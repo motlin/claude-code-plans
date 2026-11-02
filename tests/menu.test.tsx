@@ -151,7 +151,7 @@ describe("Menu", () => {
 				),
 			hint: hint?.className.split(" ").filter((c) => c === "ml-auto"),
 		}).toEqual({
-			container: ["rounded-r7", "p-1"],
+			container: ["rounded-r7"],
 			item: [
 				"h-6",
 				"rounded-r5",
@@ -200,7 +200,7 @@ describe("Menu", () => {
 			separator: screen.getByRole("separator").className,
 			expanded: trigger.getAttribute("aria-expanded"),
 		}).toStrictEqual({
-			popups: Array.from({length: 2}, () => ["rounded-card", "p-1", "text-[14px]/[20px]"]),
+			popups: Array.from({length: 2}, () => ["rounded-card", "text-[14px]/[20px]"]),
 			items: Array.from({length: 4}, () => densityClasses),
 			separator: "mx-2.5 my-1 h-px bg-border",
 			expanded: "true",
@@ -347,12 +347,14 @@ describe("Menu", () => {
 		expect(menu.className.split(" ").filter((c) => c.startsWith("min-w-"))).toEqual(["min-w-[128px]"]);
 	});
 
-	it("gives the scroller upstream's 1px transparent bottom border, so a two-row popup is 81px", async () => {
+	it("lets the scroller own upstream's gutter, edge fade and 1px transparent bottom border, so a two-row popup is 81px", async () => {
 		renderDropdown();
 		const menu = await openDropdown();
 		const scroller = menu.querySelector("[data-menu-scroller]");
 
-		expect(scroller?.className).toBe("min-h-0 overflow-y-auto border-b border-transparent");
+		expect(scroller?.className).toBe(
+			"relative min-h-0 overflow-y-auto overflow-x-hidden scroll-fade-y rounded-[inherit] border-b border-transparent p-1",
+		);
 	});
 
 	async function openStatusSub() {

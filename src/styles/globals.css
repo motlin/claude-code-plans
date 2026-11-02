@@ -966,6 +966,109 @@ html[data-interface-font="dyslexic"] {
 	}
 }
 
+/* Upstream cds `scroll-fade-y`: a scroller's top and bottom edges fade through a mask whose
+   depth a scroll-driven timeline grows from 0 to --scroll-fade-size as content scrolls past
+   each edge. Browsers without scroll timelines keep only the scroll padding, so no mask. */
+@property --scroll-fade-size {
+	syntax: "<length>";
+	inherits: true;
+	initial-value: 28px;
+}
+
+@property --scroll-fade-top-raw {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 0px;
+}
+
+@property --scroll-fade-bottom-raw {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 0px;
+}
+
+@property --scroll-fade-y-active {
+	syntax: "<number>";
+	inherits: false;
+	initial-value: 0;
+}
+
+@property --scroll-fade-top-on {
+	syntax: "<number>";
+	inherits: true;
+	initial-value: 1;
+}
+
+@property --scroll-fade-bottom-on {
+	syntax: "<number>";
+	inherits: true;
+	initial-value: 1;
+}
+
+@keyframes scroll-fade-top {
+	0% {
+		--scroll-fade-top-raw: 0px;
+	}
+	to {
+		--scroll-fade-top-raw: var(--scroll-fade-size);
+	}
+}
+
+@keyframes scroll-fade-bottom {
+	0% {
+		--scroll-fade-bottom-raw: var(--scroll-fade-size);
+	}
+	to {
+		--scroll-fade-bottom-raw: 0px;
+	}
+}
+
+@keyframes scroll-fade-y-active {
+	0%,
+	to {
+		--scroll-fade-y-active: 1;
+	}
+}
+
+@utility scroll-fade-y {
+	scroll-padding-top: calc(var(--scroll-fade-size) * var(--scroll-fade-top-on));
+	scroll-padding-bottom: calc(var(--scroll-fade-size) * var(--scroll-fade-bottom-on));
+	@supports (animation-timeline: scroll()) {
+		--scroll-fade-top: calc(var(--scroll-fade-top-raw) * var(--scroll-fade-y-active) * var(--scroll-fade-top-on));
+		--scroll-fade-bottom: calc(
+			var(--scroll-fade-bottom-raw) * var(--scroll-fade-y-active) * var(--scroll-fade-bottom-on)
+		);
+		mask-image: linear-gradient(
+			to bottom,
+			transparent,
+			#0000000d calc(var(--scroll-fade-top) * 0.15),
+			#00000026 calc(var(--scroll-fade-top) * 0.3),
+			#0000004d calc(var(--scroll-fade-top) * 0.45),
+			#00000080 calc(var(--scroll-fade-top) * 0.6),
+			#000000b3 calc(var(--scroll-fade-top) * 0.75),
+			#000000d9 calc(var(--scroll-fade-top) * 0.87),
+			#000 var(--scroll-fade-top),
+			#000 calc(100% - var(--scroll-fade-bottom)),
+			#000000d9 calc(100% - var(--scroll-fade-bottom) * 0.87),
+			#000000b3 calc(100% - var(--scroll-fade-bottom) * 0.75),
+			#00000080 calc(100% - var(--scroll-fade-bottom) * 0.6),
+			#0000004d calc(100% - var(--scroll-fade-bottom) * 0.45),
+			#00000026 calc(100% - var(--scroll-fade-bottom) * 0.3),
+			#0000000d calc(100% - var(--scroll-fade-bottom) * 0.15),
+			transparent
+		);
+		animation-name: scroll-fade-top, scroll-fade-bottom, scroll-fade-y-active;
+		animation-timing-function: linear;
+		animation-fill-mode: both, both, none;
+		animation-duration: auto;
+		animation-timeline: scroll(self block);
+		animation-range:
+			0px var(--scroll-fade-size),
+			calc(100% - var(--scroll-fade-size)) 100%,
+			0px 101%;
+	}
+}
+
 @utility ring-focus {
 	box-shadow: var(--focus-shadow);
 	outline-style: none;

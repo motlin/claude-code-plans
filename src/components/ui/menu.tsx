@@ -83,8 +83,12 @@ function NestedSheet(props: SheetContentProps & {treeId: string}) {
 const POPUP_CLASS =
 	"relative flex max-h-[var(--available-height)] min-w-[128px] max-w-[320px] flex-col bg-[var(--menu-bg)] font-normal text-primary shadow-[var(--menu-shadow)] outline-none select-none";
 
-/** Upstream's scroller carries a `border-b-[length:var(--cds-ring-inner)] border-transparent` 1px bottom border. */
-const SCROLLER_CLASS = "min-h-0 overflow-y-auto border-b border-transparent";
+/**
+ * Upstream's scroller owns the gutter (`p-[var(--cds-menu-gutter)]`) and the `scroll-fade-y` edge fade, and carries a
+ * `border-b-[length:var(--cds-ring-inner)] border-transparent` 1px bottom border.
+ */
+const SCROLLER_CLASS =
+	"relative min-h-0 overflow-y-auto overflow-x-hidden scroll-fade-y rounded-[inherit] border-b border-transparent p-1";
 
 const ITEM_VARIANT_CLASS = {
 	default: "text-primary data-[highlighted]:bg-fill-ghost-hover",
@@ -349,8 +353,7 @@ export function MenuContent({
 	/* A sheet's portal forces comfortable (`density: MG`) at every account density. */
 	const resolvedDensity = sheet ? "comfortable" : scopeDensity;
 	const sizing = sheet ? SHEET_SIZING : DENSITY_CLASSES[resolvedDensity];
-	/* With a header the gutter moves onto the header and the scroller, as upstream's `p-gutter pt-0`. */
-	const popupClass = `${POPUP_CLASS} ${sizing.popup}${header === undefined ? " p-1" : ""} ${sizing.text}`;
+	const popupClass = `${POPUP_CLASS} ${sizing.popup} ${sizing.text}`;
 	return (
 		<DensityProvider density={resolvedDensity}>
 			<MenuLgContext.Provider value={sheet}>
@@ -381,7 +384,8 @@ export function MenuContent({
 							{header !== undefined && <div className="shrink-0 px-1 pt-1">{header}</div>}
 							<div
 								data-menu-scroller=""
-								className={header === undefined ? SCROLLER_CLASS : `${SCROLLER_CLASS} p-1 pt-0`}
+								/* Under a pinned header the gutter drops its top, as upstream's `p-gutter pt-0`. */
+								className={header === undefined ? SCROLLER_CLASS : `${SCROLLER_CLASS} pt-0`}
 							>
 								{children}
 							</div>
