@@ -39,6 +39,7 @@ import {
 	type RailSectionsState,
 } from "../../lib/session-rail-store";
 import {usageRingSeverity, type UsageRingSeverity} from "../../lib/composer-state";
+import {TooltipPortalContext} from "../ui/tooltip-portal-context";
 import {
 	ContextMenu,
 	ContextMenuTrigger,
@@ -260,41 +261,44 @@ export function SessionRail({sessionId, cards}: {sessionId: string; cards: reado
 				ref={listRef}
 				className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto overscroll-contain p-px [scrollbar-width:none]"
 			>
-				<DndContext
-					sensors={sensors}
-					collisionDetection={closestCenter}
-					modifiers={RAIL_DRAG_MODIFIERS}
-					autoScroll={false}
-					onDragStart={onDragStart}
-					onDragEnd={onDragEnd}
-					accessibility={railSectionAccessibility(shownIds)}
-				>
-					<SortableContext items={shownIds} strategy={verticalListSortingStrategy}>
-						{shown.map((card) => {
-							const open = isRailSectionOpen(sections, sessionId, card.id);
-							return (
-								<RailSection
-									key={card.id}
-									sessionId={sessionId}
-									card={card}
-									open={open}
-									sections={sections}
-									onToggle={(event) => {
-										if (event.altKey) {
-											setRailSectionsOpen(
-												sessionId,
-												shown.map((each) => each.id),
-												!open,
-											);
-										} else {
-											toggleRailSection(sessionId, card.id);
-										}
-									}}
-								/>
-							);
-						})}
-					</SortableContext>
-				</DndContext>
+				{/* The list's overflow clips at the rail's edges, so its tooltips portal over the viewport. */}
+				<TooltipPortalContext.Provider value>
+					<DndContext
+						sensors={sensors}
+						collisionDetection={closestCenter}
+						modifiers={RAIL_DRAG_MODIFIERS}
+						autoScroll={false}
+						onDragStart={onDragStart}
+						onDragEnd={onDragEnd}
+						accessibility={railSectionAccessibility(shownIds)}
+					>
+						<SortableContext items={shownIds} strategy={verticalListSortingStrategy}>
+							{shown.map((card) => {
+								const open = isRailSectionOpen(sections, sessionId, card.id);
+								return (
+									<RailSection
+										key={card.id}
+										sessionId={sessionId}
+										card={card}
+										open={open}
+										sections={sections}
+										onToggle={(event) => {
+											if (event.altKey) {
+												setRailSectionsOpen(
+													sessionId,
+													shown.map((each) => each.id),
+													!open,
+												);
+											} else {
+												toggleRailSection(sessionId, card.id);
+											}
+										}}
+									/>
+								);
+							})}
+						</SortableContext>
+					</DndContext>
+				</TooltipPortalContext.Provider>
 			</div>
 		</aside>
 	);

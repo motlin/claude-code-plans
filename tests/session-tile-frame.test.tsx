@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import {act, cleanup, render} from "@testing-library/react";
+import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {useContext, useLayoutEffect, useRef} from "react";
 import {afterEach, beforeEach, expect, it, vi} from "vite-plus/test";
+import {AssistantMessageActions} from "../src/components/message-actions";
 import {SessionTileFrame, type SessionTileScrollPosition} from "../src/components/session-tile-frame";
 import {SessionTileGeometryReadyContext} from "../src/components/session-tile-geometry-context";
 
@@ -170,4 +171,50 @@ it("wraps the chat tile in upstream's rounded surface-2 card", () => {
 	expect((container.firstElementChild as HTMLElement).className).toBe(
 		"@container flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-r7 bg-surface-2 shadow-panel-sm",
 	);
+});
+
+it("portals a transcript toolbar tooltip out of the contain:strict scroller and shifts it inside the viewport's 8px edge", () => {
+	vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
+	vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(300);
+	vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(40);
+	const positionRef = {current: null};
+	const {container} = render(
+		<SessionTileFrame
+			sessionId="example-alice"
+			visitKey="example-alice-entry"
+			positionRef={positionRef}
+			anchorRef={{current: null}}
+			restoredScrollY={undefined}
+			header={<p>Example header</p>}
+			footer={<p>Example composer</p>}
+		>
+			<AssistantMessageActions
+				message={{sessionId: "example-alice", uuid: "message-1"}}
+				text="Hello"
+				details={[]}
+			/>
+		</SessionTileFrame>,
+	);
+	const fork = container.querySelector<HTMLButtonElement>('button[aria-label="Fork from here"]')!;
+	const anchor = fork.parentElement!;
+	vi.spyOn(anchor, "getBoundingClientRect").mockReturnValue(DOMRect.fromRect({x: 40, y: 400, width: 24, height: 24}));
+	fireEvent.pointerEnter(anchor);
+	act(() => {
+		vi.advanceTimersByTime(300);
+	});
+	const tooltip = document.querySelector<HTMLElement>('[role="tooltip"]')!;
+	expect({
+		insideScroller: container.querySelector("[data-session-scrollport]")!.contains(tooltip),
+		inBody: document.body.contains(tooltip),
+		text: tooltip.textContent,
+		transform: tooltip.style.transform,
+	}).toStrictEqual({
+		insideScroller: false,
+		inBody: true,
+		text: "Fork from hereStarts a new session from this point. This one stays as it is.",
+		// Centred on the 24px button the 300px tip would start at -98px; it shifts to 8px.
+		transform: "translate(106px, 0px)",
+	});
+	vi.useRealTimers();
+	vi.restoreAllMocks();
 });

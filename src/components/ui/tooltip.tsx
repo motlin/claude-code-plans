@@ -5,6 +5,7 @@ import {
 	type ReactElement,
 	useEffect,
 	useId,
+	useContext,
 	useLayoutEffect,
 	useRef,
 	useState,
@@ -24,6 +25,7 @@ import {
 	TOOLTIP_CLASS,
 } from "./tooltip-classes";
 import {placeTooltip, type TooltipAlign, type TooltipPlacement} from "./tooltip-placement";
+import {TooltipPortalContext} from "./tooltip-portal-context";
 
 /** The side classes' 4px gap widened to upstream's `sideOffset 8` (the @ mention row path tip). */
 function widenOffset(sideClass: string): string {
@@ -81,7 +83,7 @@ export function Tooltip({
 	closeOnClick = true,
 	trackCursor,
 	suppressAfterPopup = false,
-	portal = false,
+	portal: portalProp,
 	delay = OPEN_DELAY_MS,
 	sideOffset = 4,
 	maxWidth,
@@ -132,7 +134,8 @@ export function Tooltip({
 	suppressAfterPopup?: boolean;
 	/**
 	 * Render the tip in `document.body` over a fixed box matching the anchor, for anchors inside a clipping
-	 * scroller such as a menu row (upstream's Max effort row tooltip, side right).
+	 * scroller such as a menu row (upstream's Max effort row tooltip, side right). Defaults to the nearest
+	 * TooltipPortalContext, which the transcript scroller sets.
 	 */
 	portal?: boolean;
 	/** The hover open delay; upstream's @ mention rows use 200ms. */
@@ -147,6 +150,8 @@ export function Tooltip({
 	const secondaryRows: readonly TooltipRow[] =
 		secondary === undefined ? [] : "content" in secondary ? [secondary] : secondary;
 	const secondaryKey = secondaryRows.map((row) => `${row.content}\u0000${row.shortcut}`).join("\u0001");
+	const inheritedPortal = useContext(TooltipPortalContext);
+	const portal = portalProp ?? inheritedPortal;
 	const id = useId();
 	const [open, setOpen] = useState(false);
 	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);

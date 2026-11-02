@@ -3,6 +3,7 @@ import {sessionScrollKey} from "../lib/session-route-location";
 import {SessionTileGeometryReadyContext} from "./session-tile-geometry-context";
 import {useScrollGutterVar} from "../hooks/use-scroll-gutter-var";
 import {SESSION_TILE_CLASS} from "./dock-tokens";
+import {TooltipPortalContext} from "./ui/tooltip-portal-context";
 import {useCallback, useLayoutEffect, useRef, type ReactNode, type Ref, type RefObject} from "react";
 
 /** The one live chat tile's offset while a pane move reparents it; never a cross-route cache. */
@@ -149,12 +150,15 @@ export function SessionTileFrame({
 					}}
 					className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto [contain:strict] [overflow-anchor:none] [scrollbar-gutter:stable_both-edges]"
 				>
-					<div ref={anchorRef} className="flex min-h-full flex-col">
-						<SessionTileGeometryReadyContext.Provider value={restoreGeometry}>
-							<div className="flex-1">{children}</div>
-						</SessionTileGeometryReadyContext.Provider>
-						{footer}
-					</div>
+					{/* The scroller clips at its edges, so tooltips inside it portal over the viewport. */}
+					<TooltipPortalContext.Provider value>
+						<div ref={anchorRef} className="flex min-h-full flex-col">
+							<SessionTileGeometryReadyContext.Provider value={restoreGeometry}>
+								<div className="flex-1">{children}</div>
+							</SessionTileGeometryReadyContext.Provider>
+							{footer}
+						</div>
+					</TooltipPortalContext.Provider>
 				</div>
 				{rail}
 			</div>
