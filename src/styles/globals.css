@@ -229,7 +229,8 @@ html[data-interface-font="dyslexic"] {
 	--radius-xs: 0.125rem;
 	/* Upstream claude.ai/code rounded-sm is .25rem (4px), measured on the task-event button. */
 	--radius-sm: 0.25rem;
-	--radius-md: calc(var(--radius) - 2px);
+	/* Upstream claude.ai/code rounded-md is .375rem (6px). */
+	--radius-md: 0.375rem;
 	/* Upstream claude.ai/code rounded-lg is .5rem (8px), measured on the live Next-steps row. */
 	--radius-lg: 0.5rem;
 	--radius-xl: calc(var(--radius) + 4px);
