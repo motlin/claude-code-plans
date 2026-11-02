@@ -2,13 +2,14 @@ import type {HighlighterCore, ThemeRegistration} from "@shikijs/core";
 import {z} from "zod";
 
 /*
- * Settings ▸ Claude Code ▸ Code appearance, as on claude.ai/code: 10 light and
- * 18 dark Shiki themes, defaulting to the Claude pair.
+ * Settings ▸ Claude Code ▸ Code appearance, as on claude.ai/code: 11 light and
+ * 19 dark Shiki themes, defaulting to the Claude pair.
  */
 export const CodeThemeLightSchema = z.enum([
 	"claude-light",
 	"github-light",
 	"pierre-light",
+	"vscode-light",
 	"one-light",
 	"catppuccin-latte",
 	"solarized-light",
@@ -24,6 +25,7 @@ export const CodeThemeDarkSchema = z.enum([
 	"github-dark",
 	"github-dark-dimmed",
 	"pierre-dark",
+	"vscode-dark",
 	"one-dark-pro",
 	"dracula",
 	"dracula-soft",
@@ -67,6 +69,8 @@ const THEME_LOADERS: Record<CodeThemeId, () => ThemeModule> = {
 	"github-light": async () => import("shiki/themes/github-light.mjs"),
 	"pierre-light": async () =>
 		import("@pierre/theme/pierre-light").then(({default: theme}) => ({default: pierreTheme(theme)})),
+	"vscode-light": async () =>
+		import("./vscode-light-theme.json").then(({default: theme}) => ({default: {...theme, type: "light"}})),
 	"one-light": async () => import("shiki/themes/one-light.mjs"),
 	"catppuccin-latte": async () => import("shiki/themes/catppuccin-latte.mjs"),
 	"solarized-light": async () => import("shiki/themes/solarized-light.mjs"),
@@ -79,6 +83,8 @@ const THEME_LOADERS: Record<CodeThemeId, () => ThemeModule> = {
 	"github-dark-dimmed": async () => import("shiki/themes/github-dark-dimmed.mjs"),
 	"pierre-dark": async () =>
 		import("@pierre/theme/pierre-dark").then(({default: theme}) => ({default: pierreTheme(theme)})),
+	"vscode-dark": async () =>
+		import("./vscode-dark-theme.json").then(({default: theme}) => ({default: {...theme, type: "dark"}})),
 	"one-dark-pro": async () => import("shiki/themes/one-dark-pro.mjs"),
 	dracula: async () => import("shiki/themes/dracula.mjs"),
 	"dracula-soft": async () => import("shiki/themes/dracula-soft.mjs"),

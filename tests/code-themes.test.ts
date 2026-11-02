@@ -1,3 +1,4 @@
+import {resolveTheme} from "@pierre/diffs";
 import {describe, expect, it} from "vite-plus/test";
 import {DEFAULTS, settingStorageKey} from "../src/components/settings-context";
 import {CodeThemeDarkSchema, CodeThemeLightSchema, codeFontFamily, loadCodeTheme} from "../src/lib/code-themes";
@@ -15,6 +16,7 @@ describe("code theme settings", () => {
 				"claude-light",
 				"github-light",
 				"pierre-light",
+				"vscode-light",
 				"one-light",
 				"catppuccin-latte",
 				"solarized-light",
@@ -28,6 +30,7 @@ describe("code theme settings", () => {
 				"github-dark",
 				"github-dark-dimmed",
 				"pierre-dark",
+				"vscode-dark",
 				"one-dark-pro",
 				"dracula",
 				"dracula-soft",
@@ -47,6 +50,7 @@ describe("code theme settings", () => {
 				"Claude Light",
 				"GitHub Light",
 				"Pierre Light",
+				"VS Code Light",
 				"One Light",
 				"Catppuccin Latte",
 				"Solarized Light",
@@ -60,6 +64,7 @@ describe("code theme settings", () => {
 				"GitHub Dark",
 				"GitHub Dark Dimmed",
 				"Pierre Dark",
+				"VS Code Dark",
 				"One Dark Pro",
 				"Dracula",
 				"Dracula Soft",
@@ -175,6 +180,68 @@ describe("code theme settings", () => {
 		});
 	});
 
+	it.each([
+		{
+			id: "vscode-light",
+			type: "light",
+			fg: "#202020",
+			bg: "#FFFFFF",
+			selection: ["#0069cc2e", "#0069CC15"],
+			brackets: ["#0431FA", "#319331", "#7B3814"],
+			rules: 118,
+			scopes: {
+				comment: "#008000",
+				keyword: "#0000ff",
+				string: "#a31515",
+				"string.regexp": "#811f3f",
+				"constant.numeric": "#098658",
+				"entity.name.tag": "#800000",
+				"entity.other.attribute-name": "#e50000",
+				"entity.name.function": "#795E26",
+				variable: "#001080",
+				"entity.name.type": "#267f99",
+			},
+		},
+		{
+			id: "vscode-dark",
+			type: "dark",
+			fg: "#BBBEBF",
+			bg: "#121314",
+			selection: ["#3fc8ff38", "#27678240"],
+			brackets: ["#FFD700", "#DA70D6", "#179FFF"],
+			rules: 119,
+			scopes: {
+				comment: "#6A9955",
+				keyword: "#569cd6",
+				string: "#ce9178",
+				"string.regexp": "#d16969",
+				"constant.numeric": "#b5cea8",
+				"entity.name.tag": "#569cd6",
+				"entity.other.attribute-name": "#9cdcfe",
+				"entity.name.function": "#DCDCAA",
+				variable: "#9CDCFE",
+				"entity.name.type": "#4EC9B0",
+			},
+		},
+	] as const)("ports upstream's $id colours exactly", async (expected) => {
+		const theme = await loadCodeTheme(expected.id);
+		const foreground = (scope: string) =>
+			theme.settings?.find((rule) => [rule.scope].flat().includes(scope))?.settings.foreground;
+		expect({
+			id: expected.id,
+			type: theme.type,
+			fg: theme.fg,
+			bg: theme.bg,
+			selection: [
+				theme.colors?.["editor.selectionBackground"],
+				theme.colors?.["editor.selectionHighlightBackground"],
+			],
+			brackets: [1, 2, 3].map((n) => theme.colors?.[`editorBracketHighlight.foreground${n}`]),
+			rules: theme.settings?.length,
+			scopes: Object.fromEntries(Object.keys(expected.scopes).map((scope) => [scope, foreground(scope)])),
+		}).toStrictEqual(expected);
+	});
+
 	it("lazily loads every offered theme under its own id", async () => {
 		const ids = [...CodeThemeLightSchema.options, ...CodeThemeDarkSchema.options];
 		const loaded = await Promise.all(
@@ -184,5 +251,23 @@ describe("code theme settings", () => {
 			}),
 		);
 		expect(loaded).toStrictEqual(ids.map((id) => ({id, name: id})));
+	});
+
+	it("registers the upstream-only themes with @pierre/diffs", async () => {
+		// Importing the config module performs the registrations.
+		await import("../src/components/changes/diffs-config");
+		const ids = ["claude-light", "claude-dark", "vscode-light", "vscode-dark"] as const;
+		const resolved = await Promise.all(
+			ids.map(async (id) => {
+				const theme = await resolveTheme(id);
+				return {id, type: theme.type, bg: theme.bg};
+			}),
+		);
+		expect(resolved).toStrictEqual([
+			{id: "claude-light", type: "light", bg: "#faf9f580"},
+			{id: "claude-dark", type: "dark", bg: "#191919"},
+			{id: "vscode-light", type: "light", bg: "#FFFFFF"},
+			{id: "vscode-dark", type: "dark", bg: "#121314"},
+		]);
 	});
 });
