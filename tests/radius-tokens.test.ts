@@ -2,7 +2,15 @@ import {readFileSync} from "node:fs";
 import {describe, expect, it} from "vite-plus/test";
 
 const styles = readFileSync("src/styles/globals.css", "utf8");
-const upstream = readFileSync(".llm/upstream-sync/dumps/upstream-survey-root-vars.css", "utf8");
+// Upstream claude.ai/code's :root radius tokens, copied from the gitignored
+// survey dump .llm/upstream-sync/dumps/upstream-survey-root-vars.css (lines 1208-1212).
+const upstream = `
+  --radius-xs:.125rem;
+  --radius-sm:.25rem;
+  --radius-md:.375rem;
+  --radius-lg:.5rem;
+  --radius-xl:.75rem;
+`;
 
 function token(source: string, name: string): string | null {
 	return source.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1]?.trim() ?? null;
