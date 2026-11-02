@@ -44,6 +44,8 @@ import {useResizableWidth} from "../../hooks/use-resizable-width";
 import {useShortcutKeys} from "../../hooks/use-shortcut";
 import {useSessionIdentity} from "../../hooks/use-session-identity";
 import {Tooltip} from "../ui/tooltip";
+import {DensityProvider} from "../ui/density";
+import {type Density, useScopeDensity} from "../ui/density-context";
 import {useSettings} from "../settings-context";
 
 export function Sidebar({
@@ -75,6 +77,8 @@ export function Sidebar({
 	const {data: activeSessions} = useQuery(activeSessionsQueryOptions(settings.activeTimeoutSec * 1000));
 	const activeCount = activeSessions?.length ?? 0;
 	const roving = useSidebarBodyRoving();
+	/* Upstream pins aside.dframe-sidebar[data-density] to its own comfortable default, so a compact ancestor never pulls it along. */
+	const density = useScopeDensity("comfortable");
 
 	function badgeFor(section: Section): NavBadge | null {
 		if (section === "active") return {count: activeCount, title: `${activeCount} active`};
@@ -100,13 +104,13 @@ export function Sidebar({
 				data-sidebar-body=""
 				className="flex min-h-0 flex-1 flex-col px-2"
 			>
-				<div className="shrink-0">
+				<div data-nav-block="" className="shrink-0">
 					{/* Upstream's phone sheet swaps the field for its header Search button. */}
 					{onPhoneSheetClose === undefined && <SidebarSearchField />}
 					<NewSessionRow />
 				</div>
 				<NavScroll activeKey={activeSection === "sessions" ? activeSessionId : null}>
-					<div className="shrink-0">
+					<div data-nav-block="" className="shrink-0">
 						{navigationItems.map((item) => {
 							const Icon = item.icon;
 							const badge = badgeFor(item.section);
@@ -146,10 +150,10 @@ export function Sidebar({
 							badgeFor={badgeFor}
 							activeSection={activeSection}
 						/>
-						{/* Upstream's phone sheet ends the nav block 11px below More; desktop's ends 13px below. */}
+						{/* Upstream's phone sheet ends the nav block 11px below More; desktop's ends 13px below. More's 2px stack gap is part of that. */}
 						<div
 							data-nav-groups-gap=""
-							className={onPhoneSheetClose ? "h-[11px] shrink-0" : "h-[13px] shrink-0"}
+							className={onPhoneSheetClose ? "h-[9.5px] shrink-0" : "h-[11.5px] shrink-0"}
 						/>
 					</div>
 					<SidebarSessionGroups
@@ -164,74 +168,86 @@ export function Sidebar({
 
 	if (onPhoneSheetClose) {
 		return (
-			<nav
-				aria-label="Sidebar"
-				data-focus-region="navigation"
-				className="group/sidebar flex h-full min-h-0 flex-col"
-			>
-				<div data-testid="phone-sheet-header" className="flex shrink-0 flex-col gap-2 px-2">
-					<div className="flex h-11 items-center gap-2">
+			<DensityProvider density={density}>
+				<nav
+					aria-label="Sidebar"
+					data-density={density}
+					data-focus-region="navigation"
+					className="group/sidebar flex h-full min-h-0 flex-col"
+				>
+					<div data-testid="phone-sheet-header" className="flex shrink-0 flex-col gap-2 px-2">
+						<div className="flex h-11 items-center gap-2">
+							<button
+								type="button"
+								aria-label="Close sidebar"
+								data-phone-sheet-close=""
+								onClick={onPhoneSheetClose}
+								className="flex h-8 w-8 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover"
+							>
+								<X aria-hidden="true" className="size-5" />
+							</button>
+							<SidebarWordmark className="ml-2" />
+						</div>
+						{/* Upstream's CDS lg button: the ⌘K default entry opens forced to Search over the open sheet. */}
 						<button
 							type="button"
-							aria-label="Close sidebar"
-							data-phone-sheet-close=""
-							onClick={onPhoneSheetClose}
-							className="flex h-8 w-8 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover"
+							data-prefetch="palette"
+							onClick={() => {
+								openCommandPalette("default", {source: "mobile"});
+							}}
+							className="flex h-10 w-full items-center gap-1 rounded-r7 bg-fill-control px-4 text-[15px]/[22px] text-primary transition-colors"
 						>
-							<X aria-hidden="true" className="size-5" />
+							<Search aria-hidden="true" className="-ms-1 size-5" />
+							Search
 						</button>
-						<SidebarWordmark className="ml-2" />
 					</div>
-					{/* Upstream's CDS lg button: the ⌘K default entry opens forced to Search over the open sheet. */}
-					<button
-						type="button"
-						data-prefetch="palette"
-						onClick={() => {
-							openCommandPalette("default", {source: "mobile"});
-						}}
-						className="flex h-10 w-full items-center gap-1 rounded-r7 bg-fill-control px-4 text-[15px]/[22px] text-primary transition-colors"
-					>
-						<Search aria-hidden="true" className="-ms-1 size-5" />
-						Search
-					</button>
-				</div>
-				{body}
-			</nav>
+					{body}
+				</nav>
+			</DensityProvider>
 		);
 	}
 
 	if (collapsed) {
-		return <CollapsedSidebar narrowViewport={narrowViewport}>{body}</CollapsedSidebar>;
+		return (
+			<DensityProvider density={density}>
+				<CollapsedSidebar narrowViewport={narrowViewport} density={density}>
+					{body}
+				</CollapsedSidebar>
+			</DensityProvider>
+		);
 	}
 
 	// `min-[701px]:flex` only matters before hydration: afterwards AppFrame renders this docked nav solely
 	// above the width-aware narrow threshold (always > 700px), so CSS never hides it there.
 	return (
-		<nav
-			aria-label="Sidebar"
-			data-focus-region="navigation"
-			style={{"--sidebar-width": `${width}px`}}
-			className="group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)] min-[701px]:flex"
-		>
-			<div data-testid="sidebar-titlebar" className="flex h-11 shrink-0 items-center px-2">
-				{/* Pinned to the collapsed trigger's 12,12 spot so the toggle never moves between states. */}
-				<div data-testid="sidebar-toggle-slot" className="flex w-8 shrink-0 justify-center self-start pt-3">
-					<div className="flex opacity-70 transition-opacity duration-[120ms] ease-[cubic-bezier(.32,.72,0,1)] group-hover/sidebar:opacity-100 has-[:focus-visible]:opacity-100 pointer-coarse:opacity-100">
-						<SidebarToggleButton
-							{...(onToggle ? {onClick: onToggle, collapsed: false} : {})}
-							className="flex size-6 items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover [&_svg]:size-4"
-						/>
+		<DensityProvider density={density}>
+			<nav
+				aria-label="Sidebar"
+				data-density={density}
+				data-focus-region="navigation"
+				style={{"--sidebar-width": `${width}px`}}
+				className="group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)] min-[701px]:flex"
+			>
+				<div data-testid="sidebar-titlebar" className="flex h-11 shrink-0 items-center px-2">
+					{/* Pinned to the collapsed trigger's 12,12 spot so the toggle never moves between states. */}
+					<div data-testid="sidebar-toggle-slot" className="flex w-8 shrink-0 justify-center self-start pt-3">
+						<div className="flex opacity-70 transition-opacity duration-[120ms] ease-[cubic-bezier(.32,.72,0,1)] group-hover/sidebar:opacity-100 has-[:focus-visible]:opacity-100 pointer-coarse:opacity-100">
+							<SidebarToggleButton
+								{...(onToggle ? {onClick: onToggle, collapsed: false} : {})}
+								className="flex size-6 items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover [&_svg]:size-4"
+							/>
+						</div>
+					</div>
+					<div className="ml-1.5 flex min-w-0 flex-col items-start">
+						<SidebarWordmark />
 					</div>
 				</div>
-				<div className="ml-1.5 flex min-w-0 flex-col items-start">
-					<SidebarWordmark />
-				</div>
-			</div>
 
-			<div aria-hidden="true" className="h-2 shrink-0" />
-			{body}
-			<SidebarResizeHandle width={width} onHide={onToggle ?? toggleSidebarCollapsed} />
-		</nav>
+				<div aria-hidden="true" className="h-2 shrink-0" />
+				{body}
+				<SidebarResizeHandle width={width} onHide={onToggle ?? toggleSidebarCollapsed} />
+			</nav>
+		</DensityProvider>
 	);
 }
 
@@ -442,7 +458,15 @@ function isPeekInUse(peek: HTMLElement | null): boolean {
 	return active instanceof HTMLInputElement && (active.type === "text" || active.type === "search");
 }
 
-function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; children: ReactNode}) {
+function CollapsedSidebar({
+	narrowViewport,
+	density,
+	children,
+}: {
+	narrowViewport: boolean;
+	density: Density;
+	children: ReactNode;
+}) {
 	const [hovering, setHovering] = useState(false);
 	// Upstream's `peeked`: set on the first open so the peek's transition never runs on the collapse frame.
 	const [peeked, setPeeked] = useState(false);
@@ -549,6 +573,7 @@ function CollapsedSidebar({narrowViewport, children}: {narrowViewport: boolean; 
 				id={PEEK_ID}
 				data-testid="sidebar-peek"
 				aria-label="Sidebar"
+				data-density={density}
 				data-focus-region="navigation"
 				aria-hidden={hovering ? undefined : true}
 				inert={!hovering}

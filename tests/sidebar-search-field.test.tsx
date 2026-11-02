@@ -16,6 +16,7 @@ import {activeSessionsQueryOptions, recentSessionsQueryOptions} from "../src/lib
 import {installLocalStorage} from "./fake-storage";
 import {NAV_SECTIONS} from "../src/lib/nav-sections";
 import {ToastProvider} from "../src/components/toast";
+import {CompactScope} from "./fizzy-lake-off";
 
 function seedQueryClient(): QueryClient {
 	const queryClient = new QueryClient({
@@ -44,17 +45,24 @@ function Palette() {
 	return <CommandPalette {...useCommandPalette()} />;
 }
 
-async function renderSidebar(props: {collapsed?: boolean; phoneSheet?: boolean; palette?: boolean} = {}) {
+async function renderSidebar(
+	props: {
+		collapsed?: boolean;
+		phoneSheet?: boolean;
+		palette?: boolean;
+		compactAncestor?: boolean;
+	} = {},
+) {
 	const queryClient = seedQueryClient();
+	const sidebar = (
+		<Sidebar collapsed={props.collapsed ?? false} {...(props.phoneSheet ? {onPhoneSheetClose: () => {}} : {})} />
+	);
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
 				<ToastProvider>
 					<SettingsProvider>
-						<Sidebar
-							collapsed={props.collapsed ?? false}
-							{...(props.phoneSheet ? {onPhoneSheetClose: () => {}} : {})}
-						/>
+						{props.compactAncestor === true ? <CompactScope>{sidebar}</CompactScope> : sidebar}
 						{props.palette === true && <Palette />}
 					</SettingsProvider>
 				</ToastProvider>
@@ -240,6 +248,38 @@ describe("sidebar search field", () => {
 
 		await waitFor(() => {
 			expect(document.activeElement === field ? "field" : document.activeElement?.tagName).toBe("field");
+		});
+	});
+});
+
+describe("sidebar density scope", () => {
+	async function densities(props: {collapsed?: boolean; phoneSheet?: boolean}) {
+		await renderSidebar({...props, compactAncestor: true});
+		const nav = sidebarNav();
+		fireEvent.click(within(nav).getByRole("button", {name: "More navigation items", hidden: true}));
+		const menu = await screen.findByRole("menu", {hidden: true});
+		return {
+			nav: nav.getAttribute("data-density"),
+			menu: menu.closest("[data-density]")?.getAttribute("data-density"),
+		};
+	}
+
+	/* Upstream pins aside.dframe-sidebar[data-density=comfortable] (web default), so a compact ancestor never pulls it along. */
+	it("pins the docked sidebar comfortable under a compact ancestor, and its menus portal comfortable", async () => {
+		expect(await densities({})).toStrictEqual({nav: "comfortable", menu: "comfortable"});
+	});
+
+	it("pins the collapsed peek sidebar comfortable under a compact ancestor", async () => {
+		expect(await densities({collapsed: true})).toStrictEqual({
+			nav: "comfortable",
+			menu: "comfortable",
+		});
+	});
+
+	it("pins the phone sheet sidebar comfortable under a compact ancestor", async () => {
+		expect(await densities({phoneSheet: true})).toStrictEqual({
+			nav: "comfortable",
+			menu: "comfortable",
 		});
 	});
 });

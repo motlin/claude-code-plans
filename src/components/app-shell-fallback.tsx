@@ -277,14 +277,14 @@ export function AppShellFallback({
 				<div className="h-2 shrink-0" />
 
 				<div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2">
-					<div className="shrink-0">
+					<div data-nav-block="" className="shrink-0">
 						<div className={SEARCH_FIELD_WRAPPER_CLASS}>
 							<span className={SEARCH_FIELD_CLASS}>
 								<SearchFieldContents keys={searchKeys} />
 							</span>
 						</div>
 						<div className="flex items-center">
-							<span className={NAV_ROW_CLASS}>
+							<span data-row="" className={NAV_ROW_CLASS}>
 								<span className="df-leading-slot [--sb-icon:16px]">
 									<span className="df-new-icon-circle">
 										<Plus aria-hidden="true" />
@@ -296,7 +296,7 @@ export function AppShellFallback({
 						{getVisibleNavItems(navItems, DEFAULT_VISIBLE_NAV_SECTIONS).pinned.map((item) => {
 							const Icon = item.icon;
 							return (
-								<span key={item.to} className={NAV_ROW_CLASS}>
+								<span key={item.to} data-row="" className={NAV_ROW_CLASS}>
 									<span className="df-leading-slot">
 										<Icon aria-hidden="true" />
 									</span>
@@ -305,14 +305,14 @@ export function AppShellFallback({
 							);
 						})}
 						<div className="flex items-center">
-							<span className={NAV_ROW_CLASS}>
+							<span data-row="" className={NAV_ROW_CLASS}>
 								<span className="df-leading-slot">
 									<Ellipsis aria-hidden="true" />
 								</span>
 								<span className="min-w-0 flex-1 truncate">More</span>
 							</span>
 						</div>
-						<div className="h-[13px] shrink-0" />
+						<div className="h-[11.5px] shrink-0" />
 					</div>
 
 					<div className={SESSION_ROW_CLASS}>

@@ -357,7 +357,7 @@ describe("phone sheet sidebar", () => {
 		await renderFrame();
 		await openSheet();
 
-		expect(sheet().querySelector("[data-nav-groups-gap]")?.className).toBe("h-[11px] shrink-0");
+		expect(sheet().querySelector("[data-nav-groups-gap]")?.className).toBe("h-[9.5px] shrink-0");
 	});
 
 	it("puts upstream's full-width Search button under Close and opens the ⌘K default entry forced to Search", async () => {

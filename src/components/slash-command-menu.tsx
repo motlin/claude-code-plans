@@ -8,16 +8,48 @@ import {
 	type SlashMenuItem,
 } from "../lib/slash-commands";
 import {slashCommandOptionId} from "./slash-command-option-id";
-import {DENSITY_CLASSES} from "./ui/menu-internals";
+import {type Density, useScopeDensity} from "./ui/density-context";
 import {TOOLTIP_CLASS} from "./ui/tooltip-classes";
 import {placeRowTooltip} from "./ui/tooltip-placement";
 
-/* Upstream renders the slash popup in a compact-density portal whatever the account's density. */
-const COMPACT = DENSITY_CLASSES.compact;
+/*
+ * Upstream's slash portal copies its opener's density. The epitaxy root is compact unless a
+ * coarse pointer, a density override or the fizzy-lake "panels" rollout makes it comfortable.
+ * The rows are `h-control` (24px compact, 28px comfortable), not the generic menu's 32px
+ * comfortable rows, so this keeps its own map. Heights feed the virtualizer: a section header
+ * is its footnote line plus `py-1`, a separator 1px plus `my-1`, and the gutter is `p-1`/`p-1.5`.
+ */
+const SLASH_DENSITY = {
+	compact: {
+		popup: "rounded-r7",
+		scroller: "p-1",
+		row: "h-6 items-center gap-1.5 rounded-r5 px-2 py-[2.5px] text-[13px]/[19px]",
+		header: "px-2 py-1 text-[12px]/[15px] font-medium text-ink-muted",
+		separator: "mx-2 my-1 h-px bg-border",
+		loading: "flex h-6 items-center gap-1.5 px-2",
+		rowHeight: 24,
+		gutter: 4,
+		headerHeight: 23,
+	},
+	comfortable: {
+		popup: "rounded-menu-comfortable",
+		scroller: "p-1.5",
+		row: "h-7 items-center gap-2 rounded-r6 px-2.5 py-1 text-[14px]/[20px]",
+		header: "px-2.5 py-1 text-[13px]/[17px] font-medium text-ink-muted",
+		separator: "mx-2.5 my-1 h-px bg-border",
+		loading: "flex h-7 items-center gap-2 px-2.5",
+		rowHeight: 28,
+		gutter: 6,
+		headerHeight: 25,
+	},
+} as const;
 
-const POPUP_CLASS = `absolute bottom-full left-0 z-[130] mb-2 flex max-h-96 min-w-60 w-max max-w-[min(32rem,calc(100vw-16px))] flex-col ${COMPACT.popup} bg-[var(--menu-bg)] text-primary shadow-[var(--menu-shadow)] select-none`;
+type SlashSizing = (typeof SLASH_DENSITY)[Density];
 
-const ROW_CLASS = `flex w-full cursor-pointer ${COMPACT.singleLine} gap-1.5 ${COMPACT.item} ${COMPACT.text} outline-none data-[highlighted]:bg-fill-ghost-hover`;
+const POPUP_CLASS =
+	"absolute bottom-full left-0 z-[130] mb-2 flex max-h-96 min-w-60 w-max max-w-[min(32rem,calc(100vw-16px))] flex-col bg-[var(--menu-bg)] text-primary shadow-[var(--menu-shadow)] select-none";
+
+const ROW_CLASS = "flex w-full cursor-pointer outline-none data-[highlighted]:bg-fill-ghost-hover";
 
 /* Upstream's shared tooltip box in the slash popup's z-130 positioner, fading and scaling over `duration-snap`. */
 const ROW_TOOLTIP_CLASS = `${TOOLTIP_CLASS.replace("z-50", "z-[130]")} text-balance transition-[opacity,scale] duration-150 motion-reduce:transition-none`;
@@ -29,22 +61,15 @@ const TOOLTIP_DETAIL_CLASS = "block break-words text-[11px]/[14px] text-[var(--t
 const VIRTUALIZE_AT = 30;
 const OVERSCAN = 8;
 const SCROLL_PADDING = 28;
-/* Compact rows are a fixed `h-6`; the scroller's `p-1` gutter sits above item 0. */
-const ROW_HEIGHT = 24;
-const GUTTER = 4;
-/* A section header is 15px of text plus `py-1`; a separator is 1px plus `my-1`. */
-const ITEM_HEIGHT: Record<SlashMenuItem["type"], number> = {
-	command: ROW_HEIGHT,
-	"section-header": 23,
-	separator: 9,
-	loading: ROW_HEIGHT,
-};
+const SEPARATOR_HEIGHT = 9;
 
-/* Upstream's `section-header` and `separator` rows at compact density. */
-const SECTION_HEADER_CLASS = "px-2 py-1 text-[12px]/[15px] font-medium text-ink-muted";
-const SEPARATOR_CLASS = "mx-2 my-1 h-px bg-border";
-/* Upstream's iconless `loading` row: one 128×16 skeleton bar (`eO` rows:1 icon:false). */
-const LOADING_ROW_CLASS = "flex h-6 items-center gap-1.5 px-2";
+function itemHeight(type: SlashMenuItem["type"], sizing: SlashSizing): number {
+	if (type === "section-header") return sizing.headerHeight;
+	if (type === "separator") return SEPARATOR_HEIGHT;
+	return sizing.rowHeight;
+}
+
+/* Upstream's iconless `loading` row (`sizing.loading`): one 128×16 skeleton bar (`eO` rows:1 icon:false). */
 const LOADING_BAR_CLASS = "h-4 w-32 rounded bg-fill-ghost-hover animate-pulse motion-reduce:animate-none";
 /* The popup's `max-h-96`, used until the scroller has a measured height. */
 const FALLBACK_VIEWPORT_HEIGHT = 384;
@@ -55,17 +80,17 @@ interface RowWindow {
 }
 
 /* Each item's top offset below the gutter, plus the total height as the last entry. */
-function itemOffsets(items: readonly SlashMenuItem[]): number[] {
+function itemOffsets(items: readonly SlashMenuItem[], sizing: SlashSizing): number[] {
 	const offsets = [0];
-	for (const item of items) offsets.push((offsets.at(-1) ?? 0) + ITEM_HEIGHT[item.type]);
+	for (const item of items) offsets.push((offsets.at(-1) ?? 0) + itemHeight(item.type, sizing));
 	return offsets;
 }
 
 /* The items intersecting the viewport plus the overscan on each side, as an exclusive range. */
-function rowWindow(offsets: readonly number[], scrollTop: number, viewportHeight: number): RowWindow {
+function rowWindow(offsets: readonly number[], gutter: number, scrollTop: number, viewportHeight: number): RowWindow {
 	const count = offsets.length - 1;
-	const top = scrollTop - GUTTER;
-	const bottom = scrollTop + viewportHeight - GUTTER;
+	const top = scrollTop - gutter;
+	const bottom = scrollTop + viewportHeight - gutter;
 	let first = 0;
 	while (first < count && (offsets[first + 1] ?? 0) <= top) first++;
 	let last = first;
@@ -74,9 +99,15 @@ function rowWindow(offsets: readonly number[], scrollTop: number, viewportHeight
 }
 
 /* `scrollToIndex(index, {align: "auto"})` with the scroll padding: only scrolls when the row is within the padding of an edge. */
-function scrollTopFor(offsets: readonly number[], index: number, scrollTop: number, viewportHeight: number): number {
-	const rowTop = GUTTER + (offsets[index] ?? 0);
-	const rowBottom = GUTTER + (offsets[index + 1] ?? 0);
+function scrollTopFor(
+	offsets: readonly number[],
+	gutter: number,
+	index: number,
+	scrollTop: number,
+	viewportHeight: number,
+): number {
+	const rowTop = gutter + (offsets[index] ?? 0);
+	const rowBottom = gutter + (offsets[index + 1] ?? 0);
 	if (rowBottom >= scrollTop + viewportHeight - SCROLL_PADDING) return rowBottom - viewportHeight + SCROLL_PADDING;
 	if (rowTop <= scrollTop + SCROLL_PADDING) return Math.max(0, rowTop - SCROLL_PADDING);
 	return scrollTop;
@@ -104,7 +135,7 @@ function Highlighted({
 }
 
 /**
- * The claude.ai/code "/" popup: a compact menu (240px to 32rem wide) above the composer with the
+ * The claude.ai/code "/" popup: a menu in the scope's density (240px to 32rem wide) above the composer with the
  * highlighted row's description as a dark tooltip 8px past that row. Keyboard focus
  * stays in the editor, which drives `highlighted` and `onAccept`.
  */
@@ -131,13 +162,16 @@ export function SlashCommandMenu({
 	const [scrollTop, setScrollTop] = useState(0);
 	/* Upstream scrolls the active row into view only on keyboard navigation, never under a hovering pointer. */
 	const hoverHighlightRef = useRef(false);
+	const sizing = SLASH_DENSITY[useScopeDensity()];
 	const virtualized = items.length >= VIRTUALIZE_AT;
-	const offsets = useMemo(() => itemOffsets(items), [items]);
+	const offsets = useMemo(() => itemOffsets(items, sizing), [items, sizing]);
 	const viewportHeight = () => {
 		const height = scrollerRef.current?.clientHeight ?? 0;
 		return height > 0 ? height : FALLBACK_VIEWPORT_HEIGHT;
 	};
-	const range = virtualized ? rowWindow(offsets, scrollTop, viewportHeight()) : {start: 0, end: items.length};
+	const range = virtualized
+		? rowWindow(offsets, sizing.gutter, scrollTop, viewportHeight())
+		: {start: 0, end: items.length};
 	const activeItem = items[highlighted];
 	const active = activeItem?.type === "command" ? activeItem.command : undefined;
 	const activeDetail = active?.pluginName === undefined ? undefined : `${active.pluginName} plugin`;
@@ -161,14 +195,14 @@ export function SlashCommandMenu({
 		const hovered = hoverHighlightRef.current;
 		hoverHighlightRef.current = false;
 		if (!hovered && virtualized && scroller && highlighted >= 0) {
-			const next = scrollTopFor(offsets, highlighted, scroller.scrollTop, viewportHeight());
+			const next = scrollTopFor(offsets, sizing.gutter, highlighted, scroller.scrollTop, viewportHeight());
 			if (next !== scroller.scrollTop) scroller.scrollTop = next;
 			setScrollTop(scroller.scrollTop);
 		} else if (!hovered) {
 			scroller?.querySelector<HTMLElement>("[data-highlighted]")?.scrollIntoView({block: "nearest"});
 		}
 		placeTooltip();
-	}, [highlighted, items, offsets, virtualized]);
+	}, [highlighted, items, offsets, sizing.gutter, virtualized]);
 
 	/* A row mounted by a scroll may be the highlighted one, so the tip follows each window change. */
 	useLayoutEffect(placeTooltip, [range.start, range.end]);
@@ -177,7 +211,7 @@ export function SlashCommandMenu({
 		// oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- cancels mousedown so the composer textarea keeps focus
 		<div
 			ref={popupRef}
-			className={POPUP_CLASS}
+			className={`${POPUP_CLASS} ${sizing.popup}`}
 			onMouseDown={(e) => {
 				e.preventDefault();
 			}}
@@ -187,7 +221,7 @@ export function SlashCommandMenu({
 				id={id}
 				role="menu"
 				aria-label="Slash commands"
-				className="min-h-0 overflow-y-auto overflow-x-hidden rounded-[inherit] p-1"
+				className={`min-h-0 overflow-y-auto overflow-x-hidden rounded-[inherit] ${sizing.scroller}`}
 				onScroll={(e) => {
 					if (virtualized) setScrollTop(e.currentTarget.scrollTop);
 					placeTooltip();
@@ -199,16 +233,16 @@ export function SlashCommandMenu({
 					/* Upstream draws headers and separators as plain divs: no role, not focusable. */
 					if (item.type === "section-header") {
 						return (
-							<div key={`header:${index}`} className={SECTION_HEADER_CLASS}>
+							<div key={`header:${index}`} className={sizing.header}>
 								{item.label}
 							</div>
 						);
 					}
 					if (item.type === "separator")
-						return <div key={`separator:${index}`} className={SEPARATOR_CLASS} />;
+						return <div key={`separator:${index}`} className={sizing.separator} />;
 					if (item.type === "loading") {
 						return (
-							<div key={`loading:${index}`} data-testid="slash-loading-row" className={LOADING_ROW_CLASS}>
+							<div key={`loading:${index}`} data-testid="slash-loading-row" className={sizing.loading}>
 								<div className={LOADING_BAR_CLASS} />
 							</div>
 						);
@@ -222,7 +256,7 @@ export function SlashCommandMenu({
 							role="menuitem"
 							tabIndex={-1}
 							data-highlighted={index === highlighted ? "" : undefined}
-							className={ROW_CLASS}
+							className={`${ROW_CLASS} ${sizing.row}`}
 							onMouseMove={() => {
 								if (index === highlighted) return;
 								hoverHighlightRef.current = true;

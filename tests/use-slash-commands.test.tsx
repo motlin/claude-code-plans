@@ -111,7 +111,7 @@ describe("useSlashCommands", () => {
 
 		expect(loading).toStrictEqual({
 			children: [
-				'<div data-testid="slash-loading-row" class="flex h-6 items-center gap-1.5 px-2"><div class="h-4 w-32 rounded bg-fill-ghost-hover animate-pulse motion-reduce:animate-none"></div></div>',
+				'<div data-testid="slash-loading-row" class="flex h-7 items-center gap-2 px-2.5"><div class="h-4 w-32 rounded bg-fill-ghost-hover animate-pulse motion-reduce:animate-none"></div></div>',
 			],
 			menuitems: 0,
 		});

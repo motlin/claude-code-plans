@@ -217,6 +217,8 @@ html[data-interface-font="dyslexic"] {
 	--radius-discover-card: 11px;
 	/* Upstream claude.ai/code — composer field (--cds-radius-composer) */
 	--radius-composer: 14px;
+	/* Upstream comfortable menu popup: calc(var(--cds-radius) + var(--cds-menu-gutter)) = 8 + 6 */
+	--radius-menu-comfortable: 14px;
 
 	/* Upstream claude.ai/code — side pane surface (shadow-panel-sm) */
 	--shadow-panel-sm: var(--pane-shadow);
@@ -504,7 +506,8 @@ html[data-interface-font="dyslexic"] {
 	/* Sidebar rows: upstream .dframe-sidebar[data-density="comfortable"] (web variant) */
 	--sb-row-h: 32px;
 	--sb-row-px: 2px;
-	--sb-row-gap: 8px;
+	/* Upstream .dframe-sidebar[data-density="comfortable"] --df-row-gap (4px since 2026-11-01). */
+	--sb-row-gap: 4px;
 	--sb-row-font: 14px;
 	--sb-group-font: 13px;
 	/* Upstream .df-session-list: an 8px + row-height label band flush on its rows, a 2px row stack */
@@ -2111,10 +2114,19 @@ html[data-motion="reduced"] [data-palette-skeleton][data-motion="wave"] [data-sk
 	box-shadow: none;
 }
 
+/*
+ * Upstream .dframe-root[data-variant="web"] .dframe-sidebar-body [data-row]: every row in the
+ * sidebar body ends one 2px stack gap above the next (a 34px nav pitch). Session rows already
+ * stack by the same gap (gap-[var(--sb-row-stack-gap)]), so this covers the New and nav blocks.
+ * The old Search field keeps its own wrapper margin until it becomes upstream's plain Search row.
+ */
+[data-nav-block] [data-row]:not(.df-search-field) {
+	margin-bottom: var(--sb-row-stack-gap);
+}
+
 /* Shared geometry and states for the sidebar's New, navigation, and More rows. */
 @layer components {
 	.df-nav-row {
-		margin-bottom: 0.5px;
 		display: flex;
 		min-width: 0;
 		align-items: center;

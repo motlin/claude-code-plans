@@ -115,10 +115,18 @@ describe("density sidebar geometry", () => {
 			"--sb-icon": "20px",
 			"--sb-leading-slot": "28px",
 			"--sb-row-ctl": "24px",
-			"--sb-row-gap": "8px",
+			"--sb-row-gap": "4px",
 			"--sb-group-pt": "0px",
 			"--sb-radius": "8px",
 		});
+	});
+
+	/* Upstream `.dframe-root[data-variant="web"] .dframe-sidebar-body [data-row] { margin-bottom: var(--df-row-stack-gap) }`: a 34px nav pitch. */
+	it("spaces every sidebar-body row by one 2px stack gap, leaving the nav row class without its own margin", () => {
+		expect({
+			rows: token(block("\n[data-nav-block] [data-row]:not(.df-search-field)"), "margin-bottom"),
+			navRow: token(block("\n\t.df-nav-row"), "margin-bottom"),
+		}).toStrictEqual({rows: "var(--sb-row-stack-gap)", navRow: null});
 	});
 
 	it("bands desktop group labels with upstream's df-session-list tokens: 8px + row-height band, 2px stack, 8px iconless pad", () => {

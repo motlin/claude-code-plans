@@ -11,6 +11,7 @@ import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
 import type {ComposerState} from "../src/lib/composer-state";
 import type {SlashCommand} from "../src/lib/slash-commands";
 import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
+import {CompactScope} from "./fizzy-lake-off";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.
 beforeAll(async () => {
@@ -49,8 +50,12 @@ const ALIASED_COMMANDS: SlashCommand[] = [
 	},
 ];
 
-function setup(onSend = vi.fn<(prompt: string) => void>(), commands = COMMANDS) {
-	render(<Composer variant="session" draftKey="session-alice" onSend={onSend} slashCommands={commands} />);
+/* `compact` renders inside upstream's pre-rollout compact main column; by default fizzy-lake panels makes it comfortable. */
+function setup(onSend = vi.fn<(prompt: string) => void>(), commands = COMMANDS, {compact = false} = {}) {
+	render(
+		<Composer variant="session" draftKey="session-alice" onSend={onSend} slashCommands={commands} />,
+		compact ? {wrapper: CompactScope} : {},
+	);
 	const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
 	return {textarea, onSend};
 }
@@ -545,42 +550,64 @@ describe("Composer slash commands", () => {
 		expect(screen.queryByRole("menu", {name: "Slash commands"})).toBeNull();
 	});
 
-	it("virtualizes 30+ rows, mounting a window and scrolling the highlighted row into view", () => {
-		const many: SlashCommand[] = Array.from({length: 200}, (_, i) => ({
-			name: `cmd${String(i).padStart(3, "0")}`,
-			description: `Command ${i}`,
-			source: "personal-skill",
-		}));
-		const {textarea} = setup(undefined, many);
+	const MANY: SlashCommand[] = Array.from({length: 200}, (_, i) => ({
+		name: `cmd${String(i).padStart(3, "0")}`,
+		description: `Command ${i}`,
+		source: "personal-skill",
+	}));
+
+	function virtualizedAfter(compact: boolean) {
+		const {textarea} = setup(undefined, MANY, {compact});
 		fireEvent.change(textarea, {target: {value: "/"}});
 		const scroller = screen.getByRole("menu", {name: "Slash commands"});
 		const initial = screen.getAllByRole("menuitem").map((row) => row.textContent);
 
-		for (let i = 0; i < 150; i++) fireEvent.keyDown(textarea, {key: "ArrowDown"});
+		for (let i = 0; i < 40; i++) fireEvent.keyDown(textarea, {key: "ArrowDown"});
 		const after = screen.getAllByRole("menuitem");
 		const active = scroller.querySelector("[data-highlighted]");
-
-		expect({
+		return {
 			initialCount: initial.length,
 			initialFirst: initial[0],
 			afterWindowed: after.length <= 40,
 			active: active?.textContent,
 			activeIsDescendant: textarea.getAttribute("aria-activedescendant") === active?.id,
-			// Row 150 is 24px tall at 4px gutter + 3600px; "auto" alignment with upstream's 28px scroll padding puts its bottom 28px above a 384px viewport.
+			topSpacer: (scroller.firstElementChild as HTMLElement | null)?.style.height,
+			firstMounted: after[0]?.textContent,
 			scrollTop: scroller.scrollTop,
-		}).toStrictEqual({
+		};
+	}
+
+	it("virtualizes 30+ compact rows, mounting a window and scrolling the highlighted row into view", () => {
+		expect(virtualizedAfter(true)).toStrictEqual({
 			// 16 rows fill the 384px viewport, plus upstream's overscan of 8.
 			initialCount: 24,
 			initialFirst: "cmd000",
 			afterWindowed: true,
-			active: "cmd150",
+			active: "cmd040",
 			activeIsDescendant: true,
-			scrollTop: 4 + 3600 + 24 - 384 + 28,
+			topSpacer: `${18 * 24}px`,
+			firstMounted: "cmd018",
+			// Row 40 is 24px tall at 4px gutter + 960px; "auto" alignment with upstream's 28px scroll padding puts its bottom 28px above a 384px viewport.
+			scrollTop: 4 + 960 + 24 - 384 + 28,
 		});
 	});
 
-	it("uses upstream's compact popup, scroller and row metrics", () => {
-		const {textarea} = setup();
+	it("virtualizes comfortable rows at 28px under a 6px gutter", () => {
+		expect(virtualizedAfter(false)).toStrictEqual({
+			// 14 rows reach the 384px viewport below the 6px gutter, plus upstream's overscan of 8.
+			initialCount: 22,
+			initialFirst: "cmd000",
+			afterWindowed: true,
+			active: "cmd040",
+			activeIsDescendant: true,
+			topSpacer: `${20 * 28}px`,
+			firstMounted: "cmd020",
+			scrollTop: 6 + 40 * 28 + 28 - 384 + 28,
+		});
+	});
+
+	it("uses upstream's compact popup, scroller and row metrics inside a compact scope", () => {
+		const {textarea} = setup(undefined, COMMANDS, {compact: true});
 		fireEvent.change(textarea, {target: {value: "/"}});
 		const scroller = screen.getByRole("menu", {name: "Slash commands"});
 		const tokens = (element: Element | null | undefined) => element?.className.split(" ").toSorted() ?? [];
@@ -624,6 +651,58 @@ describe("Composer slash commands", () => {
 				"w-full",
 			]),
 		});
+	});
+
+	it("follows the scope density: comfortable popup, scroller and rows by default under fizzy-lake panels", () => {
+		const {textarea} = setup();
+		fireEvent.change(textarea, {target: {value: "/"}});
+		const scroller = screen.getByRole("menu", {name: "Slash commands"});
+		const tokens = (element: Element | null | undefined) => element?.className.split(" ").toSorted() ?? [];
+
+		expect({
+			popup: tokens(scroller.parentElement).filter((cls) => cls.startsWith("rounded")),
+			scroller: tokens(scroller),
+			rows: screen.getAllByRole("menuitem").map((row) => tokens(row)),
+		}).toStrictEqual({
+			popup: ["rounded-menu-comfortable"],
+			scroller: ["min-h-0", "overflow-x-hidden", "overflow-y-auto", "p-1.5", "rounded-[inherit]"],
+			rows: Array.from({length: 3}, () => [
+				"cursor-pointer",
+				"data-[highlighted]:bg-fill-ghost-hover",
+				"flex",
+				"gap-2",
+				"h-7",
+				"items-center",
+				"outline-none",
+				"px-2.5",
+				"py-1",
+				"rounded-r6",
+				"text-[14px]/[20px]",
+				"w-full",
+			]),
+		});
+	});
+
+	it("draws compact section headers, separators and the loading row inside a compact scope", () => {
+		render(
+			<SlashCommandMenu
+				id="menu"
+				items={[{type: "section-header", label: "Header"}, {type: "separator"}, {type: "loading"}]}
+				query=""
+				highlighted={-1}
+				onHighlight={vi.fn<(index: number) => void>()}
+				onAccept={vi.fn<(command: SlashCommand) => void>()}
+			/>,
+			{wrapper: CompactScope},
+		);
+
+		expect(
+			[...screen.getByRole("menu", {name: "Slash commands"}).children].map((child) => child.className),
+		).toStrictEqual([
+			"px-2 py-1 text-[12px]/[15px] font-medium text-ink-muted",
+			"mx-2 my-1 h-px bg-border",
+			"flex h-6 items-center gap-1.5 px-2",
+		]);
 	});
 
 	describe("section headers and separators", () => {
@@ -676,7 +755,7 @@ describe("Composer slash commands", () => {
 			}).toStrictEqual({
 				header: {
 					tag: "DIV",
-					className: "px-2 py-1 text-[12px]/[15px] font-medium text-ink-muted",
+					className: "px-2.5 py-1 text-[13px]/[17px] font-medium text-ink-muted",
 					role: null,
 					tabIndex: null,
 					text: HEADER,
@@ -744,7 +823,7 @@ describe("Composer slash commands", () => {
 
 			expect(children.map((child) => (child.role === "menuitem" ? child.text : child))).toStrictEqual([
 				"model",
-				{className: "mx-2 my-1 h-px bg-border", role: null, text: ""},
+				{className: "mx-2.5 my-1 h-px bg-border", role: null, text: ""},
 				"effort",
 			]);
 		});

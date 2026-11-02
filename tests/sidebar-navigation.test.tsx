@@ -494,7 +494,7 @@ describe("sidebar New row", () => {
 		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
 
 		const spacer = screen.getByTestId("nav-scroll").querySelector("[data-nav-groups-gap]");
-		expect(spacer?.className).toBe("h-[13px] shrink-0");
+		expect(spacer?.className).toBe("h-[11.5px] shrink-0");
 	});
 
 	it("navigates home and focuses the home composer, like ⇧⌘O", async () => {
