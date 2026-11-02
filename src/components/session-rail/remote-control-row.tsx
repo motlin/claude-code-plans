@@ -130,9 +130,20 @@ export function RemoteControlRow({
 				checked={state === "on" || connecting}
 				disabled={toggleDisabled}
 				onCheckedChange={onToggle}
+				// Upstream `cM`: a stable wrapper with no reason yet (a turn-blocked toggle gets none), its tooltip at
+				// inline-start. The local app has no "unavailable" Remote Control state to give it one.
+				disabledReason={null}
+				disabledReasonSide={inlineStartSide()}
 			/>
 		</div>
 	);
+}
+
+/** Upstream `io("inline-start")`: left, or right under RTL. */
+function inlineStartSide(): "left" | "right" {
+	// Rendered on the server too, where there is no document to read a direction from.
+	if (typeof document === "undefined") return "left";
+	return document.documentElement.dir === "rtl" ? "right" : "left";
 }
 
 /** Upstream `Hk` pending: the row's name over a 28px skeleton while the bridge state loads. */

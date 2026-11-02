@@ -138,8 +138,8 @@ function ActionButton({
 			<button
 				type="button"
 				aria-label={label}
-				// Upstream's aria-description is the tooltip detail, or the reason while disabled.
-				{...(description === undefined ? {} : {"aria-description": blocked ? disabledReason : description})}
+				// Upstream's toolbar drops the detail while disabled; the reason wrapper's description stands alone.
+				{...(blocked || description === undefined ? {} : {"aria-description": description})}
 				{...(pressed === undefined ? {} : {"aria-pressed": pressed})}
 				{...(readAloud ? {"data-read-aloud": ""} : {})}
 				{...(tabIndex === undefined ? {} : {tabIndex})}

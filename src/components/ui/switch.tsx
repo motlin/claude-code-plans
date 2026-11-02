@@ -1,3 +1,8 @@
+import type {ComponentProps} from "react";
+
+import {DisabledReason} from "./disabled-reason";
+import type {Tooltip} from "./tooltip";
+
 /*
  * Upstream's cds `Switch size=xs` as a standalone control (the rail's Remote
  * Control setting row): a 25.2x14 button track that a `<label htmlFor>` can
@@ -17,11 +22,26 @@ export interface SwitchProps {
 	/** Omitted, the switch only shows its state (`aria-readonly`). */
 	onCheckedChange?: ((checked: boolean) => void) | undefined;
 	"aria-label"?: string | undefined;
+	/**
+	 * Upstream `NB`: any value but `undefined` mounts a stable disabled-reason wrapper, which carries the reason only
+	 * while the switch is disabled.
+	 */
+	disabledReason?: string | null | undefined;
+	/** The reason tooltip's side (upstream `disabledReasonSide`). */
+	disabledReasonSide?: ComponentProps<typeof Tooltip>["side"];
 }
 
-export function Switch({id, checked, disabled = false, onCheckedChange, "aria-label": ariaLabel}: SwitchProps) {
+export function Switch({
+	id,
+	checked,
+	disabled = false,
+	onCheckedChange,
+	"aria-label": ariaLabel,
+	disabledReason,
+	disabledReasonSide,
+}: SwitchProps) {
 	const state = checked ? {"data-checked": ""} : {"data-unchecked": ""};
-	return (
+	const track = (
 		<button
 			id={id}
 			type="button"
@@ -43,5 +63,14 @@ export function Switch({id, checked, disabled = false, onCheckedChange, "aria-la
 		>
 			<span aria-hidden="true" {...state} className={KNOB_CLASS} />
 		</button>
+	);
+	if (disabledReason === undefined) return track;
+	return (
+		<DisabledReason
+			reason={disabled ? disabledReason : null}
+			{...(disabledReasonSide === undefined ? {} : {side: disabledReasonSide})}
+		>
+			{track}
+		</DisabledReason>
 	);
 }

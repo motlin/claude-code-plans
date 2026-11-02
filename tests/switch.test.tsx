@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {Switch} from "../src/components/ui/switch";
@@ -86,5 +86,58 @@ describe("Switch", () => {
 		render(<Switch id="rc" checked />);
 
 		expect(screen.getByRole("switch").getAttribute("aria-readonly")).toBe("true");
+	});
+
+	describe("disabledReason", () => {
+		function wrapperState() {
+			const track = screen.getByRole("switch");
+			const wrapper = track.parentElement!;
+			const describedBy = wrapper.getAttribute("aria-describedby");
+			return {
+				wrapped: wrapper.hasAttribute("data-cds-disabled-reason-wrapper"),
+				tabIndex: wrapper.tabIndex,
+				description: describedBy === null ? null : (document.getElementById(describedBy)?.textContent ?? null),
+				trackDisabled: track.hasAttribute("data-disabled"),
+			};
+		}
+
+		it("wraps a disabled switch in upstream's reason wrapper, opening the reason on its side", () => {
+			render(<Switch id="rc" checked={false} disabled disabledReason="x" disabledReasonSide="left" />);
+			const state = wrapperState();
+			act(() => {
+				screen.getByRole("switch").parentElement!.focus();
+			});
+			const tooltip = screen.getByRole("tooltip");
+
+			expect({
+				...state,
+				tooltip: tooltip.textContent,
+				side: tooltip.className.split(" ").slice(-4).join(" "),
+			}).toStrictEqual({
+				wrapped: true,
+				tabIndex: 0,
+				description: "x",
+				trackDisabled: true,
+				tooltip: "x",
+				side: "right-full top-1/2 mr-1 -translate-y-1/2",
+			});
+		});
+
+		it("keeps a stable, undescribed wrapper while enabled or given a null reason, as upstream", () => {
+			const {rerender} = render(<Switch id="rc" checked={false} disabledReason="x" onCheckedChange={() => {}} />);
+			const enabled = wrapperState();
+			rerender(<Switch id="rc" checked={false} disabled disabledReason={null} onCheckedChange={() => {}} />);
+
+			expect({enabled, nullReason: wrapperState()}).toStrictEqual({
+				enabled: {wrapped: true, tabIndex: -1, description: null, trackDisabled: false},
+				nullReason: {wrapped: true, tabIndex: -1, description: null, trackDisabled: true},
+			});
+		});
+
+		it("renders no wrapper without a disabledReason", () => {
+			const {container} = render(<Switch id="rc" checked={false} disabled />);
+
+			expect(container.querySelector("[data-cds-disabled-reason-wrapper]")).toBeNull();
+		});
 	});
 });

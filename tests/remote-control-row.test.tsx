@@ -146,6 +146,26 @@ describe("RemoteControlToggleRow", () => {
 		});
 	});
 
+	it("wraps the switch in a stable, undescribed reason wrapper both idle and while Claude is working", () => {
+		const send = vi.fn<Send>(async () => Promise.resolve());
+		const {rerender} = harness("off", send);
+		function wrapper() {
+			const parent = screen.getByRole("switch").parentElement!;
+			return {
+				wrapped: parent.hasAttribute("data-cds-disabled-reason-wrapper"),
+				tabIndex: parent.getAttribute("tabindex"),
+				describedBy: parent.getAttribute("aria-describedby"),
+			};
+		}
+		const idle = wrapper();
+		rerender("off", true);
+
+		expect({idle, working: wrapper()}).toStrictEqual({
+			idle: {wrapped: true, tabIndex: "-1", describedBy: null},
+			working: {wrapped: true, tabIndex: "-1", describedBy: null},
+		});
+	});
+
 	it("gives up connecting after 15 s without a toast", async () => {
 		vi.useFakeTimers();
 		const send = vi.fn<Send>(async () => Promise.resolve());

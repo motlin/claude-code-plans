@@ -193,4 +193,57 @@ describe("<DisabledReason>", () => {
 			tooltip: screen.queryByRole("tooltip"),
 		}).toStrictEqual({focusedElsewhere: true, tooltip: null});
 	});
+
+	it("hands focus back to the control when the reason clears while the wrapper holds focus", () => {
+		const {container, rerender} = render(<DisabledReason reason={REASON}>{control(true)}</DisabledReason>);
+		act(() => {
+			wrapperOf(container).focus();
+		});
+
+		rerender(<DisabledReason reason={null}>{control(false)}</DisabledReason>);
+
+		expect({
+			focusedControl: document.activeElement === screen.getByRole("button"),
+			wrapperTabIndex: wrapperOf(container).tabIndex,
+		}).toStrictEqual({focusedControl: true, wrapperTabIndex: -1});
+	});
+
+	it("leaves focus where it was when the reason clears while focus is elsewhere", () => {
+		const ui = (reason: string | null) => (
+			<>
+				<DisabledReason reason={reason}>{control(reason !== null)}</DisabledReason>
+				<input aria-label="elsewhere" />
+			</>
+		);
+		const {rerender} = render(ui(REASON));
+		const elsewhere = screen.getByRole("textbox");
+		act(() => {
+			elsewhere.focus();
+		});
+
+		rerender(ui(null));
+
+		expect(document.activeElement === elsewhere).toBe(true);
+	});
+
+	it("places the reason on the requested side", () => {
+		function tooltipClass(side?: "left"): string {
+			const {container, unmount} = render(
+				<DisabledReason reason={REASON} {...(side === undefined ? {} : {side})}>
+					{control(true)}
+				</DisabledReason>,
+			);
+			act(() => {
+				wrapperOf(container).focus();
+			});
+			const className = screen.getByRole("tooltip").className;
+			unmount();
+			return className.split(" ").slice(-4).join(" ");
+		}
+
+		expect({left: tooltipClass("left"), top: tooltipClass()}).toStrictEqual({
+			left: "right-full top-1/2 mr-1 -translate-y-1/2",
+			top: "bottom-full left-1/2 mb-1 -translate-x-1/2",
+		});
+	});
 });

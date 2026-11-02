@@ -1,4 +1,4 @@
-import {type ReactElement, useId, useLayoutEffect, useRef} from "react";
+import {type ComponentProps, type ReactElement, useId, useLayoutEffect, useRef} from "react";
 
 import {Tooltip} from "./tooltip";
 
@@ -12,18 +12,23 @@ const WRAPPER_CLASS =
  * disabled.
  *
  * When the control holding focus becomes disabled with a reason, focus is handed to the wrapper, which opens the
- * reason (upstream's roving focus heir plus `openOnHandedBackFocus`), instead of falling to `<body>`.
+ * reason (upstream's roving focus heir plus `openOnHandedBackFocus`), instead of falling to `<body>`. When the
+ * reason clears while the wrapper holds focus, focus goes back to the re-enabled control (upstream's focus-swap
+ * hook).
  */
 export function DisabledReason({
 	reason,
 	wrapperClassName,
 	tabIndex = 0,
+	side,
 	children,
 }: {
 	reason: string | null | undefined;
 	wrapperClassName?: string | undefined;
 	/** The wrapper's tab index while it has a reason; a roving toolbar passes -1 for its hidden items. */
 	tabIndex?: number;
+	/** Where the reason tooltip opens (upstream Button/Switch `disabledReasonSide`); the Tooltip's default is top. */
+	side?: ComponentProps<typeof Tooltip>["side"];
 	children: ReactElement;
 }) {
 	const id = useId();
@@ -37,15 +42,30 @@ export function DisabledReason({
 	useLayoutEffect(() => {
 		const wrapper = wrapperRef.current;
 		const gained = hasReason && !hadReason.current;
+		const lost = !hasReason && hadReason.current;
 		hadReason.current = hasReason;
-		if (!gained || wrapper === null) return;
+		if (wrapper === null) return;
 		const active = document.activeElement;
+		if (lost) {
+			if (active !== wrapper) return;
+			wrapper
+				.querySelector<HTMLElement>("button, [role=switch], [tabindex]:not([tabindex='-1'])")
+				?.focus({preventScroll: true});
+			return;
+		}
+		if (!gained) return;
 		const focusDropped = (active === null || active === document.body) && focusWasInside.current;
 		if (wrapper.contains(active) || focusDropped) wrapper.focus({preventScroll: true});
 	}, [hasReason]);
 
 	return (
-		<Tooltip content={reason ?? ""} variant="reason" closeOnClick={false} openWhen={() => hasReason}>
+		<Tooltip
+			content={reason ?? ""}
+			variant="reason"
+			{...(side === undefined ? {} : {side})}
+			closeOnClick={false}
+			openWhen={() => hasReason}
+		>
 			<span
 				ref={wrapperRef}
 				data-cds-disabled-reason-wrapper=""

@@ -757,6 +757,20 @@ describe("Rewind while Claude is working", () => {
 		});
 	});
 
+	it("drops the toolbar detail from a blocked Rewind, leaving the wrapper's reason as its only description", () => {
+		const {container} = render(
+			withActions(
+				{rewindTo: vi.fn<NonNullable<TranscriptActions["rewindTo"]>>(), rewindDisabledReason: REASON},
+				<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+			),
+		);
+
+		expect({
+			buttonDescription: button(container, "Rewind to here").getAttribute("aria-description"),
+			wrapperDescription: rewindState(container).description,
+		}).toStrictEqual({buttonDescription: null, wrapperDescription: REASON});
+	});
+
 	it("shows only the working reason on hover, not the Rewind to here label", () => {
 		const {container} = render(
 			withActions(
@@ -816,17 +830,6 @@ describe("Rewind while Claude is working", () => {
 		);
 
 		expect(rewindState(container)).toStrictEqual({disabled: false, wrapperTabIndex: -1, description: null});
-	});
-
-	it("swaps Rewind's aria-description for the working reason while disabled, as upstream", () => {
-		const {container} = render(
-			withActions(
-				{rewindTo: vi.fn<NonNullable<TranscriptActions["rewindTo"]>>(), rewindDisabledReason: REASON},
-				<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
-			),
-		);
-
-		expect(button(container, "Rewind to here").getAttribute("aria-description")).toBe(REASON);
 	});
 });
 
