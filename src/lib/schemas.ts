@@ -2477,8 +2477,10 @@ export const SessionRegistryFileSchema = z
 		name: z.string().optional(),
 		nameSource: z.string().optional(),
 		nameSince: z.number().optional(),
-		/** Earlier names, each with `until`, the epoch ms it was replaced. */
-		formerNames: z.array(z.object({name: z.string(), until: z.number()}).strict()).optional(),
+		/** Earlier names, each with `until`, the epoch ms it was replaced, and the session id that held it then. */
+		formerNames: z
+			.array(z.object({name: z.string(), until: z.number(), sessionId: z.string().optional()}).strict())
+			.optional(),
 		/** Absent from the first write a starting CLI makes; its first status update adds it with both timestamps. */
 		status: SessionRegistryStatusSchema.optional(),
 		/** Why a `waiting` session waits, e.g. "input needed". */
