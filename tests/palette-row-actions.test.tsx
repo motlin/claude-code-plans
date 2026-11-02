@@ -189,6 +189,29 @@ describe("palette row actions card", () => {
 		});
 	});
 
+	it("boxes each item's digit in upstream's Kbd keycap, shown on touch too, after the row's gap-xs", async () => {
+		const {card} = await openCard();
+		const open = card.querySelector('[data-card-item="open"]');
+		const kbd = open?.querySelector("kbd");
+
+		expect({
+			trailing: kbd?.parentElement?.className,
+			trailingHidden: kbd?.parentElement?.getAttribute("aria-hidden"),
+			kbd: {cds: kbd?.getAttribute("data-cds"), className: kbd?.className, text: kbd?.textContent},
+			shortcut: open?.querySelector('[data-cds="Shortcut"]') ?? null,
+		}).toStrictEqual({
+			trailing: "ms-3 flex shrink-0 items-center gap-1.5",
+			trailingHidden: "true",
+			kbd: {
+				cds: "Kbd",
+				className:
+					"text-caption inline-flex shrink-0 items-center justify-center h-[calc(1em+6px)] rounded-r3 [color:var(--shortcut-cap-ink)] bg-transparent border border-[color:var(--shortcut-cap-line)] [font-family:inherit] [font-variation-settings:inherit] [line-height:1] w-[calc(1em+6px)] px-0",
+				text: "1",
+			},
+			shortcut: null,
+		});
+	});
+
 	it('reads just "Code session" in the meta when the session is older than a year', async () => {
 		const ancient = {
 			...recentSession("sess-2", "Write release notes"),

@@ -257,6 +257,7 @@ export function PaletteRowActionsCard({
 					<MenuItem
 						key={item.id}
 						accelerator={String(index + 1)}
+						acceleratorVariant="keycap"
 						closeOnClick={false}
 						data-card-item={item.id}
 						onSelect={() => {

@@ -10,6 +10,18 @@ const WIDE_CLASS = "min-w-[calc(1em+6px)] px-[3px]";
 /** A multi-letter keycap like upstream's literal "Tab" cap, which skips the Mac ⇥ glyph. */
 export const WIDE_KEYCAP_CLASS = `${KEYCAP_CLASS} ${WIDE_CLASS}`;
 
+/** Upstream's cds `Kbd`: one boxed caption keycap on its own, as a menu row's digit accelerator. */
+export function Kbd({children}: {children: string}) {
+	return (
+		<kbd
+			data-cds="Kbd"
+			className={`text-caption ${KEYCAP_CLASS} ${children.length > 1 ? WIDE_CLASS : SQUARE_CLASS}`}
+		>
+			{children}
+		</kbd>
+	);
+}
+
 const WRAPPER_CLASS = {
 	keycap: "inline-flex shrink-0 items-center gap-[2px] text-caption",
 	text: "inline-flex shrink-0 items-baseline gap-[0.3em] text-caption",

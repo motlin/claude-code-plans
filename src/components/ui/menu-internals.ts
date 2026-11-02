@@ -22,8 +22,8 @@ export const DENSITY_CLASSES = {
 		gap: "gap-1.5",
 		iconSlot: "flex size-4 shrink-0 items-center justify-center -my-[max(0px,calc((1rem-1lh)/2))]",
 		iconSlotTwoLine: "flex h-[1lh] w-4 shrink-0 items-center justify-center self-start",
-		/* The switch row's ms-md trailing group. */
-		switchTrailing: "ms-3 flex shrink-0 items-center gap-1.5",
+		/* Upstream's ms-md gap-xs trailing group (switch rows, keycap accelerators). */
+		trailingGroup: "ms-3 flex shrink-0 items-center gap-1.5",
 	},
 	comfortable: {
 		popup: "rounded-card",
@@ -39,7 +39,7 @@ export const DENSITY_CLASSES = {
 		gap: "gap-2",
 		iconSlot: "flex size-5 shrink-0 items-center justify-center -my-[max(0px,calc((1.25rem-1lh)/2))]",
 		iconSlotTwoLine: "flex h-[1lh] w-5 shrink-0 items-center justify-center self-start",
-		switchTrailing: "ms-4 flex shrink-0 items-center gap-2",
+		trailingGroup: "ms-4 flex shrink-0 items-center gap-2",
 	},
 } as const;
 

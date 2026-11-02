@@ -42,7 +42,7 @@ import type {SheetContentProps} from "./menu-sheet";
 import {loadedMenuSheet, preloadMenuSheet} from "./menu-sheet-loader";
 import {MenuSwitch} from "./menu-switch";
 import {useSheetPresentation} from "./sheet-presentation";
-import {Shortcut} from "./shortcut";
+import {Kbd, Shortcut} from "./shortcut";
 import {Tooltip} from "./tooltip";
 
 const LazyRootSheetContent = lazy(async () =>
@@ -144,6 +144,7 @@ function ItemText({children, description}: {children: ReactNode; description: Re
 }
 
 export type MenuItemVariant = keyof typeof ITEM_VARIANT_CLASS;
+export type AcceleratorVariant = "text" | "keycap";
 
 function acceleratorProps(accelerator: string | undefined) {
 	if (accelerator === undefined) return {};
@@ -397,10 +398,26 @@ export function MenuContent({
 	);
 }
 
-function ItemTrailing({accelerator, shortcut}: {accelerator?: string; shortcut?: string}) {
+function ItemTrailing({
+	accelerator,
+	shortcut,
+	acceleratorVariant = "text",
+}: {
+	accelerator?: string;
+	shortcut?: string;
+	acceleratorVariant?: AcceleratorVariant;
+}) {
 	const sizing = useMenuSizing();
 	const keys = shortcut ?? accelerator;
 	if (keys === undefined) return null;
+	/* Upstream's boxed accelerator: a bare Kbd in the ms-md gap-xs trailing group, kept on touch. */
+	if (acceleratorVariant === "keycap" && shortcut === undefined && accelerator !== undefined) {
+		return (
+			<span aria-hidden="true" className={sizing.trailingGroup}>
+				<Kbd>{accelerator.toUpperCase()}</Kbd>
+			</span>
+		);
+	}
 	return (
 		<span aria-hidden="true" className={`${TRAILING_CLASS} ${sizing.shortcutPadding} pointer-coarse:hidden`}>
 			<Shortcut keys={keys} variant="text" className={sizing.shortcut} />
@@ -428,6 +445,8 @@ export interface MenuItemProps extends Omit<
 	accelerator?: string;
 	/** Global shortcut hint shown instead of the accelerator, e.g. "alt+cmd+r". */
 	shortcut?: string;
+	/** Draw the accelerator as upstream's boxed `Kbd` keycap (the palette row-actions card) instead of muted text. */
+	acceleratorVariant?: AcceleratorVariant;
 	/** Right-aligned trailing content after the label, such as upstream's loading spinner. */
 	trailing?: ReactNode;
 	variant?: MenuItemVariant;
@@ -445,6 +464,7 @@ export function MenuItem({
 	description,
 	accelerator,
 	shortcut,
+	acceleratorVariant = "text",
 	trailing,
 	variant = "default",
 	disabledReason,
@@ -471,6 +491,7 @@ export function MenuItem({
 			<ItemTrailing
 				{...(accelerator === undefined ? {} : {accelerator})}
 				{...(shortcut === undefined ? {} : {shortcut})}
+				acceleratorVariant={acceleratorVariant}
 			/>
 			{trailing !== undefined && <span className={TRAILING_CLASS}>{trailing}</span>}
 		</BaseMenu.Item>
@@ -578,7 +599,7 @@ export function MenuSwitchItem({children, checked, onCheckedChange, ...props}: M
 			className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
 		>
 			<span className={LABEL_CLASS}>{children}</span>
-			<span className={sizing.switchTrailing}>
+			<span className={sizing.trailingGroup}>
 				<MenuSwitch checked={checked} disabled={props.disabled} aria-label={children} />
 			</span>
 		</BaseMenu.Item>
@@ -628,7 +649,7 @@ export function MenuCheckboxSwitchItem({
 				{children}
 			</span>
 			{decorative ? (
-				<span className={sizing.switchTrailing}>
+				<span className={sizing.trailingGroup}>
 					<div aria-hidden="true" className="pointer-events-none inline-flex items-center">
 						<span inert className="inline-flex">
 							<MenuSwitch checked={checked} disabled={props.disabled} size="sm" />
@@ -636,7 +657,7 @@ export function MenuCheckboxSwitchItem({
 					</div>
 				</span>
 			) : (
-				<span inert className={sizing.switchTrailing}>
+				<span inert className={sizing.trailingGroup}>
 					<MenuSwitch
 						checked={checked}
 						disabled={props.disabled}

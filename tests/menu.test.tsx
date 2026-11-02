@@ -301,6 +301,18 @@ describe("Menu", () => {
 		});
 	});
 
+	it("keeps the text accelerator hint, hidden on touch, unless an item asks for a keycap", async () => {
+		renderDropdown();
+		await openDropdown();
+		const shortcut = screen.getByRole("menuitem", {name: /Copy link/}).querySelector('[data-cds="Shortcut"]');
+
+		expect({
+			variant: shortcut?.getAttribute("data-variant"),
+			coarseHidden: shortcut?.parentElement?.classList.contains("pointer-coarse:hidden"),
+			kbd: shortcut?.parentElement?.querySelector('[data-cds="Kbd"]') ?? null,
+		}).toStrictEqual({variant: "text", coarseHidden: true, kbd: null});
+	});
+
 	it("sets aria-keyshortcuts from the accelerator letter", async () => {
 		renderDropdown();
 		await openDropdown();
