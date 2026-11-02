@@ -475,3 +475,91 @@ describe("F6 stops on a session page", () => {
 		});
 	});
 });
+
+function AnsweredCardHarness({cards}: {cards: readonly string[]}) {
+	useFocusRegionShortcuts();
+	return (
+		<main aria-label="Main" {...region("main")}>
+			<div role="article" aria-label="Message 1">
+				{cards.map((name) => (
+					<div key={name} aria-label={name} data-approval-card-root="" {...region("question")} tabIndex={-1}>
+						<button type="button">{`${name} answer`}</button>
+					</div>
+				))}
+			</div>
+			<button type="button">Elsewhere</button>
+			<div aria-label="Composer" {...region("composer")}>
+				<div data-composer-card="" data-testid="composer-card" style={{position: "relative"}}>
+					<textarea aria-label="Prompt" {...entry} />
+				</div>
+			</div>
+		</main>
+	);
+}
+
+function answeredCardState() {
+	const active = document.activeElement;
+	return {
+		focused:
+			active === null || active === document.body
+				? null
+				: (active.getAttribute("aria-label") ?? active.textContent),
+		landing: document.querySelectorAll("[data-focus-region-landing]").length,
+	};
+}
+
+describe("answered question card refocuses the composer", () => {
+	afterEach(() => {
+		cleanup();
+	});
+
+	it("moves focus to the composer, without a landing ring, when a keyboard-focused card unmounts", async () => {
+		const {rerender} = render(<AnsweredCardHarness cards={["First card"]} />);
+		act(() => {
+			screen.getByRole("button", {name: "First card answer"}).focus();
+		});
+		rerender(<AnsweredCardHarness cards={[]} />);
+		await act(async () => {});
+
+		expect(answeredCardState()).toStrictEqual({focused: "Prompt", landing: 0});
+	});
+
+	it("leaves focus on the body when the card was answered with the pointer", async () => {
+		const {rerender} = render(<AnsweredCardHarness cards={["First card"]} />);
+		const button = screen.getByRole("button", {name: "First card answer"});
+		act(() => {
+			button.focus();
+		});
+		fireEvent.pointerDown(button);
+		fireEvent.click(button);
+		rerender(<AnsweredCardHarness cards={[]} />);
+		await act(async () => {});
+
+		expect(answeredCardState()).toStrictEqual({focused: null, landing: 0});
+	});
+
+	it("does not refocus while another waiting card remains in the container", async () => {
+		const {rerender} = render(<AnsweredCardHarness cards={["First card", "Second card"]} />);
+		act(() => {
+			screen.getByRole("button", {name: "First card answer"}).focus();
+		});
+		rerender(<AnsweredCardHarness cards={["Second card"]} />);
+		await act(async () => {});
+
+		expect(answeredCardState()).toStrictEqual({focused: null, landing: 0});
+	});
+
+	it("does not refocus when focus had already moved elsewhere", async () => {
+		const {rerender} = render(<AnsweredCardHarness cards={["First card"]} />);
+		act(() => {
+			screen.getByRole("button", {name: "First card answer"}).focus();
+		});
+		act(() => {
+			screen.getByRole("button", {name: "Elsewhere"}).focus();
+		});
+		rerender(<AnsweredCardHarness cards={[]} />);
+		await act(async () => {});
+
+		expect(answeredCardState()).toStrictEqual({focused: "Elsewhere", landing: 0});
+	});
+});

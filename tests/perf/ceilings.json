@@ -68,11 +68,11 @@
 		"raisedAt": "2026-10-29"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1955688,
+		"ceiling": 1975684,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Request panel messages (2026-10-30): the Verbose Request disclosure gains a lazy New messages section that renders each request's tail blobs (text, thinking, tool_use, tool_result, tool_addition and image blocks through the attachment tiles) plus its response schema and query options (about 3-4 KB raw), on top of the growth since the 2026-10-29 classifier artifact raise (1935847 to about 1952000, within tolerance). Raw went to 1955688, about 480 bytes past the tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-30"
+		"reason": "Answered card refocus (2026-11-02): the focus-region module gains upstream's answered-card watcher (a keyboard answer that unmounts a question or approval card moves focus to the composer without a ring), on top of the growth since the 2026-10-30 request panel messages raise (composer bash mode, plan/question answer stores, 1955688 to about 1975000, within tolerance). Raw went to 1975684, about 440 bytes past the tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-02"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 9,
