@@ -2,6 +2,7 @@ import {Check, ChevronLeft, ChevronRight} from "lucide-react";
 import {type MouseEvent, type RefObject, useEffect, useRef, useState} from "react";
 import {flushSync} from "react-dom";
 
+import {acknowledgeApproval} from "../lib/answered-approvals";
 import {holdAnswered, releaseAnswered} from "../lib/answered-sessions";
 import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, onScreen} from "../lib/dock-keys";
 import type {QuestionAnswer} from "../lib/hook-events";
@@ -275,11 +276,14 @@ export function QuestionCard({
 		savedRef.current.submitted = true;
 		if (draftKey !== undefined) {
 			clearQuestionCardState(draftKey);
-			markQuestionCardSent(draftKey, {page, drafts: finalDrafts, skipped: finalSkipped});
+			markQuestionCardSent(draftKey, {page, drafts: finalDrafts, skipped: finalSkipped}, sessionId);
 			if (sessionId !== undefined) holdAnswered(sessionId, draftKey);
 		}
 		try {
 			await onSubmit(finalDrafts.map((entry, at) => (finalSkipped[at] === true ? null : answerOf(entry))));
+			// Upstream's C1: a delivered live answer stays answered through a reload for 5 minutes.
+			if (draftKey !== undefined && sessionId !== undefined)
+				acknowledgeApproval(sessionId, draftKey, "AskUserQuestion");
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "Failed to send the answer";
 			savedRef.current.submitted = false;

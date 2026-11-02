@@ -211,6 +211,26 @@ describe("PlanApprovalCard", () => {
 		}).toStrictEqual({answered: true, card: null});
 	});
 
+	it("persists the plan decision as acknowledged once the answer is delivered", async () => {
+		const {value} = context();
+		await renderCard(value);
+		await act(async () => {
+			fireEvent.click(button("Reject"));
+			return Promise.resolve();
+		});
+		const stored: unknown = JSON.parse(window.localStorage.getItem("acknowledged-tool-decisions") ?? "null");
+
+		expect(stored).toStrictEqual({
+			[SESSION]: {
+				toolu_plan_1: {
+					toolUseId: "toolu_plan_1",
+					toolName: "ExitPlanMode",
+					acknowledgedAt: expect.any(Number) as number,
+				},
+			},
+		});
+	});
+
 	it("brings a refused revision back after a remount: Revise open, the text restored and the error shown", async () => {
 		let reject!: (reason: Error) => void;
 		const {value} = context({

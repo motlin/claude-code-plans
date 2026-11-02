@@ -1,7 +1,12 @@
 import {MessageCircle, X} from "lucide-react";
 import {useCallback, useEffect, useRef, useState} from "react";
 
-import {clearApprovalAnswered, markApprovalAnswered, useApprovalAnswered} from "../lib/answered-approvals";
+import {
+	acknowledgeApproval,
+	clearApprovalAnswered,
+	markApprovalAnswered,
+	useApprovalAnswered,
+} from "../lib/answered-approvals";
 import {holdAnswered, releaseAnswered} from "../lib/answered-sessions";
 import {APPROVAL_ARM_GRACE_MS, dockKeyAllowed} from "../lib/dock-keys";
 import {
@@ -144,6 +149,7 @@ function PlanApprovalActions({
 			try {
 				await decide(typeof decision === "function" ? decision(comments) : decision);
 				clearUnsentPlan(sessionId, toolUseId);
+				acknowledgeApproval(sessionId, toolUseId, "ExitPlanMode");
 			} catch (err) {
 				const message = err instanceof Error ? err.message : "Failed to answer the plan";
 				// Saved before the mark clears, so a card the session page dropped remounts with it.

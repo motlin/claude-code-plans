@@ -360,6 +360,103 @@ describe("QuestionCard", () => {
 		});
 	});
 
+	it("persists a delivered answer as acknowledged, so a reload while the result is due redraws its receipt, not the card", async () => {
+		const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+		render(
+			<QuestionCard
+				sessionId="s-ack-card"
+				draftKey="toolu_ack_card"
+				questions={[QUESTIONS[0]!]}
+				onSubmit={async () => Promise.resolve()}
+			/>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: /^Jest/}));
+		now.mockReturnValue(1400);
+		await act(async () => {
+			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+			return Promise.resolve();
+		});
+		now.mockRestore();
+		releaseAnswered("s-ack-card");
+		const stored: unknown = JSON.parse(window.localStorage.getItem("acknowledged-tool-decisions") ?? "null");
+		cleanup();
+
+		// A reload: every module's memory is gone, and only browser storage remains.
+		vi.resetModules();
+		const reloaded = await import("../src/components/question-card");
+		const {container} = render(
+			<reloaded.QuestionCard
+				sessionId="s-ack-card"
+				draftKey="toolu_ack_card"
+				questions={[QUESTIONS[0]!]}
+				onSubmit={async () => Promise.resolve()}
+			/>,
+		);
+		const receipt = container.querySelector("[data-question-receipt]");
+		const store = await import("../src/lib/question-card-store");
+		const sentAfterReload = store.isQuestionCardSent("toolu_ack_card");
+		store.clearSentQuestionCard("toolu_ack_card");
+
+		expect({
+			stored,
+			card: container.querySelector("[data-approval-card-root]") !== null,
+			rows: [...(receipt?.querySelectorAll("[data-answered-question]") ?? [])].map((row) =>
+				[...row.children].map((line) => line.textContent),
+			),
+			sentAfterReload,
+			sentStorage: window.sessionStorage.getItem("question-card-sent:toolu_ack_card"),
+		}).toStrictEqual({
+			stored: {
+				"s-ack-card": {
+					toolu_ack_card: {
+						toolUseId: "toolu_ack_card",
+						toolName: "AskUserQuestion",
+						acknowledgedAt: expect.any(Number) as number,
+					},
+				},
+			},
+			card: false,
+			rows: [["Which test runner?", "Jest"]],
+			sentAfterReload: true,
+			sentStorage: null,
+		});
+	});
+
+	it("draws the editable card after a reload when the answer was never delivered", async () => {
+		const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+		render(
+			<QuestionCard
+				sessionId="s-unacked-card"
+				draftKey="toolu_unacked_card"
+				questions={[QUESTIONS[0]!]}
+				onSubmit={async () => new Promise<void>(() => {})}
+			/>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: /^Jest/}));
+		now.mockReturnValue(1400);
+		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		now.mockRestore();
+		releaseAnswered("s-unacked-card");
+		cleanup();
+
+		vi.resetModules();
+		const reloaded = await import("../src/components/question-card");
+		const {container} = render(
+			<reloaded.QuestionCard
+				sessionId="s-unacked-card"
+				draftKey="toolu_unacked_card"
+				questions={[QUESTIONS[0]!]}
+				onSubmit={async () => Promise.resolve()}
+			/>,
+		);
+
+		expect({
+			card: container.querySelector("[data-approval-card-root]") !== null,
+			receipt: container.querySelector("[data-question-receipt]") !== null,
+		}).toStrictEqual({card: true, receipt: false});
+		window.sessionStorage.removeItem("question-card-sent:toolu_unacked_card");
+	});
+
 	it("reads a skipped question as Skipped in the submitted receipt", () => {
 		const {container} = render(<QuestionCard questions={QUESTIONS} onSubmit={async () => new Promise(() => {})} />);
 		fireEvent.click(screen.getByRole("button", {name: /^Next/}));

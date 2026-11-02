@@ -1,6 +1,8 @@
 import {useCallback, useSyncExternalStore} from "react";
 import {z} from "zod";
 
+import {isApprovalAnswered} from "./answered-approvals";
+
 /**
  * Upstream's per-tool question card draft store: the picks, Other text, skips
  * and page of a card being answered, kept in a module map and in sessionStorage
@@ -73,9 +75,51 @@ export function clearQuestionCardState(key: string): void {
 /**
  * Upstream's in-memory sent store: the answers and page a card submitted, kept
  * until the call's result lands (or the send fails) so a card that remounts
- * while sending redraws their receipt instead of a fresh editable card.
+ * while sending redraws their receipt instead of a fresh editable card. A live
+ * answer is also kept in sessionStorage with its session, so a reload after the
+ * answer was acknowledged (delivered) redraws the receipt too.
  */
 const sent = new Map<string, QuestionCardState>();
+
+const SENT_STORAGE_PREFIX = "question-card-sent:";
+
+const StoredSentSchema = z.strictObject({sessionId: z.string(), state: QuestionCardStateSchema});
+
+function writeStoredSent(key: string, sessionId: string, state: QuestionCardState): void {
+	try {
+		browserSessionStorage()?.setItem(SENT_STORAGE_PREFIX + key, JSON.stringify({sessionId, state}));
+	} catch {
+		// Quota or denied storage: a reload just loses the receipt, as upstream's does.
+	}
+}
+
+function removeStoredSent(key: string): void {
+	try {
+		browserSessionStorage()?.removeItem(SENT_STORAGE_PREFIX + key);
+	} catch {
+		// Denied storage holds nothing to clear.
+	}
+}
+
+/** Keys whose stored sent state was already looked up: a reload's restore happens once per key. */
+const storedSentChecked = new Set<string>();
+
+/** The card's sent state: this page's, else a stored one whose answer was acknowledged before a reload. */
+function sentState(key: string): QuestionCardState | undefined {
+	const live = sent.get(key);
+	if (live !== undefined || storedSentChecked.has(key)) return live;
+	storedSentChecked.add(key);
+	try {
+		const raw = browserSessionStorage()?.getItem(SENT_STORAGE_PREFIX + key) ?? null;
+		if (raw === null) return undefined;
+		const parsed = StoredSentSchema.safeParse(JSON.parse(raw));
+		if (!parsed.success || !isApprovalAnswered(parsed.data.sessionId, key)) return undefined;
+		sent.set(key, parsed.data.state);
+		return parsed.data.state;
+	} catch {
+		return undefined;
+	}
+}
 
 /** Hears every add to or drop from the sent map, for `useQuestionCardSent`. */
 const sentChangeListeners = new Set<() => void>();
@@ -91,15 +135,17 @@ function subscribeSentChange(listener: () => void): () => void {
 	};
 }
 
-export function markQuestionCardSent(key: string, state: QuestionCardState): void {
+/** With `sessionId` (a live answer) the sent state also survives a reload once acknowledged. */
+export function markQuestionCardSent(key: string, state: QuestionCardState, sessionId?: string): void {
 	const added = !sent.has(key);
 	sent.set(key, state);
+	if (sessionId !== undefined) writeStoredSent(key, sessionId, state);
 	if (added) notifySentChange();
 }
 
 /** The submitted state for a card of `questionCount` questions, or null when none is sending. */
 export function readSentQuestionCard(key: string, questionCount: number): QuestionCardState | null {
-	const state = sent.get(key);
+	const state = sentState(key);
 	if (state === undefined || state.drafts.length !== questionCount || state.skipped.length !== questionCount)
 		return null;
 	return state;
@@ -107,7 +153,7 @@ export function readSentQuestionCard(key: string, questionCount: number): Questi
 
 /** Whether the card under `key` has an answer sending, whatever its shape. */
 export function isQuestionCardSent(key: string): boolean {
-	return sent.has(key);
+	return sentState(key) !== undefined;
 }
 
 /** Called with the failure message when the send failed, or null when its result landed. */
@@ -128,6 +174,7 @@ export function subscribeSentQuestionCard(key: string, listener: SentListener): 
 
 /** Drops the sending entry and notifies subscribers, with `error` when the send failed. */
 export function clearSentQuestionCard(key: string, error: string | null = null): void {
+	removeStoredSent(key);
 	if (!sent.delete(key)) return;
 	notifySentChange();
 	for (const listener of [...(sentListeners.get(key) ?? [])]) listener(error);
@@ -135,7 +182,7 @@ export function clearSentQuestionCard(key: string, error: string | null = null):
 
 /** Whether the card under `key` has an answer sending, re-rendering as that changes. */
 export function useQuestionCardSent(key: string): boolean {
-	const getSnapshot = useCallback(() => sent.has(key), [key]);
+	const getSnapshot = useCallback(() => sentState(key) !== undefined, [key]);
 	return useSyncExternalStore(subscribeSentChange, getSnapshot, () => false);
 }
 

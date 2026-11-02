@@ -1,7 +1,12 @@
 import {useCallback, useEffect, useRef, useState, type ReactNode, type RefObject} from "react";
 
 import {useIsMac} from "../hooks/use-is-mac";
-import {clearApprovalAnswered, markApprovalAnswered, useApprovalAnswered} from "../lib/answered-approvals";
+import {
+	acknowledgeApproval,
+	clearApprovalAnswered,
+	markApprovalAnswered,
+	useApprovalAnswered,
+} from "../lib/answered-approvals";
 import {holdAnswered, releaseAnswered} from "../lib/answered-sessions";
 import {approvalEnterSeen, markApprovalEnterSeen} from "../lib/approval-enter-seen";
 import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, isIdleComposer, onScreen} from "../lib/dock-keys";
@@ -93,6 +98,8 @@ export function PermissionCard({
 			if (sessionId !== undefined && answerKey !== undefined) holdAnswered(sessionId, answerKey);
 			try {
 				await onDecision(decision);
+				// The card carries no tool name, and nothing reads the stored one.
+				if (markSession !== undefined && markKey !== undefined) acknowledgeApproval(markSession, markKey, "");
 			} catch (err) {
 				if (markSession !== undefined && markKey !== undefined) clearApprovalAnswered(markSession, markKey);
 				if (sessionId !== undefined) releaseAnswered(sessionId);

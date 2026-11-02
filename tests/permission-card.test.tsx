@@ -8,7 +8,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {BackgroundTasksOpenerProvider} from "../src/components/background-tasks-opener-context";
 import {PermissionCard} from "../src/components/permission-card";
 import {isAnsweredHeld, releaseAnswered} from "../src/lib/answered-sessions";
-import {isApprovalAnswered, useApprovalAnswered} from "../src/lib/answered-approvals";
+import {clearApprovalAnswered, isApprovalAnswered, useApprovalAnswered} from "../src/lib/answered-approvals";
 import {
 	findPendingPermission,
 	permissionAnswerKey,
@@ -758,6 +758,62 @@ describe("PermissionCard", () => {
 			afterResolve: container.querySelector("[data-approval-card-root]") === null,
 			calls: onDecision.mock.calls,
 		}).toStrictEqual({hidden: true, afterResolve: true, calls: [["allow"]]});
+	});
+
+	it("persists the decision as acknowledged once the answer is delivered, and not before or on a refusal", async () => {
+		const answer = deferredAnswer();
+		render(
+			<PermissionCard
+				title={{action: "run", meta: null}}
+				detail="ls"
+				canAnswer
+				sessionId="s-permission-ack"
+				answerKey="toolu_permission_ack"
+				onDecision={async () => answer.promise}
+			/>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: /^Allow once/}));
+		const sending = window.localStorage.getItem("acknowledged-tool-decisions");
+		await actAndSettle(() => {
+			answer.resolve();
+		});
+		const stored: unknown = JSON.parse(window.localStorage.getItem("acknowledged-tool-decisions") ?? "null");
+		clearApprovalAnswered("s-permission-ack", "toolu_permission_ack");
+		releaseAnswered("s-permission-ack");
+
+		const refused = deferredAnswer();
+		render(
+			<PermissionCard
+				title={{action: "run", meta: null}}
+				detail="ls"
+				canAnswer
+				sessionId="s-permission-ack"
+				answerKey="toolu_permission_refused"
+				onDecision={async () => refused.promise}
+			/>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Deny"}));
+		await actAndSettle(() => {
+			refused.reject(new Error("herdr pane is gone"));
+		});
+
+		expect({
+			sending,
+			stored,
+			refused: isApprovalAnswered("s-permission-ack", "toolu_permission_refused"),
+		}).toStrictEqual({
+			sending: null,
+			stored: {
+				"s-permission-ack": {
+					toolu_permission_ack: {
+						toolUseId: "toolu_permission_ack",
+						toolName: "",
+						acknowledgedAt: expect.any(Number) as number,
+					},
+				},
+			},
+			refused: false,
+		});
 	});
 
 	it("brings the card back with the error when the answer fails", async () => {
