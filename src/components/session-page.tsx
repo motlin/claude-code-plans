@@ -133,7 +133,7 @@ import {
 	hookQuestionCardShown as isHookQuestionCardShown,
 	liveHookQuestion,
 } from "../lib/approval-dock";
-import {useApprovalAnswered} from "../lib/answered-approvals";
+import {useApprovalAnswered, useForgetAnsweredHookPlan} from "../lib/answered-approvals";
 import {useAnsweredSessionIds} from "../lib/answered-sessions";
 import {useQuestionCardSent} from "../lib/question-card-store";
 import {applicationSettingsQueryOptions, useSaveApplicationSettings} from "../lib/api/application-settings";
@@ -559,14 +559,18 @@ function SessionView({
 		select: (data) => data.pendingElicitations,
 	}).data;
 	// The CLI writes a pending ExitPlanMode to the JSONL only once answered, so its hook copy docks until then.
-	const dockedPlan = useMemo(
+	const hookDockedPlan = useMemo(
 		() => dockedHookPlan({hookPlan, state: sessionSummaryState, records: transcript.records}),
 		[hookPlan, sessionSummaryState, transcript.records],
 	);
+	// A plan this tab answered is consumed at the click: its card and every gate drop until the answer fails.
+	const dockedPlanAnswered = useApprovalAnswered(sessionId, hookDockedPlan?.toolUseId ?? null);
+	const dockedPlan = dockedPlanAnswered ? null : hookDockedPlan;
+	useForgetAnsweredHookPlan(sessionId, hookPlan?.toolUseId ?? null);
 	// Until the record lands on disk, the Plan pane shows the plan the dock is asking about.
 	const planModel = useMemo(
-		() => withPendingPlan(sessionPlanModel(processed.lines), dockedPlan),
-		[processed.lines, dockedPlan],
+		() => withPendingPlan(sessionPlanModel(processed.lines), hookDockedPlan),
+		[processed.lines, hookDockedPlan],
 	);
 	const turnTokens = useMemo(() => turnTokenEstimate(transcript.records), [transcript.records]);
 	const workingMarkerState = useWorkingMarkerState({
@@ -579,7 +583,9 @@ function SessionView({
 	});
 	// The turn's in-flight call has its own running row in the transcript (a subagent's row stays a plain link).
 	const pendingCall = useMemo(() => findLastPendingToolUse(transcript.records), [transcript.records]);
-	const inlinePlanId = inlinePlanToolUseId(sessionSummaryState, pendingCall);
+	const waitingPlanId = inlinePlanToolUseId(sessionSummaryState, pendingCall);
+	const inlinePlanAnswered = useApprovalAnswered(sessionId, waitingPlanId);
+	const inlinePlanId = inlinePlanAnswered ? null : waitingPlanId;
 	const inFlightRow =
 		workingMarkerState.status === "working" &&
 		pendingCall !== null &&

@@ -10,6 +10,8 @@ import type {PlanApprovalContextValue} from "../src/components/plan-approval-con
 import type {PlanDecision, PlanDialog} from "../src/lib/plan-approval";
 import {planKeyAction} from "../src/lib/plan-approval";
 import {isAnsweredHeld, releaseAnswered} from "../src/lib/answered-sessions";
+import {clearApprovalAnswered, isApprovalAnswered} from "../src/lib/answered-approvals";
+import {clearUnsentPlan} from "../src/lib/plan-unsent";
 import {addPlanComment, clearPlanComments, getPlanComments} from "../src/lib/plan-comments";
 import {defaultPaneLayout} from "../src/lib/pane-layout";
 import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
@@ -20,6 +22,9 @@ afterEach(() => {
 	cleanup();
 	vi.unstubAllGlobals();
 	clearPlanComments(SESSION);
+	// The answered and unsent stores are module state: one test's answer must not hide the next one's card.
+	clearApprovalAnswered(SESSION, "toolu_plan_1");
+	clearUnsentPlan(SESSION, "toolu_plan_1");
 });
 
 const AUTO_DIALOG: PlanDialog = {forwardMode: "auto", manual: true};
@@ -192,6 +197,54 @@ describe("PlanApprovalCard", () => {
 		releaseAnswered(SESSION);
 
 		expect({sending, refused}).toStrictEqual({sending: true, refused: false});
+	});
+
+	it("marks the plan answered and hides the card at the click, with no busy primary", async () => {
+		const {value} = context({decide: async () => new Promise<void>(() => {})});
+		const view = await renderCard(value);
+		act(() => {
+			fireEvent.click(button("Accept and auto modeCtrl⏎Enter"));
+		});
+		expect({
+			answered: isApprovalAnswered(SESSION, "toolu_plan_1"),
+			card: view.container.querySelector("[data-plan-approval]"),
+		}).toStrictEqual({answered: true, card: null});
+	});
+
+	it("brings a refused revision back after a remount: Revise open, the text restored and the error shown", async () => {
+		let reject!: (reason: Error) => void;
+		const {value} = context({
+			decide: async () =>
+				new Promise<void>((_, onReject) => {
+					reject = onReject;
+				}),
+		});
+		const first = await renderCard(value);
+		fireEvent.click(button("Revise…Esc"));
+		const box = screen.getByRole("textbox", {name: "Plan feedback"});
+		fireEvent.change(box, {target: {value: "use bye instead"}});
+		act(() => {
+			fireEvent.keyDown(box, {key: "Enter"});
+		});
+		const hidden = first.container.querySelector("[data-plan-approval]");
+		// The session page drops a marked plan's card, so it unmounts before the answer is refused.
+		first.unmount();
+		await act(async () => {
+			reject(new Error("The terminal is not showing the plan approval dialog"));
+			return Promise.resolve();
+		});
+		const view = await renderCard(value);
+		expect({
+			hidden,
+			answered: isApprovalAnswered(SESSION, "toolu_plan_1"),
+			typed: screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Plan feedback"}).value,
+			error: view.container.querySelector("[data-plan-error]")?.textContent,
+		}).toStrictEqual({
+			hidden: null,
+			answered: false,
+			typed: "use bye instead",
+			error: "The terminal is not showing the plan approval dialog",
+		});
 	});
 
 	it("stacks the actions full width in upstream's ≤420px container, both groups growing", async () => {
@@ -381,6 +434,16 @@ describe("PlanApprovalCard keys", () => {
 			callsInGrace: [],
 			calls: [[{kind: "accept", mode: "auto"}]],
 		});
+	});
+
+	it("hides the card in the same act as a ⌘⏎ that lands after the grace", async () => {
+		const {value} = context({decide: async () => new Promise<void>(() => {})});
+		const view = await renderCard(value);
+		vi.advanceTimersByTime(500);
+		act(() => {
+			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		});
+		expect(view.container.querySelector("[data-plan-approval]")).toBeNull();
 	});
 
 	it("listens on window in the capture phase and stops the chord there", async () => {

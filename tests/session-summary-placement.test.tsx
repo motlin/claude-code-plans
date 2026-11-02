@@ -7,6 +7,8 @@ import type {ReactNode} from "react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {pendingQuestionQueryOptions} from "../src/lib/api/pending-question";
+import {pendingPlanQueryOptions} from "../src/lib/api/pending-plan";
+import {clearApprovalAnswered} from "../src/lib/answered-approvals";
 import {clearComposerQueues} from "../src/lib/composer-queue";
 import {clearSentQuestionCard} from "../src/lib/question-card-store";
 import {releaseAnswered} from "../src/lib/answered-sessions";
@@ -714,6 +716,45 @@ describe("SessionPage dock composition", () => {
 				// The answered session is working again at once; this fixture's turn has no reply yet.
 				workingLine: "Waiting for Claude…running",
 			});
+		});
+
+		it("drops an answered hook plan's card while the hook still reports it and the session still waits", async () => {
+			const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+				if (String(input).startsWith("/api/herdr/plan")) {
+					return init?.method === "POST"
+						? Response.json({ok: true})
+						: Response.json({dialog: {forwardMode: "auto", manual: true}});
+				}
+				return new Promise<Response>(() => {});
+			});
+			vi.stubGlobal("fetch", fetchMock);
+			await renderSessionPage({...detail, pr}, [], (queryClient) => {
+				seedUsage(queryClient);
+				queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [herdrPane], writesEnabled: true});
+				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+					pages: [{sessions: [{id: SESSION_ID, state: "waiting"}], nextCursor: null}],
+					pageParams: [null],
+				} as never);
+				queryClient.setQueryData(pendingPlanQueryOptions(SESSION_ID).queryKey, {
+					pendingPlan: {toolUseId: "toolu_plan", plan: "# Plan: ship it"},
+				});
+			});
+			const accept = await screen.findByRole("button", {name: /^Accept and auto mode/});
+			const before = document.querySelectorAll("[data-docked-plan], [data-inline-plan]").length;
+			await act(async () => {
+				fireEvent.click(accept);
+				return Promise.resolve();
+			});
+			const after = document.querySelectorAll("[data-docked-plan], [data-inline-plan]").length;
+			clearApprovalAnswered(SESSION_ID, "toolu_plan");
+
+			expect({
+				before,
+				after,
+				posts: fetchMock.mock.calls
+					.filter(([, init]) => init?.method === "POST")
+					.map(([input]) => String(input)),
+			}).toStrictEqual({before: 1, after: 0, posts: ["/api/herdr/plan"]});
 		});
 
 		it("flips the working line from Needs your input to Working… at the permission click, before the server says so", async () => {

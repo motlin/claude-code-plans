@@ -1,4 +1,4 @@
-import {useSyncExternalStore} from "react";
+import {useEffect, useRef, useSyncExternalStore} from "react";
 
 /**
  * Upstream's answered set (shared-39 `Ty`/`s9`/`xr`): approvals answered in
@@ -57,4 +57,19 @@ function useAnsweredApprovalsVersion(): number {
 export function useApprovalAnswered(sessionId: string, id: string | null): boolean {
 	useAnsweredApprovalsVersion();
 	return id !== null && isApprovalAnswered(sessionId, id);
+}
+
+/**
+ * A hook plan the PermissionRequest reported before any PreToolUse carries no
+ * tool call id (""), so its mark would hide the session's next id-less plan.
+ * Drop that mark once the hook stops reporting the plan. A real id is never
+ * reused, so its mark stays until the record lands and the card goes for good.
+ */
+export function useForgetAnsweredHookPlan(sessionId: string, hookPlanId: string | null): void {
+	const previous = useRef(hookPlanId);
+	useEffect(() => {
+		const last = previous.current;
+		previous.current = hookPlanId;
+		if (last === "" && hookPlanId !== "") clearApprovalAnswered(sessionId, "");
+	}, [sessionId, hookPlanId]);
 }

@@ -8,7 +8,12 @@ import {
 	isApprovalAnswered,
 	markApprovalAnswered,
 	useApprovalAnswered,
+	useForgetAnsweredHookPlan,
 } from "../src/lib/answered-approvals";
+
+function hookPlanProps(id: string | null): {id: string | null} {
+	return {id};
+}
 
 describe("answered approvals, as upstream's answered set keyed by session and tool call", () => {
 	it("marks a session's tool call answered until the mark is cleared", () => {
@@ -44,5 +49,25 @@ describe("answered approvals, as upstream's answered set keyed by session and to
 		const {result} = renderHook(() => useApprovalAnswered("session-answered-4", null));
 
 		expect(result.current).toStrictEqual(false);
+	});
+
+	it("forgets an id-less hook plan's mark once the hook stops reporting it, so a later id-less plan shows", () => {
+		const {rerender} = renderHook(
+			({id}: {id: string | null}) => {
+				useForgetAnsweredHookPlan("session-hook-plan", id);
+			},
+			{initialProps: hookPlanProps("")},
+		);
+		markApprovalAnswered("session-hook-plan", "");
+		markApprovalAnswered("session-hook-plan", "toolu_hook_plan");
+		const reported = isApprovalAnswered("session-hook-plan", "");
+		rerender({id: null});
+		expect({
+			reported,
+			cleared: isApprovalAnswered("session-hook-plan", ""),
+			// A real tool call id is never reused, so its mark stays until its record lands.
+			kept: isApprovalAnswered("session-hook-plan", "toolu_hook_plan"),
+		}).toStrictEqual({reported: true, cleared: false, kept: true});
+		clearApprovalAnswered("session-hook-plan", "toolu_hook_plan");
 	});
 });

@@ -1,6 +1,7 @@
 import {MessageCircle, X} from "lucide-react";
 import {useCallback, useEffect, useRef, useState} from "react";
 
+import {clearApprovalAnswered, markApprovalAnswered, useApprovalAnswered} from "../lib/answered-approvals";
 import {holdAnswered, releaseAnswered} from "../lib/answered-sessions";
 import {APPROVAL_ARM_GRACE_MS, dockKeyAllowed} from "../lib/dock-keys";
 import {
@@ -27,6 +28,7 @@ import {
 	restorePlanComments,
 	usePlanComments,
 } from "../lib/plan-comments";
+import {clearUnsentPlan, getUnsentPlan, setUnsentPlan} from "../lib/plan-unsent";
 import {usePhoneSheet} from "../lib/use-phone-sheet";
 import {ApprovalActionButton, STACK_ACTIONS} from "./approval-card";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
@@ -115,31 +117,41 @@ function PlanApprovalActions({
 	dialog: PlanDialog;
 	decide: (decision: PlanDecision) => Promise<void>;
 }) {
-	const [revising, setRevising] = useState(false);
+	// A card whose answer was refused while it was unmounted comes back as it was sent.
+	const [restored] = useState(() => getUnsentPlan(sessionId, toolUseId));
+	const [revising, setRevising] = useState(restored?.revising ?? false);
 	const hasComments = usePlanComments(sessionId).length > 0;
 	// Upstream: any comment holds the card in Revise by itself, without taking focus.
 	const showRevise = revising || hasComments;
-	const [submitting, setSubmitting] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const feedback = useRef("");
+	// Upstream's answered set: the card hides at the click, with no busy state, and returns if the answer fails.
+	const answered = useApprovalAnswered(sessionId, toolUseId);
+	const [error, setError] = useState<string | null>(restored?.error ?? null);
+	const feedback = useRef(restored?.feedback ?? "");
 	const mountedAt = useRef<number | null>(null);
 	const primary = planPrimaryAccept(dialog);
 
 	/** Any decision takes the session's comments; a refused answer puts them back. */
 	const send = useCallback(
-		async (decision: PlanDecision | ((comments: ReturnType<typeof clearPlanComments>) => PlanDecision)) => {
+		async (
+			decision: PlanDecision | ((comments: ReturnType<typeof clearPlanComments>) => PlanDecision),
+			sentRevising: boolean,
+		) => {
 			setError(null);
-			setSubmitting(true);
 			const comments = clearPlanComments(sessionId);
+			const sentFeedback = feedback.current;
+			markApprovalAnswered(sessionId, toolUseId);
 			holdAnswered(sessionId, toolUseId);
 			try {
 				await decide(typeof decision === "function" ? decision(comments) : decision);
+				clearUnsentPlan(sessionId, toolUseId);
 			} catch (err) {
+				const message = err instanceof Error ? err.message : "Failed to answer the plan";
+				// Saved before the mark clears, so a card the session page dropped remounts with it.
+				setUnsentPlan(sessionId, toolUseId, {revising: sentRevising, feedback: sentFeedback, error: message});
 				releaseAnswered(sessionId);
 				restorePlanComments(sessionId, comments);
-				setError(err instanceof Error ? err.message : "Failed to answer the plan");
-			} finally {
-				setSubmitting(false);
+				clearApprovalAnswered(sessionId, toolUseId);
+				setError(message);
 			}
 		},
 		[decide, sessionId, toolUseId],
@@ -155,7 +167,7 @@ function PlanApprovalActions({
 	}, []);
 
 	useEffect(() => {
-		if (showRevise || submitting) return undefined;
+		if (showRevise || answered) return undefined;
 		function onKeyDown(event: KeyboardEvent) {
 			if (event.defaultPrevented) return;
 			const action = planKeyAction(event, dialog);
@@ -166,19 +178,21 @@ function PlanApprovalActions({
 			event.preventDefault();
 			event.stopPropagation();
 			if (action.kind === "revise") setRevising(true);
-			else void send(action);
+			else void send(action, false);
 		}
 		window.addEventListener("keydown", onKeyDown, true);
 		return () => {
 			window.removeEventListener("keydown", onKeyDown, true);
 		};
-	}, [showRevise, submitting, dialog, send]);
+	}, [showRevise, answered, dialog, send]);
 
 	const reviseWithFeedback = () => {
 		// Keep the box (and its text) up while the comments are taken, in case the answer is refused.
 		setRevising(true);
-		void send((comments) => ({kind: "reject", feedback: formatPlanFeedback(comments, feedback.current)}));
+		void send((comments) => ({kind: "reject", feedback: formatPlanFeedback(comments, feedback.current)}), true);
 	};
+
+	if (answered) return null;
 
 	return (
 		<div data-plan-approval className="flex flex-col gap-2 pt-1">
@@ -189,6 +203,7 @@ function PlanApprovalActions({
 					// oxlint-disable-next-line jsx-a11y/no-autofocus
 					autoFocus={revising}
 					rows={3}
+					defaultValue={feedback.current}
 					aria-label={PLAN_FEEDBACK_LABEL}
 					placeholder={hasComments ? PLAN_FEEDBACK_WITH_COMMENTS_PLACEHOLDER : PLAN_FEEDBACK_PLACEHOLDER}
 					className={FEEDBACK_CLASS}
@@ -215,16 +230,11 @@ function PlanApprovalActions({
 						{hasComments ? (
 							<span className="@max-[420px]:hidden" />
 						) : (
-							<ApprovalActionButton variant="secondary" disabled={submitting} onClick={closeFeedback}>
+							<ApprovalActionButton variant="secondary" onClick={closeFeedback}>
 								{PLAN_BACK_LABEL}
 							</ApprovalActionButton>
 						)}
-						<ApprovalActionButton
-							variant="primary"
-							busy={submitting}
-							disabled={submitting}
-							onClick={reviseWithFeedback}
-						>
+						<ApprovalActionButton variant="primary" onClick={reviseWithFeedback}>
 							{PLAN_REVISE_LABEL}
 						</ApprovalActionButton>
 					</>
@@ -233,14 +243,12 @@ function PlanApprovalActions({
 						<span className="flex gap-2">
 							<ApprovalActionButton
 								variant="secondary"
-								disabled={submitting}
-								onClick={() => void send({kind: "reject", feedback: ""})}
+								onClick={() => void send({kind: "reject", feedback: ""}, false)}
 							>
 								{PLAN_REJECT_LABEL}
 							</ApprovalActionButton>
 							<ApprovalActionButton
 								variant="secondary"
-								disabled={submitting}
 								onClick={() => {
 									setRevising(true);
 								}}
@@ -253,8 +261,7 @@ function PlanApprovalActions({
 							{primary !== null && primary !== "default" && dialog.manual && (
 								<ApprovalActionButton
 									variant="secondary"
-									disabled={submitting}
-									onClick={() => void send({kind: "accept", mode: "default"})}
+									onClick={() => void send({kind: "accept", mode: "default"}, false)}
 								>
 									{PLAN_ACCEPT_LABEL.default}
 									<Shortcut keys="cmd+shift+enter" className="pointer-coarse:hidden" />
@@ -263,9 +270,7 @@ function PlanApprovalActions({
 							{primary !== null && (
 								<ApprovalActionButton
 									variant="primary"
-									busy={submitting}
-									disabled={submitting}
-									onClick={() => void send({kind: "accept", mode: primary})}
+									onClick={() => void send({kind: "accept", mode: primary}, false)}
 								>
 									{PLAN_ACCEPT_LABEL[primary]}
 									<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />

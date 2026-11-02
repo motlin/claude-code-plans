@@ -15,6 +15,10 @@ import {
 } from "./prompt";
 import type {QuestionAnswerStep} from "./question";
 import {asRecord} from "../narrow";
+import {DOMAIN_EVENTS} from "../event-names";
+import type {SessionPendingPlanChangedPayload} from "../hook-events";
+import {clearPendingPlan as clearStoredPendingPlan} from "../pending-plan-store";
+import {broadcastTyped} from "../sse-broadcast";
 
 /** The question line the CLI's plan approval dialog asks above its numbered rows. */
 const DIALOG_QUESTION = "Would you like to proceed?";
@@ -106,6 +110,8 @@ export interface HerdrPlanDependencies {
 	/** Whether the session's PermissionRequest hook says the ExitPlanMode dialog is open. */
 	hasPendingPlan: (sessionId: string) => boolean;
 	clearPendingPlan: (sessionId: string) => void;
+	/** Forget the hook's pending ExitPlanMode once answered, telling every tab the plan is gone. */
+	clearHookPlan: (sessionId: string) => void;
 	resolveTarget: (sessionId: string) => Promise<HerdrResult<HerdrPromptTarget>>;
 	/** The pane's visible screen as text. */
 	readScreen: (sessionId: string, paneId: string) => Promise<HerdrResult<string>>;
@@ -144,6 +150,13 @@ export const defaultHerdrPlanDependencies: HerdrPlanDependencies = {
 	hasPendingPlan: (sessionId) =>
 		getActiveSessionEntry(sessionId)?.pendingPermissionRequest?.toolName === "ExitPlanMode",
 	clearPendingPlan: defaultHerdrPermissionDependencies.clearPendingPermission,
+	clearHookPlan: (sessionId) => {
+		if (!clearStoredPendingPlan(sessionId)) return;
+		broadcastTyped(DOMAIN_EVENTS.SESSION_PENDING_PLAN_CHANGED, {
+			sessionId,
+			pendingPlan: null,
+		} satisfies SessionPendingPlanChangedPayload);
+	},
 	resolveTarget: async (sessionId) => resolveHerdrPromptTarget(sessionId),
 	readScreen: async (_sessionId, paneId) => readHerdrScreen(paneId),
 	request: herdrRequest,
@@ -233,5 +246,6 @@ export async function handleHerdrPlan(
 	}
 	// A rejection ends the turn with Stop (idle), which never clears the prompt.
 	dependencies.clearPendingPlan(parsed.data.sessionId);
+	dependencies.clearHookPlan(parsed.data.sessionId);
 	return Response.json({ok: true});
 }

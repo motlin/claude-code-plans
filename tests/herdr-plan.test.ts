@@ -143,6 +143,7 @@ function dependencies(overrides: Partial<HerdrPlanDependencies> = {}): HerdrPlan
 		writesEnabled: () => true,
 		hasPendingPlan: () => true,
 		clearPendingPlan: () => {},
+		clearHookPlan: () => {},
 		resolveTarget: async () => Promise.resolve({ok: true, value: {terminalId: "terminal-1", paneId: "w1:p1"}}),
 		readScreen: async () => Promise.resolve({ok: true, value: AUTO_SCREEN}),
 		request: async () => Promise.resolve({ok: true, value: {type: "ok"}}),
@@ -259,6 +260,41 @@ describe("herdr plan decision handler", () => {
 			response,
 			calls: [],
 		});
+	});
+
+	it("clears the hook's pending plan once after a successful answer", async () => {
+		const clearHookPlan = vi.fn<(sessionId: string) => void>();
+		const response = await handleHerdrPlan(
+			postRequest({sessionId: "session-1", decision: {kind: "accept", mode: "auto"}}),
+			dependencies({clearHookPlan}),
+		);
+		expect({status: response.status, cleared: clearHookPlan.mock.calls}).toStrictEqual({
+			status: 200,
+			cleared: [["session-1"]],
+		});
+	});
+
+	it.each([
+		{
+			name: "the screen shows another dialog",
+			overrides: {readScreen: async () => Promise.resolve({ok: true as const, value: "Do you want to proceed?"})},
+			status: 409,
+		},
+		{
+			name: "the agent is not ready for keys",
+			overrides: {
+				request: async () =>
+					Promise.resolve({ok: false as const, code: "agent_not_ready", message: "agent not ready"}),
+			},
+			status: 409,
+		},
+	])("keeps the hook's pending plan when $name", async ({overrides, status}) => {
+		const clearHookPlan = vi.fn<(sessionId: string) => void>();
+		const response = await handleHerdrPlan(
+			postRequest({sessionId: "session-1", decision: {kind: "accept", mode: "auto"}}),
+			dependencies({...overrides, clearHookPlan}),
+		);
+		expect({status: response.status, cleared: clearHookPlan.mock.calls}).toStrictEqual({status, cleared: []});
 	});
 
 	it("rejects a body carrying keys of its own", async () => {
