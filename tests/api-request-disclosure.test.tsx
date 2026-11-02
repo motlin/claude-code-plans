@@ -107,6 +107,7 @@ const MESSAGES: ApiRequestMessages = {
 					images: [{mediaType: "image/jpeg", data: "BBBB"}],
 				},
 				{type: "tool_addition", name: "mcp__docs__guide", definition: false},
+				{type: "tool_removal", name: "mcp__docs__batch"},
 			],
 		},
 		{
@@ -210,6 +211,7 @@ describe("ApiRequestDisclosure", () => {
 				"Tool result toolu_1 (error)",
 				"Failed.",
 				"Added tool mcp__docs__guide (by name)",
+				"Removed tool mcp__docs__batch",
 				"assistant",
 				"Thinking",
 				"Plan.",

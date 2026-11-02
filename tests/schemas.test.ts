@@ -2107,6 +2107,23 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
 	});
 
+	it("parses api-request-blob tool_removal blocks that name the removed tool", () => {
+		const record = {
+			type: "api-request-blob",
+			sessionId: "sess-123",
+			hash: "b72952e5",
+			message: {
+				role: "system",
+				content: [
+					{type: "text", text: "Tools changed."},
+					{type: "tool_removal", tool: {type: "tool_reference", name: "mcp__docs__guide"}},
+				],
+			},
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
 	it("parses subagent api-request, api-request-blob, and api-request-shape records carrying agentId", () => {
 		const records = [
 			{...jsonlRecordFixtures["api-request-shape"], agentId: "a37df3f20484177f0"},

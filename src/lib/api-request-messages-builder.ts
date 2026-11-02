@@ -60,6 +60,8 @@ function summarizeBlocks(content: BlobMessage["content"]): ApiRequestMessageBloc
 				return block.tool.type === "tool_definition"
 					? {type: "tool_addition", name: block.tool.definition.name, definition: true}
 					: {type: "tool_addition", name: block.tool.name, definition: false};
+			case "tool_removal":
+				return {type: "tool_removal", name: block.tool.name};
 			case "image":
 				return {type: "image", mediaType: block.source.media_type, data: block.source.data};
 			default:
