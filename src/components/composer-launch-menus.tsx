@@ -261,6 +261,7 @@ export function ModelMenu({
 				side="top"
 				align="end"
 				sheetSize="base"
+				cds="ModelSelector"
 				{...(surface === "bar"
 					? {
 							header: (

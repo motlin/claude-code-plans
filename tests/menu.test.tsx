@@ -1089,7 +1089,7 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 	});
 
 	const CLOSE_ROW_CLASS =
-		"group/sheet-close block w-full rounded outline-none select-none focus-visible:outline-hidden [&:not(:focus-visible):not([data-highlighted]):not([data-cds-sheet-control-held])]:sr-only";
+		"group/sheet-close block w-full rounded-r7 outline-none select-none focus-visible:outline-hidden [&:not(:focus-visible):not([data-highlighted]):not([data-cds-sheet-control-held])]:sr-only";
 
 	function renderControlledSheet() {
 		const onOpenChange = vi.fn<(open: boolean) => void>();
@@ -1141,7 +1141,7 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 			box: {
 				highlightFill: true,
 				lgRow: true,
-				icon: "flex size-5 shrink-0 items-center justify-center",
+				icon: "flex size-6 shrink-0 items-center justify-center",
 				label: "min-w-0 flex-1 truncate",
 				text: "Close",
 			},
@@ -1428,6 +1428,8 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 				className: header?.className,
 				backRole: back?.getAttribute("role"),
 				backWrapper: back?.parentElement?.className,
+				backIcon: back?.firstElementChild?.className,
+				backSvg: back?.querySelector("svg")?.classList.contains("size-5"),
 				titleText: title?.textContent,
 				titleHidden: title?.getAttribute("aria-hidden"),
 				titleClass: title?.className,
@@ -1455,11 +1457,115 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 				className: "order-first flex min-h-10 shrink-0 touch-none items-center gap-1.5 px-1 pb-1 select-none",
 				backRole: "menuitem",
 				backWrapper: "-me-2.5 shrink-0",
+				backIcon: "flex size-6 shrink-0 items-center justify-center",
+				backSvg: true,
 				titleText: "Status",
 				titleHidden: "true",
 				titleClass: "min-w-0 flex-1 truncate text-start text-[15px]/[20px] font-semibold text-primary",
 			},
 		});
+	});
+
+	it("gives the sheet levels upstream's forced-colors resets and pressed scroll padding", async () => {
+		const {root, child} = await drillIntoStatus();
+		const tokens = [
+			"forced-colors:border",
+			"forced-colors:border-x-0",
+			"forced-colors:border-b-0",
+			"forced-colors:border-0",
+			"[&[data-cds-sheet-pressed]_[data-cds-sheet-scroll]]:[scroll-padding-block:0px]",
+		];
+		const present = (level: HTMLElement | undefined) => tokens.filter((name) => level?.classList.contains(name));
+		expect({root: present(root), child: present(child)}).toStrictEqual({
+			root: [
+				"forced-colors:border",
+				"forced-colors:border-x-0",
+				"forced-colors:border-b-0",
+				"[&[data-cds-sheet-pressed]_[data-cds-sheet-scroll]]:[scroll-padding-block:0px]",
+			],
+			child: [
+				"forced-colors:border-x-0",
+				"forced-colors:border-b-0",
+				"forced-colors:border-0",
+				"[&[data-cds-sheet-pressed]_[data-cds-sheet-scroll]]:[scroll-padding-block:0px]",
+			],
+		});
+	});
+
+	it("pins every open level to the tallest level's height, as upstream's pinHeight and pushLevelHeight", async () => {
+		vi.spyOn(Element.prototype, "scrollHeight", "get").mockImplementation(function (this: Element) {
+			if (this.getAttribute("role") !== "menu") return 0;
+			return this.hasAttribute("data-nested") ? 320 : 200;
+		});
+		stubCoarseAtWidth(639);
+		renderDropdown();
+		const root = await openDropdown();
+		const atOpen = root.style.height;
+		fireEvent.click(screen.getByRole("menuitem", {name: /Status/}));
+		await flush();
+		const child = Array.from(document.querySelectorAll<HTMLElement>("[role=menu]")).find((menu) => menu !== root);
+		const drilled = {root: root.style.height, child: child?.style.height};
+		fireEvent.click(screen.getByRole("menuitem", {name: "Back"}));
+		await flush();
+		expect({atOpen, drilled, back: root.style.height}).toStrictEqual({
+			atOpen: "200px",
+			drilled: {root: "320px", child: "320px"},
+			back: "200px",
+		});
+	});
+
+	it("forwards popupProps to the sheet popup and moves the consumer className onto the content", async () => {
+		stubCoarseAtWidth(639);
+		const onKeyDownCapture = vi.fn<() => void>();
+		render(
+			<Menu>
+				<MenuTrigger aria-label="More options">...</MenuTrigger>
+				<MenuContent
+					className="w-[240px]"
+					popupProps={{"aria-label": "Templates", "data-x": "", onKeyDownCapture}}
+				>
+					<MenuItem>Copy link</MenuItem>
+				</MenuContent>
+			</Menu>,
+		);
+		const menu = await openDropdown();
+		fireEvent.keyDown(menu, {key: "a"});
+		const content = menu.querySelector("[data-cds-sheet-scroll]")?.parentElement;
+		expect({
+			presentation: menu.getAttribute("data-presentation"),
+			label: menu.getAttribute("aria-label"),
+			x: menu.hasAttribute("data-x"),
+			popupWidth: menu.classList.contains("w-[240px]"),
+			popupFull: menu.classList.contains("w-full"),
+			contentWidth: content?.classList.contains("w-[240px]"),
+			keyDownCapture: onKeyDownCapture.mock.calls.length,
+		}).toStrictEqual({
+			presentation: "sheet",
+			label: "Templates",
+			x: true,
+			popupWidth: false,
+			popupFull: true,
+			contentWidth: true,
+			keyDownCapture: 1,
+		});
+	});
+
+	it("names the popup with the cds prop, anchored and as a sheet", async () => {
+		const names: (string | null)[] = [];
+		for (const width of [1024, 639]) {
+			stubCoarseAtWidth(width);
+			render(
+				<Menu>
+					<MenuTrigger aria-label="More options">...</MenuTrigger>
+					<MenuContent cds="ModelSelector">
+						<MenuItem>Copy link</MenuItem>
+					</MenuContent>
+				</Menu>,
+			);
+			names.push((await openDropdown()).getAttribute("data-cds"));
+			cleanup();
+		}
+		expect(names).toStrictEqual(["ModelSelector", "ModelSelector"]);
 	});
 
 	it("closes the drilled level on Back and restores the parent", async () => {

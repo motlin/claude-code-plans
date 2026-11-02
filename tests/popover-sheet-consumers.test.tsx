@@ -134,6 +134,35 @@ describe("sheet-eligible popovers under a coarse pointer", () => {
 	});
 });
 
+describe("popover sheet body layout", () => {
+	function sheetParts() {
+		const body = screen.getByRole("dialog").querySelector("[data-cds-popover-body]");
+		return {body: (body?.className ?? "").split(" "), wrapper: (body?.parentElement?.className ?? "").split(" ")};
+	}
+
+	it("moves the session cost popover's layout and padding onto the sheet body, as upstream's c_ body", () => {
+		stubCoarseAtWidth(420);
+		openCost();
+		const {body, wrapper} = sheetParts();
+		const tokens = ["flex-col", "gap-2", "p-3"];
+		expect({
+			body: tokens.filter((token) => body.includes(token)),
+			wrapper: tokens.filter((token) => wrapper.includes(token)),
+			wrapperColumn: ["flex", "flex-col"].every((token) => wrapper.includes(token)),
+		}).toStrictEqual({body: tokens, wrapper: ["flex-col"], wrapperColumn: true});
+	});
+
+	it("scrolls the Usage popover's sheet body, not its wrapper", () => {
+		stubCoarseAtWidth(420);
+		openUsage();
+		const {body, wrapper} = sheetParts();
+		expect({body: body.includes("overflow-y-auto"), wrapper: wrapper.includes("overflow-y-auto")}).toStrictEqual({
+			body: true,
+			wrapper: false,
+		});
+	});
+});
+
 describe("anchored-upstream popovers under a coarse pointer at 420px", () => {
 	it("keeps the project picker anchored, like upstream's Add repository combobox", () => {
 		stubCoarseAtWidth(420);

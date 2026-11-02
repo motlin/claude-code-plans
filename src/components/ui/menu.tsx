@@ -296,6 +296,8 @@ export interface MenuContentProps {
 	sheetSize?: SheetSize;
 	/** Extra attributes for the popup element, such as an `aria-label` or a `data-*` hook for a menu with no trigger. */
 	popupProps?: MenuPopupProps;
+	/** The popup's `data-cds` name, anchored and as a sheet, such as upstream's `"ModelSelector"`; defaults to the menu kind. */
+	cds?: string;
 }
 
 type MenuPopupProps = Omit<
@@ -325,6 +327,7 @@ export function MenuContent({
 	structurallyAnchored = false,
 	sheetSize = "lg",
 	popupProps,
+	cds,
 	nested = false,
 }: MenuContentInternalProps) {
 	const resolvedCollisionAvoidance =
@@ -347,6 +350,8 @@ export function MenuContent({
 		),
 		className,
 		finalFocus,
+		popupProps,
+		cds,
 	};
 	if (sheet && !nested) return <RootSheet {...sheetProps} size={sheetSize} />;
 	/* A submenu drills in only inside a sheet tree; an anchored parent keeps its fly-out. */
@@ -376,7 +381,7 @@ export function MenuContent({
 					>
 						<BaseMenu.Popup
 							{...popupProps}
-							data-cds={kind}
+							data-cds={cds ?? kind}
 							{...(sheet ? {"data-presentation": "sheet"} : {})}
 							className={className ? `${popupClass} ${className}` : popupClass}
 							onKeyDown={handleAcceleratorKey}

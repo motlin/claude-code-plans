@@ -3,6 +3,8 @@ import type {BaseUIEvent} from "@base-ui/react/types";
 import {ArrowLeft, X} from "lucide-react";
 import {
 	type ComponentProps,
+	createContext,
+	type CSSProperties,
 	type KeyboardEvent,
 	type ReactNode,
 	useCallback,
@@ -11,11 +13,14 @@ import {
 	useId,
 	useLayoutEffect,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
 
 import type {SheetDetent} from "../../lib/sheet-drag";
+import {useCloseWatcher} from "../../lib/use-close-watcher";
 import {DensityProvider} from "./density";
+import {FORCED_COLORS_BORDER_CLASS} from "./popover-surface";
 import {
 	handleAcceleratorKey,
 	LABEL_CLASS,
@@ -70,17 +75,20 @@ const SHEET_COLLISION_AVOIDANCE = {side: "none", align: "none"} as const satisfi
 const SHEET_COVERED_CLASS =
 	"origin-top [&[data-cds-sheet-covered]:not([data-starting-style]):not([data-ending-style])]:-translate-y-3 data-[cds-sheet-covered]:scale-[0.94] after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:bg-backdrop after:opacity-0 after:transition-opacity after:duration-[300ms] motion-reduce:after:transition-none data-[cds-sheet-covered]:after:opacity-100";
 
-/** Upstream's Hc plus cD, shared by every level of a sheet tree. */
-const SHEET_LEVEL_CLASS = `group/sheet relative flex w-full min-w-0 max-w-none flex-col overflow-hidden font-normal text-primary outline-none select-none rounded-b-none pb-[max(env(safe-area-inset-bottom),0.5rem)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] transition-[translate,height,scale] ${SHEET_MOTION} ${SHEET_COVERED_CLASS}`;
+/**
+ * Upstream's Hc plus cD, shared by every level of a sheet tree: under forced colors only the top edge keeps
+ * its CanvasText border, and a pressed sheet drops its scroll padding.
+ */
+const SHEET_LEVEL_CLASS = `group/sheet relative flex w-full min-w-0 max-w-none flex-col overflow-hidden font-normal text-primary outline-none select-none rounded-b-none pb-[max(env(safe-area-inset-bottom),0.5rem)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] transition-[translate,height,scale] ${SHEET_MOTION} ${SHEET_COVERED_CLASS} forced-colors:border-x-0 forced-colors:border-b-0 [&[data-cds-sheet-pressed]_[data-cds-sheet-scroll]]:[scroll-padding-block:0px]`;
 
 /** The root level: the sheet surface, sliding up on enter and down on exit. */
-const SHEET_POPUP_CLASS = `${SHEET_LEVEL_CLASS} bg-[var(--menu-bg)] shadow-[var(--menu-shadow)] data-[starting-style]:translate-y-[calc(100%+1.5rem)] data-[ending-style]:translate-y-[calc(100%+1.5rem)]`;
+const SHEET_POPUP_CLASS = `${SHEET_LEVEL_CLASS} ${FORCED_COLORS_BORDER_CLASS} bg-[var(--menu-bg)] shadow-[var(--menu-shadow)] data-[starting-style]:translate-y-[calc(100%+1.5rem)] data-[ending-style]:translate-y-[calc(100%+1.5rem)]`;
 
 /**
  * A drilled level: transparent over the root's surface, sliding out sideways on its own close
  * (or when peeled), and down with the root when the whole tree closes.
  */
-const SHEET_NESTED_POPUP_CLASS = `${SHEET_LEVEL_CLASS} bg-transparent shadow-none [&[data-ending-style]:not([data-cds-sheet-tree-closing])]:translate-x-full rtl:[&[data-ending-style]:not([data-cds-sheet-tree-closing])]:-translate-x-full [&[data-ending-style][data-cds-sheet-peeling]]:translate-x-full rtl:[&[data-ending-style][data-cds-sheet-peeling]]:-translate-x-full [&[data-ending-style][data-cds-sheet-tree-closing]]:translate-y-[calc(100%+1.5rem)]`;
+const SHEET_NESTED_POPUP_CLASS = `${SHEET_LEVEL_CLASS} bg-transparent shadow-none forced-colors:border-0 [&[data-ending-style]:not([data-cds-sheet-tree-closing])]:translate-x-full rtl:[&[data-ending-style]:not([data-cds-sheet-tree-closing])]:-translate-x-full [&[data-ending-style][data-cds-sheet-peeling]]:translate-x-full rtl:[&[data-ending-style][data-cds-sheet-peeling]]:-translate-x-full [&[data-ending-style][data-cds-sheet-tree-closing]]:translate-y-[calc(100%+1.5rem)]`;
 
 /** Upstream's tl: a drilled level's positioner, clipped at the sheet's top edge and stacked over the root. */
 const SHEET_NESTED_POSITIONER_CLASS = "[clip-path:inset(0_0_-200vh_0)]";
@@ -148,7 +156,7 @@ function SheetLevelHeader() {
 						control?.close();
 					}}
 				>
-					<span aria-hidden="true" className="flex size-5 shrink-0 items-center justify-center">
+					<span aria-hidden="true" className="flex size-6 shrink-0 items-center justify-center">
 						<ArrowLeft className="size-5" />
 					</span>
 				</BaseMenu.Item>
@@ -161,17 +169,59 @@ function SheetLevelHeader() {
 }
 
 /**
- * A drilled level enters from the inline end (`translate: 100% 0`, then cleared), and takes the
- * taller of its own and its parent's height so the sheet never shrinks under the finger.
+ * Upstream's pinHeight / pushLevelHeight: every level of a sheet tree pins its measured content height on the
+ * root's stack, and every open level takes the tallest, so the sheet never shrinks under the finger.
  */
+interface SheetFrame {
+	height: number | undefined;
+	push: (level: string, height: number) => void;
+	release: (level: string) => void;
+}
+
+const SheetFrameContext = createContext<SheetFrame | null>(null);
+
+function useSheetFrameStack(): SheetFrame {
+	const levels = useRef(new Map<string, number>());
+	const [height, setHeight] = useState<number | undefined>(undefined);
+	const update = useCallback(() => {
+		const heights = [...levels.current.values()];
+		setHeight(heights.length === 0 ? undefined : Math.max(...heights));
+	}, []);
+	const push = useCallback(
+		(level: string, levelHeight: number) => {
+			levels.current.set(level, levelHeight);
+			update();
+		},
+		[update],
+	);
+	const release = useCallback(
+		(level: string) => {
+			if (levels.current.delete(level)) update();
+		},
+		[update],
+	);
+	return useMemo(() => ({height, push, release}), [height, push, release]);
+}
+
+/** Pins a level's own content height (its `scrollHeight` at open) on the frame stack until it unmounts. */
+function usePinLevelHeight(popup: HTMLDivElement | null, frame: SheetFrame | null) {
+	const level = useId();
+	const push = frame?.push;
+	const release = frame?.release;
+	useLayoutEffect(() => {
+		if (popup === null || push === undefined || release === undefined) return undefined;
+		const height = popup.scrollHeight;
+		if (height > 0) push(level, height);
+		return () => {
+			release(level);
+		};
+	}, [popup, push, release, level]);
+}
+
+/** A drilled level enters from the inline end (`translate: 100% 0`, then cleared). */
 function useDrilledLevelLayout(popup: HTMLDivElement | null) {
 	useLayoutEffect(() => {
 		if (popup === null) return undefined;
-		const parent = popup.ownerDocument.querySelector<HTMLElement>(
-			`[data-sheet-tree="${CSS.escape(popup.dataset["sheetTree"] ?? "")}"][data-cds-sheet-drilled]`,
-		);
-		const height = Math.max(parent?.getBoundingClientRect().height ?? 0, popup.scrollHeight);
-		if (height > 0) popup.style.height = `${height}px`;
 		popup.style.translate = "100% 0";
 		const frame = requestAnimationFrame(() => {
 			popup.style.translate = "";
@@ -184,7 +234,7 @@ function useDrilledLevelLayout(popup: HTMLDivElement | null) {
 
 /** Upstream's Vt: hidden until keyboard-highlighted or held, so screen readers and arrow keys reach it. */
 const SHEET_CLOSE_ROW_CLASS =
-	"group/sheet-close block w-full rounded outline-none select-none focus-visible:outline-hidden [&:not(:focus-visible):not([data-highlighted]):not([data-cds-sheet-control-held])]:sr-only";
+	"group/sheet-close block w-full rounded-r7 outline-none select-none focus-visible:outline-hidden [&:not(:focus-visible):not([data-highlighted]):not([data-cds-sheet-control-held])]:sr-only";
 
 /** The last row of a root sheet: an item-styled X and "Close" that dismisses the sheet. */
 function SheetCloseRow() {
@@ -192,7 +242,7 @@ function SheetCloseRow() {
 	return (
 		<BaseMenu.Item closeOnClick aria-label="Close" data-cds-sheet-control="" className={SHEET_CLOSE_ROW_CLASS}>
 			<span className={`${itemClass} text-primary group-data-[highlighted]/sheet-close:bg-fill-ghost-hover`}>
-				<span aria-hidden="true" className="flex size-5 shrink-0 items-center justify-center">
+				<span aria-hidden="true" className="flex size-6 shrink-0 items-center justify-center">
 					<X />
 				</span>
 				<span className={LABEL_CLASS}>Close</span>
@@ -255,24 +305,44 @@ const SHEET_SIZE = {
 	base: {radius: "rounded-t-card", text: DENSITY_CLASSES.comfortable.text, attributes: {}},
 } as const satisfies Record<SheetSize, {radius: string; text: string; attributes: object}>;
 
+type SheetPopupProps = Omit<
+	ComponentProps<typeof BaseMenu.Popup>,
+	"className" | "children" | "finalFocus" | "onKeyDown" | "render"
+>;
+
 export interface SheetContentProps {
 	children: ReactNode;
 	size?: SheetSize | undefined;
+	/** Upstream moves `popupClassName` onto the sheet body in sheet mode; the popup stays full width. */
 	className?: string | undefined;
 	finalFocus?: ComponentProps<typeof BaseMenu.Popup>["finalFocus"] | undefined;
+	/** Spread on the popup before the sheet's own attributes; an object `style` merges under the sheet's. */
+	popupProps?: SheetPopupProps | undefined;
+	/** The popup's `data-cds` name; defaults to the menu kind. */
+	cds?: string | undefined;
 }
 
-function popupClass(levelClass: string, size: SheetSize, className: string | undefined): string {
+function popupClass(levelClass: string, size: SheetSize): string {
 	const {radius, text} = SHEET_SIZE[size];
-	return `${levelClass} ${radius} ${text}${className ? ` ${className}` : ""}`;
+	return `${levelClass} ${radius} ${text}`;
 }
 
-function popupStyle(detent: SheetDetent) {
-	return detent === "tall" ? {...SHEET_POPUP_STYLE, height: SHEET_TALL_HEIGHT} : SHEET_POPUP_STYLE;
+function contentClass(className: string | undefined): string {
+	return className ? `${SHEET_CONTENT_CLASS} ${className}` : SHEET_CONTENT_CLASS;
+}
+
+function popupStyle(
+	detent: SheetDetent,
+	frameHeight: number | undefined,
+	consumer: SheetPopupProps["style"],
+): CSSProperties {
+	const base: CSSProperties = typeof consumer === "object" ? {...consumer, ...SHEET_POPUP_STYLE} : SHEET_POPUP_STYLE;
+	if (detent === "tall") return {...base, height: SHEET_TALL_HEIGHT};
+	return frameHeight === undefined ? base : {...base, height: `${frameHeight}px`};
 }
 
 /** A root menu's sheet: scrim, bottom-pinned positioner, handle, rows and the Close row; it owns the drag detent. */
-export function RootSheetContent({children, className, finalFocus, size = "lg"}: SheetContentProps) {
+export function RootSheetContent({children, className, finalFocus, popupProps, cds, size = "lg"}: SheetContentProps) {
 	const kind = useContext(MenuKindContext);
 	const rootTreeId = useContext(SheetTreeIdContext);
 	const ownTreeId = useId();
@@ -288,51 +358,57 @@ export function RootSheetContent({children, className, finalFocus, size = "lg"}:
 		if (next === null) setDetent("default");
 	}, []);
 	const dragFrame = useMemo(() => ({treeId, dismiss, detent, setDetent}), [treeId, dismiss, detent]);
+	const frame = useSheetFrameStack();
+	usePinLevelHeight(popup, frame);
 	useSheetPressMarkers(popup);
+	useCloseWatcher(popup, dismiss);
 	return (
 		<DensityProvider density="comfortable">
 			<SheetSizeContext.Provider value={size}>
 				<MenuLgContext.Provider value={size === "lg"}>
 					<SheetDragContext.Provider value={dragFrame}>
-						<BaseMenu.Portal>
-							<BaseMenu.Backdrop
-								data-presentation="sheet"
-								data-sheet-scrim={treeId}
-								className={SHEET_SCRIM_CLASS}
-							/>
-							<BaseMenu.Positioner
-								className={SHEET_POSITIONER_CLASS}
-								style={SHEET_POSITIONER_STYLE}
-								data-density="comfortable"
-								collisionAvoidance={SHEET_COLLISION_AVOIDANCE}
-								disableAnchorTracking
-							>
-								<BaseMenu.Popup
-									ref={setPopup}
-									data-cds={kind}
+						<SheetFrameContext.Provider value={frame}>
+							<BaseMenu.Portal>
+								<BaseMenu.Backdrop
 									data-presentation="sheet"
-									data-sheet-tree={treeId}
-									data-cds-sheet-depth="0"
-									{...SHEET_SIZE[size].attributes}
-									{...attributes}
-									className={popupClass(SHEET_POPUP_CLASS, size, className)}
-									data-cds-sheet-detent={detent}
-									style={popupStyle(detent)}
-									onKeyDown={handleSheetKey}
-									{...(finalFocus === undefined ? {} : {finalFocus})}
+									data-sheet-scrim={treeId}
+									className={SHEET_SCRIM_CLASS}
+								/>
+								<BaseMenu.Positioner
+									className={SHEET_POSITIONER_CLASS}
+									style={SHEET_POSITIONER_STYLE}
+									data-density="comfortable"
+									collisionAvoidance={SHEET_COLLISION_AVOIDANCE}
+									disableAnchorTracking
 								>
-									<SheetHandle />
-									<div className={SHEET_CONTENT_CLASS}>
-										<div data-cds-sheet-scroll="" className={SHEET_SCROLL_CLASS}>
-											<SheetLevelContext.Provider value={level}>
-												{children}
-											</SheetLevelContext.Provider>
-											<SheetCloseRow />
+									<BaseMenu.Popup
+										{...popupProps}
+										ref={setPopup}
+										data-cds={cds ?? kind}
+										data-presentation="sheet"
+										data-sheet-tree={treeId}
+										data-cds-sheet-depth="0"
+										{...SHEET_SIZE[size].attributes}
+										{...attributes}
+										className={popupClass(SHEET_POPUP_CLASS, size)}
+										data-cds-sheet-detent={detent}
+										style={popupStyle(detent, frame.height, popupProps?.style)}
+										onKeyDown={handleSheetKey}
+										{...(finalFocus === undefined ? {} : {finalFocus})}
+									>
+										<SheetHandle />
+										<div className={contentClass(className)}>
+											<div data-cds-sheet-scroll="" className={SHEET_SCROLL_CLASS}>
+												<SheetLevelContext.Provider value={level}>
+													{children}
+												</SheetLevelContext.Provider>
+												<SheetCloseRow />
+											</div>
 										</div>
-									</div>
-								</BaseMenu.Popup>
-							</BaseMenu.Positioner>
-						</BaseMenu.Portal>
+									</BaseMenu.Popup>
+								</BaseMenu.Positioner>
+							</BaseMenu.Portal>
+						</SheetFrameContext.Provider>
 					</SheetDragContext.Provider>
 				</MenuLgContext.Provider>
 			</SheetSizeContext.Provider>
@@ -341,12 +417,21 @@ export function RootSheetContent({children, className, finalFocus, size = "lg"}:
 }
 
 /** A submenu drilled into its parent's sheet: stacked over the root, with a Back header, at the root's detent. */
-export function NestedSheetContent({children, className, finalFocus, treeId}: SheetContentProps & {treeId: string}) {
+export function NestedSheetContent({
+	children,
+	className,
+	finalFocus,
+	popupProps,
+	cds,
+	treeId,
+}: SheetContentProps & {treeId: string}) {
 	const kind = useContext(MenuKindContext);
 	const {level, attributes} = useSheetLevel(treeId);
 	const detent = useContext(SheetDragContext)?.detent ?? "default";
+	const frame = useContext(SheetFrameContext);
 	const size = useContext(SheetSizeContext);
 	const [popup, setPopup] = useState<HTMLDivElement | null>(null);
+	usePinLevelHeight(popup, frame);
 	useDrilledLevelLayout(popup);
 	return (
 		<DensityProvider density="comfortable">
@@ -360,22 +445,23 @@ export function NestedSheetContent({children, className, finalFocus, treeId}: Sh
 						disableAnchorTracking
 					>
 						<BaseMenu.Popup
+							{...popupProps}
 							ref={setPopup}
-							data-cds={kind}
+							data-cds={cds ?? kind}
 							data-presentation="sheet"
 							data-nested=""
 							data-sheet-tree={treeId}
 							data-cds-sheet-depth="0"
 							{...SHEET_SIZE[size].attributes}
 							{...attributes}
-							className={popupClass(SHEET_NESTED_POPUP_CLASS, size, className)}
+							className={popupClass(SHEET_NESTED_POPUP_CLASS, size)}
 							data-cds-sheet-detent={detent}
-							style={popupStyle(detent)}
+							style={popupStyle(detent, frame?.height, popupProps?.style)}
 							onKeyDown={handleSheetKey}
 							{...(finalFocus === undefined ? {} : {finalFocus})}
 						>
 							<SheetHandle nested />
-							<div className={SHEET_CONTENT_CLASS}>
+							<div className={contentClass(className)}>
 								<div data-cds-sheet-scroll="" className={SHEET_SCROLL_CLASS}>
 									<SheetLevelContext.Provider value={level}>{children}</SheetLevelContext.Provider>
 								</div>

@@ -2,6 +2,7 @@ import {Popover as BasePopover} from "@base-ui/react/popover";
 import {type ReactNode, useCallback, useEffect, useMemo, useRef, useState} from "react";
 
 import type {SheetDetent} from "../../lib/sheet-drag";
+import {useCloseWatcher} from "../../lib/use-close-watcher";
 import {DensityProvider} from "./density";
 import {SHEET_TALL_HEIGHT, SHEET_TEXT_ENTRY, SheetDragContext, useSheetDrag} from "./menu-sheet-drag";
 
@@ -31,9 +32,10 @@ const SHEET_COLLISION_AVOIDANCE = {side: "none", align: "none"} as const;
 
 /**
  * Upstream's Hc + kX: the sheet surface, sliding up on enter and down on exit. Its `data-size="lg"`
- * body reads 15/22 over the forced comfortable density.
+ * body reads 15/22 over the forced comfortable density; under forced colors only its top edge keeps
+ * the CanvasText border (qP), and a pressed sheet drops its scroll padding.
  */
-const SHEET_POPUP_CLASS = `group/sheet relative flex w-full min-w-0 max-w-none flex-col overflow-hidden bg-[var(--menu-bg)] text-primary shadow-[var(--menu-shadow)] outline-none rounded-t-[14px] rounded-b-none pb-[max(env(safe-area-inset-bottom),0.5rem)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] transition-[translate,height,scale] ${SHEET_MOTION} [--upstream-text-body:15px] [--upstream-leading-body:22px] [&_[data-cds-sheet-scroll]]:overscroll-contain data-[starting-style]:translate-y-[calc(100%+1.5rem)] data-[ending-style]:translate-y-[calc(100%+1.5rem)]`;
+const SHEET_POPUP_CLASS = `group/sheet relative flex w-full min-w-0 max-w-none flex-col overflow-hidden bg-[var(--menu-bg)] text-primary shadow-[var(--menu-shadow)] outline-none rounded-t-[14px] rounded-b-none pb-[max(env(safe-area-inset-bottom),0.5rem)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] transition-[translate,height,scale] ${SHEET_MOTION} [--upstream-text-body:15px] [--upstream-leading-body:22px] [&_[data-cds-sheet-scroll]]:overscroll-contain [&[data-cds-sheet-pressed]_[data-cds-sheet-scroll]]:[scroll-padding-block:0px] forced-colors:border forced-colors:border-solid forced-colors:border-[color:CanvasText] forced-colors:border-x-0 forced-colors:border-b-0 data-[starting-style]:translate-y-[calc(100%+1.5rem)] data-[ending-style]:translate-y-[calc(100%+1.5rem)]`;
 
 /** Upstream's Gf (.9) resting cap and the .95 ceiling, both below the top safe area. */
 const SHEET_POPUP_STYLE = {
@@ -44,6 +46,9 @@ const SHEET_POPUP_STYLE = {
 /** Upstream's HR and Jl: the top safe area, and the .95 ceiling a pinned or tall sheet may reach. */
 const SAFE_TOP = "env(safe-area-inset-top,0px)";
 const SHEET_CEILING = SHEET_POPUP_STYLE.maxHeight;
+
+/** Upstream's Gf: an unpinned sheet rests at most .9 of the viewport below the top safe area. */
+const SHEET_REST_CAP = SHEET_POPUP_STYLE["--available-height"];
 
 /** Upstream's RH half floor (`min(50dvh, yk)`) for a sheet that holds a text field. */
 const SHEET_HALF_HEIGHT = `min(50dvh, ${SHEET_TALL_HEIGHT})`;
@@ -59,23 +64,32 @@ interface SheetKeyboard {
 	visible: number;
 }
 
-/** Upstream's RH: the sheet popup's sizing for its detent, floor and the on-screen keyboard. */
-function sheetPopupStyle(detent: SheetDetent, floor: SheetFloor, keyboard: SheetKeyboard | null) {
+/**
+ * Upstream's RH: the sheet popup's sizing for its detent, floor, pinned content height and the on-screen
+ * keyboard. Until a height is set (pinned or tall) the sheet is capped at .9, or at the half floor; once
+ * set it may reach the .95 ceiling.
+ */
+function sheetPopupStyle(
+	detent: SheetDetent,
+	floor: SheetFloor,
+	pinned: number | undefined,
+	keyboard: SheetKeyboard | null,
+) {
 	const half = floor === "half";
+	const height = detent === "tall" ? SHEET_TALL_HEIGHT : pinned === undefined ? undefined : `${pinned}px`;
+	const restCap = half ? SHEET_HALF_HEIGHT : SHEET_REST_CAP;
 	return {
 		...SHEET_POPUP_STYLE,
 		...(keyboard === null
-			? half
-				? {
-						minHeight: SHEET_HALF_HEIGHT,
-						maxHeight: detent === "tall" ? SHEET_CEILING : SHEET_HALF_HEIGHT,
-					}
-				: {}
+			? {
+					...(half ? {minHeight: SHEET_HALF_HEIGHT} : {}),
+					maxHeight: height === undefined ? restCap : SHEET_CEILING,
+				}
 			: {
 					paddingBottom: "0.5rem",
 					maxHeight: `calc(${keyboard.visible}px - ${SAFE_TOP} - 8px)`,
 				}),
-		...(detent === "tall" ? {height: SHEET_TALL_HEIGHT} : {}),
+		...(height === undefined ? {} : {height}),
 	};
 }
 
@@ -180,18 +194,36 @@ function useKeyboardInset(popup: HTMLDivElement | null, active: boolean): SheetK
 	return keyboard;
 }
 
-const SHEET_BODY_CLASS = "min-h-0 min-w-0 flex-auto overflow-y-auto outline-none";
+/** Upstream's c_: the scrolling body inherits the wrapper's layout and fills it. */
+const SHEET_BODY_CLASS =
+	"[display:inherit] [flex-direction:inherit] [flex-wrap:inherit] [align-items:inherit] [justify-content:inherit] [justify-items:inherit] [gap:inherit] [grid-template-columns:inherit] [grid-template-rows:inherit] [grid-auto-flow:inherit] [grid-auto-columns:inherit] [grid-auto-rows:inherit] col-span-full row-span-full self-stretch justify-self-stretch max-h-[inherit] min-h-0 min-w-0 flex-auto overflow-y-auto rounded-[inherit] outline-none focus-visible:outline-hidden";
 
 /** Sizing and radius tokens the sheet's own `w-full max-w-none h-auto max-h-none` merge away upstream. */
 const SHEET_STRIPPED_TOKEN = /^(?:w|max-w|max-h|rounded(?:-[a-z]+)?)-/;
 
-/** Upstream's pt: the consumer's className moves here, minus the sizing tailwind-merge drops. */
-function sheetWrapperClass(className: string | undefined): string {
-	const consumer = (className ?? "")
-		.split(/\s+/)
-		.filter((token) => token !== "" && !SHEET_STRIPPED_TOKEN.test(token))
-		.join(" ");
-	return `flex min-h-0 flex-auto flex-col ${consumer === "" ? "" : `${consumer} `}h-auto max-h-none min-h-0 w-full min-w-0 max-w-none flex-auto`;
+/**
+ * Padding (upstream's `qx` body variant), overflow (the body is the scroller) and layout tokens move to the
+ * body, so the wrapper stays a column with the DismissButton below the body.
+ */
+const SHEET_BODY_TOKEN =
+	/^(?:(?:p|px|py|pt|pb|ps|pe|pl|pr)-|overflow-|gap-|items-|justify-|(?:flex|inline-flex|grid|flex-col|flex-row)$)/;
+
+/** A token's utility, past any variant prefixes such as `sm:` or `data-[x]:`. */
+function utility(token: string): string {
+	return token.slice(token.lastIndexOf(":") + 1);
+}
+
+/** Upstream's pt and c_: the consumer's className splits between the wrapper and the body, minus the sizing tailwind-merge drops. */
+function sheetClasses(className: string | undefined): {wrapper: string; body: string} {
+	const tokens = (className ?? "").split(/\s+/).filter((token) => token !== "" && !SHEET_STRIPPED_TOKEN.test(token));
+	const body = tokens.filter((token) => SHEET_BODY_TOKEN.test(utility(token)));
+	const wrapper = tokens.filter((token) => !SHEET_BODY_TOKEN.test(utility(token)));
+	return {
+		wrapper: ["flex min-h-0 flex-auto flex-col", ...wrapper, "h-auto max-h-none w-full min-w-0 max-w-none"].join(
+			" ",
+		),
+		body: [SHEET_BODY_CLASS, ...body].join(" "),
+	};
 }
 
 /** Upstream's ft: hidden until keyboard-focused or held, so screen readers and Tab reach it. */
@@ -199,8 +231,8 @@ const SHEET_DISMISS_CLASS =
 	"mx-1 mb-1 block min-h-10 shrink-0 rounded-r7 px-2 text-start text-[15px]/[22px] font-normal text-primary outline-none select-none focus-visible:bg-fill-ghost-hover [&:not(:focus-visible):not([data-cds-sheet-control-held])]:sr-only";
 
 /**
- * Upstream's sheet press marker: a press on the popup holds a focus-visible DismissButton visible
- * until the next click, pointercancel or keydown.
+ * Upstream's _t: a press marks the sheet pressed, and holds a focus-visible or highlighted DismissButton
+ * visible, until the next click, pointercancel or keydown.
  */
 function useDismissHold(popup: HTMLDivElement | null) {
 	useEffect(() => {
@@ -208,6 +240,7 @@ function useDismissHold(popup: HTMLDivElement | null) {
 		const doc = popup.ownerDocument;
 		let held: Element | null = null;
 		const release = () => {
+			popup.removeAttribute("data-cds-sheet-pressed");
 			held?.removeAttribute("data-cds-sheet-control-held");
 			held = null;
 			doc.removeEventListener("click", release, true);
@@ -215,13 +248,14 @@ function useDismissHold(popup: HTMLDivElement | null) {
 			doc.removeEventListener("keydown", release, true);
 		};
 		const press = () => {
-			const control = popup.querySelector("[data-cds-sheet-control]");
-			if (control?.matches(":focus-visible") !== true) return;
-			held = control;
-			control.setAttribute("data-cds-sheet-control-held", "");
 			doc.addEventListener("click", release, true);
 			doc.addEventListener("pointercancel", release, true);
 			doc.addEventListener("keydown", release, true);
+			popup.setAttribute("data-cds-sheet-pressed", "");
+			const control = popup.querySelector("[data-cds-sheet-control]");
+			if (control?.matches(":focus-visible, [data-highlighted]") !== true) return;
+			held = control;
+			control.setAttribute("data-cds-sheet-control-held", "");
 		};
 		popup.addEventListener("pointerdown", press, true);
 		return () => {
@@ -247,7 +281,8 @@ function bodyContentHeight(body: HTMLElement): number {
  * the body's content), and re-pins when the popup, the body, its content or the DismissButton resizes.
  * A focus-visible DismissButton takes its 44px from the pinned body, so the sheet grows by that much.
  */
-function useSheetHeightPin(popup: HTMLDivElement | null, paused: boolean) {
+function useSheetHeightPin(popup: HTMLDivElement | null, paused: boolean): number | undefined {
+	const [pinned, setPinned] = useState<number | undefined>(undefined);
 	const pausedRef = useRef(paused);
 	pausedRef.current = paused;
 	useEffect(() => {
@@ -259,8 +294,7 @@ function useSheetHeightPin(popup: HTMLDivElement | null, paused: boolean) {
 			if (pausedRef.current) return;
 			const height = popup.getBoundingClientRect().height;
 			if (height <= 0) return;
-			const pinned = `${Math.round(height - body.clientHeight + bodyContentHeight(body))}px`;
-			if (popup.style.height !== pinned) popup.style.height = pinned;
+			setPinned(Math.round(height - body.clientHeight + bodyContentHeight(body)));
 		};
 		const resizes = new ResizeObserver(pin);
 		const observeContent = () => {
@@ -278,8 +312,10 @@ function useSheetHeightPin(popup: HTMLDivElement | null, paused: boolean) {
 		return () => {
 			resizes.disconnect();
 			mutations.disconnect();
+			setPinned(undefined);
 		};
 	}, [popup]);
+	return pinned;
 }
 
 /** Upstream's PopoverSheetContent: scrim, bottom-pinned positioner, handle and the scrolling body. */
@@ -315,7 +351,9 @@ export function PopoverSheetContent({
 		[treeId, dismiss, detent, keyboard],
 	);
 	useDismissHold(popup);
-	useSheetHeightPin(popup, detent === "tall" || keyboard !== null);
+	useCloseWatcher(popup, dismiss);
+	const pinned = useSheetHeightPin(popup, detent === "tall" || keyboard !== null);
+	const classes = sheetClasses(className);
 	/* Upstream's portal forces comfortable (`density: MG`) in sheet mode at every account density. */
 	return (
 		<DensityProvider density="comfortable">
@@ -341,15 +379,15 @@ export function PopoverSheetContent({
 							data-cds-sheet-depth="0"
 							data-cds-sheet-detent={detent}
 							className={SHEET_POPUP_CLASS}
-							style={sheetPopupStyle(detent, floor, keyboard)}
+							style={sheetPopupStyle(detent, floor, pinned, keyboard)}
 						>
 							<PopoverSheetHandle />
-							<div className={sheetWrapperClass(className)}>
+							<div className={classes.wrapper}>
 								<div
 									tabIndex={-1}
 									data-cds-popover-body=""
 									data-cds-sheet-scroll=""
-									className={SHEET_BODY_CLASS}
+									className={classes.body}
 								>
 									{children}
 								</div>

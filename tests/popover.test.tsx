@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {PopoverRoot, PopoverTrigger, PopoverContent} from "../src/components/ui/popover";
@@ -210,7 +210,7 @@ describe("PopoverContent under a coarse pointer", () => {
 			},
 			popupClass: {roundedTop: true, consumerWidth: false, consumerPadding: false},
 			popupStyle: {
-				maxHeight: "calc(0.95 * (100dvh - env(safe-area-inset-top, 0px)))",
+				maxHeight: "calc(0.9 * (100dvh - env(safe-area-inset-top, 0px)))",
 				availableHeight: "calc((100dvh - env(safe-area-inset-top,0px)) * .9)",
 			},
 			handle: {
@@ -219,13 +219,12 @@ describe("PopoverContent under a coarse pointer", () => {
 				class: "flex min-h-8 shrink-0 touch-none items-center justify-center select-none",
 				pill: "h-1 w-9 rounded-full bg-border",
 			},
-			wrapperClass:
-				"flex min-h-0 flex-auto flex-col p-3 h-auto max-h-none min-h-0 w-full min-w-0 max-w-none flex-auto",
+			wrapperClass: "flex min-h-0 flex-auto flex-col h-auto max-h-none w-full min-w-0 max-w-none",
 			body: {
 				tabIndex: "-1",
 				popoverBody: true,
 				scroll: true,
-				class: "min-h-0 min-w-0 flex-auto overflow-y-auto outline-none",
+				class: "[display:inherit] [flex-direction:inherit] [flex-wrap:inherit] [align-items:inherit] [justify-content:inherit] [justify-items:inherit] [gap:inherit] [grid-template-columns:inherit] [grid-template-rows:inherit] [grid-auto-flow:inherit] [grid-auto-columns:inherit] [grid-auto-rows:inherit] col-span-full row-span-full self-stretch justify-self-stretch max-h-[inherit] min-h-0 min-w-0 flex-auto overflow-y-auto rounded-[inherit] outline-none focus-visible:outline-hidden p-3",
 				text: "Body",
 			},
 		});
@@ -290,7 +289,7 @@ describe("PopoverContent under a coarse pointer", () => {
 		const close = screen.getByRole("button", {name: "Close"});
 		fireEvent.pointerDown(popup);
 		const unfocused = close.hasAttribute("data-cds-sheet-control-held");
-		vi.spyOn(close, "matches").mockImplementation((selector) => selector === ":focus-visible");
+		vi.spyOn(close, "matches").mockImplementation((selector) => selector.split(", ").includes(":focus-visible"));
 		fireEvent.pointerDown(popup);
 		const held = close.hasAttribute("data-cds-sheet-control-held");
 		fireEvent.keyDown(document, {key: "Shift"});
@@ -299,6 +298,47 @@ describe("PopoverContent under a coarse pointer", () => {
 			held: true,
 			released: false,
 		});
+	});
+
+	it("marks the sheet pressed on any press and holds a highlighted Close button, as upstream's _t", () => {
+		stubCoarseAtWidth(420);
+		render(
+			<PopoverRoot defaultOpen>
+				<PopoverTrigger>Usage</PopoverTrigger>
+				<PopoverContent>
+					<p>Body</p>
+				</PopoverContent>
+			</PopoverRoot>,
+		);
+		const popup = screen.getByRole("dialog");
+		const close = screen.getByRole("button", {name: "Close"});
+		fireEvent.pointerDown(popup);
+		const pressed = popup.hasAttribute("data-cds-sheet-pressed");
+		fireEvent.keyDown(document, {key: "Shift"});
+		const released = popup.hasAttribute("data-cds-sheet-pressed");
+		close.setAttribute("data-highlighted", "");
+		fireEvent.pointerDown(popup);
+		expect({
+			pressed,
+			released,
+			highlightedHeld: close.hasAttribute("data-cds-sheet-control-held"),
+			scrollPadding: classes(popup).includes(
+				"[&[data-cds-sheet-pressed]_[data-cds-sheet-scroll]]:[scroll-padding-block:0px]",
+			),
+		}).toStrictEqual({pressed: true, released: false, highlightedHeld: true, scrollPadding: true});
+	});
+
+	it("keeps only the top CanvasText border under forced colors, as upstream's qP and Hc", () => {
+		stubCoarseAtWidth(420);
+		const popup = renderUsage();
+		const tokens = [
+			"forced-colors:border",
+			"forced-colors:border-solid",
+			"forced-colors:border-[color:CanvasText]",
+			"forced-colors:border-x-0",
+			"forced-colors:border-b-0",
+		];
+		expect(tokens.filter((token) => classes(popup).includes(token))).toStrictEqual(tokens);
 	});
 
 	it("stays anchored at 900px", () => {
@@ -427,7 +467,9 @@ describe("PopoverContent sheet height pinning", () => {
 	}
 
 	function fireResize() {
-		for (const observer of observers) observer.callback([], observer as unknown as ResizeObserver);
+		act(() => {
+			for (const observer of observers) observer.callback([], observer as unknown as ResizeObserver);
+		});
 	}
 
 	it("pins the popup to its measured content height and re-pins when the DismissButton grows", () => {
@@ -459,6 +501,30 @@ describe("PopoverContent sheet height pinning", () => {
 				observers.some((observer) => observer.targets.includes(element)),
 			),
 		}).toStrictEqual({atRest: "252px", focusVisible: "296px", observed: true});
+	});
+
+	it("caps an unpinned sheet at .9 of the viewport and a pinned one at .95, as upstream's RH", () => {
+		render(
+			<PopoverRoot>
+				<PopoverTrigger>Usage</PopoverTrigger>
+				<PopoverContent>
+					<p>Body</p>
+				</PopoverContent>
+			</PopoverRoot>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Usage"}));
+		const popup = screen.getByRole("dialog");
+		const body = popup.querySelector<HTMLElement>("[data-cds-popover-body]");
+		if (body === null) throw new Error("sheet body missing");
+		const before = {height: popup.style.height, maxHeight: popup.style.maxHeight};
+		stubHeight(popup, 252);
+		stubHeight(screen.getByText("Body"), 200, 40);
+		Object.defineProperty(body, "clientHeight", {configurable: true, value: 200});
+		fireResize();
+		expect({before, after: {height: popup.style.height, maxHeight: popup.style.maxHeight}}).toStrictEqual({
+			before: {height: "", maxHeight: "calc(0.9 * (100dvh - env(safe-area-inset-top, 0px)))"},
+			after: {height: "252px", maxHeight: "calc(0.95 * (100dvh - env(safe-area-inset-top, 0px)))"},
+		});
 	});
 
 	it("leaves the height unpinned until the popup has laid out", () => {

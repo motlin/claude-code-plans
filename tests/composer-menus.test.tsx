@@ -1814,6 +1814,23 @@ describe("Composer model menu on a coarse pointer under 640px", () => {
 		);
 	}
 
+	it("names the model menu popup ModelSelector, anchored on a fine pointer and as a coarse-phone sheet", async () => {
+		renderComposer();
+		fireEvent.click(screen.getByRole("button", {name: /^Model:/}));
+		const anchored = (await screen.findByRole("menu")).getAttribute("data-cds");
+		cleanup();
+		stubCoarsePhone();
+		renderComposer();
+		fireEvent.click(screen.getByRole("button", {name: /^Model:/}));
+		const sheet = await screen.findByRole("menu");
+		expect({
+			anchored,
+			sheet: sheet.getAttribute("data-cds"),
+			presentation: sheet.getAttribute("data-presentation"),
+			size: sheet.hasAttribute("data-size"),
+		}).toStrictEqual({anchored: "ModelSelector", sheet: "ModelSelector", presentation: "sheet", size: false});
+	});
+
 	it("presents a ModelSelector sheet without data-size, keeping upstream's 32px 14/20 rows and 12px top radius", async () => {
 		stubCoarsePhone();
 		renderComposer();
