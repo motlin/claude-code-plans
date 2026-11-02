@@ -686,6 +686,16 @@ export function Composer({
 		if (!isStreaming) textareaRef.current?.focus();
 	}, [isStreaming]);
 
+	// Upstream remounts its editor per session, so opening one from the sidebar or palette lands focus in the
+	// prompt; here a session switch keeps this instance, so a new draft key takes the focus a mount would.
+	const focusedDraftKeyRef = useRef(draftKey);
+	useEffect(() => {
+		if (focusedDraftKeyRef.current === draftKey) return;
+		focusedDraftKeyRef.current = draftKey;
+		if (disabled || document.activeElement?.closest('[role="dialog"], [role="alertdialog"]')) return;
+		textareaRef.current?.focus();
+	}, [draftKey, disabled]);
+
 	// Chrome blurs a focused textarea the moment it turns disabled and never gives focus back, so a brief
 	// `disabled` flicker (a pending herdr send, a pane-state update) left dictation with no target. Note focus
 	// on the render that disables the editor, and take it back on re-enable unless the user moved it meanwhile.

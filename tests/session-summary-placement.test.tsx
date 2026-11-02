@@ -1,7 +1,14 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
+import {
+	createMemoryHistory,
+	createRootRoute,
+	createRouter,
+	RouterProvider,
+	useNavigate,
+	useRouterState,
+} from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import type {ReactNode} from "react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
@@ -48,6 +55,7 @@ vi.mock(import("../src/lib/hmr-persist"), async (importOriginal) => ({
 }));
 
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
+const OTHER_SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555777";
 const TITLE = "Sync fork with upstream";
 const SUMMARY = "Rebased the fork onto upstream and resolved three conflicts.";
 const PROJECT_PATH = "/Users/alice/projects/avalonlogs";
@@ -139,13 +147,17 @@ function newQueryClient(): QueryClient {
 	return queryClient;
 }
 
-async function renderInRouter(queryClient: QueryClient, content: ReactNode) {
+async function renderInRouter(
+	queryClient: QueryClient,
+	content: ReactNode | (() => ReactNode),
+	initialSessionId: string = SESSION_ID,
+) {
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
 				<SettingsProvider>
 					<ClaudeEventsProvider>
-						<ToastProvider>{content}</ToastProvider>
+						<ToastProvider>{typeof content === "function" ? content() : content}</ToastProvider>
 					</ClaudeEventsProvider>
 				</SettingsProvider>
 			</QueryClientProvider>
@@ -153,7 +165,7 @@ async function renderInRouter(queryClient: QueryClient, content: ReactNode) {
 	});
 	const router = createRouter({
 		routeTree: rootRoute,
-		history: createMemoryHistory({initialEntries: [`/session/${SESSION_ID}`]}),
+		history: createMemoryHistory({initialEntries: [`/session/${initialSessionId}`]}),
 	});
 	await router.load();
 	render(<RouterProvider router={router} />);
@@ -161,22 +173,27 @@ async function renderInRouter(queryClient: QueryClient, content: ReactNode) {
 	await flush();
 }
 
-async function renderSessionPage(
+function seedSession(
+	queryClient: QueryClient,
+	sessionId: string,
 	data: SessionDetailData,
 	subagents: Subagent[],
-	seed: (queryClient: QueryClient) => void = () => {},
 	extraRecords: Record<string, unknown>[] = [],
-	requestedPane?: PaneKind,
 ) {
-	const queryClient = newQueryClient();
-	seed(queryClient);
-	queryClient.setQueryData(sessionDetailQueryOptions(SESSION_ID).queryKey, data);
-	queryClient.setQueryData(transcriptQueryOptions(SESSION_ID).queryKey, {
+	queryClient.setQueryData(sessionOpenInQueryOptions(sessionId).queryKey, {
+		cwd: PROJECT_PATH,
+		bridgeSessionId: null,
+		remoteControl: null,
+		remoteHistory: null,
+		githubUrl: null,
+	});
+	queryClient.setQueryData(sessionDetailQueryOptions(sessionId).queryKey, data);
+	queryClient.setQueryData(transcriptQueryOptions(sessionId).queryKey, {
 		records: [
 			{
 				type: "user",
 				uuid: "u1",
-				sessionId: SESSION_ID,
+				sessionId,
 				timestamp: "2026-09-28T10:00:00.000Z",
 				message: {role: "user", content: "Fabricated prompt: sync the fork"},
 			},
@@ -189,8 +206,42 @@ async function renderSessionPage(
 		cuts: [],
 		chainVersion: "v1",
 	});
-	queryClient.setQueryData(sessionSubagentsQueryOptions(SESSION_ID).queryKey, subagents);
+	queryClient.setQueryData(sessionSubagentsQueryOptions(sessionId).queryKey, subagents);
+}
+
+async function renderSessionPage(
+	data: SessionDetailData,
+	subagents: Subagent[],
+	seed: (queryClient: QueryClient) => void = () => {},
+	extraRecords: Record<string, unknown>[] = [],
+	requestedPane?: PaneKind,
+) {
+	const queryClient = newQueryClient();
+	seed(queryClient);
+	seedSession(queryClient, SESSION_ID, data, subagents, extraRecords);
 	await renderInRouter(queryClient, <SessionPage sessionId={SESSION_ID} requestedPane={requestedPane} />);
+}
+
+/** The session route's shape: one SessionPage instance that follows the URL's id, beside a sidebar row link. */
+function RoutedSessionPage({rowSessionId, rowTitle}: {rowSessionId: string; rowTitle: string}) {
+	const sessionId = useRouterState({select: (state) => state.location.pathname.replace("/session/", "")});
+	const navigate = useNavigate();
+	return (
+		<>
+			<nav aria-label="Sessions">
+				<a
+					href={`/session/${rowSessionId}`}
+					onClick={(event) => {
+						event.preventDefault();
+						void navigate({to: `/session/${rowSessionId}` as never});
+					}}
+				>
+					{rowTitle}
+				</a>
+			</nav>
+			<SessionPage sessionId={sessionId} />
+		</>
+	);
 }
 
 beforeEach(() => {
@@ -642,20 +693,27 @@ describe("SessionPage dock composition", () => {
 			releaseAnswered(SESSION_ID);
 		});
 
+		function seedWaitingQuestion(
+			queryClient: QueryClient,
+			herdr: {panes: (typeof herdrPane)[]; writesEnabled: boolean},
+		) {
+			seedUsage(queryClient);
+			queryClient.setQueryData(herdrPanesQueryOptions.queryKey, herdr);
+			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+				pages: [{sessions: [{id: SESSION_ID, state: "waiting"}], nextCursor: null}],
+				pageParams: [null],
+			} as never);
+			queryClient.setQueryData(pendingQuestionQueryOptions(SESSION_ID).queryKey, {
+				pendingQuestion: {
+					toolUseId: "toolu_question",
+					questions: [{question: "Ship it?", options: [{label: "Yes"}, {label: "No"}]}],
+				},
+			});
+		}
+
 		async function renderWaitingQuestion(herdr: {panes: (typeof herdrPane)[]; writesEnabled: boolean}) {
 			await renderSessionPage({...detail, pr}, [], (queryClient) => {
-				seedUsage(queryClient);
-				queryClient.setQueryData(herdrPanesQueryOptions.queryKey, herdr);
-				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-					pages: [{sessions: [{id: SESSION_ID, state: "waiting"}], nextCursor: null}],
-					pageParams: [null],
-				} as never);
-				queryClient.setQueryData(pendingQuestionQueryOptions(SESSION_ID).queryKey, {
-					pendingQuestion: {
-						toolUseId: "toolu_question",
-						questions: [{question: "Ship it?", options: [{label: "Yes"}, {label: "No"}]}],
-					},
-				});
+				seedWaitingQuestion(queryClient, herdr);
 			});
 			const card = screen.getByRole("group", {name: "Ship it?"});
 			expect(card.closest("[data-hook-question]")).not.toBeNull();
@@ -712,6 +770,46 @@ describe("SessionPage dock composition", () => {
 					.filter(([input]) => String(input) === "/api/herdr/question")
 					.map(([, init]) => JSON.parse(String(init?.body)) as unknown),
 			).toStrictEqual([{sessionId: SESSION_ID, toolUseId: "toolu_question", answers: [{selected: [1]}]}]);
+		});
+
+		it("focuses the opened session's composer when a sidebar row switches to it, so ⌘⏎ answers its waiting card", async () => {
+			const fetchMock = vi.fn<typeof fetch>(async (input) =>
+				String(input) === "/api/herdr/question" ? Response.json({ok: true}) : new Promise<Response>(() => {}),
+			);
+			vi.stubGlobal("fetch", fetchMock);
+			const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+			const queryClient = newQueryClient();
+			seedWaitingQuestion(queryClient, {panes: [herdrPane], writesEnabled: true});
+			seedSession(queryClient, SESSION_ID, {...detail, pr}, []);
+			seedSession(queryClient, OTHER_SESSION_ID, {...detail, title: "Fabricated other session"}, []);
+			await renderInRouter(
+				queryClient,
+				() => <RoutedSessionPage rowSessionId={SESSION_ID} rowTitle={TITLE} />,
+				OTHER_SESSION_ID,
+			);
+
+			const row = screen.getByRole("link", {name: TITLE});
+			row.focus();
+			fireEvent.click(row);
+			await flush();
+			const card = within(await screen.findByRole("group", {name: "Ship it?"}));
+			await flush();
+			const focused = document.activeElement;
+			fireEvent.click(card.getByRole("button", {name: /^No/}));
+			now.mockReturnValue(5000);
+			fireEvent.keyDown(document.activeElement ?? document.body, {key: "Enter", metaKey: true});
+			await flush();
+			now.mockRestore();
+
+			expect({
+				focused: focused === screen.getByRole("textbox", {name: "Prompt"}),
+				posts: fetchMock.mock.calls
+					.filter(([input]) => String(input) === "/api/herdr/question")
+					.map(([, init]) => JSON.parse(String(init?.body)) as unknown),
+			}).toStrictEqual({
+				focused: true,
+				posts: [{sessionId: SESSION_ID, toolUseId: "toolu_question", answers: [{selected: [1]}]}],
+			});
 		});
 
 		it("stops gating the composer and working line once the answer is sending, holding a typed prompt instead of a second key stream", async () => {
