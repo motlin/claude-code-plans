@@ -10,13 +10,13 @@ import {
 import {createPortal} from "react-dom";
 
 import {CommentEditor} from "../comment-editor";
+import {FORCED_COLORS_BORDER_CLASS} from "../ui/popover-surface";
 
 const POPOVER_WIDTH = 320;
 const GAP = 8;
 const MARGIN = 8;
 
-const POPOVER_CLASS =
-	"fixed left-0 top-0 isolate z-[90] w-[320px] break-words rounded-r7 bg-surface-3 text-body text-primary outline-none shadow-[0_0_0_1px_rgb(11_11_11/0.1),0_8px_24px_rgb(0_0_0/0.12),0_2px_6px_rgb(0_0_0/0.08)] dark:shadow-[0_0_0_1px_var(--color-border),0_8px_24px_rgb(0_0_0/0.12),0_2px_6px_rgb(0_0_0/0.08)] [will-change:transform]";
+const POPOVER_CLASS = `fixed left-0 top-0 isolate z-[90] w-[320px] break-words rounded-r7 bg-surface-3 text-body text-primary outline-none shadow-[0_0_0_1px_rgb(11_11_11/0.1),0_8px_24px_rgb(0_0_0/0.12),0_2px_6px_rgb(0_0_0/0.08)] dark:shadow-[0_0_0_1px_var(--color-border),0_8px_24px_rgb(0_0_0/0.12),0_2px_6px_rgb(0_0_0/0.08)] ${FORCED_COLORS_BORDER_CLASS} [will-change:transform]`;
 
 const SELECTION_HIGHLIGHT = "plan-selection";
 
@@ -161,6 +161,7 @@ export function PlanCommentPopover({
 			role="dialog"
 			tabIndex={-1}
 			aria-label="Comment on selection"
+			data-surface="popover"
 			className={POPOVER_CLASS}
 			style={
 				position === null

@@ -73,6 +73,7 @@ describe("plan selection comment popover", () => {
 		const textarea = screen.getByRole("textbox", {name: "Plan comment"});
 		expect({
 			className: popover?.className,
+			surface: popover?.getAttribute("data-surface"),
 			parent: popover?.parentElement === document.body,
 			focused: document.activeElement === textarea,
 			placeholder: textarea.getAttribute("placeholder"),
@@ -80,7 +81,8 @@ describe("plan selection comment popover", () => {
 			windowSelectionCleared: document.getSelection()?.rangeCount,
 		}).toStrictEqual({
 			className:
-				"fixed left-0 top-0 isolate z-[90] w-[320px] break-words rounded-r7 bg-surface-3 text-body text-primary outline-none shadow-[0_0_0_1px_rgb(11_11_11/0.1),0_8px_24px_rgb(0_0_0/0.12),0_2px_6px_rgb(0_0_0/0.08)] dark:shadow-[0_0_0_1px_var(--color-border),0_8px_24px_rgb(0_0_0/0.12),0_2px_6px_rgb(0_0_0/0.08)] [will-change:transform]",
+				"fixed left-0 top-0 isolate z-[90] w-[320px] break-words rounded-r7 bg-surface-3 text-body text-primary outline-none shadow-[0_0_0_1px_rgb(11_11_11/0.1),0_8px_24px_rgb(0_0_0/0.12),0_2px_6px_rgb(0_0_0/0.08)] dark:shadow-[0_0_0_1px_var(--color-border),0_8px_24px_rgb(0_0_0/0.12),0_2px_6px_rgb(0_0_0/0.08)] forced-colors:border forced-colors:border-solid forced-colors:border-[color:CanvasText] [will-change:transform]",
+			surface: "popover",
 			parent: true,
 			focused: true,
 			placeholder: "Add a comment",

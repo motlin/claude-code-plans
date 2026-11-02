@@ -42,6 +42,7 @@ import type {SheetContentProps} from "./menu-sheet";
 import {loadedMenuSheet, preloadMenuSheet} from "./menu-sheet-loader";
 import {MenuSwitch} from "./menu-switch";
 import {useSheetPresentation} from "./sheet-presentation";
+import {FORCED_COLORS_BORDER_CLASS} from "./popover-surface";
 import {Kbd, Shortcut} from "./shortcut";
 import {Tooltip} from "./tooltip";
 
@@ -80,15 +81,14 @@ function NestedSheet(props: SheetContentProps & {treeId: string}) {
  * radio/checkbox items, and single-key accelerators that fire while open.
  */
 
-const POPUP_CLASS =
-	"relative flex max-h-[var(--available-height)] min-w-[128px] max-w-[320px] flex-col bg-[var(--menu-bg)] font-normal text-primary shadow-[var(--menu-shadow)] outline-none select-none";
+const POPUP_CLASS = `relative flex max-h-[var(--available-height)] min-w-[128px] max-w-[320px] flex-col bg-[var(--menu-bg)] shadow-[var(--menu-shadow)] ${FORCED_COLORS_BORDER_CLASS} font-normal text-primary outline-none select-none`;
 
 /**
  * Upstream's scroller owns the gutter (`p-[var(--cds-menu-gutter)]`) and the `scroll-fade-y` edge fade, and carries a
  * `border-b-[length:var(--cds-ring-inner)] border-transparent` 1px bottom border.
  */
 const SCROLLER_CLASS =
-	"relative min-h-0 overflow-y-auto overflow-x-hidden scroll-fade-y rounded-[inherit] border-b border-transparent p-1";
+	"relative min-h-0 overflow-y-auto overflow-x-hidden scroll-fade-y rounded-[inherit] border-b border-transparent forced-colors:border-b-0 p-1";
 
 const ITEM_VARIANT_CLASS = {
 	default: "text-primary data-[highlighted]:bg-fill-ghost-hover",

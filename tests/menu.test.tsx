@@ -365,8 +365,19 @@ describe("Menu", () => {
 		const scroller = menu.querySelector("[data-menu-scroller]");
 
 		expect(scroller?.className).toBe(
-			"relative min-h-0 overflow-y-auto overflow-x-hidden scroll-fade-y rounded-[inherit] border-b border-transparent p-1",
+			"relative min-h-0 overflow-y-auto overflow-x-hidden scroll-fade-y rounded-[inherit] border-b border-transparent forced-colors:border-b-0 p-1",
 		);
+	});
+
+	it("outlines every popup in CanvasText under forced colors, as cds Menu does", async () => {
+		renderDropdown();
+		const menu = await openDropdown();
+
+		expect(menu.className.split(" ").filter((value) => value.startsWith("forced-colors:"))).toStrictEqual([
+			"forced-colors:border",
+			"forced-colors:border-solid",
+			"forced-colors:border-[color:CanvasText]",
+		]);
 	});
 
 	async function openStatusSub() {

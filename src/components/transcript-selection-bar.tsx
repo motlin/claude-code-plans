@@ -4,6 +4,7 @@ import {type TranscriptSelection, useTranscriptSelection} from "../hooks/use-tra
 import {attachContext, hasComposer} from "../lib/context-attach";
 import {openSideChatWithContext, useSideChat} from "../lib/side-chat-store";
 import {findScrollContainer} from "./scroll-container";
+import {FORCED_COLORS_BORDER_CLASS} from "./ui/popover-surface";
 import {ViewportPortal} from "./viewport-portal";
 
 /** Upstream `Xl`: the gap between the selection and the bar. */
@@ -17,7 +18,7 @@ const EXCERPT_MAX_LENGTH = 1500;
 
 const HOST_CLASS =
 	"text-body text-primary break-words pointer-events-auto fixed left-0 top-0 will-change-transform isolate";
-const BAR_CLASS = "rounded-r5 bg-surface-3 shadow-[var(--menu-shadow)] group/split flex";
+const BAR_CLASS = `rounded-r5 bg-surface-3 shadow-[var(--menu-shadow)] ${FORCED_COLORS_BORDER_CLASS} group/split flex`;
 /** Upstream's cds ghost Button: 24px tall, 8px inline padding, 6px radius, ghost hover paint. */
 const BUTTON_CLASS =
 	"inline-flex h-6 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none hover:bg-fill-ghost-hover focus-visible:shadow-focus";
@@ -194,7 +195,7 @@ function SelectionBarHost({
 				...(hidden || position === null ? {visibility: "hidden"} : {}),
 			}}
 		>
-			<div ref={barRef} data-transcript-selection-bar="" className={BAR_CLASS}>
+			<div ref={barRef} data-transcript-selection-bar="" data-surface="popover" className={BAR_CLASS}>
 				{actions.map((action, index) => (
 					<Fragment key={action.label}>
 						{index > 0 && <span aria-hidden="true" className={SEPARATOR_CLASS} />}

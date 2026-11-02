@@ -250,13 +250,15 @@ describe("transcript selection bar", () => {
 
 		expect({
 			bar: bar()?.className,
+			surface: bar()?.getAttribute("data-surface"),
 			buttons: [...(bar()?.querySelectorAll("button") ?? [])].map((each) => ({
 				type: each.type,
 				className: each.className,
 			})),
 			separator: separator?.className,
 		}).toStrictEqual({
-			bar: "rounded-r5 bg-surface-3 shadow-[var(--menu-shadow)] group/split flex",
+			bar: "rounded-r5 bg-surface-3 shadow-[var(--menu-shadow)] forced-colors:border forced-colors:border-solid forced-colors:border-[color:CanvasText] group/split flex",
+			surface: "popover",
 			buttons: [
 				{
 					type: "button",
