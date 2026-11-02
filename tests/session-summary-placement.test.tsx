@@ -679,6 +679,44 @@ describe("SessionPage dock composition", () => {
 			});
 		});
 
+		it("keeps the hook copy's receipt when the summary flips to working before the record lands", async () => {
+			vi.stubGlobal(
+				"fetch",
+				vi.fn<typeof fetch>(async () => new Promise<Response>(() => {})),
+			);
+			let client: QueryClient | undefined;
+			await renderSessionPage({...detail, pr}, [], (queryClient) => {
+				client = queryClient;
+				seedUsage(queryClient);
+				queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [herdrPane], writesEnabled: true});
+				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+					pages: [{sessions: [{id: SESSION_ID, state: "waiting"}], nextCursor: null}],
+					pageParams: [null],
+				} as never);
+				queryClient.setQueryData(pendingQuestionQueryOptions(SESSION_ID).queryKey, {
+					pendingQuestion: {
+						toolUseId: "toolu_question",
+						questions: [{question: "Ship it?", options: [{label: "Yes"}, {label: "No"}]}],
+					},
+				});
+			});
+			const card = within(screen.getByRole("group", {name: "Ship it?"}));
+			fireEvent.click(card.getByRole("button", {name: /^No/}));
+			fireEvent.click(card.getByRole("button", {name: /^Submit/}));
+			await flush();
+			act(() => {
+				client?.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+					pages: [{sessions: [{id: SESSION_ID, state: "working"}], nextCursor: null}],
+					pageParams: [null],
+				} as never);
+			});
+			await flush();
+
+			expect(document.querySelector("[data-hook-question] [data-question-receipt]")?.textContent).toBe(
+				"Ship it?No",
+			);
+		});
+
 		it.each([
 			{name: "herdr writes are off", herdr: {panes: [herdrPane], writesEnabled: false}},
 			{name: "the session has no live herdr pane", herdr: {panes: [], writesEnabled: true}},

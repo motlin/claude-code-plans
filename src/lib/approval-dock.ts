@@ -84,19 +84,23 @@ export function toolUseProgress(records: readonly unknown[], toolUseId: string):
  * Whether to draw the hook's copy of the session's question: the session waits
  * on it and its record is not on disk yet. Once the record lands the transcript
  * draws it, and the hook state lags behind the JSONL, so an answered record
- * must never bring the hook copy back as an unanswered card.
+ * must never bring the hook copy back as an unanswered card. A `sent` copy keeps
+ * its receipt whatever the state, so a summary that flips to working before the
+ * record lands never blanks it.
  */
 export function hookQuestionCardShown({
 	state,
 	hookQuestion,
 	records,
+	sent,
 }: {
 	state: SessionSummaryState | null;
 	hookQuestion: PendingQuestion | null | undefined;
 	records: readonly unknown[];
+	sent: boolean;
 }): boolean {
 	return (
-		state === "waiting" &&
+		(state === "waiting" || sent) &&
 		hookQuestion !== null &&
 		hookQuestion !== undefined &&
 		toolUseProgress(records, hookQuestion.toolUseId) === "absent"

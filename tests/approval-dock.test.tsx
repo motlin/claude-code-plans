@@ -131,7 +131,21 @@ describe("hook question across the answer", () => {
 			{state: "waiting", hookQuestion: HOOK_QUESTION, records: answered},
 			{state: "working", hookQuestion: null, records: answered},
 		] as const;
-		expect(frames.map((frame) => hookQuestionCardShown(frame))).toStrictEqual([true, false, false, false]);
+		expect(frames.map((frame) => hookQuestionCardShown({...frame, sent: false}))).toStrictEqual([
+			true,
+			false,
+			false,
+			false,
+		]);
+	});
+
+	it("keeps a sent hook copy's receipt while the summary runs ahead of the record, until the record lands", () => {
+		expect([
+			hookQuestionCardShown({state: "working", hookQuestion: HOOK_QUESTION, records: [], sent: true}),
+			hookQuestionCardShown({state: "working", hookQuestion: HOOK_QUESTION, records: [], sent: false}),
+			hookQuestionCardShown({state: "working", hookQuestion: HOOK_QUESTION, records: asked, sent: true}),
+			hookQuestionCardShown({state: "working", hookQuestion: null, records: [], sent: true}),
+		]).toStrictEqual([true, false, false, false]);
 	});
 
 	it("drops a hook question the transcript already answered, so the composer stops gating on it", () => {

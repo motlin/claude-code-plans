@@ -134,6 +134,7 @@ import {
 	liveHookQuestion,
 } from "../lib/approval-dock";
 import {useApprovalAnswered} from "../lib/answered-approvals";
+import {useQuestionCardSent} from "../lib/question-card-store";
 import {applicationSettingsQueryOptions, useSaveApplicationSettings} from "../lib/api/application-settings";
 import {
 	herdrPanesQueryOptions,
@@ -677,9 +678,16 @@ function SessionView({
 		() => liveHookQuestion(hookQuestion, transcript.records),
 		[hookQuestion, transcript.records],
 	);
+	const hookQuestionSent = useQuestionCardSent(hookQuestion?.toolUseId ?? "");
 	const hookQuestionCardShown = useMemo(
-		() => isHookQuestionCardShown({state: sessionSummaryState, hookQuestion, records: transcript.records}),
-		[sessionSummaryState, hookQuestion, transcript.records],
+		() =>
+			isHookQuestionCardShown({
+				state: sessionSummaryState,
+				hookQuestion,
+				records: transcript.records,
+				sent: hookQuestionSent,
+			}),
+		[sessionSummaryState, hookQuestion, transcript.records, hookQuestionSent],
 	);
 	// Upstream draws a pending question inline as its card; one in the transcript answers there while the session runs.
 	const inlineQuestion = isActive ? pendingQuestion : null;
