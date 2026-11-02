@@ -86,7 +86,7 @@ export const SubmenuControlContext = createContext<SubmenuControl | null>(null);
 
 export function useItemClass(twoLine = false, gap = "gap-1"): string {
 	const sizing = useMenuSizing();
-	return `flex w-full cursor-default ${twoLine ? sizing.twoLine : sizing.singleLine} ${gap} ${sizing.item} ${sizing.text} font-normal outline-none select-none [--shortcut-cap-ink:var(--menu-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[disabled]:focus-visible:shadow-focus`;
+	return `flex w-full cursor-default ${twoLine ? sizing.twoLine : sizing.singleLine} ${gap} ${sizing.item} ${sizing.text} font-control-regular outline-none select-none [--shortcut-cap-ink:var(--menu-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[disabled]:focus-visible:shadow-focus`;
 }
 
 export const LABEL_CLASS = "min-w-0 flex-1 truncate";

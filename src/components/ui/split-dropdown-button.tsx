@@ -74,7 +74,7 @@ const JOINED_LOOKS: Record<JoinedVariant, {root: string; fill: string; seam: str
 	},
 	secondary: {
 		root: "shadow-field-drop after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)]",
-		fill: "bg-fill-secondary text-primary hover:bg-fill-secondary-hover aria-expanded:bg-fill-secondary-hover",
+		fill: "bg-fill-secondary text-primary font-control-regular hover:bg-fill-secondary-hover aria-expanded:bg-fill-secondary-hover",
 		seam: `relative ${SEAM_BASE_CLASS} bg-fill-secondary ${SEAM_FADE_CLASS}`,
 		line: "absolute inset-x-0 inset-y-1/4 bg-border",
 	},

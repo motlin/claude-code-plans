@@ -43,6 +43,14 @@ async function flush() {
 	});
 }
 
+function weightClasses(el: Element): string[] {
+	return [...el.classList].filter((name) => /^font-(normal|medium|semibold|control|control-regular)$/.test(name));
+}
+
+function itemWeights(): string[][] {
+	return [...screen.getAllByRole("menuitem"), ...screen.getAllByRole("menuitemcheckbox")].map(weightClasses);
+}
+
 function RowMenuBody({onCopy, onDelete}: {onCopy: () => void; onDelete: () => void}) {
 	const [status, setStatus] = useState("active");
 	const [showPr, setShowPr] = useState(true);
@@ -107,6 +115,18 @@ describe("Menu", () => {
 		).toEqual([["Show PR status", "true"]]);
 		expect(screen.getByRole("menu").getAttribute("data-cds")).toBe("Menu");
 		expect(screen.getAllByRole("separator")).toHaveLength(1);
+	});
+
+	it("weights every item with upstream's `font-normal font-control` (font-control-regular: 400, 435 under fizzy type)", async () => {
+		renderDropdown();
+		await openDropdown();
+
+		expect(itemWeights()).toStrictEqual([
+			["font-control-regular"],
+			["font-control-regular"],
+			["font-control-regular"],
+			["font-control-regular"],
+		]);
 	});
 
 	it("matches upstream's compact density on the container, items and shortcut hint", async () => {
@@ -713,6 +733,12 @@ describe("ContextMenu", () => {
 
 		const menu = screen.getByRole("menu");
 		expect(menu.getAttribute("data-cds")).toBe("ContextMenu");
+		expect(itemWeights()).toStrictEqual([
+			["font-control-regular"],
+			["font-control-regular"],
+			["font-control-regular"],
+			["font-control-regular"],
+		]);
 		fireEvent.keyDown(menu, {key: "c"});
 		await flush();
 		expect(onCopy).toHaveBeenCalledTimes(1);
