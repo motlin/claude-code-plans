@@ -134,6 +134,7 @@ import {
 	liveHookQuestion,
 } from "../lib/approval-dock";
 import {useApprovalAnswered} from "../lib/answered-approvals";
+import {useAnsweredSessionIds} from "../lib/answered-sessions";
 import {useQuestionCardSent} from "../lib/question-card-store";
 import {applicationSettingsQueryOptions, useSaveApplicationSettings} from "../lib/api/application-settings";
 import {
@@ -536,6 +537,9 @@ function SessionView({
 	const permissionWaitAnswered = useApprovalAnswered(sessionId, permissionWaitId);
 	const awaitingPermission = permissionWaitId !== null && !permissionWaitAnswered;
 	const sessionSummaryState = sessionSummary?.state ?? null;
+	// A session this tab just answered is working again at the click, before the server's summary says so.
+	const answeredHeld = useAnsweredSessionIds().has(sessionId);
+	const displaySummaryState = answeredHeld && sessionSummaryState === "waiting" ? "working" : sessionSummaryState;
 	const hookQuestion = useQuery({
 		...pendingQuestionQueryOptions(sessionId),
 		// Only a waiting session can have one; SSE patches the cache either way.
@@ -567,11 +571,11 @@ function SessionView({
 	const turnTokens = useMemo(() => turnTokenEstimate(transcript.records), [transcript.records]);
 	const workingMarkerState = useWorkingMarkerState({
 		records: transcript.records,
-		sessionState: sessionSummaryState,
+		sessionState: displaySummaryState,
 		isActive,
 		pendingToolName: pendingTools.get(sessionId)?.toolName,
 		interruptedAt: lastInterrupt?.sessionId === sessionId ? lastInterrupt.at : null,
-		awaitingPermission,
+		awaitingPermission: awaitingPermission && !answeredHeld,
 	});
 	// The turn's in-flight call has its own running row in the transcript (a subagent's row stays a plain link).
 	const pendingCall = useMemo(() => findLastPendingToolUse(transcript.records), [transcript.records]);
@@ -819,8 +823,8 @@ function SessionView({
 	);
 	// The working line's "Needs your input" replaces the dock's waiting notice, as upstream shows only the former.
 	const workingLineWaits = workingLineWaitsOnUser({
-		awaitingPermission,
-		sessionState: sessionSummaryState,
+		awaitingPermission: awaitingPermission && !answeredHeld,
+		sessionState: displaySummaryState,
 		cardShown:
 			pendingPermission !== null ||
 			inlineQuestion !== null ||
@@ -839,8 +843,8 @@ function SessionView({
 		[sessionId, hookQuestionToolUseId],
 	);
 	const askUserQuestionCtx: AskUserQuestionContextValue = useMemo(
-		() => ({answerRoute, sessionLive: answerLiveness, submitAnswer}),
-		[answerRoute, answerLiveness, submitAnswer],
+		() => ({sessionId, answerRoute, sessionLive: answerLiveness, submitAnswer}),
+		[sessionId, answerRoute, answerLiveness, submitAnswer],
 	);
 	const planApprovalCtx: PlanApprovalContextValue = useMemo(
 		() => ({
@@ -1601,6 +1605,7 @@ function SessionView({
 										draftKey={hookQuestion.toolUseId}
 										questions={hookQuestion.questions}
 										onSubmit={answerRoute === "live-pane" ? answerHookQuestion : undefined}
+										sessionId={sessionId}
 									/>
 								</div>
 							)}

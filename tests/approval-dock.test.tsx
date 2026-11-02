@@ -6,6 +6,7 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {AskUserQuestionProvider} from "../src/components/ask-user-question-context";
 import {QuestionCard} from "../src/components/question-card";
+import {isAnsweredHeld, releaseAnswered} from "../src/lib/answered-sessions";
 import {AskUserQuestionRenderer} from "../src/components/tool-renderers/ask-user-question-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 import {
@@ -322,6 +323,40 @@ describe("QuestionCard", () => {
 				["Which features?", "Mutation, Coverage, Watch"],
 			],
 			calls: [[[{selected: [0]}, {selected: [0, 1], other: "Mutation"}]]],
+		});
+	});
+
+	it("holds its session as answered the moment ⌘⏎ submits, and releases it when the send rejects", async () => {
+		let reject!: (reason: Error) => void;
+		const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+		render(
+			<QuestionCard
+				sessionId="s-card"
+				draftKey="toolu_card"
+				questions={[QUESTIONS[0]!]}
+				onSubmit={async () =>
+					new Promise<void>((_, onReject) => {
+						reject = onReject;
+					})
+				}
+			/>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: /^Jest/}));
+		now.mockReturnValue(1400);
+		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		now.mockRestore();
+		const sending = isAnsweredHeld("s-card");
+		await act(async () => {
+			reject(new Error("pane gone"));
+			return Promise.resolve();
+		});
+		const failed = isAnsweredHeld("s-card");
+		releaseAnswered("s-card");
+
+		expect({sending, failed, error: screen.queryByText("pane gone") !== null}).toStrictEqual({
+			sending: true,
+			failed: false,
+			error: true,
 		});
 	});
 

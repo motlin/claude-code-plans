@@ -23,6 +23,7 @@ import {homeFolderStatusQueryOptions} from "../src/lib/api/home-folder-status";
 import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../src/lib/api/sessions";
 import type {NextStepCandidate} from "../src/lib/home-next-steps";
+import {holdAnswered, releaseAnswered} from "../src/lib/answered-sessions";
 
 const MINUTE = 60 * 1000;
 
@@ -140,6 +141,26 @@ describe("useHomeNextSteps", () => {
 		expect(frames.filter((frame) => frame !== undefined)).toStrictEqual(
 			frames.filter((frame) => frame !== undefined).map(() => ["Needs permission"]),
 		);
+	});
+
+	it("drops a waiting session's row the moment this tab answers it", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
+		);
+		const queryClient = seededClient();
+		queryClient.setQueryData(approvalsQueryOptions().queryKey, APPROVALS);
+		const frames = await renderHook(queryClient);
+		await waitFor(() => {
+			expect(frames.at(-1)).toStrictEqual(["Needs permission"]);
+		});
+		act(() => {
+			holdAnswered("waiting", "toolu_1");
+		});
+		const answered = frames.at(-1);
+		releaseAnswered("waiting");
+
+		expect(answered).toStrictEqual([]);
 	});
 
 	it("keeps the list mounted once settled, even when a source resets and refetches", async () => {

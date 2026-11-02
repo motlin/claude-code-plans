@@ -7,6 +7,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {BackgroundTasksOpenerProvider} from "../src/components/background-tasks-opener-context";
 import {PermissionCard} from "../src/components/permission-card";
+import {isAnsweredHeld, releaseAnswered} from "../src/lib/answered-sessions";
 import {isApprovalAnswered, useApprovalAnswered} from "../src/lib/answered-approvals";
 import {
 	findPendingPermission,
@@ -420,6 +421,24 @@ describe("permission title copy", () => {
 			label,
 			detail,
 		});
+	});
+
+	it("holds its session as answered at the click, before the decision settles", () => {
+		render(
+			<PermissionCard
+				title={{action: "run", meta: null}}
+				detail="ls"
+				canAnswer
+				sessionId="s-permission"
+				answerKey="toolu_permission"
+				onDecision={async () => new Promise<void>(() => {})}
+			/>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: /^Allow/}));
+		const held = isAnsweredHeld("s-permission");
+		releaseAnswered("s-permission");
+
+		expect(held).toBe(true);
 	});
 
 	it("draws the notification text as the heading when no tool call describes the prompt", () => {

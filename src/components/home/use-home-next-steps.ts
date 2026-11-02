@@ -17,6 +17,7 @@ import {
 	sessionRunningIn,
 	type NextStepCandidate,
 } from "../../lib/home-next-steps";
+import {useAnsweredSessionIds, withAnsweredHolds} from "../../lib/answered-sessions";
 import {toGroupRow} from "../sidebar/sidebar-session-row";
 import {useHomeDraftUsed, useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
 import type {NextStepsListProps} from "./start-card";
@@ -83,6 +84,7 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 	const {data: folderPr} = useQuery(homeFolderPrQueryOptions(folder, folderPrBranch(git, worktree.enabled)));
 	const {used} = useHomeDraftUsed();
 	const latched = useRef<NextStepsListProps | undefined>(undefined);
+	const answeredIds = useAnsweredSessionIds();
 
 	const dismiss = useMutation({
 		mutationFn: postHomeDismissal,
@@ -96,7 +98,11 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 
 	if (recent === undefined || dismissals === undefined || !approvalsFetched) return latched.current;
 
-	const sessions = recent.pages.flatMap((page) => page.sessions);
+	// A session this tab just answered is working again, as the sidebar row draws it.
+	const sessions = withAnsweredHolds(
+		recent.pages.flatMap((page) => page.sessions),
+		answeredIds,
+	);
 	const approvalTools = new Map(
 		(approvals?.approvals ?? []).map((approval) => [approval.sessionId, approval.toolName]),
 	);

@@ -4,6 +4,7 @@ import {useEffect, useMemo, useReducer, useRef, useState, type ReactNode} from "
 import {Ungroup} from "lucide-react";
 
 import {type SidebarDrop, useSidebarDrag} from "../../hooks/use-sidebar-drag";
+import {useAnsweredSessionIds, withAnsweredHold} from "../../lib/answered-sessions";
 import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../../lib/api/sessions";
 import {closeDragPinHint} from "../../lib/drag-pin-hint";
 import {readPinState, unpin, usePins, writePinState} from "../../lib/pin-store";
@@ -98,11 +99,15 @@ export function SessionGroups({
 
 	const {pinnedIds, pinnedOrder} = usePins();
 
+	// A session this tab just answered draws as Working at the click, as upstream's responding row does.
+	const answeredIds = useAnsweredSessionIds();
 	const split = useMemo(() => {
 		if (data === undefined) return undefined;
-		const rows = data.pages.flatMap((page) => page.sessions.map(toGroupRow));
+		const rows = data.pages.flatMap((page) =>
+			page.sessions.map((session) => toGroupRow(withAnsweredHold(session, answeredIds.has(session.id)))),
+		);
 		return splitPinned(rows, {pinnedIds, pinnedOrder}, sessionRowComparator(prefs.sortBy, prefs.sortDirection));
-	}, [data, prefs.sortBy, prefs.sortDirection, pinnedIds, pinnedOrder]);
+	}, [data, answeredIds, prefs.sortBy, prefs.sortDirection, pinnedIds, pinnedOrder]);
 
 	const toast = useToast();
 	const {settings, setSetting} = useSettings();

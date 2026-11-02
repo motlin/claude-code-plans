@@ -23,6 +23,7 @@ import {projectsQueryOptions} from "../src/lib/api/projects";
 import {routinesQueryOptions, type Routine} from "../src/lib/api/routines";
 import {recentSessionsQueryOptions, sessionQueryKeys} from "../src/lib/api/sessions";
 import {saveRecents, type RecentEntry} from "../src/lib/recents-history";
+import {holdAnswered, releaseAnswered} from "../src/lib/answered-sessions";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
@@ -38,6 +39,7 @@ function recentSession(
 		pr: {number: number; url: string; repository: string};
 		archived: boolean;
 		unseenError: true;
+		state: "waiting";
 	}> = {},
 ) {
 	return {
@@ -1507,6 +1509,21 @@ describe("CommandPalette shell", () => {
 			["Recents", ["Plain one"]],
 			["Actions", ["New session"]],
 		]);
+	});
+
+	it("marks a session this tab just answered as running, out of Needs attention", async () => {
+		holdAnswered("s-answered", "toolu_1");
+		const dialog = await openPalette([
+			recentSession("s-answered", "Answered one", "blocked", {state: "waiting"}),
+			recentSession("s-plain", "Plain one"),
+		]);
+		releaseAnswered("s-answered");
+
+		const option = await within(dialog).findByRole("option", {name: /Answered one/});
+		expect({
+			dot: option.querySelector("[data-palette-mark-dot]")?.className.split(" ").includes("bg-fill-brand"),
+			attention: groupLabels(dialog).some(([label]) => label === "Needs attention"),
+		}).toStrictEqual({dot: true, attention: false});
 	});
 
 	it("marks lead icons with upstream's shared notched icon: a static accent dot for awaiting, brand for running", async () => {

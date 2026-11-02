@@ -1,4 +1,5 @@
 import {isSessionRouteAlias} from "../lib/session-route-alias";
+import {useAnsweredSessionIds, withAnsweredHolds} from "../lib/answered-sessions";
 import {Dialog} from "@base-ui/react/dialog";
 import {Command, defaultFilter, useCommandState} from "cmdk";
 import {useNavigate, useRouterState} from "@tanstack/react-router";
@@ -819,7 +820,18 @@ function PalettePopup({
 	const [tab, setTab] = useState<PaletteType>("all");
 	// Upstream's filter object: committed chips, kept apart from the query text.
 	const [filters, setFilters] = useState<PaletteFilters>({});
-	const {data} = useQuery(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT));
+	// A session this tab just answered marks as running at the click, as the sidebar row draws it.
+	const answeredIds = useAnsweredSessionIds();
+	const {data} = useQuery({
+		...recentSessionsQueryOptions(PALETTE_RECENT_LIMIT),
+		select: useCallback(
+			(recent: {sessions: SessionListItem[]}) =>
+				answeredIds.size === 0
+					? recent
+					: {...recent, sessions: withAnsweredHolds(recent.sessions, answeredIds)},
+			[answeredIds],
+		),
+	});
 	const queryClient = useQueryClient();
 	const currentSessionId = useCurrentSessionId();
 	const detailQuery = useQuery({

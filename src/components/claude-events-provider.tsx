@@ -15,6 +15,7 @@ import {PendingQuestionResponse, applyPendingQuestionChanged} from "../lib/api/p
 import {PendingPlanResponse, applyPendingPlanChanged} from "../lib/api/pending-plan";
 import {PendingElicitationsResponse, applyPendingElicitationsChanged} from "../lib/api/pending-elicitations";
 import {groupedSessionsQueryOptions, recentSessionsInfiniteQueryOptions, sessionQueryKeys} from "../lib/api/sessions";
+import {noteAnsweredPending, noteAnsweredSummary} from "../lib/answered-sessions";
 import {syncUnseenFromSummaries} from "../lib/unread-store";
 import {syncUnseenFromQueryCache} from "../lib/unseen-query-sync";
 import {isLiveSessionState, type ActivityState} from "../lib/session-state";
@@ -255,6 +256,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					if (session) {
 						// Before publishing, so display-state listeners see the server's unseen flag.
 						syncUnseenFromSummaries([session]);
+						noteAnsweredSummary(session.id, session.state);
 						if (isLiveSessionState(session.state)) {
 							publishSessionState(session.id, session.state, session);
 						}
@@ -278,6 +280,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					if (session) {
 						// Before publishing, so display-state listeners see the server's unseen flag.
 						syncUnseenFromSummaries([session]);
+						noteAnsweredSummary(session.id, session.state);
 						if (isLiveSessionState(session.state)) {
 							publishSessionState(session.id, session.state, session);
 						}
@@ -534,6 +537,8 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					const sessionId = data["sessionId"];
 					const parsed = PendingQuestionResponse.safeParse({pendingQuestion: data["pendingQuestion"]});
 					if (typeof sessionId === "string" && parsed.success) {
+						const toolUseId = parsed.data.pendingQuestion?.toolUseId;
+						if (toolUseId !== undefined) noteAnsweredPending(sessionId, toolUseId);
 						applyPendingQuestionChanged(queryClient, {sessionId, ...parsed.data});
 					}
 					break;
@@ -542,6 +547,8 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					const sessionId = data["sessionId"];
 					const parsed = PendingPlanResponse.safeParse({pendingPlan: data["pendingPlan"]});
 					if (typeof sessionId === "string" && parsed.success) {
+						const toolUseId = parsed.data.pendingPlan?.toolUseId;
+						if (toolUseId !== undefined) noteAnsweredPending(sessionId, toolUseId);
 						applyPendingPlanChanged(queryClient, {sessionId, ...parsed.data});
 					}
 					break;
@@ -559,6 +566,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 				case DOMAIN_EVENTS.APPROVAL_CHANGED: {
 					const approval = PendingApprovalPayloadSchema.safeParse(data["approval"]).data;
 					if (approval) {
+						noteAnsweredPending(approval.sessionId, approval.toolUseId);
 						publishSessionState(approval.sessionId, "waiting");
 						applyApprovalChanged(queryClient, approval);
 					}

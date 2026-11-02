@@ -21,6 +21,7 @@ import {takePendingHomeLaunchFolder} from "../src/lib/home-composer-focus";
 import {DEFAULT_SESSION_LIST_PREFS, type SessionListPrefs} from "../src/lib/session-groups";
 import type {SessionBucket} from "../src/lib/session-state";
 import {readSidebarState} from "../src/lib/sidebar-store";
+import {holdAnswered, noteAnsweredSummary, releaseAnswered} from "../src/lib/answered-sessions";
 import {__unreadStoreTesting, syncUnseenFromSummaries} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
 import {PIN_STORAGE_KEY} from "../src/lib/pin-store";
@@ -656,6 +657,44 @@ describe("sidebar SessionGroups", () => {
 				"Offline bridged": null,
 				"Live remote": null,
 			},
+		});
+	});
+
+	it("moves an answered Needs input row to Working at once, keeps it there as the server confirms, and back on a new wait", async () => {
+		const {container, queryClient} = await renderGroups([session("b1", "Blocked one", "blocked", 3)]);
+		const where = () => ({
+			blocked: rowTitlesIn(container, "state-blocked"),
+			working: rowTitlesIn(container, "state-working"),
+			kinds: [...container.querySelectorAll(".status-dot")].map((dot) => dot.getAttribute("data-kind")),
+		});
+		const serverSays = (bucket: SessionBucket) => {
+			const next = session("b1", "Blocked one", bucket, 3);
+			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+				pages: [RecentSessionsResponse.parse({sessions: [next], nextCursor: null})],
+				pageParams: [null],
+			});
+			noteAnsweredSummary("b1", next.state === "waiting" ? "waiting" : "working");
+		};
+		const before = where();
+		act(() => {
+			holdAnswered("b1", "toolu_1");
+		});
+		const answered = where();
+		act(() => {
+			serverSays("working");
+		});
+		const confirmed = where();
+		act(() => {
+			serverSays("blocked");
+		});
+		const rewaited = where();
+		releaseAnswered("b1");
+
+		expect({before, answered, confirmed, rewaited}).toStrictEqual({
+			before: {blocked: ["Blocked one"], working: [], kinds: ["awaiting"]},
+			answered: {blocked: [], working: ["Blocked one"], kinds: ["running"]},
+			confirmed: {blocked: [], working: ["Blocked one"], kinds: ["running"]},
+			rewaited: {blocked: ["Blocked one"], working: [], kinds: ["awaiting"]},
 		});
 	});
 

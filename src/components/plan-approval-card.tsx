@@ -1,6 +1,7 @@
 import {MessageCircle, X} from "lucide-react";
 import {useCallback, useEffect, useRef, useState} from "react";
 
+import {holdAnswered, releaseAnswered} from "../lib/answered-sessions";
 import {APPROVAL_ARM_GRACE_MS, dockKeyAllowed} from "../lib/dock-keys";
 import {
 	PLAN_ACCEPT_LABEL,
@@ -105,10 +106,12 @@ type DialogState = {kind: "loading"} | {kind: "ready"; dialog: PlanDialog} | {ki
 
 function PlanApprovalActions({
 	sessionId,
+	toolUseId,
 	dialog,
 	decide,
 }: {
 	sessionId: string;
+	toolUseId: string;
 	dialog: PlanDialog;
 	decide: (decision: PlanDecision) => Promise<void>;
 }) {
@@ -128,16 +131,18 @@ function PlanApprovalActions({
 			setError(null);
 			setSubmitting(true);
 			const comments = clearPlanComments(sessionId);
+			holdAnswered(sessionId, toolUseId);
 			try {
 				await decide(typeof decision === "function" ? decision(comments) : decision);
 			} catch (err) {
+				releaseAnswered(sessionId);
 				restorePlanComments(sessionId, comments);
 				setError(err instanceof Error ? err.message : "Failed to answer the plan");
 			} finally {
 				setSubmitting(false);
 			}
 		},
-		[decide, sessionId],
+		[decide, sessionId, toolUseId],
 	);
 
 	const closeFeedback = useCallback(() => {
@@ -327,5 +332,5 @@ export function PlanApprovalCard({toolUseId, plan}: {toolUseId: string; plan: Pl
 
 	if (!live || state.kind === "unavailable") return <ReadOnlyAnswerHint className={HINT_CLASS} />;
 	if (state.kind === "loading") return null;
-	return <PlanApprovalActions sessionId={sessionId} dialog={state.dialog} decide={decide} />;
+	return <PlanApprovalActions sessionId={sessionId} toolUseId={toolUseId} dialog={state.dialog} decide={decide} />;
 }

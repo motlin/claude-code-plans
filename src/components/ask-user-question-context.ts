@@ -10,6 +10,8 @@ export interface AnswerSubmission {
 }
 
 export interface AskUserQuestionContextValue {
+	/** The session the questions belong to; a live answer holds it as answered. */
+	sessionId?: string;
 	/**
 	 * Where an answer to the session's pending question goes: its live pane, a
 	 * new fork (only once the session stopped running), or nowhere (read-only).

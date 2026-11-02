@@ -9,6 +9,7 @@ import {PlanApprovalCard} from "../src/components/plan-approval-card";
 import type {PlanApprovalContextValue} from "../src/components/plan-approval-context";
 import type {PlanDecision, PlanDialog} from "../src/lib/plan-approval";
 import {planKeyAction} from "../src/lib/plan-approval";
+import {isAnsweredHeld, releaseAnswered} from "../src/lib/answered-sessions";
 import {addPlanComment, clearPlanComments, getPlanComments} from "../src/lib/plan-comments";
 import {defaultPaneLayout} from "../src/lib/pane-layout";
 import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
@@ -170,6 +171,27 @@ describe("PlanApprovalCard", () => {
 		expect(view.container.querySelector("[data-plan-error]")?.textContent).toStrictEqual(
 			"No plan approval is pending",
 		);
+	});
+
+	it("holds the session as answered at the click, and releases it when the answer is refused", async () => {
+		let reject!: (reason: Error) => void;
+		const {value} = context({
+			decide: async () =>
+				new Promise<void>((_, onReject) => {
+					reject = onReject;
+				}),
+		});
+		await renderCard(value);
+		fireEvent.click(button("Reject"));
+		const sending = isAnsweredHeld(SESSION);
+		await act(async () => {
+			reject(new Error("No plan approval is pending"));
+			return Promise.resolve();
+		});
+		const refused = isAnsweredHeld(SESSION);
+		releaseAnswered(SESSION);
+
+		expect({sending, refused}).toStrictEqual({sending: true, refused: false});
 	});
 
 	it("stacks the actions full width in upstream's ≤420px container, both groups growing", async () => {

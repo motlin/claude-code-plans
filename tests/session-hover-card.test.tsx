@@ -4,6 +4,7 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {isAnsweredHeld, releaseAnswered} from "../src/lib/answered-sessions";
 import {SessionHoverCard} from "../src/components/session-hover-card";
 import {ToastProvider} from "../src/components/toast";
 import {approvalsQueryOptions, type PendingApprovalItem} from "../src/lib/api/approvals";
@@ -319,6 +320,27 @@ describe("SessionHoverCard question gate", () => {
 				JSON.stringify({sessionId: SESSION_ID, toolUseId: "toolu_ask", answers: [{selected: [1]}]}),
 			],
 		]);
+	});
+
+	it("holds the session as answered the moment a reply is sent, and releases it when sending fails", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<() => Promise<Response>>(async () =>
+				Promise.resolve(new Response(JSON.stringify({error: "pane moved on"}), {status: 409})),
+			),
+		);
+		renderCard({title: "Pick a DB", summary: null, blocked: true}, {pendingQuestion: QUESTION, writable: true});
+		hover();
+		await advance(400);
+		act(() => {
+			fireEvent.click(screen.getByRole("button", {name: "SQLite"}));
+		});
+		const sending = isAnsweredHeld(SESSION_ID);
+		await advance(0);
+		const failed = isAnsweredHeld(SESSION_ID);
+		releaseAnswered(SESSION_ID);
+
+		expect({sending, failed}).toStrictEqual({sending: true, failed: false});
 	});
 
 	it("sends typed text as the Other answer on Enter, and Shift+Enter keeps typing", async () => {

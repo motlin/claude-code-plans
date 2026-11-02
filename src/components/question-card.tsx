@@ -2,6 +2,7 @@ import {Check, ChevronLeft, ChevronRight} from "lucide-react";
 import {type MouseEvent, type RefObject, useEffect, useRef, useState} from "react";
 import {flushSync} from "react-dom";
 
+import {holdAnswered, releaseAnswered} from "../lib/answered-sessions";
 import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, onScreen} from "../lib/dock-keys";
 import type {QuestionAnswer} from "../lib/hook-events";
 import {OUTCOME_LABEL, type QuestionLike} from "../lib/ask-user-question";
@@ -171,6 +172,7 @@ export function QuestionCard({
 	submitLabel = "Submit",
 	draftKey,
 	answered,
+	sessionId,
 }: {
 	questions: readonly QuestionLike[];
 	onSubmit?: ((answers: Array<QuestionAnswer | null>) => Promise<void>) | undefined;
@@ -180,6 +182,8 @@ export function QuestionCard({
 	draftKey?: string | undefined;
 	/** The call's recorded answers, once its result lands after this card sent them. */
 	answered?: readonly QuestionReceiptRow[] | undefined;
+	/** The question's session: an answer holds it as answered, so every view draws it working at the click. */
+	sessionId?: string | undefined;
 }) {
 	const [wasSent] = useState(() =>
 		draftKey === undefined ? null : readSentQuestionCard(draftKey, questions.length),
@@ -272,6 +276,7 @@ export function QuestionCard({
 		if (draftKey !== undefined) {
 			clearQuestionCardState(draftKey);
 			markQuestionCardSent(draftKey, {page, drafts: finalDrafts, skipped: finalSkipped});
+			if (sessionId !== undefined) holdAnswered(sessionId, draftKey);
 		}
 		try {
 			await onSubmit(finalDrafts.map((entry, at) => (finalSkipped[at] === true ? null : answerOf(entry))));
@@ -282,6 +287,7 @@ export function QuestionCard({
 				writeQuestionCardState(draftKey, {page, drafts: finalDrafts, skipped: finalSkipped});
 				clearSentQuestionCard(draftKey, message);
 			}
+			if (sessionId !== undefined) releaseAnswered(sessionId);
 			setError(message);
 			setSending(false);
 		}

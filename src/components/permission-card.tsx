@@ -2,6 +2,7 @@ import {useCallback, useEffect, useRef, useState, type ReactNode, type RefObject
 
 import {useIsMac} from "../hooks/use-is-mac";
 import {clearApprovalAnswered, markApprovalAnswered, useApprovalAnswered} from "../lib/answered-approvals";
+import {holdAnswered, releaseAnswered} from "../lib/answered-sessions";
 import {approvalEnterSeen, markApprovalEnterSeen} from "../lib/approval-enter-seen";
 import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, isIdleComposer, onScreen} from "../lib/dock-keys";
 import {permissionDecisionForKey, type PermissionDecision, type PermissionTitle} from "../lib/permission-card";
@@ -89,15 +90,17 @@ export function PermissionCard({
 			setError(null);
 			setDecided(true);
 			if (markSession !== undefined && markKey !== undefined) markApprovalAnswered(markSession, markKey);
+			if (sessionId !== undefined && answerKey !== undefined) holdAnswered(sessionId, answerKey);
 			try {
 				await onDecision(decision);
 			} catch (err) {
 				if (markSession !== undefined && markKey !== undefined) clearApprovalAnswered(markSession, markKey);
+				if (sessionId !== undefined) releaseAnswered(sessionId);
 				setError(err instanceof Error ? err.message : "Failed to answer the permission request");
 				setDecided(false);
 			}
 		},
-		[onDecision, markSession, markKey],
+		[onDecision, markSession, markKey, sessionId, answerKey],
 	);
 
 	const cardRootRef = useRef<HTMLDivElement>(null);

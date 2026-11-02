@@ -9,6 +9,7 @@ import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-p
 import {pendingQuestionQueryOptions} from "../src/lib/api/pending-question";
 import {clearComposerQueues} from "../src/lib/composer-queue";
 import {clearSentQuestionCard} from "../src/lib/question-card-store";
+import {releaseAnswered} from "../src/lib/answered-sessions";
 import {SessionPage} from "../src/components/session-page";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {STORAGE_KEYS} from "../src/components/settings-context";
@@ -635,6 +636,7 @@ describe("SessionPage dock composition", () => {
 			// The sent store is module state: an answer sent in one test must not leave the next one a receipt.
 			clearSentQuestionCard("toolu_question");
 			clearComposerQueues();
+			releaseAnswered(SESSION_ID);
 		});
 
 		async function renderWaitingQuestion(herdr: {panes: (typeof herdrPane)[]; writesEnabled: boolean}) {
@@ -709,7 +711,67 @@ describe("SessionPage dock composition", () => {
 				questionPosts: [{sessionId: SESSION_ID, toolUseId: "toolu_question", answers: [{selected: [1]}]}],
 				promptPosts: [],
 				heldSteer: 1,
-				workingLine: "Sending…running",
+				// The answered session is working again at once; this fixture's turn has no reply yet.
+				workingLine: "Waiting for Claude…running",
+			});
+		});
+
+		it("flips the working line from Needs your input to Working… at the permission click, before the server says so", async () => {
+			vi.stubGlobal(
+				"fetch",
+				vi.fn<typeof fetch>(async () => new Promise<Response>(() => {})),
+			);
+			await renderSessionPage(
+				{...detail, pr},
+				[],
+				(queryClient) => {
+					seedUsage(queryClient);
+					queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {
+						panes: [herdrPane],
+						writesEnabled: true,
+					});
+					queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+						pages: [
+							{
+								sessions: [{id: SESSION_ID, state: "waiting", awaitingPermission: true}],
+								nextCursor: null,
+							},
+						],
+						pageParams: [null],
+					} as never);
+				},
+				[
+					{
+						type: "assistant",
+						uuid: "a1",
+						sessionId: SESSION_ID,
+						timestamp: "2026-09-28T10:00:01.000Z",
+						message: {
+							role: "assistant",
+							content: [{type: "tool_use", id: "toolu_waiting", name: "Bash", input: {command: "ls"}}],
+						},
+					},
+				],
+			);
+			const card = within(screen.getByRole("group", {name: "Permission request: run"}));
+			const line = () => {
+				const root = document.querySelector('[data-testid="code-working-line"]');
+				return {
+					working: root?.getAttribute("data-turn-working"),
+					status: root?.querySelector("[role=status]")?.textContent,
+					blocked: root?.querySelector('[data-state="blocked"]') !== null,
+				};
+			};
+			const before = line();
+			act(() => {
+				fireEvent.click(card.getByRole("button", {name: /^Allow/}));
+			});
+			const answered = line();
+
+			// The pending Bash call then draws its own running row, so the line itself goes quiet, as upstream's.
+			expect({before, answered}).toStrictEqual({
+				before: {working: "false", status: "", blocked: false},
+				answered: {working: "true", status: "Working…", blocked: false},
 			});
 		});
 

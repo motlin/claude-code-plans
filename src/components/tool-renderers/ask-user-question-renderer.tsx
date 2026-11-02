@@ -165,6 +165,8 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 				draftKey={toolCall.id}
 				questions={questions}
 				onSubmit={submit}
+				// A fork answers in a new session, so only a live answer holds this one as working.
+				sessionId={route === "live-pane" ? ctx?.sessionId : undefined}
 				{...(route === "fork" ? {submitLabel: FORK_ANSWER_LABEL} : {})}
 			/>
 		);

@@ -1,6 +1,7 @@
 import {useMutation, useQuery} from "@tanstack/react-query";
 import {CornerDownLeft} from "lucide-react";
 import {useCallback, useId, useState, type ComponentType, type KeyboardEvent, type ReactNode} from "react";
+import {holdAnswered, releaseAnswered} from "../lib/answered-sessions";
 
 import {sendHerdrPermissionDecision, sendHerdrPrompt} from "../lib/api/herdr";
 import {planQueryOptions} from "../lib/api/plans";
@@ -168,8 +169,12 @@ function QuestionQuickReply({
 	});
 	const submit = (reply: string, restore?: () => void) => {
 		if (answer.isPending) return;
+		// A live answer draws the session working at once; a fork answers in a new session.
+		const holds = route === "live-pane";
+		if (holds) holdAnswered(sessionId, gate.toolUseId);
 		answer.mutate(reply, {
 			onError: () => {
+				if (holds) releaseAnswered(sessionId);
 				restore?.();
 				toast({kind: "error", message: SEND_FAILED});
 			},
