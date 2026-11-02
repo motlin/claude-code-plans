@@ -3,6 +3,7 @@ import {Gauge, X} from "lucide-react";
 import {usageQueryOptions} from "../lib/api/usage";
 import type {ReactElement, ReactNode} from "react";
 import {formatPaceBannerReset, limitReached, meterPercent, usageBand} from "../lib/usage";
+import {NoticeBanner} from "./notice-banner";
 import {ResetCountdown} from "./reset-countdown";
 import {useComposerNotice, useInNoticeRegion} from "./composer-notice-context";
 import {useUsageBandDismissals, writeUsageBandDismissal} from "../lib/usage-pace-dismissal";
@@ -10,8 +11,9 @@ import {useUsageBandDismissals, writeUsageBandDismissal} from "../lib/usage-pace
 /**
  * Upstream's band shell (`uc`): an icon slot, a wrapping body whose words put the headline and
  * detail on one baseline 10px apart (the detail wrapping under it on a narrow dock), and an
- * optional Dismiss slot. Live region `polite` (dropped inside the notice region, whose list is one), centred on the first line via `1lh`. The exceeded
- * band inks its icon and headline `danger`; the detail is always muted.
+ * optional Dismiss slot. Live region `polite`, centred on the first line via `1lh`. The exceeded
+ * band inks its icon and headline `danger`; the detail is always muted. Under a notice region the
+ * band draws as a cds Banner card instead.
  */
 function UsageBandShell({
 	headline,
@@ -24,13 +26,23 @@ function UsageBandShell({
 	danger?: boolean;
 	onDismiss?: () => void;
 }) {
-	// Inside the notice region its list is the live region and its item reveals in, so the band
-	// nests neither another live region nor its own enter animation.
-	const inline = !useInNoticeRegion();
+	// Inside the notice region the band is a cds Banner card (upstream `vr` → `tF` → `ah`): its
+	// list is the live region and its item reveals in, and the card inks nothing danger.
+	if (useInNoticeRegion()) {
+		return (
+			<NoticeBanner icon={<Gauge className="size-4" aria-hidden="true" />} {...(onDismiss ? {onDismiss} : {})}>
+				<span aria-atomic="true" className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75">
+					<span className="min-w-0">{headline}</span>
+					<span className="min-w-0 text-ink-muted">{detail}</span>
+				</span>
+			</NoticeBanner>
+		);
+	}
 	return (
 		<div
-			{...(inline ? {role: "status", "aria-live": "polite"} : {})}
-			className={`flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-body${inline ? " usage-band-enter" : ""}`}
+			role="status"
+			aria-live="polite"
+			className="flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-body usage-band-enter"
 		>
 			<span className="flex h-[1lh] shrink-0 items-center">
 				<Gauge className={`size-4 ${danger ? "text-danger-000" : "text-ink-muted"}`} aria-hidden="true" />
@@ -90,7 +102,14 @@ export function UsagePaceBand({
  * copy (admins with extra usage off) and has no local meaning.
  */
 export function UsageLimitBand({headline, resetsAt}: {headline: string; resetsAt: number}) {
-	return <UsageBandShell headline={headline} detail={<ResetCountdown resetsAt={resetsAt} />} danger />;
+	const inNoticeCard = useInNoticeRegion();
+	return (
+		<UsageBandShell
+			headline={headline}
+			detail={<ResetCountdown resetsAt={resetsAt} inNoticeCard={inNoticeCard} />}
+			danger
+		/>
+	);
 }
 
 /**

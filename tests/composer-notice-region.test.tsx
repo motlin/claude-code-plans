@@ -166,7 +166,7 @@ describe("ComposerNoticeRegion", () => {
 		expect(container.innerHTML).toBe('<span data-inline-band="true">Limit</span>');
 	});
 
-	it("drops the usage band's own enter animation inside the region, whose item already reveals in", () => {
+	it("draws the usage band as a cds Banner card inside the region and keeps the animated shell inline", () => {
 		function RegisteredBand() {
 			const claimed = useComposerNotice("limit", {
 				id: "code_usage_limit",
@@ -185,8 +185,15 @@ describe("ComposerNoticeRegion", () => {
 		const bandClass =
 			"flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-body";
 		expect({
-			inRegion: inRegion.querySelector('[data-cds="ChatComposerNotices"] .bg-alpha-1')?.className,
+			inRegionBanner: inRegion.querySelectorAll('[data-cds="ChatComposerNotices"] [data-cds="Banner"]').length,
+			inRegionShell: inRegion.querySelector(".bg-alpha-1"),
+			inlineBanner: inline.querySelector('[data-cds="Banner"]'),
 			inline: inline.querySelector(".bg-alpha-1")?.className,
-		}).toStrictEqual({inRegion: bandClass, inline: `${bandClass} usage-band-enter`});
+		}).toStrictEqual({
+			inRegionBanner: 1,
+			inRegionShell: null,
+			inlineBanner: null,
+			inline: `${bandClass} usage-band-enter`,
+		});
 	});
 });

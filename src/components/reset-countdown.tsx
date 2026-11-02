@@ -23,8 +23,9 @@ function resetCountdownText(resetsAt: number, nowMs: number): string {
 /**
  * The exceeded band's reset: the absolute time an hour or more out, then "Resets in N min",
  * "Resets in m:ss" under ten minutes (ticking each second), and "Resetting…" at the reset.
+ * In a notice card the visible text is aria-hidden and an sr-only absolute reset follows it.
  */
-export function ResetCountdown({resetsAt}: {resetsAt: number}) {
+export function ResetCountdown({resetsAt, inNoticeCard = false}: {resetsAt: number; inNoticeCard?: boolean}) {
 	const [nowMs, setNowMs] = useState(() => Date.now());
 	const counting = resetsAt * 1000 - nowMs < COUNTDOWN_MS;
 	useEffect(() => {
@@ -38,9 +39,19 @@ export function ResetCountdown({resetsAt}: {resetsAt: number}) {
 			clearInterval(id);
 		};
 	}, [counting]);
+	const visible = resetCountdownText(resetsAt, nowMs);
+	if (inNoticeCard) {
+		// Upstream's in-card reset: the ticking text hidden from readers, the absolute time (`Tn`) read instead.
+		return (
+			<span data-testid="reset-countdown">
+				<span aria-hidden="true">{visible}</span>
+				<span className="sr-only">{formatPaceBannerReset(resetsAt, nowMs)}</span>
+			</span>
+		);
+	}
 	return (
 		<span data-testid="reset-countdown" aria-live="off" className="tabular-nums">
-			{resetCountdownText(resetsAt, nowMs)}
+			{visible}
 		</span>
 	);
 }

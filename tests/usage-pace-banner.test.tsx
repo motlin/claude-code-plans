@@ -4,6 +4,7 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ResetCountdown} from "../src/components/reset-countdown";
+import {InRegionContext} from "../src/components/composer-notice-context";
 import {UsageLimitBand, UsagePaceBand} from "../src/components/usage-pace-banner";
 import {
 	approachingLimit,
@@ -323,6 +324,104 @@ describe("usage limit reached", () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+});
+
+const BANNER_CLASS =
+	"flex items-start gap-1.5 py-2 font-sans text-body font-normal break-words px-3 rounded-card bg-page shadow-card-ring text-primary @container";
+
+describe("usage band as a notice card", () => {
+	it("draws the reached band through upstream's cds Banner: neutral icon and headline, sr-only absolute reset, no Dismiss", () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(Date.UTC(2026, 9, 20, 16, 0));
+		try {
+			const {container} = render(
+				<InRegionContext.Provider value>
+					<UsageLimitBand headline="Weekly limit reached" resetsAt={Date.UTC(2026, 9, 20, 18, 0) / 1000} />
+				</InRegionContext.Provider>,
+			);
+			const banner = container.querySelector('[data-cds="Banner"]');
+			const [iconSlot, body] = [...(banner?.children ?? [])];
+			const content = body?.firstElementChild;
+			const words = content?.firstElementChild;
+			const [headline, detail] = [...(words?.children ?? [])];
+			const countdown = screen.getByTestId("reset-countdown");
+			expect({
+				attributes: Object.fromEntries(
+					[...(banner?.attributes ?? [])].map((attribute) => [attribute.name, attribute.value]),
+				),
+				childCount: banner?.children.length,
+				iconSlot: iconSlot?.className,
+				icon: iconSlot?.querySelector("svg")?.getAttribute("class"),
+				body: body?.className,
+				content: content?.className,
+				words: {tag: words?.tagName, atomic: words?.getAttribute("aria-atomic"), className: words?.className},
+				headline: {className: headline?.className, text: headline?.textContent},
+				detail: detail?.className,
+				countdown: [...countdown.children].map((child) => ({
+					hidden: child.getAttribute("aria-hidden"),
+					className: child.className,
+					text: child.textContent,
+				})),
+				statusRoles: container.querySelectorAll("[role=status]").length,
+				dismiss: screen.queryByRole("button", {name: "Dismiss"}),
+			}).toStrictEqual({
+				attributes: {
+					"data-cds": "Banner",
+					"data-prose-box": "",
+					"data-icon-layout": "first-line",
+					"data-cta-layout": "inline",
+					"data-action-align": "first-line",
+					role: "none",
+					class: BANNER_CLASS,
+				},
+				childCount: 2,
+				iconSlot: "flex min-h-[1lh] shrink-0 items-center text-secondary",
+				icon: "lucide lucide-gauge size-4",
+				body: "flex min-w-0 flex-wrap items-start gap-y-2 gap-x-3 flex-1",
+				content: "max-w-full min-w-0 flex-auto",
+				words: {tag: "SPAN", atomic: "true", className: "flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75"},
+				headline: {className: "min-w-0", text: "Weekly limit reached"},
+				detail: "min-w-0 text-ink-muted",
+				countdown: [
+					{hidden: "true", className: "", text: "Resets at 6:00 PM"},
+					{hidden: null, className: "sr-only", text: "Resets at 6:00 PM"},
+				],
+				statusRoles: 0,
+				dismiss: null,
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("puts the pace band's Dismiss in the Banner's ghost X slot", () => {
+		const onDismiss = vi.fn<() => void>();
+		const {container} = render(
+			<InRegionContext.Provider value>
+				<UsagePaceBand usedPct={29} resetText="Resets Tue, Oct 6, 4:00 AM" onDismiss={onDismiss} />
+			</InRegionContext.Provider>,
+		);
+		const banner = container.querySelector('[data-cds="Banner"]');
+		const dismiss = screen.getByRole("button", {name: "Dismiss"});
+		fireEvent.click(dismiss);
+
+		expect({
+			text: banner?.textContent,
+			lastChild: banner?.lastElementChild === dismiss.parentElement,
+			slot: dismiss.parentElement?.className,
+			dismiss: dismiss.className,
+			glyph: dismiss.querySelector("svg")?.getAttribute("class"),
+			calls: onDismiss.mock.calls.length,
+		}).toStrictEqual({
+			text: "On pace to hit your weekly limit early29% used · Resets Tue, Oct 6, 4:00 AM",
+			lastChild: true,
+			slot: "-me-1.5 flex h-[1lh] shrink-0 items-center",
+			dismiss:
+				"inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 p-0 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
+			glyph: "lucide lucide-x size-4",
+			calls: 1,
+		});
 	});
 });
 

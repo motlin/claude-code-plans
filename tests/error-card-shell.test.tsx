@@ -17,7 +17,8 @@ describe("ErrorCardShell", () => {
 		);
 		const root = container.firstElementChild;
 		const [alert, header, hintRow] = [...(root?.children ?? [])];
-		const [icon, headline, dismissSlot] = [...(header?.children ?? [])];
+		const [iconSlot, headline, dismissSlot] = [...(header?.children ?? [])];
+		const icon = iconSlot?.firstElementChild;
 		const dismiss = dismissSlot?.firstElementChild;
 
 		expect({
@@ -30,6 +31,7 @@ describe("ErrorCardShell", () => {
 				text: alert?.textContent,
 			},
 			header: header?.className,
+			iconSlot: iconSlot?.className,
 			icon: {
 				className: icon?.getAttribute("class"),
 				hidden: icon?.getAttribute("aria-hidden"),
@@ -53,17 +55,18 @@ describe("ErrorCardShell", () => {
 			root: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-card select-text",
 			childCount: 3,
 			alert: {tag: "SPAN", className: "sr-only", role: "alert", text: `${HEADLINE} ${HINT}`},
-			header: "flex items-center gap-3 bg-alpha-1 px-3 py-2 contain-inline-size",
+			header: "flex items-start gap-3 bg-alpha-1 px-3 py-2 text-body contain-inline-size",
+			iconSlot: "flex h-[1lh] shrink-0 items-center",
 			icon: {className: "lucide lucide-triangle-alert size-4 shrink-0 text-danger-000", hidden: "true"},
-			headline: {tag: "SPAN", className: "min-w-0 grow text-body text-primary break-words", text: HEADLINE},
-			dismissSlot: "-my-1 -me-1 flex shrink-0",
+			headline: {tag: "SPAN", className: "min-w-0 grow text-primary break-words", text: HEADLINE},
+			dismissSlot: "-me-1 flex h-[1lh] shrink-0 items-center",
 			dismiss: {
 				tag: "BUTTON",
 				type: "button",
 				label: "Dismiss",
 				className:
-					"inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r5 p-0 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
-				glyph: "lucide lucide-x size-5",
+					"inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 p-0 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
+				glyph: "lucide lucide-x size-4",
 			},
 			hintRow: "flex flex-col gap-3 px-3 pt-3 pb-2 last:pb-3 empty:hidden contain-inline-size",
 			hint: {tag: "SPAN", className: "text-body text-secondary whitespace-pre-line break-words", text: HINT},
@@ -99,19 +102,51 @@ describe("ErrorCardShell", () => {
 		expect({
 			children: [...(root?.children ?? [])].map((child) => child.className),
 			header: [...(root?.firstElementChild?.children ?? [])].map((child) => child.getAttribute("class")),
+			icon: root?.querySelector("svg")?.getAttribute("class"),
+			busy: root?.getAttribute("aria-busy"),
 			buttons: container.querySelectorAll("button").length,
 			alerts: container.querySelectorAll("[role=alert]").length,
 		}).toStrictEqual({
 			children: [
-				"flex items-center gap-3 bg-alpha-1 px-3 py-2 contain-inline-size",
+				"flex items-start gap-3 bg-alpha-1 px-3 py-2 text-body contain-inline-size",
 				"flex flex-col gap-3 px-3 pt-3 pb-2 last:pb-3 empty:hidden contain-inline-size",
 			],
-			header: [
-				"lucide lucide-gauge size-4 shrink-0 text-danger-000",
-				"min-w-0 grow text-body text-primary break-words",
-			],
+			header: ["flex h-[1lh] shrink-0 items-center", "min-w-0 grow text-primary break-words"],
+			icon: "lucide lucide-gauge size-4 shrink-0 text-danger-000",
+			busy: null,
 			buttons: 0,
 			alerts: 0,
+		});
+	});
+
+	it("draws upstream's options row and note after the hint, and marks the card busy", () => {
+		const {container} = render(
+			<ErrorCardShell
+				headline={HEADLINE}
+				hint={HINT}
+				icon="warning"
+				busy
+				options={<button type="button">Try again</button>}
+				note="Retrying uses the same model."
+			/>,
+		);
+		const root = container.firstElementChild;
+		const hintRow = root?.children[1];
+
+		expect({
+			busy: root?.getAttribute("aria-busy"),
+			hintRow: [...(hintRow?.children ?? [])].map((child) => ({
+				tag: child.tagName,
+				className: child.className,
+				text: child.textContent,
+			})),
+		}).toStrictEqual({
+			busy: "true",
+			hintRow: [
+				{tag: "SPAN", className: "text-body text-secondary whitespace-pre-line break-words", text: HINT},
+				{tag: "DIV", className: "flex flex-wrap items-center gap-1 empty:hidden", text: "Try again"},
+				{tag: "SPAN", className: "text-footnote text-secondary", text: "Retrying uses the same model."},
+			],
 		});
 	});
 });
