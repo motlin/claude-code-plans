@@ -744,11 +744,14 @@ html[data-interface-font="dyslexic"] {
 	--upstream-fill-ghost-hover: #0000000d;
 	/* Upstream `--cds-fizzy-lake-color-plain-secondary`: the message toolbar's button ink. */
 	--upstream-plain-secondary: #0009;
+	/* Upstream `--cds-text-warning` (pre-rollout yellow-600 / yellow-300). */
+	--upstream-warning: #794c02;
 }
 
 :root.dark[data-cds-fizzy-lake~="color"] {
 	--upstream-fill-ghost-hover: #ffffff13;
 	--upstream-plain-secondary: #ffffff91;
+	--upstream-warning: #e49c06;
 }
 
 @media (prefers-contrast: more) {

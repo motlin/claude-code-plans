@@ -80,4 +80,19 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () => 
 			contrastDark: {"--upstream-plain-secondary": "#ffffffbf"},
 		});
 	});
+
+	it("--upstream-warning is upstream's fizzy --cds-text-warning, #794c02 light and #e49c06 dark", () => {
+		const names = ["--upstream-warning"] as const;
+		expect({
+			base: tokens(block(":root"), names),
+			baseDark: tokens(block(".dark"), names),
+			light: tokens(block(FIZZY_LIGHT), names),
+			dark: tokens(block(FIZZY_DARK), names),
+		}).toStrictEqual({
+			base: {"--upstream-warning": "rgb(115 69 0)"},
+			baseDark: {"--upstream-warning": "rgb(219 147 0)"},
+			light: {"--upstream-warning": "#794c02"},
+			dark: {"--upstream-warning": "#e49c06"},
+		});
+	});
 });
