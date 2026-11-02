@@ -14,6 +14,7 @@ import {
 	PHASE_SETTLE_MS,
 	phaseLabel,
 	markerEventsFromRecords,
+	stripTrailingEllipsis,
 	tailMarkerQuiet,
 	toolActivityLabel,
 	formatTokenEstimate,
@@ -906,7 +907,7 @@ describe("useWorkingMarkerState", () => {
 				isActive: false,
 				pendingToolName: undefined,
 			}),
-		]).toStrictEqual(["Waiting for Claude…", "3s", "", "", "", "Waiting for Claude…", ""]);
+		]).toStrictEqual(["Waiting for Claude", "3s", "", "", "", "Waiting for Claude", ""]);
 	});
 
 	it("shows no mark while an inline card holds the mark for a waiting prompt, as upstream does", () => {
@@ -1027,6 +1028,14 @@ describe("phaseLabel", () => {
 		).toStrictEqual([null, "Sending…", "Waiting for Claude…", "Waiting for Claude…", null, null]);
 	});
 
+	it("strips one trailing ellipsis or three dots, as upstream's K, so the phase word shimmers bare", () => {
+		expect(
+			["Waiting for Claude…", "Done...", "Sending… ", "Working", "…mid…word"].map((label) =>
+				stripTrailingEllipsis(label),
+			),
+		).toStrictEqual(["Waiting for Claude", "Done", "Sending…", "Working", "…mid…word"]);
+	});
+
 	it("settles label swaps for upstream's 150ms", () => {
 		expect(PHASE_SETTLE_MS).toBe(150);
 	});
@@ -1060,8 +1069,27 @@ describe("WorkingMarker pre-stream phases", () => {
 			turnWorking: "true",
 			state: "busy",
 			activity: "default",
-			visible: "Sending…",
-			announcer: "Working…",
+			visible: "Sending",
+			announcer: "Sending",
+		});
+	});
+
+	it("draws the phase word as upstream's ShimmerText in a morph slot, with the ellipsis kept only in the row title", () => {
+		stubReducedMotion(false);
+		const {container} = render(<WorkingMarker state={{status: "idle"}} sending />);
+		const row = container.querySelector('[data-cds="TurnStatus"] > div');
+		const slot = container.querySelector("[data-morph-key]");
+		expect({
+			title: row?.getAttribute("title"),
+			morph: slot?.parentElement?.outerHTML,
+		}).toStrictEqual({
+			title: "Sending…",
+			morph:
+				'<span class="group/morph inline-grid items-center justify-items-start min-w-0 max-w-full">' +
+				'<span data-morph-key="busy|Sending" class="col-start-1 row-start-1 flex min-w-0 max-w-full items-center">' +
+				'<span data-cds="ShimmerText" data-shimmering="true" dir="auto" class="relative min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em]">' +
+				'Sending<span data-cds-shimmer-clone="" aria-hidden="true" inert="">Sending</span>' +
+				"</span></span></span>",
 		});
 	});
 
@@ -1072,8 +1100,8 @@ describe("WorkingMarker pre-stream phases", () => {
 			turnWorking: "true",
 			state: "busy",
 			activity: "default",
-			visible: "Waiting for Claude…",
-			announcer: "Working…",
+			visible: "Waiting for Claude",
+			announcer: "Waiting for Claude",
 		});
 	});
 
@@ -1091,9 +1119,9 @@ describe("WorkingMarker pre-stream phases", () => {
 			vi.advanceTimersByTime(1);
 		});
 		expect({held, before, after: visibleLineText(view.container)}).toStrictEqual({
-			held: "Sending…",
-			before: "Sending…",
-			after: "Waiting for Claude…",
+			held: "Sending",
+			before: "Sending",
+			after: "Waiting for Claude",
 		});
 	});
 
@@ -1119,15 +1147,15 @@ describe("WorkingMarker pre-stream phases", () => {
 					turnWorking: "true",
 					state: "busy",
 					activity: "default",
-					visible: "Connecting…",
-					announcer: "Working…",
+					visible: "Connecting",
+					announcer: "Connecting",
 				},
 				waiting: {
 					turnWorking: "true",
 					state: "busy",
 					activity: "default",
-					visible: "Connecting…",
-					announcer: "Working…",
+					visible: "Connecting",
+					announcer: "Connecting",
 				},
 			});
 		},

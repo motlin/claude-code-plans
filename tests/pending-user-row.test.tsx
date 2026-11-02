@@ -7,6 +7,7 @@ import {HeldUserRow, SendingUserRow} from "../src/components/pending-user-row";
 
 afterEach(() => {
 	cleanup();
+	vi.restoreAllMocks();
 });
 
 describe("SendingUserRow", () => {
@@ -38,6 +39,7 @@ describe("SendingUserRow", () => {
 describe("HeldUserRow", () => {
 	it("draws upstream's held-for-host footer under the prompt bubble with a Withdraw X", () => {
 		const onWithdraw = vi.fn<() => void>();
+		vi.spyOn(performance, "now").mockReturnValue(4500);
 		render(<HeldUserRow prompt="Fix Alice's test" reconnecting={false} onWithdraw={onWithdraw} />);
 		const footer = screen.getByTestId("epitaxy-held-for-host");
 		const withdraw = screen.getByRole("button", {name: "Withdraw message"});
@@ -47,8 +49,7 @@ describe("HeldUserRow", () => {
 			bubble: document.querySelector(".user-message-bubble")?.textContent,
 			perfPrompt: document.querySelector("[data-perf-pending-prompt]") !== null,
 			footerClass: footer.className,
-			status: footer.querySelector("span")?.textContent,
-			statusClass: footer.querySelector("span")?.className,
+			statusHtml: footer.querySelector("span")?.outerHTML,
 			withdrawClass: withdraw.className,
 			focusKept: !mouseDown,
 			withdrawn: onWithdraw.mock.calls.length,
@@ -56,8 +57,11 @@ describe("HeldUserRow", () => {
 			bubble: "Fix Alice's test",
 			perfPrompt: true,
 			footerClass: "flex items-center gap-[3px] pt-[4px]",
-			status: "Waiting to deliver to the terminal…",
-			statusClass: "text-[12px] leading-[15px] text-ink-muted",
+			// Upstream keeps the muted shimmer mounted with active:false while not reconnecting.
+			statusHtml:
+				'<span class="text-[12px] leading-[15px] text-ink-muted">' +
+				'<span data-cds="ShimmerText" data-shimmering="false" dir="auto" data-variant="muted" style="--shimmer-delay: -1500ms;">Waiting to deliver to the terminal…</span>' +
+				"</span>",
 			withdrawClass:
 				"inline-flex size-5 shrink-0 items-center justify-center rounded-r4 text-ink-muted hover:text-secondary",
 			focusKept: true,
@@ -65,10 +69,22 @@ describe("HeldUserRow", () => {
 		});
 	});
 
-	it("says the terminal is reconnecting while herdr reconnects", () => {
+	it("sweeps a muted shimmer, phase-locked to the 3s period, over the reconnecting text while herdr reconnects", () => {
+		vi.spyOn(performance, "now").mockReturnValue(7250);
 		render(<HeldUserRow prompt="Fix Alice's test" reconnecting onWithdraw={() => {}} />);
-		expect(screen.getByTestId("epitaxy-held-for-host").querySelector("span")?.textContent).toBe(
-			"Waiting for the terminal to reconnect…",
-		);
+		const shimmer = screen.getByTestId("epitaxy-held-for-host").querySelector('[data-cds="ShimmerText"]');
+		expect({
+			shimmering: shimmer?.getAttribute("data-shimmering"),
+			variant: shimmer?.getAttribute("data-variant"),
+			delay: shimmer?.getAttribute("style"),
+			clone: shimmer?.querySelector("[data-cds-shimmer-clone]")?.textContent,
+			text: shimmer?.firstChild?.textContent,
+		}).toStrictEqual({
+			shimmering: "true",
+			variant: "muted",
+			delay: "--shimmer-delay: -1250ms;",
+			clone: "Waiting for the terminal to reconnect…",
+			text: "Waiting for the terminal to reconnect…",
+		});
 	});
 });

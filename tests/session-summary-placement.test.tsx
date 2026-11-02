@@ -714,7 +714,7 @@ describe("SessionPage dock composition", () => {
 				promptPosts: [],
 				heldSteer: 1,
 				// The answered session is working again at once; this fixture's turn has no reply yet.
-				workingLine: "Waiting for Claude…running",
+				workingLine: "Waiting for ClaudeWaiting for Clauderunning",
 			});
 		});
 

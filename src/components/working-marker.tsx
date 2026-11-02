@@ -6,6 +6,7 @@ import {
 	CONNECTING_PHASE_LABEL,
 	PHASE_SETTLE_MS,
 	phaseLabel,
+	stripTrailingEllipsis,
 	workingLineAnnouncement,
 	workingLineParts,
 	workingMarkerText,
@@ -102,6 +103,25 @@ function useLinePhase(state: WorkingMarkerState, sending: boolean, waitingOnUser
 	return streamConnecting ? CONNECTING_PHASE_LABEL : phase;
 }
 
+/**
+ * Upstream's busy phase label: the bare word as ShimmerText in a `group/morph` slot keyed
+ * `busy|<word>`, so a later morph can swap it.
+ */
+function PhaseWord({word}: Readonly<{word: string}>) {
+	return (
+		<span className="group/morph inline-grid items-center justify-items-start min-w-0 max-w-full">
+			<span
+				data-morph-key={`busy|${word}`}
+				className="col-start-1 row-start-1 flex min-w-0 max-w-full items-center"
+			>
+				<ShimmerText className="min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em]">
+					{word}
+				</ShimmerText>
+			</span>
+		</span>
+	);
+}
+
 function StatDot() {
 	return (
 		<span aria-hidden className={`shrink-0 select-none ${useRestInk()} tabular-nums`}>
@@ -147,7 +167,8 @@ export function WorkingMarker({
 	const turnWorking = !waitingOnUser && (phase !== null || (state.status !== "idle" && state.status !== "waiting"));
 	const busy = turnWorking && !quiet;
 	const parts = workingLineParts(state, tokens);
-	const label = phase ?? parts.label;
+	const phaseWord = phase === null ? null : stripTrailingEllipsis(phase);
+	const label = phaseWord ?? parts.label;
 	const stats = phase === null ? parts.stats : [];
 	const tasks = runningTasks > 0;
 	const line = (
@@ -160,7 +181,10 @@ export function WorkingMarker({
 			{waitingOnUser && <BlockedStatus reduceMotion={reduceMotion} />}
 			{busy && (
 				<div data-cds="TurnStatus" data-state="busy" className="group/status flex w-full min-w-0 flex-col">
-					<div className="flex min-w-0 items-center gap-1.5 px-1 py-0.5 text-body comfortable:px-1.5 comfortable:py-1.5">
+					<div
+						{...(phase === null ? {} : {title: phase})}
+						className="flex min-w-0 items-center gap-1.5 px-1 py-0.5 text-body comfortable:px-1.5 comfortable:py-1.5"
+					>
 						<span
 							data-cds-row-mark
 							aria-hidden
@@ -172,9 +196,10 @@ export function WorkingMarker({
 							/>
 						</span>
 						<span className="inline-flex min-w-0 items-center text-secondary">
-							{label !== "" && (
+							{phaseWord !== null && <PhaseWord word={phaseWord} />}
+							{phaseWord === null && label !== "" && (
 								<span
-									title={phase ?? workingMarkerText(state, tokens)}
+									title={workingMarkerText(state, tokens)}
 									className={`truncate whitespace-nowrap${
 										state.status === "stopping" ? ` ${STOPPING_MORPH_CLASS}` : ""
 									}`}
@@ -198,11 +223,7 @@ export function WorkingMarker({
 				</div>
 			)}
 			<span role="status" aria-live="polite" className="sr-only">
-				{waitingOnUser
-					? NEEDS_INPUT_LABEL
-					: state.status === "idle" && phase !== null
-						? "Working…"
-						: workingLineAnnouncement(state)}
+				{waitingOnUser ? NEEDS_INPUT_LABEL : (phaseWord ?? workingLineAnnouncement(state))}
 			</span>
 		</div>
 	);

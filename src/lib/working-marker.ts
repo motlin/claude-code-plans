@@ -221,6 +221,11 @@ export const PHASE_SETTLE_MS = 150;
 /** Upstream's `l8` "connecting" word, standing in for a waiting phase while the event stream is down. */
 export const CONNECTING_PHASE_LABEL = "Connecting…";
 
+/** Upstream's `K`: a phase word drops its trailing ellipsis for the visible label and sr status. */
+export function stripTrailingEllipsis(label: string): string {
+	return label.replace(/(…|\.\.\.)$/u, "").trimEnd();
+}
+
 /**
  * Upstream's pre-stream phase word (`l8`): "Sending…" while a live-pane
  * prompt is on its way to the transcript, then "Waiting for Claude…" from the

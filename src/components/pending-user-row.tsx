@@ -1,6 +1,8 @@
 import {X} from "lucide-react";
-import type {ReactNode} from "react";
+import {useState, type ReactNode} from "react";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
+import {shimmerPhaseDelay} from "../lib/shimmer";
+import {ShimmerText} from "./shimmer-text";
 
 /**
  * The prompt whose POST to the live pane is still in flight, drawn like upstream's user row with
@@ -39,7 +41,11 @@ export function HeldUserRow({
 		<PendingUserRowShell prompt={prompt} rowClass="" deliveryStatus="held">
 			<div data-testid="epitaxy-held-for-host" className="flex items-center gap-[3px] pt-[4px]">
 				<span className="text-[12px] leading-[15px] text-ink-muted">
-					{reconnecting ? "Waiting for the terminal to reconnect…" : "Waiting to deliver to the terminal…"}
+					<HeldShimmer key={String(reconnecting)} sweeps={reconnecting}>
+						{reconnecting
+							? "Waiting for the terminal to reconnect…"
+							: "Waiting to deliver to the terminal…"}
+					</HeldShimmer>
 				</span>
 				<button
 					type="button"
@@ -55,6 +61,16 @@ export function HeldUserRow({
 				</button>
 			</div>
 		</PendingUserRowShell>
+	);
+}
+
+/** Upstream's `$T`: the held text in a muted shimmer that sweeps only while reconnecting, in phase with the rest. */
+function HeldShimmer({sweeps, children}: {sweeps: boolean; children: ReactNode}) {
+	const [delay] = useState(shimmerPhaseDelay);
+	return (
+		<ShimmerText variant="muted" active={sweeps} delay={delay}>
+			{children}
+		</ShimmerText>
 	);
 }
 

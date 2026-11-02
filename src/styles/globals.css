@@ -1755,15 +1755,22 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 
 /* Upstream's ShimmerText (claude.ai/code cds): the text in secondary ink (dark: muted)
    with an aria-hidden clone masked to the glyphs, whose :after band sweeps a 30%-white
-   peak across them on a 3s held loop. Reduced motion hides the clone. */
-[data-cds="ShimmerText"] {
+   peak across them on a 3s held loop (SHIMMER_PERIOD_MS). Reduced motion hides the clone.
+   An inactive shimmer (data-shimmering=false) is plain text; the muted variant keeps the
+   ink it inherits; --shimmer-delay phase-locks remounted bands. */
+[data-cds="ShimmerText"][data-shimmering="true"] {
 	--shimmer-fill: var(--upstream-text-secondary);
 	--shimmer-peak: color-mix(in srgb, var(--shimmer-fill) 30%, white);
 	-webkit-text-fill-color: var(--shimmer-fill);
 }
 
-.dark [data-cds="ShimmerText"] {
+.dark [data-cds="ShimmerText"][data-shimmering="true"] {
 	--shimmer-fill: var(--upstream-text-muted);
+}
+
+[data-cds="ShimmerText"][data-shimmering="true"][data-variant="muted"],
+.dark [data-cds="ShimmerText"][data-shimmering="true"][data-variant="muted"] {
+	--shimmer-fill: currentColor;
 }
 
 [data-cds-shimmer-clone] {
@@ -1787,6 +1794,7 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	content: "";
 	background-image: linear-gradient(120deg, transparent 37.5%, var(--shimmer-peak) 50%, transparent 62.5%);
 	animation: 3s linear infinite cds-shimmer-text-band;
+	animation-delay: var(--shimmer-delay, 0ms);
 	position: absolute;
 	inset: 0 -300% 0 0;
 	translate: -62.5%;
