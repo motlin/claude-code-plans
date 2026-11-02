@@ -36,4 +36,11 @@ describe("radius tokens match upstream claude.ai/code", () => {
 			upstream: ".5rem",
 		});
 	});
+
+	it("--radius-xl is upstream's .75rem (12px), so rounded-xl is 12px", () => {
+		expect({local: token(styles, "--radius-xl"), upstream: token(upstream, "--radius-xl")}).toStrictEqual({
+			local: "0.75rem",
+			upstream: ".75rem",
+		});
+	});
 });
