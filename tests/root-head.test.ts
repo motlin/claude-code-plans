@@ -24,10 +24,10 @@ describe("root route head", () => {
 		expect(svg).not.toContain("width='32' height='32'");
 	});
 
-	it("marks the document comfortable, upstream's web shell density", () => {
+	it("marks the document comfortable, upstream's web shell density, with the fizzy-lake parts", () => {
 		const source = readFileSync("src/routes/__root.tsx", "utf8");
 		expect(source.match(/<html [^>]*>/g)).toStrictEqual([
-			'<html lang="en" data-density="comfortable" suppressHydrationWarning>',
+			'<html lang="en" data-density="comfortable" data-cds-fizzy-lake={FIZZY_LAKE_ATTRIBUTE} suppressHydrationWarning>',
 		]);
 	});
 });

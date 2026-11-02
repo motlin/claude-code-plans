@@ -8,7 +8,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {FileRefsProvider} from "../src/components/file-refs-context";
 import {SessionChat} from "../src/components/session-chat";
 import {ToastProvider} from "../src/components/toast";
-import {DensityScope} from "../src/components/ui/density";
+import {CompactScope} from "./fizzy-lake-off";
 import {type TranscriptActions, TranscriptActionsContext} from "../src/components/transcript-actions-context";
 import {writeClipboardText} from "../src/lib/clipboard";
 import type {FileRef} from "../src/lib/file-refs";
@@ -97,7 +97,7 @@ function renderChat(wrapper?: (children: ReactNode) => ReactNode, records: unkno
 		/>
 	);
 	// The transcript sits in the compact main column.
-	return render(<DensityScope density="compact">{wrapper ? wrapper(chat) : chat}</DensityScope>).container;
+	return render(<CompactScope>{wrapper ? wrapper(chat) : chat}</CompactScope>).container;
 }
 
 function openMenuOn(element: Element): HTMLElement {

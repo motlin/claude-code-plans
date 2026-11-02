@@ -5,7 +5,7 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing
 import type {useNavigate} from "@tanstack/react-router";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
-import {DensityScope} from "../src/components/ui/density";
+import {CompactScope} from "./fizzy-lake-off";
 import {FileMentionMenu} from "../src/components/file-mention-menu";
 import {customizeMcpServersQueryOptions, type McpServerSummary} from "../src/lib/api/customize";
 import {toConnectorSlug} from "../src/lib/customize/mcp-tool-permissions";
@@ -44,9 +44,9 @@ function renderComposer(
 	const onSend = vi.fn<OnSend>();
 	// The composer sits in the compact main column.
 	render(
-		<DensityScope density="compact">
+		<CompactScope>
 			<Composer variant="session" draftKey="session-alice" onSend={onSend} chin={CHIN} {...extra} />
-		</DensityScope>,
+		</CompactScope>,
 	);
 	return onSend;
 }
@@ -226,7 +226,7 @@ describe("Composer mode menu", () => {
 
 function renderHomeComposer() {
 	render(
-		<DensityScope density="compact">
+		<CompactScope>
 			<Composer
 				variant="home"
 				draftKey="home-dana"
@@ -234,7 +234,7 @@ function renderHomeComposer() {
 				chin={CHIN}
 				environment={<span>Dana's project</span>}
 			/>
-		</DensityScope>,
+		</CompactScope>,
 	);
 }
 
@@ -808,7 +808,7 @@ describe("Composer model trigger Fast word and live status", () => {
 		const bar = {label: triggerParts().label, status: liveStatus()};
 		cleanup();
 		render(
-			<DensityScope density="compact">
+			<CompactScope>
 				<Composer
 					variant="home"
 					draftKey="home-erin"
@@ -816,7 +816,7 @@ describe("Composer model trigger Fast word and live status", () => {
 					chin={{...CHIN, fastMode: true}}
 					environment={<span>Erin's project</span>}
 				/>
-			</DensityScope>,
+			</CompactScope>,
 		);
 
 		expect({bar, fast: {label: triggerParts().label, status: liveStatus()}}).toStrictEqual({

@@ -19,6 +19,7 @@ import {AppFrame} from "../components/app-frame";
 import {NotFoundContent} from "../components/not-found-content";
 import {AppShellFallback} from "../components/app-shell-fallback";
 import {useMarkAppMounted} from "../lib/app-mounted";
+import {FIZZY_LAKE_ATTRIBUTE} from "../lib/fizzy-lake";
 import {isStaleChunkError, reloadForStaleChunk} from "../lib/stale-chunk-reload";
 import {getShellChinLabels} from "../lib/shell-chin-store";
 import {ChunkPrefetch} from "../components/chunk-prefetch";
@@ -294,7 +295,7 @@ function RootDocument({children}: Readonly<{children: ReactNode}>) {
 		// before React loads, which is by definition an attribute the server markup
 		// did not carry; suppressHydrationWarning keeps that expected difference from
 		// logging a hydration error.
-		<html lang="en" data-density="comfortable" suppressHydrationWarning>
+		<html lang="en" data-density="comfortable" data-cds-fizzy-lake={FIZZY_LAKE_ATTRIBUTE} suppressHydrationWarning>
 			<head>
 				<HeadContent />
 				{/* Static constant, no interpolation: this is the only way to run the

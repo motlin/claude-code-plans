@@ -1,5 +1,6 @@
 import {createContext, useContext} from "react";
 
+import {useFizzyLake} from "../../lib/fizzy-lake";
 import {useCoarsePointer} from "../../lib/use-phone-sheet";
 
 export type Density = "compact" | "comfortable";
@@ -21,12 +22,13 @@ export function useDensity(): Density {
 
 /**
  * Resolves a scope's density in upstream `si`'s order: an ancestor override, then
- * comfortable on a coarse pointer (live, `false` on the server), then the scope's own
- * density, then the inherited one.
+ * comfortable under fizzy-lake `panels`, then comfortable on a coarse pointer (live,
+ * `false` on the server), then the scope's own density, then the inherited one.
  */
 export function useScopeDensity(density?: Density): Density {
 	const override = useContext(DensityOverrideContext);
+	const panels = useFizzyLake("panels");
 	const coarse = useCoarsePointer();
 	const inherited = useContext(DensityContext);
-	return override ?? (coarse ? "comfortable" : (density ?? inherited));
+	return override ?? (panels || coarse ? "comfortable" : (density ?? inherited));
 }

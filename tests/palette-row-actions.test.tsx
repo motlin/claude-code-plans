@@ -23,6 +23,7 @@ import {pin, readPinState} from "../src/lib/pin-store";
 import {useSessionRenameRequest} from "../src/lib/session-rename-request";
 import {clearAll, hasUnseenWork} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
+import {PanelsOff} from "./fizzy-lake-off";
 
 const renameRequests: string[] = [];
 
@@ -98,7 +99,11 @@ async function openPalette(
 		history: createMemoryHistory({initialEntries: ["/"]}),
 	});
 	await router.load();
-	render(<RouterProvider router={router} />);
+	render(
+		<PanelsOff>
+			<RouterProvider router={router} />
+		</PanelsOff>,
+	);
 	const composer = await screen.findByRole("textbox", {name: "Composer"});
 	composer.focus();
 	fireEvent.keyDown(composer, {key: "k", code: "KeyK", metaKey: true});

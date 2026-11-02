@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {FIZZY_LAKE_PARTS, FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 import {AppFrame} from "../src/components/app-frame";
 import {useDensity} from "../src/components/ui/density-context";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
@@ -102,18 +103,20 @@ function PersistedFrame() {
 	);
 }
 
-async function renderFrame() {
+async function renderFrame(fizzyLakeParts: readonly FizzyLakePart[] = FIZZY_LAKE_PARTS) {
 	const queryClient = seedQueryClient();
 	const rootRoute = createRootRoute({
 		component: () => (
-			<QueryClientProvider client={queryClient}>
-				<ToastProvider>
-					<SettingsProvider>
-						<PersistedFrame />
-						<PaletteProbe />
-					</SettingsProvider>
-				</ToastProvider>
-			</QueryClientProvider>
+			<FizzyLakeContext.Provider value={fizzyLakeParts}>
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						<SettingsProvider>
+							<PersistedFrame />
+							<PaletteProbe />
+						</SettingsProvider>
+					</ToastProvider>
+				</QueryClientProvider>
+			</FizzyLakeContext.Provider>
 		),
 	});
 	const homeRoute = createRoute({
@@ -185,7 +188,7 @@ beforeEach(() => {
 });
 
 describe("density scopes", () => {
-	it("marks <main> compact with upstream's epitaxy-root base text classes and leaves the frame to inherit <html>", async () => {
+	it("marks <main> comfortable under fizzy-lake panels, upstream's live look, with the epitaxy-root base text classes", async () => {
 		mockViewport(1440);
 		const {container} = await renderFrame();
 		const main = mainElement(container);
@@ -193,15 +196,31 @@ describe("density scopes", () => {
 		expect({
 			frame: frameRoot(container).getAttribute("data-density"),
 			main: main.getAttribute("data-density"),
+			children: screen.getByTestId("density-probe").textContent,
 			text: main.className
 				.split(" ")
 				.filter((name) => ["text-body", "text-primary", "break-words", "select-none"].includes(name)),
-		}).toStrictEqual({frame: null, main: "compact", text: ["text-body", "text-primary", "break-words"]});
+		}).toStrictEqual({
+			frame: null,
+			main: "comfortable",
+			children: "comfortable",
+			text: ["text-body", "text-primary", "break-words"],
+		});
 	});
 
-	it("provides the compact density to <main>'s children, so their menus and portals open compact", async () => {
+	it("marks <main> compact without panels and leaves the frame to inherit <html>", async () => {
 		mockViewport(1440);
-		await renderFrame();
+		const {container} = await renderFrame(["color", "type"]);
+
+		expect({
+			frame: frameRoot(container).getAttribute("data-density"),
+			main: mainElement(container).getAttribute("data-density"),
+		}).toStrictEqual({frame: null, main: "compact"});
+	});
+
+	it("provides the compact density to <main>'s children without panels, so their menus and portals open compact", async () => {
+		mockViewport(1440);
+		await renderFrame(["color", "type"]);
 
 		expect(screen.getByTestId("density-probe").textContent).toBe("compact");
 	});

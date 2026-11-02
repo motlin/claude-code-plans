@@ -7,6 +7,7 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionHoverCard} from "../src/components/session-hover-card";
 import {ToastProvider} from "../src/components/toast";
 import {DensityOverride, DensityScope} from "../src/components/ui/density";
+import {CompactScope} from "./fizzy-lake-off";
 import {useDensity} from "../src/components/ui/density-context";
 import {Menu, MenuContent, MenuItem, MenuTrigger, type MenuContentProps} from "../src/components/ui/menu";
 import {ViewportPortal} from "../src/components/viewport-portal";
@@ -89,9 +90,9 @@ describe("DensityScope", () => {
 		render(
 			<>
 				<DensityProbe />
-				<DensityScope density="compact">
+				<CompactScope>
 					<DensityProbe />
-				</DensityScope>
+				</CompactScope>
 			</>,
 		);
 		const [outer, inner] = screen.getAllByTestId("probe");
@@ -121,9 +122,9 @@ describe("DensityScope on a coarse pointer", () => {
 	it("forces a compact scope comfortable, as upstream's si does under (pointer: coarse)", () => {
 		stubPointer(true);
 		render(
-			<DensityScope density="compact">
+			<CompactScope>
 				<DensityProbe />
-			</DensityScope>,
+			</CompactScope>,
 		);
 
 		expect(scopeOf(screen.getByTestId("probe"))).toStrictEqual({
@@ -135,9 +136,9 @@ describe("DensityScope on a coarse pointer", () => {
 	it("keeps the compact scope on a fine pointer", () => {
 		stubPointer(false);
 		render(
-			<DensityScope density="compact">
+			<CompactScope>
 				<DensityProbe />
-			</DensityScope>,
+			</CompactScope>,
 		);
 
 		expect(scopeOf(screen.getByTestId("probe"))).toStrictEqual({
@@ -165,9 +166,9 @@ describe("DensityScope on a coarse pointer", () => {
 	it("switches live when the pointer type changes, without remounting", () => {
 		const pointer = stubPointer(false);
 		render(
-			<DensityScope density="compact">
+			<CompactScope>
 				<DensityProbe />
-			</DensityScope>,
+			</CompactScope>,
 		);
 		const before = screen.getByTestId("probe");
 		act(() => {
@@ -189,7 +190,7 @@ describe("DensityScope on a coarse pointer", () => {
 		render(
 			<QueryClientProvider client={queryClient}>
 				<ToastProvider>
-					<DensityScope density="compact">
+					<CompactScope>
 						<SessionHoverCard
 							sessionId="s1"
 							title="Ship it"
@@ -200,7 +201,7 @@ describe("DensityScope on a coarse pointer", () => {
 						>
 							Ship it
 						</SessionHoverCard>
-					</DensityScope>
+					</CompactScope>
 				</ToastProvider>
 			</QueryClientProvider>,
 		);
@@ -225,9 +226,9 @@ describe("DensityScope on a coarse pointer", () => {
 describe("portals inherit their opener's density", () => {
 	it("opens a menu from the compact main column under a compact portal with 24px rows", async () => {
 		render(
-			<DensityScope density="compact">
+			<CompactScope>
 				<RowMenu />
-			</DensityScope>,
+			</CompactScope>,
 		);
 
 		expect(await openMenu()).toStrictEqual({scope: "compact", item: ["h-6", "text-[13px]/[19px]"]});
@@ -241,9 +242,9 @@ describe("portals inherit their opener's density", () => {
 
 	it("lets an explicit density prop win inside main, as upstream forces the session header menu comfortable", async () => {
 		render(
-			<DensityScope density="compact">
+			<CompactScope>
 				<RowMenu density="comfortable" />
-			</DensityScope>,
+			</CompactScope>,
 		);
 
 		expect(await openMenu()).toStrictEqual({scope: "comfortable", item: ["h-8", "text-[14px]/[20px]"]});
@@ -255,7 +256,7 @@ describe("portals inherit their opener's density", () => {
 		render(
 			<QueryClientProvider client={queryClient}>
 				<ToastProvider>
-					<DensityScope density="compact">
+					<CompactScope>
 						<SessionHoverCard
 							sessionId="s1"
 							title="Ship it"
@@ -266,7 +267,7 @@ describe("portals inherit their opener's density", () => {
 						>
 							Ship it
 						</SessionHoverCard>
-					</DensityScope>
+					</CompactScope>
 				</ToastProvider>
 			</QueryClientProvider>,
 		);
@@ -292,11 +293,11 @@ describe("portals inherit their opener's density", () => {
 
 	it("wraps viewport-portaled tooltips in the opener's density", () => {
 		render(
-			<DensityScope density="compact">
+			<CompactScope>
 				<ViewportPortal>
 					<span data-testid="tip">Tip</span>
 				</ViewportPortal>
-			</DensityScope>,
+			</CompactScope>,
 		);
 		const tip = screen.getByTestId("tip");
 

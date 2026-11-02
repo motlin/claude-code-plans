@@ -22,7 +22,8 @@ import {
 } from "../src/components/ui/menu";
 import {preloadMenuSheet} from "../src/components/ui/menu-sheet-loader";
 import {submenuAnchor} from "../src/components/ui/menu-anchor";
-import {DensityOverride, DensityScope} from "../src/components/ui/density";
+import {DensityOverride} from "../src/components/ui/density";
+import {CompactScope, PanelsOff} from "./fizzy-lake-off";
 import {type Density} from "../src/components/ui/density-context";
 
 /* The sheet presentation is a lazy chunk; load it up front so sheet tests render synchronously, as on a phone. */
@@ -73,14 +74,14 @@ function RowMenuBody({onCopy, onDelete}: {onCopy: () => void; onDelete: () => vo
 
 function renderDropdown(handlers = {onCopy: vi.fn<() => void>(), onDelete: vi.fn<() => void>()}) {
 	render(
-		<DensityScope density="compact">
+		<CompactScope>
 			<Menu>
 				<MenuTrigger aria-label="More options">...</MenuTrigger>
 				<MenuContent>
 					<RowMenuBody {...handlers} />
 				</MenuContent>
 			</Menu>
-		</DensityScope>,
+		</CompactScope>,
 	);
 	return handlers;
 }
@@ -189,12 +190,14 @@ describe("Menu", () => {
 	it("sizes leading icons like upstream's size:auto glyphs: 20px in comfortable menus, 16px in compact", async () => {
 		const glyphSize = async (density: "compact" | "comfortable") => {
 			render(
-				<Menu>
-					<MenuTrigger aria-label="More options">...</MenuTrigger>
-					<MenuContent density={density}>
-						<MenuItem icon={<svg data-testid="glyph" />}>Routines</MenuItem>
-					</MenuContent>
-				</Menu>,
+				<PanelsOff>
+					<Menu>
+						<MenuTrigger aria-label="More options">...</MenuTrigger>
+						<MenuContent density={density}>
+							<MenuItem icon={<svg data-testid="glyph" />}>Routines</MenuItem>
+						</MenuContent>
+					</Menu>
+				</PanelsOff>,
 			);
 			await openDropdown();
 			const slot = screen.getByTestId("glyph").parentElement;
@@ -373,19 +376,21 @@ describe("Menu", () => {
 
 	it("puts a radio row's check slot before its digit, both in one first-line trailing wrapper", async () => {
 		render(
-			<Menu defaultOpen>
-				<MenuTrigger aria-label="Mode">Mode</MenuTrigger>
-				<MenuContent density="compact">
-					<MenuRadioGroup value="auto">
-						<MenuRadioItem value="auto" accelerator="1">
-							Auto
-						</MenuRadioItem>
-						<MenuRadioItem value="plan" accelerator="2">
-							Plan
-						</MenuRadioItem>
-					</MenuRadioGroup>
-				</MenuContent>
-			</Menu>,
+			<PanelsOff>
+				<Menu defaultOpen>
+					<MenuTrigger aria-label="Mode">Mode</MenuTrigger>
+					<MenuContent density="compact">
+						<MenuRadioGroup value="auto">
+							<MenuRadioItem value="auto" accelerator="1">
+								Auto
+							</MenuRadioItem>
+							<MenuRadioItem value="plan" accelerator="2">
+								Plan
+							</MenuRadioItem>
+						</MenuRadioGroup>
+					</MenuContent>
+				</Menu>
+			</PanelsOff>,
 		);
 		await flush();
 
@@ -582,7 +587,7 @@ describe("MenuItem with a disabled reason", () => {
 
 	function renderReasonMenu() {
 		render(
-			<DensityScope density="compact">
+			<CompactScope>
 				<Menu>
 					<MenuTrigger aria-label="More options">...</MenuTrigger>
 					<MenuContent>
@@ -593,7 +598,7 @@ describe("MenuItem with a disabled reason", () => {
 						<MenuItem onSelect={() => {}}>Archive</MenuItem>
 					</MenuContent>
 				</Menu>
-			</DensityScope>,
+			</CompactScope>,
 		);
 	}
 
@@ -760,18 +765,20 @@ describe("MenuContent on a coarse pointer", () => {
 
 	async function openCompactMenu() {
 		render(
-			<Menu>
-				<MenuTrigger aria-label="More options">...</MenuTrigger>
-				<MenuContent density="compact">
-					<MenuItem icon={<svg data-testid="glyph" />}>Routines</MenuItem>
-					<MenuSub>
-						<MenuSubTrigger>Status</MenuSubTrigger>
-						<MenuSubContent>
-							<MenuItem>Active</MenuItem>
-						</MenuSubContent>
-					</MenuSub>
-				</MenuContent>
-			</Menu>,
+			<PanelsOff>
+				<Menu>
+					<MenuTrigger aria-label="More options">...</MenuTrigger>
+					<MenuContent density="compact">
+						<MenuItem icon={<svg data-testid="glyph" />}>Routines</MenuItem>
+						<MenuSub>
+							<MenuSubTrigger>Status</MenuSubTrigger>
+							<MenuSubContent>
+								<MenuItem>Active</MenuItem>
+							</MenuSubContent>
+						</MenuSub>
+					</MenuContent>
+				</Menu>
+			</PanelsOff>,
 		);
 		await openDropdown();
 		const trigger = screen.getByRole("menuitem", {name: /Status/});
@@ -1096,7 +1103,11 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 				</MenuContent>
 			</Menu>
 		);
-		render(override === undefined ? menu : <DensityOverride density={override}>{menu}</DensityOverride>);
+		render(
+			<PanelsOff>
+				{override === undefined ? menu : <DensityOverride density={override}>{menu}</DensityOverride>}
+			</PanelsOff>,
+		);
 		const popup = await openDropdown();
 		const glyphSlot = screen.getByTestId("glyph").parentElement;
 		const shortcut = screen.getByRole("menuitem", {name: /Copy link/}).lastElementChild;

@@ -4,7 +4,7 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {useState} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {DensityScope} from "../src/components/ui/density";
+import {CompactScope} from "./fizzy-lake-off";
 import {Menu, MenuContent, MenuItem, MenuSwitchItem, MenuTrigger} from "../src/components/ui/menu";
 import {MenuSwitch} from "../src/components/ui/menu-switch";
 
@@ -114,7 +114,7 @@ describe("MenuSwitch", () => {
 function SwitchMenu({onChange, disabled = false}: {onChange: (checked: boolean) => void; disabled?: boolean}) {
 	const [on, setOn] = useState(false);
 	return (
-		<DensityScope density="compact">
+		<CompactScope>
 			<Menu>
 				<MenuTrigger aria-label="Folder">...</MenuTrigger>
 				<MenuContent>
@@ -131,7 +131,7 @@ function SwitchMenu({onChange, disabled = false}: {onChange: (checked: boolean) 
 					</MenuSwitchItem>
 				</MenuContent>
 			</Menu>
-		</DensityScope>
+		</CompactScope>
 	);
 }
 

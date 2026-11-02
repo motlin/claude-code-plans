@@ -14,6 +14,7 @@ import {
 	isMentionSuppressed,
 } from "../src/lib/file-mentions";
 import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
+import {PanelsOff} from "./fizzy-lake-off";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.
 beforeAll(async () => {
@@ -219,7 +220,11 @@ const searchUrl = (query: string) => `/api/sessions/session-alice/files?q=${enco
 
 function setup({mentionSessionId}: {mentionSessionId?: string} = {mentionSessionId: "session-alice"}) {
 	const onSend = vi.fn<(prompt: string) => void>();
-	render(<Composer variant="session" draftKey="session-alice" onSend={onSend} mentionSessionId={mentionSessionId} />);
+	render(
+		<PanelsOff>
+			<Composer variant="session" draftKey="session-alice" onSend={onSend} mentionSessionId={mentionSessionId} />
+		</PanelsOff>,
+	);
 	const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
 	return {textarea, onSend};
 }
