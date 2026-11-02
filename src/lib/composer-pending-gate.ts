@@ -23,16 +23,19 @@ export function composerPendingGate({
 	hookQuestion,
 	transcriptQuestion,
 	awaitingPermission,
+	questionSent = false,
 }: {
 	/** The hook-reported pending question; undefined while it has not loaded. */
 	hookQuestion: PendingQuestion | null | undefined;
 	transcriptQuestion: boolean;
 	awaitingPermission: boolean;
+	/** This page has sent the pending question's answer: upstream consumes the request at submit. */
+	questionSent?: boolean;
 }): ComposerPendingGate {
-	if (hookQuestion !== null && hookQuestion !== undefined) {
+	if (!questionSent && hookQuestion !== null && hookQuestion !== undefined) {
 		return {kind: "question", toolUseId: hookQuestion.toolUseId, questions: hookQuestion.questions};
 	}
-	if (transcriptQuestion) return {kind: "held-question"};
+	if (!questionSent && transcriptQuestion) return {kind: "held-question"};
 	if (awaitingPermission) return {kind: "permission"};
 	return {kind: "none"};
 }

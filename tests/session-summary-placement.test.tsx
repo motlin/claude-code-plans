@@ -7,6 +7,7 @@ import type {ReactNode} from "react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {pendingQuestionQueryOptions} from "../src/lib/api/pending-question";
+import {clearComposerQueues} from "../src/lib/composer-queue";
 import {clearSentQuestionCard} from "../src/lib/question-card-store";
 import {SessionPage} from "../src/components/session-page";
 import {SettingsProvider} from "../src/components/settings-provider";
@@ -633,6 +634,7 @@ describe("SessionPage dock composition", () => {
 		afterEach(() => {
 			// The sent store is module state: an answer sent in one test must not leave the next one a receipt.
 			clearSentQuestionCard("toolu_question");
+			clearComposerQueues();
 		});
 
 		async function renderWaitingQuestion(herdr: {panes: (typeof herdrPane)[]; writesEnabled: boolean}) {
@@ -676,6 +678,38 @@ describe("SessionPage dock composition", () => {
 				footnote: null,
 				receipt: "Ship it?No",
 				posts: [{sessionId: SESSION_ID, toolUseId: "toolu_question", answers: [{selected: [1]}]}],
+			});
+		});
+
+		it("stops gating the composer and working line once the answer is sending, holding a typed prompt instead of a second key stream", async () => {
+			const fetchMock = vi.fn<typeof fetch>(async () => new Promise<Response>(() => {}));
+			vi.stubGlobal("fetch", fetchMock);
+			const card = await renderWaitingQuestion({panes: [herdrPane], writesEnabled: true});
+
+			fireEvent.click(card.getByRole("button", {name: /^No/}));
+			fireEvent.click(card.getByRole("button", {name: /^Submit/}));
+			await flush();
+			const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+			fireEvent.change(textarea, {target: {value: "hi"}});
+			fireEvent.keyDown(textarea, {key: "Enter"});
+			await flush();
+
+			const posts = (path: string) =>
+				fetchMock.mock.calls
+					.filter(([input]) => String(input) === path)
+					.map(([, init]) => JSON.parse(String(init?.body)) as unknown);
+			expect({
+				questionPosts: posts("/api/herdr/question"),
+				promptPosts: posts("/api/herdr/prompt"),
+				heldSteer: screen.queryAllByText("hi").length,
+				workingLine: document.querySelector(
+					'[data-testid="code-working-line"] [data-cds="TurnStatus"][data-state="busy"]',
+				)?.textContent,
+			}).toStrictEqual({
+				questionPosts: [{sessionId: SESSION_ID, toolUseId: "toolu_question", answers: [{selected: [1]}]}],
+				promptPosts: [],
+				heldSteer: 1,
+				workingLine: "Sending…running",
 			});
 		});
 

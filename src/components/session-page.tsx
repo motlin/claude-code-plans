@@ -691,6 +691,9 @@ function SessionView({
 	);
 	// Upstream draws a pending question inline as its card; one in the transcript answers there while the session runs.
 	const inlineQuestion = isActive ? pendingQuestion : null;
+	const inlineQuestionSent = useQuestionCardSent(inlineQuestion?.toolUseId ?? "");
+	// Upstream consumes the question at submit: its gates release while the pane still types the answer.
+	const questionSent = (hookQuestionSent && unansweredHookQuestion !== null) || inlineQuestionSent;
 	const chatStream = useChatStream();
 	const toast = useToast();
 	const forkSession = useSessionFork();
@@ -859,9 +862,12 @@ function SessionView({
 		hookQuestion: unansweredHookQuestion,
 		transcriptQuestion: inlineQuestion !== null,
 		awaitingPermission,
+		questionSent,
 	});
-	const paneBusy = workingMarkerState.status !== "idle" || liveHerdrPrompt.state.isPending;
-	const queueBusy = paneBusy || gateHoldsQueue(composerGate);
+	// The pane shows the dialog until the answer's result lands, so a prompt typed meanwhile is held mid-turn.
+	const paneBusy = workingMarkerState.status !== "idle" || liveHerdrPrompt.state.isPending || questionSent;
+	const dialogOpen = gateHoldsQueue(composerGate) || questionSent;
+	const queueBusy = paneBusy || dialogOpen;
 	const requestSendNowInterrupt = useCallback(async () => {
 		onInterrupt(Date.now());
 		await sendHerdrInterrupt(sessionId, false).catch(onInterruptError);
@@ -872,7 +878,7 @@ function SessionView({
 	const composerQueue = useComposerQueue({
 		sessionId,
 		busy: queueBusy,
-		dialogOpen: gateHoldsQueue(composerGate),
+		dialogOpen,
 		deliver: liveHerdrPrompt.send,
 		interrupt: requestSendNowInterrupt,
 	});
@@ -1144,8 +1150,9 @@ function SessionView({
 		(promptBehavior.usesHerdr && steeredPrompts(queuedPrompts).length > 0);
 	const workingLineQuiet = tailMarkerQuiet(workingMarkerState, inFlightRow);
 	const runningTaskCount = backgroundTasks.running.length;
-	// Upstream's "sending" phase lasts until the prompt reaches the transcript.
-	const promptSending = liveHerdrPrompt.state.phase === "sending" || liveHerdrPrompt.state.phase === "sent";
+	// Upstream's "sending" phase lasts until the prompt reaches the transcript, or a sent answer's result lands.
+	const promptSending =
+		liveHerdrPrompt.state.phase === "sending" || liveHerdrPrompt.state.phase === "sent" || questionSent;
 	const workingLine = useCallback(
 		(inline: boolean) => (
 			<WorkingMarker

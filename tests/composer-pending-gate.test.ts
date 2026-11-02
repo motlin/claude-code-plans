@@ -42,6 +42,17 @@ describe("composerPendingGate", () => {
 		).toStrictEqual({kind: "permission"});
 	});
 
+	it("is none once this page has sent the question's answer, as upstream consumes the request at submit", () => {
+		expect(
+			composerPendingGate({
+				hookQuestion: {toolUseId: "toolu_alice", questions: [COLOR]},
+				transcriptQuestion: true,
+				awaitingPermission: false,
+				questionSent: true,
+			}),
+		).toStrictEqual({kind: "none"});
+	});
+
 	it("is none with nothing waiting", () => {
 		expect(
 			composerPendingGate({hookQuestion: null, transcriptQuestion: false, awaitingPermission: false}),
