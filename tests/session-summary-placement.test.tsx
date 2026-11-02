@@ -686,6 +686,34 @@ describe("SessionPage dock composition", () => {
 			});
 		});
 
+		it.each([
+			["the page body", () => document.body],
+			["the card root", () => screen.getByRole("group", {name: "Ship it?"})],
+			["an answer button", () => screen.getByRole("button", {name: /^No/})],
+			["the empty composer", () => screen.getByRole("textbox", {name: "Prompt"})],
+		])("sends the picked answer on ⌘⏎ with focus on %s", async (_where, focusTarget) => {
+			const fetchMock = vi.fn<typeof fetch>(async (input) =>
+				String(input) === "/api/herdr/question" ? Response.json({ok: true}) : new Promise<Response>(() => {}),
+			);
+			vi.stubGlobal("fetch", fetchMock);
+			const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+			const card = await renderWaitingQuestion({panes: [herdrPane], writesEnabled: true});
+			fireEvent.click(card.getByRole("button", {name: /^No/}));
+			const target = focusTarget();
+			if (target === document.body) (document.activeElement as HTMLElement | null)?.blur();
+			else target.focus();
+			now.mockReturnValue(5000);
+			fireEvent.keyDown(target, {key: "Enter", metaKey: true});
+			await flush();
+			now.mockRestore();
+
+			expect(
+				fetchMock.mock.calls
+					.filter(([input]) => String(input) === "/api/herdr/question")
+					.map(([, init]) => JSON.parse(String(init?.body)) as unknown),
+			).toStrictEqual([{sessionId: SESSION_ID, toolUseId: "toolu_question", answers: [{selected: [1]}]}]);
+		});
+
 		it("stops gating the composer and working line once the answer is sending, holding a typed prompt instead of a second key stream", async () => {
 			const fetchMock = vi.fn<typeof fetch>(async () => new Promise<Response>(() => {}));
 			vi.stubGlobal("fetch", fetchMock);
