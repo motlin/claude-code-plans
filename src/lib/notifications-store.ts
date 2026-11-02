@@ -118,13 +118,28 @@ function enforceMaxEntries(): void {
  * notifications outright when it resumes working.
  */
 export function clearNotificationsForSession(sessionId: string): void {
+	broadcastNotificationsCleared(takeNotificationsForSession(sessionId));
+}
+
+/**
+ * Drop every notification for the session without broadcasting, returning the
+ * removed ids, so a caller can broadcast the session's new summary first and
+ * then {@link broadcastNotificationsCleared}.
+ */
+export function takeNotificationsForSession(sessionId: string): string[] {
+	const ids: string[] = [];
 	for (const [id, entry] of store) {
 		if (entry.sessionId === sessionId) {
 			store.delete(id);
 			readIds.delete(id);
-			broadcastTyped(DOMAIN_EVENTS.NOTIFICATION_CLEARED, {id});
+			ids.push(id);
 		}
 	}
+	return ids;
+}
+
+export function broadcastNotificationsCleared(ids: readonly string[]): void {
+	for (const id of ids) broadcastTyped(DOMAIN_EVENTS.NOTIFICATION_CLEARED, {id});
 }
 
 /** Drop the session's tool permission prompt once its turn has ended (Stop or SessionEnd). */

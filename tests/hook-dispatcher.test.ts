@@ -8,6 +8,7 @@ import {dispatchHookEvent} from "../src/lib/hook-dispatcher";
 import {DOMAIN_EVENTS, SSE_EVENTS} from "../src/lib/hook-events";
 import type {HookBackgroundTaskPayload, HookEvent, HookSessionCronPayload} from "../src/lib/hook-events";
 import {addNotification, getNotifications, clearAllNotifications} from "../src/lib/notifications-store";
+import {addClient, removeClient} from "../src/lib/sse-broadcast";
 import {clearLiveSubagents} from "../src/lib/live-subagent-store";
 import * as schema from "../src/lib/db/schema";
 import {getSessionViewedState} from "../src/lib/db/viewed-state";
@@ -2401,6 +2402,165 @@ describe("dispatchHookEvent for the turn-failure, denial, model-switch and elici
 				{sessionId: "abc-123", state: "working"},
 			],
 			notifications: [],
+		});
+	});
+});
+
+describe("dispatchHookEvent re-broadcasts the session summary when a working hook clears what it waited on", () => {
+	const decoder = new TextDecoder();
+
+	async function indexSession(sessionId: string) {
+		const projectDir = join(testDir, "-Users-craig-projects-app");
+		mkdirSync(projectDir, {recursive: true});
+		writeFileSync(
+			join(projectDir, "sessions-index.json"),
+			makeSessionsIndex([
+				{
+					sessionId,
+					fullPath: join(projectDir, `${sessionId}.jsonl`),
+					fileMtime: 946_598_400_000,
+					firstPrompt: "Ship feature X",
+					messageCount: 3,
+					projectPath: "/Users/craig/projects/app",
+				},
+			]),
+		);
+		await indexSessionsIndex(db.index, projectDir, "-Users-craig-projects-app");
+	}
+
+	/** Record dispatcher broadcasts and global SSE broadcasts (notification:cleared) on one timeline. */
+	async function dispatchAll(events: HookEvent[]) {
+		const timeline: Broadcast[] = [];
+		const client = {
+			enqueue: (chunk: Uint8Array) => {
+				const [eventLine, dataLine] = decoder.decode(chunk).split("\n");
+				timeline.push({
+					type: (eventLine ?? "").replace("event: ", ""),
+					data: JSON.parse((dataLine ?? "").replace("data: ", "")) as Record<string, unknown>,
+				});
+			},
+		} as unknown as ReadableStreamDefaultController;
+		const {store} = makeStore();
+		addClient(client);
+		try {
+			for (const event of events) {
+				await dispatchHookEvent({
+					event,
+					db: db.index,
+					store,
+					broadcast: (type, data) => timeline.push({type, data}),
+					reportHerdrState: () => {},
+				});
+			}
+		} finally {
+			removeClient(client);
+		}
+		return timeline;
+	}
+
+	it("PostToolUse after a permission prompt broadcasts session:updated without awaitingPermission before notification:cleared", async () => {
+		clearAllNotifications();
+		const sessionId = "permission-cleared-601";
+		await indexSession(sessionId);
+		const base = {
+			session_id: sessionId,
+			transcript_path: `/tmp/${sessionId}.jsonl`,
+			cwd: "/Users/craig/projects/app",
+		};
+		const timeline = await dispatchAll([
+			{...base, hook_event_name: "SessionStart", source: "startup"},
+			{
+				...base,
+				hook_event_name: "Notification",
+				message: "Claude needs your permission to use Bash",
+				notification_type: "permission_prompt",
+			},
+			{
+				...base,
+				hook_event_name: "PostToolUse",
+				tool_name: "Bash",
+				tool_input: {command: "ls"},
+				tool_use_id: "toolu_601",
+			},
+		]);
+
+		const relevant = timeline
+			.filter((b) => b.type === DOMAIN_EVENTS.SESSION_UPDATED || b.type === DOMAIN_EVENTS.NOTIFICATION_CLEARED)
+			.map((b) => {
+				if (b.type === DOMAIN_EVENTS.NOTIFICATION_CLEARED) return {type: b.type};
+				const session = b.data["session"] as {
+					awaitingPermission?: boolean;
+					state: string;
+				};
+				return {
+					type: b.type,
+					state: session.state,
+					awaitingPermission: session.awaitingPermission,
+				};
+			});
+		expect(relevant).toStrictEqual([
+			{
+				type: DOMAIN_EVENTS.SESSION_UPDATED,
+				state: "working",
+				awaitingPermission: undefined,
+			},
+			{type: DOMAIN_EVENTS.NOTIFICATION_CLEARED},
+		]);
+		clearAllNotifications();
+	});
+
+	it("PostToolUse(AskUserQuestion) after its PreToolUse broadcasts session:updated with a non-waiting state", async () => {
+		clearAllNotifications();
+		const sessionId = "question-cleared-602";
+		await indexSession(sessionId);
+		const base = {
+			session_id: sessionId,
+			transcript_path: `/tmp/${sessionId}.jsonl`,
+			cwd: "/Users/craig/projects/app",
+		};
+		const toolInput = {
+			questions: [
+				{
+					question: "Which?",
+					header: "Pick",
+					multiSelect: false,
+					options: [
+						{label: "A", description: "a"},
+						{label: "B", description: "b"},
+					],
+				},
+			],
+		};
+		const timeline = await dispatchAll([
+			{...base, hook_event_name: "SessionStart", source: "startup"},
+			{
+				...base,
+				hook_event_name: "PreToolUse",
+				tool_name: "AskUserQuestion",
+				tool_input: toolInput,
+				tool_use_id: "toolu_602",
+			},
+			{
+				...base,
+				hook_event_name: "PostToolUse",
+				tool_name: "AskUserQuestion",
+				tool_input: toolInput,
+				tool_use_id: "toolu_602",
+			},
+		]);
+
+		const questionClearedIndex = timeline.findIndex(
+			(b) => b.type === DOMAIN_EVENTS.SESSION_PENDING_QUESTION_CHANGED && b.data["pendingQuestion"] === null,
+		);
+		const states = timeline
+			.filter((b, index) => b.type === DOMAIN_EVENTS.SESSION_UPDATED && index > questionClearedIndex - 1)
+			.map((b) => (b.data["session"] as {state: string}).state);
+		expect({
+			questionCleared: questionClearedIndex >= 0,
+			states,
+		}).toStrictEqual({
+			questionCleared: true,
+			states: ["working"],
 		});
 	});
 });

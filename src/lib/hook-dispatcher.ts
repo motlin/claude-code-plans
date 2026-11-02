@@ -37,7 +37,12 @@ import {
 	type ReviewOfferedPayload,
 } from "./hook-events";
 import {buildSessionSummaryPayloadFromDb, toActiveSessionPayload} from "./session-summary";
-import {addNotification, clearNotificationsForSession, clearPermissionPromptsForSession} from "./notifications-store";
+import {
+	addNotification,
+	broadcastNotificationsCleared,
+	clearPermissionPromptsForSession,
+	takeNotificationsForSession,
+} from "./notifications-store";
 import {addLiveSubagent, endLiveSubagent, reconcileStoredLiveSubagents} from "./live-subagent-store";
 import {indexFile, indexJsonlFile, liveJsonlIndexCache} from "./db/indexer";
 import {isSessionArchived, setSessionArchived} from "./db/queries";
@@ -183,23 +188,25 @@ function resolvesPendingQuestion(event: HookEvent): boolean {
 /**
  * Keep the main thread's pending AskUserQuestion from its `PreToolUse` hook
  * until the call resolves, so the dock can show the question the JSONL lacks.
+ * Returns true when this event cleared the pending question.
  */
 function trackPendingQuestion(
 	event: HookEvent,
 	broadcast: (type: string, data: Record<string, unknown>) => void,
-): void {
+): boolean {
 	let pendingQuestion: PendingQuestion | null = null;
 	if (event.hook_event_name === "PreToolUse" && event.tool_name === "AskUserQuestion") {
 		pendingQuestion = pendingQuestionFromToolInput(event.tool_use_id ?? "", event.tool_input);
-		if (pendingQuestion === null) return;
+		if (pendingQuestion === null) return false;
 		setPendingQuestion(event.session_id, pendingQuestion);
 	} else if (!resolvesPendingQuestion(event) || !clearPendingQuestion(event.session_id)) {
-		return;
+		return false;
 	}
 	broadcast(DOMAIN_EVENTS.SESSION_PENDING_QUESTION_CHANGED, {
 		sessionId: event.session_id,
 		pendingQuestion,
 	} satisfies SessionPendingQuestionChangedPayload);
+	return pendingQuestion === null;
 }
 
 /** True when `candidate` is the same as `dir` or a descendant. */
@@ -545,7 +552,7 @@ export async function dispatchHookEvent({
 		// "needs your permission" notification — clear it so the badge tracks only
 		// sessions that still want attention. No-op (no broadcast) when the
 		// session has no persisted notifications.
-		if (nextState === "working") clearNotificationsForSession(event.session_id);
+		const clearedNotificationIds = nextState === "working" ? takeNotificationsForSession(event.session_id) : [];
 		// A turn that ended (Stop / StopFailure / SessionEnd) is no longer blocked
 		// on a tool permission prompt, and neither is a call the classifier denied.
 		const permissionPromptGone =
@@ -558,8 +565,20 @@ export async function dispatchHookEvent({
 		if ((nextState === "working" || permissionPromptGone) && entryBeforeDispatch?.pendingPermissionRequest) {
 			store.setPendingPermissionRequest(event.session_id, null);
 		}
-		trackPendingQuestion(event, broadcast);
+		const questionCleared = trackPendingQuestion(event, broadcast);
 		trackPendingPlan(event, broadcast);
+		// The summary no longer waits on what was cleared. Send it before
+		// notification:cleared so a client never holds "no notification, still
+		// awaiting" while the working hook's own summary is still in flight.
+		if (clearedNotificationIds.length > 0 || questionCleared) {
+			const summary = buildSessionSummaryPayloadFromDb(db, event.session_id, (sessionId) =>
+				store.getActiveSessionEntry(sessionId),
+			);
+			if (summary && !recentlyBroadcast(sessionUpdatedDedupeKey(summary), DEDUPE_TTL_MS)) {
+				broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
+			}
+		}
+		broadcastNotificationsCleared(clearedNotificationIds);
 	}
 
 	// A subagent's MCP server can ask the user too, so this runs for both scopes.

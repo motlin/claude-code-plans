@@ -1194,6 +1194,11 @@ function PermissionSlot({
 
 describe("permission prompt answered across a signal handoff", () => {
 	const records = [assistantToolUse("toolu_handoff_1", "Bash", {command: "ls", description: "List"})];
+	// Answering arms a module-level session hold that would leak into other files in the shared pool.
+	afterEach(() => {
+		for (const sessionId of ["session-handoff-2", "session-handoff-3", "session-handoff-4"])
+			releaseAnswered(sessionId);
+	});
 
 	it("names the tool call the prompt holds, whichever signal describes it", () => {
 		const signals = {sessionId: "session-test-100", isActive: true, records};
