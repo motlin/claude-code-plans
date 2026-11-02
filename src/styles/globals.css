@@ -121,6 +121,7 @@ html[data-interface-font="dyslexic"] {
 	--color-upstream-accent: var(--upstream-accent);
 	--color-upstream-warning: var(--upstream-warning);
 	--color-upstream-accent-pressed: var(--upstream-accent-pressed);
+	--color-upstream-accent-layer: var(--upstream-accent-layer);
 	--color-upstream-accent-muted: var(--upstream-accent-muted);
 	--color-upstream-tint-blue: var(--upstream-tint-blue);
 
@@ -726,6 +727,8 @@ html[data-interface-font="dyslexic"] {
 :root[data-cds-fizzy-lake~="color"] {
 	/* Upstream `--cds-bg-accent`, the same in both modes: selected mention and skill chips, pressed titlebar toggles. */
 	--upstream-accent-pressed: color-mix(in srgb, #257de0 12%, transparent);
+	/* Upstream `--cds-bg-accent-layer`, the same in both modes: the skill chip's hover layer. */
+	--upstream-accent-layer: #257de00f;
 	/* Upstream `--cds-fill-ghost-hover`: every ghost hover (pre-rollout 4% ink). */
 	--upstream-fill-ghost-hover: #0000000d;
 }

@@ -48,4 +48,16 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () => 
 			dark: {"--upstream-fill-ghost-hover": "#ffffff13"},
 		});
 	});
+
+	it("--upstream-accent-layer is upstream's fizzy --cds-bg-accent-layer, #257de0 at 6% in both modes", () => {
+		expect({
+			utility: tokens(block("@theme inline"), ["--color-upstream-accent-layer"]),
+			light: tokens(block(FIZZY_LIGHT), ["--upstream-accent-layer"]),
+			dark: tokens(block(FIZZY_DARK), ["--upstream-accent-layer"]),
+		}).toStrictEqual({
+			utility: {"--color-upstream-accent-layer": "var(--upstream-accent-layer)"},
+			light: {"--upstream-accent-layer": "#257de00f"},
+			dark: {"--upstream-accent-layer": null},
+		});
+	});
 });

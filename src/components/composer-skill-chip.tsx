@@ -1,6 +1,7 @@
 import {PreviewCard} from "@base-ui/react/preview-card";
 import {type MouseEvent, useLayoutEffect, useRef, useState} from "react";
 
+import {useFizzyLake} from "../lib/fizzy-lake";
 import {SLASH_COMMAND_CARD_CLASS, SlashCommandCardBody} from "./slash-command-chip";
 
 /** Upstream `pn`'s trigger; the only part of the pointer-transparent overlay that takes the mouse. */
@@ -10,10 +11,20 @@ const CHIP_CLASS = "group/chip inline-flex relative cursor-interactive text-upst
 
 const HIGHLIGHT_BASE_CLASS = "absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none";
 
-const HIGHLIGHT_CLASS = `${HIGHLIGHT_BASE_CLASS} group-hover/chip:[@media(hover:hover)]:bg-upstream-accent-pressed group-data-[card-open]/chip:bg-upstream-accent-pressed`;
+/*
+ * Upstream `jr` swaps the highlight's classes to `bg-accent` while the atom is the NodeSelection.
+ * Under fizzy-lake `color` (upstream's `stacks:` variants) the hover is the translucent
+ * 6% `bg-accent-layer`, which also stacks (as a gradient) over an open or selected chip's 12% `bg-accent`.
+ */
+const HIGHLIGHT_CLASS = {
+	fizzy: `${HIGHLIGHT_BASE_CLASS} [@media(hover:hover)]:group-hover/chip:bg-upstream-accent-layer group-data-[card-open]/chip:bg-upstream-accent-pressed [@media(hover:hover)]:group-data-[card-open]/chip:group-hover/chip:bg-[linear-gradient(var(--upstream-accent-layer),var(--upstream-accent-layer))]`,
+	base: `${HIGHLIGHT_BASE_CLASS} group-hover/chip:[@media(hover:hover)]:bg-upstream-accent-pressed group-data-[card-open]/chip:bg-upstream-accent-pressed`,
+};
 
-/** Upstream `jr` swaps the highlight's classes to `bg-accent` while the atom is the NodeSelection. */
-const HIGHLIGHT_SELECTED_CLASS = `${HIGHLIGHT_BASE_CLASS} bg-upstream-accent-pressed`;
+const HIGHLIGHT_SELECTED_CLASS = {
+	fizzy: `${HIGHLIGHT_BASE_CLASS} bg-upstream-accent-pressed [@media(hover:hover)]:group-hover/chip:bg-[linear-gradient(var(--upstream-accent-layer),var(--upstream-accent-layer))]`,
+	base: `${HIGHLIGHT_BASE_CLASS} bg-upstream-accent-pressed`,
+};
 
 const GLYPH_CLASS =
 	"absolute top-1/2 -translate-y-1/2 start-0 w-2 h-5 flex items-center justify-center text-[13px]/[19px] font-medium opacity-50 select-none";
@@ -37,6 +48,7 @@ export function ComposerSkillChip({
 	onPress: (event: MouseEvent<HTMLSpanElement>) => void;
 }) {
 	const [cardOpen, setCardOpen] = useState(false);
+	const look = useFizzyLake("color") ? "fizzy" : "base";
 	const chipRef = useRef<HTMLSpanElement>(null);
 	const plainRef = useRef<HTMLSpanElement>(null);
 	const [offset, setOffset] = useState(0);
@@ -70,7 +82,7 @@ export function ComposerSkillChip({
 			>
 				<PreviewCard.Root onOpenChange={setCardOpen}>
 					<PreviewCard.Trigger render={<span />} delay={300} className={TRIGGER_CLASS} onMouseDown={onPress}>
-						<span className={selected ? HIGHLIGHT_SELECTED_CLASS : HIGHLIGHT_CLASS} />
+						<span className={selected ? HIGHLIGHT_SELECTED_CLASS[look] : HIGHLIGHT_CLASS[look]} />
 						<span className="relative ps-2">
 							<span aria-hidden="true" className={GLYPH_CLASS}>
 								/

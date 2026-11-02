@@ -6,6 +6,7 @@ import {afterEach, beforeAll, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import type {SlashCommand} from "../src/lib/slash-commands";
 import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
+import {FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.
 beforeAll(async () => {
@@ -22,14 +23,21 @@ const COMMANDS: SlashCommand[] = [
 	{name: "plan", description: "Switch to plan mode", source: "builtin"},
 ];
 
-function setup() {
-	render(
+function setup(parts?: readonly FizzyLakePart[]) {
+	const composer = (
 		<Composer
 			variant="session"
 			draftKey="session-alice"
 			onSend={vi.fn<(prompt: string) => void>()}
 			slashCommands={COMMANDS}
-		/>,
+		/>
+	);
+	render(
+		parts === undefined ? (
+			composer
+		) : (
+			<FizzyLakeContext.Provider value={parts}>{composer}</FizzyLakeContext.Provider>
+		),
 	);
 	return screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
 }
@@ -86,7 +94,7 @@ describe("Composer skill chip", () => {
 							{
 								tag: "span",
 								className:
-									"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none group-hover/chip:[@media(hover:hover)]:bg-upstream-accent-pressed group-data-[card-open]/chip:bg-upstream-accent-pressed",
+									"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none [@media(hover:hover)]:group-hover/chip:bg-upstream-accent-layer group-data-[card-open]/chip:bg-upstream-accent-pressed [@media(hover:hover)]:group-data-[card-open]/chip:group-hover/chip:bg-[linear-gradient(var(--upstream-accent-layer),var(--upstream-accent-layer))]",
 								ariaHidden: null,
 								text: "",
 								children: [],
@@ -261,9 +269,9 @@ describe("Composer skill chip", () => {
 			screen.getByTestId("composer-skill-chip").firstElementChild?.firstElementChild?.getAttribute("class") ??
 			null;
 		const unselected =
-			"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none group-hover/chip:[@media(hover:hover)]:bg-upstream-accent-pressed group-data-[card-open]/chip:bg-upstream-accent-pressed";
+			"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none [@media(hover:hover)]:group-hover/chip:bg-upstream-accent-layer group-data-[card-open]/chip:bg-upstream-accent-pressed [@media(hover:hover)]:group-data-[card-open]/chip:group-hover/chip:bg-[linear-gradient(var(--upstream-accent-layer),var(--upstream-accent-layer))]";
 		const selected =
-			"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none bg-upstream-accent-pressed";
+			"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none bg-upstream-accent-pressed [@media(hover:hover)]:group-hover/chip:bg-[linear-gradient(var(--upstream-accent-layer),var(--upstream-accent-layer))]";
 
 		function chipOnly(): HTMLTextAreaElement {
 			const textarea = setup();
@@ -274,6 +282,24 @@ describe("Composer skill chip", () => {
 			fireEvent.select(textarea);
 			return textarea;
 		}
+
+		it("keeps the pre-rollout opaque bg-accent highlight without fizzy-lake color", () => {
+			const textarea = setup(["panels", "type"]);
+			accept(textarea, "/mo");
+			fireEvent.change(textarea, {target: {value: "/model"}});
+			textarea.focus();
+			textarea.setSelectionRange(6, 6);
+			fireEvent.select(textarea);
+			const before = highlightClass();
+
+			fireEvent.keyDown(textarea, {key: "Backspace"});
+
+			expect({before, highlight: highlightClass()}).toStrictEqual({
+				before: "absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none group-hover/chip:[@media(hover:hover)]:bg-upstream-accent-pressed group-data-[card-open]/chip:bg-upstream-accent-pressed",
+				highlight:
+					"absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 pointer-events-none bg-upstream-accent-pressed",
+			});
+		});
 
 		it("selects the chip on the first Backspace instead of deleting a character", () => {
 			const textarea = chipOnly();
