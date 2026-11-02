@@ -24,6 +24,8 @@ export type PermissionTitle = {action: string; meta: string | null} | {heading: 
 
 export interface PendingPermission {
 	notificationId: string;
+	/** The transcript's tool call the prompt holds, shared by every signal; null when none describes it. */
+	toolUseId: string | null;
 	title: PermissionTitle;
 	/** The block under the title: the command, the full path, the skill args, or the input as JSON. */
 	detail: string | null;
@@ -116,7 +118,12 @@ export function findPendingPermission({
 	if (toolUse === null) {
 		return isActive
 			? withPersistentAllow(
-					{notificationId: notification.id, title: {heading: notification.message}, detail: null},
+					{
+						notificationId: notification.id,
+						toolUseId: null,
+						title: {heading: notification.message},
+						detail: null,
+					},
 					notification,
 				)
 			: null;
@@ -148,6 +155,7 @@ export function findPendingElicitationPermission(entries: readonly PendingElicit
 	if (entry === undefined) return null;
 	const permission: PendingPermission = {
 		notificationId: elicitationKey(entry),
+		toolUseId: null,
 		title: {action: `use ${entry.serverName}`, meta: null},
 		detail: null,
 		description: entry.message,
@@ -216,7 +224,15 @@ function withPersistentAllow(permission: PendingPermission, notification: Permis
 
 function permissionFor(notificationId: string, toolUse: PendingToolUse): PendingPermission {
 	const {action, meta = null, detail = null, ...extras} = permissionCopy(toolUse);
-	return {notificationId, title: {action, meta}, detail, ...extras};
+	return {notificationId, toolUseId: toolUse.id, title: {action, meta}, detail, ...extras};
+}
+
+/**
+ * The key a prompt is answered and drawn under: its tool call, which the hook
+ * notification and the registry wait share, else the notification or elicitation id.
+ */
+export function permissionAnswerKey(permission: PendingPermission): string {
+	return permission.toolUseId ?? permission.notificationId;
 }
 
 interface PermissionCopy {

@@ -133,6 +133,7 @@ import {
 	hookQuestionCardShown as isHookQuestionCardShown,
 	liveHookQuestion,
 } from "../lib/approval-dock";
+import {useApprovalAnswered} from "../lib/answered-approvals";
 import {applicationSettingsQueryOptions, useSaveApplicationSettings} from "../lib/api/application-settings";
 import {
 	herdrPanesQueryOptions,
@@ -164,6 +165,7 @@ import {
 	findPendingElicitationPermission,
 	findUrlElicitationCard,
 	findPendingPermission,
+	permissionAnswerKey,
 	permissionWaitToolUseId,
 	type PermissionDecision,
 } from "../lib/permission-card";
@@ -529,7 +531,9 @@ function SessionView({
 			}),
 		[sessionId, notifications, transcript.records, sessionPermissionWait],
 	);
-	const awaitingPermission = permissionWaitId !== null;
+	// A prompt this tab answered is consumed at the click, as upstream's answered set hides it.
+	const permissionWaitAnswered = useApprovalAnswered(sessionId, permissionWaitId);
+	const awaitingPermission = permissionWaitId !== null && !permissionWaitAnswered;
 	const sessionSummaryState = sessionSummary?.state ?? null;
 	const hookQuestion = useQuery({
 		...pendingQuestionQueryOptions(sessionId),
@@ -778,12 +782,17 @@ function SessionView({
 		[answersElicitation, sessionId],
 	);
 	const candidatePermission = toolPermission ?? elicitationPermission;
+	// Keyed by its tool call, so a handoff between the signals that describe it neither remounts nor redraws it.
+	const permissionKey = candidatePermission === null ? null : permissionAnswerKey(candidatePermission);
 	// A card the server says isn't pending is stale: it drops and the lists that drew it refetch.
 	const {dropped: permissionDropped, answer: answerPermission} = usePermissionAnswer({
-		permissionId: candidatePermission?.notificationId ?? null,
+		permissionId: permissionKey,
 		send: sendPermissionDecision,
 	});
-	const pendingPermission = permissionDropped ? null : candidatePermission;
+	const shownPermission = permissionDropped ? null : candidatePermission;
+	// The gates (working line, Stop, composer) release at the click; the card hides itself and returns on a failure.
+	const permissionAnswered = useApprovalAnswered(sessionId, permissionKey);
+	const pendingPermission = permissionAnswered ? null : shownPermission;
 	// A form or url elicitation stays with the terminal dialog, but the waiting notice names its server.
 	const elicitationNotice = useMemo(
 		() => findElicitationWaitingNotice(pendingElicitations ?? []),
@@ -1531,24 +1540,26 @@ function SessionView({
 							</AskUserQuestionProvider>
 
 							{/* Upstream draws every pending approval inline; a permission prompt is not on disk, so it follows the transcript */}
-							{pendingPermission && (
+							{shownPermission && permissionKey !== null && (
 								<div data-inline-permission="" className={`${CHAT_COLUMN_CLASS} pb-4 empty:hidden`}>
 									<SessionBackgroundTasksOpener
 										sessionId={sessionId}
 										running={runningBackgroundLaunches}
 									>
 										<DeferredPermissionCard
-											key={pendingPermission.notificationId}
-											enterKey={pendingPermission.notificationId}
-											title={pendingPermission.title}
-											detail={pendingPermission.detail}
-											detailNote={pendingPermission.detailNote ?? null}
-											description={pendingPermission.description ?? null}
-											tokenWarning={pendingPermission.tokenWarning === true}
+											key={permissionKey}
+											enterKey={permissionKey}
+											sessionId={sessionId}
+											answerKey={permissionKey}
+											title={shownPermission.title}
+											detail={shownPermission.detail}
+											detailNote={shownPermission.detailNote ?? null}
+											description={shownPermission.description ?? null}
+											tokenWarning={shownPermission.tokenWarning === true}
 											canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
 											// The CLI can refuse an early Enter, so the elicitation's ElicitationResult clears its card.
 											hideOnDecision={!answersElicitation}
-											persistentAllow={pendingPermission.persistentAllow ?? null}
+											persistentAllow={shownPermission.persistentAllow ?? null}
 											onDecision={answerPermission}
 											footer={
 												<Suspense fallback={null}>

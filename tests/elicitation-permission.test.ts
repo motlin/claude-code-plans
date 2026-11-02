@@ -72,6 +72,7 @@ describe("findPendingElicitationPermission", () => {
 	it("draws a verdict elicitation as upstream's 'use {server}' permission card, with Always allow when offered", () => {
 		expect(findPendingElicitationPermission([verdictEntry(["allow", "deny", "always_allow"])])).toStrictEqual({
 			notificationId: "elicitation:elicit-verdict-1",
+			toolUseId: null,
 			title: {action: "use my-mcp-server", meta: null},
 			detail: null,
 			description: "Allow my-mcp-server to delete the deploy branch?",
@@ -82,6 +83,7 @@ describe("findPendingElicitationPermission", () => {
 	it("offers only Deny / Allow once when the enum has no always_allow", () => {
 		expect(findPendingElicitationPermission([verdictEntry(["allow", "deny"])])).toStrictEqual({
 			notificationId: "elicitation:elicit-verdict-1",
+			toolUseId: null,
 			title: {action: "use my-mcp-server", meta: null},
 			detail: null,
 			description: "Allow my-mcp-server to delete the deploy branch?",

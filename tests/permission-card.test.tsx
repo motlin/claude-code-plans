@@ -7,7 +7,13 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {BackgroundTasksOpenerProvider} from "../src/components/background-tasks-opener-context";
 import {PermissionCard} from "../src/components/permission-card";
-import {findPendingPermission, permissionDecisionForKey, type PermissionNotification} from "../src/lib/permission-card";
+import {isApprovalAnswered, useApprovalAnswered} from "../src/lib/answered-approvals";
+import {
+	findPendingPermission,
+	permissionAnswerKey,
+	permissionDecisionForKey,
+	type PermissionNotification,
+} from "../src/lib/permission-card";
 import type {PersistentAllowKind} from "../src/lib/permission-suggestions";
 
 afterEach(cleanup);
@@ -57,6 +63,7 @@ describe("findPendingPermission", () => {
 			}),
 		).toStrictEqual({
 			notificationId: "notification-test-100",
+			toolUseId: "t2",
 			title: {action: "run", meta: "Remove the build output"},
 			detail: "rm -rf dist",
 		});
@@ -100,7 +107,7 @@ describe("findPendingPermission", () => {
 				notifications: [permissionNotification()],
 				records: [assistantToolUse("t2", "Bash", input)],
 			}),
-		).toStrictEqual({notificationId: "notification-test-100", ...expected});
+		).toStrictEqual({notificationId: "notification-test-100", toolUseId: "t2", ...expected});
 	});
 
 	it("carries a Workflow's description and upstream's token warning", () => {
@@ -113,6 +120,7 @@ describe("findPendingPermission", () => {
 			}),
 		).toStrictEqual({
 			notificationId: "notification-test-100",
+			toolUseId: "t2",
 			title: {action: "run a workflow", meta: "noop-a"},
 			detail: null,
 			description: "Replies ok",
@@ -130,6 +138,7 @@ describe("findPendingPermission", () => {
 			}),
 		).toStrictEqual({
 			notificationId: "notification-test-100",
+			toolUseId: "t2",
 			title: {action: "run", meta: "Remove the build output"},
 			detail: "rm -rf dist",
 			persistentAllow: "always",
@@ -146,6 +155,7 @@ describe("findPendingPermission", () => {
 			}),
 		).toStrictEqual({
 			notificationId: "notification-test-100",
+			toolUseId: "t3",
 			title: {action: "write", meta: "b.ts"},
 			detail: "/repo/b.ts",
 		});
@@ -161,6 +171,7 @@ describe("findPendingPermission", () => {
 			}),
 		).toStrictEqual({
 			notificationId: "notification-test-100",
+			toolUseId: null,
 			title: {heading: "Claude needs your permission to use Bash"},
 			detail: null,
 		});
@@ -213,6 +224,7 @@ describe("findPendingPermission", () => {
 		}).toStrictEqual({
 			permissionWait: {
 				notificationId: "t4",
+				toolUseId: "t4",
 				title: {action: "run", meta: "Open the oxfmt comment PR and check the other test"},
 				detail: "gh pr create --fill",
 			},
@@ -230,6 +242,7 @@ describe("findPendingPermission", () => {
 			}),
 		).toStrictEqual({
 			notificationId: "notification-test-100",
+			toolUseId: "t2",
 			title: {action: "run", meta: "Remove the build output"},
 			detail: "rm -rf dist",
 		});
@@ -1118,5 +1131,126 @@ describe("PermissionCard enter fade, as upstream's epitaxy-approval-inline-enter
 		);
 
 		expect(enterFacts(container)).toStrictEqual({classes: [], skip: true});
+	});
+});
+
+/**
+ * The session page's permission slot: the card keyed by the prompt's answer
+ * key, and the gates that treat an answered prompt as consumed.
+ */
+function PermissionSlot({
+	sessionId,
+	notifications,
+	records,
+	awaitingPermission,
+	onDecision,
+}: {
+	sessionId: string;
+	notifications: readonly PermissionNotification[];
+	records: readonly unknown[];
+	awaitingPermission: boolean;
+	onDecision: ComponentProps<typeof PermissionCard>["onDecision"];
+}) {
+	const shown = findPendingPermission({sessionId, isActive: true, notifications, records, awaitingPermission});
+	const answerKey = shown === null ? null : permissionAnswerKey(shown);
+	const answered = useApprovalAnswered(sessionId, answerKey);
+	const pending = answered ? null : shown;
+	return (
+		<div data-gate={pending === null ? "released" : "pending"}>
+			{shown !== null && answerKey !== null && (
+				<PermissionCard
+					key={answerKey}
+					enterKey={answerKey}
+					sessionId={sessionId}
+					answerKey={answerKey}
+					title={shown.title}
+					detail={shown.detail}
+					canAnswer
+					onDecision={onDecision}
+				/>
+			)}
+		</div>
+	);
+}
+
+describe("permission prompt answered across a signal handoff", () => {
+	const records = [assistantToolUse("toolu_handoff_1", "Bash", {command: "ls", description: "List"})];
+
+	it("names the tool call the prompt holds, whichever signal describes it", () => {
+		const signals = {sessionId: "session-test-100", isActive: true, records};
+		expect({
+			notified: findPendingPermission({...signals, notifications: [permissionNotification()]})?.toolUseId,
+			registryOnly: findPendingPermission({...signals, notifications: [], awaitingPermission: true})?.toolUseId,
+			noCall: findPendingPermission({...signals, records: [], notifications: [permissionNotification()]})
+				?.toolUseId,
+		}).toStrictEqual({notified: "toolu_handoff_1", registryOnly: "toolu_handoff_1", noCall: null});
+	});
+
+	it("keeps an answered card hidden when the notification clears before the tool result lands", () => {
+		const answer = deferredAnswer();
+		const onDecision = vi.fn<ComponentProps<typeof PermissionCard>["onDecision"]>(async () => answer.promise);
+		const props = {sessionId: "session-handoff-2", records, awaitingPermission: true, onDecision};
+		const notification = permissionNotification({sessionId: "session-handoff-2"});
+		const {container, rerender} = render(<PermissionSlot {...props} notifications={[notification]} />);
+		fireEvent.click(screen.getByRole("button", {name: /^Allow once/}));
+		const gateAtClick = container.querySelector("[data-gate]")?.getAttribute("data-gate");
+		rerender(<PermissionSlot {...props} notifications={[]} />);
+
+		expect({
+			gateAtClick,
+			card: container.querySelector("[data-approval-card-root]"),
+			gate: container.querySelector("[data-gate]")?.getAttribute("data-gate"),
+			calls: onDecision.mock.calls,
+		}).toStrictEqual({gateAtClick: "released", card: null, gate: "released", calls: [["allow"]]});
+	});
+
+	it("keeps one card node and fades it in once when the notification follows the registry wait", () => {
+		const notification = permissionNotification({sessionId: "session-handoff-3"});
+		// Its own call id: the enter fade is remembered per prompt for the whole tab.
+		const fadeRecords = [assistantToolUse("toolu_handoff_3", "Bash", {command: "ls", description: "List"})];
+		const props = {
+			sessionId: "session-handoff-3",
+			records: fadeRecords,
+			awaitingPermission: true,
+			onDecision: async () => {},
+		};
+		const {container, rerender} = render(<PermissionSlot {...props} notifications={[]} />);
+		const first = container.querySelector("[data-approval-card-root]");
+		const firstEnters = first?.className.includes("animate-approval-inline-enter");
+		rerender(<PermissionSlot {...props} notifications={[notification]} />);
+		const second = container.querySelector("[data-approval-card-root]");
+
+		expect({
+			sameNode: first !== null && first === second,
+			firstEnters,
+			secondEnters: second?.className.includes("animate-approval-inline-enter"),
+		}).toStrictEqual({sameNode: true, firstEnters: true, secondEnters: true});
+	});
+
+	it("clears the answered mark and shows the error when the decision is rejected", async () => {
+		const answer = deferredAnswer();
+		const onDecision = vi.fn<ComponentProps<typeof PermissionCard>["onDecision"]>(async () => answer.promise);
+		const notification = permissionNotification({sessionId: "session-handoff-4"});
+		const {container} = render(
+			<PermissionSlot
+				sessionId="session-handoff-4"
+				notifications={[notification]}
+				records={records}
+				awaitingPermission
+				onDecision={onDecision}
+			/>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Deny"}));
+		const markedAtClick = isApprovalAnswered("session-handoff-4", "toolu_handoff_1");
+		await actAndSettle(() => {
+			answer.reject(new Error("herdr pane is gone"));
+		});
+
+		expect({
+			markedAtClick,
+			marked: isApprovalAnswered("session-handoff-4", "toolu_handoff_1"),
+			gate: container.querySelector("[data-gate]")?.getAttribute("data-gate"),
+			error: container.querySelector("[data-approval-card-root] .text-extended-pink")?.textContent,
+		}).toStrictEqual({markedAtClick: true, marked: false, gate: "pending", error: "herdr pane is gone"});
 	});
 });

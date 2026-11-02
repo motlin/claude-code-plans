@@ -1,6 +1,7 @@
 import {useCallback, useEffect, useRef, useState, type ReactNode, type RefObject} from "react";
 
 import {useIsMac} from "../hooks/use-is-mac";
+import {clearApprovalAnswered, markApprovalAnswered, useApprovalAnswered} from "../lib/answered-approvals";
 import {approvalEnterSeen, markApprovalEnterSeen} from "../lib/approval-enter-seen";
 import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, isIdleComposer, onScreen} from "../lib/dock-keys";
 import {permissionDecisionForKey, type PermissionDecision, type PermissionTitle} from "../lib/permission-card";
@@ -23,6 +24,8 @@ import {SplitDropdownButton} from "./ui/split-dropdown-button";
  * primary split button ("Always allow" / "Allow for this session") whose menu holds Allow once.
  * Upstream's keys (Esc deny, ⌘⏎ allow once, ⇧⌘⏎ the persistent option) and no digits, which are dock-only.
  * A decision hides the card at once, with no busy state; a failed answer brings it back with the error.
+ * With `sessionId` and `answerKey` the decision also marks the prompt answered for every view,
+ * so a remount of the same prompt stays hidden until the mark clears on a failed answer.
  * With `hideOnDecision` false the card stays, disabled, until its parent drops it.
  * A live arrival fades in over 160ms; a remount or reload of the same prompt (`enterKey`) does not.
  */
@@ -37,6 +40,8 @@ export function PermissionCard({
 	onDecision,
 	footer,
 	enterKey,
+	sessionId,
+	answerKey,
 	hideOnDecision = true,
 }: {
 	title: PermissionTitle;
@@ -56,6 +61,10 @@ export function PermissionCard({
 	footer?: ReactNode;
 	/** The prompt's notification id: it fades in only the first time this tab draws it. */
 	enterKey?: string | undefined;
+	/** The prompt's session, for the answered-approvals mark. */
+	sessionId?: string | undefined;
+	/** The prompt's answer key (its tool call, else its notification id), marked answered on a decision. */
+	answerKey?: string | undefined;
 	/**
 	 * False keeps the card up, disabled, after a decision: an elicitation's card
 	 * is cleared by its `ElicitationResult`, since the CLI can refuse an early Enter.
@@ -69,26 +78,32 @@ export function PermissionCard({
 	}, [enterKey]);
 	const [decided, setDecided] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const enabled = canAnswer && !decided;
+	// An elicitation's card stays up after a decision, so only a hiding card marks its prompt answered.
+	const markSession = hideOnDecision ? sessionId : undefined;
+	const markKey = markSession === undefined ? undefined : answerKey;
+	const answered = useApprovalAnswered(markSession ?? "", markKey ?? null);
+	const enabled = canAnswer && !decided && !answered;
 
 	const decide = useCallback(
 		async (decision: PermissionDecision) => {
 			setError(null);
 			setDecided(true);
+			if (markSession !== undefined && markKey !== undefined) markApprovalAnswered(markSession, markKey);
 			try {
 				await onDecision(decision);
 			} catch (err) {
+				if (markSession !== undefined && markKey !== undefined) clearApprovalAnswered(markSession, markKey);
 				setError(err instanceof Error ? err.message : "Failed to answer the permission request");
 				setDecided(false);
 			}
 		},
-		[onDecision],
+		[onDecision, markSession, markKey],
 	);
 
 	const cardRootRef = useRef<HTMLDivElement>(null);
 	usePermissionHotkeys(cardRootRef, {enabled, persistent: persistentAllow !== null, decide});
 
-	if (decided && hideOnDecision) return null;
+	if ((decided || answered) && hideOnDecision) return null;
 
 	return (
 		<ApprovalCardShell
