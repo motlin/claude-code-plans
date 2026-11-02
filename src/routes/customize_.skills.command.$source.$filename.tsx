@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {noop} from "@tanstack/react-query";
 import {createFileRoute} from "@tanstack/react-router";
 import {CommandDetailFrame} from "../components/customize/detail-frames";
@@ -9,7 +10,7 @@ export const Route = createFileRoute("/customize_/skills/command/$source/$filena
 	loader: ({context: {queryClient}, params}) => {
 		void queryClient.query(userCommandFileQueryOptions(params.source, fromMdSlug(params.filename))).catch(noop);
 	},
-	head: () => ({meta: [{title: "Command · Customize"}]}),
+	head: () => ({meta: [pageTitle("Command · Customize")]}),
 	staticData: {pageGutter: "tight"},
 });
 

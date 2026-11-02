@@ -162,11 +162,11 @@ describe("pinned sessions routes", () => {
 		expect([describeRoute(PinnedRoute), describeRoute(StarredRoute)]).toStrictEqual([
 			{
 				component: PinnedSessionsPage,
-				head: {meta: [{title: "Pinned sessions"}]},
+				head: {meta: [{name: "ccb-page-title", content: "Pinned sessions"}]},
 			},
 			{
 				component: PinnedSessionsPage,
-				head: {meta: [{title: "Pinned sessions"}]},
+				head: {meta: [{name: "ccb-page-title", content: "Pinned sessions"}]},
 			},
 		]);
 	});

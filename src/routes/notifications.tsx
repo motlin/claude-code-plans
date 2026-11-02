@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery, useQuery} from "@tanstack/react-query";
 import {useMemo} from "react";
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/notifications")({
 	loader: async ({context: {queryClient}}) =>
 		queryClient.query({...notificationsQueryOptions(), staleTime: "static"}),
 	head: () => ({
-		meta: [{title: "Notifications"}],
+		meta: [pageTitle("Notifications")],
 	}),
 });
 

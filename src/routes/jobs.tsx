@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {CodePageHeader} from "../components/code-page-header";
@@ -10,7 +11,7 @@ export const Route = createFileRoute("/jobs")({
 	component: JobsPage,
 	loader: async ({context: {queryClient}}) => queryClient.query({...jobsQueryOptions, staleTime: "static"}),
 	head: () => ({
-		meta: [{title: "Background jobs"}],
+		meta: [pageTitle("Background jobs")],
 	}),
 });
 

@@ -529,8 +529,8 @@ describe("HerdrPage", () => {
 			heading: "Terminals",
 			count: "2 tracked Claude sessions",
 			scopeExplanation,
-			routeMeta: [{title: "Terminals"}],
-			terminalRouteMeta: [{title: "Live terminal"}],
+			routeMeta: [{name: "ccb-page-title", content: "Terminals"}],
+			terminalRouteMeta: [{name: "ccb-page-title", content: "Live terminal"}],
 		});
 		expect(document.body.textContent.includes("Terminal Fleet")).toBe(false);
 	});
@@ -634,7 +634,7 @@ describe("HerdrPage", () => {
 			breadcrumb: "Terminals",
 			breadcrumbHref: "/terminals",
 			heading: "Live terminal",
-			routeMeta: [{title: "Live terminal"}],
+			routeMeta: [{name: "ccb-page-title", content: "Live terminal"}],
 			terminal: "session-test-100",
 		});
 		expect(document.body.textContent.includes("Terminal Fleet")).toBe(false);

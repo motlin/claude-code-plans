@@ -28,6 +28,7 @@ import {sessionDetailQueryOptions, type SessionDetailData} from "../src/lib/api/
 import {Route as SessionRoute} from "../src/routes/session.$id";
 import {SessionChat} from "../src/components/session-chat";
 import {SessionRouteIdentity} from "../src/components/session-route-identity";
+import {renderedPageTitle} from "./rendered-page-title";
 
 // The 503 case still makes all three lookups, without sleeping through the real retry delay between them.
 timeoutManager.setTimeoutProvider({
@@ -349,7 +350,7 @@ it("shows upstream's missing-session view when the alias lookup 404s", async () 
 		heading: heading.textContent,
 		body: heading.nextElementSibling?.textContent,
 		buttons: screen.getAllByRole("button").map((button) => button.textContent),
-		title: document.title,
+		title: renderedPageTitle(),
 	}).toStrictEqual({
 		heading: "This session couldn’t be found",
 		body: "It may have been deleted, or you may not have access.",
@@ -376,17 +377,17 @@ it.each([409, 503])("shows an honest %s lookup error and supports manual retry",
 		retryInActions: retry.parentElement === alert.nextElementSibling,
 	};
 	const failedRequests = fetcher.mock.calls.length;
-	const title = document.title;
+	const title = renderedPageTitle();
 	act(() => {
 		document.dispatchEvent(new Event("visibilitychange"));
 	});
-	const attentionTitle = document.title;
+	const attentionTitle = renderedPageTitle();
 	client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, ALICE_DETAIL);
 	setLookup(async () => Promise.resolve(Response.json({sessionId: ALICE})));
 	fireEvent.click(screen.getByRole("button", {name: "Retry"}));
 	const page = await screen.findByTestId("session");
 	await waitFor(() => {
-		expect(document.title).toBe("Alice session");
+		expect(renderedPageTitle()).toBe("Alice session");
 	});
 	expect({
 		status,
@@ -431,7 +432,7 @@ it.each(["ambiguous", "new-owner"])(
 			client.setQueryData<SessionDetailData | null>(sessionDetailQueryOptions(ALICE).queryKey, ALICE_DETAIL);
 		});
 		await waitFor(() => {
-			expect(document.title).toBe("Alice session");
+			expect(renderedPageTitle()).toBe("Alice session");
 		});
 		const main = screen.getByTestId("main");
 		const originalKey = router.state.location.state.__TSR_key;
@@ -448,7 +449,7 @@ it.each(["ambiguous", "new-owner"])(
 			expect(router.state.location.pathname).toBe(`/session/${ALICE}`);
 		});
 		expect({
-			title: document.title,
+			title: renderedPageTitle(),
 			samePage: screen.getByTestId("session") === page,
 			owners: new Set(observed.owners),
 			mounts: observed.mounts,
@@ -700,7 +701,7 @@ it("preserves an explicitly opened historical alias even when detail advertises 
 		finishDetail(Response.json({...ALICE_DETAIL, canonicalRouteId: "session_alice_200"}));
 	});
 	await waitFor(() => {
-		expect(document.title).toBe("Alice session");
+		expect(renderedPageTitle()).toBe("Alice session");
 	});
 	expect({
 		pathname: router.state.location.pathname,
@@ -803,7 +804,7 @@ it.each(["matching", "different", "invalidated", "error", "fetching"])(
 			finishDetail(Response.json({...ALICE_DETAIL, canonicalRouteId: ALIAS}));
 		});
 		await waitFor(() => {
-			expect(document.title).toBe("Alice session");
+			expect(renderedPageTitle()).toBe("Alice session");
 		});
 		if (state === "matching")
 			await waitFor(() => {

@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute} from "@tanstack/react-router";
 import {useQuery, useSuspenseInfiniteQuery, useSuspenseQuery} from "@tanstack/react-query";
 import {
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/sessions")({
 			queryClient.query({...groupedSessionsQueryOptions(), staleTime: "static"}),
 		]),
 	head: () => ({
-		meta: [{title: "Claude Sessions"}],
+		meta: [pageTitle("Claude Sessions")],
 	}),
 });
 

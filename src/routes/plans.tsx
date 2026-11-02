@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {plansQueryOptions} from "../lib/api/plans";
@@ -10,7 +11,7 @@ export const Route = createFileRoute("/plans")({
 	component: PlansPage,
 	loader: async ({context: {queryClient}}) => queryClient.query({...plansQueryOptions(), staleTime: "static"}),
 	head: () => ({
-		meta: [{title: "Claude Plans"}],
+		meta: [pageTitle("Claude Plans")],
 	}),
 });
 

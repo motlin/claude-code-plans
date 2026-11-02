@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute, useSearch} from "@tanstack/react-router";
 import {prefetchCustomizeSection} from "../components/customize/section-prefetch";
 import {SkillsSection} from "../components/customize/section-views";
@@ -7,7 +8,7 @@ export const Route = createFileRoute("/customize/skills")({
 	loader: ({context: {queryClient}}) => {
 		prefetchCustomizeSection(queryClient, "skills");
 	},
-	head: () => ({meta: [{title: "Skills · Customize"}]}),
+	head: () => ({meta: [pageTitle("Skills · Customize")]}),
 });
 
 function CustomizeSkills() {

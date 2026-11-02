@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {useMemo, useState} from "react";
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/project/$id_/tasks")({
 		return detail;
 	},
 	head: ({loaderData}) => ({
-		meta: [{title: loaderData ? `${loaderData.name} tasks` : "Project Not Found"}],
+		meta: [pageTitle(loaderData ? `${loaderData.name} tasks` : "Project Not Found")],
 	}),
 });
 

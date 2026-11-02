@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {ExternalLink} from "lucide-react";
@@ -8,7 +9,7 @@ export const Route = createFileRoute("/artifact/$id")({
 	component: ArtifactPreviewPage,
 	loader: async ({context: {queryClient}}) => queryClient.query({...artifactsQueryOptions, staleTime: "static"}),
 	head: () => ({
-		meta: [{title: "Artifact"}],
+		meta: [pageTitle("Artifact")],
 	}),
 });
 

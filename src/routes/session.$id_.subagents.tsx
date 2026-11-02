@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {isSessionRouteAlias} from "../lib/session-route-alias";
 import {createFileRoute, Link, useRouter} from "@tanstack/react-router";
 import {Suspense, useEffect} from "react";
@@ -33,7 +34,7 @@ export const Route = createFileRoute("/session/$id_/subagents")({
 			.query({...sessionSubagentsQueryOptions(params.id), staleTime: "static"})
 			.then(() => ({title: subagentsTitle(params.id)}));
 	},
-	head: ({loaderData}) => ({meta: [{title: loaderData?.title ?? "Subagents"}]}),
+	head: ({loaderData}) => ({meta: [pageTitle(loaderData?.title ?? "Subagents")]}),
 });
 
 function subagentsTitle(sessionId: string): string {

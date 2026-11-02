@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {CodePageHeader} from "../components/code-page-header";
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
@@ -39,7 +40,7 @@ export const Route = createFileRoute("/routines")({
 	component: RoutinesPage,
 	loader: async ({context: {queryClient}}) => queryClient.query({...routinesQueryOptions, staleTime: "static"}),
 	head: () => ({
-		meta: [{title: "Scheduled tasks"}],
+		meta: [pageTitle("Scheduled tasks")],
 	}),
 });
 

@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute, Link, useNavigate} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {memoryDetailQueryOptions, useSaveMemory} from "../lib/api/memories";
@@ -15,7 +16,7 @@ export const Route = createFileRoute("/memory/$project/$filename_/edit")({
 	loader: async ({context: {queryClient}, params}) =>
 		queryClient.query({...memoryDetailQueryOptions(params.project, params.filename), staleTime: "static"}),
 	head: ({params}) => ({
-		meta: [{title: `Edit: ${fromMdSlug(params.filename)}`}],
+		meta: [pageTitle(`Edit: ${fromMdSlug(params.filename)}`)],
 	}),
 });
 

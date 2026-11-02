@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute, Link, useNavigate} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {ArrowLeft, GitBranch, X} from "lucide-react";
@@ -25,11 +26,7 @@ export const Route = createFileRoute("/project/$id_/sessions")({
 		return detail;
 	},
 	head: ({loaderData}) => ({
-		meta: [
-			{
-				title: loaderData ? `${loaderData.name} sessions` : "Project Not Found",
-			},
-		],
+		meta: [pageTitle(loaderData ? `${loaderData.name} sessions` : "Project Not Found")],
 	}),
 });
 

@@ -4,7 +4,7 @@ import {useLocation, useRouter} from "@tanstack/react-router";
 import {useEffect, useState, type ReactNode} from "react";
 import {sessionIdentityFailure, sessionIdentityQueryOptions} from "../lib/api/session-identity";
 import {sessionScrollKey} from "../lib/session-route-location";
-import {resolvedRouteTitle} from "../lib/route-title";
+import {resolvedPageTitle} from "../lib/route-title";
 import {useMainScrollRestoration, type MainScrollRestorationSnapshot} from "../hooks/use-main-scroll-restoration";
 import {SessionSkeleton} from "./session-skeleton";
 import {ApiResponseError} from "../lib/api/client";
@@ -52,7 +52,7 @@ export function SessionRouteIdentity({
 	const unresolvedError = identity?.isError && owner === null;
 
 	useEffect(() => {
-		if (!paramsMatchLocation || !unresolvedError || resolvedRouteTitle(router.state.matches) === failure.title)
+		if (!paramsMatchLocation || !unresolvedError || resolvedPageTitle(router.state.matches) === failure.title)
 			return;
 		if (router.latestLocation.state.__TSR_key !== location.state.__TSR_key) return;
 		// The loader reads cached errors without retrying; this only updates its title snapshot.

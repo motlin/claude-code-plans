@@ -87,7 +87,7 @@ describe("blank-screen prevention on /session/$id", () => {
 		};
 
 		expect(head({loaderData: undefined})).toStrictEqual({
-			meta: [{title: "Loading session…"}],
+			meta: [{name: "ccb-page-title", content: "Loading session…"}],
 		});
 	});
 });

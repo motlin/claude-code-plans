@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute, Link, useNavigate} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {MemoryDocument} from "../components/memory-document";
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/memory/$project/$filename")({
 	loader: async ({context: {queryClient}, params}) =>
 		queryClient.query({...memoryDetailQueryOptions(params.project, params.filename), staleTime: "static"}),
 	head: ({params}) => ({
-		meta: [{title: fromMdSlug(params.filename)}],
+		meta: [pageTitle(fromMdSlug(params.filename))],
 	}),
 });
 

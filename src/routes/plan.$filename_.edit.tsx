@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute, Link, useNavigate} from "@tanstack/react-router";
 import {useSuspenseQuery, useMutation, useQueryClient} from "@tanstack/react-query";
 import {z} from "zod";
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/plan/$filename_/edit")({
 	loader: async ({context: {queryClient}, params}) =>
 		queryClient.query({...planQueryOptions(params.filename), staleTime: "static"}),
 	head: ({loaderData}) => ({
-		meta: [{title: loaderData ? `Edit: ${loaderData.title}` : "Plan Not Found"}],
+		meta: [pageTitle(loaderData ? `Edit: ${loaderData.title}` : "Plan Not Found")],
 	}),
 });
 

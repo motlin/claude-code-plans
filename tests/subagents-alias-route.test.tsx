@@ -17,6 +17,7 @@ import {sessionSubagentsQueryOptions} from "../src/lib/api/sessions";
 import type {LiveSubagentNode} from "../src/lib/live-subagent-store";
 import type {Subagent} from "../src/lib/subagents";
 import {Route as SubagentsRoute} from "../src/routes/session.$id_.subagents";
+import {renderedPageTitle} from "./rendered-page-title";
 
 const ALIAS = "session_alice_100";
 const ALICE = "local-alice-100";
@@ -158,11 +159,11 @@ it("resolves aliases before fetching UUID subagents and filters/deduplicates rea
 	});
 	await screen.findByRole("heading", {name: "Subagents (3)"});
 	await waitFor(() => {
-		expect(document.title).toBe("Subagents - local-al");
+		expect(renderedPageTitle()).toBe("Subagents - local-al");
 	});
 	expect({
 		pending,
-		title: document.title,
+		title: renderedPageTitle(),
 		urls: fetcher.mock.calls.map(([url]) => url),
 		parentLoads: parentLoader.mock.calls.length,
 		aliceIndexed: screen.getByText("Alice parent").textContent,
@@ -193,7 +194,7 @@ it("keeps UUID subagent visits free of identity requests", async () => {
 	expect({
 		urls: fetcher.mock.calls.map(([url]) => url),
 		parentLoads: parentLoader.mock.calls.length,
-		title: document.title,
+		title: renderedPageTitle(),
 		back: screen.getByRole("link", {name: "Back to session"}).getAttribute("href"),
 	}).toStrictEqual({
 		urls: [`/api/sessions/${ALICE}/subagents`],
@@ -209,7 +210,7 @@ it("shows the missing-session view and the shared 404 title without a subagents 
 		finish(new Response(null, {status: 404}));
 	});
 	await waitFor(() => {
-		expect(document.title).toBe("Session Not Found");
+		expect(renderedPageTitle()).toBe("Session Not Found");
 	});
 	expect({
 		heading: screen.getByRole("heading", {level: 2}).textContent,
@@ -228,14 +229,14 @@ it.each([409])("restores the subagents title after retrying the shared %s alias 
 		finish(new Response(null, {status: 409}));
 	});
 	await waitFor(() => {
-		expect(document.title).toBe("Ambiguous session link");
+		expect(renderedPageTitle()).toBe("Ambiguous session link");
 	});
 	const failure = {message: screen.getByRole("alert").textContent, urls: fetcher.mock.calls.map(([url]) => url)};
 	setLookup(async () => Promise.resolve(Response.json({sessionId: ALICE})));
 	fireEvent.click(screen.getByRole("button", {name: "Retry"}));
 	await screen.findByRole("heading", {name: "Subagents (2)"});
 	await waitFor(() => {
-		expect(document.title).toBe("Subagents - local-al");
+		expect(renderedPageTitle()).toBe("Subagents - local-al");
 	});
 	expect(failure).toStrictEqual({
 		message: "This session link has more than one local session.",
@@ -292,7 +293,7 @@ it.each(["ambiguous", "reassigned"])(
 			sameHeading: screen.getByRole("heading", {name: "Subagents (2)"}) === heading,
 			collapsedChild: screen.queryByText("Alice child"),
 			bob: screen.queryByText("Bob parent"),
-			title: document.title,
+			title: renderedPageTitle(),
 			search: {...router.state.location.search},
 			hash: router.state.location.hash,
 			carried: router.state.location.state.sessionIdentity,

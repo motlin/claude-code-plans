@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {noop} from "@tanstack/react-query";
 import {createFileRoute, Outlet} from "@tanstack/react-router";
 import {SkillDetailFrame} from "../components/customize/detail-frames";
@@ -8,7 +9,7 @@ export const Route = createFileRoute("/customize_/skills/id/$skillId")({
 	loader: ({context: {queryClient}, params}) => {
 		void queryClient.query(customizeSkillDetailQueryOptions(params.skillId)).catch(noop);
 	},
-	head: () => ({meta: [{title: "Skill · Customize"}]}),
+	head: () => ({meta: [pageTitle("Skill · Customize")]}),
 	staticData: {pageGutter: "tight"},
 });
 

@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute, Outlet, useLocation, useNavigate} from "@tanstack/react-router";
 import {CustomizeHeader} from "../components/customize/customize-header";
 import {routeOptions} from "../components/customize/customize-navigation";
@@ -17,7 +18,7 @@ export const Route = createFileRoute("/customize")({
 	loader: ({context: {queryClient}, deps: {searching}}) => {
 		if (searching) prefetchUnifiedSearch(queryClient);
 	},
-	head: () => ({meta: [{title: "Customize"}]}),
+	head: () => ({meta: [pageTitle("Customize")]}),
 	staticData: {pageGutter: "tight"},
 });
 

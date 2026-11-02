@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {isSessionRouteAlias} from "../lib/session-route-alias";
 import type {MainScrollRestorationSnapshot} from "../hooks/use-main-scroll-restoration";
 import {SessionRouteIdentity} from "../components/session-route-identity";
@@ -52,7 +53,7 @@ export const Route = createFileRoute("/session/$id")({
 	},
 	errorComponent: SessionErrorComponent,
 	head: ({loaderData}) => ({
-		meta: [{title: sessionHeadTitle(loaderData)}],
+		meta: [pageTitle(sessionHeadTitle(loaderData))],
 	}),
 });
 

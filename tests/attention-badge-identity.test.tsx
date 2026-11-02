@@ -74,7 +74,6 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 	Reflect.deleteProperty(navigator, "setAppBadge");
 	Reflect.deleteProperty(navigator, "clearAppBadge");
-	document.title = "";
 });
 
 async function start(routeId: string) {
@@ -89,7 +88,6 @@ async function start(routeId: string) {
 	const session = createRoute({
 		getParentRoute: () => root,
 		path: "/session/$id",
-		head: () => ({meta: [{title: "Example session"}]}),
 		component: () => null,
 	});
 	const router = createRouter({
@@ -111,7 +109,7 @@ function publish(sessionId: string, state: Observation["state"] = "waiting") {
 }
 
 function snapshot() {
-	return {badge, title: document.title, subscriptions: harness.subscribe.mock.calls.length};
+	return {badge, subscriptions: harness.subscribe.mock.calls.length};
 }
 
 describe("attention badges for session aliases", () => {
@@ -129,9 +127,9 @@ describe("attention badges for session aliases", () => {
 			client.removeQueries({queryKey: sessionQueryKeys.identity(ALIAS), exact: true});
 		});
 		expect({pending, resolved, removed: snapshot(), requests: fetch.mock.calls}).toStrictEqual({
-			pending: {badge: 2, title: "(2) Example session", subscriptions: 1},
-			resolved: {badge: 1, title: "(1) Example session", subscriptions: 1},
-			removed: {badge: 2, title: "(2) Example session", subscriptions: 1},
+			pending: {badge: 2, subscriptions: 1},
+			resolved: {badge: 1, subscriptions: 1},
+			removed: {badge: 2, subscriptions: 1},
 			requests: [],
 		});
 	});
@@ -161,8 +159,8 @@ describe("attention badges for session aliases", () => {
 			resolved: getCachedSessionIdentity(client, ALIAS),
 			requests: fetch.mock.calls,
 		}).toStrictEqual({
-			before: {badge: 1, title: "(1) Example session", subscriptions: 1},
-			after: {badge: 2, title: "(2) Example session", subscriptions: 1},
+			before: {badge: 1, subscriptions: 1},
+			after: {badge: 2, subscriptions: 1},
 			cached: {sessionId: ALICE},
 			resolved: null,
 			requests: [],
@@ -190,10 +188,10 @@ describe("attention badges for session aliases", () => {
 			afterBobWaits: snapshot(),
 			requests: fetch.mock.calls,
 		}).toStrictEqual({
-			visible: {badge: 0, title: "Example session", subscriptions: 1},
-			hidden: {badge: 1, title: "(1) Example session", subscriptions: 1},
-			differentSession: {badge: 1, title: "(1) Example session", subscriptions: 1},
-			afterBobWaits: {badge: 1, title: "(1) Example session", subscriptions: 1},
+			visible: {badge: 0, subscriptions: 1},
+			hidden: {badge: 1, subscriptions: 1},
+			differentSession: {badge: 1, subscriptions: 1},
+			afterBobWaits: {badge: 1, subscriptions: 1},
 			requests: [],
 		});
 	});
@@ -207,7 +205,7 @@ describe("attention badges for session aliases", () => {
 			queries: client.getQueryCache().getAll(),
 			resolved: getCachedSessionIdentity(client, ALICE),
 		}).toStrictEqual({
-			state: {badge: 0, title: "Example session", subscriptions: 1},
+			state: {badge: 0, subscriptions: 1},
 			requests: [],
 			queries: [],
 			resolved: ALICE,

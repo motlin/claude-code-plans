@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {ArrowLeft} from "lucide-react";
@@ -13,11 +14,7 @@ export const Route = createFileRoute("/project/$id_/memories")({
 	loader: async ({context: {queryClient}, params}) =>
 		queryClient.query({...projectMemoriesQueryOptions(params.id), staleTime: "static"}),
 	head: ({loaderData}) => ({
-		meta: [
-			{
-				title: loaderData ? `${loaderData.project.name} memories` : "Project Not Found",
-			},
-		],
+		meta: [pageTitle(loaderData ? `${loaderData.project.name} memories` : "Project Not Found")],
 	}),
 });
 

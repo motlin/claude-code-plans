@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {useQuery} from "@tanstack/react-query";
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {TerminalPane} from "../components/panes/terminal-pane";
@@ -8,7 +9,7 @@ import {terminalHostLabel} from "../lib/session-environment";
 
 export const Route = createFileRoute("/terminals/$sessionId")({
 	component: TerminalPage,
-	head: () => ({meta: [{title: "Live terminal"}]}),
+	head: () => ({meta: [pageTitle("Live terminal")]}),
 });
 
 /**

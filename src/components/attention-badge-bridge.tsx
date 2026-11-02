@@ -4,7 +4,6 @@ import {useQueryClient} from "@tanstack/react-query";
 
 import {useSubscribeSessionStates} from "../hooks/use-claude-events";
 import {countSessionsNeedingAttention} from "../lib/attention";
-import {resolvedRouteTitle} from "../lib/route-title";
 import {displayState, type ActivityState} from "../lib/session-state";
 import {hasUnseenWork, subscribeUnseenWork} from "../lib/unread-store";
 import {useSettings} from "./settings-context";
@@ -19,17 +18,6 @@ function viewedRouteId(router: ReturnType<typeof useRouter>): string | null {
 	return typeof id === "string" ? id : null;
 }
 
-/** Upstream's tab title for a page that names none, such as the 404. */
-const DEFAULT_TITLE = "Claude Code";
-
-/**
- * Title the current route asks for, else upstream's "Claude Code". Reading `document.title` back
- * instead would pin the badge to an earlier route's title, or re-prefix its own "(N)" count.
- */
-function routeTitle(router: ReturnType<typeof useRouter>): string {
-	return resolvedRouteTitle(router.state.matches) ?? DEFAULT_TITLE;
-}
-
 function setAppBadge(count: number): void {
 	if (count > 0 && typeof navigator.setAppBadge === "function") {
 		navigator.setAppBadge(count).catch(() => {});
@@ -38,7 +26,10 @@ function setAppBadge(count: number): void {
 	}
 }
 
-/** Side-effect-only component that mirrors the live attention count to browser chrome. */
+/**
+ * Side-effect-only component that mirrors the live attention count to the Dock/app badge. The tab
+ * title stays upstream's fixed "Claude Code": claude.ai/code never prefixes a "(N)" count.
+ */
 export function AttentionBadgeBridge(): null {
 	const {settings} = useSettings();
 	const subscribeSessionStates = useSubscribeSessionStates();
@@ -58,8 +49,6 @@ export function AttentionBadgeBridge(): null {
 			}));
 			const viewedSessionId = getCachedSessionIdentity(queryClient, viewedRouteId(router));
 			const count = countSessionsNeedingAttention(sessions, settings, document.hidden, viewedSessionId);
-			const title = routeTitle(router);
-			document.title = count > 0 ? `(${count}) ${title}` : title;
 			setAppBadge(count);
 		};
 
@@ -87,7 +76,6 @@ export function AttentionBadgeBridge(): null {
 			unsubscribeRouter();
 			unsubscribeIdentity();
 			document.removeEventListener("visibilitychange", updateBadge);
-			document.title = routeTitle(router);
 			if (typeof navigator.clearAppBadge === "function") {
 				navigator.clearAppBadge().catch(() => {});
 			}

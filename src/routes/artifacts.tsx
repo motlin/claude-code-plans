@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute, Link, useNavigate} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {Tabs} from "@base-ui/react/tabs";
@@ -69,7 +70,7 @@ export const Route = createFileRoute("/artifacts")({
 	},
 	loader: async ({context: {queryClient}}) => queryClient.query({...artifactsQueryOptions, staleTime: "static"}),
 	head: () => ({
-		meta: [{title: "Artifacts"}],
+		meta: [{title: "Artifacts - Claude"}, pageTitle("Artifacts")],
 	}),
 });
 

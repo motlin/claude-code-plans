@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {useQuery} from "@tanstack/react-query";
 import {createFileRoute} from "@tanstack/react-router";
 import {z} from "zod";
@@ -7,7 +8,7 @@ import {customizePluginDetailQueryOptions, customizePluginFileQueryOptions} from
 export const Route = createFileRoute("/customize_/plugins/id/$pluginId/contents")({
 	component: PluginContentsTab,
 	validateSearch: z.object({file: z.string().optional()}),
-	head: () => ({meta: [{title: "Plugin contents · Customize"}]}),
+	head: () => ({meta: [pageTitle("Plugin contents · Customize")]}),
 });
 
 /** Contents tab: README.md selected by default, or the `?file=` path. */

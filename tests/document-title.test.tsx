@@ -11,7 +11,7 @@ import {
 	RouterProvider,
 } from "@tanstack/react-router";
 import {act, cleanup, render} from "@testing-library/react";
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {DEFAULTS} from "../src/components/settings-context";
 import type {ActivityState} from "../src/lib/session-state";
@@ -78,29 +78,47 @@ function renderRoutedApp(initialPath: string) {
 	return router;
 }
 
+let badges: Array<number | "cleared">;
+
+beforeEach(() => {
+	badges = [];
+	Object.assign(navigator, {
+		setAppBadge: async (count: number) => {
+			badges.push(count);
+			return Promise.resolve();
+		},
+		clearAppBadge: async () => {
+			badges.push("cleared");
+			return Promise.resolve();
+		},
+	});
+});
+
 afterEach(() => {
 	cleanup();
 	harness.emit = null;
 	harness.alerts = false;
 	document.title = "";
+	Reflect.deleteProperty(navigator, "setAppBadge");
+	Reflect.deleteProperty(navigator, "clearAppBadge");
 });
 
 describe("AttentionBadgeBridge document title", () => {
-	it("follows the route title across client-side navigation", async () => {
+	it("leaves the route's tab title alone across client-side navigation", async () => {
 		const router = renderRoutedApp("/alpha");
 		await act(async () => {
 			await router.load();
 		});
-		expect(document.title).toBe("Alpha");
+		const alpha = document.title;
 
 		await act(async () => {
 			await router.navigate({to: "/beta"} as never);
 		});
 
-		expect(document.title).toBe("Beta");
+		expect({alpha, beta: document.title}).toStrictEqual({alpha: "Alpha", beta: "Beta"});
 	});
 
-	it("prefixes the attention count onto the current route title", async () => {
+	it("never prefixes the attention count onto the tab title, as upstream; the app badge still counts", async () => {
 		harness.alerts = true;
 		const router = renderRoutedApp("/alpha");
 		await act(async () => {
@@ -110,19 +128,6 @@ describe("AttentionBadgeBridge document title", () => {
 			await router.navigate({to: "/beta"} as never);
 		});
 
-		act(() => {
-			harness.emit?.({sessionId: "session-test-waiting", state: "waiting"});
-		});
-
-		expect(document.title).toBe("(1) Beta");
-	});
-
-	it("titles a page with no route title (the 404) 'Claude Code' as upstream, counting attention once", async () => {
-		harness.alerts = true;
-		const router = renderRoutedApp("/missing");
-		await act(async () => {
-			await router.load();
-		});
 		act(() => {
 			harness.emit?.({sessionId: "session-test-waiting", state: "waiting"});
 		});
@@ -130,6 +135,9 @@ describe("AttentionBadgeBridge document title", () => {
 			harness.emit?.({sessionId: "session-test-waiting-2", state: "waiting"});
 		});
 
-		expect(document.title).toBe("(2) Claude Code");
+		expect({title: document.title, badges}).toStrictEqual({
+			title: "Beta",
+			badges: ["cleared", "cleared", "cleared", 1, 2],
+		});
 	});
 });

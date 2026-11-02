@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {Code, SlidersHorizontal, X} from "lucide-react";
@@ -9,7 +10,7 @@ export const Route = createFileRoute("/settings_/edit")({
 	component: SettingsEditPage,
 	loader: async ({context: {queryClient}}) => queryClient.query({...settingsQueryOptions, staleTime: "static"}),
 	head: () => ({
-		meta: [{title: "Edit Settings"}],
+		meta: [pageTitle("Edit Settings")],
 	}),
 });
 

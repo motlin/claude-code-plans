@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {noop} from "@tanstack/react-query";
 import {createFileRoute, Outlet} from "@tanstack/react-router";
 import {PluginDetailFrame} from "../components/customize/detail-frames";
@@ -9,7 +10,7 @@ export const Route = createFileRoute("/customize_/plugins/id/$pluginId")({
 	loader: ({context: {queryClient}, params}) => {
 		void queryClient.query(customizePluginDetailQueryOptions(params.pluginId)).catch(noop);
 	},
-	head: () => ({meta: [{title: "Plugin · Customize"}]}),
+	head: () => ({meta: [pageTitle("Plugin · Customize")]}),
 	staticData: {pageGutter: "tight"},
 });
 

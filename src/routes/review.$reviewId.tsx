@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {createFileRoute, useNavigate} from "@tanstack/react-router";
 import {useEffect} from "react";
@@ -12,7 +13,7 @@ export const Route = createFileRoute("/review/$reviewId")({
 	component: ReviewDeepLink,
 	loader: async ({context: {queryClient}, params}) =>
 		queryClient.query({...reviewQueryOptions(params.reviewId), staleTime: "static"}),
-	head: () => ({meta: [{title: "Working-copy review"}]}),
+	head: () => ({meta: [pageTitle("Working-copy review")]}),
 });
 
 function ReviewDeepLink() {

@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {MarkdownView} from "../components/markdown-view";
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/plan/$filename")({
 			queryClient.query({...planLinksQueryOptions(params.filename), staleTime: "static"}),
 		]),
 	head: ({params}) => ({
-		meta: [{title: fromMdSlug(params.filename)}],
+		meta: [pageTitle(fromMdSlug(params.filename))],
 	}),
 });
 

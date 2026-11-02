@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {noop} from "@tanstack/react-query";
 import {createFileRoute, useNavigate} from "@tanstack/react-router";
 import {FileView} from "../components/files/file-view";
@@ -15,7 +16,7 @@ export const Route = createFileRoute("/file/$")({
 	head: ({params}) => {
 		const path = decodeFilePath(params._splat ?? "");
 		const filename = path?.split("/").at(-1) ?? "Invalid path";
-		return {meta: [{title: `File: ${filename}`}]};
+		return {meta: [pageTitle(`File: ${filename}`)]};
 	},
 });
 

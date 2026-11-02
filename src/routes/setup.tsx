@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute} from "@tanstack/react-router";
 import {CodePageHeader} from "../components/code-page-header";
 import {HookSetup} from "../components/hook-setup";
@@ -5,7 +6,7 @@ import {HookSetup} from "../components/hook-setup";
 export const Route = createFileRoute("/setup")({
 	component: SetupPage,
 	head: () => ({
-		meta: [{title: "Setup"}],
+		meta: [pageTitle("Setup")],
 	}),
 });
 

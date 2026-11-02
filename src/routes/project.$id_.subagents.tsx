@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {ArrowLeft} from "lucide-react";
@@ -20,11 +21,7 @@ export const Route = createFileRoute("/project/$id_/subagents")({
 		return detail;
 	},
 	head: ({loaderData}) => ({
-		meta: [
-			{
-				title: loaderData ? `${loaderData.name} subagents` : "Project Not Found",
-			},
-		],
+		meta: [pageTitle(loaderData ? `${loaderData.name} subagents` : "Project Not Found")],
 	}),
 });
 

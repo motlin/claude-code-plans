@@ -4,7 +4,6 @@ import {useRouter} from "@tanstack/react-router";
 import {useQueryClient, type QueryClient} from "@tanstack/react-query";
 
 import {useSubscribeSessionRemovals} from "./use-claude-events";
-import {stripAttentionCount} from "../lib/attention";
 import {
 	loadRecents,
 	push,
@@ -18,8 +17,8 @@ import {
 	type RecentTarget,
 } from "../lib/recents-history";
 import {getCachedSessionIdentity} from "../lib/api/session-identity";
-import {sessionQueryKeys} from "../lib/api/sessions";
-import {resolvedRouteTitle} from "../lib/route-title";
+import {sessionDetailQueryOptions, sessionQueryKeys} from "../lib/api/sessions";
+import {resolvedPageTitle} from "../lib/route-title";
 import {eventQueryKey} from "../lib/query-cache-event";
 
 type AppRouter = ReturnType<typeof useRouter>;
@@ -58,9 +57,10 @@ function resolvedToNotFound(router: AppRouter, title: string | null): boolean {
 }
 
 /**
- * Feeds the per-tab recents MRU behind the ⌃Q switcher. Every resolved navigation pushes its page;
- * the page being left is retitled from `document.title` so live title changes stick. Pages that
- * resolve to not-found, and sessions the index drops, are pruned.
+ * Feeds the per-tab recents MRU behind the ⌃Q switcher. Every resolved navigation pushes its page
+ * under its route's page title; a session being left is retitled from its cached detail so renames
+ * stick (the tab title is always "Claude Code", so it names nothing). Pages that resolve to
+ * not-found, and sessions the index drops, are pruned.
  */
 export function useRecentsRecorder(): void {
 	const router = useRouter();
@@ -84,7 +84,7 @@ export function useRecentsRecorder(): void {
 			visit.target ??= resolvedTarget(queryClient, location.pathname);
 			if (!visit.target) return;
 			const target = resolveRecentSession(visit.target, (alias) => getCachedSessionIdentity(queryClient, alias));
-			const title = resolvedRouteTitle(router.state.matches);
+			const title = resolvedPageTitle(router.state.matches);
 			if (resolvedToNotFound(router, title)) {
 				update(queryClient, (entries) => remove(entries, target.key));
 				return;
@@ -98,9 +98,13 @@ export function useRecentsRecorder(): void {
 					? visit.target
 					: resolvedTarget(queryClient, fromLocation.pathname)
 				: null;
-			const title = stripAttentionCount(document.title);
-			if (!left || title === "" || title.endsWith(" Not Found")) return;
-			update(queryClient, (entries) => retitle(entries, left.key, title));
+			if (left?.kind !== "session") return;
+			const {key} = resolveRecentSession(left, (alias) => getCachedSessionIdentity(queryClient, alias));
+			const title = queryClient.getQueryData(
+				sessionDetailQueryOptions(key.slice("session:".length)).queryKey,
+			)?.title;
+			if (title === undefined || title === "") return;
+			update(queryClient, (entries) => retitle(entries, key, title));
 		});
 		const unsubscribeResolved = router.subscribe("onResolved", () => {
 			navigating = false;

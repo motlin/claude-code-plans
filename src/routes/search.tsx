@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute} from "@tanstack/react-router";
 import {SearchView} from "../components/search-view";
 import {UnifiedSearchTypeSchema, type UnifiedSearchType} from "../lib/api/search";
@@ -6,7 +7,7 @@ export const Route = createFileRoute("/search")({
 	component: SearchPage,
 	validateSearch: validateSearchParameters,
 	head: () => ({
-		meta: [{title: "Search"}],
+		meta: [pageTitle("Search")],
 	}),
 });
 

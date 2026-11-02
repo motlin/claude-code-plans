@@ -16,6 +16,7 @@ import {invalidateSessionIdentities, sessionIdentityQueryOptions} from "../src/l
 import {sessionSourceQueryOptions} from "../src/lib/api/session-source";
 import {routeToRecent} from "../src/lib/recents-history";
 import {Route as SourceRoute} from "../src/routes/session.$id_.source.$uuid";
+import {renderedPageTitle} from "./rendered-page-title";
 
 const ALIAS = "session_alice_100";
 const ALICE = "local-alice-100";
@@ -127,7 +128,7 @@ it("resolves a delayed alias before fetching source and keeps record IDs in ever
 	expect({
 		pending,
 		urls: fetcher.mock.calls.map(([url]) => url),
-		title: document.title,
+		title: renderedPageTitle(),
 		links: screen.getAllByRole("link").map((link) => link.getAttribute("href")),
 		recent: routeToRecent(router.state.location.pathname),
 	}).toStrictEqual({
@@ -149,7 +150,7 @@ it("resolves a delayed alias before fetching source and keeps record IDs in ever
 it("opens UUID source routes without an identity request", async () => {
 	const {fetcher} = await setup({initial: `/session/${ALICE}/source/${RECORD}`});
 	await screen.findByRole("heading", {name: `JSONL source · line 1 · ${RECORD}`});
-	expect({urls: fetcher.mock.calls.map(([url]) => url), title: document.title}).toStrictEqual({
+	expect({urls: fetcher.mock.calls.map(([url]) => url), title: renderedPageTitle()}).toStrictEqual({
 		urls: [`/api/sessions/${ALICE}/source/${RECORD}?context=5`],
 		title: "Source: 11111111",
 	});
@@ -159,7 +160,7 @@ it("paints the source loading state before UUID source data arrives", async () =
 	const {fetcher, finishSource} = await setup({initial: `/session/${ALICE}/source/${RECORD}`, delaySource: true});
 	expect({
 		loading: screen.getByRole("status").textContent,
-		title: document.title,
+		title: renderedPageTitle(),
 		urls: fetcher.mock.calls.map(([url]) => url),
 	}).toStrictEqual({
 		loading: "Loading source…",
@@ -179,7 +180,7 @@ it("shows the missing-session view and the shared 404 title without a source req
 		finish(new Response(null, {status: 404}));
 	});
 	await waitFor(() => {
-		expect(document.title).toBe("Session Not Found");
+		expect(renderedPageTitle()).toBe("Session Not Found");
 	});
 	expect({
 		heading: screen.getByRole("heading", {level: 2}).textContent,
@@ -201,14 +202,14 @@ it.each([409])(
 		});
 		const title = "Ambiguous session link";
 		await waitFor(() => {
-			expect(document.title).toBe(title);
+			expect(renderedPageTitle()).toBe(title);
 		});
 		const failure = {message: screen.getByRole("alert").textContent, urls: fetcher.mock.calls.map(([url]) => url)};
 		setLookup(async () => Promise.resolve(Response.json({sessionId: ALICE})));
 		fireEvent.click(screen.getByRole("button", {name: "Retry"}));
 		await screen.findByRole("heading", {name: `JSONL source · line 1 · ${RECORD}`});
 		await waitFor(() => {
-			expect(document.title).toBe("Source: 11111111");
+			expect(renderedPageTitle()).toBe("Source: 11111111");
 		});
 		expect(failure).toStrictEqual({
 			message: "This session link has more than one local session.",
@@ -239,7 +240,7 @@ it.each(["ambiguous", "reassigned"])(
 			expect(router.state.location.pathname).toBe(`/session/${ALICE}/source/${RECORD}`);
 		});
 		expect({
-			title: document.title,
+			title: renderedPageTitle(),
 			sameHeading: screen.getByRole("heading", {name: `JSONL source · line 1 · ${RECORD}`}) === heading,
 			search: {...router.state.location.search},
 			hash: router.state.location.hash,

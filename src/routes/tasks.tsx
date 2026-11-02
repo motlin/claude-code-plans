@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {useMemo, useState} from "react";
@@ -17,7 +18,7 @@ export const Route = createFileRoute("/tasks")({
 	component: TasksPage,
 	loader: async ({context: {queryClient}}) => queryClient.query({...tasksQueryOptions, staleTime: "static"}),
 	head: () => ({
-		meta: [{title: "Tasks"}],
+		meta: [pageTitle("Tasks")],
 	}),
 });
 

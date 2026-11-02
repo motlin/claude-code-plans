@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {isSessionRouteAlias} from "../lib/session-route-alias";
 import {createFileRoute, Link, useRouter} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
@@ -26,7 +27,7 @@ export const Route = createFileRoute("/session/$id_/source/$uuid")({
 		};
 	},
 	head: ({params, loaderData}) => ({
-		meta: [{title: loaderData?.title ?? `Source: ${params.uuid.slice(0, 8)}`}],
+		meta: [pageTitle(loaderData?.title ?? `Source: ${params.uuid.slice(0, 8)}`)],
 	}),
 });
 

@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {useQuery} from "@tanstack/react-query";
 import {createFileRoute} from "@tanstack/react-router";
 import {ContentsViewer} from "../components/customize/contents-viewer";
@@ -5,7 +6,7 @@ import {customizeSkillDetailQueryOptions, customizeSkillFileQueryOptions} from "
 
 export const Route = createFileRoute("/customize_/skills/id/$skillId/contents")({
 	component: SkillContentsTab,
-	head: () => ({meta: [{title: "Skill contents · Customize"}]}),
+	head: () => ({meta: [pageTitle("Skill contents · Customize")]}),
 });
 
 function SkillContentsTab() {

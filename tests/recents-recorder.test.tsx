@@ -17,6 +17,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {loadRecents, saveRecents, type RecentEntry} from "../src/lib/recents-history";
 import {sessionQueryKeys} from "../src/lib/api/sessions";
 import {ApiResponseError} from "../src/lib/api/client";
+import {pageTitle} from "../src/lib/route-title";
 
 const harness = vi.hoisted(() => ({
 	sessionReady: null as Promise<void> | null,
@@ -70,14 +71,14 @@ function renderRoutedApp(initialPath: string) {
 			return SESSION_TITLES[params.id] ?? null;
 		},
 		head: ({loaderData}) => ({
-			meta: [{title: loaderData ?? "Session Not Found"}],
+			meta: [pageTitle(loaderData ?? "Session Not Found")],
 		}),
 		component: () => <div>session</div>,
 	});
 	const subagentsRoute = createRoute({
 		getParentRoute: () => rootRoute,
 		path: "/session/$id/subagents",
-		head: () => ({meta: [{title: "Example subagents"}]}),
+		head: () => ({meta: [pageTitle("Example subagents")]}),
 		component: () => <div>subagents</div>,
 	});
 	const planRoute = createRoute({
@@ -86,13 +87,13 @@ function renderRoutedApp(initialPath: string) {
 		loader: () => {
 			throw notFound();
 		},
-		head: ({params}) => ({meta: [{title: params.filename}]}),
+		head: ({params}) => ({meta: [pageTitle(params.filename)]}),
 		component: () => <div>plan</div>,
 	});
 	const settingsRoute = createRoute({
 		getParentRoute: () => rootRoute,
 		path: "/settings",
-		head: () => ({meta: [{title: "Settings"}]}),
+		head: () => ({meta: [pageTitle("Settings")]}),
 		component: () => <div>settings</div>,
 	});
 	const router = createRouter({
@@ -192,9 +193,10 @@ describe("useRecentsRecorder", () => {
 		expect(loadRecents()).toStrictEqual([BETA]);
 	});
 
-	it("retitles the page being left from document.title", async () => {
+	it("retitles the session being left from its cached detail, never from document.title", async () => {
 		const router = await start("/session/session-alpha");
-		document.title = "(2) Alpha renamed";
+		queryClient.setQueryData(sessionQueryKeys.detail("session-alpha"), {title: "Alpha renamed"});
+		document.title = "Claude Code";
 		await go(router, "/session/session-beta");
 
 		expect(loadRecents()).toStrictEqual([BETA, {...ALPHA, title: "Alpha renamed"}]);
@@ -305,7 +307,7 @@ describe("recorder session identities", () => {
 		SESSION_TITLES[ALIAS] = "Alpha updated";
 		await act(async () => router.invalidate());
 		const reassigned = loadRecents();
-		document.title = "(2) Alpha renamed";
+		queryClient.setQueryData(sessionQueryKeys.detail("session-alpha"), {title: "Alpha renamed"});
 		await go(router, "/settings");
 		const left = loadRecents();
 		SESSION_TITLES[ALIAS] = "Beta session";

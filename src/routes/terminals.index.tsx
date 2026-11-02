@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {useQueryClient, useSuspenseQuery} from "@tanstack/react-query";
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {Info, MessagesSquare} from "lucide-react";
@@ -15,7 +16,7 @@ export const Route = createFileRoute("/terminals/")({
 	loader: async ({context: {queryClient}}) =>
 		queryClient.query({...terminalPlacementsQueryOptions, staleTime: "static"}),
 	head: () => ({
-		meta: [{title: "Terminals"}],
+		meta: [pageTitle("Terminals")],
 	}),
 });
 

@@ -1,3 +1,4 @@
+import {pageTitle} from "../lib/route-title";
 import {createFileRoute, useNavigate} from "@tanstack/react-router";
 import {useCallback} from "react";
 import {HomeComposer} from "../components/home/home-composer";
@@ -9,7 +10,7 @@ export const Route = createFileRoute("/")({
 	staticData: {fullBleed: true, tileShell: "home"},
 	validateSearch: validateHomeSearch,
 	head: () => ({
-		meta: [{title: "Claude Code Browser"}],
+		meta: [pageTitle("Claude Code Browser")],
 	}),
 });
 
