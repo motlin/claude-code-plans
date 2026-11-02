@@ -14,7 +14,7 @@ const FIELD_CLASS = "flex w-full flex-col gap-1.5 font-sans";
 const LABEL_CLASS = "text-body text-primary font-medium leading-none";
 /** Upstream's `y$ Gv.outline tt.select pe-sm w-full min-w-0`. */
 const CONTROL_CLASS =
-	"group/cbx inline-flex items-center gap-1.5 h-8 rounded-r6 font-sans text-body font-normal text-primary outline-none transition data-[disabled]:opacity-50 data-[disabled]:pointer-events-none bg-fill-field shadow-field-ring [&:hover:not(:has(:focus-visible)):not([data-disabled])]:shadow-field-hover ps-0 has-[:focus-visible]:shadow-focus pe-2 w-full min-w-0";
+	"group/cbx inline-flex items-center gap-1.5 h-8 rounded-r6 font-sans text-body font-control-regular text-primary outline-none transition data-[disabled]:opacity-50 data-[disabled]:pointer-events-none bg-fill-field shadow-field-ring [&:hover:not(:has(:focus-visible)):not([data-disabled])]:shadow-field-hover ps-0 has-[:focus-visible]:shadow-focus pe-2 w-full min-w-0";
 /** Upstream's `JR`: the trigger button fills the control. */
 const TRIGGER_CLASS =
 	"flex min-w-0 flex-1 items-center gap-1.5 self-stretch ps-2 text-start border-0 bg-transparent p-0 outline-none focus-visible:outline-hidden";

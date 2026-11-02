@@ -117,4 +117,140 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () => 
 			dark: {"--upstream-tint-blue": null},
 		});
 	});
+
+	it("maps the rest of upstream's fizzy color block onto the local tokens that play the same role", () => {
+		const names = [
+			"--upstream-text-primary",
+			"--upstream-text-secondary",
+			"--upstream-text-muted",
+			"--upstream-fill-ghost-selected",
+			"--upstream-border",
+			"--upstream-surface-1",
+			"--upstream-surface-2",
+			"--upstream-surface-3",
+			"--upstream-surface-popover",
+			"--menu-bg",
+			"--upstream-fill-primary",
+			"--upstream-fill-primary-hover",
+			"--upstream-on-primary",
+			"--upstream-fill-secondary",
+			"--upstream-fill-secondary-hover",
+			"--upstream-fill-secondary-ring",
+			"--upstream-fill-danger",
+			"--upstream-fill-danger-hover",
+			"--menu-danger-fill",
+			"--upstream-bg-warning",
+			"--upstream-bg-danger",
+			"--warning-tint",
+			"--pro-tint",
+			"--muted-as-secondary",
+			"--palette-selected",
+		] as const;
+		expect({light: tokens(block(FIZZY_LIGHT), names), dark: tokens(block(FIZZY_DARK), names)}).toStrictEqual({
+			light: {
+				"--upstream-text-primary": "#000000e6",
+				"--upstream-text-secondary": "#0009",
+				"--upstream-text-muted": "#0006",
+				"--upstream-fill-ghost-selected": "#0000001a",
+				"--upstream-border": "#00000014",
+				"--upstream-surface-1": "#fff",
+				"--upstream-surface-2": "#fff",
+				"--upstream-surface-3": "#fff",
+				"--upstream-surface-popover": "#fff",
+				"--menu-bg": "#fff",
+				"--upstream-fill-primary": "#191919",
+				"--upstream-fill-primary-hover": "#3c3c3c",
+				"--upstream-on-primary": "#fff",
+				"--upstream-fill-secondary": "#0000000d",
+				"--upstream-fill-secondary-hover": "#00000013",
+				"--upstream-fill-secondary-ring": "var(--upstream-alpha-2)",
+				"--upstream-fill-danger": "#dc3c3d",
+				"--upstream-fill-danger-hover": "#c63637",
+				"--menu-danger-fill": "#dc3c3d",
+				"--upstream-bg-warning": "#fbb31529",
+				"--upstream-bg-danger": "#dc3c3d1f",
+				"--warning-tint": "#fbb31529",
+				"--pro-tint": "#785ee81f",
+				"--muted-as-secondary": "var(--upstream-text-secondary)",
+				"--palette-selected": "var(--upstream-fill-ghost-selected)",
+			},
+			dark: {
+				"--upstream-text-primary": "#ffffffed",
+				"--upstream-text-secondary": "#ffffff91",
+				"--upstream-text-muted": "#fff6",
+				"--upstream-fill-ghost-selected": "#ffffff26",
+				"--upstream-border": "#ffffff0a",
+				"--upstream-surface-1": "#191919",
+				"--upstream-surface-2": "#1f1f1f",
+				"--upstream-surface-3": "#1f1f1f",
+				"--upstream-surface-popover": "#303030",
+				"--menu-bg": "#303030",
+				"--upstream-fill-primary": "#efefef",
+				"--upstream-fill-primary-hover": "#d7d7d7",
+				"--upstream-on-primary": "#191919",
+				"--upstream-fill-secondary": "#ffffff26",
+				"--upstream-fill-secondary-hover": "#ffffff37",
+				"--upstream-fill-secondary-ring": "transparent",
+				"--upstream-fill-danger": null,
+				"--upstream-fill-danger-hover": null,
+				"--menu-danger-fill": null,
+				"--upstream-bg-warning": "#fbb31514",
+				"--upstream-bg-danger": null,
+				"--warning-tint": "#fbb31514",
+				"--pro-tint": null,
+				"--muted-as-secondary": null,
+				"--palette-selected": null,
+			},
+		});
+	});
+
+	it("keeps the pre-rollout values in the base blocks for the newly mapped tokens", () => {
+		const names = [
+			"--upstream-text-primary",
+			"--upstream-text-secondary",
+			"--upstream-text-muted",
+			"--upstream-fill-ghost-selected",
+			"--upstream-border",
+			"--upstream-surface-popover",
+			"--upstream-fill-danger",
+			"--pro-tint",
+			"--palette-selected",
+		] as const;
+		expect({light: tokens(block(":root"), names), dark: tokens(block(".dark"), names)}).toStrictEqual({
+			light: {
+				"--upstream-text-primary": "rgb(11 11 11)",
+				"--upstream-text-secondary": "rgb(82 81 78)",
+				"--upstream-text-muted": "#898781",
+				"--upstream-fill-ghost-selected": "rgb(11 11 11 / 0.1)",
+				"--upstream-border": "hsl(0 0% 4% / 0.1)",
+				"--upstream-surface-popover": "#fff",
+				"--upstream-fill-danger": "#d03b3b",
+				"--pro-tint": "#785ee81f",
+				"--palette-selected": "var(--upstream-fill-ghost-hover)",
+			},
+			dark: {
+				"--upstream-text-primary": "#f0efec",
+				"--upstream-text-secondary": "#c3c2b7",
+				"--upstream-text-muted": "#898781",
+				"--upstream-fill-ghost-selected": "rgb(255 255 255 / 0.15)",
+				"--upstream-border": "hsl(0 0% 100% / 0.1)",
+				"--upstream-surface-popover": "#20201f",
+				"--upstream-fill-danger": "#d03b3b",
+				"--pro-tint": "#785ee833",
+				"--palette-selected": null,
+			},
+		});
+	});
+
+	it("--menu-shadow's light ring is upstream's fizzy --cds-border, #00000014, under fizzy-lake color", () => {
+		expect(tokens(block(FIZZY_LIGHT), ["--menu-shadow"])).toStrictEqual({
+			"--menu-shadow": "0 0 0 1px #00000014, 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08)",
+		});
+	});
+
+	it("exposes the palette's selected-row fill as a utility", () => {
+		expect(tokens(block("@theme inline"), ["--color-palette-selected"])).toStrictEqual({
+			"--color-palette-selected": "var(--palette-selected)",
+		});
+	});
 });

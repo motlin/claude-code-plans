@@ -1429,6 +1429,22 @@ describe("CommandPalette shell", () => {
 		}).toStrictEqual({heading: true, rowGap: false});
 	});
 
+	it("inks group headings text-muted-as-secondary and fills the selected row with the palette-selected token, like upstream under fizzy-lake color", async () => {
+		const dialog = await openPalette([recentSession("s-1", "Recent one")]);
+		const option = await within(dialog).findByRole("option", {name: /Recent one/});
+		const group = dialog.querySelector("[cmdk-group]")?.className.split(" ") ?? [];
+		const row = option.className.split(" ");
+		expect({
+			headingInk: group.filter((name) =>
+				/^\[&_\[cmdk-group-heading\]\]:text-(ink-muted|muted-as-secondary)$/.test(name),
+			),
+			selected: row.filter((name) => name.startsWith("data-[selected=true]:")),
+		}).toStrictEqual({
+			headingInk: ["[&_[cmdk-group-heading]]:text-muted-as-secondary"],
+			selected: ["data-[selected=true]:bg-palette-selected", "data-[selected=true]:text-primary"],
+		});
+	});
+
 	it("sizes the header, list and group gaps as upstream: 64px input row, tabs overlapping it by 6px, a list held at its 440px cap with 4px between groups", async () => {
 		const dialog = await openPalette([recentSession("s-1", "Recent one")]);
 		const input = within(dialog).getByRole("combobox");

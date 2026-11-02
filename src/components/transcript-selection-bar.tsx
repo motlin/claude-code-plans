@@ -20,7 +20,7 @@ const HOST_CLASS =
 const BAR_CLASS = "rounded-r5 bg-surface-3 shadow-[var(--menu-shadow)] group/split flex";
 /** Upstream's cds ghost Button: 24px tall, 8px inline padding, 6px radius, ghost hover paint. */
 const BUTTON_CLASS =
-	"inline-flex h-6 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-r5 px-2 text-body font-normal text-primary select-none outline-none hover:bg-fill-ghost-hover focus-visible:shadow-focus";
+	"inline-flex h-6 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none hover:bg-fill-ghost-hover focus-visible:shadow-focus";
 const SEPARATOR_CLASS =
 	"w-px my-[7px] bg-alpha-2 shrink-0 transition-opacity motion-reduce:transition-none group-hover/split:opacity-0 group-focus-within/split:opacity-0";
 

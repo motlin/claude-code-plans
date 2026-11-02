@@ -198,7 +198,7 @@ const PALETTE_KEYS_HINT_ID = "command-palette-keys-hint";
 const PALETTE_RADIUS = "rounded-[calc(var(--radius-composer)+0.375rem)]";
 
 const GROUP_CLASS =
-	"[&_[cmdk-group-heading]]:px-3.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:pb-2 [&_[cmdk-group-heading]]:text-[12px]/[17px] [&_[cmdk-group-heading]]:text-ink-muted [&_[cmdk-group-items]]:flex [&_[cmdk-group-items]]:flex-col";
+	"[&_[cmdk-group-heading]]:px-3.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:pb-2 [&_[cmdk-group-heading]]:text-[12px]/[17px] [&_[cmdk-group-heading]]:text-muted-as-secondary [&_[cmdk-group-items]]:flex [&_[cmdk-group-items]]:flex-col";
 
 /** Fetched deep enough that sessions needing attention surface even when they are not the newest. */
 export const PALETTE_RECENT_LIMIT = 25;
@@ -2700,7 +2700,7 @@ function ShortcutCommandItem({id, ...props}: {id: ShortcutId} & Omit<Parameters<
 }
 
 const ROW_CLASS =
-	"peer group flex w-full cursor-pointer items-center justify-between gap-3 truncate rounded-r6 px-3 py-2 text-sm leading-5 text-secondary select-none data-[selected=true]:bg-fill-ghost-hover data-[selected=true]:text-primary";
+	"peer group flex w-full cursor-pointer items-center justify-between gap-3 truncate rounded-r6 px-3 py-2 text-sm leading-5 text-secondary select-none data-[selected=true]:bg-palette-selected data-[selected=true]:text-primary";
 
 const ARCHIVED_ROW_CLASS = ROW_CLASS.replace("text-secondary", "text-ink-muted");
 

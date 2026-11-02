@@ -46,12 +46,15 @@
 	--font-sans--font-feature-settings: "calt" 0;
 	/* Upstream `font-control` on font-medium cds Buttons and `font-base-bold` on the slash-chip "/": 500 until fizzy-lake `type`. */
 	--font-weight-control: 500;
+	/* Upstream `font-control` on font-normal cds Buttons and Comboboxes: 400 until fizzy-lake `type`. */
+	--font-weight-control-regular: 400;
 }
 
 /* Fizzy-lake `type` rollout: upstream `.cds-root:is([data-cds-fizzy-lake~=type], …)`
    (dumps/upstream-survey-root-vars.css). */
 :root[data-cds-fizzy-lake~="type"] {
 	--font-weight-control: 435;
+	--font-weight-control-regular: 435;
 }
 
 /* Settings ▸ Interface font ▸ OpenDyslexic, self-hosted from @fontsource/opendyslexic. */
@@ -82,6 +85,8 @@ html[data-interface-font="dyslexic"] {
 	--color-fill-control: var(--upstream-fill-control);
 	--color-fill-ghost-hover: var(--upstream-fill-ghost-hover);
 	--color-fill-ghost-selected: var(--upstream-fill-ghost-selected);
+	/* The ⌘K palette's selected row: ghost hover until fizzy-lake color, then upstream's measured ghost-selected. */
+	--color-palette-selected: var(--palette-selected);
 	/* Upstream --cds-fill-field (bg-fill-field): the ⌘K Compose field and question-card input. */
 	--color-fill-field: var(--upstream-fill-field);
 	--color-fill-grip: var(--upstream-fill-grip);
@@ -304,6 +309,7 @@ html[data-interface-font="dyslexic"] {
 	--upstream-fill-ghost-hover: hsl(0 0% 4% / 0.05);
 	/* Upstream's pressed rail toggle (session-presets gate): 10% ink. */
 	--upstream-fill-ghost-selected: rgb(11 11 11 / 0.1);
+	--palette-selected: var(--upstream-fill-ghost-hover);
 	/* Upstream pane move/resize grips: 20% ink. */
 	--upstream-fill-grip: hsl(0 0% 4% / 0.2);
 	--upstream-fill-primary: hsl(0 0% 4%);
@@ -748,12 +754,66 @@ html[data-interface-font="dyslexic"] {
 	--upstream-warning: #794c02;
 	/* Upstream `--cds-bg-tint-blue`, the same in both modes: the ⌘K palette's committed filter chips. */
 	--upstream-tint-blue: #257de01f;
+	/* Upstream `--cds-text-primary` / `-secondary` / `-muted`. */
+	--upstream-text-primary: #000000e6;
+	--upstream-text-secondary: #0009;
+	--upstream-text-muted: #0006;
+	/* Upstream `--muted-as-secondary` under fizzy color: --cds-fizzy-lake-color-secondary (#0009 / #ffffff91). */
+	--muted-as-secondary: var(--upstream-text-secondary);
+	/* Upstream `--cds-fill-ghost-selected`; the ⌘K selected row reads it (measured rgba(0,0,0,0.1)). */
+	--upstream-fill-ghost-selected: #0000001a;
+	--palette-selected: var(--upstream-fill-ghost-selected);
+	/* Upstream `--cds-border` (= --cds-ring-color), also the light menu ring. */
+	--upstream-border: #00000014;
+	--menu-shadow: 0 0 0 1px #00000014, 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+	/* Upstream `--cds-surface-1/2/3` and `--cds-surface-popover` (menus paint the popover surface). */
+	--upstream-surface-1: #fff;
+	--upstream-surface-2: #fff;
+	--upstream-surface-3: #fff;
+	--upstream-surface-popover: #fff;
+	--menu-bg: #fff;
+	/* Upstream `--cds-fill-primary(-hover)` and `--cds-on-primary`. */
+	--upstream-fill-primary: #191919;
+	--upstream-fill-primary-hover: #3c3c3c;
+	--upstream-on-primary: #fff;
+	/* Upstream `--cds-fill-secondary(-hover/-ring)`. */
+	--upstream-fill-secondary: #0000000d;
+	--upstream-fill-secondary-hover: #00000013;
+	--upstream-fill-secondary-ring: var(--upstream-alpha-2);
+	/* Upstream `--cds-fill-danger(-hover)`, the same in both modes (menu danger rows too). */
+	--upstream-fill-danger: #dc3c3d;
+	--upstream-fill-danger-hover: #c63637;
+	--menu-danger-fill: #dc3c3d;
+	/* Upstream `--cds-bg-warning` / `--cds-bg-danger` (usage meter tracks) and `--cds-bg-tint-yellow`. */
+	--upstream-bg-warning: #fbb31529;
+	--upstream-bg-danger: #dc3c3d1f;
+	--warning-tint: #fbb31529;
+	/* Upstream `--cds-bg-tint-violet` / `--cds-bg-pro`, the same in both modes. */
+	--pro-tint: #785ee81f;
 }
 
 :root.dark[data-cds-fizzy-lake~="color"] {
 	--upstream-fill-ghost-hover: #ffffff13;
 	--upstream-plain-secondary: #ffffff91;
 	--upstream-warning: #e49c06;
+	--upstream-text-primary: #ffffffed;
+	--upstream-text-secondary: #ffffff91;
+	--upstream-text-muted: #fff6;
+	--upstream-fill-ghost-selected: #ffffff26;
+	--upstream-border: #ffffff0a;
+	--upstream-surface-1: #191919;
+	--upstream-surface-2: #1f1f1f;
+	--upstream-surface-3: #1f1f1f;
+	--upstream-surface-popover: #303030;
+	--menu-bg: #303030;
+	--upstream-fill-primary: #efefef;
+	--upstream-fill-primary-hover: #d7d7d7;
+	--upstream-on-primary: #191919;
+	--upstream-fill-secondary: #ffffff26;
+	--upstream-fill-secondary-hover: #ffffff37;
+	--upstream-fill-secondary-ring: transparent;
+	--upstream-bg-warning: #fbb31514;
+	--warning-tint: #fbb31514;
 	/* Upstream dark shadow-panel: its inset ring is --cds-ring-color = --cds-border. */
 	--menu-shadow: inset 0 0 0 1px #ffffff0a, 0 8px 24px rgba(0, 0, 0, 0.32), 0 2px 6px rgba(0, 0, 0, 0.2);
 }

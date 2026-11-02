@@ -242,7 +242,7 @@ describe("useRewindRequest + RewindConfirm", () => {
 				labelFor: true,
 				labelClass: "text-body text-primary font-medium leading-none",
 				fieldClass:
-					"group/cbx inline-flex items-center gap-1.5 h-8 rounded-r6 font-sans text-body font-normal text-primary outline-none transition data-[disabled]:opacity-50 data-[disabled]:pointer-events-none bg-fill-field shadow-field-ring [&:hover:not(:has(:focus-visible)):not([data-disabled])]:shadow-field-hover ps-0 has-[:focus-visible]:shadow-focus pe-2 w-full min-w-0",
+					"group/cbx inline-flex items-center gap-1.5 h-8 rounded-r6 font-sans text-body font-control-regular text-primary outline-none transition data-[disabled]:opacity-50 data-[disabled]:pointer-events-none bg-fill-field shadow-field-ring [&:hover:not(:has(:focus-visible)):not([data-disabled])]:shadow-field-hover ps-0 has-[:focus-visible]:shadow-focus pe-2 w-full min-w-0",
 				triggerClass:
 					"flex min-w-0 flex-1 items-center gap-1.5 self-stretch ps-2 text-start border-0 bg-transparent p-0 outline-none focus-visible:outline-hidden",
 				caret: true,

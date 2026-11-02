@@ -261,12 +261,12 @@ describe("transcript selection bar", () => {
 				{
 					type: "button",
 					className:
-						"inline-flex h-6 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-r5 px-2 text-body font-normal text-primary select-none outline-none hover:bg-fill-ghost-hover focus-visible:shadow-focus",
+						"inline-flex h-6 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none hover:bg-fill-ghost-hover focus-visible:shadow-focus",
 				},
 				{
 					type: "button",
 					className:
-						"inline-flex h-6 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-r5 px-2 text-body font-normal text-primary select-none outline-none hover:bg-fill-ghost-hover focus-visible:shadow-focus",
+						"inline-flex h-6 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none hover:bg-fill-ghost-hover focus-visible:shadow-focus",
 				},
 			],
 			separator:

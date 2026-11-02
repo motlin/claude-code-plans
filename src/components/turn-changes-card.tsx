@@ -96,7 +96,7 @@ const TRAILING_CLASS = "pointer-events-none relative flex shrink-0 items-center 
 
 /** Upstream's cds ghost Button (size base) with `text-muted-as-secondary hover:text-secondary text-footnote`. */
 const UNDO_CLASS =
-	"h-6 shrink-0 cursor-pointer rounded-r5 px-2 text-[12px]/[15px] text-muted-as-secondary transition-shadow hover:bg-fill-ghost-hover hover:text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-default disabled:opacity-50";
+	"h-6 shrink-0 cursor-pointer rounded-r5 px-2 text-[12px]/[15px] font-control-regular text-muted-as-secondary transition-shadow hover:bg-fill-ghost-hover hover:text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-default disabled:opacity-50";
 
 /**
  * Upstream's Undo: tooltipped "Ask Claude to undo this turn’s file changes", and pressing it keeps focus in the
