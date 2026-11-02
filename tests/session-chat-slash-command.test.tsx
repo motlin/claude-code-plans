@@ -263,7 +263,7 @@ describe("SessionChat slash-command chip", () => {
 		}).toStrictEqual({
 			highlight:
 				"pointer-events-none absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 opacity-0 [@media(hover:hover)]:group-hover:opacity-100 group-data-[popup-open]:opacity-100 bg-upstream-accent-pressed",
-			slash: "relative inline-block w-2 text-[13px] font-medium opacity-50",
+			slash: "relative inline-block w-2 text-[13px] font-control opacity-50",
 		});
 	});
 });

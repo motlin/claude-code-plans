@@ -27,7 +27,7 @@ const HIGHLIGHT_SELECTED_CLASS = {
 };
 
 const GLYPH_CLASS =
-	"absolute top-1/2 -translate-y-1/2 start-0 w-2 h-5 flex items-center justify-center text-[13px]/[19px] font-medium opacity-50 select-none";
+	"absolute top-1/2 -translate-y-1/2 start-0 w-2 h-5 flex items-center justify-center text-[13px]/[19px] font-control opacity-50 select-none";
 
 /**
  * Upstream's composer `skillChip` node view (`Cq`), painted in the composer's mirror overlay over

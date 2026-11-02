@@ -56,7 +56,7 @@ function SlashCommandChip({name}: {name: string}) {
 				<span
 					aria-hidden="true"
 					data-slash-command-slash=""
-					className="relative inline-block w-2 text-[13px] font-medium opacity-50"
+					className="relative inline-block w-2 text-[13px] font-control opacity-50"
 				>
 					/
 				</span>

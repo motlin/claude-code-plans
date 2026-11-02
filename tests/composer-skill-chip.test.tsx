@@ -108,7 +108,7 @@ describe("Composer skill chip", () => {
 									{
 										tag: "span",
 										className:
-											"absolute top-1/2 -translate-y-1/2 start-0 w-2 h-5 flex items-center justify-center text-[13px]/[19px] font-medium opacity-50 select-none",
+											"absolute top-1/2 -translate-y-1/2 start-0 w-2 h-5 flex items-center justify-center text-[13px]/[19px] font-control opacity-50 select-none",
 										ariaHidden: "true",
 										text: "/",
 										children: [],
