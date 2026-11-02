@@ -113,11 +113,15 @@ function stepCall(paneId: string, step: QuestionAnswerStep): {method: string; pa
 		: {method: "pane.send_text", params: {pane_id: paneId, text: step.text}};
 }
 
+/** Sessions whose answer keys are still being typed into the pane. */
+const sessionsTyping = new Set<string>();
+
 /**
  * Answer the CLI's AskUserQuestion dialog in the session's live herdr pane.
  * Keys are only sent while the session's hook-reported question is still the
  * one being answered, and are derived from that stored question, so a stale
- * card can never type into a pane that moved on.
+ * card can never type into a pane that moved on. One answer types at a time
+ * per session, so a second stream can't interleave its keys with the first.
  */
 export async function handleHerdrQuestion(
 	request: Request,
@@ -145,18 +149,29 @@ export async function handleHerdrQuestion(
 		return Response.json({error: "The answers do not fit the pending question"}, {status: 400});
 	}
 
-	const target = await dependencies.resolveTarget(sessionId);
-	if (!target.ok) return Response.json({error: target.message}, {status: 502});
-
-	for (const [index, step] of steps.entries()) {
-		if (index > 0) await dependencies.pause();
-		const response = await dependencies.request({
-			id: dependencies.createRequestId(),
-			...stepCall(target.value.paneId, step),
-		});
-		if (!response.ok) {
-			return Response.json({error: response.message}, {status: response.code === "agent_not_ready" ? 409 : 502});
-		}
+	if (sessionsTyping.has(sessionId)) {
+		return Response.json({error: "An answer is already being typed into this session"}, {status: 409});
 	}
-	return Response.json({ok: true});
+	sessionsTyping.add(sessionId);
+	try {
+		const target = await dependencies.resolveTarget(sessionId);
+		if (!target.ok) return Response.json({error: target.message}, {status: 502});
+
+		for (const [index, step] of steps.entries()) {
+			if (index > 0) await dependencies.pause();
+			const response = await dependencies.request({
+				id: dependencies.createRequestId(),
+				...stepCall(target.value.paneId, step),
+			});
+			if (!response.ok) {
+				return Response.json(
+					{error: response.message},
+					{status: response.code === "agent_not_ready" ? 409 : 502},
+				);
+			}
+		}
+		return Response.json({ok: true});
+	} finally {
+		sessionsTyping.delete(sessionId);
+	}
 }

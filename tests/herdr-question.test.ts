@@ -282,4 +282,63 @@ describe("herdr question answer handler", () => {
 			calls: [],
 		});
 	});
+	it("refuses a second answer for a session whose first answer is still typing, without sending keys", async () => {
+		const sendRequest = vi.fn<HerdrRequester>(async () => Promise.resolve({ok: true, value: {type: "ok"}}));
+		let releaseTyping = (): void => undefined;
+		const typingHeld = new Promise<undefined>((resolve) => {
+			releaseTyping = () => {
+				resolve(undefined);
+			};
+		});
+		const first = handleHerdrQuestion(
+			request(VALID_BODY),
+			dependencies({
+				request: sendRequest,
+				pause: async () => {
+					await typingHeld;
+				},
+			}),
+		);
+		await vi.waitFor(() => {
+			expect(sendRequest).toHaveBeenCalledTimes(1);
+		});
+		const second = await handleHerdrQuestion(request(VALID_BODY), dependencies({request: sendRequest}));
+		expect({response: await describeResponse(second), calls: sendRequest.mock.calls.length}).toStrictEqual({
+			response: {body: {error: "An answer is already being typed into this session"}, status: 409},
+			calls: 1,
+		});
+		const otherSession = await handleHerdrQuestion(
+			request({...VALID_BODY, sessionId: "session-test-200"}),
+			dependencies(),
+		);
+		expect(otherSession.status).toStrictEqual(200);
+		releaseTyping();
+		expect({response: await describeResponse(await first), calls: sendRequest.mock.calls.length}).toStrictEqual({
+			response: {body: {ok: true}, status: 200},
+			calls: 8,
+		});
+	});
+
+	it.each([
+		{name: "the answer finished", request: async () => Promise.resolve({ok: true as const, value: {type: "ok"}})},
+		{
+			name: "herdr rejected a step",
+			request: async () => Promise.resolve({ok: false as const, code: "pane_not_found", message: "Fabricated"}),
+		},
+	])("accepts the next answer once $name", async ({request: firstRequest}) => {
+		await handleHerdrQuestion(request(VALID_BODY), dependencies({request: firstRequest}));
+		const next = await handleHerdrQuestion(request(VALID_BODY), dependencies());
+		expect(await describeResponse(next)).toStrictEqual({body: {ok: true}, status: 200});
+	});
+
+	it("accepts the next answer once resolving the pane threw", async () => {
+		await expect(
+			handleHerdrQuestion(
+				request(VALID_BODY),
+				dependencies({resolveTarget: async () => Promise.reject(new Error("Fabricated failure"))}),
+			),
+		).rejects.toThrow("Fabricated failure");
+		const next = await handleHerdrQuestion(request(VALID_BODY), dependencies());
+		expect(await describeResponse(next)).toStrictEqual({body: {ok: true}, status: 200});
+	});
 });
