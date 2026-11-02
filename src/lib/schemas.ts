@@ -2073,6 +2073,13 @@ export const ApiRequestShapeRecordSchema = z
 
 // A tool added mid-conversation: either its full definition, or just its name
 // when the definition was already sent.
+const ToolReferenceSchema = z
+	.object({
+		type: z.literal("tool_reference"),
+		name: z.string(),
+	})
+	.strict();
+
 export const ToolAdditionToolSchema = z.discriminatedUnion("type", [
 	z
 		.object({
@@ -2080,18 +2087,21 @@ export const ToolAdditionToolSchema = z.discriminatedUnion("type", [
 			definition: ToolDefinitionSchema,
 		})
 		.strict(),
-	z
-		.object({
-			type: z.literal("tool_reference"),
-			name: z.string(),
-		})
-		.strict(),
+	ToolReferenceSchema,
 ]);
 
 const ToolAdditionBlockSchema = z
 	.object({
 		type: z.literal("tool_addition"),
 		tool: ToolAdditionToolSchema,
+	})
+	.strict();
+
+// A tool removed mid-conversation, named by reference.
+const ToolRemovalBlockSchema = z
+	.object({
+		type: z.literal("tool_removal"),
+		tool: ToolReferenceSchema,
 	})
 	.strict();
 
@@ -2104,6 +2114,7 @@ export const ApiRequestBlobContentBlockSchema = z.discriminatedUnion("type", [
 	ToolResultBlockSchema,
 	ImageBlockSchema,
 	ToolAdditionBlockSchema,
+	ToolRemovalBlockSchema,
 ]);
 
 export const ApiRequestBlobRecordSchema = z

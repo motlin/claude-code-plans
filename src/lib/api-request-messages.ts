@@ -40,6 +40,7 @@ const ApiRequestMessageBlockSchema = z.discriminatedUnion("type", [
 			definition: z.boolean(),
 		})
 		.strict(),
+	z.object({type: z.literal("tool_removal"), name: z.string()}).strict(),
 	z.object({type: z.literal("image"), mediaType: z.string(), data: z.string()}).strict(),
 ]);
 

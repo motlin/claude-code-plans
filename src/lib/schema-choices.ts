@@ -983,6 +983,7 @@ const apiRequestBlobContentBlockVariants = {
 	tool_result: true,
 	image: true,
 	tool_addition: true,
+	tool_removal: true,
 } satisfies Record<z.infer<typeof ApiRequestBlobContentBlockSchema>["type"], true>;
 
 /** Not consumed yet — the API request log is only validated. */

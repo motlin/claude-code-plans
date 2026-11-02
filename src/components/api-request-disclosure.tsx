@@ -160,6 +160,8 @@ function MessageBlock({block, blockKey}: {block: ApiRequestMessageBlock; blockKe
 			);
 		case "tool_addition":
 			return <span className="text-t6">{`Added tool ${block.name}${block.definition ? "" : " (by name)"}`}</span>;
+		case "tool_removal":
+			return <span className="text-t6">{`Removed tool ${block.name}`}</span>;
 		case "image":
 			return <UserAttachments images={attachedImages(blockKey, [block])} />;
 		default:
