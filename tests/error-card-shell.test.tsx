@@ -4,6 +4,7 @@ import {cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ErrorCardShell} from "../src/components/error-card-shell";
+import {CompactScope} from "./fizzy-lake-off";
 
 const HEADLINE = "Couldn’t complete that";
 const HINT = "/permissions doesn’t take arguments here. Remove the text after the command, then send it again.";
@@ -55,11 +56,11 @@ describe("ErrorCardShell", () => {
 			root: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-card select-text",
 			childCount: 3,
 			alert: {tag: "SPAN", className: "sr-only", role: "alert", text: `${HEADLINE} ${HINT}`},
-			header: "flex items-start gap-3 bg-alpha-1 px-3 py-2 text-body contain-inline-size",
+			header: "flex items-start gap-4 bg-alpha-1 px-4 py-3 text-body contain-inline-size",
 			iconSlot: "flex h-[1lh] shrink-0 items-center",
 			icon: {className: "lucide lucide-triangle-alert size-4 shrink-0 text-danger-000", hidden: "true"},
 			headline: {tag: "SPAN", className: "min-w-0 grow text-primary break-words", text: HEADLINE},
-			dismissSlot: "-me-1 flex h-[1lh] shrink-0 items-center",
+			dismissSlot: "-me-1.5 flex h-[1lh] shrink-0 items-center",
 			dismiss: {
 				tag: "BUTTON",
 				type: "button",
@@ -68,7 +69,7 @@ describe("ErrorCardShell", () => {
 					"inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 p-0 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
 				glyph: "lucide lucide-x size-4",
 			},
-			hintRow: "flex flex-col gap-3 px-3 pt-3 pb-2 last:pb-3 empty:hidden contain-inline-size",
+			hintRow: "flex flex-col gap-4 px-4 pt-4 pb-3 last:pb-4 empty:hidden contain-inline-size",
 			hint: {tag: "SPAN", className: "text-body text-secondary whitespace-pre-line break-words", text: HINT},
 		});
 	});
@@ -108,8 +109,8 @@ describe("ErrorCardShell", () => {
 			alerts: container.querySelectorAll("[role=alert]").length,
 		}).toStrictEqual({
 			children: [
-				"flex items-start gap-3 bg-alpha-1 px-3 py-2 text-body contain-inline-size",
-				"flex flex-col gap-3 px-3 pt-3 pb-2 last:pb-3 empty:hidden contain-inline-size",
+				"flex items-start gap-4 bg-alpha-1 px-4 py-3 text-body contain-inline-size",
+				"flex flex-col gap-4 px-4 pt-4 pb-3 last:pb-4 empty:hidden contain-inline-size",
 			],
 			header: ["flex h-[1lh] shrink-0 items-center", "min-w-0 grow text-primary break-words"],
 			icon: "lucide lucide-gauge size-4 shrink-0 text-danger-000",
@@ -147,6 +148,43 @@ describe("ErrorCardShell", () => {
 				{tag: "DIV", className: "flex flex-wrap items-center gap-1 empty:hidden", text: "Try again"},
 				{tag: "SPAN", className: "text-footnote text-secondary", text: "Retrying uses the same model."},
 			],
+		});
+	});
+});
+
+describe("ErrorCardShell density", () => {
+	const metrics = (root: Element | null | undefined) => {
+		const [header, hintRow] = [...(root?.children ?? [])];
+		return {
+			header: header?.className,
+			dismissSlot: header?.lastElementChild?.className,
+			hintRow: hintRow?.className,
+		};
+	};
+
+	it("takes upstream's comfortable tokens under fizzy-lake panels", () => {
+		const {container} = render(
+			<ErrorCardShell headline={HEADLINE} hint={HINT} icon="warning" onDismiss={() => {}} />,
+		);
+
+		expect(metrics(container.firstElementChild)).toStrictEqual({
+			header: "flex items-start gap-4 bg-alpha-1 px-4 py-3 text-body contain-inline-size",
+			dismissSlot: "-me-1.5 flex h-[1lh] shrink-0 items-center",
+			hintRow: "flex flex-col gap-4 px-4 pt-4 pb-3 last:pb-4 empty:hidden contain-inline-size",
+		});
+	});
+
+	it("keeps the pre-panels compact tokens with panels off", () => {
+		const {container} = render(
+			<CompactScope>
+				<ErrorCardShell headline={HEADLINE} hint={HINT} icon="warning" onDismiss={() => {}} />
+			</CompactScope>,
+		);
+
+		expect(metrics(container.querySelector("[data-density]")?.firstElementChild)).toStrictEqual({
+			header: "flex items-start gap-3 bg-alpha-1 px-3 py-2 text-body contain-inline-size",
+			dismissSlot: "-me-1 flex h-[1lh] shrink-0 items-center",
+			hintRow: "flex flex-col gap-3 px-3 pt-3 pb-2 last:pb-3 empty:hidden contain-inline-size",
 		});
 	});
 });

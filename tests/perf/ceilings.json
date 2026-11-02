@@ -61,11 +61,11 @@
 		"raisedAt": "2026-11-02"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 653636,
+		"ceiling": 660488,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Composer bash mode (2026-11-01): the session composer enters upstream's bash mode (pill, ring, shell placeholder, key handling) and runs !<command> in the live pane, on top of the growth since the 2026-10-29 artifact share state raise (646601, now within tolerance until this commit). Session went to 653636 gzip, about 570 bytes past the 1% tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-29"
+		"reason": "Error card and notice Banner density (2026-11-02): ErrorCardShell and NoticeBanner take per-density class maps (upstream's panels !py-lg and pad-md-6px Dismiss margin) and the send-rejected card moves onto the shared shell, on top of the growth since the 2026-11-01 composer bash mode raise (653636 to 660091, within tolerance). Session went to 660488 gzip, about 316 bytes past the 1% tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-02"
 	},
 	"bundle.session.raw": {
 		"ceiling": 1975684,

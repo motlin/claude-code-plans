@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import type {ReactNode} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SendRejectedCard} from "../src/components/send-rejected-card";
+import {CompactScope} from "./fizzy-lake-off";
 
 afterEach(cleanup);
 
@@ -93,7 +95,7 @@ describe("SendRejectedCard", () => {
 			card: card?.className,
 			row: row?.className.split(/\s+/).includes("flex-wrap"),
 		}).toEqual({
-			card: "card-outline flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-r7 select-text text-[13px]/[19px]",
+			card: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-card select-text",
 			row: true,
 		});
 	});
@@ -105,12 +107,66 @@ describe("SendRejectedCard", () => {
 		expect(actions?.className).toEqual("ms-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2");
 	});
 
-	it("drops every transition under reduced motion", () => {
+	it("drops every movement transition under reduced motion (the shell's colour fade stays)", () => {
 		const {container} = renderCard();
-		const animated = [...container.querySelectorAll("[class*=transition]")].map((element) => ({
+		const animated = [...container.querySelectorAll("[class*=transition-transform]")].map((element) => ({
 			reduced: element.getAttribute("class")?.split(/\s+/).includes("motion-reduce:transition-none"),
 		}));
 
 		expect(animated).toEqual([{reduced: true}]);
+	});
+});
+
+describe("SendRejectedCard on the shared error card shell", () => {
+	const shell = (wrap: (card: ReactNode) => ReactNode) => {
+		const {container} = render(
+			wrap(
+				<SendRejectedCard
+					rejection={{prompt: "hi", message: "send failed", nonResendable: false}}
+					onRetry={() => {}}
+					onDismiss={() => {}}
+				/>,
+			),
+		);
+		const card = container.querySelector("[data-testid=send-rejected-card]");
+		const [alert, header, hintRow] = [...(card?.children ?? [])];
+		return {
+			alert: alert?.getAttribute("role"),
+			header: header?.className,
+			slots: [...(header?.children ?? [])].map((child) => child.className),
+			dismiss: header?.querySelector("button")?.getAttribute("aria-label"),
+			hintRow: hintRow?.className,
+			hint: hintRow?.firstElementChild?.className,
+		};
+	};
+
+	it("draws the shell's comfortable header and hint row under fizzy-lake panels", () => {
+		expect(shell((card): ReactNode => card)).toStrictEqual({
+			alert: "alert",
+			header: "flex items-start gap-4 bg-alpha-1 px-4 py-3 text-body contain-inline-size",
+			slots: [
+				"flex h-[1lh] shrink-0 items-center",
+				"min-w-0 grow text-primary break-words",
+				"-me-1.5 flex h-[1lh] shrink-0 items-center",
+			],
+			dismiss: "Dismiss",
+			hintRow: "flex flex-col gap-4 px-4 pt-4 pb-3 last:pb-4 empty:hidden contain-inline-size",
+			hint: "text-body text-secondary whitespace-pre-line break-words",
+		});
+	});
+
+	it("draws the shell's pre-panels compact header and hint row with panels off", () => {
+		expect(shell((card) => <CompactScope>{card}</CompactScope>)).toStrictEqual({
+			alert: "alert",
+			header: "flex items-start gap-3 bg-alpha-1 px-3 py-2 text-body contain-inline-size",
+			slots: [
+				"flex h-[1lh] shrink-0 items-center",
+				"min-w-0 grow text-primary break-words",
+				"-me-1 flex h-[1lh] shrink-0 items-center",
+			],
+			dismiss: "Dismiss",
+			hintRow: "flex flex-col gap-3 px-3 pt-3 pb-2 last:pb-3 empty:hidden contain-inline-size",
+			hint: "text-body text-secondary whitespace-pre-line break-words",
+		});
 	});
 });

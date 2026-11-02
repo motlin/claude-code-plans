@@ -1,8 +1,9 @@
 import {useState} from "react";
-import {ChevronRight, Copy, TriangleAlert, X} from "lucide-react";
+import {ChevronRight, Copy} from "lucide-react";
 
 import {sendRejectedCopy} from "../lib/send-rejection";
 import {ApprovalActionButton} from "./approval-card";
+import {ErrorCardShell} from "./error-card-shell";
 import type {SendRejection} from "./use-live-herdr-prompt";
 
 const ICON_BUTTON =
@@ -10,7 +11,8 @@ const ICON_BUTTON =
 
 /**
  * Upstream's composer-dock session-error card (`Cn`) for a rejected send: the generic
- * "Something went wrong" copy, Dismiss, Try again, and the raw message open in the details.
+ * "Something went wrong" copy on the shared error card shell, Dismiss, Try again, and the raw
+ * message open in the details.
  */
 export function SendRejectedCard({
 	rejection,
@@ -25,30 +27,14 @@ export function SendRejectedCard({
 	const copy = sendRejectedCopy({nonResendable: rejection.nonResendable});
 
 	return (
-		<div
-			data-testid="send-rejected-card"
-			className="card-outline flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-r7 select-text text-[13px]/[19px]"
+		<ErrorCardShell
+			data={{"data-testid": "send-rejected-card"}}
+			headline={copy.title}
+			hint={copy.body}
+			icon="warning"
+			announce="alert"
+			onDismiss={onDismiss}
 		>
-			<span role="alert" className="sr-only">
-				{`${copy.title} ${copy.body}`}
-			</span>
-			<div className="flex items-center gap-3 bg-alpha-1 px-3 py-2">
-				<TriangleAlert aria-hidden="true" className="size-4 shrink-0 text-danger-000" />
-				<span className="min-w-0 grow text-primary break-words">{copy.title}</span>
-				<span className="-my-1 -me-1 flex shrink-0">
-					<button
-						type="button"
-						aria-label="Dismiss"
-						onClick={onDismiss}
-						className={`${ICON_BUTTON} size-5 rounded-r4`}
-					>
-						<X aria-hidden="true" className="size-3" />
-					</button>
-				</span>
-			</div>
-			<div className="flex flex-col gap-3 px-3 pt-3 pb-2">
-				<span className="text-secondary whitespace-pre-line break-words">{copy.body}</span>
-			</div>
 			<div className="flex flex-col self-stretch">
 				<div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-5 gap-y-2 px-3 pb-3 pt-2">
 					<button
@@ -98,6 +84,6 @@ export function SendRejectedCard({
 					</div>
 				)}
 			</div>
-		</div>
+		</ErrorCardShell>
 	);
 }

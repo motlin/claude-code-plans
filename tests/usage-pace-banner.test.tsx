@@ -328,7 +328,7 @@ describe("usage limit reached", () => {
 });
 
 const BANNER_CLASS =
-	"flex items-start gap-1.5 py-2 font-sans text-body font-normal break-words px-3 rounded-card bg-page shadow-card-ring text-primary @container";
+	"flex items-start gap-2 py-4 font-sans text-body font-normal break-words px-4 rounded-card bg-page shadow-card-ring text-primary @container";
 
 describe("usage band as a notice card", () => {
 	it("draws the reached band through upstream's cds Banner: neutral icon and headline, sr-only absolute reset, no Dismiss", () => {
@@ -378,7 +378,7 @@ describe("usage band as a notice card", () => {
 				childCount: 2,
 				iconSlot: "flex min-h-[1lh] shrink-0 items-center text-secondary",
 				icon: "lucide lucide-gauge size-4",
-				body: "flex min-w-0 flex-wrap items-start gap-y-2 gap-x-3 flex-1",
+				body: "flex min-w-0 flex-wrap items-start gap-y-3 gap-x-4 flex-1",
 				content: "max-w-full min-w-0 flex-auto",
 				words: {tag: "SPAN", atomic: "true", className: "flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75"},
 				headline: {className: "min-w-0", text: "Weekly limit reached"},
