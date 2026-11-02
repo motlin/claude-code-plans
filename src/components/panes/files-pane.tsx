@@ -15,6 +15,7 @@ import type {SessionFiles} from "../../lib/session-files";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {FILE_TAB_SIZES, normalizeFileTabSize} from "../../lib/file-preview";
 import {ConfirmDialog} from "../confirm-dialog";
+import {FileTypeIconSetContext, useActiveFileTypeIconSet} from "../file-type-icon-set-context";
 import type {ContentMatchOpenOptions} from "../files/content-search-results";
 import {FileView} from "../files/file-view";
 import {FileTabsStrip} from "../files/file-tabs-strip";
@@ -412,6 +413,7 @@ interface FilesPaneViewProps {
  */
 export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRecordCount}: FilesPaneViewProps) {
 	const host = usePaneHost();
+	const iconSet = useActiveFileTypeIconSet();
 	const [treeShown, setTreeShown] = useState(true);
 	const [focusRequest, setFocusRequest] = useState(0);
 	const [mode, setMode] = useState<FilesListMode>("workspace");
@@ -528,7 +530,7 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 	}
 
 	return (
-		<>
+		<FileTypeIconSetContext value={iconSet}>
 			<div data-files-header className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
 				<div className="flex min-w-0 flex-1 items-center gap-1">
 					<TreeToggle
@@ -643,7 +645,7 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 				</div>
 			</div>
 			{editGuard.dialog}
-		</>
+		</FileTypeIconSetContext>
 	);
 }
 

@@ -5,6 +5,7 @@ import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/reac
 import type {ComponentProps} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {FilesTree, FilesTreeColumn} from "../src/components/files/files-tree";
 import {
 	FILES_TREE_WIDTH_STORAGE_KEY,
@@ -63,9 +64,11 @@ function renderTree(onOpenFile = vi.fn<NonNullable<ComponentProps<typeof FilesTr
 	render(
 		<QueryClientProvider client={queryClient}>
 			<SettingsProvider>
-				<FilesTreeColumn>
-					<FilesTree sessionId={SESSION_ID} onOpenFile={onOpenFile} />
-				</FilesTreeColumn>
+				<FileTypeIconSetContext value="pierre">
+					<FilesTreeColumn>
+						<FilesTree sessionId={SESSION_ID} onOpenFile={onOpenFile} />
+					</FilesTreeColumn>
+				</FileTypeIconSetContext>
 			</SettingsProvider>
 		</QueryClientProvider>,
 	);

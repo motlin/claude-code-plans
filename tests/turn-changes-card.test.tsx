@@ -949,7 +949,7 @@ describe("TurnChangesCard", () => {
 		}).toStrictEqual({
 			card: true,
 			title: "min-w-0 truncate text-primary",
-			icon: "shrink-0",
+			icon: "lucide lucide-file-code shrink-0",
 			iconSize: ["16px", "16px"],
 			name: "min-w-0 truncate text-primary",
 			stats: "flex shrink-0 items-center gap-0.5 tabular-nums text-[12px]/[15px]",
@@ -957,7 +957,8 @@ describe("TurnChangesCard", () => {
 		});
 	});
 
-	it("draws each multi-file row's own 16px file-type icon, never the generic FileText", () => {
+	it("draws each multi-file row's own 16px monochrome glyph, never a coloured icon or the generic FileText", () => {
+		localStorage.setItem("ccp-code-theme-light", "github-light");
 		const changes = changesWith(2);
 		changes.files = [
 			{path: "/repo/package.json", added: 1, removed: 1},
@@ -966,18 +967,17 @@ describe("TurnChangesCard", () => {
 		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changes} undoable />);
 		expect({
 			rows: screen.getAllByRole("link").map((link) => {
-				const icon = link.querySelector<SVGSVGElement>("svg[data-file-type-icon]");
-				return {
-					width: icon?.style.width,
-					fill: icon?.querySelector("path")?.getAttribute("fill"),
-				};
+				const icon = link.querySelector<SVGSVGElement>("svg");
+				return {width: icon?.style.width, className: icon?.getAttribute("class")};
 			}),
+			coloured: container.querySelectorAll("[data-file-type-icon]").length,
 			fileText: container.querySelectorAll(".lucide-file-text").length,
 		}).toStrictEqual({
 			rows: [
-				{width: "16px", fill: "var(--fti-json)"},
-				{width: "16px", fill: "var(--fti-markdown)"},
+				{width: "16px", className: "lucide lucide-file-code shrink-0"},
+				{width: "16px", className: "lucide lucide-sticky-note shrink-0"},
 			],
+			coloured: 0,
 			fileText: 0,
 		});
 	});

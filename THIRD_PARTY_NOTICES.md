@@ -11,7 +11,7 @@ This project bundles the following third-party material.
 
 Source, as recorded in the bundled file:
 
-> @pierre/trees 1.0.0-beta.3, the built-in "complete" icon set, changed to this format by scripts/gen-pierre-file-icons.ts; markdown has the drawing of text; pdf is added, made from text; slides is added, made from default with more drawn on it; word is added, made from text. Apache-2.0. Copyright 2025 Pierre Computer Company
+> @pierre/trees 1.0.0-beta.6, the built-in "complete" icon set, changed to this format by scripts/gen-pierre-file-icons.ts; bun has the color of sass; markdown has the drawing of text; pdf is added, made from text; slides is added, made from default with more drawn on it; word is added, made from text. Apache-2.0. Copyright 2025 Pierre Computer Company
 
 ```text
                                  Apache License
@@ -203,4 +203,133 @@ Unless required by applicable law or agreed to in writing, software distributed
 under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
+```
+
+## Catppuccin file-type icons
+
+- Bundled file: `src/lib/file-type-icon-sets/catppuccin.json`
+- Upstream: Catppuccin Icons for VSCode (<https://github.com/catppuccin/vscode-icons>)
+- Copyright (c) 2023 Catppuccin
+- Copyright (c) 2023 thang-nm
+- Copyright (c) 2015 - present Microsoft Corporation
+- License: MIT License
+
+Source, as recorded in the bundled file:
+
+```text
+Catppuccin Icons for VSCode 1.26.0 (https://github.com/catppuccin/vscode-icons), the icons its icon theme gives to files, in the colors of Latte and Mocha, without humans, poetry-lock, wally, workflow, and the files of the languages it names from Visual Studio Code 1.142.0; changed to this format by scripts/gen-catppuccin-file-icons.ts. MIT. Copyright (c) 2023 Catppuccin. Copyright (c) 2023 thang-nm. Copyright (c) 2015 - present Microsoft Corporation
+```
+
+```text
+Catppuccin Icons for VSCode
+
+MIT License
+
+Copyright (c) 2023 Catppuccin
+Copyright (c) 2023 thang-nm
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Visual Studio Code
+
+MIT License
+
+Copyright (c) 2015 - present Microsoft Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## Seti UI file-type icons
+
+- Bundled file: `src/lib/file-type-icon-sets/vscode.json`
+- Upstream: Visual Studio Code's "Seti" file icon theme (<https://github.com/microsoft/vscode/tree/main/extensions/theme-seti>), from Seti UI (<https://github.com/jesseweed/seti-ui>)
+- Copyright (c) 2014 Jesse Weed
+- Copyright (c) 2015 - present Microsoft Corporation
+- License: MIT License
+
+Source, as recorded in the bundled file:
+
+```text
+Visual Studio Code 1.142.0, the file icon theme "Seti" (extensions/theme-seti), made from https://github.com/jesseweed/seti-ui/commit/2d6c5e68b4ded73c92dac291845ee44e1182d511; changed to this format by scripts/gen-vscode-file-icons.ts. MIT. Copyright (c) 2014 Jesse Weed. Copyright (c) 2015 - present Microsoft Corporation
+```
+
+```text
+Seti UI
+
+Copyright (c) 2014 Jesse Weed
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Visual Studio Code
+
+MIT License
+
+Copyright (c) 2015 - present Microsoft Corporation
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```

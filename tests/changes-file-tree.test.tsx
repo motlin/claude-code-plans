@@ -3,6 +3,7 @@
 import {cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {ChangedFilesSidebar} from "../src/components/changes/changes-file-tree";
 
 const FILES = [
@@ -32,16 +33,18 @@ function renderSidebar(overrides: SidebarOverrides = {}) {
 		onCopyCommitSha: vi.fn<(sha: string) => void>(),
 	};
 	render(
-		<ChangedFilesSidebar
-			files={FILES}
-			groupByFolder
-			groupByKind={false}
-			activePath={null}
-			commits={COMMITS}
-			selectedCommitSha={null}
-			{...handlers}
-			{...overrides}
-		/>,
+		<FileTypeIconSetContext value="pierre">
+			<ChangedFilesSidebar
+				files={FILES}
+				groupByFolder
+				groupByKind={false}
+				activePath={null}
+				commits={COMMITS}
+				selectedCommitSha={null}
+				{...handlers}
+				{...overrides}
+			/>
+		</FileTypeIconSetContext>,
 	);
 	return handlers;
 }

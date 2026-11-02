@@ -328,7 +328,8 @@ describe("Composer @ file mentions", () => {
 		});
 	});
 
-	it("draws file rows with upstream's file-type icons and directory rows with the Folder glyph", async () => {
+	it("draws file rows with upstream's monochrome glyphs whatever the code theme, and directory rows with the Folder glyph", async () => {
+		localStorage.setItem("ccp-code-theme-light", "github-light");
 		responses.set(
 			TOP_URL,
 			listing([
@@ -357,13 +358,7 @@ describe("Composer @ file mentions", () => {
 				};
 			}),
 		).toStrictEqual([
-			{
-				typed: {
-					width: "width: 16px; height: 16px;",
-					fills: ["var(--fti-markdown)", "var(--fti-markdown)"],
-				},
-				lucide: null,
-			},
+			{typed: null, lucide: "lucide lucide-scroll-text shrink-0"},
 			{typed: null, lucide: "lucide lucide-file-code shrink-0"},
 			{typed: null, lucide: "lucide lucide-folder size-4 shrink-0 text-ink-muted"},
 		]);

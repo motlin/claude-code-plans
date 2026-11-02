@@ -1280,6 +1280,19 @@ describe("Outputs card", () => {
 		]);
 	});
 
+	it("draws a written file's monochrome 16px glyph, never a coloured file-type icon", async () => {
+		localStorage.setItem("ccp-code-theme-light", "github-light");
+		await renderCards({...BASE, artifacts: [], outputFiles: [{path: "/tmp/data.json", at: 2}]});
+		const card = screen.getByRole("region", {name: /^Outputs/});
+		const svg = within(card).getByRole("button", {name: "Open data.json in Files"}).querySelector("svg");
+
+		expect({
+			coloured: card.querySelector("[data-file-type-icon]") !== null,
+			className: svg?.getAttribute("class"),
+			width: svg?.style.width,
+		}).toStrictEqual({coloured: false, className: "lucide lucide-file-code shrink-0", width: "16px"});
+	});
+
 	it("lists a written file by its basename among the artifacts by time, opening it in the Files pane", async () => {
 		unregisters.push(registerPane("files", {title: "Files", render: () => <p>files pane body</p>}));
 		await renderCards({

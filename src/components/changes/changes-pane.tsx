@@ -23,6 +23,7 @@ import {asRecord} from "../../lib/narrow";
 import {loadChangesScope, saveChangesScope} from "../../lib/pane-layout";
 import type {ReviewFinding} from "../../lib/review-diff";
 import {CoachMark} from "../coach-mark";
+import {FileTypeIconSetContext, useActiveFileTypeIconSet} from "../file-type-icon-set-context";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "../panes/pane-classes";
 import type {PaneChrome} from "../panes/pane-registry";
 import {type Settings, useSettings} from "../settings-context";
@@ -673,6 +674,7 @@ export function ChangesPaneView({
 	sessionId,
 }: ChangesPaneViewProps) {
 	const comments = useDiffComments(sessionId);
+	const iconSet = useActiveFileTypeIconSet();
 	const files = diff?.files ?? [];
 	const hasFiles = files.length > 0;
 	const large = isLargeDiff(files);
@@ -831,7 +833,7 @@ export function ChangesPaneView({
 	}
 
 	return (
-		<>
+		<FileTypeIconSetContext value={iconSet}>
 			<div ref={headerRef} className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
 				<div className="relative z-[1] flex min-w-0 items-center gap-1 pl-1">
 					{hasFiles && (
@@ -882,7 +884,7 @@ export function ChangesPaneView({
 				</div>
 			</div>
 			<div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit]">{body}</div>
-		</>
+		</FileTypeIconSetContext>
 	);
 }
 

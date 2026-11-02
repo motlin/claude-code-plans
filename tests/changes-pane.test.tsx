@@ -388,7 +388,8 @@ describe("ChangesPaneView file list", () => {
 			});
 		});
 
-		it("draws upstream's 12px file-type icon on each result", () => {
+		it("draws upstream's 12px file-type icon on each result under a non-Claude code theme", () => {
+			localStorage.setItem("ccp-code-theme-light", "github-light");
 			renderPane([GREET_FILE]);
 			openGoToFile();
 			const svg = screen.getByRole("option").querySelector("svg");
@@ -406,6 +407,16 @@ describe("ChangesPaneView file list", () => {
 			});
 		});
 
+		it("draws the monochrome glyph on each result under the default Claude Light code theme", () => {
+			renderPane([GREET_FILE]);
+			openGoToFile();
+			const option = screen.getByRole("option");
+
+			expect({
+				coloured: option.querySelector("[data-file-type-icon]") !== null,
+				className: option.querySelector("svg")?.getAttribute("class"),
+			}).toStrictEqual({coloured: false, className: "lucide lucide-file-code shrink-0 text-ink-muted"});
+		});
 		it("shows No matching files when nothing matches", () => {
 			renderPane([GREET_FILE]);
 			fireEvent.change(openGoToFile(), {target: {value: "zzz"}});

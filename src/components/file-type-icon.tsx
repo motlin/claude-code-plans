@@ -11,15 +11,22 @@ import {
 	Sheet,
 	StickyNote,
 } from "lucide-react";
-import type {ReactNode} from "react";
+import {type ReactNode, useCallback, useContext, useSyncExternalStore} from "react";
 import {
 	type FileTypeGlyph,
 	type FileTypeIconNode,
+	type FileTypeIconSet,
+	type FileTypeIconSetName,
 	fileTypeGlyph,
-	fileTypeIconSet,
+	fileTypeIconDefault,
+	fileTypeIconSetFor,
+	loadFileTypeIconSet,
+	loadedFileTypeIconSet,
 	resolveFileTypeIcon,
+	subscribeFileTypeIconSets,
 } from "../lib/file-type-icons";
 
+import {FileTypeIconSetContext} from "./file-type-icon-set-context";
 import {FILE_TYPE_ICON_SIZE_PX, type FileTypeIconSize} from "./file-type-icon-size";
 
 /** Local stand-ins for upstream's monochrome cds glyphs. */
@@ -46,28 +53,51 @@ const REACT_ATTRIBUTE_NAMES: Readonly<Record<string, string>> = {
 	"stroke-dasharray": "strokeDasharray",
 };
 
-/** `"$name"` → the palette's CSS variable (src/styles/file-type-icons.css); anything else is literal. */
-function attributeValue(value: string): string {
-	return value.startsWith("$") ? `var(--fti-${value.slice(1)})` : value;
+/** The palette's CSS variable prefix (src/styles/file-type-icons.css): pierre's is unscoped, the others carry the set's name. */
+function paletteVariablePrefix(setName: FileTypeIconSetName): string {
+	return setName === "pierre" ? "--fti-" : `--fti-${setName}-`;
 }
 
-function renderNode(node: FileTypeIconNode, key: number): ReactNode {
-	const [Element, attributes, children] = node;
-	const props: Record<string, string> = {};
-	for (const [name, value] of Object.entries(attributes)) {
-		props[REACT_ATTRIBUTE_NAMES[name] ?? name] = attributeValue(value);
+/** `"$name"` → the palette's CSS variable; anything else is literal. */
+function attributeValue(value: string, prefix: string): string {
+	return value.startsWith("$") ? `var(${prefix}${value.slice(1)})` : value;
+}
+
+function renderNodes(nodes: readonly FileTypeIconNode[], prefix: string): ReactNode[] {
+	const rendered: ReactNode[] = [];
+	for (const [key, [Element, attributes, children]] of nodes.entries()) {
+		const props: Record<string, string> = {};
+		for (const [name, value] of Object.entries(attributes)) {
+			props[REACT_ATTRIBUTE_NAMES[name] ?? name] = attributeValue(value, prefix);
+		}
+		rendered.push(
+			<Element key={key} {...props}>
+				{children && renderNodes(children, prefix)}
+			</Element>,
+		);
 	}
-	return (
-		<Element key={key} {...props}>
-			{children?.map(renderNode)}
-		</Element>
+	return rendered;
+}
+
+/** Upstream `O[set]`: the named set once loaded (pierre at once), starting its load; undefined for no set. */
+function useFileTypeIconSet(name: FileTypeIconSetName | null): FileTypeIconSet | undefined {
+	const subscribe = useCallback(
+		(listener: () => void) => {
+			const unsubscribe = subscribeFileTypeIconSets(listener);
+			if (name !== null) void loadFileTypeIconSet(name).catch(() => undefined);
+			return unsubscribe;
+		},
+		[name],
 	);
+	const snapshot = () => (name === null ? undefined : loadedFileTypeIconSet(name));
+	return useSyncExternalStore(subscribe, snapshot, snapshot);
 }
 
 /**
- * Upstream `FileTypeIcon`: the coloured file-type icon for a name, else the
- * coloured default icon for generic docs, else `fallback` or a monochrome
- * per-kind glyph.
+ * Upstream `FileTypeIcon`: inside a Files or Changes pane's icon set, the
+ * coloured icon for a name, else the set's default icon for generic docs (or
+ * every file, when the set says so); otherwise, and while a set loads,
+ * `fallback` or a monochrome per-kind glyph.
  */
 export function FileTypeIcon({
 	fileName,
@@ -80,17 +110,24 @@ export function FileTypeIcon({
 	className?: string;
 	fallback?: ReactNode;
 }): ReactNode {
+	const activeSet = useContext(FileTypeIconSetContext);
+	const setName = activeSet === null ? null : fileTypeIconSetFor(fileName, activeSet);
+	const set = useFileTypeIconSet(setName);
 	const px = `${FILE_TYPE_ICON_SIZE_PX[size]}px`;
 	const style = {width: px, height: px};
-	const classes = className ? `shrink-0 ${className}` : "shrink-0";
 	const glyph = fileTypeGlyph(fileName);
-	const id = resolveFileTypeIcon(fileName) ?? (glyph === "doc" ? fileTypeIconSet.defaultIcon : null);
-	const tree = id === null ? undefined : fileTypeIconSet.icons[id];
-	if (tree === undefined) {
+	const id =
+		set === undefined
+			? null
+			: (resolveFileTypeIcon(fileName, set) ?? (glyph === "doc" ? fileTypeIconDefault(set) : null));
+	const tree = id === null || set === undefined ? undefined : set.icons[id];
+	if (tree === undefined || setName === null) {
 		if (fallback !== undefined) return fallback;
 		const Glyph = GLYPH_ICONS[glyph];
-		return <Glyph aria-hidden="true" className={classes} style={style} />;
+		return <Glyph aria-hidden="true" className={className ? `shrink-0 ${className}` : "shrink-0"} style={style} />;
 	}
+	const classes = ["shrink-0", setName === "vscode" ? "overflow-visible" : null, className].filter(Boolean).join(" ");
+	const prefix = paletteVariablePrefix(setName);
 	return (
 		<svg
 			aria-hidden="true"
@@ -100,7 +137,7 @@ export function FileTypeIcon({
 			className={classes}
 			style={style}
 		>
-			{tree.map(renderNode)}
+			{renderNodes(tree, prefix)}
 		</svg>
 	);
 }

@@ -4,6 +4,7 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {FileView} from "../src/components/files/file-view";
 import {ToastProvider} from "../src/components/toast";
 import {decodeFilePath, encodeFilePath} from "../src/lib/api/file";
@@ -57,7 +58,9 @@ function renderView(props: Parameters<typeof FileView>[0]) {
 	return render(
 		<QueryClientProvider client={queryClient}>
 			<ToastProvider>
-				<FileView {...props} />
+				<FileTypeIconSetContext value="pierre">
+					<FileView {...props} />
+				</FileTypeIconSetContext>
 			</ToastProvider>
 		</QueryClientProvider>,
 	);

@@ -5,6 +5,7 @@ import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import type {ComponentProps} from "react";
 
+import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {FilesTree, FilesTreeColumn} from "../src/components/files/files-tree";
 import {SettingsProvider} from "../src/components/settings-provider";
 import type {FileSearchResult} from "../src/lib/api/search";
@@ -247,9 +248,11 @@ function renderTree() {
 	render(
 		<QueryClientProvider client={queryClient}>
 			<SettingsProvider>
-				<FilesTreeColumn>
-					<FilesTree sessionId="content-session" cwd="/repo" onOpenFile={onOpenFile} onAsk={onAsk} />
-				</FilesTreeColumn>
+				<FileTypeIconSetContext value="pierre">
+					<FilesTreeColumn>
+						<FilesTree sessionId="content-session" cwd="/repo" onOpenFile={onOpenFile} onAsk={onAsk} />
+					</FilesTreeColumn>
+				</FileTypeIconSetContext>
 			</SettingsProvider>
 		</QueryClientProvider>,
 	);

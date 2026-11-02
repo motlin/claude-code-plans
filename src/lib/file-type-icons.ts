@@ -1,8 +1,10 @@
 import {z} from "zod";
 import rawIconSet from "./file-type-icon-set.json";
 
-// Coloured file-type icons, bundled from upstream's lazily fetched icon set
-// (@pierre/trees, Apache-2.0; see the JSON's `source` and `license`).
+// Coloured file-type icons, bundled from upstream's lazily fetched icon sets:
+// pierre (@pierre/trees, Apache-2.0) ships in this module; catppuccin
+// (Catppuccin Icons for VSCode, MIT) and vscode (Seti, MIT) load on first use.
+// See each JSON's `source` and `license`.
 
 const ICON_ELEMENTS = ["g", "path", "circle", "ellipse", "rect"] as const;
 
@@ -65,15 +67,73 @@ export const FileTypeIconSetSchema = z.strictObject({
 	source: z.string(),
 	license: z.string(),
 	defaultIcon: z.string(),
+	defaultForEveryFile: z.boolean().optional(),
 	palette: z.record(z.string(), z.tuple([z.string(), z.string()])),
 	fileNames: z.record(z.string(), z.string()),
+	filePatterns: z.record(z.string(), z.string()).optional(),
 	fileExtensions: z.record(z.string(), z.string()),
 	icons: z.record(z.string(), IconTreeSchema),
 });
 
 export type FileTypeIconSet = z.infer<typeof FileTypeIconSetSchema>;
 
+/** The pierre set, the one bundled with this module. */
 export const fileTypeIconSet: FileTypeIconSet = FileTypeIconSetSchema.parse(rawIconSet);
+
+export type FileTypeIconSetName = "pierre" | "catppuccin" | "vscode";
+
+const THEMED_ICON_SETS = ["catppuccin", "pierre", "vscode"] as const satisfies readonly FileTypeIconSetName[];
+
+/**
+ * Upstream `Z()`: the icon set a code theme draws, or null (monochrome glyphs)
+ * for Claude Light and Claude Dark; otherwise the set whose name prefixes the
+ * theme, else pierre.
+ */
+export function iconSetForCodeTheme(theme: string): FileTypeIconSetName | null {
+	if (theme === "claude-light" || theme === "claude-dark") return null;
+	return THEMED_ICON_SETS.find((name) => theme.startsWith(`${name}-`)) ?? "pierre";
+}
+
+const ICON_SET_IMPORTS: Record<Exclude<FileTypeIconSetName, "pierre">, () => Promise<{default: unknown}>> = {
+	catppuccin: async () => import("./file-type-icon-sets/catppuccin.json"),
+	vscode: async () => import("./file-type-icon-sets/vscode.json"),
+};
+
+const loadedIconSets = new Map<FileTypeIconSetName, FileTypeIconSet>([["pierre", fileTypeIconSet]]);
+const iconSetLoads = new Map<FileTypeIconSetName, Promise<FileTypeIconSet>>();
+const iconSetListeners = new Set<() => void>();
+
+/** The set when it has loaded (pierre always has), else undefined. */
+export function loadedFileTypeIconSet(name: FileTypeIconSetName): FileTypeIconSet | undefined {
+	return loadedIconSets.get(name);
+}
+
+/** Upstream `D`/`E`: loads a set once, telling subscribers when it arrives; a failed load can be retried. */
+export async function loadFileTypeIconSet(name: FileTypeIconSetName): Promise<FileTypeIconSet> {
+	const loaded = loadedIconSets.get(name);
+	if (loaded !== undefined) return loaded;
+	if (name === "pierre") return fileTypeIconSet;
+	let load = iconSetLoads.get(name);
+	if (load === undefined) {
+		load = ICON_SET_IMPORTS[name]().then(({default: raw}) => {
+			const set = FileTypeIconSetSchema.parse(raw);
+			loadedIconSets.set(name, set);
+			for (const listener of iconSetListeners) listener();
+			return set;
+		});
+		load.catch(() => iconSetLoads.delete(name));
+		iconSetLoads.set(name, load);
+	}
+	return load;
+}
+
+/** Calls `listener` whenever another set finishes loading. */
+export function subscribeFileTypeIconSets(listener: () => void): () => void {
+	iconSetListeners.add(listener);
+	return () => {
+		iconSetListeners.delete(listener);
+	};
+}
 
 /** Upstream `m5`: the last path segment, ignoring one trailing slash. */
 function baseName(path: string): string {
@@ -82,25 +142,54 @@ function baseName(path: string): string {
 	return slash === -1 ? trimmed : trimmed.slice(slash + 1);
 }
 
-/**
- * Upstream `O`/`k`: the coloured icon id for a path, or null when only a
- * fallback glyph applies.
- */
-export function resolveFileTypeIcon(path: string): string | null {
-	const name = baseName(path).toLowerCase();
-	let id: string | null = null;
-	if (Object.hasOwn(fileTypeIconSet.fileNames, name)) {
-		id = fileTypeIconSet.fileNames[name] ?? null;
-	} else {
-		for (let dot = name.indexOf("."); dot !== -1; dot = name.indexOf(".", dot + 1)) {
-			const extension = name.slice(dot + 1);
-			if (Object.hasOwn(fileTypeIconSet.fileExtensions, extension)) {
-				id = fileTypeIconSet.fileExtensions[extension] ?? null;
-				break;
-			}
-		}
+/** Upstream `k`: CLAUDE.md always draws from the pierre set. */
+export function fileTypeIconSetFor(path: string, name: FileTypeIconSetName): FileTypeIconSetName {
+	return baseName(path).toLowerCase() === "claude.md" ? "pierre" : name;
+}
+
+/** Upstream `A`: a `filePatterns` glob, split on `*`, against a lowercased name. */
+function matchesFilePattern(name: string, pattern: string): boolean {
+	const [first = "", ...middle] = pattern.split("*");
+	const last = middle.pop();
+	if (last === undefined) return name === first;
+	const end = name.length - last.length;
+	let at = first.length;
+	if (!name.startsWith(first) || !name.endsWith(last) || at > end) return false;
+	for (const piece of middle) {
+		const found = name.indexOf(piece, at);
+		if (found === -1 || found + piece.length > end) return false;
+		at = found + piece.length;
 	}
-	return id !== null && Object.hasOwn(fileTypeIconSet.icons, id) ? id : null;
+	return true;
+}
+
+/** Upstream `j`: exact file name, then file patterns, then compound extensions from the first dot. */
+function lookUpFileTypeIcon(set: FileTypeIconSet, name: string): string | null {
+	if (Object.hasOwn(set.fileNames, name)) return set.fileNames[name] ?? null;
+	for (const [pattern, id] of Object.entries(set.filePatterns ?? {})) {
+		if (matchesFilePattern(name, pattern)) return id;
+	}
+	for (let dot = name.indexOf("."); dot !== -1; dot = name.indexOf(".", dot + 1)) {
+		const extension = name.slice(dot + 1);
+		if (Object.hasOwn(set.fileExtensions, extension)) return set.fileExtensions[extension] ?? null;
+	}
+	return null;
+}
+
+/**
+ * Upstream `M`: the coloured icon id for a path in a set (pierre unless
+ * given), else the set's default icon when it covers every file, else null
+ * when only a fallback glyph applies.
+ */
+export function resolveFileTypeIcon(path: string, set: FileTypeIconSet = fileTypeIconSet): string | null {
+	const id = lookUpFileTypeIcon(set, baseName(path).toLowerCase());
+	if (id !== null && Object.hasOwn(set.icons, id)) return id;
+	return set.defaultForEveryFile === true ? fileTypeIconDefault(set) : null;
+}
+
+/** Upstream `N`: the set's default icon, when the set draws it. */
+export function fileTypeIconDefault(set: FileTypeIconSet): string | null {
+	return Object.hasOwn(set.icons, set.defaultIcon) ? set.defaultIcon : null;
 }
 
 export type FileKind = "doc" | "code" | "data" | "sheet" | "preso" | "image" | "archive" | "skill";

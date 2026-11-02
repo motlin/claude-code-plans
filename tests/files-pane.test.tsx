@@ -1,16 +1,20 @@
 // @vitest-environment jsdom
 
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {FileTabsStrip} from "../src/components/files/file-tabs-strip";
 import {filesEmptyState} from "../src/components/panes/files-empty-state";
+import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {FilesPaneView} from "../src/components/panes/files-pane";
 import {FilesPaneShortcut} from "../src/components/panes/files-pane-shortcut";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SettingsProvider} from "../src/components/settings-provider";
+import {ToastProvider} from "../src/components/toast";
 import {writeClipboardText} from "../src/lib/clipboard";
+import {requestFileOpen} from "../src/lib/file-open-requests";
 import type {SessionFiles} from "../src/lib/session-files";
 import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
 import {installLocalStorage} from "./fake-storage";
@@ -479,10 +483,12 @@ describe("Files pane tabs", () => {
 	});
 	it("draws upstream's 12px file-type icon in each tab", () => {
 		render(
-			<FileTabsStrip
-				state={{tabs: [{path: "/w/README.md", preview: false}], active: "/w/README.md"}}
-				dispatch={() => {}}
-			/>,
+			<FileTypeIconSetContext value="pierre">
+				<FileTabsStrip
+					state={{tabs: [{path: "/w/README.md", preview: false}], active: "/w/README.md"}}
+					dispatch={() => {}}
+				/>
+			</FileTypeIconSetContext>,
 		);
 		const svg = screen.getByRole("tab").querySelector("svg");
 
@@ -499,6 +505,49 @@ describe("Files pane tabs", () => {
 		});
 	});
 
+	it.each([
+		["github-light", {coloured: true, width: "12px", glyph: false}],
+		["claude-light", {coloured: false, width: "12px", glyph: true}],
+	] as const)("follows the %s code theme for the pane's tab icons", async (theme, expected) => {
+		localStorage.setItem("ccp-code-theme-light", theme);
+		requestFileOpen("files-pane-icons", {path: "/w/README.md"});
+		unregister = registerPane("files", {
+			title: "Files",
+			header: "custom",
+			render: (chrome) => (
+				<FilesPaneView
+					chrome={chrome}
+					sessionId="files-pane-icons"
+					sessionFiles={SESSION_FILES}
+					unscannedRecordCount={0}
+				/>
+			),
+		});
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<typeof fetch>(async () => Promise.resolve(Response.json({}, {status: 404}))),
+		);
+		render(
+			<QueryClientProvider client={new QueryClient({defaultOptions: {queries: {retry: false}}})}>
+				<ToastProvider>
+					<SettingsProvider>
+						<TileHost sessionId="files-pane" onExpandWithoutPane={() => {}}>
+							<FilesPaneShortcut />
+						</TileHost>
+					</SettingsProvider>
+				</ToastProvider>
+			</QueryClientProvider>,
+		);
+		press(CMD_SHIFT_F);
+		const tab = await within(filesPane()).findByRole("tab");
+		const svg = tab.querySelector("svg");
+
+		expect({
+			coloured: tab.querySelector("[data-file-type-icon]") !== null,
+			width: svg?.style.width,
+			glyph: tab.querySelector(".lucide-sticky-note") !== null,
+		}).toStrictEqual(expected);
+	});
 	it("reveals an inactive tab's hover-only close button on touch", () => {
 		render(
 			<FileTabsStrip

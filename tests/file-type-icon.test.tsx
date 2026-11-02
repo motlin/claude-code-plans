@@ -2,12 +2,20 @@
 
 import {readFileSync} from "node:fs";
 import {join} from "node:path";
-import {cleanup, render} from "@testing-library/react";
+import {cleanup, render as renderBare} from "@testing-library/react";
+import type {ReactNode} from "react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 import {fileTypeIconsCss} from "../scripts/gen-file-type-icons-css";
 import {FileTypeIcon} from "../src/components/file-type-icon";
+import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
+import {type FileTypeIconSetName, loadFileTypeIconSet} from "../src/lib/file-type-icons";
 
 afterEach(cleanup);
+
+/** Renders inside a Files/Changes-pane icon set, pierre unless named. */
+function render(ui: ReactNode, set: FileTypeIconSetName = "pierre") {
+	return renderBare(<FileTypeIconSetContext value={set}>{ui}</FileTypeIconSetContext>);
+}
 
 function iconSvg(container: HTMLElement): SVGSVGElement | null {
 	return container.querySelector<SVGSVGElement>("svg[data-file-type-icon]");
@@ -119,6 +127,56 @@ describe("FileTypeIcon", () => {
 		expect(container.innerHTML).toBe('<span data-x=""></span>');
 	});
 
+	it("draws the monochrome glyph, never the coloured svg, outside an icon-set provider", () => {
+		const {container} = renderBare(<FileTypeIcon fileName="README.md" size="xs" />);
+		expect({
+			coloured: iconSvg(container) !== null,
+			className: container.querySelector("svg")?.getAttribute("class"),
+		}).toStrictEqual({coloured: false, className: "lucide lucide-sticky-note shrink-0"});
+	});
+
+	it("renders the fallback outside an icon-set provider when given", () => {
+		const {container} = renderBare(<FileTypeIcon fileName="x.ts" size="xs" fallback={<span data-x="" />} />);
+		expect(container.innerHTML).toBe('<span data-x=""></span>');
+	});
+
+	it("draws the Seti set with overflow-visible and its own palette variables", async () => {
+		await loadFileTypeIconSet("vscode");
+		const {container} = render(<FileTypeIcon fileName="tsconfig.app.json" size="xs" className="x" />, "vscode");
+		const svg = iconSvg(container);
+		expect({
+			className: svg?.getAttribute("class"),
+			fills: [...(svg?.querySelectorAll("path") ?? [])].map((path) => path.getAttribute("fill")),
+		}).toStrictEqual({className: "shrink-0 overflow-visible x", fills: ["var(--fti-vscode-_json)"]});
+	});
+
+	it("draws the Catppuccin _file icon for an unresolved code file", async () => {
+		await loadFileTypeIconSet("catppuccin");
+		const {container} = render(<FileTypeIcon fileName="Code.gs" size="xs" />, "catppuccin");
+		const svg = iconSvg(container);
+		expect({
+			className: svg?.getAttribute("class"),
+			paths: [...(svg?.querySelectorAll("path") ?? [])].map((path) => ({
+				fill: path.getAttribute("fill"),
+				stroke: path.getAttribute("stroke"),
+				strokeLinecap: path.getAttribute("stroke-linecap"),
+			})),
+		}).toStrictEqual({
+			className: "shrink-0",
+			paths: [{fill: "none", stroke: "var(--fti-catppuccin-text)", strokeLinecap: "round"}],
+		});
+	});
+
+	it("draws CLAUDE.md from the pierre set under another set", async () => {
+		await loadFileTypeIconSet("vscode");
+		const {container} = render(<FileTypeIcon fileName="CLAUDE.md" size="xs" />, "vscode");
+		const svg = iconSvg(container);
+		expect({
+			className: svg?.getAttribute("class"),
+			fill: svg?.querySelector("path")?.getAttribute("fill"),
+		}).toStrictEqual({className: "shrink-0", fill: "var(--fti-claude)"});
+	});
+
 	it("ignores the fallback when a coloured icon resolves", () => {
 		const {container} = render(<FileTypeIcon fileName="x.ts" size="xs" fallback={<span data-x="" />} />);
 		expect({
@@ -142,13 +200,29 @@ describe("file-type-icons.css", () => {
 			darkMarkdown: dark?.includes("--fti-markdown: #5ecc71;"),
 			lightDefault: light?.includes("--fti-default: #84848a;"),
 			darkDefault: dark?.includes("--fti-default: #adadb1;"),
+			lightC: light?.includes("--fti-c:"),
+			darkC: dark?.includes("--fti-c:"),
+			lightCpp: light?.includes("--fti-cpp:"),
+			darkCpp: dark?.includes("--fti-cpp:"),
+			lightCatppuccinBlue: light?.includes("--fti-catppuccin-blue: #1e66f5;"),
+			darkCatppuccinBlue: dark?.includes("--fti-catppuccin-blue: #89b4fa;"),
+			lightSetiR: light?.includes("--fti-vscode-_R: #498ba7;"),
+			darkSetiR: dark?.includes("--fti-vscode-_R: #519aba;"),
 			paletteEntries: css.match(/--fti-[\w-]+:/g)?.length,
 		}).toEqual({
 			lightMarkdown: true,
 			darkMarkdown: true,
 			lightDefault: true,
 			darkDefault: true,
-			paletteEntries: 102,
+			lightC: true,
+			darkC: true,
+			lightCpp: true,
+			darkCpp: true,
+			lightCatppuccinBlue: true,
+			darkCatppuccinBlue: true,
+			lightSetiR: true,
+			darkSetiR: true,
+			paletteEntries: (53 + 16 + 191) * 2,
 		});
 	});
 

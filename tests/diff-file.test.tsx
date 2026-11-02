@@ -2,6 +2,7 @@
 
 import {cleanup, render, waitFor} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {DiffFile} from "../src/components/changes/diff-file";
 import {preloadFileTypeIcons} from "../src/components/file-type-icons-loader";
 
@@ -104,7 +105,11 @@ describe("DiffFile", () => {
 	});
 
 	it("draws upstream's 12px file-type icon for the header's file before the path", async () => {
-		const {container} = render(<DiffFile patch={PATCH} />);
+		const {container} = render(
+			<FileTypeIconSetContext value="pierre">
+				<DiffFile patch={PATCH} />
+			</FileTypeIconSetContext>,
+		);
 
 		await waitFor(() => {
 			const header = container.querySelector("[data-diff-file-header]");
