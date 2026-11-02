@@ -148,7 +148,7 @@ describe("Composer mode menu", () => {
 			.map((item) => {
 				const classes = item.className.split(" ");
 				return {
-					twoLine: classes.includes("min-h-[41px]") && classes.includes("items-start"),
+					twoLine: classes.includes("items-start"),
 					singleLine: classes.includes("h-6"),
 					paddedBottom: classes.includes("pb-1"),
 					description: item.querySelector("[data-menu-item-description]")?.className,

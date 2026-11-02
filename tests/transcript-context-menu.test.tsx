@@ -231,7 +231,7 @@ describe("transcript context menus", () => {
 		const menu = openMenuOn(find(container, ".user-message-bubble p"));
 
 		const twoLine = [...menu.querySelectorAll('[role="menuitem"]')]
-			.filter((row) => row.classList.contains("min-h-[41px]") && !row.classList.contains("h-6"))
+			.filter((row) => row.classList.contains("items-start") && !row.classList.contains("h-6"))
 			.map((row) => row.querySelector("[data-menu-item-title]")?.textContent);
 
 		expect({rows: menuRows(menu), wide: menu.classList.contains("w-[249px]"), twoLine}).toStrictEqual({

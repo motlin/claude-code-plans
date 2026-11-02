@@ -13,7 +13,7 @@ export const DENSITY_CLASSES = {
 		item: "rounded-r5 px-2 py-[2.5px]",
 		singleLine: "h-6 items-center",
 		/* Upstream pads compact two-line rows 2.5px 8px 4px. */
-		twoLine: "min-h-[41px] items-start pb-1",
+		twoLine: "items-start pb-1",
 		separator: "mx-2",
 		shortcut: "[&>kbd]:leading-[15px]",
 		shortcutPadding: "pl-[14px]",

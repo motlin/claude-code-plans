@@ -91,10 +91,9 @@ const ITEM_VARIANT_CLASS = {
 	danger: "text-danger-100 data-[highlighted]:bg-[var(--menu-danger-fill)] data-[highlighted]:text-[var(--menu-on-danger)] data-[highlighted]:[--shortcut-cap-ink:currentColor]",
 } as const;
 
-const DESCRIPTION_CLASS = "truncate pt-[2px] text-[12px]/[15px] text-[var(--menu-muted)]";
+/** Upstream's description wraps rather than truncates and has no top padding, so a two-line row is 40.5px. */
+const DESCRIPTION_CLASS = "break-words text-[12px]/[15px] text-[var(--menu-muted)]";
 const TRAILING_CLASS = "ml-auto flex shrink-0 items-center gap-1";
-/** Radio descriptions wrap rather than truncate, as upstream's mode rows. */
-const RADIO_DESCRIPTION_CLASS = "break-words text-[12px]/[15px] text-[var(--menu-muted)]";
 /** Pins a two-line row's keycap and check to its first line. */
 const FIRST_LINE_TRAILING_CLASS = `${TRAILING_CLASS} h-[1lh] self-start`;
 /** A digit row's trailing group: check slot then keycap, as upstream's mode rows. */
@@ -115,6 +114,27 @@ function ItemIcon({icon, twoLine = false}: {icon: ReactNode; twoLine?: boolean})
 			className={`${twoLine ? sizing.iconSlotTwoLine : sizing.iconSlot} [&_svg]:shrink-0 ${sizing.icon}`}
 		>
 			{icon}
+		</span>
+	);
+}
+
+/** A row's label, or upstream's two-line label over a wrapping muted description. */
+function ItemText({children, description}: {children: ReactNode; description: ReactNode}) {
+	if (description === undefined) {
+		return (
+			<span data-menu-item-title="" className={LABEL_CLASS}>
+				{children}
+			</span>
+		);
+	}
+	return (
+		<span className="flex min-w-0 flex-1 flex-col">
+			<span data-menu-item-title="" className="truncate">
+				{children}
+			</span>
+			<span data-menu-item-description="" className={DESCRIPTION_CLASS}>
+				{description}
+			</span>
 		</span>
 	);
 }
@@ -398,7 +418,7 @@ export interface MenuItemProps extends Omit<
 	children: ReactNode;
 	/** Leading 20px icon slot, as on upstream's icon rows. */
 	icon?: ReactNode;
-	/** Muted second line, making the item upstream's 41px two-line row. */
+	/** Muted second line, making the item upstream's 40.5px two-line row. */
 	description?: ReactNode;
 	/** Single key that fires this item while the menu is open. */
 	accelerator?: string;
@@ -443,20 +463,7 @@ export function MenuItem({
 			className={`${itemClass} ${ITEM_VARIANT_CLASS[variant]}`}
 		>
 			<ItemIcon icon={icon} twoLine={description !== undefined} />
-			{description === undefined ? (
-				<span data-menu-item-title="" className={LABEL_CLASS}>
-					{children}
-				</span>
-			) : (
-				<span className="flex min-w-0 flex-1 flex-col">
-					<span data-menu-item-title="" className="truncate">
-						{children}
-					</span>
-					<span data-menu-item-description="" className={DESCRIPTION_CLASS}>
-						{description}
-					</span>
-				</span>
-			)}
+			<ItemText description={description}>{children}</ItemText>
 			<ItemTrailing
 				{...(accelerator === undefined ? {} : {accelerator})}
 				{...(shortcut === undefined ? {} : {shortcut})}
@@ -645,20 +652,6 @@ export function MenuGroup(props: ComponentProps<typeof BaseMenu.Group>) {
 	return <BaseMenu.Group {...props} />;
 }
 
-function RadioItemText({children, description}: {children: ReactNode; description: ReactNode}) {
-	if (description === undefined) return <span className={LABEL_CLASS}>{children}</span>;
-	return (
-		<span className="flex min-w-0 flex-1 flex-col">
-			<span data-menu-item-title="" className="truncate">
-				{children}
-			</span>
-			<span data-menu-item-description="" className={RADIO_DESCRIPTION_CLASS}>
-				{description}
-			</span>
-		</span>
-	);
-}
-
 /** Upstream's digit row trailing: the check slot first, then the keycap, pinned to the first line. */
 function DigitTrailing({accelerator, hideAccelerator}: {accelerator: string; hideAccelerator: boolean}) {
 	const sizing = useMenuSizing();
@@ -682,7 +675,7 @@ function DigitTrailing({accelerator, hideAccelerator}: {accelerator: string; hid
 
 export interface MenuRadioItemProps extends Omit<ComponentProps<typeof BaseMenu.RadioItem>, "className" | "children"> {
 	children: ReactNode;
-	/** Muted wrapping second line, making the item upstream's 41px two-line row. */
+	/** Muted wrapping second line, making the item upstream's 40.5px two-line row. */
 	description?: ReactNode;
 	accelerator?: string;
 	/** Upstream's checked model row: its ✓ replaces the visible digit, which still fires. */
@@ -719,7 +712,7 @@ export function MenuRadioItem({
 			{...acceleratorProps(accelerator)}
 			className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
 		>
-			<RadioItemText description={description}>{children}</RadioItemText>
+			<ItemText description={description}>{children}</ItemText>
 			{trailing}
 		</BaseMenu.RadioItem>
 	);

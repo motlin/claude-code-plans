@@ -277,6 +277,30 @@ describe("Menu", () => {
 		});
 	});
 
+	it("sizes a compact two-line row at upstream's 40.5px: no min-height, 2.5px top, 4px bottom, a wrapping description", async () => {
+		render(
+			<CompactScope>
+				<Menu>
+					<MenuTrigger aria-label="More options">...</MenuTrigger>
+					<MenuContent>
+						<MenuItem description="Reconnect">Sentry</MenuItem>
+					</MenuContent>
+				</Menu>
+			</CompactScope>,
+		);
+		await openDropdown();
+		const row = screen.getByRole("menuitem", {name: /Sentry/});
+		const rowClasses = row.className.split(" ");
+
+		expect({
+			rowHeight: rowClasses.filter((value) => /^(min-h-|h-\d|py-|pt-|pb-|items-)/.test(value)),
+			description: row.querySelector("[data-menu-item-description]")?.className,
+		}).toStrictEqual({
+			rowHeight: ["items-start", "pb-1", "py-[2.5px]"],
+			description: "break-words text-[12px]/[15px] text-[var(--menu-muted)]",
+		});
+	});
+
 	it("sets aria-keyshortcuts from the accelerator letter", async () => {
 		renderDropdown();
 		await openDropdown();
