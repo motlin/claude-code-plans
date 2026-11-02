@@ -54,11 +54,11 @@
 		"raisedAt": "2026-10-28"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1258308,
+		"ceiling": 1270896,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Custom command detail (2026-10-29): Customize › Skills command rows now open a /customize/skills/command/$source/$filename detail, so the client entry carries one more route-tree entry and the shared customize chunk the new command navigation target. Raw went from 1256924 to 1258308 (+1384), about 320 bytes past the 1% tolerance over the 2026-10-29 elicitation ceiling. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-29"
+		"reason": "Teardown-safe journey tracker (2026-11-02): src/lib/perf/journey.ts guards its browser rAF/timer callbacks and matchMedia/innerWidth reads against a torn-down window and stops resolving paints after dispose (+161 bytes), on top of the growth since the 2026-10-29 custom command detail raise (touch sheets, tab titles, forced-colors popups; 1258308 to 1270735, within tolerance). Raw went to 1270896, 5 bytes past the 1% tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-02"
 	},
 	"bundle.session.gzip": {
 		"ceiling": 653636,

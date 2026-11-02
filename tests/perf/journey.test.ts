@@ -2,6 +2,8 @@
 
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {
+	browserEnvironment,
+	createJourneyTracker,
 	deriveFormFactor,
 	deriveOrigin,
 	endJourneyWhenRendered,
@@ -438,5 +440,68 @@ describe("journey triggers and next-paint ends", () => {
 		harness.runFrame();
 
 		expect([await first, (await second)?.start]).toStrictEqual([null, 305]);
+	});
+});
+
+describe("browser environment after the window is torn down", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	function captureBrowserScheduling(): {frames: FrameRequestCallback[]; timers: (() => void)[]} {
+		const frames: FrameRequestCallback[] = [];
+		const timers: (() => void)[] = [];
+		vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => frames.push(callback));
+		vi.spyOn(window, "setTimeout").mockImplementation(((callback: () => void, ms?: number) => {
+			if (ms === 0) timers.push(callback);
+			return timers.length;
+		}) as typeof window.setTimeout);
+		return {frames, timers};
+	}
+
+	it("fires a paint frame scheduled before teardown without throwing", () => {
+		const {frames} = captureBrowserScheduling();
+		const tracker = createJourneyTracker(browserEnvironment());
+		tracker.startJourney("F8", {trigger: keyDownAt(300)});
+		void tracker.endJourneyAtNextPaint("F8");
+		vi.stubGlobal("window", undefined);
+
+		expect(() => {
+			for (const frame of frames.splice(0)) frame(0);
+		}).not.toThrow();
+		vi.unstubAllGlobals();
+		tracker.dispose();
+	});
+
+	it("drops a journey whose post-paint timer fires after teardown, without throwing", async () => {
+		const {frames, timers} = captureBrowserScheduling();
+		const tracker = createJourneyTracker(browserEnvironment());
+		tracker.startJourney("F8", {trigger: keyDownAt(300)});
+		const done = tracker.endJourneyAtNextPaint("F8");
+		for (const frame of frames.splice(0)) frame(0);
+		vi.stubGlobal("window", undefined);
+
+		expect(() => {
+			for (const timer of timers.splice(0)) timer();
+		}).not.toThrow();
+		vi.unstubAllGlobals();
+		tracker.dispose();
+		expect(await Promise.race([done, flushMicrotasks().then(() => "pending")])).toBe("pending");
+	});
+
+	it("never resolves a paint that dispose cancelled", async () => {
+		const {frames, timers} = captureBrowserScheduling();
+		const tracker = createJourneyTracker(browserEnvironment());
+		tracker.startJourney("F8", {trigger: keyDownAt(300)});
+		const done = tracker.endJourneyAtNextPaint("F8");
+		tracker.dispose();
+		for (const frame of frames.splice(0)) frame(0);
+		for (const timer of timers.splice(0)) timer();
+
+		expect([await Promise.race([done, flushMicrotasks().then(() => "pending")]), timers]).toStrictEqual([
+			"pending",
+			[],
+		]);
 	});
 });

@@ -311,6 +311,7 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 	const cancelWaits = new Set<() => void>();
 	let queue: JourneySample[] = [];
 	let flushTimer: unknown;
+	let disposed = false;
 
 	if (environment.PerformanceObserver) {
 		for (const type of OBSERVED_TYPES) {
@@ -435,11 +436,13 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 		});
 	}
 
+	/** Never resolves once the tracker is disposed, so no journey continuation runs after teardown. */
 	async function afterPaint(): Promise<number> {
 		return new Promise((resolve) => {
 			environment.requestAnimationFrame(() => {
+				if (disposed) return;
 				environment.setTimeout(() => {
-					resolve(performance.now());
+					if (!disposed) resolve(performance.now());
 				}, 0);
 			});
 		});
@@ -510,6 +513,7 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 		flush,
 
 		dispose() {
+			disposed = true;
 			document.removeEventListener("visibilitychange", onVisibilityChange);
 			for (const observer of observers) observer.disconnect();
 			for (const cancel of cancelWaits) cancel();
@@ -522,7 +526,19 @@ export function createJourneyTracker(environment: JourneyEnvironment): JourneyTr
 
 declare const __CCB_BUILD_SHA__: string | undefined;
 
-function browserEnvironment(): JourneyEnvironment {
+/** Whether the browser window still exists: test environments tear it down while frames and timers are pending. */
+function hasWindow(): boolean {
+	return typeof window !== "undefined";
+}
+
+/** Wraps a scheduled callback so it is skipped when it fires after the window was torn down. */
+function whileWindowExists<A extends unknown[]>(callback: (...args: A) => void): (...args: A) => void {
+	return (...args) => {
+		if (hasWindow()) callback(...args);
+	};
+}
+
+export function browserEnvironment(): JourneyEnvironment {
 	return {
 		document,
 		performance,
@@ -532,16 +548,17 @@ function browserEnvironment(): JourneyEnvironment {
 			return location.pathname;
 		},
 		matchesCoarsePointer: () =>
-			typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches,
-		viewportWidth: () => window.innerWidth,
+			hasWindow() && typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches,
+		viewportWidth: () => (hasWindow() ? window.innerWidth : 0),
 		hardwareConcurrency: navigator.hardwareConcurrency,
 		buildSha: typeof __CCB_BUILD_SHA__ === "string" ? __CCB_BUILD_SHA__ : "unknown",
 		mode: import.meta.env.DEV ? "dev" : "prod",
-		requestAnimationFrame: (callback) => window.requestAnimationFrame(callback),
-		setTimeout: (callback, ms) => window.setTimeout(callback, ms),
-		setInterval: (callback, ms) => window.setInterval(callback, ms),
+		requestAnimationFrame: (callback) =>
+			hasWindow() ? window.requestAnimationFrame(whileWindowExists(callback)) : 0,
+		setTimeout: (callback, ms) => (hasWindow() ? window.setTimeout(whileWindowExists(callback), ms) : undefined),
+		setInterval: (callback, ms) => (hasWindow() ? window.setInterval(whileWindowExists(callback), ms) : undefined),
 		clearInterval: (handle) => {
-			if (typeof handle === "number") window.clearInterval(handle);
+			if (hasWindow() && typeof handle === "number") window.clearInterval(handle);
 		},
 		send: (batch) => {
 			navigator.sendBeacon(PERF_BEACON_PATH, JSON.stringify({samples: batch}));
