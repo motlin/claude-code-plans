@@ -1,4 +1,7 @@
-import {afterEach, beforeAll} from "vite-plus/test";
+import {afterAll, afterEach, beforeAll, vi} from "vite-plus/test";
+import {resetAnsweredApprovals} from "../src/lib/answered-approvals";
+import {resetAnsweredSessions} from "../src/lib/answered-sessions";
+import {resetQuestionCardStore} from "../src/lib/question-card-store";
 import {isolateGitEnvironment} from "./git-fixture";
 
 // Runs before every test file, so no test or code under test inherits a GIT_DIR
@@ -17,6 +20,21 @@ if (typeof window !== "undefined") Element.prototype.scrollIntoView = () => {};
 if (typeof navigator !== "undefined" && typeof navigator.sendBeacon !== "function") {
 	navigator.sendBeacon = () => true;
 }
+
+// The answer stores keep holds, marks and drafts at module level, and a shared pool runs every file in one module
+// graph, so a test that answers a card would leak into the next file. Reset them after every test, after Testing
+// Library's unmount below (after-hooks run in reverse registration order), as a fresh page would start.
+afterEach(() => {
+	resetAnsweredSessions();
+	resetAnsweredApprovals();
+	resetQuestionCardStore();
+});
+
+// Put back real timers and the real clock a file left faked, as a fresh worker would start the next file. Per file,
+// not per test: several files fake the clock once in beforeAll for all their tests.
+afterAll(() => {
+	vi.useRealTimers();
+});
 
 // findBy* and waitFor give up after Testing Library's default 1s, which a render on a machine at load average 100+
 // overran (session-summary-placement's "2 subagents" link), so a commit's git test failed and an unchanged retest passed.

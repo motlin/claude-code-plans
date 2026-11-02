@@ -199,3 +199,24 @@ export function markQuestionCardSeen(key: string): void {
 export function wasQuestionCardSeen(key: string): boolean {
 	return seen.has(key);
 }
+
+/** Drops every draft, sent answer and seen card with their stored copies, as a fresh page starts; tests call it between cases. */
+export function resetQuestionCardStore(): void {
+	memory.clear();
+	sent.clear();
+	storedSentChecked.clear();
+	seen.clear();
+	try {
+		const storage = browserSessionStorage();
+		if (storage !== null) {
+			const keys = Array.from({length: storage.length}, (_, index) => storage.key(index));
+			for (const key of keys) {
+				if (key?.startsWith(STORAGE_PREFIX) === true || key?.startsWith(SENT_STORAGE_PREFIX) === true)
+					storage.removeItem(key);
+			}
+		}
+	} catch {
+		// Denied storage holds nothing to clear.
+	}
+	notifySentChange();
+}

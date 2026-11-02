@@ -150,6 +150,18 @@ export function isApprovalAnswered(sessionId: string, id: string): boolean {
 	return answered.has(answerKey(sessionId, id)) || isAcknowledged(sessionId, id);
 }
 
+/** Drops every mark and the acknowledged cache with its stored copy, as a fresh page starts; tests call it between cases. */
+export function resetAnsweredApprovals(): void {
+	answered.clear();
+	acknowledged = null;
+	try {
+		browserLocalStorage()?.removeItem(ACKNOWLEDGED_STORAGE_KEY);
+	} catch {
+		// Denied storage holds nothing to clear.
+	}
+	notify();
+}
+
 /** Upstream's `YS`: re-renders whenever any approval is marked or cleared. */
 function useAnsweredApprovalsVersion(): number {
 	return useSyncExternalStore(

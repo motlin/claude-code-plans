@@ -63,6 +63,13 @@ export function releaseAnswered(sessionId: string): void {
 	notify();
 }
 
+/** Drops every hold and its timer, as a fresh module starts; tests call it between cases. */
+export function resetAnsweredSessions(): void {
+	for (const hold of holds.values()) clearTimeout(hold.timer);
+	holds.clear();
+	notify();
+}
+
 export function isAnsweredHeld(sessionId: string): boolean {
 	return holds.has(sessionId);
 }
