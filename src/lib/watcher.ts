@@ -95,6 +95,45 @@ interface JsonlThrottleState {
 	lastFired: number;
 }
 const jsonlThrottleByPath = new Map<string, JsonlThrottleState>();
+/** How long an answer's one-shot throttle bypass waits for the CLI to write the transcript. */
+const JSONL_EXPEDITE_WINDOW_MS = 5000;
+/** Session id -> when its one-shot bypass lapses, armed when the app answers a question, permission or plan. */
+const jsonlExpediteUntilBySession = new Map<string, number>();
+
+/**
+ * Read a session's transcript right away after the app answered its question,
+ * permission prompt or plan, instead of waiting out `JSONL_THROTTLE_MS`. A
+ * trailing read already pending fires now; otherwise the session's next
+ * throttled change fires at once. One-shot and per session: every other
+ * session, and this one's later changes, stay throttled.
+ */
+export function expediteSessionJsonlRead(sessionId: string): void {
+	for (const [path, state] of jsonlThrottleByPath) {
+		if (state.timer === undefined || basename(path, ".jsonl") !== sessionId) continue;
+		clearTimeout(state.timer);
+		delete state.timer;
+		void fireJsonlAppend(path, state);
+		return;
+	}
+	jsonlExpediteUntilBySession.set(sessionId, Date.now() + JSONL_EXPEDITE_WINDOW_MS);
+}
+
+/** Consume the session's armed bypass, when one is armed and not lapsed. */
+function takeJsonlExpedite(path: string): boolean {
+	const sessionId = basename(path, ".jsonl");
+	const until = jsonlExpediteUntilBySession.get(sessionId);
+	if (until === undefined) return false;
+	jsonlExpediteUntilBySession.delete(sessionId);
+	return Date.now() <= until;
+}
+
+async function fireJsonlAppend(path: string, state: JsonlThrottleState): Promise<void> {
+	state.lastFired = Date.now();
+	delete state.timer;
+	await trackActivity(`jsonl append ${path}`, async () =>
+		processJsonlAppend(getDb().index, path, jsonlOffsets, broadcastTyped),
+	);
+}
 
 /** Leading-plus-trailing throttle per session: a run's agents append to their transcripts many times a second. */
 const WORKFLOW_THROTTLE_MS = 2000;
@@ -141,6 +180,7 @@ export async function closeWatcher(): Promise<void> {
 		if (state.timer !== undefined) clearTimeout(state.timer);
 	}
 	jsonlThrottleByPath.clear();
+	jsonlExpediteUntilBySession.clear();
 	resetWorkflowThrottle();
 	if (current) await current.close();
 }
@@ -768,18 +808,12 @@ async function handleFileChange(path: string): Promise<void> {
 		jsonlThrottleByPath.set(path, throttleState);
 		const elapsed = now - throttleState.lastFired;
 
-		const fire = async () => {
-			throttleState.lastFired = Date.now();
-			delete throttleState.timer;
-			await trackActivity(`jsonl append ${path}`, async () =>
-				processJsonlAppend(getDb().index, path, jsonlOffsets, broadcastTyped),
-			);
-		};
+		const fire = async () => fireJsonlAppend(path, throttleState);
 
 		if (throttleState.timer !== undefined) clearTimeout(throttleState.timer);
 
-		if (elapsed >= JSONL_THROTTLE_MS) {
-			// Enough time has passed -- fire immediately.
+		if (elapsed >= JSONL_THROTTLE_MS || takeJsonlExpedite(path)) {
+			// Enough time has passed, or the app just answered this session -- fire immediately.
 			void fire();
 		} else {
 			// Schedule a trailing fire for the remaining interval.
@@ -970,6 +1004,7 @@ export const __testing = {
 			if (state.timer !== undefined) clearTimeout(state.timer);
 		}
 		jsonlThrottleByPath.clear();
+		jsonlExpediteUntilBySession.clear();
 		jsonlOffsets.clear();
 	},
 };

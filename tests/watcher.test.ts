@@ -16,6 +16,7 @@ import {
 	__testing,
 	closeWatcher,
 	createWatcher,
+	expediteSessionJsonlRead,
 	shouldIgnoreWatch,
 	resolveIgnoredDirNames,
 	buildIgnoredDirPattern,
@@ -177,6 +178,109 @@ describe("handleFileChange", () => {
 				new Set([alicePath, bobPath]),
 			);
 		});
+	});
+});
+
+describe("expediteSessionJsonlRead", () => {
+	const testDir = join(tmpdir(), "watcher-expedite-test-" + process.pid);
+	const alicePath = join(testDir, "alice-session.jsonl");
+	const bobPath = join(testDir, "bob-session.jsonl");
+
+	beforeEach(() => {
+		mkdirSync(testDir, {recursive: true});
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2000-01-01T00:00:00.000Z"));
+		__testing.resetJsonlThrottle();
+		writeFileSync(alicePath, jsonl({type: "user", sessionId: "alice-session"}));
+		writeFileSync(bobPath, jsonl({type: "user", sessionId: "bob-session"}));
+	});
+
+	afterEach(() => {
+		__testing.resetJsonlThrottle();
+		vi.restoreAllMocks();
+		vi.useRealTimers();
+		rmSync(testDir, {recursive: true, force: true});
+	});
+
+	function readCounts(readNewJsonlLines: {mock: {calls: unknown[][]}}): {alice: number; bob: number} {
+		const paths = readNewJsonlLines.mock.calls.map(([path]) => path);
+		return {
+			alice: paths.filter((path) => path === alicePath).length,
+			bob: paths.filter((path) => path === bobPath).length,
+		};
+	}
+
+	it("reads only the answered session's next change at once, one time, while other sessions stay throttled", async () => {
+		const readNewJsonlLines = vi.spyOn(sessions, "readNewJsonlLines");
+		await __testing.handleFileChange(alicePath);
+		await __testing.handleFileChange(bobPath);
+		await vi.waitFor(() => {
+			expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 1, bob: 1});
+		});
+		await vi.advanceTimersByTimeAsync(100);
+
+		expediteSessionJsonlRead("alice-session");
+		appendFileSync(alicePath, jsonl({type: "assistant", sessionId: "alice-session"}));
+		appendFileSync(bobPath, jsonl({type: "assistant", sessionId: "bob-session"}));
+		await __testing.handleFileChange(alicePath);
+		await __testing.handleFileChange(bobPath);
+		await vi.waitFor(() => {
+			expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 2, bob: 1});
+		});
+
+		// One-shot: the answered session's following change is throttled again.
+		await vi.advanceTimersByTimeAsync(100);
+		appendFileSync(alicePath, jsonl({type: "assistant", sessionId: "alice-session"}));
+		await __testing.handleFileChange(alicePath);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 2, bob: 1});
+
+		await vi.advanceTimersByTimeAsync(2_000);
+		await vi.waitFor(() => {
+			expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 3, bob: 2});
+		});
+	});
+
+	it("fires the answered session's pending trailing read at once", async () => {
+		const readNewJsonlLines = vi.spyOn(sessions, "readNewJsonlLines");
+		await __testing.handleFileChange(alicePath);
+		await __testing.handleFileChange(bobPath);
+		await vi.waitFor(() => {
+			expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 1, bob: 1});
+		});
+		await vi.advanceTimersByTimeAsync(100);
+		appendFileSync(alicePath, jsonl({type: "assistant", sessionId: "alice-session"}));
+		appendFileSync(bobPath, jsonl({type: "assistant", sessionId: "bob-session"}));
+		await __testing.handleFileChange(alicePath);
+		await __testing.handleFileChange(bobPath);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 1, bob: 1});
+
+		expediteSessionJsonlRead("alice-session");
+		await vi.waitFor(() => {
+			expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 2, bob: 1});
+		});
+
+		await vi.advanceTimersByTimeAsync(2_000);
+		await vi.waitFor(() => {
+			expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 2, bob: 2});
+		});
+	});
+
+	it("lets an unused expedite lapse, so a much later change is throttled as usual", async () => {
+		const readNewJsonlLines = vi.spyOn(sessions, "readNewJsonlLines");
+		expediteSessionJsonlRead("alice-session");
+		await vi.advanceTimersByTimeAsync(10_000);
+		// Unthrottled anyway, so this read leaves the stale bypass armed if it never lapsed.
+		await __testing.handleFileChange(alicePath);
+		await vi.waitFor(() => {
+			expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 1, bob: 0});
+		});
+		await vi.advanceTimersByTimeAsync(100);
+		appendFileSync(alicePath, jsonl({type: "assistant", sessionId: "alice-session"}));
+		await __testing.handleFileChange(alicePath);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(readCounts(readNewJsonlLines)).toStrictEqual({alice: 1, bob: 0});
 	});
 });
 
