@@ -340,7 +340,7 @@ html[data-interface-font="dyslexic"] {
 	--upstream-fill-brand-hover: #d97757;
 	/* Upstream claude.ai/code text-warning: the Needs input pill label. */
 	--upstream-warning: rgb(115 69 0);
-	/* Upstream pressed-toggle paint behind the accent ink (titlebar trail). */
+	/* Upstream pre-rollout `--cds-bg-accent` (role-accent-100): pressed toggles and selected chips. */
 	--upstream-accent-pressed: rgb(205 226 251);
 	/* Upstream bg-accent-muted: the slash-command chip's hover highlight. */
 	--upstream-accent-muted: rgb(37 125 224 / 0.1);
@@ -716,6 +716,16 @@ html[data-interface-font="dyslexic"] {
 	--chart-categorical-2: #d95926;
 	--chart-categorical-3: #199e70;
 	--chart-categorical-4: #c98500;
+}
+
+/* Fizzy-lake `color` rollout (src/lib/fizzy-lake.ts puts data-cds-fizzy-lake on <html>): upstream's
+   `.cds-root:is([data-cds-fizzy-lake~=color], …)` light block and its `[data-mode=dark]` twin
+   (dumps/upstream-survey-root-vars.css). The base blocks above keep the pre-rollout values, so
+   dropping `color` from FIZZY_LAKE_PARTS falls back to them. The light block outranks `.dark`, so
+   a value that differs in dark is restated in the dark block. */
+:root[data-cds-fizzy-lake~="color"] {
+	/* Upstream `--cds-bg-accent`, the same in both modes: selected mention and skill chips, pressed titlebar toggles. */
+	--upstream-accent-pressed: color-mix(in srgb, #257de0 12%, transparent);
 }
 
 @layer utilities {
