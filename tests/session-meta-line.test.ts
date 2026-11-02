@@ -80,7 +80,7 @@ describe("sessionMetaLine", () => {
 		).toEqual({kind: "blocked", word: false, reason: "Asked a question"});
 	});
 
-	it("shows the Blocked word for a blocked row under a project heading with no reason", () => {
+	it("shows the Waiting word for a blocked row under a project heading with no reason", () => {
 		expect(
 			sessionMetaLine({
 				bucket: "blocked",

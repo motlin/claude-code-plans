@@ -12,10 +12,10 @@ function PlaceGlyph({line}: {line: Extract<SessionMetaLine, {kind: "place"}>}) {
 	return <GitBranch aria-hidden="true" data-branch-glyph="" className="size-3 shrink-0 text-ink-muted" />;
 }
 
-/** A described row's second line (upstream `gM`): the blocked word and reason, or branch then folder. */
+/** A described row's second line (upstream `gM`): the Waiting word and reason, or branch then folder. */
 export function MetaLine({line}: {line: SessionMetaLine}) {
 	const items = (
-		line.kind === "blocked" ? [line.word ? "Blocked" : undefined, line.reason] : [line.branch, line.folder]
+		line.kind === "blocked" ? [line.word ? "Waiting" : undefined, line.reason] : [line.branch, line.folder]
 	).filter((item) => item !== undefined);
 	const [first, second] = items;
 	return (

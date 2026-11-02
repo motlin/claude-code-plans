@@ -3,8 +3,8 @@ import {describe, expect, it} from "vite-plus/test";
 import type {FolderPr} from "../src/lib/api/home-folder-pr";
 
 import {
-	blockedDismissLabel,
-	blockedRestTitle,
+	waitingDismissLabel,
+	waitingRestTitle,
 	folderNextStepCandidates,
 	folderPrBranch,
 	folderPrNextStepCandidates,
@@ -52,7 +52,7 @@ describe("selectNextSteps", () => {
 		expect(seats([candidate("cli-import", "cli")])).toStrictEqual(["cli"]);
 	});
 
-	it("shows up to three blocked sessions as rows", () => {
+	it("shows up to three waiting sessions as rows", () => {
 		expect(seats(blocked(3))).toStrictEqual(["s1", "s2", "s3"]);
 	});
 
@@ -61,8 +61,8 @@ describe("selectNextSteps", () => {
 			"s1",
 			"s2",
 			{
-				title: "Claude is blocked in 4 more sessions",
-				dismissLabel: "Dismiss 4 blocked sessions",
+				title: "Claude is waiting in 4 more sessions",
+				dismissLabel: "Dismiss 4 waiting sessions",
 				rest: ["s3", "s4", "s5", "s6"],
 			},
 		]);
@@ -72,8 +72,8 @@ describe("selectNextSteps", () => {
 		expect(seats([...blocked(3), candidate("pr-ci-failed", "pr")])).toStrictEqual([
 			"s1",
 			{
-				title: "Claude is blocked in 2 more sessions",
-				dismissLabel: "Dismiss 2 blocked sessions",
+				title: "Claude is waiting in 2 more sessions",
+				dismissLabel: "Dismiss 2 waiting sessions",
 				rest: ["s2", "s3"],
 			},
 			"pr",
@@ -81,8 +81,8 @@ describe("selectNextSteps", () => {
 		expect(seats([...blocked(2), candidate("pr-ci-failed", "pr"), candidate("worktree-apart", "f")])).toStrictEqual(
 			[
 				{
-					title: "Claude is blocked in 2 sessions",
-					dismissLabel: "Dismiss 2 blocked sessions",
+					title: "Claude is waiting in 2 sessions",
+					dismissLabel: "Dismiss 2 waiting sessions",
 					rest: ["s1", "s2"],
 				},
 				"f",
@@ -93,14 +93,14 @@ describe("selectNextSteps", () => {
 
 	it("titles the rest row in the singular and plural", () => {
 		expect(
-			[1, 4].flatMap((n) => [blockedRestTitle(n, false), blockedRestTitle(n, true), blockedDismissLabel(n)]),
+			[1, 4].flatMap((n) => [waitingRestTitle(n, false), waitingRestTitle(n, true), waitingDismissLabel(n)]),
 		).toStrictEqual([
-			"Claude is blocked in 1 more session",
-			"Claude is blocked in 1 session",
-			"Dismiss 1 blocked session",
-			"Claude is blocked in 4 more sessions",
-			"Claude is blocked in 4 sessions",
-			"Dismiss 4 blocked sessions",
+			"Claude is waiting in 1 more session",
+			"Claude is waiting in 1 session",
+			"Dismiss 1 waiting session",
+			"Claude is waiting in 4 more sessions",
+			"Claude is waiting in 4 sessions",
+			"Dismiss 4 waiting sessions",
 		]);
 	});
 
@@ -212,7 +212,7 @@ describe("folder PR next steps", () => {
 		expect(prRows({pr: {status: "found", pr: review}})).toStrictEqual([{...untitled, detail: null}]);
 	});
 
-	it("seats the CI row before the review row, after blocked sessions", () => {
+	it("seats the CI row before the review row, after waiting sessions", () => {
 		const both = prRows({
 			pr: {
 				status: "found",
@@ -405,8 +405,8 @@ describe("folder next steps", () => {
 			"s1",
 			"s2",
 			{
-				title: "Claude is blocked in 2 more sessions",
-				dismissLabel: "Dismiss 2 blocked sessions",
+				title: "Claude is waiting in 2 more sessions",
+				dismissLabel: "Dismiss 2 waiting sessions",
 				rest: ["s3", "s9"],
 			},
 		]);

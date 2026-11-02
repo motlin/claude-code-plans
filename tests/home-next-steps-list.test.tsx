@@ -74,7 +74,7 @@ afterEach(() => {
 });
 
 describe("NextStepsList", () => {
-	it("renders Blocked rows with their detail and a touch-revealed dismiss", () => {
+	it("renders Waiting rows with their detail and a touch-revealed dismiss", () => {
 		render(<NextStepsList rows={rowsOf(2)} onOpen={() => {}} onDismiss={() => {}} />);
 
 		const list = screen.getByRole("list", {name: "Next steps"});
@@ -87,13 +87,13 @@ describe("NextStepsList", () => {
 			})),
 		).toStrictEqual([
 			{
-				text: "Blocked Task 1Asked a question",
-				status: "Blocked",
+				text: "Waiting Task 1Asked a question",
+				status: "Waiting",
 				dismiss: "Dismiss “Task 1”",
 			},
 			{
-				text: "Blocked Task 2Needs permission",
-				status: "Blocked",
+				text: "Waiting Task 2Needs permission",
+				status: "Waiting",
 				dismiss: "Dismiss “Task 2”",
 			},
 		]);
@@ -154,7 +154,7 @@ describe("NextStepsList", () => {
 		]);
 	});
 
-	it("shows a failing PR row without the Blocked status", () => {
+	it("shows a failing PR row without the Waiting status", () => {
 		const rows = selectNextSteps({
 			candidates: [
 				...blocked(1),
@@ -172,14 +172,14 @@ describe("NextStepsList", () => {
 
 		expect(
 			screen.getAllByRole("listitem").map((item) => item.querySelector("[data-next-step-open]")?.textContent),
-		).toStrictEqual(["Blocked Task 1Asked a question", "Fix the failing checks2 failing checks"]);
+		).toStrictEqual(["Waiting Task 1Asked a question", "Fix the failing checks2 failing checks"]);
 	});
 
 	it("opens the session on press", () => {
 		const onOpen = vi.fn<(sessionId: string) => void>();
 		render(<NextStepsList rows={rowsOf(2)} onOpen={onOpen} onDismiss={() => {}} />);
 
-		fireEvent.click(screen.getByRole("button", {name: /^Blocked Task 2/}));
+		fireEvent.click(screen.getByRole("button", {name: /^Waiting Task 2/}));
 
 		expect(onOpen.mock.calls).toStrictEqual([["s2"]]);
 	});
@@ -189,10 +189,10 @@ describe("NextStepsList", () => {
 		const onDismiss = vi.fn<(candidates: NextStepCandidate[]) => void>();
 		render(<NextStepsList rows={rowsOf(5)} onOpen={onOpen} onDismiss={onDismiss} />);
 
-		fireEvent.click(screen.getByRole("button", {name: "Dismiss 3 blocked sessions"}));
+		fireEvent.click(screen.getByRole("button", {name: "Dismiss 3 waiting sessions"}));
 		fireEvent.click(
 			screen.getByRole("button", {
-				name: "Claude is blocked in 3 more sessions",
+				name: "Claude is waiting in 3 more sessions",
 			}),
 		);
 		const popup = await screen.findByRole("dialog");
@@ -213,7 +213,7 @@ describe("NextStepsList", () => {
 			names,
 			opened: onOpen.mock.calls,
 			trigger: screen
-				.getByRole("button", {name: "Claude is blocked in 3 more sessions"})
+				.getByRole("button", {name: "Claude is waiting in 3 more sessions"})
 				.getAttribute("aria-expanded"),
 		}).toStrictEqual({
 			dismissed: [["s3", "s4", "s5"]],
@@ -226,7 +226,7 @@ describe("NextStepsList", () => {
 
 	it("anchors the rest popup bottom/start at least as wide as its trigger, a list of keyed rows", async () => {
 		render(<NextStepsList rows={rowsOf(5)} onOpen={() => {}} onDismiss={() => {}} />);
-		const trigger = screen.getByRole("button", {name: "Claude is blocked in 3 more sessions"});
+		const trigger = screen.getByRole("button", {name: "Claude is waiting in 3 more sessions"});
 
 		fireEvent.click(trigger);
 		const popup = await screen.findByRole("dialog");
@@ -256,7 +256,7 @@ describe("NextStepsList", () => {
 
 	it("moves focus into the first listed row on open and back to the trigger on Escape", async () => {
 		render(<NextStepsList rows={rowsOf(5)} onOpen={() => {}} onDismiss={() => {}} />);
-		const trigger = screen.getByRole("button", {name: "Claude is blocked in 3 more sessions"});
+		const trigger = screen.getByRole("button", {name: "Claude is waiting in 3 more sessions"});
 
 		fireEvent.click(trigger);
 		const popup = await screen.findByRole("dialog");
@@ -295,7 +295,7 @@ describe("NextStepsList", () => {
 			rows: rowTexts(),
 		}).toStrictEqual({
 			focused: "Prompt",
-			rows: ["Blocked Task 1Asked a question", "Blocked Task 3Asked a question"],
+			rows: ["Waiting Task 1Asked a question", "Waiting Task 3Asked a question"],
 		});
 	});
 
@@ -314,8 +314,8 @@ describe("NextStepsList", () => {
 			focused: document.activeElement?.textContent,
 			rows: rowTexts(),
 		}).toStrictEqual({
-			focused: "Blocked Task 3Asked a question",
-			rows: ["Blocked Task 1Asked a question", "Blocked Task 3Asked a question"],
+			focused: "Waiting Task 3Asked a question",
+			rows: ["Waiting Task 1Asked a question", "Waiting Task 3Asked a question"],
 		});
 	});
 
@@ -327,15 +327,15 @@ describe("NextStepsList", () => {
 			</>,
 		);
 
-		fireEvent.click(asFocusVisible(screen.getByRole("button", {name: "Dismiss 3 blocked sessions"})));
+		fireEvent.click(asFocusVisible(screen.getByRole("button", {name: "Dismiss 3 waiting sessions"})));
 		await settle();
 
 		expect({
 			focused: document.activeElement?.textContent,
 			rows: rowTexts(),
 		}).toStrictEqual({
-			focused: "Blocked Task 2Needs permission",
-			rows: ["Blocked Task 1Asked a question", "Blocked Task 2Needs permission"],
+			focused: "Waiting Task 2Needs permission",
+			rows: ["Waiting Task 1Asked a question", "Waiting Task 2Needs permission"],
 		});
 	});
 
@@ -429,7 +429,7 @@ describe("NextStepsList", () => {
 		vi.useFakeTimers();
 		try {
 			const {container} = render(<NextStepsList rows={rowsOf(5)} onOpen={() => {}} onDismiss={() => {}} />);
-			const rest = screen.getByRole("button", {name: "Claude is blocked in 3 more sessions"});
+			const rest = screen.getByRole("button", {name: "Claude is waiting in 3 more sessions"});
 
 			fireEvent.pointerEnter(rest);
 			fireEvent.focus(rest);
@@ -555,21 +555,21 @@ describe("NextStepsList hold", () => {
 
 		expect({held, released: rowTexts()}).toStrictEqual({
 			held: [
-				"Blocked Task 1Asked a question",
-				"Blocked Task 2Needs permission",
-				"Blocked Task 3Asked a question",
+				"Waiting Task 1Asked a question",
+				"Waiting Task 2Needs permission",
+				"Waiting Task 3Asked a question",
 			],
 			released: [
-				"Blocked Task 1Asked a question",
-				"Blocked Task 2Needs permission",
-				"Claude is blocked in 2 more sessions",
+				"Waiting Task 1Asked a question",
+				"Waiting Task 2Needs permission",
+				"Claude is waiting in 2 more sessions",
 			],
 		});
 	});
 
 	it("holds while focus is inside the list, still applies removals, and releases on blur out", () => {
 		const {rerender} = render(listOf(blocked(3)));
-		const first = screen.getByRole("button", {name: /^Blocked Task 1/});
+		const first = screen.getByRole("button", {name: /^Waiting Task 1/});
 
 		fireEvent.focus(first);
 		rerender(listOf(subjects(1, 3, 4)));
@@ -577,11 +577,11 @@ describe("NextStepsList hold", () => {
 		fireEvent.blur(first, {relatedTarget: null});
 
 		expect({held, released: rowTexts()}).toStrictEqual({
-			held: ["Blocked Task 1Asked a question", "Blocked Task 3Asked a question"],
+			held: ["Waiting Task 1Asked a question", "Waiting Task 3Asked a question"],
 			released: [
-				"Blocked Task 1Asked a question",
-				"Blocked Task 3Asked a question",
-				"Blocked Task 4Needs permission",
+				"Waiting Task 1Asked a question",
+				"Waiting Task 3Asked a question",
+				"Waiting Task 4Needs permission",
 			],
 		});
 	});
@@ -589,13 +589,13 @@ describe("NextStepsList hold", () => {
 	it("releases the hold when the focused row disappears", () => {
 		const {rerender} = render(listOf(blocked(3)));
 
-		fireEvent.focus(screen.getByRole("button", {name: /^Blocked Task 2/}));
+		fireEvent.focus(screen.getByRole("button", {name: /^Waiting Task 2/}));
 		rerender(listOf(subjects(1, 3, 4)));
 
 		expect(rowTexts()).toStrictEqual([
-			"Blocked Task 1Asked a question",
-			"Blocked Task 3Asked a question",
-			"Blocked Task 4Needs permission",
+			"Waiting Task 1Asked a question",
+			"Waiting Task 3Asked a question",
+			"Waiting Task 4Needs permission",
 		]);
 	});
 });
@@ -628,7 +628,7 @@ describe("NextStepsList double-click guard", () => {
 				afterDoubleClick,
 			}).toStrictEqual({
 				dismissed: [["s1"], ["s2"]],
-				afterDoubleClick: ["Blocked Task 2Needs permission", "Blocked Task 3Asked a question"],
+				afterDoubleClick: ["Waiting Task 2Needs permission", "Waiting Task 3Asked a question"],
 			});
 		} finally {
 			clock.mockRestore();
@@ -642,9 +642,9 @@ describe("NextStepsList double-click guard", () => {
 			const onOpen = vi.fn<(sessionId: string) => void>();
 			render(<NextStepsList rows={rowsOf(2)} onOpen={onOpen} onDismiss={() => {}} />);
 
-			fireEvent.click(screen.getByRole("button", {name: /^Blocked Task 1/}), {detail: 1});
+			fireEvent.click(screen.getByRole("button", {name: /^Waiting Task 1/}), {detail: 1});
 			now += 100;
-			fireEvent.click(screen.getByRole("button", {name: /^Blocked Task 2/}), {detail: 1});
+			fireEvent.click(screen.getByRole("button", {name: /^Waiting Task 2/}), {detail: 1});
 
 			expect(onOpen.mock.calls).toStrictEqual([["s1"], ["s2"]]);
 		} finally {

@@ -87,7 +87,7 @@ function openNextStep() {
 			rows={[
 				{
 					type: "rest",
-					title: "Claude is blocked in 2 sessions",
+					title: "Claude is waiting in 2 sessions",
 					dismissLabel: "Dismiss",
 					rest: [candidate(1), candidate(2)],
 				},
@@ -96,7 +96,7 @@ function openNextStep() {
 			onDismiss={() => {}}
 		/>,
 	);
-	fireEvent.click(screen.getByRole("button", {name: "Claude is blocked in 2 sessions"}));
+	fireEvent.click(screen.getByRole("button", {name: "Claude is waiting in 2 sessions"}));
 }
 
 describe("sheet-eligible popovers under a coarse pointer", () => {

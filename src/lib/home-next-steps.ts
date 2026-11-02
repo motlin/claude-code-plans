@@ -59,13 +59,13 @@ export function nextStepKey(candidate: Pick<NextStepCandidate, "id" | "subject">
 	return `next-step:${candidate.id}:${candidate.subject}`;
 }
 
-/** "Claude is blocked in 2 more sessions", or without "more" when the rest row stands for the whole family. */
-export function blockedRestTitle(count: number, whole: boolean): string {
-	return `Claude is blocked in ${count}${whole ? "" : " more"} ${count === 1 ? "session" : "sessions"}`;
+/** "Claude is waiting in 2 more sessions", or without "more" when the rest row stands for the whole family. */
+export function waitingRestTitle(count: number, whole: boolean): string {
+	return `Claude is waiting in ${count}${whole ? "" : " more"} ${count === 1 ? "session" : "sessions"}`;
 }
 
-export function blockedDismissLabel(count: number): string {
-	return `Dismiss ${count} blocked ${count === 1 ? "session" : "sessions"}`;
+export function waitingDismissLabel(count: number): string {
+	return `Dismiss ${count} waiting ${count === 1 ? "session" : "sessions"}`;
 }
 
 /**
@@ -108,8 +108,8 @@ export function selectNextSteps<C extends NextStepCandidate>({
 			...shown.map((candidate): NextStepRow<C> => ({type: "row", candidate})),
 			{
 				type: "rest",
-				title: blockedRestTitle(rest.length, shown.length === 0),
-				dismissLabel: blockedDismissLabel(rest.length),
+				title: waitingRestTitle(rest.length, shown.length === 0),
+				dismissLabel: waitingDismissLabel(rest.length),
 				rest,
 			},
 		];
@@ -264,7 +264,7 @@ function continueCandidate({folder, git, worktreeOn, used}: FolderNextStepSource
 }
 
 /**
- * Upstream's launch-folder rows: "Blocked {title} · Hit an error" for the folder's failed session,
+ * Upstream's launch-folder rows: "Waiting {title} · Hit an error" for the folder's failed session,
  * "Turn on Worktree" when another session runs in the git folder, and "Continue uncommitted work" for a
  * non-default branch with uncommitted files. None while the draft is launching.
  */

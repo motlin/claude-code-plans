@@ -27,12 +27,12 @@ function lineParts(container: HTMLElement) {
 }
 
 describe("MetaLine", () => {
-	it("renders the warning Blocked word, then the reason in a bdi", () => {
+	it("renders the warning Waiting word, then the reason in a bdi", () => {
 		const {container} = render(<MetaLine line={{kind: "blocked", word: true, reason: "Asked a question"}} />);
 		expect(lineParts(container)).toEqual({
-			title: "Blocked, Asked a question",
+			title: "Waiting, Asked a question",
 			children: [
-				{tag: "span", ariaHidden: "true", text: "Blocked"},
+				{tag: "span", ariaHidden: "true", text: "Waiting"},
 				{tag: "bdi", ariaHidden: null, text: "Asked a question"},
 			],
 			branchGlyphs: 0,

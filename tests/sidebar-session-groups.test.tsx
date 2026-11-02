@@ -1422,7 +1422,7 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () => {
 			},
 			byProject: {
 				"Pinned on main": oneLine,
-				"Blocked asking": line("BlockedAsked a question", "Blocked, Asked a question"),
+				"Blocked asking": line("WaitingAsked a question", "Waiting, Asked a question"),
 				"Idle on main": line("main", "main"),
 				"No branch": oneLine,
 			},

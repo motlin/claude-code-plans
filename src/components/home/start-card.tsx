@@ -49,7 +49,7 @@ interface StartCardProps {
 /**
  * Upstream's /code start card "Recent environments" list, adapted to recent local folders: the
  * current folder is a static checked row, the others pick the launch folder and focus the composer,
- * and "Choose environment" opens the composer's project picker, over the "Next steps" list of blocked
+ * and "Choose environment" opens the composer's project picker, over the "Next steps" list of waiting
  * sessions and failing PRs. Upstream's cloud environments have no local equivalent.
  */
 export function StartCard({projects, selected, onSelect, nextSteps}: StartCardProps) {
@@ -184,8 +184,8 @@ const STEP_SPACER_CLASS =
 
 const DISMISS_SLOT_CLASS = `pointer-events-none absolute inset-y-0 end-1 flex items-center opacity-0 group-hover/row:opacity-100 group-has-[:focus-visible]/row:opacity-100 group-has-[[aria-expanded=true]]/row:opacity-100 ${TOUCH_REVEAL}`;
 
-/** Rows that carry upstream's "Blocked" status before their title. */
-const BLOCKED_IDS: ReadonlySet<NextStepId> = new Set(["waiting-session", "resume-session"]);
+/** Rows that carry upstream's "Waiting" status before their title. */
+const WAITING_IDS: ReadonlySet<NextStepId> = new Set(["waiting-session", "resume-session"]);
 
 function candidateKey(candidate: NextStepCandidate): string {
 	return `${candidate.id}:${candidate.subject}`;
@@ -210,7 +210,7 @@ function StepSpacer() {
 	);
 }
 
-/** `listed`: a row inside the rest popup, which drops the "Blocked" status. */
+/** `listed`: a row inside the rest popup, which drops the "Waiting" status. */
 function StepLine({candidate, listed = false}: Readonly<{candidate: NextStepCandidate; listed?: boolean}>) {
 	return (
 		<span className="flex min-w-0 flex-1 items-center gap-1">
@@ -219,9 +219,9 @@ function StepLine({candidate, listed = false}: Readonly<{candidate: NextStepCand
 				className="flex h-5 min-w-0 items-baseline gap-x-2 overflow-hidden whitespace-nowrap flex-wrap"
 			>
 				<span className="min-w-0 max-w-full truncate text-secondary">
-					{!listed && BLOCKED_IDS.has(candidate.id) && (
+					{!listed && WAITING_IDS.has(candidate.id) && (
 						<>
-							<span className="text-upstream-warning">Blocked</span>{" "}
+							<span className="text-upstream-warning">Waiting</span>{" "}
 						</>
 					)}
 					{candidate.title}
@@ -233,8 +233,8 @@ function StepLine({candidate, listed = false}: Readonly<{candidate: NextStepCand
 }
 
 /**
- * Upstream's start-card "Next steps" list: up to three seats of Blocked session and failing-PR rows, a family past its
- * seats folded into a "Claude is blocked in N more sessions" row whose popup lists the rest. Each row's
+ * Upstream's start-card "Next steps" list: up to three seats of Waiting session and failing-PR rows, a family past its
+ * seats folded into a "Claude is waiting in N more sessions" row whose popup lists the rest. Each row's
  * dismiss shows on hover, keyboard focus, or always on touch. Like upstream, a pointer dismiss focuses the composer;
  * a keyboard dismiss (the X is `:focus-visible`) focuses the last remaining row once the removal commits, else
  * `onEmptyFocus`. While the pointer or focus is in the list its rows are held (`useNextStepsHold`), and a fast second
@@ -469,8 +469,8 @@ function StepRowButton({
 }
 
 /**
- * The "Claude is blocked in N more sessions" row: a caret trigger whose popup, anchored bottom/start and at least as
- * wide as the row, lists the folded sessions as plain rows (no "Blocked", no dismiss). Opening one closes the popup.
+ * The "Claude is waiting in N more sessions" row: a caret trigger whose popup, anchored bottom/start and at least as
+ * wide as the row, lists the folded sessions as plain rows (no "Waiting", no dismiss). Opening one closes the popup.
  */
 function RestRow({
 	title,
