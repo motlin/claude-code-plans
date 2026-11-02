@@ -18,8 +18,11 @@ export const DENSITY_CLASSES = {
 		shortcut: "[&>kbd]:leading-[15px]",
 		shortcutPadding: "pl-[14px]",
 		icon: "[&_svg]:size-4",
-		/* Upstream's gap-xs and the switch row's ms-md trailing group. */
-		switchGap: "gap-1.5",
+		/* Upstream's row gap-xs and size-icon slot (--cds-icon 1rem), which may overflow a short line. */
+		gap: "gap-1.5",
+		iconSlot: "flex size-4 shrink-0 items-center justify-center -my-[max(0px,calc((1rem-1lh)/2))]",
+		iconSlotTwoLine: "flex h-[1lh] w-4 shrink-0 items-center justify-center self-start",
+		/* The switch row's ms-md trailing group. */
 		switchTrailing: "ms-3 flex shrink-0 items-center gap-1.5",
 	},
 	comfortable: {
@@ -33,7 +36,9 @@ export const DENSITY_CLASSES = {
 		shortcutPadding: "pl-5",
 		/* Upstream's size:"auto" icons follow --cds-icon: 16px compact, 20px comfortable. */
 		icon: "[&_svg]:size-5",
-		switchGap: "gap-2",
+		gap: "gap-2",
+		iconSlot: "flex size-5 shrink-0 items-center justify-center -my-[max(0px,calc((1.25rem-1lh)/2))]",
+		iconSlotTwoLine: "flex h-[1lh] w-5 shrink-0 items-center justify-center self-start",
 		switchTrailing: "ms-4 flex shrink-0 items-center gap-2",
 	},
 } as const;
@@ -84,9 +89,9 @@ export interface SubmenuControl {
 
 export const SubmenuControlContext = createContext<SubmenuControl | null>(null);
 
-export function useItemClass(twoLine = false, gap = "gap-1"): string {
+export function useItemClass(twoLine = false, gap?: string): string {
 	const sizing = useMenuSizing();
-	return `flex w-full cursor-default ${twoLine ? sizing.twoLine : sizing.singleLine} ${gap} ${sizing.item} ${sizing.text} font-control-regular outline-none select-none [--shortcut-cap-ink:var(--menu-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[disabled]:focus-visible:shadow-focus`;
+	return `flex w-full cursor-default ${twoLine ? sizing.twoLine : sizing.singleLine} ${gap ?? sizing.gap} ${sizing.item} ${sizing.text} font-control-regular outline-none select-none [--shortcut-cap-ink:var(--menu-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[disabled]:focus-visible:shadow-focus`;
 }
 
 export const LABEL_CLASS = "min-w-0 flex-1 truncate";

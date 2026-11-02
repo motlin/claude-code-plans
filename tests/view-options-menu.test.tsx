@@ -274,7 +274,8 @@ describe("SessionPaneControls", () => {
 			counter: row.querySelector('[data-cds="Counter"]')?.getAttribute("class"),
 			checkSlot: row.querySelector("[data-check-slot]"),
 		}).toStrictEqual({
-			gap: ["gap-1.5"],
+			/* cds gap-xs: 6px compact, 8px at this comfortable density. */
+			gap: ["gap-2"],
 			parts: [
 				{tag: "SPAN", className: "flex size-4 shrink-0 items-center justify-center", text: ""},
 				{tag: "SPAN", className: "min-w-0 flex-1 truncate", text: "Background tasks"},

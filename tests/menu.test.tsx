@@ -231,6 +231,52 @@ describe("Menu", () => {
 		});
 	});
 
+	it("lays icon rows out like cds: a size-icon slot with no margin and the row's gap-xs, so the label starts 30px in", async () => {
+		const layout = async (density: "compact" | "comfortable") => {
+			render(
+				<PanelsOff>
+					<Menu>
+						<MenuTrigger aria-label="More options">...</MenuTrigger>
+						<MenuContent density={density}>
+							<MenuItem icon={<svg data-testid="glyph" />}>Add files</MenuItem>
+							<MenuItem icon={<svg data-testid="glyph-2" />} description="Reconnect">
+								Sentry
+							</MenuItem>
+						</MenuContent>
+					</Menu>
+				</PanelsOff>,
+			);
+			await openDropdown();
+			const [row, twoLine] = screen.getAllByRole("menuitem");
+			const gaps = (el: Element | undefined) =>
+				[...(el?.classList ?? [])].filter((value) => value.startsWith("gap-") || value === "mr-1");
+			const result = {
+				rowGap: gaps(row),
+				slot: screen.getByTestId("glyph").parentElement?.className,
+				twoLineGap: gaps(twoLine),
+				twoLineSlot: screen.getByTestId("glyph-2").parentElement?.className,
+			};
+			cleanup();
+			return result;
+		};
+		expect({compact: await layout("compact"), comfortable: await layout("comfortable")}).toStrictEqual({
+			compact: {
+				rowGap: ["gap-1.5"],
+				slot: "flex size-4 shrink-0 items-center justify-center -my-[max(0px,calc((1rem-1lh)/2))] [&_svg]:shrink-0 [&_svg]:size-4",
+				twoLineGap: ["gap-1.5"],
+				twoLineSlot:
+					"flex h-[1lh] w-4 shrink-0 items-center justify-center self-start [&_svg]:shrink-0 [&_svg]:size-4",
+			},
+			comfortable: {
+				rowGap: ["gap-2"],
+				slot: "flex size-5 shrink-0 items-center justify-center -my-[max(0px,calc((1.25rem-1lh)/2))] [&_svg]:shrink-0 [&_svg]:size-5",
+				twoLineGap: ["gap-2"],
+				twoLineSlot:
+					"flex h-[1lh] w-5 shrink-0 items-center justify-center self-start [&_svg]:shrink-0 [&_svg]:size-5",
+			},
+		});
+	});
+
 	it("sets aria-keyshortcuts from the accelerator letter", async () => {
 		renderDropdown();
 		await openDropdown();

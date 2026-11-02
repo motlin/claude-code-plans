@@ -105,13 +105,15 @@ const CHECK_SLOT_CLASS = "-mr-1 flex size-5 shrink-0 items-center justify-center
 const CHECK_ICON_CLASS = "size-4 text-fill-accent";
 /** Hover dwell before a submenu opens. */
 const SUBMENU_HOVER_DELAY_MS = 100;
-const ICON_SLOT_CLASS = "mr-1 flex size-5 shrink-0 items-center justify-center [&_svg]:shrink-0";
-
-function ItemIcon({icon}: {icon: ReactNode}) {
-	const glyph = useMenuSizing().icon;
+/** Upstream's `size-icon` leading slot; a two-line row pins it to the first line. */
+function ItemIcon({icon, twoLine = false}: {icon: ReactNode; twoLine?: boolean}) {
+	const sizing = useMenuSizing();
 	if (icon === undefined) return null;
 	return (
-		<span aria-hidden="true" className={`${ICON_SLOT_CLASS} ${glyph}`}>
+		<span
+			aria-hidden="true"
+			className={`${twoLine ? sizing.iconSlotTwoLine : sizing.iconSlot} [&_svg]:shrink-0 ${sizing.icon}`}
+		>
 			{icon}
 		</span>
 	);
@@ -440,7 +442,7 @@ export function MenuItem({
 			data-variant={variant}
 			className={`${itemClass} ${ITEM_VARIANT_CLASS[variant]}`}
 		>
-			<ItemIcon icon={icon} />
+			<ItemIcon icon={icon} twoLine={description !== undefined} />
 			{description === undefined ? (
 				<span data-menu-item-title="" className={LABEL_CLASS}>
 					{children}
@@ -486,7 +488,7 @@ export interface MenuCheckboxItemProps extends Omit<
 	shortcut?: string;
 	/** Close the menu on pick, as upstream's View options rows do. Defaults to keeping it open. */
 	closeOnClick?: boolean;
-	/** Upstream's View options leading icon: a 16px slot before the label, with the row gap at 6px. */
+	/** Upstream's View options leading icon: a 16px slot before the label, with the row's gap-xs. */
 	icon?: ReactNode;
 	/** Upstream's trailing Counter; while it shows on an unchecked row, the check slot is left out. */
 	count?: number;
@@ -505,7 +507,7 @@ export function MenuCheckboxItem({
 	count,
 	...props
 }: MenuCheckboxItemProps) {
-	const itemClass = useItemClass(false, icon === undefined ? "gap-1" : "gap-1.5");
+	const itemClass = useItemClass();
 	const ariaKeyShortcuts = useAriaKeyShortcuts(accelerator, shortcut);
 	const showCount = count !== undefined && count > 0 && props.checked !== true;
 	return (
@@ -554,7 +556,7 @@ export interface MenuSwitchItemProps extends Omit<
  */
 export function MenuSwitchItem({children, checked, onCheckedChange, ...props}: MenuSwitchItemProps) {
 	const sizing = useMenuSizing();
-	const itemClass = useItemClass(false, sizing.switchGap);
+	const itemClass = useItemClass();
 	return (
 		<BaseMenu.Item
 			closeOnClick={false}
@@ -602,7 +604,7 @@ export function MenuCheckboxSwitchItem({
 	...props
 }: MenuCheckboxSwitchItemProps) {
 	const sizing = useMenuSizing();
-	const itemClass = useItemClass(false, sizing.switchGap);
+	const itemClass = useItemClass();
 	return (
 		<BaseMenu.CheckboxItem
 			{...props}
