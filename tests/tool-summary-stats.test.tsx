@@ -347,7 +347,7 @@ describe("ToolCallSummary stats and ink", () => {
 		]);
 		expect(
 			summaryButton(html).includes(
-				'<span class="inline-flex items-center gap-g3 min-w-0 text-ink-muted group-hover/tool:text-secondary">',
+				'<span class="inline-flex items-center gap-g3 min-w-0 text-secondary group-hover/tool:text-secondary">',
 			),
 		).toBe(true);
 	});

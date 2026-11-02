@@ -16,6 +16,7 @@ import React, {
 import {flushSync} from "react-dom";
 import {Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
+import {useRestInk} from "../lib/fizzy-lake";
 import {formatModelName} from "../lib/model-name";
 import {contextRefreshReasonLabel, contextRefreshSubjectLabels} from "../lib/schema-choices";
 import {useAskUserQuestionContext} from "./ask-user-question-context";
@@ -4267,6 +4268,7 @@ const STOP_HOOK_PREFIX_RE = /^Stop hook feedback:\s*/;
  */
 function StopHookMarker({line}: {line: MessageSessionLine}) {
 	const [expanded, setExpanded] = useState(false);
+	const restInk = useRestInk();
 	const bodyId = useId();
 	const feedback = getUserContentText(line).replace(STOP_HOOK_PREFIX_RE, "");
 
@@ -4281,7 +4283,7 @@ function StopHookMarker({line}: {line: MessageSessionLine}) {
 				}}
 				className="group/step flex self-stretch min-w-0 me-[52px] items-center gap-g2 px-1 py-0.5 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
 			>
-				<span className="text-body min-w-0 truncate text-ink-muted group-hover/step:text-secondary">
+				<span className={`text-body min-w-0 truncate ${restInk} group-hover/step:text-secondary`}>
 					Hook re-prompted Claude
 				</span>
 				<span className="shrink-0 text-secondary">
@@ -4370,6 +4372,7 @@ function CompactedSessionStatus({
 	const [expanded, setExpanded] = useState(false);
 	const bodyId = useId();
 	const verbose = useContext(TranscriptModeContext) === "verbose";
+	const restInk = useRestInk();
 	if (!verbose) {
 		return (
 			<TurnStatusFrame leading={false}>
@@ -4393,10 +4396,10 @@ function CompactedSessionStatus({
 					}}
 					className="group/tool flex self-stretch min-w-0 me-[52px] items-center gap-g1 px-1 py-0.5 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
 				>
-					<span className="text-body min-w-0 truncate text-ink-muted group-hover/tool:text-secondary">
+					<span className={`text-body min-w-0 truncate ${restInk} group-hover/tool:text-secondary`}>
 						{label}
 					</span>
-					<span className="shrink-0 text-ink-muted group-hover/tool:text-secondary">
+					<span className={`shrink-0 ${restInk} group-hover/tool:text-secondary`}>
 						<ChevronIcon expanded={expanded} size={14} />
 					</span>
 				</button>
@@ -4429,6 +4432,7 @@ function RewindMarker({
 	expanded: boolean;
 	onToggle: (replacementUuid: string) => void;
 }) {
+	const restInk = useRestInk();
 	if (!verbose || !placement.hasRows) {
 		return (
 			<TurnStatusFrame leading={false}>
@@ -4451,10 +4455,10 @@ function RewindMarker({
 					}}
 					className="group/tool flex self-stretch min-w-0 me-[52px] items-center gap-g1 px-1 py-0.5 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
 				>
-					<span className="text-body min-w-0 truncate text-ink-muted group-hover/tool:text-secondary">
+					<span className={`text-body min-w-0 truncate ${restInk} group-hover/tool:text-secondary`}>
 						{placement.label}
 					</span>
-					<span className="shrink-0 text-ink-muted group-hover/tool:text-secondary">
+					<span className={`shrink-0 ${restInk} group-hover/tool:text-secondary`}>
 						<ChevronIcon expanded={expanded} size={14} />
 					</span>
 				</button>
@@ -5398,12 +5402,13 @@ function isPendingToolCall(call: ClientToolCall): boolean {
 	return call.resultUuid === undefined && call.result === undefined && call.isError !== true;
 }
 
-/** An in-flight row's live elapsed time, in muted ink after its label. */
+/** An in-flight row's live elapsed time, in the rest ink after its label. */
 function RunningElapsed({startedAt}: {startedAt: string | undefined}) {
 	const seconds = useElapsedSeconds(startedAt);
+	const restInk = useRestInk();
 	if (seconds === null || seconds < ELAPSED_MIN_SECONDS) return null;
 	return (
-		<span data-running-elapsed="" className="shrink-0 text-body text-ink-muted tabular-nums">
+		<span data-running-elapsed="" className={`shrink-0 text-body ${restInk} tabular-nums`}>
 			{formatElapsed(seconds)}
 		</span>
 	);
@@ -5578,6 +5583,7 @@ function ToolCallRow({
 	shots?: StepShotsPlacement | undefined;
 }) {
 	const [expanded, toggleExpanded] = useModeExpansion(`row:${call.id}`);
+	const restInk = useRestInk();
 	const bodyId = useId();
 	const statusId = useId();
 	const verbose = useContext(TranscriptModeContext) === "verbose";
@@ -5619,9 +5625,9 @@ function ToolCallRow({
 		(nested && ROW_BODY_TOOLS.has(call.name)
 			? "group/body relative flex w-full pt-2.5"
 			: `group/body relative flex w-full flex-col ${nested ? "pt-2.5" : "pt-p3"}`) + " empty:hidden";
-	// Collapsed rows recede to muted ink and lift to secondary on hover; an open
+	// Collapsed rows rest in upstream's KH() ink (secondary under fizzy-lake color, else muted and lifting to secondary on hover); an open
 	// row stays secondary, as upstream does.
-	const ink = expanded ? "text-secondary" : "text-ink-muted group-hover/tool:text-secondary";
+	const ink = expanded ? "text-secondary" : `${restInk} group-hover/tool:text-secondary`;
 	// A settled Skill row reads "Ran skill" in secondary ink beside a primary
 	// skill name, as upstream draws it.
 	const isSkill = call.name === "Skill" && !call.isError && !pending;
@@ -5826,7 +5832,9 @@ function ToolCallRow({
 			{diffStats && <DiffStatPill added={diffStats.added} removed={diffStats.removed} />}
 			{agentModel !== null && (
 				// Upstream trails a settled Agent step with the subagent's model.
-				<span className="inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible text-ink-muted tabular-nums">
+				<span
+					className={`inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible ${restInk} tabular-nums`}
+				>
 					<bdi className="inline-block max-w-[28ch] truncate align-bottom">{agentModel}</bdi>
 				</span>
 			)}
@@ -6052,6 +6060,7 @@ function ToolCallSummary({
 	leading: boolean;
 }) {
 	const [expanded, toggleExpanded] = useModeExpansion(`group:${calls[0]?.id ?? `notice-${notices[0]?.lineIndex}`}`);
+	const restInk = useRestInk();
 	const bodyId = useId();
 	const statusId = useId();
 	const backgroundOutcomes = useContext(BackgroundOutcomeContext);
@@ -6087,9 +6096,9 @@ function ToolCallSummary({
 	const settledNotices = taskNotices.filter((notice) => !leadsLabel(notice));
 	// Upstream draws the grouped header in one 24px padded row whether it completed, failed, or is still running.
 	const summaryLayout = TURN_STATUS_ROW_LAYOUT;
-	// Collapsed rows recede to muted ink and lift to secondary on hover; an open
+	// Collapsed rows rest in upstream's KH() ink (secondary under fizzy-lake color, else muted and lifting to secondary on hover); an open
 	// row stays secondary, as upstream does.
-	const ink = expanded ? "text-secondary" : "text-ink-muted group-hover/tool:text-secondary";
+	const ink = expanded ? "text-secondary" : `${restInk} group-hover/tool:text-secondary`;
 	const busy = pendingCall !== undefined && runningText !== null;
 	const announcement = busy
 		? runningText

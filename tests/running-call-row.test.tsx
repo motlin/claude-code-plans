@@ -212,7 +212,7 @@ describe("an in-flight call's row", () => {
 			elapsed: /^2\ds$/.test(header?.querySelector("[data-running-elapsed]")?.textContent ?? ""),
 			srOnly: header?.querySelector(".sr-only")?.textContent,
 		}).toStrictEqual({
-			children: ["WorkingMark", "ShimmerText", "shrink-0 text-body text-ink-muted tabular-nums", "sr-only"],
+			children: ["WorkingMark", "ShimmerText", "shrink-0 text-body text-secondary tabular-nums", "sr-only"],
 			mark: "code",
 			label: "Rechecking SSH auth",
 			elapsed: true,

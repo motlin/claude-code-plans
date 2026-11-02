@@ -1025,12 +1025,12 @@ function rowHeaderChildren(records: unknown[]): {text: string | null; className:
 	return Array.from(header.children, (child) => ({text: child.textContent, className: child.className}));
 }
 
-const MUTED_LABEL = "text-body text-ink-muted group-hover/tool:text-secondary";
+const MUTED_LABEL = "text-body text-secondary group-hover/tool:text-secondary";
 const FAILED_SUFFIX = {text: "Failed", className: "shrink-0 text-body text-danger-ink"};
 const STOPPED_SUFFIX = {text: "Stopped", className: "shrink-0 text-body text-secondary"};
 const ROW_CHEVRON = {
 	text: "",
-	className: "shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary comfortable:[&_svg]:size-4",
+	className: "shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary comfortable:[&_svg]:size-4",
 };
 
 describe("SessionChat tool row permission decision", () => {
@@ -1363,7 +1363,7 @@ describe("SessionChat Skill row label", () => {
 			spans: [
 				"shrink-0 text-body text-secondary",
 				"truncate min-w-0 text-body text-primary",
-				"shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
+				"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 			],
 			name: true,
 		});
@@ -1382,10 +1382,10 @@ describe("SessionChat Skill row label", () => {
 		}).toStrictEqual({
 			text: ["Ran skill", "/nextdns:report", "Failed", ""],
 			spans: [
-				"shrink-0 text-body text-ink-muted group-hover/tool:text-secondary",
+				"shrink-0 text-body text-secondary group-hover/tool:text-secondary",
 				"truncate min-w-0 text-body text-secondary",
 				"shrink-0 text-body text-danger-ink",
-				"shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
+				"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 			],
 			code: false,
 			oldLabel: false,
@@ -1419,22 +1419,22 @@ describe("SessionChat failed tool row label text", () => {
 			okGrep: toolRowLabelSpans(renderTranscript(failedToolCallRecords(false))),
 		}).toStrictEqual({
 			failedEdit: [
-				["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Edited"],
+				["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Edited"],
 				["text-body text-primary truncate min-w-0", "cache.ts"],
 				["shrink-0 text-body text-danger-ink", "Failed"],
 			],
 			okEdit: [
-				["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Edited"],
+				["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Edited"],
 				["text-body text-primary truncate min-w-0", "cache.ts"],
 			],
 			failedGrep: [
-				["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Searched"],
-				["truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary", "alice"],
+				["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Searched"],
+				["truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary", "alice"],
 				["shrink-0 text-body text-danger-ink", "Failed"],
 			],
 			okGrep: [
-				["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Searched"],
-				["truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary", "alice"],
+				["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Searched"],
+				["truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary", "alice"],
 			],
 		});
 	});
@@ -1451,14 +1451,14 @@ describe("SessionChat failed tool row label text", () => {
 		}).toStrictEqual({
 			failed: [
 				[
-					"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
+					"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
 					"Install dependencies and build",
 				],
 				["shrink-0 text-body text-danger-ink", "Failed"],
 			],
 			ok: [
 				[
-					"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
+					"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
 					"Installed dependencies and built",
 				],
 			],
@@ -1474,15 +1474,15 @@ describe("SessionChat failed tool row label text", () => {
 		);
 
 		expect(toolRowLabelSpans(html)).toStrictEqual([
-			["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Used sentry: search issues"],
-			["truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary", "unhandled"],
+			["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Used sentry: search issues"],
+			["truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary", "unhandled"],
 			["shrink-0 text-body text-danger-ink", "Failed"],
 		]);
 	});
 });
 
 describe("SessionChat file-param tool row argument", () => {
-	const VERB = "shrink-0 text-body text-ink-muted group-hover/tool:text-secondary";
+	const VERB = "shrink-0 text-body text-secondary group-hover/tool:text-secondary";
 
 	it("sets a file argument in the sans body face, matching upstream Read/Edit rows", () => {
 		const html = renderTranscript(
@@ -1509,7 +1509,7 @@ describe("SessionChat file-param tool row argument", () => {
 	// Upstream labels a partial read with the line range beside the filename
 	// ("Read archive-completed.ts (220-239)"), in its own secondary span, so a
 	// slice is distinguishable from a whole-file read.
-	const RANGE = "text-body text-ink-muted group-hover/tool:text-secondary truncate min-w-0";
+	const RANGE = "text-body text-secondary group-hover/tool:text-secondary truncate min-w-0";
 
 	function readRow(input: unknown): [string, string][] {
 		return toolRowLabelSpans(renderTranscript(toolCallRecords([{id: "t1", name: "Read", input}])));
@@ -1575,8 +1575,8 @@ describe("SessionChat file-param tool row argument", () => {
 });
 
 describe("SessionChat Agent row label", () => {
-	const VERB = "shrink-0 text-body text-ink-muted group-hover/tool:text-secondary";
-	const DESCRIPTION = "truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary";
+	const VERB = "shrink-0 text-body text-secondary group-hover/tool:text-secondary";
+	const DESCRIPTION = "truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary";
 
 	const agentRecords = toolCallRecords([
 		{
@@ -1642,7 +1642,7 @@ describe("SessionChat Agent row label", () => {
 		expect(rowHeaderSpanClasses(renderWithSubagents(spawnedAgent("claude-haiku-4-5-20251001")))).toStrictEqual([
 			VERB,
 			DESCRIPTION,
-			"inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible text-ink-muted tabular-nums",
+			"inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible text-secondary tabular-nums",
 			"shrink-0 -ms-1 self-center text-t6",
 		]);
 	});
@@ -1702,7 +1702,7 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 	}
 
 	const MODEL_BADGE_CLASS =
-		"inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible text-ink-muted tabular-nums";
+		"inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible text-secondary tabular-nums";
 
 	function agentRow(container: HTMLElement): HTMLElement {
 		const row = container.querySelector<HTMLElement>("[data-transcript-keeps-pin]");
@@ -1733,7 +1733,7 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 			tabIndex: "0",
 			ariaExpanded: null,
 			spans: [
-				["shrink-0 text-body text-ink-muted group-hover/tool:text-secondary", "Ran agent"],
+				["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Ran agent"],
 				["truncate min-w-0 text-body text-primary", "Commit lazy allocation fixup"],
 				[MODEL_BADGE_CLASS, "Haiku 4.5"],
 			],
@@ -1788,7 +1788,7 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 			state: "failed",
 			records: toolResultRecords(AGENT_CALL, "Fabricated failure", true),
 			expectedClasses: [
-				"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
+				"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
 				"shrink-0 text-body text-danger-ink",
 			],
 		},
@@ -1830,7 +1830,7 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 });
 
 describe("SessionChat Bash row label", () => {
-	const PHRASE = "truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary";
+	const PHRASE = "truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary";
 
 	const bashLabel = (input: Record<string, unknown>) =>
 		toolRowLabelSpans(renderTranscript(failedToolCallRecords(false, {name: "Bash", input})));
@@ -1898,8 +1898,8 @@ describe("SessionChat Bash row label", () => {
 });
 
 describe("SessionChat tool row verbs", () => {
-	const SECONDARY = "shrink-0 text-body text-ink-muted group-hover/tool:text-secondary";
-	const SECONDARY_PARAM = "truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary";
+	const SECONDARY = "shrink-0 text-body text-secondary group-hover/tool:text-secondary";
+	const SECONDARY_PARAM = "truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary";
 
 	it("labels every row with an upstream verb phrase instead of the raw tool name", () => {
 		const label = (call: {name: string; input: unknown}) =>
@@ -1957,8 +1957,8 @@ describe("SessionChat tool row verbs", () => {
 });
 
 describe("SessionChat tool rows labelled from the tool result", () => {
-	const SECONDARY = "shrink-0 text-body text-ink-muted group-hover/tool:text-secondary";
-	const SECONDARY_PARAM = "truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary";
+	const SECONDARY = "shrink-0 text-body text-secondary group-hover/tool:text-secondary";
+	const SECONDARY_PARAM = "truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary";
 
 	const withToolUseResult = (call: {name: string; input: unknown}, toolUseResult: unknown) => {
 		const records = toolResultRecords(call, "ok");
@@ -2111,28 +2111,28 @@ function groupedToolCallRecords(): unknown[] {
 describe("SessionChat tool row hover treatment", () => {
 	it("mutes a collapsed successful row and lifts its verb, param and chevron to secondary on group hover", () => {
 		expect(rowHeaderSpanClasses(renderTranscript(failedToolCallRecords(false)))).toStrictEqual([
-			"shrink-0 text-body text-ink-muted group-hover/tool:text-secondary",
-			"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
-			"shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
+			"shrink-0 text-body text-secondary group-hover/tool:text-secondary",
+			"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
+			"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 		]);
 	});
 
 	it('lifts a failed row\'s label on hover like any row while its "Failed" stays danger red', () => {
 		expect(rowHeaderSpanClasses(renderTranscript(failedToolCallRecords(true)))).toStrictEqual([
-			"shrink-0 text-body text-ink-muted group-hover/tool:text-secondary",
-			"truncate min-w-0 text-body text-ink-muted group-hover/tool:text-secondary",
+			"shrink-0 text-body text-secondary group-hover/tool:text-secondary",
+			"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
 			"shrink-0 text-body text-danger-ink",
-			"shrink-0 -ms-1 text-ink-muted group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
+			"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 		]);
 	});
 
 	it("colors the collapsed group summary muted from its wrapper so the whole label lifts on hover", () => {
 		expect(rowHeaderSpanClasses(renderTranscript(groupedToolCallRecords()))).toStrictEqual([
-			"inline-flex items-center gap-g3 min-w-0 text-ink-muted group-hover/tool:text-secondary",
+			"inline-flex items-center gap-g3 min-w-0 text-secondary group-hover/tool:text-secondary",
 			"text-body truncate min-w-0",
 			"text-body",
 			"",
-			"shrink-0 text-ink-muted group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
+			"shrink-0 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 		]);
 	});
 });

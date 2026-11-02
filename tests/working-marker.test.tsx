@@ -4,6 +4,7 @@ import {act, cleanup, render, renderHook} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {WorkingMarker} from "../src/components/working-marker";
+import {FizzyLakeContext} from "../src/lib/fizzy-lake";
 import {createStreamDropStore, EventStreamStatusContext} from "../src/hooks/use-claude-events";
 import {type WorkingMarkerSignals} from "../src/components/use-working-marker-state";
 import {useWorkingMarkerState} from "../src/components/use-working-marker-state";
@@ -649,7 +650,7 @@ describe("WorkingMarker", () => {
 			animated: "true",
 			activity: "default",
 			visible: "7s",
-			stat: [["inline-flex h-[1lh] shrink-0 items-center text-ink-muted tabular-nums", "7s"]],
+			stat: [["inline-flex h-[1lh] shrink-0 items-center text-secondary tabular-nums", "7s"]],
 			busy: "running",
 			announcer: "Working…",
 			announcerLive: "polite",
@@ -774,6 +775,45 @@ describe("WorkingMarker", () => {
 			/>,
 		);
 		expect(visibleLineText(container)).toStrictEqual("7s·49.7k tokens");
+	});
+
+	it.each([
+		{parts: undefined, ink: "text-secondary"},
+		{parts: ["panels", "type"] as const, ink: "text-ink-muted"},
+	])("inks the stats and separator $ink at rest (fizzy-lake parts $parts), as upstream's KH()", ({parts, ink}) => {
+		stubReducedMotion(false);
+		const marker = (
+			<WorkingMarker
+				state={{
+					status: "working",
+					label: "Working…",
+					thinking: false,
+					replied: true,
+					turnStartedAt: at(0),
+					elapsedSeconds: 12,
+				}}
+				tokens={52_500}
+			/>
+		);
+		const {container} = render(
+			parts === undefined ? (
+				marker
+			) : (
+				<FizzyLakeContext.Provider value={parts}>{marker}</FizzyLakeContext.Provider>
+			),
+		);
+		const status = container.querySelector('[data-cds="TurnStatus"]');
+		expect(
+			[...(status?.querySelectorAll(".tabular-nums") ?? [])].map((el) => [
+				el.textContent,
+				el.classList.contains(ink),
+				el.classList.contains(ink === "text-secondary" ? "text-ink-muted" : "text-secondary"),
+			]),
+		).toStrictEqual([
+			["12s", true, false],
+			["·", true, false],
+			["52.5k tokens", true, false],
+		]);
 	});
 
 	it("holds the working mark still under reduced motion", () => {

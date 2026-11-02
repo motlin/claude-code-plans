@@ -1,5 +1,6 @@
 import {Fragment, useEffect, useState, useSyncExternalStore} from "react";
 import {useEventStreamConnecting} from "../hooks/use-claude-events";
+import {useRestInk} from "../lib/fizzy-lake";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {
 	CONNECTING_PHASE_LABEL,
@@ -36,8 +37,6 @@ function usePrefersReducedMotion(): boolean {
 
 /** Upstream swaps the Stopping label in with a short rise-and-fade. */
 const STOPPING_MORPH_CLASS = "motion-safe:animate-[cds-morph-in_0.18s_cubic-bezier(.2,0,0,1)]";
-
-const STAT_CLASS = "inline-flex h-[1lh] shrink-0 items-center text-ink-muted tabular-nums";
 
 const NEEDS_INPUT_LABEL = "Needs your input";
 
@@ -105,7 +104,7 @@ function useLinePhase(state: WorkingMarkerState, sending: boolean, waitingOnUser
 
 function StatDot() {
 	return (
-		<span aria-hidden className="shrink-0 select-none text-ink-muted tabular-nums">
+		<span aria-hidden className={`shrink-0 select-none ${useRestInk()} tabular-nums`}>
 			·
 		</span>
 	);
@@ -142,6 +141,7 @@ export function WorkingMarker({
 	tokens?: number;
 }>) {
 	const reduceMotion = usePrefersReducedMotion();
+	const restInk = useRestInk();
 	const phase = useSettledPhase(useLinePhase(state, sending, waitingOnUser));
 	// Upstream draws no mark while the turn waits on the user.
 	const turnWorking = !waitingOnUser && (phase !== null || (state.status !== "idle" && state.status !== "waiting"));
@@ -186,7 +186,9 @@ export function WorkingMarker({
 						{stats.map((stat, index) => (
 							<Fragment key={stat}>
 								{(index > 0 || label !== "") && <StatDot />}
-								<span className={STAT_CLASS}>{stat}</span>
+								<span className={`inline-flex h-[1lh] shrink-0 items-center ${restInk} tabular-nums`}>
+									{stat}
+								</span>
 							</Fragment>
 						))}
 						{tasks && (label !== "" || stats.length > 0) && <StatDot />}

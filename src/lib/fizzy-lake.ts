@@ -36,3 +36,8 @@ export const FizzyLakeContext = createContext<readonly FizzyLakePart[]>(FIZZY_LA
 export function useFizzyLake(part: FizzyLakePart): boolean {
 	return useContext(FizzyLakeContext).includes(part);
 }
+
+/** Upstream shared-9 `KH() ? "text-secondary" : "text-muted"`: transcript status ink at rest. */
+export function useRestInk(): "text-secondary" | "text-ink-muted" {
+	return useFizzyLake("color") ? "text-secondary" : "text-ink-muted";
+}
