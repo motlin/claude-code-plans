@@ -1,5 +1,5 @@
 import {inputString} from "../../lib/tool-utils";
-import {type ReactNode, useEffect, useState} from "react";
+import {type ReactNode, useEffect, useRef} from "react";
 import type {ClientToolCall, ToolRendererProps} from "./types";
 import {useAskUserQuestionContext} from "../ask-user-question-context";
 import {MarkdownArticle} from "../markdown-article";
@@ -8,7 +8,7 @@ import {QuestionReceipt} from "../question-receipt";
 import {FORK_ANSWER_LABEL} from "../../lib/question-answer-route";
 import type {QuestionAnswer} from "../../lib/hook-events";
 import {labelledAnswers} from "../../lib/question-card-draft";
-import {clearSentQuestionCard, isQuestionCardSent, wasQuestionCardSeen} from "../../lib/question-card-store";
+import {clearSentQuestionCard, isQuestionCardSent, useQuestionCardSent} from "../../lib/question-card-store";
 import {
 	describeAskUserQuestionResult,
 	isWithdrawnQuestion,
@@ -137,9 +137,16 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 	useEffect(() => {
 		if (!isPending) clearSentQuestionCard(toolCall.id);
 	}, [isPending, toolCall.id]);
-	// Upstream fades the receipt in only when it replaces a live card seen in this page,
-	// and the card's own sent receipt already faded in when it was answered here.
-	const [receiptEnters] = useState(() => wasQuestionCardSeen(toolCall.id) && !isQuestionCardSent(toolCall.id));
+	// Whether this renderer's own card sent the answer while the call was pending:
+	// then that card's sent receipt already faded in, and the result keeps its node.
+	const sentNow = useQuestionCardSent(toolCall.id);
+	const sentHereRef = useRef(false);
+	if (isPending) sentHereRef.current = sentNow;
+	// Upstream's wd fades the receipt in when the result lands with the sent store holding
+	// the answer, decided the render the result first appears; a terminal answer never fades.
+	const receiptEntersRef = useRef<boolean | null>(null);
+	if (isPending) receiptEntersRef.current = null;
+	else receiptEntersRef.current ??= isQuestionCardSent(toolCall.id) && !sentHereRef.current;
 
 	// Upstream draws a pending question as its card, inline where the call is; it answers along the session's route.
 	if (isPending && questions !== null) {
@@ -205,16 +212,14 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 	);
 	if (receipt.length > 0) {
 		const notes = recordedNotes(toolCall.resultMeta, result, questions);
-		return (
-			<QuestionReceipt
-				enters={receiptEnters}
-				rows={receipt.map((entry) => ({
-					question: entry.question,
-					answer: entry.answer ?? (entry.unanswered === undefined ? "" : OUTCOME_LABEL[entry.unanswered]),
-					notes: notes.get(entry.question) ?? null,
-				}))}
-			/>
-		);
+		const rows = receipt.map((entry) => ({
+			question: entry.question,
+			answer: entry.answer ?? (entry.unanswered === undefined ? "" : OUTCOME_LABEL[entry.unanswered]),
+			notes: notes.get(entry.question) ?? null,
+		}));
+		// The card that sent the answer stays mounted to draw the result in its sent receipt's node.
+		if (sentHereRef.current) return <QuestionCard draftKey={toolCall.id} questions={questions} answered={rows} />;
+		return <QuestionReceipt enters={receiptEntersRef.current ?? false} rows={rows} />;
 	}
 
 	return (

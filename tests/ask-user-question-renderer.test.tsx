@@ -4,7 +4,7 @@ import {cleanup, render} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 import {AskUserQuestionRenderer} from "../src/components/tool-renderers/ask-user-question-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
-import {markQuestionCardSeen} from "../src/lib/question-card-store";
+import {markQuestionCardSeen, markQuestionCardSent} from "../src/lib/question-card-store";
 
 afterEach(cleanup);
 
@@ -205,23 +205,27 @@ describe("AskUserQuestionRenderer", () => {
 		});
 	});
 
-	it("fades the receipt in (upstream's epitaxy-question-receipt-enter) only when it replaces a card seen in this page", () => {
-		const unseen = render(
-			<AskUserQuestionRenderer toolCall={makeCall({id: "tool-auq-unseen", result: ANSWERED_RESULT})} />,
-		);
-		const unseenClassName = unseen.container.querySelector(".card-ring")!.className;
-		cleanup();
+	it("fades the receipt in (upstream's epitaxy-question-receipt-enter) only when its answer was sent from this page", () => {
+		const className = (id: string) => {
+			const view = render(<AskUserQuestionRenderer toolCall={makeCall({id, result: ANSWERED_RESULT})} />);
+			const value = view.container.querySelector(".card-ring")!.className;
+			cleanup();
+			return value;
+		};
+		const unseen = className("tool-auq-unseen");
 		markQuestionCardSeen("tool-auq-seen");
-		const seen = render(
-			<AskUserQuestionRenderer toolCall={makeCall({id: "tool-auq-seen", result: ANSWERED_RESULT})} />,
-		);
+		const seen = className("tool-auq-seen");
+		markQuestionCardSent("tool-auq-sent", {
+			page: 0,
+			drafts: [{selected: [0], other: "", otherChosen: false}],
+			skipped: [false],
+		});
+		const sent = className("tool-auq-sent");
 
-		expect({
-			unseen: unseenClassName,
-			seen: seen.container.querySelector(".card-ring")!.className,
-		}).toStrictEqual({
+		expect({unseen, seen, sent}).toStrictEqual({
 			unseen: "card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
-			seen: "card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text animate-question-receipt-enter motion-reduce:animate-none",
+			seen: "card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
+			sent: "card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text animate-question-receipt-enter motion-reduce:animate-none",
 		});
 	});
 

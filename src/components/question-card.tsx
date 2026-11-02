@@ -161,13 +161,16 @@ function useMarkSeen(cardRootRef: RefObject<HTMLDivElement | null>, draftKey: st
  * control is disabled. With `draftKey` (upstream's `tool.draftKey ?? tool.id`) the
  * picks, skips and page survive a remount until the card submits. Submitting
  * swaps the card for a receipt of its answers at once, which a remount redraws
- * while the answer is sending; a failed send brings the card back.
+ * while the answer is sending; a failed send brings the card back. With
+ * `answered` it draws the recorded answers' receipt in the sent receipt's place,
+ * so the result keeps that node and its single fade.
  */
 export function QuestionCard({
 	questions,
 	onSubmit,
 	submitLabel = "Submit",
 	draftKey,
+	answered,
 }: {
 	questions: readonly QuestionLike[];
 	onSubmit?: ((answers: Array<QuestionAnswer | null>) => Promise<void>) | undefined;
@@ -175,6 +178,8 @@ export function QuestionCard({
 	submitLabel?: string;
 	/** Where the in-progress answer is kept across remounts; the tool use id. */
 	draftKey?: string | undefined;
+	/** The call's recorded answers, once its result lands after this card sent them. */
+	answered?: readonly QuestionReceiptRow[] | undefined;
 }) {
 	const [wasSent] = useState(() =>
 		draftKey === undefined ? null : readSentQuestionCard(draftKey, questions.length),
@@ -228,6 +233,7 @@ export function QuestionCard({
 	const question = questions[index];
 	const draft = drafts[index];
 	if (question === undefined || draft === undefined) return null;
+	if (answered !== undefined) return <QuestionReceipt rows={answered} enters={false} />;
 	// The answered card leaves at once for the receipt of what it sent, which
 	// stays through remounts until the result lands; a failed send brings the card back.
 	if (sending) return <QuestionReceipt rows={sentReceiptRows(questions, drafts, skipped)} enters={receiptEnters} />;

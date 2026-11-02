@@ -1,3 +1,5 @@
+import {useState} from "react";
+
 /** One answered question of a receipt: the question, the answer line, and the user's notes when they add something. */
 export interface QuestionReceiptRow {
 	question: string;
@@ -43,13 +45,17 @@ function AnsweredQuestion({question, answer, notes}: QuestionReceiptRow) {
  * Upstream's `epitaxy-question-receipt`: every answered pair of one call in a
  * 480px card, divided by its ring's hairline, 3px nearer the row above and 7px
  * further from the next. With `enters` it fades in, as when it replaces a live card.
+ * Like upstream's `wd` it reads `enters` once, so a later `true` never restarts the
+ * fade; a later `false` drops the class, which ends it without replaying.
  */
 export function QuestionReceipt({rows, enters}: {rows: readonly QuestionReceiptRow[]; enters: boolean}) {
+	const [entersAtMount] = useState(enters);
+	const fades = entersAtMount && enters;
 	return (
 		<div
 			data-question-receipt=""
 			className={`card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text${
-				enters ? " animate-question-receipt-enter motion-reduce:animate-none" : ""
+				fades ? " animate-question-receipt-enter motion-reduce:animate-none" : ""
 			}`}
 		>
 			{rows.map((row, i) => (

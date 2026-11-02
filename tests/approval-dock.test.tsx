@@ -15,7 +15,13 @@ import {
 	toolUseProgress,
 } from "../src/lib/approval-dock";
 import type {QuestionLike} from "../src/lib/ask-user-question";
-import {clearSentQuestionCard, readSentQuestionCard} from "../src/lib/question-card-store";
+import {
+	clearSentQuestionCard,
+	markQuestionCardSeen,
+	markQuestionCardSent,
+	readSentQuestionCard,
+	useQuestionCardSent,
+} from "../src/lib/question-card-store";
 
 afterEach(cleanup);
 
@@ -1331,5 +1337,111 @@ describe("question cards by answer route", () => {
 			submit: screen.getByRole("button", {name: /^Submit/}).hasAttribute("disabled"),
 			hint: container.querySelector("[data-approval-read-only]")?.textContent,
 		}).toStrictEqual({option: true, submit: true, hint: "Answer in the terminal"});
+	});
+});
+
+describe("question receipt across the answer", () => {
+	const COLOR: QuestionLike[] = [
+		{question: "Which color?", header: "Color", options: [{label: "Red (Recommended)"}, {label: "Blue"}]},
+	];
+	const RED_RESULT =
+		'User has answered your questions: "Which color?"="Red (Recommended)". You can now continue with the user\'s answers in mind.';
+	function colorCall(id: string, result?: string): ClientToolCall {
+		return {
+			id,
+			name: "AskUserQuestion",
+			input: {questions: COLOR},
+			param: "",
+			sourceUuid: "u",
+			...(result === undefined ? {} : {result}),
+		};
+	}
+	function frame(container: HTMLElement) {
+		const receipt = container.querySelector("[data-question-receipt]");
+		return {
+			card: container.querySelector("[data-approval-card-root]") !== null,
+			receipt: receipt !== null,
+			fades: receipt?.classList.contains("animate-question-receipt-enter") ?? null,
+			rows: [...(receipt?.querySelectorAll("[data-answered-question]") ?? [])].map((row) => row.textContent),
+		};
+	}
+	function tree(toolCall: ClientToolCall) {
+		return (
+			<AskUserQuestionProvider value={{answerRoute: "live-pane", submitAnswer: async () => {}}}>
+				<AskUserQuestionRenderer toolCall={toolCall} />
+			</AskUserQuestionProvider>
+		);
+	}
+
+	it("fades the receipt once and keeps its node when the hook copy was seen, the transcript card is answered with ⌘⏎, and the result lands", async () => {
+		// jsdom has no IntersectionObserver, so mounting marks the hook copy seen at once.
+		render(<QuestionCard key="hook" draftKey="toolu_sim" questions={COLOR} onSubmit={async () => {}} />).unmount();
+		const now = vi.spyOn(performance, "now").mockReturnValue(1000);
+		const view = render(tree(colorCall("toolu_sim")));
+		const pending = frame(view.container);
+		now.mockReturnValue(5000);
+		fireEvent.click(screen.getByRole("button", {name: /^Red/}));
+		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		now.mockRestore();
+		await act(async () => {
+			await Promise.resolve();
+		});
+		const sent = frame(view.container);
+		const sentNode = view.container.querySelector("[data-question-receipt]");
+		view.rerender(tree(colorCall("toolu_sim", RED_RESULT)));
+
+		expect({
+			pending,
+			sent,
+			answered: {
+				...frame(view.container),
+				sameNode: view.container.querySelector("[data-question-receipt]") === sentNode,
+			},
+		}).toStrictEqual({
+			pending: {card: true, receipt: false, fades: null, rows: []},
+			sent: {card: false, receipt: true, fades: true, rows: ["Which color?Red (Recommended)"]},
+			answered: {
+				card: false,
+				receipt: true,
+				fades: false,
+				rows: ["Which color?Red (Recommended)"],
+				sameNode: true,
+			},
+		});
+	});
+
+	it("draws the receipt without a fade when a seen card is answered in the terminal", () => {
+		markQuestionCardSeen("toolu_terminal");
+		const view = render(tree(colorCall("toolu_terminal")));
+		const pending = frame(view.container);
+		view.rerender(tree(colorCall("toolu_terminal", RED_RESULT)));
+
+		expect({pending, answered: frame(view.container)}).toStrictEqual({
+			pending: {card: true, receipt: false, fades: null, rows: []},
+			answered: {card: false, receipt: true, fades: false, rows: ["Which color?Red (Recommended)"]},
+		});
+	});
+});
+
+describe("useQuestionCardSent", () => {
+	it("re-renders as the card's answer starts and stops sending", () => {
+		const seen: boolean[] = [];
+		function Probe() {
+			seen.push(useQuestionCardSent("toolu_hook"));
+			return null;
+		}
+		render(<Probe />);
+		act(() => {
+			markQuestionCardSent("toolu_hook", {
+				page: 0,
+				drafts: [{selected: [0], other: "", otherChosen: false}],
+				skipped: [false],
+			});
+		});
+		act(() => {
+			clearSentQuestionCard("toolu_hook");
+		});
+
+		expect(seen).toStrictEqual([false, true, false]);
 	});
 });

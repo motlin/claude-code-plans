@@ -1,3 +1,4 @@
+import {useCallback, useSyncExternalStore} from "react";
 import {z} from "zod";
 
 /**
@@ -76,8 +77,24 @@ export function clearQuestionCardState(key: string): void {
  */
 const sent = new Map<string, QuestionCardState>();
 
+/** Hears every add to or drop from the sent map, for `useQuestionCardSent`. */
+const sentChangeListeners = new Set<() => void>();
+
+function notifySentChange(): void {
+	for (const listener of [...sentChangeListeners]) listener();
+}
+
+function subscribeSentChange(listener: () => void): () => void {
+	sentChangeListeners.add(listener);
+	return () => {
+		sentChangeListeners.delete(listener);
+	};
+}
+
 export function markQuestionCardSent(key: string, state: QuestionCardState): void {
+	const added = !sent.has(key);
 	sent.set(key, state);
+	if (added) notifySentChange();
 }
 
 /** The submitted state for a card of `questionCount` questions, or null when none is sending. */
@@ -112,7 +129,14 @@ export function subscribeSentQuestionCard(key: string, listener: SentListener): 
 /** Drops the sending entry and notifies subscribers, with `error` when the send failed. */
 export function clearSentQuestionCard(key: string, error: string | null = null): void {
 	if (!sent.delete(key)) return;
+	notifySentChange();
 	for (const listener of [...(sentListeners.get(key) ?? [])]) listener(error);
+}
+
+/** Whether the card under `key` has an answer sending, re-rendering as that changes. */
+export function useQuestionCardSent(key: string): boolean {
+	const getSnapshot = useCallback(() => sent.has(key), [key]);
+	return useSyncExternalStore(subscribeSentChange, getSnapshot, () => false);
 }
 
 /**
