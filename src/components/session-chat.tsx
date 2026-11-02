@@ -955,13 +955,39 @@ function TurnHeading({speaker, text}: {speaker: "user" | "assistant"; text: stri
  * The row wrapper every user-side entry shares, heading included, so a new
  * entry variant cannot render a user turn without naming the speaker.
  */
-function UserTurn({text, children}: {text: string; children: React.ReactNode}) {
+function UserTurn({text, turnKey, children}: {text: string; turnKey?: string | undefined; children: React.ReactNode}) {
+	if (turnKey === undefined) {
+		return (
+			<div className="group/msg flex justify-end w-full">
+				<TurnHeading speaker="user" text={text} />
+				{children}
+			</div>
+		);
+	}
+	// Upstream's keyed human row: [data-take-back-entry][data-row-gap] > [data-transcript-row] > h2 +
+	// [data-user-scope] > [data-cds=UserMessage][data-turn-key] (see userMessageAttributes). A user row's
+	// shared-row gap is always "none", whose class cancels the transcript row's own mt-6.
 	return (
-		<div className="group/msg flex justify-end w-full">
-			<TurnHeading speaker="user" text={text} />
-			{children}
+		<div data-take-back-entry={turnKey} data-row-gap="none" className="[&>[data-transcript-row]]:!mt-0">
+			<div data-transcript-row="" className={TRANSCRIPT_ROW_CLASS}>
+				<TurnHeading speaker="user" text={text} />
+				<div data-user-scope="" className="group/msg flex justify-end w-full">
+					{children}
+				</div>
+			</div>
 		</div>
 	);
+}
+
+/** Upstream's `[data-transcript-row]` class, copied verbatim. */
+const TRANSCRIPT_ROW_CLASS =
+	"mt-6 compact:mt-5 [&>[data-turn-key]]:!my-0 [&>[data-reply-scope]>[data-turn-key]]:!my-0 [&:has(>[data-reserves-actions-gap]:not(:empty))]:pb-md [&:has(>[data-reply-scope]>[data-reserves-actions-gap]:not(:empty))]:pb-md";
+
+/** The attributes upstream puts on a human prompt's `[data-cds=UserMessage]` column, keyed like its row. */
+function userMessageAttributes(turnKey: string | undefined) {
+	return turnKey === undefined
+		? {}
+		: ({"data-cds": "UserMessage", "data-text-size": "md", "data-turn-key": turnKey} as const);
 }
 
 function LineEntry({
@@ -4231,13 +4257,18 @@ function UserEntry({
 	const {textNodes, mediaNodes, images, excerpts} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
 	return (
-		<UserTurn text={messageText(line)}>
+		<UserTurn text={messageText(line)} turnKey={line.uuid}>
 			<TranscriptMessageMenu
 				speaker="user"
 				sessionId={sessionId}
 				uuid={line.uuid}
 				markdown={messageText(line)}
-				render={<div className="flex flex-col items-end gap-g5 comfortable:gap-g6 max-w-[85%] min-w-0" />}
+				render={
+					<div
+						{...userMessageAttributes(line.uuid)}
+						className="flex flex-col items-end gap-g5 comfortable:gap-g6 max-w-[85%] min-w-0"
+					/>
+				}
 			>
 				<UserAttachments images={images} />
 				<MessageExcerptTiles snippets={excerpts} />
@@ -4787,8 +4818,11 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 	const name = cmdName.replace(/^\//, "");
 
 	return (
-		<UserTurn text={cmdArgs ? `/${name} ${cmdArgs}` : `/${name}`}>
-			<div className="flex flex-col items-end gap-g5 comfortable:gap-g6 max-w-[85%] min-w-0">
+		<UserTurn text={cmdArgs ? `/${name} ${cmdArgs}` : `/${name}`} turnKey={line.uuid}>
+			<div
+				{...userMessageAttributes(line.uuid)}
+				className="flex flex-col items-end gap-g5 comfortable:gap-g6 max-w-[85%] min-w-0"
+			>
 				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
 					<TruncatedContent>
 						<SlashCommandText name={name} rest={cmdArgs ?? ""} />

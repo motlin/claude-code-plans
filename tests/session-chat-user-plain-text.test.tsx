@@ -304,3 +304,68 @@ describe("SessionChat user bubbles as plain text", () => {
 		]);
 	});
 });
+
+function describeTree(el: Element | null): unknown {
+	if (el === null) return null;
+	const attrs = Object.fromEntries(
+		Array.from(el.attributes)
+			.filter((attr) => attr.name.startsWith("data-") || attr.name === "class")
+			.map((attr) => [attr.name, attr.value]),
+	);
+	return {tag: el.tagName, ...attrs};
+}
+
+describe("SessionChat user row DOM structure (upstream [data-take-back-entry] > [data-transcript-row] > [data-cds=UserMessage])", () => {
+	it("keys a prompt row by its uuid through take-back entry, transcript row, user scope and UserMessage", () => {
+		const container = renderRecords([prompt("hello")]);
+		const message = bubble(container).closest("[data-cds='UserMessage']");
+		const scope = message?.parentElement ?? null;
+		const row = scope?.parentElement ?? null;
+		const entry = row?.parentElement ?? null;
+
+		expect({
+			entry: describeTree(entry),
+			row: describeTree(row),
+			rowChildren: Array.from(row?.children ?? []).map((child) => child.tagName),
+			scope: scope?.hasAttribute("data-user-scope") ?? null,
+			messageAttrs: {
+				turnKey: message?.getAttribute("data-turn-key") ?? null,
+				textSize: message?.getAttribute("data-text-size") ?? null,
+			},
+		}).toStrictEqual({
+			entry: {
+				tag: "DIV",
+				"data-take-back-entry": "user-plain-1",
+				"data-row-gap": "none",
+				class: "[&>[data-transcript-row]]:!mt-0",
+			},
+			row: {
+				tag: "DIV",
+				"data-transcript-row": "",
+				class: "mt-6 compact:mt-5 [&>[data-turn-key]]:!my-0 [&>[data-reply-scope]>[data-turn-key]]:!my-0 [&:has(>[data-reserves-actions-gap]:not(:empty))]:pb-md [&:has(>[data-reply-scope]>[data-reserves-actions-gap]:not(:empty))]:pb-md",
+			},
+			rowChildren: ["H2", "DIV"],
+			scope: true,
+			messageAttrs: {turnKey: "user-plain-1", textSize: "md"},
+		});
+	});
+
+	it("gives a slash-command prompt row the same keyed tree", () => {
+		const container = renderRecords([
+			{
+				type: "user",
+				uuid: "user-slash-1",
+				message: {
+					role: "user",
+					content: "<command-name>/loop</command-name><command-args>Check PR 1954</command-args>",
+				},
+			},
+		]);
+		const message = container.querySelector("[data-cds='UserMessage']");
+
+		expect({
+			turnKey: message?.getAttribute("data-turn-key") ?? null,
+			entry: message?.closest("[data-take-back-entry]")?.getAttribute("data-take-back-entry") ?? null,
+		}).toStrictEqual({turnKey: "user-slash-1", entry: "user-slash-1"});
+	});
+});

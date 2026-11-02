@@ -59,12 +59,13 @@ function renderRecords(records: unknown[], showCompactSummaries = true): HTMLEle
 
 /**
  * The screen-reader heading opening every `group/msg` turn wrapper, as
- * `[className, text]` pairs. A wrapper whose first element child is not a
- * heading contributes `null`, so a missing heading fails loudly.
+ * `[className, text]` pairs. A keyed user row's `[data-user-scope]` wrapper takes its
+ * heading from the enclosing `[data-transcript-row]`, as upstream's does. A wrapper whose
+ * first element child is not a heading contributes `null`, so a missing heading fails loudly.
  */
 function turnHeadings(container: HTMLElement): (readonly [string, string] | null)[] {
 	return Array.from(container.querySelectorAll("[class*='group/msg']")).map((wrapper) => {
-		const first = wrapper.firstElementChild;
+		const first = (wrapper.hasAttribute("data-user-scope") ? wrapper.parentElement : wrapper)?.firstElementChild;
 		if (!(first instanceof HTMLHeadingElement)) return null;
 		return [first.className, first.textContent] as const;
 	});
