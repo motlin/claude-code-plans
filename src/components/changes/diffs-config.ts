@@ -1,11 +1,13 @@
 import {registerCustomTheme} from "@pierre/diffs";
 import type {CSSProperties} from "react";
+import {claudeDark} from "../../lib/claude-dark-theme";
 import {claudeLight} from "../../lib/claude-light-theme";
 
-// Register our claude.ai code theme with the library's shared highlighter so
+// Register our claude.ai code themes with the library's shared highlighter so
 // every @pierre/diffs view (Changes pane, inline tool diffs) highlights with the
 // same Shiki themes as the transcript. Importing this module performs it.
 registerCustomTheme("claude-light", async () => Promise.resolve(claudeLight));
+registerCustomTheme("claude-dark", async () => Promise.resolve(claudeDark));
 
 /**
  * The `--diffs-*` variables upstream's Changes pane sets on its CodeView,

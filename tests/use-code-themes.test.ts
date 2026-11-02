@@ -27,7 +27,7 @@ describe("useCodeThemes", () => {
 	it("resolves the default light/dark pair", () => {
 		stubStorage({});
 		const {result} = renderHook(() => useCodeThemes(), {wrapper});
-		expect(result.current).toStrictEqual({light: "claude-light", dark: "github-dark"});
+		expect(result.current).toStrictEqual({light: "claude-light", dark: "claude-dark"});
 	});
 
 	it("resolves the stored pair", () => {
@@ -37,8 +37,8 @@ describe("useCodeThemes", () => {
 	});
 
 	it("ignores stored ids that are not offered for that mode", () => {
-		stubStorage({"ccp-code-theme-light": "nord", "ccp-code-theme-dark": "claude-dark"});
+		stubStorage({"ccp-code-theme-light": "nord", "ccp-code-theme-dark": "claude-light"});
 		const {result} = renderHook(() => useCodeThemes(), {wrapper});
-		expect(result.current).toStrictEqual({light: "claude-light", dark: "github-dark"});
+		expect(result.current).toStrictEqual({light: "claude-light", dark: "claude-dark"});
 	});
 });

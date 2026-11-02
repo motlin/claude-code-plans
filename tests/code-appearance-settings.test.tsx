@@ -66,13 +66,13 @@ describe("Claude Code settings ▸ Code appearance", () => {
 		await Promise.all([
 			import("../src/components/settings/code-theme-preview"),
 			requestLanguage("typescript"),
-			requestTheme("github-dark"),
+			requestTheme("claude-dark"),
 			requestTheme("nord"),
 		]);
 		await renderClaudeCode();
 
 		await waitFor(() => {
-			expect(preview("Dark code theme preview").background).toBe("rgb(36, 41, 46)");
+			expect(preview("Dark code theme preview").background).toBe("rgb(25, 25, 25)");
 		});
 		const before = preview("Dark code theme preview");
 
@@ -90,8 +90,8 @@ describe("Claude Code settings ▸ Code appearance", () => {
 			light: preview("Light code theme preview").theme,
 		}).toStrictEqual({
 			before: {
-				theme: "github-dark",
-				background: "rgb(36, 41, 46)",
+				theme: "claude-dark",
+				background: "rgb(25, 25, 25)",
 				text: '1function greet(name: string) {2-  return "Hello, " + name;2+  return `Hello, ${name}!`;3}',
 			},
 			after: {
@@ -109,7 +109,7 @@ describe("Claude Code settings ▸ Code appearance", () => {
 			import("../src/components/settings/code-theme-preview"),
 			requestLanguage("typescript"),
 			requestTheme("claude-light"),
-			requestTheme("github-dark"),
+			requestTheme("claude-dark"),
 		]);
 		await renderClaudeCode();
 		await waitFor(() => {

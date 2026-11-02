@@ -324,7 +324,7 @@ describe("renderMarkdownWithHighlighting", () => {
 						lang: "typescript",
 						themes: {
 							light: "claude-light",
-							dark: "github-dark",
+							dark: "claude-dark",
 						},
 						defaultColor: "light",
 						cssVariablePrefix: "--shiki-",
@@ -335,7 +335,7 @@ describe("renderMarkdownWithHighlighting", () => {
 	});
 
 	it("highlights with the chosen code themes once they are loaded, else the defaults", () => {
-		const loadedThemes = ["claude-light", "github-dark"];
+		const loadedThemes = ["claude-light", "claude-dark"];
 		const codeToHtml = vi.fn<HighlighterCore["codeToHtml"]>(
 			() => '<pre class="shiki"><code>highlighted</code></pre>',
 		);
@@ -356,7 +356,7 @@ describe("renderMarkdownWithHighlighting", () => {
 			themeRequests: requestThemeMock.mock.calls,
 		}).toStrictEqual({
 			themes: [
-				{light: "claude-light", dark: "github-dark"},
+				{light: "claude-light", dark: "claude-dark"},
 				{light: "min-light", dark: "nord"},
 			],
 			themeRequests: [["min-light"], ["nord"]],

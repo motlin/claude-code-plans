@@ -24,6 +24,7 @@ describe("code theme settings", () => {
 				"slack-ochin",
 			],
 			dark: [
+				"claude-dark",
 				"github-dark",
 				"github-dark-dimmed",
 				"pierre-dark",
@@ -55,6 +56,7 @@ describe("code theme settings", () => {
 				"Slack Ochin",
 			],
 			darkLabels: [
+				"Claude Dark",
 				"GitHub Dark",
 				"GitHub Dark Dimmed",
 				"Pierre Dark",
@@ -80,17 +82,17 @@ describe("code theme settings", () => {
 		expect({
 			darkAsLight: CodeThemeLightSchema.safeParse("nord").success,
 			lightAsDark: CodeThemeDarkSchema.safeParse("claude-light").success,
-			unportedClaudeDark: CodeThemeDarkSchema.safeParse("claude-dark").success,
+			darkAsDark: CodeThemeDarkSchema.safeParse("claude-dark").success,
 			unknown: CodeThemeLightSchema.safeParse("solarized").success,
 		}).toStrictEqual({
 			darkAsLight: false,
 			lightAsDark: false,
-			unportedClaudeDark: false,
+			darkAsDark: true,
 			unknown: false,
 		});
 	});
 
-	it("defaults to Claude Light, GitHub Dark and the built-in code font", () => {
+	it("defaults to Claude Light, Claude Dark and the built-in code font", () => {
 		expect({
 			codeThemeLight: DEFAULTS.codeThemeLight,
 			codeThemeDark: DEFAULTS.codeThemeDark,
@@ -102,7 +104,7 @@ describe("code theme settings", () => {
 			],
 		}).toStrictEqual({
 			codeThemeLight: "claude-light",
-			codeThemeDark: "github-dark",
+			codeThemeDark: "claude-dark",
 			codeFont: "",
 			keys: ["ccp-code-theme-light", "ccp-code-theme-dark", "ccp-code-font"],
 		});
@@ -120,6 +122,57 @@ describe("code theme settings", () => {
 			'"Fira Code", "SF Mono", ui-monospace, Menlo, Consolas, monospace',
 			'"Berkeley Mono", "SF Mono", ui-monospace, Menlo, Consolas, monospace',
 		]);
+	});
+
+	it("ports upstream's Claude Dark colours exactly", async () => {
+		const theme = await loadCodeTheme("claude-dark");
+		const foreground = (scope: string) =>
+			theme.settings?.find((rule) => [rule.scope].flat().includes(scope))?.settings.foreground;
+		expect({
+			type: theme.type,
+			fg: theme.fg,
+			bg: theme.bg,
+			editor: [theme.colors?.["editor.background"], theme.colors?.["editor.foreground"]],
+			rules: theme.settings?.length,
+			scopes: Object.fromEntries(
+				[
+					"comment",
+					"punctuation",
+					"keyword",
+					"keyword.operator",
+					"string",
+					"string.regexp",
+					"constant.numeric",
+					"entity.name.tag",
+					"entity.other.attribute-name",
+					"entity.name.function",
+					"variable.parameter",
+					"entity.name.type",
+					"variable.other.property",
+				].map((scope) => [scope, foreground(scope)]),
+			),
+		}).toStrictEqual({
+			type: "dark",
+			fg: "#eaecf0",
+			bg: "#191919",
+			editor: ["#191919", "#eaecf0"],
+			rules: 36,
+			scopes: {
+				comment: "#818898",
+				punctuation: "#d3d7de",
+				keyword: "#cc7bf4",
+				"keyword.operator": "#eaecf0",
+				string: "#9be963",
+				"string.regexp": "#96e35f",
+				"constant.numeric": "#5eeded",
+				"entity.name.tag": "#f47b85",
+				"entity.other.attribute-name": "#f0757f",
+				"entity.name.function": "#70b8ff",
+				"variable.parameter": "#f7ab5f",
+				"entity.name.type": "#fbad60",
+				"variable.other.property": "#eaecf0",
+			},
+		});
 	});
 
 	it("lazily loads every offered theme under its own id", async () => {

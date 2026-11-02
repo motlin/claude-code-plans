@@ -1186,6 +1186,7 @@ export const codeThemeLightLabels = {
 
 /** Settings ▸ Code appearance dark themes (src/lib/code-themes.ts), named as on claude.ai/code. */
 export const codeThemeDarkLabels = {
+	"claude-dark": "Claude Dark",
 	"github-dark": "GitHub Dark",
 	"github-dark-dimmed": "GitHub Dark Dimmed",
 	"pierre-dark": "Pierre Dark",

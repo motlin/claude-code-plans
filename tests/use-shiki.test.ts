@@ -14,7 +14,7 @@ const shikiMocks = vi.hoisted(() => {
 	} as LanguageRegistration;
 	const engine = {name: "test-engine"};
 	const claudeLight = {name: "claude-light", type: "light", settings: []};
-	const githubDark = {name: "github-dark", type: "dark", settings: []};
+	const claudeDark = {name: "claude-dark", type: "dark", settings: []};
 	const loadLanguage = vi.fn<HighlighterCore["loadLanguage"]>(async () => {
 		loadedLanguages.push("typescript", "ts", "cts", "mts");
 		return Promise.resolve();
@@ -32,7 +32,7 @@ const shikiMocks = vi.hoisted(() => {
 		cppRegistration,
 		createHighlighterCore,
 		engine,
-		githubDark,
+		claudeDark,
 		highlighter,
 		importedLanguages,
 		loadLanguage,
@@ -53,8 +53,8 @@ vi.mock("../src/lib/claude-light-theme", () => ({
 	claudeLight: shikiMocks.claudeLight,
 }));
 
-vi.mock("shiki/themes/github-dark.mjs", () => ({
-	default: shikiMocks.githubDark,
+vi.mock("../src/lib/claude-dark-theme", () => ({
+	claudeDark: shikiMocks.claudeDark,
 }));
 
 vi.mock("shiki/langs/typescript.mjs", () => {
@@ -93,7 +93,7 @@ describe("requestLanguage", () => {
 			createHighlighterCalls: [
 				[
 					{
-						themes: [shikiMocks.claudeLight, shikiMocks.githubDark],
+						themes: [shikiMocks.claudeLight, shikiMocks.claudeDark],
 						langs: [],
 						engine: shikiMocks.engine,
 					},

@@ -152,16 +152,15 @@ function getVersion(): number {
 }
 
 async function initHighlighter(): Promise<HighlighterCore> {
-	const [{createHighlighterCore}, {createJavaScriptRegexEngine}, {claudeLight}, {default: githubDark}] =
-		await Promise.all([
-			import("@shikijs/core"),
-			import("@shikijs/engine-javascript"),
-			import("../lib/claude-light-theme"),
-			import("shiki/themes/github-dark.mjs"),
-		]);
+	const [{createHighlighterCore}, {createJavaScriptRegexEngine}, {claudeLight}, {claudeDark}] = await Promise.all([
+		import("@shikijs/core"),
+		import("@shikijs/engine-javascript"),
+		import("../lib/claude-light-theme"),
+		import("../lib/claude-dark-theme"),
+	]);
 
 	const highlighter = await createHighlighterCore({
-		themes: [claudeLight, githubDark],
+		themes: [claudeLight, claudeDark],
 		langs: [],
 		engine: createJavaScriptRegexEngine(),
 	});

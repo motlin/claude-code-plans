@@ -3,8 +3,7 @@ import {z} from "zod";
 
 /*
  * Settings ▸ Claude Code ▸ Code appearance, as on claude.ai/code: 10 light and
- * 18 dark Shiki themes. Upstream's Claude Dark has no local port yet, so the
- * dark list omits it and defaults to GitHub Dark.
+ * 18 dark Shiki themes, defaulting to the Claude pair.
  */
 export const CodeThemeLightSchema = z.enum([
 	"claude-light",
@@ -21,6 +20,7 @@ export const CodeThemeLightSchema = z.enum([
 export type CodeThemeLight = z.infer<typeof CodeThemeLightSchema>;
 
 export const CodeThemeDarkSchema = z.enum([
+	"claude-dark",
 	"github-dark",
 	"github-dark-dimmed",
 	"pierre-dark",
@@ -48,7 +48,7 @@ export interface CodeThemePair {
 	dark: CodeThemeDark;
 }
 
-export const DEFAULT_CODE_THEMES: CodeThemePair = {light: "claude-light", dark: "github-dark"};
+export const DEFAULT_CODE_THEMES: CodeThemePair = {light: "claude-light", dark: "claude-dark"};
 
 type ThemeModule = Promise<{default: ThemeRegistration}>;
 
@@ -74,6 +74,7 @@ const THEME_LOADERS: Record<CodeThemeId, () => ThemeModule> = {
 	"min-light": async () => import("shiki/themes/min-light.mjs"),
 	"rose-pine-dawn": async () => import("shiki/themes/rose-pine-dawn.mjs"),
 	"slack-ochin": async () => import("shiki/themes/slack-ochin.mjs"),
+	"claude-dark": async () => import("./claude-dark-theme").then(({claudeDark}) => ({default: claudeDark})),
 	"github-dark": async () => import("shiki/themes/github-dark.mjs"),
 	"github-dark-dimmed": async () => import("shiki/themes/github-dark-dimmed.mjs"),
 	"pierre-dark": async () =>
