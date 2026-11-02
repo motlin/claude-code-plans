@@ -82,7 +82,7 @@ const BAR_CLASS = [
 ].join(" ");
 
 const BUTTON_CLASS =
-	"flex size-6 cursor-pointer items-center justify-center rounded-r5 text-ink-muted outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus transition-colors hover:bg-fill-ghost-hover aria-pressed:bg-upstream-accent-pressed aria-pressed:text-upstream-accent disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-ink-muted comfortable:size-8 comfortable:rounded-r6";
+	"flex size-6 cursor-pointer items-center justify-center rounded-r5 text-plain-secondary outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus transition-colors hover:bg-fill-ghost-hover aria-pressed:bg-upstream-accent-pressed aria-pressed:text-upstream-accent disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-plain-secondary comfortable:size-8 comfortable:rounded-r6";
 
 const ICON_CLASS = "size-4 comfortable:size-5";
 

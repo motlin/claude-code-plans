@@ -60,4 +60,24 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () => 
 			dark: {"--upstream-accent-layer": null},
 		});
 	});
+
+	it("--upstream-plain-secondary is the pre-rollout muted ink, and upstream's --cds-fizzy-lake-color-plain-secondary under fizzy-lake color", () => {
+		const names = ["--upstream-plain-secondary"] as const;
+		const contrast = styles.slice(styles.indexOf("@media (prefers-contrast: more)"));
+		expect({
+			utility: tokens(block("@theme inline"), ["--color-plain-secondary"]),
+			base: tokens(block(":root"), names),
+			light: tokens(block(FIZZY_LIGHT), names),
+			dark: tokens(block(FIZZY_DARK), names),
+			contrastLight: tokens(contrast.slice(contrast.indexOf(`${FIZZY_LIGHT} {`)), names),
+			contrastDark: tokens(contrast.slice(contrast.indexOf(`${FIZZY_DARK} {`)), names),
+		}).toStrictEqual({
+			utility: {"--color-plain-secondary": "var(--upstream-plain-secondary)"},
+			base: {"--upstream-plain-secondary": "var(--upstream-text-muted)"},
+			light: {"--upstream-plain-secondary": "#0009"},
+			dark: {"--upstream-plain-secondary": "#ffffff91"},
+			contrastLight: {"--upstream-plain-secondary": "#000000bf"},
+			contrastDark: {"--upstream-plain-secondary": "#ffffffbf"},
+		});
+	});
 });

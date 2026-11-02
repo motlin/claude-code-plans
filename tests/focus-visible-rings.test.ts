@@ -71,7 +71,7 @@ describe("hand-rolled focus rings", () => {
 			switch: has("src/components/settings/switch.tsx", `data-[disabled]:opacity-40 ${SHADOW_FOCUS}`),
 			messageActions: has(
 				"src/components/message-actions.tsx",
-				`text-ink-muted outline-none ${SHADOW_FOCUS} transition-colors`,
+				`text-plain-secondary outline-none ${SHADOW_FOCUS} transition-colors`,
 			),
 			customizeView: has(
 				"src/components/customize/list-row.tsx",

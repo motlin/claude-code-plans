@@ -147,6 +147,7 @@ html[data-interface-font="dyslexic"] {
 
 	/* Upstream claude.ai/code — session row icons (src/components/status-dot.tsx) */
 	--color-ink-muted: var(--upstream-text-muted);
+	--color-plain-secondary: var(--upstream-plain-secondary);
 	/* Upstream text-muted-as-secondary: the ⌘/ dialog's "or" between bindings. */
 	--color-muted-as-secondary: var(--muted-as-secondary, var(--upstream-text-muted));
 	/* Upstream cds-era inline code chip ink (prose `code`). */
@@ -454,6 +455,8 @@ html[data-interface-font="dyslexic"] {
 
 	/* Upstream claude.ai/code — row status dots (--cds-text-muted / fill-warning|accent|danger) */
 	--upstream-text-muted: #898781;
+	/* Upstream message-toolbar button ink: --cds-text-muted until fizzy-lake color swaps in plain-secondary. */
+	--upstream-plain-secondary: var(--upstream-text-muted);
 	--upstream-code-ink: rgb(142 38 38);
 	/* Upstream --cds-text-danger / --cds-text-success (light). */
 	--upstream-text-danger: #a42528;
@@ -739,10 +742,23 @@ html[data-interface-font="dyslexic"] {
 	--upstream-accent-layer: #257de00f;
 	/* Upstream `--cds-fill-ghost-hover`: every ghost hover (pre-rollout 4% ink). */
 	--upstream-fill-ghost-hover: #0000000d;
+	/* Upstream `--cds-fizzy-lake-color-plain-secondary`: the message toolbar's button ink. */
+	--upstream-plain-secondary: #0009;
 }
 
 :root.dark[data-cds-fizzy-lake~="color"] {
 	--upstream-fill-ghost-hover: #ffffff13;
+	--upstream-plain-secondary: #ffffff91;
+}
+
+@media (prefers-contrast: more) {
+	:root[data-cds-fizzy-lake~="color"] {
+		--upstream-plain-secondary: #000000bf;
+	}
+
+	:root.dark[data-cds-fizzy-lake~="color"] {
+		--upstream-plain-secondary: #ffffffbf;
+	}
 }
 
 @layer utilities {

@@ -90,9 +90,11 @@ describe("AssistantMessageActions", () => {
 			bar: ["opacity-0", "group-hover/msg:opacity-100", "focus-within:opacity-100"].every((c) =>
 				classes.includes(c),
 			),
-			button: ["text-ink-muted", "hover:text-primary"].map((c) => copyClasses.includes(c)),
+			button: ["text-plain-secondary", "text-ink-muted", "hover:text-primary"].map((c) =>
+				copyClasses.includes(c),
+			),
 			barHover: classes.includes("[&_button:hover:not([aria-pressed=true]):not(:disabled)]:text-primary"),
-		}).toStrictEqual({bar: true, button: [true, false], barHover: true});
+		}).toStrictEqual({bar: true, button: [true, false, false], barHover: true});
 	});
 
 	it("grows to upstream's comfortable 32px buttons, 20px icons and 32px time slot under a comfortable scope (coarse pointer)", () => {
