@@ -695,4 +695,87 @@ describe("SplitDropdownButton", () => {
 			});
 		});
 	});
+
+	describe("tooltips", () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		function hoverOpen(button: HTMLElement) {
+			vi.useFakeTimers();
+			fireEvent.pointerEnter(button.parentElement!);
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+		}
+
+		function tooltipState(button: HTMLElement) {
+			const tooltip = screen.getByRole("tooltip");
+			return {
+				text: tooltip.textContent,
+				describedBy: button.getAttribute("aria-describedby") === tooltip.id,
+				side: tooltip.className.split(" ").slice(-4).join(" "),
+			};
+		}
+
+		it("wraps neither segment in a tooltip anchor when no tooltip is asked for", () => {
+			renderSplit();
+
+			expect({
+				primaryParent: primary().parentElement!.className,
+				caretParent: caret().parentElement!.hasAttribute("data-cds-segment"),
+			}).toStrictEqual({primaryParent: "contents", caretParent: true});
+		});
+
+		it("shows a string tooltip on the labeled primary, side top by default", () => {
+			renderSplit({tooltip: "Don\u2019t ask again for this tool"});
+			hoverOpen(primary());
+
+			expect(tooltipState(primary())).toStrictEqual({
+				text: "Don\u2019t ask again for this tool",
+				describedBy: true,
+				side: "bottom-full left-1/2 mb-1 -translate-x-1/2",
+			});
+		});
+
+		it("names an icon-only primary's tooltip after its aria-label when tooltip is true, on tooltipSide", () => {
+			render(
+				<SplitDropdownButton
+					variant="ghost"
+					icon={<span>+</span>}
+					aria-label="New tab"
+					tooltip
+					tooltipSide="bottom"
+					menuLabel="More tab options"
+					items={[{label: "Duplicate", onSelect: () => {}}]}
+					onPrimaryClick={() => {}}
+				/>,
+			);
+			const button = screen.getByRole("button", {name: "New tab"});
+			hoverOpen(button);
+
+			expect(tooltipState(button)).toStrictEqual({
+				text: "New tab",
+				describedBy: true,
+				side: "top-full left-1/2 mt-1 -translate-x-1/2",
+			});
+		});
+
+		it("shows the menu label as the caret's tooltip when menuTooltip is true", () => {
+			renderSplit({menuTooltip: true});
+			hoverOpen(caret());
+
+			expect(tooltipState(caret())).toStrictEqual({
+				text: "More allow options",
+				describedBy: true,
+				side: "bottom-full left-1/2 mb-1 -translate-x-1/2",
+			});
+		});
+
+		it("keeps the stacked approval layout's flex-auto primary reachable through the tooltip anchor", () => {
+			renderSplit({tooltip: "Applies to this session only"});
+
+			expect([...primary().parentElement!.classList]).toStrictEqual(["relative", "flex", "min-w-0", "shrink"]);
+		});
+	});
 });

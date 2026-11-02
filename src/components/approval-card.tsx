@@ -3,18 +3,19 @@ import {useState, type ButtonHTMLAttributes, type DragEvent, type KeyboardEvent,
 import type {ElicitationFocus} from "../lib/herdr/elicitation-keys";
 import {DisabledReason} from "./ui/disabled-reason";
 import {Spinner} from "./ui/spinner";
+import {SECONDARY_RING_CLASS} from "./ui/split-dropdown-button";
 
 const ACTION_BUTTON =
 	"relative inline-flex h-6 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-2 text-[13px]/[19px] whitespace-nowrap select-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-50 [&_kbd]:text-[11px]";
 
 const ACTION_VARIANTS = {
-	secondary: "bg-fill-secondary shadow-field-drop text-primary hover:bg-fill-secondary-hover",
+	secondary: `bg-fill-secondary shadow-field-drop ${SECONDARY_RING_CLASS} text-primary hover:bg-fill-secondary-hover`,
 	primary: "bg-primary font-medium text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-primary/80",
 } as const;
 
 export type ApprovalActionVariant = keyof typeof ACTION_VARIANTS;
 
-/** Classes for an approval card action: upstream's filled secondary or a black primary, 24px tall with 11px keycaps. */
+/** Classes for an approval card action: upstream's filled, inset-ringed secondary or a black primary, 24px tall with 11px keycaps. */
 function approvalActionClass(variant: ApprovalActionVariant): string {
 	return `${ACTION_BUTTON} ${ACTION_VARIANTS[variant]}`;
 }
@@ -62,10 +63,10 @@ export const APPROVAL_CARD_TITLE = "flex min-h-6 items-center text-[13px]/[19px]
 /**
  * Upstream's `@container (width <= 420px)` stack: the action row and its allow
  * group (`[data-approval-allow]`), full width. A split button stretches too, its primary segment taking
- * the spare width (`width:100%` and `flex:auto`).
+ * the spare width (`width:100%` and `flex:auto`), through a tooltip anchor when the primary has one.
  */
 export const STACK_ACTIONS =
-	"@max-[420px]:flex-col @max-[420px]:items-stretch @max-[420px]:[&>div]:flex-col @max-[420px]:[&>div]:items-stretch @max-[420px]:[&_[data-cds=SplitDropdownButton]]:w-full @max-[420px]:[&_[data-cds=SplitDropdownButton]>[data-cds-segment]:first-child_button]:flex-auto";
+	"@max-[420px]:flex-col @max-[420px]:items-stretch @max-[420px]:[&>div]:flex-col @max-[420px]:[&>div]:items-stretch @max-[420px]:[&_[data-cds=SplitDropdownButton]]:w-full @max-[420px]:[&_[data-cds=SplitDropdownButton]>[data-cds-segment]:first-child_button]:flex-auto @max-[420px]:[&_[data-cds=SplitDropdownButton]>[data-cds-segment]:first-child>div>:first-child]:flex-auto";
 
 const ROAM_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]);
 

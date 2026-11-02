@@ -1,8 +1,9 @@
 import {ChevronDown, Loader2} from "lucide-react";
-import {type CSSProperties, Fragment, type ReactNode, useRef, useState} from "react";
+import {type CSSProperties, Fragment, type ReactElement, type ReactNode, useRef, useState} from "react";
 
 import {Menu, MenuContent, type MenuContentProps, MenuItem, MenuSeparator, MenuTrigger} from "./menu";
 import {Shortcut} from "./shortcut";
+import {Tooltip} from "./tooltip";
 
 /*
  * Upstream's cds SplitDropdownButton (`n4`): a joined primary button and a caret DropdownButton whose menu
@@ -47,7 +48,23 @@ export interface SplitDropdownButtonProps {
 	finalFocus?: MenuContentProps["finalFocus"];
 	/** A trailing slot inside the primary segment that shares its fill and hover, e.g. a count. */
 	status?: ReactNode;
+	/**
+	 * The primary's tooltip: `true` names it after its aria-label (or string label), a string sets the text.
+	 * Upstream only tips the icon-only primary; the labeled one takes it locally for the approval scope note.
+	 */
+	tooltip?: boolean | string;
+	tooltipSide?: "top" | "bottom";
+	/** The caret's tooltip: `true` shows the menu label, a string sets the text. */
+	menuTooltip?: boolean | string;
 	className?: string;
+}
+
+/* A tooltip anchor stays a shrinkable flex item, so the joined segments keep their layout. */
+const TOOLTIP_ANCHOR_CLASS = "flex min-w-0 shrink";
+
+function tooltipText(tooltip: boolean | string | undefined, name: string | undefined): string | undefined {
+	if (typeof tooltip === "string") return tooltip;
+	return tooltip === true ? name : undefined;
 }
 
 const ROOT_CLASS = "relative inline-flex w-fit shrink-0 items-stretch";
@@ -62,6 +79,10 @@ const SEAM_FADE_CLASS =
 /* Solid seams dim with their segments when both neighbours are disabled. */
 const SOLID_SEAM_DISABLED_CLASS = "[[data-cds-segment]:has(:disabled)+&:has(+[data-cds-segment]_:disabled)]:opacity-40";
 
+/** Upstream's cds secondary frame: an inset 1px `fill-secondary-ring` drawn on `::after` over the fill. */
+export const SECONDARY_RING_CLASS =
+	"after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)]";
+
 type JoinedVariant = "primary" | "secondary" | "danger";
 
 /* Upstream's `ho` seam: a 1px strip in the segment fill with a half-height line. */
@@ -73,7 +94,7 @@ const JOINED_LOOKS: Record<JoinedVariant, {root: string; fill: string; seam: str
 		line: "absolute inset-x-0 inset-y-1/4 bg-on-primary opacity-25",
 	},
 	secondary: {
-		root: "shadow-field-drop after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)]",
+		root: `shadow-field-drop ${SECONDARY_RING_CLASS}`,
 		fill: "bg-fill-secondary text-primary font-control-regular hover:bg-fill-secondary-hover aria-expanded:bg-fill-secondary-hover",
 		seam: `relative ${SEAM_BASE_CLASS} bg-fill-secondary ${SEAM_FADE_CLASS}`,
 		line: "absolute inset-x-0 inset-y-1/4 bg-border",
@@ -208,6 +229,9 @@ export function SplitDropdownButton({
 	onOpenChange,
 	finalFocus,
 	status,
+	tooltip,
+	tooltipSide = "top",
+	menuTooltip,
 	className,
 }: SplitDropdownButtonProps) {
 	const [internalOpen, setInternalOpen] = useState(false);
@@ -289,6 +313,8 @@ export function SplitDropdownButton({
 		scale.icon,
 		(variant === "secondary" || variant === "ghost") && !disabled && "text-ink-muted",
 	);
+	const primaryTooltip = tooltipText(tooltip, ariaLabel ?? (typeof label === "string" ? label : undefined));
+	const caretTooltip = tooltipText(menuTooltip, menuLabel);
 	const labelSpan =
 		label === undefined ? null : (
 			<span className={`min-w-0 truncate [unicode-bidi:plaintext]${busy ? " opacity-0" : ""}`}>{label}</span>
@@ -306,35 +332,40 @@ export function SplitDropdownButton({
 		>
 			<div data-cds-segment="" className="contents">
 				<div className="contents">
-					<button
-						type="button"
-						data-cds="Button"
-						className={primaryClass}
-						disabled={disabled}
-						onPointerDown={() => {
-							openAtPointerDown.current = open;
-						}}
-						onClick={handlePrimaryClick}
-						{...(label === undefined && ariaLabel !== undefined ? {"aria-label": ariaLabel} : {})}
-						{...(ariaKeyShortcuts === undefined ? {} : {"aria-keyshortcuts": ariaKeyShortcuts})}
-						{...(busy ? {"aria-busy": "true", "aria-disabled": "true"} : {})}
-						{...(!busy && ariaDisabled !== undefined ? {"aria-disabled": ariaDisabled} : {})}
-						{...(pressed === undefined ? {} : {"aria-pressed": pressed})}
-					>
-						{!joined && <GhostPaint />}
-						{icon !== undefined && <span className={busy ? "opacity-0" : undefined}>{icon}</span>}
-						{labelSpan}
-						{shortcut !== undefined && label !== undefined && (
-							<span aria-hidden="true" className="ms-1 inline-flex pointer-coarse:hidden">
-								<Shortcut keys={shortcut} />
-							</span>
-						)}
-						{busy && (
-							<span aria-hidden="true" className="absolute inset-0 grid place-items-center">
-								<Loader2 className="size-3 animate-spin" />
-							</span>
-						)}
-					</button>
+					{withTooltip(
+						primaryTooltip,
+						tooltipSide,
+						false,
+						<button
+							type="button"
+							data-cds="Button"
+							className={primaryClass}
+							disabled={disabled}
+							onPointerDown={() => {
+								openAtPointerDown.current = open;
+							}}
+							onClick={handlePrimaryClick}
+							{...(label === undefined && ariaLabel !== undefined ? {"aria-label": ariaLabel} : {})}
+							{...(ariaKeyShortcuts === undefined ? {} : {"aria-keyshortcuts": ariaKeyShortcuts})}
+							{...(busy ? {"aria-busy": "true", "aria-disabled": "true"} : {})}
+							{...(!busy && ariaDisabled !== undefined ? {"aria-disabled": ariaDisabled} : {})}
+							{...(pressed === undefined ? {} : {"aria-pressed": pressed})}
+						>
+							{!joined && <GhostPaint />}
+							{icon !== undefined && <span className={busy ? "opacity-0" : undefined}>{icon}</span>}
+							{labelSpan}
+							{shortcut !== undefined && label !== undefined && (
+								<span aria-hidden="true" className="ms-1 inline-flex pointer-coarse:hidden">
+									<Shortcut keys={shortcut} />
+								</span>
+							)}
+							{busy && (
+								<span aria-hidden="true" className="absolute inset-0 grid place-items-center">
+									<Loader2 className="size-3 animate-spin" />
+								</span>
+							)}
+						</button>,
+					)}
 					{hasStatus && <span className={statusClass}>{status}</span>}
 				</div>
 			</div>
@@ -343,17 +374,22 @@ export function SplitDropdownButton({
 			</span>
 			<div data-cds-segment="" className="contents">
 				<Menu open={open} onOpenChange={setOpen}>
-					<MenuTrigger
-						type="button"
-						data-cds="Button"
-						data-cds-icon-only=""
-						aria-label={menuLabel}
-						disabled={disabled}
-						className={caretClass}
-					>
-						{!joined && <GhostPaint />}
-						<ChevronDown aria-hidden="true" className={caretIconClass} />
-					</MenuTrigger>
+					{withTooltip(
+						caretTooltip,
+						tooltipSide,
+						true,
+						<MenuTrigger
+							type="button"
+							data-cds="Button"
+							data-cds-icon-only=""
+							aria-label={menuLabel}
+							disabled={disabled}
+							className={caretClass}
+						>
+							{!joined && <GhostPaint />}
+							<ChevronDown aria-hidden="true" className={caretIconClass} />
+						</MenuTrigger>,
+					)}
 					<MenuContent
 						side={side}
 						align={align}
@@ -365,5 +401,19 @@ export function SplitDropdownButton({
 				</Menu>
 			</div>
 		</div>
+	);
+}
+
+function withTooltip(
+	content: string | undefined,
+	side: "top" | "bottom",
+	suppressAfterPopup: boolean,
+	button: ReactElement<{"aria-describedby"?: string}>,
+): ReactElement {
+	if (content === undefined) return button;
+	return (
+		<Tooltip content={content} side={side} suppressAfterPopup={suppressAfterPopup} className={TOOLTIP_ANCHOR_CLASS}>
+			{button}
+		</Tooltip>
 	);
 }

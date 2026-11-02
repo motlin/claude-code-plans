@@ -37,11 +37,12 @@ describe("approval card chrome", () => {
 				"@max-[420px]:[&>div]:items-stretch",
 				"@max-[420px]:[&_[data-cds=SplitDropdownButton]]:w-full",
 				"@max-[420px]:[&_[data-cds=SplitDropdownButton]>[data-cds-segment]:first-child_button]:flex-auto",
+				"@max-[420px]:[&_[data-cds=SplitDropdownButton]>[data-cds-segment]:first-child>div>:first-child]:flex-auto",
 			],
 		});
 	});
 
-	it("uses upstream's filled secondary and black primary variants with 11px keycaps and a focus shadow", () => {
+	it("uses upstream's filled, inset-ringed secondary and black primary variants with 11px keycaps and a focus shadow", () => {
 		const chrome = permissionChrome();
 		const classes = (value: string | null) => new Set(value?.split(/\s+/));
 		const missing = (value: string | null, expected: string[]) =>
@@ -61,6 +62,11 @@ describe("approval card chrome", () => {
 				"px-2",
 				"bg-fill-secondary",
 				"shadow-field-drop",
+				"after:pointer-events-none",
+				"after:absolute",
+				"after:inset-0",
+				"after:rounded-[inherit]",
+				"after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)]",
 				"text-primary",
 				"hover:bg-fill-secondary-hover",
 				"focus-visible:shadow-focus",
