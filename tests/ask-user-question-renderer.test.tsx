@@ -175,7 +175,7 @@ describe("AskUserQuestionRenderer", () => {
 
 		const cards = [...container.querySelectorAll(".card-ring")];
 		const card = cards[0]!;
-		const paragraphs = [...card.querySelectorAll("p")].map((p) => ({
+		const paragraphs = [...card.querySelectorAll("[data-answered-question] > div")].map((p) => ({
 			className: p.className,
 			text: p.textContent,
 		}));
@@ -196,7 +196,8 @@ describe("AskUserQuestionRenderer", () => {
 					text: "Which test runner?",
 				},
 				{
-					className: "text-body text-secondary [overflow-wrap:anywhere] [unicode-bidi:plaintext]",
+					className:
+						"max-h-[250px] overflow-y-auto whitespace-pre-wrap text-body text-secondary [overflow-wrap:anywhere] [unicode-bidi:plaintext]",
 					text: "Vitest",
 				},
 			],
@@ -263,7 +264,7 @@ describe("AskUserQuestionRenderer", () => {
 			className: card.className,
 			pairs: [...card.children].map((pair) => ({
 				className: pair.className,
-				lines: [...pair.querySelectorAll("p")].map((p) => p.textContent),
+				lines: [...pair.children].map((line) => line.textContent),
 			})),
 		}));
 
@@ -313,7 +314,7 @@ describe("AskUserQuestionRenderer", () => {
 				<AskUserQuestionRenderer toolCall={makeCall({input: TWO_QUESTIONS, result, resultMeta})} />,
 			);
 			return [...container.querySelectorAll("[data-answered-question]")].map((row) =>
-				[...row.querySelectorAll("p")].map((p) => p.textContent),
+				[...row.children].map((line) => line.textContent),
 			);
 		}
 

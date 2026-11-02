@@ -270,7 +270,7 @@ describe("QuestionCard", () => {
 				focus: ["focus-visible:outline-hidden", "hide-focus-ring", "focus-visible:shadow-focus"],
 				label: "text-body text-primary [unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]",
 				description:
-					"text-body text-secondary [unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]",
+					"whitespace-pre-wrap text-body text-secondary [unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]",
 				pager: ["size-5", "rounded-r5"],
 				caret: ["size-4"],
 			});
@@ -842,7 +842,7 @@ describe("QuestionCard", () => {
 		expect(onSubmit.mock.calls[0]?.[0]).toStrictEqual([null, {selected: [0]}]);
 	});
 
-	it("keeps backticks literal in the header question and links its URLs as upstream's TextLink, but keeps option labels plain", () => {
+	it("keeps backticks literal in the header question and links its URLs as upstream's TextLink, keeps option labels plain, and links option descriptions", () => {
 		render(
 			<QuestionCard
 				questions={[
@@ -885,7 +885,7 @@ describe("QuestionCard", () => {
 				},
 			],
 			headerCode: 0,
-			links: ["https://example.com/guide"],
+			links: ["https://example.com/guide", "https://example.com/d"],
 		});
 	});
 

@@ -864,9 +864,11 @@ describe("SessionChat sequential tool batches", () => {
 		]);
 
 		expect(
-			[...container.querySelectorAll('[data-tool-row] > [role="button"], [data-tool-row] > button, p')].map(
-				(element) => element.textContent,
-			),
+			[
+				...container.querySelectorAll(
+					'[data-tool-row] > [role="button"], [data-tool-row] > button, [data-answered-question] > div',
+				),
+			].map((element) => element.textContent),
 		).toStrictEqual(["Prepared example files", "Continue with the example?", "Continue", "Ran 2 commands"]);
 	});
 

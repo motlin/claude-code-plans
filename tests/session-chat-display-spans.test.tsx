@@ -844,7 +844,9 @@ describe("assistant display-span actions", () => {
 		fireEvent.click(button(footers(view.container)[0]!, "Fork from here"));
 		expect({
 			content: Array.from(
-				view.container.querySelectorAll('[data-tool-row] > [role="button"], [data-tool-row] > button, p'),
+				view.container.querySelectorAll(
+					'[data-tool-row] > [role="button"], [data-tool-row] > button, [data-answered-question] > div, p',
+				),
 				(element) => element.textContent,
 			),
 			anchors: footers(view.container).map(anchor),

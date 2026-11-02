@@ -1,5 +1,13 @@
 import {Check, ChevronLeft, ChevronRight} from "lucide-react";
-import {type MouseEvent, type RefObject, useEffect, useRef, useState} from "react";
+import {
+	type KeyboardEvent as ReactKeyboardEvent,
+	type MouseEvent,
+	type RefObject,
+	useEffect,
+	useId,
+	useRef,
+	useState,
+} from "react";
 import {flushSync} from "react-dom";
 
 import {acknowledgeApproval} from "../lib/answered-approvals";
@@ -83,6 +91,61 @@ function Mark({checked, multi}: {checked: boolean; multi: boolean}) {
 	);
 }
 
+/** Upstream's `data-question-answer`: every option button and the Other button, the arrow keys' stops. */
+const ANSWER_ATTR = "data-question-answer";
+
+/** Upstream's `data-question-answer-row`: an option whose description links, drawn as a row around its button. */
+const ANSWER_ROW_ATTR = "data-question-answer-row";
+
+const OPTION_FOCUS = "focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus";
+
+const OPTION_CLASS = "epitaxy-answer-option flex w-full items-start gap-3 px-3 py-3 text-start";
+
+const OPTION_TEXT_CLASS =
+	"[unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]";
+
+/** Upstream's `lt`: a description with a URL is linkified, and its option becomes a row. */
+const HAS_URL = /https?:\/\//;
+
+/**
+ * Upstream's `st()` on the card root (gated `__gb__725942835`, on upstream):
+ * ArrowDown / ArrowUp move focus one stop through the enabled answers, clamped
+ * at both ends; from the root they go to the first / last answer (a repeat is
+ * swallowed without moving). A link inside an answer row moves from its row.
+ * Modified keys and IME composition pass through; the selection never changes.
+ */
+function roveAnswers(event: ReactKeyboardEvent<HTMLDivElement>) {
+	const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
+	if (step === 0 || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return;
+	// oxlint-disable-next-line typescript/no-deprecated -- Safari reports IME keydowns only as keyCode 229, as upstream checks
+	if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+	const stops = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(`[${ANSWER_ATTR}]:not(:disabled)`));
+	const onRoot = event.target === event.currentTarget;
+	const target = event.target instanceof Element ? event.target : null;
+	const from = target?.matches("a")
+		? target.closest(`[${ANSWER_ROW_ATTR}]`)?.querySelector(`[${ANSWER_ATTR}]`)
+		: target;
+	const at = stops.findIndex((stop) => stop === from);
+	if (stops.length === 0 || (!onRoot && at === -1)) return;
+	event.preventDefault();
+	if (!onRoot) {
+		stops[at + step]?.focus({focusVisible: true});
+		return;
+	}
+	if (!event.repeat) stops.at(step === 1 ? 0 : -1)?.focus({focusVisible: true});
+}
+
+/** Upstream's `dt()`: the click landed in the row and not on a link or another button inside it. */
+function clickPicksRow(event: MouseEvent<HTMLElement>): boolean {
+	const target = event.target instanceof Element ? event.target : null;
+	const control = target?.closest("a, button");
+	return (
+		target !== null &&
+		event.currentTarget.contains(target) &&
+		(control === null || control === undefined || control.hasAttribute(ANSWER_ATTR))
+	);
+}
+
 /** Upstream's onMouseDown preventDefault: clicking a card button never moves focus. */
 function keepFocus(event: MouseEvent) {
 	event.preventDefault();
@@ -152,6 +215,92 @@ function useMarkSeen(cardRootRef: RefObject<HTMLDivElement | null>, draftKey: st
 			observer.disconnect();
 		};
 	}, [cardRootRef, draftKey]);
+}
+
+/**
+ * One option of upstream's card (`R`): its mark, then the label over a pre-wrap
+ * description. A description with a URL is linkified, and the option becomes a
+ * `data-question-answer-row` around an inset button labelled by its text, so a
+ * link click opens the link instead of picking the option.
+ */
+function AnswerOption({
+	label,
+	description,
+	checked,
+	multi,
+	disabled,
+	onPick,
+}: {
+	label: string;
+	description: string;
+	checked: boolean;
+	multi: boolean;
+	disabled: boolean;
+	onPick: () => void;
+}) {
+	const textId = useId();
+	const pressStartedOnControl = useRef(false);
+	const linked = HAS_URL.test(description);
+	const text = (
+		<div id={textId} className="relative flex min-w-0 flex-1 flex-col gap-1.5 select-text">
+			<span className={`text-body text-primary ${OPTION_TEXT_CLASS}`}>{label}</span>
+			{description !== "" && (
+				<span className={`whitespace-pre-wrap text-body text-secondary ${OPTION_TEXT_CLASS}`}>
+					{linked ? <UserInlineText text={description} codeSpans={false} /> : description}
+				</span>
+			)}
+		</div>
+	);
+	const content = (
+		<>
+			<Mark checked={checked} multi={multi} />
+			{text}
+		</>
+	);
+	if (!linked) {
+		return (
+			<button
+				type="button"
+				{...{[ANSWER_ATTR]: ""}}
+				aria-pressed={checked}
+				disabled={disabled}
+				onClick={(event) => {
+					if (selectionInside(event)) return;
+					onPick();
+				}}
+				className={`${OPTION_CLASS} cursor-pointer ${OPTION_FOCUS} disabled:cursor-default`}
+			>
+				{content}
+			</button>
+		);
+	}
+	return (
+		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- upstream's row: the inset button takes the keys, the row takes clicks on its text
+		<div
+			role="presentation"
+			{...{[ANSWER_ROW_ATTR]: ""}}
+			onMouseDown={(event) => {
+				pressStartedOnControl.current = !clickPicksRow(event);
+			}}
+			onClick={(event) => {
+				const fromControl = event.detail !== 0 && pressStartedOnControl.current;
+				pressStartedOnControl.current = false;
+				if (disabled || fromControl || !clickPicksRow(event) || selectionInside(event)) return;
+				onPick();
+			}}
+			className={`relative ${disabled ? "cursor-default" : "cursor-pointer"} ${OPTION_CLASS}`}
+		>
+			<button
+				type="button"
+				{...{[ANSWER_ATTR]: ""}}
+				aria-pressed={checked}
+				aria-labelledby={textId}
+				disabled={disabled}
+				className={`absolute inset-0 rounded-[inherit] ${OPTION_FOCUS}`}
+			/>
+			{content}
+		</div>
+	);
 }
 
 /**
@@ -353,6 +502,7 @@ export function QuestionCard({
 			onClick={(event) => {
 				event.stopPropagation();
 			}}
+			onKeyDown={roveAnswers}
 			{...(skipEnter ? {"data-skip-approval-enter": ""} : {})}
 			className={`card-ring @container relative isolate flex max-w-[480px] flex-col overflow-clip rounded-r7 outline-none${
 				skipEnter ? "" : " animate-approval-inline-enter motion-reduce:animate-none"
@@ -400,37 +550,23 @@ export function QuestionCard({
 			</div>
 			<span className="contents" data-approval-allow="">
 				<div className="flex flex-col divide-y divide-[var(--card-outline)]">
-					{question.options.map((option, optionIndex) => {
-						const checked = draft.selected.includes(optionIndex);
-						return (
-							<button
-								key={`${optionIndex}-${option.label}`}
-								type="button"
-								aria-pressed={checked}
-								disabled={!editable}
-								onClick={(event) => {
-									if (selectionInside(event)) return;
-									update(pickOption(question, draft, optionIndex));
-								}}
-								className="epitaxy-answer-option flex w-full cursor-pointer items-start gap-3 px-3 py-3 text-start focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus disabled:cursor-default"
-							>
-								<Mark checked={checked} multi={multi} />
-								<div className="flex min-w-0 flex-1 flex-col gap-1.5 select-text">
-									<span className="text-body text-primary [unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]">
-										{option.label}
-									</span>
-									{option.description !== undefined && option.description !== "" && (
-										<span className="text-body text-secondary [unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]">
-											{option.description}
-										</span>
-									)}
-								</div>
-							</button>
-						);
-					})}
+					{question.options.map((option, optionIndex) => (
+						<AnswerOption
+							key={`${optionIndex}-${option.label}`}
+							label={option.label}
+							description={option.description ?? ""}
+							checked={draft.selected.includes(optionIndex)}
+							multi={multi}
+							disabled={!editable}
+							onPick={() => {
+								update(pickOption(question, draft, optionIndex));
+							}}
+						/>
+					))}
 					<div className="epitaxy-answer-option relative grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-2 px-3 py-3">
 						<button
 							type="button"
+							{...{[ANSWER_ATTR]: ""}}
 							aria-label="Other"
 							aria-pressed={draft.otherChosen}
 							disabled={!editable}
@@ -460,12 +596,23 @@ export function QuestionCard({
 								onChange={(event) => {
 									update(typeOther(question, draft, event.target.value));
 								}}
+								onKeyDown={(event) => {
+									// Upstream's ct(): Escape hands focus back to the card, keeping the text.
+									if (event.key !== "Escape" || event.nativeEvent.isComposing) return;
+									event.preventDefault();
+									cardRootRef.current?.focus({preventScroll: true});
+								}}
 								className="relative z-[1] col-start-2 row-start-2 min-h-[calc(1lh+0.75rem)] max-h-[calc(4lh+0.75rem)] w-full resize-none rounded-r5 bg-fill-field px-2 py-1.5 font-sans text-[13px]/[19px] text-primary outline-none [field-sizing:content] placeholder:text-ink-muted shadow-field-ring transition duration-150 hover:shadow-field-hover focus-visible:shadow-focus disabled:opacity-50"
 							/>
 						)}
 					</div>
 				</div>
 			</span>
+			{multi && (
+				<span role="status" data-find-omitted="" className="sr-only select-none">
+					{draft.selected.length + (draft.otherChosen ? 1 : 0)} selected
+				</span>
+			)}
 			{error !== null && <p className="px-3 pt-2 text-footnote text-danger-ink">{error}</p>}
 			{onSubmit === undefined && <ReadOnlyAnswerHint className="px-3 pt-2 text-footnote text-secondary" />}
 			<div

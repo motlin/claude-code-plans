@@ -20,22 +20,24 @@ function notesAddInformation(notes: string | null, answerValue: string): notes i
 
 /**
  * One row of upstream's question receipt: the question in primary w500 over the
- * chosen answer (or the Other text, or the unanswered outcome's word) in secondary.
- * Unchosen options are omitted.
+ * chosen answer (or the Other text, or the unanswered outcome's word) in secondary,
+ * its newlines kept and capped at 250px with its own scroll. Unchosen options are omitted.
  */
 function AnsweredQuestion({question, answer, notes}: QuestionReceiptRow) {
 	const trimmed = answer.trim();
 	return (
 		<div data-answered-question className="flex flex-col gap-0.5 px-3 py-2">
-			<p className="text-body font-medium text-primary break-words [unicode-bidi:plaintext]">{question}</p>
+			<div className="text-body font-medium text-primary break-words [unicode-bidi:plaintext]">{question}</div>
 			{trimmed !== "" && (
-				<p className="text-body text-secondary [overflow-wrap:anywhere] [unicode-bidi:plaintext]">{trimmed}</p>
+				<div className="max-h-[250px] overflow-y-auto whitespace-pre-wrap text-body text-secondary [overflow-wrap:anywhere] [unicode-bidi:plaintext]">
+					{trimmed}
+				</div>
 			)}
 			{notesAddInformation(notes, trimmed) && (
-				<p className="text-footnote text-secondary italic whitespace-pre-wrap">
+				<div className="text-footnote text-secondary italic whitespace-pre-wrap">
 					<span className="text-primary">Notes: </span>
 					{notes}
-				</p>
+				</div>
 			)}
 		</div>
 	);
