@@ -95,4 +95,18 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () => 
 			dark: {"--upstream-warning": "#e49c06"},
 		});
 	});
+
+	it("--menu-shadow's dark ring is upstream's fizzy --cds-border, #ffffff0a, under fizzy-lake color", () => {
+		const names = ["--menu-shadow"] as const;
+		expect({baseDark: tokens(block(".dark"), names), dark: tokens(block(FIZZY_DARK), names)}).toStrictEqual({
+			baseDark: {
+				"--menu-shadow":
+					"inset 0 0 0 1px hsl(0 0% 100% / 0.1), 0 8px 24px rgba(0, 0, 0, 0.32), 0 2px 6px rgba(0, 0, 0, 0.2)",
+			},
+			dark: {
+				"--menu-shadow":
+					"inset 0 0 0 1px #ffffff0a, 0 8px 24px rgba(0, 0, 0, 0.32), 0 2px 6px rgba(0, 0, 0, 0.2)",
+			},
+		});
+	});
 });
