@@ -26,7 +26,7 @@ export type PlanDialog = z.infer<typeof PlanDialogSchema>;
 export const PLAN_ACCEPT_LABEL: Record<PlanAcceptMode, string> = {
 	default: "Accept",
 	acceptEdits: "Accept and allow edits",
-	auto: "Accept and auto mode",
+	auto: "Accept and use auto mode",
 	bypassPermissions: "Accept and bypass permissions",
 };
 

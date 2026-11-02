@@ -241,7 +241,7 @@ describe("QuestionCard option descriptions, as upstream's R", () => {
 				onSubmit={async () => {}}
 			/>,
 		);
-		const link = document.querySelector("[data-question-answer-row] a") as HTMLAnchorElement;
+		const link = document.querySelector<HTMLAnchorElement>("[data-question-answer-row] a")!;
 		link.focus();
 		const result = fireEvent.keyDown(link, {key: "ArrowDown"});
 

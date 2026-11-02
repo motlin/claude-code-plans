@@ -5,6 +5,9 @@ import {
 	exitPlanModeState,
 	parseAllowedPrompts,
 	planBlockSegments,
+	planHeadingMeta,
+	planSubtitleLine,
+	planText,
 } from "../src/lib/exit-plan-mode";
 
 describe("parseAllowedPrompts", () => {
@@ -151,5 +154,52 @@ describe("planBlockSegments", () => {
 
 	it("returns plain text as one segment", () => {
 		expect(planBlockSegments("# Plan\n\n- step")).toStrictEqual([{code: false, text: "# Plan\n\n- step"}]);
+	});
+});
+
+describe("planSubtitleLine", () => {
+	it("is the plan's first non-empty line, trimmed, with a leading heading mark and Bidi controls stripped", () => {
+		expect({
+			heading: planSubtitleLine("\n# Plan: X\n\nbody"),
+			plain: planSubtitleLine("  \n  Water the plant  \nthen rest"),
+			deep: planSubtitleLine("###### Deep"),
+			bidi: planSubtitleLine("# ‮Plan‬"),
+			empty: planSubtitleLine(" \n "),
+		}).toStrictEqual({heading: "Plan: X", plain: "Water the plant", deep: "Deep", bidi: "Plan", empty: ""});
+	});
+});
+
+describe("planHeadingMeta", () => {
+	it("is the first Markdown heading before any code fence, with links, emphasis and code marks dropped", () => {
+		expect({
+			heading: planHeadingMeta("# Plan: Make a Cup of Tea\n\n1. Boil water"),
+			later: planHeadingMeta("Intro\n\n## Water a *pretend* plant ##\n"),
+			marks: planHeadingMeta("# Run `just test` for [the app](https://example.com) _now_"),
+			snake: planHeadingMeta("# Edit snake_case_name"),
+			fenced: planHeadingMeta("Intro\n```\n# not a heading\n```\n# After"),
+			tilde: planHeadingMeta("~~~\n# no\n~~~"),
+			none: planHeadingMeta("Just text"),
+			missing: planHeadingMeta(undefined),
+		}).toStrictEqual({
+			heading: "Plan: Make a Cup of Tea",
+			later: "Water a pretend plant",
+			marks: "Run just test for the app now",
+			snake: "Edit snake_case_name",
+			fenced: undefined,
+			tilde: undefined,
+			none: undefined,
+			missing: undefined,
+		});
+	});
+});
+
+describe("planText", () => {
+	it("is the plan string when it has any non-space text, else undefined (upstream's planless ExitPlanMode)", () => {
+		expect([planText({plan: "# P"}), planText({plan: "  \n"}), planText({}), planText({plan: 3})]).toStrictEqual([
+			"# P",
+			undefined,
+			undefined,
+			undefined,
+		]);
 	});
 });

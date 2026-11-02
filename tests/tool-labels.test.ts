@@ -83,9 +83,28 @@ describe("toolLabel", () => {
 			taskCreate: {verb: "Added task"},
 			taskStop: {verb: "Stopped task"},
 			enterPlanMode: {verb: "Started planning"},
-			exitPlanMode: {verb: "Proposed plan"},
+			exitPlanMode: {verb: "Proposed plan", meta: "Plan"},
 			toolSearch: {verb: "Loaded tools"},
 			subagentHandback: {verb: "Reported back"},
+		});
+	});
+
+	it("labels ExitPlanMode with its plan's first heading, and a planless approved call 'Finished planning'", () => {
+		const approved = "User has approved exiting plan mode. You can now proceed.";
+		expect({
+			heading: toolLabel(call("ExitPlanMode", {plan: "# Plan: Make a Cup of Tea\n\n1. Boil"})),
+			noHeading: toolLabel(call("ExitPlanMode", {plan: "Boil water"})),
+			planlessApproved: toolLabel({name: "ExitPlanMode", input: {}, result: approved}),
+			planlessPending: toolLabel(call("ExitPlanMode", {})),
+			planlessRejected: toolLabel({name: "ExitPlanMode", input: {}, result: "rejected", isError: true}),
+			running: runningToolLabel(call("ExitPlanMode", {plan: "# Water"})),
+		}).toStrictEqual({
+			heading: {verb: "Proposed plan", meta: "Plan: Make a Cup of Tea"},
+			noHeading: {verb: "Proposed plan"},
+			planlessApproved: {verb: "Finished planning"},
+			planlessPending: {verb: "Proposed plan"},
+			planlessRejected: {verb: "Proposed plan"},
+			running: {verb: "Proposing plan", meta: "Water"},
 		});
 	});
 

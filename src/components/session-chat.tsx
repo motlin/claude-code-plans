@@ -22,6 +22,8 @@ import {contextRefreshReasonLabel, contextRefreshSubjectLabels} from "../lib/sch
 import {useAskUserQuestionContext} from "./ask-user-question-context";
 import {orphansOpenQuestions} from "../lib/question-answer-route";
 import {isWithdrawnQuestion, OUTCOME_LABEL, questionOutcomeNote, type AskedCall} from "../lib/ask-user-question";
+import {PLAN_NOT_APPROVED} from "../lib/exit-plan-mode";
+import {parseToolRejection} from "../lib/tool-rejection";
 import {parseAttachSnippets, type AttachSnippet} from "../lib/attach-markers";
 import {ApiErrorCard, ApiErrorMarker, type ApiErrorRecovery} from "./api-error-card";
 import {ErrorCardShell} from "./error-card-shell";
@@ -5565,6 +5567,29 @@ function fromNestedControl(event: React.KeyboardEvent): boolean {
 	return event.target !== event.currentTarget;
 }
 
+/** The words a user typed when they sent an ExitPlanMode back with Revise, or null. */
+function planRejectionFeedback(call: ClientToolCall): string | null {
+	if (call.name !== "ExitPlanMode" || call.result === undefined) return null;
+	return parseToolRejection(call.result.trim())?.feedback ?? null;
+}
+
+/**
+ * Upstream shows a plan's Revise feedback as the user's own message after the
+ * plan row; the CLI records it only inside the ExitPlanMode tool_result, so
+ * it is drawn here from that text.
+ */
+function PlanFeedbackBubble({text}: {text: string}) {
+	return (
+		<UserTurn text={text}>
+			<div data-plan-feedback="" className="flex flex-col items-end max-w-[85%] min-w-0">
+				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
+					<p className="whitespace-pre-wrap">{text}</p>
+				</div>
+			</div>
+		</UserTurn>
+	);
+}
+
 /**
  * A tool call alone in its row. A Workflow call that is starting (no launch
  * result yet) or whose run is still running draws upstream's workflow card
@@ -5577,7 +5602,15 @@ function LoneToolCall({call, sessionId, leading}: {call: ClientToolCall; session
 	const isWorkflow = call.name === "Workflow" && call.isError !== true && permissionWaitId !== call.id;
 	const preLaunch = isWorkflow && run === undefined && isPendingToolCall(call);
 	if (!preLaunch && !(isWorkflow && run?.status === "running")) {
-		return <ToolCallRow call={call} sessionId={sessionId} leading={leading} />;
+		const feedback = planRejectionFeedback(call);
+		const row = <ToolCallRow call={call} sessionId={sessionId} leading={leading} />;
+		if (feedback === null) return row;
+		return (
+			<>
+				{row}
+				<PlanFeedbackBubble text={feedback} />
+			</>
+		);
 	}
 	const name = workflowCallName(call.input) ?? run?.workflowName ?? run?.description ?? "";
 	const onOpen =
@@ -5669,20 +5702,22 @@ function ToolCallRow({
 	// Upstream keeps a failed or stopped row's success-shaped label in muted ink and
 	// appends a status: a danger "Failed", a secondary "Stopped" when the user
 	// rejected or interrupted the call, or a secondary "Denied" when they rejected
-	// it with a reply.
+	// it with a reply. Upstream's `mD` notes a rejected or interrupted ExitPlanMode "Not approved" instead.
 	// A background launch takes the status its later notification reports.
 	const backgroundOutcomes = useContext(BackgroundOutcomeContext);
 	const backgroundOutcome = backgroundOutcomes.byLaunch.get(call.id);
 	const status =
 		call.isError === true
-			? call.stopped === true
-				? // Upstream notes an orphaned open question "Not answered" in place of "Stopped".
-					call.orphaned === true
-					? OUTCOME_LABEL.dismissed
-					: "Stopped"
-				: call.denied === true
-					? "Denied"
-					: "Failed"
+			? call.name === "ExitPlanMode" && (call.stopped === true || call.denied === true)
+				? PLAN_NOT_APPROVED
+				: call.stopped === true
+					? // Upstream notes an orphaned open question "Not answered" in place of "Stopped".
+						call.orphaned === true
+						? OUTCOME_LABEL.dismissed
+						: "Stopped"
+					: call.denied === true
+						? "Denied"
+						: "Failed"
 			: call.name === "AskUserQuestion"
 				? // A completed question nobody answered notes why, as upstream does.
 					(questionOutcomeNote(call) ?? null)

@@ -154,7 +154,6 @@ import {pendingQuestionQueryOptions} from "../lib/api/pending-question";
 import {pendingPlanQueryOptions} from "../lib/api/pending-plan";
 import {pendingElicitationsQueryOptions} from "../lib/api/pending-elicitations";
 import {
-	DeferredDockedPlanApproval,
 	DeferredInlinePlanApproval,
 	DeferredPermissionCard,
 	DeferredSendRejectedCard,
@@ -162,6 +161,7 @@ import {
 } from "./session-prompt-cards-entry";
 import {useSendRejectionActions} from "./use-send-rejection-actions";
 import {dockedHookPlan, inlinePlanToolUseId} from "../lib/docked-plan";
+import {planText} from "../lib/exit-plan-mode";
 import {
 	findElicitationWaitingNotice,
 	findPendingElicitationPermission,
@@ -586,6 +586,11 @@ function SessionView({
 	const waitingPlanId = inlinePlanToolUseId(sessionSummaryState, pendingCall);
 	const inlinePlanAnswered = useApprovalAnswered(sessionId, waitingPlanId);
 	const inlinePlanId = inlinePlanAnswered ? null : waitingPlanId;
+	const inlinePlanCard = useMemo(() => {
+		if (inlinePlanId !== null) return {toolUseId: inlinePlanId, planText: planText(pendingCall?.input ?? {})};
+		if (dockedPlan === null) return null;
+		return {toolUseId: dockedPlan.toolUseId, planText: dockedPlan.plan};
+	}, [inlinePlanId, pendingCall, dockedPlan]);
 	const inFlightRow =
 		workingMarkerState.status === "working" &&
 		pendingCall !== null &&
@@ -1386,14 +1391,6 @@ function SessionView({
 														card={urlElicitationCard}
 													/>
 												)}
-												{/* Upstream docks a pending plan's approval above the composer; the hooks carry it before the JSONL does */}
-												{dockedPlan !== null && (
-													<DeferredDockedPlanApproval
-														key={dockedPlan.toolUseId}
-														pendingPlan={dockedPlan}
-														plan={planApprovalCtx}
-													/>
-												)}
 												{/* Upstream docks a rejected send's session-error card above the composer */}
 												{liveHerdrPrompt.state.rejection !== null && (
 													<DeferredSendRejectedCard
@@ -1597,11 +1594,13 @@ function SessionView({
 									</SessionBackgroundTasksOpener>
 								</div>
 							)}
-							{/* Upstream draws a pending plan's approval as its own sticky card after the transcript */}
-							{inlinePlanId !== null && (
+							{/* Upstream draws a pending plan's approval as its own sticky card after the transcript, whether
+							    the record is on disk or only the hooks carry it yet */}
+							{inlinePlanCard !== null && (
 								<DeferredInlinePlanApproval
-									key={inlinePlanId}
-									toolUseId={inlinePlanId}
+									key={inlinePlanCard.toolUseId}
+									toolUseId={inlinePlanCard.toolUseId}
+									planText={inlinePlanCard.planText}
 									plan={planApprovalCtx}
 								/>
 							)}

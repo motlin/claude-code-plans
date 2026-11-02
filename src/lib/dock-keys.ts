@@ -38,3 +38,9 @@ export function onScreen(card: HTMLElement): boolean {
 	const rect = card.getBoundingClientRect();
 	return rect.bottom >= 0 && rect.top <= window.innerHeight;
 }
+
+/** Upstream's `VS`: the card is hidden (`checkVisibility()` false) or wholly outside the viewport. */
+export function elementOffscreen(card: HTMLElement): boolean {
+	if (typeof card.checkVisibility === "function" && !card.checkVisibility()) return true;
+	return !onScreen(card);
+}

@@ -8,6 +8,7 @@ import {
 	gitPrActionLabels,
 	remoteTriggerActionLabels,
 } from "./schema-choices";
+import {planHeadingMeta, planText} from "./exit-plan-mode";
 import {isRecord} from "./narrow";
 import {pastTense, startsWithKnownVerb} from "./past-tense";
 import {AskUserQuestionResultSchema, ExitWorktreeActionSchema, RemoteTriggerActionSchema} from "./tool-input-schemas";
@@ -42,6 +43,9 @@ export interface ToolLabelCall {
 	recipientDescription?: string | null | undefined;
 	/** The call is the one the session's tool permission prompt waits on. */
 	awaitingPermission?: true | undefined;
+	/** The call's result text, once it has one. */
+	result?: string | undefined;
+	isError?: boolean | undefined;
 }
 
 /**
@@ -179,7 +183,6 @@ const FIXED_LABELS: Record<string, {verb: string}> = {
 	TaskCreate: {verb: "Added task"},
 	TaskStop: {verb: "Stopped task"},
 	EnterPlanMode: {verb: "Started planning"},
-	ExitPlanMode: {verb: "Proposed plan"},
 	// Upstream's generic map: tool_search reads "Loaded tools", with no parameter.
 	ToolSearch: {verb: "Loaded tools"},
 	ReportFindings: {
@@ -576,6 +579,14 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
 			return withMeta({verb: "Ran workflow"}, workflowCallName(input) ?? null);
 		case "SendMessage":
 			return sendMessageLabel(call);
+		case "ExitPlanMode": {
+			// Upstream reads a planless call that completed cleanly as "Finished planning".
+			const finished = planText(input) === undefined && call.result !== undefined && call.isError !== true;
+			return withMeta(
+				{verb: finished ? "Finished planning" : "Proposed plan"},
+				planHeadingMeta(planText(input)) ?? null,
+			);
+		}
 		case "AskUserQuestion": {
 			const meta = askedMeta(input);
 			// Upstream draws "Asked <header>" as one text run, not a verb and a param.

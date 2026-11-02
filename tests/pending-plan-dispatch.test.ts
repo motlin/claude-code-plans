@@ -166,6 +166,21 @@ describe("pending ExitPlanMode from hooks", () => {
 		});
 	});
 
+	it.each([
+		{name: "an empty plan", input: {plan: ""}},
+		{name: "no plan at all", input: {}},
+	])(
+		"stores a planless ExitPlanMode ($name) as an empty plan, for upstream's leave-plan-mode card",
+		async ({input}) => {
+			const broadcasts = await dispatchAll([{...PRE_TOOL_USE, tool_input: input}]);
+
+			expect({count: broadcasts.length, pending: getPendingPlan("session-alice")}).toStrictEqual({
+				count: 1,
+				pending: {toolUseId: "toolu_plan_alice", plan: ""},
+			});
+		},
+	);
+
 	it("ignores a subagent's plan, which the root session does not wait on", async () => {
 		const broadcasts = await dispatchAll([{...PRE_TOOL_USE, agent_id: "agent-bob", agent_type: "Plan"}]);
 

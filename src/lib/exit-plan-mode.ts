@@ -114,3 +114,48 @@ export function planBlockSegments(plan: string): PlanBlockSegment[] {
 	if (last < text.length) segments.push({code: false, text: text.slice(last)});
 	return segments;
 }
+
+/** Upstream's `zc`: an ExitPlanMode input's plan when it has any non-space text, else undefined (a planless call). */
+export function planText(input: Record<string, unknown>): string | undefined {
+	const plan = input["plan"];
+	return typeof plan === "string" && plan.trim() !== "" ? plan : undefined;
+}
+
+/** Upstream's planless card title and subtitle (`Rc.noPlan`, "PwT7Jm"). */
+export const PLAN_LEAVE_TITLE = "Claude wants to leave plan mode";
+export const PLAN_NOTHING_TO_REVIEW = "Claude hasn’t written a plan, so there’s nothing to review.";
+
+/** Upstream's card subtitle (`Kc`, then `so`): the plan's first non-empty line, its heading mark and Bidi controls dropped. */
+export function planSubtitleLine(plan: string): string {
+	const line = plan.split("\n").find((candidate) => candidate.trim() !== "") ?? "";
+	return line
+		.trim()
+		.replace(/^#{1,6}\s+/u, "")
+		.replace(BIDI_CONTROL_RE, "");
+}
+
+const FENCE_RE = /^[ \t]*(?:`{3,}|~{3,})/m;
+const HEADING_RE = /^#{1,6}[ \t]+(.+)$/m;
+
+/**
+ * Upstream's transcript row meta for ExitPlanMode (`jc`, `Mc`): the first
+ * Markdown heading before any code fence, its closing `#`s trimmed, links
+ * reduced to their text and `*`, `` ` `` and `_` emphasis dropped.
+ */
+export function planHeadingMeta(plan: string | undefined): string | undefined {
+	const head = plan?.split(FENCE_RE, 1)[0] ?? "";
+	const match = HEADING_RE.exec(head);
+	if (match?.[1] === undefined) return undefined;
+	const text = match[1].slice(0, 2000).trimEnd();
+	const unclosed = text.replace(/#+$/, "");
+	// A closing run of `#`s goes only when a space sets it off ("Plan ##"), so "C#" keeps its mark.
+	const meta = (unclosed === unclosed.trimEnd() ? text : unclosed)
+		.replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+		.replace(/[*`]/g, "")
+		.replace(/(^|[^\p{L}\p{N}_])_+|_+(?![\p{L}\p{N}_])/gu, "$1")
+		.trim();
+	return meta === "" ? undefined : meta;
+}
+
+/** Upstream's row outcome for a rejected or interrupted ExitPlanMode (`mD`). */
+export const PLAN_NOT_APPROVED = "Not approved";

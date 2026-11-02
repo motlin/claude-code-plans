@@ -1299,6 +1299,57 @@ describe("SessionChat failed tool row label", () => {
 		});
 	});
 
+	it('notes a rejected or interrupted ExitPlanMode "Not approved" after its plan heading, as upstream\'s mD does', () => {
+		const rejection =
+			"The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). To tell you how to proceed, the user said:\nmake it shorter";
+		const plan = {name: "ExitPlanMode", input: {plan: "# Plan: Water a pretend plant\n\n1. Pour"}};
+		const texts = (records: unknown[]) => rowHeaderChildren(records).map((child) => child.text);
+
+		expect({
+			denied: texts(
+				toolResultRecords(plan, rejection, true, {
+					toolDenialKind: "user-rejected",
+					toolUseResult: `Error: ${rejection}`,
+				}),
+			),
+			stopped: texts(
+				toolResultRecords(plan, rejection, true, {
+					toolDenialKind: "user-rejected",
+					toolUseResult: "User rejected tool use",
+				}),
+			),
+		}).toStrictEqual({
+			denied: ["Proposed plan", "Plan: Water a pretend plant", "Not approved", ""],
+			stopped: ["Proposed plan", "Plan: Water a pretend plant", "Not approved", ""],
+		});
+	});
+
+	it("shows a Revise feedback after the ExitPlanMode row as a user message bubble, as upstream does", () => {
+		const rejection =
+			"The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). To tell you how to proceed, the user said:\nmake it shorter";
+		const plan = {name: "ExitPlanMode", input: {plan: "# Plan: Water a pretend plant"}};
+		const bubbles = (result: string) =>
+			[
+				...renderTranscriptElement(
+					toolResultRecords(plan, result, true, {
+						toolDenialKind: "user-rejected",
+						toolUseResult: `Error: ${result}`,
+					}),
+				).querySelectorAll("[data-plan-feedback]"),
+			].map((bubble) => [
+				bubble.querySelector(".user-message-bubble p")?.className,
+				bubble.querySelector(".user-message-bubble p")?.textContent,
+			]);
+
+		expect({
+			feedback: bubbles(rejection),
+			bare: bubbles("The user doesn't want to proceed with this tool use. The tool use was rejected."),
+		}).toStrictEqual({
+			feedback: [["whitespace-pre-wrap", "make it shorter"]],
+			bare: [],
+		});
+	});
+
 	it('marks a call whose result reports {success: false} "Failed" without is_error, as upstream does', () => {
 		const sendMessage = {name: "SendMessage", input: {to: "slotter", message: "hi"}};
 		const unreachable = "No agent named 'slotter' is reachable.";
@@ -1927,7 +1978,10 @@ describe("SessionChat tool row verbs", () => {
 			],
 			todoWrite: [[SECONDARY, "Updated todos"]],
 			enterPlanMode: [[SECONDARY, "Started planning"]],
-			exitPlanMode: [[SECONDARY, "Proposed plan"]],
+			exitPlanMode: [
+				[SECONDARY, "Proposed plan"],
+				[SECONDARY_PARAM, "Plan"],
+			],
 			cronCreate: [
 				[SECONDARY, "Started loop"],
 				[SECONDARY_PARAM, "Review the weekly metrics"],

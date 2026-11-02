@@ -35,6 +35,7 @@ import {installLocalStorage} from "./fake-storage";
 import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
 import {preloadSideChatPanel} from "../src/components/side-chat-panel-module";
 import {loadSessionPromptCards} from "../src/components/session-prompt-cards-entry";
+import {findWaitingCard} from "../src/lib/question-landing";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.
 beforeAll(async () => {
@@ -718,6 +719,39 @@ describe("SessionPage dock composition", () => {
 			});
 		});
 
+		it("draws a hook-only plan inline in the transcript's trailing slot, as upstream's card presentation, not docked", async () => {
+			vi.stubGlobal(
+				"fetch",
+				vi.fn<typeof fetch>(async (input) =>
+					String(input).startsWith("/api/herdr/plan")
+						? Response.json({dialog: {forwardMode: "auto", manual: true}})
+						: new Promise<Response>(() => {}),
+				),
+			);
+			await renderSessionPage({...detail, pr}, [], (queryClient) => {
+				seedUsage(queryClient);
+				queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [herdrPane], writesEnabled: true});
+				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+					pages: [{sessions: [{id: SESSION_ID, state: "waiting"}], nextCursor: null}],
+					pageParams: [null],
+				} as never);
+				queryClient.setQueryData(pendingPlanQueryOptions(SESSION_ID).queryKey, {
+					pendingPlan: {toolUseId: "toolu_plan", plan: "# Plan: ship it"},
+				});
+			});
+			await screen.findByRole("button", {name: /^Accept and use auto mode/});
+
+			expect({
+				inline: document.querySelectorAll("[data-inline-plan] [data-approval-presentation=card]").length,
+				docked: document.querySelectorAll("[data-docked-plan]").length,
+				inComposerDock:
+					document
+						.querySelector('[data-focus-region="composer"]')
+						?.parentElement?.querySelector("[data-inline-plan]") ?? null,
+				waitingCard: findWaitingCard(document)?.closest("[data-inline-plan]") !== null,
+			}).toStrictEqual({inline: 1, docked: 0, inComposerDock: null, waitingCard: true});
+		});
+
 		it("drops an answered hook plan's card while the hook still reports it and the session still waits", async () => {
 			const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
 				if (String(input).startsWith("/api/herdr/plan")) {
@@ -739,13 +773,13 @@ describe("SessionPage dock composition", () => {
 					pendingPlan: {toolUseId: "toolu_plan", plan: "# Plan: ship it"},
 				});
 			});
-			const accept = await screen.findByRole("button", {name: /^Accept and auto mode/});
-			const before = document.querySelectorAll("[data-docked-plan], [data-inline-plan]").length;
+			const accept = await screen.findByRole("button", {name: /^Accept and use auto mode/});
+			const before = document.querySelectorAll("[data-inline-plan]").length;
 			await act(async () => {
 				fireEvent.click(accept);
 				return Promise.resolve();
 			});
-			const after = document.querySelectorAll("[data-docked-plan], [data-inline-plan]").length;
+			const after = document.querySelectorAll("[data-inline-plan]").length;
 			clearApprovalAnswered(SESSION_ID, "toolu_plan");
 
 			expect({

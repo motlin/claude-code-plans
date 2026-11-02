@@ -150,7 +150,7 @@ describe("standalone calls end a tool run", () => {
 		const expected = [
 			human,
 			tool(["Editedfabricated-plan.md+1−11 added, 1 removed"]),
-			tool(["Proposed planStopped"]),
+			tool(["Proposed planFabricated planNot approved"]),
 		];
 		expect(observed).toStrictEqual({normal: expected, verbose: expected});
 		expect(JSON.stringify(observed).toLowerCase()).not.toContain("proposed a plan");
@@ -167,7 +167,7 @@ describe("standalone calls end a tool run", () => {
 			}),
 			...call(exitPlan("plan", REJECTED)),
 		];
-		const expected = [human, tool(["Loaded tools"]), tool(["Proposed planStopped"])];
+		const expected = [human, tool(["Loaded tools"]), tool(["Proposed planFabricated planNot approved"])];
 		expect(bothModes(records)).toStrictEqual({normal: expected, verbose: expected});
 	});
 
@@ -187,7 +187,11 @@ describe("standalone calls end a tool run", () => {
 
 	it("never joins two standalones", () => {
 		const records = [prompt, ...call(exitPlan("first", REJECTED)), ...call(exitPlan("second", REJECTED))];
-		const expected = [human, tool(["Proposed planStopped"]), tool(["Proposed planStopped"])];
+		const expected = [
+			human,
+			tool(["Proposed planFabricated planNot approved"]),
+			tool(["Proposed planFabricated planNot approved"]),
+		];
 		expect(bothModes(records)).toStrictEqual({normal: expected, verbose: expected});
 	});
 
@@ -256,7 +260,7 @@ describe("standalone calls end a tool run", () => {
 		const expected = [
 			human,
 			tool(["Editedfabricated-plan.md+1−11 added, 1 removed"]),
-			tool(["Proposing planProposing planrunning"]),
+			tool(["Proposing planProposing planFabricated planFabricated planrunning"]),
 		];
 		expect(bothModes(records)).toStrictEqual({normal: expected, verbose: expected});
 	});
@@ -287,7 +291,7 @@ describe("notices next to a standalone", () => {
 		expect(rows(records)).toStrictEqual([
 			human,
 			tool(["Ran a command, finished a background command"]),
-			tool(["Proposed planStopped"]),
+			tool(["Proposed planFabricated planNot approved"]),
 		]);
 	});
 
@@ -301,8 +305,8 @@ describe("notices next to a standalone", () => {
 		];
 		expect(rows(records)).toStrictEqual([
 			human,
-			tool(["Proposed planStopped"]),
-			tool(["Proposed planStopped"]),
+			tool(["Proposed planFabricated planNot approved"]),
+			tool(["Proposed planFabricated planNot approved"]),
 			tool(["Ran a command, finished a background command"]),
 		]);
 	});
@@ -317,14 +321,14 @@ describe("notices next to a standalone", () => {
 		expect(rows(records)).toStrictEqual([
 			human,
 			tool(["Ran a command, finished a background command"]),
-			tool(["Proposed planStopped"]),
-			tool(["Proposed planStopped"]),
+			tool(["Proposed planFabricated planNot approved"]),
+			tool(["Proposed planFabricated planNot approved"]),
 		]);
 	});
 
 	it("keeps a task notification as its own row when the span has no default run", () => {
 		const records = [prompt, taskNotice, ...call(exitPlan("plan", REJECTED))];
-		expect(rows(records)).toStrictEqual([human, tool([]), tool(["Proposed planStopped"])]);
+		expect(rows(records)).toStrictEqual([human, tool([]), tool(["Proposed planFabricated planNot approved"])]);
 	});
 });
 

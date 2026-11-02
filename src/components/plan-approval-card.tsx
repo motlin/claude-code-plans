@@ -1,5 +1,5 @@
 import {MessageCircle, X} from "lucide-react";
-import {useCallback, useEffect, useRef, useState} from "react";
+import {type RefObject, useCallback, useEffect, useRef, useState} from "react";
 
 import {
 	acknowledgeApproval,
@@ -8,7 +8,7 @@ import {
 	useApprovalAnswered,
 } from "../lib/answered-approvals";
 import {holdAnswered, releaseAnswered} from "../lib/answered-sessions";
-import {APPROVAL_ARM_GRACE_MS, dockKeyAllowed} from "../lib/dock-keys";
+import {APPROVAL_ARM_GRACE_MS, dockKeyAllowed, elementOffscreen} from "../lib/dock-keys";
 import {
 	PLAN_ACCEPT_LABEL,
 	PLAN_BACK_LABEL,
@@ -111,20 +111,63 @@ function PlanCommentList({sessionId}: {sessionId: string}) {
 
 type DialogState = {kind: "loading"} | {kind: "ready"; dialog: PlanDialog} | {kind: "unavailable"};
 
+/** Upstream's approval presentation: the inline transcript "card", or the composer "dock". */
+export type PlanApprovalPlacement = "card" | "dock";
+
+/**
+ * Upstream's chord arming (`He`/`er`): the 400ms grace starts at mount, and
+ * again whenever an inline card scrolls into view or the window regains focus.
+ */
+function useApprovalArming(
+	rootRef: RefObject<HTMLElement | null>,
+	placement: PlanApprovalPlacement,
+): RefObject<number | null> {
+	const armedAt = useRef<number | null>(null);
+	useEffect(() => {
+		const arm = () => {
+			armedAt.current = performance.now();
+		};
+		arm();
+		const onVisibility = () => {
+			if (document.visibilityState === "visible") arm();
+		};
+		window.addEventListener("focus", arm);
+		document.addEventListener("visibilitychange", onVisibility);
+		const root = rootRef.current;
+		const observer =
+			placement === "card" && root !== null && typeof IntersectionObserver !== "undefined"
+				? new IntersectionObserver((entries) => {
+						if (entries.some((entry) => entry.isIntersecting)) arm();
+					})
+				: null;
+		if (observer !== null && root !== null) observer.observe(root);
+		return () => {
+			window.removeEventListener("focus", arm);
+			document.removeEventListener("visibilitychange", onVisibility);
+			observer?.disconnect();
+		};
+	}, [rootRef, placement]);
+	return armedAt;
+}
+
 function PlanApprovalActions({
 	sessionId,
 	toolUseId,
 	dialog,
 	decide,
+	placement,
 }: {
 	sessionId: string;
 	toolUseId: string;
 	dialog: PlanDialog;
 	decide: (decision: PlanDecision) => Promise<void>;
+	placement: PlanApprovalPlacement;
 }) {
-	// A card whose answer was refused while it was unmounted comes back as it was sent.
+	// A card whose answer was refused, or whose Revise draft was left, while it was unmounted comes back as it was.
 	const [restored] = useState(() => getUnsentPlan(sessionId, toolUseId));
 	const [revising, setRevising] = useState(restored?.revising ?? false);
+	// Upstream refocuses a restored box only after a failed send; a draft left behind waits for the user.
+	const [focusOnOpen, setFocusOnOpen] = useState(restored?.error !== null);
 	const hasComments = usePlanComments(sessionId).length > 0;
 	// Upstream: any comment holds the card in Revise by itself, without taking focus.
 	const showRevise = revising || hasComments;
@@ -132,8 +175,26 @@ function PlanApprovalActions({
 	const answered = useApprovalAnswered(sessionId, toolUseId);
 	const [error, setError] = useState<string | null>(restored?.error ?? null);
 	const feedback = useRef(restored?.feedback ?? "");
-	const mountedAt = useRef<number | null>(null);
+	const rootRef = useRef<HTMLDivElement>(null);
+	const armedAt = useApprovalArming(rootRef, placement);
+	const sending = useRef(false);
+	const reviseShown = useRef(showRevise);
+	reviseShown.current = showRevise;
 	const primary = planPrimaryAccept(dialog);
+	const docked = placement === "dock";
+
+	// Upstream's `unsentFeedback`: a Revise draft outlives the card, so a remount brings it back.
+	useEffect(
+		() => () => {
+			if (sending.current) return;
+			if (reviseShown.current && feedback.current.trim() !== "") {
+				setUnsentPlan(sessionId, toolUseId, {revising: true, feedback: feedback.current, error: null});
+			} else {
+				clearUnsentPlan(sessionId, toolUseId);
+			}
+		},
+		[sessionId, toolUseId],
+	);
 
 	/** Any decision takes the session's comments; a refused answer puts them back. */
 	const send = useCallback(
@@ -144,6 +205,7 @@ function PlanApprovalActions({
 			setError(null);
 			const comments = clearPlanComments(sessionId);
 			const sentFeedback = feedback.current;
+			sending.current = true;
 			markApprovalAnswered(sessionId, toolUseId);
 			holdAnswered(sessionId, toolUseId);
 			try {
@@ -152,6 +214,7 @@ function PlanApprovalActions({
 				acknowledgeApproval(sessionId, toolUseId, "ExitPlanMode");
 			} catch (err) {
 				const message = err instanceof Error ? err.message : "Failed to answer the plan";
+				sending.current = false;
 				// Saved before the mark clears, so a card the session page dropped remounts with it.
 				setUnsentPlan(sessionId, toolUseId, {revising: sentRevising, feedback: sentFeedback, error: message});
 				releaseAnswered(sessionId);
@@ -168,8 +231,9 @@ function PlanApprovalActions({
 		setRevising(false);
 	}, []);
 
-	useEffect(() => {
-		mountedAt.current = performance.now();
+	const openRevise = useCallback(() => {
+		setFocusOnOpen(true);
+		setRevising(true);
 	}, []);
 
 	useEffect(() => {
@@ -178,19 +242,23 @@ function PlanApprovalActions({
 			if (event.defaultPrevented) return;
 			const action = planKeyAction(event, dialog);
 			if (action === null || !planKeyAllowed(event.target, action)) return;
-			// Upstream withholds an accept chord that lands within 400ms of the card arriving.
-			const armedAt = mountedAt.current ?? performance.now();
-			if (action.kind === "accept" && performance.now() - armedAt < APPROVAL_ARM_GRACE_MS) return;
+			// Upstream's inline card yields its keys while it is scrolled away (`VS`).
+			const root = rootRef.current;
+			const card = root?.closest<HTMLElement>("[data-approval-card-root]") ?? root;
+			if (placement === "card" && card !== null && elementOffscreen(card)) return;
+			// Upstream withholds an accept chord that lands within 400ms of the card arriving or re-arming.
+			const armed = armedAt.current ?? performance.now();
+			if (action.kind === "accept" && performance.now() - armed < APPROVAL_ARM_GRACE_MS) return;
 			event.preventDefault();
 			event.stopPropagation();
-			if (action.kind === "revise") setRevising(true);
+			if (action.kind === "revise") openRevise();
 			else void send(action, false);
 		}
 		window.addEventListener("keydown", onKeyDown, true);
 		return () => {
 			window.removeEventListener("keydown", onKeyDown, true);
 		};
-	}, [showRevise, answered, dialog, send]);
+	}, [showRevise, answered, dialog, send, placement, armedAt, openRevise]);
 
 	const reviseWithFeedback = () => {
 		// Keep the box (and its text) up while the comments are taken, in case the answer is refused.
@@ -201,13 +269,13 @@ function PlanApprovalActions({
 	if (answered) return null;
 
 	return (
-		<div data-plan-approval className="flex flex-col gap-2 pt-1">
+		<div ref={rootRef} data-plan-approval className="flex flex-col gap-2 pt-1">
 			{hasComments && <PlanCommentList sessionId={sessionId} />}
 			{showRevise && (
 				<textarea
 					// Opened by the user's own click or Esc, taking focus is expected; opened by comments, it waits.
 					// oxlint-disable-next-line jsx-a11y/no-autofocus
-					autoFocus={revising}
+					autoFocus={revising && focusOnOpen}
 					rows={3}
 					defaultValue={feedback.current}
 					aria-label={PLAN_FEEDBACK_LABEL}
@@ -253,35 +321,36 @@ function PlanApprovalActions({
 							>
 								{PLAN_REJECT_LABEL}
 							</ApprovalActionButton>
-							<ApprovalActionButton
-								variant="secondary"
-								onClick={() => {
-									setRevising(true);
-								}}
-							>
+							<ApprovalActionButton variant="secondary" onClick={openRevise}>
 								{PLAN_REVISE_OPEN_LABEL}
-								<Shortcut keys="esc" className="pointer-coarse:hidden" />
+								{/* Upstream shows the Revise… and manual Accept keycaps only in the dock. */}
+								{docked && <Shortcut keys="esc" className="pointer-coarse:hidden" />}
 							</ApprovalActionButton>
 						</span>
 						<span className="flex flex-wrap justify-end gap-2">
-							{primary !== null && primary !== "default" && dialog.manual && (
-								<ApprovalActionButton
-									variant="secondary"
-									onClick={() => void send({kind: "accept", mode: "default"}, false)}
-								>
-									{PLAN_ACCEPT_LABEL.default}
-									<Shortcut keys="cmd+shift+enter" className="pointer-coarse:hidden" />
-								</ApprovalActionButton>
-							)}
-							{primary !== null && (
-								<ApprovalActionButton
-									variant="primary"
-									onClick={() => void send({kind: "accept", mode: primary}, false)}
-								>
-									{PLAN_ACCEPT_LABEL[primary]}
-									<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
-								</ApprovalActionButton>
-							)}
+							{/* Upstream's arming group around the accepts (`data-approval-allow`). */}
+							<span className="contents" data-approval-allow="">
+								{primary !== null && primary !== "default" && dialog.manual && (
+									<ApprovalActionButton
+										variant="secondary"
+										onClick={() => void send({kind: "accept", mode: "default"}, false)}
+									>
+										{PLAN_ACCEPT_LABEL.default}
+										{docked && (
+											<Shortcut keys="cmd+shift+enter" className="pointer-coarse:hidden" />
+										)}
+									</ApprovalActionButton>
+								)}
+								{primary !== null && (
+									<ApprovalActionButton
+										variant="primary"
+										onClick={() => void send({kind: "accept", mode: primary}, false)}
+									>
+										{PLAN_ACCEPT_LABEL[primary]}
+										<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
+									</ApprovalActionButton>
+								)}
+							</span>
 						</span>
 					</>
 				)}
@@ -300,15 +369,15 @@ function PlanApprovalActions({
  * reopens it), only where side panes exist (never on a phone, where upstream
  * passes no `onOpenPlan`) and only while the tab is visible.
  */
-function useAutoOpenPlanPane(): void {
+function useAutoOpenPlanPane(enabled: boolean): void {
 	const host = useOptionalPaneHost();
 	const phone = usePhoneSheet();
 	const opened = useRef(false);
 	useEffect(() => {
-		if (opened.current || host === null || phone || document.visibilityState !== "visible") return;
+		if (!enabled || opened.current || host === null || phone || document.visibilityState !== "visible") return;
 		opened.current = true;
 		host.openPane("plan");
-	}, [host, phone]);
+	}, [enabled, host, phone]);
 }
 
 /**
@@ -318,9 +387,20 @@ function useAutoOpenPlanPane(): void {
  * plan dialog in the session's live pane, offering only what that dialog has
  * on screen; with no writable pane, or no dialog showing, it is read-only.
  */
-export function PlanApprovalCard({toolUseId, plan}: {toolUseId: string; plan: PlanApprovalContextValue}) {
+export function PlanApprovalCard({
+	toolUseId,
+	plan,
+	placement = "dock",
+	autoOpenPlan = true,
+}: {
+	toolUseId: string;
+	plan: PlanApprovalContextValue;
+	placement?: PlanApprovalPlacement;
+	/** False for a planless ExitPlanMode, which has no plan to open. */
+	autoOpenPlan?: boolean;
+}) {
 	const {sessionId, answerRoute, loadDialog, decide} = plan;
-	useAutoOpenPlanPane();
+	useAutoOpenPlanPane(autoOpenPlan);
 	const live = answerRoute === "live-pane";
 	const [state, setState] = useState<DialogState>({kind: "loading"});
 
@@ -343,5 +423,13 @@ export function PlanApprovalCard({toolUseId, plan}: {toolUseId: string; plan: Pl
 
 	if (!live || state.kind === "unavailable") return <ReadOnlyAnswerHint className={HINT_CLASS} />;
 	if (state.kind === "loading") return null;
-	return <PlanApprovalActions sessionId={sessionId} toolUseId={toolUseId} dialog={state.dialog} decide={decide} />;
+	return (
+		<PlanApprovalActions
+			sessionId={sessionId}
+			toolUseId={toolUseId}
+			dialog={state.dialog}
+			decide={decide}
+			placement={placement}
+		/>
+	);
 }

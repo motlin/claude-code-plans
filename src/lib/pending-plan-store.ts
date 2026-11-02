@@ -15,11 +15,14 @@ export function persistPendingPlansTo(file: string): void {
 	store.persistTo(file);
 }
 
-/** Trim a hook's ExitPlanMode input to the fields the dock shows, or null when it proposes nothing. */
+/**
+ * Trim a hook's ExitPlanMode input to the fields the card shows, or null when it is not an ExitPlanMode input.
+ * A call with no plan keeps an empty one: upstream still asks to leave plan mode.
+ */
 export function pendingPlanFromToolInput(toolUseId: string, toolInput: unknown): PendingPlan | null {
 	const input = toolInputSchemas.ExitPlanMode.safeParse(toolInput);
-	if (!input.success || input.data.plan === undefined || input.data.plan === "") return null;
-	const pending: PendingPlan = {toolUseId, plan: input.data.plan};
+	if (!input.success) return null;
+	const pending: PendingPlan = {toolUseId, plan: input.data.plan ?? ""};
 	if (input.data.planFilePath !== undefined) pending.planFilePath = input.data.planFilePath;
 	return pending;
 }

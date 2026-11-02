@@ -143,6 +143,7 @@ export function ApprovalCardShell({
 	footer,
 	presentation = "dock",
 	enter = false,
+	compact = false,
 	onKeyDown,
 }: {
 	rootRef?: Ref<HTMLDivElement>;
@@ -165,18 +166,27 @@ export function ApprovalCardShell({
 	presentation?: "card" | "dock";
 	/** Upstream's 160ms enter fade for a live arrival; false marks the card `data-skip-approval-enter`. */
 	enter?: boolean;
+	/**
+	 * Upstream's plan card (`Gc`): inline it keeps 12px gaps and the plain 60vh cap under its title band, and an
+	 * empty body takes no room (`epitaxy-approval-body … empty:hidden`).
+	 */
+	compact?: boolean;
 	/** Runs before the root's own keys; a handler that calls preventDefault keeps that key from them. */
 	onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
 }) {
 	// Inline, upstream's card is at most 480px wide with 24px gaps; the dock keeps its 12px rhythm.
 	const look =
 		presentation === "card"
-			? "card-ring w-full max-w-[480px] gap-[24px]"
+			? `card-ring w-full max-w-[480px] ${compact ? "gap-3" : "gap-[24px]"}`
 			: "bg-surface-popover shadow-[var(--approval-card-shadow)] gap-3";
-	const bodyGap = presentation === "card" ? "gap-[24px]" : "gap-2.5";
+	const bodyGap = presentation === "card" ? (compact ? "gap-3 empty:hidden" : "gap-[24px]") : "gap-2.5";
 	const band = presentation === "card" && title !== undefined;
 	// The banded card is upstream's in-flow tool card: no top padding, clipped to its radius, and a taller floor.
-	const frame = band ? "max-h-[max(60vh,calc(16rem*var(--cds-rem-scale,1)))] !pt-0 overflow-clip" : "max-h-[60vh]";
+	const frame = band
+		? compact
+			? "max-h-[60vh] !pt-0 overflow-clip"
+			: "max-h-[max(60vh,calc(16rem*var(--cds-rem-scale,1)))] !pt-0 overflow-clip"
+		: "max-h-[60vh]";
 	return (
 		<div className="@container/approval-dock [--approval-dock-floor:144px] @max-[500px]/approval-dock:[--approval-dock-floor:208px]">
 			{/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-element-interactions -- upstream's focusable card root: arrows roam its action buttons, Enter focuses the primary, and clicks stop short of the transcript */}

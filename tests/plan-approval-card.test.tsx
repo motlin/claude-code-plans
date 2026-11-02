@@ -66,12 +66,12 @@ describe("PlanApprovalCard", () => {
 			"Reject",
 			"Revise…Esc",
 			"AcceptCtrlShift⏎Enter",
-			"Accept and auto modeCtrl⏎Enter",
+			"Accept and use auto modeCtrl⏎Enter",
 		]);
 	});
 
 	it.each([
-		{name: "Accept and auto modeCtrl⏎Enter", decision: {kind: "accept", mode: "auto"}},
+		{name: "Accept and use auto modeCtrl⏎Enter", decision: {kind: "accept", mode: "auto"}},
 		{name: "AcceptCtrlShift⏎Enter", decision: {kind: "accept", mode: "default"}},
 		{name: "Reject", decision: {kind: "reject", feedback: ""}},
 	])("sends $decision.kind for '$name'", async ({name, decision}) => {
@@ -203,7 +203,7 @@ describe("PlanApprovalCard", () => {
 		const {value} = context({decide: async () => new Promise<void>(() => {})});
 		const view = await renderCard(value);
 		act(() => {
-			fireEvent.click(button("Accept and auto modeCtrl⏎Enter"));
+			fireEvent.click(button("Accept and use auto modeCtrl⏎Enter"));
 		});
 		expect({
 			answered: isApprovalAnswered(SESSION, "toolu_plan_1"),
@@ -352,7 +352,7 @@ describe("PlanApprovalCard with plan comments", () => {
 		await renderCard(value);
 		for (const del of screen.getAllByRole("button", {name: "Delete comment"})) fireEvent.click(del);
 		expect({buttons: buttonNames(), store: getPlanComments(SESSION)}).toStrictEqual({
-			buttons: ["Reject", "Revise…Esc", "AcceptCtrlShift⏎Enter", "Accept and auto modeCtrl⏎Enter"],
+			buttons: ["Reject", "Revise…Esc", "AcceptCtrlShift⏎Enter", "Accept and use auto modeCtrl⏎Enter"],
 			store: [],
 		});
 	});
@@ -507,6 +507,146 @@ describe("PlanApprovalCard keys", () => {
 	});
 });
 
+describe("PlanApprovalCard in the inline card placement", () => {
+	beforeEach(() => {
+		vi.useFakeTimers({toFake: ["performance"]});
+	});
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	async function renderInline(value: PlanApprovalContextValue) {
+		const view = render(<PlanApprovalCard toolUseId="toolu_plan_1" plan={value} placement="card" />);
+		await act(async () => Promise.resolve());
+		return view;
+	}
+
+	function rect(top: number): DOMRect {
+		return {top, bottom: top + 100, left: 0, right: 400, width: 400, height: 100, x: 0, y: top, toJSON: () => ({})};
+	}
+
+	it("drops the Revise… and Accept keycaps the dock shows, and groups both accepts in upstream's allow span", async () => {
+		const {value} = context();
+		const view = await renderInline(value);
+		const allow = view.container.querySelector("[data-approval-allow]");
+		expect({
+			buttons: buttonNames(),
+			allowClass: allow?.className,
+			allowButtons: [...(allow?.querySelectorAll("button") ?? [])].map((b) => b.textContent),
+		}).toStrictEqual({
+			buttons: ["Reject", "Revise…", "Accept", "Accept and use auto modeCtrl⏎Enter"],
+			allowClass: "contents",
+			allowButtons: ["Accept", "Accept and use auto modeCtrl⏎Enter"],
+		});
+	});
+
+	it("ignores ⌘⏎ and Esc while the card is scrolled offscreen", async () => {
+		const {value, decide} = context();
+		const view = await renderInline(value);
+		const root = view.container.querySelector<HTMLElement>("[data-plan-approval]");
+		if (root === null) throw new Error("No card");
+		vi.spyOn(root, "getBoundingClientRect").mockReturnValue(rect(window.innerHeight + 50));
+		vi.advanceTimersByTime(500);
+		await act(async () => {
+			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+			fireEvent.keyDown(document.body, {key: "Escape"});
+			return Promise.resolve();
+		});
+		expect({calls: decide.mock.calls, revising: screen.queryByRole("textbox")}).toStrictEqual({
+			calls: [],
+			revising: null,
+		});
+	});
+
+	it("re-arms upstream's 400ms grace when the card scrolls back into view", async () => {
+		let observed: IntersectionObserverCallback | null = null;
+		vi.stubGlobal(
+			"IntersectionObserver",
+			class {
+				constructor(callback: IntersectionObserverCallback) {
+					observed = callback;
+				}
+				observe() {}
+				disconnect() {}
+				unobserve() {}
+			},
+		);
+		const {value, decide} = context();
+		await renderInline(value);
+		vi.advanceTimersByTime(1000);
+		act(() => {
+			observed?.([{isIntersecting: false} as IntersectionObserverEntry], {} as IntersectionObserver);
+			observed?.([{isIntersecting: true} as IntersectionObserverEntry], {} as IntersectionObserver);
+		});
+		vi.advanceTimersByTime(100);
+		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		const callsInGrace = [...decide.mock.calls];
+		vi.advanceTimersByTime(400);
+		await act(async () => {
+			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+			return Promise.resolve();
+		});
+		expect({callsInGrace, calls: decide.mock.calls}).toStrictEqual({
+			callsInGrace: [],
+			calls: [[{kind: "accept", mode: "auto"}]],
+		});
+	});
+
+	it("re-arms the grace when the window regains focus", async () => {
+		const {value, decide} = context();
+		await renderInline(value);
+		vi.advanceTimersByTime(1000);
+		act(() => {
+			window.dispatchEvent(new Event("focus"));
+		});
+		vi.advanceTimersByTime(100);
+		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		expect(decide.mock.calls).toStrictEqual([]);
+	});
+});
+
+describe("PlanApprovalCard keeps a Revise draft across remounts", () => {
+	it("brings the typed feedback back, unfocused, when the same plan's card mounts again", async () => {
+		const {value} = context();
+		const first = await renderCard(value);
+		fireEvent.click(button("Revise…Esc"));
+		fireEvent.change(screen.getByRole("textbox", {name: "Plan feedback"}), {target: {value: "make it iced"}});
+		first.unmount();
+		await renderCard(value);
+		const box = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Plan feedback"});
+		expect({value: box.value, focused: document.activeElement === box, buttons: buttonNames()}).toStrictEqual({
+			value: "make it iced",
+			focused: false,
+			buttons: ["Back", "Revise"],
+		});
+	});
+
+	it("brings nothing back once the plan was answered", async () => {
+		const {value} = context();
+		const first = await renderCard(value);
+		fireEvent.click(button("Revise…Esc"));
+		const box = screen.getByRole("textbox", {name: "Plan feedback"});
+		fireEvent.change(box, {target: {value: "make it iced"}});
+		await act(async () => {
+			fireEvent.keyDown(box, {key: "Enter"});
+			return Promise.resolve();
+		});
+		first.unmount();
+		clearApprovalAnswered(SESSION, "toolu_plan_1");
+		await renderCard(value);
+		expect(screen.queryByRole("textbox")).toStrictEqual(null);
+	});
+
+	it("forgets an empty Revise box", async () => {
+		const {value} = context();
+		const first = await renderCard(value);
+		fireEvent.click(button("Revise…Esc"));
+		first.unmount();
+		await renderCard(value);
+		expect(screen.queryByRole("textbox")).toStrictEqual(null);
+	});
+});
+
 describe("PlanApprovalCard auto-opens the Plan pane", () => {
 	function paneHost(openPane: PaneHostApi["openPane"]): PaneHostApi {
 		return {
@@ -565,7 +705,7 @@ describe("PlanApprovalCard auto-opens the Plan pane", () => {
 			"Reject",
 			"Revise…Esc",
 			"AcceptCtrlShift⏎Enter",
-			"Accept and auto modeCtrl⏎Enter",
+			"Accept and use auto modeCtrl⏎Enter",
 		]);
 	});
 
