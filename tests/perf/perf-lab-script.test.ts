@@ -188,7 +188,7 @@ describe("ratchet mode", () => {
 			J3: {layoutShift: 0},
 			J4: {layoutShift: 0},
 			J5: {layoutCount: 0, layoutShift: 0},
-			J6: {layoutCount: 0},
+			J6: {layoutCount: 0.1},
 		});
 	});
 

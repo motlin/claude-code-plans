@@ -684,7 +684,8 @@ export type StableLabMetrics = Partial<Record<JourneyId, Partial<Record<MetricKe
  * the ceiling tolerance it needs. Only these are ratcheted; style-recalc counts, durations and the other journeys'
  * layout and request counts moved between runs and stay diagnostic. J2 requests and layout shift drifted while each run
  * appended to the session J2 opens and J4 appends to; since the lab resets that session before each run, J2 read 645
- * requests and 0.021 CLS and J4 read 0.0001 CLS in every run of two batches.
+ * requests and 0.021 CLS and J4 read 0.0001 CLS in every run of two batches. J6 layout count drifted to medians of 39..43
+ * once the reset worked again (2026-11-02), so it takes a 10% tolerance.
  */
 export const RATCHETED_LAB_METRICS: StableLabMetrics = {
 	J1: {requests: 0.02, layoutShift: 0},
@@ -692,7 +693,7 @@ export const RATCHETED_LAB_METRICS: StableLabMetrics = {
 	J3: {layoutShift: 0},
 	J4: {layoutShift: 0},
 	J5: {layoutCount: 0, layoutShift: 0},
-	J6: {layoutCount: 0},
+	J6: {layoutCount: 0.1},
 };
 
 /** The median over `runs` of each stable metric, keyed `browser.<journey>.<metric>`, for the journeys that ran. */
