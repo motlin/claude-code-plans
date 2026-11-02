@@ -155,6 +155,7 @@ function ToastItem({
 	return (
 		<div
 			data-toast
+			data-cds="Toast"
 			data-kind={kind}
 			data-behind={behind ? "" : undefined}
 			style={{

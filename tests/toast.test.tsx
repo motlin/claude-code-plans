@@ -58,6 +58,13 @@ describe("ToastProvider", () => {
 		expect({before, after: stops()}).toStrictEqual({before: 0, after: 1});
 	});
 
+	it("marks each toast data-cds=Toast so an F6 landing ring survives focus moving into it", () => {
+		renderWithToast({message: "Link copied to clipboard.", kind: "success"});
+
+		const toasts = Array.from(screen.getByRole("status").querySelectorAll("[data-toast]"));
+		expect(toasts.map((el) => el.getAttribute("data-cds"))).toStrictEqual(["Toast"]);
+	});
+
 	it("renders a success toast in the polite live region", () => {
 		renderWithToast({message: "Link copied to clipboard.", kind: "success"});
 

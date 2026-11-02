@@ -297,6 +297,26 @@ describe("F6 landing ring", () => {
 		});
 	});
 
+	it("keeps the landing ring when focus moves into a toast, as upstream exempts [data-cds=Toast]", () => {
+		render(
+			<>
+				<Harness />
+				<div data-cds="Toast">
+					<button type="button">Toast action</button>
+				</div>
+			</>,
+		);
+		const main = screen.getByRole("main", {name: "Main"});
+
+		pressF6();
+		pressF6();
+		act(() => {
+			screen.getByRole("button", {name: "Toast action"}).focus();
+		});
+
+		expect(main.getAttribute("data-focus-region-landing")).toBe("overlay");
+	});
+
 	it("clears when focus moves elsewhere, but not into an unrelated dialog", () => {
 		render(
 			<>

@@ -173,9 +173,31 @@ describe("upstream base focus ring", () => {
 
 	it("colours the base ring with upstream --accent-100 in light and dark", () => {
 		expect([...css.matchAll(/--focus-outline-color:\s*([^;]+);/g)].map((m) => m[1])).toStrictEqual([
-			"hsl(213.117 67.5439% 44.7059%)",
-			"hsl(212.466 75.2577% 61.9608%)",
+			"hsl(212.824 70.8333% 47.0588%)",
+			"hsl(211.154 81.25% 62.3529%)",
 		]);
+	});
+
+	it("rests links, buttons and fields on a transparent accent outline so the ring fades in at constant width and offset", () => {
+		const base = css.slice(css.indexOf("@layer base {"));
+		const declarations = (body: string | undefined) =>
+			body
+				?.split(";")
+				.map((d) => d.trim())
+				.filter(Boolean);
+		const resting = base.match(/\n\t\.can-focus,\s*a,\s*button,\s*input,\s*textarea\s*\{([^}]*)\}/)?.[1];
+		const noneSelector =
+			/\.can-focus:not\(:where\(input, textarea, :focus-visible\)\),\s*a:not\(:where\(:focus-visible\)\),\s*button:not\(:where\(:focus-visible\)\)\s*\{([^}]*)\}/g;
+		const forced = base.match(/@media \(forced-colors: active\)\s*\{([\s\S]*?)\n\t\}/)?.[1] ?? "";
+		expect({
+			resting: declarations(resting),
+			none: [...base.matchAll(noneSelector)].map((m) => declarations(m[1])),
+			forced: [...forced.matchAll(noneSelector)].length,
+		}).toStrictEqual({
+			resting: ["outline: 2px solid hsl(from var(--focus-outline-color) h s l / 0%)", "outline-offset: 2px"],
+			none: [["outline-style: none"], ["outline-style: none"]],
+			forced: 1,
+		});
 	});
 
 	it("draws ring-focus as upstream's shadow-focus box-shadow", () => {
@@ -200,12 +222,12 @@ describe("upstream focus shadow tokens", () => {
 			utility: values("--shadow-focus-danger"),
 		}).toStrictEqual({
 			focus: [
-				"inset 0 0 0 1px #fcfcfb, 0 0 0 1px #257de0, 0 0 6px 1px #cde2fb",
+				"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #257de0, 0 0 6px 1px #cde2fb",
 				"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #257de0, 0 0 6px 1px rgb(23 87 172 / 0.6)",
 			],
 			danger: [
-				"inset 0 0 0 1px #fcfcfb, 0 0 0 1px #d03b3b, 0 0 6px 1px #fad6d6",
-				"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #d03b3b, 0 0 6px 1px rgb(142 38 38 / 0.6)",
+				"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #dc3c3d, 0 0 6px 1px #fad6d6",
+				"inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #dc3c3d, 0 0 6px 1px rgb(142 38 38 / 0.6)",
 			],
 			utility: ["var(--focus-shadow-danger)"],
 		});

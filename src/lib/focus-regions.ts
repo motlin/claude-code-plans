@@ -111,7 +111,8 @@ function landFocus(target: HTMLElement, {ring = true, ringOn = target, clearOnIn
 	};
 	const onFocusMoved = (next: EventTarget | null) => {
 		if (next === target) return;
-		const dialog = next instanceof Element ? next.closest('[role="dialog"], [role="alertdialog"]') : null;
+		const dialog =
+			next instanceof Element ? next.closest('[role="dialog"], [role="alertdialog"], [data-cds="Toast"]') : null;
 		if (dialog !== null && !dialog.contains(ringOn) && !ringOn.contains(dialog)) return;
 		clear();
 	};
