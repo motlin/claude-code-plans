@@ -1,8 +1,10 @@
-import {readFileSync} from "node:fs";
-import {join} from "node:path";
-import {describe, expect, it} from "vite-plus/test";
+import {appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync} from "node:fs";
+import {tmpdir} from "node:os";
+import {basename, join} from "node:path";
+import {afterEach, describe, expect, it} from "vite-plus/test";
 import {
 	type CdpMetricsPayload,
+	isSeededIndex,
 	type JourneySample,
 	labRatchetValues,
 	layoutShiftSum,
@@ -14,6 +16,11 @@ import {
 	ratchetLab,
 	summarize,
 } from "../../scripts/perf-lab";
+import {openTestDb, type AppDb} from "../../src/lib/db/connection";
+import {indexJsonlFile} from "../../src/lib/db/indexer";
+import {getSessionsByIds} from "../../src/lib/db/queries";
+import {toSessionSummaryPayload} from "../../src/lib/session-summary";
+import {generateTranscript, PERF_SHAPES} from "./fixtures/generate-transcript";
 import {loadCeilings} from "./ratchet";
 
 /** Real `Performance.getMetrics` payloads and a real preflight probe, captured from Playwright's headless Chromium. */
@@ -208,6 +215,61 @@ describe("ratchet mode", () => {
 		expect({checked, failures}).toStrictEqual({
 			checked: ["browser.J1.requests=480", "browser.J2.requests=644"],
 			failures: ["browser.J2.requests rose"],
+		});
+	});
+});
+
+describe("resetting the open session", () => {
+	let db: AppDb | undefined;
+	let directory: string | undefined;
+
+	afterEach(() => {
+		db?.close();
+		if (directory) rmSync(directory, {recursive: true, force: true});
+	});
+
+	it("recognizes the re-indexed seed by the index's own row, which dates a session by its last record, not the file mtime", async () => {
+		db = openTestDb();
+		directory = mkdtempSync(join(tmpdir(), "perf-lab-reset-"));
+		const source = await generateTranscript(PERF_SHAPES.small, 1, {cacheDir: directory});
+		const path = join(directory, "project", basename(source));
+		const sessionId = basename(source, ".jsonl");
+		const seed = readFileSync(source);
+		const resetMtimeSeconds = Date.parse("2000-01-02T11:59:00.000Z") / 1000;
+		const indexDb = db.index;
+		const indexed = async () => {
+			await indexJsonlFile(indexDb, path, "-repo");
+			const [entry] = getSessionsByIds(indexDb, [sessionId]);
+			if (!entry) throw new Error(`${sessionId} was not indexed`);
+			const {messageCount, mtime} = toSessionSummaryPayload(entry);
+			return {messageCount, mtime};
+		};
+		const reset = async () => {
+			writeFileSync(path, seed);
+			utimesSync(path, resetMtimeSeconds, resetMtimeSeconds);
+			return indexed();
+		};
+
+		mkdirSync(join(directory, "project"));
+		const seeded = await reset();
+		const lastRecord = JSON.parse(seed.toString("utf8").trimEnd().split("\n").at(-1) ?? "{}") as {
+			timestamp: string;
+		};
+		appendFileSync(
+			path,
+			`${JSON.stringify({type: "user", uuid: "appended", parentUuid: null, sessionId, timestamp: "2026-11-02T00:00:00.000Z", message: {role: "user", content: "appended"}})}\n`,
+		);
+		const appended = await indexed();
+		const afterReset = await reset();
+
+		expect({
+			seededMtime: seeded.mtime,
+			appended: isSeededIndex(appended, seeded),
+			afterReset: isSeededIndex(afterReset, seeded),
+		}).toStrictEqual({
+			seededMtime: lastRecord.timestamp,
+			appended: false,
+			afterReset: true,
 		});
 	});
 });

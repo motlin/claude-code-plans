@@ -280,11 +280,19 @@ async function seedLabFixture(): Promise<LabFixture> {
 	};
 }
 
+/** A session as the server's index reports it. `mtime` is the last record's timestamp, not the file's mtime. */
+export interface IndexedSession {
+	messageCount: number;
+	mtime: string;
+}
+
+/** Whether the index holds the seeded transcript again: the row the server reported for it before the first run. */
+export function isSeededIndex(indexed: IndexedSession | undefined, seeded: IndexedSession): boolean {
+	return indexed?.messageCount === seeded.messageCount && indexed.mtime === seeded.mtime;
+}
+
 /** The open session as the server's index sees it: what the sidebar and session list are rendered from. */
-async function indexedOpenSession(
-	baseUrl: string,
-	fixture: LabFixture,
-): Promise<{messageCount: number; mtime: string} | undefined> {
+async function indexedOpenSession(baseUrl: string, fixture: LabFixture): Promise<IndexedSession | undefined> {
 	const rows = z
 		.array(z.object({messageCount: z.number(), mtime: z.string()}))
 		.parse(JSON.parse(await httpGet(`${baseUrl}/api/sessions/lookup?ids=${fixture.openSessionId}`)));
@@ -295,15 +303,14 @@ async function indexedOpenSession(
  * Before each run, restore the J4 session to its seeded transcript and mtime, so every run opens the same transcript
  * (J2) and the session no longer counts as active. The server's watcher sees the file shrink below its read offset and
  * moves the offset back to the new end, so the run's append (J4) is still read. Waits until the index holds the
- * seeded transcript again, so the run does not race the watcher's re-index.
+ * seeded transcript again, so the run does not race the watcher's re-index. The index dates a session by its last
+ * record, so the reset is recognized by the seeded row the server reported, not by the restored file mtime.
  */
-async function resetOpenSession(baseUrl: string, fixture: LabFixture, seededMessageCount: number): Promise<void> {
+async function resetOpenSession(baseUrl: string, fixture: LabFixture, seeded: IndexedSession): Promise<void> {
 	writeFileSync(fixture.openSessionPath, fixture.openSessionSeed);
 	utimesSync(fixture.openSessionPath, OPEN_SESSION_MTIME_MS / 1000, OPEN_SESSION_MTIME_MS / 1000);
-	const mtime = new Date(OPEN_SESSION_MTIME_MS).toISOString();
 	for (let attempt = 0; attempt < 240; attempt += 1) {
-		const indexed = await indexedOpenSession(baseUrl, fixture).catch(() => undefined);
-		if (indexed?.messageCount === seededMessageCount && indexed.mtime === mtime) return;
+		if (isSeededIndex(await indexedOpenSession(baseUrl, fixture).catch(() => undefined), seeded)) return;
 		await new Promise((resolvePromise) => {
 			setTimeout(resolvePromise, 250);
 		});
@@ -777,13 +784,13 @@ export async function runLab(
 	const blocked: string[] = [];
 	try {
 		await waitForIdleIndex(baseUrl, server.process, server.output);
-		const seededMessageCount = (await indexedOpenSession(baseUrl, fixture))?.messageCount;
-		if (seededMessageCount === undefined) throw new Error(`The lab server did not index ${fixture.openSessionId}`);
+		const seeded = await indexedOpenSession(baseUrl, fixture);
+		if (seeded === undefined) throw new Error(`The lab server did not index ${fixture.openSessionId}`);
 		const browser = await chromium.launch({headless: true});
 		const runs: LabRun[] = [];
 		try {
 			for (let run = 1; run <= args.runs; run += 1) {
-				await resetOpenSession(baseUrl, fixture, seededMessageCount);
+				await resetOpenSession(baseUrl, fixture, seeded);
 				await waitForIdleIndex(baseUrl, server.process, server.output);
 				const context = await browser.newContext({viewport: VIEWPORT, colorScheme: "dark", locale: "en-US"});
 				try {
