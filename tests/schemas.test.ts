@@ -1688,6 +1688,13 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 			}),
 			{type: "dev-mods", folder: "/tmp/dev-mods/sess-123", sessionId: "sess-123"},
 			{type: "tools-used", tools: ["Bash"], sessionId: "sess-123"},
+			{type: "session-owner", accountUuid: "acct-123", organizationUuid: "org-123", sessionId: "sess-123"},
+			attachmentRecord({
+				type: "edited_text_file",
+				filename: "/tmp/test/notes.md",
+				snippet: "",
+				rereadEntry: {timestamp: 1793680885686, contentHash: "31ejkaqruz3sp", contentLength: 33381},
+			}),
 		];
 
 		expect(records.map((record) => JsonlRecordSchema.parse(record))).toStrictEqual(records);

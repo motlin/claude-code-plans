@@ -207,6 +207,12 @@ export const jsonlRecordFixtures = {
 		tools: ["Bash", "Read"],
 		sessionId: "session-alice-100",
 	},
+	"session-owner": {
+		type: "session-owner",
+		accountUuid: "account-alice",
+		organizationUuid: "org-alice",
+		sessionId: "session-alice-100",
+	},
 	"api-request": {
 		type: "api-request",
 		sessionId: "session-alice-100",

@@ -494,6 +494,20 @@ describe("workflow schemas", () => {
 		};
 		expect(WorkflowAgentMetaSchema.parse(meta)).toStrictEqual(meta);
 	});
+
+	it("accepts an agent meta file with pickedEffortModel", () => {
+		const meta = {
+			agentType: "general-purpose",
+			isBuiltIn: true,
+			description: "task-1",
+			workflowPhase: "Tasks",
+			spawnDepth: 1,
+			requestShape: "background",
+			requestNonInteractive: true,
+			pickedEffortModel: "claude-opus-5-5",
+		};
+		expect(WorkflowAgentMetaSchema.parse(meta)).toStrictEqual(meta);
+	});
 });
 
 /** The paths `pick` selects for every ~/.claude/projects/<project>/<session> entry. */

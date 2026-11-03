@@ -997,6 +997,10 @@ const EditedTextFileAttachmentPayload = z
 		filename: z.string(),
 		snippet: z.string().optional(),
 		displayPath: z.string().optional(),
+		rereadEntry: z
+			.object({timestamp: z.number(), contentHash: z.string(), contentLength: z.number().int()})
+			.strict()
+			.optional(),
 	})
 	.strict();
 
@@ -2021,6 +2025,16 @@ const DevModsRecordSchema = z
 	})
 	.strict();
 
+// Records the account and organization that own a session.
+const SessionOwnerRecordSchema = z
+	.object({
+		type: z.literal("session-owner"),
+		accountUuid: z.string(),
+		organizationUuid: z.string(),
+		sessionId: z.string(),
+	})
+	.strict();
+
 // Names the tools a session has used so far.
 const ToolsUsedRecordSchema = z
 	.object({
@@ -2420,6 +2434,7 @@ export const JsonlRecordSchema = z.discriminatedUnion("type", [
 	ArtifactAutoreactLedgerRecordSchema,
 	DevModsRecordSchema,
 	ToolsUsedRecordSchema,
+	SessionOwnerRecordSchema,
 	ApiRequestRecordSchema,
 	ApiRequestBlobRecordSchema,
 	ApiRequestShapeRecordSchema,

@@ -93,6 +93,7 @@ export const WorkflowAgentMetaSchema = z.strictObject({
 	requestShape: z.string().optional(),
 	requestNonInteractive: z.boolean().optional(),
 	model: z.string().optional(),
+	pickedEffortModel: z.string().optional(),
 });
 
 const RuntimeLaunchResultSchema = /* @__PURE__ */ toLenient(WorkflowLaunchResultSchema);
