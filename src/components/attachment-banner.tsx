@@ -438,11 +438,14 @@ function AttachmentContent({
 			);
 		case "edited_text_file":
 			return (
-				<Banner
-					icon={<Pencil className="h-3.5 w-3.5" />}
-					label={`Edited: ${attachment.filename}`}
-					{...shared}
-				/>
+				<Banner icon={<Pencil className="h-3.5 w-3.5" />} label={`Edited: ${attachment.filename}`} {...shared}>
+					{attachment.rereadEntry !== undefined && (
+						<span className="text-t6">
+							Re-read {formatTimestamp(new Date(attachment.rereadEntry.timestamp).toISOString())} ·{" "}
+							{attachment.rereadEntry.contentLength.toLocaleString("en-US")} chars
+						</span>
+					)}
+				</Banner>
 			);
 		case "selected_lines_in_ide": {
 			const filePart = attachment.displayPath ?? attachment.filename ?? "file";

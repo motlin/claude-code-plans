@@ -116,6 +116,17 @@ describe("processTranscript", () => {
 		expect(result.customTitle).toBe("My Custom Title");
 	});
 
+	it("consumes session-owner records as metadata instead of rendering them", () => {
+		const records = [
+			{type: "session-owner", accountUuid: "acct-1", organizationUuid: "org-1", sessionId: "s-1"},
+			userRecord([{type: "text", text: "Hello"}], {uuid: "u-1"}),
+			{type: "session-owner", accountUuid: "acct-2", organizationUuid: "org-2", sessionId: "s-1"},
+		];
+		const result = processTranscript(records);
+		expect(result.lines.map((line) => line.type)).toStrictEqual(["user"]);
+		expect(result.sessionOwner).toStrictEqual({accountUuid: "acct-2", organizationUuid: "org-2"});
+	});
+
 	it("builds uuidToLine mapping", () => {
 		const records = [
 			userRecord([{type: "text", text: "Hello"}], {uuid: "u-1"}),

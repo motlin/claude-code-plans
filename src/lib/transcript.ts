@@ -349,6 +349,8 @@ export interface ProcessedTranscript {
 	uuidToLine: Map<string, number>;
 	title: string;
 	customTitle: string | undefined;
+	/** The account and organization owning the session, from its latest `session-owner` record. */
+	sessionOwner: SessionOwner | undefined;
 	/** The served cuts keyed by the on-chain prompt that replaced each abandoned branch, in served order. */
 	cutsByReplacement: ReadonlyMap<string, readonly TranscriptCut[]>;
 }
@@ -792,11 +794,17 @@ function isInvisibleThinkingRecord(record: {
 	);
 }
 
+export interface SessionOwner {
+	accountUuid: string;
+	organizationUuid: string;
+}
+
 interface RecordBatchResult {
 	sessionLines: ProcessedLine[];
 	toolResults: Map<string, ToolResultInfo>;
 	title: string;
 	customTitle: string | undefined;
+	sessionOwner: SessionOwner | undefined;
 }
 
 /**
@@ -845,6 +853,7 @@ function* processRecordBatchSteps(
 	let lastAttributionKey: string | undefined;
 	let lastRequestRef: string | undefined;
 	let customTitle: string | undefined;
+	let sessionOwner: SessionOwner | undefined;
 	const publishedArtifactKeys = new Set<string>();
 	let lastMonitor: Extract<z.infer<typeof JsonlRecordSchema>, {type: "artifact-comment-monitor"}> | undefined;
 	let lastLedger: Extract<z.infer<typeof JsonlRecordSchema>, {type: "artifact-autoreact-ledger"}> | undefined;
@@ -887,6 +896,12 @@ function* processRecordBatchSteps(
 
 		if (record.type === "custom-title") {
 			customTitle = record.customTitle;
+			continue;
+		}
+
+		// Re-emitted every turn; metadata, never a transcript row.
+		if (record.type === "session-owner") {
+			sessionOwner = {accountUuid: record.accountUuid, organizationUuid: record.organizationUuid};
 			continue;
 		}
 
@@ -1331,6 +1346,7 @@ function* processRecordBatchSteps(
 		toolResults,
 		title,
 		customTitle,
+		sessionOwner,
 	};
 }
 
@@ -1369,7 +1385,7 @@ export function* processTranscriptSteps(
 	onFold?: CommandGroupFoldObserver,
 ): Generator<void, ProcessedTranscript, void> {
 	const uuidToLine = new Map<string, number>();
-	const {sessionLines, toolResults, title, customTitle} = yield* processRecordBatchSteps(
+	const {sessionLines, toolResults, title, customTitle, sessionOwner} = yield* processRecordBatchSteps(
 		records,
 		startLineIndex,
 		uuidToLine,
@@ -1389,6 +1405,7 @@ export function* processTranscriptSteps(
 		uuidToLine,
 		title,
 		customTitle,
+		sessionOwner,
 		cutsByReplacement,
 	};
 }

@@ -6,6 +6,7 @@ import {render} from "@testing-library/react";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
 import {AttachmentBanner} from "../src/components/attachment-banner";
 import {AttachmentPayloadSchema, type AttachmentPayload} from "../src/lib/schemas";
+import {formatTimestamp} from "../src/lib/timestamp-format";
 
 function renderBanner(payload: AttachmentPayload): string {
 	return renderToStaticMarkup(<AttachmentBanner attachmentJson={JSON.stringify(payload)} />);
@@ -255,6 +256,27 @@ describe("AttachmentBanner", () => {
 		expect(html.match(/<span>([^<]*)<\/span>/)?.[1]).toStrictEqual(
 			"Token usage: 120,000 / 1,000,000 (880,000 left)",
 		);
+	});
+
+	describe("edited_text_file", () => {
+		it("shows when an edited file was re-read and how long its content was", () => {
+			const timestamp = 1793680885686;
+			const html = renderBanner({
+				type: "edited_text_file",
+				filename: "/repo/src/a.ts",
+				rereadEntry: {timestamp, contentHash: "31ejkaqruz3sp", contentLength: 33381},
+			});
+			const reread = formatTimestamp(new Date(timestamp).toISOString());
+			expect(html.match(/<span[^>]*>([^<]*)<\/span>/g)?.slice(-2)).toStrictEqual([
+				"<span>Edited: /repo/src/a.ts</span>",
+				`<span class="text-t6">Re-read ${reread} · 33,381 chars</span>`,
+			]);
+		});
+
+		it("omits the re-read detail when there is no rereadEntry", () => {
+			const html = renderBanner({type: "edited_text_file", filename: "/repo/src/a.ts"});
+			expect(html).not.toContain("Re-read");
+		});
 	});
 
 	describe("queued_command", () => {

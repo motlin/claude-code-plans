@@ -277,6 +277,42 @@ describe("readWorkflowRuns", () => {
 		]);
 	});
 
+	it("falls back to an agent meta's pickedEffortModel when it names no model", () => {
+		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
+		writeJournal([
+			{type: "launched"},
+			{type: "started", key: "v2:aa", agentId: "a1", label: "probe", phase: "Inventory"},
+		]);
+		writeAgent(
+			"a1",
+			{
+				agentType: "general-purpose",
+				spawnDepth: 1,
+				requestShape: "background",
+				requestNonInteractive: true,
+				pickedEffortModel: "claude-opus-5-5",
+			},
+			1_790_000_000_000,
+			1_790_000_060_000,
+		);
+
+		expect(readWorkflowRuns(transcriptPath)[0]?.progress).toStrictEqual([
+			{type: "workflow_phase", index: 1, title: "Inventory"},
+			{
+				type: "workflow_agent",
+				index: 1,
+				label: "probe",
+				agentId: "a1",
+				state: "progress",
+				phaseIndex: 1,
+				phaseTitle: "Inventory",
+				model: "claude-opus-5-5",
+				startedAt: 1_790_000_000_000,
+				lastProgressAt: 1_790_000_060_000,
+			},
+		]);
+	});
+
 	it("carries a journal result's toolsUsed onto a running run's agent entry", () => {
 		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
 		writeJournal([

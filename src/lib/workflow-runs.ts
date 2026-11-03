@@ -314,7 +314,9 @@ function journalProgress(transcriptDir: string): WorkflowProgressEntry[] {
 			entry.phaseIndex = phaseIndex;
 			entry.phaseTitle = phaseTitle;
 		}
-		if (meta.success && meta.data.model !== undefined) entry.model = meta.data.model;
+		// A default-launched agent names only the model its effort picked.
+		const model = meta.success ? (meta.data.model ?? meta.data.pickedEffortModel) : undefined;
+		if (model !== undefined) entry.model = model;
 		const tools = toolsUsed.get(agentId);
 		if (tools !== undefined) entry.toolsUsed = tools;
 		const startedAt = mtimeMs(metaPath);
