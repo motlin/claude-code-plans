@@ -366,29 +366,37 @@ const INTERFACE_FONT_COMBOBOX_OPTIONS: Array<{
 	})),
 ];
 
+const INTERFACE_FONT_DESCRIPTION = "Font for the whole interface — menus, sidebars, and panels.";
+
 /** General ▸ Appearance ▸ Interface font, after Theme (moved from Claude Code in upstream's 2026-11 build). */
 function InterfaceFontRow() {
 	const {settings, setSetting} = useSettings();
 	const typeLed = useFizzyLake("type");
 
+	// Upstream's fizzy `type` registry hides this description (sr-only, plain text, no Font licenses link);
+	// the link stays on the pre-rollout visible description.
 	return (
 		<SettingsRow
 			slug="interface-font"
 			title="Interface font"
-			description={
-				<>
-					Font for the whole interface — menus, sidebars, and panels.{" "}
-					<a
-						data-cds="TextLink"
-						href="/third-party-notices.txt"
-						target="_blank"
-						rel="noopener"
-						className="text-link inline cursor-pointer"
-					>
-						Font licenses<span className="sr-only">(opens in new tab)</span>
-					</a>
-				</>
-			}
+			{...(typeLed
+				? {description: INTERFACE_FONT_DESCRIPTION, descriptionHidden: true}
+				: {
+						description: (
+							<>
+								{INTERFACE_FONT_DESCRIPTION}{" "}
+								<a
+									data-cds="TextLink"
+									href="/third-party-notices.txt"
+									target="_blank"
+									rel="noopener"
+									className="text-link inline cursor-pointer"
+								>
+									Font licenses<span className="sr-only">(opens in new tab)</span>
+								</a>
+							</>
+						),
+					})}
 		>
 			{typeLed ? (
 				<ThemedCombobox

@@ -382,7 +382,7 @@ describe("Appearance settings", () => {
 		).toStrictEqual(["default-transcript-view"]);
 	});
 
-	it("offers OpenDyslexic, which marks <html>, swaps the Code font placeholder and links the font licenses", async () => {
+	it("offers OpenDyslexic, which marks <html>, swaps the Code font placeholder and hides a plain description under type", async () => {
 		await renderTab(
 			<>
 				<GeneralSettings />
@@ -400,20 +400,15 @@ describe("Appearance settings", () => {
 		};
 		choose("Interface font", "Default · Sans");
 
-		const link = screen.getByRole("link", {name: /Font licenses/});
 		const row = screen.getByRole("group", {name: "Interface font"});
+		const desc = row.querySelector("[data-settings-desc]");
 		expect({
 			placeholderBefore,
 			dyslexic,
 			reverted: document.documentElement.dataset["interfaceFont"] ?? null,
-			link: {
-				href: link.getAttribute("href"),
-				target: link.getAttribute("target"),
-				rel: link.getAttribute("rel"),
-				text: link.textContent,
-				srOnly: link.querySelector(".sr-only")?.textContent ?? null,
-			},
-			description: row.querySelector("[data-settings-desc]")?.textContent ?? null,
+			link: screen.queryByRole("link", {name: /Font licenses/}),
+			desc: desc === null ? null : {className: desc.className, text: desc.textContent},
+			describedBy: row.getAttribute("aria-describedby") === desc?.id,
 		}).toStrictEqual({
 			placeholderBefore: "e.g. JetBrains Mono",
 			dyslexic: {
@@ -423,6 +418,31 @@ describe("Appearance settings", () => {
 				placeholder: "e.g. OpenDyslexic Mono",
 			},
 			reverted: null,
+			link: null,
+			desc: {className: "sr-only", text: "Font for the whole interface — menus, sidebars, and panels."},
+			describedBy: true,
+		});
+	});
+
+	it("keeps the visible description and Font licenses link when fizzy-lake type is off", async () => {
+		await renderTab(
+			<FizzyLakeContext.Provider value={PRE_TYPE_PARTS}>
+				<GeneralSettings />
+			</FizzyLakeContext.Provider>,
+		);
+
+		const link = screen.getByRole("link", {name: /Font licenses/});
+		const desc = screen.getByRole("group", {name: "Interface font"}).querySelector("[data-settings-desc]");
+		expect({
+			link: {
+				href: link.getAttribute("href"),
+				target: link.getAttribute("target"),
+				rel: link.getAttribute("rel"),
+				text: link.textContent,
+				srOnly: link.querySelector(".sr-only")?.textContent ?? null,
+			},
+			desc: desc === null ? null : {className: desc.className, text: desc.textContent},
+		}).toStrictEqual({
 			link: {
 				href: "/third-party-notices.txt",
 				target: "_blank",
@@ -430,7 +450,10 @@ describe("Appearance settings", () => {
 				text: "Font licenses(opens in new tab)",
 				srOnly: "(opens in new tab)",
 			},
-			description: "Font for the whole interface — menus, sidebars, and panels. Font licenses(opens in new tab)",
+			desc: {
+				className: "text-body text-[var(--settings-muted)]",
+				text: "Font for the whole interface — menus, sidebars, and panels. Font licenses(opens in new tab)",
+			},
 		});
 	});
 
