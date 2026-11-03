@@ -44,6 +44,31 @@ describe("spawnClaude", () => {
 
 		expect(new Uint8Array(await new Response(stream).arrayBuffer())).toStrictEqual(new Uint8Array(expected));
 	});
+
+	it("keeps a stdout line split across chunks intact when a stderr chunk arrives between them", async () => {
+		const child = fakeChildProcess();
+		spawnMock.mockReturnValue(child);
+
+		const {stream} = spawnClaude({
+			sessionId: "session-test-100",
+			prompt: "Review Alice's fixture",
+			projectDir: "/fixture/alice-repository",
+			environment: {},
+		});
+		child.stdout!.emit("data", Buffer.from('{"type":"assistant","text":"Hel'));
+		child.stderr!.emit("data", Buffer.from("warning: Alice's config is stale\n"));
+		child.stdout!.emit("data", Buffer.from('lo Alice"}\n{"type":"result","tail":"no newline"}'));
+		child.emit("close", 0);
+
+		expect(await new Response(stream).text()).toBe(
+			[
+				'{"type":"error","message":"warning: Alice\'s config is stale"}',
+				'{"type":"assistant","text":"Hello Alice"}',
+				'{"type":"result","tail":"no newline"}',
+				"",
+			].join("\n"),
+		);
+	});
 });
 
 describe("buildLaunchFlags", () => {

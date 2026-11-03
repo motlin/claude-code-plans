@@ -51,12 +51,29 @@ export function spawnClaude({
 	activeProcesses.set(processId, child);
 
 	const encoder = new TextEncoder();
+	// stdout bytes after the last newline: held back so events from stderr or
+	// exit never land inside a partially written stream-json line.
+	let stdoutTail: Buffer = Buffer.alloc(0);
 
 	const stream = new ReadableStream<Uint8Array>({
 		start(controller) {
+			const flushStdoutTail = () => {
+				if (stdoutTail.length === 0) return;
+				const line = Buffer.concat([stdoutTail, Buffer.from("\n")]);
+				stdoutTail = Buffer.alloc(0);
+				controller.enqueue(new Uint8Array(line));
+			};
+
 			child.stdout.on("data", (chunk: Buffer) => {
+				const pending = stdoutTail.length === 0 ? chunk : Buffer.concat([stdoutTail, chunk]);
+				const lastNewline = pending.lastIndexOf(0x0a);
+				if (lastNewline === -1) {
+					stdoutTail = pending;
+					return;
+				}
+				stdoutTail = pending.subarray(lastNewline + 1);
 				try {
-					controller.enqueue(new Uint8Array(chunk));
+					controller.enqueue(new Uint8Array(pending.subarray(0, lastNewline + 1)));
 				} catch {
 					// stream closed
 				}
@@ -77,6 +94,7 @@ export function spawnClaude({
 			child.on("close", (code) => {
 				activeProcesses.delete(processId);
 				try {
+					flushStdoutTail();
 					if (code !== 0 && code !== null) {
 						const errorEvent =
 							JSON.stringify({
@@ -94,6 +112,7 @@ export function spawnClaude({
 			child.on("error", (err) => {
 				activeProcesses.delete(processId);
 				try {
+					flushStdoutTail();
 					const errorEvent = JSON.stringify({type: "error", message: err.message}) + "\n";
 					controller.enqueue(encoder.encode(errorEvent));
 					controller.close();
