@@ -1829,8 +1829,13 @@ export const LastPromptRecordSchema = z
 	.object({
 		type: z.literal("last-prompt"),
 		lastPrompt: z.string().optional(),
-		leafUuid: z.string().optional(),
+		/** `null` withdraws a checkpoint (CLI 2.1.316 `J2o`). */
+		leafUuid: z.string().nullable().optional(),
 		explicit: z.boolean().optional(),
+		/** A terminal rewind's anchor checkpoint (CLI 2.1.316 `nF`). */
+		rewound: z.boolean().optional(),
+		/** The first message the rewind removed. */
+		cutUuid: z.string().optional(),
 		sessionId: z.string(),
 	})
 	.strict();

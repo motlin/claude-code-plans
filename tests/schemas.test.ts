@@ -582,6 +582,25 @@ describe("LastPromptRecordSchema", () => {
 
 		expect(LastPromptRecordSchema.parse(record)).toStrictEqual(record);
 	});
+
+	it("parses CLI 2.1.316's rewind checkpoint", () => {
+		const record = {
+			type: "last-prompt",
+			leafUuid: "a",
+			explicit: true,
+			rewound: true,
+			cutUuid: "b",
+			sessionId: "s",
+		};
+
+		expect(LastPromptRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it("parses CLI 2.1.316's checkpoint withdrawal (leafUuid null)", () => {
+		const record = {type: "last-prompt", leafUuid: null, explicit: true, sessionId: "s"};
+
+		expect(LastPromptRecordSchema.parse(record)).toStrictEqual(record);
+	});
 });
 
 describe("QueueOperationRecordSchema", () => {

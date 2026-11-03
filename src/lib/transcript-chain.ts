@@ -19,7 +19,7 @@ type TranscriptRecord = Record<string, unknown>;
 export interface AbandonedCut {
 	/** The parent both the abandoned prompt and its replacement hang off. */
 	parentUuid: string;
-	/** The on-chain sibling prompt that replaced the abandoned one. */
+	/** The on-chain sibling prompt that replaced the abandoned one (for a rewind with nothing sent since, the anchor). */
 	replacementUuid: string;
 	/** The root of the hidden subtree. */
 	abandonedUuid: string;
@@ -80,7 +80,17 @@ export function isPrompt(record: TranscriptRecord): boolean {
 	return text !== undefined && text.trim() !== "" && !text.startsWith("<task-notification");
 }
 
-const SKELETON_FIELDS = ["type", "uuid", "parentUuid", "isSidechain", "isMeta", "timestamp", "leafUuid"] as const;
+const SKELETON_FIELDS = [
+	"type",
+	"uuid",
+	"parentUuid",
+	"isSidechain",
+	"isMeta",
+	"timestamp",
+	"leafUuid",
+	"rewound",
+	"cutUuid",
+] as const;
 
 /**
  * The part of a record `computeAbandoned` reads, so a cache can keep a whole
@@ -97,27 +107,37 @@ export function chainSkeleton(record: TranscriptRecord): TranscriptRecord {
 	return skeleton;
 }
 
+/** The nearest user/assistant row at or above `uuid`, or undefined when the walk leaves the file. */
+function messageAncestor(byUuid: Map<string, TranscriptRecord>, start: string): string | undefined {
+	const seen = new Set<string>();
+	let uuid: string | undefined = start;
+	while (uuid !== undefined && !seen.has(uuid)) {
+		seen.add(uuid);
+		const current = byUuid.get(uuid);
+		if (current === undefined) {
+			return undefined;
+		}
+		if (isMessage(current)) {
+			return uuid;
+		}
+		uuid = stringField(current, "parentUuid");
+	}
+	return undefined;
+}
+
 function findLeaf(byUuid: Map<string, TranscriptRecord>, records: TranscriptRecord[]): string | undefined {
 	for (const record of records.toReversed()) {
 		if (record["type"] !== "last-prompt") {
 			continue;
 		}
+		// A `leafUuid: null` withdrawal has no string and falls through to the next older checkpoint, as the CLI does.
 		const leafUuid = stringField(record, "leafUuid");
 		if (leafUuid === undefined || !byUuid.has(leafUuid)) {
 			continue;
 		}
-		const seen = new Set<string>();
-		let uuid: string | undefined = leafUuid;
-		while (uuid !== undefined && !seen.has(uuid)) {
-			seen.add(uuid);
-			const current = byUuid.get(uuid);
-			if (current === undefined) {
-				break;
-			}
-			if (isMessage(current)) {
-				return uuid;
-			}
-			uuid = stringField(current, "parentUuid");
+		const leaf = messageAncestor(byUuid, leafUuid);
+		if (leaf !== undefined) {
+			return leaf;
 		}
 		break;
 	}
@@ -134,12 +154,15 @@ export function computeAbandoned(records: TranscriptRecord[]): AbandonedBranches
 	const byUuid = new Map<string, TranscriptRecord>();
 	/** Child uuids per parent uuid, in file order. */
 	const children = new Map<string, string[]>();
-	for (const record of records) {
+	/** Each record's position in the file, so a rewind keeps rows written after its checkpoint. */
+	const fileIndex = new Map<string, number>();
+	for (const [index, record] of records.entries()) {
 		const uuid = stringField(record, "uuid");
 		if (uuid === undefined || record["isSidechain"] === true) {
 			continue;
 		}
 		byUuid.set(uuid, record);
+		fileIndex.set(uuid, index);
 		const parentUuid = stringField(record, "parentUuid");
 		if (parentUuid !== undefined) {
 			const siblings = children.get(parentUuid);
@@ -164,6 +187,20 @@ export function computeAbandoned(records: TranscriptRecord[]): AbandonedBranches
 
 	const hidden = new Set<string>();
 	const cuts: AbandonedCut[] = [];
+	/** Hides `root`'s subtree (rows before `limit` in file order only) and returns how many rows it hid. */
+	const hideSubtree = (root: string, limit = Number.POSITIVE_INFINITY): number => {
+		let count = 0;
+		const stack = [root];
+		for (let next = stack.pop(); next !== undefined; next = stack.pop()) {
+			if (hidden.has(next) || (fileIndex.get(next) ?? 0) >= limit) {
+				continue;
+			}
+			hidden.add(next);
+			count++;
+			stack.push(...(children.get(next) ?? []));
+		}
+		return count;
+	};
 	for (const [parentUuid, siblings] of children) {
 		const prompts = siblings.filter((sibling) => {
 			const record = byUuid.get(sibling);
@@ -180,18 +217,42 @@ export function computeAbandoned(records: TranscriptRecord[]): AbandonedBranches
 			if (chain.has(abandonedUuid)) {
 				continue;
 			}
-			let count = 0;
-			const stack = [abandonedUuid];
-			for (let next = stack.pop(); next !== undefined; next = stack.pop()) {
-				if (hidden.has(next)) {
-					continue;
-				}
-				hidden.add(next);
-				count++;
-				stack.push(...(children.get(next) ?? []));
-			}
+			const count = hideSubtree(abandonedUuid);
 			cuts.push({
 				parentUuid,
+				replacementUuid,
+				abandonedUuid,
+				at: stringField(byUuid.get(abandonedUuid) ?? {}, "timestamp") ?? "",
+				count,
+			});
+		}
+	}
+
+	// Terminal rewinds: each rewound checkpoint whose anchor is on the chain cuts the anchor's off-chain children written before it.
+	for (const [checkpointIndex, record] of records.entries()) {
+		if (record["type"] !== "last-prompt" || record["rewound"] !== true) {
+			continue;
+		}
+		const leafUuid = stringField(record, "leafUuid");
+		const anchor = leafUuid === undefined ? undefined : messageAncestor(byUuid, leafUuid);
+		if (anchor === undefined || !chain.has(anchor)) {
+			continue;
+		}
+		const anchorChildren = children.get(anchor) ?? [];
+		const offChain = anchorChildren.filter(
+			(child) => !chain.has(child) && (fileIndex.get(child) ?? 0) < checkpointIndex,
+		);
+		const cutUuid = stringField(record, "cutUuid");
+		const roots = cutUuid !== undefined && offChain.includes(cutUuid) ? [cutUuid] : offChain;
+		const replacementUuid =
+			anchorChildren.find((child) => chain.has(child) && (fileIndex.get(child) ?? 0) > checkpointIndex) ?? anchor;
+		for (const abandonedUuid of roots) {
+			if (hidden.has(abandonedUuid)) {
+				continue;
+			}
+			const count = hideSubtree(abandonedUuid, checkpointIndex);
+			cuts.push({
+				parentUuid: anchor,
 				replacementUuid,
 				abandonedUuid,
 				at: stringField(byUuid.get(abandonedUuid) ?? {}, "timestamp") ?? "",

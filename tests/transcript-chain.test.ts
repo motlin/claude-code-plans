@@ -1,5 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
 import {chainSkeleton, computeAbandoned} from "../src/lib/transcript-chain";
+import {transcriptChainVersion} from "../src/lib/structured-transcript";
 
 /**
  * Tests for `computeAbandoned` in `src/lib/transcript-chain.ts`.
@@ -291,6 +292,103 @@ describe("computeAbandoned", () => {
 				},
 			],
 		});
+	});
+});
+
+/** P1 → A1 → P2 → A2: the turn a terminal rewind pulls back to A1. */
+function rewindHead(): Rec[] {
+	return [
+		prompt("P1", null, "do chapter 1", "2026-11-02T10:00:00.000Z"),
+		assistantText("A1", "P1", "Chapter 1 is ready.", "2026-11-02T10:01:00.000Z"),
+		prompt("P2", "A1", "do chapter 2", "2026-11-02T10:02:00.000Z"),
+		assistantText("A2", "P2", "Chapter 2 is ready.", "2026-11-02T10:03:00.000Z"),
+	];
+}
+
+/** CLI 2.1.316 `nF`: the explicit leaf checkpoint a terminal rewind persists. */
+function rewoundCheckpoint(cutUuid?: string): Rec {
+	return {
+		type: "last-prompt",
+		leafUuid: "A1",
+		explicit: true,
+		rewound: true,
+		...(cutUuid === undefined ? {} : {cutUuid}),
+		sessionId: SESSION,
+	};
+}
+
+const REWOUND_CUT = {
+	parentUuid: "A1",
+	replacementUuid: "A1",
+	abandonedUuid: "P2",
+	at: "2026-11-02T10:02:00.000Z",
+	count: 2,
+};
+
+describe("computeAbandoned with a rewind checkpoint (CLI 2.1.316)", () => {
+	it("(h) hides the pulled-back turn below the anchor, rooted at cutUuid", () => {
+		const records = [...rewindHead(), rewoundCheckpoint("P2")];
+
+		expect(computeAbandoned(records)).toStrictEqual({hidden: new Set(["P2", "A2"]), cuts: [REWOUND_CUT]});
+	});
+
+	it("(i) keeps new work written after the checkpoint visible", () => {
+		const records = [
+			...rewindHead(),
+			rewoundCheckpoint("P2"),
+			prompt("P3", "A1", "do chapter 3", "2026-11-02T10:05:00.000Z"),
+		];
+
+		expect(computeAbandoned(records)).toStrictEqual({hidden: new Set(["P2", "A2"]), cuts: [REWOUND_CUT]});
+	});
+
+	it("(i) gives one cut, at the replacement prompt, once a newer checkpoint puts it on the chain", () => {
+		const records = [
+			...rewindHead(),
+			rewoundCheckpoint("P2"),
+			prompt("P3", "A1", "do chapter 3", "2026-11-02T10:05:00.000Z"),
+			assistantText("A3", "P3", "Chapter 3 is ready.", "2026-11-02T10:06:00.000Z"),
+			{type: "last-prompt", lastPrompt: "do chapter 3", leafUuid: "A3", sessionId: SESSION},
+		];
+
+		expect(computeAbandoned(records)).toStrictEqual({
+			hidden: new Set(["P2", "A2"]),
+			cuts: [{...REWOUND_CUT, replacementUuid: "P3"}],
+		});
+	});
+
+	it("(j) without cutUuid, hides every off-chain child of the anchor written before the checkpoint", () => {
+		const records = [...rewindHead(), rewoundCheckpoint()];
+
+		expect(computeAbandoned(records)).toStrictEqual({hidden: new Set(["P2", "A2"]), cuts: [REWOUND_CUT]});
+	});
+
+	it("(k) skips a leafUuid:null withdrawal and uses the older checkpoint", () => {
+		const records = [
+			...rewindHead(),
+			{type: "last-prompt", lastPrompt: "do chapter 2", leafUuid: "A2", sessionId: SESSION},
+			{type: "last-prompt", leafUuid: null, explicit: true, sessionId: SESSION},
+		];
+
+		expect(computeAbandoned(records)).toStrictEqual({hidden: new Set(), cuts: []});
+	});
+
+	it("(l) changes the chain version when the rewound checkpoint lands", () => {
+		const before = [
+			...rewindHead(),
+			{type: "last-prompt", lastPrompt: "do chapter 2", leafUuid: "A2", sessionId: SESSION},
+		];
+		const after = [...before, rewoundCheckpoint("P2")];
+
+		expect(transcriptChainVersion(computeAbandoned(after).cuts)).not.toBe(
+			transcriptChainVersion(computeAbandoned(before).cuts),
+		);
+	});
+
+	it("gives the same answer over chain skeletons", () => {
+		const records = [...rewindHead(), rewoundCheckpoint("P2")];
+
+		expect(computeAbandoned(records.map(chainSkeleton))).toStrictEqual(computeAbandoned(records));
 	});
 });
 
