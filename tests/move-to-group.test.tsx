@@ -18,7 +18,6 @@ import {ToastProvider} from "../src/components/toast";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import type {SessionListItem} from "../src/lib/api/sessions";
 import {readSessionGroupState} from "../src/lib/session-group-store";
-import {DEFAULT_SESSION_LIST_PREFS, type SessionListPrefs} from "../src/lib/session-groups";
 import {getSessionMenuItems, type SessionMenuCapability, type SessionMenuSession} from "../src/lib/session-menu-items";
 import {installLocalStorage} from "./fake-storage";
 
@@ -63,7 +62,7 @@ describe("getSessionMenuItems Move to group", () => {
 			{
 				kind: "item",
 				id: "move-to-group",
-				label: "Move to group",
+				label: "Move to section",
 				submenu: [
 					{
 						kind: "item",
@@ -82,7 +81,7 @@ describe("getSessionMenuItems Move to group", () => {
 						accelerator: "2",
 					},
 					{kind: "separator"},
-					{kind: "item", id: "new-group", label: "New group…", accelerator: "3"},
+					{kind: "item", id: "new-group", label: "New section", accelerator: "3"},
 				],
 			},
 			{kind: "separator"},
@@ -100,7 +99,7 @@ describe("getSessionMenuItems Move to group", () => {
 		expect(moveToGroup).toEqual({
 			kind: "item",
 			id: "move-to-group",
-			label: "Move to group",
+			label: "Move to section",
 			submenu: [
 				{
 					kind: "item",
@@ -119,8 +118,8 @@ describe("getSessionMenuItems Move to group", () => {
 					accelerator: "2",
 				},
 				{kind: "separator"},
-				{kind: "item", id: "ungroup", label: "Ungrouped", checked: false, accelerator: "3"},
-				{kind: "item", id: "new-group", label: "New group…", accelerator: "4"},
+				{kind: "item", id: "ungroup", label: "Remove from GTD", checked: false, accelerator: "3"},
+				{kind: "item", id: "new-group", label: "New section", accelerator: "4"},
 			],
 		});
 	});
@@ -135,8 +134,8 @@ describe("getSessionMenuItems Move to group", () => {
 		expect(moveToGroup).toEqual({
 			kind: "item",
 			id: "move-to-group",
-			label: "Move to group",
-			submenu: [{kind: "item", id: "new-group", label: "New group…", accelerator: "1"}],
+			label: "Move to section",
+			submenu: [{kind: "item", id: "new-group", label: "New section", accelerator: "1"}],
 		});
 	});
 
@@ -197,10 +196,6 @@ function storeGroups(assignments: Record<string, string> = {}) {
 	localStorage.setItem(GROUPS_KEY, JSON.stringify({groups: GROUPS, assignments, order: {}}));
 }
 
-function storePrefs(prefs: Partial<SessionListPrefs>) {
-	localStorage.setItem(PREFS_KEY, JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, ...prefs}));
-}
-
 function storedPrefs(): unknown {
 	const raw = localStorage.getItem(PREFS_KEY);
 	return raw === null ? null : JSON.parse(raw);
@@ -247,7 +242,7 @@ async function renderRow() {
 async function openMoveToGroup(): Promise<HTMLElement> {
 	fireEvent.contextMenu(screen.getByText("Row title"), {clientX: 40, clientY: 50});
 	await flush();
-	const trigger = screen.getByRole("menuitem", {name: /^Move to group/});
+	const trigger = screen.getByRole("menuitem", {name: /^Move to section/});
 	expect(trigger.getAttribute("data-testid")).toBe("move-to-group-trigger");
 	act(() => {
 		trigger.focus();
@@ -296,7 +291,7 @@ describe("SessionActionsMenu Move to group", () => {
 			"Blog1 [1] (false)",
 			"GTD2 [2] (false)",
 			"---",
-			"New group…3 [3]",
+			"New section3 [3]",
 		]);
 	});
 
@@ -308,8 +303,8 @@ describe("SessionActionsMenu Move to group", () => {
 			"Blog1 [1] (true)",
 			"GTD2 [2] (false)",
 			"---",
-			"Ungrouped3 [3] (false)",
-			"New group…4 [4]",
+			"Remove from Blog3 [3] (false)",
+			"New section4 [4]",
 		]);
 	});
 
@@ -337,20 +332,20 @@ describe("SessionActionsMenu Move to group", () => {
 	});
 });
 
-describe("New group dialog", () => {
-	it("creates a group, moves the row into it and switches Group by to custom", async () => {
+describe("New section dialog", () => {
+	it("creates a section, moves the row into it and leaves Group by alone", async () => {
 		storeGroups();
 		await renderRow();
 		const dialog = await openNewGroupDialog();
 
-		expect(dialog.querySelector("h2")?.textContent).toBe("New group");
-		expect(dialog.textContent).toContain("The list will switch to Custom groups to show it.");
-		const input = screen.getByRole("textbox", {name: "Group name"});
-		expect(input.getAttribute("placeholder")).toBe("Group name");
+		expect(dialog.querySelector("h2")?.textContent).toBe("New section");
+		expect(dialog.textContent).toContain("The new section is listed above your other sessions.");
+		const input = screen.getByRole("textbox", {name: "Section name"});
+		expect(input.getAttribute("placeholder")).toBe("Section name");
 		await waitFor(() => {
 			expect(document.activeElement).toBe(input);
 		});
-		const create = screen.getByRole("button", {name: "Create and group by custom"});
+		const create = screen.getByRole("button", {name: "Create section"});
 		expect(create.hasAttribute("disabled")).toBe(true);
 
 		fireEvent.change(input, {target: {value: "   "}});
@@ -364,32 +359,10 @@ describe("New group dialog", () => {
 		const created = state.groups.at(-1);
 		expect(state.groups.map((group) => group.name)).toEqual(["Blog", "GTD", "Upstream sync"]);
 		expect(state.assignments).toEqual({[SESSION_ID]: created?.id});
-		expect(storedPrefs()).toEqual({...DEFAULT_SESSION_LIST_PREFS, groupBy: "custom"});
+		expect(storedPrefs()).toBeNull();
 		await waitFor(() => {
 			expect(screen.queryByRole("dialog")).toBeNull();
 		});
-	});
-
-	it("reads Create group without the switch note when already grouped by custom", async () => {
-		storeGroups();
-		storePrefs({groupBy: "custom", sortBy: "name"});
-		await renderRow();
-		const dialog = await openNewGroupDialog();
-
-		expect(dialog.textContent).not.toContain("The list will switch");
-		fireEvent.change(screen.getByRole("textbox", {name: "Group name"}), {
-			target: {value: "Blog 2"},
-		});
-		fireEvent.submit(screen.getByRole("textbox", {name: "Group name"}));
-		await flush();
-
-		expect(readSessionGroupState().groups.map((group) => group.name)).toEqual(["Blog", "GTD", "Blog 2"]);
-		expect(storedPrefs()).toEqual({
-			...DEFAULT_SESSION_LIST_PREFS,
-			groupBy: "custom",
-			sortBy: "name",
-		});
-		expect(screen.queryByRole("button", {name: "Create and group by custom"})).toBeNull();
 	});
 
 	it("cancels with Escape without creating a group", async () => {
@@ -397,10 +370,10 @@ describe("New group dialog", () => {
 		await renderRow();
 		await openNewGroupDialog();
 
-		fireEvent.change(screen.getByRole("textbox", {name: "Group name"}), {
+		fireEvent.change(screen.getByRole("textbox", {name: "Section name"}), {
 			target: {value: "Never"},
 		});
-		fireEvent.keyDown(screen.getByRole("textbox", {name: "Group name"}), {key: "Escape"});
+		fireEvent.keyDown(screen.getByRole("textbox", {name: "Section name"}), {key: "Escape"});
 		await flush();
 
 		await waitFor(() => {

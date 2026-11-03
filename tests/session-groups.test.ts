@@ -4,6 +4,7 @@ import {
 	DEFAULT_SESSION_LIST_PREFS,
 	SessionListPrefsSchema,
 	buildGroups,
+	buildSidebarSections,
 	customGroupLaunchTarget,
 	migrateSessionListPrefs,
 	shouldLoadNextPage,
@@ -369,12 +370,13 @@ describe("buildGroups project mode", () => {
 	});
 });
 
-describe("buildGroups custom mode", () => {
-	const custom = {
-		groups: [
-			{id: "cg-blog", name: "Blog"},
-			{id: "cg-gtd", name: "GTD"},
-			{id: "cg-empty", name: "Someday"},
+describe("buildSidebarSections", () => {
+	const view = {sortBy: "activity", sortDirection: "desc"} as const;
+	const manual = {
+		sections: [
+			{id: "cg-blog", name: "Blog", ...view},
+			{id: "cg-gtd", name: "GTD", ...view},
+			{id: "cg-empty", name: "Someday", ...view},
 		],
 		assignments: {
 			"gtd-old": "cg-gtd",
@@ -382,84 +384,111 @@ describe("buildGroups custom mode", () => {
 			"gtd-manual": "cg-gtd",
 			"blog-1": "cg-blog",
 			"gtd-archived": "cg-gtd",
+			stray: "cg-deleted",
 		},
 		order: {"cg-gtd": ["gtd-manual", "gtd-gone"]},
 	};
 	const rows = [
 		row("gtd-old", {lastActivityAt: NOW - 3 * HOUR}),
-		row("loose-1", {lastActivityAt: NOW - 2 * HOUR}),
-		row("gtd-new", {lastActivityAt: NOW - HOUR}),
+		row("loose-1", {lastActivityAt: NOW - 2 * HOUR, bucket: "blocked"}),
+		row("gtd-new", {lastActivityAt: NOW - HOUR, bucket: "blocked"}),
 		row("gtd-manual", {lastActivityAt: NOW - 5 * HOUR}),
 		row("blog-1"),
 		row("gtd-archived", {archived: true}),
+		row("stray", {lastActivityAt: NOW - 4 * HOUR}),
 	];
 
-	it("lists the groups in order, then Ungrouped, ordering rows manually first then by Sort by", () => {
-		expect(summarize(buildGroups(rows, prefs({groupBy: "custom"}), NOW, {}, custom))).toStrictEqual([
-			{key: "custom-cg-blog", label: "Blog", rows: ["blog-1"], hiddenCount: 0},
-			{
-				key: "custom-cg-gtd",
-				label: "GTD",
-				rows: ["gtd-manual", "gtd-new", "gtd-old"],
-				hiddenCount: 0,
-			},
-			{key: "custom-ungrouped", label: "Ungrouped", rows: ["loose-1"], hiddenCount: 0},
-		]);
-	});
+	function summarizeSections(built: ReturnType<typeof buildSidebarSections<SessionGroupRow>>) {
+		return {
+			manual: built.manual.map((section) => ({
+				id: section.id,
+				group: summarize([section.group])[0],
+				subgroups: section.subgroups === null ? null : summarize(section.subgroups),
+			})),
+			sessions: summarize(built.sessions),
+		};
+	}
 
-	it("shows empty groups when Show empty groups is on", () => {
-		expect(
-			summarize(
-				buildGroups(rows, prefs({groupBy: "custom", sortBy: "name", showEmptyGroups: true}), NOW, {}, custom),
-			),
-		).toStrictEqual([
-			{key: "custom-cg-blog", label: "Blog", rows: ["blog-1"], hiddenCount: 0},
-			{
-				key: "custom-cg-gtd",
-				label: "GTD",
-				rows: ["gtd-manual", "gtd-new", "gtd-old"],
-				hiddenCount: 0,
-			},
-			{key: "custom-cg-empty", label: "Someday", rows: [], hiddenCount: 0},
-			{key: "custom-ungrouped", label: "Ungrouped", rows: ["loose-1"], hiddenCount: 0},
-		]);
-	});
-
-	it("omits Ungrouped when every row is grouped and treats unknown groups as Ungrouped", () => {
-		expect(
-			summarize(
-				buildGroups(
-					[row("blog-1"), row("stray")],
-					prefs({groupBy: "custom"}),
-					NOW,
-					{},
-					{
-						...custom,
-						assignments: {"blog-1": "cg-blog", stray: "cg-deleted"},
+	it("gives each manual section its sessions (manual order first) and groups the rest under Recents", () => {
+		expect(summarizeSections(buildSidebarSections(rows, prefs(), NOW, {}, manual))).toStrictEqual({
+			manual: [
+				{
+					id: "cg-blog",
+					group: {key: "custom-cg-blog", label: "Blog", rows: ["blog-1"], hiddenCount: 0},
+					subgroups: null,
+				},
+				{
+					id: "cg-gtd",
+					group: {
+						key: "custom-cg-gtd",
+						label: "GTD",
+						rows: ["gtd-manual", "gtd-new", "gtd-old"],
+						hiddenCount: 0,
 					},
-				),
-			),
-		).toStrictEqual([
-			{key: "custom-cg-blog", label: "Blog", rows: ["blog-1"], hiddenCount: 0},
-			{key: "custom-ungrouped", label: "Ungrouped", rows: ["stray"], hiddenCount: 0},
-		]);
-		expect(summarize(buildGroups([row("blog-1")], prefs({groupBy: "custom"}), NOW, {}, custom))).toStrictEqual([
-			{key: "custom-cg-blog", label: "Blog", rows: ["blog-1"], hiddenCount: 0},
-		]);
+					subgroups: null,
+				},
+				{
+					id: "cg-empty",
+					group: {key: "custom-cg-empty", label: "Someday", rows: [], hiddenCount: 0},
+					subgroups: null,
+				},
+			],
+			sessions: [
+				{key: "state-blocked", label: "Needs input", rows: ["loose-1"], hiddenCount: 0},
+				{key: "state-done", label: "Idle", rows: ["stray"], hiddenCount: 0},
+			],
+		});
 	});
 
-	it("puts every row in Ungrouped when no groups are given", () => {
-		expect(summarize(buildGroups([row("loose-1")], prefs({groupBy: "custom"}), NOW))).toStrictEqual([
-			{key: "custom-ungrouped", label: "Ungrouped", rows: ["loose-1"], hiddenCount: 0},
-		]);
+	it("sorts a manual section by its own Sort by and splits it by its own Status or Date", () => {
+		const own = {
+			...manual,
+			sections: [
+				{id: "cg-gtd", name: "GTD", sortBy: "name", sortDirection: "desc", groupBy: "status"},
+				{id: "cg-blog", name: "Blog", ...view, groupBy: "date"},
+			] as const,
+			order: {},
+		};
+		expect(summarizeSections(buildSidebarSections(rows, prefs({groupBy: "none"}), NOW, {}, own))).toStrictEqual({
+			manual: [
+				{
+					id: "cg-gtd",
+					group: {
+						key: "custom-cg-gtd",
+						label: "GTD",
+						rows: ["gtd-manual", "gtd-new", "gtd-old"],
+						hiddenCount: 0,
+					},
+					subgroups: [
+						{key: "section:cg-gtd:state-blocked", label: "Needs input", rows: ["gtd-new"], hiddenCount: 0},
+						{
+							key: "section:cg-gtd:state-done",
+							label: "Idle",
+							rows: ["gtd-manual", "gtd-old"],
+							hiddenCount: 0,
+						},
+					],
+				},
+				{
+					id: "cg-blog",
+					group: {key: "custom-cg-blog", label: "Blog", rows: ["blog-1"], hiddenCount: 0},
+					subgroups: [
+						{key: "section:cg-blog:date-yesterday", label: "Yesterday", rows: ["blog-1"], hiddenCount: 0},
+					],
+				},
+			],
+			sessions: [{key: "recents", label: "Recents", rows: ["loose-1", "stray"], hiddenCount: 0}],
+		});
 	});
 
-	it("leaves pinned rows out of their group once split into the Pinned section", () => {
+	it("leaves pinned rows out of their section once split into the Pinned section", () => {
 		const withIds = rows.map((groupRow) => ({...groupRow, id: groupRow.sessionId}));
 		const {rest} = splitPinned(withIds, {pinnedIds: ["gtd-new", "blog-1"], pinnedOrder: []}, () => 0);
-		expect(summarize(buildGroups(rest, prefs({groupBy: "custom"}), NOW, {}, custom))).toStrictEqual([
-			{key: "custom-cg-gtd", label: "GTD", rows: ["gtd-manual", "gtd-old"], hiddenCount: 0},
-			{key: "custom-ungrouped", label: "Ungrouped", rows: ["loose-1"], hiddenCount: 0},
+		const built = buildSidebarSections(rest, prefs(), NOW, {}, manual);
+		expect(built.manual.map((section) => section.group.rows.map((r) => r.sessionId))).toStrictEqual([
+			[],
+			["gtd-manual", "gtd-old"],
+			[],
 		]);
 	});
 });
@@ -498,6 +527,13 @@ describe("SessionListPrefsSchema", () => {
 });
 
 describe("migrateSessionListPrefs", () => {
+	it("ungroups Recents when the stored Group by was the retired Custom groups mode", () => {
+		const stored = {...DEFAULT_SESSION_LIST_PREFS, groupBy: "custom", sortBy: "name"};
+		expect(
+			migrateSessionListPrefs({stored: JSON.stringify(stored), sessionsGrouping: null, sessionSort: null}),
+		).toStrictEqual({...DEFAULT_SESSION_LIST_PREFS, groupBy: "none", sortBy: "name"});
+	});
+
 	it("returns stored prefs when they parse", () => {
 		const stored = {...DEFAULT_SESSION_LIST_PREFS, groupBy: "none", activityDays: "all"};
 		expect(

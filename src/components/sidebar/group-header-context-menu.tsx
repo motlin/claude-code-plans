@@ -1,27 +1,93 @@
 import {useNavigate} from "@tanstack/react-router";
 import {type ReactNode, useState} from "react";
 
-import {useArchiveSessions} from "../../hooks/use-session-archive";
 import {requestHomeComposerFocus} from "../../lib/home-composer-focus";
-import {familyKey, setSidebarGroupsCollapsed, useSidebarState} from "../../lib/sidebar-store";
 import type {SessionGroup, SessionGroupRow} from "../../lib/session-groups";
 import {ConfirmDialog} from "../confirm-dialog";
 import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "../ui/menu";
-import {useSidebarSelection} from "./selection-context";
+import {BULK_REASONS, type GroupBulkActions, useGroupBulkActions} from "./group-bulk-items";
 import {useAfterMenuClose} from "./use-after-menu-close";
-
-/** Upstream's `RB` disabled reasons for the header context menu. */
-const REASONS = {
-	selectAll: "Select all needs at least two visible sessions in this group.",
-	collapseAll: "Everything shown is already collapsed.",
-	expandAll: "Everything is already expanded.",
-	archiveAllEmpty: "Nothing to archive right now.",
-	archiveAllNone:
-		"Every item here is pinned, open in a pane or window, already archived, or can’t be archived from here.",
-} as const;
 
 interface HeaderRow extends SessionGroupRow {
 	archived: boolean;
+}
+
+/** Upstream `rv`'s organize, view and remove groups: Select all | Collapse all, Expand all | Archive all (N). */
+export function GroupBulkMenuItems({
+	actions,
+	onArchiveAll,
+	beforeArchive,
+}: {
+	actions: GroupBulkActions;
+	/** Opens the Archive all confirm (after the menu closes). */
+	onArchiveAll: () => void;
+	/** Items with no upstream group, shown between the view and remove groups (the Icon and color picker). */
+	beforeArchive?: ReactNode;
+}) {
+	return (
+		<>
+			<MenuSeparator />
+			<MenuItem
+				disabled={!actions.canSelectAll}
+				disabledReason={BULK_REASONS.selectAll}
+				onSelect={actions.selectAll}
+			>
+				Select all
+			</MenuItem>
+			<MenuSeparator />
+			<MenuItem
+				disabled={actions.allCollapsed}
+				disabledReason={BULK_REASONS.collapseAll}
+				onSelect={actions.collapseAll}
+			>
+				Collapse all
+			</MenuItem>
+			<MenuItem
+				disabled={actions.noneCollapsed}
+				disabledReason={BULK_REASONS.expandAll}
+				onSelect={actions.expandAll}
+			>
+				Expand all
+			</MenuItem>
+			{beforeArchive !== undefined && (
+				<>
+					<MenuSeparator />
+					{beforeArchive}
+				</>
+			)}
+			<MenuSeparator />
+			<MenuItem
+				disabled={actions.archivableIds.length === 0}
+				disabledReason={actions.archiveAllReason}
+				onSelect={onArchiveAll}
+			>
+				Archive all ({actions.archivableIds.length})
+			</MenuItem>
+		</>
+	);
+}
+
+/** Upstream's Archive all confirm for a section. */
+export function ArchiveAllConfirm({
+	open,
+	onOpenChange,
+	label,
+	onConfirm,
+}: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	label: string;
+	onConfirm: () => void;
+}) {
+	return (
+		<ConfirmDialog
+			open={open}
+			onOpenChange={onOpenChange}
+			title={`Archive all sessions in “${label}”?`}
+			confirmLabel="Archive"
+			onConfirm={onConfirm}
+		/>
+	);
 }
 
 /**
@@ -47,30 +113,10 @@ export function GroupHeaderContextMenu({
 	children: ReactNode;
 }): ReactNode {
 	const navigate = useNavigate();
-	const selection = useSidebarSelection();
-	const {collapsedFamilies, collapsedGroups} = useSidebarState();
-	const archiveSessions = useArchiveSessions();
+	const actions = useGroupBulkActions(group, sectionKeys, activeItemId, pinned);
 	const [confirmArchive, setConfirmArchive] = useState(false);
 	// The composer and the confirm take focus, so they act only once the menu has closed.
 	const {later, menuProps, contentProps} = useAfterMenuClose();
-
-	const hiddenFamilies = new Set(collapsedFamilies);
-	const visibleIds = group.rows.flatMap((row) => [
-		row.sessionId,
-		...(hiddenFamilies.has(familyKey(row.sessionId))
-			? []
-			: (group.nested.get(row.sessionId) ?? []).map((child) => child.sessionId)),
-	]);
-	const unarchived = group.rows
-		.flatMap((row) => [row, ...(group.nested.get(row.sessionId) ?? [])])
-		.filter((row) => !row.archived);
-	const archivableIds = pinned
-		? []
-		: unarchived.filter((row) => row.sessionId !== activeItemId).map((row) => row.sessionId);
-	const collapsed = new Set(collapsedGroups);
-	const allCollapsed = sectionKeys.every((key) => collapsed.has(key));
-	const noneCollapsed = !sectionKeys.some((key) => collapsed.has(key));
-	const canSelectAll = selection !== null && visibleIds.length >= 2;
 
 	return (
 		<>
@@ -80,55 +126,19 @@ export function GroupHeaderContextMenu({
 					<MenuItem onSelect={later(() => void navigate({to: "/"}).then(requestHomeComposerFocus))}>
 						New session
 					</MenuItem>
-					<MenuSeparator />
-					<MenuItem
-						disabled={!canSelectAll}
-						disabledReason={REASONS.selectAll}
-						onSelect={() => {
-							selection?.selectAll(visibleIds);
-						}}
-					>
-						Select all
-					</MenuItem>
-					<MenuSeparator />
-					<MenuItem
-						disabled={allCollapsed}
-						disabledReason={REASONS.collapseAll}
-						onSelect={() => {
-							setSidebarGroupsCollapsed(sectionKeys, true);
-						}}
-					>
-						Collapse all
-					</MenuItem>
-					<MenuItem
-						disabled={noneCollapsed}
-						disabledReason={REASONS.expandAll}
-						onSelect={() => {
-							setSidebarGroupsCollapsed(sectionKeys, false);
-						}}
-					>
-						Expand all
-					</MenuItem>
-					<MenuSeparator />
-					<MenuItem
-						disabled={archivableIds.length === 0}
-						disabledReason={unarchived.length === 0 ? REASONS.archiveAllEmpty : REASONS.archiveAllNone}
-						onSelect={later(() => {
+					<GroupBulkMenuItems
+						actions={actions}
+						onArchiveAll={later(() => {
 							setConfirmArchive(true);
 						})}
-					>
-						Archive all ({archivableIds.length})
-					</MenuItem>
+					/>
 				</MenuContent>
 			</ContextMenu>
-			<ConfirmDialog
+			<ArchiveAllConfirm
 				open={confirmArchive}
 				onOpenChange={setConfirmArchive}
-				title={`Archive all sessions in “${group.label}”?`}
-				confirmLabel="Archive"
-				onConfirm={() => {
-					archiveSessions(archivableIds);
-				}}
+				label={group.label}
+				onConfirm={actions.archiveAll}
 			/>
 		</>
 	);

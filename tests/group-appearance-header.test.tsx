@@ -6,7 +6,7 @@ import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 
 import {GroupSection} from "../src/components/sidebar/session-group-section";
-import type {SidebarSessionRow} from "../src/components/sidebar/sidebar-session-row";
+import {type SidebarSessionRow, toGroupRow} from "../src/components/sidebar/sidebar-session-row";
 import {ToastProvider} from "../src/components/toast";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import {readProjectAppearance} from "../src/lib/project-appearance-store";
@@ -25,11 +25,11 @@ async function flush() {
 	});
 }
 
-async function renderSection(key: string, label: string) {
+async function renderSection(key: string, label: string, rows: SidebarSessionRow[] = []) {
 	const group: SessionGroup<SidebarSessionRow> = {
 		key,
 		label,
-		rows: [],
+		rows,
 		hiddenCount: 0,
 		hiddenAwaiting: false,
 		canShowLess: false,
@@ -101,6 +101,24 @@ function radio(menu: HTMLElement, label: string): HTMLElement {
 	);
 	if (item === undefined) throw new Error(`No radio ${label}`);
 	return item;
+}
+
+function projectRow(id: string): SidebarSessionRow {
+	return toGroupRow({
+		id,
+		title: `Session ${id}`,
+		mtime: "2026-09-28T10:00:00.000Z",
+		created: "2026-09-28T09:00:00.000Z",
+		project: "-projects-foo",
+		projectName: "foo",
+		messageCount: 4,
+		archived: false,
+		state: "ended",
+		bucket: "done",
+		liveAgentCount: 0,
+		unseen: false,
+		blockedSince: null,
+	});
 }
 
 beforeEach(() => {
@@ -258,5 +276,55 @@ describe("appearance picker", () => {
 			stored: {"project-alpha": {icon: "bug"}},
 			mark: "bug/-",
 		});
+	});
+});
+
+describe("folder section header menu", () => {
+	it("offers upstream's worked-out rv groups, with Rename, Move and Delete disabled for a made-up section", async () => {
+		await renderSection("project-foo", "foo", [projectRow("s1"), projectRow("s2")]);
+
+		fireEvent.click(screen.getByRole("button", {name: "More options for foo"}));
+		await flush();
+		const menu = await waitFor(() => screen.getByRole("menu"));
+		const outline = [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((node) => {
+			if (node.getAttribute("role") === "separator") return "---";
+			const reason = document.getElementById(node.getAttribute("aria-describedby") ?? "")?.textContent;
+			return node.getAttribute("aria-disabled") === "true"
+				? `${node.textContent} (${reason ?? ""})`
+				: node.textContent;
+		});
+
+		expect(outline).toStrictEqual([
+			"New session (Where these sessions run isn’t known, so there’s nowhere to start a new one.)",
+			"---",
+			"New group…",
+			"Rename (This group is made automatically, so it can’t be renamed.)",
+			"Move up (This group stays at the end of the list.)",
+			"Move down (This group stays at the end of the list.)",
+			"---",
+			"Select all (Select all needs at least two visible sessions in this group.)",
+			"---",
+			"Collapse all",
+			"Expand all (Everything is already expanded.)",
+			"---",
+			"Icon and color",
+			"---",
+			"Archive all (2)",
+			"---",
+			"Delete (This group is made automatically, so it can’t be deleted.)",
+		]);
+	});
+
+	it("asks to confirm Archive all with the section's name", async () => {
+		await renderSection("project-foo", "foo", [projectRow("s1"), projectRow("s2")]);
+
+		fireEvent.click(screen.getByRole("button", {name: "More options for foo"}));
+		await flush();
+		fireEvent.click(await waitFor(() => screen.getByRole("menuitem", {name: "Archive all (2)"})));
+		await flush();
+
+		expect((await waitFor(() => screen.getByRole("alertdialog"))).querySelector("h2")?.textContent).toBe(
+			"Archive all sessions in “foo”?",
+		);
 	});
 });

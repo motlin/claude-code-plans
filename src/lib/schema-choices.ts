@@ -90,6 +90,7 @@ import type {
 	SessionSortDirectionSchema,
 	SessionStatusFilterSchema,
 } from "./session-groups";
+import type {SectionGroupBySchema, SidebarSectionKindSchema} from "./sidebar-sections";
 import type {GhCheckRunConclusionSchema, GhStatusContextStateSchema} from "./pr-details";
 import type {GhPrReviewDecisionSchema, GhPrStateSchema, GhPrStatusCacheStateSchema} from "./pr-status";
 import type {SessionMenuItemIdSchema} from "./session-menu-items";
@@ -429,9 +430,23 @@ export const sessionGroupByLabels = {
 	date: "Date",
 	project: "Folder",
 	state: "Status",
-	custom: "Custom groups",
 	none: "None",
 } satisfies Record<z.infer<typeof SessionGroupBySchema>, string>;
+
+/** Sidebar section kinds (src/lib/sidebar-sections.ts); the Sessions section is headed "Recents". */
+const sidebarSectionKindLabels = {
+	pinned: "Pinned",
+	manual: "Section",
+	sessions: "Recents",
+} satisfies Record<z.infer<typeof SidebarSectionKindSchema>, string>;
+
+/** A sidebar section's own Group by (upstream `yX` without the cloud-only Environment). */
+export const sectionGroupByLabels = {
+	none: "None",
+	folder: "Folder",
+	status: "Status",
+	date: "Date",
+} satisfies Record<z.infer<typeof SectionGroupBySchema>, string>;
 
 /** Section header icon choices (src/lib/group-appearance.ts). */
 export const groupIconLabels = {
@@ -1247,10 +1262,10 @@ export const sessionMenuItemLabels = {
 	rename: "Rename",
 	"copy-link": "Copy link",
 	fork: "Fork",
-	"move-to-group": "Move to group",
+	"move-to-group": "Move to section",
 	"move-to-custom-group": "Custom group",
-	ungroup: "Ungrouped",
-	"new-group": "New group…",
+	ungroup: "Remove from sections",
+	"new-group": "New section",
 	"transcript-view": "Transcript view",
 	"transcript-mode": "Transcript mode",
 	"make-default-transcript-mode": "Make default",
@@ -1589,6 +1604,8 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"SessionListPrefsSchema.sortDirection": sessionSortDirectionLabels,
 	"SessionListPrefsSchema.statusFilter": sessionStatusFilterLabels,
 	"SessionListPrefsSchema.activityDays": sessionActivityDaysLabels,
+	"SidebarSectionSchema.kind": sidebarSectionKindLabels,
+	"SidebarSectionSchema.groupBy": sectionGroupByLabels,
 	ContentBlockSchema: contentBlockVariants,
 	AttachmentPayloadSchema: attachmentVariants,
 	"UserRecordSchema.promptSource": promptSourceLabels,

@@ -108,7 +108,9 @@ function pinnedSection(container: HTMLElement): HTMLElement {
 
 function rowTitles(element: Element | null): string[] {
 	if (element === null) return [];
-	return [...element.querySelectorAll("a[data-row-main-button]")].map((link) => rowTitle(link));
+	return [...element.querySelectorAll("a[data-row-main-button]")]
+		.filter((link) => link.closest("[hidden]") === null)
+		.map((link) => rowTitle(link));
 }
 
 function visibleGroupNames(container: HTMLElement): string[] {

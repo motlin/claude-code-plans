@@ -6,21 +6,17 @@ const BUTTON_BASE_CLASS =
 	"h-8 rounded-r6 px-3 text-body font-medium transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /**
- * claude.ai/code's small "New group" dialog: no close X, one "Group name"
- * input with initial focus, and a primary button disabled while the name is
- * blank. Outside Custom groups mode it says the list will switch, and the
- * button reads "Create and group by custom".
+ * claude.ai/code's small "New section" dialog (upstream's sections vocabulary `Cg`): no close X, one
+ * "Section name" input with initial focus, a note that the section is listed above the other
+ * sessions, and a "Create section" button disabled while the name is blank.
  */
 export function NewGroupDialog({
 	open,
 	onOpenChange,
-	switchesGroupBy,
 	onCreate,
 }: {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	/** Group by is not Custom groups, so creating switches it. */
-	switchesGroupBy: boolean;
 	/** Called with the trimmed, non-blank name. */
 	onCreate: (name: string) => void;
 }) {
@@ -52,7 +48,7 @@ export function NewGroupDialog({
 					>
 						<form className="flex min-h-0 flex-1 flex-col p-6" onSubmit={submit}>
 							<Dialog.Title className="mb-4 text-[17px] leading-6 font-semibold break-words text-primary">
-								New group
+								New section
 							</Dialog.Title>
 							<div className="grid gap-2">
 								<input
@@ -62,16 +58,14 @@ export function NewGroupDialog({
 									onChange={(event) => {
 										setName(event.target.value);
 									}}
-									placeholder="Group name"
-									aria-label="Group name"
+									placeholder="Section name"
+									aria-label="Section name"
 									autoComplete="off"
 									className="h-8 w-full rounded-r6 border border-strong bg-surface-1 px-2.5 text-body text-primary outline-none placeholder:text-t6 focus:border-accent-100/60"
 								/>
-								{switchesGroupBy && (
-									<p className="text-[12px]/[16px] text-secondary">
-										The list will switch to Custom groups to show it.
-									</p>
-								)}
+								<p className="text-[12px]/[16px] text-secondary">
+									The new section is listed above your other sessions.
+								</p>
 							</div>
 							<div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
 								<Dialog.Close
@@ -85,7 +79,7 @@ export function NewGroupDialog({
 									disabled={trimmed === ""}
 									className={`${BUTTON_BASE_CLASS} bg-fill-primary text-on-primary hover:bg-fill-primary-hover disabled:pointer-events-none disabled:opacity-50`}
 								>
-									{switchesGroupBy ? "Create and group by custom" : "Create group"}
+									Create section
 								</button>
 							</div>
 						</form>

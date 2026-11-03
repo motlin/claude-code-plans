@@ -4,8 +4,9 @@ import {sidebarStateGroupLabels} from "./schema-choices";
 import {resolveFamilies} from "./session-families";
 import type {SessionBucket} from "./session-state";
 import {assertNever} from "./assert-never";
+import type {SidebarSection} from "./sidebar-sections";
 
-export const SessionGroupBySchema = z.enum(["date", "project", "state", "custom", "none"]);
+export const SessionGroupBySchema = z.enum(["date", "project", "state", "none"]);
 type SessionGroupBy = z.infer<typeof SessionGroupBySchema>;
 
 export const SessionSortBySchema = z.enum(["name", "created", "activity"]);
@@ -79,23 +80,25 @@ export interface SessionGroup<Row extends SessionGroupRow> {
 	nested: ReadonlyMap<string, Row[]>;
 }
 
-/** The user's custom groups (src/lib/session-group-store.ts) as Custom groups mode needs them. */
-export interface CustomGroups {
-	groups: readonly {id: string; name: string}[];
+/** The manual sections (custom groups, src/lib/session-group-store.ts) above Recents, in section order. */
+export interface ManualSections {
+	sections: readonly Pick<SidebarSection, "id" | "name" | "groupBy" | "sortBy" | "sortDirection">[];
 	/** sessionId → groupId; at most one group per session. */
 	assignments: Readonly<Record<string, string>>;
-	/** groupId → manual in-group order; unlisted sessions follow the Sort by. */
+	/** groupId → manual in-group order; unlisted sessions follow the section's Sort by. */
 	order: Readonly<Record<string, readonly string[]>>;
 }
 
-const NO_CUSTOM_GROUPS: CustomGroups = {groups: [], assignments: {}, order: {}};
-
-const CUSTOM_UNGROUPED_KEY = "custom-ungrouped";
 const CUSTOM_GROUP_KEY_PREFIX = "custom-";
 
-/** The custom group behind a section key, or null for Ungrouped and every other mode. */
+/** A manual section's group key; its collapse state is kept under it. */
+function customGroupKey(groupId: string): string {
+	return `${CUSTOM_GROUP_KEY_PREFIX}${groupId}`;
+}
+
+/** The custom group behind a manual section's key, or null for every other section. */
 export function customGroupIdOfKey(key: string): string | null {
-	if (key === CUSTOM_UNGROUPED_KEY || !key.startsWith(CUSTOM_GROUP_KEY_PREFIX)) return null;
+	if (!key.startsWith(CUSTOM_GROUP_KEY_PREFIX)) return null;
 	return key.slice(CUSTOM_GROUP_KEY_PREFIX.length);
 }
 
@@ -274,6 +277,8 @@ function buildDateGroups<Row extends SessionGroupRow>(
 	now: number,
 	revealed: RevealedPages,
 	nested: ReadonlyMap<string, Row[]>,
+	/** A manual section's own date headings (upstream `v8`): prefixed keys and no Show more cap. */
+	inSection?: string,
 ): SessionGroup<Row>[] {
 	const todayStart = startOfLocalDay(now);
 	const byDay = new Map<string, {label: string; dayStart: number; rows: Row[]}>();
@@ -287,7 +292,9 @@ function buildDateGroups<Row extends SessionGroupRow>(
 	return [...byDay.entries()]
 		.toSorted(([, first], [, second]) => second.dayStart - first.dayStart)
 		.map(([key, entry]) =>
-			group(key, entry.label, entry.rows, groupCap(key === "date-older", key, revealed), nested),
+			inSection === undefined
+				? group(key, entry.label, entry.rows, groupCap(key === "date-older", key, revealed), nested)
+				: group(`${inSection}${key}`, entry.label, entry.rows, null, nested),
 		);
 }
 
@@ -328,81 +335,67 @@ function buildProjectGroups<Row extends SessionGroupRow>(
 	return groups;
 }
 
-function buildCustomGroups<Row extends SessionGroupRow>(
-	visibleRows: Row[],
-	custom: CustomGroups,
-	showEmptyGroups: boolean,
-	nested: ReadonlyMap<string, Row[]>,
-): SessionGroup<Row>[] {
-	const byGroup = new Map<string, Row[]>(custom.groups.map((entry) => [entry.id, []]));
-	const ungrouped: Row[] = [];
-	for (const row of visibleRows) {
-		const groupId = custom.assignments[row.sessionId];
-		const groupRows = groupId === undefined ? undefined : byGroup.get(groupId);
-		if (groupRows === undefined) ungrouped.push(row);
-		else groupRows.push(row);
-	}
-	const sections = custom.groups.flatMap((entry) => {
-		const manual = custom.order[entry.id] ?? [];
-		const rank = (row: Row) => {
-			const index = manual.indexOf(row.sessionId);
-			return index === -1 ? manual.length : index;
-		};
-		// Array.sort is stable, so rows outside the manual order keep the Sort by order.
-		const groupRows = (byGroup.get(entry.id) ?? []).toSorted((first, second) => rank(first) - rank(second));
-		if (groupRows.length === 0 && !showEmptyGroups) return [];
-		return [group(`${CUSTOM_GROUP_KEY_PREFIX}${entry.id}`, entry.name, groupRows, null, nested)];
-	});
-	if (ungrouped.length > 0) sections.push(group(CUSTOM_UNGROUPED_KEY, "Ungrouped", ungrouped, null, nested));
-	return sections;
+/** Visible rows sorted by the list's Sort by, resolved into families. */
+interface ResolvedRows<Row extends SessionGroupRow> {
+	/** Family heads, in Sort by order. */
+	visible: Row[];
+	/** Head sessionId → the family's most urgent bucket. */
+	familyBucket: ReadonlyMap<string, SessionBucket>;
+	nested: ReadonlyMap<string, Row[]>;
 }
 
-/**
- * Pure model behind the sidebar session list and its Filter & group menu,
- * mirroring claude.ai/code's groupings. Empty groups are omitted except in
- * Project and Custom groups modes with Show empty groups on. Cappable groups show
- * 5 rows plus 5 per Show more page `revealed` under their key. Custom groups
- * mode lists `custom` groups in order, then Ungrouped; callers pass rows with
- * pinned sessions already split out. Forks nest under their family head, which
- * is placed (in State mode) by the family's most urgent member.
- */
-export function buildGroups<Row extends SessionGroupRow>(
+function resolveRows<Row extends SessionGroupRow>(
 	rows: readonly Row[],
 	prefs: SessionListPrefs,
 	now: number,
-	revealed: RevealedPages = {},
-	custom: CustomGroups = NO_CUSTOM_GROUPS,
-): SessionGroup<Row>[] {
+): ResolvedRows<Row> {
 	const families = resolveFamilies(
 		rows
 			.filter((row) => isVisible(row, prefs, now))
 			.toSorted(sessionRowComparator(prefs.sortBy, prefs.sortDirection)),
 	);
-	const visible = families.map((family) => family.head);
-	const familyBucket = new Map(families.map((family) => [family.head.sessionId, family.bucket]));
-	const nested = new Map(
-		families
-			.filter((family) => family.children.length > 0)
-			.map((family) => [family.head.sessionId, family.children]),
-	);
+	return {
+		visible: families.map((family) => family.head),
+		familyBucket: new Map(families.map((family) => [family.head.sessionId, family.bucket])),
+		nested: new Map(
+			families
+				.filter((family) => family.children.length > 0)
+				.map((family) => [family.head.sessionId, family.children]),
+		),
+	};
+}
 
+function stateGroups<Row extends SessionGroupRow>(
+	{visible, familyBucket, nested}: ResolvedRows<Row>,
+	revealed: RevealedPages,
+	inSection?: string,
+): SessionGroup<Row>[] {
+	return STATE_ORDER.map((bucket) =>
+		group(
+			`${inSection ?? ""}state-${bucket}`,
+			sidebarStateGroupLabels[bucket],
+			liveFirst(visible.filter((row) => familyBucket.get(row.sessionId) === bucket)),
+			inSection === undefined ? groupCap(bucket === "done", `state-${bucket}`, revealed) : null,
+			nested,
+		),
+	).filter((stateGroup) => stateGroup.rows.length > 0);
+}
+
+function groupResolved<Row extends SessionGroupRow>(
+	rows: readonly Row[],
+	resolved: ResolvedRows<Row>,
+	prefs: SessionListPrefs,
+	now: number,
+	revealed: RevealedPages,
+): SessionGroup<Row>[] {
+	const {visible, nested} = resolved;
 	switch (prefs.groupBy) {
 		case "state":
-			return STATE_ORDER.map((bucket) =>
-				group(
-					`state-${bucket}`,
-					sidebarStateGroupLabels[bucket],
-					liveFirst(visible.filter((row) => familyBucket.get(row.sessionId) === bucket)),
-					groupCap(bucket === "done", `state-${bucket}`, revealed),
-					nested,
-				),
-			).filter((stateGroup) => stateGroup.rows.length > 0);
+			return stateGroups(resolved, revealed);
 		case "date":
 			return buildDateGroups(visible, now, revealed, nested);
 		case "project":
 			return buildProjectGroups(rows, visible, prefs.showEmptyGroups, nested);
-		case "custom":
-			return buildCustomGroups(visible, custom, prefs.showEmptyGroups, nested);
 		case "none":
 			return visible.length === 0
 				? []
@@ -412,12 +405,95 @@ export function buildGroups<Row extends SessionGroupRow>(
 	}
 }
 
+/**
+ * Pure model behind the sidebar's Recents list and its Group and sort menu,
+ * mirroring claude.ai/code's groupings. Empty groups are omitted except in
+ * Project mode with Show empty groups on. Cappable groups show 5 rows plus 5
+ * per Show more page `revealed` under their key. Callers pass rows with pinned
+ * sessions already split out. Forks nest under their family head, which is
+ * placed (in State mode) by the family's most urgent member.
+ */
+export function buildGroups<Row extends SessionGroupRow>(
+	rows: readonly Row[],
+	prefs: SessionListPrefs,
+	now: number,
+	revealed: RevealedPages = {},
+): SessionGroup<Row>[] {
+	return groupResolved(rows, resolveRows(rows, prefs, now), prefs, now, revealed);
+}
+
+/** One manual section: all its rows as one group, and its own date or status headings when it groups. */
+export interface ManualSectionGroups<Row extends SessionGroupRow> {
+	id: string;
+	/** Key `custom-<id>`, labelled with the section name, rows in the section's own sort. */
+	group: SessionGroup<Row>;
+	/** Upstream `v8`: headings keyed `section:<id>:<bucket>`, or null when the section lists its rows flat. */
+	subgroups: SessionGroup<Row>[] | null;
+}
+
+export interface SidebarSectionGroups<Row extends SessionGroupRow> {
+	manual: ManualSectionGroups<Row>[];
+	/** The Recents (Sessions) section: buildGroups over the rows no manual section holds. */
+	sessions: SessionGroup<Row>[];
+}
+
+/**
+ * Upstream's sections layout (`Fh`): each manual section holds the sessions assigned to it, sorted
+ * by its own Sort by (its manual order first) and optionally split by Date or Status; Recents
+ * groups the rest by the list's Group by. The Status and Last activity filters apply to all of it.
+ */
+export function buildSidebarSections<Row extends SessionGroupRow>(
+	rows: readonly Row[],
+	prefs: SessionListPrefs,
+	now: number,
+	revealed: RevealedPages,
+	manual: ManualSections,
+): SidebarSectionGroups<Row> {
+	const resolved = resolveRows(rows, prefs, now);
+	const known = new Set(manual.sections.map((section) => section.id));
+	const sectionOf = (sessionId: string): string | undefined => {
+		const groupId = manual.assignments[sessionId];
+		return groupId !== undefined && known.has(groupId) ? groupId : undefined;
+	};
+	const sessions = groupResolved(
+		rows.filter((row) => sectionOf(row.sessionId) === undefined),
+		{...resolved, visible: resolved.visible.filter((row) => sectionOf(row.sessionId) === undefined)},
+		prefs,
+		now,
+		revealed,
+	);
+	const manualGroups = manual.sections.map((section): ManualSectionGroups<Row> => {
+		const ordered = manual.order[section.id] ?? [];
+		const rank = (row: Row) => {
+			const index = ordered.indexOf(row.sessionId);
+			return index === -1 ? ordered.length : index;
+		};
+		// Array.sort is stable, so rows outside the manual order keep the section's Sort by order.
+		const heads = resolved.visible
+			.filter((row) => sectionOf(row.sessionId) === section.id)
+			.toSorted(sessionRowComparator(section.sortBy, section.sortDirection))
+			.toSorted((first, second) => rank(first) - rank(second));
+		const prefix = `section:${section.id}:`;
+		const own = {...resolved, visible: heads};
+		return {
+			id: section.id,
+			group: group(customGroupKey(section.id), section.name, heads, null, resolved.nested),
+			subgroups:
+				section.groupBy === "date"
+					? buildDateGroups(heads, now, {}, resolved.nested, prefix)
+					: section.groupBy === "status"
+						? stateGroups(own, {}, prefix)
+						: null,
+		};
+	});
+	return {manual: manualGroups, sessions};
+}
+
 /** The header label the sidebar shows over an empty list, so its Filter control stays reachable. */
 export const EMPTY_LIST_GROUP_LABELS = {
 	state: sidebarStateGroupLabels.done,
 	date: "Today",
 	project: "Other",
-	custom: "Ungrouped",
 	none: "Recents",
 } as const satisfies Record<SessionGroupBy, string>;
 
@@ -444,6 +520,14 @@ export interface StoredSessionListPrefs {
 	sessionSort: string | null;
 }
 
+/** Custom groups mode is gone: the groups are their own sections now, so Recents goes ungrouped. */
+function withoutCustomGroupBy(stored: unknown): unknown {
+	if (typeof stored !== "object" || stored === null || !("groupBy" in stored) || stored.groupBy !== "custom") {
+		return stored;
+	}
+	return {...stored, groupBy: "none"};
+}
+
 /** Reads persisted prefs, seeding them from the legacy sessionsGrouping/sessionSort settings. */
 export function migrateSessionListPrefs(input: StoredSessionListPrefs): SessionListPrefs {
 	if (input.stored !== null) {
@@ -455,7 +539,7 @@ export function migrateSessionListPrefs(input: StoredSessionListPrefs): SessionL
 				showMetadata: true,
 				sortDirection: true,
 				version: true,
-			}).safeParse(JSON.parse(input.stored));
+			}).safeParse(withoutCustomGroupBy(JSON.parse(input.stored)));
 			if (parsed.success) {
 				const migrated = parsed.data.version === undefined;
 				return {

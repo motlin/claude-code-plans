@@ -38,14 +38,14 @@ describe("dialogs opened from the compact main column", () => {
 		expect(scopeOf(await screen.findByRole("alertdialog"))).toBe("comfortable");
 	});
 
-	it("forces comfortable on the new-group dialog", async () => {
+	it("forces comfortable on the new-section dialog", async () => {
 		render(
 			<DensityScope density="compact">
-				<NewGroupDialog open onOpenChange={() => {}} switchesGroupBy={false} onCreate={() => {}} />
+				<NewGroupDialog open onOpenChange={() => {}} onCreate={() => {}} />
 			</DensityScope>,
 		);
 
-		expect(scopeOf(await screen.findByRole("dialog", {name: "New group"}))).toBe("comfortable");
+		expect(scopeOf(await screen.findByRole("dialog", {name: "New section"}))).toBe("comfortable");
 	});
 
 	it("forces comfortable on the keyboard shortcuts dialog", async () => {

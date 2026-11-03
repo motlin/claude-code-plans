@@ -37,7 +37,6 @@ import {hasUnseenWork, markSeen, markUnseen, subscribeUnseenWork} from "../lib/u
 import {InlineRenameInput} from "./inline-rename-input";
 import {NewGroupDialog} from "./new-group-dialog";
 import {bulkSelectionFor, type SidebarSelectionApi, useSidebarSelection} from "./sidebar/selection-context";
-import {useSettings} from "./settings-context";
 import {useHasUnseenWork} from "./use-has-unseen-work";
 import {
 	ContextMenu,
@@ -401,8 +400,6 @@ export function SessionActionsMenu({
 	const newGroupAfterClose = useRenameAfterMenuClose(() => {
 		setNewGroupOpen(true);
 	});
-	const {settings, setSetting} = useSettings();
-	const listPrefs = settings.sessionListPrefs;
 	// The rows a bulk New group… moves, captured when the menu asked for the dialog.
 	const newGroupIds = useRef<readonly string[] | null>(null);
 	const requestBulkNewGroup: RequestBulkNewGroup = (ids) => {
@@ -414,9 +411,6 @@ export function SessionActionsMenu({
 		const ids = newGroupIds.current ?? [session.id];
 		newGroupIds.current = null;
 		for (const id of ids) assign(id, groupId);
-		if (listPrefs.groupBy !== "custom") {
-			setSetting("sessionListPrefs", {...listPrefs, groupBy: "custom"});
-		}
 	};
 	const rowRef = useRef<HTMLDivElement>(null);
 	// Upstream's `data-menu-open` / `data-context-menu-open` keep the row's hover background while a menu is open.
@@ -488,12 +482,7 @@ export function SessionActionsMenu({
 					</MenuContent>
 				</Menu>
 			</div>
-			<NewGroupDialog
-				open={newGroupOpen}
-				onOpenChange={setNewGroupOpen}
-				switchesGroupBy={listPrefs.groupBy !== "custom"}
-				onCreate={createGroupWithRow}
-			/>
+			<NewGroupDialog open={newGroupOpen} onOpenChange={setNewGroupOpen} onCreate={createGroupWithRow} />
 		</RowRenameContext.Provider>
 	);
 }

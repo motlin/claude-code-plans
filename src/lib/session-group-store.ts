@@ -200,30 +200,12 @@ export function setGroupOrder(groupId: string, sessionIds: readonly string[]): v
 	write({...state, order});
 }
 
-/** Move a group section to `toIndex`, clamped to the list. */
-export function moveGroup(id: string, toIndex: number): void {
-	const state = readSessionGroupState();
-	const group = state.groups.find((candidate) => candidate.id === id);
-	if (group === undefined) return;
-	const rest = state.groups.filter((candidate) => candidate.id !== id);
-	const index = Math.max(0, Math.min(toIndex, rest.length));
-	write({...state, groups: [...rest.slice(0, index), group, ...rest.slice(index)]});
-}
-
-/** Reorder every group section by name, A to Z. */
-export function sortGroupsByName(): void {
-	const state = readSessionGroupState();
-	const groups = state.groups.toSorted((first, second) =>
-		first.name.localeCompare(second.name, undefined, {sensitivity: "base"}),
-	);
-	write({...state, groups});
-}
-
 function onStorage(event: StorageEvent): void {
 	if (event.key === null || event.key === SESSION_GROUP_STORAGE_KEY) notify();
 }
 
-function subscribe(listener: () => void): () => void {
+/** Calls `listener` whenever the groups change, here or in another tab. */
+export function subscribeSessionGroups(listener: () => void): () => void {
 	if (listeners.size === 0) window.addEventListener("storage", onStorage);
 	listeners.add(listener);
 	return () => {
@@ -242,6 +224,6 @@ export interface SessionGroupsSnapshot extends SessionGroupState {
 
 /** Live custom groups for this browser, kept in sync across tabs via the `storage` event. */
 export function useSessionGroups(): SessionGroupsSnapshot {
-	const state = useSyncExternalStore(subscribe, readSessionGroupState, getServerSnapshot);
+	const state = useSyncExternalStore(subscribeSessionGroups, readSessionGroupState, getServerSnapshot);
 	return {...state, groupOf: (sessionId) => state.assignments[sessionId] ?? null};
 }

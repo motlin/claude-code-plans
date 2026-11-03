@@ -51,17 +51,17 @@
 		"raisedAt": "2026-11-02"
 	},
 	"bundle.home.gzip": {
-		"ceiling": 421306,
+		"ceiling": 426978,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "SplitDropdownButton tooltips (2026-11-02): tooltip/tooltipSide/menuTooltip props wrap the primary and caret in the shared Tooltip, and approval secondary actions gain the inset fill-secondary-ring class, on top of the growth since the 2026-10-29 context refresh meta line raise. Gzip went from 417070 to 421306, about 66 bytes past the 1% tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-10-28"
+		"reason": "Sidebar sections model (2026-11-02): upstream's sections layout adds the per-browser sections store with its Zod schema and migration (src/lib/sidebar-sections.ts), each manual section's own Group and sort menu with its Date/Status headings, the shared Group and sort footer with Reset/View all disabled states, and the folder header's full worked-out rv menu, while custom groups mode and the first-header + go. Went from 421306 to 426978. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-02"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1270896,
+		"ceiling": 1290676,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Teardown-safe journey tracker (2026-11-02): src/lib/perf/journey.ts guards its browser rAF/timer callbacks and matchMedia/innerWidth reads against a torn-down window and stops resolving paints after dispose (+161 bytes), on top of the growth since the 2026-10-29 custom command detail raise (touch sheets, tab titles, forced-colors popups; 1258308 to 1270735, within tolerance). Raw went to 1270896, 5 bytes past the 1% tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Sidebar sections model (2026-11-02): upstream's sections layout adds the per-browser sections store with its Zod schema and migration (src/lib/sidebar-sections.ts), each manual section's own Group and sort menu with its Date/Status headings, the shared Group and sort footer with Reset/View all disabled states, and the folder header's full worked-out rv menu, while custom groups mode and the first-header + go. Went from 1270896 to 1290676. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-02"
 	},
 	"bundle.session.gzip": {
@@ -72,10 +72,10 @@
 		"raisedAt": "2026-11-02"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1975684,
+		"ceiling": 1996997,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Answered card refocus (2026-11-02): the focus-region module gains upstream's answered-card watcher (a keyboard answer that unmounts a question or approval card moves focus to the composer without a ring), on top of the growth since the 2026-10-30 request panel messages raise (composer bash mode, plan/question answer stores, 1955688 to about 1975000, within tolerance). Raw went to 1975684, about 440 bytes past the tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Sidebar sections model (2026-11-02): upstream's sections layout adds the per-browser sections store with its Zod schema and migration (src/lib/sidebar-sections.ts), each manual section's own Group and sort menu with its Date/Status headings, the shared Group and sort footer with Reset/View all disabled states, and the folder header's full worked-out rv menu, while custom groups mode and the first-header + go. Went from 1975684 to 1996997. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-02"
 	},
 	"client.coldHome.default.commitsToRows": {

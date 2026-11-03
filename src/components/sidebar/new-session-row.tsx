@@ -4,7 +4,6 @@ import type {MouseEvent} from "react";
 import {useShortcutKeys} from "../../hooks/use-shortcut";
 import {requestHomeComposerFocus} from "../../lib/home-composer-focus";
 import {Shortcut} from "../ui/shortcut";
-import {Tooltip} from "../ui/tooltip";
 
 /** Upstream's sidebar header row (`Xx` variant nav), shared by New and the Search row under it. */
 export const NAV_ROW_CLASS =
@@ -55,30 +54,5 @@ export function NewSessionRow() {
 				<Shortcut keys={shortcut.keys} variant="text" hidden className={NAV_ROW_HINT_CLASS} />
 			</Link>
 		</div>
-	);
-}
-
-/**
- * Upstream's "+" New session button on the first sidebar section header: always visible, it goes
- * home and focuses the composer like the New row, with the same ⇧⌘O in its tooltip.
- */
-export function NewSessionHeaderButton() {
-	const navigate = useNavigate();
-	const shortcut = useShortcutKeys("new_session");
-	return (
-		<Tooltip content="New session" shortcut={shortcut.keys} className="-my-1 shrink-0">
-			<button
-				type="button"
-				aria-label="New session"
-				aria-keyshortcuts={shortcut.ariaKeyShortcuts}
-				data-row-action=""
-				// The list keeps one roving tab stop; the New row and ⇧⌘O reach the same action by keyboard.
-				tabIndex={-1}
-				onClick={() => void navigate({to: "/"}).then(requestHomeComposerFocus)}
-				className="relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-[color:var(--sb-heading-ink,var(--color-secondary))] hover:text-primary data-[popup-open]:text-primary aria-expanded:text-primary hover:bg-[var(--sb-hover)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
-			>
-				<Plus aria-hidden="true" className="size-4" />
-			</button>
-		</Tooltip>
 	);
 }

@@ -65,11 +65,11 @@ function archiveCalls(): Array<{url: string; method: string | undefined}> {
 }
 
 async function renderGroups({
-	groupBy = "custom",
+	groupBy = "none",
 	sessions = FIXTURE,
 	path = "/",
 	activeItemId = null,
-}: {groupBy?: "custom" | "state"; sessions?: typeof FIXTURE; path?: string; activeItemId?: string | null} = {}) {
+}: {groupBy?: "none" | "state"; sessions?: typeof FIXTURE; path?: string; activeItemId?: string | null} = {}) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
@@ -269,7 +269,7 @@ describe("sidebar group header context menu", () => {
 			{label: "Collapse all", disabledReason: null},
 			{label: "Expand all", disabledReason: "Everything is already expanded."},
 			{label: "---", disabledReason: null},
-			{label: "Archive all (5)", disabledReason: null},
+			{label: "Archive all (3)", disabledReason: null},
 		]);
 	});
 
@@ -280,17 +280,11 @@ describe("sidebar group header context menu", () => {
 		fireEvent.click(screen.getByRole("menuitem", {name: "Select all"}));
 		await flush();
 
-		expect(selectedTitles(container)).toStrictEqual([
-			"Alpha one",
-			"Beta one",
-			"Loose one",
-			"Loose two",
-			"Loose three",
-		]);
+		expect(selectedTitles(container)).toStrictEqual(["Loose one", "Loose two", "Loose three"]);
 	});
 
 	it("disables Select all under two visible sessions and Archive all with nothing to archive", async () => {
-		await renderGroups({groupBy: "state", sessions: [session("a1", "Alpha one", 1)], activeItemId: "a1"});
+		await renderGroups({groupBy: "state", sessions: [session("u1", "Loose one", 1)], activeItemId: "u1"});
 
 		expect(headerMenuItems(await openIdleHeaderMenu())).toStrictEqual([
 			{label: "New session", disabledReason: null},
@@ -319,7 +313,7 @@ describe("sidebar group header context menu", () => {
 		await flush();
 
 		expect({collapsed, collapsedMenu, expanded: readSidebarState().collapsedGroups}).toStrictEqual({
-			collapsed: ["state-done"],
+			collapsed: ["custom-cg-a", "custom-cg-b", "state-done"],
 			collapsedMenu: [
 				{label: "Collapse all", disabledReason: "Everything shown is already collapsed."},
 				{label: "Expand all", disabledReason: null},
@@ -331,20 +325,18 @@ describe("sidebar group header context menu", () => {
 	it("Archive all asks to confirm, then archives every unpinned row that is not open", async () => {
 		await renderGroups({groupBy: "state", activeItemId: "u3"});
 
-		fireEvent.click(menuItemByLabel(await openIdleHeaderMenu(), "Archive all (4)"));
+		fireEvent.click(menuItemByLabel(await openIdleHeaderMenu(), "Archive all (2)"));
 		await flush();
 		const dialog = await waitFor(() => screen.getByRole("alertdialog"));
 		const title = dialog.querySelector("h2")?.textContent;
 		fireEvent.click(screen.getByRole("button", {name: "Archive"}));
 
 		await waitFor(() => {
-			expect(archiveCalls()).toHaveLength(4);
+			expect(archiveCalls()).toHaveLength(2);
 		});
 		expect({title, calls: archiveCalls()}).toStrictEqual({
 			title: "Archive all sessions in \u201cIdle\u201d?",
 			calls: [
-				{url: "/api/sessions/a1/archived", method: "PUT"},
-				{url: "/api/sessions/b1/archived", method: "PUT"},
 				{url: "/api/sessions/u1/archived", method: "PUT"},
 				{url: "/api/sessions/u2/archived", method: "PUT"},
 			],
@@ -378,7 +370,7 @@ describe("sidebar bulk menu", () => {
 
 		const menu = await openRowMenu("Loose two");
 
-		expect(menuOutline(menu)).toStrictEqual(["Mark as unreadU", "---", "Move 2 to group", "---", "ArchiveA"]);
+		expect(menuOutline(menu)).toStrictEqual(["Mark as unreadU", "---", "Move 2 to section", "---", "ArchiveA"]);
 	});
 
 	it("keeps the single-row menu on a row outside the selection", async () => {
@@ -397,8 +389,8 @@ describe("sidebar bulk menu", () => {
 		cmdClick("Loose three");
 		await openRowMenu("Loose one");
 
-		const submenu = await openSubmenu(/^Move 2 to group/);
-		expect(menuOutline(submenu)).toStrictEqual(["Alpha1", "Beta2", "---", "New group…3"]);
+		const submenu = await openSubmenu(/^Move 2 to section/);
+		expect(menuOutline(submenu)).toStrictEqual(["Alpha1", "Beta2", "---", "New section3"]);
 		fireEvent.keyDown(submenu, {key: "2"});
 		await flush();
 
@@ -416,12 +408,12 @@ describe("sidebar bulk menu", () => {
 		cmdClick("Loose one");
 		cmdClick("Loose two");
 		await openRowMenu("Loose two");
-		const submenu = await openSubmenu(/^Move 2 to group/);
+		const submenu = await openSubmenu(/^Move 2 to section/);
 
 		fireEvent.keyDown(submenu, {key: "3"});
 		await flush();
 		const dialog = await waitFor(() => screen.getByRole("dialog"));
-		fireEvent.change(screen.getByPlaceholderText("Group name"), {target: {value: "Gamma"}});
+		fireEvent.change(screen.getByPlaceholderText("Section name"), {target: {value: "Gamma"}});
 		fireEvent.submit(dialog.querySelector("form")!);
 		await flush();
 
@@ -485,10 +477,13 @@ function rect(top: number, height: number): DOMRect {
 function layout(element: Element): DOMRect {
 	if (element.matches('[data-testid="sidebar-pinned"]')) return rect(0, 250);
 	if (element.matches("[data-pin-drop-row]")) return rect(200, 32);
-	if (element.matches('[data-testid="sidebar-recents"]')) return rect(RECENTS_TOP, 600);
-	const recents = element.closest('[data-testid="sidebar-recents"]');
-	if (recents === null) return rect(0, 0);
-	const units = [...recents.querySelectorAll(UNIT_SELECTOR)];
+	const list = element.closest('[data-testid="sidebar-sections"], [data-testid="sidebar-recents"]');
+	if (list === null) return rect(0, 0);
+	const units = [
+		...document.querySelectorAll(
+			`[data-testid="sidebar-sections"] :is(${UNIT_SELECTOR}), [data-testid="sidebar-recents"] :is(${UNIT_SELECTOR})`,
+		),
+	];
 	const top = (unit: Element) => RECENTS_TOP + ROW_STEP * units.indexOf(unit);
 	if (element.matches(UNIT_SELECTOR)) return rect(top(element), 32);
 	const inside = units.filter((unit) => element.contains(unit));
@@ -510,7 +505,7 @@ function pointer(type: "move" | "up", clientY: number): void {
 	});
 }
 
-// Units: 0 Alpha, 1 Alpha one, 2 Beta, 3 Beta one, 4 Ungrouped, 5 Loose one, 6 Loose two, 7 Loose three.
+// Units: 0 Alpha, 1 Alpha one, 2 Beta, 3 Beta one, 4 Recents, 5 Loose one, 6 Loose two, 7 Loose three.
 
 describe("sidebar multi-row drag", () => {
 	beforeEach(() => {

@@ -129,7 +129,7 @@ describe("density sidebar geometry", () => {
 		}).toStrictEqual({rows: "var(--sb-row-stack-gap)", navRow: null});
 	});
 
-	it("bands desktop group labels with upstream's df-session-list tokens: 8px + row-height band, 2px stack, 8px iconless pad", () => {
+	it("bands desktop group labels with upstream's df-session-list tokens: 18px web band margin + row-height band, 2px stack, 8px iconless pad", () => {
 		const root = block(":root");
 		const names = [
 			"--sb-row-stack-gap",
@@ -143,7 +143,7 @@ describe("density sidebar geometry", () => {
 
 		expect(Object.fromEntries(names.map((name) => [name, token(root, name)]))).toStrictEqual({
 			"--sb-row-stack-gap": "2px",
-			"--sb-group-band-mt": "calc(10px - var(--sb-row-stack-gap))",
+			"--sb-group-band-mt": "calc(var(--sb-group-pt-token) + 4px - var(--sb-row-stack-gap))",
 			"--sb-group-band-h": "var(--sb-row-h)",
 			"--sb-group-pt": "0px",
 			"--sb-group-label-pb": "0px",

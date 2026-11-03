@@ -17,6 +17,7 @@ import {ToastProvider} from "../src/components/toast";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import {PIN_STORAGE_KEY, readPinState} from "../src/lib/pin-store";
 import {SESSION_GROUP_STORAGE_KEY, readSessionGroupState} from "../src/lib/session-group-store";
+import {readSidebarSections} from "../src/lib/sidebar-sections";
 import {DEFAULT_SESSION_LIST_PREFS} from "../src/lib/session-groups";
 import {installLocalStorage} from "./fake-storage";
 import {rowTitle} from "./sidebar-row-title";
@@ -75,7 +76,7 @@ async function renderGroups() {
 		component: () => (
 			<QueryClientProvider client={queryClient}>
 				<ToastProvider>
-					<SessionGroups activeItemId={null} prefs={{...DEFAULT_SESSION_LIST_PREFS, groupBy: "custom"}} />
+					<SessionGroups activeItemId={null} prefs={{...DEFAULT_SESSION_LIST_PREFS, groupBy: "none"}} />
 					<Outlet />
 				</ToastProvider>
 			</QueryClientProvider>
@@ -129,15 +130,18 @@ function rect(top: number, height: number): DOMRect {
 function layout(element: Element): DOMRect {
 	if (element.matches('[data-testid="sidebar-pinned"]')) return rect(0, 250);
 	if (element.matches("[data-pin-drop-row]")) return rect(200, 32);
-	if (element.matches('[data-testid="sidebar-recents"]')) return rect(RECENTS_TOP, 600);
 	const pinned = element.closest('[data-testid="sidebar-pinned"]');
 	if (pinned !== null) {
 		const index = [...pinned.querySelectorAll("[data-drag-id]")].indexOf(element);
 		return index === -1 ? rect(0, 0) : rect(ROW_STEP * (index + 1), 32);
 	}
-	const recents = element.closest('[data-testid="sidebar-recents"]');
-	if (recents === null) return rect(0, 0);
-	const units = [...recents.querySelectorAll(UNIT_SELECTOR)];
+	const list = element.closest('[data-testid="sidebar-sections"], [data-testid="sidebar-recents"]');
+	if (list === null) return rect(0, 0);
+	const units = [
+		...document.querySelectorAll(
+			`[data-testid="sidebar-sections"] :is(${UNIT_SELECTOR}), [data-testid="sidebar-recents"] :is(${UNIT_SELECTOR})`,
+		),
+	];
 	const top = (unit: Element) => RECENTS_TOP + ROW_STEP * units.indexOf(unit);
 	if (element.matches(UNIT_SELECTOR)) return rect(top(element), 32);
 	const inside = units.filter((unit) => element.contains(unit));
@@ -185,7 +189,11 @@ function drag(element: HTMLElement, fromY: number, toY: number): void {
 
 /** Section labels with their row titles, in display order. */
 function sections(container: HTMLElement): [string, string[]][] {
-	return [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-group-key]')].map((section) => [
+	return [
+		...container.querySelectorAll(
+			'[data-testid="sidebar-sections"] [data-group-key], [data-testid="sidebar-recents"] [data-group-key]',
+		),
+	].map((section) => [
 		section.querySelector("[data-group-name]")?.textContent ?? "",
 		[...section.querySelectorAll("a[data-row-main-button]")].map((link) => rowTitle(link)),
 	]);
@@ -204,7 +212,7 @@ beforeEach(() => {
 	});
 });
 
-// Units: 0 Alpha, 1 Alpha one, 2 Alpha two, 3 Beta, 4 Beta one, 5 Ungrouped, 6 Loose one, 7 Loose two.
+// Units: 0 Alpha, 1 Alpha one, 2 Alpha two, 3 Beta, 4 Beta one, 5 Recents, 6 Loose one, 7 Loose two.
 
 describe("sidebar drag to custom groups", () => {
 	it("assigns an ungrouped row dropped between two group rows at that slot", async () => {
@@ -216,7 +224,7 @@ describe("sidebar drag to custom groups", () => {
 			expect(sections(container)).toStrictEqual([
 				["Alpha", ["Alpha one", "Loose one", "Alpha two"]],
 				["Beta", ["Beta one"]],
-				["Ungrouped", ["Loose two"]],
+				["Recents", ["Loose two"]],
 			]);
 		});
 		expect(readSessionGroupState()).toStrictEqual({
@@ -235,7 +243,7 @@ describe("sidebar drag to custom groups", () => {
 			expect(sections(container)).toStrictEqual([
 				["Alpha", ["Alpha one", "Alpha two"]],
 				["Beta", ["Loose two", "Beta one"]],
-				["Ungrouped", ["Loose one"]],
+				["Recents", ["Loose one"]],
 			]);
 		});
 		expect(readSessionGroupState().order).toStrictEqual({"cg-b": ["u2", "b1"]});
@@ -262,7 +270,7 @@ describe("sidebar drag to custom groups", () => {
 			clientY: unitY(1),
 		});
 		pointerMove(unitY(1) + 20);
-		// The Ungroup row is unit 5, between Beta one and the Ungrouped header.
+		// The Remove from Alpha row is unit 5, between Beta one and the Recents header.
 		pointerMove(unitY(5));
 		const hot = {text: ungroupRow()?.textContent, hot: ungroupRow()?.hasAttribute("data-hot")};
 		pointerUp(unitY(5));
@@ -271,7 +279,7 @@ describe("sidebar drag to custom groups", () => {
 			expect(sections(container)).toStrictEqual([
 				["Alpha", ["Alpha two"]],
 				["Beta", ["Beta one"]],
-				["Ungrouped", ["Alpha one", "Loose one", "Loose two"]],
+				["Recents", ["Alpha one", "Loose one", "Loose two"]],
 			]);
 		});
 		expect({
@@ -281,7 +289,7 @@ describe("sidebar drag to custom groups", () => {
 			assignments: readSessionGroupState().assignments,
 		}).toStrictEqual({
 			whileLoose: null,
-			hot: {text: "Ungroup", hot: true},
+			hot: {text: "Remove from Alpha", hot: true},
 			after: null,
 			assignments: {a2: "cg-a", b1: "cg-b"},
 		});
@@ -293,9 +301,14 @@ describe("sidebar drag to custom groups", () => {
 		drag(groupToggle("Beta"), unitY(3), unitY(0));
 
 		await waitFor(() => {
-			expect(sections(container).map(([label]) => label)).toStrictEqual(["Beta", "Alpha", "Ungrouped"]);
+			expect(sections(container).map(([label]) => label)).toStrictEqual(["Beta", "Alpha", "Recents"]);
 		});
-		expect(readSessionGroupState().groups).toStrictEqual([BETA, ALPHA]);
+		expect(readSidebarSections().map((section) => section.id)).toStrictEqual([
+			"pinned",
+			"cg-b",
+			"cg-a",
+			"sessions",
+		]);
 	});
 
 	it("unpins a pinned row dropped into a group and places it there", async () => {
@@ -308,7 +321,7 @@ describe("sidebar drag to custom groups", () => {
 			expect(sections(container)).toStrictEqual([
 				["Alpha", ["Alpha one", "Loose two", "Alpha two"]],
 				["Beta", ["Beta one"]],
-				["Ungrouped", ["Loose one"]],
+				["Recents", ["Loose one"]],
 			]);
 		});
 		expect({
@@ -320,7 +333,7 @@ describe("sidebar drag to custom groups", () => {
 		});
 	});
 
-	it("still unpins a pinned row dropped on the Ungrouped section", async () => {
+	it("still unpins a pinned row dropped on Recents", async () => {
 		localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify({pinnedIds: ["u2"], pinnedOrder: []}));
 		const {container} = await renderGroups();
 
@@ -330,7 +343,7 @@ describe("sidebar drag to custom groups", () => {
 			expect(sections(container)).toStrictEqual([
 				["Alpha", ["Alpha one", "Alpha two"]],
 				["Beta", ["Beta one"]],
-				["Ungrouped", ["Loose one", "Loose two"]],
+				["Recents", ["Loose one", "Loose two"]],
 			]);
 		});
 		expect(readPinState()).toStrictEqual({pinnedIds: [], pinnedOrder: []});

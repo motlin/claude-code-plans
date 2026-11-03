@@ -164,8 +164,8 @@ function numbered(entries: SessionMenuEntry[]): SessionMenuEntry[] {
 }
 
 /**
- * Upstream's "Move to group ▸": the groups as radios, a separator, Ungrouped
- * (only when the row is grouped) and New group…, numbered 1…9 in that order.
+ * Upstream's "Move to section ▸": the manual sections as radios, a separator, Remove from {section}
+ * (only when the row is in one) and New section, numbered 1…9 in that order.
  */
 function moveToGroupItem(
 	{groups, current, grouped = current !== null}: NonNullable<SessionMenuSession["customGroup"]> & {grouped?: boolean},
@@ -180,10 +180,12 @@ function moveToGroupItem(
 	}));
 	if (entries.length > 0) entries.push({kind: "separator"});
 	if (grouped) {
+		// Upstream `Cg`: "Remove from {groupName}", or "Remove from sections" across several.
+		const currentName = groups.find((group) => group.id === current)?.name;
 		entries.push({
 			kind: "item",
 			id: "ungroup",
-			label: sessionMenuItemLabels.ungroup,
+			label: currentName === undefined ? sessionMenuItemLabels.ungroup : `Remove from ${currentName}`,
 			checked: false,
 		});
 	}
@@ -232,7 +234,7 @@ export function getBulkSessionMenuItems({
 					current: customGroup.current,
 					grouped: customGroup.anyGrouped,
 				},
-				`Move ${count} to group`,
+				`Move ${count} to section`,
 			),
 		]);
 	}

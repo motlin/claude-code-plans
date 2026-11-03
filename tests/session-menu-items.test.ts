@@ -334,7 +334,7 @@ describe("getBulkSessionMenuItems", () => {
 			{
 				kind: "item",
 				id: "move-to-group",
-				label: "Move 3 to group",
+				label: "Move 3 to section",
 				submenu: [
 					{
 						kind: "item",
@@ -353,7 +353,7 @@ describe("getBulkSessionMenuItems", () => {
 						accelerator: "2",
 					},
 					SEPARATOR,
-					{kind: "item", id: "new-group", label: "New group…", accelerator: "3"},
+					{kind: "item", id: "new-group", label: "New section", accelerator: "3"},
 				],
 			},
 			SEPARATOR,
@@ -375,7 +375,7 @@ describe("getBulkSessionMenuItems", () => {
 			{
 				kind: "item",
 				id: "move-to-group",
-				label: "Move 2 to group",
+				label: "Move 2 to section",
 				submenu: [
 					{
 						kind: "item",
@@ -386,8 +386,8 @@ describe("getBulkSessionMenuItems", () => {
 						accelerator: "1",
 					},
 					SEPARATOR,
-					{kind: "item", id: "ungroup", label: "Ungrouped", checked: false, accelerator: "2"},
-					{kind: "item", id: "new-group", label: "New group…", accelerator: "3"},
+					{kind: "item", id: "ungroup", label: "Remove from Beta", checked: false, accelerator: "2"},
+					{kind: "item", id: "new-group", label: "New section", accelerator: "3"},
 				],
 			},
 		]);

@@ -5,12 +5,11 @@ import {useArchiveSessions} from "../../hooks/use-session-archive";
 import {
 	createGroup,
 	deleteGroup,
-	moveGroup,
 	renameGroup,
 	setGroupAppearance,
-	sortGroupsByName,
 	useSessionGroups,
 } from "../../lib/session-group-store";
+import {moveSidebarSection, sortManualSectionsByName, useSidebarSections} from "../../lib/sidebar-sections";
 import {readSidebarState, toggleSidebarGroup} from "../../lib/sidebar-store";
 import type {GroupAppearance, GroupAppearancePatch} from "../../lib/group-appearance";
 import {ConfirmDialog} from "../confirm-dialog";
@@ -24,20 +23,22 @@ export const KEBAB_CLASS =
 
 type Dialog = "new-group" | "delete" | "archive-all";
 
-/** Upstream's delete confirm body, pluralized on the sessions assigned to the group. */
+/** Upstream `Cg.deleteBody`, pluralized on the sessions in the section. */
 function deleteGroupBody(name: string, count: number): string {
 	const rest =
 		count === 0
 			? "Nothing is in it."
-			: `The ${count} ${count === 1 ? "item" : "items"} in it will no longer be grouped.`;
+			: count === 1
+				? "The 1 session in it moves back to your other sessions."
+				: `The ${count} sessions in it move back to your other sessions.`;
 	return `“${name}” will be removed. ${rest}`;
 }
 
 /**
- * The label of a Custom groups section with claude.ai/code's header menu,
- * opened by right-clicking the label or by its hover kebab: New session (upstream `rv`), Rename group
- * (inline), Icon and color ▸, New group…, Move up / Move down / Sort A to Z, Archive all (N)
- * and Delete group behind a confirm.
+ * The header label of a manual section with claude.ai/code's header menu, opened by right-clicking
+ * the label or by its hover kebab: New session (upstream `rv`), Rename section (inline), Icon and
+ * color ▸, New section, Move up / Move down / Sort A to Z among the manual sections, Archive all (N)
+ * and Delete section behind a confirm.
  */
 export function CustomGroupHeader({
 	groupId,
@@ -59,6 +60,8 @@ export function CustomGroupHeader({
 	children: ReactNode;
 }) {
 	const {groups, assignments} = useSessionGroups();
+	const sections = useSidebarSections();
+	const manual = sections.filter((section) => section.kind === "manual");
 	const [renaming, setRenaming] = useState(false);
 	const [dialog, setDialog] = useState<Dialog | null>(null);
 	const archiveSessions = useArchiveSessions();
@@ -68,8 +71,8 @@ export function CustomGroupHeader({
 	// Menus hand focus back after onOpenChangeComplete, so this outlives the queued action.
 	const keepFocus = useRef(false);
 
-	const index = groups.findIndex((group) => group.id === groupId);
-	const appearance = groups[index];
+	const index = manual.findIndex((section) => section.id === groupId);
+	const appearance = groups.find((group) => group.id === groupId);
 	const assignedCount = Object.values(assignments).filter((id) => id === groupId).length;
 
 	const later = (action: () => void) => () => {
@@ -97,7 +100,7 @@ export function CustomGroupHeader({
 	const items = (
 		<CustomGroupMenuItems
 			index={index}
-			count={groups.length}
+			count={manual.length}
 			archiveCount={archivableIds.length}
 			appearance={appearance}
 			onAppearance={(patch) => {
@@ -111,9 +114,10 @@ export function CustomGroupHeader({
 				setDialog("new-group");
 			})}
 			onMove={(delta) => {
-				moveGroup(groupId, index + delta);
+				const neighbour = manual[index + delta];
+				if (neighbour !== undefined) moveSidebarSection(groupId, sections.indexOf(neighbour));
 			}}
-			onSort={sortGroupsByName}
+			onSort={sortManualSectionsByName}
 			onArchiveAll={later(() => {
 				setDialog("archive-all");
 			})}
@@ -131,7 +135,7 @@ export function CustomGroupHeader({
 						{renaming ? (
 							<InlineRenameInput
 								value={label}
-								ariaLabel="Rename group"
+								ariaLabel="Rename section"
 								onCommit={(name) => {
 									renameGroup(groupId, name);
 									endRename();
@@ -158,7 +162,6 @@ export function CustomGroupHeader({
 				onOpenChange={(open) => {
 					setDialog(open ? "new-group" : null);
 				}}
-				switchesGroupBy={false}
 				onCreate={(name) => createGroup(name)}
 			/>
 			<ConfirmDialog
@@ -166,7 +169,7 @@ export function CustomGroupHeader({
 				onOpenChange={(open) => {
 					setDialog(open ? "delete" : null);
 				}}
-				title="Delete group?"
+				title="Delete section?"
 				body={deleteGroupBody(label, assignedCount)}
 				confirmLabel="Delete"
 				variant="danger"
@@ -204,7 +207,7 @@ function CustomGroupMenuItems({
 	onArchiveAll,
 	onDelete,
 }: {
-	/** The group's position among all sections, -1 when unknown. */
+	/** The section's position among the manual sections, -1 when unknown. */
 	index: number;
 	count: number;
 	archiveCount: number;
@@ -223,9 +226,9 @@ function CustomGroupMenuItems({
 		<>
 			<MenuItem onSelect={onNewSession}>New session</MenuItem>
 			<MenuSeparator />
-			<MenuItem onSelect={onRename}>Rename group</MenuItem>
+			<MenuItem onSelect={onRename}>Rename section</MenuItem>
 			<GroupAppearanceSubmenu appearance={appearance} onChange={onAppearance} />
-			<MenuItem onSelect={onNewGroup}>New group…</MenuItem>
+			<MenuItem onSelect={onNewGroup}>New section</MenuItem>
 			{canReorder && (
 				<>
 					<MenuSeparator />
@@ -258,7 +261,7 @@ function CustomGroupMenuItems({
 			)}
 			<MenuSeparator />
 			<MenuItem variant="danger" onSelect={onDelete}>
-				Delete group
+				Delete section
 			</MenuItem>
 		</>
 	);

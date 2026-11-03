@@ -329,7 +329,7 @@ describe("sidebar body roving focus", () => {
 			press("ArrowRight"),
 			press("ArrowLeft"),
 			press("ArrowDown"),
-		]).toEqual(["Group and sort", "New session", "New session", "Group and sort", "First row"]);
+		]).toEqual(["Group and sort", "Group and sort", "Group and sort", "Idle", "First row"]);
 	});
 
 	it("reaches a project header's New session in {group} + with ArrowRight, and Tab reaches only the focused header's buttons", async () => {

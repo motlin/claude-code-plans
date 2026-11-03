@@ -66,6 +66,7 @@ import {
 	schemaChoiceRegistry,
 } from "../src/lib/schema-choices";
 import {SessionListPrefsSchema} from "../src/lib/session-groups";
+import {SidebarSectionSchema} from "../src/lib/sidebar-sections";
 import {SessionMenuItemIdSchema} from "../src/lib/session-menu-items";
 import {
 	CustomizeDetailTabSchema,
@@ -144,6 +145,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
 	["GhCheckRunConclusionSchema", GhCheckRunConclusionSchema],
 	["GhStatusContextStateSchema", GhStatusContextStateSchema],
 	["SessionListPrefsSchema", SessionListPrefsSchema],
+	["SidebarSectionSchema", SidebarSectionSchema],
 	["GroupIconSchema", GroupIconSchema],
 	["GroupColorSchema", GroupColorSchema],
 	["ArtifactAccessLevelSchema", ArtifactAccessLevelSchema],

@@ -1,7 +1,6 @@
 import {sectionHoverWithinProps} from "../../lib/section-hover-within";
 import {Link, useNavigate} from "@tanstack/react-router";
 import {useQuery, useQueryClient} from "@tanstack/react-query";
-import {ChevronRight} from "lucide-react";
 import {
 	Fragment,
 	useCallback,
@@ -58,7 +57,6 @@ import {GroupHeaderContextMenu} from "./group-header-context-menu";
 import {GroupNewSessionButton} from "./group-new-session-button";
 import {GroupAppearanceMark} from "./group-appearance";
 import {useOpenRowAutoExpand, useSectionFocusRescue} from "./group-section-focus";
-import {NewSessionHeaderButton} from "./new-session-row";
 import {ProjectGroupHeader} from "./project-group-header";
 import {useSidebarSelection} from "./selection-context";
 import type {SidebarSessionRow} from "./sidebar-session-row";
@@ -90,20 +88,12 @@ const DESCRIBED_ROW_CLASS =
 
 /**
  * A section header's trailing controls, as upstream lays them out: Group and sort revealed on hover
- * or keyboard focus (always on touch, and while its menu is open), then the first section's
- * always-visible New session + (or, under project grouping, every section's own +).
+ * or keyboard focus (always on touch, and while its menu is open), then a folder or manual section's
+ * own +. Upstream's hub-rail sidebar puts no generic New session + on any header: the New nav row has it.
  */
-function HeaderControls({
-	filterSlot,
-	leadsList,
-	trailing,
-}: {
-	filterSlot: ReactNode;
-	leadsList: boolean;
-	trailing?: ReactNode;
-}) {
+function HeaderControls({filterSlot, trailing}: {filterSlot: ReactNode; trailing?: ReactNode}) {
 	const hasFilter = filterSlot !== undefined && filterSlot !== null;
-	if (!hasFilter && !leadsList && trailing === undefined) return null;
+	if (!hasFilter && trailing === undefined) return null;
 	return (
 		<div className="flex items-center">
 			{hasFilter && (
@@ -114,7 +104,6 @@ function HeaderControls({
 					{filterSlot}
 				</span>
 			)}
-			{leadsList && <NewSessionHeaderButton />}
 			{trailing}
 		</div>
 	);
@@ -216,6 +205,24 @@ function useCollapsedBadgeKind(
 	return useSyncExternalStore(subscribeUnseenWork, getSnapshot, getSnapshot);
 }
 
+/** Upstream `BO{name:"CaretRightFilled",customSize:14}`: a filled right-pointing triangle. */
+function CaretRightFilled({className}: {className: string}) {
+	return (
+		<svg
+			aria-hidden="true"
+			data-group-caret
+			viewBox="0 0 14 14"
+			fill="currentColor"
+			className={className}
+			style={{translate: "0 0.5px"}}
+		>
+			<path d="M5 3.4v7.2c0 .42.48.65.81.39l4.5-3.6a.5.5 0 0 0 0-.78l-4.5-3.6A.5.5 0 0 0 5 3.4Z" />
+		</svg>
+	);
+}
+
+const NO_SHOW_MORE = () => {};
+
 /** A collapsible sidebar group: label row (caret on hover), session rows, "Show more" / "Show less". */
 export function GroupSection({
 	group,
@@ -223,7 +230,9 @@ export function GroupSection({
 	expanded,
 	activeItemId,
 	filterSlot,
-	leadsList = false,
+	subgroups = null,
+	collapsedKeys,
+	showMetadata,
 	onShowMore,
 	onShowLess,
 	loadingMore = false,
@@ -243,8 +252,12 @@ export function GroupSection({
 	expanded: boolean;
 	activeItemId: string | null;
 	filterSlot: ReactNode;
-	/** The list's first section, whose header also carries New session. */
-	leadsList?: boolean;
+	/** A manual section's own Date or Status headings (upstream `v8`), drawn in place of its flat rows. */
+	subgroups?: readonly SessionGroup<SidebarSessionRow>[] | null;
+	/** Collapsed section keys, for the subgroups' own collapse. */
+	collapsedKeys?: ReadonlySet<string>;
+	/** The section's own Show ▸ Metadata (a manual section's); defaults to the list's. */
+	showMetadata?: boolean;
 	onShowMore: () => void;
 	onShowLess: () => void;
 	/** The next feed page this group's Show more asked for is loading. */
@@ -275,7 +288,12 @@ export function GroupSection({
 	const appearance = useSectionAppearance(group.key, customGroupId, isProject);
 	// Upstream omits the env glyph on pinned rows and when the section is itself a place.
 	const envGlyph = pinnedIds === undefined && !isProject;
-	const place: RowPlace = {heading: group.label, underNeedsInput: group.key === NEEDS_INPUT_GROUP_KEY};
+	const {settings} = useSettings();
+	const place: RowPlace = {
+		heading: group.label,
+		underNeedsInput: group.key.endsWith(NEEDS_INPUT_GROUP_KEY),
+		metadata: showMetadata ?? settings.sessionListPrefs.showMetadata,
+	};
 	const sectionElement = useRef<HTMLDivElement | null>(null);
 	const rows = useMemo(() => allRows(group), [group]);
 	const rowKeys = useMemo(() => rows.map((row) => row.sessionId), [rows]);
@@ -306,39 +324,43 @@ export function GroupSection({
 					(group.nested.get(row.sessionId) ?? []).some((child) => child.sessionId === activeItemId),
 			);
 	const toggle = (
-		<button
-			type="button"
-			{...ROVING_ITEM_PROPS}
-			data-group-toggle
-			aria-expanded={expanded}
-			onClick={() => {
-				toggleSidebarGroup(group.key);
-			}}
-			className="group/label -my-1 -ml-1 flex min-w-0 flex-1 items-center gap-1 rounded-[var(--sb-radius)] py-1 pl-1 text-left hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
-		>
-			<GroupAppearanceMark appearance={appearance} />
-			<span data-group-name className="min-w-0">
-				<FadeLabel text={group.label} />
-			</span>
-			<ChevronRight
-				aria-hidden="true"
-				data-group-caret
-				className={`h-3 w-3 shrink-0 transition-transform duration-[60ms] motion-reduce:transition-none ${
-					expanded
-						? "rotate-90 opacity-0 group-data-[hover-within]/section:opacity-100 group-focus-visible/label:opacity-100"
-						: "opacity-100"
-				}`}
-			/>
-			{badgeKind !== null && (
-				<span data-group-badge className="-my-1 ms-auto flex size-6 shrink-0 items-center justify-center">
-					<SessionStateIcon
-						kind={badgeKind}
-						live={false}
-						{...(badgeKind === "ready" ? {label: "Unread response"} : {})}
-					/>
+		<h3 className="flex min-w-0 flex-1">
+			<button
+				type="button"
+				{...ROVING_ITEM_PROPS}
+				data-group-toggle
+				aria-expanded={expanded}
+				onClick={() => {
+					toggleSidebarGroup(group.key);
+				}}
+				className="group/label -my-1 -ml-1 flex min-w-0 flex-1 items-center gap-1.25 rounded-[var(--sb-radius)] py-1 pl-1 hover:text-secondary text-left hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
+			>
+				<span data-group-name className="min-w-0">
+					<FadeLabel text={group.label} />
 				</span>
-			)}
-		</button>
+				{appearance !== undefined && (appearance.icon !== undefined || appearance.color !== undefined) && (
+					<span data-group-mark className="flex shrink-0">
+						<GroupAppearanceMark appearance={appearance} />
+					</span>
+				)}
+				<CaretRightFilled
+					className={`size-3.5 shrink-0 transition-transform duration-[60ms] motion-reduce:transition-none ${
+						expanded
+							? "rotate-90 opacity-0 group-data-[hover-within]/section:opacity-100 group-focus-visible/label:opacity-100"
+							: "opacity-100"
+					}`}
+				/>
+				{badgeKind !== null && (
+					<span data-group-badge className="-my-1 ms-auto flex size-6 shrink-0 items-center justify-center">
+						<SessionStateIcon
+							kind={badgeKind}
+							live={false}
+							{...(badgeKind === "ready" ? {label: "Unread response"} : {})}
+						/>
+					</span>
+				)}
+			</button>
+		</h3>
 	);
 	return (
 		<div
@@ -356,11 +378,16 @@ export function GroupSection({
 				data-sidebar-group-label
 				data-drop-hot={dropHot ? "" : undefined}
 				data-rowless={expanded || openRows.length > 0 ? undefined : ""}
-				className="group/labelrow df-label-inset rounded-[var(--sb-radius)] data-[drop-hot]:bg-[var(--sb-hover)] data-[rowless]:mb-[var(--sb-row-stack-gap)] flex mt-[var(--sb-group-band-mt)] h-[var(--sb-group-band-h)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[var(--sb-row-ctl-inset)] pb-[var(--sb-group-label-pb)] text-[length:var(--sb-group-font)] leading-4 [--sb-heading-ink:var(--color-ink-muted)] hover:[--sb-heading-ink:var(--color-secondary)] text-[color:var(--sb-heading-ink)]"
+				className="group/labelrow df-label-inset rounded-[var(--sb-radius)] data-[drop-hot]:bg-[var(--sb-hover)] mb-[var(--sb-row-stack-gap)] flex mt-[var(--sb-group-band-mt)] h-[var(--sb-group-band-h)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[var(--sb-row-ctl-inset)] pb-[var(--sb-group-label-pb)] text-[length:var(--sb-group-font)] leading-4 [--sb-heading-ink:var(--color-ink-muted)] hover:[--sb-heading-ink:var(--color-secondary)] text-[color:var(--sb-heading-ink)]"
 			>
 				{customGroupId === null ? (
 					isProject ? (
-						<ProjectGroupHeader groupKey={group.key} label={group.label} onNewSession={projectNewSession}>
+						<ProjectGroupHeader
+							group={group}
+							sectionKeys={sectionKeys ?? [group.key]}
+							activeItemId={activeItemId}
+							onNewSession={projectNewSession}
+						>
 							{toggle}
 						</ProjectGroupHeader>
 					) : (
@@ -386,43 +413,45 @@ export function GroupSection({
 				)}
 				<HeaderControls
 					filterSlot={filterSlot}
-					leadsList={leadsList}
 					trailing={sectionNewSessionButton(group.label, customNewSession, projectNewSession)}
 				/>
 			</div>
-			{expanded && (
-				<div ref={rowsRef} data-group-rows className={ROWS_CLASS}>
-					{group.rows.map((row) => {
-						const nested = group.nested.get(row.sessionId);
-						return (
-							<Fragment key={row.sessionId}>
-								<div
-									{...dragRowProps?.(row.sessionId)}
-									data-row-key={row.sessionId}
-									className="df-drag-shiftable relative"
-								>
-									<SessionRowLink
-										row={row}
-										selected={row.sessionId === activeItemId}
-										pinnedIds={pinnedIds}
-										envGlyph={envGlyph}
-										place={place}
-									/>
-								</div>
-								{nested !== undefined && (
-									<SessionFamily
-										head={row}
-										nested={nested}
-										activeItemId={activeItemId}
-										familyHeadIds={familyHeadIds}
-										dragRowProps={dragRowProps}
-										envGlyph={envGlyph}
-										place={place}
-									/>
-								)}
-							</Fragment>
-						);
-					})}
+			{/* Upstream P3: collapsed rows stay mounted in a hidden wrapper, keeping their state. */}
+			{subgroups === null ? (
+				<div ref={rowsRef} data-group-rows hidden={!expanded} className={expanded ? ROWS_CLASS : "hidden"}>
+					{(expanded ? group.rows : group.rows.filter((row) => !openKeys.includes(row.sessionId))).map(
+						(row) => {
+							const nested = group.nested.get(row.sessionId);
+							return (
+								<Fragment key={row.sessionId}>
+									<div
+										{...dragRowProps?.(row.sessionId)}
+										data-row-key={row.sessionId}
+										className="df-drag-shiftable relative"
+									>
+										<SessionRowLink
+											row={row}
+											selected={row.sessionId === activeItemId}
+											pinnedIds={pinnedIds}
+											envGlyph={envGlyph}
+											place={place}
+										/>
+									</div>
+									{nested !== undefined && (
+										<SessionFamily
+											head={row}
+											nested={nested}
+											activeItemId={activeItemId}
+											familyHeadIds={familyHeadIds}
+											dragRowProps={dragRowProps}
+											envGlyph={envGlyph}
+											place={place}
+										/>
+									)}
+								</Fragment>
+							);
+						},
+					)}
 					{loadingMore ? (
 						<OverflowRow disabled onClick={() => {}}>
 							Loading…
@@ -459,6 +488,25 @@ export function GroupSection({
 							{announcement}
 						</span>
 					)}
+				</div>
+			) : (
+				<div data-group-rows hidden={!expanded} className={expanded ? "flex flex-col" : "hidden"}>
+					{subgroups.map((subgroup) => (
+						<GroupSection
+							key={subgroup.key}
+							group={subgroup}
+							groupBy={groupBy}
+							expanded={collapsedKeys?.has(subgroup.key) !== true}
+							activeItemId={activeItemId}
+							filterSlot={undefined}
+							{...(showMetadata === undefined ? {} : {showMetadata})}
+							onShowMore={NO_SHOW_MORE}
+							onShowLess={NO_SHOW_MORE}
+							{...(dragRowProps === undefined ? {} : {dragRowProps})}
+							familyHeadIds={familyHeadIds}
+							sectionKeys={sectionKeys ?? [group.key]}
+						/>
+					))}
 				</div>
 			)}
 			{openRows.length > 0 && (
@@ -549,7 +597,7 @@ export function EmptyGroupSection({
 				className="group/labelrow df-label-inset flex mt-[var(--sb-group-band-mt)] h-[var(--sb-group-band-h)] w-full items-center gap-[var(--sb-row-gap)] pt-[var(--sb-group-pt)] pr-[var(--sb-row-ctl-inset)] pb-[var(--sb-group-label-pb)] text-[length:var(--sb-group-font)] leading-4 [--sb-heading-ink:var(--color-ink-muted)] hover:[--sb-heading-ink:var(--color-secondary)] text-[color:var(--sb-heading-ink)]"
 			>
 				<span className="min-w-0 flex-1 truncate">{label}</span>
-				<HeaderControls filterSlot={filterSlot} leadsList />
+				<HeaderControls filterSlot={filterSlot} />
 			</div>
 			<EmptyListBody reason={reason} />
 		</div>
@@ -799,12 +847,7 @@ function SessionRowLink({
 		pinnedIds === undefined && settings.sessionListPrefs.showPrStatus && row.session.prStatus !== undefined
 			? prGlyph(row.session.prStatus).state
 			: undefined;
-	const metaLine = useRowMetaLine(
-		row,
-		pinnedIds === undefined && settings.sessionListPrefs.showMetadata,
-		place,
-		prTail,
-	);
+	const metaLine = useRowMetaLine(row, pinnedIds === undefined && place.metadata, place, prTail);
 	const rowClass = metaLine === undefined ? ROW_CLASS : DESCRIBED_ROW_CLASS;
 	const titleLine = (
 		<>
@@ -925,6 +968,8 @@ function FadeLabel({text, children}: {text: string; children?: ReactNode}) {
 interface RowPlace {
 	heading: string;
 	underNeedsInput: boolean;
+	/** Show ▸ Metadata for this row's section. */
+	metadata: boolean;
 }
 
 /** The state grouping's Needs input section, whose heading already says a row is blocked. */

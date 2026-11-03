@@ -178,3 +178,12 @@ describe("button press squish (upstream .cds-btn-squish)", () => {
 		);
 	});
 });
+
+describe("sidebar group band", () => {
+	it("uses upstream's web band top margin: the comfortable group padding + 4px, less one stack gap (18px)", () => {
+		expect(tokens(block(":root"), ["--sb-group-pt-token", "--sb-group-band-mt"])).toStrictEqual({
+			"--sb-group-pt-token": "16px",
+			"--sb-group-band-mt": "calc(var(--sb-group-pt-token) + 4px - var(--sb-row-stack-gap))",
+		});
+	});
+});

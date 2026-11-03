@@ -143,10 +143,13 @@ function toggleOf(container: HTMLElement, key: string): HTMLElement {
 	return toggle;
 }
 
+/** The section's shown rows; a collapsed section keeps its other rows mounted in a hidden wrapper. */
 function rowTitlesIn(container: HTMLElement, groupKey: string): string[] {
 	const section = container.querySelector(`[data-group-key="${groupKey}"]`);
 	if (!(section instanceof HTMLElement)) return [];
-	return [...section.querySelectorAll("a[data-row-main-button]")].map((link) => rowTitle(link));
+	return [...section.querySelectorAll("a[data-row-main-button]")]
+		.filter((link) => link.closest("[hidden]") === null)
+		.map((link) => rowTitle(link));
 }
 
 afterEach(() => {
@@ -330,7 +333,8 @@ describe("sidebar SessionGroups", () => {
 			const badge = label.querySelector("[data-group-toggle] > [data-group-badge]");
 			return {
 				rowless: label.getAttribute("data-rowless"),
-				rowlessGap: label.classList.contains("data-[rowless]:mb-[var(--sb-row-stack-gap)]"),
+				// Upstream always keeps one stack gap under the label, rowless or not.
+				rowlessGap: label.classList.contains("mb-[var(--sb-row-stack-gap)]"),
 				badgeClass: badge?.getAttribute("class") ?? null,
 				badge: [...(badge?.querySelectorAll("[role=img]") ?? [])].map((mark) =>
 					mark.getAttribute("aria-label"),
@@ -1117,7 +1121,7 @@ describe("SessionGroups open row and focus rescue", () => {
 			expanded: toggleOf(container, "state-done").getAttribute("aria-expanded"),
 			rows: rowTitlesIn(container, "state-done"),
 			selected: container
-				.querySelector('[data-group-key="state-done"] a[data-row-main-button]')
+				.querySelector('[data-group-key="state-done"] [data-group-rows]:not([hidden]) a[data-row-main-button]')
 				?.getAttribute("data-selected"),
 			rowless: label?.getAttribute("data-rowless") ?? null,
 			badges: label?.querySelectorAll("[data-group-badge]").length,
@@ -1217,10 +1221,11 @@ describe("SessionGroups per-project New session +", () => {
 		});
 	});
 
-	it("keeps the generic New session + on the first header under status grouping", async () => {
+	// Upstream's hub-rail sidebar passes the status list no onNewSession: the New nav row is the entry point.
+	it("puts no New session + on any header under status grouping", async () => {
 		const {container} = await renderGroups(ROWS, {projects: PROJECTS});
 
-		expect(newSessionButtons(container)).toStrictEqual({"state-done": ["New session"]});
+		expect(newSessionButtons(container)).toStrictEqual({"state-done": []});
 	});
 
 	it("shows no + for a project whose folder is gone or unknown", async () => {
@@ -1444,5 +1449,162 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () => {
 			onLine: glyph.closest(".df-meta-line") !== null,
 		}));
 		expect(glyphs).toStrictEqual([{state: "opened", onLine: true}]);
+	});
+});
+
+describe("SessionGroups sections layout", () => {
+	function seedSections(assignments: Record<string, string>): void {
+		localStorage.setItem(
+			"ccp-session-groups",
+			JSON.stringify({
+				groups: [{id: "cg-a", name: "A", icon: "star", color: "red"}],
+				assignments,
+				order: {},
+			}),
+		);
+	}
+
+	function menuOutline(menu: HTMLElement): string[] {
+		return [
+			...menu.querySelectorAll(
+				':scope [role="menuitem"], :scope [role="menuitemcheckbox"], :scope [role="menuitemradio"], :scope [role="separator"]',
+			),
+		].map((node) => (node.getAttribute("role") === "separator" ? "---" : node.textContent.trim()));
+	}
+
+	async function openSectionMenu(container: HTMLElement): Promise<HTMLElement> {
+		const trigger = container.querySelector<HTMLElement>(
+			'.df-sortable-section [data-group-key="custom-cg-a"] button[aria-label="Group and sort"]',
+		);
+		if (trigger === null) throw new Error("no section Group and sort");
+		fireEvent.click(trigger);
+		return await waitFor(() => screen.getByRole("menu"));
+	}
+
+	async function openSubmenu(name: RegExp): Promise<HTMLElement> {
+		const trigger = screen.getByRole("menuitem", {name});
+		act(() => {
+			trigger.focus();
+		});
+		fireEvent.keyDown(trigger, {key: "ArrowRight"});
+		const submenu = await waitFor(() => {
+			const menus = screen.getAllByRole("menu");
+			if (menus.length < 2) throw new Error("no submenu");
+			return menus.at(-1);
+		});
+		if (submenu === undefined) throw new Error("Expected a submenu");
+		return submenu;
+	}
+
+	it("lists a manual section above Recents in a df-sortable-section, its sessions left out of Recents", async () => {
+		seedSections({b1: "cg-a"});
+		const {container} = await renderGroups(FIXTURE);
+
+		expect({
+			order: [...container.querySelectorAll("[data-sidebar-group-label] [data-group-name]")].map(
+				(node) => node.textContent,
+			),
+			sortable: [...container.querySelectorAll(".df-sortable-section [data-group-name]")].map(
+				(node) => node.textContent,
+			),
+			inSection: rowTitlesIn(container, "custom-cg-a"),
+			recents: groupNames(container),
+		}).toStrictEqual({
+			order: ["Pinned", "A", "Ready for review", "Working", "Idle"],
+			sortable: ["A"],
+			inSection: ["Blocked one"],
+			recents: ["Ready for review", "Working", "Idle"],
+		});
+	});
+
+	it("wraps each header toggle in an h3, with a 5px gap, its own hover ink and the mark after the name", async () => {
+		seedSections({b1: "cg-a"});
+		const {container} = await renderGroups(FIXTURE);
+		const toggle = toggleOf(container, "custom-cg-a");
+
+		expect({
+			heading: screen.getByRole("heading", {level: 3, name: "A"}).contains(toggle),
+			classes: toggle.className
+				.split(" ")
+				.filter((name) => name === "gap-1.25" || name === "hover:text-secondary"),
+			children: [...toggle.children].map((child) =>
+				["data-group-name", "data-group-mark", "data-group-caret"].find((name) => child.hasAttribute(name)),
+			),
+		}).toStrictEqual({
+			heading: true,
+			classes: ["gap-1.25", "hover:text-secondary"],
+			children: ["data-group-name", "data-group-mark", "data-group-caret"],
+		});
+	});
+
+	it("draws upstream's filled 14px caret, nudged half a pixel down", async () => {
+		const {container} = await renderGroups(FIXTURE);
+		const caret = container.querySelector('[data-group-key="state-done"] [data-group-caret]');
+
+		expect({
+			tag: caret?.tagName.toLowerCase(),
+			size: caret?.getAttribute("class")?.split(" ").includes("size-3.5"),
+			translate: caret instanceof SVGElement ? caret.style.translate : null,
+			lucide: caret?.getAttribute("class")?.includes("lucide") ?? false,
+		}).toStrictEqual({tag: "svg", size: true, translate: "0 0.5px", lucide: false});
+	});
+
+	it("keeps a collapsed section's rows mounted in a hidden wrapper", async () => {
+		const {container} = await renderGroups(FIXTURE);
+
+		fireEvent.click(toggleOf(container, "state-done"));
+
+		const wrapper = container.querySelector('[data-group-key="state-done"] [data-group-rows]');
+		expect({
+			hidden: wrapper?.hasAttribute("hidden"),
+			hiddenClass: wrapper?.classList.contains("hidden"),
+			rows: [...(wrapper?.querySelectorAll("a[data-row-main-button]") ?? [])].map((link) => rowTitle(link)),
+		}).toStrictEqual({hidden: true, hiddenClass: true, rows: ["Completed newest", "Completed older"]});
+	});
+
+	it("gives a manual section upstream's own Group and sort: Date, Status, None, Sort by, Show ▸ Metadata and the footer", async () => {
+		seedSections({b1: "cg-a"});
+		const {container} = await renderGroups(FIXTURE);
+
+		const menu = await openSectionMenu(container);
+		const top = menuOutline(menu);
+		const reset = within(menu).getByRole("menuitem", {name: "Reset to defaults"});
+		const resetReason = document.getElementById(reset.getAttribute("aria-describedby") ?? "")?.textContent;
+		const groupBy = menuOutline(await openSubmenu(/^Group by/));
+
+		expect({top, resetDisabled: reset.getAttribute("aria-disabled"), resetReason, groupBy}).toStrictEqual({
+			top: [
+				"Group byNone",
+				"Sort byLast updated",
+				"Show",
+				"---",
+				"New section",
+				"---",
+				"Reset to defaults",
+				"View all",
+			],
+			resetDisabled: "true",
+			resetReason: "Grouping and sorting are already at their defaults.",
+			groupBy: ["Date", "Status", "---", "None"],
+		});
+	});
+
+	it("splits a manual section under its own Date headings, leaving Recents' grouping alone", async () => {
+		seedSections({d1: "cg-a", d2: "cg-a", w1: "cg-a"});
+		const rows = [...FIXTURE.filter((row) => row.id !== "d2"), session("d2", "Completed older", "done", 24 * 60)];
+		const {container} = await renderGroups(rows);
+
+		await openSectionMenu(container);
+		await openSubmenu(/^Group by/);
+		fireEvent.click(screen.getByRole("menuitemradio", {name: "Date"}));
+
+		await waitFor(() => {
+			expect({
+				headings: [
+					...container.querySelectorAll('[data-group-key="custom-cg-a"] [data-group-key] [data-group-name]'),
+				].map((node) => node.textContent),
+				recents: groupNames(container),
+			}).toStrictEqual({headings: ["Today", "Yesterday"], recents: ["Needs input", "Ready for review"]});
+		});
 	});
 });

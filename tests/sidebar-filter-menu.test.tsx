@@ -166,7 +166,7 @@ beforeEach(() => {
 });
 
 describe("sidebar Group and sort menu", () => {
-	it("puts Group and sort on every section header, revealed on hover, and an always-visible New session + on the first", async () => {
+	it("puts Group and sort on every section header, revealed on hover, and no New session + on any (the New nav row has it)", async () => {
 		storePrefs({groupBy: "state"});
 		const {container} = await renderSidebarGroups();
 
@@ -180,35 +180,17 @@ describe("sidebar Group and sort menu", () => {
 				.closest("[data-header-reveal]")
 				?.className.split(" ")
 				.filter((name) => name === "w-0" || name === "group-hover/labelrow:w-auto"),
-		}).toStrictEqual({groupAndSort: [1, 1], newSession: [1, 0], revealed: ["w-0", "group-hover/labelrow:w-auto"]});
+		}).toStrictEqual({groupAndSort: [1, 1], newSession: [0, 0], revealed: ["w-0", "group-hover/labelrow:w-auto"]});
 	});
 
-	// Upstream: the header + carries aria-keyshortcuts="Shift+Meta+o" and its tooltip reads "New session ⇧⌘O".
-	it("gives the header New session + upstream's ⇧⌘O shortcut in its tooltip and aria-keyshortcuts", async () => {
-		const userAgent = vi
-			.spyOn(navigator, "userAgent", "get")
-			.mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36");
-		try {
-			await renderSidebarGroups();
-			const button = screen.getByRole("button", {name: "New session"});
+	// Upstream exempts header glyphs from --df-chrome-icon-size: a 20px glyph in the 24px button, with data-row-glyph.
+	it("draws the Group and sort glyph at 20px and marks the trigger data-row-glyph", async () => {
+		await renderSidebarGroups();
 
-			fireEvent.pointerEnter(button);
-			const tooltip = await screen.findByRole("tooltip", {}, {timeout: 2000});
-
-			expect({
-				ariaKeyShortcuts: button.getAttribute("aria-keyshortcuts"),
-				tooltip: tooltip.textContent,
-				keycaps: [...tooltip.querySelectorAll('[data-cds="Shortcut"] kbd > [aria-hidden="true"]')].map(
-					(cap) => cap.textContent,
-				),
-			}).toStrictEqual({
-				ariaKeyShortcuts: "Shift+Meta+o",
-				tooltip: "New session⇧Shift⌘CommandO",
-				keycaps: ["⇧", "⌘"],
-			});
-		} finally {
-			userAgent.mockRestore();
-		}
+		expect({
+			rowGlyph: filterButton().getAttribute("data-row-glyph"),
+			glyph: filterButton().querySelector("svg")?.getAttribute("class")?.split(" ").includes("size-5"),
+		}).toStrictEqual({rowGlyph: "", glyph: true});
 	});
 
 	it("styles the trigger like upstream: radius 6 (r5)", async () => {
@@ -243,16 +225,14 @@ describe("sidebar Group and sort menu", () => {
 			label: inkTokens(label),
 			toggle: inkTokens(label?.querySelector("[data-group-toggle]")),
 			groupAndSort: inkTokens(label?.querySelector('button[aria-label="Group and sort"]')),
-			newSession: inkTokens(label?.querySelector('button[aria-label="New session"]')),
 		}).toStrictEqual({
 			label: [
 				"[--sb-heading-ink:var(--color-ink-muted)]",
 				"hover:[--sb-heading-ink:var(--color-secondary)]",
 				"text-[color:var(--sb-heading-ink)]",
 			],
-			toggle: [],
+			toggle: ["hover:text-secondary"],
 			groupAndSort: buttonInk,
-			newSession: buttonInk,
 		});
 	});
 
@@ -282,20 +262,25 @@ describe("sidebar Group and sort menu", () => {
 		}).toStrictEqual({row: ["h-8", "text-[14px]/[20px]"], width: true});
 	});
 
-	it("offers upstream's Group by order, with Folder standing in for Environment and Custom groups after it", async () => {
+	it("offers upstream's Group by order: Date, Status, Folder (for Environment), then None after a separator", async () => {
 		await renderSidebarGroups();
 		await openFilterMenu();
-		await openSubmenu(/^Group by/);
+		const submenu = await openSubmenu(/^Group by/);
 
-		expect(
-			screen.getAllByRole("menuitemradio").map((node) => [node.textContent, node.getAttribute("aria-checked")]),
-		).toEqual([
-			["None", "true"],
-			["Status", "false"],
-			["Date", "false"],
-			["Folder", "false"],
-			["Custom groups", "false"],
-		]);
+		expect({
+			outline: menuOutline(submenu),
+			checked: screen
+				.getAllByRole("menuitemradio")
+				.map((node) => [node.textContent, node.getAttribute("aria-checked")]),
+		}).toStrictEqual({
+			outline: ["Date", "Status", "Folder", "---", "None"],
+			checked: [
+				["Date", "false"],
+				["Status", "false"],
+				["Folder", "false"],
+				["None", "true"],
+			],
+		});
 	});
 
 	it("sorts by Last updated or Date created, keeping the local Name sort, then Descending or Ascending", async () => {
@@ -443,15 +428,40 @@ describe("sidebar Group and sort menu", () => {
 			stored: {...DEFAULT_SESSION_LIST_PREFS, showPrStatus: true},
 		});
 	});
-	it("resets every list preference with Reset to defaults", async () => {
-		storePrefs({statusFilter: "all", activityDays: "1d", sortBy: "name", groupBy: "date"});
+	it("resets the grouping and sort with Reset to defaults, keeping the local Show filters", async () => {
+		storePrefs({statusFilter: "all", activityDays: "1d", sortBy: "name", sortDirection: "asc", groupBy: "date"});
 		await renderSidebarGroups();
 
 		await openFilterMenu();
 		fireEvent.click(screen.getByRole("menuitem", {name: "Reset to defaults"}));
 		await flush();
 
-		expect(storedPrefs()).toEqual(DEFAULT_SESSION_LIST_PREFS);
+		expect(storedPrefs()).toEqual({...DEFAULT_SESSION_LIST_PREFS, statusFilter: "all", activityDays: "1d"});
+	});
+
+	it("disables Reset to defaults with upstream's reason while the grouping and sort are at their defaults", async () => {
+		storePrefs({statusFilter: "all"});
+		await renderSidebarGroups();
+
+		const menu = await openFilterMenu();
+		const reset = within(menu).getByRole("menuitem", {name: "Reset to defaults"});
+		const reason = document.getElementById(reset.getAttribute("aria-describedby") ?? "");
+		expect({disabled: reset.getAttribute("aria-disabled"), reason: reason?.textContent}).toStrictEqual({
+			disabled: "true",
+			reason: "Grouping and sorting are already at their defaults.",
+		});
+	});
+
+	it("disables View all with upstream's reason while there are no sessions to view", async () => {
+		await renderSidebarGroups([]);
+
+		const menu = await openFilterMenu();
+		const viewAll = within(menu).getByRole("menuitem", {name: "View all"});
+		const reason = document.getElementById(viewAll.getAttribute("aria-describedby") ?? "");
+		expect({disabled: viewAll.getAttribute("aria-disabled"), reason: reason?.textContent}).toStrictEqual({
+			disabled: "true",
+			reason: "There are no other sessions to view.",
+		});
 	});
 
 	it("opens the all-sessions page with View all", async () => {
@@ -463,28 +473,39 @@ describe("sidebar Group and sort menu", () => {
 		expect(routerRef.current?.state.location.pathname).toBe("/sessions");
 	});
 
-	it("starts a custom section from New section, switching the list to Custom groups", async () => {
+	it("starts a section above Recents from New section, leaving the grouping alone", async () => {
+		storePrefs({groupBy: "state"});
 		const {container} = await renderSidebarGroups();
 		await openFilterMenu();
 		fireEvent.click(screen.getByRole("menuitem", {name: "New section"}));
 		await flush();
 
-		fireEvent.change(screen.getByRole("textbox", {name: "Group name"}), {target: {value: "Reading"}});
-		fireEvent.click(screen.getByRole("button", {name: "Create and group by custom"}));
+		const title = screen.getByRole("dialog").querySelector("h2")?.textContent;
+		fireEvent.change(screen.getByRole("textbox", {name: "Section name"}), {target: {value: "Reading"}});
+		fireEvent.click(screen.getByRole("button", {name: "Create section"}));
 		await flush();
 
 		const stored = JSON.parse(localStorage.getItem("ccp-session-groups") ?? "{}") as {
 			groups?: Array<{name: string}>;
 		};
 		expect({
+			title,
 			groupBy: (storedPrefs() as SessionListPrefs).groupBy,
 			sections: stored.groups?.map((group) => group.name),
-			// An empty section stays hidden until Show ▸ Empty groups is on.
-			groups: groupNames(container),
-		}).toStrictEqual({groupBy: "custom", sections: ["Reading"], groups: ["Ungrouped"]});
+			manual: [...container.querySelectorAll(".df-sortable-section [data-group-name]")].map(
+				(node) => node.textContent,
+			),
+			recents: groupNames(container),
+		}).toStrictEqual({
+			title: "New section",
+			groupBy: "state",
+			sections: ["Reading"],
+			manual: ["Reading"],
+			recents: ["Working", "Idle"],
+		});
 	});
 
-	it("keeps the trigger on an empty-list header so Reset to defaults can bring the rows back", async () => {
+	it("keeps the trigger on an empty-list header, whose Show all sessions brings the rows back", async () => {
 		storePrefs({statusFilter: "archived"});
 		const {container} = await renderSidebarGroups(FIXTURE, {archived: []});
 
@@ -494,17 +515,20 @@ describe("sidebar Group and sort menu", () => {
 				node.textContent.trim(),
 			),
 			empty: recents?.querySelector("[data-sidebar-empty]")?.textContent,
-		}).toStrictEqual({labels: ["Recents"], empty: "No sessions match the current filtersShow all sessions"});
+			trigger: recents?.querySelectorAll('button[aria-label="Group and sort"]').length,
+		}).toStrictEqual({
+			labels: ["Recents"],
+			empty: "No sessions match the current filtersShow all sessions",
+			trigger: 1,
+		});
 
-		await openFilterMenu();
-		fireEvent.click(screen.getByRole("menuitem", {name: "Reset to defaults"}));
+		fireEvent.click(screen.getByRole("button", {name: "Show all sessions"}));
 		await flush();
 
-		expect({
-			groups: groupNames(container),
-			empty: container.querySelector("[data-sidebar-empty]"),
-			stored: storedPrefs(),
-		}).toStrictEqual({groups: ["Recents"], empty: null, stored: DEFAULT_SESSION_LIST_PREFS});
+		expect({groups: groupNames(container), empty: container.querySelector("[data-sidebar-empty]")}).toStrictEqual({
+			groups: ["Recents"],
+			empty: null,
+		});
 	});
 
 	it("marks an archived row with sr-only Archived right after its title, not a visible pill, as upstream does", async () => {
@@ -624,7 +648,7 @@ describe("sidebar Group and sort menu", () => {
 		}).toStrictEqual({text: "Sessions you start will show up here", showAll: null});
 	});
 
-	it("groups the list by this browser's custom groups in Custom groups mode", async () => {
+	it("lists this browser's custom groups as their own sections above Recents, which keeps its grouping", async () => {
 		localStorage.setItem(
 			"ccp-session-groups",
 			JSON.stringify({
@@ -636,9 +660,21 @@ describe("sidebar Group and sort menu", () => {
 				order: {},
 			}),
 		);
-		storePrefs({groupBy: "custom"});
+		storePrefs({groupBy: "state"});
 		const {container} = await renderSidebarGroups();
 
-		expect(groupNames(container)).toEqual(["Blog", "Ungrouped"]);
+		expect({
+			order: [...container.querySelectorAll("[data-sidebar-group-label] [data-group-name]")].map(
+				(node) => node.textContent,
+			),
+			manual: [...container.querySelectorAll(".df-sortable-section [data-group-name]")].map(
+				(node) => node.textContent,
+			),
+			recents: groupNames(container),
+		}).toStrictEqual({
+			order: ["Pinned", "Blog", "Someday", "Working"],
+			manual: ["Blog", "Someday"],
+			recents: ["Working"],
+		});
 	});
 });

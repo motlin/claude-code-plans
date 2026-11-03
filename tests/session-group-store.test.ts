@@ -9,7 +9,6 @@ import {
 	createGroup,
 	deleteGroup,
 	listGroups,
-	moveGroup,
 	readSessionGroupState,
 	renameGroup,
 	setGroupAppearance,
@@ -211,24 +210,6 @@ describe("session group store", () => {
 		expect({replaced, final: readSessionGroupState()}).toStrictEqual({
 			replaced: {[a.id]: ["session-bob", "session-alice"]},
 			final: {groups: [a], assignments: {"session-alice": a.id}, order: {}},
-		});
-	});
-
-	it("moves a group to a clamped index", () => {
-		const a = createGroup("A");
-		const b = createGroup("B");
-		const c = createGroup("C");
-		moveGroup(c.id, 0);
-		const cFirst = listGroups().map((group) => group.name);
-		moveGroup(c.id, 99);
-		const cLast = listGroups().map((group) => group.name);
-		moveGroup(a.id, -5);
-		moveGroup("cg-missing", 0);
-
-		expect({cFirst, cLast, final: listGroups()}).toStrictEqual({
-			cFirst: ["C", "A", "B"],
-			cLast: ["A", "B", "C"],
-			final: [a, b, c],
 		});
 	});
 

@@ -14,6 +14,7 @@ import type {SessionListItem} from "../src/lib/api/sessions";
 import {takePendingHomeLaunchFolder} from "../src/lib/home-composer-focus";
 import {assignLaunchedSession, readSessionGroupState, setPendingLaunchGroup} from "../src/lib/session-group-store";
 import type {SessionGroup} from "../src/lib/session-groups";
+import {readSidebarSections} from "../src/lib/sidebar-sections";
 import {installLocalStorage} from "./fake-storage";
 
 const GROUPS_KEY = "ccp-session-groups";
@@ -141,8 +142,9 @@ async function choose(name: string, label: string) {
 	await flush();
 }
 
+/** The manual sections' names, in section order. */
 function groupNames(): string[] {
-	return readSessionGroupState().groups.map((group) => group.name);
+	return readSidebarSections().flatMap((section) => (section.kind === "manual" ? [section.name] : []));
 }
 
 beforeEach(() => {
@@ -166,15 +168,15 @@ describe("custom group header menu items", () => {
 		expect(menuOutline(await openHeaderMenu("GTD"))).toEqual([
 			"New session",
 			"---",
-			"Rename group",
+			"Rename section",
 			"Icon and color",
-			"New group…",
+			"New section",
 			"---",
 			"Move up",
 			"Move down",
 			"Sort A to Z",
 			"---",
-			"Delete group",
+			"Delete section",
 		]);
 	});
 
@@ -185,14 +187,14 @@ describe("custom group header menu items", () => {
 		expect(menuOutline(await openHeaderMenu("Blog"))).toEqual([
 			"New session",
 			"---",
-			"Rename group",
+			"Rename section",
 			"Icon and color",
-			"New group…",
+			"New section",
 			"---",
 			"Move down",
 			"Sort A to Z",
 			"---",
-			"Delete group",
+			"Delete section",
 		]);
 	});
 
@@ -203,14 +205,14 @@ describe("custom group header menu items", () => {
 		expect(menuOutline(await openHeaderMenu("Alpha"))).toEqual([
 			"New session",
 			"---",
-			"Rename group",
+			"Rename section",
 			"Icon and color",
-			"New group…",
+			"New section",
 			"---",
 			"Move up",
 			"Sort A to Z",
 			"---",
-			"Delete group",
+			"Delete section",
 		]);
 	});
 
@@ -224,11 +226,11 @@ describe("custom group header menu items", () => {
 		expect(menuOutline(await openHeaderMenu("Blog"))).toEqual([
 			"New session",
 			"---",
-			"Rename group",
+			"Rename section",
 			"Icon and color",
-			"New group…",
+			"New section",
 			"---",
-			"Delete group",
+			"Delete section",
 		]);
 	});
 
@@ -245,15 +247,15 @@ describe("custom group header menu items", () => {
 		expect(menuOutline(await waitFor(() => screen.getByRole("menu")))).toEqual([
 			"New session",
 			"---",
-			"Rename group",
+			"Rename section",
 			"Icon and color",
-			"New group…",
+			"New section",
 			"---",
 			"Move up",
 			"Move down",
 			"Sort A to Z",
 			"---",
-			"Delete group",
+			"Delete section",
 		]);
 	});
 
@@ -268,9 +270,9 @@ describe("custom group header menu items", () => {
 		expect(menuOutline(await openHeaderMenu("GTD"))).toEqual([
 			"New session",
 			"---",
-			"Rename group",
+			"Rename section",
 			"Icon and color",
-			"New group…",
+			"New section",
 			"---",
 			"Move up",
 			"Move down",
@@ -278,7 +280,7 @@ describe("custom group header menu items", () => {
 			"---",
 			"Archive all (2)",
 			"---",
-			"Delete group",
+			"Delete section",
 		]);
 	});
 });
@@ -309,12 +311,12 @@ describe("custom group section order", () => {
 	});
 });
 
-describe("Rename group", () => {
+describe("Rename section", () => {
 	async function startRename(): Promise<HTMLInputElement> {
 		storeGroups();
 		await renderGroup("cg-gtd");
-		await choose("GTD", "Rename group");
-		const input = await waitFor(() => screen.getByRole("textbox", {name: "Rename group"}));
+		await choose("GTD", "Rename section");
+		const input = await waitFor(() => screen.getByRole("textbox", {name: "Rename section"}));
 		return input as HTMLInputElement;
 	}
 
@@ -333,7 +335,7 @@ describe("Rename group", () => {
 		await flush();
 
 		expect(groupNames()).toEqual(["Blog", "Getting things done", "Alpha"]);
-		expect(screen.queryByRole("textbox", {name: "Rename group"})).toBeNull();
+		expect(screen.queryByRole("textbox", {name: "Rename section"})).toBeNull();
 	});
 
 	it("cancels on Escape", async () => {
@@ -343,7 +345,7 @@ describe("Rename group", () => {
 		await flush();
 
 		expect(groupNames()).toEqual(["Blog", "GTD", "Alpha"]);
-		expect(screen.queryByRole("textbox", {name: "Rename group"})).toBeNull();
+		expect(screen.queryByRole("textbox", {name: "Rename section"})).toBeNull();
 		expect(screen.getByRole("button", {name: "GTD"})).toBeTruthy();
 	});
 
@@ -354,7 +356,7 @@ describe("Rename group", () => {
 		await flush();
 
 		expect(groupNames()).toEqual(["Blog", "Chores", "Alpha"]);
-		expect(screen.queryByRole("textbox", {name: "Rename group"})).toBeNull();
+		expect(screen.queryByRole("textbox", {name: "Rename section"})).toBeNull();
 	});
 
 	it("keeps the old name when the new one is blank", async () => {
@@ -367,27 +369,27 @@ describe("Rename group", () => {
 	});
 });
 
-describe("New group…", () => {
+describe("New section", () => {
 	it("creates a group after the others", async () => {
 		storeGroups();
 		await renderGroup("cg-gtd");
-		await choose("GTD", "New group…");
-		const input = await waitFor(() => screen.getByRole("textbox", {name: "Group name"}));
+		await choose("GTD", "New section");
+		const input = await waitFor(() => screen.getByRole("textbox", {name: "Section name"}));
 
 		expect(screen.getByRole("dialog").textContent).not.toContain("The list will switch");
 		fireEvent.change(input, {target: {value: "Blog 2"}});
-		fireEvent.click(screen.getByRole("button", {name: "Create group"}));
+		fireEvent.click(screen.getByRole("button", {name: "Create section"}));
 		await flush();
 
 		expect(groupNames()).toEqual(["Blog", "GTD", "Alpha", "Blog 2"]);
 	});
 });
 
-describe("Delete group", () => {
+describe("Delete section", () => {
 	async function openDelete(assignments: Record<string, string>): Promise<HTMLElement> {
 		storeGroups(assignments);
 		await renderGroup("cg-gtd");
-		await choose("GTD", "Delete group");
+		await choose("GTD", "Delete section");
 		return await waitFor(() => screen.getByRole("alertdialog"));
 	}
 
@@ -401,7 +403,7 @@ describe("Delete group", () => {
 
 	it("says nothing is in an empty group", async () => {
 		expect(dialogText(await openDelete({}))).toEqual({
-			title: "Delete group?",
+			title: "Delete section?",
 			body: "“GTD” will be removed. Nothing is in it.",
 			buttons: ["Cancel", "Delete"],
 		});
@@ -409,16 +411,16 @@ describe("Delete group", () => {
 
 	it("counts one item in the singular", async () => {
 		expect(dialogText(await openDelete({s1: "cg-gtd", s2: "cg-blog"}))).toEqual({
-			title: "Delete group?",
-			body: "“GTD” will be removed. The 1 item in it will no longer be grouped.",
+			title: "Delete section?",
+			body: "“GTD” will be removed. The 1 session in it moves back to your other sessions.",
 			buttons: ["Cancel", "Delete"],
 		});
 	});
 
 	it("counts several items in the plural", async () => {
 		expect(dialogText(await openDelete({s1: "cg-gtd", s2: "cg-gtd", s3: "cg-gtd"}))).toEqual({
-			title: "Delete group?",
-			body: "“GTD” will be removed. The 3 items in it will no longer be grouped.",
+			title: "Delete section?",
+			body: "“GTD” will be removed. The 3 sessions in it move back to your other sessions.",
 			buttons: ["Cancel", "Delete"],
 		});
 	});

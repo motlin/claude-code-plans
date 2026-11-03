@@ -19,22 +19,28 @@ import {
 	sectionDropOutcome,
 	sectionOfDragId,
 	UNGROUP_ZONE,
-	UNGROUPED_SECTION_ZONE,
 } from "../../lib/group-drop";
 import {
-	buildGroups,
+	buildSidebarSections,
 	customGroupIdOfKey,
 	DEFAULT_SESSION_LIST_PREFS,
 	EMPTY_LIST_GROUP_LABELS,
 	GROUP_PAGE_SIZE,
 	PINNED_GROUP_KEY,
+	type ManualSectionGroups,
 	type RevealedPages,
 	type SessionGroup,
 	sessionRowComparator,
 	type SessionListPrefs,
 	shouldLoadNextPage,
 } from "../../lib/session-groups";
-import {assign, moveGroup, readSessionGroupState, setGroupOrder, useSessionGroups} from "../../lib/session-group-store";
+import {assign, readSessionGroupState, setGroupOrder, useSessionGroups} from "../../lib/session-group-store";
+import {
+	moveSidebarSection,
+	readSidebarSections,
+	type SidebarSection,
+	useSidebarSections,
+} from "../../lib/sidebar-sections";
 import {slotToIndex} from "../../lib/sidebar-drag";
 import {
 	EMPTY_SELECTION,
@@ -50,20 +56,20 @@ import {DescribedLoadingRows, LoadingBars} from "./primitives/LoadingBars";
 import {EmptyGroupSection, type EmptyListReason, GroupSection, ROW_CLASS} from "./session-group-section";
 import {type SidebarSessionRow, toGroupRow} from "./sidebar-session-row";
 import {SidebarSelectionContext, type SidebarSelectionApi} from "./selection-context";
+import {SectionViewMenu} from "./section-view-menu";
 import {PinnedSubList} from "./sublists";
 
 /**
- * The sidebar session list, grouped like claude.ai/code's recents: Needs input,
- * Ready for review, Working and Completed by default. Collapsed groups persist in
- * the sidebar store; "Show more" reveals a group's next 5 rows and "Show less" folds it back to 5.
- * Once no group hides rows, expanding the last one or scrolling to the list end fetches
- * the next feed page while it can still hold sessions inside Last activity. Pinned
- * sessions move out of their group into the Pinned section above. Dragging any row
- * pins it at a Pinned slot, reorders a pinned row, or (dropped below Pinned) unpins it.
- * In Custom groups mode a row dropped on a group header or row slot joins that group
- * there, a grouped row dropped on "Ungroup" leaves it, and headers drag to reorder.
- * ⌘-click and ⇧-click select several rows for the bulk row menu; dragging a
- * selected row moves the whole selection, which can only drop on a custom group.
+ * The sidebar session list in claude.ai/code's sections layout: Pinned, then the user's manual
+ * sections (custom groups, each with its own Group and sort) in a `df-sortable-section`, then
+ * Recents grouped by the list's Group by. Collapsed groups persist in the sidebar store; "Show
+ * more" reveals a group's next 5 rows and "Show less" folds it back to 5. Once no group hides rows,
+ * expanding the last one or scrolling to the list end fetches the next feed page while it can
+ * still hold sessions inside Last activity. Dragging any row pins it at a Pinned slot, reorders a
+ * pinned row, or (dropped below Pinned) unpins it. A row dropped on a manual section's header or
+ * row slot joins that section there, a row dropped on "Remove from …" leaves it, and section
+ * headers drag to reorder. ⌘-click and ⇧-click select several rows for the bulk row menu;
+ * dragging a selected row moves the whole selection, which can only drop on a manual section.
  */
 export function SessionGroups({
 	activeItemId,
@@ -71,7 +77,7 @@ export function SessionGroups({
 	prefs = DEFAULT_SESSION_LIST_PREFS,
 }: {
 	activeItemId: string | null;
-	/** Rendered at the end of the first group header, or of the empty-list header when no group renders. */
+	/** Recents' Group and sort: at the end of each of its group headers, or of the empty-list header. */
 	filterSlot?: ReactNode;
 	prefs?: SessionListPrefs;
 }) {
@@ -118,8 +124,7 @@ export function SessionGroups({
 	};
 	const latestSplit = useRef<SplitPinned<SidebarSessionRow> | undefined>(undefined);
 	latestSplit.current = split;
-	const latestGroups = useRef<SessionGroup<SidebarSessionRow>[] | undefined>(undefined);
-	const custom = prefs.groupBy === "custom";
+	const latestManual = useRef<ManualSectionGroups<SidebarSessionRow>[]>([]);
 	const recentsRef = useRef<HTMLDivElement>(null);
 	const {drag, rowProps, listRef, zoneRef} = useSidebarDrag({
 		onDrop: (drop) => {
@@ -130,30 +135,33 @@ export function SessionGroups({
 			}
 			const selected = latestSelected.current;
 			if (selected.length > 1 && selected.includes(drop.srcId)) {
-				const applied =
-					custom && applyMultiGroupDrop(selected, drop, latestGroups.current ?? [], latestSplit.current);
-				if (applied) dispatchSelection({type: "clear"});
+				if (applyMultiGroupDrop(selected, drop, latestManual.current, latestSplit.current)) {
+					dispatchSelection({type: "clear"});
+				}
 				return;
 			}
-			if (custom && applyGroupDrop(drop, latestGroups.current ?? [], latestSplit.current)) return;
+			if (applyGroupDrop(drop, latestManual.current, latestSplit.current)) return;
 			applyPinDrop(drop, () => latestSplit.current, toast, markDragPinHintSeen);
 		},
 		getScrollContainer: () => recentsRef.current?.closest("[data-testid=nav-scroll]") ?? null,
 	});
 
-	const {groups: customGroups, assignments, order} = useSessionGroups();
-	const groups = useMemo(
+	const {assignments, order} = useSessionGroups();
+	const sections = useSidebarSections();
+	const manualSections = useMemo(() => sections.filter((section) => section.kind === "manual"), [sections]);
+	const built = useMemo(
 		() =>
 			split === undefined
 				? undefined
-				: buildGroups(split.rest, prefs, Date.now(), revealed, {
-						groups: customGroups,
+				: buildSidebarSections(split.rest, prefs, Date.now(), revealed, {
+						sections: manualSections,
 						assignments,
 						order,
 					}),
-		[split, prefs, revealed, customGroups, assignments, order],
+		[split, prefs, revealed, manualSections, assignments, order],
 	);
-	latestGroups.current = groups;
+	const groups = built?.sessions;
+	latestManual.current = built?.manual ?? [];
 
 	const loadedRows = useMemo(() => (split === undefined ? [] : [...split.pinned, ...split.rest]), [split]);
 	const canLoadNextPage = (visibleGroups: readonly SessionGroup<SidebarSessionRow>[]) =>
@@ -175,7 +183,7 @@ export function SessionGroups({
 		};
 	}, [loadOnScroll, fetchNextPage]);
 
-	if (split === undefined || groups === undefined) {
+	if (split === undefined || built === undefined || groups === undefined) {
 		if (isError) {
 			return (
 				<EmptyGroupSection
@@ -194,8 +202,11 @@ export function SessionGroups({
 	}
 
 	const collapsed = new Set(collapsedGroups);
-	const familyHeadIds = groups.flatMap((group) => [...group.nested.keys()]);
-	const displayOrder = displayedRowIds(split, groups, collapsed, new Set(collapsedFamilies));
+	const manual = built.manual;
+	const familyHeadIds = [...manual.map((section) => section.group), ...groups].flatMap((group) => [
+		...group.nested.keys(),
+	]);
+	const displayOrder = displayedRowIds(split, manual, groups, collapsed, new Set(collapsedFamilies));
 	const selectedIds = visibleSelection(selection, displayOrder);
 	latestSelected.current = selectedIds;
 	const selectionApi: SidebarSelectionApi = {
@@ -227,27 +238,34 @@ export function SessionGroups({
 	const rowDrag = drag !== null && !sectionDrag;
 	const multiDrag = rowDrag && selectedIds.length > 1 && selectedIds.includes(drag.srcId);
 	const draggedIds = rowDrag ? (multiDrag ? selectedIds : [drag.srcId]) : [];
-	const showUngroupRow = custom && draggedIds.some((id) => assignments[id] !== undefined);
+	const manualIds = new Set(manual.map((section) => section.id));
+	const draggedSectionIds = [
+		...new Set(draggedIds.flatMap((id) => (manualIds.has(assignments[id] ?? "") ? [assignments[id] ?? ""] : []))),
+	];
 	const target = drag?.target ?? null;
-	const hotGroupId = groups
-		.map((group) => customGroupIdOfKey(group.key))
+	const hotGroupId = manual
+		.map((section) => section.id)
 		.find(
 			(id) =>
-				id !== null &&
 				target !== null &&
 				(target.type === "zone" ? target.zoneId === groupHeaderZoneId(id) : target.listId === groupListId(id)),
 		);
-	const firstUngroupedIndex = groups.findIndex((group) => customGroupIdOfKey(group.key) === null);
 
-	const ungroupRow = showUngroupRow ? (
-		<UngroupDropRow
-			key={UNGROUP_ZONE}
-			ref={zoneRef(UNGROUP_ZONE)}
-			hot={target?.type === "zone" && target.zoneId === UNGROUP_ZONE}
-		/>
-	) : null;
+	const ungroupRow =
+		draggedSectionIds.length > 0 ? (
+			<UngroupDropRow
+				ref={zoneRef(UNGROUP_ZONE)}
+				hot={target?.type === "zone" && target.zoneId === UNGROUP_ZONE}
+				label={
+					draggedSectionIds.length === 1
+						? `Remove from ${manual.find((section) => section.id === draggedSectionIds[0])?.group.label ?? ""}`
+						: "Remove from sections"
+				}
+			/>
+		) : null;
 
-	const sectionKeys = groups.map((group) => group.key);
+	const sectionKeys = [...manual.map((section) => section.group.key), ...groups.map((group) => group.key)];
+	const sectionById = new Map<string, SidebarSection>(manualSections.map((section) => [section.id, section]));
 	const emptyListReason: EmptyListReason =
 		(data?.pages.every((page) => page.sessions.length === 0) ?? false) &&
 		prefs.statusFilter === DEFAULT_SESSION_LIST_PREFS.statusFilter &&
@@ -273,6 +291,42 @@ export function SessionGroups({
 					{...(multiDrag ? {} : {listRef: listRef(PINNED_LIST), dropRowRef: zoneRef(PIN_DROP_ZONE)})}
 					dragRowProps={rowProps}
 				/>
+				<div data-testid="sidebar-sections" className="df-sortable-section contents" data-gap-after="">
+					{manual.map((section) => {
+						const view = sectionById.get(section.id);
+						const groupId = section.id;
+						return (
+							<GroupSection
+								key={section.group.key}
+								group={section.group}
+								groupBy={prefs.groupBy}
+								subgroups={section.subgroups}
+								collapsedKeys={collapsed}
+								{...(view === undefined ? {} : {showMetadata: view.show.metadata})}
+								expanded={!collapsed.has(section.group.key)}
+								activeItemId={activeItemId}
+								filterSlot={
+									view === undefined ? undefined : (
+										<SectionViewMenu section={view} statusFilter={prefs.statusFilter} />
+									)
+								}
+								onShowMore={() => {}}
+								onShowLess={() => {}}
+								dragRowProps={rowProps}
+								familyHeadIds={familyHeadIds}
+								sectionKeys={sectionKeys}
+								headerDragProps={rowProps(sectionDragId(groupId))}
+								headerRef={zoneRef(groupHeaderZoneId(groupId))}
+								dropHot={hotGroupId === groupId}
+								// Inner date or status headings reorder the rows, so slots only make sense in a flat section.
+								{...(sectionDrag || section.subgroups !== null
+									? {}
+									: {rowsRef: listRef(groupListId(groupId))})}
+							/>
+						);
+					})}
+					{ungroupRow}
+				</div>
 				<div
 					ref={(element) => {
 						recentsRef.current = element;
@@ -283,52 +337,36 @@ export function SessionGroups({
 					data-perf-region="sidebar_recents"
 					className="flex min-h-[120px] shrink-0 grow flex-col"
 				>
-					{groups.map((group, index) => {
-						const groupId = custom ? customGroupIdOfKey(group.key) : null;
-						const ungroupedSection = custom && groupId === null;
-						const section = (
-							<GroupSection
-								key={group.key}
-								group={group}
-								groupBy={prefs.groupBy}
-								expanded={!collapsed.has(group.key)}
-								activeItemId={activeItemId}
-								filterSlot={filterSlot}
-								// Upstream `Xv` vs `gd`: one generic + for status and date; project and custom sections carry their own.
-								leadsList={index === 0 && prefs.groupBy !== "project" && prefs.groupBy !== "custom"}
-								onShowMore={() => {
-									setRevealed((previous) => ({
-										...previous,
-										[group.key]: (previous[group.key] ?? 0) + 1,
-									}));
-									if (
-										group.hiddenCount <= GROUP_PAGE_SIZE &&
-										canLoadNextPage(groups.filter((other) => other.key !== group.key))
-									) {
-										setLoadingKey(group.key);
-										void fetchNextPage();
-									}
-								}}
-								onShowLess={() => {
-									setRevealed((previous) => ({...previous, [group.key]: 0}));
-								}}
-								loadingMore={isFetchingNextPage && loadingKey === group.key}
-								dragRowProps={rowProps}
-								familyHeadIds={familyHeadIds}
-								sectionKeys={sectionKeys}
-								{...(groupId === null
-									? {}
-									: {
-											headerDragProps: rowProps(sectionDragId(groupId)),
-											headerRef: zoneRef(groupHeaderZoneId(groupId)),
-											dropHot: hotGroupId === groupId,
-											...(sectionDrag ? {} : {rowsRef: listRef(groupListId(groupId))}),
-										})}
-								{...(ungroupedSection ? {sectionRef: zoneRef(UNGROUPED_SECTION_ZONE)} : {})}
-							/>
-						);
-						return index === firstUngroupedIndex && ungroupRow !== null ? [ungroupRow, section] : section;
-					})}
+					{groups.map((group) => (
+						<GroupSection
+							key={group.key}
+							group={group}
+							groupBy={prefs.groupBy}
+							expanded={!collapsed.has(group.key)}
+							activeItemId={activeItemId}
+							filterSlot={filterSlot}
+							onShowMore={() => {
+								setRevealed((previous) => ({
+									...previous,
+									[group.key]: (previous[group.key] ?? 0) + 1,
+								}));
+								if (
+									group.hiddenCount <= GROUP_PAGE_SIZE &&
+									canLoadNextPage(groups.filter((other) => other.key !== group.key))
+								) {
+									setLoadingKey(group.key);
+									void fetchNextPage();
+								}
+							}}
+							onShowLess={() => {
+								setRevealed((previous) => ({...previous, [group.key]: 0}));
+							}}
+							loadingMore={isFetchingNextPage && loadingKey === group.key}
+							dragRowProps={rowProps}
+							familyHeadIds={familyHeadIds}
+							sectionKeys={sectionKeys}
+						/>
+					))}
 					{groups.length === 0 && (
 						<EmptyGroupSection
 							label={EMPTY_LIST_GROUP_LABELS[prefs.groupBy]}
@@ -336,7 +374,6 @@ export function SessionGroups({
 							reason={emptyListReason}
 						/>
 					)}
-					{firstUngroupedIndex === -1 && ungroupRow}
 					<div ref={listEndRef} aria-hidden="true" data-sidebar-list-end />
 				</div>
 			</div>
@@ -355,12 +392,17 @@ const UNPIN_ZONE = "unpin";
  */
 function displayedRowIds(
 	split: SplitPinned<SidebarSessionRow>,
+	manual: readonly ManualSectionGroups<SidebarSessionRow>[],
 	groups: readonly SessionGroup<SidebarSessionRow>[],
 	collapsed: ReadonlySet<string>,
 	collapsedFamilies: ReadonlySet<string>,
 ): string[] {
 	const pinned = collapsed.has(PINNED_GROUP_KEY) ? [] : split.pinned.map((row) => row.id);
-	const sections = groups
+	const manualGroups = manual.flatMap((section) => {
+		if (collapsed.has(section.group.key)) return [];
+		return section.subgroups ?? [section.group];
+	});
+	const sections = [...manualGroups, ...groups]
 		.filter((group) => !collapsed.has(group.key))
 		.flatMap((group) =>
 			group.rows.flatMap((row) => [
@@ -373,22 +415,21 @@ function displayedRowIds(
 	return [...pinned, ...sections];
 }
 
-/** Move a dragged custom group header to the section it was dropped on. */
+/** Move a dragged manual section header to the manual section it was dropped on. */
 function applySectionDrop(groupId: string, {target}: SidebarDrop): void {
-	const outcome = sectionDropOutcome({
-		groupId,
-		target,
-		groupIds: readSessionGroupState().groups.map((group) => group.id),
-	});
-	if (outcome !== null) moveGroup(outcome.groupId, outcome.toIndex);
+	const sections = readSidebarSections();
+	const manual = sections.filter((section) => section.kind === "manual");
+	const outcome = sectionDropOutcome({groupId, target, groupIds: manual.map((section) => section.id)});
+	const onto = outcome === null ? undefined : manual[outcome.toIndex];
+	if (outcome !== null && onto !== undefined) moveSidebarSection(outcome.groupId, sections.indexOf(onto));
 }
 
-/** Each custom group's displayed rows in DOM order, families included. */
+/** Each manual section's displayed rows in DOM order, families included. */
 function groupLists(
-	groups: readonly SessionGroup<SidebarSessionRow>[],
+	manual: readonly ManualSectionGroups<SidebarSessionRow>[],
 ): Record<string, GroupDropGeometry["lists"][string]> {
 	const lists: Record<string, GroupDropGeometry["lists"][string]> = {};
-	for (const group of groups) {
+	for (const {group} of manual) {
 		const groupId = customGroupIdOfKey(group.key);
 		if (groupId === null) continue;
 		lists[groupId] = group.rows.flatMap((row) => [
@@ -410,10 +451,10 @@ function groupLists(
 function applyMultiGroupDrop(
 	srcIds: readonly string[],
 	{target}: SidebarDrop,
-	groups: readonly SessionGroup<SidebarSessionRow>[],
+	manual: readonly ManualSectionGroups<SidebarSessionRow>[],
 	split: SplitPinned<SidebarSessionRow> | undefined,
 ): boolean {
-	const lists = groupLists(groups);
+	const lists = groupLists(manual);
 	const {assignments} = readSessionGroupState();
 	const outcome = multiGroupDropOutcome({
 		srcIds,
@@ -451,10 +492,10 @@ function applyMultiGroupDrop(
  */
 function applyGroupDrop(
 	{srcId, target}: SidebarDrop,
-	groups: readonly SessionGroup<SidebarSessionRow>[],
+	manual: readonly ManualSectionGroups<SidebarSessionRow>[],
 	split: SplitPinned<SidebarSessionRow> | undefined,
 ): boolean {
-	const lists = groupLists(groups);
+	const lists = groupLists(manual);
 	const srcGroupId = readSessionGroupState().assignments[srcId] ?? null;
 	const outcome = groupDropOutcome({srcId, srcGroupId, target, lists});
 	if (outcome === null) return false;
@@ -534,8 +575,8 @@ function applyPinDrop(
 	}
 }
 
-/** The drop row shown between the custom groups and Ungrouped while a grouped row is dragged. */
-function UngroupDropRow({ref, hot}: {ref: (element: HTMLElement | null) => void; hot: boolean}) {
+/** The drop row shown under the manual sections while a row in one is dragged (upstream `dragRemove`). */
+function UngroupDropRow({ref, hot, label}: {ref: (element: HTMLElement | null) => void; hot: boolean; label: string}) {
 	return (
 		<div
 			ref={ref}
@@ -546,7 +587,7 @@ function UngroupDropRow({ref, hot}: {ref: (element: HTMLElement | null) => void;
 			<span className="df-leading-slot">
 				<Ungroup aria-hidden="true" />
 			</span>
-			Ungroup
+			{label}
 		</div>
 	);
 }

@@ -514,7 +514,10 @@ html[data-interface-font="dyslexic"] {
 	--sb-group-pt: 0px;
 	/* Upstream ends a section 2px (one stack gap) below its last row */
 	--sb-group-pb: var(--sb-row-stack-gap);
-	--sb-group-band-mt: calc(10px - var(--sb-row-stack-gap));
+	/* Upstream --df-group-pt at comfortable density (12px at default, which gives a 14px band margin) */
+	--sb-group-pt-token: 16px;
+	/* Upstream web .dframe-sidebar .df-session-list band margin: group-pt + 4px - one stack gap (18px) */
+	--sb-group-band-mt: calc(var(--sb-group-pt-token) + 4px - var(--sb-row-stack-gap));
 	--sb-group-band-h: var(--sb-row-h);
 	--sb-group-label-pb: 0px;
 	--sb-row-stack-gap: 2px;
