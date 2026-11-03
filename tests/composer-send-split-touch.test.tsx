@@ -142,14 +142,62 @@ describe("Composer touch split Send while working", () => {
 		}).toStrictEqual({stops: 1, draft: "Alice's note", focused: true});
 	});
 
-	it("ignores a primary tap within 500ms of a menu Stop", async () => {
+	it("swaps the split to the plain Send face right after a menu Stop, keeping the draft", async () => {
+		const {handlers, textarea} = renderWorking(true);
+		await openMenu();
+		fireEvent.click(screen.getByRole("menuitem", {name: "Stop"}));
+		await flush();
+
+		expect({
+			stops: handlers.onStop.mock.calls.length,
+			group: screen.queryByRole("group", {name: "Send"}),
+			send: screen.getByRole("button", {name: "Send"}).dataset["testid"],
+			draft: textarea.value,
+		}).toStrictEqual({stops: 1, group: null, send: "code-prompt-send", draft: "Alice's note"});
+	});
+
+	it("ignores a plain Send tap within 500ms of a menu Stop, then sends", async () => {
+		vi.useFakeTimers({toFake: ["Date"]});
+		vi.setSystemTime(10_000);
 		const {handlers} = renderWorking(true);
 		await openMenu();
 		fireEvent.click(screen.getByRole("menuitem", {name: "Stop"}));
 		await flush();
 		fireEvent.click(screen.getByRole("button", {name: "Send"}));
+		const early = [...handlers.onSend.mock.calls];
+		vi.setSystemTime(10_500);
+		fireEvent.click(screen.getByRole("button", {name: "Send"}));
 
-		expect(handlers.onSend.mock.calls).toStrictEqual([]);
+		expect({early, sent: handlers.onSend.mock.calls}).toStrictEqual({early: [], sent: [["Alice's note"]]});
+	});
+
+	it("brings the split back when the next turn hands over a new Stop", async () => {
+		const {view, element} = renderWorking(true);
+		await openMenu();
+		fireEvent.click(screen.getByRole("menuitem", {name: "Stop"}));
+		await flush();
+		view.rerender(element({onStop: vi.fn<() => void>()}));
+
+		expect(screen.getByRole("group", {name: "Send"}).getAttribute("data-cds")).toBe("SplitDropdownButton");
+	});
+
+	it("brings the split back after the turn ends and a new one starts with the same Stop", async () => {
+		const {view, element, handlers} = renderWorking(true);
+		await openMenu();
+		fireEvent.click(screen.getByRole("menuitem", {name: "Stop"}));
+		await flush();
+		view.rerender(
+			<Composer
+				variant="session"
+				draftKey="session-alice"
+				onSend={() => {}}
+				onStop={undefined}
+				onQueueForLater={handlers.onQueueForLater}
+			/>,
+		);
+		view.rerender(element());
+
+		expect(screen.getByRole("group", {name: "Send"}).getAttribute("data-cds")).toBe("SplitDropdownButton");
 	});
 
 	it("holds the primary while sending is disabled, keeping the menu usable", async () => {

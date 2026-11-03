@@ -190,6 +190,18 @@ describe("Composer send slot while working", () => {
 });
 
 describe("useStopResponse", () => {
+	it("keeps the same stop function across re-renders with the default interrupt", () => {
+		const seen: (() => void)[] = [];
+		function Probe({tick}: {tick: number}) {
+			seen.push(useStopResponse({sessionId: "session-alice", enabled: false, onInterrupt: noop, onError: noop}));
+			return <span>{tick}</span>;
+		}
+		const view = render(<Probe tick={1} />);
+		view.rerender(<Probe tick={2} />);
+
+		expect({renders: seen.length, same: seen[0] === seen[1]}).toStrictEqual({renders: 2, same: true});
+	});
+
 	it("enables the stop_response registry entry", () => {
 		expect(getShortcut("stop_response").enabled).toBe(true);
 	});

@@ -294,7 +294,7 @@ const SEND_FACE_EXIT_CLASS =
 
 type SendFace = "stop" | "send";
 
-/** Upstream's `Ou`: a primary tap this soon after a Stop click is the same finger landing twice. */
+/** Upstream's `od`: a plain Send tap this soon after a Stop click is the same finger landing twice. */
 const STOP_TAP_GUARD_MS = 500;
 const noop = () => undefined;
 /* The coarse spacer's inert split never opens, but its menu holds the working items so it measures the same. */
@@ -417,7 +417,10 @@ const SendSlot = memo(function SendSlot({
 				aria-label="Send"
 				aria-describedby={deliveryHint ? hintId : undefined}
 				data-testid="code-prompt-send"
-				onClick={onSubmit}
+				onClick={(event) => {
+					if (Date.now() - stopClickAtRef.current < STOP_TAP_GUARD_MS) return;
+					onSubmit(event);
+				}}
 				disabled={!canSend}
 				className={ICON_BUTTON_CLASS}
 			>
@@ -431,8 +434,16 @@ const SendSlot = memo(function SendSlot({
 	};
 	/* Upstream leaves focus on the body after a menu Stop, so the soft keyboard stays down; other closes refocus the editor. */
 	const stopFromMenuRef = useRef(false);
+	/*
+	 * Upstream drops `showStop` the moment the menu's Stop is tapped, so the split gives way to the plain Send
+	 * face with the draft kept. Locally the turn stays working until the pane goes idle, so latch the Stop this
+	 * split handed out; a new Stop (the next turn) or none (the turn ended) clears it.
+	 */
+	const [stopAskedOf, setStopAskedOf] = useState<{stop: () => void} | null>(null);
+	if (stopAskedOf !== null && stopAskedOf.stop !== onStop) setStopAskedOf(null);
 	const menuStop = () => {
 		stopFromMenuRef.current = true;
+		if (onStop !== undefined) setStopAskedOf({stop: onStop});
 		stop();
 	};
 	const splitFinalFocus = useCallback(() => {
@@ -444,7 +455,7 @@ const SendSlot = memo(function SendSlot({
 	 * Upstream's touch split (`ue = showStop && !R && isCoarsePointer`): working with a draft on a coarse
 	 * pointer, the cell is a ghost split whose primary steers and whose menu queues or stops.
 	 */
-	const touchSplit = coarse && !isStreaming && onStop !== undefined && hasContent;
+	const touchSplit = coarse && !isStreaming && onStop !== undefined && hasContent && stopAskedOf === null;
 	const splitItems: SplitItem[] = queueForLater
 		? [
 				{
@@ -470,8 +481,7 @@ const SendSlot = memo(function SendSlot({
 			finalFocus={splitFinalFocus}
 			{...(canSend ? {} : {"aria-disabled": true})}
 			onPrimaryClick={() => {
-				if (!canSend || Date.now() - stopClickAtRef.current < STOP_TAP_GUARD_MS) return;
-				onTouchSubmit("send");
+				if (canSend) onTouchSubmit("send");
 			}}
 		/>
 	) : working ? (
@@ -1523,7 +1533,11 @@ export function Composer({
 				data-composer-card
 				data-bash-mode={bashMode ? "" : undefined}
 				className={bashMode ? `${COMPOSER_CARD_CLASS} ${BASH_CARD_CLASS}` : COMPOSER_CARD_CLASS}
-				onClick={() => textareaRef.current?.focus()}
+				onClick={(event) => {
+					// A portaled menu's click bubbles here through the React tree; only clicks on the card itself focus.
+					if (event.target instanceof Node && event.currentTarget.contains(event.target))
+						textareaRef.current?.focus();
+				}}
 			>
 				{dropState !== "idle" && !disabled && <ComposerDropScrim />}
 				{(contextChips.length > 0 || queuedComments.length > 0) && (

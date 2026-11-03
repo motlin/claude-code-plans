@@ -19,6 +19,10 @@ export function canStopResponse({
 	return hasLivePane && writesEnabled && working;
 }
 
+/* A module-level default keeps `stop` stable across renders, so the composer can key its Stop latch on it. */
+const defaultInterrupt = async (sessionId: string, force: boolean): Promise<void> =>
+	sendHerdrInterrupt(sessionId, force);
+
 export interface StopResponseOptions {
 	sessionId: string;
 	enabled: boolean;
@@ -42,7 +46,7 @@ export function useStopResponse({
 	enabled,
 	onInterrupt,
 	onError,
-	interrupt = async (id, force) => sendHerdrInterrupt(id, force),
+	interrupt = defaultInterrupt,
 	now = Date.now,
 	onEscapeRecall,
 }: StopResponseOptions): () => void {
