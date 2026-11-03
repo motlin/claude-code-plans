@@ -1,4 +1,4 @@
-import {useLayoutEffect, useRef, useState} from "react";
+import {useLayoutEffect, useRef} from "react";
 import {Folder} from "lucide-react";
 
 import type {SessionFilesEntry} from "../lib/api/session-files";
@@ -11,7 +11,7 @@ const POPUP_CLASS =
 	"absolute z-[130] flex max-h-[min(24rem,calc(100svh-2rem))] max-w-[calc(100vw-2rem)] flex-col overflow-y-auto rounded-r7 bg-[var(--menu-bg)] p-1 text-body text-primary shadow-[var(--menu-shadow)] select-none";
 
 const ROW_CLASS =
-	"flex h-6 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-r5 px-2 py-[2.5px] text-left text-[13px]/[19px] text-primary outline-none data-[highlighted]:bg-fill-ghost-hover";
+	"flex h-6 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-r5 px-2 py-[2.5px] text-start text-[13px]/[19px] text-primary outline-none data-[highlighted]:bg-fill-ghost-hover";
 
 /** Upstream's row tooltip text: the full path (directories keep their trailing `/`) with a ZWSP after every `/`. */
 function mentionTooltip(entry: SessionFilesEntry): string {
@@ -27,32 +27,35 @@ function EntryIcon({entry, icons}: {entry: SessionFilesEntry; icons: FileTypeIco
 /**
  * The claude.ai/code "@" popup: a "Mention suggestions" listbox over the line,
  * left-aligned to the `@` glyph, 560px wide when any row has a dirname caption and 420px otherwise, one row per path (icon, basename, dirname caption). Keyboard focus
- * stays in the editor, which drives `highlighted` (the keyboard index) and `onAccept`. Like upstream, the pointer keeps
- * its own hover index that wins while it is over a row and falls back to the keyboard index when it leaves the list.
+ * stays in the editor, which drives `highlighted` and `onAccept`. Like upstream, hover and keyboard share that one index:
+ * real pointer movement over a row commits it through `onHighlight`, it stays when the pointer leaves, and only
+ * keyboard moves scroll the highlighted row into view.
  */
 export function FileMentionMenu({
 	id,
 	entries,
 	highlighted,
+	onHighlight,
 	onAccept,
 }: {
 	id: string;
 	entries: readonly SessionFilesEntry[];
 	highlighted: number;
+	onHighlight: (index: number) => void;
 	onAccept: (entry: SessionFilesEntry) => void;
 }) {
 	const listRef = useRef<HTMLDivElement>(null);
 	const icons = useFileTypeIcons();
-	// Tied to the entries it was set against, so a new result list drops a stale hover.
-	const [hover, setHover] = useState<{
-		entries: readonly SessionFilesEntry[];
-		index: number;
-	} | null>(null);
-	const shown = hover?.entries === entries ? hover.index : highlighted;
+	// Upstream's `k.current`: a highlight set by hover must not scroll the list under the pointer.
+	const hoverHighlightRef = useRef(false);
 
 	useLayoutEffect(() => {
+		if (hoverHighlightRef.current) {
+			hoverHighlightRef.current = false;
+			return;
+		}
 		listRef.current?.querySelector<HTMLElement>("[data-highlighted]")?.scrollIntoView({block: "nearest"});
-	}, [shown, entries]);
+	}, [highlighted, entries]);
 
 	return (
 		// oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- the composer textarea keeps focus and drives the list through aria-activedescendant
@@ -61,13 +64,12 @@ export function FileMentionMenu({
 			id={id}
 			role="listbox"
 			aria-label="Mention suggestions"
+			data-cds="MentionDropdown"
+			tabIndex={-1}
 			className={POPUP_CLASS}
 			style={{width: fileMentionMenuWidth(entries)}}
 			onMouseDown={(e) => {
 				e.preventDefault();
-			}}
-			onMouseLeave={() => {
-				setHover(null);
 			}}
 		>
 			{entries.map((entry, index) => {
@@ -91,14 +93,16 @@ export function FileMentionMenu({
 							id={fileMentionOptionId(id, index)}
 							role="option"
 							data-option-index={index}
-							aria-selected={index === shown}
-							data-highlighted={index === shown ? "" : undefined}
+							aria-selected={index === highlighted}
+							data-highlighted={index === highlighted ? "" : undefined}
 							className={ROW_CLASS}
-							onMouseEnter={() => {
-								setHover({entries, index});
+							onMouseMove={(e) => {
+								// Skip the zero-movement move a browser fires when the list scrolls under a still pointer.
+								if (index === highlighted || (e.movementX === 0 && e.movementY === 0)) return;
+								hoverHighlightRef.current = true;
+								onHighlight(index);
 							}}
-							onMouseDown={(e) => {
-								e.preventDefault();
+							onClick={() => {
 								onAccept(entry);
 							}}
 						>

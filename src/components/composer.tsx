@@ -900,7 +900,8 @@ export function Composer({
 	}>({entries: [], index: 0});
 	const mentionHighlighted =
 		mentionHighlight.entries === mentionEntries ? Math.min(mentionHighlight.index, mentionEntries.length - 1) : 0;
-	// Upstream anchors the popup to the `@` glyph: measured once per trigger start (and width), again on resize.
+	// Upstream anchors the popup to the `@` glyph, clamped to the textarea's box: measured once per trigger start (and width),
+	// again on resize and whenever the textarea scrolls.
 	// The position goes straight onto the popup's DOM node (`left`/`bottom` stay out of its React style), so measuring costs no extra render per keystroke.
 	const mentionInputRef = useRef<HTMLDivElement>(null);
 	const mentionStart = mentionOpen ? mention.start : null;
@@ -916,6 +917,9 @@ export function Composer({
 			const box = textarea.getBoundingClientRect();
 			const {left, bottom} = fileMentionMenuPosition({
 				at: {left: box.left + caretRect.left, bottom: box.top + caretRect.top + caretRect.height},
+				editor: box,
+				// Upstream's `@.bottom - @.top`: the glyph's line box.
+				lineHeight: caretRect.height,
 				container: container.getBoundingClientRect(),
 				width: mentionWidth,
 				viewportWidth: window.innerWidth,
@@ -924,9 +928,12 @@ export function Composer({
 			menu.style.bottom = `${bottom}px`;
 		};
 		place();
+		const textarea = textareaRef.current;
 		window.addEventListener("resize", place);
+		textarea?.addEventListener("scroll", place);
 		return () => {
 			window.removeEventListener("resize", place);
+			textarea?.removeEventListener("scroll", place);
 		};
 	}, [mentionStart, mentionWidth, mentionMenuId]);
 
@@ -1583,6 +1590,9 @@ export function Composer({
 							id={mentionMenuId}
 							entries={mentionEntries}
 							highlighted={mentionHighlighted}
+							onHighlight={(index) => {
+								setMentionHighlight({entries: mentionEntries, index});
+							}}
 							onAccept={acceptFileMention}
 						/>
 					)}

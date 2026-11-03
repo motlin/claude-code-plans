@@ -100,6 +100,8 @@ describe("fileMentionMenuPosition", () => {
 		expect(
 			fileMentionMenuPosition({
 				at: {left: 397.5, bottom: 695.5},
+				editor: {top: 600, bottom: 700},
+				lineHeight: 20,
 				container: {left: 300, bottom: 720},
 				width: 560,
 				viewportWidth: 1400,
@@ -111,12 +113,16 @@ describe("fileMentionMenuPosition", () => {
 		expect([
 			fileMentionMenuPosition({
 				at: {left: 1000, bottom: 500},
+				editor: {top: 400, bottom: 520},
+				lineHeight: 20,
 				container: {left: 200, bottom: 520},
 				width: 560,
 				viewportWidth: 1400,
 			}),
 			fileMentionMenuPosition({
 				at: {left: 4, bottom: 500},
+				editor: {top: 400, bottom: 520},
+				lineHeight: 20,
 				container: {left: 0, bottom: 520},
 				width: 420,
 				viewportWidth: 1400,
@@ -124,6 +130,8 @@ describe("fileMentionMenuPosition", () => {
 			// A popup wider than the viewport shrinks to it (max-w-[calc(100vw-2rem)]) and sits at the padding.
 			fileMentionMenuPosition({
 				at: {left: 200, bottom: 500},
+				editor: {top: 400, bottom: 520},
+				lineHeight: 20,
 				container: {left: 10, bottom: 520},
 				width: 420,
 				viewportWidth: 390,
@@ -133,6 +141,27 @@ describe("fileMentionMenuPosition", () => {
 			{left: 16, bottom: 40},
 			{left: 6, bottom: 40},
 		]);
+	});
+});
+
+describe("fileMentionMenuPosition editor clamp", () => {
+	// Upstream clamps the @ glyph's bottom to [editorScroll.top, editorScroll.bottom + lineHeight] before anchoring.
+	const at = (bottom: number) =>
+		fileMentionMenuPosition({
+			at: {left: 100, bottom},
+			editor: {top: 200, bottom: 400},
+			lineHeight: 20,
+			container: {left: 0, bottom: 600},
+			width: 420,
+			viewportWidth: 1200,
+		});
+
+	it("pins the popup to the editor box when the @ line scrolls out, and leaves an in-range @ alone", () => {
+		expect({above: at(50), below: at(900), inRange: at(300)}).toStrictEqual({
+			above: {left: 100, bottom: 420},
+			below: {left: 100, bottom: 200},
+			inRange: {left: 100, bottom: 320},
+		});
 	});
 });
 
@@ -417,6 +446,42 @@ describe("Composer @ file mentions", () => {
 		}).toStrictEqual({measured: ["@"], left: "87px", bottom: "24px", composerAnchored: []});
 	});
 
+	it("re-anchors the popup when the textarea scrolls, pinned to the textarea's box", async () => {
+		responses.set(searchUrl("sk"), search("sk", ["skills/a.md"]));
+		const {textarea} = setup();
+		const box = (left: number, top: number, width: number, height: number) =>
+			({
+				left,
+				top,
+				width,
+				height,
+				x: left,
+				y: top,
+				right: left + width,
+				bottom: top + height,
+				toJSON: () => ({}),
+			}) as DOMRect;
+		// The @ sits 60px down a 120px-tall mirror; scrolling moves it 100px up, above the textarea's top.
+		let markerTop = 60;
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+			if (this.dataset["textareaCaretMarker"] !== undefined) return box(157, markerTop, 9, 18);
+			if (this.dataset["textareaCaretMirror"] !== undefined) return box(100, 0, 600, 120);
+			if (this === textarea) return box(130, 400, 600, 100);
+			if (this === textarea.parentElement) return box(100, 400, 660, 104);
+			return box(0, 0, 0, 0);
+		});
+
+		await type(textarea, "line\nline\nline\n@sk");
+		const popup = screen.getByRole("listbox", {name: "Mention suggestions"});
+		const before = popup.style.bottom;
+		markerTop = -40;
+		fireEvent.scroll(textarea);
+
+		// Before: @ bottom 400 + 60 + 18 = 478, popup bottom 478 - 20 = 458, container bottom 504 → 46px.
+		// After: @ bottom 400 - 40 + 18 = 378 clamps to the textarea top 400 → 380 → 124px.
+		expect({before, after: popup.style.bottom}).toStrictEqual({before: "46px", after: "124px"});
+	});
+
 	it("sizes the popup 420px without dirnames and 560px when any row has one", async () => {
 		responses.set(
 			TOP_URL,
@@ -468,10 +533,12 @@ describe("Composer @ file mentions", () => {
 			"py-[2.5px]",
 			"text-[13px]/[19px]",
 			"cursor-pointer",
-			"text-left",
+			"text-start",
 		];
-		const rowBans = ["px-2.5", "py-1.5", "cursor-default"];
+		const rowBans = ["px-2.5", "py-1.5", "cursor-default", "text-left"];
+		const listbox = screen.getByRole("listbox", {name: "Mention suggestions"});
 		expect({
+			listbox: {cds: listbox.dataset["cds"], tabIndex: listbox.getAttribute("tabindex")},
 			popup: {
 				has: popupWants.filter((c) => popup.includes(c)),
 				banned: popupBans.filter((c) => popup.includes(c)),
@@ -487,6 +554,7 @@ describe("Composer @ file mentions", () => {
 				};
 			}),
 		}).toStrictEqual({
+			listbox: {cds: "MentionDropdown", tabIndex: "-1"},
 			popup: {has: popupWants, banned: []},
 			rows: [0, 1].map((index) => ({
 				tag: "BUTTON",
@@ -535,10 +603,10 @@ describe("Composer @ file mentions", () => {
 		});
 	});
 
-	it("keeps the hover index separate from the keyboard index, restoring the keyboard row when the pointer leaves", async () => {
+	it("hovering a row makes it the selected row, kept when the pointer leaves, and ↓ continues from it", async () => {
 		responses.set(
 			searchUrl("ind"),
-			search("ind", ["src/a/index.ts", "src/b/index.ts", "src/c/index.ts", "src/d/index.ts"]),
+			search("ind", ["src/a/index.ts", "src/b/index.ts", "src/c/index.ts", "src/d/index.ts", "src/e/index.ts"]),
 		);
 		const {textarea} = setup();
 
@@ -550,20 +618,49 @@ describe("Composer @ file mentions", () => {
 				selected: row.getAttribute("aria-selected"),
 			}));
 		const only = (index: number) =>
-			[0, 1, 2, 3].map((i) => ({highlighted: i === index, selected: String(i === index)}));
-		const hovered = screen.getAllByRole("option")[3];
-		if (hovered === undefined) throw new Error("missing row 3");
-		fireEvent.mouseEnter(hovered);
-		const whileHovering = highlightedRows();
+			[0, 1, 2, 3, 4].map((i) => ({highlighted: i === index, selected: String(i === index)}));
+		const activeOption = () => textarea.getAttribute("aria-activedescendant")?.replace(/^.*-(option-\d+)$/, "$1");
+		const row = (index: number) => {
+			const found = screen.getAllByRole("option")[index];
+			if (found === undefined) throw new Error(`missing row ${index}`);
+			return found;
+		};
+		fireEvent.mouseMove(row(3), {movementX: 1, movementY: 0});
+		const whileHovering = {rows: highlightedRows(), active: activeOption()};
+		// The synthetic move a browser fires when the list scrolls under a still pointer carries no movement.
+		fireEvent.mouseMove(row(2), {movementX: 0, movementY: 0});
+		const afterStillMove = highlightedRows();
 		fireEvent.mouseLeave(screen.getByRole("listbox"));
 		const afterLeave = highlightedRows();
+		fireEvent.keyDown(textarea, {key: "ArrowDown"});
+		const afterDown = highlightedRows();
 		fireEvent.keyDown(textarea, {key: "Enter"});
 
-		expect({whileHovering, afterLeave, value: textarea.value}).toStrictEqual({
-			whileHovering: only(3),
-			afterLeave: only(1),
-			value: "@src/b/index.ts ",
+		expect({whileHovering, afterStillMove, afterLeave, afterDown, value: textarea.value}).toStrictEqual({
+			whileHovering: {rows: only(3), active: "option-3"},
+			afterStillMove: only(3),
+			afterLeave: only(3),
+			afterDown: only(4),
+			value: "@src/e/index.ts ",
 		});
+	});
+
+	it("scrolls the highlighted row into view for keyboard moves but not for hover", async () => {
+		responses.set(searchUrl("ind"), search("ind", ["src/a/index.ts", "src/b/index.ts", "src/c/index.ts"]));
+		const {textarea} = setup();
+
+		await type(textarea, "@ind");
+		const scrolled: (string | undefined)[] = [];
+		vi.spyOn(Element.prototype, "scrollIntoView").mockImplementation(function (this: Element) {
+			scrolled.push((this as HTMLElement).dataset["optionIndex"]);
+		});
+		const row = screen.getAllByRole("option")[2];
+		if (row === undefined) throw new Error("missing row 2");
+		fireEvent.mouseMove(row, {movementX: 0, movementY: 1});
+		const afterHover = [...scrolled];
+		fireEvent.keyDown(textarea, {key: "ArrowUp"});
+
+		expect({afterHover, afterKey: scrolled}).toStrictEqual({afterHover: [], afterKey: ["1"]});
 	});
 
 	it("shows the row's full path as a 200ms tooltip 8px to its right, with a ZWSP after every slash", async () => {
@@ -624,12 +721,27 @@ describe("Composer @ file mentions", () => {
 		await type(textarea, "@ind");
 		const row = screen.getAllByRole("option")[2];
 		if (row === undefined) throw new Error("missing row 2");
-		fireEvent.mouseEnter(row);
 		fireEvent.mouseDown(row);
-		// Finish the click inside the React root (the accepted row is gone): React suppresses onSelect until the mouseup.
-		fireEvent.mouseUp(textarea);
+		fireEvent.mouseUp(row);
+		fireEvent.click(row);
 
 		expect(textarea.value).toBe("@src/c/index.ts ");
+	});
+
+	it("does not accept a press that drags off the row, like upstream's onClick", async () => {
+		responses.set(searchUrl("ind"), search("ind", ["src/a/index.ts", "src/b/index.ts", "src/c/index.ts"]));
+		const {textarea} = setup();
+
+		await type(textarea, "@ind");
+		const row = screen.getAllByRole("option")[2];
+		if (row === undefined) throw new Error("missing row 2");
+		fireEvent.mouseDown(row);
+		fireEvent.mouseUp(textarea);
+
+		expect({
+			value: textarea.value,
+			rows: screen.getAllByRole("option").length,
+		}).toStrictEqual({value: "@ind", rows: 3});
 	});
 
 	it("stays closed after Escape while the token extends the dismissed one, and reopens when it shrinks", async () => {

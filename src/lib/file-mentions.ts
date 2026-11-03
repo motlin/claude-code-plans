@@ -66,11 +66,16 @@ const MENTION_SIDE_OFFSET = 24;
  */
 export function fileMentionMenuPosition({
 	at,
+	editor,
+	lineHeight,
 	container,
 	width,
 	viewportWidth,
 }: {
 	at: {left: number; bottom: number};
+	/** The editor's scroll box: the @ glyph's bottom is clamped to [top, bottom + lineHeight], like upstream. */
+	editor: {top: number; bottom: number};
+	lineHeight: number;
 	container: {left: number; bottom: number};
 	width: number;
 	viewportWidth: number;
@@ -80,7 +85,8 @@ export function fileMentionMenuPosition({
 		MENTION_COLLISION_PADDING,
 		Math.min(at.left, viewportWidth - MENTION_COLLISION_PADDING - shown),
 	);
-	const popupBottom = at.bottom + MENTION_ANCHOR_GAP - MENTION_SIDE_OFFSET;
+	const anchorBottom = Math.min(Math.max(at.bottom, editor.top), editor.bottom + lineHeight);
+	const popupBottom = anchorBottom + MENTION_ANCHOR_GAP - MENTION_SIDE_OFFSET;
 	return {left: left - container.left, bottom: container.bottom - popupBottom};
 }
 
