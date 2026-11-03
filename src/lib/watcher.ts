@@ -200,6 +200,16 @@ export async function closeWatcher(): Promise<void> {
 }
 
 const WATCHED_EXTENSIONS = new Set([".md", ".jsonl", ".json"]);
+
+/** Indexing that handleFileChange detaches from its caller, kept so tests can wait for it to finish. */
+const detachedWork = new Set<Promise<void>>();
+
+function detach(work: () => Promise<void>): void {
+	const promise = work().finally(() => {
+		detachedWork.delete(promise);
+	});
+	detachedWork.add(promise);
+}
 const JSONL_THROTTLE_MS = 2000;
 
 /**
@@ -850,30 +860,30 @@ async function handleFileChange(path: string): Promise<void> {
 		// ~/.claude/tasks/{taskDir}/{taskId}.json
 		const taskDir = basename(dirname(path));
 		seedTaskSnapshot(taskDir);
-		void (async () => {
+		detach(async () => {
 			await indexSilently(path, projectsDir);
 			safeDiffTasks(taskDir);
-		})();
+		});
 	} else if (ext === ".json" && path.endsWith("sessions-index.json")) {
-		void (async () => {
+		detach(async () => {
 			await indexSilently(path, projectsDir);
 			safeDiffSessions(basename(dirname(path)));
-		})();
+		});
 	} else if (ext === ".md") {
 		if (plansDir && path.startsWith(plansDir)) {
-			void (async () => {
+			detach(async () => {
 				try {
 					await handlePlanMdChange(getDb().index, path, projectsDir, plansDir, broadcastTyped);
 				} catch {
 					// transient indexing error
 					await broadcastPlanChanged(path);
 				}
-			})();
+			});
 		} else if (projectsDir && path.startsWith(projectsDir)) {
-			void (async () => {
+			detach(async () => {
 				await indexSilently(path, projectsDir);
 				await broadcastMemoryChanged(path, projectsDir);
-			})();
+			});
 		}
 	}
 }
@@ -1022,6 +1032,10 @@ export const __testing = {
 	handleFileContentUnlink,
 	handleFileChange,
 	handleFileUnlink,
+	/** Resolve once every indexing job handleFileChange detached, including ones started meanwhile, has finished. */
+	async settleDetachedWork(): Promise<void> {
+		while (detachedWork.size > 0) await Promise.allSettled(detachedWork);
+	},
 	handleJobFileEvent,
 	handleWorkflowFileEvent,
 	resetWorkflowThrottle,

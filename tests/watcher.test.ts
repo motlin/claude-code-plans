@@ -965,10 +965,8 @@ describe("task diff across task lists", () => {
 		addClient(client);
 		try {
 			await action();
-			// handleFileChange detaches the task indexing; let it settle.
-			await new Promise((resolve) => {
-				setTimeout(resolve, 200);
-			});
+			// handleFileChange detaches the task indexing; wait for it rather than a fixed sleep.
+			await __testing.settleDetachedWork();
 		} finally {
 			removeClient(client);
 		}
@@ -999,6 +997,7 @@ describe("task diff across task lists", () => {
 		const pathB = writeTask("sess-list-b", "1", "pending", 1000);
 		await captureBroadcasts(async () => {
 			await __testing.handleFileChange(pathA);
+			await __testing.settleDetachedWork();
 			await __testing.handleFileChange(pathB);
 		});
 
@@ -1037,7 +1036,9 @@ describe("task diff across task lists", () => {
 		const namedPath = writeTask("named-dirs", "1", "pending", 1000);
 
 		const broadcasts = await captureBroadcasts(async () => {
+			// Concurrent indexes of one project finish in either order; settle in between for a stable order.
 			await __testing.handleFileChange(prefixPath);
+			await __testing.settleDetachedWork();
 			await __testing.handleFileChange(namedPath);
 		});
 
