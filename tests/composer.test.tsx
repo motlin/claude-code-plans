@@ -542,6 +542,45 @@ describe("Composer", () => {
 			expect(dialog.querySelector("[data-usage-popover-header] > span")?.textContent).toBe("Plan usage limits");
 		});
 
+		it("tints the usage popover's meter fills by severity over an alpha-2 track with the inset ring", async () => {
+			const usage = CHIN.usage && {
+				...CHIN.usage,
+				fiveHour: {...CHIN.usage.fiveHour!, usedPercentage: 80},
+				weekly: {...CHIN.usage.weekly!, usedPercentage: 95},
+			};
+			render(
+				<QueryClientProvider client={new QueryClient()}>
+					<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={{...CHIN, usage}} />
+				</QueryClientProvider>,
+			);
+
+			fireEvent.click(screen.getByRole("button", {name: /^Usage:/}));
+			const dialog = await screen.findByRole("dialog");
+
+			expect(
+				within(dialog)
+					.getAllByRole("meter")
+					.map((meter) => ({
+						variant: meter.getAttribute("data-variant"),
+						track: [...meter.classList].filter(
+							(name) => name.startsWith("bg-") || name.startsWith("shadow-"),
+						),
+						fill: [...(meter.firstElementChild?.classList ?? [])].filter((name) => name.startsWith("bg-")),
+					})),
+			).toStrictEqual([
+				{
+					variant: "warning",
+					track: ["bg-alpha-2", "shadow-[inset_0_0_0_1px_var(--color-alpha-1)]"],
+					fill: ["bg-usage-warning"],
+				},
+				{
+					variant: "danger",
+					track: ["bg-alpha-2", "shadow-[inset_0_0_0_1px_var(--color-alpha-1)]"],
+					fill: ["bg-usage-danger"],
+				},
+			]);
+		});
+
 		it("previews the most-used limit and its reset in a two-row tooltip on the ring", () => {
 			vi.useFakeTimers({now: NOW_MS});
 			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
