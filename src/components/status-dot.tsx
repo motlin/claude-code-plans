@@ -8,6 +8,7 @@ import {
 	type LucideIcon,
 	TriangleAlert,
 } from "lucide-react";
+import type {CSSProperties} from "react";
 import {sessionStateKindLabels} from "../lib/schema-choices";
 import type {GitPrState} from "../lib/pr-status";
 import type {SessionStateKind} from "../lib/session-state";
@@ -27,21 +28,30 @@ const PR_GLYPH_ICONS = {
 } satisfies Record<GitPrState, LucideIcon>;
 
 const PR_GLYPH_CLASS = {
-	title: "flex h-[var(--sb-row-ctl)] min-w-[var(--sb-row-ctl)] shrink-0 items-center justify-end gap-0.5 ps-[calc((var(--sb-row-ctl)-12px)/2)] pe-[calc((var(--sb-row-ctl)-12px)/2)] text-footnote text-ink-muted",
+	title: "flex h-[var(--sb-row-ctl)] min-w-[var(--sb-row-ctl)] shrink-0 items-center justify-end gap-0.5 ps-[calc((var(--sb-row-ctl)-var(--df-pr-glyph))/2)] pe-[calc((var(--sb-row-ctl)-var(--df-pr-glyph))/2+max(0px,var(--df-heading-pitch,0px)-var(--sb-row-ctl)))] text-footnote text-muted-as-secondary",
 	line: "flex h-4 shrink-0 items-center gap-0.5",
 } as const;
 
+/** Upstream `tT place:"title"` sets `--df-pr-glyph:16px`; the metadata line keeps a 12px glyph. */
+const TITLE_GLYPH_STYLE = {"--df-pr-glyph": "16px"} as CSSProperties;
+
 /**
- * Upstream's PR glyph (`tT`): a 12px git-coloured icon with a "Pull request · {state}" tooltip. The
- * `title` place is the row's title tail, just left of the trailing status slot; the `line` place
- * leads the branch on a described row's metadata line.
+ * Upstream's PR glyph (`tT`): a git-coloured icon with a "Pull request · {state}" tooltip. The
+ * `title` place is the row's 16px title tail, just left of the trailing status slot; the `line`
+ * place is 12px and leads the branch on a described row's metadata line.
  */
 export function PrTailGlyph({state, place = "title"}: {state: GitPrState; place?: keyof typeof PR_GLYPH_CLASS}) {
 	const Icon = PR_GLYPH_ICONS[state];
+	const title = place === "title";
 	return (
 		<Tooltip content={`Pull request · ${GIT_PR_STATE_LABELS[state]}`}>
-			<span aria-hidden="true" data-pr-glyph={state} className={PR_GLYPH_CLASS[place]}>
-				<Icon size={12} style={{color: `var(--color-git-${state})`}} />
+			<span
+				aria-hidden="true"
+				data-pr-glyph={state}
+				className={PR_GLYPH_CLASS[place]}
+				{...(title ? {style: TITLE_GLYPH_STYLE} : {})}
+			>
+				<Icon size={title ? 16 : 12} style={{color: `var(--color-git-${state})`}} />
 			</span>
 		</Tooltip>
 	);

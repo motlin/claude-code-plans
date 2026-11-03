@@ -63,10 +63,12 @@ function seedQueryClient(sessions: unknown[], nextCursor: string | null = null):
 			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
 		},
 	});
-	queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-		pages: [RecentSessionsResponse.parse({sessions, nextCursor})],
-		pageParams: [null],
-	});
+	for (const status of ["active", "all"] as const) {
+		queryClient.setQueryData(recentSessionsInfiniteQueryOptions(undefined, status).queryKey, {
+			pages: [RecentSessionsResponse.parse({sessions, nextCursor})],
+			pageParams: [null],
+		});
+	}
 	return queryClient;
 }
 
@@ -548,7 +550,7 @@ describe("sidebar SessionGroups", () => {
 		expect(within(headers[0] as HTMLElement).getByRole("button", {name: "Working"})).toBeTruthy();
 	});
 
-	it("draws each row's status in upstream's trailing slot, with no leading glyph, the env laptop on a settled row", async () => {
+	it("draws each row's status in upstream's trailing slot, with no leading glyph, the env laptop on a settled row, and upstream's attention markup", async () => {
 		__unreadStoreTesting.reset();
 		syncUnseenFromSummaries(FIXTURE.map(({id, unseen}) => ({id, unseen})));
 		const {container} = await renderGroups(FIXTURE);
@@ -563,8 +565,14 @@ describe("sidebar SessionGroups", () => {
 			const link = rowOf(title);
 			const decoration = link.closest("[data-session-actions]")?.querySelector("[data-row-decoration]");
 			const mark = decoration?.querySelector("[role=status], [role=img]");
+			const wrappers: string[] = [];
+			for (let node = mark?.parentElement; node && node !== decoration; node = node.parentElement) {
+				wrappers.push(`${node.getAttribute("aria-hidden")} ${node.getAttribute("class")}`);
+			}
 			return {
 				leading: link.querySelector(".df-leading-slot") !== null,
+				attention: link.querySelector("[data-row-label] .relative")?.getAttribute("data-attention") ?? null,
+				wrappers,
 				mark:
 					mark === null || mark === undefined
 						? null
@@ -587,6 +595,8 @@ describe("sidebar SessionGroups", () => {
 		}).toStrictEqual({
 			blocked: {
 				leading: false,
+				attention: "waiting",
+				wrappers: ["true flex items-center", "true flex items-center"],
 				mark: ["img", "Awaiting input", "flex items-center", "true"],
 				env: null,
 				hidesOnHover: true,
@@ -594,6 +604,8 @@ describe("sidebar SessionGroups", () => {
 			},
 			working: {
 				leading: false,
+				attention: null,
+				wrappers: ["true flex items-center"],
 				mark: ["img", "Running", "flex items-center", "true"],
 				env: null,
 				hidesOnHover: true,
@@ -601,12 +613,22 @@ describe("sidebar SessionGroups", () => {
 			},
 			review: {
 				leading: false,
+				attention: "unread",
+				wrappers: ["true flex items-center", "true flex items-center"],
 				mark: ["img", "Unread response", "flex items-center", "true"],
 				env: null,
 				hidesOnHover: true,
 				flushRight: true,
 			},
-			done: {leading: false, mark: null, env: "bridge", hidesOnHover: true, flushRight: true},
+			done: {
+				leading: false,
+				attention: null,
+				wrappers: [],
+				mark: null,
+				env: "bridge",
+				hidesOnHover: true,
+				flushRight: true,
+			},
 		});
 	});
 
@@ -634,12 +656,23 @@ describe("sidebar SessionGroups", () => {
 									wrapper: glyph.parentElement?.getAttribute("class") ?? null,
 									wrapperHidden: glyph.parentElement?.getAttribute("aria-hidden") ?? null,
 									slash: glyph.querySelector('path[d="m2 2 20 20"]') !== null,
+									ink: (glyph.getAttribute("class") ?? "")
+										.split(" ")
+										.filter((name) => name.startsWith("text-")),
 								},
 					];
 				}),
 			);
 		const wrapper = "flex size-[var(--sb-row-ctl)] shrink-0 items-center justify-center";
-		const live = {tag: "svg", kind: "bridge", offline: false, wrapper, wrapperHidden: "true", slash: false};
+		const live = {
+			tag: "svg",
+			kind: "bridge",
+			offline: false,
+			wrapper,
+			wrapperHidden: "true",
+			slash: false,
+			ink: ["text-muted-as-secondary"],
+		};
 
 		localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify({pinnedIds: ["p1"], pinnedOrder: ["p1"]}));
 		const byProject = describeEnv(
@@ -754,7 +787,7 @@ describe("sidebar SessionGroups", () => {
 				};
 			});
 		const slot =
-			"shrink-0 flex items-center gap-1.5 text-xs text-ink-muted me-[calc(var(--sb-row-ctl-inset)+var(--sb-row-ctl)-var(--sb-row-px))]";
+			"shrink-0 flex items-center gap-1.5 text-xs text-muted-as-secondary me-[calc(var(--sb-row-ctl-inset)+var(--sb-row-ctl)-var(--sb-row-px))]";
 		const label = "min-w-0 flex-1 ps-2";
 
 		__unreadStoreTesting.reset();
@@ -885,6 +918,40 @@ describe("sidebar SessionGroups", () => {
 				b1: " herdr",
 				d2: " Local",
 			},
+		});
+	});
+
+	it("names a row's PR in its sr environment text only while Show PR status is on and the row isn't archived", async () => {
+		const rows = [
+			{...session("d1", "Draft PR", "done", 5), prStatus: {number: 8, state: "draft"}},
+			{...session("a1", "Archived PR", "done", 6), archived: true, prStatus: {number: 9, state: "draft"}},
+		];
+		const environments = () =>
+			Object.fromEntries(
+				screen
+					.getAllByRole("link")
+					.filter((link) => link.hasAttribute("data-row-main-button"))
+					.map((link) => [
+						rowTitle(link),
+						[...link.querySelectorAll("[data-row-label] .relative > .sr-only[data-find-omitted]")].at(-1)
+							?.textContent ?? null,
+					]),
+			);
+		const render = async (showPrStatus: boolean) => {
+			localStorage.setItem(
+				"ccp-session-list-prefs",
+				JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, showPrStatus}),
+			);
+			await renderGroups(rows, {prefs: {...DEFAULT_SESSION_LIST_PREFS, groupBy: "state", statusFilter: "all"}});
+			const result = environments();
+			cleanup();
+			localStorage.removeItem("ccp-session-list-prefs");
+			return result;
+		};
+
+		expect({off: await render(false), on: await render(true)}).toStrictEqual({
+			off: {"Draft PR": " Local", "Archived PR Archived": " Local"},
+			on: {"Draft PR": " Local · Draft", "Archived PR Archived": " Local"},
 		});
 	});
 

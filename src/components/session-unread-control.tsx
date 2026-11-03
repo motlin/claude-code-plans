@@ -12,6 +12,7 @@ import {SessionStateIcon} from "./status-dot";
 import {GIT_PR_STATE_LABELS} from "./git-pr-state-labels";
 import {Tooltip} from "./ui/tooltip";
 import {useHasUnseenWork} from "./use-has-unseen-work";
+import {rowAttention, useRowIconKind} from "./use-row-icon-kind";
 
 /**
  * Upstream session row status dot. Awaiting and running glyphs carry a top tooltip, a read finished
@@ -71,14 +72,17 @@ const SR_ROW_ERROR_LABEL = ` ${sessionStateKindLabels.error}`;
 /**
  * Upstream's sr-only environment text: where the session runs (its terminal
  * host, or Local), its live CLI's Remote Control on or off, then the PR state.
+ * Upstream (shared-18) drops the PR when Show PR status is off or the row is archived.
  */
-function rowEnvironmentText(session: SessionListItem): string {
+function rowEnvironmentText(session: SessionListItem, showPrStatus: boolean): string {
 	const environment = sessionEnvironment({
 		terminalHost: session.terminalHost ?? null,
 		remoteControl: session.remoteControlState ?? null,
 	});
 	const parts = [sessionEnvironmentText(environment)];
-	if (session.prStatus !== undefined) parts.push(GIT_PR_STATE_LABELS[prGlyph(session.prStatus).state]);
+	if (showPrStatus && !session.archived && session.prStatus !== undefined) {
+		parts.push(GIT_PR_STATE_LABELS[prGlyph(session.prStatus).state]);
+	}
 	return ` ${parts.join(" · ")}`;
 }
 
@@ -92,28 +96,12 @@ function BridgeEnvGlyph({offline}: {offline: boolean}) {
 			<Laptop
 				data-env-glyph="bridge"
 				data-env-offline={offline ? "" : undefined}
-				className="size-4 shrink-0 text-ink-muted"
+				className="size-4 shrink-0 text-muted-as-secondary"
 			>
 				{offline && <path d="m2 2 20 20" />}
 			</Laptop>
 		</span>
 	);
-}
-
-function useRowIconKind(session: SessionListItem) {
-	const unseen = useHasUnseenWork(session.id);
-	const {settings} = useSettings();
-	return {
-		unseen,
-		kind: sessionRowIconKind({
-			bucket: session.bucket,
-			unseen,
-			serverUnseen: session.unseen,
-			unseenError: session.unseenError === true,
-			prStatus: session.prStatus,
-			showPrStatus: settings.sessionListPrefs.showPrStatus,
-		}),
-	};
 }
 
 /**
@@ -126,6 +114,9 @@ function useRowIconKind(session: SessionListItem) {
  */
 export function SidebarRowDecoration({session, envGlyph}: {session: SessionListItem; envGlyph: boolean}) {
 	const {kind} = useRowIconKind(session);
+	const mark = (
+		<SessionStateIcon kind={kind} live={false} {...(kind === "ready" ? {label: "Unread response"} : {})} />
+	);
 	return (
 		<span
 			data-row-decoration=""
@@ -138,11 +129,14 @@ export function SidebarRowDecoration({session, envGlyph}: {session: SessionListI
 				)
 			) : (
 				<span aria-hidden="true" className="flex items-center">
-					<SessionStateIcon
-						kind={kind}
-						live={false}
-						{...(kind === "ready" ? {label: "Unread response"} : {})}
-					/>
+					{rowAttention(kind) === undefined ? (
+						mark
+					) : (
+						// Upstream `Oc`: a waiting or unread attention look wraps the mark once more.
+						<span aria-hidden="true" className="flex items-center">
+							{mark}
+						</span>
+					)}
 				</span>
 			)}
 		</span>
@@ -155,7 +149,7 @@ export function SidebarRowDecoration({session, envGlyph}: {session: SessionListI
  * environment (" herdr · Remote Control · Connected").
  */
 export function SidebarRowSrText({session}: {session: SessionListItem}) {
-	const {unseen, kind} = useRowIconKind(session);
+	const {unseen, kind, showPrStatus} = useRowIconKind(session);
 	const srClass = "sr-only [[role=tooltip]_&]:hidden";
 	return (
 		<>
@@ -165,7 +159,7 @@ export function SidebarRowSrText({session}: {session: SessionListItem}) {
 					: SR_ROW_STATUS_LABELS[sessionMenuReadState(session.bucket, unseen)]}
 			</span>
 			<span className={srClass} data-find-omitted="">
-				{rowEnvironmentText(session)}
+				{rowEnvironmentText(session, showPrStatus)}
 			</span>
 		</>
 	);

@@ -49,6 +49,7 @@ import {SessionActionsMenu, SessionRowTitle} from "../session-actions-menu";
 import {SessionHoverCard} from "../session-hover-card";
 import {QUICK_REPLY_HINT} from "../session-hover-card-classes";
 import {SidebarRowDecoration, SidebarRowSrText} from "../session-unread-control";
+import {type RowAttention, useRowAttention} from "../use-row-icon-kind";
 import {useSettings} from "../settings-context";
 import {PrTailGlyph, SessionStateIcon} from "../status-dot";
 import {Tooltip} from "../ui/tooltip";
@@ -842,6 +843,7 @@ function SessionRowLink({
 	const {settings} = useSettings();
 	const blocked = row.bucket === "blocked";
 	const hintId = useId();
+	const attention = useRowAttention(row.session);
 	// Upstream draws no PR tail on pinned rows.
 	const prTail =
 		pinnedIds === undefined && settings.sessionListPrefs.showPrStatus && row.session.prStatus !== undefined
@@ -855,7 +857,7 @@ function SessionRowLink({
 			<span data-row-label className="min-w-0 flex-1 ps-2">
 				<SessionRowTitle
 					render={(title) => (
-						<FadeLabel text={title}>
+						<FadeLabel text={title} attention={attention}>
 							{/* Upstream's o_: archived rows get a sr-only " Archived" right after the title, no pill */}
 							{row.archived && <span className="sr-only"> Archived</span>}
 							<SidebarRowSrText session={row.session} />
@@ -864,7 +866,7 @@ function SessionRowLink({
 				/>
 			</span>
 			{/* Upstream's title tail: reserves the trailing slot and holds the PR glyph left of it, unless the meta line has it */}
-			<span className="shrink-0 flex items-center gap-1.5 text-xs text-ink-muted me-[calc(var(--sb-row-ctl-inset)+var(--sb-row-ctl)-var(--sb-row-px))]">
+			<span className="shrink-0 flex items-center gap-1.5 text-xs text-muted-as-secondary me-[calc(var(--sb-row-ctl-inset)+var(--sb-row-ctl)-var(--sb-row-px))]">
 				{prTail !== undefined && metaLine === undefined && <PrTailGlyph state={prTail} />}
 			</span>
 		</>
@@ -934,8 +936,19 @@ function SessionRowLink({
 	);
 }
 
-/** Marks itself `data-overflowing` when the title is clipped, so CSS fades its end. */
-function FadeLabel({text, children}: {text: string; children?: ReactNode}) {
+/**
+ * Marks itself `data-overflowing` when the title is clipped, so CSS fades its end. A session row
+ * passes upstream's `data-attention` look for its title's `span.relative`.
+ */
+function FadeLabel({
+	text,
+	attention,
+	children,
+}: {
+	text: string;
+	attention?: RowAttention | undefined;
+	children?: ReactNode;
+}) {
 	const ref = useRef<HTMLSpanElement>(null);
 	const [overflowing, setOverflowing] = useState(false);
 
@@ -956,7 +969,7 @@ function FadeLabel({text, children}: {text: string; children?: ReactNode}) {
 
 	return (
 		<span ref={ref} dir="auto" className="dframe-fade-label" data-overflowing={overflowing ? "" : undefined}>
-			<span className="relative inline-block align-top whitespace-nowrap">
+			<span className="relative inline-block align-top whitespace-nowrap" data-attention={attention}>
 				{text}
 				{children}
 			</span>

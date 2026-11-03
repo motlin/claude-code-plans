@@ -16,7 +16,7 @@ export interface SessionFamily<Row extends FamilyRow> {
 	bucket: SessionBucket;
 }
 
-/** Upstream family urgency: Needs input < Working < Ready for review < Completed. */
+/** Upstream family urgency (`sM` by `XL`): Needs input < Working < Ready for review < Idle. */
 const BUCKET_URGENCY = {
 	blocked: 0,
 	working: 1,

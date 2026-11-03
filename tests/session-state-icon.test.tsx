@@ -85,11 +85,12 @@ describe("sessionStateKind", () => {
 	});
 });
 
+// Upstream `tT place:"title"`: --df-pr-glyph:16px, with the --df-heading-pitch term on the end padding.
 const PR_TAIL_CLASS =
-	"flex h-[var(--sb-row-ctl)] min-w-[var(--sb-row-ctl)] shrink-0 items-center justify-end gap-0.5 ps-[calc((var(--sb-row-ctl)-12px)/2)] pe-[calc((var(--sb-row-ctl)-12px)/2)] text-footnote text-ink-muted";
+	"flex h-[var(--sb-row-ctl)] min-w-[var(--sb-row-ctl)] shrink-0 items-center justify-end gap-0.5 ps-[calc((var(--sb-row-ctl)-var(--df-pr-glyph))/2)] pe-[calc((var(--sb-row-ctl)-var(--df-pr-glyph))/2+max(0px,var(--df-heading-pitch,0px)-var(--sb-row-ctl)))] text-footnote text-muted-as-secondary";
 
 describe("PrTailGlyph", () => {
-	it("renders upstream's aria-hidden title tail: a 12px git-coloured glyph per PR state", () => {
+	it("renders upstream's aria-hidden title tail: a 16px git-coloured glyph per PR state", () => {
 		const glyphs = (["opened", "draft", "merged", "closed", "conflicting", "queued"] as const).map((state) => {
 			const {container} = render(<PrTailGlyph state={state} />);
 			const tail = container.querySelector("[data-pr-glyph]");
@@ -99,6 +100,7 @@ describe("PrTailGlyph", () => {
 				hidden: tail?.getAttribute("aria-hidden"),
 				state: tail?.getAttribute("data-pr-glyph"),
 				className: tail?.getAttribute("class"),
+				glyphSize: tail instanceof HTMLElement ? tail.style.getPropertyValue("--df-pr-glyph") : null,
 				icon: icon
 					?.getAttribute("class")
 					?.split(" ")
@@ -114,8 +116,9 @@ describe("PrTailGlyph", () => {
 			hidden: "true",
 			state,
 			className: PR_TAIL_CLASS,
+			glyphSize: "16px",
 			icon,
-			size: ["12", "12"],
+			size: ["16", "16"],
 			style: `color: var(--color-git-${state});`,
 		});
 		expect(glyphs).toStrictEqual([
@@ -126,6 +129,17 @@ describe("PrTailGlyph", () => {
 			expected("conflicting", "lucide-git-merge-conflict"),
 			expected("queued", "lucide-git-pull-request-arrow"),
 		]);
+	});
+
+	it("keeps the metadata line's PR glyph at 12px", () => {
+		const {container} = render(<PrTailGlyph state="opened" place="line" />);
+		const tail = container.querySelector<HTMLElement>("[data-pr-glyph]");
+		const icon = tail?.firstElementChild;
+		expect({
+			className: tail?.getAttribute("class"),
+			glyphSize: tail?.style.getPropertyValue("--df-pr-glyph"),
+			size: [icon?.getAttribute("width"), icon?.getAttribute("height")],
+		}).toStrictEqual({className: "flex h-4 shrink-0 items-center gap-0.5", glyphSize: "", size: ["12", "12"]});
 	});
 
 	it("shows upstream's Pull request · {state} tooltip on hover", () => {
