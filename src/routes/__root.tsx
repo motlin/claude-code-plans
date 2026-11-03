@@ -57,6 +57,7 @@ import {
 import appCss from "../styles/globals.css?url";
 import {THEME_INIT_SCRIPT} from "../lib/theme-init";
 import {startLaunchJourneys} from "../lib/perf/field-journeys";
+import {installPaletteFocusOrigin} from "../lib/palette-focus-origin";
 import {installVisualViewportHeight} from "../lib/visual-viewport-height";
 
 export const Route = createRootRouteWithContext<{queryClient: QueryClient}>()({
@@ -172,6 +173,8 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 	}, []);
 	// Fit the app frame above the soft keyboard on touch devices.
 	useEffect(() => installVisualViewportHeight(), []);
+	// Remember the last focus outside the command palette, which "Jump to question" cycles from.
+	useEffect(() => installPaletteFocusOrigin(document), []);
 
 	return (
 		<>

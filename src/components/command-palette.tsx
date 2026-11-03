@@ -56,8 +56,9 @@ import {
 	TextCursorInput,
 } from "lucide-react";
 import {useActiveSessionsIfAvailable} from "../hooks/use-claude-events";
-import {focusRegionByName, type JumpRegionName} from "../lib/focus-regions";
+import {focusRegionByName, isAvailable, type JumpRegionName} from "../lib/focus-regions";
 import {jumpActionKeywords, PALETTE_JUMP_ACTIONS, type PaletteJumpActionId} from "../lib/palette-jump-actions";
+import {paletteFocusOrigin} from "../lib/palette-focus-origin";
 import {findWaitingCard, landOnWaitingCard} from "../lib/question-landing";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
 import type {PaletteMode, PaletteModeChangeOptions} from "../hooks/use-command-palette";
@@ -878,7 +879,7 @@ function PalettePopup({
 	// Rename hands focus to the page title, so closing must not pull it back to the old element.
 	const restoreFocusRef = useRef(true);
 	// Upstream decides "Jump to question" once per open, from the waiting card on the page at that moment.
-	const [jumpCard] = useState(() => (typeof document === "undefined" ? null : findWaitingCard(document)));
+	const [jumpOffered] = useState(() => typeof document !== "undefined" && findWaitingCard(document) !== null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const composeChips = useContextChips(COMPOSE_DRAFT_KEY);
 	const restoredComposeChipIds = useRestoredChipIds(COMPOSE_DRAFT_KEY);
@@ -942,9 +943,9 @@ function PalettePopup({
 				currentSessionId,
 				markOf,
 				frozenView,
-				jumpCard !== null,
+				jumpOffered,
 			),
-		[data, history, pathname, currentSessionId, markOf, frozenView, jumpCard],
+		[data, history, pathname, currentSessionId, markOf, frozenView, jumpOffered],
 	);
 
 	const trimmedQuery = query.trim();
@@ -1458,12 +1459,18 @@ function PalettePopup({
 		chooseTab("all");
 	}
 
-	// Closes the palette and lands on the waiting card seen at open, if it is still on the page.
+	// Upstream's $n(["question"], true): closes the palette, then resolves the card now, the one after the card
+	// that held focus before the palette opened, else refocuses that element while it is still shown.
 	function jumpToQuestion() {
+		const from = paletteFocusOrigin();
 		restoreFocusRef.current = false;
 		select(() => {
 			requestAnimationFrame(() => {
-				if (jumpCard?.isConnected === true) landOnWaitingCard(jumpCard);
+				const card = findWaitingCard(document, from);
+				if (card !== null) landOnWaitingCard(card);
+				else if (from instanceof HTMLElement && from.isConnected && isAvailable(from)) {
+					from.focus({preventScroll: true});
+				}
 			});
 		});
 	}
@@ -1529,17 +1536,17 @@ function PalettePopup({
 				: []),
 			regionJumpAction("jump_to_navigation", <PanelLeft />, "navigation"),
 			regionJumpAction("jump_to_main_content", <BookText />, "main"),
-			// Upstream lists an unavailable jump action nowhere, so it needs the card seen at open.
-			...(jumpCard === null
-				? []
-				: [
+			// Upstream lists an unavailable jump action nowhere, so it needs a card seen at open.
+			...(jumpOffered
+				? [
 						{
 							label: PALETTE_JUMP_ACTIONS.jump_to_question.label,
 							icon: <CircleHelp />,
 							run: jumpToQuestion,
 							keywords: jumpActionKeywords("jump_to_question"),
 						} satisfies PaletteAction,
-					]),
+					]
+				: []),
 			regionJumpAction("jump_to_input", <TextCursorInput />, "composer"),
 		] satisfies PaletteAction[]
 	).filter((action: PaletteAction) => action.shortcut === undefined || SHORTCUTS[action.shortcut].enabled);
@@ -1580,7 +1587,7 @@ function PalettePopup({
 			return;
 		}
 		// Upstream's modifiedEnterPicksNothing: while the jump is offered, ⌘/Ctrl+Enter picks no row.
-		if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !compose && jumpCard !== null) {
+		if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !compose && jumpOffered) {
 			event.preventDefault();
 			return;
 		}

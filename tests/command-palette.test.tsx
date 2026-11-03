@@ -25,6 +25,7 @@ import {recentSessionsQueryOptions, sessionQueryKeys} from "../src/lib/api/sessi
 import {saveRecents, type RecentEntry} from "../src/lib/recents-history";
 import {holdAnswered, releaseAnswered} from "../src/lib/answered-sessions";
 import {FIZZY_LAKE_PARTS, FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
+import {installPaletteFocusOrigin} from "../src/lib/palette-focus-origin";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
@@ -3261,7 +3262,10 @@ describe("CommandPalette committed filter chips", () => {
 });
 
 describe("CommandPalette pinned Jump to question row", () => {
+	let uninstallFocusOrigin: (() => void) | undefined;
+
 	beforeEach(() => {
+		uninstallFocusOrigin = installPaletteFocusOrigin(document);
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
 		vi.stubGlobal("fetch", async () => new Promise(() => {}));
 		vi.stubGlobal(
@@ -3276,6 +3280,7 @@ describe("CommandPalette pinned Jump to question row", () => {
 	});
 
 	afterEach(() => {
+		uninstallFocusOrigin?.();
 		cleanup();
 		document.querySelectorAll("[data-test-waiting-card]").forEach((card) => {
 			card.remove();
@@ -3446,6 +3451,92 @@ describe("CommandPalette pinned Jump to question row", () => {
 			whileOpen,
 			reopened: (await within(reopened).findByRole("option", {name: "Jump to question"})).textContent,
 		}).toStrictEqual({whileOpen: null, reopened: "Jump to question"});
+	});
+
+	function addOutsideButton(): HTMLElement {
+		const button = document.createElement("button");
+		button.textContent = "Elsewhere";
+		button.setAttribute("data-test-waiting-card", "");
+		document.body.append(button);
+		return button;
+	}
+
+	async function runJumpFrom(from: HTMLElement, typed = false, whileOpen: () => void = () => {}) {
+		await renderPalette();
+		from.focus();
+		const dialog = await pressOpen(from);
+		const input = within(dialog).getByRole("combobox");
+		if (typed) fireEvent.change(input, {target: {value: "!jq"}});
+		await within(dialog).findByRole("option", {name: "Jump to question"});
+		whileOpen();
+		fireEvent.keyDown(input, {key: "Enter", code: "Enter"});
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Search"})).toBeNull();
+		});
+	}
+
+	async function landedOn(card: HTMLElement) {
+		return waitFor(() => {
+			expect({
+				focused: document.activeElement === card,
+				landing: card.getAttribute("data-focus-region-landing"),
+			}).toStrictEqual({focused: true, landing: "overlay"});
+		});
+	}
+
+	it("cycles to the next waiting card from the card that held focus, as upstream's Fe(state, question, from)", async () => {
+		const a = addWaitingCard();
+		const b = addWaitingCard();
+		await runJumpFrom(a);
+		await landedOn(b);
+	});
+
+	it("wraps to the first waiting card from the last one", async () => {
+		const a = addWaitingCard();
+		const b = addWaitingCard();
+		await runJumpFrom(b);
+		await landedOn(a);
+	});
+
+	it("returns focus to the pre-palette element when the card is gone by the time the row runs", async () => {
+		const card = addWaitingCard();
+		const outside = addOutsideButton();
+		await runJumpFrom(outside, false, () => {
+			card.remove();
+		});
+		await waitFor(() => {
+			expect(document.activeElement).toBe(outside);
+		});
+	});
+
+	it("lands on a card that replaced the one seen at open", async () => {
+		const card = addWaitingCard();
+		const outside = addOutsideButton();
+		let replacement: HTMLElement | undefined;
+		await runJumpFrom(outside, false, () => {
+			card.remove();
+			replacement = addWaitingCard();
+		});
+		if (replacement === undefined) throw new Error("No replacement card");
+		await landedOn(replacement);
+	});
+
+	it("cycles and falls back the same way from the typed !jq action", async () => {
+		const a = addWaitingCard();
+		const b = addWaitingCard();
+		await runJumpFrom(a, true);
+		await landedOn(b);
+		cleanup();
+		a.remove();
+		b.remove();
+		const card = addWaitingCard();
+		const outside = addOutsideButton();
+		await runJumpFrom(outside, true, () => {
+			card.remove();
+		});
+		await waitFor(() => {
+			expect(document.activeElement).toBe(outside);
+		});
 	});
 
 	function searchResultLabels(dialog: HTMLElement): string[] {

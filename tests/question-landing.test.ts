@@ -59,7 +59,56 @@ describe("findWaitingCard", () => {
 	});
 });
 
+describe("findWaitingCard cycling from the focus origin", () => {
+	const THREE = `
+		<main>
+			<div id="a" data-approval-card-root></div>
+			<div id="b" data-approval-card-root><button id="in-b">Pick</button></div>
+			<div id="c" data-approval-card-root></div>
+		</main>
+		<button id="outside">Elsewhere</button>
+		<footer><div data-focus-region="composer"></div></footer>`;
+
+	it("lands on the card after the one holding focus, wrapping to the first", () => {
+		mount(THREE);
+		const ids = [byId("a"), byId("b"), byId("c"), null, byId("outside"), byId("in-b")].map(
+			(from) => findWaitingCard(document, from)?.id,
+		);
+		expect(ids).toStrictEqual(["b", "c", "a", "a", "a", "c"]);
+	});
+
+	it("orders the dock card first, then transcript cards", () => {
+		mount(`
+			<main><div id="a" data-approval-card-root></div></main>
+			<footer>
+				<div id="d" data-docked-plan data-approval-card-root></div>
+				<div data-focus-region="composer"></div>
+			</footer>`);
+		const ids = [byId("d"), byId("a")].map((from) => findWaitingCard(document, from)?.id);
+		expect(ids).toStrictEqual(["a", "d"]);
+	});
+
+	it("skips a hidden card after the one holding focus", () => {
+		mount(`
+			<div id="a" data-approval-card-root></div>
+			<div hidden><div id="h" data-approval-card-root></div></div>
+			<div id="c" data-approval-card-root></div>`);
+		expect(findWaitingCard(document, byId("a"))?.id).toBe("c");
+	});
+});
+
 describe("landOnWaitingCard", () => {
+	it("clears the previous card's landing ring when landing on another", () => {
+		mount(`
+			<div role="dialog"><div id="a" data-approval-card-root tabindex="-1"></div>
+			<div id="b" data-approval-card-root tabindex="-1"></div></div>`);
+		const a = byId("a");
+		const b = byId("b");
+		landOnWaitingCard(a);
+		landOnWaitingCard(b);
+		expect([a.getAttribute(LANDING), b.getAttribute(LANDING)]).toStrictEqual([null, "overlay"]);
+	});
+
 	function landed(): HTMLElement {
 		mount(
 			`<div data-approval-card-root role="group" tabindex="-1" id="card"><button id="inner">Pick</button></div>`,

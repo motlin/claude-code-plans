@@ -2,7 +2,7 @@ import {isAvailable} from "./focus-regions";
 
 /**
  * Upstream's `question` focus region: the palette's "Jump to question" lands
- * on the first waiting card, dock cards (beside the composer) before
+ * on the next waiting card, dock cards (beside the composer) before
  * transcript cards, and draws the cds overlay focus ring on it until the next
  * real interaction.
  */
@@ -11,12 +11,18 @@ export const WAITING_CARD_SELECTOR = "[data-approval-card-root]";
 const LANDING_ATTR = "data-focus-region-landing";
 const MODIFIER_KEYS = new Set(["Shift", "Control", "Alt", "Meta", "CapsLock"]);
 
-/** The first shown waiting card: the composer dock's cards first, then the rest in document order. */
-export function findWaitingCard(root: Document): HTMLElement | null {
+/**
+ * Upstream's region resolver `Fe(state, "question", from)`: the shown waiting
+ * cards in order (the composer dock's first, then the rest in document order),
+ * landing on the card after the one holding `from`, else on the first.
+ */
+export function findWaitingCard(root: Document, from: Element | null = null): HTMLElement | null {
 	const all = [...root.querySelectorAll<HTMLElement>(WAITING_CARD_SELECTOR)].filter(isAvailable);
 	const dock = root.querySelector('[data-focus-region="composer"]')?.parentElement ?? null;
-	const docked = dock === null ? undefined : all.find((card) => dock.contains(card));
-	return docked ?? all[0] ?? null;
+	const docked = dock === null ? [] : all.filter((card) => dock.contains(card));
+	const cards = [...docked, ...all.filter((card) => !docked.includes(card))];
+	const index = from === null ? -1 : cards.findIndex((card) => card.contains(from));
+	return (index === -1 ? cards[0] : (cards[index + 1] ?? cards[0])) ?? null;
 }
 
 /** Focus the card with the overlay landing ring, cleared by the next key, input, pointerdown, focus-out or window blur. */
