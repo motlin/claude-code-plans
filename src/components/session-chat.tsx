@@ -75,6 +75,7 @@ import {usePickupSettling} from "../lib/pickup-settling";
 import {assistantTurnDetails, userTurnDetails} from "../lib/turn-metadata";
 import {TurnChangesCard} from "./turn-changes-card";
 import {collectTurnChanges, lastTurnChangesAnchor, type TurnChanges} from "../lib/turn-changes";
+import {agentCompletionOf, foldedTaskNotificationOf, taskNotificationOf} from "../lib/task-notification-lines";
 import {useSettings} from "./settings-context";
 import {ToastContext} from "./toast-context";
 import type {TranscriptMode} from "../lib/transcript-mode";
@@ -1381,16 +1382,6 @@ function settledCompletionIndices(lines: readonly SessionLine[]): number[] {
 }
 
 /**
- * The completed background Agent a user record's notification reports, which
- * upstream draws as "<done description> · took Ns" with no bubble.
- */
-function agentCompletionOf(line: SessionLine): TaskNotification | null {
-	if (line.type !== "user") return null;
-	const notification = taskNotificationOf(line);
-	return notification?.status === "completed" && notification.agent ? notification : null;
-}
-
-/**
  * Completed background Agents upstream draws above their own launch, keyed by
  * the launching line's index: a user-record completion whose agent sent no
  * hand-back between its launch and the notification (79a0ad58:153). Upstream
@@ -1436,20 +1427,6 @@ function stoppedAgentNoticeOf(line: SessionLine): string | null {
  */
 function stoppedStatusIndex(line: SessionLine): number {
 	return line.lineIndex - 0.5;
-}
-
-/**
- * The finished background task a line announces, or null for any other line.
- * A notification queued while the turn ran arrives as a queued_command
- * attachment instead of a user line.
- */
-function taskNotificationOf(line: SessionLine): TaskNotification | null {
-	if (line.type === "attachment") {
-		const {type, prompt} = getAttachmentHead(line.attachmentJson);
-		return type === "queued_command" && prompt !== null ? parseTaskNotification(prompt) : null;
-	}
-	if (line.type !== "user") return null;
-	return parseTaskNotification(getUserContentText(line));
 }
 
 /** How a background launch ended when it did not complete, keyed by the launching tool_use id. */
@@ -2522,10 +2499,8 @@ function buildSessionListEntries(
 	const noticeOf = (index: number): FoldedNotice | null => {
 		if (!foldNotifications) return null;
 		const line = lineAt(index);
-		const notification = taskNotificationOf(line);
-		if (notification !== null && agentCompletionOf(line) === null) {
-			return {kind: "task", lineIndex: line.lineIndex, notification};
-		}
+		const notification = foldedTaskNotificationOf(line);
+		if (notification !== null) return {kind: "task", lineIndex: line.lineIndex, notification};
 		const message = foldablePeerMessage(lines, index, renderProps.subagentLookup);
 		if (message !== null) return {kind: "peer", lineIndex: line.lineIndex, message, leads: true};
 		return repromptsIntoTools(index) && line.type === "user"

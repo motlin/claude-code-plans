@@ -1,12 +1,11 @@
 import {parseAgentMessage} from "./agent-message";
 import {isArtifactCardCall, parseArtifactOutput} from "./artifact-output";
-import {parseTaskNotification} from "./background-tasks";
 import type {ToolResultInfo} from "./sessions";
 import {diffStatsForCall, type ToolCallLike} from "./session-utils";
 import {defined} from "./defined";
-import {asRecord} from "./narrow";
+import {foldedTaskNotificationOf, userText} from "./task-notification-lines";
 import {rendersBare, splitRuns, type RunCall} from "./tool-runs";
-import type {MessageSessionLine, SessionLine} from "./transcript";
+import type {SessionLine} from "./transcript";
 
 /** One file's summed diff stats across a turn's edit calls. */
 export interface TurnFileChange {
@@ -127,41 +126,15 @@ function isTurnStartLine(line: SessionLine): boolean {
 	return !content.some((block) => block.type === "tool_result");
 }
 
-function userText(line: MessageSessionLine): string {
-	const content = line.message?.content;
-	if (content === undefined) return "";
-	if (typeof content === "string") return content;
-	return content
-		.flatMap((block) => (block.type === "text" ? [block.text] : []))
-		.join("\n")
-		.trim();
-}
-
-/** The task notification a queued_command attachment carries: one queued while the turn ran. */
-function isQueuedTaskNotification(attachmentJson: string): boolean {
-	let attachment: unknown;
-	try {
-		attachment = JSON.parse(attachmentJson);
-	} catch {
-		return false;
-	}
-	const record = asRecord(attachment);
-	const prompt = record?.["prompt"];
-	return (
-		record?.["type"] === "queued_command" && typeof prompt === "string" && parseTaskNotification(prompt) !== null
-	);
-}
-
 /**
- * A line the transcript folds into a neighbouring tool run as a notice: a task notification (a user
- * line, or a queued_command attachment), stop-hook feedback, or a peer agent's message. Upstream `gN` draws a run carrying one as a
+ * A line the transcript folds into a neighbouring tool run as a notice: a task notification other
+ * than an agent completion (a user line, or a queued_command attachment), stop-hook feedback, or a peer agent's message. Upstream `gN` draws a run carrying one as a
  * summary, never a bare row.
  */
 function isFoldedNoticeLine(line: SessionLine): boolean {
-	if (line.type === "attachment") return isQueuedTaskNotification(line.attachmentJson);
+	if (foldedTaskNotificationOf(line) !== null) return true;
 	if (line.type !== "user") return false;
 	const text = userText(line);
-	if (line.turnOrigin === "task_notification" || parseTaskNotification(text) !== null) return true;
 	return line.isMeta === true && (text.startsWith("Stop hook feedback:") || parseAgentMessage(text) !== null);
 }
 

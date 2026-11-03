@@ -442,6 +442,25 @@ const QUEUED_TASK_NOTICE = {
 	attachment: {type: "queued_command", prompt: TASK_NOTICE.message.content, commandMode: "task-notification"},
 };
 
+/** A background Agent's completion notification, which upstream draws as its own completion row, not folded. */
+const AGENT_COMPLETION_NOTICE = {
+	type: "user",
+	uuid: "n-agent",
+	promptSource: "system",
+	turnOrigin: "task_notification",
+	message: {
+		role: "user",
+		content: [
+			"<task-notification>",
+			"<task-id>fabagent1</task-id>",
+			"<tool-use-id>fab-launch</tool-use-id>",
+			"<status>completed</status>",
+			'<summary>Agent "Fabricated review" completed</summary>',
+			"</task-notification>",
+		].join("\n"),
+	},
+};
+
 /** Hello2's last turn (session_01KwfEs1RD2zvBHuES114CNb): the plan file rewritten, then a stopped ExitPlanMode. */
 const HELLO2_LAST_TURN: TurnStep[] = [
 	{
@@ -660,6 +679,14 @@ describe("collectTurnChanges", () => {
 			expect([...collectTurnChanges(lines, toolResultMap, {verbose: true}).values()]).toStrictEqual([]);
 		});
 
+		it("drops the card when an agent-completion notification follows the sole edit, which draws its own row", () => {
+			const {lines, toolResultMap} = processTranscript(
+				[...turnRecords([editA("e1")]), AGENT_COMPLETION_NOTICE, ...turnRecords([{text: "ok"}], "n").slice(1)],
+				0,
+			);
+			expect([...collectTurnChanges(lines, toolResultMap).values()]).toStrictEqual([]);
+		});
+
 		it("still drops the card when prose comes between the edit and the notification", () => {
 			const {lines, toolResultMap} = processTranscript(
 				[
@@ -736,6 +763,39 @@ describe("SessionChat end-of-turn card", () => {
 				(row) => row.textContent,
 			),
 		}).toStrictEqual({cards: 1, rows: ["Edited a.ts, finished a background command+1−11 added, 1 removed"]});
+	});
+
+	it("draws no card when an agent-completion notification follows the sole edit, which stays a bare row", () => {
+		const {lines, toolResultMap} = processTranscript(
+			[
+				...turnRecords([
+					{
+						tool: "Edit",
+						id: "e1",
+						input: {file_path: "/repo/a.ts", old_string: "old", new_string: "new"},
+					},
+				]),
+				AGENT_COMPLETION_NOTICE,
+				...turnRecords([{text: "ok"}], "n").slice(1),
+			],
+			0,
+		);
+		const {container} = render(
+			<SettingsProvider>
+				<SessionChat
+					sessionId="test-session"
+					lines={lines}
+					toolResultMap={toolResultMap}
+					shouldScrollToEnd={false}
+				/>
+			</SettingsProvider>,
+		);
+		expect({
+			cards: container.querySelectorAll("[data-turn-changes-card]").length,
+			rows: [...container.querySelectorAll('[data-tool-row] > [role="button"], [data-tool-row] > button')].map(
+				(row) => row.textContent,
+			),
+		}).toStrictEqual({cards: 0, rows: ["Editeda.ts+1−11 added, 1 removed"]});
 	});
 
 	it("draws no card in Verbose, where the notification is its own row and the sole edit stays bare", () => {
