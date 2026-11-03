@@ -1236,6 +1236,21 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
 	});
 
+	it("parses loop-wakeup user records carrying wakeupSource", () => {
+		const record = {
+			type: "user",
+			...baseFields,
+			message: {role: "user", content: "Recheck the other session."},
+			isMeta: true,
+			promptSource: "system",
+			wakeupSource: "loop_wakeup",
+			scheduledTaskId: "e56aacad",
+			scheduledFireId: "9ea8b9d2-5183-4966-92b7-efcca560c845",
+			turnOrigin: "scheduled",
+		};
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
 	it("parses user records carrying turn origin, scheduled-task, and classifier context fields", () => {
 		const record = {
 			type: "user",

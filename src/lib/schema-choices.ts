@@ -79,6 +79,7 @@ import type {
 	TurnOriginSchema,
 	QueueOriginKindSchema,
 	QueueOriginSourceSchema,
+	WakeupSourceSchema,
 	HistorySuppressionCauseSchema,
 	UserRecordSchema,
 	WriteToolUseResultTypeSchema,
@@ -149,6 +150,12 @@ export const turnOriginLabels = {
 const queueOriginKindLabels = {
 	"task-notification": "Task notification",
 } satisfies Record<z.infer<typeof QueueOriginKindSchema>, string>;
+
+/** Not consumed yet — `wakeupSource` is only validated. */
+const wakeupSourceLabels = {
+	loop_wakeup: "Loop wakeup",
+	schedule_wakeup: "Schedule wakeup",
+} satisfies Record<z.infer<typeof WakeupSourceSchema>, string>;
 
 /** Labels not consumed yet — the transcript reads `queueOrigin` only for an ended Artifact watch. */
 const queueOriginSourceLabels = {
@@ -1613,6 +1620,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"UserRecordSchema.turnOrigin": turnOriginLabels,
 	"UserRecordSchema.queueOrigin.kind": queueOriginKindLabels,
 	"UserRecordSchema.queueOrigin.source": queueOriginSourceLabels,
+	"UserRecordSchema.wakeupSource": wakeupSourceLabels,
 	"JsonlRecordSchema.<history-suppression>.cause": historySuppressionCauseLabels,
 	"UserRecordSchema.permissionDecision.decision": permissionDecisionDecisionLabels,
 	"UserRecordSchema.permissionDecision.source": permissionDecisionSourceLabels,

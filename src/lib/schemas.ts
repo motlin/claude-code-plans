@@ -267,6 +267,8 @@ export const PromptSourceSchema = z.enum(["typed", "system", "sdk", "queued", "s
 
 /** Who started a user turn; `human` is the ordinary typed-at-the-keyboard case. */
 export const TurnOriginSchema = z.enum(["human", "peer", "task_notification", "scheduled", "system", "sdk"]);
+/** Which wakeup fired a scheduled/loop prompt; mirrors the UserPromptSubmit hook `source` wakeup values. */
+export const WakeupSourceSchema = z.enum(["loop_wakeup", "schedule_wakeup"]);
 /** `queueOrigin.kind` on user records: the queue that delivered the prompt. */
 export const QueueOriginKindSchema = z.enum(["task-notification"]);
 /** `queueOrigin.source` on user records: the background producer behind a queued notification. */
@@ -555,6 +557,7 @@ export const UserRecordSchema = z
 		queueTranscriptOnly: z.boolean().optional(),
 		scheduledTaskId: z.string().optional(),
 		scheduledFireId: z.string().optional(),
+		wakeupSource: WakeupSourceSchema.optional(),
 		classifierMetaLines: z.string().optional(),
 		serverClassifierContext: ServerClassifierContextSchema.optional(),
 		permissionDecision: PermissionDecisionSchema.optional(),
