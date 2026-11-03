@@ -34,6 +34,7 @@ let db: AppDb;
 
 function fakeChildProcess(): ChildProcess {
 	const child = new EventEmitter() as ChildProcess;
+	child.stdin = new PassThrough();
 	child.stdout = new PassThrough();
 	child.stderr = new PassThrough();
 	child.kill = vi.fn<ChildProcess["kill"]>(() => true);
@@ -122,7 +123,6 @@ describe("spawnClaude ephemeral option", () => {
 			SESSION_ID,
 			"--fork-session",
 			"-p",
-			"What does the build do?",
 			"--output-format",
 			"stream-json",
 			"--verbose",
@@ -227,7 +227,6 @@ describe("POST /api/side-chat", () => {
 					SESSION_ID,
 					"--fork-session",
 					"-p",
-					"Earlier in this side chat:\n\n> Q: Why is the build flaky?\n> A: A race.\n\nHow do I fix it?",
 					"--output-format",
 					"stream-json",
 					"--verbose",
@@ -237,6 +236,9 @@ describe("POST /api/side-chat", () => {
 				expect.objectContaining({cwd: "/Users/alice/proj"}),
 			],
 		]);
+		expect(String((child.stdin as PassThrough).read())).toBe(
+			"Earlier in this side chat:\n\n> Q: Why is the build flaky?\n> A: A race.\n\nHow do I fix it?",
+		);
 		expect(await readdir(join(projectsDir, PROJECT))).toStrictEqual(before);
 		expect(state.broadcasts).toBe(0);
 	});

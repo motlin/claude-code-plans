@@ -15,6 +15,7 @@ import {buildLaunchFlags} from "../src/lib/launch-options";
 
 function fakeChildProcess(): ChildProcess {
 	const child = new EventEmitter() as ChildProcess;
+	child.stdin = new PassThrough();
 	child.stdout = new PassThrough();
 	child.stderr = new PassThrough();
 	child.kill = vi.fn<ChildProcess["kill"]>(() => true);
@@ -98,6 +99,48 @@ describe("buildLaunchFlags", () => {
 	});
 });
 
+describe("spawnClaude prompt delivery", () => {
+	it("writes a prompt that looks like CLI flags to stdin instead of argv", async () => {
+		const child = fakeChildProcess();
+		spawnMock.mockReturnValue(child);
+		const stdinChunks: Buffer[] = [];
+		const stdinEnded = new Promise<string>((resolve) => {
+			child.stdin!.on("data", (chunk: Buffer) => {
+				stdinChunks.push(chunk);
+			});
+			child.stdin!.on("end", () => {
+				resolve(Buffer.concat(stdinChunks).toString());
+			});
+		});
+
+		spawnClaude({
+			sessionId: "session-test-100",
+			prompt: "--model opus",
+			projectDir: "/fixture/alice-repository",
+			environment: {},
+		});
+
+		expect({
+			args: spawnMock.mock.calls[0]?.[1],
+			stdio: spawnMock.mock.calls[0]?.[2].stdio,
+			stdin: await stdinEnded,
+		}).toStrictEqual({
+			args: [
+				"--resume",
+				"session-test-100",
+				"--fork-session",
+				"-p",
+				"--output-format",
+				"stream-json",
+				"--verbose",
+				"--include-partial-messages",
+			],
+			stdio: ["pipe", "pipe", "pipe"],
+			stdin: "--model opus",
+		});
+	});
+});
+
 describe("spawnClaude launch flags", () => {
 	it("appends the launch flags to the argv array without shell interpolation", () => {
 		spawnMock.mockReturnValue(fakeChildProcess());
@@ -117,7 +160,6 @@ describe("spawnClaude launch flags", () => {
 				"session-test-100",
 				"--fork-session",
 				"-p",
-				"Review $(whoami) && Alice's `fixture`",
 				"--output-format",
 				"stream-json",
 				"--verbose",

@@ -32,8 +32,9 @@ export function spawnClaude({
 		"--resume",
 		sessionId,
 		"--fork-session",
+		// The prompt goes on stdin: as a positional after boolean -p, a prompt
+		// starting with '-' would be parsed as CLI options.
 		"-p",
-		prompt,
 		"--output-format",
 		"stream-json",
 		"--verbose",
@@ -44,9 +45,12 @@ export function spawnClaude({
 
 	const child = spawn("claude", args, {
 		cwd: projectDir,
-		stdio: ["ignore", "pipe", "pipe"],
+		stdio: ["pipe", "pipe", "pipe"],
 		env: {...process.env, ...environment},
 	});
+	// A spawn failure surfaces via the "error" event below; swallow EPIPE here.
+	child.stdin.on("error", () => {});
+	child.stdin.end(prompt);
 
 	activeProcesses.set(processId, child);
 
