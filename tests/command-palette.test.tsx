@@ -964,6 +964,32 @@ describe("CommandPalette shell", () => {
 		});
 	});
 
+	it("puts upstream's flat Compose button row straight in the input row, with 8px icon buttons", async () => {
+		const dialog = await openPalette();
+		fireEvent.keyDown(within(dialog).getByRole("combobox"), {key: "Tab", code: "Tab"});
+		const composer = await within(dialog).findByRole("combobox", {name: "Write a message…"});
+		const inputRow = composer.parentElement;
+		const send = within(dialog).getByRole("button", {name: "Send"});
+		const paperclip = within(dialog).getByRole("button", {name: "Add files or photos"});
+		const row = send.closest(".basis-full.justify-between");
+
+		expect({
+			row: row?.className,
+			rowParentIsInputRow: row?.parentElement === inputRow,
+			fileInputParentIsInputRow: dialog.querySelector("input[type=file]")?.parentElement === inputRow,
+			wrapper: dialog.querySelector(".pr-1\\.5.flex-col") !== null,
+			sendRadius: [send.classList.contains("rounded-r6"), send.classList.contains("rounded-r7")],
+			paperclipRadius: [paperclip.classList.contains("rounded-r6"), paperclip.classList.contains("rounded-r7")],
+		}).toStrictEqual({
+			row: "relative flex basis-full items-center justify-between",
+			rowParentIsInputRow: true,
+			fileInputParentIsInputRow: true,
+			wrapper: false,
+			sendRadius: [true, false],
+			paperclipRadius: [true, false],
+		});
+	});
+
 	it("keeps the Search divider, visible list and bordered footer", async () => {
 		const dialog = await openPalette();
 
@@ -1170,7 +1196,7 @@ describe("CommandPalette shell", () => {
 
 		expect({
 			disabled: send.disabled,
-			classes: ["bg-fill-brand", "hover:bg-fill-brand-hover", "rounded-r7", "me-0.5", "text-white"].filter(
+			classes: ["bg-fill-brand", "hover:bg-fill-brand-hover", "rounded-r6", "me-0.5", "text-white"].filter(
 				(name) => send.classList.contains(name),
 			),
 			icon: send.querySelector("svg")?.classList.contains("lucide-corner-down-left"),
@@ -1178,7 +1204,7 @@ describe("CommandPalette shell", () => {
 			clipMouseDownPrevented: clipDown.defaultPrevented,
 		}).toStrictEqual({
 			disabled: false,
-			classes: ["bg-fill-brand", "hover:bg-fill-brand-hover", "rounded-r7", "me-0.5", "text-white"],
+			classes: ["bg-fill-brand", "hover:bg-fill-brand-hover", "rounded-r6", "me-0.5", "text-white"],
 			icon: true,
 			sendMouseDownPrevented: true,
 			clipMouseDownPrevented: true,

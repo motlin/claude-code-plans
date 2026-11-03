@@ -1950,8 +1950,11 @@ function PalettePopup({
 									</Dialog.Close>
 								</Tooltip>
 							)}
+							{/* Upstream renders the file input and button row as direct children of the input row, so Send sits
+							    12px from the card edge. Radius 8 = calc(var(--cds-radius) + var(--cds-button-radius-add)):
+							    7px + 1px under [data-cds-fizzy-lake~="panels"]. */}
 							{compose && (
-								<div className="relative flex w-full flex-col gap-1.5 pr-1.5">
+								<>
 									<input
 										ref={fileInputRef}
 										type="file"
@@ -1969,7 +1972,7 @@ function PalettePopup({
 											event.target.value = "";
 										}}
 									/>
-									<div className="flex items-center justify-between">
+									<div className="relative flex basis-full items-center justify-between">
 										<Tooltip content="Add files or photos" side="top">
 											<button
 												type="button"
@@ -1979,7 +1982,7 @@ function PalettePopup({
 													event.preventDefault();
 												}}
 												onClick={openFilePicker}
-												className={`${ICON_BUTTON_CLASS} -ms-3 rounded-r7 text-primary hover:bg-fill-ghost-hover`}
+												className={`${ICON_BUTTON_CLASS} -ms-3 rounded-r6 text-primary hover:bg-fill-ghost-hover`}
 											>
 												<Paperclip aria-hidden="true" className="size-4" />
 											</button>
@@ -1994,7 +1997,7 @@ function PalettePopup({
 													event.preventDefault();
 												}}
 												onClick={onSend}
-												className={`${ICON_BUTTON_CLASS} me-0.5 rounded-r7 bg-fill-brand text-white hover:bg-fill-brand-hover`}
+												className={`${ICON_BUTTON_CLASS} me-0.5 rounded-r6 bg-fill-brand text-white hover:bg-fill-brand-hover`}
 											>
 												{launching ? (
 													<LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
@@ -2004,7 +2007,7 @@ function PalettePopup({
 											</button>
 										</Tooltip>
 									</div>
-								</div>
+								</>
 							)}
 						</div>
 					</div>
