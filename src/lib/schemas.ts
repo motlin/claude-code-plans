@@ -998,7 +998,12 @@ const EditedTextFileAttachmentPayload = z
 		snippet: z.string().optional(),
 		displayPath: z.string().optional(),
 		rereadEntry: z
-			.object({timestamp: z.number(), contentHash: z.string(), contentLength: z.number().int()})
+			.object({
+				timestamp: z.number(),
+				contentHash: z.string(),
+				contentLength: z.number().int(),
+				isPartialView: z.boolean().optional(),
+			})
 			.strict()
 			.optional(),
 	})
