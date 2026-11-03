@@ -38,6 +38,20 @@ function radios(groupName: string) {
 		}));
 }
 
+/** Opens a ghost settings combobox and lists its options (the fizzy `type` Appearance rows). */
+function comboboxOptions(name: string) {
+	fireEvent.click(screen.getByRole("combobox", {name}));
+	return screen.getAllByRole("option").map((option) => ({
+		name: option.textContent,
+		selected: option.getAttribute("aria-selected"),
+	}));
+}
+
+function choose(name: string, option: string) {
+	fireEvent.click(screen.getByRole("combobox", {name}));
+	fireEvent.click(screen.getByRole("option", {name: option}));
+}
+
 function switchState(name: string) {
 	const control = screen.getByRole("switch", {name});
 	return {
@@ -72,14 +86,14 @@ describe("General settings ▸ Appearance", () => {
 			order: rows.map((row) => row.getAttribute("data-settings-row")),
 			description: document.querySelector('[data-settings-row="transcript-width"] [data-settings-desc]')
 				?.textContent,
-			width: radios("Transcript width"),
+			width: comboboxOptions("Transcript width"),
 		}).toStrictEqual({
 			order: ["theme", "interface-font", "transcript-text-size", "transcript-width", "motion", "hide-chrome"],
 			description: "Maximum width of the transcript and composer columns.",
 			width: [
-				{name: "Narrow", checked: "true"},
-				{name: "Medium", checked: "false"},
-				{name: "Wide", checked: "false"},
+				{name: "Narrow", selected: "true"},
+				{name: "Medium", selected: "false"},
+				{name: "Wide", selected: "false"},
 			],
 		});
 	});
@@ -145,18 +159,18 @@ describe("General settings ▸ Appearance", () => {
 		stubNotification("granted");
 		await renderGeneral();
 
-		expect(radios("Motion")).toStrictEqual([
-			{name: "System", checked: "true"},
-			{name: "Reduced", checked: "false"},
+		expect(comboboxOptions("Motion")).toStrictEqual([
+			{name: "System", selected: "true"},
+			{name: "Reduced", selected: "false"},
 		]);
 
-		fireEvent.click(within(screen.getByRole("radiogroup", {name: "Motion"})).getByText("Reduced"));
+		fireEvent.click(screen.getByRole("option", {name: "Reduced"}));
 		const reduced = {
 			attribute: document.documentElement.getAttribute("data-motion"),
 			stored: localStorage.getItem("ccp-motion"),
 		};
 
-		fireEvent.click(within(screen.getByRole("radiogroup", {name: "Motion"})).getByText("System"));
+		choose("Motion", "System");
 
 		expect({
 			reduced,

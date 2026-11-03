@@ -156,8 +156,8 @@ describe("Appearance settings", () => {
 		const initial = htmlVars();
 
 		choose("Interface font", "System");
-		pick("Transcript text size", "Large");
-		pick("Transcript width", "Wide");
+		choose("Transcript text size", "Large");
+		choose("Transcript width", "Wide");
 		const changed = htmlVars();
 		const stored = {
 			font: localStorage.getItem("ccp-interface-font"),
@@ -166,7 +166,7 @@ describe("Appearance settings", () => {
 		};
 
 		choose("Interface font", "Default · Sans");
-		pick("Transcript text size", "Small");
+		choose("Transcript text size", "Small");
 
 		expect({initial, changed, stored, reverted: htmlVars()}).toStrictEqual({
 			initial: {
@@ -258,6 +258,119 @@ describe("Appearance settings", () => {
 		}).toStrictEqual({combobox: null, radios: ["Sans", "System", "OpenDyslexic"]});
 	});
 
+	// Upstream fizzy `type` (c0db37792 on() picks en/tn/an): ghost Comboboxes reading the plain option label,
+	// text size with no description, width and motion with `descriptionHidden` (div[data-settings-desc].sr-only).
+	it("renders Transcript text size, width and Motion as ghost comboboxes with hidden descriptions", async () => {
+		await renderTab(<GeneralSettings />);
+		const rows = ["Transcript text size", "Transcript width", "Motion"].map((name) => {
+			const row = screen.getByRole("group", {name});
+			const desc = row.querySelector("[data-settings-desc]");
+			return {
+				name,
+				radiogroup: row.querySelector("[role=radiogroup]") !== null,
+				ghost: row.querySelector("[data-cds=Combobox]")?.classList.contains("group/cbx") ?? false,
+				trigger: within(row).getByRole("combobox", {name}).textContent,
+				desc: desc === null ? null : {className: desc.className, text: desc.textContent},
+				describedBy: row.getAttribute("aria-describedby") === desc?.id,
+			};
+		});
+
+		choose("Transcript text size", "Large");
+		choose("Transcript width", "Wide");
+		choose("Motion", "Reduced");
+
+		expect({
+			rows,
+			stored: {
+				size: localStorage.getItem("ccp-transcript-text-size"),
+				width: localStorage.getItem("ccp-transcript-width"),
+				motion: localStorage.getItem("ccp-motion"),
+			},
+			after: ["Transcript text size", "Transcript width", "Motion"].map(
+				(name) => screen.getByRole("combobox", {name}).textContent,
+			),
+		}).toStrictEqual({
+			rows: [
+				{
+					name: "Transcript text size",
+					radiogroup: false,
+					ghost: true,
+					trigger: "Medium",
+					desc: null,
+					describedBy: false,
+				},
+				{
+					name: "Transcript width",
+					radiogroup: false,
+					ghost: true,
+					trigger: "Narrow",
+					desc: {className: "sr-only", text: "Maximum width of the transcript and composer columns."},
+					describedBy: true,
+				},
+				{
+					name: "Motion",
+					radiogroup: false,
+					ghost: true,
+					trigger: "System",
+					desc: {
+						className: "sr-only",
+						text: "Reduce animation in streaming responses and other interface elements.",
+					},
+					describedBy: true,
+				},
+			],
+			stored: {size: "lg", width: "wide", motion: "reduced"},
+			after: ["Large", "Wide", "Reduced"],
+		});
+	});
+
+	it("keeps the segmented Transcript text size, width and Motion rows with visible descriptions when type is off", async () => {
+		await renderTab(
+			<FizzyLakeContext.Provider value={PRE_TYPE_PARTS}>
+				<GeneralSettings />
+			</FizzyLakeContext.Provider>,
+		);
+
+		expect(
+			["Transcript text size", "Transcript width", "Motion"].map((name) => {
+				const row = screen.getByRole("group", {name});
+				const desc = row.querySelector("[data-settings-desc]");
+				return {
+					combobox: row.querySelector("[role=combobox]") !== null,
+					radios: within(within(row).getByRole("radiogroup", {name}))
+						.getAllByRole("radio")
+						.map((radio) => radio.textContent),
+					desc: desc === null ? null : {className: desc.className, text: desc.textContent},
+				};
+			}),
+		).toStrictEqual([
+			{
+				combobox: false,
+				radios: ["Small", "Medium", "Large"],
+				desc: {
+					className: "text-body text-[var(--settings-muted)]",
+					text: "Size of the conversation transcript text.",
+				},
+			},
+			{
+				combobox: false,
+				radios: ["Narrow", "Medium", "Wide"],
+				desc: {
+					className: "text-body text-[var(--settings-muted)]",
+					text: "Maximum width of the transcript and composer columns.",
+				},
+			},
+			{
+				combobox: false,
+				radios: ["System", "Reduced"],
+				desc: {
+					className: "text-body text-[var(--settings-muted)]",
+					text: "Reduce animation in streaming responses and other interface elements.",
+				},
+			},
+		]);
+	});
+
 	it("moves Interface font out of Claude Code, whose Appearance keeps only Default transcript view", async () => {
 		await renderTab(<ClaudeCodeSettings />);
 		const appearance = document.getElementById("appearance");
@@ -347,8 +460,8 @@ describe("Appearance settings", () => {
 
 		expect({
 			font: screen.getByRole("combobox", {name: "Interface font"}).textContent,
-			size: checked("Transcript text size"),
-			width: checked("Transcript width"),
+			size: screen.getByRole("combobox", {name: "Transcript text size"}).textContent,
+			width: screen.getByRole("combobox", {name: "Transcript width"}).textContent,
 			view: checked("Default transcript view"),
 			fontSans: document.documentElement.style.getPropertyValue("--font-sans"),
 		}).toStrictEqual({

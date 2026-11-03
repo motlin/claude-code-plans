@@ -457,23 +457,68 @@ const MOTION_OPTIONS: Array<{value: Motion; label: string}> = [
 	{value: "reduced", label: "Reduced"},
 ];
 
+/*
+ * Upstream's fizzy `type` rows (c0db37792 `on()` picks the registry rows en/tn/an over the segmented
+ * $t/wt/Ct): a ghost Combobox reading the plain option label, with the description kept for screen
+ * readers only. Without `type` the segmented control and visible description stay.
+ */
+function AppearanceChoiceRow<T extends string>({
+	slug,
+	title,
+	description,
+	typeLedDescription,
+	value,
+	options,
+	onValueChange,
+}: {
+	slug: string;
+	title: string;
+	description: string;
+	/** Upstream's registry drops some descriptions under `type` (Transcript text size has none). */
+	typeLedDescription: boolean;
+	value: T;
+	options: Array<{value: T; label: string}>;
+	onValueChange: (next: T) => void;
+}) {
+	const typeLed = useFizzyLake("type");
+
+	if (!typeLed) {
+		return (
+			<SettingsRow slug={slug} title={title} description={description}>
+				<SegmentedControl value={value} options={options} onValueChange={onValueChange} />
+			</SettingsRow>
+		);
+	}
+
+	return (
+		<SettingsRow slug={slug} title={title} {...(typeLedDescription ? {description, descriptionHidden: true} : {})}>
+			<ThemedCombobox
+				aria-label={title}
+				variant="ghost"
+				filterable={false}
+				value={value}
+				options={options}
+				onValueChange={onValueChange}
+			/>
+		</SettingsRow>
+	);
+}
+
 function TranscriptTextSizeRow() {
 	const {settings, setSetting} = useSettings();
 
 	return (
-		<SettingsRow
+		<AppearanceChoiceRow
 			slug="transcript-text-size"
 			title="Transcript text size"
 			description="Size of the conversation transcript text."
-		>
-			<SegmentedControl
-				value={settings.transcriptTextSize}
-				options={TRANSCRIPT_TEXT_SIZE_OPTIONS}
-				onValueChange={(next) => {
-					setSetting("transcriptTextSize", next);
-				}}
-			/>
-		</SettingsRow>
+			typeLedDescription={false}
+			value={settings.transcriptTextSize}
+			options={TRANSCRIPT_TEXT_SIZE_OPTIONS}
+			onValueChange={(next) => {
+				setSetting("transcriptTextSize", next);
+			}}
+		/>
 	);
 }
 
@@ -481,19 +526,17 @@ function TranscriptWidthRow() {
 	const {settings, setSetting} = useSettings();
 
 	return (
-		<SettingsRow
+		<AppearanceChoiceRow
 			slug="transcript-width"
 			title="Transcript width"
 			description="Maximum width of the transcript and composer columns."
-		>
-			<SegmentedControl
-				value={settings.transcriptWidth}
-				options={TRANSCRIPT_WIDTH_OPTIONS}
-				onValueChange={(next) => {
-					setSetting("transcriptWidth", next);
-				}}
-			/>
-		</SettingsRow>
+			typeLedDescription
+			value={settings.transcriptWidth}
+			options={TRANSCRIPT_WIDTH_OPTIONS}
+			onValueChange={(next) => {
+				setSetting("transcriptWidth", next);
+			}}
+		/>
 	);
 }
 
@@ -501,19 +544,17 @@ function MotionRow() {
 	const {settings, setSetting} = useSettings();
 
 	return (
-		<SettingsRow
+		<AppearanceChoiceRow
 			slug="motion"
 			title="Motion"
 			description="Reduce animation in streaming responses and other interface elements."
-		>
-			<SegmentedControl
-				value={settings.motion}
-				options={MOTION_OPTIONS}
-				onValueChange={(next) => {
-					setSetting("motion", next);
-				}}
-			/>
-		</SettingsRow>
+			typeLedDescription
+			value={settings.motion}
+			options={MOTION_OPTIONS}
+			onValueChange={(next) => {
+				setSetting("motion", next);
+			}}
+		/>
 	);
 }
 
