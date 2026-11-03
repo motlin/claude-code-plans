@@ -4,6 +4,7 @@ import {createMemoryHistory, createRootRoute, createRouter, Outlet, RouterProvid
 import {cleanup, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
+import {NotFoundContent} from "../src/components/not-found-content";
 import {Route as RootRoute} from "../src/routes/__root";
 
 afterEach(cleanup);
@@ -31,6 +32,11 @@ describe("404 page", () => {
 				className: classSet(child.className),
 				text: child.textContent,
 			})),
+			headingPair: Array.from(page?.children[1]?.children ?? [], (child) => ({
+				tag: child.tagName.toLowerCase(),
+				className: classSet(child.className),
+				text: child.textContent,
+			})),
 			wordmarkParent: wordmark.parentElement === page?.firstElementChild,
 			wordmarkHidden: Array.from(wordmark.childNodes, (node) =>
 				node instanceof Element ? node.getAttribute("aria-hidden") : node.textContent,
@@ -45,6 +51,14 @@ describe("404 page", () => {
 			children: [
 				{tag: "div", className: classSet("mb-10 text-center"), text: "Claude Code Browser"},
 				{
+					tag: "div",
+					className: classSet("grid gap-2"),
+					text: "Page not foundClaude can help with many things, but finding this page isn’t one of them.",
+				},
+				{tag: "div", className: classSet("mx-0 mt-4 min-w-[16rem]"), text: "Go back home"},
+			],
+			headingPair: [
+				{
 					tag: "h2",
 					className: classSet("font-voice text-balance text-[20px]/[28px] font-normal text-primary"),
 					text: "Page not found",
@@ -54,7 +68,6 @@ describe("404 page", () => {
 					className: classSet("text-balance text-[14px]/[18px] font-normal text-secondary"),
 					text: "Claude can help with many things, but finding this page isn’t one of them.",
 				},
-				{tag: "div", className: classSet("mx-0 mt-4 min-w-[16rem]"), text: "Go back home"},
 			],
 			wordmarkParent: true,
 			wordmarkHidden: ["true", "true"],
@@ -62,6 +75,27 @@ describe("404 page", () => {
 			homeHref: "/",
 			h1: null,
 		});
+	});
+
+	it("puts the detail <pre> directly in the grid between the heading pair and the button wrapper", async () => {
+		const root = createRootRoute({component: () => <NotFoundContent detail="x" />});
+		const router = createRouter({routeTree: root, history: createMemoryHistory({initialEntries: ["/"]})});
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		const heading = await screen.findByRole("heading", {level: 2});
+		const page = heading.closest("[data-not-found]");
+		expect(
+			Array.from(page?.children ?? [], (child) => ({tag: child.tagName.toLowerCase(), text: child.textContent})),
+		).toStrictEqual([
+			{tag: "div", text: "Claude Code Browser"},
+			{
+				tag: "div",
+				text: "Page not foundClaude can help with many things, but finding this page isn’t one of them.",
+			},
+			{tag: "pre", text: "x"},
+			{tag: "div", text: "Go back home"},
+		]);
 	});
 
 	it("draws Go back home as upstream's default-density cds Button with the shadow-focus ring", async () => {
