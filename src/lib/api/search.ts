@@ -65,6 +65,11 @@ export const UnifiedSearchParamsSchema = z
 		type: UnifiedSearchTypeSchema.default("all"),
 		project: z.string().trim().min(1).optional(),
 		date: UnifiedSearchDateSchema.optional(),
+		/** `archived=true` keeps only archived session hits, like upstream's Archived chip. */
+		archived: z
+			.literal("true")
+			.transform(() => true as const)
+			.optional(),
 		limit: z.coerce.number().int().min(1).max(UNIFIED_SEARCH_MAX_LIMIT).default(UNIFIED_SEARCH_DEFAULT_LIMIT),
 	})
 	.strict();
@@ -109,13 +114,14 @@ export const UnifiedSearchResponse = z
 
 /** `GET /api/search` params the palette and page send; `type` defaults to all and `limit` to 25. */
 export type UnifiedSearchRequest = Pick<UnifiedSearchParams, "query"> &
-	Partial<Pick<UnifiedSearchParams, "type" | "project" | "date" | "limit">>;
+	Partial<Pick<UnifiedSearchParams, "type" | "project" | "date" | "archived" | "limit">>;
 
-function unifiedSearchUrl({query, type, project, date, limit}: UnifiedSearchRequest): string {
+function unifiedSearchUrl({query, type, project, date, archived, limit}: UnifiedSearchRequest): string {
 	const parameters = new URLSearchParams({query});
 	if (type !== undefined && type !== "all") parameters.set("type", type);
 	if (project !== undefined) parameters.set("project", project);
 	if (date !== undefined) parameters.set("date", date);
+	if (archived === true) parameters.set("archived", "true");
 	if (limit !== undefined) parameters.set("limit", String(limit));
 	return `/api/search?${parameters.toString()}`;
 }

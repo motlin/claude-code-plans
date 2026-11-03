@@ -103,10 +103,11 @@ function dateCutoff(date: UnifiedSearchDate | undefined, now: number): number | 
 	return now - (date === "week" ? 7 : 30) * DAY_MS;
 }
 
-function sessionFilters(project: string | undefined, cutoff: number | null): SQL {
+function sessionFilters(project: string | undefined, cutoff: number | null, archived: boolean): SQL {
 	const projectFilter = project === undefined ? sql`` : sql` AND s.project_id = ${project}`;
 	const dateFilter = cutoff === null ? sql`` : sql` AND s.mtime_ms >= ${cutoff}`;
-	return sql`${projectFilter}${dateFilter}`;
+	const archivedFilter = archived ? sql` AND s.id IN (SELECT session_id FROM archived_sessions)` : sql``;
+	return sql`${projectFilter}${dateFilter}${archivedFilter}`;
 }
 
 function usableSnippet(highlighted: string, title: string, sentinels: Sentinels): Snippet | null {
@@ -124,7 +125,7 @@ function searchSessions(
 	projectNames: Map<string, string>,
 	sentinels: Sentinels,
 ): UnifiedSearchItem[] {
-	const filters = sessionFilters(params.project, cutoff);
+	const filters = sessionFilters(params.project, cutoff, params.archived === true);
 	const {open, close} = sentinels;
 
 	const titleRows = db.all<TitleHitRow>(
@@ -338,6 +339,8 @@ export function searchUnifiedDb(db: IndexDb, params: UnifiedSearchParams, now: n
 	if (params.type === "all" || params.type === "sessions") {
 		items.push(...searchSessions(db, ftsQuery, terms, params, cutoff, projectNames, sentinels));
 	}
+	// Archiving applies to sessions only, so the Archived filter leaves no plan, memory or file hits.
+	if (params.archived === true) return items.slice(0, params.limit);
 	const docKinds: Array<DocHitRow["kind"]> = [];
 	if (params.type === "all" || params.type === "plans") docKinds.push("plan");
 	if (params.type === "all" || params.type === "memories") docKinds.push("memory");

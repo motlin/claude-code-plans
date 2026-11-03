@@ -120,6 +120,7 @@ import {
 	paletteFilterHints,
 	paletteInlineSuggestions,
 	paletteProjectMatches,
+	paletteRepoValue,
 	paletteSearchParams,
 	paletteValueSuggestions,
 	paletteTypeStep,
@@ -147,6 +148,7 @@ import {loadRecents, resolveRecentSessions, routeToRecent, type RecentEntry} fro
 import {filterRoutines, formatNextRun, routineTitle, sortRoutines} from "../lib/routines";
 import {paletteEmptyKind, paletteEmptyMessage} from "../lib/palette-empty";
 import {PaletteEmptyState} from "./palette-empty-state";
+import {PaletteFilterSpoken} from "./palette-filter-spoken";
 import {PaletteSkeleton} from "./palette-skeleton";
 import {paletteFilterLabels, paletteTypeLabels} from "../lib/schema-choices";
 import {relativeBucket, titleMatches, type Snippet, type TextMatch} from "../lib/search-text";
@@ -936,15 +938,7 @@ function PalettePopup({
 		() => applyPaletteFilters(parsePaletteTokens(trimmedQuery), filters),
 		[trimmedQuery, filters],
 	);
-	const chips = useMemo(
-		() =>
-			paletteChips(
-				filters,
-				// The repo values `repo:` commits: each session's cwd basename.
-				(data?.sessions ?? []).map((session) => session.project.replace(/\/+$/u, "").split("/").pop() ?? ""),
-			),
-		[filters, data],
-	);
+	const chips = useMemo(() => paletteChips(filters, (data?.sessions ?? []).map(paletteRepoValue)), [filters, data]);
 	/** Date, repo or archived narrowing, which upstream's Clear filters drops while keeping the text. */
 	const hasFilterTokens = tokens.date !== undefined || tokens.project !== undefined || tokens.archived === true;
 	// A trailing bare `key:` lists that filter's values instead of results.
@@ -991,12 +985,12 @@ function PalettePopup({
 		(hintMatch.sentence
 			? query.slice(0, hintMatch.start).trim() === ""
 			: hintMatch.keys.every((filter) => PALETTE_FILTER_TOKENS[filter].startsWith(trimmedQuery.toLowerCase())));
-	// `archived:` searches recents that include archived sessions.
-	const withArchivedQuery = useQuery({
-		...recentSessionsQueryOptions(PALETTE_RECENT_LIMIT, "all"),
+	// `archived:` searches archived sessions only, like upstream.
+	const archivedQuery = useQuery({
+		...recentSessionsQueryOptions(PALETTE_RECENT_LIMIT, "archived"),
 		enabled: tokens.archived === true,
 	});
-	const searchedSessions = (tokens.archived === true ? withArchivedQuery.data : data)?.sessions ?? NO_SESSIONS;
+	const searchedSessions = (tokens.archived === true ? archivedQuery.data : data)?.sessions ?? NO_SESSIONS;
 	const projectsQuery = useQuery({
 		...projectsQueryOptions(),
 		enabled: type === "projects" || type === "memories" || tokens.project !== undefined || startStep === "picker",
@@ -2218,13 +2212,24 @@ function PalettePopup({
 					{/* Upstream's live region stays empty beside the long-prompt New session row: search never ran. */}
 					{(showResults || (idle && longPrompt)) && (
 						<div aria-live="polite" aria-atomic="true" className="sr-only">
-							{showResults && chips.length > 0 && (
-								<p data-palette-showing="">
-									Showing {[paletteTypeLabels[tab], ...chips.map((chip) => chip.label)].join(", ")}
-								</p>
-							)}
 							{showResults && !searching ? liveMessage : ""}
 						</div>
+					)}
+					{!compose && (
+						<PaletteFilterSpoken
+							filterKey={JSON.stringify([
+								tab,
+								filters.date,
+								filters.repo,
+								filters.project,
+								filters.archived,
+								filters.actions,
+							])}
+							words={`Showing ${new Intl.ListFormat("en", {type: "unit"}).format([
+								paletteTypeLabels[tab],
+								...chips.map((chip) => chip.label),
+							])}`}
+						/>
 					)}
 
 					{compose && (
@@ -2439,6 +2444,15 @@ function PaletteFooter({
 	);
 }
 
+/** Each chip's `data-filter`: upstream's filter key, which names the Date filter `active`. */
+const CHIP_DATA_FILTER = {
+	date: "active",
+	repo: "repo",
+	project: "project",
+	archived: "archived",
+	actions: "actions",
+} as const satisfies Record<PaletteChipFilter, string>;
+
 /** Upstream's committed filter chips, in a strip before the textarea. */
 const CHIP_BADGE_CLASSES =
 	"inline-flex items-center gap-1 h-[22px] whitespace-nowrap rounded-[5.5px] px-2 text-xs leading-[15px] font-control bg-upstream-tint-blue text-upstream-accent";
@@ -2461,7 +2475,7 @@ function FilterChips({
 		const strip = stripRef.current;
 		const added = chips.find((chip) => !shownRef.current.has(chip.filter));
 		shownRef.current = new Set(chips.map((chip) => chip.filter));
-		const chip = added && strip?.querySelector<HTMLElement>(`[data-filter="${added.filter}"]`);
+		const chip = added && strip?.querySelector<HTMLElement>(`[data-filter="${CHIP_DATA_FILTER[added.filter]}"]`);
 		if (strip && chip) scrollIntoStrip(strip, chip, getComputedStyle(strip).paddingLeft);
 	}, [chips]);
 	// Upstream's phone fold: 2+ non-action chips collapse into one "N filters" chip below `sm`.
@@ -2498,7 +2512,7 @@ function FilterChips({
 					role="group"
 					aria-label={chip.label}
 					title={chip.title}
-					data-filter={chip.filter}
+					data-filter={CHIP_DATA_FILTER[chip.filter]}
 					className={`${CHIP_BADGE_CLASSES} min-w-0 max-w-[10rem] shrink-0${folded ? " max-sm:hidden" : ""}`}
 				>
 					<span

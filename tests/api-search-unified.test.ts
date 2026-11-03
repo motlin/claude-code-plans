@@ -192,6 +192,21 @@ describe("unified search API", () => {
 		expect(items.map((item) => item.id)).toStrictEqual(["s-b", "/projects/beta/login.md"]);
 	});
 
+	it("returns only archived session hits for archived=true, like upstream's Archived chip", async () => {
+		seedSession("s-active", {title: "login active"});
+		seedSession("s-archived", {title: "login archived"});
+		seedFile("/projects/alpha/login.md", "login notes");
+		db.index.insert(schema.archivedSessions).values({sessionId: "s-archived", archivedAt: 1}).run();
+
+		expect({
+			archived: (await search({query: "login", archived: "true"})).map((item) => item.id),
+			unfiltered: (await search({query: "login"})).map((item) => item.id).toSorted(),
+		}).toStrictEqual({
+			archived: ["s-archived"],
+			unfiltered: ["/projects/alpha/login.md", "s-active", "s-archived"],
+		});
+	});
+
 	it("filters by date", async () => {
 		seedSession("s-hour", {title: "login hour", mtimeMs: NOW - HOUR});
 		seedSession("s-3d", {title: "login three days", mtimeMs: NOW - 3 * DAY});

@@ -160,6 +160,7 @@ export function paletteSearchParams(
 		type,
 		...(tokens.project === undefined ? {} : {project: resolvePaletteProject(tokens.project, projects)}),
 		...(tokens.date === undefined ? {} : {date: tokens.date}),
+		...(tokens.archived === true ? {archived: true} : {}),
 	};
 }
 
@@ -258,6 +259,14 @@ export interface PaletteValueSession {
 	projectName: string;
 }
 
+/**
+ * The value `repo:` lists and commits for a session: its cwd basename, which the server derives
+ * as `projectName`. `project` is the encoded project dir id, never a path.
+ */
+export function paletteRepoValue(session: PaletteValueSession): string {
+	return session.projectName;
+}
+
 export interface PaletteFilterValue {
 	label: string;
 	/** The whole query once this value completes the token. */
@@ -295,7 +304,7 @@ function filterValues(
 					.map((type) => [paletteTypeLabels[type], type === "sessions" ? "code" : type])
 			);
 		case "repo":
-			return recentValues(sessions.map((session) => basename(session.project))).map((repo) => [repo, repo]);
+			return recentValues(sessions.map(paletteRepoValue)).map((repo) => [repo, repo]);
 		case "project":
 			return recentValues(sessions.map((session) => session.projectName)).map((name) => [name, name]);
 		// Upstream's Archived and Actions hints commit their chip at once, so they have no values.
@@ -416,10 +425,7 @@ function parseCommitToken(
 ): FilterChange | undefined {
 	const value = rawValue.toLowerCase();
 	if (key === "repo" || key === "repository") {
-		const repo = knownValue(
-			rawValue,
-			sessions.map((session) => basename(session.project)),
-		);
+		const repo = knownValue(rawValue, sessions.map(paletteRepoValue));
 		return repo === undefined ? undefined : {filters: {repo}};
 	}
 	if (key === "project") {

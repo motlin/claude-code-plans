@@ -2553,14 +2553,43 @@ describe("CommandPalette filter values", () => {
 
 	it("lists the recent repos under Repo after repo:", async () => {
 		const dialog = await openPalette([
-			{...recentSession("sess-1", "One"), project: "/users/dev/ccp", projectName: "claude-code-plans"},
-			{...recentSession("sess-2", "Two"), project: "/users/dev/avalon", projectName: "avalon"},
-			{...recentSession("sess-3", "Three"), project: "/users/dev/ccp", projectName: "claude-code-plans"},
+			{
+				...recentSession("sess-1", "One"),
+				project: "-Users-dev-claude-code-plans",
+				projectName: "claude-code-plans",
+			},
+			{...recentSession("sess-2", "Two"), project: "-Users-dev-avalon", projectName: "avalon"},
+			{
+				...recentSession("sess-3", "Three"),
+				project: "-Users-dev-claude-code-plans",
+				projectName: "claude-code-plans",
+			},
 		]);
 
 		typeQuery(dialog, "repo:");
 
-		expect(groupLabels(dialog)).toStrictEqual([["Repo", ["ccp", "avalon"]]]);
+		expect(groupLabels(dialog)).toStrictEqual([["Repo", ["claude-code-plans", "avalon"]]]);
+	});
+
+	it("narrows and commits repo: by the cwd basename, not the encoded project id", async () => {
+		const dialog = await openPalette([
+			{...recentSession("sess-1", "One"), project: "-Users-craig-projects-cublitz", projectName: "cublitz"},
+			{
+				...recentSession("sess-2", "Two"),
+				project: "-Users-craig-projects-claude-code-plans",
+				projectName: "claude-code-plans",
+			},
+		]);
+
+		typeQuery(dialog, "repo:cub");
+		const narrowed = groupLabels(dialog);
+		typeQuery(dialog, "repo:cublitz ");
+
+		expect({
+			narrowed,
+			value: within(dialog).getByRole<HTMLTextAreaElement>("combobox").value,
+			chip: dialog.querySelector('[role=group][data-filter="repo"]')?.getAttribute("aria-label") ?? null,
+		}).toStrictEqual({narrowed: [["Repo", ["cublitz"]]], value: "", chip: "Repo cublitz"});
 	});
 
 	it("commits the Archived and Actions chips straight from their hints, with no value list", async () => {
@@ -2678,9 +2707,14 @@ describe("CommandPalette filter values", () => {
 		});
 	});
 
-	it("searches archived sessions with archived:", async () => {
+	it("searches archived sessions only with archived:, like upstream", async () => {
 		const archivedSession = {...recentSession("sess-old", "Old archived refactor"), archived: true};
 		const dialog = await openPalette([recentSession("sess-1", "Refactor auth module")], "/", (queryClient) => {
+			queryClient.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT, "archived").queryKey, {
+				sessions: [archivedSession],
+				nextCursor: null,
+			});
+			// A decoy: the include-archived recents must not feed the Archived chip.
 			queryClient.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT, "all").queryKey, {
 				sessions: [recentSession("sess-1", "Refactor auth module"), archivedSession],
 				nextCursor: null,
@@ -2689,19 +2723,26 @@ describe("CommandPalette filter values", () => {
 
 		typeQuery(dialog, "refactor");
 		const withoutToken = sessionLabels(dialog);
-		typeQuery(dialog, "archived:true refactor");
+		typeQuery(dialog, "archived: refactor");
+		const withToken = sessionLabels(dialog);
+		typeQuery(dialog, "");
+		const listed = [...dialog.querySelectorAll('[cmdk-item][data-item-type="code_session"]')].map((item) => ({
+			label: item.querySelector("[data-palette-label]")?.textContent ?? "",
+			muted: item.hasAttribute("data-archived"),
+		}));
 
-		expect({withoutToken, withToken: sessionLabels(dialog)}).toStrictEqual({
+		expect({withoutToken, withToken, listed}).toStrictEqual({
 			withoutToken: ["Refactor auth module"],
-			withToken: ["Refactor auth module", "Old archived refactor"],
+			withToken: ["Old archived refactor"],
+			listed: [{label: "Old archived refactor", muted: true}],
 		});
 	});
 
 	it("marks archived search rows with the palette Archived badge and muted text", async () => {
 		const archivedSession = {...recentSession("sess-old", "Old archived refactor"), archived: true};
 		const dialog = await openPalette([recentSession("sess-1", "Refactor auth module")], "/", (queryClient) => {
-			queryClient.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT, "all").queryKey, {
-				sessions: [recentSession("sess-1", "Refactor auth module"), archivedSession],
+			queryClient.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT, "archived").queryKey, {
+				sessions: [archivedSession],
 				nextCursor: null,
 			});
 		});
@@ -2714,10 +2755,7 @@ describe("CommandPalette filter values", () => {
 				badge: item.querySelector("[data-archived-badge]")?.textContent ?? null,
 				muted: item.hasAttribute("data-archived"),
 			})),
-		).toStrictEqual([
-			{label: "Refactor auth module", badge: null, muted: false},
-			{label: "Old archived refactor", badge: "Archived", muted: true},
-		]);
+		).toStrictEqual([{label: "Old archived refactor", badge: "Archived", muted: true}]);
 	});
 
 	it("joins upstream's PR #N and the time into a typed session row's secondary", async () => {
@@ -2748,7 +2786,7 @@ describe("CommandPalette filter values", () => {
 			archived: true,
 		});
 		const dialog = await openPalette([recentSession("sess-1", "Refactor auth module")], "/", (queryClient) => {
-			queryClient.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT, "all").queryKey, {
+			queryClient.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT, "archived").queryKey, {
 				sessions: [archivedSession],
 				nextCursor: null,
 			});
@@ -2980,7 +3018,7 @@ describe("CommandPalette committed filter chips", () => {
 
 		typeQuery(dialog, "date:today ");
 
-		expect(dialog.querySelector('[role=group][data-filter="date"]')?.firstElementChild?.className).toStrictEqual(
+		expect(dialog.querySelector('[role=group][data-filter="active"]')?.firstElementChild?.className).toStrictEqual(
 			label,
 		);
 	});
@@ -3007,7 +3045,7 @@ describe("CommandPalette committed filter chips", () => {
 				.toSorted(),
 			chips: [
 				{
-					filter: "date",
+					filter: "active",
 					label: "Date Today",
 					title: "Today",
 					text: "Today",
@@ -3063,7 +3101,7 @@ describe("CommandPalette committed filter chips", () => {
 					first: true,
 				},
 				chips: [
-					{filter: "date", classes: `${CHIP_CLASSES} max-sm:hidden`.split(" ").toSorted()},
+					{filter: "active", classes: `${CHIP_CLASSES} max-sm:hidden`.split(" ").toSorted()},
 					{filter: "archived", classes: `${CHIP_CLASSES} max-sm:hidden`.split(" ").toSorted()},
 				],
 			},
@@ -3089,7 +3127,7 @@ describe("CommandPalette committed filter chips", () => {
 		typeQuery(dialog, "date:today archived: ");
 		input.focus();
 
-		const clear = dialog.querySelector('[data-filter="date"] button[aria-label="Clear filter"]');
+		const clear = dialog.querySelector('[data-filter="active"] button[aria-label="Clear filter"]');
 		if (clear === null) throw new Error("missing Date clear button");
 		const mouseDownNotPrevented = fireEvent.mouseDown(clear);
 		fireEvent.click(clear);
@@ -3138,14 +3176,55 @@ describe("CommandPalette committed filter chips", () => {
 		}).toStrictEqual({rows: ["Fix flaky test"], empty: false});
 	});
 
-	it("announces the tab and chips in the live region", async () => {
+	it("announces filter changes in upstream's own debounced, self-clearing status region", async () => {
 		const dialog = await openPalette();
+		const input = within(dialog).getByRole<HTMLTextAreaElement>("combobox");
+		const region = () => dialog.querySelector('[data-testid="palette-filter-spoken"]');
+		const spoken = () => region()?.textContent ?? null;
+		const advance = (ms: number) => {
+			act(() => {
+				vi.advanceTimersByTime(ms);
+			});
+		};
+		const opened = {
+			role: region()?.getAttribute("role"),
+			live: region()?.getAttribute("aria-live"),
+			atomic: region()?.getAttribute("aria-atomic"),
+			className: region()?.className,
+			text: spoken(),
+		};
+		vi.useFakeTimers();
+		try {
+			typeQuery(dialog, "date:today ");
+			advance(499);
+			const before = spoken();
+			advance(1);
+			const committed = spoken();
+			advance(3000);
+			const cleared = spoken();
+			fireEvent.keyDown(input, {key: "Backspace", code: "Backspace"});
+			advance(500);
+			const popped = spoken();
+			advance(3000);
+			fireEvent.click(within(dialog).getByRole("tab", {name: "Code"}));
+			advance(500);
+			const tabbed = spoken();
+			const results = [...dialog.querySelectorAll("div.sr-only[aria-live]")]
+				.filter((element) => element !== region())
+				.some((element) => element.textContent.includes("Showing"));
 
-		typeQuery(dialog, "date:today archived: ");
-
-		expect(dialog.querySelector("[aria-live=polite] [data-palette-showing]")?.textContent).toBe(
-			"Showing All, Date Today, Archived",
-		);
+			expect({opened, before, committed, cleared, popped, tabbed, results}).toStrictEqual({
+				opened: {role: "status", live: "polite", atomic: "true", className: "sr-only", text: ""},
+				before: "",
+				committed: "Showing All, Date Today",
+				cleared: "",
+				popped: "Showing All",
+				tabbed: "Showing Code",
+				results: false,
+			});
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });
 

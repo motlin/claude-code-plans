@@ -106,6 +106,14 @@ describe("paletteSearchParams", () => {
 		).toStrictEqual({query: "fix", type: "plans", project: "-Users-dev-ccp", date: "week"});
 	});
 
+	it("asks for archived session hits only under the Archived chip", () => {
+		expect(paletteSearchParams({text: "fix", archived: true}, "all", [])).toStrictEqual({
+			query: "fix",
+			type: "all",
+			archived: true,
+		});
+	});
+
 	it("falls back to the tab when there is no type token", () => {
 		expect(paletteSearchParams({text: "fix"}, "memories", [])).toStrictEqual({
 			query: "fix",
@@ -150,13 +158,35 @@ describe("paletteFilterHints", () => {
 	});
 });
 
+describe("palette repo values from the recent sessions API", () => {
+	// `/api/sessions/recent` returns `project` as the encoded project dir id and `projectName` as the cwd basename.
+	const sessions = [
+		{project: "-Users-craig-projects-cublitz", projectName: "cublitz"},
+		{project: "-Users-craig-projects-claude-code-plans", projectName: "claude-code-plans"},
+	];
+
+	it("lists, commits and suggests the cwd basename, not the encoded project id", () => {
+		expect({
+			values: paletteValueSuggestions("repo:", sessions)?.values.map((value) => value.label),
+			committed: commitPaletteTokens("repo:cublitz ", {}, sessions),
+			inline: paletteInlineSuggestions("fix cublitz", sessions).filter(
+				(suggestion) => suggestion.filter === "repo",
+			),
+		}).toStrictEqual({
+			values: ["cublitz", "claude-code-plans"],
+			committed: {text: "", filters: {repo: "cublitz"}},
+			inline: [{filter: "repo", value: "cublitz", label: "Repo: cublitz", start: 4}],
+		});
+	});
+});
+
 describe("paletteValueSuggestions", () => {
 	const sessions = [
-		{project: "/Users/dev/ccp", projectName: "claude-code-plans"},
-		{project: "/Users/dev/avalon", projectName: "avalon"},
-		{project: "/Users/dev/ccp", projectName: "claude-code-plans"},
-		{project: "/Users/dev/my notes", projectName: "my notes"},
-		...Array.from({length: 12}, (_, index) => ({project: `/Users/dev/r${index}`, projectName: `p${index}`})),
+		{project: "-Users-dev-claude-code-plans", projectName: "claude-code-plans"},
+		{project: "-Users-dev-avalon", projectName: "avalon"},
+		{project: "-Users-dev-claude-code-plans", projectName: "claude-code-plans"},
+		{project: "-Users-dev-my-notes", projectName: "my notes"},
+		...Array.from({length: 12}, (_, index) => ({project: `-Users-dev-p${index}`, projectName: `p${index}`})),
 	];
 
 	function labels(query: string): string[] | null {
@@ -198,7 +228,7 @@ describe("paletteValueSuggestions", () => {
 			repo: labels("repo:"),
 			project: paletteValueSuggestions("project:", sessions)?.values.slice(0, 3),
 		}).toStrictEqual({
-			repo: ["ccp", "avalon", "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7"],
+			repo: ["claude-code-plans", "avalon", "p0", "p1", "p2", "p3", "p4", "p5", "p6", "p7"],
 			project: [
 				{label: "claude-code-plans", query: "project:claude-code-plans "},
 				{label: "avalon", query: "project:avalon "},
@@ -233,8 +263,8 @@ describe("paletteValueSuggestions", () => {
 	it("does not split repo labels on hyphens, like upstream", () => {
 		expect(
 			paletteValueSuggestions("fix repo:pla", [
-				{project: "motlin/playdate-template", projectName: "playdate"},
-				{project: "/Users/dev/claude-code-plans", projectName: "ccp"},
+				{project: "-Users-dev-playdate-template", projectName: "playdate-template"},
+				{project: "-Users-dev-claude-code-plans", projectName: "claude-code-plans"},
 			]),
 		).toStrictEqual({
 			filter: "repo",
@@ -292,8 +322,8 @@ describe("paletteFilterHintMatch", () => {
 
 describe("paletteInlineSuggestions", () => {
 	const sessions = [
-		{project: "/Users/dev/claude-code-plans", projectName: "ccp"},
-		{project: "/Users/dev/avalon", projectName: "avalon"},
+		{project: "-Users-dev-claude-code-plans", projectName: "ccp"},
+		{project: "-Users-dev-avalon", projectName: "avalon"},
 	];
 
 	it("suggests the value the last words name, with where its words start", () => {
@@ -332,8 +362,8 @@ describe("paletteInlineSuggestions", () => {
 
 describe("commitPaletteTokens", () => {
 	const sessions = [
-		{project: "/Users/dev/ccp", projectName: "claude-code-plans"},
-		{project: "/Users/dev/avalon", projectName: "avalon"},
+		{project: "-Users-dev-ccp", projectName: "ccp"},
+		{project: "-Users-dev-avalon", projectName: "avalon"},
 	];
 
 	it("commits every key:value word followed by whitespace and strips it from the text", () => {
