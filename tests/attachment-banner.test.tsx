@@ -273,6 +273,35 @@ describe("AttachmentBanner", () => {
 			]);
 		});
 
+		it("marks a re-read that only viewed part of the file", () => {
+			const timestamp = 1793680885686;
+			const html = renderBanner({
+				type: "edited_text_file",
+				filename: "/repo/src/a.ts",
+				rereadEntry: {timestamp, contentHash: "31ejkaqruz3sp", contentLength: 33381, isPartialView: true},
+			});
+			const reread = formatTimestamp(new Date(timestamp).toISOString());
+			expect(html.match(/<span[^>]*>([^<]*)<\/span>/g)?.slice(-2)).toStrictEqual([
+				"<span>Edited: /repo/src/a.ts</span>",
+				`<span class="text-t6">Re-read ${reread} · 33,381 chars · partial view</span>`,
+			]);
+		});
+
+		it("does not mark a re-read whose isPartialView is false", () => {
+			const html = renderBanner({
+				type: "edited_text_file",
+				filename: "/repo/src/a.ts",
+				rereadEntry: {
+					timestamp: 1793680885686,
+					contentHash: "31ejkaqruz3sp",
+					contentLength: 33381,
+					isPartialView: false,
+				},
+			});
+			expect(html).toContain("33,381 chars</span>");
+			expect(html).not.toContain("partial view");
+		});
+
 		it("omits the re-read detail when there is no rereadEntry", () => {
 			const html = renderBanner({type: "edited_text_file", filename: "/repo/src/a.ts"});
 			expect(html).not.toContain("Re-read");

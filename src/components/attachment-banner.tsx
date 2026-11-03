@@ -442,7 +442,7 @@ function AttachmentContent({
 					{attachment.rereadEntry !== undefined && (
 						<span className="text-t6">
 							Re-read {formatTimestamp(new Date(attachment.rereadEntry.timestamp).toISOString())} ·{" "}
-							{attachment.rereadEntry.contentLength.toLocaleString("en-US")} chars
+							{`${attachment.rereadEntry.contentLength.toLocaleString("en-US")} chars${attachment.rereadEntry.isPartialView === true ? " · partial view" : ""}`}
 						</span>
 					)}
 				</Banner>
