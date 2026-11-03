@@ -30,16 +30,17 @@ function approvalActionClass(variant: ApprovalActionVariant, size: ApprovalActio
 /**
  * An approval card action. `busy` is upstream's busy cds Button: it stays focusable
  * (`aria-busy` + `aria-disabled`, not `disabled`), ignores clicks, hides its label and
- * centres a 12px spinner over it.
+ * centres a 12px spinner over it. `busyLabel` (upstream's "Sending…") names it while busy.
  */
 export function ApprovalActionButton({
 	variant,
 	size = "default",
 	busy = false,
+	busyLabel,
 	children,
 	onClick,
 	...props
-}: {variant: ApprovalActionVariant; size?: ApprovalActionSize; busy?: boolean} & Omit<
+}: {variant: ApprovalActionVariant; size?: ApprovalActionSize; busy?: boolean; busyLabel?: string} & Omit<
 	ButtonHTMLAttributes<HTMLButtonElement>,
 	"className" | "type" | "aria-busy" | "aria-disabled"
 >) {
@@ -51,6 +52,7 @@ export function ApprovalActionButton({
 			data-approval-variant={variant}
 			{...(size === "sm" ? {"data-size": "sm"} : {})}
 			{...(busy ? {"aria-busy": true, "aria-disabled": true} : {})}
+			{...(busy && busyLabel !== undefined ? {"aria-label": busyLabel} : {})}
 			className={approvalActionClass(variant, size)}
 		>
 			{busy ? (
@@ -66,6 +68,9 @@ export function ApprovalActionButton({
 		</button>
 	);
 }
+
+/** Upstream's busyLabel on a held approval card's chosen action. */
+export const APPROVAL_SENDING_LABEL = "Sending…";
 
 export const APPROVAL_CARD_TITLE = "flex min-h-6 items-center text-[13px]/[19px] font-[580]";
 
@@ -294,29 +299,32 @@ export const URL_OPEN_LOADING_REASON = "Reading the terminal dialog…";
  * Decline for a URL it can't show exactly or that is too long.
  */
 export const URL_OPEN_UNAVAILABLE_REASON = "Claude Code won't open this URL from here. Check it in the terminal.";
-const URL_OPENS_ON_CLI = "Claude Code opens the link on the machine it runs on.";
 
-/** The URL with its scheme's authority (the host) bold, as the CLI dialog draws it; other text stays plain. */
-function UrlWithBoldHost({url}: {url: string}) {
-	const match = /^([a-z][a-z\d+.-]*:\/\/)([^/?#]+)(.*)$/is.exec(url);
-	if (match === null) return url;
-	return (
-		<>
-			{match[1]}
-			<strong>{match[2]}</strong>
-			{match[3]}
-		</>
-	);
+/** The URL's host as upstream's link card names it; empty for text that isn't a URL. */
+function urlHost(url: string): string {
+	try {
+		return new URL(url).host;
+	} catch {
+		return "";
+	}
 }
 
+/** Upstream's cds Card frame and its body (`zb` / `MR`), with `size="sm"` stepping the body padding down to 12px. */
+const LINK_CARD_CLASS =
+	"group/card relative isolate flex flex-col rounded-card after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:shadow-card-ring after:content-['']";
+const LINK_CARD_BODY_CLASS =
+	"cds-card-body flex min-h-0 flex-1 flex-col self-stretch [gap:inherit] [align-items:inherit] [justify-content:inherit] rounded-[inherit] p-3";
+const LINK_TEXT = "text-body min-w-0 [overflow-wrap:anywhere] [unicode-bidi:plaintext]";
+
 /**
- * A url elicitation docked above the composer, answered through the CLI's
- * terminal dialog (upstream draws nothing for one): "{server} wants to open a
- * URL", the message, the URL with its host bold, and Decline / Open. Open
- * presses the dialog's Accept, so it is on only while the dialog read off the
- * pane (`dialogFocus`; undefined while reading) sits on Accept. A decision
- * holds both buttons until the `ElicitationResult` drops the card, since the
- * CLI can refuse an answer; a refused one shows its error and re-enables them.
+ * A url elicitation docked above the composer, drawn as upstream's cloud link card (`wc`) and answered
+ * through the CLI's terminal dialog: "{server} wants to open a URL", a cds Card with the host and the URL,
+ * the message, the caution, and [Decline] then [Open link]. Open link presses the dialog's Accept, which
+ * opens the link and answers in one step, so upstream's separate "I’m done, continue" has no local twin.
+ * It is on only while the dialog read off the pane (`dialogFocus`; undefined while reading) sits on Accept.
+ * A decision marks the chosen button busy ("Sending…") and disables the other until the
+ * `ElicitationResult` drops the card, since the CLI can refuse an answer; a refused one shows its error
+ * and re-enables them.
  */
 export function UrlElicitationCard({
 	serverName,
@@ -331,9 +339,9 @@ export function UrlElicitationCard({
 	dialogFocus: ElicitationFocus | null | undefined;
 	onDecision: (decision: "allow" | "deny") => Promise<void>;
 }) {
-	const [decided, setDecided] = useState(false);
+	const [sent, setSent] = useState<"allow" | "deny" | null>(null);
 	const [error, setError] = useState<string | null>(null);
-	const title = `${serverName} wants to open a URL`;
+	const title = `${serverName.trim() || "An unknown server"} wants to open a URL`;
 	const openReason =
 		dialogFocus === undefined
 			? URL_OPEN_LOADING_REASON
@@ -343,12 +351,12 @@ export function UrlElicitationCard({
 
 	const decide = async (decision: "allow" | "deny") => {
 		setError(null);
-		setDecided(true);
+		setSent(decision);
 		try {
 			await onDecision(decision);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to answer the URL request");
-			setDecided(false);
+			setSent(null);
 		}
 	};
 
@@ -356,45 +364,61 @@ export function UrlElicitationCard({
 		<ApprovalCardShell
 			label={title}
 			body={
-				<div data-url-elicitation className="flex flex-col gap-[10px]">
-					<span data-approval-card-title className={`${APPROVAL_CARD_TITLE} [unicode-bidi:plaintext]`}>
-						{title}
-					</span>
-					<div className="flex flex-col gap-[12px]">
-						{message !== "" && (
-							<span className="text-body text-secondary whitespace-pre-wrap [overflow-wrap:anywhere] select-text [unicode-bidi:plaintext]">
-								{message}
-							</span>
-						)}
-						<div
-							data-elicitation-url
-							dir="ltr"
-							className="bg-alpha-1 rounded-r4 py-2 px-3 text-code text-secondary [overflow-wrap:anywhere] select-text"
+				<>
+					<div className="text-primary min-h-6 shrink-0 flex items-center gap-1">
+						<span
+							data-approval-card-title
+							data-question-stop-name=""
+							className={`${APPROVAL_CARD_TITLE} min-w-0 break-words [unicode-bidi:plaintext]`}
 						>
-							<UrlWithBoldHost url={url} />
-						</div>
-						<span className="text-footnote text-secondary">{URL_OPENS_ON_CLI}</span>
-						{error !== null && (
-							<p role="alert" className="text-footnote text-extended-pink">
-								{error}
-							</p>
-						)}
+							{title}
+						</span>
 					</div>
-				</div>
+					<div
+						data-cds="Card"
+						data-size="sm"
+						data-testid="epitaxy-elicitation-link"
+						className={LINK_CARD_CLASS}
+					>
+						<div data-cds-card-body="" className={LINK_CARD_BODY_CLASS}>
+							<span className={`${LINK_TEXT} font-medium text-primary`}>{urlHost(url)}</span>
+							<span className={`${LINK_TEXT} text-secondary`}>{url}</span>
+						</div>
+					</div>
+					{message !== "" && <p className={`${LINK_TEXT} text-secondary whitespace-pre-wrap`}>{message}</p>}
+					{error !== null && (
+						<p role="alert" className="text-footnote text-extended-pink">
+							{error}
+						</p>
+					)}
+				</>
+			}
+			note={
+				<p className="text-body text-muted-as-secondary" data-testid="epitaxy-elicitation-caution">
+					This opens a site outside Claude.
+				</p>
 			}
 			actions={
 				<>
-					<ApprovalActionButton variant="secondary" disabled={decided} onClick={() => void decide("deny")}>
+					<ApprovalActionButton
+						variant="secondary"
+						busy={sent === "deny"}
+						busyLabel={APPROVAL_SENDING_LABEL}
+						disabled={sent === "allow"}
+						onClick={() => void decide("deny")}
+					>
 						Decline
 					</ApprovalActionButton>
-					<DisabledReason reason={decided ? null : openReason}>
+					<DisabledReason reason={sent === null ? openReason : null}>
 						<ApprovalActionButton
 							variant="primary"
 							data-approval-primary=""
-							disabled={decided || openReason !== null}
+							busy={sent === "allow"}
+							busyLabel={APPROVAL_SENDING_LABEL}
+							disabled={sent === "deny" || (sent === null && openReason !== null)}
 							onClick={() => void decide("allow")}
 						>
-							Open
+							Open link
 						</ApprovalActionButton>
 					</DisabledReason>
 				</>

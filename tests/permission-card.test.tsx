@@ -737,6 +737,15 @@ function deferredAnswer() {
 	return {promise, resolve, reject};
 }
 
+function heldButtons() {
+	return screen.getAllByRole("button").map((button) => ({
+		text: button.textContent,
+		label: button.getAttribute("aria-label"),
+		busy: button.getAttribute("aria-busy"),
+		disabled: button.hasAttribute("disabled"),
+	}));
+}
+
 function renderCard({
 	canAnswer = true,
 	persistentAllow = null,
@@ -1272,7 +1281,7 @@ describe("PermissionCard", () => {
 		});
 	});
 
-	it("keeps an elicitation card up, disabled, after a decision until its ElicitationResult unmounts it", async () => {
+	it("keeps an elicitation card up after a decision, the chosen button busy, until its ElicitationResult unmounts it", async () => {
 		const answer = deferredAnswer();
 		const onDecision = vi.fn<ComponentProps<typeof PermissionCard>["onDecision"]>(async () => answer.promise);
 		const {container} = render(
@@ -1285,33 +1294,67 @@ describe("PermissionCard", () => {
 			/>,
 		);
 		fireEvent.click(screen.getByRole("button", {name: "Deny"}));
-		const buttonStates = () =>
-			screen.getAllByRole("button").map((button) => [button.textContent, button.hasAttribute("disabled")]);
-		const sending = {shown: container.querySelector("[data-approval-card-root]") !== null, buttons: buttonStates()};
+		const sending = {shown: container.querySelector("[data-approval-card-root]") !== null, buttons: heldButtons()};
 		await actAndSettle(() => {
 			answer.resolve();
 		});
 		expect({
 			sending,
-			answered: {shown: container.querySelector("[data-approval-card-root]") !== null, buttons: buttonStates()},
+			answered: {shown: container.querySelector("[data-approval-card-root]") !== null, buttons: heldButtons()},
 			calls: onDecision.mock.calls,
 		}).toStrictEqual({
 			sending: {
 				shown: true,
 				buttons: [
-					["Deny", true],
-					["Allow onceCtrl⏎Enter", true],
+					{text: "Deny", label: "Sending…", busy: "true", disabled: false},
+					{text: "Allow onceCtrl⏎Enter", label: null, busy: null, disabled: true},
 				],
 			},
 			answered: {
 				shown: true,
 				buttons: [
-					["Deny", true],
-					["Allow onceCtrl⏎Enter", true],
+					{text: "Deny", label: "Sending…", busy: "true", disabled: false},
+					{text: "Allow onceCtrl⏎Enter", label: null, busy: null, disabled: true},
 				],
 			},
 			calls: [["deny"]],
 		});
+	});
+
+	it("marks Allow once busy after ⌘⏎ on a held elicitation card, and clears it when the answer fails", async () => {
+		vi.useFakeTimers({toFake: ["performance"]});
+		try {
+			const answer = deferredAnswer();
+			const onDecision = vi.fn<ComponentProps<typeof PermissionCard>["onDecision"]>(async () => answer.promise);
+			render(
+				<PermissionCard
+					title={{action: "use my-mcp-server", meta: null}}
+					detail={null}
+					canAnswer
+					hideOnDecision={false}
+					onDecision={onDecision}
+				/>,
+			);
+			vi.advanceTimersByTime(400);
+			fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+			const sending = heldButtons();
+			await actAndSettle(() => {
+				answer.reject(new Error("The terminal is not showing this elicitation"));
+			});
+			expect({sending, failed: heldButtons(), calls: onDecision.mock.calls}).toStrictEqual({
+				sending: [
+					{text: "Deny", label: null, busy: null, disabled: true},
+					{text: "Allow onceCtrl⏎Enter", label: "Sending…", busy: "true", disabled: false},
+				],
+				failed: [
+					{text: "Deny", label: null, busy: null, disabled: false},
+					{text: "Allow onceCtrl⏎Enter", label: null, busy: null, disabled: false},
+				],
+				calls: [["allow"]],
+			});
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("keeps an elicitation card up with the error when the terminal refuses the answer", async () => {

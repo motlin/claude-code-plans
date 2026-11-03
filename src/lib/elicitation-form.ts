@@ -174,9 +174,18 @@ function parseField(raw: FormDataEntryValue | null, field: ElicitationFieldSchem
 }
 
 /**
+ * Upstream's `Sc` required filter: the schema's required keys without its booleans, so a
+ * required checkbox never has to be checked.
+ */
+export function requiredFieldNames(schema: ElicitationFormSchema): Set<string> {
+	return new Set((schema.required ?? []).filter((key) => schema.properties[key]?.["type"] !== "boolean"));
+}
+
+/**
  * Upstream's `lo`: the form's answer and the fields that fail validation. Numbers,
  * booleans, JSON arrays and date-times become values, empty optional fields are
- * dropped, and a cleared select answers "".
+ * dropped, and a cleared select answers "". As upstream's `Sc`, booleans are never
+ * required and a missing one answers false.
  */
 export function parseElicitationForm(
 	formData: FormData,
@@ -184,14 +193,16 @@ export function parseElicitationForm(
 ): {data: Record<string, unknown>; invalidFields: Set<string>} {
 	const data: Record<string, unknown> = {};
 	const invalidFields = new Set<string>();
+	const requiredKeys = requiredFieldNames(schema);
 	for (const [key, field] of Object.entries(schema.properties)) {
 		const raw = formData.get(key);
 		const cleared = raw === ELICIT_SELECT_EMPTY_VALUE;
 		const value = parseField(cleared ? "" : raw, field);
-		const required = schema.required?.includes(key) ?? false;
+		const required = requiredKeys.has(key);
 		const empty = (value === "" && !cleared) || (Array.isArray(value) && value.length === 0);
 		if (!empty || required) data[key] = value;
 		if (!cleared && validateFieldValue(value, field, required) !== null) invalidFields.add(key);
+		if (field["type"] === "boolean" && data[key] === undefined) data[key] = false;
 	}
 	return {data, invalidFields};
 }

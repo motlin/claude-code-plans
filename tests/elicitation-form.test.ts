@@ -167,6 +167,28 @@ describe("parseElicitationForm (upstream lo)", () => {
 	});
 });
 
+describe("parseElicitationForm required booleans (upstream Sc)", () => {
+	it("never requires a boolean and sends a missing one as false", () => {
+		expect(
+			parseElicitationForm(formData({}), {
+				type: "object",
+				properties: {agree: {type: "boolean"}},
+				required: ["agree"],
+			}),
+		).toStrictEqual({data: {agree: false}, invalidFields: new Set()});
+	});
+
+	it("fills a missing optional boolean with false and keeps an answered one", () => {
+		expect(
+			parseElicitationForm(formData({name: "Ada", b: "true"}), {
+				type: "object",
+				properties: {name: {type: "string"}, a: {type: "boolean"}, b: {type: "boolean"}},
+				required: ["name", "a"],
+			}),
+		).toStrictEqual({data: {name: "Ada", a: false, b: true}, invalidFields: new Set()});
+	});
+});
+
 describe("validateFieldValue (upstream M / Te)", () => {
 	const cases: [unknown, ElicitationFieldSchema, boolean, string | null][] = [
 		["", {type: "string"}, true, "This field is required."],

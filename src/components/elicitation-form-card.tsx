@@ -6,6 +6,7 @@ import {
 	fieldLabel,
 	isMultiSelect,
 	parseElicitationForm,
+	requiredFieldNames,
 	schemaText,
 	validateFieldValue,
 	type ElicitationFieldSchema,
@@ -418,7 +419,7 @@ function ElicitationField({
 /**
  * Upstream's elicitation form card: "{server} requests your input", the message,
  * one field per `fieldNames` entry, the caution line, and Decline / Submit.
- * Submit validates every field first; a sent answer holds both buttons until the
+ * Submit validates every field first; a sent answer marks Submit busy (accept) and disables the rest until the
  * card goes, and a failed one shows its error and re-enables them.
  */
 export function ElicitationFormCard({
@@ -436,21 +437,23 @@ export function ElicitationFormCard({
 }) {
 	const formId = useId();
 	const [defaults] = useState(() => elicitationFormDefaults(schema));
-	const [sending, setSending] = useState(false);
+	const [requiredKeys] = useState(() => requiredFieldNames(schema));
+	const [inFlight, setInFlight] = useState<ElicitationAnswer["action"] | null>(null);
+	const sending = inFlight !== null;
 	const [error, setError] = useState<string | null>(null);
 	const [invalidFields, setInvalidFields] = useState<ReadonlySet<string>>(() => new Set());
-	const title = `${serverName} requests your input`;
+	const title = `${serverName.trim() || "An unknown server"} requests your input`;
 	const shownMessage = message.slice(0, TEXT_MAX).trim();
 
 	const answer = async (result: ElicitationAnswer) => {
 		if (sending) return;
 		setError(null);
-		setSending(true);
+		setInFlight(result.action);
 		try {
 			await onAnswer(result);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to answer the request");
-			setSending(false);
+			setInFlight(null);
 		}
 	};
 	const clearSubmitError = (name: string) => {
@@ -508,7 +511,7 @@ export function ElicitationFormCard({
 										key={name}
 										name={name}
 										field={field}
-										required={schema.required?.includes(name) ?? false}
+										required={requiredKeys.has(name)}
 										initialValue={Object.hasOwn(defaults, name) ? defaults[name] : undefined}
 										hasSubmitError={invalidFields.has(name)}
 										clearSubmitError={clearSubmitError}
@@ -543,7 +546,8 @@ export function ElicitationFormCard({
 						<ApprovalActionButton
 							variant="primary"
 							data-approval-primary=""
-							disabled={sending}
+							busy={inFlight === "accept"}
+							disabled={inFlight === "decline"}
 							onClick={() => {
 								const form = document.getElementById(formId);
 								if (form instanceof HTMLFormElement) form.requestSubmit();

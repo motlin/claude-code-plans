@@ -32,6 +32,15 @@ function renderCard(onAnswer: (answer: ElicitationAnswer) => Promise<void> = asy
 	).container;
 }
 
+function actionStates() {
+	return [...document.querySelectorAll("[data-approval-card-actions] button")].map((button) => ({
+		text: button.textContent,
+		label: button.getAttribute("aria-label"),
+		busy: button.getAttribute("aria-busy"),
+		disabled: button.hasAttribute("disabled"),
+	}));
+}
+
 describe("ElicitationFormCard", () => {
 	it("draws upstream's heading, message, form, caution and Decline / Submit in order", () => {
 		const container = renderCard();
@@ -79,7 +88,7 @@ describe("ElicitationFormCard", () => {
 		}).toStrictEqual({calls: [], alerts: [true], invalid: "true"});
 	});
 
-	it("submits the parsed answer and holds both buttons while it is sent", () => {
+	it("submits the parsed answer, Submit busy and Decline disabled while it is sent", () => {
 		const onAnswer = vi.fn<(answer: ElicitationAnswer) => Promise<void>>(async () => new Promise<void>(() => {}));
 		renderCard(onAnswer);
 
@@ -89,18 +98,63 @@ describe("ElicitationFormCard", () => {
 		fireEvent.click(screen.getByRole("checkbox", {name: "b"}));
 		fireEvent.click(screen.getByRole("button", {name: "Submit"}));
 
-		expect({
-			calls: onAnswer.mock.calls,
-			disabled: screen
-				.getAllByRole("button")
-				.filter((button) => button.hasAttribute("disabled"))
-				.map((b) => b.textContent),
-		}).toStrictEqual({
+		expect({calls: onAnswer.mock.calls, buttons: actionStates()}).toStrictEqual({
 			calls: [
 				[{action: "accept", content: {username: "ada", count: 2, remember: true, color: "blue", tags: ["b"]}}],
 			],
-			disabled: ["Decline", "Submit"],
+			buttons: [
+				{text: "Decline", label: null, busy: null, disabled: true},
+				{text: "Submit", label: null, busy: "true", disabled: false},
+			],
 		});
+	});
+
+	it("sends an untouched checkbox as false", () => {
+		const onAnswer = vi.fn<(answer: ElicitationAnswer) => Promise<void>>(async () => new Promise<void>(() => {}));
+		renderCard(onAnswer);
+
+		fireEvent.change(screen.getByRole("textbox", {name: "Username"}), {target: {value: "ada"}});
+		fireEvent.click(screen.getByRole("button", {name: "Submit"}));
+
+		expect(onAnswer.mock.calls).toStrictEqual([
+			[{action: "accept", content: {username: "ada", count: 2, remember: false}}],
+		]);
+	});
+
+	it("disables Submit while declining", () => {
+		const onAnswer = vi.fn<(answer: ElicitationAnswer) => Promise<void>>(async () => new Promise<void>(() => {}));
+		renderCard(onAnswer);
+
+		fireEvent.click(screen.getByRole("button", {name: "Decline"}));
+
+		expect(actionStates()).toStrictEqual([
+			{text: "Decline", label: null, busy: null, disabled: true},
+			{text: "Submit", label: null, busy: null, disabled: true},
+		]);
+	});
+
+	it("names an empty server as upstream's unknown server", () => {
+		const {container} = render(
+			<ElicitationFormCard serverName="" message="" schema={schema} fieldNames={[]} onAnswer={async () => {}} />,
+		);
+
+		expect(container.querySelector("[data-approval-card-title]")?.textContent).toBe(
+			"An unknown server requests your input",
+		);
+	});
+
+	it("does not mark a required checkbox required", () => {
+		render(
+			<ElicitationFormCard
+				serverName="s"
+				message=""
+				schema={{type: "object", properties: {agree: {type: "boolean", title: "Agree"}}, required: ["agree"]}}
+				fieldNames={["agree"]}
+				onAnswer={async () => {}}
+			/>,
+		);
+
+		expect(screen.getByRole("checkbox", {name: "Agree"}).getAttribute("aria-required")).toBe(null);
 	});
 
 	it("answers decline from Decline, and re-enables the buttons with the error when the answer fails", async () => {

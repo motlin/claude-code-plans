@@ -24,7 +24,7 @@ import {
 	type PersistentAllowKind,
 } from "../lib/permission-suggestions";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
-import {ApprovalActionButton, ApprovalCardShell} from "./approval-card";
+import {APPROVAL_SENDING_LABEL, ApprovalActionButton, ApprovalCardShell} from "./approval-card";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import {HighlightedCommand} from "./tool-renderers/bash-renderer";
 import {Shortcut} from "./ui/shortcut";
@@ -41,7 +41,8 @@ import {SplitDropdownButton} from "./ui/split-dropdown-button";
  * A decision hides the card at once, with no busy state; a failed answer brings it back with the error.
  * With `sessionId` and `answerKey` the decision also marks the prompt answered for every view,
  * so a remount of the same prompt stays hidden until the mark clears on a failed answer.
- * With `hideOnDecision` false the card stays, disabled, until its parent drops it.
+ * With `hideOnDecision` false the card stays until its parent drops it: the chosen action busy ("Sending…")
+ * and the others disabled, as upstream's held form and link cards.
  * A live arrival fades in over 160ms; a remount or reload of the same prompt (`enterKey`) does not.
  */
 export function PermissionCard({
@@ -87,7 +88,7 @@ export function PermissionCard({
 	/** The prompt's answer key (its tool call, else its notification id), marked answered on a decision. */
 	answerKey?: string | undefined;
 	/**
-	 * False keeps the card up, disabled, after a decision: an elicitation's card
+	 * False keeps the card up, its chosen action busy, after a decision: an elicitation's card
 	 * is cleared by its `ElicitationResult`, since the CLI can refuse an early Enter.
 	 */
 	hideOnDecision?: boolean;
@@ -97,7 +98,8 @@ export function PermissionCard({
 	useEffect(() => {
 		if (enterKey !== undefined) markApprovalEnterSeen(enterKey);
 	}, [enterKey]);
-	const [decided, setDecided] = useState(false);
+	const [sent, setSent] = useState<PermissionDecision | null>(null);
+	const decided = sent !== null;
 	const [error, setError] = useState<string | null>(null);
 	// An elicitation's card stays up after a decision, so only a hiding card marks its prompt answered.
 	const markSession = hideOnDecision ? sessionId : undefined;
@@ -108,7 +110,7 @@ export function PermissionCard({
 	const decide = useCallback(
 		async (decision: PermissionDecision) => {
 			setError(null);
-			setDecided(true);
+			setSent(decision);
 			if (markSession !== undefined && markKey !== undefined) markApprovalAnswered(markSession, markKey);
 			if (sessionId !== undefined && answerKey !== undefined) holdAnswered(sessionId, answerKey);
 			try {
@@ -119,7 +121,7 @@ export function PermissionCard({
 				if (markSession !== undefined && markKey !== undefined) clearApprovalAnswered(markSession, markKey);
 				if (sessionId !== undefined) releaseAnswered(sessionId);
 				setError(err instanceof Error ? err.message : "Failed to answer the permission request");
-				setDecided(false);
+				setSent(null);
 			}
 		},
 		[onDecision, markSession, markKey, sessionId, answerKey],
@@ -191,7 +193,9 @@ export function PermissionCard({
 						<ApprovalActionButton
 							variant="secondary"
 							aria-keyshortcuts="Escape"
-							disabled={!enabled}
+							busy={sent === "deny"}
+							busyLabel={APPROVAL_SENDING_LABEL}
+							disabled={!enabled && sent !== "deny"}
 							onClick={() => void decide("deny")}
 						>
 							<span data-approval-digit="1">Deny</span>
@@ -203,7 +207,9 @@ export function PermissionCard({
 								variant="primary"
 								data-approval-primary=""
 								aria-keyshortcuts={toAriaKeyShortcuts("cmd+enter", isMac)}
-								disabled={!enabled}
+								busy={sent === "allow"}
+								busyLabel={APPROVAL_SENDING_LABEL}
+								disabled={!enabled && sent !== "allow"}
 								onClick={() => void decide("allow")}
 							>
 								<span data-approval-digit="2">Allow once</span>
@@ -251,6 +257,7 @@ export function PermissionCard({
 											onPrimaryClick: () => void decide("allow"),
 										})}
 								menuLabel="More allow options"
+								busy={sent === "allow" || sent === "always"}
 								disabled={!enabled}
 							/>
 						)}

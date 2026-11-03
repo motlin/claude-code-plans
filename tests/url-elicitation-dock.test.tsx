@@ -32,7 +32,7 @@ describe("UrlElicitationDock", () => {
 			</QueryClientProvider>,
 		);
 
-		const open = screen.getByRole("button", {name: "Open"});
+		const open = screen.getByRole("button", {name: "Open link"});
 		await waitFor(() => {
 			expect(open.hasAttribute("disabled")).toStrictEqual(false);
 		});
