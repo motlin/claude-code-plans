@@ -1,14 +1,24 @@
 import {PreviewCard} from "@base-ui/react/preview-card";
 import {useContext} from "react";
 
+import {useFizzyLake} from "../lib/fizzy-lake";
 import {SlashCommandsContext} from "./slash-commands-context";
 import {UserPlainText} from "./user-plain-text";
 
 const CHIP_CLASS =
 	"group relative inline-flex items-baseline rounded-r5 text-upstream-accent cursor-pointer align-baseline";
 
-const HIGHLIGHT_CLASS =
-	"pointer-events-none absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 opacity-0 [@media(hover:hover)]:group-hover:opacity-100 group-data-[popup-open]:opacity-100 bg-upstream-accent-pressed";
+const HIGHLIGHT_BASE_CLASS = "pointer-events-none absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5";
+
+/*
+ * Upstream `dn`'s highlight. Under fizzy-lake `color` (its `stacks:` variants) the hover is the
+ * translucent 6% `bg-accent-layer`, the open card's 12% `bg-accent`, and both stacked (as a
+ * gradient) while the open chip is still hovered.
+ */
+const HIGHLIGHT_CLASS = {
+	fizzy: `${HIGHLIGHT_BASE_CLASS} [@media(hover:hover)]:group-hover:bg-upstream-accent-layer group-data-[popup-open]:bg-upstream-accent-pressed [@media(hover:hover)]:group-data-[popup-open]:group-hover:bg-[linear-gradient(var(--upstream-accent-layer),var(--upstream-accent-layer))]`,
+	base: `${HIGHLIGHT_BASE_CLASS} opacity-0 [@media(hover:hover)]:group-hover:opacity-100 group-data-[popup-open]:opacity-100 bg-upstream-accent-pressed`,
+};
 
 export const SLASH_COMMAND_CARD_CLASS =
 	"flex w-[280px] max-w-[calc(100vw-16px)] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none";
@@ -43,6 +53,7 @@ export function SlashCommandCardBody({name, description}: {name: string; descrip
 function SlashCommandChip({name}: {name: string}) {
 	const commands = useContext(SlashCommandsContext);
 	const description = commands.find((command) => command.name === name)?.description;
+	const look = useFizzyLake("color") ? "fizzy" : "base";
 
 	return (
 		<PreviewCard.Root>
@@ -52,7 +63,7 @@ function SlashCommandChip({name}: {name: string}) {
 				data-slash-command-chip=""
 				className={CHIP_CLASS}
 			>
-				<span aria-hidden="true" data-slash-command-highlight="" className={HIGHLIGHT_CLASS} />
+				<span aria-hidden="true" data-slash-command-highlight="" className={HIGHLIGHT_CLASS[look]} />
 				<span
 					aria-hidden="true"
 					data-slash-command-slash=""

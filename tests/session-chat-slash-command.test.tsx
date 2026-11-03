@@ -3,6 +3,7 @@
 import {act, cleanup, fireEvent, render, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
+import {FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 import type {SlashCommand} from "../src/lib/slash-commands";
 import type {TranscriptMode} from "../src/lib/transcript-mode";
 import {processTranscript} from "../src/lib/transcript";
@@ -66,6 +67,8 @@ function renderRecords(records: unknown[], options: RenderOptions = {}): HTMLEle
 		/>,
 	).container;
 }
+
+const WITHOUT_FIZZY_COLOR: readonly FizzyLakePart[] = ["panels", "type"];
 
 const LOOP_PROMPT = {
 	type: "user",
@@ -253,7 +256,7 @@ describe("SessionChat slash-command chip", () => {
 		}).toStrictEqual({before: null, after: ""});
 	});
 
-	it("draws the hover highlight as an absolute bg-accent span behind a 13px/500 half-opacity slash", () => {
+	it("draws the fizzy-lake hover highlight as an absolute 6% accent layer, 12% accent while the card is open, behind a half-opacity slash", () => {
 		const container = renderRecords([LOOP_PROMPT]);
 		const chip = container.querySelector("[data-slash-command-chip]")!;
 
@@ -262,8 +265,29 @@ describe("SessionChat slash-command chip", () => {
 			slash: chip.querySelector("[data-slash-command-slash]")?.className ?? null,
 		}).toStrictEqual({
 			highlight:
-				"pointer-events-none absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 opacity-0 [@media(hover:hover)]:group-hover:opacity-100 group-data-[popup-open]:opacity-100 bg-upstream-accent-pressed",
+				"pointer-events-none absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 [@media(hover:hover)]:group-hover:bg-upstream-accent-layer group-data-[popup-open]:bg-upstream-accent-pressed [@media(hover:hover)]:group-data-[popup-open]:group-hover:bg-[linear-gradient(var(--upstream-accent-layer),var(--upstream-accent-layer))]",
 			slash: "relative inline-block w-2 text-[13px] font-control opacity-50",
 		});
+	});
+
+	it("keeps the pre-rollout opaque bg-accent hover highlight without fizzy-lake color", () => {
+		const {lines, toolResultMap} = processTranscript([LOOP_PROMPT]);
+		const {container} = render(
+			<FizzyLakeContext.Provider value={WITHOUT_FIZZY_COLOR}>
+				<SessionChat
+					sessionId="test-session"
+					lines={lines}
+					toolResultMap={toolResultMap}
+					showCompactSummaries={true}
+					showTranscriptOnly={true}
+					shouldScrollToEnd={false}
+					transcriptMode="normal"
+				/>
+			</FizzyLakeContext.Provider>,
+		);
+
+		expect(container.querySelector("[data-slash-command-highlight]")?.className ?? null).toBe(
+			"pointer-events-none absolute -inset-y-0.5 -start-0.5 -end-1 rounded-r5 opacity-0 [@media(hover:hover)]:group-hover:opacity-100 group-data-[popup-open]:opacity-100 bg-upstream-accent-pressed",
+		);
 	});
 });
