@@ -435,6 +435,13 @@ const TASK_NOTICE = {
 	},
 };
 
+/** The same notification queued while the turn ran, which the CLI writes as a queued_command attachment. */
+const QUEUED_TASK_NOTICE = {
+	type: "attachment",
+	uuid: "n-queued",
+	attachment: {type: "queued_command", prompt: TASK_NOTICE.message.content, commandMode: "task-notification"},
+};
+
 /** Hello2's last turn (session_01KwfEs1RD2zvBHuES114CNb): the plan file rewritten, then a stopped ExitPlanMode. */
 const HELLO2_LAST_TURN: TurnStep[] = [
 	{
@@ -626,6 +633,33 @@ describe("collectTurnChanges", () => {
 			).toStrictEqual([{turn: "t-u", files: ["/repo/a.ts"], sole: false}]);
 		});
 
+		it("keeps the card when the notification arrives as a queued_command attachment", () => {
+			const {lines, toolResultMap} = processTranscript(
+				[...turnRecords([editA("e1")]), QUEUED_TASK_NOTICE, ...turnRecords([{text: "ok"}], "n").slice(1)],
+				0,
+			);
+			expect(
+				[...collectTurnChanges(lines, toolResultMap).values()].map((change) => ({
+					turn: change.turnUuid,
+					files: change.files.map((file) => file.path),
+					sole: change.soleVisibleEditToolRow,
+				})),
+			).toStrictEqual([{turn: "t-u", files: ["/repo/a.ts"], sole: false}]);
+		});
+
+		it("drops the card in Verbose, which draws the notification as its own row and the edit bare", () => {
+			const {lines, toolResultMap} = processTranscript(
+				[
+					...turnRecords([editA("e1")]),
+					TASK_NOTICE,
+					QUEUED_TASK_NOTICE,
+					...turnRecords([{text: "ok"}], "n").slice(1),
+				],
+				0,
+			);
+			expect([...collectTurnChanges(lines, toolResultMap, {verbose: true}).values()]).toStrictEqual([]);
+		});
+
 		it("still drops the card when prose comes between the edit and the notification", () => {
 			const {lines, toolResultMap} = processTranscript(
 				[
@@ -702,6 +736,35 @@ describe("SessionChat end-of-turn card", () => {
 				(row) => row.textContent,
 			),
 		}).toStrictEqual({cards: 1, rows: ["Edited a.ts, finished a background command+1−11 added, 1 removed"]});
+	});
+
+	it("draws no card in Verbose, where the notification is its own row and the sole edit stays bare", () => {
+		const {lines, toolResultMap} = processTranscript(
+			[
+				...turnRecords([
+					{
+						tool: "Edit",
+						id: "e1",
+						input: {file_path: "/repo/a.ts", old_string: "old", new_string: "new"},
+					},
+				]),
+				TASK_NOTICE,
+				...turnRecords([{text: "ok"}], "n").slice(1),
+			],
+			0,
+		);
+		const {container} = render(
+			<SettingsProvider>
+				<SessionChat
+					sessionId="test-session"
+					lines={lines}
+					toolResultMap={toolResultMap}
+					shouldScrollToEnd={false}
+					transcriptMode="verbose"
+				/>
+			</SettingsProvider>,
+		);
+		expect(container.querySelectorAll("[data-turn-changes-card]").length).toBe(0);
 	});
 
 	it("still shows Hello2's +4 −4 on the turn's row after the card is dropped", () => {

@@ -2582,6 +2582,7 @@ function buildSessionListEntries(
 		showTools: renderProps.showTools,
 		showThinking: renderProps.showThinking,
 		turnInProgress,
+		verbose,
 	});
 	const undoAnchor = archived ? undefined : lastTurnChangesAnchor(lines, turnChangesByLine);
 	const entries: PendingSessionListEntry[] = [];

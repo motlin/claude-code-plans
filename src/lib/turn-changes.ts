@@ -4,6 +4,7 @@ import {parseTaskNotification} from "./background-tasks";
 import type {ToolResultInfo} from "./sessions";
 import {diffStatsForCall, type ToolCallLike} from "./session-utils";
 import {defined} from "./defined";
+import {asRecord} from "./narrow";
 import {rendersBare, splitRuns, type RunCall} from "./tool-runs";
 import type {MessageSessionLine, SessionLine} from "./transcript";
 
@@ -136,12 +137,28 @@ function userText(line: MessageSessionLine): string {
 		.trim();
 }
 
+/** The task notification a queued_command attachment carries: one queued while the turn ran. */
+function isQueuedTaskNotification(attachmentJson: string): boolean {
+	let attachment: unknown;
+	try {
+		attachment = JSON.parse(attachmentJson);
+	} catch {
+		return false;
+	}
+	const record = asRecord(attachment);
+	const prompt = record?.["prompt"];
+	return (
+		record?.["type"] === "queued_command" && typeof prompt === "string" && parseTaskNotification(prompt) !== null
+	);
+}
+
 /**
- * A user line the transcript folds into a neighbouring tool run as a notice: a task notification,
- * stop-hook feedback, or a peer agent's message. Upstream `gN` draws a run carrying one as a
+ * A line the transcript folds into a neighbouring tool run as a notice: a task notification (a user
+ * line, or a queued_command attachment), stop-hook feedback, or a peer agent's message. Upstream `gN` draws a run carrying one as a
  * summary, never a bare row.
  */
 function isFoldedNoticeLine(line: SessionLine): boolean {
+	if (line.type === "attachment") return isQueuedTaskNotification(line.attachmentJson);
 	if (line.type !== "user") return false;
 	const text = userText(line);
 	if (line.turnOrigin === "task_notification" || parseTaskNotification(text) !== null) return true;
@@ -171,6 +188,8 @@ interface TurnAccumulator {
 export interface CollectTurnChangesOptions {
 	showTools?: boolean;
 	showThinking?: boolean;
+	/** Verbose draws each notice as its own row, so none folds into a tool run. */
+	verbose?: boolean;
 	/** The transcript's trailing turn hasn't ended, and upstream draws no card until it does. */
 	turnInProgress?: boolean;
 }
@@ -222,7 +241,7 @@ function turnPublishedArtifact(items: readonly TurnCall[][]): boolean {
 export function collectTurnChanges(
 	lines: readonly SessionLine[],
 	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
-	{showTools = true, showThinking = false, turnInProgress = false}: CollectTurnChangesOptions = {},
+	{showTools = true, showThinking = false, turnInProgress = false, verbose = false}: CollectTurnChangesOptions = {},
 ): Map<number, TurnChanges> {
 	const result = new Map<number, TurnChanges>();
 	let turn = newTurn();
@@ -241,7 +260,7 @@ export function collectTurnChanges(
 
 	for (const line of lines) {
 		// A notice folds into the run its last call sits in, unless prose has since opened a new item.
-		if (isFoldedNoticeLine(line)) {
+		if (!verbose && isFoldedNoticeLine(line)) {
 			const last = turn.items.at(-1)?.at(-1);
 			if (last !== undefined) last.hasTaskEvents = true;
 		}
