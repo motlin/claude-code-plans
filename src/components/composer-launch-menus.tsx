@@ -214,12 +214,14 @@ export function ModelMenu({
 	const primary = primaryModelMenuValue(current);
 	const level = EffortLevelSchema.safeParse(currentEffort);
 	const effortLabel = level.success ? effortLevelShortLabels[level.data] : currentEffort;
+	/** Upstream's trigger has no effort word (nor Max's warning) for a model with no effort levels. */
+	const effortShown = effortLevels.length > 0;
 	const modelKeys = useShortcutKeys("open_model_menu").keys;
 	const fastShown = fastMode && current !== undefined && fastModeSupported(current);
 	const trigger = (
 		<MenuTrigger
 			data-cds="ModelSelector"
-			aria-label={`Model: ${currentLabel}${fastShown ? " Fast" : ""} ${effortLabel}`}
+			aria-label={`Model: ${currentLabel}${fastShown ? " Fast" : ""}${effortShown ? ` ${effortLabel}` : ""}`}
 			className={CHIN_TRIGGER_CLASS}
 		>
 			{settingsOverride === null ? (
@@ -235,8 +237,8 @@ export function ModelMenu({
 					{" Fast"}
 				</span>
 			)}
-			<span className={EFFORT_LABEL_CLASS}> {effortLabel}</span>
-			{level.success && level.data === "max" && (
+			{effortShown && <span className={EFFORT_LABEL_CLASS}> {effortLabel}</span>}
+			{effortShown && level.success && level.data === "max" && (
 				<TriangleAlert
 					data-effort-warning-icon=""
 					aria-hidden="true"

@@ -1415,6 +1415,23 @@ describe("Composer chin tooltips and contrast", () => {
 		expect(document.querySelector("[data-effort-warning-icon]")).toBeNull();
 	});
 
+	it("drops the effort word and Max warning for a model with no effort levels", () => {
+		renderComposer({
+			chin: {
+				...CHIN,
+				model: "Haiku 4.5",
+				modelId: "claude-haiku-4-5-20251001",
+				effort: {id: "max", label: "Max"},
+			},
+		});
+		const trigger = screen.getByRole("button", {name: "Model: Haiku 4.5"});
+
+		expect({
+			text: trigger.textContent,
+			warning: document.querySelector("[data-effort-warning-icon]"),
+		}).toStrictEqual({text: "Haiku 4.5", warning: null});
+	});
+
 	it("shows the Model ⇧⌘I tooltip on the home bar's model trigger", () => {
 		vi.useFakeTimers();
 		try {
