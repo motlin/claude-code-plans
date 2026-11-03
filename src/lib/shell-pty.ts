@@ -22,6 +22,7 @@ import {getSessionDirectory} from "./db/queries";
 import type {TerminalObserverSocket} from "./herdr/terminal-observer";
 import {decodeTerminalText, encodeTerminalText, parseShellClientFrame} from "./herdr/terminal-protocol";
 import {rejectCrossSite} from "./same-origin-guard";
+import {isLoopbackAddress} from "./loopback-guard";
 import {nonEmpty} from "./non-empty";
 
 export interface PtyProcess {
@@ -250,17 +251,6 @@ export function isForegroundBusy(pid: number): boolean {
 	const [foreground, own] = output.trim().split(/\s+/).map(Number);
 	if (foreground === undefined || own === undefined) return false;
 	return Number.isInteger(foreground) && foreground > 0 && foreground !== own;
-}
-
-const LOOPBACK_ADDRESS = /^(?:127(?:\.\d{1,3}){3}|::1|::ffff:127(?:\.\d{1,3}){3})$/i;
-
-function isLoopbackAddress(address: string): boolean {
-	return LOOPBACK_ADDRESS.test(address.trim());
-}
-
-/** The WebSocket peer check: fails closed when the runtime gives no address. */
-export function isLoopbackPeer(address: string | undefined): boolean {
-	return address !== undefined && isLoopbackAddress(address);
 }
 
 const LOCAL_ONLY = "Shell tabs are only available from this computer";

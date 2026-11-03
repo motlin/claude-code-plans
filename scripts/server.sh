@@ -203,6 +203,9 @@ start_server() {
     mkdir -p "$(dirname "$LOG_FILE")"
     (
         cd "$PROJECT_DIR"
+        # No HOST: one socket cannot bind both 127.0.0.1 (Caddy's upstream) and
+        # [::1] (local browsers), so Nitro listens on every interface and
+        # server/middleware/loopback-only.ts 403s any non-loopback peer.
         # `exec` so the launched process IS the server, not a wrapper shell
         # that would leave an orphan when killed.
         PORT="$PORT" nohup bash -c "exec $cmd" >>"$LOG_FILE" 2>&1 &

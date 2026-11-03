@@ -7,6 +7,7 @@ import {
 	type TerminalObserverSocket,
 } from "../../../../src/lib/terminal-host";
 import {hmrDispose} from "../../../../src/lib/hmr-persist";
+import {isLoopbackPeer, LOCAL_ONLY_CLOSE_REASON} from "../../../../src/lib/loopback-guard";
 
 const QuerySchema = z.object({
 	sessionId: z.string().min(1),
@@ -46,6 +47,10 @@ export default defineWebSocketHandler({
 		return {context: query.data};
 	},
 	async open(peer) {
+		if (!isLoopbackPeer(peer.remoteAddress)) {
+			peer.close(1008, LOCAL_ONLY_CLOSE_REASON);
+			return;
+		}
 		const query = QuerySchema.parse(peer.context);
 		const connection: Connection = {
 			close: () => {

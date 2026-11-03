@@ -1,11 +1,7 @@
 import {defineWebSocketHandler} from "nitro";
 import {z} from "zod";
-import {
-	authorizeShellSocket,
-	getShellRegistry,
-	isLoopbackPeer,
-	type ShellConnection,
-} from "../../../../src/lib/shell-pty";
+import {authorizeShellSocket, getShellRegistry, type ShellConnection} from "../../../../src/lib/shell-pty";
+import {isLoopbackPeer} from "../../../../src/lib/loopback-guard";
 
 const PtyKeySchema = z.uuid();
 

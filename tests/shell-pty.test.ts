@@ -16,12 +16,12 @@ import {
 	handleCreateShellRequest,
 	handleShellBusyRequest,
 	isForegroundBusy,
-	isLoopbackPeer,
 	type PtyProcess,
 	type ShellRegistry,
 	type ShellRegistryDependencies,
 	type SpawnPty,
 } from "../src/lib/shell-pty";
+import {isLoopbackPeer} from "../src/lib/loopback-guard";
 
 class FakePty implements PtyProcess {
 	constructor(readonly pid = 4242) {}

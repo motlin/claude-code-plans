@@ -2,6 +2,7 @@ import {defineWebSocketHandler} from "nitro";
 import {z} from "zod";
 import {getTerminalHost, type TerminalObserverSocket} from "../../../../src/lib/terminal-host";
 import {hmrDispose} from "../../../../src/lib/hmr-persist";
+import {isLoopbackPeer, LOCAL_ONLY_CLOSE_REASON} from "../../../../src/lib/loopback-guard";
 import {rejectCrossSite} from "../../../../src/lib/same-origin-guard";
 
 const QuerySchema = z.object({
@@ -37,6 +38,10 @@ export default defineWebSocketHandler({
 		return {context: query.data};
 	},
 	async open(peer) {
+		if (!isLoopbackPeer(peer.remoteAddress)) {
+			peer.close(1008, LOCAL_ONLY_CLOSE_REASON);
+			return;
+		}
 		const query = QuerySchema.parse(peer.context);
 		const connection: Connection = {
 			close: () => {
