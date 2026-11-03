@@ -194,6 +194,74 @@ const LINT_GROUPS: BackgroundTaskGroups = {
 	finished: [],
 };
 
+describe("BackgroundTasksList artifact links", () => {
+	const ARTIFACT_GROUPS: BackgroundTaskGroups = {
+		running: [
+			task({
+				id: "afab1publish",
+				kind: "agent",
+				description: "Publish artifact https://claude.ai/code/artifact/fab1 now",
+			}),
+			task({
+				id: "bfab1publish",
+				description: "Publish artifact https://claude.ai/code/artifact/fab2",
+				command: "true",
+			}),
+		],
+		finished: [],
+	};
+
+	function titleOf(id: string) {
+		const title = document.querySelector(`li[data-task-id="${id}"] button[data-background-task] .truncate`);
+		return {
+			text: title?.textContent,
+			links: [...(title?.querySelectorAll("a") ?? [])].map((link) => ({
+				text: link.textContent,
+				href: link.getAttribute("href"),
+				target: link.getAttribute("target"),
+				rel: link.getAttribute("rel"),
+				artifact: link.getAttribute("data-artifact-link"),
+			})),
+		};
+	}
+
+	it("links the word artifact before an artifact URL in a non-bash card title, leaving bash titles plain", () => {
+		render(<BackgroundTasksList groups={ARTIFACT_GROUPS} />);
+
+		expect({agent: titleOf("afab1publish"), bash: titleOf("bfab1publish")}).toStrictEqual({
+			agent: {
+				text: "Publish artifact now",
+				links: [
+					{
+						text: "artifact",
+						href: "https://claude.ai/code/artifact/fab1",
+						target: "_blank",
+						rel: "noreferrer",
+						artifact: "",
+					},
+				],
+			},
+			bash: {text: "Publish artifact https://claude.ai/code/artifact/fab2", links: []},
+		});
+	});
+
+	it("opening a card title's artifact link does not toggle the card, while its plain text still does", () => {
+		render(<BackgroundTasksList groups={ARTIFACT_GROUPS} />);
+		const card = screen.getByRole("button", {
+			name: "Background task: Publish artifact https://claude.ai/code/artifact/fab1 now",
+		});
+
+		fireEvent.click(screen.getByRole("link", {name: "artifact"}));
+		const afterLink = card.getAttribute("aria-expanded");
+		fireEvent.click(card.querySelector(".truncate") ?? card);
+
+		expect({afterLink, afterTitle: card.getAttribute("aria-expanded")}).toStrictEqual({
+			afterLink: "false",
+			afterTitle: "true",
+		});
+	});
+});
+
 describe("BackgroundTasksList touch summary", () => {
 	it("shows a failed or stopped task's summary inline on coarse pointers only, and not for completed tasks", () => {
 		const groups: BackgroundTaskGroups = {

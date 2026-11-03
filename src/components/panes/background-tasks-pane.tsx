@@ -19,6 +19,8 @@ import {HighlightedCommand} from "../tool-renderers/bash-renderer";
 import {AnsiText} from "../tool-renderers/shared";
 import {Tooltip} from "../ui/tooltip";
 import {nonEmpty} from "../../lib/non-empty";
+import {taskDescriptionSegments} from "../../lib/task-description-segments";
+import {TaskDescriptionLinks} from "../task-event-run-row";
 import {WorkflowTaskCard} from "./workflow-task-card";
 
 const NO_WORKFLOW_RUNS: readonly SessionWorkflowRun[] = [];
@@ -36,6 +38,15 @@ const MISSING_COPY = "Output no longer available";
 
 function taskTitle(task: BackgroundTask): string {
 	return nonEmpty(task.description) ?? nonEmpty(task.command) ?? task.id;
+}
+
+/** The card title, with an artifact word linked to its URL as the transcript's task-event rows do. */
+function TaskTitle({task, title}: {task: BackgroundTask; title: string}) {
+	const segments =
+		title === task.description
+			? taskDescriptionSegments(title, task.kind === "bash" ? "local_bash" : task.kind)
+			: undefined;
+	return segments === undefined ? title : <TaskDescriptionLinks segments={segments} />;
 }
 
 function OutputRegion({title, output}: {title: string; output: string}) {
@@ -112,11 +123,18 @@ function BackgroundTaskCard({
 				aria-label={`Background task: ${title}`}
 				aria-expanded={expanded}
 				aria-controls={detailsId}
-				onClick={onToggle}
+				onClick={(event) => {
+					// A title's artifact link opens its artifact without toggling the card.
+					if (event.target instanceof Element && event.target.closest("a[data-artifact-link]") !== null)
+						return;
+					onToggle();
+				}}
 				className="flex w-full min-w-0 cursor-pointer flex-col text-left"
 			>
 				<span className="flex min-w-0 items-center gap-0.5 text-footnote text-ink-muted">
-					<span className="truncate">{title}</span>
+					<span className="truncate">
+						<TaskTitle task={task} title={title} />
+					</span>
 					<ChevronRight
 						aria-hidden="true"
 						className={`size-3.5 shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`}
