@@ -1,8 +1,10 @@
 import {
 	cloneElement,
+	createContext,
 	type CSSProperties,
 	type PointerEvent,
 	type ReactElement,
+	type ReactNode,
 	useEffect,
 	useId,
 	useContext,
@@ -48,6 +50,34 @@ function anchorClass(className: string | undefined): string {
 	return ownDisplay ? `relative ${className}` : `relative inline-flex ${className}`;
 }
 
+/** A group's single open tip: opening another tip in the group closes it. */
+interface TooltipGroupValue {
+	claim: (hide: () => void) => void;
+	release: (hide: () => void) => void;
+}
+
+const TooltipGroupContext = createContext<TooltipGroupValue | null>(null);
+
+/**
+ * Keeps at most one tooltip under it open, as Base UI's delay group does: a nested trigger's tip (a StackedMeter
+ * segment) replaces its parent's (the whole meter) instead of drawing over it.
+ */
+export function TooltipGroup({children}: {children: ReactNode}) {
+	const [value] = useState<TooltipGroupValue>(() => {
+		let current: (() => void) | null = null;
+		return {
+			claim: (hide) => {
+				if (current !== null && current !== hide) current();
+				current = hide;
+			},
+			release: (hide) => {
+				if (current === hide) current = null;
+			},
+		};
+	});
+	return <TooltipGroupContext.Provider value={value}>{children}</TooltipGroupContext.Provider>;
+}
+
 /** One action row of a multi-action tooltip: its label and keyboard shortcut. */
 interface TooltipRow {
 	content: string;
@@ -91,6 +121,7 @@ export function Tooltip({
 	maxWidth,
 	lineClamp = false,
 	className,
+	style,
 	children,
 }: {
 	content: string;
@@ -153,12 +184,20 @@ export function Tooltip({
 	/** Overrides the box's max width, e.g. `max-w-[360px]` for a multiline @ mention path. */
 	maxWidth?: string | undefined;
 	className?: string;
+	/** Inline style for the anchor, e.g. a StackedMeter segment's position and width. */
+	style?: CSSProperties | undefined;
 	children: ReactElement<{"aria-describedby"?: string; "data-popup-open"?: string}>;
 }) {
 	const secondaryRows: readonly TooltipRow[] =
 		secondary === undefined ? [] : "content" in secondary ? [secondary] : secondary;
 	const secondaryKey = secondaryRows.map((row) => `${row.content}\u0000${row.shortcut}`).join("\u0001");
 	const inheritedPortal = useContext(TooltipPortalContext);
+	const group = useContext(TooltipGroupContext);
+	/** A stable closer for the group to call, since `hide` is redefined each render. */
+	const hideRef = useRef<() => void>(() => {});
+	const [groupHide] = useState(() => () => {
+		hideRef.current();
+	});
 	const portal = portalProp ?? inheritedPortal;
 	const id = useId();
 	const [open, setOpen] = useState(false);
@@ -231,7 +270,7 @@ export function Tooltip({
 		const observer = new MutationObserver(() => {
 			if (!popupOpen(anchor)) return;
 			if (suppressAfterPopup) suppressed.current = true;
-			hide();
+			hideRef.current();
 		});
 		observer.observe(anchor, {attributes: true, attributeFilter: ["aria-expanded"], subtree: true});
 		return () => {
@@ -256,6 +295,7 @@ export function Tooltip({
 				setAnchorBox({left, top, width, height});
 			}
 			if (byFocus) setOpenedByFocus(true);
+			group?.claim(groupHide);
 			setOpen(true);
 		};
 		if (openDelay === 0) reveal();
@@ -268,9 +308,12 @@ export function Tooltip({
 
 	function hide() {
 		clearTimeout(timer.current);
+		group?.release(groupHide);
 		setOpen(false);
 		setOpenedByFocus(false);
 	}
+
+	hideRef.current = hide;
 
 	/** Leaving the anchor lifts the suppression, unless the popup is still open. */
 	function leave() {
@@ -352,6 +395,7 @@ export function Tooltip({
 		<span
 			ref={anchorRef}
 			className={anchorClass(className)}
+			style={style}
 			onPointerEnter={(event) => {
 				if (trackCursor === "y") trackPointer(event);
 				show();

@@ -288,7 +288,7 @@ function ContextUpdated({
 }
 
 /** Upstream's rail Context card: "N% used" over the token summary, a 4px meter, and when the usage was last updated. */
-function contextCard(inputs: SessionRailInputs): RailCard {
+function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSummary[]): RailCard {
 	const {usage, working, breakdown} = inputs;
 	if (breakdown !== null) {
 		const liveTokens = usage?.contextTokens ?? null;
@@ -297,7 +297,12 @@ function contextCard(inputs: SessionRailInputs): RailCard {
 			rollupPct: Math.min(100, Math.round(buildContextLegend(breakdown, liveTokens).usedPct)),
 			body: (
 				<div className="flex flex-col">
-					<ContextBreakdownBody breakdown={breakdown} liveTokens={liveTokens} homeRoot={inputs.homeRoot} />
+					<ContextBreakdownBody
+						breakdown={breakdown}
+						liveTokens={liveTokens}
+						homeRoot={inputs.homeRoot}
+						mcpServers={connectors}
+					/>
 					<ContextUpdated updatedAt={breakdown.fetchedAt} working={working} source={breakdown.source} />
 				</div>
 			),
@@ -342,7 +347,15 @@ function contextCard(inputs: SessionRailInputs): RailCard {
 						<div className="h-full bg-accent-100 transition-[width]" style={{width: `${percent}%`}} />
 					</div>
 				</div>
-				{usage.updatedAt !== null && <ContextUpdated updatedAt={usage.updatedAt} working={working} />}
+				{/* Upstream's window-only state: no Last updated footer, which needs a breakdown. */}
+				{!working && (
+					<div
+						data-rail-context-hint=""
+						className="mt-1 flex min-h-6 items-center px-1 pb-1 text-[12px]/[15px] text-secondary"
+					>
+						Send a message to see the breakdown.
+					</div>
+				)}
 			</div>
 		),
 	};
@@ -718,14 +731,15 @@ export function SessionRailCards({inputs}: {inputs: SessionRailInputs}) {
 		...sessionDiffQueryOptions(inputs.sessionId, "uncommitted"),
 		enabled: inputs.cwd !== null,
 	}).data?.stats;
+	const connectors = sessionConnectors(mcpServers ?? [], inputs.cwd);
 	const cards = [
 		{
 			id: "environment",
 			...(inputs.gitBranch === null ? {} : {summary: inputs.gitBranch}),
 			body: <EnvironmentBody inputs={inputs} />,
 		} satisfies RailCard,
-		contextCard(inputs),
-		connectorsCard(sessionConnectors(mcpServers ?? [], inputs.cwd)),
+		contextCard(inputs, connectors),
+		connectorsCard(connectors),
 		outputsCard(inputs),
 		changesCard(inputs, diff ?? null),
 		serversCard(devServers ?? []),

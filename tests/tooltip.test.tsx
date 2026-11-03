@@ -6,7 +6,7 @@ import {resolve} from "node:path";
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {Tooltip} from "../src/components/ui/tooltip";
+import {Tooltip, TooltipGroup} from "../src/components/ui/tooltip";
 import {TOOLTIP_CLASS} from "../src/components/ui/tooltip-classes";
 
 const globalsCss = readFileSync(resolve(__dirname, "..", "src", "styles", "globals.css"), "utf8");
@@ -480,5 +480,43 @@ describe("tooltip click-to-open (upstream's receipt Tooltip, closeOnClick false 
 			hovered: "Copy",
 			open: false,
 		});
+	});
+});
+
+describe("tooltip group", () => {
+	it("keeps one tip open at a time, so a nested trigger's tip replaces its parent's (Base UI's delay group)", () => {
+		vi.useFakeTimers();
+		render(
+			<TooltipGroup>
+				<Tooltip content="Whole meter" className="block">
+					<div data-testid="outer">
+						<Tooltip content="One segment">
+							<span data-testid="inner" />
+						</Tooltip>
+					</div>
+				</Tooltip>
+			</TooltipGroup>,
+		);
+
+		fireEvent.pointerEnter(screen.getByTestId("inner"));
+		act(() => {
+			vi.advanceTimersByTime(300);
+		});
+		const nested = screen.getAllByRole("tooltip").map((tip) => tip.textContent);
+		fireEvent.pointerLeave(screen.getByTestId("inner").parentElement!);
+		fireEvent.focus(screen.getByTestId("outer"));
+		expect({nested, focused: screen.getAllByRole("tooltip").map((tip) => tip.textContent)}).toStrictEqual({
+			nested: ["One segment"],
+			focused: ["Whole meter"],
+		});
+	});
+
+	it("passes a style to the anchor", () => {
+		const {container} = render(
+			<Tooltip content="Segment" className="absolute! inset-y-0" style={{insetInlineStart: "calc(2% + 1px)"}}>
+				<span />
+			</Tooltip>,
+		);
+		expect(container.firstElementChild?.getAttribute("style")).toBe("inset-inline-start: calc(2% + 1px);");
 	});
 });

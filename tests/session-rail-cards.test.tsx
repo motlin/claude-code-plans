@@ -3,6 +3,7 @@
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import {useState} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {
@@ -21,6 +22,7 @@ import {sessionDiffQueryOptions} from "../src/lib/api/session-diff";
 import {sessionDevServersQueryOptions, sessionOpenInQueryOptions} from "../src/lib/api/sessions";
 import type {BackgroundTask} from "../src/lib/background-tasks";
 import type {ContextBreakdown} from "../src/lib/context-breakdown";
+import {toConnectorSlug} from "../src/lib/customize/mcp-tool-permissions";
 import {DEFAULT_RAIL_SECTIONS_STATE, RAIL_SECTIONS_STORAGE_KEY} from "../src/lib/session-rail-store";
 import {installLocalStorage} from "./fake-storage";
 
@@ -207,11 +209,17 @@ async function renderCards(
 	const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	prepare(client);
 	const streamDropStore = createStreamDropStore(stream);
+	let setInputs: (next: SessionRailInputs) => void = () => {};
+	function Cards() {
+		const [current, set] = useState(inputs);
+		setInputs = set;
+		return <SessionRailCards inputs={current} />;
+	}
 	const rootRoute = createRootRoute({
 		component: () => (
 			<TileHost sessionId={SESSION_ID}>
 				<BackgroundTasksOpenerProvider value={opener}>
-					<SessionRailCards inputs={inputs} />
+					<Cards />
 				</BackgroundTasksOpenerProvider>
 			</TileHost>
 		),
@@ -229,6 +237,12 @@ async function renderCards(
 	await act(async () => {
 		await router.load();
 	});
+	/** Re-renders the cards with new inputs. */
+	return (next: SessionRailInputs) => {
+		act(() => {
+			setInputs(next);
+		});
+	};
 }
 
 /** Context starts collapsed upstream; a hand toggle in another session makes it start open. */
@@ -914,7 +928,7 @@ describe("Context card", () => {
 			track: bar.style.backgroundColor,
 			fill: bar.firstElementChild?.className,
 		}).toStrictEqual({
-			text: "18% used178.5k / 1M",
+			text: "18% used178.5k / 1MSend a message to see the breakdown.",
 			summary: "178.5k / 1M",
 			pct: "18",
 			bar: "h-[4px] rounded-full overflow-hidden",
@@ -923,20 +937,26 @@ describe("Context card", () => {
 		});
 	});
 
-	it("says when usage was last updated and that a message refreshes it", async () => {
+	const HINT_CLASS = "mt-1 flex min-h-6 items-center px-1 pb-1 text-[12px]/[15px] text-secondary";
+
+	it("says a message brings the breakdown, with no Last updated footer, when only window totals are known", async () => {
 		await renderCards(contextInputs(SIXTEEN_HOURS_AGO()));
 
-		expect(contextBody().querySelector("[data-rail-context-updated]")?.textContent).toBe(
-			"Last updated 16 hours ago. Send a message to refresh.",
-		);
+		const hint = contextBody().querySelector("[data-rail-context-hint]");
+		expect({
+			text: hint?.textContent,
+			className: hint?.className,
+			footer: contextBody().querySelector("[data-rail-context-updated]"),
+		}).toStrictEqual({text: "Send a message to see the breakdown.", className: HINT_CLASS, footer: null});
 	});
 
-	it("says the turn's end refreshes it while the session is working", async () => {
+	it("drops the breakdown hint while the session is working", async () => {
 		await renderCards(contextInputs(SIXTEEN_HOURS_AGO(), true));
 
-		expect(contextBody().querySelector("[data-rail-context-updated]")?.textContent).toBe(
-			"Last updated 16 hours ago. Refreshes when this turn ends.",
-		);
+		expect({
+			hint: contextBody().querySelector("[data-rail-context-hint]"),
+			footer: contextBody().querySelector("[data-rail-context-updated]"),
+		}).toStrictEqual({hint: null, footer: null});
 	});
 });
 
@@ -1018,25 +1038,121 @@ describe("Context card breakdown", () => {
 			label: meter.getAttribute("aria-label"),
 			tabIndex: meter.tabIndex,
 			className: meter.className,
-			height: meter.style.height,
-			track: meter.style.backgroundColor,
-			segments: [...meter.children].map((segment) => (segment as HTMLElement).style.backgroundColor),
+			style: meter.getAttribute("style"),
 		}).toStrictEqual({
 			headline: "18% used180k / 1M",
 			label: "Context window: Messages: 143.5k, 14%; System tools: 14.5k, 1.5%; Skills: 9.9k, 0.99%; Memory files: 6.3k, 0.63%; Other: 5.8k, 0.58%; Autocompact buffer: 33k, 3.3%",
 			tabIndex: 0,
 			className:
-				"relative w-full overflow-hidden rounded-full outline-none focus-visible:outline-hidden focus-visible:shadow-focus shrink-0",
-			height: "4px",
-			track: "var(--chart-reference-tint)",
-			segments: [
-				"var(--chart-categorical-1)",
-				"var(--chart-categorical-2)",
-				"var(--chart-categorical-3)",
-				"var(--chart-categorical-4)",
-				"var(--chart-reference)",
-				"var(--chart-muted)",
+				"relative w-full overflow-hidden forced-colors:outline forced-colors:outline-solid forced-colors:outline-[color:CanvasText] rounded-full outline-none focus-visible:outline-hidden focus-visible:shadow-focus shrink-0",
+			style: "height: 4px; background-color: var(--chart-reference-tint); container-type: inline-size;",
+		});
+	});
+
+	it("floors the meter's small segments to 2px plus a 1px seam at upstream's 246px rail width", async () => {
+		await renderCards(INPUTS);
+
+		const meter = within(body()).getByRole("img", {name: /^Context window/});
+		expect(
+			[...meter.children].map((anchor) => ({
+				anchor: anchor.getAttribute("style"),
+				segment: anchor.firstElementChild?.className,
+				paint: anchor.firstElementChild?.getAttribute("style"),
+			})),
+		).toStrictEqual(
+			[
+				["calc(0% + 0px)", "calc(13.104% - 0px)", "categorical-1", "2px", "1px"],
+				["calc(13.104% + 1px)", "calc(1.429% - 1px)", "categorical-2", "1px", "1px"],
+				["calc(14.533% + 1px)", "calc(1.22% - 1px)", "categorical-3", "1px", "1px"],
+				["calc(15.752% + 1px)", "calc(1.22% - 1px)", "categorical-4", "1px", "1px"],
+				["calc(16.972% + 1px)", "calc(1.22% - 1px)", "reference", "1px", "1px"],
+				["calc(18.191% + 1px)", "calc(3.109% - 1px)", "muted", "1px", "2px"],
+			].map(([start, width, color, radiusStart, radiusEnd]) => ({
+				anchor: `inset-inline-start: ${start}; width: ${width};`,
+				segment: "absolute inset-0 forced-color-adjust-none",
+				paint: `background-color: var(--chart-${color}); border-start-start-radius: ${radiusStart}; border-end-start-radius: ${radiusStart}; border-start-end-radius: ${radiusEnd}; border-end-end-radius: ${radiusEnd};`,
+			})),
+		);
+	});
+
+	it("draws a 4px dot in the largest series' color when the used run is narrower than the meter is tall", async () => {
+		await renderCards({
+			...INPUTS,
+			usage: null,
+			breakdown: {
+				...BREAKDOWN,
+				categories: [
+					{name: "Messages", tokens: 3_000, kind: "used"},
+					{name: "System prompt", tokens: 1_000, kind: "used"},
+					{name: "Free space", tokens: 996_000, kind: "free"},
+				],
+				totalTokens: 4_000,
+			},
+		});
+
+		const meter = within(body()).getByRole("img", {name: /^Context window/});
+		expect(
+			[...meter.children].map((anchor) => [
+				anchor.firstElementChild?.className,
+				anchor.firstElementChild?.getAttribute("style"),
+			]),
+		).toStrictEqual([
+			[
+				"absolute inset-y-0 start-0 rounded-full forced-color-adjust-none",
+				"width: 4px; background-color: var(--chart-categorical-1);",
 			],
+		]);
+	});
+
+	describe("meter tooltips", () => {
+		beforeEach(() => {
+			vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		const LINES = [
+			"Messages: 143.5k, 14%",
+			"System tools: 14.5k, 1.5%",
+			"Skills: 9.9k, 0.99%",
+			"Memory files: 6.3k, 0.63%",
+			"Other: 5.8k, 0.58%",
+			"Autocompact buffer: 33k, 3.3%",
+		];
+
+		function tooltips(): string[] {
+			return [...document.querySelectorAll('[role="tooltip"]')].map((tip) => tip.textContent);
+		}
+
+		it("lists every series, one per line, when the meter is hovered", async () => {
+			await renderCards(INPUTS);
+
+			const meter = within(body()).getByRole("img", {name: /^Context window/});
+			fireEvent.pointerEnter(meter.parentElement!);
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+			expect(tooltips()).toStrictEqual([LINES.join("\n")]);
+		});
+
+		it("lists every series when the meter takes keyboard focus", async () => {
+			await renderCards(INPUTS);
+
+			fireEvent.focus(within(body()).getByRole("img", {name: /^Context window/}));
+			expect(tooltips()).toStrictEqual([LINES.join("\n")]);
+		});
+
+		it("names a hovered segment's series, amount and share", async () => {
+			await renderCards(INPUTS);
+
+			const meter = within(body()).getByRole("img", {name: /^Context window/});
+			fireEvent.pointerEnter(meter.children[1] as HTMLElement);
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+			expect(tooltips()).toStrictEqual(["System tools: 14.5k, 1.5%"]);
 		});
 	});
 
@@ -1047,9 +1163,9 @@ describe("Context card breakdown", () => {
 			["", "Messages", "143.5k", "14.4%"],
 			["", "System tools", "14.5k", "1.5%"],
 			["", "Skills", "9.9k", "1.0%", "Manage skills"],
-			["", "Memory files", "6.3k", "0.6%", "Edit memory files"],
+			["", "Memory files", "6.3k", "0.6%", "View memory files"],
 			["", "System prompt", "3.1k", "0.3%"],
-			["", "MCP server instructions", "1.5k", "0.2%"],
+			["", "MCP server instructions", "1.5k", "0.2%", "Manage connectors"],
 			["", "Custom agents", "1.2k", "0.1%", "View custom agents"],
 			["", "Autocompact buffer", "33k", "3.3%"],
 			["", "Free space", "787k", "78.7%"],
@@ -1102,6 +1218,36 @@ describe("Context card breakdown", () => {
 		).toBe("/customize/skills");
 	});
 
+	it("links the MCP server instructions row to the connectors page", async () => {
+		await renderCards(INPUTS);
+
+		expect(
+			within(body())
+				.getByRole("link", {name: /^MCP server instructions.*Manage connectors$/})
+				.getAttribute("href"),
+		).toBe("/customize/connectors");
+	});
+
+	it("shows an action row's hint in a tooltip above it on hover", async () => {
+		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
+		try {
+			await renderCards(INPUTS);
+
+			fireEvent.pointerEnter(within(body()).getByRole("link", {name: /^Skills/}).parentElement!);
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+			expect(
+				[...document.querySelectorAll('[role="tooltip"]')].map((tip) => [
+					tip.textContent,
+					tip.getAttribute("data-side"),
+				]),
+			).toStrictEqual([["Manage skills", "top"]]);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it("opens the MCP tools expander, scrolling a list of more than 12 rows", async () => {
 		await renderCards(INPUTS);
 
@@ -1118,9 +1264,73 @@ describe("Context card breakdown", () => {
 		}).toStrictEqual({
 			expanded: "true",
 			count: "MCP tools13",
-			list: "flex flex-col max-h-60 overflow-y-auto overscroll-contain",
+			list: "flex flex-col -mx-0.5 max-h-73 scroll-py-0.5 overflow-y-auto overscroll-contain p-0.5",
 			first: "github · tool_0100",
 		});
+	});
+
+	it("gives expander rows upstream's 24px height and clips long names with an overflow tooltip", async () => {
+		await renderCards(INPUTS);
+
+		const mcp = toggle("MCP tools");
+		fireEvent.click(mcp);
+		const row = mcp.nextElementSibling?.firstElementChild?.firstElementChild;
+		const name = row?.children[1];
+		expect({
+			row: row?.className,
+			name: name?.className,
+			clip: name?.querySelector("[data-rail-context-row-name]")?.className,
+		}).toStrictEqual({
+			row: "flex min-h-6 w-full min-w-0 items-center gap-2 px-1 text-[12px]/[15px]",
+			name: "flex min-w-0 flex-1 text-ink-muted",
+			clip: "block min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap flex-1",
+		});
+	});
+
+	it("names an MCP tool without a local connector by upstream's fallback", async () => {
+		await renderCards({
+			...INPUTS,
+			breakdown: {
+				...BREAKDOWN,
+				mcpTools: [
+					{name: "mcp__claude_ai_Claude_Docs__batch", serverName: "claude_ai_Claude_Docs", tokens: 144},
+				],
+			},
+		});
+
+		const mcp = toggle("MCP tools");
+		fireEvent.click(mcp);
+		expect(mcp.nextElementSibling?.firstElementChild?.firstElementChild?.textContent).toBe(
+			"claude ai Claude Docs · batch144",
+		);
+	});
+
+	it("links an MCP tool row to its connector when the session can manage it", async () => {
+		await renderCards(INPUTS, seed);
+
+		fireEvent.click(toggle("MCP tools"));
+		const first = within(body()).getByRole("link", {name: /^github · tool_0100/});
+		expect({
+			name: first.textContent,
+			href: first.getAttribute("href"),
+			className: first.className,
+		}).toStrictEqual({
+			name: "github · tool_0100Manage connector",
+			href: `/customize/connectors/id/${toConnectorSlug("user:github")}`,
+			className:
+				"group/press relative text-start flex min-h-6 w-full min-w-0 items-center gap-2 px-1 text-[12px]/[15px] rounded focus-visible:outline-hidden focus-visible:shadow-focus hover:bg-fill-ghost-hover active:bg-alpha-2",
+		});
+	});
+
+	it("moves focus to the MCP tools toggle when the focused tool row goes away", async () => {
+		const update = await renderCards(INPUTS, seed);
+
+		fireEvent.click(toggle("MCP tools"));
+		within(body())
+			.getByRole("link", {name: /^github · tool_12112/})
+			.focus();
+		update({...INPUTS, breakdown: {...BREAKDOWN, mcpTools: MCP_TOOLS.slice(0, 12)}});
+		expect(document.activeElement).toBe(toggle("MCP tools"));
 	});
 
 	it("reveals and focuses the Custom agents expander from its action row", async () => {
@@ -1138,7 +1348,7 @@ describe("Context card breakdown", () => {
 	it("links auto-memory files from the Memory files expander", async () => {
 		await renderCards(INPUTS);
 
-		fireEvent.click(within(body()).getByRole("button", {name: /^Memory files.*Edit memory files/}));
+		fireEvent.click(within(body()).getByRole("button", {name: /^Memory files.*View memory files/}));
 
 		const memory = toggle("Memory files");
 		const list = memory.nextElementSibling?.firstElementChild;
