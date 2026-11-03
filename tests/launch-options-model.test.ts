@@ -2,8 +2,11 @@ import {describe, expect, it} from "vite-plus/test";
 import {
 	buildLaunchFlags,
 	CLI_DEFAULT_MODEL,
+	EFFORT_LEVELS,
+	effortLevelsFor,
 	fastModeSupported,
 	MORE_MODELS,
+	modelLabel,
 	modelMenuValue,
 	moreModelsMenuValue,
 	primaryModelMenuValue,
@@ -95,6 +98,29 @@ describe("fastModeSupported", () => {
 		{model: "haiku", expected: false},
 	])("$model -> $expected", ({model, expected}) => {
 		expect(fastModeSupported(model)).toBe(expected);
+	});
+});
+
+describe("effortLevelsFor", () => {
+	it.each([
+		{model: "claude-haiku-4-5-20251001", expected: []},
+		{model: "claude-haiku-4-5", expected: []},
+		{model: "claude-haiku-4-5-20251001[1m]", expected: []},
+		{model: "opus", expected: ["low", "medium", "high", "xhigh", "max", "ultracode"]},
+		{model: "default", expected: EFFORT_LEVELS},
+		{model: "haiku", expected: EFFORT_LEVELS},
+		{model: "claude-sonnet-4-6", expected: EFFORT_LEVELS},
+	])("$model -> $expected", ({model, expected}) => {
+		expect(effortLevelsFor(model)).toStrictEqual(expected);
+	});
+});
+
+describe("modelLabel", () => {
+	it("labels the CLI's default alias with the model it launches", () => {
+		expect({def: modelLabel("default"), opus: modelLabel("opus")}).toStrictEqual({
+			def: "Opus 5.5",
+			opus: "Opus 5.5",
+		});
 	});
 });
 

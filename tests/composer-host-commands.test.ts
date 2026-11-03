@@ -32,6 +32,14 @@ describe("parseHostCommand", () => {
 		["/model.opus", {kind: "model", model: "opus", name: "model"}],
 		["/model OPUS", {kind: "model", model: "opus", name: "model"}],
 		["/model claude-opus-4-6", {kind: "model", model: "claude-opus-4-6", name: "model"}],
+		["/model default", {kind: "model", model: "default", name: "model"}],
+		["/model DEFAULT", {kind: "model", model: "default", name: "model"}],
+		["/model best", {kind: "model", model: "best", name: "model"}],
+		["/model opusplan", {kind: "model", model: "opusplan", name: "model"}],
+		["/model mythos", {kind: "model", model: "mythos", name: "model"}],
+		["/model claude-opus-4-6-20260101", {kind: "model", model: "claude-opus-4-6", name: "model"}],
+		["/model claude-opus-4-6-20260101[1m]", {kind: "model", model: "claude-opus-4-6", name: "model"}],
+		["/model claude-haiku-4-5-20251001", {kind: "model", model: "claude-haiku-4-5-20251001", name: "model"}],
 	])("%j opens or applies", (text, expected) => {
 		expect(parseHostCommand(text, ctx)).toStrictEqual(expected);
 	});
@@ -76,6 +84,14 @@ describe("parseHostCommand", () => {
 
 	it("leaves /effort to the CLI when the model has no effort levels", () => {
 		expect(parseHostCommand("/effort", {...ctx, effortLevels: []})).toBeNull();
+	});
+
+	it("opens the Model menu for /effort when the model offers at most one level", () => {
+		expect(parseHostCommand("/effort", {...ctx, effortLevels: ["high"]})).toStrictEqual({
+			kind: "open",
+			menu: "model",
+			name: "effort",
+		});
 	});
 });
 

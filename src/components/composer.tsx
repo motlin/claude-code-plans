@@ -65,7 +65,8 @@ import {
 	trailingArgsBody,
 } from "../lib/composer-host-commands";
 import {
-	EFFORT_LEVELS,
+	CLI_DEFAULT_MODEL,
+	effortLevelsFor,
 	type LaunchOptions,
 	LaunchOptionsSchema,
 	MORE_MODELS,
@@ -1149,7 +1150,7 @@ export function Composer({
 	function runHostCommand(text: string): boolean {
 		if (runFastCommand(text) || runRewindCommand(text) || runWorkflowsCommand(text)) return true;
 		const command = parseHostCommand(text, {
-			effortLevels: EFFORT_LEVELS,
+			effortLevels: effortLevelsFor(chinLaunchOptions.model ?? chin?.modelId ?? CLI_DEFAULT_MODEL),
 			models: HOST_COMMAND_MODELS,
 			menusAvailable: chin !== undefined,
 		});

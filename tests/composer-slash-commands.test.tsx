@@ -1066,6 +1066,43 @@ describe("Composer host commands", () => {
 		}).toStrictEqual({sends: [], text: "", label: "Model: Fable 5.1 High"});
 	});
 
+	it("applies /model default to the chin as the CLI's default model without sending", () => {
+		const {textarea, onSend} = hostSetup({chin: {...CHIN, model: "Fable 5.1", modelId: "claude-fable-5-1"}});
+
+		send(textarea, "/model default");
+
+		expect({
+			sends: onSend.mock.calls,
+			text: textarea.value,
+			label: modelTrigger()?.getAttribute("aria-label"),
+		}).toStrictEqual({sends: [], text: "", label: "Model: Opus 5.5 High"});
+	});
+
+	const HAIKU_CHIN: ComposerState = {...CHIN, model: "Haiku 4.5", modelId: "claude-haiku-4-5-20251001"};
+
+	it("sends /effort to the CLI when the chin model has no effort levels", () => {
+		const {textarea, onSend} = hostSetup({chin: HAIKU_CHIN});
+
+		send(textarea, "/effort");
+
+		expect({sends: onSend.mock.calls, menus: screen.queryAllByRole("menu").length}).toStrictEqual({
+			sends: [["/effort", {}]],
+			menus: 0,
+		});
+	});
+
+	it("hides the Effort submenu when the chin model has no effort levels", async () => {
+		const {textarea} = hostSetup({chin: HAIKU_CHIN});
+
+		send(textarea, "/model");
+		const menu = await screen.findByRole("menu");
+
+		expect({
+			expanded: modelTrigger()?.getAttribute("aria-expanded"),
+			effort: within(menu).queryByRole("menuitem", {name: /^Effort/}),
+		}).toStrictEqual({expanded: "true", effort: null});
+	});
+
 	it("asks Change effort? for /effort low on a live pane, like a menu pick", async () => {
 		const apply = vi.fn<LiveLaunchControls["apply"]>(async () => {});
 		const {textarea, onSend} = hostSetup({chin: CHIN, live: {options: {}, apply}});

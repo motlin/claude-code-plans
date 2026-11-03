@@ -4,7 +4,6 @@ import {useState} from "react";
 import {useShortcutKeys} from "../hooks/use-shortcut";
 
 import {
-	EFFORT_LEVELS,
 	type EffortLevel,
 	EffortLevelSchema,
 	fastModeSupported,
@@ -185,6 +184,7 @@ export function ModelMenu({
 	currentEffort,
 	onSelect,
 	onSelectEffort,
+	effortLevels,
 	fastMode,
 	fastModeBlocked,
 	onFastModeChange,
@@ -200,6 +200,8 @@ export function ModelMenu({
 	currentEffort: string;
 	onSelect: (model: string) => void;
 	onSelectEffort: (effort: EffortLevel) => void;
+	/** The current model's effort levels; the Effort submenu is hidden when it offers none. */
+	effortLevels: readonly EffortLevel[];
 	/** Already false while blocked. */
 	fastMode: boolean;
 	/** The CLI can't use fast mode here: upstream's greyed row with this line and reason tooltip. */
@@ -307,45 +309,54 @@ export function ModelMenu({
 						);
 					})}
 				</MenuRadioGroup>
-				<MenuSeparator />
-				<MenuSub defaultOpen={effortOpen}>
-					<MenuSubTrigger value={effortLabel}>Effort</MenuSubTrigger>
-					<MenuSubContent side="inline-start" align="end" className="w-[320px]">
-						<MenuLabel className="px-2 pt-1.5 pb-1 text-[12px]/[16px] text-[var(--menu-muted)]">
-							{EFFORT_HELP}
-						</MenuLabel>
-						<MenuRadioGroup
-							value={level.success ? level.data : ""}
-							onValueChange={(value: unknown) => {
-								const picked = EffortLevelSchema.safeParse(value);
-								if (!picked.success) return;
-								onSelectEffort(picked.data);
-								onOpenChange(false);
-							}}
-						>
-							{EFFORT_LEVELS.map((effort) => {
-								const row = (
-									<MenuRadioItem key={effort} value={effort} data-effort-id={effort} closeOnClick>
-										<EffortRowLabel effort={effort} />
-									</MenuRadioItem>
-								);
-								return effort === "max" ? (
-									<Tooltip
-										key={effort}
-										content={MAX_EFFORT_TOOLTIP}
-										side="right"
-										portal
-										className="flex w-full"
-									>
-										{row}
-									</Tooltip>
-								) : (
-									row
-								);
-							})}
-						</MenuRadioGroup>
-					</MenuSubContent>
-				</MenuSub>
+				{effortLevels.length > 0 && (
+					<>
+						<MenuSeparator />
+						<MenuSub defaultOpen={effortOpen}>
+							<MenuSubTrigger value={effortLabel}>Effort</MenuSubTrigger>
+							<MenuSubContent side="inline-start" align="end" className="w-[320px]">
+								<MenuLabel className="px-2 pt-1.5 pb-1 text-[12px]/[16px] text-[var(--menu-muted)]">
+									{EFFORT_HELP}
+								</MenuLabel>
+								<MenuRadioGroup
+									value={level.success ? level.data : ""}
+									onValueChange={(value: unknown) => {
+										const picked = EffortLevelSchema.safeParse(value);
+										if (!picked.success) return;
+										onSelectEffort(picked.data);
+										onOpenChange(false);
+									}}
+								>
+									{effortLevels.map((effort) => {
+										const row = (
+											<MenuRadioItem
+												key={effort}
+												value={effort}
+												data-effort-id={effort}
+												closeOnClick
+											>
+												<EffortRowLabel effort={effort} />
+											</MenuRadioItem>
+										);
+										return effort === "max" ? (
+											<Tooltip
+												key={effort}
+												content={MAX_EFFORT_TOOLTIP}
+												side="right"
+												portal
+												className="flex w-full"
+											>
+												{row}
+											</Tooltip>
+										) : (
+											row
+										);
+									})}
+								</MenuRadioGroup>
+							</MenuSubContent>
+						</MenuSub>
+					</>
+				)}
 				<MenuSeparator />
 				<MenuSub>
 					<MenuSubTrigger>More models</MenuSubTrigger>

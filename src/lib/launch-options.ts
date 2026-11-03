@@ -168,6 +168,18 @@ export function fastModeSupported(model: string): boolean {
 	return FAST_MODE_MODELS.has(resolveLaunchModel(model.replace(/\[[^\]]*\]$/, "")));
 }
 
+/**
+ * Models with no effort parameter. The local server has no model capability data, so this is
+ * hard-coded: the Haiku 4.5 family offers no Effort section (see model-menu-catalog-row-badges).
+ */
+const NO_EFFORT_MODELS: ReadonlySet<string> = new Set(["claude-haiku-4-5"]);
+
+/** The effort levels a model id or alias offers; empty when it has no Effort section. */
+export function effortLevelsFor(model: string): readonly EffortLevel[] {
+	const bare = resolveLaunchModel(model.replace(/\[[^\]]*\]$/, "")).replace(/-\d{8}$/, "");
+	return NO_EFFORT_MODELS.has(bare) ? [] : EFFORT_LEVELS;
+}
+
 /** Options with a new model; fast mode is dropped when that model lacks it, as the CLI turns it off. */
 export function withModel(options: LaunchOptions, model: string): LaunchOptions {
 	if (fastModeSupported(model)) return {...options, model};
@@ -176,6 +188,7 @@ export function withModel(options: LaunchOptions, model: string): LaunchOptions 
 }
 
 export function modelLabel(id: string): string {
+	if (id === "default") return modelLabel(CLI_DEFAULT_MODEL);
 	return [...PRIMARY_MODELS, ...MORE_MODELS].find((model) => model.id === id)?.label ?? formatModelName(id) ?? id;
 }
 

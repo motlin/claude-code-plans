@@ -25,6 +25,19 @@ const MODEL_COMMAND = /^\/model(?:[\s:,.]+(.*))?$/is;
 const COMMAND_NAME = /^\/([^\s/]+)(?:\s+([\s\S]*))?$/;
 const SINGLE_WORD = /^[A-Za-z][A-Za-z0-9]*$/;
 const PERMISSION_NAMES = ["permissions", "allowed-tools"];
+/** Upstream's `ho`: the CLI's bare-word model aliases `/model` accepts even when no catalog id matches. */
+const ACCEPTED_MODEL_WORDS: ReadonlySet<string> = new Set([
+	"default",
+	"best",
+	"opusplan",
+	"sonnet",
+	"opus",
+	"haiku",
+	"fable",
+	"mythos",
+]);
+/** A dated id's `-20YYMMDD` suffix (and any `[1m]` window after it), which upstream strips before matching. */
+const DATE_SUFFIX = /-20\d{6}(\[[^\]]+\])?$/;
 
 /** How a sent host command is shaped: bare, with text after it, or spanning lines. */
 export interface CommandShape {
@@ -82,10 +95,18 @@ export function parseHostCommand(text: string, ctx: HostCommandContext): HostCom
 function parseModel(arg: string, ctx: HostCommandContext): HostCommand {
 	if (!ctx.menusAvailable) return {kind: "refuse", toast: MODEL_LOCKED};
 	if (!arg) return {kind: "open", menu: "model", name: "model"};
-	const known = ctx.models.find((model) => model.toLowerCase() === arg.toLowerCase());
+	const known = findModel(arg, ctx.models) ?? findModel(arg.replace(DATE_SUFFIX, ""), ctx.models);
 	if (known) return {kind: "model", model: known, name: "model"};
-	if (SINGLE_WORD.test(arg)) return {kind: "refuse", toast: `“${arg}” isn’t an available model.`};
+	if (SINGLE_WORD.test(arg)) {
+		const word = arg.toLowerCase();
+		if (ACCEPTED_MODEL_WORDS.has(word)) return {kind: "model", model: word, name: "model"};
+		return {kind: "refuse", toast: `“${arg}” isn’t an available model.`};
+	}
 	return {kind: "model", model: arg, name: "model"};
+}
+
+function findModel(arg: string, models: readonly string[]): string | undefined {
+	return models.find((model) => model.toLowerCase() === arg.toLowerCase());
 }
 
 function parseEffort(arg: string, name: string, ctx: HostCommandContext): HostCommand | null {
@@ -95,7 +116,9 @@ function parseEffort(arg: string, name: string, ctx: HostCommandContext): HostCo
 	if (!ctx.menusAvailable) {
 		return {kind: "refuse", toast: `The model is still loading. Try /${name} again in a moment.`};
 	}
-	return level ? {kind: "effort", level, name} : {kind: "open", menu: "effort", name};
+	if (level) return {kind: "effort", level, name};
+	// Upstream's chin `requestOpen`: an Effort menu with one option or fewer opens the Model menu instead.
+	return {kind: "open", menu: ctx.effortLevels.length <= 1 ? "model" : "effort", name};
 }
 
 /** What a sent `/fast [on|off]` does: nothing new, flip fast mode, or reach the CLI as typed. */

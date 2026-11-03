@@ -17,6 +17,7 @@ import {
 } from "../lib/composer-state";
 import {
 	type EffortLevel,
+	effortLevelsFor,
 	EffortLevelSchema,
 	fastModeSupported,
 	type LaunchOptions,
@@ -300,6 +301,7 @@ export const ComposerChin = memo(function ComposerChin({
 					onSelect={selectModel}
 					settingsOverride={overridden ? {label: modelLabel(settingsModel), onUse: clearModel} : null}
 					onSelectEffort={selectEffort}
+					effortLevels={effortLevelsFor(currentModel ?? state.modelId)}
 					fastMode={fastMode}
 					fastModeBlocked={fastModeBlocked}
 					onFastModeChange={selectFastMode}
