@@ -1116,7 +1116,7 @@ describe("SettingsDialog local tabs", () => {
 			title: '<h2 class="min-w-0 truncate text-[22px]/[28px] font-[580] text-primary">Skills</h2>',
 			controls: "ms-auto flex min-w-0 items-center justify-end gap-2",
 			spacer: ["true", "shrink-0 h-4"],
-			scroller: "relative -mt-1 flex min-h-0 flex-1 flex-col overflow-y-auto pb-3 pt-1",
+			scroller: "relative -mt-1 flex min-h-0 flex-1 flex-col overflow-y-auto pb-4 pt-1",
 			column: "mx-auto w-full max-w-4xl px-5 flex flex-1 flex-col",
 			rowInScroller: true,
 			headerInScroller: false,

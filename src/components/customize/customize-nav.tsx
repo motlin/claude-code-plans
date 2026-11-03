@@ -38,7 +38,7 @@ export function CustomizeLink({target, className, children}: CustomizeLinkProps)
 }
 
 const BACK_LINK_CLASS =
-	"-ms-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-[13px]/[19px] text-secondary no-underline hover:bg-fill-ghost-hover hover:text-primary";
+	"-ms-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-[13px]/[19px] text-primary no-underline hover:bg-fill-ghost-hover";
 
 function plainClick(event: MouseEvent<HTMLAnchorElement>): boolean {
 	return !(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0);

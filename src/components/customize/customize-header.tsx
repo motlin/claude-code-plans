@@ -314,7 +314,7 @@ function FixedSearchField({placeholder, value, onChange}: SearchFieldProps) {
 	});
 
 	return (
-		<div className="inline-flex h-8 w-64 min-w-0 cursor-text items-center gap-1.5 rounded-r6 ps-2 pe-2 bg-[var(--settings-field-bg)] shadow-field-ring [&:hover:not(:focus-visible):not(:has(:focus-visible))]:shadow-field-hover has-[:focus-visible]:shadow-focus">
+		<div className="inline-flex h-8 w-64 min-w-0 cursor-text items-center gap-2 rounded-r6 ps-3 pe-3 bg-[var(--settings-field-bg)] shadow-field-ring [&:hover:not(:focus-visible):not(:has(:focus-visible))]:shadow-field-hover has-[:focus-visible]:shadow-focus">
 			<Search aria-hidden="true" className="size-4 shrink-0 text-t6" />
 			<input
 				ref={input}

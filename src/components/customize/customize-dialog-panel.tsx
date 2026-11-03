@@ -197,7 +197,7 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 						}}
 					/>
 					<div aria-hidden="true" className="shrink-0 h-4" />
-					<div className="relative -mt-1 flex min-h-0 flex-1 flex-col overflow-y-auto pb-3 pt-1">
+					<div className="relative -mt-1 flex min-h-0 flex-1 flex-col overflow-y-auto pb-4 pt-1">
 						<div className="mx-auto w-full max-w-4xl px-5 flex flex-1 flex-col">
 							{query === "" ? (
 								<SectionBody location={location} search={search} />

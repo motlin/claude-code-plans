@@ -1655,7 +1655,7 @@ const MCP_CATALOG: DiscoverCatalog = {
 };
 
 const BACK_LINK_CLASS =
-	"-ms-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-[13px]/[19px] text-secondary no-underline hover:bg-fill-ghost-hover hover:text-primary";
+	"-ms-2 inline-flex h-6 w-fit items-center gap-1.5 rounded-r6 px-2 text-[13px]/[19px] text-primary no-underline hover:bg-fill-ghost-hover";
 
 describe("returning to the unified search from an opened hit", () => {
 	it("turns the back link into Search, then restores the query, the expanded section and focus", async () => {
@@ -1978,10 +1978,10 @@ describe("customize header search width gate", () => {
 					"min-w-0",
 					"cursor-text",
 					"items-center",
-					"gap-1.5",
+					"gap-2",
 					"rounded-r6",
-					"ps-2",
-					"pe-2",
+					"ps-3",
+					"pe-3",
 					"bg-[var(--settings-field-bg)]",
 					"shadow-field-ring",
 					"[&:hover:not(:focus-visible):not(:has(:focus-visible))]:shadow-field-hover",
