@@ -25,6 +25,7 @@ import {
 	recentSessionsInfiniteQueryOptions,
 } from "../src/lib/api/sessions";
 import {installLocalStorage} from "./fake-storage";
+import {DEFAULT_SESSION_LIST_PREFS} from "../src/lib/session-groups";
 import {NAV_SECTIONS} from "../src/lib/nav-sections";
 
 function session(id: string, title: string, bucket: string, minutesAgo: number) {
@@ -130,6 +131,8 @@ afterEach(cleanup);
 
 beforeEach(() => {
 	installLocalStorage();
+	// These cases assert Status groups, so store the grouping a browser would have chosen.
+	localStorage.setItem("ccp-session-list-prefs", JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, groupBy: "state"}));
 });
 
 describe("sidebar session list", () => {

@@ -167,6 +167,7 @@ beforeEach(() => {
 
 describe("sidebar Group and sort menu", () => {
 	it("puts Group and sort on every section header, revealed on hover, and an always-visible New session + on the first", async () => {
+		storePrefs({groupBy: "state"});
 		const {container} = await renderSidebarGroups();
 
 		const headers = [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-sidebar-group-label]')];
@@ -260,7 +261,7 @@ describe("sidebar Group and sort menu", () => {
 		const menu = await openFilterMenu();
 
 		expect(menuOutline(menu)).toEqual([
-			"Group byStatus",
+			"Group byNone",
 			"Sort byLast updated",
 			"Show",
 			"---",
@@ -289,8 +290,8 @@ describe("sidebar Group and sort menu", () => {
 		expect(
 			screen.getAllByRole("menuitemradio").map((node) => [node.textContent, node.getAttribute("aria-checked")]),
 		).toEqual([
-			["None", "false"],
-			["Status", "true"],
+			["None", "true"],
+			["Status", "false"],
 			["Date", "false"],
 			["Folder", "false"],
 			["Custom groups", "false"],
@@ -380,7 +381,26 @@ describe("sidebar Group and sort menu", () => {
 		expect([accentOf(/^Sort by/), accentOf(/^Group by/)]).toEqual([false, true]);
 	});
 
+	// Upstream's fresh default (and the user's account) leaves Recents ungrouped under one header.
+	it("renders a fresh browser's list ungrouped under one Recents header, as upstream", async () => {
+		const {container} = await renderSidebarGroups();
+		expect({groups: groupNames(container), stored: storedPrefs()}).toStrictEqual({
+			groups: ["Recents"],
+			stored: null,
+		});
+	});
+
+	it("keeps a grouping this browser already saved instead of the ungrouped default", async () => {
+		storePrefs({groupBy: "state"});
+		const {container} = await renderSidebarGroups();
+		expect({groups: groupNames(container), stored: storedPrefs()}).toStrictEqual({
+			groups: ["Working", "Idle"],
+			stored: {...DEFAULT_SESSION_LIST_PREFS, groupBy: "state"},
+		});
+	});
+
 	it("regroups the list and persists when a Group by option is chosen", async () => {
+		storePrefs({groupBy: "state"});
 		const {container} = await renderSidebarGroups();
 		expect(groupNames(container)).toEqual(["Working", "Idle"]);
 
@@ -474,7 +494,7 @@ describe("sidebar Group and sort menu", () => {
 				node.textContent.trim(),
 			),
 			empty: recents?.querySelector("[data-sidebar-empty]")?.textContent,
-		}).toStrictEqual({labels: ["Idle"], empty: "No sessions match the current filtersShow all sessions"});
+		}).toStrictEqual({labels: ["Recents"], empty: "No sessions match the current filtersShow all sessions"});
 
 		await openFilterMenu();
 		fireEvent.click(screen.getByRole("menuitem", {name: "Reset to defaults"}));
@@ -484,7 +504,7 @@ describe("sidebar Group and sort menu", () => {
 			groups: groupNames(container),
 			empty: container.querySelector("[data-sidebar-empty]"),
 			stored: storedPrefs(),
-		}).toStrictEqual({groups: ["Working", "Idle"], empty: null, stored: DEFAULT_SESSION_LIST_PREFS});
+		}).toStrictEqual({groups: ["Recents"], empty: null, stored: DEFAULT_SESSION_LIST_PREFS});
 	});
 
 	it("marks an archived row with sr-only Archived right after its title, not a visible pill, as upstream does", async () => {

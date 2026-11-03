@@ -40,7 +40,7 @@ export const SessionListPrefsSchema = z
 export type SessionListPrefs = z.infer<typeof SessionListPrefsSchema>;
 
 export const DEFAULT_SESSION_LIST_PREFS: SessionListPrefs = {
-	groupBy: "state",
+	groupBy: "none",
 	sortBy: "activity",
 	sortDirection: "desc",
 	statusFilter: "active",

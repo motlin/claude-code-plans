@@ -31,8 +31,9 @@ function row(sessionId: string, overrides: Partial<SessionGroupRow> = {}): Sessi
 	};
 }
 
+/** Most cases exercise Status grouping, so the helper starts from it rather than the ungrouped default. */
 function prefs(overrides: Partial<SessionListPrefs> = {}): SessionListPrefs {
-	return {...DEFAULT_SESSION_LIST_PREFS, ...overrides};
+	return {...DEFAULT_SESSION_LIST_PREFS, groupBy: "state", ...overrides};
 }
 
 function summarize(groups: SessionGroup<SessionGroupRow>[]) {
@@ -47,7 +48,7 @@ function summarize(groups: SessionGroup<SessionGroupRow>[]) {
 describe("DEFAULT_SESSION_LIST_PREFS", () => {
 	it("matches the upstream defaults", () => {
 		expect(DEFAULT_SESSION_LIST_PREFS).toStrictEqual({
-			groupBy: "state",
+			groupBy: "none",
 			sortBy: "activity",
 			sortDirection: "desc",
 			statusFilter: "active",
@@ -567,15 +568,27 @@ describe("migrateSessionListPrefs", () => {
 		);
 	});
 
+	it("defaults a fresh browser to ungrouped, as upstream", () => {
+		expect(migrateSessionListPrefs({stored: null, sessionsGrouping: null, sessionSort: null}).groupBy).toBe("none");
+	});
+
+	it("keeps the Status grouping a browser saved under the old default", () => {
+		const stored = {...DEFAULT_SESSION_LIST_PREFS, groupBy: "state"};
+		expect(
+			migrateSessionListPrefs({stored: JSON.stringify(stored), sessionsGrouping: null, sessionSort: null}),
+		).toStrictEqual(stored);
+	});
+
 	it.each<[string | null, string | null, Partial<SessionListPrefs>]>([
 		["project", "urgency", {groupBy: "project", sortBy: "activity"}],
 		["time", "stable", {groupBy: "date", sortBy: "created"}],
 		[null, "stable", {sortBy: "created"}],
 		["bogus", "bogus", {}],
 	])("migrates sessionsGrouping=%s sessionSort=%s", (sessionsGrouping, sessionSort, expected) => {
-		expect(migrateSessionListPrefs({stored: "{not json", sessionsGrouping, sessionSort})).toStrictEqual(
-			prefs(expected),
-		);
+		expect(migrateSessionListPrefs({stored: "{not json", sessionsGrouping, sessionSort})).toStrictEqual({
+			...DEFAULT_SESSION_LIST_PREFS,
+			...expected,
+		});
 	});
 });
 

@@ -71,7 +71,7 @@ async function renderGroups(sessions: unknown[]) {
 			<SettingsProvider>
 				<QueryClientProvider client={queryClient}>
 					<ToastProvider>
-						<SessionGroups activeItemId={null} />
+						<SessionGroups activeItemId={null} prefs={{...DEFAULT_SESSION_LIST_PREFS, groupBy: "state"}} />
 						<Outlet />
 					</ToastProvider>
 				</QueryClientProvider>

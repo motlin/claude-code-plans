@@ -230,6 +230,11 @@ describe("sidebar body roving focus", () => {
 
 	beforeEach(() => {
 		installLocalStorage();
+		// These cases rove Status groups, so store the grouping a browser would have chosen.
+		localStorage.setItem(
+			"ccp-session-list-prefs",
+			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, groupBy: "state"}),
+		);
 		vi.stubGlobal("fetch", async () => new Promise(() => {}));
 		vi.stubGlobal(
 			"ResizeObserver",
@@ -584,6 +589,11 @@ describe("sidebar row context menu keys", () => {
 
 	beforeEach(() => {
 		installLocalStorage();
+		// These cases rove Status groups, so store the grouping a browser would have chosen.
+		localStorage.setItem(
+			"ccp-session-list-prefs",
+			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, groupBy: "state"}),
+		);
 		vi.stubGlobal("fetch", async () => new Promise(() => {}));
 		vi.stubGlobal(
 			"ResizeObserver",

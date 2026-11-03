@@ -99,7 +99,8 @@ async function renderGroups(
 						<SessionGroups
 							activeItemId={options.activeItemId ?? null}
 							filterSlot={options.filterSlot}
-							{...(options.prefs === undefined ? {} : {prefs: options.prefs})}
+							// Most cases exercise Status grouping, so render it unless a case picks other prefs.
+							prefs={options.prefs ?? {...DEFAULT_SESSION_LIST_PREFS, groupBy: "state"}}
 						/>
 						<Outlet />
 					</ToastProvider>

@@ -13,6 +13,7 @@ import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/reac
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 
 import {SessionGroups} from "../src/components/sidebar/session-groups";
+import {DEFAULT_SESSION_LIST_PREFS} from "../src/lib/session-groups";
 import {ToastProvider} from "../src/components/toast";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import type {SessionBucket} from "../src/lib/session-state";
@@ -76,7 +77,7 @@ async function renderGroups(sessions: unknown[]) {
 		component: () => (
 			<QueryClientProvider client={queryClient}>
 				<ToastProvider>
-					<SessionGroups activeItemId={null} />
+					<SessionGroups activeItemId={null} prefs={{...DEFAULT_SESSION_LIST_PREFS, groupBy: "state"}} />
 					<Outlet />
 				</ToastProvider>
 			</QueryClientProvider>
