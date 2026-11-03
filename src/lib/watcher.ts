@@ -11,6 +11,7 @@ import {
 	deleteFileContent,
 	deleteMemoryFile,
 	deleteTaskFile,
+	pruneDeletedTranscript,
 	deletePlan,
 	indexFile,
 	indexFileContent,
@@ -914,6 +915,12 @@ async function handleFileUnlink(path: string): Promise<void> {
 		const throttleState = jsonlThrottleByPath.get(path);
 		if (throttleState?.timer !== undefined) clearTimeout(throttleState.timer);
 		jsonlThrottleByPath.delete(path);
+		try {
+			const db = getDb();
+			pruneDeletedTranscript(db.index, db.summaries, projectsDir, path);
+		} catch {
+			// transient DB error; the next full scan prunes the session
+		}
 		safeDiffSessions(projectIdFromPath(path, projectsDir));
 		removePendingApprovalForSession(sessionIdFromJsonlPath(path));
 	} else if (ext === ".json" && path.endsWith("sessions-index.json")) {

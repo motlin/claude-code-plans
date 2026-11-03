@@ -910,6 +910,112 @@ describe("task file unlink", () => {
 	});
 });
 
+describe("session transcript unlink", () => {
+	let testDir: string;
+
+	beforeEach(() => {
+		testDir = realpathSync(mkdtempSync(join(tmpdir(), "watcher-session-unlink-test-")));
+	});
+
+	afterEach(() => {
+		__testing.setProjectsDir("");
+		rmSync(testDir, {recursive: true, force: true});
+	});
+
+	it("deletes the deleted transcript's session rows and broadcasts session:removed", async () => {
+		const projectsDir = join(testDir, "projects");
+		const projectId = "-Users-alice-projects-unlink";
+		const projectDir = join(projectsDir, projectId);
+		const sessionId = "sess-transcript-unlink";
+		mkdirSync(projectDir, {recursive: true});
+		const jsonlPath = join(projectDir, `${sessionId}.jsonl`);
+		writeFileSync(
+			jsonlPath,
+			jsonl({
+				type: "user",
+				sessionId,
+				timestamp: "2000-01-01T00:00:00.000Z",
+				message: {role: "user", content: "Remember this conversation"},
+			}),
+		);
+		__testing.setProjectsDir(projectsDir);
+		await processJsonlAppend(sharedDb.index, jsonlPath, new Map(), () => {}, {projectsDir, plansDir: ""});
+		rebroadcastSessionsById(new Set([sessionId]), () => {}, sharedDb.index);
+
+		const broadcasts: CapturedBroadcast[] = [];
+		const decoder = new TextDecoder();
+		const client = {
+			enqueue: (chunk: Uint8Array) => {
+				const [eventLine = "", dataLine = ""] = decoder.decode(chunk).split("\n");
+				broadcasts.push({
+					type: eventLine.replace("event: ", ""),
+					data: JSON.parse(dataLine.replace("data: ", "")),
+				});
+			},
+		} as unknown as ReadableStreamDefaultController;
+
+		addClient(client);
+		try {
+			rmSync(jsonlPath);
+			await __testing.handleFileUnlink(jsonlPath);
+		} finally {
+			removeClient(client);
+		}
+
+		expect({
+			broadcasts: broadcasts.filter(({type}) => type === DOMAIN_EVENTS.SESSION_REMOVED),
+			sessions: sharedDb.index.select().from(schema.sessions).where(eq(schema.sessions.id, sessionId)).all(),
+			messages: sharedDb.index
+				.select()
+				.from(schema.sessionMessages)
+				.where(eq(schema.sessionMessages.sessionId, sessionId))
+				.all(),
+			indexedFiles: sharedDb.index
+				.select()
+				.from(schema.indexedFiles)
+				.where(eq(schema.indexedFiles.path, jsonlPath))
+				.all(),
+			messageContent: sharedDb.index.all(sql`SELECT * FROM message_content WHERE session_id = ${sessionId}`),
+		}).toStrictEqual({
+			broadcasts: [{type: DOMAIN_EVENTS.SESSION_REMOVED, data: {sessionId, projectDir: projectId}}],
+			sessions: [],
+			messages: [],
+			indexedFiles: [],
+			messageContent: [],
+		});
+	});
+
+	it("keeps a moved session's rows when its transcript still exists under another project", async () => {
+		const projectsDir = join(testDir, "projects");
+		const sessionId = "sess-transcript-moved";
+		const oldPath = join(projectsDir, "-Users-alice-projects-old", `${sessionId}.jsonl`);
+		const newPath = join(projectsDir, "-Users-alice-projects-new", `${sessionId}.jsonl`);
+		mkdirSync(dirname(oldPath), {recursive: true});
+		mkdirSync(dirname(newPath), {recursive: true});
+		const content = jsonl({
+			type: "user",
+			sessionId,
+			timestamp: "2000-01-01T00:00:00.000Z",
+			message: {role: "user", content: "Move me"},
+		});
+		writeFileSync(oldPath, content);
+		__testing.setProjectsDir(projectsDir);
+		await processJsonlAppend(sharedDb.index, oldPath, new Map(), () => {}, {projectsDir, plansDir: ""});
+
+		writeFileSync(newPath, content);
+		rmSync(oldPath);
+		await __testing.handleFileUnlink(oldPath);
+
+		expect(
+			sharedDb.index
+				.select({id: schema.sessions.id})
+				.from(schema.sessions)
+				.where(eq(schema.sessions.id, sessionId))
+				.all(),
+		).toStrictEqual([{id: sessionId}]);
+	});
+});
+
 describe("handlePlanMdChange", () => {
 	const testDir = join(tmpdir(), "claude-watcher-md-test-" + process.pid);
 	let db: AppDb;

@@ -1,5 +1,5 @@
 import {lstat, readdir, readFile, realpath, stat} from "node:fs/promises";
-import {createReadStream, existsSync, realpathSync, type Stats} from "node:fs";
+import {createReadStream, existsSync, readdirSync, realpathSync, type Stats} from "node:fs";
 import {join, basename, extname, isAbsolute, relative, resolve, sep} from "node:path";
 import {canonicalPath} from "../canonical-path";
 import {createLineReader} from "../line-reader";
@@ -1846,6 +1846,67 @@ function isPrimaryTranscriptPath(projectsDir: string, filePath: string): boolean
 	);
 }
 
+/** Delete every indexed row belonging to one session, including its subagents' file cache rows. */
+function deleteSessionRows(indexDb: IndexDb, summariesDb: IndexDb, sessionId: string): void {
+	const subagentPaths = indexDb
+		.select({filePath: schema.subagents.filePath})
+		.from(schema.subagents)
+		.where(eq(schema.subagents.sessionId, sessionId))
+		.all();
+	for (const subagent of subagentPaths) {
+		indexDb.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, subagent.filePath)).run();
+	}
+
+	indexDb.delete(schema.subagents).where(eq(schema.subagents.sessionId, sessionId)).run();
+	indexDb.delete(schema.planSessions).where(eq(schema.planSessions.sessionId, sessionId)).run();
+	summariesDb.delete(schema.summaries).where(eq(schema.summaries.sessionId, sessionId)).run();
+	indexDb.run(sql`DELETE FROM message_content WHERE session_id = ${sessionId}`);
+	indexDb.delete(schema.sessions).where(eq(schema.sessions.id, sessionId)).run();
+	indexDb.delete(schema.sessionMessages).where(eq(schema.sessionMessages.sessionId, sessionId)).run();
+	indexDb.delete(schema.sessionMcpTools).where(eq(schema.sessionMcpTools.sessionId, sessionId)).run();
+	deleteArtifactEventsForSessions(indexDb, [sessionId]);
+	deleteRoutinesForSessions(indexDb, [sessionId]);
+	deleteUsageDailyForSessions(indexDb, [sessionId]);
+	deleteSessionBridgeAliases(indexDb, sessionId);
+}
+
+/** True when `<sessionId>.jsonl` exists as a primary transcript in any project directory. */
+function sessionTranscriptExistsElsewhere(projectsDir: string, sessionId: string): boolean {
+	let projects: string[];
+	try {
+		projects = readdirSync(projectsDir);
+	} catch {
+		// An unreadable projects directory cannot prove the session is gone.
+		return true;
+	}
+	return projects.some((project) => existsSync(join(projectsDir, project, `${sessionId}.jsonl`)));
+}
+
+/**
+ * Prune one primary transcript the watcher saw deleted, the live counterpart of
+ * the full-scan prune. A transcript that reappeared, or a session whose ID still
+ * has a transcript under another project (a move), keeps its session rows.
+ */
+export function pruneDeletedTranscript(
+	indexDb: IndexDb,
+	summariesDb: IndexDb,
+	projectsDir: string,
+	filePath: string,
+): void {
+	if (!isPrimaryTranscriptPath(projectsDir, filePath) || existsSync(filePath)) return;
+	indexDb.transaction(() => {
+		indexDb.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).run();
+		indexDb.delete(schema.usageDaily).where(eq(schema.usageDaily.filePath, filePath)).run();
+		const session = indexDb
+			.select({id: schema.sessions.id})
+			.from(schema.sessions)
+			.where(eq(schema.sessions.filePath, filePath))
+			.get();
+		if (!session || sessionTranscriptExistsElsewhere(projectsDir, session.id)) return;
+		deleteSessionRows(indexDb, summariesDb, session.id);
+	});
+}
+
 /**
  * Prune sessions whose primary transcripts disappeared during a complete scan.
  * A session ID still present under another project is a moved session, so only
@@ -1883,26 +1944,7 @@ function pruneDeletedSessions(
 		indexDb.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, session.filePath)).run();
 		if (onDiskIds.has(session.id)) continue;
 
-		const subagentPaths = indexDb
-			.select({filePath: schema.subagents.filePath})
-			.from(schema.subagents)
-			.where(eq(schema.subagents.sessionId, session.id))
-			.all();
-		for (const subagent of subagentPaths) {
-			indexDb.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, subagent.filePath)).run();
-		}
-
-		indexDb.delete(schema.subagents).where(eq(schema.subagents.sessionId, session.id)).run();
-		indexDb.delete(schema.planSessions).where(eq(schema.planSessions.sessionId, session.id)).run();
-		summariesDb.delete(schema.summaries).where(eq(schema.summaries.sessionId, session.id)).run();
-		indexDb.run(sql`DELETE FROM message_content WHERE session_id = ${session.id}`);
-		indexDb.delete(schema.sessions).where(eq(schema.sessions.id, session.id)).run();
-		indexDb.delete(schema.sessionMessages).where(eq(schema.sessionMessages.sessionId, session.id)).run();
-		indexDb.delete(schema.sessionMcpTools).where(eq(schema.sessionMcpTools.sessionId, session.id)).run();
-		deleteArtifactEventsForSessions(indexDb, [session.id]);
-		deleteRoutinesForSessions(indexDb, [session.id]);
-		deleteUsageDailyForSessions(indexDb, [session.id]);
-		deleteSessionBridgeAliases(indexDb, session.id);
+		deleteSessionRows(indexDb, summariesDb, session.id);
 	}
 
 	// Re-indexing a moved session updates sessions.filePath before pruning runs,
