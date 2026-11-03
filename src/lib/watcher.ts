@@ -25,7 +25,8 @@ import {
 	listSessionsForProjectFromDb,
 	getArchivedSessionIds,
 	getSessionProjectId,
-	getTasksForProject,
+	getTaskFilesForProject,
+	resolveTaskDirProjectId,
 } from "./db/queries";
 import type {TaskRow} from "./db/queries";
 import {getUnseenSessionIds} from "./db/viewed-state";
@@ -75,7 +76,11 @@ const lastSessionsByProject = hmrPersist(
 	"lastSessionsByProject",
 	() => new Map<string, Map<string, SessionSummaryPayload>>(),
 );
-const lastTasksByProject = hmrPersist("lastTasksByProject", () => new Map<string, Map<string, TaskSummaryPayload>>());
+/** Per project, the last-broadcast tasks keyed by task file path: task ids repeat across task lists. */
+const lastTasksByProject = hmrPersist(
+	"lastTaskFilesByProject",
+	() => new Map<string, Map<string, TaskSummaryPayload>>(),
+);
 
 // Transient state: module-scoped, recreated on HMR
 let watcher: RecursiveWatcher | null = null;
@@ -352,50 +357,46 @@ function diffAndBroadcastSessions(index: IndexDb, projectId: string, broadcast: 
 	lastSessionsByProject.set(projectId, next);
 }
 
+function readTaskSnapshot(projectId: string): Map<string, TaskSummaryPayload> {
+	const snapshot = new Map<string, TaskSummaryPayload>();
+	for (const {filePath, task} of getTaskFilesForProject(getDb().index, projectId)) {
+		snapshot.set(filePath, toTaskSummaryPayload(task));
+	}
+	return snapshot;
+}
+
+/** Same key as the hook dispatcher's, so whichever path broadcasts first suppresses the other. */
+function taskChangedDedupeKey(filePath: string, status: string): string {
+	return `${DOMAIN_EVENTS.TASK_CHANGED}:${filePath}:${status}`;
+}
+
 /**
  * Diff the current DB tasks for a project against the last-known snapshot
  * and broadcast task:changed / task:completed / task:removed deltas. A task transitioning to
  * status 'completed' gets a task:completed event in addition to task:changed.
  */
 function diffAndBroadcastTasks(projectId: string): void {
-	const {index} = getDb();
-	const rows = getTasksForProject(index, projectId);
-	const next = new Map<string, TaskSummaryPayload>();
-	for (const row of rows) {
-		next.set(row.taskId, toTaskSummaryPayload(row));
-	}
-
+	const next = readTaskSnapshot(projectId);
 	const previous = lastTasksByProject.get(projectId) ?? new Map<string, TaskSummaryPayload>();
-	const {added, removed, updated} = diffEntityMaps(previous, next, tasksEqual);
+	const {removed} = diffEntityMaps(previous, next, tasksEqual);
 
-	for (const task of added) {
-		const key = `${DOMAIN_EVENTS.TASK_CHANGED}:${task.taskId}:${task.status}`;
-		if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
-			broadcastTyped(DOMAIN_EVENTS.TASK_CHANGED, {task});
-		}
-		if (task.status === "completed") {
+	for (const [filePath, task] of next) {
+		const before = previous.get(filePath);
+		if (before !== undefined && tasksEqual(before, task)) continue;
+		// The dispatcher already broadcast this change, including its task:completed.
+		if (recentlyBroadcast(taskChangedDedupeKey(filePath, task.status), DEDUPE_TTL_MS)) continue;
+		broadcastTyped(DOMAIN_EVENTS.TASK_CHANGED, {task});
+		if (task.status === "completed" && before?.status !== "completed") {
 			broadcastTyped(DOMAIN_EVENTS.TASK_COMPLETED, {
 				taskId: task.taskId,
 				subject: task.subject,
 			});
 		}
 	}
-	for (const task of updated) {
-		const key = `${DOMAIN_EVENTS.TASK_CHANGED}:${task.taskId}:${task.status}`;
-		if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
-			broadcastTyped(DOMAIN_EVENTS.TASK_CHANGED, {task});
-		}
-		const wasCompleted = previous.get(task.taskId)?.status === "completed";
-		if (task.status === "completed" && !wasCompleted) {
-			broadcastTyped(DOMAIN_EVENTS.TASK_COMPLETED, {
-				taskId: task.taskId,
-				subject: task.subject,
-			});
-		}
-	}
-	for (const taskId of removed) {
-		const projectDir = previous.get(taskId)?.projectDir;
-		if (projectDir !== undefined) broadcastTyped(DOMAIN_EVENTS.TASK_REMOVED, {taskId, projectDir});
+	for (const filePath of removed) {
+		const task = previous.get(filePath);
+		if (task !== undefined)
+			broadcastTyped(DOMAIN_EVENTS.TASK_REMOVED, {taskId: task.taskId, projectDir: task.projectDir});
 	}
 
 	lastTasksByProject.set(projectId, next);
@@ -573,16 +574,29 @@ export function rebroadcastSessionsById(
 	for (const projectId of projectIds) safeDiffSessions(projectId, broadcast, db);
 }
 
-/** Safely diff and broadcast tasks for a session's project; swallow indexing races. */
-function safeDiffTasks(sessionId: string): void {
-	if (!sessionId) return;
+/**
+ * Snapshot a task dir's project before a task file change is indexed, so the
+ * first diff after a restart compares against the indexed state instead of
+ * nothing and broadcasts only what changed.
+ */
+function seedTaskSnapshot(taskDir: string): void {
+	if (!taskDir) return;
 	try {
-		const {index} = getDb();
-		const projectId = getSessionProjectId(index, sessionId);
-		if (projectId)
-			trackActivitySync(`task diff ${projectId}`, () => {
-				diffAndBroadcastTasks(projectId);
-			});
+		const projectId = resolveTaskDirProjectId(getDb().index, taskDir);
+		if (!lastTasksByProject.has(projectId)) lastTasksByProject.set(projectId, readTaskSnapshot(projectId));
+	} catch {
+		// transient DB error; the diff then treats the project as new
+	}
+}
+
+/** Safely diff and broadcast tasks for a task dir's project; swallow indexing races. */
+function safeDiffTasks(taskDir: string): void {
+	if (!taskDir) return;
+	try {
+		const projectId = resolveTaskDirProjectId(getDb().index, taskDir);
+		trackActivitySync(`task diff ${projectId}`, () => {
+			diffAndBroadcastTasks(projectId);
+		});
 	} catch {
 		// transient DB error; next file event will retry
 	}
@@ -833,10 +847,12 @@ async function handleFileChange(path: string): Promise<void> {
 		const sessionId = filename.replace(/\.json$/, "");
 		broadcastTyped(SSE_EVENTS.STATUSLINE_UPDATED, {sessionId});
 	} else if (ext === ".json" && path.includes("/tasks/")) {
+		// ~/.claude/tasks/{taskDir}/{taskId}.json
+		const taskDir = basename(dirname(path));
+		seedTaskSnapshot(taskDir);
 		void (async () => {
 			await indexSilently(path, projectsDir);
-			// ~/.claude/tasks/{projectDir}/{taskId}.json
-			safeDiffTasks(basename(dirname(path)));
+			safeDiffTasks(taskDir);
 		})();
 	} else if (ext === ".json" && path.endsWith("sessions-index.json")) {
 		void (async () => {
@@ -926,12 +942,14 @@ async function handleFileUnlink(path: string): Promise<void> {
 	} else if (ext === ".json" && path.endsWith("sessions-index.json")) {
 		safeDiffSessions(basename(dirname(path)));
 	} else if (ext === ".json" && path.includes("/tasks/")) {
+		const taskDir = basename(dirname(path));
+		seedTaskSnapshot(taskDir);
 		try {
 			deleteTaskFile(getDb().index, path);
 		} catch {
 			// transient DB error; the diff below still runs
 		}
-		safeDiffTasks(basename(dirname(path)));
+		safeDiffTasks(taskDir);
 	}
 }
 

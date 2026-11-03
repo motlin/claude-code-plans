@@ -1332,6 +1332,7 @@ function parseTaskRow(row: {
 function getRawTaskRowsForProject(db: IndexDb, projectId: string) {
 	const rows = db
 		.select({
+			filePath: schema.tasks.filePath,
 			taskId: schema.tasks.taskId,
 			projectDir: schema.tasks.projectDir,
 			subject: schema.tasks.subject,
@@ -1364,6 +1365,29 @@ function getRawTaskRowsForProject(db: IndexDb, projectId: string) {
 /** Return all tasks attributed to a project, including completed tasks. */
 export function getTasksForProject(db: IndexDb, projectId: string): TaskRow[] {
 	return getRawTaskRowsForProject(db, projectId).map(parseTaskRow);
+}
+
+/**
+ * Return every task attributed to a project with its file path. Task ids are
+ * only unique within one task list, so the file path is the task's identity
+ * when tasks from several lists are compared.
+ */
+export function getTaskFilesForProject(db: IndexDb, projectId: string): {filePath: string; task: TaskRow}[] {
+	return getRawTaskRowsForProject(db, projectId).map((row) => ({filePath: row.filePath, task: parseTaskRow(row)}));
+}
+
+/**
+ * Resolve the project a ~/.claude/tasks/ directory belongs to, by the same
+ * rules getRawTaskRowsForProject applies: a session id joins its session, and
+ * any other name (`session-<prefix>`, a project name) resolves as unmatched.
+ */
+export function resolveTaskDirProjectId(db: IndexDb, taskDir: string): string {
+	const session = db
+		.select({projectId: schema.sessions.projectId})
+		.from(schema.sessions)
+		.where(eq(schema.sessions.id, taskDir))
+		.get();
+	return session?.projectId ?? resolveUnmatchedTaskDir(db, taskDir).projectId;
 }
 
 /** Return open tasks attributed to a project, in-progress first, newest first. */

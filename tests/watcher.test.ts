@@ -8,6 +8,7 @@ import {
 	rmSync,
 	statSync,
 	symlinkSync,
+	utimesSync,
 } from "node:fs";
 import {createServer as createHttpServer} from "node:http";
 import {createServer, type AddressInfo, type Server} from "node:net";
@@ -907,6 +908,143 @@ describe("task file unlink", () => {
 			events: [{type: DOMAIN_EVENTS.TASK_REMOVED, data: {taskId: "1", projectDir: "sess-task-unlink"}}],
 			rows: [],
 		});
+	});
+});
+
+describe("task diff across task lists", () => {
+	let testDir: string;
+	let projectsDir: string;
+
+	beforeEach(() => {
+		testDir = realpathSync(mkdtempSync(join(tmpdir(), "watcher-task-diff-test-")));
+		projectsDir = join(testDir, "projects");
+	});
+
+	afterEach(() => {
+		rmSync(testDir, {recursive: true, force: true});
+	});
+
+	async function indexSession(projectId: string, sessionId: string): Promise<void> {
+		const jsonlPath = join(projectsDir, projectId, `${sessionId}.jsonl`);
+		mkdirSync(dirname(jsonlPath), {recursive: true});
+		writeFileSync(
+			jsonlPath,
+			jsonl({
+				type: "user",
+				sessionId,
+				timestamp: "2000-01-01T00:00:00.000Z",
+				message: {role: "user", content: "Track tasks"},
+			}),
+		);
+		await processJsonlAppend(sharedDb.index, jsonlPath, new Map(), () => {}, {projectsDir, plansDir: ""});
+	}
+
+	function writeTask(dirName: string, id: string, status: string, mtimeSeconds: number): string {
+		const taskPath = join(testDir, "tasks", dirName, `${id}.json`);
+		mkdirSync(dirname(taskPath), {recursive: true});
+		writeFileSync(
+			taskPath,
+			JSON.stringify({id, subject: `Task ${dirName} ${id}`, description: "", status, blocks: [], blockedBy: []}),
+		);
+		utimesSync(taskPath, mtimeSeconds, mtimeSeconds);
+		return taskPath;
+	}
+
+	async function captureBroadcasts(action: () => Promise<void>): Promise<CapturedBroadcast[]> {
+		const broadcasts: CapturedBroadcast[] = [];
+		const decoder = new TextDecoder();
+		const client = {
+			enqueue: (chunk: Uint8Array) => {
+				const [eventLine = "", dataLine = ""] = decoder.decode(chunk).split("\n");
+				broadcasts.push({
+					type: eventLine.replace("event: ", ""),
+					data: JSON.parse(dataLine.replace("data: ", "")),
+				});
+			},
+		} as unknown as ReadableStreamDefaultController;
+		addClient(client);
+		try {
+			await action();
+			// handleFileChange detaches the task indexing; let it settle.
+			await new Promise((resolve) => {
+				setTimeout(resolve, 200);
+			});
+		} finally {
+			removeClient(client);
+		}
+		return broadcasts.filter(({type}) => type.startsWith("task:"));
+	}
+
+	function taskPayload(dirName: string, id: string, status: string): Record<string, unknown> {
+		return {
+			task: {
+				taskId: id,
+				projectDir: dirName,
+				subject: `Task ${dirName} ${id}`,
+				description: "",
+				status,
+				activeForm: null,
+				owner: null,
+				blocks: [],
+				blockedBy: [],
+			},
+		};
+	}
+
+	it("keeps two lists' task '1' apart and does not dedupe one list's change against the other's", async () => {
+		const projectId = "-Users-alice-projects-two-lists";
+		await indexSession(projectId, "sess-list-a");
+		await indexSession(projectId, "sess-list-b");
+		const pathA = writeTask("sess-list-a", "1", "pending", 1000);
+		const pathB = writeTask("sess-list-b", "1", "pending", 1000);
+		await captureBroadcasts(async () => {
+			await __testing.handleFileChange(pathA);
+			await __testing.handleFileChange(pathB);
+		});
+
+		writeTask("sess-list-a", "1", "in_progress", 2000);
+		const changeA = await captureBroadcasts(async () => __testing.handleFileChange(pathA));
+		writeTask("sess-list-b", "1", "in_progress", 2000);
+		const changeB = await captureBroadcasts(async () => __testing.handleFileChange(pathB));
+
+		expect({changeA, changeB}).toStrictEqual({
+			changeA: [{type: DOMAIN_EVENTS.TASK_CHANGED, data: taskPayload("sess-list-a", "1", "in_progress")}],
+			changeB: [{type: DOMAIN_EVENTS.TASK_CHANGED, data: taskPayload("sess-list-b", "1", "in_progress")}],
+		});
+	});
+
+	it("broadcasts only the changed task on the first change after a restart", async () => {
+		const projectId = "-Users-alice-projects-restart";
+		await indexSession(projectId, "sess-restart");
+		const donePath = writeTask("sess-restart", "1", "completed", 1000);
+		const openPath = writeTask("sess-restart", "2", "pending", 1000);
+		// The startup scan indexed these before the watcher saw any event.
+		await indexFile(sharedDb.index, donePath, projectsDir);
+		await indexFile(sharedDb.index, openPath, projectsDir);
+
+		writeTask("sess-restart", "2", "in_progress", 2000);
+		const broadcasts = await captureBroadcasts(async () => __testing.handleFileChange(openPath));
+
+		expect(broadcasts).toStrictEqual([
+			{type: DOMAIN_EVENTS.TASK_CHANGED, data: taskPayload("sess-restart", "2", "in_progress")},
+		]);
+	});
+
+	it("broadcasts changes in session-<prefix> and project-named task dirs", async () => {
+		const projectId = "-Users-alice-projects-named-dirs";
+		await indexSession(projectId, "abcd1234-0000-4000-8000-000000000001");
+		const prefixPath = writeTask("session-abcd1234", "1", "pending", 1000);
+		const namedPath = writeTask("named-dirs", "1", "pending", 1000);
+
+		const broadcasts = await captureBroadcasts(async () => {
+			await __testing.handleFileChange(prefixPath);
+			await __testing.handleFileChange(namedPath);
+		});
+
+		expect(broadcasts).toStrictEqual([
+			{type: DOMAIN_EVENTS.TASK_CHANGED, data: taskPayload("session-abcd1234", "1", "pending")},
+			{type: DOMAIN_EVENTS.TASK_CHANGED, data: taskPayload("named-dirs", "1", "pending")},
+		]);
 	});
 });
 
