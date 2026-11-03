@@ -715,7 +715,7 @@ describe("artifacts route", () => {
 				preview: card.querySelector("[data-card-preview]")?.className,
 				cover: cover?.getAttribute("data-artifact-cover"),
 				hue: [...(cover?.classList ?? [])].filter((name) => /cds-(gray|blue)-/.test(name)),
-				front: [...(front?.classList ?? [])].filter((name) => /^(h|w|top|rounded|shadow|z)-/.test(name)),
+				front: [...(front?.classList ?? [])].filter((name) => /^(h|w|top|rounded|shadow|z|border)-/.test(name)),
 				blank: blank?.getAttribute("data-artifact-cover-blank"),
 				viewBox: blank?.getAttribute("viewBox"),
 				rects: blank?.querySelector("g")?.querySelectorAll("rect").length,
@@ -730,7 +730,15 @@ describe("artifacts route", () => {
 				preview: "relative h-[152px] shrink-0 select-none overflow-hidden",
 				cover: "file",
 				hue: ["bg-cds-gray-100", "text-cds-gray-600", "dark:bg-cds-gray-700", "dark:text-cds-gray-200"],
-				front: ["shadow-lg", "top-[30px]", "z-2", "rounded-xl", "h-[190px]", "w-[min(232px,100%-24px)]"],
+				front: [
+					"border-[color:var(--color-border-line)]",
+					"shadow-lg",
+					"top-[30px]",
+					"z-2",
+					"rounded-xl",
+					"h-[190px]",
+					"w-[min(232px,100%-24px)]",
+				],
 				blank: "other",
 				viewBox: "0 0 202 130",
 				rects: 6,
@@ -739,10 +747,103 @@ describe("artifacts route", () => {
 				preview: "relative h-[152px] shrink-0 select-none overflow-hidden",
 				cover: "document",
 				hue: ["bg-cds-blue-100", "text-cds-blue-600", "dark:bg-cds-blue-700", "dark:text-cds-blue-200"],
-				front: ["shadow-lg", "top-[30px]", "z-2", "rounded-xl", "h-[200px]", "w-[182px]"],
+				front: [
+					"border-[color:var(--color-border-line)]",
+					"shadow-lg",
+					"top-[30px]",
+					"z-2",
+					"rounded-xl",
+					"h-[200px]",
+					"w-[182px]",
+				],
 				blank: "document",
 				viewBox: "0 0 180 130",
 				rects: 6,
+			},
+		});
+	});
+
+	it("draws upstream's blank skeletons overflowing the sheet, with a fading sheen copy and pill text lines, under an eased bottom fade", async () => {
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		await renderArtifactsPage("/artifacts", true);
+		const coverFor = (name: string) => {
+			const cover = screen
+				.getByRole("link", {name})
+				.closest("li")
+				?.querySelector<HTMLElement>("[data-artifact-cover]");
+			if (cover === null || cover === undefined) throw new Error(`no cover for ${name}`);
+			return cover;
+		};
+		const describeBlank = (cover: HTMLElement) => {
+			const blank = cover.querySelector("svg[data-artifact-cover-blank]");
+			const gradient = blank?.querySelector("linearGradient");
+			const groups = [...(blank?.querySelectorAll(":scope > g") ?? [])];
+			return {
+				className: blank?.getAttribute("class"),
+				size: [blank?.getAttribute("width"), blank?.getAttribute("height")],
+				gradient: {
+					units: gradient?.getAttribute("gradientUnits"),
+					x2: gradient?.getAttribute("x2"),
+					stops: [...(gradient?.querySelectorAll("stop") ?? [])].map((stop) => [
+						stop.getAttribute("offset"),
+						stop.getAttribute("class"),
+						stop.getAttribute("stop-opacity"),
+					]),
+				},
+				groups: groups.map((group) => ({
+					fill: group.getAttribute("fill") === `url(#${gradient?.id})` ? "sheen" : group.getAttribute("fill"),
+					rx: [...group.querySelectorAll("rect")].map((rect) => rect.getAttribute("rx")),
+				})),
+			};
+		};
+		const describeFade = (cover: HTMLElement) => {
+			const fade = cover.lastElementChild as HTMLElement | null;
+			return {
+				mask: fade?.style.maskImage,
+				composite: fade?.style.maskComposite,
+				children: [...(fade?.children ?? [])].map((child) => child.className),
+			};
+		};
+
+		const other = describeBlank(coverFor("Asap Ladder Queue"));
+		const doc = describeBlank(coverFor("Quarterly plan"));
+		const ramp = [
+			0, 0.013, 0.049, 0.104, 0.175, 0.259, 0.352, 0.45, 0.55, 0.648, 0.741, 0.825, 0.896, 0.951, 0.987, 1,
+		]
+			.map((step, index) => `rgb(0 0 0 / ${(step * 0.3).toFixed(3)}) ${(67 + index * 2.2).toFixed(1)}%`)
+			.join(", ");
+		const blankClass =
+			"pointer-events-none absolute top-0 overflow-visible fill-current start-1/2 -translate-x-1/2 rtl:translate-x-1/2 text-[color:var(--skeleton-base)]";
+		const sheen = {
+			units: "userSpaceOnUse",
+			stops: [
+				["0", "[stop-color:currentColor]", null],
+				["1", "[stop-color:currentColor]", "0"],
+			],
+		};
+		expect({other, doc, fade: describeFade(coverFor("Asap Ladder Queue"))}).toStrictEqual({
+			other: {
+				className: blankClass,
+				size: ["202", "130"],
+				gradient: {...sheen, x2: "202"},
+				groups: [
+					{fill: null, rx: ["6", "6", "6", "6", "6", "6"]},
+					{fill: "sheen", rx: ["6", "6", "6", "6", "6", "6"]},
+				],
+			},
+			doc: {
+				className: blankClass,
+				size: ["180", "130"],
+				gradient: {...sheen, x2: "180"},
+				groups: [
+					{fill: null, rx: ["5", "3", "2.5", "2.5", "2.5", "6"]},
+					{fill: "sheen", rx: ["5", "3", "2.5", "2.5", "2.5", "6"]},
+				],
+			},
+			fade: {
+				mask: `linear-gradient(to bottom, transparent, ${ramp}), linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 12px), transparent)`,
+				composite: "intersect",
+				children: ["absolute inset-0 bg-surface-2 opacity-40 dark:opacity-35"],
 			},
 		});
 	});
@@ -778,7 +879,7 @@ describe("artifacts route", () => {
 			};
 		};
 		const words = "flex min-w-0 flex-1 flex-col gap-0.5";
-		const title = "min-w-0 truncate text-start text-body font-medium leading-5 text-primary";
+		const title = "min-w-0 truncate text-start text-body font-control leading-5 text-primary";
 		const body = "relative flex min-h-18 flex-1 items-center gap-3 p-4";
 
 		expect({
@@ -1420,6 +1521,24 @@ describe("artifacts route", () => {
 		expect({rows, search: {...router.state.location.search}}).toStrictEqual({rows: 14, search: {type: "other"}});
 	});
 
+	it("draws upstream's filter-empty block: muted status copy over a secondary Clear filters button", async () => {
+		await renderArtifactsPage("/artifacts?type=slides", seedMixedGallery);
+		const status = screen.getByText("Nothing matches. Try clearing a filter.");
+		const clear = screen.getByRole("button", {name: "Clear filters"});
+		expect({
+			status: [status.tagName, status.getAttribute("role"), status.className],
+			block: status.parentElement?.className,
+			clear: [clear.parentElement === status.parentElement, clear.className],
+		}).toStrictEqual({
+			status: ["SPAN", "status", ""],
+			block: "mt-10 flex flex-col items-center gap-3 text-body text-muted-as-secondary",
+			clear: [
+				true,
+				"inline-flex h-7 shrink-0 items-center justify-center rounded-r6 px-[9px] text-body text-primary bg-fill-secondary shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)] transition-shadow hover:bg-fill-secondary-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
+			],
+		});
+	});
+
 	it("shows upstream's empty text for a type with no artifacts and paints the pressed trigger", async () => {
 		await renderArtifactsPage("/artifacts?type=slides", seedMixedGallery);
 
@@ -1435,7 +1554,7 @@ describe("artifacts route", () => {
 			pressed: "true",
 			paint: [],
 			icon: true,
-			statuses: ["", "No artifacts of this type here yet"],
+			statuses: ["", "Nothing matches. Try clearing a filter."],
 		});
 	});
 

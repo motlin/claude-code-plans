@@ -50,7 +50,8 @@
 	--font-weight-control-regular: 400;
 	/*
 	 * Upstream cds palette steps for the Artifacts gallery covers and template tiles (`--cds-<hue>-<step>`,
-	 * dumps/upstream-survey-root-vars.css); Tailwind's own gray/blue/… steps differ and stay for other uses.
+	 * pre-rollout values from dumps/upstream-survey-root-vars.css, restated under fizzy-lake color below); Tailwind's own
+	 * gray/blue/… steps differ and stay for other uses.
 	 */
 	--color-cds-gray-100: #e1e0d9;
 	--color-cds-gray-200: #c3c2b7;
@@ -264,6 +265,8 @@ html[data-interface-font="dyslexic"] {
 	--shadow-panel-md: var(--panel-md-shadow);
 	/* Upstream cds shadow-md (--cds-shadow-md): screenshot thumbnails in tool rows. */
 	--shadow-md: var(--cds-shadow-md);
+	/* Upstream cds shadow-lg (--cds-shadow-lg): the Artifacts cover's front sheet. */
+	--shadow-lg: var(--cds-shadow-lg);
 	/* Upstream claude.ai/code — dialog surface (shadow-panel-lg) */
 	--shadow-panel-lg: var(--panel-lg-shadow);
 	/* Upstream claude.ai/code — collapsed sidebar peek popover (--df-shadow-pop) */
@@ -543,6 +546,8 @@ html[data-interface-font="dyslexic"] {
 		0 0 0 1px rgb(11 11 11 / 0.1), 0 2px 4px 0 rgb(11 11 11 / 0.07), 0 6px 16px 0 rgb(11 11 11 / 0.08);
 	/* Upstream --cds-shadow-md (light) */
 	--cds-shadow-md: 0 2px 4px 0 rgb(11 11 11 / 0.07), 0 6px 16px 0 rgb(11 11 11 / 0.08);
+	/* Upstream --cds-shadow-lg (light): the Artifacts cover's front sheet. */
+	--cds-shadow-lg: 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(11 11 11 / 0.08);
 	/* Upstream claude.ai/code — approval card (.epitaxy-approval-card surface) */
 	--approval-card-shadow: 0 0 0 1px rgb(11 11 11 / 0.1), 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.08);
 	--menu-danger-fill: #d03b3b;
@@ -779,6 +784,8 @@ html[data-interface-font="dyslexic"] {
 		inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 2px 4px 0 rgb(11 11 11 / 0.07), 0 6px 16px 0 rgb(0 0 0 / 0.24);
 	/* Upstream --cds-shadow-md (dark) */
 	--cds-shadow-md: 0 2px 4px 0 rgb(11 11 11 / 0.07), 0 6px 16px 0 rgb(0 0 0 / 0.24);
+	/* Upstream --cds-shadow-lg (dark) */
+	--cds-shadow-lg: 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(0 0 0 / 0.24);
 	/* Upstream claude.ai/code — approval card (dark) */
 	--approval-card-shadow: 0 0 0 1px hsl(0 0% 100% / 0.1), 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.3);
 	/* Upstream --cds-chart-* (dark: reference gray-350, muted gray-550; categorical blue-400/orange-400/aqua-400/yellow-350) */
@@ -811,6 +818,28 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream `--cds-bg-tint-blue`, the same in both modes: the ⌘K palette's committed filter chips. */
 	--upstream-tint-blue: #257de01f;
 	--upstream-text-tint-blue: #1757ac;
+	/* Upstream's fizzy-lake `--cds-<hue>-<step>` palette, the same in both modes: the Artifacts gallery
+	   covers and template tiles (read live 2026-11-03, dumps/artifacts-gallery-verify-2026-11-03.txt). */
+	--color-cds-gray-100: #e0e0e0;
+	--color-cds-gray-200: #c2c2c2;
+	--color-cds-gray-600: #515151;
+	--color-cds-gray-700: #383838;
+	--color-cds-blue-100: #cce3fd;
+	--color-cds-blue-200: #9dc8f7;
+	--color-cds-blue-600: #1757ac;
+	--color-cds-blue-700: #0e3d7e;
+	--color-cds-orange-100: #f7d9ca;
+	--color-cds-orange-200: #f6b293;
+	--color-cds-orange-600: #90370f;
+	--color-cds-orange-700: #632508;
+	--color-cds-violet-100: #e4deff;
+	--color-cds-violet-200: #c6bdfa;
+	--color-cds-violet-600: #5437b8;
+	--color-cds-violet-700: #3a2684;
+	--color-cds-red-100: #fbd4d4;
+	--color-cds-red-200: #f7a7a7;
+	--color-cds-red-600: #a42528;
+	--color-cds-red-700: #761a1c;
 	/* Upstream `--cds-text-primary` / `-secondary` / `-muted`. */
 	--upstream-text-primary: #000000e6;
 	--upstream-text-secondary: #0009;

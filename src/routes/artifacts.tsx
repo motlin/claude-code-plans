@@ -303,7 +303,6 @@ function ArtifactsPage() {
 	);
 	const unpinned = visible.filter((artifact) => !isPinned(artifact.url));
 	const searching = search.trim() !== "";
-	const filterCount = activeFilterCount(filters);
 	const layoutLabel = layout === "grid" ? "List view" : "Grid view";
 
 	function toggleLayout() {
@@ -401,26 +400,26 @@ function ArtifactsPage() {
 				{inView.length === 0 && (artifacts.length === 0 || !searching) ? (
 					<ArtifactsEmptyState view={view} />
 				) : visible.length === 0 ? (
-					<div className="mt-10 flex flex-col items-center gap-3">
-						<div role="status" className="text-center text-body text-ink-muted">
-							{searching
-								? `No artifacts matching “${search}”`
-								: filterCount === filters.types.length
-									? "No artifacts of this type here yet"
-									: "No artifacts match these filters"}
+					searching ? (
+						<div className="mt-10 flex flex-col items-center gap-3">
+							<div role="status" className="text-center text-body text-ink-muted">
+								{`No artifacts matching “${search}”`}
+							</div>
 						</div>
-						{!searching && filterCount > 0 && (
+					) : (
+						<div className="mt-10 flex flex-col items-center gap-3 text-body text-muted-as-secondary">
+							<span role="status">Nothing matches. Try clearing a filter.</span>
 							<button
 								type="button"
-								className="flex h-6 items-center rounded-r5 px-2 text-body text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+								className={FILTER_EMPTY_CLEAR_CLASS}
 								onClick={() => {
 									updateSearch({filters: NO_ARTIFACT_FILTERS});
 								}}
 							>
 								Clear filters
 							</button>
-						)}
-					</div>
+						</div>
+					)
 				) : layout === "grid" ? (
 					<ArtifactGrid pinned={pinned} artifacts={unpinned} now={now} />
 				) : (
@@ -430,6 +429,13 @@ function ArtifactsPage() {
 		</div>
 	);
 }
+
+/**
+ * Upstream's cds Button `variant="secondary"` at the gallery's comfortable density (28px, 9px padding, 8px radius,
+ * the filled secondary with the field ring) under the filter-empty copy (gated `On`).
+ */
+const FILTER_EMPTY_CLEAR_CLASS =
+	"inline-flex h-7 shrink-0 items-center justify-center rounded-r6 px-[9px] text-body text-primary bg-fill-secondary shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)] transition-shadow hover:bg-fill-secondary-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /**
  * Upstream's "Filter and sort" menu (bundle `Dn`): Sort by, then Owner / Type / Date opened / Sharing submenus,
@@ -633,57 +639,87 @@ const COVER_FRONT_SIZE: Record<CoverKind, string> = {
 	document: "h-[200px] w-[182px]",
 };
 
-/** Upstream's bottom fade: clear down to 67%, then 30% of the cover hue, with 12px side fades. */
+/** Upstream's bottom fade (`he`): an eased 16-stop ramp from clear at 67% to 30% of the cover hue, with 12px side fades. */
+const COVER_FADE_EASING = [
+	0, 0.013, 0.049, 0.104, 0.175, 0.259, 0.352, 0.45, 0.55, 0.648, 0.741, 0.825, 0.896, 0.951, 0.987, 1,
+];
 const COVER_FADE_MASK = {
-	maskImage:
-		"linear-gradient(transparent, transparent 67%, rgba(0, 0, 0, 0.3) 100%), linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 12px), transparent)",
+	maskImage: [
+		`linear-gradient(to bottom, transparent, ${COVER_FADE_EASING.map(
+			(step, index) => `rgb(0 0 0 / ${(step * 0.3).toFixed(3)}) ${(67 + index * 2.2).toFixed(1)}%`,
+		).join(", ")})`,
+		"linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 12px), transparent)",
+	].join(", "),
 	maskComposite: "intersect",
 } as const;
 
-/** Upstream's `other` blank drawing: a 3 × 2 grid of 51.33 × 74 r6 tiles. */
-const BLANK_OTHER_TILES = [16, 98].flatMap((y) => [16, 75.33, 134.66].map((x) => ({x, y})));
+/** Upstream's cover wash: the surface laid over the hue at 40% (35% dark), on the cover and again inside its fade. */
+const COVER_SURFACE_WASH = "absolute inset-0 bg-surface-2 opacity-40 dark:opacity-35";
 
-/** Upstream's `document` blank drawing: a title, a subtitle, three text lines and a block. */
-const BLANK_DOCUMENT_LINES = [
-	{y: 18, width: 92, height: 10},
-	{y: 36, width: 55, height: 6},
-	{y: 54, width: 132.5, height: 5},
-	{y: 67, width: 121, height: 5},
-	{y: 80, width: 126.5, height: 5},
-	{y: 95, width: 144, height: 30},
-];
+/** An upstream blank-drawing box: `[x, y, width, height, rx?]`, where a missing rx rounds it into a pill. */
+type BlankBox = readonly [x: number, y: number, width: number, height: number, rx?: number];
 
-/** Upstream's no-thumbnail front sheet: a skeleton drawing in the skeleton base ink with a sheen. */
+/** Upstream's blank drawings (`M` in c8a1f083a): the `other` 3 × 2 tile grid and the `document` page's text lines. */
+const BLANK_DRAWINGS: Record<CoverKind, {width: number; boxes: readonly BlankBox[]}> = {
+	file: {
+		width: 202,
+		boxes: [0, 1, 2, 3, 4, 5].map((index): BlankBox => [
+			16 + (index % 3) * 59.33,
+			index < 3 ? 16 : 98,
+			51.33,
+			74,
+			6,
+		]),
+	},
+	document: {
+		width: 180,
+		boxes: [
+			[18, 18, 92, 10],
+			[18, 36, 55, 6],
+			[18, 54, 132.5, 5],
+			[18, 67, 121, 5],
+			[18, 80, 126.5, 5],
+			[18, 95, 144, 30, 6],
+		],
+	},
+};
+
+function BlankBoxes({boxes}: {boxes: readonly BlankBox[]}) {
+	return boxes.map(([x, y, width, height, rx]) => (
+		<rect key={`${x} ${y}`} x={x} y={y} width={width} height={height} rx={rx ?? Math.min(width, height) / 2} />
+	));
+}
+
+const SHEEN_STOP = "[stop-color:currentColor]";
+
+/**
+ * Upstream's no-thumbnail front sheet (`R`): the skeleton drawing pinned to the sheet's top centre, overflowing its
+ * 130px box, with a second copy filled by a sheen that fades from the skeleton ink to clear across its width.
+ */
 function CoverBlank({kind}: {kind: CoverKind}) {
 	const sheenId = useId();
-	const other = kind === "file";
-	const width = other ? 202 : 180;
+	const {width, boxes} = BLANK_DRAWINGS[kind];
 	return (
 		<svg
 			aria-hidden="true"
-			data-artifact-cover-blank={other ? "other" : "document"}
-			viewBox={`0 0 ${width} 130`}
+			data-artifact-cover-blank={kind === "file" ? "other" : "document"}
 			width={width}
 			height={130}
-			className="mx-auto block fill-current text-[color:var(--skeleton-base)]"
+			viewBox={`0 0 ${width} 130`}
+			className="pointer-events-none absolute top-0 overflow-visible fill-current start-1/2 -translate-x-1/2 rtl:translate-x-1/2 text-[color:var(--skeleton-base)]"
 		>
-			<g>
-				{other
-					? BLANK_OTHER_TILES.map(({x, y}) => (
-							<rect key={`${x}-${y}`} x={x} y={y} width={51.33} height={74} rx={6} />
-						))
-					: BLANK_DOCUMENT_LINES.map(({y, width: lineWidth, height}) => (
-							<rect key={y} x={18} y={y} width={lineWidth} height={height} />
-						))}
-			</g>
 			<defs>
-				<linearGradient id={sheenId} x1="0" x2="1" y1="0" y2="0">
-					<stop offset="0" stopColor="var(--skeleton-sheen)" stopOpacity="0" />
-					<stop offset="0.5" stopColor="var(--skeleton-sheen)" />
-					<stop offset="1" stopColor="var(--skeleton-sheen)" stopOpacity="0" />
+				<linearGradient id={sheenId} gradientUnits="userSpaceOnUse" x1={0} x2={width} y1={0} y2={0}>
+					<stop offset={0} className={SHEEN_STOP} />
+					<stop offset={1} className={SHEEN_STOP} stopOpacity={0} />
 				</linearGradient>
 			</defs>
-			<rect width={width} height={130} fill={`url(#${sheenId})`} />
+			<g>
+				<BlankBoxes boxes={boxes} />
+			</g>
+			<g fill={`url(#${sheenId})`}>
+				<BlankBoxes boxes={boxes} />
+			</g>
 		</svg>
 	);
 }
@@ -695,10 +731,10 @@ function ArtifactCover({kind}: {kind: CoverKind}) {
 			data-artifact-cover={kind}
 			className={`group/cover relative h-full overflow-hidden isolate ${COVER_HUE[kind]}`}
 		>
-			<div className="absolute inset-0 bg-surface-2 opacity-40 dark:opacity-35" />
+			<div className={COVER_SURFACE_WASH} />
 			<div
 				data-cover-front=""
-				className={`absolute inset-x-0 mx-auto overflow-hidden border border-border bg-white bg-clip-padding text-primary dark:bg-surface-1 isolate shadow-lg top-[30px] z-2 rounded-xl ${COVER_FRONT_SIZE[kind]}`}
+				className={`absolute inset-x-0 mx-auto overflow-hidden border border-[color:var(--color-border-line)] bg-white bg-clip-padding text-primary dark:bg-surface-1 isolate shadow-lg top-[30px] z-2 rounded-xl ${COVER_FRONT_SIZE[kind]}`}
 			>
 				<CoverBlank kind={kind} />
 			</div>
@@ -706,7 +742,9 @@ function ArtifactCover({kind}: {kind: CoverKind}) {
 				aria-hidden="true"
 				className={`pointer-events-none absolute inset-0 isolate z-3 mx-auto max-w-[268px] overflow-hidden ${COVER_HUE[kind]}`}
 				style={COVER_FADE_MASK}
-			/>
+			>
+				<div className={COVER_SURFACE_WASH} />
+			</div>
 		</div>
 	);
 }
@@ -1106,7 +1144,7 @@ function ArtifactCard({artifact, now, pinned}: {artifact: ArtifactSummary; now: 
 										<div
 											aria-hidden="true"
 											data-card-title=""
-											className="min-w-0 truncate text-start text-body font-medium leading-5 text-primary"
+											className="min-w-0 truncate text-start text-body font-control leading-5 text-primary"
 										>
 											{artifact.title}
 										</div>

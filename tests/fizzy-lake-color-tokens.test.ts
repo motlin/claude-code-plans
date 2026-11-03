@@ -253,4 +253,48 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () => 
 			"--color-palette-selected": "var(--palette-selected)",
 		});
 	});
+	it("restates the Artifacts covers' cds palette steps with upstream's fizzy-lake color values (read live 2026-11-03)", () => {
+		const names = ["gray", "blue", "orange", "violet", "red"].flatMap((hue) =>
+			[100, 200, 600, 700].map((step) => `--color-cds-${hue}-${step}`),
+		);
+		expect({
+			light: tokens(block(FIZZY_LIGHT), names),
+			dark: tokens(block(FIZZY_DARK), ["--color-cds-gray-100"]),
+		}).toStrictEqual({
+			light: {
+				"--color-cds-gray-100": "#e0e0e0",
+				"--color-cds-gray-200": "#c2c2c2",
+				"--color-cds-gray-600": "#515151",
+				"--color-cds-gray-700": "#383838",
+				"--color-cds-blue-100": "#cce3fd",
+				"--color-cds-blue-200": "#9dc8f7",
+				"--color-cds-blue-600": "#1757ac",
+				"--color-cds-blue-700": "#0e3d7e",
+				"--color-cds-orange-100": "#f7d9ca",
+				"--color-cds-orange-200": "#f6b293",
+				"--color-cds-orange-600": "#90370f",
+				"--color-cds-orange-700": "#632508",
+				"--color-cds-violet-100": "#e4deff",
+				"--color-cds-violet-200": "#c6bdfa",
+				"--color-cds-violet-600": "#5437b8",
+				"--color-cds-violet-700": "#3a2684",
+				"--color-cds-red-100": "#fbd4d4",
+				"--color-cds-red-200": "#f7a7a7",
+				"--color-cds-red-600": "#a42528",
+				"--color-cds-red-700": "#761a1c",
+			},
+			dark: {"--color-cds-gray-100": null},
+		});
+	});
+	it("shadow-lg is upstream's cds --cds-shadow-lg: the Artifacts cover's front sheet (read live 2026-11-01/03)", () => {
+		expect({
+			utility: tokens(block("@theme inline"), ["--shadow-lg"]),
+			light: tokens(block(":root"), ["--cds-shadow-lg"]),
+			dark: tokens(block(".dark"), ["--cds-shadow-lg"]),
+		}).toStrictEqual({
+			utility: {"--shadow-lg": "var(--cds-shadow-lg)"},
+			light: {"--cds-shadow-lg": "0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(11 11 11 / 0.08)"},
+			dark: {"--cds-shadow-lg": "0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(0 0 0 / 0.24)"},
+		});
+	});
 });
