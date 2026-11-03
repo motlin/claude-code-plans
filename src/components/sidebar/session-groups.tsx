@@ -19,6 +19,7 @@ import {
 	sectionDropOutcome,
 	sectionOfDragId,
 	UNGROUP_ZONE,
+	UNGROUPED_SECTION_ZONE,
 } from "../../lib/group-drop";
 import {
 	buildSidebarSections,
@@ -67,7 +68,7 @@ import {PinnedSubList} from "./sublists";
  * expanding the last one or scrolling to the list end fetches the next feed page while it can
  * still hold sessions inside Last activity. Dragging any row pins it at a Pinned slot, reorders a
  * pinned row, or (dropped below Pinned) unpins it. A row dropped on a manual section's header or
- * row slot joins that section there, a row dropped on "Remove from …" leaves it, and section
+ * row slot joins that section there, a row dropped on "Remove from …" or on Recents leaves it, and section
  * headers drag to reorder. ⌘-click and ⇧-click select several rows for the bulk row menu;
  * dragging a selected row moves the whole selection, which can only drop on a manual section.
  */
@@ -330,7 +331,7 @@ export function SessionGroups({
 				<div
 					ref={(element) => {
 						recentsRef.current = element;
-						zoneRef(UNPIN_ZONE)(element);
+						zoneRef(UNGROUPED_SECTION_ZONE)(element);
 					}}
 					data-testid="sidebar-recents"
 					data-tab-section=""
@@ -383,8 +384,6 @@ export function SessionGroups({
 
 const PINNED_LIST = "pinned";
 const PIN_DROP_ZONE = "pin-drop";
-/** The recents list below Pinned: dropping a pinned row here unpins it. */
-const UNPIN_ZONE = "unpin";
 
 /**
  * Every session row the sidebar shows, in display order: Pinned, then each expanded
@@ -445,7 +444,7 @@ function groupLists(
 
 /**
  * Apply a released multi-row drag: every selected row joins the group it was dropped
- * on (in display order, at the slot) or leaves its group on Ungroup. Pinned rows
+ * on (in display order, at the slot) or leaves its group on Remove from … or Recents. Pinned rows
  * among them are unpinned so they show where they were dropped. False when nothing moved.
  */
 function applyMultiGroupDrop(

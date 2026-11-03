@@ -1,5 +1,5 @@
 import {Ellipsis} from "lucide-react";
-import {type ReactNode, useRef, useState} from "react";
+import {type KeyboardEvent, type ReactNode, useRef, useState} from "react";
 
 import {useArchiveSessions} from "../../hooks/use-session-archive";
 import {
@@ -38,7 +38,7 @@ function deleteGroupBody(name: string, count: number): string {
  * The header label of a manual section with claude.ai/code's header menu, opened by right-clicking
  * the label or by its hover kebab: New session (upstream `rv`), Rename section (inline), Icon and
  * color ▸, New section, Move up / Move down / Sort A to Z among the manual sections, Archive all (N)
- * and Delete section behind a confirm.
+ * and Delete section behind a confirm. Alt+Shift+Up/Down on the label moves the section too.
  */
 export function CustomGroupHeader({
 	groupId,
@@ -90,11 +90,29 @@ export function CustomGroupHeader({
 	};
 	const finalFocus = () => !keepFocus.current;
 
+	const focusToggle = () => {
+		labelRef.current?.querySelector<HTMLElement>("[data-group-toggle]")?.focus();
+	};
+	/** Move this section one place among the manual sections; false at either end. */
+	const move = (delta: -1 | 1): boolean => {
+		const neighbour = manual[index + delta];
+		if (neighbour === undefined) return false;
+		moveSidebarSection(groupId, sections.indexOf(neighbour));
+		return true;
+	};
+	// Upstream `no`: Alt+Shift+Up/Down on the header moves the section, keeping focus on its toggle.
+	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+		if (!event.altKey || !event.shiftKey || event.metaKey || event.ctrlKey) return;
+		if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+		if (event.target instanceof HTMLInputElement) return;
+		event.preventDefault();
+		event.stopPropagation();
+		if (move(event.key === "ArrowUp" ? -1 : 1)) requestAnimationFrame(focusToggle);
+	};
+
 	const endRename = () => {
 		setRenaming(false);
-		requestAnimationFrame(() => {
-			labelRef.current?.querySelector<HTMLElement>("[data-group-toggle]")?.focus();
-		});
+		requestAnimationFrame(focusToggle);
 	};
 
 	const items = (
@@ -113,10 +131,7 @@ export function CustomGroupHeader({
 			onNewGroup={later(() => {
 				setDialog("new-group");
 			})}
-			onMove={(delta) => {
-				const neighbour = manual[index + delta];
-				if (neighbour !== undefined) moveSidebarSection(groupId, sections.indexOf(neighbour));
-			}}
+			onMove={move}
 			onSort={sortManualSectionsByName}
 			onArchiveAll={later(() => {
 				setDialog("archive-all");
@@ -129,7 +144,7 @@ export function CustomGroupHeader({
 
 	return (
 		<>
-			<div ref={labelRef} className="flex min-w-0 flex-1 items-center">
+			<div ref={labelRef} role="presentation" onKeyDown={onKeyDown} className="flex min-w-0 flex-1 items-center">
 				<ContextMenu onOpenChangeComplete={onOpenChangeComplete} disabled={renaming}>
 					<ContextMenuTrigger className="flex min-w-0 flex-1">
 						{renaming ? (

@@ -295,6 +295,39 @@ describe("sidebar drag to custom groups", () => {
 		});
 	});
 
+	it("removes a section row dropped on a Recents row from its section", async () => {
+		const {container} = await renderGroups();
+
+		// While Alpha one is dragged, the Remove from Alpha row is unit 5, so Loose one is unit 7.
+		drag(rowLink("Alpha one"), unitY(1), unitY(7));
+
+		await waitFor(() => {
+			expect(sections(container)).toStrictEqual([
+				["Alpha", ["Alpha two"]],
+				["Beta", ["Beta one"]],
+				["Recents", ["Alpha one", "Loose one", "Loose two"]],
+			]);
+		});
+		expect(readSessionGroupState().assignments).toStrictEqual({a2: "cg-a", b1: "cg-b"});
+	});
+
+	it("removes every selected section row dropped on Recents from its section", async () => {
+		const {container} = await renderGroups();
+		fireEvent.click(rowLink("Alpha one"), {metaKey: true});
+		fireEvent.click(rowLink("Beta one"), {metaKey: true});
+
+		drag(rowLink("Alpha one"), unitY(1), unitY(7));
+
+		await waitFor(() => {
+			expect(sections(container)).toStrictEqual([
+				["Alpha", ["Alpha two"]],
+				["Beta", []],
+				["Recents", ["Alpha one", "Beta one", "Loose one", "Loose two"]],
+			]);
+		});
+		expect(readSessionGroupState().assignments).toStrictEqual({a2: "cg-a"});
+	});
+
 	it("reorders sections when a group header is dragged onto another", async () => {
 		const {container} = await renderGroups();
 
@@ -347,5 +380,59 @@ describe("sidebar drag to custom groups", () => {
 			]);
 		});
 		expect(readPinState()).toStrictEqual({pinnedIds: [], pinnedOrder: []});
+	});
+});
+
+describe("keyboard section reorder", () => {
+	function keyMove(label: string, key: "ArrowUp" | "ArrowDown", modifiers: {altKey?: boolean; shiftKey?: boolean}) {
+		const toggle = groupToggle(label);
+		toggle.focus();
+		fireEvent.keyDown(toggle, {key, ...modifiers});
+	}
+
+	it("moves a section up with Alt+Shift+ArrowUp and keeps focus on its header", async () => {
+		const {container} = await renderGroups();
+
+		keyMove("Beta", "ArrowUp", {altKey: true, shiftKey: true});
+
+		await waitFor(() => {
+			expect(sections(container).map(([label]) => label)).toStrictEqual(["Beta", "Alpha", "Recents"]);
+		});
+		await waitFor(() => {
+			expect(document.activeElement).toBe(groupToggle("Beta"));
+		});
+		expect(readSidebarSections().map((section) => section.id)).toStrictEqual([
+			"pinned",
+			"cg-b",
+			"cg-a",
+			"sessions",
+		]);
+	});
+
+	it("moves a section down with Alt+Shift+ArrowDown", async () => {
+		const {container} = await renderGroups();
+
+		keyMove("Alpha", "ArrowDown", {altKey: true, shiftKey: true});
+
+		await waitFor(() => {
+			expect(sections(container).map(([label]) => label)).toStrictEqual(["Beta", "Alpha", "Recents"]);
+		});
+	});
+
+	it("leaves the order alone past either end or without both modifiers", async () => {
+		const {container} = await renderGroups();
+
+		keyMove("Alpha", "ArrowUp", {altKey: true, shiftKey: true});
+		keyMove("Beta", "ArrowDown", {altKey: true, shiftKey: true});
+		keyMove("Beta", "ArrowUp", {altKey: true});
+		keyMove("Beta", "ArrowUp", {shiftKey: true});
+
+		expect({
+			shown: sections(container).map(([label]) => label),
+			stored: readSidebarSections().map((section) => section.id),
+		}).toStrictEqual({
+			shown: ["Alpha", "Beta", "Recents"],
+			stored: ["pinned", "cg-a", "cg-b", "sessions"],
+		});
 	});
 });

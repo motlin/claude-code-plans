@@ -3,14 +3,14 @@ import type {SidebarDropTarget} from "../hooks/use-sidebar-drag";
 /**
  * Pure drop resolution for dragging sessions onto claude.ai/code-style custom groups
  * (Group by ▸ Custom groups): a row dropped on a group's header or at one of its row
- * slots joins that group at that position, a grouped row dropped on the "Ungroup" row
- * or the Ungrouped section leaves its group, and a dragged group header reorders
+ * slots joins that group at that position, a grouped row dropped on the "Remove from …" row
+ * or on Recents leaves its group, and a dragged group header reorders
  * the sections.
  */
 
 /** The drop row shown while a grouped row is dragged. */
 export const UNGROUP_ZONE = "ungroup";
-/** The Ungrouped section as a whole. */
+/** Recents as a whole: a section row dropped there leaves its section, and a pinned one is unpinned. */
 export const UNGROUPED_SECTION_ZONE = "custom-ungrouped";
 
 const LIST_PREFIX = "custom-group:";
@@ -122,7 +122,7 @@ export interface MultiGroupDropGeometry {
 
 /**
  * What releasing a multi-row drag does: like upstream, a selection can only drop
- * on a custom group (header or row slot) or on Ungroup; it can never pin.
+ * on a custom group (header or row slot), on Remove from … or on Recents; it can never pin.
  */
 export function multiGroupDropOutcome({srcIds, srcGroupIds, target, lists}: MultiGroupDropGeometry): GroupDropOutcome {
 	if (target === null) return null;
@@ -150,7 +150,7 @@ export interface SectionDropGeometry {
 
 /**
  * Where a dragged custom group header lands: at the index of the header it is
- * dropped on, or last when dropped on Ungrouped. Null when nothing moves.
+ * dropped on, or last when dropped on Recents. Null when nothing moves.
  */
 export function sectionDropOutcome({
 	groupId,
