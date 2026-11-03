@@ -1416,7 +1416,9 @@ function SessionView({
 												{!chromeHidden && sessionDirectory && (
 													<NotifyMePrompt sessionId={sessionId} />
 												)}
-												{/* Upstream's composer stand-in: an archived session shows the Unarchive note in place of the editor */}
+												{/* Upstream's notice region: registered bands (usage → `limit`) stacked in NOTICE_ORDER */}
+												{!chromeHidden && sessionDirectory && <ComposerNoticeRegion />}
+												{/* Upstream's composer stand-in: an archived session shows the Unarchive note in the editor's slot, the dock's last child */}
 												{!chromeHidden && sessionDirectory && data.archived && (
 													<div
 														className="contents"
@@ -1425,8 +1427,6 @@ function SessionView({
 														<ArchivedComposerNote sessionId={sessionId} />
 													</div>
 												)}
-												{/* Upstream's notice region: registered bands (usage → `limit`) stacked in NOTICE_ORDER */}
-												{!chromeHidden && sessionDirectory && <ComposerNoticeRegion />}
 												{!chromeHidden && sessionDirectory && !data.archived && (
 													<SessionBackgroundTasksOpener
 														sessionId={sessionId}

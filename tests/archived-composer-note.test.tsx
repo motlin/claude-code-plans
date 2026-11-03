@@ -54,16 +54,22 @@ describe("ArchivedComposerNote", () => {
 			standIn: note.getAttribute("data-composer-stand-in"),
 			className: note.className,
 			button: within(note).getByRole("button").textContent,
+			buttonSize: within(note).getByRole("button").getAttribute("data-size"),
+			buttonClasses: ["h-5", "px-1.5", "text-[12px]/[17px]", "h-6", "px-2", "text-[13px]/[19px]"].filter((name) =>
+				within(note).getByRole("button").classList.contains(name),
+			),
 		}).toEqual({
 			text: "This session is archived. Unarchive it to keep working in this session.Unarchive",
 			standIn: "",
 			className:
 				"flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-[13px]/[19px] band-enter",
 			button: "Unarchive",
+			buttonSize: "sm",
+			buttonClasses: ["h-5", "px-1.5", "text-[12px]/[17px]"],
 		});
 	});
 
-	it("shows the busy button and Unarchiving… while the request runs, then toasts Session unarchived.", async () => {
+	it("shows the busy button and Unarchiving… while the request runs, then toasts Session unarchived", async () => {
 		let resolve: (response: Response) => void = () => undefined;
 		fetchMock.mockImplementation(
 			async () =>
@@ -100,6 +106,6 @@ describe("ArchivedComposerNote", () => {
 			busy: within(note).getByRole("button").getAttribute("aria-busy"),
 			status: within(note).queryByRole("status"),
 			toasts: toastTexts(),
-		}).toEqual({busy: null, status: null, toasts: ["Session unarchived."]});
+		}).toEqual({busy: null, status: null, toasts: ["Session unarchived"]});
 	});
 });

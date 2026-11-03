@@ -16,6 +16,12 @@ import {SessionPage} from "../src/components/session-page";
 import {ToastProvider} from "../src/components/toast";
 import {SettingsProvider} from "../src/components/settings-provider";
 
+// A stand-in region marks where registered notice bands stack, so the note's slot can be checked against it.
+vi.mock("../src/components/composer-notice-region", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../src/components/composer-notice-region")>()),
+	ComposerNoticeRegion: () => <div data-testid="notice-region" />,
+}));
+
 // session-chat pulls in HMR-persisted module state that jsdom cannot evaluate.
 vi.mock("../src/components/session-chat", () => ({
 	SessionChat: () => null,
@@ -233,6 +239,21 @@ describe("archived session composer note", () => {
 			composer: screen.queryByRole("textbox", {name: "Prompt"}) !== null,
 			standIns: document.querySelectorAll("[data-composer-stand-in]").length,
 		}).toStrictEqual({composer: true, standIns: 0});
+	});
+
+	it("puts the archived note in the composer's slot, the dock's last child below the notice region", async () => {
+		stubBrowserGlobals();
+
+		await renderSession({archived: true});
+
+		const note = screen.getByRole("note");
+		const dock = note.closest(".chat-dock-column");
+		expect({
+			lastChildHoldsNote: dock?.lastElementChild?.contains(note),
+			afterNoticeRegion: Boolean(
+				screen.getByTestId("notice-region").compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING,
+			),
+		}).toStrictEqual({lastChildHoldsNote: true, afterNoticeRegion: true});
 	});
 
 	it("band-enters the archived note when the session is archived while open", async () => {

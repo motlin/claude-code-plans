@@ -13,6 +13,7 @@ import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {ArchivedComposerNote} from "../src/components/archived-composer-note";
 import {SessionActionsMenu} from "../src/components/session-actions-menu";
 import {SessionTitleHeading} from "../src/components/session-title-heading";
 import {SessionGroups} from "../src/components/sidebar/session-groups";
@@ -183,14 +184,53 @@ describe("archive in the session row menu", () => {
 		});
 	});
 
-	it("unarchives on a and toasts Session unarchived. without an Undo", async () => {
+	it("unarchives on a and toasts Session unarchived without an Undo", async () => {
 		const menu = await openRowMenu(listItem({archived: true}));
 
 		fireEvent.keyDown(menu, {key: "a"});
 		await waitFor(() => {
-			expect(toastTexts()).toEqual(["Session unarchived."]);
+			expect(toastTexts()).toEqual(["Session unarchived"]);
 		});
 		expect(archiveCalls()).toEqual([{url: ARCHIVED_URL, method: "DELETE"}]);
+	});
+
+	it("shares one in-flight unarchive between the archived note and the row menu", async () => {
+		let resolve: (response: Response) => void = () => undefined;
+		fetchMock.mockImplementation(async (input) =>
+			input === ARCHIVED_URL
+				? new Promise<Response>((r) => {
+						resolve = r;
+					})
+				: new Promise<Response>(() => {}),
+		);
+		const session = listItem({archived: true});
+		await renderWithRouter(
+			<>
+				<ArchivedComposerNote sessionId={session.id} />
+				<SessionActionsMenu session={session}>
+					<a href={`/session/${session.id}`}>Row title</a>
+				</SessionActionsMenu>
+			</>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Unarchive"}));
+		fireEvent.contextMenu(screen.getByText("Row title"), {clientX: 40, clientY: 50});
+		await flush();
+		fireEvent.keyDown(screen.getByRole("menu"), {key: "a"});
+		await flush();
+
+		expect(archiveCalls()).toEqual([{url: ARCHIVED_URL, method: "DELETE"}]);
+
+		act(() => {
+			resolve(Response.json({archived: false}));
+		});
+		await waitFor(() => {
+			expect(toastTexts()).toEqual(["Session unarchived"]);
+		});
+		await flush();
+		expect({calls: archiveCalls(), toasts: toastTexts()}).toEqual({
+			calls: [{url: ARCHIVED_URL, method: "DELETE"}],
+			toasts: ["Session unarchived"],
+		});
 	});
 
 	it("toasts upstream's error when the unarchive request fails", async () => {

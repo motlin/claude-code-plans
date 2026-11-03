@@ -6,18 +6,25 @@ import {Spinner} from "./ui/spinner";
 import {SECONDARY_RING_CLASS} from "./ui/split-dropdown-button";
 
 const ACTION_BUTTON =
-	"relative inline-flex h-6 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r5 px-2 text-[13px]/[19px] whitespace-nowrap select-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-50 [&_kbd]:text-[11px]";
+	"relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r5 whitespace-nowrap select-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-50 [&_kbd]:text-[11px]";
 
 const ACTION_VARIANTS = {
 	secondary: `bg-fill-secondary shadow-field-drop ${SECONDARY_RING_CLASS} text-primary hover:bg-fill-secondary-hover`,
 	primary: "bg-primary font-medium text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-primary/80",
 } as const;
 
-export type ApprovalActionVariant = keyof typeof ACTION_VARIANTS;
+/** The approval-card 24px button, or upstream's cds `size="sm"` button (20px, padding 0 6px, 12/17). */
+const ACTION_SIZES = {
+	default: "h-6 px-2 text-[13px]/[19px]",
+	sm: "h-5 px-1.5 text-[12px]/[17px]",
+} as const;
 
-/** Classes for an approval card action: upstream's filled, inset-ringed secondary or a black primary, 24px tall with 11px keycaps. */
-function approvalActionClass(variant: ApprovalActionVariant): string {
-	return `${ACTION_BUTTON} ${ACTION_VARIANTS[variant]}`;
+export type ApprovalActionVariant = keyof typeof ACTION_VARIANTS;
+export type ApprovalActionSize = keyof typeof ACTION_SIZES;
+
+/** Classes for an approval card action: upstream's filled, inset-ringed secondary or a black primary, 24px (or sm 20px) tall with 11px keycaps. */
+function approvalActionClass(variant: ApprovalActionVariant, size: ApprovalActionSize): string {
+	return `${ACTION_BUTTON} ${ACTION_SIZES[size]} ${ACTION_VARIANTS[variant]}`;
 }
 
 /**
@@ -27,11 +34,12 @@ function approvalActionClass(variant: ApprovalActionVariant): string {
  */
 export function ApprovalActionButton({
 	variant,
+	size = "default",
 	busy = false,
 	children,
 	onClick,
 	...props
-}: {variant: ApprovalActionVariant; busy?: boolean} & Omit<
+}: {variant: ApprovalActionVariant; size?: ApprovalActionSize; busy?: boolean} & Omit<
 	ButtonHTMLAttributes<HTMLButtonElement>,
 	"className" | "type" | "aria-busy" | "aria-disabled"
 >) {
@@ -41,8 +49,9 @@ export function ApprovalActionButton({
 			{...props}
 			onClick={busy ? undefined : onClick}
 			data-approval-variant={variant}
+			{...(size === "sm" ? {"data-size": "sm"} : {})}
 			{...(busy ? {"aria-busy": true, "aria-disabled": true} : {})}
-			className={approvalActionClass(variant)}
+			className={approvalActionClass(variant, size)}
 		>
 			{busy ? (
 				<>

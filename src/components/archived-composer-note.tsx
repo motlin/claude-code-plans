@@ -21,7 +21,13 @@ export function ArchivedComposerNote({sessionId}: {sessionId: string}) {
 				</div>
 				<div className="flex min-w-0 max-w-full shrink-0 flex-wrap items-start gap-2">
 					<span className="flex h-[1lh] shrink-0 items-center">
-						<ApprovalActionButton variant="secondary" busy={pending} disabled={pending} onClick={unarchive}>
+						<ApprovalActionButton
+							variant="secondary"
+							size="sm"
+							busy={pending}
+							disabled={pending}
+							onClick={unarchive}
+						>
 							Unarchive
 						</ApprovalActionButton>
 					</span>
