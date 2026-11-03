@@ -30,6 +30,13 @@ afterEach(() => {
 	resetQuestionCardStore();
 });
 
+declare global {
+	interface Window {
+		/** The animation frames still queued, kept on the window so a shared-dom worker's rerun of this file finds them. */
+		ccbPendingAnimationFrames?: Set<number>;
+	}
+}
+
 // Put back real timers and the real clock a file left faked, as a fresh worker would start the next file. Per file,
 // not per test: several files fake the clock once in beforeAll for all their tests.
 afterAll(() => {
@@ -50,7 +57,37 @@ if (typeof window !== "undefined") {
 		localStorage.clear();
 		sessionStorage.clear();
 	});
+	// A frame a test leaves queued outlives its unmount: Base UI's menus focus their highlighted item in a
+	// requestAnimationFrame, which then lands in a later test and spends a focus() call there. Track pending frames
+	// and drop them after cleanup (registered first, so it runs after cleanup and catches frames an unmount queues),
+	// as leaving the page would. Wrap once: a shared-dom worker runs this file again for every test file.
+	const pendingFrames = trackAnimationFrames(window);
+	afterEach(() => {
+		for (const id of pendingFrames) window.cancelAnimationFrame(id);
+		pendingFrames.clear();
+	});
 	afterEach(() => {
 		cleanup();
 	});
+}
+
+function trackAnimationFrames(win: Window): Set<number> {
+	if (win.ccbPendingAnimationFrames !== undefined) return win.ccbPendingAnimationFrames;
+	const pending = new Set<number>();
+	const request = win.requestAnimationFrame.bind(win);
+	const cancel = win.cancelAnimationFrame.bind(win);
+	win.requestAnimationFrame = (callback) => {
+		const id = request((time) => {
+			pending.delete(id);
+			callback(time);
+		});
+		pending.add(id);
+		return id;
+	};
+	win.cancelAnimationFrame = (id) => {
+		pending.delete(id);
+		cancel(id);
+	};
+	win.ccbPendingAnimationFrames = pending;
+	return pending;
 }

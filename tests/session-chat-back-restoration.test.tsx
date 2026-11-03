@@ -293,9 +293,14 @@ it.each([
 		act(() => {
 			router.history.back();
 		});
-		await vi.waitFor(() => {
-			expect(router.state.resolvedLocation?.pathname).toBe(`/session/${routeId}`);
-		});
+		// vi.waitFor gives up after its own 1s default, not Testing Library's 5s from tests/setup.ts. This Back takes
+		// 50-250ms alone at load average 200, and overran 1s once in a full run, so give it the same 5s budget.
+		await vi.waitFor(
+			() => {
+				expect(router.state.resolvedLocation?.pathname).toBe(`/session/${routeId}`);
+			},
+			{timeout: 5000},
+		);
 		const routerWrites = writes.filter((write) => write.phase === "back-router");
 		const restoredOffset = restored.at(-1);
 		phase = "back-measurement";

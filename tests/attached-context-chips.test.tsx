@@ -912,6 +912,13 @@ describe("AttachedContextChips scrolling row", () => {
 		const {container} = render(<Live />);
 		const {row, scrollTo} = stubRowGeometry(container);
 		row.scrollLeft = 0;
+		// jsdom's selector engine decides :focus-visible from the window's last key or pointer event and last
+		// focus-visible node, which earlier tests leave behind, so pin it: this test covers the hand-off's own
+		// scroll; the focusin scroll of a keyboard-focused tile is the test above.
+		const matches = HTMLElement.prototype.matches;
+		vi.spyOn(HTMLElement.prototype, "matches").mockImplementation(function (this: HTMLElement, selector: string) {
+			return selector === ":focus-visible" ? false : matches.call(this, selector);
+		});
 		const focus = vi.spyOn(HTMLElement.prototype, "focus");
 		const link = (name: string) =>
 			container.querySelector<HTMLElement>(`li[data-chip-label="${name}"] [data-cds=CardLink]`)!;
@@ -927,10 +934,7 @@ describe("AttachedContextChips scrolling row", () => {
 		});
 		const result = {
 			focusedNext: document.activeElement === link("shot-3.png"),
-			// Only focus calls inside the strip: an earlier test's menu can still be settling its own focus.
-			focusArgs: focus.mock.calls.filter((_args, index) =>
-				container.contains(focus.mock.contexts[index] as Node),
-			),
+			focusArgs: focus.mock.calls,
 			// Tile 3 now sits second, at 126-246: inside the 300px row, so no scroll is needed.
 			scrolls: scrollTo.mock.calls,
 		};
