@@ -32,8 +32,8 @@ describe("paletteEmptyMessage", () => {
 });
 
 describe("paletteEmptyKind", () => {
-	it("ports upstream's Sm: no kind while searching or with rows, then silent, failed, filtered, nothing", () => {
-		const base = {query: "zzqxvq", searching: false, rowCount: 0, filtered: false, failed: false};
+	it("ports upstream's Sm: no kind while searching or with rows, then silent, stalled, failed, filtered, nothing", () => {
+		const base = {query: "zzqxvq", searching: false, rowCount: 0, filtered: false, failed: false, stalled: false};
 		const cases = [
 			base,
 			{...base, searching: true},
@@ -48,6 +48,9 @@ describe("paletteEmptyKind", () => {
 			{...base, filtered: true},
 			{...base, query: ""},
 			{...base, query: "", filtered: true},
+			{...base, filtered: true, stalled: true},
+			{...base, filtered: true, failed: true, stalled: true},
+			{...base, query: "x", filtered: true, stalled: true},
 		];
 
 		expect(cases.map((input) => paletteEmptyKind(input))).toStrictEqual([
@@ -64,6 +67,9 @@ describe("paletteEmptyKind", () => {
 			"filtered",
 			"nothing",
 			"filtered",
+			"stalled",
+			"stalled",
+			"silent",
 		]);
 	});
 });

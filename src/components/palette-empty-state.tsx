@@ -5,15 +5,16 @@ const KEYCAP_CLASS =
 	"text-caption inline-flex shrink-0 items-center justify-center h-[calc(1em+6px)] min-w-[calc(1em+6px)] px-[3px] rounded-r3 [color:var(--shortcut-cap-ink)] bg-transparent border border-[color:var(--shortcut-cap-line)] [font-family:inherit] [font-variation-settings:inherit] [line-height:1]";
 
 /**
- * Upstream's cds Button `variant="secondary" size="sm"` at default density: 20px tall, 6px padding,
- * 5px radius (comfortable density is 28px / 10px / 7px), secondary fill with the field shadow.
+ * Upstream's cds Button `variant="secondary" size="sm"`. The ⌘K palette is a comfortable-density cds
+ * scope for every web user, so it is 28px tall; 9px padding and 8px radius are the fizzy-lake values
+ * (pre-fizzy comfortable was 10px / 7px). Secondary fill with the field shadow.
  */
 const SEARCH_ALL_CLASS =
-	"h-5 rounded-r4 px-1.5 text-sm text-primary bg-fill-secondary shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)] transition-shadow hover:bg-fill-secondary-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"h-7 rounded-r6 px-[9px] text-sm text-primary bg-fill-secondary shadow-[inset_0_0_0_1px_var(--color-border),0_1px_2px_rgb(0_0_0/0.05)] transition-shadow hover:bg-fill-secondary-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /**
  * The palette's no-results block, a port of upstream's `rr`: centred copy plus "Search all" when
- * filters emptied the list, or the "Tab to compose" hint otherwise. "silent" renders nothing.
+ * filters emptied (or stalled) the list, or the "Tab to compose" hint otherwise. "silent" renders nothing.
  */
 export function PaletteEmptyState({
 	kind,
@@ -35,7 +36,7 @@ export function PaletteEmptyState({
 			<p aria-hidden="true" className="m-0 max-w-full break-words text-secondary">
 				{message}
 			</p>
-			{kind === "filtered" ? (
+			{kind === "filtered" || kind === "stalled" ? (
 				<button
 					type="button"
 					// Keep focus in the palette input, as upstream does.

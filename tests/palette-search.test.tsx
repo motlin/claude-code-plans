@@ -9,7 +9,7 @@ import {
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
-import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
 import {ToastProvider} from "../src/components/toast";
@@ -447,6 +447,22 @@ describe("⌘K palette live search", () => {
 		}).toStrictEqual({skeletons: 0, busy: "false"});
 	});
 
+	it("keeps the spinner off for a 1-character query, which upstream never sends to the server", async () => {
+		const {dialog} = await openPalette([]);
+
+		type(dialog, "ǂ");
+		const request = await awaitRequest();
+		await new Promise((resolve) => {
+			setTimeout(resolve, 400);
+		});
+
+		expect({
+			spinner: dialog.querySelector("[data-palette-spinner-slot]")?.childElementCount,
+			skeleton: dialog.querySelector("[data-palette-skeleton]") !== null,
+		}).toStrictEqual({spinner: 0, skeleton: true});
+		request.resolve([]);
+	});
+
 	it("fills the list with upstream's wave SkeletonGroup while settling, with no option rows above it", async () => {
 		const {dialog} = await openPalette();
 
@@ -454,7 +470,8 @@ describe("⌘K palette live search", () => {
 		const request = await awaitRequest();
 
 		const group = dialog.querySelector("[data-palette-skeleton]");
-		const rows = Array.from(group?.children ?? []);
+		const wrapper = group?.firstElementChild;
+		const rows = Array.from(wrapper?.children ?? []);
 		const bars = (row: Element | undefined) =>
 			Array.from(row?.querySelectorAll<HTMLElement>("[data-skeleton]") ?? []).map((bar) => ({
 				width: bar.style.width,
@@ -466,10 +483,17 @@ describe("⌘K palette live search", () => {
 				className: group?.className,
 				hidden: group?.getAttribute("aria-hidden"),
 				motion: group?.getAttribute("data-motion"),
+				cds: group?.getAttribute("data-cds"),
+				hold: group?.getAttribute("data-hold"),
+				reason: group?.getAttribute("data-hold-reason"),
+				shown: group?.getAttribute("data-shown"),
+				children: group?.childElementCount,
 			},
+			wrapper: {className: wrapper?.className, hidden: wrapper?.getAttribute("aria-hidden")},
 			rows: rows.length,
 			rowClass: rows[0]?.className,
 			barClass: rows[0]?.querySelector("[data-skeleton]")?.className,
+			barCds: rows[0]?.querySelector("[data-skeleton]")?.getAttribute("data-cds"),
 			first: bars(rows[0]),
 			titleWidths: rows.map((row) => bars(row)[1]?.width),
 			lastIndices: bars(rows[12]).map((bar) => bar.index),
@@ -479,10 +503,17 @@ describe("⌘K palette live search", () => {
 				className: "flex min-h-0 grow basis-0 flex-col flex-wrap content-start overflow-hidden",
 				hidden: "true",
 				motion: "wave",
+				cds: "SkeletonGroup",
+				hold: "none",
+				reason: "predicted-slow",
+				shown: "",
+				children: 1,
 			},
+			wrapper: {className: "contents", hidden: "true"},
 			rows: 13,
 			rowClass: "flex shrink-0 items-center gap-2 px-3 py-2 box-border h-9 w-full",
-			barClass: "max-w-full rounded bg-[var(--skeleton-base)]",
+			barClass: "h-[1em] max-w-full rounded bg-[var(--skeleton-base)]",
+			barCds: "Skeleton",
 			first: [
 				{width: "20px", height: "20px", index: "0"},
 				{width: "224px", height: "14px", index: "1"},
@@ -855,20 +886,56 @@ describe("⌘K palette filters", () => {
 		}).toStrictEqual({block: true, live: "Something went wrong"});
 	});
 
-	it("keeps a 1-character no-match silent, announcing No results found only to the live region", async () => {
+	it("keeps a 1-character no-match silent, announcing No results found to the live region only after 3s", async () => {
 		const {dialog} = await openPalette([]);
+		const live = () => dialog.querySelector("[aria-live=polite]")?.textContent;
+		const advance = async (ms: number) => {
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(ms);
+			});
+		};
+		const settle = async (query: string) => {
+			type(dialog, query);
+			await advance(150);
+			const request = pending.at(-1);
+			if (request === undefined) throw new Error("no request");
+			request.resolve([]);
+			await advance(0);
+			await advance(0);
+		};
 
-		type(dialog, "ǂ");
-		(await awaitRequest()).resolve([]);
+		vi.useFakeTimers();
+		try {
+			await settle("ǂ");
+			const settled = {
+				skeleton: dialog.querySelector("[data-palette-skeleton]"),
+				empty: dialog.querySelector("[data-palette-empty]"),
+				text: [...resultsGroup(dialog).querySelectorAll("p")].map((node) => node.textContent),
+				options: optionLabels(dialog),
+				live: live(),
+			};
+			await advance(2999);
+			const before = live();
+			await advance(1);
+			const spoken = live();
+			await settle("ǀ");
+			const replaced = live();
+			await advance(2999);
+			const replacedBefore = live();
+			await advance(1);
+			const replacedSpoken = live();
 
-		await waitFor(() => {
-			expect(dialog.querySelector("[aria-live=polite]")?.textContent).toBe("No results found");
-		});
-		expect({
-			empty: dialog.querySelector("[data-palette-empty]"),
-			text: [...resultsGroup(dialog).querySelectorAll("p")].map((node) => node.textContent),
-			options: optionLabels(dialog),
-		}).toStrictEqual({empty: null, text: [], options: []});
+			expect({settled, before, spoken, replaced, replacedBefore, replacedSpoken}).toStrictEqual({
+				settled: {skeleton: null, empty: null, text: [], options: [], live: ""},
+				before: "",
+				spoken: "No results found",
+				replaced: "",
+				replacedBefore: "",
+				replacedSpoken: "No results found",
+			});
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("offers upstream's Search all when filters emptied the list, clearing chips and type but keeping text and focus", async () => {
@@ -935,5 +1002,54 @@ describe("⌘K palette filters", () => {
 		await waitFor(() => {
 			expect(pending.map((search) => search.url)).toContain("/api/search?query=zzqxvq");
 		});
+	});
+
+	it("sizes Search all at the palette's comfortable density: 28px tall, 9px padding, 8px radius", async () => {
+		const {dialog} = await openPalette([]);
+
+		type(dialog, "date:week zzqxvq");
+		(await awaitRequest()).resolve([]);
+
+		const classes = (await within(dialog).findByRole("button", {name: "Search all"})).className.split(" ");
+		expect(["h-7", "px-[9px]", "rounded-r6"].map((name) => classes.includes(name))).toStrictEqual([
+			true,
+			true,
+			true,
+		]);
+	});
+
+	it("turns a filtered search still unsettled after 8s into upstream's Something went wrong", async () => {
+		const {dialog} = await openPalette([]);
+		const advance = async (ms: number) => {
+			await act(async () => {
+				await vi.advanceTimersByTimeAsync(ms);
+			});
+		};
+		const state = () => ({
+			skeleton: dialog.querySelector("[data-palette-skeleton]") !== null,
+			copy: dialog.querySelector("[data-palette-empty] p")?.textContent ?? null,
+			searchAll: within(dialog).queryByRole("button", {name: "Search all"}) !== null,
+			live: dialog.querySelector("[aria-live=polite]")?.textContent,
+		});
+
+		fireEvent.click(within(dialog).getByRole("tab", {name: "Code"}));
+		vi.useFakeTimers();
+		try {
+			type(dialog, "zzqxvq");
+			await advance(150);
+			const requested = pending.length;
+			await advance(7849);
+			const before = state();
+			await advance(1);
+			const stalled = state();
+
+			expect({requested, before, stalled}).toStrictEqual({
+				requested: 1,
+				before: {skeleton: true, copy: null, searchAll: false, live: ""},
+				stalled: {skeleton: false, copy: "Something went wrong", searchAll: true, live: "Something went wrong"},
+			});
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

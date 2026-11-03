@@ -216,6 +216,12 @@ const RECENTS_POOL = 7;
  */
 export const PALETTE_SEARCH_DEBOUNCE_MS = 150;
 
+/** Upstream's `Rh=3e3`: a settled 1-character no-match waits 3s before the live region speaks it. */
+const PALETTE_SILENT_LIVE_DELAY_MS = 3000;
+
+/** Upstream's `Qd=8e3`: a type-tab or filtered search still unsettled after 8s becomes a failure. */
+const PALETTE_FILTERED_STALL_MS = 8000;
+
 /** Server hit kinds plus the kinds the Projects, Artifacts and Scheduled tabs list client-side. */
 type SearchKind = UnifiedSearchItem["kind"] | "project" | "artifact" | "routine";
 
@@ -1064,7 +1070,22 @@ function PalettePopup({
 		...unifiedSearchQueryOptions(debouncedParams ?? {query: ""}),
 		enabled: serverActive && debouncedParams !== null && debouncedParams.query !== "",
 	});
-	const searching = serverActive && (debouncedQuery !== trimmedQuery || serverSearch.isFetching);
+	const fetching = serverActive && (debouncedQuery !== trimmedQuery || serverSearch.isFetching);
+	const stallKey =
+		fetching && (type !== "all" || hasFilterTokens) ? JSON.stringify([trimmedQuery, tab, filters]) : null;
+	const [stalledKey, setStalledKey] = useState<string | null>(null);
+	useEffect(() => {
+		if (stallKey === null) return undefined;
+		const timer = setTimeout(() => {
+			setStalledKey(stallKey);
+		}, PALETTE_FILTERED_STALL_MS);
+		return () => {
+			clearTimeout(timer);
+			setStalledKey(null);
+		};
+	}, [stallKey]);
+	const stalled = stallKey !== null && stalledKey === stallKey;
+	const searching = fetching && !stalled;
 
 	const visibleSessions = useMemo(
 		() =>
@@ -1747,18 +1768,33 @@ function PalettePopup({
 		rowCount: resultCount,
 		filtered: type !== "all" || hasFilterTokens,
 		failed: serverActive && serverSearch.isError,
+		stalled,
 	});
+	const silentText = emptyKind === "silent" ? tokens.text : null;
+	const [silentSpokenFor, setSilentSpokenFor] = useState<string | null>(null);
+	useEffect(() => {
+		if (silentText === null) return undefined;
+		const timer = setTimeout(() => {
+			setSilentSpokenFor(silentText);
+		}, PALETTE_SILENT_LIVE_DELAY_MS);
+		return () => {
+			clearTimeout(timer);
+			setSilentSpokenFor(null);
+		};
+	}, [silentText]);
 	// Local-only: the Files tab searches file contents, so before typing it asks for a query.
 	const emptyMessage =
-		emptyKind === "failed"
+		emptyKind === "failed" || emptyKind === "stalled"
 			? "Something went wrong"
 			: type === "files" && tokens.text.trim() === ""
 				? "Type to search file contents"
 				: paletteEmptyMessage(tokens.text, type === "all" ? null : paletteTypeLabels[type]);
-	// Upstream's live region: the empty copy ("silent" speaks the bare No results found), else the ICU count.
+	// Upstream's live region: the empty copy ("silent" speaks the bare No results found 3s after settling), else the ICU count.
 	const liveMessage =
 		emptyKind === "silent"
-			? "No results found"
+			? silentSpokenFor === silentText
+				? "No results found"
+				: ""
 			: emptyKind === null
 				? `${resultCount} ${resultCount === 1 ? "result" : "results"} available`
 				: emptyMessage;
@@ -1888,7 +1924,9 @@ function PalettePopup({
 									data-palette-spinner-slot=""
 									className="flex size-4 shrink-0 items-center justify-center"
 								>
-									{searching && <Spinner size="md" delay={150} label="Searching deeper..." />}
+									{searching && tokens.text.trim().length >= 2 && (
+										<Spinner size="md" delay={150} label="Searching deeper..." />
+									)}
 								</span>
 							)}
 							{!compose && (
