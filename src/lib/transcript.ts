@@ -120,6 +120,10 @@ const MessageLineSchema = z.object({
 	thinkingDurationMs: z.number().optional(),
 	/** The CLI withheld this turn's thinking text (`thinkingDisplay: "omitted"`), leaving empty thinking blocks. */
 	thinkingOmitted: z.literal(true).optional(),
+	/** A user line drawn from a prompt typed while the turn ran and absorbed into it, which can't be rewound to. */
+	absorbedPrompt: z.literal(true).optional(),
+	/** The key upstream gives this user row when it differs from `uuid` (an absorbed prompt's CLI command uuid). */
+	turnKey: z.string().optional(),
 	/** What the server-side permission classifier saw for this user turn. */
 	classifierContext: z
 		.object({
@@ -193,6 +197,8 @@ const AttachmentLineSchema = z.object({
 		.object({
 			content: z.union([z.string(), z.array(ContentBlockSchema)]),
 			timestamp: z.string().optional(),
+			// The CLI command's uuid, which upstream keys the prompt's row by.
+			sourceUuid: z.string().optional(),
 		})
 		.optional(),
 	// Descriptions of deferred tools a deferred_tools_delta surfaced only by a
@@ -711,7 +717,11 @@ function humanQueuedPrompt(
 			: content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join("\n");
 	// The harness frames agent messages with a lead-in line, so the envelope can sit past the start.
 	if (!isHumanQueuedContent(text) || parseAgentMessage(text) !== null) return null;
-	return attachment.timestamp === undefined ? {content} : {content, timestamp: attachment.timestamp};
+	return {
+		content,
+		...(attachment.timestamp === undefined ? {} : {timestamp: attachment.timestamp}),
+		...(attachment.source_uuid === undefined ? {} : {sourceUuid: attachment.source_uuid}),
+	};
 }
 
 /**

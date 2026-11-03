@@ -3,6 +3,11 @@
 import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
+import {
+	type TranscriptActions,
+	TranscriptActionsContext,
+	type TranscriptMessageRef,
+} from "../src/components/transcript-actions-context";
 import {processTranscript} from "../src/lib/transcript";
 import type {TranscriptMode} from "../src/lib/transcript-mode";
 
@@ -444,6 +449,83 @@ describe("Absorbed human queued commands", () => {
 			enqueueTime: false,
 			sentMidTurn: false,
 		});
+	});
+});
+
+const ABSORBED_WITH_SOURCE: unknown[] = [
+	assistantText("a-A", "A"),
+	...bashCall("first"),
+	absorbedRemove("fix it", {commandUuid: "cmd-1", deliveryId: "dlv-1"}),
+	attachment("att-q", {
+		type: "queued_command",
+		prompt: "fix it",
+		commandMode: "prompt",
+		origin: {kind: "human"},
+		source_uuid: "cmd-1",
+		delivery_id: "dlv-1",
+		timestamp: ENQUEUED_AT,
+	}),
+	assistantText("a-B", "B"),
+];
+
+function renderWithActions(records: unknown[], actions: TranscriptActions): HTMLElement {
+	const {lines, toolResultMap} = processTranscript(records);
+	return render(
+		<TranscriptActionsContext.Provider value={actions}>
+			<SessionChat
+				sessionId="test-session"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				shouldScrollToEnd={false}
+				transcriptMode="normal"
+			/>
+		</TranscriptActionsContext.Provider>,
+	).container;
+}
+
+function userRewind(container: HTMLElement) {
+	const bubble = container.querySelector(".user-message-bubble")!;
+	const row = bubble.closest<HTMLElement>("[data-take-back-entry]")!;
+	const button = row.querySelector<HTMLButtonElement>('button[aria-label="Rewind to here"]')!;
+	const wrapper = button.closest("[data-cds-disabled-reason-wrapper]");
+	return {row, button, wrapper};
+}
+
+describe("Absorbed prompt row actions", () => {
+	it("disables Rewind to here with a reason, since the CLI can't rewind to a prompt sent mid-turn", () => {
+		const rewindTo = vi.fn<(message: TranscriptMessageRef) => void>();
+		const container = renderWithActions(ABSORBED_WITH_SOURCE, {rewindTo});
+		const {button, wrapper} = userRewind(container);
+		fireEvent.click(button);
+		expect({
+			disabled: button.disabled,
+			reason: wrapper?.querySelector("[data-cds-disabled-reason]")?.textContent,
+			calls: rewindTo.mock.calls.length,
+		}).toStrictEqual({
+			disabled: true,
+			reason: "Rewind isn't available for a message sent mid-turn",
+			calls: 0,
+		});
+	});
+
+	it("keeps Rewind to here enabled on an ordinary user row", () => {
+		const rewindTo = vi.fn<(message: TranscriptMessageRef) => void>();
+		const container = renderWithActions([userPrompt("u-1", "hello")], {rewindTo});
+		const {button} = userRewind(container);
+		fireEvent.click(button);
+		expect({disabled: button.disabled, calls: rewindTo.mock.calls}).toStrictEqual({
+			disabled: false,
+			calls: [[{sessionId: "test-session", uuid: "u-1"}]],
+		});
+	});
+
+	it("keys the absorbed row by the CLI command's source_uuid, as upstream", () => {
+		const container = renderWithActions(ABSORBED_WITH_SOURCE, {});
+		const {row} = userRewind(container);
+		expect({
+			entry: row.dataset["takeBackEntry"],
+			turnKey: row.querySelector("[data-turn-key]")?.getAttribute("data-turn-key"),
+		}).toStrictEqual({entry: "cmd-1", turnKey: "cmd-1"});
 	});
 });
 

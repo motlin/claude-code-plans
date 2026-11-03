@@ -63,7 +63,7 @@ import {permissionDecisionLabel, permissionDecisionTitle} from "../lib/permissio
 import {DebugLink} from "./debug-link";
 import {TranscriptMessageMenu} from "./transcript-context-menu";
 import {TranscriptSelectionBar} from "./transcript-selection-bar";
-import type {TranscriptMessageRef} from "./transcript-actions-context";
+import {TranscriptActionsContext, type TranscriptMessageRef} from "./transcript-actions-context";
 import {AssistantMessageActions, UserMessageActions} from "./message-actions";
 import {MessageExcerptTiles} from "./message-excerpt-tiles";
 import {defined} from "../lib/defined";
@@ -2252,11 +2252,13 @@ function withQueuedPrompts(lines: SessionLine[]): SessionLine[] {
 	let laterPrompts: Map<string, number> | null = null;
 	for (const [index, line] of lines.entries()) {
 		if (line.type !== "attachment" || line.humanPrompt === undefined) continue;
-		const {content, timestamp = line.timestamp} = line.humanPrompt;
+		const {content, timestamp = line.timestamp, sourceUuid} = line.humanPrompt;
 		const prompt: MessageSessionLine = {
 			type: "user",
 			message: {role: "user", content},
 			lineIndex: line.lineIndex,
+			absorbedPrompt: true,
+			...(sourceUuid === undefined ? {} : {turnKey: sourceUuid}),
 			...(line.uuid === undefined ? {} : {uuid: line.uuid}),
 			...(timestamp === undefined ? {} : {timestamp}),
 			...(line.sessionId === undefined ? {} : {sessionId: line.sessionId}),
@@ -4278,8 +4280,9 @@ function UserEntry({
 
 	const {textNodes, mediaNodes, images, excerpts} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
 
-	return (
-		<UserTurn text={messageText(line)} turnKey={line.uuid}>
+	const turnKey = line.turnKey ?? line.uuid;
+	const row = (
+		<UserTurn text={messageText(line)} turnKey={turnKey}>
 			<TranscriptMessageMenu
 				speaker="user"
 				sessionId={sessionId}
@@ -4287,7 +4290,7 @@ function UserEntry({
 				markdown={messageText(line)}
 				render={
 					<div
-						{...userMessageAttributes(line.uuid)}
+						{...userMessageAttributes(turnKey)}
 						className="flex flex-col items-end gap-g5 comfortable:gap-g6 max-w-[85%] min-w-0"
 					/>
 				}
@@ -4300,6 +4303,19 @@ function UserEntry({
 			</TranscriptMessageMenu>
 		</UserTurn>
 	);
+	return line.absorbedPrompt === true ? <AbsorbedPromptActions>{row}</AbsorbedPromptActions> : row;
+}
+
+const ABSORBED_REWIND_REASON = "Rewind isn't available for a message sent mid-turn";
+
+/**
+ * A prompt absorbed mid-turn exists only as a queued_command attachment, which the CLI's rewind picker
+ * (`mmo` in 2.1.317: `type==="user"` records only) never lists, so Rewind to here stays visible but disabled.
+ */
+function AbsorbedPromptActions({children}: {children: ReactNode}) {
+	const actions = useContext(TranscriptActionsContext);
+	const value = useMemo(() => ({...actions, rewindDisabledReason: ABSORBED_REWIND_REASON}), [actions]);
+	return <TranscriptActionsContext.Provider value={value}>{children}</TranscriptActionsContext.Provider>;
 }
 
 type LabeledKind = "request-interrupted" | "compact-summary";
