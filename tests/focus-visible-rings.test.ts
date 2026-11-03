@@ -62,7 +62,7 @@ describe("hand-rolled focus rings", () => {
 			),
 			chevron: has(
 				"src/components/session-titlebar.tsx",
-				`text-secondary transition-colors hover:bg-fill-ghost-hover ${SHADOW_FOCUS} data-[popup-open]`,
+				`"} transition-colors hover:bg-fill-ghost-hover ${SHADOW_FOCUS} data-[popup-open]`,
 			),
 			segmented: has(
 				"src/components/settings/segmented-control.tsx",

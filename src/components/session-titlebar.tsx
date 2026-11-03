@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type {ReactNode} from "react";
 
+import {useFizzyLake} from "../lib/fizzy-lake";
 import {foldBudget} from "../lib/titlebar-fold";
 
 import {useSessionRename} from "../hooks/use-session-rename";
@@ -52,10 +53,16 @@ import {
 import {Tooltip} from "./ui/tooltip";
 
 const TITLE_CLASS =
-	"-mx-1 h-6 min-w-0 cursor-text truncate rounded-r5 border-0 bg-transparent px-1 text-left text-[13px]/[19px] font-medium text-primary select-none hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus comfortable:-mx-1.5 comfortable:h-8 comfortable:px-1.5 comfortable:rounded-r6 comfortable:text-[14px]/[20px]";
+	"-mx-2 h-6 min-w-0 cursor-text truncate rounded-r5 border-0 bg-transparent px-2 text-left text-[13px]/[19px] font-medium text-primary select-none hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus comfortable:-mx-3 comfortable:h-8 comfortable:px-3 comfortable:rounded-r6 comfortable:text-[14px]/[20px]";
 
-const CHEVRON_CLASS =
-	"flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r6 text-secondary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-fill-ghost-hover comfortable:size-8";
+/* Upstream `MY`'s chevron: `lu("text-secondary")`, where `lu = Hj` drops the ink under fizzy-lake panels and the ghost button's text-primary shows. */
+function chevronClass(panels: boolean): string {
+	return `flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 ${panels ? "text-primary" : "text-secondary"} transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-fill-ghost-hover comfortable:rounded-r6 comfortable:size-7`;
+}
+
+/* Upstream's `cc-lined-title-group`: gap pad-md - 6px (2 / 6), min-width 32 + h-control + gap, 8 + h-control + gap while the pills are compact. */
+const TITLE_GROUP_CLASS =
+	"cc-lined-title-group flex items-center gap-0.5 min-w-[58px] group-data-[pills-compact]/lead:min-w-[34px] comfortable:gap-1.5 comfortable:min-w-[66px] comfortable:group-data-[pills-compact]/lead:min-w-[42px]";
 
 const PILL_CLASS =
 	"inline-flex h-5 min-w-0 shrink-0 cursor-default items-center gap-[3px] rounded-r5 bg-primary/10 dark:bg-alpha-2 px-[5px] text-caption leading-[15px] text-secondary no-underline select-none transition-colors hover:bg-alpha-3 data-[popup-open]:bg-alpha-3 dark:hover:bg-alpha-3 dark:data-[popup-open]:bg-alpha-3";
@@ -346,6 +353,7 @@ export function SessionTitlebar({
 	railToggleFoldable = false,
 }: SessionTitlebarProps) {
 	const rename = useSessionRename(sessionId, data.title);
+	const panels = useFizzyLake("panels");
 	const cwd = data.cwd ?? data.projectPath;
 	useSessionTitleShortcuts({
 		sessionId,
@@ -374,7 +382,7 @@ export function SessionTitlebar({
 			<div
 				data-titlebar-lead=""
 				{...(compact ? {"data-pills-compact": ""} : {})}
-				className="flex min-w-0 items-center"
+				className="group/lead flex min-w-0 items-center"
 			>
 				{/* Upstream's lead spacer at every width, max(0px, 1rem - tiles-padding - tiles-border): 7px, so the title text clears the chat card edge (x=48 at 390). */}
 				<span aria-hidden className="w-[7px] shrink-0" />
@@ -389,12 +397,24 @@ export function SessionTitlebar({
 							Parent session
 						</Link>
 					)}
-					<div className="flex min-w-[32px] items-center">
+					<div className={TITLE_GROUP_CLASS}>
 						<ContextMenu
 							onOpenChangeComplete={contextRename.onOpenChangeComplete}
 							disabled={rename.editing}
 						>
-							<ContextMenuTrigger className="flex min-w-0">
+							{/* Upstream's title wrapper is an h2 named by the title, and a span while renaming (`k = D ? "span" : "h2"`). */}
+							<ContextMenuTrigger
+								className="flex min-w-[32px] items-center group-data-[pills-compact]/lead:min-w-[8px]"
+								render={({children, ...props}) =>
+									rename.editing ? (
+										<span {...props}>{children}</span>
+									) : (
+										<h2 {...props} aria-label={rename.title}>
+											{children}
+										</h2>
+									)
+								}
+							>
 								<SessionTitleButton rename={rename} className={TITLE_CLASS} summary={summary} />
 							</ContextMenuTrigger>
 							<MenuContent finalFocus={contextRename.finalFocus}>
@@ -411,7 +431,10 @@ export function SessionTitlebar({
 						</ContextMenu>
 						<Menu onOpenChangeComplete={menuRename.onOpenChangeComplete}>
 							<Tooltip content={menuTooltipLabel(rename.title)} side="bottom">
-								<MenuTrigger aria-label={`More options for ${rename.title}`} className={CHEVRON_CLASS}>
+								<MenuTrigger
+									aria-label={`More options for ${rename.title}`}
+									className={chevronClass(panels)}
+								>
 									<ChevronDown aria-hidden className="size-4" />
 								</MenuTrigger>
 							</Tooltip>

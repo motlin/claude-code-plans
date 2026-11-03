@@ -14,6 +14,7 @@ import {
 	TITLEBAR_RAIL_TOGGLE_CLASS,
 } from "../src/components/titlebar-classes";
 import {useTitlebarHiddenCount} from "../src/components/titlebar-fold-context";
+import {FIZZY_LAKE_PARTS, FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 import {foldBudget, splitPanes} from "../src/lib/titlebar-fold";
 import {topLeftClearance} from "../src/lib/top-left-clearance";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
@@ -186,7 +187,13 @@ async function flush() {
 
 async function renderTitlebar(
 	data: SessionDetailData,
-	slots: {withSlots?: boolean; viewOptions?: ReactNode; paneToggles?: ReactNode; railToggleFoldable?: boolean} = {},
+	slots: {
+		withSlots?: boolean;
+		viewOptions?: ReactNode;
+		paneToggles?: ReactNode;
+		railToggleFoldable?: boolean;
+		fizzyLake?: readonly FizzyLakePart[];
+	} = {},
 ) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
@@ -229,7 +236,9 @@ async function renderTitlebar(
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
-				<ToastProvider>{content}</ToastProvider>
+				<FizzyLakeContext.Provider value={slots.fizzyLake ?? FIZZY_LAKE_PARTS}>
+					<ToastProvider>{content}</ToastProvider>
+				</FizzyLakeContext.Provider>
 			</QueryClientProvider>
 		),
 	});
@@ -394,18 +403,68 @@ describe("SessionTitlebar title and chevron", () => {
 		return result;
 	}
 
-	it("sizes the title and chevron as upstream's flush 24px controls", async () => {
+	it("sizes the title and chevron as upstream's flush 24px controls, the title padded and bled by pad-md", async () => {
 		await renderTitlebar(baseDetail);
 		const title = screen.getByRole("button", {name: `${TITLE}, rename session`});
 		const chevron = screen.getByRole("button", {name: `More options for ${TITLE}`});
+		const pick = (element: HTMLElement, pattern: RegExp) =>
+			[...element.classList].filter((name) => pattern.test(name));
 
 		expect({
-			title: ["h-6", "px-1", "rounded-r5"].every((name) => title.classList.contains(name)),
-			chevron: ["size-6", "rounded-r6"].every((name) => chevron.classList.contains(name)),
-		}).toStrictEqual({title: true, chevron: true});
+			title: pick(title, /^(-?m[xs]?-|p[xs]?-|h-|rounded-)/),
+			chevron: pick(chevron, /^(size-|rounded-|text-(primary|secondary))/),
+		}).toStrictEqual({
+			title: ["-mx-2", "h-6", "rounded-r5", "px-2"],
+			chevron: ["size-6", "rounded-r5", "text-primary"],
+		});
 	});
 
-	it("grows the title and chevron to upstream's comfortable 32px controls under a comfortable scope (coarse pointer)", async () => {
+	it("keeps the chevron's text-secondary ink without fizzy-lake panels, as upstream's lu = Hj", async () => {
+		await renderTitlebar(baseDetail, {fizzyLake: []});
+		const chevron = screen.getByRole("button", {name: `More options for ${TITLE}`});
+
+		expect([...chevron.classList].filter((name) => /^text-(primary|secondary)$/.test(name))).toStrictEqual([
+			"text-secondary",
+		]);
+	});
+
+	it("wraps the title in upstream's h2 inside the cc-lined-title-group with the chevron", async () => {
+		const titlebar = await renderTitlebar(baseDetail);
+		const heading = screen.getByRole("heading", {level: 2, name: TITLE});
+		const title = screen.getByRole("button", {name: `${TITLE}, rename session`});
+		const group = title.closest(".cc-lined-title-group");
+		const lead = titlebar.querySelector("[data-titlebar-lead]");
+
+		expect({
+			headingHoldsTitle: heading.contains(title),
+			headingClass: heading.className,
+			paneTitle: title.hasAttribute("data-pane-title"),
+			groupClass: group?.className,
+			groupHoldsChevron: group?.contains(screen.getByRole("button", {name: `More options for ${TITLE}`})),
+			leadIsGroup: lead?.classList.contains("group/lead"),
+		}).toStrictEqual({
+			headingHoldsTitle: true,
+			headingClass: "flex min-w-[32px] items-center group-data-[pills-compact]/lead:min-w-[8px]",
+			paneTitle: true,
+			groupClass:
+				"cc-lined-title-group flex items-center gap-0.5 min-w-[58px] group-data-[pills-compact]/lead:min-w-[34px] comfortable:gap-1.5 comfortable:min-w-[66px] comfortable:group-data-[pills-compact]/lead:min-w-[42px]",
+			groupHoldsChevron: true,
+			leadIsGroup: true,
+		});
+	});
+
+	it("drops the h2 for a span while the title is being renamed, as upstream's k = D ? span : h2", async () => {
+		await renderTitlebar(baseDetail);
+		fireEvent.click(screen.getByRole("button", {name: `${TITLE}, rename session`}));
+		await flush();
+
+		expect({
+			heading: screen.queryByRole("heading", {level: 2}),
+			input: screen.getByRole("textbox").closest(".cc-lined-title-group") !== null,
+		}).toStrictEqual({heading: null, input: true});
+	});
+
+	it("grows the title and chevron to upstream's comfortable controls under a comfortable scope", async () => {
 		await renderTitlebar(baseDetail);
 		const comfortable = (element: HTMLElement) =>
 			[...element.classList].filter((name) => name.startsWith("comfortable:"));
@@ -415,13 +474,13 @@ describe("SessionTitlebar title and chevron", () => {
 			chevron: comfortable(screen.getByRole("button", {name: `More options for ${TITLE}`})),
 		}).toStrictEqual({
 			title: [
-				"comfortable:-mx-1.5",
+				"comfortable:-mx-3",
 				"comfortable:h-8",
-				"comfortable:px-1.5",
+				"comfortable:px-3",
 				"comfortable:rounded-r6",
 				"comfortable:text-[14px]/[20px]",
 			],
-			chevron: ["comfortable:size-8"],
+			chevron: ["comfortable:rounded-r6", "comfortable:size-7"],
 		});
 	});
 
@@ -437,17 +496,17 @@ describe("SessionTitlebar title and chevron", () => {
 		const spacerWidth = Number(
 			/^w-\[(\d+)px\]$/.exec([...spacer.classList].find((name) => name.startsWith("w-")) ?? "")?.[1],
 		);
-		const buttonX = rowStart + spacerWidth + (title.classList.contains("-mx-1") ? -4 : 0);
+		const buttonX = rowStart + spacerWidth + (title.classList.contains("-mx-2") ? -8 : 0);
 
 		expect({
 			spacer: {tag: spacer.tagName, hidden: spacer.getAttribute("aria-hidden"), className: spacer.className},
 			rowStart,
 			buttonX,
-			textX: buttonX + (title.classList.contains("px-1") ? 4 : 0),
+			textX: buttonX + (title.classList.contains("px-2") ? 8 : 0),
 		}).toStrictEqual({
 			spacer: {tag: "SPAN", hidden: "true", className: "w-[7px] shrink-0"},
 			rowStart: 41,
-			buttonX: 44,
+			buttonX: 40,
 			textX: 48,
 		});
 	});
