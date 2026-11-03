@@ -402,7 +402,7 @@ describe("Composer", () => {
 						{text: "Opus 5.5", classes: ["truncate"]},
 						{
 							text: " Extra",
-							classes: ["shrink-0", "whitespace-pre", "text-ink-muted", "@max-[280px]:hidden"],
+							classes: ["shrink-0", "whitespace-pre", "text-muted-as-secondary", "@max-[280px]:hidden"],
 						},
 					],
 				},

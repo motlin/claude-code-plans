@@ -24,10 +24,10 @@ const CHIN_BUTTON_CLASS =
 export const CHIN_TRIGGER_CLASS = `${CHIN_BUTTON_CLASS} truncate px-1.5 comfortable:rounded-r5`;
 
 /**
- * Upstream mutes the effort (`text-muted-as-secondary`, which falls back to the muted ink) and drops it when the
+ * Upstream mutes the effort with `text-muted-as-secondary` (the muted ink, secondary under fizzy color) and drops it when the
  * chin is under 280px.
  */
-export const EFFORT_LABEL_CLASS = "shrink-0 whitespace-pre text-ink-muted @max-[280px]:hidden";
+export const EFFORT_LABEL_CLASS = "shrink-0 whitespace-pre text-muted-as-secondary @max-[280px]:hidden";
 
 /** The usage ring's 24px square button. */
 export const USAGE_RING_CLASS = `${CHIN_BUTTON_CLASS} aspect-square comfortable:rounded-r5`;

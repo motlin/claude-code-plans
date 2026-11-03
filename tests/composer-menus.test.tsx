@@ -734,7 +734,7 @@ describe("Composer model trigger Fast word and live status", () => {
 		return status === null ? null : {className: status.getAttribute("class"), text: status.textContent};
 	}
 
-	const TAIL_CLASS = "shrink-0 whitespace-pre text-ink-muted @max-[280px]:hidden";
+	const TAIL_CLASS = "shrink-0 whitespace-pre text-muted-as-secondary @max-[280px]:hidden";
 
 	it("puts upstream's Fast word between the model and the effort while the session is fast", () => {
 		renderComposer({chin: {...CHIN, fastMode: true}});
@@ -1257,7 +1257,7 @@ describe("Composer chin tooltips and contrast", () => {
 		}).toStrictEqual({
 			focus: ["focus-visible:shadow-focus"],
 			expanded: ["aria-expanded:bg-fill-ghost-hover"],
-			effort: "shrink-0 whitespace-pre text-ink-muted @max-[280px]:hidden",
+			effort: "shrink-0 whitespace-pre text-muted-as-secondary @max-[280px]:hidden",
 		});
 	});
 
