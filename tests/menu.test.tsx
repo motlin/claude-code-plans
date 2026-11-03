@@ -1883,8 +1883,26 @@ describe("Menu under fizzy-lake panels on a fine pointer", () => {
 
 		expect(anatomy()).toStrictEqual({
 			popup: ["panels-fine:rounded-menu-comfortable"],
-			scroller: ["panels-fine:p-1.5"],
+			scroller: ["panels-fine:p-1.5", "panels-fine:border-b-0"],
 			rows: Array.from({length: 3}, () => ["panels-fine:h-7", "panels-fine:py-1"]),
+		});
+	});
+
+	it("lays a submenu trigger's value out as upstream's Filter and sort rows: ms-md gap-xs trailing group, max-w-[160px] footnote value", async () => {
+		render(
+			<Menu>
+				<MenuTrigger aria-label="More options">...</MenuTrigger>
+				<MenuContent>
+					<RowMenuBody onCopy={vi.fn<() => void>()} onDelete={vi.fn<() => void>()} />
+				</MenuContent>
+			</Menu>,
+		);
+		await openDropdown();
+		const value = screen.getByRole("menuitem", {name: /Status/}).querySelector("[data-menu-value]");
+
+		expect({trailing: value?.parentElement?.className, value: value?.className}).toStrictEqual({
+			trailing: "ms-4 flex shrink-0 items-center gap-2",
+			value: "max-w-[160px] shrink-0 truncate text-footnote text-[var(--menu-muted)]",
 		});
 	});
 

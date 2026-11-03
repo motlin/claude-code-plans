@@ -29,8 +29,9 @@ export const DENSITY_CLASSES = {
 	comfortable: {
 		/* Upstream's radius + gutter: 8 + 4 = 12, or 8 + 6 = 14 under fizzy-lake panels on a fine pointer. */
 		popup: "rounded-card panels-fine:rounded-menu-comfortable",
-		/* Upstream's `--cds-menu-gutter`: 0.25rem, 0.375rem under panels (fine pointer). */
-		scroller: "panels-fine:p-1.5",
+		/* Upstream's `--cds-menu-gutter`: 0.25rem, 0.375rem under panels (fine pointer), where the scroller
+		   also has no 1px transparent bottom border. */
+		scroller: "panels-fine:p-1.5 panels-fine:border-b-0",
 		text: "text-[14px]/[20px]",
 		/* Rows are upstream's h-control (32, 28 under panels on a fine pointer) with py (h-control - 20) / 2. */
 		item: "rounded-r6 px-2.5 py-1.5 panels-fine:py-1",

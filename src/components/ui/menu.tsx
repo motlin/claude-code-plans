@@ -906,6 +906,7 @@ export interface MenuSubTriggerProps extends Omit<
 /** Submenu trigger: opens on hover, click, Enter or ArrowRight. */
 export function MenuSubTrigger({children, icon, value, valueAccent, ...props}: MenuSubTriggerProps) {
 	const itemClass = useItemClass();
+	const sizing = useMenuSizing();
 	const triggerRef = useContext(SubmenuTriggerContext);
 	/* A sheet drills in on a press only; hover would yank the level sideways under the finger. */
 	const sheet = useContext(MenuSheetContext);
@@ -923,14 +924,15 @@ export function MenuSubTrigger({children, icon, value, valueAccent, ...props}: M
 			<span data-menu-sub-label="" className={LABEL_CLASS}>
 				{children}
 			</span>
-			<span className={`${TRAILING_CLASS} pl-3`}>
+			{/* Upstream's `ms-md gap-xs` trailing group around a `max-w-[160px] text-footnote` value. */}
+			<span className={sizing.trailingGroup}>
 				{value !== undefined && (
 					<span
 						data-menu-value=""
 						className={
 							valueAccent
 								? "max-w-[100px] truncate text-[12px]/[15px] text-accent-100"
-								: "text-[12px]/[15px] text-[var(--menu-muted)]"
+								: "max-w-[160px] shrink-0 truncate text-footnote text-[var(--menu-muted)]"
 						}
 					>
 						{value}
