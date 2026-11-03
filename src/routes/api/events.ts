@@ -3,6 +3,7 @@ import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
 import {addClient, removeClient} from "../../lib/watcher";
 import {onServerShutdown} from "../../lib/server-shutdown";
 import {connectEvents} from "../../lib/sse-connect-events";
+import {SSE_HIGH_WATER_MARK_BYTES} from "../../lib/sse-broadcast";
 
 export const Route = createFileRoute("/api/events")({
 	server: {
@@ -29,36 +30,41 @@ export const Route = createFileRoute("/api/events")({
 					unregisterShutdown = null;
 				};
 
-				const stream = new ReadableStream({
-					start(controller) {
-						ctrl = controller;
-						controller.enqueue(encoder.encode(":\n\n"));
-						for (const event of connectEvents()) {
-							controller.enqueue(encoder.encode(`event: ${event.type}\ndata: ${event.data}\n\n`));
-						}
-						addClient(controller);
+				const stream = new ReadableStream<Uint8Array>(
+					{
+						start(controller) {
+							ctrl = controller;
+							controller.enqueue(encoder.encode(":\n\n"));
+							for (const event of connectEvents()) {
+								controller.enqueue(encoder.encode(`event: ${event.type}\ndata: ${event.data}\n\n`));
+							}
+							addClient(controller);
 
-						keepalive = setInterval(() => {
-							try {
-								controller.enqueue(encoder.encode(":\n\n"));
-							} catch {
+							keepalive = setInterval(() => {
+								try {
+									controller.enqueue(encoder.encode(":\n\n"));
+								} catch {
+									release();
+								}
+							}, 30000);
+
+							// An open stream would otherwise hold the HTTP server (and its
+							// keepalive timer the event loop) open through shutdown.
+							unregisterShutdown = onServerShutdown(() => {
 								release();
-							}
-						}, 30000);
-
-						// An open stream would otherwise hold the HTTP server (and its
-						// keepalive timer the event loop) open through shutdown.
-						unregisterShutdown = onServerShutdown(() => {
-							release();
-							try {
-								controller.close();
-							} catch {
-								// already closed
-							}
-						});
+								try {
+									controller.close();
+								} catch {
+									// already closed
+								}
+							});
+						},
+						cancel: release,
 					},
-					cancel: release,
-				});
+					// Byte-sized so desiredSize tracks the unsent backlog that
+					// broadcastTyped uses to drop stalled clients.
+					new ByteLengthQueuingStrategy({highWaterMark: SSE_HIGH_WATER_MARK_BYTES}),
+				);
 
 				return new Response(stream, {
 					headers: {

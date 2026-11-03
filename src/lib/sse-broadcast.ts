@@ -7,6 +7,46 @@ const clients = hmrPersist("watcherClients", () => new Set<ReadableStreamDefault
 
 const encoder = new TextEncoder();
 
+/**
+ * Per-stream queue budget for `/api/events`. A client that is merely slow (a
+ * phone link, a throttled background tab) dips below it briefly and drains.
+ */
+export const SSE_HIGH_WATER_MARK_BYTES = 1024 * 1024;
+
+/**
+ * How long a client's queue may stay at or over its high-water mark before it
+ * is dropped. Generous so only a stalled reader (half-open TCP, frozen tab) is
+ * cut; the browser's EventSource reconnects and the app refetches.
+ */
+export const SSE_STALL_DROP_MS = 2 * 60_000;
+
+// When each client's queue was first seen full, cleared once it drains.
+const fullSince = new WeakMap<ReadableStreamDefaultController, number>();
+
+/** Drop `client` if its queue has stayed full for the stall window. */
+function dropIfStalled(client: ReadableStreamDefaultController, now: number): boolean {
+	const {desiredSize} = client;
+	if (typeof desiredSize !== "number" || desiredSize > 0) {
+		fullSince.delete(client);
+		return false;
+	}
+	const since = fullSince.get(client);
+	if (since === undefined) {
+		fullSince.set(client, now);
+		return false;
+	}
+	if (now - since < SSE_STALL_DROP_MS) return false;
+	clients.delete(client);
+	fullSince.delete(client);
+	try {
+		// error() discards the queued backlog at once; close() would wait for it to drain.
+		client.error(new Error("SSE client stalled"));
+	} catch {
+		// already errored or closed
+	}
+	return true;
+}
+
 export interface SseTypeStats {
 	events: number;
 	payloadBytes: number;
@@ -63,7 +103,9 @@ export function broadcastTyped(type: string, data: Record<string, unknown>): voi
 	ensureStatsLog();
 	const payload = encoder.encode(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
 	let delivered = 0;
+	const now = Date.now();
 	for (const client of clients) {
+		if (dropIfStalled(client, now)) continue;
 		try {
 			client.enqueue(payload);
 			delivered++;
