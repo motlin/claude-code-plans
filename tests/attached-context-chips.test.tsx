@@ -734,6 +734,12 @@ describe("AttachedContextChips text preview", () => {
 		});
 	});
 
+	it("opens a pasted-text pill as a file titled Pasted text", async () => {
+		const {container} = renderChips([{id: "chip-x", kind: "pasted-text", text: "alpha\nbeta"}]);
+		fireEvent.click(linkOf(container, "Pasted text · 2 lines"));
+		expect(await openedPreview()).toStrictEqual({title: "Pasted text", variant: "file", text: "alpha\nbeta"});
+	});
+
 	it("closes on Escape, refocusing the pill's CardLink", async () => {
 		const {container} = renderChips([MESSAGE]);
 		const link = linkOf(container, "Message");
