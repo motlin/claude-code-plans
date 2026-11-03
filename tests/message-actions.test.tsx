@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render} from "@testing-library/react";
+import {renderToString} from "react-dom/server";
 import {actAndSettle} from "./act-and-settle";
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
@@ -540,24 +541,7 @@ describe("UserMessageActions", () => {
 		});
 	});
 
-	it("opens a Read by Claude dialog when the receipt is clicked", async () => {
-		const {container} = render(
-			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} readByClaude />,
-		);
-		await actAndSettle(() => {
-			fireEvent.click(button(container, "Read by Claude"));
-		});
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(50);
-		});
-		const dialog = document.querySelector('[role="dialog"]');
-		expect({label: dialog?.getAttribute("aria-label"), text: dialog?.textContent}).toStrictEqual({
-			label: "Read by Claude",
-			text: "Read by Claude",
-		});
-	});
-
-	it("draws the receipt as upstream's CheckDouble InfoTip that turns primary on hover", () => {
+	it("draws the receipt on a fine pointer as a toolbar CheckDouble icon button with no ghost fill", () => {
 		const {container} = render(
 			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} readByClaude />,
 		);
@@ -565,12 +549,14 @@ describe("UserMessageActions", () => {
 		const classes = receipt.className.split(" ");
 		expect({
 			infoTip: receipt.hasAttribute("data-info-tip"),
+			hasPopup: receipt.getAttribute("aria-haspopup"),
 			icon: receipt.querySelector("svg")?.getAttribute("class")?.split(" ").includes("lucide-check-check"),
-			margin: ["p-1", "-m-1", "text-ink-muted", "hover:text-primary"].every((c) => classes.includes(c)),
-		}).toStrictEqual({infoTip: true, icon: true, margin: true});
+			button: ["size-6", "hover:bg-transparent"].every((c) => classes.includes(c)),
+			infoTipSpacing: ["p-1", "-m-1"].some((c) => classes.includes(c)),
+		}).toStrictEqual({infoTip: false, hasPopup: null, icon: true, button: true, infoTipSpacing: false});
 	});
 
-	it("without panels: spaces the receipt as upstream: its -4px margins overlap the time's 6px pe and Copy by 4px in a gapless bar", () => {
+	it("without panels: spaces the receipt as a plain 24px toolbar button in a gapless bar, overlapping nothing", () => {
 		const {container} = render(
 			<PanelsOff>
 				<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} readByClaude />
@@ -587,7 +573,7 @@ describe("UserMessageActions", () => {
 			bar: ["gap-0"],
 			items: [
 				["time", ["pe-[6px]"]],
-				["Read by Claude", ["p-1", "-m-1"]],
+				["Read by Claude", ["size-6"]],
 				["Copy", ["size-6"]],
 				["Rewind to here", ["size-6"]],
 				["Fork from here", ["size-6"]],
@@ -1207,7 +1193,12 @@ describe("message actions states (upstream 2026-11-01)", () => {
 				const control = child.matches("button") ? child : child.querySelector("button");
 				return control?.getAttribute("aria-label") ?? child.getAttribute("data-testid") ?? child.tagName;
 			}),
-			receipt: ["order-first", "me-0"].filter((c) => receipt.className.split(" ").includes(c)),
+			// The bar's flex item holding the receipt: the button itself, or the tooltip anchor around it.
+			receipt: ["order-first", "me-0"].filter((c) =>
+				(Array.from(bar(container).children).find((child) => child.contains(receipt))?.className ?? "")
+					.split(" ")
+					.includes(c),
+			),
 			separator:
 				separator === null
 					? null
@@ -1327,5 +1318,124 @@ describe("message actions states (upstream 2026-11-01)", () => {
 				"motion-safe:pointer-coarse:transition-none",
 			].filter((c) => !classes.includes(c)),
 		}).toStrictEqual({found: true, legacy: false, bareDelay: false, missing: []});
+	});
+});
+
+describe("pointer-forked receipt mark (user-row-read-receipt T1)", () => {
+	/** Stubs `matchMedia` so only upstream's touch query `(pointer: coarse), (hover: none)` matches, when `touch`. */
+	function stubPointer(touch: boolean) {
+		vi.stubGlobal("matchMedia", (query: string) => ({
+			matches: touch && query === "(pointer: coarse), (hover: none)",
+			media: query,
+			addEventListener: () => undefined,
+			removeEventListener: () => undefined,
+		}));
+	}
+
+	function readByClaude() {
+		return render(
+			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} readByClaude />,
+		).container;
+	}
+
+	function tooltips(): string[] {
+		return Array.from(document.querySelectorAll('[role="tooltip"]')).map((tip) => tip.textContent);
+	}
+
+	it("fine pointer: a click opens the Read by Claude tooltip and keeps focus on the button, with no dialog", () => {
+		stubPointer(false);
+		const container = readByClaude();
+		const receipt = button(container, "Read by Claude");
+		act(() => {
+			receipt.focus();
+		});
+		fireEvent.click(receipt);
+		act(() => {
+			vi.advanceTimersByTime(1000);
+		});
+		expect({
+			tooltips: tooltips(),
+			dialogs: document.querySelectorAll('[role="dialog"]').length,
+			focused: document.activeElement === receipt,
+		}).toStrictEqual({tooltips: ["Read by Claude"], dialogs: 0, focused: true});
+	});
+
+	it("fine pointer: the tooltip a click opened closes when the pointer leaves", () => {
+		stubPointer(false);
+		const container = readByClaude();
+		const receipt = button(container, "Read by Claude");
+		fireEvent.pointerEnter(receipt);
+		fireEvent.click(receipt);
+		const opened = tooltips();
+		fireEvent.pointerLeave(receipt);
+		act(() => {
+			vi.advanceTimersByTime(1000);
+		});
+		expect({opened, left: tooltips()}).toStrictEqual({opened: ["Read by Claude"], left: []});
+	});
+
+	it("fine pointer: keyboard focus opens the tooltip", () => {
+		stubPointer(false);
+		const container = readByClaude();
+		fireEvent.focus(button(container, "Read by Claude"));
+		act(() => {
+			vi.advanceTimersByTime(300);
+		});
+		expect(tooltips()).toStrictEqual(["Read by Claude"]);
+	});
+
+	it("touch / no hover: keeps upstream's InfoTip, whose click opens a Read by Claude dialog", async () => {
+		stubPointer(true);
+		const container = readByClaude();
+		const receipt = button(container, "Read by Claude");
+		const attributes = {
+			hasPopup: receipt.getAttribute("aria-haspopup"),
+			infoTip: receipt.hasAttribute("data-info-tip"),
+		};
+		await actAndSettle(() => {
+			fireEvent.click(receipt);
+		});
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(50);
+		});
+		const dialog = document.querySelector('[role="dialog"]');
+		expect({
+			attributes,
+			dialog: {label: dialog?.getAttribute("aria-label"), text: dialog?.textContent},
+		}).toStrictEqual({
+			attributes: {hasPopup: "dialog", infoTip: true},
+			dialog: {label: "Read by Claude", text: "Read by Claude"},
+		});
+	});
+
+	it("fine pointer: a stacked waiting row's Unread is a dimmed 24px button whose click shows its tooltip and marks it popup-open", () => {
+		stubPointer(false);
+		const {container} = render(
+			<PanelsOff>
+				<WaitingMessageActions text="two" stacked />
+			</PanelsOff>,
+		);
+		const unread = button(container, "Unread");
+		const classes = unread.className.split(" ");
+		const at = {
+			infoTip: unread.hasAttribute("data-info-tip"),
+			button: ["size-6", "opacity-50", "data-[popup-open]:opacity-100"].every((c) => classes.includes(c)),
+		};
+		fireEvent.click(unread);
+		expect({at, tooltips: tooltips(), popupOpen: unread.hasAttribute("data-popup-open")}).toStrictEqual({
+			at: {infoTip: false, button: true},
+			tooltips: ["Unread"],
+			popupOpen: true,
+		});
+	});
+
+	it("server render draws the button form, as upstream's false server snapshot does", () => {
+		const html = renderToString(
+			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} readByClaude />,
+		);
+		expect({
+			label: html.includes('aria-label="Read by Claude"'),
+			hasPopup: html.includes("aria-haspopup"),
+		}).toStrictEqual({label: true, hasPopup: false});
 	});
 });

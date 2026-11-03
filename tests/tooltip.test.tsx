@@ -381,3 +381,47 @@ describe("<Tooltip> anchor display", () => {
 		expect(anchorClasses("md:hidden")).toStrictEqual(["relative", "inline-flex", "md:hidden"]);
 	});
 });
+
+describe("tooltip click-to-open (upstream's receipt Tooltip, closeOnClick false + onClick open)", () => {
+	it("opens at once on a click with openOnClick, stays open on a second click, marks the trigger popup-open, and closes on pointer leave", () => {
+		vi.useFakeTimers();
+		render(
+			<Tooltip content="Read by Claude" closeOnClick={false} openOnClick markOpen>
+				<button type="button">receipt</button>
+			</Tooltip>,
+		);
+		const trigger = screen.getByRole("button");
+		fireEvent.click(trigger);
+		const first = {tip: screen.queryByRole("tooltip")?.textContent, open: trigger.hasAttribute("data-popup-open")};
+		fireEvent.click(trigger);
+		const second = screen.queryByRole("tooltip")?.textContent;
+		fireEvent.pointerLeave(trigger);
+		expect({
+			first,
+			second,
+			left: {tip: screen.queryByRole("tooltip"), open: trigger.hasAttribute("data-popup-open")},
+		}).toStrictEqual({
+			first: {tip: "Read by Claude", open: true},
+			second: "Read by Claude",
+			left: {tip: null, open: false},
+		});
+	});
+
+	it("leaves a click inert without openOnClick and never marks the trigger without markOpen", () => {
+		vi.useFakeTimers();
+		render(
+			<Tooltip content="Copy" closeOnClick={false}>
+				<button type="button">copy</button>
+			</Tooltip>,
+		);
+		const trigger = screen.getByRole("button");
+		fireEvent.click(trigger);
+		const clicked = screen.queryByRole("tooltip");
+		const hovered = openTooltip().textContent;
+		expect({clicked, hovered, open: trigger.hasAttribute("data-popup-open")}).toStrictEqual({
+			clicked: null,
+			hovered: "Copy",
+			open: false,
+		});
+	});
+});

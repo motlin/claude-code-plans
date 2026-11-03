@@ -16,6 +16,7 @@ import {useFizzyLake} from "../lib/fizzy-lake";
 import {messageHeading} from "../lib/transcript-action-targets";
 import {type ReadAloudStatus, useReadAloud} from "../hooks/use-read-aloud";
 import {TOUCH_REVEAL} from "../lib/touch-reveal";
+import {useMediaQuery} from "../lib/use-phone-sheet";
 import {useRovingToolbar} from "../lib/use-roving-toolbar";
 import {formatMessageTime, formatRelativeTimestamp, formatTimestamp} from "../lib/timestamp-format";
 import {type TranscriptMessageRef, TranscriptActionsContext} from "./transcript-actions-context";
@@ -438,20 +439,77 @@ export function AssistantMessageActions({message, text, timestamp, details, hove
 	);
 }
 
-/** Upstream's "Read by Claude" CheckDouble InfoTip; the toolbar's hover rule turns it primary. */
+/** Upstream's receipt-mark fork (`gw`): touch or no-hover devices get the InfoTip, fine pointers a toolbar button. */
+const RECEIPT_TOUCH_QUERY = "(pointer: coarse), (hover: none)";
+
+/**
+ * Upstream's receipt mark (`vs`). On a fine pointer it is the toolbar's own icon button, unfilled on hover, in a
+ * tooltip that a click opens and keeps open until the pointer leaves; on touch or no-hover devices it is the
+ * InfoTip popover. The server renders the button, as upstream's false server snapshot does.
+ */
+function ReceiptMark({
+	label,
+	icon,
+	className,
+	anchorClassName,
+	tabIndex,
+}: {
+	label: string;
+	icon: ReactNode;
+	/** Classes on the control itself. */
+	className?: string;
+	/** Classes on the bar's flex item: the InfoTip trigger, or the tooltip anchor around the button. */
+	anchorClassName?: string;
+	tabIndex: number | undefined;
+}) {
+	const touch = useMediaQuery(RECEIPT_TOUCH_QUERY);
+	if (touch) {
+		const triggerClass = [className, anchorClassName].filter(Boolean).join(" ");
+		return (
+			<InfoTip
+				aria-label={label}
+				content={label}
+				delay={0}
+				icon={icon}
+				{...(triggerClass === "" ? {} : {className: triggerClass})}
+				{...(tabIndex === undefined ? {} : {tabIndex})}
+			/>
+		);
+	}
+	return (
+		<Tooltip
+			content={label}
+			closeOnClick={false}
+			openOnClick
+			markOpen
+			{...(anchorClassName === undefined ? {} : {className: anchorClassName})}
+		>
+			<button
+				type="button"
+				aria-label={label}
+				{...(tabIndex === undefined ? {} : {tabIndex})}
+				onMouseDown={preventFocusSteal}
+				// `hover:bg-transparent` stands in for upstream's `[&_[data-cds-part=paint]]:invisible`.
+				className={`${BUTTON_CLASS} hover:bg-transparent${className === undefined ? "" : ` ${className}`}`}
+			>
+				{icon}
+			</button>
+		</Tooltip>
+	);
+}
+
+/** Upstream's "Read by Claude" CheckDouble receipt mark; the toolbar's hover rule turns it primary. */
 function ReadByClaudeReceipt() {
 	const tabIndex = useRovingTabIndex(true);
 	const panels = useFizzyLake("panels");
 	return (
 		<>
-			<InfoTip
-				aria-label="Read by Claude"
-				content="Read by Claude"
-				delay={0}
+			<ReceiptMark
+				label="Read by Claude"
 				icon={<CheckCheck aria-hidden className={ICON_CLASS} />}
 				// Under panels upstream draws the receipt first, though it stays after the time in the DOM.
-				className={panels ? "order-first me-0 hover:text-primary" : "hover:text-primary"}
-				{...(tabIndex === undefined ? {} : {tabIndex})}
+				{...(panels ? {anchorClassName: "order-first me-0"} : {})}
+				tabIndex={tabIndex}
 			/>
 			{panels && (
 				<span
@@ -605,10 +663,8 @@ export function WaitingMessageActions({
 					data-testid="epitaxy-receipt-at-rest"
 					className="text-body text-ink-muted tabular-nums flex min-h-6 items-center self-center ps-[5px] epitaxy-hint-fade-in"
 				>
-					<InfoTip
-						aria-label="Unread"
-						content="Unread"
-						delay={0}
+					<ReceiptMark
+						label="Unread"
 						icon={<Check aria-hidden className={ICON_CLASS} />}
 						className="opacity-50 hover:opacity-100 focus-visible:opacity-100 data-[popup-open]:opacity-100"
 						tabIndex={0}

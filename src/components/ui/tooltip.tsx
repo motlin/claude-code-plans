@@ -81,6 +81,8 @@ export function Tooltip({
 	multiline = false,
 	variant,
 	closeOnClick = true,
+	openOnClick = false,
+	markOpen = false,
 	trackCursor,
 	suppressAfterPopup = false,
 	portal: portalProp,
@@ -122,6 +124,13 @@ export function Tooltip({
 	/** Upstream keeps a disabled reason open when its control is clicked (`closeOnClick: false`). */
 	closeOnClick?: boolean;
 	/**
+	 * A click opens the tip at once, or keeps it open, without toggling it (upstream's receipt mark: `onClick`
+	 * sets `open`, with `closeOnClick: false`). Pointer leave still closes it, as upstream's `hoverable: false`.
+	 */
+	openOnClick?: boolean;
+	/** Mark the anchored child `data-popup-open` while the tip is open, as Base UI's tooltip trigger does. */
+	markOpen?: boolean;
+	/**
 	 * `y`: follow the pointer's Y along the anchor, centring the tip on it 8px inside the viewport (upstream's
 	 * sidebar resize edge, `trackCursorAxis="y"`). Until the pointer moves it sits at the side's default.
 	 */
@@ -145,7 +154,7 @@ export function Tooltip({
 	/** Overrides the box's max width, e.g. `max-w-[360px]` for a multiline @ mention path. */
 	maxWidth?: string | undefined;
 	className?: string;
-	children: ReactElement<{"aria-describedby"?: string}>;
+	children: ReactElement<{"aria-describedby"?: string; "data-popup-open"?: string}>;
 }) {
 	const secondaryRows: readonly TooltipRow[] =
 		secondary === undefined ? [] : "content" in secondary ? [secondary] : secondary;
@@ -344,11 +353,22 @@ export function Tooltip({
 				show(variant === "reason" ? 0 : delay);
 			}}
 			onBlur={leave}
-			onClick={closeOnClick ? hide : undefined}
+			onClick={
+				closeOnClick
+					? hide
+					: openOnClick
+						? () => {
+								show(0);
+							}
+						: undefined
+			}
 		>
-			{open && variant !== "reason"
+			{open && (variant !== "reason" || markOpen)
 				? cloneElement(children, {
-						"aria-describedby": [children.props["aria-describedby"], id].filter(Boolean).join(" "),
+						...(variant === "reason"
+							? {}
+							: {"aria-describedby": [children.props["aria-describedby"], id].filter(Boolean).join(" ")}),
+						...(markOpen ? {"data-popup-open": ""} : {}),
 					})
 				: children}
 			{open &&
