@@ -22,6 +22,7 @@ import type {LiveLaunchControls} from "../hooks/use-live-launch-options";
 import {useIsMac, useIsWindows} from "../hooks/use-is-mac";
 import {useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
 import {useTypeToFocus} from "../hooks/use-type-to-focus";
+import {assertNever} from "../lib/assert-never";
 import type {ComposerState} from "../lib/composer-state";
 import {type QueuedPrompt, queuedForLater, queuedStatusText} from "../lib/composer-queue";
 import {type HistoryNavigator, historyKeyApplies, historyNavigator} from "../lib/prompt-history";
@@ -176,6 +177,18 @@ export interface ComposerQueueView {
 	clear: () => void;
 }
 
+/**
+ * Upstream's `/rewind` gate (`dn`) plus its unsupported check: `unsupported` (can't rewind at all),
+ * `offline` (upstream's `bridgeOffline`; locally no writable live pane), `busy` (`ignore`) or `ready`.
+ */
+export type ComposerRewindState = "unsupported" | "offline" | "busy" | "ready";
+
+interface ComposerRewind {
+	state: ComposerRewindState;
+	/** Opens the Rewind picker, after the composer has cleared `/rewind`. */
+	open: () => void;
+}
+
 interface ComposerProps {
 	variant: ComposerVariant;
 	/** Draft storage key: the session id, or `"home"` for the new-session composer. */
@@ -227,8 +240,11 @@ interface ComposerProps {
 	subscribePrefill?: ((listener: (text: string) => void) => () => void) | undefined;
 	/** Upstream's `isPanelActive`: only the active pane's composer gives its file input the upload id and takes type-to-focus keys. */
 	active?: boolean | undefined;
-	/** Opens the Rewind picker for a sent `/rewind`; absent, `/rewind` reaches the CLI as typed. */
-	onRewind?: (() => void) | undefined;
+	/**
+	 * A sent `/rewind`'s outcome, by upstream's gate (`dn`): `ready` clears the composer and opens the
+	 * Rewind picker; the others keep the draft. Absent, `/rewind` reaches the CLI as typed.
+	 */
+	rewind?: ComposerRewind | undefined;
 	/**
 	 * Runs a bash-mode command in the session's live pane; resolves false when it was refused. Present only with a
 	 * live pane: `!` in the empty composer then enters upstream's bash mode. Without it, a `! command` send is refused.
@@ -260,6 +276,9 @@ function BashHighlight({lines}: {lines: ThemedToken[][]}) {
 	));
 }
 
+/** Upstream's `/rewind` toasts for a session that can't rewind, and for one whose computer is offline. */
+const REWIND_UNSUPPORTED = "Rewind isn’t available for this session.";
+const REWIND_OFFLINE = "Rewind is unavailable while the computer running this session is offline.";
 /** Upstream's bash-mode placeholder for a session whose terminal runs the command (`voKGw/`). */
 const BASH_PLACEHOLDER = "Run a shell command in the terminal and send the output to Claude";
 /** Upstream gUdQrb: prefilled or taken-back text refused while bash mode holds a command. */
@@ -590,7 +609,7 @@ export function Composer({
 	promptHistory = NO_HISTORY,
 	subscribePrefill,
 	active = true,
-	onRewind,
+	rewind,
 	onShellCommand,
 }: ComposerProps) {
 	const {
@@ -1162,14 +1181,29 @@ export function Composer({
 		}
 		return true;
 	}
-	/** Upstream's `/rewind` (`noArgs`): clears the composer, then opens the Rewind picker. */
+	/** Upstream's `/rewind` (`noArgs`) dispatch: the shape band first, then the gate's outcome. */
 	function runRewindCommand(text: string): boolean {
-		if (onRewind === undefined) return false;
+		if (rewind === undefined) return false;
 		const shape = parseCommandShape(["rewind"], text);
 		if (shape === null) return false;
 		if (shape.kind === "run") {
-			clearDraft();
-			onRewind();
+			switch (rewind.state) {
+				case "unsupported":
+					toast?.({kind: "error", message: REWIND_UNSUPPORTED});
+					break;
+				case "offline":
+					toast?.({kind: "warning", message: REWIND_OFFLINE});
+					break;
+				case "busy":
+					// Upstream's `ignore`: nothing happens and the composer keeps `/rewind`.
+					break;
+				case "ready":
+					clearDraft();
+					rewind.open();
+					break;
+				default:
+					assertNever(rewind.state);
+			}
 		} else {
 			setCommandError({
 				draftKey,

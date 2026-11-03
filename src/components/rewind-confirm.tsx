@@ -75,7 +75,9 @@ export function RewindConfirm({text, preview, conversation, onClose, onConfirm}:
 						<div className="mt-3 flex flex-col gap-3">
 							<div className="rounded-card bg-alpha-1 px-4 py-3 text-[15px]/[20px] text-primary">
 								<span className="sr-only">You</span>
-								<p className="line-clamp-2 whitespace-pre-wrap">{text.trim().slice(0, QUOTE_LIMIT)}</p>
+								<p className="line-clamp-2 whitespace-pre-wrap [unicode-bidi:plaintext]">
+									{text.trim().slice(0, QUOTE_LIMIT)}
+								</p>
 							</div>
 							{preview !== "none" && (
 								<>

@@ -25,7 +25,7 @@ import {TranscriptActionsProvider} from "./transcript-actions-provider";
 import {TurnUndoSendContext} from "./turn-undo-send-context";
 import {useSessionFork} from "../hooks/use-session-fork";
 import {ArchivedComposerNote} from "./archived-composer-note";
-import {Composer} from "./composer";
+import {Composer, type ComposerRewindState} from "./composer";
 import {HeldUserRow, SendingUserRow} from "./pending-user-row";
 import {StreamingMessage} from "./streaming-message";
 import {HeldSteerTurns, OptimisticWaitingTurn} from "./waiting-user-turn";
@@ -933,17 +933,16 @@ function SessionView({
 	const {retryable: errorRetryable, idle: errorIdle} = errorRecoveryAvailable;
 	// Rewinding drives the live CLI's selector, so it needs a writable pane on a session that isn't archived.
 	const rewindAvailable = promptBehavior.hasLivePane && herdr.writesEnabled && !data.archived;
-	const rewindPicker = useRewindPicker({
-		sessionId,
-		available: rewindAvailable,
-		busy:
-			paneBusy ||
-			pendingPermission !== null ||
-			inlineQuestion !== null ||
-			hookQuestionCardShown ||
-			inlinePlanId !== null ||
-			dockedPlan !== null,
-	});
+	// Upstream's picker gate (`E_`) refuses while working, with a send pending, or under a card.
+	const rewindBusy =
+		paneBusy ||
+		liveHerdrPrompt.state.isPending ||
+		pendingPermission !== null ||
+		inlineQuestion !== null ||
+		hookQuestionCardShown ||
+		inlinePlanId !== null ||
+		dockedPlan !== null;
+	const rewindPicker = useRewindPicker({sessionId, available: rewindAvailable, busy: rewindBusy});
 	const rewindTurnList = useMemo(
 		() => rewindTurns(transcript.records, hiddenUuids),
 		[transcript.records, hiddenUuids],
@@ -982,6 +981,23 @@ function SessionView({
 		[requestRewind, rewindTurnList, toast],
 	);
 	const {requestOpen: requestRewindPicker} = rewindPicker;
+	// A sent `/rewind`'s outcome: no writable live pane reads as upstream's offline computer.
+	const composerRewindState: ComposerRewindState = data.archived
+		? "unsupported"
+		: !promptBehavior.hasLivePane || !herdr.writesEnabled
+			? "offline"
+			: rewindBusy
+				? "busy"
+				: "ready";
+	const composerRewind = useMemo(
+		() => ({
+			state: composerRewindState,
+			open: () => {
+				requestRewindPicker({fromComposer: true});
+			},
+		}),
+		[composerRewindState, requestRewindPicker],
+	);
 	const rewindAvailableFromComposer = useMemo(
 		() =>
 			rewindAvailable
@@ -1479,7 +1495,7 @@ function SessionView({
 															mentionSessionId={sessionId}
 															mentionCwd={sessionDirectory}
 															promptHistory={promptHistory}
-															onRewind={rewindAvailableFromComposer}
+															rewind={composerRewind}
 															onShellCommand={runShellCommand}
 														/>
 													</SessionBackgroundTasksOpener>

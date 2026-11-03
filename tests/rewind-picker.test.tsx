@@ -249,7 +249,6 @@ describe("RewindPicker", () => {
 			activeDescendant: listbox.getAttribute("aria-activedescendant"),
 			options: options.map((option) => ({
 				id: option.id,
-				idx: option.dataset["idx"],
 				selected: option.getAttribute("aria-selected"),
 				className: option.className,
 				label: option.textContent,
@@ -263,23 +262,20 @@ describe("RewindPicker", () => {
 			options: [
 				{
 					id: "rewind-opt-0",
-					idx: "0",
 					selected: "false",
-					className: "rounded-r4 px-[6px] py-[5px] text-secondary",
+					className: "rounded-r4 px-[6px] py-[5px] last:scroll-mb-5 text-secondary",
 					label: "Rename the button",
 				},
 				{
 					id: "rewind-opt-1",
-					idx: "1",
 					selected: "false",
-					className: "rounded-r4 px-[6px] py-[5px] text-secondary",
+					className: "rounded-r4 px-[6px] py-[5px] last:scroll-mb-5 text-secondary",
 					label: "Add a test",
 				},
 				{
 					id: "rewind-opt-2",
-					idx: "2",
 					selected: "true",
-					className: "rounded-r4 px-[6px] py-[5px] bg-fill-ghost-hover text-primary",
+					className: "rounded-r4 px-[6px] py-[5px] last:scroll-mb-5 bg-fill-ghost-hover text-primary",
 					label: "Fix the lint",
 				},
 			],
@@ -321,14 +317,44 @@ describe("RewindPicker", () => {
 		});
 	});
 
-	it("selects on hover and picks on click", () => {
+	it("selects on a hover only once the pointer has moved, without scrolling, and picks on click", () => {
 		const {onSelect} = renderPicker();
-		const first = screen.getAllByRole("option")[0]!;
-		fireEvent.mouseEnter(first);
-		const activeDescendant = screen.getByRole("listbox").getAttribute("aria-activedescendant");
-		fireEvent.click(first);
-		expect({activeDescendant, selected: onSelect.mock.calls}).toStrictEqual({
-			activeDescendant: "rewind-opt-0",
+		const listbox = screen.getByRole("listbox");
+		const [first, second] = screen.getAllByRole("option");
+		const active = () => listbox.getAttribute("aria-activedescendant");
+		scrollIntoView.mockClear();
+		// Upstream's `id`: a move with no recorded pointer (the dialog opened under a resting cursor) doesn't select.
+		fireEvent.mouseMove(first!, {screenX: 10, screenY: 10});
+		const unrecorded = active();
+		// The list records (10,10); a row move at the same spot (a keyboard scroll under a resting cursor) doesn't select.
+		fireEvent.mouseMove(listbox, {screenX: 10, screenY: 10});
+		fireEvent.mouseMove(first!, {screenX: 10, screenY: 10});
+		const resting = active();
+		fireEvent.mouseMove(first!, {screenX: 10, screenY: 14});
+		const moved = active();
+		const hoverScrolls = scrollIntoView.mock.calls.length;
+		// Leaving the list forgets the pointer.
+		fireEvent.mouseLeave(listbox);
+		fireEvent.mouseMove(second!, {screenX: 10, screenY: 20});
+		const afterLeave = active();
+		fireEvent.keyDown(listbox, {key: "ArrowDown"});
+		const keyboardScrolls = scrollIntoView.mock.contexts.map((row) => (row as Element).id);
+		fireEvent.click(first!);
+		expect({
+			unrecorded,
+			resting,
+			moved,
+			hoverScrolls,
+			afterLeave,
+			keyboardScrolls,
+			selected: onSelect.mock.calls,
+		}).toStrictEqual({
+			unrecorded: "rewind-opt-2",
+			resting: "rewind-opt-2",
+			moved: "rewind-opt-0",
+			hoverScrolls: 0,
+			afterLeave: "rewind-opt-0",
+			keyboardScrolls: ["rewind-opt-1"],
 			selected: [["u1", "Rename the button"]],
 		});
 	});

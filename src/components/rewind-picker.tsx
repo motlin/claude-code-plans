@@ -2,6 +2,7 @@ import {Dialog} from "@base-ui/react/dialog";
 import {X} from "lucide-react";
 import {useCallback, useRef, useState} from "react";
 
+import {usePointerHoverSelect} from "../hooks/use-pointer-hover-select";
 import {type RewindTurn, rewindLabel} from "../lib/rewind-picker";
 
 export interface RewindPickerProps {
@@ -13,27 +14,38 @@ export interface RewindPickerProps {
 	onSelect: (uuid: string, text: string) => void;
 }
 
-const OPTION_CLASS = "rounded-r4 px-[6px] py-[5px]";
+// `last:scroll-mb-(--cds-pad-xl)`: a keyboard move to the last row keeps the list's bottom padding in view.
+const OPTION_CLASS = "rounded-r4 px-[6px] py-[5px] last:scroll-mb-5";
 
 /**
  * claude.ai/code's Rewind picker (`rce`): a "Rewind session" dialog listing
  * the session's prompts with the newest selected. ArrowUp/ArrowDown move the
  * selection (clamped) and focus the list, Enter picks while focus is in it,
- * hovering selects and clicking picks.
+ * a pointer that has moved selects (without scrolling) and clicking picks.
  */
 export function RewindPicker({open, turns, onClose, onSelect}: RewindPickerProps) {
 	const last = Math.max(turns.length - 1, 0);
 	const [selected, setSelected] = useState(last);
+	// Upstream's `reveal`: the initial open and keyboard moves scroll the selection into view; hovers don't.
+	const [reveal, setReveal] = useState(true);
 	const listRef = useRef<HTMLUListElement>(null);
 
 	// Each opening starts on the newest prompt; a transcript update while open keeps the selection.
 	const [wasOpen, setWasOpen] = useState(open);
 	if (wasOpen !== open) {
 		setWasOpen(open);
-		if (open) setSelected(last);
+		if (open) {
+			setSelected(last);
+			setReveal(true);
+		}
 	}
+	const hoverSelect = useCallback((index: number) => {
+		setSelected(index);
+		setReveal(false);
+	}, []);
+	const pointer = usePointerHoverSelect(hoverSelect);
 
-	// The selected row scrolls into view as it mounts with the dialog and on each move.
+	// The selected row scrolls into view as it mounts with the dialog and on each keyboard move.
 	const scrollSelectedIntoView = useCallback((row: HTMLLIElement | null) => {
 		row?.scrollIntoView({block: "nearest"});
 	}, []);
@@ -48,10 +60,12 @@ export function RewindPicker({open, turns, onClose, onSelect}: RewindPickerProps
 		if (event.key === "ArrowDown") {
 			event.preventDefault();
 			listRef.current?.focus();
+			setReveal(true);
 			setSelected((index) => Math.min(index + 1, last));
 		} else if (event.key === "ArrowUp") {
 			event.preventDefault();
 			listRef.current?.focus();
+			setReveal(true);
 			setSelected((index) => Math.max(index - 1, 0));
 		} else if (event.key === "Enter") {
 			if (!(event.target instanceof Node && listRef.current?.contains(event.target))) return;
@@ -99,6 +113,8 @@ export function RewindPicker({open, turns, onClose, onSelect}: RewindPickerProps
 							role="listbox"
 							aria-activedescendant={turns.length === 0 ? undefined : `rewind-opt-${current}`}
 							tabIndex={-1}
+							onMouseMove={pointer.recordPointer}
+							onMouseLeave={pointer.forgetPointer}
 							className="-mx-5 -mb-5 flex max-h-[calc(50vh+20px)] flex-col gap-[3px] overflow-y-auto px-5 pb-5 outline-none"
 						>
 							{turns.length === 0 ? (
@@ -114,13 +130,12 @@ export function RewindPicker({open, turns, onClose, onSelect}: RewindPickerProps
 									<li
 										key={turn.uuid}
 										id={`rewind-opt-${index}`}
-										data-idx={index}
 										role="option"
 										aria-selected={index === current}
-										ref={index === current ? scrollSelectedIntoView : undefined}
+										ref={reveal && index === current ? scrollSelectedIntoView : undefined}
 										className={`${OPTION_CLASS} ${index === current ? "bg-fill-ghost-hover text-primary" : "text-secondary"}`}
-										onMouseEnter={() => {
-											setSelected(index);
+										onMouseMove={(event) => {
+											pointer.hoverSelect(index, event);
 										}}
 										onClick={() => {
 											pick(index);

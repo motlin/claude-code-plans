@@ -125,7 +125,10 @@ function view() {
 	const trigger = restoreTrigger();
 	return {
 		title: dialog()?.querySelector("h2")?.textContent ?? null,
-		quote: dialog()?.querySelector("p.line-clamp-2")?.textContent ?? null,
+		// Upstream's quote (`GT`) keeps a right-to-left prompt's own direction.
+		quote:
+			dialog()?.querySelector(String.raw`p.line-clamp-2.whitespace-pre-wrap.\[unicode-bidi\:plaintext\]`)
+				?.textContent ?? null,
 		select:
 			trigger === null
 				? null
@@ -211,6 +214,14 @@ describe("useRewindRequest + RewindConfirm", () => {
 			cancelFocused: true,
 			hidden: true,
 		});
+	});
+
+	it("shows only the file count, with no diff, when the changed files have no line changes", async () => {
+		const {preview} = setup();
+		preview.resolve({filesChanged: ["/repo/a.txt"], insertions: 0, deletions: 0});
+		await settle();
+
+		expect(view().column).toBe("1 fileChanges made through shell commands aren’t reverted. Commits stay in place.");
 	});
 
 	it("renders Restore as upstream's styled Combobox select: labelled trigger with caret, check-marked listbox options", async () => {

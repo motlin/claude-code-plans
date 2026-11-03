@@ -3,7 +3,7 @@
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeAll, describe, expect, it, vi} from "vite-plus/test";
-import {Composer} from "../src/components/composer";
+import {Composer, type ComposerRewindState} from "../src/components/composer";
 import {SlashCommandMenu} from "../src/components/slash-command-menu";
 import {ToastProvider} from "../src/components/toast";
 import type {LiveLaunchControls} from "../src/hooks/use-live-launch-options";
@@ -1273,17 +1273,19 @@ describe("Composer host commands", () => {
 		});
 	});
 
-	function rewindSetup() {
+	function rewindSetup(state: ComposerRewindState = "ready") {
 		const onSend = vi.fn<(prompt: string) => void>();
 		const onRewind = vi.fn<() => void>();
 		render(
 			<ToastProvider>
-				<Composer variant="session" draftKey="session-alice" onSend={onSend} onRewind={onRewind} />
+				<Composer variant="session" draftKey="session-alice" onSend={onSend} rewind={{state, open: onRewind}} />
 			</ToastProvider>,
 		);
 		const textarea = screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
 		return {textarea, onSend, onRewind};
 	}
+
+	const toastIcon = () => document.querySelector("[data-toast-icon]")?.getAttribute("data-toast-icon");
 
 	it("opens the Rewind picker for /rewind and clears the composer instead of sending", () => {
 		const {textarea, onSend, onRewind} = rewindSetup();
@@ -1297,25 +1299,83 @@ describe("Composer host commands", () => {
 		});
 	});
 
-	it("refuses /rewind with arguments with upstream's noArgs band", () => {
-		const {textarea, onSend, onRewind} = rewindSetup();
+	it("ignores /rewind while the session is busy, keeping it in the composer, as upstream's gate", () => {
+		const {textarea, onSend, onRewind} = rewindSetup("busy");
 
-		send(textarea, "/rewind 3");
+		send(textarea, "/rewind");
 
 		expect({
 			sends: onSend.mock.calls,
 			rewinds: onRewind.mock.calls.length,
 			text: textarea.value,
-			hint: bandCard()?.firstElementChild?.children[2]?.textContent,
+			toast: toastText(),
+		}).toStrictEqual({sends: [], rewinds: 0, text: "/rewind", toast: undefined});
+	});
+
+	it("warns that the computer is offline for /rewind without a writable live pane", () => {
+		const {textarea, onSend, onRewind} = rewindSetup("offline");
+
+		send(textarea, "/rewind");
+
+		expect({
+			sends: onSend.mock.calls,
+			rewinds: onRewind.mock.calls.length,
+			text: textarea.value,
+			toast: toastText(),
+			icon: toastIcon(),
 		}).toStrictEqual({
 			sends: [],
 			rewinds: 0,
-			text: "/rewind 3",
-			hint: "/rewind doesn’t take arguments here. Remove the text after the command, then send it again.",
+			text: "/rewind",
+			toast: "Rewind is unavailable while the computer running this session is offline.",
+			icon: "warning",
 		});
 	});
 
-	it("sends /rewind to the CLI as typed when the session can't rewind from the browser", () => {
+	it("errors that rewind isn't available for /rewind on a session that can't rewind", () => {
+		const {textarea, onSend, onRewind} = rewindSetup("unsupported");
+
+		send(textarea, "/rewind");
+
+		expect({
+			sends: onSend.mock.calls,
+			rewinds: onRewind.mock.calls.length,
+			text: textarea.value,
+			toast: toastText(),
+			icon: toastIcon(),
+		}).toStrictEqual({
+			sends: [],
+			rewinds: 0,
+			text: "/rewind",
+			toast: "Rewind isn’t available for this session.",
+			icon: "danger",
+		});
+	});
+
+	it.each(["ready", "busy", "offline", "unsupported"] as const)(
+		"refuses /rewind with arguments with upstream's noArgs band (%s)",
+		(state) => {
+			const {textarea, onSend, onRewind} = rewindSetup(state);
+
+			send(textarea, "/rewind 3");
+
+			expect({
+				sends: onSend.mock.calls,
+				rewinds: onRewind.mock.calls.length,
+				text: textarea.value,
+				toast: toastText(),
+				hint: bandCard()?.firstElementChild?.children[2]?.textContent,
+			}).toStrictEqual({
+				sends: [],
+				rewinds: 0,
+				text: "/rewind 3",
+				toast: undefined,
+				hint: "/rewind doesn’t take arguments here. Remove the text after the command, then send it again.",
+			});
+		},
+	);
+
+	it("sends /rewind to the CLI as typed from a composer with no rewind wiring", () => {
 		const {textarea, onSend} = hostSetup();
 
 		send(textarea, "/rewind");
