@@ -354,6 +354,7 @@ export const sessionQueryKeys = {
 		[...RECENT_SESSIONS_QUERY_ROOT, "infinite", limit, status] as const,
 	groupedLists: () => GROUPED_SESSIONS_QUERY_ROOT,
 	grouped: (perProject: number = SESSION_GROUP_PAGE_SIZE) => [...GROUPED_SESSIONS_QUERY_ROOT, perProject] as const,
+	byIdLists: () => [...SESSION_QUERY_ROOT, "by-ids"] as const,
 	byIds: (ids: readonly string[]) => [...SESSION_QUERY_ROOT, "by-ids", ids.toSorted()] as const,
 	titles: (ids: string[]) => [...SESSION_QUERY_ROOT, "titles", ids.toSorted()] as const,
 	activeLists: () => ACTIVE_SESSIONS_QUERY_ROOT,

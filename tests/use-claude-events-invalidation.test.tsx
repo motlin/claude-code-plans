@@ -134,6 +134,56 @@ describe("ClaudeEventsProvider terminal placement invalidation", () => {
 		});
 	});
 
+	it("refetches only the session lists that carry terminal hosts on Herdr events, not the open session's queries", () => {
+		const {client, eventSource} = renderProvider();
+		const keys = {
+			recent: sessionQueryKeys.recent(20),
+			recentInfinite: sessionQueryKeys.recentInfinite(),
+			grouped: sessionQueryKeys.grouped(),
+			byIds: sessionQueryKeys.byIds(["session-a"]),
+			active: sessionQueryKeys.active(),
+			titles: sessionQueryKeys.titles(["session-a"]),
+			identity: sessionQueryKeys.identity("session-a"),
+			detail: sessionQueryKeys.detail("session-a"),
+			transcript: sessionQueryKeys.transcript("session-a"),
+			resources: sessionQueryKeys.resources("session-a"),
+			apiRequests: sessionQueryKeys.apiRequests("session-a"),
+			subagents: sessionQueryKeys.subagents("session-a"),
+			workflows: sessionQueryKeys.workflows("session-a"),
+			contextBreakdown: sessionQueryKeys.contextBreakdown("session-a"),
+			openIn: sessionQueryKeys.openIn("session-a"),
+		};
+		for (const key of Object.values(keys)) client.setQueryData(key, {});
+
+		act(() => {
+			for (const type of [HERDR_EVENTS.PANE_UPDATED, HERDR_EVENTS.PANE_AGENT_STATUS_CHANGED]) {
+				eventSource.emit(type);
+			}
+		});
+
+		expect(
+			Object.fromEntries(
+				Object.entries(keys).map(([name, key]) => [name, client.getQueryState(key)?.isInvalidated]),
+			),
+		).toStrictEqual({
+			recent: true,
+			recentInfinite: true,
+			grouped: true,
+			byIds: true,
+			active: false,
+			titles: false,
+			identity: false,
+			detail: false,
+			transcript: false,
+			resources: false,
+			apiRequests: false,
+			subagents: false,
+			workflows: false,
+			contextBreakdown: false,
+			openIn: false,
+		});
+	});
+
 	it("stores the herdr connection's reconnect state from its event without refetching the Herdr read models", () => {
 		const {client, eventSource} = renderProvider();
 

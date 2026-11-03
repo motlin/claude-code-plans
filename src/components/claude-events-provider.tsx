@@ -635,7 +635,14 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 			void queryClient.invalidateQueries({queryKey: ["herdr", "panes"]});
 			void queryClient.invalidateQueries({queryKey: ["herdr", "workspaces"]});
 			void queryClient.invalidateQueries({queryKey: ["terminal", "placements"]});
-			void queryClient.invalidateQueries({queryKey: sessionQueryKeys.all()});
+			// Only the lists whose rows carry a terminal host label read the pane table; the open session's queries don't.
+			for (const queryKey of [
+				sessionQueryKeys.recentLists(),
+				sessionQueryKeys.groupedLists(),
+				sessionQueryKeys.byIdLists(),
+			]) {
+				void queryClient.invalidateQueries({queryKey});
+			}
 		}
 
 		function handleHerdrConnectionEvent(e: Event) {
