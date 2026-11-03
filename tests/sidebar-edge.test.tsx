@@ -117,25 +117,36 @@ describe("collapsed sidebar edge handle", () => {
 		expect(edge.className.split(/\s+/)).toEqual(
 			expect.arrayContaining(["absolute", "inset-y-0", "left-0", "w-2", "z-[21]", "cursor-col-resize"]),
 		);
-		expect(screen.getByTestId("app-frame").firstElementChild?.contains(edge)).toBe(true);
+		expect(screen.getByTestId("app-frame").firstElementChild).toBe(edge);
 	});
 
-	it("gives the grip pill upstream's 200ms hover delay and 48px cap", async () => {
+	it("draws upstream's panels resize line: a full-height 2px accent line, 3px and rounded when focus-visible", async () => {
 		await renderFrame({collapsed: true});
 		const pill = edgeHandle()?.querySelector<HTMLElement>("[data-resize-pill]");
-		expect(pill?.className.split(/\s+/)).toEqual(
-			expect.arrayContaining([
-				"delay-200",
-				"max-h-12",
-				"w-[3px]",
-				"text-ink-muted",
-				"opacity-0",
-				"group-hover/resize:opacity-100",
-				"group-focus-visible/resize:max-h-none",
-				"group-focus-visible/resize:bg-accent-100",
+		expect({
+			part: pill?.getAttribute("data-cds-part"),
+			classes: pill?.className.split(/\s+/).toSorted(),
+		}).toStrictEqual({
+			part: "resize-pill",
+			classes: [
+				"[--resize-line:2px]",
+				"absolute",
+				"bg-fill-accent",
+				"delay-100",
+				"duration-200",
+				"group-focus-visible/resize:[--resize-line:3px]",
 				"group-focus-visible/resize:delay-0",
-			]),
-		);
+				"group-focus-visible/resize:opacity-100",
+				"group-focus-visible/resize:rounded-full",
+				"group-hover/resize:opacity-100",
+				"inset-y-0",
+				"my-auto",
+				"opacity-0",
+				"start-[calc(50%_-_var(--resize-line)_/_2)]",
+				"transition-opacity",
+				"w-[var(--resize-line)]",
+			],
+		});
 	});
 
 	it("does not render when expanded", async () => {
@@ -148,18 +159,20 @@ describe("collapsed sidebar edge handle", () => {
 		expect(edgeHandle()).toBeNull();
 	});
 
-	it("shows Show sidebar ⌘B / Drag to resize on hover", async () => {
+	it("renders no tooltip under panels: the separator sits directly in the frame, marked data-trigger-disabled", async () => {
 		await renderFrame({collapsed: true});
 		vi.useFakeTimers();
 		const edge = edgeHandle();
 		if (!edge) throw new Error("edge handle missing");
 		fireEvent.pointerEnter(edge);
 		act(() => {
-			vi.advanceTimersByTime(300);
+			vi.advanceTimersByTime(1000);
 		});
-		const tooltip = screen.getByRole("tooltip");
-		expect(tooltip.textContent).toContain("Show sidebar");
-		expect(tooltip.textContent).toContain("Drag to resize");
+		expect({
+			tooltip: screen.queryByRole("tooltip"),
+			parent: edge.parentElement === screen.getByTestId("app-frame"),
+			triggerDisabled: edge.getAttribute("data-trigger-disabled"),
+		}).toStrictEqual({tooltip: null, parent: true, triggerDisabled: ""});
 	});
 });
 

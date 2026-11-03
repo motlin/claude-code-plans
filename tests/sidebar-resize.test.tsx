@@ -84,28 +84,36 @@ describe("sidebar resize handle", () => {
 
 	afterEach(() => {
 		cleanup();
+		vi.useRealTimers();
 		vi.restoreAllMocks();
 	});
 
-	it("explains itself on hover with a right-side two-line tooltip: Hide sidebar ⌘B, then Drag to resize", async () => {
+	it("shows no tooltip under panels and draws the shared 2px accent line pill, half-clipped at rest", async () => {
 		const handle = await renderSidebar();
+		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
 
 		fireEvent.pointerEnter(handle);
-		const tooltip = await waitFor(() => screen.getByRole("tooltip"));
-		const lines = [...tooltip.children].map((line) => line.textContent);
+		act(() => {
+			vi.advanceTimersByTime(1000);
+		});
+		const pill = handle.querySelector<HTMLElement>("[data-resize-pill]");
 
 		expect({
-			lines,
-			side: tooltip.className.includes("left-full"),
-			muted: tooltip.lastElementChild?.className,
-			describedBy: handle.getAttribute("aria-describedby") === tooltip.id,
+			tooltip: screen.queryByRole("tooltip"),
+			describedBy: handle.getAttribute("aria-describedby"),
+			triggerDisabled: handle.getAttribute("data-trigger-disabled"),
 			tabIndex: handle.tabIndex,
+			clipped: handle.classList.contains("[clip-path:inset(0_0_0_37.5%)]"),
+			pill: ["w-[var(--resize-line)]", "bg-fill-accent", "inset-y-0", "delay-100"].filter((token) =>
+				pill?.classList.contains(token),
+			),
 		}).toStrictEqual({
-			lines: ["Hide sidebar⌘CommandB", "Drag to resize"],
-			side: true,
-			muted: "text-[11px]/[14px] text-[var(--tooltip-description-ink)]",
-			describedBy: true,
+			tooltip: null,
+			describedBy: null,
+			triggerDisabled: "",
 			tabIndex: 0,
+			clipped: true,
+			pill: ["w-[var(--resize-line)]", "bg-fill-accent", "inset-y-0", "delay-100"],
 		});
 	});
 

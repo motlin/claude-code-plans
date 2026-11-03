@@ -210,7 +210,7 @@ describe("collapsed sidebar peek", () => {
 		const classes = [...peek.classList];
 
 		expect({
-			fullHeight: ["fixed", "inset-y-0", "left-0", "h-dvh", "w-[288px]", "rounded-none", "pt-12"].filter(
+			fullHeight: ["fixed", "inset-y-0", "left-0", "h-dvh", "w-[288px]", "rounded-none", "pt-[45px]"].filter(
 				(token) => classes.includes(token),
 			),
 			card: classes.filter((token) => token === "max-h-[70vh]" || token === "rounded-card"),
@@ -229,7 +229,7 @@ describe("collapsed sidebar peek", () => {
 							0,
 				),
 		}).toEqual({
-			fullHeight: ["fixed", "inset-y-0", "left-0", "h-dvh", "w-[288px]", "rounded-none", "pt-12"],
+			fullHeight: ["fixed", "inset-y-0", "left-0", "h-dvh", "w-[288px]", "rounded-none", "pt-[45px]"],
 			card: [],
 			wordmark: "/",
 			footerSearch: null,
@@ -493,6 +493,138 @@ describe("collapsed sidebar peek close grace", () => {
 		});
 
 		expect(root.hasAttribute("data-hovering")).toBe(false);
+	});
+});
+
+describe("collapsed sidebar peek dismissal", () => {
+	async function openPeek(): Promise<HTMLElement> {
+		const trigger = await renderCollapsedSidebar();
+		fakeTimeouts();
+		act(() => {
+			fireEvent.pointerEnter(trigger, {pointerType: "mouse"});
+		});
+		return screen.getByTestId("sidebar-collapsed");
+	}
+
+	it("closes on Escape and focuses Show sidebar", async () => {
+		const root = await openPeek();
+
+		act(() => {
+			fireEvent.keyDown(window, {key: "Escape"});
+		});
+
+		expect({
+			hovering: root.hasAttribute("data-hovering"),
+			focused: document.activeElement?.getAttribute("aria-label"),
+		}).toStrictEqual({hovering: false, focused: "Show sidebar"});
+	});
+
+	it("stays open when an Escape consumer prevented the key first", async () => {
+		const root = await openPeek();
+		const field = document.createElement("textarea");
+		field.addEventListener("keydown", (event) => {
+			event.preventDefault();
+		});
+		document.body.append(field);
+		field.focus();
+
+		act(() => {
+			fireEvent.keyDown(field, {key: "Escape"});
+		});
+
+		expect(root.hasAttribute("data-hovering")).toBe(true);
+		field.remove();
+	});
+
+	it("stays open on Escape while a menu opened from the peek is open", async () => {
+		const root = await openPeek();
+		const more = within(screen.getByTestId("sidebar-peek")).getByRole("button", {name: "More navigation items"});
+		act(() => {
+			fireEvent.click(more);
+		});
+
+		act(() => {
+			fireEvent.keyDown(window, {key: "Escape"});
+		});
+
+		expect(root.hasAttribute("data-hovering")).toBe(true);
+	});
+
+	function leaveThroughTop(root: HTMLElement) {
+		act(() => {
+			fireEvent.pointerMove(window, {clientY: 20, pointerType: "mouse"});
+			fireEvent.pointerLeave(root, {pointerType: "mouse", relatedTarget: null});
+		});
+	}
+
+	it("waits after the pointer leaves the window through the top, then closes on the next outside pointerover", async () => {
+		const root = await openPeek();
+		leaveThroughTop(root);
+		act(() => {
+			vi.advanceTimersByTime(500);
+		});
+		const waiting = root.hasAttribute("data-hovering");
+
+		act(() => {
+			fireEvent.pointerOver(document.body, {pointerType: "mouse"});
+		});
+		runCloseGrace();
+
+		expect({waiting, closed: !root.hasAttribute("data-hovering")}).toStrictEqual({waiting: true, closed: true});
+	});
+
+	it("cancels the top-exit wait when the pointer comes back inside", async () => {
+		const root = await openPeek();
+		leaveThroughTop(root);
+		act(() => {
+			fireEvent.pointerOver(screen.getByTestId("sidebar-peek"), {pointerType: "mouse"});
+		});
+		act(() => {
+			fireEvent.pointerOver(document.body, {pointerType: "mouse"});
+		});
+		act(() => {
+			vi.advanceTimersByTime(500);
+		});
+
+		expect(root.hasAttribute("data-hovering")).toBe(true);
+	});
+
+	it("closes on window blur during the top-exit wait", async () => {
+		const root = await openPeek();
+		leaveThroughTop(root);
+		act(() => {
+			window.dispatchEvent(new Event("blur"));
+		});
+		runCloseGrace();
+
+		expect(root.hasAttribute("data-hovering")).toBe(false);
+	});
+
+	it("still closes after the grace when the pointer leaves the window lower down", async () => {
+		const root = await openPeek();
+		act(() => {
+			fireEvent.pointerMove(window, {clientY: 300, pointerType: "mouse"});
+			fireEvent.pointerLeave(root, {pointerType: "mouse", relatedTarget: null});
+		});
+		runCloseGrace();
+
+		expect(root.hasAttribute("data-hovering")).toBe(false);
+	});
+
+	it("closes on a touch press outside at any width, but not on a mouse press", async () => {
+		const root = await openPeek();
+		act(() => {
+			fireEvent.pointerDown(document.body, {pointerType: "mouse"});
+		});
+		const afterMouse = root.hasAttribute("data-hovering");
+		act(() => {
+			fireEvent.pointerDown(document.body, {pointerType: "touch"});
+		});
+
+		expect({afterMouse, afterTouch: root.hasAttribute("data-hovering")}).toStrictEqual({
+			afterMouse: true,
+			afterTouch: false,
+		});
 	});
 });
 

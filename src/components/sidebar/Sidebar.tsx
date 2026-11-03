@@ -28,6 +28,7 @@ import {approvalsQueryOptions} from "../../lib/api/approvals";
 import {notificationsQueryOptions, useMarkNotificationsRead} from "../../lib/api/notifications";
 import {activeSessionsQueryOptions} from "../../lib/api/sessions";
 import {useFizzyLake} from "../../lib/fizzy-lake";
+import {RESIZE_LINE_PILL_CLASS} from "../ui/resize-pill";
 import {
 	clearPeekSuppression,
 	isPeekSuppressed,
@@ -279,10 +280,13 @@ function SidebarWordmark({className}: {className?: string}) {
 
 /**
  * Upstream's 12px `dframe-resize-handle` straddling the sidebar's right edge: its inner half is
- * clipped away unless focus-visible, and hovering reveals a 3x48 grip pill. A press that never
- * moves past the drag threshold hides the sidebar like ⌘B, which the right-side tooltip explains.
+ * clipped away unless focus-visible. Under panels hovering fades in the 2px accent line and no
+ * tooltip renders (`o || p5("panels") && ml()`); otherwise it shows a 3x48 grip pill and a
+ * right-side "Hide sidebar / Drag to resize" tooltip. A press that never moves past the drag
+ * threshold hides the sidebar like ⌘B.
  */
 function SidebarResizeHandle({width, onHide}: {width: number; onHide: () => void}) {
+	const panels = useFizzyLake("panels");
 	const {keys} = useShortcutKeys("toggle_sidebar");
 	const max = useSidebarMaxWidth();
 	const handleProps = useResizableWidth({
@@ -295,7 +299,28 @@ function SidebarResizeHandle({width, onHide}: {width: number; onHide: () => void
 		onChange: setSidebarWidth,
 		onClick: onHide,
 	});
+	const positionClass = "absolute! inset-y-0 end-[-6px] z-10 w-3";
 
+	const handle = (
+		<div
+			{...handleProps}
+			data-trigger-disabled={panels ? "" : undefined}
+			className="group/resize relative flex size-full cursor-col-resize touch-none items-center justify-center [clip-path:inset(0_0_0_37.5%)] focus-visible:outline-hidden focus-visible:[clip-path:none]"
+		>
+			<span
+				aria-hidden="true"
+				data-resize-pill=""
+				{...(panels ? {"data-cds-part": "resize-pill"} : {})}
+				className={
+					panels
+						? RESIZE_LINE_PILL_CLASS
+						: "h-12 w-[3px] rounded-full bg-border opacity-0 transition-opacity duration-[120ms] group-hover/resize:opacity-100 group-focus-visible/resize:bg-accent-100 group-focus-visible/resize:opacity-100"
+				}
+			/>
+		</div>
+	);
+
+	if (panels) return <div className={positionClass}>{handle}</div>;
 	return (
 		<Tooltip
 			content="Hide sidebar"
@@ -303,25 +328,18 @@ function SidebarResizeHandle({width, onHide}: {width: number; onHide: () => void
 			description="Drag to resize"
 			side="right"
 			trackCursor="y"
-			className="absolute! inset-y-0 end-[-6px] z-10 w-3"
+			className={positionClass}
 		>
-			<div
-				{...handleProps}
-				className="group/resize flex size-full cursor-col-resize touch-none items-center justify-center [clip-path:inset(0_0_0_37.5%)] focus-visible:outline-hidden focus-visible:[clip-path:none]"
-			>
-				<span
-					aria-hidden="true"
-					className="h-12 w-[3px] rounded-full bg-border opacity-0 transition-opacity duration-[120ms] group-hover/resize:opacity-100 group-focus-visible/resize:bg-accent-100 group-focus-visible/resize:opacity-100"
-				/>
-			</div>
+			{handle}
 		</Tooltip>
 	);
 }
 
 /**
  * Upstream's collapsed-sidebar edge (`.dframe-sidebar-edge`): an 8px `separator` at the frame's left
- * edge whose hover fades in a 3x48 grip pill after 200ms (accent and full height when focus-visible),
- * with a cursor-tracking "Show sidebar ⌘B / Drag to resize" tooltip on its right. A click expands
+ * edge. Under panels its hover fades in the full-height 2px accent line and no tooltip renders;
+ * otherwise a 3x48 grip pill fades in after 200ms (accent and full height when focus-visible), with a
+ * cursor-tracking "Show sidebar ⌘B / Drag to resize" tooltip on its right. A click expands
  * the sidebar, a drag past half the floor expands it live, and ArrowRight expands it and focuses Hide.
  */
 /** Upstream's `mF`: pointer travel (px) below which a press on the edge is a click. */
@@ -410,7 +428,41 @@ function onEdgeKeyDown(event: ReactKeyboardEvent<HTMLElement>): void {
 }
 
 export function SidebarEdgeHandle() {
+	const panels = useFizzyLake("panels");
 	const {keys} = useShortcutKeys("toggle_sidebar");
+	const separator = (
+		<div
+			role="separator"
+			aria-orientation="vertical"
+			aria-label="Resize sidebar"
+			aria-valuenow={0}
+			aria-valuemin={0}
+			aria-valuemax={SIDEBAR_MAX_WIDTH}
+			tabIndex={0}
+			data-sidebar-edge=""
+			data-trigger-disabled={panels ? "" : undefined}
+			onPointerDown={onEdgePointerDown}
+			onKeyDown={onEdgeKeyDown}
+			className="group/resize absolute inset-y-0 left-0 z-[21] w-2 cursor-col-resize touch-none outline-none select-none"
+		>
+			<div
+				aria-hidden="true"
+				className="absolute inset-y-0 left-1/2 w-3 -translate-x-1/2 cursor-col-resize rounded-full transition-shadow duration-150 group-focus-visible/resize:shadow-focus"
+			/>
+			<div
+				aria-hidden="true"
+				data-resize-pill=""
+				{...(panels ? {"data-cds-part": "resize-pill"} : {})}
+				className={
+					panels
+						? RESIZE_LINE_PILL_CLASS
+						: "absolute top-1/2 left-1/2 h-full max-h-12 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-current text-ink-muted opacity-0 transition-[opacity,color,background-color] delay-200 duration-200 group-hover/resize:opacity-100 group-focus-visible/resize:max-h-none group-focus-visible/resize:bg-accent-100 group-focus-visible/resize:opacity-100 group-focus-visible/resize:delay-0"
+				}
+			/>
+		</div>
+	);
+	// Under panels upstream's `JP` passes no tooltip content, so the separator is a direct child of the frame.
+	if (panels) return separator;
 	return (
 		<Tooltip
 			content="Show sidebar"
@@ -420,29 +472,7 @@ export function SidebarEdgeHandle() {
 			trackCursor="y"
 			className="absolute! inset-y-0 left-0 z-[21] w-2"
 		>
-			<div
-				role="separator"
-				aria-orientation="vertical"
-				aria-label="Resize sidebar"
-				aria-valuenow={0}
-				aria-valuemin={0}
-				aria-valuemax={SIDEBAR_MAX_WIDTH}
-				tabIndex={0}
-				data-sidebar-edge=""
-				onPointerDown={onEdgePointerDown}
-				onKeyDown={onEdgeKeyDown}
-				className="group/resize absolute inset-y-0 left-0 z-[21] w-2 cursor-col-resize touch-none outline-none select-none"
-			>
-				<div
-					aria-hidden="true"
-					className="absolute inset-y-0 left-1/2 w-3 -translate-x-1/2 cursor-col-resize rounded-full transition-shadow duration-150 group-focus-visible/resize:shadow-focus"
-				/>
-				<div
-					aria-hidden="true"
-					data-resize-pill=""
-					className="absolute top-1/2 left-1/2 h-full max-h-12 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-current text-ink-muted opacity-0 transition-[opacity,color,background-color] delay-200 duration-200 group-hover/resize:opacity-100 group-focus-visible/resize:max-h-none group-focus-visible/resize:bg-accent-100 group-focus-visible/resize:opacity-100 group-focus-visible/resize:delay-0"
-				/>
-			</div>
+			{separator}
 		</Tooltip>
 	);
 }
@@ -453,12 +483,20 @@ const PEEK_ID = "sidebar-peek-popover";
  * Collapsed desktop sidebar, like claude.ai/code: a transparent 24x24 floating trigger at 12,12
  * (the expanded Hide sidebar toggle's spot) whose hover (or the invisible bridge beneath it)
  * slides in upstream's `#frame-peek-popover`: a 288px full-height panel at the left edge whose
- * 48px top padding leaves room for the still-visible trigger beside the wordmark.
+ * top padding (45px under panels, 48px otherwise) leaves room for the still-visible trigger beside the wordmark.
  * In the forced-collapse regime (640px to the narrow threshold) a click toggles the peek open instead of expanding
  * the persisted preference.
  */
 /** Upstream's peek close grace (ms) after the pointer leaves the trigger, bridge or body. */
 const PEEK_CLOSE_GRACE_MS = 180;
+
+/** Upstream's `overflowMenuOpen`: a menu opened from a trigger inside the peek is open. */
+function isPeekMenuOpen(peek: HTMLElement | null): boolean {
+	return peek?.querySelector('[aria-haspopup][aria-expanded="true"]') != null;
+}
+
+/** Upstream's `c2`: a window exit with the last pointer y above this (px) is a leave through the top. */
+const PEEK_TOP_EXIT_PX = 46;
 
 /**
  * Whether the peek must stay open past its grace, as upstream re-arms the close while its More/sort
@@ -466,7 +504,7 @@ const PEEK_CLOSE_GRACE_MS = 180;
  */
 function isPeekInUse(peek: HTMLElement | null): boolean {
 	if (peek === null) return false;
-	if (peek.querySelector('[aria-haspopup][aria-expanded="true"]') !== null) return true;
+	if (isPeekMenuOpen(peek)) return true;
 	const active = document.activeElement;
 	if (!(active instanceof HTMLElement) || !peek.contains(active)) return false;
 	if (active.isContentEditable || active instanceof HTMLTextAreaElement) return true;
@@ -482,11 +520,14 @@ function CollapsedSidebar({
 	density: Density;
 	children: ReactNode;
 }) {
+	const panels = useFizzyLake("panels");
 	const [hovering, setHovering] = useState(false);
 	// Upstream's `peeked`: set on the first open so the peek's transition never runs on the collapse frame.
 	const [peeked, setPeeked] = useState(false);
 	const rootRef = useRef<HTMLDivElement>(null);
 	const closeTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+	const lastClientYRef = useRef<number | undefined>(undefined);
+	const topExitWaitRef = useRef<AbortController | undefined>(undefined);
 
 	// Upstream lands focus on the trigger when the peek hides around it (e.g. after a peek menu closes), not on BODY.
 	const focusTrigger = useCallback(() => {
@@ -535,18 +576,89 @@ function CollapsedSidebar({
 		});
 	}, [narrowViewport, cancelClose]);
 
-	// A tapped-open peek has no pointerleave to close it, so an outside press dismisses it.
+	// Upstream's `U4`: a touch or pen press outside closes the peek at any width (it has no pointerleave),
+	// unless a menu opened from the peek is open. A narrow tapped-open peek closes on a mouse press too.
 	useEffect(() => {
-		if (!narrowViewport || !hovering) return undefined;
+		if (!hovering) return undefined;
 		const onPointerDown = (event: PointerEvent) => {
-			if (event.target instanceof Node && rootRef.current?.contains(event.target)) return;
+			if (event.pointerType === "mouse" && !narrowViewport) return;
+			const target = event.target;
+			if (target instanceof Node && rootRef.current?.contains(target)) return;
+			if (target instanceof Element && target.closest("[data-sidebar-edge]") !== null) return;
+			if (isPeekMenuOpen(document.getElementById(PEEK_ID))) return;
 			setHovering(false);
 		};
-		document.addEventListener("pointerdown", onPointerDown);
+		document.addEventListener("pointerdown", onPointerDown, true);
 		return () => {
-			document.removeEventListener("pointerdown", onPointerDown);
+			document.removeEventListener("pointerdown", onPointerDown, true);
 		};
 	}, [narrowViewport, hovering]);
+
+	// Upstream's window keydown: Escape closes the open peek and focuses the trigger, unless an Escape
+	// consumer (the composer, a field) prevented it first or a menu opened from the peek is open.
+	useEffect(() => {
+		if (!hovering) return undefined;
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== "Escape" || event.defaultPrevented) return;
+			if (isPeekMenuOpen(document.getElementById(PEEK_ID))) return;
+			event.preventDefault();
+			cancelClose();
+			setHovering(false);
+			focusTrigger();
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => {
+			window.removeEventListener("keydown", onKeyDown);
+		};
+	}, [hovering, cancelClose, focusTrigger]);
+
+	// Upstream's `c2`: track the last mouse clientY so a leave through the window's top edge can be told apart.
+	useEffect(() => {
+		if (!hovering) return undefined;
+		const onPointerMove = (event: PointerEvent) => {
+			if (event.pointerType === "mouse") lastClientYRef.current = event.clientY;
+		};
+		window.addEventListener("pointermove", onPointerMove, true);
+		return () => {
+			window.removeEventListener("pointermove", onPointerMove, true);
+		};
+	}, [hovering]);
+
+	const cancelTopExitWait = useCallback(() => {
+		topExitWaitRef.current?.abort();
+		topExitWaitRef.current = undefined;
+	}, []);
+
+	// Upstream's `yn`: after leaving through the top, wait for the pointer's return. The first mouse
+	// pointerover outside the peek, or a window blur, starts the grace; one back inside cancels the wait.
+	const startTopExitWait = useCallback(() => {
+		cancelTopExitWait();
+		const controller = new AbortController();
+		topExitWaitRef.current = controller;
+		const close = () => {
+			cancelTopExitWait();
+			scheduleClose();
+		};
+		window.addEventListener(
+			"pointerover",
+			(event) => {
+				if (event.pointerType !== "mouse") return;
+				if (event.target instanceof Node && rootRef.current?.contains(event.target)) {
+					cancelTopExitWait();
+					return;
+				}
+				close();
+			},
+			{capture: true, signal: controller.signal},
+		);
+		window.addEventListener("blur", close, {signal: controller.signal});
+	}, [cancelTopExitWait, scheduleClose]);
+
+	useEffect(() => {
+		if (!hovering) cancelTopExitWait();
+	}, [hovering, cancelTopExitWait]);
+
+	useEffect(() => cancelTopExitWait, [cancelTopExitWait]);
 
 	return (
 		<div
@@ -556,12 +668,20 @@ function CollapsedSidebar({
 			data-peeked={peeked ? "" : undefined}
 			onPointerEnter={(event) => {
 				if (event.pointerType !== "mouse" || isPeekSuppressed()) return;
+				cancelTopExitWait();
 				cancelClose();
 				openPeek();
 			}}
 			onPointerLeave={(event) => {
 				clearPeekSuppression();
 				if (event.pointerType !== "mouse") return;
+				const lastY = lastClientYRef.current;
+				// React reports a leave out of the window (native relatedTarget null) with the window as relatedTarget.
+				const leftWindow = !(event.relatedTarget instanceof Node);
+				if (leftWindow && lastY !== undefined && lastY < PEEK_TOP_EXIT_PX) {
+					startTopExitWait();
+					return;
+				}
 				scheduleClose();
 			}}
 			// Narrow (≤700px) takes upstream's comfortable `h-control w-control` 32px trigger at 8,8, the phone trigger's geometry.
@@ -592,7 +712,7 @@ function CollapsedSidebar({
 				data-focus-region="navigation"
 				aria-hidden={hovering ? undefined : true}
 				inert={!hovering}
-				className="pointer-events-none fixed inset-y-0 left-0 flex h-dvh w-[288px] -translate-x-1 flex-col overflow-hidden rounded-none border-r-[0.5px] border-border bg-surface-popover pt-12 pb-1.5 opacity-0 shadow-[0_0_0_.5px_rgba(0,0,0,.06),0_4px_12px_rgba(0,0,0,.06),0_16px_40px_rgba(0,0,0,.08)] sidebar-peek-motion group-data-[hovering]/peek:pointer-events-auto group-data-[hovering]/peek:translate-x-0 group-data-[hovering]/peek:opacity-100"
+				className={`pointer-events-none fixed inset-y-0 left-0 flex h-dvh w-[288px] -translate-x-1 flex-col overflow-hidden rounded-none border-r-[0.5px] border-border bg-surface-popover ${panels ? "pt-[45px]" : "pt-12"} pb-1.5 opacity-0 shadow-[0_0_0_.5px_rgba(0,0,0,.06),0_4px_12px_rgba(0,0,0,.06),0_16px_40px_rgba(0,0,0,.08)] sidebar-peek-motion group-data-[hovering]/peek:pointer-events-auto group-data-[hovering]/peek:translate-x-0 group-data-[hovering]/peek:opacity-100`}
 			>
 				{/* The header row: the trigger stays put over the empty 32px slot, the wordmark sits beside it. */}
 				<div data-testid="sidebar-peek-header" className="absolute inset-x-0 top-0 flex h-11 items-center px-2">
