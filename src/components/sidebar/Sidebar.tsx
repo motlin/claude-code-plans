@@ -136,6 +136,7 @@ export function Sidebar({
 								<Link
 									key={item.to}
 									to={item.to}
+									data-nav-item={item.navItemId}
 									data-row={hasRowActions ? undefined : ""}
 									data-row-main-button={hasRowActions ? "" : undefined}
 									data-roving-item=""

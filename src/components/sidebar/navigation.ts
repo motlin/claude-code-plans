@@ -24,6 +24,8 @@ interface NavEntry {
 	to: string;
 	label: string;
 	icon: LucideIcon;
+	/** Upstream's `data-nav-item` id; local extras use `local-<section>`. */
+	navItemId: string;
 }
 
 /**
@@ -35,67 +37,80 @@ interface NavEntry {
 const navEntries = {
 	artifacts: {
 		to: "/artifacts",
+		navItemId: "epitaxy-apps",
 		label: "Artifacts",
 		icon: Shapes,
 	},
 	routines: {
 		to: "/routines",
+		navItemId: "local-routines",
 		// Upstream's nav label for its Scheduled tasks page
 		label: "Scheduled",
 		icon: Clock,
 	},
 	jobs: {
 		to: "/jobs",
+		navItemId: "local-jobs",
 		label: "Background jobs",
 		icon: Briefcase,
 	},
 	active: {
 		to: "/active",
+		navItemId: "local-active",
 		label: "Active",
 		icon: Radio,
 	},
 	herdr: {
 		to: "/terminals",
+		navItemId: "local-herdr",
 		label: "Terminals",
 		icon: SquareTerminal,
 	},
 	approvals: {
 		to: "/approvals",
+		navItemId: "local-approvals",
 		label: "Approvals",
 		icon: Inbox,
 	},
 	notifications: {
 		to: "/notifications",
+		navItemId: "local-notifications",
 		label: "Notifications",
 		icon: Bell,
 	},
 	tasks: {
 		to: "/tasks",
+		navItemId: "local-tasks",
 		label: "Tasks",
 		icon: ListTodo,
 	},
 	projects: {
 		to: "/projects",
+		navItemId: "local-projects",
 		label: "Projects",
 		icon: FolderOpen,
 	},
 	plans: {
 		to: "/plans",
+		navItemId: "local-plans",
 		label: "Plans",
 		icon: FileText,
 	},
 	memories: {
 		to: "/memories",
+		navItemId: "local-memories",
 		label: "Memories",
 		icon: Brain,
 	},
 	sessions: {
 		to: "/sessions",
+		navItemId: "local-sessions",
 		label: "Sessions",
 		icon: MessageSquare,
 	},
 	customize: {
 		to: "/customize",
+		navItemId: "customize",
 		label: "Customize",
 		icon: SlidersVertical,
 	},

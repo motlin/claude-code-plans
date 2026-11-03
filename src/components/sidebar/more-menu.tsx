@@ -44,6 +44,7 @@ export function MoreNavMenu({
 				<Menu>
 					<MenuTrigger
 						aria-label={active?.label ?? "More navigation items"}
+						data-nav-item="more"
 						data-row=""
 						data-roving-item=""
 						data-selected={active === undefined ? undefined : "focused"}

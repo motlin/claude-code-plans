@@ -54,16 +54,14 @@ export function ArtifactsNavRow({children}: Readonly<{children: ReactNode}>) {
 									{template.slug === "dashboard" && <MenuSeparator />}
 									<MenuItem
 										icon={
+											// Upstream's default ArtifactMark tile; its filled Anthropicons glyph is a bold outline here (anthropicons-glyph-icons).
 											<span
 												aria-hidden="true"
-												data-template-tile=""
-												className="inline-flex size-5 items-center justify-center rounded-r4 [&_svg]:!size-4"
-												style={{
-													background: `color-mix(in srgb, ${template.hue} 16%, transparent)`,
-													color: template.hue,
-												}}
+												data-artifact-mark={template.markKind}
+												data-artifact-mark-size="menu"
+												className={`inline-flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[25%] text-white ${template.markClass} [&_svg]:!size-3.5`}
 											>
-												<Icon />
+												<Icon strokeWidth={2.25} />
 											</span>
 										}
 										onSelect={() => void navigate({to: "/", search: {create: template.slug}})}

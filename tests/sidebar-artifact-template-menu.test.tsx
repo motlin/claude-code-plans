@@ -192,4 +192,59 @@ describe("sidebar Artifacts template launcher", () => {
 			}).toStrictEqual({menu: null, focused: true});
 		});
 	});
+	it("marks each template row with upstream's default ArtifactMark tile: solid hue, bold white glyph, 25% radius", async () => {
+		await renderSidebar();
+		const menu = await openTemplateMenu();
+		const marks = [...menu.querySelectorAll<HTMLElement>('[data-artifact-mark-size="menu"]')].map((mark) => {
+			const classes = mark.className.split(" ");
+			return {
+				kind: mark.dataset["artifactMark"],
+				tile: ["inline-flex", "size-5", "shrink-0", "overflow-hidden", "rounded-[25%]", "text-white"].every(
+					(name) => classes.includes(name),
+				),
+				background: classes.filter((name) => name.startsWith("bg-") || name.startsWith("dark:bg-")),
+				strokeWidth: mark.querySelector("svg")?.getAttribute("stroke-width"),
+			};
+		});
+		expect({marks, legacyTiles: menu.querySelectorAll("[data-template-tile]").length}).toStrictEqual({
+			marks: [
+				{
+					kind: "document",
+					tile: true,
+					background: ["bg-[rgb(51,140,237)]", "dark:bg-[rgb(37,125,224)]"],
+					strokeWidth: "2.25",
+				},
+				{
+					kind: "slides",
+					tile: true,
+					background: ["bg-[rgb(244,114,48)]", "dark:bg-[#d95926]"],
+					strokeWidth: "2.25",
+				},
+				{
+					kind: "design",
+					tile: true,
+					background: ["bg-[rgb(120,94,232)]", "dark:bg-[#6250d6]"],
+					strokeWidth: "2.25",
+				},
+				{
+					kind: "chart",
+					tile: true,
+					background: ["bg-[rgb(220,60,61)]", "dark:bg-[#b93535]"],
+					strokeWidth: "2.25",
+				},
+			],
+			legacyTiles: 0,
+		});
+	});
+
+	it("tags the nav rows with upstream's data-nav-item ids", async () => {
+		await renderSidebar();
+		const navItem = (id: string) => document.querySelector(`[data-nav-item="${id}"]`);
+		expect({
+			artifacts: navItem("epitaxy-apps") === screen.getByRole("link", {name: "Artifacts"}),
+			customize: navItem("customize") === screen.getByRole("link", {name: "Customize"}),
+			more: navItem("more") === screen.getByRole("button", {name: "More navigation items"}),
+			plans: navItem("local-plans") === screen.getByRole("link", {name: "Plans"}),
+		}).toStrictEqual({artifacts: true, customize: true, more: true, plans: true});
+	});
 });
