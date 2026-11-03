@@ -151,8 +151,7 @@ const queueOriginKindLabels = {
 	"task-notification": "Task notification",
 } satisfies Record<z.infer<typeof QueueOriginKindSchema>, string>;
 
-/** Not consumed yet — `wakeupSource` is only validated. */
-const wakeupSourceLabels = {
+export const wakeupSourceLabels = {
 	loop_wakeup: "Loop wakeup",
 	schedule_wakeup: "Schedule wakeup",
 } satisfies Record<z.infer<typeof WakeupSourceSchema>, string>;

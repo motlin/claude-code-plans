@@ -26,6 +26,7 @@ import {
 	PromptSourceSchema,
 	RenderedRoleSchema,
 	TurnOriginSchema,
+	WakeupSourceSchema,
 } from "./schemas";
 import {JsonlRecordSchema} from "./runtime-schemas";
 import {
@@ -89,6 +90,7 @@ const MessageLineSchema = z.object({
 	promptSource: PromptSourceSchema.optional(),
 	turnOrigin: TurnOriginSchema.optional(),
 	scheduledTaskId: z.string().optional(),
+	wakeupSource: WakeupSourceSchema.optional(),
 	queuePriority: z.literal("later").optional(),
 	/** The `queueOrigin.displayName` of an Artifact watch whose end this task-notification announces. */
 	artifactWatchEnded: z.string().optional(),
@@ -1223,6 +1225,9 @@ function* processRecordBatchSteps(
 			}
 			if (record.scheduledTaskId !== undefined) {
 				processedLine.scheduledTaskId = record.scheduledTaskId;
+			}
+			if (record.wakeupSource !== undefined) {
+				processedLine.wakeupSource = record.wakeupSource;
 			}
 			const queueOrigin = record.queueOrigin;
 			if (queueOrigin?.source === "artifact-watch-lifecycle" && queueOrigin.watchEnded === true) {

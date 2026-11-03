@@ -137,6 +137,29 @@ describe("userTurnDetails", () => {
 		).toStrictEqual(["Scheduled task ecc5631f · queued for later"]);
 	});
 
+	it("names the wakeup source of a scheduled turn", () => {
+		expect({
+			loop: userTurnDetails({
+				type: "user",
+				lineIndex: 0,
+				turnOrigin: "scheduled",
+				scheduledTaskId: "e56aacad",
+				wakeupSource: "loop_wakeup",
+				promptSource: "system",
+				queuePriority: "later",
+			}),
+			schedule: userTurnDetails({
+				type: "user",
+				lineIndex: 0,
+				turnOrigin: "scheduled",
+				wakeupSource: "schedule_wakeup",
+			}),
+		}).toStrictEqual({
+			loop: ["Scheduled task e56aacad (Loop wakeup) · System prompt · queued for later"],
+			schedule: ["Scheduled task (Schedule wakeup)"],
+		});
+	});
+
 	it("names a peer origin and a non-typed prompt source", () => {
 		expect({
 			peer: userTurnDetails({type: "user", lineIndex: 0, turnOrigin: "peer"}),

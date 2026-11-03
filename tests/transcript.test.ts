@@ -1257,10 +1257,14 @@ describe("extractSessionTitle", () => {
 // ---------------------------------------------------------------------------
 
 describe("message metadata fields", () => {
-	it("carries non-human turnOrigin and scheduledTaskId on user lines", () => {
+	it("carries non-human turnOrigin, scheduledTaskId and wakeupSource on user lines", () => {
 		const records = [
 			userRecord("from a peer", {turnOrigin: "peer"}),
-			userRecord("/loop check", {turnOrigin: "scheduled", scheduledTaskId: "e283ee16"}),
+			userRecord("/loop check", {
+				turnOrigin: "scheduled",
+				scheduledTaskId: "e283ee16",
+				wakeupSource: "loop_wakeup",
+			}),
 			userRecord("typed by a human", {turnOrigin: "human"}),
 		];
 		expect(processTranscript(records).lines).toStrictEqual([
@@ -1275,6 +1279,7 @@ describe("message metadata fields", () => {
 				lineIndex: 1,
 				turnOrigin: "scheduled",
 				scheduledTaskId: "e283ee16",
+				wakeupSource: "loop_wakeup",
 				message: {role: "user", content: "/loop check"},
 			},
 			{

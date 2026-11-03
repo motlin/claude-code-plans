@@ -1,6 +1,6 @@
 import {formatTokens} from "../components/system-banner-text";
 import {formatModelName} from "./model-name";
-import {promptSourceLabels, turnOriginLabels} from "./schema-choices";
+import {promptSourceLabels, turnOriginLabels, wakeupSourceLabels} from "./schema-choices";
 import type {MessageSessionLine} from "./transcript";
 
 /*
@@ -102,11 +102,13 @@ function originDetail(line: MessageSessionLine): string | undefined {
 	const parts: string[] = [];
 	if (line.turnOrigin !== undefined && line.turnOrigin !== "human") {
 		const origin = turnOriginLabels[line.turnOrigin];
-		parts.push(
-			line.turnOrigin === "scheduled" && line.scheduledTaskId !== undefined
-				? `${origin} ${line.scheduledTaskId}`
-				: origin,
-		);
+		if (line.turnOrigin === "scheduled") {
+			const taskId = line.scheduledTaskId === undefined ? "" : ` ${line.scheduledTaskId}`;
+			const wakeup = line.wakeupSource === undefined ? "" : ` (${wakeupSourceLabels[line.wakeupSource]})`;
+			parts.push(`${origin}${taskId}${wakeup}`);
+		} else {
+			parts.push(origin);
+		}
 	}
 	if (line.promptSource !== undefined) parts.push(`${promptSourceLabels[line.promptSource]} prompt`);
 	if (line.queuePriority === "later" && parts.length > 0) parts.push("queued for later");
