@@ -114,7 +114,8 @@ describe("AssistantMessageActions", () => {
 			bar: ["comfortable:h-8"],
 			button: ["comfortable:size-8", "comfortable:rounded-r6"],
 			icon: ["comfortable:size-5"],
-			time: ["comfortable:h-8", "comfortable:ps-3", "comfortable:text-[14px]/[20px]"],
+			// Panels' ms-1 already brings the time to upstream's 12px, so no comfortable ps-3 on top.
+			time: ["comfortable:h-8", "comfortable:text-[14px]/[20px]"],
 		});
 	});
 
@@ -1289,7 +1290,7 @@ describe("message actions states (upstream 2026-11-01)", () => {
 		});
 	});
 
-	it("panels: starts the assistant time 4px further from the last button (flat-look ms-1)", () => {
+	it("panels: starts the assistant time 12px from the last button at both densities (flat-look ms-1 on ps-2)", () => {
 		const spacing = (className: string) => className.split(" ").filter((c) => /^(?:comfortable:)?[mp]s-/.test(c));
 		const on = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
@@ -1302,7 +1303,7 @@ describe("message actions states (upstream 2026-11-01)", () => {
 		).container.querySelector("time")!.className;
 
 		expect({on: spacing(on), off: spacing(off)}).toStrictEqual({
-			on: ["ps-2", "ms-1", "comfortable:ps-3"],
+			on: ["ps-2", "ms-1"],
 			off: ["ps-2", "comfortable:ps-3"],
 		});
 	});

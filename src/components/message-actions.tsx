@@ -302,7 +302,11 @@ function ReadAloudAction({text}: {text: string}) {
 
 function timeClass(inner: "left" | "right", panels: boolean): string {
 	if (inner === "left") {
-		return `flex h-6 items-center ps-2${panels ? " ms-1" : ""} text-[13px]/[19px] text-ink-muted tabular-nums outline-none comfortable:h-8 comfortable:ps-3 comfortable:text-[14px]/[20px]`;
+		// Panels: upstream's flat-look ps 8 + ms-1 4 = 12px from the last button at both densities, so
+		// no comfortable ps-3 on top (panels makes every scope comfortable locally).
+		const inset = panels ? "ps-2 ms-1" : "ps-2";
+		const comfortableInset = panels ? "" : " comfortable:ps-3";
+		return `flex h-6 items-center ${inset} text-[13px]/[19px] text-ink-muted tabular-nums outline-none comfortable:h-8${comfortableInset} comfortable:text-[14px]/[20px]`;
 	}
 	// Upstream's panels + flat-look rule: `display:block; align-content:center` and an uppercase first letter.
 	return panels
