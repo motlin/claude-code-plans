@@ -1216,9 +1216,11 @@ const JsonObjectSchema = z.record(z.string(), TypedJsonValueSchema);
 /**
  * Read new JSONL lines from a file starting at a byte offset.
  * Returns the parsed JSON objects and the next byte offset to resume from.
- * Tracks bytes per successfully-parsed line (not stat().size) to handle
- * partial writes: an incomplete trailing line is skipped and re-read on
- * the next call.
+ * Tracks bytes per consumed line (not stat().size) to handle partial
+ * writes: an unparseable unterminated tail is left unconsumed and re-read
+ * on the next call, while an unparseable newline-terminated line (e.g. one
+ * truncated by a killed CLI before `--resume` appended more) is skipped so
+ * it cannot block every later read.
  */
 export async function readNewJsonlLines(
 	filePath: string,
@@ -1226,16 +1228,22 @@ export async function readNewJsonlLines(
 ): Promise<{lines: Record<string, JsonValue>[]; nextByteOffset: number}> {
 	const lines: Record<string, JsonValue>[] = [];
 	let bytesConsumed = 0;
+	// Byte length (with newline) of the last line that failed to parse, until a later line proves it was terminated.
+	let unparsedByteLength: number | undefined;
 
-	const rl = createLineReader(
-		trackedCreateReadStream(filePath, {
-			encoding: "utf-8",
-			start: fromByteOffset,
-		}),
-	);
+	const stream = trackedCreateReadStream(filePath, {
+		encoding: "utf-8",
+		start: fromByteOffset,
+	});
+	const rl = createLineReader(stream);
 
 	try {
 		for await (const line of rl) {
+			if (unparsedByteLength !== undefined) {
+				// A line followed it, so the unparseable line was newline-terminated: skip it.
+				bytesConsumed += unparsedByteLength;
+				unparsedByteLength = undefined;
+			}
 			// Each line in the stream has its newline stripped by readline.
 			// Account for the line content + 1 byte for the newline character.
 			const lineByteLength = Buffer.byteLength(line, "utf-8") + 1;
@@ -1248,10 +1256,13 @@ export async function readNewJsonlLines(
 				if (parsed.success) lines.push(parsed.data);
 				bytesConsumed += lineByteLength;
 			} catch {
-				// Partial/malformed line at the end of the file. Do not advance
-				// the byte offset past it so we re-read it on the next change.
-				break;
+				unparsedByteLength = lineByteLength;
 			}
+		}
+		// A final unparseable line is skipped only if its newline was read; an unterminated tail is a partial write
+		// still in progress, so leave the offset before it and re-read it on the next change.
+		if (unparsedByteLength !== undefined && bytesConsumed + unparsedByteLength <= stream.bytesRead) {
+			bytesConsumed += unparsedByteLength;
 		}
 	} finally {
 		await rl.close();

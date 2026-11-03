@@ -2109,6 +2109,33 @@ describe("readNewJsonlLines", () => {
 		expect(result.nextByteOffset).toBe(Buffer.byteLength(completeLine, "utf-8"));
 	});
 
+	it("skips a malformed newline-terminated mid-file line and advances past it", async () => {
+		const filePath = join(testDir, "truncated-then-resumed.jsonl");
+		const firstLine = JSON.stringify(userMessage("Hello")) + "\n";
+		const truncatedLine = '{"type":"assistant","message":{"role":"asse\n';
+		const resumedLine = JSON.stringify(assistantMessage([{type: "text", text: "Hi"}])) + "\n";
+		writeFileSync(filePath, firstLine + truncatedLine + resumedLine);
+
+		const result = await readNewJsonlLines(filePath, 0);
+		expect(result).toStrictEqual({
+			lines: [JSON.parse(firstLine), JSON.parse(resumedLine)],
+			nextByteOffset: Buffer.byteLength(firstLine + truncatedLine + resumedLine, "utf-8"),
+		});
+	});
+
+	it("skips a malformed newline-terminated last line and advances past it", async () => {
+		const filePath = join(testDir, "terminated-bad-tail.jsonl");
+		const firstLine = JSON.stringify(userMessage("Hello")) + "\n";
+		const badLine = "not json\n";
+		writeFileSync(filePath, firstLine + badLine);
+
+		const result = await readNewJsonlLines(filePath, 0);
+		expect(result).toStrictEqual({
+			lines: [JSON.parse(firstLine)],
+			nextByteOffset: Buffer.byteLength(firstLine + badLine, "utf-8"),
+		});
+	});
+
 	it("returns empty array when offset is at end of file", async () => {
 		const filePath = join(testDir, "at-end.jsonl");
 		writeFileSync(filePath, jsonl(userMessage("Hello")));
