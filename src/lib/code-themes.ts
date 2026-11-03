@@ -130,3 +130,31 @@ export function codeFontFamily(codeFont: string): string | null {
 	const name = codeFont.replace(/["'\\;{}]/g, "").trim();
 	return name === "" ? null : `"${name}", ${MONO_FONT_STACK}`;
 }
+
+/** Settings ▸ Claude Code ▸ Code font size choices, upstream `L4`; null keeps the 13px default. */
+export const CODE_FONT_SIZES = [11, 12, 13, 14, 15, 16, 18, 20] as const;
+export type CodeFontSize = (typeof CODE_FONT_SIZES)[number];
+/** The size code renders at when Code font size is Default (upstream's binding default "13 px"). */
+export const DEFAULT_CODE_FONT_SIZE: CodeFontSize = 13;
+
+export function isCodeFontSize(value: unknown): value is CodeFontSize {
+	return CODE_FONT_SIZES.some((size) => size === value);
+}
+
+/** Upstream `vm`: code line height in px for a code font size. */
+function codeLeadingPx(px: number): number {
+	return Math.round(px * 1.45);
+}
+
+/**
+ * Upstream `H2`: the `--epitaxy-code-font-size` / `--epitaxy-code-leading` overrides set on <html>,
+ * or null for each when Code font size is Default. globals.css reads them behind every density's
+ * `--upstream-text-code` / `--upstream-leading-code`.
+ */
+export function codeFontSizeCssVars(
+	size: CodeFontSize | null,
+): Record<"--epitaxy-code-font-size" | "--epitaxy-code-leading", string | null> {
+	return size === null
+		? {"--epitaxy-code-font-size": null, "--epitaxy-code-leading": null}
+		: {"--epitaxy-code-font-size": `${size / 16}rem`, "--epitaxy-code-leading": `${codeLeadingPx(size) / 16}rem`};
+}

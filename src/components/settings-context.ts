@@ -9,6 +9,8 @@ import {
 	CodeThemeDarkSchema,
 	CodeThemeLightSchema,
 	DEFAULT_CODE_THEMES,
+	isCodeFontSize,
+	type CodeFontSize,
 	type CodeThemeDark,
 	type CodeThemeLight,
 } from "../lib/code-themes";
@@ -83,6 +85,8 @@ export interface Settings {
 	codeThemeDark: CodeThemeDark;
 	/** Custom monospace font family for code and terminal; empty keeps the built-in stack. */
 	codeFont: string;
+	/** Code font size in px for code and terminals (upstream `editorPrefs.codeFontSize`); null keeps the 13px default. */
+	codeFontSize: CodeFontSize | null;
 	/** Terminal colors: the light/dark code theme (upstream's behavior) or the Ghostty config. */
 	terminalAppearance: TerminalAppearance;
 
@@ -162,6 +166,7 @@ export const DEFAULTS: Settings = {
 	codeThemeLight: DEFAULT_CODE_THEMES.light,
 	codeThemeDark: DEFAULT_CODE_THEMES.dark,
 	codeFont: "",
+	codeFontSize: null,
 	terminalAppearance: DEFAULT_TERMINAL_APPEARANCE,
 
 	showSummaryButton: true,
@@ -223,6 +228,7 @@ export const STORAGE_KEYS: Record<keyof Settings, string> = {
 	codeThemeLight: "ccp-code-theme-light",
 	codeThemeDark: "ccp-code-theme-dark",
 	codeFont: "ccp-code-font",
+	codeFontSize: "ccp-code-font-size",
 	terminalAppearance: "ccp-terminal-appearance",
 	showSummaryButton: "ccp-show-summary-button",
 	capabilities: "ccp-capabilities",
@@ -395,6 +401,12 @@ const STORED_VALUE_READERS: {[K in keyof Settings]: StoredValueReader<Settings[K
 	codeThemeLight: readSchema(CodeThemeLightSchema),
 	codeThemeDark: readSchema(CodeThemeDarkSchema),
 	codeFont: readString,
+	// Like upstream `ut()`, anything but one of the listed sizes reads as Default.
+	codeFontSize: (stored) => {
+		if (stored === null) return undefined;
+		const size = Number(stored);
+		return isCodeFontSize(size) ? size : null;
+	},
 	terminalAppearance: readSchema(TerminalAppearanceSchema),
 	showSummaryButton: readBoolean,
 	capabilities: readJsonSchema(PersistedCapabilitiesSchema),

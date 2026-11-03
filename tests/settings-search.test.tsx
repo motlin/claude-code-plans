@@ -185,6 +185,30 @@ describe("settings search", () => {
 		expect({flashing: flashingRows(), scrolled}).toStrictEqual({flashing: [], scrolled: ["code-font"]});
 	});
 
+	it("deep links to Interface font on General, its new home, and flashes setting-general-interface-font", async () => {
+		const router = buildRouter("/#settings/general/interface-font");
+		await router.load();
+		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
+		act(() => {
+			render(<RouterProvider router={router} />);
+		});
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(300);
+		});
+
+		expect({
+			hash: router.state.location.hash,
+			flashing: flashingRows(),
+			id: document.querySelector(".feature-anchor-row-fill")?.id,
+			scrolled,
+		}).toStrictEqual({
+			hash: "settings/general",
+			flashing: [{row: "interface-font", title: true}],
+			id: "setting-general-interface-font",
+			scrolled: ["interface-font"],
+		});
+	});
+
 	/** Each popover row's accessible name, or for hits (no aria-label) their visible text. */
 	function popoverRows(popover: HTMLElement): string[] {
 		return within(popover)
@@ -584,10 +608,12 @@ describe("settings search", () => {
 	}
 
 	const FONT_ROWS = [
+		"hit: General",
+		"Interface font in General",
+		"Transcript text size in General",
 		"hit: Claude Code",
 		"Code font in Claude Code",
-		"Interface font in Claude Code",
-		"hit: GeneralTranscript text size",
+		"Code font size in Claude Code",
 	];
 	const marked = (index: number) => FONT_ROWS.map((row, i) => (i === index ? `> ${row}` : row));
 
@@ -599,14 +625,33 @@ describe("settings search", () => {
 		fireEvent.change(input, {target: {value: "font"}});
 		await screen.findByRole("dialog", {name: "Search results"});
 		const seen = [highlightedRows()];
-		for (const key of ["ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowUp", "ArrowUp"]) {
+		for (const key of [
+			"ArrowDown",
+			"ArrowDown",
+			"ArrowDown",
+			"ArrowDown",
+			"ArrowDown",
+			"ArrowDown",
+			"ArrowUp",
+			"ArrowUp",
+		]) {
 			fireEvent.keyDown(input, {key});
 			seen.push(highlightedRows());
 		}
 
-		expect(seen).toStrictEqual([marked(0), marked(1), marked(2), marked(3), marked(0), marked(3), marked(2)]);
+		expect(seen).toStrictEqual([
+			marked(0),
+			marked(1),
+			marked(2),
+			marked(3),
+			marked(4),
+			marked(5),
+			marked(0),
+			marked(5),
+			marked(4),
+		]);
 		expect(highlightScrolls.at(-1)).toStrictEqual({
-			row: "Interface font in Claude Code",
+			row: "Code font in Claude Code",
 			options: {block: "nearest"},
 		});
 	});
@@ -645,7 +690,7 @@ describe("settings search", () => {
 		fireEvent.keyDown(input, {key: "Enter", repeat: true});
 		expect({hash: router.state.location.hash, rows: highlightedRows()}).toStrictEqual({
 			hash: "settings/general",
-			rows: marked(3),
+			rows: marked(5),
 		});
 
 		fireEvent.keyDown(input, {key: "ArrowUp"});
@@ -654,7 +699,7 @@ describe("settings search", () => {
 		await waitFor(() => {
 			expect(router.state.location.hash).toBe("settings/claude-code");
 		});
-		expect(scrolled).toStrictEqual(["interface-font"]);
+		expect(scrolled).toStrictEqual(["code-font"]);
 	});
 
 	it("moves the single highlight with the pointer and keeps focus in the input on mousedown", async () => {
@@ -671,7 +716,7 @@ describe("settings search", () => {
 		const notPrevented = fireEvent.mouseDown(second);
 
 		expect({rows, notPrevented, focused: document.activeElement === input}).toStrictEqual({
-			rows: marked(1),
+			rows: marked(4),
 			notPrevented: false,
 			focused: true,
 		});
@@ -753,7 +798,7 @@ describe("settings search", () => {
 	});
 
 	it("selecting a result clears the query and blurs the field", async () => {
-		const router = await renderAt("/#settings/general");
+		const router = await renderAt("/#settings/claude-code");
 		await screen.findByRole("dialog", {name: "Settings"});
 		const input = screen.getByRole<HTMLInputElement>("textbox", {name: "Search settings"});
 		input.focus();
@@ -762,7 +807,7 @@ describe("settings search", () => {
 
 		fireEvent.keyDown(input, {key: "Enter"});
 		await waitFor(() => {
-			expect(router.state.location.hash).toBe("settings/claude-code");
+			expect(router.state.location.hash).toBe("settings/general");
 		});
 
 		expect(searchState(input)).toStrictEqual({value: "", focused: false, results: false, settings: true});

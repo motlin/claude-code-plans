@@ -1,5 +1,5 @@
 import {Check, ChevronDown} from "lucide-react";
-import {type KeyboardEvent, useEffect, useId, useRef, useState} from "react";
+import {type CSSProperties, type KeyboardEvent, useEffect, useId, useRef, useState} from "react";
 
 import {useSettingsRowIds} from "./settings-row-context";
 
@@ -8,7 +8,9 @@ import {useSettingsRowIds} from "./settings-row-context";
  * holds a filter input over a listbox with a check on the current option.
  * Typing narrows the options and clears the active option until an arrow
  * key moves onto a match; Enter selects the active option and closes. Selection applies immediately (no Save). Escape is left to
- * bubble so, as upstream, it also closes the surrounding Settings dialog.
+ * bubble so, as upstream, it also closes the surrounding Settings dialog. A short list (Code font size) drops
+ * the filter (`filterable={false}`): the listbox itself takes focus and the arrow keys. The `ghost` variant is
+ * upstream's borderless fizzy `type` trigger, whose popup is w-56 and aligned to the trigger's end edge.
  */
 
 interface ComboboxOption<T extends string> {
@@ -16,6 +18,8 @@ interface ComboboxOption<T extends string> {
 	label: string;
 	/** Shown (and checked when current) but not selectable, like upstream's uninstalled output style. */
 	disabled?: boolean;
+	/** Inline style for the option's label (a font option set in its own family). */
+	labelStyle?: CSSProperties;
 }
 
 interface ThemedComboboxProps<T extends string> {
@@ -25,6 +29,11 @@ interface ThemedComboboxProps<T extends string> {
 	"aria-label": string;
 	className?: string;
 	disabled?: boolean;
+	/** False drops the popup's filter input, for a short fixed list. */
+	filterable?: boolean;
+	variant?: "field" | "ghost";
+	/** Trigger text in place of the current option's label ("Default · 13 px"). */
+	triggerLabel?: string;
 }
 
 export function ThemedCombobox<T extends string>({
@@ -34,17 +43,21 @@ export function ThemedCombobox<T extends string>({
 	"aria-label": ariaLabel,
 	className,
 	disabled = false,
+	filterable = true,
+	variant = "field",
+	triggerLabel,
 }: ThemedComboboxProps<T>) {
 	const row = useSettingsRowIds();
 	const baseId = useId();
 	const listboxId = `${baseId}-listbox`;
 	const rootRef = useRef<HTMLDivElement>(null);
 	const triggerRef = useRef<HTMLButtonElement>(null);
+	const listboxRef = useRef<HTMLDivElement>(null);
 	const [open, setOpen] = useState(false);
 	const [query, setQuery] = useState("");
 	const [activeIndex, setActiveIndex] = useState(0);
 
-	const needle = query.trim().toLowerCase();
+	const needle = filterable ? query.trim().toLowerCase() : "";
 	const filtered = options.filter((option) => option.label.toLowerCase().includes(needle));
 	const current = options.find((option) => option.value === value);
 
@@ -54,11 +67,12 @@ export function ThemedCombobox<T extends string>({
 			if (event.target instanceof Node && rootRef.current?.contains(event.target)) return;
 			setOpen(false);
 		};
+		if (!filterable) listboxRef.current?.focus();
 		document.addEventListener("mousedown", handlePointerDown);
 		return () => {
 			document.removeEventListener("mousedown", handlePointerDown);
 		};
-	}, [open]);
+	}, [open, filterable]);
 
 	const openPopup = () => {
 		setQuery("");
@@ -78,7 +92,7 @@ export function ThemedCombobox<T extends string>({
 		triggerRef.current?.focus();
 	};
 
-	const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+	const handleListKeyDown = (event: KeyboardEvent<HTMLElement>) => {
 		switch (event.key) {
 			case "ArrowDown":
 				event.preventDefault();
@@ -94,6 +108,7 @@ export function ThemedCombobox<T extends string>({
 				break;
 			case "Escape":
 				setOpen(false);
+				if (!filterable) triggerRef.current?.focus();
 				break;
 			default:
 				break;
@@ -101,9 +116,19 @@ export function ThemedCombobox<T extends string>({
 	};
 
 	const activeOption = filtered[activeIndex];
+	const activeDescendant = activeOption === undefined ? undefined : `${baseId}-${activeOption.value}`;
+	const ghost = variant === "ghost";
 
 	return (
-		<div ref={rootRef} className={`relative ${className ?? "w-56"}`}>
+		<div
+			ref={rootRef}
+			data-cds="Combobox"
+			className={
+				ghost
+					? `group/cbx relative inline-flex items-center gap-1.5 h-8 rounded-r6 bg-transparent hover:bg-fill-ghost-hover aria-expanded:bg-fill-ghost-hover has-[[aria-expanded=true]]:bg-fill-ghost-hover ps-0 pe-2 has-[:focus-visible]:shadow-focus shrink-0${className === undefined ? "" : ` ${className}`}`
+					: `relative ${className ?? "w-56"}`
+			}
+		>
 			<button
 				ref={triggerRef}
 				type="button"
@@ -125,32 +150,56 @@ export function ThemedCombobox<T extends string>({
 						openPopup();
 					}
 				}}
-				className="flex h-8 w-full items-center justify-between gap-2 rounded-r6 border border-border bg-[var(--settings-field-bg)] pr-2 pl-3 text-left text-body text-primary outline-none enabled:hover:bg-fill-ghost-hover disabled:opacity-50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+				className={
+					ghost
+						? "flex h-8 min-w-0 flex-1 items-center gap-1.5 ps-2 text-start bg-transparent text-body text-primary outline-none disabled:opacity-50 hide-focus-ring focus-visible:outline-hidden"
+						: "flex h-8 w-full items-center justify-between gap-2 rounded-r6 border border-border bg-[var(--settings-field-bg)] pr-2 pl-3 text-left text-body text-primary outline-none enabled:hover:bg-fill-ghost-hover disabled:opacity-50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+				}
 			>
-				<span className="min-w-0 truncate">{current?.label ?? value}</span>
-				<ChevronDown aria-hidden="true" className="size-4 shrink-0 text-[var(--settings-muted)]" />
+				<span className={ghost ? "min-w-0 flex-1 truncate" : "min-w-0 truncate"}>
+					{triggerLabel ?? current?.label ?? value}
+				</span>
+				<ChevronDown
+					aria-hidden="true"
+					className={
+						ghost
+							? "size-4 me-0.5 shrink-0 text-[var(--settings-muted)] group-hover/cbx:text-secondary"
+							: "size-4 shrink-0 text-[var(--settings-muted)]"
+					}
+				/>
 			</button>
 			{open ? (
-				<div className="absolute top-full left-0 z-[140] mt-1 flex max-h-72 w-full min-w-[12rem] flex-col rounded-card bg-[var(--menu-bg)] shadow-[var(--menu-shadow)]">
-					<div className="border-b border-subtle p-1">
-						<input
-							type="search"
-							autoFocus
-							aria-label={ariaLabel}
-							aria-controls={listboxId}
-							aria-activedescendant={
-								activeOption === undefined ? undefined : `${baseId}-${activeOption.value}`
-							}
-							value={query}
-							onChange={(event) => {
-								setQuery(event.target.value);
-								setActiveIndex(-1);
-							}}
-							onKeyDown={handleSearchKeyDown}
-							className="h-8 w-full rounded-r6 bg-transparent px-2.5 text-body text-primary outline-none"
-						/>
-					</div>
-					<div id={listboxId} role="listbox" aria-label={ariaLabel} className="min-h-0 overflow-y-auto p-1">
+				<div
+					className={`absolute top-full z-[140] mt-1 flex max-h-72 flex-col rounded-card bg-[var(--menu-bg)] shadow-[var(--menu-shadow)] ${ghost ? "end-0 w-56" : "left-0 w-full min-w-[12rem]"}`}
+				>
+					{filterable ? (
+						<div className="border-b border-subtle p-1">
+							<input
+								type="search"
+								autoFocus
+								aria-label={ariaLabel}
+								aria-controls={listboxId}
+								aria-activedescendant={activeDescendant}
+								value={query}
+								onChange={(event) => {
+									setQuery(event.target.value);
+									setActiveIndex(-1);
+								}}
+								onKeyDown={handleListKeyDown}
+								className="h-8 w-full rounded-r6 bg-transparent px-2.5 text-body text-primary outline-none"
+							/>
+						</div>
+					) : null}
+					<div
+						ref={listboxRef}
+						id={listboxId}
+						role="listbox"
+						aria-label={ariaLabel}
+						tabIndex={filterable ? undefined : -1}
+						aria-activedescendant={filterable ? undefined : activeDescendant}
+						onKeyDown={filterable ? undefined : handleListKeyDown}
+						className="min-h-0 overflow-y-auto p-1 outline-none"
+					>
 						{filtered.length === 0 ? (
 							<div className="px-2.5 py-1.5 text-body text-[var(--settings-muted)]">No results</div>
 						) : (
@@ -176,7 +225,9 @@ export function ThemedCombobox<T extends string>({
 										}}
 										className="flex h-8 cursor-default items-center gap-1 rounded-r6 px-2.5 text-body text-primary select-none data-[highlighted]:bg-fill-ghost-hover aria-disabled:opacity-50"
 									>
-										<span className="min-w-0 flex-1 truncate">{option.label}</span>
+										<span className="min-w-0 flex-1 truncate" style={option.labelStyle}>
+											{option.label}
+										</span>
 										<span className="-mr-1 flex size-5 shrink-0 items-center justify-center">
 											{selected ? <Check aria-hidden="true" className="size-4" /> : null}
 										</span>

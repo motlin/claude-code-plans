@@ -166,66 +166,92 @@ describe("SettingsDialog", () => {
 		}).toStrictEqual({popup: popupExpected, backdrop: backdropExpected});
 	});
 
-	// Locks today's comfortable shell spacing: the Settings dialog is comfortable for every web user
-	// (density-default-tokens), so upstream's px-xl / pb-lg / pt-md resolve to 24 / 16 / 12px.
-	it("keeps the comfortable shell spacing", async () => {
+	// Upstream's 2026-11 shell: a grid whose full-width settings-top-row band (visible "Settings" title + the
+	// dialog's only Close) sits above the nav and the panel; the panel header and sticky top fade are gone.
+	it("lays the desktop shell out as upstream's grid under a full-width settings-top-row band", async () => {
+		await renderAt("/#settings/general");
+
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const contents = dialog.firstElementChild;
+		const [nav, topRow, panel] = [...(contents?.children ?? [])];
+		const scroller = panel?.firstElementChild ?? null;
+		const popupClasses = dialog.className.split(" ");
+		const heading = document.getElementById(dialog.getAttribute("aria-labelledby") ?? "");
+
+		expect({
+			grid: ["grid", "grid-cols-[auto_minmax(0,1fr)]", "grid-rows-[auto_minmax(0,1fr)]", "flex"].filter((name) =>
+				popupClasses.includes(name),
+			),
+			contents: [contents?.tagName, contents?.className, contents?.childElementCount],
+			nav: [nav?.tagName, nav?.classList.contains("row-start-2")],
+			headingInNav: heading !== null && nav?.contains(heading),
+			topRow: [topRow?.getAttribute("data-testid"), topRow?.className],
+			topRowChildren: [...(topRow?.children ?? [])].map((child) => ({
+				tag: child.tagName,
+				ariaHidden: child.getAttribute("aria-hidden"),
+				ariaLabel: child.getAttribute("aria-label"),
+				text: child.textContent,
+				classes:
+					child.tagName === "BUTTON"
+						? ["size-7", "rounded-r6"].filter((name) => child.classList.contains(name))
+						: child.className,
+			})),
+			closes: within(dialog).getAllByRole("button", {name: "Close"}).length,
+			panel: panel?.className,
+			scroller: scroller?.className,
+			firstScrollChildIsFade: scroller?.firstElementChild?.classList.contains("sticky"),
+		}).toStrictEqual({
+			grid: ["grid", "grid-cols-[auto_minmax(0,1fr)]", "grid-rows-[auto_minmax(0,1fr)]"],
+			contents: ["DIV", "contents", 3],
+			nav: ["NAV", true],
+			headingInNav: true,
+			topRow: [
+				"settings-top-row",
+				"col-span-full row-start-1 flex shrink-0 items-center justify-between gap-3 border-b border-[rgb(0_0_0/0.12)] dark:border-white/10 ps-4 pe-2 min-h-11",
+			],
+			topRowChildren: [
+				{
+					tag: "DIV",
+					ariaHidden: "true",
+					ariaLabel: null,
+					text: "Settings",
+					classes: "min-w-0 [overflow-wrap:anywhere] text-[15px]/[20px] font-[520] text-primary",
+				},
+				{tag: "BUTTON", ariaHidden: null, ariaLabel: "Close", text: "", classes: ["size-7", "rounded-r6"]},
+			],
+			closes: 1,
+			panel: "flex min-h-0 min-w-0 flex-1 flex-col",
+			scroller: "relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-4 [scrollbar-gutter:stable]",
+			firstScrollChildIsFade: false,
+		});
+	});
+
+	// Upstream's nav column: w-53 (212px) with the fizzy-lake seam, px-lg/pt-lg search, and the list's
+	// [&>.text-caption]:px-0 pulling the group labels flush; the first group is "Preferences".
+	it("sizes the nav column, search wrapper, list and group labels like upstream", async () => {
 		await renderAt("/#settings/general");
 
 		const dialog = await screen.findByRole("dialog", {name: "Settings"});
 		const nav = within(dialog).getByRole("navigation", {name: "Settings"});
-		const close = within(dialog).getByRole("button", {name: "Close"});
-		const header = close.parentElement;
-		const scroll = header?.nextElementSibling ?? null;
-		const pick = (element: Element | null, names: string[]) =>
-			names.filter((name) => element?.classList.contains(name));
+		const search = within(nav).getByRole("textbox", {name: "Search settings"});
+		const searchWrap = [...nav.children].find((child) => child.contains(search));
+		const lists = within(nav).getAllByRole("list");
+		const listWrap = lists[0]?.parentElement?.parentElement;
+		const labels = lists.map((list) => document.getElementById(list.getAttribute("aria-labelledby") ?? ""));
 
 		expect({
-			nav: pick(nav, ["w-48", "gap-3"]),
-			header: pick(header ?? null, ["px-3", "pt-3", "pb-2"]),
-			scroll: pick(scroll, ["px-6", "pt-2", "pb-4"]),
+			nav: nav.className,
+			searchWrap: searchWrap?.className,
+			list: listWrap?.className,
+			labels: labels.map((label) => [label?.textContent, label?.className]),
 		}).toStrictEqual({
-			nav: ["w-48", "gap-3"],
-			header: ["px-3", "pt-3", "pb-2"],
-			scroll: ["px-6", "pt-2", "pb-4"],
-		});
-	});
-
-	// Upstream's panel header has an empty left title slot before Close, and the scroll container
-	// starts with a sticky fade in the popup's surface colour so rows don't cut hard under the header.
-	// Spacing stays comfortable (density-default-tokens): px-xl / gap-md resolve to 24 / 12px.
-	it("renders the panel header title slot and the scroll top fade", async () => {
-		await renderAt("/#settings/general");
-
-		const dialog = await screen.findByRole("dialog", {name: "Settings"});
-		const close = within(dialog).getByRole("button", {name: "Close"});
-		const header = close.parentElement;
-		const scroll = header?.nextElementSibling ?? null;
-		const fade = scroll?.firstElementChild ?? null;
-
-		expect({
-			header: header?.className,
-			headerChildren: [...(header?.children ?? [])].map((child) => ({
-				className: child.className,
-				childCount: child.childElementCount,
-				text: child.textContent,
-			})),
-			fade: {
-				ariaHidden: fade?.getAttribute("aria-hidden"),
-				className: fade?.className,
-				childCount: fade?.childElementCount,
-			},
-		}).toStrictEqual({
-			header: "flex shrink-0 items-center justify-between gap-3 px-3 pt-3 pb-2",
-			headerChildren: [
-				{className: "flex min-w-0 flex-1 items-center", childCount: 0, text: ""},
-				{className: close.className, childCount: 1, text: ""},
+			nav: "row-start-2 flex w-[212px] min-h-0 shrink-0 flex-col border-e border-[rgb(0_0_0/0.1)] dark:border-white/10 bg-surface-1",
+			searchWrap: "shrink-0 px-4 pt-4",
+			list: "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pt-3 pb-4",
+			labels: [
+				["Preferences", "px-0 pt-3 text-[12px]/[17px] text-ink-muted"],
+				["Customize", "px-0 pt-3 text-[12px]/[17px] text-ink-muted"],
 			],
-			fade: {
-				ariaHidden: "true",
-				className:
-					"pointer-events-none sticky -top-2 z-[1] -mx-6 -mt-2 mb-0! h-2 bg-gradient-to-b from-[var(--menu-bg)] to-transparent dark:from-surface-2",
-				childCount: 0,
-			},
 		});
 	});
 
@@ -250,7 +276,7 @@ describe("SettingsDialog", () => {
 		).toStrictEqual(Array.from({length: 12}, () => "svg"));
 	});
 
-	it("lists every navigation item once in a ul labelled by its Settings or Customize heading, as upstream", async () => {
+	it("lists every navigation item once in a ul labelled by its Preferences or Customize heading, as upstream", async () => {
 		await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
 		const nav = screen.getByRole("navigation", {name: "Settings"});
@@ -276,7 +302,7 @@ describe("SettingsDialog", () => {
 		).toStrictEqual([
 			{
 				name: true,
-				label: {tag: "div", text: "Settings"},
+				label: {tag: "div", text: "Preferences"},
 				className: "flex flex-col gap-px",
 				items: [
 					{testId: "general-settings", label: "General", selected: "page"},
@@ -413,8 +439,9 @@ describe("SettingsDialog at phone width", () => {
 
 		expect({
 			sideNav: within(dialog).queryByRole("navigation"),
-			w48: dialog.querySelector(".w-48"),
+			sideNavWidth: dialog.querySelector(".w-\\[212px\\]"),
 			heading: within(dialog).getByRole("heading", {level: 2}).textContent,
+			headingClass: within(dialog).getByRole("heading", {level: 2}).className,
 			orientation: tablist.getAttribute("aria-orientation"),
 			stripClasses: ["overflow-x-auto", "overscroll-x-contain"].filter((name) =>
 				tablist.classList.contains(name),
@@ -423,11 +450,12 @@ describe("SettingsDialog at phone width", () => {
 				.getAllByRole("tab")
 				.map((tab) => ({label: tab.textContent, selected: tab.getAttribute("aria-selected")})),
 			search: within(dialog).queryAllByRole("textbox", {name: "Search settings"}).length,
-			scrollForward: within(dialog).getAllByRole("button", {name: "Scroll forward"}).length,
+			scrollForward: dialog.querySelectorAll('button[aria-label="Scroll forward"]').length,
 		}).toStrictEqual({
 			sideNav: null,
-			w48: null,
+			sideNavWidth: null,
 			heading: "Settings",
+			headingClass: "min-w-0 flex-1 text-[15px]/[20px] font-[520] text-primary",
 			orientation: "horizontal",
 			stripClasses: ["overflow-x-auto", "overscroll-x-contain"],
 			tabs: [
@@ -462,6 +490,61 @@ describe("SettingsDialog at phone width", () => {
 			tablists: within(dialog).getAllByRole("tablist", {name: "Settings"}).length,
 			search: within(dialog).queryAllByRole("textbox", {name: "Search settings"}).length,
 		}).toStrictEqual({query: "(max-width: 767px)", sideNav: null, tablists: 1, search: 0});
+	});
+
+	// Upstream's cds Tabs pager: "Scroll back" (data-toward=start) before the strip once it leaves its start,
+	// "Scroll forward" (data-toward=end) until it reaches its end; each pages by the strip's client width.
+	it("pages the tab strip with Scroll back and Scroll forward controls shown only when they can move", async () => {
+		await renderAt("/#settings/general");
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const tablist = within(dialog).getByRole("tablist", {name: "Settings"});
+		const scrollBy = vi.fn<(options: ScrollToOptions) => void>();
+		Object.assign(tablist, {scrollBy});
+		Object.defineProperty(tablist, "clientWidth", {configurable: true, value: 300});
+		Object.defineProperty(tablist, "scrollWidth", {configurable: true, value: 900});
+		const pager = (name: string) => {
+			// A hidden button has no accessible name, so find it by its label attribute.
+			const button = dialog.querySelector<HTMLButtonElement>(`button[aria-label="${name}"]`);
+			return {
+				toward: button?.getAttribute("data-toward"),
+				hidden: button?.hidden,
+				classes: ["size-8", "rounded-r6"].filter((token) => button?.classList.contains(token)),
+			};
+		};
+		const scrollTo = (left: number) => {
+			act(() => {
+				Object.defineProperty(tablist, "scrollLeft", {configurable: true, value: left});
+				fireEvent.scroll(tablist);
+			});
+		};
+
+		scrollTo(0);
+		const atStart = {back: pager("Scroll back"), forward: pager("Scroll forward")};
+		scrollTo(300);
+		const middle = {back: pager("Scroll back"), forward: pager("Scroll forward")};
+		fireEvent.click(within(dialog).getByRole("button", {name: "Scroll back"}));
+		scrollTo(600);
+		const atEnd = {back: pager("Scroll back"), forward: pager("Scroll forward")};
+		const order = [...(tablist.parentElement?.children ?? [])].map(
+			(child) => child.getAttribute("role") ?? child.getAttribute("aria-label"),
+		);
+
+		expect({atStart, middle, atEnd, order, calls: scrollBy.mock.calls}).toStrictEqual({
+			atStart: {
+				back: {toward: "start", hidden: true, classes: ["size-8", "rounded-r6"]},
+				forward: {toward: "end", hidden: false, classes: ["size-8", "rounded-r6"]},
+			},
+			middle: {
+				back: {toward: "start", hidden: false, classes: ["size-8", "rounded-r6"]},
+				forward: {toward: "end", hidden: false, classes: ["size-8", "rounded-r6"]},
+			},
+			atEnd: {
+				back: {toward: "start", hidden: false, classes: ["size-8", "rounded-r6"]},
+				forward: {toward: "end", hidden: true, classes: ["size-8", "rounded-r6"]},
+			},
+			order: ["Scroll back", "tablist", "Scroll forward"],
+			calls: [[{left: -300, behavior: "smooth"}]],
+		});
 	});
 
 	it("switches tabs from the strip through the hash", async () => {
@@ -931,7 +1014,7 @@ describe("SettingsDialog local tabs", () => {
 		});
 	});
 
-	it("gives the Customize panel upstream's own chrome: absolute Close, crumb bar, fixed title header and an inner list scroller", async () => {
+	it("gives the Customize panel upstream's own chrome: an empty chrome slot, crumb bar, fixed title header and an inner list scroller", async () => {
 		const skill: SkillSummary = {
 			id: "personal:foo",
 			name: "foo",
@@ -949,7 +1032,6 @@ describe("SettingsDialog local tabs", () => {
 		const dialog = screen.getByRole("dialog", {name: "Settings"});
 		const pane = dialog.querySelector<HTMLElement>("[data-customize-dialog-pane]");
 		const [chrome, crumbBar, body] = [...(pane?.children ?? [])];
-		const closeWrap = chrome?.firstElementChild;
 		const frame = body?.firstElementChild?.firstElementChild;
 		const [header, spacer, scroller] = [...(frame?.children ?? [])];
 		const [titleGroup, controls] = [...(header?.children ?? [])];
@@ -958,8 +1040,8 @@ describe("SettingsDialog local tabs", () => {
 			pane: pane?.className,
 			paneChildren: pane?.children.length,
 			chrome: [chrome?.getAttribute("data-customize-dialog-chrome"), chrome?.className],
-			closeWrap: closeWrap?.className,
-			close: closeWrap?.querySelector("button")?.getAttribute("aria-label"),
+			chromeChildren: chrome?.childElementCount,
+			closes: within(dialog).getAllByRole("button", {name: "Close"}).length,
 			crumbBar: [crumbBar?.getAttribute("data-testid"), crumbBar?.className, crumbBar?.innerHTML],
 			body: body?.className,
 			clip: body?.firstElementChild?.className,
@@ -979,11 +1061,11 @@ describe("SettingsDialog local tabs", () => {
 			pane: "relative flex min-h-0 flex-1 flex-col",
 			paneChildren: 3,
 			chrome: ["", "contents"],
-			closeWrap: "absolute top-0 end-0 z-[2] flex h-14 items-center pe-2",
-			close: "Close",
+			chromeChildren: 0,
+			closes: 1,
 			crumbBar: [
 				"customize-dialog-crumb-bar",
-				"flex shrink-0 items-center pt-2 pb-2 ps-5 pe-12",
+				"flex shrink-0 items-center pt-3 pb-2 ps-5 pe-4 has-[>:empty]:pb-0 max-md:has-[>:empty]:hidden [&>:empty]:hidden",
 				'<div class="min-h-8 relative flex min-w-0 flex-1 items-center gap-6"></div>',
 			],
 			body: "relative flex min-h-0 flex-1 flex-col",
@@ -1018,12 +1100,12 @@ describe("SettingsDialog local tabs", () => {
 		});
 	});
 
-	it("closes the dialog from the Customize panel's absolute Close button", async () => {
+	it("closes the dialog from the top row's Close button while a Customize section is open", async () => {
 		const router = await renderAt("/#customize/skills/yours");
 		const dialog = await screen.findByRole("dialog", {name: "Settings"});
 		const close = await waitFor(() => {
 			const button = dialog.querySelector<HTMLButtonElement>(
-				"[data-customize-dialog-chrome] button[aria-label=Close]",
+				'[data-testid="settings-top-row"] button[aria-label=Close]',
 			);
 			if (button === null) throw new Error("Customize Close button not rendered yet");
 			return button;

@@ -139,6 +139,7 @@ describe("SettingsSection and SettingsRow", () => {
 				item: row.getAttribute("data-settings-item"),
 				slug: row.getAttribute("data-settings-row"),
 				groupSetting: row.classList.contains("group/setting"),
+				text: row.firstElementChild?.getAttribute("data-settings-text"),
 			},
 		}).toStrictEqual({
 			section: {id: "notifications", titled: ""},
@@ -166,6 +167,7 @@ describe("SettingsSection and SettingsRow", () => {
 				item: "",
 				slug: "response-completions",
 				groupSetting: true,
+				text: "",
 			},
 		});
 	});

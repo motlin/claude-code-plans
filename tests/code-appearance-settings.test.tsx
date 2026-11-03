@@ -49,6 +49,8 @@ afterEach(() => {
 	cleanup();
 	vi.unstubAllGlobals();
 	document.documentElement.style.removeProperty("--font-mono");
+	document.documentElement.style.removeProperty("--epitaxy-code-font-size");
+	document.documentElement.style.removeProperty("--epitaxy-code-leading");
 });
 
 describe("Claude Code settings ▸ Code appearance", () => {
@@ -174,6 +176,66 @@ describe("Claude Code settings ▸ Code appearance", () => {
 			custom: '"Fira Code", "SF Mono", ui-monospace, Menlo, Consolas, monospace',
 			cleared: "",
 			stored: "",
+		});
+	});
+
+	// Upstream's 2026-11 Code font size row: a device select (11-20px, default 13) without a filter whose
+	// choice sets --epitaxy-code-font-size and --epitaxy-code-leading (round(px * 1.45)) in rem on <html>.
+	it("renders upstream's Code font size row after Code font with a filterless size select", async () => {
+		await renderClaudeCode();
+		// Outside the dialog there is no tab context, so the row has its slug but no setting-<tab>- id.
+		const row = document.querySelector('[data-settings-row="code-font-size"]');
+		const trigger = screen.getByRole("combobox", {name: "Code font size"});
+		const slugs = [...(row?.parentElement?.querySelectorAll("[data-settings-row]") ?? [])].map((element) =>
+			element.getAttribute("data-settings-row"),
+		);
+
+		fireEvent.click(trigger);
+
+		expect({
+			title: row?.querySelector(".settings-row-title")?.textContent,
+			description: row?.querySelector("[data-settings-desc]")?.textContent,
+			wrapper: trigger.closest("[data-settings-control] > div")?.className.split(" ").includes("w-56"),
+			trigger: trigger.textContent,
+			lastSlugs: slugs.slice(-2),
+			filter: screen.queryByRole("searchbox"),
+			options: screen.getAllByRole("option").map((option) => option.textContent),
+			selected: screen
+				.getAllByRole("option")
+				.filter((option) => option.getAttribute("aria-selected") === "true")
+				.map((option) => option.textContent),
+		}).toStrictEqual({
+			title: "Code font size",
+			description: "Applies to open files, diffs, code blocks, command output, and the terminal.",
+			wrapper: true,
+			trigger: "Default · 13 px",
+			lastSlugs: ["code-font", "code-font-size"],
+			filter: null,
+			options: ["Default · 13 px", "11 px", "12 px", "13 px", "14 px", "15 px", "16 px", "18 px", "20 px"],
+			selected: ["Default · 13 px"],
+		});
+	});
+
+	it("stores a picked code font size and sets upstream's rem size and leading on <html>, and Default clears both", async () => {
+		await renderClaudeCode();
+		const style = document.documentElement.style;
+		const read = () => ({
+			trigger: screen.getByRole("combobox", {name: "Code font size"}).textContent,
+			stored: localStorage.getItem("ccp-code-font-size"),
+			size: style.getPropertyValue("--epitaxy-code-font-size"),
+			leading: style.getPropertyValue("--epitaxy-code-leading"),
+		});
+
+		fireEvent.click(screen.getByRole("combobox", {name: "Code font size"}));
+		fireEvent.click(screen.getByRole("option", {name: "16 px"}));
+		const picked = read();
+		fireEvent.click(screen.getByRole("combobox", {name: "Code font size"}));
+		fireEvent.click(screen.getByRole("option", {name: "Default · 13 px"}));
+		const reset = read();
+
+		expect({picked, reset}).toStrictEqual({
+			picked: {trigger: "16 px", stored: "16", size: "1rem", leading: "1.4375rem"},
+			reset: {trigger: "Default · 13 px", stored: "null", size: "", leading: ""},
 		});
 	});
 

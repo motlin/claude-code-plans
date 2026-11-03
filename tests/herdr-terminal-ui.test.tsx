@@ -52,7 +52,11 @@ const appearanceState = vi.hoisted((): {appearance: GhosttyAppearance} => ({
 }));
 
 const terminalThemeState = vi.hoisted(() => ({
-	value: {ready: true, theme: null} as {ready: boolean; theme: Record<string, string> | null},
+	value: {ready: true, theme: null, fontSize: null} as {
+		ready: boolean;
+		theme: Record<string, string> | null;
+		fontSize: number | null;
+	},
 }));
 
 vi.mock("../src/hooks/use-terminal-theme", () => ({
@@ -165,7 +169,7 @@ describe("live herdr terminal UI", () => {
 		terminalState.resizeCallbacks = [];
 		shortcutState.dispatched = [];
 		appearanceState.appearance = DEFAULT_APPEARANCE;
-		terminalThemeState.value = {ready: true, theme: null};
+		terminalThemeState.value = {ready: true, theme: null, fontSize: null};
 		vi.stubGlobal("ResizeObserver", FakeResizeObserver);
 		vi.stubGlobal("WebSocket", FakeWebSocket);
 		const ready = new Promise<void>((resolve) => {
@@ -441,11 +445,35 @@ describe("live herdr terminal UI", () => {
 		});
 	});
 
+	it("sizes the terminal font from Settings ▸ Code font size over the Ghostty size", async () => {
+		appearanceState.appearance = GHOSTTY_APPEARANCE;
+		terminalThemeState.value = {ready: true, theme: null, fontSize: 18};
+
+		render(<HerdrTerminal sessionId="session-test-100" />);
+		releaseFonts();
+		await waitFor(() => {
+			expect(terminalState.socketUrls.length).toBe(1);
+		});
+
+		expect(terminalState.constructorOptions).toStrictEqual([
+			{
+				convertEol: false,
+				cursorBlink: false,
+				disableStdin: true,
+				fontFamily: GHOSTTY_APPEARANCE.fontFamily,
+				fontSize: 18,
+				scrollback: 0,
+				theme: GHOSTTY_APPEARANCE.theme,
+			},
+		]);
+	});
+
 	it("paints the code theme's terminal colours over the Ghostty font", async () => {
 		appearanceState.appearance = GHOSTTY_APPEARANCE;
 		terminalThemeState.value = {
 			ready: true,
 			theme: {background: "#ffffff", foreground: "#24292e", red: "#d73a49"},
+			fontSize: null,
 		};
 
 		render(<HerdrTerminal sessionId="session-test-100" />);
@@ -474,19 +502,19 @@ describe("live herdr terminal UI", () => {
 	});
 
 	it("waits for the code theme before building the terminal, and rebuilds it when the theme changes", async () => {
-		terminalThemeState.value = {ready: false, theme: null};
+		terminalThemeState.value = {ready: false, theme: null, fontSize: null};
 		const view = render(<HerdrTerminal sessionId="session-test-100" />);
 		releaseFonts();
 		await flushPendingWork();
 		const beforeReady = terminalState.constructorOptions.length;
 
-		terminalThemeState.value = {ready: true, theme: {background: "#ffffff"}};
+		terminalThemeState.value = {ready: true, theme: {background: "#ffffff"}, fontSize: null};
 		view.rerender(<HerdrTerminal sessionId="session-test-100" />);
 		await waitFor(() => {
 			expect(terminalState.socketUrls.length).toBe(1);
 		});
 
-		terminalThemeState.value = {ready: true, theme: {background: "#000000"}};
+		terminalThemeState.value = {ready: true, theme: {background: "#000000"}, fontSize: null};
 		view.rerender(<HerdrTerminal sessionId="session-test-100" />);
 		await waitFor(() => {
 			expect(terminalState.socketUrls.length).toBe(2);

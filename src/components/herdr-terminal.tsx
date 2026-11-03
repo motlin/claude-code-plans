@@ -46,7 +46,7 @@ export function HerdrTerminal({
 	const [error, setError] = useState("");
 	const [appearance, setAppearance] = useState<GhosttyAppearance | null>(null);
 	const {actions: selectionActions, announcement} = useTerminalSelectionActions(sessionId);
-	const {ready: themeReady, theme: codeTheme} = useTerminalTheme();
+	const {ready: themeReady, theme: codeTheme, fontSize: codeFontSize} = useTerminalTheme();
 
 	useEffect(() => {
 		const element = container.current;
@@ -177,7 +177,7 @@ export function HerdrTerminal({
 		void (async () => {
 			const loaded = await loadGhostty();
 			if (disposed) return;
-			const ghosttyAppearance = applyTerminalTheme(loaded.appearance, codeTheme);
+			const ghosttyAppearance = applyTerminalTheme(loaded.appearance, codeTheme, codeFontSize);
 			setAppearance(ghosttyAppearance);
 			teardown = start(loaded.ghostty, ghosttyAppearance);
 		})().catch((cause: unknown) => {
@@ -190,7 +190,7 @@ export function HerdrTerminal({
 			disposed = true;
 			teardown?.();
 		};
-	}, [sessionId, interactive, selectionActions, themeReady, codeTheme]);
+	}, [sessionId, interactive, selectionActions, themeReady, codeTheme, codeFontSize]);
 
 	useEffect(() => {
 		onStatusChange?.(status);

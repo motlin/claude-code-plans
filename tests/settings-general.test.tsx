@@ -62,19 +62,19 @@ afterEach(() => {
 });
 
 describe("General settings ▸ Appearance", () => {
-	it("renders Theme, Transcript text size, Transcript width, then Motion with the upstream width description", async () => {
+	it("renders Theme, Interface font, Transcript text size, Transcript width, then Motion with the upstream width description", async () => {
 		stubNotification("granted");
 		await renderGeneral();
 
 		const appearance = screen.getByRole("heading", {name: "Appearance"}).closest("section");
 		const rows = [...(appearance?.querySelectorAll("[data-settings-row]") ?? [])];
 		expect({
-			order: rows.map((row) => row.getAttribute("data-settings-row")).slice(0, 4),
+			order: rows.map((row) => row.getAttribute("data-settings-row")),
 			description: document.querySelector('[data-settings-row="transcript-width"] [data-settings-desc]')
 				?.textContent,
 			width: radios("Transcript width"),
 		}).toStrictEqual({
-			order: ["theme", "transcript-text-size", "transcript-width", "motion"],
+			order: ["theme", "interface-font", "transcript-text-size", "transcript-width", "motion", "hide-chrome"],
 			description: "Maximum width of the transcript and composer columns.",
 			width: [
 				{name: "Narrow", checked: "true"},
@@ -84,7 +84,7 @@ describe("General settings ▸ Appearance", () => {
 		});
 	});
 
-	it("leaves out upstream's not-applicable rows and keeps exactly the five Appearance rows in order", async () => {
+	it("leaves out upstream's not-applicable rows and keeps exactly the six Appearance rows in order", async () => {
 		stubNotification("granted");
 		await renderGeneral();
 
@@ -102,7 +102,14 @@ describe("General settings ▸ Appearance", () => {
 				allTitles.includes(title),
 			),
 		}).toStrictEqual({
-			appearance: ["Theme", "Transcript text size", "Transcript width", "Motion", "Hide chrome"],
+			appearance: [
+				"Theme",
+				"Interface font",
+				"Transcript text size",
+				"Transcript width",
+				"Motion",
+				"Hide chrome",
+			],
 			notApplicable: [],
 		});
 	});

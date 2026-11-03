@@ -95,11 +95,18 @@ describe("terminalThemeFromCodeTheme", () => {
 
 describe("applyTerminalTheme", () => {
 	it("keeps the Ghostty appearance untouched in ghostty mode", () => {
-		expect(applyTerminalTheme(GHOSTTY, null)).toBe(GHOSTTY);
+		expect(applyTerminalTheme(GHOSTTY, null, null)).toBe(GHOSTTY);
+	});
+
+	it("sizes the terminal font from Settings ▸ Code font size when one is set", () => {
+		expect([
+			applyTerminalTheme(GHOSTTY, null, 20).fontSize,
+			applyTerminalTheme(GHOSTTY, {}, 11).fontSize,
+		]).toStrictEqual([20, 11]);
 	});
 
 	it("replaces the Ghostty colours with the code theme, keeping its font and background fallbacks", () => {
-		expect(applyTerminalTheme(GHOSTTY, {red: "#d73a49", cursor: "#000000"})).toStrictEqual({
+		expect(applyTerminalTheme(GHOSTTY, {red: "#d73a49", cursor: "#000000"}, null)).toStrictEqual({
 			fontFamily: '"Alice Mono", monospace',
 			fontSize: 16,
 			theme: {

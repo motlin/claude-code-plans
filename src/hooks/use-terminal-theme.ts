@@ -2,7 +2,7 @@ import type {ITheme} from "ghostty-web";
 import {useEffect, useMemo, useState} from "react";
 import {useSettings} from "../components/settings-context";
 import {useResolvedTheme} from "../components/theme-context";
-import {type CodeThemeId, loadCodeTheme} from "../lib/code-themes";
+import {type CodeFontSize, type CodeThemeId, loadCodeTheme} from "../lib/code-themes";
 import {terminalThemeFromCodeTheme} from "../lib/terminal-theme";
 
 export interface TerminalThemeState {
@@ -10,10 +10,9 @@ export interface TerminalThemeState {
 	ready: boolean;
 	/** The code theme's terminal colours, or null to keep the Ghostty config's. */
 	theme: ITheme | null;
+	/** Settings ▸ Code font size, which replaces the Ghostty font size; null keeps Ghostty's. */
+	fontSize: CodeFontSize | null;
 }
-
-const NOT_READY: TerminalThemeState = {ready: false, theme: null};
-const GHOSTTY: TerminalThemeState = {ready: true, theme: null};
 
 const mappedThemes = new Map<CodeThemeId, Promise<ITheme>>();
 
@@ -49,10 +48,11 @@ export function useTerminalTheme(): TerminalThemeState {
 		};
 	}, [id, loaded, followCodeTheme]);
 
+	const fontSize = settings.codeFontSize;
 	return useMemo(() => {
-		if (!loaded) return NOT_READY;
-		if (!followCodeTheme) return GHOSTTY;
-		if (loadedTheme?.id !== id) return NOT_READY;
-		return {ready: true, theme: loadedTheme.theme};
-	}, [loaded, followCodeTheme, loadedTheme, id]);
+		if (!loaded) return {ready: false, theme: null, fontSize};
+		if (!followCodeTheme) return {ready: true, theme: null, fontSize};
+		if (loadedTheme?.id !== id) return {ready: false, theme: null, fontSize};
+		return {ready: true, theme: loadedTheme.theme, fontSize};
+	}, [loaded, followCodeTheme, loadedTheme, id, fontSize]);
 }

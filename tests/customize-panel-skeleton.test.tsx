@@ -199,7 +199,7 @@ describe("Customize panel skeleton", () => {
 			stillShown: true,
 			busy: "true",
 			className:
-				"flex-1 space-y-6 overflow-y-auto px-6 pt-2 pb-4 [scrollbar-gutter:stable] opacity-60 transition-opacity",
+				"relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-4 [scrollbar-gutter:stable] opacity-60 transition-opacity",
 			skeleton: null,
 		});
 	});

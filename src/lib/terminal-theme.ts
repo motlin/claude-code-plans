@@ -91,12 +91,18 @@ export function terminalThemeFromCodeTheme(theme: CodeThemeColors): ITheme {
 /**
  * The appearance a terminal is built with: the Ghostty config as-is, or its
  * font with the code theme's colours, keeping Ghostty's background and
- * foreground when the code theme declares neither.
+ * foreground when the code theme declares neither. A Settings ▸ Code font
+ * size replaces Ghostty's font size, as upstream's applies to the terminal.
  */
-export function applyTerminalTheme(appearance: GhosttyAppearance, codeTheme: ITheme | null): GhosttyAppearance {
-	if (codeTheme === null) return appearance;
+export function applyTerminalTheme(
+	appearance: GhosttyAppearance,
+	codeTheme: ITheme | null,
+	codeFontSize: number | null,
+): GhosttyAppearance {
+	const sized = codeFontSize === null ? appearance : {...appearance, fontSize: codeFontSize};
+	if (codeTheme === null) return sized;
 	return {
-		...appearance,
+		...sized,
 		theme: {
 			...codeTheme,
 			background: codeTheme.background ?? appearance.theme.background,

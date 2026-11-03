@@ -404,8 +404,8 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream claude.ai/code — typography */
 	--upstream-text-body: 14px;
 	--upstream-leading-body: 20px;
-	--upstream-text-code: 13px;
-	--upstream-leading-code: 19px;
+	--upstream-text-code: var(--epitaxy-code-font-size, 13px);
+	--upstream-leading-code: var(--epitaxy-code-leading, 19px);
 	/* Secondary label size (upstream --cds-font-size-footnote). */
 	--upstream-text-footnote: 13px;
 	--upstream-leading-footnote: 17px;
@@ -1894,8 +1894,8 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	--upstream-leading-body: 20px;
 	--upstream-text-footnote: 13px;
 	--upstream-leading-footnote: 17px;
-	--upstream-text-code: 13px;
-	--upstream-leading-code: 19px;
+	--upstream-text-code: var(--epitaxy-code-font-size, 13px);
+	--upstream-leading-code: var(--epitaxy-code-leading, 19px);
 	--upstream-text-caption: 12px;
 	--upstream-leading-caption: 17px;
 }
@@ -1905,8 +1905,8 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	--upstream-leading-body: 19px;
 	--upstream-text-footnote: 12px;
 	--upstream-leading-footnote: 15px;
-	--upstream-text-code: 12px;
-	--upstream-leading-code: 17px;
+	--upstream-text-code: var(--epitaxy-code-font-size, 12px);
+	--upstream-leading-code: var(--epitaxy-code-leading, 17px);
 	--upstream-text-caption: 11px;
 	--upstream-leading-caption: 17px;
 }
@@ -2014,6 +2014,36 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	}
 	100% {
 		clip-path: inset(0px);
+		opacity: 0;
+	}
+}
+
+/* A flashed section header's wash hugs its title: upstream insets it by 4px minus --cds-pad-md (12px comfortable). */
+.feature-anchor-row-fill[data-settings-group-header]::before {
+	inset-block: calc(4px - 12px);
+}
+
+/* Under RTL the underline wipes in from the right. */
+.feature-anchor-highlight:where(:root[dir="rtl"] :dir(rtl))::after {
+	clip-path: inset(0 0 0 100%);
+	animation-name: feature-anchor-highlight-underline-rtl;
+}
+
+@keyframes feature-anchor-highlight-underline-rtl {
+	0% {
+		clip-path: inset(0 0 0 100%);
+		opacity: 1;
+	}
+	17.9% {
+		clip-path: inset(0);
+		opacity: 1;
+	}
+	53.8% {
+		clip-path: inset(0);
+		opacity: 1;
+	}
+	100% {
+		clip-path: inset(0);
 		opacity: 0;
 	}
 }

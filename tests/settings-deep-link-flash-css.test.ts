@@ -24,6 +24,18 @@ describe("settings deep-link flash CSS", () => {
 		).toStrictEqual([]);
 	});
 
+	// Upstream's 2026-11 stylesheet: a section header's wash hugs its title (inset-block 4px minus pad-md, 12px
+	// at comfortable), and under RTL the underline wipes in from the right.
+	it("copies upstream's section-header wash inset and the RTL underline wipe", () => {
+		expect(
+			missing([
+				".feature-anchor-row-fill[data-settings-group-header]::before { inset-block: calc(4px - 12px); }",
+				'.feature-anchor-highlight:where(:root[dir="rtl"] :dir(rtl))::after { clip-path: inset(0 0 0 100%); animation-name: feature-anchor-highlight-underline-rtl; }',
+				"@keyframes feature-anchor-highlight-underline-rtl { 0% { clip-path: inset(0 0 0 100%); opacity: 1; } 17.9% { clip-path: inset(0); opacity: 1; } 53.8% { clip-path: inset(0); opacity: 1; } 100% { clip-path: inset(0); opacity: 0; } }",
+			]),
+		).toStrictEqual([]);
+	});
+
 	it("shows both static under the OS reduced-motion preference and the Motion: Reduced setting", () => {
 		expect(
 			missing([

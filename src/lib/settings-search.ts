@@ -21,6 +21,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 		title: "Theme",
 		searchPhrases: ["dark mode", "light mode", "dark theme", "light theme"],
 	},
+	{tab: "general", rowSlug: "interface-font", title: "Interface font"},
 	{
 		tab: "general",
 		rowSlug: "transcript-text-size",
@@ -36,7 +37,12 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 	{tab: "general", rowSlug: "reset-settings", title: "Reset settings"},
 	{tab: "claude-code", rowSlug: "terminal-colors", title: "Terminal colors"},
 	{tab: "claude-code", rowSlug: "code-font", title: "Code font"},
-	{tab: "claude-code", rowSlug: "interface-font", title: "Interface font"},
+	{
+		tab: "claude-code",
+		rowSlug: "code-font-size",
+		title: "Code font size",
+		searchPhrases: ["editor font size", "terminal font size"],
+	},
 	{tab: "claude-code", rowSlug: "default-transcript-view", title: "Default transcript view"},
 	{
 		tab: "claude-code",

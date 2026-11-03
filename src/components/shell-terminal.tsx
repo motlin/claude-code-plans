@@ -74,7 +74,7 @@ export function ShellTerminal({
 	const [restarting, setRestarting] = useState(false);
 	const [appearance, setAppearance] = useState<GhosttyAppearance | null>(null);
 	const {actions: selectionActions, announcement} = useTerminalSelectionActions(sessionId);
-	const {ready: themeReady, theme: codeTheme} = useTerminalTheme();
+	const {ready: themeReady, theme: codeTheme, fontSize: codeFontSize} = useTerminalTheme();
 
 	useEffect(() => {
 		const element = container.current;
@@ -223,7 +223,7 @@ export function ShellTerminal({
 		void loadGhostty()
 			.then(({ghostty, appearance: loadedAppearance}) => {
 				if (disposed) return;
-				const ghosttyAppearance = applyTerminalTheme(loadedAppearance, codeTheme);
+				const ghosttyAppearance = applyTerminalTheme(loadedAppearance, codeTheme, codeFontSize);
 				setAppearance(ghosttyAppearance);
 				dispatch({type: "loaded"});
 				teardown = start(ghostty, ghosttyAppearance);
@@ -236,7 +236,7 @@ export function ShellTerminal({
 			disposed = true;
 			teardown?.();
 		};
-	}, [ptyKey, selectionActions, themeReady, codeTheme]);
+	}, [ptyKey, selectionActions, themeReady, codeTheme, codeFontSize]);
 
 	useEffect(() => {
 		if (!closeRequested) return;

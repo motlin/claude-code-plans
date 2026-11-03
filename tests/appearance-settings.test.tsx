@@ -7,6 +7,7 @@ import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {
+	INTERFACE_FONT_FAMILIES,
 	InterfaceFontSchema,
 	SYSTEM_FONT_STACK,
 	TRANSCRIPT_TEXT_SIZES,
@@ -14,6 +15,7 @@ import {
 } from "../src/lib/appearance";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {DEFAULTS} from "../src/components/settings-context";
+import {FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 import {ClaudeCodeSettings, GeneralSettings, TranscriptSettings} from "../src/components/settings/settings-sections";
 import {ThemeProvider} from "../src/components/theme-provider";
 import {installLocalStorage} from "./fake-storage";
@@ -50,6 +52,15 @@ async function renderTab(tab: React.ReactNode) {
 
 function pick(group: string, option: string) {
 	fireEvent.click(within(screen.getByRole("radiogroup", {name: group})).getByRole("radio", {name: option}));
+}
+
+/** The fizzy-lake rollout without its `type` part. */
+const PRE_TYPE_PARTS: readonly FizzyLakePart[] = ["color", "panels"];
+
+/** Picks an option from a settings ThemedCombobox (the fizzy `type` Interface font control). */
+function choose(name: string, option: string) {
+	fireEvent.click(screen.getByRole("combobox", {name}));
+	fireEvent.click(screen.getByRole("option", {name: option}));
 }
 
 function checked(group: string): string | null {
@@ -133,17 +144,12 @@ describe("appearance setting schemas", () => {
 	});
 });
 
-describe("Claude Code settings ▸ Appearance", () => {
+describe("Appearance settings", () => {
 	it("applies interface font, transcript text size and width as CSS variables on <html>", async () => {
-		await renderTab(
-			<>
-				<GeneralSettings />
-				<ClaudeCodeSettings />
-			</>,
-		);
+		await renderTab(<GeneralSettings />);
 		const initial = htmlVars();
 
-		pick("Interface font", "System");
+		choose("Interface font", "System");
 		pick("Transcript text size", "Large");
 		pick("Transcript width", "Wide");
 		const changed = htmlVars();
@@ -153,7 +159,7 @@ describe("Claude Code settings ▸ Appearance", () => {
 			width: localStorage.getItem("ccp-transcript-width"),
 		};
 
-		pick("Interface font", "Sans");
+		choose("Interface font", "Default · Sans");
 		pick("Transcript text size", "Small");
 
 		expect({initial, changed, stored, reverted: htmlVars()}).toStrictEqual({
@@ -191,26 +197,93 @@ describe("Claude Code settings ▸ Appearance", () => {
 		});
 	});
 
-	it("offers OpenDyslexic, which marks <html>, swaps the Code font placeholder and links the font licenses", async () => {
+	// Upstream's fizzy `type` General row: a ghost Combobox reading "Default · {font}" whose options are each
+	// set in their own family (upstream dn: [default, anthropic, system, dyslexic]); local's default is Sans.
+	it("offers the interface fonts in a ghost combobox, each option in its own family", async () => {
+		await renderTab(<GeneralSettings />);
+		const trigger = screen.getByRole("combobox", {name: "Interface font"});
+		const root = trigger.closest("[data-cds=Combobox]");
+		const initial = trigger.textContent;
+		fireEvent.click(trigger);
+		const options = screen.getAllByRole("option").map((option) => ({
+			label: option.textContent,
+			fontFamily: option.querySelector<HTMLElement>("span")?.style.fontFamily,
+			selected: option.getAttribute("aria-selected"),
+		}));
+		const filter = screen.queryByRole("searchbox");
+		fireEvent.click(screen.getByRole("option", {name: "OpenDyslexic"}));
+
+		expect({
+			initial,
+			ghost: ["group/cbx", "bg-transparent", "hover:bg-fill-ghost-hover"].filter((name) =>
+				root?.classList.contains(name),
+			),
+			filter,
+			options,
+			after: screen.getByRole("combobox", {name: "Interface font"}).textContent,
+			stored: localStorage.getItem("ccp-interface-font"),
+		}).toStrictEqual({
+			initial: "Default · Sans",
+			ghost: ["group/cbx", "bg-transparent", "hover:bg-fill-ghost-hover"],
+			filter: null,
+			options: [
+				{label: "Default · Sans", fontFamily: INTERFACE_FONT_FAMILIES.sans, selected: "true"},
+				{label: "Sans", fontFamily: INTERFACE_FONT_FAMILIES.sans, selected: "false"},
+				{label: "System", fontFamily: INTERFACE_FONT_FAMILIES.system, selected: "false"},
+				{label: "OpenDyslexic", fontFamily: INTERFACE_FONT_FAMILIES.dyslexic, selected: "false"},
+			],
+			after: "OpenDyslexic",
+			stored: "dyslexic",
+		});
+	});
+
+	it("keeps the pre-rollout segmented Interface font control when fizzy-lake type is off", async () => {
+		await renderTab(
+			<FizzyLakeContext.Provider value={PRE_TYPE_PARTS}>
+				<GeneralSettings />
+			</FizzyLakeContext.Provider>,
+		);
+
+		expect({
+			combobox: screen.queryByRole("combobox", {name: "Interface font"}),
+			radios: within(screen.getByRole("radiogroup", {name: "Interface font"}))
+				.getAllByRole("radio")
+				.map((radio) => radio.textContent),
+		}).toStrictEqual({combobox: null, radios: ["Sans", "System", "OpenDyslexic"]});
+	});
+
+	it("moves Interface font out of Claude Code, whose Appearance keeps only Default transcript view", async () => {
 		await renderTab(<ClaudeCodeSettings />);
-		const options = within(screen.getByRole("radiogroup", {name: "Interface font"}))
-			.getAllByRole("radio")
-			.map((radio) => radio.textContent);
+		const appearance = document.getElementById("appearance");
+
+		expect(
+			[...(appearance?.querySelectorAll("[data-settings-row]") ?? [])].map((row) =>
+				row.getAttribute("data-settings-row"),
+			),
+		).toStrictEqual(["default-transcript-view"]);
+	});
+
+	it("offers OpenDyslexic, which marks <html>, swaps the Code font placeholder and links the font licenses", async () => {
+		await renderTab(
+			<>
+				<GeneralSettings />
+				<ClaudeCodeSettings />
+			</>,
+		);
 		const placeholderBefore = screen.getByRole("textbox", {name: "Code font family"}).getAttribute("placeholder");
 
-		pick("Interface font", "OpenDyslexic");
+		choose("Interface font", "OpenDyslexic");
 		const dyslexic = {
 			dataset: document.documentElement.dataset["interfaceFont"] ?? null,
 			fontSans: document.documentElement.style.getPropertyValue("--font-sans"),
 			stored: localStorage.getItem("ccp-interface-font"),
 			placeholder: screen.getByRole("textbox", {name: "Code font family"}).getAttribute("placeholder"),
 		};
-		pick("Interface font", "Sans");
+		choose("Interface font", "Default · Sans");
 
 		const link = screen.getByRole("link", {name: /Font licenses/});
 		const row = screen.getByRole("group", {name: "Interface font"});
 		expect({
-			options,
 			placeholderBefore,
 			dyslexic,
 			reverted: document.documentElement.dataset["interfaceFont"] ?? null,
@@ -223,7 +296,6 @@ describe("Claude Code settings ▸ Appearance", () => {
 			},
 			description: row.querySelector("[data-settings-desc]")?.textContent ?? null,
 		}).toStrictEqual({
-			options: ["Sans", "System", "OpenDyslexic"],
 			placeholderBefore: "e.g. JetBrains Mono",
 			dyslexic: {
 				dataset: "dyslexic",
@@ -268,7 +340,7 @@ describe("Claude Code settings ▸ Appearance", () => {
 		);
 
 		expect({
-			font: checked("Interface font"),
+			font: screen.getByRole("combobox", {name: "Interface font"}).textContent,
 			size: checked("Transcript text size"),
 			width: checked("Transcript width"),
 			view: checked("Default transcript view"),

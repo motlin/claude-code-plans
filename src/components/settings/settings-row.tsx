@@ -88,7 +88,7 @@ export function SettingsRow({slug, title, description, children, footnote, below
 
 	const inner = (
 		<>
-			<div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+			<div data-settings-text="" className="flex min-w-0 flex-1 flex-col justify-center gap-1">
 				<div id={titleId} className="text-body text-primary">
 					<span
 						className={`settings-row-title inline-block align-top ${lit ? "feature-anchor-highlight" : ""}`}

@@ -14,6 +14,16 @@ export const SYSTEM_FONT_STACK =
 	'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
 /**
+ * Each interface font's family, mirroring globals.css (`--font-sans` and the OpenDyslexic rule), so the
+ * fizzy `type` Interface font options can each be set in their own face like upstream's.
+ */
+export const INTERFACE_FONT_FAMILIES: Record<InterfaceFont, string> = {
+	sans: '"Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+	system: SYSTEM_FONT_STACK,
+	dyslexic: '"OpenDyslexic", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+};
+
+/**
  * Transcript body font size and leading, from upstream's non-fizzy-lake `[data-chat-text-size]`
  * blocks: `--chat-body` .8125/.875/.9375rem at `--chat-leading` 1.42857 / 1.42857 / 1.46667.
  * Rem sizes and unitless leadings let a browser text zoom (a larger root font size) scale the

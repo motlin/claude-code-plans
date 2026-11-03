@@ -3,6 +3,7 @@ import {useQuery} from "@tanstack/react-query";
 import {type KeyboardEvent, lazy, type ReactNode, Suspense, useEffect, useRef, useState} from "react";
 import {ArrowDown, ArrowUp, Monitor, Moon, Plus, Sun, Trash2} from "lucide-react";
 import {
+	DEFAULTS,
 	matchedVerbosityPreset,
 	useSettings,
 	type Motion,
@@ -10,12 +11,20 @@ import {
 	type Settings,
 	type Verbosity,
 } from "../settings-context";
-import {InterfaceFontSchema} from "../../lib/appearance";
-import type {TranscriptTextSize} from "../../lib/appearance";
+import {
+	INTERFACE_FONT_FAMILIES,
+	type InterfaceFont,
+	InterfaceFontSchema,
+	type TranscriptTextSize,
+} from "../../lib/appearance";
+import {useFizzyLake} from "../../lib/fizzy-lake";
 import type {CapabilityId} from "../../lib/capabilities";
 import {
+	CODE_FONT_SIZES,
 	CodeThemeDarkSchema,
 	CodeThemeLightSchema,
+	DEFAULT_CODE_FONT_SIZE,
+	isCodeFontSize,
 	type CodeThemeDark,
 	type CodeThemeLight,
 } from "../../lib/code-themes";
@@ -334,29 +343,69 @@ const TRANSCRIPT_WIDTH_OPTIONS: Array<{value: TranscriptWidth; label: string}> =
 	{value: "wide", label: "Wide"},
 ];
 
-function AppearanceSection() {
-	const {settings, setSetting, setVerbosity} = useSettings();
+/*
+ * Upstream's fizzy `type` Interface font options (c0db37792 `dn`): "Default · {font}" and then each font, every
+ * label set in its own family. Upstream stores Default apart from its named font; locally Sans is the
+ * default, so both write `sans` and the trigger reads "Default · Sans" for it.
+ */
+const INTERFACE_FONT_DEFAULT = "default";
+const INTERFACE_FONT_COMBOBOX_OPTIONS: Array<{
+	value: typeof INTERFACE_FONT_DEFAULT | InterfaceFont;
+	label: string;
+	labelStyle: {fontFamily: string};
+}> = [
+	{
+		value: INTERFACE_FONT_DEFAULT,
+		label: `Default · ${interfaceFontLabels[DEFAULTS.interfaceFont]}`,
+		labelStyle: {fontFamily: INTERFACE_FONT_FAMILIES[DEFAULTS.interfaceFont]},
+	},
+	...InterfaceFontSchema.options.map((value) => ({
+		value,
+		label: interfaceFontLabels[value],
+		labelStyle: {fontFamily: INTERFACE_FONT_FAMILIES[value]},
+	})),
+];
+
+/** General ▸ Appearance ▸ Interface font, after Theme (moved from Claude Code in upstream's 2026-11 build). */
+function InterfaceFontRow() {
+	const {settings, setSetting} = useSettings();
+	const typeLed = useFizzyLake("type");
 
 	return (
-		<SettingsSection title="Appearance">
-			<SettingsRow
-				slug="interface-font"
-				title="Interface font"
-				description={
-					<>
-						Font for the whole interface — menus, sidebars, and panels.{" "}
-						<a
-							data-cds="TextLink"
-							href="/third-party-notices.txt"
-							target="_blank"
-							rel="noopener"
-							className="text-link inline cursor-pointer"
-						>
-							Font licenses<span className="sr-only">(opens in new tab)</span>
-						</a>
-					</>
-				}
-			>
+		<SettingsRow
+			slug="interface-font"
+			title="Interface font"
+			description={
+				<>
+					Font for the whole interface — menus, sidebars, and panels.{" "}
+					<a
+						data-cds="TextLink"
+						href="/third-party-notices.txt"
+						target="_blank"
+						rel="noopener"
+						className="text-link inline cursor-pointer"
+					>
+						Font licenses<span className="sr-only">(opens in new tab)</span>
+					</a>
+				</>
+			}
+		>
+			{typeLed ? (
+				<ThemedCombobox
+					aria-label="Interface font"
+					variant="ghost"
+					filterable={false}
+					value={
+						settings.interfaceFont === DEFAULTS.interfaceFont
+							? INTERFACE_FONT_DEFAULT
+							: settings.interfaceFont
+					}
+					options={INTERFACE_FONT_COMBOBOX_OPTIONS}
+					onValueChange={(next) => {
+						setSetting("interfaceFont", next === INTERFACE_FONT_DEFAULT ? DEFAULTS.interfaceFont : next);
+					}}
+				/>
+			) : (
 				<SegmentedControl
 					value={settings.interfaceFont}
 					options={INTERFACE_FONT_OPTIONS}
@@ -364,7 +413,16 @@ function AppearanceSection() {
 						setSetting("interfaceFont", next);
 					}}
 				/>
-			</SettingsRow>
+			)}
+		</SettingsRow>
+	);
+}
+
+function AppearanceSection() {
+	const {settings, setVerbosity} = useSettings();
+
+	return (
+		<SettingsSection title="Appearance">
 			<SettingsRow
 				slug="default-transcript-view"
 				title="Default transcript view"
@@ -840,6 +898,7 @@ export function GeneralSettings() {
 		<>
 			<SettingsSection title="Appearance">
 				<ThemeRow />
+				<InterfaceFontRow />
 				<TranscriptTextSizeRow />
 				<TranscriptWidthRow />
 				<MotionRow />
@@ -866,6 +925,38 @@ const CODE_THEME_LIGHT_OPTIONS: Array<{value: CodeThemeLight; label: string}> = 
 const CODE_THEME_DARK_OPTIONS: Array<{value: CodeThemeDark; label: string}> = CodeThemeDarkSchema.options.map(
 	(value) => ({value, label: codeThemeDarkLabels[value]}),
 );
+
+/** Upstream's Code font size options: "Default · 13 px", then each size. */
+const CODE_FONT_SIZE_OPTIONS: Array<{value: string; label: string}> = [
+	{value: "default", label: `Default · ${DEFAULT_CODE_FONT_SIZE} px`},
+	...CODE_FONT_SIZES.map((size) => ({value: String(size), label: `${size} px`})),
+];
+
+function CodeFontSizeRow() {
+	const {settings, setSetting} = useSettings();
+
+	return (
+		<SettingsRow
+			slug="code-font-size"
+			title="Code font size"
+			description="Applies to open files, diffs, code blocks, command output, and the terminal."
+		>
+			<div className="w-56">
+				<ThemedCombobox
+					aria-label="Code font size"
+					value={settings.codeFontSize === null ? "default" : String(settings.codeFontSize)}
+					options={CODE_FONT_SIZE_OPTIONS}
+					filterable={false}
+					onValueChange={(next) => {
+						const size = Number(next);
+						setSetting("codeFontSize", isCodeFontSize(size) ? size : null);
+					}}
+					className="w-full"
+				/>
+			</div>
+		</SettingsRow>
+	);
+}
 
 function CodeAppearanceSection() {
 	const {settings, setSetting} = useSettings();
@@ -929,6 +1020,7 @@ function CodeAppearanceSection() {
 					className="h-8 w-56 rounded-r6 bg-[var(--settings-field-bg)] px-3 text-body text-primary outline-none placeholder:text-[var(--settings-muted)] shadow-field-ring transition duration-150 enabled:[&:hover:not(:focus)]:shadow-field-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 				/>
 			</SettingsRow>
+			<CodeFontSizeRow />
 		</SettingsSection>
 	);
 }

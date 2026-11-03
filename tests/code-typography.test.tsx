@@ -37,15 +37,16 @@ function customProperty(styles: string, name: string): string {
 afterEach(cleanup);
 
 describe("code typography", () => {
-	it("pins the upstream comfortable code font size and line height tokens (compact lives in density-tokens.test.ts)", () => {
+	// Settings ▸ Code font size overrides both through upstream's --epitaxy-code-* vars on <html>.
+	it("pins the upstream comfortable code font size and line height tokens behind the Code font size override (compact lives in density-tokens.test.ts)", () => {
 		const styles = readFileSync("src/styles/globals.css", "utf8");
 
 		expect({
 			fontSize: customProperty(styles, "--upstream-text-code"),
 			lineHeight: customProperty(styles, "--upstream-leading-code"),
 		}).toStrictEqual({
-			fontSize: "13px",
-			lineHeight: "19px",
+			fontSize: "var(--epitaxy-code-font-size, 13px)",
+			lineHeight: "var(--epitaxy-code-leading, 19px)",
 		});
 	});
 

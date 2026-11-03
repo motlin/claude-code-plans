@@ -34,7 +34,7 @@ describe("useTerminalTheme", () => {
 		const {result} = renderHook(() => useTerminalTheme(), {wrapper});
 
 		await waitFor(() => {
-			expect(result.current).toStrictEqual({ready: true, theme: expected});
+			expect(result.current).toStrictEqual({ready: true, theme: expected, fontSize: null});
 		});
 	});
 
@@ -45,7 +45,7 @@ describe("useTerminalTheme", () => {
 
 		const {result} = renderHook(() => useTerminalTheme(), {wrapper});
 		await waitFor(() => {
-			expect(result.current).toStrictEqual({ready: true, theme: light});
+			expect(result.current).toStrictEqual({ready: true, theme: light, fontSize: null});
 		});
 
 		act(() => {
@@ -53,7 +53,7 @@ describe("useTerminalTheme", () => {
 		});
 
 		await waitFor(() => {
-			expect(result.current).toStrictEqual({ready: true, theme: dark});
+			expect(result.current).toStrictEqual({ready: true, theme: dark, fontSize: null});
 		});
 	});
 
@@ -63,7 +63,17 @@ describe("useTerminalTheme", () => {
 		const {result} = renderHook(() => useTerminalTheme(), {wrapper});
 
 		await waitFor(() => {
-			expect(result.current).toStrictEqual({ready: true, theme: null});
+			expect(result.current).toStrictEqual({ready: true, theme: null, fontSize: null});
+		});
+	});
+
+	it("hands terminals the Code font size when one is set", async () => {
+		stubStorage({"ccp-terminal-appearance": "ghostty", "ccp-code-font-size": "18"});
+
+		const {result} = renderHook(() => useTerminalTheme(), {wrapper});
+
+		await waitFor(() => {
+			expect(result.current).toStrictEqual({ready: true, theme: null, fontSize: 18});
 		});
 	});
 });

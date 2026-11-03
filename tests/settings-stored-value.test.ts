@@ -26,6 +26,14 @@ describe("readStoredValue", () => {
 		]);
 	});
 
+	it("reads only upstream's code font sizes, and anything else as the Default (null)", () => {
+		const read = (raw: string) => {
+			store("codeFontSize", raw);
+			return readStoredValue("codeFontSize");
+		};
+		expect(["11", "16", "20", "17", "null", "big"].map(read)).toStrictEqual([11, 16, 20, null, null, null]);
+	});
+
 	it("drops a non-finite number", () => {
 		store("activeTimeoutSec", "soon");
 		expect(readStoredValue("activeTimeoutSec")).toBeUndefined();

@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useMemo, useState} from "react";
 
 import {appearanceCssVars} from "../lib/appearance";
-import {codeFontFamily} from "../lib/code-themes";
+import {codeFontFamily, codeFontSizeCssVars} from "../lib/code-themes";
 import {objectKeys} from "../lib/narrow";
 import {
 	DEFAULTS,
@@ -66,6 +66,14 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 		if (family === null) style.removeProperty("--font-mono");
 		else style.setProperty("--font-mono", family);
 	}, [settings.codeFont]);
+
+	useEffect(() => {
+		const style = document.documentElement.style;
+		for (const [name, value] of Object.entries(codeFontSizeCssVars(settings.codeFontSize))) {
+			if (value === null) style.removeProperty(name);
+			else style.setProperty(name, value);
+		}
+	}, [settings.codeFontSize]);
 
 	useEffect(() => {
 		const style = document.documentElement.style;

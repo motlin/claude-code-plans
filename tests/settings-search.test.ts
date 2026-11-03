@@ -23,25 +23,62 @@ describe("rankSettingsSections grouping", () => {
 		["", []],
 		["   ", []],
 		["zzz-no-such-setting", []],
-		// Claude Code scores 5 + 2 (word start); General scores 5 + 4 via the "font size" phrase.
+		// Both score 5 + 2 (word start) and tie in nav order; General also matches via the "font size" phrase.
 		[
 			"font",
+			[
+				{
+					tab: "general",
+					rows: [
+						["interface-font", "Interface font"],
+						["transcript-text-size", "Transcript text size"],
+					],
+				},
+				{
+					tab: "claude-code",
+					rows: [
+						["code-font", "Code font"],
+						["code-font-size", "Code font size"],
+					],
+				},
+			],
+		],
+		// Space-insensitive prefix and order-free word starts.
+		[
+			"codefont",
 			[
 				{
 					tab: "claude-code",
 					rows: [
 						["code-font", "Code font"],
-						["interface-font", "Interface font"],
+						["code-font-size", "Code font size"],
 					],
 				},
+			],
+		],
+		[
+			"font code",
+			[
+				{
+					tab: "claude-code",
+					rows: [
+						["code-font", "Code font"],
+						["code-font-size", "Code font size"],
+					],
+				},
+			],
+		],
+		[
+			"font size",
+			[
+				{tab: "claude-code", rows: [["code-font-size", "Code font size"]]},
 				{tab: "general", rows: [["transcript-text-size", "Transcript text size"]]},
 			],
 		],
-		// Space-insensitive prefix and order-free word starts.
-		["codefont", [{tab: "claude-code", rows: [["code-font", "Code font"]]}]],
-		["font code", [{tab: "claude-code", rows: [["code-font", "Code font"]]}]],
-		["font size", [{tab: "general", rows: [["transcript-text-size", "Transcript text size"]]}]],
 		["dark mode", [{tab: "general", rows: [["theme", "Theme"]]}]],
+		// Upstream's Code font size search phrases.
+		["editor font size", [{tab: "claude-code", rows: [["code-font-size", "Code font size"]]}]],
+		["terminal font size", [{tab: "claude-code", rows: [["code-font-size", "Code font size"]]}]],
 		["terse", [{tab: "claude-code", rows: [["output-style", "Output style"]]}]],
 		["response style", [{tab: "claude-code", rows: [["output-style", "Output style"]]}]],
 		// A keyword-only section hit has no rows.
@@ -187,7 +224,14 @@ describe("rankSettingsSections", () => {
 		[
 			"code",
 			[
-				{tab: "claude-code", score: 2, rows: [["code-font", 1]]},
+				{
+					tab: "claude-code",
+					score: 2,
+					rows: [
+						["code-font", 1],
+						["code-font-size", 1],
+					],
+				},
 				{tab: "general", score: 6, rows: [["code-permission-requests", 1]]},
 				{tab: "claude-config", score: 7, rows: [["claude-code-settings-files", 2]]},
 			],
@@ -240,10 +284,12 @@ describe("buildSettingsResultRows", () => {
 		[
 			"font",
 			[
+				{kind: "hit", tab: "general"},
+				{kind: "child", tab: "general", rowSlug: "interface-font", title: "Interface font"},
+				{kind: "child", tab: "general", rowSlug: "transcript-text-size", title: "Transcript text size"},
 				{kind: "hit", tab: "claude-code"},
 				{kind: "child", tab: "claude-code", rowSlug: "code-font", title: "Code font"},
-				{kind: "child", tab: "claude-code", rowSlug: "interface-font", title: "Interface font"},
-				{kind: "hit", tab: "general", via: "Transcript text size", rowSlug: "transcript-text-size"},
+				{kind: "child", tab: "claude-code", rowSlug: "code-font-size", title: "Code font size"},
 			],
 		],
 		["theme", [{kind: "hit", tab: "general", via: "Theme", rowSlug: "theme"}]],
@@ -295,12 +341,7 @@ describe("buildSettingsResultRows", () => {
 				{kind: "hit", tab: "ai-features", via: "Summary button", rowSlug: "summary-button"},
 				{kind: "hit", tab: "application", via: "Shell tabs", rowSlug: "shell-tabs"},
 				{kind: "hit", tab: "general", via: "Transcript text size", rowSlug: "transcript-text-size"},
-				{
-					kind: "hit",
-					tab: "claude-code",
-					via: "Connect new sessions to Remote Control",
-					rowSlug: "connect-new-sessions-to-remote-control",
-				},
+				{kind: "hit", tab: "claude-code", via: "Code font size", rowSlug: "code-font-size"},
 				{
 					kind: "hit",
 					tab: "claude-config",

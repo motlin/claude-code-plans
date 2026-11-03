@@ -1,6 +1,6 @@
 import {Dialog} from "@base-ui/react/dialog";
 import {useLocation, useNavigate} from "@tanstack/react-router";
-import {ChevronRight, X} from "lucide-react";
+import {ChevronLeft, ChevronRight, X} from "lucide-react";
 import {
 	type ComponentProps,
 	Suspense,
@@ -87,7 +87,7 @@ const NAV_ITEMS: readonly NavItem[] = SettingsTabSchema.options.flatMap((tab): N
 );
 
 const NAV_GROUPS = [
-	{label: "Settings", items: NAV_ITEMS.filter((item) => item.kind === "settings")},
+	{label: "Preferences", items: NAV_ITEMS.filter((item) => item.kind === "settings")},
 	{label: "Customize", items: NAV_ITEMS.filter((item) => item.kind === "customize")},
 ];
 
@@ -108,7 +108,9 @@ function navItemWarmers(item: NavItem) {
 
 /**
  * Upstream's phone-width tab strip: one horizontally scrolling `role=tablist` of 32px tabs
- * (14/20 w500, px12, inactive muted) with a 32px "Scroll forward" button pinned at its right.
+ * (14/20 w500, px12, inactive muted) between cds Tabs' 32px pager controls, "Scroll back"
+ * (`data-toward=start`) and "Scroll forward" (`data-toward=end`), each shown only while the strip
+ * can still move that way.
  */
 function PhoneTabStrip({
 	isSelected,
@@ -119,6 +121,36 @@ function PhoneTabStrip({
 }) {
 	const listRef = useRef<HTMLDivElement>(null);
 	const selectedItem = NAV_ITEMS.find(isSelected);
+	const [edges, setEdges] = useState({atStart: true, atEnd: true});
+	const measure = useCallback(() => {
+		const list = listRef.current;
+		if (list === null) return;
+		const atStart = list.scrollLeft <= 0;
+		const atEnd = list.scrollLeft + list.clientWidth >= list.scrollWidth - 1;
+		setEdges((previous) =>
+			previous.atStart === atStart && previous.atEnd === atEnd ? previous : {atStart, atEnd},
+		);
+	}, []);
+
+	useEffect(() => {
+		measure();
+		const list = listRef.current;
+		if (list === null || typeof ResizeObserver === "undefined") return undefined;
+		const observer = new ResizeObserver(measure);
+		observer.observe(list);
+		return () => {
+			observer.disconnect();
+		};
+	}, [measure]);
+
+	const page = (direction: 1 | -1, fraction: number) => {
+		const list = listRef.current;
+		if (list !== null && typeof list.scrollBy === "function") {
+			list.scrollBy({left: direction * list.clientWidth * fraction, behavior: "smooth"});
+		}
+	};
+	const pagerClass =
+		"flex size-8 shrink-0 items-center justify-center rounded-r6 text-secondary transition-colors hover:bg-fill-ghost-hover";
 
 	useEffect(() => {
 		const tab = listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]');
@@ -127,8 +159,21 @@ function PhoneTabStrip({
 
 	return (
 		<div className="flex shrink-0 items-center gap-1 pb-3">
+			<button
+				type="button"
+				aria-label="Scroll back"
+				data-toward="start"
+				hidden={edges.atStart}
+				onClick={() => {
+					page(-1, 1);
+				}}
+				className={pagerClass}
+			>
+				<ChevronLeft aria-hidden="true" className="size-5" />
+			</button>
 			<div
 				ref={listRef}
+				onScroll={measure}
 				role="tablist"
 				aria-label="Settings"
 				aria-orientation="horizontal"
@@ -160,13 +205,12 @@ function PhoneTabStrip({
 			<button
 				type="button"
 				aria-label="Scroll forward"
+				data-toward="end"
+				hidden={edges.atEnd}
 				onClick={() => {
-					const list = listRef.current;
-					if (list !== null && typeof list.scrollBy === "function") {
-						list.scrollBy({left: list.clientWidth * 0.8, behavior: "smooth"});
-					}
+					page(1, 0.8);
 				}}
-				className="flex size-8 shrink-0 items-center justify-center rounded-r6 text-secondary transition-colors hover:bg-fill-ghost-hover"
+				className={pagerClass}
 			>
 				<ChevronRight aria-hidden="true" className="size-5" />
 			</button>
@@ -299,7 +343,7 @@ export function SettingsDialog() {
 	const closeButton = (
 		<Dialog.Close
 			aria-label="Close"
-			className="flex h-8 w-8 shrink-0 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover"
+			className={`flex ${phone ? "size-8" : "size-7"} shrink-0 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover`}
 		>
 			<X aria-hidden="true" className="size-5" />
 		</Dialog.Close>
@@ -342,13 +386,16 @@ export function SettingsDialog() {
 						finalFocus={finalFocus}
 						data-perf-overlay="settings_modal"
 						data-perf-screen={customize === null ? tab : `customize-${customize.section}`}
-						className={`fixed inset-4 z-50 m-auto flex max-h-[50rem] max-w-[1024px] overflow-hidden dark:border dark:border-white/5 rounded-card bg-[var(--menu-bg)] dark:bg-surface-2 text-body text-primary dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.1),0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgba(0,0,0,0.24)] not-dark:shadow-[0_0_0_1px_rgb(11_11_11/0.1),0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgb(11_11_11/0.08)] outline-none transition-[opacity,scale] duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none data-[starting-style]:opacity-0 data-[starting-style]:scale-[0.98] motion-reduce:data-[starting-style]:scale-100 data-[ending-style]:opacity-0 data-[ending-style]:scale-[0.98] ${phone ? "flex-col" : ""}`}
+						className={`fixed inset-4 z-50 m-auto ${phone ? "flex flex-col" : "grid grid-cols-[auto_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)]"} max-h-[50rem] max-w-[1024px] overflow-hidden dark:border dark:border-white/5 rounded-card bg-[var(--menu-bg)] dark:bg-surface-2 text-body text-primary dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.1),0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgba(0,0,0,0.24)] not-dark:shadow-[0_0_0_1px_rgb(11_11_11/0.1),0_1px_2px_rgb(11_11_11/0.06),0_2px_8px_rgb(11_11_11/0.08)] outline-none transition-[opacity,scale] duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none data-[starting-style]:opacity-0 data-[starting-style]:scale-[0.98] motion-reduce:data-[starting-style]:scale-100 data-[ending-style]:opacity-0 data-[ending-style]:scale-[0.98]`}
 					>
 						{phone ? (
 							// Upstream at phone width: one scroll container (p-24) holding the header, the tab strip and a single column; no search.
 							<div className="isolate flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
 								<div className="flex shrink-0 items-center justify-between gap-3 pb-3">
-									<h2 id={titleId} className="text-[22px]/[28px] font-[580] text-primary">
+									<h2
+										id={titleId}
+										className="min-w-0 flex-1 text-[15px]/[20px] font-[520] text-primary"
+									>
 										Settings
 									</h2>
 									{closeButton}
@@ -362,23 +409,24 @@ export function SettingsDialog() {
 								</div>
 							</div>
 						) : (
-							<>
-								<h2 id={titleId} className="sr-only">
-									Settings
-								</h2>
+							// Upstream's grid shell: nav (row 2), the full-width top row band (row 1), then the panel.
+							<div className="contents">
 								<nav
 									aria-label="Settings"
-									className="flex w-48 shrink-0 flex-col gap-3 border-r border-subtle bg-surface-1"
+									className="row-start-2 flex w-[212px] min-h-0 shrink-0 flex-col border-e border-[rgb(0_0_0/0.1)] dark:border-white/10 bg-surface-1"
 								>
-									<div className="shrink-0 px-3 pt-3">
+									<h2 id={titleId} className="sr-only">
+										Settings
+									</h2>
+									<div className="shrink-0 px-4 pt-4">
 										<SettingsSearch onSelect={selectTab} />
 									</div>
-									<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 pb-3">
+									<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pt-3 pb-4">
 										{NAV_GROUPS.map((group) => (
 											<div key={group.label} className="flex shrink-0 flex-col gap-3">
 												<div
 													id={`${titleId}-${group.label}`}
-													className="px-2 pt-3 text-[12px]/[17px] text-ink-muted"
+													className="px-0 pt-3 text-[12px]/[17px] text-ink-muted"
 												>
 													{group.label}
 												</div>
@@ -424,39 +472,38 @@ export function SettingsDialog() {
 										))}
 									</div>
 								</nav>
+								<div
+									data-testid="settings-top-row"
+									className="col-span-full row-start-1 flex shrink-0 items-center justify-between gap-3 border-b border-[rgb(0_0_0/0.12)] dark:border-white/10 ps-4 pe-2 min-h-11"
+								>
+									<div
+										aria-hidden="true"
+										className="min-w-0 [overflow-wrap:anywhere] text-[15px]/[20px] font-[520] text-primary"
+									>
+										Settings
+									</div>
+									{closeButton}
+								</div>
 								{shownCustomize === null ? (
-									<div className="flex min-w-0 flex-1 flex-col">
-										<div className="flex shrink-0 items-center justify-between gap-3 px-3 pt-3 pb-2">
-											<div className="flex min-w-0 flex-1 items-center" />
-											{closeButton}
-										</div>
+									<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 										<div
 											aria-busy={switching || undefined}
-											className={`flex-1 space-y-6 overflow-y-auto px-6 pt-2 pb-4 [scrollbar-gutter:stable]${pendingClass}`}
+											className={`relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-4 [scrollbar-gutter:stable]${pendingClass}`}
 										>
-											{/* Upstream's scroll-top fade; mb-0! cancels space-y so it adds no height. */}
-											<div
-												aria-hidden="true"
-												className="pointer-events-none sticky -top-2 z-[1] -mx-6 -mt-2 mb-0! h-2 bg-gradient-to-b from-[var(--menu-bg)] to-transparent dark:from-surface-2"
-											/>
 											{content}
 										</div>
 									</div>
 								) : (
-									<div className="flex min-w-0 flex-1 flex-col">
-										{/* Upstream's Customize pane owns its chrome: an absolute Close, the crumb bar, then the panel. */}
+									<div className="flex min-h-0 min-w-0 flex-1 flex-col">
+										{/* Upstream's Customize pane: an empty chrome slot (Close lives in the top row), the crumb bar, then the panel. */}
 										<div
 											data-customize-dialog-pane=""
 											className="relative flex min-h-0 flex-1 flex-col"
 										>
-											<div data-customize-dialog-chrome="" className="contents">
-												<div className="absolute top-0 end-0 z-[2] flex h-14 items-center pe-2">
-													{closeButton}
-												</div>
-											</div>
+											<div data-customize-dialog-chrome="" className="contents" />
 											<div
 												data-testid="customize-dialog-crumb-bar"
-												className="flex shrink-0 items-center pt-2 pb-2 ps-5 pe-12"
+												className="flex shrink-0 items-center pt-3 pb-2 ps-5 pe-4 has-[>:empty]:pb-0 max-md:has-[>:empty]:hidden [&>:empty]:hidden"
 											>
 												<div className="min-h-8 relative flex min-w-0 flex-1 items-center gap-6" />
 											</div>
@@ -471,7 +518,7 @@ export function SettingsDialog() {
 										</div>
 									</div>
 								)}
-							</>
+							</div>
 						)}
 					</Dialog.Popup>
 				</DensityScope>
