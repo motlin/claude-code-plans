@@ -1576,8 +1576,24 @@ describe("CommandPalette shell", () => {
 				mask: plain.querySelector("[class*='mask-image']"),
 			},
 		}).toStrictEqual({
-			running: ["absolute", "-top-px", "-end-px", "size-1.5", "rounded-full", "bg-fill-brand"],
-			awaiting: ["absolute", "-top-px", "-end-px", "size-1.5", "rounded-full", "bg-fill-accent"],
+			running: [
+				"absolute",
+				"-top-px",
+				"-end-px",
+				"size-1.5",
+				"rounded-full",
+				"forced-colors:!bg-[color:CanvasText]",
+				"bg-fill-brand",
+			],
+			awaiting: [
+				"absolute",
+				"-top-px",
+				"-end-px",
+				"size-1.5",
+				"rounded-full",
+				"forced-colors:!bg-[color:CanvasText]",
+				"bg-fill-accent",
+			],
 			wrapper: ["relative", "shrink-0"],
 			mask: [
 				"block",
@@ -1605,7 +1621,15 @@ describe("CommandPalette shell", () => {
 				["Recents", ["Old run Running", "Plain one"]],
 				["Actions", ["New session"]],
 			],
-			dot: ["absolute", "-top-px", "-end-px", "size-1.5", "rounded-full", "bg-fill-brand"],
+			dot: [
+				"absolute",
+				"-top-px",
+				"-end-px",
+				"size-1.5",
+				"rounded-full",
+				"forced-colors:!bg-[color:CanvasText]",
+				"bg-fill-brand",
+			],
 		});
 	});
 
@@ -1782,7 +1806,15 @@ describe("CommandPalette shell", () => {
 			seen: within(dialog).getByRole("option", {name: "Seen done"}).querySelector("[data-palette-mark-dot]"),
 		}).toStrictEqual({
 			sr: " Unread",
-			dot: ["absolute", "-top-px", "-end-px", "size-1.5", "rounded-full", "bg-fill-accent"],
+			dot: [
+				"absolute",
+				"-top-px",
+				"-end-px",
+				"size-1.5",
+				"rounded-full",
+				"forced-colors:!bg-[color:CanvasText]",
+				"bg-fill-accent",
+			],
 			seen: null,
 		});
 	});

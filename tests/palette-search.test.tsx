@@ -20,7 +20,17 @@ import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 const YEAR_MS = 365 * 24 * 60 * 60_000;
 
-function recentSession(id: string, title: string, bucket: "blocked" | "working" | "done" = "done") {
+function recentSession(
+	id: string,
+	title: string,
+	bucket: "blocked" | "working" | "done" = "done",
+	overrides: Partial<{
+		unseen: boolean;
+		unseenError: true;
+		archived: boolean;
+		pr: {number: number; url: string; repository: string};
+	}> = {},
+) {
 	return {
 		id,
 		title,
@@ -37,6 +47,7 @@ function recentSession(id: string, title: string, bucket: "blocked" | "working" 
 		liveAgentCount: 0,
 		unseen: false,
 		blockedSince: null,
+		...overrides,
 	};
 }
 
@@ -312,12 +323,28 @@ describe("⌘K palette live search", () => {
 		expect({awaiting: marks("Waiting 0"), running: marks("Waiting run")}).toStrictEqual({
 			awaiting: {
 				sr: " Awaiting input",
-				dot: ["absolute", "-top-px", "-end-px", "size-1.5", "rounded-full", "bg-fill-accent"],
+				dot: [
+					"absolute",
+					"-top-px",
+					"-end-px",
+					"size-1.5",
+					"rounded-full",
+					"forced-colors:!bg-[color:CanvasText]",
+					"bg-fill-accent",
+				],
 				meta: "Just now",
 			},
 			running: {
 				sr: " Running",
-				dot: ["absolute", "-top-px", "-end-px", "size-1.5", "rounded-full", "bg-fill-brand"],
+				dot: [
+					"absolute",
+					"-top-px",
+					"-end-px",
+					"size-1.5",
+					"rounded-full",
+					"forced-colors:!bg-[color:CanvasText]",
+					"bg-fill-brand",
+				],
 				meta: "Just now",
 			},
 		});
@@ -340,6 +367,51 @@ describe("⌘K palette live search", () => {
 			waitingSr: option(dialog, "Deploy waiting").querySelector(".sr-only")?.textContent,
 			idle: option(dialog, "Deploy idle").querySelector("[data-palette-mark-dot]"),
 		}).toStrictEqual({waiting: "SPAN", waitingSr: " Awaiting input", idle: null});
+	});
+
+	it("marks server-only session hits from the session list, with its PR and archived state", async () => {
+		const pr = (number: number) => ({number, url: `https://github.com/o/r/pull/${number}`, repository: "o/r"});
+		const {dialog} = await openPalette([
+			recentSession("s1", "Alpha", "working"),
+			recentSession("s2", "Bravo", "done", {unseen: true, pr: pr(863)}),
+			recentSession("s3", "Charlie", "blocked", {unseenError: true}),
+			recentSession("s4", "Delta", "done", {archived: true, pr: pr(12)}),
+		]);
+
+		type(dialog, "zebra");
+		(await awaitRequest()).resolve([
+			serverSession("s1", "Alpha"),
+			serverSession("s2", "Bravo"),
+			serverSession("s3", "Charlie"),
+			serverSession("s4", "Delta"),
+			serverSession("s5", "Echo", {state: "waiting"}),
+		]);
+
+		await waitFor(() => {
+			expect(optionLabels(dialog)).toContain("Echo");
+		});
+		const row = (label: string) => {
+			const element = option(dialog, label);
+			return {
+				sr: element.querySelector(".sr-only")?.textContent,
+				dot: element.querySelector("[data-palette-mark-dot]")?.className.split(" ").at(-1),
+				meta: element.querySelector("[data-palette-meta]")?.textContent,
+				archived: element.hasAttribute("data-archived"),
+			};
+		};
+		expect({
+			s1: row("Alpha"),
+			s2: row("Bravo"),
+			s3: row("Charlie"),
+			s4: row("Delta"),
+			s5: row("Echo"),
+		}).toStrictEqual({
+			s1: {sr: " Running", dot: "bg-fill-brand", meta: "Just now", archived: false},
+			s2: {sr: " Unread", dot: "bg-fill-accent", meta: "PR #863 · Just now", archived: false},
+			s3: {sr: " Error", dot: "bg-fill-accent", meta: "Just now", archived: false},
+			s4: {sr: undefined, dot: undefined, meta: "PR #12 · Just nowArchived", archived: true},
+			s5: {sr: " Awaiting input", dot: "bg-fill-accent", meta: "Just now", archived: false},
+		});
 	});
 
 	it("shows the deeper-search spinner and skeletons only while fetching", async () => {

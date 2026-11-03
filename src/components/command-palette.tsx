@@ -258,11 +258,11 @@ interface SearchRow {
 	titleMatches: readonly TextMatch[];
 	snippet: Snippet | undefined;
 	mtime: string;
-	/** Upstream's row mark; server hits only know awaiting. */
+	/** Upstream's row mark; server hits outside the session list only know awaiting. */
 	mark?: PaletteMark;
-	/** Only recents know it; server hits leave it unset. */
+	/** Known from the session list; other server hits leave it unset. */
 	archived?: boolean;
-	/** The session's open PR, shown as upstream's "PR #N" secondary; recents only. */
+	/** The session's open PR, shown as upstream's "PR #N" secondary; known from the session list only. */
 	prNumber?: number;
 	href: string | undefined;
 	/** Replaces the relative-time meta, e.g. a routine's next run. */
@@ -445,16 +445,31 @@ function recentDocRows(
 		}));
 }
 
-function serverRow(item: UnifiedSearchItem): SearchRow {
-	return {
+/** A server hit; a session hit known to the session list takes that session's mark, PR and archived state. */
+function serverRow(
+	item: UnifiedSearchItem,
+	sessionsById: ReadonlyMap<string, SessionListItem>,
+	markOf: MarkOf,
+): SearchRow {
+	const row: SearchRow = {
 		kind: item.kind,
 		id: item.id,
 		title: item.title,
 		titleMatches: item.titleMatches,
 		snippet: item.snippet,
 		mtime: item.mtime,
-		...(item.state === "waiting" ? {mark: "awaiting" as const} : {}),
 		href: item.href,
+	};
+	const session = item.kind === "session" ? sessionsById.get(item.id) : undefined;
+	if (session === undefined) {
+		return item.state === "waiting" ? {...row, mark: "awaiting"} : row;
+	}
+	const mark = markOf(session)?.mark;
+	return {
+		...row,
+		...(mark === undefined ? {} : {mark}),
+		archived: session.archived,
+		...(session.pr === undefined ? {} : {prNumber: session.pr.number}),
 	};
 }
 
@@ -1095,6 +1110,10 @@ function PalettePopup({
 	);
 
 	// Instant rows keep their position; server rows append, minus what is already shown.
+	const sessionsById = useMemo(
+		() => new Map(searchedSessions.map((session) => [session.id, session])),
+		[searchedSessions],
+	);
 	const serverRows = useMemo(() => {
 		if (!serverActive || debouncedQuery !== trimmedQuery || serverSearch.data === undefined) {
 			return [];
@@ -1102,9 +1121,18 @@ function PalettePopup({
 		const shown = new Set(instant.map(rowKey));
 		return serverSearch.data.items
 			.filter((item) => item.id !== currentSessionId || item.kind !== "session")
-			.map(serverRow)
+			.map((item) => serverRow(item, sessionsById, markOf))
 			.filter((row) => !shown.has(rowKey(row)));
-	}, [serverActive, serverSearch.data, debouncedQuery, trimmedQuery, instant, currentSessionId]);
+	}, [
+		serverActive,
+		serverSearch.data,
+		debouncedQuery,
+		trimmedQuery,
+		instant,
+		currentSessionId,
+		sessionsById,
+		markOf,
+	]);
 
 	// Sessions the → card can act on: recents carry archive/bucket state, server hits do not.
 	const cardSessions = useMemo(() => {
@@ -2704,7 +2732,7 @@ function PaletteSessionIcon({mark}: {mark: PaletteMark | undefined}) {
 			<span
 				aria-hidden="true"
 				data-palette-mark-dot=""
-				className={`absolute -top-px -end-px size-1.5 rounded-full ${MARK_DOT_CLASS[mark]}`}
+				className={`absolute -top-px -end-px size-1.5 rounded-full forced-colors:!bg-[color:CanvasText] ${MARK_DOT_CLASS[mark]}`}
 			/>
 		</div>
 	);
