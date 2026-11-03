@@ -3,7 +3,7 @@ import {cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, write
 import {createServer} from "node:net";
 import {tmpdir} from "node:os";
 import {basename, join, resolve} from "node:path";
-import {afterAll, beforeAll, describe, expect, it} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 
 // The production server must run from a snapshot of .output outside the
 // worktree: `just precommit` rebuilds .output in place, and a server running
@@ -13,11 +13,11 @@ const projectRoot = resolve(process.cwd());
 const script = join(projectRoot, "scripts", "server.sh");
 const fixture = join(projectRoot, "tests", "fixtures", "fake-server.mjs");
 
-const runDir = mkdtempSync(join(tmpdir(), "server-snapshot-"));
-const projectDir = join(runDir, "project");
-const cacheDir = join(runDir, "cache");
-const snapshotRoot = join(cacheDir, "claude-code-plans", "server-build");
-
+// Each test gets its own project, cache, snapshot root and port (beforeEach),
+// so the cases pass in any order.
+let runDir = "";
+let projectDir = "";
+let snapshotRoot = "";
 let env: NodeJS.ProcessEnv = {};
 
 async function freePort(): Promise<string> {
@@ -73,7 +73,11 @@ function snapshots(): string[] {
 		.toSorted();
 }
 
-beforeAll(async () => {
+beforeEach(async () => {
+	runDir = mkdtempSync(join(tmpdir(), "server-snapshot-"));
+	projectDir = join(runDir, "project");
+	const cacheDir = join(runDir, "cache");
+	snapshotRoot = join(cacheDir, "claude-code-plans", "server-build");
 	mkdirSync(projectDir, {recursive: true});
 	writeBuild();
 	env = {
@@ -88,7 +92,7 @@ beforeAll(async () => {
 	delete env["LOG_FILE"];
 });
 
-afterAll(() => {
+afterEach(() => {
 	run("stop");
 	rmSync(runDir, {recursive: true, force: true});
 });
@@ -102,6 +106,7 @@ describe("scripts/server.sh snapshots", () => {
 	}, 30_000);
 
 	it("restart reuses the last snapshot even after .output is deleted", () => {
+		run("start");
 		const before = snapshots();
 		rmSync(join(projectDir, ".output"), {recursive: true, force: true});
 		run("restart");
@@ -110,6 +115,7 @@ describe("scripts/server.sh snapshots", () => {
 	}, 30_000);
 
 	it("start takes a fresh snapshot and prunes the old one", () => {
+		run("start");
 		const before = snapshots();
 		writeBuild();
 		run("start");
@@ -138,6 +144,10 @@ describe("scripts/server.sh snapshots", () => {
 	}, 60_000);
 
 	it("start keeps only one generation of previous assets", () => {
+		writeBuild({"tip-OLD1.js": "old tip", "shared-SAME.js": "shared"});
+		run("start");
+		writeBuild({"tip-NEW2.js": "new tip", "shared-SAME.js": "shared"});
+		run("start");
 		writeBuild({"tip-THIRD.js": "third"});
 		run("start");
 		const [snapshot = ""] = snapshots();
@@ -146,9 +156,10 @@ describe("scripts/server.sh snapshots", () => {
 			"shared-SAME.js": "shared",
 			"tip-NEW2.js": "new tip",
 		});
-	}, 30_000);
+	}, 60_000);
 
 	it("stop still finds the snapshot server", () => {
+		run("start");
 		run("stop");
 		expect(run("status")).toBe(`No server running (port ${env["PORT"] ?? ""})\n`);
 	}, 30_000);
