@@ -65,4 +65,21 @@ describe("route components must not be exported from route files", () => {
 
 		expect(violations).toStrictEqual([]);
 	});
+
+	it("no split route file exports a component, which would pin its imports to the route tree every page loads", () => {
+		const violations: string[] = [];
+
+		for (const file of collectRouteFiles(ROUTES_DIR)) {
+			// The root route renders on every page and is never code-split.
+			if (file.endsWith("__root.tsx")) continue;
+			const source = readFileSync(file, "utf8");
+			for (const name of exportedNames(source)) {
+				if (name !== "Route" && /^[A-Z]/.test(name)) {
+					violations.push(`${file.slice(ROUTES_DIR.length + 1)}: ${name}`);
+				}
+			}
+		}
+
+		expect(violations).toStrictEqual([]);
+	});
 });

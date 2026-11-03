@@ -2,7 +2,7 @@
 
 import {render} from "@testing-library/react";
 import {describe, expect, it} from "vite-plus/test";
-import {ProjectCardCounts} from "../src/routes/projects";
+import {ProjectCardCounts} from "../src/components/project-card-counts";
 
 const baseProject = {
 	activeCount: 0,

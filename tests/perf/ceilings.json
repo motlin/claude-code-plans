@@ -5,10 +5,10 @@
 		"tolerance": 0
 	},
 	"browser.J1.requests": {
-		"ceiling": 667,
+		"ceiling": 664,
 		"unit": "requests",
 		"tolerance": 0.02,
-		"reason": "lab was blind 2026-10-11..2026-11-02 (reset never completed); raised to current to get CI green; follow-up task investigates and lowers",
+		"reason": "lowered from 667 (2026-11-02): HomeDock and ProjectCardCounts moved out of their route files and the pinned page title out of the pinned page, so code splitting no longer pins those components' imports to the route tree. The rest of the climb from 481 (c029659b5) is legitimate: ~170 new src modules in the root shell, sidebar and home composer, 7 new route files, newer Base UI dep chunks, and the idle ⌘K palette and Settings warm-ups growing from 31 to 57 modules. The lab now waits for the network to go quiet too, so the idle warm-ups always count here and the median reads 664 every run",
 		"raisedAt": "2026-11-02"
 	},
 	"browser.J2.layoutShift": {
@@ -17,10 +17,10 @@
 		"tolerance": 0
 	},
 	"browser.J2.requests": {
-		"ceiling": 996,
+		"ceiling": 987,
 		"unit": "requests",
 		"tolerance": 0,
-		"reason": "lab was blind 2026-10-11..2026-11-02 (reset never completed); raised to current to get CI green; follow-up task investigates and lowers",
+		"reason": "lowered from 996 (2026-11-02): the home composer no longer loads with the route tree on a session page (HomeDock moved out of routes/index.tsx) and the pinned page no longer loads with its route's head. The rest of the climb from 653 (c029659b5) is legitimate: the session page's split chunk grew from 140 to 181 modules, its idle pane warm-ups (background tasks 40, terminal 20, prompt cards 20, files, links, side chat, error recovery) replaced the old files pane's 44, plus J1's shell growth. The lab now waits for the network to go quiet, so those warm-ups always count here instead of 967 or 996 depending on timing",
 		"raisedAt": "2026-11-02"
 	},
 	"browser.J3.layoutShift": {

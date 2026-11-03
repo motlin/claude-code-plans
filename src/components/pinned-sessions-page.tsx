@@ -4,6 +4,7 @@ import {PinOff} from "lucide-react";
 import {useMemo} from "react";
 import {type SessionListItem, sessionsByIdsQueryOptions} from "../lib/api/sessions";
 import {orderedPins, unpin, usePins} from "../lib/pin-store";
+import {PINNED_SESSIONS_TITLE} from "../lib/pinned-sessions";
 import {formatCount} from "../lib/pluralize";
 import {TOUCH_REVEAL} from "../lib/touch-reveal";
 import {ListPageHeader} from "./list-page-header";
@@ -21,8 +22,6 @@ function formatDate(iso: string): string {
 
 const newestFirst = (a: SessionListItem, b: SessionListItem): number =>
 	new Date(b.mtime).getTime() - new Date(a.mtime).getTime();
-
-export const PINNED_SESSIONS_TITLE = "Pinned sessions";
 
 /** This browser's pinned sessions: user-ordered pins first, then newest first. */
 export function PinnedSessionsPage() {

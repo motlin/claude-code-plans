@@ -7,6 +7,9 @@
  * Counts depend on frame boundaries, so most stay diagnostic (plan §7 decision 4). `--ratchet` checks the median of only
  * the metrics `just perf-lab-stability` proved stable (RATCHETED_LAB_METRICS) against tests/perf/ceilings.json as
  * `browser.<journey>.<metric>`.
+ *
+ * `PERF_LAB_REQUEST_LOG=<dir>` writes each journey's request URLs to `<dir>/<journey>-<run>.txt`, to diff the module
+ * graph between two commits when a request count moves.
  */
 
 import {execFileSync, spawn, type ChildProcess} from "node:child_process";
@@ -25,7 +28,7 @@ import {get} from "node:http";
 import {tmpdir} from "node:os";
 import {dirname, join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
-import {chromium, type BrowserContext, type CDPSession, type Page} from "playwright";
+import {chromium, type BrowserContext, type CDPSession, type Page, type Request} from "playwright";
 import {z} from "zod";
 import {IndexingStatusResponse} from "../src/lib/api/indexing";
 import {asRecord} from "../src/lib/narrow";
@@ -419,7 +422,16 @@ interface Probe {
 	page: Page;
 	cdp: CDPSession;
 	requests: () => number;
+	/** Every request URL so far, in order; `PERF_LAB_REQUEST_LOG` writes each journey's slice. */
+	urls: string[];
+	/** Requests still in flight, leaving out the SSE stream that stays open for the page's life. */
+	inFlight: () => number;
+	/** `performance.now()`-style ms timestamp of the last request start or finish. */
+	lastNetworkActivity: () => number;
 }
+
+const NETWORK_QUIET_MS = 300;
+const NETWORK_SETTLE_CAP_MS = 10_000;
 
 async function prepareContext(context: BrowserContext, blocked: string[]): Promise<void> {
 	await context.route("**/*", async (route) => {
@@ -438,12 +450,30 @@ async function prepareContext(context: BrowserContext, blocked: string[]): Promi
 async function openProbe(context: BrowserContext): Promise<Probe> {
 	const page = await context.newPage();
 	let requests = 0;
-	page.on("request", () => {
+	let lastActivity = Date.now();
+	const urls: string[] = [];
+	const pending = new Set<Request>();
+	const done = (request: Request) => {
+		if (pending.delete(request)) lastActivity = Date.now();
+	};
+	page.on("request", (request) => {
 		requests += 1;
+		urls.push(request.url());
+		lastActivity = Date.now();
+		if (new URL(request.url()).pathname !== "/api/events") pending.add(request);
 	});
+	page.on("requestfinished", done);
+	page.on("requestfailed", done);
 	const cdp = await context.newCDPSession(page);
 	await cdp.send("Performance.enable");
-	return {page, cdp, requests: () => requests};
+	return {
+		page,
+		cdp,
+		requests: () => requests,
+		urls,
+		inFlight: () => pending.size,
+		lastNetworkActivity: () => lastActivity,
+	};
 }
 
 async function runPreflight(page: Page): Promise<void> {
@@ -496,6 +526,23 @@ async function settle(page: Page): Promise<void> {
 	);
 }
 
+/**
+ * Settles the DOM, then keeps settling until no request has started or finished for 300 ms (10 s cap). Idle-time chunk
+ * warm-ups (the ⌘K palette, Settings, the session panes) download without touching the DOM, so a DOM-only settle let
+ * them land inside or after a journey's window depending on timing: J2 read 967 or 996 requests (the palette's 29
+ * modules) and a lone `--journey J6` read 2 to ~125 (the session page's pane warm-ups). Waiting for the network to go
+ * quiet as well charges each warm-up to the journey whose page scheduled it.
+ */
+async function settleWithNetwork(probe: Probe): Promise<void> {
+	const deadline = Date.now() + NETWORK_SETTLE_CAP_MS;
+	for (;;) {
+		await settle(probe.page);
+		const quietFor = Date.now() - probe.lastNetworkActivity();
+		if ((probe.inFlight() === 0 && quietFor >= NETWORK_QUIET_MS) || Date.now() >= deadline) return;
+		await probe.page.waitForTimeout(Math.max(50, NETWORK_QUIET_MS - quietFor));
+	}
+}
+
 async function shiftCount(page: Page): Promise<number> {
 	return page.evaluate(() => globalThis.__perfLabShifts.length);
 }
@@ -508,13 +555,23 @@ async function shiftsSince(page: Page, start: number): Promise<LayoutShiftEntry[
  * Measures one interaction in the current document. Navigation journeys pass `navigates` so the baseline is taken
  * on a same-origin blank page: the renderer stays the same and the layout-shift buffer starts empty.
  */
-async function measure(probe: Probe, interaction: () => Promise<void>): Promise<JourneySample> {
+async function measure(
+	probe: Probe,
+	id: JourneyId,
+	run: number,
+	interaction: () => Promise<void>,
+): Promise<JourneySample> {
 	const before = await probe.cdp.send("Performance.getMetrics");
 	const requestsBefore = probe.requests();
 	const shiftsBefore = await shiftCount(probe.page).catch(() => 0);
 	const urlBefore = probe.page.url();
 	await interaction();
-	await settle(probe.page);
+	await settleWithNetwork(probe);
+	const requestLog = process.env["PERF_LAB_REQUEST_LOG"];
+	if (requestLog !== undefined) {
+		mkdirSync(requestLog, {recursive: true});
+		writeFileSync(join(requestLog, `${id}-${run}.txt`), `${probe.urls.slice(requestsBefore).join("\n")}\n`);
+	}
 	const after = await probe.cdp.send("Performance.getMetrics");
 	const navigated = probe.page.url() !== urlBefore && !(await sameDocument(probe.page));
 	const shifts = await shiftsSince(probe.page, navigated ? 0 : shiftsBefore);
@@ -602,7 +659,7 @@ async function runJourneys(
 
 	const cold = async (id: JourneyId, path: string, anchor: string) => {
 		await page.goto(blank);
-		samples[id] = await measure(probe, async () => {
+		samples[id] = await measure(probe, id, run, async () => {
 			await page.goto(`${baseUrl}${path}`, {waitUntil: "domcontentloaded"});
 			await page.locator(anchor).first().waitFor({state: "attached", timeout: 30_000});
 		});
@@ -617,7 +674,7 @@ async function runJourneys(
 	// J4 right after J2: a deep link lands at the tail, so the appended rows mount inside the virtualized window.
 	if (want.has("J4")) {
 		const marker = `Perf lab reply ${run}: appended while the session was open.`;
-		samples.J4 = await measure(probe, async () => {
+		samples.J4 = await measure(probe, "J4", run, async () => {
 			writeFileSync(fixture.openSessionPath, appendedLines(fixture, run), {flag: "a"});
 			await page.getByText(marker).first().waitFor({state: "attached", timeout: 30_000});
 		});
@@ -627,7 +684,7 @@ async function runJourneys(
 	const switchRow = page.locator(`a[data-row-main-button][href="/session/${fixture.switchSessionId}"]`).first();
 	if (want.has("J3")) {
 		await switchRow.waitFor();
-		samples.J3 = await measure(probe, async () => {
+		samples.J3 = await measure(probe, "J3", run, async () => {
 			await switchRow.click();
 			await page.locator(`${switchView} ${LAST_ROW}`).first().waitFor({state: "attached", timeout: 30_000});
 		});
@@ -642,7 +699,7 @@ async function runJourneys(
 		const prompt = page.getByRole("textbox", {name: "Prompt"});
 		await prompt.click();
 		await settle(page);
-		samples.J5 = await measure(probe, async () => {
+		samples.J5 = await measure(probe, "J5", run, async () => {
 			await page.keyboard.type("measure the composer keystrokes", {delay: 20});
 		});
 		await prompt.fill("");
@@ -651,7 +708,7 @@ async function runJourneys(
 	}
 
 	if (want.has("J6")) {
-		samples.J6 = await measure(probe, async () => {
+		samples.J6 = await measure(probe, "J6", run, async () => {
 			await page.keyboard.press("ControlOrMeta+k");
 			const palette = page.locator('[data-perf-overlay="command_palette"]');
 			await palette.waitFor({timeout: 10_000});
@@ -696,7 +753,8 @@ export type StableLabMetrics = Partial<Record<JourneyId, Partial<Record<MetricKe
  * the ceiling tolerance it needs. Only these are ratcheted; style-recalc counts, durations and the other journeys'
  * layout and request counts moved between runs and stay diagnostic. J2 requests and layout shift drifted while each run
  * appended to the session J2 opens and J4 appends to; since the lab resets that session before each run, J2 read 645
- * requests and 0.021 CLS and J4 read 0.0001 CLS in every run of two batches. J6 layout count drifted to medians of 39..43
+ * requests and 0.021 CLS and J4 read 0.0001 CLS in every run of two batches. Request counts also raced the idle chunk
+ * warm-ups until each journey waited for the network to go quiet (settleWithNetwork). J6 layout count drifted to medians of 39..43
  * while the palette's transitions ran; with reduced motion its medians read 25 or 26, so it keeps a 4% tolerance.
  */
 export const RATCHETED_LAB_METRICS: StableLabMetrics = {

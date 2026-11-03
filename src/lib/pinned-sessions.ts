@@ -9,6 +9,9 @@ export {slotFromPointer} from "./sidebar-drag";
  * a pinned session moves out of its state/date/project group into Pinned (it is not
  * duplicated), and a drop resolves to one of the outcomes below.
  */
+/** The pinned sessions page heading and tab name; kept here so its routes' `head` doesn't pull the page into the route tree. */
+export const PINNED_SESSIONS_TITLE = "Pinned sessions";
+
 export const PIN_DROP_OUTCOMES = ["pin", "reorder", "unpin", "cancel"] as const;
 export const PinDropOutcomeSchema = z.enum(PIN_DROP_OUTCOMES);
 export type PinDropOutcome = z.infer<typeof PinDropOutcomeSchema>;
