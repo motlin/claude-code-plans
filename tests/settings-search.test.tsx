@@ -299,10 +299,14 @@ describe("settings search", () => {
 
 	const ROW =
 		"flex w-full items-center gap-2 rounded-r6 h-auto !px-1 py-1.5 text-start text-body font-normal text-primary select-none outline-none data-[highlighted]:bg-fill-ghost-hover";
-	const ICON = "size-5 shrink-0 p-0.5 text-secondary";
+	const ICON = "size-5 shrink-0 text-primary";
 	const TRUNCATE = "min-w-0 flex-1 truncate";
 	const INDENTED = "flex min-w-0 flex-1 items-center gap-3 ps-[32px]";
 	const accent = (text: string): Shape => ({tag: "span", className: "text-upstream-accent", children: [text]});
+	// Upstream wraps every non-empty unhighlighted part of a label in a bare span.
+	const plain = (text: string): Shape => ({tag: "span", className: "", children: [text]});
+	const BODY =
+		"[display:inherit] [flex-direction:inherit] [flex-wrap:inherit] [align-items:inherit] [justify-content:inherit] [justify-items:inherit] [gap:inherit] [grid-template-columns:inherit] [grid-template-rows:inherit] [grid-auto-flow:inherit] [grid-auto-columns:inherit] [grid-auto-rows:inherit] col-span-full row-span-full self-stretch justify-self-stretch max-h-[inherit] min-h-0 min-w-0 flex-auto overflow-y-auto rounded-[inherit] outline-none focus-visible:outline-hidden scroll-fade-y p-0";
 
 	it("renders upstream's comfortable hit, child and more anatomy in a text-body popup", async () => {
 		await renderAt("/#settings/general");
@@ -311,8 +315,17 @@ describe("settings search", () => {
 		fireEvent.change(screen.getByRole("textbox", {name: "Search settings"}), {target: {value: "ho"}});
 
 		const popover = await screen.findByRole("dialog", {name: "Search results"});
-		const [status, scroller] = [...popover.children];
+		const [body] = [...popover.children];
+		const [status, scroller] = [...body.children];
 		expect({
+			popupChildren: popover.children.length,
+			body: {
+				tabIndex: body.getAttribute("tabindex"),
+				popoverBody: body.hasAttribute("data-cds-popover-body"),
+				sheetScroll: body.hasAttribute("data-cds-sheet-scroll"),
+				className: body.className,
+				children: body.children.length,
+			},
 			popup: popover.className,
 			status: shape(status),
 			statusRole: status.getAttribute("role"),
@@ -322,6 +335,8 @@ describe("settings search", () => {
 				.slice(0, 5)
 				.map((button) => ({label: button.getAttribute("aria-label"), ...shape(button)})),
 		}).toStrictEqual({
+			popupChildren: 1,
+			body: {tabIndex: "-1", popoverBody: true, sheetScroll: true, className: BODY, children: 2},
 			popup: "w-[280px] rounded-card bg-[var(--menu-bg)] text-body font-normal text-primary shadow-[var(--menu-shadow)] outline-none",
 			status: {tag: "p", className: "sr-only", children: []},
 			statusRole: "status",
@@ -339,7 +354,10 @@ describe("settings search", () => {
 								{
 									tag: "span",
 									className: "flex items-center gap-3",
-									children: ["svg", {tag: "span", className: TRUNCATE, children: ["Transcript"]}],
+									children: [
+										"svg",
+										{tag: "span", className: TRUNCATE, children: [plain("Transcript")]},
+									],
 								},
 							],
 						},
@@ -347,9 +365,9 @@ describe("settings search", () => {
 				},
 				...(
 					[
-						["Hook warnings", [accent("Ho"), "ok warnings"]],
-						["Hook errors", [accent("Ho"), "ok errors"]],
-						["Passed hooks", ["Passed ", accent("ho"), "oks"]],
+						["Hook warnings", [accent("Ho"), plain("ok warnings")]],
+						["Hook errors", [accent("Ho"), plain("ok errors")]],
+						["Passed hooks", [plain("Passed "), accent("ho"), plain("oks")]],
 					] satisfies Array<[string, Array<Shape | string>]>
 				).map(([title, text]) => ({
 					label: `${title} in Transcript`,
@@ -462,7 +480,7 @@ describe("settings search", () => {
 		fireEvent.change(screen.getByRole("textbox", {name: "Search settings"}), {target: {value: "zzzq"}});
 
 		const popover = await screen.findByRole("dialog", {name: "Search results"});
-		const empty = popover.children[1].firstElementChild;
+		const empty = popover.querySelector("[data-cds-popover-body] > div")?.firstElementChild ?? null;
 		const icon = empty?.querySelector("svg");
 		expect({
 			empty: empty === null ? null : shape(empty),

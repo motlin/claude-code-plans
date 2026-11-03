@@ -1,7 +1,7 @@
 // Base UI Popover, not ui/popover: structurally anchored to its input.
 import {Popover} from "@base-ui/react/popover";
 import {Search, SearchX} from "lucide-react";
-import {type MouseEvent, useEffect, useId, useMemo, useRef, useState} from "react";
+import {type MouseEvent, type RefObject, useEffect, useId, useMemo, useRef, useState} from "react";
 import {useShortcut} from "../../hooks/use-shortcut";
 import {settingsTabLabels} from "../../lib/schema-choices";
 import type {SettingsTab} from "../../lib/settings-hash";
@@ -12,21 +12,28 @@ import {
 	settingsMatchStart,
 	splitMatch,
 } from "../../lib/settings-search";
+import {SHEET_BODY_CLASS} from "../ui/popover-sheet";
 import {SETTINGS_TAB_ICONS} from "./settings-tab-icons";
 
-/** `label` with the query's first word-start (else first) occurrence in the accent color. */
+/**
+ * `label` with the query's first word-start (else first) occurrence in the accent color. Like upstream,
+ * each non-empty part is its own span, and an unmatched label is a single span.
+ */
 function Highlighted({label, query}: {label: string; query: string}) {
 	const start = settingsMatchStart(label, query);
-	if (start === -1) return label;
+	if (start === -1) return <span>{label}</span>;
 	const parts = splitMatch(label, start, query.trim().length);
 	return (
 		<>
-			{parts.before}
+			{parts.before !== "" && <span>{parts.before}</span>}
 			<span className="text-upstream-accent">{parts.match}</span>
-			{parts.after}
+			{parts.after !== "" && <span>{parts.after}</span>}
 		</>
 	);
 }
+
+// Upstream's cds popover body: the popup's one child, scrolling with a scroll-edge fade.
+const POPOVER_BODY_CLASS = `${SHEET_BODY_CLASS} scroll-fade-y p-0`;
 
 // Upstream's cds menu-item row at comfortable density (gap-xs 8, radius 8) plus `h-auto !px-1 py-1.5`.
 const ROW_CLASS =
@@ -79,7 +86,7 @@ function ResultRow({
 			<button {...rowProps}>
 				<span className="flex min-w-0 flex-1 flex-col">
 					<span className="flex items-center gap-3">
-						<Icon aria-hidden="true" className="size-5 shrink-0 p-0.5 text-secondary" />
+						<Icon aria-hidden="true" className="size-5 shrink-0 text-primary" />
 						<span className="min-w-0 flex-1 truncate">
 							<Highlighted label={section} query={query} />
 						</span>
@@ -117,13 +124,21 @@ function ResultRow({
  * match in the accent color. Choosing a hit or child hands its tab (and row, when it names one) to
  * `onSelect`; "+N more" lists the rest of that section in place.
  */
-export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: string) => void}) {
+export function SettingsSearch({
+	onSelect,
+	inputRef: givenInputRef,
+}: {
+	onSelect: (tab: SettingsTab, row?: string) => void;
+	/** The dialog's handle on the input, for its initial focus. */
+	inputRef?: RefObject<HTMLInputElement | null>;
+}) {
 	const [query, setQuery] = useState("");
 	const [expanded, setExpanded] = useState<ReadonlySet<SettingsTab>>(() => new Set());
 	const [announcement, setAnnouncement] = useState("");
 	const [active, setActive] = useState(0);
 	const anchorRef = useRef<HTMLDivElement>(null);
-	const inputRef = useRef<HTMLInputElement>(null);
+	const ownInputRef = useRef<HTMLInputElement>(null);
+	const inputRef = givenInputRef ?? ownInputRef;
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	const listId = useId();
 	const rows = useMemo(() => buildSettingsResultRows(query, expanded), [query, expanded]);
@@ -249,33 +264,40 @@ export function SettingsSearch({onSelect}: {onSelect: (tab: SettingsTab, row?: s
 						finalFocus={false}
 						className="w-[280px] rounded-card bg-[var(--menu-bg)] text-body font-normal text-primary shadow-[var(--menu-shadow)] outline-none"
 					>
-						<p role="status" className="sr-only">
-							{announcement}
-						</p>
 						<div
-							ref={scrollerRef}
-							className="max-h-[min(320px,var(--available-height))] overflow-y-auto p-1"
+							tabIndex={-1}
+							data-cds-popover-body=""
+							data-cds-sheet-scroll=""
+							className={POPOVER_BODY_CLASS}
 						>
-							{rows.length === 0 ? (
-								// Upstream's xl search icon over "No matching settings"; gap-sm and px-md are 12px at comfortable density.
-								<div className="flex min-h-[120px] flex-col items-center justify-center gap-3 px-3 text-center text-[var(--settings-muted)]">
-									<SearchX aria-hidden="true" className="size-7" />
-									<span className="text-body">No matching settings</span>
-								</div>
-							) : (
-								rows.map((row, index) => (
-									<ResultRow
-										key={rowKey(row)}
-										row={row}
-										query={query}
-										highlighted={index === active}
-										onChoose={choose}
-										onHighlight={() => {
-											setActive(index);
-										}}
-									/>
-								))
-							)}
+							<p role="status" className="sr-only">
+								{announcement}
+							</p>
+							<div
+								ref={scrollerRef}
+								className="max-h-[min(320px,var(--available-height))] overflow-y-auto p-1"
+							>
+								{rows.length === 0 ? (
+									// Upstream's xl search icon over "No matching settings"; gap-sm and px-md are 12px at comfortable density.
+									<div className="flex min-h-[120px] flex-col items-center justify-center gap-3 px-3 text-center text-[var(--settings-muted)]">
+										<SearchX aria-hidden="true" className="size-7" />
+										<span className="text-body">No matching settings</span>
+									</div>
+								) : (
+									rows.map((row, index) => (
+										<ResultRow
+											key={rowKey(row)}
+											row={row}
+											query={query}
+											highlighted={index === active}
+											onChoose={choose}
+											onHighlight={() => {
+												setActive(index);
+											}}
+										/>
+									))
+								)}
+							</div>
 						</div>
 					</Popover.Popup>
 				</Popover.Positioner>

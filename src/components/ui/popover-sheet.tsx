@@ -195,7 +195,7 @@ function useKeyboardInset(popup: HTMLDivElement | null, active: boolean): SheetK
 }
 
 /** Upstream's c_: the scrolling body inherits the wrapper's layout and fills it. */
-const SHEET_BODY_CLASS =
+export const SHEET_BODY_CLASS =
 	"[display:inherit] [flex-direction:inherit] [flex-wrap:inherit] [align-items:inherit] [justify-content:inherit] [justify-items:inherit] [gap:inherit] [grid-template-columns:inherit] [grid-template-rows:inherit] [grid-auto-flow:inherit] [grid-auto-columns:inherit] [grid-auto-rows:inherit] col-span-full row-span-full self-stretch justify-self-stretch max-h-[inherit] min-h-0 min-w-0 flex-auto overflow-y-auto rounded-[inherit] outline-none focus-visible:outline-hidden";
 
 /** Sizing and radius tokens the sheet's own `w-full max-w-none h-auto max-h-none` merge away upstream. */

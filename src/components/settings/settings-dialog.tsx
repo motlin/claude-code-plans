@@ -290,6 +290,16 @@ export function SettingsDialog() {
 		return target?.isConnected === true ? target : true;
 	}, []);
 
+	// Upstream's search focuses its input on open (focusVisible:false, so no focus ring), not the trigger
+	// wrapper div that Base UI's default (first tabbable) would pick. The phone layout has no search.
+	const searchInputRef = useRef<HTMLInputElement>(null);
+	const initialFocus = useCallback(() => {
+		const input = searchInputRef.current;
+		if (input === null) return true;
+		input.focus({preventScroll: true, focusVisible: false});
+		return false;
+	}, []);
+
 	const tab = current?.tab ?? "general";
 
 	// Upstream's warm switch: the nav moves at once, but the panel renders from a deferred hash, so a section
@@ -383,6 +393,7 @@ export function SettingsDialog() {
 					<Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40 dark:bg-black/50 transition-opacity duration-200 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 motion-reduce:transition-none" />
 					<Dialog.Popup
 						aria-labelledby={titleId}
+						initialFocus={initialFocus}
 						finalFocus={finalFocus}
 						data-perf-overlay="settings_modal"
 						data-perf-screen={customize === null ? tab : `customize-${customize.section}`}
@@ -419,7 +430,7 @@ export function SettingsDialog() {
 										Settings
 									</h2>
 									<div className="shrink-0 px-4 pt-4">
-										<SettingsSearch onSelect={selectTab} />
+										<SettingsSearch inputRef={searchInputRef} onSelect={selectTab} />
 									</div>
 									<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pt-3 pb-4">
 										{NAV_GROUPS.map((group) => (

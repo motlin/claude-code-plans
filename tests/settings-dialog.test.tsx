@@ -406,6 +406,34 @@ describe("SettingsDialog", () => {
 		expect(location(router)).toStrictEqual({pathname: "/", hash: "settings/transcript"});
 	});
 
+	// Upstream's SettingsNavSearch focuses its input on mount (focusVisible:false), not the trigger wrapper div.
+	it("puts initial focus in the Search input, not its trigger wrapper", async () => {
+		// jsdom ignores focusVisible (an input always matches :focus-visible there), so pin the option itself.
+		const focus = vi.spyOn(HTMLInputElement.prototype, "focus");
+		await renderAt("/#settings/general");
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const input = within(dialog).getByRole("textbox", {name: "Search settings"});
+
+		await waitFor(() => {
+			expect(document.activeElement).toBe(input);
+		});
+		expect(focus.mock.calls).toStrictEqual([[{preventScroll: true, focusVisible: false}]]);
+		focus.mockRestore();
+	});
+
+	it("puts initial focus in the Search input when ⇧⌘, opens the dialog", async () => {
+		await renderAt("/");
+		const composer = await screen.findByRole("textbox", {name: "Page composer"});
+		composer.focus();
+
+		fireEvent.keyDown(composer, {key: "<", code: "Comma", ctrlKey: true, shiftKey: true});
+
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		await waitFor(() => {
+			expect(document.activeElement).toBe(within(dialog).getByRole("textbox", {name: "Search settings"}));
+		});
+	});
+
 	it("opens General with ⇧⌘, while a textarea has focus", async () => {
 		const router = await renderAt("/");
 		const composer = await screen.findByRole("textbox", {name: "Page composer"});
@@ -474,6 +502,15 @@ describe("SettingsDialog at phone width", () => {
 			],
 			search: 0,
 			scrollForward: 1,
+		});
+	});
+
+	it("keeps the default initial focus (the first tabbable, Close) at phone width, where there is no search", async () => {
+		await renderAt("/#settings/general");
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+
+		await waitFor(() => {
+			expect(document.activeElement).toBe(within(dialog).getByRole("button", {name: "Close"}));
 		});
 	});
 
