@@ -1269,7 +1269,7 @@ function RemoteControlSection() {
 			<ClaudeCodeSwitchRow
 				slug="connect-new-sessions-to-remote-control"
 				title="Connect new sessions to Remote Control"
-				description="Sessions you start on this computer connect to Remote Control automatically, so you can continue them from the terminal or claude.ai/code."
+				description="Sessions you start on this computer connect to Remote Control automatically, so you can continue them from other devices."
 				settingKey="remoteControlAtStartup"
 				isOn={(value) => value === true}
 				valueFor={(on) => on}
