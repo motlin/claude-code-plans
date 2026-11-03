@@ -42,6 +42,18 @@ const MIN_RAF_HZ = 50;
 const PREFLIGHT_FRAMES = 30;
 const VIEWPORT = {width: 1280, height: 800} as const;
 
+/**
+ * Reduced motion turns off the app's CSS transitions (motion-reduce:transition-none). An animated height, max-height
+ * or grid-rows transition lays out once per frame, so its count varies with how many frames land in its 150ms: the ⌘K
+ * palette's footer collapse and list resize took J6 from 25 to 41..47 layouts and made them drift run to run.
+ */
+export const LAB_CONTEXT_OPTIONS = {
+	viewport: VIEWPORT,
+	colorScheme: "dark",
+	locale: "en-US",
+	reducedMotion: "reduce",
+} as const;
+
 export const JOURNEYS = ["J1", "J2", "J3", "J4", "J5", "J6"] as const;
 export type JourneyId = (typeof JOURNEYS)[number];
 
@@ -685,7 +697,7 @@ export type StableLabMetrics = Partial<Record<JourneyId, Partial<Record<MetricKe
  * layout and request counts moved between runs and stay diagnostic. J2 requests and layout shift drifted while each run
  * appended to the session J2 opens and J4 appends to; since the lab resets that session before each run, J2 read 645
  * requests and 0.021 CLS and J4 read 0.0001 CLS in every run of two batches. J6 layout count drifted to medians of 39..43
- * once the reset worked again (2026-11-02), so it takes a 10% tolerance.
+ * while the palette's transitions ran; with reduced motion its medians read 25 or 26, so it keeps a 4% tolerance.
  */
 export const RATCHETED_LAB_METRICS: StableLabMetrics = {
 	J1: {requests: 0.02, layoutShift: 0},
@@ -693,7 +705,7 @@ export const RATCHETED_LAB_METRICS: StableLabMetrics = {
 	J3: {layoutShift: 0},
 	J4: {layoutShift: 0},
 	J5: {layoutCount: 0, layoutShift: 0},
-	J6: {layoutCount: 0.1},
+	J6: {layoutCount: 0.04},
 };
 
 /** The median over `runs` of each stable metric, keyed `browser.<journey>.<metric>`, for the journeys that ran. */
@@ -793,7 +805,7 @@ export async function runLab(
 			for (let run = 1; run <= args.runs; run += 1) {
 				await resetOpenSession(baseUrl, fixture, seeded);
 				await waitForIdleIndex(baseUrl, server.process, server.output);
-				const context = await browser.newContext({viewport: VIEWPORT, colorScheme: "dark", locale: "en-US"});
+				const context = await browser.newContext(LAB_CONTEXT_OPTIONS);
 				try {
 					await prepareContext(context, blocked);
 					const sample = await runJourneys(context, baseUrl, fixture, args.journeys, run).catch(

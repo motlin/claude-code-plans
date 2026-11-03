@@ -6,6 +6,7 @@ import {
 	type CdpMetricsPayload,
 	isSeededIndex,
 	type JourneySample,
+	LAB_CONTEXT_OPTIONS,
 	labRatchetValues,
 	layoutShiftSum,
 	metricsDelta,
@@ -188,7 +189,7 @@ describe("ratchet mode", () => {
 			J3: {layoutShift: 0},
 			J4: {layoutShift: 0},
 			J5: {layoutCount: 0, layoutShift: 0},
-			J6: {layoutCount: 0.1},
+			J6: {layoutCount: 0.04},
 		});
 	});
 
@@ -215,6 +216,17 @@ describe("ratchet mode", () => {
 		expect({checked, failures}).toStrictEqual({
 			checked: ["browser.J1.requests=480", "browser.J2.requests=644"],
 			failures: ["browser.J2.requests rose"],
+		});
+	});
+});
+
+describe("browser context", () => {
+	it("asks for reduced motion, so transition frames do not add a timing-dependent layout per frame to the counts", () => {
+		expect(LAB_CONTEXT_OPTIONS).toStrictEqual({
+			viewport: {width: 1280, height: 800},
+			colorScheme: "dark",
+			locale: "en-US",
+			reducedMotion: "reduce",
 		});
 	});
 });
