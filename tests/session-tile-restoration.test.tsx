@@ -69,6 +69,9 @@ const writes: Array<{
 }> = [];
 let unregister = () => {};
 const nativeScrollTop = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop")!;
+// Captured before any test spies on it: spying on a method that is still spied reuses that spy, so wrapping
+// the current window.getComputedStyle after a skipped teardown made the spy call itself until the stack overflowed.
+const nativeGetComputedStyle = window.getComputedStyle.bind(window);
 
 function mountedRows(host: Element): HTMLElement[] {
 	return transcriptRows(host);
@@ -359,9 +362,8 @@ async function renderShell(strict: boolean, routeId = LOCAL_ID, fresh = false, r
 	chatSource = records;
 	freshVisit = fresh;
 	vi.stubGlobal("localStorage", {getItem: () => null, setItem: () => {}, removeItem: () => {}});
-	const computed = window.getComputedStyle.bind(window);
 	vi.spyOn(window, "getComputedStyle").mockImplementation((element) => {
-		const result = computed(element);
+		const result = nativeGetComputedStyle(element);
 		if (element.classList.contains("overflow-y-auto")) Object.defineProperty(result, "overflowY", {value: "auto"});
 		return result;
 	});
@@ -403,6 +405,15 @@ async function renderShell(strict: boolean, routeId = LOCAL_ID, fresh = false, r
 	await screen.findByRole("button", {name: "Open fabricated pane"});
 	return router;
 }
+// A hook that overruns its timeout skips the rest of afterEach, so the next test's renderShell runs over the
+// spies this one installed. Rendering again without that teardown is the same ordering.
+it("renders again over the stubs a skipped teardown left installed", async () => {
+	await renderShell(false);
+	cleanup();
+	await renderShell(false);
+	expect(screen.getAllByRole("button", {name: "Open fabricated pane"})).toHaveLength(1);
+});
+
 it.each([false, true])(
 	"retains the visible record through a same-commit nested tile move, strict=%s",
 	async (strict) => {
