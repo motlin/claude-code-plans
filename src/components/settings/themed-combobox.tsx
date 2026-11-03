@@ -7,10 +7,12 @@ import {useSettingsRowIds} from "./settings-row-context";
  * The claude.ai/code settings Combobox: a full-width 32px trigger whose popup
  * holds a filter input over a listbox with a check on the current option.
  * Typing narrows the options and clears the active option until an arrow
- * key moves onto a match; Enter selects the active option and closes. Selection applies immediately (no Save). Escape is left to
- * bubble so, as upstream, it also closes the surrounding Settings dialog. A short list (Code font size) drops
+ * key moves onto a match; Enter selects the active option and closes. Selection applies immediately (no Save),
+ * and choosing the current value is ignored (upstream `U`'s onChange guard). In the field look Escape is left
+ * to bubble so, as upstream, it also closes the surrounding Settings dialog. A short list (Code font size) drops
  * the filter (`filterable={false}`): the listbox itself takes focus and the arrow keys. The `ghost` variant is
- * upstream's borderless fizzy `type` trigger, whose popup is w-56 and aligned to the trigger's end edge.
+ * upstream's borderless fizzy `type` trigger (cebb16f99 `U` over `E8`), whose popup is w-56 and aligned to the
+ * trigger's end edge; its Escape closes only the popup and refocuses the trigger.
  */
 
 interface ComboboxOption<T extends string> {
@@ -57,6 +59,7 @@ export function ThemedCombobox<T extends string>({
 	const [query, setQuery] = useState("");
 	const [activeIndex, setActiveIndex] = useState(0);
 
+	const ghost = variant === "ghost";
 	const needle = filterable ? query.trim().toLowerCase() : "";
 	const filtered = options.filter((option) => option.label.toLowerCase().includes(needle));
 	const current = options.find((option) => option.value === value);
@@ -87,7 +90,7 @@ export function ThemedCombobox<T extends string>({
 
 	const choose = (option: ComboboxOption<T> | undefined) => {
 		if (option === undefined || option.disabled === true) return;
-		onValueChange(option.value);
+		if (option.value !== value) onValueChange(option.value);
 		setOpen(false);
 		triggerRef.current?.focus();
 	};
@@ -107,8 +110,12 @@ export function ThemedCombobox<T extends string>({
 				choose(filtered[activeIndex]);
 				break;
 			case "Escape":
+				if (ghost) {
+					event.preventDefault();
+					event.stopPropagation();
+				}
 				setOpen(false);
-				if (!filterable) triggerRef.current?.focus();
+				if (ghost || !filterable) triggerRef.current?.focus();
 				break;
 			default:
 				break;
@@ -117,7 +124,6 @@ export function ThemedCombobox<T extends string>({
 
 	const activeOption = filtered[activeIndex];
 	const activeDescendant = activeOption === undefined ? undefined : `${baseId}-${activeOption.value}`;
-	const ghost = variant === "ghost";
 
 	return (
 		<div

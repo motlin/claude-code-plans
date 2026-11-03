@@ -16,6 +16,7 @@ import {
 import {SettingsProvider} from "../src/components/settings-provider";
 import {DEFAULTS} from "../src/components/settings-context";
 import {FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
+import {TRANSCRIPT_WIDTH_PX} from "../src/lib/transcript-width";
 import {ClaudeCodeSettings, GeneralSettings, TranscriptSettings} from "../src/components/settings/settings-sections";
 import {ThemeProvider} from "../src/components/theme-provider";
 import {installLocalStorage} from "./fake-storage";
@@ -145,6 +146,11 @@ describe("appearance setting schemas", () => {
 });
 
 describe("Appearance settings", () => {
+	// Upstream fizzy `type`: --fizzy-lake-column:768, [data-transcript-width=m] 960px, =l 1280px.
+	it("measures the transcript column at upstream's 768 / 960 / 1280px", () => {
+		expect(TRANSCRIPT_WIDTH_PX).toStrictEqual({narrow: 768, medium: 960, wide: 1280});
+	});
+
 	it("applies interface font, transcript text size and width as CSS variables on <html>", async () => {
 		await renderTab(<GeneralSettings />);
 		const initial = htmlVars();

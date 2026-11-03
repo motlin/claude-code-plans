@@ -205,6 +205,28 @@ describe("SettingsSection and SettingsRow", () => {
 			row: ["gap-7", "py-3"],
 		});
 	});
+	it("keeps a hidden description for screen readers only (upstream descriptionHidden)", () => {
+		render(
+			<>
+				<SettingsRow slug="hidden" title="Hidden" description="Read aloud only." descriptionHidden />
+				<SettingsRow slug="shown" title="Shown" description="Shown on screen." />
+			</>,
+		);
+		const describe = (name: string) => {
+			const group = screen.getByRole("group", {name});
+			const desc = group.querySelector("[data-settings-desc]");
+			return {
+				tag: desc?.tagName,
+				className: desc?.className,
+				describedBy: group.getAttribute("aria-describedby") === desc?.id,
+			};
+		};
+
+		expect({hidden: describe("Hidden"), shown: describe("Shown")}).toStrictEqual({
+			hidden: {tag: "DIV", className: "sr-only", describedBy: true},
+			shown: {tag: "DIV", className: "text-body text-[var(--settings-muted)]", describedBy: true},
+		});
+	});
 });
 
 describe("Switch", () => {
@@ -501,5 +523,112 @@ describe("ThemedCombobox", () => {
 		fireEvent.keyDown(search, {key: "Enter"});
 
 		expect(screen.getByRole("status", {name: "Chosen theme"}).textContent).toBe("github-light");
+	});
+	it("renders upstream's ghost trigger: borderless group/cbx root, ps-2 button, truncating label and chevron", () => {
+		render(
+			<ThemedCombobox
+				aria-label="Light code theme"
+				variant="ghost"
+				filterable={false}
+				value="claude-light"
+				onValueChange={() => {}}
+				options={THEME_OPTIONS}
+			/>,
+		);
+		const trigger = screen.getByRole("combobox", {name: "Light code theme"});
+		const root = trigger.closest("[data-cds=Combobox]");
+		const classes = (element: Element | null | undefined) => element?.getAttribute("class")?.split(" ");
+		fireEvent.click(trigger);
+		const popup = screen.getByRole("listbox", {name: "Light code theme"}).parentElement;
+
+		expect({
+			root: classes(root),
+			trigger: ["ps-2", "text-start", "bg-transparent"].filter((name) => trigger.classList.contains(name)),
+			label: classes(trigger.firstElementChild),
+			chevron: ["me-0.5", "shrink-0", "text-[var(--settings-muted)]", "group-hover/cbx:text-secondary"].filter(
+				(name) => trigger.lastElementChild?.classList.contains(name),
+			),
+			popup: ["end-0", "w-56"].filter((name) => popup?.classList.contains(name)),
+		}).toStrictEqual({
+			root: [
+				"group/cbx",
+				"relative",
+				"inline-flex",
+				"items-center",
+				"gap-1.5",
+				"h-8",
+				"rounded-r6",
+				"bg-transparent",
+				"hover:bg-fill-ghost-hover",
+				"aria-expanded:bg-fill-ghost-hover",
+				"has-[[aria-expanded=true]]:bg-fill-ghost-hover",
+				"ps-0",
+				"pe-2",
+				"has-[:focus-visible]:shadow-focus",
+				"shrink-0",
+			],
+			trigger: ["ps-2", "text-start", "bg-transparent"],
+			label: ["min-w-0", "flex-1", "truncate"],
+			chevron: ["me-0.5", "shrink-0", "text-[var(--settings-muted)]", "group-hover/cbx:text-secondary"],
+			popup: ["end-0", "w-56"],
+		});
+	});
+
+	it("closes only the ghost popup on Escape, refocusing the trigger without reaching the dialog", () => {
+		const dialogKeys: string[] = [];
+		render(
+			// oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- stands in for the Settings dialog's Escape handler
+			<div
+				onKeyDown={(event) => {
+					dialogKeys.push(event.key);
+				}}
+			>
+				<ThemedCombobox
+					aria-label="Light code theme"
+					variant="ghost"
+					filterable={false}
+					value="claude-light"
+					onValueChange={() => {}}
+					options={THEME_OPTIONS}
+				/>
+			</div>,
+		);
+		const trigger = screen.getByRole("combobox", {name: "Light code theme"});
+		fireEvent.click(trigger);
+		fireEvent.keyDown(screen.getByRole("listbox", {name: "Light code theme"}), {key: "Escape"});
+
+		expect({
+			listbox: screen.queryByRole("listbox"),
+			expanded: trigger.getAttribute("aria-expanded"),
+			focused: document.activeElement === trigger,
+			dialogKeys,
+		}).toStrictEqual({listbox: null, expanded: "false", focused: true, dialogKeys: []});
+	});
+
+	it("ignores choosing the current value, like upstream's onChange guard", () => {
+		const changes: string[] = [];
+		render(
+			<ThemedCombobox
+				aria-label="Light code theme"
+				variant="ghost"
+				filterable={false}
+				value="claude-light"
+				onValueChange={(next) => {
+					changes.push(next);
+				}}
+				options={THEME_OPTIONS}
+			/>,
+		);
+		const trigger = screen.getByRole("combobox", {name: "Light code theme"});
+		fireEvent.click(trigger);
+		fireEvent.click(screen.getByRole("option", {name: "Claude Light"}));
+		const afterCurrent = {changes: [...changes], listbox: screen.queryByRole("listbox")};
+		fireEvent.click(trigger);
+		fireEvent.click(screen.getByRole("option", {name: "One Light"}));
+
+		expect({afterCurrent, changes}).toStrictEqual({
+			afterCurrent: {changes: [], listbox: null},
+			changes: ["one-light"],
+		});
 	});
 });

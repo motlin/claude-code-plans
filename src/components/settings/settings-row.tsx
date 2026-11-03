@@ -69,9 +69,20 @@ interface SettingsRowProps {
 	 */
 	below?: ReactNode;
 	className?: string;
+	/** Keeps the description for screen readers only (upstream's `descriptionHidden`, a `div.sr-only`). */
+	descriptionHidden?: boolean;
 }
 
-export function SettingsRow({slug, title, description, children, footnote, below, className}: SettingsRowProps) {
+export function SettingsRow({
+	slug,
+	title,
+	description,
+	children,
+	footnote,
+	below,
+	className,
+	descriptionHidden = false,
+}: SettingsRowProps) {
 	const baseId = useId();
 	const titleId = `${baseId}-title`;
 	const descriptionId = description === undefined ? undefined : `${baseId}-description`;
@@ -97,7 +108,11 @@ export function SettingsRow({slug, title, description, children, footnote, below
 					</span>
 				</div>
 				{description === undefined ? null : (
-					<div id={descriptionId} data-settings-desc="" className="text-body text-[var(--settings-muted)]">
+					<div
+						id={descriptionId}
+						data-settings-desc=""
+						className={descriptionHidden ? "sr-only" : "text-body text-[var(--settings-muted)]"}
+					>
 						{description}
 					</div>
 				)}
