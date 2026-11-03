@@ -282,7 +282,7 @@ describe("⌘K palette: start a new session", () => {
 			label: `New session“${LONG_PROMPT}”`,
 			labelClass: "truncate",
 			promptClass: "opacity-50 ms-1.5",
-			promptHtml: `<span dir="auto"><span class="opacity-50">“</span>${LONG_PROMPT}<span class="opacity-50">”</span></span>`,
+			promptHtml: `<span><span class="opacity-50">“</span>${LONG_PROMPT}<span class="opacity-50">”</span></span>`,
 			icon: true,
 			project: "it's",
 		});
@@ -358,6 +358,68 @@ describe("⌘K palette: start a new session", () => {
 		expect(
 			[...dialog.querySelectorAll("[cmdk-item]")].map((item) => item.getAttribute("data-value")),
 		).toStrictEqual(["start:new-session"]);
+	});
+
+	it("lets a long prompt ending in a bare filter key win over the value list, like upstream", async () => {
+		const {dialog, input} = await openPalette();
+
+		fireEvent.change(input, {target: {value: "please refactor the palette search spec so it is faster repo:"}});
+
+		expect({
+			headings: headings(dialog),
+			items: dialog.querySelectorAll("[cmdk-item]").length,
+			values: dialog.querySelector('[data-value^="filter-value:"]'),
+		}).toStrictEqual({headings: ["Quick actions"], items: 1, values: null});
+	});
+
+	it("treats a long ! query as a prompt, quoting the bang word, while a short one keeps the bang path", async () => {
+		const {dialog, input} = await openPalette();
+
+		fireEvent.change(input, {target: {value: "!sett"}});
+		const shortHeadings = headings(dialog);
+		fireEvent.change(input, {target: {value: "!settings and then something else entirely different here"}});
+
+		expect({
+			shortHasQuickActions: shortHeadings.includes("Quick actions"),
+			longHeadings: headings(dialog),
+			label: newSessionRow(dialog).querySelector("[data-palette-label]")?.textContent,
+		}).toStrictEqual({
+			shortHasQuickActions: false,
+			longHeadings: ["Quick actions"],
+			label: "New session“!settings and then something else entirely different here”",
+		});
+	});
+
+	it("does not turn a key:value word into a chip once the raw query is over 50 characters", async () => {
+		const {dialog, input} = await openPalette();
+
+		fireEvent.change(input, {
+			target: {value: "please refactor the palette search spec so it is faster is:archived now"},
+		});
+
+		expect({
+			chips: dialog.querySelectorAll("[data-filter]").length,
+			label: newSessionRow(dialog).querySelector("[data-palette-label]")?.textContent,
+		}).toStrictEqual({
+			chips: 0,
+			label: "New session“please refactor the palette search spec so it is faster is:archived now”",
+		});
+	});
+
+	it("shows only the Actions group for a whitespace-only query over 50 characters", async () => {
+		const {dialog, input} = await openPalette();
+
+		fireEvent.change(input, {target: {value: " ".repeat(3)}});
+		const short = headings(dialog);
+		fireEvent.change(input, {target: {value: " ".repeat(51)}});
+		const long = headings(dialog);
+		fireEvent.change(input, {target: {value: ""}});
+
+		expect({short, long, cleared: headings(dialog)}).toStrictEqual({
+			short: ["Recents", "Actions"],
+			long: ["Actions"],
+			cleared: ["Recents", "Actions"],
+		});
 	});
 
 	it("does not offer New session for the / filter hints", async () => {

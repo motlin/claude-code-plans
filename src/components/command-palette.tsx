@@ -63,7 +63,7 @@ import {findWaitingCard, landOnWaitingCard} from "../lib/question-landing";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
 import type {PaletteMode, PaletteModeChangeOptions} from "../hooks/use-command-palette";
 import {PASTE_ATTACH_CHARS, type PaletteBuffers, switchPaletteView} from "../lib/palette-compose";
-import {offersQuickNewSession} from "../lib/palette-quick-action";
+import {offersQuickNewSession, paletteSearchable} from "../lib/palette-quick-action";
 import {useDebouncedValue} from "../hooks/use-debounced-value";
 import {sessionIdentityQueryOptions} from "../lib/api/session-identity";
 import {useSessionIdentity} from "../hooks/use-session-identity";
@@ -112,6 +112,7 @@ import {
 	PaletteTypeSchema,
 	applyPaletteFilters,
 	commitPaletteTokens,
+	shouldCommitPaletteTokens,
 	isClientPaletteType,
 	paletteChips,
 	popPaletteFilter,
@@ -963,14 +964,20 @@ function PalettePopup({
 	const chips = useMemo(() => paletteChips(filters, (data?.sessions ?? []).map(paletteRepoValue)), [filters, data]);
 	/** Date, repo or archived narrowing, which upstream's Clear filters drops while keeping the text. */
 	const hasFilterTokens = tokens.date !== undefined || tokens.project !== undefined || tokens.archived === true;
-	// A trailing bare `key:` lists that filter's values instead of results.
+	// A trailing bare `key:` lists that filter's values instead of results, but only for a searchable (≤50) query.
 	const valueSuggestions = useMemo(
-		() => (hints === null ? paletteValueSuggestions(query, data?.sessions ?? []) : null),
+		() =>
+			hints === null && paletteSearchable(query) ? paletteValueSuggestions(query, data?.sessions ?? []) : null,
 		[hints, query, data],
 	);
 	const actionsOnly = tokens.actions === true;
-	// A query starting with "!" searches only the jump bangs: no sessions, server search or Quick actions.
-	const bangQuery = !compose && hints === null && valueSuggestions === null && tokens.text.startsWith("!");
+	// A searchable query starting with "!" searches only the jump bangs: no sessions, server search or Quick actions.
+	const bangQuery =
+		!compose &&
+		hints === null &&
+		valueSuggestions === null &&
+		paletteSearchable(query) &&
+		tokens.text.startsWith("!");
 	// Upstream's `nn`: a raw query over 50 characters is a prompt, so Search offers only New session and skips search.
 	const longPrompt = !compose && hints === null && valueSuggestions === null && offersQuickNewSession(query);
 	const startable = hints === null && valueSuggestions === null && !actionsOnly && !bangQuery;
@@ -1413,7 +1420,7 @@ function PalettePopup({
 
 	// Upstream's `ht`: each `key:value` word a whitespace follows becomes a chip (or, for `type:`, the tab).
 	function changeQuery(next: string) {
-		if (compose) {
+		if (compose || !shouldCommitPaletteTokens(next)) {
 			setQuery(next);
 			return;
 		}
@@ -1803,7 +1810,11 @@ function PalettePopup({
 	// Upstream's sending Compose keeps the list hidden: the busy Send and the live region carry the state.
 	const composeAtRest = compose && startStep !== "picker";
 	const showEmptyState = idle && !compose && trimmedQuery === "" && tab === "all" && chips.length === 0;
-	if (frozenMarks !== null && frozenView === null && showEmptyState) setFrozenView(emptyView.view);
+	// Upstream's `nn` fails for whitespace over 50 characters: only the Actions group shows, and it isn't frozen.
+	const whitespacePrompt = showEmptyState && !paletteSearchable(query);
+	if (frozenMarks !== null && frozenView === null && showEmptyState && !whitespacePrompt) {
+		setFrozenView(emptyView.view);
+	}
 	const showResults =
 		idle && !compose && hints === null && valueSuggestions === null && !showEmptyState && !longPrompt;
 	// Upstream sizes the scroller to its content, but holds it at the cap while the skeleton or empty block fills it.
@@ -2079,44 +2090,48 @@ function PalettePopup({
 
 						{showEmptyState && (
 							<>
-								{emptyView.groups.map((group) =>
-									group.id === "jump" ? (
-										// Upstream's pinned jump group is a bare, untitled div above Needs attention.
-										<div key={group.id}>
-											<CommandItem
-												value="action:jump_to_question"
-												icon={<CircleHelp />}
-												onSelect={jumpToQuestion}
-											>
-												{PALETTE_JUMP_ACTIONS.jump_to_question.label}
-											</CommandItem>
-										</div>
-									) : (
-										<Command.Group key={group.id} heading={group.title} className={GROUP_CLASS}>
-											{group.items.map((row) => (
-												<EmptyViewItem
-													key={row.id}
-													row={row}
-													onOpenSession={(id) => {
-														select(() => {
-															openSession(id);
-														});
-													}}
-													onOpenRowActions={openRowActions}
-													onNavigate={(href) => {
-														select(() => void navigate({href}));
-													}}
-													onNewSession={() => {
-														select(
-															() =>
-																void navigate({to: "/"}).then(requestHomeComposerFocus),
-														);
-													}}
-												/>
-											))}
-										</Command.Group>
-									),
-								)}
+								{emptyView.groups
+									.filter((group) => !whitespacePrompt || group.id === "actions")
+									.map((group) =>
+										group.id === "jump" ? (
+											// Upstream's pinned jump group is a bare, untitled div above Needs attention.
+											<div key={group.id}>
+												<CommandItem
+													value="action:jump_to_question"
+													icon={<CircleHelp />}
+													onSelect={jumpToQuestion}
+												>
+													{PALETTE_JUMP_ACTIONS.jump_to_question.label}
+												</CommandItem>
+											</div>
+										) : (
+											<Command.Group key={group.id} heading={group.title} className={GROUP_CLASS}>
+												{group.items.map((row) => (
+													<EmptyViewItem
+														key={row.id}
+														row={row}
+														onOpenSession={(id) => {
+															select(() => {
+																openSession(id);
+															});
+														}}
+														onOpenRowActions={openRowActions}
+														onNavigate={(href) => {
+															select(() => void navigate({href}));
+														}}
+														onNewSession={() => {
+															select(
+																() =>
+																	void navigate({to: "/"}).then(
+																		requestHomeComposerFocus,
+																	),
+															);
+														}}
+													/>
+												))}
+											</Command.Group>
+										),
+									)}
 							</>
 						)}
 
@@ -2930,7 +2945,7 @@ function NewSessionItem({
 				<span data-palette-label="" className="truncate">
 					New session
 					<span data-palette-prompt="" className="opacity-50 ms-1.5">
-						<span dir="auto">
+						<span>
 							<span className="opacity-50">“</span>
 							{prompt}
 							<span className="opacity-50">”</span>

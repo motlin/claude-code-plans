@@ -2,6 +2,7 @@ import {z} from "zod";
 import {UnifiedSearchDateSchema, type UnifiedSearchDate, type UnifiedSearchParams} from "./api/search";
 import {paletteFilterLabels, paletteTypeLabels, unifiedSearchDateLabels} from "./schema-choices";
 import {assertNever} from "./assert-never";
+import {paletteSearchable} from "./palette-quick-action";
 
 /**
  * The ⌘K palette's filter grammar, copied from claude.ai/code minus its cloud
@@ -476,6 +477,14 @@ export function commitPaletteTokens(
 		return "";
 	});
 	return {text, filters: next, ...(tab === undefined ? {} : {tab})};
+}
+
+/**
+ * Upstream's chip-conversion gate: only a raw query of at most 50 characters with no newline
+ * turns its `key:value` words into chips; a longer one is a prompt and keeps them as text.
+ */
+export function shouldCommitPaletteTokens(rawQuery: string): boolean {
+	return paletteSearchable(rawQuery) && !rawQuery.includes("\n");
 }
 
 /** Backspace on an empty query pops the newest filter in this order, like upstream. */

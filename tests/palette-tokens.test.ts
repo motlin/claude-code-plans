@@ -16,6 +16,7 @@ import {
 	nextPaletteType,
 	paletteTypeStep,
 	scrollIntoStrip,
+	shouldCommitPaletteTokens,
 	type PaletteTokens,
 } from "../src/lib/palette-tokens";
 
@@ -604,5 +605,15 @@ describe("nextPaletteType", () => {
 			missing: nextPaletteType(["a", "b"], "z", 1, true),
 			single: nextPaletteType(["a"], "a", 1, true),
 		}).toStrictEqual({missing: "a", single: undefined});
+	});
+});
+
+describe("shouldCommitPaletteTokens", () => {
+	it("commits chips only for a raw query of at most 50 characters without a newline, like upstream", () => {
+		expect(
+			["is:archived ", `${"a".repeat(30)} is:archived `, `${"x".repeat(50)} is:archived `, "a\nis:archived "].map(
+				shouldCommitPaletteTokens,
+			),
+		).toStrictEqual([true, true, false, false]);
 	});
 });
