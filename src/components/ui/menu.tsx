@@ -544,6 +544,13 @@ export interface MenuCheckboxItemProps extends Omit<
 	icon?: ReactNode;
 	/** Upstream's trailing Counter; while it shows on an unchecked row, the check slot is left out. */
 	count?: number;
+	/**
+	 * Upstream's multi-select filter row (the Artifacts Type submenu): a leading cds checkbox in the icon slot
+	 * instead of the trailing check.
+	 */
+	leadingCheck?: boolean;
+	/** Muted trailing hint text after the label, such as upstream's filter count ("8+"). */
+	hint?: ReactNode;
 }
 
 /** Upstream's compact `Counter`: a 16px pill in neutral fill with caption-medium muted digits. */
@@ -557,11 +564,46 @@ export function MenuCheckboxItem({
 	closeOnClick = false,
 	icon,
 	count,
+	leadingCheck = false,
+	hint,
 	...props
 }: MenuCheckboxItemProps) {
 	const itemClass = useItemClass();
 	const ariaKeyShortcuts = useAriaKeyShortcuts(accelerator, shortcut);
 	const showCount = count !== undefined && count > 0 && props.checked !== true;
+	if (leadingCheck) {
+		return (
+			<BaseMenu.CheckboxItem
+				{...props}
+				closeOnClick={closeOnClick}
+				className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
+			>
+				<span aria-hidden="true" className="-ms-1 flex size-5 shrink-0 items-center justify-center">
+					<BaseMenu.CheckboxItemIndicator
+						keepMounted
+						render={(slotProps, {checked}) => (
+							<span
+								{...slotProps}
+								data-cds-checkbox=""
+								className={`flex size-4 items-center justify-center rounded-r4 border ${checked ? "border-fill-accent bg-fill-accent text-white" : "border-strong"}`}
+							>
+								{checked && <Check aria-hidden="true" strokeWidth={3} className="size-3" />}
+							</span>
+						)}
+					/>
+				</span>
+				<span className={LABEL_CLASS}>{children}</span>
+				{hint !== undefined && (
+					<span
+						data-menu-hint=""
+						className="ms-3 max-w-[160px] shrink-0 truncate text-footnote tabular-nums text-ink-muted"
+					>
+						{hint}
+					</span>
+				)}
+			</BaseMenu.CheckboxItem>
+		);
+	}
 	return (
 		<BaseMenu.CheckboxItem
 			{...props}
@@ -758,6 +800,8 @@ export interface MenuRadioItemProps extends Omit<ComponentProps<typeof BaseMenu.
 	accelerator?: string;
 	/** Upstream's checked model row: its ✓ replaces the visible digit, which still fires. */
 	hideAccelerator?: boolean;
+	/** Why a disabled row is unavailable: it describes the row and shows in a reason tooltip, as `MenuItem`'s. */
+	disabledReason?: string | undefined;
 }
 
 export function MenuRadioItem({
@@ -765,9 +809,12 @@ export function MenuRadioItem({
 	description,
 	accelerator,
 	hideAccelerator = false,
+	disabledReason,
 	...props
 }: MenuRadioItemProps) {
 	const itemClass = useItemClass(description !== undefined);
+	const reasonId = useId();
+	const reason = activeDisabledReason(props.disabled, disabledReason);
 	const check = (
 		<BaseMenu.RadioItemIndicator className={CHECK_SLOT_CLASS}>
 			<Check aria-hidden="true" strokeWidth={3} className={CHECK_ICON_CLASS} />
@@ -783,16 +830,23 @@ export function MenuRadioItem({
 			</span>
 		);
 	}
-	return (
+	const item = (
 		<BaseMenu.RadioItem
 			closeOnClick={false}
 			{...props}
+			{...(reason === undefined ? {} : {"aria-describedby": reasonId})}
 			{...acceleratorProps(accelerator)}
 			className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
 		>
 			<ItemText description={description}>{children}</ItemText>
 			{trailing}
 		</BaseMenu.RadioItem>
+	);
+	if (reason === undefined) return item;
+	return (
+		<DisabledReasonRow reason={reason} reasonId={reasonId}>
+			{item}
+		</DisabledReasonRow>
 	);
 }
 

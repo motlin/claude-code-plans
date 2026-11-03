@@ -48,6 +48,30 @@
 	--font-weight-control: 500;
 	/* Upstream `font-control` on font-normal cds Buttons and Comboboxes: 400 until fizzy-lake `type`. */
 	--font-weight-control-regular: 400;
+	/*
+	 * Upstream cds palette steps for the Artifacts gallery covers and template tiles (`--cds-<hue>-<step>`,
+	 * dumps/upstream-survey-root-vars.css); Tailwind's own gray/blue/… steps differ and stay for other uses.
+	 */
+	--color-cds-gray-100: #e1e0d9;
+	--color-cds-gray-200: #c3c2b7;
+	--color-cds-gray-600: #52514e;
+	--color-cds-gray-700: #383835;
+	--color-cds-blue-100: #cde2fb;
+	--color-cds-blue-200: #9ec5f4;
+	--color-cds-blue-600: #184f95;
+	--color-cds-blue-700: #0d366b;
+	--color-cds-orange-100: #f7d8cb;
+	--color-cds-orange-200: #f4ae94;
+	--color-cds-orange-600: #863311;
+	--color-cds-orange-700: #5d230b;
+	--color-cds-violet-100: #dfdbfd;
+	--color-cds-violet-200: #bfb9f5;
+	--color-cds-violet-600: #4a3aa7;
+	--color-cds-violet-700: #322777;
+	--color-cds-red-100: #fad6d6;
+	--color-cds-red-200: #f4abab;
+	--color-cds-red-600: #8e2626;
+	--color-cds-red-700: #641919;
 }
 
 /* Fizzy-lake `panels` rollout: upstream's toolbar hairline token, 1px under panels (read live 2026-11-01);
@@ -143,6 +167,12 @@ html[data-interface-font="dyslexic"] {
 	--color-upstream-accent-layer: var(--upstream-accent-layer);
 	--color-upstream-accent-muted: var(--upstream-accent-muted);
 	--color-upstream-tint-blue: var(--upstream-tint-blue);
+	/* Upstream text-tint-blue: the Docs ArtifactMark glyph on its bg-tint-blue tile. */
+	--color-tint-blue-ink: var(--upstream-text-tint-blue);
+	/* Upstream --cds-button-on-content(-hover/-ring): blurred buttons floating over card content. */
+	--color-button-on-content: var(--upstream-button-on-content);
+	--color-button-on-content-hover: var(--upstream-button-on-content-hover);
+	--color-button-on-content-ring: var(--upstream-button-on-content-ring);
 
 	/* User message bubble */
 	--color-user-msg-bg: var(--user-msg-bg);
@@ -374,6 +404,11 @@ html[data-interface-font="dyslexic"] {
 	--upstream-accent-muted: rgb(37 125 224 / 0.1);
 	/* Upstream bg-tint-blue: the ⌘K palette's committed filter chips. */
 	--upstream-tint-blue: rgb(118 178 251 / 0.35);
+	/* Upstream --cds-text-tint-blue (blue-600) and --cds-button-on-content(-hover/-ring), light. */
+	--upstream-text-tint-blue: #184f95;
+	--upstream-button-on-content: #fff9;
+	--upstream-button-on-content-hover: #ffffffb3;
+	--upstream-button-on-content-ring: #ffffff59;
 	--accent-100: hsl(210 70.9% 51.6%);
 	--accent-900: hsl(211 72% 90%);
 
@@ -650,6 +685,11 @@ html[data-interface-font="dyslexic"] {
 	--upstream-accent-pressed: #032042;
 	--upstream-accent-muted: rgb(37 125 224 / 0.2);
 	--upstream-tint-blue: rgb(0 36 81 / 0.75);
+	/* Upstream dark --cds-text-tint-blue (blue-300) and --cds-button-on-content(-hover/-ring). */
+	--upstream-text-tint-blue: #6da7ec;
+	--upstream-button-on-content: #0000008c;
+	--upstream-button-on-content-hover: #000000a6;
+	--upstream-button-on-content-ring: transparent;
 	--accent-100: hsl(210 70.9% 51.6%);
 	--accent-900: hsl(210 55.9% 24.6%);
 	/* Upstream dark --cds-role-warning-800 (--cds-yellow-800) / --cds-role-danger-800 (--cds-red-800). */
@@ -770,6 +810,7 @@ html[data-interface-font="dyslexic"] {
 	--upstream-warning: #794c02;
 	/* Upstream `--cds-bg-tint-blue`, the same in both modes: the ⌘K palette's committed filter chips. */
 	--upstream-tint-blue: #257de01f;
+	--upstream-text-tint-blue: #1757ac;
 	/* Upstream `--cds-text-primary` / `-secondary` / `-muted`. */
 	--upstream-text-primary: #000000e6;
 	--upstream-text-secondary: #0009;
@@ -809,6 +850,7 @@ html[data-interface-font="dyslexic"] {
 }
 
 :root.dark[data-cds-fizzy-lake~="color"] {
+	--upstream-text-tint-blue: #6aabf1;
 	--upstream-fill-ghost-hover: #ffffff13;
 	--upstream-plain-secondary: #ffffff91;
 	--upstream-warning: #e49c06;

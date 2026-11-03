@@ -21,6 +21,7 @@ const ARTIFACT: ArtifactSummary = {
 	audience: "owner",
 	firstSeenAt: 1_000,
 	lastPublishedAt: 2_000,
+	lastOpenedAt: null,
 	publishCount: 1,
 	sessionId: "session-ladder",
 	projectId: "-Users-alice-projects-ladder",

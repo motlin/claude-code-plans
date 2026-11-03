@@ -237,6 +237,7 @@ const expectedArtifactAfterBothSessions = {
 	typeUrl: null,
 	firstSeenAt: Date.parse("2000-01-01T00:00:00.000Z"),
 	lastPublishedAt: Date.parse("2000-01-02T00:00:00.000Z"),
+	lastOpenedAt: null,
 	publishCount: 2,
 	lastSessionId: sessionB,
 	projectId,
@@ -365,6 +366,7 @@ describe("artifact indexing", () => {
 				typeUrl: null,
 				firstSeenAt: Date.parse("2000-01-01T00:00:00.000Z"),
 				lastPublishedAt: Date.parse("2000-01-01T00:00:00.000Z"),
+				lastOpenedAt: null,
 				publishCount: 1,
 				lastSessionId: sessionA,
 				projectId,
@@ -421,11 +423,53 @@ describe("artifact indexing", () => {
 				typeUrl: null,
 				firstSeenAt: Date.parse("2000-01-02T00:00:00.000Z"),
 				lastPublishedAt: Date.parse("2000-01-02T00:00:00.000Z"),
+				lastOpenedAt: null,
 				publishCount: 1,
 				lastSessionId: sessionB,
 				projectId,
 			},
 		]);
+	});
+
+	it("indexes the latest open or read as lastOpenedAt, and null for a publish-only artifact", async () => {
+		const openCall: ArtifactCall = {
+			toolUseId: "toolu_a_open",
+			timestamp: "2000-01-01T05:00:00.000Z",
+			input: {action: "open", url: ARTIFACT_URL},
+			resultText: `Opened ${ARTIFACT_URL}.`,
+			toolUseResult: {opened: true},
+		};
+		const readCall: ArtifactCall = {
+			toolUseId: "toolu_a_read",
+			timestamp: "2000-01-01T04:00:00.000Z",
+			input: {action: "read", url: ARTIFACT_URL},
+			resultText: "<html></html>",
+			toolUseResult: {read: {url: ARTIFACT_URL}},
+		};
+		writeTranscript(sessionPath(sessionA), sessionA, [firstPublish, readCall, openCall, slugHtmlPublish]);
+		await indexJsonlFile(db.index, sessionPath(sessionA), projectId);
+
+		expect({
+			rows: readArtifacts().map(({url, lastPublishedAt, lastOpenedAt}) => ({url, lastPublishedAt, lastOpenedAt})),
+			summaries: getArtifacts(db.index, {}, () => null).map(({url, lastOpenedAt}) => ({url, lastOpenedAt})),
+		}).toStrictEqual({
+			rows: [
+				{
+					url: SLUG_HTML_URL,
+					lastPublishedAt: Date.parse("2000-01-03T00:00:00.000Z"),
+					lastOpenedAt: null,
+				},
+				{
+					url: ARTIFACT_URL,
+					lastPublishedAt: Date.parse("2000-01-01T00:00:00.000Z"),
+					lastOpenedAt: Date.parse("2000-01-01T05:00:00.000Z"),
+				},
+			],
+			summaries: [
+				{url: SLUG_HTML_URL, lastOpenedAt: null},
+				{url: ARTIFACT_URL, lastOpenedAt: Date.parse("2000-01-01T05:00:00.000Z")},
+			],
+		});
 	});
 
 	it("classifies a slug-URL HTML publish as html and keeps its icon", async () => {
@@ -448,6 +492,7 @@ describe("artifact indexing", () => {
 				typeUrl: null,
 				firstSeenAt: Date.parse("2000-01-03T00:00:00.000Z"),
 				lastPublishedAt: Date.parse("2000-01-03T00:00:00.000Z"),
+				lastOpenedAt: null,
 				publishCount: 1,
 				lastSessionId: sessionA,
 				projectId,

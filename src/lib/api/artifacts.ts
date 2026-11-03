@@ -17,6 +17,8 @@ const ArtifactSummarySchema = z.strictObject({
 	audience: z.string().nullable(),
 	firstSeenAt: z.number(),
 	lastPublishedAt: z.number().nullable(),
+	/** The latest local `open`/`read` of it, in ms; null when it was never opened. */
+	lastOpenedAt: z.number().nullable(),
 	publishCount: z.number(),
 	sessionId: z.string(),
 	projectId: z.string(),

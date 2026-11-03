@@ -12,7 +12,7 @@ const BADGE_CLASS: Record<ArtifactTemplate["badge"], string> = {
 /**
  * Upstream's Artifacts "Make something new" strip. Each tile opens home with `?create=<slug>`, which
  * prefills the composer with a starter prompt; sending it starts a herdr session that makes the
- * artifact. Upstream's hover mini-animations are replaced by a static hue gradient.
+ * artifact. Each tile is a solid hue with a grain texture and grows to 103% on hover.
  */
 export function MakeSomethingNew() {
 	const headingId = useId();
@@ -49,17 +49,11 @@ function TemplateTile({template}: Readonly<{template: ArtifactTemplate}>) {
 			<span
 				aria-hidden="true"
 				data-template-tile
-				className="relative block w-34 h-24 rounded-composer bg-surface-2 shadow-sm transition-shadow duration-200 ease-out group-hover:shadow-md after:pointer-events-none after:absolute after:inset-0 after:rounded-composer after:ring-1 after:ring-inset after:ring-alpha-2 after:transition-shadow after:duration-200 after:ease-out group-hover:after:ring-[var(--tile-ring)]"
-				style={{"--tile-ring": `color-mix(in srgb, ${template.hue} 50%, transparent)`}}
+				className={`relative flex h-24 w-34 items-center justify-center overflow-hidden rounded-composer transition-transform duration-200 ease-out motion-safe:group-hover:scale-[1.03] ${template.tileClass}`}
 			>
-				<span
-					className="absolute inset-1.5 flex items-center justify-center overflow-hidden rounded"
-					style={{
-						background: `linear-gradient(135deg, color-mix(in srgb, ${template.hue} 24%, transparent), color-mix(in srgb, ${template.hue} 6%, transparent))`,
-						color: template.hue,
-					}}
-				>
-					<Icon className="size-6" />
+				<TileGrain />
+				<span className="relative flex">
+					<Icon className="size-14" />
 				</span>
 			</span>
 			<span className="flex min-h-4 min-w-0 items-center gap-1.5 px-0.5 text-footnote font-medium text-primary">
@@ -72,6 +66,22 @@ function TemplateTile({template}: Readonly<{template: ArtifactTemplate}>) {
 				</span>
 			)}
 		</Link>
+	);
+}
+
+/** Upstream's 12% grain over the tile hue: fractal noise displaced by 1.6. */
+function TileGrain() {
+	const filterId = useId();
+	return (
+		<span className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit] opacity-[0.12]">
+			<svg aria-hidden="true" viewBox="0 0 115 80" preserveAspectRatio="xMidYMid slice" className="size-full">
+				<filter id={filterId}>
+					<feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="3" result="noise" />
+					<feDisplacementMap in="noise" in2="noise" scale="1.6" />
+				</filter>
+				<rect width="115" height="80" filter={`url(#${filterId})`} />
+			</svg>
+		</span>
 	);
 }
 

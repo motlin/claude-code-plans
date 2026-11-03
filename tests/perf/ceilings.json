@@ -58,11 +58,11 @@
 		"raisedAt": "2026-11-02"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1290676,
+		"ceiling": 1305089,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Sidebar sections model (2026-11-02): upstream's sections layout adds the per-browser sections store with its Zod schema and migration (src/lib/sidebar-sections.ts), each manual section's own Group and sort menu with its Date/Status headings, the shared Group and sort footer with Reset/View all disabled states, and the folder header's full worked-out rv menu, while custom groups mode and the first-header + go. Went from 1270896 to 1290676. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-02"
+		"reason": "Artifacts gallery delta (2026-11-03): upstream's Filter and sort menu adds the leading-checkbox MenuCheckboxItem variant and the MenuRadioItem disabled-reason row to the shared menu primitives, the gallery's comma-list search parsing runs in the route's validateSearch, and the strip tiles' hue classes ride the template catalog, on top of the growth since the 2026-11-02 sidebar sections raise. Went from 1290676 to 1305089. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-03"
 	},
 	"bundle.session.gzip": {
 		"ceiling": 667120,
@@ -72,11 +72,11 @@
 		"raisedAt": "2026-11-03"
 	},
 	"bundle.session.raw": {
-		"ceiling": 1996997,
+		"ceiling": 2020881,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Sidebar sections model (2026-11-02): upstream's sections layout adds the per-browser sections store with its Zod schema and migration (src/lib/sidebar-sections.ts), each manual section's own Group and sort menu with its Date/Status headings, the shared Group and sort footer with Reset/View all disabled states, and the folder header's full worked-out rv menu, while custom groups mode and the first-header + go. Went from 1975684 to 1996997. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-02"
+		"reason": "Artifacts gallery delta (2026-11-03): upstream's Filter and sort menu adds the leading-checkbox MenuCheckboxItem variant and the MenuRadioItem disabled-reason row to the shared menu primitives, the gallery's comma-list search parsing runs in the route's validateSearch, and the strip tiles' hue classes ride the template catalog, on top of the growth since the 2026-11-02 sidebar sections raise. Went from 1996997 to 2020881. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-03"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 9,

@@ -16,8 +16,12 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {artifactsQueryOptions, ArtifactListResponse} from "../src/lib/api/artifacts";
 import {
 	ARTIFACTS_LAYOUT_STORAGE_KEY,
+	activeFilterCount,
+	applyArtifactFilters,
 	artifactDateGroupLabel,
-	filterArtifacts,
+	artifactMatchesSearch,
+	NO_ARTIFACT_FILTERS,
+	sortArtifacts,
 	formatArtifactRelative,
 	formatArtifactTooltip,
 	groupArtifactsByDate,
@@ -97,6 +101,126 @@ describe("artifactDateGroupLabel", () => {
 			{label: "November 2025", ids: ["e"]},
 			{label: "Older", ids: ["u"]},
 		]);
+	});
+});
+
+describe("sortArtifacts", () => {
+	const items = [
+		{
+			id: "opened-late",
+			lastOpenedAt: localMs(2026, 8, 29, 9),
+			lastPublishedAt: localMs(2026, 8, 1),
+			firstSeenAt: 0,
+		},
+		{id: "edited-late", lastOpenedAt: null, lastPublishedAt: localMs(2026, 8, 28), firstSeenAt: 0},
+		{id: "seen-only", lastOpenedAt: null, lastPublishedAt: null, firstSeenAt: localMs(2026, 8, 20)},
+		{id: "opened-early", lastOpenedAt: localMs(2026, 8, 10), lastPublishedAt: localMs(2026, 8, 25), firstSeenAt: 0},
+	];
+
+	it("orders by Last opened (open, else publish, else first seen) or by Last edited (publish, else first seen)", () => {
+		expect({
+			opened: sortArtifacts(items, "opened").map((item) => item.id),
+			edited: sortArtifacts(items, "edited").map((item) => item.id),
+		}).toStrictEqual({
+			opened: ["opened-late", "edited-late", "seen-only", "opened-early"],
+			edited: ["edited-late", "opened-early", "seen-only", "opened-late"],
+		});
+	});
+});
+
+describe("applyArtifactFilters", () => {
+	const items = [
+		{
+			id: "docs-mine-today",
+			kind: "docs" as const,
+			audience: "owner",
+			lastOpenedAt: localMs(2026, 8, 29, 8),
+			lastPublishedAt: null,
+			firstSeenAt: 0,
+			pinned: true,
+		},
+		{
+			id: "html-shared-yesterday",
+			kind: "html" as const,
+			audience: "org",
+			lastOpenedAt: localMs(2026, 8, 28, 8),
+			lastPublishedAt: null,
+			firstSeenAt: 0,
+			pinned: false,
+		},
+		{
+			id: "html-mine-week",
+			kind: "html" as const,
+			audience: "owner",
+			lastOpenedAt: null,
+			lastPublishedAt: localMs(2026, 8, 24),
+			firstSeenAt: 0,
+			pinned: false,
+		},
+		{
+			id: "docs-shared-month",
+			kind: "docs" as const,
+			audience: null,
+			lastOpenedAt: null,
+			lastPublishedAt: null,
+			firstSeenAt: localMs(2026, 8, 5),
+			pinned: false,
+		},
+		{
+			id: "html-old",
+			kind: "html" as const,
+			audience: "owner",
+			lastOpenedAt: localMs(2026, 5, 1),
+			lastPublishedAt: null,
+			firstSeenAt: 0,
+			pinned: false,
+		},
+	];
+	const run = (filters: Partial<typeof NO_ARTIFACT_FILTERS>) =>
+		applyArtifactFilters(
+			items,
+			{...NO_ARTIFACT_FILTERS, ...filters},
+			{now: NOW, isPinned: (item) => item.pinned},
+		).map((item) => item.id);
+
+	it("narrows by type, owner, date opened, sharing and pinned, and counts each active pick", () => {
+		expect({
+			none: run({}),
+			docs: run({types: ["docs"]}),
+			other: run({types: ["other"]}),
+			slides: run({types: ["slides"]}),
+			mine: run({owners: ["me"]}),
+			others: run({owners: ["others"]}),
+			both: run({owners: ["me", "others"]}),
+			today: run({opened: "today"}),
+			yesterday: run({opened: "yesterday"}),
+			week: run({opened: "week"}),
+			month: run({opened: "month"}),
+			private: run({sharing: "private"}),
+			shared: run({sharing: "shared"}),
+			pinned: run({pinned: true}),
+			counts: [
+				activeFilterCount(NO_ARTIFACT_FILTERS),
+				activeFilterCount({...NO_ARTIFACT_FILTERS, types: ["docs", "other"], opened: "week", pinned: true}),
+				activeFilterCount({...NO_ARTIFACT_FILTERS, owners: ["me"], sharing: "shared"}),
+			],
+		}).toStrictEqual({
+			none: ["docs-mine-today", "html-shared-yesterday", "html-mine-week", "docs-shared-month", "html-old"],
+			docs: ["docs-mine-today", "docs-shared-month"],
+			other: ["html-shared-yesterday", "html-mine-week", "html-old"],
+			slides: [],
+			mine: ["docs-mine-today", "html-mine-week", "html-old"],
+			others: ["html-shared-yesterday", "docs-shared-month"],
+			both: ["docs-mine-today", "html-shared-yesterday", "html-mine-week", "docs-shared-month", "html-old"],
+			today: ["docs-mine-today"],
+			yesterday: ["html-shared-yesterday"],
+			week: ["docs-mine-today", "html-shared-yesterday", "html-mine-week"],
+			month: ["docs-mine-today", "html-shared-yesterday", "html-mine-week", "docs-shared-month"],
+			private: ["docs-mine-today", "html-mine-week", "html-old"],
+			shared: ["html-shared-yesterday", "docs-shared-month"],
+			pinned: ["docs-mine-today"],
+			counts: [0, 4, 2],
+		});
 	});
 });
 
@@ -265,6 +389,33 @@ describe("getArtifacts", () => {
 		]);
 	});
 
+	it("titles an artifact with neither a title nor a source path \u201cUntitled artifact\u201d, as upstream", () => {
+		const db = openTestDb();
+		db.index
+			.insert(schema.artifacts)
+			.values({
+				url: "https://claude.ai/artifact/X57Wrq94uRBcVC499vkvKY",
+				id: "X57Wrq94uRBcVC499vkvKY",
+				urlKind: "slug",
+				title: null,
+				favicon: null,
+				description: null,
+				version: "1",
+				projectId: "-Users-alice-projects-ladder",
+				sourcePath: null,
+				audience: "owner",
+				firstSeenAt: localMs(2026, 8, 1),
+				lastPublishedAt: null,
+				publishCount: 0,
+				lastSessionId: "session-untitled",
+			})
+			.run();
+
+		expect(getArtifacts(db.index, {}, () => null).map((artifact) => artifact.title)).toStrictEqual([
+			"Untitled artifact",
+		]);
+	});
+
 	it("filters by title, ignoring case", () => {
 		const db = openTestDb();
 		seedArtifacts(db);
@@ -280,8 +431,16 @@ describe("getArtifacts", () => {
 		const artifacts = getArtifacts(db.index, {}, () => null);
 
 		expect({
-			docs: filterArtifacts(artifacts, {search: "", type: "docs"}).map((a) => a.id),
-			html: filterArtifacts(artifacts, {search: "cash", type: "html"}).map((a) => a.id),
+			docs: applyArtifactFilters(
+				artifacts,
+				{...NO_ARTIFACT_FILTERS, types: ["docs"]},
+				{now: NOW, isPinned: () => false},
+			).map((a) => a.id),
+			html: applyArtifactFilters(
+				artifacts.filter((a) => artifactMatchesSearch(a.title, "cash")),
+				{...NO_ARTIFACT_FILTERS, types: ["other"]},
+				{now: NOW, isPinned: () => false},
+			).map((a) => a.id),
 		}).toStrictEqual({
 			docs: ["7Hq2vXbN4pLmKcR9sTwYzA"],
 			html: ["17b8a2c1-4c41-46bf-b064-a272240be709"],
@@ -417,36 +576,65 @@ describe("artifacts route", () => {
 		});
 	});
 
-	it("draws grid cards as upstream: r10, a 160px preview, a 28px type tile straddling the divider, 14px body, 13/20 title, 11/17 meta, no pills", async () => {
+	it("lays the grid out with upstream's @container auto-fill template", async () => {
 		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
 		await renderArtifactsPage("/artifacts", true);
-		const card = document.querySelector<HTMLElement>("[data-gallery-card]");
-		if (card === null) throw new Error("no card");
-		const classes = (selector: string) => card.querySelector(selector)?.className.split(" ") ?? [];
-		const has = (selector: string, names: string[]) => names.filter((name) => !classes(selector).includes(name));
+
+		expect(document.querySelector("[data-gallery-card]")?.closest("ul")?.className).toBe(
+			"grid @container gap-6 grid-cols-[repeat(auto-fill,minmax(min(100%,max(15rem,30%)),1fr))]",
+		);
+	});
+
+	it("grows the whole card to 103% on hover and while its menu is open, on an r16 pressable whose frame keeps its fill", async () => {
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		await renderArtifactsPage("/artifacts", true);
+		const item = screen.getByRole("link", {name: "Quarterly plan"}).closest<HTMLElement>("li");
+		if (item === null) throw new Error("no card");
+		const missing = (element: Element | null | undefined, names: string[]) =>
+			names.filter((name) => element?.classList.contains(name) !== true);
+		const grows = item.querySelector("[data-card-grows]");
+		const pressable = item.querySelector("[data-gallery-card]");
+		const frame = item.querySelector("[data-card-frame]");
+
 		expect({
-			frame: has("[data-card-frame]", [
-				"rounded-r7",
+			grows: missing(grows, [
+				"group",
+				"relative",
 				"h-full",
-				"after:absolute",
-				"after:inset-0",
-				"after:border",
+				"transition-transform",
+				"duration-200",
+				"ease-[cubic-bezier(0.165,0.84,0.44,1)]",
+				"motion-safe:hover:scale-[1.03]",
+				"motion-safe:has-[[aria-expanded=true]]:scale-[1.03]",
 			]),
-			preview: has("[data-card-preview]", ["h-[160px]"]),
-			badge: has("[data-card-badge]", [
-				"absolute",
-				"start-3",
-				"top-0",
-				"-translate-y-2/3",
-				"size-7",
-				"rounded-r6",
-				"p-0.5",
+			growsHoldsPressable: grows?.contains(pressable ?? null),
+			pressable: missing(pressable, [
+				"relative",
+				"block",
+				"w-full",
+				"group/card",
+				"transition-transform",
+				"duration-[120ms]",
+				"active:scale-[0.98]",
+				"rounded-2xl",
+				"h-full",
 			]),
-			body: has("[data-card-body]", ["p-3.5"]),
-			title: has("[data-card-title]", ["text-[13px]/[20px]", "font-medium"]),
-			meta: has("[data-card-meta]", ["text-[11px]/[17px]", "mt-auto"]),
-			pills: within(card).queryAllByRole("link", {name: /^(Session|Preview)$/}).length,
-		}).toStrictEqual({frame: [], preview: [], badge: [], body: [], title: [], meta: [], pills: 0});
+			link: missing(screen.getByRole("link", {name: "Quarterly plan"}), [
+				"rounded-2xl",
+				"focus-visible:shadow-focus",
+			]),
+			frame: missing(frame, ["rounded-2xl", "bg-surface-2", "overflow-hidden", "after:shadow-card-ring"]),
+			frameStray: ["group-hover:bg-surface-1", "after:border", "rounded-r7"].filter((name) =>
+				frame?.classList.contains(name),
+			),
+		}).toStrictEqual({
+			grows: [],
+			growsHoldsPressable: true,
+			pressable: [],
+			link: [],
+			frame: [],
+			frameStray: [],
+		});
 	});
 
 	it("rings grid cards instead of bordering them and lets them size to their content, as upstream", async () => {
@@ -462,115 +650,56 @@ describe("artifacts route", () => {
 		}).toStrictEqual({minHeight: false, border: false});
 	});
 
-	it("puts the card's Pin after the time in the meta row and its More options top-right over the preview, as upstream", async () => {
+	it("seats More then Pin together top-right as upstream's blurred on-content buttons, revealed on hover, focus, open menu and touch", async () => {
 		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
 		await renderArtifactsPage("/artifacts", true);
 		const card = screen.getByRole("link", {name: "Quarterly plan"}).closest<HTMLElement>("li");
 		if (card === null) throw new Error("no card");
-		const meta = card.querySelector("[data-card-meta]");
-		const pin = within(card).getByRole("button", {name: "Pin"});
-		const more = within(card).getByRole("button", {name: "More options for Quarterly plan"});
-		const moreWrapper = more.closest<HTMLElement>("[data-card-more]");
-
-		expect({
-			metaChildren: [...(meta?.children ?? [])]
-				.slice(-2)
-				.map((child) =>
-					child.contains(pin) ? "pin" : child.hasAttribute("data-artifact-meta") ? "time" : "other",
-				),
-			pinInMeta: meta?.contains(pin),
-			pinClasses: ["size-6", "p-1", "-my-1"].filter((name) => !pin.classList.contains(name)),
-			moreInMeta: meta?.contains(more),
-			moreWrapper: ["absolute", "z-10", "end-3", "top-3"].filter(
-				(name) => !moreWrapper?.classList.contains(name),
-			),
-		}).toStrictEqual({
-			metaChildren: ["time", "pin"],
-			pinInMeta: true,
-			pinClasses: [],
-			moreInMeta: false,
-			moreWrapper: [],
-		});
-	});
-
-	it("gives grid cards upstream's interaction states: pressed scale, badge hover fill, focus ring, focus-revealed Pin and More", async () => {
-		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
-		await renderArtifactsPage("/artifacts", true);
-		const link = screen.getByRole("link", {name: "Quarterly plan"});
-		const item = link.closest<HTMLElement>("li");
-		if (item === null) throw new Error("no card");
+		const actions = card.querySelector<HTMLElement>("[data-card-actions]");
 		const missing = (element: Element | null | undefined, names: string[]) =>
 			names.filter((name) => element?.classList.contains(name) !== true);
-		const pressable = item.querySelector<HTMLElement>("[data-gallery-card]");
-		const pin = within(item).getByRole("button", {name: "Pin"});
-		const more = within(item).getByRole("button", {name: "More options for Quarterly plan"});
-		const dot = item.querySelector("[data-card-meta] span[aria-hidden=true].rounded-full");
+		const seats = [...(actions?.children ?? [])];
+		const reveal = [
+			"relative",
+			"flex",
+			"shrink-0",
+			"opacity-0",
+			"group-hover:opacity-100",
+			"group-has-[:focus-visible]:opacity-100",
+			"group-has-[[aria-expanded=true]]:opacity-100",
+			"touch:opacity-100",
+		];
+		const paint = [
+			"size-6",
+			"backdrop-blur-md",
+			"bg-button-on-content",
+			"hover:bg-button-on-content-hover",
+			"shadow-[inset_0_0_0_1px_var(--color-button-on-content-ring)]",
+		];
 
 		expect({
-			item: missing(item, ["group", "relative", "h-full"]),
-			pressableTag: pressable?.tagName,
-			pressable: missing(pressable, [
-				"relative",
-				"block",
-				"w-full",
-				"group",
-				"group/card",
-				"transition-transform",
-				"duration-[120ms]",
-				"active:scale-[0.98]",
-				"rounded-r7",
-				"h-full",
-			]),
-			pressableHoldsLinkAndFrame: [
-				pressable?.contains(link),
-				pressable?.contains(item.querySelector("[data-card-frame]")),
-				pressable?.contains(more),
-			],
-			badge: missing(item.querySelector("[data-card-badge]"), ["bg-surface-2", "group-hover:bg-surface-1"]),
-			link: {
-				missing: missing(link, ["focus-visible:shadow-focus", "rounded-r7"]),
-				ring: [...link.classList].filter((name) => /(^|:)ring-/.test(name)),
-			},
-			pin: missing(pin, ["opacity-0", "group-has-[:focus-visible]/cdsrow:opacity-100"]),
-			moreWrapper: missing(more.closest("[data-card-more]"), [
-				"absolute",
-				"end-3",
-				"top-3",
-				"z-10",
-				"opacity-0",
-				"transition-opacity",
-				"group-hover:opacity-100",
-				"group-has-[:focus-visible]:opacity-100",
-				"has-[[data-popup-open]]:opacity-100",
-				"pointer-coarse:opacity-100",
-			]),
-			more: {
-				missing: missing(more, [
-					"rounded-r5",
-					"bg-surface-1",
-					"hover:bg-surface-3",
-					"aria-expanded:bg-surface-3",
-				]),
-				stray: ["bg-page", "opacity-0", "rounded-r6", "hover:bg-fill-ghost-hover"].filter((name) =>
-					more.classList.contains(name),
-				),
-			},
-			dot: missing(dot, ["bg-alpha-3"]),
+			actions: missing(actions, ["absolute", "z-10", "end-4", "top-4", "flex", "items-center", "gap-1"]),
+			order: seats.map((seat) => seat.querySelector("button")?.getAttribute("aria-label")),
+			seats: seats.map((seat) => missing(seat, reveal)),
+			backings: seats.map((seat) => seat.querySelector(":scope > span[aria-hidden=true]")?.className ?? null),
+			buttons: seats.map((seat) => missing(seat.querySelector("button"), paint)),
+			pinAtRest: seats[1]?.getAttribute("data-pin-at-rest"),
+			metaButtons: card.querySelectorAll("[data-card-meta] button").length,
 		}).toStrictEqual({
-			item: [],
-			pressableTag: "DIV",
-			pressable: [],
-			pressableHoldsLinkAndFrame: [true, true, false],
-			badge: [],
-			link: {missing: [], ring: []},
-			pin: [],
-			moreWrapper: [],
-			more: {missing: [], stray: []},
-			dot: [],
+			actions: [],
+			order: ["More options for Quarterly plan", "Pin"],
+			seats: [[], []],
+			backings: [
+				"absolute inset-0 rounded-[inherit] bg-surface-1 opacity-75",
+				"absolute inset-0 rounded-[inherit] bg-surface-1 opacity-75",
+			],
+			buttons: [[], []],
+			pinAtRest: "hidden",
+			metaButtons: 0,
 		});
 	});
 
-	it("draws upstream's type-media preview with the artifact's own icon and hides the badge when there's no thumbnail", async () => {
+	it("draws upstream's tinted cover with a floating front sheet and a blank skeleton drawing per kind", async () => {
 		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
 		await renderArtifactsPage("/artifacts", true);
 		const cardFor = (name: string) => {
@@ -579,51 +708,112 @@ describe("artifacts route", () => {
 			return card;
 		};
 		const describeCard = (card: HTMLElement) => {
-			const media = card.querySelector<HTMLElement>("[data-card-preview] [data-gallery-type-media]");
-			const glyph = media?.querySelector("svg");
+			const cover = card.querySelector<HTMLElement>("[data-card-preview] > [data-artifact-cover]");
+			const front = cover?.querySelector("[data-cover-front]");
+			const blank = front?.querySelector("svg[data-artifact-cover-blank]");
 			return {
-				media: media?.className,
-				icon: glyph?.getAttribute("data-icon"),
-				glyph: ["lucide", "size-6"].filter((name) => !glyph?.classList.contains(name)),
-				frameGroup: card.querySelector("[data-gallery-card]")?.classList.contains("group/card"),
-				badge: [
-					"group-has-[[data-gallery-type-media]]/card:sr-only",
-					"group-has-[[data-gallery-type-media]]/card:pointer-events-none",
-				].filter((name) => !card.querySelector("[data-card-badge]")?.classList.contains(name)),
+				preview: card.querySelector("[data-card-preview]")?.className,
+				cover: cover?.getAttribute("data-artifact-cover"),
+				hue: [...(cover?.classList ?? [])].filter((name) => /cds-(gray|blue)-/.test(name)),
+				front: [...(front?.classList ?? [])].filter((name) => /^(h|w|top|rounded|shadow|z)-/.test(name)),
+				blank: blank?.getAttribute("data-artifact-cover-blank"),
+				viewBox: blank?.getAttribute("viewBox"),
+				rects: blank?.querySelector("g")?.querySelectorAll("rect").length,
 			};
 		};
-		const media = "flex h-full w-full items-center justify-center bg-alpha-1 text-secondary";
 
 		expect({
-			chart: describeCard(cardFor("household-cash.html")),
 			html: describeCard(cardFor("Asap Ladder Queue")),
 			docs: describeCard(cardFor("Quarterly plan")),
-			chartGlyph: cardFor("household-cash.html")
-				.querySelector("[data-gallery-type-media] svg")
-				?.classList.contains("lucide-chart-column"),
 		}).toStrictEqual({
-			chart: {media, icon: "chart", glyph: [], frameGroup: true, badge: []},
-			html: {media, icon: "code", glyph: [], frameGroup: true, badge: []},
-			docs: {media, icon: "doc", glyph: [], frameGroup: true, badge: []},
-			chartGlyph: true,
+			html: {
+				preview: "relative h-[152px] shrink-0 select-none overflow-hidden",
+				cover: "file",
+				hue: ["bg-cds-gray-100", "text-cds-gray-600", "dark:bg-cds-gray-700", "dark:text-cds-gray-200"],
+				front: ["shadow-lg", "top-[30px]", "z-2", "rounded-xl", "h-[190px]", "w-[min(232px,100%-24px)]"],
+				blank: "other",
+				viewBox: "0 0 202 130",
+				rects: 6,
+			},
+			docs: {
+				preview: "relative h-[152px] shrink-0 select-none overflow-hidden",
+				cover: "document",
+				hue: ["bg-cds-blue-100", "text-cds-blue-600", "dark:bg-cds-blue-700", "dark:text-cds-blue-200"],
+				front: ["shadow-lg", "top-[30px]", "z-2", "rounded-xl", "h-[200px]", "w-[182px]"],
+				blank: "document",
+				viewBox: "0 0 180 130",
+				rects: 6,
+			},
 		});
 	});
 
-	it("keeps every card's straddling type tile neutral and draws the card's private lock at 16px, as upstream", async () => {
+	it("draws upstream's 72px mark row: a 40px ArtifactMark, a one-line title and the Opened meta with sr-only Private", async () => {
 		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
-		await renderArtifactsPage("/artifacts", true);
-		const tiles = [...document.querySelectorAll("[data-card-badge] [data-type-tile]")];
-		const locks = [...document.querySelectorAll("[data-card-meta] svg")];
+		await renderArtifactsPage("/artifacts", (db) => {
+			seedArtifacts(db);
+			db.index
+				.update(schema.artifacts)
+				.set({lastOpenedAt: Date.now() - 2 * 60 * 60 * 1000 - 60_000})
+				.where(eq(schema.artifacts.url, LADDER_URL))
+				.run();
+		});
+		const cardFor = (name: string) => {
+			const card = screen.getByRole("link", {name}).closest<HTMLElement>("li");
+			if (card === null) throw new Error(`no card for ${name}`);
+			return card;
+		};
+		const describeCard = (card: HTMLElement) => {
+			const mark = card.querySelector<HTMLElement>("[data-card-body] [data-artifact-mark]");
+			return {
+				body: card.querySelector("[data-card-body]")?.className,
+				mark: mark?.getAttribute("data-artifact-mark"),
+				markClass: mark?.className,
+				markSize: mark?.getAttribute("data-artifact-mark-size"),
+				glyph: mark?.querySelector("svg")?.getAttribute("class")?.includes("size-5"),
+				words: card.querySelector("[data-artifact-mark-words]")?.className,
+				title: card.querySelector("[data-card-title]")?.className,
+				meta: card.querySelector("[data-card-meta]")?.textContent,
+				lock: card.querySelector("[data-card-meta] svg") !== null,
+				badge: card.querySelector("[data-card-badge]") !== null,
+			};
+		};
+		const words = "flex min-w-0 flex-1 flex-col gap-0.5";
+		const title = "min-w-0 truncate text-start text-body font-medium leading-5 text-primary";
+		const body = "relative flex min-h-18 flex-1 items-center gap-3 p-4";
 
 		expect({
-			kinds: [...new Set(tiles.map((tile) => tile.getAttribute("data-type-tile")))].toSorted((a, b) =>
-				(a ?? "").localeCompare(b ?? ""),
-			),
-			neutral: tiles.every(
-				(tile) => tile.classList.contains("bg-alpha-1") && tile.classList.contains("text-secondary"),
-			),
-			locks: locks.length > 0 && locks.every((lock) => lock.classList.contains("size-4")),
-		}).toStrictEqual({kinds: ["docs", "html"], neutral: true, locks: true});
+			opened: describeCard(cardFor("Asap Ladder Queue")),
+			edited: describeCard(cardFor("Quarterly plan")),
+			chart: describeCard(cardFor("household-cash.html")).meta,
+		}).toStrictEqual({
+			opened: {
+				body,
+				mark: "file",
+				markClass:
+					"flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-fill-secondary text-secondary",
+				markSize: "card",
+				glyph: true,
+				words,
+				title,
+				meta: "Opened 2h agoPrivate",
+				lock: false,
+				badge: false,
+			},
+			edited: {
+				body,
+				mark: "document",
+				markClass:
+					"flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-upstream-tint-blue text-tint-blue-ink",
+				markSize: "card",
+				glyph: true,
+				words,
+				title,
+				meta: expect.stringMatching(/^Edited Nov 3, 2025Private$/),
+				lock: false,
+				badge: false,
+			},
+			chart: expect.stringMatching(/^Edited Jun 10(, 2026)?$/),
+		});
 	});
 
 	it("lists artifacts by date group linking out to claude.ai", async () => {
@@ -811,12 +1001,12 @@ describe("artifacts route", () => {
 		expect([
 			await tooltipFor(screen.getByRole("button", {name: "Search your artifacts"})),
 			await tooltipFor(screen.getByRole("button", {name: "Grid view"})),
-			await tooltipFor(screen.getByRole("button", {name: "Filter by type: All types"})),
+			await tooltipFor(screen.getByRole("button", {name: "Filter and sort"})),
 			await tooltipFor(screen.getAllByRole("img", {name: "Private"})[0]!),
 		]).toStrictEqual([
 			{text: "Search your artifacts", keys: "⌘CommandF"},
 			{text: "Grid view", keys: null},
-			{text: "Filter by type: All types", keys: null},
+			{text: "Filter and sort", keys: null},
 			{text: "Private", keys: null},
 		]);
 	});
@@ -994,62 +1184,246 @@ describe("artifacts route", () => {
 		});
 	});
 
-	it("names the type filter options with upstream's vocabulary, chips and counts", async () => {
-		await renderArtifactsPage("/artifacts", seedMixedGallery);
-
-		fireEvent.click(screen.getByRole("button", {name: "Filter by type: All types"}));
-		const items = await screen.findAllByRole("menuitemradio");
+	it("orders the toolbar Search · Filter and sort · List view and names the trigger by its active filter count", async () => {
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		const labels = () =>
+			[...document.querySelectorAll("[data-cds-part=controls] button[aria-label]")].map((button) =>
+				button.getAttribute("aria-label"),
+			);
+		await renderArtifactsPage("/artifacts", true);
+		const resting = {labels: labels(), pressed: screen.getByRole("button", {name: "Filter and sort"}).ariaPressed};
+		cleanup();
+		await renderArtifactsPage("/artifacts?type=docs", true);
+		const one = screen.getByRole("button", {name: "1 filter on"}).getAttribute("aria-pressed");
+		cleanup();
+		await renderArtifactsPage("/artifacts?type=docs,other&pinned=1", true);
 
 		expect({
-			names: items.map((item) => item.textContent),
-			chips: items.map((item) => item.querySelector("[data-type-chip]")?.getAttribute("style") ?? null),
-			plainIcons: items.map(
-				(item) => item.querySelector("[data-type-icon]")?.getAttribute("data-type-icon") ?? null,
-			),
-			counts: items.map((item) => item.querySelector("[data-type-count]")?.className ?? null),
+			resting,
+			one,
+			three: screen.getByRole("button", {name: "3 filters on"}).getAttribute("aria-pressed"),
 		}).toStrictEqual({
-			names: ["All types", "Slides0", "Design0", "Design System0", "Dashboard0", "Docs2", "Other14"],
-			chips: [
-				null,
-				"background-color: color-mix(in srgb, rgb(183, 121, 31) 16%, transparent); color: rgb(183, 121, 31);",
-				"background-color: color-mix(in srgb, rgb(118, 99, 184) 16%, transparent); color: rgb(118, 99, 184);",
-				"background-color: color-mix(in srgb, rgb(84, 104, 207) 16%, transparent); color: rgb(84, 104, 207);",
-				"background-color: color-mix(in srgb, var(--color-violet-500) 16%, transparent); color: var(--color-violet-500);",
-				"background-color: color-mix(in srgb, var(--color-blue-500) 16%, transparent); color: var(--color-blue-500);",
-				null,
-			],
-			plainIcons: ["all", null, null, null, null, null, "other"],
-			counts: [
-				null,
-				...Array.from(
-					{length: 6},
-					() => "ms-auto max-w-[160px] shrink-0 truncate ps-4 text-footnote tabular-nums text-ink-muted",
-				),
-			],
+			resting: {labels: ["Search your artifacts", "Filter and sort", "List view"], pressed: "false"},
+			one: "true",
+			three: "true",
 		});
 	});
 
-	it("keeps the picked type in ?type= and labels the pressed trigger", async () => {
+	function menuRows(menu: HTMLElement) {
+		return [
+			...menu.querySelectorAll(
+				"[role=menuitem], [role=menuitemcheckbox], [role=menuitemradio], [role=separator]",
+			),
+		]
+			.filter((element) => element.closest("[role=menu]") === menu)
+			.map((element) => {
+				const role = element.getAttribute("role");
+				if (role === "separator") return "──";
+				const label = element.querySelector("[data-menu-sub-label]")?.textContent ?? element.textContent;
+				const value = element.querySelector("[data-menu-value]")?.textContent;
+				return value === undefined ? `${role}:${label}` : `${role}:${label}=${value}`;
+			});
+	}
+
+	async function openSubmenu(menu: HTMLElement, label: string): Promise<HTMLElement> {
+		const trigger = [...menu.querySelectorAll<HTMLElement>("[role=menuitem]")].find(
+			(item) => item.querySelector("[data-menu-sub-label]")?.textContent === label,
+		);
+		if (trigger === undefined) throw new Error(`no ${label} submenu`);
+		act(() => {
+			trigger.focus();
+		});
+		fireEvent.keyDown(trigger, {key: "ArrowRight"});
+		await waitFor(() => {
+			expect(screen.getAllByRole("menu")).toHaveLength(2);
+		});
+		const submenu = screen.getAllByRole("menu").find((candidate) => candidate !== menu);
+		if (submenu === undefined) throw new Error(`no ${label} submenu`);
+		return submenu;
+	}
+
+	it("opens upstream's Filter and sort menu: Sort by · Owner · Type · Date opened · Sharing · Pinned", async () => {
+		await renderArtifactsPage("/artifacts", seedMixedGallery);
+
+		fireEvent.click(screen.getByRole("button", {name: "Filter and sort"}));
+		const menu = await screen.findByRole("menu");
+
+		expect(menuRows(menu)).toStrictEqual([
+			"menuitem:Sort by=Last opened",
+			"──",
+			"menuitem:Owner=Anyone",
+			"menuitem:Type=Any",
+			"menuitem:Date opened=Any time",
+			"menuitem:Sharing=Any",
+			"──",
+			"menuitemcheckbox:Pinned",
+		]);
+	});
+
+	it("multi-picks types from checkbox rows with no chips and no 0 hint, keeping them in ?type=", async () => {
 		const router = await renderArtifactsPage("/artifacts", seedMixedGallery);
 
-		fireEvent.click(screen.getByRole("button", {name: "Filter by type: All types"}));
-		fireEvent.click(await screen.findByRole("menuitemradio", {name: "Docs2"}));
+		fireEvent.click(screen.getByRole("button", {name: "Filter and sort"}));
+		const menu = await screen.findByRole("menu");
+		const submenu = await openSubmenu(menu, "Type");
+		const items = within(submenu).getAllByRole("menuitemcheckbox");
+		const resting = {
+			names: items.map((item) => item.textContent),
+			hints: items.map((item) => item.querySelector("[data-menu-hint]")?.className ?? null),
+			chips: submenu.querySelectorAll("[data-type-chip]").length,
+			boxes: items.map((item) => item.querySelector("[data-cds-checkbox]") !== null),
+		};
 
+		fireEvent.click(within(submenu).getByRole("menuitemcheckbox", {name: "Docs2"}));
 		await waitFor(() => {
 			expect({...router.state.location.search}).toStrictEqual({type: "docs"});
 		});
+		fireEvent.click(within(submenu).getByRole("menuitemcheckbox", {name: "Slides"}));
+		await waitFor(() => {
+			expect({...router.state.location.search}).toStrictEqual({type: "docs,slides"});
+		});
+		const hint = "ms-3 max-w-[160px] shrink-0 truncate text-footnote tabular-nums text-ink-muted";
 
-		fireEvent.click(screen.getByRole("menuitemradio", {name: "Other14"}));
+		expect({
+			resting,
+			typeValue: menuRows(menu).find((row) => row.startsWith("menuitem:Type=")),
+			checked: within(submenu)
+				.getAllByRole("menuitemcheckbox")
+				.map((item) => item.getAttribute("aria-checked")),
+		}).toStrictEqual({
+			resting: {
+				names: ["Dashboard", "Design", "Design System", "Docs2", "Slides", "Other14"],
+				hints: [null, null, null, hint, null, hint],
+				chips: 0,
+				boxes: [true, true, true, true, true, true],
+			},
+			typeValue: "menuitem:Type=2 picked",
+			checked: ["false", "false", "false", "true", "true", "false"],
+		});
+	});
+
+	it("notes on the Yours tab that Owner lists only your own artifacts", async () => {
+		await renderArtifactsPage("/artifacts?tab=mine", seedMixedGallery);
+
+		fireEvent.click(screen.getByRole("button", {name: "Filter and sort"}));
+		const submenu = await openSubmenu(await screen.findByRole("menu"), "Owner");
+
+		expect({
+			text: submenu.textContent,
+			checkboxes: within(submenu).queryAllByRole("menuitemcheckbox").length,
+		}).toStrictEqual({text: "This tab lists only your own artifacts.", checkboxes: 0});
+	});
+
+	it("filters by Date opened: Today hides a card last opened yesterday", async () => {
+		const now = new Date();
+		const yesterdayNoon = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1, 12).getTime();
+		const seed = (db: AppDb) => {
+			seedArtifacts(db);
+			db.index
+				.update(schema.artifacts)
+				.set({lastOpenedAt: Date.now() - 1000})
+				.where(eq(schema.artifacts.url, LADDER_URL))
+				.run();
+			db.index
+				.update(schema.artifacts)
+				.set({lastOpenedAt: yesterdayNoon})
+				.where(eq(schema.artifacts.url, DOCS_URL))
+				.run();
+		};
+		const router = await renderArtifactsPage("/artifacts", seed);
+
+		fireEvent.click(screen.getByRole("button", {name: "Filter and sort"}));
+		const submenu = await openSubmenu(await screen.findByRole("menu"), "Date opened");
+		const options = within(submenu)
+			.getAllByRole("menuitemradio")
+			.map((item) => item.textContent);
+		fireEvent.click(within(submenu).getByRole("menuitemradio", {name: "Today"}));
+		await waitFor(() => {
+			expect({...router.state.location.search}).toStrictEqual({opened: "today"});
+		});
+
+		expect({options, rows: galleryRows().map((row) => rowSummary(row).title)}).toStrictEqual({
+			options: ["Any time", "Today", "Yesterday", "Past 7 days", "Past 30 days"],
+			rows: ["Asap Ladder Queue"],
+		});
+	});
+
+	it("sorts by Last opened by default and by Last edited from ?sort=edited or the Sort by radios, announcing the sort", async () => {
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		const seed = (db: AppDb) => {
+			seedArtifacts(db);
+			db.index
+				.update(schema.artifacts)
+				.set({lastOpenedAt: Date.now() - 1000})
+				.where(eq(schema.artifacts.url, DOCS_URL))
+				.run();
+		};
+		const cards = () =>
+			[...document.querySelectorAll("[data-gallery-card] a[data-primary]")].map((link) =>
+				link.getAttribute("aria-label"),
+			);
+		await renderArtifactsPage("/artifacts?sort=edited", seed);
+		const edited = cards();
+		cleanup();
+		const router = await renderArtifactsPage("/artifacts", seed);
+		const opened = cards();
+
+		fireEvent.click(screen.getByRole("button", {name: "Filter and sort"}));
+		const submenu = await openSubmenu(await screen.findByRole("menu"), "Sort by");
+		fireEvent.click(within(submenu).getByRole("menuitemradio", {name: "Last edited"}));
+		await waitFor(() => {
+			expect({...router.state.location.search}).toStrictEqual({sort: "edited"});
+		});
+
+		expect({edited, opened, picked: cards(), statuses: pageStatuses()}).toStrictEqual({
+			edited: ["Asap Ladder Queue", "household-cash.html", "Quarterly plan"],
+			opened: ["Quarterly plan", "Asap Ladder Queue", "household-cash.html"],
+			picked: ["Asap Ladder Queue", "household-cash.html", "Quarterly plan"],
+			statuses: ["Sorted by Last edited"],
+		});
+	});
+
+	it("offers Clear filters only while a filter is on, in the menu and under the filter-empty text, and it resets the URL", async () => {
+		await renderArtifactsPage("/artifacts", seedMixedGallery);
+		fireEvent.click(screen.getByRole("button", {name: "Filter and sort"}));
+		const resting = menuRows(await screen.findByRole("menu")).includes("menuitem:Clear filters");
+		cleanup();
+
+		const router = await renderArtifactsPage("/artifacts?tab=mine&type=slides&opened=week", seedMixedGallery);
+		const emptyClear = screen.getByRole("button", {name: "Clear filters"}).tagName;
+		fireEvent.click(screen.getByRole("button", {name: "2 filters on"}));
+		const menu = await screen.findByRole("menu");
+		const filtered = menuRows(menu).slice(-2);
+		fireEvent.click(within(menu).getByRole("menuitem", {name: "Clear filters"}));
 
 		await waitFor(() => {
-			expect({...router.state.location.search}).toStrictEqual({type: "other"});
+			expect({...router.state.location.search}).toStrictEqual({tab: "mine"});
 		});
+		expect({resting, emptyClear, filtered}).toStrictEqual({
+			resting: false,
+			emptyClear: "BUTTON",
+			filtered: ["──", "menuitem:Clear filters"],
+		});
+	});
+
+	it("still reads a single legacy ?type= and drops it on Clear filters under the empty text", async () => {
+		const router = await renderArtifactsPage("/artifacts?type=other", seedMixedGallery);
+		const rows = galleryRows().length;
+
+		cleanup();
+		const emptyRouter = await renderArtifactsPage("/artifacts?type=slides", seedMixedGallery);
+		fireEvent.click(screen.getByRole("button", {name: "Clear filters"}));
+
+		await waitFor(() => {
+			expect({...emptyRouter.state.location.search}).toStrictEqual({});
+		});
+		expect({rows, search: {...router.state.location.search}}).toStrictEqual({rows: 14, search: {type: "other"}});
 	});
 
 	it("shows upstream's empty text for a type with no artifacts and paints the pressed trigger", async () => {
 		await renderArtifactsPage("/artifacts?type=slides", seedMixedGallery);
 
-		const trigger = screen.getByRole("button", {name: "Filter by type: Slides"});
+		const trigger = screen.getByRole("button", {name: "1 filter on"});
 		expect({
 			pressed: trigger.getAttribute("aria-pressed"),
 			paint: ["aria-pressed:bg-upstream-accent-pressed", "aria-pressed:text-upstream-accent"].filter(
@@ -1115,7 +1489,7 @@ describe("artifacts route", () => {
 		}).toStrictEqual({
 			rows: [
 				{row: "pin", keys: "p", cap: "P", capHidden: true},
-				{row: "copy-link", keys: "c", cap: "C", capHidden: true},
+				{row: "copy_link", keys: "c", cap: "C", capHidden: true},
 			],
 			offset: "6",
 			toast: "Link copied to clipboard.",
@@ -1271,28 +1645,35 @@ describe("Make something new strip", () => {
 		});
 	});
 
-	it("draws 136×96 composer-radius tiles with a 50% hue ring on hover, and stays while searching", async () => {
+	it("draws upstream's solid hue tiles with a 12% grain, a 56px glyph and a 103% hover grow, and stays while searching", async () => {
 		await renderArtifactsPage("/artifacts?search=zzz-no-match", true);
 		const strip = screen.getByRole("region", {name: "Make something new"});
 		const tiles = [...strip.querySelectorAll<HTMLElement>("[data-template-tile]")];
+		const docs = tiles[0];
 
 		expect({
-			tile: tiles[0]?.className
-				.split(" ")
-				.filter((name) =>
-					["w-34", "h-24", "rounded-composer", "bg-surface-2", "shadow-sm", "group-hover:shadow-md"].includes(
-						name,
-					),
-				),
-			rings: tiles.map((tile) => tile.style.getPropertyValue("--tile-ring")),
+			tile: docs?.className,
+			hues: tiles.map((tile) => [...tile.classList].filter((name) => name.includes("cds-")).join(" ")),
+			grain: docs?.querySelector("svg feTurbulence")?.closest("span")?.className,
+			turbulence: ["type", "baseFrequency", "numOctaves", "seed"].map((name) =>
+				docs?.querySelector("feTurbulence")?.getAttribute(name),
+			),
+			displacement: docs?.querySelector("feDisplacementMap")?.getAttribute("scale"),
+			glyph: docs?.querySelector(":scope > span.relative > svg")?.getAttribute("class")?.includes("size-14"),
+			link: strip.querySelector("a")?.classList.contains("duration-150"),
 		}).toStrictEqual({
-			tile: ["w-34", "h-24", "rounded-composer", "bg-surface-2", "shadow-sm", "group-hover:shadow-md"],
-			rings: [
-				"color-mix(in srgb, var(--color-blue-500) 50%, transparent)",
-				"color-mix(in srgb, #b7791f 50%, transparent)",
-				"color-mix(in srgb, #7663b8 50%, transparent)",
-				"color-mix(in srgb, var(--color-violet-500) 50%, transparent)",
+			tile: "relative flex h-24 w-34 items-center justify-center overflow-hidden rounded-composer transition-transform duration-200 ease-out motion-safe:group-hover:scale-[1.03] bg-cds-blue-100 text-cds-blue-600 dark:bg-cds-blue-700 dark:text-cds-blue-200",
+			hues: [
+				"bg-cds-blue-100 text-cds-blue-600 dark:bg-cds-blue-700 dark:text-cds-blue-200",
+				"bg-cds-orange-100 text-cds-orange-600 dark:bg-cds-orange-700 dark:text-cds-orange-200",
+				"bg-cds-violet-100 text-cds-violet-600 dark:bg-cds-violet-700 dark:text-cds-violet-200",
+				"bg-cds-red-100 text-cds-red-600 dark:bg-cds-red-700 dark:text-cds-red-200",
 			],
+			grain: "pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit] opacity-[0.12]",
+			turbulence: ["fractalNoise", "0.9", "2", "3"],
+			displacement: "1.6",
+			glyph: true,
+			link: true,
 		});
 	});
 });

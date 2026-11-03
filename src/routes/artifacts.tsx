@@ -7,7 +7,6 @@ import {
 	ChartColumn,
 	CodeXml,
 	EllipsisVertical,
-	File,
 	FileText,
 	LayoutGrid,
 	Link as LinkIcon,
@@ -15,23 +14,38 @@ import {
 	Lock,
 	Map as MapIcon,
 	Pin,
-	Shapes,
 	SlidersVertical,
 } from "lucide-react";
 import {type ReactNode, useEffect, useId, useMemo, useState} from "react";
 import {artifactsQueryOptions, type ArtifactSummary} from "../lib/api/artifacts";
 import {
+	activeFilterCount,
+	applyArtifactFilters,
+	ARTIFACT_OPENED_RANGES,
+	ARTIFACT_OWNERS,
+	ARTIFACT_SHARINGS,
+	ARTIFACT_TYPE_KEYS,
 	artifactInView,
+	artifactMatchesSearch,
+	artifactOpenedTimestamp,
+	artifactSortTimestamp,
 	artifactTimestamp,
-	filterArtifacts,
+	artifactTypeKey,
 	formatArtifactRelative,
 	formatArtifactTooltip,
 	groupArtifactsByDate,
+	NO_ARTIFACT_FILTERS,
 	readArtifactsLayout,
+	sortArtifacts,
 	writeArtifactsLayout,
+	type ArtifactFilters,
 	type ArtifactKind,
+	type ArtifactOpenedRange,
+	type ArtifactOwner,
+	type ArtifactSharing,
+	type ArtifactSort,
 	type ArtifactsLayout,
-	type ArtifactTypeFilter,
+	type ArtifactTypeKey,
 	type ArtifactView,
 } from "../lib/artifact-gallery";
 import {pinArtifact, unpinArtifact, useArtifactPins} from "../lib/artifact-pins";
@@ -43,29 +57,57 @@ import {
 	ContextMenu,
 	ContextMenuTrigger,
 	Menu,
+	MenuCheckboxItem,
 	MenuContent,
 	MenuItem,
+	MenuLabel,
 	MenuRadioGroup,
 	MenuRadioItem,
+	MenuSeparator,
+	MenuSub,
+	MenuSubContent,
+	MenuSubTrigger,
 	MenuTrigger,
 } from "../components/ui/menu";
 import {CodePageHeader} from "../components/code-page-header";
 import {MakeSomethingNew} from "../components/make-something-new";
 import {Tooltip} from "../components/ui/tooltip";
 
+/** The gallery's URL state: upstream's `?search=` and `?tab=`, plus the local Filter and sort picks. */
+interface ArtifactsSearch {
+	search?: string;
+	tab?: ArtifactTabParam;
+	/** Comma list of Type keys (`docs,other`); a single `?type=docs` reads the same. */
+	type?: string;
+	/** The non-default sort; "Last opened" omits it. */
+	sort?: "edited";
+	/** Comma list of `me` / `others`. */
+	owner?: string;
+	opened?: Exclude<ArtifactOpenedRange, "any">;
+	sharing?: Exclude<ArtifactSharing, "any">;
+	pinned?: 1;
+}
+
 export const Route = createFileRoute("/artifacts")({
 	component: ArtifactsPage,
 	staticData: {pageGutter: "none"},
-	validateSearch: (
-		search: Record<string, unknown>,
-	): {search?: string; tab?: ArtifactTabParam; type?: ArtifactTypeParam} => {
+	validateSearch: (search: Record<string, unknown>): ArtifactsSearch => {
 		const query = search["search"];
 		const tab = tabParamFromSearch(search);
-		const type = search["type"];
+		const types = parseList(search["type"], ARTIFACT_TYPE_KEYS);
+		const owners = parseList(search["owner"], ARTIFACT_OWNERS);
+		const opened = search["opened"];
+		const sharing = search["sharing"];
+		const pinned = search["pinned"];
 		return {
 			...(typeof query === "string" && query !== "" ? {search: query} : {}),
 			...(tab === undefined ? {} : {tab}),
-			...(isTypeParam(type) ? {type} : {}),
+			...(types.length === 0 ? {} : {type: types.join(",")}),
+			...(search["sort"] === "edited" ? {sort: "edited" as const} : {}),
+			...(owners.length === 0 ? {} : {owner: owners.join(",")}),
+			...(isOneOf(opened, ARTIFACT_OPENED_RANGES) && opened !== "any" ? {opened} : {}),
+			...(isOneOf(sharing, ARTIFACT_SHARINGS) && sharing !== "any" ? {sharing} : {}),
+			...(pinned === 1 || pinned === "1" || pinned === true ? {pinned: 1 as const} : {}),
 		};
 	},
 	loader: async ({context: {queryClient}}) => queryClient.query({...artifactsQueryOptions, staleTime: "static"}),
@@ -73,6 +115,17 @@ export const Route = createFileRoute("/artifacts")({
 		meta: [{title: "Artifacts - Claude"}, pageTitle("Artifacts")],
 	}),
 });
+
+function isOneOf<T extends string>(value: unknown, options: readonly T[]): value is T {
+	return options.some((option) => option === value);
+}
+
+/** A comma list param narrowed to known values, in the options' order, without repeats. */
+function parseList<T extends string>(value: unknown, options: readonly T[]): T[] {
+	if (typeof value !== "string") return [];
+	const picked = new Set(value.split(","));
+	return options.filter((option) => picked.has(option));
+}
 
 /** Upstream's `?tab=` values; All omits the param. */
 type ArtifactTabParam = "mine" | "shared";
@@ -103,52 +156,69 @@ function isArtifactView(value: unknown): value is ArtifactView {
 	return VIEW_TABS.some((tab) => tab.view === value);
 }
 
+function filtersFromSearch(search: ArtifactsSearch): ArtifactFilters {
+	return {
+		types: parseList(search.type, ARTIFACT_TYPE_KEYS),
+		owners: parseList(search.owner, ARTIFACT_OWNERS),
+		opened: search.opened ?? "any",
+		sharing: search.sharing ?? "any",
+		pinned: search.pinned === 1,
+	};
+}
+
+function searchFromState({
+	search,
+	view,
+	filters,
+	sort,
+}: {
+	search: string;
+	view: ArtifactView;
+	filters: ArtifactFilters;
+	sort: ArtifactSort;
+}): ArtifactsSearch {
+	const tab = tabParamFromView(view);
+	return {
+		...(search === "" ? {} : {search}),
+		...(tab === undefined ? {} : {tab}),
+		...(filters.types.length === 0 ? {} : {type: filters.types.join(",")}),
+		...(sort === "edited" ? {sort: "edited" as const} : {}),
+		...(filters.owners.length === 0 ? {} : {owner: filters.owners.join(",")}),
+		...(filters.opened === "any" ? {} : {opened: filters.opened}),
+		...(filters.sharing === "any" ? {} : {sharing: filters.sharing}),
+		...(filters.pinned ? {pinned: 1 as const} : {}),
+	};
+}
+
 /** Upstream's type vocabulary: anything that is not a Doc (or a Slides/Design type we never see) is "Other". */
-const TYPE_FILTER_LABELS: Record<ArtifactTypeFilter, string> = {
-	all: "All types",
-	slides: "Slides",
+const TYPE_LABELS: Record<ArtifactTypeKey, string> = {
+	dashboard: "Dashboard",
 	design: "Design",
 	"design-system": "Design System",
-	dashboard: "Dashboard",
 	docs: "Docs",
-	html: "Other",
+	slides: "Slides",
+	other: "Other",
 };
 
-const TYPE_FILTERS: readonly ArtifactTypeFilter[] = [
-	"all",
-	"slides",
-	"design",
-	"design-system",
-	"dashboard",
-	"docs",
-	"html",
-];
+const OWNER_LABELS: Record<ArtifactOwner, string> = {me: "You", others: "Other people"};
 
-/** Upstream's type chip hues (`--cds-violet-500` / `--cds-blue-500` for Dashboard / Docs); All and Other draw a plain glyph instead. */
-const TYPE_CHIP_HUES: Partial<Record<ArtifactTypeFilter, string>> = {
-	slides: "#b7791f",
-	design: "#7663b8",
-	"design-system": "#5468cf",
-	dashboard: "var(--color-violet-500)",
-	docs: "var(--color-blue-500)",
+const SORT_LABELS: Record<ArtifactSort, string> = {opened: "Last opened", edited: "Last edited"};
+
+const OPENED_LABELS: Record<ArtifactOpenedRange, string> = {
+	any: "Any time",
+	today: "Today",
+	yesterday: "Yesterday",
+	week: "Past 7 days",
+	month: "Past 30 days",
 };
 
-/** The `?type=` value: upstream keys it by type uuid; locally it is the type's name, with HTML pages as `other`. */
-type ArtifactTypeParam = Exclude<ArtifactTypeFilter, "all" | "html"> | "other";
+const SHARING_LABELS: Record<ArtifactSharing, string> = {any: "Any", private: "Only you", shared: "Shared"};
 
-function isTypeParam(value: unknown): value is ArtifactTypeParam {
-	return value === "other" || (value !== "html" && isTypeFilter(value) && value !== "all");
-}
-
-function typeFromParam(param: ArtifactTypeParam | undefined): ArtifactTypeFilter {
-	if (param === undefined) return "all";
-	return param === "other" ? "html" : param;
-}
-
-function typeParamFromFilter(type: ArtifactTypeFilter): ArtifactTypeParam | undefined {
-	if (type === "all") return undefined;
-	return type === "html" ? "other" : type;
-}
+/** Upstream's Owner note on the tabs that already fix the owner. */
+const OWNER_TAB_NOTES: Partial<Record<ArtifactView, string>> = {
+	yours: "This tab lists only your own artifacts.",
+	shared: "This tab lists only other people’s artifacts.",
+};
 
 const VIEW_TABS: ReadonlyArray<{view: ArtifactView; label: string}> = [
 	{view: "all", label: "All"},
@@ -183,19 +253,30 @@ const ARTIFACTS_BOX_CLASS = "mx-auto w-full max-w-5xl px-2 md:px-8";
 const VIEW_TAB_CLASS =
 	"inline-flex h-6 shrink-0 items-center rounded-md px-2 text-[13px] font-medium whitespace-nowrap text-ink-muted transition-colors hover:text-primary aria-selected:bg-fill-ghost-hover aria-selected:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
-function isTypeFilter(value: unknown): value is ArtifactTypeFilter {
-	return TYPE_FILTERS.some((filter) => filter === value);
+/** Upstream's Owner/Type multi-pick summary: "Any" (or "Anyone"), the one label, or "{n} picked". */
+function pickedSummary<T extends string>(picked: readonly T[], labels: Record<T, string>, none: string): string {
+	const [only] = picked;
+	if (only === undefined) return none;
+	return picked.length === 1 ? labels[only] : `${picked.length} picked`;
+}
+
+function toggled<T>(list: readonly T[], value: T, on: boolean): T[] {
+	return on ? [...list.filter((item) => item !== value), value] : list.filter((item) => item !== value);
 }
 
 function ArtifactsPage() {
 	const {data: artifacts} = useSuspenseQuery(artifactsQueryOptions);
-	const {search = "", tab: tabParam, type: typeParam} = Route.useSearch();
+	const params = Route.useSearch();
+	const {search = "", tab: tabParam} = params;
 	const view = viewFromTabParam(tabParam);
-	const type = typeFromParam(typeParam);
+	const filters = filtersFromSearch(params);
+	const sort: ArtifactSort = params.sort ?? "opened";
 	const navigate = useNavigate();
 	const [layout, setLayout] = useState<ArtifactsLayout>("grid");
 	const [searchOpen, setSearchOpen] = useState(false);
+	const [sortLanded, setSortLanded] = useState(false);
 	const now = useMemo(() => new Date(), []);
+	const {isPinned} = useArtifactPins();
 
 	useEffect(() => {
 		setLayout(readArtifactsLayout());
@@ -205,11 +286,24 @@ function ArtifactsPage() {
 		() => artifacts.filter((artifact) => artifactInView(artifact.audience, view)),
 		[artifacts, view],
 	);
-	const visible = useMemo(() => filterArtifacts(inView, {search, type}), [inView, search, type]);
-	const {isPinned} = useArtifactPins();
-	const pinned = visible.filter((artifact) => isPinned(artifact.url));
+	// The Owner picks only apply on All; Yours and Shared already fix the owner.
+	const applied = view === "all" ? filters : {...filters, owners: []};
+	const visible = sortArtifacts(
+		applyArtifactFilters(
+			inView.filter((artifact) => artifactMatchesSearch(artifact.title, search)),
+			applied,
+			{now, isPinned: (artifact) => isPinned(artifact.url)},
+		),
+		sort,
+	);
+	// Upstream's note: pinned artifacts are always sorted by Last edited.
+	const pinned = sortArtifacts(
+		visible.filter((artifact) => isPinned(artifact.url)),
+		"edited",
+	);
 	const unpinned = visible.filter((artifact) => !isPinned(artifact.url));
 	const searching = search.trim() !== "";
+	const filterCount = activeFilterCount(filters);
 	const layoutLabel = layout === "grid" ? "List view" : "Grid view";
 
 	function toggleLayout() {
@@ -218,18 +312,24 @@ function ArtifactsPage() {
 		writeArtifactsLayout(next);
 	}
 
-	function updateSearch(next: {search: string; view: ArtifactView; type: ArtifactTypeFilter}) {
-		const tab = tabParamFromView(next.view);
-		const typeValue = typeParamFromFilter(next.type);
+	function updateSearch(
+		next: Partial<{search: string; view: ArtifactView; filters: ArtifactFilters; sort: ArtifactSort}>,
+	) {
 		void navigate({
 			to: "/artifacts",
-			search: {
-				...(next.search === "" ? {} : {search: next.search}),
-				...(tab === undefined ? {} : {tab}),
-				...(typeValue === undefined ? {} : {type: typeValue}),
-			},
+			search: searchFromState({search, view, filters, sort, ...next}),
 			replace: true,
 		});
+	}
+
+	let status = "";
+	if (searching) {
+		status =
+			visible.length === 0
+				? `No artifacts match “${search}”`
+				: `${formatCount(visible.length, "artifact")} matching “${search}”`;
+	} else if (sortLanded) {
+		status = `Sorted by ${SORT_LABELS[sort]}`;
 	}
 
 	return (
@@ -242,7 +342,7 @@ function ArtifactsPage() {
 					<Tabs.Root
 						value={view}
 						onValueChange={(next: unknown) => {
-							if (isArtifactView(next)) updateSearch({search, view: next, type});
+							if (isArtifactView(next)) updateSearch({view: next});
 						}}
 					>
 						<Tabs.List activateOnFocus={false} aria-label="Artifacts" className="flex items-center gap-1">
@@ -262,7 +362,20 @@ function ArtifactsPage() {
 							search={search}
 							onOpenChange={setSearchOpen}
 							onSearch={(next) => {
-								updateSearch({search: next, view, type});
+								updateSearch({search: next});
+							}}
+						/>
+						<ArtifactFilterMenu
+							artifacts={inView}
+							view={view}
+							filters={filters}
+							sort={sort}
+							onFilters={(next) => {
+								updateSearch({filters: next});
+							}}
+							onSort={(next) => {
+								setSortLanded(true);
+								updateSearch({sort: next});
 							}}
 						/>
 						<Tooltip content={layoutLabel}>
@@ -275,22 +388,11 @@ function ArtifactsPage() {
 								{layout === "grid" ? <List aria-hidden="true" /> : <LayoutGrid aria-hidden="true" />}
 							</button>
 						</Tooltip>
-						<TypeFilterMenu
-							artifacts={inView}
-							type={type}
-							onChange={(next) => {
-								updateSearch({search, view, type: next});
-							}}
-						/>
 					</>
 				}
 			>
 				<p role="status" className="sr-only">
-					{searching
-						? visible.length === 0
-							? `No artifacts match “${search}”`
-							: `${formatCount(visible.length, "artifact")} matching “${search}”`
-						: ""}
+					{status}
 				</p>
 			</CodePageHeader>
 
@@ -299,100 +401,198 @@ function ArtifactsPage() {
 				{inView.length === 0 && (artifacts.length === 0 || !searching) ? (
 					<ArtifactsEmptyState view={view} />
 				) : visible.length === 0 ? (
-					<div role="status" className="mt-10 text-center text-body text-ink-muted">
-						{searching ? `No artifacts matching “${search}”` : "No artifacts of this type here yet"}
+					<div className="mt-10 flex flex-col items-center gap-3">
+						<div role="status" className="text-center text-body text-ink-muted">
+							{searching
+								? `No artifacts matching “${search}”`
+								: filterCount === filters.types.length
+									? "No artifacts of this type here yet"
+									: "No artifacts match these filters"}
+						</div>
+						{!searching && filterCount > 0 && (
+							<button
+								type="button"
+								className="flex h-6 items-center rounded-r5 px-2 text-body text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+								onClick={() => {
+									updateSearch({filters: NO_ARTIFACT_FILTERS});
+								}}
+							>
+								Clear filters
+							</button>
+						)}
 					</div>
 				) : layout === "grid" ? (
 					<ArtifactGrid pinned={pinned} artifacts={unpinned} now={now} />
 				) : (
-					<ArtifactList pinned={pinned} artifacts={unpinned} now={now} />
+					<ArtifactList pinned={pinned} artifacts={unpinned} now={now} sort={sort} />
 				)}
 			</div>
 		</div>
 	);
 }
 
-function TypeFilterMenu({
+/**
+ * Upstream's "Filter and sort" menu (bundle `Dn`): Sort by, then Owner / Type / Date opened / Sharing submenus,
+ * the Pinned checkbox and, while any filter is on, Clear filters. Locally Owner and Sharing both read the
+ * indexed audience, and only Docs and Other ever count, since the other types never index.
+ */
+function ArtifactFilterMenu({
 	artifacts,
-	type,
-	onChange,
+	view,
+	filters,
+	sort,
+	onFilters,
+	onSort,
 }: {
 	artifacts: readonly ArtifactSummary[];
-	type: ArtifactTypeFilter;
-	onChange: (next: ArtifactTypeFilter) => void;
+	view: ArtifactView;
+	filters: ArtifactFilters;
+	sort: ArtifactSort;
+	onFilters: (next: ArtifactFilters) => void;
+	onSort: (next: ArtifactSort) => void;
 }) {
-	const countOf = (option: ArtifactTypeFilter) =>
-		option === "all" ? artifacts.length : artifacts.filter((artifact) => artifact.kind === option).length;
-	const label = `Filter by type: ${TYPE_FILTER_LABELS[type]}`;
+	const count = activeFilterCount(filters);
+	const label = count === 0 ? "Filter and sort" : `${count} ${count === 1 ? "filter" : "filters"} on`;
+	const countOf = (key: ArtifactTypeKey) =>
+		artifacts.filter((artifact) => artifactTypeKey(artifact.kind) === key).length;
+	const ownerNote = OWNER_TAB_NOTES[view];
 	return (
 		<Menu>
 			<Tooltip content={label}>
-				<MenuTrigger className={TOOLBAR_ICON_BUTTON} aria-label={label} aria-pressed={type !== "all"}>
+				<MenuTrigger className={TOOLBAR_ICON_BUTTON} aria-label={label} aria-pressed={count > 0}>
 					<SlidersVertical aria-hidden="true" />
 				</MenuTrigger>
 			</Tooltip>
-			<MenuContent align="end">
-				<MenuRadioGroup
-					value={type}
-					onValueChange={(next: unknown) => {
-						if (isTypeFilter(next)) onChange(next);
+			<MenuContent align="end" className="max-w-[320px]">
+				<MenuSub>
+					<MenuSubTrigger value={SORT_LABELS[sort]}>Sort by</MenuSubTrigger>
+					<MenuSubContent>
+						<MenuRadioGroup
+							value={sort}
+							onValueChange={(next: unknown) => {
+								if (next === "opened" || next === "edited") onSort(next);
+							}}
+						>
+							{(["opened", "edited"] as const).map((option) => (
+								<MenuRadioItem key={option} value={option}>
+									{SORT_LABELS[option]}
+								</MenuRadioItem>
+							))}
+						</MenuRadioGroup>
+					</MenuSubContent>
+				</MenuSub>
+				<MenuSeparator />
+				<MenuSub>
+					<MenuSubTrigger value={pickedSummary(filters.owners, OWNER_LABELS, "Anyone")}>Owner</MenuSubTrigger>
+					<MenuSubContent>
+						{ownerNote === undefined ? (
+							ARTIFACT_OWNERS.map((owner) => (
+								<MenuCheckboxItem
+									key={owner}
+									leadingCheck
+									checked={filters.owners.includes(owner)}
+									onCheckedChange={(checked) => {
+										onFilters({...filters, owners: toggled(filters.owners, owner, checked)});
+									}}
+								>
+									{OWNER_LABELS[owner]}
+								</MenuCheckboxItem>
+							))
+						) : (
+							<MenuLabel className="max-w-[240px] px-2.5 py-1.5 text-footnote text-ink-muted">
+								{ownerNote}
+							</MenuLabel>
+						)}
+					</MenuSubContent>
+				</MenuSub>
+				<MenuSub>
+					<MenuSubTrigger value={pickedSummary(filters.types, TYPE_LABELS, "Any")}>Type</MenuSubTrigger>
+					<MenuSubContent>
+						{ARTIFACT_TYPE_KEYS.map((key) => {
+							const total = countOf(key);
+							return (
+								<MenuCheckboxItem
+									key={key}
+									leadingCheck
+									checked={filters.types.includes(key)}
+									{...(total > 0 ? {hint: total} : {})}
+									onCheckedChange={(checked) => {
+										onFilters({...filters, types: toggled(filters.types, key, checked)});
+									}}
+								>
+									{TYPE_LABELS[key]}
+								</MenuCheckboxItem>
+							);
+						})}
+					</MenuSubContent>
+				</MenuSub>
+				<MenuSub>
+					<MenuSubTrigger value={OPENED_LABELS[filters.opened]}>Date opened</MenuSubTrigger>
+					<MenuSubContent>
+						<MenuRadioGroup
+							value={filters.opened}
+							onValueChange={(next: unknown) => {
+								if (isOneOf(next, ARTIFACT_OPENED_RANGES)) onFilters({...filters, opened: next});
+							}}
+						>
+							{ARTIFACT_OPENED_RANGES.map((range) => (
+								<MenuRadioItem key={range} value={range}>
+									{OPENED_LABELS[range]}
+								</MenuRadioItem>
+							))}
+						</MenuRadioGroup>
+					</MenuSubContent>
+				</MenuSub>
+				<MenuSub>
+					<MenuSubTrigger value={SHARING_LABELS[filters.sharing]}>Sharing</MenuSubTrigger>
+					<MenuSubContent>
+						<MenuRadioGroup
+							value={filters.sharing}
+							onValueChange={(next: unknown) => {
+								if (isOneOf(next, ARTIFACT_SHARINGS)) onFilters({...filters, sharing: next});
+							}}
+						>
+							{ARTIFACT_SHARINGS.map((sharing) => (
+								<MenuRadioItem
+									key={sharing}
+									value={sharing}
+									disabled={sharing === "private" && view === "shared"}
+									disabledReason="This applies to your own artifacts only."
+								>
+									{SHARING_LABELS[sharing]}
+								</MenuRadioItem>
+							))}
+						</MenuRadioGroup>
+					</MenuSubContent>
+				</MenuSub>
+				<MenuSeparator />
+				<MenuCheckboxItem
+					checked={filters.pinned}
+					onCheckedChange={(checked) => {
+						onFilters({...filters, pinned: checked});
 					}}
 				>
-					{TYPE_FILTERS.map((option) => (
-						<MenuRadioItem key={option} value={option}>
-							<span className="flex w-full items-center gap-2">
-								<TypeFilterIcon option={option} />
-								<span className="min-w-0 flex-1 truncate">{TYPE_FILTER_LABELS[option]}</span>
-								{option !== "all" && (
-									<span
-										data-type-count=""
-										className="ms-auto max-w-[160px] shrink-0 truncate ps-4 text-footnote tabular-nums text-ink-muted"
-									>
-										{countOf(option)}
-									</span>
-								)}
-							</span>
-						</MenuRadioItem>
-					))}
-				</MenuRadioGroup>
+					Pinned
+				</MenuCheckboxItem>
+				{count > 0 && (
+					<>
+						<MenuSeparator />
+						<MenuItem
+							onSelect={() => {
+								onFilters(NO_ARTIFACT_FILTERS);
+							}}
+						>
+							Clear filters
+						</MenuItem>
+					</>
+				)}
 			</MenuContent>
 		</Menu>
 	);
 }
 
-/** Upstream's filter-row lead: a plain 16px glyph for All types / Other, else a 16x16 r4 hue chip with a 12px glyph. */
-function TypeFilterIcon({option}: {option: ArtifactTypeFilter}) {
-	const hue = TYPE_CHIP_HUES[option];
-	if (hue === undefined) {
-		const Icon = option === "all" ? Shapes : File;
-		return (
-			<span
-				aria-hidden="true"
-				data-type-icon={option === "all" ? "all" : "other"}
-				className="flex size-4 shrink-0 items-center justify-center"
-			>
-				<Icon className="size-4" />
-			</span>
-		);
-	}
-	const Icon = option === "docs" ? FileText : Shapes;
-	return (
-		<span
-			aria-hidden="true"
-			data-type-chip={option}
-			className="inline-flex size-4 shrink-0 items-center justify-center rounded"
-			style={{backgroundColor: `color-mix(in srgb, ${hue} 16%, transparent)`, color: hue}}
-		>
-			<Icon className="size-3" />
-		</span>
-	);
-}
-
-const TILE_BOX = {
-	row: "size-9 rounded-lg",
-	badge: "size-6 rounded-r5",
-} as const;
-const TILE_ICON = {row: "size-5", badge: "size-4"} as const;
+const TILE_BOX = "size-9 rounded-lg";
+const TILE_ICON = "size-5";
 
 /** The publish's icon word → its glyph; any other word falls back to the artifact's kind. */
 const TYPE_MEDIA_ICONS = {
@@ -415,17 +615,116 @@ function typeMediaIconWord(artifact: ArtifactSummary): TypeMediaIconWord {
 	return artifact.kind === "docs" ? "doc" : "code";
 }
 
-/** Upstream's no-thumbnail card preview: a neutral fill showing the artifact's own icon at 24px. */
-function TypeMedia({artifact}: {artifact: ArtifactSummary}) {
-	const word = typeMediaIconWord(artifact);
-	const Icon = TYPE_MEDIA_ICONS[word];
+/** Upstream's cover and mark kinds: Docs draw a `document`, everything else a `file`. */
+type CoverKind = "file" | "document";
+
+function coverKind(kind: ArtifactKind): CoverKind {
+	return kind === "docs" ? "document" : "file";
+}
+
+/** Upstream's cover tints (`--cds-<hue>-100/600`, dark `-700/200`). */
+const COVER_HUE: Record<CoverKind, string> = {
+	file: "bg-cds-gray-100 text-cds-gray-600 dark:bg-cds-gray-700 dark:text-cds-gray-200",
+	document: "bg-cds-blue-100 text-cds-blue-600 dark:bg-cds-blue-700 dark:text-cds-blue-200",
+};
+
+const COVER_FRONT_SIZE: Record<CoverKind, string> = {
+	file: "h-[190px] w-[min(232px,100%-24px)]",
+	document: "h-[200px] w-[182px]",
+};
+
+/** Upstream's bottom fade: clear down to 67%, then 30% of the cover hue, with 12px side fades. */
+const COVER_FADE_MASK = {
+	maskImage:
+		"linear-gradient(transparent, transparent 67%, rgba(0, 0, 0, 0.3) 100%), linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 12px), transparent)",
+	maskComposite: "intersect",
+} as const;
+
+/** Upstream's `other` blank drawing: a 3 × 2 grid of 51.33 × 74 r6 tiles. */
+const BLANK_OTHER_TILES = [16, 98].flatMap((y) => [16, 75.33, 134.66].map((x) => ({x, y})));
+
+/** Upstream's `document` blank drawing: a title, a subtitle, three text lines and a block. */
+const BLANK_DOCUMENT_LINES = [
+	{y: 18, width: 92, height: 10},
+	{y: 36, width: 55, height: 6},
+	{y: 54, width: 132.5, height: 5},
+	{y: 67, width: 121, height: 5},
+	{y: 80, width: 126.5, height: 5},
+	{y: 95, width: 144, height: 30},
+];
+
+/** Upstream's no-thumbnail front sheet: a skeleton drawing in the skeleton base ink with a sheen. */
+function CoverBlank({kind}: {kind: CoverKind}) {
+	const sheenId = useId();
+	const other = kind === "file";
+	const width = other ? 202 : 180;
+	return (
+		<svg
+			aria-hidden="true"
+			data-artifact-cover-blank={other ? "other" : "document"}
+			viewBox={`0 0 ${width} 130`}
+			width={width}
+			height={130}
+			className="mx-auto block fill-current text-[color:var(--skeleton-base)]"
+		>
+			<g>
+				{other
+					? BLANK_OTHER_TILES.map(({x, y}) => (
+							<rect key={`${x}-${y}`} x={x} y={y} width={51.33} height={74} rx={6} />
+						))
+					: BLANK_DOCUMENT_LINES.map(({y, width: lineWidth, height}) => (
+							<rect key={y} x={18} y={y} width={lineWidth} height={height} />
+						))}
+			</g>
+			<defs>
+				<linearGradient id={sheenId} x1="0" x2="1" y1="0" y2="0">
+					<stop offset="0" stopColor="var(--skeleton-sheen)" stopOpacity="0" />
+					<stop offset="0.5" stopColor="var(--skeleton-sheen)" />
+					<stop offset="1" stopColor="var(--skeleton-sheen)" stopOpacity="0" />
+				</linearGradient>
+			</defs>
+			<rect width={width} height={130} fill={`url(#${sheenId})`} />
+		</svg>
+	);
+}
+
+/** Upstream's card cover: a tinted wash with a floating front sheet and a masked bottom fade. */
+function ArtifactCover({kind}: {kind: CoverKind}) {
 	return (
 		<div
-			data-gallery-type-media=""
-			className="flex h-full w-full items-center justify-center bg-alpha-1 text-secondary"
+			data-artifact-cover={kind}
+			className={`group/cover relative h-full overflow-hidden isolate ${COVER_HUE[kind]}`}
 		>
-			<Icon aria-hidden="true" data-icon={word} className="size-6" />
+			<div className="absolute inset-0 bg-surface-2 opacity-40 dark:opacity-35" />
+			<div
+				data-cover-front=""
+				className={`absolute inset-x-0 mx-auto overflow-hidden border border-border bg-white bg-clip-padding text-primary dark:bg-surface-1 isolate shadow-lg top-[30px] z-2 rounded-xl ${COVER_FRONT_SIZE[kind]}`}
+			>
+				<CoverBlank kind={kind} />
+			</div>
+			<div
+				aria-hidden="true"
+				className={`pointer-events-none absolute inset-0 isolate z-3 mx-auto max-w-[268px] overflow-hidden ${COVER_HUE[kind]}`}
+				style={COVER_FADE_MASK}
+			/>
 		</div>
+	);
+}
+
+/** Upstream's card-size ArtifactMark: a 40px r8 tile, neutral for files and tint-blue for documents. */
+function ArtifactMark({artifact}: {artifact: ArtifactSummary}) {
+	const kind = coverKind(artifact.kind);
+	const word = typeMediaIconWord(artifact);
+	const Icon = TYPE_MEDIA_ICONS[word];
+	const tone = kind === "document" ? "bg-upstream-tint-blue text-tint-blue-ink" : "bg-fill-secondary text-secondary";
+	return (
+		<span
+			data-artifact-mark={kind}
+			data-artifact-mark-size="card"
+			className={`flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg ${tone}`}
+		>
+			<Icon aria-hidden="true" data-icon={word} className="size-5" />
+		</span>
 	);
 }
 
@@ -433,34 +732,32 @@ function TypeMedia({artifact}: {artifact: ArtifactSummary}) {
  * Upstream's type tile: a neutral `</>` tile for HTML pages ("Other") and a blue document tile for Docs.
  * 36px in list rows.
  */
-function TypeTile({kind, size = "row"}: {kind: ArtifactKind; size?: keyof typeof TILE_BOX}) {
+function TypeTile({kind}: {kind: ArtifactKind}) {
 	const Icon = kind === "docs" ? FileText : CodeXml;
-	// Upstream's straddling card tile is neutral for every type.
-	const tone =
-		kind === "docs" && size !== "badge"
-			? "bg-blue-500/10 text-blue-600 dark:text-blue-300"
-			: "bg-alpha-1 text-secondary";
-	const labelled = kind === "docs" && size !== "badge";
+	const tone = kind === "docs" ? "bg-blue-500/10 text-blue-600 dark:text-blue-300" : "bg-alpha-1 text-secondary";
 	return (
 		<div
-			{...(labelled ? {role: "img", "aria-label": "Docs"} : {"aria-hidden": true})}
+			{...(kind === "docs" ? {role: "img", "aria-label": "Docs"} : {"aria-hidden": true})}
 			data-type-tile={kind}
-			className={`flex shrink-0 items-center justify-center overflow-hidden ${TILE_BOX[size]} ${tone}`}
+			className={`flex shrink-0 items-center justify-center overflow-hidden ${TILE_BOX} ${tone}`}
 		>
-			<Icon aria-hidden="true" className={TILE_ICON[size]} />
+			<Icon aria-hidden="true" className={TILE_ICON} />
 		</div>
 	);
 }
 
-function PrivacyAndDate({
-	artifact,
-	now,
-	lockClass = "size-3.5",
-}: {
-	artifact: ArtifactSummary;
-	now: Date;
-	lockClass?: string;
-}) {
+function RelativeTime({ms, now}: {ms: number; now: Date}) {
+	return (
+		<Tooltip content={formatArtifactTooltip(ms)} className="pointer-events-auto">
+			<time data-cds="RelativeTime" dateTime={new Date(ms).toISOString()}>
+				{formatArtifactRelative(ms, now)}
+			</time>
+		</Tooltip>
+	);
+}
+
+/** The list row's lock, dot and "Edited/Viewed <t>" (list rows keep them until list view is re-verified). */
+function PrivacyAndDate({artifact, now}: {artifact: ArtifactSummary; now: Date}) {
 	const ms = artifactTimestamp(artifact);
 	return (
 		<>
@@ -468,22 +765,24 @@ function PrivacyAndDate({
 				<>
 					<Tooltip content="Private" className="pointer-events-auto shrink-0">
 						<span role="img" aria-label="Private" className="flex shrink-0 items-center">
-							<Lock aria-hidden="true" className={lockClass} />
+							<Lock aria-hidden="true" className="size-3.5" />
 						</span>
 					</Tooltip>
 					<span aria-hidden="true" className="inline-block size-[3px] shrink-0 rounded-full bg-alpha-3" />
 				</>
 			)}
 			<span data-artifact-meta="">
-				{artifact.lastPublishedAt === null ? "Viewed" : "Edited"}{" "}
-				<Tooltip content={formatArtifactTooltip(ms)} className="pointer-events-auto">
-					<time data-cds="RelativeTime" dateTime={new Date(ms).toISOString()}>
-						{formatArtifactRelative(ms, now)}
-					</time>
-				</Tooltip>
+				{artifact.lastPublishedAt === null ? "Viewed" : "Edited"} <RelativeTime ms={ms} now={now} />
 			</span>
 		</>
 	);
+}
+
+/** Upstream's card meta: "Opened <t>", else "Edited <publish>", else "Created <first seen>". */
+function cardMetaTime(artifact: ArtifactSummary): {verb: string; ms: number} {
+	if (artifact.lastOpenedAt !== null) return {verb: "Opened", ms: artifact.lastOpenedAt};
+	if (artifact.lastPublishedAt !== null) return {verb: "Edited", ms: artifact.lastPublishedAt};
+	return {verb: "Created", ms: artifact.firstSeenAt};
 }
 
 function ArtifactChips({artifact}: {artifact: ArtifactSummary}) {
@@ -554,7 +853,7 @@ function ArtifactMenuItems({artifact, pinned}: {artifact: ArtifactSummary; pinne
 			<MenuItem
 				icon={<LinkIcon aria-hidden="true" />}
 				accelerator="c"
-				data-artifact-row="copy-link"
+				data-artifact-row="copy_link"
 				onSelect={() => void copyLink(artifact)}
 			>
 				Copy link
@@ -566,7 +865,7 @@ function ArtifactMenuItems({artifact, pinned}: {artifact: ArtifactSummary; pinne
 function ArtifactPinButton({
 	artifact,
 	pinned,
-	className = "",
+	className = ROW_ACTION_CLASS,
 }: {
 	artifact: ArtifactSummary;
 	pinned: boolean;
@@ -579,7 +878,7 @@ function ArtifactPinButton({
 				type="button"
 				aria-label={pinLabel}
 				aria-pressed={pinned}
-				className={`${ROW_ACTION_CLASS} ${className}`}
+				className={className}
 				onClick={() => {
 					togglePin(artifact, pinned);
 				}}
@@ -590,9 +889,13 @@ function ArtifactPinButton({
 	);
 }
 
-/** Upstream's grid-card More button: r6, surface-1, surface-3 on hover or open; its wrapper does the reveal. */
-const CARD_MORE_CLASS =
-	"pointer-events-auto flex size-6 shrink-0 items-center justify-center rounded-r5 bg-surface-1 text-ink-muted hover:bg-surface-3 hover:text-primary aria-expanded:bg-surface-3 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+/** Upstream's on-content card button seat: revealed on hover, focus within, an open menu and touch. */
+const CARD_ACTION_SEAT_CLASS =
+	"relative flex shrink-0 rounded-r5 opacity-0 transition-opacity group-hover:opacity-100 group-has-[:focus-visible]:opacity-100 group-has-[[aria-expanded=true]]:opacity-100 touch:opacity-100 data-[pin-at-rest=shown]:opacity-100";
+
+/** Upstream's blurred on-content button paint (`--cds-button-on-content`, its hover and inset ring). */
+const CARD_ACTION_BUTTON_CLASS =
+	"pointer-events-auto relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-primary backdrop-blur-md bg-button-on-content shadow-[inset_0_0_0_1px_var(--color-button-on-content-ring)] hover:bg-button-on-content-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /** Upstream's card/row More menu sits 6px off its trigger. */
 const ARTIFACT_MENU_OFFSET = 6;
@@ -648,11 +951,25 @@ function ArtifactContextMenu({
 	);
 }
 
-function ArtifactList({pinned, artifacts, now}: {pinned: ArtifactSummary[]; artifacts: ArtifactSummary[]; now: Date}) {
+function ArtifactList({
+	pinned,
+	artifacts,
+	now,
+	sort,
+}: {
+	pinned: ArtifactSummary[];
+	artifacts: ArtifactSummary[];
+	now: Date;
+	sort: ArtifactSort;
+}) {
 	const idPrefix = useId();
+	const timestamp =
+		sort === "opened"
+			? artifactOpenedTimestamp
+			: (artifact: ArtifactSummary) => artifactSortTimestamp(artifact, sort);
 	const groups = [
 		...(pinned.length > 0 ? [{label: "Pinned", items: pinned, pinned: true}] : []),
-		...groupArtifactsByDate(artifacts, now).map((group) => ({...group, pinned: false})),
+		...groupArtifactsByDate(artifacts, now, timestamp).map((group) => ({...group, pinned: false})),
 	];
 	return (
 		<div className="-mx-3 flex flex-col gap-3">
@@ -739,7 +1056,11 @@ function ArtifactCardList({
 	labelledBy?: string;
 }) {
 	return (
-		<ul role="list" aria-labelledby={labelledBy} className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
+		<ul
+			role="list"
+			aria-labelledby={labelledBy}
+			className="grid @container gap-6 grid-cols-[repeat(auto-fill,minmax(min(100%,max(15rem,30%)),1fr))]"
+		>
 			{artifacts.map((artifact) => (
 				<ArtifactCard key={artifact.url} artifact={artifact} now={now} pinned={pinned} />
 			))}
@@ -747,54 +1068,92 @@ function ArtifactCardList({
 	);
 }
 
+/**
+ * Upstream's grid card: the whole card grows to 103% on hover (and while its menu is open) around an r16
+ * pressable holding the tinted cover and the 72px mark row; More and Pin float top-right over the cover.
+ */
 function ArtifactCard({artifact, now, pinned}: {artifact: ArtifactSummary; now: Date; pinned: boolean}) {
+	const {verb, ms} = cardMetaTime(artifact);
 	return (
-		<li className="group group/cdsrow relative h-full">
+		<li className="h-full">
 			<ArtifactContextMenu artifact={artifact} pinned={pinned}>
-				{/* Upstream's pressable: shrinks to 98% over duration-snap (120ms) while pressed. */}
 				<div
-					data-gallery-card=""
-					className="relative block w-full group group/card transition-transform duration-[120ms] active:scale-[0.98] rounded-r7 h-full"
+					data-card-grows=""
+					className="group relative h-full transition-transform duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-safe:hover:scale-[1.03] motion-safe:has-[[aria-expanded=true]]:scale-[1.03]"
 				>
-					<PrimaryLink artifact={artifact} className="rounded-r7" />
+					{/* Upstream's pressable: shrinks to 98% over duration-snap (120ms) while pressed. */}
 					<div
-						data-card-frame=""
-						className="pointer-events-none relative flex h-full flex-col overflow-hidden rounded-r7 bg-surface-2 after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:border after:border-border group-hover:bg-surface-1"
+						data-gallery-card=""
+						className="relative block w-full group/card transition-transform duration-[120ms] active:scale-[0.98] rounded-2xl h-full"
 					>
-						<div data-card-preview="" className="relative h-[160px] shrink-0 select-none overflow-hidden">
-							<TypeMedia artifact={artifact} />
-						</div>
-						<div className="mx-px border-t border-alpha-1" />
-						<div data-card-body="" className="relative flex flex-1 flex-col gap-1.5 p-3.5">
-							{/* Upstream's 28px type tile straddles the divider, 12px in from the card's edge; sr-only beside type-media */}
+						<PrimaryLink artifact={artifact} className="rounded-2xl" />
+						<div
+							data-card-frame=""
+							className="pointer-events-none relative flex h-full flex-col overflow-hidden rounded-2xl bg-surface-2 after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:shadow-card-ring"
+						>
 							<div
-								data-card-badge=""
-								className="absolute start-3 top-0 size-7 -translate-y-2/3 rounded-r6 bg-surface-2 p-0.5 group-hover:bg-surface-1 group-has-[[data-gallery-type-media]]/card:pointer-events-none group-has-[[data-gallery-type-media]]/card:sr-only"
+								data-card-preview=""
+								className="relative h-[152px] shrink-0 select-none overflow-hidden"
 							>
-								<TypeTile kind={artifact.kind} size="badge" />
+								<ArtifactCover kind={coverKind(artifact.kind)} />
 							</div>
-							<div
-								aria-hidden="true"
-								data-card-title=""
-								className="line-clamp-2 min-w-0 text-left text-[13px]/[20px] font-medium text-primary"
-							>
-								{artifact.title}
-							</div>
-							<div
-								data-card-meta=""
-								className="mt-auto flex items-center gap-1 text-[11px]/[17px] text-ink-muted"
-							>
-								<PrivacyAndDate artifact={artifact} now={now} lockClass="size-4" />
-								<ArtifactPinButton artifact={artifact} pinned={pinned} className="-my-1 p-1" />
+							<div data-card-body="" className="relative flex min-h-18 flex-1 items-center gap-3 p-4">
+								<div aria-hidden="true">
+									<ArtifactMark artifact={artifact} />
+								</div>
+								<div data-artifact-mark-words="" className="flex min-w-0 flex-1 flex-col gap-0.5">
+									<div className="flex items-start gap-2">
+										<div
+											aria-hidden="true"
+											data-card-title=""
+											className="min-w-0 truncate text-start text-body font-medium leading-5 text-primary"
+										>
+											{artifact.title}
+										</div>
+									</div>
+									<div
+										data-card-meta=""
+										className="mt-auto flex items-center gap-1 text-caption text-muted-as-secondary"
+									>
+										<span
+											data-artifact-meta=""
+											className="pointer-events-auto min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap"
+										>
+											{verb} <RelativeTime ms={ms} now={now} />
+										</span>
+										{artifact.audience === "owner" && <span className="sr-only">Private</span>}
+									</div>
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
-				<div
-					data-card-more=""
-					className="absolute end-3 top-3 z-10 opacity-0 transition-opacity group-hover:opacity-100 group-has-[:focus-visible]:opacity-100 has-[[data-popup-open]]:opacity-100 pointer-coarse:opacity-100"
-				>
-					<ArtifactMoreMenu artifact={artifact} pinned={pinned} className={CARD_MORE_CLASS} />
+					<div
+						data-card-actions=""
+						className="absolute end-4 top-4 z-10 flex items-center gap-1 transition-opacity has-[[data-popup-open]]:opacity-100"
+					>
+						<span data-card-more="" className={CARD_ACTION_SEAT_CLASS}>
+							<span
+								aria-hidden="true"
+								className="absolute inset-0 rounded-[inherit] bg-surface-1 opacity-75"
+							/>
+							<ArtifactMoreMenu
+								artifact={artifact}
+								pinned={pinned}
+								className={CARD_ACTION_BUTTON_CLASS}
+							/>
+						</span>
+						<span data-pin-at-rest={pinned ? "shown" : "hidden"} className={CARD_ACTION_SEAT_CLASS}>
+							<span
+								aria-hidden="true"
+								className="absolute inset-0 rounded-[inherit] bg-surface-1 opacity-75"
+							/>
+							<ArtifactPinButton
+								artifact={artifact}
+								pinned={pinned}
+								className={CARD_ACTION_BUTTON_CLASS}
+							/>
+						</span>
+					</div>
 				</div>
 			</ArtifactContextMenu>
 		</li>

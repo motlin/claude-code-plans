@@ -3,8 +3,6 @@ export const ARTIFACTS_LAYOUT_STORAGE_KEY = "artifacts-gallery-layout";
 
 export type ArtifactsLayout = "list" | "grid";
 export type ArtifactKind = "html" | "docs";
-/** Upstream's type filter rows; the Slides/Design/Design System/Dashboard types never index locally, so they count 0. */
-export type ArtifactTypeFilter = "all" | "slides" | "design" | "design-system" | "dashboard" | ArtifactKind;
 /** Upstream's ownership tabs: All, Yours (you own it), Shared with you (any other audience). */
 export type ArtifactView = "all" | "yours" | "shared";
 
@@ -13,11 +11,6 @@ const RECENT_DAYS = 7;
 interface DatedArtifact {
 	lastPublishedAt: number | null;
 	firstSeenAt: number;
-}
-
-interface FilterableArtifact {
-	title: string;
-	kind: ArtifactKind;
 }
 
 export function readArtifactsLayout(): ArtifactsLayout {
@@ -81,13 +74,14 @@ export function artifactDateGroupLabel(ms: number, now: Date): string {
 export function groupArtifactsByDate<T extends DatedArtifact>(
 	items: readonly T[],
 	now: Date,
+	timestamp: (item: T) => number = artifactTimestamp,
 ): Array<{label: string; items: T[]}> {
 	const dayStarts = recentDayStarts(now);
 	const days: T[][] = dayStarts.map(() => []);
 	const months = new Map<number, T[]>();
 	const older: T[] = [];
 	for (const item of items) {
-		const ms = artifactTimestamp(item);
+		const ms = timestamp(item);
 		if (!Number.isFinite(ms)) {
 			older.push(item);
 			continue;
@@ -103,7 +97,7 @@ export function groupArtifactsByDate<T extends DatedArtifact>(
 		if (bucket) bucket.push(item);
 		else months.set(key, [item]);
 	}
-	const newestFirst = (bucket: T[]) => bucket.toSorted((a, b) => artifactTimestamp(b) - artifactTimestamp(a));
+	const newestFirst = (bucket: T[]) => bucket.toSorted((a, b) => timestamp(b) - timestamp(a));
 	const groups = days.flatMap((bucket, index) =>
 		bucket.length === 0 ? [] : [{label: dayLabel(index, dayStarts[index] ?? 0), items: newestFirst(bucket)}],
 	);
@@ -162,9 +156,104 @@ export function artifactInView(audience: string | null, view: ArtifactView): boo
 	return (audience === "owner") === (view === "yours");
 }
 
-export function filterArtifacts<T extends FilterableArtifact>(
+/** Upstream's Sort by: "Last opened" (the default) or "Last edited". */
+export type ArtifactSort = "opened" | "edited";
+
+interface OpenedArtifact extends DatedArtifact {
+	lastOpenedAt: number | null;
+}
+
+/** The "Last opened" time: the latest local open/read, else the last publish, else first seen. */
+export function artifactOpenedTimestamp(artifact: OpenedArtifact): number {
+	return artifact.lastOpenedAt ?? artifactTimestamp(artifact);
+}
+
+export function artifactSortTimestamp(artifact: OpenedArtifact, sort: ArtifactSort): number {
+	return sort === "opened" ? artifactOpenedTimestamp(artifact) : artifactTimestamp(artifact);
+}
+
+/** Newest first by the picked sort's time. */
+export function sortArtifacts<T extends OpenedArtifact>(items: readonly T[], sort: ArtifactSort): T[] {
+	return items.toSorted((a, b) => artifactSortTimestamp(b, sort) - artifactSortTimestamp(a, sort));
+}
+
+/** Upstream's Type submenu rows, alphabetical, then Other (every non-Docs local publish). */
+export const ARTIFACT_TYPE_KEYS = ["dashboard", "design", "design-system", "docs", "slides", "other"] as const;
+export type ArtifactTypeKey = (typeof ARTIFACT_TYPE_KEYS)[number];
+export const ARTIFACT_OWNERS = ["me", "others"] as const;
+export type ArtifactOwner = (typeof ARTIFACT_OWNERS)[number];
+/** Upstream's Date opened radios: Any time / Today / Yesterday / Past 7 days / Past 30 days. */
+export const ARTIFACT_OPENED_RANGES = ["any", "today", "yesterday", "week", "month"] as const;
+export type ArtifactOpenedRange = (typeof ARTIFACT_OPENED_RANGES)[number];
+/** Upstream's Sharing radios: Any / Only you / Shared. */
+export const ARTIFACT_SHARINGS = ["any", "private", "shared"] as const;
+export type ArtifactSharing = (typeof ARTIFACT_SHARINGS)[number];
+
+export interface ArtifactFilters {
+	types: readonly ArtifactTypeKey[];
+	owners: readonly ArtifactOwner[];
+	opened: ArtifactOpenedRange;
+	sharing: ArtifactSharing;
+	pinned: boolean;
+}
+
+export const NO_ARTIFACT_FILTERS: ArtifactFilters = {
+	types: [],
+	owners: [],
+	opened: "any",
+	sharing: "any",
+	pinned: false,
+};
+
+/** The trigger's "{n} filters on": each type and owner pick, a non-Any date or sharing, and Pinned. */
+export function activeFilterCount(filters: ArtifactFilters): number {
+	return (
+		filters.types.length +
+		filters.owners.length +
+		(filters.opened === "any" ? 0 : 1) +
+		(filters.sharing === "any" ? 0 : 1) +
+		(filters.pinned ? 1 : 0)
+	);
+}
+
+export function artifactTypeKey(kind: ArtifactKind): ArtifactTypeKey {
+	return kind === "docs" ? "docs" : "other";
+}
+
+/** Each Date opened range's [days back to its first local midnight, days back to its end midnight]; null is open-ended. */
+const OPENED_RANGE_DAYS: Record<Exclude<ArtifactOpenedRange, "any">, readonly [number, number | null]> = {
+	today: [0, null],
+	yesterday: [1, 0],
+	week: [RECENT_DAYS - 1, null],
+	month: [29, null],
+};
+
+/** Whether the artifact's opened time falls in the range, with local-midnight day boundaries. */
+function openedInRange(ms: number, range: ArtifactOpenedRange, now: Date): boolean {
+	if (range === "any") return true;
+	const dayStart = (daysAgo: number) =>
+		new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysAgo).getTime();
+	const [from, to] = OPENED_RANGE_DAYS[range];
+	return ms >= dayStart(from) && (to === null || ms < dayStart(to));
+}
+
+interface FilteredArtifact extends OpenedArtifact {
+	kind: ArtifactKind;
+	audience: string | null;
+}
+
+/** The Filter and sort menu's picks; locally Owner and Sharing both read the indexed audience. */
+export function applyArtifactFilters<T extends FilteredArtifact>(
 	items: readonly T[],
-	{search, type}: {search: string; type: ArtifactTypeFilter},
+	filters: ArtifactFilters,
+	{now, isPinned}: {now: Date; isPinned: (item: T) => boolean},
 ): T[] {
-	return items.filter((item) => (type === "all" || item.kind === type) && artifactMatchesSearch(item.title, search));
+	return items.filter((item) => {
+		const mine = item.audience === "owner";
+		if (filters.types.length > 0 && !filters.types.includes(artifactTypeKey(item.kind))) return false;
+		if (filters.owners.length > 0 && !filters.owners.includes(mine ? "me" : "others")) return false;
+		if (!openedInRange(artifactOpenedTimestamp(item), filters.opened, now)) return false;
+		if (filters.sharing !== "any" && mine !== (filters.sharing === "private")) return false;
+		return !filters.pinned || isPinned(item);
+	});
 }

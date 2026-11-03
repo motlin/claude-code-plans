@@ -160,6 +160,8 @@ export const artifacts = sqliteTable(
 		typeUrl: text("type_url"),
 		firstSeenAt: integer("first_seen_at").notNull(),
 		lastPublishedAt: integer("last_published_at"),
+		/** The latest `open`/`read` event's time: upstream's "Last opened" sort and "Opened <t>" meta. */
+		lastOpenedAt: integer("last_opened_at"),
 		publishCount: integer("publish_count").notNull().default(0),
 		lastSessionId: text("last_session_id").notNull(),
 		projectId: text("project_id").notNull(),

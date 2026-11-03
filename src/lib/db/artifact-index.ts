@@ -12,6 +12,8 @@ type ArtifactEventData = Omit<ArtifactEventRow, "sessionId" | "projectId" | "fil
 
 const INDEXED_ACTIONS = new Set(["publish", "open", "read", "read_db", "pin", "unpin"]);
 const PUBLISH_ACTION = "publish";
+/** The actions that count as opening an artifact for its "Last opened" time. */
+const OPEN_ACTIONS = new Set(["open", "read"]);
 
 interface PendingCall {
 	action: string;
@@ -167,6 +169,7 @@ function recomputeArtifact(transaction: IndexDb, url: string): void {
 		typeUrl: firstNonNull(events.map((event) => event.typeUrl)),
 		firstSeenAt: events[0]?.ts ?? latest.ts,
 		lastPublishedAt: publishes.at(-1)?.ts ?? null,
+		lastOpenedAt: events.findLast((event) => OPEN_ACTIONS.has(event.action))?.ts ?? null,
 		publishCount: publishes.length,
 		lastSessionId: latest.sessionId,
 		projectId: latest.projectId,

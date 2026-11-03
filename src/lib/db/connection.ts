@@ -120,6 +120,7 @@ CREATE TABLE IF NOT EXISTS artifacts (
   type_url TEXT,
   first_seen_at INTEGER NOT NULL,
   last_published_at INTEGER,
+  last_opened_at INTEGER,
   publish_count INTEGER NOT NULL DEFAULT 0,
   last_session_id TEXT NOT NULL,
   project_id TEXT NOT NULL

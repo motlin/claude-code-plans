@@ -21,6 +21,9 @@ function artifactKind(typeUrl: string | null): ArtifactKind {
 	return (typeUrl === null ? undefined : ARTIFACT_TYPE_KINDS[typeUrl]) ?? "html";
 }
 
+/** Upstream's card label for an artifact with no title. */
+const UNTITLED_ARTIFACT = "Untitled artifact";
+
 /** The source file's mtime in ms when it is still a regular file, else null. */
 function statSourceMtime(path: string): number | null {
 	try {
@@ -33,7 +36,7 @@ function statSourceMtime(path: string): number | null {
 
 /**
  * Every indexed artifact, newest publish first, titled like upstream's card label
- * (title → source basename → id) and optionally narrowed to titles containing `q`.
+ * (title → source basename → "Untitled artifact") and optionally narrowed to titles containing `q`.
  * A source counts as existing only when it can be previewed locally.
  */
 export function getArtifacts(
@@ -59,7 +62,7 @@ export function getArtifacts(
 				id: row.id,
 				kind: artifactKind(row.typeUrl),
 				icon: row.icon,
-				title: row.title ?? (row.sourcePath ? basename(row.sourcePath) : row.id),
+				title: row.title ?? (row.sourcePath ? basename(row.sourcePath) : UNTITLED_ARTIFACT),
 				description: row.description,
 				sourcePath: row.sourcePath,
 				sourceExists: sourceModifiedAt !== null,
@@ -67,6 +70,7 @@ export function getArtifacts(
 				audience: row.audience,
 				firstSeenAt: row.firstSeenAt,
 				lastPublishedAt: row.lastPublishedAt,
+				lastOpenedAt: row.lastOpenedAt,
 				publishCount: row.publishCount,
 				sessionId: row.lastSessionId,
 				projectId: row.projectId,

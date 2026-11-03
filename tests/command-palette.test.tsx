@@ -2141,6 +2141,7 @@ function artifact(id: string, title: string, publishedAgoMs: number): ArtifactSu
 		audience: null,
 		firstSeenAt: Date.now() - publishedAgoMs,
 		lastPublishedAt: Date.now() - publishedAgoMs,
+		lastOpenedAt: null,
 		publishCount: 1,
 		sessionId: "sess-1",
 		projectId: "-users-dev-project-a",

@@ -7,8 +7,8 @@ export type ArtifactMarkKind = "document" | "slides" | "design" | "chart";
 export interface ArtifactTemplate {
 	slug: ArtifactTemplateSlug;
 	label: string;
-	/** Upstream's type hue: the tile's gradient and its 50% hover ring. */
-	hue: string;
+	/** Upstream's strip tile hue pair: `bg-<hue>-100 text-<hue>-600`, dark `-700` / `-200`, from the cds palette. */
+	tileClass: string;
 	badge: "New" | "Beta";
 	/** Upstream's `ArtifactMark` kind for the template menu row. */
 	markKind: ArtifactMarkKind;
@@ -28,7 +28,7 @@ export const ARTIFACT_TEMPLATES: readonly ArtifactTemplate[] = [
 	{
 		slug: "pages",
 		label: "Docs",
-		hue: "var(--color-blue-500)",
+		tileClass: "bg-cds-blue-100 text-cds-blue-600 dark:bg-cds-blue-700 dark:text-cds-blue-200",
 		badge: "New",
 		markKind: "document",
 		markClass: "bg-[#338ced] dark:bg-[#257de0]",
@@ -39,7 +39,7 @@ export const ARTIFACT_TEMPLATES: readonly ArtifactTemplate[] = [
 	{
 		slug: "slides",
 		label: "Slides",
-		hue: "#b7791f",
+		tileClass: "bg-cds-orange-100 text-cds-orange-600 dark:bg-cds-orange-700 dark:text-cds-orange-200",
 		badge: "New",
 		markKind: "slides",
 		markClass: "bg-[#f47230] dark:bg-[#e76624]",
@@ -48,7 +48,7 @@ export const ARTIFACT_TEMPLATES: readonly ArtifactTemplate[] = [
 	{
 		slug: "design",
 		label: "Design",
-		hue: "#7663b8",
+		tileClass: "bg-cds-violet-100 text-cds-violet-600 dark:bg-cds-violet-700 dark:text-cds-violet-200",
 		badge: "New",
 		markKind: "design",
 		markClass: "bg-[#785ee8] dark:bg-[#6a4ce2]",
@@ -57,7 +57,7 @@ export const ARTIFACT_TEMPLATES: readonly ArtifactTemplate[] = [
 	{
 		slug: "dashboard",
 		label: "Dashboard",
-		hue: "var(--color-violet-500)",
+		tileClass: "bg-cds-red-100 text-cds-red-600 dark:bg-cds-red-700 dark:text-cds-red-200",
 		badge: "Beta",
 		markKind: "chart",
 		markClass: "bg-[#dc3c3d] dark:bg-[#c83839]",
