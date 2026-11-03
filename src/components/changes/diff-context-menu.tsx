@@ -1,10 +1,12 @@
-import {type MouseEvent, type ReactNode, useState} from "react";
+import {type MouseEvent, type ReactNode, useEffect, useState} from "react";
 
 import {writeClipboardText} from "../../lib/clipboard";
 import {attachContext} from "../../lib/context-attach";
 import {type DiffSide, openDiffCommentDraft} from "../../lib/diff-comments";
 import {detectLanguage} from "../../lib/diff-utils";
 import {useToast} from "../toast-context";
+import {SELECTION_BAR_BUTTON_CLASS, SELECTION_BAR_CLASS} from "../transcript-selection-bar";
+import {findScrollContainer} from "../scroll-container";
 import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "../ui/menu";
 
 /** The diff lines a right-click lands on: the selection inside the diff, or the clicked line. */
@@ -75,22 +77,67 @@ function linesLabel({line, endLine}: DiffLineSelection): string {
 	return line === endLine ? `line ${line}` : `lines ${line}–${endLine}`;
 }
 
+/** The diff row an event lands on, through the `@pierre/diffs` shadow root. */
+function eventRow(event: MouseEvent): Element | null {
+	const path = event.nativeEvent.composedPath();
+	return rowOf(path.find((target): target is Element => target instanceof Element) ?? null);
+}
+
+/** The rows a selection inside the row's shadow root spans, or null without one. */
+function selectedRows(row: Element): {root: ShadowRoot; selection: Selection; rows: Element[]} | null {
+	const root = row.getRootNode();
+	const selection = root instanceof ShadowRoot ? selectionIn(root) : null;
+	if (!(root instanceof ShadowRoot) || selection === null) return null;
+	const anchor = rowOf(selection.anchorNode);
+	const focus = rowOf(selection.focusNode);
+	if (anchor === null || focus === null) return null;
+	return {root, selection, rows: rowsBetween(anchor, focus)};
+}
+
 /** Resolves a right-click inside a `@pierre/diffs` shadow root to diff lines. */
 function diffLinesAt(event: MouseEvent): DiffLineSelection | null {
-	const path = event.nativeEvent.composedPath();
-	const clicked = rowOf(path.find((target): target is Element => target instanceof Element) ?? null);
+	const clicked = eventRow(event);
 	if (clicked === null) return null;
-	const root = clicked.getRootNode();
-	const selection = root instanceof ShadowRoot ? selectionIn(root) : null;
-	if (selection !== null) {
-		const anchor = rowOf(selection.anchorNode);
-		const focus = rowOf(selection.focusNode);
-		if (anchor !== null && focus !== null) {
-			const rows = rowsBetween(anchor, focus);
-			if (rows.includes(clicked)) return selectionOf(rows);
-		}
-	}
+	const selected = selectedRows(clicked);
+	if (selected?.rows.includes(clicked)) return selectionOf(selected.rows);
 	return selectionOf([clicked]);
+}
+
+/** Upstream `Wl`: the gap between the selection and the chip. */
+const CHIP_GAP = 8;
+/** The chip's height: one 24px cds ghost button. */
+const CHIP_HEIGHT = 24;
+
+/** The floating chip over a diff selection, placed in the file wrapper's coordinates. */
+interface SelectionChip {
+	root: ShadowRoot;
+	lines: DiffLineSelection;
+	x: number;
+	y: number;
+	flipBelow: boolean;
+}
+
+/** Upstream's mouse-up chip: centred on the selection, above it unless the scroller's top cuts it off. */
+function selectionChipAt(event: MouseEvent<HTMLElement>): SelectionChip | null {
+	const row = eventRow(event);
+	const selected = row === null ? null : selectedRows(row);
+	const lines = selected === null ? null : selectionOf(selected.rows);
+	if (selected === null || lines === null) return null;
+	const rect = selected.selection.getRangeAt(0).getBoundingClientRect();
+	const host = event.currentTarget.getBoundingClientRect();
+	const scroller = findScrollContainer(event.currentTarget);
+	const top =
+		scroller === document.scrollingElement || scroller === document.documentElement
+			? 0
+			: scroller.getBoundingClientRect().top;
+	const flipBelow = rect.top - CHIP_GAP - CHIP_HEIGHT < top;
+	return {
+		root: selected.root,
+		lines,
+		x: Math.round(rect.left + rect.width / 2 - host.left),
+		y: Math.round((flipBelow ? rect.bottom : rect.top) - host.top),
+		flipBelow,
+	};
 }
 
 /**
@@ -99,7 +146,23 @@ function diffLinesAt(event: MouseEvent): DiffLineSelection | null {
  */
 export function DiffContextMenu({sessionId, path, children}: {sessionId: string; path: string; children: ReactNode}) {
 	const [target, setTarget] = useState<DiffLineSelection | null>(null);
+	const [chip, setChip] = useState<SelectionChip | null>(null);
 	const toast = useToast();
+
+	useEffect(() => {
+		if (chip === null) return undefined;
+		const hideWhenCleared = () => {
+			if (selectionIn(chip.root) === null) setChip(null);
+		};
+		document.addEventListener("selectionchange", hideWhenCleared);
+		return () => {
+			document.removeEventListener("selectionchange", hideWhenCleared);
+		};
+	}, [chip]);
+
+	function comment(lines: DiffLineSelection) {
+		openDiffCommentDraft(sessionId, {path, side: lines.side, line: lines.line, endLine: lines.endLine});
+	}
 
 	function attach(lines: DiffLineSelection) {
 		const attached = attachContext(sessionId, {
@@ -127,12 +190,50 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 	return (
 		<ContextMenu>
 			<ContextMenuTrigger
-				render={<div />}
+				render={<div className="relative" />}
 				onContextMenu={(event: MouseEvent) => {
+					setChip(null);
 					setTarget(diffLinesAt(event));
+				}}
+				onMouseUp={(event: MouseEvent<HTMLElement>) => {
+					// A press on the chip itself keeps it, so its click still lands.
+					if (event.target instanceof Element && event.target.closest("[data-pane-editor]")) return;
+					setChip(selectionChipAt(event));
 				}}
 			>
 				{children}
+				{chip !== null && (
+					<div
+						className="absolute isolate"
+						data-pane-editor=""
+						style={{
+							left: chip.x,
+							top: chip.y,
+							transform: chip.flipBelow
+								? `translate(-50%, ${CHIP_GAP}px)`
+								: `translate(-50%, calc(-100% - ${CHIP_GAP}px))`,
+							zIndex: 20,
+						}}
+					>
+						<div data-surface="popover" className={SELECTION_BAR_CLASS}>
+							<button
+								type="button"
+								className={SELECTION_BAR_BUTTON_CLASS}
+								aria-label={`Add comment on ${linesLabel(chip.lines)}`}
+								onMouseDown={(event) => {
+									event.preventDefault();
+								}}
+								onClick={() => {
+									comment(chip.lines);
+									selectionIn(chip.root)?.removeAllRanges();
+									setChip(null);
+								}}
+							>
+								Add comment
+							</button>
+						</div>
+					</div>
+				)}
 			</ContextMenuTrigger>
 			<MenuContent>
 				<MenuItem
@@ -146,15 +247,9 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 				<MenuItem
 					disabled={target === null}
 					{...(target === null ? {} : {"aria-label": `Add comment on ${linesLabel(target)}`})}
-					onSelect={() =>
-						target &&
-						openDiffCommentDraft(sessionId, {
-							path,
-							side: target.side,
-							line: target.line,
-							endLine: target.endLine,
-						})
-					}
+					onSelect={() => {
+						if (target) comment(target);
+					}}
 				>
 					Add comment
 				</MenuItem>

@@ -478,6 +478,90 @@ describe("Changes pane right-click menu", () => {
 	});
 });
 
+describe("Changes pane selection Add comment chip", () => {
+	/** Selects lines 2-3 inside the diff's shadow root, as Chrome's ShadowRoot.getSelection reports it. */
+	async function selectLines(container: HTMLElement): Promise<{row: Element; cleared: () => number}> {
+		const [root, first, last] = await waitFor(() => {
+			const found = container.querySelector("diffs-container")?.shadowRoot;
+			const start = found?.querySelector('[data-line-type="change-addition"][data-line="2"]');
+			const end = found?.querySelector('[data-line-type="change-addition"][data-line="3"]');
+			if (!found || !start || !end) throw new Error("diff not rendered yet");
+			return [found, start, end] as const;
+		});
+		let clears = 0;
+		let collapsed = false;
+		const range = {
+			commonAncestorContainer: first.parentNode,
+			getBoundingClientRect: () => new DOMRect(100, 200, 60, 40),
+			getClientRects: () => [new DOMRect(100, 200, 60, 20)],
+		};
+		const selection = {
+			get rangeCount() {
+				return collapsed ? 0 : 1;
+			},
+			get isCollapsed() {
+				return collapsed;
+			},
+			anchorNode: first.firstChild,
+			focusNode: last.firstChild,
+			getRangeAt: () => range,
+			removeAllRanges: () => {
+				clears += 1;
+				collapsed = true;
+			},
+		};
+		Object.defineProperty(root, "getSelection", {configurable: true, value: () => selection});
+		return {row: last, cleared: () => clears};
+	}
+
+	it("floats upstream's Add comment chip over a diff selection and opens a card on its lines", async () => {
+		const {container} = renderPane();
+		const {row, cleared} = await selectLines(container);
+		fireEvent.mouseUp(row);
+		const chip = await screen.findByRole("button", {name: "Add comment on lines 2–3"});
+		const host = chip.closest("[data-pane-editor]");
+		const shown = {
+			text: chip.textContent,
+			hostClass: host?.className,
+			transform: host instanceof HTMLElement ? host.style.transform : null,
+		};
+
+		fireEvent.mouseDown(chip);
+		fireEvent.mouseUp(chip);
+		fireEvent.click(chip);
+
+		expect({
+			shown,
+			drafts: getDiffComments(SESSION).drafts.map(({path, side, line, endLine}) => ({path, side, line, endLine})),
+			cleared: cleared(),
+			chip: screen.queryByRole("button", {name: "Add comment on lines 2–3"}),
+		}).toStrictEqual({
+			shown: {
+				text: "Add comment",
+				hostClass: "absolute isolate",
+				transform: "translate(-50%, calc(-100% - 8px))",
+			},
+			drafts: [{path: "src/greet.ts", side: "additions", line: 2, endLine: 3}],
+			cleared: 1,
+			chip: null,
+		});
+	});
+
+	it("hides the chip when the diff body's context menu opens", async () => {
+		const {container} = renderPane();
+		const {row} = await selectLines(container);
+		fireEvent.mouseUp(row);
+		await screen.findByRole("button", {name: "Add comment on lines 2–3"});
+
+		fireEvent.contextMenu(row);
+
+		expect({
+			chip: screen.queryByRole("button", {name: "Add comment on lines 2–3"}),
+			menuItem: (await screen.findByRole("menuitem", {name: "Add comment on lines 2–3"})).textContent,
+		}).toStrictEqual({chip: null, menuItem: "Add comment"});
+	});
+});
+
 describe("Changes pane gutter add-comment button", () => {
 	it("renders upstream's accent + with no title", () => {
 		render(<AddCommentGutterButton getHoveredLine={() => undefined} onAddComment={() => {}} />);

@@ -18,9 +18,10 @@ const EXCERPT_MAX_LENGTH = 1500;
 
 const HOST_CLASS =
 	"text-body text-primary break-words pointer-events-auto fixed left-0 top-0 will-change-transform isolate";
-const BAR_CLASS = `rounded-r5 bg-surface-3 shadow-[var(--menu-shadow)] ${FORCED_COLORS_BORDER_CLASS} group/split flex`;
+/** The floating selection action bar shared with the diff selection chip (upstream `Ml`/`sn`). */
+export const SELECTION_BAR_CLASS = `rounded-r5 bg-surface-3 shadow-[var(--menu-shadow)] ${FORCED_COLORS_BORDER_CLASS} group/split flex`;
 /** Upstream's cds ghost Button: 24px tall, 8px inline padding, 6px radius, ghost hover paint. */
-const BUTTON_CLASS =
+export const SELECTION_BAR_BUTTON_CLASS =
 	"inline-flex h-6 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none hover:bg-fill-ghost-hover focus-visible:shadow-focus";
 const SEPARATOR_CLASS =
 	"w-px my-[7px] bg-alpha-2 shrink-0 transition-opacity motion-reduce:transition-none group-hover/split:opacity-0 group-focus-within/split:opacity-0";
@@ -195,13 +196,13 @@ function SelectionBarHost({
 				...(hidden || position === null ? {visibility: "hidden"} : {}),
 			}}
 		>
-			<div ref={barRef} data-transcript-selection-bar="" data-surface="popover" className={BAR_CLASS}>
+			<div ref={barRef} data-transcript-selection-bar="" data-surface="popover" className={SELECTION_BAR_CLASS}>
 				{actions.map((action, index) => (
 					<Fragment key={action.label}>
 						{index > 0 && <span aria-hidden="true" className={SEPARATOR_CLASS} />}
 						<button
 							type="button"
-							className={BUTTON_CLASS}
+							className={SELECTION_BAR_BUTTON_CLASS}
 							onMouseDown={(event) => {
 								event.preventDefault();
 							}}

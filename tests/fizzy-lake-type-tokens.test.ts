@@ -36,7 +36,9 @@ describe("fizzy-lake type tokens (upstream data-cds-fizzy-lake~=type)", () => {
 		const weights = (classes: readonly string[]) =>
 			classes.filter((name) => /^font-(normal|medium|control|control-regular)$/.test(name));
 		expect({
-			selectionBar: weights(constant("src/components/transcript-selection-bar.tsx", "BUTTON_CLASS")),
+			selectionBar: weights(
+				constant("src/components/transcript-selection-bar.tsx", "SELECTION_BAR_BUTTON_CLASS"),
+			),
 			turnChanges: weights(constant("src/components/turn-changes-card.tsx", "UNDO_CLASS")),
 			combobox: weights(constant("src/components/ui/select.tsx", "CONTROL_CLASS")),
 		}).toStrictEqual({
