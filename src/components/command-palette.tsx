@@ -2440,10 +2440,13 @@ function ViewHint({
 			onClick={onSwitch}
 			className="inline-flex h-5 shrink-0 cursor-pointer items-center whitespace-nowrap rounded-r4 px-1.5 text-caption text-ink-muted hover:bg-fill-ghost-hover disabled:pointer-events-none disabled:opacity-40"
 		>
-			{label}
-			<kbd aria-hidden="true" className={`ms-1 ${WIDE_KEYCAP_CLASS}`}>
-				Tab
-			</kbd>
+			{/* Upstream's cds Button content span: gap-1 plus the keycap's ms-1 puts 8px between label and Tab. */}
+			<span className="inline-flex min-w-0 items-center gap-1">
+				{label}
+				<kbd aria-hidden="true" className={`ms-1 ${WIDE_KEYCAP_CLASS}`}>
+					Tab
+				</kbd>
+			</span>
 		</button>
 	);
 }
@@ -2513,7 +2516,7 @@ function PaletteFooter({
 			className={
 				compose
 					? "bg-surface-3 pr-4 pb-2.5 pl-5 pointer-coarse:hidden"
-					: "border-t-[0.5px] border-border bg-surface-3 py-2.5 pr-4 pl-5 pointer-coarse:hidden"
+					: "border-t-[length:max(var(--cds-toolbar-line,0px),0.5px)] border-border bg-surface-3 py-2.5 pr-4 pl-5 pointer-coarse:hidden"
 			}
 		>
 			<div className="flex min-h-5 items-center justify-between text-caption text-ink-muted">

@@ -50,6 +50,12 @@
 	--font-weight-control-regular: 400;
 }
 
+/* Fizzy-lake `panels` rollout: upstream's toolbar hairline token, 1px under panels (read live 2026-11-01);
+   borders use max(var(--cds-toolbar-line,0px),0.5px) so they fall back to 0.5px without it. */
+:root[data-cds-fizzy-lake~="panels"] {
+	--cds-toolbar-line: 1px;
+}
+
 /* Fizzy-lake `type` rollout: upstream `.cds-root:is([data-cds-fizzy-lake~=type], …)`
    (dumps/upstream-survey-root-vars.css). */
 :root[data-cds-fizzy-lake~="type"] {

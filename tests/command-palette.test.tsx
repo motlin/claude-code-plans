@@ -9,6 +9,7 @@ import {
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
+import {readFileSync} from "node:fs";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
@@ -338,6 +339,21 @@ describe("CommandPalette shell", () => {
 				["DIV", "hidden md:flex items-center gap-2", "Filters"],
 				["DIV", "flex items-center gap-2", "Actions"],
 			],
+		});
+	});
+
+	it("draws the Search footer's top border from --cds-toolbar-line like upstream", async () => {
+		const dialog = await openPalette();
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const panels = /:root\[data-cds-fizzy-lake~="panels"\] \{([^}]*)\}/.exec(styles)?.[1] ?? "";
+
+		expect({
+			className: footer(dialog)?.className,
+			token: /--cds-toolbar-line:\s*1px;/.test(panels),
+		}).toStrictEqual({
+			className:
+				"border-t-[length:max(var(--cds-toolbar-line,0px),0.5px)] border-border bg-surface-3 py-2.5 pr-4 pl-5 pointer-coarse:hidden",
+			token: true,
 		});
 	});
 
@@ -1000,7 +1016,7 @@ describe("CommandPalette shell", () => {
 		}).toStrictEqual({
 			divider: true,
 			listHidden: false,
-			footer: "border-t-[0.5px] border-border bg-surface-3 py-2.5 pr-4 pl-5 pointer-coarse:hidden",
+			footer: "border-t-[length:max(var(--cds-toolbar-line,0px),0.5px)] border-border bg-surface-3 py-2.5 pr-4 pl-5 pointer-coarse:hidden",
 		});
 	});
 
@@ -1144,9 +1160,15 @@ describe("CommandPalette shell", () => {
 			keys: hint.getAttribute("aria-keyshortcuts"),
 			ownKeys: hint.hasAttribute("data-palette-own-keys"),
 			disabled: (hint as HTMLButtonElement).disabled,
+			content: [...hint.children].map((child) => [child.tagName, child.className]),
+			inner: [...(hint.firstElementChild?.childNodes ?? [])].map((node) => node.nodeName),
+			label: hint.firstElementChild?.firstChild?.textContent,
 			kbd: hint.querySelector("kbd")?.className,
 		}).toStrictEqual({
 			hints: ["Send⏎Enter", "Add files or photos⌘CommandU"],
+			content: [["SPAN", "inline-flex min-w-0 items-center gap-1"]],
+			inner: ["#text", "KBD"],
+			label: "Search",
 			text: "SearchTab",
 			keys: "Tab",
 			ownKeys: true,
@@ -2203,9 +2225,15 @@ describe("CommandPalette Artifacts and Scheduled tabs", () => {
 			keys: hint.getAttribute("aria-keyshortcuts"),
 			ownKeys: hint.hasAttribute("data-palette-own-keys"),
 			className: hint.className,
+			content: [...hint.children].map((child) => [child.tagName, child.className]),
+			inner: [...(hint.firstElementChild?.childNodes ?? [])].map((node) => node.nodeName),
+			label: hint.firstElementChild?.firstChild?.textContent,
 			kbd: [hint.querySelector("kbd")?.textContent, hint.querySelector("kbd")?.className],
 		}).toStrictEqual({
 			tag: "BUTTON",
+			content: [["SPAN", "inline-flex min-w-0 items-center gap-1"]],
+			inner: ["#text", "KBD"],
+			label: "Compose",
 			name: true,
 			keys: "Tab",
 			ownKeys: true,
