@@ -158,6 +158,44 @@ describe("scripts/server.sh snapshots", () => {
 		});
 	}, 60_000);
 
+	it("a rebuild of .output leaves the files the running server uses untouched", () => {
+		writeBuild({"tip-OLD1.js": "old tip"});
+		run("start");
+		const [snapshot = ""] = snapshots();
+		const serverBefore = snapshotFiles(snapshot, "server");
+		writeFileSync(join(projectDir, ".output", "server", "index.mjs"), "throw new Error('rebuilt');\n");
+		writeFileSync(join(projectDir, ".output", "public", "assets", "tip-OLD1.js"), "rebuilt tip");
+
+		expect({
+			snapshots: snapshots(),
+			server: snapshotFiles(snapshot, "server"),
+			assets: snapshotFiles(snapshot, "public/assets"),
+		}).toStrictEqual({
+			snapshots: [snapshot],
+			server: serverBefore,
+			assets: {"tip-OLD1.js": "old tip"},
+		});
+	}, 30_000);
+
+	it("start keeps the previous snapshot current when the new build never listens", () => {
+		run("start");
+		const before = snapshots();
+		writeBuild();
+		writeFileSync(join(projectDir, ".output", "server", "index.mjs"), "process.exit(1);\n");
+
+		// A dead build can't answer HTTP, so don't wait out the full default deadline.
+		env = {...env, START_TIMEOUT_SECONDS: "3"};
+		expect(() => run("start")).toThrow("Command failed");
+		env = {...env, START_TIMEOUT_SECONDS: "20"};
+		expect({
+			current: readFileSync(join(snapshotRoot, "current"), "utf8").trim(),
+			kept: before.every((name) => snapshots().includes(name)),
+		}).toStrictEqual({current: before[0], kept: true});
+
+		run("restart");
+		expect(listenerCommand()).toBe(`node ${join(snapshotRoot, before[0] ?? "", ".output", "server", "index.mjs")}`);
+	}, 60_000);
+
 	it("stop still finds the snapshot server", () => {
 		run("start");
 		run("stop");

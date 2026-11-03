@@ -10,9 +10,10 @@
 # The server never runs from the worktree's .output: `just precommit` rebuilds
 # it in place, and a running server's lazy import()s then hit deleted chunks.
 # `start` copies .output into SNAPSHOT_ROOT/<id>/.output and runs from there;
-# `restart` reuses the last snapshot. Older snapshots are pruned once the
-# server that used them has stopped; each snapshot keeps a copy of the
-# previous one's public/assets as .output/previous-assets.
+# `restart` reuses the last snapshot. Older snapshots are pruned only once the
+# new server answers HTTP; if it never does, the previous snapshot is made
+# current again so `restart` brings the last working build back. Each snapshot
+# keeps a copy of the previous one's public/assets as .output/previous-assets.
 #
 # Environment overrides (used by tests/server-lifecycle.test.ts and
 # tests/server-snapshot.test.ts):
@@ -174,8 +175,9 @@ current_snapshot() {
     fi
 }
 
-# Remove every snapshot except the current one. Only called once the server is
-# stopped, so no live process still imports from a pruned snapshot.
+# Remove every snapshot except the current one. Only called once the new server
+# is listening (the old one is stopped by then), so no live process still
+# imports from a pruned snapshot.
 prune_snapshots() {
     local keep=$1 entry
     for entry in "$SNAPSHOT_ROOT"/*; do
@@ -188,18 +190,16 @@ prune_snapshots() {
 # `start_server fresh` snapshots the current build first; otherwise the last
 # snapshot is reused, and one is taken only if none exists yet.
 start_server() {
-    local cmd=$SERVER_CMD id=""
+    local cmd=$SERVER_CMD id="" previous=""
     if [ -z "$cmd" ]; then
-        if [ "${1:-}" = "fresh" ] || [ -z "$(current_snapshot)" ]; then
+        previous=$(current_snapshot)
+        if [ "${1:-}" = "fresh" ] || [ -z "$previous" ]; then
             take_snapshot
         fi
         id=$(current_snapshot)
         cmd="node $SNAPSHOT_ROOT/$id/.output/server/index.mjs"
     fi
     stop_server
-    if [ -n "$id" ]; then
-        prune_snapshots "$id"
-    fi
     mkdir -p "$(dirname "$LOG_FILE")"
     (
         cd "$PROJECT_DIR"
@@ -217,11 +217,19 @@ start_server() {
         pid=$(port_pids | head -n 1 || true)
         if [ -n "$pid" ] && curl -sI -o /dev/null --max-time 5 "http://localhost:$PORT/"; then
             echo "Server pid $pid listening on port $PORT (log: $LOG_FILE)"
+            if [ -n "$id" ]; then
+                prune_snapshots "$id"
+            fi
             return 0
         fi
         sleep 0.2
     done
     echo "Server failed to listen on port $PORT within ${START_TIMEOUT_SECONDS}s; see $LOG_FILE" >&2
+    if [ -n "$previous" ] && [ "$previous" != "$id" ]; then
+        printf '%s\n' "$previous" >"$SNAPSHOT_ROOT/current.tmp"
+        mv -f "$SNAPSHOT_ROOT/current.tmp" "$SNAPSHOT_ROOT/current"
+        echo "Kept snapshot $previous current; 'just restart' serves it again" >&2
+    fi
     return 1
 }
 
