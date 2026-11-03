@@ -9,6 +9,7 @@ import {
 	WaitingPickupStatus,
 	WaitingUserTurn,
 } from "../src/components/waiting-user-turn";
+import {PanelsOff} from "./fizzy-lake-off";
 
 afterEach(() => {
 	cleanup();
@@ -83,12 +84,12 @@ describe("WaitingUserTurn", () => {
 		]);
 	});
 
-	it("leads a stacked row's toolbar with an at-rest Unread receipt, and gives the head row none", () => {
+	it("panels off: leads a stacked row's toolbar with an at-rest Unread receipt, and gives the head row none", () => {
 		const {container} = render(
-			<>
+			<PanelsOff>
 				<WaitingUserTurn entryId="queued-1" text="one" head />
 				<WaitingUserTurn entryId="queued-2" text="two" head={false} />
-			</>,
+			</PanelsOff>,
 		);
 		expect(
 			[...container.querySelectorAll("[data-take-back-entry]")].map((row) => {
@@ -132,6 +133,87 @@ describe("WaitingUserTurn", () => {
 				},
 			},
 		]);
+	});
+
+	it("panels: a stacked row the CLI holds has no at-rest receipt, a hover-only toolbar, and leads its reveal group with Delivered", () => {
+		const {container} = render(
+			<>
+				<WaitingUserTurn entryId="queued-1" text="one" head hostHasIt onSendNow={() => {}} />
+				<WaitingUserTurn entryId="queued-2" text="two" head={false} hostHasIt />
+			</>,
+		);
+		expect(
+			[...container.querySelectorAll("[data-take-back-entry]")].map((row) => {
+				const group = row.querySelector("[data-reveal-on-hover]");
+				const delivered = row.querySelector("[data-testid=epitaxy-receipt-on-hover]");
+				const dot = row.querySelector("[data-testid=epitaxy-row-words-end]");
+				return {
+					entry: row.getAttribute("data-take-back-entry"),
+					status: row.querySelector("[role=status]")?.textContent,
+					atRest: row.querySelector("[data-testid=epitaxy-receipt-at-rest]") !== null,
+					alwaysVisible: row.querySelector("[role=toolbar]")?.hasAttribute("data-always-visible"),
+					sendNow: row.querySelectorAll("[data-testid=awaiting-turn-send-now]").length,
+					delivered:
+						delivered === null
+							? null
+							: {
+									first: group?.firstElementChild === delivered,
+									ariaHidden: delivered.getAttribute("aria-hidden"),
+									text: delivered.textContent,
+									className: delivered.className,
+								},
+					dot:
+						dot === null
+							? null
+							: {
+									afterDelivered: delivered?.nextElementSibling === dot,
+									ariaHidden: dot.getAttribute("aria-hidden"),
+									className: dot.className,
+								},
+				};
+			}),
+		).toStrictEqual([
+			{
+				entry: "queued-1",
+				status: "unread",
+				atRest: false,
+				alwaysVisible: true,
+				sendNow: 1,
+				delivered: null,
+				dot: null,
+			},
+			{
+				entry: "queued-2",
+				status: "Delivered",
+				atRest: false,
+				alwaysVisible: false,
+				sendNow: 0,
+				delivered: {
+					first: true,
+					ariaHidden: "true",
+					text: "Delivered",
+					className:
+						"flex min-h-6 items-center self-center text-caption text-muted-as-secondary comfortable:min-h-8 pe-1.5",
+				},
+				dot: {
+					afterDelivered: true,
+					ariaHidden: "true",
+					className:
+						"flex min-h-6 items-center self-center pe-0.5 text-caption text-muted-as-secondary before:content-['·'] comfortable:min-h-8",
+				},
+			},
+		]);
+	});
+
+	it("panels: a stacked row the browser still holds shows no Delivered and reads unread", () => {
+		const {container} = render(<WaitingUserTurn entryId="q5" text="two" head={false} onCancel={() => {}} />);
+		const row = container.querySelector("[data-take-back-entry]");
+		expect({
+			status: row?.querySelector("[role=status]")?.textContent,
+			atRest: row?.querySelector("[data-testid=epitaxy-receipt-at-rest]") !== null,
+			delivered: row?.querySelector("[data-testid=epitaxy-receipt-on-hover]") !== null,
+			alwaysVisible: row?.querySelector("[role=toolbar]")?.hasAttribute("data-always-visible"),
+		}).toStrictEqual({status: "unread", atRest: false, delivered: false, alwaysVisible: false});
 	});
 
 	it("calls the Send now handler from the head row", () => {
@@ -188,7 +270,7 @@ describe("HeldSteerTurns", () => {
 			})),
 		).toStrictEqual([
 			{entry: "q4", bubble: "Dave's answer instead", status: "unread", sendNow: 1, unread: 0},
-			{entry: "q5", bubble: "and Erin's too", status: "unread", sendNow: 0, unread: 1},
+			{entry: "q5", bubble: "and Erin's too", status: "unread", sendNow: 0, unread: 0},
 		]);
 	});
 
@@ -199,7 +281,7 @@ describe("HeldSteerTurns", () => {
 		expect({
 			sendNow: container.querySelectorAll("[data-testid=awaiting-turn-send-now]").length,
 			unread: container.querySelectorAll('[aria-label="Unread"]').length,
-		}).toStrictEqual({sendNow: 0, unread: 2});
+		}).toStrictEqual({sendNow: 0, unread: 0});
 	});
 
 	it("Send now forwards the head steer's id", () => {
@@ -255,13 +337,20 @@ describe("waiting-row sr announcements", () => {
 
 	it("announces read for 1400ms when a waiting prompt leaves the live session's queue", () => {
 		vi.useFakeTimers();
-		const {container, rerender} = render(<WaitingPickupStatus waitingIds={["queued-1", "queued-2"]} />);
+		const {container, rerender} = render(
+			<WaitingPickupStatus
+				waiting={[
+					{id: "queued-1", text: "one"},
+					{id: "queued-2", text: "two"},
+				]}
+			/>,
+		);
 		const status = () => {
 			const node = container.querySelector("[role=status]");
 			return node === null ? null : {className: node.className, text: node.textContent};
 		};
 		const waiting = status();
-		rerender(<WaitingPickupStatus waitingIds={["queued-2"]} />);
+		rerender(<WaitingPickupStatus waiting={[{id: "queued-2", text: "two"}]} />);
 		const picked = status();
 		act(() => {
 			vi.advanceTimersByTime(1400);

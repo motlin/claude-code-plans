@@ -98,7 +98,7 @@ import {useLiveLaunchOptions} from "../hooks/use-live-launch-options";
 import {useRewindPicker} from "../hooks/use-rewind-shortcut";
 import {useRewindRequest} from "../hooks/use-rewind-request";
 import {canStopResponse, useStopResponse} from "../hooks/use-stop-response";
-import {useComposerQueue} from "../hooks/use-composer-queue";
+import {SEND_NOW_FAILED_MESSAGE, useComposerQueue} from "../hooks/use-composer-queue";
 import {
 	type ComposerPaneState,
 	type ComposerSubmit,
@@ -881,6 +881,14 @@ function SessionView({
 		onInterrupt(Date.now());
 		await sendHerdrInterrupt(sessionId, false).catch(onInterruptError);
 	}, [onInterrupt, onInterruptError, sessionId]);
+	// A queued message's Send now toasts upstream's promote failure instead of the stop error.
+	const requestQueuedSendNowInterrupt = useCallback(async () => {
+		onInterrupt(Date.now());
+		await sendHerdrInterrupt(sessionId, false);
+	}, [onInterrupt, sessionId]);
+	const toastQueuedSendNowFailed = useCallback(() => {
+		toast({kind: "error", message: SEND_NOW_FAILED_MESSAGE});
+	}, [toast]);
 	const focusSessionComposer = useCallback(() => {
 		focusComposer(sessionId);
 	}, [sessionId]);
@@ -889,7 +897,8 @@ function SessionView({
 		busy: queueBusy,
 		dialogOpen,
 		deliver: liveHerdrPrompt.send,
-		interrupt: requestSendNowInterrupt,
+		interrupt: requestQueuedSendNowInterrupt,
+		onSendNowFailed: toastQueuedSendNowFailed,
 	});
 	const {enqueue: enqueuePrompt, items: queuedPrompts, remove: removeQueuedPrompt} = composerQueue;
 	const cancelHeldSteer = useCallback(

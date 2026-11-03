@@ -8,8 +8,9 @@ import {pickWorkingPlaceholder} from "../src/lib/working-placeholder";
 import {recallLastHeldSteer} from "../src/lib/steer-recall";
 import {ToastContext, type ToastOptions} from "../src/components/toast-context";
 import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
-import {type DeliveryResult, useComposerQueue} from "../src/hooks/use-composer-queue";
+import {type DeliveryResult, SEND_NOW_FAILED_MESSAGE, useComposerQueue} from "../src/hooks/use-composer-queue";
 import {useStopResponse} from "../src/hooks/use-stop-response";
+import {clearLanded, isLanded} from "../src/lib/landed-store";
 import {HerdrRequestError, isAgentNotReady, sendHerdrPrompt} from "../src/lib/api/herdr";
 import {
 	clearComposerQueues,
@@ -218,12 +219,14 @@ function renderQueue({
 	interrupt = vi.fn<() => Promise<void>>(async () => {}),
 	sessionId = "session-alice",
 	dialogOpen = false,
+	onSendNowFailed,
 }: {
 	busy: boolean;
 	deliver: Deliver;
 	interrupt?: () => Promise<void>;
 	sessionId?: string;
 	dialogOpen?: boolean;
+	onSendNowFailed?: () => void;
 }) {
 	const hook = renderHook(() => {
 		const [isBusy, setBusy] = useState(busy);
@@ -239,6 +242,7 @@ function renderQueue({
 			},
 			interrupt,
 			retryMs: 20,
+			...(onSendNowFailed === undefined ? {} : {onSendNowFailed}),
 		});
 		return {queue, setBusy, setDialogOpen};
 	});
@@ -418,6 +422,55 @@ describe("useComposerQueue", () => {
 		await sending;
 
 		expect({before, after: settled}).toStrictEqual({before: false, after: true});
+	});
+
+	it("marks a promoted prompt landed once it is delivered, and no other", async () => {
+		const deliver = vi.fn<Deliver>(async () => Promise.resolve("sent"));
+		const {result, setBusy} = renderQueue({busy: true, deliver});
+		act(() => {
+			result.current.enqueue("Alice's first follow-up");
+			result.current.enqueue("Bob's second follow-up");
+		});
+		const bob = result.current.items[1];
+		if (bob === undefined) throw new Error("Expected Bob's queued prompt");
+		await act(async () => result.current.sendNow(bob.id));
+		const beforeDelivery = isLanded("Bob's second follow-up");
+		setBusy(false);
+		await waitFor(() => {
+			expect(deliver.mock.calls.length).toBe(1);
+		});
+		const promoted = isLanded("Bob's second follow-up");
+		setBusy(false);
+		await waitFor(() => {
+			expect(deliver.mock.calls.length).toBe(2);
+		});
+		expect({beforeDelivery, promoted, other: isLanded("Alice's first follow-up")}).toStrictEqual({
+			beforeDelivery: false,
+			promoted: true,
+			other: false,
+		});
+		clearLanded();
+	});
+
+	it("reports a failed Send now interrupt and keeps the prompt queued", async () => {
+		const onSendNowFailed = vi.fn<() => void>();
+		const interrupt = vi.fn<() => Promise<void>>(async () => Promise.reject(new Error("herdr down")));
+		const {result} = renderQueue({busy: true, deliver: vi.fn<Deliver>(), interrupt, onSendNowFailed});
+		act(() => {
+			result.current.enqueue("Alice's first follow-up");
+		});
+		const alice = result.current.items[0];
+		if (alice === undefined) throw new Error("Expected Alice's queued prompt");
+		await act(async () => result.current.sendNow(alice.id));
+		expect({
+			failed: onSendNowFailed.mock.calls,
+			texts: result.current.items.map((item) => item.text),
+			message: SEND_NOW_FAILED_MESSAGE,
+		}).toStrictEqual({
+			failed: [[]],
+			texts: ["Alice's first follow-up"],
+			message: "Couldn’t send the message now. It’s still in the queue.",
+		});
 	});
 
 	it("keeps queues per session", () => {

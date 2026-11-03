@@ -1321,6 +1321,20 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	}
 }
 
+/* Upstream's "landed" flash on a promoted queued message's row (`animate-code-reply-flash-accent`). */
+@keyframes code-reply-flash-accent {
+	0% {
+		background-color: var(--upstream-accent-pressed);
+	}
+	100% {
+		background-color: transparent;
+	}
+}
+
+.animate-code-reply-flash-accent {
+	animation: 1.2s ease-out code-reply-flash-accent;
+}
+
 /* Upstream's workflow agent cells (inline style c1bc4f7a0), on the local tokens. */
 .epitaxy-agent-cell {
 	background-color: transparent;

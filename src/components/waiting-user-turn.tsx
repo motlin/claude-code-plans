@@ -1,6 +1,8 @@
 import {type MouseEvent, useCallback, useEffect, useId, useRef, useState} from "react";
 
 import type {QueuedPrompt} from "../lib/composer-queue";
+import {useFizzyLake} from "../lib/fizzy-lake";
+import {recordPickup} from "../lib/pickup-settling";
 import {messageHeading} from "../lib/transcript-action-targets";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {WaitingMessageActions} from "./message-actions";
@@ -130,6 +132,7 @@ export function WaitingUserTurn({
 	text,
 	head,
 	delivered = false,
+	hostHasIt = false,
 	onSendNow,
 	sendNowBusy = false,
 	onFocusComposer,
@@ -141,6 +144,8 @@ export function WaitingUserTurn({
 	head: boolean;
 	/** Claude picked the prompt up, so the status reads "read" briefly and then goes quiet. */
 	delivered?: boolean;
+	/** The CLI has the prompt (a JSONL `enqueue`): upstream's "Delivered", which a browser-held steer is not yet. */
+	hostHasIt?: boolean;
 	/** Stops Claude's current response so it reads this message next; absent leaves Send now inert. */
 	onSendNow?: (() => Promise<void> | void) | undefined;
 	/** Keeps Send now busy past its own interrupt, while the CLI has yet to take the prompt. */
@@ -152,11 +157,14 @@ export function WaitingUserTurn({
 	"data-perf-pending-prompt"?: string;
 }) {
 	const reading = useReadAnnouncement(delivered);
+	const panels = useFizzyLake("panels");
+	// Upstream `qv`: under panels a stacked row the host acknowledged reads "Delivered".
+	const waitingStatus = panels && !head && hostHasIt ? "Delivered" : "unread";
 	return (
 		<div className="group/msg flex w-full justify-start items-start gap-1" data-take-back-entry={entryId} {...rest}>
 			<h2 className="sr-only select-none">{messageHeading("user", text)}</h2>
 			<span role="status" className="sr-only">
-				{delivered ? (reading ? "read" : "") : "unread"}
+				{delivered ? (reading ? "read" : "") : waitingStatus}
 			</span>
 			<div className="flex w-full flex-col min-w-0 ms-auto items-end gap-g5 comfortable:gap-g6">
 				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 max-w-[85%] overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
@@ -164,7 +172,7 @@ export function WaitingUserTurn({
 						{text}
 					</p>
 				</div>
-				<WaitingMessageActions text={text} unread={!head} onCancel={onCancel}>
+				<WaitingMessageActions text={text} stacked={!head} hostHasIt={hostHasIt} onCancel={onCancel}>
 					{head && (
 						<SendNowButton onSendNow={onSendNow} onFocusComposer={onFocusComposer} busy={sendNowBusy} />
 					)}
@@ -179,14 +187,18 @@ export function WaitingUserTurn({
  * live region, mounted for as long as the session runs, carries upstream's brief "read" after a
  * waiting prompt leaves the CLI's queue.
  */
-export function WaitingPickupStatus({waitingIds}: {waitingIds: readonly string[]}) {
-	const previousRef = useRef(waitingIds);
+export function WaitingPickupStatus({waiting}: {waiting: readonly {id: string; text: string}[]}) {
+	const previousRef = useRef(waiting);
 	const [pickups, setPickups] = useState(0);
 	useEffect(() => {
 		const previous = previousRef.current;
-		previousRef.current = waitingIds;
-		if (previous.some((id) => !waitingIds.includes(id))) setPickups((count) => count + 1);
-	}, [waitingIds]);
+		previousRef.current = waiting;
+		const left = previous.filter((entry) => !waiting.some((next) => next.id === entry.id));
+		if (left.length === 0) return;
+		// The transcript row each one becomes settles from this pickup.
+		for (const entry of left) recordPickup(entry.text);
+		setPickups((count) => count + 1);
+	}, [waiting]);
 	// One span for the session's life: a live region mounted with its text in it may go unannounced.
 	const reading = useReadAnnouncement(pickups);
 	return (

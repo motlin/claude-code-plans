@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useState} from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
 
 import {
 	dispatchComposerQueue,
@@ -7,9 +7,13 @@ import {
 	type QueuedPrompt,
 	useComposerQueueItems,
 } from "../lib/composer-queue";
+import {markLanded} from "../lib/landed-store";
 
 /** How a prompt delivery ended; `not-ready` is herdr's 409 agent_not_ready. */
 export type DeliveryResult = "sent" | "not-ready" | "failed";
+
+/** Upstream's toast when a queued message's Send now (`promoteQueued`) fails. */
+export const SEND_NOW_FAILED_MESSAGE = "Couldn’t send the message now. It’s still in the queue.";
 
 /** A not-ready delivery goes back to the head of the queue and retries after this delay. */
 const QUEUE_RETRY_MS = 1000;
@@ -24,6 +28,8 @@ export interface ComposerQueueOptions {
 	deliver: (text: string, options?: {midTurn: true}) => Promise<DeliveryResult>;
 	/** Interrupt the current response (Esc) so a "Send now" prompt goes next; settles with the request. */
 	interrupt: () => Promise<void>;
+	/** The Send now interrupt rejected; the prompt stays queued (upstream toasts {@link SEND_NOW_FAILED_MESSAGE}). */
+	onSendNowFailed?: () => void;
 	retryMs?: number;
 }
 
@@ -49,9 +55,12 @@ export function useComposerQueue({
 	dialogOpen = false,
 	deliver,
 	interrupt,
+	onSendNowFailed,
 	retryMs = QUEUE_RETRY_MS,
 }: ComposerQueueOptions): ComposerQueue {
 	const items = useComposerQueueItems(sessionId);
+	// Prompts Send now promoted: each flashes as "landed" once it is delivered.
+	const promotedRef = useRef(new Set<string>());
 	const [flushing, setFlushing] = useState(false);
 	const [waiting, setWaiting] = useState(false);
 
@@ -74,6 +83,8 @@ export function useComposerQueue({
 		const delivery = next.midTurn === true ? deliver(next.text, {midTurn: true}) : deliver(next.text);
 		void delivery.then((result) => {
 			setFlushing(false);
+			if (result !== "not-ready" && promotedRef.current.delete(next.id) && result === "sent")
+				markLanded(next.text);
 			if (result !== "not-ready") return;
 			dispatchComposerQueue(sessionId, {type: "enqueue", item: next, position: "front"});
 			setWaiting(true);
@@ -103,9 +114,15 @@ export function useComposerQueue({
 	const sendNow = useCallback(
 		async (id: string) => {
 			dispatchComposerQueue(sessionId, {type: "reorder", id, toIndex: 0});
-			if (busy) await interrupt();
+			promotedRef.current.add(id);
+			if (!busy) return;
+			try {
+				await interrupt();
+			} catch {
+				onSendNowFailed?.();
+			}
 		},
-		[busy, interrupt, sessionId],
+		[busy, interrupt, onSendNowFailed, sessionId],
 	);
 	return {items, enqueue, remove, clear, sendNow};
 }

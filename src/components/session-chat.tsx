@@ -70,6 +70,8 @@ import {defined} from "../lib/defined";
 import {narrationProse} from "../lib/thinking-narration";
 import {messageHeading, messageText} from "../lib/transcript-action-targets";
 import {WaitingPickupStatus, WaitingUserTurn} from "./waiting-user-turn";
+import {useLandedFlash} from "./landed-flash";
+import {usePickupSettling} from "../lib/pickup-settling";
 import {assistantTurnDetails, userTurnDetails} from "../lib/turn-metadata";
 import {TurnChangesCard} from "./turn-changes-card";
 import {collectTurnChanges, lastTurnChangesAnchor, type TurnChanges} from "../lib/turn-changes";
@@ -258,6 +260,7 @@ function QueuedWaitingTurn({entryId, text, head}: {entryId: string; text: string
 			entryId={entryId}
 			text={text}
 			head={head}
+			hostHasIt
 			onSendNow={sendNow === undefined ? undefined : async () => sendNow(entryId)}
 			sendNowBusy={pendingEntryId === entryId}
 			onFocusComposer={focusComposer}
@@ -586,10 +589,12 @@ function UserTurnActions({
 	/** A human prompt in the JSONL was taken into a turn by the CLI, so it reads "Read by Claude". */
 	readByClaude?: boolean;
 }) {
+	const settling = usePickupSettling(messageText(line));
 	return (
 		<UserMessageActions
 			{...(contextText === undefined ? {} : {contextText})}
 			readByClaude={readByClaude}
+			settling={settling}
 			message={messageRef(line, sessionId)}
 			text={messageText(line)}
 			timestamp={line.timestamp}
@@ -671,6 +676,7 @@ export const SessionChat = React.memo(function SessionChat({
 	const lastError = useMemo(() => ({line: fullErrorLine, recovery: errorRecovery}), [fullErrorLine, errorRecovery]);
 	const listedLines = useMemo(() => withQueuedPromptsAtTail(lines, sessionLive), [lines, sessionLive]);
 	const waitingIds = useMemo(() => queuedEntryIds(listedLines), [listedLines]);
+	const waitingEntries = useMemo(() => queuedEntries(listedLines), [listedLines]);
 	const {sendNow, pendingEntryId} = useQueuedSendNow(onSendNow, waitingIds);
 	const sendNowHandlers = useMemo(
 		() => ({sendNow, pendingEntryId, focusComposer: onFocusComposer}),
@@ -862,7 +868,7 @@ export const SessionChat = React.memo(function SessionChat({
 												{sessionLive && (
 													<WaitingPickupStatus
 														key={`pickup-${sessionId}`}
-														waitingIds={waitingIds}
+														waiting={waitingEntries}
 													/>
 												)}
 												<TranscriptSelectionBar
@@ -2302,6 +2308,13 @@ function withLocalCommandProse(lines: SessionLine[]): SessionLine[] {
 /** The row id of each prompt waiting in the CLI's queue, as the transcript tail draws it. */
 function queuedEntryIds(lines: SessionLine[]): string[] {
 	return lines.flatMap((line) => (line.type === "queued-prompt" ? [queuedEntryId(line.lineIndex)] : []));
+}
+
+/** The CLI's waiting prompts with their text, which the transcript row each becomes is matched by. */
+function queuedEntries(lines: SessionLine[]): {id: string; text: string}[] {
+	return lines.flatMap((line) =>
+		line.type === "queued-prompt" ? [{id: queuedEntryId(line.lineIndex), text: line.content}] : [],
+	);
 }
 
 const queuedEntryId = (lineIndex: number): string => `queued-${lineIndex}`;
@@ -4194,6 +4207,19 @@ function classifyUserContent(line: MessageSessionLine): UserContentKind {
 	return "text";
 }
 
+/** The human prompt's bubble, which flashes upstream's accent when a promoted queued prompt lands as it. */
+function UserPromptBubble({text, children}: {text: string; children: ReactNode}) {
+	const {isolate, accent} = useLandedFlash(text);
+	return (
+		<div
+			className={`user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]${isolate === "" ? "" : ` ${isolate}`}`}
+		>
+			{accent}
+			{children}
+		</div>
+	);
+}
+
 function UserEntry({
 	line,
 	sessionId,
@@ -4274,11 +4300,7 @@ function UserEntry({
 			>
 				<UserAttachments images={images} />
 				<MessageExcerptTiles snippets={excerpts} />
-				{textNodes.length > 0 && (
-					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
-						{textNodes}
-					</div>
-				)}
+				{textNodes.length > 0 && <UserPromptBubble text={messageText(line)}>{textNodes}</UserPromptBubble>}
 				{mediaNodes}
 				<UserTurnActions line={line} sessionId={sessionId} readByClaude />
 			</TranscriptMessageMenu>

@@ -12,6 +12,7 @@ import {
 
 import {useChapters} from "../lib/chapter-store";
 import {writeClipboardText} from "../lib/clipboard";
+import {useFizzyLake} from "../lib/fizzy-lake";
 import {messageHeading} from "../lib/transcript-action-targets";
 import {type ReadAloudStatus, useReadAloud} from "../hooks/use-read-aloud";
 import {TOUCH_REVEAL} from "../lib/touch-reveal";
@@ -53,6 +54,8 @@ export interface MessageActionsProps {
 	hovered?: boolean | undefined;
 	/** The CLI took this prompt into a turn, so the user row shows upstream's "Read by Claude" receipt. */
 	readByClaude?: boolean;
+	/** The user row just replaced a waiting row Claude read, so its time fades in (upstream `settling`). */
+	settling?: boolean;
 	/** Reads the turn's rendered prose as HTML for Copy's text/html flavour; absent or undefined copies text only. */
 	getHtml?: (() => string | undefined) | undefined;
 }
@@ -302,11 +305,14 @@ function MessageTime({
 	timestamp,
 	details,
 	inner,
+	settling = false,
 }: {
 	timestamp: string | undefined;
 	details: readonly string[];
 	/** The side facing the buttons, which gets 8px of padding. */
 	inner: "left" | "right";
+	/** Upstream's `settling` row state: the time fades in after a waiting row was read. */
+	settling?: boolean;
 }) {
 	// Upstream's user <time> turns absolute after a week; the assistant's stays relative.
 	const relative = inner === "right" ? formatMessageTime(timestamp) : formatRelativeTimestamp(timestamp);
@@ -316,12 +322,14 @@ function MessageTime({
 	return (
 		<Tooltip content={tooltip} multiline>
 			<time
+				// Keyed so the fade replays when the row starts settling.
+				key={settling ? "settling" : "rest"}
 				dateTime={timestamp}
-				className={
+				className={`${
 					inner === "left"
 						? "flex h-6 items-center ps-2 text-[13px]/[19px] text-ink-muted tabular-nums outline-none comfortable:h-8 comfortable:ps-3 comfortable:text-[14px]/[20px]"
 						: "flex h-6 items-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none comfortable:h-8"
-				}
+				}${settling ? " epitaxy-hint-fade-in" : ""}`}
 			>
 				{relative}
 			</time>
@@ -438,13 +446,14 @@ export function UserMessageActions({
 	timestamp,
 	details,
 	readByClaude = false,
+	settling = false,
 }: MessageActionsProps) {
 	return (
 		<ActionBar
 			className={`${BAR_CLASS} justify-end self-end`}
 			label={`Show message actions for ${messageHeading("user", contextText)}`}
 		>
-			<MessageTime timestamp={timestamp} details={details} inner="right" />
+			<MessageTime timestamp={timestamp} details={details} inner="right" settling={settling} />
 			{readByClaude && <ReadByClaudeReceipt />}
 			<CopyAction text={text} first={!readByClaude} />
 			<RewindAction message={message} />
@@ -500,32 +509,62 @@ function CancelEditAction({onCancel}: {onCancel: () => Promise<void> | void}) {
 	);
 }
 
+/** Upstream `Mv`: the caption words in a waiting row's toolbar. */
+const ROW_WORDS_CLASS =
+	"flex min-h-6 items-center self-center text-caption text-muted-as-secondary comfortable:min-h-8";
+
 /**
- * Upstream's always-visible toolbar under a waiting user row. Copy and a disabled Rewind fade in on
- * hover; `children` (Send now on the head row) sit outside that group, so they show at rest.
+ * Upstream's "Delivered" (`Kv`), first in a stacked row's hover group once the host has the
+ * message, then the "·" before the actions that follow (Copy always does here).
+ */
+function DeliveredReceipt() {
+	return (
+		<>
+			<span aria-hidden data-testid="epitaxy-receipt-on-hover" className={`${ROW_WORDS_CLASS} pe-1.5`}>
+				Delivered
+			</span>
+			<span
+				aria-hidden
+				data-testid="epitaxy-row-words-end"
+				className="flex min-h-6 items-center self-center pe-0.5 text-caption text-muted-as-secondary before:content-['·'] comfortable:min-h-8"
+			/>
+		</>
+	);
+}
+
+/**
+ * The toolbar under a waiting user row. Copy and a disabled Rewind fade in on hover; `children`
+ * (Send now on the head row) sit outside that group, so they show at rest. Under fizzy-lake
+ * panels a stacked row's toolbar is hover-only and leads with "Delivered"; without panels it
+ * stays visible behind upstream's at-rest "Unread" receipt.
  */
 export function WaitingMessageActions({
 	text,
-	unread = false,
+	stacked = false,
+	hostHasIt = false,
 	onCancel,
 	children,
 }: {
 	text: string;
-	/** A stacked (not head) waiting row leads with upstream's at-rest "Unread" receipt. */
-	unread?: boolean;
+	/** A waiting row after the head one, which carries no Send now. */
+	stacked?: boolean;
+	/** The CLI has the message (upstream's host acknowledgement), so a stacked row reads "Delivered". */
+	hostHasIt?: boolean;
 	/** Takes a browser-held steer back into the composer; absent once the CLI owns the text. */
 	onCancel?: (() => Promise<void> | void) | undefined;
 	children?: ReactNode;
 }) {
+	const panels = useFizzyLake("panels");
+	const hoverOnly = stacked && panels;
 	return (
 		<div
 			data-message-actions
-			data-always-visible
+			{...(hoverOnly ? {} : {"data-always-visible": ""})}
 			role="toolbar"
 			aria-label="Message actions"
 			className="flex items-center select-none"
 		>
-			{unread && (
+			{stacked && !panels && (
 				<span
 					data-testid="epitaxy-receipt-at-rest"
 					className="text-body text-ink-muted tabular-nums flex min-h-6 items-center self-center ps-[5px] epitaxy-hint-fade-in"
@@ -541,6 +580,7 @@ export function WaitingMessageActions({
 				</span>
 			)}
 			<div data-reveal-on-hover className={REVEAL_ON_HOVER_CLASS}>
+				{hoverOnly && hostHasIt && <DeliveredReceipt />}
 				<CopyAction text={text} />
 				<RewindAction message={undefined} />
 				{onCancel !== undefined && <CancelEditAction onCancel={onCancel} />}
