@@ -699,14 +699,54 @@ describe("Composer slash commands", () => {
 		expect(
 			[...screen.getByRole("menu", {name: "Slash commands"}).children].map((child) => child.className),
 		).toStrictEqual([
-			"px-2 py-1 text-[12px]/[15px] font-medium text-ink-muted",
-			"mx-2 my-1 h-px bg-border",
-			"flex h-6 items-center gap-1.5 px-2",
+			"px-2 py-1 text-[12px]/[15px] font-medium text-ink-muted whitespace-pre-line",
+			// Upstream's separator dropped its compact:mx-2 variant on 2026-11-01: 10px at every density.
+			"mx-2.5 my-1 h-px bg-border",
+			"",
 		]);
+		expect(screen.getByTestId("slash-loading-row").querySelector('[aria-hidden="true"] > div')?.className).toBe(
+			"flex h-6 items-center gap-1.5 px-2",
+		);
+	});
+
+	function headedVirtualScrollTop(label: string): number {
+		const many: SlashCommand[] = Array.from({length: 40}, (_, i) => ({
+			name: `cmd${String(i).padStart(3, "0")}`,
+			description: `Command ${i}`,
+			source: "personal-skill",
+		}));
+		render(
+			<SlashCommandMenu
+				id="menu"
+				items={[
+					{type: "section-header", label},
+					...many.map((command) => ({type: "command" as const, command})),
+				]}
+				query=""
+				highlighted={40}
+				onHighlight={vi.fn<(index: number) => void>()}
+				onAccept={vi.fn<(command: SlashCommand) => void>()}
+			/>,
+			{wrapper: CompactScope},
+		);
+		const top = screen.getByRole("menu", {name: "Slash commands"}).scrollTop;
+		cleanup();
+		return top;
+	}
+
+	it("reserves 8px plus one 15px line per header line in the virtualized offsets", () => {
+		expect({
+			twoLine: headedVirtualScrollTop("Some commands didn’t load.\nType / again to retry."),
+			oneLine: headedVirtualScrollTop("More commands available once the session is running"),
+		}).toStrictEqual({
+			// Item 40 (cmd039) ends at the 4px gutter + header + 40 rows of 24px, 28px above the 384px viewport bottom.
+			twoLine: 4 + 38 + 40 * 24 - 384 + 28,
+			oneLine: 4 + 23 + 40 * 24 - 384 + 28,
+		});
 	});
 
 	describe("section headers and separators", () => {
-		const HEADER = "Some commands didn’t load. Type / again to retry.";
+		const HEADER = "Some commands didn’t load.\nType / again to retry.";
 		const HEADED: SlashCommand[] = [
 			{name: "model", description: "Set the model for this session", source: "builtin"},
 			{name: "effort", description: "Set the effort level for this session", source: "builtin"},
@@ -755,7 +795,7 @@ describe("Composer slash commands", () => {
 			}).toStrictEqual({
 				header: {
 					tag: "DIV",
-					className: "px-2.5 py-1 text-[13px]/[17px] font-medium text-ink-muted",
+					className: "px-2.5 py-1 text-[13px]/[17px] font-medium text-ink-muted whitespace-pre-line",
 					role: null,
 					tabIndex: null,
 					text: HEADER,
@@ -781,6 +821,32 @@ describe("Composer slash commands", () => {
 					],
 					active: "model",
 				},
+			});
+		});
+
+		it("drops the section header once a query is typed, as upstream ranks only command rows", () => {
+			const textarea = setupHeaded();
+			fireEvent.change(textarea, {target: {value: "/"}});
+			const menu = () => screen.queryByRole("menu", {name: "Slash commands"});
+			const headers = () => menu()?.querySelectorAll(":scope > div:not([role])").length;
+			const bare = {headers: headers(), rows: rows()};
+			fireEvent.change(textarea, {target: {value: "/mo"}});
+			const typed = {headers: headers(), rows: rows()};
+			fireEvent.keyDown(textarea, {key: "ArrowDown"});
+			const down = activeRow(textarea);
+			fireEvent.change(textarea, {target: {value: "/zzzz"}});
+
+			expect({bare, typed, down, noMatch: menu()}).toStrictEqual({
+				bare: {
+					headers: 1,
+					rows: [
+						{name: "model", highlighted: true},
+						{name: "effort", highlighted: false},
+					],
+				},
+				typed: {headers: 0, rows: [{name: "model", highlighted: true}]},
+				down: "model",
+				noMatch: null,
 			});
 		});
 

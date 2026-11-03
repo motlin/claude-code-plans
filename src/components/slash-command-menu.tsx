@@ -17,30 +17,31 @@ import {placeRowTooltip} from "./ui/tooltip-placement";
  * coarse pointer, a density override or the fizzy-lake "panels" rollout makes it comfortable.
  * The rows are `h-control` (24px compact, 28px comfortable), not the generic menu's 32px
  * comfortable rows, so this keeps its own map. Heights feed the virtualizer: a section header
- * is its footnote line plus `py-1`, a separator 1px plus `my-1`, and the gutter is `p-1`/`p-1.5`.
+ * is `py-1` plus one footnote line per `whitespace-pre-line` line, a separator 1px plus `my-1`
+ * (upstream's `mx-2.5` at every density since 2026-11-01), and the gutter is `p-1`/`p-1.5`.
  */
 const SLASH_DENSITY = {
 	compact: {
 		popup: "rounded-r7",
 		scroller: "p-1",
 		row: "h-6 items-center gap-1.5 rounded-r5 px-2 py-[2.5px] text-[13px]/[19px]",
-		header: "px-2 py-1 text-[12px]/[15px] font-medium text-ink-muted",
-		separator: "mx-2 my-1 h-px bg-border",
+		header: "px-2 py-1 text-[12px]/[15px] font-medium text-ink-muted whitespace-pre-line",
+		separator: "mx-2.5 my-1 h-px bg-border",
 		loading: "flex h-6 items-center gap-1.5 px-2",
 		rowHeight: 24,
 		gutter: 4,
-		headerHeight: 23,
+		headerLineHeight: 15,
 	},
 	comfortable: {
 		popup: "rounded-menu-comfortable",
 		scroller: "p-1.5",
 		row: "h-7 items-center gap-2 rounded-r6 px-2.5 py-1 text-[14px]/[20px]",
-		header: "px-2.5 py-1 text-[13px]/[17px] font-medium text-ink-muted",
+		header: "px-2.5 py-1 text-[13px]/[17px] font-medium text-ink-muted whitespace-pre-line",
 		separator: "mx-2.5 my-1 h-px bg-border",
 		loading: "flex h-7 items-center gap-2 px-2.5",
 		rowHeight: 28,
 		gutter: 6,
-		headerHeight: 25,
+		headerLineHeight: 17,
 	},
 } as const;
 
@@ -63,14 +64,14 @@ const OVERSCAN = 8;
 const SCROLL_PADDING = 28;
 const SEPARATOR_HEIGHT = 9;
 
-function itemHeight(type: SlashMenuItem["type"], sizing: SlashSizing): number {
-	if (type === "section-header") return sizing.headerHeight;
-	if (type === "separator") return SEPARATOR_HEIGHT;
+function itemHeight(item: SlashMenuItem, sizing: SlashSizing): number {
+	if (item.type === "section-header") return 8 + sizing.headerLineHeight * item.label.split("\n").length;
+	if (item.type === "separator") return SEPARATOR_HEIGHT;
 	return sizing.rowHeight;
 }
 
-/* Upstream's iconless `loading` row (`sizing.loading`): one 128×16 skeleton bar (`eO` rows:1 icon:false). */
-const LOADING_BAR_CLASS = "h-4 w-32 rounded bg-fill-ghost-hover animate-pulse motion-reduce:animate-none";
+/* Upstream's iconless `loading` row: a cds SkeletonGroup (`Skeleton.Rows` rows:1 icon:false) holding one 120×16 bar (`JO[0]`). */
+const LOADING_BAR_CLASS = "max-w-full rounded bg-[var(--skeleton-base)]";
 /* The popup's `max-h-96`, used until the scroller has a measured height. */
 const FALLBACK_VIEWPORT_HEIGHT = 384;
 
@@ -82,7 +83,7 @@ interface RowWindow {
 /* Each item's top offset below the gutter, plus the total height as the last entry. */
 function itemOffsets(items: readonly SlashMenuItem[], sizing: SlashSizing): number[] {
 	const offsets = [0];
-	for (const item of items) offsets.push((offsets.at(-1) ?? 0) + itemHeight(item.type, sizing));
+	for (const item of items) offsets.push((offsets.at(-1) ?? 0) + itemHeight(item, sizing));
 	return offsets;
 }
 
@@ -242,8 +243,25 @@ export function SlashCommandMenu({
 						return <div key={`separator:${index}`} className={sizing.separator} />;
 					if (item.type === "loading") {
 						return (
-							<div key={`loading:${index}`} data-testid="slash-loading-row" className={sizing.loading}>
-								<div className={LOADING_BAR_CLASS} />
+							<div key={`loading:${index}`} data-testid="slash-loading-row">
+								<div
+									data-skeleton-group=""
+									data-motion="wave"
+									data-hold="none"
+									data-hold-reason="overlay"
+									role="status"
+								>
+									<span className="sr-only">Loading</span>
+									<div aria-hidden="true" className="contents">
+										<div className={sizing.loading}>
+											<div
+												data-skeleton=""
+												className={LOADING_BAR_CLASS}
+												style={{width: "120px", height: "16px"}}
+											/>
+										</div>
+									</div>
+								</div>
 							</div>
 						);
 					}

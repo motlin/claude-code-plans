@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import {useSlashCommands} from "../src/hooks/use-slash-commands";
@@ -13,7 +13,7 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-const HEADER = "Some commands didn’t load. Type / again to retry.";
+const HEADER = "Some commands didn’t load.\nType / again to retry.";
 const LOADED: SlashCommand[] = [{name: "standup", description: "Write my standup", source: "personal-command"}];
 
 function Harness() {
@@ -102,6 +102,7 @@ describe("useSlashCommands", () => {
 		const loading = {
 			children: [...menu.children].map((child) => child.outerHTML),
 			menuitems: menu.querySelectorAll('[role="menuitem"]').length,
+			status: within(menu).getByRole("status").textContent,
 		};
 
 		resolve(Response.json(LOADED));
@@ -111,9 +112,10 @@ describe("useSlashCommands", () => {
 
 		expect(loading).toStrictEqual({
 			children: [
-				'<div data-testid="slash-loading-row" class="flex h-7 items-center gap-2 px-2.5"><div class="h-4 w-32 rounded bg-fill-ghost-hover animate-pulse motion-reduce:animate-none"></div></div>',
+				'<div data-testid="slash-loading-row"><div data-skeleton-group="" data-motion="wave" data-hold="none" data-hold-reason="overlay" role="status"><span class="sr-only">Loading</span><div aria-hidden="true" class="contents"><div class="flex h-7 items-center gap-2 px-2.5"><div data-skeleton="" class="max-w-full rounded bg-[var(--skeleton-base)]" style="width: 120px; height: 16px;"></div></div></div></div></div>',
 			],
 			menuitems: 0,
+			status: "Loading",
 		});
 	});
 

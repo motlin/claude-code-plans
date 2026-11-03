@@ -9,7 +9,7 @@ import {
 } from "../lib/slash-commands";
 
 /** Upstream's `y6s5jEXe/X` header for a command list that failed to load. */
-const SLASH_COMMANDS_FAILED_HEADER = "Some commands didn’t load. Type / again to retry.";
+const SLASH_COMMANDS_FAILED_HEADER = "Some commands didn’t load.\nType / again to retry.";
 
 /** Upstream's `w51ki9qEWN` header for a session whose command list can't be known yet (`lt`). */
 const SLASH_COMMANDS_NOT_RUNNING_HEADER = "More commands available once the session is running";

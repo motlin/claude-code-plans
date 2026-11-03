@@ -815,7 +815,10 @@ export function Composer({
 	const slashItems: SlashMenuItem[] = slashLoading
 		? [{type: "loading"}]
 		: [
-				...(slashMenuHeader === undefined ? [] : [{type: "section-header" as const, label: slashMenuHeader}]),
+				// Upstream ranks a typed query over command rows only (`zq` drops headers), so headers lead the bare `/` alone.
+				...(slashMenuHeader === undefined || query !== ""
+					? []
+					: [{type: "section-header" as const, label: slashMenuHeader}]),
 				...matches.map((command) => ({type: "command" as const, command})),
 			];
 	// A mid-line slash opens with nothing highlighted (-1), as upstream's `startsUnselected` does.
