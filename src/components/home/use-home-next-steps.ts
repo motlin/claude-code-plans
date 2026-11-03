@@ -55,9 +55,12 @@ function newestFailedSession(
 	let failed: {sessionId: string; title: string; failedAt: number} | null = null;
 	for (const session of sessions) {
 		if (session.project !== projectId || session.archived || session.erroredAt === undefined) continue;
+		// Upstream's folder scan (`gge`) skips a failed session whose trimmed title is blank.
+		const title = session.title.trim();
+		if (title === "") continue;
 		const failedAt = Date.parse(session.erroredAt);
 		if (failed === null || failedAt > failed.failedAt) {
-			failed = {sessionId: session.id, title: session.title.trim(), failedAt};
+			failed = {sessionId: session.id, title, failedAt};
 		}
 	}
 	return failed;

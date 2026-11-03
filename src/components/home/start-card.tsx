@@ -197,8 +197,16 @@ const DISMISS_SLOT_CLASS = `pointer-events-none absolute inset-y-0 end-1 flex it
 /** Rows that carry upstream's "Waiting" status before their title. */
 const WAITING_IDS: ReadonlySet<NextStepId> = new Set(["waiting-session", "resume-session"]);
 
+/** Rows keyed by their subject (upstream's `f5`); every other row's key is its bare id. */
+const SUBJECT_KEYED_IDS: ReadonlySet<NextStepId> = new Set(["waiting-session", "resume-session", "suggested-task"]);
+
+/**
+ * Upstream's row key (`f5`), used for the React key, `data-row-key` and the hold. It differs from the dismissal key
+ * (`nextStepKey`): a folder row keeps its key while its subject changes (e.g. continue-branch's file count), so its
+ * `li` stays mounted and keeps hover, tooltip and focus.
+ */
 function candidateKey(candidate: NextStepCandidate): string {
-	return `${candidate.id}:${candidate.subject}`;
+	return SUBJECT_KEYED_IDS.has(candidate.id) ? `${candidate.id}:${candidate.subject}` : candidate.id;
 }
 
 function nextStepRowKey(row: NextStepRow<NextStepCandidate>): string {
@@ -452,6 +460,7 @@ function StepRowButton({
 			>
 				<button
 					type="button"
+					data-testid={`start-card-${candidate.id}`}
 					data-next-step-open
 					aria-describedby={titleId}
 					onClick={() => {
@@ -509,7 +518,7 @@ function RestRow({
 				onOpenChange(next);
 			}}
 		>
-			<PopoverTrigger data-next-step-open className={STEP_BUTTON_CLASS}>
+			<PopoverTrigger data-testid="start-card-blocked-sessions" data-next-step-open className={STEP_BUTTON_CLASS}>
 				<span className="min-w-0 flex-1 truncate text-secondary">{title}</span>
 				<ChevronDown aria-hidden="true" className={STEP_CARET_CLASS} />
 				<StepSpacer />
@@ -523,7 +532,7 @@ function RestRow({
 			>
 				<ul role="list" className="flex flex-col gap-0.5 p-1">
 					{rest.map((candidate) => {
-						const key = `${candidate.id}:${candidate.subject}`;
+						const key = candidateKey(candidate);
 						return (
 							<li key={key} data-row-key={key} className="group/row relative">
 								<StepRowButton candidate={candidate} onOpen={openListed} listed />

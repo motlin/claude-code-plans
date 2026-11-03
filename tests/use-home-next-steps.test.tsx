@@ -316,6 +316,33 @@ describe("useHomeNextSteps", () => {
 			});
 		});
 
+		it("skips an errored session with a blank title, like upstream's folder scan", async () => {
+			vi.stubGlobal(
+				"fetch",
+				vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
+			);
+			const describeWithSubject = (candidate: NextStepCandidate) =>
+				`${candidate.id} ${candidate.subject} ${candidate.title} · ${candidate.detail}`;
+			const frames = await renderHook(
+				erroredClient([
+					errored("older", "1999-12-31T00:00:01.000Z"),
+					{...errored("blank", "1999-12-31T00:00:02.000Z"), title: "  "},
+				]),
+				describeWithSubject,
+			);
+			await waitFor(() => {
+				expect(frames.at(-1)).toStrictEqual(["resume-session older Title older · Hit an error"]);
+			});
+			cleanup();
+			const blankOnly = await renderHook(
+				erroredClient([{...errored("blank", "1999-12-31T00:00:02.000Z"), title: "  "}]),
+				describeWithSubject,
+			);
+			await waitFor(() => {
+				expect(blankOnly.at(-1)).toStrictEqual([]);
+			});
+		});
+
 		it("lists nothing once the error is seen", async () => {
 			vi.stubGlobal(
 				"fetch",

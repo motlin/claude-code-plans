@@ -495,7 +495,7 @@ describe("NextStepsList", () => {
 
 		fireEvent.click(screen.getByRole("button", {name: /^Turn on Worktree/}));
 
-		const li = container.querySelector("li[data-row-key='worktree-apart:/p']")!;
+		const li = container.querySelector("li[data-row-key='worktree-apart']")!;
 		const row = li.querySelector("[data-testid='start-card-worktree-apart']")!;
 		const check = row.querySelector("svg");
 		expect({
@@ -650,5 +650,82 @@ describe("NextStepsList double-click guard", () => {
 		} finally {
 			clock.mockRestore();
 		}
+	});
+});
+
+const worktreeApart: NextStepCandidate = {
+	id: "worktree-apart",
+	kind: "worktree",
+	subject: "/p",
+	stamp: 0,
+	title: "Turn on Worktree",
+	detail: "Session running here",
+	tooltipText: "Another session is running in this folder.",
+	dismissLabel: "Dismiss the Worktree suggestion",
+};
+
+function continueBranch(files: number): NextStepCandidate {
+	return {
+		id: "continue-branch",
+		kind: "prefill",
+		subject: `/p\0feat\0${files}`,
+		stamp: 0,
+		title: "Continue uncommitted work",
+		detail: `${files} files`,
+		tooltipText: `${files} uncommitted files on feat`,
+		dismissLabel: "Dismiss the uncommitted work",
+		prefill: "Continue the work in progress on feat.",
+	};
+}
+
+describe("NextStepsList row keys and test ids", () => {
+	it("keys rows like upstream's f5: session rows by session id, folder rows by their bare id", () => {
+		const {container} = render(listOf([...blocked(1), worktreeApart, continueBranch(3)]));
+
+		expect(
+			[...container.querySelectorAll<HTMLElement>("[aria-label='Next steps'] > li")].map(
+				(li) => li.dataset["rowKey"],
+			),
+		).toStrictEqual(["waiting-session:s1", "worktree-apart", "continue-branch"]);
+	});
+
+	it("keeps the continue-branch row mounted when its file count changes", () => {
+		const {container, rerender} = render(listOf([continueBranch(3)]));
+		const before = container.querySelector("li[data-row-key='continue-branch']");
+
+		rerender(listOf([continueBranch(4)]));
+		const after = container.querySelector("li[data-row-key='continue-branch']");
+
+		expect({
+			same: after === before,
+			mounted: after !== null,
+			text: after?.querySelector("[data-next-step-open]")?.textContent,
+		}).toStrictEqual({
+			same: true,
+			mounted: true,
+			text: "Continue uncommitted work4 files",
+		});
+	});
+
+	it("gives each row button and the rest trigger upstream's start-card test id, in seat order", () => {
+		const {container} = render(listOf([...blocked(5), worktreeApart]));
+
+		expect(
+			[...container.querySelectorAll<HTMLElement>("[data-testid^=start-card-]")].map((e) => e.dataset["testid"]),
+		).toStrictEqual(["start-card-waiting-session", "start-card-blocked-sessions", "start-card-worktree-apart"]);
+	});
+
+	it("tags a seated continue-branch row's button with start-card-continue-branch", () => {
+		const {container} = render(listOf([worktreeApart, continueBranch(3)]));
+
+		expect(
+			[...container.querySelectorAll<HTMLElement>("[data-testid^=start-card-]")].map((e) => ({
+				testid: e.dataset["testid"],
+				tag: e.tagName,
+			})),
+		).toStrictEqual([
+			{testid: "start-card-worktree-apart", tag: "BUTTON"},
+			{testid: "start-card-continue-branch", tag: "BUTTON"},
+		]);
 	});
 });
