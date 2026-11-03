@@ -87,6 +87,24 @@ describe("herdrRequest", () => {
 		});
 	});
 
+	it("decodes a multibyte character split across two socket chunks intact", async () => {
+		const title = "✳ Claude Code";
+		await listen((socket) => {
+			socket.once("data", () => {
+				const response = Buffer.from(
+					`${JSON.stringify({id: "response-100", result: {type: "snapshot", title}})}\n`,
+				);
+				const splitIndex = response.indexOf(Buffer.from("✳")) + 1;
+				socket.write(response.subarray(0, splitIndex));
+				setTimeout(() => socket.end(response.subarray(splitIndex)), 5);
+			});
+		});
+
+		const result = await herdrRequest({id: "request-100", method: "session.snapshot"});
+
+		expect(result).toStrictEqual({ok: true, value: {type: "snapshot", title}});
+	});
+
 	it("routes a request for a named-server pane to that server's socket with the raw pane id", async () => {
 		const otherSocketPath = join(directory, "other.sock");
 		const received: Record<string, unknown[]> = {default: [], other: []};

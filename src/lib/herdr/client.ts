@@ -114,8 +114,10 @@ export async function herdrRequest(
 		const onConnect = () => {
 			socket?.write(serializedRequest.value);
 		};
-		const onData = (chunk: Buffer) => {
-			buffer += chunk.toString();
+		// setEncoding("utf8") below makes chunks strings decoded by a streaming decoder, so a
+		// multibyte character split across chunk boundaries arrives intact.
+		const onData = (chunk: string) => {
+			buffer += chunk;
 			const newlineIndex = buffer.indexOf("\n");
 			if (newlineIndex === -1) return;
 			finish(parseResponse(buffer.slice(0, newlineIndex)));
