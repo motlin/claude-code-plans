@@ -1,7 +1,6 @@
 import {Laptop} from "lucide-react";
 import type {SessionListItem} from "../lib/api/sessions";
 import {prGlyph} from "../lib/pr-status";
-import {sessionEnvironment, sessionEnvironmentText} from "../lib/session-environment";
 import {sessionMenuReadState, type SessionMenuReadState} from "../lib/session-menu-items";
 import {sessionStateKindLabels} from "../lib/schema-choices";
 import {isLiveSessionState, sessionRowIconKind} from "../lib/session-state";
@@ -70,16 +69,14 @@ const SR_ROW_STATUS_LABELS = {
 const SR_ROW_ERROR_LABEL = ` ${sessionStateKindLabels.error}`;
 
 /**
- * Upstream's sr-only environment text: where the session runs (its terminal
- * host, or Local), its live CLI's Remote Control on or off, then the PR state.
+ * Upstream's sr-only environment text (`Z7a` for a bridge, which every local CLI is): the machine
+ * name (here its terminal host) or repo, falling back to "Remote Control", then Connected while
+ * the CLI lives or Offline once it ended, then the PR state.
  * Upstream (shared-18) drops the PR when Show PR status is off or the row is archived.
  */
 function rowEnvironmentText(session: SessionListItem, showPrStatus: boolean): string {
-	const environment = sessionEnvironment({
-		terminalHost: session.terminalHost ?? null,
-		remoteControl: session.remoteControlState ?? null,
-	});
-	const parts = [sessionEnvironmentText(environment)];
+	const name = session.terminalHost ?? (session.projectName || "Remote Control");
+	const parts = [name, isLiveSessionState(session.state) ? "Connected" : "Offline"];
 	if (showPrStatus && !session.archived && session.prStatus !== undefined) {
 		parts.push(GIT_PR_STATE_LABELS[prGlyph(session.prStatus).state]);
 	}
@@ -146,7 +143,7 @@ export function SidebarRowDecoration({session, envGlyph}: {session: SessionListI
 /**
  * Upstream's `L_` screen-reader text, rendered inside the row title so it joins the link's
  * accessible name: a status region (" Awaiting input", " Error", " Running", " Unread response") and the
- * environment (" herdr · Remote Control · Connected").
+ * environment (" herdr · Connected", " claude-code-plans · Offline").
  */
 export function SidebarRowSrText({session}: {session: SessionListItem}) {
 	const {unseen, kind, showPrStatus} = useRowIconKind(session);

@@ -1,5 +1,4 @@
 import {splitHerdrId} from "./herdr/herdr-id";
-import {remoteControlStateLabels} from "./schema-choices";
 import {claudeAiSessionUrl} from "./session-open-in";
 import type {RemoteControlState} from "./session-state";
 import type {TerminalPaneHost} from "./terminal-host-capabilities";
@@ -61,8 +60,4 @@ export function terminalHostLabel(pane: EnvironmentPane): string {
 	if (pane.host === "tmux") return `tmux · ${pane.workspaceId}`;
 	const {session} = splitHerdrId(pane.paneId);
 	return session === null ? "herdr" : `herdr · ${session}`;
-}
-
-export function sessionEnvironmentText({label, remoteControl}: SessionEnvironment): string {
-	return remoteControl === null ? label : `${label} · ${remoteControlStateLabels[remoteControl]}`;
 }

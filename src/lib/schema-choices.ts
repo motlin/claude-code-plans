@@ -397,8 +397,8 @@ export const gitPrActionLabels = {
 	closed: "Closed PR",
 } satisfies Record<z.infer<typeof GitPrActionSchema>, string>;
 
-/** A live CLI's Remote Control bridge state (src/lib/session-environment.ts), as the sidebar row's sr-only text says it. */
-export const remoteControlStateLabels = {
+/** A live CLI's Remote Control bridge state (src/lib/session-environment.ts), registered so each state has a name. */
+const remoteControlStateLabels = {
 	on: "Remote Control on",
 	off: "Remote Control off",
 } satisfies Record<RemoteControlState, string>;

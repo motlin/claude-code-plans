@@ -866,57 +866,43 @@ describe("sidebar SessionGroups", () => {
 		const environments = () =>
 			Object.fromEntries(FIXTURE.map((row) => [row.id, srOnlyOf(row.title)[1]?.[1] ?? null]));
 		const terminalHosts: Record<string, string> = {b1: "herdr", w1: "herdr · later", r1: "tmux · work"};
-		const withHost = (row: (typeof FIXTURE)[number]) =>
-			row.id in terminalHosts ? {...row, terminalHost: terminalHosts[row.id]} : row;
-		const remoteControlStates: Record<string, "on" | "off"> = {b1: "on", r1: "off"};
 		await renderGroups(
 			FIXTURE.map((row) => ({
-				...withHost(row),
-				...(row.id in remoteControlStates ? {remoteControlState: remoteControlStates[row.id]} : {}),
-				// Bridged once, but its process ended: no registry entry, so no Remote Control state.
+				...row,
+				...(row.id in terminalHosts ? {terminalHost: terminalHosts[row.id]} : {}),
+				// Remote Control on or off no longer shows: upstream's bridge text is only Connected/Offline.
+				...(row.id === "b1" ? {remoteControlState: "on" as const} : {}),
+				...(row.id === "r1" ? {remoteControlState: "off" as const} : {}),
+				// Its process ended, so its bridge is Offline.
 				...(row.id === "d1" ? {remoteControl: true, state: "ended"} : {}),
+				// No machine or repo name falls back to upstream's "Remote Control".
+				...(row.id === "d2" ? {projectName: ""} : {}),
 			})),
 		);
-		const first = {
+
+		expect({
 			href: screen
-				.getByRole("link", {name: /^Blocked one\s*Awaiting input\s*herdr · Remote Control on$/})
+				.getByRole("link", {name: /^Blocked one\s*Awaiting input\s*herdr · Connected$/})
 				.getAttribute("href"),
 			awaiting: srOnlyOf("Blocked one"),
 			idle: srOnlyOf("Completed older"),
 			env: environments(),
-		};
-		cleanup();
-		await renderGroups(
-			FIXTURE.map((row) =>
-				row.id === "w1" ? {...withHost(row), remoteControlState: "on" as const} : withHost(row),
-			),
-		);
-
-		expect({first, second: environments()}).toStrictEqual({
-			first: {
-				href: "/session/b1",
-				awaiting: [
-					["status", " Awaiting input"],
-					[null, " herdr · Remote Control on"],
-				],
-				idle: [
-					["status", ""],
-					[null, " Local"],
-				],
-				env: {
-					d1: " Local",
-					w1: " herdr · later",
-					r1: " tmux · work · Remote Control off",
-					b1: " herdr · Remote Control on",
-					d2: " Local",
-				},
-			},
-			second: {
-				d1: " Local",
-				w1: " herdr · later · Remote Control on",
-				r1: " tmux · work",
-				b1: " herdr",
-				d2: " Local",
+		}).toStrictEqual({
+			href: "/session/b1",
+			awaiting: [
+				["status", " Awaiting input"],
+				[null, " herdr · Connected"],
+			],
+			idle: [
+				["status", ""],
+				[null, " Remote Control · Connected"],
+			],
+			env: {
+				d1: " project-d1 · Offline",
+				w1: " herdr · later · Connected",
+				r1: " tmux · work · Connected",
+				b1: " herdr · Connected",
+				d2: " Remote Control · Connected",
 			},
 		});
 	});
@@ -950,8 +936,8 @@ describe("sidebar SessionGroups", () => {
 		};
 
 		expect({off: await render(false), on: await render(true)}).toStrictEqual({
-			off: {"Draft PR": " Local", "Archived PR Archived": " Local"},
-			on: {"Draft PR": " Local · Draft", "Archived PR Archived": " Local"},
+			off: {"Draft PR": " project-d1 · Connected", "Archived PR Archived": " project-a1 · Connected"},
+			on: {"Draft PR": " project-d1 · Connected · Draft", "Archived PR Archived": " project-a1 · Connected"},
 		});
 	});
 

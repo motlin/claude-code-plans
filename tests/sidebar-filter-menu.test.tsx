@@ -549,7 +549,7 @@ describe("sidebar Group and sort menu", () => {
 				"Archived one",
 				{className: "sr-only", text: " Archived"},
 				{className: "sr-only [[role=tooltip]_&]:hidden", text: ""},
-				{className: "sr-only [[role=tooltip]_&]:hidden", text: " Local"},
+				{className: "sr-only [[role=tooltip]_&]:hidden", text: " alpha · Connected"},
 			],
 		});
 	});
@@ -561,7 +561,7 @@ describe("sidebar Group and sort menu", () => {
 		const label = container.querySelector<HTMLElement>('a[href="/session/h1"] .dframe-fade-label');
 		expect({dir: label?.getAttribute("dir"), text: label?.textContent}).toStrictEqual({
 			dir: "auto",
-			text: "שלום עולם Local",
+			text: "שלום עולם alpha · Connected",
 		});
 	});
 

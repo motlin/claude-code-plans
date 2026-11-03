@@ -1,11 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
 
-import {
-	registryRemoteControl,
-	sessionEnvironment,
-	sessionEnvironmentText,
-	terminalHostLabel,
-} from "../src/lib/session-environment";
+import {registryRemoteControl, sessionEnvironment, terminalHostLabel} from "../src/lib/session-environment";
 
 const HERDR = {host: "herdr", paneId: "wE:p2", workspaceId: "wE"} as const;
 const HERDR_NAMED = {host: "herdr", paneId: "wM:p1@later", workspaceId: "wM@later"} as const;
@@ -70,13 +65,5 @@ describe("sessionEnvironment", () => {
 				off: {label: "Local", remoteControl: "off"},
 			},
 		});
-	});
-
-	it("joins the label and Remote Control on or off into one line", () => {
-		expect([
-			sessionEnvironmentText(sessionEnvironment({terminalHost: "herdr · later", remoteControl: "on"})),
-			sessionEnvironmentText(sessionEnvironment({terminalHost: "tmux · work", remoteControl: "off"})),
-			sessionEnvironmentText(sessionEnvironment({terminalHost: null, remoteControl: null})),
-		]).toStrictEqual(["herdr · later · Remote Control on", "tmux · work · Remote Control off", "Local"]);
 	});
 });
