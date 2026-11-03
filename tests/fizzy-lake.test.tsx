@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {cleanup, render, screen} from "@testing-library/react";
+import {readFileSync} from "node:fs";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {DensityOverride, DensityScope} from "../src/components/ui/density";
@@ -119,5 +120,17 @@ describe("fizzy-lake panels step in density resolution (upstream si)", () => {
 	it("still swaps to comfortable on a coarse pointer with panels off", () => {
 		stubPointer(true);
 		expect(scopeDensity([], "compact")).toBe("comfortable");
+	});
+});
+
+describe("panels-fine Tailwind variant", () => {
+	it("wraps upstream's fine-pointer media query around a fizzy-lake panels descendant, so coarse pointers keep 32px controls", () => {
+		const css = readFileSync("src/styles/globals.css", "utf8");
+		const start = css.indexOf("@custom-variant panels-fine {");
+		const body = start === -1 ? "" : css.slice(start, css.indexOf("\n}", start) + 2);
+
+		expect(body.replaceAll(/\s+/g, " ")).toBe(
+			`@custom-variant panels-fine { @media ${FIZZY_LAKE_PANELS_FINE_POINTER_QUERY} { &:where([data-cds-fizzy-lake~="panels"] *) { @slot; } } }`,
+		);
 	});
 });

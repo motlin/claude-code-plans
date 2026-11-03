@@ -4,15 +4,21 @@ import {useEffect, useRef, useState} from "react";
 import {useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
 import {Tooltip} from "./ui/tooltip";
 
-/** Upstream's 24x24 r6 page-toolbar icon button with an ink icon (the Artifacts and Routines toolbars); pressed paints accent ink on the accent tint. */
+/**
+ * Upstream's page-toolbar icon button with an ink icon (the Artifacts and Routines toolbars): 24x24 r6, or the
+ * fizzy-lake panels 28x28 r8 toolbar icon box on a fine pointer. Pressed paints accent ink on the accent tint.
+ */
 export const TOOLBAR_ICON_BUTTON =
-	"flex size-6 shrink-0 items-center justify-center rounded-r5 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus aria-pressed:bg-upstream-accent-pressed aria-pressed:text-upstream-accent [&_svg]:size-4";
+	"flex size-6 panels-fine:size-7 shrink-0 items-center justify-center rounded-r5 panels-fine:rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus aria-pressed:bg-upstream-accent-pressed aria-pressed:text-upstream-accent [&_svg]:size-4";
 
-/** Upstream's cds TextInput shell (24px `h-control`, r6, `bg-fill-field`, field ring, accent focus shadow; 8px / 3px insets). */
+/**
+ * Upstream's cds TextInput shell (24px `h-control` r6, or 28px r8 under fizzy-lake panels on a fine pointer;
+ * `bg-fill-field`, field ring, accent focus shadow; 8px / 3px insets).
+ */
 export const TOOLBAR_SEARCH_FIELD_CLASS =
-	"inline-flex h-6 w-full min-w-0 cursor-text items-center gap-1.5 rounded-r5 bg-fill-field ps-2 pe-[3px] font-sans text-body font-normal text-primary shadow-field-ring transition duration-150 has-[:focus-visible]:shadow-focus [&:hover:not(:focus-visible):not(:has(:focus-visible))]:shadow-field-hover";
+	"inline-flex h-6 panels-fine:h-7 w-full min-w-0 cursor-text items-center gap-1.5 rounded-r5 panels-fine:rounded-r6 bg-fill-field ps-2 pe-[3px] font-sans text-body font-normal text-primary shadow-field-ring transition duration-150 has-[:focus-visible]:shadow-focus [&:hover:not(:focus-visible):not(:has(:focus-visible))]:shadow-field-hover";
 
-/** Upstream's ghost sm "Clear search" button nested in the field: 18px, radius 6 - (24 - 18) / 2 = 3px. */
+/** Upstream's ghost sm "Clear search" button nested in the field: 18px, radius 6 - (24 - 18) / 2 = 8 - (28 - 18) / 2 = 3px. */
 export const TOOLBAR_SEARCH_CLEAR_CLASS =
 	"flex size-[18px] shrink-0 items-center justify-center rounded-r2 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 

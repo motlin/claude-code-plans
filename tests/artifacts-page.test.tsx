@@ -1139,6 +1139,25 @@ describe("artifacts route", () => {
 		});
 	});
 
+	it("grows the toolbar to upstream's fizzy-lake panels 28px r8 controls on a fine pointer", async () => {
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		await renderArtifactsPage("/artifacts", true);
+		const panelsFine = (element: Element | null | undefined) =>
+			(element?.className ?? "").split(" ").filter((name) => name.startsWith("panels-fine:"));
+		const buttons = ["Search your artifacts", "Filter and sort", "List view"].map((name) =>
+			panelsFine(screen.getByRole("button", {name})),
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Search your artifacts"}));
+
+		expect({
+			buttons,
+			field: panelsFine(screen.getByRole("search").querySelector("[data-cds=TextInput]")),
+		}).toStrictEqual({
+			buttons: Array.from({length: 3}, () => ["panels-fine:size-7", "panels-fine:rounded-r6"]),
+			field: ["panels-fine:h-7", "panels-fine:rounded-r6"],
+		});
+	});
+
 	it("opens search as upstream's cds TextInput and marks the toolbar data-search-open", async () => {
 		await renderArtifactsPage("/artifacts", true);
 		const controls = document.querySelector("[data-cds-part=controls]");

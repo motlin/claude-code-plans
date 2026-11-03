@@ -9,6 +9,7 @@ export const MenuKindContext = createContext<MenuKind>("Menu");
 export const DENSITY_CLASSES = {
 	compact: {
 		popup: "rounded-r7",
+		scroller: "",
 		text: "text-[13px]/[19px]",
 		item: "rounded-r5 px-2 py-[2.5px]",
 		singleLine: "h-6 items-center",
@@ -26,11 +27,15 @@ export const DENSITY_CLASSES = {
 		trailingGroup: "ms-3 flex shrink-0 items-center gap-1.5",
 	},
 	comfortable: {
-		popup: "rounded-card",
+		/* Upstream's radius + gutter: 8 + 4 = 12, or 8 + 6 = 14 under fizzy-lake panels on a fine pointer. */
+		popup: "rounded-card panels-fine:rounded-menu-comfortable",
+		/* Upstream's `--cds-menu-gutter`: 0.25rem, 0.375rem under panels (fine pointer). */
+		scroller: "panels-fine:p-1.5",
 		text: "text-[14px]/[20px]",
-		item: "rounded-r6 px-2.5 py-1.5",
-		singleLine: "h-8 items-center",
-		twoLine: "min-h-8 items-start",
+		/* Rows are upstream's h-control (32, 28 under panels on a fine pointer) with py (h-control - 20) / 2. */
+		item: "rounded-r6 px-2.5 py-1.5 panels-fine:py-1",
+		singleLine: "h-8 panels-fine:h-7 items-center",
+		twoLine: "min-h-8 panels-fine:min-h-7 items-start",
 		separator: "mx-2.5",
 		shortcut: "[&>kbd]:text-[13px] [&>kbd]:inline-flex [&>kbd]:items-baseline [&>kbd]:gap-[0.3em]",
 		shortcutPadding: "pl-5",
@@ -46,6 +51,10 @@ export const DENSITY_CLASSES = {
 /** Upstream's `ta("lg")` rows, which a sheet lays over its forced comfortable density. */
 export const SHEET_SIZING = {
 	...DENSITY_CLASSES.comfortable,
+	/* A sheet is a coarse-pointer surface, so the panels fine-pointer sizes never apply. */
+	popup: "rounded-card",
+	scroller: "",
+	twoLine: "min-h-8 items-start",
 	text: "text-[15px]/[22px]",
 	item: "rounded-r7 px-2.5 py-[9px]",
 	singleLine: "min-h-10 items-center",

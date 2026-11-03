@@ -22,6 +22,16 @@
 
 @custom-variant dark (&:is(.dark *));
 @custom-variant touch (@media (pointer: coarse), (hover: none));
+/* Upstream's fizzy-lake `panels` control sizes (28px comfortable controls, the toolbar icon box, the
+   6px menu gutter) sit in this fine-pointer query, so a coarse device keeps the classic 32px controls.
+   The query is FIZZY_LAKE_PANELS_FINE_POINTER_QUERY in src/lib/fizzy-lake.ts. */
+@custom-variant panels-fine {
+	@media (hover: hover) and (pointer: fine), (hover: hover) and (pointer: none) {
+		&:where([data-cds-fizzy-lake~="panels"] *) {
+			@slot;
+		}
+	}
+}
 /* Upstream's density variants: the nearest [data-density] scope wins, so the compact
    main column flips to comfortable when a coarse pointer swaps its scope. Each :not() level
    undoes the previous one for a deeper scope of the other density, so the nearest of up to

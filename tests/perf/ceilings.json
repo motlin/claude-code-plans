@@ -51,11 +51,11 @@
 		"raisedAt": "2026-11-02"
 	},
 	"bundle.home.gzip": {
-		"ceiling": 426978,
+		"ceiling": 431271,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Sidebar sections model (2026-11-02): upstream's sections layout adds the per-browser sections store with its Zod schema and migration (src/lib/sidebar-sections.ts), each manual section's own Group and sort menu with its Date/Status headings, the shared Group and sort footer with Reset/View all disabled states, and the folder header's full worked-out rv menu, while custom groups mode and the first-header + go. Went from 421306 to 426978. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-02"
+		"reason": "Fizzy-lake panels fine-pointer controls (2026-11-03): the shared Menu and the Artifacts/Routines toolbar gain panels-fine: classes (28px rows, 6px gutter, 14px popup radius, 28x28 r8 toolbar controls), which pushed the measurement 23 bytes past the 1% tolerance; the rest of the climb since 2026-11-02 is the Artifacts gallery port (Filter and sort menu, cards, empty state). Went from 426978 to 431271. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-03"
 	},
 	"bundle.home.raw": {
 		"ceiling": 1305089,

@@ -391,7 +391,7 @@ export function MenuContent({
 							<div
 								data-menu-scroller=""
 								/* Under a pinned header the gutter drops its top, as upstream's `p-gutter pt-0`. */
-								className={header === undefined ? SCROLLER_CLASS : `${SCROLLER_CLASS} pt-0`}
+								className={`${SCROLLER_CLASS}${sizing.scroller === "" ? "" : ` ${sizing.scroller}`}${header === undefined ? "" : " pt-0"}`}
 							>
 								{children}
 							</div>

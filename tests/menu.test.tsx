@@ -1846,3 +1846,80 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		}).toStrictEqual({highlighted: true, srOnly: false});
 	});
 });
+
+describe("Menu under fizzy-lake panels on a fine pointer", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	/** The classes a panels-fine (fizzy-lake panels, fine pointer) media rule adds. */
+	function panelsFine(element: Element | null | undefined): string[] {
+		return (element?.className ?? "").split(" ").filter((name) => name.startsWith("panels-fine:"));
+	}
+
+	function anatomy() {
+		const menu = screen.getByRole("menu");
+		return {
+			popup: panelsFine(menu),
+			scroller: panelsFine(menu.querySelector("[data-menu-scroller]")),
+			rows: [
+				screen.getByRole("menuitem", {name: /Status/}),
+				screen.getByRole("menuitem", {name: /Copy link/}),
+				screen.getByRole("menuitemcheckbox", {name: "Show PR status"}),
+			].map(panelsFine),
+		};
+	}
+
+	it("sizes comfortable menus like upstream's Filter and sort: 28px rows with 4px block pads, a 6px gutter, a 14px popup radius", async () => {
+		render(
+			<Menu>
+				<MenuTrigger aria-label="More options">...</MenuTrigger>
+				<MenuContent>
+					<RowMenuBody onCopy={vi.fn<() => void>()} onDelete={vi.fn<() => void>()} />
+				</MenuContent>
+			</Menu>,
+		);
+		await openDropdown();
+
+		expect(anatomy()).toStrictEqual({
+			popup: ["panels-fine:rounded-menu-comfortable"],
+			scroller: ["panels-fine:p-1.5"],
+			rows: Array.from({length: 3}, () => ["panels-fine:h-7", "panels-fine:py-1"]),
+		});
+	});
+
+	it("leaves compact menus on their classic metrics", async () => {
+		renderDropdown();
+		await openDropdown();
+
+		expect(anatomy()).toStrictEqual({popup: [], scroller: [], rows: [[], [], []]});
+	});
+
+	it("leaves a coarse-pointer sheet on its lg rows", async () => {
+		vi.stubGlobal(
+			"matchMedia",
+			vi.fn((query: string) => ({
+				matches: query === "(pointer: coarse)" || query === "(pointer: coarse) and (max-width: 639.98px)",
+				media: query,
+				onchange: null,
+				addEventListener: () => undefined,
+				removeEventListener: () => undefined,
+				addListener: () => undefined,
+				removeListener: () => undefined,
+				dispatchEvent: () => false,
+			})),
+		);
+		renderDropdown();
+		await openDropdown();
+		const menu = screen.getByRole("menu");
+
+		expect({
+			presentation: menu.getAttribute("data-presentation"),
+			popup: panelsFine(menu),
+			rows: [
+				screen.getByRole("menuitem", {name: /Copy link/}),
+				screen.getByRole("menuitemcheckbox", {name: "Show PR status"}),
+			].map(panelsFine),
+		}).toStrictEqual({presentation: "sheet", popup: [], rows: [[], []]});
+	});
+});

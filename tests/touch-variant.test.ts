@@ -8,6 +8,7 @@ describe("custom variants", () => {
 		expect(styles.match(/^@custom-variant .*$/gm)).toStrictEqual([
 			"@custom-variant dark (&:is(.dark *));",
 			"@custom-variant touch (@media (pointer: coarse), (hover: none));",
+			"@custom-variant panels-fine {",
 			'@custom-variant compact (&:where([data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *)))));',
 			'@custom-variant comfortable (&:where([data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] [data-density="compact"] *)))));',
 		]);
