@@ -4,6 +4,7 @@ import {act, renderHook} from "@testing-library/react";
 import {describe, expect, it, vi} from "vite-plus/test";
 import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
 import {HerdrRequestError} from "../src/lib/api/herdr";
+import type {RejectedRefill} from "../src/lib/context-attach";
 import {type SessionLine, processTranscript} from "../src/lib/transcript";
 
 const PENDING = {phase: "sent", isPending: true, prompt: "Fix Alice's test", rejection: null};
@@ -161,9 +162,9 @@ describe("useLiveHerdrPrompt tracks the send phase", () => {
 });
 
 describe("useLiveHerdrPrompt records a rejected send", () => {
-	const rejectingHook = (error: Error) => {
+	const rejectingHook = (error: Error, restoredAttachments = false) => {
 		const postPrompt = vi.fn<(sessionId: string, prompt: string) => Promise<void>>().mockRejectedValue(error);
-		const onRejected = vi.fn<(prompt: string) => void>();
+		const onRejected = vi.fn<(prompt: string) => RejectedRefill>(() => ({restoredAttachments}));
 		const hook = renderHook(() => useLiveHerdrPrompt("s1", 100, [], postPrompt, onRejected));
 		return {hook, onRejected};
 	};
@@ -184,6 +185,22 @@ describe("useLiveHerdrPrompt records a rejected send", () => {
 				rejection: {prompt: "hi", message: "boom", nonResendable: false},
 			},
 			refills: [["hi"]],
+		});
+	});
+
+	it("marks a prompt whose tiles came back as not resendable, with no failedSend in the draft", async () => {
+		localStorage.clear();
+		const {hook} = rejectingHook(new HerdrRequestError("boom", 502, "x"), true);
+		await act(async () => {
+			await hook.result.current.send("@alice.ts\n\nhi");
+		});
+
+		expect({
+			rejection: hook.result.current.state.rejection,
+			draft: localStorage.getItem("ccp-composer-draft:s1"),
+		}).toStrictEqual({
+			rejection: {prompt: "@alice.ts\n\nhi", message: "boom", nonResendable: true},
+			draft: null,
 		});
 	});
 

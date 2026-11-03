@@ -2,7 +2,7 @@ import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {markFailedSend, readFailedSend} from "../hooks/use-composer-draft";
 import type {DeliveryResult} from "../hooks/use-composer-queue";
 import {HerdrRequestError, isAgentNotReady, sendHerdrPrompt} from "../lib/api/herdr";
-import {requestComposerTakeBack} from "../lib/context-attach";
+import {type RejectedRefill, requestComposerTakeBack} from "../lib/context-attach";
 import type {SessionLine} from "../lib/transcript";
 
 /**
@@ -16,7 +16,7 @@ export function useLiveHerdrPrompt(
 	lines: readonly SessionLine[],
 	postPrompt: (sessionId: string, prompt: string, options: {midTurn?: true}) => Promise<void> = sendHerdrPrompt,
 	/** Hands a rejected prompt back, as upstream's composer catch refills the composer. */
-	onRejected?: (prompt: string) => void,
+	onRejected?: (prompt: string) => RejectedRefill,
 	/** Whether the session has a live pane now; a held prompt is delivered when this turns true. */
 	hasLivePane = true,
 	/** Changes whenever the session's herdr pane list or revision does; a held prompt is re-sent on each change. */
@@ -82,18 +82,18 @@ export function useLiveHerdrPrompt(
 					return "failed";
 				}
 				// Upstream `local_send_rejected`: the bubble goes, the card and the refilled composer take over.
-				// Attachments are composed into the text locally, so every rejected prompt can be resent.
+				// A prompt whose tiles came back can't be resent as is, and its draft carries no failedSend.
+				const nonResendable = onRejectedRef.current?.(prompt).restoredAttachments === true;
 				setState({
 					phase: "idle",
 					prompt: "",
 					rejection: {
 						prompt,
 						message: error instanceof Error && error.message !== "" ? error.message : SEND_FAILED_MESSAGE,
-						nonResendable: false,
+						nonResendable,
 					},
 				});
-				markFailedSend(sessionId, prompt);
-				onRejectedRef.current?.(prompt);
+				if (!nonResendable) markFailedSend(sessionId, prompt);
 				return "failed";
 			}
 		},

@@ -30,6 +30,8 @@ import {
 	attachUploadedFiles,
 	composePrompt,
 	mergeTakeBack,
+	hydrateStagedChips,
+	recordSentAttachments,
 	registerComposer,
 	takeContextChips,
 	waitForPendingUploads,
@@ -616,6 +618,10 @@ export function Composer({
 	const {queued: queuedComments} = useDiffComments(draftKey);
 	const contextChips = useContextChips(draftKey);
 	const restoredChipIds = useRestoredChipIds(draftKey);
+	// Upstream restores staged attachments with the draft; after mount, so SSR and hydration render none.
+	useEffect(() => {
+		hydrateStagedChips(draftKey);
+	}, [draftKey]);
 	// Upstream's bash mode, saved with the draft: only a composer that can run shell commands enters or restores it.
 	const bashMode = onShellCommand !== undefined && draftBashMode;
 	const bashModeRef = useRef(bashMode);
@@ -1041,7 +1047,11 @@ export function Composer({
 			return;
 		}
 		const finish = () => {
-			send(composePrompt(trimmed, takeContextChips(draftKey), takeQueuedDiffComments(draftKey)));
+			const sentChips = takeContextChips(draftKey);
+			const comments = takeQueuedDiffComments(draftKey);
+			const composed = composePrompt(trimmed, sentChips, comments);
+			recordSentAttachments(draftKey, composed, composePrompt(trimmed, [], comments), sentChips);
+			send(composed);
 			clearDraft();
 		};
 		if (!contextChips.some((chip) => chip.status === "pending")) {

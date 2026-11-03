@@ -65,6 +65,32 @@ describe("image byte serving", () => {
 		});
 	});
 
+	it("serves a saved composer attachment from the built-in attachments root without an image_roots entry", async () => {
+		const attachmentsRoot = join(fixtureDirectory, "attachments");
+		mkdirSync(attachmentsRoot);
+		writeConfig([]);
+		const imagePath = join(attachmentsRoot, "bob.png");
+		writeFileSync(imagePath, "fabricated png bytes");
+
+		const response = await handleImageRequest(imageRequest(imagePath), configPath, [attachmentsRoot]);
+
+		expect({status: response.status, body: await response.text()}).toStrictEqual({
+			status: 200,
+			body: "fabricated png bytes",
+		});
+	});
+
+	it("still serves image_roots when the built-in attachments root does not exist yet", async () => {
+		const imagePath = join(allowedRoot, "carol.png");
+		writeFileSync(imagePath, "fabricated png bytes");
+
+		const response = await handleImageRequest(imageRequest(imagePath), configPath, [
+			join(fixtureDirectory, "missing"),
+		]);
+
+		expect(response.status).toBe(200);
+	});
+
 	it("returns 304 with the same cache metadata when If-None-Match matches", async () => {
 		const imagePath = join(allowedRoot, "alice.jpg");
 		writeFileSync(imagePath, "fabricated jpeg bytes");

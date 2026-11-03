@@ -9,7 +9,7 @@ import {Minimize2} from "lucide-react";
 import {SessionTileFrame, type SessionTileScrollPosition} from "./session-tile-frame";
 import {latestBreakdown, preferNewerBreakdown} from "../lib/context-breakdown";
 import {sessionContextBreakdownQueryOptions} from "../lib/api/context-breakdown";
-import {focusComposer, refillComposer, requestComposerTakeBack} from "../lib/context-attach";
+import {focusComposer, refillComposer, refillRejectedSend, requestComposerTakeBack} from "../lib/context-attach";
 import {rewindStepsBack, rewindTurns} from "../lib/rewind-picker";
 import {SessionRailSlot} from "./session-rail/session-rail-slot";
 import {
@@ -720,7 +720,7 @@ function SessionView({
 			: (target: {sessionId: string; atMessage: string}) => {
 					forkSession({...target, cwd: forkCwd});
 				};
-	const refillRejectedPrompt = useCallback((prompt: string) => refillComposer(sessionId, prompt), [sessionId]);
+	const refillRejectedPrompt = useCallback((prompt: string) => refillRejectedSend(sessionId, prompt), [sessionId]);
 	const promptBehavior = getSessionPromptBehavior(sessionId, isActive, herdr);
 	const liveHerdrPrompt = useLiveHerdrPrompt(
 		sessionId,

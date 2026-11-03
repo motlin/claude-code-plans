@@ -204,7 +204,139 @@ function setChips(sessionId: string, next: readonly ContextChip[]): void {
 	chips = new Map(chips);
 	if (next.length === 0) chips.delete(sessionId);
 	else chips.set(sessionId, next);
+	saveStagedChips(sessionId, next);
 	for (const listener of chipListeners) listener();
+}
+
+const STAGED_CHIPS_PREFIX = "ccp-composer-attachments:";
+
+/** What a reload can bring back of a tile: no bytes, no blob preview, nothing still uploading. */
+const StagedChipSchema = z.object({
+	kind: ContextAttachmentKindSchema,
+	path: z.string().optional(),
+	range: z.object({start: z.number(), end: z.number()}).optional(),
+	text: z.string().optional(),
+	language: z.string().nullable().optional(),
+	name: z.string().optional(),
+});
+type StagedChip = z.infer<typeof StagedChipSchema>;
+
+function browserLocalStorage(): Storage | null {
+	if (typeof window === "undefined") return null;
+	try {
+		return window.localStorage;
+	} catch {
+		return null;
+	}
+}
+
+function stagedChip({kind, path, range, text, language, name}: ContextChip): StagedChip {
+	return {
+		kind,
+		...(path !== undefined && {path}),
+		...(range !== undefined && {range}),
+		...(text !== undefined && {text}),
+		...(language !== undefined && {language}),
+		...(name !== undefined && {name}),
+	};
+}
+
+/** Upstream saves staged attachments with the draft (`stagedImages`); settled tiles only, as their bytes stay in memory. */
+function saveStagedChips(sessionId: string, next: readonly ContextChip[]): void {
+	try {
+		const storage = browserLocalStorage();
+		if (storage === null) return;
+		const key = `${STAGED_CHIPS_PREFIX}${sessionId}`;
+		const settled = next.filter((chip) => chip.status !== "pending").map(stagedChip);
+		if (settled.length === 0) storage.removeItem(key);
+		else storage.setItem(key, JSON.stringify(settled));
+	} catch {
+		// Saved tiles are best-effort: storage can be denied or full.
+	}
+}
+
+function readStagedChips(sessionId: string): readonly StagedChip[] {
+	try {
+		const raw = browserLocalStorage()?.getItem(`${STAGED_CHIPS_PREFIX}${sessionId}`);
+		if (raw === null || raw === undefined) return [];
+		const parsed = z.array(StagedChipSchema).safeParse(JSON.parse(raw));
+		return parsed.success ? parsed.data : [];
+	} catch {
+		return [];
+	}
+}
+
+/** Ids of tiles put back from storage or a rejected send: upstream's restored tiles, which skip the enter motion. */
+const restoredIds = new Set<string>();
+
+function restoredChip(attachment: ContextAttachment): ContextChip {
+	const id = `context-chip-${nextChipId++}`;
+	restoredIds.add(id);
+	return {...attachment, id};
+}
+
+/**
+ * Brings back the session's tiles saved before a reload, with a served preview
+ * for images; false, changing nothing, when the strip already holds tiles or
+ * nothing was saved.
+ */
+export function hydrateStagedChips(sessionId: string): boolean {
+	if (getContextChips(sessionId).length > 0) return false;
+	const saved = readStagedChips(sessionId);
+	if (saved.length === 0) return false;
+	setChips(
+		sessionId,
+		saved.map((chip) =>
+			restoredChip({
+				...chip,
+				...(chip.kind === "image" &&
+					chip.path !== undefined && {previewUrl: `/api/image?path=${encodeURIComponent(chip.path)}`}),
+			}),
+		),
+	);
+	return true;
+}
+
+interface SentAttachments {
+	prompt: string;
+	text: string;
+	chips: readonly ContextChip[];
+}
+
+/** Recent sends that carried tiles, per session, so a rejection can put the tiles back. */
+const sentAttachments = new Map<string, readonly SentAttachments[]>();
+const MAX_SENT_ATTACHMENTS = 10;
+
+/** Remembers the tiles a send carried, keyed by the composed prompt it sent; a send without tiles records nothing. */
+export function recordSentAttachments(
+	sessionId: string,
+	prompt: string,
+	text: string,
+	sent: readonly ContextChip[],
+): void {
+	if (sent.length === 0) return;
+	const recent = (sentAttachments.get(sessionId) ?? []).filter((each) => each.prompt !== prompt);
+	sentAttachments.set(sessionId, [...recent, {prompt, text, chips: sent}].slice(-MAX_SENT_ATTACHMENTS));
+}
+
+/**
+ * Upstream's composer restore after a rejected send (changelog cb63ed069): the
+ * tiles the prompt carried go back ahead of the strip, and the typed text
+ * comes back; null when the prompt carried no tiles.
+ */
+export function restoreRejectedAttachments(sessionId: string, prompt: string): string | null {
+	const recent = sentAttachments.get(sessionId) ?? [];
+	const match = recent.find((each) => each.prompt === prompt);
+	if (match === undefined) return null;
+	sentAttachments.set(
+		sessionId,
+		recent.filter((each) => each !== match),
+	);
+	setChips(sessionId, [
+		...match.chips.map(({id: _id, ...chip}) => restoredChip(chip)),
+		...getContextChips(sessionId),
+	]);
+	return match.text;
 }
 
 function mounted(sessionId: string): readonly ComposerHandle[] {
@@ -297,7 +429,12 @@ export async function waitForPendingUploads(sessionId: string): Promise<void> {
  * itself mounts with the first new chip, so it can't tell on its own.
  */
 export function useRestoredChipIds(sessionId: string): ReadonlySet<string> {
-	return useMemo(() => new Set(getContextChips(sessionId).map((chip) => chip.id)), [sessionId]);
+	const current = useContextChips(sessionId);
+	const atMount = useMemo(() => new Set(getContextChips(sessionId).map((chip) => chip.id)), [sessionId]);
+	return useMemo(
+		() => new Set([...atMount, ...current.filter((chip) => restoredIds.has(chip.id)).map((chip) => chip.id)]),
+		[atMount, current],
+	);
 }
 
 export function useContextChips(sessionId: string): readonly ContextChip[] {
@@ -343,6 +480,18 @@ export function refillComposer(sessionId: string, text: string): boolean {
 	if (handle?.setText === undefined || handle.getText === undefined) return false;
 	handle.setText(mergeRefill(text, handle.getText()));
 	return true;
+}
+
+/** What a rejected send put back: with tiles, the prompt can't be resent as is (upstream `nonResendable`). */
+export interface RejectedRefill {
+	restoredAttachments: boolean;
+}
+
+/** Puts a rejected send back: its tiles and typed text when it carried tiles, else the prompt as text. */
+export function refillRejectedSend(sessionId: string, prompt: string): RejectedRefill {
+	const text = restoreRejectedAttachments(sessionId, prompt);
+	refillComposer(sessionId, text ?? prompt);
+	return {restoredAttachments: text !== null};
 }
 
 /** The session's first composer's prompt text, or null when none can report it. */

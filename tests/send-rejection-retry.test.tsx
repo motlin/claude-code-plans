@@ -11,12 +11,13 @@ import {useSendRejectionActions} from "../src/components/use-send-rejection-acti
 import {useComposerQueue} from "../src/hooks/use-composer-queue";
 import {HerdrRequestError} from "../src/lib/api/herdr";
 import {clearComposerQueues, dispatchComposerQueue} from "../src/lib/composer-queue";
-import {refillComposer} from "../src/lib/context-attach";
+import {attachContext, getContextChips, refillRejectedSend, removeContextChip} from "../src/lib/context-attach";
 
 afterEach(() => {
 	cleanup();
 	localStorage.clear();
 	clearComposerQueues();
+	for (const chip of getContextChips("s1")) removeContextChip("s1", chip.id);
 });
 
 type PostPrompt = (sessionId: string, prompt: string, options: {midTurn?: true}) => Promise<void>;
@@ -24,7 +25,7 @@ type PostPrompt = (sessionId: string, prompt: string, options: {midTurn?: true})
 const boom = () => new HerdrRequestError("boom", 502, "herdr_error");
 
 function Harness({postPrompt, busy = false}: {postPrompt: PostPrompt; busy?: boolean}) {
-	const refill = useCallback((prompt: string) => refillComposer("s1", prompt), []);
+	const refill = useCallback((prompt: string) => refillRejectedSend("s1", prompt), []);
 	const live = useLiveHerdrPrompt("s1", 0, [], postPrompt, refill);
 	const {retryRejection, dismissRejection} = useSendRejectionActions("s1", live.state.rejection, live.clearRejection);
 	useComposerQueue({sessionId: "s1", busy, deliver: live.send, interrupt: async () => {}});
@@ -155,6 +156,35 @@ describe("send-rejected Try again / Dismiss", () => {
 
 		await waitFor(() => {
 			expect(localStorage.getItem("ccp-composer-draft:s1")).toBe(JSON.stringify({text: "hi", failedSend: "hi"}));
+		});
+	});
+});
+
+describe("send-rejected with attachment tiles", () => {
+	it("restores the tiles and the typed text, and offers no Try again", async () => {
+		render(<Harness postPrompt={vi.fn<PostPrompt>().mockRejectedValueOnce(boom())} />);
+		act(() => {
+			attachContext("s1", {kind: "file", path: "alice.ts"});
+		});
+		fireEvent.change(textarea(), {target: {value: "hi"}});
+		fireEvent.keyDown(textarea(), {key: "Enter"});
+		await waitFor(() => {
+			expect(card()).not.toBeNull();
+		});
+		await waitFor(() => {
+			expect(localStorage.getItem("ccp-composer-draft:s1")).toBe(JSON.stringify({text: "hi"}));
+		});
+
+		expect({
+			value: textarea().value,
+			chips: getContextChips("s1").map(({id: _id, ...rest}) => rest),
+			alert: screen.getByRole("alert").textContent,
+			buttons: screen.queryByRole("button", {name: "Try again"}),
+		}).toStrictEqual({
+			value: "hi",
+			chips: [{kind: "file", path: "alice.ts"}],
+			alert: "Something went wrong Your message didn’t send. Check the error details before sending it again.",
+			buttons: null,
 		});
 	});
 });

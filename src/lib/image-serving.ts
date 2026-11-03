@@ -1,5 +1,6 @@
 import {realpath, stat} from "node:fs/promises";
 import {extname, isAbsolute, sep} from "node:path";
+import {attachmentsDir} from "./attachments.server";
 import {readConfig} from "./config";
 import {fileBodyStream} from "./file-stream";
 
@@ -18,7 +19,16 @@ function textResponse(body: string, status: number): Response {
 	return new Response(body, {status});
 }
 
-export async function handleImageRequest(request: Request, configPath?: string): Promise<Response> {
+/**
+ * Serves images under the configured `image_roots`, plus `builtInRoots`: by
+ * default the composer's saved attachments, so a restored image tile can show
+ * its preview. A built-in root that doesn't exist yet is skipped.
+ */
+export async function handleImageRequest(
+	request: Request,
+	configPath?: string,
+	builtInRoots: readonly string[] = [attachmentsDir()],
+): Promise<Response> {
 	const requestedPath = new URL(request.url).searchParams.get("path");
 	if (requestedPath === null || !isAbsolute(requestedPath)) {
 		return textResponse("An absolute image path is required", 400);
@@ -38,6 +48,9 @@ export async function handleImageRequest(request: Request, configPath?: string):
 	} catch {
 		return textResponse("Image path is not allowed", 403);
 	}
+
+	const resolvedBuiltIns = await Promise.all(builtInRoots.map(async (root) => realpath(root).catch(() => null)));
+	resolvedRoots.push(...resolvedBuiltIns.filter((root) => root !== null));
 
 	const isContained = resolvedRoots.some((root) => resolvedPath === root || resolvedPath.startsWith(root + sep));
 	if (!isContained) {

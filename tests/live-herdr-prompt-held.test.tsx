@@ -5,7 +5,7 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
 import {type DeliveryResult} from "../src/hooks/use-composer-queue";
 import {HerdrRequestError} from "../src/lib/api/herdr";
-import {registerComposer} from "../src/lib/context-attach";
+import {type RejectedRefill, registerComposer} from "../src/lib/context-attach";
 
 afterEach(() => {
 	cleanup();
@@ -14,7 +14,10 @@ afterEach(() => {
 
 type PostPrompt = (sessionId: string, prompt: string, options: {midTurn?: true}) => Promise<void>;
 
-function renderHeld(postPrompt: PostPrompt, onRejected = vi.fn<(prompt: string) => void>()) {
+function renderHeld(
+	postPrompt: PostPrompt,
+	onRejected = vi.fn<(prompt: string) => RejectedRefill>(() => ({restoredAttachments: false})),
+) {
 	return renderHook(
 		({hasLivePane}: {hasLivePane: boolean}) =>
 			useLiveHerdrPrompt("session-alice", 100, [], postPrompt, onRejected, hasLivePane),
@@ -27,7 +30,7 @@ describe("useLiveHerdrPrompt held for the terminal", () => {
 		"holds a prompt rejected with %s instead of failing it",
 		async (code) => {
 			const postPrompt = vi.fn<PostPrompt>().mockRejectedValue(new HerdrRequestError("no live pane", 502, code));
-			const onRejected = vi.fn<(prompt: string) => void>();
+			const onRejected = vi.fn<(prompt: string) => RejectedRefill>(() => ({restoredAttachments: false}));
 			const {result} = renderHeld(postPrompt, onRejected);
 
 			let delivery: DeliveryResult | undefined;

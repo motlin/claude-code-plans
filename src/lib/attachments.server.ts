@@ -17,7 +17,8 @@ const IMAGE_EXTENSIONS = new Map<string, string>([
 /** Room for the multipart envelope around a file at the size limit. */
 const MULTIPART_OVERHEAD_BYTES = 64 * 1024;
 
-function attachmentsDir(cacheDir: string = getCacheDir()): string {
+/** Where uploaded composer attachments are saved. */
+export function attachmentsDir(cacheDir: string = getCacheDir()): string {
 	return join(cacheDir, "attachments");
 }
 

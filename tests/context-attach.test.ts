@@ -16,6 +16,8 @@ import {
 	waitForPendingUploads,
 	formatReviewComment,
 	formatReviewComments,
+	recordSentAttachments,
+	restoreRejectedAttachments,
 } from "../src/lib/context-attach";
 import {schemaChoiceRegistry} from "../src/lib/schema-choices";
 
@@ -300,6 +302,42 @@ describe("attachContext", () => {
 		stop();
 
 		expect(events).toStrictEqual(["one left", "settled", "none pending resolves at once"]);
+	});
+
+	it("puts a rejected send's tiles back ahead of the strip and hands back its typed text, once", () => {
+		const stop = registerComposer(SESSION, {insertText: () => {}, focus: () => {}});
+		attachContext(SESSION, {kind: "file", path: "alice.ts"});
+		attachContext(SESSION, {kind: "image", path: "/cache/bob.png", name: "bob.png"});
+		const sent = takeContextChips(SESSION);
+		const composed = composePrompt("hi", sent, []);
+		recordSentAttachments(SESSION, composed, "hi", sent);
+		attachContext(SESSION, {kind: "terminal", text: "carol"});
+
+		const restored = restoreRejectedAttachments(SESSION, composed);
+		const chips = getContextChips(SESSION).map(({id: _id, ...rest}) => rest);
+		const again = restoreRejectedAttachments(SESSION, composed);
+		const unknown = restoreRejectedAttachments(SESSION, "never sent");
+		stop();
+
+		expect({restored, chips, again, unknown}).toStrictEqual({
+			restored: "hi",
+			chips: [
+				{kind: "file", path: "alice.ts"},
+				{kind: "image", path: "/cache/bob.png", name: "bob.png"},
+				{kind: "terminal", text: "carol"},
+			],
+			again: null,
+			unknown: null,
+		});
+	});
+
+	it("records nothing for a send without tiles", () => {
+		recordSentAttachments(SESSION, "hi", "hi", []);
+
+		expect({restored: restoreRejectedAttachments(SESSION, "hi"), chips: getContextChips(SESSION)}).toStrictEqual({
+			restored: null,
+			chips: [],
+		});
 	});
 
 	it("registers every kind in the schema choice registry", () => {
