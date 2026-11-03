@@ -530,6 +530,8 @@ describe("CLI_COMMAND_NAMES", () => {
 			"allowed-tools",
 			"exit",
 			"quit",
+			// New in CLI 2.1.317.
+			"use-case",
 		];
 		expect(expected.filter((name) => !CLI_COMMAND_NAMES.has(name))).toStrictEqual([]);
 	});

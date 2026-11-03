@@ -165,7 +165,7 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommand[] = [
 
 /*
  * Every built-in name and alias the CLI answers to, plus its bundled skills, so a mistyped
- * `/name` can be told apart from a real command. Seeded from CLI 2.1.310 with
+ * `/name` can be told apart from a real command. Seeded from CLI 2.1.310 (re-checked against 2.1.317) with
  *   rg -ao 'type:"(local-jsx|local|prompt)",name:"[a-z][a-z0-9:-]*"' <binary>
  *   rg -ao 'name:"[a-z][a-z0-9:-]*",[^{}]{0,300}type:"(local-jsx|local|prompt)"' <binary>
  *   rg -ao 'Wi\(\{name:"[a-z][a-z0-9:-]*"' <binary>
@@ -324,6 +324,7 @@ const CLI_BUILTIN_NAMES = [
 	"upgrade",
 	"usage",
 	"usage-credits",
+	"use-case",
 	"verify",
 	"version",
 	"voice",
