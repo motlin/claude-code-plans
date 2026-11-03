@@ -9,7 +9,8 @@ import {
 	statSync,
 	symlinkSync,
 } from "node:fs";
-import {createServer, type Server} from "node:net";
+import {createServer as createHttpServer} from "node:http";
+import {createServer, type AddressInfo, type Server} from "node:net";
 import {dirname, join} from "node:path";
 import {tmpdir} from "node:os";
 import {
@@ -1082,6 +1083,67 @@ describe("shouldIgnoreWatch", () => {
 		expect(shouldIgnoreWatch("/foo/bar.md", fileStats)).toBe(false);
 		expect(shouldIgnoreWatch("/foo/bar.jsonl", fileStats)).toBe(false);
 		expect(shouldIgnoreWatch("/foo/bar.json", fileStats)).toBe(false);
+	});
+
+	it("keeps the Git index and its ancestor directories watched under an ignored .git", () => {
+		const repositoryDirectory = realpathSync(mkdtempSync(join(tmpdir(), "watch-git-index-")));
+		mkdirSync(join(repositoryDirectory, ".git"));
+		try {
+			__testing.setFileContentRoots([repositoryDirectory]);
+			expect({
+				index: shouldIgnoreWatch(join(repositoryDirectory, ".git", "index")),
+				gitDirectory: shouldIgnoreWatch(join(repositoryDirectory, ".git")),
+				root: shouldIgnoreWatch(repositoryDirectory),
+				parent: shouldIgnoreWatch(dirname(repositoryDirectory)),
+				otherGitFile: shouldIgnoreWatch(join(repositoryDirectory, ".git", "HEAD")),
+				lockFile: shouldIgnoreWatch(join(repositoryDirectory, ".git", "index.lock")),
+			}).toStrictEqual({
+				index: false,
+				gitDirectory: false,
+				root: false,
+				parent: false,
+				otherGitFile: true,
+				lockFile: true,
+			});
+		} finally {
+			rmSync(repositoryDirectory, {recursive: true, force: true});
+		}
+	});
+
+	it("filters a burst of native events without blocking a concurrent HTTP request", async () => {
+		// libuv drains a whole FSEvents batch in one callback, so the predicate runs once per changed path with
+		// no chance to yield. Many file-content roots plus heavy churn in other projects starved the server.
+		const base = realpathSync(mkdtempSync(join(tmpdir(), "watch-burst-")));
+		const roots = Array.from({length: 300}, (_, index) => {
+			const root = join(base, `repository-${index}`);
+			mkdirSync(join(root, ".git"), {recursive: true});
+			return root;
+		});
+		const server = createHttpServer((_request, response) => response.end("ok"));
+		try {
+			__testing.setFileContentRoots(roots);
+			await new Promise<void>((resolve) => {
+				server.listen(0, "127.0.0.1", resolve);
+			});
+			const {port} = server.address() as AddressInfo;
+			const startedAt = performance.now();
+			const response = fetch(`http://127.0.0.1:${port}/`).then(() => performance.now() - startedAt);
+			let ignoredCount = 0;
+			for (let event = 0; event < 20_000; event += 1) {
+				const root = roots[event % roots.length] ?? base;
+				// Half land in an ignored build directory; the rest survive to the post-stat check.
+				const ignoredDirectory = event % 2 === 0;
+				const path = join(root, ignoredDirectory ? "target/classes" : "src", `file-${event}.ts`);
+				if (ignoredDirectory ? shouldIgnoreWatch(path) : shouldIgnoreWatch(path, fileStats)) ignoredCount += 1;
+			}
+			expect({ignoredCount, answeredWithinASecond: (await response) < 1000}).toStrictEqual({
+				ignoredCount: 10_000,
+				answeredWithinASecond: true,
+			});
+		} finally {
+			server.close();
+			rmSync(base, {recursive: true, force: true});
+		}
 	});
 });
 

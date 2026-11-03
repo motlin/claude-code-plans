@@ -87,7 +87,14 @@ let contextMirrorDir = "";
 /** The registry directory as given and as its real path: the recursive watcher reports real paths. */
 let sessionRegistryDirs = new Set<string>();
 let fileContentRoots: string[] = [];
+let fileContentRootSet = new Set<string>();
 let fileContentRootByGitIndexPath = new Map<string, string>();
+/**
+ * Every Git index path plus each of its ancestor directories: the paths `shouldIgnoreWatch` keeps watched even under an
+ * ignored `.git`. A set lookup, because the predicate runs once per native event inside libuv's FSEvents callback, and
+ * scanning every root per event starved the event loop under heavy churn in other projects.
+ */
+let gitIndexWatchPaths = new Set<string>();
 const trackedFileIndex = new TrackedFileIndex();
 // One queue per database, so a burst of change events indexes file by file instead of all at once.
 const fileContentQueues = new WeakMap<IndexDb, CooperativeQueue>();
@@ -235,13 +242,10 @@ let ignoredDirPattern = buildIgnoredDirPattern(resolveIgnoredDirNames());
  * - Defense in depth: skips non-regular files (sockets, FIFOs).
  */
 export function shouldIgnoreWatch(path: string, stats?: Stats): boolean {
-	const normalizedPath = resolve(path);
-	for (const indexPath of fileContentRootByGitIndexPath.keys()) {
-		if (isPathInsideFileContentRoots(indexPath, [normalizedPath])) return false;
-	}
+	if (gitIndexWatchPaths.has(resolve(path))) return false;
 	if (ignoredDirPattern.test(path)) return true;
 	if (stats && !stats.isFile() && !stats.isDirectory()) return true;
-	if (stats?.isFile() && isPathInsideFileContentRoots(path, fileContentRoots)) {
+	if (stats?.isFile() && fileContentRootForPath(path) !== undefined) {
 		return !isFileContentIndexable(path);
 	}
 	if (stats?.isFile()) {
@@ -638,13 +642,25 @@ function handleFileContentUnlink(db: IndexDb, path: string): void {
 	deleteFileContent(db, path);
 }
 
+/** The file-content root holding `path`, found by walking its ancestors so the cost tracks depth, not root count. */
 function fileContentRootForPath(path: string): string | undefined {
-	return fileContentRoots.find((root) => isPathInsideFileContentRoots(path, [root]));
+	for (let current = resolve(path); ; current = dirname(current)) {
+		if (fileContentRootSet.has(current)) return current;
+		if (dirname(current) === current) return undefined;
+	}
 }
 
 function setFileContentRoots(roots: readonly string[]): void {
 	fileContentRoots = roots.map((root) => resolve(root));
+	fileContentRootSet = new Set(fileContentRoots);
 	fileContentRootByGitIndexPath = new Map(fileContentRoots.map((root) => [resolve(gitIndexPath(root)), root]));
+	gitIndexWatchPaths = new Set();
+	for (const indexPath of fileContentRootByGitIndexPath.keys()) {
+		for (let path = indexPath; !gitIndexWatchPaths.has(path); path = dirname(path)) {
+			gitIndexWatchPaths.add(path);
+			if (dirname(path) === path) break;
+		}
+	}
 }
 
 async function refreshTrackedFileRoot(db: IndexDb, root: string): Promise<void> {
