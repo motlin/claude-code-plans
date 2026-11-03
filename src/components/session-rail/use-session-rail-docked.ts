@@ -1,5 +1,6 @@
 import {createContext, useCallback, useContext, useId, useMemo, useRef, useState, type RefObject} from "react";
 
+import {useFizzyLake} from "../../lib/fizzy-lake";
 import {setSessionRailShown, useSessionRailShown} from "../../lib/session-rail-store";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {useOptionalPaneHost} from "../panes/pane-host-context";
@@ -21,24 +22,28 @@ export const SessionRailFitContext = createContext<SessionRailFit | null>(null);
 
 /** Owns one chat tile's fit state; attach `measureRef` to the tile root and provide the result. */
 export function useSessionRailFitState(): SessionRailFit {
+	const panels = useFizzyLake("panels");
 	const [band, setBand] = useState<RailFit>();
 	const [raised, setRaised] = useState(false);
 	const overlayId = useId();
 	const toggleRef = useRef<HTMLButtonElement>(null);
 	const observer = useRef<ResizeObserver>(null);
-	const measureRef = useCallback((node: HTMLElement | null) => {
-		observer.current?.disconnect();
-		observer.current = null;
-		if (node === null || typeof ResizeObserver === "undefined") return;
-		const measure = () => {
-			// Only the band is state, so resizing within one doesn't re-render the tile.
-			const {width} = node.getBoundingClientRect();
-			setBand(width > 0 ? railFit(width) : undefined);
-		};
-		measure();
-		observer.current = new ResizeObserver(measure);
-		observer.current.observe(node);
-	}, []);
+	const measureRef = useCallback(
+		(node: HTMLElement | null) => {
+			observer.current?.disconnect();
+			observer.current = null;
+			if (node === null || typeof ResizeObserver === "undefined") return;
+			const measure = () => {
+				// Only the band is state, so resizing within one doesn't re-render the tile.
+				const {width} = node.getBoundingClientRect();
+				setBand(width > 0 ? railFit(width, panels) : undefined);
+			};
+			measure();
+			observer.current = new ResizeObserver(measure);
+			observer.current.observe(node);
+		},
+		[panels],
+	);
 	return useMemo(
 		() => ({band, measureRef, raised, setRaised, overlayId, toggleRef}),
 		[band, measureRef, raised, overlayId],
@@ -46,9 +51,9 @@ export function useSessionRailFitState(): SessionRailFit {
 }
 
 /**
- * The fit state while the rail can't dock in the chat tile (upstream: under 611px, or
- * 771px beside a pane), so the toggle raises an overlay instead; null while it docks by
- * the pref, unmeasured, or on a phone, where the pref floats it over the transcript.
+ * The fit state while the rail can't dock in the chat tile (upstream under panels: under
+ * 640px, or 800px beside a pane), so the toggle raises an overlay instead; null while it
+ * docks by the pref, unmeasured, or on a phone, where the pref floats it over the transcript.
  */
 export function useSessionRailRaise(): SessionRailFit | null {
 	const fit = useContext(SessionRailFitContext);
@@ -59,8 +64,9 @@ export function useSessionRailRaise(): SessionRailFit | null {
 }
 
 /**
- * Whether the rail fits beside the open panes (upstream: the chat tile ≥771px). Unmeasured
- * or on a phone, a pane and the rail share the right side, so the pane swaps the rail out.
+ * Whether the rail fits beside the open panes (upstream under panels: the chat tile ≥800px).
+ * Unmeasured or on a phone, a pane and the rail share the right side, so the pane swaps the
+ * rail out.
  */
 function useSessionRailBesidePanes(): boolean {
 	const fit = useContext(SessionRailFitContext);

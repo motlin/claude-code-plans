@@ -503,8 +503,8 @@ describe("session rail fit by chat-panel width", () => {
 		};
 	}
 
-	it("thresholds the fit at upstream's 611px alone and 771px beside a pane", () => {
-		expect([railFit(610), railFit(611), railFit(770), railFit(771)]).toStrictEqual([
+	it("thresholds the fit at upstream's panels 640px alone and 800px beside a pane", () => {
+		expect([railFit(639, true), railFit(640, true), railFit(799, true), railFit(800, true)]).toStrictEqual([
 			"none",
 			"alone",
 			"alone",
@@ -515,6 +515,44 @@ describe("session rail fit by chat-panel width", () => {
 			false,
 			true,
 		]);
+	});
+
+	it("keeps upstream's pre-panels 611px alone and 771px beside a pane when panels is off", () => {
+		expect([railFit(610, false), railFit(611, false), railFit(770, false), railFit(771, false)]).toStrictEqual([
+			"none",
+			"alone",
+			"alone",
+			"beside-pane",
+		]);
+	});
+
+	it("doesn't dock alone at upstream's live 640px viewport (tile 632) but docks at a 640px tile", async () => {
+		setSessionRailShown(true);
+		tileWidth = 632;
+		renderFitSession();
+		await settle();
+		const narrow = {
+			column: document.querySelector("[data-epitaxy-rail-column]"),
+			toggle: toggleState(),
+		};
+		resizeTile(640);
+		await settle();
+
+		expect({
+			narrow,
+			wide: document.querySelector("[data-epitaxy-rail-column]") !== null,
+		}).toStrictEqual({
+			narrow: {
+				column: null,
+				toggle: {
+					label: "Show session rail",
+					pressed: "false",
+					expanded: "false",
+					controls: narrow.toggle.controls,
+				},
+			},
+			wide: true,
+		});
 	});
 
 	it("doesn't dock below the fit and raises an unpersisted overlay from the toggle, as upstream", async () => {
@@ -633,7 +671,7 @@ describe("session rail fit by chat-panel width", () => {
 		});
 	});
 
-	it("docks beside an open pane once the tile is 771px, as upstream", async () => {
+	it("docks beside an open pane once the tile is 800px, as upstream under panels", async () => {
 		registerKinds("changes");
 		setSessionRailShown(true);
 		tileWidth = 800;
@@ -677,10 +715,31 @@ describe("session rail fit by chat-panel width", () => {
 		});
 	});
 
-	it("raises the overlay beside a pane below 771px, leaving the pane open", async () => {
+	it("doesn't dock beside an open pane at a 799px tile under panels", async () => {
 		registerKinds("changes");
 		setSessionRailShown(true);
-		tileWidth = 700;
+		tileWidth = 799;
+		renderFitSession();
+		await settle();
+		fireEvent.click(screen.getByRole("button", {name: "Changes"}));
+		await settle();
+		const toggle = toggleState();
+
+		expect({
+			column: document.querySelector("[data-epitaxy-rail-column]"),
+			pane: screen.queryByRole("region", {name: "changes"}) !== null,
+			toggle,
+		}).toStrictEqual({
+			column: null,
+			pane: true,
+			toggle: {label: "Show session rail", pressed: "false", expanded: "false", controls: toggle.controls},
+		});
+	});
+
+	it("raises the overlay beside a pane below 800px, leaving the pane open", async () => {
+		registerKinds("changes");
+		setSessionRailShown(true);
+		tileWidth = 799;
 		renderFitSession();
 		await settle();
 		fireEvent.click(screen.getByRole("button", {name: "Changes"}));

@@ -243,7 +243,7 @@ type RailTileFrameProps = Omit<ComponentProps<typeof SessionTileFrame>, "rail" |
 	runningBackgroundLaunches: ReadonlyMap<string, string>;
 };
 
-/** The chat tile with the session rail docked at its end while shown and fitting (≥771px beside a side pane). */
+/** The chat tile with the session rail docked at its end while shown and fitting (≥800px beside a side pane under panels). */
 function RailTileFrame(props: RailTileFrameProps) {
 	const fit = useSessionRailFitState();
 	return (
