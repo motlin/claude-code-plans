@@ -96,6 +96,10 @@ describe("serializeDevServerRestarts with a real dev server", () => {
 	// A burst of config edits (a git checkout) asks for a restart again while one is under way, sometimes from the
 	// watcher of the half-built server the restart is creating. Vite drops its own in-flight guard on that server, so
 	// two restarts run at once and race to listen on the same port.
+	//
+	// The second request is made as the restart configures its new server, before it closes the old one, so it always
+	// lands mid-restart, and the test awaits that request's own promise rather than sleeping, so a slow machine only
+	// makes it slower.
 	it.each(["new", "current"] as const)(
 		"keeps serving when the %s server asks for a restart during a restart",
 		async (asker) => {
@@ -105,17 +109,17 @@ describe("serializeDevServerRestarts with a real dev server", () => {
 			let configured = 0;
 			let closed = 0;
 			let current: ViteDevServer | undefined;
+			let followUp: Promise<void> | undefined;
+			// Ordered after the serializer, so the server's restart is already wrapped when this asks for one.
 			const burst: Plugin = {
 				name: "config-edit-burst",
 				configureServer(server) {
 					configured++;
 					if (configured !== 2) return;
 					const target = asker === "new" ? server : current;
-					setTimeout(() => {
-						target?.restart().catch((error: unknown) => {
-							errors.push(error);
-						});
-					}, 10);
+					followUp = target?.restart().catch((error: unknown) => {
+						errors.push(error);
+					});
 				},
 				async buildEnd() {
 					// Closing the old server takes a while in the real app (nitro's worker), which widens the race.
@@ -128,29 +132,32 @@ describe("serializeDevServerRestarts with a real dev server", () => {
 				configFile: false,
 				logLevel: "silent",
 				server: {
-					port: 20_000 + Math.floor(Math.random() * 30_000),
+					// Port 0 lets the OS pick a free port on every listen, so parallel runs never collide.
+					port: 0,
 					strictPort: true,
 					host: "127.0.0.1",
 					watch: null,
 				},
-				plugins: [burst, serializeDevServerRestarts()],
+				plugins: [serializeDevServerRestarts(), burst],
 			});
 			await current.listen();
 			await current.restart().catch((error: unknown) => {
 				errors.push(error);
 			});
-			await sleep(500);
+			const requested = followUp !== undefined;
+			await followUp;
 
 			const url = current.resolvedUrls?.local[0];
 			const status = url === undefined ? undefined : (await fetch(`${url}@vite/client`)).status;
 			await current.close();
 
-			expect({errors: errors.map(String), configured, status}).toStrictEqual({
+			expect({errors: errors.map(String), requested, configured, status}).toStrictEqual({
 				errors: [],
+				requested: true,
 				configured: 3,
 				status: 200,
 			});
 		},
-		20_000,
+		60_000,
 	);
 });
