@@ -14,10 +14,11 @@ export interface ArtifactTemplate {
 	markKind: ArtifactMarkKind;
 	/**
 	 * Upstream's default (no color flag) `pK` mark tile fill: blue-400/orange-350/violet-450/red-450, dark
-	 * blue-450/orange-400/violet-500/red-500. Light values are 2026-11-01 computed colours; the dark orange,
-	 * violet and red come from the root-vars survey palette.
+	 * blue-450/orange-400/violet-500/red-500, from the live palette scale (dumps/template-menu-marks-2026-11-03.txt).
 	 */
 	markClass: string;
+	/** Upstream's fizzy-lake color `NH` bare glyph ink: `--cds-text-tint-<hue>` light and dark. */
+	glyphClass: string;
 	/** Upstream's sr-only catalog description; only Docs' was captured from the live page. */
 	description?: string;
 }
@@ -30,7 +31,8 @@ export const ARTIFACT_TEMPLATES: readonly ArtifactTemplate[] = [
 		hue: "var(--color-blue-500)",
 		badge: "New",
 		markKind: "document",
-		markClass: "bg-[rgb(51,140,237)] dark:bg-[rgb(37,125,224)]",
+		markClass: "bg-[#338ced] dark:bg-[#257de0]",
+		glyphClass: "text-[#1757ac] dark:text-[#6aabf1]",
 		description:
 			"By Anthropic. A document your team reads, comments on and edits in place while Claude keeps it current.",
 	},
@@ -40,7 +42,8 @@ export const ARTIFACT_TEMPLATES: readonly ArtifactTemplate[] = [
 		hue: "#b7791f",
 		badge: "New",
 		markKind: "slides",
-		markClass: "bg-[rgb(244,114,48)] dark:bg-[#d95926]",
+		markClass: "bg-[#f47230] dark:bg-[#e76624]",
+		glyphClass: "text-[#90370f] dark:text-[#f18a59]",
 	},
 	{
 		slug: "design",
@@ -48,7 +51,8 @@ export const ARTIFACT_TEMPLATES: readonly ArtifactTemplate[] = [
 		hue: "#7663b8",
 		badge: "New",
 		markKind: "design",
-		markClass: "bg-[rgb(120,94,232)] dark:bg-[#6250d6]",
+		markClass: "bg-[#785ee8] dark:bg-[#6a4ce2]",
+		glyphClass: "text-[#5437b8] dark:text-[#a89af0]",
 	},
 	{
 		slug: "dashboard",
@@ -56,7 +60,8 @@ export const ARTIFACT_TEMPLATES: readonly ArtifactTemplate[] = [
 		hue: "var(--color-violet-500)",
 		badge: "Beta",
 		markKind: "chart",
-		markClass: "bg-[rgb(220,60,61)] dark:bg-[#b93535]",
+		markClass: "bg-[#dc3c3d] dark:bg-[#c83839]",
+		glyphClass: "text-[#a42528] dark:text-[#f17778]",
 	},
 ];
 

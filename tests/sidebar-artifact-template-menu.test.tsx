@@ -18,6 +18,7 @@ import {applicationSettingsQueryOptions} from "../src/lib/api/application-settin
 import {approvalsQueryOptions} from "../src/lib/api/approvals";
 import {notificationsQueryOptions} from "../src/lib/api/notifications";
 import {activeSessionsQueryOptions} from "../src/lib/api/sessions";
+import {FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 import type {NavSection} from "../src/lib/nav-sections";
 import {ToastProvider} from "../src/components/toast";
 import {installLocalStorage} from "./fake-storage";
@@ -61,6 +62,7 @@ function stubFetch() {
 async function renderSidebar(
 	visibleNavSections: NavSection[] = ["artifacts", "plans", "memories", "customize"],
 	initialPath = "/plans",
+	fizzyLakeParts?: readonly FizzyLakePart[],
 ) {
 	const queryClient = seedQueryClient(visibleNavSections);
 	const rootRoute = createRootRoute({
@@ -68,7 +70,13 @@ async function renderSidebar(
 			<QueryClientProvider client={queryClient}>
 				<ToastProvider>
 					<SettingsProvider>
-						<Sidebar collapsed={false} />
+						{fizzyLakeParts === undefined ? (
+							<Sidebar collapsed={false} />
+						) : (
+							<FizzyLakeContext.Provider value={fizzyLakeParts}>
+								<Sidebar collapsed={false} />
+							</FizzyLakeContext.Provider>
+						)}
 						<Outlet />
 					</SettingsProvider>
 				</ToastProvider>
@@ -192,49 +200,61 @@ describe("sidebar Artifacts template launcher", () => {
 			}).toStrictEqual({menu: null, focused: true});
 		});
 	});
-	it("marks each template row with upstream's default ArtifactMark tile: solid hue, bold white glyph, 25% radius", async () => {
-		await renderSidebar();
-		const menu = await openTemplateMenu();
-		const marks = [...menu.querySelectorAll<HTMLElement>('[data-artifact-mark-size="menu"]')].map((mark) => {
+	function readMarks(menu: HTMLElement) {
+		return [...menu.querySelectorAll<HTMLElement>('[data-artifact-mark-size="menu"]')].map((mark) => {
 			const classes = mark.className.split(" ");
 			return {
 				kind: mark.dataset["artifactMark"],
-				tile: ["inline-flex", "size-5", "shrink-0", "overflow-hidden", "rounded-[25%]", "text-white"].every(
-					(name) => classes.includes(name),
+				tile: ["size-5", "overflow-hidden", "rounded-[25%]", "text-white"].filter((name) =>
+					classes.includes(name),
 				),
-				background: classes.filter((name) => name.startsWith("bg-") || name.startsWith("dark:bg-")),
+				colors: classes.filter((name) => /^(dark:)?(bg|text)-\[/.test(name)),
+				svgSize: classes.filter((name) => name.startsWith("[&_svg]")),
 				strokeWidth: mark.querySelector("svg")?.getAttribute("stroke-width"),
 			};
 		});
-		expect({marks, legacyTiles: menu.querySelectorAll("[data-template-tile]").length}).toStrictEqual({
+	}
+
+	it("marks each template row with upstream's fizzy-lake color look: a bare 20px tinted outline glyph", async () => {
+		await renderSidebar();
+		const menu = await openTemplateMenu();
+		const glyph = (kind: string, light: string, dark: string) => ({
+			kind,
+			tile: ["size-5"],
+			colors: [`text-[${light}]`, `dark:text-[${dark}]`],
+			svgSize: ["[&_svg]:!size-5"],
+			strokeWidth: "2",
+		});
+		expect({
+			marks: readMarks(menu),
+			legacyTiles: menu.querySelectorAll("[data-template-tile]").length,
+		}).toStrictEqual({
 			marks: [
-				{
-					kind: "document",
-					tile: true,
-					background: ["bg-[rgb(51,140,237)]", "dark:bg-[rgb(37,125,224)]"],
-					strokeWidth: "2.25",
-				},
-				{
-					kind: "slides",
-					tile: true,
-					background: ["bg-[rgb(244,114,48)]", "dark:bg-[#d95926]"],
-					strokeWidth: "2.25",
-				},
-				{
-					kind: "design",
-					tile: true,
-					background: ["bg-[rgb(120,94,232)]", "dark:bg-[#6250d6]"],
-					strokeWidth: "2.25",
-				},
-				{
-					kind: "chart",
-					tile: true,
-					background: ["bg-[rgb(220,60,61)]", "dark:bg-[#b93535]"],
-					strokeWidth: "2.25",
-				},
+				glyph("document", "#1757ac", "#6aabf1"),
+				glyph("slides", "#90370f", "#f18a59"),
+				glyph("design", "#5437b8", "#a89af0"),
+				glyph("chart", "#a42528", "#f17778"),
 			],
 			legacyTiles: 0,
 		});
+	});
+
+	it("keeps upstream's default ArtifactMark tile when the fizzy-lake color part is off", async () => {
+		await renderSidebar(undefined, undefined, ["panels", "type"]);
+		const menu = await openTemplateMenu();
+		const tile = (kind: string, light: string, dark: string) => ({
+			kind,
+			tile: ["size-5", "overflow-hidden", "rounded-[25%]", "text-white"],
+			colors: [`bg-[${light}]`, `dark:bg-[${dark}]`],
+			svgSize: ["[&_svg]:!size-3.5"],
+			strokeWidth: "2.25",
+		});
+		expect(readMarks(menu)).toStrictEqual([
+			tile("document", "#338ced", "#257de0"),
+			tile("slides", "#f47230", "#e76624"),
+			tile("design", "#785ee8", "#6a4ce2"),
+			tile("chart", "#dc3c3d", "#c83839"),
+		]);
 	});
 
 	it("tags the nav rows with upstream's data-nav-item ids", async () => {
