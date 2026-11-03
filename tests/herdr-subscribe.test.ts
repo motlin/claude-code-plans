@@ -749,6 +749,82 @@ describe("herdr event bridge", () => {
 		});
 	});
 
+	it("retries a failed snapshot with backoff and resubscribes to every pane once one succeeds", async () => {
+		const sockets: FakeSocket[] = [];
+		const scheduledDelays: number[] = [];
+		const reconnecting: boolean[] = [];
+		let snapshotCalls = 0;
+		const stop = __testing.createBridge({
+			probe: available,
+			connect: () => {
+				const socket = new FakeSocket();
+				sockets.push(socket);
+				return socket as unknown as Socket;
+			},
+			createLineReader: () => new FakeLineReader() as unknown as ReadlineInterface,
+			getSnapshot: async () => {
+				snapshotCalls += 1;
+				return Promise.resolve(
+					snapshotCalls <= 2
+						? null
+						: paneState([
+								{paneId: "w1:p1", revision: 0},
+								{paneId: "w1:p2", revision: 0},
+							]),
+				);
+			},
+			getPanes: async () => Promise.resolve([]),
+			paneTable: createHerdrPaneTable(),
+			broadcast: () => {},
+			schedule: (callback, delayMs) => {
+				scheduledDelays.push(delayMs);
+				return setTimeout(callback, delayMs);
+			},
+			cancel: clearTimeout,
+			viewedStateTracker: viewedStateTracker(),
+			setReconnecting: (value) => reconnecting.push(value),
+		});
+		await flushPromises();
+		sockets[0]!.emit("connect");
+		await flushPromises();
+		await vi.advanceTimersByTimeAsync(250);
+		await vi.advanceTimersByTimeAsync(500);
+		sockets[1]!.emit("connect");
+		await flushPromises();
+		await vi.advanceTimersByTimeAsync(20_000);
+
+		expect({
+			snapshotCalls,
+			scheduledDelays,
+			socketCount: sockets.length,
+			firstSocketDestroyed: sockets[0]!.destroyedByBridge,
+			subscriptions: sockets.map((socket) =>
+				socket.writes.map((write) =>
+					JSON.parse(write).params.subscriptions.filter(
+						(subscription: {type: string}) => subscription.type === "pane.agent_status_changed",
+					),
+				),
+			),
+			reconnecting,
+		}).toStrictEqual({
+			snapshotCalls: 3,
+			scheduledDelays: [250, 500],
+			socketCount: 2,
+			firstSocketDestroyed: true,
+			subscriptions: [
+				[[]],
+				[
+					[
+						{type: "pane.agent_status_changed", pane_id: "w1:p1"},
+						{type: "pane.agent_status_changed", pane_id: "w1:p2"},
+					],
+				],
+			],
+			reconnecting: [],
+		});
+		stop();
+	});
+
 	it("reports reconnecting from losing herdr until the resubscribe starts, but not for a deliberate resubscribe", async () => {
 		const sockets: FakeSocket[] = [];
 		const lineReaders: FakeLineReader[] = [];

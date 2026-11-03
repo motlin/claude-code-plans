@@ -187,8 +187,10 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 	let probeRetryTimer: Timer | null = null;
 	let reconnectTimer: Timer | null = null;
 	let resyncTimer: Timer | null = null;
+	let snapshotRetryTimer: Timer | null = null;
 	let probeRetryDelayMs = INITIAL_RETRY_DELAY_MS;
 	let reconnectDelayMs = INITIAL_RETRY_DELAY_MS;
+	let snapshotRetryDelayMs = INITIAL_RETRY_DELAY_MS;
 	let reconnectPending = false;
 	let resyncRunning = false;
 	let resyncAgain = false;
@@ -376,12 +378,7 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 		});
 	};
 
-	const openSubscription = async (): Promise<void> => {
-		if (stopped) return;
-		// One snapshot per (re)subscribe seeds the pane table, the replay
-		// differ, and the pane-scoped status subscriptions.
-		const snapshot = await reseedPaneTable();
-		if (isStopped()) return;
+	const subscribeFromSnapshot = async (snapshot: HerdrPaneState | null): Promise<void> => {
 		const panes = (snapshot?.panes ?? []).map((pane) => ({paneId: pane.pane_id, revision: pane.revision}));
 		paneDiffer.seedKnownPanes(panes);
 		// Seed terminalId-keyed transition state before subscribing. Otherwise a
@@ -390,6 +387,56 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 		if (isStopped()) return;
 		// herdr subscribes by its own pane ids, not ccp's qualified ones.
 		connect(panes.map((pane) => splitHerdrId(pane.paneId).id));
+		// Without a snapshot the subscription carries no pane-scoped status streams,
+		// so keep retrying the snapshot rather than waiting for a pane create or close.
+		if (snapshot === null) scheduleSnapshotRetry();
+		else snapshotRetryDelayMs = INITIAL_RETRY_DELAY_MS;
+	};
+
+	const cancelSnapshotRetry = (): void => {
+		if (!snapshotRetryTimer) return;
+		dependencies.cancel(snapshotRetryTimer);
+		snapshotRetryTimer = null;
+	};
+
+	const scheduleSnapshotRetry = (): void => {
+		if (stopped) return;
+		cancelSnapshotRetry();
+		snapshotRetryTimer = dependencies.schedule(() => {
+			snapshotRetryTimer = null;
+			void retrySnapshot();
+		}, snapshotRetryDelayMs);
+		snapshotRetryDelayMs = Math.min(snapshotRetryDelayMs * 2, MAXIMUM_RETRY_DELAY_MS);
+	};
+
+	// Retry only the snapshot, and resubscribe only once it succeeds: a resubscribe
+	// makes herdr replay its history, so it must never run on a failed attempt.
+	const retrySnapshot = async (): Promise<void> => {
+		const subscribedSocket = socket;
+		if (stopped || reconnectPending || subscribedSocket === null) return;
+		const snapshot = await reseedPaneTable();
+		// A reconnect started meanwhile drops this socket and takes its own snapshot.
+		if (isStopped() || socket !== subscribedSocket) return;
+		if (snapshot === null) {
+			scheduleSnapshotRetry();
+			return;
+		}
+		// A deliberate resubscribe: drop the socket first so its close is not a disconnect.
+		socket = null;
+		lineReader?.close();
+		lineReader = null;
+		subscribedSocket.destroy();
+		await subscribeFromSnapshot(snapshot);
+	};
+
+	const openSubscription = async (): Promise<void> => {
+		if (stopped) return;
+		cancelSnapshotRetry();
+		// One snapshot per (re)subscribe seeds the pane table, the replay
+		// differ, and the pane-scoped status subscriptions.
+		const snapshot = await reseedPaneTable();
+		if (isStopped()) return;
+		await subscribeFromSnapshot(snapshot);
 	};
 
 	const probeAndOpenSubscription = async (): Promise<void> => {
@@ -416,6 +463,7 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 		if (probeRetryTimer) dependencies.cancel(probeRetryTimer);
 		if (reconnectTimer) dependencies.cancel(reconnectTimer);
 		if (resyncTimer) dependencies.cancel(resyncTimer);
+		cancelSnapshotRetry();
 		lineReader?.close();
 		socket?.destroy();
 		paneTable.invalidate();
