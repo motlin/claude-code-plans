@@ -25,11 +25,12 @@ function Harness() {
 }
 
 function currentFolder(): string | null {
-	const list = screen.getByRole("list", {name: "Recent environments"});
+	const list = screen.getByRole("list", {name: "Recent folders"});
 	return (
 		within(list)
 			.getAllByRole("listitem")
-			.find((item) => item.getAttribute("aria-current") === "true")?.textContent ?? null
+			.find((item) => item.getAttribute("aria-current") === "true")
+			?.querySelector("span.truncate")?.textContent ?? null
 	);
 }
 

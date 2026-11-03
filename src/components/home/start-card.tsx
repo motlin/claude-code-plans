@@ -16,7 +16,8 @@ import {Tooltip} from "../ui/tooltip";
 import type {StartProject} from "../../lib/palette-start-session";
 import {useHomeDraftUsed, useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
 import {ProjectPicker} from "./project-picker";
-import {START_CARD_SETUP_HIDE_CLASS} from "./start-card-placement";
+import {ClawdMascot} from "./clawd-mascot";
+import {START_CARD_ENVIRONMENTS, START_CARD_SETUP_HIDE_CLASS} from "./start-card-placement";
 import {useNextStepsHold} from "./use-next-steps-hold";
 
 /** Upstream shows at most three recent environments. */
@@ -47,7 +48,7 @@ interface StartCardProps {
 }
 
 /**
- * Upstream's /code start card "Recent environments" list, adapted to recent local folders: the
+ * Upstream's /code start card "Recent folders" list of recent local folders: the
  * current folder is a static checked row, the others pick the launch folder and focus the composer,
  * and "Choose environment" opens the composer's project picker, over the "Next steps" list of waiting
  * sessions and failing PRs. Upstream's cloud environments have no local equivalent.
@@ -68,8 +69,10 @@ export function StartCard({projects, selected, onSelect, nextSteps}: StartCardPr
 		else requestHomeComposerFocus();
 	};
 
+	// Upstream's `q5`: Clawd peeks over the env card, or leads Next steps when there is none.
 	return (
 		<div data-start-card className="flex w-full min-w-0 flex-col items-center gap-3 p-px">
+			<ClawdMascot />
 			{projects.length > 0 && (
 				<RecentEnvironments projects={projects} selected={selected} choose={choose} chooseRef={chooseRef} />
 			)}
@@ -97,7 +100,13 @@ function RecentEnvironments({
 		if (project !== undefined) choose(project.id);
 	});
 	return (
-		<ul role="list" aria-label="Recent environments" className={CARD_CLASS}>
+		<ul
+			role="list"
+			aria-label="Recent folders"
+			data-testid="start-card-environments"
+			{...{[START_CARD_ENVIRONMENTS]: ""}}
+			className={CARD_CLASS}
+		>
 			{rows.map((project) => {
 				const current = project.id === selected?.id;
 				const content = (
@@ -112,6 +121,7 @@ function RecentEnvironments({
 							{current ? (
 								<div className={ROW_CLASS}>
 									{content}
+									<span className="sr-only">{shortenCwd(project.projectPath)}</span>
 									<Check
 										data-start-card-check
 										aria-hidden="true"

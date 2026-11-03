@@ -252,7 +252,7 @@ function sidebarRecentsRows(): number {
 }
 
 /**
- * Rows in the home main region: the start card's Recent environments and Next steps rows.
+ * Rows in the home main region: the start card's Recent folders and Next steps rows.
  */
 function homeMainRows(): number {
 	return document.querySelectorAll("[data-home-action-center] li").length;

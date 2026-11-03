@@ -31,7 +31,7 @@ function FakeComposer() {
 }
 
 function rows() {
-	const list = screen.getByRole("list", {name: "Recent environments"});
+	const list = screen.getByRole("list", {name: "Recent folders"});
 	return within(list)
 		.getAllByRole("listitem")
 		.map((item) => ({
@@ -54,7 +54,7 @@ describe("StartCard", () => {
 		expect(rows()).toStrictEqual([
 			{text: "p1", current: null, title: null, button: "p1", check: false},
 			{text: "p2", current: null, title: null, button: "p2", check: false},
-			{text: "p5", current: "true", title: null, button: null, check: true},
+			{text: "p5~/projects/p5", current: "true", title: null, button: null, check: true},
 			{
 				text: "Choose environment",
 				current: null,
@@ -70,9 +70,105 @@ describe("StartCard", () => {
 
 		expect(rows().map(({text, current}) => ({text, current}))).toStrictEqual([
 			{text: "p1", current: null},
-			{text: "p2", current: "true"},
+			{text: "p2~/projects/p2", current: "true"},
 			{text: "p3", current: null},
 			{text: "Choose environment", current: null},
+		]);
+	});
+
+	it("puts the current row's shortened cwd in an sr-only span before the Check, like upstream's r5", () => {
+		const {container} = render(<StartCard projects={PROJECTS} selected={PROJECTS[4]} onSelect={() => {}} />);
+		const current = container.querySelector("li[aria-current] [data-start-card-check]")?.parentElement;
+
+		expect(
+			[...(current?.children ?? [])].map((child) => ({
+				tag: child.tagName,
+				className: child.getAttribute("class"),
+				text: child.textContent,
+			})),
+		).toStrictEqual([
+			{tag: "svg", className: "lucide lucide-folder size-4 shrink-0", text: ""},
+			{tag: "SPAN", className: "min-w-0 flex-1 truncate text-start", text: "p5"},
+			{tag: "SPAN", className: "sr-only", text: "~/projects/p5"},
+			{tag: "svg", className: "lucide lucide-check size-4 shrink-0 text-primary", text: ""},
+		]);
+	});
+
+	it("peeks Clawd over the env card as the start card's first child, marking the env card for placement", () => {
+		const {container} = render(<StartCard projects={PROJECTS} selected={PROJECTS[0]} onSelect={() => {}} />);
+		const card = container.querySelector("[data-start-card]");
+		const clawd = card?.firstElementChild;
+		const mascot = clawd?.querySelector<HTMLButtonElement>("[data-clawd-mascot]");
+		if (!mascot) throw new Error("Expected the Clawd mascot in the start card");
+		const before = {
+			children: [...(card?.children ?? [])].map((child) => child.getAttribute("data-testid") ?? child.tagName),
+			wrapper: {className: clawd?.getAttribute("class"), zIndex: (clawd as HTMLElement).style.zIndex},
+			envMarked: screen.getByRole("list", {name: "Recent folders"}).hasAttribute("data-start-card-environments"),
+			ariaHidden: mascot.getAttribute("aria-hidden"),
+			tabIndex: mascot.getAttribute("tabindex"),
+			viewBox: mascot.querySelector("svg")?.getAttribute("viewBox"),
+			art: {
+				width: mascot.querySelector("svg")?.getAttribute("width"),
+				height: mascot.querySelector("svg")?.getAttribute("height"),
+				className: mascot.querySelector("svg")?.getAttribute("class"),
+			},
+			box: mascot.className,
+			hopping: mascot.hasAttribute("data-hopping"),
+		};
+		fireEvent.click(mascot);
+		const afterClick = mascot.hasAttribute("data-hopping");
+		// jsdom has no AnimationEvent, so React listens for the prefixed name instead of `animationend`.
+		fireEvent(mascot, new Event("webkitAnimationEnd", {bubbles: true}));
+
+		expect({...before, afterClick, afterEnd: mascot.hasAttribute("data-hopping")}).toStrictEqual({
+			children: ["start-card-clawd", "start-card-environments"],
+			wrapper: {className: "pointer-events-none relative h-0 -mb-3 w-80 max-w-full shrink-0", zIndex: "2"},
+			envMarked: true,
+			ariaHidden: "true",
+			tabIndex: "-1",
+			viewBox: "0 0 2750 1850",
+			art: {width: "49", height: "33", className: "absolute top-[34px] left-[22px]"},
+			box: "clawd-mascot pointer-events-none absolute right-[-13px] bottom-[calc(var(--cds-ring-outer,0px)-144px/11)] h-[80px] w-[80px] -scale-x-100 cursor-default border-0 bg-transparent p-0 outline-none [&_path]:pointer-events-auto",
+			hopping: false,
+			afterClick: true,
+			afterEnd: false,
+		});
+	});
+
+	it("leads Next steps with Clawd when there is no env card", () => {
+		const {container} = render(
+			<StartCard
+				projects={[]}
+				selected={undefined}
+				onSelect={() => {}}
+				nextSteps={{
+					rows: selectNextSteps({
+						candidates: [
+							{
+								id: "waiting-session",
+								subject: "s1",
+								stamp: 100,
+								title: "Task 1",
+								detail: "Asked a question",
+							},
+						],
+						dismissed: {},
+					}),
+					onOpen: () => {},
+					onDismiss: () => {},
+				}}
+			/>,
+		);
+		const card = container.querySelector("[data-start-card]");
+
+		expect(
+			[...(card?.children ?? [])].map((child) => ({
+				testid: child.getAttribute("data-testid"),
+				setup: child.hasAttribute("data-start-card-setup"),
+			})),
+		).toStrictEqual([
+			{testid: "start-card-clawd", setup: false},
+			{testid: null, setup: true},
 		]);
 	});
 
@@ -251,8 +347,10 @@ function FolderChip() {
 	return <ProjectPicker projects={projects} selected={selected} onSelect={select} worktree={worktree} />;
 }
 
+/** The current row's folder name, without its sr-only path. */
 function currentFolder() {
-	return rows().find((row) => row.current !== null)?.text ?? null;
+	const list = screen.getByRole("list", {name: "Recent folders"});
+	return list.querySelector("li[aria-current] span.truncate")?.textContent ?? null;
 }
 
 describe("home launch-folder request", () => {

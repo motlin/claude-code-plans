@@ -22,7 +22,6 @@ import {findLaunchedSession, type PendingLaunch} from "../../lib/palette-start-s
 import {assignLaunchedSession, setPendingLaunchGroup} from "../../lib/session-group-store";
 import {Composer} from "../composer";
 import {useToast} from "../toast-context";
-import {ClawdMascot} from "./clawd-mascot";
 import {UsagePaceBanner} from "../usage-pace-banner";
 import {useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
 import {ProjectPicker} from "./project-picker";
@@ -146,7 +145,6 @@ export function HomeComposer({
 			<div className="pb-1.5 empty:hidden">
 				<UsagePaceBanner />
 			</div>
-			<ClawdMascot />
 			<Composer
 				variant="home"
 				draftKey="home"

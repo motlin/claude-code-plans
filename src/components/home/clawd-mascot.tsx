@@ -6,14 +6,19 @@ const BODY =
 const EYES = "M750 600h250v250H750zM1750 600h250v250h-250z";
 
 /**
- * Upstream's Clawd easter egg: a pixel-art crab peeking over the home composer's top-right corner.
- * Only its painted pixels take clicks, and a click plays a short hop (skipped under reduced motion).
+ * Upstream's Clawd easter egg (`q5`): a zero-height 320px strip at the top of the start card whose pixel-art crab
+ * peeks over the next card's top-right corner. Only its painted pixels take clicks, and a click plays a short hop
+ * (skipped under reduced motion).
  */
 export function ClawdMascot() {
 	const [hopping, setHopping] = useState(false);
 
 	return (
-		<div className="pointer-events-none relative h-0">
+		<div
+			data-testid="start-card-clawd"
+			className="pointer-events-none relative h-0 -mb-3 w-80 max-w-full shrink-0"
+			style={{zIndex: 2}}
+		>
 			<button
 				type="button"
 				tabIndex={-1}
@@ -29,7 +34,7 @@ export function ClawdMascot() {
 				className="clawd-mascot pointer-events-none absolute right-[-13px] bottom-[calc(var(--cds-ring-outer,0px)-144px/11)] h-[80px] w-[80px] -scale-x-100 cursor-default border-0 bg-transparent p-0 outline-none [&_path]:pointer-events-auto"
 			>
 				{/* Upstream's art is 49x33 inside the 80px hit box: insets top 34, bottom 13 and (before the
-				    mirror) left 22, right 9, so it rests on the composer's top edge 9px in from its right. */}
+				    mirror) left 22, right 9, so it rests on the card's top edge 9px in from its right. */}
 				<svg
 					viewBox="0 0 2750 1850"
 					width="49"

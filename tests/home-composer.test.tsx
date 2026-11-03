@@ -284,42 +284,11 @@ describe("HomeComposer", () => {
 		});
 	});
 
-	it("peeks the Clawd mascot over the composer as an unfocusable decorative button that hops on click", async () => {
+	it("leaves the Clawd mascot off the home composer; it peeks over the start card instead", async () => {
 		await renderApp();
 		await screen.findByRole("textbox", {name: "Prompt"});
 
-		const mascot = document.querySelector<HTMLButtonElement>("[data-clawd-mascot]");
-		if (mascot === null) throw new Error("Expected the Clawd mascot on the home composer");
-		const before = {
-			tag: mascot.tagName,
-			ariaHidden: mascot.getAttribute("aria-hidden"),
-			tabIndex: mascot.getAttribute("tabindex"),
-			hopping: mascot.hasAttribute("data-hopping"),
-			viewBox: mascot.querySelector("svg")?.getAttribute("viewBox"),
-			// Upstream paints the art 49x33 inside the 80px hit box, 9px in from its (mirrored) right edge and 13px up.
-			art: {
-				width: mascot.querySelector("svg")?.getAttribute("width"),
-				height: mascot.querySelector("svg")?.getAttribute("height"),
-				className: mascot.querySelector("svg")?.getAttribute("class"),
-			},
-			box: mascot.className,
-		};
-		fireEvent.click(mascot);
-		const afterClick = mascot.hasAttribute("data-hopping");
-		// jsdom has no AnimationEvent, so React listens for the prefixed name instead of `animationend`.
-		fireEvent(mascot, new Event("webkitAnimationEnd", {bubbles: true}));
-
-		expect({...before, afterClick, afterEnd: mascot.hasAttribute("data-hopping")}).toStrictEqual({
-			tag: "BUTTON",
-			ariaHidden: "true",
-			tabIndex: "-1",
-			hopping: false,
-			viewBox: "0 0 2750 1850",
-			art: {width: "49", height: "33", className: "absolute top-[34px] left-[22px]"},
-			box: "clawd-mascot pointer-events-none absolute right-[-13px] bottom-[calc(var(--cds-ring-outer,0px)-144px/11)] h-[80px] w-[80px] -scale-x-100 cursor-default border-0 bg-transparent p-0 outline-none [&_path]:pointer-events-auto",
-			afterClick: true,
-			afterEnd: false,
-		});
+		expect(document.querySelector("[data-home-composer] [data-clawd-mascot]")).toBeNull();
 	});
 
 	it("leaves the Clawd mascot off the session composer", () => {

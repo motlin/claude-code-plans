@@ -148,7 +148,11 @@ describe("HomeLanding", () => {
 			startCard: true,
 			scroller: true,
 			wrapperClass: "flex min-h-full w-full flex-col pb-6",
-			slot: [{className: "flex w-full flex-col", children: [true]}],
+			// Upstream's IZ: a spacer whose max-height centres the env card, then the slot.
+			slot: [
+				{className: "max-h-0 grow basis-0", children: []},
+				{className: "flex w-full flex-col", children: [true]},
+			],
 			nextStepsHides: {setup: true, hideClass: true},
 			h2s: [],
 			regions: [],

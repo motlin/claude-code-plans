@@ -1989,7 +1989,7 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	}
 }
 
-/* Clawd mascot on the home composer: a click plays a short hop. `translate` leaves the
+/* Clawd mascot on the home start card: a click plays a short hop. `translate` leaves the
    mirroring `scale` alone. */
 @media (prefers-reduced-motion: no-preference) {
 	.clawd-mascot[data-hopping] {
