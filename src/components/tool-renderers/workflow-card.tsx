@@ -94,7 +94,7 @@ export function WorkflowCard({
 	const surface = (
 		<span
 			aria-hidden="true"
-			className="card-outline absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover"
+			className="card-outline task-card-surface absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover"
 		/>
 	);
 	if (onOpen === undefined) {

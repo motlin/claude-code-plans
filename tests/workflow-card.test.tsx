@@ -124,13 +124,13 @@ function records(launched: boolean): unknown[] {
 	];
 }
 
-function renderChat(
-	launched: boolean,
+function chat(
+	transcript: unknown[],
 	workflowRuns: WorkflowRun[],
 	open = vi.fn<(focus?: BackgroundTasksFocus) => void>(),
 ) {
-	const {lines, toolResultMap} = processTranscript(records(launched));
-	const view = render(
+	const {lines, toolResultMap} = processTranscript(transcript);
+	return (
 		<BackgroundTasksOpenerProvider value={{open, running: new Map()}}>
 			<SessionChat
 				sessionId="test-session"
@@ -140,9 +140,16 @@ function renderChat(
 				showCompactSummaries
 				showTranscriptOnly
 			/>
-		</BackgroundTasksOpenerProvider>,
+		</BackgroundTasksOpenerProvider>
 	);
-	return {...view, open};
+}
+
+function renderChat(
+	launched: boolean,
+	workflowRuns: WorkflowRun[],
+	open = vi.fn<(focus?: BackgroundTasksFocus) => void>(),
+) {
+	return {...render(chat(records(launched), workflowRuns, open)), open};
 }
 
 function cells(container: HTMLElement): string[] {
@@ -159,11 +166,14 @@ describe("WorkflowCard", () => {
 			text: card.textContent,
 			cells: cells(container),
 			summary: container.querySelector('[role="img"]')?.getAttribute("aria-label"),
+			surface: card.querySelector('span[aria-hidden="true"]')?.className,
 		}).toStrictEqual({
 			className: CARD_CLASS,
 			text: `${NAME}${NAME}Starting workflow`,
 			cells: ["epitaxy-agent-cell shrink-0 rounded-xs epitaxy-agent-cell--ghost"],
 			summary: "Waiting for agents to start",
+			surface:
+				"card-outline task-card-surface absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover",
 		});
 	});
 
@@ -232,6 +242,30 @@ describe("Workflow call in the session transcript", () => {
 			anchor: container.querySelector(`[data-tool-anchor="${TOOL_USE_ID}"]`)?.className,
 			calls: open.mock.calls,
 		}).toStrictEqual({anchor: "contents", calls: [[{taskId: TASK_ID}]]});
+	});
+
+	it("keeps a call that was live at mount a Starting workflow card until its run record arrives, as upstream's Rw latch", async () => {
+		vi.useFakeTimers({now: NOW, toFake: ["Date"]});
+		const {rerender} = render(chat(records(false), []));
+		await screen.findByRole("button", {name: `View workflow: ${NAME}`});
+		rerender(chat(records(true), []));
+		const launched = screen.queryByRole("button", {name: `View workflow: ${NAME}`})?.textContent;
+		rerender(chat(records(true), [run()]));
+
+		expect({
+			launched,
+			running: screen.queryByRole("button", {name: `View workflow: ${NAME}`})?.textContent,
+		}).toStrictEqual({
+			launched: `${NAME}${NAME}Starting workflow`,
+			running: `${NAME}${NAME}Workflow3 agents13s`,
+		});
+	});
+
+	it("draws a call already completed at mount with no run record as the row", async () => {
+		renderChat(true, []);
+		await screen.findByText("Ran workflow");
+
+		expect(screen.queryByRole("button", {name: `View workflow: ${NAME}`})).toBeNull();
 	});
 
 	it("draws a completed launch as a row, not a card", async () => {
@@ -363,10 +397,83 @@ describe("settled Workflow row", () => {
 		});
 	});
 
+	it("draws the settled row in upstream's 3px-gap rounded-sm shell with no hover recolour", async () => {
+		const {container} = renderSettled([], [run({status: "completed"})]);
+		await screen.findByText("Ran workflow");
+		const row = launchRow(container);
+
+		expect({
+			root: row.firstElementChild?.className,
+			label: row.querySelector('[id$="-label"]')?.className,
+		}).toStrictEqual({
+			root: "relative flex self-start max-w-full items-center py-0 gap-0.75 text-start rounded-sm",
+			label: "shrink-0 text-body text-secondary",
+		});
+	});
+
+	it("draws a failed run's label in danger ink", async () => {
+		const {container} = renderSettled(
+			[workflowNotification("failed", `Workflow "${NAME}" failed: agent crashed`)],
+			[run({status: "failed"})],
+		);
+		await screen.findByText("Ran workflow");
+
+		expect(launchRow(container).querySelector('[id$="-label"]')?.className).toBe(
+			"shrink-0 text-body text-danger-ink",
+		);
+	});
+
 	it("marks the row Stopped when a TaskStop ended its task", async () => {
 		const {container} = renderSettled(TASK_STOP_RECORDS, [run({status: "completed"})]);
 		await screen.findByText("Ran workflow");
 
 		expect(launchRow(container).textContent).toBe(`Ran workflow${NAME}StoppedRan workflow ${NAME} Stopped`);
+	});
+});
+
+describe("errored Workflow call", () => {
+	it("reads Failed to run workflow with the name and no separate Failed status, as upstream's generic failed row", async () => {
+		const [call] = records(false);
+		const {container} = render(
+			chat(
+				[
+					call,
+					{
+						type: "user",
+						uuid: "u1",
+						timestamp: "2026-10-19T12:00:00.000Z",
+						toolUseResult: "Error: Workflow script not found",
+						message: {
+							role: "user",
+							content: [
+								{
+									type: "tool_result",
+									tool_use_id: TOOL_USE_ID,
+									is_error: true,
+									content: "<tool_use_error>Workflow script not found</tool_use_error>",
+								},
+							],
+						},
+					},
+				],
+				[],
+			),
+		);
+		await screen.findByText("Failed to run workflow");
+		const row = [...container.querySelectorAll<HTMLElement>("[data-tool-row]")].find((element) =>
+			element.textContent.startsWith("Failed to run workflow"),
+		);
+
+		expect({
+			cards: screen.queryAllByRole("button", {name: `View workflow: ${NAME}`}).length,
+			label: row?.querySelector('[id$="-label"]')?.textContent,
+			meta: row?.querySelector('[id$="-meta"]')?.textContent,
+			outcome: row?.querySelector('[id$="-outcome"]')?.textContent ?? null,
+		}).toStrictEqual({
+			cards: 0,
+			label: "Failed to run workflow",
+			meta: NAME,
+			outcome: null,
+		});
 	});
 });

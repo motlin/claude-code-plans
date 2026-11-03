@@ -50,7 +50,7 @@ export function ArtifactCard({url, label, previewHref}: {url: string; label: str
 			>
 				<span
 					aria-hidden="true"
-					className="card-outline absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover"
+					className="card-outline task-card-surface absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover"
 				/>
 				<AppWindow size={16} aria-hidden="true" className="shrink-0 self-center text-ink-muted" />
 				<span className="min-w-0 flex-1 text-body text-primary truncate">{label}</span>

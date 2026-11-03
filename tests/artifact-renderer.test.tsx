@@ -124,6 +124,7 @@ function cardSummary(container: HTMLElement) {
 		rel: card?.getAttribute("rel"),
 		className: card?.getAttribute("class"),
 		label: card?.querySelector("span.truncate")?.textContent,
+		surface: card?.querySelector('span[aria-hidden="true"]')?.className,
 	};
 }
 
@@ -228,6 +229,8 @@ describe("ArtifactRenderer", () => {
 			rel: "noopener noreferrer",
 			className: CARD_CLASS,
 			label: "Quarto Oracle",
+			surface:
+				"card-outline task-card-surface absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover",
 		});
 	});
 

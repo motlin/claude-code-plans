@@ -973,6 +973,18 @@ html[data-interface-font="dyslexic"] {
 	}
 }
 
+/* Upstream `.epitaxy-task-card-surface`: a pressed 318px task card's surface shrinks
+   to .99 in 60ms and springs back over .45s, shared by the workflow and artifact cards. */
+.task-card-surface {
+	transform-origin: 50%;
+	transition: transform 0.45s var(--btn-spring);
+}
+
+.group\/btn:active:not([disabled]) .task-card-surface {
+	transition: transform 60ms ease-out;
+	transform: scale(0.99);
+}
+
 /* Upstream cds `scroll-fade-y`: a scroller's top and bottom edges fade through a mask whose
    depth a scroll-driven timeline grows from 0 to --scroll-fade-size as content scrolls past
    each edge. Browsers without scroll timelines keep only the scroll padding, so no mask. */

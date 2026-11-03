@@ -5615,16 +5615,20 @@ function PlanFeedbackBubble({text}: {text: string}) {
 }
 
 /**
- * A tool call alone in its row. A Workflow call that is starting (no launch
- * result yet) or whose run is still running draws upstream's workflow card
+ * A tool call alone in its row. A Workflow call that is starting (no run
+ * record yet, and live at mount or still pending) or whose run is still running draws upstream's workflow card
  * (`S1` -> `Vme`); every other call, and a settled workflow, is a row.
  */
 function LoneToolCall({call, sessionId, leading}: {call: ClientToolCall; sessionId: string; leading: boolean}) {
 	const run = useContext(WorkflowRunsContext).get(call.id);
 	const permissionWaitId = useContext(PermissionWaitContext);
 	const backgroundTasks = useBackgroundTasksOpener();
+	// Upstream `Rw` latches at mount whether the call was live: a live call stays a
+	// "Starting workflow" card after its launch result lands until its run record
+	// arrives, so only a call already settled at mount falls straight to the row.
+	const [wasLive] = useState(() => isPendingToolCall(call) || permissionWaitId === call.id);
 	const isWorkflow = call.name === "Workflow" && call.isError !== true && permissionWaitId !== call.id;
-	const preLaunch = isWorkflow && run === undefined && isPendingToolCall(call);
+	const preLaunch = isWorkflow && run === undefined && (wasLive || isPendingToolCall(call));
 	if (!preLaunch && !(isWorkflow && run?.status === "running")) {
 		const feedback = planRejectionFeedback(call);
 		const row = <ToolCallRow call={call} sessionId={sessionId} leading={leading} />;
@@ -5741,7 +5745,10 @@ function ToolCallRow({
 						: "Stopped"
 					: call.denied === true
 						? "Denied"
-						: "Failed"
+						: // A failed verb ("Failed to run workflow") already names the failure, so upstream adds no status.
+							toolRowLabel.failedVerb === true
+							? null
+							: "Failed"
 			: call.name === "AskUserQuestion"
 				? // A completed question nobody answered notes why, as upstream does.
 					(questionOutcomeNote(call) ?? null)
@@ -5755,6 +5762,8 @@ function ToolCallRow({
 		isWorkflow && status !== null && backgroundOutcome !== undefined
 			? workflowNotificationSummary(backgroundOutcomes.notificationByLaunch.get(call.id))
 			: undefined;
+	// Upstream's `Rw` row: a lone launched workflow sits in a 3px-gap rounded-sm shell with no hover recolour.
+	const settledWorkflowRow = isWorkflow && call.isError !== true && !nested && !verbose;
 	// A settled workflow reads in secondary ink, or danger once it failed, as upstream's `S1` draws it.
 	const workflowInk =
 		isWorkflow && !call.isError ? (status === "Failed" ? "text-danger-ink" : "text-secondary") : null;
@@ -6072,7 +6081,11 @@ function ToolCallRow({
 			<div data-tool-row="" className="flex flex-col w-full">
 				<div
 					data-state={busyAgent ? "busy" : undefined}
-					className="relative group/tool flex self-start max-w-full items-center py-0 gap-g5 text-left"
+					className={
+						settledWorkflowRow
+							? "relative flex self-start max-w-full items-center py-0 gap-0.75 text-start rounded-sm"
+							: "relative group/tool flex self-start max-w-full items-center py-0 gap-g5 text-left"
+					}
 				>
 					{rowLabel}
 					{media}

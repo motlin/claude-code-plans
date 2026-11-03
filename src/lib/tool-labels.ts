@@ -46,6 +46,10 @@ export interface ToolLabelCall {
 	/** The call's result text, once it has one. */
 	result?: string | undefined;
 	isError?: boolean | undefined;
+	/** The user interrupted the call. */
+	stopped?: boolean | undefined;
+	/** The user rejected the call. */
+	denied?: boolean | undefined;
 }
 
 /**
@@ -60,6 +64,8 @@ export interface ToolLabel {
 	metaIsCode?: true;
 	metaHref?: string;
 	doneLabel?: string;
+	/** The verb is upstream's `failedVerb`, which names the failure, so the row adds no "Failed" status. */
+	failedVerb?: true;
 }
 
 type FileEditToolUseResult = z.infer<typeof FileEditToolUseResultSchema>;
@@ -577,9 +583,15 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
 		}
 		case "Artifact":
 			return artifactLabel(input);
-		case "Workflow":
-			// Upstream's settled row names the run beside the verb.
-			return withMeta({verb: "Ran workflow"}, workflowCallName(input) ?? null);
+		case "Workflow": {
+			// Upstream's settled row names the run beside the verb; an errored call (not
+			// one the user stopped or rejected) takes its failedVerb instead.
+			const failed = call.isError === true && call.stopped !== true && call.denied !== true;
+			return withMeta(
+				failed ? {verb: "Failed to run workflow", failedVerb: true} : {verb: "Ran workflow"},
+				workflowCallName(input) ?? null,
+			);
+		}
 		case "SendMessage":
 			return sendMessageLabel(call);
 		case "ExitPlanMode": {

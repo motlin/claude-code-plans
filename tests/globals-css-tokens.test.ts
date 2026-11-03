@@ -187,3 +187,16 @@ describe("sidebar group band", () => {
 		});
 	});
 });
+
+describe("task-card press scale", () => {
+	it("scales a pressed task card's surface to .99 in 60ms and springs it back over .45s, as upstream's epitaxy-task-card-surface", () => {
+		expect({
+			rest: block(".task-card-surface").replaceAll(/\s+/g, " "),
+			pressed: block(".group\\/btn:active:not([disabled]) .task-card-surface").replaceAll(/\s+/g, " "),
+		}).toStrictEqual({
+			rest: ".task-card-surface { transform-origin: 50%; transition: transform 0.45s var(--btn-spring);",
+			pressed:
+				".group\\/btn:active:not([disabled]) .task-card-surface { transition: transform 60ms ease-out; transform: scale(0.99);",
+		});
+	});
+});
