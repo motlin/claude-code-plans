@@ -2,6 +2,7 @@ import {Check, Copy, Gauge, TriangleAlert} from "lucide-react";
 import {type ReactNode, useEffect, useId, useRef, useState} from "react";
 
 import {type ApiErrorCategory, classifyApiError, errorCopy, refusalPassthrough} from "../lib/api-error-category";
+import {parseApiErrorDetails} from "../lib/api-error-details";
 import {categoryRecoveryHelps, fallbackModel, type RecoveryAction, recoveryActions} from "../lib/api-error-recovery";
 import {modelLabel, primaryModelMenuValue, PRIMARY_MODELS} from "../lib/launch-options";
 import {writeClipboardText} from "../lib/clipboard";
@@ -93,8 +94,8 @@ function CopyDetailsButton({details}: {details: string}) {
  * details" opens a tinted box with the raw error body, then the Status,
  * Request ID and Message ID lines, and a Copy details button in its corner.
  * Like upstream, the lines show only when there is a status or request id.
- * Upstream builds its copy text in a chunk the dumps don't include, so this
- * joins the body and the lines with newlines.
+ * Copy details copies the raw error text (upstream's `jW({details})`), or the
+ * lines when there is none.
  */
 function ErrorDetails({
 	details,
@@ -108,7 +109,7 @@ function ErrorDetails({
 	/** Upstream's action group, pushed to the row's trailing edge. */
 	actions?: ReactNode;
 }) {
-	const {body, status, requestId, messageId} = details ?? {};
+	const {body, raw, status, requestId, messageId} = details ?? {};
 	const [open, setOpen] = useState(false);
 	const panelId = useId();
 	const facts =
@@ -119,7 +120,7 @@ function ErrorDetails({
 					...(requestId === undefined ? [] : [`Request ID: ${requestId}`]),
 					...(messageId === undefined ? [] : [`Message ID: ${messageId}`]),
 				];
-	const copyText = [...(body === undefined ? [] : [body]), ...facts].join("\n");
+	const copyText = raw ?? facts.join("\n");
 	return (
 		<>
 			<div
@@ -180,7 +181,10 @@ interface ResolvedApiError {
 	learnMoreUrl?: string;
 	/** The View details props, or undefined when upstream shows no View details. */
 	details?: {
+		/** The parsed body (upstream's `eX`): no API Error prefix, a JSON body unwrapped. */
 		body?: string;
+		/** The unparsed error text, which Copy details copies. */
+		raw?: string;
 		status?: number | string;
 		requestId?: string;
 		messageId?: string;
@@ -191,8 +195,8 @@ interface ResolvedApiError {
  * Classifies the error and picks what upstream shows for it. Without a live
  * session the viewer can't rewind, retry or send, so the hint is the
  * no-composer variant; with one, it follows what the card offers. A `drop`
- * verdict hides the raw body and keeps View details only for a status or
- * request id.
+ * verdict hides the body and keeps View details only for a status or
+ * request id. The status falls back to the one in the text's prefix.
  */
 function resolveApiError({
 	text,
@@ -213,12 +217,15 @@ function resolveApiError({
 		...(stopReason !== undefined && {stopReason}),
 		...(numeric !== undefined && {status: numeric}),
 	});
-	const copy = errorCopy(category, hintContext);
+	const copy = errorCopy(category, {...hintContext, text});
 	// Upstream's passthrough: a refusal's own text replaces the hint, drops Learn more, and leaves View details.
 	const passthrough = category === "usage_policy" && stopReason === "refusal" ? refusalPassthrough(text) : undefined;
 	const raw = details ?? (text === "" ? undefined : text);
-	const body = copy.detailsVerdict === "drop" || passthrough !== undefined ? undefined : raw;
-	const showDetails = body !== undefined || status !== undefined || requestId !== undefined;
+	const parsed = raw === undefined ? undefined : parseApiErrorDetails(raw);
+	const parsedBody = parsed?.body === "" ? raw : parsed?.body;
+	const body = copy.detailsVerdict === "drop" || passthrough !== undefined ? undefined : parsedBody;
+	const detailsStatus = status ?? parsed?.status;
+	const showDetails = body !== undefined || detailsStatus !== undefined || requestId !== undefined;
 	const learnMoreUrl = passthrough === undefined ? copy.learnMoreUrl : undefined;
 	return {
 		category,
@@ -232,7 +239,8 @@ function resolveApiError({
 		...(showDetails && {
 			details: {
 				...(body !== undefined && {body}),
-				...(status !== undefined && {status}),
+				...(raw !== undefined && {raw}),
+				...(detailsStatus !== undefined && {status: detailsStatus}),
 				...(requestId !== undefined && {requestId}),
 				...(messageId !== undefined && {messageId}),
 			},

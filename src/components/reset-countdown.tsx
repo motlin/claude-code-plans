@@ -1,57 +1,38 @@
 import {useEffect, useState} from "react";
 import {formatPaceBannerReset} from "../lib/usage";
 
-/** Upstream's `rn`: under an hour the countdown replaces the absolute reset time. */
-const COUNTDOWN_MS = 3_600_000;
-/** Upstream's `an`: under ten minutes the countdown shows seconds. */
-const SECONDS_COUNTDOWN = 600;
-
-const MINUTES = new Intl.NumberFormat("en-US", {style: "unit", unit: "minute", unitDisplay: "short"});
-
-/** Upstream's countdown text (`cn`) for a reset `resetsAt` (epoch seconds) seen at `nowMs`. */
-function resetCountdownText(resetsAt: number, nowMs: number): string {
-	const remainingMs = resetsAt * 1000 - nowMs;
-	if (remainingMs >= COUNTDOWN_MS) return formatPaceBannerReset(resetsAt, nowMs);
-	const seconds = Math.max(0, Math.ceil(remainingMs / 1000));
-	if (seconds === 0) return "Resetting…";
-	if (seconds < SECONDS_COUNTDOWN) {
-		return `Resets in ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-	}
-	return `Resets in ${MINUTES.format(Math.floor(seconds / 60))}`;
-}
+const RESETTING = "Resetting…";
 
 /**
- * The exceeded band's reset: the absolute time an hour or more out, then "Resets in N min",
- * "Resets in m:ss" under ten minutes (ticking each second), and "Resetting…" at the reset.
- * In a notice card the visible text is aria-hidden and an sr-only absolute reset follows it.
+ * The exceeded band's reset (upstream `Tn`): the absolute reset time until it passes, then
+ * "Resetting…". Ticks once a minute (so the same-day vs dated form stays right) plus once at
+ * the reset instant. In a notice card the visible text is aria-hidden and an sr-only absolute
+ * reset follows it; outside one, "Resetting…" sits in an `aria-live="off"` span.
  */
 export function ResetCountdown({resetsAt, inNoticeCard = false}: {resetsAt: number; inNoticeCard?: boolean}) {
 	const [nowMs, setNowMs] = useState(() => Date.now());
-	const counting = resetsAt * 1000 - nowMs < COUNTDOWN_MS;
+	const resetMs = resetsAt * 1000;
+	const resetting = resetMs <= nowMs;
 	useEffect(() => {
-		const id = setInterval(
-			() => {
-				setNowMs(Date.now());
-			},
-			counting ? 1000 : 60_000,
-		);
+		const tick = () => {
+			setNowMs(Date.now());
+		};
+		const id = setInterval(tick, 60_000);
+		const atReset = resetting ? undefined : setTimeout(tick, resetMs - Date.now());
 		return () => {
 			clearInterval(id);
+			if (atReset !== undefined) clearTimeout(atReset);
 		};
-	}, [counting]);
-	const visible = resetCountdownText(resetsAt, nowMs);
+	}, [resetMs, resetting]);
+	const absolute = formatPaceBannerReset(resetsAt, nowMs);
+	const visible = resetting ? RESETTING : absolute;
 	if (inNoticeCard) {
-		// Upstream's in-card reset: the ticking text hidden from readers, the absolute time (`Tn`) read instead.
 		return (
 			<span data-testid="reset-countdown">
 				<span aria-hidden="true">{visible}</span>
-				<span className="sr-only">{formatPaceBannerReset(resetsAt, nowMs)}</span>
+				<span className="sr-only">{absolute}</span>
 			</span>
 		);
 	}
-	return (
-		<span data-testid="reset-countdown" aria-live="off" className="tabular-nums">
-			{visible}
-		</span>
-	);
+	return <span data-testid="reset-countdown">{resetting ? <span aria-live="off">{RESETTING}</span> : visible}</span>;
 }

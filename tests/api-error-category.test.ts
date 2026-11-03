@@ -81,6 +81,50 @@ describe("classifyApiError", () => {
 	});
 });
 
+describe("upstream's effort cap and model version gate", () => {
+	const EFFORT =
+		'API Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Invalid effort level: max"}}';
+	const VERSION = "API Error: 400 Claude Code 2.1.0 does not support this model; version 2.2.0 or newer is required";
+
+	it("classifies a 400 whose message starts with Invalid effort level, or with the version gate", () => {
+		expect([
+			classify({text: EFFORT}),
+			classify({text: "API Error: 400 Invalid effort level: max"}),
+			classify({text: VERSION}),
+			classify({text: "API Error: 500 Invalid effort level: max"}),
+			classify({text: "API Error: 400 Something mentions Invalid effort level"}),
+		]).toStrictEqual([
+			"effort_cap_exceeded",
+			"effort_cap_exceeded",
+			"model_version_unsupported",
+			"server_error",
+			"invalid_request",
+		]);
+	});
+
+	it("gives each upstream's headline and hint", () => {
+		expect([
+			errorCopy("effort_cap_exceeded", VIEWER),
+			errorCopy("model_version_unsupported", {...VIEWER, text: VERSION}),
+		]).toStrictEqual([
+			{
+				headline: "Your organization limits effort for this model",
+				markerLabel: "Your organization limits effort for this model",
+				hint: "Contact your admin to change this limit.",
+				rewindHelps: false,
+				detailsVerdict: "drop",
+			},
+			{
+				headline: "This model needs a newer version of Claude Code",
+				markerLabel: "This model needs a newer version of Claude Code",
+				hint: "This session is on Claude Code 2.1.0. This model needs 2.2.0 or newer. You can pick a different model, or update Claude Code or the Claude desktop app, then start a new session.",
+				rewindHelps: false,
+				detailsVerdict: "keep",
+			},
+		]);
+	});
+});
+
 describe("errorCopy", () => {
 	it("gives the viewer upstream's no-rewind, no-composer copy for each specimen category", () => {
 		expect([
@@ -140,7 +184,7 @@ describe("errorCopy", () => {
 			{
 				headline: "Image is too large",
 				markerLabel: "Image is too large",
-				hint: "An image in this conversation is over 2000px. Start a new session to continue.",
+				hint: "An image in this session is too large to send. Start a new session to continue.",
 				rewindHelps: true,
 				detailsVerdict: "drop",
 			},

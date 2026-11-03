@@ -141,7 +141,7 @@ describe("ApiErrorCard", () => {
 		});
 	});
 
-	it("opens View details on the status, request id and message id, and Copy details copies them then shows Copied for 1200ms", async () => {
+	it("opens View details on the status, request id and message id, and Copy details copies the raw error text then shows Copied for 1200ms", async () => {
 		const container = renderRecords([OVERLOADED_RECORD]);
 		const card = container.querySelector("[data-api-error-card]");
 		const trigger = card?.querySelector("button");
@@ -188,11 +188,7 @@ describe("ApiErrorCard", () => {
 			label: copy?.getAttribute("aria-label"),
 			status: box?.querySelector("[role=status]")?.textContent,
 		}).toStrictEqual({
-			copied: [
-				[
-					"Status: 529\nRequest ID: req_011CfHarGaksRjzuQwv2aEni\nMessage ID: 69f6c760-e79e-4483-bdfe-5fb492ef4838",
-				],
-			],
+			copied: [[RAW_529]],
 			label: "Copied",
 			status: "Copied",
 		});
@@ -243,9 +239,86 @@ describe("ApiErrorCard", () => {
 		}).toStrictEqual({
 			headline: "An API error occurred",
 			hint: "Try sending your message again.",
-			body: "API Error: something odd",
+			body: "something odd",
 			prose: 0,
 		});
+	});
+
+	it("shows a network error's body without the API Error prefix and copies the raw text, like upstream's parsed details", async () => {
+		const raw = "API Error: Can't reach the API server — check your internet or DNS (ENOTFOUND)";
+		const container = renderRecords([
+			{
+				type: "assistant",
+				message: {role: "assistant", content: [{type: "text", text: raw}]},
+				isApiErrorMessage: true,
+			},
+		]);
+		const card = container.querySelector("[data-api-error-card]");
+		fireEvent.click(card!.querySelector("button")!);
+		const box = card?.querySelector("[data-api-error-details]")?.firstElementChild;
+		await act(async () => {
+			fireEvent.click(box!.querySelector("button")!);
+			await Promise.resolve();
+		});
+
+		expect({
+			headline: card?.firstElementChild?.textContent,
+			body: box?.querySelector(".whitespace-pre-wrap")?.textContent,
+			copied: writeText.mock.calls,
+		}).toStrictEqual({
+			headline: "Connection problem",
+			body: "Can't reach the API server — check your internet or DNS (ENOTFOUND)",
+			copied: [[raw]],
+		});
+	});
+
+	it("quotes the versions in upstream's model version gate hint", () => {
+		const container = renderRecords([
+			{
+				type: "assistant",
+				message: {
+					role: "assistant",
+					content: [
+						{
+							type: "text",
+							text: "API Error: 400 Claude Code 2.1.0 does not support this model; version 2.2.0 or newer is required",
+						},
+					],
+				},
+				isApiErrorMessage: true,
+			},
+		]);
+		const card = container.querySelector("[data-api-error-card]");
+		expect({headline: card?.firstElementChild?.textContent, hint: card?.children[1]?.textContent}).toStrictEqual({
+			headline: "This model needs a newer version of Claude Code",
+			hint: "This session is on Claude Code 2.1.0. This model needs 2.2.0 or newer. You can pick a different model, or update Claude Code or the Claude desktop app, then start a new session.",
+		});
+	});
+
+	it("unwraps a JSON error body to its message and shows the prefix's status", () => {
+		const container = renderRecords([
+			{
+				type: "assistant",
+				message: {
+					role: "assistant",
+					content: [
+						{
+							type: "text",
+							text: 'API Error: 400 {"type":"error","error":{"type":"invalid_request_error","message":"Bad thing"}}',
+						},
+					],
+				},
+				isApiErrorMessage: true,
+			},
+		]);
+		const card = container.querySelector("[data-api-error-card]");
+		fireEvent.click(card!.querySelector("button")!);
+		const box = card?.querySelector("[data-api-error-details]")?.firstElementChild;
+
+		expect({
+			body: box?.querySelector(".whitespace-pre-wrap")?.textContent,
+			facts: [...(box?.querySelector(".break-all")?.children ?? [])].map((line) => line.textContent),
+		}).toStrictEqual({body: "Bad thing", facts: ["Status: 400"]});
 	});
 	it("draws a safeguards refusal whose content is only empty thinking as upstream's Message flagged card", () => {
 		const container = renderRecords([

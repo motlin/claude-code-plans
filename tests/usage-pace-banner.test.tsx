@@ -437,36 +437,48 @@ describe("ResetCountdown", () => {
 		vi.useRealTimers();
 	});
 
-	function countdown(secondsAhead: number) {
-		render(<ResetCountdown resetsAt={NOW / 1000 + secondsAhead} />);
+	function countdown(secondsAhead: number, inNoticeCard = false) {
+		render(<ResetCountdown resetsAt={NOW / 1000 + secondsAhead} inNoticeCard={inNoticeCard} />);
 		return screen.getByTestId("reset-countdown");
 	}
 
 	it("shows the absolute reset an hour or more ahead", () => {
 		const node = countdown(2 * HOUR);
-		expect({text: node.textContent, live: node.getAttribute("aria-live"), className: node.className}).toStrictEqual(
-			{
-				text: "Resets at 6:00 PM",
-				live: "off",
-				className: "tabular-nums",
-			},
-		);
+		expect(node.outerHTML).toBe('<span data-testid="reset-countdown">Resets at 6:00 PM</span>');
 	});
 
-	it("counts minutes under an hour", () => {
-		expect(countdown(37 * 60).textContent).toBe("Resets in 37 min");
+	it("keeps the absolute reset under an hour, with no minute countdown", () => {
+		expect(countdown(37 * 60).outerHTML).toBe('<span data-testid="reset-countdown">Resets at 4:37 PM</span>');
 	});
 
-	it("counts minutes and two-digit seconds under ten minutes, ticking every second", () => {
+	it("keeps the absolute reset under ten minutes without ticking seconds", () => {
 		const node = countdown(9 * 60 + 5);
-		expect(node.textContent).toBe("Resets in 9:05");
+		expect(node.textContent).toBe("Resets at 4:09 PM");
 		act(() => {
 			vi.advanceTimersByTime(5000);
 		});
-		expect(node.textContent).toBe("Resets in 9:00");
+		expect(node.textContent).toBe("Resets at 4:09 PM");
 	});
 
-	it("reads 'Resetting…' once the reset arrives", () => {
-		expect(countdown(0).textContent).toBe("Resetting\u2026");
+	it("flips to 'Resetting…' at the reset instant", () => {
+		const node = countdown(9 * 60 + 5);
+		act(() => {
+			vi.advanceTimersByTime((9 * 60 + 5) * 1000);
+		});
+		expect(node.outerHTML).toBe(
+			'<span data-testid="reset-countdown"><span aria-live="off">Resetting\u2026</span></span>',
+		);
+	});
+
+	it("reads 'Resetting…' once the reset arrives, outside the live region", () => {
+		expect(countdown(0).outerHTML).toBe(
+			'<span data-testid="reset-countdown"><span aria-live="off">Resetting\u2026</span></span>',
+		);
+	});
+
+	it("hides the visible text from readers in a notice card and reads the absolute reset instead", () => {
+		expect(countdown(37 * 60, true).outerHTML).toBe(
+			'<span data-testid="reset-countdown"><span aria-hidden="true">Resets at 4:37 PM</span><span class="sr-only">Resets at 4:37 PM</span></span>',
+		);
 	});
 });

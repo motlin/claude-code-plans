@@ -22,7 +22,9 @@ export type ApiErrorCategory =
 	| "invalid_request"
 	| "image_invalid"
 	| "request_too_large"
+	| "effort_cap_exceeded"
 	| "model_not_found"
+	| "model_version_unsupported"
 	| "output_token_limit"
 	| "extra_usage_required"
 	| "billing"
@@ -46,7 +48,46 @@ export interface ApiErrorInput {
  * `NK` billing, `_w` permission); the gates can't come from a transcript and
  * the other three still have the textual rows that follow them.
  */
-const TEXT_CATEGORIES: ReadonlyArray<readonly [RegExp, ApiErrorCategory]> = [
+/** Upstream's `OT(400)`: an "API Error: 400" / "API 400" / "API Error (400)" prefix. */
+const BAD_REQUEST_PREFIX =
+	/^\s*(?:Claude Code returned an error result:\s*)?API (?:400\b|Error(?: \((?!\d{3}\))[^()\n]{1,80}\))?:? ?400\b|Error \(400\))/i;
+
+/** Upstream's `A3`: a 400's message, unwrapped from a JSON error body when there is one. */
+function badRequestMessage(text: string): string | undefined {
+	const prefix = BAD_REQUEST_PREFIX.exec(text);
+	if (prefix === null) return undefined;
+	const rest = text.slice(prefix[0].length).replace(/^:?\s*/, "");
+	if (!rest.startsWith("{") && !rest.startsWith("[")) return rest;
+	const newline = rest.indexOf("\n");
+	try {
+		const parsed: unknown = JSON.parse(newline === -1 ? rest : rest.slice(0, newline));
+		const first: unknown = Array.isArray(parsed) ? parsed[0] : parsed;
+		const error: unknown = typeof first === "object" && first !== null ? Reflect.get(first, "error") : undefined;
+		const message: unknown =
+			typeof error === "object" && error !== null ? Reflect.get(error, "message") : undefined;
+		return typeof message === "string" ? message.trimStart() : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/** Upstream's `R$` on the 400 message (`_C`). */
+const EFFORT_CAP = /^Invalid effort level\b/;
+
+/** Upstream's `Hn`: the CLI's model version gate, on the 400 message (`HU`). */
+const MODEL_VERSION_GATE =
+	/^Claude Code (\d{1,6}\.\d{1,6}\.\d{1,6}) does not support this model; version (\d{1,6}\.\d{1,6}\.\d{1,6}) or newer is required\b/;
+
+/** Upstream's `HU`: the running and required versions of a model version gate error. */
+function modelVersionGate(text: string): {version: string; minVersion: string} | undefined {
+	const match = MODEL_VERSION_GATE.exec(badRequestMessage(text) ?? "");
+	const [, version, minVersion] = match ?? [];
+	return version === undefined || minVersion === undefined ? undefined : {version, minVersion};
+}
+
+type TextRule = RegExp | ((text: string) => boolean);
+
+const TEXT_CATEGORIES: ReadonlyArray<readonly [TextRule, ApiErrorCategory]> = [
 	[/exceeds the dimension limit|\bImage was too large\b/i, "image_dimension"],
 	[
 		/hit your (?:org's )?(?:monthly )?(?:usage )?limit|out of (?:extra )?usage|usage allocation|monthly usage limit|group's usage limit|(?<!not your )usage limit/i,
@@ -69,6 +110,8 @@ const TEXT_CATEGORIES: ReadonlyArray<readonly [RegExp, ApiErrorCategory]> = [
 		"org_disabled",
 	],
 	[/Could not process image|image .* could not be processed|PDF is password protected/i, "image_invalid"],
+	[(text) => modelVersionGate(text) !== undefined, "model_version_unsupported"],
+	[(text) => EFFORT_CAP.test(badRequestMessage(text) ?? ""), "effort_cap_exceeded"],
 	[/selected model|model not found|is not a valid model|model does not exist/i, "model_not_found"],
 	[/exceeded the \d+ output token/i, "output_token_limit"],
 	[/Extra usage is required|Usage credits required for 1M context/i, "extra_usage_required"],
@@ -134,7 +177,7 @@ export function classifyApiError({text, code, status, stopReason}: ApiErrorInput
 		const decisive = codeCategory(code);
 		if (decisive !== undefined) return decisive;
 	}
-	const fromText = TEXT_CATEGORIES.find(([pattern]) => pattern.test(text))?.[1];
+	const fromText = TEXT_CATEGORIES.find(([rule]) => (typeof rule === "function" ? rule(text) : rule.test(text)))?.[1];
 	if (fromText !== undefined) return fromText;
 	const fromCode = codeCategory(code);
 	if (fromCode !== undefined) return fromCode;
@@ -208,8 +251,8 @@ const COPY: Readonly<Record<ApiErrorCategory, CategoryCopy>> = {
 	},
 	image_dimension: {
 		headline: "Image is too large",
-		hint: "An image in this conversation is over 2000px. Rewind to remove it, or start a new session.",
-		hintNoRewind: "An image in this conversation is over 2000px. Start a new session to continue.",
+		hint: "An image in this session is too large to send. Rewind to remove it, or start a new session.",
+		hintNoRewind: "An image in this session is too large to send. Start a new session to continue.",
 		detailsVerdict: "drop",
 	},
 	overloaded: {
@@ -273,6 +316,16 @@ const COPY: Readonly<Record<ApiErrorCategory, CategoryCopy>> = {
 		hintNoRewind: "An attachment is too large. Start a new session to continue.",
 		detailsVerdict: "drop",
 	},
+	effort_cap_exceeded: {
+		headline: "Your organization limits effort for this model",
+		hint: "Contact your admin to change this limit.",
+		detailsVerdict: "drop",
+	},
+	model_version_unsupported: {
+		headline: "This model needs a newer version of Claude Code",
+		hint: "This session is on Claude Code {version}. This model needs {minVersion} or newer. You can pick a different model, or update Claude Code or the Claude desktop app, then start a new session.",
+		detailsVerdict: "keep",
+	},
 	model_not_found: {
 		headline: "Model isn’t available",
 		hint: "Switch to a different model to continue.",
@@ -313,6 +366,8 @@ export interface ErrorCopyContext {
 	canRetry: boolean;
 	/** The session has a live composer to send a new message from. */
 	hasComposer: boolean;
+	/** The error text, for hints that quote it (the version gate's versions). */
+	text?: string;
 }
 
 export interface ErrorCopy {
@@ -330,10 +385,18 @@ export interface ErrorCopy {
  * the without-retry hint when there is a composer but no Try again, or the
  * without-composer hint when there is neither.
  */
-export function errorCopy(category: ApiErrorCategory, {canRewind, canRetry, hasComposer}: ErrorCopyContext): ErrorCopy {
+export function errorCopy(
+	category: ApiErrorCategory,
+	{canRewind, canRetry, hasComposer, text}: ErrorCopyContext,
+): ErrorCopy {
 	const copy = COPY[category];
 	const hint = !canRewind && copy.hintNoRewind !== undefined ? copy.hintNoRewind : copy.hint;
-	const shown = canRetry ? hint : hasComposer ? (copy.hintWithoutRetry ?? hint) : (copy.hintWithoutComposer ?? hint);
+	const chosen = canRetry ? hint : hasComposer ? (copy.hintWithoutRetry ?? hint) : (copy.hintWithoutComposer ?? hint);
+	const versions = text === undefined ? undefined : modelVersionGate(text);
+	const shown =
+		versions === undefined
+			? chosen
+			: chosen.replace("{version}", versions.version).replace("{minVersion}", versions.minVersion);
 	return {
 		headline: copy.headline,
 		markerLabel: copy.markerLabel ?? copy.headline,
