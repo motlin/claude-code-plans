@@ -1,6 +1,7 @@
 import {createFileRoute} from "@tanstack/react-router";
 import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
 import {SettingsResponse} from "../../lib/api/settings";
+import {type FileVersion, filesEtag, notModifiedResponse, validatorHeaders} from "../../lib/conditional-get";
 
 const SETTINGS_FILENAMES = ["settings.json", "settings.local.json"] as const;
 
@@ -19,10 +20,11 @@ export const Route = createFileRoute("/api/settings")({
 					exists: boolean;
 					content: string;
 				}> = [];
-				let latestMtime: Date | null = null;
+				const versions: Array<FileVersion | null> = [];
 
 				for (const filename of SETTINGS_FILENAMES) {
 					const filePath = join(claudeHome, filename);
+					versions.push(await stat(filePath).catch(() => null));
 					try {
 						const raw = await readFile(filePath, "utf-8");
 						const pretty = JSON.stringify(JSON.parse(raw), null, 2);
@@ -32,10 +34,6 @@ export const Route = createFileRoute("/api/settings")({
 							exists: true,
 							content: pretty,
 						});
-						const fileStat = await stat(filePath);
-						if (!latestMtime || fileStat.mtime > latestMtime) {
-							latestMtime = fileStat.mtime;
-						}
 					} catch {
 						results.push({
 							filename,
@@ -46,31 +44,11 @@ export const Route = createFileRoute("/api/settings")({
 					}
 				}
 
-				if (latestMtime) {
-					const ifModifiedSince = request.headers.get("If-Modified-Since");
-					if (ifModifiedSince) {
-						const since = new Date(ifModifiedSince).getTime();
-						const mtimeFloor = Math.floor(latestMtime.getTime() / 1000) * 1000;
-						if (!Number.isNaN(since) && since >= mtimeFloor) {
-							return new Response(null, {
-								status: 304,
-								headers: {
-									"Cache-Control": "private, max-age=0, must-revalidate",
-									"Last-Modified": latestMtime.toUTCString(),
-								},
-							});
-						}
-					}
-				}
+				const etag = filesEtag(versions);
+				const notModified = notModifiedResponse(request, etag);
+				if (notModified) return notModified;
 
-				const headers: Record<string, string> = {
-					"Cache-Control": "private, max-age=0, must-revalidate",
-				};
-				if (latestMtime) {
-					headers["Last-Modified"] = latestMtime.toUTCString();
-				}
-
-				return Response.json(SettingsResponse.parse(results), {headers});
+				return Response.json(SettingsResponse.parse(results), {headers: validatorHeaders(etag)});
 			},
 		}),
 	},

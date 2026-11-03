@@ -3,23 +3,7 @@ import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
 import {PlanDetailResponse} from "../../lib/api/plans";
 import {fromMdSlug} from "../../lib/md-slug";
 import {rejectCrossSite} from "../../lib/same-origin-guard";
-
-/**
- * Returns `true` when an `If-Modified-Since` header value indicates the
- * client's cached copy is up-to-date relative to the file's `mtime`.
- *
- * HTTP `Last-Modified`/`If-Modified-Since` have one-second precision, so
- * the comparison is performed against `mtime` floored to the nearest
- * second. Returns `false` when the header is missing, unparseable, or
- * older than the floored mtime.
- */
-export function isPlanNotModified(ifModifiedSince: string | null, mtime: Date): boolean {
-	if (!ifModifiedSince) return false;
-	const since = new Date(ifModifiedSince).getTime();
-	if (Number.isNaN(since)) return false;
-	const mtimeFloor = Math.floor(mtime.getTime() / 1000) * 1000;
-	return since >= mtimeFloor;
-}
+import {filesEtag, notModifiedResponse, validatorHeaders} from "../../lib/conditional-get";
 
 export const Route = createFileRoute("/api/plans/$filename")({
 	server: {
@@ -39,37 +23,22 @@ export const Route = createFileRoute("/api/plans/$filename")({
 					return new Response("Not Found", {status: 404});
 				}
 
-				let mtime: Date | null = null;
-				try {
-					const fileStat = await stat(filePath);
-					mtime = fileStat.mtime;
-				} catch {
-					// missing file — fall through to readPlan which returns null
+				const fileStat = await stat(filePath).catch(() => null);
+				if (fileStat === null) {
+					return new Response("Not Found", {status: 404});
 				}
-
-				if (mtime) {
-					if (isPlanNotModified(request.headers.get("If-Modified-Since"), mtime)) {
-						return new Response(null, {
-							status: 304,
-							headers: {
-								"Cache-Control": "private, max-age=0, must-revalidate",
-								"Last-Modified": mtime.toUTCString(),
-							},
-						});
-					}
-				}
+				const etag = filesEtag([fileStat]);
+				const notModified = notModifiedResponse(request, etag);
+				if (notModified) return notModified;
 
 				const markdown = await readPlan(plansDir, filename);
-				if (markdown == null || mtime == null) {
+				if (markdown == null) {
 					return new Response("Not Found", {status: 404});
 				}
 
 				const title = extractTitleFromContent(markdown, filename);
-
-				const headers: Record<string, string> = {
-					"Cache-Control": "private, max-age=0, must-revalidate",
-					"Last-Modified": mtime.toUTCString(),
-				};
+				const mtime = fileStat.mtime;
+				const headers = validatorHeaders(etag);
 
 				return Response.json(
 					PlanDetailResponse.parse({

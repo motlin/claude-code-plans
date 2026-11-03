@@ -1,4 +1,4 @@
-import {writeFileSync, mkdirSync, rmSync} from "node:fs";
+import {writeFileSync, mkdirSync, rmSync, statSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {
@@ -77,14 +77,14 @@ describe("readSourceFile", () => {
 		writeFileSync(join(testRoot, "plan.md"), "# Hello\n");
 		const file = await readSourceFile("plan", mdConfig, "plan.md");
 		if (!file) throw new Error("Expected non-null file");
-		expect(file.mtime).toBeInstanceOf(Date);
-		const {mtime: _mtime, ...rest} = file;
-		expect(rest).toStrictEqual({
+		const fileStat = statSync(join(testRoot, "plan.md"));
+		expect(file).toStrictEqual({
 			kind: "plan",
 			absolutePath: join(testRoot, "plan.md"),
 			content: "# Hello\n",
 			language: "markdown",
 			relativePath: "plan.md",
+			version: {mtimeMs: fileStat.mtimeMs, size: 8},
 		});
 	});
 
@@ -93,14 +93,14 @@ describe("readSourceFile", () => {
 		writeFileSync(join(testRoot, "proj", "1.json"), '{"id":"1"}');
 		const file = await readSourceFile("task", jsonConfig, "proj/1.json");
 		if (!file) throw new Error("Expected non-null file");
-		expect(file.mtime).toBeInstanceOf(Date);
-		const {mtime: _mtime2, ...rest} = file;
-		expect(rest).toStrictEqual({
+		const fileStat = statSync(join(testRoot, "proj", "1.json"));
+		expect(file).toStrictEqual({
 			kind: "task",
 			absolutePath: join(testRoot, "proj", "1.json"),
 			content: '{"id":"1"}',
 			language: "json",
 			relativePath: "proj/1.json",
+			version: {mtimeMs: fileStat.mtimeMs, size: 10},
 		});
 	});
 

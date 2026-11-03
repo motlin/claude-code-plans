@@ -1,6 +1,7 @@
 import {readFile, stat} from "node:fs/promises";
 import {join, resolve, sep} from "node:path";
 import {assertNever} from "./assert-never";
+import type {FileVersion} from "./conditional-get";
 
 /**
  * Generic source-view kinds. Each kind maps to a known root directory under ~/.claude/
@@ -20,7 +21,8 @@ export interface SourceFile {
 	absolutePath: string;
 	content: string;
 	language: "markdown" | "json";
-	mtime: Date;
+	/** The stat identity the route's ETag is built from. */
+	version: FileVersion;
 }
 
 /**
@@ -60,7 +62,7 @@ export async function readSourceFile(
 			absolutePath,
 			content,
 			language: config.language,
-			mtime: fileStat.mtime,
+			version: {mtimeMs: fileStat.mtimeMs, size: fileStat.size},
 		};
 	} catch {
 		return null;

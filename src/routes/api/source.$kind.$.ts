@@ -1,6 +1,7 @@
 import {createFileRoute} from "@tanstack/react-router";
 import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
 import {SourceFileResponse} from "../../lib/api/source";
+import {filesEtag, notModifiedResponse, validatorHeaders} from "../../lib/conditional-get";
 
 export const Route = createFileRoute("/api/source/$kind/$")({
 	server: {
@@ -34,20 +35,9 @@ export const Route = createFileRoute("/api/source/$kind/$")({
 					});
 				}
 
-				const ifModifiedSince = request.headers.get("If-Modified-Since");
-				if (ifModifiedSince) {
-					const since = new Date(ifModifiedSince).getTime();
-					const mtimeFloor = Math.floor(file.mtime.getTime() / 1000) * 1000;
-					if (!Number.isNaN(since) && since >= mtimeFloor) {
-						return new Response(null, {
-							status: 304,
-							headers: {
-								"Cache-Control": "private, max-age=0, must-revalidate",
-								"Last-Modified": file.mtime.toUTCString(),
-							},
-						});
-					}
-				}
+				const etag = filesEtag([file.version]);
+				const notModified = notModifiedResponse(request, etag);
+				if (notModified) return notModified;
 
 				return Response.json(
 					SourceFileResponse.parse({
@@ -56,12 +46,7 @@ export const Route = createFileRoute("/api/source/$kind/$")({
 						relativePath: file.relativePath,
 						absolutePath: file.absolutePath,
 					}),
-					{
-						headers: {
-							"Cache-Control": "private, max-age=0, must-revalidate",
-							"Last-Modified": file.mtime.toUTCString(),
-						},
-					},
+					{headers: validatorHeaders(etag)},
 				);
 			},
 		}),

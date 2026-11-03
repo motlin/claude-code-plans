@@ -3,6 +3,7 @@ import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
 import {MemoryDeleteResponse, MemoryDetailResponse, MemorySaveResponse} from "../../lib/api/memories";
 import {fromMdSlug} from "../../lib/md-slug";
 import {rejectCrossSite} from "../../lib/same-origin-guard";
+import {filesEtag, notModifiedResponse, validatorHeaders} from "../../lib/conditional-get";
 
 export const Route = createFileRoute("/api/projects/$id/memories/$filename")({
 	server: {
@@ -25,29 +26,11 @@ export const Route = createFileRoute("/api/projects/$id/memories/$filename")({
 					return new Response("Not Found", {status: 404});
 				}
 
-				let mtime: Date | null = null;
-				try {
-					const fileStat = await stat(filePath);
-					mtime = fileStat.mtime;
-				} catch {
-					// missing file — fall through to readMemory which returns null
-				}
-
-				if (mtime) {
-					const ifModifiedSince = request.headers.get("If-Modified-Since");
-					if (ifModifiedSince) {
-						const since = new Date(ifModifiedSince).getTime();
-						const mtimeFloor = Math.floor(mtime.getTime() / 1000) * 1000;
-						if (!Number.isNaN(since) && since >= mtimeFloor) {
-							return new Response(null, {
-								status: 304,
-								headers: {
-									"Cache-Control": "private, max-age=0, must-revalidate",
-									"Last-Modified": mtime.toUTCString(),
-								},
-							});
-						}
-					}
+				const fileStat = await stat(filePath).catch(() => null);
+				const etag = fileStat === null ? null : filesEtag([fileStat]);
+				if (etag !== null) {
+					const notModified = notModifiedResponse(request, etag);
+					if (notModified) return notModified;
 				}
 
 				const content = await readMemory(projectsDir, params.id, filename);
@@ -58,12 +41,9 @@ export const Route = createFileRoute("/api/projects/$id/memories/$filename")({
 				}
 
 				const projectName = decodeProjectDir(params.id);
-				const headers: Record<string, string> = {
-					"Cache-Control": "private, max-age=0, must-revalidate",
-				};
-				if (mtime) {
-					headers["Last-Modified"] = mtime.toUTCString();
-				}
+				const mtime = fileStat?.mtime ?? null;
+				const headers =
+					etag === null ? {"Cache-Control": "private, max-age=0, must-revalidate"} : validatorHeaders(etag);
 
 				return Response.json(
 					MemoryDetailResponse.parse({
