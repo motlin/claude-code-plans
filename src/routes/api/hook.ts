@@ -49,13 +49,33 @@ const HOOK_DIRS: HookDispatchDirs = {
 /** Truncated raw body to keep the drift table from growing unbounded. */
 const RAW_BODY_MAX_BYTES = 16_384;
 
+/** Issue fields that carry body values rather than schema shape, so two bodies with the same drift differ there. */
+const VALUE_BEARING_ISSUE_KEYS = new Set(["input", "message"]);
+
+function normalizeIssueValue(key: string, value: unknown): unknown {
+	if (key === "path" && Array.isArray(value)) {
+		return value.map((segment: unknown) => (typeof segment === "number" ? "*" : segment));
+	}
+	if (Array.isArray(value)) return value.map((item: unknown) => normalizeIssueValue("", item));
+	if (isRecord(value)) {
+		return Object.fromEntries(
+			Object.keys(value)
+				.filter((childKey) => !VALUE_BEARING_ISSUE_KEYS.has(childKey))
+				.toSorted()
+				.map((childKey) => [childKey, normalizeIssueValue(childKey, value[childKey])]),
+		);
+	}
+	return value;
+}
+
 /**
- * Compute a stable sha256 of the body so duplicate drifts collapse onto a
- * single row keyed by (hook_event_name, body_sha256). Hash the raw text rather
- * than re-serializing to avoid key churn from object-property ordering.
+ * A sha256 of the Zod issue list with body values stripped (messages, inputs, array indices), so every hook that
+ * hits the same drift collapses onto one (hook_event_name, issue_signature) row however its session, prompt or
+ * tool input differ.
  */
-function hashBody(text: string): string {
-	return createHash("sha256").update(text).digest("hex");
+export function driftIssueSignature(error: ZodError): string {
+	const normalized = JSON.stringify(normalizeIssueValue("", error.issues));
+	return createHash("sha256").update(normalized).digest("hex");
 }
 
 /**
@@ -152,27 +172,29 @@ function extractHookEventName(body: unknown): string {
 }
 
 /**
- * Persist a schema-drift row keyed by (hook_event_name, body_sha256). Repeat
- * drifts increment the `count` column and refresh `last_seen_at` instead of
- * inserting a new row so a misbehaving hook can't flood the table.
+ * Persist a schema-drift row keyed by (hook_event_name, issue_signature). Repeat
+ * drifts keep the first sample body, increment the `count` column and refresh
+ * `last_seen_at` instead of inserting a new row, so the table holds one row per
+ * distinct drift.
  *
  * Returns the post-upsert `count` so callers can include it in the broadcast.
  */
-function persistDrift(
+export function persistDrift(
 	db: BetterSQLite3Database<typeof dbSchema>,
 	hookEventName: string,
-	bodySha256: string,
 	rawBody: string,
-	issuesJson: string,
+	error: ZodError,
 ): number {
 	const now = Date.now();
+	const issueSignature = driftIssueSignature(error);
+	const issuesJson = JSON.stringify(error.issues);
 	const truncated = rawBody.length > RAW_BODY_MAX_BYTES ? rawBody.slice(0, RAW_BODY_MAX_BYTES) : rawBody;
 
 	const result = db
 		.insert(hookSchemaDrift)
 		.values({
 			hookEventName,
-			bodySha256,
+			issueSignature,
 			rawBody: truncated,
 			issuesJson,
 			count: 1,
@@ -180,7 +202,7 @@ function persistDrift(
 			lastSeenAt: now,
 		})
 		.onConflictDoUpdate({
-			target: [hookSchemaDrift.hookEventName, hookSchemaDrift.bodySha256],
+			target: [hookSchemaDrift.hookEventName, hookSchemaDrift.issueSignature],
 			set: {count: sql`${hookSchemaDrift.count} + 1`, lastSeenAt: now},
 		})
 		.returning({count: hookSchemaDrift.count})
@@ -239,13 +261,11 @@ export const Route = createFileRoute("/api/hook")({
 				if (!result.success) {
 					const {index} = getDb();
 					const hookEventName = extractHookEventName(body);
-					const bodySha256 = hashBody(rawText);
 					const {missingFields, unknownFields} = classifyZodIssues(result.error, body);
-					const issuesJson = JSON.stringify(result.error.issues);
 
 					let count = 1;
 					try {
-						count = persistDrift(index, hookEventName, bodySha256, rawText, issuesJson);
+						count = persistDrift(index, hookEventName, rawText, result.error);
 					} catch {
 						// transient DB error — still broadcast and attempt fallback
 					}

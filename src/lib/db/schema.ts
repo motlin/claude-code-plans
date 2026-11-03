@@ -367,7 +367,7 @@ export const hookSchemaDrift = sqliteTable(
 	"hook_schema_drift",
 	{
 		hookEventName: text("hook_event_name").notNull(),
-		bodySha256: text("body_sha256").notNull(),
+		issueSignature: text("issue_signature").notNull(),
 		rawBody: text("raw_body").notNull(),
 		issuesJson: text("issues_json").notNull(),
 		count: integer("count").notNull().default(1),
@@ -375,7 +375,7 @@ export const hookSchemaDrift = sqliteTable(
 		lastSeenAt: integer("last_seen_at").notNull(),
 	},
 	(table) => [
-		primaryKey({columns: [table.hookEventName, table.bodySha256]}),
+		primaryKey({columns: [table.hookEventName, table.issueSignature]}),
 		index("hook_schema_drift_last_seen_idx").on(table.lastSeenAt),
 	],
 );

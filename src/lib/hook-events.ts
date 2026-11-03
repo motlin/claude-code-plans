@@ -31,7 +31,7 @@ export interface ReviewOfferedPayload {
  * Payload broadcast when a hook event POSTed to /api/hook fails to parse
  * against `HookEventEnvelope`. Carries the offending event name, the set of
  * missing/unknown field paths derived from the Zod issue list, and the count
- * of how many times this exact (event_name, body_sha256) drift has been seen
+ * of how many times this exact (event_name, issue_signature) drift has been seen
  * on the server since startup.
  */
 export interface HookSchemaDriftPayload {
