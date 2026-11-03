@@ -22,14 +22,12 @@ import {
 	type SessionDetailData,
 } from "../src/lib/api/sessions";
 import {__unreadStoreTesting} from "../src/lib/unread-store";
+import {preloadSessionPageChunks} from "./session-page-chunks";
 import {installLocalStorage} from "./fake-storage";
-import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
-import {preloadSideChatPanel} from "../src/components/side-chat-panel-module";
-import {loadSessionPromptCards} from "../src/components/session-prompt-cards-entry";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.
 beforeAll(async () => {
-	await Promise.all([preloadComposerSurfaces(), preloadSideChatPanel(), loadSessionPromptCards()]);
+	await preloadSessionPageChunks();
 });
 
 vi.mock(import("../src/lib/hmr-persist"), async (importOriginal) => ({

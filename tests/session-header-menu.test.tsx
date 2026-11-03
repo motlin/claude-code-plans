@@ -3,7 +3,7 @@
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {SESSION_MENU_CAPABILITIES} from "../src/components/session-actions-menu";
@@ -26,6 +26,12 @@ import {
 import {getSessionMenuItems, type SessionMenuEntry} from "../src/lib/session-menu-items";
 import {__unreadStoreTesting} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
+import {preloadSessionPageChunks} from "./session-page-chunks";
+
+// SessionPage's composer starts these chunk loads on mount; finish them up front so none lands after teardown.
+beforeAll(async () => {
+	await preloadSessionPageChunks();
+});
 
 // session-chat pulls in HMR-persisted module state that jsdom cannot evaluate.
 vi.mock("../src/components/session-chat", () => ({
