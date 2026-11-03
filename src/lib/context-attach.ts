@@ -1,4 +1,4 @@
-import {useSyncExternalStore} from "react";
+import {useMemo, useSyncExternalStore} from "react";
 import {z} from "zod";
 
 import type {ToastOptions} from "../components/toast-context";
@@ -291,6 +291,15 @@ export async function waitForPendingUploads(sessionId: string): Promise<void> {
 	});
 }
 
+/**
+ * The ids of the chips already staged when the composer mounted for this
+ * session: upstream's restored tiles, which skip the enter motion. The strip
+ * itself mounts with the first new chip, so it can't tell on its own.
+ */
+export function useRestoredChipIds(sessionId: string): ReadonlySet<string> {
+	return useMemo(() => new Set(getContextChips(sessionId).map((chip) => chip.id)), [sessionId]);
+}
+
 export function useContextChips(sessionId: string): readonly ContextChip[] {
 	return useSyncExternalStore(
 		(listener) => {
@@ -385,8 +394,18 @@ const MAX_IMAGES_MESSAGE = `Maximum of ${MAX_IMAGES} images allowed.`;
 /** Upstream's oversize sentence (`Ie`) with the local server's limit in place of its 30 MB. */
 const IMAGES_TOO_LARGE_MESSAGE = `Some images were too large to attach. Maximum size is ${MAX_ATTACHMENT_BYTES / (1024 * 1024)} MB.`;
 
+/** Upstream's warning toast timeout (`Qr`): the size and count warnings last 8 s. */
+const ATTACH_WARNING_MS = 8000;
+
+/** Upstream's image lane types (`Yt`); any other file, BMP or SVG included, goes to the file lane. */
+const IMAGE_TYPES: ReadonlySet<string> = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+
+function isImageType(mediaType: string): boolean {
+	return IMAGE_TYPES.has(mediaType);
+}
+
 function isImage(file: File): boolean {
-	return file.type.startsWith("image/");
+	return isImageType(file.type);
 }
 
 /**
@@ -400,7 +419,8 @@ function withinImageCaps(
 	notify: (options: ToastOptions) => void,
 ): readonly File[] {
 	const sized = files.filter((file) => !isImage(file) || file.size <= MAX_ATTACHMENT_BYTES);
-	if (sized.length < files.length) notify({kind: "warning", message: IMAGES_TOO_LARGE_MESSAGE});
+	if (sized.length < files.length)
+		notify({kind: "warning", message: IMAGES_TOO_LARGE_MESSAGE, durationMs: ATTACH_WARNING_MS});
 	let room = MAX_IMAGES - getContextChips(sessionId).filter((chip) => chip.kind === "image").length;
 	const accepted: File[] = [];
 	for (const file of sized) {
@@ -410,7 +430,8 @@ function withinImageCaps(
 			accepted.push(file);
 		}
 	}
-	if (accepted.length < sized.length) notify({kind: "warning", message: MAX_IMAGES_MESSAGE});
+	if (accepted.length < sized.length)
+		notify({kind: "warning", message: MAX_IMAGES_MESSAGE, durationMs: ATTACH_WARNING_MS});
 	return accepted;
 }
 
@@ -438,7 +459,7 @@ export function attachUploadedFiles(
 		};
 		uploadAttachment(file).then(
 			(saved) => {
-				const savedImage = saved.mediaType.startsWith("image/");
+				const savedImage = isImageType(saved.mediaType);
 				const attachment: ContextAttachment = {
 					kind: savedImage ? "image" : "file",
 					path: saved.path,

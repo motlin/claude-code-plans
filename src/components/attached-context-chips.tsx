@@ -1,4 +1,15 @@
-import {type KeyboardEvent, lazy, type MouseEvent, type ReactNode, Suspense, useRef, useState} from "react";
+import {
+	type CSSProperties,
+	type KeyboardEvent,
+	lazy,
+	type MouseEvent,
+	type ReactNode,
+	Suspense,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 import {
 	ClipboardPaste,
 	FileText,
@@ -10,7 +21,13 @@ import {
 	X,
 } from "lucide-react";
 
-import {type ContextChip, contextChipLabel, formatContextAttachment, removeContextChip} from "../lib/context-attach";
+import {
+	type ContextChip,
+	contextChipLabel,
+	focusComposer,
+	formatContextAttachment,
+	removeContextChip,
+} from "../lib/context-attach";
 import {type QueuedDiffComment, removeQueuedDiffComment} from "../lib/diff-comments";
 import {TEXT_PREVIEW_LIMIT} from "../lib/text-preview";
 import {isTextPreviewable} from "../lib/text-preview-extensions";
@@ -19,6 +36,7 @@ import {absoluteMentionPath} from "./files/mention-path";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "./ui/menu";
 import {Skeleton} from "./ui/skeleton";
 import {ExcerptQuote} from "./message-excerpt-tiles";
+import {motionReduced} from "./palette-row-actions-geometry";
 import {
 	BADGE_CLASS,
 	CARD_BODY_CLASS,
@@ -68,26 +86,109 @@ function focusTarget(item: Element): HTMLElement | null {
 }
 
 /**
- * Upstream's `zn`: when the item being removed holds focus, hand it to the
- * next item, else the previous one, so it isn't lost to the body.
+ * Upstream's `Ny`: scrolls the row instantly so the tile sits inside its view,
+ * less the scroll padding `scroll-fade-x` reserves under each edge fade.
+ * Client-rect deltas map onto scrollLeft the same way in RTL rows.
  */
-function handOffFocus(item: Element | null): void {
+function scrollTileIntoRow(row: HTMLElement, tile: Element): void {
+	if (typeof row.scrollTo !== "function") return;
+	const style = getComputedStyle(row);
+	const padLeft = Number.parseFloat(style.scrollPaddingLeft) || 0;
+	const padRight = Number.parseFloat(style.scrollPaddingRight) || 0;
+	const view = row.getBoundingClientRect();
+	const rect = tile.getBoundingClientRect();
+	const start = view.left + padLeft;
+	const end = view.right - padRight;
+	let delta = 0;
+	if (rect.left < start) delta = rect.left - start;
+	else if (rect.right > end) delta = Math.min(rect.right - end, rect.left - start);
+	if (delta !== 0) row.scrollTo({left: row.scrollLeft + delta, behavior: "instant"});
+}
+
+/** Upstream's `A0`: once the removed tile leaves the row, scrolls the tile that took focus into view. */
+function scrollIntoRowAfterRemoval(row: HTMLElement, tile: Element, removed: Element): void {
+	let done = false;
+	const observer =
+		typeof MutationObserver === "function"
+			? new MutationObserver(() => {
+					if (!removed.isConnected) finish();
+				})
+			: null;
+	const timer = setTimeout(finish, 300);
+	observer?.observe(row, {childList: true});
+	function finish() {
+		if (done) return;
+		done = true;
+		observer?.disconnect();
+		clearTimeout(timer);
+		if (tile.isConnected) scrollTileIntoRow(row, tile);
+	}
+}
+
+/**
+ * After a keyboard removal of the last tile, upstream's `D5` swallows that
+ * key's repeats and focuses the editor on its keyup, so a held Backspace
+ * doesn't go on to delete prompt text; a window blur cancels the hand-off.
+ */
+function focusComposerOnKeyUp(sessionId: string, key: string, removed: Element): void {
+	const view = removed.ownerDocument.defaultView;
+	if (view === null) return;
+	const onKeyDown = (event: globalThis.KeyboardEvent) => {
+		if (event.key === key && event.repeat) {
+			event.preventDefault();
+			event.stopPropagation();
+		}
+	};
+	const onKeyUp = (event: globalThis.KeyboardEvent) => {
+		if (event.key !== key) return;
+		stop();
+		const active = removed.ownerDocument.activeElement;
+		if (active === null || active === removed.ownerDocument.body || removed.contains(active)) {
+			focusComposer(sessionId);
+		}
+	};
+	const stop = () => {
+		view.removeEventListener("keydown", onKeyDown, true);
+		view.removeEventListener("keyup", onKeyUp, true);
+		view.removeEventListener("blur", stop);
+	};
+	view.addEventListener("keydown", onKeyDown, true);
+	view.addEventListener("keyup", onKeyUp, true);
+	view.addEventListener("blur", stop);
+}
+
+/**
+ * Upstream's `D5`: when the item being removed holds focus, hand it to the
+ * next item, else the previous one, without scrolling, then scroll it into
+ * the row once the removed item is gone. With no item left, focus goes to the
+ * composer: at once for a click, on the key's keyup for a keyboard removal.
+ */
+function handOffFocus(item: Element | null, sessionId: string, key: string | null): void {
 	const active = item?.ownerDocument.activeElement;
 	if (item === null || !(active instanceof HTMLElement) || !item.contains(active)) return;
+	const target = siblingFocusTarget(item);
+	if (target === null) {
+		if (key === null) focusComposer(sessionId);
+		else focusComposerOnKeyUp(sessionId, key, item);
+		return;
+	}
+	target.focus({preventScroll: true});
+	const row = item.parentElement;
+	const tile = target.closest("li");
+	if (row !== null && tile !== null) scrollIntoRowAfterRemoval(row, tile, item);
+}
+
+/** Upstream's `sk`: the next item's focus target, else the previous one's. */
+function siblingFocusTarget(item: Element): HTMLElement | null {
 	for (let next = item.nextElementSibling; next !== null; next = next.nextElementSibling) {
 		const target = focusTarget(next);
-		if (target !== null) {
-			target.focus();
-			return;
-		}
+		if (target !== null) return target;
 	}
 	for (let previous = item.previousElementSibling; previous !== null; previous = previous.previousElementSibling) {
 		const target = focusTarget(previous);
-		if (target !== null) {
-			target.focus();
-			return;
-		}
+		if (target !== null) return target;
 	}
+	return null;
 }
 
 /** Upstream's `Vn`: a pointer press on a remove button doesn't take focus, so the editor keeps it. */
@@ -95,11 +196,24 @@ function keepFocusOnPointerRemove(event: MouseEvent<HTMLButtonElement>): void {
 	event.preventDefault();
 }
 
-/** Runs a remove click after handing focus off from the item it removes. */
-function removeHandler(remove: () => void) {
-	return (event: MouseEvent<HTMLButtonElement>) => {
-		handOffFocus(event.currentTarget.closest("li"));
-		remove();
+/**
+ * A remove button's handlers: a click hands focus off from the item it
+ * removes; Enter removes on keydown and, for the last item, focuses the
+ * editor on Enter's keyup, as upstream's `D5` does with the key.
+ */
+function removeButtonProps(sessionId: string, remove: () => void) {
+	return {
+		onMouseDown: keepFocusOnPointerRemove,
+		onClick: (event: MouseEvent<HTMLButtonElement>) => {
+			handOffFocus(event.currentTarget.closest("li"), sessionId, null);
+			remove();
+		},
+		onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => {
+			if (event.key !== "Enter" || event.repeat || event.nativeEvent.isComposing) return;
+			event.preventDefault();
+			handOffFocus(event.currentTarget.closest("li"), sessionId, event.key);
+			remove();
+		},
 	};
 }
 
@@ -107,20 +221,64 @@ function removeHandler(remove: () => void) {
  * Upstream's `Fi`: Delete or Backspace on a focused CardLink removes its tile,
  * handing focus off first; modifiers, key repeat and IME composition don't.
  */
-function removeOnDeleteKey(event: KeyboardEvent<HTMLElement>, remove: () => void): void {
+function removeOnDeleteKey(event: KeyboardEvent<HTMLElement>, sessionId: string, remove: () => void): void {
 	if (event.key !== "Delete" && event.key !== "Backspace") return;
 	if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
 	if (event.repeat || event.nativeEvent.isComposing) return;
 	event.preventDefault();
-	handOffFocus(event.currentTarget.closest("li"));
+	handOffFocus(event.currentTarget.closest("li"), sessionId, event.key);
 	remove();
 }
 
-function removeChip(sessionId: string, chip: ContextChip): void {
-	if (chip.previewUrl !== undefined && typeof URL.revokeObjectURL === "function") {
-		URL.revokeObjectURL(chip.previewUrl);
+/** Upstream's `ry`: a tile taking keyboard focus scrolls into the row's view. */
+function scrollFocusedTileIntoRow(row: HTMLElement, event: globalThis.FocusEvent): void {
+	const target = event.target;
+	if (!(target instanceof HTMLElement)) return;
+	let visible = false;
+	try {
+		visible = target.matches(":focus-visible");
+	} catch {
+		// A browser that can't parse :focus-visible scrolls nothing.
 	}
-	removeContextChip(sessionId, chip.id);
+	if (!visible) return;
+	const tile = target.closest("li");
+	if (tile?.parentElement === row) scrollTileIntoRow(row, tile);
+}
+
+interface TransitionDocument {
+	startViewTransition?: (options: {types: string[]; update: () => void}) => unknown;
+}
+
+/**
+ * Upstream's `Ks`: runs a tray change inside a `cds-attachments` view
+ * transition, so the old tile shrinks out while its siblings slide; at once
+ * in a hidden tab, under reduced motion, or without view-transition types.
+ */
+function withAttachmentsTransition(update: () => void): void {
+	const start = (document as TransitionDocument).startViewTransition;
+	const supported =
+		typeof CSS !== "undefined" &&
+		typeof CSS.supports === "function" &&
+		CSS.supports("selector(:active-view-transition-type(cds-attachments))");
+	if (start === undefined || !supported || document.visibilityState === "hidden" || motionReduced()) {
+		update();
+		return;
+	}
+	start.call(document, {types: ["cds-attachments"], update});
+}
+
+/** Upstream's `--cds-attachment-vt-name`: the tile's view-transition name, its id made ident-safe. */
+function viewTransitionStyle(id: string): CSSProperties {
+	return {"--cds-attachment-vt-name": `cds-attachment-${id.replaceAll(/[^a-zA-Z0-9_-]/g, "-")}`};
+}
+
+function removeChip(sessionId: string, chip: ContextChip): void {
+	withAttachmentsTransition(() => {
+		if (chip.previewUrl !== undefined && typeof URL.revokeObjectURL === "function") {
+			URL.revokeObjectURL(chip.previewUrl);
+		}
+		removeContextChip(sessionId, chip.id);
+	});
 }
 
 /**
@@ -143,6 +301,7 @@ function PendingSkeleton() {
 function Tile({
 	sessionId,
 	chip,
+	restored,
 	kind,
 	status,
 	name = contextChipLabel(chip),
@@ -150,6 +309,8 @@ function Tile({
 }: {
 	sessionId: string;
 	chip: ContextChip;
+	/** Upstream's `data-cds-attachment-restored`: the tile was staged before this composer mounted. */
+	restored: boolean;
 	kind: "MessageAttachmentsImage" | "MessageAttachmentsFile" | "MessageAttachmentsQuote";
 	status: string;
 	/** What the remove button names, when it isn't the chip's label: an excerpt's own text. */
@@ -158,12 +319,24 @@ function Tile({
 }) {
 	const label = contextChipLabel(chip);
 	const pending = chip.status === "pending";
+	const ref = useRef<HTMLLIElement>(null);
+	// Upstream's `nr`: a tile added after the row mounted scrolls into its view.
+	useLayoutEffect(() => {
+		const tile = ref.current;
+		const row = tile?.parentElement;
+		if (!restored && tile && row) scrollTileIntoRow(row, tile);
+		// Only on mount: a restored tile never scrolls, and a tile scrolls once.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 	return (
 		<li
+			ref={ref}
 			data-chip-label={label}
 			data-cds={kind}
 			data-cds-attachment=""
+			{...(restored ? {"data-cds-attachment-restored": ""} : {})}
 			tabIndex={-1}
+			style={viewTransitionStyle(chip.id)}
 			{...pendingProps(chip)}
 			className={TILE_CLASS}
 		>
@@ -178,8 +351,7 @@ function Tile({
 				type="button"
 				data-cds-attachment-remove=""
 				aria-label={`Remove ${name}`}
-				onMouseDown={keepFocusOnPointerRemove}
-				onClick={removeHandler(() => {
+				{...removeButtonProps(sessionId, () => {
 					removeChip(sessionId, chip);
 				})}
 				className={TILE_REMOVE_CLASS}
@@ -203,10 +375,12 @@ function Tile({
 function ImageChip({
 	sessionId,
 	chip,
+	restored,
 	onOpen,
 }: {
 	sessionId: string;
 	chip: ContextChip;
+	restored: boolean;
 	/** Opens the preview, morphing out of the tile's image. */
 	onOpen: (chip: ContextChip, origin: HTMLImageElement | null) => void;
 }) {
@@ -220,7 +394,11 @@ function ImageChip({
 		<img
 			ref={imgRef}
 			src={chip.previewUrl}
-			alt=""
+			alt={pending ? label : ""}
+			loading="lazy"
+			decoding="async"
+			width={120}
+			height={120}
 			onLoad={() => {
 				setLoaded(true);
 			}}
@@ -231,7 +409,13 @@ function ImageChip({
 		/>
 	);
 	return (
-		<Tile sessionId={sessionId} chip={chip} kind="MessageAttachmentsImage" status="Processing image">
+		<Tile
+			sessionId={sessionId}
+			chip={chip}
+			restored={restored}
+			kind="MessageAttachmentsImage"
+			status="Processing image"
+		>
 			{pending ? (
 				img
 			) : (
@@ -249,7 +433,7 @@ function ImageChip({
 							onOpen(chip, imgRef.current);
 						}
 
-						removeOnDeleteKey(event, () => {
+						removeOnDeleteKey(event, sessionId, () => {
 							removeChip(sessionId, chip);
 						});
 					}}
@@ -289,16 +473,24 @@ function opensTextPreview(chip: ContextChip): boolean {
 function FileChip({
 	sessionId,
 	chip,
+	restored,
 	onOpen,
 }: {
 	sessionId: string;
 	chip: ContextChip;
+	restored: boolean;
 	onOpen: (chip: ContextChip, link: HTMLElement) => void;
 }) {
 	const label = contextChipLabel(chip);
 	const badge = extensionBadge(label);
 	return (
-		<Tile sessionId={sessionId} chip={chip} kind="MessageAttachmentsFile" status="Uploading file">
+		<Tile
+			sessionId={sessionId}
+			chip={chip}
+			restored={restored}
+			kind="MessageAttachmentsFile"
+			status="Uploading file"
+		>
 			{opensTextPreview(chip) ? (
 				<span
 					data-cds="CardLink"
@@ -314,7 +506,7 @@ function FileChip({
 							onOpen(chip, event.currentTarget);
 						}
 
-						removeOnDeleteKey(event, () => {
+						removeOnDeleteKey(event, sessionId, () => {
 							removeChip(sessionId, chip);
 						});
 					}}
@@ -352,15 +544,24 @@ function FileChip({
 function ExcerptChip({
 	sessionId,
 	chip,
+	restored,
 	onOpen,
 }: {
 	sessionId: string;
 	chip: ContextChip;
+	restored: boolean;
 	onOpen: (chip: ContextChip, link: HTMLElement) => void;
 }) {
 	const text = chip.text ?? "";
 	return (
-		<Tile sessionId={sessionId} chip={chip} kind="MessageAttachmentsQuote" status="" name={text}>
+		<Tile
+			sessionId={sessionId}
+			chip={chip}
+			restored={restored}
+			kind="MessageAttachmentsQuote"
+			status=""
+			name={text}
+		>
 			<span
 				data-cds="CardLink"
 				role="button"
@@ -375,7 +576,7 @@ function ExcerptChip({
 						onOpen(chip, event.currentTarget);
 					}
 
-					removeOnDeleteKey(event, () => {
+					removeOnDeleteKey(event, sessionId, () => {
 						removeChip(sessionId, chip);
 					});
 				}}
@@ -412,10 +613,12 @@ function textPreviewOf(chip: ContextChip): TextPreview | null {
 
 /** A pill's opener: upstream's CardLink, a focusable button with the default cursor. */
 function PillLink({
+	sessionId,
 	onOpen,
 	onRemove,
 	children,
 }: {
+	sessionId: string;
 	onOpen: (link: HTMLElement) => void;
 	onRemove: () => void;
 	children: ReactNode;
@@ -434,7 +637,7 @@ function PillLink({
 					event.preventDefault();
 					onOpen(event.currentTarget);
 				}
-				removeOnDeleteKey(event, onRemove);
+				removeOnDeleteKey(event, sessionId, onRemove);
 			}}
 			className="flex min-w-0 items-center gap-1 rounded-r5 outline-none focus-visible:shadow-focus"
 		>
@@ -453,13 +656,33 @@ export function AttachedContextChips({
 	context,
 	comments,
 	cwd,
+	restoredIds,
 }: {
 	sessionId: string;
 	context: readonly ContextChip[];
 	comments: readonly QueuedDiffComment[];
 	/** The session's working directory: a path chip's right-click opens the file-actions menu. */
 	cwd?: string | undefined;
+	/**
+	 * Chips staged before the composer mounted, which skip the enter motion and
+	 * the scroll into view; by default, those present when this strip mounts.
+	 */
+	restoredIds?: ReadonlySet<string> | undefined;
 }) {
+	const [mountedIds] = useState<ReadonlySet<string>>(() => new Set(context.map((chip) => chip.id)));
+	const restored = restoredIds ?? mountedIds;
+	const rowRef = useRef<HTMLUListElement>(null);
+	useEffect(() => {
+		const row = rowRef.current;
+		if (row === null) return undefined;
+		const onFocusIn = (event: globalThis.FocusEvent) => {
+			scrollFocusedTileIntoRow(row, event);
+		};
+		row.addEventListener("focusin", onFocusIn);
+		return () => {
+			row.removeEventListener("focusin", onFocusIn);
+		};
+	}, []);
 	const [preview, setPreview] = useState<{chipId: string; origin: HTMLImageElement | null} | null>(null);
 	const [previewOpen, setPreviewOpen] = useState(false);
 	const previewChip = preview === null ? undefined : context.find((chip) => chip.id === preview.chipId);
@@ -509,19 +732,45 @@ export function AttachedContextChips({
 			className="-mx-2 grid grid-rows-[1fr] overflow-hidden px-2 -mt-2 pt-2"
 		>
 			<div data-cds-composer-attachments="" className="min-h-0 min-w-0 px-1 pt-1 pb-2.5">
-				<ul aria-label="Attached context" className="flex w-full flex-wrap gap-[6px] justify-start">
+				<ul
+					aria-label="Attached context"
+					data-cds="MessageAttachments"
+					data-cds-composer-attachments-row=""
+					ref={rowRef}
+					className="flex items-end gap-[6px] *:shrink-0 overflow-x-auto overscroll-x-contain scroll-fade-x p-2 pt-2.5 pe-2.5 -m-2 -mt-2.5 -me-2.5"
+				>
 					{context.map((chip) => {
 						if (chip.kind === "image" && chip.previewUrl !== undefined) {
-							return <ImageChip key={chip.id} sessionId={sessionId} chip={chip} onOpen={openPreview} />;
+							return (
+								<ImageChip
+									key={chip.id}
+									sessionId={sessionId}
+									chip={chip}
+									restored={restored.has(chip.id)}
+									onOpen={openPreview}
+								/>
+							);
 						}
 						if (chip.kind === "file" && chip.name !== undefined) {
 							return (
-								<FileChip key={chip.id} sessionId={sessionId} chip={chip} onOpen={openFilePreview} />
+								<FileChip
+									key={chip.id}
+									sessionId={sessionId}
+									chip={chip}
+									restored={restored.has(chip.id)}
+									onOpen={openFilePreview}
+								/>
 							);
 						}
 						if (chip.kind === "excerpt") {
 							return (
-								<ExcerptChip key={chip.id} sessionId={sessionId} chip={chip} onOpen={openTextPreview} />
+								<ExcerptChip
+									key={chip.id}
+									sessionId={sessionId}
+									chip={chip}
+									restored={restored.has(chip.id)}
+									onOpen={openTextPreview}
+								/>
 							);
 						}
 						const label = contextChipLabel(chip);
@@ -538,6 +787,7 @@ export function AttachedContextChips({
 									content
 								) : (
 									<PillLink
+										sessionId={sessionId}
 										onOpen={(opener) => {
 											openTextPreview(chip, opener);
 										}}
@@ -551,8 +801,7 @@ export function AttachedContextChips({
 								<button
 									type="button"
 									aria-label={`Remove ${label}`}
-									onMouseDown={keepFocusOnPointerRemove}
-									onClick={removeHandler(() => {
+									{...removeButtonProps(sessionId, () => {
 										removeChip(sessionId, chip);
 									})}
 									className={CHIP_REMOVE_CLASS}
@@ -610,8 +859,7 @@ export function AttachedContextChips({
 								<button
 									type="button"
 									aria-label={`Remove comment on ${label}`}
-									onMouseDown={keepFocusOnPointerRemove}
-									onClick={removeHandler(() => {
+									{...removeButtonProps(sessionId, () => {
 										removeQueuedDiffComment(sessionId, comment.id);
 									})}
 									className={CHIP_REMOVE_CLASS}

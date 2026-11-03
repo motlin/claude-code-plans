@@ -50,8 +50,31 @@ describe("AttachedContextChips cds tiles", () => {
 		}).toStrictEqual({
 			clip: ["-mt-2", "-mx-2", "grid", "grid-rows-[1fr]", "overflow-hidden", "pt-2", "px-2"],
 			tray: ["min-h-0", "min-w-0", "pb-2.5", "pt-1", "px-1"],
-			list: ["flex", "flex-wrap", "gap-[6px]", "justify-start", "w-full"],
+			list: [
+				"*:shrink-0",
+				"-m-2",
+				"-me-2.5",
+				"-mt-2.5",
+				"flex",
+				"gap-[6px]",
+				"items-end",
+				"overflow-x-auto",
+				"overscroll-x-contain",
+				"p-2",
+				"pe-2.5",
+				"pt-2.5",
+				"scroll-fade-x",
+			],
 		});
+	});
+
+	it("marks the tray list as upstream's composer MessageAttachments row", () => {
+		const {container} = renderChips([IMAGE]);
+		const list = container.querySelector('ul[aria-label="Attached context"]');
+		expect({
+			cds: list?.getAttribute("data-cds"),
+			row: list?.getAttribute("data-cds-composer-attachments-row"),
+		}).toStrictEqual({cds: "MessageAttachments", row: ""});
 	});
 
 	it("renders an image chip as a 120px cds tile with a zoom CardLink and a hover-revealed remove button", () => {
@@ -72,7 +95,15 @@ describe("AttachedContextChips cds tiles", () => {
 				tabIndex: link?.getAttribute("tabindex"),
 				classes: classes(link),
 			},
-			img: {alt: img?.getAttribute("alt"), src: img?.getAttribute("src"), classes: classes(img)},
+			img: {
+				alt: img?.getAttribute("alt"),
+				src: img?.getAttribute("src"),
+				loading: img?.getAttribute("loading"),
+				decoding: img?.getAttribute("decoding"),
+				width: img?.getAttribute("width"),
+				height: img?.getAttribute("height"),
+				classes: classes(img),
+			},
 			name: link?.querySelector("span.sr-only")?.textContent,
 			remove: {label: remove?.getAttribute("aria-label"), classes: classes(remove)},
 			glyph: tile?.querySelector("[data-attachment-glyph]") ?? null,
@@ -133,6 +164,10 @@ describe("AttachedContextChips cds tiles", () => {
 			img: {
 				alt: "",
 				src: "blob:shot",
+				loading: "lazy",
+				decoding: "async",
+				width: "120",
+				height: "120",
 				classes: [
 					"absolute",
 					"block",
@@ -580,6 +615,26 @@ describe("AttachedContextChips cds tiles", () => {
 			}).toStrictEqual({dialog: null, focused: true, tileVisibility: ""});
 		});
 
+		it("names a pending image by its alt, with upstream's lazy 120x120 img attributes", () => {
+			const {container} = renderChips([{...IMAGE, status: "pending"}]);
+			const img = container.querySelector("li[data-cds=MessageAttachmentsImage] img");
+			expect({
+				alt: img?.getAttribute("alt"),
+				loading: img?.getAttribute("loading"),
+				decoding: img?.getAttribute("decoding"),
+				width: img?.getAttribute("width"),
+				height: img?.getAttribute("height"),
+				link: container.querySelector("[data-cds=CardLink]"),
+			}).toStrictEqual({
+				alt: "shot.png",
+				loading: "lazy",
+				decoding: "async",
+				width: "120",
+				height: "120",
+				link: null,
+			});
+		});
+
 		it("gives a pending image no CardLink to open", () => {
 			const {container} = renderChips([{...IMAGE, status: "pending"}]);
 			const tile = container.querySelector<HTMLElement>("li[data-cds=MessageAttachmentsImage]");
@@ -772,5 +827,351 @@ describe("AttachedContextChips path chip file actions", () => {
 		);
 
 		expect({results, menus: screen.queryAllByRole("menu")}).toStrictEqual({results: [true, true], menus: []});
+	});
+});
+
+/** Lays each tile out 126px apart from x=0 in a 300px-wide row, shifted by the row's scrollLeft. */
+function stubRowGeometry(container: HTMLElement) {
+	const row = container.querySelector<HTMLElement>('ul[aria-label="Attached context"]');
+	if (row === null) throw new Error("no row");
+	const scrollTo = vi.fn<(options: ScrollToOptions) => void>();
+	Object.assign(row, {scrollTo});
+	vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function rect(this: HTMLElement) {
+		if (this === row) return DOMRect.fromRect({x: 0, y: 0, width: 300, height: 136});
+		const tiles = [...row.children];
+		const index = tiles.indexOf(this);
+		return DOMRect.fromRect({x: index * 126 - row.scrollLeft, y: 8, width: 120, height: 120});
+	});
+	return {row, scrollTo};
+}
+
+function shot(n: number): ContextChip {
+	return {
+		id: `chip-${n}`,
+		kind: "image",
+		path: `/cache/attachments/${n}.png`,
+		name: `shot-${n}.png`,
+		previewUrl: `blob:shot-${n}`,
+	};
+}
+
+describe("AttachedContextChips scrolling row", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("scrolls a tile added after mount into the row's view, but not tiles present at mount", () => {
+		const {container, rerender} = renderChips([shot(1), shot(2)]);
+		const {scrollTo} = stubRowGeometry(container);
+		rerender(<AttachedContextChips sessionId={SESSION} context={[shot(1), shot(2)]} comments={[]} />);
+		const atMount = scrollTo.mock.calls.length;
+		rerender(<AttachedContextChips sessionId={SESSION} context={[shot(1), shot(2), shot(3)]} comments={[]} />);
+		// Tile 3 spans 252-372 in a 300px row: scroll right by 72px.
+		expect({atMount, calls: scrollTo.mock.calls}).toStrictEqual({
+			atMount: 0,
+			calls: [[{left: 72, behavior: "instant"}]],
+		});
+	});
+
+	it("leaves the row alone when a new tile is already in view", () => {
+		const {container, rerender} = renderChips([shot(1)]);
+		const {scrollTo} = stubRowGeometry(container);
+		rerender(<AttachedContextChips sessionId={SESSION} context={[shot(1), shot(2)]} comments={[]} />);
+		expect(scrollTo.mock.calls).toStrictEqual([]);
+	});
+
+	it("scrolls a keyboard-focused tile into view on focusin, not a pointer-focused one", () => {
+		const {container} = renderChips([shot(1), shot(2), shot(3)]);
+		const {scrollTo} = stubRowGeometry(container);
+		const link = container.querySelector<HTMLElement>('li[data-chip-label="shot-3.png"] [data-cds=CardLink]');
+		if (link === null) throw new Error("no CardLink");
+		const matches = vi.spyOn(link, "matches").mockReturnValue(false);
+		fireEvent.focusIn(link);
+		const pointer = scrollTo.mock.calls.length;
+		matches.mockImplementation((selector: string) => selector === ":focus-visible");
+		fireEvent.focusIn(link);
+		expect({pointer, calls: scrollTo.mock.calls}).toStrictEqual({
+			pointer: 0,
+			calls: [[{left: 72, behavior: "instant"}]],
+		});
+	});
+
+	it("focuses the next tile without scrolling on keyboard removal, then scrolls it into view once the old tile is gone", async () => {
+		const stop = registerComposer(SESSION, {insertText: () => {}, focus: () => {}});
+		for (const n of [1, 2, 3]) {
+			attachContext(SESSION, {
+				kind: "image",
+				path: `/cache/attachments/${n}.png`,
+				name: `shot-${n}.png`,
+				previewUrl: `blob:${n}`,
+			});
+		}
+		function Live() {
+			return <AttachedContextChips sessionId={SESSION} context={useContextChips(SESSION)} comments={[]} />;
+		}
+		const {container} = render(<Live />);
+		const {row, scrollTo} = stubRowGeometry(container);
+		row.scrollLeft = 0;
+		const focus = vi.spyOn(HTMLElement.prototype, "focus");
+		const link = (name: string) =>
+			container.querySelector<HTMLElement>(`li[data-chip-label="${name}"] [data-cds=CardLink]`)!;
+		link("shot-2.png").focus();
+		focus.mockClear();
+		act(() => {
+			fireEvent.keyDown(link("shot-2.png"), {key: "Delete"});
+		});
+		await act(async () => {
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
+		});
+		const result = {
+			focusedNext: document.activeElement === link("shot-3.png"),
+			// Only focus calls inside the strip: an earlier test's menu can still be settling its own focus.
+			focusArgs: focus.mock.calls.filter((_args, index) =>
+				container.contains(focus.mock.contexts[index] as Node),
+			),
+			// Tile 3 now sits second, at 126-246: inside the 300px row, so no scroll is needed.
+			scrolls: scrollTo.mock.calls,
+		};
+		cleanup();
+		takeContextChips(SESSION);
+		stop();
+		expect(result).toStrictEqual({focusedNext: true, focusArgs: [[{preventScroll: true}]], scrolls: []});
+	});
+});
+
+describe("AttachedContextChips last-tile keyboard removal", () => {
+	let stop: () => void = () => {};
+	let editor: HTMLTextAreaElement;
+
+	function LiveChips() {
+		return <AttachedContextChips sessionId={SESSION} context={useContextChips(SESSION)} comments={[]} />;
+	}
+
+	beforeEach(() => {
+		editor = document.createElement("textarea");
+		document.body.append(editor);
+		stop = registerComposer(SESSION, {
+			insertText: () => {},
+			focus: () => {
+				editor.focus();
+			},
+		});
+		attachContext(SESSION, {
+			kind: "image",
+			path: "/cache/attachments/solo.png",
+			name: "solo.png",
+			previewUrl: "blob:solo",
+		});
+		editor.blur();
+	});
+
+	afterEach(() => {
+		cleanup();
+		takeContextChips(SESSION);
+		stop();
+		editor.remove();
+	});
+
+	function soloLink(container: HTMLElement): HTMLElement {
+		const found = container.querySelector<HTMLElement>('li[data-chip-label="solo.png"] [data-cds=CardLink]');
+		if (found === null) throw new Error("no CardLink");
+		return found;
+	}
+
+	it("focuses the editor on Backspace's keyup, swallowing the key's repeats until then", () => {
+		const {container} = render(<LiveChips />);
+		soloLink(container).focus();
+		act(() => {
+			fireEvent.keyDown(soloLink(container), {key: "Backspace"});
+		});
+		const afterKeyDown = {
+			tiles: container.querySelectorAll("li").length,
+			editor: document.activeElement === editor,
+		};
+		const repeatAllowed = fireEvent.keyDown(document.body, {key: "Backspace", repeat: true});
+		fireEvent.keyUp(document.body, {key: "Backspace"});
+		const laterRepeatAllowed = fireEvent.keyDown(editor, {key: "Backspace", repeat: true});
+		expect({
+			afterKeyDown,
+			repeatAllowed,
+			editor: document.activeElement === editor,
+			laterRepeatAllowed,
+		}).toStrictEqual({
+			afterKeyDown: {tiles: 0, editor: false},
+			repeatAllowed: false,
+			editor: true,
+			laterRepeatAllowed: true,
+		});
+	});
+
+	it("cancels the hand-off when the window blurs before the keyup", () => {
+		const {container} = render(<LiveChips />);
+		soloLink(container).focus();
+		act(() => {
+			fireEvent.keyDown(soloLink(container), {key: "Backspace"});
+		});
+		fireEvent.blur(window);
+		fireEvent.keyUp(document.body, {key: "Backspace"});
+		expect(document.activeElement === editor).toBe(false);
+	});
+
+	it("leaves focus where it was on a pointer removal of the last tile", () => {
+		const outside = document.createElement("button");
+		document.body.append(outside);
+		outside.focus();
+		render(<LiveChips />);
+		const remove = screen.getByRole("button", {name: "Remove solo.png"});
+		fireEvent.mouseDown(remove);
+		fireEvent.click(remove);
+		const active = document.activeElement === outside;
+		outside.remove();
+		expect(active).toBe(true);
+	});
+
+	it("focuses the editor on Enter's keyup after Enter on the last tile's remove button", () => {
+		render(<LiveChips />);
+		const remove = screen.getByRole("button", {name: "Remove solo.png"});
+		remove.focus();
+		act(() => {
+			fireEvent.keyDown(remove, {key: "Enter"});
+		});
+		const before = document.activeElement === editor;
+		fireEvent.keyUp(document.body, {key: "Enter"});
+		expect({
+			before,
+			after: document.activeElement === editor,
+			tiles: document.querySelectorAll("li").length,
+		}).toStrictEqual({
+			before: false,
+			after: true,
+			tiles: 0,
+		});
+	});
+});
+
+describe("AttachedContextChips motion", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		Reflect.deleteProperty(document, "startViewTransition");
+	});
+
+	it("names each tile's view transition after its id, with unsafe characters replaced", () => {
+		const {container} = renderChips([{...IMAGE, id: "chip:1/a b"}]);
+		const tile = container.querySelector<HTMLElement>("li[data-cds=MessageAttachmentsImage]");
+		expect(tile?.style.getPropertyValue("--cds-attachment-vt-name")).toBe("cds-attachment-chip-1-a-b");
+	});
+
+	it("marks tiles present at mount as restored, and tiles added later as new", () => {
+		const {container, rerender} = renderChips([IMAGE]);
+		rerender(<AttachedContextChips sessionId={SESSION} context={[IMAGE, FILE]} comments={[]} />);
+		expect(
+			Array.from(container.querySelectorAll("li[data-cds-attachment]"), (li) => [
+				li.getAttribute("data-chip-label"),
+				li.getAttribute("data-cds-attachment-restored"),
+			]),
+		).toStrictEqual([
+			["shot.png", ""],
+			["notes.md", null],
+		]);
+	});
+
+	it("takes restored ids from the caller when given, so a strip mounted by the first add animates it", () => {
+		const {container} = render(
+			<AttachedContextChips
+				sessionId={SESSION}
+				context={[IMAGE, FILE]}
+				comments={[]}
+				restoredIds={new Set(["chip-2"])}
+			/>,
+		);
+		expect(
+			Array.from(container.querySelectorAll("li[data-cds-attachment]"), (li) =>
+				li.getAttribute("data-cds-attachment-restored"),
+			),
+		).toStrictEqual([null, ""]);
+	});
+
+	function stubTransitions(reduced: boolean) {
+		const updates: (() => void)[] = [];
+		const startViewTransition = vi.fn<(options: {types: string[]; update: () => void}) => void>((options) => {
+			updates.push(options.update);
+		});
+		Object.assign(document, {startViewTransition});
+		vi.stubGlobal("CSS", {
+			supports: (query: string) => query === "selector(:active-view-transition-type(cds-attachments))",
+		});
+		vi.stubGlobal("matchMedia", (query: string) => ({
+			matches: reduced && query === "(prefers-reduced-motion: reduce)",
+			addEventListener: () => {},
+			removeEventListener: () => {},
+		}));
+		return {startViewTransition, updates};
+	}
+
+	function LiveChips() {
+		return <AttachedContextChips sessionId={SESSION} context={useContextChips(SESSION)} comments={[]} />;
+	}
+
+	function withLiveChip(run: () => void) {
+		const stop = registerComposer(SESSION, {insertText: () => {}, focus: () => {}});
+		attachContext(SESSION, {kind: "image", path: "/cache/attachments/a.png", name: "a.png", previewUrl: "blob:a"});
+		try {
+			run();
+		} finally {
+			cleanup();
+			takeContextChips(SESSION);
+			stop();
+		}
+	}
+
+	it("removes a tile inside a cds-attachments view transition", () => {
+		const {startViewTransition, updates} = stubTransitions(false);
+		withLiveChip(() => {
+			render(<LiveChips />);
+			fireEvent.click(screen.getByRole("button", {name: "Remove a.png"}));
+			const during = document.querySelectorAll("li").length;
+			act(() => {
+				updates[0]?.();
+			});
+			expect({
+				types: startViewTransition.mock.calls.map(([options]) => options.types),
+				during,
+				after: document.querySelectorAll("li").length,
+			}).toStrictEqual({types: [["cds-attachments"]], during: 1, after: 0});
+		});
+	});
+
+	it("removes at once with no view transition under reduced motion", () => {
+		const {startViewTransition} = stubTransitions(true);
+		withLiveChip(() => {
+			render(<LiveChips />);
+			fireEvent.click(screen.getByRole("button", {name: "Remove a.png"}));
+			expect({
+				calls: startViewTransition.mock.calls.length,
+				tiles: document.querySelectorAll("li").length,
+			}).toStrictEqual({
+				calls: 0,
+				tiles: 0,
+			});
+		});
+	});
+
+	it("removes at once with no view transition in a hidden tab", () => {
+		const {startViewTransition} = stubTransitions(false);
+		vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+		withLiveChip(() => {
+			render(<LiveChips />);
+			fireEvent.click(screen.getByRole("button", {name: "Remove a.png"}));
+			expect({
+				calls: startViewTransition.mock.calls.length,
+				tiles: document.querySelectorAll("li").length,
+			}).toStrictEqual({
+				calls: 0,
+				tiles: 0,
+			});
+		});
+		vi.restoreAllMocks();
 	});
 });

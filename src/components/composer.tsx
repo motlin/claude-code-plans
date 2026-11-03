@@ -34,6 +34,7 @@ import {
 	takeContextChips,
 	waitForPendingUploads,
 	useContextChips,
+	useRestoredChipIds,
 } from "../lib/context-attach";
 import {takeQueuedDiffComments, useDiffComments} from "../lib/diff-comments";
 import type {SessionFilesEntry} from "../lib/api/session-files";
@@ -604,6 +605,7 @@ export function Composer({
 	const pendingCaretRef = useRef<number | null>(null);
 	const {queued: queuedComments} = useDiffComments(draftKey);
 	const contextChips = useContextChips(draftKey);
+	const restoredChipIds = useRestoredChipIds(draftKey);
 	// Upstream's bash mode, saved with the draft: only a composer that can run shell commands enters or restores it.
 	const bashMode = onShellCommand !== undefined && draftBashMode;
 	const bashModeRef = useRef(bashMode);
@@ -1530,6 +1532,7 @@ export function Composer({
 						context={contextChips}
 						comments={queuedComments}
 						cwd={mentionCwd}
+						restoredIds={restoredChipIds}
 					/>
 				)}
 				<div

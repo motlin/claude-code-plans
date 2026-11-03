@@ -102,6 +102,7 @@ import {
 	registerComposer,
 	takeContextChips,
 	useContextChips,
+	useRestoredChipIds,
 } from "../lib/context-attach";
 import {writeClipboardText} from "../lib/clipboard";
 import {requestHomeComposerFocus} from "../lib/home-composer-focus";
@@ -863,6 +864,7 @@ function PalettePopup({
 	const [jumpCard] = useState(() => (typeof document === "undefined" ? null : findWaitingCard(document)));
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const composeChips = useContextChips(COMPOSE_DRAFT_KEY);
+	const restoredComposeChipIds = useRestoredChipIds(COMPOSE_DRAFT_KEY);
 	const compose = mode === "compose";
 	const query = compose ? buffers.compose : buffers.search;
 	function setQuery(next: string) {
@@ -1826,6 +1828,7 @@ function PalettePopup({
 										sessionId={COMPOSE_DRAFT_KEY}
 										context={composeChips}
 										comments={[]}
+										restoredIds={restoredComposeChipIds}
 									/>
 								</div>
 							)}

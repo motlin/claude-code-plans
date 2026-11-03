@@ -327,7 +327,7 @@ describe("Composer attachments", () => {
 				skeletonClasses: [],
 				skeletonRelative: false,
 				src: "blob:preview",
-				alt: "",
+				alt: "shot.png",
 				opacity: ["opacity-0"],
 				status: ["Processing image"],
 				cardLink: null,
@@ -336,6 +336,21 @@ describe("Composer attachments", () => {
 			after: {state: null, busy: null, skeleton: null},
 			chips: [{kind: "image", path: `${ATTACHMENTS}/0005.png`, name: "shot.png", previewUrl: "blob:preview"}],
 		});
+	});
+
+	it("animates the first tile in, though the strip mounts with it, and marks tiles staged before a remount restored", async () => {
+		deferUploads();
+		renderComposer();
+
+		paste({files: [png("first.png")]});
+		const fresh = (await screen.findByRole("listitem")).getAttribute("data-cds-attachment-restored");
+		cleanup();
+		renderComposer();
+
+		expect({
+			fresh,
+			remounted: (await screen.findByRole("listitem")).getAttribute("data-cds-attachment-restored"),
+		}).toStrictEqual({fresh: null, remounted: ""});
 	});
 
 	it("shows a pending file tile while a non-image upload runs", () => {
@@ -505,7 +520,7 @@ describe("Composer attachments", () => {
 
 		expect({uploads, toasts: toasts.mock.calls, chips: chipNames()}).toStrictEqual({
 			uploads: ["a.png", "b.png", "c.png", "d.png", "e.png"],
-			toasts: [[{kind: "warning", message: "Maximum of 5 images allowed."}]],
+			toasts: [[{kind: "warning", message: "Maximum of 5 images allowed.", durationMs: 8000}]],
 			chips: ["a.png", "b.png", "c.png", "d.png", "e.png"],
 		});
 	});
@@ -523,6 +538,61 @@ describe("Composer attachments", () => {
 		});
 	});
 
+	it.each([
+		{name: "pic.bmp", type: "image/bmp"},
+		{name: "logo.svg", type: "image/svg+xml"},
+		{name: "photo.heic", type: "image/heic"},
+		{name: "scan.tiff", type: "image/tiff"},
+	])("routes $type to the file lane: a pending file tile, uploading", ({name, type}) => {
+		deferUploads();
+		renderComposer();
+
+		paste({files: [new File([new Uint8Array([1, 2, 3])], name, {type})]});
+		const tile = document.querySelector(`li[data-chip-label="${name}"]`);
+
+		expect({
+			kind: tile?.getAttribute("data-cds"),
+			state: tile?.getAttribute("data-state"),
+			status: [...(tile?.querySelectorAll(":scope > [role=status].sr-only") ?? [])].map(
+				(node) => node.textContent,
+			),
+			uploads,
+		}).toStrictEqual({
+			kind: "MessageAttachmentsFile",
+			state: "pending",
+			status: ["Uploading file"],
+			uploads: [name],
+		});
+	});
+
+	it("toasts the file failure copy when a BMP upload is rejected", async () => {
+		mockUploads(() => Response.json({error: "Unsupported file type"}, {status: 415}));
+		renderComposer();
+
+		paste({files: [new File([new Uint8Array([1, 2, 3])], "pic.bmp", {type: "image/bmp"})]});
+		await waitFor(() => {
+			expect(toasts).toHaveBeenCalled();
+		});
+
+		expect({toasts: toasts.mock.calls, chips: chipNames()}).toStrictEqual({
+			toasts: [[{kind: "error", message: "Failed to upload pic.bmp. It won’t be attached."}]],
+			chips: [],
+		});
+	});
+
+	it("does not count a BMP toward the 5-image cap", () => {
+		deferUploads();
+		renderComposer();
+
+		paste({files: ["a", "b", "c", "d", "e"].map((name) => png(`${name}.png`))});
+		paste({files: [new File([new Uint8Array([1, 2, 3])], "pic.bmp", {type: "image/bmp"})]});
+
+		expect({uploads, toasts: toasts.mock.calls}).toStrictEqual({
+			uploads: ["a.png", "b.png", "c.png", "d.png", "e.png", "pic.bmp"],
+			toasts: [],
+		});
+	});
+
 	it("drops an image over the size limit without uploading it and warns with the local limit", () => {
 		deferUploads();
 		renderComposer();
@@ -532,7 +602,15 @@ describe("Composer attachments", () => {
 
 		expect({uploads, toasts: toasts.mock.calls, chips: chipNames()}).toStrictEqual({
 			uploads: ["small.png"],
-			toasts: [[{kind: "warning", message: "Some images were too large to attach. Maximum size is 5 MB."}]],
+			toasts: [
+				[
+					{
+						kind: "warning",
+						message: "Some images were too large to attach. Maximum size is 5 MB.",
+						durationMs: 8000,
+					},
+				],
+			],
 			chips: ["small.png"],
 		});
 	});
