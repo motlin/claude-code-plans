@@ -61,10 +61,13 @@ export function Shortcut({
 	keys,
 	variant = "keycap",
 	className,
+	hidden = false,
 }: {
 	keys: string;
 	variant?: ShortcutVariant;
 	className?: string;
+	/** Upstream's row hints are `aria-hidden`: the row's `aria-keyshortcuts` already names the keys. */
+	hidden?: boolean;
 }) {
 	const isMac = useIsMac();
 	const steps = formatKeySequence(keys, isMac);
@@ -72,7 +75,12 @@ export function Shortcut({
 	const wrapperClass = className ? `${baseClass} ${className}` : baseClass;
 
 	return (
-		<span data-cds="Shortcut" data-variant={variant} className={wrapperClass}>
+		<span
+			data-cds="Shortcut"
+			data-variant={variant}
+			aria-hidden={hidden ? "true" : undefined}
+			className={wrapperClass}
+		>
 			{variant === "keycap" ? (
 				steps.map((labels, index) => (
 					<Fragment key={index}>

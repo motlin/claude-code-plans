@@ -1,4 +1,3 @@
-import type {BaseUIEvent} from "@base-ui/react/types";
 import {type KeyboardEvent, useEffect, useRef} from "react";
 
 import {isEditableTarget} from "../../lib/shortcuts/match";
@@ -86,29 +85,55 @@ function rowControls(element: Element): HTMLElement[] {
 			(button) => button.offsetParent !== null && button.closest(SECTION_SELECTOR) === section,
 		);
 	}
-	return [...row.querySelectorAll<HTMLElement>("[data-roving-item], [data-row-action]")];
+	// Upstream moves trailing name-suffix controls to the end of the row's order.
+	const controls = [...row.querySelectorAll<HTMLElement>("[data-roving-item], [data-row-action]")];
+	const isSuffix = (control: HTMLElement) => control.closest(".df-name-suffix-end") !== null;
+	return [...controls.filter((control) => !isSuffix(control)), ...controls.filter(isSuffix)];
 }
 
 /**
- * Upstream's `LW`: one Tab stop per tab section, the focused item, else the one last focused in
- * that section, else its first. Every other item and row control leaves the Tab order.
+ * Upstream's `Tl`: a control of the focused row that Tab may stop on — not part of the row's item,
+ * not aria-disabled, and not an arrows-only control such as the row's PR glyph.
+ */
+function isTabbableRowControl(item: HTMLElement, control: HTMLElement): boolean {
+	return (
+		!item.contains(control) &&
+		control.getAttribute("aria-disabled") !== "true" &&
+		control.closest("[data-arrows-only]") === null
+	);
+}
+
+/**
+ * Upstream's `xD`: one Tab stop per tab section, the focused item, else the one last focused in
+ * that section, else its first. While a group header's button (not its toggle) holds focus, the
+ * section keeps its remembered row. The focused row's own controls (kebab, Group and sort, a +)
+ * are Tab stops too; every other item and row control leaves the Tab order.
  */
 function assignTabStops(container: HTMLElement, remembered: WeakSet<HTMLElement>): void {
 	const items = bodyItems(container);
 	const active = document.activeElement;
-	const focusedItem = active !== null && container.contains(active) ? owningItem(active) : null;
+	const inside = active !== null && container.contains(active);
+	const focusedItem = inside ? owningItem(active) : null;
+	const activeRow = inside ? active.closest(ROW_SELECTOR) : null;
+	const headerButton = focusedItem?.hasAttribute("data-group-toggle") === true && !focusedItem.contains(active);
+	for (const item of items) {
+		const row = item.closest(ROW_SELECTOR);
+		for (const control of rowControls(item)) {
+			if (control === item) continue;
+			setTabIndex(control, row !== null && row === activeRow && isTabbableRowControl(item, control) ? 0 : -1);
+		}
+	}
 	for (const group of tabGroups(items)) {
+		const rememberedStop = group.find((item) => remembered.has(item));
 		const stop =
-			group.find((item) => item === focusedItem) ?? group.find((item) => remembered.has(item)) ?? group[0];
+			(headerButton ? rememberedStop : undefined) ??
+			group.find((item) => item === focusedItem) ??
+			rememberedStop ??
+			group[0];
 		for (const item of group) {
 			if (item === stop) remembered.add(item);
 			else remembered.delete(item);
 			setTabIndex(item, item === stop ? 0 : -1);
-		}
-	}
-	for (const item of items) {
-		for (const control of rowControls(item)) {
-			if (control !== item) setTabIndex(control, -1);
 		}
 	}
 }
@@ -194,14 +219,8 @@ function swallowMenuItemEnter(event: KeyboardEvent<HTMLElement>): void {
 	}
 }
 
-/**
- * Upstream's `oa` trigger handler: a sidebar menu trigger (More, a row kebab) skips Base UI's
- * open-on-arrow so ArrowUp/Down keep roving the sidebar body.
- */
-export function keepArrowsRoving(event: BaseUIEvent<KeyboardEvent<HTMLElement>>): void {
-	if (event.metaKey || event.ctrlKey || event.altKey) return;
-	if (event.key === "ArrowDown" || event.key === "ArrowUp") event.preventBaseUIHandler();
-}
+/** A closed menu trigger, whose ArrowUp/Down the body takes before Base UI can open the menu. */
+const CLOSED_MENU_TRIGGER_SELECTOR = '[aria-haspopup="menu"]:not([aria-expanded="true"])';
 
 /**
  * claude.ai/code's sidebar body keyboard container (upstream `L$`): ArrowUp/Down (wrapping) and
@@ -259,5 +278,20 @@ export function useSidebarBodyRoving() {
 		target.scrollIntoView({block: "nearest"});
 	};
 
-	return {ref, onKeyDown, onKeyDownCapture: swallowMenuItemEnter};
+	/*
+	 * Upstream's `L$` capture handler: after the held-Enter guard, ArrowUp/Down on any closed sidebar
+	 * menu trigger (More, a row or header kebab, Group and sort) roves in the capture phase, and the
+	 * trigger never sees a key the body used, so it doesn't open its menu.
+	 */
+	const onKeyDownCapture = (event: KeyboardEvent<HTMLElement>) => {
+		swallowMenuItemEnter(event);
+		if (event.defaultPrevented || (event.key !== "ArrowDown" && event.key !== "ArrowUp")) return;
+		const target = event.target;
+		if (!(target instanceof Element) || ref.current?.contains(target) !== true) return;
+		if (!target.matches(CLOSED_MENU_TRIGGER_SELECTOR)) return;
+		onKeyDown(event);
+		if (event.isDefaultPrevented()) event.stopPropagation();
+	};
+
+	return {ref, onKeyDown, onKeyDownCapture};
 }

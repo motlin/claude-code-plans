@@ -2,6 +2,7 @@ import {Search} from "lucide-react";
 import {openCommandPalette} from "../../hooks/use-command-palette";
 import {useShortcutKeys} from "../../hooks/use-shortcut";
 import {Shortcut} from "../ui/shortcut";
+import {NAV_ROW_CLASS, NAV_ROW_HINT_CLASS} from "./new-session-row";
 
 /** The field's row wrapper and row classes, shared with the pre-hydration fallback so New does not shift on load. */
 export const SEARCH_FIELD_WRAPPER_CLASS = "mb-2";
@@ -32,7 +33,7 @@ export function SearchFieldContents({keys}: {keys: string}) {
 }
 
 /**
- * Upstream's `.df-search-field`: the always-on sidebar Search row above New, which opens the
+ * Upstream's `.df-search-field` (fizzy-lake `panels` off): the sidebar Search field above New, which opens the
  * ⌘K "search or start" palette. Built on the `--sb-*` row tokens so it follows the sidebar density.
  */
 export function SidebarSearchField() {
@@ -58,5 +59,50 @@ export function SidebarSearchField() {
 				<SearchFieldContents keys={keys} />
 			</button>
 		</div>
+	);
+}
+
+/** The Search row's icon, fade-truncated label and text ⌘K hint, shared with the pre-hydration fallback. */
+export function SearchRowContents({keys}: {keys: string}) {
+	return (
+		<>
+			<span data-leading-slot="" className="df-on-rail df-leading-slot">
+				<Search aria-hidden="true" />
+			</span>
+			<span className="flex min-w-0 flex-1 items-center">
+				<span className="df-fade-truncate whitespace-nowrap">Search</span>
+			</span>
+			<Shortcut keys={keys} variant="text" hidden className={NAV_ROW_HINT_CLASS} />
+		</>
+	);
+}
+
+/**
+ * Upstream's fizzy-lake `panels` Search entry (`Gx`, non-classic under the hub rail): a plain nav
+ * row right under New, in the nav block's tab stop, that opens the ⌘K "search or start" palette.
+ */
+export function SidebarSearchRow() {
+	const {keys, ariaKeyShortcuts} = useShortcutKeys("search_or_start");
+
+	return (
+		<button
+			type="button"
+			data-row=""
+			data-roving-item=""
+			data-row-main-button=""
+			data-row-nav=""
+			data-prefetch="palette"
+			aria-keyshortcuts={ariaKeyShortcuts}
+			// Upstream prevents mousedown so a click never focuses the row; focus returns to whatever held it.
+			onMouseDown={(event) => {
+				event.preventDefault();
+			}}
+			onClick={() => {
+				openCommandPalette("default", {source: "sidebar_field"});
+			}}
+			className={NAV_ROW_CLASS}
+		>
+			<SearchRowContents keys={keys} />
+		</button>
 	);
 }

@@ -18,7 +18,7 @@ import {useVisibleNavItems} from "./navigation";
 import {NavScroll} from "./nav-scroll";
 import {NewSessionRow} from "./new-session-row";
 import {SidebarFooter} from "./sidebar-footer";
-import {SidebarSearchField} from "./sidebar-search-field";
+import {SidebarSearchField, SidebarSearchRow} from "./sidebar-search-field";
 import {SidebarToggleButton} from "./sidebar-toggle";
 import {useSidebarBodyRoving} from "./use-roving-focus";
 import {Search, X} from "lucide-react";
@@ -27,6 +27,7 @@ import {SidebarSessionGroups} from "./session-filter-menu";
 import {approvalsQueryOptions} from "../../lib/api/approvals";
 import {notificationsQueryOptions, useMarkNotificationsRead} from "../../lib/api/notifications";
 import {activeSessionsQueryOptions} from "../../lib/api/sessions";
+import {useFizzyLake} from "../../lib/fizzy-lake";
 import {
 	clearPeekSuppression,
 	isPeekSuppressed,
@@ -77,6 +78,7 @@ export function Sidebar({
 	const {data: activeSessions} = useQuery(activeSessionsQueryOptions(settings.activeTimeoutSec * 1000));
 	const activeCount = activeSessions?.length ?? 0;
 	const roving = useSidebarBodyRoving();
+	const panels = useFizzyLake("panels");
 	/* Upstream pins aside.dframe-sidebar[data-density] to its own comfortable default, so a compact ancestor never pulls it along. */
 	const density = useScopeDensity("comfortable");
 
@@ -102,15 +104,28 @@ export function Sidebar({
 				onKeyDown={roving.onKeyDown}
 				onKeyDownCapture={roving.onKeyDownCapture}
 				data-sidebar-body=""
-				className="flex min-h-0 flex-1 flex-col px-2"
+				className="df-nav-scroll-box relative flex min-h-0 flex-1 flex-col px-2"
 			>
-				<div data-nav-block="" className="shrink-0">
-					{/* Upstream's phone sheet swaps the field for its header Search button. */}
-					{onPhoneSheetClose === undefined && <SidebarSearchField />}
-					<NewSessionRow />
-				</div>
-				<NavScroll activeKey={activeSection === "sessions" ? activeSessionId : null}>
+				{/* Upstream's panels-off header stays pinned above the scroller. */}
+				{!panels && (
 					<div data-nav-block="" className="shrink-0">
+						{/* Upstream's phone sheet swaps the field for its header Search button. */}
+						{onPhoneSheetClose === undefined && <SidebarSearchField />}
+						<NewSessionRow />
+					</div>
+				)}
+				<NavScroll activeKey={activeSection === "sessions" ? activeSessionId : null}>
+					{/* Upstream's panels header (`pinHeader` false) is the scroller's first child, so it scrolls with the list. */}
+					{panels && (
+						<div data-nav-block="" className="shrink-0">
+							<NewSessionRow />
+							{/* Upstream's phone sheet swaps the Search row for its header Search button. */}
+							{onPhoneSheetClose === undefined && <SidebarSearchRow />}
+							<div aria-hidden="true" className="h-1 shrink-0" />
+						</div>
+					)}
+					{/* Upstream pulls the nav block back over the header's h-1 spacer. */}
+					<div data-nav-block="" className={panels ? "-mt-1 shrink-0" : "shrink-0"}>
 						{navigationItems.map((item) => {
 							const Icon = item.icon;
 							const badge = badgeFor(item.section);

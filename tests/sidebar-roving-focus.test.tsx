@@ -190,6 +190,7 @@ async function renderSidebar(
 /** An element's label, or the title of the session row whose link it is. */
 function name(element: Element | null): string {
 	if (element?.matches("button.df-search-field") === true) return "Search field";
+	if (element?.matches("button[data-row-nav]") === true) return "Search";
 	const row = FIXTURE.find(({title}) => element === rowLink(title));
 	return row?.title ?? label(element);
 }
@@ -265,7 +266,8 @@ describe("sidebar body roving focus", () => {
 			press("ArrowDown"),
 			press("ArrowDown"),
 			press("ArrowDown"),
-		]).toEqual(["Projects", "Plans", "More navigation items", "Idle", "First row"]);
+			press("ArrowDown"),
+		]).toEqual(["Search", "Projects", "Plans", "More navigation items", "Idle", "First row"]);
 		expect(scrollIntoView).toHaveBeenLastCalledWith({block: "nearest"});
 	});
 
@@ -288,10 +290,10 @@ describe("sidebar body roving focus", () => {
 			home: (rowLink("First row").focus(), press("Home")),
 		}).toStrictEqual({
 			end: "Third row",
-			wrapDown: "Search field",
-			down: "New",
-			wrapUp: ["Search field", "Third row"],
-			home: "Search field",
+			wrapDown: "New",
+			down: "Search",
+			wrapUp: ["New", "Third row"],
+			home: "New",
 		});
 	});
 
@@ -325,7 +327,7 @@ describe("sidebar body roving focus", () => {
 		]).toEqual(["Group and sort", "New session", "New session", "Group and sort", "First row"]);
 	});
 
-	it("reaches a project header's New session in {group} + with ArrowRight, and Tab skips every +", async () => {
+	it("reaches a project header's New session in {group} + with ArrowRight, and Tab reaches only the focused header's buttons", async () => {
 		localStorage.setItem(
 			"ccp-session-list-prefs",
 			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, groupBy: "project"}),
@@ -351,9 +353,11 @@ describe("sidebar body roving focus", () => {
 			along: [press("ArrowRight"), press("ArrowRight"), press("ArrowRight"), press("ArrowRight")],
 			back: [press("ArrowLeft"), press("ArrowLeft"), press("ArrowLeft"), press("ArrowLeft")],
 			stops: bodyTabStops(),
-			pluses: screen
-				.getAllByRole("button", {name: /^New session in /})
-				.map((button) => button.getAttribute("tabindex")),
+			pluses: Object.fromEntries(
+				screen
+					.getAllByRole("button", {name: /^New session in /})
+					.map((button) => [label(button), button.getAttribute("tabindex")]),
+			),
 		}).toStrictEqual({
 			along: [
 				"More options for project-s2",
@@ -362,8 +366,12 @@ describe("sidebar body roving focus", () => {
 				"New session in project-s2",
 			],
 			back: ["Group and sort", "More options for project-s2", "project-s2", "project-s2"],
-			stops: ["Search field", "New", "project-s2"],
-			pluses: ["-1", "-1", "-1"],
+			stops: ["New", "project-s2", "More options for project-s2", "Group and sort", "New session in project-s2"],
+			pluses: {
+				"New session in project-s1": "-1",
+				"New session in project-s2": "0",
+				"New session in project-s3": "-1",
+			},
 		});
 	});
 
@@ -396,7 +404,7 @@ describe("sidebar body roving focus", () => {
 		]).toEqual([null, null]);
 	});
 
-	it("gives the field, the nav rows and the session list one tab stop each", async () => {
+	it("gives the header and nav rows one tab stop and the session list another", async () => {
 		await renderSidebar();
 
 		screen.getByRole("link", {name: "New"}).focus();
@@ -405,7 +413,7 @@ describe("sidebar body roving focus", () => {
 			groupAndSort: screen
 				.getAllByRole("button", {name: "Group and sort"})
 				.map((button) => button.getAttribute("tabindex")),
-		}).toStrictEqual({stops: ["Search field", "New", "Idle"], groupAndSort: ["-1"]});
+		}).toStrictEqual({stops: ["New", "Idle"], groupAndSort: ["-1"]});
 	});
 
 	it("keeps every group header button out of the tab order across several groups", async () => {
@@ -424,7 +432,7 @@ describe("sidebar body roving focus", () => {
 				.map((button) => button.getAttribute("tabindex")),
 		}).toStrictEqual({
 			toggles: ["Pinned", "Needs input", "Working", "Idle"],
-			stops: ["Search field", "New", "Needs input"],
+			stops: ["New", "Needs input"],
 			groupAndSort: ["-1", "-1", "-1"],
 		});
 	});
@@ -436,8 +444,9 @@ describe("sidebar body roving focus", () => {
 		press("ArrowDown");
 		press("ArrowDown");
 		press("ArrowDown");
+		press("ArrowDown");
 		rowLink("First row").focus();
-		expect(bodyTabStops()).toEqual(["Search field", "More navigation items", "First row"]);
+		expect(bodyTabStops()).toEqual(["More navigation items", "First row", "More options for First row"]);
 	});
 
 	it("keeps the first item as the tab stop when a row is selected", async () => {
@@ -445,7 +454,104 @@ describe("sidebar body roving focus", () => {
 
 		expect(rowLink("Second row").dataset["selected"]).toBe("focused");
 		screen.getByRole("link", {name: "New"}).focus();
-		expect(bodyTabStops()).toEqual(["Search field", "New", "Idle"]);
+		expect(bodyTabStops()).toEqual(["New", "Idle"]);
+	});
+
+	it("makes the Search row the nav stop once it holds focus, and roves from it to the first nav row", async () => {
+		await renderSidebar();
+
+		screen.getByRole("link", {name: "New"}).focus();
+		const fromNew = press("ArrowDown");
+		expect({
+			fromNew,
+			stops: bodyTabStops(),
+			newTabIndex: screen.getByRole("link", {name: "New"}).getAttribute("tabindex"),
+			down: press("ArrowDown"),
+		}).toStrictEqual({fromNew: "Search", stops: ["Search", "Idle"], newTabIndex: "-1", down: "Projects"});
+	});
+
+	it("puts the focused row's kebab in the tab order and takes it out again when focus moves on", async () => {
+		await renderSidebar();
+
+		const kebabs = () =>
+			screen.getAllByRole("button", {name: /^More options for /}).map((kebab) => kebab.getAttribute("tabindex"));
+		rowLink("First row").focus();
+		const first = {kebabs: kebabs(), stops: bodyTabStops()};
+		rowLink("Second row").focus();
+		expect({first, second: kebabs()}).toStrictEqual({
+			first: {kebabs: ["0", "-1", "-1"], stops: ["New", "First row", "More options for First row"]},
+			second: ["-1", "0", "-1"],
+		});
+	});
+
+	it("puts a focused group toggle's Group and sort in the tab order", async () => {
+		await renderSidebar();
+
+		screen.getByRole("button", {name: "Idle"}).focus();
+		expect(screen.getByRole("button", {name: "Group and sort"}).getAttribute("tabindex")).toBe("0");
+	});
+
+	it("keeps an arrows-only control in the focused row out of the tab order", async () => {
+		await renderSidebar();
+
+		const row = rowLink("First row").closest("[data-row]")!;
+		const arrowsOnly = document.createElement("span");
+		arrowsOnly.setAttribute("data-arrows-only", "");
+		const glyph = document.createElement("button");
+		glyph.setAttribute("data-row-action", "");
+		glyph.setAttribute("aria-label", "Pull requests");
+		arrowsOnly.append(glyph);
+		row.append(arrowsOnly);
+		rowLink("First row").focus();
+		expect({
+			glyph: glyph.getAttribute("tabindex"),
+			kebab: screen.getByRole("button", {name: "More options for First row"}).getAttribute("tabindex"),
+		}).toStrictEqual({glyph: "-1", kebab: "0"});
+	});
+
+	it("keeps the section's remembered row as its stop while a group header button holds focus", async () => {
+		await renderSidebar();
+
+		const groupAndSort = screen.getByRole("button", {name: "Group and sort"});
+		groupAndSort.focus();
+		const nothingRemembered = rovingTabIndexes()["Idle"];
+		rowLink("Second row").focus();
+		groupAndSort.focus();
+		const indexes = rovingTabIndexes();
+		expect({nothingRemembered, toggle: indexes["Idle"], row: indexes["Second row"]}).toStrictEqual({
+			nothingRemembered: "0",
+			toggle: "-1",
+			row: "0",
+		});
+	});
+
+	it("roves past a project header's kebab with ArrowDown instead of opening its menu", async () => {
+		localStorage.setItem(
+			"ccp-session-list-prefs",
+			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, groupBy: "project"}),
+		);
+		await renderSidebar(
+			"/",
+			FIXTURE,
+			FIXTURE.map(({id, project, projectName}) => ({
+				id: project,
+				name: projectName,
+				projectPath: `/p/${id}`,
+				sessionCount: 1,
+				memoryCount: 0,
+				planCount: 0,
+				taskCount: 0,
+				activeCount: 0,
+				lastActivity: "2026-10-01T00:00:00Z",
+			})),
+		);
+
+		screen.getByRole("button", {name: "More options for project-s2"}).focus();
+		const moved = press("ArrowDown");
+		await new Promise((resolve) => {
+			setTimeout(resolve, 50);
+		});
+		expect({moved, menu: screen.queryByRole("menu") !== null}).toStrictEqual({moved: "Second row", menu: false});
 	});
 
 	it("re-chooses the tab stops when Tab is pressed", async () => {
@@ -454,7 +560,7 @@ describe("sidebar body roving focus", () => {
 		screen.getByRole("link", {name: "New"}).focus();
 		screen.getByRole("button", {name: "Idle"}).setAttribute("tabindex", "-1");
 		fireEvent.keyDown(document.activeElement!, {key: "Tab"});
-		expect(bodyTabStops()).toEqual(["Search field", "New", "Idle"]);
+		expect(bodyTabStops()).toEqual(["New", "Idle"]);
 	});
 
 	it("leaves the tab stops alone while rows are selected", async () => {

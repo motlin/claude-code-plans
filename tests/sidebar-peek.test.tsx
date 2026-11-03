@@ -204,7 +204,7 @@ describe("collapsed sidebar peek", () => {
 		expect(root.hasAttribute("data-hovering")).toBe(false);
 	});
 
-	it("renders the peek as a full-height panel holding the wordmark and the Search field, but no footer Search icon", async () => {
+	it("renders the peek as a full-height panel holding the wordmark and the Search row under New, but no footer Search icon", async () => {
 		await renderCollapsedSidebar();
 		const peek = screen.getByTestId("sidebar-peek");
 		const classes = [...peek.classList];
@@ -219,15 +219,21 @@ describe("collapsed sidebar peek", () => {
 				name: "Search",
 				hidden: true,
 			}),
-			fields: within(peek)
+			searchRows: within(peek)
 				.getAllByRole("button", {name: "Search", hidden: true})
-				.map((button) => button.classList.contains("df-search-field")),
+				.map(
+					(button) =>
+						button.matches("button[data-row-nav]") &&
+						(within(peek).getByRole("link", {name: "New", hidden: true}).compareDocumentPosition(button) &
+							Node.DOCUMENT_POSITION_FOLLOWING) !==
+							0,
+				),
 		}).toEqual({
 			fullHeight: ["fixed", "inset-y-0", "left-0", "h-dvh", "w-[288px]", "rounded-none", "pt-12"],
 			card: [],
 			wordmark: "/",
 			footerSearch: null,
-			fields: [true],
+			searchRows: [true],
 		});
 	});
 

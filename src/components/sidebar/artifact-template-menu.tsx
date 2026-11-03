@@ -6,7 +6,6 @@ import {TemplateBadge} from "../make-something-new";
 import {TEMPLATE_ICONS} from "../artifact-template-icons";
 import {Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
-import {keepArrowsRoving} from "./use-roving-focus";
 
 const LABEL = "New from a template";
 
@@ -34,7 +33,6 @@ export function ArtifactsNavRow({children}: Readonly<{children: ReactNode}>) {
 							aria-label={LABEL}
 							data-row-action=""
 							tabIndex={-1}
-							onKeyDown={keepArrowsRoving}
 							className="flex size-[var(--sb-row-ctl,24px)] items-center justify-center rounded-r5 text-secondary hover:bg-fill-ghost-hover hover:text-primary aria-expanded:bg-fill-ghost-hover aria-expanded:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 						>
 							<Plus aria-hidden="true" className="size-4" />

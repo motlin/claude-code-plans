@@ -16,7 +16,7 @@ import {activeSessionsQueryOptions, recentSessionsQueryOptions} from "../src/lib
 import {installLocalStorage} from "./fake-storage";
 import {NAV_SECTIONS} from "../src/lib/nav-sections";
 import {ToastProvider} from "../src/components/toast";
-import {CompactScope} from "./fizzy-lake-off";
+import {CompactScope, PanelsOff} from "./fizzy-lake-off";
 
 function seedQueryClient(): QueryClient {
 	const queryClient = new QueryClient({
@@ -51,12 +51,14 @@ async function renderSidebar(
 		phoneSheet?: boolean;
 		palette?: boolean;
 		compactAncestor?: boolean;
+		panelsOff?: boolean;
 	} = {},
 ) {
 	const queryClient = seedQueryClient();
-	const sidebar = (
+	const docked = (
 		<Sidebar collapsed={props.collapsed ?? false} {...(props.phoneSheet ? {onPhoneSheetClose: () => {}} : {})} />
 	);
+	const sidebar = props.panelsOff === true ? <PanelsOff>{docked}</PanelsOff> : docked;
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
@@ -107,9 +109,158 @@ beforeEach(() => {
 	Element.prototype.scrollIntoView = () => {};
 });
 
-describe("sidebar search field", () => {
-	it("renders a Search button above New in the docked sidebar", async () => {
+function searchRow(): HTMLElement | null {
+	return sidebarNav().querySelector<HTMLElement>("button[data-row-nav]");
+}
+
+function newRow(): HTMLElement {
+	// The collapsed peek is inert until hovered, so its rows are hidden from the accessibility tree.
+	return within(sidebarNav()).getByRole("link", {name: "New", hidden: true});
+}
+
+/* Upstream fizzy-lake `panels` with the hub rail: the Search nav row under New (`Gx`, non-classic). */
+describe("sidebar Search row", () => {
+	it("renders one Search nav row right after New, then the h-1 spacer, and no old field", async () => {
 		await renderSidebar();
+
+		const row = searchRow();
+		const header = row?.parentElement;
+
+		expect({
+			fields: sidebarNav().querySelectorAll(".df-search-field").length,
+			searchButtons: within(sidebarNav())
+				.getAllByRole("button", {name: "Search"})
+				.map((button) => button === row),
+			header: [
+				header?.children[0]?.contains(newRow()),
+				header?.children[1] === row,
+				header?.children[2]?.outerHTML,
+				header?.children.length,
+			],
+			tabSection: row?.closest("[data-tab-section]") ?? null,
+		}).toStrictEqual({
+			fields: 0,
+			searchButtons: [true],
+			header: [true, true, '<div aria-hidden="true" class="h-1 shrink-0"></div>', 3],
+			tabSection: null,
+		});
+	});
+
+	it("carries upstream's row attributes, 20px icon in the rail slot, fade-truncated label and text ⌘K hint", async () => {
+		await renderSidebar();
+
+		const row = searchRow();
+		const hint = row?.querySelector("[data-cds=Shortcut]");
+
+		expect({
+			type: row?.getAttribute("type"),
+			attributes: ["data-row", "data-roving-item", "data-row-main-button", "data-row-nav"].map((name) =>
+				row?.getAttribute(name),
+			),
+			ariaKeyShortcuts: row?.getAttribute("aria-keyshortcuts"),
+			leadingSlot: row?.querySelector("[data-leading-slot]")?.className,
+			icon: row?.querySelector("[data-leading-slot] > svg") !== null,
+			label: row?.querySelector(".df-fade-truncate")?.className,
+			labelText: row?.querySelector(".df-fade-truncate")?.textContent,
+			labelWrapper: row?.querySelector(".df-fade-truncate")?.parentElement?.className,
+			hintHidden: hint?.getAttribute("aria-hidden"),
+			hintVariant: hint?.getAttribute("data-variant"),
+			hintClasses: [
+				"ms-1",
+				"me-[var(--sb-radius)]",
+				"leading-none",
+				"text-muted-as-secondary",
+				"[--shortcut-cap-ink:currentColor]",
+				"opacity-0",
+				"group-hover:opacity-100",
+			].filter((token) => hint?.classList.contains(token) !== true),
+			hintText: hint?.textContent,
+		}).toStrictEqual({
+			type: "button",
+			attributes: ["", "", "", ""],
+			ariaKeyShortcuts: "Control+k",
+			leadingSlot: "df-on-rail df-leading-slot",
+			icon: true,
+			label: "df-fade-truncate whitespace-nowrap",
+			labelText: "Search",
+			labelWrapper: "flex min-w-0 flex-1 items-center",
+			hintHidden: "true",
+			hintVariant: "text",
+			hintClasses: [],
+			hintText: "Ctrl+K",
+		});
+	});
+
+	/* Upstream's New carries mt-1 to land at y=52 on the dock; the local header already starts there, so New takes no margin. */
+	it("shares New's row classes and hint classes exactly", async () => {
+		await renderSidebar();
+
+		const row = searchRow();
+		const newClasses = newRow().className.split(" ");
+		const rowClasses = row?.className.split(" ") ?? [];
+		const hintOf = (element: Element | null | undefined) =>
+			element?.querySelector("[data-cds=Shortcut]")?.className.split(" ") ?? [];
+
+		expect({
+			onlyNew: newClasses.filter((token) => !rowClasses.includes(token)),
+			onlyRow: rowClasses.filter((token) => !newClasses.includes(token)),
+			hint: hintOf(newRow()).toSorted(),
+			noFocusVisibleHint: [...hintOf(row), ...hintOf(newRow())].filter((token) =>
+				token.startsWith("group-focus-visible:"),
+			),
+		}).toStrictEqual({
+			onlyNew: [],
+			onlyRow: [],
+			hint: hintOf(row).toSorted(),
+			noFocusVisibleHint: [],
+		});
+	});
+
+	it("is shown under New in the collapsed peek", async () => {
+		await renderSidebar({collapsed: true});
+
+		const row = searchRow();
+
+		expect(row !== null && (newRow().compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0).toBe(
+			true,
+		);
+	});
+
+	it("is not rendered in the phone sheet, which keeps its own header Search button", async () => {
+		await renderSidebar({phoneSheet: true});
+
+		expect(searchRow()).toBeNull();
+	});
+
+	it("never takes focus on mouse down", async () => {
+		await renderSidebar();
+
+		const row = searchRow();
+
+		expect(row !== null && fireEvent.mouseDown(row)).toBe(false);
+	});
+
+	it("opens the ⌘K default entry in Search without overwriting a remembered Compose tab", async () => {
+		localStorage.setItem("cmdk-mode", "compose");
+		await renderSidebar({palette: true});
+
+		const row = searchRow();
+		if (row === null) throw new Error("No Search row");
+		fireEvent.click(row);
+		const dialog = await screen.findByRole("dialog", {name: "Search"});
+		const input = await within(dialog).findByRole("combobox", {name: "Search"});
+
+		expect({
+			placeholder: input.getAttribute("placeholder"),
+			modeSwitch: within(dialog).queryByRole("radiogroup", {name: "Search or compose"}) !== null,
+			stored: localStorage.getItem("cmdk-mode"),
+		}).toStrictEqual({placeholder: "Search", modeSwitch: false, stored: "compose"});
+	});
+});
+
+describe("sidebar search field (fizzy-lake panels off)", () => {
+	it("renders a Search button above New in the docked sidebar", async () => {
+		await renderSidebar({panelsOff: true});
 
 		const field = within(sidebarNav()).getAllByRole("button", {name: "Search"})[0];
 		const newRow = within(sidebarNav()).getByRole("link", {name: /^New/});
@@ -122,7 +273,7 @@ describe("sidebar search field", () => {
 	});
 
 	it("exposes the ⌘K default-entry shortcut and roving attributes", async () => {
-		await renderSidebar();
+		await renderSidebar({panelsOff: true});
 
 		const field = searchField();
 		const keys = field?.querySelector(".df-search-field-keys");
@@ -157,7 +308,7 @@ describe("sidebar search field", () => {
 	});
 
 	it("builds the field on the --sb-* row tokens", async () => {
-		await renderSidebar();
+		await renderSidebar({panelsOff: true});
 
 		const classes = searchField()?.className.split(" ") ?? [];
 
@@ -179,19 +330,19 @@ describe("sidebar search field", () => {
 	});
 
 	it("is shown in the collapsed peek", async () => {
-		await renderSidebar({collapsed: true});
+		await renderSidebar({panelsOff: true, collapsed: true});
 
 		expect(searchField() === null).toBe(false);
 	});
 
 	it("is not rendered in the phone sheet, which keeps its own header Search button", async () => {
-		await renderSidebar({phoneSheet: true});
+		await renderSidebar({panelsOff: true, phoneSheet: true});
 
 		expect(searchField()).toBeNull();
 	});
 
 	it("never takes focus on mouse down", async () => {
-		await renderSidebar();
+		await renderSidebar({panelsOff: true});
 
 		const field = searchField();
 
@@ -200,7 +351,7 @@ describe("sidebar search field", () => {
 
 	it("opens the ⌘K default entry in Search without overwriting a remembered Compose tab", async () => {
 		localStorage.setItem("cmdk-mode", "compose");
-		await renderSidebar({palette: true});
+		await renderSidebar({panelsOff: true, palette: true});
 
 		const field = searchField();
 		if (field === null) throw new Error("No search field");
@@ -215,7 +366,7 @@ describe("sidebar search field", () => {
 		}).toStrictEqual({placeholder: "Search", modeSwitch: false, stored: "compose"});
 	});
 	it("returns focus to the previously focused element after a mouse open and close", async () => {
-		await renderSidebar({palette: true});
+		await renderSidebar({panelsOff: true, palette: true});
 
 		const field = searchField();
 		if (field === null) throw new Error("No search field");
@@ -234,7 +385,7 @@ describe("sidebar search field", () => {
 	});
 
 	it("returns focus to the field after a keyboard open and close", async () => {
-		await renderSidebar({palette: true});
+		await renderSidebar({panelsOff: true, palette: true});
 
 		const field = searchField();
 		if (field === null) throw new Error("No search field");

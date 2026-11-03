@@ -118,7 +118,8 @@ describe("hand-rolled focus rings", () => {
 });
 
 describe("sidebar nav row focus ring", () => {
-	it("rings nav rows and the account trigger with upstream's inset row ring instead of a hover background", () => {
+	/* Upstream's nav rows (`Xx` variant nav, 2026-11-01) also tint keyboard focus with the hover background; the account trigger doesn't. */
+	it("rings nav rows and the account trigger with upstream's inset row ring, tinting only the nav rows with the hover background", () => {
 		const css = readFileSync("src/styles/globals.css", "utf8");
 		const has = (path: string, needle: string) => readFileSync(path, "utf8").includes(needle);
 		expect({
@@ -136,7 +137,7 @@ describe("sidebar nav row focus ring", () => {
 			accountMenu: has("src/components/sidebar/account-menu.tsx", `pr-2 pl-0.5 text-left ${ROW_FOCUS} hover:`),
 			accountMenuBackground: has("src/components/sidebar/account-menu.tsx", "focus-visible:bg-"),
 		}).toStrictEqual({
-			cssBackgroundRule: false,
+			cssBackgroundRule: true,
 			navLink: true,
 			newRow: true,
 			moreRow: true,

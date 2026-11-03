@@ -2243,7 +2243,7 @@ html[data-motion="reduced"] [data-palette-skeleton][data-motion="wave"] [data-sk
  * Upstream .dframe-root[data-variant="web"] .dframe-sidebar-body [data-row]: every row in the
  * sidebar body ends one 2px stack gap above the next (a 34px nav pitch). Session rows already
  * stack by the same gap (gap-[var(--sb-row-stack-gap)]), so this covers the New and nav blocks.
- * The old Search field keeps its own wrapper margin until it becomes upstream's plain Search row.
+ * The pre-panels Search field keeps its own wrapper margin; the panels Search row stacks like New.
  */
 [data-nav-block] [data-row]:not(.df-search-field) {
 	margin-bottom: var(--sb-row-stack-gap);
@@ -2268,6 +2268,11 @@ html[data-motion="reduced"] [data-palette-skeleton][data-motion="wave"] [data-sk
 		.df-nav-row:hover {
 			background-color: var(--sb-hover);
 		}
+	}
+
+	/* Upstream's nav rows tint keyboard focus with the hover background; selection still wins. */
+	.df-nav-row:focus-visible {
+		background-color: var(--sb-hover);
 	}
 
 	.df-nav-row[data-selected="focused"] {
@@ -2342,6 +2347,25 @@ html[data-motion="reduced"] [data-palette-skeleton][data-motion="wave"] [data-sk
 	.df-search-field:hover .df-search-field-keys {
 		opacity: 1;
 	}
+}
+
+/* Upstream .df-fade-truncate: a label that fades out over its last 12px instead of an ellipsis. */
+.df-fade-truncate {
+	min-width: 0;
+	margin: -4px 0;
+	padding: 4px 12px 4px 0;
+	overflow: hidden;
+	mask-image: linear-gradient(90deg, #000 calc(100% - 12px), transparent);
+}
+
+.df-fade-truncate:where(:root[dir="rtl"] :dir(rtl)) {
+	padding: 4px 0 4px 12px;
+	mask-image: linear-gradient(270deg, #000 calc(100% - 12px), transparent);
+}
+
+/* Upstream .dframe-sidebar .df-on-rail: a leading slot that follows the hub rail's shift. */
+.df-on-rail {
+	margin-inline-start: var(--sb-rail-shift, 0px);
 }
 
 /* Upstream hit-row-main: a ::before that extends the click target --cds-hit-gap-y below the row. */

@@ -71,4 +71,23 @@ describe("sidebar search field CSS", () => {
 			["@media (hover: hover)"],
 		]);
 	});
+
+	it("copies upstream's .df-fade-truncate label mask, its RTL flip, and .df-on-rail for the Search row", () => {
+		expect(
+			missing([
+				".df-fade-truncate { min-width: 0; margin: -4px 0; padding: 4px 12px 4px 0; overflow: hidden; mask-image: linear-gradient(90deg, #000 calc(100% - 12px), transparent); }",
+				'.df-fade-truncate:where(:root[dir="rtl"] :dir(rtl)) { padding: 4px 0 4px 12px; mask-image: linear-gradient(270deg, #000 calc(100% - 12px), transparent); }',
+				".df-on-rail { margin-inline-start: var(--sb-rail-shift, 0px); }",
+			]),
+		).toStrictEqual([]);
+	});
+
+	it("tints a keyboard-focused nav row with the hover background, under the selected background", () => {
+		const focusVisible = styles.indexOf(".df-nav-row:focus-visible { background-color: var(--sb-hover); }");
+		const selected = styles.indexOf('.df-nav-row[data-selected="focused"] {');
+		expect({
+			focusVisible: focusVisible !== -1,
+			beforeSelected: focusVisible < selected,
+		}).toStrictEqual({focusVisible: true, beforeSelected: true});
+	});
 });

@@ -32,6 +32,7 @@ import {redirectLegacyPlugins} from "../src/routes/plugins";
 import {ToastProvider} from "../src/components/toast";
 import {onHomeComposerFocusRequest} from "../src/lib/home-composer-focus";
 import {plansQueryOptions} from "../src/lib/api/plans";
+import {PanelsOff} from "./fizzy-lake-off";
 
 function seedQueryClient(): QueryClient {
 	const queryClient = new QueryClient({
@@ -80,13 +81,14 @@ function seedQueryClient(): QueryClient {
 	return queryClient;
 }
 
-async function renderSidebarAt(path: string, queryClient = seedQueryClient()) {
+async function renderSidebarAt(path: string, queryClient = seedQueryClient(), {panelsOff = false} = {}) {
+	const sidebar = <Sidebar collapsed={false} />;
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
 				<ToastProvider>
 					<SettingsProvider>
-						<Sidebar collapsed={false} />
+						{panelsOff ? <PanelsOff>{sidebar}</PanelsOff> : sidebar}
 						<Outlet />
 					</SettingsProvider>
 				</ToastProvider>
@@ -436,7 +438,7 @@ describe("sidebar New row", () => {
 				(cap) => cap.textContent,
 			),
 			hiddenUntilHover: ["opacity-0", "group-hover:opacity-100"].every((name) =>
-				shortcut?.parentElement?.classList.contains(name),
+				shortcut?.classList.contains(name),
 			),
 		}).toStrictEqual({
 			firstNavLink: true,
@@ -448,8 +450,38 @@ describe("sidebar New row", () => {
 		});
 	});
 
-	it("keeps only New fixed while the other navigation rows and More scroll", async () => {
+	it("scrolls the New and Search header with the nav rows, first inside the scroller, as upstream panels does", async () => {
 		await renderSidebarAt("/tasks");
+		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
+
+		const scroller = screen.getByTestId("nav-scroll");
+		const newRow = screen.getByRole("link", {name: "New"});
+		const header = scroller.firstElementChild;
+		expect({
+			fixedLinks: navLinks()
+				.filter((link) => !scroller.contains(link))
+				.map((link) => link.getAttribute("href")),
+			headerFirst:
+				header?.contains(newRow) === true && header.contains(screen.getByRole("button", {name: "Search"})),
+			newBeforeNav: Boolean(
+				newRow.compareDocumentPosition(screen.getByRole("link", {name: "Tasks"})) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+			),
+			scrollPaddingTop: scroller.classList.contains("scroll-pt-1"),
+			keyboardContainer: ["df-nav-scroll-box", "relative", "flex", "flex-1", "flex-col", "min-h-0"].filter(
+				(token) => scroller.closest("[data-sidebar-body]")?.classList.contains(token) !== true,
+			),
+		}).toStrictEqual({
+			fixedLinks: [],
+			headerFirst: true,
+			newBeforeNav: true,
+			scrollPaddingTop: true,
+			keyboardContainer: [],
+		});
+	});
+
+	it("keeps only New fixed while the other navigation rows and More scroll, with fizzy-lake panels off", async () => {
+		await renderSidebarAt("/tasks", seedQueryClient(), {panelsOff: true});
 		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
 
 		const scroller = screen.getByTestId("nav-scroll");
