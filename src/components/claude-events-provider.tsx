@@ -91,6 +91,7 @@ const DOMAIN_EVENT_TYPES = [
 	DOMAIN_EVENTS.MEMORY_CHANGED,
 	DOMAIN_EVENTS.MEMORY_REMOVED,
 	DOMAIN_EVENTS.TASK_CHANGED,
+	DOMAIN_EVENTS.TASK_REMOVED,
 	DOMAIN_EVENTS.TASK_CREATED,
 	DOMAIN_EVENTS.TASK_COMPLETED,
 	DOMAIN_EVENTS.APPROVAL_CHANGED,
@@ -516,6 +517,15 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 					const filename = data["filename"];
 					if (typeof project === "string" && typeof filename === "string") {
 						applyMemoryRemoved(queryClient, project, filename);
+					}
+					break;
+				}
+				case DOMAIN_EVENTS.TASK_REMOVED: {
+					const projectDir = data["projectDir"];
+					if (typeof projectDir === "string") {
+						applyTaskChanged(queryClient, projectDir);
+					} else {
+						void queryClient.invalidateQueries({queryKey: ["tasks"]});
 					}
 					break;
 				}

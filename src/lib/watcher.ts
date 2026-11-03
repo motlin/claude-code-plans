@@ -10,6 +10,7 @@ import {readAppendedJsonlLines, sharedJsonlOffsets} from "./jsonl-append-reader"
 import {
 	deleteFileContent,
 	deleteMemoryFile,
+	deleteTaskFile,
 	deletePlan,
 	indexFile,
 	indexFileContent,
@@ -348,7 +349,7 @@ function diffAndBroadcastSessions(index: IndexDb, projectId: string, broadcast: 
 
 /**
  * Diff the current DB tasks for a project against the last-known snapshot
- * and broadcast task:changed / task:completed deltas. A task transitioning to
+ * and broadcast task:changed / task:completed / task:removed deltas. A task transitioning to
  * status 'completed' gets a task:completed event in addition to task:changed.
  */
 function diffAndBroadcastTasks(projectId: string): void {
@@ -387,11 +388,9 @@ function diffAndBroadcastTasks(projectId: string): void {
 			});
 		}
 	}
-	// Removed tasks: file was deleted. No explicit removal delta is defined yet;
-	// clients can invalidate the tasks query if needed via task:changed elsewhere.
 	for (const taskId of removed) {
-		// Intentionally no broadcast — schema does not define task:removed yet.
-		void taskId;
+		const projectDir = previous.get(taskId)?.projectDir;
+		if (projectDir !== undefined) broadcastTyped(DOMAIN_EVENTS.TASK_REMOVED, {taskId, projectDir});
 	}
 
 	lastTasksByProject.set(projectId, next);
@@ -904,6 +903,11 @@ async function handleFileUnlink(path: string): Promise<void> {
 	} else if (ext === ".json" && path.endsWith("sessions-index.json")) {
 		safeDiffSessions(basename(dirname(path)));
 	} else if (ext === ".json" && path.includes("/tasks/")) {
+		try {
+			deleteTaskFile(getDb().index, path);
+		} catch {
+			// transient DB error; the diff below still runs
+		}
 		safeDiffTasks(basename(dirname(path)));
 	}
 }
@@ -976,6 +980,7 @@ export const __testing = {
 	handleFileContentChange,
 	handleFileContentUnlink,
 	handleFileChange,
+	handleFileUnlink,
 	handleJobFileEvent,
 	handleWorkflowFileEvent,
 	resetWorkflowThrottle,

@@ -965,6 +965,7 @@ describe("DOMAIN_EVENTS", () => {
 		expect(DOMAIN_EVENTS.MEMORY_CHANGED).toBe("memory:changed");
 		expect(DOMAIN_EVENTS.MEMORY_REMOVED).toBe("memory:removed");
 		expect(DOMAIN_EVENTS.TASK_CHANGED).toBe("task:changed");
+		expect(DOMAIN_EVENTS.TASK_REMOVED).toBe("task:removed");
 		expect(DOMAIN_EVENTS.TASK_CREATED).toBe("task:created");
 		expect(DOMAIN_EVENTS.TASK_COMPLETED).toBe("task:completed");
 		expect(DOMAIN_EVENTS.SUBAGENT_STARTED).toBe("subagent:started");

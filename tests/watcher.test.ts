@@ -835,6 +835,80 @@ describe("rebroadcastSessionsById", () => {
 	});
 });
 
+describe("task file unlink", () => {
+	let testDir: string;
+
+	beforeEach(() => {
+		testDir = realpathSync(mkdtempSync(join(tmpdir(), "watcher-task-unlink-test-")));
+	});
+
+	afterEach(() => {
+		rmSync(testDir, {recursive: true, force: true});
+	});
+
+	it("drops the deleted task's row and broadcasts task:removed", async () => {
+		const projectsDir = join(testDir, "projects");
+		const projectDir = join(projectsDir, "-Users-alice-projects-tasks");
+		mkdirSync(projectDir, {recursive: true});
+		const jsonlPath = join(projectDir, "sess-task-unlink.jsonl");
+		writeFileSync(
+			jsonlPath,
+			jsonl({
+				type: "user",
+				sessionId: "sess-task-unlink",
+				timestamp: "2000-01-01T00:00:00.000Z",
+				message: {role: "user", content: "Track a task"},
+			}),
+		);
+		await processJsonlAppend(sharedDb.index, jsonlPath, new Map(), () => {}, {projectsDir, plansDir: ""});
+
+		const taskPath = join(testDir, "tasks", "sess-task-unlink", "1.json");
+		mkdirSync(dirname(taskPath), {recursive: true});
+		writeFileSync(
+			taskPath,
+			JSON.stringify({
+				id: "1",
+				subject: "Fix bug",
+				description: "",
+				status: "pending",
+				blocks: [],
+				blockedBy: [],
+			}),
+		);
+
+		const decoder = new TextDecoder();
+		const events: {type: string; data: unknown}[] = [];
+		const client = {
+			enqueue: (chunk: Uint8Array) => {
+				const [eventLine = "", dataLine = ""] = decoder.decode(chunk).split("\n");
+				events.push({type: eventLine.replace("event: ", ""), data: JSON.parse(dataLine.replace("data: ", ""))});
+			},
+		} as unknown as ReadableStreamDefaultController;
+
+		addClient(client);
+		try {
+			await __testing.handleFileChange(taskPath);
+			await vi.waitFor(() => {
+				expect(events.map(({type}) => type)).toContain(DOMAIN_EVENTS.TASK_CHANGED);
+			});
+			events.length = 0;
+
+			rmSync(taskPath);
+			await __testing.handleFileUnlink(taskPath);
+		} finally {
+			removeClient(client);
+		}
+
+		expect({
+			events,
+			rows: sharedDb.index.select().from(schema.tasks).where(eq(schema.tasks.filePath, taskPath)).all(),
+		}).toStrictEqual({
+			events: [{type: DOMAIN_EVENTS.TASK_REMOVED, data: {taskId: "1", projectDir: "sess-task-unlink"}}],
+			rows: [],
+		});
+	});
+});
+
 describe("handlePlanMdChange", () => {
 	const testDir = join(tmpdir(), "claude-watcher-md-test-" + process.pid);
 	let db: AppDb;

@@ -75,6 +75,8 @@ export const DOMAIN_EVENTS = {
 	MEMORY_CHANGED: "memory:changed",
 	MEMORY_REMOVED: "memory:removed",
 	TASK_CHANGED: "task:changed",
+	/** A task file was deleted (TaskUpdate `deleted`, list reset, or by hand). */
+	TASK_REMOVED: "task:removed",
 	TASK_CREATED: "task:created",
 	TASK_COMPLETED: "task:completed",
 	APPROVAL_CHANGED: "approval:changed",

@@ -1387,11 +1387,18 @@ export async function linkSubagentParents(db: IndexDb, jsonlPath: string, parent
 	}
 }
 
+/** Delete a task file's `tasks` row and its `indexed_files` cache entry. Idempotent. */
+export function deleteTaskFile(db: IndexDb, filePath: string): void {
+	db.delete(schema.tasks).where(eq(schema.tasks.filePath, filePath)).run();
+	db.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).run();
+}
+
 export async function indexTaskFile(db: IndexDb, filePath: string, projectDir: string): Promise<void> {
 	let fileStat: Awaited<ReturnType<typeof stat>>;
 	try {
 		fileStat = await stat(filePath);
 	} catch {
+		deleteTaskFile(db, filePath);
 		return;
 	}
 
@@ -1507,10 +1514,7 @@ export async function scanTasksDir(db: IndexDb, tasksDir: string): Promise<void>
 	// Clean up deleted files
 	const allTasks = db.select({filePath: schema.tasks.filePath}).from(schema.tasks).all();
 	for (const row of allTasks) {
-		if (!indexedPaths.has(row.filePath)) {
-			db.delete(schema.tasks).where(eq(schema.tasks.filePath, row.filePath)).run();
-			db.delete(schema.indexedFiles).where(eq(schema.indexedFiles.path, row.filePath)).run();
-		}
+		if (!indexedPaths.has(row.filePath)) deleteTaskFile(db, row.filePath);
 	}
 }
 

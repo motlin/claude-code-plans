@@ -3380,6 +3380,24 @@ describe("task indexer", () => {
 		expect(tasksAfter.map((t) => t.subject)).toStrictEqual(["Fix bug"]);
 	});
 
+	it("removes the task row when its file is deleted", async () => {
+		const tasksDir = join(testDir, "tasks", "my-project");
+		mkdirSync(tasksDir, {recursive: true});
+
+		const filePath = join(tasksDir, "1.json");
+		writeFileSync(filePath, makeTaskFile({id: "1", subject: "Fix bug"}));
+		await indexTaskFile(db.index, filePath, "my-project");
+		expect(db.index.select({taskId: schema.tasks.taskId}).from(schema.tasks).all()).toStrictEqual([{taskId: "1"}]);
+
+		rmSync(filePath);
+		await indexTaskFile(db.index, filePath, "my-project");
+
+		expect(db.index.select().from(schema.tasks).all()).toStrictEqual([]);
+		expect(
+			db.index.select().from(schema.indexedFiles).where(eq(schema.indexedFiles.path, filePath)).all(),
+		).toStrictEqual([]);
+	});
+
 	it("re-indexes when file changes", async () => {
 		const tasksDir = join(testDir, "tasks", "my-project");
 		mkdirSync(tasksDir, {recursive: true});
