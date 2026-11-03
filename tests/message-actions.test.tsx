@@ -5,10 +5,11 @@ import {actAndSettle} from "./act-and-settle";
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {AssistantMessageActions, UserMessageActions} from "../src/components/message-actions";
+import {AssistantMessageActions, UserMessageActions, WaitingMessageActions} from "../src/components/message-actions";
 import {type TranscriptActions, TranscriptActionsContext} from "../src/components/transcript-actions-context";
 import {removeChapter, toggleChapter} from "../src/lib/chapter-store";
 import {writeClipboardText} from "../src/lib/clipboard";
+import {PanelsOff} from "./fizzy-lake-off";
 
 vi.mock("../src/lib/clipboard", () => ({
 	writeClipboardText: vi.fn<typeof import("../src/lib/clipboard").writeClipboardText>(async () =>
@@ -482,10 +483,12 @@ describe("UserMessageActions", () => {
 		]);
 	});
 
-	it("dates a week-old message as upstream's user <time> does: 11px caption ink in a 24px slot, relative before", () => {
+	it("without panels: dates a week-old message as upstream's user <time> does: 11px caption ink in a 24px slot, relative before", () => {
 		const time = (timestamp: string) => {
 			const {container, unmount} = render(
-				<UserMessageActions message={MESSAGE} text="Hi" timestamp={timestamp} details={[]} />,
+				<PanelsOff>
+					<UserMessageActions message={MESSAGE} text="Hi" timestamp={timestamp} details={[]} />
+				</PanelsOff>,
 			);
 			const element = container.querySelector("time");
 			const result = {text: element?.textContent, className: element?.className};
@@ -566,9 +569,11 @@ describe("UserMessageActions", () => {
 		}).toStrictEqual({infoTip: true, icon: true, margin: true});
 	});
 
-	it("spaces the receipt as upstream: its -4px margins overlap the time's 6px pe and Copy by 4px in a gapless bar", () => {
+	it("without panels: spaces the receipt as upstream: its -4px margins overlap the time's 6px pe and Copy by 4px in a gapless bar", () => {
 		const {container} = render(
-			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} readByClaude />,
+			<PanelsOff>
+				<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} readByClaude />
+			</PanelsOff>,
 		);
 		const spacing = (element: Element) =>
 			(element.getAttribute("class") ?? "").split(" ").filter((c) => /^-?(?:[pm][xyseltrb]?|gap|size)-/.test(c));
@@ -999,7 +1004,7 @@ describe("message action toolbar sizing and reveal", () => {
 		});
 	});
 
-	it("gives the user bar toolbar semantics without the assistant's test id", () => {
+	it("gives the user bar toolbar semantics and upstream's user-message-actions test id", () => {
 		const {container} = render(
 			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
 		);
@@ -1015,7 +1020,7 @@ describe("message action toolbar sizing and reveal", () => {
 			role: "toolbar",
 			label: "Message actions",
 			cds: "MessageActions",
-			testId: null,
+			testId: "user-message-actions",
 			timeTabIndex: null,
 		});
 	});
@@ -1156,5 +1161,170 @@ describe("message action toolbar sizing and reveal", () => {
 			after: status()?.textContent ?? null,
 			srOnly: status()?.className.split(" ").includes("sr-only") ?? false,
 		}).toStrictEqual({before: "", after: "Copied", srOnly: true});
+	});
+});
+
+describe("message actions states (upstream 2026-11-01)", () => {
+	const toolbarAttrs = (element: Element | null) =>
+		element === null
+			? null
+			: {testId: element.getAttribute("data-testid"), size: element.getAttribute("data-size")};
+
+	it("tags the user, assistant and waiting toolbars as upstream and marks each data-size xs", () => {
+		const user = toolbarAttrs(
+			bar(
+				render(<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />).container,
+			),
+		);
+		cleanup();
+		const assistant = toolbarAttrs(
+			bar(
+				render(<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />)
+					.container,
+			),
+		);
+		cleanup();
+		const waiting = toolbarAttrs(
+			render(<WaitingMessageActions text="Hi" />).container.querySelector("[role=toolbar]"),
+		);
+
+		expect({user, assistant, waiting}).toStrictEqual({
+			user: {testId: "user-message-actions", size: "xs"},
+			assistant: {testId: "message-actions", size: "xs"},
+			waiting: {testId: "user-message-actions", size: "xs"},
+		});
+	});
+
+	function receiptLayout(container: HTMLElement) {
+		const receipt = button(container, "Read by Claude");
+		const separator = bar(container).querySelector("[data-testid=epitaxy-row-words-end]");
+		return {
+			// The bar's flex items in DOM order, each named by the control it holds.
+			children: Array.from(bar(container).children).map((child) => {
+				if (child.querySelector("time") !== null) return "time";
+				if (child.getAttribute("role") === "status") return "status";
+				const control = child.matches("button") ? child : child.querySelector("button");
+				return control?.getAttribute("aria-label") ?? child.getAttribute("data-testid") ?? child.tagName;
+			}),
+			receipt: ["order-first", "me-0"].filter((c) => receipt.className.split(" ").includes(c)),
+			separator:
+				separator === null
+					? null
+					: {
+							ariaHidden: separator.getAttribute("aria-hidden"),
+							className: separator.className,
+						},
+		};
+	}
+
+	it("panels: leads the user toolbar with the receipt (order-first me-0) and a · separator shown when something follows the time", () => {
+		const {container} = render(
+			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} readByClaude />,
+		);
+
+		expect(receiptLayout(container)).toStrictEqual({
+			children: [
+				"time",
+				"Read by Claude",
+				"epitaxy-row-words-end",
+				"Copy",
+				"status",
+				"Rewind to here",
+				"Fork from here",
+			],
+			receipt: ["order-first", "me-0"],
+			separator: {
+				ariaHidden: "true",
+				className:
+					"hidden min-h-6 items-center self-center pe-0.5 text-caption text-muted-as-secondary before:content-['·'] [:has(>time)~&:not(:last-child)]:flex comfortable:min-h-8",
+			},
+		});
+	});
+
+	it("panels: draws no separator without the receipt", () => {
+		const {container} = render(
+			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+		);
+		expect(bar(container).querySelector("[data-testid=epitaxy-row-words-end]")).toBeNull();
+	});
+
+	it("without panels: keeps the receipt after the time with no separator", () => {
+		const {container} = render(
+			<PanelsOff>
+				<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} readByClaude />
+			</PanelsOff>,
+		);
+
+		expect(receiptLayout(container)).toStrictEqual({
+			children: ["time", "Read by Claude", "Copy", "status", "Rewind to here", "Fork from here"],
+			receipt: [],
+			separator: null,
+		});
+	});
+
+	it("panels: sentence-cases the user time as a block box, leaving the assistant time alone", () => {
+		const user = render(
+			<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+		).container.querySelector("time")!.className;
+		cleanup();
+		const assistant = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		).container.querySelector("time")!.className;
+		cleanup();
+		const userOff = render(
+			<PanelsOff>
+				<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />
+			</PanelsOff>,
+		).container.querySelector("time")!.className;
+
+		expect({
+			user,
+			assistantCased: assistant.split(" ").includes("first-letter:uppercase"),
+			userOff,
+		}).toStrictEqual({
+			user: "block h-6 content-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none first-letter:uppercase comfortable:h-8",
+			assistantCased: false,
+			userOff:
+				"flex h-6 items-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none comfortable:h-8",
+		});
+	});
+
+	it("panels: starts the assistant time 4px further from the last button (flat-look ms-1)", () => {
+		const spacing = (className: string) => className.split(" ").filter((c) => /^(?:comfortable:)?[mp]s-/.test(c));
+		const on = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		).container.querySelector("time")!.className;
+		cleanup();
+		const off = render(
+			<PanelsOff>
+				<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />
+			</PanelsOff>,
+		).container.querySelector("time")!.className;
+
+		expect({on: spacing(on), off: spacing(off)}).toStrictEqual({
+			on: ["ps-2", "ms-1", "comfortable:ps-3"],
+			off: ["ps-2", "comfortable:ps-3"],
+		});
+	});
+
+	it("fades the waiting row's reveal-on-hover group with the bar's timing: out 60ms at once, hover in after 100ms, focus in at once", () => {
+		const {container} = render(<WaitingMessageActions text="Hi" />);
+		const group = container.querySelector("[data-cds-reveal-on-hover]");
+		const classes = group?.className.split(" ") ?? [];
+
+		expect({
+			found: group !== null,
+			legacy: container.querySelector("[data-reveal-on-hover]") !== null,
+			bareDelay: classes.includes("motion-safe:delay-100"),
+			missing: [
+				"motion-safe:duration-[60ms]",
+				"motion-safe:delay-0",
+				"motion-safe:group-hover/msg:duration-[120ms]",
+				"motion-safe:group-hover/msg:delay-100",
+				"motion-safe:focus-within:duration-[120ms]",
+				"motion-safe:focus-within:delay-0",
+				"motion-safe:pointer-coarse:transition-none",
+			].filter((c) => !classes.includes(c)),
+		}).toStrictEqual({found: true, legacy: false, bareDelay: false, missing: []});
 	});
 });

@@ -28,7 +28,7 @@ function toolbarControls(row: Element) {
 					name: button.getAttribute("aria-label") ?? button.textContent,
 					disabled: button.disabled,
 					testId: button.dataset["testid"] ?? null,
-					inRevealGroup: button.closest("[data-reveal-on-hover]") !== null,
+					inRevealGroup: button.closest("[data-cds-reveal-on-hover]") !== null,
 				})),
 			};
 }
@@ -144,7 +144,7 @@ describe("WaitingUserTurn", () => {
 		);
 		expect(
 			[...container.querySelectorAll("[data-take-back-entry]")].map((row) => {
-				const group = row.querySelector("[data-reveal-on-hover]");
+				const group = row.querySelector("[data-cds-reveal-on-hover]");
 				const delivered = row.querySelector("[data-testid=epitaxy-receipt-on-hover]");
 				const dot = row.querySelector("[data-testid=epitaxy-row-words-end]");
 				return {

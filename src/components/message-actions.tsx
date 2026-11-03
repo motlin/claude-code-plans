@@ -300,6 +300,16 @@ function ReadAloudAction({text}: {text: string}) {
 	);
 }
 
+function timeClass(inner: "left" | "right", panels: boolean): string {
+	if (inner === "left") {
+		return `flex h-6 items-center ps-2${panels ? " ms-1" : ""} text-[13px]/[19px] text-ink-muted tabular-nums outline-none comfortable:h-8 comfortable:ps-3 comfortable:text-[14px]/[20px]`;
+	}
+	// Upstream's panels + flat-look rule: `display:block; align-content:center` and an uppercase first letter.
+	return panels
+		? "block h-6 content-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none first-letter:uppercase comfortable:h-8"
+		: "flex h-6 items-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none comfortable:h-8";
+}
+
 /** The relative time, with the absolute time and the turn's details in its tooltip. */
 function MessageTime({
 	timestamp,
@@ -314,6 +324,9 @@ function MessageTime({
 	/** Upstream's `settling` row state: the time fades in after a waiting row was read. */
 	settling?: boolean;
 }) {
+	// Fizzy-lake panels brings upstream's flat look: the user time sentence-cased in a block box, the
+	// assistant time 4px further (`ms-1`) from the last button.
+	const panels = useFizzyLake("panels");
 	// Upstream's user <time> turns absolute after a week; the assistant's stays relative.
 	const relative = inner === "right" ? formatMessageTime(timestamp) : formatRelativeTimestamp(timestamp);
 	if (timestamp === undefined || relative === null) return null;
@@ -325,11 +338,7 @@ function MessageTime({
 				// Keyed so the fade replays when the row starts settling.
 				key={settling ? "settling" : "rest"}
 				dateTime={timestamp}
-				className={`${
-					inner === "left"
-						? "flex h-6 items-center ps-2 text-[13px]/[19px] text-ink-muted tabular-nums outline-none comfortable:h-8 comfortable:ps-3 comfortable:text-[14px]/[20px]"
-						: "flex h-6 items-center pe-[6px] text-[11px]/[17px] text-ink-muted tabular-nums outline-none comfortable:h-8"
-				}${settling ? " epitaxy-hint-fade-in" : ""}`}
+				className={`${timeClass(inner, panels)}${settling ? " epitaxy-hint-fade-in" : ""}`}
 			>
 				{relative}
 			</time>
@@ -349,8 +358,8 @@ function ActionBar({
 	children: ReactNode;
 	label: string;
 	hovered?: boolean | undefined;
-	/** Upstream tags only the assistant bar `data-testid="message-actions"`. */
-	testId?: string;
+	/** Upstream's `message-actions` (assistant) or `user-message-actions` (user). */
+	testId: string;
 }) {
 	const [revealed, setRevealed] = useState(false);
 	const {ref: barRef, onFocus, onKeyDown} = useRovingToolbar();
@@ -392,7 +401,8 @@ function ActionBar({
 				role="toolbar"
 				aria-label="Message actions"
 				tabIndex={-1}
-				{...(testId === undefined ? {} : {"data-testid": testId})}
+				data-testid={testId}
+				data-size="xs"
 				data-hovered={hovered ? "" : undefined}
 				{...(revealed ? {"data-revealed": ""} : {})}
 				className={className}
@@ -427,15 +437,27 @@ export function AssistantMessageActions({message, text, timestamp, details, hove
 /** Upstream's "Read by Claude" CheckDouble InfoTip; the toolbar's hover rule turns it primary. */
 function ReadByClaudeReceipt() {
 	const tabIndex = useRovingTabIndex(true);
+	const panels = useFizzyLake("panels");
 	return (
-		<InfoTip
-			aria-label="Read by Claude"
-			content="Read by Claude"
-			delay={0}
-			icon={<CheckCheck aria-hidden className={ICON_CLASS} />}
-			className="hover:text-primary"
-			{...(tabIndex === undefined ? {} : {tabIndex})}
-		/>
+		<>
+			<InfoTip
+				aria-label="Read by Claude"
+				content="Read by Claude"
+				delay={0}
+				icon={<CheckCheck aria-hidden className={ICON_CLASS} />}
+				// Under panels upstream draws the receipt first, though it stays after the time in the DOM.
+				className={panels ? "order-first me-0 hover:text-primary" : "hover:text-primary"}
+				{...(tabIndex === undefined ? {} : {tabIndex})}
+			/>
+			{panels && (
+				<span
+					aria-hidden="true"
+					data-testid="epitaxy-row-words-end"
+					// Upstream's `[time~&:not(:last-child)]:flex`; the local <time> sits inside its tooltip anchor.
+					className="hidden min-h-6 items-center self-center pe-0.5 text-caption text-muted-as-secondary before:content-['·'] [:has(>time)~&:not(:last-child)]:flex comfortable:min-h-8"
+				/>
+			)}
+		</>
 	);
 }
 
@@ -452,6 +474,7 @@ export function UserMessageActions({
 		<ActionBar
 			className={`${BAR_CLASS} justify-end self-end`}
 			label={`Show message actions for ${messageHeading("user", contextText)}`}
+			testId="user-message-actions"
 		>
 			<MessageTime timestamp={timestamp} details={details} inner="right" settling={settling} />
 			{readByClaude && <ReadByClaudeReceipt />}
@@ -462,11 +485,18 @@ export function UserMessageActions({
 	);
 }
 
+/*
+ * Upstream drives an always-visible bar's `[data-cds-reveal-on-hover]` children from the bar's reveal
+ * timing: out in 60ms with no delay, hover in over 120ms after 100ms, focus in over 120ms at once.
+ */
 const REVEAL_ON_HOVER_CLASS = [
 	"flex items-center",
 	"opacity-0 group-hover/msg:opacity-100 focus-within:opacity-100",
 	"pointer-coarse:opacity-100 [@media(hover:none)]:opacity-100",
-	"motion-safe:transition-opacity motion-safe:duration-[120ms] motion-safe:delay-100 motion-safe:ease-[cubic-bezier(.32,.72,0,1)]",
+	"motion-safe:transition-opacity motion-safe:duration-[60ms] motion-safe:delay-0 motion-safe:ease-[cubic-bezier(.32,.72,0,1)]",
+	"motion-safe:group-hover/msg:duration-[120ms] motion-safe:group-hover/msg:delay-100",
+	"motion-safe:focus-within:duration-[120ms] motion-safe:focus-within:delay-0",
+	"motion-safe:pointer-coarse:transition-none",
 ].join(" ");
 
 /**
@@ -562,6 +592,8 @@ export function WaitingMessageActions({
 			{...(hoverOnly ? {} : {"data-always-visible": ""})}
 			role="toolbar"
 			aria-label="Message actions"
+			data-testid="user-message-actions"
+			data-size="xs"
 			className="flex items-center select-none"
 		>
 			{stacked && !panels && (
@@ -579,7 +611,7 @@ export function WaitingMessageActions({
 					/>
 				</span>
 			)}
-			<div data-reveal-on-hover className={REVEAL_ON_HOVER_CLASS}>
+			<div data-cds-reveal-on-hover className={REVEAL_ON_HOVER_CLASS}>
 				{hoverOnly && hostHasIt && <DeliveredReceipt />}
 				<CopyAction text={text} />
 				<RewindAction message={undefined} />
