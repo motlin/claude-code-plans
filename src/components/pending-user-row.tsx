@@ -16,7 +16,10 @@ export function SendingUserRow({prompt}: {prompt: string}) {
 			deliveryStatus="sending"
 		>
 			<div className="-mt-[8px] flex items-center gap-[3px]">
-				<span role="status" className="flex items-center gap-[3px] text-[12px] leading-none text-secondary">
+				<span
+					role="status"
+					className="flex items-center gap-[3px] text-[12px] leading-none text-secondary comfortable:text-[13px]"
+				>
 					Sending…
 				</span>
 			</div>
@@ -39,8 +42,21 @@ export function HeldUserRow({
 }) {
 	return (
 		<PendingUserRowShell prompt={prompt} rowClass="" deliveryStatus="held">
-			<div data-testid="epitaxy-held-for-host" className="flex items-center gap-[3px] pt-[4px]">
-				<span className="text-[12px] leading-[15px] text-ink-muted">
+			{/* Upstream's `tE`: an always-visible MessageActions toolbar whose X sits at the end under a right-hand bubble. */}
+			<div
+				data-cds="MessageActions"
+				data-reveal="fade"
+				data-always-visible=""
+				data-size="xs"
+				role="toolbar"
+				aria-label="Message actions"
+				tabIndex={-1}
+				className="flex items-center select-none"
+			>
+				<span
+					data-testid="epitaxy-held-for-host"
+					className="flex min-h-[20px] items-center text-[12px] leading-[15px] text-secondary pe-[4px] comfortable:min-h-[24px] comfortable:text-[13px] comfortable:leading-[17px] comfortable:pe-[6px]"
+				>
 					<HeldShimmer key={String(reconnecting)} sweeps={reconnecting}>
 						{reconnecting
 							? "Waiting for the terminal to reconnect…"
@@ -50,7 +66,7 @@ export function HeldUserRow({
 				<button
 					type="button"
 					aria-label="Withdraw message"
-					className="inline-flex size-5 shrink-0 items-center justify-center rounded-r4 text-ink-muted hover:text-secondary"
+					className="inline-flex size-5 comfortable:size-6 shrink-0 items-center justify-center rounded-r4 comfortable:rounded-r5 text-ink-muted hover:text-primary"
 					onMouseDown={(event) => {
 						// Upstream `xi`: the click leaves focus where it was.
 						event.preventDefault();

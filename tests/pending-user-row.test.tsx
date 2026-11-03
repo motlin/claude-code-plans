@@ -31,39 +31,60 @@ describe("SendingUserRow", () => {
 			bubble: "Fix Alice's test",
 			statusLine: "-mt-[8px] flex items-center gap-[3px]",
 			status: "Sending…",
-			statusClass: "flex items-center gap-[3px] text-[12px] leading-none text-secondary",
+			statusClass: "flex items-center gap-[3px] text-[12px] leading-none text-secondary comfortable:text-[13px]",
 		});
 	});
 });
 
 describe("HeldUserRow", () => {
-	it("draws upstream's held-for-host footer under the prompt bubble with a Withdraw X", () => {
+	it("draws upstream's held-for-host footer as an always-visible MessageActions toolbar with the Withdraw X at the end", () => {
 		const onWithdraw = vi.fn<() => void>();
 		vi.spyOn(performance, "now").mockReturnValue(4500);
 		render(<HeldUserRow prompt="Fix Alice's test" reconnecting={false} onWithdraw={onWithdraw} />);
-		const footer = screen.getByTestId("epitaxy-held-for-host");
+		const toolbar = screen.getByRole("toolbar", {name: "Message actions"});
+		const status = screen.getByTestId("epitaxy-held-for-host");
 		const withdraw = screen.getByRole("button", {name: "Withdraw message"});
 		const mouseDown = fireEvent.mouseDown(withdraw);
 		fireEvent.click(withdraw);
 		expect({
 			bubble: document.querySelector(".user-message-bubble")?.textContent,
 			perfPrompt: document.querySelector("[data-perf-pending-prompt]") !== null,
-			footerClass: footer.className,
-			statusHtml: footer.querySelector("span")?.outerHTML,
+			toolbar: {
+				cds: toolbar.getAttribute("data-cds"),
+				reveal: toolbar.getAttribute("data-reveal"),
+				alwaysVisible: toolbar.getAttribute("data-always-visible"),
+				size: toolbar.getAttribute("data-size"),
+				tabIndex: toolbar.getAttribute("tabindex"),
+				className: toolbar.className,
+			},
+			children: [...toolbar.children].map((child) => child.tagName),
+			statusFirst: toolbar.firstElementChild === status,
+			withdrawLast: toolbar.lastElementChild === withdraw,
+			statusHtml: status.outerHTML,
 			withdrawClass: withdraw.className,
 			focusKept: !mouseDown,
 			withdrawn: onWithdraw.mock.calls.length,
 		}).toStrictEqual({
 			bubble: "Fix Alice's test",
 			perfPrompt: true,
-			footerClass: "flex items-center gap-[3px] pt-[4px]",
+			toolbar: {
+				cds: "MessageActions",
+				reveal: "fade",
+				alwaysVisible: "",
+				size: "xs",
+				tabIndex: "-1",
+				className: "flex items-center select-none",
+			},
+			children: ["SPAN", "BUTTON"],
+			statusFirst: true,
+			withdrawLast: true,
 			// Upstream keeps the muted shimmer mounted with active:false while not reconnecting.
 			statusHtml:
-				'<span class="text-[12px] leading-[15px] text-ink-muted">' +
+				'<span data-testid="epitaxy-held-for-host" class="flex min-h-[20px] items-center text-[12px] leading-[15px] text-secondary pe-[4px] comfortable:min-h-[24px] comfortable:text-[13px] comfortable:leading-[17px] comfortable:pe-[6px]">' +
 				'<span data-cds="ShimmerText" data-shimmering="false" dir="auto" data-variant="muted" style="--shimmer-delay: -1500ms;">Waiting to deliver to the terminal…</span>' +
 				"</span>",
 			withdrawClass:
-				"inline-flex size-5 shrink-0 items-center justify-center rounded-r4 text-ink-muted hover:text-secondary",
+				"inline-flex size-5 comfortable:size-6 shrink-0 items-center justify-center rounded-r4 comfortable:rounded-r5 text-ink-muted hover:text-primary",
 			focusKept: true,
 			withdrawn: 1,
 		});
