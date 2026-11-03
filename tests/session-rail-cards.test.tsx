@@ -507,6 +507,42 @@ describe("Environment card", () => {
 		});
 	});
 
+	it("shows the dropped event stream's state on a plain environment row when the transcript has no cwd", async () => {
+		const states: Record<string, StreamDrop> = {reconnecting: "reconnecting", connected: null};
+		const seen: Record<string, unknown> = {};
+		for (const [name, stream] of Object.entries(states)) {
+			await renderCards(
+				{...BASE, cwd: null, gitBranch: null, model: null, herdrPane: PANE},
+				() => {},
+				null,
+				stream,
+			);
+			const card = screen.getByRole("region", {name: /^Environment/});
+			seen[name] = {
+				rows: rows("Environment"),
+				status: [...card.querySelectorAll("[data-stream-status]")].map((el) => [
+					el.textContent,
+					el.getAttribute("data-stream-status"),
+					el.hasAttribute("data-rail-row-hint"),
+				]),
+				menuButtons: within(card).queryAllByRole("button", {name: /herdr/}).length,
+			};
+			cleanup();
+		}
+
+		expect(seen).toStrictEqual({
+			reconnecting: {
+				rows: [
+					["herdr", "Reconnecting"],
+					["herdr", "working"],
+				],
+				status: [["Reconnecting", "reconnecting", true]],
+				menuButtons: 0,
+			},
+			connected: {rows: [["herdr", "working"]], status: [], menuButtons: 0},
+		});
+	});
+
 	it("labels a herdr session herdr and links its live pane's agent status to its terminal", async () => {
 		await renderCards({...BASE, gitBranch: null, model: null, herdrPane: PANE}, noBridge);
 		const card = screen.getByRole("region", {name: /^Environment/});

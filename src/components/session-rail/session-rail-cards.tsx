@@ -199,6 +199,15 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs}) {
 					</MenuItem>
 				</EnvironmentMenuRow>
 			)}
+			{cwd === null && streamDrop !== null && (
+				// Upstream's Environment row always exists; without a folder the stream's state rides a plain row.
+				<RailRow
+					icon={<Icon icon={Laptop} />}
+					label={environment.label}
+					hint={streamDropHint(streamDrop)}
+					hintStatus={streamDrop}
+				/>
+			)}
 			{gitBranch !== null && (
 				<EnvironmentMenuRow icon={GitBranch} label={gitBranch} title={gitBranch}>
 					<MenuItem
