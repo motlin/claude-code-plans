@@ -347,7 +347,7 @@ describe("summarizeToolCallStats with background completions", () => {
 		]);
 	});
 
-	it('leads with a failed completion: "Finished a background command (1 failed), ran a command"', () => {
+	it('leads with a failed completion: "Finished a background command, ran a command (1 failed)"', () => {
 		const stats = summarizeToolCallStats(
 			[{name: "Bash", input: {command: "dig neighbors.motlin.com"}}],
 			[{command: true, status: "failed"}],
@@ -355,23 +355,23 @@ describe("summarizeToolCallStats with background completions", () => {
 
 		expect({segments: stats.segments, failed: stats.failed}).toStrictEqual({
 			segments: [
-				{verb: "Finished", rest: "a background command (1 failed)"},
+				{verb: "Finished", rest: "a background command"},
 				{verb: "ran", rest: "a command"},
 			],
-			failed: 0,
+			failed: 1,
 		});
 	});
 
-	it('leads with a failed task completion: "Finished a background task (1 failed), used a tool"', () => {
+	it('leads with a failed task completion: "Finished a background task, used a tool (1 failed)"', () => {
 		expect(
 			summarizeToolCallStats([{name: "Mystery", input: {}}], [{command: false, status: "failed"}]).segments,
 		).toStrictEqual([
-			{verb: "Finished", rest: "a background task (1 failed)"},
+			{verb: "Finished", rest: "a background task"},
 			{verb: "used", rest: "a tool"},
 		]);
 	});
 
-	it('fails the launch in its own group instead: "Ran 2 commands (1 failed), finished a background command"', () => {
+	it('fails the launch in its own group instead: "Ran 2 commands, finished a background command (1 failed)"', () => {
 		const stats = summarizeToolCallStats(
 			[
 				{id: "toolu_launch", name: "Bash", input: {command: "just dev", run_in_background: true}},
@@ -382,7 +382,7 @@ describe("summarizeToolCallStats with background completions", () => {
 
 		expect({segments: stats.segments, failed: stats.failed}).toStrictEqual({
 			segments: [
-				{verb: "Ran", rest: "2 commands (1 failed)"},
+				{verb: "Ran", rest: "2 commands"},
 				{verb: "finished", rest: "a background command"},
 			],
 			failed: 1,
@@ -399,7 +399,7 @@ describe("summarizeToolCallStats with background completions", () => {
 				[],
 				new Set(["toolu_launch"]),
 			).segments,
-		).toStrictEqual([{verb: "Ran", rest: "2 commands (1 failed)"}]);
+		).toStrictEqual([{verb: "Ran", rest: "2 commands"}]);
 	});
 
 	it("settles one failed completion per failed launch in the group, whichever launch the completion reports", () => {
@@ -416,8 +416,8 @@ describe("summarizeToolCallStats with background completions", () => {
 				new Set(["toolu_scan", "toolu_elsewhere", "toolu_other"]),
 			).segments,
 		).toStrictEqual([
-			{verb: "Finished", rest: "2 background commands (1 failed)"},
-			{verb: "ran", rest: "2 commands (1 failed)"},
+			{verb: "Finished", rest: "2 background commands"},
+			{verb: "ran", rest: "2 commands"},
 		]);
 	});
 
@@ -478,7 +478,7 @@ describe("task notifications in the transcript", () => {
 		const container = renderLines(
 			laterRecords(notification("failed", 'Background command "Run the test suite" failed with exit code 7')),
 		);
-		fireEvent.click(summaryButton(container, "Finished a background command (1 failed), ran a command"));
+		fireEvent.click(summaryButton(container, "Finished a background command, ran a command (1 failed)"));
 		expect({
 			groupRows: groupRowTexts(container),
 			notice: noticeChildren(container),
@@ -498,7 +498,7 @@ describe("task notifications in the transcript", () => {
 		const container = renderLines(
 			records(notification("failed", 'Background command "Run the test suite" failed with exit code 7')),
 		);
-		fireEvent.click(summaryButton(container, "Ran a command (1 failed), finished a background command"));
+		fireEvent.click(summaryButton(container, "Ran a command, finished a background command (1 failed)"));
 		expect(groupRowTexts(container)).toStrictEqual([
 			"Run the test suiteFailed",
 			"Background commandRun the test suiteFailed",
@@ -555,7 +555,7 @@ describe("background launch row status", () => {
 			expandedLaunchRow(
 				"failed",
 				'Background command "Run the test suite" failed with exit code 7',
-				"Ran a command (1 failed), finished a background command",
+				"Ran a command, finished a background command (1 failed)",
 			),
 		).toStrictEqual([
 			{text: "Run the test suite", className: MUTED_PHRASE},
@@ -1164,7 +1164,7 @@ describe("a run of notices inside an expanded group", () => {
 				message: {role: "assistant", content: [{type: "text", text: "Lint failed."}]},
 			},
 		]);
-		fireEvent.click(summaryButton(container, "Ran 2 commands (1 failed), finished 2 background commands"));
+		fireEvent.click(summaryButton(container, "Ran 2 commands, finished 2 background commands (1 failed)"));
 		const notices = [...container.querySelectorAll("[data-background-notice]")];
 		expect(
 			notices.map((notice) => ({

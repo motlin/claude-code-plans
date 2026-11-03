@@ -585,12 +585,13 @@ function visibleLineText(root: ParentNode): string | null {
 }
 
 describe("WorkingMarker", () => {
-	it("keeps an empty 24px code-working-line mounted when idle, so the transcript bottom never jumps", () => {
+	it("keeps a 24px code-working-line mounted when idle, holding upstream's h-control placeholder and no status", () => {
 		stubReducedMotion(false);
-		const {getByRole, container} = render(<WorkingMarker state={{status: "idle"}} />);
+		const {container} = render(<WorkingMarker state={{status: "idle"}} />);
 		const line = container.querySelector('[data-testid="code-working-line"]');
 		expect({
-			status: getByRole("status").textContent,
+			children: Array.from(line?.children ?? [], (child) => [child.tagName, child.className, child.textContent]),
+			status: container.querySelector("[role=status]"),
 			row: container.querySelector('[data-perf-row="marker"]') !== null,
 			turnWorking: line?.getAttribute("data-turn-working"),
 			className: line?.className,
@@ -598,7 +599,8 @@ describe("WorkingMarker", () => {
 			mark: container.querySelector('[data-cds="WorkingMark"]'),
 			oldAnnouncer: container.querySelector('[data-testid="response-status-announcer"]'),
 		}).toStrictEqual({
-			status: "",
+			children: [["DIV", "flex items-center h-6 comfortable:h-8", ""]],
+			status: null,
 			row: true,
 			turnWorking: "false",
 			className: "flex min-h-6 flex-col comfortable:min-h-8",
@@ -912,12 +914,12 @@ describe("useWorkingMarkerState", () => {
 
 	it("shows no mark while an inline card holds the mark for a waiting prompt, as upstream does", () => {
 		stubReducedMotion(false);
-		const {container, getByRole} = render(<WorkingMarker state={{status: "waiting"}} waitingOnUser={false} />);
+		const {container} = render(<WorkingMarker state={{status: "waiting"}} waitingOnUser={false} />);
 		expect({
-			text: getByRole("status").textContent,
+			status: container.querySelector("[role=status]"),
 			turnStatus: container.querySelector('[data-cds="TurnStatus"]'),
 			mark: container.querySelector('[data-cds="WorkingMark"]'),
-		}).toStrictEqual({text: "", turnStatus: null, mark: null});
+		}).toStrictEqual({status: null, turnStatus: null, mark: null});
 	});
 
 	it("shows a blocked Needs your input status when no card holds the mark, as upstream does", () => {

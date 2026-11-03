@@ -788,9 +788,12 @@ function batchedToolCallRecords(
 
 /** Text of every collapsed summary label (`Read 3 files`), in document order. */
 function summaryLabels(html: string): string[] {
-	return [
-		...html.matchAll(/<span (?:id="[^"]*" )?class="text-body truncate min-w-0">([\s\S]*?)<\/span><\/span>/g),
-	].map((match) => (match[1] ?? "").replaceAll(/<[^>]+>/g, ""));
+	const root = document.createElement("div");
+	root.innerHTML = html;
+	return Array.from(
+		root.querySelectorAll("[data-testid=counted-line-names]"),
+		(names) => names.parentElement?.textContent ?? "",
+	);
 }
 
 /** One tool-only assistant record and its result, with an optional source session id. */
@@ -1691,11 +1694,12 @@ describe("SessionChat Agent row label", () => {
 		]);
 	});
 
-	it("trails the subagent's model in a muted badge before the chevron", () => {
+	it("trails the subagent's model in a secondary badge before the chevron", () => {
 		expect(rowHeaderSpanClasses(renderWithSubagents(spawnedAgent("claude-haiku-4-5-20251001")))).toStrictEqual([
 			VERB,
 			DESCRIPTION,
 			"inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible text-secondary tabular-nums",
+			"truncate",
 			"shrink-0 -ms-1 self-center text-t6",
 		]);
 	});
@@ -1756,6 +1760,10 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 
 	const MODEL_BADGE_CLASS =
 		"inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible text-secondary tabular-nums";
+	// Upstream's settled Agent meta: a link underline, transparent at rest, solid
+	// on the step's hover or keyboard focus, and 35% under (hover:none).
+	const AGENT_META_UNDERLINE =
+		"py-[0.125em] -my-[0.125em] underline decoration-(--_text-link-line) underline-offset-[3px] transition-none [--_text-link-line:transparent] [@media(hover:none)]:[--_text-link-line:color-mix(in_srgb,currentColor,transparent_35%)] group-hover/tool:[--_text-link-line:color-mix(in_srgb,currentColor_100%,transparent)] group-focus-visible/tool:[--_text-link-line:color-mix(in_srgb,currentColor_100%,transparent)]";
 
 	function agentRow(container: HTMLElement): HTMLElement {
 		const row = container.querySelector<HTMLElement>("[data-transcript-keeps-pin]");
@@ -1787,7 +1795,7 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 			ariaExpanded: null,
 			spans: [
 				["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Ran agent"],
-				["truncate min-w-0 text-body text-primary", "Commit lazy allocation fixup"],
+				[`truncate min-w-0 text-body ${AGENT_META_UNDERLINE} text-primary`, "Commit lazy allocation fixup"],
 				[MODEL_BADGE_CLASS, "Haiku 4.5"],
 			],
 			glyph: undefined,
@@ -1795,7 +1803,7 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 		});
 	});
 
-	it("follows a settled agent's description with upstream's muted model badge", () => {
+	it("follows a settled agent's description with upstream's model badge, its full name in a title", () => {
 		const {lines, toolResultMap} = processTranscript(toolCallRecords([AGENT_CALL]));
 		const container = render(
 			<SubagentOpenerProvider value={() => {}}>
@@ -1817,7 +1825,7 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 			bdi: badge?.querySelector(":scope > bdi")?.outerHTML,
 		}).toStrictEqual({
 			className: MODEL_BADGE_CLASS,
-			bdi: '<bdi class="inline-block max-w-[28ch] truncate align-bottom">Opus 5.5</bdi>',
+			bdi: '<bdi class="inline-flex max-w-[28ch] align-bottom" title="Opus 5.5"><span class="truncate">Opus 5.5</span></bdi>',
 		});
 	});
 
@@ -2185,7 +2193,8 @@ describe("SessionChat tool row hover treatment", () => {
 	it("colors the collapsed group summary muted from its wrapper so the whole label lifts on hover", () => {
 		expect(rowHeaderSpanClasses(renderTranscript(groupedToolCallRecords()))).toStrictEqual([
 			"inline-flex items-center gap-g3 min-w-0 text-secondary group-hover/tool:text-secondary",
-			"text-body truncate min-w-0",
+			"flex min-w-0 text-body",
+			"min-w-0 truncate",
 			"text-body",
 			"",
 			"shrink-0 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",

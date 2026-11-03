@@ -971,7 +971,7 @@ describe("SessionPage dock composition", () => {
 
 			// The pending Bash call then draws its own running row, so the line itself goes quiet, as upstream's.
 			expect({before, answered}).toStrictEqual({
-				before: {working: "false", status: "", blocked: false},
+				before: {working: "false", status: undefined, blocked: false},
 				answered: {working: "true", status: "Working…", blocked: false},
 			});
 		});

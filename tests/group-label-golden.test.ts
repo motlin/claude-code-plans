@@ -1,5 +1,11 @@
+import {withTrailingFailedCount} from "./failed-count";
 import specimens from "./fixtures/group-label-specimens.json";
-import {summarizeToolCallStats, type BackgroundCompletionLike, type ToolCallLike} from "../src/lib/session-utils";
+import {
+	countedLabelText,
+	summarizeToolCallStats,
+	type BackgroundCompletionLike,
+	type ToolCallLike,
+} from "../src/lib/session-utils";
 
 /**
  * Tool-only groups whose header text was read from live claude.ai/code DOM
@@ -18,20 +24,18 @@ interface Specimen {
 }
 
 function label(specimen: Specimen): string {
-	return summarizeToolCallStats(specimen.calls, specimen.completions, new Set(), specimen.received)
-		.segments.map((segment) => (segment.rest ? `${segment.verb} ${segment.rest}` : segment.verb))
-		.join(", ");
+	return countedLabelText(summarizeToolCallStats(specimen.calls, specimen.completions, new Set(), specimen.received));
 }
 
 const all = specimens as Specimen[];
 
 describe("group label golden specimens", () => {
 	it.each(all.filter((specimen) => specimen.skip === undefined))("$session:$line reads $upstream", (specimen) => {
-		expect(label(specimen)).toBe(specimen.upstream);
+		expect(label(specimen)).toBe(withTrailingFailedCount(specimen.upstream));
 	});
 
 	it.for(all.filter((specimen) => specimen.skip !== undefined))("$session:$line ($skip)", (specimen, {skip}) => {
 		skip(specimen.skip);
-		expect(label(specimen)).toBe(specimen.upstream);
+		expect(label(specimen)).toBe(withTrailingFailedCount(specimen.upstream));
 	});
 });

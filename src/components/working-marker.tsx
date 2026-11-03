@@ -134,8 +134,9 @@ function StatDot() {
  * Upstream claude.ai/code's working line (`code-working-line`): a TurnStatus
  * row of the working mark and muted "·"-joined stats, with no visible
  * "Working…" label. It stays mounted at 24px whether busy, quiet (a tool row
- * is in flight) or done, so the transcript bottom never jumps; a polite
- * sr-only status announces "Working…" instead of the ticking clock. While a
+ * is in flight) or done, so the transcript bottom never jumps; while the turn
+ * works, a polite sr-only status announces "Working…" instead of the ticking
+ * clock. While a
  * prompt waits on the user with no inline card, it says "Needs your input".
  * Before Claude replies, a phase word ("Sending…", "Waiting for Claude…")
  * stands in for the stats.
@@ -222,9 +223,14 @@ export function WorkingMarker({
 					</div>
 				</div>
 			)}
-			<span role="status" aria-live="polite" className="sr-only">
-				{waitingOnUser ? NEEDS_INPUT_LABEL : (phaseWord ?? workingLineAnnouncement(state))}
-			</span>
+			{turnWorking || waitingOnUser ? (
+				<span role="status" aria-live="polite" className="sr-only">
+					{waitingOnUser ? NEEDS_INPUT_LABEL : (phaseWord ?? workingLineAnnouncement(state))}
+				</span>
+			) : (
+				// Upstream's done line holds one control-height placeholder and drops its status.
+				<div className="flex items-center h-6 comfortable:h-8" />
+			)}
 		</div>
 	);
 	return inline ? (

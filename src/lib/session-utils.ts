@@ -538,10 +538,6 @@ export interface SummarySegment {
 	rest: string;
 }
 
-/**
- * A summary row's label segments plus the totals upstream renders beside them:
- * the git-coloured `+added -removed` span and the " (N failed)" suffix.
- */
 /** A background task whose completion notification folded into a tool group. */
 export interface BackgroundCompletionLike {
 	/** A `run_in_background` Bash command rather than an agent or monitor. */
@@ -561,11 +557,32 @@ export interface ReceivedMessages {
 
 const NO_RECEIVED: ReceivedMessages = {leading: 0, trailing: 0};
 
+/**
+ * A summary row's label segments plus the totals upstream renders beside them:
+ * the git-coloured `+added -removed` span and the trailing " (N failed)" count,
+ * which totals the whole group's failures.
+ */
 export interface ToolCallSummaryStats {
 	segments: SummarySegment[];
 	added: number;
 	removed: number;
 	failed: number;
+}
+
+/**
+ * Upstream's counted-line count (shared-80 `Tl`): one trailing " (N failed)"
+ * after the phrases, outside their clip, or nothing when no call failed.
+ */
+export function failedCountText(failed: number): string {
+	return failed > 0 ? ` (${failed} failed)` : "";
+}
+
+/** The group header as text: its phrases, then the trailing failure count. */
+export function countedLabelText(stats: Pick<ToolCallSummaryStats, "segments" | "failed">): string {
+	const names = stats.segments
+		.map((segment) => (segment.rest ? `${segment.verb} ${segment.rest}` : segment.verb))
+		.join(", ");
+	return `${names}${failedCountText(stats.failed)}`;
 }
 
 function basenameFromPath(path: string): string {
@@ -658,10 +675,6 @@ interface CountedSegment extends SummarySegment {
 	failed: number;
 }
 
-function withFailures({verb, rest, failed}: CountedSegment): SummarySegment {
-	return failed === 0 ? {verb, rest} : {verb, rest: `${rest} (${failed} failed)`};
-}
-
 /**
  * One segment for every file call when they all touched one file: the verbs in
  * the order first used, then its name -- "Read, edited, and created x.ts" --
@@ -714,7 +727,7 @@ function capSegments(segments: CountedSegment[]): CountedSegment[] {
 
 /**
  * Upstream fails a launch in this group whose background task failed, "Ran 2
- * commands (1 failed), finished a background command", and settles as many
+ * commands, finished a background command (1 failed)", and settles as many
  * failed completions in the group, whichever launch each one reports, so they
  * stop leading the label.
  */
@@ -779,10 +792,7 @@ function buildSummarySegments(
 		}
 	});
 
-	let failed = otherFailed;
-	for (const byKey of outcomes.values()) failed += countFailed(byKey);
-
-	// Each segment reports its own failures: "Edited k.ts (1 failed), ran a command".
+	// Each segment counts its own failures, which the header totals in one trailing count.
 	const segments: CountedSegment[] = [];
 	const solePath = soleFilePath(calls, categories);
 	let soleFileNamed = false;
@@ -806,8 +816,8 @@ function buildSummarySegments(
 
 	// Upstream folds background completions in last: "Ran a command, finished
 	// a background command", "Used a tool, finished a background task (1 stopped)",
-	// but leads with them when one failed: "Finished a background command (1 failed),
-	// ran a command". A group mixing failed and stopped completions is unobserved.
+	// but leads with them when one failed: "Finished a background command, ran a
+	// command (1 failed)". A group mixing failed and stopped completions is unobserved.
 	if (completions.length > 0) {
 		const noun = completions.every((completion) => completion.command) ? "command" : "task";
 		const stopped = completions.filter((completion) => completion.status === "stopped").length;
@@ -828,12 +838,10 @@ function buildSummarySegments(
 
 	// Upstream capitalizes only the leading verb: "Ran 2 commands, read cache.ts".
 	return {
-		segments: capSegments(segments)
-			.map(withFailures)
-			.map((segment, i) => (i === 0 ? segment : {verb: lowercaseFirst(segment.verb), rest: segment.rest})),
+		segments: capSegments(segments).map(({verb, rest}, i) => ({verb: i === 0 ? verb : lowercaseFirst(verb), rest})),
 		added,
 		removed,
-		failed,
+		failed: segments.reduce((sum, segment) => sum + segment.failed, 0),
 	};
 }
 
@@ -863,6 +871,7 @@ export function hasDiffStats(stats: {added: number; removed: number}): boolean {
 
 export function summarizeToolCalls(calls: ToolCallLike[]): string {
 	const summary = buildSummarySegments(calls);
-	const label = summary.segments.map((s) => `${lowercaseFirst(s.verb)} ${s.rest}`.trimEnd()).join(", ");
+	const names = summary.segments.map((s) => `${lowercaseFirst(s.verb)} ${s.rest}`.trimEnd()).join(", ");
+	const label = `${names}${failedCountText(summary.failed)}`;
 	return hasDiffStats(summary) ? `${label} +${summary.added} -${summary.removed}` : label;
 }

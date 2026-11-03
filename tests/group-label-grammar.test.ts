@@ -1,10 +1,13 @@
-import {summarizeToolCallStats, type BackgroundCompletionLike, type ToolCallLike} from "../src/lib/session-utils";
+import {
+	countedLabelText,
+	summarizeToolCallStats,
+	type BackgroundCompletionLike,
+	type ToolCallLike,
+} from "../src/lib/session-utils";
 
 /** The group header text, joined the way upstream draws it: "Ran 2 commands, edited a.ts". */
 function label(calls: ToolCallLike[]): string {
-	return summarizeToolCallStats(calls)
-		.segments.map((segment) => (segment.rest ? `${segment.verb} ${segment.rest}` : segment.verb))
-		.join(", ");
+	return countedLabelText(summarizeToolCallStats(calls));
 }
 
 const bash = (extra: Partial<ToolCallLike> = {}): ToolCallLike => ({name: "Bash", input: {command: "ls"}, ...extra});
@@ -103,14 +106,14 @@ describe("group label: distinct files", () => {
 	});
 });
 
-describe("group label: failure suffix", () => {
+describe("group label: failure count", () => {
 	const mcp = (extra: Partial<ToolCallLike> = {}): ToolCallLike => ({name: "mcp__x__y", input: {}, ...extra});
 
 	it.each([
-		{calls: [edit("/r/k.ts", {isError: true}), bash()], expected: "Edited k.ts (1 failed), ran a command"},
+		{calls: [edit("/r/k.ts", {isError: true}), bash()], expected: "Edited k.ts, ran a command (1 failed)"},
 		{
 			calls: [read("/r/a", {isError: true}), bash(), read("/r/b"), read("/r/c"), read("/r/d"), bash()],
-			expected: "Read 4 files (1 failed), ran 2 commands",
+			expected: "Read 4 files, ran 2 commands (1 failed)",
 		},
 		{
 			calls: [
@@ -119,10 +122,10 @@ describe("group label: failure suffix", () => {
 				read("/r/b", {isError: true}),
 				read("/r/c", {isError: true}),
 			],
-			expected: "Ran a command (1 failed), read 3 files (3 failed)",
+			expected: "Ran a command, read 3 files (4 failed)",
 		},
 		{calls: [mcp({isError: true}), bash(), mcp()], expected: "Ran a command, used 2 tools (1 failed)"},
-	])("attaches each failure to its own segment: $expected", ({calls, expected}) => {
+	])("totals every failure in one trailing count: $expected", ({calls, expected}) => {
 		expect(label(calls)).toBe(expected);
 	});
 });
@@ -246,10 +249,7 @@ describe("group label: received messages", () => {
 		calls: ToolCallLike[],
 		messages: {leading: number; trailing: number},
 		completions: BackgroundCompletionLike[] = [],
-	): string =>
-		summarizeToolCallStats(calls, completions, new Set(), messages)
-			.segments.map((segment) => (segment.rest ? `${segment.verb} ${segment.rest}` : segment.verb))
-			.join(", ");
+	): string => countedLabelText(summarizeToolCallStats(calls, completions, new Set(), messages));
 	const failedTask: BackgroundCompletionLike = {status: "failed", command: false, toolUseId: null};
 	const finishedCommand: BackgroundCompletionLike = {status: "completed", command: true, toolUseId: null};
 
@@ -271,7 +271,7 @@ describe("group label: received messages", () => {
 			failed: received([bash()], {leading: 1, trailing: 0}, [failedTask]),
 			settled: received([bash()], {leading: 0, trailing: 1}, [finishedCommand]),
 		}).toStrictEqual({
-			failed: "Finished a background task (1 failed), received a message, ran a command",
+			failed: "Finished a background task, received a message, ran a command (1 failed)",
 			settled: "Ran a command, received a message, finished a background command",
 		});
 	});

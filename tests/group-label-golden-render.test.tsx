@@ -7,6 +7,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import type {Subagent} from "../src/lib/subagents";
 import {processTranscript} from "../src/lib/transcript";
+import {withTrailingFailedCount} from "./failed-count";
 import specimens from "./fixtures/group-label-specimens.json";
 import rowSpecimens from "./fixtures/transcript-row-specimens.json";
 
@@ -102,13 +103,13 @@ describe("group label golden specimens rendered from JSONL", () => {
 	it.each(recorded.filter((specimen) => specimen.skip === undefined))(
 		"$session:$line reads $upstream",
 		(specimen) => {
-			expect(groupLabels(specimen.records)).toStrictEqual([specimen.upstream]);
+			expect(groupLabels(specimen.records)).toStrictEqual([withTrailingFailedCount(specimen.upstream)]);
 		},
 	);
 
 	it.for(recorded.filter((specimen) => specimen.skip !== undefined))("$session:$line ($skip)", (specimen, {skip}) => {
 		skip(specimen.skip);
-		expect(groupLabels(specimen.records)).toStrictEqual([specimen.upstream]);
+		expect(groupLabels(specimen.records)).toStrictEqual([withTrailingFailedCount(specimen.upstream)]);
 	});
 });
 
@@ -182,7 +183,7 @@ function transcriptRows({records, turnEnd, subagents}: RowSpecimen): string[] {
 
 describe("transcript row golden specimens rendered from JSONL", () => {
 	it.each(rowSpecimens as RowSpecimen[])("$session:$line", (specimen) => {
-		expect(transcriptRows(specimen)).toStrictEqual(specimen.upstream);
+		expect(transcriptRows(specimen)).toStrictEqual(specimen.upstream.map(withTrailingFailedCount));
 	});
 });
 

@@ -94,6 +94,8 @@ import {
 	parseBashOutput,
 	hasDiffStats,
 	summarizeToolCallStats,
+	countedLabelText,
+	failedCountText,
 	diffStatsForCall,
 	isRequestInterrupted,
 } from "../lib/session-utils";
@@ -5476,6 +5478,14 @@ function RunningElapsed({startedAt}: {startedAt: string | undefined}) {
  * A row label span in `ink`, or upstream's ShimmerText when the ink is null (the
  * label of an in-flight call).
  */
+/**
+ * Upstream's settled Agent meta (`cds-text-link-underline`): a link underline
+ * that is transparent at rest, solid on the step's hover or keyboard focus, and
+ * 35% under `(hover:none)`, where hover never comes.
+ */
+const AGENT_META_UNDERLINE =
+	"py-[0.125em] -my-[0.125em] underline decoration-(--_text-link-line) underline-offset-[3px] transition-none [--_text-link-line:transparent] [@media(hover:none)]:[--_text-link-line:color-mix(in_srgb,currentColor,transparent_35%)] group-hover/tool:[--_text-link-line:color-mix(in_srgb,currentColor_100%,transparent)] group-focus-visible/tool:[--_text-link-line:color-mix(in_srgb,currentColor_100%,transparent)]";
+
 function InkedLabel({
 	className,
 	ink,
@@ -5886,7 +5896,11 @@ function ToolCallRow({
 								{paramContent}
 							</span>
 						) : (
-							<InkedLabel id={`${statusId}-meta`} className="truncate min-w-0 text-body" ink={paramInk}>
+							<InkedLabel
+								id={`${statusId}-meta`}
+								className={`truncate min-w-0 text-body${isCompletedPaneAgent ? ` ${AGENT_META_UNDERLINE}` : ""}`}
+								ink={paramInk}
+							>
 								{paramContent}
 							</InkedLabel>
 						))}
@@ -5926,7 +5940,9 @@ function ToolCallRow({
 				<span
 					className={`inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible ${restInk} tabular-nums`}
 				>
-					<bdi className="inline-block max-w-[28ch] truncate align-bottom">{agentModel}</bdi>
+					<bdi className="inline-flex max-w-[28ch] align-bottom" title={agentModel}>
+						<span className="truncate">{agentModel}</span>
+					</bdi>
 				</span>
 			)}
 			{status !== null &&
@@ -6139,6 +6155,25 @@ function SummarySpans({segments}: {segments: SummarySegment[]}) {
 	);
 }
 
+/**
+ * Upstream's counted line (shared-80 `Tl`): the phrases clip in their own
+ * span, and the group's one failure count trails them unclipped.
+ */
+function CountedLine({id, segments, failed}: {id: string; segments: SummarySegment[]; failed: number}) {
+	return (
+		<span id={id} className="flex min-w-0 text-body">
+			<span className="min-w-0 truncate" data-testid="counted-line-names">
+				<SummarySpans segments={segments} />
+			</span>
+			{failed > 0 && (
+				<bdi className="shrink-0 whitespace-pre" data-testid="counted-line-count">
+					{failedCountText(failed)}
+				</bdi>
+			)}
+		</span>
+	);
+}
+
 function ToolCallSummary({
 	calls,
 	sessionId,
@@ -6191,11 +6226,7 @@ function ToolCallSummary({
 	// row stays secondary, as upstream does.
 	const ink = expanded ? "text-secondary" : `${restInk} group-hover/tool:text-secondary`;
 	const busy = pendingCall !== undefined && runningText !== null;
-	const announcement = busy
-		? runningText
-		: summary.segments
-				.map((segment) => (segment.rest ? `${segment.verb} ${segment.rest}` : segment.verb))
-				.join(", ");
+	const announcement = busy ? runningText : countedLabelText(summary);
 
 	// Each step's place in the group's screenshot strip, which collapsed groups show at the row's end.
 	const shotPlacements = useMemo(() => {
@@ -6235,9 +6266,7 @@ function ToolCallSummary({
 						</span>
 					</>
 				) : (
-					<span id={`${statusId}-label`} className="text-body truncate min-w-0">
-						<SummarySpans segments={summary.segments} />
-					</span>
+					<CountedLine id={`${statusId}-label`} segments={summary.segments} failed={summary.failed} />
 				)}
 			</span>
 			{hasDiffStats(summary) && <DiffStatPill added={summary.added} removed={summary.removed} />}
