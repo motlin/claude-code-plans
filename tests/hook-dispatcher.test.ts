@@ -1,4 +1,4 @@
-import {appendFileSync, writeFileSync, mkdirSync, rmSync, statSync} from "node:fs";
+import {appendFileSync, writeFileSync, mkdirSync, realpathSync, rmSync, statSync, symlinkSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {vi} from "vite-plus/test";
@@ -1840,6 +1840,82 @@ describe("dispatchHookEvent", () => {
 				statuslineDir: join(testDir, "statusline"),
 			};
 		}
+
+		it("keys hook-side transcript and memory indexing by the same real path the watcher reports under a symlinked ~/.claude", async () => {
+			const realClaude = join(realpathSync(testDir), "real");
+			const linkedClaude = join(testDir, "link");
+			const realProjectDir = join(realClaude, "projects", "-home-alice-app");
+			mkdirSync(join(realProjectDir, "memory"), {recursive: true});
+			symlinkSync(realClaude, linkedClaude);
+			const realTranscript = join(realProjectDir, "alice-session.jsonl");
+			const realMemory = join(realProjectDir, "memory", "alice-memory.md");
+			writeFileSync(
+				realTranscript,
+				`${JSON.stringify({
+					type: "user",
+					sessionId: "alice-session",
+					uuid: "alice-uuid-1",
+					timestamp: "1999-12-31T00:00:00.000Z",
+					cwd: "/home/alice/app",
+					message: {role: "user", content: "Hello"},
+				})}\n`,
+			);
+			writeFileSync(realMemory, "# Alice memory\n");
+			const dirs = {
+				projectsDir: join(linkedClaude, "projects"),
+				plansDir: join(linkedClaude, "plans"),
+				tasksDir: join(linkedClaude, "tasks"),
+				commandsDir: join(linkedClaude, "commands"),
+				pluginsDir: join(linkedClaude, "plugins", "cache"),
+				statuslineDir: join(linkedClaude, "statusline"),
+			};
+			const {store} = makeStore();
+
+			await dispatchHookEvent({
+				event: {
+					hook_event_name: "PostToolUse",
+					session_id: "alice-session",
+					transcript_path: join(dirs.projectsDir, "-home-alice-app", "alice-session.jsonl"),
+					cwd: "/home/alice/app",
+					tool_name: "Write",
+					tool_input: {
+						file_path: join(dirs.projectsDir, "-home-alice-app", "memory", "alice-memory.md"),
+						content: "# Alice memory\n",
+					},
+				},
+				db: db.index,
+				store,
+				broadcast: () => {},
+				dirs,
+				reportHerdrState: () => {},
+			});
+			// The recursive watcher reports the same files under their real paths.
+			await indexFile(db.index, realTranscript, dirs.projectsDir, dirs.plansDir);
+			await indexFile(db.index, realMemory, dirs.projectsDir, dirs.plansDir);
+
+			expect({
+				indexedFiles: db.index
+					.select({path: schema.indexedFiles.path})
+					.from(schema.indexedFiles)
+					.all()
+					.map((row) => row.path)
+					.filter((path) => path.endsWith(".jsonl")),
+				sessionFilePaths: db.index
+					.select({filePath: schema.sessions.filePath})
+					.from(schema.sessions)
+					.all()
+					.map((row) => row.filePath),
+				memoryFilePaths: db.index
+					.select({filePath: schema.memories.filePath})
+					.from(schema.memories)
+					.all()
+					.map((row) => row.filePath),
+			}).toStrictEqual({
+				indexedFiles: [realTranscript],
+				sessionFilePaths: [realTranscript],
+				memoryFilePaths: [realMemory],
+			});
+		});
 
 		it("Edit on a plan markdown file indexes the file and broadcasts plan:changed", async () => {
 			const dirs = makeDirs();

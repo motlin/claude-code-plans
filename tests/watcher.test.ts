@@ -14,6 +14,8 @@ import {dirname, join} from "node:path";
 import {tmpdir} from "node:os";
 import {
 	__testing,
+	addClient,
+	removeClient,
 	closeWatcher,
 	createWatcher,
 	expediteSessionJsonlRead,
@@ -1246,6 +1248,100 @@ describe("session registry events", () => {
 			await closeWatcher();
 			rmSync(fixture, {recursive: true, force: true});
 		}
+	});
+});
+
+describe("createWatcher with a symlinked ~/.claude", () => {
+	let fixture: string;
+	let realClaude: string;
+
+	beforeEach(() => {
+		fixture = realpathSync(mkdtempSync(join(tmpdir(), "watcher-claude-symlink-test-")));
+		realClaude = join(fixture, "real");
+		for (const dir of ["projects/-home-alice-app/memory", "plans", "jobs"]) {
+			mkdirSync(join(realClaude, dir), {recursive: true});
+		}
+		symlinkSync(realClaude, join(fixture, "link"));
+		const recursiveWatcher = {
+			once: vi.fn<() => RecursiveWatcher>(() => recursiveWatcher),
+			on: vi.fn<() => RecursiveWatcher>(() => recursiveWatcher),
+			whenReady: vi.fn<RecursiveWatcher["whenReady"]>(async () => Promise.resolve(undefined)),
+			close: vi.fn<RecursiveWatcher["close"]>(async () => Promise.resolve(undefined)),
+		} as unknown as RecursiveWatcher;
+		vi.spyOn(recursiveWatch, "createRecursiveWatcher").mockReturnValue(recursiveWatcher);
+	});
+
+	afterEach(async () => {
+		await closeWatcher();
+		__testing.setProjectsDir("");
+		__testing.resetJsonlThrottle();
+		vi.restoreAllMocks();
+		rmSync(fixture, {recursive: true, force: true});
+	});
+
+	it("indexes plan and memory edits the recursive watcher reports under the real path", async () => {
+		const linkedClaude = join(fixture, "link");
+		await createWatcher(
+			[],
+			join(linkedClaude, "projects"),
+			join(linkedClaude, "plans"),
+			undefined,
+			[],
+			join(linkedClaude, "jobs"),
+		);
+		const planPath = join(realClaude, "plans", "symlinked-plan.md");
+		const memoryPath = join(realClaude, "projects", "-home-alice-app", "memory", "symlinked-memory.md");
+		writeFileSync(planPath, "# Symlinked plan\n");
+		writeFileSync(memoryPath, "# Symlinked memory\n");
+
+		await __testing.handleFileChange(planPath);
+		await __testing.handleFileChange(memoryPath);
+
+		await vi.waitFor(() => {
+			expect({
+				plans: sharedDb.index
+					.select({filename: schema.plans.filename, title: schema.plans.title})
+					.from(schema.plans)
+					.where(eq(schema.plans.filename, "symlinked-plan.md"))
+					.all(),
+				memories: sharedDb.index
+					.select({
+						filePath: schema.memories.filePath,
+						projectId: schema.memories.projectId,
+						title: schema.memories.title,
+					})
+					.from(schema.memories)
+					.where(eq(schema.memories.filename, "symlinked-memory.md"))
+					.all(),
+			}).toStrictEqual({
+				plans: [{filename: "symlinked-plan.md", title: "Symlinked plan"}],
+				memories: [{filePath: memoryPath, projectId: "-home-alice-app", title: "Symlinked memory"}],
+			});
+		});
+	});
+
+	it("broadcasts jobs:changed for a job state file reported under the real path", async () => {
+		const linkedClaude = join(fixture, "link");
+		await createWatcher([], undefined, undefined, undefined, [], join(linkedClaude, "jobs"));
+		const decoder = new TextDecoder();
+		const events: string[] = [];
+		const client = {
+			enqueue: (chunk: Uint8Array) => {
+				events.push(decoder.decode(chunk).split("\n")[0] ?? "");
+			},
+		} as unknown as ReadableStreamDefaultController;
+		const stateFile = join(realClaude, "jobs", "job-alice", "state.json");
+		mkdirSync(dirname(stateFile), {recursive: true});
+		writeFileSync(stateFile, "{}");
+
+		addClient(client);
+		try {
+			await __testing.handleFileChange(stateFile);
+		} finally {
+			removeClient(client);
+		}
+
+		expect(events).toStrictEqual([`event: ${DOMAIN_EVENTS.JOBS_CHANGED}`]);
 	});
 });
 

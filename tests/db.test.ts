@@ -46,7 +46,7 @@ import * as schema from "../src/lib/db/schema";
 import {eq, sql} from "drizzle-orm";
 import {encodeProjectPath} from "../src/lib/memory";
 
-const testDir = join(tmpdir(), "claude-db-test-" + process.pid);
+const testDir = join(realpathSync(tmpdir()), "claude-db-test-" + process.pid);
 let db: AppDb;
 
 function jsonl(...lines: Record<string, unknown>[]): string {

@@ -1,6 +1,7 @@
 import {lstat, readdir, readFile, realpath, stat} from "node:fs/promises";
 import {createReadStream, existsSync, realpathSync, type Stats} from "node:fs";
 import {join, basename, extname, isAbsolute, relative, resolve, sep} from "node:path";
+import {canonicalPath} from "../canonical-path";
 import {createLineReader} from "../line-reader";
 import {eq, ne, notInArray, sql} from "drizzle-orm";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
@@ -858,10 +859,13 @@ export async function indexJsonlFile(
 /** indexJsonlFile, plus the subagent links of the transcript when they are known without another read. */
 async function indexJsonlFileWithLinks(
 	db: IndexDb,
-	filePath: string,
+	reportedFilePath: string,
 	project: string,
 	{cache}: IndexJsonlOptions,
 ): Promise<{linkedPlans: string[]; subagentLinks?: readonly SubagentLink[]}> {
+	// One transcript keeps one indexed_files row, cache entry and sessions.filePath
+	// whether it was reached through a symlinked ~/.claude or its real path.
+	const filePath = canonicalPath(reportedFilePath);
 	let fileStat: Stats;
 	try {
 		fileStat = await stat(filePath);
@@ -2023,12 +2027,15 @@ async function listSubagentTranscripts(
 export async function fullScan(
 	indexDb: IndexDb,
 	summariesDb: IndexDb,
-	projectsDir: string,
+	configuredProjectsDir: string,
 	tasksDir?: string,
 	plansDir?: string,
 	readDirectory: ReadDirectory = readdir,
 	signal?: AbortSignal,
 ): Promise<void> {
+	// Scan under the real path the watcher and hooks key transcripts by, so
+	// discovered paths match indexed_files and pruning compares like with like.
+	const projectsDir = canonicalPath(configuredProjectsDir);
 	// Each step is one unit of work that another connection's write lock can
 	// hold up. It retries after an asynchronous pause instead of sleeping the
 	// thread, and names itself for the dev event-loop stall monitor.

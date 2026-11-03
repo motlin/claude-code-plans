@@ -1,4 +1,5 @@
-import {realpathSync, type Stats} from "node:fs";
+import {type Stats} from "node:fs";
+import {canonicalPath} from "./canonical-path";
 import {stat} from "node:fs/promises";
 import {basename, dirname, join, resolve} from "node:path";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
@@ -730,14 +731,6 @@ export async function processJsonlAppend(
 	}
 }
 
-function realpathOrSelf(path: string): string {
-	try {
-		return realpathSync(path);
-	} catch {
-		return resolve(path);
-	}
-}
-
 /**
  * Route an event inside the CLI session registry: a `<pid>.json` write or
  * removal schedules a registry refresh, and everything else there (notably the
@@ -928,15 +921,17 @@ export async function createWatcher(
 	registryDir?: string,
 	mirrorDir?: string,
 ): Promise<RecursiveWatcher> {
+	// The recursive watcher reports real paths, so every directory compared
+	// against an event path is canonicalized once here (`~/.claude` may be a symlink).
 	if (projDir) {
 		resolveProjectsDirectory(projDir);
-		projectsDir = projDir;
+		projectsDir = canonicalPath(projDir);
 	}
-	if (plDir) plansDir = plDir;
-	if (slDir) statuslineDir = slDir;
-	if (jbDir) jobsDir = resolve(jbDir);
-	if (registryDir) sessionRegistryDirs = new Set([resolve(registryDir), realpathOrSelf(registryDir)]);
-	if (mirrorDir) contextMirrorDir = realpathOrSelf(mirrorDir);
+	if (plDir) plansDir = canonicalPath(plDir);
+	if (slDir) statuslineDir = canonicalPath(slDir);
+	if (jbDir) jobsDir = canonicalPath(jbDir);
+	if (registryDir) sessionRegistryDirs = new Set([resolve(registryDir), canonicalPath(registryDir)]);
+	if (mirrorDir) contextMirrorDir = canonicalPath(mirrorDir);
 	setFileContentRoots(configuredFileContentRoots);
 
 	await Promise.all(

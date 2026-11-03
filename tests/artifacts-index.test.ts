@@ -1,4 +1,4 @@
-import {mkdirSync, rmSync, utimesSync, writeFileSync} from "node:fs";
+import {mkdirSync, realpathSync, rmSync, utimesSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {asc} from "drizzle-orm";
@@ -9,7 +9,7 @@ import {getArtifacts} from "../src/lib/db/artifact-queries";
 import {indexJsonlFile, indexSubagentFile} from "../src/lib/db/indexer";
 import * as schema from "../src/lib/db/schema";
 
-const testDir = join(tmpdir(), `claude-artifacts-index-test-${process.pid}`);
+const testDir = join(realpathSync(tmpdir()), `claude-artifacts-index-test-${process.pid}`);
 const projectId = "-Users-alice-projects-ladder";
 const sessionA = "session-alice-a";
 const sessionB = "session-alice-b";

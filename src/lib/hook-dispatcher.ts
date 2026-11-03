@@ -44,6 +44,7 @@ import {
 	takeNotificationsForSession,
 } from "./notifications-store";
 import {addLiveSubagent, endLiveSubagent, reconcileStoredLiveSubagents} from "./live-subagent-store";
+import {canonicalPath} from "./canonical-path";
 import {indexFile, indexJsonlFile, liveJsonlIndexCache} from "./db/indexer";
 import {isSessionArchived, setSessionArchived} from "./db/queries";
 import {resolveProjectName} from "./memory";
@@ -207,6 +208,18 @@ function trackPendingQuestion(
 		pendingQuestion,
 	} satisfies SessionPendingQuestionChangedPayload);
 	return pendingQuestion === null;
+}
+
+/** `dirs` with every root in the canonical (symlink-resolved) form the watcher reports. */
+function canonicalHookDirs(dirs: HookDispatchDirs): HookDispatchDirs {
+	return {
+		projectsDir: canonicalPath(dirs.projectsDir),
+		plansDir: canonicalPath(dirs.plansDir),
+		tasksDir: canonicalPath(dirs.tasksDir),
+		commandsDir: canonicalPath(dirs.commandsDir),
+		pluginsDir: canonicalPath(dirs.pluginsDir),
+		statuslineDir: canonicalPath(dirs.statuslineDir),
+	};
 }
 
 /** True when `candidate` is the same as `dir` or a descendant. */
@@ -713,9 +726,13 @@ export async function dispatchHookEvent({
 			// statusline files. The watcher will pick these up ~2s later; the
 			// dedupe layer (Section 6) suppresses the trailing duplicate.
 			const editedFilePath = extractEditedFilePath(event);
-			if (dirs && editedFilePath) {
+			// Hooks report paths through `~/.claude` as configured; the watcher
+			// reports real paths. Index both under the real path so one file keeps
+			// one indexed_files row, session filePath and memory row.
+			const canonicalDirs = dirs ? canonicalHookDirs(dirs) : undefined;
+			if (canonicalDirs && editedFilePath) {
 				try {
-					await handlePostToolUseFileEdit(db, editedFilePath, dirs, broadcast);
+					await handlePostToolUseFileEdit(db, canonicalPath(editedFilePath), canonicalDirs, broadcast);
 				} catch {
 					// transient indexing error — chokidar will retry
 				}
@@ -724,8 +741,14 @@ export async function dispatchHookEvent({
 			// Any tool that carries a transcript_path lets us emit
 			// SESSION_LINES_APPENDED without waiting for chokidar to re-read
 			// the JSONL on a 2s debounce.
-			if (dirs && event.transcript_path) {
-				await appendTranscriptLines(db, event.transcript_path, dirs.projectsDir, state, broadcast);
+			if (canonicalDirs && event.transcript_path) {
+				await appendTranscriptLines(
+					db,
+					canonicalPath(event.transcript_path),
+					canonicalDirs.projectsDir,
+					state,
+					broadcast,
+				);
 			}
 			break;
 		}

@@ -1,4 +1,4 @@
-import {mkdirSync, rmSync, writeFileSync} from "node:fs";
+import {mkdirSync, realpathSync, rmSync, writeFileSync} from "node:fs";
 import {readdir} from "node:fs/promises";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
@@ -7,7 +7,7 @@ import {fullScan, indexFile} from "../src/lib/db/indexer";
 import {listSessionsForProjectFromDb} from "../src/lib/db/queries";
 import * as schema from "../src/lib/db/schema";
 
-const testDir = join(tmpdir(), "claude-fullscan-concurrent-test-" + process.pid);
+const testDir = join(realpathSync(tmpdir()), "claude-fullscan-concurrent-test-" + process.pid);
 let db: AppDb;
 
 function transcript(content: string): string {
