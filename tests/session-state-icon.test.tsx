@@ -131,17 +131,6 @@ describe("PrTailGlyph", () => {
 		]);
 	});
 
-	it("keeps the metadata line's PR glyph at 12px", () => {
-		const {container} = render(<PrTailGlyph state="opened" place="line" />);
-		const tail = container.querySelector<HTMLElement>("[data-pr-glyph]");
-		const icon = tail?.firstElementChild;
-		expect({
-			className: tail?.getAttribute("class"),
-			glyphSize: tail?.style.getPropertyValue("--df-pr-glyph"),
-			size: [icon?.getAttribute("width"), icon?.getAttribute("height")],
-		}).toStrictEqual({className: "flex h-4 shrink-0 items-center gap-0.5", glyphSize: "", size: ["12", "12"]});
-	});
-
 	it("shows upstream's Pull request · {state} tooltip on hover", () => {
 		vi.useFakeTimers();
 		try {

@@ -1,39 +1,49 @@
-import {GitBranch} from "lucide-react";
-import type {SessionMetaLine} from "../../lib/session-meta-line";
-import {PrTailGlyph} from "../status-dot";
+import type {MetaStatus, SessionMetaLine} from "../../lib/session-meta-line";
 
 const ITEM_CLASS = "shrink-0 whitespace-nowrap";
 const LIST_FORMAT = new Intl.ListFormat("en", {type: "unit"});
 
-/** The glyph leading a place line: the PR state when there is one, else a branch mark when there's a branch. */
-function PlaceGlyph({line}: {line: Extract<SessionMetaLine, {kind: "place"}>}) {
-	if (line.pr !== undefined) return <PrTailGlyph state={line.pr} place="line" />;
-	if (line.branch === undefined) return null;
-	return <GitBranch aria-hidden="true" data-branch-glyph="" className="size-3 shrink-0 text-ink-muted" />;
-}
+/** Upstream's status words (`LH`/`kx`): an unread row reads "Done", a blocked one "Waiting". */
+const STATUS_WORDS = {
+	idle: "Idle",
+	unread: "Done",
+	working: "Working",
+	blocked: "Waiting",
+	error: "Error",
+} satisfies Record<MetaStatus, string>;
 
-/** A described row's second line (upstream `gM`): the Waiting word and reason, or branch then folder. */
+/** A described row's second line (upstream `gM`): the status word and message, then the place. */
 export function MetaLine({line}: {line: SessionMetaLine}) {
-	const items = (
-		line.kind === "blocked" ? [line.word ? "Waiting" : undefined, line.reason] : [line.branch, line.folder]
-	).filter((item) => item !== undefined);
-	const [first, second] = items;
+	const {word, text, place} = line;
+	const wordLabel = word === undefined ? undefined : STATUS_WORDS[word];
+	const title = LIST_FORMAT.format([wordLabel, text, place?.text].filter((item) => item !== undefined));
+	// Upstream hides the line when nothing in it would be spoken: a non-Idle word is in the row's sr text already.
+	const silent = word !== "idle" && text === undefined && place?.spoken !== true;
 	return (
 		<span
-			className="df-meta-line flex min-w-0 flex-1 items-center gap-2 text-ink-muted"
-			title={LIST_FORMAT.format(items)}
+			className="df-meta-slots flex min-w-0 flex-1 items-center gap-2 text-ink-muted"
+			title={title}
+			aria-hidden={silent ? "true" : undefined}
 		>
-			{line.kind === "blocked" && line.word ? (
-				<span aria-hidden="true" className={`${ITEM_CLASS} text-upstream-warning`}>
-					{first}
-				</span>
-			) : (
-				<span className="flex shrink-0 items-center gap-1">
-					{line.kind === "place" && <PlaceGlyph line={line} />}
-					<bdi className={ITEM_CLASS}>{first}</bdi>
-				</span>
+			<span className="df-meta-line flex min-w-0 flex-1 items-center gap-2">
+				{wordLabel !== undefined && (
+					<span
+						className={word === "blocked" ? `${ITEM_CLASS} text-upstream-warning` : ITEM_CLASS}
+						aria-hidden={word === "idle" ? undefined : "true"}
+					>
+						{wordLabel}
+					</span>
+				)}
+				{text !== undefined && <bdi className={ITEM_CLASS}>{text}</bdi>}
+			</span>
+			{place !== undefined && (
+				<bdi
+					className="df-meta-place shrink-0 whitespace-nowrap"
+					aria-hidden={place.spoken ? undefined : "true"}
+				>
+					{place.text}
+				</bdi>
 			)}
-			{second !== undefined && <bdi className={ITEM_CLASS}>{second}</bdi>}
 		</span>
 	);
 }

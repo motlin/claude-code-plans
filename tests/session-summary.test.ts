@@ -144,6 +144,41 @@ describe("buildSessionSummaryPayloadFromDb", () => {
 		});
 	});
 
+	it("carries the first line of the last prompt the user typed, skipping tool results and meta records", async () => {
+		const user = (content: unknown, extra: Record<string, unknown> = {}) => ({
+			type: "user",
+			sessionId: "session-test-100",
+			message: {role: "user", content},
+			...extra,
+		});
+		await indexSession(
+			[
+				user("Fix the test login bug"),
+				user(`Run the tests\nand report back ${"x".repeat(300)}`),
+				user([{type: "tool_result", tool_use_id: "t1", content: "ok"}]),
+				user("Caveat: injected", {isMeta: true}),
+			]
+				.map((record) => JSON.stringify(record))
+				.join("\n") + "\n",
+		);
+		await indexJsonlFile(db.index, join(testDir, PROJECT_ID, "session-test-100.jsonl"), PROJECT_ID);
+
+		expect(buildSessionSummaryPayloadFromDb(db.index, "session-test-100")?.lastUserMessage).toBe("Run the tests");
+	});
+
+	it("trims a long last prompt to 200 characters", async () => {
+		await indexSession(
+			JSON.stringify({
+				type: "user",
+				sessionId: "session-test-100",
+				message: {role: "user", content: "y".repeat(300)},
+			}) + "\n",
+		);
+		await indexJsonlFile(db.index, join(testDir, PROJECT_ID, "session-test-100.jsonl"), PROJECT_ID);
+
+		expect(buildSessionSummaryPayloadFromDb(db.index, "session-test-100")?.lastUserMessage).toBe("y".repeat(200));
+	});
+
 	it("uses the active-session state when no durable approval exists", async () => {
 		await indexSession();
 		markSessionActive("session-test-100", {cwd: PROJECT_PATH, model: "claude-test-model"});

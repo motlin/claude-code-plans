@@ -200,3 +200,69 @@ describe("task-card press scale", () => {
 		});
 	});
 });
+
+const RTL_ROOT_BDI = ':root[dir="rtl"] .df-meta-slots .df-meta-line > bdi:dir(ltr) {';
+
+describe("described row meta line (upstream sidebar-row-metadata-line)", () => {
+	const squash = (source: string) => source.replaceAll(/\s+/g, " ").trim();
+
+	it("makes the slots a size container and caps the place at upstream's min(14ch, 40cqi) with a 12px fade", () => {
+		expect({
+			slots: squash(block(".df-meta-slots")),
+			place: tokens(block(".df-meta-place"), ["--df-place-cap", "max-inline-size", "mask-image", "overflow"]),
+			textless: tokens(block(".df-meta-line:not(:has(> bdi)) + .df-meta-place"), ["--df-place-cap"]),
+			rtlPlace: tokens(block(".df-meta-place:dir(rtl)"), ["mask-image"]),
+		}).toStrictEqual({
+			slots: ".df-meta-slots { container-type: inline-size;",
+			place: {
+				"--df-place-cap": "min(14ch, 40cqi)",
+				"max-inline-size": "calc(var(--df-place-cap) + 12px)",
+				"mask-image":
+					"linear-gradient(to right, #000 var(--df-place-cap), transparent calc(var(--df-place-cap) + 12px))",
+				overflow: "clip",
+			},
+			textless: {"--df-place-cap": "min(70cqi, 100cqi - 92px)"},
+			rtlPlace: {
+				"mask-image":
+					"linear-gradient(to left, #000 var(--df-place-cap), transparent calc(var(--df-place-cap) + 12px))",
+			},
+		});
+	});
+
+	it("clips opposite-direction message text with a fade at its own end", () => {
+		expect({
+			ltrRoot: tokens(
+				block(
+					':root:not([dir="rtl"]) .df-meta-slots .df-meta-line > bdi:dir(rtl),\n:root[dir="rtl"] .df-meta-slots .df-meta-line > bdi:dir(ltr)',
+				),
+				["flex-shrink", "min-inline-size", "padding-inline-end", "overflow", "mask-image"],
+			),
+			// The RTL-root override is the selector's last, standalone block.
+			rtlRoot: tokens(styles.slice(styles.lastIndexOf(RTL_ROOT_BDI)), ["mask-image"]),
+		}).toStrictEqual({
+			ltrRoot: {
+				"flex-shrink": "1",
+				"min-inline-size": "0",
+				"padding-inline-end": "12px",
+				overflow: "clip",
+				"mask-image": "linear-gradient(270deg, #000 calc(100% - 12px), #0000)",
+			},
+			rtlRoot: {"mask-image": "linear-gradient(90deg, #000 calc(100% - 12px), #0000)"},
+		});
+	});
+
+	it("pads a described row from the row control, not the described line (phone row 54px)", () => {
+		expect(tokens(block(".df-described-row"), ["padding-block"])).toStrictEqual({
+			"padding-block":
+				"calc( (var(--sb-row-h) - var(--sb-row-ctl)) / 2 + var(--sb-described-tuck) - var(--sb-described-trim) )",
+		});
+	});
+
+	it("ends the fork guide mid-description when the family's last child is described", () => {
+		expect(
+			tokens(block(".df-family:has(> [data-family-child]:last-child .df-described-row)::before"), ["bottom"]),
+		).toStrictEqual({
+			bottom: "calc( (var(--sb-row-h) - var(--sb-row-ctl)) / 2 + var(--sb-described-tuck) - var(--sb-described-trim) + 2px + 1.5 * (var(--sb-described-line, var(--sb-row-ctl)) - var(--sb-described-tuck)) )",
+		});
+	});
+});

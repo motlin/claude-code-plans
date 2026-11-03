@@ -1381,15 +1381,22 @@ describe("SessionGroups per-project New session +", () => {
 
 describe("SessionGroups described rows (Show ▸ Metadata)", () => {
 	const described = [
-		{...session("d1", "Idle on main", "done", 5), gitBranch: "main", projectName: "claude-code-plans"},
-		{...session("b1", "Blocked asking", "blocked", 3), gitBranch: "main"},
+		{
+			...session("d1", "Idle on main", "done", 5),
+			gitBranch: "main",
+			projectName: "claude-code-plans",
+			summary: "Fixed it",
+			lastUserMessage: "Fix it",
+		},
+		{...session("b1", "Blocked asking", "blocked", 3), gitBranch: "main", lastUserMessage: "Run the tests"},
+		{...session("b2", "Permission ask", "blocked", 4), awaitingPermission: true},
 		{...session("p1", "Pinned on main", "done", 8), gitBranch: "main", projectName: "claude-code-plans"},
 		session("n1", "No branch", "done", 9),
 	];
 	const describeRows = (container: HTMLElement) =>
 		Object.fromEntries(
 			[...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].map((link) => {
-				const line = link.querySelector(".df-row-description .df-meta-line");
+				const line = link.querySelector(".df-row-description .df-meta-slots");
 				return [
 					rowTitle(link.querySelector("[data-row-label]")),
 					{
@@ -1470,25 +1477,28 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () => {
 			off: {
 				"Pinned on main": oneLine,
 				"Blocked asking": oneLine,
+				"Permission ask": oneLine,
 				"Idle on main": oneLine,
 				"No branch": oneLine,
 			},
 			byState: {
 				"Pinned on main": oneLine,
-				"Blocked asking": line("Asked a question", "Asked a question"),
-				"Idle on main": line("mainclaude-code-plans", "main, claude-code-plans"),
+				"Blocked asking": line("Run the testsproject-b1", "Run the tests, project-b1"),
+				"Permission ask": line("Needs permissionproject-b2", "Needs permission, project-b2"),
+				"Idle on main": line("Fixed itclaude-code-plans", "Fixed it, claude-code-plans"),
 				"No branch": line("project-n1", "project-n1"),
 			},
 			byProject: {
 				"Pinned on main": oneLine,
-				"Blocked asking": line("WaitingAsked a question", "Waiting, Asked a question"),
-				"Idle on main": line("main", "main"),
-				"No branch": oneLine,
+				"Blocked asking": line("WaitingRun the tests", "Waiting, Run the tests"),
+				"Permission ask": line("WaitingNeeds permission", "Waiting, Needs permission"),
+				"Idle on main": line("Fixed it", "Fixed it"),
+				"No branch": line("Idle", "Idle"),
 			},
 		});
 	});
 
-	it("moves the PR glyph from the title tail onto the meta line while the line shows", async () => {
+	it("keeps the PR glyph in the title tail and draws no branch glyph on the meta line", async () => {
 		localStorage.setItem(
 			"ccp-session-list-prefs",
 			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, showMetadata: true, showPrStatus: true}),
@@ -1497,11 +1507,38 @@ describe("SessionGroups described rows (Show ▸ Metadata)", () => {
 			{...session("d1", "Open PR on main", "done", 5), gitBranch: "main", prStatus: {number: 8, state: "open"}},
 		]);
 
-		const glyphs = [...container.querySelectorAll("a[data-row-main-button] [data-pr-glyph]")].map((glyph) => ({
-			state: glyph.getAttribute("data-pr-glyph"),
-			onLine: glyph.closest(".df-meta-line") !== null,
-		}));
-		expect(glyphs).toStrictEqual([{state: "opened", onLine: true}]);
+		const link = container.querySelector("a[data-row-main-button]");
+		expect({
+			glyphs: [...(link?.querySelectorAll("[data-pr-glyph]") ?? [])].map((glyph) => ({
+				state: glyph.getAttribute("data-pr-glyph"),
+				onLine: glyph.closest(".df-row-description") !== null,
+			})),
+			branchGlyphs: link?.querySelectorAll("[data-branch-glyph]").length,
+		}).toStrictEqual({glyphs: [{state: "opened", onLine: false}], branchGlyphs: 0});
+	});
+
+	it("labels a described row by its title and description ids", async () => {
+		localStorage.setItem(
+			"ccp-session-list-prefs",
+			JSON.stringify({...DEFAULT_SESSION_LIST_PREFS, showMetadata: true}),
+		);
+		const {container} = await renderGroups([{...session("d1", "Tidy up", "done", 5), summary: "Fixed it"}]);
+
+		const link = container.querySelector("a[data-row-main-button]");
+		const ids = link?.getAttribute("aria-labelledby")?.split(" ") ?? [];
+		expect(
+			ids.map((id) => {
+				const element = document.getElementById(id);
+				return {
+					suffix: id.slice(ids[0]?.length),
+					label: element?.hasAttribute("data-row-label") === true,
+					description: element?.classList.contains("df-row-description") === true,
+				};
+			}),
+		).toStrictEqual([
+			{suffix: "", label: true, description: false},
+			{suffix: "-description", label: false, description: true},
+		]);
 	});
 });
 

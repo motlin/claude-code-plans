@@ -2577,12 +2577,11 @@ html[data-motion="reduced"] [data-skeleton-group][data-motion="wave"] [data-skel
 }
 
 /* Upstream .df-described-row: a two-line session row (Show > Metadata), its title line where a one-line row's text sits.
-   Padding uses upstream's described-line form: the same 6px on desktop (line unset, so ctl), and the 12px
-   upstream's phone sheet measures (row 66px, title line centred at 22px with the decoration). */
+   Padding comes from the row control, as upstream's does: 6px on desktop and on the phone sheet, where the
+   24px described line makes the row 6 + 20 + 2 + 20 + 6 = 54px. */
 .df-described-row {
 	padding-block: calc(
-		(var(--sb-row-h) - var(--sb-described-line, var(--sb-row-ctl))) / 2 + var(--sb-described-tuck) -
-			var(--sb-described-trim)
+		(var(--sb-row-h) - var(--sb-row-ctl)) / 2 + var(--sb-described-tuck) - var(--sb-described-trim)
 	);
 	row-gap: 2px;
 }
@@ -2608,6 +2607,42 @@ html[data-motion="reduced"] [data-skeleton-group][data-motion="wave"] [data-skel
 
 .df-meta-line:where(:root[dir="rtl"] :dir(rtl)) {
 	mask-image: linear-gradient(270deg, #000 calc(100% - 12px), transparent);
+}
+
+/* Upstream .df-meta-slots: the line and its place, sized as a container so the place caps against it. */
+.df-meta-slots {
+	container-type: inline-size;
+}
+
+/* Upstream .df-meta-place: the folder clips past min(14ch, 40cqi) under a 12px fade. */
+.df-meta-place {
+	--df-place-cap: min(14ch, 40cqi);
+	max-inline-size: calc(var(--df-place-cap) + 12px);
+	mask-image: linear-gradient(to right, #000 var(--df-place-cap), transparent calc(var(--df-place-cap) + 12px));
+	overflow: clip;
+}
+
+.df-meta-place:dir(rtl) {
+	mask-image: linear-gradient(to left, #000 var(--df-place-cap), transparent calc(var(--df-place-cap) + 12px));
+}
+
+/* With no message before it (only a word, or nothing), the place gets most of the width. */
+.df-meta-line:not(:has(> bdi)) + .df-meta-place {
+	--df-place-cap: min(70cqi, 100cqi - 92px);
+}
+
+/* Message text running against the page direction shrinks and fades at its own end. */
+:root:not([dir="rtl"]) .df-meta-slots .df-meta-line > bdi:dir(rtl),
+:root[dir="rtl"] .df-meta-slots .df-meta-line > bdi:dir(ltr) {
+	flex-shrink: 1;
+	min-inline-size: 0;
+	padding-inline-end: 12px;
+	overflow: clip;
+	mask-image: linear-gradient(270deg, #000 calc(100% - 12px), #0000);
+}
+
+:root[dir="rtl"] .df-meta-slots .df-meta-line > bdi:dir(ltr) {
+	mask-image: linear-gradient(90deg, #000 calc(100% - 12px), #0000);
 }
 
 /* Upstream's described row swaps top-1/2 for this, so the status mark and kebab centre on the title line. */
@@ -2663,6 +2698,14 @@ html[data-motion="reduced"] [data-skeleton-group][data-motion="wave"] [data-skel
 	border-radius: 1px;
 	background: var(--df-tree-ink, var(--upstream-border));
 	transition: background-color 150ms ease-out;
+}
+
+/* Upstream: a described last child ends the guide halfway down its description line. */
+.df-family:has(> [data-family-child]:last-child .df-described-row)::before {
+	bottom: calc(
+		(var(--sb-row-h) - var(--sb-row-ctl)) / 2 + var(--sb-described-tuck) - var(--sb-described-trim) + 2px + 1.5 *
+			(var(--sb-described-line, var(--sb-row-ctl)) - var(--sb-described-tuck))
+	);
 }
 
 .df-family[data-branch-hot]::before {

@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS sessions (
   project_id TEXT NOT NULL,
   title TEXT NOT NULL,
   first_prompt TEXT,
+  last_user_message TEXT,
   summary TEXT,
   custom_title TEXT,
   ai_title TEXT,

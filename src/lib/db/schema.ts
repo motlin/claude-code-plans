@@ -34,6 +34,8 @@ export const sessions = sqliteTable(
 		projectId: text("project_id").notNull(),
 		title: text("title").notNull(),
 		firstPrompt: text("first_prompt"),
+		/** The first line of the newest prompt the user typed, for a described sidebar row. */
+		lastUserMessage: text("last_user_message"),
 		summary: text("summary"),
 		customTitle: text("custom_title"),
 		aiTitle: text("ai_title"),

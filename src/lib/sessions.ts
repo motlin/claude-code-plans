@@ -34,6 +34,8 @@ export interface SessionEntry {
 	id: string;
 	title: string;
 	firstPrompt?: string | undefined;
+	/** The first line of the newest prompt the user typed, from the index. */
+	lastUserMessage?: string | undefined;
 	summary?: string | undefined;
 	customTitle?: string | undefined;
 	/** The CLI's latest generated ai-title, which a custom title outranks. */
@@ -344,6 +346,11 @@ function typedPromptText(line: string): string | null {
 	} catch {
 		return null;
 	}
+	return typedRecordPromptText(obj);
+}
+
+/** typedPromptText for a record the caller already parsed. */
+export function typedRecordPromptText(obj: unknown): string | null {
 	if (!isRecord(obj) || obj["type"] !== "user") return null;
 	if (obj["isMeta"] === true || obj["isCompactSummary"] === true || obj["isVisibleInTranscriptOnly"] === true) {
 		return null;

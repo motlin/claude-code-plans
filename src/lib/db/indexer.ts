@@ -23,6 +23,7 @@ import {
 	resolveFirstPrompt,
 	resolveSessionTitle,
 	TitleRecordCollector,
+	typedRecordPromptText,
 } from "../sessions";
 import {currentJsonlState, foldJsonl, IncrementalJsonlCache} from "../incremental-jsonl";
 import {bridgePushedTitle} from "../bridge-pushed-title-store";
@@ -587,6 +588,13 @@ interface IndexedMessage {
 	text: string | null;
 }
 
+/** Upstream trims a described row's message to one line; this keeps the stored copy short. */
+const LAST_USER_MESSAGE_MAX = 200;
+
+function firstLine(text: string): string {
+	return text.trim().split(/\r?\n/, 1)[0]?.trim() ?? "";
+}
+
 /** Everything indexJsonlFile derives from a session transcript, folded one line at a time. */
 class SessionIndexState {
 	readonly bridgeSessions = new BridgeSessionCollector();
@@ -612,6 +620,8 @@ class SessionIndexState {
 	readonly routines = new RoutineCollector();
 	readonly usage = new UsageCollector();
 	readonly firstPrompt = new FirstUserMessageCollector();
+	/** The first line of the newest prompt the user typed, capped at LAST_USER_MESSAGE_MAX characters. */
+	lastUserMessage: string | null = null;
 	readonly subagentLinks = new SubagentLinkCollector();
 	readonly indexedMessages: IndexedMessage[] = [];
 	/** Messages on the active chain: an append can abandon an earlier branch, so this resolves at persist time. */
@@ -781,6 +791,10 @@ class SessionIndexState {
 			this.artifactEvents.add(obj);
 			this.routines.add(obj);
 			this.usage.add(obj);
+			if (type === "user") {
+				const prompt = typedRecordPromptText(obj);
+				if (prompt !== null) this.lastUserMessage = firstLine(prompt).slice(0, LAST_USER_MESSAGE_MAX);
+			}
 			if (type === "user" || type === "assistant") {
 				const content = asRecord(obj["message"])?.["content"];
 				const messageText: string[] = [];
@@ -945,6 +959,7 @@ async function persistSessionIndexState(
 		updates["filePath"] = filePath;
 		updates["projectId"] = project;
 		updates["firstPrompt"] = firstPrompt?.text ?? null;
+		updates["lastUserMessage"] = state.lastUserMessage;
 		updates["customTitle"] = customTitle ?? null;
 		updates["aiTitle"] = aiTitle ?? null;
 		updates["prNumber"] = latestPrLink?.prNumber ?? null;
@@ -981,6 +996,7 @@ async function persistSessionIndexState(
 				projectId: project,
 				title,
 				firstPrompt: firstPrompt?.text ?? null,
+				lastUserMessage: state.lastUserMessage,
 				summary: null,
 				customTitle: customTitle ?? null,
 				aiTitle: aiTitle ?? null,

@@ -19,10 +19,10 @@ import {requestHomeComposerFocus, requestHomeLaunchFolder} from "../../lib/home-
 import {useSecondaryAiTitle} from "../../hooks/use-secondary-ai-title";
 import type {SidebarDragRowProps} from "../../hooks/use-sidebar-drag";
 import {startSessionSwitchJourney} from "../../lib/perf/field-journeys";
-import {type GitPrState, prGlyph} from "../../lib/pr-status";
+import {prGlyph} from "../../lib/pr-status";
 import {approvalsQueryOptions} from "../../lib/api/approvals";
 import {blockedDetail} from "../../lib/blocked-detail";
-import {sessionMetaLine, type SessionMetaLine} from "../../lib/session-meta-line";
+import {metaStatus, sessionMetaLine, sessionMetaMessage, type SessionMetaLine} from "../../lib/session-meta-line";
 import {MetaLine} from "./meta-line";
 import {sessionRowIconKind, type SessionStateKind} from "../../lib/session-state";
 import {hasUnseenWork, subscribeUnseenWork} from "../../lib/unread-store";
@@ -292,7 +292,7 @@ export function GroupSection({
 	const {settings} = useSettings();
 	const place: RowPlace = {
 		heading: group.label,
-		underNeedsInput: group.key.endsWith(NEEDS_INPUT_GROUP_KEY),
+		underStatusHeading: groupBy === "state",
 		metadata: showMetadata ?? settings.sessionListPrefs.showMetadata,
 	};
 	const sectionElement = useRef<HTMLDivElement | null>(null);
@@ -849,12 +849,15 @@ function SessionRowLink({
 		pinnedIds === undefined && settings.sessionListPrefs.showPrStatus && row.session.prStatus !== undefined
 			? prGlyph(row.session.prStatus).state
 			: undefined;
-	const metaLine = useRowMetaLine(row, pinnedIds === undefined && place.metadata, place, prTail);
+	const metaLine = useRowMetaLine(row, pinnedIds === undefined && place.metadata, place);
+	const labelId = useId();
+	const descriptionId = `${labelId}-description`;
+	const lineageId = `${labelId}-lineage`;
 	const rowClass = metaLine === undefined ? ROW_CLASS : DESCRIBED_ROW_CLASS;
 	const titleLine = (
 		<>
 			{/* Upstream starts the title 10px into the row; the trailing span below keeps it clear of the 24px slot */}
-			<span data-row-label className="min-w-0 flex-1 ps-2">
+			<span id={labelId} data-row-label className="min-w-0 flex-1 ps-2">
 				<SessionRowTitle
 					render={(title) => (
 						<FadeLabel text={title} attention={attention}>
@@ -865,9 +868,9 @@ function SessionRowLink({
 					)}
 				/>
 			</span>
-			{/* Upstream's title tail: reserves the trailing slot and holds the PR glyph left of it, unless the meta line has it */}
+			{/* Upstream's title tail: reserves the trailing slot and holds the PR glyph left of it */}
 			<span className="shrink-0 flex items-center gap-1.5 text-xs text-muted-as-secondary me-[calc(var(--sb-row-ctl-inset)+var(--sb-row-ctl)-var(--sb-row-px))]">
-				{prTail !== undefined && metaLine === undefined && <PrTailGlyph state={prTail} />}
+				{prTail !== undefined && <PrTailGlyph state={prTail} />}
 			</span>
 		</>
 	);
@@ -896,6 +899,12 @@ function SessionRowLink({
 					{...ROVING_ITEM_PROPS}
 					data-row-main-button
 					aria-describedby={blocked ? hintId : undefined}
+					// Upstream names a described row by its title and description; the sr-only lineage note stays in it.
+					aria-labelledby={
+						metaLine === undefined
+							? undefined
+							: [labelId, descriptionId, ...(lineage === undefined ? [] : [lineageId])].join(" ")
+					}
 					data-selected={selected ? "focused" : undefined}
 					data-multi-selected={multiSelected ? "" : undefined}
 					onPointerDown={(event) => {
@@ -913,13 +922,16 @@ function SessionRowLink({
 							<span className="df-described-title flex min-w-0 items-center gap-[var(--sb-row-gap)]">
 								{titleLine}
 							</span>
-							<span className="df-row-description flex min-w-0 items-center text-ink-muted ps-2">
+							<span
+								id={descriptionId}
+								className="df-row-description flex min-w-0 items-center text-ink-muted ps-2"
+							>
 								<MetaLine line={metaLine} />
 							</span>
 						</>
 					)}
 					{lineage !== undefined && (
-						<span data-family-lineage className="sr-only">
+						<span id={lineageId} data-family-lineage className="sr-only">
 							{lineage}
 						</span>
 					)}
@@ -977,25 +989,19 @@ function FadeLabel({
 	);
 }
 
-/** Where a row sits: its section heading, and whether that section is Needs input. */
+/** Where a row sits: its section heading, and whether that heading names a status. */
 interface RowPlace {
 	heading: string;
-	underNeedsInput: boolean;
+	/** The section is a state grouping's, so its heading already says the row's status. */
+	underStatusHeading: boolean;
 	/** Show ▸ Metadata for this row's section. */
 	metadata: boolean;
 }
 
-/** The state grouping's Needs input section, whose heading already says a row is blocked. */
-const NEEDS_INPUT_GROUP_KEY = "state-blocked";
-
 /** A row's described second line (Show ▸ Metadata), or undefined for a one-line row. */
-function useRowMetaLine(
-	row: SidebarSessionRow,
-	enabled: boolean,
-	place: RowPlace,
-	pr: GitPrState | undefined,
-): SessionMetaLine | undefined {
-	const blocked = row.bucket === "blocked";
+function useRowMetaLine(row: SidebarSessionRow, enabled: boolean, place: RowPlace): SessionMetaLine | undefined {
+	const status = metaStatus(row.session);
+	const blocked = status === "blocked";
 	const {data: toolName} = useQuery({
 		...approvalsQueryOptions(),
 		enabled: enabled && blocked,
@@ -1003,12 +1009,17 @@ function useRowMetaLine(
 	});
 	if (!enabled) return undefined;
 	return sessionMetaLine({
-		bucket: row.bucket,
-		underNeedsInput: place.underNeedsInput,
-		reason: blocked ? blockedDetail(toolName) : undefined,
-		pr,
-		branch: row.session.gitBranch,
-		folder: row.session.projectName,
+		status,
+		underStatusHeading: place.underStatusHeading,
+		reason: blocked ? blockedReason(toolName, row.session.awaitingPermission === true) : undefined,
+		message: sessionMetaMessage(row.session, status),
+		place: {text: row.session.projectName, spoken: true},
 		heading: place.heading,
 	});
+}
+
+/** Why a blocked row waits, only when a pending approval or permission prompt says so (upstream `p9`). */
+function blockedReason(toolName: string | undefined, awaitingPermission: boolean): string | undefined {
+	if (toolName !== undefined) return blockedDetail(toolName);
+	return awaitingPermission ? "Needs permission" : undefined;
 }

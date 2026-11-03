@@ -26,6 +26,7 @@ export const SessionSummaryPayloadSchema: z.ZodType<SessionSummaryPayload> = z
 		title: z.string(),
 		summary: z.string().optional(),
 		aiTitle: z.string().exactOptional(),
+		lastUserMessage: z.string().exactOptional(),
 		mtime: z.string(),
 		created: z.string(),
 		project: z.string(),

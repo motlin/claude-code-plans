@@ -25,6 +25,8 @@ const SessionListItemSchema = z.object({
 	/** The CLI's latest ai-title, shown beside a differing /rename title. */
 	aiTitle: z.string().optional(),
 	summary: z.string().optional(),
+	/** The first line of the newest prompt the user typed, the described row's fallback message. */
+	lastUserMessage: z.string().optional(),
 	mtime: z.string(),
 	created: z.string(),
 	project: z.string(),

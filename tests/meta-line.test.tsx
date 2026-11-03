@@ -6,82 +6,55 @@ import {MetaLine} from "../src/components/sidebar/meta-line";
 
 afterEach(cleanup);
 
-function lineParts(container: HTMLElement) {
-	const line = container.querySelector(".df-meta-line");
-	if (line === null) throw new Error("no .df-meta-line");
-	return {
-		title: line.getAttribute("title"),
-		children: [...line.children].map((child) => ({
-			tag: child.tagName.toLowerCase(),
-			ariaHidden: child.getAttribute("aria-hidden"),
-			text: child.textContent,
-		})),
-		branchGlyphs: line.querySelectorAll("svg[data-branch-glyph]").length,
-		prGlyphs: [...line.querySelectorAll("[data-pr-glyph]")].map((glyph) => ({
-			state: glyph.getAttribute("data-pr-glyph"),
-			ariaHidden: glyph.getAttribute("aria-hidden"),
-			className: glyph.getAttribute("class"),
-			icons: glyph.querySelectorAll("svg").length,
-		})),
-	};
-}
+const SLOTS = "df-meta-slots flex min-w-0 flex-1 items-center gap-2 text-ink-muted";
+const LINE = "df-meta-line flex min-w-0 flex-1 items-center gap-2";
+const ITEM = "shrink-0 whitespace-nowrap";
+const PLACE = "df-meta-place shrink-0 whitespace-nowrap";
 
 describe("MetaLine", () => {
-	it("renders the warning Waiting word, then the reason in a bdi", () => {
-		const {container} = render(<MetaLine line={{kind: "blocked", word: true, reason: "Asked a question"}} />);
-		expect(lineParts(container)).toEqual({
-			title: "Waiting, Asked a question",
-			children: [
-				{tag: "span", ariaHidden: "true", text: "Waiting"},
-				{tag: "bdi", ariaHidden: null, text: "Asked a question"},
-			],
-			branchGlyphs: 0,
-			prGlyphs: [],
-		});
-	});
-
-	it("leads a branch with the GitBranch glyph", () => {
-		const {container} = render(<MetaLine line={{kind: "place", branch: "main", folder: "claude-code-plans"}} />);
-		expect(lineParts(container)).toEqual({
-			title: "main, claude-code-plans",
-			children: [
-				{tag: "span", ariaHidden: null, text: "main"},
-				{tag: "bdi", ariaHidden: null, text: "claude-code-plans"},
-			],
-			branchGlyphs: 1,
-			prGlyphs: [],
-		});
-	});
-
-	it("leads with the PR glyph instead of the branch glyph when the row has a PR", () => {
+	it("renders upstream's slots: the warning Waiting word, the reason bdi, then the place bdi", () => {
 		const {container} = render(
-			<MetaLine line={{kind: "place", pr: "opened", branch: "feature", folder: "claude-code-plans"}} />,
+			<MetaLine line={{word: "blocked", text: "Asked a question", place: {text: "ccp", spoken: true}}} />,
 		);
-		expect(lineParts(container)).toEqual({
-			title: "feature, claude-code-plans",
-			children: [
-				{tag: "span", ariaHidden: null, text: "feature"},
-				{tag: "bdi", ariaHidden: null, text: "claude-code-plans"},
-			],
-			branchGlyphs: 0,
-			prGlyphs: [
-				{
-					state: "opened",
-					ariaHidden: "true",
-					className: "flex h-4 shrink-0 items-center gap-0.5",
-					icons: 1,
-				},
-			],
-		});
+		expect(container.innerHTML).toBe(
+			`<span class="${SLOTS}" title="Waiting, Asked a question, ccp">` +
+				`<span class="${LINE}">` +
+				`<span class="${ITEM} text-upstream-warning" aria-hidden="true">Waiting</span>` +
+				`<bdi class="${ITEM}">Asked a question</bdi>` +
+				`</span>` +
+				`<bdi class="${PLACE}">ccp</bdi>` +
+				`</span>`,
+		);
 	});
 
-	it("draws no glyph for a folder-only line", () => {
-		const {container} = render(<MetaLine line={{kind: "place", folder: "claude-code-plans"}} />);
-		expect(lineParts(container)).toEqual({
-			title: "claude-code-plans",
-			children: [{tag: "span", ariaHidden: null, text: "claude-code-plans"}],
-			branchGlyphs: 0,
-			prGlyphs: [],
+	it("leaves the Idle word spoken", () => {
+		const {container} = render(<MetaLine line={{word: "idle"}} />);
+		expect(container.innerHTML).toBe(
+			`<span class="${SLOTS}" title="Idle">` +
+				`<span class="${LINE}">` +
+				`<span class="${ITEM}">Idle</span>` +
+				`</span>` +
+				`</span>`,
+		);
+	});
+
+	it("hides the whole line from assistive tech when it holds only an unspoken place", () => {
+		const {container} = render(<MetaLine line={{place: {text: "ccp", spoken: false}}} />);
+		expect(container.innerHTML).toBe(
+			`<span class="${SLOTS}" title="ccp" aria-hidden="true">` +
+				`<span class="${LINE}"></span>` +
+				`<bdi class="${PLACE}" aria-hidden="true">ccp</bdi>` +
+				`</span>`,
+		);
+	});
+
+	it("labels every status word as upstream does", () => {
+		const words = (["idle", "unread", "working", "blocked", "error"] as const).map((word) => {
+			const {container} = render(<MetaLine line={{word}} />);
+			const text = container.querySelector(".df-meta-line > span")?.textContent;
+			cleanup();
+			return text;
 		});
+		expect(words).toEqual(["Idle", "Done", "Working", "Waiting", "Error"]);
 	});
 });

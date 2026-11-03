@@ -196,7 +196,7 @@ describe("described session rows", () => {
 		}).toStrictEqual({
 			row: {
 				"padding-block":
-					"calc((var(--sb-row-h) - var(--sb-described-line, var(--sb-row-ctl))) / 2 + var(--sb-described-tuck) - var(--sb-described-trim))",
+					"calc((var(--sb-row-h) - var(--sb-row-ctl)) / 2 + var(--sb-described-tuck) - var(--sb-described-trim))",
 				"row-gap": "2px",
 			},
 			lines: {height: "calc(var(--sb-described-line, var(--sb-row-ctl)) - var(--sb-described-tuck))"},

@@ -56,6 +56,8 @@ export interface SessionSummaryPayload {
 	summary: string | undefined;
 	/** The CLI's latest ai-title; absent when the session has none or it is the title. */
 	aiTitle?: string;
+	/** The first line of the newest prompt the user typed; absent when there is none. */
+	lastUserMessage?: string;
 	mtime: string;
 	created: string;
 	project: string;
