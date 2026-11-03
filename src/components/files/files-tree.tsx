@@ -16,6 +16,7 @@ import {useShortcutKeys} from "../../hooks/use-shortcut";
 import {useResizableWidth} from "../../hooks/use-resizable-width";
 import {type SessionFilesResponse, sessionFilesQueryOptions} from "../../lib/api/session-files";
 import type {AttachContextHandler} from "../../lib/context-attach";
+import {useFizzyLake} from "../../lib/fizzy-lake";
 import {parseContentSearchQuery} from "../../lib/files-content-search";
 import {FileTypeIcon} from "../file-type-icon";
 import {useSettings} from "../settings-context";
@@ -27,6 +28,7 @@ import {
 	parseTreeQuery,
 } from "./files-tree-layout";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
+import {RESIZE_LINE_PILL_CLASS} from "../ui/resize-pill";
 import {Tooltip} from "../ui/tooltip";
 import {type ContentMatchOpenOptions, ContentSearchResults} from "./content-search-results";
 import {TreeRowMenuItems} from "./file-context-menu";
@@ -81,6 +83,7 @@ export function FilesTreeColumn({
 	const {settings, setSetting} = useSettings();
 	const hideKeys = useShortcutKeys("toggle_changes_file_list");
 	const width = clampFilesTreeWidth(settings.filesTreeWidth);
+	const panels = useFizzyLake("panels");
 	const resizeHandleProps = useResizableWidth({
 		label: "Resize file tree",
 		min: FILES_TREE_MIN_WIDTH,
@@ -120,9 +123,18 @@ export function FilesTreeColumn({
 			>
 				<div
 					{...resizeHandleProps}
-					className="group/resize flex size-full cursor-col-resize touch-none justify-center outline-none"
+					className="group/resize relative flex size-full cursor-col-resize touch-none justify-center outline-none"
 				>
-					<div className="h-full max-h-12 w-[3px] self-center rounded-full bg-ink-muted opacity-0 transition-opacity delay-200 group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100" />
+					<span
+						aria-hidden="true"
+						data-resize-pill=""
+						{...(panels ? {"data-cds-part": "resize-pill"} : {})}
+						className={
+							panels
+								? RESIZE_LINE_PILL_CLASS
+								: "h-full max-h-12 w-[3px] self-center rounded-full bg-ink-muted opacity-0 transition-opacity delay-200 group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100"
+						}
+					/>
 				</div>
 			</Tooltip>
 		</div>

@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 
 import {cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import type {ComponentType, ReactNode} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {ChangedFilesSidebar} from "../src/components/changes/changes-file-tree";
+import {RESIZE_LINE_PILL_CLASS} from "../src/components/ui/resize-pill";
+import {PanelsOff} from "./fizzy-lake-off";
 
 const FILES = [
 	{path: ".github/workflows/push.yml", additions: 3, deletions: 1},
@@ -26,7 +29,7 @@ type SidebarOverrides = Partial<
 	Omit<Parameters<typeof ChangedFilesSidebar>[0], "onSelectFile" | "onSelectCommit" | "onCopyCommitSha">
 >;
 
-function renderSidebar(overrides: SidebarOverrides = {}) {
+function renderSidebar(overrides: SidebarOverrides = {}, wrapper?: ComponentType<{children: ReactNode}>) {
 	const handlers = {
 		onSelectFile: vi.fn<(path: string) => void>(),
 		onSelectCommit: vi.fn<(sha: string | null) => void>(),
@@ -45,6 +48,7 @@ function renderSidebar(overrides: SidebarOverrides = {}) {
 				{...overrides}
 			/>
 		</FileTypeIconSetContext>,
+		wrapper === undefined ? {} : {wrapper},
 	);
 	return handlers;
 }
@@ -157,6 +161,30 @@ describe("ChangedFilesSidebar", () => {
 		expect({opened: onOpenFile.mock.calls, selected: props.onSelectFile.mock.calls}).toEqual({
 			opened: [["tests/app.test.ts"]],
 			selected: [],
+		});
+	});
+
+	it("draws the shared panels 2px accent line pill on the file list resize handle under panels", () => {
+		renderSidebar();
+		const handle = screen.getByRole("separator", {name: "Resize file list"});
+		const pill = handle.querySelector("[data-resize-pill]");
+
+		expect({
+			part: pill?.getAttribute("data-cds-part"),
+			className: pill?.getAttribute("class"),
+			cursor: handle.classList.contains("cursor-col-resize"),
+			tabIndex: handle.tabIndex,
+		}).toStrictEqual({part: "resize-pill", className: RESIZE_LINE_PILL_CLASS, cursor: true, tabIndex: 0});
+	});
+
+	it("keeps the old 3px muted pill on the file list resize handle when panels is off", () => {
+		renderSidebar({}, PanelsOff);
+		const pill = screen.getByRole("separator", {name: "Resize file list"}).querySelector("[data-resize-pill]");
+
+		expect({part: pill?.getAttribute("data-cds-part"), className: pill?.getAttribute("class")}).toStrictEqual({
+			part: null,
+			className:
+				"h-full max-h-12 w-[3px] self-center rounded-full bg-ink-muted opacity-0 transition-opacity delay-200 group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100",
 		});
 	});
 

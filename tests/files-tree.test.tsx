@@ -2,7 +2,7 @@
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
-import type {ComponentProps} from "react";
+import type {ComponentProps, ComponentType, ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
@@ -14,8 +14,10 @@ import {
 	parseTreeQuery,
 } from "../src/components/files/files-tree-layout";
 import {SettingsProvider} from "../src/components/settings-provider";
+import {RESIZE_LINE_PILL_CLASS} from "../src/components/ui/resize-pill";
 import type {SessionFilesResponse} from "../src/lib/api/session-files";
 import {installLocalStorage} from "./fake-storage";
+import {PanelsOff} from "./fizzy-lake-off";
 
 class FakeObserver {
 	observe() {}
@@ -59,7 +61,10 @@ function stubFetch(): void {
 	);
 }
 
-function renderTree(onOpenFile = vi.fn<NonNullable<ComponentProps<typeof FilesTree>["onOpenFile"]>>()) {
+function renderTree(
+	onOpenFile = vi.fn<NonNullable<ComponentProps<typeof FilesTree>["onOpenFile"]>>(),
+	wrapper?: ComponentType<{children: ReactNode}>,
+) {
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	render(
 		<QueryClientProvider client={queryClient}>
@@ -71,6 +76,7 @@ function renderTree(onOpenFile = vi.fn<NonNullable<ComponentProps<typeof FilesTr
 				</FileTypeIconSetContext>
 			</SettingsProvider>
 		</QueryClientProvider>,
+		wrapper === undefined ? {} : {wrapper},
 	);
 	return onOpenFile;
 }
@@ -498,6 +504,31 @@ describe("FilesTreeColumn resize", () => {
 			stepped: "248",
 			max: "640",
 			min: "160",
+		});
+	});
+
+	it("draws the shared panels 2px accent line pill under panels", () => {
+		responses.set(key("", ""), {kind: "listing", dir: "", entries: [], partial: false});
+		renderTree();
+		const pill = separator().querySelector("[data-resize-pill]");
+
+		expect({
+			part: pill?.getAttribute("data-cds-part"),
+			className: pill?.getAttribute("class"),
+			cursor: separator().classList.contains("cursor-col-resize"),
+			tabIndex: separator().tabIndex,
+		}).toStrictEqual({part: "resize-pill", className: RESIZE_LINE_PILL_CLASS, cursor: true, tabIndex: 0});
+	});
+
+	it("keeps the old 3px muted pill when panels is off", () => {
+		responses.set(key("", ""), {kind: "listing", dir: "", entries: [], partial: false});
+		renderTree(undefined, PanelsOff);
+		const pill = separator().querySelector("[data-resize-pill]");
+
+		expect({part: pill?.getAttribute("data-cds-part"), className: pill?.getAttribute("class")}).toStrictEqual({
+			part: null,
+			className:
+				"h-full max-h-12 w-[3px] self-center rounded-full bg-ink-muted opacity-0 transition-opacity delay-200 group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100",
 		});
 	});
 

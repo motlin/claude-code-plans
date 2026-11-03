@@ -2,9 +2,11 @@ import {ChevronRight, Copy} from "lucide-react";
 import {type KeyboardEvent, type MouseEvent, useState} from "react";
 
 import {useResizableWidth} from "../../hooks/use-resizable-width";
+import {useFizzyLake} from "../../lib/fizzy-lake";
 import {formatRelativeTimeFromIso} from "../../lib/relative-time";
 import {changedFileKindLabels} from "../../lib/schema-choices";
 import {FileTypeIcon} from "../file-type-icon";
+import {RESIZE_LINE_PILL_CLASS} from "../ui/resize-pill";
 import {
 	buildChangedFileTree,
 	type ChangedFileInput,
@@ -249,6 +251,7 @@ export function ChangedFilesSidebar({
 }: ChangedFilesSidebarProps) {
 	const [width, setWidth] = useState(FILE_LIST_DEFAULT_WIDTH);
 	const [collapsedDirs, setCollapsedDirs] = useState<ReadonlySet<string>>(new Set());
+	const panels = useFizzyLake("panels");
 	const resizeHandleProps = useResizableWidth({
 		label: "Resize file list",
 		min: FILE_LIST_MIN_WIDTH,
@@ -334,7 +337,16 @@ export function ChangedFilesSidebar({
 				{...resizeHandleProps}
 				className="group/resize absolute inset-y-0 -right-1.5 z-10 flex w-3 cursor-col-resize justify-center outline-none"
 			>
-				<div className="h-full max-h-12 w-[3px] self-center rounded-full bg-ink-muted opacity-0 transition-opacity delay-200 group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100" />
+				<span
+					aria-hidden="true"
+					data-resize-pill=""
+					{...(panels ? {"data-cds-part": "resize-pill"} : {})}
+					className={
+						panels
+							? RESIZE_LINE_PILL_CLASS
+							: "h-full max-h-12 w-[3px] self-center rounded-full bg-ink-muted opacity-0 transition-opacity delay-200 group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100"
+					}
+				/>
 			</div>
 		</div>
 	);
