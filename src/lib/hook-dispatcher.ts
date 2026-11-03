@@ -49,7 +49,7 @@ import {indexFile, indexJsonlFile, liveJsonlIndexCache} from "./db/indexer";
 import {isSessionArchived, setSessionArchived} from "./db/queries";
 import {resolveProjectName} from "./memory";
 import {recentlyBroadcast, sessionUpdatedDedupeKey} from "./update-dedupe";
-import {jsonlReadOffset} from "./jsonl-resume-offset";
+import {readAppendedJsonlLines, sharedJsonlOffsets} from "./jsonl-append-reader";
 import {toSubagentSessionId} from "./subagents";
 import {stateForEvent, type ActivityState} from "./session-state";
 import {isSessionVisible as isSessionVisibleInBrowser} from "./session-visibility";
@@ -121,10 +121,9 @@ export interface HookDispatchDirs {
 }
 
 /**
- * Persistent per-process state the dispatcher mutates as new lines stream in
- * over hooks. Lives outside the dispatcher so tests can supply a fresh map and
- * the watcher and dispatcher can share the same offsets when wired up via
- * Section 6's dedupe layer.
+ * Per-process state the dispatcher mutates as new lines stream in over hooks.
+ * Omitted in production, where the dispatcher advances `sharedJsonlOffsets`,
+ * the same map the watcher reads from; tests supply a fresh map.
  */
 export interface HookDispatchState {
 	jsonlOffsets: Map<string, number>;
@@ -399,8 +398,8 @@ async function handlePostToolUseFileEdit(
 /**
  * Index a JSONL transcript fragment that grew between the last hook event and
  * this one, then broadcast `session:lines-appended` with the newly-appended
- * lines. The prior offset is read from `state.jsonlOffsets` so multiple hooks
- * for the same session don't re-broadcast the entire transcript.
+ * lines. The prior offset is read from `state.jsonlOffsets`, or the offset map
+ * shared with the watcher, so neither re-broadcasts lines the other sent.
  */
 async function appendTranscriptLines(
 	db: IndexDb,
@@ -414,10 +413,12 @@ async function appendTranscriptLines(
 
 	const sessionId = sessionIdFromTranscriptPath(transcriptPath);
 	try {
-		const fromOffset = await jsonlReadOffset(db, transcriptPath, state?.jsonlOffsets.get(transcriptPath));
-		const {jsonlWrittenAt, readNewJsonlLines} = await import("./sessions");
-		const {lines: newLines, nextByteOffset} = await readNewJsonlLines(transcriptPath, fromOffset);
-		state?.jsonlOffsets.set(transcriptPath, nextByteOffset);
+		const {lines: newLines, nextByteOffset} = await readAppendedJsonlLines(
+			db,
+			transcriptPath,
+			state?.jsonlOffsets ?? sharedJsonlOffsets,
+		);
+		const {jsonlWrittenAt} = await import("./sessions");
 		if (newLines.length > 0) {
 			const key = `${DOMAIN_EVENTS.SESSION_LINES_APPENDED}:${sessionId}:${nextByteOffset}`;
 			if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {

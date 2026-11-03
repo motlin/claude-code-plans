@@ -8,7 +8,7 @@ import type {core, ZodError} from "zod";
 import {DOMAIN_EVENTS, HookEventEnvelope, type HookEvent} from "../../lib/hook-events";
 import {toLenient} from "../../lib/lenient-schema";
 import {broadcastTyped} from "../../lib/watcher";
-import {dispatchHookEvent, type HookDispatchDirs, type HookDispatchState} from "../../lib/hook-dispatcher";
+import {dispatchHookEvent, type HookDispatchDirs} from "../../lib/hook-dispatcher";
 import {getTerminalHost} from "../../lib/terminal-host";
 import {
 	getActiveSessionEntry,
@@ -25,7 +25,6 @@ import {getCacheDir} from "../../lib/db/connection";
 import {getDb} from "../../lib/db";
 import {hookSchemaDrift} from "../../lib/db/schema";
 import {indexFile} from "../../lib/db/indexer";
-import {hmrPersist} from "../../lib/hmr-persist";
 import {rejectCrossSite} from "../../lib/same-origin-guard";
 import {isRecord} from "../../lib/narrow";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
@@ -45,15 +44,6 @@ const HOOK_DIRS: HookDispatchDirs = {
 	commandsDir: COMMANDS_DIR,
 	pluginsDir: PLUGINS_DIR,
 	statuslineDir: STATUSLINE_DIR,
-};
-
-/**
- * Shared JSONL byte-offset map for the dispatcher's `SESSION_LINES_APPENDED`
- * fast path. Persisted across HMR reloads so the dispatcher does not
- * re-broadcast already-seen lines after a hot reload.
- */
-const dispatcherState: HookDispatchState = {
-	jsonlOffsets: hmrPersist("hookDispatcherJsonlOffsets", () => new Map<string, number>()),
 };
 
 /** Truncated raw body to keep the drift table from growing unbounded. */
@@ -218,7 +208,6 @@ async function dispatch(event: HookEvent): Promise<void> {
 		},
 		broadcast: broadcastTyped,
 		dirs: HOOK_DIRS,
-		state: dispatcherState,
 		reportHerdrState: (reportedEvent, entry) => {
 			void getTerminalHost().then((host) => {
 				host.reportHookState(reportedEvent, entry);

@@ -2231,6 +2231,91 @@ describe("dispatchHookEvent", () => {
 			vi.useRealTimers();
 		});
 
+		function setUpSharedTranscript(sessionId: string) {
+			const root = realpathSync(testDir);
+			const dirs = {
+				projectsDir: join(root, "projects"),
+				plansDir: join(root, "plans"),
+				tasksDir: join(root, "tasks"),
+				commandsDir: join(root, "commands"),
+				pluginsDir: join(root, "plugins", "cache"),
+				statuslineDir: join(root, "statusline"),
+			};
+			const projectDir = join(dirs.projectsDir, "-Users-craig-projects-shared");
+			mkdirSync(projectDir, {recursive: true});
+			const transcriptPath = join(projectDir, `${sessionId}.jsonl`);
+			const line = (n: number) => ({type: "summary", summary: `Summary ${n}`});
+			const broadcasts: Broadcast[] = [];
+			const broadcast = (type: string, data: Record<string, unknown>): void => {
+				broadcasts.push({type, data});
+			};
+			const hookEvent: HookEvent = {
+				hook_event_name: "PostToolUse",
+				session_id: sessionId,
+				transcript_path: transcriptPath,
+				cwd: "/tmp",
+				tool_name: "Bash",
+				tool_input: {command: "echo hi"},
+			};
+			const appendedLines = () =>
+				broadcasts.filter((b) => b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED).map((b) => b.data["lines"]);
+			return {dirs, transcriptPath, line, broadcast, hookEvent, appendedLines};
+		}
+
+		it("broadcasts each uuid-less transcript line once across watcher, hook and watcher appends", async () => {
+			const {__testing: dedupeTesting} = await import("../src/lib/update-dedupe");
+			dedupeTesting.clear();
+			const {processJsonlAppend} = await import("../src/lib/watcher");
+			const {sharedJsonlOffsets} = await import("../src/lib/jsonl-append-reader");
+			const {dirs, transcriptPath, line, broadcast, hookEvent, appendedLines} =
+				setUpSharedTranscript("shared-offsets");
+			const {store} = makeStore();
+			const watcherDirs = {projectsDir: dirs.projectsDir, plansDir: dirs.plansDir};
+
+			writeFileSync(transcriptPath, JSON.stringify(line(1)) + "\n");
+			await processJsonlAppend(db.index, transcriptPath, sharedJsonlOffsets, broadcast, watcherDirs);
+			appendFileSync(transcriptPath, JSON.stringify(line(2)) + "\n");
+			await dispatchHookEvent({
+				event: hookEvent,
+				db: db.index,
+				store,
+				broadcast,
+				dirs,
+				reportHerdrState: () => {},
+			});
+			appendFileSync(transcriptPath, JSON.stringify(line(3)) + "\n");
+			await processJsonlAppend(db.index, transcriptPath, sharedJsonlOffsets, broadcast, watcherDirs);
+
+			expect(appendedLines()).toStrictEqual([[line(1)], [line(2)], [line(3)]]);
+		});
+
+		it("serializes overlapping hook and watcher reads of one transcript so each line broadcasts once", async () => {
+			const {__testing: dedupeTesting} = await import("../src/lib/update-dedupe");
+			dedupeTesting.clear();
+			const {processJsonlAppend} = await import("../src/lib/watcher");
+			const {sharedJsonlOffsets} = await import("../src/lib/jsonl-append-reader");
+			const {dirs, transcriptPath, line, broadcast, hookEvent, appendedLines} =
+				setUpSharedTranscript("overlapping-reads");
+			const {store} = makeStore();
+			const watcherDirs = {projectsDir: dirs.projectsDir, plansDir: dirs.plansDir};
+
+			writeFileSync(transcriptPath, JSON.stringify(line(1)) + "\n");
+			const first = processJsonlAppend(db.index, transcriptPath, sharedJsonlOffsets, broadcast, watcherDirs);
+			appendFileSync(transcriptPath, JSON.stringify(line(2)) + "\n");
+			const second = dispatchHookEvent({
+				event: hookEvent,
+				db: db.index,
+				store,
+				broadcast,
+				dirs,
+				reportHerdrState: () => {},
+			});
+			await Promise.all([first, second]);
+
+			expect(appendedLines().flat()).toStrictEqual([line(1), line(2)]);
+			expect(sharedJsonlOffsets.get(transcriptPath)).toBe(statSync(transcriptPath).size);
+		});
+
 		it("only broadcasts plan:changed once when PostToolUse fires then watcher trails", async () => {
 			const {__testing: dedupeTesting} = await import("../src/lib/update-dedupe");
 			dedupeTesting.clear();

@@ -6,7 +6,7 @@ import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {awaitInitialIndexScan, awaitInitialScan, getDb} from "./db";
 import {retryWhileBusy} from "./db/busy";
 import {trackActivity, trackActivitySync} from "./perf/event-loop-stalls";
-import {jsonlReadOffset} from "./jsonl-resume-offset";
+import {readAppendedJsonlLines, sharedJsonlOffsets} from "./jsonl-append-reader";
 import {
 	deleteFileContent,
 	deleteMemoryFile,
@@ -74,7 +74,6 @@ const lastSessionsByProject = hmrPersist(
 	() => new Map<string, Map<string, SessionSummaryPayload>>(),
 );
 const lastTasksByProject = hmrPersist("lastTasksByProject", () => new Map<string, Map<string, TaskSummaryPayload>>());
-const jsonlOffsets = hmrPersist("jsonlOffsets", () => new Map<string, number>());
 
 // Transient state: module-scoped, recreated on HMR
 let watcher: RecursiveWatcher | null = null;
@@ -132,7 +131,7 @@ async function fireJsonlAppend(path: string, state: JsonlThrottleState): Promise
 	state.lastFired = Date.now();
 	delete state.timer;
 	await trackActivity(`jsonl append ${path}`, async () =>
-		processJsonlAppend(getDb().index, path, jsonlOffsets, broadcastTyped),
+		processJsonlAppend(getDb().index, path, sharedJsonlOffsets, broadcastTyped),
 	);
 }
 
@@ -682,10 +681,8 @@ export async function processJsonlAppend(
 	dirs: JsonlAppendDirs = {projectsDir, plansDir},
 ): Promise<void> {
 	try {
-		const fromOffset = await jsonlReadOffset(db, path, offsets.get(path));
-		const {jsonlWrittenAt, readNewJsonlLines} = await import("./sessions");
-		const {lines: newLines, nextByteOffset} = await readNewJsonlLines(path, fromOffset);
-		offsets.set(path, nextByteOffset);
+		const {lines: newLines, nextByteOffset} = await readAppendedJsonlLines(db, path, offsets);
+		const {jsonlWrittenAt} = await import("./sessions");
 
 		if (newLines.length > 0) {
 			const sessionId = sessionIdFromJsonlPath(path);
@@ -896,7 +893,7 @@ async function handleFileUnlink(path: string): Promise<void> {
 			});
 		}
 	} else if (ext === ".jsonl") {
-		jsonlOffsets.delete(path);
+		sharedJsonlOffsets.delete(path);
 		liveJsonlIndexCache.delete(path);
 		liveSubagentIndexCache.delete(path);
 		const throttleState = jsonlThrottleByPath.get(path);
@@ -1004,6 +1001,6 @@ export const __testing = {
 		}
 		jsonlThrottleByPath.clear();
 		jsonlExpediteUntilBySession.clear();
-		jsonlOffsets.clear();
+		sharedJsonlOffsets.clear();
 	},
 };
