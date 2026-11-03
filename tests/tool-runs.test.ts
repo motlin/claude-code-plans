@@ -72,9 +72,19 @@ describe("targetKey", () => {
 			targetKey(call("Edit", {file_path: "/a"})),
 			targetKey(call("MultiEdit", {file_path: "/a"})),
 			targetKey(call("NotebookEdit", {notebook_path: "/n.ipynb"})),
+			targetKey(call("NotebookEdit", {notebook_path: "/n.ipynb", edit_mode: "insert"})),
 			targetKey(call("Edit", {})),
 			targetKey(call("Bash", {command: "ls"})),
-		]).toStrictEqual(["Read /a", "Write /a", "Edit /a", "Edit /a", "NotebookEdit /n.ipynb", null, null]);
+		]).toStrictEqual([
+			"Read /a",
+			"Write /a",
+			"Edit /a",
+			"Edit /a",
+			"NotebookEdit replace /n.ipynb",
+			"NotebookEdit insert /n.ipynb",
+			null,
+			null,
+		]);
 	});
 });
 
@@ -95,6 +105,22 @@ describe("rendersBare", () => {
 			false,
 		],
 		["[Edit a] thinking before first", [call("Edit", {file_path: "/a"}, {precedingThinking: true})], true],
+		[
+			"[NotebookEdit insert n, NotebookEdit replace n]",
+			[
+				call("NotebookEdit", {notebook_path: "/n.ipynb", edit_mode: "insert"}),
+				call("NotebookEdit", {notebook_path: "/n.ipynb", edit_mode: "replace"}),
+			],
+			false,
+		],
+		[
+			"[NotebookEdit replace n, NotebookEdit n]",
+			[
+				call("NotebookEdit", {notebook_path: "/n.ipynb", edit_mode: "replace"}),
+				call("NotebookEdit", {notebook_path: "/n.ipynb"}),
+			],
+			true,
+		],
 	];
 
 	it("is bare only when every call shares one file target", () => {

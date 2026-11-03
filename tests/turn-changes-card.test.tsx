@@ -402,6 +402,39 @@ function turnRecords(steps: TurnStep[], prefix = "t"): unknown[] {
 	return records;
 }
 
+function isArtifactResult(record: unknown): boolean {
+	return JSON.stringify(record).includes('"tool_use_id":"art"');
+}
+
+/** Marks a turnRecords tool-result line as an error. */
+function withErrorResult(record: unknown): unknown {
+	const line = record as {message: {content: Record<string, unknown>[]}};
+	return {
+		...line,
+		message: {...line.message, content: line.message.content.map((block) => ({...block, is_error: true}))},
+	};
+}
+
+/** A background command's completion notification, which upstream folds into the run before it. */
+const TASK_NOTICE = {
+	type: "user",
+	uuid: "n-task",
+	promptSource: "system",
+	turnOrigin: "task_notification",
+	message: {
+		role: "user",
+		content: [
+			"<task-notification>",
+			"<task-id>fab123</task-id>",
+			"<tool-use-id>bg</tool-use-id>",
+			"<output-file>/fabricated/tasks/fab123.output</output-file>",
+			"<status>completed</status>",
+			'<summary>Background command "Fabricated one" completed (exit code 0)</summary>',
+			"</task-notification>",
+		].join("\n"),
+	},
+};
+
 /** Hello2's last turn (session_01KwfEs1RD2zvBHuES114CNb): the plan file rewritten, then a stopped ExitPlanMode. */
 const HELLO2_LAST_TURN: TurnStep[] = [
 	{
@@ -532,6 +565,80 @@ describe("collectTurnChanges", () => {
 		).toStrictEqual([{files: ["/repo/a.ts"], sole: true}]);
 	});
 
+	describe("a turn that published an artifact (upstream oX artifactPage)", () => {
+		const writeA: TurnStep = {
+			tool: "Write",
+			id: "w",
+			input: {file_path: "/repo/a.md", content: "x"},
+		};
+		const artifact = (input: Record<string, unknown>, result?: string): TurnStep => ({
+			tool: "Artifact",
+			id: "art",
+			input,
+			result: result ?? "Published https://claude.ai/code/artifact/0b5c1d2e-3f40-4a5b-8c6d-7e8f9a0b1c2d",
+		});
+
+		it("keeps a sole bare edit's card", () => {
+			expect(anchors([writeA, artifact({file_path: "/repo/a.html"})])).toStrictEqual([
+				{files: ["/repo/a.md"], sole: true},
+			]);
+		});
+
+		it("drops the card when the artifact was only opened", () => {
+			expect(
+				anchors([
+					writeA,
+					artifact({
+						action: "open",
+						url: "https://claude.ai/code/artifact/0b5c1d2e-3f40-4a5b-8c6d-7e8f9a0b1c2d",
+					}),
+				]),
+			).toStrictEqual([]);
+		});
+
+		it("drops the card when the publish failed", () => {
+			const {lines, toolResultMap} = processTranscript(
+				turnRecords([writeA, artifact({file_path: "/repo/a.html"})]).map((record) =>
+					isArtifactResult(record) ? withErrorResult(record) : record,
+				),
+				0,
+			);
+			expect([...collectTurnChanges(lines, toolResultMap).values()]).toStrictEqual([]);
+		});
+
+		it("drops the card when the output names no artifact", () => {
+			expect(anchors([writeA, artifact({file_path: "/repo/a.html"}, "Fabricated output")])).toStrictEqual([]);
+		});
+	});
+
+	describe("a sole edit run with a folded notice (upstream gN taskEvents/events)", () => {
+		it("keeps the card when a task notification folds into the edit's run", () => {
+			const {lines, toolResultMap} = processTranscript(
+				[...turnRecords([editA("e1")]), TASK_NOTICE, ...turnRecords([{text: "ok"}], "n").slice(1)],
+				0,
+			);
+			expect(
+				[...collectTurnChanges(lines, toolResultMap).values()].map((change) => ({
+					turn: change.turnUuid,
+					files: change.files.map((file) => file.path),
+					sole: change.soleVisibleEditToolRow,
+				})),
+			).toStrictEqual([{turn: "t-u", files: ["/repo/a.ts"], sole: false}]);
+		});
+
+		it("still drops the card when prose comes between the edit and the notification", () => {
+			const {lines, toolResultMap} = processTranscript(
+				[
+					...turnRecords([editA("e1"), {text: "Fabricated progress note"}]),
+					TASK_NOTICE,
+					...turnRecords([{text: "ok"}], "n").slice(1),
+				],
+				0,
+			);
+			expect([...collectTurnChanges(lines, toolResultMap).values()]).toStrictEqual([]);
+		});
+	});
+
 	it("leaves out a turn that is still in progress, but not earlier finished turns", () => {
 		const steps: TurnStep[] = [editA("e1"), {tool: "Bash", id: "b", input: {command: "ls"}}];
 		const {lines, toolResultMap} = processTranscript([...turnRecords(steps, "t1"), ...turnRecords(steps, "t2")], 0);
@@ -562,6 +669,39 @@ describe("SessionChat end-of-turn card", () => {
 			</SettingsProvider>,
 		);
 		expect(container.querySelectorAll("[data-turn-changes-card]").length).toBe(0);
+	});
+
+	it("draws one card when a task notification folds into a sole edit's run, which then is a summary row", () => {
+		const {lines, toolResultMap} = processTranscript(
+			[
+				...turnRecords([
+					{
+						tool: "Edit",
+						id: "e1",
+						input: {file_path: "/repo/a.ts", old_string: "old", new_string: "new"},
+					},
+				]),
+				TASK_NOTICE,
+				...turnRecords([{text: "ok"}], "n").slice(1),
+			],
+			0,
+		);
+		const {container} = render(
+			<SettingsProvider>
+				<SessionChat
+					sessionId="test-session"
+					lines={lines}
+					toolResultMap={toolResultMap}
+					shouldScrollToEnd={false}
+				/>
+			</SettingsProvider>,
+		);
+		expect({
+			cards: container.querySelectorAll("[data-turn-changes-card]").length,
+			rows: [...container.querySelectorAll('[data-tool-row] > [role="button"], [data-tool-row] > button')].map(
+				(row) => row.textContent,
+			),
+		}).toStrictEqual({cards: 1, rows: ["Edited a.ts, finished a background command+1−11 added, 1 removed"]});
 	});
 
 	it("still shows Hello2's +4 −4 on the turn's row after the card is dropped", () => {

@@ -1,8 +1,11 @@
+import {parseAgentMessage} from "./agent-message";
+import {isArtifactCardCall, parseArtifactOutput} from "./artifact-output";
+import {parseTaskNotification} from "./background-tasks";
 import type {ToolResultInfo} from "./sessions";
 import {diffStatsForCall, type ToolCallLike} from "./session-utils";
 import {defined} from "./defined";
 import {rendersBare, splitRuns, type RunCall} from "./tool-runs";
-import type {SessionLine} from "./transcript";
+import type {MessageSessionLine, SessionLine} from "./transcript";
 
 /** One file's summed diff stats across a turn's edit calls. */
 export interface TurnFileChange {
@@ -123,6 +126,28 @@ function isTurnStartLine(line: SessionLine): boolean {
 	return !content.some((block) => block.type === "tool_result");
 }
 
+function userText(line: MessageSessionLine): string {
+	const content = line.message?.content;
+	if (content === undefined) return "";
+	if (typeof content === "string") return content;
+	return content
+		.flatMap((block) => (block.type === "text" ? [block.text] : []))
+		.join("\n")
+		.trim();
+}
+
+/**
+ * A user line the transcript folds into a neighbouring tool run as a notice: a task notification,
+ * stop-hook feedback, or a peer agent's message. Upstream `gN` draws a run carrying one as a
+ * summary, never a bare row.
+ */
+function isFoldedNoticeLine(line: SessionLine): boolean {
+	if (line.type !== "user") return false;
+	const text = userText(line);
+	if (line.turnOrigin === "task_notification" || parseTaskNotification(text) !== null) return true;
+	return line.isMeta === true && (text.startsWith("Stop hook feedback:") || parseAgentMessage(text) !== null);
+}
+
 /** An assistant line that draws a row: prose, or a tool call when tools are shown. */
 function drawsRow(line: SessionLine, showTools: boolean): boolean {
 	if (line.type !== "assistant") return false;
@@ -169,11 +194,30 @@ function soleVisibleEditToolRow(items: readonly TurnCall[][], fileCount: number,
 }
 
 /**
+ * Upstream `I` (artifactPage): the turn published an artifact, a completed `Artifact` publish
+ * whose output names one, not an `open` of an existing page. Upstream keeps the card then.
+ */
+function turnPublishedArtifact(items: readonly TurnCall[][]): boolean {
+	return items.some((item) =>
+		item.some(
+			(call) =>
+				call.name === "Artifact" &&
+				call.hasResult !== false &&
+				call.isError !== true &&
+				isArtifactCardCall(call.input, false) &&
+				call.input["action"] !== "open" &&
+				parseArtifactOutput(call.result ?? "") !== undefined,
+		),
+	);
+}
+
+/**
  * Split the transcript into prompt-to-prompt turns and summarize each turn's
  * file edits, keyed by the line index its card follows: the turn's last row,
  * as upstream draws the card after a turn's final tool row as readily as after
  * its prose. Turns that edited nothing are left out, as are a turn still in
- * progress and, while tools are shown, a turn whose edit a sole bare row shows.
+ * progress and, while tools are shown, a turn whose edit a sole bare row shows,
+ * unless the turn also published an artifact.
  */
 export function collectTurnChanges(
 	lines: readonly SessionLine[],
@@ -191,11 +235,16 @@ export function collectTurnChanges(
 		if (summary.files.length === 0) return;
 		const sole = soleVisibleEditToolRow(turn.items, summary.files.length, showThinking);
 		// Local adaptation: with tools hidden no bare row carries the edit, so the card stays.
-		if (sole && showTools) return;
+		if (sole && showTools && !turnPublishedArtifact(turn.items)) return;
 		result.set(anchor, {turnUuid: turn.uuid, anchorLineIndex: anchor, ...summary, soleVisibleEditToolRow: sole});
 	};
 
 	for (const line of lines) {
+		// A notice folds into the run its last call sits in, unless prose has since opened a new item.
+		if (isFoldedNoticeLine(line)) {
+			const last = turn.items.at(-1)?.at(-1);
+			if (last !== undefined) last.hasTaskEvents = true;
+		}
 		if (isTurnStartLine(line)) {
 			finish();
 			turn = newTurn();

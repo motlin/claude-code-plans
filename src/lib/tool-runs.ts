@@ -57,9 +57,12 @@ const FILE_VERBS: Readonly<Record<string, string>> = {
 	NotebookEdit: "NotebookEdit",
 };
 
+/** Upstream `S`: `<verb> <path>`, with NotebookEdit's verb carrying its edit_mode (default "replace"). */
 export function targetKey(call: Pick<RunCall, "name" | "input">): string | null {
-	const verb = FILE_VERBS[call.name];
-	if (verb === undefined) return null;
+	const baseVerb = FILE_VERBS[call.name];
+	if (baseVerb === undefined) return null;
+	const mode = call.input["edit_mode"];
+	const verb = call.name === "NotebookEdit" ? `${baseVerb} ${typeof mode === "string" ? mode : "replace"}` : baseVerb;
 	const path = call.input["file_path"] ?? call.input["notebook_path"];
 	return typeof path === "string" ? `${verb} ${path}` : null;
 }
