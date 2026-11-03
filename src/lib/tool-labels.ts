@@ -232,11 +232,14 @@ function taskUpdateVerb(input: Record<string, unknown>): string {
 
 function askedMeta(input: Record<string, unknown>): string | null {
 	const questions = input["questions"];
-	if (!Array.isArray(questions) || questions.length === 0) return null;
-	// Upstream names the row by its first question's header, however many it asks.
+	if (!Array.isArray(questions)) return null;
+	// Upstream counts several questions, else quotes the first one's trimmed header.
+	const count = questions.filter((q) => typeof q === "object" && q !== null).length;
+	if (count > 1) return `${count} questions`;
 	const first: unknown = questions[0];
 	if (typeof first !== "object" || first === null || !("header" in first)) return null;
-	return typeof first.header === "string" && first.header !== "" ? first.header : null;
+	const header = typeof first.header === "string" ? first.header.trim() : "";
+	return header === "" ? null : `“${header}”`;
 }
 
 function withMeta(label: ToolLabel, meta: string | null): ToolLabel {
@@ -589,7 +592,7 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
 		}
 		case "AskUserQuestion": {
 			const meta = askedMeta(input);
-			// Upstream draws "Asked <header>" as one text run, not a verb and a param.
+			// Upstream draws "Asked “<header>”" / "Asked N questions" as one text run, not a verb and a param.
 			return meta === null ? {verb: "Asked"} : {verb: "Asked", meta, doneLabel: `Asked ${meta}`};
 		}
 	}

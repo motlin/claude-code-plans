@@ -80,7 +80,7 @@ describe("AskUserQuestionRenderer", () => {
 			};
 		}
 
-		it("lists a stopped question with Not answered under it, and no options card", () => {
+		it("lists a single stopped question alone, with no outcome line and no options card", () => {
 			expect(
 				outcomeList(
 					makeCall({
@@ -95,10 +95,7 @@ describe("AskUserQuestionRenderer", () => {
 				items: [
 					{
 						className: "flex flex-col text-body [overflow-wrap:anywhere]",
-						lines: [
-							{className: "text-secondary", text: "Which animal do you prefer?"},
-							{className: "text-ink-muted", text: "Not answered"},
-						],
+						lines: [{className: "text-secondary", text: "Which animal do you prefer?"}],
 					},
 				],
 				badges: 0,

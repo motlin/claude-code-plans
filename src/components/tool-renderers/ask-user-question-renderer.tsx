@@ -79,20 +79,18 @@ function UnansweredQuestion({question, header, options}: QuestionLike) {
 
 /**
  * Upstream's step body for a question nobody answered: each question in plain
- * secondary text over its answer, its outcome's word, or "Not answered" when the
- * call was stopped. A question with no recorded outcome shows only itself.
+ * secondary text over its answer, or, when the call asked several questions,
+ * its outcome's word ("Not answered" when the call was stopped). A single
+ * unanswered question shows only itself, since the row's note already says why.
  */
 function QuestionOutcomeList({toolCall}: {toolCall: ClientToolCall}) {
+	const entries = questionOutcomes(toolCall);
 	return (
 		<div className="flex flex-col gap-3 pt-1">
-			{questionOutcomes(toolCall).map((entry, i) => {
+			{entries.map((entry, i) => {
+				const kind = entry.unanswered ?? (toolCall.stopped === true ? "dismissed" : undefined);
 				const line =
-					entry.answer ??
-					(entry.unanswered === undefined
-						? toolCall.stopped === true
-							? OUTCOME_LABEL.dismissed
-							: undefined
-						: OUTCOME_LABEL[entry.unanswered]);
+					entry.answer ?? (kind !== undefined && entries.length > 1 ? OUTCOME_LABEL[kind] : undefined);
 				return (
 					<div key={i} className="flex flex-col text-body [overflow-wrap:anywhere]">
 						<div className="text-secondary">{entry.question}</div>

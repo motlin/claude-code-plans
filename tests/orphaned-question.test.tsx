@@ -106,7 +106,7 @@ describe("orphansOpenQuestions", () => {
 });
 
 describe("an orphaned open question", () => {
-	it('draws "Asked Animal · Not answered" with Not answered under the question, and no card', async () => {
+	it('draws "Asked “Animal” · Not answered" with only the question in its body, and no card', async () => {
 		const {container} = renderOpenQuestion("read-only", false);
 		const header = container.querySelector(".group\\/tool");
 		const row = header === null ? null : Array.from(header.children, (child) => child.textContent).filter(Boolean);
@@ -126,14 +126,9 @@ describe("an orphaned open question", () => {
 				Array.from(item.children, (line) => ({className: line.className, text: line.textContent})),
 			),
 		}).toStrictEqual({
-			row: ["Asked Animal", "Not answered"],
+			row: ["Asked “Animal”", "Not answered"],
 			card: false,
-			body: [
-				[
-					{className: "text-secondary", text: "Which animal do you prefer?"},
-					{className: "text-ink-muted", text: "Not answered"},
-				],
-			],
+			body: [[{className: "text-secondary", text: "Which animal do you prefer?"}]],
 		});
 	});
 

@@ -91,9 +91,9 @@ const question = (text: string) => ({className: "text-secondary", text});
 const outcome = (text: string) => ({className: "text-ink-muted", text});
 
 describe("AskUserQuestion outcome shapes from real JSONL", () => {
-	it('draws a two-question reply in chat as "Asked Parser fixes · Replied in chat", each question replied', async () => {
+	it('draws a two-question reply in chat as "Asked 2 questions · Replied in chat", each question replied', async () => {
 		expect(await rowAndBody("replied in chat, two questions")).toStrictEqual({
-			row: ["Asked Parser fixes", "Replied in chat"],
+			row: ["Asked 2 questions", "Replied in chat"],
 			receipt: false,
 			body: [
 				[question("Approve the two parser fixes?"), outcome("Replied in chat")],
@@ -103,52 +103,63 @@ describe("AskUserQuestion outcome shapes from real JSONL", () => {
 		});
 	});
 
-	it('draws a dismissed question as "Asked Next · Not answered"', async () => {
+	it('draws a dismissed question as "Asked “Next” · Not answered" with only the question in its body', async () => {
 		expect(await rowAndBody("dismissed, one question")).toStrictEqual({
-			row: ["Asked Next", "Not answered"],
+			row: ["Asked “Next”", "Not answered"],
 			receipt: false,
 			body: [
 				[
 					question(
 						"The fixes are done. What's left: (1) remove the stale worktrees; (2) resolve the conflicted rebase. Which next?",
 					),
-					outcome("Not answered"),
 				],
 			],
 			optionBadges: 0,
 		});
 	});
 
-	it('draws the CLI terminal skip (answers: {}) as a plain "Asked G" row whose body lists only the questions', async () => {
+	it('draws the CLI terminal skip (answers: {}) as a plain "Asked 2 questions" row whose body lists only the questions', async () => {
 		expect(await rowAndBody("CLI terminal skip, answers {}")).toStrictEqual({
-			row: ["Asked G"],
+			row: ["Asked 2 questions"],
 			receipt: false,
 			body: [[question("Gee?")], [question("Aitch?")]],
 			optionBadges: 0,
 		});
 	});
 
-	it('draws a Stop / Esc rejection as "Asked Game pic · Stopped" with Not answered under the question', async () => {
+	it('draws a single-question Stop / Esc rejection as "Asked “Game pic” · Stopped" with only the question in its body', async () => {
 		expect(await rowAndBody("stopped by Stop / Esc")).toStrictEqual({
-			row: ["Asked Game pic", "Stopped"],
+			row: ["Asked “Game pic”", "Stopped"],
 			receipt: false,
-			body: [[question('Game "Raw" resource-panel screenshot — where does it belong?'), outcome("Not answered")]],
+			body: [[question('Game "Raw" resource-panel screenshot — where does it belong?')]],
 			optionBadges: 0,
 		});
 	});
 
-	it('draws upstream\'s single "[No preference]" skip as "Asked Color · Skipped"', async () => {
+	it('draws a two-question Stop / Esc rejection as "Asked 2 questions · Stopped" with Not answered under each question', async () => {
+		expect(await rowAndBody("stopped by Stop / Esc, two questions")).toStrictEqual({
+			row: ["Asked 2 questions", "Stopped"],
+			receipt: false,
+			body: [
+				[question('Game "Raw" resource-panel screenshot — where does it belong?'), outcome("Not answered")],
+				[question("Should the screenshot be renamed?"), outcome("Not answered")],
+			],
+			optionBadges: 0,
+		});
+	});
+
+	it('draws upstream\'s single "[No preference]" skip as "Asked “Color” · Skipped" with only the question in its body', async () => {
 		expect(await rowAndBody("[No preference], one question")).toStrictEqual({
-			row: ["Asked Color", "Skipped"],
+			row: ["Asked “Color”", "Skipped"],
 			receipt: false,
-			body: [[question("Which color do you prefer?"), outcome("Skipped")]],
+			body: [[question("Which color do you prefer?")]],
 			optionBadges: 0,
 		});
 	});
 
-	it('draws upstream\'s two-question "[No preference]" skip as "Asked Fruit · Skipped", each question skipped', async () => {
+	it('draws upstream\'s two-question "[No preference]" skip as "Asked 2 questions · Skipped", each question skipped', async () => {
 		expect(await rowAndBody("[No preference], two questions")).toStrictEqual({
-			row: ["Asked Fruit", "Skipped"],
+			row: ["Asked 2 questions", "Skipped"],
 			receipt: false,
 			body: [
 				[question("Which fruit do you prefer?"), outcome("Skipped")],

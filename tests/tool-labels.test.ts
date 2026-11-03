@@ -140,24 +140,25 @@ describe("toolLabel", () => {
 		});
 	});
 
-	it('labels AskUserQuestion "Asked" with the first header, however many questions it asks', () => {
+	it('labels AskUserQuestion "Asked “<trimmed header>”" for one question and "Asked N questions" for several', () => {
+		const asked = (questions: unknown[]) => toolLabel(call("AskUserQuestion", {questions}));
 		expect({
-			one: toolLabel(
-				call("AskUserQuestion", {
-					questions: [{header: "Auth method", question: "Which?", options: []}],
-				}),
-			),
-			many: toolLabel(
-				call("AskUserQuestion", {
-					questions: [
-						{header: "A", question: "a?", options: []},
-						{header: "B", question: "b?", options: []},
-					],
-				}),
-			),
+			one: asked([{header: "Auth method", question: "Which?", options: []}]),
+			many: asked([
+				{header: "A", question: "a?", options: []},
+				{header: "B", question: "b?", options: []},
+			]),
+			padded: asked([{header: "  Pad  ", question: "p?", options: []}]),
+			blank: asked([{header: "", question: "e?", options: []}]),
+			spaces: asked([{header: "   ", question: "s?", options: []}]),
+			oneObjectAmongJunk: asked(["junk", {header: "Solo", question: "s?", options: []}]),
 		}).toStrictEqual({
-			one: {verb: "Asked", meta: "Auth method", doneLabel: "Asked Auth method"},
-			many: {verb: "Asked", meta: "A", doneLabel: "Asked A"},
+			one: {verb: "Asked", meta: "“Auth method”", doneLabel: "Asked “Auth method”"},
+			many: {verb: "Asked", meta: "2 questions", doneLabel: "Asked 2 questions"},
+			padded: {verb: "Asked", meta: "“Pad”", doneLabel: "Asked “Pad”"},
+			blank: {verb: "Asked"},
+			spaces: {verb: "Asked"},
+			oneObjectAmongJunk: {verb: "Asked"},
 		});
 	});
 

@@ -312,6 +312,82 @@
 		]
 	},
 	{
+		"name": "stopped by Stop / Esc, two questions",
+		"source": "Desktop bd921c40 lines 54-56, with a second question added",
+		"records": [
+			{
+				"type": "assistant",
+				"uuid": "a-stopped-two",
+				"message": {
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_stopped_two",
+							"name": "AskUserQuestion",
+							"input": {
+								"questions": [
+									{
+										"question": "Game \"Raw\" resource-panel screenshot — where does it belong?",
+										"header": "Game pic",
+										"multiSelect": false,
+										"options": [
+											{
+												"label": "pictures/Blueprints/",
+												"description": "Keep all the game's images together."
+											},
+											{
+												"label": "pictures/screenshots/",
+												"description": "File as a general screenshot."
+											}
+										]
+									},
+									{
+										"question": "Should the screenshot be renamed?",
+										"header": "Rename",
+										"multiSelect": false,
+										"options": [
+											{"label": "Yes", "description": "Give it a descriptive name."},
+											{"label": "No", "description": "Keep the original name."}
+										]
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			{
+				"type": "user",
+				"uuid": "r-stopped-two",
+				"parentUuid": "a-stopped-two",
+				"sourceToolAssistantUUID": "a-stopped-two",
+				"message": {
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"content": "The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed.",
+							"is_error": true,
+							"tool_use_id": "toolu_stopped_two"
+						}
+					]
+				},
+				"toolUseResult": "User rejected tool use",
+				"toolDenialKind": "user-rejected"
+			},
+			{
+				"type": "user",
+				"uuid": "u-stopped-two-interrupt",
+				"parentUuid": "r-stopped-two",
+				"message": {
+					"role": "user",
+					"content": [{"type": "text", "text": "[Request interrupted by user for tool use]"}]
+				}
+			}
+		]
+	},
+	{
 		"name": "[No preference], one question",
 		"source": "upstream session_01WvPscZB9phoMMMJ2P7hHZY turn 1 payload, in the CLI's answer envelope",
 		"records": [

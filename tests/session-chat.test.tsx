@@ -1158,7 +1158,7 @@ describe("SessionChat failed tool row label", () => {
 		});
 	});
 
-	it('names a stopped multi-question AskUserQuestion row "Asked <first header>" as one text run, with a 12px chevron 2px after the status', () => {
+	it('names a stopped multi-question AskUserQuestion row "Asked 2 questions" as one text run, with a 12px chevron 2px after the status', () => {
 		const records = toolResultRecords(
 			{
 				name: "AskUserQuestion",
@@ -1181,7 +1181,7 @@ describe("SessionChat failed tool row label", () => {
 			chevron: [chevron?.getAttribute("width"), chevron?.getAttribute("height")],
 		}).toStrictEqual({
 			children: [
-				{text: "Asked Change", className: `truncate min-w-0 ${MUTED_LABEL}`},
+				{text: "Asked 2 questions", className: `truncate min-w-0 ${MUTED_LABEL}`},
 				STOPPED_SUFFIX,
 				ROW_CHEVRON,
 			],
@@ -1229,14 +1229,14 @@ describe("SessionChat failed tool row label", () => {
 		});
 		const dismissedAnswer = "[User dismissed — do not proceed, wait for next instruction]";
 
-		it('draws a single "[No preference]" answer as the row "Asked Color" noted "Skipped", not a receipt', () => {
+		it('draws a single "[No preference]" answer as the row "Asked “Color”" noted "Skipped", not a receipt', () => {
 			const color = question("Color", "Which color?");
 			expect(row(unanswered([color], {"Which color?": "[No preference]"}))).toStrictEqual(
-				noted("Asked Color", "Skipped"),
+				noted("Asked “Color”", "Skipped"),
 			);
 		});
 
-		it('notes a call replied to in chat "Replied in chat" under its first header', () => {
+		it('notes a two-question call replied to in chat "Asked 2 questions · Replied in chat"', () => {
 			const replied =
 				"[User did not answer this question — they sent a message instead. Treat that message as their response; do not re-ask.]";
 			expect(
@@ -1246,12 +1246,12 @@ describe("SessionChat failed tool row label", () => {
 						"How big?": replied,
 					}),
 				),
-			).toStrictEqual(noted("Asked Fruit", "Replied in chat"));
+			).toStrictEqual(noted("Asked 2 questions", "Replied in chat"));
 		});
 
 		it('notes a dismissed question "Not answered"', () => {
 			expect(row(unanswered([question("Pet", "Which pet?")], {"Which pet?": dismissedAnswer}))).toStrictEqual(
-				noted("Asked Pet", "Not answered"),
+				noted("Asked “Pet”", "Not answered"),
 			);
 		});
 
@@ -1263,14 +1263,14 @@ describe("SessionChat failed tool row label", () => {
 						"How big?": dismissedAnswer,
 					}),
 				),
-			).toStrictEqual(noted("Asked Fruit", "Not answered"));
+			).toStrictEqual(noted("Asked 2 questions", "Not answered"));
 		});
 
-		it('draws the CLI terminal skip (answers: {}) as a plain "Asked G" row with no note and no legacy card', () => {
+		it('draws the CLI terminal skip (answers: {}) as a plain "Asked “G”" row with no note and no legacy card', () => {
 			expect(
 				row(unanswered([question("G", "Which game?")], {}, "The user did not answer the questions.")),
 			).toStrictEqual({
-				children: [{text: "Asked G", className: `truncate min-w-0 ${MUTED_LABEL}`}, ROW_CHEVRON],
+				children: [{text: "Asked “G”", className: `truncate min-w-0 ${MUTED_LABEL}`}, ROW_CHEVRON],
 				receipt: false,
 				legacyCard: false,
 			});

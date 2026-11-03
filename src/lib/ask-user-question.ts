@@ -202,7 +202,7 @@ export interface AskedCall {
  * rejected or interrupted the call, dismissed the prompt (newer Claude Code
  * records a "[User dismissed — ...]" answer to every question), or the call
  * completed without a single real answer. Upstream draws such a question as a
- * compact "Asked <header>" step, not a receipt.
+ * compact "Asked “<header>”" / "Asked N questions" step, not a receipt.
  */
 export function isWithdrawnQuestion(call: AskedCall): boolean {
 	if (call.stopped === true || call.denied === true) return true;

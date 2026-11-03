@@ -14572,7 +14572,7 @@
 	{
 		"session": "f20bec67",
 		"line": 183,
-		"upstream": ["prose", "status: Asked Cleanup Not answered"],
+		"upstream": ["prose", "status: Asked “Cleanup” Not answered"],
 		"records": [
 			{
 				"parentUuid": "e096d668-d8b9-4761-9965-543740e05d99",
@@ -14876,7 +14876,7 @@
 	{
 		"session": "5f402159",
 		"line": 1797,
-		"upstream": ["status: Asked Upload Stopped"],
+		"upstream": ["status: Asked “Upload” Stopped"],
 		"records": [
 			{
 				"parentUuid": "0799fa19-d1d9-4e67-956c-690211a1d2bb",
