@@ -6,6 +6,7 @@ import {
 	type NoticePart,
 } from "../lib/background-notice-summary";
 import type {BackgroundTaskStatus} from "../lib/background-tasks";
+import {type TaskDescriptionSegment, taskDescriptionSegments} from "../lib/task-description-segments";
 import {formatElapsed} from "../lib/working-marker";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 
@@ -16,15 +17,48 @@ export interface TaskEvent {
 	kind: NoticeKind;
 	description: string;
 	durationMs: number | null;
+	/** The task's `<task-type>`, which decides whether its description gets artifact links. */
+	taskType: string | null;
 	/** An agent's done phrase, which upstream draws in place of the "Background agent completed" label. */
 	phrase?: string;
 }
 
 const INK = "text-secondary group-hover/tool:text-primary";
 
+/**
+ * Upstream's `CS` segments: description text with each "artifact" word drawn as a link to the
+ * artifact its URL named.
+ */
+export function TaskDescriptionLinks({segments}: {segments: readonly TaskDescriptionSegment[]}) {
+	return segments.map((segment, index) =>
+		typeof segment === "string" ? (
+			// biome-ignore lint/suspicious/noArrayIndexKey: segments are positional and never reorder
+			<React.Fragment key={index}>{segment}</React.Fragment>
+		) : (
+			<a
+				// biome-ignore lint/suspicious/noArrayIndexKey: segments are positional and never reorder
+				key={index}
+				href={segment.href}
+				target="_blank"
+				rel="noreferrer"
+				data-artifact-link=""
+				className="underline underline-offset-2"
+			>
+				{segment.word}
+			</a>
+		),
+	);
+}
+
+/** The artifact link segments a lone settled event draws, which make its row inert upstream. */
+function singleEventSegments(event: TaskEvent): TaskDescriptionSegment[] | undefined {
+	return event.phrase === undefined ? taskDescriptionSegments(event.description, event.taskType) : undefined;
+}
+
 /** Upstream's `YX` settled single row: label, "·", description, then "· took {elapsed}". */
 function SingleEvent({event}: {event: TaskEvent}) {
 	const failed = event.status === "failed";
+	const segments = singleEventSegments(event);
 	return (
 		<>
 			{event.phrase === undefined ? (
@@ -35,7 +69,13 @@ function SingleEvent({event}: {event: TaskEvent}) {
 					{event.description !== "" && (
 						<>
 							<span className={`text-body ${INK} shrink-0`}>·</span>
-							<span className={`text-body ${INK} min-w-0 truncate`}>{event.description}</span>
+							<span className={`text-body ${INK} min-w-0 truncate`}>
+								{segments === undefined ? (
+									event.description
+								) : (
+									<TaskDescriptionLinks segments={segments} />
+								)}
+							</span>
 						</>
 					)}
 				</>
@@ -93,10 +133,13 @@ export function TaskEventRun({events}: {events: readonly TaskEvent[]}) {
 		</span>
 	);
 	// Upstream's `JX`: a button opening Background tasks on the run's first task, with Finished
-	// expanded since every local task event is settled; a plain div where no pane can host it.
+	// expanded since every local task event is settled; a plain div where no pane can host it, or
+	// where a lone event's artifact link must be the only click target (`inert`).
+	const inert = events.length === 1 && singleEventSegments(first) !== undefined;
+	// Upstream's `Spe` wraps task-event cards in `data-find-omitted`, so find-in-page skips them.
 	return (
-		<div data-turn-status-marker="" className="ps-1 flex min-w-0 flex-col empty:hidden">
-			{opener === null ? (
+		<div data-turn-status-marker="" data-find-omitted="" className="ps-1 flex min-w-0 flex-col empty:hidden">
+			{opener === null || inert ? (
 				<div className="flex flex-col gap-1 py-0 max-w-full items-start">{content}</div>
 			) : (
 				<button

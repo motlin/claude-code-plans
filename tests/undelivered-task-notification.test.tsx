@@ -369,4 +369,48 @@ describe("undelivered background-task notifications", () => {
 			plain: row?.querySelector("[data-turn-status-marker] > div")?.className,
 		}).toStrictEqual({buttons: 0, plain: "flex flex-col gap-1 py-0 max-w-full items-start"});
 	});
+
+	it("links the word artifact before an artifact URL, drops the URL, and draws the row inert with no button, as upstream's dj/vj do", () => {
+		const open = vi.fn<BackgroundTasksOpener["open"]>();
+		const container = renderRecords(
+			[
+				reply,
+				enqueue(
+					notification(
+						"toolu_elsewhere1",
+						"completed",
+						'Agent "Publish artifact https://claude.ai/code/artifact/abc" completed',
+					),
+				),
+			],
+			{open, running: new Map()},
+		);
+
+		const row = container.querySelector("[data-task-event-row]");
+		expect({
+			buttons: row?.querySelectorAll("button").length,
+			plain: row?.querySelector("[data-turn-status-marker] > div")?.className,
+			links: Array.from(row?.querySelectorAll("a") ?? [], (link) => ({
+				text: link.textContent,
+				href: link.getAttribute("href"),
+				artifact: link.getAttribute("data-artifact-link"),
+			})),
+			text: row?.textContent,
+		}).toStrictEqual({
+			buttons: 0,
+			plain: "flex flex-col gap-1 py-0 max-w-full items-start",
+			links: [{text: "artifact", href: "https://claude.ai/code/artifact/abc", artifact: ""}],
+			text: "Background agent completed·Publish artifact",
+		});
+	});
+
+	it("marks the task-event row's wrapper data-find-omitted, so find-in-page skips it as upstream's Spe does", () => {
+		const container = renderRecords([
+			reply,
+			enqueue(notification("toolu_elsewhere1", "completed", 'Agent "Review the diff" completed')),
+		]);
+
+		const marker = container.querySelector("[data-task-event-row] [data-turn-status-marker]");
+		expect(marker?.getAttribute("data-find-omitted")).toBe("");
+	});
 });

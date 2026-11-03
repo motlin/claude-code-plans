@@ -461,6 +461,33 @@ describe("task notifications in the transcript", () => {
 		});
 	});
 
+	it("draws a lone failed agent notice's artifact word as a link in a titled bdi, as upstream's upe step does", () => {
+		const description = "Publish artifact https://claude.ai/code/artifact/abc";
+		const agentNotice = notification("failed", `Agent "${description}" failed`).replace(
+			"toolu_bash",
+			"toolu_agent_elsewhere",
+		);
+		const container = renderLines(laterRecords(agentNotice));
+		fireEvent.click(summaryButton(container, "Finished a background task, ran a command (1 failed)"));
+		const notice = container.querySelector("[data-background-notice]");
+		expect({
+			children: noticeChildren(container),
+			title: notice?.querySelector("bdi")?.getAttribute("title"),
+			links: Array.from(notice?.querySelectorAll("bdi a") ?? [], (link) => ({
+				text: link.textContent,
+				href: link.getAttribute("href"),
+			})),
+		}).toStrictEqual({
+			children: [
+				{text: "Background task", className: NOTICE_KIND},
+				{text: "Publish artifact", className: NOTICE_DESCRIPTION},
+				{text: "Failed", className: "shrink-0 text-danger-ink"},
+			],
+			title: description,
+			links: [{text: "artifact", href: "https://claude.ai/code/artifact/abc"}],
+		});
+	});
+
 	it('appends a secondary "Stopped" to a stopped task\'s sub-row', () => {
 		const container = renderLines(
 			records(notification("stopped", 'Background command "Run the test suite" was stopped')),

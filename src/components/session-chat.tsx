@@ -75,6 +75,7 @@ import {usePickupSettling} from "../lib/pickup-settling";
 import {assistantTurnDetails, userTurnDetails} from "../lib/turn-metadata";
 import {TurnChangesCard} from "./turn-changes-card";
 import {collectTurnChanges, lastTurnChangesAnchor, type TurnChanges} from "../lib/turn-changes";
+import {taskDescriptionSegments} from "../lib/task-description-segments";
 import {agentCompletionOf, foldedTaskNotificationOf, taskNotificationOf} from "../lib/task-notification-lines";
 import {useSettings} from "./settings-context";
 import {ToastContext} from "./toast-context";
@@ -104,7 +105,7 @@ import type {BackgroundCompletionLike, SummarySegment} from "../lib/session-util
 import {pastTense} from "../lib/past-tense";
 import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
 import {ELAPSED_MIN_SECONDS, formatElapsed} from "../lib/working-marker";
-import {NoticeParts, type TaskEvent, TaskEventRun} from "./task-event-run-row";
+import {NoticeParts, TaskDescriptionLinks, type TaskEvent, TaskEventRun} from "./task-event-run-row";
 import {usageLimitCard, type UsageLimitCard} from "../lib/usage-limit-notice";
 import {useElapsedSeconds} from "../hooks/use-elapsed-seconds";
 import {inlinePathImages} from "./inline-path-images";
@@ -1563,7 +1564,8 @@ function stopCompletions(
  * the task did not complete.
  */
 function BackgroundNoticeRow({notice}: {notice: BackgroundNotice}) {
-	const {status, description, command} = notice.notification;
+	const {status, description, command, taskType} = notice.notification;
+	const segments = taskDescriptionSegments(description, taskType);
 	return (
 		<div
 			data-record-index={notice.lineIndex}
@@ -1571,7 +1573,18 @@ function BackgroundNoticeRow({notice}: {notice: BackgroundNotice}) {
 			className="flex min-w-0 items-center gap-1.5 text-body"
 		>
 			<span className="shrink-0 text-ink-muted">{command ? "Background command" : "Background task"}</span>
-			{description !== "" && <span className="truncate min-w-0 text-primary">{description}</span>}
+			{description !== "" && (
+				<span className="truncate min-w-0 text-primary">
+					{segments === undefined ? (
+						description
+					) : (
+						// Upstream's `upe`: the artifact link segments in a bdi titled with the full description.
+						<bdi title={description}>
+							<TaskDescriptionLinks segments={segments} />
+						</bdi>
+					)}
+				</span>
+			)}
 			{status === "failed" && <span className="shrink-0 text-danger-ink">Failed</span>}
 			{status === "stopped" && <span className="shrink-0 text-secondary">Stopped</span>}
 		</div>
@@ -1783,6 +1796,7 @@ function taskEvent(notification: TaskNotification): TaskEvent {
 		kind: noticeKind(notification),
 		description: notification.description,
 		durationMs: notification.durationMs,
+		taskType: notification.taskType,
 	};
 }
 
@@ -2419,6 +2433,7 @@ function IdleCommandsRow({commands}: {commands: readonly SlowCommand[]}) {
 				taskId: null,
 				status,
 				kind: "shell",
+				taskType: "local_bash",
 				description,
 				durationMs: null,
 			}))}
@@ -2996,6 +3011,7 @@ function buildSessionListEntries(
 								taskId: null,
 								status: "stopped",
 								kind: "task",
+								taskType: null,
 								description: stoppedAgent,
 								durationMs: null,
 							},
