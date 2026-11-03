@@ -12,6 +12,15 @@ export interface TurnFileChange {
 	path: string;
 	added: number;
 	removed: number;
+	/** Upstream `rX`: the file's first counted call is a Write whose result type is "create". */
+	created: boolean;
+}
+
+/** Upstream `rX`: the header verb, "Created" when every file was created, "Changed" when some were. */
+export function turnChangesKind(files: readonly TurnFileChange[]): "created" | "changed" | "edited" {
+	const created = files.filter((file) => file.created).length;
+	if (created === 0) return "edited";
+	return created === files.length ? "created" : "changed";
 }
 
 export interface TurnChangesSummary {
@@ -105,7 +114,12 @@ export function aggregateTurnEdits(calls: readonly TurnEditCall[]): TurnChangesS
 		const path = countedEditPath(call);
 		if (path === null) continue;
 		const stats = callStats(call);
-		const file = files.get(path) ?? {path, added: 0, removed: 0};
+		const file = files.get(path) ?? {
+			path,
+			added: 0,
+			removed: 0,
+			created: call.name === "Write" && call.resultMeta?.writeType === "create",
+		};
 		file.added += stats.added;
 		file.removed += stats.removed;
 		files.set(path, file);

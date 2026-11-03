@@ -1,10 +1,9 @@
-import {Code} from "lucide-react";
 import {type ReactNode, useContext, useState} from "react";
 
 import {fileViewerPath} from "../lib/api/file";
 import {requestChangesScope} from "../lib/changes-scope-request";
 import {formatCount} from "../lib/pluralize";
-import type {TurnChanges} from "../lib/turn-changes";
+import {type TurnChanges, turnChangesKind} from "../lib/turn-changes";
 import {turnUndoPrompt} from "../lib/turn-undo-prompt";
 import {LazyFileTypeIcon} from "./lazy-file-type-icon";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
@@ -22,6 +21,9 @@ const VISIBLE_FILE_LIMIT = 3;
  * remounting (scrolling, re-rendering the transcript) for the life of the page.
  */
 const expandedTurns = new Map<string, boolean>();
+
+/** Upstream `rX`'s ICU header, `{n, plural, one {Edited a file} other {Edited # files}}`, and its Created/Changed kin. */
+const TITLE_VERB = {created: "Created", changed: "Changed", edited: "Edited"} as const;
 
 function useTurnExpanded(turnUuid: string): [boolean, (expanded: boolean) => void] {
 	const key = `turn-edits:${turnUuid}`;
@@ -68,10 +70,13 @@ function folderHints(paths: readonly string[]): Map<string, string> {
 	return hints;
 }
 
-/** Upstream's DiffStat: sr-only "{n} additions, {n} deletions", the visible "+n −n" hidden from the a11y tree. */
-function Stats({added, removed, className = ""}: {added: number; removed: number; className?: string}) {
+/**
+ * Upstream's DiffStat: sr-only "{n} additions, {n} deletions", the visible "+n −n" hidden from the a11y tree, its
+ * order pinned left-to-right.
+ */
+function Stats({added, removed}: {added: number; removed: number}) {
 	return (
-		<span className={`flex shrink-0 items-center gap-0.5 tabular-nums ${className}`}>
+		<span dir="ltr" className="flex shrink-0 items-center gap-0.5 tabular-nums">
 			<span className="sr-only">{`${formatCount(added, "addition")}, ${formatCount(removed, "deletion")}`}</span>
 			<span aria-hidden="true" className="contents">
 				<span className="text-diff-added">+{added}</span>
@@ -84,8 +89,6 @@ function Stats({added, removed, className = ""}: {added: number; removed: number
 /** Upstream's summary card: 4px top margin, 4px 8px padding, 10px radius, 13/19 control text, inset ring. */
 const CARD_CLASS =
 	"mt-1 flex w-full select-text flex-col gap-1 rounded-r7 px-2 py-1 text-[13px]/[19px] shadow-[inset_0_0_0_1px_var(--color-border)]";
-/** Upstream's 12/15 git stats. */
-const STAT_TEXT = "text-[12px]/[15px]";
 /** Upstream's file row: the control's `::before` fills the whole `<li>`, Undo and stats included, on hover. */
 const ITEM_CLASS = "relative -mx-1 flex min-w-0 items-center gap-2 px-2";
 const ROW_CONTROL_CLASS =
@@ -94,9 +97,12 @@ const ROW_CONTROL_CLASS =
 const SEE_ALL_CLASS = "flex min-w-0 grow items-center justify-between gap-2";
 const TRAILING_CLASS = "pointer-events-none relative flex shrink-0 items-center gap-1";
 
-/** Upstream's cds ghost Button (size base) with `text-muted-as-secondary hover:text-secondary text-footnote`. */
+/**
+ * Upstream's cds ghost Button (size base) with `text-muted-as-secondary hover:text-secondary`. Its "type"
+ * fizzy-lake token (`nX`) strips `text-footnote`, so Undo, the stats and folder hints inherit the card's body size.
+ */
 const UNDO_CLASS =
-	"h-6 shrink-0 cursor-pointer rounded-r5 px-2 text-[12px]/[15px] font-control-regular text-muted-as-secondary transition-shadow hover:bg-fill-ghost-hover hover:text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-default disabled:opacity-50";
+	"h-6 shrink-0 cursor-pointer rounded-r5 px-2 font-control-regular text-muted-as-secondary transition-shadow hover:bg-fill-ghost-hover hover:text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-default disabled:opacity-50";
 
 /**
  * Upstream's Undo: tooltipped "Ask Claude to undo this turn’s file changes", and pressing it keeps focus in the
@@ -140,7 +146,7 @@ function RowLabel({icon, path, folderHint}: {icon: ReactNode; path: string; fold
 			<span className="min-w-0 truncate text-primary">
 				{basename(path)}
 				{folderHint !== undefined && (
-					<span className="ms-1 text-[12px]/[15px] text-muted-as-secondary">
+					<span className="ms-1 text-muted-as-secondary">
 						<span className="sr-only">, </span>
 						{folderHint}
 					</span>
@@ -156,20 +162,20 @@ function RowTrailing({added, removed, undo}: {added: number; removed: number; un
 		<span className={TRAILING_CLASS}>
 			{undo !== undefined && <span className="pointer-events-auto flex items-center gap-1">{undo}</span>}
 			<span className="flex items-center gap-2.5">
-				<Stats added={added} removed={removed} className={STAT_TEXT} />
+				<Stats added={added} removed={removed} />
 			</span>
 		</span>
 	);
 }
 
 /**
- * Upstream's end-of-turn changes card: "Edited N files", up to three file
+ * Upstream's end-of-turn changes card: "Edited N files" (or Created/Changed), up to three file
  * rows (icon, name, stats), then a closing "See all +A −R" row that opens the
  * Changes pane scoped to this turn. With more than three files that row is a
  * toggle: "See all" opens the pane and expands, "Show less" collapses. A file
  * row opens the file viewer.
  * A one-file turn is a lone row in an outlined card with no header (79a0ad58
- * "settings.json +1 −1", its row 44px below the Denied row): a code glyph and
+ * "settings.json +1 −1", its row 44px below the Denied row): its file-type glyph and
  * the name open the Changes pane ("View this turn's changes"), the stats and a
  * chevron sit right-aligned, and Undo is always visible.
  *
@@ -203,7 +209,7 @@ export function TurnChangesCard({
 					send(turnUndoPrompt(changes.files.map((file) => file.path)));
 				};
 	const count = changes.files.length;
-	const title = `Edited ${count} ${count === 1 ? "file" : "files"}`;
+	const title = `${TITLE_VERB[turnChangesKind(changes.files)]} ${count === 1 ? "a file" : `${count} files`}`;
 	const toggles = count > VISIBLE_FILE_LIMIT;
 	const visible = toggles && !expanded ? changes.files.slice(0, VISIBLE_FILE_LIMIT) : changes.files;
 	const openChanges =
@@ -218,7 +224,7 @@ export function TurnChangesCard({
 	if (count === 1 && soleFile !== undefined) {
 		const label = (
 			<RowLabel
-				icon={<Code aria-hidden="true" className="size-4" />}
+				icon={<LazyFileTypeIcon fileName={soleFile.path} size="sm" />}
 				path={soleFile.path}
 				folderHint={undefined}
 			/>
@@ -270,7 +276,7 @@ export function TurnChangesCard({
 				<span className="min-w-0 truncate text-primary">{toggles && expanded ? "Show less" : "See all"}</span>
 			</span>
 			<span className="relative flex shrink-0">
-				<Stats added={changes.added} removed={changes.removed} className={STAT_TEXT} />
+				<Stats added={changes.added} removed={changes.removed} />
 			</span>
 		</>
 	);

@@ -173,8 +173,8 @@ describe("01d132c8's turn that updated justfile and created sync-template.md", (
 		expect(cards.map(({files, added, removed}) => ({files, added, removed}))).toStrictEqual([
 			{
 				files: [
-					{path: justfile, added: 46, removed: 3},
-					{path: syncTemplate, added: 147, removed: 0},
+					{path: justfile, added: 46, removed: 3, created: false},
+					{path: syncTemplate, added: 147, removed: 0, created: true},
 				],
 				added: 193,
 				removed: 3,
