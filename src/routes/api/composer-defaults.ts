@@ -8,10 +8,12 @@ export const Route = createFileRoute("/api/composer-defaults")({
 				const {join} = await import("node:path");
 				const {homedir} = await import("node:os");
 				const {readFile} = await import("node:fs/promises");
-				const {getComposerDefaults} = await import("../../lib/composer-state-server");
+				const {getComposerDefaults, nodeFastModeBlockDependencies} =
+					await import("../../lib/composer-state-server");
 				const defaults = await getComposerDefaults(
 					async () =>
 						JSON.parse(await readFile(join(homedir(), ".claude", "settings.json"), "utf-8")) as unknown,
+					await nodeFastModeBlockDependencies(),
 				);
 				return Response.json(defaults, {
 					headers: {"Cache-Control": "private, max-age=0, must-revalidate"},

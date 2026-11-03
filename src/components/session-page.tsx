@@ -645,6 +645,7 @@ function SessionView({
 				lastAssistantUsage: lastAssistantUsageFromRecords(transcript.records),
 				lastAssistantEffort: lastAssistantEffortFromRecords(transcript.records),
 				fastMode: sessionFastMode(transcript.records, {fastMode: composerServerState?.settingsFastMode}),
+				fastModeBlocked: composerServerState?.fastModeBlocked ?? null,
 				settingsModel: composerServerState?.settingsModel ?? null,
 				settingsEffortLevel: composerServerState?.settingsEffortLevel ?? null,
 				statusline: composerServerState?.statusline ?? null,

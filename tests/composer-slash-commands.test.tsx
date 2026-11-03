@@ -836,6 +836,7 @@ describe("Composer slash commands", () => {
 			modelId: "claude-opus-5-5",
 			settingsModelId: "claude-opus-5-5",
 			fastMode: false,
+			fastModeBlocked: null,
 			effort: {id: "high", label: "High"},
 			usage: null,
 		};
@@ -909,6 +910,7 @@ describe("Composer host commands", () => {
 		modelId: "claude-opus-5-5",
 		settingsModelId: "claude-opus-5-5",
 		fastMode: false,
+		fastModeBlocked: null,
 		effort: {id: "high", label: "High"},
 		usage: null,
 	};
@@ -1181,6 +1183,11 @@ describe("Composer host commands", () => {
 		["an unknown argument", CHIN, "/fast turbo"],
 		["a model without fast mode", {...CHIN, model: "Sonnet 5", modelId: "claude-sonnet-5"}, "/fast"],
 		["no chin", undefined, "/fast on"],
+		[
+			"a session the CLI blocks from fast mode",
+			{...CHIN, fastModeBlocked: {line: "Not available with this provider"}},
+			"/fast on",
+		],
 	])("sends /fast as typed with %s", (_, chin, text) => {
 		const {textarea, onSend} = hostSetup({chin});
 

@@ -15,7 +15,7 @@ import {
 	usageRingPercent,
 	usageRingSeverity,
 } from "../src/lib/composer-state";
-import {type ComposerStateDependencies, getComposerState} from "../src/lib/composer-state-server";
+import {type ComposerStateDependencies, getComposerState, managedSettingsPath} from "../src/lib/composer-state-server";
 import {handleComposerStateRequest} from "../src/routes/api/sessions.$id.composer-state";
 
 const NOW_MS = Date.UTC(2026, 8, 29, 12, 0, 0);
@@ -52,6 +52,7 @@ const EMPTY_SOURCES: ComposerStateSources = {
 	lastAssistantUsage: null,
 	lastAssistantEffort: null,
 	fastMode: false,
+	fastModeBlocked: null,
 	settingsModel: null,
 	settingsEffortLevel: null,
 	statusline: null,
@@ -64,6 +65,18 @@ describe("resolveComposerState precedence", () => {
 			on: resolveComposerState({...EMPTY_SOURCES, fastMode: true}).fastMode,
 			off: resolveComposerState(EMPTY_SOURCES).fastMode,
 		}).toStrictEqual({on: true, off: false});
+	});
+
+	it("turns fast mode off and carries the block while the CLI can't use it", () => {
+		const blocked = {
+			line: "Off for this session",
+			reason: "An environment variable turns fast mode off in this session.",
+		};
+		const state = resolveComposerState({...EMPTY_SOURCES, fastMode: true, fastModeBlocked: blocked});
+		expect({fastMode: state.fastMode, fastModeBlocked: state.fastModeBlocked}).toStrictEqual({
+			fastMode: false,
+			fastModeBlocked: blocked,
+		});
 	});
 
 	it.each([
@@ -501,6 +514,7 @@ describe("getComposerState", () => {
 			settingsEffortLevel: "xhigh",
 			settingsBypassPermissionsAllowed: false,
 			settingsFastMode: false,
+			fastModeBlocked: null,
 			statusline: ALICE_STATUSLINE,
 			statuslineUpdatedAt: "2026-09-29T09:00:00.000Z",
 		});
@@ -518,6 +532,7 @@ describe("getComposerState", () => {
 			settingsEffortLevel: null,
 			settingsBypassPermissionsAllowed: false,
 			settingsFastMode: false,
+			fastModeBlocked: null,
 			statusline: null,
 			statuslineUpdatedAt: null,
 		});
@@ -555,6 +570,42 @@ describe("getComposerState", () => {
 		}).toStrictEqual({on: true, optIn: false, off: false});
 	});
 
+	it("blocks fast mode from the settings env merged over the server env, or a managed policy", async () => {
+		const blocked = async (dependencies: Partial<ComposerStateDependencies>) =>
+			(
+				await getComposerState("erin-session", {
+					readStatusline: async () => Promise.reject(new Error("ENOENT: fabricated")),
+					readSettings: async () => Promise.resolve({}),
+					...dependencies,
+				})
+			).fastModeBlocked;
+
+		expect({
+			settingsEnv: await blocked({
+				readSettings: async () => Promise.resolve({env: {CLAUDE_CODE_DISABLE_FAST_MODE: "1"}}),
+			}),
+			serverEnv: await blocked({env: {CLAUDE_CODE_USE_VERTEX: "1"}}),
+			settingsOverride: await blocked({
+				env: {CLAUDE_CODE_DISABLE_FAST_MODE: "1"},
+				readSettings: async () => Promise.resolve({env: {CLAUDE_CODE_DISABLE_FAST_MODE: "0"}}),
+			}),
+			policy: await blocked({readManagedSettings: async () => Promise.resolve({fastMode: false})}),
+			missingPolicy: await blocked({readManagedSettings: async () => Promise.reject(new Error("ENOENT"))}),
+		}).toStrictEqual({
+			settingsEnv: {
+				line: "Off for this session",
+				reason: "An environment variable turns fast mode off in this session.",
+			},
+			serverEnv: {
+				line: "Not available with this provider",
+				reason: "Fast mode is only available when Claude Code uses the Claude API directly.",
+			},
+			settingsOverride: null,
+			policy: {line: "Not available"},
+			missingPolicy: null,
+		});
+	});
+
 	it("never reads a statusline for a traversal session id", async () => {
 		const readStatusline = vi.fn<ComposerStateDependencies["readStatusline"]>(async () =>
 			Promise.resolve({json: {}, mtimeMs: 0}),
@@ -574,11 +625,26 @@ describe("getComposerState", () => {
 				settingsEffortLevel: null,
 				settingsBypassPermissionsAllowed: false,
 				settingsFastMode: false,
+				fastModeBlocked: null,
 				statusline: null,
 				statuslineUpdatedAt: null,
 			},
 			reads: [],
 			cacheControl: "private, max-age=0, must-revalidate",
 		});
+	});
+});
+
+describe("managedSettingsPath", () => {
+	it("is where the CLI reads managed (policy) settings on each platform", () => {
+		expect([
+			managedSettingsPath("darwin"),
+			managedSettingsPath("linux"),
+			managedSettingsPath("win32"),
+		]).toStrictEqual([
+			"/Library/Application Support/ClaudeCode/managed-settings.json",
+			"/etc/claude-code/managed-settings.json",
+			"C:\\Program Files\\ClaudeCode\\managed-settings.json",
+		]);
 	});
 });

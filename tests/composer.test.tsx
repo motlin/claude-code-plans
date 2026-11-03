@@ -305,6 +305,7 @@ describe("Composer", () => {
 			modelId: "claude-opus-5-5",
 			settingsModelId: "claude-opus-5-5",
 			fastMode: false,
+			fastModeBlocked: null,
 			effort: {id: "xhigh", label: "Extra-high"},
 			usage: {
 				contextTokens: 190_200,

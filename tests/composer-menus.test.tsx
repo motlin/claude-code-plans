@@ -28,6 +28,7 @@ const CHIN: ComposerState = {
 	modelId: "claude-opus-5-5",
 	settingsModelId: "claude-opus-5-5",
 	fastMode: false,
+	fastModeBlocked: null,
 	effort: {id: "high", label: "High"},
 	usage: null,
 };
@@ -543,7 +544,7 @@ describe("Composer model menu Fast mode section", () => {
 		"relative inline-flex h-[14px] w-[25.2px] shrink-0 rounded-full p-[2px] bg-[var(--menu-switch-track)] hover:bg-[var(--menu-switch-track-hover)] data-[checked]:bg-accent-100 data-[disabled]:opacity-40 forced-colors:border forced-colors:border-solid forced-colors:border-[CanvasText] forced-colors:p-px forced-colors:data-[checked]:border-[Highlight] forced-colors:data-[checked]:!bg-[Highlight]";
 
 	function fastRow(menu: HTMLElement) {
-		return within(menu).getByRole("menuitemcheckbox", {name: "Enable fast mode"});
+		return within(menu).getByRole("menuitemcheckbox", {name: /^Enable fast mode/});
 	}
 
 	function describeNode(element: Element | null | undefined): unknown {
@@ -558,6 +559,104 @@ describe("Composer model menu Fast mode section", () => {
 			children: Array.from(element.children).map(describeNode),
 		};
 	}
+
+	/** Upstream's `kk` label nest, with the blocked row's description span as `extra`. */
+	function FAST_LABEL_NEST(extra: unknown[]) {
+		return {
+			tag: "span",
+			attrs: {"data-menu-item-title": "", class: "min-w-0 flex-1 truncate"},
+			children: [
+				{
+					tag: "span",
+					attrs: {class: "block min-w-0 whitespace-normal"},
+					children: [
+						{
+							tag: "span",
+							attrs: {class: "flex min-w-0 items-center gap-1"},
+							children: [{tag: "span", attrs: {class: "truncate"}, children: []}],
+						},
+						...extra,
+					],
+				},
+			],
+		};
+	}
+
+	const ENV_BLOCKED = {
+		line: "Off for this session",
+		reason: "An environment variable turns fast mode off in this session.",
+	};
+
+	it("greys a blocked row with upstream's second line, forced off, describing it by the reason", async () => {
+		const onSend = renderComposer({chin: {...CHIN, fastMode: true, fastModeBlocked: ENV_BLOCKED}});
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		const row = fastRow(menu);
+		fireEvent.click(row);
+		await flushMenu();
+		const description = row.querySelector(".mt-1");
+		sendPrompt("Continue Peggy's test");
+
+		expect({
+			checked: row.getAttribute("aria-checked"),
+			disabled: row.hasAttribute("data-disabled"),
+			heights: row.className.split(" ").filter((c) => /^(h-|min-h-|items-|pb-)/.test(c)),
+			parentRole: row.parentElement?.getAttribute("role"),
+			reason: document.getElementById(row.getAttribute("aria-describedby") ?? "")?.textContent,
+			labelNest: describeNode(row.firstElementChild),
+			description: description?.textContent,
+			calls: onSend.mock.calls,
+		}).toStrictEqual({
+			checked: "false",
+			disabled: true,
+			heights: ["items-center"],
+			parentRole: "none",
+			reason: ENV_BLOCKED.reason,
+			labelNest: FAST_LABEL_NEST([
+				{tag: "span", attrs: {class: "mt-1 block text-[12px]/[15px] text-[var(--menu-muted)]"}, children: []},
+			]),
+			description: "Off for this session",
+			calls: [["Continue Peggy's test", {}]],
+		});
+	});
+
+	it("opens the blocked row's reason tooltip on the right when hovered", async () => {
+		renderComposer({chin: {...CHIN, fastModeBlocked: ENV_BLOCKED}});
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		const wrapper = fastRow(menu).parentElement!;
+		vi.useFakeTimers();
+		try {
+			fireEvent.pointerEnter(wrapper);
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+			const tip = screen.getByRole("tooltip");
+			expect({side: tip.getAttribute("data-side"), text: tip.textContent}).toStrictEqual({
+				side: "right",
+				text: ENV_BLOCKED.reason,
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("gives a policy-blocked row its second line but no reason", async () => {
+		renderComposer({chin: {...CHIN, fastModeBlocked: {line: "Not available"}}});
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		const row = fastRow(menu);
+
+		expect({
+			disabled: row.hasAttribute("data-disabled"),
+			describedBy: row.getAttribute("aria-describedby"),
+			parentRole: row.parentElement?.getAttribute("role"),
+			description: row.querySelector(".mt-1")?.textContent,
+		}).toStrictEqual({disabled: true, describedBy: null, parentRole: null, description: "Not available"});
+	});
 
 	it("ends the menu with a separator, upstream's Fast mode header and an unchecked switch row on Opus", async () => {
 		renderComposer();
@@ -574,12 +673,16 @@ describe("Composer model menu Fast mode section", () => {
 			header: {
 				role: header?.getAttribute("role"),
 				className: header?.className,
+				inner: describeNode(header?.firstElementChild),
 				text: header?.textContent,
 			},
 			last: row.nextElementSibling,
 			row: {
 				checked: row.getAttribute("aria-checked"),
+				disabled: row.hasAttribute("data-disabled"),
+				describedBy: row.getAttribute("aria-describedby"),
 				label: row.firstElementChild?.textContent,
+				labelNest: describeNode(row.firstElementChild),
 				trailingClass: trailing?.className,
 			},
 			wrapper: describeNode(trailing?.firstElementChild),
@@ -589,12 +692,16 @@ describe("Composer model menu Fast mode section", () => {
 			header: {
 				role: "presentation",
 				className: "px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]",
+				inner: {tag: "span", attrs: {class: "flex items-center gap-1"}, children: []},
 				text: "Fast mode",
 			},
 			last: null,
 			row: {
 				checked: "false",
+				disabled: false,
+				describedBy: null,
 				label: "Enable fast mode",
+				labelNest: FAST_LABEL_NEST([]),
 				trailingClass: "ms-3 flex shrink-0 items-center gap-1.5",
 			},
 			wrapper: {
@@ -825,14 +932,23 @@ describe("Composer model trigger Fast word and live status", () => {
 		});
 	});
 
-	it("has neither the word nor the live status on a model without fast mode", () => {
+	it("has no word on a model without fast mode, but still announces fast mode off, as upstream's chin does", () => {
 		renderComposer({
-			chin: {...CHIN, model: "Sonnet 5.5", modelId: "claude-sonnet-5-5", fastMode: true},
+			chin: {...CHIN, model: "Sonnet 5.5", modelId: "claude-sonnet-5-5", fastMode: false},
 		});
 
 		expect({label: triggerParts().label, status: liveStatus()}).toStrictEqual({
 			label: "Model: Sonnet 5.5 High",
-			status: null,
+			status: {className: "sr-only", text: "Fast mode off"},
+		});
+	});
+
+	it("has no word and announces fast mode off while the CLI blocks it", () => {
+		renderComposer({chin: {...CHIN, fastMode: true, fastModeBlocked: {line: "Not available"}}});
+
+		expect({label: triggerParts().label, status: liveStatus()}).toStrictEqual({
+			label: "Model: Opus 5.5 High",
+			status: {className: "sr-only", text: "Fast mode off"},
 		});
 	});
 });
@@ -1012,6 +1128,17 @@ describe("Composer ⌥⌘F fast mode shortcut", () => {
 
 		expect({label: modelLabel(), menus: screen.queryAllByRole("menu").length}).toStrictEqual({
 			label: "Model: Sonnet 5.5 High",
+			menus: 0,
+		});
+	});
+
+	it("does nothing while the CLI blocks fast mode", () => {
+		renderComposer({chin: {...CHIN, fastModeBlocked: {line: "Not available"}}});
+
+		toggleFast();
+
+		expect({label: modelLabel(), menus: screen.queryAllByRole("menu").length}).toStrictEqual({
+			label: "Model: Opus 5.5 High",
 			menus: 0,
 		});
 	});

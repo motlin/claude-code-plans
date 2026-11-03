@@ -17,6 +17,7 @@ import {
 	primaryModelMenuValue,
 } from "../lib/launch-options";
 import {effortLevelShortLabels} from "../lib/schema-choices";
+import type {FastModeBlocked} from "../lib/session-fast-mode";
 import {ConfirmDialog} from "./confirm-dialog";
 import {CHIN_TRIGGER_CLASS, EFFORT_LABEL_CLASS} from "./composer-tokens";
 import {
@@ -185,6 +186,7 @@ export function ModelMenu({
 	onSelect,
 	onSelectEffort,
 	fastMode,
+	fastModeBlocked,
 	onFastModeChange,
 	settingsOverride,
 	surface,
@@ -198,7 +200,10 @@ export function ModelMenu({
 	currentEffort: string;
 	onSelect: (model: string) => void;
 	onSelectEffort: (effort: EffortLevel) => void;
+	/** Already false while blocked. */
 	fastMode: boolean;
+	/** The CLI can't use fast mode here: upstream's greyed row with this line and reason tooltip. */
+	fastModeBlocked: FastModeBlocked | null;
 	onFastModeChange: (on: boolean) => void;
 	/** The pick differs from the settings.json model: accent label, "(settings: X)" tooltip, "Use settings’ X". */
 	settingsOverride: {label: string; onUse: () => void} | null;
@@ -368,9 +373,21 @@ export function ModelMenu({
 							role="presentation"
 							className="px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]"
 						>
-							Fast mode
+							<span className="flex items-center gap-1">Fast mode</span>
 						</div>
-						<MenuCheckboxSwitchItem decorative checked={fastMode} onCheckedChange={onFastModeChange}>
+						{/* Upstream's blocked row: greyed, with the reason line and tooltip; blocked already forces it off. */}
+						<MenuCheckboxSwitchItem
+							decorative
+							checked={fastMode}
+							onCheckedChange={onFastModeChange}
+							{...(fastModeBlocked === null
+								? {}
+								: {
+										disabled: true,
+										description: fastModeBlocked.line,
+										disabledReason: fastModeBlocked.reason,
+									})}
+						>
 							Enable fast mode
 						</MenuCheckboxSwitchItem>
 					</>

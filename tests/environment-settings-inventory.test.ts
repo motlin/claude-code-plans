@@ -24,6 +24,8 @@ const EXPECTED_INJECTED_RUNTIME_READS = [
 	"src/lib/herdr/socket-path.ts:HERDR_SOCKET_PATH",
 	"src/lib/herdr/socket-path.ts:HOME",
 	"src/lib/herdr/socket-path.ts:XDG_CONFIG_HOME",
+	// The CLI's own fast-mode switch, read from the env a launched CLI inherits to mirror its blocked row.
+	"src/lib/session-fast-mode.ts:CLAUDE_CODE_DISABLE_FAST_MODE",
 	"src/lib/terminal-host/selection.ts:TMUX",
 ];
 

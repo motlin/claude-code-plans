@@ -1,6 +1,10 @@
 import {createFileRoute} from "@tanstack/react-router";
 import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
-import {type ComposerStateDependencies, getComposerState} from "../../lib/composer-state-server";
+import {
+	type ComposerStateDependencies,
+	getComposerState,
+	nodeFastModeBlockDependencies,
+} from "../../lib/composer-state-server";
 
 export async function handleComposerStateRequest(
 	sessionId: string,
@@ -20,6 +24,7 @@ export const Route = createFileRoute("/api/sessions/$id/composer-state")({
 				const {readFile, stat} = await import("node:fs/promises");
 				const {getCacheDir} = await import("../../lib/db/connection");
 				return handleComposerStateRequest(params.id, {
+					...(await nodeFastModeBlockDependencies()),
 					readStatusline: async (sessionId) => {
 						const filePath = join(getCacheDir(), "statusline", `${sessionId}.json`);
 						const [raw, stats] = await Promise.all([readFile(filePath, "utf-8"), stat(filePath)]);

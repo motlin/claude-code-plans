@@ -73,6 +73,7 @@ export function HomeComposer({
 						lastAssistantUsage: null,
 						lastAssistantEffort: null,
 						fastMode: defaults.fastMode,
+						fastModeBlocked: defaults.fastModeBlocked,
 						settingsModel: defaults.model,
 						settingsEffortLevel: defaults.effortLevel,
 						statusline: null,

@@ -189,7 +189,7 @@ export type ChinPick = {effort: EffortLevel} | {model: string} | {fastMode: bool
 
 export interface ChinPickHandle {
 	pick: (pick: ChinPick) => void;
-	/** The chin's fast state; `canToggle` is false when the current model has no Fast mode section. */
+	/** The chin's fast state; `canToggle` is false when the current model has no Fast mode section or it is blocked. */
 	fastState: () => {on: boolean; canToggle: boolean};
 }
 
@@ -233,8 +233,11 @@ export const ComposerChin = memo(function ComposerChin({
 		onLaunchOptionsChange(withModel(launchOptions, model));
 	};
 	const currentModel = launchOptions.model ?? modelMenuValue(state.modelId) ?? undefined;
-	const fastMode = launchOptions.fastMode ?? state.fastMode;
+	// Upstream's `fastModeOn = !blocked && value`; a blocked session can't pick it either.
+	const fastModeBlocked = state.fastModeBlocked;
+	const fastMode = fastModeBlocked === null && (launchOptions.fastMode ?? state.fastMode);
 	const selectFastMode = (on: boolean) => {
+		if (fastModeBlocked !== null) return;
 		onLaunchOptionsChange({...launchOptions, fastMode: on});
 	};
 	useImperativeHandle(pickRef, () => ({
@@ -243,7 +246,10 @@ export const ComposerChin = memo(function ComposerChin({
 			else if ("model" in pick) selectModel(pick.model);
 			else selectFastMode(pick.fastMode);
 		},
-		fastState: () => ({on: fastMode, canToggle: currentModel !== undefined && fastModeSupported(currentModel)}),
+		fastState: () => ({
+			on: fastMode,
+			canToggle: fastModeBlocked === null && currentModel !== undefined && fastModeSupported(currentModel),
+		}),
 	}));
 	const menuProps = (menu: ChinMenu) => ({
 		open: openMenu === menu,
@@ -295,10 +301,11 @@ export const ComposerChin = memo(function ComposerChin({
 					settingsOverride={overridden ? {label: modelLabel(settingsModel), onUse: clearModel} : null}
 					onSelectEffort={selectEffort}
 					fastMode={fastMode}
+					fastModeBlocked={fastModeBlocked}
 					onFastModeChange={selectFastMode}
 				/>
-				{/* Upstream's session chin announces the fast state at rest; the new-session bar has no live region. */}
-				{surface === "chin" && currentModel !== undefined && fastModeSupported(currentModel) && (
+				{/* Upstream's session chin announces the fast state at rest on every model; the new-session bar has no live region. */}
+				{surface === "chin" && (
 					<span data-fast-mode-status="" role="status" aria-live="polite" className="sr-only">
 						{fastMode ? "Fast mode on" : "Fast mode off"}
 					</span>

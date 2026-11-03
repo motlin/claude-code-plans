@@ -4,6 +4,7 @@ import {resolveLaunchModel} from "./launch-options";
 import {formatModelName, SYNTHETIC_MODEL} from "./model-name";
 import {formatWeeklyReset} from "./usage";
 import {nonEmpty} from "./non-empty";
+import type {FastModeBlocked} from "./session-fast-mode";
 
 /**
  * The composer chin's readouts (mode · model · effort · usage ring), resolved
@@ -52,6 +53,8 @@ export interface ComposerStateSources {
 	settingsEffortLevel: string | null;
 	/** `sessionFastMode` over the transcript and settings.json. */
 	fastMode: boolean;
+	/** Why the CLI can't use fast mode in this session (`ComposerServerState.fastModeBlocked`). */
+	fastModeBlocked: FastModeBlocked | null;
 	statusline: Statusline | null;
 	statuslineUpdatedAt: string | null;
 }
@@ -91,8 +94,10 @@ export interface ComposerState {
 	/** The model settings.json launches with; a session pick that differs gets upstream's overridden cue. */
 	settingsModelId: string;
 	effort: ComposerLabelled;
-	/** The trigger's " Fast" word and the chin's "Fast mode on|off" live status. */
+	/** The trigger's " Fast" word and the chin's "Fast mode on|off" live status; always off while blocked. */
 	fastMode: boolean;
+	/** Upstream's blocked Fast mode row: greyed, with this second line and reason tooltip. */
+	fastModeBlocked: FastModeBlocked | null;
 	usage: ComposerUsage | null;
 }
 
@@ -172,7 +177,8 @@ export function resolveComposerState(sources: ComposerStateSources): ComposerSta
 		modelId,
 		settingsModelId: resolveLaunchModel(sources.settingsModel),
 		effort: {id: effortId, label: EFFORT_LABELS[effortId] ?? effortId},
-		fastMode: sources.fastMode,
+		fastMode: sources.fastModeBlocked === null && sources.fastMode,
+		fastModeBlocked: sources.fastModeBlocked,
 		usage: resolveComposerUsage(sources, modelId),
 	};
 }
@@ -351,6 +357,11 @@ export function formatUpdatedAgo(iso: string, nowMs: number): string {
 	return "just now";
 }
 
+const FastModeBlockedResponse: z.ZodType<FastModeBlocked> = z.strictObject({
+	line: z.string(),
+	reason: z.string().optional(),
+});
+
 /** The server-side half of the chin: settings defaults plus the statusline snapshot. */
 export interface ComposerServerState {
 	settingsDefaultMode: string | null;
@@ -360,6 +371,8 @@ export interface ComposerServerState {
 	settingsBypassPermissionsAllowed: boolean;
 	/** Settings start a fresh session in fast mode (`sessionFastMode` with no turns). */
 	settingsFastMode: boolean;
+	/** Why the CLI can't use fast mode here (`fastModeBlockedReason`), or null. */
+	fastModeBlocked: FastModeBlocked | null;
 	statusline: Statusline | null;
 	statuslineUpdatedAt: string | null;
 }
@@ -370,6 +383,7 @@ export const ComposerServerStateResponse: z.ZodType<ComposerServerState> = z.str
 	settingsEffortLevel: z.string().nullable(),
 	settingsBypassPermissionsAllowed: z.boolean(),
 	settingsFastMode: z.boolean(),
+	fastModeBlocked: FastModeBlockedResponse.nullable(),
 	statusline: StatuslineSchema.nullable(),
 	statuslineUpdatedAt: z.string().nullable(),
 });
@@ -382,6 +396,8 @@ export interface ComposerDefaults {
 	bypassPermissionsAllowed: boolean;
 	/** A fresh session starts in fast mode (`sessionFastMode` with no turns). */
 	fastMode: boolean;
+	/** Why the CLI can't use fast mode in a new session, or null. */
+	fastModeBlocked: FastModeBlocked | null;
 }
 
 export const ComposerDefaultsResponse: z.ZodType<ComposerDefaults> = z.strictObject({
@@ -390,4 +406,5 @@ export const ComposerDefaultsResponse: z.ZodType<ComposerDefaults> = z.strictObj
 	defaultMode: z.string().nullable(),
 	bypassPermissionsAllowed: z.boolean(),
 	fastMode: z.boolean(),
+	fastModeBlocked: FastModeBlockedResponse.nullable(),
 });

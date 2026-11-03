@@ -282,6 +282,7 @@ describe("AppShellFallback", () => {
 			defaultMode: "auto",
 			bypassPermissionsAllowed: false,
 			fastMode: false,
+			fastModeBlocked: null,
 		});
 		host.innerHTML = renderToStaticMarkup(<AppShellFallback chin={chin} />);
 		const chinRow = host.querySelector('[data-cds="ChatComposerChin"]')!;
@@ -311,6 +312,7 @@ describe("AppShellFallback", () => {
 				defaultMode: "plan",
 				bypassPermissionsAllowed: false,
 				fastMode: false,
+				fastModeBlocked: null,
 			}),
 		);
 		const markup = renderToStaticMarkup(<AppShellFallback chin={getShellChinLabels()} />);
@@ -469,6 +471,7 @@ describe("AppShellFallback", () => {
 					defaultMode: "auto",
 					bypassPermissionsAllowed: false,
 					fastMode: false,
+					fastModeBlocked: null,
 				})}
 			/>,
 		);
@@ -549,6 +552,7 @@ describe("AppShellFallback dock frame", () => {
 					defaultMode: "auto",
 					bypassPermissionsAllowed: false,
 					fastMode: false,
+					fastModeBlocked: null,
 				})}
 			/>,
 		);

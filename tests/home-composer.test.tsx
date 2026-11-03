@@ -130,6 +130,7 @@ async function renderApp(
 		defaultMode: "plan",
 		bypassPermissionsAllowed: false,
 		fastMode,
+		fastModeBlocked: null,
 	});
 	const rootRoute = createRootRoute({
 		component: () => (
@@ -856,6 +857,7 @@ describe("getComposerDefaults", () => {
 			defaultMode: "acceptEdits",
 			bypassPermissionsAllowed: false,
 			fastMode: false,
+			fastModeBlocked: null,
 		});
 	});
 
@@ -872,6 +874,7 @@ describe("getComposerDefaults", () => {
 				defaultMode: null,
 				bypassPermissionsAllowed: false,
 				fastMode: true,
+				fastModeBlocked: null,
 			},
 			{
 				model: null,
@@ -879,7 +882,27 @@ describe("getComposerDefaults", () => {
 				defaultMode: null,
 				bypassPermissionsAllowed: false,
 				fastMode: false,
+				fastModeBlocked: null,
 			},
+		]);
+	});
+
+	it("blocks fast mode for new sessions when the env or a managed policy turns it off", async () => {
+		expect(
+			(
+				await Promise.all([
+					getComposerDefaults(async () => Promise.resolve({env: {CLAUDE_CODE_USE_BEDROCK: "1"}})),
+					getComposerDefaults(async () => Promise.resolve({}), {
+						readManagedSettings: async () => Promise.resolve({fastMode: false}),
+					}),
+				])
+			).map((defaults) => defaults.fastModeBlocked),
+		).toStrictEqual([
+			{
+				line: "Not available with this provider",
+				reason: "Fast mode is only available when Claude Code uses the Claude API directly.",
+			},
+			{line: "Not available"},
 		]);
 	});
 
@@ -890,6 +913,7 @@ describe("getComposerDefaults", () => {
 			defaultMode: null,
 			bypassPermissionsAllowed: false,
 			fastMode: false,
+			fastModeBlocked: null,
 		});
 	});
 });

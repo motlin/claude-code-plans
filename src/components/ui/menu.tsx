@@ -479,8 +479,7 @@ export function MenuItem({
 	const itemClass = useItemClass(description !== undefined);
 	const ariaKeyShortcuts = useAriaKeyShortcuts(accelerator, shortcut);
 	const reasonId = useId();
-	const reason =
-		props.disabled === true && disabledReason !== undefined && disabledReason !== "" ? disabledReason : undefined;
+	const reason = activeDisabledReason(props.disabled, disabledReason);
 	const item = (
 		<BaseMenu.Item
 			{...props}
@@ -502,11 +501,27 @@ export function MenuItem({
 		</BaseMenu.Item>
 	);
 	if (reason === undefined) return item;
-	/* Upstream's UV: no tab stop; the pointer lands on the role=none row, so hovering a disabled item still opens it. */
+	return (
+		<DisabledReasonRow reason={reason} reasonId={reasonId}>
+			{item}
+		</DisabledReasonRow>
+	);
+}
+
+/** The reason a disabled item is unavailable, or undefined when it is enabled or has none. */
+function activeDisabledReason(disabled: boolean | undefined, disabledReason: string | undefined): string | undefined {
+	return disabled === true && disabledReason !== undefined && disabledReason !== "" ? disabledReason : undefined;
+}
+
+/**
+ * Upstream's UV: no tab stop; the pointer lands on the role=none row, so hovering a disabled item still opens its
+ * reason tooltip on side right, and the hidden reason describes the item.
+ */
+function DisabledReasonRow({reason, reasonId, children}: {reason: string; reasonId: string; children: ReactNode}) {
 	return (
 		<Tooltip content={reason} variant="reason" side="right" closeOnClick={false} portal className="w-full">
 			<div role="none" className="w-full">
-				{item}
+				{children}
 				<span id={reasonId} hidden data-cds-disabled-reason="">
 					{reason}
 				</span>
@@ -623,9 +638,13 @@ export interface MenuCheckboxSwitchItemProps extends Omit<
 	closeOnClick?: boolean;
 	/**
 	 * Upstream's Fast mode row: the sm switch sits in an `aria-hidden` `pointer-events-none` wrapper, so it is
-	 * purely decorative and the row's `aria-checked` alone carries the state.
+	 * purely decorative and the row's `aria-checked` alone carries the state. Its label takes upstream's `kk` nest.
 	 */
 	decorative?: boolean;
+	/** A decorative row's muted second line, as upstream's blocked Fast mode row. */
+	description?: string | undefined;
+	/** Why a disabled row is unavailable: it describes the row and shows in a reason tooltip, as `MenuItem`'s. */
+	disabledReason?: string | undefined;
 }
 
 /**
@@ -638,20 +657,43 @@ export function MenuCheckboxSwitchItem({
 	checked,
 	closeOnClick = false,
 	decorative = false,
+	description,
+	disabledReason,
 	...props
 }: MenuCheckboxSwitchItemProps) {
 	const sizing = useMenuSizing();
-	const itemClass = useItemClass();
-	return (
+	// Upstream's `kk` row has no fixed height: a description line grows it, with the switch kept centred.
+	const itemClass = useItemClass().replace(
+		sizing.singleLine,
+		decorative && description !== undefined ? "items-center" : sizing.singleLine,
+	);
+	const reasonId = useId();
+	const reason = activeDisabledReason(props.disabled, disabledReason);
+	const item = (
 		<BaseMenu.CheckboxItem
 			{...props}
+			{...(reason === undefined ? {} : {"aria-describedby": reasonId})}
 			checked={checked}
 			closeOnClick={closeOnClick}
 			className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
 		>
 			<ItemIcon icon={icon} />
 			<span data-menu-item-title="" className={LABEL_CLASS}>
-				{children}
+				{decorative ? (
+					/* Upstream's `kk` label: a wrapping block holding the truncated title, then the muted line. */
+					<span className="block min-w-0 whitespace-normal">
+						<span className="flex min-w-0 items-center gap-1">
+							<span className="truncate">{children}</span>
+						</span>
+						{description !== undefined && (
+							<span className="mt-1 block text-[12px]/[15px] text-[var(--menu-muted)]">
+								{description}
+							</span>
+						)}
+					</span>
+				) : (
+					children
+				)}
 			</span>
 			{decorative ? (
 				<span className={sizing.trailingGroup}>
@@ -672,6 +714,12 @@ export function MenuCheckboxSwitchItem({
 				</span>
 			)}
 		</BaseMenu.CheckboxItem>
+	);
+	if (reason === undefined) return item;
+	return (
+		<DisabledReasonRow reason={reason} reasonId={reasonId}>
+			{item}
+		</DisabledReasonRow>
 	);
 }
 
