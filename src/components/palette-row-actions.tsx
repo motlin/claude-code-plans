@@ -239,7 +239,7 @@ export function PaletteRowActionsCard({
 					onKeyDownCapture: handleKeyDownCapture,
 				}}
 				header={
-					<div className="flex flex-col gap-0.5 px-2 pt-1 pb-1">
+					<div className="flex flex-col gap-0.5 px-2.5 pt-1 pb-1">
 						<div
 							data-palette-card-title=""
 							className="line-clamp-2 break-words text-[13px]/[19px] text-primary"

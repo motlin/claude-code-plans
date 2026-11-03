@@ -212,6 +212,14 @@ describe("palette row actions card", () => {
 		});
 	});
 
+	it("pads the card header with upstream's px-2.5 in every density", async () => {
+		const {card} = await openCard();
+
+		expect(card.querySelector("[data-palette-card-title]")?.parentElement?.className).toBe(
+			"flex flex-col gap-0.5 px-2.5 pt-1 pb-1",
+		);
+	});
+
 	it('reads just "Code session" in the meta when the session is older than a year', async () => {
 		const ancient = {
 			...recentSession("sess-2", "Write release notes"),
