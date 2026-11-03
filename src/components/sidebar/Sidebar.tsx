@@ -189,6 +189,7 @@ export function Sidebar({
 				<nav
 					aria-label="Sidebar"
 					data-density={density}
+					data-flat-look={panels ? "" : undefined}
 					data-focus-region="navigation"
 					className="group/sidebar flex h-full min-h-0 flex-col"
 				>
@@ -241,6 +242,7 @@ export function Sidebar({
 			<nav
 				aria-label="Sidebar"
 				data-density={density}
+				data-flat-look={panels ? "" : undefined}
 				data-focus-region="navigation"
 				style={{"--sidebar-width": `${width}px`}}
 				className="group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)] min-[701px]:flex"
@@ -710,6 +712,7 @@ function CollapsedSidebar({
 				data-testid="sidebar-peek"
 				aria-label="Sidebar"
 				data-density={density}
+				data-flat-look={panels ? "" : undefined}
 				data-focus-region="navigation"
 				aria-hidden={hovering ? undefined : true}
 				inert={!hovering}

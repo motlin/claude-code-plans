@@ -30,6 +30,7 @@ import type {GroupAppearance} from "../../lib/group-appearance";
 import {useProjectAppearance} from "../../lib/project-appearance-store";
 import {setPendingLaunchGroup, useSessionGroups} from "../../lib/session-group-store";
 import {assertNever} from "../../lib/assert-never";
+import {useFizzyLake} from "../../lib/fizzy-lake";
 import {
 	customGroupIdOfKey,
 	customGroupLaunchTarget,
@@ -93,14 +94,20 @@ const DESCRIBED_ROW_CLASS =
  * own +. Upstream's hub-rail sidebar puts no generic New session + on any header: the New nav row has it.
  */
 function HeaderControls({filterSlot, trailing}: {filterSlot: ReactNode; trailing?: ReactNode}) {
+	// Upstream's flat look (fizzy-lake panels) keeps Group and sort's width and fades it by opacity in CSS.
+	const panels = useFizzyLake("panels");
 	const hasFilter = filterSlot !== undefined && filterSlot !== null;
 	if (!hasFilter && trailing === undefined) return null;
 	return (
-		<div className="flex items-center">
+		<div data-header-controls="" className="flex items-center">
 			{hasFilter && (
 				<span
 					data-header-reveal=""
-					className="flex w-0 overflow-hidden group-hover/labelrow:w-auto group-hover/labelrow:overflow-visible group-has-[:focus-visible]/labelrow:w-auto group-has-[:focus-visible]/labelrow:overflow-visible has-[[data-popup-open]]:w-auto has-[[data-popup-open]]:overflow-visible touch:w-auto touch:overflow-visible"
+					className={
+						panels
+							? "flex"
+							: "flex w-0 overflow-hidden group-hover/labelrow:w-auto group-hover/labelrow:overflow-visible group-has-[:focus-visible]/labelrow:w-auto group-has-[:focus-visible]/labelrow:overflow-visible has-[[data-popup-open]]:w-auto has-[[data-popup-open]]:overflow-visible touch:w-auto touch:overflow-visible"
+					}
 				>
 					{filterSlot}
 				</span>
@@ -207,11 +214,11 @@ function useCollapsedBadgeKind(
 }
 
 /** Upstream `BO{name:"CaretRightFilled",customSize:14}`: a filled right-pointing triangle. */
-function CaretRightFilled({className}: {className: string}) {
+function CaretRightFilled({className, stays}: {className: string; stays: boolean}) {
 	return (
 		<svg
 			aria-hidden="true"
-			data-group-caret
+			data-group-caret={stays ? "stays" : ""}
 			viewBox="0 0 14 14"
 			fill="currentColor"
 			className={className}
@@ -287,6 +294,7 @@ export function GroupSection({
 	const projectNewSession = useProjectNewSession(group, isProject);
 	const customNewSession = useCustomGroupNewSession(group, customGroupId);
 	const appearance = useSectionAppearance(group.key, customGroupId, isProject);
+	const panels = useFizzyLake("panels");
 	// Upstream omits the env glyph on pinned rows and when the section is itself a place.
 	const envGlyph = pinnedIds === undefined && !isProject;
 	const {settings} = useSettings();
@@ -344,10 +352,14 @@ export function GroupSection({
 						<GroupAppearanceMark appearance={appearance} />
 					</span>
 				)}
+				{/* Upstream `SH`: the caret stays visible under fizzy-lake panels (`data-group-caret="stays"`). */}
 				<CaretRightFilled
+					stays={panels}
 					className={`size-3.5 shrink-0 transition-transform duration-[60ms] motion-reduce:transition-none ${
-						expanded
-							? "rotate-90 opacity-0 group-data-[hover-within]/section:opacity-100 group-focus-visible/label:opacity-100"
+						expanded ? "rotate-90 " : ""
+					}${
+						expanded && !panels
+							? "opacity-0 group-data-[hover-within]/section:opacity-100 group-focus-visible/label:opacity-100"
 							: "opacity-100"
 					}`}
 				/>

@@ -18,6 +18,7 @@ import {SidebarSessionGroups} from "../src/components/sidebar/session-filter-men
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import {DEFAULT_SESSION_LIST_PREFS, type SessionListPrefs} from "../src/lib/session-groups";
 import type {SessionBucket} from "../src/lib/session-state";
+import {FizzyLakeContext, FIZZY_LAKE_PARTS, type FizzyLakePart} from "../src/lib/fizzy-lake";
 import {installLocalStorage} from "./fake-storage";
 import {readFileSync} from "node:fs";
 
@@ -66,6 +67,7 @@ function storedPrefs(): unknown {
 async function renderSidebarGroups(
 	fixture: readonly object[] = FIXTURE,
 	fixtureByStatus: Partial<Record<SessionListPrefs["statusFilter"], readonly object[]>> = {},
+	fizzyLake: readonly FizzyLakePart[] = FIZZY_LAKE_PARTS,
 ) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
@@ -81,14 +83,16 @@ async function renderSidebarGroups(
 	}
 	const rootRoute = createRootRoute({
 		component: () => (
-			<SettingsProvider>
-				<QueryClientProvider client={queryClient}>
-					<ToastProvider>
-						<SidebarSessionGroups activeItemId={null} />
-						<Outlet />
-					</ToastProvider>
-				</QueryClientProvider>
-			</SettingsProvider>
+			<FizzyLakeContext.Provider value={fizzyLake}>
+				<SettingsProvider>
+					<QueryClientProvider client={queryClient}>
+						<ToastProvider>
+							<SidebarSessionGroups activeItemId={null} />
+							<Outlet />
+						</ToastProvider>
+					</QueryClientProvider>
+				</SettingsProvider>
+			</FizzyLakeContext.Provider>
 		),
 	});
 	const homeRoute = createRoute({
@@ -166,9 +170,9 @@ beforeEach(() => {
 });
 
 describe("sidebar Group and sort menu", () => {
-	it("puts Group and sort on every section header, revealed on hover, and no New session + on any (the New nav row has it)", async () => {
+	it("puts Group and sort on every section header, revealed on hover with panels off, and no New session + on any (the New nav row has it)", async () => {
 		storePrefs({groupBy: "state"});
-		const {container} = await renderSidebarGroups();
+		const {container} = await renderSidebarGroups(FIXTURE, {}, []);
 
 		const headers = [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-sidebar-group-label]')];
 		expect({
@@ -566,8 +570,8 @@ describe("sidebar Group and sort menu", () => {
 	});
 
 	// Upstream: the caret rotates in 60ms (duration-fast), and the reveal span's `touch:` variant is coarse OR hover:none.
-	it("rotates the header caret in 60ms and reveals Group and sort on any touch device, like upstream", async () => {
-		const {container} = await renderSidebarGroups();
+	it("rotates the header caret in 60ms and, with panels off, reveals Group and sort on any touch device, like upstream", async () => {
+		const {container} = await renderSidebarGroups(FIXTURE, {}, []);
 		const header = container.querySelector('[data-testid="sidebar-recents"] [data-sidebar-group-label]');
 		const classes = (selector: string) => header?.querySelector(selector)?.getAttribute("class")?.split(" ") ?? [];
 

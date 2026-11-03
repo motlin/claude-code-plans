@@ -18,6 +18,7 @@ import {SessionGroups} from "../src/components/sidebar/session-groups";
 import {ProjectListResponse, projectsQueryOptions} from "../src/lib/api/projects";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import {takePendingHomeLaunchFolder} from "../src/lib/home-composer-focus";
+import {FizzyLakeContext, FIZZY_LAKE_PARTS, type FizzyLakePart} from "../src/lib/fizzy-lake";
 import {DEFAULT_SESSION_LIST_PREFS, type SessionListPrefs} from "../src/lib/session-groups";
 import type {SessionBucket} from "../src/lib/session-state";
 import {readSidebarState} from "../src/lib/sidebar-store";
@@ -84,6 +85,8 @@ async function renderGroups(
 		initialPath?: string;
 		/** Return while the list still loads instead of waiting for a group or alert. */
 		loading?: boolean;
+		/** The fizzy-lake parts in effect; defaults to the app's (panels on). */
+		fizzyLake?: readonly FizzyLakePart[];
 	} = {},
 ) {
 	const queryClient =
@@ -95,19 +98,21 @@ async function renderGroups(
 	}
 	const rootRoute = createRootRoute({
 		component: () => (
-			<SettingsProvider>
-				<QueryClientProvider client={queryClient}>
-					<ToastProvider>
-						<SessionGroups
-							activeItemId={options.activeItemId ?? null}
-							filterSlot={options.filterSlot}
-							// Most cases exercise Status grouping, so render it unless a case picks other prefs.
-							prefs={options.prefs ?? {...DEFAULT_SESSION_LIST_PREFS, groupBy: "state"}}
-						/>
-						<Outlet />
-					</ToastProvider>
-				</QueryClientProvider>
-			</SettingsProvider>
+			<FizzyLakeContext.Provider value={options.fizzyLake ?? FIZZY_LAKE_PARTS}>
+				<SettingsProvider>
+					<QueryClientProvider client={queryClient}>
+						<ToastProvider>
+							<SessionGroups
+								activeItemId={options.activeItemId ?? null}
+								filterSlot={options.filterSlot}
+								// Most cases exercise Status grouping, so render it unless a case picks other prefs.
+								prefs={options.prefs ?? {...DEFAULT_SESSION_LIST_PREFS, groupBy: "state"}}
+							/>
+							<Outlet />
+						</ToastProvider>
+					</QueryClientProvider>
+				</SettingsProvider>
+			</FizzyLakeContext.Provider>
 		),
 	});
 	const homeRoute = createRoute({
@@ -365,8 +370,8 @@ describe("sidebar SessionGroups", () => {
 		});
 	});
 
-	it("shows an expanded section's caret while any of its rows holds data-hover-within, one section at a time", async () => {
-		const {container} = await renderGroups(FIXTURE);
+	it("shows an expanded section's caret while any of its rows holds data-hover-within, one section at a time, with panels off", async () => {
+		const {container} = await renderGroups(FIXTURE, {fizzyLake: []});
 		const hovered = () =>
 			[...container.querySelectorAll("[data-group-key][data-hover-within]")].map((section) =>
 				section.getAttribute("data-group-key"),
@@ -401,6 +406,54 @@ describe("sidebar SessionGroups", () => {
 				"group-data-[hover-within]/section:opacity-100",
 				"group-focus-visible/label:opacity-100",
 			],
+		});
+	});
+
+	// Upstream `SH`: under fizzy-lake panels the caret stays (`data-group-caret="stays"`, opacity 1) and
+	// Group and sort keeps its width, fading by opacity in the flat-look CSS instead.
+	it("keeps the expanded caret visible and Group and sort at full width under fizzy-lake panels", async () => {
+		const render = async (fizzyLake: readonly FizzyLakePart[]) => {
+			const {container, unmount} = await renderGroups(FIXTURE, {
+				fizzyLake,
+				filterSlot: <button type="button">Group and sort</button>,
+			});
+			const header = container.querySelector('[data-group-key="state-done"] [data-sidebar-group-label]');
+			const caret = header?.querySelector("[data-group-caret]");
+			const result = {
+				caret: caret?.getAttribute("data-group-caret"),
+				caretOpacity: caret
+					?.getAttribute("class")
+					?.split(" ")
+					.filter((name) => name.includes("opacity")),
+				reveal: header
+					?.querySelector("[data-header-reveal]")
+					?.getAttribute("class")
+					?.split(" ")
+					.filter((name) => /(^|:)w-/.test(name)),
+				controls: header?.querySelector(":scope > [data-header-controls]") !== null,
+			};
+			unmount();
+			return result;
+		};
+
+		expect({panels: await render(FIZZY_LAKE_PARTS), off: await render([])}).toStrictEqual({
+			panels: {caret: "stays", caretOpacity: ["opacity-100"], reveal: [], controls: true},
+			off: {
+				caret: "",
+				caretOpacity: [
+					"opacity-0",
+					"group-data-[hover-within]/section:opacity-100",
+					"group-focus-visible/label:opacity-100",
+				],
+				reveal: [
+					"w-0",
+					"group-hover/labelrow:w-auto",
+					"group-has-[:focus-visible]/labelrow:w-auto",
+					"has-[[data-popup-open]]:w-auto",
+					"touch:w-auto",
+				],
+				controls: true,
+			},
 		});
 	});
 

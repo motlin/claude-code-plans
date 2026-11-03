@@ -257,6 +257,20 @@ describe("sidebar Artifacts template launcher", () => {
 		]);
 	});
 
+	// Upstream's hub-rail sidebar aside carries data-flat-look under fizzy-lake panels, scoping the flat-look CSS.
+	it("marks the sidebar nav data-flat-look only under fizzy-lake panels", async () => {
+		const flatLook = async (parts: readonly FizzyLakePart[]) => {
+			await renderSidebar(undefined, undefined, parts);
+			const value = screen.getByRole("navigation", {name: "Sidebar"}).getAttribute("data-flat-look");
+			cleanup();
+			return value;
+		};
+		expect({
+			panels: await flatLook(["color", "panels", "type"]),
+			off: await flatLook(["color", "type"]),
+		}).toStrictEqual({panels: "", off: null});
+	});
+
 	it("tags the nav rows with upstream's data-nav-item ids", async () => {
 		await renderSidebar();
 		const navItem = (id: string) => document.querySelector(`[data-nav-item="${id}"]`);

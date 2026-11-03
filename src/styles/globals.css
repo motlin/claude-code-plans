@@ -856,6 +856,8 @@ html[data-interface-font="dyslexic"] {
 	--upstream-text-muted: #0006;
 	/* Upstream `--muted-as-secondary` under fizzy color: --cds-fizzy-lake-color-secondary (#0009 / #ffffff91). */
 	--muted-as-secondary: var(--upstream-text-secondary);
+	/* Upstream `--cds-fizzy-lake-color-secondary` (#0009 / #ffffff91): the flat-look group toggle's resting ink. */
+	--fizzy-lake-color-secondary: var(--upstream-text-secondary);
 	/* Upstream `--cds-fill-ghost-selected`; the ⌘K selected row reads it (measured rgba(0,0,0,0.1)). */
 	--upstream-fill-ghost-selected: #0000001a;
 	--palette-selected: var(--upstream-fill-ghost-selected);
@@ -2655,6 +2657,148 @@ html[data-motion="reduced"] [data-skeleton-group][data-motion="wave"] [data-skel
 /* Upstream .df-label-inset: the row padding plus .df-session-list's iconless pad (10px), else the icon inset. */
 .df-label-inset {
 	padding-left: calc(var(--sb-row-px) + var(--sb-iconless-pad, calc((var(--sb-leading-slot) - var(--sb-icon)) / 2)));
+}
+
+/*
+ * Upstream's fizzy-lake `color` sidebar headings (c6a992d55): a group label's muted and secondary inks
+ * read as primary, which is the .9 ink measured live on header hover, while its custom group mark keeps
+ * the sidebar's own muted and fizzy secondary inks.
+ */
+:root[data-cds-fizzy-lake~="color"] [data-sidebar-group-label] {
+	--color-ink-muted: var(--color-primary);
+	--muted-as-secondary: var(--color-primary);
+	--color-secondary: var(--color-primary);
+}
+
+:root[data-cds-fizzy-lake~="color"] [data-sidebar-group-label] [data-group-mark] {
+	--color-ink-muted: var(--upstream-text-muted);
+	--muted-as-secondary: var(--fizzy-lake-color-secondary, var(--upstream-text-muted));
+	--color-secondary: var(--fizzy-lake-color-secondary, var(--upstream-text-muted));
+}
+
+/*
+ * Upstream's flat-look group headers (`html[data-cds-fizzy-lake~=panels] .dframe-sidebar.df-hub-rail[data-flat-look]`,
+ * dumps/sidebar-group-header-hover-2026-11-01-css.txt): a 12px/20px label with no gaps and 4px before its
+ * glyphs, Group and sort faded by opacity (not width) on a fine pointer, a pill behind a hovered or
+ * menu-open header, the collapsed badge at the row end where Group and sort appears, and secondary
+ * toggle ink that turns to the label's ink on hover, focus or an open menu.
+ */
+:root[data-cds-fizzy-lake~="panels"] [data-flat-look] [data-sidebar-group-label] {
+	--sb-group-font: 12px;
+	isolation: isolate;
+	line-height: 20px;
+	position: relative;
+}
+
+:root[data-cds-fizzy-lake~="panels"] [data-flat-look] [data-sidebar-group-label] input {
+	line-height: 20px;
+}
+
+:root[data-cds-fizzy-lake~="panels"] [data-flat-look] [data-sidebar-group-label],
+:root[data-cds-fizzy-lake~="panels"] [data-flat-look] [data-sidebar-group-label] > div {
+	gap: 0;
+}
+
+:root[data-cds-fizzy-lake~="panels"] [data-flat-look] [data-sidebar-group-label] [data-row-glyph] {
+	margin-inline-start: 4px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+	:root[data-cds-fizzy-lake~="panels"]
+		[data-flat-look]
+		[data-group-key]:not([data-hover-within])
+		[data-sidebar-group-label]:not(:has(:focus-visible), :has([data-popup-open]))
+		[data-header-reveal] {
+		opacity: 0;
+	}
+}
+
+:root[data-cds-fizzy-lake~="panels"]
+	[data-flat-look]
+	[data-sidebar-group-label]:has(> [data-header-controls])
+	h3
+	> [data-group-toggle]:has(> [data-group-badge]:not(:empty)) {
+	isolation: auto;
+	position: static;
+}
+
+:root[data-cds-fizzy-lake~="panels"]
+	[data-flat-look]
+	[data-sidebar-group-label]:has(> [data-header-controls])
+	h3
+	> [data-group-toggle]
+	> [data-group-badge] {
+	width: var(--sb-row-ctl);
+	height: var(--sb-row-h);
+	pointer-events: none;
+	margin-block: 0;
+	position: absolute;
+	inset-block: auto 0;
+	inset-inline-end: var(--sb-row-ctl-inset, calc((var(--sb-row-h) - var(--sb-row-ctl)) / 2));
+}
+
+:root[data-cds-fizzy-lake~="panels"]
+	[data-flat-look]
+	[data-group-key][data-hover-within]
+	[data-sidebar-group-label]:not([data-group-key]:not([data-hover-within]) [data-sidebar-group-label]):has(
+		> [data-header-controls]
+	)
+	h3
+	> [data-group-toggle]
+	> [data-group-badge],
+:root[data-cds-fizzy-lake~="panels"]
+	[data-flat-look]
+	[data-sidebar-group-label]:has(> [data-header-controls]):has(:focus-visible)
+	h3
+	> [data-group-toggle]
+	> [data-group-badge],
+:root[data-cds-fizzy-lake~="panels"]
+	[data-flat-look]
+	[data-sidebar-group-label]:has(> [data-header-controls]):has([data-popup-open])
+	h3
+	> [data-group-toggle]
+	> [data-group-badge] {
+	opacity: 0;
+}
+
+@media (hover: hover) {
+	:root[data-cds-fizzy-lake~="panels"]
+		[data-flat-look]
+		[data-sidebar-group-label]:has(h3 > [data-group-toggle]):hover::before,
+	:root[data-cds-fizzy-lake~="panels"]
+		[data-flat-look]
+		[data-sidebar-group-label]:has(h3 > [data-group-toggle]):has([data-popup-open])::before {
+		content: "";
+		z-index: -1;
+		height: var(--sb-row-h);
+		border-radius: var(--sb-radius);
+		background: var(--sb-hover);
+		position: absolute;
+		inset: auto 0 0;
+	}
+}
+
+:root[data-cds-fizzy-lake~="panels"] [data-flat-look] [data-sidebar-group-label] h3 > [data-group-toggle] {
+	color: var(--fizzy-lake-color-secondary, inherit);
+}
+
+:root[data-cds-fizzy-lake~="panels"]
+	[data-flat-look]
+	[data-sidebar-group-label]
+	h3
+	> [data-group-toggle]:focus-visible {
+	color: inherit;
+}
+
+@media (hover: hover) {
+	:root[data-cds-fizzy-lake~="panels"] [data-flat-look] [data-sidebar-group-label]:hover h3 > [data-group-toggle],
+	:root[data-cds-fizzy-lake~="panels"]
+		[data-flat-look]
+		[data-sidebar-group-label]:has([data-popup-open])
+		h3
+		> [data-group-toggle] {
+		color: inherit;
+	}
 }
 
 /* Upstream .df-described-row: a two-line session row (Show > Metadata), its title line where a one-line row's text sits.
