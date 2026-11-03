@@ -148,6 +148,20 @@ export const SHORTCUTS = {
 		ownerSlug: "account-menu",
 		enabled: true,
 	},
+	focus_next_region: {
+		description: "Focus next page area",
+		group: "general",
+		bindings: [everywhere("f6", [], "F6"), ...cmdOrCtrl("f6", [], "F6")],
+		ownerSlug: "focus-regions",
+		enabled: true,
+	},
+	focus_previous_region: {
+		description: "Focus previous page area",
+		group: "general",
+		bindings: [everywhere("f6", ["shift"], "F6"), ...cmdOrCtrl("f6", ["shift"], "F6")],
+		ownerSlug: "focus-regions",
+		enabled: true,
+	},
 	new_session: {
 		description: "New session",
 		group: "general",
@@ -232,22 +246,6 @@ export const SHORTCUTS = {
 		bindings: ctrlEverywhere("o", [], letterCode("o")),
 		ownerSlug: "transcript-view",
 		enabled: true,
-	},
-	focus_next_region: {
-		description: "Focus next region",
-		group: "general",
-		bindings: [everywhere("f6", [], "F6"), ...cmdOrCtrl("f6", [], "F6")],
-		ownerSlug: "focus-regions",
-		enabled: true,
-		hiddenFromDialog: true,
-	},
-	focus_previous_region: {
-		description: "Focus previous region",
-		group: "general",
-		bindings: [everywhere("f6", ["shift"], "F6")],
-		ownerSlug: "focus-regions",
-		enabled: true,
-		hiddenFromDialog: true,
 	},
 	page_search: {
 		description: "Search this page",

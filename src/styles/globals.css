@@ -256,6 +256,10 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream claude.ai/code — typography scale */
 	--text-body: var(--upstream-text-body);
 	--text-body--line-height: var(--upstream-leading-body);
+	/* Upstream text-body-regular: text-body at weight 400 (the ⌘/ dialog's section headings). */
+	--text-body-regular: var(--upstream-text-body);
+	--text-body-regular--line-height: var(--upstream-leading-body);
+	--text-body-regular--font-weight: 400;
 	--text-code: var(--upstream-text-code);
 	--text-code--line-height: var(--upstream-leading-code);
 	--text-footnote: var(--upstream-text-footnote);
@@ -1268,6 +1272,13 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 }
 
 /* The approval notify tip's icon and line fade in (upstream's animate-notify-tip-in), via `motion-safe:`. */
+/* Upstream cds-sticky-edge-start: a sticky band's bottom line fades in once its scroll timeline moves. */
+@keyframes sc-sticky-edge {
+	to {
+		opacity: 1;
+	}
+}
+
 @keyframes notify-tip-in {
 	from {
 		opacity: 0;

@@ -85,7 +85,7 @@ describe("hand-rolled focus rings", () => {
 				"src/components/customize/plugin-row-actions.tsx",
 				`hover:bg-fill-ghost-hover ${SHADOW_FOCUS}`,
 			),
-			shortcutsScroller: has("src/components/keyboard-shortcuts-dialog.tsx", `px-6 pb-6 ${INSET_FOCUS}`),
+			shortcutsScroller: has("src/components/keyboard-shortcuts-dialog.tsx", `px-4 pb-4 ${INSET_FOCUS}`),
 			terminalPane: has(
 				"src/components/panes/terminal-pane.tsx",
 				`rounded-b-[inherit] outline-none ${INSET_FOCUS}`,

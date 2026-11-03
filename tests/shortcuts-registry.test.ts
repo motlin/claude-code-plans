@@ -211,6 +211,8 @@ describe("shortcut registry", () => {
 			"toggle_sidebar",
 			"shortcuts_modal",
 			"settings",
+			"focus_next_region",
+			"focus_previous_region",
 			"new_session",
 			"select_environment",
 			"new_environment",
@@ -223,8 +225,6 @@ describe("shortcut registry", () => {
 			"jump_prev_prompt",
 			"jump_next_prompt",
 			"transcript_view",
-			"focus_next_region",
-			"focus_previous_region",
 			"page_search",
 			"settings_search",
 			"stop_response",
@@ -250,11 +250,12 @@ describe("shortcut registry", () => {
 		]);
 	});
 
-	it("binds F6 (plus ⌘F6 / Ctrl+F6) forward and ⇧F6 backward", () => {
+	it("binds F6 (plus ⌘F6 / Ctrl+F6) forward and ⇧F6 (plus ⇧⌘F6 / Ctrl+⇧F6) backward", () => {
 		expect({
 			nextMac: bindingsFor("focus_next_region", true),
 			nextNonMac: bindingsFor("focus_next_region", false),
-			previous: bindingsFor("focus_previous_region", true),
+			previousMac: bindingsFor("focus_previous_region", true),
+			previousNonMac: bindingsFor("focus_previous_region", false),
 		}).toStrictEqual({
 			nextMac: [
 				{key: "f6", code: "F6", modifiers: []},
@@ -264,7 +265,14 @@ describe("shortcut registry", () => {
 				{key: "f6", code: "F6", modifiers: []},
 				{key: "f6", code: "F6", modifiers: ["ctrl"], platform: "non-mac"},
 			],
-			previous: [{key: "f6", code: "F6", modifiers: ["shift"]}],
+			previousMac: [
+				{key: "f6", code: "F6", modifiers: ["shift"]},
+				{key: "f6", code: "F6", modifiers: ["cmd", "shift"], platform: "mac"},
+			],
+			previousNonMac: [
+				{key: "f6", code: "F6", modifiers: ["shift"]},
+				{key: "f6", code: "F6", modifiers: ["ctrl", "shift"], platform: "non-mac"},
+			],
 		});
 	});
 

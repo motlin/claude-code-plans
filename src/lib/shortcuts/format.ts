@@ -128,6 +128,14 @@ export function formatKeys(keys: string, isMac: boolean): KeyLabel[] {
 	return [...modifiers.map((m) => ({...modifierLabels[m]})), {...keyLabelFor(key, isMac)}];
 }
 
+/** The keycap label for one "+"-separated part, which may be a lone modifier. */
+export function keyPartLabel(part: string, isMac: boolean): KeyLabel {
+	const modifier = MODIFIER_ALIASES[part.toLowerCase()];
+	if (modifier === undefined) return {...keyLabelFor(part, isMac)};
+	const labels = isMac ? MAC_MODIFIER_LABELS : NON_MAC_MODIFIER_LABELS;
+	return {...labels[!isMac && modifier === "cmd" ? "ctrl" : modifier]};
+}
+
 /** Keycap labels per step of a whitespace-separated sequence like "esc esc"; a plain chord is one step. */
 export function formatKeySequence(keys: string, isMac: boolean): KeyLabel[][] {
 	return keys
