@@ -57,9 +57,9 @@ describe("vp task cache environment", () => {
 		});
 	});
 
-	it("builds through the cached build:app task with the commit SHA in its environment", () => {
+	it("builds through the cached build:app task with the commit SHA in its environment, behind the per-worktree build lock", () => {
 		expect(justRecipeBody("build")).toMatch(
-			/^\s+CCB_BUILD_SHA="\$\(git rev-parse --short HEAD\)" scripts\/clean-env\.sh vp run --cache build:app$/m,
+			/^\s+CCB_BUILD_SHA="\$\(git rev-parse --short HEAD\)" scripts\/with-lock\.sh "\$\(git rev-parse --absolute-git-dir\)\/ccb-build\.lock" scripts\/clean-env\.sh vp run --cache build:app$/m,
 		);
 	});
 

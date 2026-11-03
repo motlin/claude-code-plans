@@ -143,9 +143,9 @@ perf-ceilings: install
 typecheck: install
     vp run typecheck
 
-# Build the project
+# Build the project. Holds a per-worktree lock, so `just start` and a `git test run` building at once take turns instead of corrupting .output
 build: install
-    CCB_BUILD_SHA="$(git rev-parse --short HEAD)" scripts/clean-env.sh vp run --cache build:app
+    CCB_BUILD_SHA="$(git rev-parse --short HEAD)" scripts/with-lock.sh "$(git rev-parse --absolute-git-dir)/ccb-build.lock" scripts/clean-env.sh vp run --cache build:app
 
 # Run Storybook dev server
 storybook *args: install
