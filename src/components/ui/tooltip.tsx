@@ -64,7 +64,7 @@ function popupOpen(anchor: HTMLElement): boolean {
 
 /**
  * Minimal claude.ai/code tooltip: always dark, side top (titlebar controls use
- * bottom, sidebar family handles right), offset 4, 300ms open delay, with an optional text-variant shortcut
+ * bottom, sidebar family handles right), offset 4, 300ms hover delay (keyboard focus opens at once, marked `data-instant="focus"`), with an optional text-variant shortcut
  * after the label. Once open it is measured and, when it would leave the viewport, flipped to the opposite side
  * and shifted to stay 8px inside the edges.
  */
@@ -116,8 +116,7 @@ export function Tooltip({
 	/** Clamp the content to three lines, keeping its whitespace, as upstream's settled workflow status tip does. */
 	lineClamp?: boolean;
 	/**
-	 * `reason`: upstream's disabled-reason tooltip. The balanced 240px box, opened at once when focus arrives
-	 * (upstream `data-instant="focus"`), and the anchored child is left undescribed because the reason already
+	 * `reason`: upstream's disabled-reason tooltip. The balanced 240px box, and the anchored child is left undescribed because the reason already
 	 * describes it.
 	 */
 	variant?: "reason" | undefined;
@@ -163,6 +162,8 @@ export function Tooltip({
 	const portal = portalProp ?? inheritedPortal;
 	const id = useId();
 	const [open, setOpen] = useState(false);
+	/** Upstream's `data-instant="focus"`: the tip opened at once because keyboard focus arrived. */
+	const [openedByFocus, setOpenedByFocus] = useState(false);
 	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 	const anchorRef = useRef<HTMLSpanElement>(null);
 	const tipRef = useRef<HTMLSpanElement>(null);
@@ -171,6 +172,11 @@ export function Tooltip({
 	const [cursorY, setCursorY] = useState<number | undefined>(undefined);
 	const [trackedTop, setTrackedTop] = useState<number | undefined>(undefined);
 	const suppressed = useRef(false);
+	/**
+	 * A pointer press on the anchor that hasn't been followed by blur: the focus it brings is not keyboard focus, so
+	 * it leaves the tip to the hover delay (upstream's Base UI `:focus-visible` gate).
+	 */
+	const pointerPressed = useRef(false);
 
 	useEffect(
 		() => () => {
@@ -237,7 +243,7 @@ export function Tooltip({
 	const baseSideClass = (align === "start" || trackedTop !== undefined ? START_SIDE_CLASS : SIDE_CLASS)[placedSide];
 	const sideClass = sideOffset === 8 ? widenOffset(baseSideClass) : baseSideClass;
 
-	function show(openDelay = delay) {
+	function show(openDelay = delay, byFocus = false) {
 		clearTimeout(timer.current);
 		const anchor = anchorRef.current;
 		if (suppressed.current) return;
@@ -249,6 +255,7 @@ export function Tooltip({
 				const {left, top, width, height} = anchor.getBoundingClientRect();
 				setAnchorBox({left, top, width, height});
 			}
+			if (byFocus) setOpenedByFocus(true);
 			setOpen(true);
 		};
 		if (openDelay === 0) reveal();
@@ -262,6 +269,7 @@ export function Tooltip({
 	function hide() {
 		clearTimeout(timer.current);
 		setOpen(false);
+		setOpenedByFocus(false);
 	}
 
 	/** Leaving the anchor lifts the suppression, unless the popup is still open. */
@@ -307,6 +315,7 @@ export function Tooltip({
 			id={id}
 			data-side={placedSide}
 			data-align={align}
+			data-instant={openedByFocus ? "focus" : undefined}
 			className={`${tooltipClass} ${sideClass}`}
 			style={trackedTop === undefined ? shiftStyle(placement) : trackedStyle(trackedTop, placement)}
 		>
@@ -349,10 +358,16 @@ export function Tooltip({
 			}}
 			onPointerMove={trackCursor === "y" ? trackPointer : undefined}
 			onPointerLeave={leave}
-			onFocus={() => {
-				show(variant === "reason" ? 0 : delay);
+			onPointerDown={() => {
+				pointerPressed.current = true;
 			}}
-			onBlur={leave}
+			onFocus={() => {
+				if (!pointerPressed.current) show(0, true);
+			}}
+			onBlur={() => {
+				pointerPressed.current = false;
+				leave();
+			}}
 			onClick={
 				closeOnClick
 					? hide

@@ -198,7 +198,7 @@ describe('<Tooltip variant="reason">', () => {
 		expect(screen.getByRole("tooltip").textContent).toBe("Choose an option or skip this question");
 	});
 
-	it("still waits 300ms on focus for the default variant", () => {
+	it("opens every variant at once on keyboard focus, marked data-instant=focus as upstream", () => {
 		vi.useFakeTimers();
 		render(
 			<Tooltip content="Copy">
@@ -206,9 +206,66 @@ describe('<Tooltip variant="reason">', () => {
 			</Tooltip>,
 		);
 
+		fireEvent.keyDown(document.body, {key: "Tab"});
 		fireEvent.focus(screen.getByRole("button"));
 
+		const tooltip = screen.getByRole("tooltip");
+		expect({text: tooltip.textContent, instant: tooltip.dataset["instant"]}).toEqual({
+			text: "Copy",
+			instant: "focus",
+		});
+	});
+
+	it("leaves data-instant off a tip opened by hover", () => {
+		vi.useFakeTimers();
+		render(
+			<Tooltip content="Copy">
+				<button type="button">Copy</button>
+			</Tooltip>,
+		);
+
+		expect(openTooltip().dataset["instant"]).toBeUndefined();
+	});
+
+	it("does not open on focus that follows a pointer press, as upstream's focus-visible gate", () => {
+		vi.useFakeTimers();
+		render(
+			<Tooltip content="Copy">
+				<button type="button">Copy</button>
+			</Tooltip>,
+		);
+		const button = screen.getByRole("button");
+
+		fireEvent.pointerDown(button);
+		fireEvent.focus(button);
+		act(() => {
+			vi.advanceTimersByTime(300);
+		});
+
 		expect(screen.queryByRole("tooltip")).toBeNull();
+	});
+
+	it("keeps the 300ms delay on pointer hover after a pointer press", () => {
+		vi.useFakeTimers();
+		render(
+			<Tooltip content="Copy">
+				<button type="button">Copy</button>
+			</Tooltip>,
+		);
+		const button = screen.getByRole("button");
+
+		fireEvent.pointerDown(button);
+		fireEvent.focus(button);
+		fireEvent.pointerEnter(button);
+		act(() => {
+			vi.advanceTimersByTime(299);
+		});
+		const early = screen.queryByRole("tooltip");
+		act(() => {
+			vi.advanceTimersByTime(1);
+		});
+
+		expect({early, late: screen.getByRole("tooltip").textContent}).toEqual({early: null, late: "Copy"});
 	});
 });
 
