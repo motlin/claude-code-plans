@@ -4,6 +4,8 @@ import {cleanup, render, waitFor} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {DiffFile} from "../src/components/changes/diff-file";
+import {DIFFS_STYLE_OVERRIDES, diffsUnsafeCss} from "../src/components/changes/diffs-config";
+import {PanelsOff} from "./fizzy-lake-off";
 import {preloadFileTypeIcons} from "../src/components/file-type-icons-loader";
 
 const PATCH = `diff --git a/src/greet.ts b/src/greet.ts
@@ -100,6 +102,34 @@ describe("DiffFile", () => {
 		await waitFor(() => {
 			expect(overflowVars(scrolled.container)).toStrictEqual({overflow: "", gutter: ""});
 		});
+	});
+
+	it("injects upstream's panels hunk-separator CSS (ca7ba268c za() Ta) only while panels is on, with the comfortable pad-md on the host", async () => {
+		const TA =
+			"[data-separator-wrapper]{padding-left:var(--cds-pad-md)}@media (pointer:fine){[data-separator-wrapper][data-separator-multi-button]{grid-template-columns:16px calc(24px - var(--cds-pad-md)) auto}}";
+		const injected = (container: HTMLElement) =>
+			[...shadowRootOf(container).querySelectorAll("style")].some((style) => style.textContent.includes(TA));
+		expect({
+			on: diffsUnsafeCss({panels: true}),
+			off: diffsUnsafeCss({panels: false}),
+			padMd: (DIFFS_STYLE_OVERRIDES as Record<string, string>)["--cds-pad-md"],
+		}).toStrictEqual({on: TA, off: "", padMd: "8px"});
+
+		const panels = render(<DiffFile patch={PATCH} />);
+		await waitFor(() => {
+			expect(injected(panels.container)).toBe(true);
+		});
+		cleanup();
+
+		const off = render(
+			<PanelsOff>
+				<DiffFile patch={PATCH} />
+			</PanelsOff>,
+		);
+		await waitFor(() => {
+			expect(contentRowTypes(shadowRootOf(off.container))).toHaveLength(6);
+		});
+		expect(injected(off.container)).toBe(false);
 	});
 
 	it("renders side-by-side when diffStyle is split", async () => {

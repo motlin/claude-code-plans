@@ -1,5 +1,6 @@
 import {type ReactNode, useEffect, useRef, useState} from "react";
 
+import {useFizzyLake} from "../lib/fizzy-lake";
 import {findScrollContainer, toObserverRoot} from "./scroll-container";
 
 /**
@@ -8,8 +9,9 @@ import {findScrollContainer, toObserverRoot} from "./scroll-container";
  *
  * With `sticky`, it renders upstream's cds Page header band: an `h-0` sentinel, then a
  * `sticky top-0 bg-page` band (z 20) holding the content-width `box` (with `pb-6`) and a
- * `data-cds-part=fade` strip that hangs 32px below it. The strip stays invisible until the
- * sentinel scrolls out of the scroller, i.e. until the band pins over scrolled content. The sentinel
+ * separator: under fizzy-lake panels a 1px `data-cds-part=line` border at the band's bottom edge,
+ * otherwise a `data-cds-part=fade` strip that hangs 32px below it. The separator stays invisible
+ * until the sentinel scrolls out of the scroller, i.e. until the band pins over scrolled content. The sentinel
  * (and so the band) rises over RootTopRow's empty 36px (48px phone) spacer and pads it back, so pinned it keeps the
  * whitespace upstream's 64px title row has above the title instead of pinning the title flush at the top.
  */
@@ -69,10 +71,14 @@ const CONTROLS_CLASS =
 
 /** Upstream's `page-fade-t` strip; `transition-[opacity,visibility]` runs at the default 150ms (upstream's duration-fast). */
 const FADE_CLASS = "page-fade-t absolute inset-x-0 -bottom-8 h-8 transition-[opacity,visibility]";
+/** Upstream c193cfc9b cds Page `data-cds-part: E ? "line" : "fade"`: the panels separator, a 1px `--cds-border-line` rule. */
+const LINE_CLASS =
+	"pointer-events-none absolute inset-x-0 bottom-0 border-b border-[color:var(--color-border-line)] transition-[opacity,visibility]";
 
 function StickyBand({box, children}: {box: string; children: ReactNode}) {
 	const sentinelRef = useRef<HTMLDivElement>(null);
 	const [scrolled, setScrolled] = useState(false);
+	const panels = useFizzyLake("panels");
 	useEffect(() => {
 		const sentinel = sentinelRef.current;
 		if (sentinel === null || typeof IntersectionObserver === "undefined") return undefined;
@@ -93,11 +99,19 @@ function StickyBand({box, children}: {box: string; children: ReactNode}) {
 			<div ref={sentinelRef} className="h-0 -mt-9 max-sm:-mt-12" />
 			<div className="sticky top-0 bg-page" style={{zIndex: 20}}>
 				<div className={`${box} pt-9 max-sm:pt-12 pb-6`}>{children}</div>
-				<div
-					aria-hidden="true"
-					data-cds-part="fade"
-					className={`${FADE_CLASS} ${scrolled ? "visible opacity-100" : "invisible opacity-0"}`}
-				/>
+				{panels ? (
+					<div
+						aria-hidden="true"
+						data-cds-part="line"
+						className={`${LINE_CLASS} ${scrolled ? "opacity-100" : "invisible opacity-0"}`}
+					/>
+				) : (
+					<div
+						aria-hidden="true"
+						data-cds-part="fade"
+						className={`${FADE_CLASS} ${scrolled ? "visible opacity-100" : "invisible opacity-0"}`}
+					/>
+				)}
 			</div>
 		</>
 	);

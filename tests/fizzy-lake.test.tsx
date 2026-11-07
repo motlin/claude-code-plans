@@ -8,12 +8,14 @@ import {DensityOverride, DensityScope} from "../src/components/ui/density";
 import {
 	FIZZY_LAKE_ATTRIBUTE,
 	FIZZY_LAKE_COLOR,
+	FIZZY_LAKE_FLAT_LOOK,
 	FIZZY_LAKE_PANELS,
 	FIZZY_LAKE_PANELS_FINE_POINTER_QUERY,
 	FIZZY_LAKE_PARTS,
 	FIZZY_LAKE_TYPE,
 	FizzyLakeContext,
 	type FizzyLakePart,
+	flatLookFor,
 	useFizzyLake,
 } from "../src/lib/fizzy-lake";
 
@@ -62,6 +64,14 @@ function scopeDensity(
 }
 
 describe("fizzy-lake switch", () => {
+	it("marks <html> data-flat-look as upstream's app root does (shared-m-w-0 uZ) while panels is on", () => {
+		expect({
+			attr: FIZZY_LAKE_FLAT_LOOK,
+			on: flatLookFor(["color", "panels", "type"]),
+			off: flatLookFor(["color", "type"]),
+		}).toStrictEqual({attr: "", on: "", off: undefined});
+	});
+
 	it("adopts all three upstream parts by default, rendered as upstream's html[data-cds-fizzy-lake]", () => {
 		expect({
 			parts: FIZZY_LAKE_PARTS,

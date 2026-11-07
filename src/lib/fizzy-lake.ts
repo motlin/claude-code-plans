@@ -22,6 +22,17 @@ export const FIZZY_LAKE_COLOR = FIZZY_LAKE_PARTS.includes("color");
 export const FIZZY_LAKE_PANELS = FIZZY_LAKE_PARTS.includes("panels");
 export const FIZZY_LAKE_TYPE = FIZZY_LAKE_PARTS.includes("type");
 
+/** The `data-flat-look` value for `<html>`: present ("") while panels is on. */
+export function flatLookFor(parts: readonly FizzyLakePart[]): "" | undefined {
+	return parts.includes("panels") ? "" : undefined;
+}
+
+/*
+ * Upstream shared-m-w-0 `uZ`: `document.documentElement.toggleAttribute("data-flat-look",!0)`,
+ * rendered by the app root; the sidebar aside carries it too. Local keeps it tied to panels.
+ */
+export const FIZZY_LAKE_FLAT_LOOK = flatLookFor(FIZZY_LAKE_PARTS);
+
 /*
  * Upstream `sF`: panels control sizes (28px comfortable controls, toolbar icon box and
  * strip, the flat-look row heights) sit inside this media query, so a coarse device keeps

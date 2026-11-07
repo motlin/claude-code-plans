@@ -24,10 +24,12 @@ describe("root route head", () => {
 		expect(svg).not.toContain("width='32' height='32'");
 	});
 
-	it("marks the document comfortable, upstream's web shell density, with the fizzy-lake parts", () => {
+	it("marks the document comfortable, upstream's web shell density, with the fizzy-lake parts and upstream's data-flat-look", () => {
 		const source = readFileSync("src/routes/__root.tsx", "utf8");
-		expect(source.match(/<html [^>]*>/g)).toStrictEqual([
-			'<html lang="en" data-density="comfortable" data-cds-fizzy-lake={FIZZY_LAKE_ATTRIBUTE} suppressHydrationWarning>',
-		]);
+		expect(source.match(/<html\s[^>]*>/g)?.map((tag) => tag.replace(/\s+/g, " ").replace(" >", ">"))).toStrictEqual(
+			[
+				'<html lang="en" data-density="comfortable" data-cds-fizzy-lake={FIZZY_LAKE_ATTRIBUTE} data-flat-look={FIZZY_LAKE_FLAT_LOOK} suppressHydrationWarning>',
+			],
+		);
 	});
 });

@@ -4,6 +4,7 @@ import {act, cleanup, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {CodePageHeader} from "../src/components/code-page-header";
+import {PanelsOff} from "./fizzy-lake-off";
 
 afterEach(cleanup);
 
@@ -63,9 +64,57 @@ describe("CodePageHeader sticky", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("pins upstream's sticky bg-page band over a content box and shows the fade only once the h-0 sentinel scrolls away", () => {
+	it("pins upstream's sticky bg-page band over a content box and draws upstream's 1px panels line only once the h-0 sentinel scrolls away", () => {
 		const {container} = render(
 			<CodePageHeader title="Artifacts" sticky={{box: "mx-auto w-full max-w-5xl px-2 md:px-8"}} />,
+		);
+		const header = screen.getByRole("heading", {level: 1, name: "Artifacts"}).parentElement;
+		const box = header?.parentElement;
+		const band = box?.parentElement;
+		const fade = container.querySelector('[data-cds-part="line"]');
+		const sentinel = band?.previousElementSibling;
+		const scrolled = (isIntersecting: boolean) => {
+			act(() => {
+				observed[0]?.callback([{isIntersecting} as IntersectionObserverEntry], {} as IntersectionObserver);
+			});
+			return fade?.className;
+		};
+		expect({
+			header: header?.className,
+			box: box?.className,
+			band: band?.className,
+			bandZ: band instanceof HTMLElement ? band.style.zIndex : null,
+			sentinel: sentinel?.className,
+			observes: observed.map((record) => record.target === sentinel),
+			fadeParent: fade?.parentElement === band,
+			fadeHidden: fade?.getAttribute("aria-hidden"),
+			atRest: fade?.className,
+			afterScroll: scrolled(false),
+			backAtTop: scrolled(true),
+		}).toStrictEqual({
+			header: "@container flex flex-col sm:-mt-1",
+			// The sentinel (so the band) rises over RootTopRow's 36px (48px phone) spacer and pads it back, so the pinned band keeps
+			// upstream's whitespace above the title (its 64px title row) instead of pinning the title flush at the top.
+			box: "mx-auto w-full max-w-5xl px-2 md:px-8 pt-9 max-sm:pt-12 pb-6",
+			band: "sticky top-0 bg-page",
+			bandZ: "20",
+			sentinel: "h-0 -mt-9 max-sm:-mt-12",
+			observes: [true],
+			fadeParent: true,
+			fadeHidden: "true",
+			atRest: "pointer-events-none absolute inset-x-0 bottom-0 border-b border-[color:var(--color-border-line)] transition-[opacity,visibility] invisible opacity-0",
+			afterScroll:
+				"pointer-events-none absolute inset-x-0 bottom-0 border-b border-[color:var(--color-border-line)] transition-[opacity,visibility] opacity-100",
+			backAtTop:
+				"pointer-events-none absolute inset-x-0 bottom-0 border-b border-[color:var(--color-border-line)] transition-[opacity,visibility] invisible opacity-0",
+		});
+	});
+
+	it("keeps the pre-rollout page-fade-t strip without panels (upstream c193cfc9b cds Page data-cds-part=fade)", () => {
+		const {container} = render(
+			<PanelsOff>
+				<CodePageHeader title="Artifacts" sticky={{box: "mx-auto w-full max-w-5xl px-2 md:px-8"}} />
+			</PanelsOff>,
 		);
 		const header = screen.getByRole("heading", {level: 1, name: "Artifacts"}).parentElement;
 		const box = header?.parentElement;

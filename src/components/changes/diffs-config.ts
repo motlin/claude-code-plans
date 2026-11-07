@@ -39,7 +39,22 @@ export const DIFFS_STYLE_OVERRIDES = {
 	"--diffs-bg-selection-number-override": "var(--accent-900)",
 	"--diffs-fg-conflict-marker-override": "var(--upstream-text-muted)",
 	"--diffs-gap-style": "0",
+	// Upstream's comfortable --cds-pad-md, which the injected separator CSS reads inside the shadow root.
+	"--cds-pad-md": "8px",
 } as CSSProperties;
+
+/*
+ * Upstream ca7ba268c CodeView `za()` injects `Ta` into every diff shadow root while panels is on.
+ * It goes after upstream's always-on `wa` list, which local does not inject yet
+ * (upstream-sync diff-codeview-injected-css); until then `Ta` stands alone.
+ */
+const PANELS_SEPARATOR_CSS =
+	"[data-separator-wrapper]{padding-left:var(--cds-pad-md)}@media (pointer:fine){[data-separator-wrapper][data-separator-multi-button]{grid-template-columns:16px calc(24px - var(--cds-pad-md)) auto}}";
+
+/** The `unsafeCSS` upstream's CodeView injects for the given fizzy-lake state. */
+export function diffsUnsafeCss({panels}: {panels: boolean}): string {
+	return panels ? PANELS_SEPARATOR_CSS : "";
+}
 
 /**
  * Upstream sets these only in wrap mode (ca7ba268c za(): `n==="wrap"&&{…}`).

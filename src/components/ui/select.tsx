@@ -8,6 +8,8 @@ import {useId} from "react";
  * Local mapping: h-control is h-8, the comfortable radius is rounded-r6, the field gap and the
  * control's end pad use the cds density utilities, the trigger's pad-sm is 2,
  * opacity-disabled is opacity-50 and duration-fast is Tailwind's default transition.
+ * Under panels on a fine pointer the trigger is h-control 28px and the rows 28px too (upstream
+ * shared-frame combobox row `MM("panels") && density==="comfortable" && !touch ? 28 : 32`).
  */
 
 /** Upstream's `gap-xs flex-col font-sans` field around the label and trigger. */
@@ -15,7 +17,7 @@ const FIELD_CLASS = "flex w-full flex-col gap-xs font-sans";
 const LABEL_CLASS = "text-body text-primary font-medium leading-none";
 /** Upstream's `y$ Gv.outline tt.select pe-sm w-full min-w-0`. */
 const CONTROL_CLASS =
-	"group/cbx inline-flex items-center gap-1.5 h-8 rounded-r6 font-sans text-body font-control-regular text-primary outline-none transition data-[disabled]:opacity-50 data-[disabled]:pointer-events-none bg-fill-field shadow-field-ring [&:hover:not(:has(:focus-visible)):not([data-disabled])]:shadow-field-hover ps-0 has-[:focus-visible]:shadow-focus pe-sm w-full min-w-0";
+	"group/cbx inline-flex items-center gap-1.5 h-8 panels-fine:h-7 rounded-r6 font-sans text-body font-control-regular text-primary outline-none transition data-[disabled]:opacity-50 data-[disabled]:pointer-events-none bg-fill-field shadow-field-ring [&:hover:not(:has(:focus-visible)):not([data-disabled])]:shadow-field-hover ps-0 has-[:focus-visible]:shadow-focus pe-sm w-full min-w-0";
 /** Upstream's `JR`: the trigger button fills the control. */
 const TRIGGER_CLASS =
 	"flex min-w-0 flex-1 items-center gap-1.5 self-stretch ps-2 text-start border-0 bg-transparent p-0 outline-none focus-visible:outline-hidden";
@@ -26,7 +28,7 @@ const POPUP_CLASS =
 const LIST_CLASS = "flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto rounded-[inherit] p-1 outline-none";
 /** Upstream's `vE` row. */
 const ITEM_CLASS =
-	"group/cbx-item flex w-full items-center gap-2 min-h-8 px-3 py-1 rounded-r6 text-body font-normal text-primary select-none outline-none data-[highlighted]:bg-fill-ghost-hover data-[disabled]:opacity-50 data-[disabled]:pointer-events-none";
+	"group/cbx-item flex w-full items-center gap-2 min-h-8 panels-fine:min-h-7 px-3 py-1 rounded-r6 text-body font-normal text-primary select-none outline-none data-[highlighted]:bg-fill-ghost-hover data-[disabled]:opacity-50 data-[disabled]:pointer-events-none";
 
 export interface SelectItem<T extends string> {
 	value: T;

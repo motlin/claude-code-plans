@@ -6,7 +6,8 @@ import {ArrowUpRight, ChevronDown, ChevronRight, Plus} from "lucide-react";
 import {type CSSProperties, type ReactNode, useMemo, useState} from "react";
 import {useCodeThemes} from "../../hooks/use-code-themes";
 import {LazyFileTypeIcon} from "../lazy-file-type-icon";
-import {DIFFS_STYLE_OVERRIDES, DIFFS_WRAP_STYLE} from "./diffs-config";
+import {useFizzyLake} from "../../lib/fizzy-lake";
+import {DIFFS_STYLE_OVERRIDES, DIFFS_WRAP_STYLE, diffsUnsafeCss} from "./diffs-config";
 import type {DiffStyle} from "../settings-context";
 import {useResolvedTheme} from "../theme-context";
 
@@ -193,6 +194,7 @@ export function DiffFile({
 	};
 	const resolvedTheme = useResolvedTheme();
 	const codeThemes = useCodeThemes();
+	const panels = useFizzyLake("panels");
 
 	const lineAnnotations = useMemo(
 		() =>
@@ -216,8 +218,9 @@ export function DiffFile({
 			stickyHeader: true,
 			collapsed,
 			enableGutterUtility: onRequestChanges !== undefined,
+			unsafeCSS: diffsUnsafeCss({panels}),
 		}),
-		[codeThemes, resolvedTheme, diffStyle, wordWrap, wordDiff, collapsed, onRequestChanges],
+		[codeThemes, resolvedTheme, diffStyle, wordWrap, wordDiff, collapsed, onRequestChanges, panels],
 	);
 	const style = useMemo<CSSProperties>(
 		() => (wordWrap ? {...DIFFS_STYLE_OVERRIDES, ...DIFFS_WRAP_STYLE} : DIFFS_STYLE_OVERRIDES),
