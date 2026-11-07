@@ -71,6 +71,7 @@ function sentReceiptRows(
 	}));
 }
 
+/** Upstream cds Checkbox / Radio indicator: unchecked, its edge reads --cds-checkbox-edge (hover -hover). */
 function Mark({checked, multi}: {checked: boolean; multi: boolean}) {
 	const shape = multi ? "rounded-r3" : "rounded-full";
 	return (
@@ -78,7 +79,9 @@ function Mark({checked, multi}: {checked: boolean; multi: boolean}) {
 			aria-hidden="true"
 			{...(checked ? {"data-checked": ""} : {"data-unchecked": ""})}
 			className={`mt-[calc((1lh-1rem)/2)] flex size-4 shrink-0 items-center justify-center ${shape} ${
-				checked ? "bg-fill-accent text-white" : "shadow-[inset_0_0_0_1px_var(--upstream-border-strong)]"
+				checked
+					? "bg-fill-accent text-white"
+					: "shadow-[inset_0_0_0_1px_var(--color-checkbox-edge)] group-hover:shadow-[inset_0_0_0_1px_var(--color-checkbox-edge-hover)]"
 			}`}
 		>
 			{checked &&
@@ -99,7 +102,7 @@ const ANSWER_ROW_ATTR = "data-question-answer-row";
 
 const OPTION_FOCUS = "focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus";
 
-const OPTION_CLASS = "epitaxy-answer-option flex w-full items-start gap-3 px-3 py-3 text-start";
+const OPTION_CLASS = "epitaxy-answer-option group flex w-full items-start gap-3 px-3 py-3 text-start";
 
 const OPTION_TEXT_CLASS =
 	"[unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]";
@@ -563,7 +566,7 @@ export function QuestionCard({
 							}}
 						/>
 					))}
-					<div className="epitaxy-answer-option relative grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-2 px-3 py-3">
+					<div className="epitaxy-answer-option group relative grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-2 px-3 py-3">
 						<button
 							type="button"
 							{...{[ANSWER_ATTR]: ""}}

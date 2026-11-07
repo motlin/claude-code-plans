@@ -167,6 +167,11 @@ html[data-interface-font="dyslexic"] {
 	--color-border: var(--upstream-border);
 	--color-subtle: var(--upstream-border-subtle);
 	--color-strong: var(--upstream-border-strong);
+	/* Upstream cds Checkbox/Radio edge (shared-frame Rh `border-[color:var(--cds-checkbox-edge,var(--cds-border-strong))]`);
+	   only the contrast:more block sets it. Upstream's hover fallback is --cds-border-stronger, which local lacks,
+	   so the hover falls back to border-strong too; swap it when border-stronger is ported. */
+	--color-checkbox-edge: var(--checkbox-edge, var(--upstream-border-strong));
+	--color-checkbox-edge-hover: var(--checkbox-edge-hover, var(--upstream-border-strong));
 	--color-seam: var(--upstream-seam);
 	--color-border-line: var(--upstream-border-line);
 
@@ -998,13 +1003,49 @@ html[data-interface-font="dyslexic"] {
 	--menu-shadow: inset 0 0 0 1px #ffffff0a, 0 8px 24px rgba(0, 0, 0, 0.32), 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
+/*
+ * Upstream `@media (prefers-contrast:more){.cds-root:is([data-cds-fizzy-lake~=color],…){--cds-fill-field-ring:
+ * var(--cds-alpha-5);--cds-fill-field-hover-ring:var(--cds-alpha-6);--cds-text-primary:#000;--cds-text-secondary:
+ * #000000bf;--cds-text-muted:#0009;--cds-checkbox-edge:var(--cds-alpha-5);--cds-checkbox-edge-hover:var(--cds-alpha-6);
+ * --cds-switch-track:var(--cds-alpha-5);--cds-switch-track-hover:var(--cds-alpha-6);--cds-fizzy-lake-color-composer-ring:
+ * #00000080;--cds-fizzy-lake-color-placeholder:#0009;--cds-fizzy-lake-color-plain-secondary:#000000bf;…}}` and its
+ * dark twins (dumps/fizzy-contrast-more-tokens-upstream-rules-2026-11-06.css.txt). alpha-N is neutral-900 at N%:
+ * #0b0b0b light, #fff dark under fizzy. --fizzy-lake-color-secondary and --muted-as-secondary follow
+ * --upstream-text-secondary. The dark rule restates every value because `.dark`/`:root.dark[…]` would otherwise win.
+ */
 @media (prefers-contrast: more) {
 	:root[data-cds-fizzy-lake~="color"] {
 		--upstream-plain-secondary: #000000bf;
+		--upstream-text-primary: #000;
+		--upstream-text-secondary: #000000bf;
+		--upstream-text-muted: #0009;
+		--field-ring-shadow: inset 0 0 0 1px #0b0b0b80;
+		--field-hover-shadow: inset 0 0 0 1px #0b0b0b99;
+		--settings-switch-track: #0b0b0b80;
+		--settings-switch-track-hover: #0b0b0b99;
+		--menu-switch-track: #0b0b0b80;
+		--menu-switch-track-hover: #0b0b0b99;
+		--checkbox-edge: #0b0b0b80;
+		--checkbox-edge-hover: #0b0b0b99;
+		--composer-ring: #00000080;
+		--upstream-placeholder: #0009;
 	}
 
 	:root.dark[data-cds-fizzy-lake~="color"] {
 		--upstream-plain-secondary: #ffffffbf;
+		--upstream-text-primary: #fff;
+		--upstream-text-secondary: #ffffffbf;
+		--upstream-text-muted: #ffffff91;
+		--field-ring-shadow: inset 0 0 0 1px #ffffff80;
+		--field-hover-shadow: inset 0 0 0 1px #ffffff99;
+		--settings-switch-track: #fff6;
+		--settings-switch-track-hover: #ffffff70;
+		--menu-switch-track: #fff6;
+		--menu-switch-track-hover: #ffffff70;
+		--checkbox-edge: #ffffff80;
+		--checkbox-edge-hover: #ffffff99;
+		--composer-ring: #ffffff80;
+		--upstream-placeholder: #ffffff91;
 	}
 }
 

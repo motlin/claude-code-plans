@@ -265,3 +265,37 @@ describe("QuestionCard Escape in the Other box, as upstream's ct", () => {
 		}).toStrictEqual({focused: "root", text: "x", calls: 0});
 	});
 });
+
+describe("QuestionCard marks, as upstream's cds Checkbox / Radio edge", () => {
+	const EDGE = "shadow-[inset_0_0_0_1px_var(--color-checkbox-edge)]";
+	const EDGE_HOVER = "group-hover:shadow-[inset_0_0_0_1px_var(--color-checkbox-edge-hover)]";
+
+	function marks() {
+		return Array.from(document.querySelectorAll("[data-question-answer]")).map((answer) => {
+			const option = answer.closest(".epitaxy-answer-option");
+			const mark = option?.querySelector("[data-unchecked], [data-checked]");
+			return {
+				group: option?.classList.contains("group") ?? false,
+				edge: mark?.classList.contains(EDGE) ?? false,
+				edgeHover: mark?.classList.contains(EDGE_HOVER) ?? false,
+				borderStrong: mark?.className.includes("--upstream-border-strong") ?? true,
+			};
+		});
+	}
+
+	const UNCHECKED = {group: true, edge: true, edgeHover: true, borderStrong: false};
+	const CHECKED = {group: true, edge: false, edgeHover: false, borderStrong: false};
+
+	it("draws unchecked radio marks with the checkbox edge and the hover edge", () => {
+		render(<QuestionCard questions={[SINGLE]} onSubmit={async () => {}} />);
+		fireEvent.click(screen.getByRole("button", {name: "JestWidely adopted"}));
+
+		expect(marks()).toStrictEqual([UNCHECKED, CHECKED, UNCHECKED]);
+	});
+
+	it("draws unchecked checkbox marks the same way", () => {
+		render(<QuestionCard questions={[MULTI]} onSubmit={async () => {}} />);
+
+		expect(marks()).toStrictEqual([UNCHECKED, UNCHECKED, UNCHECKED, UNCHECKED]);
+	});
+});

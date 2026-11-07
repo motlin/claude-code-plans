@@ -26,6 +26,20 @@ function tokens(source: string, names: readonly string[]): Record<string, string
 const FIZZY_LIGHT = ':root[data-cds-fizzy-lake~="color"]';
 const FIZZY_DARK = ':root.dark[data-cds-fizzy-lake~="color"]';
 
+/* The local twin of upstream's four `@media (prefers-contrast:more)` fizzy token blocks. */
+const CONTRAST_START = styles.indexOf("@media (prefers-contrast: more)");
+const CONTRAST = styles.slice(CONTRAST_START, styles.indexOf("\n}\n", CONTRAST_START) + 2);
+
+/** The declarations of `selector`'s rule inside the contrast:more block. */
+function contrastBlock(selector: string): string {
+	const start = CONTRAST.indexOf(`\t${selector} {`);
+	return start === -1 ? "" : CONTRAST.slice(start, CONTRAST.indexOf("\n\t}", start));
+}
+
+function contrastTokens(names: readonly string[]) {
+	return {light: tokens(contrastBlock(FIZZY_LIGHT), names), dark: tokens(contrastBlock(FIZZY_DARK), names)};
+}
+
 describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () => {
 	it("--upstream-accent-pressed is upstream's fizzy --cds-bg-accent, #257de0 at 12% in both modes", () => {
 		const names = ["--upstream-accent-pressed"] as const;
@@ -65,14 +79,13 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () => 
 
 	it("--upstream-plain-secondary is the pre-rollout muted ink, and upstream's --cds-fizzy-lake-color-plain-secondary under fizzy-lake color", () => {
 		const names = ["--upstream-plain-secondary"] as const;
-		const contrast = styles.slice(styles.indexOf("@media (prefers-contrast: more)"));
 		expect({
 			utility: tokens(block("@theme inline"), ["--color-plain-secondary"]),
 			base: tokens(block(":root"), names),
 			light: tokens(block(FIZZY_LIGHT), names),
 			dark: tokens(block(FIZZY_DARK), names),
-			contrastLight: tokens(contrast.slice(contrast.indexOf(`${FIZZY_LIGHT} {`)), names),
-			contrastDark: tokens(contrast.slice(contrast.indexOf(`${FIZZY_DARK} {`)), names),
+			contrastLight: tokens(contrastBlock(FIZZY_LIGHT), names),
+			contrastDark: tokens(contrastBlock(FIZZY_DARK), names),
 		}).toStrictEqual({
 			utility: {"--color-plain-secondary": "var(--upstream-plain-secondary)"},
 			base: {"--upstream-plain-secondary": "var(--upstream-text-muted)"},
@@ -350,5 +363,117 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () => 
 		expect(PLACE_CHIP_CLASS.split(" ").filter((name) => /^text-(secondary|primary)/.test(name))).toStrictEqual([
 			"text-secondary-control",
 		]);
+	});
+});
+
+/* Upstream `@media (prefers-contrast:more){.cds-root:is([data-cds-fizzy-lake~=color],…)…}` and its three dark
+   twins (dumps/fizzy-contrast-more-tokens-upstream-rules-2026-11-06.css.txt). alpha-N is neutral-900 at N%:
+   #0b0b0b light, #fff dark under fizzy. */
+describe("fizzy-lake color tokens under prefers-contrast: more", () => {
+	it("strengthens the text inks; the fizzy secondary and muted-as-secondary follow --upstream-text-secondary", () => {
+		expect(
+			contrastTokens([
+				"--upstream-text-primary",
+				"--upstream-text-secondary",
+				"--upstream-text-muted",
+				"--fizzy-lake-color-secondary",
+				"--muted-as-secondary",
+			]),
+		).toStrictEqual({
+			light: {
+				"--upstream-text-primary": "#000",
+				"--upstream-text-secondary": "#000000bf",
+				"--upstream-text-muted": "#0009",
+				"--fizzy-lake-color-secondary": null,
+				"--muted-as-secondary": null,
+			},
+			dark: {
+				"--upstream-text-primary": "#fff",
+				"--upstream-text-secondary": "#ffffffbf",
+				"--upstream-text-muted": "#ffffff91",
+				"--fizzy-lake-color-secondary": null,
+				"--muted-as-secondary": null,
+			},
+		});
+	});
+
+	it("raises the field ring and hover ring to alpha-5 / alpha-6, leaving the base rings alone", () => {
+		const names = ["--field-ring-shadow", "--field-hover-shadow"] as const;
+		expect({
+			...contrastTokens(names),
+			base: tokens(block(":root"), names),
+			baseDark: tokens(block(".dark"), names),
+		}).toStrictEqual({
+			light: {
+				"--field-ring-shadow": "inset 0 0 0 1px #0b0b0b80",
+				"--field-hover-shadow": "inset 0 0 0 1px #0b0b0b99",
+			},
+			dark: {
+				"--field-ring-shadow": "inset 0 0 0 1px #ffffff80",
+				"--field-hover-shadow": "inset 0 0 0 1px #ffffff99",
+			},
+			base: {
+				"--field-ring-shadow": "inset 0 0 0 1px rgb(11 11 11 / 0.1)",
+				"--field-hover-shadow": "inset 0 0 0 1px rgb(11 11 11 / 0.2)",
+			},
+			baseDark: {
+				"--field-ring-shadow": "inset 0 0 0 1px hsl(0 0% 100% / 0.1)",
+				"--field-hover-shadow": "inset 0 0 0 1px hsl(0 0% 100% / 0.2)",
+			},
+		});
+	});
+
+	it("raises the settings and menu switch tracks", () => {
+		expect(
+			contrastTokens([
+				"--settings-switch-track",
+				"--settings-switch-track-hover",
+				"--menu-switch-track",
+				"--menu-switch-track-hover",
+			]),
+		).toStrictEqual({
+			light: {
+				"--settings-switch-track": "#0b0b0b80",
+				"--settings-switch-track-hover": "#0b0b0b99",
+				"--menu-switch-track": "#0b0b0b80",
+				"--menu-switch-track-hover": "#0b0b0b99",
+			},
+			dark: {
+				"--settings-switch-track": "#fff6",
+				"--settings-switch-track-hover": "#ffffff70",
+				"--menu-switch-track": "#fff6",
+				"--menu-switch-track-hover": "#ffffff70",
+			},
+		});
+	});
+
+	it("adds the checkbox edge tokens: border-strong fallbacks at rest, alpha-5 / alpha-6 under contrast", () => {
+		const names = ["--checkbox-edge", "--checkbox-edge-hover"] as const;
+		expect({
+			utility: tokens(block("@theme inline"), ["--color-checkbox-edge", "--color-checkbox-edge-hover"]),
+			base: tokens(block(":root"), names),
+			baseDark: tokens(block(".dark"), names),
+			fizzy: tokens(block(FIZZY_LIGHT), names),
+			fizzyDark: tokens(block(FIZZY_DARK), names),
+			...contrastTokens(names),
+		}).toStrictEqual({
+			utility: {
+				"--color-checkbox-edge": "var(--checkbox-edge, var(--upstream-border-strong))",
+				"--color-checkbox-edge-hover": "var(--checkbox-edge-hover, var(--upstream-border-strong))",
+			},
+			base: {"--checkbox-edge": null, "--checkbox-edge-hover": null},
+			baseDark: {"--checkbox-edge": null, "--checkbox-edge-hover": null},
+			fizzy: {"--checkbox-edge": null, "--checkbox-edge-hover": null},
+			fizzyDark: {"--checkbox-edge": null, "--checkbox-edge-hover": null},
+			light: {"--checkbox-edge": "#0b0b0b80", "--checkbox-edge-hover": "#0b0b0b99"},
+			dark: {"--checkbox-edge": "#ffffff80", "--checkbox-edge-hover": "#ffffff99"},
+		});
+	});
+
+	it("strengthens the composer ring and the placeholder", () => {
+		expect(contrastTokens(["--composer-ring", "--upstream-placeholder"])).toStrictEqual({
+			light: {"--composer-ring": "#00000080", "--upstream-placeholder": "#0009"},
+			dark: {"--composer-ring": "#ffffff80", "--upstream-placeholder": "#ffffff91"},
+		});
 	});
 });

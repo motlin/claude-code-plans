@@ -697,6 +697,41 @@ describe("MenuCheckboxItem closeOnClick", () => {
 	});
 });
 
+describe("MenuCheckboxItem leadingCheck edge, as upstream's cds Checkbox Rh", () => {
+	it("draws the unchecked box with the checkbox edge and its hover bump, and the checked box in accent", async () => {
+		render(
+			<Menu defaultOpen>
+				<MenuTrigger aria-label="Type">...</MenuTrigger>
+				<MenuContent>
+					<MenuCheckboxItem leadingCheck checked={false}>
+						Docs
+					</MenuCheckboxItem>
+					<MenuCheckboxItem leadingCheck checked>
+						Slides
+					</MenuCheckboxItem>
+				</MenuContent>
+			</Menu>,
+		);
+		await flush();
+
+		expect(
+			screen.getAllByRole("menuitemcheckbox").map((row) => ({
+				group: row.classList.contains("group/cb"),
+				box: row.querySelector("[data-cds-checkbox]")?.className,
+			})),
+		).toStrictEqual([
+			{
+				group: true,
+				box: "flex size-4 items-center justify-center rounded-r4 border border-checkbox-edge group-hover/cb:border-checkbox-edge-hover",
+			},
+			{
+				group: true,
+				box: "flex size-4 items-center justify-center rounded-r4 border border-fill-accent bg-fill-accent text-white",
+			},
+		]);
+	});
+});
+
 describe("MenuItem with a disabled reason", () => {
 	const REASON = "Session file is still being written";
 

@@ -576,7 +576,7 @@ export function MenuCheckboxItem({
 			<BaseMenu.CheckboxItem
 				{...props}
 				closeOnClick={closeOnClick}
-				className={`${itemClass} ${ITEM_VARIANT_CLASS.default}`}
+				className={`${itemClass} ${ITEM_VARIANT_CLASS.default} group/cb`}
 			>
 				<span aria-hidden="true" className="-ms-1 flex size-5 shrink-0 items-center justify-center">
 					<BaseMenu.CheckboxItemIndicator
@@ -585,7 +585,7 @@ export function MenuCheckboxItem({
 							<span
 								{...slotProps}
 								data-cds-checkbox=""
-								className={`flex size-4 items-center justify-center rounded-r4 border ${checked ? "border-fill-accent bg-fill-accent text-white" : "border-strong"}`}
+								className={`flex size-4 items-center justify-center rounded-r4 border ${checked ? "border-fill-accent bg-fill-accent text-white" : "border-checkbox-edge group-hover/cb:border-checkbox-edge-hover"}`}
 							>
 								{checked && <Check aria-hidden="true" strokeWidth={3} className="size-3" />}
 							</span>
