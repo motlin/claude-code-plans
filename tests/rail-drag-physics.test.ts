@@ -10,6 +10,7 @@ import {
 } from "../src/components/session-rail/rail-drag-physics";
 
 afterEach(() => {
+	document.documentElement.removeAttribute("data-reduce-motion");
 	document.body.replaceChildren();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
@@ -86,6 +87,14 @@ describe("animateRailDrop", () => {
 
 	it("skips under reduced motion", () => {
 		stubReducedMotion(true);
+		const {element, animate} = sectionAt(120);
+		animateRailDrop(element, 160);
+		expect(animate.mock.calls).toStrictEqual([]);
+	});
+
+	it("skips under html[data-reduce-motion=true] with no OS preference", () => {
+		stubReducedMotion(false);
+		document.documentElement.setAttribute("data-reduce-motion", "true");
 		const {element, animate} = sectionAt(120);
 		animateRailDrop(element, 160);
 		expect(animate.mock.calls).toStrictEqual([]);

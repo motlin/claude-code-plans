@@ -40,8 +40,8 @@ describe("settings deep-link flash CSS", () => {
 		expect(
 			missing([
 				"@media (prefers-reduced-motion: reduce) { .feature-anchor-highlight::after { clip-path: inset(0px); opacity: 1; animation: none; } .feature-anchor-row-fill::before { opacity: 1; animation: none; } }",
-				'html[data-motion="reduced"] .feature-anchor-highlight::after { clip-path: inset(0px); opacity: 1; animation: none; }',
-				'html[data-motion="reduced"] .feature-anchor-row-fill::before { opacity: 1; animation: none; }',
+				'html[data-reduce-motion="true"] .feature-anchor-highlight::after { clip-path: inset(0px); opacity: 1; animation: none; }',
+				'html[data-reduce-motion="true"] .feature-anchor-row-fill::before { opacity: 1; animation: none; }',
 			]),
 		).toStrictEqual([]);
 	});

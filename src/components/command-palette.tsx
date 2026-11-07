@@ -173,7 +173,7 @@ import {
 	type RowActionsCloseOptions,
 	type RowActionsRepeatKey,
 } from "./palette-row-actions";
-import {motionReduced} from "../lib/motion";
+import {isMotionReduced} from "../lib/reduced-motion";
 import {isAltEnter, rowActionsAnchorRect} from "./palette-row-actions-geometry";
 import {AttachedContextChips} from "./attached-context-chips";
 import {useToast} from "./toast-context";
@@ -1204,7 +1204,7 @@ function PalettePopup({
 			list: list.getBoundingClientRect(),
 			row: (row ?? list).getBoundingClientRect(),
 			dialog: dialog.getBoundingClientRect(),
-			reducedMotion: motionReduced(),
+			reducedMotion: isMotionReduced(),
 		});
 		setRowActions({session, anchorRect});
 	}

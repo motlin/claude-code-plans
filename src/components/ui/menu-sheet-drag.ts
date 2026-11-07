@@ -1,5 +1,6 @@
 import {createContext, type PointerEvent, useContext, useMemo, useRef} from "react";
 
+import {isMotionReduced} from "../../lib/reduced-motion";
 import {rawAt, release, type SheetDetent, type SheetGeometry, follow, sheetGeometry} from "../../lib/sheet-drag";
 
 /** Upstream's Gf: the tall detent is .9 of the viewport below the top safe area. */
@@ -17,8 +18,6 @@ const NO_DRAG_TARGET = 'button, a, input, textarea, [role="menuitem"], [role="op
 /** Upstream's td: the text-entry controls that floor a sheet at half height and summon the keyboard. */
 export const SHEET_TEXT_ENTRY =
 	'input:not([type=button],[type=checkbox],[type=radio],[type=range],[type=submit],[type=reset],[type=color],[type=file],[type=image],[type=hidden],[readonly]), textarea:not([readonly]), [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]';
-
-const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
 /** The root sheet's frame: its tree, how to close it, and the detent the drag can move it to. */
 export interface SheetDragFrame {
@@ -90,10 +89,6 @@ function availableHeight(popup: HTMLElement): number {
 	return margin > 0 ? Math.max(0, view.innerHeight - margin) : view.innerHeight;
 }
 
-function prefersReducedMotion(view: Window | null): boolean {
-	return view?.matchMedia(REDUCED_MOTION_QUERY).matches === true;
-}
-
 /** Upstream's Hi: a level holding a text field, or whose rows overflow, can open the tall detent. */
 function contentGrows(popup: HTMLElement): boolean {
 	if (popup.querySelector(SHEET_TEXT_ENTRY) !== null) return true;
@@ -156,7 +151,7 @@ export function useSheetDrag() {
 				);
 				const canGrow = contentGrows(popup) || frame.detent === "tall";
 				const geometry = sheetGeometry(height, availableHeight(popup), TALL_FRACTION, canGrow);
-				const banded = prefersReducedMotion(doc.defaultView) || !canGrow ? {...geometry, room: 0} : geometry;
+				const banded = isMotionReduced(doc) || !canGrow ? {...geometry, room: 0} : geometry;
 				const scrims = Array.from(
 					doc.querySelectorAll<HTMLElement>(
 						`[data-presentation="sheet"][data-sheet-scrim="${CSS.escape(frame.treeId)}"]`,

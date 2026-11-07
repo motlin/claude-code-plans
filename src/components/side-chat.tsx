@@ -12,7 +12,7 @@ import {ViewportPortal} from "./viewport-portal";
 const SideChatPanel = deferredComponent(sideChatPanel, "SideChatPanel");
 
 const ASIDE_CLASS =
-	"fixed right-4 bottom-4 z-40 flex w-[400px] max-w-[calc(100vw-2rem)] max-h-[min(560px,calc(100vh-2rem))] invisible pointer-events-none origin-bottom-right scale-95 flex-col overflow-hidden rounded-card border-[0.5px] border-strong bg-surface-3 opacity-0 shadow-[0_24px_60px_color-mix(in_srgb,black_18%,transparent),0_4px_16px_color-mix(in_srgb,black_8%,transparent)] transition-[opacity,transform,visibility] duration-200 ease-out data-[open]:visible data-[open]:pointer-events-auto data-[open]:scale-100 data-[open]:opacity-100";
+	"fixed right-4 bottom-4 z-40 flex w-[400px] max-w-[calc(100vw-2rem)] max-h-[min(560px,calc(100vh-2rem))] invisible pointer-events-none origin-bottom-right scale-95 flex-col overflow-hidden rounded-card border-[0.5px] border-strong bg-surface-3 opacity-0 shadow-[0_24px_60px_color-mix(in_srgb,black_18%,transparent),0_4px_16px_color-mix(in_srgb,black_8%,transparent)] transition-[opacity,transform,visibility] motion-reduce:transition-none duration-200 ease-out data-[open]:visible data-[open]:pointer-events-auto data-[open]:scale-100 data-[open]:opacity-100";
 
 const POPOUT_BLOCKED_MESSAGE = "Couldn’t open a new window. Allow pop-ups for this site.";
 

@@ -1,6 +1,7 @@
-import {Fragment, useEffect, useState, useSyncExternalStore} from "react";
+import {Fragment, useEffect, useState} from "react";
 import {useEventStreamConnecting} from "../hooks/use-claude-events";
 import {useRestInk} from "../lib/fizzy-lake";
+import {useReducedMotion} from "../lib/reduced-motion";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {
 	CONNECTING_PHASE_LABEL,
@@ -16,25 +17,6 @@ import {RunningTasksControl} from "./running-tasks-control";
 import {ShimmerText} from "./shimmer-text";
 import {workingLineActivity} from "../lib/working-mark-activity";
 import {WorkingMark} from "./working-mark";
-
-const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
-
-function subscribeReducedMotion(onChange: () => void): () => void {
-	if (typeof window.matchMedia !== "function") return () => {};
-	const list = window.matchMedia(REDUCED_MOTION_QUERY);
-	list.addEventListener("change", onChange);
-	return () => {
-		list.removeEventListener("change", onChange);
-	};
-}
-
-function prefersReducedMotion(): boolean {
-	return typeof window.matchMedia === "function" && window.matchMedia(REDUCED_MOTION_QUERY).matches;
-}
-
-function usePrefersReducedMotion(): boolean {
-	return useSyncExternalStore(subscribeReducedMotion, prefersReducedMotion, () => false);
-}
 
 /** Upstream swaps the Stopping label in with a short rise-and-fade. */
 const STOPPING_MORPH_CLASS = "motion-safe:animate-[cds-morph-in_0.18s_cubic-bezier(.2,0,0,1)]";
@@ -161,7 +143,7 @@ export function WorkingMarker({
 	/** The turn's token estimate (`turnTokenEstimate`); shown after the clock while working. */
 	tokens?: number;
 }>) {
-	const reduceMotion = usePrefersReducedMotion();
+	const reduceMotion = useReducedMotion();
 	const restInk = useRestInk();
 	const phase = useSettledPhase(useLinePhase(state, sending, waitingOnUser));
 	// Upstream draws no mark while the turn waits on the user.

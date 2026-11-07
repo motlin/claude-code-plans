@@ -907,7 +907,7 @@ export function Banner({
 		return (
 			<details className="group text-xs text-t6 bg-surface-1 rounded-md border border-subtle">
 				<summary className="flex flex-wrap items-center gap-2 py-1.5 px-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
-					<ChevronRight className="h-3 w-3 shrink-0 transition-transform group-open:rotate-90" />
+					<ChevronRight className="h-3 w-3 shrink-0 transition-transform motion-reduce:transition-none group-open:rotate-90" />
 					{icon && <span className="shrink-0">{icon}</span>}
 					{label && <span>{label}</span>}
 					{children}

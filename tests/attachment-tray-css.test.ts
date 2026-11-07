@@ -56,7 +56,7 @@ describe("composer attachment tray CSS", () => {
 		expect(
 			missing([
 				"@media (prefers-reduced-motion: reduce) { [data-cds-composer-attachments]:has([data-cds-attachment]), [data-cds-composer-attachments] [data-cds-attachment] { transition: none; } }",
-				'html[data-motion="reduced"] [data-cds-composer-attachments]:has([data-cds-attachment]), html[data-motion="reduced"] [data-cds-composer-attachments] [data-cds-attachment] { transition: none; }',
+				'html[data-reduce-motion="true"] [data-cds-composer-attachments]:has([data-cds-attachment]), html[data-reduce-motion="true"] [data-cds-composer-attachments] [data-cds-attachment] { transition: none; }',
 			]),
 		).toStrictEqual([]);
 	});

@@ -81,7 +81,7 @@ function TreeRows({nodes, sectionKey, flat, collapsedDirs, onToggleDir, activePa
 					>
 						<ChevronRight
 							aria-hidden="true"
-							className={`size-3 shrink-0 text-ink-muted transition-transform ${expanded ? "rotate-90" : ""}`}
+							className={`size-3 shrink-0 text-ink-muted transition-transform motion-reduce:transition-none ${expanded ? "rotate-90" : ""}`}
 						/>
 						<span className="min-w-0 truncate">{node.name}</span>
 					</button>

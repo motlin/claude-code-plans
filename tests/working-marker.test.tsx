@@ -837,6 +837,35 @@ describe("WorkingMarker", () => {
 			"false",
 		);
 	});
+
+	it("holds the working mark still under html[data-reduce-motion=true] and resumes when it is removed", async () => {
+		stubReducedMotion(false);
+		document.documentElement.setAttribute("data-reduce-motion", "true");
+		const {container} = render(
+			<WorkingMarker
+				state={{
+					status: "working",
+					label: "Working…",
+					thinking: false,
+					replied: true,
+					turnStartedAt: at(0),
+					elapsedSeconds: 1,
+				}}
+			/>,
+		);
+		const mark = container.querySelector('[data-cds="WorkingMark"]');
+		const reduced = mark?.getAttribute("data-animated");
+		await act(async () => {
+			document.documentElement.removeAttribute("data-reduce-motion");
+			await Promise.resolve();
+		});
+
+		expect({
+			reduced,
+			resumed: container.querySelector('[data-cds="WorkingMark"]')?.getAttribute("data-animated"),
+			sameNode: container.querySelector('[data-cds="WorkingMark"]') === mark,
+		}).toStrictEqual({reduced: "false", resumed: "true", sameNode: true});
+	});
 });
 
 describe("useWorkingMarkerState", () => {

@@ -77,7 +77,7 @@ function setup(options: {animating?: boolean; backgroundColor?: string} = {}) {
 afterEach(() => {
 	vi.restoreAllMocks();
 	document.body.innerHTML = "";
-	delete document.documentElement.dataset["motion"];
+	delete document.documentElement.dataset["reduceMotion"];
 });
 
 describe("applyThumb (upstream kO)", () => {
@@ -125,10 +125,10 @@ describe("applyThumb (upstream kO)", () => {
 		});
 	});
 
-	it("moves without animating under html[data-motion=reduced]", () => {
+	it("moves without animating under html[data-reduce-motion=true]", () => {
 		const {group, thumb, state} = setup();
 		applyThumb(thumb, group, {left: 1, width: 26})();
-		document.documentElement.dataset["motion"] = "reduced";
+		document.documentElement.dataset["reduceMotion"] = "true";
 
 		applyThumb(thumb, group, {left: 27, width: 30})();
 

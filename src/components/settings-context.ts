@@ -65,7 +65,7 @@ export interface Settings {
 	defaultSubagentView: SubagentView;
 
 	chromeHidden: boolean;
-	/** "reduced" sets `html[data-motion=reduced]`, which stops pulses and transitions. */
+	/** "reduced" (or the OS reduced-motion query) sets `html[data-reduce-motion=true]`, which collapses animations. */
 	motion: Motion;
 	/** The transcript and composer column measure: 768, 960 or 1280px. */
 	transcriptWidth: TranscriptWidth;

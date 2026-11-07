@@ -1,8 +1,9 @@
-import {useCallback, useEffect, useMemo, useState} from "react";
+import {useCallback, useEffect, useLayoutEffect, useMemo, useState} from "react";
 
 import {appearanceCssVars} from "../lib/appearance";
 import {codeFontFamily, codeFontSizeCssVars} from "../lib/code-themes";
 import {objectKeys} from "../lib/narrow";
+import {usePrefersReducedMotion} from "../lib/reduced-motion";
 import {
 	DEFAULTS,
 	detectVerbosity,
@@ -48,11 +49,18 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 		setLoaded(true);
 	}, []);
 
-	useEffect(() => {
+	// Upstream's yL/ax5: html[data-reduce-motion="true"] is the effective state (the Reduced
+	// setting or the OS query), written after hydration and never written as "false".
+	const osReducedMotion = usePrefersReducedMotion();
+	const reduceMotion = settings.motion === "reduced" || osReducedMotion;
+	useLayoutEffect(() => {
 		const root = document.documentElement;
-		if (settings.motion === "reduced") root.dataset["motion"] = "reduced";
-		else delete root.dataset["motion"];
-	}, [settings.motion]);
+		if (reduceMotion) root.dataset["reduceMotion"] = "true";
+		else delete root.dataset["reduceMotion"];
+		return () => {
+			delete root.dataset["reduceMotion"];
+		};
+	}, [reduceMotion]);
 
 	useEffect(() => {
 		const root = document.documentElement;

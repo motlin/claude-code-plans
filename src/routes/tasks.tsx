@@ -161,7 +161,7 @@ function TasksPage() {
 													className={`cursor-pointer ${TOUCH_HIT}`}
 												>
 													<ChevronRight
-														className="h-3 w-3 text-t6 transition-transform duration-200"
+														className="h-3 w-3 text-t6 transition-transform motion-reduce:transition-none duration-200"
 														style={{
 															transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)",
 														}}

@@ -1,5 +1,7 @@
 import type {Modifier} from "@dnd-kit/core";
 
+import {isMotionReduced} from "../../lib/reduced-motion";
+
 /** Upstream's rail drag modifier: sections only move up and down. */
 export const lockRailDragToVerticalAxis: Modifier = ({transform}) => ({...transform, x: 0});
 
@@ -12,7 +14,7 @@ export function blurOnPointerDragStart(activatorEvent: Event | null): void {
 
 /** Upstream's drop animation: slide the moved section from where it was let go into its new slot. */
 export function animateRailDrop(element: HTMLElement, dropTop: number): void {
-	if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+	if (isMotionReduced()) return;
 	const delta = dropTop - element.getBoundingClientRect().top;
 	if (Math.abs(delta) < 1) return;
 	element.animate([{transform: `translate3d(0,${delta}px,0)`}, {transform: "translate3d(0,0,0)"}], {

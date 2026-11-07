@@ -71,7 +71,7 @@ beforeEach(() => {
 afterEach(() => {
 	cleanup();
 	vi.unstubAllGlobals();
-	document.documentElement.removeAttribute("data-motion");
+	document.documentElement.removeAttribute("data-reduce-motion");
 	document.documentElement.classList.remove("light", "dark");
 });
 
@@ -155,7 +155,7 @@ describe("General settings ▸ Appearance", () => {
 		});
 	});
 
-	it("sets html[data-motion=reduced] from the Motion control and clears it for System", async () => {
+	it("sets html[data-reduce-motion=true] from the Motion control and clears it for System", async () => {
 		stubNotification("granted");
 		await renderGeneral();
 
@@ -166,7 +166,8 @@ describe("General settings ▸ Appearance", () => {
 
 		fireEvent.click(screen.getByRole("option", {name: "Reduced"}));
 		const reduced = {
-			attribute: document.documentElement.getAttribute("data-motion"),
+			attribute: document.documentElement.getAttribute("data-reduce-motion"),
+			legacy: document.documentElement.getAttribute("data-motion"),
 			stored: localStorage.getItem("ccp-motion"),
 		};
 
@@ -174,10 +175,59 @@ describe("General settings ▸ Appearance", () => {
 
 		expect({
 			reduced,
-			system: document.documentElement.getAttribute("data-motion"),
+			system: {
+				attribute: document.documentElement.getAttribute("data-reduce-motion"),
+				legacy: document.documentElement.getAttribute("data-motion"),
+			},
 		}).toStrictEqual({
-			reduced: {attribute: "reduced", stored: "reduced"},
-			system: null,
+			reduced: {attribute: "true", legacy: null, stored: "reduced"},
+			system: {attribute: null, legacy: null},
+		});
+	});
+
+	it("sets html[data-reduce-motion=true] for the OS reduced-motion query under System and follows its changes", async () => {
+		stubNotification("granted");
+		const listeners = new Set<() => void>();
+		const os = {matches: true};
+		vi.stubGlobal(
+			"matchMedia",
+			vi.fn((query: string) => ({
+				get matches() {
+					return query === "(prefers-reduced-motion: reduce)" && os.matches;
+				},
+				addEventListener: (_type: string, listener: () => void) => {
+					if (query === "(prefers-reduced-motion: reduce)") listeners.add(listener);
+				},
+				removeEventListener: (_type: string, listener: () => void) => {
+					listeners.delete(listener);
+				},
+			})),
+		);
+		await renderGeneral();
+		const osReduce = document.documentElement.getAttribute("data-reduce-motion");
+
+		act(() => {
+			os.matches = false;
+			for (const listener of listeners) listener();
+		});
+
+		expect({osReduce, osNoPreference: document.documentElement.getAttribute("data-reduce-motion")}).toStrictEqual({
+			osReduce: "true",
+			osNoPreference: null,
+		});
+	});
+
+	it("removes html[data-reduce-motion] when the settings provider unmounts", async () => {
+		stubNotification("granted");
+		localStorage.setItem("ccp-motion", "reduced");
+		await renderGeneral();
+		const mounted = document.documentElement.getAttribute("data-reduce-motion");
+
+		cleanup();
+
+		expect({mounted, unmounted: document.documentElement.getAttribute("data-reduce-motion")}).toStrictEqual({
+			mounted: "true",
+			unmounted: null,
 		});
 	});
 
@@ -216,7 +266,10 @@ describe("General settings ▸ Appearance", () => {
 		localStorage.setItem("ccp-motion", "reduced");
 		await renderGeneral();
 
-		expect(document.documentElement.getAttribute("data-motion")).toBe("reduced");
+		expect({
+			attribute: document.documentElement.getAttribute("data-reduce-motion"),
+			legacy: document.documentElement.getAttribute("data-motion"),
+		}).toStrictEqual({attribute: "true", legacy: null});
 	});
 });
 

@@ -36,6 +36,24 @@
    main column flips to comfortable when a coarse pointer swaps its scope. Each :not() level
    undoes the previous one for a deeper scope of the other density, so the nearest of up to
    four nested scopes decides; markdown-article.module.css repeats the comfortable chain. */
+/* Upstream's motion variants: html[data-reduce-motion=true] (Settings ▸ Motion ▸ Reduced or the OS
+   query, set by the settings provider) suppresses motion-safe: and turns on motion-reduce:, and the
+   @media halves cover the paint before hydration. */
+@custom-variant motion-safe {
+	@media (prefers-reduced-motion: no-preference) {
+		&:not(:where([data-reduce-motion="true"], [data-reduce-motion="true"] *)) {
+			@slot;
+		}
+	}
+}
+@custom-variant motion-reduce {
+	@media (prefers-reduced-motion: reduce) {
+		@slot;
+	}
+	&:where([data-reduce-motion="true"], [data-reduce-motion="true"] *) {
+		@slot;
+	}
+}
 @custom-variant compact (&:where([data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *)))));
 @custom-variant comfortable (&:where([data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] [data-density="compact"] *)))));
 
@@ -3067,50 +3085,63 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	}
 }
 
-html[data-motion="reduced"] .feature-anchor-highlight::after {
+html[data-reduce-motion="true"] .feature-anchor-highlight::after {
 	clip-path: inset(0px);
 	opacity: 1;
 	animation: none;
 }
 
-html[data-motion="reduced"] .feature-anchor-row-fill::before {
+html[data-reduce-motion="true"] .feature-anchor-row-fill::before {
 	opacity: 1;
 	animation: none;
 }
 
-/* Settings ▸ General ▸ Motion: Reduced. The settings provider sets html[data-motion=reduced];
-   it stops pulsing and pinging indicators and every transition regardless of the OS preference. */
-html[data-motion="reduced"] {
+/* Upstream's global pair: under the OS query or html[data-reduce-motion=true] every animation jumps to
+   its end state (and still fires animationend). Transitions are gated one by one. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	::before,
+	::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+	}
+}
+
+[data-reduce-motion="true"] *,
+[data-reduce-motion="true"] ::before,
+[data-reduce-motion="true"] ::after {
+	animation-duration: 0.01ms !important;
+	animation-iteration-count: 1 !important;
+}
+
+/* Settings ▸ General ▸ Motion: Reduced (or the OS query). The settings provider sets
+   html[data-reduce-motion=true]; it stops pulsing and pinging indicators. Transitions stop only where
+   gated (motion-reduce:transition-none and the hand-written rules), as upstream's do. */
+html[data-reduce-motion="true"] {
 	--cds-dur-base: 0s;
 }
 
-html[data-motion="reduced"] *,
-html[data-motion="reduced"] *::before,
-html[data-motion="reduced"] *::after {
-	transition: none !important;
-}
-
-html[data-motion="reduced"] .animate-pulse,
-html[data-motion="reduced"] .animate-ping,
-html[data-motion="reduced"] .animate-approval-inline-enter,
-html[data-motion="reduced"] .animate-question-receipt-enter,
-html[data-motion="reduced"] .animate-palette-card-in,
-html[data-motion="reduced"] .status-dot[data-kind="running"],
-html[data-motion="reduced"] .terminal-caret,
-html[data-motion="reduced"] [data-spinner] * {
+html[data-reduce-motion="true"] .animate-pulse,
+html[data-reduce-motion="true"] .animate-ping,
+html[data-reduce-motion="true"] .animate-approval-inline-enter,
+html[data-reduce-motion="true"] .animate-question-receipt-enter,
+html[data-reduce-motion="true"] .animate-palette-card-in,
+html[data-reduce-motion="true"] .status-dot[data-kind="running"],
+html[data-reduce-motion="true"] .terminal-caret,
+html[data-reduce-motion="true"] [data-spinner] * {
 	animation: none !important;
 }
 
 /* The ⌘K palette doesn't recede behind the row-actions card, as motion-reduce:scale-100 does. */
-html[data-motion="reduced"] [data-palette-recede-card] {
+html[data-reduce-motion="true"] [data-palette-recede-card] {
 	scale: none !important;
 }
 
-html[data-motion="reduced"] [data-cds-shimmer-clone] {
+html[data-reduce-motion="true"] [data-cds-shimmer-clone] {
 	display: none;
 }
 
-html[data-motion="reduced"] [data-cds="Skeleton"]::after {
+html[data-reduce-motion="true"] [data-cds="Skeleton"]::after {
 	display: none;
 }
 
@@ -3138,8 +3169,8 @@ html[data-motion="reduced"] [data-cds="Skeleton"]::after {
 	}
 }
 
-html[data-motion="reduced"] [data-palette-skeleton][data-motion="wave"] [data-skeleton],
-html[data-motion="reduced"] [data-skeleton-group][data-motion="wave"] [data-skeleton] {
+html[data-reduce-motion="true"] [data-palette-skeleton][data-motion="wave"] [data-skeleton],
+html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-skeleton] {
 	animation-duration: 0.01ms;
 	animation-iteration-count: 1;
 }
@@ -3971,7 +4002,7 @@ html.vt-image-preview-active.vt-image-preview-crossfade::view-transition-group(r
 	}
 }
 
-html[data-motion="reduced"] [data-cds-composer-attachments]:has([data-cds-attachment]),
-html[data-motion="reduced"] [data-cds-composer-attachments] [data-cds-attachment] {
+html[data-reduce-motion="true"] [data-cds-composer-attachments]:has([data-cds-attachment]),
+html[data-reduce-motion="true"] [data-cds-composer-attachments] [data-cds-attachment] {
 	transition: none;
 }

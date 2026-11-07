@@ -123,7 +123,7 @@ function TreeRows({nodes, depth, selected, collapsed, onSelect, onToggle}: TreeR
 					>
 						<ChevronRight
 							aria-hidden="true"
-							className={`size-3.5 shrink-0 text-t6 transition-transform ${expanded ? "rotate-90" : ""}`}
+							className={`size-3.5 shrink-0 text-t6 transition-transform motion-reduce:transition-none ${expanded ? "rotate-90" : ""}`}
 						/>
 						<Folder aria-hidden="true" className="size-4 shrink-0 text-t6" />
 						<span className="truncate">{name}</span>

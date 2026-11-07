@@ -137,7 +137,7 @@ function BackgroundTaskCard({
 					</span>
 					<ChevronRight
 						aria-hidden="true"
-						className={`size-3.5 shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`}
+						className={`size-3.5 shrink-0 transition-transform motion-reduce:transition-none ${expanded ? "rotate-90" : ""}`}
 					/>
 				</span>
 				<span className="block text-caption/[15px] text-ink-muted">{backgroundTaskMeta(task)}</span>
@@ -352,7 +352,7 @@ export function BackgroundTasksList({
 								Finished {finished.length}
 								<ChevronRight
 									aria-hidden="true"
-									className={`size-3.5 transition-transform ${finishedOpen ? "rotate-90" : ""}`}
+									className={`size-3.5 transition-transform motion-reduce:transition-none ${finishedOpen ? "rotate-90" : ""}`}
 								/>
 							</button>
 						</h3>

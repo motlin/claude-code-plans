@@ -36,7 +36,7 @@ import {absoluteMentionPath} from "./files/mention-path";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "./ui/menu";
 import {Skeleton} from "./ui/skeleton";
 import {ExcerptQuote} from "./message-excerpt-tiles";
-import {motionReduced} from "../lib/motion";
+import {isMotionReduced} from "../lib/reduced-motion";
 import {
 	BADGE_CLASS,
 	CARD_BODY_CLASS,
@@ -260,7 +260,7 @@ function withAttachmentsTransition(update: () => void): void {
 		typeof CSS !== "undefined" &&
 		typeof CSS.supports === "function" &&
 		CSS.supports("selector(:active-view-transition-type(cds-attachments))");
-	if (start === undefined || !supported || document.visibilityState === "hidden" || motionReduced()) {
+	if (start === undefined || !supported || document.visibilityState === "hidden" || isMotionReduced()) {
 		update();
 		return;
 	}

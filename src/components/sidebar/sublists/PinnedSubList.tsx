@@ -129,7 +129,7 @@ function PinDropRow({ref, state}: {ref: ((element: HTMLElement | null) => void) 
 			<span className="df-leading-slot">
 				<Pin
 					aria-hidden="true"
-					className={`transition-transform ${state === "idle" ? "" : "rotate-6 scale-105"}`}
+					className={`transition-transform motion-reduce:transition-none ${state === "idle" ? "" : "rotate-6 scale-105"}`}
 				/>
 			</span>
 			{DROP_ROW_LABELS[state]}

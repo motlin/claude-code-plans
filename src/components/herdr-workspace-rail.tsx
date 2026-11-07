@@ -107,7 +107,7 @@ function WorkspaceGroup({
 			>
 				<ChevronRight
 					aria-hidden="true"
-					className="h-3 w-3 justify-self-center transition-transform duration-200"
+					className="h-3 w-3 justify-self-center transition-transform motion-reduce:transition-none duration-200"
 					style={{transform: expanded ? "rotate(90deg)" : "rotate(0deg)"}}
 				/>
 				<span className="truncate font-medium">

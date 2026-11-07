@@ -1121,7 +1121,7 @@ function ArtifactCard({artifact, now, pinned}: {artifact: ArtifactSummary; now: 
 					{/* Upstream's pressable: shrinks to 98% over duration-snap (120ms) while pressed. */}
 					<div
 						data-gallery-card=""
-						className="relative block w-full group/card transition-transform duration-[120ms] active:scale-[0.98] rounded-2xl h-full"
+						className="relative block w-full group/card transition-transform motion-reduce:transition-none duration-[120ms] active:scale-[0.98] rounded-2xl h-full"
 					>
 						<PrimaryLink artifact={artifact} className="rounded-2xl" />
 						<div

@@ -44,7 +44,7 @@ function FileTreeItem({node, pluginId, depth}: {node: FileTreeNode; pluginId: st
 					style={{paddingLeft: `${depth * 16 + 8}px`}}
 				>
 					<ChevronRight
-						className="h-3 w-3 shrink-0 text-t6 transition-transform duration-200"
+						className="h-3 w-3 shrink-0 text-t6 transition-transform motion-reduce:transition-none duration-200"
 						style={{transform: expanded ? "rotate(90deg)" : "rotate(0deg)"}}
 					/>
 					<Folder className="h-3.5 w-3.5 shrink-0 text-t6" />

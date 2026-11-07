@@ -16,7 +16,6 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
 import {rowActionsAnchorRect} from "../src/components/palette-row-actions-geometry";
-import {motionReduced} from "../src/lib/motion";
 import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {recentSessionsQueryOptions, sessionQueryKeys, type SessionListItem} from "../src/lib/api/sessions";
@@ -857,30 +856,5 @@ describe("rowActionsAnchorRect", () => {
 			{x: 100, y: 196, width: 600, height: 32},
 			{x: 100, y: 564, width: 600, height: 32},
 		]);
-	});
-});
-
-describe("motionReduced", () => {
-	afterEach(() => {
-		delete document.documentElement.dataset["motion"];
-		vi.unstubAllGlobals();
-	});
-
-	function stubOsReducedMotion(matches: boolean) {
-		vi.stubGlobal("matchMedia", (query: string) => ({
-			matches: matches && query === "(prefers-reduced-motion: reduce)",
-		}));
-	}
-
-	it("follows the OS reduced-motion setting and Settings ▸ Motion ▸ Reduced", () => {
-		stubOsReducedMotion(false);
-		const neither = motionReduced();
-		document.documentElement.dataset["motion"] = "reduced";
-		const inApp = motionReduced();
-		delete document.documentElement.dataset["motion"];
-		stubOsReducedMotion(true);
-		const os = motionReduced();
-
-		expect({neither, inApp, os}).toStrictEqual({neither: false, inApp: true, os: true});
 	});
 });

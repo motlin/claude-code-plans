@@ -325,7 +325,7 @@ function FormToggle({
 			}`}
 		>
 			<span
-				className={`inline-block h-3.5 w-3.5 rounded-full shadow-sm transition-transform ${
+				className={`inline-block h-3.5 w-3.5 rounded-full shadow-sm transition-transform motion-reduce:transition-none ${
 					checked ? "translate-x-[18px] bg-on-primary" : "translate-x-[3px] bg-white"
 				}`}
 			/>

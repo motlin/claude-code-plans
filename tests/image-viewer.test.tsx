@@ -537,6 +537,7 @@ describe("ImageViewer focus and morph", () => {
 	afterEach(() => {
 		vi.unstubAllGlobals();
 		Reflect.deleteProperty(document, "startViewTransition");
+		document.documentElement.removeAttribute("data-reduce-motion");
 		for (const origin of origins.splice(0)) origin.remove();
 	});
 
@@ -579,6 +580,18 @@ describe("ImageViewer focus and morph", () => {
 		expect({calls: start.mock.calls.length, whileOpen, afterClose: origin.style.visibility}).toStrictEqual({
 			calls: 0,
 			whileOpen: "hidden",
+			afterClose: "",
+		});
+	});
+
+	it("starts no view transition under html[data-reduce-motion=true] with no OS preference", () => {
+		const {start} = stubMotion(false);
+		document.documentElement.setAttribute("data-reduce-motion", "true");
+		const origin = makeOrigin();
+		render(<OriginHarness origin={origin} onClose={() => undefined} />);
+		fireEvent.click(screen.getByRole("button", {name: "Close"}));
+		expect({calls: start.mock.calls.length, afterClose: origin.style.visibility}).toStrictEqual({
+			calls: 0,
 			afterClose: "",
 		});
 	});

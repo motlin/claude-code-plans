@@ -74,7 +74,7 @@ describe("settings dialog in dark (wave 90, W90-13)", () => {
 		expect({
 			dur: token(":root", "--cds-dur-base"),
 			ease: token(":root", "--cds-ease-snap"),
-			reducedDur: token('html[data-motion="reduced"]', "--cds-dur-base"),
+			reducedDur: token('html[data-reduce-motion="true"]', "--cds-dur-base"),
 		}).toStrictEqual({dur: "0.2s", ease: "cubic-bezier(0.32, 0.72, 0, 1)", reducedDur: "0s"});
 	});
 });

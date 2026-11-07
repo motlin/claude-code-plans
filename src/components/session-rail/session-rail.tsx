@@ -175,7 +175,7 @@ function RailSection({
 							<span className="shrink-0">{RAIL_SECTION_TITLES[card.id]}</span>
 							<ChevronRight
 								aria-hidden
-								className={`size-3 shrink-0 text-ink-muted transition-transform ${open ? "rotate-90" : ""}`}
+								className={`size-3 shrink-0 text-ink-muted transition-transform motion-reduce:transition-none ${open ? "rotate-90" : ""}`}
 							/>
 							{(card.summary !== undefined || card.rollupPct !== undefined) && (
 								<span

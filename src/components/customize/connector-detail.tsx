@@ -156,7 +156,7 @@ function ToolGroup({title, tools, editable, onChange}: ToolGroupProps) {
 				>
 					<ChevronDown
 						aria-hidden="true"
-						className={`size-4 shrink-0 text-secondary transition-transform duration-200 ${expanded ? "" : "-rotate-90"}`}
+						className={`size-4 shrink-0 text-secondary transition-transform motion-reduce:transition-none duration-200 ${expanded ? "" : "-rotate-90"}`}
 					/>
 					<span className="text-body text-primary">{title}</span>
 					<ScopeBadge>{tools.length}</ScopeBadge>

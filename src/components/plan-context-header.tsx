@@ -85,7 +85,7 @@ function ProjectRows({group, now}: {group: ProjectGroup; now: number}) {
 						icon={
 							<ChevronRight
 								aria-hidden
-								className={`transition-transform ${expanded ? "rotate-90" : ""}`}
+								className={`transition-transform motion-reduce:transition-none ${expanded ? "rotate-90" : ""}`}
 							/>
 						}
 						label={formatCount(group.sessions.length, "session")}

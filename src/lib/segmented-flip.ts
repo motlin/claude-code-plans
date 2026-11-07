@@ -1,4 +1,4 @@
-import {motionReduced} from "./motion";
+import {isMotionReduced} from "./reduced-motion";
 
 /*
  * Ports of upstream's cds SegmentedControl thumb helpers (shared-frame bundle): `LL` measures the
@@ -104,7 +104,7 @@ export function applyThumb(
 		thumb.style.transform = `translateX(${rect.left}px)`;
 		thumb.style.visibility = "inherit";
 		if (!translucent) thumb.style.willChange = "";
-		if (previous === undefined || !canAnimate(thumb) || motionReduced() || snapCorrection) return;
+		if (previous === undefined || !canAnimate(thumb) || isMotionReduced() || snapCorrection) return;
 		try {
 			thumb.animate(
 				{
