@@ -344,6 +344,19 @@ export const summaries = sqliteTable("summaries", {
 });
 
 /**
+ * The post-turn verdict on a session's final main-thread assistant turn (upstream
+ * `post_turn_summary.status_category`): whether it asks the user to decide or act.
+ * `turnUuid` keys the model call; `turnEndedAt` is the session's turn end it answers for.
+ */
+export const turnVerdicts = sqliteTable("turn_verdicts", {
+	sessionId: text("session_id").primaryKey(),
+	turnUuid: text("turn_uuid").notNull(),
+	turnEndedAt: integer("turn_ended_at").notNull(),
+	needsInput: integer("needs_input").notNull(),
+	generatedAt: integer("generated_at").notNull(),
+});
+
+/**
  * The last whole-transcript file and link scan per JSONL (see
  * session-resource-scan.ts), so a server restart does not rescan a 400 MB
  * session. A row answers only while the file's size and mtime, the home root

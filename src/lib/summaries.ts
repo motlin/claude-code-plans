@@ -113,7 +113,7 @@ function serializeForSummary(messages: Array<{role: string; text: string}>): str
 	return result;
 }
 
-async function runClaude(prompt: string): Promise<string> {
+export async function runClaude(prompt: string): Promise<string> {
 	return new Promise((resolve, reject) => {
 		const child = execFile(
 			"claude",

@@ -16,6 +16,7 @@ import {initPendingApprovalsCache} from "../src/lib/db/pending-approvals-cache";
 import {addLiveSubagent, clearLiveSubagents} from "../src/lib/live-subagent-store";
 import {addNotification, clearAllNotifications} from "../src/lib/notifications-store";
 import {clearSessionRegistry, refreshSessionRegistry} from "../src/lib/session-registry-store";
+import {startTurnVerdictWorker} from "../src/lib/turn-verdict";
 
 const testDir = join(tmpdir(), "claude-session-summary-test-" + process.pid);
 const PROJECT_ID = "-tmp-test-alice-project";
@@ -522,6 +523,61 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 			recovered: {bucket: "done", unseenError: undefined, erroredAt: undefined},
 			retried: {bucket: "done", unseenError: undefined, erroredAt: undefined},
 		});
+	});
+
+	it("puts an unread session in Needs input once its last turn's verdict asks for input", async () => {
+		// The worker skips turns older than two weeks, so this turn ends a minute ago.
+		const turnEndedAt = new Date(Date.now() - 60_000).toISOString();
+		const record = (fields: Record<string, unknown>) =>
+			`${JSON.stringify({sessionId: "session-test-100", ...fields})}\n`;
+		await indexSession(
+			record({type: "user", uuid: "u-1", timestamp: turnEndedAt, message: {role: "user", content: "Fix it"}}) +
+				record({
+					type: "assistant",
+					uuid: "a-1",
+					timestamp: turnEndedAt,
+					message: {role: "assistant", content: [{type: "text", text: "Fixed. Your call: push it?"}]},
+				}) +
+				record({
+					type: "system",
+					subtype: "turn_duration",
+					durationMs: 1000,
+					uuid: "s-1",
+					timestamp: turnEndedAt,
+				}),
+		);
+		await indexJsonlFile(db.index, join(testDir, PROJECT_ID, "session-test-100.jsonl"), PROJECT_ID);
+		let resolve = () => {};
+		const judged = new Promise<undefined>((done) => {
+			resolve = () => {
+				done(undefined);
+			};
+		});
+		const stop = startTurnVerdictWorker({
+			summariesDb: db.summaries,
+			projectsDir: testDir,
+			runModel: async () => Promise.resolve("NEEDS_INPUT"),
+			onVerdict: () => {
+				resolve();
+			},
+		});
+		try {
+			const bucketOf = () => buildSessionSummaryPayloadFromDb(db.index, "session-test-100")?.bucket;
+			markSessionUnreviewed(db.index, "session-test-100", 1);
+			const beforeVerdict = bucketOf();
+			await judged;
+			const unseen = bucketOf();
+			markSessionReviewed(db.index, "session-test-100", 1);
+			const seen = bucketOf();
+
+			expect({beforeVerdict, unseen, seen}).toStrictEqual({
+				beforeVerdict: "done",
+				unseen: "blocked",
+				seen: "done",
+			});
+		} finally {
+			stop();
+		}
 	});
 
 	it("lets a hook state written after the registry status win", async () => {

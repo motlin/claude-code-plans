@@ -174,6 +174,7 @@ export const SessionBucketReasonSchema = z.enum([
 	"pending-input",
 	"waiting",
 	"error",
+	"verdict-needs-input",
 	"main-working",
 	"live-agents",
 	"background-tasks",
@@ -205,6 +206,8 @@ export interface SessionBucketSignals {
 	herdrStatus: string | null;
 	prState: PullRequestState | null;
 	unseen: boolean;
+	/** The post-turn verdict says the session's finished last turn asks the user to decide or act (upstream `status_category`). */
+	verdictNeedsInput: boolean;
 	/** Transcript mtime, consulted only for fs-only (`unknown`) sessions. */
 	fileMtime: number;
 	now: number;
@@ -231,10 +234,14 @@ export function isRunningBackgroundTask(task: {status: string}): boolean {
 export function resolveSessionBucket(signals: SessionBucketSignals): SessionBucketResolution {
 	const {mainState, now} = signals;
 	const pendingInput = signals.pendingInput || signals.awaitingPermission;
-	if (mainState === "ended" && !pendingInput) return {bucket: "done", reason: "ended"};
+	// Upstream `Ea()`: an unread session whose worker is not mid-turn waits when its last turn's verdict
+	// says so, including a bridged session whose process has ended.
+	const verdictWaits = signals.unseen && signals.verdictNeedsInput && mainState !== "working";
 	if (pendingInput) return {bucket: "blocked", reason: "pending-input"};
+	if (mainState === "ended" && !verdictWaits) return {bucket: "done", reason: "ended"};
 	if (mainState === "waiting") return {bucket: "blocked", reason: "waiting"};
 	if (signals.unseenError) return {bucket: "blocked", reason: "error"};
+	if (verdictWaits) return {bucket: "blocked", reason: "verdict-needs-input"};
 
 	if (mainState === "working") return {bucket: "working", reason: "main-working"};
 	if (signals.liveAgentCount > 0) return {bucket: "working", reason: "live-agents"};

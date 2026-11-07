@@ -16,6 +16,7 @@ import {registryRemoteControl} from "./session-environment";
 import {getRegistrySessionState, type RegistrySessionState} from "./session-registry-store";
 import {sessionAwaitingPermission} from "./session-permission-wait";
 import {resolveMainState, resolveSessionBucket} from "./session-state";
+import {requestTurnVerdict, turnVerdictNeedsInput} from "./turn-verdict";
 import {ownRepositoryPr, readOriginRepoName} from "./session-own-pr";
 import type {SessionEntry} from "./sessions";
 
@@ -89,6 +90,10 @@ export function toSessionSummaryPayload(
 	// A standing permission prompt outlives the active-session sweep: the CLI
 	// writes nothing while it waits, so the session goes quiet but is not done.
 	const awaitingPermission = sessionAwaitingPermission(entry.id, registrySession);
+	// Upstream judges every finished turn; ours judges only the turns an unread row could show as waiting.
+	if (unseen && entry.turnEndedAt !== undefined && main.state !== "working") {
+		requestTurnVerdict(entry.id, entry.project, entry.turnEndedAt, now);
+	}
 	const {bucket, reason} = resolveSessionBucket({
 		mainState: main.state,
 		pendingInput,
@@ -100,6 +105,7 @@ export function toSessionSummaryPayload(
 		herdrStatus: null,
 		prState: prStatus?.state ?? null,
 		unseen,
+		verdictNeedsInput: turnVerdictNeedsInput(entry.id, entry.turnEndedAt),
 		fileMtime: entry.mtime.getTime(),
 		now,
 	});

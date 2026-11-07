@@ -515,6 +515,7 @@ const sessionBucketReasonLabels = {
 	"pending-input": "Waiting on input",
 	waiting: "Waiting on a question",
 	error: "Error",
+	"verdict-needs-input": "Last turn asks for input",
 	"main-working": "Working",
 	"live-agents": "Subagents running",
 	"background-tasks": "Background tasks running",

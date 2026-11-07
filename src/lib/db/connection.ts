@@ -427,6 +427,13 @@ CREATE TABLE IF NOT EXISTS summaries (
   summary TEXT NOT NULL,
   generated_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS turn_verdicts (
+  session_id TEXT PRIMARY KEY,
+  turn_uuid TEXT NOT NULL,
+  turn_ended_at INTEGER NOT NULL,
+  needs_input INTEGER NOT NULL,
+  generated_at INTEGER NOT NULL
+);
 `;
 
 const SchemaObjectRowsSchema = z.array(

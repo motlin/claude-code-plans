@@ -1860,6 +1860,7 @@ function deleteSessionRows(indexDb: IndexDb, summariesDb: IndexDb, sessionId: st
 	indexDb.delete(schema.subagents).where(eq(schema.subagents.sessionId, sessionId)).run();
 	indexDb.delete(schema.planSessions).where(eq(schema.planSessions.sessionId, sessionId)).run();
 	summariesDb.delete(schema.summaries).where(eq(schema.summaries.sessionId, sessionId)).run();
+	summariesDb.delete(schema.turnVerdicts).where(eq(schema.turnVerdicts.sessionId, sessionId)).run();
 	indexDb.run(sql`DELETE FROM message_content WHERE session_id = ${sessionId}`);
 	indexDb.delete(schema.sessions).where(eq(schema.sessions.id, sessionId)).run();
 	indexDb.delete(schema.sessionMessages).where(eq(schema.sessionMessages.sessionId, sessionId)).run();

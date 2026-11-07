@@ -15,6 +15,7 @@ import {
 	type ActivityState,
 	type DisplayState,
 	type SessionBucketResolution,
+	type SessionBucketSignals,
 } from "../src/lib/session-state";
 import {isAwaitingPermission} from "../src/lib/permission-card";
 
@@ -428,6 +429,7 @@ describe("resolveSessionBucket for a session blocked on a permission prompt", ()
 			herdrStatus: null,
 			prState: null,
 			unseen: false,
+			verdictNeedsInput: false,
 			fileMtime: NOW - 8 * 60 * 60 * 1000,
 			now: NOW,
 		});
@@ -439,6 +441,54 @@ describe("resolveSessionBucket for a session blocked on a permission prompt", ()
 
 	it("is completed once a tool_result follows", () => {
 		expect(bucketFor([PENDING_BASH, BASH_RESULT])).toStrictEqual({bucket: "done", reason: "ended"});
+	});
+});
+
+describe("resolveSessionBucket with a post-turn needs-input verdict", () => {
+	const NOW = 946_598_400_000;
+	const BASE: SessionBucketSignals = {
+		mainState: "idle",
+		pendingInput: false,
+		awaitingPermission: false,
+		unseenError: false,
+		liveAgentCount: 0,
+		backgroundTasks: [],
+		lastSubagentActivityAt: null,
+		herdrStatus: null,
+		prState: null,
+		unseen: true,
+		verdictNeedsInput: true,
+		fileMtime: NOW - 10 * 60 * 1000,
+		now: NOW,
+	};
+
+	it("is blocked when an idle, unread session's last turn handed the user an action", () => {
+		expect(resolveSessionBucket(BASE)).toStrictEqual({bucket: "blocked", reason: "verdict-needs-input"});
+	});
+
+	it("is done once the session has been read", () => {
+		expect(resolveSessionBucket({...BASE, unseen: false})).toStrictEqual({bucket: "done", reason: "idle"});
+	});
+
+	it("is blocked, not ended, after the session's process has ended", () => {
+		expect(resolveSessionBucket({...BASE, mainState: "ended"})).toStrictEqual({
+			bucket: "blocked",
+			reason: "verdict-needs-input",
+		});
+	});
+
+	it("is working while the main thread runs a new turn", () => {
+		expect(resolveSessionBucket({...BASE, mainState: "working"})).toStrictEqual({
+			bucket: "working",
+			reason: "main-working",
+		});
+	});
+
+	it("is done when the verdict says no input is needed", () => {
+		expect(resolveSessionBucket({...BASE, verdictNeedsInput: false})).toStrictEqual({
+			bucket: "done",
+			reason: "unseen",
+		});
 	});
 });
 

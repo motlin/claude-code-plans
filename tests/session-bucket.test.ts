@@ -17,6 +17,7 @@ const BASE: SessionBucketSignals = {
 	herdrStatus: null,
 	prState: null,
 	unseen: false,
+	verdictNeedsInput: false,
 	fileMtime: NOW - 10 * MINUTE,
 	now: NOW,
 };

@@ -15,6 +15,7 @@ import {
 import {getDb, getShutdownSignal, initDb, runInitialScan, shutdownDb} from "./lib/db";
 import {startSweep, stopSweep} from "./lib/active-session-store";
 import {startAutoArchive, stopAutoArchive} from "./lib/auto-archive-service";
+import {startTurnVerdictWorker} from "./lib/turn-verdict";
 import {SESSION_REGISTRY_DIR} from "./lib/session-registry";
 import {startSessionRegistryMonitor, stopSessionRegistryMonitor} from "./lib/session-registry-store";
 import {persistBridgePushedTitlesTo} from "./lib/bridge-pushed-title-store";
@@ -50,6 +51,7 @@ async function readClaudeSettings(): Promise<unknown> {
 }
 
 let stopHerdrEventBridge: (() => void) | null = null;
+let stopTurnVerdictWorker: (() => void) | null = null;
 
 // In dev, log every event-loop stall longer than this with the requests and scan steps that ran during it.
 const EVENT_LOOP_STALL_LOG_MS = 500;
@@ -69,6 +71,8 @@ void (async () => {
 	await takeOverServerShutdown(async () => {
 		stopSweep();
 		stopAutoArchive();
+		stopTurnVerdictWorker?.();
+		stopTurnVerdictWorker = null;
 		stopSessionRegistryMonitor();
 		stopNotificationsSweep();
 		stopLiveSubagentSweep();
@@ -166,6 +170,14 @@ void (async () => {
 	stopHerdrEventBridge = startTerminalHostEvents();
 	// Archive inactive sessions: a no-op until the setting leaves its default of Never.
 	startAutoArchive();
+	// Judge unread sessions' finished turns; one that asks for input moves to Needs input.
+	stopTurnVerdictWorker = startTurnVerdictWorker({
+		summariesDb: getDb().summaries,
+		projectsDir: PROJECTS_DIR,
+		onVerdict: (sessionId) => {
+			rebroadcastSessionsById(new Set([sessionId]));
+		},
+	});
 	initPrStatusService(rebroadcastProjectSessions);
 })();
 
