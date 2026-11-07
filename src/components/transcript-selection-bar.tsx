@@ -17,7 +17,7 @@ const HIDE_AFTER_SCROLL = 100;
 const EXCERPT_MAX_LENGTH = 1500;
 
 const HOST_CLASS =
-	"text-body text-primary break-words pointer-events-auto fixed left-0 top-0 will-change-transform isolate";
+	"text-body text-primary break-words pointer-events-auto fixed left-0 top-0 will-change-transform isolate draggable-none";
 /** The floating selection action bar shared with the diff selection chip (upstream `Ml`/`sn`). */
 export const SELECTION_BAR_CLASS = `rounded-r5 bg-surface-3 shadow-[var(--menu-shadow)] ${FORCED_COLORS_BORDER_CLASS} group/split flex`;
 /** Upstream's cds ghost Button: 24px tall, 8px inline padding, 6px radius, ghost hover paint. */
@@ -97,10 +97,8 @@ export function TranscriptSelectionBar({
 	containerRef: RefObject<Element | null>;
 	sideChatAvailable: boolean;
 }) {
-	const selection = useTranscriptSelection(containerRef);
+	const {selection: shown, hide} = useTranscriptSelection(containerRef);
 	const sideChat = useSideChat(sessionId);
-	const [dismissed, setDismissed] = useState<TranscriptSelection | null>(null);
-	const shown = selection !== null && selection !== dismissed ? selection : null;
 	const menuOpen = useAnyMenuOpen(shown !== null);
 
 	const actions: BarAction[] = [];
@@ -126,9 +124,7 @@ export function TranscriptSelectionBar({
 				containerRef={containerRef}
 				actions={actions}
 				hidden={menuOpen}
-				onHide={() => {
-					setDismissed(shown);
-				}}
+				onHide={hide}
 			/>
 		</ViewportPortal>
 	);
@@ -193,10 +189,16 @@ function SelectionBarHost({
 				zIndex: 55,
 				transform:
 					position === null ? undefined : `translate(${position.x}px, ${position.y}px) translateX(-50%)`,
-				...(hidden || position === null ? {visibility: "hidden"} : {}),
+				...(position === null ? {visibility: "hidden"} : {}),
 			}}
 		>
-			<div ref={barRef} data-transcript-selection-bar="" data-surface="popover" className={SELECTION_BAR_CLASS}>
+			<div
+				ref={barRef}
+				data-transcript-selection-bar=""
+				data-surface="popover"
+				className={SELECTION_BAR_CLASS}
+				style={hidden ? {visibility: "hidden"} : undefined}
+			>
 				{actions.map((action, index) => (
 					<Fragment key={action.label}>
 						{index > 0 && <span aria-hidden="true" className={SEPARATOR_CLASS} />}

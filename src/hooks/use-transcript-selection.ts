@@ -1,4 +1,4 @@
-import {type RefObject, useEffect, useState} from "react";
+import {type RefObject, useCallback, useEffect, useState} from "react";
 
 import {MIN_EXCERPT_LENGTH} from "./use-transcript-selection-attach";
 
@@ -13,7 +13,7 @@ export interface TranscriptSelection {
 }
 
 /** The selection as upstream's `xV` counts it: two or more trimmed characters touching `container`. */
-function readSelection(container: Element): TranscriptSelection | null {
+function readSelection(container: Element): {range: Range; text: string} | null {
 	const selection = container.ownerDocument.getSelection();
 	if (selection === null || selection.rangeCount === 0 || selection.isCollapsed) return null;
 	const text = selection.toString().trim();
@@ -21,80 +21,138 @@ function readSelection(container: Element): TranscriptSelection | null {
 	const range = selection.getRangeAt(0);
 	const touches = container.contains(range.startContainer) || container.contains(range.endContainer);
 	if (!touches || !range.intersectsNode(container)) return null;
-	return {range: range.cloneRange(), text};
+	return {range, text};
 }
 
-/** Touch, or a pen's non-right press, selects with the native callout instead of the bar (upstream `YS`). */
+/** Upstream `tT`: whether two ranges share both boundaries. */
+function sameBoundaries(a: Range, b: Range): boolean {
+	return (
+		a.startContainer === b.startContainer &&
+		a.startOffset === b.startOffset &&
+		a.endContainer === b.endContainer &&
+		a.endOffset === b.endOffset
+	);
+}
+
+/** Touch, or a pen's non-right press, selects with the native callout instead of the bar (upstream `Gw`). */
 function isTouchPointer(event: PointerEvent): boolean {
 	return event.pointerType === "touch" || (event.pointerType === "pen" && event.button !== 2);
 }
 
+export interface TranscriptSelectionState {
+	selection: TranscriptSelection | null;
+	/** Upstream's `hideTooltip`: hide the bar until the selection is next read. */
+	hide: () => void;
+}
+
 /**
  * The transcript selection the selection bar should show for, like upstream's
- * `xV`: it settles 250ms after a keyboard or programmatic change, waits for
- * mouseup during a drag, hides at once when the selection collapses, and stays
- * null after a touch press.
+ * `Dv`: it settles 250ms after a keyboard or programmatic change, hides at once
+ * when the selection changes during a mouse drag and re-reads it on mouseup,
+ * hides at once when the selection collapses, and stays null after a touch
+ * press inside the transcript (upstream `Gw`).
  */
-export function useTranscriptSelection(containerRef: RefObject<Element | null>): TranscriptSelection | null {
+export function useTranscriptSelection(containerRef: RefObject<Element | null>): TranscriptSelectionState {
 	const [shown, setShown] = useState<TranscriptSelection | null>(null);
+	const hide = useCallback(() => {
+		setShown(null);
+	}, []);
 
 	useEffect(() => {
-		const doc = containerRef.current?.ownerDocument ?? document;
+		const container = containerRef.current;
+		const doc = container?.ownerDocument ?? document;
 		let timer: ReturnType<typeof setTimeout> | undefined;
 		let dragging = false;
+		/** Upstream `f`: the selection changed during the current drag. */
+		let changedDuringDrag = false;
+		/** Upstream `p`: the settle timer fired during the current drag. */
+		let firedDuringDrag = false;
 		let touch = false;
 
 		const cancel = () => {
 			if (timer !== undefined) clearTimeout(timer);
 			timer = undefined;
+			firedDuringDrag = false;
+		};
+		const hideNow = () => {
+			cancel();
+			setShown(null);
 		};
 		const evaluate = () => {
 			cancel();
-			const container = containerRef.current;
-			setShown(container === null || touch ? null : readSelection(container));
+			const current = containerRef.current;
+			const next = current === null || touch ? null : readSelection(current);
+			if (next === null) {
+				setShown(null);
+				return;
+			}
+			setShown((previous) =>
+				previous !== null && previous.text === next.text && sameBoundaries(previous.range, next.range)
+					? previous
+					: {range: next.range.cloneRange(), text: next.text},
+			);
 		};
 		const debounce = () => {
 			cancel();
-			timer = setTimeout(evaluate, SELECTION_DEBOUNCE_MS);
+			timer = setTimeout(() => {
+				timer = undefined;
+				if (dragging) {
+					firedDuringDrag = true;
+					return;
+				}
+				evaluate();
+			}, SELECTION_DEBOUNCE_MS);
 		};
 		const onSelectionChange = () => {
 			const selection = doc.getSelection();
 			if (selection === null || selection.rangeCount === 0 || selection.isCollapsed) {
-				cancel();
-				setShown(null);
+				hideNow();
 				return;
 			}
-			if (!dragging) debounce();
-		};
-		const onPointerDown = (event: PointerEvent) => {
-			touch = isTouchPointer(event);
-			if (touch) {
-				cancel();
-				setShown(null);
+			if (dragging) {
+				changedDuringDrag = true;
+				hideNow();
+				return;
 			}
+			debounce();
+		};
+		const onPointerDown = (event: Event) => {
+			if (!(event instanceof PointerEvent)) return;
+			touch = isTouchPointer(event);
+			if (touch) hideNow();
 		};
 		const onMouseDown = (event: MouseEvent) => {
-			if (event.button === 0) dragging = true;
+			if (event.defaultPrevented || dragging) return;
+			dragging = true;
+			changedDuringDrag = false;
 		};
 		const onMouseUp = (event: MouseEvent) => {
-			if (!dragging) return;
+			if (!dragging || event.buttons !== 0) return;
 			dragging = false;
+			const fired = firedDuringDrag;
+			firedDuringDrag = false;
+			if (!changedDuringDrag) {
+				if (doc.getSelection()?.isCollapsed === false) {
+					if (fired) debounce();
+				} else hideNow();
+				return;
+			}
 			if (event.detail === 2) debounce();
 			else evaluate();
 		};
 
 		doc.addEventListener("selectionchange", onSelectionChange);
-		doc.addEventListener("pointerdown", onPointerDown, true);
-		doc.addEventListener("mousedown", onMouseDown, true);
-		doc.addEventListener("mouseup", onMouseUp, true);
+		container?.addEventListener("pointerdown", onPointerDown, {capture: true, passive: true});
+		doc.addEventListener("mousedown", onMouseDown);
+		doc.addEventListener("mouseup", onMouseUp);
 		return () => {
 			cancel();
 			doc.removeEventListener("selectionchange", onSelectionChange);
-			doc.removeEventListener("pointerdown", onPointerDown, true);
-			doc.removeEventListener("mousedown", onMouseDown, true);
-			doc.removeEventListener("mouseup", onMouseUp, true);
+			container?.removeEventListener("pointerdown", onPointerDown, {capture: true});
+			doc.removeEventListener("mousedown", onMouseDown);
+			doc.removeEventListener("mouseup", onMouseUp);
 		};
 	}, [containerRef]);
 
-	return shown;
+	return {selection: shown, hide};
 }

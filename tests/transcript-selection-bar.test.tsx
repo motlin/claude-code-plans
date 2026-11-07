@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, fireEvent, render} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, renderHook} from "@testing-library/react";
 import {useRef} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {TranscriptSelectionBar} from "../src/components/transcript-selection-bar";
+import {useTranscriptSelection} from "../src/hooks/use-transcript-selection";
 import {type ComposerHandle, getContextChips, registerComposer, takeContextChips} from "../src/lib/context-attach";
 import {getSideChat, openSideChat, resetSideChatStore} from "../src/lib/side-chat-store";
 
@@ -202,13 +203,132 @@ describe("transcript selection hook", () => {
 		expect({duringDrag, shown: host() !== null}).toStrictEqual({duringDrag: null, shown: true});
 	});
 
-	it("suppresses the bar after a touch pointerdown", () => {
+	it("suppresses the bar after a touch pointerdown inside the transcript", () => {
+		renderBar();
+		fireEvent.pointerDown(textNodeContaining("Hermit").parentElement ?? document.body, {pointerType: "touch"});
+		select("Hermit crabs");
+		advance(300);
+
+		expect(host()).toBeNull();
+	});
+
+	it("ignores a touch pointerdown outside the transcript", () => {
 		renderBar();
 		fireEvent.pointerDown(document.body, {pointerType: "touch"});
 		select("Hermit crabs");
 		advance(300);
 
+		expect(host() !== null).toBe(true);
+	});
+
+	it("hides at once when the selection changes mid-drag, and shows again on mouseup", () => {
+		renderBar();
+		select("Hermit crabs");
+		advance(250);
+		const before = host() !== null;
+
+		fireEvent.mouseDown(textNodeContaining("Tide pools form").parentElement ?? document.body);
+		select("Tide pools");
+		const duringDrag = host();
+		fireEvent.mouseUp(document.body, {detail: 1});
+
+		expect({before, duringDrag, after: host() !== null}).toStrictEqual({
+			before: true,
+			duringDrag: null,
+			after: true,
+		});
+	});
+
+	it("counts a right-button press as a drag, ends it only once no button is held, and keeps an unchanged bar", () => {
+		renderBar();
+		select("Hermit crabs");
+		advance(250);
+		const before = host();
+
+		fireEvent.mouseDown(textNodeContaining("Hermit").parentElement ?? document.body, {button: 2, buttons: 2});
+		fireEvent.mouseUp(document.body, {button: 2, buttons: 0});
+		const afterRightClick = host();
+
+		fireEvent.mouseDown(textNodeContaining("Hermit").parentElement ?? document.body, {button: 2, buttons: 2});
+		fireEvent.mouseUp(document.body, {button: 0, buttons: 2});
+		select("Tide pools");
+		const stillDragging = host();
+		fireEvent.mouseUp(document.body, {button: 2, buttons: 0});
+
+		expect({
+			same: before !== null && afterRightClick === before,
+			stillDragging,
+			after: host() !== null,
+		}).toStrictEqual({same: true, stillDragging: null, after: true});
+	});
+
+	it("hides on a mouseup that left the selection collapsed without a selectionchange", () => {
+		renderBar();
+		select("Hermit crabs");
+		advance(250);
+
+		fireEvent.mouseDown(textNodeContaining("Hermit").parentElement ?? document.body);
+		window.getSelection()?.collapseToStart();
+		fireEvent.mouseUp(document.body);
+
 		expect(host()).toBeNull();
+	});
+
+	it("re-debounces on mouseup when the settle timer fired mid-drag", () => {
+		renderBar();
+		select("Hermit crabs");
+		advance(100);
+		fireEvent.mouseDown(textNodeContaining("Hermit").parentElement ?? document.body);
+		advance(200);
+		const duringDrag = host();
+
+		fireEvent.mouseUp(document.body);
+		const atMouseUp = host();
+		advance(249);
+		const before = host();
+		advance(1);
+
+		expect({duringDrag, atMouseUp, before, after: host() !== null}).toStrictEqual({
+			duringDrag: null,
+			atMouseUp: null,
+			before: null,
+			after: true,
+		});
+	});
+
+	it("does not start a drag from a mousedown whose default was prevented", () => {
+		renderBar();
+		const target = textNodeContaining("Hermit").parentElement ?? document.body;
+		target.addEventListener("mousedown", (event) => {
+			event.preventDefault();
+		});
+
+		fireEvent.mouseDown(target);
+		select("Hermit crabs");
+		advance(250);
+
+		expect(host() !== null).toBe(true);
+	});
+});
+
+describe("useTranscriptSelection", () => {
+	it("keeps the same selection object when an unchanged selection is re-read", () => {
+		const container = document.createElement("div");
+		container.innerHTML = "<p>Hermit crabs live in tide pools.</p>";
+		document.body.append(container);
+		const {result} = renderHook(() => useTranscriptSelection({current: container}));
+
+		select("Hermit crabs");
+		advance(250);
+		const first = result.current.selection;
+		act(() => {
+			document.dispatchEvent(new Event("selectionchange"));
+		});
+		advance(250);
+		const second = result.current.selection;
+		container.remove();
+
+		expect({shown: first !== null, same: second === first}).toStrictEqual({shown: true, same: true});
 	});
 });
 
@@ -225,7 +345,7 @@ describe("transcript selection bar", () => {
 			parent: host()?.closest("[data-testid=scroller]") ?? null,
 		}).toStrictEqual({
 			className:
-				"text-body text-primary break-words pointer-events-auto fixed left-0 top-0 will-change-transform isolate",
+				"text-body text-primary break-words pointer-events-auto fixed left-0 top-0 will-change-transform isolate draggable-none",
 			zIndex: "55",
 			transform: "translate(500px, 337px) translateX(-50%)",
 			parent: null,
@@ -391,13 +511,20 @@ describe("transcript selection bar", () => {
 			document.body.append(menu);
 			await Promise.resolve();
 		});
-		const hidden = host()?.style.visibility;
+		const whileOpen = {
+			bar: bar()?.style.visibility,
+			host: host()?.style.visibility,
+			transform: host()?.style.transform,
+		};
 		await act(async () => {
 			menu.remove();
 			await Promise.resolve();
 		});
 
-		expect({hidden, after: host()?.style.visibility}).toStrictEqual({hidden: "hidden", after: ""});
+		expect({whileOpen, after: bar()?.style.visibility}).toStrictEqual({
+			whileOpen: {bar: "hidden", host: "", transform: "translate(500px, 337px) translateX(-50%)"},
+			after: "",
+		});
 	});
 });
 
