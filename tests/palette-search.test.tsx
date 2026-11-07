@@ -176,6 +176,9 @@ async function awaitRequest(): Promise<PendingSearch> {
 	return request;
 }
 
+const ACCENT_DOT = "background: var(--cds-fill-accent); box-shadow: 0 0 0 0.5px var(--cds-page-bg);";
+const BRAND_DOT = "background: var(--cds-fill-brand); box-shadow: 0 0 0 0.5px var(--cds-page-bg);";
+
 describe("⌘K palette live search", () => {
 	beforeEach(() => {
 		pending = [];
@@ -316,35 +319,53 @@ describe("⌘K palette live search", () => {
 			const row = option(dialog, label);
 			return {
 				sr: row.querySelector(".sr-only")?.textContent,
-				dot: row.querySelector("[data-palette-mark-dot]")?.className.split(" "),
+				dot: (() => {
+					const dot = row.querySelector("[data-palette-mark-dot]");
+					return {
+						cds: dot?.getAttribute("data-cds"),
+						class: dot?.className.split(" "),
+						style: dot?.getAttribute("style"),
+						wrapper: dot?.parentElement?.className,
+					};
+				})(),
 				meta: row.querySelector("[data-palette-meta]")?.textContent,
 			};
 		};
 		expect({awaiting: marks("Waiting 0"), running: marks("Waiting run")}).toStrictEqual({
 			awaiting: {
 				sr: " Awaiting input",
-				dot: [
-					"absolute",
-					"-top-px",
-					"-end-px",
-					"size-1.5",
-					"rounded-full",
-					"forced-colors:!bg-[color:CanvasText]",
-					"bg-fill-accent",
-				],
+				dot: {
+					cds: "Pulse",
+					class: [
+						"block",
+						"size-[calc(0.375rem*var(--cds-rem-scale,1))]",
+						"rounded-full",
+						"forced-colors:!bg-[color:CanvasText]",
+						"absolute",
+						"-top-px",
+						"-end-px",
+					],
+					style: "background: var(--cds-fill-accent); box-shadow: 0 0 0 0.5px var(--cds-page-bg);",
+					wrapper: "relative shrink-0 [--cds-page-bg:transparent]",
+				},
 				meta: "Just now",
 			},
 			running: {
 				sr: " Running",
-				dot: [
-					"absolute",
-					"-top-px",
-					"-end-px",
-					"size-1.5",
-					"rounded-full",
-					"forced-colors:!bg-[color:CanvasText]",
-					"bg-fill-brand",
-				],
+				dot: {
+					cds: "Pulse",
+					class: [
+						"block",
+						"size-[calc(0.375rem*var(--cds-rem-scale,1))]",
+						"rounded-full",
+						"forced-colors:!bg-[color:CanvasText]",
+						"absolute",
+						"-top-px",
+						"-end-px",
+					],
+					style: "background: var(--cds-fill-brand); box-shadow: 0 0 0 0.5px var(--cds-page-bg);",
+					wrapper: "relative shrink-0 [--cds-page-bg:transparent]",
+				},
 				meta: "Just now",
 			},
 		});
@@ -394,7 +415,7 @@ describe("⌘K palette live search", () => {
 			const element = option(dialog, label);
 			return {
 				sr: element.querySelector(".sr-only")?.textContent,
-				dot: element.querySelector("[data-palette-mark-dot]")?.className.split(" ").at(-1),
+				dot: element.querySelector("[data-palette-mark-dot]")?.getAttribute("style"),
 				meta: element.querySelector("[data-palette-meta]")?.textContent,
 				archived: element.hasAttribute("data-archived"),
 			};
@@ -406,11 +427,11 @@ describe("⌘K palette live search", () => {
 			s4: row("Delta"),
 			s5: row("Echo"),
 		}).toStrictEqual({
-			s1: {sr: " Running", dot: "bg-fill-brand", meta: "Just now", archived: false},
-			s2: {sr: " Unread", dot: "bg-fill-accent", meta: "PR #863 · Just now", archived: false},
-			s3: {sr: " Error", dot: "bg-fill-accent", meta: "Just now", archived: false},
+			s1: {sr: " Running", dot: BRAND_DOT, meta: "Just now", archived: false},
+			s2: {sr: " Unread", dot: ACCENT_DOT, meta: "PR #863 · Just now", archived: false},
+			s3: {sr: " Error", dot: ACCENT_DOT, meta: "Just now", archived: false},
 			s4: {sr: undefined, dot: undefined, meta: "PR #12 · Just nowArchived", archived: true},
-			s5: {sr: " Awaiting input", dot: "bg-fill-accent", meta: "Just now", archived: false},
+			s5: {sr: " Awaiting input", dot: ACCENT_DOT, meta: "Just now", archived: false},
 		});
 	});
 

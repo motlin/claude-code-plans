@@ -495,6 +495,17 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream `--cds-fill-brand` / `hover:bg-fill-brand-hover` (the palette's running dot and the Compose Send), the same in both modes. */
 	--upstream-fill-brand: #c6613f;
 	--upstream-fill-brand-hover: #d97757;
+	/* Upstream `--cds-fill-success` (read live 2026-11-06): the usage ring's reset Pulse and connector dots. */
+	--upstream-fill-success: #10a122;
+	/* Upstream `--cds-*` names the cds Pulse reads (src/components/ui/pulse.tsx), aliased onto the local
+	   upstream tokens so the dark and fizzy-lake blocks carry through. */
+	--cds-page-bg: var(--upstream-page);
+	--cds-fill-accent: var(--upstream-fill-accent);
+	--cds-fill-warning: var(--upstream-fill-warning);
+	--cds-fill-success: var(--upstream-fill-success);
+	--cds-fill-danger: var(--upstream-fill-danger);
+	--cds-fill-brand: var(--upstream-fill-brand);
+	--cds-text-muted: var(--upstream-text-muted);
 	/* Upstream claude.ai/code text-warning: the Needs input pill label. */
 	--upstream-warning: rgb(115 69 0);
 	/* Upstream pre-rollout `--cds-bg-accent` (role-accent-100): pressed toggles and selected chips. */
@@ -627,8 +638,6 @@ html[data-interface-font="dyslexic"] {
 	--git-closed: #ff3a30;
 	--git-conflicting: #c5621b;
 	--git-queued: #98801f;
-	--status-dot-awaiting: #fab219;
-	--status-dot-ready: #257de0;
 
 	/* Upstream claude.ai/code — Settings controls (Switch, SegmentedControl, text field) */
 	--settings-muted: #898781;
@@ -2651,26 +2660,15 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	}
 }
 
-/* Upstream claude.ai/code session row icons: 6px dots keyed by data-kind. */
-.status-dot {
+/* The session row's running dot (awaiting and ready are cds Pulses, src/components/status-dot.tsx). */
+.status-dot[data-kind="running"] {
 	position: relative;
 	display: block;
 	width: 6px;
 	height: 6px;
 	border-radius: 50%;
-}
-
-.status-dot[data-kind="awaiting"] {
-	background: var(--status-dot-awaiting);
-}
-
-.status-dot[data-kind="running"] {
 	background: var(--color-ink-muted);
 	animation: dot-blink 1.2s ease-in-out infinite;
-}
-
-.status-dot[data-kind="ready"] {
-	background: var(--status-dot-ready);
 }
 
 @keyframes dot-blink {

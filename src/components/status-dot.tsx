@@ -13,6 +13,7 @@ import {sessionStateKindLabels} from "../lib/schema-choices";
 import type {GitPrState} from "../lib/pr-status";
 import type {SessionStateKind} from "../lib/session-state";
 import {GIT_PR_STATE_LABELS} from "./git-pr-state-labels";
+import {Pulse} from "./ui/pulse";
 import {Tooltip} from "./ui/tooltip";
 
 const DOT_WRAPPER = "flex min-h-3.5 min-w-3.5 shrink-0 items-center justify-center";
@@ -45,8 +46,26 @@ export function PrTailGlyph({state}: {state: GitPrState}) {
 	);
 }
 
+const STATUS_PULSE_COLORS = {
+	awaiting: "var(--cds-fill-warning)",
+	ready: "var(--cds-fill-accent)",
+} as const;
+
 /**
- * Upstream claude.ai/code session row icon: a 6px `.status-dot` for live states, upstream's `U7`
+ * Upstream's sidebar status Pulse (`QY` → `Io`): a static cds Pulse inside a `contents` wrapper
+ * that turns its page-bg ring off. The wrapper keeps the local `.status-dot[data-kind]` hook.
+ */
+export function StatusPulse({kind}: {kind: keyof typeof STATUS_PULSE_COLORS}) {
+	return (
+		<span className="status-dot contents [--cds-page-bg:transparent]" data-kind={kind}>
+			<Pulse animate={false} color={STATUS_PULSE_COLORS[kind]} />
+		</span>
+	);
+}
+
+/**
+ * Upstream claude.ai/code session row icon: a 6px cds Pulse for awaiting and ready, a blinking
+ * `.status-dot` while running, upstream's `U7`
  * 16px warning-coloured triangle for an error, and a hollow ring for idle. A PR never takes this
  * slot; it draws as a `PrTailGlyph`.
  */
@@ -80,8 +99,10 @@ export function SessionStateIcon({
 		<span role={live ? "status" : "img"} aria-label={ariaLabel} className={DOT_WRAPPER} {...describedByProps}>
 			{kind === "error" ? (
 				<TriangleAlert aria-hidden="true" size={16} className="shrink-0 text-upstream-warning" />
-			) : (
+			) : kind === "running" ? (
 				<span className="status-dot" data-kind={kind} />
+			) : (
+				<StatusPulse kind={kind} />
 			)}
 		</span>
 	);

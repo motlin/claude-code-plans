@@ -167,6 +167,31 @@ function footer(dialog: HTMLElement): Element | null {
 	return dialog.querySelector("[data-palette-footer]");
 }
 
+const MARK_DOT_CLASS = [
+	"block",
+	"size-[calc(0.375rem*var(--cds-rem-scale,1))]",
+	"rounded-full",
+	"forced-colors:!bg-[color:CanvasText]",
+	"absolute",
+	"-top-px",
+	"-end-px",
+];
+const ACCENT_DOT = {
+	cds: "Pulse",
+	class: MARK_DOT_CLASS,
+	style: "background: var(--cds-fill-accent); box-shadow: 0 0 0 0.5px var(--cds-page-bg);",
+};
+const BRAND_DOT = {
+	cds: "Pulse",
+	class: MARK_DOT_CLASS,
+	style: "background: var(--cds-fill-brand); box-shadow: 0 0 0 0.5px var(--cds-page-bg);",
+};
+
+/** The palette mark dot (a static cds Pulse) as {cds, class, style}. */
+function markDot(dot: Element | null | undefined) {
+	return {cds: dot?.getAttribute("data-cds"), class: dot?.className.split(" "), style: dot?.getAttribute("style")};
+}
+
 describe("CommandPalette shell", () => {
 	beforeEach(() => {
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
@@ -1633,7 +1658,7 @@ describe("CommandPalette shell", () => {
 
 		const option = await within(dialog).findByRole("option", {name: /Answered one/});
 		expect({
-			dot: option.querySelector("[data-palette-mark-dot]")?.className.split(" ").includes("bg-fill-brand"),
+			dot: option.querySelector("[data-palette-mark-dot]")?.getAttribute("style") === BRAND_DOT.style,
 			attention: groupLabels(dialog).some(([label]) => label === "Needs attention"),
 		}).toStrictEqual({dot: true, attention: false});
 	});
@@ -1648,7 +1673,7 @@ describe("CommandPalette shell", () => {
 
 		await within(dialog).findByRole("option", {name: /Running one/});
 		const dotClasses = (name: RegExp) =>
-			within(dialog).getByRole("option", {name}).querySelector("[data-palette-mark-dot]")?.className.split(" ");
+			markDot(within(dialog).getByRole("option", {name}).querySelector("[data-palette-mark-dot]"));
 		const maskClasses = (name: RegExp) =>
 			within(dialog)
 				.getByRole("option", {name})
@@ -1668,30 +1693,14 @@ describe("CommandPalette shell", () => {
 				mask: plain.querySelector("[class*='mask-image']"),
 			},
 		}).toStrictEqual({
-			running: [
-				"absolute",
-				"-top-px",
-				"-end-px",
-				"size-1.5",
-				"rounded-full",
-				"forced-colors:!bg-[color:CanvasText]",
-				"bg-fill-brand",
-			],
-			awaiting: [
-				"absolute",
-				"-top-px",
-				"-end-px",
-				"size-1.5",
-				"rounded-full",
-				"forced-colors:!bg-[color:CanvasText]",
-				"bg-fill-accent",
-			],
-			wrapper: ["relative", "shrink-0"],
+			running: BRAND_DOT,
+			awaiting: ACCENT_DOT,
+			wrapper: ["relative", "shrink-0", "[--cds-page-bg:transparent]"],
 			mask: [
 				"block",
-				"[--dot-r:0.1875rem]",
+				"[--dot-r:calc(0.1875rem*var(--cds-rem-scale,1))]",
 				"[mask-image:radial-gradient(circle_at_calc(100%_-_var(--dot-r)_+_1px)_calc(var(--dot-r)_-_1px),transparent_calc(var(--dot-r)_+_2px),black_calc(var(--dot-r)_+_2.5px))]",
-				"rtl:[mask-image:radial-gradient(circle_at_calc(var(--dot-r)_-_1px)_calc(var(--dot-r)_-_1px),transparent_calc(var(--dot-r)_+_2px),black_calc(var(--dot-r)_+_2.5px))]",
+				"[&:where(:root[dir=rtl]_:dir(rtl))]:not-forced-colors:[mask-image:radial-gradient(circle_at_calc(var(--dot-r)_-_1px)_calc(var(--dot-r)_-_1px),transparent_calc(var(--dot-r)_+_2px),black_calc(var(--dot-r)_+_2.5px))]",
 				"forced-colors:[mask-image:none]",
 			],
 			plain: {dot: null, mask: null},
@@ -1707,21 +1716,13 @@ describe("CommandPalette shell", () => {
 		const row = await within(dialog).findByRole("option", {name: /Old run/});
 		expect({
 			groups: groupLabels(dialog),
-			dot: row.querySelector("[data-palette-mark-dot]")?.className.split(" "),
+			dot: markDot(row.querySelector("[data-palette-mark-dot]")),
 		}).toStrictEqual({
 			groups: [
 				["Recents", ["Old run Running", "Plain one"]],
 				["Actions", ["New session"]],
 			],
-			dot: [
-				"absolute",
-				"-top-px",
-				"-end-px",
-				"size-1.5",
-				"rounded-full",
-				"forced-colors:!bg-[color:CanvasText]",
-				"bg-fill-brand",
-			],
+			dot: BRAND_DOT,
 		});
 	});
 
@@ -1894,19 +1895,11 @@ describe("CommandPalette shell", () => {
 		const unseen = within(dialog).getByRole("option", {name: /Unseen done/});
 		expect({
 			sr: unseen.querySelector(".sr-only")?.textContent,
-			dot: unseen.querySelector("[data-palette-mark-dot]")?.className.split(" "),
+			dot: markDot(unseen.querySelector("[data-palette-mark-dot]")),
 			seen: within(dialog).getByRole("option", {name: "Seen done"}).querySelector("[data-palette-mark-dot]"),
 		}).toStrictEqual({
 			sr: " Unread",
-			dot: [
-				"absolute",
-				"-top-px",
-				"-end-px",
-				"size-1.5",
-				"rounded-full",
-				"forced-colors:!bg-[color:CanvasText]",
-				"bg-fill-accent",
-			],
+			dot: ACCENT_DOT,
 			seen: null,
 		});
 	});

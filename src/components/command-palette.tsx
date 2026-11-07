@@ -177,6 +177,7 @@ import {isAltEnter, rowActionsAnchorRect} from "./palette-row-actions-geometry";
 import {AttachedContextChips} from "./attached-context-chips";
 import {useToast} from "./toast-context";
 import {Icon} from "./ui/icon";
+import {Pulse} from "./ui/pulse";
 import {Shortcut, WIDE_KEYCAP_CLASS} from "./ui/shortcut";
 import {Spinner} from "./ui/spinner";
 import {ArchivedBadge} from "./archived-badge";
@@ -2782,15 +2783,15 @@ function EmptyViewItem({
 	);
 }
 
-/** Upstream's 6px static mark dot: accent for awaiting, error and unread; brand for running. */
-const MARK_DOT_CLASS = {
-	awaiting: "bg-fill-accent",
-	error: "bg-fill-accent",
-	unread: "bg-fill-accent",
-	running: "bg-fill-brand",
+/** Upstream's static mark Pulse colors (`fn`): accent for awaiting, error and unread; brand for running. */
+const MARK_DOT_COLOR = {
+	awaiting: "var(--cds-fill-accent)",
+	error: "var(--cds-fill-accent)",
+	unread: "var(--cds-fill-accent)",
+	running: "var(--cds-fill-brand)",
 } as const satisfies Record<PaletteMark, string>;
 
-/** Upstream's code-session icon (`er`): bare when unmarked, else notched by a `--dot-r` mask (mirrored in RTL) under its mark dot. */
+/** Upstream's code-session icon (`mn`): bare when unmarked, else notched by a rem-scaled `--dot-r` mask (mirrored in RTL) under its mark Pulse. */
 function PaletteSessionIcon({mark}: {mark: PaletteMark | undefined}) {
 	if (mark === undefined) {
 		return (
@@ -2800,14 +2801,16 @@ function PaletteSessionIcon({mark}: {mark: PaletteMark | undefined}) {
 		);
 	}
 	return (
-		<div className="relative shrink-0">
-			<span className="block [--dot-r:0.1875rem] [mask-image:radial-gradient(circle_at_calc(100%_-_var(--dot-r)_+_1px)_calc(var(--dot-r)_-_1px),transparent_calc(var(--dot-r)_+_2px),black_calc(var(--dot-r)_+_2.5px))] rtl:[mask-image:radial-gradient(circle_at_calc(var(--dot-r)_-_1px)_calc(var(--dot-r)_-_1px),transparent_calc(var(--dot-r)_+_2px),black_calc(var(--dot-r)_+_2.5px))] forced-colors:[mask-image:none]">
+		<div className="relative shrink-0 [--cds-page-bg:transparent]">
+			<span className="block [--dot-r:calc(0.1875rem*var(--cds-rem-scale,1))] [mask-image:radial-gradient(circle_at_calc(100%_-_var(--dot-r)_+_1px)_calc(var(--dot-r)_-_1px),transparent_calc(var(--dot-r)_+_2px),black_calc(var(--dot-r)_+_2.5px))] [&:where(:root[dir=rtl]_:dir(rtl))]:not-forced-colors:[mask-image:radial-gradient(circle_at_calc(var(--dot-r)_-_1px)_calc(var(--dot-r)_-_1px),transparent_calc(var(--dot-r)_+_2px),black_calc(var(--dot-r)_+_2.5px))] forced-colors:[mask-image:none]">
 				<CodeXml />
 			</span>
-			<span
+			<Pulse
 				aria-hidden="true"
 				data-palette-mark-dot=""
-				className={`absolute -top-px -end-px size-1.5 rounded-full forced-colors:!bg-[color:CanvasText] ${MARK_DOT_CLASS[mark]}`}
+				animate={false}
+				color={MARK_DOT_COLOR[mark]}
+				className="absolute -top-px -end-px"
 			/>
 		</div>
 	);

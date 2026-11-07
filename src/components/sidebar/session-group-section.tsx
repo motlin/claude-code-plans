@@ -795,7 +795,7 @@ function FamilyStub({nested, onExpand}: {nested: readonly SidebarSessionRow[]; o
 						{" · "}
 						<span
 							aria-hidden="true"
-							className="mr-1 inline-block size-1.5 rounded-full bg-[var(--status-dot-ready)] align-middle"
+							className="mr-1 inline-block size-1.5 rounded-full bg-fill-accent align-middle"
 						/>
 						{unread}
 					</>

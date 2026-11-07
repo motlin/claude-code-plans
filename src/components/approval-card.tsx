@@ -1,6 +1,7 @@
 import {useState, type ButtonHTMLAttributes, type DragEvent, type KeyboardEvent, type ReactNode, type Ref} from "react";
 
 import type {ElicitationFocus} from "../lib/herdr/elicitation-keys";
+import {StatusPulse} from "./status-dot";
 import {DisabledReason} from "./ui/disabled-reason";
 import {Spinner} from "./ui/spinner";
 import {SECONDARY_RING_CLASS} from "./ui/split-dropdown-button";
@@ -279,7 +280,7 @@ export function WaitingForInputNotice({
 			className="flex items-start gap-2 rounded-r7 bg-surface-2 p-3 text-[13px]/[19px] text-primary shadow-[var(--approval-card-shadow)]"
 		>
 			<span aria-hidden="true" className="flex h-[19px] shrink-0 items-center">
-				<span className="status-dot" data-kind="awaiting" />
+				<StatusPulse kind="awaiting" />
 			</span>
 			<span className="flex min-w-0 flex-col">
 				<span className="font-[580]">{title}</span>
