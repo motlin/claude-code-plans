@@ -1,5 +1,4 @@
 import {basename, join} from "node:path";
-import {eq} from "drizzle-orm";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import * as schema from "./db/schema";
 import {hmrPersist} from "./hmr-persist";
@@ -11,6 +10,8 @@ type SummariesDb = BetterSQLite3Database<typeof schema>;
 
 /** Retitle once the conversation has grown by this many messages since the stored title. */
 export const TITLE_REGENERATE_MESSAGES = 20;
+/** After a failed attempt, wait this long before asking again, whatever the conversation does meanwhile. */
+export const TITLE_RETRY_MS = 10 * 60 * 1000;
 /** The title names the current work; keep the conversation's last characters. */
 const MAX_CONVERSATION_CHARS = 6000;
 const MAX_TITLE_CHARS = 80;
@@ -35,15 +36,23 @@ export interface StoredSessionTitle {
 	title: string | null;
 	/** The session's message count when the row was written. */
 	messageCount: number;
+	/** In memory only: the last attempt failed, so do not retry before this time. */
+	retryAt?: number;
 }
 
-/** Whether the session needs a (new) title: never judged, renamed since, or moved on by TITLE_REGENERATE_MESSAGES. */
+/**
+ * Whether the session needs a (new) title: never judged, renamed since, pane-named but still untitled, or moved on by
+ * TITLE_REGENERATE_MESSAGES. After a failed attempt it waits for `retryAt` instead.
+ */
 export function titleNeedsGeneration(
 	stored: StoredSessionTitle | undefined,
 	current: {customTitle: string; messageCount: number},
+	now: number,
 ): boolean {
 	if (stored === undefined || stored.customTitle !== current.customTitle) return true;
-	return stored.paneNamed && current.messageCount - stored.messageCount >= TITLE_REGENERATE_MESSAGES;
+	if (!stored.paneNamed) return false;
+	if (stored.retryAt !== undefined) return now >= stored.retryAt;
+	return stored.title === null || current.messageCount - stored.messageCount >= TITLE_REGENERATE_MESSAGES;
 }
 
 function promptText(content: unknown): string | null {
@@ -59,9 +68,14 @@ function textBlocks(content: unknown): string | null {
 	return texts.length > 0 ? texts.join("\n") : null;
 }
 
-/** The main thread's typed prompts and assistant text in transcript `lines`, last characters kept, and the latest agent name. */
+/**
+ * The main thread's typed prompts and assistant text in transcript `lines`, last characters kept, and the latest agent
+ * name. A tail of only tool calls and results (large tool output fills the read window) falls back to the CLI's
+ * `last-prompt` record.
+ */
 export function conversationFromLines(lines: Iterable<string>): {agentName: string | null; conversation: string} {
 	let agentName: string | null = null;
+	let lastPrompt: string | null = null;
 	const parts: string[] = [];
 	for (const line of lines) {
 		let obj: unknown;
@@ -75,12 +89,17 @@ export function conversationFromLines(lines: Iterable<string>): {agentName: stri
 			agentName = obj["agentName"];
 			continue;
 		}
+		if (obj["type"] === "last-prompt" && typeof obj["lastPrompt"] === "string") {
+			lastPrompt = obj["lastPrompt"];
+			continue;
+		}
 		if (obj["isSidechain"] === true || obj["isMeta"] === true) continue;
 		const content = asRecord(obj["message"])?.["content"];
 		const role = obj["type"] === "user" || obj["type"] === "assistant" ? obj["type"] : null;
 		const text = role === "user" ? promptText(content) : role === "assistant" ? textBlocks(content) : null;
 		if (role !== null && text !== null) parts.push(`[${role}]\n${text}`);
 	}
+	if (parts.length === 0 && lastPrompt !== null && lastPrompt.trim() !== "") parts.push(`[user]\n${lastPrompt}`);
 	return {agentName, conversation: parts.join("\n\n").slice(-MAX_CONVERSATION_CHARS)};
 }
 
@@ -96,12 +115,12 @@ function titlePrompt(conversation: string): string {
 	].join("\n");
 }
 
-/** The model's answer as a title, or null when it is empty or too long to be one. */
+/** The model's answer as a title, skipping lead-in lines that end with a colon, or null when it is empty or too long to be one. */
 export function parseGeneratedTitle(output: string): string | null {
 	const line = output
 		.split("\n")
 		.map((part) => part.trim())
-		.find((part) => part !== "");
+		.find((part) => part !== "" && !part.endsWith(":"));
 	if (line === undefined) return null;
 	const title = line
 		.replace(/^title:\s*/i, "")
@@ -119,30 +138,23 @@ export interface SessionTitleRequest {
 	messageCount: number;
 }
 
-function readStored(summariesDb: SummariesDb, sessionId: string): StoredSessionTitle | undefined {
-	const row = summariesDb
-		.select()
-		.from(schema.generatedTitles)
-		.where(eq(schema.generatedTitles.sessionId, sessionId))
-		.get();
-	return row === undefined ? undefined : toStored(row);
-}
-
 function toStored(row: typeof schema.generatedTitles.$inferSelect): StoredSessionTitle {
 	return {
 		customTitle: row.customTitle,
 		paneNamed: row.paneNamed === 1,
 		agentName: row.agentName,
 		cwdBasename: row.cwdBasename,
-		title: row.title,
+		// Rows written before empty answers counted as failures may hold "".
+		title: row.title?.trim() ? row.title : null,
 		messageCount: row.messageCount,
 	};
 }
 
 /**
  * Judge whether the session's custom title is only its pane name and, when it is, title the session from its recent
- * conversation. A model answer that is not a title keeps the previous title. The result is stored either way, unless
- * `signal` aborted (the worker stopped, so shutdown may have closed the database); then it returns null.
+ * conversation, storing the result. A pane-named session with no conversation to title or a model answer that is not
+ * a title throws and stores nothing, so the previous row stands. When `signal` aborted (the worker stopped, so
+ * shutdown may have closed the database) it stores nothing and returns null.
  */
 export async function generateSessionTitle(
 	summariesDb: SummariesDb,
@@ -156,11 +168,13 @@ export async function generateSessionTitle(
 		agentName: agentName ?? undefined,
 		cwdBasename: cwdBasename ?? undefined,
 	});
-	const previous = readStored(summariesDb, sessionId);
-	let title = previous?.customTitle === customTitle ? previous.title : null;
-	if (paneNamed && conversation !== "") {
-		title = parseGeneratedTitle(await runModel(titlePrompt(conversation))) ?? title;
-	} else if (!paneNamed) {
+	let title: string | null;
+	if (paneNamed) {
+		if (conversation === "") throw new Error("No conversation to title");
+		const output = await runModel(titlePrompt(conversation));
+		title = parseGeneratedTitle(output);
+		if (title === null) throw new Error(`The model gave no usable title: ${JSON.stringify(output.slice(0, 200))}`);
+	} else {
 		title = null;
 	}
 	if (signal?.aborted === true) return null;
@@ -195,7 +209,8 @@ export interface SessionTitleQueueRequest {
 
 interface SessionTitleState {
 	titles: Map<string, StoredSessionTitle>;
-	queue: Map<string, SessionTitleQueueRequest>;
+	/** Each queued request with the time it was requested, which a failure's backoff counts from. */
+	queue: Map<string, SessionTitleQueueRequest & {requestedAt: number}>;
 	worker: SessionTitleWorker | null;
 	running: boolean;
 }
@@ -216,7 +231,7 @@ export function generatedTitleSources(
 	customTitle: string | undefined,
 ): {generatedTitle?: string; agentName?: string; cwdBasename?: string} {
 	const stored = state.titles.get(sessionId);
-	if (stored === undefined || stored.customTitle !== customTitle || stored.title === null) return {};
+	if (stored === undefined || stored.customTitle !== customTitle || !stored.title?.trim()) return {};
 	return {
 		generatedTitle: stored.title,
 		...(stored.agentName === null ? {} : {agentName: stored.agentName}),
@@ -230,9 +245,9 @@ export function generatedTitleSources(
  */
 export function requestSessionTitle(request: SessionTitleQueueRequest, now: number): void {
 	if (state.worker === null || now - request.mtimeMs > MAX_SESSION_AGE_MS) return;
-	if (!titleNeedsGeneration(state.titles.get(request.sessionId), request)) return;
+	if (!titleNeedsGeneration(state.titles.get(request.sessionId), request, now)) return;
 	if (state.queue.has(request.sessionId)) return;
-	state.queue.set(request.sessionId, request);
+	state.queue.set(request.sessionId, {...request, requestedAt: now});
 	void drainQueue();
 }
 
@@ -240,7 +255,7 @@ async function drainQueue(): Promise<void> {
 	if (state.running) return;
 	state.running = true;
 	try {
-		for (const [sessionId, {project, customTitle, cwd, messageCount}] of state.queue) {
+		for (const [sessionId, {project, customTitle, cwd, messageCount, requestedAt}] of state.queue) {
 			state.queue.delete(sessionId);
 			const worker = state.worker;
 			if (worker === null) return;
@@ -263,16 +278,18 @@ async function drainQueue(): Promise<void> {
 				if (stored.title !== before) worker.onTitle(sessionId);
 			} catch (err) {
 				if (worker.stopped.aborted) continue;
-				// A failed attempt still answers for this message count, so the row does not requeue it on every read.
+				// A failed attempt keeps the previous title and backs off, so reads do not requeue it every time.
 				const previous = state.titles.get(sessionId);
+				const same = previous?.customTitle === customTitle;
 				state.titles.set(sessionId, {
 					customTitle,
-					// Unjudged counts as pane-named so a failed first attempt retries once the conversation moves on.
-					paneNamed: previous?.paneNamed ?? true,
+					// Unjudged counts as pane-named so a failed first attempt retries.
+					paneNamed: same ? previous.paneNamed : true,
 					agentName: previous?.agentName ?? null,
 					cwdBasename: previous?.cwdBasename ?? null,
-					title: previous?.customTitle === customTitle ? previous.title : null,
-					messageCount,
+					title: same ? previous.title : null,
+					messageCount: same ? previous.messageCount : messageCount,
+					retryAt: requestedAt + TITLE_RETRY_MS,
 				});
 				console.error(`Session title failed for ${sessionId}:`, err);
 			}

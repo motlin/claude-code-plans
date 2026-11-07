@@ -15,6 +15,7 @@ import {
 	startSessionTitleWorker,
 	titleNeedsGeneration,
 	TITLE_REGENERATE_MESSAGES,
+	TITLE_RETRY_MS,
 	type StoredSessionTitle,
 } from "../src/lib/session-title-generator";
 import {flushWorker, heldModel} from "./held-model";
@@ -116,17 +117,23 @@ describe("titleNeedsGeneration", () => {
 
 	it("generates once, then again after the conversation moves on or the custom title changes", () => {
 		expect({
-			never: titleNeedsGeneration(undefined, {customTitle: "klass", messageCount: 40}),
-			unchanged: titleNeedsGeneration(stored, {customTitle: "klass", messageCount: 40}),
-			fewNew: titleNeedsGeneration(stored, {
-				customTitle: "klass",
-				messageCount: 40 + TITLE_REGENERATE_MESSAGES - 1,
-			}),
-			movedOn: titleNeedsGeneration(stored, {customTitle: "klass", messageCount: 40 + TITLE_REGENERATE_MESSAGES}),
-			renamed: titleNeedsGeneration(stored, {customTitle: "Release checklist", messageCount: 40}),
+			never: titleNeedsGeneration(undefined, {customTitle: "klass", messageCount: 40}, NOW),
+			unchanged: titleNeedsGeneration(stored, {customTitle: "klass", messageCount: 40}, NOW),
+			fewNew: titleNeedsGeneration(
+				stored,
+				{customTitle: "klass", messageCount: 40 + TITLE_REGENERATE_MESSAGES - 1},
+				NOW,
+			),
+			movedOn: titleNeedsGeneration(
+				stored,
+				{customTitle: "klass", messageCount: 40 + TITLE_REGENERATE_MESSAGES},
+				NOW,
+			),
+			renamed: titleNeedsGeneration(stored, {customTitle: "Release checklist", messageCount: 40}, NOW),
 			deliberate: titleNeedsGeneration(
 				{...stored, customTitle: "Release checklist", paneNamed: false, title: null},
 				{customTitle: "Release checklist", messageCount: 400},
+				NOW,
 			),
 		}).toStrictEqual({
 			never: true,
@@ -137,6 +144,22 @@ describe("titleNeedsGeneration", () => {
 			deliberate: false,
 		});
 	});
+
+	it("retries an untitled pane-named session, but not before a failed attempt's backoff ends", () => {
+		const untitled = {...stored, title: null};
+		const failed = {...untitled, retryAt: NOW + TITLE_RETRY_MS};
+		const current = {customTitle: "klass", messageCount: 40};
+		expect({
+			untitled: titleNeedsGeneration(untitled, current, NOW),
+			backingOff: titleNeedsGeneration(failed, current, NOW + TITLE_RETRY_MS - 1),
+			backedOff: titleNeedsGeneration(failed, current, NOW + TITLE_RETRY_MS),
+			titledBackingOff: titleNeedsGeneration(
+				{...stored, retryAt: NOW + TITLE_RETRY_MS},
+				{customTitle: "klass", messageCount: 40 + TITLE_REGENERATE_MESSAGES},
+				NOW,
+			),
+		}).toStrictEqual({untitled: true, backingOff: false, backedOff: true, titledBackingOff: false});
+	});
 });
 
 describe("conversationFromLines", () => {
@@ -145,6 +168,14 @@ describe("conversationFromLines", () => {
 			agentName: null,
 			conversation: "[user]\nReview pull request 910\n\n[assistant]\nThe pull request looks good.",
 		});
+	});
+
+	it("falls back to the last typed prompt when the tail holds no prompt or assistant text", () => {
+		const lastPrompt = record({type: "last-prompt", lastPrompt: "Collapse the migrations"});
+		expect([
+			conversationFromLines([PANE_NAME, lastPrompt, TOOL_RESULT]).conversation,
+			conversationFromLines([lastPrompt, PROMPT]).conversation,
+		]).toStrictEqual(["[user]\nCollapse the migrations", "[user]\nReview pull request 910"]);
 	});
 
 	it("reads the latest agent name", () => {
@@ -159,8 +190,23 @@ describe("parseGeneratedTitle", () => {
 			parseGeneratedTitle('"Klass pull request 910."'),
 			parseGeneratedTitle("Title: Klass pull request 910"),
 			parseGeneratedTitle("  \n"),
+			parseGeneratedTitle('""'),
 			parseGeneratedTitle("x".repeat(81)),
-		]).toStrictEqual(["Klass pull request 910", "Klass pull request 910", "Klass pull request 910", null, null]);
+		]).toStrictEqual([
+			"Klass pull request 910",
+			"Klass pull request 910",
+			"Klass pull request 910",
+			null,
+			null,
+			null,
+		]);
+	});
+
+	it("skips a lead-in line that ends with a colon", () => {
+		expect([
+			parseGeneratedTitle("Caveman title, sentence case, 3-6 words:\nKlass pull request 910"),
+			parseGeneratedTitle("Title:"),
+		]).toStrictEqual(["Klass pull request 910", null]);
 	});
 });
 
@@ -217,20 +263,53 @@ describe("generateSessionTitle", () => {
 		});
 	});
 
-	it("keeps the previous title when the model gives no usable title", async () => {
+	it("fails and stores nothing when the model gives no usable title, keeping the previous title", async () => {
 		const filePath = writeTranscript([PANE_NAME, PROMPT, REPLY]);
 		const request = {sessionId: SESSION_ID, filePath, customTitle: "klass", cwd: CWD, messageCount: 2};
 		await generateSessionTitle(db.summaries, request, stubModel("Klass pull request 910").run);
 
-		const stored = await generateSessionTitle(db.summaries, {...request, messageCount: 30}, stubModel("").run);
+		const failure = await generateSessionTitle(
+			db.summaries,
+			{...request, messageCount: 30},
+			stubModel("").run,
+		).then(
+			() => null,
+			(err: unknown) => String(err),
+		);
 
-		expect(stored).toStrictEqual({
-			customTitle: "klass",
-			paneNamed: true,
-			agentName: null,
-			cwdBasename: "klass",
-			title: "Klass pull request 910",
-			messageCount: 30,
+		expect({failure, rows: storedRows()}).toStrictEqual({
+			failure: 'Error: The model gave no usable title: ""',
+			rows: [
+				{
+					sessionId: SESSION_ID,
+					customTitle: "klass",
+					paneNamed: 1,
+					agentName: null,
+					cwdBasename: "klass",
+					title: "Klass pull request 910",
+					messageCount: 2,
+				},
+			],
+		});
+	});
+
+	it("fails without asking the model when there is no conversation to title", async () => {
+		const filePath = writeTranscript([PANE_NAME, TOOL_RESULT]);
+		const model = stubModel("Klass pull request 910");
+
+		const failure = await generateSessionTitle(
+			db.summaries,
+			{sessionId: SESSION_ID, filePath, customTitle: "klass", cwd: CWD, messageCount: 2},
+			model.run,
+		).then(
+			() => null,
+			(err: unknown) => String(err),
+		);
+
+		expect({failure, prompts: model.prompts.length, rows: storedRows()}).toStrictEqual({
+			failure: "Error: No conversation to title",
+			prompts: 0,
+			rows: [],
 		});
 	});
 });
@@ -336,6 +415,102 @@ describe("session title worker", () => {
 
 		expect(consoleError.mock.calls).toStrictEqual([]);
 		consoleError.mockRestore();
+	});
+
+	it("retries a failed title once the backoff ends, not on every request", async () => {
+		writeTranscript([PANE_NAME, PROMPT, REPLY]);
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+		const answers = ["", "Klass pull request 910"];
+		let asked = 0;
+		const stop = startSessionTitleWorker({
+			summariesDb: db.summaries,
+			projectsDir: testDir,
+			runModel: async () => {
+				asked++;
+				return Promise.resolve(answers.shift() ?? "");
+			},
+			onTitle: () => {},
+		});
+		try {
+			const request = {
+				sessionId: SESSION_ID,
+				project: PROJECT_ID,
+				customTitle: "klass",
+				cwd: CWD,
+				messageCount: 2,
+				mtimeMs: NOW,
+			};
+			requestSessionTitle(request, NOW);
+			await vi.waitFor(() => {
+				expect(consoleError).toHaveBeenCalledOnce();
+			});
+			requestSessionTitle(request, NOW + TITLE_RETRY_MS - 1);
+			const afterFailure = {asked, sources: generatedTitleSources(SESSION_ID, "klass"), rows: storedRows()};
+			requestSessionTitle(request, NOW + TITLE_RETRY_MS);
+			await vi.waitFor(() => {
+				expect(generatedTitleSources(SESSION_ID, "klass")).not.toStrictEqual({});
+			});
+
+			expect({
+				afterFailure,
+				asked,
+				sources: generatedTitleSources(SESSION_ID, "klass"),
+				errors: consoleError.mock.calls.length,
+			}).toStrictEqual({
+				afterFailure: {asked: 1, sources: {}, rows: []},
+				asked: 2,
+				sources: {generatedTitle: "Klass pull request 910", cwdBasename: "klass"},
+				errors: 1,
+			});
+		} finally {
+			stop();
+			consoleError.mockRestore();
+		}
+	});
+
+	it("retries a stored row that has no title and never serves an empty one", async () => {
+		writeTranscript([PANE_NAME, PROMPT, REPLY]);
+		const row = {customTitle: "klass", paneNamed: 1, agentName: null, cwdBasename: "klass", messageCount: 2};
+		db.summaries
+			.insert(schema.generatedTitles)
+			.values({sessionId: SESSION_ID, ...row, title: "", generatedAt: NOW})
+			.run();
+		const model = stubModel("Klass pull request 910");
+		const stop = startSessionTitleWorker({
+			summariesDb: db.summaries,
+			projectsDir: testDir,
+			runModel: model.run,
+			onTitle: () => {},
+		});
+		try {
+			const before = generatedTitleSources(SESSION_ID, "klass");
+			requestSessionTitle(
+				{
+					sessionId: SESSION_ID,
+					project: PROJECT_ID,
+					customTitle: "klass",
+					cwd: CWD,
+					messageCount: 2,
+					mtimeMs: NOW,
+				},
+				NOW,
+			);
+			await vi.waitFor(() => {
+				expect(generatedTitleSources(SESSION_ID, "klass")).not.toStrictEqual({});
+			});
+
+			expect({
+				before,
+				prompts: model.prompts.length,
+				sources: generatedTitleSources(SESSION_ID, "klass"),
+			}).toStrictEqual({
+				before: {},
+				prompts: 1,
+				sources: {generatedTitle: "Klass pull request 910", cwdBasename: "klass"},
+			});
+		} finally {
+			stop();
+		}
 	});
 
 	it("ignores requests until the worker starts", () => {

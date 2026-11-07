@@ -975,6 +975,14 @@ describe("resolveSessionTitle", () => {
 		]).toStrictEqual(["Klass pull request 910", "Klass pull request 910", "Klass pull request 910"]);
 	});
 
+	it("ignores an empty or blank generated title", () => {
+		const paneNamed = {bridged: true, customTitle: "do-all", agentName: "do-all", aiTitle: "Dev logs"};
+		expect([
+			resolveSessionTitle({...paneNamed, generatedTitle: "", sessionId: "session-test-1"}),
+			resolveSessionTitle({...paneNamed, generatedTitle: "  ", sessionId: "session-test-1"}),
+		]).toStrictEqual(["Dev logs", "Dev logs"]);
+	});
+
 	it("keeps a deliberate /rename title over a generated title", () => {
 		expect(
 			resolveSessionTitle({

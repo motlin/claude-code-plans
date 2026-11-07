@@ -479,7 +479,7 @@ export function namedSessionTitle(sources: {
 	agentName?: string | undefined;
 	cwdBasename?: string | undefined;
 }): string | undefined {
-	if (sources.bridged && sources.generatedTitle !== undefined && isPaneNameTitle(sources.customTitle, sources)) {
+	if (sources.bridged && sources.generatedTitle?.trim() && isPaneNameTitle(sources.customTitle, sources)) {
 		return sources.generatedTitle;
 	}
 	const [first, second] = sources.bridged
