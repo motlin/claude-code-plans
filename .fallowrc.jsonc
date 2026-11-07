@@ -7,6 +7,8 @@
 		"server/routes/**/*.ts",
 		"scripts/field-presence.ts",
 		"scripts/perf-ceilings.ts",
+		// Run by hand via `just background-claude-check`; spends real haiku tokens, so no test imports it.
+		"scripts/background-claude-check.ts",
 		"tests/fixtures/fake-server.mjs",
 		"tests/perf/run-hot-path.mjs",
 		"scripts/**/*.mjs",

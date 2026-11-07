@@ -256,6 +256,35 @@ describe("turn verdict worker", () => {
 		consoleError.mockRestore();
 	});
 
+	it("logs a failed verdict as one line", async () => {
+		writeTranscript([PROMPT, ASK]);
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+		const stop = startTurnVerdictWorker({
+			summariesDb: db.summaries,
+			projectsDir: testDir,
+			runModel: async () => Promise.reject(new Error("claude CLI failed: Command failed: claude -p\nexit 1")),
+			onVerdict: () => {},
+		});
+		try {
+			requestTurnVerdict(SESSION_ID, PROJECT_ID, NOW, NOW);
+			await vi.waitFor(() => {
+				expect(consoleError).toHaveBeenCalledOnce();
+			});
+
+			expect({errors: consoleError.mock.calls, needsInput: turnVerdictNeedsInput(SESSION_ID, NOW)}).toStrictEqual(
+				{
+					errors: [
+						["Turn verdict failed for session-test-100: claude CLI failed: Command failed: claude -p"],
+					],
+					needsInput: false,
+				},
+			);
+		} finally {
+			stop();
+			consoleError.mockRestore();
+		}
+	});
+
 	it("ignores requests until the worker starts", () => {
 		writeTranscript([PROMPT, ASK]);
 		requestTurnVerdict(SESSION_ID, PROJECT_ID, NOW, NOW);

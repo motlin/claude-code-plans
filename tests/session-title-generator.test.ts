@@ -455,12 +455,12 @@ describe("session title worker", () => {
 				afterFailure,
 				asked,
 				sources: generatedTitleSources(SESSION_ID, "klass"),
-				errors: consoleError.mock.calls.length,
+				errors: consoleError.mock.calls,
 			}).toStrictEqual({
 				afterFailure: {asked: 1, sources: {}, rows: []},
 				asked: 2,
 				sources: {generatedTitle: "Klass pull request 910", cwdBasename: "klass"},
-				errors: 1,
+				errors: [['Session title failed for session-test-200: The model gave no usable title: ""']],
 			});
 		} finally {
 			stop();

@@ -3,7 +3,7 @@ import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import * as schema from "./db/schema";
 import {hmrPersist} from "./hmr-persist";
 import {asRecord, isRecord} from "./narrow";
-import {runClaude} from "./summaries";
+import {errorLine, runClaude} from "./summaries";
 import {readTailLines, type RunModel} from "./turn-verdict";
 
 type SummariesDb = BetterSQLite3Database<typeof schema>;
@@ -103,7 +103,7 @@ export function conversationFromLines(lines: Iterable<string>): {agentName: stri
 	return {agentName, conversation: parts.join("\n\n").slice(-MAX_CONVERSATION_CHARS)};
 }
 
-function titlePrompt(conversation: string): string {
+export function titlePrompt(conversation: string): string {
 	return [
 		"Below is the recent part of a conversation between a user and a coding assistant.",
 		"Write a title for the conversation as it stands now, naming the current work.",
@@ -291,7 +291,7 @@ async function drainQueue(): Promise<void> {
 					messageCount: same ? previous.messageCount : messageCount,
 					retryAt: requestedAt + TITLE_RETRY_MS,
 				});
-				console.error(`Session title failed for ${sessionId}:`, err);
+				console.error(`Session title failed for ${sessionId}: ${errorLine(err)}`);
 			}
 		}
 	} finally {

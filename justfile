@@ -157,6 +157,10 @@ screenshots *args: install
     vp exec playwright install --with-deps chromium
     vp exec tsx scripts/screenshots.ts {{ args }}
 
+# Spend a few haiku tokens checking the background title/verdict calls run isolated from your Claude Code config (no tools, hooks, CLAUDE.md or MCP). Not part of precommit
+background-claude-check: install
+    vp exec tsx scripts/background-claude-check.ts
+
 # Check the ⌘K palette footer stays one line with upstream's hints at 390, 700 and 1200px against a running dev server. Not part of precommit
 [group('docs')]
 palette-footer-layout *args: install

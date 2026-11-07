@@ -5,7 +5,7 @@ import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import * as schema from "./db/schema";
 import {hmrPersist} from "./hmr-persist";
 import {asRecord, isRecord} from "./narrow";
-import {runClaude} from "./summaries";
+import {errorLine, runClaude} from "./summaries";
 
 type SummariesDb = BetterSQLite3Database<typeof schema>;
 
@@ -83,7 +83,7 @@ export async function readTailLines(filePath: string): Promise<string[]> {
 	}
 }
 
-function turnVerdictPrompt(turnText: string): string {
+export function turnVerdictPrompt(turnText: string): string {
 	return [
 		"Below is the final message a coding assistant sent to its user at the end of a turn.",
 		"Does it ask the user to decide or act before work can continue? Questions, offers that wait on a choice",
@@ -215,7 +215,7 @@ async function drainQueue(): Promise<void> {
 			} catch (err) {
 				if (worker.stopped.aborted) continue;
 				state.verdicts.set(sessionId, {turnEndedAt, needsInput: false});
-				console.error(`Turn verdict failed for ${sessionId}:`, err);
+				console.error(`Turn verdict failed for ${sessionId}: ${errorLine(err)}`);
 			}
 		}
 	} finally {
