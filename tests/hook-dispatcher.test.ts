@@ -1140,6 +1140,79 @@ describe("dispatchHookEvent", () => {
 		clearAllNotifications();
 	});
 
+	it.each([
+		{hasSeen: false, persistentAllow: null},
+		{hasSeen: true, persistentAllow: "perChat"},
+	] as const)(
+		"auto mode's first outside Read stores its permission mode, and its prompt offers a persistent option only once the flag is seen ($hasSeen)",
+		async ({hasSeen, persistentAllow}) => {
+			clearAllNotifications();
+			const {store, pendingPermissionCalls} = makeStore();
+			const base = {
+				session_id: "session-test-202",
+				transcript_path: "/tmp/session-test-202.jsonl",
+				cwd: "/tmp/spike/cwd",
+			};
+			const suggestion = {
+				type: "addRules" as const,
+				rules: [{toolName: "Read", ruleContent: "//tmp/spike/outside/**"}],
+				behavior: "allow" as const,
+				destination: "session" as const,
+			};
+			const configReads: string[] = [];
+			const events: HookEvent[] = [
+				{
+					...base,
+					hook_event_name: "SessionStart",
+					source: "startup",
+					claude_env: {CLAUDE_CONFIG_DIR: "/tmp/cfg"},
+				},
+				{
+					...base,
+					hook_event_name: "PermissionRequest",
+					permission_mode: "auto",
+					tool_name: "Read",
+					tool_input: {file_path: "/tmp/spike/outside/note.txt"},
+					permission_suggestions: [suggestion],
+				},
+				{
+					...base,
+					hook_event_name: "Notification",
+					message: "Claude needs your permission to use Read",
+					notification_type: "permission_prompt",
+				},
+			];
+			for (const event of events) {
+				await dispatchHookEvent({
+					event,
+					db: db.index,
+					store,
+					broadcast: () => {},
+					reportHerdrState: () => {},
+					readHasSeenOutsideReadPrompt: async (configDir) => {
+						configReads.push(configDir);
+						return Promise.resolve(hasSeen);
+					},
+				});
+			}
+			expect({
+				pendingPermissionCalls,
+				persistentAllow: getNotifications().map((notification) => notification.persistentAllow ?? null),
+				configReads,
+			}).toStrictEqual({
+				pendingPermissionCalls: [
+					{
+						sessionId: "session-test-202",
+						request: {toolName: "Read", suggestions: [suggestion], permissionMode: "auto"},
+					},
+				],
+				persistentAllow: [persistentAllow],
+				configReads: ["/tmp/cfg"],
+			});
+			clearAllNotifications();
+		},
+	);
+
 	it("a permission prompt without a PermissionRequest carries no persistent option", async () => {
 		clearAllNotifications();
 		const {store} = makeStore();

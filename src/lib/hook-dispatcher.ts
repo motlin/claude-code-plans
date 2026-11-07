@@ -6,6 +6,7 @@ import * as schema from "./db/schema";
 import type {ActiveSessionEntry, PendingPermissionRequest} from "./active-session-store";
 import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-prompt";
 import {persistentAllowKind, type PersistentAllowKind} from "./permission-suggestions";
+import {outsideReadDialogKind, readHasSeenOutsideReadPrompt} from "./outside-read-prompt";
 import {
 	DOMAIN_EVENTS,
 	SSE_EVENTS,
@@ -143,6 +144,8 @@ interface DispatchHookEventArgs {
 	reportHerdrState: (event: HookEvent, entry: ActiveSessionEntry | null) => void;
 	/** Whether a browser tab is showing the session right now (see session-visibility). */
 	isSessionVisible?: (sessionId: string) => boolean;
+	/** Reads the CLI's global `hasSeenAutoModeOutsideReadPrompt` flag from a config dir. */
+	readHasSeenOutsideReadPrompt?: (configDir: string) => Promise<boolean>;
 }
 
 function broadcastHookContext(
@@ -550,6 +553,7 @@ export async function dispatchHookEvent({
 	state,
 	reportHerdrState,
 	isSessionVisible = isSessionVisibleInBrowser,
+	readHasSeenOutsideReadPrompt: readHasSeen = readHasSeenOutsideReadPrompt,
 }: DispatchHookEventArgs): Promise<void> {
 	const entryBeforeDispatch = store.getActiveSessionEntry(event.session_id);
 	// Subagent hooks carry the root session_id plus agent_id. They describe the
@@ -908,9 +912,11 @@ export async function dispatchHookEvent({
 				notificationInput.title = event.title;
 			}
 			if (notificationInput.notificationType === PERMISSION_PROMPT_NOTIFICATION) {
-				const persistentAllow = persistentAllowKind(
-					store.getActiveSessionEntry(event.session_id)?.pendingPermissionRequest?.suggestions,
-				);
+				// Auto mode's first outside-read prompt has no session-grant row, so its card offers none.
+				const entry = store.getActiveSessionEntry(event.session_id);
+				const request = entry?.pendingPermissionRequest;
+				const dialogKind = await outsideReadDialogKind(request, entry?.claudeEnv ?? {}, readHasSeen);
+				const persistentAllow = dialogKind === "generic" ? persistentAllowKind(request?.suggestions) : null;
 				if (persistentAllow !== null) notificationInput.persistentAllow = persistentAllow;
 			}
 			addNotification(db, notificationInput);
@@ -922,10 +928,12 @@ export async function dispatchHookEvent({
 			// persistent option it offers so the inline card can show it and the
 			// answer handler knows "2" is that option rather than "No".
 			store.touchSession(event.session_id);
-			store.setPendingPermissionRequest(event.session_id, {
+			const pendingRequest: PendingPermissionRequest = {
 				toolName: event.tool_name,
 				suggestions: event.permission_suggestions ?? [],
-			});
+			};
+			if (event.permission_mode !== undefined) pendingRequest.permissionMode = event.permission_mode;
+			store.setPendingPermissionRequest(event.session_id, pendingRequest);
 			break;
 		}
 

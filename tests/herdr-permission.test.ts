@@ -6,6 +6,7 @@ import {
 	BASH_FULL_NO_FEEDBACK_TYPED,
 	BASH_UNICODE_WHITESPACE,
 	CLASSIFIER_FALLBACK,
+	READ_OUTSIDE_AUTO_FIRST_PROMPT,
 	EDIT_ACCEPT_EDITS_ROW,
 	READ_OUTSIDE_SESSION_DIR,
 	WEBFETCH,
@@ -31,6 +32,7 @@ function dependencies(overrides: Partial<HerdrPermissionDependencies> = {}): Her
 		writesEnabled: () => true,
 		hasPendingPermission: () => true,
 		persistentAllow: () => null,
+		dialogKind: async () => Promise.resolve("generic"),
 		clearPendingPermission: () => {},
 		resolveTarget: async () =>
 			Promise.resolve({
@@ -161,6 +163,57 @@ describe("herdr permission decision handler", () => {
 			});
 		},
 	);
+
+	describe("on auto mode's first outside-read prompt", () => {
+		async function answerFirstPrompt(
+			decision: "allow" | "always" | "deny",
+		): Promise<{response: {body: unknown; status: number}; keys: unknown[]; cleared: string[]}> {
+			const keys: unknown[] = [];
+			const cleared: string[] = [];
+			const response = await handleHerdrPermission(
+				request({sessionId: "session-test-100", decision}),
+				dependencies({
+					// The hook's session suggestion would say "2", which blocks outside reads everywhere.
+					persistentAllow: () => "perChat",
+					dialogKind: async () => Promise.resolve("outsideReadFirstPrompt"),
+					readScreen: async () => Promise.resolve({ok: true, value: READ_OUTSIDE_AUTO_FIRST_PROMPT}),
+					request: async (value) => {
+						keys.push((value as {params: {keys: unknown}}).params.keys);
+						return Promise.resolve({ok: true, value: {type: "ok"}});
+					},
+					clearPendingPermission: (sessionId) => cleared.push(sessionId),
+				}),
+			);
+			return {response: await describeResponse(response), keys, cleared};
+		}
+
+		it("allows once with row 4, which writes nothing lasting", async () => {
+			expect(await answerFirstPrompt("allow")).toStrictEqual({
+				response: {body: {ok: true}, status: 200},
+				keys: [["4"]],
+				cleared: ["session-test-100"],
+			});
+		});
+
+		it("denies with Esc", async () => {
+			expect(await answerFirstPrompt("deny")).toStrictEqual({
+				response: {body: {ok: true}, status: 200},
+				keys: [["esc"]],
+				cleared: ["session-test-100"],
+			});
+		});
+
+		it("refuses always, since no row is a session-only grant", async () => {
+			expect(await answerFirstPrompt("always")).toStrictEqual({
+				response: {
+					body: {error: "The terminal offers no session-only grant for this read", code: "dialog_mismatch"},
+					status: 409,
+				},
+				keys: [],
+				cleared: [],
+			});
+		});
+	});
 
 	it("keeps the prompt pending when herdr rejects the keys", async () => {
 		const cleared: string[] = [];

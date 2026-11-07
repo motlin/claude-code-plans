@@ -2,6 +2,7 @@ import {z} from "zod";
 
 import {getActiveSessionEntry, setPendingPermissionRequest} from "../active-session-store";
 import {clearNotificationsForSession} from "../notifications-store";
+import {outsideReadDialogKind, type PermissionDialogKind} from "../outside-read-prompt";
 import {
 	permissionDialogKey,
 	persistentAllowKind,
@@ -29,6 +30,8 @@ export interface HerdrPermissionDependencies {
 	hasPendingPermission: (sessionId: string) => boolean;
 	/** The persistent option the session's PermissionRequest hook says its dialog offers. */
 	persistentAllow: (sessionId: string) => PersistentAllowKind | null;
+	/** Whether the pending dialog is auto mode's first outside-read prompt, whose digits mean something else. */
+	dialogKind: (sessionId: string) => Promise<PermissionDialogKind>;
 	clearPendingPermission: (sessionId: string) => void;
 	resolveTarget: (sessionId: string) => Promise<HerdrResult<HerdrPromptTarget>>;
 	request: HerdrRequester;
@@ -58,6 +61,10 @@ export const defaultHerdrPermissionDependencies: HerdrPermissionDependencies = {
 	hasPendingPermission: (sessionId) => sessionAwaitingPermission(sessionId),
 	persistentAllow: (sessionId) =>
 		persistentAllowKind(getActiveSessionEntry(sessionId)?.pendingPermissionRequest?.suggestions),
+	dialogKind: async (sessionId) => {
+		const entry = getActiveSessionEntry(sessionId);
+		return outsideReadDialogKind(entry?.pendingPermissionRequest, entry?.claudeEnv ?? {});
+	},
 	clearPendingPermission: (sessionId) => {
 		clearNotificationsForSession(sessionId);
 		setPendingPermissionRequest(sessionId, null);
@@ -77,6 +84,11 @@ const DIALOG_MISMATCH = {
 	code: "dialog_mismatch",
 } as const;
 
+const NO_SESSION_GRANT = {
+	error: "The terminal offers no session-only grant for this read",
+	code: "dialog_mismatch",
+} as const;
+
 /**
  * The keys for `decision`, read from the dialog on screen. A screen that can't
  * be read, or shows no "Do you want to …?" question, falls back to the hook's
@@ -91,7 +103,12 @@ async function permissionSteps(
 ): Promise<{ok: true; steps: string[][]} | {ok: false; response: Response}> {
 	const screen = await dependencies.readScreen(sessionId, paneId);
 	if (!screen.ok || !showsPermissionQuestion(screen.value)) {
-		const key = permissionDialogKey(decision, dependencies.persistentAllow(sessionId));
+		const dialogKind = await dependencies.dialogKind(sessionId);
+		if (dialogKind === "outsideReadFirstPrompt" && decision === "always") {
+			return {ok: false, response: Response.json(NO_SESSION_GRANT, {status: 409})};
+		}
+		const persistent = dialogKind === "generic" ? dependencies.persistentAllow(sessionId) : null;
+		const key = permissionDialogKey(decision, persistent, dialogKind);
 		return key === null
 			? {
 					ok: false,

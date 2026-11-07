@@ -4,10 +4,11 @@ import type {HookBackgroundTaskPayload, HookSessionCronPayload, PermissionUpdate
 import type {LiveSessionRoutines} from "./routines";
 import {touchStoredLiveSubagent} from "./live-subagent-store";
 
-/** The CLI's latest PermissionRequest hook: the tool asking and the dialog's persistent-option updates. */
+/** The CLI's latest PermissionRequest hook: the tool asking, the dialog's persistent-option updates, and the mode it asked in. */
 export interface PendingPermissionRequest {
 	toolName: string;
 	suggestions: PermissionUpdate[];
+	permissionMode?: string;
 }
 
 export interface ActiveSessionEntry {

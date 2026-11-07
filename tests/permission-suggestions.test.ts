@@ -165,4 +165,12 @@ describe("permissionDialogKey", () => {
 	] as const)("sends $key for $decision on a dialog with $shape", ({persistent, decision, key}) => {
 		expect(permissionDialogKey(decision, persistent)).toStrictEqual(key);
 	});
+
+	it.each([
+		{persistent: null, decision: "allow", key: "4"},
+		{persistent: null, decision: "deny", key: "esc"},
+		{persistent: "perChat", decision: "always", key: null},
+	] as const)("sends $key for $decision on auto mode's first outside-read prompt", ({persistent, decision, key}) => {
+		expect(permissionDialogKey(decision, persistent, "outsideReadFirstPrompt")).toStrictEqual(key);
+	});
 });

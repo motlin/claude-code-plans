@@ -1,6 +1,7 @@
 import {z} from "zod";
 import {assertNever} from "./assert-never";
 import type {PermissionUpdate} from "./hook-events";
+import type {PermissionDialogKind} from "./outside-read-prompt";
 
 /**
  * The persistent allow option upstream's permission card offers beside
@@ -64,14 +65,22 @@ export function persistentAllowKind(suggestions: readonly PermissionUpdate[] | u
 }
 
 /**
- * The key that picks `decision` in the CLI's permission dialog: "1" is always
- * "Yes" and Esc declines. The persistent option is "2" only when the dialog
- * has one; without it "2" is "No", so there is no key and the caller refuses.
+ * The key that picks `decision` in the CLI's permission dialog: "1" is "Yes"
+ * except in auto mode's first outside-read prompt, where 1 is the lasting
+ * "keep allowing" row and 4 the one-time "Yes, but ask again next time"; that
+ * dialog has no session-only grant. Esc declines. The persistent option is "2"
+ * only when the dialog has one; without it "2" is "No", so there is no key and
+ * the caller refuses.
  */
 export function permissionDialogKey(
 	decision: PermissionDialogDecision,
 	persistent: PersistentAllowKind | null,
+	dialog: PermissionDialogKind = "generic",
 ): string | null {
+	if (dialog === "outsideReadFirstPrompt") {
+		if (decision === "always") return null;
+		return decision === "allow" ? "4" : "esc";
+	}
 	switch (decision) {
 		case "allow":
 			return "1";
