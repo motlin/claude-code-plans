@@ -6,7 +6,6 @@ import {
 	Calendar,
 	ChartColumn,
 	CodeXml,
-	EllipsisVertical,
 	FileText,
 	LayoutGrid,
 	Link as LinkIcon,
@@ -72,6 +71,7 @@ import {
 import {CodePageHeader} from "../components/code-page-header";
 import {MakeSomethingNew} from "../components/make-something-new";
 import {CDS_TAB_CLASS, CDS_TAB_LIST_CLASS} from "../components/ui/cds-tabs";
+import {Icon} from "../components/ui/icon";
 import {Tooltip} from "../components/ui/tooltip";
 
 /** The gallery's URL state: upstream's `?search=` and `?tab=`, plus the local Filter and sort picks. */
@@ -752,7 +752,7 @@ function ArtifactCover({kind}: {kind: CoverKind}) {
 function ArtifactMark({artifact}: {artifact: ArtifactSummary}) {
 	const kind = coverKind(artifact.kind);
 	const word = typeMediaIconWord(artifact);
-	const Icon = TYPE_MEDIA_ICONS[word];
+	const Glyph = TYPE_MEDIA_ICONS[word];
 	const tone = kind === "document" ? "bg-upstream-tint-blue text-tint-blue-ink" : "bg-fill-secondary text-secondary";
 	return (
 		<span
@@ -760,7 +760,7 @@ function ArtifactMark({artifact}: {artifact: ArtifactSummary}) {
 			data-artifact-mark-size="card"
 			className={`flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg ${tone}`}
 		>
-			<Icon aria-hidden="true" data-icon={word} className="size-5" />
+			<Glyph aria-hidden="true" data-icon={word} className="size-5" />
 		</span>
 	);
 }
@@ -770,7 +770,7 @@ function ArtifactMark({artifact}: {artifact: ArtifactSummary}) {
  * 36px in list rows.
  */
 function TypeTile({kind}: {kind: ArtifactKind}) {
-	const Icon = kind === "docs" ? FileText : CodeXml;
+	const Glyph = kind === "docs" ? FileText : CodeXml;
 	const tone = kind === "docs" ? "bg-blue-500/10 text-blue-600 dark:text-blue-300" : "bg-alpha-1 text-secondary";
 	return (
 		<div
@@ -778,7 +778,7 @@ function TypeTile({kind}: {kind: ArtifactKind}) {
 			data-type-tile={kind}
 			className={`flex shrink-0 items-center justify-center overflow-hidden ${TILE_BOX} ${tone}`}
 		>
-			<Icon aria-hidden="true" className={TILE_ICON} />
+			<Glyph aria-hidden="true" className={TILE_ICON} />
 		</div>
 	);
 }
@@ -949,7 +949,7 @@ function ArtifactMoreMenu({
 	return (
 		<Menu>
 			<MenuTrigger aria-label={`More options for ${artifact.title}`} className={className}>
-				<EllipsisVertical aria-hidden="true" className="size-4" />
+				<Icon name="DotsVertical" size="sm" />
 			</MenuTrigger>
 			<MenuContent align="end" sideOffset={ARTIFACT_MENU_OFFSET}>
 				<ArtifactMenuItems artifact={artifact} pinned={pinned} />

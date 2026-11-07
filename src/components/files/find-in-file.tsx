@@ -1,7 +1,7 @@
-import {ChevronDown, ChevronUp, X} from "lucide-react";
 import type {KeyboardEvent, RefObject} from "react";
 
 import {findCounterText} from "../../lib/find-in-file";
+import {Icon} from "../ui/icon";
 
 const BAR_BUTTON =
 	"flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r3 text-secondary hover:bg-fill-ghost-hover hover:text-primary disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent";
@@ -73,7 +73,7 @@ export function FindBar({
 					}}
 					className={BAR_BUTTON}
 				>
-					<ChevronUp aria-hidden="true" className="size-4" />
+					<Icon name="CaretUp" size="sm" />
 				</button>
 				<button
 					type="button"
@@ -85,7 +85,7 @@ export function FindBar({
 					}}
 					className={BAR_BUTTON}
 				>
-					<ChevronDown aria-hidden="true" className="size-4" />
+					<Icon name="CaretDown" size="sm" />
 				</button>
 				<button
 					type="button"
@@ -94,7 +94,7 @@ export function FindBar({
 					onClick={onClose}
 					className={BAR_BUTTON}
 				>
-					<X aria-hidden="true" className="size-4" />
+					<Icon name="X" size="sm" />
 				</button>
 			</div>
 		</div>

@@ -415,7 +415,7 @@ describe("ChangesPaneView file list", () => {
 			expect({
 				coloured: option.querySelector("[data-file-type-icon]") !== null,
 				className: option.querySelector("svg")?.getAttribute("class"),
-			}).toStrictEqual({coloured: false, className: "lucide lucide-file-code shrink-0 text-ink-muted"});
+			}).toStrictEqual({coloured: false, className: "lucide lucide-code-xml shrink-0 text-ink-muted"});
 		});
 		it("shows No matching files when nothing matches", () => {
 			renderPane([GREET_FILE]);

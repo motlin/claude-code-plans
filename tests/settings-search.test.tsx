@@ -484,7 +484,13 @@ describe("settings search", () => {
 		const icon = empty?.querySelector("svg");
 		expect({
 			empty: empty === null ? null : shape(empty),
-			icon: {ariaHidden: icon?.getAttribute("aria-hidden"), className: icon?.getAttribute("class")},
+			icon: {
+				ariaHidden: icon?.getAttribute("aria-hidden"),
+				className: icon?.getAttribute("class"),
+				cds: icon?.getAttribute("data-cds"),
+				stroke: icon?.getAttribute("stroke-width"),
+				fontSize: icon?.style.fontSize,
+			},
 			buttons: within(popover).queryAllByRole("button").length,
 		}).toStrictEqual({
 			// gap-sm and px-md at comfortable density are both 12px.
@@ -494,7 +500,14 @@ describe("settings search", () => {
 					"flex min-h-[120px] flex-col items-center justify-center gap-3 px-3 text-center text-[var(--settings-muted)]",
 				children: ["svg", {tag: "span", className: "text-body", children: ["No matching settings"]}],
 			},
-			icon: {ariaHidden: "true", className: "lucide lucide-search-x size-7"},
+			// Upstream's xl Search glyph: 28px at a 1.6667px stroke (wght 407.9).
+			icon: {
+				ariaHidden: "true",
+				className: "lucide lucide-search",
+				cds: "Icon",
+				stroke: String((1.6667 * 24) / 28),
+				fontSize: "calc(1.75rem * var(--cds-rem-scale, 1))",
+			},
 			buttons: 0,
 		});
 	});
@@ -523,7 +536,13 @@ describe("settings search", () => {
 				controls: trigger?.getAttribute("aria-controls") === popover.id,
 			},
 			field: field?.getAttribute("class"),
-			icon: {ariaHidden: icon?.getAttribute("aria-hidden"), className: icon?.getAttribute("class")},
+			icon: {
+				ariaHidden: icon?.getAttribute("aria-hidden"),
+				className: icon?.getAttribute("class"),
+				cds: icon?.getAttribute("data-cds"),
+				stroke: icon?.getAttribute("stroke-width"),
+				fontSize: icon?.style.fontSize,
+			},
 			input: {
 				type: input.getAttribute("type"),
 				role: input.getAttribute("role"),
@@ -536,7 +555,14 @@ describe("settings search", () => {
 			trigger: {tag: "div", role: "button", hasPopup: "dialog", expanded: "true", controls: true},
 			// h-control 32, px-sm 8, gap-sm 12 and radius 8 (rounded-r6) at comfortable density.
 			field: "flex h-8 w-full cursor-text items-center gap-3 rounded-r6 px-2 bg-[var(--settings-field-bg)] shadow-field-ring transition duration-150 [&:hover:not(:focus-within)]:shadow-field-hover has-[:focus-visible]:shadow-focus",
-			icon: {ariaHidden: "true", className: "lucide lucide-search size-5 shrink-0 text-[var(--settings-muted)]"},
+			// Upstream's md Search glyph: 20px at a 1.25px stroke (wght 433.3).
+			icon: {
+				ariaHidden: "true",
+				className: "lucide lucide-search text-[var(--settings-muted)]",
+				cds: "Icon",
+				stroke: "1.5",
+				fontSize: "calc(1.25rem * var(--cds-rem-scale, 1))",
+			},
 			input: {type: "text", role: null, expanded: null, autocomplete: null},
 			focusedByClick: true,
 			spaceTypes: true,

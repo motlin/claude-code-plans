@@ -1,7 +1,7 @@
-import {Search} from "lucide-react";
 import {openCommandPalette} from "../../hooks/use-command-palette";
 import {useShortcutKeys} from "../../hooks/use-shortcut";
 import {Shortcut} from "../ui/shortcut";
+import {Icon} from "../ui/icon";
 import {NAV_ROW_CLASS, NAV_ROW_HINT_CLASS} from "./new-session-row";
 
 /** The Search row's icon, fade-truncated label and text ⌘K hint, shared with the pre-hydration fallback. */
@@ -9,7 +9,7 @@ export function SearchRowContents({keys}: {keys: string}) {
 	return (
 		<>
 			<span data-leading-slot="" className="df-on-rail df-leading-slot">
-				<Search aria-hidden="true" />
+				<Icon name="Search" size="auto" />
 			</span>
 			<span className="flex min-w-0 flex-1 items-center">
 				<span className="df-fade-truncate whitespace-nowrap">Search</span>

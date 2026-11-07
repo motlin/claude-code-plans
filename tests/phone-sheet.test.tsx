@@ -342,14 +342,15 @@ describe("phone sheet sidebar", () => {
 		await renderFrame();
 		await openSheet();
 
-		expect(
-			screen
-				.getByRole("button", {name: "Close sidebar"})
-				.querySelector("svg")
+		const svg = screen.getByRole("button", {name: "Close sidebar"}).querySelector("svg");
+		expect({
+			glyph: svg
 				?.getAttribute("class")
 				?.split(" ")
-				.filter((name) => name.startsWith("lucide-") || name === "size-5"),
-		).toStrictEqual(["lucide-x", "size-5"]);
+				.filter((name) => name.startsWith("lucide-")),
+			cds: svg?.getAttribute("data-cds"),
+			fontSize: svg?.style.fontSize,
+		}).toStrictEqual({glyph: ["lucide-x"], cds: "Icon", fontSize: "calc(1.25rem * var(--cds-rem-scale, 1))"});
 	});
 
 	it("ends the nav block 11px below More, as upstream's phone sheet does", async () => {
@@ -386,13 +387,15 @@ describe("phone sheet sidebar", () => {
 				.querySelector("svg")
 				?.getAttribute("class")
 				?.split(" ")
-				.filter((name) => name === "lucide-search" || name === "size-5" || name === "-ms-1"),
+				.filter((name) => name === "lucide-search" || name === "-ms-1"),
+			iconSize: search.querySelector("svg")?.style.fontSize,
 		}).toStrictEqual({
 			buttons: ["Close sidebar", "Search"],
 			headerLayout: ["flex-col", "gap-2"],
 			closeRadius: ["rounded-r6"],
 			searchBox: ["h-10", "w-full", "rounded-r7", "bg-fill-control", "px-4"],
-			icon: ["lucide-search", "-ms-1", "size-5"],
+			icon: ["lucide-search", "-ms-1"],
+			iconSize: "calc(1.25rem * var(--cds-rem-scale, 1))",
 		});
 
 		fireEvent.click(search);

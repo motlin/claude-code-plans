@@ -91,6 +91,23 @@ describe("Composer stop slot", () => {
 			stop: screen.queryByRole("button", {name: "Stop", hidden: true}),
 		}).toStrictEqual({send: true, stop: null});
 	});
+
+	it("draws Send as upstream's mirrored ArrowReturn Icon at the scope's auto size", () => {
+		render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
+		fireEvent.change(screen.getByRole("textbox", {name: "Prompt"}), {target: {value: "Continue Alice's test"}});
+		const icon = screen.getByRole("button", {name: "Send"}).querySelector("svg");
+		expect({
+			cds: icon?.getAttribute("data-cds"),
+			mirror: icon?.getAttribute("data-cds-mirror"),
+			stroke: icon?.getAttribute("stroke-width"),
+			fontSize: icon?.style.fontSize,
+		}).toStrictEqual({
+			cds: "Icon",
+			mirror: "",
+			stroke: "1.5",
+			fontSize: "calc(1.25rem * var(--cds-rem-scale, 1))",
+		});
+	});
 });
 
 describe("Composer send slot while working", () => {
@@ -116,7 +133,7 @@ describe("Composer send slot while working", () => {
 			keys: stop.getAttribute("aria-keyshortcuts"),
 			testId: stop.dataset["testid"],
 			unwrapped: icon?.parentElement === stop,
-			icon: icon?.getAttribute("class"),
+			icon: {cds: icon?.getAttribute("data-cds"), fontSize: icon?.style.fontSize},
 			face: stop.closest("[data-send-face]")?.className,
 			cell: stop.closest("[data-send-face]")?.parentElement?.className,
 			send: screen.queryByRole("button", {name: "Send", hidden: true}),
@@ -124,7 +141,7 @@ describe("Composer send slot while working", () => {
 			keys: "Escape",
 			testId: "code-prompt-stop",
 			unwrapped: true,
-			icon: "size-5",
+			icon: {cds: "Icon", fontSize: "calc(1.25rem * var(--cds-rem-scale, 1))"},
 			face: "col-start-1 row-start-1 flex cursor-default items-center justify-end",
 			cell: "grid items-center justify-items-end",
 			send: null,

@@ -41,6 +41,7 @@ import {
 import {inlineEndSide, submenuAnchor} from "./menu-anchor";
 import type {SheetContentProps} from "./menu-sheet";
 import {loadedMenuSheet, preloadMenuSheet} from "./menu-sheet-loader";
+import {Icon} from "./icon";
 import {MenuSwitch} from "./menu-switch";
 import {useSheetPresentation} from "./sheet-presentation";
 import {FORCED_COLORS_BORDER_CLASS} from "./popover-surface";
@@ -104,9 +105,9 @@ const TRAILING_CLASS = "ml-auto flex shrink-0 items-center gap-1";
 /** Pins a two-line row's keycap and check to its first line. */
 const FIRST_LINE_TRAILING_CLASS = `${TRAILING_CLASS} h-[1lh] self-start`;
 const DIGIT_CHECK_SLOT_CLASS = "flex size-4 shrink-0 items-center justify-center pointer-coarse:-me-1";
-const CHECK_SLOT_CLASS = "-mr-1 flex size-5 shrink-0 items-center justify-center";
-/** Upstream's checked tick: 16px, bold, in fill-accent ink. */
-const CHECK_ICON_CLASS = "size-4 text-fill-accent";
+const CHECK_SLOT_CLASS = "-mr-1 flex size-icon shrink-0 items-center justify-center";
+/** Upstream's checked tick: a bold sm Check Icon (16px) in fill-accent ink. */
+const CHECK_ICON = <Icon name="Check" size="sm" bold className="text-fill-accent" />;
 /** Hover dwell before a submenu opens. */
 const SUBMENU_HOVER_DELAY_MS = 100;
 /** Upstream's `size-icon` leading slot; a two-line row pins it to the first line. */
@@ -629,7 +630,7 @@ export function MenuCheckboxItem({
 				</span>
 			) : (
 				<BaseMenu.CheckboxItemIndicator data-check-slot="" className={CHECK_SLOT_CLASS}>
-					<Check aria-hidden="true" strokeWidth={3} className={CHECK_ICON_CLASS} />
+					{CHECK_ICON}
 				</BaseMenu.CheckboxItemIndicator>
 			)}
 		</BaseMenu.CheckboxItem>
@@ -782,11 +783,7 @@ function DigitTrailing({accelerator}: {accelerator: string}) {
 			<BaseMenu.RadioItemIndicator
 				keepMounted
 				className={DIGIT_CHECK_SLOT_CLASS}
-				render={(slotProps, {checked}) => (
-					<span {...slotProps}>
-						{checked && <Check aria-hidden="true" strokeWidth={3} className={CHECK_ICON_CLASS} />}
-					</span>
-				)}
+				render={(slotProps, {checked}) => <span {...slotProps}>{checked && CHECK_ICON}</span>}
 			/>
 			<Shortcut keys={accelerator} variant="text" className={menuHintClass(accelerator)} />
 		</span>
@@ -807,7 +804,7 @@ function SlotDigitTrailing({accelerator}: {accelerator: string}) {
 						className={`-me-1 flex ${sizing.iconBox} shrink-0 items-center justify-center`}
 					>
 						{checked ? (
-							<Check aria-hidden="true" strokeWidth={3} className={CHECK_ICON_CLASS} />
+							CHECK_ICON
 						) : (
 							<span className="pointer-coarse:hidden text-footnote text-[var(--menu-muted)]">
 								{accelerator}
@@ -842,11 +839,7 @@ export function MenuRadioItem({
 	const itemClass = useItemClass(description !== undefined);
 	const reasonId = useId();
 	const reason = activeDisabledReason(props.disabled, disabledReason);
-	const check = (
-		<BaseMenu.RadioItemIndicator className={CHECK_SLOT_CLASS}>
-			<Check aria-hidden="true" strokeWidth={3} className={CHECK_ICON_CLASS} />
-		</BaseMenu.RadioItemIndicator>
-	);
+	const check = <BaseMenu.RadioItemIndicator className={CHECK_SLOT_CLASS}>{CHECK_ICON}</BaseMenu.RadioItemIndicator>;
 	let trailing: ReactNode = check;
 	if (accelerator !== undefined)
 		trailing = acceleratorInSlot ? (

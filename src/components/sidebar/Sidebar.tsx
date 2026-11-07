@@ -21,7 +21,6 @@ import {SidebarFooter} from "./sidebar-footer";
 import {SidebarSearchRow} from "./sidebar-search-field";
 import {SidebarToggleButton} from "./sidebar-toggle";
 import {useSidebarBodyRoving} from "./use-roving-focus";
-import {Search, X} from "lucide-react";
 import {openCommandPalette} from "../../hooks/use-command-palette";
 import {SidebarSessionGroups} from "./session-filter-menu";
 import {approvalsQueryOptions} from "../../lib/api/approvals";
@@ -45,6 +44,7 @@ import {
 import {useResizableWidth} from "../../hooks/use-resizable-width";
 import {useSessionIdentity} from "../../hooks/use-session-identity";
 import {DensityProvider} from "../ui/density";
+import {Icon} from "../ui/icon";
 import {type Density, useScopeDensity} from "../ui/density-context";
 import {useSettings} from "../settings-context";
 
@@ -115,7 +115,7 @@ export function Sidebar({
 					{/* Upstream pulls the nav block back over the header's h-1 spacer. */}
 					<div data-nav-block="" className="-mt-1 shrink-0">
 						{navigationItems.map((item) => {
-							const Icon = item.icon;
+							const Glyph = item.icon;
 							const badge = badgeFor(item.section);
 							// Upstream's Artifacts row wraps its link with the "New from a template" + action.
 							const hasRowActions = item.section === "artifacts";
@@ -132,7 +132,7 @@ export function Sidebar({
 									className="group df-nav-row h-[var(--sb-row-h)] data-[row-main-button]:flex-1 rounded-[var(--sb-radius)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
 								>
 									<span className="df-leading-slot">
-										<Icon aria-hidden="true" />
+										<Glyph aria-hidden="true" />
 									</span>
 									<span className="min-w-0 flex-1 truncate">{item.label}</span>
 									{badge && badge.count > 0 && (
@@ -191,7 +191,7 @@ export function Sidebar({
 								onClick={onPhoneSheetClose}
 								className="flex h-8 w-8 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover"
 							>
-								<X aria-hidden="true" className="size-5" />
+								<Icon name="X" />
 							</button>
 							<SidebarWordmark className="ml-2" />
 						</div>
@@ -204,7 +204,7 @@ export function Sidebar({
 							}}
 							className="flex h-10 w-full items-center gap-1 rounded-r7 bg-fill-control px-4 text-[15px]/[22px] text-primary transition-colors"
 						>
-							<Search aria-hidden="true" className="-ms-1 size-5" />
+							<Icon name="Search" className="-ms-1" />
 							Search
 						</button>
 					</div>

@@ -1,5 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
-import {EllipsisVertical, Folder, PanelLeft, Search} from "lucide-react";
+import {Folder, PanelLeft, Search} from "lucide-react";
 import {type ReactNode, type RefObject, useCallback, useEffect, useRef, useState} from "react";
 
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
@@ -35,6 +35,7 @@ import {
 	MenuSubTrigger,
 	MenuTrigger,
 } from "../ui/menu";
+import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
 import {consumePendingFilterFocus} from "./files-filter-focus";
@@ -89,7 +90,7 @@ function FilesSettingsMenu({
 	return (
 		<Menu>
 			<MenuTrigger aria-label="Files settings" className={PANE_HEADER_ICON_BUTTON_CLASS}>
-				<EllipsisVertical aria-hidden="true" className="size-4" />
+				<Icon name="DotsVertical" size="sm" />
 			</MenuTrigger>
 			<MenuContent align="end">
 				<MenuCheckboxItem checked={treeShown} onCheckedChange={onTreeShownChange} shortcut={treeKeys.keys}>

@@ -50,7 +50,6 @@ import {
 	SquareSlash,
 	Shapes,
 	Clock,
-	Paperclip,
 	CircleHelp,
 	BookText,
 	TextCursorInput,
@@ -177,6 +176,7 @@ import {isMotionReduced} from "../lib/reduced-motion";
 import {isAltEnter, rowActionsAnchorRect} from "./palette-row-actions-geometry";
 import {AttachedContextChips} from "./attached-context-chips";
 import {useToast} from "./toast-context";
+import {Icon} from "./ui/icon";
 import {Shortcut, WIDE_KEYCAP_CLASS} from "./ui/shortcut";
 import {Spinner} from "./ui/spinner";
 import {ArchivedBadge} from "./archived-badge";
@@ -1947,7 +1947,7 @@ function PalettePopup({
 										aria-label="Close"
 										className={`${ICON_BUTTON_BASE_CLASS} size-8 rounded-r6 text-primary hover:bg-fill-ghost-hover`}
 									>
-										<X aria-hidden="true" className="h-5 w-5" />
+										<Icon name="X" />
 									</Dialog.Close>
 								</Tooltip>
 							)}
@@ -1985,7 +1985,7 @@ function PalettePopup({
 												onClick={openFilePicker}
 												className={`${ICON_BUTTON_CLASS} -ms-3 rounded-r6 text-primary hover:bg-fill-ghost-hover`}
 											>
-												<Paperclip aria-hidden="true" className="size-4" />
+												<Icon name="Attachment" />
 											</button>
 										</Tooltip>
 										<Tooltip content="Send" side="top">
@@ -2003,7 +2003,7 @@ function PalettePopup({
 												{launching ? (
 													<LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
 												) : (
-													<CornerDownLeft aria-hidden="true" className="size-4" />
+													<Icon name="ArrowReturn" />
 												)}
 											</button>
 										</Tooltip>

@@ -1163,7 +1163,7 @@ describe("TurnChangesCard", () => {
 			rows: ["file-1.tsUndo1 addition, 1 deletion+1\u22121"],
 			links: ["file-1.ts"],
 			more: null,
-			icons: ["lucide lucide-file-code shrink-0"],
+			icons: ["lucide lucide-code-xml shrink-0"],
 		});
 	});
 
@@ -1291,7 +1291,7 @@ describe("TurnChangesCard", () => {
 		}).toStrictEqual({
 			card: true,
 			title: "min-w-0 truncate text-primary",
-			icon: "lucide lucide-file-code shrink-0",
+			icon: "lucide lucide-code-xml shrink-0",
 			iconSize: ["16px", "16px"],
 			name: "min-w-0 truncate text-primary",
 			stats: "flex shrink-0 items-center gap-0.5 tabular-nums",
@@ -1316,7 +1316,7 @@ describe("TurnChangesCard", () => {
 			fileText: container.querySelectorAll(".lucide-file-text").length,
 		}).toStrictEqual({
 			rows: [
-				{width: "16px", className: "lucide lucide-file-code shrink-0"},
+				{width: "16px", className: "lucide lucide-code-xml shrink-0"},
 				{width: "16px", className: "lucide lucide-sticky-note shrink-0"},
 			],
 			coloured: 0,

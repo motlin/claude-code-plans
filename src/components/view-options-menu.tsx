@@ -1,4 +1,4 @@
-import {EllipsisVertical, FileDiff, Files} from "lucide-react";
+import {FileDiff, Files} from "lucide-react";
 import type {RefObject} from "react";
 
 import {useIsMac} from "../hooks/use-is-mac";
@@ -13,6 +13,7 @@ import {TITLEBAR_ICON_BUTTON_CLASS} from "./titlebar-classes";
 import {useTitlebarHiddenCount} from "./titlebar-fold-context";
 import {useFoldFocus} from "./use-fold-focus";
 import {TITLEBAR_TOGGLES_ATTRIBUTE} from "./use-titlebar-fold";
+import {Icon} from "./ui/icon";
 import {Menu, MenuCheckboxItem, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
 import {viewOptionsItems} from "./view-options-items";
@@ -30,7 +31,7 @@ function MainPaneToggle({entry}: {entry: MainPaneEntry}) {
 	const host = usePaneHost();
 	const keys = useShortcutKeys(entry.shortcut);
 	const open = host.isOpen(entry.kind);
-	const Icon = entry.icon;
+	const Glyph = entry.icon;
 	return (
 		<Tooltip content={entry.label} shortcut={keys.keys} side="bottom">
 			<button
@@ -43,7 +44,7 @@ function MainPaneToggle({entry}: {entry: MainPaneEntry}) {
 				}}
 				className={TITLEBAR_ICON_BUTTON_CLASS}
 			>
-				<Icon aria-hidden="true" />
+				<Glyph aria-hidden="true" />
 			</button>
 		</Tooltip>
 	);
@@ -68,14 +69,14 @@ function ViewOptionsMenu({
 		<Menu>
 			<Tooltip content="View options" side="bottom">
 				<MenuTrigger ref={triggerRef} aria-label="View options" className={TITLEBAR_ICON_BUTTON_CLASS}>
-					<EllipsisVertical aria-hidden="true" />
+					<Icon name="DotsVertical" size="auto" />
 				</MenuTrigger>
 			</Tooltip>
 			<MenuContent align="end" sideOffset={6}>
 				{railFolded && <SessionRailMenuItem />}
 				{entries.map((entry) => {
 					const binding = entry.shortcut === undefined ? undefined : bindingsFor(entry.shortcut, isMac)[0];
-					const Icon = entry.icon;
+					const Glyph = entry.icon;
 					return (
 						<MenuCheckboxItem
 							key={entry.kind}
@@ -86,7 +87,7 @@ function ViewOptionsMenu({
 							}}
 							{...(binding === undefined ? {} : {shortcut: bindingToKeys(binding)})}
 							{...(entry.badge === undefined ? {} : {count: entry.badge})}
-							icon={<Icon aria-hidden="true" className="size-4 shrink-0 text-primary" />}
+							icon={<Glyph aria-hidden="true" className="size-4 shrink-0 text-primary" />}
 						>
 							{entry.label}
 						</MenuCheckboxItem>

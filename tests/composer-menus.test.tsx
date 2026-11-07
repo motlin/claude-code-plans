@@ -1606,6 +1606,24 @@ describe("Composer + menu Add files keycap", () => {
 		});
 	});
 
+	it("leads Add files with upstream's Attachment Icon at the menu's auto size", async () => {
+		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, []);
+		render(
+			<QueryClientProvider client={queryClient}>
+				<Composer variant="session" draftKey="session-alice" onSend={vi.fn<OnSend>()} chin={CHIN} />
+			</QueryClientProvider>,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Add"}));
+		const row = await screen.findByRole("menuitem", {name: /Add files or photos/});
+		const icon = row.querySelector("svg");
+		expect({
+			cds: icon?.getAttribute("data-cds"),
+			glyph: icon?.classList.contains("lucide-paperclip"),
+			stroke: icon?.getAttribute("stroke-width"),
+		}).toStrictEqual({cds: "Icon", glyph: true, stroke: "1.5"});
+	});
+
 	it("keeps Add mounted and the editor row inset without a chin", () => {
 		render(<Composer variant="session" draftKey="session-alice" onSend={vi.fn<OnSend>()} />);
 		const add = screen.getByRole("button", {name: "Add"});

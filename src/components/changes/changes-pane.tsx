@@ -1,6 +1,6 @@
 import {Virtualizer} from "@pierre/diffs/react";
 import {useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
-import {ArrowRight, ChevronDown, EllipsisVertical, List, Loader2, TriangleAlert} from "lucide-react";
+import {ArrowRight, ChevronDown, List, Loader2, TriangleAlert} from "lucide-react";
 import {Fragment, type ReactNode, type RefObject, useCallback, useEffect, useRef, useState} from "react";
 
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
@@ -41,6 +41,7 @@ import {
 	MenuTrigger,
 } from "../ui/menu";
 import {useToast} from "../toast-context";
+import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
 import {ChangedFilesSidebar} from "./changes-file-tree";
 import {openDiffCommentDraft, useDiffComments} from "../../lib/diff-comments";
@@ -306,7 +307,7 @@ function SettingsMenu({
 	return (
 		<Menu>
 			<MenuTrigger aria-label="Changes settings" className={PANE_HEADER_ICON_BUTTON_CLASS}>
-				<EllipsisVertical aria-hidden="true" className="size-4" />
+				<Icon name="DotsVertical" size="sm" />
 			</MenuTrigger>
 			<MenuContent align="end">
 				{hasFiles && (

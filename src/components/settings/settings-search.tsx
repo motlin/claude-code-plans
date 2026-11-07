@@ -1,6 +1,5 @@
 // Base UI Popover, not ui/popover: structurally anchored to its input.
 import {Popover} from "@base-ui/react/popover";
-import {Search, SearchX} from "lucide-react";
 import {type MouseEvent, type RefObject, useEffect, useId, useMemo, useRef, useState} from "react";
 import {useShortcut} from "../../hooks/use-shortcut";
 import {settingsTabLabels} from "../../lib/schema-choices";
@@ -12,6 +11,7 @@ import {
 	settingsMatchStart,
 	splitMatch,
 } from "../../lib/settings-search";
+import {Icon} from "../ui/icon";
 import {SHEET_BODY_CLASS} from "../ui/popover-sheet";
 import {SETTINGS_TAB_ICONS} from "./settings-tab-icons";
 
@@ -81,12 +81,12 @@ function ResultRow({
 		className: ROW_CLASS,
 	} as const;
 	if (row.kind === "hit") {
-		const Icon = SETTINGS_TAB_ICONS[row.tab];
+		const TabIcon = SETTINGS_TAB_ICONS[row.tab];
 		return (
 			<button {...rowProps}>
 				<span className="flex min-w-0 flex-1 flex-col">
 					<span className="flex items-center gap-3">
-						<Icon aria-hidden="true" className="size-5 shrink-0 text-primary" />
+						<TabIcon aria-hidden="true" className="size-5 shrink-0 text-primary" />
 						<span className="min-w-0 flex-1 truncate">
 							<Highlighted label={section} query={query} />
 						</span>
@@ -215,7 +215,7 @@ export function SettingsSearch({
 					onClick={() => inputRef.current?.focus()}
 					className="flex h-8 w-full cursor-text items-center gap-3 rounded-r6 px-2 bg-[var(--settings-field-bg)] shadow-field-ring transition duration-150 [&:hover:not(:focus-within)]:shadow-field-hover has-[:focus-visible]:shadow-focus"
 				>
-					<Search aria-hidden="true" className="size-5 shrink-0 text-[var(--settings-muted)]" />
+					<Icon name="Search" className="text-[var(--settings-muted)]" />
 					<input
 						ref={inputRef}
 						type="text"
@@ -280,7 +280,7 @@ export function SettingsSearch({
 								{rows.length === 0 ? (
 									// Upstream's xl search icon over "No matching settings"; gap-sm and px-md are 12px at comfortable density.
 									<div className="flex min-h-[120px] flex-col items-center justify-center gap-3 px-3 text-center text-[var(--settings-muted)]">
-										<SearchX aria-hidden="true" className="size-7" />
+										<Icon name="Search" size="xl" />
 										<span className="text-body">No matching settings</span>
 									</div>
 								) : (

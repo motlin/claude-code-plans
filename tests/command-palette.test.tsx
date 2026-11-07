@@ -1256,12 +1256,21 @@ describe("CommandPalette shell", () => {
 				(name) => send.classList.contains(name),
 			),
 			icon: send.querySelector("svg")?.classList.contains("lucide-corner-down-left"),
+			// Upstream's compose-mode glyphs are md Icons: 20px at a 1.25px stroke.
+			glyphs: [send, within(dialog).getByRole("button", {name: "Add files or photos"})].map((button) => {
+				const svg = button.querySelector("svg");
+				return [svg?.getAttribute("data-cds"), svg?.getAttribute("stroke-width"), svg?.style.fontSize];
+			}),
 			sendMouseDownPrevented: mouseDown.defaultPrevented,
 			clipMouseDownPrevented: clipDown.defaultPrevented,
 		}).toStrictEqual({
 			disabled: false,
 			classes: ["bg-fill-brand", "hover:bg-fill-brand-hover", "rounded-r6", "me-0.5", "text-white"],
 			icon: true,
+			glyphs: [
+				["Icon", "1.5", "calc(1.25rem * var(--cds-rem-scale, 1))"],
+				["Icon", "1.5", "calc(1.25rem * var(--cds-rem-scale, 1))"],
+			],
 			sendMouseDownPrevented: true,
 			clipMouseDownPrevented: true,
 		});

@@ -1,7 +1,7 @@
 import {Checkbox} from "@base-ui/react/checkbox";
 import {Dialog} from "@base-ui/react/dialog";
 import {useNavigate} from "@tanstack/react-router";
-import {Check, Ellipsis} from "lucide-react";
+import {Check} from "lucide-react";
 import {useRef, useState} from "react";
 import {useSetNavSectionPinned} from "../../lib/api/application-settings";
 import {useFizzyLake} from "../../lib/fizzy-lake";
@@ -10,6 +10,7 @@ import {useDialogBandBodyClass} from "../ui/dialog-band";
 import {DialogHeader} from "../ui/dialog-header";
 import {DIALOG_FOOTER_CLASS, useDialogPad} from "../ui/dialog-pad";
 import {DialogPopup} from "../ui/dialog-popup";
+import {Icon} from "../ui/icon";
 import {Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "../ui/menu";
 import {navItems, type NavItem} from "./navigation";
 import type {Section} from "./types";
@@ -58,7 +59,7 @@ export function MoreNavMenu({
 						className={NAV_ROW_CLASS}
 					>
 						<span className="df-leading-slot">
-							<Ellipsis aria-hidden="true" />
+							<Icon name="DotsHorizontal" size="auto" />
 						</span>
 						{active === undefined ? (
 							<span>More</span>
@@ -68,12 +69,12 @@ export function MoreNavMenu({
 					</MenuTrigger>
 					<MenuContent density="comfortable" side="right" align="start">
 						{overflow.map((item) => {
-							const Icon = item.icon;
+							const Glyph = item.icon;
 							const badge = badgeFor(item.section);
 							return (
 								<MenuItem
 									key={item.section}
-									icon={<Icon aria-hidden="true" />}
+									icon={<Glyph aria-hidden="true" />}
 									onSelect={() => void navigate({to: item.to})}
 								>
 									<span className="flex min-w-0 items-center">
@@ -143,7 +144,7 @@ function EditSidebarDialog({
 						/>
 						<div className={panels ? "flex flex-col" : "mt-2 flex flex-col"}>
 							{navItems.map((item) => {
-								const Icon = item.icon;
+								const Glyph = item.icon;
 								return (
 									<Checkbox.Root
 										key={item.section}
@@ -159,7 +160,7 @@ function EditSidebarDialog({
 											</Checkbox.Indicator>
 										</span>
 										<span className="flex items-center gap-2 pl-1">
-											<Icon aria-hidden="true" className="size-4 shrink-0 text-secondary" />
+											<Glyph aria-hidden="true" className="size-4 shrink-0 text-secondary" />
 											{item.label}
 										</span>
 									</Checkbox.Root>

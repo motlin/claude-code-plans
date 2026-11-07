@@ -387,8 +387,8 @@ describe("Composer @ file mentions", () => {
 				};
 			}),
 		).toStrictEqual([
-			{typed: null, lucide: "lucide lucide-scroll-text shrink-0"},
-			{typed: null, lucide: "lucide lucide-file-code shrink-0"},
+			{typed: null, lucide: "lucide lucide-scroll shrink-0"},
+			{typed: null, lucide: "lucide lucide-code-xml shrink-0"},
 			{typed: null, lucide: "lucide lucide-folder size-4 shrink-0 text-ink-muted"},
 		]);
 	});

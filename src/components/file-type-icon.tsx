@@ -1,16 +1,3 @@
-import {
-	Database,
-	File,
-	FileArchive,
-	FileCode,
-	FileImage,
-	Globe,
-	type LucideIcon,
-	Presentation,
-	ScrollText,
-	Sheet,
-	StickyNote,
-} from "lucide-react";
 import {type ReactNode, useCallback, useContext, useSyncExternalStore} from "react";
 import {
 	type FileTypeGlyph,
@@ -28,19 +15,20 @@ import {
 
 import {FileTypeIconSetContext} from "./file-type-icon-set-context";
 import {FILE_TYPE_ICON_SIZE_PX, type FileTypeIconSize} from "./file-type-icon-size";
+import {Icon, type IconName} from "./ui/icon";
 
-/** Local stand-ins for upstream's monochrome cds glyphs. */
-const GLYPH_ICONS: Readonly<Record<FileTypeGlyph, LucideIcon>> = {
-	doc: File,
-	code: FileCode,
-	data: Database,
-	sheet: Sheet,
-	preso: Presentation,
-	image: FileImage,
-	archive: FileArchive,
-	note: StickyNote,
-	globe: Globe,
-	skill: ScrollText,
+/** Upstream's monochrome cds glyph per kind, drawn through the local Icon. */
+const GLYPH_ICONS: Readonly<Record<FileTypeGlyph, IconName>> = {
+	doc: "File",
+	code: "Code",
+	data: "Database",
+	sheet: "Spreadsheet",
+	preso: "Slides",
+	image: "Image",
+	archive: "Archive",
+	note: "Note",
+	globe: "Globe",
+	skill: "Scroll",
 };
 
 const REACT_ATTRIBUTE_NAMES: Readonly<Record<string, string>> = {
@@ -123,8 +111,14 @@ export function FileTypeIcon({
 	const tree = id === null || set === undefined ? undefined : set.icons[id];
 	if (tree === undefined || setName === null) {
 		if (fallback !== undefined) return fallback;
-		const Glyph = GLYPH_ICONS[glyph];
-		return <Glyph aria-hidden="true" className={className ? `shrink-0 ${className}` : "shrink-0"} style={style} />;
+		return (
+			<Icon
+				name={GLYPH_ICONS[glyph]}
+				size={size}
+				className={className ? `shrink-0 ${className}` : "shrink-0"}
+				style={style}
+			/>
+		);
 	}
 	const classes = ["shrink-0", setName === "vscode" ? "overflow-visible" : null, className].filter(Boolean).join(" ");
 	const prefix = paletteVariablePrefix(setName);

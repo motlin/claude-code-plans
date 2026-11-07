@@ -1,5 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
-import {Gauge, Paperclip, Plus, SquareSlash} from "lucide-react";
+import {Gauge, Plus, SquareSlash} from "lucide-react";
 import {lazy, memo, type Ref, Suspense, useImperativeHandle, useState} from "react";
 
 import {
@@ -34,6 +34,7 @@ import {ADD_BUTTON_CLASS, CHIN_ICON_INK_CLASS, USAGE_RING_CLASS} from "./compose
 import {localAccountQueryOptions} from "../lib/api/local-account";
 import {settingsHash} from "../lib/settings-hash";
 import {ConfirmDialog} from "./confirm-dialog";
+import {Icon} from "./ui/icon";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
 import {POPOVER_SCROLL_BODY_CLASS, PopoverRoot, PopoverTitle, PopoverTrigger, PopoverContent} from "./ui/popover";
 import {Tooltip} from "./ui/tooltip";
@@ -166,7 +167,11 @@ export const ComposerAddMenu = memo(function ComposerAddMenu({
 				</MenuTrigger>
 			</Tooltip>
 			<MenuContent side="top" sideOffset={6} finalFocus={slashAfterClose.finalFocus}>
-				<MenuItem icon={<Paperclip />} onSelect={onAddFiles} {...(active ? {shortcut: addFilesKeys} : {})}>
+				<MenuItem
+					icon={<Icon name="Attachment" size="auto" />}
+					onSelect={onAddFiles}
+					{...(active ? {shortcut: addFilesKeys} : {})}
+				>
 					Add files or photos
 				</MenuItem>
 				<MenuItem icon={<SquareSlash />} onSelect={slashAfterClose.requestRename}>

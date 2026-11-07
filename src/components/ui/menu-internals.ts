@@ -1,4 +1,6 @@
 import {createContext, type KeyboardEvent, type RefObject, useContext} from "react";
+
+import {ICON_SLOT_CLASS, ICON_SLOT_FIRST_LINE_CLASS} from "../../lib/icon-sizes";
 import {useDensity} from "./density-context";
 
 /* The pieces of the menu primitive that both the anchored popup (./menu) and the lazy sheet (./menu-sheet) use. */
@@ -6,6 +8,10 @@ import {useDensity} from "./density-context";
 export type MenuKind = "Menu" | "ContextMenu";
 
 export const MenuKindContext = createContext<MenuKind>("Menu");
+
+/* Upstream's size:"auto" icons follow --cds-icon (16px compact, 20px comfortable), which the
+   popup's data-density sets, so one slot string serves both densities. */
+const ICON_GLYPH_CLASS = "[&_svg]:size-icon";
 export const DENSITY_CLASSES = {
 	compact: {
 		popup: "rounded-r7",
@@ -16,11 +22,11 @@ export const DENSITY_CLASSES = {
 		/* Upstream pads compact two-line rows 2.5px 8px 4px. */
 		twoLine: "items-start pb-1",
 		separator: "mx-2",
-		icon: "[&_svg]:size-4",
+		icon: ICON_GLYPH_CLASS,
 		/* Upstream's row gap-xs and size-icon slot (--cds-icon 1rem), which may overflow a short line. */
 		gap: "gap-1.5",
-		iconSlot: "flex size-4 shrink-0 items-center justify-center -my-[max(0px,calc((1rem-1lh)/2))]",
-		iconSlotTwoLine: "flex h-[1lh] w-4 shrink-0 items-center justify-center self-start",
+		iconSlot: ICON_SLOT_CLASS,
+		iconSlotTwoLine: ICON_SLOT_FIRST_LINE_CLASS,
 		/* Upstream's ms-md gap-xs trailing group (switch rows, keycap accelerators). */
 		trailingGroup: "ms-3 flex shrink-0 items-center gap-1.5",
 		/* The same group on a digit row (upstream's mode rows), pinned to the first line. */
@@ -39,11 +45,10 @@ export const DENSITY_CLASSES = {
 		singleLine: "h-8 panels-fine:h-7 items-center",
 		twoLine: "min-h-8 panels-fine:min-h-7 items-start",
 		separator: "mx-2.5",
-		/* Upstream's size:"auto" icons follow --cds-icon: 16px compact, 20px comfortable. */
-		icon: "[&_svg]:size-5",
+		icon: ICON_GLYPH_CLASS,
 		gap: "gap-2",
-		iconSlot: "flex size-5 shrink-0 items-center justify-center -my-[max(0px,calc((1.25rem-1lh)/2))]",
-		iconSlotTwoLine: "flex h-[1lh] w-5 shrink-0 items-center justify-center self-start",
+		iconSlot: ICON_SLOT_CLASS,
+		iconSlotTwoLine: ICON_SLOT_FIRST_LINE_CLASS,
 		trailingGroup: "ms-4 flex shrink-0 items-center gap-2",
 		digitTrailing: "flex shrink-0 items-center gap-2 ms-4 h-[1lh] self-start",
 		iconBox: "size-5",
@@ -61,7 +66,6 @@ export const SHEET_SIZING = {
 	item: "rounded-r7 px-2.5 py-[9px]",
 	singleLine: "min-h-10 items-center",
 	separator: "mx-2.5",
-	icon: "[&_svg]:size-5",
 };
 
 /**

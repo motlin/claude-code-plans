@@ -51,31 +51,31 @@
 		"raisedAt": "2026-11-02"
 	},
 	"bundle.home.gzip": {
-		"ceiling": 441089,
+		"ceiling": 445151,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Reply-face root attribute (2026-11-07): the settings provider now carries the Response font setting and upstream's gated html[data-reply-face] writer, the last ~60 bytes over a home bundle already at the 1% tolerance edge after the start-failed card (431271 to 436665, measured 441032+ since). Went from 436665 to 441089. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "cds Icon (2026-11-07): the shared Icon component, its size table and the 22-glyph lucide map (composer Send/Stop/Attachment, sidebar Search/New/More, menu checks, file-type glyphs) now load with every page that draws an Icon; the map was trimmed to the glyphs in use. Went from 441089 to 445151. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-07"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1334967,
+		"ceiling": 1342736,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "ScrollFade home strips (2026-11-07): the scroll-fade family port (menu sheet, dialog bodies, select lists, popovers, the landing column's overflow observer) used most of the 1% headroom, and the ScrollFade primitive wrapping the home landing column tipped it over. Went from 1321491 to 1334967. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "cds Icon (2026-11-07): the shared Icon component, its size table and the 22-glyph lucide map (composer Send/Stop/Attachment, sidebar Search/New/More, menu checks, file-type glyphs) now load with every page that draws an Icon; the map was trimmed to the glyphs in use. Went from 1334967 to 1342736. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-07"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 680796,
+		"ceiling": 684361,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Transcript scroll fades (2026-11-07): the scroll-fade family port (menu sheet, dialog bodies, select lists, popovers) and the cds type gate used most of the 1% headroom, and the feed's article scroll margins and fade-height formulas tipped it over. Went from 673807 to 680796. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "cds Icon (2026-11-07): the shared Icon component, its size table and the 22-glyph lucide map (composer Send/Stop/Attachment, sidebar Search/New/More, menu checks, file-type glyphs) now load with every page that draws an Icon; the map was trimmed to the glyphs in use. Went from 680796 to 684361. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-07"
 	},
 	"bundle.session.raw": {
-		"ceiling": 2042393,
+		"ceiling": 2053272,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "cds type gate (2026-11-07): the row-cut observer (useRowCut) wired into every transcript status label plus the reply-type marker, on top of the growth since the 2026-11-03 Artifacts gallery raise (reply face, home launch failure card, transcript rewrite handling). Went from 2020881 to 2042393. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "cds Icon (2026-11-07): the shared Icon component, its size table and the 22-glyph lucide map (composer Send/Stop/Attachment, sidebar Search/New/More, menu checks, file-type glyphs) now load with every page that draws an Icon; the map was trimmed to the glyphs in use. Went from 2042393 to 2053272. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-07"
 	},
 	"client.coldHome.default.commitsToRows": {
@@ -108,9 +108,11 @@
 		"tolerance": 0
 	},
 	"client.composer.home.slashMenu.componentsPerKeystroke": {
-		"ceiling": 7,
+		"ceiling": 8,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "cds Icon (2026-11-07): the composer's Send glyph and the menu checks now render through the shared Icon component, one more distinct component in the census when the Send face mounts or a menu row draws. Went from 7 to 8.",
+		"raisedAt": "2026-11-07"
 	},
 	"client.composer.home.slashMenu.localStorageWrites": {
 		"ceiling": 1,
@@ -133,9 +135,11 @@
 		"tolerance": 0
 	},
 	"client.composer.home.typing.componentsPerKeystroke": {
-		"ceiling": 1.4,
+		"ceiling": 1.5,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "cds Icon (2026-11-07): the composer's Send glyph and the menu checks now render through the shared Icon component, one more distinct component in the census when the Send face mounts or a menu row draws. Went from 1.4 to 1.5.",
+		"raisedAt": "2026-11-07"
 	},
 	"client.composer.home.typing.localStorageWrites": {
 		"ceiling": 1,
@@ -158,11 +162,11 @@
 		"tolerance": 0
 	},
 	"client.composer.session.mentionMenu.componentsPerKeystroke": {
-		"ceiling": 10,
+		"ceiling": 11,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "File-type icons follow the code theme (2026-11-02): like upstream, only the Files and Changes panes supply a coloured icon set, so @ mention rows always draw the monochrome glyph. That glyph is a lucide icon component where the coloured icon was a bare svg element, adding one component per keystroke (9 to 10).",
-		"raisedAt": "2026-11-02"
+		"reason": "cds Icon (2026-11-07): the composer's Send glyph and the menu checks now render through the shared Icon component, one more distinct component in the census when the Send face mounts or a menu row draws. Went from 10 to 11.",
+		"raisedAt": "2026-11-07"
 	},
 	"client.composer.session.mentionMenu.localStorageWrites": {
 		"ceiling": 1,
@@ -190,9 +194,11 @@
 		"tolerance": 0
 	},
 	"client.composer.session.slashMenu.componentsPerKeystroke": {
-		"ceiling": 7,
+		"ceiling": 8,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "cds Icon (2026-11-07): the composer's Send glyph and the menu checks now render through the shared Icon component, one more distinct component in the census when the Send face mounts or a menu row draws. Went from 7 to 8.",
+		"raisedAt": "2026-11-07"
 	},
 	"client.composer.session.slashMenu.localStorageWrites": {
 		"ceiling": 1,
@@ -220,9 +226,11 @@
 		"tolerance": 0
 	},
 	"client.composer.session.typing.componentsPerKeystroke": {
-		"ceiling": 1.4,
+		"ceiling": 1.5,
 		"unit": "count",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "cds Icon (2026-11-07): the composer's Send glyph and the menu checks now render through the shared Icon component, one more distinct component in the census when the Send face mounts or a menu row draws. Went from 1.4 to 1.5.",
+		"raisedAt": "2026-11-07"
 	},
 	"client.composer.session.typing.localStorageWrites": {
 		"ceiling": 1,

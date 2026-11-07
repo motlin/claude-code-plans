@@ -12,7 +12,6 @@ import {
 	useRef,
 	useState,
 } from "react";
-import {CornerDownLeft} from "lucide-react";
 import type {ThemedToken} from "@shikijs/core";
 
 import {useBandEnter} from "../hooks/use-band-enter";
@@ -103,7 +102,7 @@ import {ToastContext} from "./toast-context";
 import {fileMentionOptionId} from "./file-mention-option-id";
 import {preloadComposerSurfaces, useComposerSurfaces} from "./composer-surfaces-entry";
 import {slashCommandOptionId} from "./slash-command-option-id";
-import {StopFilledIcon} from "./ui/stop-filled-icon";
+import {Icon} from "./ui/icon";
 import {Tooltip} from "./ui/tooltip";
 import {startComposerKeystrokeJourney, startComposerSubmitJourneys} from "../lib/perf/field-journeys";
 import {SESSION_COMPOSER_PLACEHOLDER} from "../lib/composer-pending-gate";
@@ -448,7 +447,7 @@ const SendSlot = memo(function SendSlot({
 				disabled={!canSend}
 				className={ICON_BUTTON_CLASS}
 			>
-				<CornerDownLeft className="size-4" aria-hidden="true" />
+				<Icon name="ArrowReturn" size="auto" />
 			</button>
 		</Tooltip>
 	);
@@ -495,7 +494,7 @@ const SendSlot = memo(function SendSlot({
 		<SplitDropdownButton
 			variant="ghost"
 			size="touch"
-			icon={<CornerDownLeft className={`size-4${canSend ? "" : " opacity-40"}`} aria-hidden="true" />}
+			icon={<Icon name="ArrowReturn" size="auto" {...(canSend ? {} : {className: "opacity-40"})} />}
 			aria-label="Send"
 			aria-keyshortcuts="Enter"
 			menuLabel="More send options"
@@ -521,7 +520,7 @@ const SendSlot = memo(function SendSlot({
 						onClick={isStreaming ? onCancel : stop}
 						className={ICON_BUTTON_CLASS}
 					>
-						<StopFilledIcon />
+						<Icon name="StopFilled" />
 					</button>
 				</Tooltip>
 			}
@@ -546,7 +545,7 @@ const SendSlot = memo(function SendSlot({
 					<SplitDropdownButton
 						variant="ghost"
 						size="touch"
-						icon={<CornerDownLeft className="size-4" aria-hidden="true" />}
+						icon={<Icon name="ArrowReturn" size="auto" />}
 						aria-label="Send"
 						menuLabel="More send options"
 						items={SPACER_SPLIT_ITEMS}

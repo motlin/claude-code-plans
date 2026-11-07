@@ -94,17 +94,21 @@ describe("FileTypeIcon", () => {
 		]);
 	});
 
-	it("draws a monochrome lucide glyph for an unresolved code file", () => {
+	it("draws upstream's monochrome cds Code Icon for an unresolved code file", () => {
 		const {container} = render(<FileTypeIcon fileName="Main.java" size="xs" className="text-ink-muted" />);
 		const svg = container.querySelector("svg");
 		expect({
 			coloured: iconSvg(container) !== null,
 			className: svg?.getAttribute("class"),
+			cds: svg?.getAttribute("data-cds"),
+			stroke: svg?.getAttribute("stroke-width"),
 			width: svg?.style.width,
 			height: svg?.style.height,
 		}).toEqual({
 			coloured: false,
-			className: "lucide lucide-file-code shrink-0 text-ink-muted",
+			className: "lucide lucide-code-xml shrink-0 text-ink-muted",
+			cds: "Icon",
+			stroke: "2",
 			width: "12px",
 			height: "12px",
 		});
@@ -117,8 +121,8 @@ describe("FileTypeIcon", () => {
 		});
 		expect(classes).toEqual([
 			"lucide lucide-database shrink-0",
-			"lucide lucide-scroll-text shrink-0",
-			"lucide lucide-file-image shrink-0",
+			"lucide lucide-scroll shrink-0",
+			"lucide lucide-image shrink-0",
 		]);
 	});
 

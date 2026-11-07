@@ -1536,7 +1536,7 @@ describe("Outputs card", () => {
 			coloured: card.querySelector("[data-file-type-icon]") !== null,
 			className: svg?.getAttribute("class"),
 			width: svg?.style.width,
-		}).toStrictEqual({coloured: false, className: "lucide lucide-file-code shrink-0", width: "16px"});
+		}).toStrictEqual({coloured: false, className: "lucide lucide-code-xml shrink-0", width: "16px"});
 	});
 
 	it("lists a written file by its basename among the artifacts by time, opening it in the Files pane", async () => {

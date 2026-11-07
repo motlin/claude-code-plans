@@ -59,6 +59,8 @@
 @custom-variant vh-max-520 (:where(body[data-vh-max-520]) &);
 @custom-variant compact (&:where([data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *)))));
 @custom-variant comfortable (&:where([data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] [data-density="compact"] *)))));
+/* Upstream cds `cds-Icon:*` variants: style the Icons inside an element (`cds-Icon:text-secondary`). */
+@custom-variant cds-Icon (& [data-cds=Icon]);
 
 /* Not inline, so `font-mono` and `font-sans` read their variables and Settings ▸
    Code font / Interface font can override them on <html>. */
@@ -395,6 +397,8 @@ html[data-interface-font="dyslexic"] {
 :root {
 	/* Upstream .cds-root control height: the shell is a comfortable context (see [data-density] below). */
 	--cds-h-control: calc(2rem * var(--cds-rem-scale, 1));
+	/* Upstream .cds-root[data-density=comfortable] --cds-icon: the size-icon box and `auto` Icon size. */
+	--cds-icon: calc(1.25rem * var(--cds-rem-scale, 1));
 	/* Upstream .cds-root motion tokens: the SegmentedControl thumb FLIP reads both (src/lib/segmented-flip.ts). */
 	--cds-dur-base: 0.2s;
 	--cds-ease-snap: cubic-bezier(0.32, 0.72, 0, 1);
@@ -3031,6 +3035,7 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
    A comfortable scope restates :root's scale so it wins over an enclosing compact one. */
 [data-density="comfortable"] {
 	--cds-h-control: calc(2rem * var(--cds-rem-scale, 1));
+	--cds-icon: calc(1.25rem * var(--cds-rem-scale, 1));
 	--upstream-radius: 0.5rem;
 	--upstream-radius-composer: 0.875rem;
 	--upstream-text-body: 14px;
@@ -3070,6 +3075,7 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 
 [data-density="compact"] {
 	--cds-h-control: calc(1.5rem * var(--cds-rem-scale, 1));
+	--cds-icon: calc(1rem * var(--cds-rem-scale, 1));
 	--upstream-radius: 0.375rem;
 	--upstream-radius-composer: 0.75rem;
 	--upstream-text-body: 13px;
@@ -4319,4 +4325,27 @@ html.vt-image-preview-active.vt-image-preview-crossfade::view-transition-group(r
 html[data-reduce-motion="true"] [data-cds-composer-attachments]:has([data-cds-attachment]),
 html[data-reduce-motion="true"] [data-cds-composer-attachments] [data-cds-attachment] {
 	transition: none;
+}
+
+/* Upstream cds Icon (c6a992d55): the size-icon / w-icon boxes over --cds-icon, and the Icon rules for
+   its svg form (the font-only rules stay out with the font; see src/components/ui/icon.tsx). */
+@utility size-icon {
+	width: var(--cds-icon);
+	height: var(--cds-icon);
+}
+@utility w-icon {
+	width: var(--cds-icon);
+}
+[data-cds="Icon"] {
+	flex-shrink: 0;
+}
+:root[dir="rtl"] :is([data-cds="Icon"], svg)[data-cds-mirror]:dir(rtl) {
+	transform: scaleX(-1);
+}
+[data-cds="Icon"][data-cds-rotate] {
+	--cds-icon-rotate: 0deg;
+	rotate: var(--cds-icon-rotate);
+}
+:root[dir="rtl"] [data-cds="Icon"][data-cds-rotate]:dir(rtl) {
+	rotate: calc(var(--cds-icon-rotate) * -1);
 }

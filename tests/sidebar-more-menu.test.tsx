@@ -230,7 +230,7 @@ describe("sidebar More menu", () => {
 				const classes = slot?.className.split(" ") ?? [];
 				return {
 					label: item.textContent,
-					slot: classes.includes("size-5") && classes.includes("[&_svg]:size-5"),
+					slot: classes.includes("size-icon") && classes.includes("[&_svg]:size-icon"),
 					glyph: Boolean(slot?.querySelector("svg")),
 				};
 			});

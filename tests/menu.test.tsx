@@ -226,8 +226,8 @@ describe("Menu", () => {
 			return sizes;
 		};
 		expect({compact: await glyphSize("compact"), comfortable: await glyphSize("comfortable")}).toStrictEqual({
-			compact: ["[&_svg]:size-4"],
-			comfortable: ["[&_svg]:size-5"],
+			compact: ["[&_svg]:size-icon"],
+			comfortable: ["[&_svg]:size-icon"],
 		});
 	});
 
@@ -262,17 +262,17 @@ describe("Menu", () => {
 		expect({compact: await layout("compact"), comfortable: await layout("comfortable")}).toStrictEqual({
 			compact: {
 				rowGap: ["gap-1.5"],
-				slot: "flex size-4 shrink-0 items-center justify-center -my-[max(0px,calc((1rem-1lh)/2))] [&_svg]:shrink-0 [&_svg]:size-4",
+				slot: "flex size-icon shrink-0 items-center justify-center -my-[max(0px,calc((var(--cds-icon)_-_1lh)_/_2))] [&_svg]:shrink-0 [&_svg]:size-icon",
 				twoLineGap: ["gap-1.5"],
 				twoLineSlot:
-					"flex h-[1lh] w-4 shrink-0 items-center justify-center self-start [&_svg]:shrink-0 [&_svg]:size-4",
+					"flex h-[1lh] w-icon shrink-0 items-center justify-center self-start [&_svg]:shrink-0 [&_svg]:size-icon",
 			},
 			comfortable: {
 				rowGap: ["gap-2"],
-				slot: "flex size-5 shrink-0 items-center justify-center -my-[max(0px,calc((1.25rem-1lh)/2))] [&_svg]:shrink-0 [&_svg]:size-5",
+				slot: "flex size-icon shrink-0 items-center justify-center -my-[max(0px,calc((var(--cds-icon)_-_1lh)_/_2))] [&_svg]:shrink-0 [&_svg]:size-icon",
 				twoLineGap: ["gap-2"],
 				twoLineSlot:
-					"flex h-[1lh] w-5 shrink-0 items-center justify-center self-start [&_svg]:shrink-0 [&_svg]:size-5",
+					"flex h-[1lh] w-icon shrink-0 items-center justify-center self-start [&_svg]:shrink-0 [&_svg]:size-icon",
 			},
 		});
 	});
@@ -541,7 +541,7 @@ describe("Menu", () => {
 		}).toEqual({right: "end", bottom: null});
 	});
 
-	it("draws radio and checkbox checks in upstream fill-accent ink at stroke-width 3", async () => {
+	it("draws radio and checkbox checks as upstream's bold sm Check Icon in fill-accent ink", async () => {
 		renderDropdown();
 		await openDropdown();
 		const trigger = screen.getByRole("menuitem", {name: /Status/});
@@ -556,13 +556,16 @@ describe("Menu", () => {
 			screen.getByRole("menuitemradio", {name: "Active"}),
 		].map((item) => {
 			const svg = item.querySelector("svg");
-			return [svg?.getAttribute("class")?.includes("text-fill-accent"), svg?.getAttribute("stroke-width")];
+			return [
+				svg?.getAttribute("class")?.includes("text-fill-accent"),
+				svg?.getAttribute("data-cds"),
+				svg?.getAttribute("stroke-width"),
+				svg?.style.fontSize,
+			];
 		});
 
-		expect(checks).toEqual([
-			[true, "3"],
-			[true, "3"],
-		]);
+		const check = [true, "Icon", "2.34375", "calc(1rem * var(--cds-rem-scale, 1))"];
+		expect(checks).toStrictEqual([check, check]);
 	});
 
 	it("puts a radio row's check slot before its digit, both in one first-line trailing wrapper", async () => {
@@ -1043,8 +1046,7 @@ describe("MenuContent on a coarse pointer", () => {
 		"text-[14px]/[20px]",
 		"rounded-r7",
 		"rounded-card",
-		"[&_svg]:size-4",
-		"[&_svg]:size-5",
+		"[&_svg]:size-icon",
 	]);
 
 	function tokens(element: Element | null | undefined): string[] {
@@ -1094,7 +1096,7 @@ describe("MenuContent on a coarse pointer", () => {
 			popup: ["rounded-card", "text-[14px]/[20px]"],
 			popupDensity: "comfortable",
 			item: comfortableItem,
-			icon: ["items-center", "[&_svg]:size-5"],
+			icon: ["items-center", "[&_svg]:size-icon"],
 			subPopup: ["rounded-card", "text-[14px]/[20px]"],
 			subPopupDensity: "comfortable",
 			subItem: comfortableItem,
@@ -1108,7 +1110,7 @@ describe("MenuContent on a coarse pointer", () => {
 			popup: ["rounded-r7", "text-[13px]/[19px]"],
 			popupDensity: "compact",
 			item: compactItem,
-			icon: ["items-center", "[&_svg]:size-4"],
+			icon: ["items-center", "[&_svg]:size-icon"],
 			subPopup: ["rounded-r7", "text-[13px]/[19px]"],
 			subPopupDensity: "compact",
 			subItem: compactItem,
@@ -1407,7 +1409,7 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 				.getByRole("menuitem", {name: "Delete"})
 				.className.split(" ")
 				.filter((name) => SHEET_ITEM_TOKENS.has(name)),
-			icon: glyphSlot?.classList.contains("[&_svg]:size-5"),
+			icon: glyphSlot?.classList.contains("[&_svg]:size-icon"),
 			hintGroup: shortcut?.className.split(" ").filter((name) => ["ms-4", "gap-2"].includes(name)),
 			separator: document
 				.querySelector("[role=separator]")

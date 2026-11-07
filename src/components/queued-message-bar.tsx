@@ -1,7 +1,8 @@
 import {type KeyboardEvent, type MouseEvent, useCallback, useId, useRef, useState} from "react";
-import {ChevronDown, ChevronUp, CornerDownLeft, EllipsisVertical, Pencil, X} from "lucide-react";
+import {ChevronDown, ChevronUp, CornerDownLeft, Pencil, X} from "lucide-react";
 
 import {type QueuedPrompt, queueBandExpanded, queuedPreview, setQueueBandExpanded} from "../lib/composer-queue";
+import {Icon} from "./ui/icon";
 import {Spinner} from "./ui/spinner";
 import {ContextMenu, ContextMenuTrigger, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./ui/menu";
 
@@ -297,7 +298,7 @@ function QueuedRow({
 								aria-label="Queued message actions"
 								className={`flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100 data-[popup-open]:opacity-100 ${contextOpen ? "opacity-100" : "opacity-0"}`}
 							>
-								<EllipsisVertical aria-hidden="true" className="size-3.5" />
+								<Icon name="DotsVertical" size="sm" className="size-3.5" />
 							</MenuTrigger>
 							<MenuContent side="bottom" align="end">
 								<QueuedRowItems {...actions} />

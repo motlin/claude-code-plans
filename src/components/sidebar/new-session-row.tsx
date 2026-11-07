@@ -1,9 +1,9 @@
 import {Link, useNavigate} from "@tanstack/react-router";
-import {Plus} from "lucide-react";
 import type {MouseEvent} from "react";
 import {useShortcutKeys} from "../../hooks/use-shortcut";
 import {requestHomeComposerFocus} from "../../lib/home-composer-focus";
 import {Shortcut} from "../ui/shortcut";
+import {Icon} from "../ui/icon";
 
 /** Upstream's sidebar header row (`Xx` variant nav), shared by New and the Search row under it. */
 export const NAV_ROW_CLASS =
@@ -48,7 +48,7 @@ export function NewSessionRow() {
 			>
 				<span className="df-leading-slot [--sb-icon:16px]">
 					<span className="df-new-icon-circle">
-						<Plus aria-hidden="true" />
+						<Icon name="Add" size="sm" />
 					</span>
 				</span>
 				<span className="min-w-0 flex-1 truncate">New</span>
