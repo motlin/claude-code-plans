@@ -19,10 +19,18 @@ const listeners = new Set<() => void>();
 const acks = new Map<string, number>(load());
 let version = 0;
 
+/**
+ * The browser's storage, or null on the server: Node 22+ has a global `localStorage` getter that prints an
+ * ExperimentalWarning when touched without `--localstorage-file`, and this module loads during SSR.
+ */
+function browserStorage(): Storage | null {
+	return typeof window === "undefined" ? null : window.localStorage;
+}
+
 function load(): [string, number][] {
 	try {
-		const raw = localStorage.getItem(AWAITING_ACK_STORAGE_KEY);
-		if (raw === null) return [];
+		const raw = browserStorage()?.getItem(AWAITING_ACK_STORAGE_KEY);
+		if (raw === null || raw === undefined) return [];
 		const result = AwaitingAckStorageSchema.safeParse(JSON.parse(raw));
 		return result.success ? Object.entries(result.data.state.ackedAt) : [];
 	} catch {
@@ -32,7 +40,7 @@ function load(): [string, number][] {
 
 function save(): void {
 	try {
-		localStorage.setItem(
+		browserStorage()?.setItem(
 			AWAITING_ACK_STORAGE_KEY,
 			JSON.stringify({state: {ackedAt: Object.fromEntries(acks)}, version: 0}),
 		);
