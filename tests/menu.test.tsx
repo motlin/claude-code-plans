@@ -149,7 +149,7 @@ describe("Menu", () => {
 						"[--shortcut-cap-ink:var(--menu-muted)]",
 					].includes(c),
 				),
-			hint: hint?.className.split(" ").filter((c) => c === "ml-auto"),
+			hint: hint?.className.split(" ").filter((c) => ["ms-3", "gap-1.5"].includes(c)),
 		}).toEqual({
 			container: ["rounded-r7"],
 			item: [
@@ -160,7 +160,7 @@ describe("Menu", () => {
 				"text-[13px]/[19px]",
 				"[--shortcut-cap-ink:var(--menu-muted)]",
 			],
-			hint: ["ml-auto"],
+			hint: ["ms-3", "gap-1.5"],
 		});
 	});
 
@@ -311,6 +311,50 @@ describe("Menu", () => {
 			coarseHidden: shortcut?.parentElement?.classList.contains("pointer-coarse:hidden"),
 			kbd: shortcut?.parentElement?.querySelector('[data-cds="Kbd"]') ?? null,
 		}).toStrictEqual({variant: "text", coarseHidden: true, kbd: null});
+	});
+
+	it("draws text hints at upstream's eJ size in the ms-md gap-xs group, tabular digits only", () => {
+		function hints(density: Density) {
+			render(
+				<PanelsOff>
+					<Menu defaultOpen>
+						<MenuTrigger aria-label={density}>{density}</MenuTrigger>
+						<MenuContent density={density}>
+							<MenuItem accelerator="c">Copy</MenuItem>
+							<MenuItem accelerator="1">First</MenuItem>
+							<MenuItem shortcut="alt+cmd+r">Rename</MenuItem>
+						</MenuContent>
+					</Menu>
+				</PanelsOff>,
+			);
+			return screen.getAllByRole("menuitem").map((item) => {
+				const shortcut = item.querySelector('[data-cds="Shortcut"]');
+				return {group: shortcut?.parentElement?.className, hint: shortcut?.getAttribute("class")};
+			});
+		}
+		const base =
+			"inline-flex shrink-0 items-baseline gap-[0.15em] [&:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse";
+		const letter = `${base} pointer-coarse:hidden text-footnote`;
+		const digit = `${base} pointer-coarse:hidden text-footnote tabular-nums`;
+		const compactGroup = "ms-3 flex shrink-0 items-center gap-1.5 pointer-coarse:hidden";
+		const comfortableGroup = "ms-4 flex shrink-0 items-center gap-2 pointer-coarse:hidden";
+
+		const compact = hints("compact");
+		cleanup();
+		const comfortable = hints("comfortable");
+
+		expect({compact, comfortable}).toStrictEqual({
+			compact: [
+				{group: compactGroup, hint: letter},
+				{group: compactGroup, hint: digit},
+				{group: compactGroup, hint: letter},
+			],
+			comfortable: [
+				{group: comfortableGroup, hint: letter},
+				{group: comfortableGroup, hint: digit},
+				{group: comfortableGroup, hint: letter},
+			],
+		});
 	});
 
 	it("sets aria-keyshortcuts from the accelerator letter", async () => {
@@ -554,12 +598,12 @@ describe("Menu", () => {
 			};
 		});
 
-		const trailing = "flex shrink-0 items-center gap-1 ms-3 h-[1lh] self-start";
+		const trailing = "flex shrink-0 items-center gap-1.5 ms-3 h-[1lh] self-start";
 		const checkSlot = "flex size-4 shrink-0 items-center justify-center pointer-coarse:-me-1";
 		const digit = (text: string) => ({
 			cds: "Shortcut",
 			className:
-				"inline-flex shrink-0 items-baseline gap-[0.3em] text-caption [&:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse [&>kbd]:leading-[15px] pointer-coarse:hidden",
+				"inline-flex shrink-0 items-baseline gap-[0.15em] [&:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse pointer-coarse:hidden text-footnote tabular-nums",
 			checked: false,
 			text,
 		});
@@ -569,35 +613,91 @@ describe("Menu", () => {
 		]);
 	});
 
-	it("hides a checked row's digit with hideAccelerator but keeps its accelerator attributes", async () => {
+	it("spaces a comfortable radio row's check slot and digit at upstream's gap-xs and ms-md", async () => {
 		render(
-			<Menu defaultOpen>
-				<MenuTrigger aria-label="Model">Model</MenuTrigger>
-				<MenuContent>
-					<MenuRadioGroup value="opus">
-						<MenuRadioItem value="opus" accelerator="1" hideAccelerator>
-							Opus
-						</MenuRadioItem>
-						<MenuRadioItem value="fable" accelerator="2">
-							Fable
-						</MenuRadioItem>
-					</MenuRadioGroup>
-				</MenuContent>
-			</Menu>,
+			<PanelsOff>
+				<Menu defaultOpen>
+					<MenuTrigger aria-label="Mode">Mode</MenuTrigger>
+					<MenuContent density="comfortable">
+						<MenuRadioGroup value="auto">
+							<MenuRadioItem value="auto" accelerator="1">
+								Auto
+							</MenuRadioItem>
+						</MenuRadioGroup>
+					</MenuContent>
+				</Menu>
+			</PanelsOff>,
 		);
 		await flush();
 
-		const rows = screen.getAllByRole("menuitemradio").map((item) => ({
-			text: item.textContent,
-			key: item.getAttribute("aria-keyshortcuts"),
-			accelerator: item.getAttribute("data-accelerator"),
-			check: item.querySelector("svg") !== null,
-		}));
+		expect(screen.getByRole("menuitemradio").querySelector("[data-menu-item-trailing]")?.className).toBe(
+			"flex shrink-0 items-center gap-2 ms-4 h-[1lh] self-start",
+		);
+	});
 
-		expect(rows).toStrictEqual([
-			{text: "Opus", key: "1", accelerator: "1", check: true},
-			{text: "Fable2", key: "2", accelerator: "2", check: false},
-		]);
+	it("puts a model row's digit inside its check slot, where the checked row's tick replaces it", async () => {
+		const onValueChange = vi.fn<(value: string) => void>();
+		render(
+			<PanelsOff>
+				<Menu defaultOpen>
+					<MenuTrigger aria-label="Model">Model</MenuTrigger>
+					<MenuContent density="compact">
+						<MenuRadioGroup value="opus" onValueChange={onValueChange}>
+							<MenuRadioItem value="opus" accelerator="1" acceleratorInSlot>
+								Opus
+							</MenuRadioItem>
+							<MenuRadioItem value="fable" accelerator="2" acceleratorInSlot>
+								Fable
+							</MenuRadioItem>
+						</MenuRadioGroup>
+					</MenuContent>
+				</Menu>
+			</PanelsOff>,
+		);
+		await flush();
+
+		const rows = screen.getAllByRole("menuitemradio").map((item) => {
+			const trailing = item.querySelector("[data-menu-item-trailing]");
+			return {
+				key: item.getAttribute("aria-keyshortcuts"),
+				accelerator: item.getAttribute("data-accelerator"),
+				trailing: trailing?.className,
+				slots: Array.from(trailing?.children ?? []).map((slot) => ({
+					ariaHidden: slot.getAttribute("aria-hidden"),
+					className: slot.getAttribute("class"),
+					check: slot.querySelector("svg") !== null,
+					digit: Array.from(slot.querySelectorAll("span")).map((span) => [span.className, span.textContent]),
+				})),
+			};
+		});
+		fireEvent.keyDown(screen.getByRole("menu"), {key: "2", code: "Digit2"});
+
+		const slot = "-me-1 flex size-4 shrink-0 items-center justify-center";
+		const trailing = "ms-3 flex shrink-0 items-center gap-1.5";
+		expect({rows, picked: onValueChange.mock.calls.map((call) => call[0])}).toStrictEqual({
+			rows: [
+				{
+					key: "1",
+					accelerator: "1",
+					trailing,
+					slots: [{ariaHidden: "true", className: slot, check: true, digit: []}],
+				},
+				{
+					key: "2",
+					accelerator: "2",
+					trailing,
+					slots: [
+						{
+							ariaHidden: "true",
+							className: slot,
+							check: false,
+							digit: [["pointer-coarse:hidden text-footnote text-[var(--menu-muted)]", "2"]],
+						},
+					],
+				},
+			],
+			picked: ["fable"],
+		});
 	});
 
 	it("matches a digit accelerator by e.code (AZERTY Digit2 types é) and ignores key repeat", async () => {
@@ -1308,7 +1408,7 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 				.className.split(" ")
 				.filter((name) => SHEET_ITEM_TOKENS.has(name)),
 			icon: glyphSlot?.classList.contains("[&_svg]:size-5"),
-			shortcutPadding: shortcut?.classList.contains("pl-5"),
+			hintGroup: shortcut?.className.split(" ").filter((name) => ["ms-4", "gap-2"].includes(name)),
 			separator: document
 				.querySelector("[role=separator]")
 				?.className.split(" ")
@@ -1339,7 +1439,7 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		popupText: true,
 		item: ["min-h-10", "items-center", "rounded-r7", "px-2.5", "py-[9px]", "text-[15px]/[22px]"],
 		icon: true,
-		shortcutPadding: true,
+		hintGroup: ["ms-4", "gap-2"],
 		separator: ["mx-2.5"],
 	};
 

@@ -179,13 +179,16 @@ describe("Composer send slot while working", () => {
 		});
 	});
 
-	it("lists Send ⏎ and Queue for later (Ctrl⏎ off Mac) in the Send tooltip while working", async () => {
+	it("lists Send ⏎ and Queue for later (Ctrl+Enter off Mac) in the Send tooltip while working", async () => {
 		const textarea = renderWorking();
 		fireEvent.change(textarea, {target: {value: "Alice's steer"}});
 		fireEvent.pointerEnter(screen.getByRole("button", {name: "Send"}));
 		const tooltip = await screen.findByRole("tooltip");
 
-		expect([...tooltip.children].map((row) => row.textContent)).toStrictEqual(["Send⏎", "Queue for laterCtrl+⏎"]);
+		expect([...tooltip.children].map((row) => row.textContent)).toStrictEqual([
+			"SendEnter",
+			"Queue for laterCtrl+Enter",
+		]);
 	});
 });
 

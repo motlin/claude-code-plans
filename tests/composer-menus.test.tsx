@@ -162,7 +162,7 @@ describe("Composer mode menu", () => {
 			singleLine: false,
 			paddedBottom: true,
 			description: "break-words text-[12px]/[15px] text-[var(--menu-muted)]",
-			trailing: "flex shrink-0 items-center gap-1 ms-3 h-[1lh] self-start",
+			trailing: "flex shrink-0 items-center gap-1.5 ms-3 h-[1lh] self-start",
 		};
 		expect({rows, fixedWidth: popup?.classList.contains("w-[280px]")}).toStrictEqual({
 			rows: [row, row, row, row],
@@ -404,6 +404,31 @@ describe("Composer model menu", () => {
 			trigger: "Model: Fable 5.1 High",
 			calls: [["Continue Carol's test", {model: "fable"}]],
 		});
+	});
+
+	it("puts each Model row's digit inside its check slot, as upstream's Bp rows", async () => {
+		renderComposer();
+
+		openModelMenu();
+		const menu = await screen.findByRole("menu");
+		const slots = within(menu)
+			.getAllByRole("menuitemradio")
+			.map((item) => {
+				const trailing = item.querySelector("[data-menu-item-trailing]");
+				return {
+					count: trailing?.children.length,
+					slot: trailing?.firstElementChild?.className,
+					text: trailing?.textContent,
+				};
+			});
+
+		const slot = "-me-1 flex size-4 shrink-0 items-center justify-center";
+		expect(slots).toStrictEqual([
+			{count: 1, slot, text: ""},
+			{count: 1, slot, text: "2"},
+			{count: 1, slot, text: "3"},
+			{count: 1, slot, text: "4"},
+		]);
 	});
 
 	it("numbers the rows around a checked middle row and picks the row a digit names", async () => {

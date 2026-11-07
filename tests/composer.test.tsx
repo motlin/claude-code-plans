@@ -250,7 +250,7 @@ describe("Composer", () => {
 			hintKept: describedBy
 				.split(" ")
 				.some((id) => document.getElementById(id)?.textContent === "Starts a forked session"),
-		}).toStrictEqual({tooltip: "Send⏎", descriptionCount: 2, hintKept: true});
+		}).toStrictEqual({tooltip: "SendEnter", descriptionCount: 2, hintKept: true});
 	});
 
 	it("keeps the editor box 28 tall on coarse pointers, with the overlay aligned", async () => {

@@ -98,7 +98,7 @@ describe("Fork with this prompt", () => {
 		expect({
 			rows: [...tooltip.children].map((row) => row.textContent),
 			separators: [...tooltip.querySelectorAll("span")].filter((span) => span.textContent === "·").length,
-		}).toStrictEqual({rows: ["Send⏎", "Fork with this promptCtrl+Alt+⏎"], separators: 0});
+		}).toStrictEqual({rows: ["SendEnter", "Fork with this promptCtrl+Alt+Enter"], separators: 0});
 	});
 
 	it("labels the headless fork as Send in a forked session", () => {
@@ -115,6 +115,6 @@ describe("Fork with this prompt", () => {
 		expect({
 			rows: [...tooltip.children].map((row) => row.textContent),
 			separators: [...tooltip.querySelectorAll("span")].filter((span) => span.textContent === "·").length,
-		}).toStrictEqual({rows: ["Send⏎", "Send in a forked sessionCtrl+Alt+⏎"], separators: 0});
+		}).toStrictEqual({rows: ["SendEnter", "Send in a forked sessionCtrl+Alt+Enter"], separators: 0});
 	});
 });

@@ -25,6 +25,7 @@ import {
 	DENSITY_CLASSES,
 	handleAcceleratorKey,
 	LABEL_CLASS,
+	menuHintClass,
 	MenuKindContext,
 	MenuLgContext,
 	POSITIONER_CLASS,
@@ -102,8 +103,6 @@ const DESCRIPTION_CLASS = "break-words text-[12px]/[15px] text-[var(--menu-muted
 const TRAILING_CLASS = "ml-auto flex shrink-0 items-center gap-1";
 /** Pins a two-line row's keycap and check to its first line. */
 const FIRST_LINE_TRAILING_CLASS = `${TRAILING_CLASS} h-[1lh] self-start`;
-/** A digit row's trailing group: check slot then keycap, as upstream's mode rows. */
-const DIGIT_TRAILING_CLASS = "flex shrink-0 items-center gap-1 ms-3 h-[1lh] self-start";
 const DIGIT_CHECK_SLOT_CLASS = "flex size-4 shrink-0 items-center justify-center pointer-coarse:-me-1";
 const CHECK_SLOT_CLASS = "-mr-1 flex size-5 shrink-0 items-center justify-center";
 /** Upstream's checked tick: 16px, bold, in fill-accent ink. */
@@ -427,8 +426,8 @@ function ItemTrailing({
 		);
 	}
 	return (
-		<span aria-hidden="true" className={`${TRAILING_CLASS} ${sizing.shortcutPadding} pointer-coarse:hidden`}>
-			<Shortcut keys={keys} variant="text" className={sizing.shortcut} />
+		<span aria-hidden="true" className={`${sizing.trailingGroup} pointer-coarse:hidden`}>
+			<Shortcut keys={keys} variant="text" className={menuHintClass(keys)} />
 		</span>
 	);
 }
@@ -775,11 +774,11 @@ export function MenuGroup(props: ComponentProps<typeof BaseMenu.Group>) {
 	return <BaseMenu.Group {...props} />;
 }
 
-/** Upstream's digit row trailing: the check slot first, then the keycap, pinned to the first line. */
-function DigitTrailing({accelerator, hideAccelerator}: {accelerator: string; hideAccelerator: boolean}) {
+/** Upstream's digit row trailing: the check slot first, then the text digit, pinned to the first line. */
+function DigitTrailing({accelerator}: {accelerator: string}) {
 	const sizing = useMenuSizing();
 	return (
-		<span data-menu-item-trailing="" className={DIGIT_TRAILING_CLASS}>
+		<span data-menu-item-trailing="" className={sizing.digitTrailing}>
 			<BaseMenu.RadioItemIndicator
 				keepMounted
 				className={DIGIT_CHECK_SLOT_CLASS}
@@ -789,9 +788,34 @@ function DigitTrailing({accelerator, hideAccelerator}: {accelerator: string; hid
 					</span>
 				)}
 			/>
-			{!hideAccelerator && (
-				<Shortcut keys={accelerator} variant="text" className={`${sizing.shortcut} pointer-coarse:hidden`} />
-			)}
+			<Shortcut keys={accelerator} variant="text" className={menuHintClass(accelerator)} />
+		</span>
+	);
+}
+
+/** Upstream's model row trailing (Bp): one check slot holding the muted digit, which the ✓ replaces when checked. */
+function SlotDigitTrailing({accelerator}: {accelerator: string}) {
+	const sizing = useMenuSizing();
+	return (
+		<span data-menu-item-trailing="" className={sizing.trailingGroup}>
+			<BaseMenu.RadioItemIndicator
+				keepMounted
+				render={(slotProps, {checked}) => (
+					<span
+						{...slotProps}
+						aria-hidden="true"
+						className={`-me-1 flex ${sizing.iconBox} shrink-0 items-center justify-center`}
+					>
+						{checked ? (
+							<Check aria-hidden="true" strokeWidth={3} className={CHECK_ICON_CLASS} />
+						) : (
+							<span className="pointer-coarse:hidden text-footnote text-[var(--menu-muted)]">
+								{accelerator}
+							</span>
+						)}
+					</span>
+				)}
+			/>
 		</span>
 	);
 }
@@ -801,8 +825,8 @@ export interface MenuRadioItemProps extends Omit<ComponentProps<typeof BaseMenu.
 	/** Muted wrapping second line, making the item upstream's 40.5px two-line row. */
 	description?: ReactNode;
 	accelerator?: string;
-	/** Upstream's checked model row: its ✓ replaces the visible digit, which still fires. */
-	hideAccelerator?: boolean;
+	/** Upstream's model rows: the digit sits in the check slot, and a checked row's ✓ replaces it (the key still fires). */
+	acceleratorInSlot?: boolean;
 	/** Why a disabled row is unavailable: it describes the row and shows in a reason tooltip, as `MenuItem`'s. */
 	disabledReason?: string | undefined;
 }
@@ -811,7 +835,7 @@ export function MenuRadioItem({
 	children,
 	description,
 	accelerator,
-	hideAccelerator = false,
+	acceleratorInSlot = false,
 	disabledReason,
 	...props
 }: MenuRadioItemProps) {
@@ -825,7 +849,11 @@ export function MenuRadioItem({
 	);
 	let trailing: ReactNode = check;
 	if (accelerator !== undefined)
-		trailing = <DigitTrailing accelerator={accelerator} hideAccelerator={hideAccelerator} />;
+		trailing = acceleratorInSlot ? (
+			<SlotDigitTrailing accelerator={accelerator} />
+		) : (
+			<DigitTrailing accelerator={accelerator} />
+		);
 	else if (description !== undefined) {
 		trailing = (
 			<span data-menu-item-trailing="" className={FIRST_LINE_TRAILING_CLASS}>

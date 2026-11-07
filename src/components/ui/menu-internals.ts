@@ -16,8 +16,6 @@ export const DENSITY_CLASSES = {
 		/* Upstream pads compact two-line rows 2.5px 8px 4px. */
 		twoLine: "items-start pb-1",
 		separator: "mx-2",
-		shortcut: "[&>kbd]:leading-[15px]",
-		shortcutPadding: "pl-[14px]",
 		icon: "[&_svg]:size-4",
 		/* Upstream's row gap-xs and size-icon slot (--cds-icon 1rem), which may overflow a short line. */
 		gap: "gap-1.5",
@@ -25,6 +23,9 @@ export const DENSITY_CLASSES = {
 		iconSlotTwoLine: "flex h-[1lh] w-4 shrink-0 items-center justify-center self-start",
 		/* Upstream's ms-md gap-xs trailing group (switch rows, keycap accelerators). */
 		trailingGroup: "ms-3 flex shrink-0 items-center gap-1.5",
+		/* The same group on a digit row (upstream's mode rows), pinned to the first line. */
+		digitTrailing: "flex shrink-0 items-center gap-1.5 ms-3 h-[1lh] self-start",
+		iconBox: "size-4",
 	},
 	comfortable: {
 		/* Upstream's radius + gutter: 8 + 4 = 12, or 8 + 6 = 14 under fizzy-lake panels on a fine pointer. */
@@ -38,14 +39,14 @@ export const DENSITY_CLASSES = {
 		singleLine: "h-8 panels-fine:h-7 items-center",
 		twoLine: "min-h-8 panels-fine:min-h-7 items-start",
 		separator: "mx-2.5",
-		shortcut: "[&>kbd]:text-[13px] [&>kbd]:inline-flex [&>kbd]:items-baseline [&>kbd]:gap-[0.3em]",
-		shortcutPadding: "pl-5",
 		/* Upstream's size:"auto" icons follow --cds-icon: 16px compact, 20px comfortable. */
 		icon: "[&_svg]:size-5",
 		gap: "gap-2",
 		iconSlot: "flex size-5 shrink-0 items-center justify-center -my-[max(0px,calc((1.25rem-1lh)/2))]",
 		iconSlotTwoLine: "flex h-[1lh] w-5 shrink-0 items-center justify-center self-start",
 		trailingGroup: "ms-4 flex shrink-0 items-center gap-2",
+		digitTrailing: "flex shrink-0 items-center gap-2 ms-4 h-[1lh] self-start",
+		iconBox: "size-5",
 	},
 } as const;
 
@@ -61,7 +62,6 @@ export const SHEET_SIZING = {
 	singleLine: "min-h-10 items-center",
 	separator: "mx-2.5",
 	icon: "[&_svg]:size-5",
-	shortcutPadding: "pl-5",
 };
 
 /**
@@ -105,6 +105,13 @@ export function useItemClass(twoLine = false, gap?: string): string {
 }
 
 export const LABEL_CLASS = "min-w-0 flex-1 truncate";
+
+/** Upstream's eJ: a menu row's text hint is footnote-sized, hidden on touch, with tabular all-digit keys. */
+export function menuHintClass(keys: string): string {
+	return /^\d+$/.test(keys)
+		? "pointer-coarse:hidden text-footnote tabular-nums"
+		: "pointer-coarse:hidden text-footnote";
+}
 
 /** Upstream's digit rows match the physical key, so Numpad digits and non-QWERTY layouts work. */
 const DIGIT_CODE = /^(?:Digit|Numpad)([1-9])$/;

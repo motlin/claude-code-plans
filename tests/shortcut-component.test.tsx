@@ -16,7 +16,9 @@ const WIDE = `${KEYCAP} min-w-[calc(1em+6px)] px-[3px]`;
 // innerHTML serializes & in attribute values as &amp;.
 const RTL = "[&amp;:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse";
 const KEYCAP_SEQUENCE_WRAPPER = "inline-flex shrink-0 items-center gap-[2px] text-caption";
-const TEXT_SEQUENCE_WRAPPER = "inline-flex shrink-0 items-baseline gap-[0.3em] text-caption";
+const TEXT_SEQUENCE_WRAPPER = "inline-flex shrink-0 items-baseline gap-[0.15em] text-caption";
+const TEXT_KBD = `<kbd class="[font-family:inherit] [color:var(--shortcut-cap-ink)]">`;
+const PLUS = `<span class="mx-[-0.15em] [color:var(--shortcut-cap-ink)]">+</span>`;
 const KEYCAP_WRAPPER = `${KEYCAP_SEQUENCE_WRAPPER} ${RTL}`;
 const TEXT_WRAPPER = `${TEXT_SEQUENCE_WRAPPER} ${RTL}`;
 const THEN = `<span class="px-[2px] [color:var(--shortcut-cap-ink)]">then</span>`;
@@ -82,40 +84,50 @@ describe("<Shortcut variant=keycap>", () => {
 });
 
 describe("<Shortcut variant=text>", () => {
-	it("concatenates mac glyphs in one borderless kbd", () => {
+	it("renders one borderless kbd per key on mac, spaced by the wrapper gap", () => {
 		stubUserAgent(MAC_UA);
 		const {container} = render(<Shortcut keys="shift+cmd+o" variant="text" />);
 
 		expect(container.innerHTML).toBe(
 			`<span data-cds="Shortcut" data-variant="text" class="${TEXT_WRAPPER}">` +
-				`<kbd class="[font-family:inherit] [color:var(--shortcut-cap-ink)]">` +
-				`<span aria-hidden="true">⇧</span><span class="sr-only select-none">Shift</span>` +
-				`<span aria-hidden="true">⌘</span><span class="sr-only select-none">Command</span>` +
-				`O</kbd>` +
+				`${TEXT_KBD}<span aria-hidden="true">⇧</span><span class="sr-only select-none">Shift</span></kbd>` +
+				`${TEXT_KBD}<span aria-hidden="true">⌘</span><span class="sr-only select-none">Command</span></kbd>` +
+				`${TEXT_KBD}O</kbd>` +
 				`</span>`,
 		);
 	});
 
-	it("joins non-mac labels with +", () => {
+	it("separates non-mac kbds with gap-cancelling + spans", () => {
 		stubUserAgent(WINDOWS_UA);
 		const {container} = render(<Shortcut keys="shift+cmd+o" variant="text" />);
 
 		expect(container.innerHTML).toBe(
 			`<span data-cds="Shortcut" data-variant="text" class="${TEXT_WRAPPER}">` +
-				`<kbd class="[font-family:inherit] [color:var(--shortcut-cap-ink)]">Ctrl+Shift+O</kbd>` +
+				`${TEXT_KBD}Ctrl</kbd>${PLUS}${TEXT_KBD}Shift</kbd>${PLUS}${TEXT_KBD}O</kbd>` +
 				`</span>`,
+		);
+	});
+
+	it("lets a text-footnote className replace the wrapper's text-caption, as upstream's tailwind-merge does", () => {
+		stubUserAgent(MAC_UA);
+		const {container} = render(
+			<Shortcut keys="1" variant="text" className="pointer-coarse:hidden text-footnote" />,
+		);
+
+		expect(container.querySelector("[data-cds=Shortcut]")?.getAttribute("class")).toBe(
+			"inline-flex shrink-0 items-baseline gap-[0.15em] [&:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse pointer-coarse:hidden text-footnote",
 		);
 	});
 });
 
 describe("<Shortcut variant=text> sequences", () => {
-	it("joins sequence steps with then and drops the RTL reverse class", () => {
+	it("puts a padded then span between steps and drops the RTL reverse class", () => {
 		stubUserAgent(WINDOWS_UA);
 		const {container} = render(<Shortcut keys="esc esc" variant="text" />);
 
 		expect(container.innerHTML).toBe(
 			`<span data-cds="Shortcut" data-variant="text" class="${TEXT_SEQUENCE_WRAPPER}">` +
-				`<kbd class="[font-family:inherit] [color:var(--shortcut-cap-ink)]">Esc then Esc</kbd>` +
+				`${TEXT_KBD}Esc</kbd>${THEN}${TEXT_KBD}Esc</kbd>` +
 				`</span>`,
 		);
 	});

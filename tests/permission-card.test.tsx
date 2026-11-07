@@ -1206,7 +1206,7 @@ describe("PermissionCard", () => {
 		};
 		fireEvent.click(screen.getByRole("menuitem", {name: /^Allow once/}));
 		expect({...facts, calls: onDecision.mock.calls}).toStrictEqual({
-			items: ["Allow onceCtrl+⏎"],
+			items: ["Allow onceCtrl+Enter"],
 			shortcut: "Control+Enter",
 			calls: [["allow"]],
 		});

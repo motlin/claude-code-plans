@@ -24,12 +24,15 @@ export function Kbd({children}: {children: string}) {
 
 const WRAPPER_CLASS = {
 	keycap: "inline-flex shrink-0 items-center gap-[2px] text-caption",
-	text: "inline-flex shrink-0 items-baseline gap-[0.3em] text-caption",
+	text: "inline-flex shrink-0 items-baseline gap-[0.15em] text-caption",
 } as const;
 
 /** Upstream reverses chord caps under RTL; sequences keep reading order, so they omit it. */
 const RTL_REVERSE_CLASS = "[&:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse";
 const THEN_CLASS = "px-[2px] [color:var(--shortcut-cap-ink)]";
+const TEXT_KBD_CLASS = "[font-family:inherit] [color:var(--shortcut-cap-ink)]";
+/** Upstream's non-Mac "+" between text kbds: its negative margin cancels the wrapper gap. */
+const PLUS_CLASS = "mx-[-0.15em] [color:var(--shortcut-cap-ink)]";
 
 export type ShortcutVariant = keyof typeof WRAPPER_CLASS;
 
@@ -42,8 +45,13 @@ function Keycaps({labels}: {labels: KeyLabel[]}) {
 }
 
 function TextKeys({labels, isMac}: {labels: KeyLabel[]; isMac: boolean}) {
-	if (!isMac) return labels.map((label) => label.label).join("+");
-	return labels.map((label, index) => <KeyGlyph key={index} label={label} />);
+	return labels.map((label, index) => (
+		<Fragment key={index}>
+			{!isMac && index > 0 && <span className={PLUS_CLASS}>+</span>}
+			{/* Upstream spells a glyph key's word off Mac in text hints ("Ctrl+Enter"), with no sr-only twin. */}
+			<kbd className={TEXT_KBD_CLASS}>{isMac ? <KeyGlyph label={label} /> : (label.spoken ?? label.label)}</kbd>
+		</Fragment>
+	));
 }
 
 function KeyGlyph({label}: {label: KeyLabel}) {
@@ -71,7 +79,11 @@ export function Shortcut({
 }) {
 	const isMac = useIsMac();
 	const steps = formatKeySequence(keys, isMac);
-	const baseClass = steps.length > 1 ? WRAPPER_CLASS[variant] : `${WRAPPER_CLASS[variant]} ${RTL_REVERSE_CLASS}`;
+	/* Upstream tailwind-merges the consumer's className, so a menu hint's text-footnote replaces text-caption. */
+	const wrapper = className?.split(" ").includes("text-footnote")
+		? WRAPPER_CLASS[variant].replace(" text-caption", "")
+		: WRAPPER_CLASS[variant];
+	const baseClass = steps.length > 1 ? wrapper : `${wrapper} ${RTL_REVERSE_CLASS}`;
 	const wrapperClass = className ? `${baseClass} ${className}` : baseClass;
 
 	return (
@@ -81,23 +93,12 @@ export function Shortcut({
 			aria-hidden={hidden ? "true" : undefined}
 			className={wrapperClass}
 		>
-			{variant === "keycap" ? (
-				steps.map((labels, index) => (
-					<Fragment key={index}>
-						{index > 0 && <span className={THEN_CLASS}>then</span>}
-						<Keycaps labels={labels} />
-					</Fragment>
-				))
-			) : (
-				<kbd className="[font-family:inherit] [color:var(--shortcut-cap-ink)]">
-					{steps.map((labels, index) => (
-						<Fragment key={index}>
-							{index > 0 && " then "}
-							<TextKeys labels={labels} isMac={isMac} />
-						</Fragment>
-					))}
-				</kbd>
-			)}
+			{steps.map((labels, index) => (
+				<Fragment key={index}>
+					{index > 0 && <span className={THEN_CLASS}>then</span>}
+					{variant === "keycap" ? <Keycaps labels={labels} /> : <TextKeys labels={labels} isMac={isMac} />}
+				</Fragment>
+			))}
 		</span>
 	);
 }

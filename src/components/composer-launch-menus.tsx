@@ -296,7 +296,7 @@ export function ModelMenu({
 								key={model.id}
 								value={model.id}
 								accelerator={String(index + 1)}
-								hideAccelerator={model.id === primary}
+								acceleratorInSlot
 								closeOnClick
 							>
 								<span data-menu-item-label="">{model.label}</span>
