@@ -31,7 +31,7 @@ describe("sidebar search field CSS", () => {
 		expect(
 			missing([
 				".df-search-field { transition: background-color 60ms cubic-bezier(0.165, 0.84, 0.44, 1); }",
-				".df-search-field:not(:focus-visible) { box-shadow: inset 0 0 0 0.5px var(--sb-field-ring), 0 1px 2px 0 #0000000d; }",
+				".df-search-field:not(:focus-visible) { box-shadow: inset 0 0 0 var(--sb-field-hairline) var(--sb-field-ring), 0 1px 2px 0 #0000000d; }",
 				".df-search-field:focus-visible { box-shadow: inset 0 0 0 1px var(--color-accent-100, #257de0), 0 0 6px 0 color-mix(in srgb, #257de0 20%, transparent); }",
 				".df-search-field-keys { opacity: 0; }",
 				".df-search-field:focus-visible .df-search-field-keys { opacity: 1; }",

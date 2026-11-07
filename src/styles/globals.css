@@ -311,8 +311,11 @@ html[data-interface-font="dyslexic"] {
 	--shadow-focus-danger: var(--focus-shadow-danger);
 	/* Upstream claude.ai/code — joined secondary split button (shadow-field-drop) */
 	--shadow-field-drop: 0 1px 2px rgb(0 0 0 / 0.05);
-	/* Upstream cds shadow-card-ring: a hairline inset ring; a Card sets --card-ring-color to border-strong. */
-	--shadow-card-ring: inset 0 0 0 1px var(--card-ring-color, var(--card-outline));
+	/* Upstream cds shadow-card-ring: a hairline ring, outside the edge in light and inset in dark
+	   (--ring-inner/--ring-outer); a Card sets --card-ring-color to border-strong. */
+	--shadow-card-ring:
+		inset 0 0 0 var(--ring-inner) var(--card-ring-color, var(--card-outline)),
+		0 0 0 var(--ring-outer) var(--card-ring-color, var(--card-outline));
 
 	/* Upstream claude.ai/code rounded-xs is .125rem (2px): agent cells and plan-comment marks. */
 	--radius-xs: 0.125rem;
@@ -503,6 +506,9 @@ html[data-interface-font="dyslexic"] {
      hairline outline over the page rather than a filled wash; the code cards
      (Read/Edit/Write) additionally sit on the page color. */
 	--card-outline: hsl(0 0% 4% / 0.1);
+	/* Upstream `.cds-root` sets `--cds-ring-inner: 0px; --cds-ring-outer: 1px`: light rings sit outside the edge. */
+	--ring-inner: 0px;
+	--ring-outer: 1px;
 	--code-card-bg: hsl(60 14% 99%);
 
 	/* Upstream claude.ai/code — cds-input field ring (10% ink, 20% on hover) and focus ring */
@@ -634,6 +640,8 @@ html[data-interface-font="dyslexic"] {
 	--sb-field-ring: rgb(11 11 11 / 0.1);
 	--sb-field-hover: rgb(11 11 11 / 0.05);
 	--sb-field-hover-ring: rgb(11 11 11 / 0.1);
+	/* Upstream --cds-ring-hairline: one device pixel (DPR media blocks below). */
+	--sb-field-hairline: 1px;
 	/* Upstream --cds-chart-* (light: reference gray-400, muted gray-200; categorical blue-450/orange-350/aqua-350/yellow-250) */
 	--chart-reference: #898781;
 	--chart-muted: #c3c2b7;
@@ -790,6 +798,9 @@ html[data-interface-font="dyslexic"] {
 
 	/* Upstream claude.ai/code — card surfaces (light-alpha ring, page color) */
 	--card-outline: hsl(0 0% 100% / 0.1);
+	/* Upstream dark `--cds-ring-inner: 1px; --cds-ring-outer: 0px`: dark rings sit inside the edge. */
+	--ring-inner: 1px;
+	--ring-outer: 0px;
 	--code-card-bg: #151515;
 
 	/* Upstream claude.ai/code — cds-input field ring and focus ring (dark) */
@@ -844,6 +855,9 @@ html[data-interface-font="dyslexic"] {
 	--cds-shadow-md: 0 2px 4px 0 rgb(11 11 11 / 0.07), 0 6px 16px 0 rgb(0 0 0 / 0.24);
 	/* Upstream --cds-shadow-lg (dark) */
 	--cds-shadow-lg: 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(0 0 0 / 0.24);
+	/* Upstream dark shadow-panel-lg: inset ring-inner of --cds-alpha-2, then the dark --cds-shadow-lg (every dialog). */
+	--panel-lg-shadow:
+		inset 0 0 0 1px hsl(0 0% 100% / 0.1), 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(0 0 0 / 0.24);
 	/* Upstream claude.ai/code — approval card (dark) */
 	--approval-card-shadow: 0 0 0 1px hsl(0 0% 100% / 0.1), 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.3);
 	/* Upstream --cds-chart-* (dark: reference gray-350, muted gray-550; categorical blue-400/orange-400/aqua-400/yellow-350) */
@@ -940,6 +954,17 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream `--cds-border` (= --cds-ring-color), also the light menu ring. */
 	--upstream-border: #00000014;
 	--menu-shadow: 0 0 0 1px #00000014, 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+	/* Upstream fizzy `--cds-border` (= `--cds-ring-color`, `--cds-fill-field-ring`): card outlines and dividers,
+	   text-field rings, the sidebar Search ring, and the ring of every shadow-panel-* and the approval dock. */
+	--card-outline: #00000014;
+	--field-ring-shadow: inset 0 0 0 1px #00000014;
+	--sb-field-ring: #00000014;
+	/* Upstream approval dock backdrop `bg-surface-panel shadow-panel-sm` (c2d1aeb56 `y()`). */
+	--approval-card-shadow: 0 0 0 1px #00000014, 0 1px 2px #0b0b0b0f, 0 2px 8px #0b0b0b14;
+	--upstream-shadow-panel-sm:
+		inset 0 0 0 0 #00000014, 0 0 0 1px #00000014, 0 1px 2px rgb(11 11 11 / 0.06), 0 2px 8px rgb(11 11 11 / 0.08);
+	--panel-md-shadow: 0 0 0 1px #00000014, 0 2px 4px 0 rgb(11 11 11 / 0.07), 0 6px 16px 0 rgb(11 11 11 / 0.08);
+	--panel-lg-shadow: 0 0 0 1px #00000014, 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(11 11 11 / 0.08);
 	/* Upstream `--cds-surface-1/2/3` and `--cds-surface-popover` (menus paint the popover surface). */
 	--upstream-surface-1: #fff;
 	--upstream-surface-2: #fff;
@@ -954,6 +979,8 @@ html[data-interface-font="dyslexic"] {
 	--upstream-fill-secondary: #0000000d;
 	--upstream-fill-secondary-hover: #00000013;
 	--upstream-fill-secondary-ring: var(--upstream-alpha-2);
+	/* The sidebar Search hover is upstream's `--cds-fill-secondary-hover`. */
+	--sb-field-hover: #00000013;
 	/* Upstream `--cds-fill-danger(-hover)`, the same in both modes (menu danger rows too). */
 	--upstream-fill-danger: #dc3c3d;
 	--upstream-fill-danger-hover: #c63637;
@@ -1001,6 +1028,35 @@ html[data-interface-font="dyslexic"] {
 	--warning-tint: #fbb31514;
 	/* Upstream dark shadow-panel: its inset ring is --cds-ring-color = --cds-border. */
 	--menu-shadow: inset 0 0 0 1px #ffffff0a, 0 8px 24px rgba(0, 0, 0, 0.32), 0 2px 6px rgba(0, 0, 0, 0.2);
+	/* Upstream fizzy dark `--cds-border`, inset (ring-inner 1px), on the rings the light block lists. */
+	--card-outline: #ffffff0a;
+	--field-ring-shadow: inset 0 0 0 1px #ffffff0a;
+	--sb-field-ring: #ffffff0a;
+	--sb-field-hover: #ffffff37;
+	--approval-card-shadow: inset 0 0 0 1px #ffffff0a, 0 1px 2px #0b0b0b0f, 0 2px 8px #0000003d;
+	--upstream-shadow-panel-sm:
+		inset 0 0 0 1px #ffffff0a, 0 0 0 0 #ffffff0a, 0 1px 2px rgb(11 11 11 / 0.06), 0 2px 8px rgb(0 0 0 / 0.24);
+	--panel-md-shadow: inset 0 0 0 1px #ffffff0a, 0 2px 4px 0 rgb(11 11 11 / 0.07), 0 6px 16px 0 rgb(0 0 0 / 0.24);
+	--panel-lg-shadow: inset 0 0 0 1px #ffffff0a, 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(0 0 0 / 0.24);
+}
+
+/* Upstream `--cds-ring-hairline`: .5px at 2x, a third at 3x, a quarter at 4x (the sidebar Search ring). */
+@media (min-resolution: 2dppx) {
+	:root {
+		--sb-field-hairline: 0.5px;
+	}
+}
+
+@media (min-resolution: 3dppx) {
+	:root {
+		--sb-field-hairline: calc(1px / 3);
+	}
+}
+
+@media (min-resolution: 4dppx) {
+	:root {
+		--sb-field-hairline: calc(1px / 4);
+	}
 }
 
 /*
@@ -1205,7 +1261,10 @@ html[data-interface-font="dyslexic"] {
 		position: absolute;
 		inset: 0;
 		border-radius: inherit;
-		box-shadow: inset 0 0 0 1px var(--card-outline);
+		/* Upstream draws a transcript-surface inset under the ring, so a tinted card keeps a page-coloured edge. */
+		box-shadow:
+			inset 0 0 0 1px var(--card-outline),
+			inset 0 0 0 1px var(--upstream-page);
 		pointer-events: none;
 	}
 	.code-card {
@@ -2998,7 +3057,7 @@ html[data-motion="reduced"] [data-skeleton-group][data-motion="wave"] [data-skel
 
 .df-search-field:not(:focus-visible) {
 	box-shadow:
-		inset 0 0 0 0.5px var(--sb-field-ring),
+		inset 0 0 0 var(--sb-field-hairline) var(--sb-field-ring),
 		0 1px 2px 0 #0000000d;
 }
 

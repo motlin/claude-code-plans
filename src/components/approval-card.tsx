@@ -189,10 +189,11 @@ export function ApprovalCardShell({
 	onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
 }) {
 	// Inline, upstream's card is at most 480px wide with 24px gaps; the dock keeps its 12px rhythm.
+	// Docked, it paints upstream's backdrop `bg-surface-panel shadow-panel-sm` (c2d1aeb56 `y()`); surface-panel = surface-2.
 	const look =
 		presentation === "card"
 			? `card-ring w-full max-w-[480px] ${compact ? "gap-3" : "gap-[24px]"}`
-			: "bg-surface-popover shadow-[var(--approval-card-shadow)] gap-3";
+			: "bg-surface-2 shadow-[var(--approval-card-shadow)] gap-3";
 	const bodyGap = presentation === "card" ? (compact ? "gap-3 empty:hidden" : "gap-[24px]") : "gap-2.5";
 	const band = presentation === "card" && title !== undefined;
 	// The banded card is upstream's in-flow tool card: no top padding, clipped to its radius, and a taller floor.
@@ -274,7 +275,7 @@ export function WaitingForInputNotice({
 			role="status"
 			aria-label={title}
 			data-waiting-input-notice
-			className="flex items-start gap-2 rounded-r7 bg-surface-popover p-3 text-[13px]/[19px] text-primary shadow-[var(--approval-card-shadow)]"
+			className="flex items-start gap-2 rounded-r7 bg-surface-2 p-3 text-[13px]/[19px] text-primary shadow-[var(--approval-card-shadow)]"
 		>
 			<span aria-hidden="true" className="flex h-[19px] shrink-0 items-center">
 				<span className="status-dot" data-kind="awaiting" />

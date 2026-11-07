@@ -477,3 +477,154 @@ describe("fizzy-lake color tokens under prefers-contrast: more", () => {
 		});
 	});
 });
+
+/* fizzy-dark-ring-other-tokens: under fizzy color every cds ring is `--cds-border`, #00000014 light and
+   #ffffff0a dark (dumps/fizzy-dark-ring-other-tokens-evidence-2026-11-06.txt). */
+describe("fizzy-lake color rings (upstream --cds-border = --cds-ring-color)", () => {
+	const both = (names: readonly string[]) => ({
+		base: tokens(block(":root"), names),
+		baseDark: tokens(block(".dark"), names),
+		light: tokens(block(FIZZY_LIGHT), names),
+		dark: tokens(block(FIZZY_DARK), names),
+	});
+
+	it("the card outline and field ring are the fizzy border, keeping the pre-rollout 10% rings", () => {
+		expect(both(["--card-outline", "--field-ring-shadow"])).toStrictEqual({
+			base: {
+				"--card-outline": "hsl(0 0% 4% / 0.1)",
+				"--field-ring-shadow": "inset 0 0 0 1px rgb(11 11 11 / 0.1)",
+			},
+			baseDark: {
+				"--card-outline": "hsl(0 0% 100% / 0.1)",
+				"--field-ring-shadow": "inset 0 0 0 1px hsl(0 0% 100% / 0.1)",
+			},
+			light: {"--card-outline": "#00000014", "--field-ring-shadow": "inset 0 0 0 1px #00000014"},
+			dark: {"--card-outline": "#ffffff0a", "--field-ring-shadow": "inset 0 0 0 1px #ffffff0a"},
+		});
+	});
+
+	it("the contrast:more field ring still comes after the fizzy blocks, so it wins", () => {
+		expect({
+			fizzyLightBeforeContrast: styles.indexOf(`\n${FIZZY_LIGHT} {`) < CONTRAST_START,
+			fizzyDarkBeforeContrast: styles.indexOf(`\n${FIZZY_DARK} {`) < CONTRAST_START,
+		}).toStrictEqual({fizzyLightBeforeContrast: true, fizzyDarkBeforeContrast: true});
+	});
+
+	it("the approval dock is upstream's bg-surface-panel shadow-panel-sm backdrop", () => {
+		expect(both(["--approval-card-shadow"])).toStrictEqual({
+			base: {
+				"--approval-card-shadow":
+					"0 0 0 1px rgb(11 11 11 / 0.1), 0 1px 2px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.08)",
+			},
+			baseDark: {
+				"--approval-card-shadow":
+					"0 0 0 1px hsl(0 0% 100% / 0.1), 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.3)",
+			},
+			light: {"--approval-card-shadow": "0 0 0 1px #00000014, 0 1px 2px #0b0b0b0f, 0 2px 8px #0b0b0b14"},
+			dark: {"--approval-card-shadow": "inset 0 0 0 1px #ffffff0a, 0 1px 2px #0b0b0b0f, 0 2px 8px #0000003d"},
+		});
+	});
+
+	it("the panel shadows ring at the fizzy border, and dark dialogs get upstream's dark shadow-panel-lg", () => {
+		expect(both(["--upstream-shadow-panel-sm", "--panel-md-shadow", "--panel-lg-shadow"])).toStrictEqual({
+			base: {
+				"--upstream-shadow-panel-sm":
+					"inset 0 0 0 0 rgb(11 11 11 / 0.1), 0 0 0 1px rgb(11 11 11 / 0.1), 0 1px 2px rgb(11 11 11 / 0.06), 0 2px 8px rgb(11 11 11 / 0.08)",
+				"--panel-md-shadow":
+					"0 0 0 1px rgb(11 11 11 / 0.1), 0 2px 4px 0 rgb(11 11 11 / 0.07), 0 6px 16px 0 rgb(11 11 11 / 0.08)",
+				"--panel-lg-shadow":
+					"0 0 0 1px rgb(11 11 11 / 0.1), 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(11 11 11 / 0.08)",
+			},
+			baseDark: {
+				"--upstream-shadow-panel-sm":
+					"inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 0 0 0 rgb(255 255 255 / 0.1), 0 1px 2px rgb(11 11 11 / 0.06), 0 2px 8px rgb(0 0 0 / 0.24)",
+				"--panel-md-shadow":
+					"inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 2px 4px 0 rgb(11 11 11 / 0.07), 0 6px 16px 0 rgb(0 0 0 / 0.24)",
+				"--panel-lg-shadow":
+					"inset 0 0 0 1px hsl(0 0% 100% / 0.1), 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(0 0 0 / 0.24)",
+			},
+			light: {
+				"--upstream-shadow-panel-sm":
+					"inset 0 0 0 0 #00000014, 0 0 0 1px #00000014, 0 1px 2px rgb(11 11 11 / 0.06), 0 2px 8px rgb(11 11 11 / 0.08)",
+				"--panel-md-shadow":
+					"0 0 0 1px #00000014, 0 2px 4px 0 rgb(11 11 11 / 0.07), 0 6px 16px 0 rgb(11 11 11 / 0.08)",
+				"--panel-lg-shadow":
+					"0 0 0 1px #00000014, 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(11 11 11 / 0.08)",
+			},
+			dark: {
+				"--upstream-shadow-panel-sm":
+					"inset 0 0 0 1px #ffffff0a, 0 0 0 0 #ffffff0a, 0 1px 2px rgb(11 11 11 / 0.06), 0 2px 8px rgb(0 0 0 / 0.24)",
+				"--panel-md-shadow":
+					"inset 0 0 0 1px #ffffff0a, 0 2px 4px 0 rgb(11 11 11 / 0.07), 0 6px 16px 0 rgb(0 0 0 / 0.24)",
+				"--panel-lg-shadow":
+					"inset 0 0 0 1px #ffffff0a, 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(0 0 0 / 0.24)",
+			},
+		});
+	});
+
+	it("the sidebar Search field rings at the fizzy border and hovers at the fizzy fill-secondary-hover", () => {
+		expect(both(["--sb-field-ring", "--sb-field-hover", "--sb-field-hover-ring"])).toStrictEqual({
+			base: {
+				"--sb-field-ring": "rgb(11 11 11 / 0.1)",
+				"--sb-field-hover": "rgb(11 11 11 / 0.05)",
+				"--sb-field-hover-ring": "rgb(11 11 11 / 0.1)",
+			},
+			baseDark: {
+				"--sb-field-ring": "hsl(0 0% 100% / 0.1)",
+				"--sb-field-hover": "hsl(0 0% 100% / 0.14)",
+				"--sb-field-hover-ring": "transparent",
+			},
+			light: {"--sb-field-ring": "#00000014", "--sb-field-hover": "#00000013", "--sb-field-hover-ring": null},
+			dark: {"--sb-field-ring": "#ffffff0a", "--sb-field-hover": "#ffffff37", "--sb-field-hover-ring": null},
+		});
+	});
+
+	it("the sidebar Search hairline is upstream's DPR-scaled --cds-ring-hairline", () => {
+		const atResolution = (dppx: number) => {
+			const start = styles.indexOf(`@media (min-resolution: ${dppx}dppx) {`);
+			return start === -1 ? "" : styles.slice(start, styles.indexOf("\n}", start));
+		};
+		const names = ["--sb-field-hairline"] as const;
+		expect({
+			base: tokens(block(":root"), names),
+			x2: tokens(atResolution(2), names),
+			x3: tokens(atResolution(3), names),
+			x4: tokens(atResolution(4), names),
+			x2BeforeX3: styles.indexOf("min-resolution: 2dppx") < styles.indexOf("min-resolution: 3dppx"),
+			x3BeforeX4: styles.indexOf("min-resolution: 3dppx") < styles.indexOf("min-resolution: 4dppx"),
+			rest: tokens(block(".df-search-field:not(:focus-visible)"), ["box-shadow"]),
+		}).toStrictEqual({
+			base: {"--sb-field-hairline": "1px"},
+			x2: {"--sb-field-hairline": "0.5px"},
+			x3: {"--sb-field-hairline": "calc(1px / 3)"},
+			x4: {"--sb-field-hairline": "calc(1px / 4)"},
+			x2BeforeX3: true,
+			x3BeforeX4: true,
+			rest: {"box-shadow": "inset 0 0 0 var(--sb-field-hairline) var(--sb-field-ring), 0 1px 2px 0 #0000000d"},
+		});
+	});
+
+	it("the outline layer draws upstream's two insets: the border ring over a transcript-surface edge", () => {
+		const start = styles.indexOf("\t.card-outline-layer::after {");
+		const rule = styles.slice(start, styles.indexOf("\n\t}", start));
+		expect(tokens(rule, ["box-shadow"])).toStrictEqual({
+			"box-shadow": "inset 0 0 0 1px var(--card-outline), inset 0 0 0 1px var(--upstream-page)",
+		});
+	});
+
+	it("shadow-card-ring sits outside the edge in light and inset in dark (upstream --cds-ring-inner/-outer)", () => {
+		const names = ["--ring-inner", "--ring-outer"] as const;
+		expect({
+			utility: tokens(block("@theme inline"), ["--shadow-card-ring"]),
+			base: tokens(block(":root"), names),
+			baseDark: tokens(block(".dark"), names),
+		}).toStrictEqual({
+			utility: {
+				"--shadow-card-ring":
+					"inset 0 0 0 var(--ring-inner) var(--card-ring-color, var(--card-outline)), 0 0 0 var(--ring-outer) var(--card-ring-color, var(--card-outline))",
+			},
+			base: {"--ring-inner": "0px", "--ring-outer": "1px"},
+			baseDark: {"--ring-inner": "1px", "--ring-outer": "0px"},
+		});
+	});
+});

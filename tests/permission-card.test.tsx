@@ -6,7 +6,7 @@ import type {ComponentProps} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {BackgroundTasksOpenerProvider} from "../src/components/background-tasks-opener-context";
-import {ApprovalCardShell} from "../src/components/approval-card";
+import {ApprovalCardShell, WaitingForInputNotice} from "../src/components/approval-card";
 import {PermissionCard} from "../src/components/permission-card";
 import {APPROVAL_LEADING_ALLOW_KEY} from "../src/lib/approval-leading-allow";
 import {isAnsweredHeld, releaseAnswered} from "../src/lib/answered-sessions";
@@ -944,7 +944,7 @@ describe("PermissionCard", () => {
 		expect({
 			presentation: card.dataset["approvalPresentation"],
 			card: missing(card, ["card-ring", "@container", "rounded-r7", "p-3"]),
-			dockLook: ["shadow-[var(--approval-card-shadow)]", "bg-surface-popover"].filter((name) =>
+			dockLook: ["shadow-[var(--approval-card-shadow)]", "bg-surface-2"].filter((name) =>
 				card.classList.contains(name),
 			),
 			title: card.querySelector("[data-permission-title]")?.getAttribute("class"),
@@ -1030,6 +1030,28 @@ describe("PermissionCard", () => {
 			details: "flex flex-col gap-[12px] empty:hidden",
 			detailsAreBodyChild: true,
 			detailsText: ["Remove the build output", "$ rm -rf dist"],
+		});
+	});
+
+	it("paints the docked card and the waiting-input notice as upstream's dock backdrop: bg-surface-panel shadow-panel-sm", () => {
+		const look = ["bg-surface-2", "shadow-[var(--approval-card-shadow)]", "bg-surface-popover"];
+		const {container} = render(
+			<>
+				<ApprovalCardShell
+					presentation="dock"
+					body={<span>Plan</span>}
+					actions={<button type="button">Ok</button>}
+				/>
+				<WaitingForInputNotice />
+			</>,
+		);
+		const has = (element: Element | null) => look.filter((name) => element?.classList.contains(name));
+		expect({
+			dock: has(container.querySelector("[data-approval-card-root]")),
+			notice: has(container.querySelector("[data-waiting-input-notice]")),
+		}).toStrictEqual({
+			dock: ["bg-surface-2", "shadow-[var(--approval-card-shadow)]"],
+			notice: ["bg-surface-2", "shadow-[var(--approval-card-shadow)]"],
 		});
 	});
 

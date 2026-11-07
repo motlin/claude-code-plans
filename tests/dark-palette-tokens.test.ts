@@ -149,14 +149,16 @@ describe("dark palette", () => {
 		const layerStart = styles.indexOf(".card-outline-layer {");
 		const afterStart = styles.indexOf(".card-outline-layer::after {");
 		const layer = styles.slice(layerStart, afterStart);
-		const rule = styles.slice(afterStart, styles.indexOf("}", afterStart));
+		const rule = styles.slice(afterStart, styles.indexOf("\n\t}", afterStart));
 		const declares = (body: string, declaration: string) =>
 			body.split("\n").some((line) => line.trim() === declaration);
 
 		expect({
 			layerShadow: layer.includes("box-shadow"),
 			layerPosition: declares(layer, "position: relative;"),
-			ring: declares(rule, "box-shadow: inset 0 0 0 1px var(--card-outline);"),
+			ring: rule
+				.replaceAll(/\s+/g, " ")
+				.includes("box-shadow: inset 0 0 0 1px var(--card-outline), inset 0 0 0 1px var(--upstream-page);"),
 			inset: declares(rule, "inset: 0;"),
 			radius: declares(rule, "border-radius: inherit;"),
 			passThrough: declares(rule, "pointer-events: none;"),
