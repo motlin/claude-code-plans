@@ -902,7 +902,7 @@ function SessionRowLink({
 				described={metaLine !== undefined}
 				// Upstream's row shell owns the background. The selected tint keys off the link's data-selected
 				// (which nav-scroll and roving focus watch), so switching rows mutates no extra attribute.
-				className="rounded-[var(--sb-radius)] hover:bg-[var(--sb-hover)] has-[:focus-visible]:bg-[var(--sb-hover)] data-[menu-open=true]:bg-[var(--sb-hover)] data-[context-menu-open=true]:bg-[var(--sb-hover)] has-[[data-row-main-button][data-selected=focused]]:bg-[var(--sb-session-selected)]"
+				className="rounded-[var(--sb-radius)] hover:bg-[var(--sb-hover)] has-[:focus-visible]:bg-[var(--sb-hover)] data-[menu-open=true]:bg-[var(--sb-hover)] data-[context-menu-open=true]:bg-[var(--sb-hover)] has-[[data-row-main-button][data-selected=focused]]:bg-[var(--sb-session-selected)] hover:has-[[data-row-main-button][data-selected=focused]]:bg-[var(--selected-hover,var(--sb-session-selected))]"
 				{...(pinnedIds === undefined ? {} : {pinnedIds})}
 			>
 				<Link

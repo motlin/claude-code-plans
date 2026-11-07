@@ -23,8 +23,9 @@
 	--md-prose-leading: calc(var(--transcript-leading, 1.42857) * var(--transcript-text-size, 0.875rem));
 }
 
-/* Inside the transcript's nearest comfortable scope (a coarse pointer), upstream's prose steps up
-   to its comfortable scale: 15/22, 16/24 and 18/27 at Small, Medium and Large. The chain matches
+/* Inside the transcript's nearest comfortable scope, upstream's prose steps up to its comfortable
+   scale: 15/22, 16/24 and 18/27 at Small, Medium and Large, or 14/20, 15/21 and 16/22 under
+   fizzy-lake `type` (src/lib/appearance.ts). Leadings are absolute rem, as upstream's are. The chain matches
    globals.css's comfortable: variant, so the nearest of up to four nested scopes decides. */
 :global(.transcript-text)
 	.markdown:where(:global([data-density="comfortable"] *)):not(
@@ -43,9 +44,7 @@
 		)
 	) {
 	--md-prose-size: var(--transcript-comfortable-text-size, 1rem);
-	--md-prose-leading: calc(
-		var(--transcript-comfortable-leading, 1.5) * var(--transcript-comfortable-text-size, 1rem)
-	);
+	--md-prose-leading: var(--transcript-comfortable-leading, 1.5rem);
 }
 
 .markdown h1,
@@ -477,12 +476,13 @@
 	text-align: left;
 }
 
+/* Upstream fizzy-lake color: prose th/td borders read --cds-fizzy-lake-color-message-line. */
 .markdown th {
 	font-size: var(--md-prose-size);
 	line-height: var(--md-prose-leading);
 	font-weight: 500;
 	background: var(--color-alpha-1);
-	border-bottom: 1px solid var(--color-border);
+	border-bottom: 1px solid var(--message-line, var(--color-border));
 }
 
 .markdown td {

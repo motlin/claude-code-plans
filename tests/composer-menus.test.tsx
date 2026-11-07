@@ -1346,14 +1346,14 @@ describe("Composer chin tooltips and contrast", () => {
 		}
 	});
 
-	it("reads every chin control in secondary ink, with r4 corners and an 18px +", () => {
+	it("reads every chin control in control ink (secondary with fizzy color off), with r4 corners and an 18px +", () => {
 		renderComposer();
 		const classes = (element: Element | null) => element?.getAttribute("class")?.split(" ") ?? [];
 		const add = screen.getByRole("button", {name: "Add"});
 		const pick = (element: Element | null) => {
 			const list = classes(element);
 			return {
-				ink: list.filter((name) => name === "text-primary" || name === "text-secondary"),
+				ink: list.filter((name) => /^text-(primary|secondary|secondary-control)$/.test(name)),
 				radius: list.filter((name) => name.startsWith("rounded")),
 				lineHeight: list.filter((name) => name.startsWith("leading")),
 			};
@@ -1365,10 +1365,10 @@ describe("Composer chin tooltips and contrast", () => {
 			mode: pick(document.querySelector("[data-chin-mode]")),
 			model: pick(screen.getByRole("button", {name: "Model: Opus 5.5 High"})),
 		}).toStrictEqual({
-			add: {ink: ["text-secondary"], radius: ["rounded-r5"], lineHeight: ["leading-[20px]"]},
+			add: {ink: ["text-secondary-control"], radius: ["rounded-r5"], lineHeight: ["leading-[20px]"]},
 			plusIcon: ["size-[18px]"],
-			mode: {ink: ["text-secondary"], radius: ["rounded-r4"], lineHeight: ["leading-[20px]"]},
-			model: {ink: ["text-secondary"], radius: ["rounded-r4"], lineHeight: ["leading-[20px]"]},
+			mode: {ink: ["text-secondary-control"], radius: ["rounded-r4"], lineHeight: ["leading-[20px]"]},
+			model: {ink: ["text-secondary-control"], radius: ["rounded-r4"], lineHeight: ["leading-[20px]"]},
 		});
 	});
 

@@ -496,7 +496,7 @@ describe("AppShellFallback", () => {
 			],
 		}).toStrictEqual({
 			card: COMPOSER_CARD_CLASS,
-			line: "block py-1 pl-1 text-[14px]/[20px] text-[rgb(137,135,129)]",
+			line: "block py-1 pl-1 text-[14px]/[20px] text-placeholder",
 			add: ADD_BUTTON_CLASS,
 			addIcon: "lucide lucide-plus size-[18px]",
 			chin: COMPOSER_CHIN_CLASS,

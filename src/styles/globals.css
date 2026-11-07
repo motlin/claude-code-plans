@@ -108,6 +108,8 @@
 :root[data-cds-fizzy-lake~="type"] {
 	--font-weight-control: 435;
 	--font-weight-control-regular: 435;
+	/* Upstream `--cds-font-weight-header`: dialog headings, settings group titles, sidebar group labels. */
+	--font-weight-header: 520;
 }
 
 /* Settings ▸ Interface font ▸ OpenDyslexic, self-hosted from @fontsource/opendyslexic. */
@@ -140,6 +142,8 @@ html[data-interface-font="dyslexic"] {
 	--color-fill-ghost-selected: var(--upstream-fill-ghost-selected);
 	/* The ⌘K palette's selected row: ghost hover until fizzy-lake color, then upstream's measured ghost-selected. */
 	--color-palette-selected: var(--palette-selected);
+	/* Upstream's placeholder ink: --cds-text-muted until fizzy-lake color swaps in --cds-fizzy-lake-color-placeholder. */
+	--color-placeholder: var(--upstream-placeholder);
 	/* Upstream --cds-fill-field (bg-fill-field): the ⌘K Compose field and question-card input. */
 	--color-fill-field: var(--upstream-fill-field);
 	--color-fill-grip: var(--upstream-fill-grip);
@@ -616,6 +620,10 @@ html[data-interface-font="dyslexic"] {
 	/* Session rows: upstream selects them lighter than nav rows in dark. */
 	--sb-session-selected: var(--sb-selected);
 	--sb-bg: color-mix(in srgb, var(--upstream-surface-0) 50%, var(--upstream-surface-1));
+	/* The sidebar's end border: the border ink until fizzy-lake color swaps in upstream's seam. */
+	--sidebar-seam: var(--upstream-border);
+	/* Upstream's pre-rollout placeholder ink (--cds-text-muted). */
+	--upstream-placeholder: #898781;
 	/* Sidebar Search field: upstream --cds-fill-field, --cds-ring-color, --cds-fill-secondary-hover/-ring (light) */
 	--sb-field-bg: #ffffff80;
 	--sb-field-ring: rgb(11 11 11 / 0.1);
@@ -892,7 +900,31 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream `--cds-text-primary` / `-secondary` / `-muted`. */
 	--upstream-text-primary: #000000e6;
 	--upstream-text-secondary: #0009;
-	--upstream-text-muted: #0006;
+	--upstream-text-muted: #0007;
+	/* Upstream `--cds-surface-0` (read live from :root 2026-11-03; dark keeps #0b0b0b). */
+	--upstream-surface-0: #f9f9f9;
+	/* Upstream `--cds-shortcut-cap-ink` at the root. */
+	--shortcut-cap-ink: #6b6b6b;
+	/* Upstream `[data-cds-popup]:is(FZC) { --cds-text-muted: var(--cds-fizzy-lake-color-secondary) }`: muted ink
+	   inside menus and the settings dialog (#0009 / #ffffff91). The dark-scoped tooltip keeps its own ink. */
+	--menu-muted: var(--upstream-text-secondary);
+	--settings-muted: var(--upstream-text-secondary);
+	/* Upstream `--cds-fizzy-lake-color-placeholder`, the same in both modes. */
+	--upstream-placeholder: #878787;
+	/* Upstream `data-page-bg=surface-1`: the page is surface-1 (#fff / #191919). */
+	--upstream-page: var(--upstream-surface-1);
+	/* Upstream `--cds-fizzy-lake-color-sidebar` and the sidebar's `--cds-fizzy-lake-color-seam` end border. */
+	--sb-bg: #fafafa;
+	--sidebar-seam: var(--upstream-seam);
+	/* Upstream `[data-cds=ChatComposer] { --cds-ring-color: var(--cds-fizzy-lake-color-composer-ring) }`: the
+	   composer's idle and focus rings. */
+	--composer-ring: #0000001f;
+	--composer-shadow-idle: 0 4px 20px rgb(0 0 0 / 0.035), 0 0 0 1px var(--composer-ring);
+	--composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.075), 0 0 0 1px var(--composer-ring);
+	/* Upstream `--cds-fizzy-lake-color-message-line`: prose table cell borders. */
+	--message-line: #0000001a;
+	/* Upstream `--cds-fizzy-lake-color-selected-hover`: a selected row under the pointer. */
+	--selected-hover: #00000025;
 	/* Upstream `--muted-as-secondary` under fizzy color: --cds-fizzy-lake-color-secondary (#0009 / #ffffff91). */
 	--muted-as-secondary: var(--upstream-text-secondary);
 	/* Upstream `--cds-fizzy-lake-color-secondary` (#0009 / #ffffff91): the flat-look group toggle's resting ink. */
@@ -937,6 +969,16 @@ html[data-interface-font="dyslexic"] {
 	--upstream-text-primary: #ffffffed;
 	--upstream-text-secondary: #ffffff91;
 	--upstream-text-muted: #fff6;
+	--upstream-surface-0: #0b0b0b;
+	--shortcut-cap-ink: #a4a4a4;
+	/* Upstream fizzy `--cds-tooltip-bg` in dark (pre-rollout #20201f); light keeps #0b0b0b. */
+	--tooltip-bg: #303030;
+	--sb-bg: #1f1f1f;
+	--composer-ring: #ffffff14;
+	--composer-shadow-idle: 0 4px 20px rgb(0 0 0 / 0.035), inset 0 0 0 1px var(--composer-ring);
+	--composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.3), 0 0 0 1px var(--composer-ring);
+	--message-line: #ffffff1a;
+	--selected-hover: #ffffff37;
 	--upstream-fill-ghost-selected: #ffffff26;
 	--upstream-border: #ffffff0a;
 	--upstream-surface-1: #191919;
@@ -964,6 +1006,66 @@ html[data-interface-font="dyslexic"] {
 	:root.dark[data-cds-fizzy-lake~="color"] {
 		--upstream-plain-secondary: #ffffffbf;
 	}
+}
+
+/*
+ * Fizzy-lake `color` component remaps (upstream shared-styles rules 14-15, 23-24, 11-12/51, 55;
+ * dumps/fizzy-lake-rollout-tokens-shared-styles-rules-2026-11-03.css.txt). Unlayered like upstream's, so
+ * they beat the layered utilities they remap.
+ *
+ * Upstream `[class*="data-[highlighted]:bg-fill-ghost-hover"][data-highlighted]:is(FZC) { background-color:
+ * var(--cds-fill-ghost-selected) }` and its siblings: highlighted, focus-visible, popup-open and expanded ghost
+ * rows (every Menu, Select, sheet row and chin trigger) paint ghost-selected, not ghost-hover.
+ */
+:root[data-cds-fizzy-lake~="color"] [class*="data-[highlighted]:bg-fill-ghost-hover"][data-highlighted],
+:root[data-cds-fizzy-lake~="color"]
+	[data-highlighted]
+	[class*="group-data-[highlighted]/sheet-close:bg-fill-ghost-hover"],
+:root[data-cds-fizzy-lake~="color"] [class*="focus-visible:bg-fill-ghost-hover"]:focus-visible,
+:root[data-cds-fizzy-lake~="color"]
+	[class*="data-[popup-open]:bg-fill-ghost-hover"][data-popup-open]:not(
+		[class*="data-[highlighted]:bg-fill-ghost-hover"]
+	),
+:root[data-cds-fizzy-lake~="color"] [class*="aria-expanded:bg-fill-ghost-hover"][aria-expanded="true"] {
+	background-color: var(--color-fill-ghost-selected);
+}
+
+@media (hover: hover) {
+	:root[data-cds-fizzy-lake~="color"]
+		[class*="data-[highlighted]:bg-fill-ghost-hover"][class*="focus-visible:bg-fill-ghost-hover"]:hover {
+		background-color: var(--color-fill-ghost-selected);
+	}
+
+	/* Upstream `.bg-fill-ghost-selected:hover { background-color: var(--cds-fizzy-lake-color-selected-hover) }`. */
+	:root[data-cds-fizzy-lake~="color"] .bg-fill-ghost-selected:hover {
+		background-color: var(--selected-hover);
+	}
+}
+
+/* Upstream `.placeholder\:text-muted::placeholder { color: var(--cds-fizzy-lake-color-placeholder) }`. */
+:root[data-cds-fizzy-lake~="color"] .placeholder\:text-ink-muted::placeholder {
+	color: var(--upstream-placeholder);
+}
+
+/* Upstream `[data-cds=Panel]`/`.cds-pane-ground` collapse surface-2/3 to surface-1 (dark #1f1f1f to #191919;
+   light is #fff throughout), and `.bg-surface-3.rounded-composer` takes the popover surface (dark #303030). */
+:root[data-cds-fizzy-lake~="color"] [data-session-tile] {
+	--upstream-surface-2: var(--upstream-surface-1);
+	--upstream-surface-3: var(--upstream-surface-1);
+}
+
+:root[data-cds-fizzy-lake~="color"] .bg-surface-3.rounded-composer {
+	--upstream-surface-3: var(--upstream-surface-popover);
+}
+
+/* Fizzy-lake `type`: upstream's `font-weight: var(--cds-font-weight-header)` on dialog headings and settings
+   group titles (rule 211), and the sidebar group labels (measured 520 live 2026-11-03). OpenDyslexic opts out. */
+:root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"])
+	:is([role="dialog"], [role="alertdialog"])
+	:is(h1, h2).break-words.font-semibold,
+:root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]) [data-settings-group-title],
+:root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]) [data-sidebar-group-label] {
+	font-weight: var(--font-weight-header);
 }
 
 @layer utilities {
@@ -2809,6 +2911,13 @@ html[data-motion="reduced"] [data-skeleton-group][data-motion="wave"] [data-skel
 	.df-nav-row[data-selected="focused"] {
 		background-color: var(--sb-selected);
 		color: var(--upstream-text-primary);
+	}
+
+	/* Upstream `.dframe-sidebar [data-row][data-selected]:hover`: the fizzy selected-hover, unset with color off. */
+	@media (hover: hover) {
+		.df-nav-row[data-selected="focused"]:hover {
+			background-color: var(--selected-hover, var(--sb-selected));
+		}
 	}
 
 	.df-nav-row .df-leading-slot {

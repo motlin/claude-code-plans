@@ -4,6 +4,8 @@ import {renderMarkdownToHtml} from "../src/lib/client-markdown";
 import {markdownCss, ruleDeclarations} from "./markdown-css";
 
 const TRANSCRIPT_PROSE = ":global(.transcript-text) .markdown";
+/** Fizzy-lake without `type`: the pre-rollout comfortable steps (tests/fizzy-lake-rollout-tokens.test.ts covers type). */
+const PRE_TYPE_PARTS = ["color", "panels"] as const;
 const COMFORTABLE_PROSE =
 	':global(.transcript-text)\n\t.markdown:where(:global([data-density="comfortable"] *)):not(\n\t\t:where(:global([data-density="comfortable"] [data-density="compact"] *)):not(\n\t\t\t:where(:global([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *)):not(\n\t\t\t\t:where(\n\t\t\t\t\t:global(\n\t\t\t\t\t\t[data-density="comfortable"]\n\t\t\t\t\t\t\t[data-density="compact"]\n\t\t\t\t\t\t\t[data-density="comfortable"]\n\t\t\t\t\t\t\t[data-density="compact"]\n\t\t\t\t\t\t\t*\n\t\t\t\t\t)\n\t\t\t\t)\n\t\t\t)\n\t\t)\n\t)';
 
@@ -46,8 +48,7 @@ describe("transcript prose follows Transcript text size", () => {
 			},
 			comfortable: {
 				"--md-prose-size": "var(--transcript-comfortable-text-size, 1rem)",
-				"--md-prose-leading":
-					"calc( var(--transcript-comfortable-leading, 1.5) * var(--transcript-comfortable-text-size, 1rem) )",
+				"--md-prose-leading": "var(--transcript-comfortable-leading, 1.5rem)",
 			},
 			headings: {
 				"font-size": "var(--md-prose-size)",
@@ -57,12 +58,15 @@ describe("transcript prose follows Transcript text size", () => {
 		});
 	});
 
-	it("sizes prose at upstream's chat body for each setting, and its comfortable steps on touch", () => {
+	it("sizes prose at upstream's chat body for each setting, and its pre-type comfortable steps", () => {
 		const compact = ruleDeclarations(markdownCss, TRANSCRIPT_PROSE);
 		const comfortable = ruleDeclarations(markdownCss, COMFORTABLE_PROSE);
 		const measured = Object.fromEntries(
 			(["sm", "md", "lg"] as const).map((transcriptTextSize) => {
-				const vars = appearanceCssVars({interfaceFont: "sans", transcriptTextSize, transcriptWidth: "narrow"});
+				const vars = appearanceCssVars(
+					{interfaceFont: "sans", transcriptTextSize, transcriptWidth: "narrow"},
+					PRE_TYPE_PARTS,
+				);
 				return [
 					transcriptTextSize,
 					{
@@ -103,7 +107,10 @@ describe("transcript prose follows Transcript text size", () => {
 		};
 		const measured = Object.fromEntries(
 			(["sm", "md", "lg"] as const).map((transcriptTextSize) => {
-				const vars = appearanceCssVars({interfaceFont: "sans", transcriptTextSize, transcriptWidth: "narrow"});
+				const vars = appearanceCssVars(
+					{interfaceFont: "sans", transcriptTextSize, transcriptWidth: "narrow"},
+					PRE_TYPE_PARTS,
+				);
 				const measure = (prose: Record<string, string | undefined>) => {
 					const body = resolvePx(prose["--md-prose-size"]!, vars);
 					const leading = resolvePx(prose["--md-prose-leading"]!, vars);
@@ -185,7 +192,7 @@ describe("prose tables", () => {
 			"line-height": "var(--md-prose-leading)",
 			"font-weight": "500",
 			background: "var(--color-alpha-1)",
-			"border-bottom": "1px solid var(--color-border)",
+			"border-bottom": "1px solid var(--message-line, var(--color-border))",
 		});
 	});
 

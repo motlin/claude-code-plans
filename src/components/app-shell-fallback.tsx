@@ -80,10 +80,7 @@ function FallbackComposer({
 							<Plus data-fallback-chin-readout="" aria-hidden="true" className="size-[18px]" />
 						</span>
 					</div>
-					<span
-						data-fallback-placeholder=""
-						className="block py-1 pl-1 text-[14px]/[20px] text-[rgb(137,135,129)]"
-					>
+					<span data-fallback-placeholder="" className="block py-1 pl-1 text-[14px]/[20px] text-placeholder">
 						{placeholder}
 					</span>
 				</div>

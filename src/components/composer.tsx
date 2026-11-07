@@ -126,16 +126,17 @@ const PLACEHOLDER: Record<ComposerVariant, string> = {
 
 /**
  * The prompt follows Transcript text size via `--prompt-text-size` / `--prompt-line-height`
- * (upstream's `--cmp-font-size` / `--cmp-line-height`). The `--upstream-*-body` overrides
+ * (upstream's `--cmp-font-size` / `--cmp-line-height`); inside a comfortable scope it reads the comfortable pair,
+ * which fizzy-lake `type` drops to the comfortable prose scale (15/21 at Medium). The `--upstream-*-body` overrides
  * keep the coarse-pointer text-entry floor (globals.css) on the prompt size too. The floor's 22px line
  * takes 3px padding on coarse pointers so the editor box stays upstream's h28, as 20px + py-1 does on fine.
  */
 const EDITOR_CLASS =
-	"block w-full resize-none overflow-y-auto bg-transparent py-1 pl-1 pointer-coarse:py-[3px] font-sans text-[length:var(--prompt-text-size,14px)] leading-[var(--prompt-line-height,20px)] [--upstream-text-body:var(--prompt-text-size,14px)] [--upstream-leading-body:var(--prompt-line-height,20px)] [field-sizing:content] focus:outline-none disabled:opacity-50";
+	"block w-full resize-none overflow-y-auto bg-transparent py-1 pl-1 pointer-coarse:py-[3px] font-sans comfortable:[--prompt-text-size:var(--prompt-comfortable-text-size)] comfortable:[--prompt-line-height:var(--prompt-comfortable-line-height)] text-[length:var(--prompt-text-size,14px)] leading-[var(--prompt-line-height,20px)] [--upstream-text-body:var(--prompt-text-size,14px)] [--upstream-leading-body:var(--prompt-line-height,20px)] [field-sizing:content] focus:outline-none disabled:opacity-50";
 
 /** Overlays ghost text after the prompt, lined up with the textarea's text (and its coarse-pointer floor). */
 const GHOST_OVERLAY_CLASS =
-	"pointer-events-none absolute inset-y-0 right-[30px] comfortable:right-[32px] overflow-hidden py-1 pl-1 pointer-coarse:py-[3px] font-sans text-[length:var(--prompt-text-size,14px)] leading-[var(--prompt-line-height,20px)] [--upstream-text-body:var(--prompt-text-size,14px)] [--upstream-leading-body:var(--prompt-line-height,20px)] break-words whitespace-pre-wrap text-entry-floored";
+	"pointer-events-none absolute inset-y-0 right-[30px] comfortable:right-[32px] overflow-hidden py-1 pl-1 pointer-coarse:py-[3px] font-sans comfortable:[--prompt-text-size:var(--prompt-comfortable-text-size)] comfortable:[--prompt-line-height:var(--prompt-comfortable-line-height)] text-[length:var(--prompt-text-size,14px)] leading-[var(--prompt-line-height,20px)] [--upstream-text-body:var(--prompt-text-size,14px)] [--upstream-leading-body:var(--prompt-line-height,20px)] break-words whitespace-pre-wrap text-entry-floored";
 
 /** Paints the whole prompt over a transparent textarea, so it also follows the coarse-pointer send gutter. */
 const PAINTED_OVERLAY_CLASS = `${GHOST_OVERLAY_CLASS} left-[30px] comfortable:left-[32px] pointer-coarse:right-[51px] comfortable:pointer-coarse:right-[53px]`;
@@ -145,7 +146,7 @@ const PAINTED_OVERLAY_CLASS = `${GHOST_OVERLAY_CLASS} left-[30px] comfortable:le
  * not a native `placeholder`, so the 16px coarse-pointer text never wraps into `[field-sizing:content]` and grows
  * the empty editor past h28. The second line of a too-wide placeholder is clipped.
  */
-const PLACEHOLDER_OVERLAY_CLASS = `${PAINTED_OVERLAY_CLASS} text-[rgb(137,135,129)] select-none`;
+const PLACEHOLDER_OVERLAY_CLASS = `${PAINTED_OVERLAY_CLASS} text-placeholder select-none`;
 
 /** Upstream's inline visually-hidden style for the argument hint's live twin. */
 const SR_ONLY_STYLE: CSSProperties = {

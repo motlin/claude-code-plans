@@ -151,7 +151,7 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () => 
 			light: {
 				"--upstream-text-primary": "#000000e6",
 				"--upstream-text-secondary": "#0009",
-				"--upstream-text-muted": "#0006",
+				"--upstream-text-muted": "#0007",
 				"--upstream-fill-ghost-selected": "#0000001a",
 				"--upstream-border": "#00000014",
 				"--upstream-surface-1": "#fff",

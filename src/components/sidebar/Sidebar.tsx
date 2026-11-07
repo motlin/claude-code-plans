@@ -245,7 +245,7 @@ export function Sidebar({
 				data-flat-look={panels ? "" : undefined}
 				data-focus-region="navigation"
 				style={{"--sidebar-width": `${width}px`}}
-				className="group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[0.5px] border-border bg-[var(--sb-bg)] min-[701px]:flex"
+				className="group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[length:max(var(--cds-toolbar-line,0px),0.5px)] border-[color:var(--sidebar-seam)] bg-[var(--sb-bg)] min-[701px]:flex"
 			>
 				<div data-testid="sidebar-titlebar" className="flex h-11 shrink-0 items-center px-2">
 					{/* Pinned to the collapsed trigger's 12,12 spot so the toggle never moves between states. */}

@@ -17,8 +17,12 @@ export const COMPOSER_EDITOR_ROW_CLASS = "relative pr-[30px] pl-[30px] comfortab
 export const COMPOSER_CHIN_CLASS =
 	"@container mt-1.5 flex min-h-6 items-center justify-between ps-[7px] pe-2.5 text-[13px]/[20px] text-secondary";
 
+/**
+ * Upstream re-inks the chin buttons' `--cds-text-secondary` to `--cds-fizzy-lake-color-control-ink` under fizzy color
+ * (`text-secondary-control`: secondary with color off) at the control weight.
+ */
 const CHIN_BUTTON_CLASS =
-	"flex h-6 min-w-0 items-center justify-center rounded-r4 leading-[20px] text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary aria-expanded:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"flex h-6 min-w-0 items-center justify-center rounded-r4 leading-[20px] text-secondary-control font-control-regular transition-colors hover:bg-fill-ghost-hover hover:text-primary aria-expanded:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /** Upstream's footer pills: 24px tall at both densities, the radius 5px → 6px at comfortable. */
 export const CHIN_TRIGGER_CLASS = `${CHIN_BUTTON_CLASS} truncate px-1.5 comfortable:rounded-r5`;
