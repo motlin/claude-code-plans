@@ -24,7 +24,7 @@ export function IndexingBannerView({onDismiss}: {onDismiss: () => void}) {
 
 export function IndexingBanner() {
 	const queryClient = useQueryClient();
-	const [isIndexing, setIsIndexing] = useState(false);
+	const [isInitialBuild, setIsInitialBuild] = useState(false);
 	const [dismissed, setDismissed] = useState(false);
 
 	useEffect(() => {
@@ -37,7 +37,7 @@ export function IndexingBanner() {
 			try {
 				const result = await apiFetch("/api/indexing-status", IndexingStatusResponse);
 				if (cancelled) return;
-				setIsIndexing(result.isIndexing);
+				setIsInitialBuild(result.isInitialBuild);
 				if (result.isIndexing) {
 					retried.clear();
 					reconciledDetails.clear();
@@ -97,7 +97,8 @@ export function IndexingBanner() {
 		};
 	}, [queryClient]);
 
-	if (!isIndexing || dismissed) return null;
+	// The routine startup scan of an existing index leaves search complete, so only the build from empty shows.
+	if (!isInitialBuild || dismissed) return null;
 
 	return (
 		<IndexingBannerView

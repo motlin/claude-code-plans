@@ -1809,8 +1809,18 @@ export async function scanPlansDir(db: IndexDb, plansDir: string): Promise<void>
 }
 
 let indexingInProgress = false;
+let initialBuildInProgress = false;
 export function isCurrentlyIndexing(): boolean {
 	return indexingInProgress;
+}
+
+/**
+ * `isInitialBuild` is true only while a scan fills an index that started with
+ * no indexed files (first run or schema rebuild), when search results are
+ * actually incomplete; the routine incremental startup scan reports false.
+ */
+export function getIndexingStatus(): {isIndexing: boolean; isInitialBuild: boolean} {
+	return {isIndexing: indexingInProgress, isInitialBuild: indexingInProgress && initialBuildInProgress};
 }
 
 /** Max concurrent session files indexed during a full scan. */
@@ -2091,6 +2101,8 @@ export async function fullScan(
 		trackActivity(`scan ${label}`, async () => retryWhileBusy(run, signal));
 
 	indexingInProgress = true;
+	initialBuildInProgress =
+		indexDb.select({path: schema.indexedFiles.path}).from(schema.indexedFiles).limit(1).get() === undefined;
 	const scanStartMs = Date.now() - SCAN_START_MTIME_SLACK_MS;
 	try {
 		await step("project names", () => {
@@ -2270,6 +2282,7 @@ export async function fullScan(
 		});
 	} finally {
 		indexingInProgress = false;
+		initialBuildInProgress = false;
 	}
 }
 

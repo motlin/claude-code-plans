@@ -143,7 +143,7 @@ describe("indexing completion catch-up", () => {
 			.mockImplementation(async (url: string) =>
 				Promise.resolve(
 					url === "/api/indexing-status"
-						? Response.json({isIndexing: indexing})
+						? Response.json({isIndexing: indexing, isInitialBuild: false})
 						: indexing
 							? Response.json({}, {status: 503})
 							: Response.json({sessionId: ALICE}),
@@ -169,7 +169,7 @@ describe("indexing completion catch-up", () => {
 			.mockImplementation(async (url: string) =>
 				Promise.resolve(
 					url === "/api/indexing-status"
-						? Response.json({isIndexing: false})
+						? Response.json({isIndexing: false, isInitialBuild: false})
 						: Response.json({}, {status: 503}),
 				),
 			);
@@ -232,7 +232,9 @@ describe("active detail alias backfill catch-up", () => {
 		const fetcher = vi.fn<(url: string) => Promise<Response>>(async (url: string) =>
 			Promise.resolve(
 				Response.json(
-					url === "/api/indexing-status" ? {isIndexing: indexing} : {...DETAIL, canonicalRouteId: ALIAS},
+					url === "/api/indexing-status"
+						? {isIndexing: indexing, isInitialBuild: false}
+						: {...DETAIL, canonicalRouteId: ALIAS},
 				),
 			),
 		);
@@ -266,7 +268,8 @@ describe("active detail alias backfill catch-up", () => {
 		const old = deferredResponse();
 		let detailRequests = 0;
 		const fetcher = vi.fn<(url: string) => Promise<Response>>(async (url: string) => {
-			if (url === "/api/indexing-status") return Promise.resolve(Response.json({isIndexing: indexing}));
+			if (url === "/api/indexing-status")
+				return Promise.resolve(Response.json({isIndexing: indexing, isInitialBuild: false}));
 			detailRequests++;
 			return detailRequests === 1
 				? old.promise
@@ -307,7 +310,8 @@ describe("active detail alias backfill catch-up", () => {
 		let detailRequests = 0;
 		client.setQueryData(sessionQueryKeys.detail(ALICE), {...DETAIL, canonicalRoutePending: true});
 		const fetcher = vi.fn<(url: string) => Promise<Response>>(async (url: string) => {
-			if (url === "/api/indexing-status") return Promise.resolve(Response.json({isIndexing: false}));
+			if (url === "/api/indexing-status")
+				return Promise.resolve(Response.json({isIndexing: false, isInitialBuild: false}));
 			detailRequests++;
 			return detailRequests === 1
 				? old.promise
