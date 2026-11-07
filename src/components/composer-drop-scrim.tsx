@@ -1,4 +1,5 @@
 import {type RefObject, useEffect, useEffectEvent, useState} from "react";
+import {splitDroppedItems} from "../lib/drop-collect";
 
 export type FileDropState = "idle" | "off-target" | "on-target";
 
@@ -27,7 +28,9 @@ function claim(token: symbol) {
 /**
  * Upstream's page-scoped file drop hook (shared-5 `f7`): capture listeners on the body track whether files are being
  * dragged over the page (`on-target` when over `targetRef`), and a drop anywhere on the page attaches. When several
- * targets are mounted, only the owner (see `owners`) reacts.
+ * targets are mounted, only the owner (see `owners`) reacts. Like the Code session composer's drop (`cc970fefe` `WJ`),
+ * dropped folders are left out (upstream `zt`), and a drop of only folders still prevents the browser opening it but
+ * calls nothing.
  */
 export function useFileDropTarget({
 	onFileDrop,
@@ -73,7 +76,8 @@ export function useFileDropTarget({
 			reset();
 			if (!owns()) return;
 			e.preventDefault();
-			drop(Array.from(e.dataTransfer?.files ?? []));
+			const {files} = splitDroppedItems(e.dataTransfer?.items, e.dataTransfer?.files);
+			if (files.length > 0) drop(files);
 		};
 		body.addEventListener("dragover", onDragOver, true);
 		body.addEventListener("dragleave", onDragLeave, true);

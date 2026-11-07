@@ -206,6 +206,79 @@ describe("Composer attachments", () => {
 		});
 	});
 
+	describe("dropped and pasted folders (upstream zt + cc970fefe WJ)", () => {
+		const folderFile = () => new File([], "proj");
+		const item = (file: File, isDirectory: boolean) => ({
+			kind: "file",
+			getAsFile: () => file,
+			webkitGetAsEntry: () => ({isDirectory, name: file.name}),
+		});
+
+		it("drops the folder and attaches the files beside it, with no toast", async () => {
+			mockUploads(savedAs(`${ATTACHMENTS}/0003.png`));
+			renderComposer();
+			const proj = folderFile();
+			const dropped = png("dropped.png");
+
+			fireEvent.drop(document.body, {
+				dataTransfer: {
+					types: ["Files"],
+					items: [item(proj, true), item(dropped, false)],
+					files: [proj, dropped],
+				},
+			});
+			await screen.findByRole("button", {name: "dropped.png"});
+
+			expect({uploads, chips: chipNames(), toasts: toasts.mock.calls}).toStrictEqual({
+				uploads: ["dropped.png"],
+				chips: ["dropped.png"],
+				toasts: [],
+			});
+		});
+
+		it("does nothing for a drop of only folders, but still keeps the browser from opening it", async () => {
+			mockUploads(savedAs(`${ATTACHMENTS}/0003.png`));
+			renderComposer();
+			const proj = folderFile();
+
+			const notPrevented = fireEvent.drop(document.body, {
+				dataTransfer: {types: ["Files"], items: [item(proj, true)], files: [proj]},
+			});
+			await Promise.resolve();
+
+			expect({notPrevented, uploads, chips: chipNames(), toasts: toasts.mock.calls}).toStrictEqual({
+				notPrevented: false,
+				uploads: [],
+				chips: [],
+				toasts: [],
+			});
+		});
+
+		it("pastes only the files beside a copied folder", async () => {
+			mockUploads(savedAs(`${ATTACHMENTS}/0003.png`));
+			renderComposer();
+			const proj = folderFile();
+			const shot = png("shot.png");
+
+			const notPrevented = fireEvent.paste(prompt(), {
+				clipboardData: {
+					getData: (type: string) => (type === "text/plain" ? "proj" : ""),
+					items: [item(proj, true), item(shot, false)],
+					files: [proj, shot],
+					types: ["Files", "text/plain"],
+				},
+			});
+			await screen.findByRole("button", {name: "shot.png"});
+
+			expect({notPrevented, uploads, prompt: prompt().value, toasts: toasts.mock.calls}).toStrictEqual({
+				notPrevented: false,
+				uploads: ["shot.png"],
+				prompt: "",
+				toasts: [],
+			});
+		});
+	});
+
 	it("opens the file picker from ⌘U and from + Add files or photos, and uploads the picks", async () => {
 		mockUploads(savedAs(`${ATTACHMENTS}/0004.png`));
 		renderComposer(CHIN);

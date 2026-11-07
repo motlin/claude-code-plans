@@ -40,6 +40,7 @@ import {
 	useRestoredChipIds,
 } from "../lib/context-attach";
 import {takeQueuedDiffComments, useDiffComments} from "../lib/diff-comments";
+import {splitDroppedItems} from "../lib/drop-collect";
 import type {SessionFilesEntry} from "../lib/api/session-files";
 import {
 	fileMentionMenuPosition,
@@ -1335,11 +1336,12 @@ export function Composer({
 	const dropState = useFileDropTarget({onFileDrop: attachFiles, targetRef: cardRef});
 
 	function handlePaste(e: React.ClipboardEvent) {
-		const files = Array.from(e.clipboardData.files);
-		if (files.length > 0) {
+		// Upstream's paste guard (`c1958b152` `_c`): a clipboard holding a folder isn't pasted as text, and only the
+		// files beside the folder attach.
+		const {folders, files} = splitDroppedItems(e.clipboardData.items, e.clipboardData.files);
+		if (files.length > 0 || folders.length > 0) {
 			e.preventDefault();
-			attachFiles(files);
-			return;
+			if (files.length > 0) attachFiles(files);
 		}
 	}
 
