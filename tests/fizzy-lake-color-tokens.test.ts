@@ -1,5 +1,6 @@
 import {readFileSync} from "node:fs";
 import {describe, expect, it} from "vite-plus/test";
+import {compileAll} from "./helpers/tailwind-design-system";
 
 const styles = readFileSync("src/styles/globals.css", "utf8");
 
@@ -295,6 +296,52 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () => 
 			utility: {"--shadow-lg": "var(--cds-shadow-lg)"},
 			light: {"--cds-shadow-lg": "0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(11 11 11 / 0.08)"},
 			dark: {"--cds-shadow-lg": "0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(0 0 0 / 0.24)"},
+		});
+	});
+
+	it("--control-ink is upstream's fizzy --cds-fizzy-lake-color-control-ink (text-primary), unset with color off", () => {
+		const names = ["--control-ink"] as const;
+		expect({
+			base: tokens(block(":root"), names),
+			light: tokens(block(FIZZY_LIGHT), names),
+			dark: tokens(block(FIZZY_DARK), names),
+		}).toStrictEqual({
+			base: {"--control-ink": null},
+			light: {"--control-ink": "var(--color-primary)"},
+			dark: {"--control-ink": null},
+		});
+	});
+
+	it("text-*-control utilities paint --control-ink with upstream's secondary / muted / currentColor fallbacks", () => {
+		expect({
+			secondary: tokens(block("@utility text-secondary-control"), ["color"]),
+			muted: tokens(block("@utility text-muted-control"), ["color"]),
+			current: tokens(block("@utility text-current-control"), ["color"]),
+		}).toStrictEqual({
+			secondary: {color: "var(--control-ink, var(--color-secondary))"},
+			muted: {color: "var(--control-ink, var(--color-ink-muted))"},
+			current: {color: "var(--control-ink, currentColor)"},
+		});
+	});
+
+	it("the text-*-control utilities compile, with upstream's hover / enabled:hover / important variants", async () => {
+		expect(
+			await compileAll([
+				"text-secondary-control",
+				"hover:text-secondary-control",
+				"enabled:hover:text-secondary-control",
+				"!text-muted-control",
+				"text-current-control",
+			]),
+		).toStrictEqual({
+			"text-secondary-control": ".text-secondary-control { color: var(--control-ink, var(--color-secondary)); }",
+			"hover:text-secondary-control":
+				"@media (hover: hover) { .hover\\:text-secondary-control:hover { color: var(--control-ink, var(--color-secondary)); } }",
+			"enabled:hover:text-secondary-control":
+				"@media (hover: hover) { .enabled\\:hover\\:text-secondary-control:enabled:hover { color: var(--control-ink, var(--color-secondary)); } }",
+			"!text-muted-control":
+				".\\!text-muted-control { color: var(--control-ink, var(--color-ink-muted)) !important; }",
+			"text-current-control": ".text-current-control { color: var(--control-ink, currentColor); }",
 		});
 	});
 });

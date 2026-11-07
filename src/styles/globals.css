@@ -850,6 +850,10 @@ html[data-interface-font="dyslexic"] {
    dropping `color` from FIZZY_LAKE_PARTS falls back to them. The light block outranks `.dark`, so
    a value that differs in dark is restated in the dark block. */
 :root[data-cds-fizzy-lake~="color"] {
+	/* Upstream `--control-ink: var(--cds-fizzy-lake-color-control-ink, var(--cds-text-primary))`
+	   (.9 light / .93 dark): the `text-*-control` utilities' ink. The dark value follows from
+	   `--upstream-text-primary`, so the dark block needs no restatement. */
+	--control-ink: var(--color-primary);
 	/* Upstream `--cds-bg-accent`, the same in both modes: selected mention and skill chips, pressed titlebar toggles. */
 	--upstream-accent-pressed: color-mix(in srgb, #257de0 12%, transparent);
 	/* Upstream `--cds-bg-accent-layer`, the same in both modes: the skill chip's hover layer. */
@@ -1069,6 +1073,22 @@ html[data-interface-font="dyslexic"] {
 /* Upstream claude.ai/code focus rings. `hide-focus-ring` has no rules of its own:
    it only opts an element out of the base `:focus-visible` outline below, and the
    element draws its own ring, usually `focus-visible:ring-focus` / `shadow-focus`. */
+/* Upstream `.text-{secondary,muted,current}-control`: control ink (text-primary under fizzy-lake
+   color), falling back to secondary / muted / currentColor with color off. Upstream resets
+   `[data-cds-theme] { --control-ink: initial }`; when local gains a `[data-cds-theme]` scope
+   (see tooltip-content-dark-scope-wrapper), add that reset too. */
+@utility text-secondary-control {
+	color: var(--control-ink, var(--color-secondary));
+}
+
+@utility text-muted-control {
+	color: var(--control-ink, var(--color-ink-muted));
+}
+
+@utility text-current-control {
+	color: var(--control-ink, currentColor);
+}
+
 /* Upstream `cursor-interactive`: the pointer cursor on chips and other clickable inline atoms. */
 @utility cursor-interactive {
 	cursor: pointer;
