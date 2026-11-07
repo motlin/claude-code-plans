@@ -59,6 +59,7 @@ import {THEME_INIT_SCRIPT} from "../lib/theme-init";
 import {startLaunchJourneys} from "../lib/perf/field-journeys";
 import {installPaletteFocusOrigin} from "../lib/palette-focus-origin";
 import {installVisualViewportHeight} from "../lib/visual-viewport-height";
+import {installViewportHeightAttributes} from "../lib/viewport-height-attributes";
 
 export const Route = createRootRouteWithContext<{queryClient: QueryClient}>()({
 	ssr: false,
@@ -173,6 +174,10 @@ function RootLayout({children}: Readonly<{children: ReactNode}>) {
 	}, []);
 	// Fit the app frame above the soft keyboard on touch devices.
 	useEffect(() => installVisualViewportHeight(), []);
+	// Mark short viewports on <body> (data-vh-max-400/420/520) for the vh-max-N: variants.
+	useEffect(() => {
+		installViewportHeightAttributes(document);
+	}, []);
 	// Remember the last focus outside the command palette, which "Jump to question" cycles from.
 	useEffect(() => installPaletteFocusOrigin(document), []);
 
