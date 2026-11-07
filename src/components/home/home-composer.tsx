@@ -1,6 +1,6 @@
 import {useQuery} from "@tanstack/react-query";
 import {useNavigate} from "@tanstack/react-router";
-import {useEffect, useMemo, useRef, useState} from "react";
+import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {HOME_DOCK_CLASS} from "../dock-tokens";
 
 import {useActiveSessionsIfAvailable} from "../../hooks/use-claude-events";
@@ -8,7 +8,10 @@ import {useSlashCommands} from "../../hooks/use-slash-commands";
 import {promptHistoryQueryOptions} from "../../lib/api/prompt-history";
 import {composerDefaultsQueryOptions} from "../../lib/api/composer-defaults";
 import {homeFolderStatusQueryOptions} from "../../lib/api/home-folder-status";
-import {launchHerdrSession} from "../../lib/api/herdr";
+import {HerdrRequestError, isNoTerminalHost, launchHerdrSession} from "../../lib/api/herdr";
+import {getComposerText, refillRejectedSend, restoreRejectedAttachments} from "../../lib/context-attach";
+import {restoreStoredDraft} from "../../hooks/use-composer-draft";
+import {startFailedOffscreenToast, type StartFailure} from "../../lib/send-rejection";
 import {buildClaudeCopyCommand} from "../../lib/claude-launch-command";
 import {writeClipboardText} from "../../lib/clipboard";
 import {resolveComposerState} from "../../lib/composer-state";
@@ -21,6 +24,8 @@ import {
 import {findLaunchedSession, type PendingLaunch} from "../../lib/palette-start-session";
 import {assignLaunchedSession, setPendingLaunchGroup} from "../../lib/session-group-store";
 import {Composer} from "../composer";
+import {SendRejectedCard} from "../send-rejected-card";
+import {useSendRejectionActions} from "../use-send-rejection-actions";
 import {useToast} from "../toast-context";
 import {UsagePaceBanner} from "../usage-pace-banner";
 import {useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
@@ -45,6 +50,26 @@ export function HomeComposer({
 	const {data: defaults} = useQuery(composerDefaultsQueryOptions);
 	const [pendingLaunch, setPendingLaunch] = useState<(PendingLaunch & {worktree: boolean}) | null>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
+	// Upstream keeps the failed start's display error in memory only: a reload or remount drops the card.
+	const [startFailure, setStartFailure] = useState<StartFailure | null>(null);
+	const mountedRef = useRef(true);
+	useEffect(() => {
+		mountedRef.current = true;
+		return () => {
+			mountedRef.current = false;
+		};
+	}, []);
+	const rejection = useMemo(
+		() =>
+			startFailure === null
+				? null
+				: {prompt: startFailure.restoredDraft, message: startFailure.message, nonResendable: false},
+		[startFailure],
+	);
+	const clearStartFailure = useCallback(() => {
+		setStartFailure(null);
+	}, []);
+	const {retryRejection, dismissRejection} = useSendRejectionActions("home", rejection, clearStartFailure);
 
 	const {
 		projects: startProjects,
@@ -106,6 +131,21 @@ export function HomeComposer({
 		void navigate({to: "/session/$id", params: {id}});
 	}, [pendingLaunch, activeSessions, navigate]);
 
+	/**
+	 * Upstream's failed-start restore: the prompt and its tiles go back into the composer under the
+	 * start-failed card, or, when home has unmounted, into the stored draft with a toast.
+	 */
+	function restoreFailedStart(prompt: string, error: unknown) {
+		if (!mountedRef.current) {
+			restoreStoredDraft("home", restoreRejectedAttachments("home", prompt) ?? prompt);
+			toast({kind: "error", message: startFailedOffscreenToast({promptIsBack: prompt.trim() !== ""})});
+			return;
+		}
+		refillRejectedSend("home", prompt);
+		const message = error instanceof Error && error.message !== "" ? error.message : "Send failed";
+		setStartFailure({message, restoredDraft: getComposerText("home") ?? prompt});
+	}
+
 	/** `stay` (⌘⏎) launches without opening the session, leaving home ready for the next prompt. */
 	async function launch(prompt: string, launchOptions: LaunchOptions, stay = false) {
 		if (project === undefined) {
@@ -115,6 +155,8 @@ export function HomeComposer({
 		const args = buildLaunchFlags(worktree.useWorktree ? {...launchOptions, worktree: true} : launchOptions);
 		const request = {cwd: project.projectPath, prompt, ...(args.length > 0 ? {args} : {})};
 		const since = Date.now();
+		// A new start clears the last failure's card, as upstream does.
+		setStartFailure(null);
 		setLaunching(true);
 		try {
 			const {sessionId} = await launchHerdrSession(request);
@@ -127,13 +169,22 @@ export function HomeComposer({
 			} else {
 				setPendingLaunch({cwd: request.cwd, since, sessionId, worktree: worktree.useWorktree});
 			}
-		} catch {
-			const copied = await writeClipboardText(buildClaudeCopyCommand(request));
-			toast(
-				copied
-					? {kind: "success", message: "Copied command — no terminal to launch in"}
-					: {kind: "error", message: "Couldn’t start a session. Try again."},
-			);
+		} catch (error) {
+			// Without a terminal host the shell command is the way to start; a copy that fails falls back to the card.
+			if (isNoTerminalHost(error) && (await writeClipboardText(buildClaudeCopyCommand(request)))) {
+				toast({kind: "success", message: "Copied command — no terminal to launch in"});
+				return;
+			}
+			restoreFailedStart(prompt, error);
+			// claude started before its prompt failed: open its session once it shows up, as upstream keeps a created session.
+			if (
+				mountedRef.current &&
+				error instanceof HerdrRequestError &&
+				error.code === "agent_prompt_failed" &&
+				error.sessionId !== undefined
+			) {
+				setPendingLaunch({cwd: request.cwd, since, sessionId: error.sessionId, worktree: worktree.useWorktree});
+			}
 		} finally {
 			setLaunching(false);
 		}
@@ -144,6 +195,14 @@ export function HomeComposer({
 			{/* Upstream's home sets the weekly pace banner above the composer */}
 			<div className="pb-1.5 empty:hidden">
 				<UsagePaceBanner />
+				{rejection !== null && (
+					<SendRejectedCard
+						rejection={rejection}
+						onRetry={retryRejection}
+						onDismiss={dismissRejection}
+						data={{"data-start-failed": ""}}
+					/>
+				)}
 			</div>
 			<Composer
 				variant="home"

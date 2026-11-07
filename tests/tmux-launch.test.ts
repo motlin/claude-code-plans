@@ -213,7 +213,7 @@ describe("tmux host launch", () => {
 
 		expect({status: response.status, body: await response.json()}).toStrictEqual({
 			status: 502,
-			body: {error: "no server running on /private/tmp/tmux-501/default"},
+			body: {error: "no server running on /private/tmp/tmux-501/default", code: "tmux-failed"},
 		});
 	});
 });

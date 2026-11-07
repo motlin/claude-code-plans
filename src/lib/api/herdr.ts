@@ -47,16 +47,26 @@ export type HerdrPaneIndexData = z.infer<typeof HerdrPaneIndexResponse>;
 const HerdrPromptSuccessResponse = z.object({ok: z.literal(true)}).strict();
 const HerdrPromptErrorResponse = z.object({error: z.string(), code: z.string().optional()}).strict();
 
-/** A rejected herdr write, with the HTTP status and herdr's error code when it sent one. */
+/**
+ * A rejected herdr write, with the HTTP status and herdr's error code when it sent one. `sessionId` names
+ * the claude a launch started before its prompt failed.
+ */
 export class HerdrRequestError extends Error {
 	constructor(
 		message: string,
 		readonly status: number,
 		readonly code: string | undefined,
+		readonly sessionId?: string | undefined,
 	) {
 		super(message);
 		this.name = "HerdrRequestError";
 	}
+}
+
+/** No terminal to launch in: herdr is unreachable, its writes are disabled, or the request never reached the server. */
+export function isNoTerminalHost(error: unknown): boolean {
+	if (!(error instanceof HerdrRequestError)) return true;
+	return error.code === "connect-failed" || (error.status === 403 && error.code === undefined);
 }
 
 /** The server holds no permission prompt for the session: the card answered is already gone. */
@@ -110,6 +120,10 @@ const HerdrLaunchSuccessResponse = z
 	})
 	.strict();
 
+const HerdrLaunchErrorResponse = z
+	.object({error: z.string(), code: z.string().optional(), sessionId: z.string().nullable().optional()})
+	.strict();
+
 export type HerdrLaunchResponse = z.infer<typeof HerdrLaunchSuccessResponse>;
 
 /** Start `claude` (with `prompt` and/or `args`) in a new herdr tab rooted at `cwd`; throws when herdr cannot. */
@@ -126,7 +140,8 @@ export async function launchHerdrSession(
 	const json: unknown = await response.json();
 
 	if (!response.ok) {
-		throw new Error(HerdrPromptErrorResponse.parse(json).error);
+		const {error, code, sessionId} = HerdrLaunchErrorResponse.parse(json);
+		throw new HerdrRequestError(error, response.status, code, sessionId ?? undefined);
 	}
 
 	return HerdrLaunchSuccessResponse.parse(json);

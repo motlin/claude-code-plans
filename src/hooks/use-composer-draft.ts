@@ -66,6 +66,11 @@ function writeDraft(draftKey: string, text: string, bashMode: boolean): void {
 	});
 }
 
+/** Puts a prompt back in the stored draft while its composer is unmounted, so it comes back on the next mount. */
+export function restoreStoredDraft(draftKey: string, text: string): void {
+	storeDraft(draftKey, {text});
+}
+
 /** Records a rejected prompt in the draft, so the send-rejected card comes back after a reload. */
 export function markFailedSend(draftKey: string, prompt: string): void {
 	storeDraft(draftKey, {text: prompt, failedSend: prompt});

@@ -31,3 +31,16 @@ export function sendRejectedCopy({nonResendable}: {nonResendable: boolean}): Sen
 export function mergeRefill(rejected: string, current: string): string {
 	return current.trim() === "" ? rejected : `${rejected}\n\n${current}`;
 }
+
+/** A failed home launch: the herdr reason and the prompt put back in the composer (upstream `restoredDraft`). */
+export interface StartFailure {
+	message: string;
+	restoredDraft: string;
+}
+
+/** Upstream `Tr`'s toast when a new session fails to start after the user left the New session page. */
+export function startFailedOffscreenToast({promptIsBack}: {promptIsBack: boolean}): string {
+	return promptIsBack
+		? "Your new session couldn’t start. Your prompt is back on the New session page."
+		: "Your new session couldn’t start.";
+}

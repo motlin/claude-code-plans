@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {mergeRefill, rejectedRetryAction, sendRejectedCopy} from "../src/lib/send-rejection";
+import {mergeRefill, rejectedRetryAction, sendRejectedCopy, startFailedOffscreenToast} from "../src/lib/send-rejection";
 
 describe("rejectedRetryAction", () => {
 	it("resends when the composer still holds the rejected prompt", () => {
@@ -40,5 +40,17 @@ describe("mergeRefill", () => {
 
 	it("puts the rejected prompt above newer text", () => {
 		expect(mergeRefill("hi", "new")).toEqual("hi\n\nnew");
+	});
+});
+
+describe("startFailedOffscreenToast", () => {
+	it("says the prompt is back on the New session page when the draft held text", () => {
+		expect(startFailedOffscreenToast({promptIsBack: true})).toStrictEqual(
+			"Your new session couldn’t start. Your prompt is back on the New session page.",
+		);
+	});
+
+	it("says only that the session couldn't start when nothing came back", () => {
+		expect(startFailedOffscreenToast({promptIsBack: false})).toStrictEqual("Your new session couldn’t start.");
 	});
 });

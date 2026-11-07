@@ -26,6 +26,7 @@ import {HomeDock} from "../src/components/home/home-dock";
 import {Route as HomeRoute, validateHomeSearch} from "../src/routes/index";
 import {SSE_EVENTS} from "../src/lib/hook-events";
 import {HOME_WORKTREE_STORAGE_KEY} from "../src/lib/home-worktree-pref";
+import {attachContext, getContextChips, removeContextChip} from "../src/lib/context-attach";
 import {createGroup, readSessionGroupState, setPendingLaunchGroup} from "../src/lib/session-group-store";
 import {installLocalStorage} from "./fake-storage";
 
@@ -713,6 +714,196 @@ describe("HomeComposer", () => {
 			]);
 		});
 		expect((await findToast()).textContent).toContain("Copied command — no terminal to launch in");
+	});
+
+	describe("a failed launch", () => {
+		const failedLaunch = async () =>
+			Promise.resolve(Response.json({error: "herdr agent.start timed out", code: "timeout"}, {status: 502}));
+		const card = () => document.querySelector("[data-home-composer] [data-testid=send-rejected-card]");
+		const textarea = () => screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Prompt"});
+
+		afterEach(() => {
+			for (const chip of getContextChips("home")) removeContextChip("home", chip.id);
+		});
+
+		async function sendAndFail(prompt = "fix the flaky test") {
+			launchResponse = failedLaunch;
+			await renderApp();
+			await typePrompt(prompt);
+			fireEvent.click(screen.getByRole("button", {name: "Send"}));
+			await waitFor(() => {
+				expect(card()).not.toBeNull();
+			});
+		}
+
+		it("puts the prompt back and shows the start-failed card above the composer without a toast or clipboard write", async () => {
+			await sendAndFail();
+
+			const shown = card();
+			expect({
+				value: textarea().value,
+				startFailed: shown?.hasAttribute("data-start-failed"),
+				alert: shown?.querySelector("[role=alert]")?.textContent,
+				message: shown?.querySelector("[data-send-rejected-message]")?.textContent,
+				nextHoldsComposer:
+					shown?.parentElement?.nextElementSibling?.querySelector("[data-composer-card]") !== null,
+				toast: screen
+					.queryAllByRole("status")
+					.filter((each) => !each.hasAttribute("data-skill-arg-hint-sr") && each.textContent !== "").length,
+				clipboard: writeText.mock.calls,
+			}).toStrictEqual({
+				value: "fix the flaky test",
+				startFailed: true,
+				alert: "Something went wrong Try sending your message again. If it keeps failing, the error details show why.",
+				message: "herdr agent.start timed out",
+				nextHoldsComposer: true,
+				toast: 0,
+				clipboard: [],
+			});
+		});
+
+		it("relaunches the unchanged prompt from Try again, clearing the card while the launch is pending", async () => {
+			await sendAndFail();
+			launchResponse = async () => new Promise<Response>(() => {});
+
+			fireEvent.click(screen.getByRole("button", {name: "Try again"}));
+
+			await waitFor(() => {
+				expect(launchCalls.length).toBe(2);
+			});
+			expect({card: card(), bodies: launchCalls.map(launchBody)}).toStrictEqual({
+				card: null,
+				bodies: [
+					{cwd: "/users/dev/it's", prompt: "fix the flaky test"},
+					{cwd: "/users/dev/it's", prompt: "fix the flaky test"},
+				],
+			});
+		});
+
+		it("focuses the edited prompt from Try again without relaunching", async () => {
+			await sendAndFail();
+			fireEvent.change(textarea(), {target: {value: "fix the flaky test now"}});
+
+			fireEvent.click(screen.getByRole("button", {name: "Try again"}));
+
+			expect({
+				launches: launchCalls.length,
+				focused: document.activeElement === textarea(),
+				value: textarea().value,
+				card: card(),
+			}).toStrictEqual({launches: 1, focused: true, value: "fix the flaky test now", card: null});
+		});
+
+		it("keeps the prompt when the card is dismissed", async () => {
+			await sendAndFail();
+
+			fireEvent.click(screen.getByRole("button", {name: "Dismiss"}));
+
+			expect({card: card(), value: textarea().value}).toStrictEqual({card: null, value: "fix the flaky test"});
+		});
+
+		it("still copies the command when herdr itself can't be reached", async () => {
+			launchResponse = async () =>
+				Promise.resolve(Response.json({error: "connect ENOENT", code: "connect-failed"}, {status: 502}));
+			await renderApp();
+			await typePrompt("hello");
+
+			fireEvent.click(screen.getByRole("button", {name: "Send"}));
+
+			expect((await findToast()).textContent).toContain("Copied command — no terminal to launch in");
+			expect({card: card(), clipboard: writeText.mock.calls}).toStrictEqual({
+				card: null,
+				clipboard: [[`cd '/users/dev/it'\\''s' && claude 'hello'`]],
+			});
+		});
+
+		it("restores the prompt's context tile and relaunches with it", async () => {
+			launchResponse = failedLaunch;
+			await renderApp();
+			await typePrompt("explain this");
+			act(() => {
+				attachContext("home", {kind: "excerpt", text: "Hermit crabs"});
+			});
+			fireEvent.click(screen.getByRole("button", {name: "Send"}));
+			await waitFor(() => {
+				expect(card()).not.toBeNull();
+			});
+			const firstPrompt = (launchBody(launchCalls[0]) as {prompt: string}).prompt;
+			const restored = getContextChips("home").map((chip) => chip.kind);
+			const value = textarea().value;
+			launchResponse = async () => new Promise<Response>(() => {});
+
+			fireEvent.click(screen.getByRole("button", {name: "Try again"}));
+
+			await waitFor(() => {
+				expect(launchCalls.length).toBe(2);
+			});
+			expect({
+				restored,
+				value,
+				carriedExcerpt: firstPrompt.includes("Hermit crabs"),
+				resent: (launchBody(launchCalls[1]) as {prompt: string}).prompt,
+			}).toStrictEqual({restored: ["excerpt"], value: "explain this", carriedExcerpt: true, resent: firstPrompt});
+		});
+
+		it("puts the prompt back in the stored draft with a toast when home was left before the launch failed", async () => {
+			let fail: () => void = () => {};
+			launchResponse = async () =>
+				new Promise<Response>((resolve) => {
+					fail = () => {
+						resolve(Response.json({error: "herdr agent.start timed out", code: "timeout"}, {status: 502}));
+					};
+				});
+			const {router} = await renderApp();
+			await typePrompt("fix the flaky test");
+			fireEvent.click(screen.getByRole("button", {name: "Send"}));
+			await waitFor(() => {
+				expect(launchCalls.length).toBe(1);
+			});
+			act(() => {
+				router.history.push("/elsewhere");
+			});
+			await screen.findByRole("button", {name: "Elsewhere"});
+
+			act(() => {
+				fail();
+			});
+
+			await waitFor(() => {
+				expect(document.querySelector("[data-focus-region=notifications] [role=alert]")?.textContent).toBe(
+					"Your new session couldn’t start. Your prompt is back on the New session page.",
+				);
+			});
+			const stored: unknown = JSON.parse(localStorage.getItem("ccp-composer-draft:home") ?? "null");
+			await act(async () => router.navigate({to: "/"}));
+			await waitFor(() => {
+				expect(textarea().value).toBe("fix the flaky test");
+			});
+			expect({stored, card: card()}).toStrictEqual({stored: {text: "fix the flaky test"}, card: null});
+		});
+
+		it("shows the card without copying the command when claude started but the prompt didn't arrive", async () => {
+			launchResponse = async () =>
+				Promise.resolve(
+					Response.json(
+						{error: "Fabricated pane gone", code: "agent_prompt_failed", sessionId: "s-started"},
+						{status: 502},
+					),
+				);
+			await renderApp();
+			await typePrompt("hello");
+
+			fireEvent.click(screen.getByRole("button", {name: "Send"}));
+
+			await waitFor(() => {
+				expect(card()).not.toBeNull();
+			});
+			expect({
+				message: card()?.querySelector("[data-send-rejected-message]")?.textContent,
+				value: textarea().value,
+				clipboard: writeText.mock.calls,
+			}).toStrictEqual({message: "Fabricated pane gone", value: "hello", clipboard: []});
+		});
 	});
 
 	it("focuses the composer on ⇧⌘O while already home", async () => {

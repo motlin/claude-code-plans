@@ -59,8 +59,13 @@ export interface HerdrLaunchDependencies {
 	launchClaude?: (
 		launch: LaunchClaudeRequest,
 		dependencies: Pick<HerdrLaunchDependencies, "request" | "createLaunchId" | "wait" | "launchServer">,
-	) => Promise<HerdrResult<HerdrLaunchResult>>;
+	) => Promise<HerdrLaunchOutcome>;
 }
+
+/** A launch whose prompt failed after `agent.start` names the session it left running. */
+export type HerdrLaunchOutcome =
+	| HerdrResult<HerdrLaunchResult>
+	| {ok: false; code: "agent_prompt_failed"; message: string; sessionId: string | null};
 
 export const defaultHerdrLaunchDependencies: HerdrLaunchDependencies = {
 	rejectRequest: rejectCrossSite,
@@ -92,7 +97,7 @@ async function launchClaudeInHerdr(
 		wait,
 		launchServer,
 	}: Pick<HerdrLaunchDependencies, "request" | "createLaunchId" | "wait" | "launchServer">,
-): Promise<HerdrResult<HerdrLaunchResult>> {
+): Promise<HerdrLaunchOutcome> {
 	const launchId = createLaunchId();
 	const requestId = (method: string) => `ccp:launch:${launchId}:${method}`;
 
@@ -151,7 +156,15 @@ async function launchClaudeInHerdr(
 			await wait(PROMPT_RETRY_DELAY_MS);
 			promptResponse = await request(promptRequest);
 		}
-		if (!promptResponse.ok) return promptResponse;
+		// claude is running in its tab, so the tab stays open and the client can still open the session.
+		if (!promptResponse.ok) {
+			return {
+				ok: false,
+				code: "agent_prompt_failed",
+				message: promptResponse.message,
+				sessionId: started.data.agent.agent_session?.value ?? null,
+			};
+		}
 	}
 
 	return {
@@ -197,7 +210,13 @@ export async function handleHerdrLaunch(
 	const launchClaude = dependencies.launchClaude ?? launchClaudeInHerdr;
 	const result = await launchClaude({...parsed.data, cwd: parsed.data.cwd ?? dependencies.homeDir()}, dependencies);
 	if (!result.ok) {
-		return Response.json({error: result.message}, {status: errorStatus(result.code)});
+		if ("sessionId" in result) {
+			return Response.json(
+				{error: result.message, code: result.code, sessionId: result.sessionId},
+				{status: errorStatus(result.code)},
+			);
+		}
+		return Response.json({error: result.message, code: result.code}, {status: errorStatus(result.code)});
 	}
 
 	return Response.json({ok: true, ...result.value});

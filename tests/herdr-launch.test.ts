@@ -333,7 +333,7 @@ describe("herdr launch write handler", () => {
 		});
 	});
 
-	it("gives up on the prompt after herdr stays not-ready", async () => {
+	it("gives up on the prompt after herdr stays not-ready and reports the started session", async () => {
 		const methods: string[] = [];
 		const sendRequest: HerdrRequester = async (requestValue) => {
 			const method = (requestValue as {method: string}).method;
@@ -352,7 +352,10 @@ describe("herdr launch write handler", () => {
 			response: await describeResponse(response),
 			promptAttempts: methods.filter((method) => method === "agent.prompt").length,
 		}).toStrictEqual({
-			response: {body: {error: "Fabricated never ready"}, status: 409},
+			response: {
+				body: {error: "Fabricated never ready", code: "agent_prompt_failed", sessionId: "session-test-200"},
+				status: 502,
+			},
 			promptAttempts: 20,
 		});
 	});
@@ -374,13 +377,46 @@ describe("herdr launch write handler", () => {
 			closeRequest: herdr.requests[2]?.request,
 			requestCount: herdr.requests.length,
 		}).toStrictEqual({
-			response: {body: {error: "Fabricated startup stall"}, status: 409},
+			response: {body: {error: "Fabricated startup stall", code: "agent_not_ready"}, status: 409},
 			closeRequest: {
 				id: "ccp:launch:test100:tab.close",
 				method: "tab.close",
 				params: {tab_id: "w100:t100"},
 			},
 			requestCount: 3,
+		});
+	});
+
+	it("reports herdr's failure code with the error", async () => {
+		const response = await handleHerdrLaunch(
+			request({cwd: "/Users/alice/project", prompt: "hello"}),
+			dependencies({launchClaude: async () => Promise.resolve({ok: false, code: "timeout", message: "x"})}),
+		);
+
+		expect(await describeResponse(response)).toStrictEqual({body: {error: "x", code: "timeout"}, status: 502});
+	});
+
+	it("keeps the started claude's tab open and names its session when the prompt can't be delivered", async () => {
+		const herdr = fakeHerdr({
+			"tab.create": {ok: true, value: tabCreated},
+			"agent.start": {ok: true, value: agentStarted(["claude"])},
+			"agent.prompt": {ok: false, code: "pane-not-found", message: "Fabricated pane gone"},
+		});
+
+		const response = await handleHerdrLaunch(
+			request({cwd: "/Users/alice/project", prompt: "hello"}),
+			dependencies({request: herdr.requester}),
+		);
+
+		expect({
+			response: await describeResponse(response),
+			methods: herdr.requests.map(({request: sent}) => (sent as {method: string}).method),
+		}).toStrictEqual({
+			response: {
+				body: {error: "Fabricated pane gone", code: "agent_prompt_failed", sessionId: "session-test-200"},
+				status: 502,
+			},
+			methods: ["tab.create", "agent.start", "agent.prompt"],
 		});
 	});
 
@@ -396,7 +432,7 @@ describe("herdr launch write handler", () => {
 			response: await describeResponse(response),
 			requestCount: herdr.requests.length,
 		}).toStrictEqual({
-			response: {body: {error: "herdr returned an invalid tab.create result"}, status: 502},
+			response: {body: {error: "herdr returned an invalid tab.create result", code: "bad-response"}, status: 502},
 			requestCount: 1,
 		});
 	});

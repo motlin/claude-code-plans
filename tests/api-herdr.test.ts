@@ -3,7 +3,10 @@ import {
 	HerdrPaneIndexResponse,
 	fetchHerdrElicitationDialog,
 	herdrPanesQueryOptions,
+	HerdrRequestError,
+	isNoTerminalHost,
 	isPermissionNotPending,
+	launchHerdrSession,
 	sendHerdrElicitationDecision,
 	sendHerdrPermissionDecision,
 	sendHerdrPrompt,
@@ -265,5 +268,71 @@ describe("sendHerdrPermissionDecision", () => {
 			message: error instanceof Error ? error.message : null,
 			notPending: isPermissionNotPending(error),
 		}).toStrictEqual({message: "This permission request has no persistent allow option", notPending: false});
+	});
+});
+
+describe("launchHerdrSession", () => {
+	async function launchError(status: number, body: object): Promise<unknown> {
+		const fetcher = vi.fn<typeof fetch>();
+		fetcher.mockResolvedValue(Response.json(body, {status}));
+		return launchHerdrSession({cwd: "/tmp/test/project", prompt: "hi"}, fetcher).catch((caught: unknown) => caught);
+	}
+
+	function describeError(error: unknown) {
+		return error instanceof HerdrRequestError
+			? {
+					message: error.message,
+					status: error.status,
+					code: error.code,
+					sessionId: error.sessionId,
+					noTerminalHost: isNoTerminalHost(error),
+				}
+			: null;
+	}
+
+	it("rejects with herdr's code so an unreachable herdr reads as no terminal host", async () => {
+		expect(describeError(await launchError(502, {error: "x", code: "connect-failed"}))).toStrictEqual({
+			message: "x",
+			status: 502,
+			code: "connect-failed",
+			sessionId: undefined,
+			noTerminalHost: true,
+		});
+	});
+
+	it("treats a herdr launch error as a real failure, not a missing terminal", async () => {
+		expect(describeError(await launchError(502, {error: "x", code: "timeout"}))).toStrictEqual({
+			message: "x",
+			status: 502,
+			code: "timeout",
+			sessionId: undefined,
+			noTerminalHost: false,
+		});
+	});
+
+	it("treats disabled herdr writes as no terminal host", async () => {
+		expect(describeError(await launchError(403, {error: "herdr writes are disabled"}))).toStrictEqual({
+			message: "herdr writes are disabled",
+			status: 403,
+			code: undefined,
+			sessionId: undefined,
+			noTerminalHost: true,
+		});
+	});
+
+	it("carries the started session's id when only the prompt failed", async () => {
+		expect(
+			describeError(await launchError(502, {error: "x", code: "agent_prompt_failed", sessionId: "s1"})),
+		).toStrictEqual({
+			message: "x",
+			status: 502,
+			code: "agent_prompt_failed",
+			sessionId: "s1",
+			noTerminalHost: false,
+		});
+	});
+
+	it("treats a network failure as no terminal host", () => {
+		expect(isNoTerminalHost(new TypeError("Failed to fetch"))).toBe(true);
 	});
 });

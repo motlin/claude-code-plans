@@ -51,18 +51,18 @@
 		"raisedAt": "2026-11-02"
 	},
 	"bundle.home.gzip": {
-		"ceiling": 431271,
+		"ceiling": 436665,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Fizzy-lake panels fine-pointer controls (2026-11-03): the shared Menu and the Artifacts/Routines toolbar gain panels-fine: classes (28px rows, 6px gutter, 14px popup radius, 28x28 r8 toolbar controls), which pushed the measurement 23 bytes past the 1% tolerance; the rest of the climb since 2026-11-02 is the Artifacts gallery port (Filter and sort menu, cards, empty state). Went from 426978 to 431271. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-03"
+		"reason": "Home start-failed card (2026-11-07): a failed home launch now restores the prompt under upstream's session-error card, so the home dock statically loads SendRejectedCard (ErrorCardShell, ApprovalActionButton), the retry/dismiss hook and the HerdrRequestError launch parsing. Went from 431271 to 436665. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-07"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1305089,
+		"ceiling": 1321491,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Artifacts gallery delta (2026-11-03): upstream's Filter and sort menu adds the leading-checkbox MenuCheckboxItem variant and the MenuRadioItem disabled-reason row to the shared menu primitives, the gallery's comma-list search parsing runs in the route's validateSearch, and the strip tiles' hue classes ride the template catalog, on top of the growth since the 2026-11-02 sidebar sections raise. Went from 1290676 to 1305089. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-03"
+		"reason": "Home start-failed card (2026-11-07): a failed home launch now restores the prompt under upstream's session-error card, so the home dock statically loads SendRejectedCard (ErrorCardShell, ApprovalActionButton), the retry/dismiss hook and the HerdrRequestError launch parsing. Went from 1305089 to 1321491. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-07"
 	},
 	"bundle.session.gzip": {
 		"ceiling": 673807,
