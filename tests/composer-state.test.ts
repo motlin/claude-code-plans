@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from "vite-plus/test";
-import {StatuslineSchema, type Statusline} from "../src/lib/api/statusline";
+import {StatuslineRateLimitsStrictSchema, StatuslineSchema, type Statusline} from "../src/lib/api/statusline";
 import {
 	type ComposerStateSources,
 	formatResetLabel,
@@ -482,13 +482,47 @@ describe("StatuslineSchema rate_limits", () => {
 		});
 	});
 
-	it("rejects unknown keys inside rate_limits", () => {
+	it("keeps unknown keys inside rate_limits at runtime", () => {
 		expect(
-			StatuslineSchema.safeParse({
-				rate_limits: {five_hour: {used_percentage: 1, resets_at: 1, extra: true}},
+			StatuslineSchema.parse({
+				rate_limits: {
+					five_hour: {used_percentage: 1, resets_at: 1, extra: true},
+					monthly: {used_percentage: 2, resets_at: 3},
+				},
+			}).rate_limits,
+		).toStrictEqual({
+			five_hour: {used_percentage: 1, resets_at: 1, extra: true},
+			monthly: {used_percentage: 2, resets_at: 3},
+		});
+	});
+
+	it("rejects unknown keys inside rate_limits in the strict schema", () => {
+		expect(
+			StatuslineRateLimitsStrictSchema.safeParse({
+				five_hour: {used_percentage: 1, resets_at: 1, extra: true},
 			}).success,
 		).toBe(false);
-		expect(StatuslineSchema.safeParse({rate_limits: {monthly: {}}}).success).toBe(false);
+		expect(StatuslineRateLimitsStrictSchema.safeParse({monthly: {}}).success).toBe(false);
+		expect(
+			StatuslineRateLimitsStrictSchema.safeParse({
+				spend_limit: {used_percentage: 12, resets_at: 1_794_300_000, used_usd: 3.5, limit_usd: 50, extra: 1},
+			}).success,
+		).toBe(false);
+	});
+
+	it("accepts every known window in the strict schema", () => {
+		const rateLimits = {
+			five_hour: {used_percentage: 1, resets_at: 1},
+			seven_day: {used_percentage: 2, resets_at: 2},
+			spend_limit: {
+				used_percentage: 12,
+				resets_at: 1_794_300_000,
+				used_usd: 3.5,
+				limit_usd: 50,
+				period: "monthly",
+			},
+		};
+		expect(StatuslineRateLimitsStrictSchema.parse(rateLimits)).toStrictEqual(rateLimits);
 	});
 });
 
@@ -519,6 +553,31 @@ describe("getComposerState", () => {
 			statuslineUpdatedAt: "2026-09-29T09:00:00.000Z",
 		});
 		expect(readStatusline.mock.calls).toStrictEqual([["alice-session"]]);
+	});
+
+	it("keeps the statusline when rate_limits gains a key the schema does not know", async () => {
+		const json = {
+			...ALICE_STATUSLINE,
+			rate_limits: {
+				seven_day: {used_percentage: 46, resets_at: 1_794_297_600},
+				spend_limit: {
+					used_percentage: 12,
+					resets_at: 1_794_300_000,
+					used_usd: 3.5,
+					limit_usd: 50,
+					period: "monthly",
+				},
+				seven_day_fable: {used_percentage: 5, resets_at: 1_794_297_600},
+			},
+		};
+		const result = await getComposerState("erin-session", {
+			readStatusline: async () => Promise.resolve({json, mtimeMs: Date.parse("2026-09-29T09:00:00.000Z")}),
+			readSettings: async () => Promise.resolve({}),
+		});
+		expect({statusline: result.statusline, statuslineUpdatedAt: result.statuslineUpdatedAt}).toStrictEqual({
+			statusline: json,
+			statuslineUpdatedAt: "2026-09-29T09:00:00.000Z",
+		});
 	});
 
 	it("returns nulls when files are missing or invalid", async () => {

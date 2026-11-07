@@ -83,6 +83,20 @@ describe("StatuslineSchema", () => {
 		});
 	});
 
+	it("keeps the snapshot when rate_limits gains a window the schema does not know", () => {
+		const parsed = StatuslineSchema.safeParse({
+			context_window: {context_window_size: 200_000, used_percentage: 3},
+			rate_limits: {
+				seven_day: {used_percentage: 40, resets_at: 1_794_297_600},
+				seven_day_fable: {used_percentage: 5, resets_at: 1_794_297_600},
+			},
+		});
+		expect({success: parsed.success, usedPercentage: parsed.data?.context_window?.used_percentage}).toStrictEqual({
+			success: true,
+			usedPercentage: 3,
+		});
+	});
+
 	it("preserves unknown fields from future Claude Code releases", () => {
 		const statuslineWithUnknownFields = {
 			...CAPTURED_STATUSLINE,

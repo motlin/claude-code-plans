@@ -61,6 +61,32 @@ describe("GET /api/usage", () => {
 		});
 	});
 
+	it("reads the newest statusline when its rate_limits carry a gateway spend_limit", async () => {
+		await writeStatusline("old-session.json", {rate_limits: RATE_LIMITS}, 1_700_000_000);
+		await writeStatusline(
+			"new-session.json",
+			{
+				rate_limits: {
+					seven_day: {used_percentage: 46, resets_at: 1_794_297_600},
+					spend_limit: {
+						used_percentage: 12,
+						resets_at: 1_794_300_000,
+						used_usd: 3.5,
+						limit_usd: 50,
+						period: "monthly",
+					},
+				},
+			},
+			1_700_000_100,
+		);
+
+		expect(await requestUsage(directory)).toStrictEqual({
+			fiveHour: null,
+			sevenDay: {usedPct: 46, resetsAt: 1_794_297_600},
+			updatedAt: new Date(1_700_000_100_000).toISOString(),
+		});
+	});
+
 	it("returns null windows when the newest statusline has no rate_limits", async () => {
 		await writeStatusline("old-session.json", {rate_limits: RATE_LIMITS}, 1_700_000_000);
 		await writeStatusline("new-session.json", {model: {id: "m"}}, 1_700_000_100);

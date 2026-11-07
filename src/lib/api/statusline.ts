@@ -2,9 +2,38 @@ import {z} from "zod";
 
 export const SESSION_ID_PATTERN = /^[a-z0-9-]+$/;
 
-const RateLimitWindowSchema = z.strictObject({
+const rateLimitWindowFields = {
 	used_percentage: z.number(),
 	resets_at: z.number(),
+};
+
+/** CLI 2.1.319+ `spend_limit`: emitted only under LLM-gateway auth, with USD figures when known. */
+const spendLimitWindowFields = {
+	...rateLimitWindowFields,
+	used_usd: z.number().optional(),
+	limit_usd: z.number().optional(),
+	period: z.string().optional(),
+};
+
+const RateLimitWindowSchema = z.object(rateLimitWindowFields).loose();
+const SpendLimitWindowSchema = z.object(spendLimitWindowFields).loose();
+
+/**
+ * Lenient at runtime: a window the CLI adds later must not throw the whole snapshot away.
+ * The strict twin below is for the disk scan, so schema-sync notices new windows.
+ */
+const StatuslineRateLimitsSchema = z
+	.object({
+		five_hour: RateLimitWindowSchema.optional(),
+		seven_day: RateLimitWindowSchema.optional(),
+		spend_limit: SpendLimitWindowSchema.optional(),
+	})
+	.loose();
+
+export const StatuslineRateLimitsStrictSchema = z.strictObject({
+	five_hour: z.strictObject(rateLimitWindowFields).optional(),
+	seven_day: z.strictObject(rateLimitWindowFields).optional(),
+	spend_limit: z.strictObject(spendLimitWindowFields).optional(),
 });
 
 export const StatuslineSchema = z
@@ -40,12 +69,7 @@ export const StatuslineSchema = z
 			})
 			.loose()
 			.optional(),
-		rate_limits: z
-			.strictObject({
-				five_hour: RateLimitWindowSchema.optional(),
-				seven_day: RateLimitWindowSchema.optional(),
-			})
-			.optional(),
+		rate_limits: StatuslineRateLimitsSchema.optional(),
 		cost: z
 			.object({
 				total_cost_usd: z.number().optional(),
