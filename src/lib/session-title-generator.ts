@@ -251,6 +251,23 @@ export function generatedTitleSources(
 }
 
 /**
+ * The title every view names an indexed session by: for a bridged session whose custom title is only its pane name,
+ * the title generated from its conversation, else the indexed `title` (which never holds the generated title).
+ */
+export function displayedSessionTitle(session: {
+	id: string;
+	title: string;
+	customTitle?: string | null | undefined;
+	bridged: boolean;
+}): string {
+	if (!session.bridged || session.customTitle == null) return session.title;
+	const sources = generatedTitleSources(session.id, session.customTitle);
+	return sources.generatedTitle !== undefined && isPaneNameTitle(session.customTitle, sources)
+		? sources.generatedTitle
+		: session.title;
+}
+
+/**
  * Queue a title for a bridged session with a custom title. A no-op until the worker starts (the server starts it;
  * tests and scripts never call the model), for a long-idle session, and while no title is due or one is queued.
  */

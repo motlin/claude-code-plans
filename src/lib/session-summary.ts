@@ -17,8 +17,7 @@ import {getRegistrySessionState, type RegistrySessionState} from "./session-regi
 import {sessionAwaitingPermission} from "./session-permission-wait";
 import {resolveMainState, resolveSessionBucket} from "./session-state";
 import {requestTurnVerdict, turnVerdictNeedsInput} from "./turn-verdict";
-import {generatedTitleSources, requestSessionTitle} from "./session-title-generator";
-import {namedSessionTitle} from "./sessions";
+import {displayedSessionTitle, requestSessionTitle} from "./session-title-generator";
 import {ownRepositoryPr, readOriginRepoName} from "./session-own-pr";
 import type {SessionEntry} from "./sessions";
 
@@ -164,15 +163,7 @@ function bridgedSessionTitle(entry: SessionEntry, now: number): string {
 		},
 		now,
 	);
-	const sources = generatedTitleSources(entry.id, entry.customTitle);
-	if (sources.generatedTitle === undefined) return entry.title;
-	const named = namedSessionTitle({
-		customTitle: entry.customTitle,
-		aiTitle: entry.aiTitle,
-		bridged: true,
-		...sources,
-	});
-	return named === sources.generatedTitle ? named : entry.title;
+	return displayedSessionTitle({...entry, bridged: true});
 }
 
 /** The entry without a PR it only touched in another repository, as session detail shows it. */

@@ -4,6 +4,7 @@ import {basename, dirname, relative, sep} from "node:path";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import * as schema from "./schema";
 import {sessionRemoteControlColumn} from "./bridge-session-index";
+import {displayedSessionTitle} from "../session-title-generator";
 import type {SessionEntry, SessionPrLink} from "../sessions";
 import type {SessionStatusFilter} from "../session-groups";
 import {ORPHANED_TASKS_PROJECT_ID, ORPHANED_TASKS_PROJECT_NAME} from "../task-groups";
@@ -79,10 +80,15 @@ export function getSessionPrLink(db: IndexDb, sessionId: string): SessionPrLink 
 	return row === undefined ? null : (sessionPrLink(row) ?? null);
 }
 
+/** The row's displayed title: a pane-named bridged session's generated title, else the indexed one. */
+function rowTitle(row: Pick<SessionRow, "id" | "title" | "customTitle">, remoteControl: number): string {
+	return displayedSessionTitle({...row, bridged: remoteControl === 1});
+}
+
 function rowToSessionEntry(row: SessionEntryRow, projectNames: Map<string, string>): SessionEntry {
 	return {
 		id: row.id,
-		title: row.title,
+		title: rowTitle(row, row.remoteControl),
 		firstPrompt: row.firstPrompt ?? undefined,
 		lastUserMessage: row.lastUserMessage ?? undefined,
 		summary: row.summary ?? undefined,
@@ -112,12 +118,17 @@ function batchFetchSessionTitles(db: IndexDb, sessionIds: string[]): Map<string,
 	const map = new Map<string, string | null>();
 	if (sessionIds.length === 0) return map;
 	const rows = db
-		.select({id: schema.sessions.id, title: schema.sessions.title})
+		.select({
+			id: schema.sessions.id,
+			title: schema.sessions.title,
+			customTitle: schema.sessions.customTitle,
+			remoteControl: sessionRemoteControlColumn,
+		})
 		.from(schema.sessions)
 		.where(inArray(schema.sessions.id, sessionIds))
 		.all();
 	for (const r of rows) {
-		map.set(r.id, r.title);
+		map.set(r.id, rowTitle(r, r.remoteControl));
 	}
 	return map;
 }
@@ -381,7 +392,7 @@ export function listSessionsForProjectFromDb(
 
 	return rows.map((row) => ({
 		id: row.id,
-		title: row.title,
+		title: rowTitle(row, row.remoteControl),
 		firstPrompt: row.firstPrompt ?? undefined,
 		lastUserMessage: row.lastUserMessage ?? undefined,
 		summary: row.summary ?? undefined,
@@ -439,7 +450,7 @@ export function listSessionsForBranch(db: IndexDb, projectId: string, branch: st
 	const projectName = projectRow?.name ?? projectId;
 
 	const rows = db
-		.select()
+		.select(SESSION_ENTRY_COLUMNS)
 		.from(schema.sessions)
 		.where(
 			and(
@@ -453,7 +464,7 @@ export function listSessionsForBranch(db: IndexDb, projectId: string, branch: st
 
 	return rows.map((row) => ({
 		id: row.id,
-		title: row.title,
+		title: rowTitle(row, row.remoteControl),
 		firstPrompt: row.firstPrompt ?? undefined,
 		lastUserMessage: row.lastUserMessage ?? undefined,
 		summary: row.summary ?? undefined,
@@ -1078,7 +1089,7 @@ export function getSessionsByIds(
 
 	return rows.map((row) => ({
 		id: row.session.id,
-		title: row.session.title,
+		title: rowTitle(row.session, row.remoteControl),
 		firstPrompt: row.session.firstPrompt ?? undefined,
 		lastUserMessage: row.session.lastUserMessage ?? undefined,
 		summary: row.session.summary ?? undefined,

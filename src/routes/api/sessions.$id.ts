@@ -19,8 +19,9 @@ export const Route = createFileRoute("/api/sessions/$id")({
 					isSessionArchived,
 				} = await import("../../lib/db/queries");
 				const {sessions, metadata} = await import("../../lib/db/schema");
-				const {canonicalSessionRouteId, sessionBridgeMetadataKey} =
+				const {canonicalSessionRouteId, sessionBridgeMetadataKey, sessionRemoteControlColumn} =
 					await import("../../lib/db/bridge-session-index");
+				const {displayedSessionTitle} = await import("../../lib/session-title-generator");
 				const {indexFile, isCurrentlyIndexing} = await import("../../lib/db/indexer");
 				const {eq, sql} = await import("drizzle-orm");
 				const {getSummary} = await import("../../lib/summaries");
@@ -47,6 +48,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
 							title: sessions.title,
 							customTitle: sessions.customTitle,
 							aiTitle: sessions.aiTitle,
+							remoteControl: sessionRemoteControlColumn,
 							projectId: sessions.projectId,
 							mtimeMs: sessions.mtimeMs,
 							filePath: sessions.filePath,
@@ -136,7 +138,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
 				const summary = getSummary(summaries, id);
 
 				const detail: NonNullable<ReturnType<typeof SessionDetailResponse.parse>> = {
-					title: sessionRow.title,
+					title: displayedSessionTitle({id, ...sessionRow, bridged: sessionRow.remoteControl === 1}),
 					projectName: sessionMeta?.projectName ?? sessionRow.projectId,
 					projectId: sessionRow.projectId,
 					homeRoot,
