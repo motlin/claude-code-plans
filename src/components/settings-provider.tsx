@@ -56,8 +56,8 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 
 	useEffect(() => {
 		const root = document.documentElement;
-		if (settings.interfaceFont === "dyslexic") root.dataset["interfaceFont"] = "dyslexic";
-		else delete root.dataset["interfaceFont"];
+		if (settings.interfaceFont === "sans") delete root.dataset["interfaceFont"];
+		else root.dataset["interfaceFont"] = settings.interfaceFont;
 	}, [settings.interfaceFont]);
 
 	useEffect(() => {

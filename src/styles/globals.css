@@ -110,11 +110,33 @@
 	--font-weight-control-regular: 435;
 	/* Upstream `--cds-font-weight-header`: dialog headings, settings group titles, sidebar group labels. */
 	--font-weight-header: 520;
+	/* Upstream's type role axes (`--cds-font-wght-body/control/header/badge`); they apply in dark only. */
+	--cds-font-wght-body: "wght" 360;
+	--cds-font-wght-control: "wght" 395;
+	--cds-font-wght-header: "wght" 480;
+	--cds-font-wght-badge: "wght" 480;
+}
+
+/* Upstream's `[data-font=system]` type axes, for Settings ▸ Interface font ▸ System. */
+:root[data-cds-fizzy-lake~="type"][data-interface-font="system"] {
+	--cds-font-wght-body: "wght" 380;
+	--cds-font-wght-control: "wght" 420;
+	--cds-font-wght-header: "wght" 500;
+	--cds-font-wght-badge: "wght" 480;
 }
 
 /* Settings ▸ Interface font ▸ OpenDyslexic, self-hosted from @fontsource/opendyslexic. */
 html[data-interface-font="dyslexic"] {
 	--font-sans: "OpenDyslexic", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Upstream `:root[data-dyslexic-font]`: no type role axes, so dark text falls back to the regular axis
+   (OpenDyslexic is static, so the axis draws nothing anyway). After the type blocks so it wins. */
+:root[data-interface-font="dyslexic"] {
+	--cds-font-wght-body: initial;
+	--cds-font-wght-control: initial;
+	--cds-font-wght-header: initial;
+	--cds-font-wght-badge: initial;
 }
 
 @theme inline {
@@ -667,6 +689,23 @@ html[data-interface-font="dyslexic"] {
 	--cds-pad-xl--xs: 0.875rem;
 	--cds-pad-xl--sm: 0.875rem;
 	--cds-pad-xl--lg: 1.375rem;
+	/* Upstream cds wght axes (.cds-root): light mode leaves the weight alone (empty axes); .dark thins it. */
+	--cds-font-wght-regular: normal;
+	--cds-font-wght-medium: normal;
+	--cds-font-wght-semibold: normal;
+	--cds-font-wght-bold: normal;
+	--cds-font-wght-body: initial;
+	--cds-font-wght-control: initial;
+	--cds-font-wght-header: initial;
+	--cds-font-wght-badge: initial;
+	--cds-font-axis-wght-regular: ;
+	--cds-font-axis-wght-medium: ;
+	--cds-font-axis-wght-semibold: ;
+	--cds-font-axis-wght-bold: ;
+	--cds-font-axis-wght-body: initial;
+	--cds-font-axis-wght-control: initial;
+	--cds-font-axis-wght-header: initial;
+	--cds-font-axis-wght-badge: initial;
 }
 
 .dark {
@@ -869,6 +908,26 @@ html[data-interface-font="dyslexic"] {
 	--chart-categorical-2: #d95926;
 	--chart-categorical-3: #199e70;
 	--chart-categorical-4: #c98500;
+}
+
+/* Upstream cds dark-mode wght axes ([data-mode=dark] .cds-root): text thins in dark. The axis tokens end in a
+   comma so they can open a font-variation-settings list (the formatter would drop it, hence the ignore); the
+   role axes only resolve under fizzy-lake type. */
+/* prettier-ignore */
+.dark {
+	--cds-font-wght-regular: "wght" 360;
+	--cds-font-wght-medium: "wght" 460;
+	--cds-font-wght-semibold: "wght" 540;
+	--cds-font-wght-bold: "wght" 560;
+	--cds-font-axis-wght-regular: var(--cds-font-wght-regular),;
+	--cds-font-axis-wght-medium: var(--cds-font-wght-medium),;
+	--cds-font-axis-wght-semibold: var(--cds-font-wght-semibold),;
+	--cds-font-axis-wght-bold: var(--cds-font-wght-bold),;
+	--cds-font-axis-wght-body: var(--cds-font-wght-body),;
+	--cds-font-axis-wght-control: var(--cds-font-wght-control),;
+	--cds-font-axis-wght-header: var(--cds-font-wght-header),;
+	--cds-font-axis-wght-badge: var(--cds-font-wght-badge),;
+	--cds-prose-axis-wght-heading-serif: "wght" 480,;
 }
 
 /* Fizzy-lake `color` rollout (src/lib/fizzy-lake.ts puts data-cds-fizzy-lake on <html>): upstream's
@@ -1243,6 +1302,96 @@ html[data-interface-font="dyslexic"] {
 :root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]) [data-settings-group-title],
 :root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]) [data-sidebar-group-label] {
 	font-weight: var(--font-weight-header);
+}
+
+/* Upstream's variable wght axes: font-variation-settings is inherited and its "wght" beats font-weight, so the
+   root applies the body axis and every weight utility re-declares its own (dark only, where the axes are set).
+   Light mode computes `"GRAD" 0`, which Inter and SF Pro ignore. */
+@property --_cds-font-axis-wght-role {
+	syntax: "*";
+	inherits: false;
+}
+
+@layer base {
+	:root {
+		--cds-font-axis-wght: var(--cds-font-axis-wght-body, var(--cds-font-axis-wght-regular,));
+		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
+	}
+
+	code,
+	kbd,
+	samp,
+	pre {
+		font-variation-settings: var(--default-mono-font-variation-settings, normal);
+	}
+
+	/* Elements whose weight comes from elsewhere drop the axis so that weight shows: table headers, local
+	   arbitrary `font-[580]` weights (upstream has none), and inline font-weight styles other than 400. */
+	:where(:root) th,
+	[class*="font-["],
+	[style*="font-weight"]:where(
+		:not(
+			[style*="font-weight: 400"],
+			[style*="font-weight:400"],
+			[style*="font-weight: normal"],
+			[style*="font-weight:normal"]
+		)
+	) {
+		--cds-font-axis-wght: initial;
+		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
+	}
+}
+
+@layer utilities {
+	/* Local `font-control(-regular)` is upstream's `font-medium font-control` / `font-normal font-control`. */
+	.font-control,
+	.font-control-regular {
+		--_cds-font-axis-wght-role: var(--cds-font-axis-wght-control);
+	}
+
+	:where(.dark) :is(b, strong):where([class*="font"]) {
+		--cds-font-axis-wght: initial;
+		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
+	}
+
+	:where(.dark) :is(b, strong):where(:not([class*="font"])) {
+		--cds-font-axis-wght: var(--cds-font-axis-wght-bold);
+		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
+	}
+
+	:where(.dark) :is(.font-normal, .font-control-regular) {
+		--cds-font-axis-wght: var(
+			--_cds-font-axis-wght-role,
+			var(--cds-font-axis-wght-body, var(--cds-font-axis-wght-regular))
+		);
+		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
+	}
+
+	:where(.dark) :is(.font-medium, .font-control) {
+		--cds-font-axis-wght: var(
+			--_cds-font-axis-wght-role,
+			var(--cds-font-axis-wght-control, var(--cds-font-axis-wght-medium))
+		);
+		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
+	}
+
+	:where(.dark) .font-semibold {
+		--cds-font-axis-wght: var(
+			--_cds-font-axis-wght-role,
+			var(--cds-font-axis-wght-header, var(--cds-font-axis-wght-semibold))
+		);
+		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
+	}
+
+	:where(.dark) .font-bold {
+		--cds-font-axis-wght: var(--_cds-font-axis-wght-role, var(--cds-font-axis-wght-bold));
+		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
+	}
+
+	:where(.dark) :is(.font-normal, .font-medium, .font-semibold) :is(b, strong) {
+		--cds-font-axis-wght: var(--cds-font-axis-wght-bold);
+		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
+	}
 }
 
 @layer utilities {

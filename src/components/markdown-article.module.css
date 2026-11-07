@@ -642,3 +642,42 @@
 :global(.dark) :global([data-transcript-prose]) .markdown code:not(pre code) {
 	border: 0.5px solid rgb(255 255 255 / 0.1);
 }
+
+/* Upstream's prose wght axes (`.prose` + `@scope(.prose)` in the c6a992d55 sheet): body, semibold headings,
+   bold strong and medium table headers. They only bite in dark, where the axis tokens are set. Prose drops the
+   fizzy-lake type header axis, so headings use the semibold axis in both type modes. */
+.markdown {
+	--cds-font-axis-wght: var(--cds-font-axis-wght-body, var(--cds-font-axis-wght-regular,));
+	font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
+}
+
+.markdown :is(h1, h2, h3, h4, h5, h6) {
+	--cds-font-axis-wght: var(--_prose-heading-axis-wght, var(--cds-font-axis-wght-semibold,));
+	font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
+}
+
+.markdown :is(strong, b, dt, summary) {
+	--cds-font-axis-wght: var(--cds-font-axis-wght-bold,);
+	font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
+}
+
+.markdown :is(h1, h2, h3, h4, h5, h6) :is(strong, b) {
+	--cds-font-axis-wght: inherit;
+	font-variation-settings: inherit;
+}
+
+.markdown th {
+	--cds-font-axis-wght: var(--cds-font-axis-wght-medium,);
+	font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
+}
+
+@media (forced-colors: active) {
+	.markdown th {
+		--cds-font-axis-wght: var(--cds-font-axis-wght-bold,);
+		font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
+	}
+}
+
+.markdown :is(pre, code) {
+	font-variation-settings: normal;
+}
