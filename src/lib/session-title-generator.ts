@@ -141,13 +141,15 @@ function toStored(row: typeof schema.generatedTitles.$inferSelect): StoredSessio
 
 /**
  * Judge whether the session's custom title is only its pane name and, when it is, title the session from its recent
- * conversation. A model answer that is not a title keeps the previous title. The result is stored either way.
+ * conversation. A model answer that is not a title keeps the previous title. The result is stored either way, unless
+ * `signal` aborted (the worker stopped, so shutdown may have closed the database); then it returns null.
  */
 export async function generateSessionTitle(
 	summariesDb: SummariesDb,
 	{sessionId, filePath, customTitle, cwd, messageCount}: SessionTitleRequest,
 	runModel: RunModel = runClaude,
-): Promise<StoredSessionTitle> {
+	signal?: AbortSignal,
+): Promise<StoredSessionTitle | null> {
 	const {agentName, conversation} = conversationFromLines(await readTailLines(filePath));
 	const cwdBasename = cwd === undefined ? null : basename(cwd);
 	const paneNamed = isPaneNameTitle(customTitle, {
@@ -161,6 +163,7 @@ export async function generateSessionTitle(
 	} else if (!paneNamed) {
 		title = null;
 	}
+	if (signal?.aborted === true) return null;
 	const stored: StoredSessionTitle = {customTitle, paneNamed, agentName, cwdBasename, title, messageCount};
 	const row = {...stored, paneNamed: paneNamed ? 1 : 0, generatedAt: Date.now()};
 	summariesDb
@@ -176,6 +179,8 @@ interface SessionTitleWorker {
 	projectsDir: string;
 	runModel: RunModel;
 	onTitle: (sessionId: string) => void;
+	/** Aborts when the worker stops, so in-flight work neither touches the database nor logs. */
+	stopped: AbortSignal;
 }
 
 export interface SessionTitleQueueRequest {
@@ -251,10 +256,13 @@ async function drainQueue(): Promise<void> {
 						messageCount,
 					},
 					worker.runModel,
+					worker.stopped,
 				);
+				if (stored === null || worker.stopped.aborted) continue;
 				state.titles.set(sessionId, stored);
 				if (stored.title !== before) worker.onTitle(sessionId);
 			} catch (err) {
+				if (worker.stopped.aborted) continue;
 				// A failed attempt still answers for this message count, so the row does not requeue it on every read.
 				const previous = state.titles.get(sessionId);
 				state.titles.set(sessionId, {
@@ -280,12 +288,14 @@ export function startSessionTitleWorker({
 	projectsDir,
 	runModel = runClaude,
 	onTitle,
-}: Omit<SessionTitleWorker, "runModel"> & {runModel?: RunModel}): () => void {
+}: Omit<SessionTitleWorker, "runModel" | "stopped"> & {runModel?: RunModel}): () => void {
 	for (const row of summariesDb.select().from(schema.generatedTitles).all()) {
 		state.titles.set(row.sessionId, toStored(row));
 	}
-	state.worker = {summariesDb, projectsDir, runModel, onTitle};
+	const controller = new AbortController();
+	state.worker = {summariesDb, projectsDir, runModel, onTitle, stopped: controller.signal};
 	return () => {
+		controller.abort();
 		state.worker = null;
 		state.queue.clear();
 		state.titles.clear();

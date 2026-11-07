@@ -13,6 +13,7 @@ import {
 	startTurnVerdictWorker,
 	turnVerdictNeedsInput,
 } from "../src/lib/turn-verdict";
+import {flushWorker, heldModel} from "./held-model";
 
 const testDir = join(tmpdir(), `claude-turn-verdict-test-${process.pid}`);
 const PROJECT_ID = "-tmp-test-alice-project";
@@ -204,6 +205,55 @@ describe("turn verdict worker", () => {
 		} finally {
 			stop();
 		}
+	});
+
+	it("writes, reports, and logs nothing when the model answers after the worker stops", async () => {
+		writeTranscript([PROMPT, ASK]);
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+		const model = heldModel();
+		const reported: string[] = [];
+		const stop = startTurnVerdictWorker({
+			summariesDb: db.summaries,
+			projectsDir: testDir,
+			runModel: model.run,
+			onVerdict: (sessionId) => {
+				reported.push(sessionId);
+			},
+		});
+		requestTurnVerdict(SESSION_ID, PROJECT_ID, NOW, NOW);
+		await model.asked;
+		stop();
+		model.release("NEEDS_INPUT");
+		await flushWorker();
+
+		expect({
+			rows: db.summaries.select().from(schema.turnVerdicts).all(),
+			reported,
+			errors: consoleError.mock.calls,
+			needsInput: turnVerdictNeedsInput(SESSION_ID, NOW),
+		}).toStrictEqual({rows: [], reported: [], errors: [], needsInput: false});
+		consoleError.mockRestore();
+	});
+
+	it("logs nothing when the model answers after shutdown closed the database", async () => {
+		writeTranscript([PROMPT, ASK]);
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+		const model = heldModel();
+		const stop = startTurnVerdictWorker({
+			summariesDb: db.summaries,
+			projectsDir: testDir,
+			runModel: model.run,
+			onVerdict: () => {},
+		});
+		requestTurnVerdict(SESSION_ID, PROJECT_ID, NOW, NOW);
+		await model.asked;
+		stop();
+		db.close();
+		model.release("NEEDS_INPUT");
+		await flushWorker();
+
+		expect(consoleError.mock.calls).toStrictEqual([]);
+		consoleError.mockRestore();
 	});
 
 	it("ignores requests until the worker starts", () => {

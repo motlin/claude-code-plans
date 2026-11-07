@@ -17,6 +17,7 @@ import {
 	TITLE_REGENERATE_MESSAGES,
 	type StoredSessionTitle,
 } from "../src/lib/session-title-generator";
+import {flushWorker, heldModel} from "./held-model";
 
 const testDir = join(tmpdir(), `claude-session-title-test-${process.pid}`);
 const PROJECT_ID = "-tmp-test-alice-klass";
@@ -280,6 +281,61 @@ describe("session title worker", () => {
 		} finally {
 			stop();
 		}
+	});
+
+	it("writes, reports, and logs nothing when the model answers after the worker stops", async () => {
+		writeTranscript([PANE_NAME, PROMPT, REPLY]);
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+		const model = heldModel();
+		const reported: string[] = [];
+		const stop = startSessionTitleWorker({
+			summariesDb: db.summaries,
+			projectsDir: testDir,
+			runModel: model.run,
+			onTitle: (sessionId) => {
+				reported.push(sessionId);
+			},
+		});
+		requestSessionTitle(
+			{sessionId: SESSION_ID, project: PROJECT_ID, customTitle: "klass", cwd: CWD, messageCount: 2, mtimeMs: NOW},
+			NOW,
+		);
+		await model.asked;
+		stop();
+		model.release("Klass pull request 910");
+		await flushWorker();
+
+		expect({
+			rows: storedRows(),
+			reported,
+			errors: consoleError.mock.calls,
+			sources: generatedTitleSources(SESSION_ID, "klass"),
+		}).toStrictEqual({rows: [], reported: [], errors: [], sources: {}});
+		consoleError.mockRestore();
+	});
+
+	it("logs nothing when the model answers after shutdown closed the database", async () => {
+		writeTranscript([PANE_NAME, PROMPT, REPLY]);
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+		const model = heldModel();
+		const stop = startSessionTitleWorker({
+			summariesDb: db.summaries,
+			projectsDir: testDir,
+			runModel: model.run,
+			onTitle: () => {},
+		});
+		requestSessionTitle(
+			{sessionId: SESSION_ID, project: PROJECT_ID, customTitle: "klass", cwd: CWD, messageCount: 2, mtimeMs: NOW},
+			NOW,
+		);
+		await model.asked;
+		stop();
+		db.close();
+		model.release("Klass pull request 910");
+		await flushWorker();
+
+		expect(consoleError.mock.calls).toStrictEqual([]);
+		consoleError.mockRestore();
 	});
 
 	it("ignores requests until the worker starts", () => {

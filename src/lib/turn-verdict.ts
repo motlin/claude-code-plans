@@ -118,12 +118,14 @@ export interface TurnVerdict {
 
 /**
  * Judge the session's final turn and store the verdict. The model runs only when the final turn changed: a new
- * turn end over the same assistant turn (an away summary) just restamps the stored verdict.
+ * turn end over the same assistant turn (an away summary) just restamps the stored verdict. Once `signal` aborts
+ * (the worker stopped, so shutdown may have closed the database) nothing is stored.
  */
 export async function generateTurnVerdict(
 	summariesDb: SummariesDb,
 	{sessionId, filePath, turnEndedAt}: TurnVerdictRequest,
 	runModel: RunModel = runClaude,
+	signal?: AbortSignal,
 ): Promise<TurnVerdict | null> {
 	const turn = finalTurnFromLines(await readTailLines(filePath));
 	if (turn === null) return null;
@@ -140,6 +142,7 @@ export async function generateTurnVerdict(
 		if (parsed === null) return null;
 		needsInput = parsed;
 	}
+	if (signal?.aborted === true) return null;
 	const row = {turnUuid: turn.uuid, turnEndedAt, needsInput: needsInput ? 1 : 0, generatedAt: Date.now()};
 	summariesDb
 		.insert(schema.turnVerdicts)
@@ -154,6 +157,8 @@ interface TurnVerdictWorker {
 	projectsDir: string;
 	runModel: RunModel;
 	onVerdict: (sessionId: string) => void;
+	/** Aborts when the worker stops, so in-flight work neither touches the database nor logs. */
+	stopped: AbortSignal;
 }
 
 interface TurnVerdictState {
@@ -201,11 +206,14 @@ async function drainQueue(): Promise<void> {
 					worker.summariesDb,
 					{sessionId, filePath: join(worker.projectsDir, project, `${sessionId}.jsonl`), turnEndedAt},
 					worker.runModel,
+					worker.stopped,
 				);
+				if (worker.stopped.aborted) continue;
 				// A failed judgment still answers for this turn end, so the row does not requeue it on every read.
 				state.verdicts.set(sessionId, verdict ?? {turnEndedAt, needsInput: false});
 				if (verdict?.needsInput === true) worker.onVerdict(sessionId);
 			} catch (err) {
+				if (worker.stopped.aborted) continue;
 				state.verdicts.set(sessionId, {turnEndedAt, needsInput: false});
 				console.error(`Turn verdict failed for ${sessionId}:`, err);
 			}
@@ -221,12 +229,14 @@ export function startTurnVerdictWorker({
 	projectsDir,
 	runModel = runClaude,
 	onVerdict,
-}: Omit<TurnVerdictWorker, "runModel"> & {runModel?: RunModel}): () => void {
+}: Omit<TurnVerdictWorker, "runModel" | "stopped"> & {runModel?: RunModel}): () => void {
 	for (const row of summariesDb.select().from(schema.turnVerdicts).all()) {
 		state.verdicts.set(row.sessionId, {turnEndedAt: row.turnEndedAt, needsInput: row.needsInput === 1});
 	}
-	state.worker = {summariesDb, projectsDir, runModel, onVerdict};
+	const controller = new AbortController();
+	state.worker = {summariesDb, projectsDir, runModel, onVerdict, stopped: controller.signal};
 	return () => {
+		controller.abort();
 		state.worker = null;
 		state.queue.clear();
 		state.verdicts.clear();
