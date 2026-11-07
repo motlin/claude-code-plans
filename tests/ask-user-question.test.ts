@@ -131,9 +131,64 @@ describe("answerForQuestion", () => {
 });
 
 describe("parseAnswerResult", () => {
-	const q = (question: string, options: Array<{label: string}> = []): QuestionLike => ({
+	const q = (question: string, options: Array<{label: string; preview?: string}> = []): QuestionLike => ({
 		question,
 		options,
+	});
+	const READ_CAREFULLY =
+		". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.";
+	const ANSWERED_SUFFIX = ". You can now continue with these answers in mind.";
+
+	it('reads the " notes: " marker the CLI writes today', () => {
+		const text = `The user answered: "Pick?"="Option A" notes: check my assumption${READ_CAREFULLY}`;
+		const result = parseAnswerResult(text, [q("Pick?", [{label: "Option A"}])]);
+		expect(result).toStrictEqual([{question: "Pick?", answer: "Option A", notes: "check my assumption"}]);
+	});
+
+	it('reads " notes: " written after the selected preview', () => {
+		const preview = 'int[] a = {1, 2};\nString[] b = {"x"};';
+		const text = `The user answered: "Arrays?"="Add an option" selected preview:\n${preview} notes: on or off?${READ_CAREFULLY}`;
+		const result = parseAnswerResult(text, [q("Arrays?", [{label: "Add an option", preview}])]);
+		expect(result).toStrictEqual([{question: "Arrays?", answer: "Add an option", notes: "on or off?"}]);
+	});
+
+	it('reads " notes: " containing commas before a plain second pair', () => {
+		const text = `The user answered: "Q1"="A1" notes: a, b, "Q2"="A2"${READ_CAREFULLY}`;
+		const result = parseAnswerResult(text, [q("Q1", [{label: "A1"}]), q("Q2", [{label: "A2"}])]);
+		expect(result).toStrictEqual([
+			{question: "Q1", answer: "A1", notes: "a, b"},
+			{question: "Q2", answer: "A2", notes: null},
+		]);
+	});
+
+	it("reads a notes-only answer written as (no option selected)", () => {
+		const text = `The user answered: "Java?"=(no option selected) notes: newest 21, "Node?"="LTS"${READ_CAREFULLY}`;
+		const result = parseAnswerResult(text, [q("Java?"), q("Node?", [{label: "LTS"}])]);
+		expect(result).toStrictEqual([
+			{question: "Java?", answer: "(notes only)", notes: "newest 21"},
+			{question: "Node?", answer: "LTS", notes: null},
+		]);
+	});
+
+	it("skips a question the CLI omitted because it had no answer and no notes", () => {
+		const text = `Your questions have been answered: "Q2"="A2"${ANSWERED_SUFFIX}`;
+		const result = parseAnswerResult(text, [q("Q1"), q("Q2", [{label: "A2"}])]);
+		expect(result).toStrictEqual([{question: "Q2", answer: "A2", notes: null}]);
+	});
+
+	it("reads questions and answers whose double quotes the CLI writes raw", () => {
+		const text = `Your questions have been answered: "Fix ("payments failed")?"="Make it "public""${ANSWERED_SUFFIX}`;
+		const result = parseAnswerResult(text, [q('Fix ("payments failed")?', [{label: 'Make it "public"'}])]);
+		expect(result).toStrictEqual([{question: 'Fix ("payments failed")?', answer: 'Make it "public"', notes: null}]);
+	});
+
+	it("reads a raw-quoted free-text answer followed by another pair", () => {
+		const text = `Your questions have been answered: "Say "hi"?"="I said "no"", "Q2"="A2"${ANSWERED_SUFFIX}`;
+		const result = parseAnswerResult(text, [q('Say "hi"?'), q("Q2")]);
+		expect(result).toStrictEqual([
+			{question: 'Say "hi"?', answer: 'I said "no"', notes: null},
+			{question: "Q2", answer: "A2", notes: null},
+		]);
 	});
 
 	it("parses a single Q/A pair without notes", () => {
@@ -173,7 +228,7 @@ describe("parseAnswerResult", () => {
 		]);
 	});
 
-	it("handles questions containing escaped double quotes", () => {
+	it("handles legacy escaped double quotes in questions and answers", () => {
 		const text =
 			'User has answered your questions: "Say \\"hi\\"?"="No \\"thanks\\"".' +
 			" You can now continue with the user's answers in mind.";

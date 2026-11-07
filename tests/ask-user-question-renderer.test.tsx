@@ -283,6 +283,39 @@ describe("AskUserQuestionRenderer", () => {
 		]);
 	});
 
+	it("draws a no-meta (no option selected) result as a receipt with its notes, not the raw result text", () => {
+		const result =
+			'The user answered: "Java?"=(no option selected) notes: newest 21, "Node?"="LTS". Read the answers carefully — they may request clarification, changes, or that you not proceed — and follow what they actually say.';
+		const toolCall = makeCall({
+			input: {
+				questions: [
+					{question: "Java?", header: "Java", options: [{label: "17"}, {label: "21"}], multiSelect: false},
+					{
+						question: "Node?",
+						header: "Node",
+						options: [{label: "LTS"}, {label: "Current"}],
+						multiSelect: false,
+					},
+				],
+			},
+			result,
+		});
+		const {container} = render(<AskUserQuestionRenderer toolCall={toolCall} />);
+
+		expect({
+			rawFallback: container.querySelector("p.whitespace-pre-wrap")?.textContent,
+			pairs: [...container.querySelectorAll(".card-ring > div")].map((pair) =>
+				[...pair.children].map((line) => line.textContent),
+			),
+		}).toStrictEqual({
+			rawFallback: undefined,
+			pairs: [
+				["Java?", "(notes only)", "Notes: newest 21"],
+				["Node?", "LTS"],
+			],
+		});
+	});
+
 	describe("receipt rows for unanswered questions (upstream's Wi + BT)", () => {
 		const TWO_QUESTIONS = {
 			questions: [

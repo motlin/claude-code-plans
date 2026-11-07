@@ -11,12 +11,14 @@ import {parseToolRejection} from "./tool-rejection";
 export interface QuestionLike {
 	question: string;
 	header?: string | undefined;
-	options: Array<{label: string; description?: string | undefined}>;
+	options: Array<{label: string; description?: string | undefined; preview?: string | undefined}>;
 	multiSelect?: boolean | undefined;
 }
 
 // Loose, so a question keeps the fields (`preview`, ...) the renderers read beyond these.
-const QuestionOptionsSchema = z.array(z.looseObject({label: z.string(), description: z.string().optional()}));
+const QuestionOptionsSchema = z.array(
+	z.looseObject({label: z.string(), description: z.string().optional(), preview: z.string().optional()}),
+);
 const QuestionsSchema = z.array(
 	z.looseObject({
 		question: z.string(),
@@ -282,58 +284,137 @@ export function questionOutcomes(call: AskedCall): QuestionOutcomeEntry[] {
 	});
 }
 
-const NOTES_MARKER = " user notes: ";
+/** Older CLIs wrote ` user notes: ` before the preview; since 2.1.232 they write ` notes: ` last. Old form first, so it isn't split at its inner ` notes: `. */
+const LEGACY_NOTES_MARKER = " user notes: ";
+const NOTES_MARKER = " notes: ";
 const PREVIEW_MARKER = " selected preview:";
+const PREVIEW_PREFIX = `${PREVIEW_MARKER}\n`;
 const PAIR_SEPARATOR = ", ";
+/** The CLI's pair for an answer that is only notes: `"Q"=(no option selected)`. */
+const NO_OPTION_SELECTED = "(no option selected)";
+/** The answer the CLI records in meta for that same notes-only answer (its `XEn`). */
+const NOTES_ONLY_ANSWER = "(notes only)";
+/** What may follow the closing quote of a raw answer, besides the next pair or the end of the body. */
+const ANSWER_TERMINATORS = [PREVIEW_MARKER, LEGACY_NOTES_MARKER, NOTES_MARKER] as const;
+
+interface Anchor {
+	length: number;
+	escaped: boolean;
+}
 
 /**
  * Parse the canonical AskUserQuestion `tool_result.content` text into a
  * structured list of {question, answer, notes} entries. Returns null when the
- * text does not match the expected envelope or no questions were supplied.
+ * text does not match the expected envelope, no questions were supplied, or
+ * no pair parses.
  *
- * The text format mirrors what Claude Code's CLI writes back to the model:
- *   Your questions have been answered: "Q1"="A1"[ user notes: N1], "Q2"="A2"[...]. You can now continue with these answers in mind.
- * Both the current and legacy envelope wordings in ENVELOPES are accepted.
+ * The CLI writes each pair as `"Q"="A"` (or `"Q"=(no option selected)` for a
+ * notes-only answer), then ` selected preview:\n<preview>` and ` notes: <notes>`,
+ * joined with ", ". Question and answer text is interpolated raw, unescaped;
+ * a question with no answer and no notes is omitted. Older CLIs escaped quotes
+ * as `\"` and wrote ` user notes: ` before the preview; both forms still parse.
  *
- * Question titles are matched against the supplied `questions` array (whose
- * text comes from the original tool_use input) so we can correctly tokenize
- * pairs even when answers or notes contain commas.
+ * Pairs are tokenized against the supplied `questions` (from the tool_use
+ * input), so answers and notes may contain commas and quotes.
  */
 export function parseAnswerResult(text: string, questions: QuestionLike[]): ParsedAnswer[] | null {
 	if (questions.length === 0) return null;
-	const envelopeBody = matchEnvelope(text);
-	if (envelopeBody === null) return null;
-	let body = envelopeBody;
+	const body = matchEnvelope(text);
+	if (body === null) return null;
 
 	const result: ParsedAnswer[] = [];
-	for (const [i, {question}] of questions.entries()) {
-		const anchor = `"${escapeQuote(question)}"=`;
-		if (!body.startsWith(anchor)) return null;
-		let cursor = anchor.length;
-		const answerEnd = findClosingQuote(body, cursor + 1);
-		if (answerEnd < 0) return null;
-		const answer = unescapeQuote(body.slice(cursor + 1, answerEnd));
-		cursor = answerEnd + 1;
-
-		// Find where this question's segment ends. The next question's anchor
-		// (after a ", " separator) is the boundary; otherwise the segment runs
-		// to the end of the body.
-		let segmentEnd = body.length;
-		const nextQuestion = questions[i + 1];
-		if (nextQuestion !== undefined) {
-			const nextAnchor = `${PAIR_SEPARATOR}"${escapeQuote(nextQuestion.question)}"=`;
-			const nextIdx = body.indexOf(nextAnchor, cursor);
-			if (nextIdx < 0) return null;
-			segmentEnd = nextIdx;
-		}
-
-		const notes = extractNotes(body.slice(cursor, segmentEnd));
-
-		result.push({question, answer, notes});
-		body = body.slice(segmentEnd + (i + 1 < questions.length ? PAIR_SEPARATOR.length : 0));
+	let cursor = 0;
+	let next = 0;
+	while (cursor < body.length) {
+		const found = anchorAt(body, cursor, questions, next);
+		if (found === null) return null;
+		const {index, anchor} = found;
+		const question = questions[index];
+		if (question === undefined) return null;
+		const later = questions.slice(index + 1);
+		const valueStart = cursor + anchor.length;
+		const parsed = readAnswer(body, valueStart, anchor.escaped, question, later);
+		if (parsed === null) return null;
+		const segmentEnd = nextPairStart(body, parsed.end, later);
+		const preview = question.options.find((option) => option.label === parsed.answer)?.preview;
+		const notes = extractNotes(body.slice(parsed.end, segmentEnd), preview);
+		result.push({question: question.question, answer: parsed.answer, notes});
+		cursor = segmentEnd < body.length ? segmentEnd + PAIR_SEPARATOR.length : segmentEnd;
+		next = index + 1;
 	}
-	if (body.length !== 0) return null;
-	return result;
+	return result.length > 0 ? result : null;
+}
+
+/** The first question from `from` on whose anchor (raw, else legacy escaped) starts at `cursor`. */
+function anchorAt(
+	body: string,
+	cursor: number,
+	questions: QuestionLike[],
+	from: number,
+): {index: number; anchor: Anchor} | null {
+	for (let index = from; index < questions.length; index++) {
+		const question = questions[index];
+		if (question === undefined) continue;
+		for (const escaped of [false, true]) {
+			const anchor = anchorText(question.question, escaped);
+			if (body.startsWith(anchor, cursor)) return {index, anchor: {length: anchor.length, escaped}};
+		}
+	}
+	return null;
+}
+
+function anchorText(question: string, escaped: boolean): string {
+	return `"${escaped ? escapeQuote(question) : question}"=`;
+}
+
+/** Read the answer value at `start`; `end` is just past it. */
+function readAnswer(
+	body: string,
+	start: number,
+	escaped: boolean,
+	question: QuestionLike,
+	later: QuestionLike[],
+): {answer: string; end: number} | null {
+	if (body.startsWith(NO_OPTION_SELECTED, start)) {
+		return {answer: NOTES_ONLY_ANSWER, end: start + NO_OPTION_SELECTED.length};
+	}
+	if (body[start] !== '"') return null;
+	if (escaped) {
+		const close = findClosingQuote(body, start + 1);
+		if (close < 0) return null;
+		return {answer: unescapeQuote(body.slice(start + 1, close)), end: close + 1};
+	}
+	const endsAnswer = (close: number) => body[close] === '"' && isAnswerEnd(body, close + 1, later);
+	const labels = question.options.map((option) => option.label).toSorted((a, b) => b.length - a.length);
+	const label = labels.find(
+		(candidate) => endsAnswer(start + 1 + candidate.length) && body.startsWith(candidate, start + 1),
+	);
+	if (label !== undefined) return {answer: label, end: start + 2 + label.length};
+	for (let close = body.indexOf('"', start + 1); close >= 0; close = body.indexOf('"', close + 1)) {
+		if (endsAnswer(close)) return {answer: body.slice(start + 1, close), end: close + 1};
+	}
+	// An annotation this parser doesn't know follows the answer: end at the first quote.
+	const close = body.indexOf('"', start + 1);
+	return close < 0 ? null : {answer: body.slice(start + 1, close), end: close + 1};
+}
+
+/** Whether a raw answer's closing quote may sit just before `at`. */
+function isAnswerEnd(body: string, at: number, later: QuestionLike[]): boolean {
+	if (at === body.length) return true;
+	if (ANSWER_TERMINATORS.some((marker) => body.startsWith(marker, at))) return true;
+	return nextPairStart(body, at, later) === at;
+}
+
+/** Where the next pair's ", " separator starts at or after `from`: the earliest later question's anchor, raw or escaped. */
+function nextPairStart(body: string, from: number, later: QuestionLike[]): number {
+	let earliest = body.length;
+	for (const {question} of later) {
+		for (const escaped of [false, true]) {
+			const index = body.indexOf(`${PAIR_SEPARATOR}${anchorText(question, escaped)}`, from);
+			if (index >= 0 && index < earliest) earliest = index;
+		}
+	}
+	return earliest;
 }
 
 /**
@@ -351,21 +432,30 @@ function matchEnvelope(text: string): string | null {
 }
 
 /**
- * Extract user notes from the annotation remainder between an answer value and
- * the next question separator. The remainder can contain multiple annotation
- * markers (e.g. ` user notes: ...`, ` selected preview:\n...`). We extract
- * the notes value and ignore other annotations.
+ * Extract user notes from the annotations between an answer value and the
+ * next pair. New CLIs write ` selected preview:\n<preview>` then ` notes: <notes>`;
+ * old CLIs wrote ` user notes: <notes>` then the preview. `preview` is the
+ * chosen option's preview, stripped exactly when known; without it, notes
+ * follow the last ` notes: `. Other annotations are ignored.
  */
-function extractNotes(remainder: string): string | null {
-	if (remainder.length === 0) return null;
-	const notesStart = remainder.indexOf(NOTES_MARKER);
-	if (notesStart < 0) return null;
-	const notesContent = remainder.slice(notesStart + NOTES_MARKER.length);
-	const previewIndex = notesContent.indexOf(PREVIEW_MARKER);
-	if (previewIndex >= 0) {
-		return notesContent.slice(0, previewIndex);
+function extractNotes(remainder: string, preview: string | undefined): string | null {
+	if (remainder.startsWith(PREVIEW_MARKER)) {
+		const selected = preview === undefined ? null : `${PREVIEW_PREFIX}${preview}`;
+		if (selected !== null && remainder.startsWith(selected)) {
+			const rest = remainder.slice(selected.length);
+			return rest.startsWith(NOTES_MARKER) ? rest.slice(NOTES_MARKER.length) : null;
+		}
+		const notesStart = remainder.lastIndexOf(NOTES_MARKER);
+		return notesStart < 0 ? null : remainder.slice(notesStart + NOTES_MARKER.length);
 	}
-	return notesContent;
+	const legacyStart = remainder.indexOf(LEGACY_NOTES_MARKER);
+	const notesStart = remainder.indexOf(NOTES_MARKER);
+	if (legacyStart >= 0 && legacyStart <= notesStart) {
+		const notes = remainder.slice(legacyStart + LEGACY_NOTES_MARKER.length);
+		const previewIndex = notes.indexOf(PREVIEW_MARKER);
+		return previewIndex >= 0 ? notes.slice(0, previewIndex) : notes;
+	}
+	return notesStart < 0 ? null : remainder.slice(notesStart + NOTES_MARKER.length);
 }
 
 function findClosingQuote(text: string, start: number): number {
