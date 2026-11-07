@@ -15,6 +15,7 @@ import {
 	findPendingPermission,
 	permissionAnswerKey,
 	permissionDecisionForKey,
+	permissionWaitToolUseId,
 	type PermissionNotification,
 } from "../src/lib/permission-card";
 import type {PersistentAllowKind} from "../src/lib/permission-suggestions";
@@ -325,6 +326,110 @@ describe("findPendingPermission", () => {
 				records,
 			}),
 		).toBeNull();
+	});
+
+	describe("picking the call the CLI asks about in a batch", () => {
+		const SERIAL = [
+			assistantToolUse("e1", "Edit", {file_path: "/repo/a", old_string: "x", new_string: "y"}),
+			assistantToolUse("w1", "Write", {file_path: "/repo/b", content: "z"}),
+			assistantToolUse("b1", "Bash", {command: "ls"}),
+		];
+		const PARALLEL = [
+			assistantToolUse("f1", "WebFetch", {url: "https://a", prompt: "p"}),
+			assistantToolUse("r1", "Read", {file_path: "/repo/a"}),
+			toolResult("r1"),
+		];
+		const TWO_FETCHES = [
+			assistantToolUse("f1", "WebFetch", {url: "https://a", prompt: "p"}),
+			assistantToolUse("f2", "WebFetch", {url: "https://b", prompt: "p"}),
+		];
+		const EDIT_CARD = {
+			notificationId: "notification-test-100",
+			toolUseId: "e1",
+			title: {action: "edit", meta: "a"},
+			detail: "/repo/a",
+			clampTitle: true,
+		};
+
+		it.each([true, false])("describes a serial batch's first call, not its last (active %s)", (isActive) => {
+			expect(
+				findPendingPermission({
+					sessionId: "session-test-100",
+					isActive,
+					notifications: [permissionNotification()],
+					records: SERIAL,
+				}),
+			).toStrictEqual(EDIT_CARD);
+		});
+
+		it("marks the serial batch's first call as the one waiting", () => {
+			expect(
+				permissionWaitToolUseId({
+					sessionId: "session-test-100",
+					notifications: [permissionNotification()],
+					records: SERIAL,
+				}),
+			).toBe("e1");
+		});
+
+		it("describes a parallel ask whose later sibling already finished", () => {
+			const signals = {
+				sessionId: "session-test-100",
+				notifications: [permissionNotification()],
+				records: PARALLEL,
+			};
+			expect({
+				inactive: findPendingPermission({...signals, isActive: false}),
+				active: findPendingPermission({...signals, isActive: true}),
+				waiting: permissionWaitToolUseId(signals),
+			}).toStrictEqual({
+				inactive: {
+					notificationId: "notification-test-100",
+					toolUseId: "f1",
+					title: {action: "use WebFetch", meta: null},
+					detail: JSON.stringify({url: "https://a", prompt: "p"}, null, 2),
+				},
+				active: {
+					notificationId: "notification-test-100",
+					toolUseId: "f1",
+					title: {action: "use WebFetch", meta: null},
+					detail: JSON.stringify({url: "https://a", prompt: "p"}, null, 2),
+				},
+				waiting: "f1",
+			});
+		});
+
+		it("describes the call the hook's ask names when several are pending", () => {
+			const signals = {
+				sessionId: "session-test-100",
+				notifications: [permissionNotification()],
+				records: TWO_FETCHES,
+				ask: {toolName: "WebFetch", toolInput: {url: "https://b", prompt: "p"}},
+			};
+			expect({
+				card: findPendingPermission({...signals, isActive: false}),
+				waiting: permissionWaitToolUseId(signals),
+			}).toStrictEqual({
+				card: {
+					notificationId: "notification-test-100",
+					toolUseId: "f2",
+					title: {action: "use WebFetch", meta: null},
+					detail: JSON.stringify({url: "https://b", prompt: "p"}, null, 2),
+				},
+				waiting: "f2",
+			});
+		});
+
+		it("falls back to the first pending call when the ask matches none", () => {
+			expect(
+				permissionWaitToolUseId({
+					sessionId: "session-test-100",
+					notifications: [permissionNotification()],
+					records: TWO_FETCHES,
+					ask: {toolName: "WebFetch", toolInput: {url: "https://c", prompt: "p"}},
+				}),
+			).toBe("f1");
+		});
 	});
 
 	it("is hidden while an AskUserQuestion is the pending tool call", () => {

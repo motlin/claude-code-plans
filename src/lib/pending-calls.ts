@@ -14,7 +14,7 @@ export type PendingQuestionItem = z.infer<typeof PendingQuestionItemSchema>;
 
 /**
  * The AskUserQuestion call a session waits on, taken from its `PreToolUse`
- * hook: the CLI writes the call to the JSONL only once it is answered.
+ * hook: the hook copy lands first; the JSONL record follows when the block is flushed.
  */
 export const PendingQuestionSchema = z.strictObject({
 	toolUseId: z.string(),

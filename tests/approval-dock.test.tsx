@@ -10,8 +10,12 @@ import {isAnsweredHeld, releaseAnswered} from "../src/lib/answered-sessions";
 import {AskUserQuestionRenderer} from "../src/components/tool-renderers/ask-user-question-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 import {
+	findFirstPendingToolUse,
+	findLastPendingToolUse,
 	findPendingAskUserQuestion,
+	findPendingToolUses,
 	hookQuestionCardShown,
+	matchPendingToolUse,
 	liveHookQuestion,
 	toolUseProgress,
 } from "../src/lib/approval-dock";
@@ -57,6 +61,88 @@ function toolResult(id: string) {
 		message: {content: [{type: "tool_result", tool_use_id: id, content: "ok"}]},
 	};
 }
+
+describe("findPendingToolUses", () => {
+	it("lists a serial batch's unanswered calls in record order, and the first is the one the CLI asks about", () => {
+		const records = [
+			assistantToolUse("e1", "Edit", {file_path: "/repo/a.ts"}),
+			assistantToolUse("w1", "Write", {file_path: "/repo/b.ts", content: "x"}),
+			assistantToolUse("b1", "Bash", {command: "ls"}),
+		];
+		expect(findPendingToolUses(records)).toStrictEqual([
+			{id: "e1", name: "Edit", input: {file_path: "/repo/a.ts"}},
+			{id: "w1", name: "Write", input: {file_path: "/repo/b.ts", content: "x"}},
+			{id: "b1", name: "Bash", input: {command: "ls"}},
+		]);
+		expect(findFirstPendingToolUse(records)).toStrictEqual({
+			id: "e1",
+			name: "Edit",
+			input: {file_path: "/repo/a.ts"},
+		});
+	});
+
+	it("keeps a parallel ask whose later sibling already finished, which the last-block lookup misses", () => {
+		const records = [
+			assistantToolUse("f1", "WebFetch", {url: "https://a"}),
+			assistantToolUse("r1", "Read", {file_path: "/repo/a.ts"}),
+			toolResult("r1"),
+		];
+		expect(findPendingToolUses(records)).toStrictEqual([{id: "f1", name: "WebFetch", input: {url: "https://a"}}]);
+		expect(findLastPendingToolUse(records)).toBeNull();
+	});
+
+	it("counts a re-written block once", () => {
+		const records = [
+			assistantToolUse("e1", "Edit", {file_path: "/repo/a.ts"}),
+			assistantToolUse("w1", "Write", {file_path: "/repo/b.ts"}),
+			assistantToolUse("e1", "Edit", {file_path: "/repo/a.ts"}),
+		];
+		expect(findPendingToolUses(records)).toStrictEqual([
+			{id: "e1", name: "Edit", input: {file_path: "/repo/a.ts"}},
+			{id: "w1", name: "Write", input: {file_path: "/repo/b.ts"}},
+		]);
+	});
+
+	it("ignores a sidechain call", () => {
+		const records = [
+			assistantToolUse("s1", "Bash", {command: "ls"}, {isSidechain: true}),
+			assistantToolUse("b1", "Bash", {command: "pwd"}),
+		];
+		expect(findPendingToolUses(records)).toStrictEqual([{id: "b1", name: "Bash", input: {command: "pwd"}}]);
+		expect(findFirstPendingToolUse([records[0]])).toBeNull();
+	});
+});
+
+describe("matchPendingToolUse", () => {
+	const pending = [
+		{id: "f1", name: "WebFetch", input: {url: "https://a", prompt: "p"}},
+		{id: "f2", name: "WebFetch", input: {url: "https://b", prompt: "p"}},
+	];
+
+	it("matches the ask by tool name and deep-equal input", () => {
+		expect(
+			matchPendingToolUse(pending, {toolName: "WebFetch", toolInput: {prompt: "p", url: "https://b"}}),
+		).toStrictEqual({id: "f2", name: "WebFetch", input: {url: "https://b", prompt: "p"}});
+	});
+
+	it("matches nested input regardless of key order", () => {
+		const nested = [{id: "m1", name: "mcp__x__y", input: {a: [1, {b: null, c: "d"}]}}];
+		expect(
+			matchPendingToolUse(nested, {toolName: "mcp__x__y", toolInput: {a: [1, {c: "d", b: null}]}}),
+		).toStrictEqual({id: "m1", name: "mcp__x__y", input: {a: [1, {b: null, c: "d"}]}});
+	});
+
+	it("finds nothing for another tool, a different input or an extra key", () => {
+		expect(matchPendingToolUse(pending, {toolName: "Read", toolInput: {url: "https://b", prompt: "p"}})).toBeNull();
+		expect(
+			matchPendingToolUse(pending, {toolName: "WebFetch", toolInput: {url: "https://c", prompt: "p"}}),
+		).toBeNull();
+		expect(
+			matchPendingToolUse(pending, {toolName: "WebFetch", toolInput: {url: "https://b", prompt: "p", x: 1}}),
+		).toBeNull();
+		expect(matchPendingToolUse(pending, {toolName: "WebFetch", toolInput: null})).toBeNull();
+	});
+});
 
 describe("findPendingAskUserQuestion", () => {
 	it("finds an unanswered AskUserQuestion that is the last assistant tool_use", () => {
