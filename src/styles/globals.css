@@ -519,8 +519,8 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream claude.ai/code — typography */
 	--upstream-text-body: 14px;
 	--upstream-leading-body: 20px;
-	--upstream-text-code: var(--epitaxy-code-font-size, 13px);
-	--upstream-leading-code: var(--epitaxy-code-leading, 19px);
+	--upstream-text-code: 13px;
+	--upstream-leading-code: 19px;
 	/* Secondary label size (upstream --cds-font-size-footnote). */
 	--upstream-text-footnote: 13px;
 	--upstream-leading-footnote: 17px;
@@ -2783,8 +2783,8 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	--upstream-leading-body: 20px;
 	--upstream-text-footnote: 13px;
 	--upstream-leading-footnote: 17px;
-	--upstream-text-code: var(--epitaxy-code-font-size, 13px);
-	--upstream-leading-code: var(--epitaxy-code-leading, 19px);
+	--upstream-text-code: 13px;
+	--upstream-leading-code: 19px;
 	--upstream-text-caption: 12px;
 	--upstream-leading-caption: 17px;
 	--cds-gap-xs: 0.5rem;
@@ -2821,8 +2821,8 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	--upstream-leading-body: 19px;
 	--upstream-text-footnote: 12px;
 	--upstream-leading-footnote: 15px;
-	--upstream-text-code: var(--epitaxy-code-font-size, 12px);
-	--upstream-leading-code: var(--epitaxy-code-leading, 17px);
+	--upstream-text-code: 12px;
+	--upstream-leading-code: 17px;
 	--upstream-text-caption: 11px;
 	--upstream-leading-caption: 17px;
 	--cds-gap-xs: 0.375rem;
@@ -2850,6 +2850,33 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	--cds-pad-xl--xs: 0.875rem;
 	--cds-pad-xl--sm: 0.875rem;
 	--cds-pad-xl--lg: 1.375rem;
+}
+
+/* Upstream Settings ▸ Code font size: the --epitaxy-code-* vars on <html> only reach the code tokens
+   inside upstream's four hook classes, so chrome text-code (composer, sidebar, inline chips) stays at
+   the density default. --code-size / --code-leading are unset by default so hardcoded consumers keep
+   their own fallbacks (12px / 17px fences, Bash, inline diffs). */
+[data-code-font-size] :is(.epitaxy-code-size, .epitaxy-codeblock, .epitaxy-diff, .epitaxy-terminal-view) {
+	--upstream-text-code: var(--epitaxy-code-font-size);
+	--upstream-leading-code: var(--epitaxy-code-leading);
+	--code-size: var(--epitaxy-code-font-size);
+	--code-leading: var(--epitaxy-code-leading);
+}
+
+/* Upstream's Files pane rows take Settings ▸ Code font size at ×1.5 leading (11/13/16/20 px → 17/20/24/30 px). */
+[data-code-font-size] .epitaxy-file-rows {
+	font-size: var(--code-size);
+	line-height: round(calc(var(--code-size) * 1.5 + 0.01px), 1px);
+}
+
+/* Upstream exempts the markdown document view and approval cards from the code font size. */
+[data-code-font-size]
+	:is(.epitaxy-document-prose, [data-fixed-code-size])
+	:is(.epitaxy-code-size, .epitaxy-codeblock, .epitaxy-diff) {
+	--upstream-text-code: inherit;
+	--upstream-leading-code: inherit;
+	--code-size: initial;
+	--code-leading: initial;
 }
 /* Upstream .cds-root [data-size=xs|sm|lg]: a sized control's subtree pads on that size's scale. */
 [data-size="xs"] {

@@ -22,6 +22,17 @@ function permissionChrome() {
 }
 
 describe("approval card chrome", () => {
+	// Upstream approval cards carry data-fixed-code-size, so their code keeps the default size under
+	// Settings ▸ Code font size; the detail opts into the hook class that the exemption rule matches.
+	it("fixes the card's code size with upstream's data-fixed-code-size root and epitaxy-code-size detail", () => {
+		const {root} = permissionChrome();
+
+		expect({
+			fixed: root?.getAttribute("data-fixed-code-size"),
+			detail: root?.querySelector("[data-permission-detail]")?.classList.contains("epitaxy-code-size"),
+		}).toStrictEqual({fixed: "", detail: true});
+	});
+
 	it("rounds the card with upstream's rounded-card (cds radius + 4px), not the fixed 10px rounded-r7", () => {
 		const classes = permissionChrome().card?.split(/\s+/) ?? [];
 		expect({card: classes.includes("rounded-card"), r7: classes.includes("rounded-r7")}).toStrictEqual({

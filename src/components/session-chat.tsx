@@ -5730,12 +5730,14 @@ function ToolCallRow({
 	const diffStats = useEditDiffStats(call);
 	const isCardStyle = CARD_STYLE_TOOLS.has(call.name) && !nested;
 	const isCodeCard = CODE_CARD_TOOLS.has(call.name);
-	// Renderers that draw nothing leave no padded gap.
+	// Renderers that draw nothing leave no padded gap. Every tool body carries upstream's
+	// `epitaxy-code-size` hook, so its code text follows Settings ▸ Code font size.
 	const bodyClass =
 		// Upstream opens a grouped row's body 10px below its header line.
 		(nested && ROW_BODY_TOOLS.has(call.name)
-			? "group/body relative flex w-full pt-2.5"
-			: `group/body relative flex w-full flex-col ${nested ? "pt-2.5" : "pt-p3"}`) + " empty:hidden";
+			? "epitaxy-code-size group/body relative flex w-full pt-2.5"
+			: `epitaxy-code-size group/body relative flex w-full flex-col ${nested ? "pt-2.5" : "pt-p3"}`) +
+		" empty:hidden";
 	// Collapsed rows rest in upstream's KH() ink (secondary under fizzy-lake color, else muted and lifting to secondary on hover); an open
 	// row stays secondary, as upstream does.
 	const ink = expanded ? "text-secondary" : `${restInk} group-hover/tool:text-secondary`;
@@ -6010,7 +6012,7 @@ function ToolCallRow({
 
 	const body = hasBody ? (
 		isCardStyle ? (
-			<div className="group/body py-p6">
+			<div className="epitaxy-code-size group/body py-p6">
 				<div
 					className={`card-outline ${isCodeCard ? "code-card " : ""}rounded-r6 overflow-clip flex flex-col relative`}
 				>

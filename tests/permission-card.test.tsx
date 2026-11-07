@@ -976,7 +976,7 @@ describe("PermissionCard", () => {
 			title: "text-[13px]/[19px] font-normal min-w-0 break-words",
 			value: "flow-root",
 			codeCard:
-				"flex overflow-clip rounded-lg px-2 py-1 text-code bg-surface-1 dark:bg-surface-2 select-text [unicode-bidi:plaintext]",
+				"epitaxy-code-size flex overflow-clip rounded-lg px-2 py-1 text-code bg-surface-1 dark:bg-surface-2 select-text [unicode-bidi:plaintext]",
 			gutter: "$ ",
 			deny: [],
 			allow: [],

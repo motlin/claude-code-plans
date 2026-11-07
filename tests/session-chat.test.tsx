@@ -641,18 +641,18 @@ describe("SessionChat nested tool rows", () => {
 				"flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5",
 			],
 			groupedBashBodies: [
-				"group/body relative flex w-full pt-2.5 empty:hidden",
-				"group/body relative flex w-full pt-2.5 empty:hidden",
+				"epitaxy-code-size group/body relative flex w-full pt-2.5 empty:hidden",
+				"epitaxy-code-size group/body relative flex w-full pt-2.5 empty:hidden",
 			],
 			groupedReadCards: [
 				"flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5",
 			],
 			groupedReadBodies: [
-				"group/body relative flex w-full flex-col pt-2.5 empty:hidden",
-				"group/body relative flex w-full flex-col pt-2.5 empty:hidden",
+				"epitaxy-code-size group/body relative flex w-full flex-col pt-2.5 empty:hidden",
+				"epitaxy-code-size group/body relative flex w-full flex-col pt-2.5 empty:hidden",
 			],
 			singleBashCards: ["card-outline rounded-r6 overflow-clip flex flex-col relative"],
-			singleBashBodies: ["group/body py-p6"],
+			singleBashBodies: ["epitaxy-code-size group/body py-p6"],
 		});
 	});
 });

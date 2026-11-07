@@ -7,7 +7,7 @@ import {
 	requestTheme,
 	subscribeHighlighter,
 } from "../../hooks/use-shiki";
-import type {CodeThemeId} from "../../lib/code-themes";
+import {codeLeadingPx, DEFAULT_CODE_FONT_SIZE, type CodeFontSize, type CodeThemeId} from "../../lib/code-themes";
 import {SHIKI_TOKENIZE_OPTIONS} from "../../lib/shiki-tokenize-options";
 
 /** Upstream's Code appearance sample: one line removed, one added, each with its changed word. */
@@ -108,17 +108,29 @@ function useHighlightedPreview(theme: CodeThemeId): HighlightedPreview {
 	}, [theme, highlighterVersion]);
 }
 
-/** A live 3-line diff card rendered in `theme`, shown under its picker. */
-export function CodeThemePreview({theme, label}: {theme: CodeThemeId; label: string}) {
+/**
+ * A live 3-line diff card rendered in `theme`, shown under its picker. Its `epitaxy-codeblock` wrapper
+ * takes Settings ▸ Code font size, and the min-height is upstream `JG`: 4 code lines + 18px.
+ */
+export function CodeThemePreview({
+	theme,
+	label,
+	codeFontSize,
+}: {
+	theme: CodeThemeId;
+	label: string;
+	codeFontSize: CodeFontSize | null;
+}) {
 	const {bg, fg, lines} = useHighlightedPreview(theme);
+	const minHeight = `${4 * codeLeadingPx(codeFontSize ?? DEFAULT_CODE_FONT_SIZE) + 18}px`;
 
 	return (
-		<div className="min-h-[94px] overflow-clip rounded-lg border">
+		<div className="epitaxy-codeblock overflow-clip rounded-lg border">
 			<figure
 				aria-label={label}
 				data-code-theme={theme}
-				style={{backgroundColor: bg, color: fg}}
-				className="m-0 min-h-[94px] py-2 font-mono text-code leading-5"
+				style={{backgroundColor: bg, color: fg, minHeight}}
+				className="m-0 py-2 font-mono text-code leading-[var(--code-leading,20px)]"
 			>
 				{PREVIEW_LINES.map((line, index) => {
 					const [before, word, after] = splitAtWord(

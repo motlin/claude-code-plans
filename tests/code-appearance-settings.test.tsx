@@ -51,6 +51,7 @@ afterEach(() => {
 	document.documentElement.style.removeProperty("--font-mono");
 	document.documentElement.style.removeProperty("--epitaxy-code-font-size");
 	document.documentElement.style.removeProperty("--epitaxy-code-leading");
+	delete document.documentElement.dataset["codeFontSize"];
 });
 
 describe("Claude Code settings ▸ Code appearance", () => {
@@ -134,7 +135,7 @@ describe("Claude Code settings ▸ Code appearance", () => {
 		}).toStrictEqual({
 			grid: "grid grid-cols-2 gap-4 py-3",
 			columns: ["flex min-w-0 flex-col gap-2", "flex min-w-0 flex-col gap-2"],
-			wrapper: "min-h-[94px] overflow-clip rounded-lg border",
+			wrapper: "epitaxy-codeblock overflow-clip rounded-lg border",
 			numbers: [
 				"w-8 shrink-0 pr-2 text-right opacity-50 select-none",
 				"w-8 shrink-0 pr-2 text-right text-[var(--upstream-git-removed)] select-none",
@@ -151,6 +152,30 @@ describe("Claude Code settings ▸ Code appearance", () => {
 					className: "bg-[color-mix(in_srgb,var(--upstream-git-added)_30%,transparent)]",
 				},
 			],
+		});
+	});
+
+	// Upstream `JG`: the preview's min-height is 4 code lines + 18px, the leading round(px * 1.45), 19px at Default.
+	it("scales the code theme preview's min-height and leading with Code font size", async () => {
+		await import("../src/components/settings/code-theme-preview");
+		await renderClaudeCode();
+		const read = () => {
+			const figure = screen.getByRole("figure", {name: "Light code theme preview"});
+			return {
+				minHeight: figure.style.minHeight,
+				leading: figure.classList.contains("leading-[var(--code-leading,20px)]"),
+				hook: figure.parentElement?.classList.contains("epitaxy-codeblock"),
+			};
+		};
+
+		const initial = read();
+		fireEvent.click(screen.getByRole("combobox", {name: "Code font size"}));
+		fireEvent.click(screen.getByRole("option", {name: "20 px"}));
+		const picked = read();
+
+		expect({initial, picked}).toStrictEqual({
+			initial: {minHeight: "94px", leading: true, hook: true},
+			picked: {minHeight: "134px", leading: true, hook: true},
 		});
 	});
 
@@ -224,6 +249,7 @@ describe("Claude Code settings ▸ Code appearance", () => {
 			stored: localStorage.getItem("ccp-code-font-size"),
 			size: style.getPropertyValue("--epitaxy-code-font-size"),
 			leading: style.getPropertyValue("--epitaxy-code-leading"),
+			attribute: document.documentElement.dataset["codeFontSize"] ?? null,
 		});
 
 		fireEvent.click(screen.getByRole("combobox", {name: "Code font size"}));
@@ -234,8 +260,8 @@ describe("Claude Code settings ▸ Code appearance", () => {
 		const reset = read();
 
 		expect({picked, reset}).toStrictEqual({
-			picked: {trigger: "16 px", stored: "16", size: "1rem", leading: "1.4375rem"},
-			reset: {trigger: "Default · 13 px", stored: "null", size: "", leading: ""},
+			picked: {trigger: "16 px", stored: "16", size: "1rem", leading: "1.4375rem", attribute: "16"},
+			reset: {trigger: "Default · 13 px", stored: "null", size: "", leading: "", attribute: null},
 		});
 	});
 

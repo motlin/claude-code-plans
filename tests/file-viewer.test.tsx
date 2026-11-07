@@ -35,6 +35,19 @@ afterEach(() => {
 });
 
 describe("read-only file viewer", () => {
+	// Upstream's Files pane rows (`epitaxy-diff epitaxy-file-rows`) follow Settings ▸ Code font size at ×1.5 leading.
+	it("marks the rows container with upstream's Code font size hooks and sizes rows by their line box", () => {
+		renderViewer("alice\nbob");
+
+		expect({
+			rows: document.querySelector("[data-file-source]")?.getAttribute("class"),
+			row: document.querySelector("#L1")?.getAttribute("class"),
+		}).toStrictEqual({
+			rows: "epitaxy-diff epitaxy-file-rows bg-surface-1 py-2 font-mono text-xs leading-5 min-w-max",
+			row: "flex min-h-[1lh] scroll-mt-16 ",
+		});
+	});
+
 	it("scrolls to and highlights line 142 from the initial hash", () => {
 		window.history.replaceState(null, "", "/file/fabricated-token#L142");
 		renderViewer(Array.from({length: 150}, (_, index) => `line ${index + 1}`).join("\n"));

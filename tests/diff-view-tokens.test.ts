@@ -82,7 +82,7 @@ describe("diff view tokens", () => {
 			dark: ["#32d74b", "#ff2c56"],
 			theme: ["var(--upstream-git-added)", "var(--upstream-git-removed)"],
 			numbers: ["var(--upstream-git-added)", "var(--upstream-git-removed)"],
-			inline: ["12px", "17px", "var(--upstream-git-added)"],
+			inline: ["var(--code-size, 12px)", "var(--code-leading, 17px)", "var(--upstream-git-added)"],
 		});
 	});
 

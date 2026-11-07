@@ -68,7 +68,10 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 	}, [settings.codeFont]);
 
 	useEffect(() => {
-		const style = document.documentElement.style;
+		const root = document.documentElement;
+		if (settings.codeFontSize === null) delete root.dataset["codeFontSize"];
+		else root.dataset["codeFontSize"] = String(settings.codeFontSize);
+		const style = root.style;
 		for (const [name, value] of Object.entries(codeFontSizeCssVars(settings.codeFontSize))) {
 			if (value === null) style.removeProperty(name);
 			else style.setProperty(name, value);

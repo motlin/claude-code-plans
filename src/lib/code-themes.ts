@@ -142,14 +142,15 @@ export function isCodeFontSize(value: unknown): value is CodeFontSize {
 }
 
 /** Upstream `vm`: code line height in px for a code font size. */
-function codeLeadingPx(px: number): number {
+export function codeLeadingPx(px: number): number {
 	return Math.round(px * 1.45);
 }
 
 /**
  * Upstream `H2`: the `--epitaxy-code-font-size` / `--epitaxy-code-leading` overrides set on <html>,
- * or null for each when Code font size is Default. globals.css reads them behind every density's
- * `--upstream-text-code` / `--upstream-leading-code`.
+ * or null for each when Code font size is Default. globals.css maps them onto `--upstream-text-code` /
+ * `--upstream-leading-code` (and `--code-size` / `--code-leading`) inside upstream's hook classes only,
+ * under `html[data-code-font-size]`.
  */
 export function codeFontSizeCssVars(
 	size: CodeFontSize | null,

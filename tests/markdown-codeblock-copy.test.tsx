@@ -13,7 +13,7 @@ describe("fenced code block copy button markup", () => {
 		const html = renderMarkdownToHtml(`${FENCE}\n\n\`\`\`\nplain\n\`\`\``);
 
 		expect({
-			wrappers: html.match(/class="markdown-codeblock"/g)?.length ?? 0,
+			wrappers: html.match(/class="markdown-codeblock epitaxy-codeblock"/g)?.length ?? 0,
 			rails: html.match(/class="markdown-code-copy-rail"/g)?.length ?? 0,
 			strips: html.match(/class="markdown-code-copy"/g)?.length ?? 0,
 			buttons:
@@ -29,7 +29,7 @@ describe("fenced code block copy button markup", () => {
 		expect(renderMarkdownToHtml("a `snippet` in prose")).toBe("<p>a <code>snippet</code> in prose</p>\n");
 	});
 
-	it("draws fences as upstream's white 12/17 card at least 318px wide", () => {
+	it("draws fences as upstream's white 12/17 card at least 318px wide, following Settings ▸ Code font size", () => {
 		expect({
 			wrapper: ruleDeclarations(markdownCss, ".markdown :global(.markdown-codeblock)"),
 			pre: ruleDeclarations(markdownCss, ".markdown :global(.markdown-codeblock) > pre"),
@@ -45,14 +45,14 @@ describe("fenced code block copy button markup", () => {
 			pre: {
 				margin: "0",
 				width: "auto",
-				"font-size": "12px",
-				"line-height": "17px",
+				"font-size": "var(--code-size, 12px)",
+				"line-height": "var(--code-leading, 17px)",
 				background: "var(--color-surface-1)",
 				"border-radius": "8px",
 				padding: "8px 45.2px 8px 17.2px",
 			},
 			darkPre: {background: "var(--color-surface-1)"},
-			code: {"line-height": "17px"},
+			code: {"line-height": "var(--code-leading, 17px)"},
 		});
 	});
 

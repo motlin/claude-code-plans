@@ -70,6 +70,6 @@ export const DIFFS_WRAP_STYLE = {
 export const INLINE_DIFFS_STYLE_OVERRIDES = {
 	...DIFFS_STYLE_OVERRIDES,
 	...DIFFS_WRAP_STYLE,
-	"--diffs-font-size": "12px",
-	"--diffs-line-height": "17px",
+	"--diffs-font-size": "var(--code-size, 12px)",
+	"--diffs-line-height": "var(--code-leading, 17px)",
 } as CSSProperties;

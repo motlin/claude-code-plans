@@ -33,5 +33,10 @@ export function InlineDiff({filePath, oldStr, newStr}: {filePath: string; oldStr
 		[codeThemes, resolvedTheme],
 	);
 
-	return <FileDiff fileDiff={fileDiff} options={options} style={INLINE_DIFFS_STYLE_OVERRIDES} disableWorkerPool />;
+	// Upstream's `epitaxy-diff` hook class carries Settings ▸ Code font size into the diff.
+	return (
+		<div className="epitaxy-diff">
+			<FileDiff fileDiff={fileDiff} options={options} style={INLINE_DIFFS_STYLE_OVERRIDES} disableWorkerPool />
+		</div>
+	);
 }

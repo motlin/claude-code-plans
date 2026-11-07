@@ -88,7 +88,7 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps) {
 			{command && (
 				<div
 					data-bash-code-card=""
-					className={`relative rounded-r6 bg-surface-1 dark:bg-surface-2 dark:ring-1 dark:ring-white/10 py-p3 pl-p6 ${nested ? "pr-p6" : "pr-[32px]"} text-[12px]/[17px]`}
+					className={`epitaxy-diff relative rounded-r6 bg-surface-1 dark:bg-surface-2 dark:ring-1 dark:ring-white/10 py-p3 pl-p6 ${nested ? "pr-p6" : "pr-[32px]"} text-[length:var(--code-size,12px)]/[var(--code-leading,17px)]`}
 				>
 					<HighlightedCommand command={command} />
 					{!nested && (
@@ -104,7 +104,7 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps) {
 				<div
 					data-bash-output=""
 					{...TOOL_OUTPUT_REGION}
-					className={`max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all text-[12px]/[17px] ${isError ? "text-danger-ink" : "text-secondary"}`}
+					className={`epitaxy-code-size max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all text-[length:var(--code-size,12px)]/[var(--code-leading,17px)] ${isError ? "text-danger-ink" : "text-secondary"}`}
 				>
 					<AnsiText content={resultContent} />
 				</div>

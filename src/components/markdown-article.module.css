@@ -170,14 +170,15 @@
 	max-width: 100%;
 }
 
-/* Upstream's fence card: white surface, 12/17 mono, and 45.2px of right padding
+/* Upstream's fence card: white surface, 12/17 mono (or Settings ▸ Code font size, via
+   the `epitaxy-codeblock` hook's --code-size / --code-leading), and 45.2px of right padding
    so a long line never runs under the copy button. The wrapper carries the
    column gap, so the `pre` drops its own margin and fills the wrapper. */
 .markdown :global(.markdown-codeblock) > pre {
 	margin: 0;
 	width: auto;
-	font-size: 12px;
-	line-height: 17px;
+	font-size: var(--code-size, 12px);
+	line-height: var(--code-leading, 17px);
 	background: var(--color-surface-1);
 	border-radius: 8px;
 	padding: 8px 45.2px 8px 17.2px;
@@ -188,7 +189,7 @@
 }
 
 .markdown :global(.markdown-codeblock) > pre code {
-	line-height: 17px;
+	line-height: var(--code-leading, 17px);
 }
 
 /* A full-height rail inset 7px from the right edge, so the strip inside can

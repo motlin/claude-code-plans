@@ -243,7 +243,9 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
 			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- delegates clicks from the rendered links and copy buttons inside it, which are keyboard-reachable themselves */}
 			<article
 				ref={missingFocus.article}
-				className={styles["markdown"]}
+				className={
+					props.document === true ? `${styles["markdown"]} epitaxy-document-prose` : styles["markdown"]
+				}
 				{...(props.document === true ? {"data-document": ""} : {})}
 				onClick={handleClick}
 				{...(onFileRef === undefined ? {} : {onKeyDown: handleKeyDown, ...reasonTooltip.handlers})}

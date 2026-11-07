@@ -565,7 +565,7 @@ function applyPlugins(instance: MarkdownIt): void {
 	// markdown-it `<pre>` has nowhere to anchor one.
 	const renderFence = defined(instance.renderer.rules.fence, "markdown-it fence rule");
 	instance.renderer.rules.fence = (tokens, idx, options, env, self) =>
-		`<div class="${CODEBLOCK_CLASS}">${renderFence(tokens, idx, options, env, self).trimEnd()}${COPY_STRIP}</div>\n`;
+		`<div class="${CODEBLOCK_CLASS} epitaxy-codeblock">${renderFence(tokens, idx, options, env, self).trimEnd()}${COPY_STRIP}</div>\n`;
 
 	// Upstream renders every table inside an `overflow-x-auto` div so a table wider
 	// than the transcript column scrolls on its own instead of stretching the column.

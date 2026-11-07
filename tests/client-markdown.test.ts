@@ -40,7 +40,7 @@ beforeEach(() => {
 /** Drops the copy-button chrome the fence renderer wraps every code block in. */
 function withoutCopyChrome(html: string): string {
 	return html
-		.replaceAll('<div class="markdown-codeblock">', "")
+		.replaceAll('<div class="markdown-codeblock epitaxy-codeblock">', "")
 		.replaceAll(/<div class="markdown-code-copy-rail">[\s\S]*?<\/div><\/div><\/div>/g, "");
 }
 

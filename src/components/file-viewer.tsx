@@ -170,7 +170,7 @@ export function FileViewer({
 				key={lineId}
 				role="row"
 				data-highlighted={isHighlighted ? "true" : undefined}
-				className={`flex min-h-5 scroll-mt-16 ${isHighlighted ? "bg-accent-100/15" : ""}`}
+				className={`flex min-h-[1lh] scroll-mt-16 ${isHighlighted ? "bg-accent-100/15" : ""}`}
 			>
 				<div role="cell" className="w-14 shrink-0 select-none border-r border-strong pr-3 text-right">
 					<a
@@ -206,7 +206,7 @@ export function FileViewer({
 		<div ref={containerRef} className={`rounded-lg border border-strong ${wrap ? "" : "overflow-x-auto"}`}>
 			<div
 				data-file-source=""
-				className={`bg-surface-1 py-2 font-mono text-xs leading-5 ${wrap ? "" : "min-w-max"}`}
+				className={`epitaxy-diff epitaxy-file-rows bg-surface-1 py-2 font-mono text-xs leading-5 ${wrap ? "" : "min-w-max"}`}
 				role="table"
 				style={{tabSize}}
 			>

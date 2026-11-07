@@ -1024,7 +1024,11 @@ function CodeAppearanceSection() {
 						className="w-full"
 					/>
 					<Suspense>
-						<CodeThemePreview theme={settings.codeThemeLight} label="Light code theme preview" />
+						<CodeThemePreview
+							theme={settings.codeThemeLight}
+							label="Light code theme preview"
+							codeFontSize={settings.codeFontSize}
+						/>
 					</Suspense>
 				</div>
 				<div className="flex min-w-0 flex-col gap-2">
@@ -1038,7 +1042,11 @@ function CodeAppearanceSection() {
 						className="w-full"
 					/>
 					<Suspense>
-						<CodeThemePreview theme={settings.codeThemeDark} label="Dark code theme preview" />
+						<CodeThemePreview
+							theme={settings.codeThemeDark}
+							label="Dark code theme preview"
+							codeFontSize={settings.codeFontSize}
+						/>
 					</Suspense>
 				</div>
 			</div>

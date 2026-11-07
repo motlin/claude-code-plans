@@ -208,6 +208,7 @@ export function ApprovalCardShell({
 			<div
 				ref={rootRef}
 				data-approval-card-root
+				data-fixed-code-size=""
 				data-focus-region="question"
 				data-approval-card-digits={digits}
 				data-approval-presentation={presentation}

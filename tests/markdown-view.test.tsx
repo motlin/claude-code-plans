@@ -80,6 +80,17 @@ describe("MarkdownView", () => {
 		expect(container.querySelector("article")?.innerHTML).toBe("<h1>Hi</h1>\n");
 	});
 
+	// Upstream's markdown document view (`.epitaxy-document-prose`) keeps code at the default size.
+	it("marks only a document with upstream's epitaxy-document-prose code size exemption", () => {
+		const document = render(<MarkdownView markdown="# Hi" document />).container;
+		const chat = render(<MarkdownView markdown="# Hi" />).container;
+
+		expect({
+			document: document.querySelector("article")?.classList.contains("epitaxy-document-prose"),
+			chat: chat.querySelector("article")?.classList.contains("epitaxy-document-prose"),
+		}).toStrictEqual({document: true, chat: false});
+	});
+
 	it("preserves typographer output", () => {
 		const {container} = render(<MarkdownView markdown={'He said "hi" -- ok'} />);
 

@@ -37,17 +37,58 @@ function customProperty(styles: string, name: string): string {
 afterEach(cleanup);
 
 describe("code typography", () => {
-	// Settings ▸ Code font size overrides both through upstream's --epitaxy-code-* vars on <html>.
-	it("pins the upstream comfortable code font size and line height tokens behind the Code font size override (compact lives in density-tokens.test.ts)", () => {
+	it("pins the upstream comfortable code font size and line height tokens (compact lives in density-tokens.test.ts)", () => {
 		const styles = readFileSync("src/styles/globals.css", "utf8");
 
 		expect({
 			fontSize: customProperty(styles, "--upstream-text-code"),
 			lineHeight: customProperty(styles, "--upstream-leading-code"),
 		}).toStrictEqual({
-			fontSize: "var(--epitaxy-code-font-size, 13px)",
-			lineHeight: "var(--epitaxy-code-leading, 19px)",
+			fontSize: "13px",
+			lineHeight: "19px",
 		});
+	});
+
+	// Upstream scopes Settings ▸ Code font size to four hook classes under html[data-code-font-size], and
+	// exempts document prose and approval cards ([data-fixed-code-size]), so chrome text-code stays fixed.
+	it("scopes the Code font size override to upstream's hook classes and exempts documents and approval cards", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8").replace(/\s+/g, " ");
+
+		expect({
+			scoped: styles.includes(
+				"[data-code-font-size] :is(.epitaxy-code-size, .epitaxy-codeblock, .epitaxy-diff, .epitaxy-terminal-view) { --upstream-text-code: var(--epitaxy-code-font-size); --upstream-leading-code: var(--epitaxy-code-leading); --code-size: var(--epitaxy-code-font-size); --code-leading: var(--epitaxy-code-leading); }",
+			),
+			exempt: styles.includes(
+				"[data-code-font-size] :is(.epitaxy-document-prose, [data-fixed-code-size]) :is(.epitaxy-code-size, .epitaxy-codeblock, .epitaxy-diff) { --upstream-text-code: inherit; --upstream-leading-code: inherit; --code-size: initial; --code-leading: initial; }",
+			),
+			globalFallback: styles.includes("var(--epitaxy-code-font-size,"),
+			// Files pane rows: 11/13/16/20 px → 17/20/24/30 px lines.
+			fileRows: styles.includes(
+				"[data-code-font-size] .epitaxy-file-rows { font-size: var(--code-size); line-height: round(calc(var(--code-size) * 1.5 + 0.01px), 1px); }",
+			),
+		}).toStrictEqual({scoped: true, exempt: true, globalFallback: false, fileRows: true});
+	});
+
+	it("matches upstream's exemption selector on hook classes inside approval cards and document prose only", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const exemption = styles.match(/(\[data-code-font-size\]\s*:is\(\.epitaxy-document-prose[^{]+)\{/)?.[1]?.trim();
+		if (exemption === undefined) throw new Error("Missing exemption rule");
+		const {container} = render(
+			<div data-code-font-size="20">
+				<div data-fixed-code-size="">
+					<div data-testid="card" className="epitaxy-code-size" />
+				</div>
+				<div className="epitaxy-document-prose">
+					<div data-testid="document" className="epitaxy-codeblock" />
+				</div>
+				<div data-testid="transcript" className="epitaxy-diff" />
+			</div>,
+		);
+		const matches = (testId: string) => container.querySelector(`[data-testid=${testId}]`)?.matches(exemption);
+
+		expect({card: matches("card"), document: matches("document"), transcript: matches("transcript")}).toStrictEqual(
+			{card: true, document: true, transcript: false},
+		);
 	});
 
 	it("pins the upstream red inline-code ink in both themes", () => {
