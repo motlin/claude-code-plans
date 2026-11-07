@@ -209,13 +209,18 @@ describe("fizzy-lake rollout: component remaps under color", () => {
 	it("T9: panes collapse surface-2/3 to surface-1, and the composer card's surface-3 becomes the popover surface", () => {
 		expect({
 			pane: rule(':root[data-cds-fizzy-lake~="color"] [data-session-tile]'),
-			composer: rule(':root[data-cds-fizzy-lake~="color"] .bg-surface-3.rounded-composer'),
+			composer: rule(
+				':root[data-cds-fizzy-lake~="color"] .bg-surface-3:is(.fixed, .shadow-lg, .shadow-xl, .shadow-2xl, .shadow-panel, .shadow-panel-sm, .shadow-panel-lg, .shadow-popover, .shadow-composer, .shadow-composer-hover, .shadow-composer-focus, .rounded-composer, .rounded-\\[20px\\])',
+			),
 		}).toStrictEqual({
 			pane: {
 				"--upstream-surface-2": "var(--upstream-surface-1)",
 				"--upstream-surface-3": "var(--upstream-surface-1)",
 			},
-			composer: {"--upstream-surface-3": "var(--upstream-surface-popover)"},
+			composer: {
+				"--upstream-surface-3": "var(--upstream-surface-popover)",
+				"--color-surface-3": "var(--upstream-surface-popover)",
+			},
 		});
 	});
 

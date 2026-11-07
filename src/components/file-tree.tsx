@@ -40,7 +40,7 @@ function FileTreeItem({node, pluginId, depth}: {node: FileTreeNode; pluginId: st
 					onClick={() => {
 						setExpanded(!expanded);
 					}}
-					className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-sm text-secondary transition-colors hover:bg-surface-0/50"
+					className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-sm text-secondary transition-colors hover:bg-surface-0"
 					style={{paddingLeft: `${depth * 16 + 8}px`}}
 				>
 					<ChevronRight
@@ -77,7 +77,7 @@ function FileTreeItem({node, pluginId, depth}: {node: FileTreeNode; pluginId: st
 					type,
 					_splat: filePath.split("/").map(toPluginFileSlug).join("/"),
 				}}
-				className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-secondary no-underline transition-colors hover:bg-surface-0/50 hover:text-secondary"
+				className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-secondary no-underline transition-colors hover:bg-surface-0 hover:text-secondary"
 				style={{paddingLeft: `${depth * 16 + 8}px`}}
 			>
 				<span className="w-3" />

@@ -32,7 +32,7 @@ function ProjectsPage() {
 							key={project.id}
 							to="/project/$id"
 							params={{id: project.id}}
-							className="group block rounded-lg border border-border p-4 transition-colors hover:bg-surface-0/50"
+							className="group block rounded-lg border border-border p-4 transition-colors hover:bg-surface-0"
 						>
 							<div className="truncate font-medium" style={{fontSize: "14px", fontWeight: 500}}>
 								{project.projectPath ? project.projectPath.split("/").pop() : project.name}

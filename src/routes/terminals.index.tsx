@@ -43,7 +43,7 @@ const HERDR_ROW_COLUMNS =
 const HERDR_ROW_ACTION_CELL = "justify-self-end max-sm:ms-auto";
 
 const TMUX_ROW_COLUMNS =
-	"grid grid-cols-[0.625rem_2.75rem_2.5rem_minmax(0,1fr)_minmax(0,8rem)_8.5rem_auto] items-center gap-2 rounded-md border border-border p-3 no-underline transition-colors hover:bg-surface-0/50 max-sm:flex max-sm:flex-wrap";
+	"grid grid-cols-[0.625rem_2.75rem_2.5rem_minmax(0,1fr)_minmax(0,8rem)_8.5rem_auto] items-center gap-2 rounded-md border border-border p-3 no-underline transition-colors hover:bg-surface-0 max-sm:flex max-sm:flex-wrap";
 
 const HOST_BADGE = "rounded bg-surface-0/60 px-1.5 py-0.5 text-center text-[10px] text-t6";
 
@@ -206,7 +206,7 @@ function TerminalsPage() {
 									params={{sessionId: placement.sessionId}}
 									aria-label={`Open live read-only terminal for ${placement.displayName}`}
 									title={`Open live read-only terminal for ${placement.displayName}. ${technicalDetails}`}
-									className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0/50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus max-sm:order-first max-sm:basis-full max-sm:pb-1"
+									className="grid grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-1.5 rounded-md p-3 no-underline transition-colors hover:bg-surface-0 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus max-sm:order-first max-sm:basis-full max-sm:pb-1"
 								>
 									<span className="sr-only">
 										{placement.active ? "Herdr pane focused" : "Herdr pane not focused"}
@@ -231,7 +231,7 @@ function TerminalsPage() {
 								<Link
 									to="/session/$id"
 									params={{id: placement.sessionId}}
-									className="flex size-8 items-center justify-center justify-self-center rounded-md text-t6 transition-colors hover:bg-surface-0/50 hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+									className="flex size-8 items-center justify-center justify-self-center rounded-md text-t6 transition-colors hover:bg-surface-0 hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 									title={`Open session transcript for ${placement.displayName}`}
 									aria-label={`Open session transcript for ${placement.displayName}`}
 								>

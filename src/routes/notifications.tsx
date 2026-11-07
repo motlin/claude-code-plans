@@ -121,7 +121,7 @@ function NotificationsPage() {
 								<Link
 									to="/session/$id"
 									params={{id: notification.sessionId}}
-									className="block rounded-md border border-border p-3 pr-10 no-underline transition-colors hover:bg-surface-0/50"
+									className="block rounded-md border border-border p-3 pr-10 no-underline transition-colors hover:bg-surface-0"
 								>
 									<div className="flex items-center gap-2">
 										<TypeIcon notificationType={notification.notificationType} />

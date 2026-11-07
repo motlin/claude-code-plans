@@ -54,7 +54,7 @@ function ApprovalsPage() {
 							<li key={`${approval.sessionId}:${approval.toolUseId}`}>
 								<Link
 									{...linkProps}
-									className="block rounded-md border border-border p-3 no-underline transition-colors hover:bg-surface-0/50"
+									className="block rounded-md border border-border p-3 no-underline transition-colors hover:bg-surface-0"
 								>
 									<div className="flex items-center gap-2">
 										<span className="truncate text-sm font-medium text-primary">

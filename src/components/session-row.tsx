@@ -41,7 +41,7 @@ export function SessionRow({
 					onPointerDown={(event) => {
 						startSessionSwitchJourney(event.nativeEvent, session.id, queryClient);
 					}}
-					className="block rounded-md p-2 pr-36 cursor-pointer transition-colors hover:bg-surface-0/50"
+					className="block rounded-md p-2 pr-36 cursor-pointer transition-colors hover:bg-surface-0"
 				>
 					<div className="flex items-center gap-1.5 truncate" style={{fontSize: "14px", fontWeight: 430}}>
 						{/* A row the active feed reports live whose summary still says "ended" shows as running. */}

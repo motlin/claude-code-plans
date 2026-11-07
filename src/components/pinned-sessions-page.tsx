@@ -51,7 +51,7 @@ export function PinnedSessionsPage() {
 							<Link
 								to="/session/$id"
 								params={{id: session.id}}
-								className="block rounded-md p-2 pr-40 cursor-pointer transition-colors hover:bg-surface-0/50"
+								className="block rounded-md p-2 pr-40 cursor-pointer transition-colors hover:bg-surface-0"
 							>
 								<div className="truncate pr-8" style={{fontSize: "14px", fontWeight: 430}}>
 									{session.title}

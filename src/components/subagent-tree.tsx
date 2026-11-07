@@ -113,7 +113,7 @@ function TreeNode({node, presentation}: {node: SubagentTreeNode; presentation: T
 		<div>
 			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a pointer shortcut for the chevron button, which is the keyboard control */}
 			<div
-				className={`group flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-surface-0/50 ${liveStatus === "ended" ? "opacity-60" : ""}`}
+				className={`group flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-surface-0 ${liveStatus === "ended" ? "opacity-60" : ""}`}
 				onClick={() => {
 					if (hasChildren) setExpanded((current) => !current);
 				}}
@@ -174,7 +174,7 @@ function ParallelGroupNode({group, presentation}: {group: ParallelSubagentGroup;
 		<div>
 			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a pointer shortcut for the chevron button, which is the keyboard control */}
 			<div
-				className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-surface-0/50"
+				className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-surface-0"
 				onClick={() => {
 					setExpanded((current) => !current);
 				}}
@@ -217,7 +217,7 @@ function WorkflowPhaseNode({
 				type="button"
 				aria-expanded={expanded}
 				aria-label={phaseAriaLabel(phase)}
-				className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 text-start hover:bg-surface-0/50"
+				className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 text-start hover:bg-surface-0"
 				onClick={() => {
 					setExpanded((current) => !current);
 				}}
@@ -255,7 +255,7 @@ function EarlierAttempts({agents, presentation}: {agents: SubagentTreeNode[]; pr
 			<button
 				type="button"
 				aria-expanded={expanded}
-				className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 text-start hover:bg-surface-0/50"
+				className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 text-start hover:bg-surface-0"
 				onClick={() => {
 					setExpanded((current) => !current);
 				}}
@@ -285,7 +285,7 @@ function WorkflowRunNode({run, presentation}: {run: WorkflowRunGroup; presentati
 		<div>
 			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a pointer shortcut for the chevron button, which is the keyboard control */}
 			<div
-				className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-surface-0/50"
+				className="flex cursor-pointer items-center gap-2 rounded-md px-2.5 py-1 hover:bg-surface-0"
 				onClick={() => {
 					setExpanded((current) => !current);
 				}}

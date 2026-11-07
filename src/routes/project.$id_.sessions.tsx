@@ -129,7 +129,7 @@ function ProjectSessionsPage() {
 								<Link
 									to="/session/$id"
 									params={{id: sess.id}}
-									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-surface-0/50"
+									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-surface-0"
 								>
 									<div
 										className="flex items-center gap-1.5 truncate"

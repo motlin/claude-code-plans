@@ -19,7 +19,7 @@ describe("focus rings", () => {
 		expect({
 			offenders,
 			fileResult: readFileSync("src/components/file-search-results.tsx", "utf8").includes(
-				"hover:bg-surface-0/50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
+				"hover:bg-surface-0 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
 			),
 		}).toStrictEqual({offenders: [], fileResult: true});
 	});

@@ -345,7 +345,7 @@ function ResultCards({
 									const lineNumber = Number(lineElement?.dataset["lineNumber"] ?? firstLineNumber);
 									onOpen(file.path, lineNumber);
 								}}
-								className="block w-full rounded-lg p-3 text-left transition-colors hover:bg-surface-0/50 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+								className="block w-full rounded-lg p-3 text-left transition-colors hover:bg-surface-0 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 							>
 								<span className="flex items-start justify-between gap-3 pr-8">
 									<span className="min-w-0">

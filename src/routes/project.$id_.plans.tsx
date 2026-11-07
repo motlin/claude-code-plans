@@ -67,7 +67,7 @@ function ProjectPlansPage() {
 							<Link
 								to="/plan/$filename"
 								params={{filename: toMdSlug(plan.filename)}}
-								className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-surface-0/50"
+								className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-surface-0"
 							>
 								<span className="text-sm font-medium">{plan.title}</span>
 								{plan.mtime && (

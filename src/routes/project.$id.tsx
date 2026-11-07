@@ -72,7 +72,7 @@ function NavCard({to, params, icon: Icon, label, count, hint}: NavCardProps) {
 		<Link
 			to={to}
 			params={params}
-			className="group flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-surface-0/50"
+			className="group flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-surface-0"
 		>
 			<div className="flex items-center gap-3">
 				<Icon className="h-4 w-4 text-t6" />
@@ -146,7 +146,7 @@ function ProjectPage() {
 								<li key={`${approval.sessionId}:${approval.toolUseId}`}>
 									<Link
 										{...linkProps}
-										className="flex items-center gap-2 rounded-md border border-border px-4 py-3 no-underline transition-colors hover:bg-surface-0/50"
+										className="flex items-center gap-2 rounded-md border border-border px-4 py-3 no-underline transition-colors hover:bg-surface-0"
 									>
 										<span className={pillStyles.outline}>{approval.toolName}</span>
 										<span className="ml-auto text-xs text-t6">
@@ -214,7 +214,7 @@ function ProjectPage() {
 								<Link
 									to="/session/$id"
 									params={{id: sess.id}}
-									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-surface-0/50"
+									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-surface-0"
 								>
 									<div className="truncate" style={{fontSize: "14px", fontWeight: 430}}>
 										{sess.title}
@@ -324,7 +324,7 @@ function ProjectPage() {
 								<Link
 									to="/memory/$project/$filename"
 									params={{project: mem.project, filename: toMdSlug(mem.filename)}}
-									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-surface-0/50"
+									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-surface-0"
 								>
 									<div className="truncate" style={{fontSize: "14px", fontWeight: 430}}>
 										{mem.title}
@@ -347,7 +347,7 @@ function ProjectPage() {
 								<Link
 									to="/plan/$filename"
 									params={{filename: toMdSlug(plan.filename)}}
-									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-surface-0/50"
+									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-surface-0"
 								>
 									<div className="truncate" style={{fontSize: "14px", fontWeight: 430}}>
 										{plan.title}
