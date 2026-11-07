@@ -2676,35 +2676,43 @@ function TypeTabs({value, onChange}: {value: PaletteType | null; onChange: (type
 					}
 				}}
 			>
-				<div
-					role="tablist"
-					aria-label="Type"
-					className="flex min-w-max items-center [&>[role=tab]:first-child]:before:start-0 [&>[role=tab]:last-child]:before:end-0"
-				>
-					{PaletteTypeSchema.options.map((type) => {
-						const selected = type === value;
-						return (
-							<button
-								key={type}
-								type="button"
-								role="tab"
-								aria-selected={selected}
-								data-active={selected ? "" : undefined}
-								tabIndex={selected || (value === null && type === "all") ? 0 : -1}
-								onMouseDown={(event) => {
-									event.preventDefault();
-								}}
-								onClick={() => {
-									onChange(type);
-								}}
-								// Comfortable-density geometry (28px, 0 10px, 14px/20px, 7px pill) to match the rest of the
-								// palette; upstream's default density is 20px / 6px / 12px·17px / 5px (see density-default-tokens).
-								className="relative isolate inline-flex h-7 shrink-0 cursor-pointer items-center justify-center gap-1.5 px-2.5 text-sm font-medium whitespace-nowrap text-ink-muted outline-none select-none before:absolute before:inset-x-px before:inset-y-0 before:-z-[1] before:rounded-control-sm before:transition-shadow before:duration-[60ms] focus-visible:before:shadow-focus data-[active]:text-primary data-[active]:before:bg-fill-ghost-hover [&:not([data-active])]:hover:text-secondary [&:not([data-active])]:hover:before:bg-fill-ghost-hover"
+				{/* Upstream's cds Tabs root > data-size contents > scroll-pager scroller > tablist; the fizzy-lake
+				    `color` ink and ghost-selected pill rules in globals.css key off [data-cds="Tabs"]. */}
+				<div data-cds="Tabs" data-orientation="horizontal" className="min-w-max">
+					<div data-size="sm" className="contents">
+						<div data-cds-part="scroll-pager-scroller" className="contents">
+							<div
+								role="tablist"
+								aria-label="Type"
+								className="flex items-center font-sans [&>[role=tab]:first-child]:before:start-0 [&>[role=tab]:last-child]:before:end-0"
 							>
-								{paletteTypeLabels[type]}
-							</button>
-						);
-					})}
+								{PaletteTypeSchema.options.map((type) => {
+									const selected = type === value;
+									return (
+										<button
+											key={type}
+											type="button"
+											role="tab"
+											aria-selected={selected}
+											data-active={selected ? "" : undefined}
+											tabIndex={selected || (value === null && type === "all") ? 0 : -1}
+											onMouseDown={(event) => {
+												event.preventDefault();
+											}}
+											onClick={() => {
+												onChange(type);
+											}}
+											// Comfortable-density geometry (28px, 0 10px, 14px/20px, 7px pill) to match the rest of the
+											// palette; upstream's default density is 20px / 6px / 12px·17px / 5px (see density-default-tokens).
+											className="relative isolate inline-flex h-7 shrink-0 cursor-pointer items-center justify-center gap-1.5 px-2.5 text-sm font-medium whitespace-nowrap text-ink-muted outline-none select-none before:absolute before:inset-x-px before:inset-y-0 before:-z-[1] before:rounded-control-sm before:transition-shadow before:duration-[60ms] focus-visible:before:shadow-focus focus-visible:outline-hidden font-control data-[active]:text-primary data-[active]:before:bg-fill-ghost-hover [&:not([data-active])]:hover:text-secondary [&:not([data-active])]:hover:before:bg-fill-ghost-hover"
+										>
+											{paletteTypeLabels[type]}
+										</button>
+									);
+								})}
+							</div>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>

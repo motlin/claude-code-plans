@@ -506,6 +506,8 @@ describe("CommandPalette shell", () => {
 			"[&:not([data-active])]:hover:text-secondary",
 			"[&:not([data-active])]:hover:before:bg-fill-ghost-hover",
 			"focus-visible:before:shadow-focus",
+			"focus-visible:outline-hidden",
+			"font-control",
 		];
 		const tablist = within(dialog).getByRole("tablist", {name: "Type"}).className.split(" ");
 
@@ -517,6 +519,7 @@ describe("CommandPalette shell", () => {
 				tablist.includes("[&>[role=tab]:first-child]:before:start-0"),
 				tablist.includes("[&>[role=tab]:last-child]:before:end-0"),
 			],
+			tablistFontSans: tablist.includes("font-sans"),
 		}).toStrictEqual({
 			roving: [
 				["All", "", 0],
@@ -531,13 +534,40 @@ describe("CommandPalette shell", () => {
 			missingPill: [],
 			hoverPrimary: 0,
 			edgePills: [true, true],
+			tablistFontSans: true,
+		});
+	});
+
+	it("wraps the tablist in upstream's cds Tabs root > size contents > scroll-pager scroller, inside the presentation scroller", async () => {
+		const dialog = await openPalette();
+		const tablist = within(dialog).getByRole("tablist", {name: "Type"});
+		const root = tablist.closest<HTMLElement>('[data-cds="Tabs"]');
+		const size = tablist.parentElement?.parentElement;
+		const pager = tablist.parentElement;
+
+		expect({
+			rootClass: root?.className,
+			rootOrientation: root?.getAttribute("data-orientation"),
+			rootInScroller: root?.parentElement?.getAttribute("role"),
+			size: [size?.getAttribute("data-size"), size?.className],
+			pager: [pager?.getAttribute("data-cds-part"), pager?.className],
+			sizeParentIsRoot: size?.parentElement === root,
+			tablistMinWMax: tablist.classList.contains("min-w-max"),
+		}).toStrictEqual({
+			rootClass: "min-w-max",
+			rootOrientation: "horizontal",
+			rootInScroller: "presentation",
+			size: ["sm", "contents"],
+			pager: ["scroll-pager-scroller", "contents"],
+			sizeParentIsRoot: true,
+			tablistMinWMax: false,
 		});
 	});
 
 	it("wraps the tablist in upstream's Filters group and hidden-scrollbar scroller", async () => {
 		const dialog = await openPalette();
 		const tablist = within(dialog).getByRole("tablist", {name: "Type"});
-		const scroller = tablist.parentElement;
+		const scroller = tablist.closest('[role="presentation"]');
 		const group = scroller?.parentElement;
 		const sorted = (element: Element | null | undefined) => element?.className.split(" ").toSorted() ?? [];
 
@@ -573,7 +603,9 @@ describe("CommandPalette shell", () => {
 	it("scrolls the selected tab into the strip, keeping the scroller's padding as a margin", async () => {
 		const dialog = await openPalette();
 		const input = within(dialog).getByRole("combobox");
-		const scroller = within(dialog).getByRole("tablist", {name: "Type"}).parentElement!;
+		const scroller = within(dialog)
+			.getByRole("tablist", {name: "Type"})
+			.closest<HTMLElement>('[role="presentation"]')!;
 		const files = within(dialog).getByRole("tab", {name: "Files"});
 		let scrollLeft = 0;
 		Object.defineProperty(scroller, "scrollLeft", {
@@ -597,7 +629,9 @@ describe("CommandPalette shell", () => {
 
 	it("maps a vertical wheel to horizontal strip scrolling, mirrored in RTL, and cancels mousedown on the strip", async () => {
 		const dialog = await openPalette();
-		const scroller = within(dialog).getByRole("tablist", {name: "Type"}).parentElement!;
+		const scroller = within(dialog)
+			.getByRole("tablist", {name: "Type"})
+			.closest<HTMLElement>('[role="presentation"]')!;
 		let scrollLeft = 100;
 		Object.defineProperty(scroller, "scrollLeft", {
 			configurable: true,
