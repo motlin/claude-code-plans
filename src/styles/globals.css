@@ -3062,6 +3062,55 @@ html[data-motion="reduced"] [data-skeleton-group][data-motion="wave"] [data-skel
 }
 
 /*
+ * Upstream's fizzy-lake `color` sidebar inks (`html[data-cds-fizzy-lake~=color] .dframe-sidebar`): every
+ * secondary ink in the sidebar reads primary, and every muted ink reads the fizzy secondary (#0009 /
+ * #ffffff91, the inherited root value, so this scope must not redefine --fizzy-lake-color-secondary).
+ * `text-*` utilities inline the --upstream-text-* values, so both layers are remapped.
+ */
+:root[data-cds-fizzy-lake~="color"] .dframe-sidebar {
+	--color-secondary: var(--color-primary);
+	--upstream-text-secondary: var(--upstream-text-primary);
+	--upstream-plain-secondary: var(--upstream-text-primary);
+	--color-ink-muted: var(--fizzy-lake-color-secondary);
+	--upstream-text-muted: var(--fizzy-lake-color-secondary);
+	--sb-icon-rest: var(--fizzy-lake-color-secondary);
+}
+
+/* Upstream `.dframe-sidebar [data-cds=Badge]`: badges keep the fizzy secondary ink. */
+:root[data-cds-fizzy-lake~="color"] .dframe-sidebar [data-cds="Badge"] {
+	--color-secondary: var(--fizzy-lake-color-secondary);
+	--upstream-text-secondary: var(--fizzy-lake-color-secondary);
+}
+
+/* Upstream `.dframe-sidebar .df-leading-slot`: leading icons rest at the fizzy secondary... */
+:root[data-cds-fizzy-lake~="color"] .dframe-sidebar .df-leading-slot {
+	color: var(--sb-icon-rest);
+}
+
+/* ...and take the row's own ink while it is focused, menu-open, selected or being renamed... */
+:root[data-cds-fizzy-lake~="color"] .dframe-sidebar :is(.group, [data-row]):focus-visible .df-leading-slot,
+:root[data-cds-fizzy-lake~="color"] .dframe-sidebar :is(.group, [data-row]):has(:focus-visible) .df-leading-slot,
+:root[data-cds-fizzy-lake~="color"] .dframe-sidebar [data-menu-open="true"] .df-leading-slot,
+:root[data-cds-fizzy-lake~="color"] .dframe-sidebar [data-context-menu-open="true"] .df-leading-slot,
+:root[data-cds-fizzy-lake~="color"] .dframe-sidebar [data-selected] .df-leading-slot,
+:root[data-cds-fizzy-lake~="color"] .dframe-sidebar [data-editing] .df-leading-slot,
+:root[data-cds-fizzy-lake~="color"] .dframe-sidebar [data-edit-box] .df-leading-slot {
+	color: inherit;
+}
+
+/* ...or hovered. */
+@media (hover: hover) {
+	:root[data-cds-fizzy-lake~="color"] .dframe-sidebar :is(.group, [data-row]):hover .df-leading-slot {
+		color: inherit;
+	}
+}
+
+/* Upstream `.dframe-sidebar [data-row-nav] .df-leading-slot`: nav-variant rows always paint their icon primary. */
+:root[data-cds-fizzy-lake~="color"] .dframe-sidebar [data-row-nav] .df-leading-slot {
+	color: var(--upstream-text-primary);
+}
+
+/*
  * Upstream's flat-look group headers (`html[data-cds-fizzy-lake~=panels] .dframe-sidebar.df-hub-rail[data-flat-look]`,
  * dumps/sidebar-group-header-hover-2026-11-01-css.txt): a 12px/20px label with no gaps and 4px before its
  * glyphs, Group and sort faded by opacity (not width) on a fine pointer, a pill behind a hovered or

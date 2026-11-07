@@ -124,7 +124,7 @@ function PinDropRow({ref, state}: {ref: ((element: HTMLElement | null) => void) 
 			ref={ref}
 			data-pin-drop-row
 			data-hot={state === "hot" ? "" : undefined}
-			className={`${ROW_CLASS} ${state === "hot" ? "bg-[var(--sb-hover)] text-secondary" : "text-ink-muted opacity-80"}`}
+			className={`${ROW_CLASS} ${state === "hot" ? "bg-[var(--sb-hover)] text-secondary" : "text-muted-as-secondary"}`}
 		>
 			<span className="df-leading-slot">
 				<Pin

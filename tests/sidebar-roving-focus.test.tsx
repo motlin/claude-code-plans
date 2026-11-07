@@ -190,7 +190,7 @@ async function renderSidebar(
 /** An element's label, or the title of the session row whose link it is. */
 function name(element: Element | null): string {
 	if (element?.matches("button.df-search-field") === true) return "Search field";
-	if (element?.matches("button[data-row-nav]") === true) return "Search";
+	if (element?.matches("button[data-row-nav][data-row-main-button]") === true) return "Search";
 	const row = FIXTURE.find(({title}) => element === rowLink(title));
 	return row?.title ?? label(element);
 }

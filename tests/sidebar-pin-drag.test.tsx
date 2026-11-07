@@ -189,6 +189,13 @@ function dropRow(container: HTMLElement) {
 		text: rowTitle(row),
 		hot: row.hasAttribute("data-hot"),
 		iconTilted: icon?.classList.contains("rotate-6") === true && icon.classList.contains("scale-105"),
+		ink: [
+			"text-muted-as-secondary",
+			"text-ink-muted",
+			"opacity-80",
+			"bg-[var(--sb-hover)]",
+			"text-secondary",
+		].filter((name) => row.classList.contains(name)),
 	};
 }
 
@@ -216,7 +223,7 @@ describe("sidebar drag to pin", () => {
 			dropRow: dropRow(container),
 		}).toStrictEqual({
 			stub: false,
-			dropRow: {text: "Drop here", hot: false, iconTilted: true},
+			dropRow: {text: "Drop here", hot: false, iconTilted: true, ink: ["text-muted-as-secondary"]},
 		});
 
 		pointerMove(DROP_ROW_TOP + 10);
@@ -224,6 +231,7 @@ describe("sidebar drag to pin", () => {
 			text: "Let go",
 			hot: true,
 			iconTilted: true,
+			ink: ["bg-[var(--sb-hover)]", "text-secondary"],
 		});
 
 		pointerUp(DROP_ROW_TOP + 10);

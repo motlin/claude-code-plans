@@ -139,6 +139,7 @@ export function Sidebar({
 									data-nav-item={item.navItemId}
 									data-row={hasRowActions ? undefined : ""}
 									data-row-main-button={hasRowActions ? "" : undefined}
+									data-row-nav=""
 									data-roving-item=""
 									data-selected={item.section === activeSection ? "focused" : undefined}
 									className="group df-nav-row h-[var(--sb-row-h)] data-[row-main-button]:flex-1 rounded-[var(--sb-radius)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
@@ -191,7 +192,7 @@ export function Sidebar({
 					data-density={density}
 					data-flat-look={panels ? "" : undefined}
 					data-focus-region="navigation"
-					className="group/sidebar flex h-full min-h-0 flex-col"
+					className="dframe-sidebar group/sidebar flex h-full min-h-0 flex-col"
 				>
 					<div data-testid="phone-sheet-header" className="flex shrink-0 flex-col gap-2 px-2">
 						<div className="flex h-11 items-center gap-2">
@@ -245,7 +246,7 @@ export function Sidebar({
 				data-flat-look={panels ? "" : undefined}
 				data-focus-region="navigation"
 				style={{"--sidebar-width": `${width}px`}}
-				className="group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[length:max(var(--cds-toolbar-line,0px),0.5px)] border-[color:var(--sidebar-seam)] bg-[var(--sb-bg)] min-[701px]:flex"
+				className="dframe-sidebar group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[length:max(var(--cds-toolbar-line,0px),0.5px)] border-[color:var(--sidebar-seam)] bg-[var(--sb-bg)] min-[701px]:flex"
 			>
 				<div data-testid="sidebar-titlebar" className="flex h-11 shrink-0 items-center px-2">
 					{/* Pinned to the collapsed trigger's 12,12 spot so the toggle never moves between states. */}

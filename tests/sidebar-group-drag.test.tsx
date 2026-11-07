@@ -270,9 +270,18 @@ describe("sidebar drag to custom groups", () => {
 			clientY: unitY(1),
 		});
 		pointerMove(unitY(1) + 20);
+		const ink = () =>
+			[
+				"text-muted-as-secondary",
+				"text-ink-muted",
+				"opacity-80",
+				"bg-[var(--sb-hover)]",
+				"text-secondary",
+			].filter((name) => ungroupRow()?.classList.contains(name) === true);
+		const idleInk = ink();
 		// The Remove from Alpha row is unit 5, between Beta one and the Recents header.
 		pointerMove(unitY(5));
-		const hot = {text: ungroupRow()?.textContent, hot: ungroupRow()?.hasAttribute("data-hot")};
+		const hot = {text: ungroupRow()?.textContent, hot: ungroupRow()?.hasAttribute("data-hot"), ink: ink()};
 		pointerUp(unitY(5));
 
 		await waitFor(() => {
@@ -284,12 +293,14 @@ describe("sidebar drag to custom groups", () => {
 		});
 		expect({
 			whileLoose,
+			idleInk,
 			hot,
 			after: ungroupRow(),
 			assignments: readSessionGroupState().assignments,
 		}).toStrictEqual({
 			whileLoose: null,
-			hot: {text: "Remove from Alpha", hot: true},
+			idleInk: ["text-muted-as-secondary"],
+			hot: {text: "Remove from Alpha", hot: true, ink: ["bg-[var(--sb-hover)]", "text-secondary"]},
 			after: null,
 			assignments: {a2: "cg-a", b1: "cg-b"},
 		});

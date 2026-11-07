@@ -110,7 +110,7 @@ beforeEach(() => {
 });
 
 function searchRow(): HTMLElement | null {
-	return sidebarNav().querySelector<HTMLElement>("button[data-row-nav]");
+	return sidebarNav().querySelector<HTMLElement>("button[data-row-nav][data-row-main-button]");
 }
 
 function newRow(): HTMLElement {

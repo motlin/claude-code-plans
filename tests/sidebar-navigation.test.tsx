@@ -81,8 +81,12 @@ function seedQueryClient(): QueryClient {
 	return queryClient;
 }
 
-async function renderSidebarAt(path: string, queryClient = seedQueryClient(), {panelsOff = false} = {}) {
-	const sidebar = <Sidebar collapsed={false} />;
+async function renderSidebarAt(
+	path: string,
+	queryClient = seedQueryClient(),
+	{panelsOff = false, phoneSheet = false} = {},
+) {
+	const sidebar = <Sidebar collapsed={false} {...(phoneSheet ? {onPhoneSheetClose: () => {}} : {})} />;
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
@@ -396,6 +400,46 @@ describe("sidebar nav rows", () => {
 			text: tail?.textContent,
 			badgeTitle: tail ? within(tail as HTMLElement).getByTitle("1 awaiting approval").textContent : null,
 		}).toStrictEqual({text: "1", badgeTitle: "1"});
+	});
+});
+
+describe("fizzy sidebar color ink hooks", () => {
+	it.each([{phoneSheet: false}, {phoneSheet: true}])(
+		"classes the sidebar nav dframe-sidebar (phone sheet: $phoneSheet)",
+		async ({phoneSheet}) => {
+			await renderSidebarAt("/tasks", seedQueryClient(), {phoneSheet});
+			await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
+
+			expect(
+				screen
+					.getAllByRole("navigation", {name: "Sidebar"})
+					.map((nav) => nav.classList.contains("dframe-sidebar")),
+			).toStrictEqual([true]);
+		},
+	);
+
+	it("marks New, Search, every nav link and More data-row-nav, and nothing else", async () => {
+		await renderSidebarAt("/tasks");
+		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
+
+		const nav = screen.getByRole("navigation", {name: "Sidebar"});
+		const navLinks = Array.from(nav.querySelectorAll<HTMLElement>("a[data-nav-item]"));
+		expect(navLinks.length).toBeGreaterThan(0);
+		expect(
+			Array.from(nav.querySelectorAll<HTMLElement>("[data-row-nav]")).map((row) => ({
+				tag: row.tagName,
+				value: row.getAttribute("data-row-nav"),
+				label:
+					row.getAttribute("data-nav-item") ??
+					row.getAttribute("aria-label") ??
+					row.querySelector(".df-leading-slot")?.nextElementSibling?.textContent,
+			})),
+		).toStrictEqual([
+			{tag: "A", value: "", label: "New"},
+			{tag: "BUTTON", value: "", label: "Search"},
+			...navLinks.map((link) => ({tag: "A", value: "", label: link.getAttribute("data-nav-item")})),
+			{tag: "BUTTON", value: "", label: "more"},
+		]);
 	});
 });
 

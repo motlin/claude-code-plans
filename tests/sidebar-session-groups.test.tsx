@@ -1772,6 +1772,18 @@ describe("SessionGroups sections layout", () => {
 		});
 	});
 
+	it("inks the group mark span with upstream's muted-as-secondary class (fizzy-sidebar-color-inks T4)", async () => {
+		localStorage.setItem(
+			"ccp-session-groups",
+			JSON.stringify({groups: [{id: "cg-a", name: "A", icon: "star"}], assignments: {b1: "cg-a"}, order: {}}),
+		);
+		const {container} = await renderGroups(FIXTURE);
+
+		expect(container.querySelector('[data-group-key="custom-cg-a"] span[data-group-mark]')?.className).toBe(
+			"flex shrink-0 text-[color:var(--muted-as-secondary,var(--color-ink-muted))]",
+		);
+	});
+
 	it("draws upstream's filled 14px caret, nudged half a pixel down", async () => {
 		const {container} = await renderGroups(FIXTURE);
 		const caret = container.querySelector('[data-group-key="state-done"] [data-group-caret]');

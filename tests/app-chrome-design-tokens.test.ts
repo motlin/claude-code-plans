@@ -150,10 +150,11 @@ describe("app chrome design tokens", () => {
 		});
 	});
 	it("paints a selected nav row's leading icon upstream's text-primary, as data-[selected=focused]:[&_.df-leading-slot]:text-primary does", () => {
-		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const styles = readFileSync("src/styles/globals.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
 		const leadingSlotColors = [...styles.matchAll(/([^{}]*\.df-leading-slot)\s*\{\s*color:\s*([^;]+);/g)].map(
-			([, selector, color]) => [selector?.trim(), color],
+			([, selector, color]) => [selector?.trim().replace(/\s+/g, " "), color],
 		);
+		const fizzy = ':root[data-cds-fizzy-lake~="color"] .dframe-sidebar';
 		const newRow = readFileSync("src/components/sidebar/new-session-row.tsx", "utf8");
 
 		expect({
@@ -163,6 +164,22 @@ describe("app chrome design tokens", () => {
 			leadingSlotColors: [
 				[".df-nav-row .df-leading-slot", "var(--upstream-text-secondary)"],
 				['.df-nav-row[data-selected="focused"] .df-leading-slot', "var(--upstream-text-primary)"],
+				/* fizzy-sidebar-color-inks T2: icons rest at the fizzy secondary, inherit on interaction, nav rows primary. */
+				[`${fizzy} .df-leading-slot`, "var(--sb-icon-rest)"],
+				[
+					[
+						`${fizzy} :is(.group, [data-row]):focus-visible .df-leading-slot`,
+						`${fizzy} :is(.group, [data-row]):has(:focus-visible) .df-leading-slot`,
+						`${fizzy} [data-menu-open="true"] .df-leading-slot`,
+						`${fizzy} [data-context-menu-open="true"] .df-leading-slot`,
+						`${fizzy} [data-selected] .df-leading-slot`,
+						`${fizzy} [data-editing] .df-leading-slot`,
+						`${fizzy} [data-edit-box] .df-leading-slot`,
+					].join(", "),
+					"inherit",
+				],
+				[`${fizzy} :is(.group, [data-row]):hover .df-leading-slot`, "inherit"],
+				[`${fizzy} [data-row-nav] .df-leading-slot`, "var(--upstream-text-primary)"],
 			],
 			newRowOwnSelectedRule: false,
 		});

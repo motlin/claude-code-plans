@@ -46,6 +46,7 @@ export function MoreNavMenu({
 						aria-label={active?.label ?? "More navigation items"}
 						data-nav-item="more"
 						data-row=""
+						data-row-nav=""
 						data-roving-item=""
 						data-selected={active === undefined ? undefined : "focused"}
 						className={NAV_ROW_CLASS}

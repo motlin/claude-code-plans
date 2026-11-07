@@ -40,6 +40,7 @@ export function NewSessionRow() {
 				activeProps={{"data-selected": "focused"}}
 				onClick={onClick}
 				data-row=""
+				data-row-nav=""
 				data-roving-item=""
 				aria-label="New"
 				aria-keyshortcuts={shortcut.ariaKeyShortcuts}

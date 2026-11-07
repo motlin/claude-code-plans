@@ -348,7 +348,10 @@ export function GroupSection({
 					<FadeLabel text={group.label} />
 				</span>
 				{appearance !== undefined && (appearance.icon !== undefined || appearance.color !== undefined) && (
-					<span data-group-mark className="flex shrink-0">
+					<span
+						data-group-mark
+						className="flex shrink-0 text-[color:var(--muted-as-secondary,var(--color-ink-muted))]"
+					>
 						<GroupAppearanceMark appearance={appearance} />
 					</span>
 				)}
