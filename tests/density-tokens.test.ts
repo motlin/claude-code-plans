@@ -11,6 +11,7 @@ import {
 	PLACE_CHIP_CLASS,
 } from "../src/components/composer-tokens";
 import {SESSION_DOCK_COLUMN_CLASS} from "../src/components/dock-tokens";
+import {FIZZY_LAKE_PANELS_FINE_POINTER_QUERY} from "../src/lib/fizzy-lake";
 
 const styles = readFileSync("src/styles/globals.css", "utf8");
 
@@ -74,7 +75,7 @@ describe("density type tokens", () => {
 				"--upstream-text-caption": "12px",
 				"--upstream-leading-caption": "17px",
 			},
-			comfortableDeclarations: 35,
+			comfortableDeclarations: 36,
 			compact: {
 				"--upstream-text-body": "13px",
 				"--upstream-leading-body": "19px",
@@ -85,9 +86,31 @@ describe("density type tokens", () => {
 				"--upstream-text-caption": "11px",
 				"--upstream-leading-caption": "17px",
 			},
-			compactDeclarations: 35,
+			compactDeclarations: 36,
 			caption: "var(--upstream-text-caption)",
 			captionLeading: "var(--upstream-leading-caption)",
+		});
+	});
+});
+
+describe("control height token", () => {
+	it("copies upstream's --cds-h-control: 24px compact, 32px comfortable (and on :root), 28px comfortable under panels on a fine pointer", () => {
+		const mediaStart = styles.indexOf(
+			`@media ${FIZZY_LAKE_PANELS_FINE_POINTER_QUERY} {\n\t[data-cds-fizzy-lake~="panels"][data-density="comfortable"]`,
+		);
+		const panels = mediaStart === -1 ? "" : styles.slice(mediaStart, styles.indexOf("}", mediaStart));
+
+		expect({
+			root: token(block(":root"), "--cds-h-control"),
+			comfortable: token(block('[data-density="comfortable"]'), "--cds-h-control"),
+			compact: token(block('[data-density="compact"]'), "--cds-h-control"),
+			panelsComfortable: panels.slice(panels.indexOf("{\n\t") + 3),
+		}).toStrictEqual({
+			root: "calc(2rem * var(--cds-rem-scale, 1))",
+			comfortable: "calc(2rem * var(--cds-rem-scale, 1))",
+			compact: "calc(1.5rem * var(--cds-rem-scale, 1))",
+			panelsComfortable:
+				'[data-cds-fizzy-lake~="panels"][data-density="comfortable"],\n\t[data-cds-fizzy-lake~="panels"] [data-density="comfortable"] {\n\t\t--cds-h-control: calc(1.75rem * var(--cds-rem-scale, 1));\n\t',
 		});
 	});
 });
