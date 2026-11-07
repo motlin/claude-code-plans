@@ -12,11 +12,13 @@ import React, {
 	useState,
 	type Context,
 	type ReactNode,
+	type RefCallback,
 } from "react";
 import {flushSync} from "react-dom";
 import {Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
-import {useRestInk} from "../lib/fizzy-lake";
+import {useFizzyLake, useRestInk} from "../lib/fizzy-lake";
+import {useTypeRowCut} from "../lib/use-row-cut";
 import {formatModelName} from "../lib/model-name";
 import {contextRefreshReasonLabel, contextRefreshSubjectLabels} from "../lib/schema-choices";
 import {useAskUserQuestionContext} from "./ask-user-question-context";
@@ -3156,6 +3158,9 @@ function VirtualizedSessionEntries({
 	measurementSource: object | undefined;
 }) {
 	const geometryReady = useContext(SessionTileGeometryReadyContext);
+	// Upstream AssistantMessage `data-cds-reply-type` (shared-9 `nB`): under fizzy-lake `type` it opts the
+	// reply into the reply-type prose CSS. User rows never carry it.
+	const replyType = useFizzyLake("type");
 	const managesTileGeometry = geometryReady !== undefined;
 	const handoffAttempted = useRef(false);
 	const pendingHandoff = useRef<Map<string, number> | null>(null);
@@ -3710,6 +3715,7 @@ function VirtualizedSessionEntries({
 								focusNeighbour(event, index);
 							}}
 							data-assistant-span={entry.assistantSpan?.key}
+							data-cds-reply-type={replyType && entry.kind.startsWith("assistant") ? "" : undefined}
 							data-reply-boundary={entry.opensReply ? "" : undefined}
 							className={entry.opensReply ? "pt-p5" : undefined}
 							data-transcript-entry-index={index}
@@ -4329,6 +4335,7 @@ const LABEL_BY_KIND: Record<LabeledKind, string> = {
 };
 
 const STOP_HOOK_PREFIX_RE = /^Stop hook feedback:\s*/;
+const STOP_HOOK_LABEL = "Hook re-prompted Claude";
 
 /**
  * Upstream's "Hook re-prompted Claude" marker: a muted 24px disclosure in the
@@ -4338,6 +4345,7 @@ function StopHookMarker({line}: {line: MessageSessionLine}) {
 	const [expanded, setExpanded] = useState(false);
 	const restInk = useRestInk();
 	const bodyId = useId();
+	const rowCut = useTypeRowCut(STOP_HOOK_LABEL);
 	const feedback = getUserContentText(line).replace(STOP_HOOK_PREFIX_RE, "");
 
 	return (
@@ -4349,10 +4357,11 @@ function StopHookMarker({line}: {line: MessageSessionLine}) {
 				onClick={() => {
 					setExpanded(!expanded);
 				}}
+				data-cds-row=""
 				className="group/step flex self-stretch min-w-0 me-[52px] items-center gap-g2 px-1 py-0.5 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
 			>
-				<span className={`text-body min-w-0 truncate ${restInk} group-hover/step:text-secondary`}>
-					Hook re-prompted Claude
+				<span ref={rowCut} className={`text-body min-w-0 truncate ${restInk} group-hover/step:text-secondary`}>
+					{STOP_HOOK_LABEL}
 				</span>
 				<span className="shrink-0 text-secondary">
 					<ChevronIcon expanded={expanded} size={12} />
@@ -4441,12 +4450,15 @@ function CompactedSessionStatus({
 	const bodyId = useId();
 	const verbose = useContext(TranscriptModeContext) === "verbose";
 	const restInk = useRestInk();
+	const rowCut = useTypeRowCut(label);
 	if (!verbose) {
 		return (
 			<TurnStatusFrame leading={false}>
 				<div data-turn-status="" className={TURN_STATUS_CLASS}>
-					<div data-turn-status-marker="" className="flex min-w-0 me-[52px] px-1 py-0.5">
-						<span className="text-body min-w-0 truncate text-ink-muted">{label}</span>
+					<div data-turn-status-marker="" data-cds-row="" className="flex min-w-0 me-[52px] px-1 py-0.5">
+						<span ref={rowCut} className="text-body min-w-0 truncate text-ink-muted">
+							{label}
+						</span>
 					</div>
 				</div>
 			</TurnStatusFrame>
@@ -4462,9 +4474,13 @@ function CompactedSessionStatus({
 					onClick={() => {
 						setExpanded(!expanded);
 					}}
+					data-cds-row=""
 					className="group/tool flex self-stretch min-w-0 me-[52px] items-center gap-g1 px-1 py-0.5 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
 				>
-					<span className={`text-body min-w-0 truncate ${restInk} group-hover/tool:text-secondary`}>
+					<span
+						ref={rowCut}
+						className={`text-body min-w-0 truncate ${restInk} group-hover/tool:text-secondary`}
+					>
 						{label}
 					</span>
 					<span className={`shrink-0 ${restInk} group-hover/tool:text-secondary`}>
@@ -4501,12 +4517,15 @@ function RewindMarker({
 	onToggle: (replacementUuid: string) => void;
 }) {
 	const restInk = useRestInk();
+	const rowCut = useTypeRowCut(placement.label);
 	if (!verbose || !placement.hasRows) {
 		return (
 			<TurnStatusFrame leading={false}>
 				<div data-turn-status="" data-testid="rewind-marker" data-find-omitted="" className={TURN_STATUS_CLASS}>
-					<div data-turn-status-marker="" className="flex min-w-0 me-[52px] px-1 py-0.5">
-						<span className="text-body min-w-0 truncate text-ink-muted">{placement.label}</span>
+					<div data-turn-status-marker="" data-cds-row="" className="flex min-w-0 me-[52px] px-1 py-0.5">
+						<span ref={rowCut} className="text-body min-w-0 truncate text-ink-muted">
+							{placement.label}
+						</span>
 					</div>
 				</div>
 			</TurnStatusFrame>
@@ -4521,9 +4540,13 @@ function RewindMarker({
 					onClick={() => {
 						onToggle(placement.replacementUuid);
 					}}
+					data-cds-row=""
 					className="group/tool flex self-stretch min-w-0 me-[52px] items-center gap-g1 px-1 py-0.5 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
 				>
-					<span className={`text-body min-w-0 truncate ${restInk} group-hover/tool:text-secondary`}>
+					<span
+						ref={rowCut}
+						className={`text-body min-w-0 truncate ${restInk} group-hover/tool:text-secondary`}
+					>
 						{placement.label}
 					</span>
 					<span className={`shrink-0 ${restInk} group-hover/tool:text-secondary`}>
@@ -5498,21 +5521,23 @@ function InkedLabel({
 	className,
 	ink,
 	id,
+	ref,
 	children,
 }: {
 	className: string;
 	ink: string | null;
 	id?: string;
+	ref?: RefCallback<HTMLElement> | undefined;
 	children: ReactNode;
 }) {
 	if (ink === null)
 		return (
-			<ShimmerText {...(className === "" ? {} : {className})} {...(id === undefined ? {} : {id})}>
+			<ShimmerText ref={ref} {...(className === "" ? {} : {className})} {...(id === undefined ? {} : {id})}>
 				{children}
 			</ShimmerText>
 		);
 	return (
-		<span id={id} className={className === "" ? ink : `${className} ${ink}`}>
+		<span ref={ref} id={id} className={className === "" ? ink : `${className} ${ink}`}>
 			{children}
 		</span>
 	);
@@ -5880,6 +5905,8 @@ function ToolCallRow({
 		...(busy ? [`${statusId}-busy`] : []),
 	].join(" ");
 	const announcement = [label, displayParam, rangeLabel ?? "", status ?? ""].filter((part) => part !== "").join(" ");
+	// Upstream `_C`: one row-cut ref fades both the label and the meta while either overflows.
+	const rowCut = useTypeRowCut(`${label}\n${displayParam}`);
 	const announcer = isTurnStatus ? (
 		<span className="sr-only" role="status" aria-live="polite">
 			{announcement}
@@ -5890,7 +5917,7 @@ function ToolCallRow({
 			{runningRow && <WorkingMark activity={toolMarkActivity(call.name, call.input)} className="me-1.5" />}
 			{joinedLabel ? (
 				// Upstream's grouped row: label and parameter in one <bdi>, joined by a plain space.
-				<bdi id={`${statusId}-label`} className="truncate min-w-0 text-body">
+				<bdi ref={rowCut} id={`${statusId}-label`} className="truncate min-w-0 text-body">
 					<InkedLabel className="" ink={labelClass}>
 						{label}
 					</InkedLabel>{" "}
@@ -5903,6 +5930,7 @@ function ToolCallRow({
 					{label && (
 						<InkedLabel
 							id={`${statusId}-label`}
+							{...(isPhraseLabel ? {ref: rowCut} : {})}
 							className={`${isPhraseLabel ? "truncate min-w-0" : "shrink-0"} text-body`}
 							ink={labelClass}
 						>
@@ -5911,12 +5939,17 @@ function ToolCallRow({
 					)}
 					{displayParam &&
 						(isFileParam ? (
-							<span id={`${statusId}-meta`} className="text-body text-primary truncate min-w-0">
+							<span
+								ref={rowCut}
+								id={`${statusId}-meta`}
+								className="text-body text-primary truncate min-w-0"
+							>
 								{paramContent}
 							</span>
 						) : (
 							<InkedLabel
 								id={`${statusId}-meta`}
+								ref={rowCut}
 								className={`truncate min-w-0 text-body${isCompletedPaneAgent ? ` ${AGENT_META_UNDERLINE}` : ""}`}
 								ink={paramInk}
 							>
@@ -6046,6 +6079,7 @@ function ToolCallRow({
 					tabIndex={0}
 					aria-labelledby={labelledBy}
 					data-state={busyAgent ? "busy" : undefined}
+					data-cds-row=""
 					data-transcript-keeps-pin=""
 					onClick={open}
 					onKeyDown={(e) => {
@@ -6099,6 +6133,7 @@ function ToolCallRow({
 			<div data-tool-row="" className="flex flex-col w-full">
 				<div
 					data-state={busyAgent ? "busy" : undefined}
+					data-cds-row=""
 					className={
 						settledWorkflowRow
 							? "relative flex self-start max-w-full items-center py-0 gap-0.75 text-start rounded-sm"
@@ -6128,6 +6163,7 @@ function ToolCallRow({
 				aria-controls={bodyId}
 				aria-labelledby={labelledBy}
 				data-state={busyAgent ? "busy" : undefined}
+				data-cds-row=""
 				onClick={toggleExpanded}
 				onKeyDown={(e) => {
 					if (fromNestedControl(e)) return;
@@ -6183,9 +6219,10 @@ function SummarySpans({segments}: {segments: SummarySegment[]}) {
  * span, and the group's one failure count trails them unclipped.
  */
 function CountedLine({id, segments, failed}: {id: string; segments: SummarySegment[]; failed: number}) {
+	const rowCut = useTypeRowCut(countedLabelText({segments, failed: 0}));
 	return (
 		<span id={id} className="flex min-w-0 text-body">
-			<span className="min-w-0 truncate" data-testid="counted-line-names">
+			<span ref={rowCut} className="min-w-0 truncate" data-testid="counted-line-names">
 				<SummarySpans segments={segments} />
 			</span>
 			{failed > 0 && (
@@ -6250,6 +6287,7 @@ function ToolCallSummary({
 	const ink = expanded ? "text-secondary" : `${restInk} group-hover/tool:text-secondary`;
 	const busy = pendingCall !== undefined && runningText !== null;
 	const announcement = busy ? runningText : countedLabelText(summary);
+	const busyRowCut = useTypeRowCut(busy ? runningText : "");
 
 	// Each step's place in the group's screenshot strip, which collapsed groups show at the row's end.
 	const shotPlacements = useMemo(() => {
@@ -6270,6 +6308,7 @@ function ToolCallSummary({
 			aria-controls={bodyId}
 			aria-labelledby={busy ? `${statusId}-label ${statusId}-busy` : `${statusId}-label`}
 			onClick={toggleExpanded}
+			data-cds-row=""
 			className={`relative group/tool flex max-w-full items-center ${hasGroupMedia ? "min-w-0" : summaryLayout} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3${hasGroupMedia ? "" : ` ${TURN_STATUS_ROW_COMFORTABLE}`}`}
 		>
 			<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
@@ -6280,7 +6319,7 @@ function ToolCallSummary({
 							activity={toolMarkActivity(pendingCall.name, pendingCall.input)}
 							className="me-1.5"
 						/>
-						<ShimmerText id={`${statusId}-label`} className="text-body truncate min-w-0">
+						<ShimmerText ref={busyRowCut} id={`${statusId}-label`} className="text-body truncate min-w-0">
 							{runningText}
 						</ShimmerText>
 						<RunningElapsed startedAt={pendingCall.startedAt} />

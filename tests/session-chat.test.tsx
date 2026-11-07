@@ -2209,7 +2209,7 @@ function toolRowChrome(html: string): Record<string, unknown> {
 	return {
 		// Only a non-expanding row puts `class` first; the disclosure row leads
 		// with role/tabindex/aria attributes.
-		bareHeaderClass: html.match(/<div class="(relative group\/tool[^"]*)"/)?.[1] ?? null,
+		bareHeaderClass: html.match(/<div (?:data-cds-row="" )?class="(relative group\/tool[^"]*)"/)?.[1] ?? null,
 		roleButton: html.includes('role="button"'),
 		ariaExpanded: html.includes("aria-expanded"),
 		bodyMounted: html.includes('class="flow-root"'),

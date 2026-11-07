@@ -1,4 +1,4 @@
-import type {CSSProperties, ReactNode} from "react";
+import type {CSSProperties, ReactNode, Ref} from "react";
 
 /**
  * Upstream's ShimmerText: the text in secondary ink, plus an aria-hidden, inert clone
@@ -14,6 +14,7 @@ export function ShimmerText({
 	active = true,
 	variant = "secondary",
 	delay,
+	ref,
 }: {
 	children: ReactNode;
 	className?: string;
@@ -21,11 +22,14 @@ export function ShimmerText({
 	active?: boolean;
 	variant?: "secondary" | "muted";
 	delay?: number;
+	/** The row-cut observer's ref, for a label that fades when it overflows. */
+	ref?: Ref<HTMLSpanElement> | undefined;
 }) {
 	const style = delay === undefined ? undefined : ({"--shimmer-delay": `${delay}ms`} as CSSProperties);
 	const classes = active ? (className === undefined ? "relative" : `relative ${className}`) : className;
 	return (
 		<span
+			ref={ref}
 			id={id}
 			data-cds="ShimmerText"
 			data-shimmering={active ? "true" : "false"}

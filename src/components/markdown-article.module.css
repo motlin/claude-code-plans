@@ -496,6 +496,95 @@
 	text-align: right;
 }
 
+/* Upstream's reply-type prose (c6a992d55, cds-type-experiment-gate T5/T6): under fizzy-lake `type` an
+   assistant row carries data-cds-reply-type. Upstream's guard leaves prose nested in another cds component
+   inside the reply alone; local tool rows carry no data-cds, so [data-tool-row] joins the guard. */
+:global([data-cds-reply-type])
+	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+	> :global(.markdown-table-wrapper),
+:global([data-cds-reply-type])
+	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+	:is(li, blockquote, details)
+	:global(.markdown-table-wrapper) {
+	border-width: 0;
+	border-radius: 0;
+}
+
+/* Upstream keeps the table frame under forced colors. */
+@media (forced-colors: none) {
+	:global([data-cds-reply-type])
+		.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+		table {
+		border-width: 0;
+		border-radius: 0;
+	}
+}
+
+/* Frameless cells: no wash, flush to the column start, 1.5em between columns, message-line rules. */
+:global([data-cds-reply-type])
+	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+	:is(th, td) {
+	background: transparent;
+	border-radius: 0;
+	padding-block: calc(0.4375em + 1px);
+	padding-inline: 0;
+	border-color: var(--message-line, var(--color-border));
+}
+
+:global([data-cds-reply-type])
+	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+	:is(th, td)
+	+ :is(th, td) {
+	padding-inline-start: 1.5em;
+}
+
+/* Upstream's header weight (`--cds-font-weight-header`, 520 under type). */
+:global([data-cds-reply-type])
+	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+	th {
+	font-weight: var(--font-weight-header, 520);
+}
+
+/* Upstream's reply code chip: the ghost-hover wash in primary ink, 4px radius, 1px 4px padding. Size and
+   leading stay the base chip's. */
+@media screen and (forced-colors: none) {
+	:global([data-cds-reply-type])
+		.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+		code:not(pre code) {
+		background: var(--upstream-fill-ghost-hover);
+		color: var(--upstream-text-primary);
+		border: 0;
+		border-radius: 4px;
+		padding: 1px 4px;
+	}
+}
+
+/* Upstream `--_reply-weight`: strong is medium + 1 (501); headings, and strong inside them or a th, take the
+   header weight. Its Windows/Linux `--cds-reply-weight-floor` has no macOS meaning and is left out; the dark
+   wght axes belong to fizzy-type-dark-wght-axes. */
+:global([data-cds-reply-type])
+	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+	:is(strong, b) {
+	font-weight: 501;
+}
+
+:global([data-cds-reply-type])
+	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+	:is(h1, h2, h3, h4, h5, h6),
+:global([data-cds-reply-type])
+	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+	:is(h1, h2, h3, h4, h5, h6, th)
+	:is(strong, b) {
+	font-weight: var(--font-weight-header, 520);
+}
+
+/* Inline code inherits the surrounding reply weight (upstream `var(--_reply-weight, inherit)`). */
+:global([data-cds-reply-type])
+	.markdown:not(:global([data-cds-reply-type] :is([data-cds]:not([data-cds-reply-type]), [data-tool-row])) *)
+	:is(code, kbd):not([class]) {
+	font-weight: inherit;
+}
+
 .markdown hr {
 	border: none;
 	border-top: 1px solid var(--color-border);

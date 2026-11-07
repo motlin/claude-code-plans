@@ -1,4 +1,5 @@
 import {useId, useState} from "react";
+import {useTypeRowCut} from "../lib/use-row-cut";
 import type {AgentMessage} from "../lib/agent-message";
 import {ProseMarkdown} from "./file-refs";
 import {ChevronIcon} from "./tool-renderers/shared";
@@ -13,6 +14,7 @@ import {TruncatedContent} from "./truncated-content";
 export function AgentMessageRow({message}: {message: AgentMessage}) {
 	const [expanded, setExpanded] = useState(false);
 	const bodyId = useId();
+	const rowCut = useTypeRowCut("Message from\nsubagent");
 
 	return (
 		<div className="flex w-full min-w-0 flex-col" data-agent-message-from={message.from}>
@@ -24,10 +26,13 @@ export function AgentMessageRow({message}: {message: AgentMessage}) {
 				onClick={() => {
 					setExpanded((value) => !value);
 				}}
+				data-cds-row=""
 				className="group/step flex self-stretch min-w-0 me-[52px] items-center gap-g5 px-1 py-0.5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
 			>
 				<span className="shrink-0 text-body text-ink-muted group-hover/step:text-secondary">Message from</span>
-				<bdi className="min-w-0 truncate text-body text-primary">subagent</bdi>
+				<bdi ref={rowCut} className="min-w-0 truncate text-body text-primary">
+					subagent
+				</bdi>
 				<span className="shrink-0 -ms-1 text-ink-muted group-hover/step:text-secondary">
 					<ChevronIcon expanded={expanded} size={12} />
 				</span>

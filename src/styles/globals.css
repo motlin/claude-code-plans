@@ -3460,6 +3460,74 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	mask-image: linear-gradient(270deg, #000 calc(100% - 12px), transparent);
 }
 
+/* Upstream `.cds-root [data-cds-row-cut]` (c6a992d55, cds-type-experiment-gate): under fizzy-lake
+   `type`, useRowCut marks an overflowing transcript label and it fades over its last 24px instead
+   of an ellipsis. Inside a cds row the faded label sits above the row's hit area but lets clicks
+   through, except on its own interactive descendants. */
+[data-cds-row-cut] {
+	text-overflow: clip;
+	mask-image: linear-gradient(90deg, #000 calc(100% - 24px), #0000);
+	mask-clip: no-clip;
+}
+
+[data-cds-row-cut]:dir(rtl) {
+	mask-image: linear-gradient(270deg, #000 calc(100% - 24px), #0000);
+}
+
+[data-cds-row] [data-cds-row-cut] {
+	z-index: 1;
+	pointer-events: none;
+	position: relative;
+}
+
+:where([data-cds-row] [data-cds-row-cut])
+	:where(
+		a,
+		button,
+		input,
+		select,
+		textarea,
+		label,
+		summary,
+		iframe,
+		[role="button"],
+		[contenteditable]:not([contenteditable="false"]),
+		[tabindex]:not([tabindex^="-"])
+	) {
+	pointer-events: auto;
+}
+
+/* Upstream `[data-cds=AssistantMessage][data-cds-reply-type] [data-cds=TurnStatus] > div:first-child` and the
+   TurnStatusStep rows (c6a992d55, cds-type-experiment-gate T7): tool rows in a reply follow the reply's prose
+   size and leading, not the fixed 14/20 body. Local labels size themselves with text-body, so the row restates
+   the body tokens. The comfortable chain matches markdown-article.module.css's transcript prose. */
+[data-cds-reply-type]
+	:is([data-turn-status], [data-cds="TurnStatus"]):not([data-cds-reply-type] [data-cds]:not([data-cds-reply-type]) *)
+	> :first-child,
+[data-cds-reply-type] .group\/step:not([data-cds-reply-type] [data-cds]:not([data-cds-reply-type]) *) {
+	--upstream-text-body: var(--transcript-text-size, 0.875rem);
+	--upstream-leading-body: calc(var(--transcript-leading, 1.42857) * var(--transcript-text-size, 0.875rem));
+	font-size: var(--upstream-text-body);
+	line-height: var(--upstream-leading-body);
+
+	&:where([data-density="comfortable"] *):not(
+			:where([data-density="comfortable"] [data-density="compact"] *):not(
+				:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *):not(
+					:where(
+						[data-density="comfortable"]
+							[data-density="compact"]
+							[data-density="comfortable"]
+							[data-density="compact"]
+							*
+					)
+				)
+			)
+		) {
+		--upstream-text-body: var(--transcript-comfortable-text-size, 1rem);
+		--upstream-leading-body: var(--transcript-comfortable-leading, 1.5rem);
+	}
+}
+
 /* Upstream .dframe-sidebar .df-on-rail: a leading slot that follows the hub rail's shift. */
 .df-on-rail {
 	margin-inline-start: var(--sb-rail-shift, 0px);

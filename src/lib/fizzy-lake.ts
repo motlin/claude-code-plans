@@ -6,7 +6,10 @@ import {createContext, useContext} from "react";
  * - `color`: the rollout colour tokens.
  * - `panels`: every density scope is comfortable (upstream `si()` in shared-frame) and
  *   the flat panel look. Its smaller control sizes apply on a fine pointer only.
- * - `type`: the type-led Settings rows (upstream `B("type")` in c0db37792 `on()`).
+ * - `type`: the type-led Settings rows (upstream `B("type")` in c0db37792 `on()`), and in the
+ *   transcript (cds-type-experiment-gate): status labels fade when cut (useRowCut's
+ *   `data-cds-row-cut`), Phrases skip measuring, and assistant rows carry
+ *   `data-cds-reply-type` for the reply prose CSS.
  * Local follows the whole rollout (upstream-sync Q1, 2026-11-02); drop a part here to
  * fall back to the pre-rollout look for it.
  */

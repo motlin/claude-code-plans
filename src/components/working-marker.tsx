@@ -2,6 +2,7 @@ import {Fragment, useEffect, useState} from "react";
 import {useEventStreamConnecting} from "../hooks/use-claude-events";
 import {useRestInk} from "../lib/fizzy-lake";
 import {useReducedMotion} from "../lib/reduced-motion";
+import {useTypeRowCut} from "../lib/use-row-cut";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {
 	CONNECTING_PHASE_LABEL,
@@ -90,13 +91,17 @@ function useLinePhase(state: WorkingMarkerState, sending: boolean, waitingOnUser
  * `busy|<word>`, so a later morph can swap it.
  */
 function PhaseWord({word}: Readonly<{word: string}>) {
+	const rowCut = useTypeRowCut(word);
 	return (
 		<span className="group/morph inline-grid items-center justify-items-start min-w-0 max-w-full">
 			<span
 				data-morph-key={`busy|${word}`}
 				className="col-start-1 row-start-1 flex min-w-0 max-w-full items-center"
 			>
-				<ShimmerText className="min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em]">
+				<ShimmerText
+					ref={rowCut}
+					className="min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em]"
+				>
 					{word}
 				</ShimmerText>
 			</span>
@@ -154,6 +159,7 @@ export function WorkingMarker({
 	const label = phaseWord ?? parts.label;
 	const stats = phase === null ? parts.stats : [];
 	const tasks = runningTasks > 0;
+	const labelRowCut = useTypeRowCut(phaseWord === null ? label : "");
 	const line = (
 		<div
 			data-testid="code-working-line"
@@ -166,6 +172,7 @@ export function WorkingMarker({
 				<div data-cds="TurnStatus" data-state="busy" className="group/status flex w-full min-w-0 flex-col">
 					<div
 						{...(phase === null ? {} : {title: phase})}
+						data-cds-row=""
 						className="flex min-w-0 items-center gap-1.5 px-1 py-0.5 text-body comfortable:px-1.5 comfortable:py-1.5"
 					>
 						<span
@@ -182,6 +189,7 @@ export function WorkingMarker({
 							{phaseWord !== null && <PhaseWord word={phaseWord} />}
 							{phaseWord === null && label !== "" && (
 								<span
+									ref={labelRowCut}
 									title={workingMarkerText(state, tokens)}
 									className={`truncate whitespace-nowrap${
 										state.status === "stopping" ? ` ${STOPPING_MORPH_CLASS}` : ""

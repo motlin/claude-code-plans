@@ -72,11 +72,11 @@
 		"raisedAt": "2026-11-07"
 	},
 	"bundle.session.raw": {
-		"ceiling": 2020881,
+		"ceiling": 2042393,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Artifacts gallery delta (2026-11-03): upstream's Filter and sort menu adds the leading-checkbox MenuCheckboxItem variant and the MenuRadioItem disabled-reason row to the shared menu primitives, the gallery's comma-list search parsing runs in the route's validateSearch, and the strip tiles' hue classes ride the template catalog, on top of the growth since the 2026-11-02 sidebar sections raise. Went from 1996997 to 2020881. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-03"
+		"reason": "cds type gate (2026-11-07): the row-cut observer (useRowCut) wired into every transcript status label plus the reply-type marker, on top of the growth since the 2026-11-03 Artifacts gallery raise (reply face, home launch failure card, transcript rewrite handling). Went from 2020881 to 2042393. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-07"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 9,
