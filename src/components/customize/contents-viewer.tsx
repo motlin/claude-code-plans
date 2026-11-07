@@ -2,6 +2,7 @@ import {type QueryKey, type UseQueryOptions, useQuery} from "@tanstack/react-que
 import {Check, ChevronDown, ChevronRight, Code, Eye, File, Folder} from "lucide-react";
 import {useMemo, useState} from "react";
 import {useResizableWidth} from "../../hooks/use-resizable-width";
+import {ResizeHandle} from "../ui/resize-handle";
 import type {FileTreeNodeData} from "../../lib/api/plugins";
 import {FileViewer} from "../file-viewer";
 import {MarkdownView} from "../markdown-view";
@@ -230,10 +231,10 @@ export function ContentsViewer<TKey extends QueryKey>({name, tree, fileQuery, in
 		label: "Resize file list",
 		min: FILE_LIST_MIN_WIDTH,
 		max: FILE_LIST_MAX_WIDTH,
-		step: 16,
 		edge: "end",
 		value: width,
 		onChange: setWidth,
+		defaultWidth: FILE_LIST_DEFAULT_WIDTH,
 	});
 
 	const toggle = (path: string) => {
@@ -251,22 +252,24 @@ export function ContentsViewer<TKey extends QueryKey>({name, tree, fileQuery, in
 				<VersionCombobox name={name} />
 			</div>
 			<div className="flex min-h-[480px] overflow-hidden rounded-xl border border-border bg-surface-0">
-				<nav aria-label="Files" style={{width}} className="shrink-0 overflow-auto p-2">
-					<ul role="tree" aria-label="Files">
-						<TreeRows
-							nodes={ordered}
-							depth={0}
-							selected={selected}
-							collapsed={collapsed}
-							onSelect={setSelected}
-							onToggle={toggle}
-						/>
-					</ul>
-				</nav>
 				<div
-					{...separator}
-					className="w-1 shrink-0 cursor-col-resize border-l border-border outline-none hover:bg-accent-100/30 focus-visible:bg-accent-100/40"
-				/>
+					style={{width, minWidth: FILE_LIST_MIN_WIDTH, maxWidth: `min(${FILE_LIST_MAX_WIDTH}px, 60%)`}}
+					className="relative flex shrink-0 border-r border-border"
+				>
+					<nav aria-label="Files" className="min-w-0 flex-1 overflow-auto p-2">
+						<ul role="tree" aria-label="Files">
+							<TreeRows
+								nodes={ordered}
+								depth={0}
+								selected={selected}
+								collapsed={collapsed}
+								onSelect={setSelected}
+								onToggle={toggle}
+							/>
+						</ul>
+					</nav>
+					<ResizeHandle {...separator} side="inline-end" className="z-10 max-sm:hidden" />
+				</div>
 				{selected === null ? (
 					<p className="p-4 text-body text-t6">No files.</p>
 				) : (

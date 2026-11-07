@@ -223,6 +223,42 @@ describe("ContentsViewer", () => {
 		]);
 	});
 
+	it("draws the file list handle as upstream's cds ResizeHandle, hidden on a phone", async () => {
+		await renderViewer();
+		const separator = screen.getByRole("separator", {name: "Resize file list"});
+		expect({
+			cds: separator.dataset["cds"],
+			pill: separator.querySelector("[data-cds-part=resize-pill]") !== null,
+			phoneHidden: separator.classList.contains("max-sm:hidden"),
+			besideNav: separator.previousElementSibling === screen.getByRole("navigation", {name: "Files"}),
+		}).toStrictEqual({cds: "ResizeHandle", pill: true, phoneHidden: true, besideNav: true});
+	});
+
+	it("resets the file list to 244px on Enter, Space and double-click", async () => {
+		await renderViewer();
+		const separator = screen.getByRole("separator", {name: "Resize file list"});
+		const column = separator.parentElement;
+		if (column === null) throw new Error("file list column missing");
+		const widths: string[] = [];
+		for (const reset of [
+			() => fireEvent.keyDown(separator, {key: "Enter"}),
+			() => fireEvent.keyDown(separator, {key: " "}),
+			() => fireEvent.doubleClick(separator),
+		]) {
+			fireEvent.keyDown(separator, {key: "ArrowRight"});
+			fireEvent.keyDown(separator, {key: "ArrowRight"});
+			fireEvent.keyDown(separator, {key: "ArrowRight", shiftKey: true});
+			widths.push(column.style.width);
+			reset();
+			widths.push(column.style.width);
+		}
+		expect({widths, maxWidth: column.style.maxWidth, minWidth: column.style.minWidth}).toStrictEqual({
+			widths: ["292px", "244px", "292px", "244px", "292px", "244px"],
+			maxWidth: "min(520px, 60%)",
+			minWidth: "160px",
+		});
+	});
+
 	it("exposes a 244px file list resizable between 160 and 520", async () => {
 		await renderViewer();
 		const separator = screen.getByRole("separator", {name: "Resize file list"});

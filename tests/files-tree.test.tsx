@@ -14,7 +14,7 @@ import {
 	parseTreeQuery,
 } from "../src/components/files/files-tree-layout";
 import {SettingsProvider} from "../src/components/settings-provider";
-import {RESIZE_LINE_PILL_CLASS} from "../src/components/ui/resize-pill";
+import {RESIZE_GRIP_PILL, RESIZE_LINE_PILL, resizePillClass} from "../src/components/ui/resize-pill";
 import type {SessionFilesResponse} from "../src/lib/api/session-files";
 import {installLocalStorage} from "./fake-storage";
 import {PanelsOff} from "./fizzy-lake-off";
@@ -507,45 +507,57 @@ describe("FilesTreeColumn resize", () => {
 		});
 	});
 
-	it("draws the shared panels 2px accent line pill under panels", () => {
+	it("is upstream's cds ResizeHandle on the column's border, half-clipped at rest, with the panels line pill", () => {
 		responses.set(key("", ""), {kind: "listing", dir: "", entries: [], partial: false});
 		renderTree();
-		const pill = separator().querySelector("[data-resize-pill]");
+		const pill = separator().querySelector("[data-cds-part=resize-pill]");
 
 		expect({
-			part: pill?.getAttribute("data-cds-part"),
-			className: pill?.getAttribute("class"),
-			cursor: separator().classList.contains("cursor-col-resize"),
+			cds: separator().dataset["cds"],
+			classes: [...separator().classList].toSorted(),
+			ringOuter: separator().style.getPropertyValue("--cds-ring-outer"),
+			ring: separator().firstElementChild?.classList.contains("group-focus-visible/resize:shadow-focus"),
+			pill: pill?.getAttribute("class"),
 			tabIndex: separator().tabIndex,
-		}).toStrictEqual({part: "resize-pill", className: RESIZE_LINE_PILL_CLASS, cursor: true, tabIndex: 0});
-	});
-
-	it("keeps the old 3px muted pill when panels is off", () => {
-		responses.set(key("", ""), {kind: "listing", dir: "", entries: [], partial: false});
-		renderTree(undefined, PanelsOff);
-		const pill = separator().querySelector("[data-resize-pill]");
-
-		expect({part: pill?.getAttribute("data-cds-part"), className: pill?.getAttribute("class")}).toStrictEqual({
-			part: null,
-			className:
-				"h-full max-h-12 w-[3px] self-center rounded-full bg-ink-muted opacity-0 transition-opacity delay-200 group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100",
+		}).toStrictEqual({
+			cds: "ResizeHandle",
+			classes: [
+				"cds-reset group/resize outline-none focus-visible:outline-hidden w-3 cursor-col-resize absolute z-10",
+				"inset-y-0 end-[calc(-6px_-_(var(--cds-ring-outer,0px)_-_var(--cds-ring-inner,0px))_/_2)]",
+				"[clip-path:inset(0_0_0_37.5%)] [&:where(:root[dir=rtl]_:dir(rtl))]:[clip-path:inset(0_37.5%_0_0)] focus-visible:[clip-path:none]",
+			]
+				.join(" ")
+				.split(" ")
+				.toSorted(),
+			ringOuter: "1px",
+			ring: true,
+			pill: resizePillClass(RESIZE_LINE_PILL, "vertical", false),
+			tabIndex: 0,
 		});
 	});
 
-	it("explains itself on hover: Hide file tree ⌃⇧Y, then Drag to resize", async () => {
+	it("uses upstream's grip pill when panels is off", () => {
 		responses.set(key("", ""), {kind: "listing", dir: "", entries: [], partial: false});
-		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
-			"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-		);
+		renderTree(undefined, PanelsOff);
+		const pill = separator().querySelector("[data-cds-part=resize-pill]");
+
+		expect(pill?.getAttribute("class")).toBe(resizePillClass(RESIZE_GRIP_PILL, "vertical", false));
+	});
+
+	it("shows no tooltip on hover or focus", async () => {
+		responses.set(key("", ""), {kind: "listing", dir: "", entries: [], partial: false});
 		renderTree();
 
 		fireEvent.pointerEnter(separator());
-		const tooltip = await waitFor(() => screen.getByRole("tooltip"));
+		fireEvent.focus(separator());
+		await new Promise((resolve) => {
+			setTimeout(resolve, 600);
+		});
 
 		expect({
-			lines: [...tooltip.children].map((line) => line.textContent),
-			describedBy: separator().getAttribute("aria-describedby") === tooltip.id,
-		}).toStrictEqual({lines: ["Hide file tree⌃Control⇧ShiftY", "Drag to resize"], describedBy: true});
+			tooltip: screen.queryByRole("tooltip"),
+			describedBy: separator().getAttribute("aria-describedby"),
+		}).toStrictEqual({tooltip: null, describedBy: null});
 	});
 
 	it("hides the tree on a click that stays within the drag threshold, but not on a drag", () => {
@@ -579,6 +591,26 @@ describe("FilesTreeColumn resize", () => {
 		fireEvent.pointerUp(handle, {clientX: 281, pointerId: 2});
 
 		expect({afterDrag, afterClick: onHide.mock.calls.length}).toStrictEqual({afterDrag: 0, afterClick: 1});
+	});
+
+	it("hides the tree on Enter and Space, like a click", () => {
+		responses.set(key("", ""), {kind: "listing", dir: "", entries: [], partial: false});
+		const onHide = vi.fn<() => void>();
+		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		render(
+			<QueryClientProvider client={queryClient}>
+				<SettingsProvider>
+					<FilesTreeColumn onHide={onHide}>
+						<FilesTree sessionId={SESSION_ID} />
+					</FilesTreeColumn>
+				</SettingsProvider>
+			</QueryClientProvider>,
+		);
+
+		fireEvent.keyDown(separator(), {key: "Enter"});
+		fireEvent.keyDown(separator(), {key: " "});
+
+		expect(onHide).toHaveBeenCalledTimes(2);
 	});
 
 	it("restores a persisted width, clamped", async () => {

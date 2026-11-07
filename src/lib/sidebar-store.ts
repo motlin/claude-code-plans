@@ -8,7 +8,6 @@ export const SIDEBAR_STORAGE_KEY = "ccb-sidebar";
 
 export const SIDEBAR_MIN_WIDTH = 232;
 export const SIDEBAR_MAX_WIDTH = 420;
-export const SIDEBAR_RESIZE_STEP = 8;
 
 const SidebarStateSchema = z.strictObject({
 	collapsed: z.boolean(),

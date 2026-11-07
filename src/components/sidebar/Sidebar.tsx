@@ -27,7 +27,8 @@ import {approvalsQueryOptions} from "../../lib/api/approvals";
 import {notificationsQueryOptions, useMarkNotificationsRead} from "../../lib/api/notifications";
 import {activeSessionsQueryOptions} from "../../lib/api/sessions";
 import {useFizzyLake} from "../../lib/fizzy-lake";
-import {RESIZE_LINE_PILL_CLASS} from "../ui/resize-pill";
+import {ResizeHandle} from "../ui/resize-handle";
+import {RESIZE_GRIP_PILL, RESIZE_HANDLE_HALF_CLIP_CLASS, RESIZE_LINE_PILL, resizePillClass} from "../ui/resize-pill";
 import {
 	clearPeekSuppression,
 	isPeekSuppressed,
@@ -35,7 +36,6 @@ import {
 	setSidebarWidth,
 	SIDEBAR_MAX_WIDTH,
 	SIDEBAR_MIN_WIDTH,
-	SIDEBAR_RESIZE_STEP,
 	readSidebarState,
 	toggleSidebarCollapsed,
 	useSidebarState,
@@ -272,20 +272,17 @@ function SidebarWordmark({className}: {className?: string}) {
 }
 
 /**
- * Upstream's 12px `dframe-resize-handle` straddling the sidebar's right edge: its inner half is
- * clipped away unless focus-visible. Upstream graduated the tooltip (shared-21 passes `content: void 0`
- * to its cds Tooltip, so none ever opens), but its pill is still panels-gated (shared-38
- * `i9("panels") ? IJ : Tw`): under panels hovering fades in the 2px accent line; otherwise a 3x48
- * grip pill. A press that never moves past the drag threshold hides the sidebar like ⌘B.
+ * Upstream's 12px `dframe-resize-handle`: a cds ResizeHandle straddling the sidebar's right edge with
+ * its inner half clipped away unless focus-visible. Upstream graduated the tooltip (shared-21 passes
+ * `content: void 0` to its cds Tooltip, so none ever opens). A press that never moves past the drag
+ * threshold, or Enter/Space, hides the sidebar like ⌘B.
  */
 function SidebarResizeHandle({width, onHide}: {width: number; onHide: () => void}) {
-	const panels = useFizzyLake("panels");
 	const max = useSidebarMaxWidth();
 	const handleProps = useResizableWidth({
 		label: "Resize sidebar",
 		min: SIDEBAR_MIN_WIDTH,
 		max,
-		step: SIDEBAR_RESIZE_STEP,
 		edge: "end",
 		value: width,
 		onChange: setSidebarWidth,
@@ -293,24 +290,13 @@ function SidebarResizeHandle({width, onHide}: {width: number; onHide: () => void
 	});
 
 	return (
-		<div className="absolute! inset-y-0 end-[-6px] z-10 w-3">
-			<div
-				{...handleProps}
-				data-trigger-disabled=""
-				className="group/resize relative flex size-full cursor-col-resize touch-none items-center justify-center [clip-path:inset(0_0_0_37.5%)] focus-visible:outline-hidden focus-visible:[clip-path:none]"
-			>
-				<span
-					aria-hidden="true"
-					data-resize-pill=""
-					{...(panels ? {"data-cds-part": "resize-pill"} : {})}
-					className={
-						panels
-							? RESIZE_LINE_PILL_CLASS
-							: "h-12 w-[3px] rounded-full bg-border opacity-0 transition-opacity duration-[120ms] group-hover/resize:opacity-100 group-focus-visible/resize:bg-accent-100 group-focus-visible/resize:opacity-100"
-					}
-				/>
-			</div>
-		</div>
+		<ResizeHandle
+			{...handleProps}
+			side="inline-end"
+			onBorder
+			data-trigger-disabled=""
+			className={`z-10 ${RESIZE_HANDLE_HALF_CLIP_CLASS}`}
+		/>
 	);
 }
 
@@ -361,8 +347,9 @@ function applyEdgeDrag(distance: number): void {
  * Track an edge press on window listeners, since a drag that passes the threshold expands the
  * sidebar and unmounts the edge mid-gesture.
  */
-function startEdgeGesture(event: ReactPointerEvent<HTMLElement>): void {
+function startEdgeGesture(event: ReactPointerEvent<HTMLElement>, onDragging: (dragging: boolean) => void): void {
 	const {pointerId, clientX: startX} = event;
+	onDragging(true);
 	const frame = event.currentTarget.closest<HTMLElement>('[data-testid="app-frame"]');
 	let dragging = false;
 
@@ -383,18 +370,13 @@ function startEdgeGesture(event: ReactPointerEvent<HTMLElement>): void {
 		window.removeEventListener("pointerup", finish);
 		window.removeEventListener("pointercancel", finish);
 		frame?.removeAttribute("data-resizing");
+		onDragging(false);
 		if (!dragging && endEvent.type === "pointerup") toggleSidebarCollapsed();
 	}
 
 	window.addEventListener("pointermove", onMove);
 	window.addEventListener("pointerup", finish);
 	window.addEventListener("pointercancel", finish);
-}
-
-function onEdgePointerDown(event: ReactPointerEvent<HTMLElement>): void {
-	if (event.button !== 0) return;
-	event.preventDefault();
-	startEdgeGesture(event);
 }
 
 function onEdgeKeyDown(event: ReactKeyboardEvent<HTMLElement>): void {
@@ -407,7 +389,8 @@ function onEdgeKeyDown(event: ReactKeyboardEvent<HTMLElement>): void {
 }
 
 export function SidebarEdgeHandle() {
-	const panels = useFizzyLake("panels");
+	const pill = useFizzyLake("panels") ? RESIZE_LINE_PILL : RESIZE_GRIP_PILL;
+	const [dragging, setDragging] = useState(false);
 	return (
 		<div
 			role="separator"
@@ -419,23 +402,23 @@ export function SidebarEdgeHandle() {
 			tabIndex={0}
 			data-sidebar-edge=""
 			data-trigger-disabled=""
-			onPointerDown={onEdgePointerDown}
+			data-dragging={dragging ? "" : undefined}
+			onPointerDown={(event) => {
+				if (event.button !== 0) return;
+				event.preventDefault();
+				startEdgeGesture(event, setDragging);
+			}}
 			onKeyDown={onEdgeKeyDown}
 			className="group/resize absolute inset-y-0 left-0 z-[21] w-2 cursor-col-resize touch-none outline-none select-none"
 		>
 			<div
 				aria-hidden="true"
-				className="absolute inset-y-0 left-1/2 w-3 -translate-x-1/2 cursor-col-resize rounded-full transition-shadow duration-150 group-focus-visible/resize:shadow-focus"
+				className="absolute inset-y-0 left-1/2 w-3 -translate-x-1/2 cursor-col-resize rounded-full transition-shadow duration-[60ms] group-focus-visible/resize:shadow-focus"
 			/>
 			<div
 				aria-hidden="true"
-				data-resize-pill=""
-				{...(panels ? {"data-cds-part": "resize-pill"} : {})}
-				className={
-					panels
-						? RESIZE_LINE_PILL_CLASS
-						: "absolute top-1/2 left-1/2 h-full max-h-12 w-[3px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-current text-ink-muted opacity-0 transition-[opacity,color,background-color] delay-200 duration-200 group-hover/resize:opacity-100 group-focus-visible/resize:max-h-none group-focus-visible/resize:bg-accent-100 group-focus-visible/resize:opacity-100 group-focus-visible/resize:delay-0"
-				}
+				data-cds-part="resize-pill"
+				className={resizePillClass(pill, "vertical", dragging)}
 			/>
 		</div>
 	);

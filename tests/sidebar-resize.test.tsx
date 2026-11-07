@@ -15,6 +15,8 @@ import {activeSessionsQueryOptions} from "../src/lib/api/sessions";
 import {installLocalStorage} from "./fake-storage";
 import {NAV_SECTIONS} from "../src/lib/nav-sections";
 import {ToastProvider} from "../src/components/toast";
+import {RESIZE_LINE_PILL, resizePillClass} from "../src/components/ui/resize-pill";
+import {PanelsOff} from "./fizzy-lake-off";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
@@ -42,14 +44,20 @@ function StoreBackedSidebar() {
 	return <Sidebar collapsed={collapsed} />;
 }
 
-async function renderSidebar(): Promise<HTMLElement> {
+async function renderSidebar(panelsOff = false): Promise<HTMLElement> {
 	const queryClient = seedQueryClient();
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
 				<ToastProvider>
 					<SettingsProvider>
-						<StoreBackedSidebar />
+						{panelsOff ? (
+							<PanelsOff>
+								<StoreBackedSidebar />
+							</PanelsOff>
+						) : (
+							<StoreBackedSidebar />
+						)}
 						<Outlet />
 					</SettingsProvider>
 				</ToastProvider>
@@ -88,7 +96,7 @@ describe("sidebar resize handle", () => {
 		vi.restoreAllMocks();
 	});
 
-	it("shows no tooltip under panels and draws the shared 2px accent line pill, half-clipped at rest", async () => {
+	it("shows no tooltip and is upstream's cds ResizeHandle with the 2px accent line pill, half-clipped at rest", async () => {
 		const handle = await renderSidebar();
 		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
 
@@ -96,25 +104,62 @@ describe("sidebar resize handle", () => {
 		act(() => {
 			vi.advanceTimersByTime(1000);
 		});
-		const pill = handle.querySelector<HTMLElement>("[data-resize-pill]");
+		const pill = handle.querySelector<HTMLElement>("[data-cds-part=resize-pill]");
 
 		expect({
 			tooltip: screen.queryByRole("tooltip"),
 			describedBy: handle.getAttribute("aria-describedby"),
 			triggerDisabled: handle.getAttribute("data-trigger-disabled"),
+			cds: handle.dataset["cds"],
 			tabIndex: handle.tabIndex,
-			clipped: handle.classList.contains("[clip-path:inset(0_0_0_37.5%)]"),
-			pill: ["w-[var(--resize-line)]", "bg-fill-accent", "inset-y-0", "delay-100"].filter((token) =>
-				pill?.classList.contains(token),
-			),
+			classes: [...handle.classList].toSorted(),
+			ring: handle.firstElementChild?.classList.contains("group-focus-visible/resize:shadow-focus"),
+			pill: pill?.getAttribute("class"),
 		}).toStrictEqual({
 			tooltip: null,
 			describedBy: null,
 			triggerDisabled: "",
+			cds: "ResizeHandle",
 			tabIndex: 0,
-			clipped: true,
-			pill: ["w-[var(--resize-line)]", "bg-fill-accent", "inset-y-0", "delay-100"],
+			classes: [
+				"cds-reset group/resize outline-none focus-visible:outline-hidden w-3 cursor-col-resize absolute z-10",
+				"inset-y-0 end-[calc(-6px_-_(var(--cds-ring-outer,0px)_-_var(--cds-ring-inner,0px))_/_2)]",
+				"[clip-path:inset(0_0_0_37.5%)] [&:where(:root[dir=rtl]_:dir(rtl))]:[clip-path:inset(0_37.5%_0_0)] focus-visible:[clip-path:none]",
+			]
+				.join(" ")
+				.split(" ")
+				.toSorted(),
+			ring: true,
+			pill: resizePillClass(RESIZE_LINE_PILL, "vertical", false),
 		});
+	});
+
+	it("shows no tooltip with panels off either", async () => {
+		const handle = await renderSidebar(true);
+		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
+		fireEvent.pointerEnter(handle);
+		fireEvent.focus(handle);
+		act(() => {
+			vi.advanceTimersByTime(1000);
+		});
+		expect({
+			tooltip: screen.queryByRole("tooltip"),
+			describedBy: handle.getAttribute("aria-describedby"),
+		}).toStrictEqual({tooltip: null, describedBy: null});
+	});
+
+	it("marks data-dragging while a drag runs", async () => {
+		const handle = await renderSidebar();
+		fireEvent.pointerDown(handle, {clientX: 288, pointerId: 1});
+		const during = handle.dataset["dragging"];
+		fireEvent.pointerUp(handle, {clientX: 288, pointerId: 1});
+		expect(during).toBe("");
+	});
+
+	it("hides the sidebar on Enter, like a click", async () => {
+		const handle = await renderSidebar();
+		fireEvent.keyDown(handle, {key: "Enter"});
+		expect(readSidebarState().collapsed).toBe(true);
 	});
 
 	it("collapses the sidebar on a click that stays within the drag threshold", async () => {

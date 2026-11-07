@@ -17,6 +17,7 @@ import {readSidebarState, useSidebarState, writeSidebarState} from "../src/lib/s
 import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 import {installLocalStorage} from "./fake-storage";
 import {PanelsOff} from "./fizzy-lake-off";
+import {RESIZE_LINE_PILL, resizePillClass} from "../src/components/ui/resize-pill";
 
 function seedQueryClient(): QueryClient {
 	const queryClient = new QueryClient({
@@ -137,7 +138,7 @@ describe("collapsed sidebar edge handle", () => {
 
 	it("draws upstream's panels resize line: a full-height 2px accent line, 3px and rounded when focus-visible", async () => {
 		await renderFrame({collapsed: true});
-		const pill = edgeHandle()?.querySelector<HTMLElement>("[data-resize-pill]");
+		const pill = edgeHandle()?.querySelector<HTMLElement>("[data-cds-part=resize-pill]");
 		expect({
 			part: pill?.getAttribute("data-cds-part"),
 			classes: pill?.className.split(/\s+/).toSorted(),
@@ -156,7 +157,7 @@ describe("collapsed sidebar edge handle", () => {
 				"group-hover/resize:opacity-100",
 				"inset-y-0",
 				"my-auto",
-				"opacity-0",
+				"opacity-[var(--cds-resize-pill-force,0)]",
 				"start-[calc(50%_-_var(--resize-line)_/_2)]",
 				"transition-opacity",
 				"w-[var(--resize-line)]",
@@ -237,6 +238,16 @@ describe("collapsed sidebar edge click, drag-out and keyboard", () => {
 		release(80);
 		expect(readSidebarState().collapsed).toBe(true);
 		expect(screen.getByTestId("app-frame").hasAttribute("data-resizing")).toBe(false);
+	});
+
+	it("lights the pill in its dragging state and marks data-dragging while a short drag runs", async () => {
+		await renderFrame({collapsed: true});
+		press(3);
+		const edge = requireEdge();
+		const pill = edge.querySelector("[data-cds-part=resize-pill]");
+		const during = {dragging: edge.dataset["dragging"], pill: pill?.getAttribute("class")};
+		release(3);
+		expect(during).toStrictEqual({dragging: "", pill: resizePillClass(RESIZE_LINE_PILL, "vertical", true)});
 	});
 
 	it("expands live once the drag reaches half the floor and commits the dragged width", async () => {

@@ -6,7 +6,7 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {ChangedFilesSidebar} from "../src/components/changes/changes-file-tree";
-import {RESIZE_LINE_PILL_CLASS} from "../src/components/ui/resize-pill";
+import {RESIZE_GRIP_PILL, RESIZE_LINE_PILL, resizePillClass} from "../src/components/ui/resize-pill";
 import {PanelsOff} from "./fizzy-lake-off";
 
 const FILES = [
@@ -164,28 +164,66 @@ describe("ChangedFilesSidebar", () => {
 		});
 	});
 
-	it("draws the shared panels 2px accent line pill on the file list resize handle under panels", () => {
+	it("is upstream's cds ResizeHandle on the file list's border, half-clipped at rest, with the panels line pill", () => {
 		renderSidebar();
 		const handle = screen.getByRole("separator", {name: "Resize file list"});
-		const pill = handle.querySelector("[data-resize-pill]");
+		const pill = handle.querySelector("[data-cds-part=resize-pill]");
 
 		expect({
-			part: pill?.getAttribute("data-cds-part"),
-			className: pill?.getAttribute("class"),
-			cursor: handle.classList.contains("cursor-col-resize"),
+			cds: handle.dataset["cds"],
+			classes: [...handle.classList].toSorted(),
+			ringOuter: handle.style.getPropertyValue("--cds-ring-outer"),
+			ring: handle.firstElementChild?.classList.contains("group-focus-visible/resize:shadow-focus"),
+			pill: pill?.getAttribute("class"),
 			tabIndex: handle.tabIndex,
-		}).toStrictEqual({part: "resize-pill", className: RESIZE_LINE_PILL_CLASS, cursor: true, tabIndex: 0});
+		}).toStrictEqual({
+			cds: "ResizeHandle",
+			classes: [
+				"cds-reset group/resize outline-none focus-visible:outline-hidden w-3 cursor-col-resize absolute z-10",
+				"inset-y-0 end-[calc(-6px_-_(var(--cds-ring-outer,0px)_-_var(--cds-ring-inner,0px))_/_2)]",
+				"[clip-path:inset(0_0_0_37.5%)] [&:where(:root[dir=rtl]_:dir(rtl))]:[clip-path:inset(0_37.5%_0_0)] focus-visible:[clip-path:none]",
+			]
+				.join(" ")
+				.split(" ")
+				.toSorted(),
+			ringOuter: "1px",
+			ring: true,
+			pill: resizePillClass(RESIZE_LINE_PILL, "vertical", false),
+			tabIndex: 0,
+		});
 	});
 
-	it("keeps the old 3px muted pill on the file list resize handle when panels is off", () => {
+	it("uses upstream's grip pill on the file list resize handle when panels is off", () => {
 		renderSidebar({}, PanelsOff);
-		const pill = screen.getByRole("separator", {name: "Resize file list"}).querySelector("[data-resize-pill]");
+		const pill = screen
+			.getByRole("separator", {name: "Resize file list"})
+			.querySelector("[data-cds-part=resize-pill]");
 
-		expect({part: pill?.getAttribute("data-cds-part"), className: pill?.getAttribute("class")}).toStrictEqual({
-			part: null,
-			className:
-				"h-full max-h-12 w-[3px] self-center rounded-full bg-ink-muted opacity-0 transition-opacity delay-200 group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100",
+		expect(pill?.getAttribute("class")).toBe(resizePillClass(RESIZE_GRIP_PILL, "vertical", false));
+	});
+
+	it("marks the file list handle data-dragging while a drag runs", () => {
+		renderSidebar();
+		const handle = screen.getByRole("separator", {name: "Resize file list"});
+
+		fireEvent.pointerDown(handle, {clientX: 240, pointerId: 1});
+		const during = handle.dataset["dragging"];
+		fireEvent.pointerMove(handle, {clientX: 280, pointerId: 1});
+		fireEvent.pointerUp(handle, {clientX: 280, pointerId: 1});
+
+		expect({during, after: handle.dataset["dragging"], width: handle.getAttribute("aria-valuenow")}).toStrictEqual({
+			during: "",
+			after: undefined,
+			width: "280",
 		});
+	});
+
+	it("steps 32px with Shift+Arrow and does nothing on Enter", () => {
+		renderSidebar();
+		const handle = screen.getByRole("separator", {name: "Resize file list"});
+		fireEvent.keyDown(handle, {key: "ArrowRight", shiftKey: true});
+		fireEvent.keyDown(handle, {key: "Enter"});
+		expect(handle.getAttribute("aria-valuenow")).toBe("272");
 	});
 
 	it("resizes the file list with the keyboard between 160 and 640 pixels", () => {

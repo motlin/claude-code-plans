@@ -12,11 +12,9 @@ import {
 } from "react";
 
 import {useDebouncedValue} from "../../hooks/use-debounced-value";
-import {useShortcutKeys} from "../../hooks/use-shortcut";
 import {useResizableWidth} from "../../hooks/use-resizable-width";
 import {type SessionFilesResponse, sessionFilesQueryOptions} from "../../lib/api/session-files";
 import type {AttachContextHandler} from "../../lib/context-attach";
-import {useFizzyLake} from "../../lib/fizzy-lake";
 import {parseContentSearchQuery} from "../../lib/files-content-search";
 import {FileTypeIcon} from "../file-type-icon";
 import {useSettings} from "../settings-context";
@@ -28,7 +26,8 @@ import {
 	parseTreeQuery,
 } from "./files-tree-layout";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
-import {RESIZE_LINE_PILL_CLASS} from "../ui/resize-pill";
+import {ResizeHandle} from "../ui/resize-handle";
+import {RESIZE_HANDLE_HALF_CLIP_CLASS} from "../ui/resize-pill";
 import {Tooltip} from "../ui/tooltip";
 import {type ContentMatchOpenOptions, ContentSearchResults} from "./content-search-results";
 import {TreeRowMenuItems} from "./file-context-menu";
@@ -63,13 +62,10 @@ function symlinkLabel(entry: WorkspaceEntry): string | undefined {
 }
 
 /**
- * The Files pane's tree column shell: 240px wide, resizable 160–640 with a
- * "Resize file tree" separator, and the width persisted across reloads. A
- * click on the separator without a drag hides the tree, like upstream.
- */
-/**
- * The tree column beside the viewer. `fill` makes it the pane's only column (a
- * phone, where upstream shows the tree OR the file), with no width or resize handle.
+ * The Files pane's tree column shell: 240px wide, resizable 160–640 with a "Resize file tree" cds
+ * ResizeHandle, and the width persisted across reloads. A click (or Enter/Space) on the handle
+ * without a drag hides the tree, like upstream, which opens no tooltip on it. `fill` makes it the
+ * pane's only column (a phone, where upstream shows the tree OR the file), with no width or handle.
  */
 export function FilesTreeColumn({
 	children,
@@ -81,14 +77,11 @@ export function FilesTreeColumn({
 	fill?: boolean;
 }) {
 	const {settings, setSetting} = useSettings();
-	const hideKeys = useShortcutKeys("toggle_changes_file_list");
 	const width = clampFilesTreeWidth(settings.filesTreeWidth);
-	const panels = useFizzyLake("panels");
 	const resizeHandleProps = useResizableWidth({
 		label: "Resize file tree",
 		min: FILES_TREE_MIN_WIDTH,
 		max: FILES_TREE_MAX_WIDTH,
-		step: 8,
 		edge: "end",
 		value: width,
 		onChange: (next) => {
@@ -114,29 +107,12 @@ export function FilesTreeColumn({
 			}}
 		>
 			{children}
-			<Tooltip
-				content="Hide file tree"
-				shortcut={hideKeys.keys}
-				description="Drag to resize"
-				side="right"
-				className="absolute! inset-y-0 -right-1.5 z-10 w-3"
-			>
-				<div
-					{...resizeHandleProps}
-					className="group/resize relative flex size-full cursor-col-resize touch-none justify-center outline-none"
-				>
-					<span
-						aria-hidden="true"
-						data-resize-pill=""
-						{...(panels ? {"data-cds-part": "resize-pill"} : {})}
-						className={
-							panels
-								? RESIZE_LINE_PILL_CLASS
-								: "h-full max-h-12 w-[3px] self-center rounded-full bg-ink-muted opacity-0 transition-opacity delay-200 group-hover/resize:opacity-100 group-focus-visible/resize:opacity-100"
-						}
-					/>
-				</div>
-			</Tooltip>
+			<ResizeHandle
+				{...resizeHandleProps}
+				side="inline-end"
+				onBorder
+				className={`z-10 ${RESIZE_HANDLE_HALF_CLIP_CLASS}`}
+			/>
 		</div>
 	);
 }

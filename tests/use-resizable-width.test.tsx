@@ -3,46 +3,37 @@
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {useState} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {ResizeHandle} from "../src/components/ui/resize-handle";
 import {type ResizeEdge, useResizableWidth} from "../src/hooks/use-resizable-width";
-
-function installPointerCapture(handle: HTMLElement) {
-	const capturedPointers = new Set<number>();
-	Object.assign(handle, {
-		setPointerCapture: vi.fn<HTMLElement["setPointerCapture"]>((pointerId: number) =>
-			capturedPointers.add(pointerId),
-		),
-		releasePointerCapture: vi.fn<HTMLElement["releasePointerCapture"]>((pointerId: number) =>
-			capturedPointers.delete(pointerId),
-		),
-		hasPointerCapture: vi.fn<HTMLElement["hasPointerCapture"]>((pointerId: number) =>
-			capturedPointers.has(pointerId),
-		),
-	});
-}
 
 function Harness({
 	edge = "end",
 	initial = 288,
 	onChange,
+	onClick,
+	defaultWidth,
 }: {
 	edge?: ResizeEdge;
 	initial?: number;
 	onChange?: (width: number) => void;
+	onClick?: () => void;
+	defaultWidth?: number;
 }) {
 	const [width, setWidth] = useState(initial);
 	const handleProps = useResizableWidth({
 		label: "Resize sidebar",
 		min: 232,
 		max: 420,
-		step: 8,
 		edge,
 		value: width,
 		onChange: (next) => {
 			setWidth(next);
 			onChange?.(next);
 		},
+		...(onClick === undefined ? {} : {onClick}),
+		...(defaultWidth === undefined ? {} : {defaultWidth}),
 	});
-	return <div {...handleProps} />;
+	return <ResizeHandle {...handleProps} />;
 }
 
 function handleState(handle: HTMLElement) {
@@ -108,7 +99,6 @@ describe("useResizableWidth", () => {
 		const onChange = vi.fn<(width: number) => void>();
 		render(<Harness onChange={onChange} />);
 		const handle = screen.getByRole("separator", {name: "Resize sidebar"});
-		installPointerCapture(handle);
 
 		fireEvent.pointerDown(handle, {clientX: 288, pointerId: 3});
 		fireEvent.pointerMove(handle, {clientX: 338, pointerId: 3});
@@ -125,5 +115,43 @@ describe("useResizableWidth", () => {
 		expect(handle.getAttribute("aria-valuenow")).toBe("232");
 
 		expect(onChange.mock.calls).toStrictEqual([[338], [420], [232]]);
+	});
+
+	it("steps 32px with Shift+Arrow", () => {
+		render(<Harness />);
+		const handle = screen.getByRole("separator", {name: "Resize sidebar"});
+		fireEvent.keyDown(handle, {key: "ArrowRight", shiftKey: true});
+		expect(handle.getAttribute("aria-valuenow")).toBe("320");
+	});
+
+	it("calls onClick for a press with no travel and for Enter, but not after a drag", () => {
+		const onClick = vi.fn<() => void>();
+		render(<Harness onClick={onClick} />);
+		const handle = screen.getByRole("separator", {name: "Resize sidebar"});
+
+		fireEvent.pointerDown(handle, {clientX: 288, pointerId: 1});
+		fireEvent.pointerUp(handle, {clientX: 288, pointerId: 1});
+		fireEvent.keyDown(handle, {key: "Enter"});
+		fireEvent.pointerDown(handle, {clientX: 288, pointerId: 1});
+		fireEvent.pointerMove(handle, {clientX: 300, pointerId: 1});
+		fireEvent.pointerUp(handle, {clientX: 300, pointerId: 1});
+
+		expect(onClick).toHaveBeenCalledTimes(2);
+	});
+
+	it("resets to defaultWidth on double-click and Enter/Space", () => {
+		render(<Harness defaultWidth={244} />);
+		const handle = screen.getByRole("separator", {name: "Resize sidebar"});
+
+		fireEvent.keyDown(handle, {key: "End"});
+		fireEvent.keyDown(handle, {key: "Enter"});
+		const afterEnter = handle.getAttribute("aria-valuenow");
+		fireEvent.keyDown(handle, {key: "End"});
+		fireEvent.keyDown(handle, {key: " "});
+		const afterSpace = handle.getAttribute("aria-valuenow");
+		fireEvent.keyDown(handle, {key: "End"});
+		fireEvent.doubleClick(handle);
+
+		expect([afterEnter, afterSpace, handle.getAttribute("aria-valuenow")]).toStrictEqual(["244", "244", "244"]);
 	});
 });
