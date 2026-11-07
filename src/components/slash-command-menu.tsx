@@ -222,7 +222,7 @@ export function SlashCommandMenu({
 				id={id}
 				role="menu"
 				aria-label="Slash commands"
-				className={`min-h-0 overflow-y-auto overflow-x-hidden rounded-[inherit] ${sizing.scroller}`}
+				className={`relative min-h-0 overflow-y-auto overflow-x-hidden scroll-fade-y rounded-[inherit] ${sizing.scroller}`}
 				onScroll={(e) => {
 					if (virtualized) setScrollTop(e.currentTarget.scrollTop);
 					placeTooltip();

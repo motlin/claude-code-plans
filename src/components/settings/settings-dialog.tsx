@@ -43,6 +43,7 @@ import {UsageSettings} from "./usage-settings";
 import {SETTINGS_PHONE_QUERY, useMediaQuery} from "../../lib/use-phone-sheet";
 import {CDS_TAB_CLASS, CDS_TAB_LIST_CLASS} from "../ui/cds-tabs";
 import {DensityScope} from "../ui/density";
+import {DIALOG_BODY_CLASS} from "../ui/dialog-classes";
 
 const TAB_PANELS = {
 	general: GeneralSettings,
@@ -404,7 +405,7 @@ export function SettingsDialog() {
 					>
 						{phone ? (
 							// Upstream at phone width: one scroll container (p-24) holding the header, the tab strip and a single column; no search.
-							<div className="isolate flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
+							<div className={`${DIALOG_BODY_CLASS} p-6`}>
 								<div className="flex shrink-0 items-center justify-between gap-3 pb-3">
 									<h2
 										id={titleId}
@@ -435,7 +436,7 @@ export function SettingsDialog() {
 									<div className="shrink-0 px-4 pt-4">
 										<SettingsSearch inputRef={searchInputRef} onSelect={selectTab} />
 									</div>
-									<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pt-3 pb-4">
+									<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto scroll-fade-y scroll-fade-hide-top scroll-fade-size-6 scroll-pt-2 px-4 pt-3 pb-4">
 										{NAV_GROUPS.map((group) => (
 											<div key={group.label} className="flex shrink-0 flex-col gap-3">
 												<div

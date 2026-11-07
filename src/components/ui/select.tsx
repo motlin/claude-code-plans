@@ -2,6 +2,8 @@ import {Select as BaseSelect} from "@base-ui/react/select";
 import {Check, ChevronDown} from "lucide-react";
 import {useId} from "react";
 
+import {POPUP_LIST_GUTTER_CLASS, POPUP_LIST_SCROLL_CLASS, POPUP_LISTBOX_CLASS} from "./popup-list-classes";
+
 /*
  * Upstream's cds Select: its Combobox (`u5`) in `mode:"select"` with `searchable:false`, a labelled
  * outline trigger with a CaretDown, and a popover listbox whose selected row carries a bold check.
@@ -25,7 +27,6 @@ const CARET_CLASS = "me-0.5 size-4 shrink-0 text-muted-as-secondary transition-c
 /** Upstream's popover popup (`oe` + `Yv`), as wide as the trigger and at least 12rem. */
 const POPUP_CLASS =
 	"flex w-[var(--anchor-width)] min-w-[12rem] max-h-[min(var(--available-height,100dvh),320px)] flex-col rounded-[calc(var(--radius-r6)+0.25rem)] bg-[var(--menu-bg)] text-body font-normal text-primary shadow-[var(--menu-shadow)] outline-none data-[anchor-hidden]:invisible";
-const LIST_CLASS = "flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto rounded-[inherit] p-1 outline-none";
 /** Upstream's `vE` row. */
 const ITEM_CLASS =
 	"group/cbx-item flex w-full items-center gap-2 min-h-8 panels-fine:min-h-7 px-3 py-1 rounded-r6 text-body font-normal text-primary select-none outline-none data-[highlighted]:bg-fill-ghost-hover data-[disabled]:opacity-50 data-[disabled]:pointer-events-none";
@@ -74,18 +75,22 @@ export function Select<T extends string>({label, items, value, onChange, disable
 						alignItemWithTrigger={false}
 					>
 						<BaseSelect.Popup data-cds="Combobox" className={POPUP_CLASS}>
-							<BaseSelect.List className={LIST_CLASS}>
-								{items.map((item) => (
-									<BaseSelect.Item key={item.value} value={item.value} className={ITEM_CLASS}>
-										<BaseSelect.ItemText className="min-w-0 flex-1 truncate">
-											{item.label}
-										</BaseSelect.ItemText>
-										<BaseSelect.ItemIndicator className="shrink-0 text-fill-accent">
-											<Check aria-hidden="true" strokeWidth={3} className="size-4" />
-										</BaseSelect.ItemIndicator>
-									</BaseSelect.Item>
-								))}
-							</BaseSelect.List>
+							<div className={POPUP_LIST_GUTTER_CLASS}>
+								<div data-cds-sheet-scroll="" className={POPUP_LIST_SCROLL_CLASS}>
+									<BaseSelect.List className={POPUP_LISTBOX_CLASS}>
+										{items.map((item) => (
+											<BaseSelect.Item key={item.value} value={item.value} className={ITEM_CLASS}>
+												<BaseSelect.ItemText className="min-w-0 flex-1 truncate">
+													{item.label}
+												</BaseSelect.ItemText>
+												<BaseSelect.ItemIndicator className="shrink-0 text-fill-accent">
+													<Check aria-hidden="true" strokeWidth={3} className="size-4" />
+												</BaseSelect.ItemIndicator>
+											</BaseSelect.Item>
+										))}
+									</BaseSelect.List>
+								</div>
+							</div>
 						</BaseSelect.Popup>
 					</BaseSelect.Positioner>
 				</BaseSelect.Portal>

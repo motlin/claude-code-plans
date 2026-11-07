@@ -74,6 +74,14 @@ export function PopoverRoot(props: ComponentProps<typeof BasePopover.Root>) {
 	);
 }
 
+/**
+ * A scroll body for an anchored popup that scrolls its own content: upstream's popover body (`c_` +
+ * `scroll-fade-y`), clamped to the popup's max height. The fade's mask sits on this body, not on the
+ * popup, so it can't clip the popup's shadow.
+ */
+export const POPOVER_SCROLL_BODY_CLASS =
+	"max-h-[inherit] min-h-0 min-w-0 flex-auto overflow-y-auto scroll-fade-y rounded-[inherit] outline-none";
+
 /** Upstream's cds `Ql` trigger and title, beside the gated `PopoverRoot`, with `PopoverContent` as the surface. */
 export const PopoverTrigger = BasePopover.Trigger;
 export const PopoverTitle = BasePopover.Title;

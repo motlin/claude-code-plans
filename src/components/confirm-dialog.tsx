@@ -3,6 +3,7 @@ import {memo, type ReactNode, useRef} from "react";
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {DensityScope} from "./ui/density";
 import {DIALOG_FOOTER_CLASS} from "./ui/dialog-pad";
+import {DIALOG_BODY_CLASS} from "./ui/dialog-classes";
 
 const BUTTON_BASE_CLASS =
 	"h-8 rounded-r6 px-3 text-body font-medium transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
@@ -29,8 +30,7 @@ const POPUP_CLASS =
  * - `jS` = `${Rf} -mt-[calc(toolbar-pad-block + (h-control - leading-heading) / 2)]`, `Rf` = `mx-0
  *   text-body font-normal text-secondary break-words`.
  */
-const PANELS_BODY_CLASS =
-	"isolate flex min-h-0 flex-1 flex-col overflow-y-auto rounded-[inherit] p-4 break-words m-[var(--ring-inner)]";
+const PANELS_BODY_CLASS = `${DIALOG_BODY_CLASS} p-4 m-[var(--ring-inner)]`;
 const PANELS_BAND_CLASS =
 	"-mx-4 first:-mt-4 mb-1 flex shrink-0 items-center gap-1 self-stretch justify-self-stretch min-h-12 panels-fine:min-h-11 ps-4 pe-2 py-2 pointer-events-none";
 const PANELS_TITLE_CLASS =

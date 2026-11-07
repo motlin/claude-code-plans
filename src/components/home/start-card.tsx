@@ -11,7 +11,7 @@ import {
 	type NextStepRow,
 } from "../../lib/home-next-steps";
 import {TOUCH_REVEAL} from "../../lib/touch-reveal";
-import {PopoverRoot, PopoverTrigger, PopoverContent} from "../ui/popover";
+import {POPOVER_SCROLL_BODY_CLASS, PopoverRoot, PopoverTrigger, PopoverContent} from "../ui/popover";
 import {Tooltip} from "../ui/tooltip";
 import type {StartProject} from "../../lib/palette-start-session";
 import {useHomeDraftUsed, useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
@@ -531,18 +531,20 @@ function RestRow({
 				align="start"
 				sideOffset={6}
 				onPointerEnter={onPopupPointerEnter}
-				className="max-h-[var(--available-height)] min-w-[var(--anchor-width)] max-w-[min(26rem,90vw)] overflow-y-auto rounded-r7 bg-surface-3 shadow-[var(--menu-shadow)] break-words outline-none"
+				className="max-h-[var(--available-height)] min-w-[var(--anchor-width)] max-w-[min(26rem,90vw)] rounded-r7 bg-surface-3 shadow-[var(--menu-shadow)] break-words outline-none"
 			>
-				<ul role="list" className="flex flex-col gap-0.5 p-1">
-					{rest.map((candidate) => {
-						const key = candidateKey(candidate);
-						return (
-							<li key={key} data-row-key={key} className="group/row relative">
-								<StepRowButton candidate={candidate} onOpen={openListed} listed />
-							</li>
-						);
-					})}
-				</ul>
+				<div className={POPOVER_SCROLL_BODY_CLASS}>
+					<ul role="list" className="flex flex-col gap-0.5 p-1">
+						{rest.map((candidate) => {
+							const key = candidateKey(candidate);
+							return (
+								<li key={key} data-row-key={key} className="group/row relative">
+									<StepRowButton candidate={candidate} onOpen={openListed} listed />
+								</li>
+							);
+						})}
+					</ul>
+				</div>
 			</PopoverContent>
 		</PopoverRoot>
 	);

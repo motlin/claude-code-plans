@@ -112,7 +112,8 @@ const SHEET_POPUP_STYLE = {
 /** Upstream's tP: the level's content, which slides off when a submenu drills in. */
 const SHEET_CONTENT_CLASS = `flex min-h-0 flex-1 flex-col transition-[translate] ${SHEET_MOTION} group-data-[cds-sheet-drilled]/sheet:-translate-x-[calc(100%+env(safe-area-inset-left,0px))] rtl:group-data-[cds-sheet-drilled]/sheet:translate-x-[calc(100%+env(safe-area-inset-right,0px))]`;
 
-const SHEET_SCROLL_CLASS = "relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-1";
+const SHEET_SCROLL_CLASS =
+	"relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden scroll-fade-y overscroll-contain p-1";
 
 /** Upstream's dt: the drag handle pill at the top of the sheet, hidden on a drilled level. */
 function SheetHandle({nested = false}: {nested?: boolean}) {

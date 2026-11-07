@@ -57,6 +57,7 @@ describe("TextPreviewDialog", () => {
 				"overflow-y-auto",
 				"p-6",
 				"rounded-[inherit]",
+				"scroll-fade-y",
 			],
 			header: ["flex", "gap-2", "items-start", "mb-3"],
 			heading: {text: "Excerpt", classes: ["break-words", "font-[580]", "text-[22px]/[28px]", "text-primary"]},

@@ -10,6 +10,7 @@ import {DialogHeader} from "./ui/dialog-header";
 import {DIALOG_FOOTER_CLASS, useDialogPad} from "./ui/dialog-pad";
 import {DialogPopup} from "./ui/dialog-popup";
 import {Select} from "./ui/select";
+import {DIALOG_BODY_CLASS} from "./ui/dialog-classes";
 
 /** Upstream's `ece`: the quote card shows the prompt's first 600 characters. */
 const QUOTE_LIMIT = 600;
@@ -76,9 +77,7 @@ export function RewindConfirm({text, preview, conversation, onClose, onConfirm}:
 						initialFocus={cancelRef}
 						className="epitaxy-root fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[400px] -translate-x-1/2 -translate-y-1/2 flex-col break-words rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none"
 					>
-						<div
-							className={`isolate flex min-h-0 flex-1 flex-col overflow-y-auto rounded-[inherit] ${pad.p} ${bandBody}`}
-						>
+						<div className={`${DIALOG_BODY_CLASS} ${pad.p} ${bandBody}`}>
 							<DialogHeader
 								title="Rewind to this message?"
 								showClose={false}

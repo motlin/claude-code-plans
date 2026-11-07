@@ -11,6 +11,7 @@ import {RewindPicker} from "../src/components/rewind-picker";
 import {SessionRenameDialog} from "../src/components/session-rename-dialog";
 import {TextPreviewDialog} from "../src/components/text-preview-dialog";
 import {DIALOG_BAND_BODY_CLASS} from "../src/components/ui/dialog-band";
+import {DIALOG_BODY_CLASS} from "../src/components/ui/dialog-classes";
 import {PanelsOff} from "./fizzy-lake-off";
 import {mockTallWindow} from "./tall-window";
 
@@ -52,6 +53,17 @@ async function popupOf(node: ReactNode) {
 	render(node);
 	return screen.findByRole("dialog");
 }
+
+describe("dialog bodies carry upstream's Xn scroll-fade-y (menu-scroll-fade-utility)", () => {
+	for (const name of ["Text preview", "Rewind confirm", "Rewind picker"]) {
+		it(`${name}: the body is upstream's Xn, scroll-fade-y included`, async () => {
+			const popup = await popupOf(DIALOGS[name]?.node());
+			const body = DIALOGS[name]?.body(popup);
+			const xn = DIALOG_BODY_CLASS.split(" ");
+			expect(pick(body, xn)).toStrictEqual(xn);
+		});
+	}
+});
 
 describe("dialog popups and pads under panels (dialog-panels-pad-lg)", () => {
 	for (const [name, {node, body}] of Object.entries(DIALOGS)) {

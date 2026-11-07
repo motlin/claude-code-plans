@@ -434,7 +434,7 @@ describe("Composer skill chip", () => {
 						{
 							tag: "span",
 							className:
-								"max-h-[min(40vh,calc(var(--available-height,100vh)-3rem))] overflow-y-auto overscroll-contain break-words text-primary",
+								"max-h-[min(40vh,calc(var(--available-height,100vh)-3rem))] scroll-fade-y overflow-y-auto overscroll-contain break-words text-primary",
 							text: "Set the model for this session",
 						},
 					],

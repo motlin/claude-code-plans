@@ -8,6 +8,7 @@ import {useDialogBandBodyClass} from "./ui/dialog-band";
 import {DialogHeader} from "./ui/dialog-header";
 import {useDialogPad} from "./ui/dialog-pad";
 import {DialogPopup} from "./ui/dialog-popup";
+import {DIALOG_BODY_CLASS} from "./ui/dialog-classes";
 
 /**
  * A port of upstream's FilePreviewModal text paths: an `excerpt` shows the
@@ -54,9 +55,7 @@ export function TextPreviewDialog({
 							{...(finalFocus === undefined ? {} : {finalFocus})}
 							className="fixed top-1/2 left-1/2 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[520px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body font-normal text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none motion-reduce:data-[ending-style]:scale-100 motion-reduce:data-[starting-style]:scale-100"
 						>
-							<div
-								className={`isolate flex min-h-0 flex-1 flex-col overflow-y-auto rounded-[inherit] ${pad.p} break-words ${bandBody}`}
-							>
+							<div className={`${DIALOG_BODY_CLASS} ${pad.p} ${bandBody}`}>
 								<DialogHeader
 									title={title}
 									closeRef={closeRef}

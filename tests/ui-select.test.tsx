@@ -29,4 +29,27 @@ describe("Select", () => {
 			item: ["min-h-8", "panels-fine:min-h-7"],
 		});
 	});
+
+	it("nests the listbox in upstream's FC gutter and wI scroller, which owns scroll-fade-y", async () => {
+		render(<Select label="Letter" items={ITEMS} value="a" onChange={() => {}} />);
+		await act(async () => {
+			fireEvent.click(screen.getByRole("combobox"));
+			await Promise.resolve();
+		});
+		const listbox = await screen.findByRole("listbox", {hidden: true});
+		const scroller = listbox.parentElement;
+		expect({
+			listbox: listbox.className,
+			scroller: {marker: scroller?.getAttribute("data-cds-sheet-scroll"), className: scroller?.className},
+			gutter: scroller?.parentElement?.className,
+		}).toStrictEqual({
+			listbox: "outline-none focus-visible:outline-hidden",
+			scroller: {
+				marker: "",
+				className:
+					"min-h-0 flex-1 overflow-y-auto overflow-x-hidden scroll-fade-y outline-none focus-visible:outline-hidden max-h-[var(--cds-popup-list-max-h,none)]",
+			},
+			gutter: "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[inherit] p-1",
+		});
+	});
 });

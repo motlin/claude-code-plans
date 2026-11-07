@@ -7,6 +7,7 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
 import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
+import {POPOVER_SCROLL_BODY_CLASS} from "../src/components/ui/popover";
 import {localAccountQueryOptions} from "../src/lib/api/local-account";
 import type {ComposerState} from "../src/lib/composer-state";
 import {refillComposer, requestComposerTakeBack} from "../src/lib/context-attach";
@@ -646,11 +647,13 @@ describe("Composer", () => {
 				link: link.className.match(/\bsize-5\b|\brounded-r4\b|-me-1\b/g),
 				icon: link.querySelector("svg")?.classList.contains("lucide-gauge"),
 				className: dialog.className.match(/rounded-\S+|max-h-\S+|overflow-\S+/g),
+				body: dialog.firstElementChild?.className,
 			}).toStrictEqual({
 				href: "#settings/usage",
 				link: ["-me-1", "size-5", "rounded-r4"],
 				icon: true,
-				className: ["max-h-[min(var(--available-height),640px)]", "overflow-y-auto", "rounded-r7"],
+				className: ["max-h-[min(var(--available-height),640px)]", "rounded-r7"],
+				body: POPOVER_SCROLL_BODY_CLASS,
 			});
 
 			fireEvent.click(link);

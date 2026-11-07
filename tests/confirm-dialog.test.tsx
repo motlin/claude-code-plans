@@ -47,7 +47,7 @@ describe("ConfirmDialog", () => {
 			cds: "ConfirmationDialog",
 			fizzy: "",
 			popupPad: [],
-			body: "isolate flex min-h-0 flex-1 flex-col overflow-y-auto rounded-[inherit] p-4 break-words m-[var(--ring-inner)]",
+			body: "isolate flex min-h-0 flex-1 flex-col overflow-y-auto scroll-fade-y rounded-[inherit] break-words p-4 m-[var(--ring-inner)]",
 			band: {
 				alert: "",
 				className:

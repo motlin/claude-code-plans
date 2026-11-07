@@ -84,6 +84,16 @@ describe("Composer slash commands", () => {
 		});
 	});
 
+	it("scrolls the rows in upstream's Menu scroller (bY), scroll-fade-y included", () => {
+		const {textarea} = setup();
+
+		fireEvent.change(textarea, {target: {value: "/"}});
+
+		expect(screen.getByRole("menu", {name: "Slash commands"}).className).toStrictEqual(
+			"relative min-h-0 overflow-y-auto overflow-x-hidden scroll-fade-y rounded-[inherit] p-1.5",
+		);
+	});
+
 	it("filters over name and description with bold match spans", () => {
 		const {textarea} = setup();
 
@@ -635,7 +645,15 @@ describe("Composer slash commands", () => {
 				"w-max",
 				"z-[130]",
 			],
-			scroller: ["min-h-0", "overflow-x-hidden", "overflow-y-auto", "p-1", "rounded-[inherit]"],
+			scroller: [
+				"min-h-0",
+				"overflow-x-hidden",
+				"overflow-y-auto",
+				"p-1",
+				"relative",
+				"rounded-[inherit]",
+				"scroll-fade-y",
+			],
 			rows: Array.from({length: 3}, () => [
 				"cursor-pointer",
 				"data-[highlighted]:bg-fill-ghost-hover",
@@ -665,7 +683,15 @@ describe("Composer slash commands", () => {
 			rows: screen.getAllByRole("menuitem").map((row) => tokens(row)),
 		}).toStrictEqual({
 			popup: ["rounded-menu-comfortable"],
-			scroller: ["min-h-0", "overflow-x-hidden", "overflow-y-auto", "p-1.5", "rounded-[inherit]"],
+			scroller: [
+				"min-h-0",
+				"overflow-x-hidden",
+				"overflow-y-auto",
+				"p-1.5",
+				"relative",
+				"rounded-[inherit]",
+				"scroll-fade-y",
+			],
 			rows: Array.from({length: 3}, () => [
 				"cursor-pointer",
 				"data-[highlighted]:bg-fill-ghost-hover",

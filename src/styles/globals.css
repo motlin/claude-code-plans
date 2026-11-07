@@ -1629,7 +1629,7 @@ html[data-interface-font="dyslexic"] {
    each edge. Browsers without scroll timelines keep only the scroll padding, so no mask. */
 @property --scroll-fade-size {
 	syntax: "<length>";
-	inherits: true;
+	inherits: false;
 	initial-value: 28px;
 }
 
@@ -1653,13 +1653,13 @@ html[data-interface-font="dyslexic"] {
 
 @property --scroll-fade-top-on {
 	syntax: "<number>";
-	inherits: true;
+	inherits: false;
 	initial-value: 1;
 }
 
 @property --scroll-fade-bottom-on {
 	syntax: "<number>";
-	inherits: true;
+	inherits: false;
 	initial-value: 1;
 }
 
@@ -1689,8 +1689,8 @@ html[data-interface-font="dyslexic"] {
 }
 
 @utility scroll-fade-y {
-	scroll-padding-top: calc(var(--scroll-fade-size) * var(--scroll-fade-top-on));
-	scroll-padding-bottom: calc(var(--scroll-fade-size) * var(--scroll-fade-bottom-on));
+	scroll-padding-block: calc(var(--scroll-fade-size) * var(--scroll-fade-top-on))
+		calc(var(--scroll-fade-size) * var(--scroll-fade-bottom-on));
 	@supports (animation-timeline: scroll()) {
 		--scroll-fade-top: calc(var(--scroll-fade-top-raw) * var(--scroll-fade-y-active) * var(--scroll-fade-top-on));
 		--scroll-fade-bottom: calc(
@@ -1750,13 +1750,13 @@ html[data-interface-font="dyslexic"] {
 
 @property --scroll-fade-left-on {
 	syntax: "<number>";
-	inherits: true;
+	inherits: false;
 	initial-value: 1;
 }
 
 @property --scroll-fade-right-on {
 	syntax: "<number>";
-	inherits: true;
+	inherits: false;
 	initial-value: 1;
 }
 
@@ -1783,11 +1783,6 @@ html[data-interface-font="dyslexic"] {
 	to {
 		--scroll-fade-x-active: 1;
 	}
-}
-
-/* upstream `.scroll-fade-hide-top{--cds-scroll-fade-top-on:0}` */
-@utility scroll-fade-hide-top {
-	--scroll-fade-top-on: 0;
 }
 
 @utility scroll-fade-x {
@@ -1828,7 +1823,7 @@ html[data-interface-font="dyslexic"] {
 			0px var(--scroll-fade-size),
 			calc(100% - var(--scroll-fade-size)) 100%,
 			0px 101%;
-		&:where(:dir(rtl), [dir="rtl"] *) {
+		&:where(:root[dir="rtl"] :dir(rtl)) {
 			--scroll-fade-left: calc(
 				var(--scroll-fade-right-raw) * var(--scroll-fade-x-active) * var(--scroll-fade-left-on)
 			);
@@ -1836,6 +1831,241 @@ html[data-interface-font="dyslexic"] {
 				var(--scroll-fade-left-raw) * var(--scroll-fade-x-active) * var(--scroll-fade-right-on)
 			);
 		}
+	}
+}
+
+/* Upstream cds scroll-fade modifiers: each edge switch drops that edge's mask and scroll padding,
+   and the size utilities set the fade depth on this element only (the properties don't inherit). */
+@utility scroll-fade-hide-top {
+	--scroll-fade-top-on: 0;
+}
+
+@utility scroll-fade-hide-bottom {
+	--scroll-fade-bottom-on: 0;
+}
+
+@utility scroll-fade-hide-left {
+	--scroll-fade-left-on: 0;
+}
+
+@utility scroll-fade-hide-right {
+	--scroll-fade-right-on: 0;
+}
+
+@utility scroll-fade-size-* {
+	--scroll-fade-size: calc(var(--spacing) * --value(integer));
+	--scroll-fade-size: --value([length], [*]);
+}
+
+/* Upstream cds `scroll-fade`: both axes at once, the y and x masks intersected. */
+@utility scroll-fade {
+	scroll-padding: calc(var(--scroll-fade-size) * var(--scroll-fade-top-on))
+		calc(var(--scroll-fade-size) * var(--scroll-fade-right-on))
+		calc(var(--scroll-fade-size) * var(--scroll-fade-bottom-on))
+		calc(var(--scroll-fade-size) * var(--scroll-fade-left-on));
+	@supports (animation-timeline: scroll()) {
+		--scroll-fade-top: calc(var(--scroll-fade-top-raw) * var(--scroll-fade-y-active) * var(--scroll-fade-top-on));
+		--scroll-fade-bottom: calc(
+			var(--scroll-fade-bottom-raw) * var(--scroll-fade-y-active) * var(--scroll-fade-bottom-on)
+		);
+		--scroll-fade-left: calc(
+			var(--scroll-fade-left-raw) * var(--scroll-fade-x-active) * var(--scroll-fade-left-on)
+		);
+		--scroll-fade-right: calc(
+			var(--scroll-fade-right-raw) * var(--scroll-fade-x-active) * var(--scroll-fade-right-on)
+		);
+		mask-image:
+			linear-gradient(
+				to bottom,
+				transparent,
+				#0000000d calc(var(--scroll-fade-top) * 0.15),
+				#00000026 calc(var(--scroll-fade-top) * 0.3),
+				#0000004d calc(var(--scroll-fade-top) * 0.45),
+				#00000080 calc(var(--scroll-fade-top) * 0.6),
+				#000000b3 calc(var(--scroll-fade-top) * 0.75),
+				#000000d9 calc(var(--scroll-fade-top) * 0.87),
+				#000 var(--scroll-fade-top),
+				#000 calc(100% - var(--scroll-fade-bottom)),
+				#000000d9 calc(100% - var(--scroll-fade-bottom) * 0.87),
+				#000000b3 calc(100% - var(--scroll-fade-bottom) * 0.75),
+				#00000080 calc(100% - var(--scroll-fade-bottom) * 0.6),
+				#0000004d calc(100% - var(--scroll-fade-bottom) * 0.45),
+				#00000026 calc(100% - var(--scroll-fade-bottom) * 0.3),
+				#0000000d calc(100% - var(--scroll-fade-bottom) * 0.15),
+				transparent
+			),
+			linear-gradient(
+				to right,
+				transparent,
+				#0000000d calc(var(--scroll-fade-left) * 0.15),
+				#00000026 calc(var(--scroll-fade-left) * 0.3),
+				#0000004d calc(var(--scroll-fade-left) * 0.45),
+				#00000080 calc(var(--scroll-fade-left) * 0.6),
+				#000000b3 calc(var(--scroll-fade-left) * 0.75),
+				#000000d9 calc(var(--scroll-fade-left) * 0.87),
+				#000 var(--scroll-fade-left),
+				#000 calc(100% - var(--scroll-fade-right)),
+				#000000d9 calc(100% - var(--scroll-fade-right) * 0.87),
+				#000000b3 calc(100% - var(--scroll-fade-right) * 0.75),
+				#00000080 calc(100% - var(--scroll-fade-right) * 0.6),
+				#0000004d calc(100% - var(--scroll-fade-right) * 0.45),
+				#00000026 calc(100% - var(--scroll-fade-right) * 0.3),
+				#0000000d calc(100% - var(--scroll-fade-right) * 0.15),
+				transparent
+			);
+		animation-name:
+			scroll-fade-top, scroll-fade-bottom, scroll-fade-left, scroll-fade-right, scroll-fade-y-active,
+			scroll-fade-x-active;
+		animation-timing-function: linear;
+		animation-fill-mode: both, both, both, both, none, none;
+		animation-duration: auto;
+		animation-timeline:
+			scroll(self), scroll(self), scroll(self inline), scroll(self inline), scroll(self), scroll(self inline);
+		animation-range:
+			0px var(--scroll-fade-size),
+			calc(100% - var(--scroll-fade-size)) 100%,
+			0px var(--scroll-fade-size),
+			calc(100% - var(--scroll-fade-size)) 100%,
+			0px 101%,
+			0px 101%;
+		mask-composite: intersect;
+		&:where(:root[dir="rtl"] :dir(rtl)) {
+			--scroll-fade-left: calc(
+				var(--scroll-fade-right-raw) * var(--scroll-fade-x-active) * var(--scroll-fade-left-on)
+			);
+			--scroll-fade-right: calc(
+				var(--scroll-fade-left-raw) * var(--scroll-fade-x-active) * var(--scroll-fade-right-on)
+			);
+		}
+	}
+}
+
+/* Upstream cds `scroll-fade-strip-top/bottom`: a sticky surface-colored gradient strip whose
+   opacity follows the nearest scroll ancestor, so it's invisible at that edge. */
+@property --scroll-fade-strip-raw {
+	syntax: "<number>";
+	inherits: false;
+	initial-value: 0;
+}
+
+@property --scroll-fade-strip-active {
+	syntax: "<number>";
+	inherits: false;
+	initial-value: 0;
+}
+
+@keyframes scroll-fade-strip-in {
+	0% {
+		--scroll-fade-strip-raw: 0;
+	}
+	to {
+		--scroll-fade-strip-raw: 1;
+	}
+}
+
+@keyframes scroll-fade-strip-out {
+	0% {
+		--scroll-fade-strip-raw: 1;
+	}
+	to {
+		--scroll-fade-strip-raw: 0;
+	}
+}
+
+@keyframes scroll-fade-strip-active {
+	0%,
+	to {
+		--scroll-fade-strip-active: 1;
+	}
+}
+
+@layer base {
+	:where(.bg-surface-0) {
+		--scroll-fade-strip-color: var(--color-surface-0);
+	}
+	:where(.bg-surface-1) {
+		--scroll-fade-strip-color: var(--color-surface-1);
+	}
+	:where(.bg-surface-2) {
+		--scroll-fade-strip-color: var(--color-surface-2);
+	}
+	:where(.bg-surface-3) {
+		--scroll-fade-strip-color: var(--color-surface-3);
+	}
+	:where(.bg-surface-popover) {
+		--scroll-fade-strip-color: var(--color-surface-popover);
+	}
+	:where([data-cds="Card"]) {
+		--scroll-fade-strip-color: var(--color-surface-1);
+	}
+}
+
+@utility scroll-fade-strip-top {
+	height: var(--scroll-fade-size);
+	margin-bottom: calc(var(--scroll-fade-size) * -1);
+	pointer-events: none;
+	z-index: 1;
+	opacity: 0;
+	background: linear-gradient(
+		to bottom,
+		var(--scroll-fade-strip-color, var(--color-surface-1)),
+		rgb(from var(--scroll-fade-strip-color, var(--color-surface-1)) r g b / 0.85) 13%,
+		rgb(from var(--scroll-fade-strip-color, var(--color-surface-1)) r g b / 0.5) 40%,
+		rgb(from var(--scroll-fade-strip-color, var(--color-surface-1)) r g b / 0.15) 70%,
+		transparent
+	);
+	top: 0;
+	position: sticky;
+	inset-inline-start: 0;
+	@supports (animation-timeline: scroll()) {
+		opacity: calc(var(--scroll-fade-strip-raw) * var(--scroll-fade-strip-active));
+		animation-name: scroll-fade-strip-in, scroll-fade-strip-active;
+		animation-timing-function: linear;
+		animation-fill-mode: both, none;
+		animation-duration: auto;
+		animation-timeline: scroll(), scroll();
+		animation-range:
+			0px var(--scroll-fade-size),
+			0px 101%;
+	}
+}
+
+@utility scroll-fade-strip-bottom {
+	height: var(--scroll-fade-size);
+	margin-top: calc(var(--scroll-fade-size) * -1);
+	pointer-events: none;
+	z-index: 1;
+	opacity: 0;
+	background: linear-gradient(
+		to top,
+		var(--scroll-fade-strip-color, var(--color-surface-1)),
+		rgb(from var(--scroll-fade-strip-color, var(--color-surface-1)) r g b / 0.85) 13%,
+		rgb(from var(--scroll-fade-strip-color, var(--color-surface-1)) r g b / 0.5) 40%,
+		rgb(from var(--scroll-fade-strip-color, var(--color-surface-1)) r g b / 0.15) 70%,
+		transparent
+	);
+	bottom: 0;
+	position: sticky;
+	inset-inline-start: 0;
+	@supports (animation-timeline: scroll()) {
+		opacity: calc(var(--scroll-fade-strip-raw) * var(--scroll-fade-strip-active));
+		animation-name: scroll-fade-strip-out, scroll-fade-strip-active;
+		animation-timing-function: linear;
+		animation-fill-mode: both, none;
+		animation-duration: auto;
+		animation-timeline: scroll(), scroll();
+		animation-range:
+			calc(100% - var(--scroll-fade-size)) 100%,
+			0px 101%;
+	}
+}
+
+/* Upstream `u-hidden-scrollbar`. */
+@utility u-hidden-scrollbar {
+	scrollbar-width: none;
+	&::-webkit-scrollbar {
+		opacity: 0;
+		width: 0;
 	}
 }
 

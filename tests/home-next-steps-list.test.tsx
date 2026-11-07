@@ -5,6 +5,7 @@ import {useEffect, useRef, useState} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {NextStepsList} from "../src/components/home/start-card";
+import {POPOVER_SCROLL_BODY_CLASS} from "../src/components/ui/popover";
 import {onHomeComposerFocusRequest} from "../src/lib/home-composer-focus";
 import {selectNextSteps, type NextStepCandidate} from "../src/lib/home-next-steps";
 
@@ -244,6 +245,7 @@ describe("NextStepsList", () => {
 			align: popup.getAttribute("data-align"),
 			side: popup.getAttribute("data-side"),
 			popupClass: popup.className,
+			bodyClass: list.parentElement?.className,
 			listClass: list.className,
 			keys: [...list.children].map((li) => li.getAttribute("data-row-key")),
 			expanded: trigger.getAttribute("aria-expanded"),
@@ -253,7 +255,8 @@ describe("NextStepsList", () => {
 			align: "start",
 			side: "bottom",
 			popupClass:
-				"max-h-[var(--available-height)] min-w-[var(--anchor-width)] max-w-[min(26rem,90vw)] overflow-y-auto rounded-r7 bg-surface-3 shadow-[var(--menu-shadow)] break-words outline-none",
+				"max-h-[var(--available-height)] min-w-[var(--anchor-width)] max-w-[min(26rem,90vw)] rounded-r7 bg-surface-3 shadow-[var(--menu-shadow)] break-words outline-none",
+			bodyClass: POPOVER_SCROLL_BODY_CLASS,
 			listClass: "flex flex-col gap-0.5 p-1",
 			keys: ["waiting-session:s3", "waiting-session:s4", "waiting-session:s5"],
 			expanded: "true",

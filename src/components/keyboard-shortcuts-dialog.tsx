@@ -284,7 +284,7 @@ export function KeyboardShortcutsDialog() {
 						data-perf-overlay="keyboard_shortcuts_dialog"
 						className="fixed top-1/2 left-1/2 z-50 flex h-dvh max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[520px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale,filter] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none motion-reduce:data-[ending-style]:scale-100 motion-reduce:data-[starting-style]:scale-100"
 					>
-						<div className="isolate flex min-h-0 flex-1 flex-col overflow-y-auto rounded-[inherit] p-4 [timeline-scope:--sc-dialog-scroll] [:where([data-cds-tall-window])_&]:scroll-pt-[56px] panels-fine:[:where([data-cds-tall-window])_&]:scroll-pt-[52px]">
+						<div className="isolate flex min-h-0 flex-1 flex-col overflow-y-auto scroll-fade-y rounded-[inherit] p-4 [timeline-scope:--sc-dialog-scroll] [:where([data-cds-tall-window])_&]:scroll-pt-[56px] panels-fine:[:where([data-cds-tall-window])_&]:scroll-pt-[52px]">
 							{/* Upstream forces data-density="comfortable" on this dialog for every user, so the band
 								shows at every density; local keeps it whatever the panels flag. Its bottom line fades in
 								once the list region scrolls (its scroll-timeline, hoisted by timeline-scope). */}
@@ -295,7 +295,7 @@ export function KeyboardShortcutsDialog() {
 								aria-label="Shortcuts"
 								// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region needs focus for keyboard scrolling
 								tabIndex={count === 0 ? undefined : 0}
-								className="-mx-4 -mb-4 min-h-0 flex-1 overflow-y-auto rounded-b-[inherit] [scroll-timeline:--sc-dialog-scroll_block] px-4 pb-4 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),inset_0_0_6px_1px_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
+								className="-mx-4 -mb-4 min-h-0 flex-1 overflow-y-auto rounded-b-[inherit] [scroll-timeline:--sc-dialog-scroll_block] px-4 pb-4 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),inset_0_0_6px_1px_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] scroll-fade-y focus-visible:scroll-fade-hide-top focus-visible:scroll-fade-hide-bottom"
 							>
 								<div role="status">
 									{matcher !== null && (

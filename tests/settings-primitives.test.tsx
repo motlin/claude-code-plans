@@ -484,6 +484,26 @@ describe("SegmentedControl thumb (upstream FLIP)", () => {
 });
 
 describe("ThemedCombobox", () => {
+	it("nests the listbox in upstream's FC gutter and wI scroller, which owns scroll-fade-y", () => {
+		render(<ControlledCombobox />);
+		fireEvent.click(screen.getByRole("combobox", {name: "Light code theme"}));
+		const listbox = screen.getByRole("listbox", {name: "Light code theme"});
+		const scroller = listbox.parentElement;
+		expect({
+			listbox: listbox.className,
+			scroller: {marker: scroller?.getAttribute("data-cds-sheet-scroll"), className: scroller?.className},
+			gutter: scroller?.parentElement?.className,
+		}).toStrictEqual({
+			listbox: "outline-none focus-visible:outline-hidden",
+			scroller: {
+				marker: "",
+				className:
+					"min-h-0 flex-1 overflow-y-auto overflow-x-hidden scroll-fade-y outline-none focus-visible:outline-hidden max-h-[var(--cds-popup-list-max-h,none)]",
+			},
+			gutter: "flex min-h-0 flex-1 flex-col overflow-hidden rounded-[inherit] p-1",
+		});
+	});
+
 	it("opens a filterable listbox with a check on the current option", () => {
 		render(<ControlledCombobox />);
 		const trigger = screen.getByRole("combobox", {name: "Light code theme"});
@@ -631,7 +651,8 @@ describe("ThemedCombobox", () => {
 		const root = trigger.closest("[data-cds=Combobox]");
 		const classes = (element: Element | null | undefined) => element?.getAttribute("class")?.split(" ");
 		fireEvent.click(trigger);
-		const popup = screen.getByRole("listbox", {name: "Light code theme"}).parentElement;
+		const popup = screen.getByRole("listbox", {name: "Light code theme"}).parentElement?.parentElement
+			?.parentElement;
 
 		expect({
 			root: classes(root),

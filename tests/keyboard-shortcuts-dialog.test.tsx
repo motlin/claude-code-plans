@@ -84,6 +84,23 @@ describe("KeyboardShortcutsDialog", () => {
 		vi.unstubAllGlobals();
 	});
 
+	it("fades the outer scroller and the list region like upstream, the region dropping its fades while focused", async () => {
+		const {region} = await openDialog();
+		const has = (element: Element | null, names: string[]) =>
+			names.filter((name) => element?.classList.contains(name));
+		expect({
+			scroller: has(region.parentElement, ["scroll-fade-y"]),
+			region: has(region, [
+				"scroll-fade-y",
+				"focus-visible:scroll-fade-hide-top",
+				"focus-visible:scroll-fade-hide-bottom",
+			]),
+		}).toStrictEqual({
+			scroller: ["scroll-fade-y"],
+			region: ["scroll-fade-y", "focus-visible:scroll-fade-hide-top", "focus-visible:scroll-fade-hide-bottom"],
+		});
+	});
+
 	it("opens on ⌘/ from a focused textarea", async () => {
 		const composer = renderWithComposer();
 

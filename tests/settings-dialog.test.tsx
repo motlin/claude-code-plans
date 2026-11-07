@@ -24,6 +24,7 @@ import {
 	type SkillDetail,
 	type SkillSummary,
 } from "../src/lib/api/customize";
+import {DIALOG_BODY_CLASS} from "../src/components/ui/dialog-classes";
 import {PHONE_SHEET_QUERY, SETTINGS_PHONE_QUERY, SETTINGS_WIDE_QUERY} from "../src/lib/use-phone-sheet";
 import {redirectToSettingsDialog} from "../src/routes/settings";
 import {installLocalStorage} from "./fake-storage";
@@ -247,7 +248,7 @@ describe("SettingsDialog", () => {
 		}).toStrictEqual({
 			nav: "row-start-2 flex w-[212px] min-h-0 shrink-0 flex-col border-e border-[rgb(0_0_0/0.1)] dark:border-white/10 bg-surface-1",
 			searchWrap: "shrink-0 px-4 pt-4",
-			list: "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pt-3 pb-4",
+			list: "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto scroll-fade-y scroll-fade-hide-top scroll-fade-size-6 scroll-pt-2 px-4 pt-3 pb-4",
 			labels: [
 				["Preferences", "px-0 pt-3 text-[12px]/[17px] text-ink-muted"],
 				["Customize", "px-0 pt-3 text-[12px]/[17px] text-ink-muted"],
@@ -503,6 +504,14 @@ describe("SettingsDialog at phone width", () => {
 			search: 0,
 			scrollForward: 1,
 		});
+	});
+
+	it("scrolls the phone body as upstream's Xn dialog body, scroll-fade-y included", async () => {
+		await renderAt("/#settings/general");
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const body = within(dialog).getByRole("heading", {level: 2}).parentElement?.parentElement;
+
+		expect(body?.className).toStrictEqual(`${DIALOG_BODY_CLASS} p-6`);
 	});
 
 	it("keeps the default initial focus (the first tabbable, Close) at phone width, where there is no search", async () => {
@@ -1066,7 +1075,7 @@ describe("SettingsDialog local tabs", () => {
 			fixedColumn: "mx-auto w-full max-w-5xl md:px-2 flex flex-col pt-3",
 			inset: "px-6",
 			header: ["HEADER", "flex flex-col gap-4"],
-			scroller: "flex min-h-0 flex-1 flex-col overflow-y-auto pt-6 pb-6",
+			scroller: "flex min-h-0 flex-1 flex-col overflow-y-auto scroll-fade-y pt-6 pb-6",
 			column: "mx-auto w-full max-w-5xl md:px-2 flex flex-1 flex-col",
 			inset2: "px-6 flex flex-1 flex-col",
 			headerInScroller: false,

@@ -54,7 +54,7 @@ function DetailShell({layout, header, pageClassName, children}: DetailShellProps
 					</div>
 				</div>
 			)}
-			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto pt-6 pb-6">
+			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto scroll-fade-y pt-6 pb-6">
 				<div className="mx-auto w-full max-w-5xl md:px-2 flex flex-1 flex-col">
 					<div className="px-6 flex flex-1 flex-col">{children}</div>
 				</div>

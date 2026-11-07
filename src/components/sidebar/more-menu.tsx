@@ -13,6 +13,7 @@ import {DialogPopup} from "../ui/dialog-popup";
 import {Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "../ui/menu";
 import {navItems, type NavItem} from "./navigation";
 import type {Section} from "./types";
+import {DIALOG_BODY_CLASS} from "../ui/dialog-classes";
 
 export interface NavBadge {
 	count: number;
@@ -133,9 +134,7 @@ function EditSidebarDialog({
 					initialFocus={doneRef}
 					className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[400px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none"
 				>
-					<div
-						className={`isolate flex min-h-0 flex-1 flex-col overflow-y-auto rounded-[inherit] ${pad.p} ${bandBody}`}
-					>
+					<div className={`${DIALOG_BODY_CLASS} ${pad.p} ${bandBody}`}>
 						<DialogHeader
 							title="Edit sidebar"
 							description="Choose which items appear in your sidebar."

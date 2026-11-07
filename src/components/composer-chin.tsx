@@ -35,7 +35,7 @@ import {localAccountQueryOptions} from "../lib/api/local-account";
 import {settingsHash} from "../lib/settings-hash";
 import {ConfirmDialog} from "./confirm-dialog";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
-import {PopoverRoot, PopoverTitle, PopoverTrigger, PopoverContent} from "./ui/popover";
+import {POPOVER_SCROLL_BODY_CLASS, PopoverRoot, PopoverTitle, PopoverTrigger, PopoverContent} from "./ui/popover";
 import {Tooltip} from "./ui/tooltip";
 import {UsagePopoverLimitRow} from "./usage-limit-row";
 import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
@@ -47,7 +47,7 @@ const ComposerConnectorsMenu = lazy(loadConnectorsMenu);
 
 /** Upstream's 2026-10-20 usage popover: r10, and up to 640px (or the room left) tall before its own scroll. */
 const POPUP_CLASS =
-	"w-[360px] max-w-[calc(100vw-2rem)] max-h-[min(var(--available-height),640px)] overflow-y-auto rounded-r7 bg-[var(--menu-bg)] p-0 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none";
+	"w-[360px] max-w-[calc(100vw-2rem)] max-h-[min(var(--available-height),640px)] rounded-r7 bg-[var(--menu-bg)] p-0 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none";
 
 function UsagePopoverBody({usage, onNavigate}: {usage: ComposerUsage | null; onNavigate: () => void}) {
 	const {data: account} = useQuery(localAccountQueryOptions);
@@ -124,12 +124,14 @@ export function UsageRing({usage}: {usage: ComposerUsage | null}) {
 				</PopoverTrigger>
 			</Tooltip>
 			<PopoverContent side="top" align="end" sideOffset={6} className={POPUP_CLASS}>
-				<UsagePopoverBody
-					usage={usage}
-					onNavigate={() => {
-						setOpen(false);
-					}}
-				/>
+				<div className={POPOVER_SCROLL_BODY_CLASS}>
+					<UsagePopoverBody
+						usage={usage}
+						onNavigate={() => {
+							setOpen(false);
+						}}
+					/>
+				</div>
 			</PopoverContent>
 		</PopoverRoot>
 	);

@@ -1,4 +1,4 @@
-import type {ReactNode} from "react";
+import {type ReactNode, useLayoutEffect, useRef} from "react";
 import {HOME_COLUMN} from "./home-column";
 
 /**
@@ -18,14 +18,17 @@ export function HomeTitlebar() {
  * dock in an 840px centered column with 32px/40px gutters (16px/24px once the tile is ≤560px).
  */
 export function HomePage({children, dock}: Readonly<{children?: ReactNode; dock?: ReactNode}>) {
+	const bodyRef = useRef<HTMLDivElement>(null);
+	useLandingOverflows(bodyRef);
 	return (
 		<div className="@container/tile-slot flex h-full min-h-0 flex-col">
 			<HomeTitlebar />
 			<div className={`flex min-h-0 flex-1 flex-col ${HOME_COLUMN}`}>
 				<div
+					ref={bodyRef}
 					data-home-body
 					data-scroll-restoration-id="main"
-					className="min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable_both-edges]"
+					className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto u-hidden-scrollbar scroll-py-(--scroll-fade-size) data-[landing-overflows]:scroll-fade-y"
 				>
 					{children}
 				</div>
@@ -33,4 +36,26 @@ export function HomePage({children, dock}: Readonly<{children?: ReactNode; dock?
 			{dock === undefined ? null : <div className={`shrink-0 ${HOME_COLUMN}`}>{dock}</div>}
 		</div>
 	);
+}
+
+/**
+ * Upstream's landing column (`qw`, attribute `oB`): `data-landing-overflows` while the column is taller than
+ * its viewport, so `scroll-fade-y` (and its mask) applies only then. The `+ 1` and the ResizeObserver match
+ * upstream's code-view setter (`scrollHeight > clientHeight + 1`).
+ */
+function useLandingOverflows(ref: Readonly<{current: HTMLDivElement | null}>) {
+	useLayoutEffect(() => {
+		const element = ref.current;
+		if (element === null || typeof ResizeObserver === "undefined") return undefined;
+		const sync = () => {
+			element.toggleAttribute("data-landing-overflows", element.scrollHeight > element.clientHeight + 1);
+		};
+		sync();
+		const observer = new ResizeObserver(sync);
+		observer.observe(element);
+		if (element.firstElementChild !== null) observer.observe(element.firstElementChild);
+		return () => {
+			observer.disconnect();
+		};
+	}, [ref]);
 }

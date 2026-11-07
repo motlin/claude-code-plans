@@ -2,6 +2,7 @@ import {Check, ChevronDown} from "lucide-react";
 import {type CSSProperties, type KeyboardEvent, useEffect, useId, useRef, useState} from "react";
 
 import {useSettingsRowIds} from "./settings-row-context";
+import {POPUP_LIST_GUTTER_CLASS, POPUP_LIST_SCROLL_CLASS, POPUP_LISTBOX_CLASS} from "../ui/popup-list-classes";
 
 /*
  * The claude.ai/code settings Combobox: a full-width 32px trigger whose popup
@@ -196,51 +197,57 @@ export function ThemedCombobox<T extends string>({
 							/>
 						</div>
 					) : null}
-					<div
-						ref={listboxRef}
-						id={listboxId}
-						role="listbox"
-						aria-label={ariaLabel}
-						tabIndex={filterable ? undefined : -1}
-						aria-activedescendant={filterable ? undefined : activeDescendant}
-						onKeyDown={filterable ? undefined : handleListKeyDown}
-						className="min-h-0 overflow-y-auto p-1 outline-none"
-					>
-						{filtered.length === 0 ? (
-							<div className="px-2.5 py-1.5 text-body text-[var(--settings-muted)]">No results</div>
-						) : (
-							filtered.map((option, index) => {
-								const selected = option.value === value;
-								return (
-									// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- an aria-activedescendant option: focus and arrow keys stay in the input that owns the list
-									<div
-										key={option.value}
-										id={`${baseId}-${option.value}`}
-										role="option"
-										aria-selected={selected}
-										aria-disabled={option.disabled === true ? true : undefined}
-										data-highlighted={index === activeIndex ? "" : undefined}
-										onMouseEnter={() => {
-											setActiveIndex(index);
-										}}
-										onMouseDown={(event) => {
-											event.preventDefault();
-										}}
-										onClick={() => {
-											choose(option);
-										}}
-										className="flex h-8 cursor-default items-center gap-1 rounded-r6 px-2.5 text-body text-primary select-none data-[highlighted]:bg-fill-ghost-hover aria-disabled:opacity-50"
-									>
-										<span className="min-w-0 flex-1 truncate" style={option.labelStyle}>
-											{option.label}
-										</span>
-										<span className="-mr-1 flex size-5 shrink-0 items-center justify-center">
-											{selected ? <Check aria-hidden="true" className="size-4" /> : null}
-										</span>
+					<div className={POPUP_LIST_GUTTER_CLASS}>
+						<div data-cds-sheet-scroll="" className={POPUP_LIST_SCROLL_CLASS}>
+							<div
+								ref={listboxRef}
+								id={listboxId}
+								role="listbox"
+								aria-label={ariaLabel}
+								tabIndex={filterable ? undefined : -1}
+								aria-activedescendant={filterable ? undefined : activeDescendant}
+								onKeyDown={filterable ? undefined : handleListKeyDown}
+								className={POPUP_LISTBOX_CLASS}
+							>
+								{filtered.length === 0 ? (
+									<div className="px-2.5 py-1.5 text-body text-[var(--settings-muted)]">
+										No results
 									</div>
-								);
-							})
-						)}
+								) : (
+									filtered.map((option, index) => {
+										const selected = option.value === value;
+										return (
+											// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- an aria-activedescendant option: focus and arrow keys stay in the input that owns the list
+											<div
+												key={option.value}
+												id={`${baseId}-${option.value}`}
+												role="option"
+												aria-selected={selected}
+												aria-disabled={option.disabled === true ? true : undefined}
+												data-highlighted={index === activeIndex ? "" : undefined}
+												onMouseEnter={() => {
+													setActiveIndex(index);
+												}}
+												onMouseDown={(event) => {
+													event.preventDefault();
+												}}
+												onClick={() => {
+													choose(option);
+												}}
+												className="flex h-8 cursor-default items-center gap-1 rounded-r6 px-2.5 text-body text-primary select-none data-[highlighted]:bg-fill-ghost-hover aria-disabled:opacity-50"
+											>
+												<span className="min-w-0 flex-1 truncate" style={option.labelStyle}>
+													{option.label}
+												</span>
+												<span className="-mr-1 flex size-5 shrink-0 items-center justify-center">
+													{selected ? <Check aria-hidden="true" className="size-4" /> : null}
+												</span>
+											</div>
+										);
+									})
+								)}
+							</div>
+						</div>
 					</div>
 				</div>
 			) : null}

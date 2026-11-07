@@ -1117,7 +1117,8 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 				"flex min-h-0 flex-1 flex-col transition-[translate] duration-[300ms] ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none group-data-[cds-sheet-drilled]/sheet:-translate-x-[calc(100%+env(safe-area-inset-left,0px))] rtl:group-data-[cds-sheet-drilled]/sheet:translate-x-[calc(100%+env(safe-area-inset-right,0px))]",
 			scroll: {
 				marker: true,
-				className: "relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-1",
+				className:
+					"relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden scroll-fade-y overscroll-contain p-1",
 				items: 4,
 			},
 		});
