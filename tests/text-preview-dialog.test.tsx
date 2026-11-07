@@ -4,6 +4,7 @@ import {cleanup, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 import {TextPreviewDialog} from "../src/components/text-preview-dialog";
 import {TEXT_PREVIEW_LIMIT, textPreviewStats} from "../src/lib/text-preview";
+import {PanelsOff} from "./fizzy-lake-off";
 
 function classes(element: Element | null): string[] {
 	return (element?.getAttribute("class") ?? "").split(/\s+/).filter(Boolean).toSorted();
@@ -16,8 +17,12 @@ function noop(): void {
 afterEach(cleanup);
 
 describe("TextPreviewDialog", () => {
-	it("renders an excerpt as upstream's FilePreviewModal snippet: a 520px card titled Excerpt over a blockquote", async () => {
-		render(<TextPreviewDialog open title="Excerpt" text={"a\nb"} variant="excerpt" onClose={noop} />);
+	it("renders an excerpt as upstream's FilePreviewModal snippet: a 520px card titled Excerpt over a blockquote (panels off)", async () => {
+		render(
+			<PanelsOff>
+				<TextPreviewDialog open title="Excerpt" text={"a\nb"} variant="excerpt" onClose={noop} />
+			</PanelsOff>,
+		);
 		const dialog = await screen.findByRole("dialog");
 		const scroll = dialog.firstElementChild;
 		const header = scroll?.firstElementChild ?? null;
@@ -65,8 +70,12 @@ describe("TextPreviewDialog", () => {
 		});
 	});
 
-	it("renders a file as a code box under a size line", async () => {
-		render(<TextPreviewDialog open title="a.ts:1-3" text={"one\ntwo\nthree"} variant="file" onClose={noop} />);
+	it("renders a file as a code box under a size line (panels off)", async () => {
+		render(
+			<PanelsOff>
+				<TextPreviewDialog open title="a.ts:1-3" text={"one\ntwo\nthree"} variant="file" onClose={noop} />
+			</PanelsOff>,
+		);
 		const dialog = await screen.findByRole("dialog");
 		const heading = dialog.querySelector("h2");
 		const description = dialog.querySelector("p");

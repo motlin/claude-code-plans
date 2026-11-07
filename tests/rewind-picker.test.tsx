@@ -263,19 +263,19 @@ describe("RewindPicker", () => {
 				{
 					id: "rewind-opt-0",
 					selected: "false",
-					className: "rounded-r4 px-[6px] py-[5px] last:scroll-mb-5 text-secondary",
+					className: "rounded-r4 px-[6px] py-[5px] last:scroll-mb-4 text-secondary",
 					label: "Rename the button",
 				},
 				{
 					id: "rewind-opt-1",
 					selected: "false",
-					className: "rounded-r4 px-[6px] py-[5px] last:scroll-mb-5 text-secondary",
+					className: "rounded-r4 px-[6px] py-[5px] last:scroll-mb-4 text-secondary",
 					label: "Add a test",
 				},
 				{
 					id: "rewind-opt-2",
 					selected: "true",
-					className: "rounded-r4 px-[6px] py-[5px] last:scroll-mb-5 bg-fill-ghost-hover text-primary",
+					className: "rounded-r4 px-[6px] py-[5px] last:scroll-mb-4 bg-fill-ghost-hover text-primary",
 					label: "Fix the lint",
 				},
 			],

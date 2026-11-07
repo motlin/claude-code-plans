@@ -260,6 +260,41 @@ describe("sidebar More menu", () => {
 });
 
 describe("Edit sidebar dialog", () => {
+	it("renders upstream's panels band, the description, a flush list, a 16px body and footer, and focuses Done", async () => {
+		await renderSidebar();
+		const dialog = await openEditSidebar();
+		const band = dialog.querySelector("[data-cds-part=band]");
+		const done = within(dialog).getByRole("button", {name: "Done"});
+		await waitFor(() => {
+			expect(document.activeElement).toBe(done);
+		});
+		const list = within(dialog).getAllByRole("checkbox")[0]?.parentElement;
+		const pick = (element: Element | null | undefined, names: string[]) =>
+			names.filter((name) => (element?.className.split(" ") ?? []).includes(name));
+		expect({
+			band: [...(band?.children ?? [])].map(
+				(child) => `${child.tagName} ${child.textContent || child.getAttribute("aria-label")}`,
+			),
+			description: {
+				text: band?.nextElementSibling?.textContent,
+				mb: pick(band?.nextElementSibling, ["mb-4"]),
+			},
+			list: list?.className,
+			body: pick(band?.parentElement, ["p-4", "p-6"]),
+			footer: pick(done.parentElement, ["mt-4", "mt-6"]),
+			fizzy: dialog.getAttribute("data-cds-fizzy"),
+			focused: document.activeElement === done,
+		}).toStrictEqual({
+			band: ["H2 Edit sidebar", "BUTTON Close"],
+			description: {text: "Choose which items appear in your sidebar.", mb: ["mb-4"]},
+			list: "flex flex-col",
+			body: ["p-4"],
+			footer: ["mt-4"],
+			fizzy: "",
+			focused: true,
+		});
+	});
+
 	it("lists every toggleable section with its current visibility", async () => {
 		await renderSidebar();
 		const dialog = await openEditSidebar();

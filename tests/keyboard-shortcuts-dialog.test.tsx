@@ -10,6 +10,8 @@ import {KeyboardShortcutsDialog, ShortcutRow} from "../src/components/keyboard-s
 import {setKeyboardShortcutsOpen} from "../src/components/keyboard-shortcuts-open";
 import {shortcutSections} from "../src/components/keyboard-shortcut-sections";
 import {SHORTCUT_IDS, SHORTCUTS} from "../src/lib/shortcuts/registry";
+import {PanelsOff} from "./fizzy-lake-off";
+import {mockTallWindow} from "./tall-window";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
@@ -257,70 +259,129 @@ describe("KeyboardShortcutsDialog", () => {
 	});
 
 	it("uses the 2026-11 upstream chrome: a sticky 44px band, 16px padding, no blur, full height", async () => {
-		const {dialog} = await openDialog();
-		const classes = (element: Element | null | undefined) => element?.className.split(" ") ?? [];
-		const band = within(dialog).getByRole("heading", {name: "Keyboard shortcuts"}).parentElement;
-		const close = within(dialog).getByRole("button", {name: "Close"});
-		const region = within(dialog).getByRole("region", {name: "Shortcuts"});
-		const pick = (element: Element | null | undefined, names: string[]) =>
-			names.filter((name) => classes(element).includes(name));
-		expect({
-			bandPart: band?.dataset["cdsPart"],
-			band: pick(band, [
-				"sticky",
-				"-top-4",
-				"z-[1000]",
-				"-mx-4",
-				"-mt-4",
-				"mb-1",
-				"flex",
-				"min-h-11",
-				"shrink-0",
-				"items-center",
-				"gap-1",
-				"ps-4",
-				"pe-2",
-				"py-2",
-				"bg-page",
-			]),
-			close: pick(close, ["size-7", "self-start", "-me-2", "-mt-2", "h-8", "w-8"]),
-			scroller: pick(band?.parentElement, ["p-4", "scroll-pt-[52px]", "p-6"]),
-			region: pick(region, ["-mx-4", "-mb-4", "px-4", "pb-4"]),
-			transition: classes(dialog).includes("transition-[opacity,scale,filter]"),
-			blurred: [...document.querySelectorAll("div")].filter((element) =>
-				classes(element).some((name) => name.startsWith("backdrop-blur")),
-			).length,
-			fullHeight: classes(dialog).includes("h-dvh"),
-			cds: dialog.dataset["cds"],
-			perfOverlay: dialog.dataset["perfOverlay"],
-		}).toStrictEqual({
-			bandPart: "band",
-			band: [
-				"sticky",
-				"-top-4",
-				"z-[1000]",
-				"-mx-4",
-				"-mt-4",
-				"mb-1",
-				"flex",
-				"min-h-11",
-				"shrink-0",
-				"items-center",
-				"gap-1",
-				"ps-4",
-				"pe-2",
-				"py-2",
-				"bg-page",
-			],
-			close: ["size-7", "self-start"],
-			scroller: ["p-4", "scroll-pt-[52px]"],
-			region: ["-mx-4", "-mb-4", "px-4", "pb-4"],
-			transition: true,
-			blurred: 0,
-			fullHeight: true,
-			cds: "Dialog",
-			perfOverlay: "keyboard_shortcuts_dialog",
+		const media = mockTallWindow(true);
+		try {
+			const {dialog} = await openDialog();
+			const classes = (element: Element | null | undefined) => element?.className.split(" ") ?? [];
+			const band = within(dialog).getByRole("heading", {name: "Keyboard shortcuts"}).parentElement;
+			const close = within(dialog).getByRole("button", {name: "Close"});
+			const region = within(dialog).getByRole("region", {name: "Shortcuts"});
+			const pick = (element: Element | null | undefined, names: string[]) =>
+				names.filter((name) => classes(element).includes(name));
+			const tall = [dialog.hasAttribute("data-cds-tall-window")];
+			act(() => {
+				media.setMatches(false);
+			});
+			tall.push(dialog.hasAttribute("data-cds-tall-window"));
+			expect({
+				bandPart: band?.dataset["cdsPart"],
+				band: pick(band, [
+					"sticky",
+					"-top-4",
+					"[:where([data-cds-tall-window])_&]:-top-4",
+					"z-[1000]",
+					"-mx-4",
+					"first:-mt-4",
+					"mb-1",
+					"flex",
+					"min-h-11",
+					"min-h-12",
+					"panels-fine:min-h-11",
+					"shrink-0",
+					"items-center",
+					"gap-1",
+					"ps-4",
+					"pe-2",
+					"py-2",
+					"bg-page",
+					"after:opacity-0",
+					"supports-[animation-timeline:scroll()]:after:opacity-0",
+					"after:border-b",
+					"[:where([data-cds-tall-window])_&]:after:border-b",
+				]),
+				close: pick(close, [
+					"size-7",
+					"size-8",
+					"panels-fine:size-7",
+					"self-start",
+					"-me-2",
+					"-mt-2",
+					"h-8",
+					"w-8",
+				]),
+				scroller: pick(band?.parentElement, [
+					"p-4",
+					"scroll-pt-[52px]",
+					"[:where([data-cds-tall-window])_&]:scroll-pt-[56px]",
+					"panels-fine:[:where([data-cds-tall-window])_&]:scroll-pt-[52px]",
+					"p-6",
+				]),
+				region: pick(region, ["-mx-4", "-mb-4", "px-4", "pb-4"]),
+				transition: classes(dialog).includes("transition-[opacity,scale,filter]"),
+				blurred: [...document.querySelectorAll("div")].filter((element) =>
+					classes(element).some((name) => name.startsWith("backdrop-blur")),
+				).length,
+				fullHeight: classes(dialog).includes("h-dvh"),
+				cds: dialog.dataset["cds"],
+				fizzy: dialog.dataset["cdsFizzy"],
+				tall,
+				perfOverlay: dialog.dataset["perfOverlay"],
+			}).toStrictEqual({
+				bandPart: "band",
+				band: [
+					"sticky",
+					"[:where([data-cds-tall-window])_&]:-top-4",
+					"z-[1000]",
+					"-mx-4",
+					"first:-mt-4",
+					"mb-1",
+					"flex",
+					"min-h-12",
+					"panels-fine:min-h-11",
+					"shrink-0",
+					"items-center",
+					"gap-1",
+					"ps-4",
+					"pe-2",
+					"py-2",
+					"bg-page",
+					"supports-[animation-timeline:scroll()]:after:opacity-0",
+					"[:where([data-cds-tall-window])_&]:after:border-b",
+				],
+				close: ["size-8", "panels-fine:size-7", "self-start"],
+				scroller: [
+					"p-4",
+					"[:where([data-cds-tall-window])_&]:scroll-pt-[56px]",
+					"panels-fine:[:where([data-cds-tall-window])_&]:scroll-pt-[52px]",
+				],
+				region: ["-mx-4", "-mb-4", "px-4", "pb-4"],
+				transition: true,
+				blurred: 0,
+				fullHeight: true,
+				cds: "Dialog",
+				fizzy: "",
+				tall: [true, false],
+				perfOverlay: "keyboard_shortcuts_dialog",
+			});
+		} finally {
+			media.restore();
+		}
+	});
+
+	it("keeps the band with panels off, as upstream forces comfortable on this dialog", async () => {
+		render(
+			<PanelsOff>
+				<KeyboardShortcutsDialog />
+			</PanelsOff>,
+		);
+		act(() => {
+			setKeyboardShortcutsOpen(true);
 		});
+		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
+		expect({
+			band: within(dialog).getByRole("heading", {name: "Keyboard shortcuts"}).parentElement?.dataset["cdsPart"],
+			fizzy: dialog.getAttribute("data-cds-fizzy"),
+		}).toStrictEqual({band: "band", fizzy: null});
 	});
 
 	it("renders sections as h3 + ul[role=list] and rows as li with an sr-only nbsp", async () => {

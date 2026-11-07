@@ -1724,6 +1724,11 @@ html[data-interface-font="dyslexic"] {
 	}
 }
 
+/* upstream `.scroll-fade-hide-top{--cds-scroll-fade-top-on:0}` */
+@utility scroll-fade-hide-top {
+	--scroll-fade-top-on: 0;
+}
+
 @utility scroll-fade-x {
 	scroll-padding-left: calc(var(--scroll-fade-size) * var(--scroll-fade-left-on));
 	scroll-padding-right: calc(var(--scroll-fade-size) * var(--scroll-fade-right-on));

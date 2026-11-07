@@ -1,9 +1,12 @@
 import {Dialog} from "@base-ui/react/dialog";
-import {X} from "lucide-react";
 import {useCallback, useRef, useState} from "react";
 
 import {usePointerHoverSelect} from "../hooks/use-pointer-hover-select";
 import {type RewindTurn, rewindLabel} from "../lib/rewind-picker";
+import {useDialogBandBodyClass} from "./ui/dialog-band";
+import {DialogHeader} from "./ui/dialog-header";
+import {useDialogPad} from "./ui/dialog-pad";
+import {DialogPopup} from "./ui/dialog-popup";
 
 export interface RewindPickerProps {
 	open: boolean;
@@ -14,8 +17,9 @@ export interface RewindPickerProps {
 	onSelect: (uuid: string, text: string) => void;
 }
 
-// `last:scroll-mb-(--cds-pad-xl)`: a keyboard move to the last row keeps the list's bottom padding in view.
-const OPTION_CLASS = "rounded-r4 px-[6px] py-[5px] last:scroll-mb-5";
+// `last:scroll-mb-(--cds-pad-xl)` = 16px under panels (`_z`), 20px pre-rollout: a keyboard move to the
+// last row keeps the list's bottom padding in view.
+const optionClass = (scrollMb: string) => `rounded-r4 px-[6px] py-[5px] ${scrollMb}`;
 
 /**
  * claude.ai/code's Rewind picker (`rce`): a "Rewind session" dialog listing
@@ -29,6 +33,8 @@ export function RewindPicker({open, turns, onClose, onSelect}: RewindPickerProps
 	// Upstream's `reveal`: the initial open and keyboard moves scroll the selection into view; hovers don't.
 	const [reveal, setReveal] = useState(true);
 	const listRef = useRef<HTMLUListElement>(null);
+	const pad = useDialogPad({compactOrigin: true});
+	const bandBody = useDialogBandBodyClass();
 
 	// Each opening starts on the newest prompt; a transcript update while open keeps the selection.
 	const [wasOpen, setWasOpen] = useState(open);
@@ -84,30 +90,20 @@ export function RewindPicker({open, turns, onClose, onSelect}: RewindPickerProps
 		>
 			<Dialog.Portal>
 				<Dialog.Backdrop className="fixed inset-0 z-50 bg-backdrop transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
-				<Dialog.Popup
+				<DialogPopup
 					aria-label="Rewind session"
-					data-cds="Dialog"
 					initialFocus={listRef}
 					onKeyDown={onKeyDown}
 					className="epitaxy-root fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[32rem] -translate-x-1/2 -translate-y-1/2 flex-col break-words rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none motion-reduce:data-[ending-style]:scale-100 motion-reduce:data-[starting-style]:scale-100"
 				>
-					<div className="isolate flex min-h-0 flex-1 flex-col overflow-y-auto rounded-[inherit] p-5">
-						<div className="mb-3 flex items-start gap-2">
-							<div className="-mt-1 flex min-w-0 flex-1 flex-col gap-1">
-								<Dialog.Title className="text-[20px]/[25px] font-semibold break-words text-primary">
-									Rewind
-								</Dialog.Title>
-								<Dialog.Description className="text-body text-secondary">
-									Restore the session to an earlier message.
-								</Dialog.Description>
-							</div>
-							<Dialog.Close
-								aria-label="Close"
-								className="-me-[6px] -mt-[6px] flex aspect-square h-8 w-8 shrink-0 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
-							>
-								<X aria-hidden="true" className="h-5 w-5" />
-							</Dialog.Close>
-						</div>
+					<div
+						className={`isolate flex min-h-0 flex-1 flex-col overflow-y-auto rounded-[inherit] ${pad.p} ${bandBody}`}
+					>
+						<DialogHeader
+							title="Rewind"
+							description="Restore the session to an earlier message."
+							offTitleClassName="text-[20px]/[25px] font-semibold break-words text-primary"
+						/>
 						<ul
 							ref={listRef}
 							role="listbox"
@@ -115,7 +111,7 @@ export function RewindPicker({open, turns, onClose, onSelect}: RewindPickerProps
 							tabIndex={-1}
 							onMouseMove={pointer.recordPointer}
 							onMouseLeave={pointer.forgetPointer}
-							className="-mx-5 -mb-5 flex max-h-[calc(50vh+20px)] flex-col gap-[3px] overflow-y-auto px-5 pb-5 outline-none"
+							className={`${pad.mx} ${pad.mb} flex ${pad.maxHList} flex-col gap-[3px] overflow-y-auto ${pad.px} ${pad.pb} outline-none`}
 						>
 							{turns.length === 0 ? (
 								<li
@@ -133,7 +129,7 @@ export function RewindPicker({open, turns, onClose, onSelect}: RewindPickerProps
 										role="option"
 										aria-selected={index === current}
 										ref={reveal && index === current ? scrollSelectedIntoView : undefined}
-										className={`${OPTION_CLASS} ${index === current ? "bg-fill-ghost-hover text-primary" : "text-secondary"}`}
+										className={`${optionClass(pad.scrollMb)} ${index === current ? "bg-fill-ghost-hover text-primary" : "text-secondary"}`}
 										onMouseMove={(event) => {
 											pointer.hoverSelect(index, event);
 										}}
@@ -147,7 +143,7 @@ export function RewindPicker({open, turns, onClose, onSelect}: RewindPickerProps
 							)}
 						</ul>
 					</div>
-				</Dialog.Popup>
+				</DialogPopup>
 			</Dialog.Portal>
 		</Dialog.Root>
 	);

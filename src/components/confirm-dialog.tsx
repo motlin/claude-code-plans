@@ -2,6 +2,7 @@ import {AlertDialog} from "@base-ui/react/alert-dialog";
 import {memo, type ReactNode, useRef} from "react";
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {DensityScope} from "./ui/density";
+import {DIALOG_FOOTER_CLASS} from "./ui/dialog-pad";
 
 const BUTTON_BASE_CLASS =
 	"h-8 rounded-r6 px-3 text-body font-medium transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
@@ -72,7 +73,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 	const rest = (
 		<>
 			{details !== undefined && <div className="mt-2 min-h-0 overflow-y-auto">{details}</div>}
-			<div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+			<div className={DIALOG_FOOTER_CLASS}>
 				<AlertDialog.Close
 					ref={cancelRef}
 					type="button"

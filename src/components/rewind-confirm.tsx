@@ -3,7 +3,12 @@ import {useRef, useState} from "react";
 
 import type {RewindChoice, RewindPreview} from "../hooks/use-rewind-request";
 import {DiffStats} from "./tool-renderers/shared";
+import {useFizzyLake} from "../lib/fizzy-lake";
 import {DensityScope} from "./ui/density";
+import {useDialogBandBodyClass} from "./ui/dialog-band";
+import {DialogHeader} from "./ui/dialog-header";
+import {DIALOG_FOOTER_CLASS, useDialogPad} from "./ui/dialog-pad";
+import {DialogPopup} from "./ui/dialog-popup";
 import {Select} from "./ui/select";
 
 /** Upstream's `ece`: the quote card shows the prompt's first 600 characters. */
@@ -47,6 +52,9 @@ export function RewindConfirm({text, preview, conversation, onClose, onConfirm}:
 	const pending = preview === "pending";
 	const files = typeof preview === "object" ? preview : null;
 	const choices = conversation ? ALL_CHOICES : (["code"] as const);
+	const panels = useFizzyLake("panels");
+	const pad = useDialogPad();
+	const bandBody = useDialogBandBodyClass();
 	const confirm = () => {
 		setRunning(true);
 		void onConfirm(files === null ? (conversation ? "conversation" : "code") : choice).finally(() => {
@@ -64,81 +72,92 @@ export function RewindConfirm({text, preview, conversation, onClose, onConfirm}:
 			<Dialog.Portal>
 				<DensityScope density="comfortable">
 					<Dialog.Backdrop className="fixed inset-0 z-50 bg-backdrop transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
-					<Dialog.Popup
-						data-cds="Dialog"
+					<DialogPopup
 						initialFocus={cancelRef}
-						className="epitaxy-root fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[400px] -translate-x-1/2 -translate-y-1/2 flex-col break-words rounded-card bg-surface-3 p-6 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none"
+						className="epitaxy-root fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[400px] -translate-x-1/2 -translate-y-1/2 flex-col break-words rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none"
 					>
-						<Dialog.Title className="text-[17px] leading-6 font-semibold break-words text-primary">
-							Rewind to this message?
-						</Dialog.Title>
-						<div className="mt-3 flex flex-col gap-3">
-							<div className="rounded-card bg-alpha-1 px-4 py-3 text-[15px]/[20px] text-primary">
-								<span className="sr-only">You</span>
-								<p className="line-clamp-2 whitespace-pre-wrap [unicode-bidi:plaintext]">
-									{text.trim().slice(0, QUOTE_LIMIT)}
-								</p>
+						<div
+							className={`isolate flex min-h-0 flex-1 flex-col overflow-y-auto rounded-[inherit] ${pad.p} ${bandBody}`}
+						>
+							<DialogHeader
+								title="Rewind to this message?"
+								showClose={false}
+								offHeaderClassName="flex items-start gap-2"
+								offTitleClassName="text-[17px] leading-6 font-semibold break-words text-primary"
+							/>
+							{/* Upstream `aDe`: the body `flex flex-col gap-md` sits straight under the band's mb-1. */}
+							<div className={`${panels ? "" : "mt-3 "}flex flex-col gap-3`}>
+								<div className="rounded-card bg-alpha-1 px-4 py-3 text-[15px]/[20px] text-primary">
+									<span className="sr-only">You</span>
+									<p className="line-clamp-2 whitespace-pre-wrap [unicode-bidi:plaintext]">
+										{text.trim().slice(0, QUOTE_LIMIT)}
+									</p>
+								</div>
+								{preview !== "none" && (
+									<>
+										{choices.length > 1 && (
+											<Select
+												label="Restore"
+												items={choices.map((value) => ({value, label: CHOICE_LABELS[value]}))}
+												value={choice}
+												disabled={running || pending}
+												onChange={setChoice}
+											/>
+										)}
+										<div
+											aria-live="polite"
+											className={`flex flex-col gap-1 text-body text-secondary${files !== null && choice === "conversation" ? " invisible" : ""}`}
+										>
+											<span>
+												{files === null ? (
+													"Checking for file changes…"
+												) : files.insertions > 0 || files.deletions > 0 ? (
+													<>
+														{fileCount(files.filesChanged.length)} ·{" "}
+														<span className="align-middle">
+															<DiffStats
+																added={files.insertions}
+																removed={files.deletions}
+															/>
+														</span>
+													</>
+												) : (
+													fileCount(files.filesChanged.length)
+												)}
+											</span>
+											<span className={`text-muted-as-secondary${pending ? " invisible" : ""}`}>
+												Changes made through shell commands aren’t reverted. Commits stay in
+												place.
+											</span>
+										</div>
+									</>
+								)}
 							</div>
-							{preview !== "none" && (
-								<>
-									{choices.length > 1 && (
-										<Select
-											label="Restore"
-											items={choices.map((value) => ({value, label: CHOICE_LABELS[value]}))}
-											value={choice}
-											disabled={running || pending}
-											onChange={setChoice}
-										/>
-									)}
-									<div
-										aria-live="polite"
-										className={`flex flex-col gap-1 text-body text-secondary${files !== null && choice === "conversation" ? " invisible" : ""}`}
-									>
-										<span>
-											{files === null ? (
-												"Checking for file changes…"
-											) : files.insertions > 0 || files.deletions > 0 ? (
-												<>
-													{fileCount(files.filesChanged.length)} ·{" "}
-													<span className="align-middle">
-														<DiffStats added={files.insertions} removed={files.deletions} />
-													</span>
-												</>
-											) : (
-												fileCount(files.filesChanged.length)
-											)}
-										</span>
-										<span className={`text-muted-as-secondary${pending ? " invisible" : ""}`}>
-											Changes made through shell commands aren’t reverted. Commits stay in place.
-										</span>
-									</div>
-								</>
-							)}
+							<div className={DIALOG_FOOTER_CLASS}>
+								<button
+									ref={cancelRef}
+									type="button"
+									data-initial-focus=""
+									disabled={running}
+									onClick={onClose}
+									className={`${BUTTON_BASE_CLASS} border border-strong text-primary hover:bg-fill-ghost-hover`}
+								>
+									Cancel
+								</button>
+								<button
+									type="button"
+									disabled={pending}
+									aria-busy={running ? true : undefined}
+									onClick={() => {
+										if (!running) confirm();
+									}}
+									className={`${BUTTON_BASE_CLASS} bg-fill-primary text-on-primary hover:bg-fill-primary-hover`}
+								>
+									{running ? "Rewinding…" : "Rewind"}
+								</button>
+							</div>
 						</div>
-						<div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-							<button
-								ref={cancelRef}
-								type="button"
-								data-initial-focus=""
-								disabled={running}
-								onClick={onClose}
-								className={`${BUTTON_BASE_CLASS} border border-strong text-primary hover:bg-fill-ghost-hover`}
-							>
-								Cancel
-							</button>
-							<button
-								type="button"
-								disabled={pending}
-								aria-busy={running ? true : undefined}
-								onClick={() => {
-									if (!running) confirm();
-								}}
-								className={`${BUTTON_BASE_CLASS} bg-fill-primary text-on-primary hover:bg-fill-primary-hover`}
-							>
-								{running ? "Rewinding…" : "Rewind"}
-							</button>
-						</div>
-					</Dialog.Popup>
+					</DialogPopup>
 				</DensityScope>
 			</Dialog.Portal>
 		</Dialog.Root>

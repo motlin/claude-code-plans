@@ -1,10 +1,15 @@
 import {Checkbox} from "@base-ui/react/checkbox";
 import {Dialog} from "@base-ui/react/dialog";
 import {useNavigate} from "@tanstack/react-router";
-import {Check, Ellipsis, X} from "lucide-react";
-import {useState} from "react";
+import {Check, Ellipsis} from "lucide-react";
+import {useRef, useState} from "react";
 import {useSetNavSectionPinned} from "../../lib/api/application-settings";
+import {useFizzyLake} from "../../lib/fizzy-lake";
 import type {NavSection} from "../../lib/nav-sections";
+import {useDialogBandBodyClass} from "../ui/dialog-band";
+import {DialogHeader} from "../ui/dialog-header";
+import {DIALOG_FOOTER_CLASS, useDialogPad} from "../ui/dialog-pad";
+import {DialogPopup} from "../ui/dialog-popup";
 import {Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "../ui/menu";
 import {navItems, type NavItem} from "./navigation";
 import type {Section} from "./types";
@@ -114,30 +119,30 @@ function EditSidebarDialog({
 }) {
 	const setPinned = useSetNavSectionPinned();
 	const visible = new Set(visibleNavSections);
+	const panels = useFizzyLake("panels");
+	const pad = useDialogPad();
+	const bandBody = useDialogBandBodyClass();
+	// Upstream `sV`: `initialFocus` is the Done button.
+	const doneRef = useRef<HTMLButtonElement>(null);
 
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
 				<Dialog.Backdrop className="fixed inset-0 z-50 bg-backdrop backdrop-blur-[2px] transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
-				<Dialog.Popup className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[400px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none">
-					<div className="isolate flex min-h-0 flex-1 flex-col overflow-y-auto rounded-[inherit] p-6">
-						<div className="mb-4 flex items-start gap-2">
-							<div className="-mt-1 flex min-w-0 flex-1 flex-col gap-1">
-								<Dialog.Title className="text-[17px] leading-6 font-semibold break-words text-primary">
-									Edit sidebar
-								</Dialog.Title>
-								<Dialog.Description className="text-body text-secondary">
-									Choose which items appear in your sidebar.
-								</Dialog.Description>
-							</div>
-							<Dialog.Close
-								aria-label="Close"
-								className="-me-2 -mt-2 flex aspect-square h-8 w-8 shrink-0 items-center justify-center rounded-r6 text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
-							>
-								<X aria-hidden="true" className="h-5 w-5" />
-							</Dialog.Close>
-						</div>
-						<div className="mt-2 flex flex-col">
+				<DialogPopup
+					initialFocus={doneRef}
+					className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[400px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none"
+				>
+					<div
+						className={`isolate flex min-h-0 flex-1 flex-col overflow-y-auto rounded-[inherit] ${pad.p} ${bandBody}`}
+					>
+						<DialogHeader
+							title="Edit sidebar"
+							description="Choose which items appear in your sidebar."
+							offHeaderClassName="mb-4 flex items-start gap-2"
+							offTitleClassName="text-[17px] leading-6 font-semibold break-words text-primary"
+						/>
+						<div className={panels ? "flex flex-col" : "mt-2 flex flex-col"}>
 							{navItems.map((item) => {
 								const Icon = item.icon;
 								return (
@@ -162,13 +167,16 @@ function EditSidebarDialog({
 								);
 							})}
 						</div>
-						<div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-							<Dialog.Close className="h-8 rounded-r6 bg-fill-primary px-3 text-body font-medium text-on-primary transition-colors hover:bg-fill-primary-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus">
+						<div className={DIALOG_FOOTER_CLASS}>
+							<Dialog.Close
+								ref={doneRef}
+								className="h-8 rounded-r6 bg-fill-primary px-3 text-body font-medium text-on-primary transition-colors hover:bg-fill-primary-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+							>
 								Done
 							</Dialog.Close>
 						</div>
 					</div>
-				</Dialog.Popup>
+				</DialogPopup>
 			</Dialog.Portal>
 		</Dialog.Root>
 	);

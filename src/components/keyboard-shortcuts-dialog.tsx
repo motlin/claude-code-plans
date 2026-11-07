@@ -22,6 +22,9 @@ import {
 	subscribeKeyboardShortcutsOpen,
 } from "./keyboard-shortcuts-open";
 import {DensityScope} from "./ui/density";
+import {GHOST_ICON_BUTTON} from "./ui/dialog-band";
+import {DialogHeader} from "./ui/dialog-header";
+import {DialogPopup} from "./ui/dialog-popup";
 
 function rowKeys(definition: ShortcutDefinition, isMac: boolean, isWindows: boolean): string[] {
 	const keys = platformBindings(definition, isMac, isWindows).map(bindingToKeys);
@@ -78,9 +81,6 @@ const PRESS_FIND: ShortcutFind = {by: "press", pressed: null};
 /** Upstream's 28px dialog cds TextInput (comfortable `h-control`, r8, 12px insets). */
 const SEARCH_FIELD_CLASS =
 	"inline-flex h-7 w-full min-w-0 flex-1 cursor-text items-center gap-1.5 rounded-r6 bg-fill-field ps-3 pe-3 font-sans text-body font-normal text-primary shadow-field-ring transition duration-150 has-[:focus-visible]:shadow-focus [&:hover:not(:focus-visible):not(:has(:focus-visible))]:shadow-field-hover";
-
-const GHOST_ICON_BUTTON =
-	"flex shrink-0 items-center justify-center text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /**
  * Upstream's Search shortcuts toolbar (`Vt`): a text filter plus a Record keys toggle that turns the
@@ -277,32 +277,18 @@ export function KeyboardShortcutsDialog() {
 			<Dialog.Portal>
 				<DensityScope density="comfortable">
 					<Dialog.Backdrop className="fixed inset-0 z-50 bg-backdrop transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
-					<Dialog.Popup
+					<DialogPopup
 						initialFocus={inputRef}
 						finalFocus={finalFocus}
 						tabIndex={-1}
-						data-cds="Dialog"
 						data-perf-overlay="keyboard_shortcuts_dialog"
 						className="fixed top-1/2 left-1/2 z-50 flex h-dvh max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[520px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale,filter] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none motion-reduce:data-[ending-style]:scale-100 motion-reduce:data-[starting-style]:scale-100"
 					>
-						<div className="isolate flex min-h-0 flex-1 scroll-pt-[52px] flex-col overflow-y-auto rounded-[inherit] p-4 [timeline-scope:--sc-dialog-scroll]">
-							{/* Upstream forces data-density="comfortable" on this dialog for every user, so
-								these fixed 16/8/28px values hold at the default density too. The band's
-								bottom line fades in once the list region scrolls (its scroll-timeline, hoisted by timeline-scope). */}
-							<div
-								data-cds-part="band"
-								className="sticky -top-4 z-[1000] -mx-4 -mt-4 mb-1 flex min-h-11 shrink-0 items-center gap-1 bg-page py-2 ps-4 pe-2 after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:border-b after:border-[color:var(--color-border-line)] after:opacity-0 after:[animation-duration:auto] after:[animation-fill-mode:both] after:[animation-range:0px_4px] after:[animation-timeline:--sc-dialog-scroll] after:[animation-timing-function:linear] supports-[animation-timeline:scroll()]:after:[animation-name:sc-sticky-edge]"
-							>
-								<Dialog.Title className="min-w-0 flex-1 text-[15px]/[20px] font-[520] break-words text-primary">
-									Keyboard shortcuts
-								</Dialog.Title>
-								<Dialog.Close
-									aria-label="Close"
-									className={`${GHOST_ICON_BUTTON} aspect-square size-7 self-start rounded-r6`}
-								>
-									<X aria-hidden="true" className="h-5 w-5" />
-								</Dialog.Close>
-							</div>
+						<div className="isolate flex min-h-0 flex-1 flex-col overflow-y-auto rounded-[inherit] p-4 [timeline-scope:--sc-dialog-scroll] [:where([data-cds-tall-window])_&]:scroll-pt-[56px] panels-fine:[:where([data-cds-tall-window])_&]:scroll-pt-[52px]">
+							{/* Upstream forces data-density="comfortable" on this dialog for every user, so the band
+								shows at every density; local keeps it whatever the panels flag. Its bottom line fades in
+								once the list region scrolls (its scroll-timeline, hoisted by timeline-scope). */}
+							<DialogHeader title="Keyboard shortcuts" band />
 							<ShortcutsSearch find={find} onFind={setFind} inputRef={inputRef} isMac={isMac} />
 							<div
 								role="region"
@@ -351,7 +337,7 @@ export function KeyboardShortcutsDialog() {
 								))}
 							</div>
 						</div>
-					</Dialog.Popup>
+					</DialogPopup>
 				</DensityScope>
 			</Dialog.Portal>
 		</Dialog.Root>
