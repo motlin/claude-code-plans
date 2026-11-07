@@ -369,6 +369,38 @@ describe("Menu", () => {
 		);
 	});
 
+	it("marks the anchored scroller data-cds-sheet-scroll, as upstream's z0 does in both presentations", async () => {
+		renderDropdown();
+		const menu = await openDropdown();
+		const scroller = menu.querySelector("[data-menu-scroller]");
+
+		expect({
+			sheetScroll: scroller?.getAttribute("data-cds-sheet-scroll"),
+			count: menu.querySelectorAll("[data-cds-sheet-scroll]").length,
+		}).toStrictEqual({sheetScroll: "", count: 1});
+	});
+
+	it("marks the anchored scroller under a header data-cds-sheet-scroll, as upstream's f9 body", async () => {
+		render(
+			<CompactScope>
+				<Menu>
+					<MenuTrigger aria-label="More options">...</MenuTrigger>
+					<MenuContent header={<span>Heading</span>}>
+						<RowMenuBody onCopy={vi.fn<() => void>()} onDelete={vi.fn<() => void>()} />
+					</MenuContent>
+				</Menu>
+			</CompactScope>,
+		);
+		const menu = await openDropdown();
+		const scroller = menu.querySelector("[data-menu-scroller]");
+
+		expect({
+			sheetScroll: scroller?.getAttribute("data-cds-sheet-scroll"),
+			count: menu.querySelectorAll("[data-cds-sheet-scroll]").length,
+			ptZero: scroller?.className.endsWith(" pt-0"),
+		}).toStrictEqual({sheetScroll: "", count: 1, ptZero: true});
+	});
+
 	it("outlines every popup in CanvasText under forced colors, as cds Menu does", async () => {
 		renderDropdown();
 		const menu = await openDropdown();
@@ -1240,11 +1272,11 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () => {
 		expect({
 			presentation: menu.getAttribute("data-presentation"),
 			size: menu.getAttribute("data-size"),
-			sheetMarkers: document.querySelectorAll(
-				"[data-sheet-scrim], [data-sheet-tree], [data-cds-sheet-handle], [data-cds-sheet-scroll]",
-			).length,
+			sheetMarkers: document.querySelectorAll("[data-sheet-scrim], [data-sheet-tree], [data-cds-sheet-handle]")
+				.length,
+			scrollMarker: menu.querySelectorAll("[data-cds-sheet-scroll]").length,
 			roundedTop: menu.className.includes("rounded-t-[14px]"),
-		}).toStrictEqual({presentation: null, size: null, sheetMarkers: 0, roundedTop: false});
+		}).toStrictEqual({presentation: null, size: null, sheetMarkers: 0, scrollMarker: 1, roundedTop: false});
 	});
 
 	async function openCompactSheet(override?: Density) {

@@ -85,7 +85,9 @@ const POPUP_CLASS = `relative flex max-h-[var(--available-height)] min-w-[128px]
 
 /**
  * Upstream's scroller owns the gutter (`p-[var(--cds-menu-gutter)]`) and the `scroll-fade-y` edge fade, and carries a
- * `border-b-[length:var(--cds-ring-inner)] border-transparent` 1px bottom border.
+ * `border-b-[length:var(--cds-ring-inner)] border-transparent` 1px bottom border. Upstream's `z0` spreads `{[Wj]:""}`
+ * (`data-cds-sheet-scroll`) on both its plain (`bY`) and header/footer (`f9`) scrollers, so the anchored body and the
+ * sheet share one marker that `Hi`/`yt`/`St` measure; on an anchored popup nothing reads it.
  */
 const SCROLLER_CLASS =
 	"relative min-h-0 overflow-y-auto overflow-x-hidden scroll-fade-y rounded-[inherit] border-b border-transparent forced-colors:border-b-0 p-1";
@@ -390,6 +392,7 @@ export function MenuContent({
 							{header !== undefined && <div className="shrink-0 px-1 pt-1">{header}</div>}
 							<div
 								data-menu-scroller=""
+								data-cds-sheet-scroll=""
 								/* Under a pinned header the gutter drops its top, as upstream's `p-gutter pt-0`. */
 								className={`${SCROLLER_CLASS}${sizing.scroller === "" ? "" : ` ${sizing.scroller}`}${header === undefined ? "" : " pt-0"}`}
 							>
