@@ -7,8 +7,14 @@ import {type CSSProperties, type ReactNode, useMemo, useState} from "react";
 import {useCodeThemes} from "../../hooks/use-code-themes";
 import {LazyFileTypeIcon} from "../lazy-file-type-icon";
 import {useFizzyLake} from "../../lib/fizzy-lake";
-import {DIFFS_STYLE_OVERRIDES, DIFFS_WRAP_STYLE, diffsUnsafeCss} from "./diffs-config";
-import type {DiffStyle} from "../settings-context";
+import {
+	DIFFS_STYLE_OVERRIDES,
+	DIFFS_WRAP_STYLE,
+	changesDiffMetrics,
+	diffLineHeightStyle,
+	diffsUnsafeCss,
+} from "./diffs-config";
+import {type DiffStyle, useSettings} from "../settings-context";
 import {useResolvedTheme} from "../theme-context";
 
 export type {DiffStyle};
@@ -195,6 +201,8 @@ export function DiffFile({
 	const resolvedTheme = useResolvedTheme();
 	const codeThemes = useCodeThemes();
 	const panels = useFizzyLake("panels");
+	const {codeFontSize} = useSettings().settings;
+	const metrics = useMemo(() => changesDiffMetrics(codeFontSize), [codeFontSize]);
 
 	const lineAnnotations = useMemo(
 		() =>
@@ -222,15 +230,24 @@ export function DiffFile({
 		}),
 		[codeThemes, resolvedTheme, diffStyle, wordWrap, wordDiff, collapsed, onRequestChanges, panels],
 	);
+	// Upstream sets the Changes font from JS: the pane sits outside the CSS hook classes for Code font size.
 	const style = useMemo<CSSProperties>(
-		() => (wordWrap ? {...DIFFS_STYLE_OVERRIDES, ...DIFFS_WRAP_STYLE} : DIFFS_STYLE_OVERRIDES),
-		[wordWrap],
+		() => ({
+			...DIFFS_STYLE_OVERRIDES,
+			...(wordWrap ? DIFFS_WRAP_STYLE : {}),
+			...diffLineHeightStyle(metrics),
+			...(codeFontSize === null ? {} : {"--diffs-font-size": `${codeFontSize / 16}rem`}),
+		}),
+		[wordWrap, metrics, codeFontSize],
 	);
 
+	// Pierre 1.6.2 reads `metrics` only when the instance is created, so a new lineHeight remounts (upstream ca817835b key).
 	return (
 		<FileDiff<ReactNode>
+			key={metrics.lineHeight}
 			fileDiff={fileDiff}
 			options={options}
+			metrics={metrics}
 			style={style}
 			disableWorkerPool
 			{...(lineAnnotations === undefined

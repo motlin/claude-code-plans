@@ -2,12 +2,13 @@ import type {ThemedToken} from "@shikijs/core";
 import {type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from "react";
 import {useHighlightedLines} from "../hooks/use-shiki";
 import type {FileViewerData} from "../lib/api/file";
+import {codeRowLeadingPx} from "../lib/code-themes";
 import {fileViewerLanguage, parseFileLineRangeHash} from "./file-viewer-utils";
+import {useSettings} from "./settings-context";
 
 /** Files longer than this mount only the chunks of lines near the viewport. */
 const VIRTUALIZE_OVER_LINES = 2000;
 const CHUNK_LINES = 200;
-const ESTIMATED_LINE_PX = 20;
 
 function HighlightedLine({tokens}: {tokens: ThemedToken[]}) {
 	return (
@@ -100,6 +101,8 @@ export function FileViewer({
 	const lines = useMemo(() => file.content.split("\n"), [file.content]);
 	const tokens = useHighlightedLines(file.content, fileViewerLanguage(file.path));
 	const virtualized = lines.length > VIRTUALIZE_OVER_LINES;
+	// Unmounted chunks reserve upstream's ×1.5 row height for the Code font size (c82eca2bd c()).
+	const estimatedLinePx = codeRowLeadingPx(useSettings().settings.codeFontSize);
 	const chunks = useMountedChunks(containerRef, virtualized);
 	const {mount} = chunks;
 	const [selection, setSelection] = useState<Selection | null>(null);
@@ -223,7 +226,7 @@ export function FileViewer({
 									style={
 										isMounted
 											? undefined
-											: {height: chunks.heights.get(chunk) ?? (to - from) * ESTIMATED_LINE_PX}
+											: {height: chunks.heights.get(chunk) ?? (to - from) * estimatedLinePx}
 									}
 								>
 									{isMounted ? rowRange(from, to) : null}

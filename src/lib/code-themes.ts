@@ -147,6 +147,14 @@ export function codeLeadingPx(px: number): number {
 }
 
 /**
+ * Upstream c82eca2bd `c()`: Files pane and Changes pane row height, ×1.5 of the code font size.
+ * Default (null) uses the comfortable 13px even in compact density.
+ */
+export function codeRowLeadingPx(size: CodeFontSize | null): number {
+	return Math.round((size ?? DEFAULT_CODE_FONT_SIZE) * 1.5 + 0.01);
+}
+
+/**
  * Upstream `H2`: the `--epitaxy-code-font-size` / `--epitaxy-code-leading` overrides set on <html>,
  * or null for each when Code font size is Default. globals.css maps them onto `--upstream-text-code` /
  * `--upstream-leading-code` (and `--code-size` / `--code-leading`) inside upstream's hook classes only,

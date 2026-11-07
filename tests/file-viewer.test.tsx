@@ -3,7 +3,20 @@
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {FileViewer} from "../src/components/file-viewer";
+import {DEFAULTS, SettingsContext} from "../src/components/settings-context";
 import {fileViewerLanguage, parseFileLineHash} from "../src/components/file-viewer-utils";
+
+/** Settings context values with only Code font size changed. */
+function settingsWithCodeFontSize(codeFontSize: 20 | null) {
+	return {
+		settings: {...DEFAULTS, codeFontSize},
+		loaded: true,
+		setSetting: () => undefined,
+		setVerbosity: () => undefined,
+		resetAll: () => undefined,
+	};
+}
+const CODE_FONT_SIZE_CONTEXT = {default: settingsWithCodeFontSize(null), twenty: settingsWithCodeFontSize(20)};
 
 const useHighlightedLines = vi.hoisted(() => vi.fn<(code: string, language: string | null) => null>(() => null));
 
@@ -35,6 +48,27 @@ afterEach(() => {
 });
 
 describe("read-only file viewer", () => {
+	// Upstream cd2efac6e sizes Files pane rows with c82eca2bd c(): ×1.5 of the code font size, Default 13 → 20px.
+	it("estimates unmounted chunks at the Code font size's ×1.5 row height", () => {
+		const content = Array.from({length: 2401}, (_, index) => `line ${index + 1}`).join("\n");
+		const secondChunkHeight = (codeFontSize: 20 | null) => {
+			const view = render(
+				<SettingsContext.Provider
+					value={codeFontSize === null ? CODE_FONT_SIZE_CONTEXT.default : CODE_FONT_SIZE_CONTEXT.twenty}
+				>
+					<FileViewer file={{content, path: "/test/alice.unknown"}} />
+				</SettingsContext.Provider>,
+			);
+			const height = view.container.querySelector<HTMLElement>('[data-chunk="1"]')?.style.height;
+			view.unmount();
+			return height;
+		};
+		expect({defaultSize: secondChunkHeight(null), twenty: secondChunkHeight(20)}).toStrictEqual({
+			defaultSize: "4000px",
+			twenty: "6000px",
+		});
+	});
+
 	// Upstream's Files pane rows (`epitaxy-diff epitaxy-file-rows`) follow Settings ▸ Code font size at ×1.5 leading.
 	it("marks the rows container with upstream's Code font size hooks and sizes rows by their line box", () => {
 		renderViewer("alice\nbob");

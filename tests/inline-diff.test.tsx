@@ -2,6 +2,7 @@
 
 import {cleanup, render, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {InlineDiff} from "../src/components/tool-renderers/inline-diff";
 import {EditRenderer} from "../src/components/tool-renderers/edit-renderer";
 import {WriteRenderer} from "../src/components/tool-renderers/write-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
@@ -65,6 +66,32 @@ function inlineDiffMarkup(root: ShadowRoot): InlineDiffMarkup {
 }
 
 describe("inline Edit/Write diffs render with @pierre/diffs", () => {
+	// Upstream _a keeps --diffs-line-height: var(--cds-leading-code) unless a caller passes metrics.lineHeight (ca7ba268c za).
+	it("reads the scope's density code tokens on the host rather than a fixed 12/17", async () => {
+		const hostVars = (container: HTMLElement) =>
+			[...container.querySelectorAll<HTMLElement>("diffs-container")].map((host) => ({
+				size: host.style.getPropertyValue("--diffs-font-size"),
+				leading: host.style.getPropertyValue("--diffs-line-height"),
+			}));
+		const {container} = render(
+			<>
+				<div data-density="comfortable">
+					<InlineDiff filePath="/test/alice.ts" oldStr="const alice = 1;" newStr="const alice = 2;" />
+				</div>
+				<div data-density="compact">
+					<InlineDiff filePath="/test/alice.ts" oldStr="const bob = 1;" newStr="const bob = 2;" />
+				</div>
+			</>,
+		);
+		const tokens = {
+			size: "var(--code-size, var(--upstream-text-code))",
+			leading: "var(--code-leading, var(--upstream-leading-code))",
+		};
+		await waitFor(() => {
+			expect(hostVars(container)).toStrictEqual([tokens, tokens]);
+		});
+	});
+
 	it("renders an Edit as a unified, wrapped diff with no file header", async () => {
 		const {container} = render(
 			<EditRenderer

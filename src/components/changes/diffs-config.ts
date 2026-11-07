@@ -1,8 +1,10 @@
-import {registerCustomTheme} from "@pierre/diffs";
+import {DEFAULT_VIRTUAL_FILE_METRICS, registerCustomTheme} from "@pierre/diffs";
+import type {VirtualFileMetrics} from "@pierre/diffs";
 import type {CSSProperties} from "react";
 import {claudeDark} from "../../lib/claude-dark-theme";
 import {claudeLight} from "../../lib/claude-light-theme";
-import {loadCodeTheme} from "../../lib/code-themes";
+import {type CodeFontSize, codeRowLeadingPx, loadCodeTheme} from "../../lib/code-themes";
+import type {Density} from "../ui/density-context";
 
 // Register our claude.ai code themes with the library's shared highlighter so
 // every @pierre/diffs view (Changes pane, inline tool diffs) highlights with the
@@ -66,10 +68,58 @@ export const DIFFS_WRAP_STYLE = {
 	"--diffs-scrollbar-gutter-override": "0px",
 } as CSSProperties;
 
-/** Upstream's transcript diffs set the same tokens at 12/17 mono, always wrapped. */
+/**
+ * Upstream's transcript diffs, always wrapped. Upstream `_a` keeps `--diffs-line-height: var(--cds-leading-code)`
+ * unless the caller passes metrics.lineHeight (ca7ba268c za), so rows follow the scope density (17/12 compact,
+ * 19/13 comfortable); `--code-size` / `--code-leading` carry Settings ▸ Code font size inside the hook classes.
+ */
 export const INLINE_DIFFS_STYLE_OVERRIDES = {
 	...DIFFS_STYLE_OVERRIDES,
 	...DIFFS_WRAP_STYLE,
-	"--diffs-font-size": "var(--code-size, 12px)",
-	"--diffs-line-height": "var(--code-leading, 17px)",
+	"--diffs-font-size": "var(--code-size, var(--upstream-text-code))",
+	"--diffs-line-height": "var(--code-leading, var(--upstream-leading-code))",
 } as CSSProperties;
+
+/** Upstream ca7ba268c `ga`: the code leading per cds density, the JS twin of `--cds-leading-code`. */
+export const DIFF_DENSITY_LINE_HEIGHT = {compact: 17, comfortable: 19} as const;
+
+/** Pierre's virtual file metrics (`{hunkLineCount: 50, lineHeight: 20, diffHeaderHeight: 44, spacing: 8}`). */
+export const DEFAULT_DIFF_METRICS: Readonly<VirtualFileMetrics> = DEFAULT_VIRTUAL_FILE_METRICS;
+
+/**
+ * Upstream ca7ba268c `ya`/`za`: pierre's defaults with the density's leading, the caller's metrics on top,
+ * and a disabled header zeroed with `spacing` as the top padding. Local has no rem scale, so `rootPx/16` is 1.
+ * Pierre reads these only for a FileDiff under a `Virtualizer`.
+ */
+export function diffMetrics({
+	density,
+	metrics,
+	disableFileHeader = false,
+}: {
+	density: Density;
+	metrics?: Partial<VirtualFileMetrics>;
+	disableFileHeader?: boolean;
+}): VirtualFileMetrics {
+	const merged: VirtualFileMetrics = {
+		...DEFAULT_DIFF_METRICS,
+		lineHeight: DIFF_DENSITY_LINE_HEIGHT[density],
+		...metrics,
+	};
+	if (!disableFileHeader) return merged;
+	const headerless: VirtualFileMetrics = {...merged, diffHeaderHeight: 0};
+	headerless.paddingTop = merged.paddingTop ?? merged.spacing;
+	return headerless;
+}
+
+/** Upstream za: only a caller's lineHeight writes the inline `--diffs-line-height`; otherwise the token stays. */
+export function diffLineHeightStyle(metrics: Partial<VirtualFileMetrics> | undefined): CSSProperties {
+	return metrics?.lineHeight === undefined ? {} : {"--diffs-line-height": `${metrics.lineHeight}px`};
+}
+
+/**
+ * Upstream c82eca2bd `c()` for the Changes pane: comfortable defaults whatever the scope density,
+ * ×1.5 rows from Settings ▸ Code font size, and the 32px custom header (c44d00c7f).
+ */
+export function changesDiffMetrics(size: CodeFontSize | null): VirtualFileMetrics {
+	return diffMetrics({density: "comfortable", metrics: {lineHeight: codeRowLeadingPx(size), diffHeaderHeight: 32}});
+}

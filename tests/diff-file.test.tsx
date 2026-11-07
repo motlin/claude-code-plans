@@ -6,6 +6,7 @@ import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-conte
 import {DiffFile} from "../src/components/changes/diff-file";
 import {DIFFS_STYLE_OVERRIDES, diffsUnsafeCss} from "../src/components/changes/diffs-config";
 import {PanelsOff} from "./fizzy-lake-off";
+import {DEFAULTS, SettingsContext} from "../src/components/settings-context";
 import {preloadFileTypeIcons} from "../src/components/file-type-icons-loader";
 
 const PATCH = `diff --git a/src/greet.ts b/src/greet.ts
@@ -55,7 +56,51 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
+/** Settings context values with only Code font size changed. */
+function settingsWithCodeFontSize(codeFontSize: 20 | null) {
+	return {
+		settings: {...DEFAULTS, codeFontSize},
+		loaded: true,
+		setSetting: () => undefined,
+		setVerbosity: () => undefined,
+		resetAll: () => undefined,
+	};
+}
+const CODE_FONT_SIZE_CONTEXT = {default: settingsWithCodeFontSize(null), twenty: settingsWithCodeFontSize(20)};
+
+function withCodeFontSize(codeFontSize: 20 | null) {
+	return (
+		<SettingsContext.Provider
+			value={codeFontSize === null ? CODE_FONT_SIZE_CONTEXT.default : CODE_FONT_SIZE_CONTEXT.twenty}
+		>
+			<DiffFile patch={PATCH} />
+		</SettingsContext.Provider>
+	);
+}
+
 describe("DiffFile", () => {
+	// Upstream c44d00c7f passes c82eca2bd c()'s ×1.5 lineHeight, so za() writes it on the host; a size also sets the font.
+	it("sizes Changes rows from Settings ▸ Code font size at ×1.5 on the host, and remounts when the metric changes", async () => {
+		const hostVars = (container: HTMLElement) => {
+			const host = container.querySelector<HTMLElement>("diffs-container");
+			return {
+				leading: host?.style.getPropertyValue("--diffs-line-height"),
+				size: host?.style.getPropertyValue("--diffs-font-size"),
+			};
+		};
+		const view = render(withCodeFontSize(null));
+		await waitFor(() => {
+			expect(hostVars(view.container)).toStrictEqual({leading: "20px", size: "var(--upstream-text-code)"});
+		});
+		const previousHost = view.container.querySelector("diffs-container");
+
+		view.rerender(withCodeFontSize(20));
+		await waitFor(() => {
+			expect(hostVars(view.container)).toStrictEqual({leading: "30px", size: "1.25rem"});
+		});
+		expect(view.container.querySelector("diffs-container")).not.toBe(previousHost);
+	});
+
 	it("renders every added, removed and context row of a patch, pairing the rewritten line with its replacement", async () => {
 		const {container} = render(<DiffFile patch={PATCH} />);
 

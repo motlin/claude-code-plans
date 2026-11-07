@@ -1,7 +1,15 @@
 import {resolveTheme} from "@pierre/diffs";
 import {describe, expect, it} from "vite-plus/test";
 import {DEFAULTS, settingStorageKey} from "../src/components/settings-context";
-import {CodeThemeDarkSchema, CodeThemeLightSchema, codeFontFamily, loadCodeTheme} from "../src/lib/code-themes";
+import {
+	CODE_FONT_SIZES,
+	CodeThemeDarkSchema,
+	CodeThemeLightSchema,
+	codeFontFamily,
+	codeLeadingPx,
+	codeRowLeadingPx,
+	loadCodeTheme,
+} from "../src/lib/code-themes";
 import {codeThemeDarkLabels, codeThemeLightLabels} from "../src/lib/schema-choices";
 
 describe("code theme settings", () => {
@@ -269,5 +277,17 @@ describe("code theme settings", () => {
 			{id: "vscode-light", type: "light", bg: "#FFFFFF"},
 			{id: "vscode-dark", type: "dark", bg: "#121314"},
 		]);
+	});
+});
+
+describe("code font size metrics", () => {
+	it("leads code at upstream vm's ×1.45 and file/Changes rows at c82eca2bd c()'s ×1.5, Default (null) as 13px", () => {
+		expect({
+			leading: [11, 13, 16, 20].map((size) => codeLeadingPx(size)),
+			rows: [null, ...CODE_FONT_SIZES].map((size) => codeRowLeadingPx(size)),
+		}).toStrictEqual({
+			leading: [16, 19, 23, 29],
+			rows: [20, 17, 18, 20, 21, 23, 24, 27, 30],
+		});
 	});
 });

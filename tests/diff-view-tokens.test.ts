@@ -56,7 +56,7 @@ describe("diff view tokens", () => {
 		});
 	});
 
-	it("defines upstream's git added/removed inks per theme, and the transcript's inline diffs at 12/17", () => {
+	it("defines upstream's git added/removed inks per theme, and the transcript's inline diffs on the density code tokens", () => {
 		const css = readFileSync(GLOBALS_CSS, "utf8");
 		const token = (selector: string, name: string) => {
 			const start = css.indexOf(`\n${selector} {`);
@@ -82,7 +82,11 @@ describe("diff view tokens", () => {
 			dark: ["#32d74b", "#ff2c56"],
 			theme: ["var(--upstream-git-added)", "var(--upstream-git-removed)"],
 			numbers: ["var(--upstream-git-added)", "var(--upstream-git-removed)"],
-			inline: ["var(--code-size, 12px)", "var(--code-leading, 17px)", "var(--upstream-git-added)"],
+			inline: [
+				"var(--code-size, var(--upstream-text-code))",
+				"var(--code-leading, var(--upstream-leading-code))",
+				"var(--upstream-git-added)",
+			],
 		});
 	});
 
