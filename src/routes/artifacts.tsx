@@ -330,7 +330,7 @@ function ArtifactsPage() {
 	}
 
 	return (
-		<div className="flex w-full flex-col">
+		<div data-cds="Page" data-width="content" className="flex w-full flex-col">
 			<CodePageHeader
 				title="Artifacts"
 				sticky={{box: ARTIFACTS_BOX_CLASS}}

@@ -561,15 +561,20 @@ describe("artifacts route", () => {
 		expect({
 			gutter: ArtifactsRoute.options.staticData?.pageGutter,
 			page: page?.className,
+			cds: [page?.getAttribute("data-cds"), page?.getAttribute("data-width")],
+			grounds: page?.querySelectorAll(':scope > .sticky > [data-cds-part="page-header-ground"]').length,
 			parts: [...(page?.children ?? [])].map((child) => child.className),
 			headerBox: band?.firstElementChild?.className,
 		}).toStrictEqual({
 			gutter: "none",
 			page: "flex w-full flex-col",
+			// Upstream cds Page's marker, which scopes the page-header-ground CSS.
+			cds: ["Page", "content"],
+			grounds: 1,
 			// px-md is 8px (README pad-md); local spacing has no md token, so px-2.
 			parts: [
 				"h-0 -mt-9 max-sm:-mt-12",
-				"sticky top-0 bg-page",
+				"sticky top-0",
 				"mx-auto w-full max-w-5xl px-2 md:px-8 flex flex-col pb-12 pt-1",
 			],
 			headerBox: "mx-auto w-full max-w-5xl px-2 md:px-8 pt-9 max-sm:pt-12 pb-6",

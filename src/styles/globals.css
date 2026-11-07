@@ -1533,6 +1533,37 @@ html[data-interface-font="dyslexic"] {
 	background-image: linear-gradient(var(--color-page), transparent);
 }
 
+/* Upstream c6a992d55 page-header ground: under panels the sticky page header band is frosted (85% page colour + 12px
+   backdrop blur) instead of an opaque bg-page slab, and falls back to opaque when transparency is unwanted or
+   unsupported. `--cds-page-bg` (default surface-0) maps to the local `--color-page`. Upstream shares these rules with
+   `[data-cds=Toolbar]>[data-cds-part=toolbar-ground]`; the desktop-only `[data-cds-opaque-toolbars]` rule is left out. */
+[data-cds="Page"] [data-cds-part="page-header-ground"] {
+	--_toolbar-ground-fill: 85%;
+	z-index: -1;
+	pointer-events: none;
+	-webkit-user-select: none;
+	user-select: none;
+	background-color: color-mix(in srgb, var(--color-page) var(--_toolbar-ground-fill), transparent);
+	-webkit-backdrop-filter: blur(12px);
+	backdrop-filter: blur(12px);
+	position: absolute;
+	inset: 0;
+}
+
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more), (forced-colors: active), print {
+	[data-cds="Page"] [data-cds-part="page-header-ground"] {
+		--_toolbar-ground-fill: 100%;
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
+}
+
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+	[data-cds="Page"] [data-cds-part="page-header-ground"] {
+		--_toolbar-ground-fill: 100%;
+	}
+}
+
 /* Upstream `.cds-btn-squish`: pressed buttons shrink to .975 in 60ms and spring
    back over .45s. `transition` replaces `transition-colors`, so the hover fade
    rides along at upstream's 60ms paint-span timing. */

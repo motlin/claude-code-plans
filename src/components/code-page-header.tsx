@@ -8,7 +8,8 @@ import {findScrollContainer, toObserverRoot} from "./scroll-container";
  * title at y=32 (y=48 below sm, past the sidebar trigger), then a row with the tabs on the left and the toolbar right-aligned on it.
  *
  * With `sticky`, it renders upstream's cds Page header band: an `h-0` sentinel, then a
- * `sticky top-0 bg-page` band (z 20) holding the content-width `box` (with `pb-6`) and a
+ * `sticky top-0` band (z 20) holding the content-width `box` (with `pb-6`), under panels a frosted
+ * `data-cds-part=page-header-ground` (85% page colour + 12px blur, in globals.css; `bg-page` without panels), and a
  * separator: under fizzy-lake panels a 1px `data-cds-part=line` border at the band's bottom edge,
  * otherwise a `data-cds-part=fade` strip that hangs 32px below it. The separator stays invisible
  * until the sentinel scrolls out of the scroller, i.e. until the band pins over scrolled content. The sentinel
@@ -97,8 +98,11 @@ function StickyBand({box, children}: {box: string; children: ReactNode}) {
 	return (
 		<>
 			<div ref={sentinelRef} className="h-0 -mt-9 max-sm:-mt-12" />
-			<div className="sticky top-0 bg-page" style={{zIndex: 20}}>
+			{/* Upstream c193cfc9b cds Page `D?"sticky top-0":"sticky top-0 bg-page"` + page-header-ground, with D = translucentHeader &&
+			    panels; cd75b47e6 passes `translucentHeader: band !== "compact"`, and the web band is always tall. */}
+			<div className={panels ? "sticky top-0" : "sticky top-0 bg-page"} style={{zIndex: 20}}>
 				<div className={`${box} pt-9 max-sm:pt-12 pb-6`}>{children}</div>
+				{panels ? <div aria-hidden="true" data-cds-part="page-header-ground" /> : null}
 				{panels ? (
 					<div
 						aria-hidden="true"

@@ -64,7 +64,7 @@ describe("CodePageHeader sticky", () => {
 		vi.unstubAllGlobals();
 	});
 
-	it("pins upstream's sticky bg-page band over a content box and draws upstream's 1px panels line only once the h-0 sentinel scrolls away", () => {
+	it("pins upstream's sticky band over a content box and draws upstream's 1px panels line only once the h-0 sentinel scrolls away", () => {
 		const {container} = render(
 			<CodePageHeader title="Artifacts" sticky={{box: "mx-auto w-full max-w-5xl px-2 md:px-8"}} />,
 		);
@@ -96,7 +96,7 @@ describe("CodePageHeader sticky", () => {
 			// The sentinel (so the band) rises over RootTopRow's 36px (48px phone) spacer and pads it back, so the pinned band keeps
 			// upstream's whitespace above the title (its 64px title row) instead of pinning the title flush at the top.
 			box: "mx-auto w-full max-w-5xl px-2 md:px-8 pt-9 max-sm:pt-12 pb-6",
-			band: "sticky top-0 bg-page",
+			band: "sticky top-0",
 			bandZ: "20",
 			sentinel: "h-0 -mt-9 max-sm:-mt-12",
 			observes: [true],
@@ -108,6 +108,42 @@ describe("CodePageHeader sticky", () => {
 			backAtTop:
 				"pointer-events-none absolute inset-x-0 bottom-0 border-b border-[color:var(--color-border-line)] transition-[opacity,visibility] invisible opacity-0",
 		});
+	});
+
+	it("frosts the band under panels: no bg-page, an aria-hidden page-header-ground between the box and the line (upstream c193cfc9b)", () => {
+		render(<CodePageHeader title="Artifacts" sticky={{box: "max-w-5xl"}} />);
+		const band = screen.getByRole("heading", {level: 1, name: "Artifacts"}).closest(".sticky");
+		expect({
+			bandClass: band?.className,
+			children: [...(band?.children ?? [])].map((child) => ({
+				part: child.getAttribute("data-cds-part"),
+				hidden: child.getAttribute("aria-hidden"),
+				cls: child.getAttribute("class"),
+			})),
+		}).toStrictEqual({
+			bandClass: "sticky top-0",
+			children: [
+				{part: null, hidden: null, cls: "max-w-5xl pt-9 max-sm:pt-12 pb-6"},
+				{part: "page-header-ground", hidden: "true", cls: null},
+				{
+					part: "line",
+					hidden: "true",
+					cls: "pointer-events-none absolute inset-x-0 bottom-0 border-b border-[color:var(--color-border-line)] transition-[opacity,visibility] invisible opacity-0",
+				},
+			],
+		});
+	});
+
+	it("keeps the opaque bg-page band with no ground without panels", () => {
+		const {container} = render(
+			<PanelsOff>
+				<CodePageHeader title="Artifacts" sticky={{box: "max-w-5xl"}} />
+			</PanelsOff>,
+		);
+		expect({
+			bandClass: screen.getByRole("heading", {level: 1, name: "Artifacts"}).closest(".sticky")?.className,
+			grounds: container.querySelectorAll('[data-cds-part="page-header-ground"]').length,
+		}).toStrictEqual({bandClass: "sticky top-0 bg-page", grounds: 0});
 	});
 
 	it("keeps the pre-rollout page-fade-t strip without panels (upstream c193cfc9b cds Page data-cds-part=fade)", () => {
