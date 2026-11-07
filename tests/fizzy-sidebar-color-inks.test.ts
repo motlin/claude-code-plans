@@ -91,7 +91,7 @@ describe("fizzy sidebar color inks", () => {
 	});
 
 	it("T1: the group mark resets muted to the scoped sidebar muted (upstream --df-sidebar-muted)", () => {
-		expect(rule(':root[data-cds-fizzy-lake~="color"] [data-sidebar-group-label] [data-group-mark]')).toStrictEqual({
+		expect(rule("[data-hub-rail] [data-sidebar-group-label] [data-group-mark]")).toStrictEqual({
 			"--color-ink-muted": "var(--upstream-text-muted)",
 			"--muted-as-secondary": "var(--fizzy-lake-color-secondary, var(--upstream-text-muted))",
 			"--color-secondary": "var(--fizzy-lake-color-secondary, var(--upstream-text-muted))",

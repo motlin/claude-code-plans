@@ -30,7 +30,6 @@ import type {GroupAppearance} from "../../lib/group-appearance";
 import {useProjectAppearance} from "../../lib/project-appearance-store";
 import {setPendingLaunchGroup, useSessionGroups} from "../../lib/session-group-store";
 import {assertNever} from "../../lib/assert-never";
-import {useFizzyLake} from "../../lib/fizzy-lake";
 import {
 	customGroupIdOfKey,
 	customGroupLaunchTarget,
@@ -94,21 +93,13 @@ const DESCRIBED_ROW_CLASS =
  * own +. Upstream's hub-rail sidebar puts no generic New session + on any header: the New nav row has it.
  */
 function HeaderControls({filterSlot, trailing}: {filterSlot: ReactNode; trailing?: ReactNode}) {
-	// Upstream's flat look (fizzy-lake panels) keeps Group and sort's width and fades it by opacity in CSS.
-	const panels = useFizzyLake("panels");
 	const hasFilter = filterSlot !== undefined && filterSlot !== null;
 	if (!hasFilter && trailing === undefined) return null;
 	return (
 		<div data-header-controls="" className="flex items-center">
 			{hasFilter && (
-				<span
-					data-header-reveal=""
-					className={
-						panels
-							? "flex"
-							: "flex w-0 overflow-hidden group-hover/labelrow:w-auto group-hover/labelrow:overflow-visible group-has-[:focus-visible]/labelrow:w-auto group-has-[:focus-visible]/labelrow:overflow-visible has-[[data-popup-open]]:w-auto has-[[data-popup-open]]:overflow-visible touch:w-auto touch:overflow-visible"
-					}
-				>
+				// Upstream's hub sidebar (`Cs` `o_(open && !held, inHubSidebar)`) keeps Group and sort's width; CSS fades it by opacity.
+				<span data-header-reveal="" className="flex">
 					{filterSlot}
 				</span>
 			)}
@@ -214,11 +205,11 @@ function useCollapsedBadgeKind(
 }
 
 /** Upstream `BO{name:"CaretRightFilled",customSize:14}`: a filled right-pointing triangle. */
-function CaretRightFilled({className, stays}: {className: string; stays: boolean}) {
+function CaretRightFilled({className}: {className: string}) {
 	return (
 		<svg
 			aria-hidden="true"
-			data-group-caret={stays ? "stays" : ""}
+			data-group-caret="stays"
 			viewBox="0 0 14 14"
 			fill="currentColor"
 			className={className}
@@ -294,7 +285,6 @@ export function GroupSection({
 	const projectNewSession = useProjectNewSession(group, isProject);
 	const customNewSession = useCustomGroupNewSession(group, customGroupId);
 	const appearance = useSectionAppearance(group.key, customGroupId, isProject);
-	const panels = useFizzyLake("panels");
 	// Upstream omits the env glyph on pinned rows and when the section is itself a place.
 	const envGlyph = pinnedIds === undefined && !isProject;
 	const {settings} = useSettings();
@@ -342,7 +332,7 @@ export function GroupSection({
 				onClick={() => {
 					toggleSidebarGroup(group.key);
 				}}
-				className="group/label -my-1 -ml-1 flex min-w-0 flex-1 items-center gap-1.25 rounded-[var(--sb-radius)] py-1 pl-1 hover:text-secondary text-left hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
+				className="group/label -my-1 -ml-1 flex min-w-0 flex-1 items-center gap-1.25 rounded-[var(--sb-radius)] py-1 pl-1 text-left hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
 			>
 				<span data-group-name className="min-w-0">
 					<FadeLabel text={group.label} />
@@ -355,16 +345,11 @@ export function GroupSection({
 						<GroupAppearanceMark appearance={appearance} />
 					</span>
 				)}
-				{/* Upstream `SH`: the caret stays visible under fizzy-lake panels (`data-group-caret="stays"`). */}
+				{/* Upstream `SH` (shared-18): the caret always stays visible (`data-group-caret="stays"`). */}
 				<CaretRightFilled
-					stays={panels}
 					className={`size-3.5 shrink-0 transition-transform duration-[60ms] motion-reduce:transition-none ${
 						expanded ? "rotate-90 " : ""
-					}${
-						expanded && !panels
-							? "opacity-0 group-data-[hover-within]/section:opacity-100 group-focus-visible/label:opacity-100"
-							: "opacity-100"
-					}`}
+					}group-data-[hover-within]/section:opacity-100 group-focus-visible/label:opacity-100 opacity-100`}
 				/>
 				{badgeKind !== null && (
 					<span data-group-badge className="-my-1 ms-auto flex size-6 shrink-0 items-center justify-center">

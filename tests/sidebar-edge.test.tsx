@@ -16,6 +16,7 @@ import {NAV_SECTIONS} from "../src/lib/nav-sections";
 import {readSidebarState, useSidebarState, writeSidebarState} from "../src/lib/sidebar-store";
 import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 import {installLocalStorage} from "./fake-storage";
+import {PanelsOff} from "./fizzy-lake-off";
 
 function seedQueryClient(): QueryClient {
 	const queryClient = new QueryClient({
@@ -67,7 +68,15 @@ function PersistedFrame() {
 	);
 }
 
-async function renderFrame({collapsed, width = 1440}: {collapsed: boolean; width?: number}) {
+async function renderFrame({
+	collapsed,
+	width = 1440,
+	panelsOff = false,
+}: {
+	collapsed: boolean;
+	width?: number;
+	panelsOff?: boolean;
+}) {
 	mockViewport(width);
 	writeSidebarState({...readSidebarState(), collapsed});
 	const queryClient = seedQueryClient();
@@ -76,7 +85,13 @@ async function renderFrame({collapsed, width = 1440}: {collapsed: boolean; width
 			<QueryClientProvider client={queryClient}>
 				<ToastProvider>
 					<SettingsProvider>
-						<PersistedFrame />
+						{panelsOff ? (
+							<PanelsOff>
+								<PersistedFrame />
+							</PanelsOff>
+						) : (
+							<PersistedFrame />
+						)}
 					</SettingsProvider>
 				</ToastProvider>
 			</QueryClientProvider>
@@ -159,21 +174,24 @@ describe("collapsed sidebar edge handle", () => {
 		expect(edgeHandle()).toBeNull();
 	});
 
-	it("renders no tooltip under panels: the separator sits directly in the frame, marked data-trigger-disabled", async () => {
-		await renderFrame({collapsed: true});
-		vi.useFakeTimers();
-		const edge = edgeHandle();
-		if (!edge) throw new Error("edge handle missing");
-		fireEvent.pointerEnter(edge);
-		act(() => {
-			vi.advanceTimersByTime(1000);
-		});
-		expect({
-			tooltip: screen.queryByRole("tooltip"),
-			parent: edge.parentElement === screen.getByTestId("app-frame"),
-			triggerDisabled: edge.getAttribute("data-trigger-disabled"),
-		}).toStrictEqual({tooltip: null, parent: true, triggerDisabled: ""});
-	});
+	it.each([{panelsOff: false}, {panelsOff: true}])(
+		"renders no tooltip whatever fizzy-lake parts are on (panelsOff: $panelsOff): the separator sits directly in the frame, marked data-trigger-disabled",
+		async ({panelsOff}) => {
+			await renderFrame({collapsed: true, panelsOff});
+			vi.useFakeTimers();
+			const edge = edgeHandle();
+			if (!edge) throw new Error("edge handle missing");
+			fireEvent.pointerEnter(edge);
+			act(() => {
+				vi.advanceTimersByTime(1000);
+			});
+			expect({
+				tooltip: screen.queryByRole("tooltip"),
+				parent: edge.parentElement === screen.getByTestId("app-frame"),
+				triggerDisabled: edge.getAttribute("data-trigger-disabled"),
+			}).toStrictEqual({tooltip: null, parent: true, triggerDisabled: ""});
+		},
+	);
 });
 
 describe("collapsed sidebar edge click, drag-out and keyboard", () => {

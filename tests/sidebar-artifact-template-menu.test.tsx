@@ -257,18 +257,19 @@ describe("sidebar Artifacts template launcher", () => {
 		]);
 	});
 
-	// Upstream's hub-rail sidebar aside carries data-flat-look under fizzy-lake panels, scoping the flat-look CSS.
-	it("marks the sidebar nav data-flat-look only under fizzy-lake panels", async () => {
-		const flatLook = async (parts: readonly FizzyLakePart[]) => {
+	// Upstream's `R8` aside hard-codes data-flat-look="" and carries data-hub-rail in the hub layout.
+	it("marks the sidebar nav data-flat-look and data-hub-rail whatever fizzy-lake parts are on", async () => {
+		const attributes = async (parts: readonly FizzyLakePart[]) => {
 			await renderSidebar(undefined, undefined, parts);
-			const value = screen.getByRole("navigation", {name: "Sidebar"}).getAttribute("data-flat-look");
+			const nav = screen.getByRole("navigation", {name: "Sidebar"});
+			const value = {flatLook: nav.getAttribute("data-flat-look"), hubRail: nav.getAttribute("data-hub-rail")};
 			cleanup();
 			return value;
 		};
 		expect({
-			panels: await flatLook(["color", "panels", "type"]),
-			off: await flatLook(["color", "type"]),
-		}).toStrictEqual({panels: "", off: null});
+			panels: await attributes(["color", "panels", "type"]),
+			off: await attributes([]),
+		}).toStrictEqual({panels: {flatLook: "", hubRail: ""}, off: {flatLook: "", hubRail: ""}});
 	});
 
 	it("tags the nav rows with upstream's data-nav-item ids", async () => {

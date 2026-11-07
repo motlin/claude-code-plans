@@ -258,148 +258,22 @@ describe("sidebar Search row", () => {
 	});
 });
 
-describe("sidebar search field (fizzy-lake panels off)", () => {
-	it("renders a Search button above New in the docked sidebar", async () => {
-		await renderSidebar({panelsOff: true});
-
-		const field = within(sidebarNav()).getAllByRole("button", {name: "Search"})[0];
-		const newRow = within(sidebarNav()).getByRole("link", {name: /^New/});
-
-		expect({
-			isField: field !== undefined && field === searchField(),
-			precedesNew:
-				field !== undefined && (field.compareDocumentPosition(newRow) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
-		}).toStrictEqual({isField: true, precedesNew: true});
-	});
-
-	it("exposes the ⌘K default-entry shortcut and roving attributes", async () => {
-		await renderSidebar({panelsOff: true});
-
-		const field = searchField();
-		const keys = field?.querySelector(".df-search-field-keys");
-		const shortcut = keys?.querySelector("[data-cds=Shortcut][data-variant=keycap]");
-		const wrapper = field?.parentElement;
+// Upstream's `R8` aside hard-codes data-flat-look="" and carries data-hub-rail in the hub layout, and its
+// graduated header has no Search field above New, whatever fizzy-lake parts are on.
+describe("sidebar root attributes with fizzy-lake panels off", () => {
+	it.each([
+		{mode: "docked", props: {}},
+		{mode: "collapsed peek", props: {collapsed: true}},
+		{mode: "phone sheet", props: {phoneSheet: true}},
+	])("marks the $mode nav data-flat-look and data-hub-rail, with no Search field", async ({props}) => {
+		await renderSidebar({...props, panelsOff: true});
+		const nav = sidebarNav();
 
 		expect({
-			type: field?.getAttribute("type"),
-			roving: field?.getAttribute("data-roving-item"),
-			ariaKeyShortcuts: field?.getAttribute("aria-keyshortcuts"),
-			leadingSlot: field?.querySelector("[data-leading-slot] svg") !== null,
-			label: field?.querySelector("[data-row-label]")?.textContent,
-			keysHidden: keys?.getAttribute("aria-hidden"),
-			keycaps: [...(shortcut?.querySelectorAll("kbd") ?? [])].map(
-				(kbd) => kbd.querySelector("[aria-hidden]")?.textContent ?? kbd.textContent,
-			),
-			wrapperTag: wrapper?.tagName,
-			wrapperClass: wrapper?.className,
-			wrapperTabSection: wrapper?.getAttribute("data-tab-section"),
-		}).toStrictEqual({
-			type: "button",
-			roving: "",
-			ariaKeyShortcuts: "Control+k",
-			leadingSlot: true,
-			label: "Search",
-			keysHidden: "true",
-			keycaps: ["Ctrl", "K"],
-			wrapperTag: "DIV",
-			wrapperClass: "mb-2",
-			wrapperTabSection: "",
-		});
-	});
-
-	it("builds the field on the --sb-* row tokens", async () => {
-		await renderSidebar({panelsOff: true});
-
-		const classes = searchField()?.className.split(" ") ?? [];
-
-		expect(
-			[
-				"df-search-field",
-				"hit-row",
-				"hit-row-main",
-				"[--cds-hit-gap-y:10px]",
-				"h-[var(--sb-row-h)]",
-				"gap-[var(--sb-row-gap)]",
-				"rounded-[var(--sb-radius)]",
-				"bg-[var(--sb-field-bg)]",
-				"px-[var(--sb-row-px)]",
-				"text-[length:var(--sb-row-font)]",
-				"text-ink-muted",
-			].filter((token) => !classes.includes(token)),
-		).toStrictEqual([]);
-	});
-
-	it("is shown in the collapsed peek", async () => {
-		await renderSidebar({panelsOff: true, collapsed: true});
-
-		expect(searchField() === null).toBe(false);
-	});
-
-	it("is not rendered in the phone sheet, which keeps its own header Search button", async () => {
-		await renderSidebar({panelsOff: true, phoneSheet: true});
-
-		expect(searchField()).toBeNull();
-	});
-
-	it("never takes focus on mouse down", async () => {
-		await renderSidebar({panelsOff: true});
-
-		const field = searchField();
-
-		expect(field !== null && fireEvent.mouseDown(field)).toBe(false);
-	});
-
-	it("opens the ⌘K default entry in Search without overwriting a remembered Compose tab", async () => {
-		localStorage.setItem("cmdk-mode", "compose");
-		await renderSidebar({panelsOff: true, palette: true});
-
-		const field = searchField();
-		if (field === null) throw new Error("No search field");
-		fireEvent.click(field);
-		const dialog = await screen.findByRole("dialog", {name: "Search"});
-		const input = await within(dialog).findByRole("combobox", {name: "Search"});
-
-		expect({
-			placeholder: input.getAttribute("placeholder"),
-			modeSwitch: within(dialog).queryByRole("radiogroup", {name: "Search or compose"}) !== null,
-			stored: localStorage.getItem("cmdk-mode"),
-		}).toStrictEqual({placeholder: "Search", modeSwitch: false, stored: "compose"});
-	});
-	it("returns focus to the previously focused element after a mouse open and close", async () => {
-		await renderSidebar({panelsOff: true, palette: true});
-
-		const field = searchField();
-		if (field === null) throw new Error("No search field");
-		// jsdom skips the browser's focus-on-mousedown default, so apply it unless the field prevented it.
-		if (fireEvent.mouseDown(field)) field.focus();
-		fireEvent.click(field);
-		const dialog = await screen.findByRole("dialog", {name: "Search"});
-		fireEvent.keyDown(within(dialog).getByRole("combobox", {name: "Search"}), {key: "Escape"});
-		await waitFor(() => {
-			expect(screen.queryByRole("dialog", {name: "Search"})).toBeNull();
-		});
-
-		await waitFor(() => {
-			expect(document.activeElement === field ? "field" : document.activeElement?.tagName).toBe("BODY");
-		});
-	});
-
-	it("returns focus to the field after a keyboard open and close", async () => {
-		await renderSidebar({panelsOff: true, palette: true});
-
-		const field = searchField();
-		if (field === null) throw new Error("No search field");
-		field.focus();
-		fireEvent.click(field);
-		const dialog = await screen.findByRole("dialog", {name: "Search"});
-		fireEvent.keyDown(within(dialog).getByRole("combobox", {name: "Search"}), {key: "Escape"});
-		await waitFor(() => {
-			expect(screen.queryByRole("dialog", {name: "Search"})).toBeNull();
-		});
-
-		await waitFor(() => {
-			expect(document.activeElement === field ? "field" : document.activeElement?.tagName).toBe("field");
-		});
+			flatLook: nav.getAttribute("data-flat-look"),
+			hubRail: nav.getAttribute("data-hub-rail"),
+			field: searchField(),
+		}).toStrictEqual({flatLook: "", hubRail: "", field: null});
 	});
 });
 

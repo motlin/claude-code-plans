@@ -18,7 +18,7 @@ import {useVisibleNavItems} from "./navigation";
 import {NavScroll} from "./nav-scroll";
 import {NewSessionRow} from "./new-session-row";
 import {SidebarFooter} from "./sidebar-footer";
-import {SidebarSearchField, SidebarSearchRow} from "./sidebar-search-field";
+import {SidebarSearchRow} from "./sidebar-search-field";
 import {SidebarToggleButton} from "./sidebar-toggle";
 import {useSidebarBodyRoving} from "./use-roving-focus";
 import {Search, X} from "lucide-react";
@@ -43,9 +43,7 @@ import {
 	writeSidebarState,
 } from "../../lib/sidebar-store";
 import {useResizableWidth} from "../../hooks/use-resizable-width";
-import {useShortcutKeys} from "../../hooks/use-shortcut";
 import {useSessionIdentity} from "../../hooks/use-session-identity";
-import {Tooltip} from "../ui/tooltip";
 import {DensityProvider} from "../ui/density";
 import {type Density, useScopeDensity} from "../ui/density-context";
 import {useSettings} from "../settings-context";
@@ -79,7 +77,6 @@ export function Sidebar({
 	const {data: activeSessions} = useQuery(activeSessionsQueryOptions(settings.activeTimeoutSec * 1000));
 	const activeCount = activeSessions?.length ?? 0;
 	const roving = useSidebarBodyRoving();
-	const panels = useFizzyLake("panels");
 	/* Upstream pins aside.dframe-sidebar[data-density] to its own comfortable default, so a compact ancestor never pulls it along. */
 	const density = useScopeDensity("comfortable");
 
@@ -107,26 +104,16 @@ export function Sidebar({
 				data-sidebar-body=""
 				className="df-nav-scroll-box relative flex min-h-0 flex-1 flex-col px-2"
 			>
-				{/* Upstream's panels-off header stays pinned above the scroller. */}
-				{!panels && (
-					<div data-nav-block="" className="shrink-0">
-						{/* Upstream's phone sheet swaps the field for its header Search button. */}
-						{onPhoneSheetClose === undefined && <SidebarSearchField />}
-						<NewSessionRow />
-					</div>
-				)}
 				<NavScroll activeKey={activeSection === "sessions" ? activeSessionId : null}>
-					{/* Upstream's panels header (`pinHeader` false) is the scroller's first child, so it scrolls with the list. */}
-					{panels && (
-						<div data-nav-block="" className="shrink-0">
-							<NewSessionRow />
-							{/* Upstream's phone sheet swaps the Search row for its header Search button. */}
-							{onPhoneSheetClose === undefined && <SidebarSearchRow />}
-							<div aria-hidden="true" className="h-1 shrink-0" />
-						</div>
-					)}
+					{/* Upstream's graduated header (`pinHeader` false outside edit mode) is the scroller's first child, so it scrolls with the list. */}
+					<div data-nav-block="" className="shrink-0">
+						<NewSessionRow />
+						{/* Upstream's phone sheet swaps the Search row for its header Search button. */}
+						{onPhoneSheetClose === undefined && <SidebarSearchRow />}
+						<div aria-hidden="true" className="h-1 shrink-0" />
+					</div>
 					{/* Upstream pulls the nav block back over the header's h-1 spacer. */}
-					<div data-nav-block="" className={panels ? "-mt-1 shrink-0" : "shrink-0"}>
+					<div data-nav-block="" className="-mt-1 shrink-0">
 						{navigationItems.map((item) => {
 							const Icon = item.icon;
 							const badge = badgeFor(item.section);
@@ -190,7 +177,8 @@ export function Sidebar({
 				<nav
 					aria-label="Sidebar"
 					data-density={density}
-					data-flat-look={panels ? "" : undefined}
+					data-flat-look=""
+					data-hub-rail=""
 					data-focus-region="navigation"
 					className="dframe-sidebar group/sidebar flex h-full min-h-0 flex-col"
 				>
@@ -243,7 +231,8 @@ export function Sidebar({
 			<nav
 				aria-label="Sidebar"
 				data-density={density}
-				data-flat-look={panels ? "" : undefined}
+				data-flat-look=""
+				data-hub-rail=""
 				data-focus-region="navigation"
 				style={{"--sidebar-width": `${width}px`}}
 				className="dframe-sidebar group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[length:max(var(--cds-toolbar-line,0px),0.5px)] border-[color:var(--sidebar-seam)] bg-[var(--sb-bg)] min-[701px]:flex"
@@ -284,14 +273,13 @@ function SidebarWordmark({className}: {className?: string}) {
 
 /**
  * Upstream's 12px `dframe-resize-handle` straddling the sidebar's right edge: its inner half is
- * clipped away unless focus-visible. Under panels hovering fades in the 2px accent line and no
- * tooltip renders (`o || p5("panels") && ml()`); otherwise it shows a 3x48 grip pill and a
- * right-side "Hide sidebar / Drag to resize" tooltip. A press that never moves past the drag
- * threshold hides the sidebar like ⌘B.
+ * clipped away unless focus-visible. Upstream graduated the tooltip (shared-21 passes `content: void 0`
+ * to its cds Tooltip, so none ever opens), but its pill is still panels-gated (shared-38
+ * `i9("panels") ? IJ : Tw`): under panels hovering fades in the 2px accent line; otherwise a 3x48
+ * grip pill. A press that never moves past the drag threshold hides the sidebar like ⌘B.
  */
 function SidebarResizeHandle({width, onHide}: {width: number; onHide: () => void}) {
 	const panels = useFizzyLake("panels");
-	const {keys} = useShortcutKeys("toggle_sidebar");
 	const max = useSidebarMaxWidth();
 	const handleProps = useResizableWidth({
 		label: "Resize sidebar",
@@ -303,48 +291,35 @@ function SidebarResizeHandle({width, onHide}: {width: number; onHide: () => void
 		onChange: setSidebarWidth,
 		onClick: onHide,
 	});
-	const positionClass = "absolute! inset-y-0 end-[-6px] z-10 w-3";
 
-	const handle = (
-		<div
-			{...handleProps}
-			data-trigger-disabled={panels ? "" : undefined}
-			className="group/resize relative flex size-full cursor-col-resize touch-none items-center justify-center [clip-path:inset(0_0_0_37.5%)] focus-visible:outline-hidden focus-visible:[clip-path:none]"
-		>
-			<span
-				aria-hidden="true"
-				data-resize-pill=""
-				{...(panels ? {"data-cds-part": "resize-pill"} : {})}
-				className={
-					panels
-						? RESIZE_LINE_PILL_CLASS
-						: "h-12 w-[3px] rounded-full bg-border opacity-0 transition-opacity duration-[120ms] group-hover/resize:opacity-100 group-focus-visible/resize:bg-accent-100 group-focus-visible/resize:opacity-100"
-				}
-			/>
-		</div>
-	);
-
-	if (panels) return <div className={positionClass}>{handle}</div>;
 	return (
-		<Tooltip
-			content="Hide sidebar"
-			shortcut={keys}
-			description="Drag to resize"
-			side="right"
-			trackCursor="y"
-			className={positionClass}
-		>
-			{handle}
-		</Tooltip>
+		<div className="absolute! inset-y-0 end-[-6px] z-10 w-3">
+			<div
+				{...handleProps}
+				data-trigger-disabled=""
+				className="group/resize relative flex size-full cursor-col-resize touch-none items-center justify-center [clip-path:inset(0_0_0_37.5%)] focus-visible:outline-hidden focus-visible:[clip-path:none]"
+			>
+				<span
+					aria-hidden="true"
+					data-resize-pill=""
+					{...(panels ? {"data-cds-part": "resize-pill"} : {})}
+					className={
+						panels
+							? RESIZE_LINE_PILL_CLASS
+							: "h-12 w-[3px] rounded-full bg-border opacity-0 transition-opacity duration-[120ms] group-hover/resize:opacity-100 group-focus-visible/resize:bg-accent-100 group-focus-visible/resize:opacity-100"
+					}
+				/>
+			</div>
+		</div>
 	);
 }
 
 /**
  * Upstream's collapsed-sidebar edge (`.dframe-sidebar-edge`): an 8px `separator` at the frame's left
- * edge. Under panels its hover fades in the full-height 2px accent line and no tooltip renders;
- * otherwise a 3x48 grip pill fades in after 200ms (accent and full height when focus-visible), with a
- * cursor-tracking "Show sidebar ⌘B / Drag to resize" tooltip on its right. A click expands
- * the sidebar, a drag past half the floor expands it live, and ArrowRight expands it and focuses Hide.
+ * edge, with no tooltip wrapper (shared-21 renders `JP` directly; the tooltip graduated). Its pill is
+ * still panels-gated: under panels hover fades in the full-height 2px accent line; otherwise a 3x48
+ * grip pill fades in after 200ms (accent and full height when focus-visible). A click expands the
+ * sidebar, a drag past half the floor expands it live, and ArrowRight expands it and focuses Hide.
  */
 /** Upstream's `mF`: pointer travel (px) below which a press on the edge is a click. */
 const EDGE_CLICK_THRESHOLD_PX = 3;
@@ -433,8 +408,7 @@ function onEdgeKeyDown(event: ReactKeyboardEvent<HTMLElement>): void {
 
 export function SidebarEdgeHandle() {
 	const panels = useFizzyLake("panels");
-	const {keys} = useShortcutKeys("toggle_sidebar");
-	const separator = (
+	return (
 		<div
 			role="separator"
 			aria-orientation="vertical"
@@ -444,7 +418,7 @@ export function SidebarEdgeHandle() {
 			aria-valuemax={SIDEBAR_MAX_WIDTH}
 			tabIndex={0}
 			data-sidebar-edge=""
-			data-trigger-disabled={panels ? "" : undefined}
+			data-trigger-disabled=""
 			onPointerDown={onEdgePointerDown}
 			onKeyDown={onEdgeKeyDown}
 			className="group/resize absolute inset-y-0 left-0 z-[21] w-2 cursor-col-resize touch-none outline-none select-none"
@@ -464,20 +438,6 @@ export function SidebarEdgeHandle() {
 				}
 			/>
 		</div>
-	);
-	// Under panels upstream's `JP` passes no tooltip content, so the separator is a direct child of the frame.
-	if (panels) return separator;
-	return (
-		<Tooltip
-			content="Show sidebar"
-			shortcut={keys}
-			description="Drag to resize"
-			side="right"
-			trackCursor="y"
-			className="absolute! inset-y-0 left-0 z-[21] w-2"
-		>
-			{separator}
-		</Tooltip>
 	);
 }
 
@@ -524,6 +484,7 @@ function CollapsedSidebar({
 	density: Density;
 	children: ReactNode;
 }) {
+	// The peek's top padding follows upstream's `--frame-row-h`, which is still panels-gated in upstream CSS.
 	const panels = useFizzyLake("panels");
 	const [hovering, setHovering] = useState(false);
 	// Upstream's `peeked`: set on the first open so the peek's transition never runs on the collapse frame.
@@ -713,7 +674,8 @@ function CollapsedSidebar({
 				data-testid="sidebar-peek"
 				aria-label="Sidebar"
 				data-density={density}
-				data-flat-look={panels ? "" : undefined}
+				data-flat-look=""
+				data-hub-rail=""
 				data-focus-region="navigation"
 				aria-hidden={hovering ? undefined : true}
 				inert={!hovering}

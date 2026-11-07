@@ -3,7 +3,7 @@
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, Outlet, RouterProvider} from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {DEFAULTS} from "../src/components/settings-context";
 import {NavScroll} from "../src/components/sidebar/nav-scroll";
@@ -14,6 +14,7 @@ import {approvalsQueryOptions} from "../src/lib/api/approvals";
 import {notificationsQueryOptions} from "../src/lib/api/notifications";
 import {activeSessionsQueryOptions} from "../src/lib/api/sessions";
 import {installLocalStorage} from "./fake-storage";
+import {PanelsOff} from "./fizzy-lake-off";
 import {NAV_SECTIONS} from "../src/lib/nav-sections";
 import {ToastProvider} from "../src/components/toast";
 
@@ -36,14 +37,20 @@ function seedQueryClient(): QueryClient {
 	return queryClient;
 }
 
-async function renderSidebar() {
+async function renderSidebar({panelsOff = false}: {panelsOff?: boolean} = {}) {
 	const queryClient = seedQueryClient();
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
 				<ToastProvider>
 					<SettingsProvider>
-						<Sidebar collapsed={false} />
+						{panelsOff ? (
+							<PanelsOff>
+								<Sidebar collapsed={false} />
+							</PanelsOff>
+						) : (
+							<Sidebar collapsed={false} />
+						)}
 						<Outlet />
 					</SettingsProvider>
 				</ToastProvider>
@@ -82,6 +89,27 @@ describe("sidebar header", () => {
 });
 
 describe("sidebar resize handle", () => {
+	it.each([{panelsOff: false}, {panelsOff: true}])(
+		"renders no tooltip on hover whatever fizzy-lake parts are on (panelsOff: $panelsOff), marked data-trigger-disabled",
+		async ({panelsOff}) => {
+			await renderSidebar({panelsOff});
+			const handle = await waitFor(() => screen.getByRole("separator", {name: "Resize sidebar"}));
+			vi.useFakeTimers();
+			try {
+				fireEvent.pointerEnter(handle);
+				act(() => {
+					vi.advanceTimersByTime(1000);
+				});
+				expect({
+					tooltip: screen.queryByRole("tooltip"),
+					triggerDisabled: handle.getAttribute("data-trigger-disabled"),
+				}).toStrictEqual({tooltip: null, triggerDisabled: ""});
+			} finally {
+				vi.useRealTimers();
+			}
+		},
+	);
+
 	it("persists the width to the sidebar store and exposes it as --sidebar-width", async () => {
 		await renderSidebar();
 		const handle = await waitFor(() => screen.getByRole("separator", {name: "Resize sidebar"}));
@@ -118,7 +146,7 @@ describe("nav scroll", () => {
 		]);
 	});
 
-	it("sets data-scrolled only while scrolled away from the top", () => {
+	it("sets data-scrolled only once scrolled more than 2px, like upstream's L$", () => {
 		render(
 			<NavScroll>
 				<div>content</div>
@@ -126,6 +154,18 @@ describe("nav scroll", () => {
 		);
 		const scroller = screen.getByTestId("nav-scroll");
 		expect(scroller.hasAttribute("data-scrolled")).toBe(false);
+
+		act(() => {
+			scroller.scrollTop = 2;
+			fireEvent.scroll(scroller);
+		});
+		expect(scroller.hasAttribute("data-scrolled")).toBe(false);
+
+		act(() => {
+			scroller.scrollTop = 3;
+			fireEvent.scroll(scroller);
+		});
+		expect(scroller.hasAttribute("data-scrolled")).toBe(true);
 
 		act(() => {
 			scroller.scrollTop = 40;

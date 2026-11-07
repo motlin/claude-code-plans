@@ -10,6 +10,7 @@ import {fallbackShellFor} from "../src/components/fallback-shell";
 import {getVisibleNavItems, navItems} from "../src/components/sidebar/navigation";
 import {SidebarSearchRow} from "../src/components/sidebar/sidebar-search-field";
 import {DEFAULT_VISIBLE_NAV_SECTIONS} from "../src/lib/nav-sections";
+import {PanelsOff} from "./fizzy-lake-off";
 import {Route} from "../src/routes/__root";
 import {resolveShellChinLabels} from "../src/lib/shell-chin-labels";
 import {getShellChinLabels, setShellChinLabels} from "../src/lib/shell-chin-store";
@@ -239,6 +240,23 @@ describe("AppShellFallback", () => {
 			oldField: null,
 			nextBlock: "-mt-1 shrink-0",
 		});
+	});
+
+	it("paints the same New + Search header with fizzy-lake panels off, since upstream graduated the shell", () => {
+		const host = document.createElement("div");
+		host.innerHTML = renderToStaticMarkup(
+			<PanelsOff>
+				<AppShellFallback />
+			</PanelsOff>,
+		);
+		const blocks = host.querySelectorAll('[aria-label="Sidebar"] [data-nav-block]');
+
+		expect({
+			header: blocks[0]?.children[0]?.textContent,
+			searchRow: blocks[0]?.children[1]?.textContent.startsWith("Search"),
+			navBlockClass: blocks[1]?.getAttribute("class"),
+			oldField: host.querySelector(".df-search-field"),
+		}).toStrictEqual({header: "New", searchRow: true, navBlockClass: "-mt-1 shrink-0", oldField: null});
 	});
 
 	it("paints the same session skeleton as an in-app switch: the header dot and bar, a bubble and 10 line bars in the column", () => {

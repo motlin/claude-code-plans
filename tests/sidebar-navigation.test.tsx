@@ -524,25 +524,33 @@ describe("sidebar New row", () => {
 		});
 	});
 
-	it("keeps only New fixed while the other navigation rows and More scroll, with fizzy-lake panels off", async () => {
-		await renderSidebarAt("/tasks", seedQueryClient(), {panelsOff: true});
-		await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
+	it("keeps New and Search in the scroller whatever fizzy-lake parts are on, as upstream's graduated shell does", async () => {
+		async function render(panelsOff: boolean) {
+			await renderSidebarAt("/tasks", seedQueryClient(), {panelsOff});
+			await waitFor(() => screen.getByRole("link", {name: "Tasks"}));
+			const scroller = screen.getByTestId("nav-scroll");
+			const header = scroller.firstElementChild;
+			const result = {
+				fixedLinks: navLinks()
+					.filter((link) => !scroller.contains(link))
+					.map((link) => link.getAttribute("href")),
+				newInScroller: header?.contains(screen.getByRole("link", {name: "New"})) === true,
+				searchRowInScroller: header?.contains(screen.getByRole("button", {name: "Search"})) === true,
+				navBlockClass: scroller.querySelectorAll("[data-nav-block]")[1]?.getAttribute("class"),
+				flatLook: screen.getByRole("navigation", {name: "Sidebar"}).getAttribute("data-flat-look"),
+			};
+			cleanup();
+			return result;
+		}
+		const expected = {
+			fixedLinks: [],
+			newInScroller: true,
+			searchRowInScroller: true,
+			navBlockClass: "-mt-1 shrink-0",
+			flatLook: "",
+		};
 
-		const scroller = screen.getByTestId("nav-scroll");
-		const newRow = screen.getByRole("link", {name: "New"});
-		expect({
-			fixedLinks: navLinks()
-				.filter((link) => !scroller.contains(link))
-				.map((link) => link.getAttribute("href")),
-			localExtrasScroll: ["Plans", "Memories"].map((name) => scroller.contains(screen.getByRole("link", {name}))),
-			moreScrolls: scroller.contains(screen.getByRole("button", {name: "More navigation items"})),
-			newBeforeScroller: Boolean(newRow.compareDocumentPosition(scroller) & Node.DOCUMENT_POSITION_FOLLOWING),
-		}).toStrictEqual({
-			fixedLinks: ["/"],
-			localExtrasScroll: [true, true],
-			moreScrolls: true,
-			newBeforeScroller: true,
-		});
+		expect({on: await render(false), off: await render(true)}).toStrictEqual({on: expected, off: expected});
 	});
 
 	it("pins Projects first by default, then Artifacts, Plans, Memories and Customize", async () => {

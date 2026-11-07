@@ -170,7 +170,7 @@ beforeEach(() => {
 });
 
 describe("sidebar Group and sort menu", () => {
-	it("puts Group and sort on every section header, revealed on hover with panels off, and no New session + on any (the New nav row has it)", async () => {
+	it("puts Group and sort on every section header at full width even with panels off, and no New session + on any (the New nav row has it)", async () => {
 		storePrefs({groupBy: "state"});
 		const {container} = await renderSidebarGroups(FIXTURE, {}, []);
 
@@ -184,7 +184,7 @@ describe("sidebar Group and sort menu", () => {
 				.closest("[data-header-reveal]")
 				?.className.split(" ")
 				.filter((name) => name === "w-0" || name === "group-hover/labelrow:w-auto"),
-		}).toStrictEqual({groupAndSort: [1, 1], newSession: [0, 0], revealed: ["w-0", "group-hover/labelrow:w-auto"]});
+		}).toStrictEqual({groupAndSort: [1, 1], newSession: [0, 0], revealed: []});
 	});
 
 	// Upstream exempts header glyphs from --df-chrome-icon-size: a 20px glyph in the 24px button, with data-row-glyph.
@@ -235,7 +235,7 @@ describe("sidebar Group and sort menu", () => {
 				"hover:[--sb-heading-ink:var(--color-secondary)]",
 				"text-[color:var(--sb-heading-ink)]",
 			],
-			toggle: ["hover:text-secondary"],
+			toggle: [],
 			groupAndSort: buttonInk,
 		});
 	});
@@ -569,8 +569,8 @@ describe("sidebar Group and sort menu", () => {
 		});
 	});
 
-	// Upstream: the caret rotates in 60ms (duration-fast), and the reveal span's `touch:` variant is coarse OR hover:none.
-	it("rotates the header caret in 60ms and, with panels off, reveals Group and sort on any touch device, like upstream", async () => {
+	// Upstream: the caret rotates in 60ms (duration-fast); the hub sidebar's reveal span is plain `flex` (shared-21 `Cs`).
+	it("rotates the header caret in 60ms and leaves the reveal span free of touch-only width classes, like upstream", async () => {
 		const {container} = await renderSidebarGroups(FIXTURE, {}, []);
 		const header = container.querySelector('[data-testid="sidebar-recents"] [data-sidebar-group-label]');
 		const classes = (selector: string) => header?.querySelector(selector)?.getAttribute("class")?.split(" ") ?? [];
@@ -580,7 +580,7 @@ describe("sidebar Group and sort menu", () => {
 			reveal: classes("[data-header-reveal]").filter((name) => /^(touch|pointer-coarse):/.test(name)),
 		}).toStrictEqual({
 			caret: ["duration-[60ms]"],
-			reveal: ["touch:w-auto", "touch:overflow-visible"],
+			reveal: [],
 		});
 	});
 

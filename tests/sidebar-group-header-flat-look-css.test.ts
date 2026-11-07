@@ -7,7 +7,7 @@ const styles = readFileSync("src/styles/globals.css", "utf8")
 	.replaceAll("( ", "(")
 	.replaceAll(" )", ")");
 
-const FLAT = ':root[data-cds-fizzy-lake~="panels"] [data-flat-look]';
+const FLAT = "[data-hub-rail]";
 const LABEL = `${FLAT} [data-sidebar-group-label]`;
 const BADGE_LABEL = `${LABEL}:has(> [data-header-controls])`;
 
@@ -36,13 +36,23 @@ function missing(rules: readonly string[]): string[] {
 }
 
 describe("sidebar group header flat-look CSS", () => {
-	it("remaps the label's muted and secondary inks to primary under fizzy-lake color, keeping the mark's own inks", () => {
-		expect(
-			missing([
+	it("remaps the label's muted and secondary inks to primary in the hub-rail sidebar, keeping the mark's own inks", () => {
+		expect({
+			colorGated: styles.includes(':root[data-cds-fizzy-lake~="color"] [data-sidebar-group-label]'),
+			missing: missing([
 				"--fizzy-lake-color-secondary: var(--upstream-text-secondary);",
-				':root[data-cds-fizzy-lake~="color"] [data-sidebar-group-label] { --color-ink-muted: var(--color-primary); --muted-as-secondary: var(--color-primary); --color-secondary: var(--color-primary); }',
-				':root[data-cds-fizzy-lake~="color"] [data-sidebar-group-label] [data-group-mark] { --color-ink-muted: var(--upstream-text-muted); --muted-as-secondary: var(--fizzy-lake-color-secondary, var(--upstream-text-muted)); --color-secondary: var(--fizzy-lake-color-secondary, var(--upstream-text-muted)); }',
+				"[data-hub-rail] [data-sidebar-group-label] { --color-ink-muted: var(--color-primary); --muted-as-secondary: var(--color-primary); --color-secondary: var(--color-primary); }",
+				"[data-hub-rail] [data-sidebar-group-label] [data-group-mark] { --color-ink-muted: var(--upstream-text-muted); --muted-as-secondary: var(--fizzy-lake-color-secondary, var(--upstream-text-muted)); --color-secondary: var(--fizzy-lake-color-secondary, var(--upstream-text-muted)); }",
 			]),
+		}).toStrictEqual({colorGated: false, missing: []});
+	});
+
+	it("no group-header rule depends on the panels or color fizzy-lake part or on data-flat-look", () => {
+		const selectors = [
+			...styles.replaceAll(/\/\*.*?\*\//g, "").matchAll(/[^{}]*\[data-sidebar-group-label\][^{}]*\{/g),
+		].map((match) => match[0].trim());
+		expect(
+			selectors.filter((selector) => /data-cds-fizzy-lake~="(panels|color)"|data-flat-look/.test(selector)),
 		).toStrictEqual([]);
 	});
 
@@ -65,15 +75,20 @@ describe("sidebar group header flat-look CSS", () => {
 		}).toStrictEqual({missing: [], media: ["@media (hover: hover) and (pointer: fine)"]});
 	});
 
-	it("parks the collapsed badge at the row end and hides it while Group and sort shows", () => {
+	it("parks the collapsed badge at the row end on a fine pointer and hides it while Group and sort or a trailing control shows", () => {
 		const toggleBadge = "h3 > [data-group-toggle] > [data-group-badge]";
-		expect(
-			missing([
-				`${BADGE_LABEL} h3 > [data-group-toggle]:has(> [data-group-badge]:not(:empty)) { isolation: auto; position: static; }`,
-				`${BADGE_LABEL} ${toggleBadge} { width: var(--sb-row-ctl); height: var(--sb-row-h); pointer-events: none; margin-block: 0; position: absolute; inset-block: auto 0; inset-inline-end: var(--sb-row-ctl-inset, calc((var(--sb-row-h) - var(--sb-row-ctl)) / 2)); }`,
-				`${FLAT} [data-group-key][data-hover-within] [data-sidebar-group-label]:not([data-group-key]:not([data-hover-within]) [data-sidebar-group-label]):has(> [data-header-controls]) ${toggleBadge}, ${BADGE_LABEL}:has(:focus-visible) ${toggleBadge}, ${BADGE_LABEL}:has([data-popup-open]) ${toggleBadge} { opacity: 0; }`,
+		const isolation = `${BADGE_LABEL} h3 > [data-group-toggle]:has(> [data-group-badge]:not(:empty))`;
+		const park = `${BADGE_LABEL} ${toggleBadge}`;
+		const hidden = `${FLAT} [data-group-key][data-hover-within] [data-sidebar-group-label]:not([data-group-key]:not([data-hover-within]) [data-sidebar-group-label]):has(> [data-header-controls]) ${toggleBadge}, ${BADGE_LABEL}:has(:focus-visible) ${toggleBadge}, ${BADGE_LABEL}:has([data-popup-open]) ${toggleBadge}, ${LABEL}:has(> [data-header-controls] > :not([data-header-reveal]):focus-within) ${toggleBadge}`;
+		const fine = ["@media (hover: hover) and (pointer: fine)"];
+		expect({
+			missing: missing([
+				`${isolation} { isolation: auto; position: static; }`,
+				`${park} { width: var(--sb-row-ctl); height: var(--sb-row-h); pointer-events: none; margin-block: 0; position: absolute; inset-block: auto 0; inset-inline-end: var(--sb-row-ctl-inset, calc((var(--sb-row-h) - var(--sb-row-ctl)) / 2)); }`,
+				`${hidden} { opacity: 0; }`,
 			]),
-		).toStrictEqual([]);
+			media: [enclosingAtRules(isolation), enclosingAtRules(park), enclosingAtRules(hidden)],
+		}).toStrictEqual({missing: [], media: [fine, fine, fine]});
 	});
 
 	it("draws upstream's hover pill behind a hovered or menu-open header", () => {

@@ -373,7 +373,7 @@ describe("sidebar SessionGroups", () => {
 		});
 	});
 
-	it("shows an expanded section's caret while any of its rows holds data-hover-within, one section at a time, with panels off", async () => {
+	it("marks a section data-hover-within while any of its rows is hovered, one section at a time, even with fizzy-lake parts off", async () => {
 		const {container} = await renderGroups(FIXTURE, {fizzyLake: []});
 		const hovered = () =>
 			[...container.querySelectorAll("[data-group-key][data-hover-within]")].map((section) =>
@@ -405,16 +405,16 @@ describe("sidebar SessionGroups", () => {
 			afterDone: ["state-done"],
 			afterLeave: [],
 			caret: [
-				"opacity-0",
 				"group-data-[hover-within]/section:opacity-100",
 				"group-focus-visible/label:opacity-100",
+				"opacity-100",
 			],
 		});
 	});
 
-	// Upstream `SH`: under fizzy-lake panels the caret stays (`data-group-caret="stays"`, opacity 1) and
-	// Group and sort keeps its width, fading by opacity in the flat-look CSS instead.
-	it("keeps the expanded caret visible and Group and sort at full width under fizzy-lake panels", async () => {
+	// Upstream `SH` (shared-18) and `Cs` (shared-21) graduated: the caret always stays (`data-group-caret="stays"`,
+	// opacity 1) and Group and sort keeps its width in the hub sidebar, fading by opacity in the header CSS.
+	it("keeps the expanded caret visible and Group and sort at full width whatever fizzy-lake parts are on", async () => {
 		const render = async (fizzyLake: readonly FizzyLakePart[]) => {
 			const {container, unmount} = await renderGroups(FIXTURE, {
 				fizzyLake,
@@ -434,29 +434,28 @@ describe("sidebar SessionGroups", () => {
 					?.split(" ")
 					.filter((name) => /(^|:)w-/.test(name)),
 				controls: header?.querySelector(":scope > [data-header-controls]") !== null,
+				toggleHoverInk: (
+					header?.querySelector("[data-group-toggle]")?.getAttribute("class")?.split(" ") ?? []
+				).filter((name) => name.startsWith("hover:text-")),
 			};
 			unmount();
 			return result;
 		};
+		const expected = {
+			caret: "stays",
+			caretOpacity: [
+				"group-data-[hover-within]/section:opacity-100",
+				"group-focus-visible/label:opacity-100",
+				"opacity-100",
+			],
+			reveal: [],
+			controls: true,
+			toggleHoverInk: [],
+		};
 
 		expect({panels: await render(FIZZY_LAKE_PARTS), off: await render([])}).toStrictEqual({
-			panels: {caret: "stays", caretOpacity: ["opacity-100"], reveal: [], controls: true},
-			off: {
-				caret: "",
-				caretOpacity: [
-					"opacity-0",
-					"group-data-[hover-within]/section:opacity-100",
-					"group-focus-visible/label:opacity-100",
-				],
-				reveal: [
-					"w-0",
-					"group-hover/labelrow:w-auto",
-					"group-has-[:focus-visible]/labelrow:w-auto",
-					"has-[[data-popup-open]]:w-auto",
-					"touch:w-auto",
-				],
-				controls: true,
-			},
+			panels: expected,
+			off: expected,
 		});
 	});
 
@@ -1752,7 +1751,7 @@ describe("SessionGroups sections layout", () => {
 		});
 	});
 
-	it("wraps each header toggle in an h3, with a 5px gap, its own hover ink and the mark after the name", async () => {
+	it("wraps each header toggle in an h3, with a 5px gap, no hover ink of its own and the mark after the name", async () => {
 		seedSections({b1: "cg-a"});
 		const {container} = await renderGroups(FIXTURE);
 		const toggle = toggleOf(container, "custom-cg-a");
@@ -1767,7 +1766,7 @@ describe("SessionGroups sections layout", () => {
 			),
 		}).toStrictEqual({
 			heading: true,
-			classes: ["gap-1.25", "hover:text-secondary"],
+			classes: ["gap-1.25"],
 			children: ["data-group-name", "data-group-mark", "data-group-caret"],
 		});
 	});

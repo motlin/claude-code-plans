@@ -3381,17 +3381,18 @@ html[data-motion="reduced"] [data-skeleton-group][data-motion="wave"] [data-skel
 }
 
 /*
- * Upstream's fizzy-lake `color` sidebar headings (c6a992d55): a group label's muted and secondary inks
- * read as primary, which is the .9 ink measured live on header hover, while its custom group mark keeps
- * the sidebar's own muted and fizzy secondary inks.
+ * Upstream's web sidebar headings (c6a992d55; the fizzy-lake `color` gate dropped between
+ * shared-styles-BM0lMNTW and -B2jCwgFx): a group label's muted and secondary inks read as primary,
+ * which is the .9 ink measured live on header hover, while its custom group mark keeps the sidebar's
+ * own muted and fizzy secondary inks.
  */
-:root[data-cds-fizzy-lake~="color"] [data-sidebar-group-label] {
+[data-hub-rail] [data-sidebar-group-label] {
 	--color-ink-muted: var(--color-primary);
 	--muted-as-secondary: var(--color-primary);
 	--color-secondary: var(--color-primary);
 }
 
-:root[data-cds-fizzy-lake~="color"] [data-sidebar-group-label] [data-group-mark] {
+[data-hub-rail] [data-sidebar-group-label] [data-group-mark] {
 	--color-ink-muted: var(--upstream-text-muted);
 	--muted-as-secondary: var(--fizzy-lake-color-secondary, var(--upstream-text-muted));
 	--color-secondary: var(--fizzy-lake-color-secondary, var(--upstream-text-muted));
@@ -3474,35 +3475,35 @@ html[data-motion="reduced"] [data-skeleton-group][data-motion="wave"] [data-skel
 }
 
 /*
- * Upstream's flat-look group headers (`html[data-cds-fizzy-lake~=panels] .dframe-sidebar.df-hub-rail[data-flat-look]`,
- * dumps/sidebar-group-header-hover-2026-11-01-css.txt): a 12px/20px label with no gaps and 4px before its
+ * Upstream's hub-rail group headers (`.dframe-sidebar.df-hub-rail`, shared-styles-DOn1fsYM.css; the
+ * `html[data-cds-fizzy-lake~=panels] … [data-flat-look]` scope dropped in index-BDcv5SmC, 2026-11-04,
+ * dumps/sidebar-header-flat-look-ungated-css-hub-rail-old-new.css.txt): a 12px/20px label with no gaps and 4px before its
  * glyphs, Group and sort faded by opacity (not width) on a fine pointer, a pill behind a hovered or
- * menu-open header, the collapsed badge at the row end where Group and sort appears, and secondary
+ * menu-open header, the collapsed badge at the row end where Group and sort appears (fine pointer only), and secondary
  * toggle ink that turns to the label's ink on hover, focus or an open menu.
  */
-:root[data-cds-fizzy-lake~="panels"] [data-flat-look] [data-sidebar-group-label] {
+[data-hub-rail] [data-sidebar-group-label] {
 	--sb-group-font: 12px;
 	isolation: isolate;
 	line-height: 20px;
 	position: relative;
 }
 
-:root[data-cds-fizzy-lake~="panels"] [data-flat-look] [data-sidebar-group-label] input {
+[data-hub-rail] [data-sidebar-group-label] input {
 	line-height: 20px;
 }
 
-:root[data-cds-fizzy-lake~="panels"] [data-flat-look] [data-sidebar-group-label],
-:root[data-cds-fizzy-lake~="panels"] [data-flat-look] [data-sidebar-group-label] > div {
+[data-hub-rail] [data-sidebar-group-label],
+[data-hub-rail] [data-sidebar-group-label] > div {
 	gap: 0;
 }
 
-:root[data-cds-fizzy-lake~="panels"] [data-flat-look] [data-sidebar-group-label] [data-row-glyph] {
+[data-hub-rail] [data-sidebar-group-label] [data-row-glyph] {
 	margin-inline-start: 4px;
 }
 
 @media (hover: hover) and (pointer: fine) {
-	:root[data-cds-fizzy-lake~="panels"]
-		[data-flat-look]
+	[data-hub-rail]
 		[data-group-key]:not([data-hover-within])
 		[data-sidebar-group-label]:not(:has(:focus-visible), :has([data-popup-open]))
 		[data-header-reveal] {
@@ -3510,61 +3511,59 @@ html[data-motion="reduced"] [data-skeleton-group][data-motion="wave"] [data-skel
 	}
 }
 
-:root[data-cds-fizzy-lake~="panels"]
-	[data-flat-look]
-	[data-sidebar-group-label]:has(> [data-header-controls])
-	h3
-	> [data-group-toggle]:has(> [data-group-badge]:not(:empty)) {
-	isolation: auto;
-	position: static;
-}
+@media (hover: hover) and (pointer: fine) {
+	[data-hub-rail]
+		[data-sidebar-group-label]:has(> [data-header-controls])
+		h3
+		> [data-group-toggle]:has(> [data-group-badge]:not(:empty)) {
+		isolation: auto;
+		position: static;
+	}
 
-:root[data-cds-fizzy-lake~="panels"]
-	[data-flat-look]
-	[data-sidebar-group-label]:has(> [data-header-controls])
-	h3
-	> [data-group-toggle]
-	> [data-group-badge] {
-	width: var(--sb-row-ctl);
-	height: var(--sb-row-h);
-	pointer-events: none;
-	margin-block: 0;
-	position: absolute;
-	inset-block: auto 0;
-	inset-inline-end: var(--sb-row-ctl-inset, calc((var(--sb-row-h) - var(--sb-row-ctl)) / 2));
-}
+	[data-hub-rail]
+		[data-sidebar-group-label]:has(> [data-header-controls])
+		h3
+		> [data-group-toggle]
+		> [data-group-badge] {
+		width: var(--sb-row-ctl);
+		height: var(--sb-row-h);
+		pointer-events: none;
+		margin-block: 0;
+		position: absolute;
+		inset-block: auto 0;
+		inset-inline-end: var(--sb-row-ctl-inset, calc((var(--sb-row-h) - var(--sb-row-ctl)) / 2));
+	}
 
-:root[data-cds-fizzy-lake~="panels"]
-	[data-flat-look]
-	[data-group-key][data-hover-within]
-	[data-sidebar-group-label]:not([data-group-key]:not([data-hover-within]) [data-sidebar-group-label]):has(
-		> [data-header-controls]
-	)
-	h3
-	> [data-group-toggle]
-	> [data-group-badge],
-:root[data-cds-fizzy-lake~="panels"]
-	[data-flat-look]
-	[data-sidebar-group-label]:has(> [data-header-controls]):has(:focus-visible)
-	h3
-	> [data-group-toggle]
-	> [data-group-badge],
-:root[data-cds-fizzy-lake~="panels"]
-	[data-flat-look]
-	[data-sidebar-group-label]:has(> [data-header-controls]):has([data-popup-open])
-	h3
-	> [data-group-toggle]
-	> [data-group-badge] {
-	opacity: 0;
+	[data-hub-rail]
+		[data-group-key][data-hover-within]
+		[data-sidebar-group-label]:not([data-group-key]:not([data-hover-within]) [data-sidebar-group-label]):has(
+			> [data-header-controls]
+		)
+		h3
+		> [data-group-toggle]
+		> [data-group-badge],
+	[data-hub-rail]
+		[data-sidebar-group-label]:has(> [data-header-controls]):has(:focus-visible)
+		h3
+		> [data-group-toggle]
+		> [data-group-badge],
+	[data-hub-rail]
+		[data-sidebar-group-label]:has(> [data-header-controls]):has([data-popup-open])
+		h3
+		> [data-group-toggle]
+		> [data-group-badge],
+	[data-hub-rail]
+		[data-sidebar-group-label]:has(> [data-header-controls] > :not([data-header-reveal]):focus-within)
+		h3
+		> [data-group-toggle]
+		> [data-group-badge] {
+		opacity: 0;
+	}
 }
 
 @media (hover: hover) {
-	:root[data-cds-fizzy-lake~="panels"]
-		[data-flat-look]
-		[data-sidebar-group-label]:has(h3 > [data-group-toggle]):hover::before,
-	:root[data-cds-fizzy-lake~="panels"]
-		[data-flat-look]
-		[data-sidebar-group-label]:has(h3 > [data-group-toggle]):has([data-popup-open])::before {
+	[data-hub-rail] [data-sidebar-group-label]:has(h3 > [data-group-toggle]):hover::before,
+	[data-hub-rail] [data-sidebar-group-label]:has(h3 > [data-group-toggle]):has([data-popup-open])::before {
 		content: "";
 		z-index: -1;
 		height: var(--sb-row-h);
@@ -3575,25 +3574,17 @@ html[data-motion="reduced"] [data-skeleton-group][data-motion="wave"] [data-skel
 	}
 }
 
-:root[data-cds-fizzy-lake~="panels"] [data-flat-look] [data-sidebar-group-label] h3 > [data-group-toggle] {
+[data-hub-rail] [data-sidebar-group-label] h3 > [data-group-toggle] {
 	color: var(--fizzy-lake-color-secondary, inherit);
 }
 
-:root[data-cds-fizzy-lake~="panels"]
-	[data-flat-look]
-	[data-sidebar-group-label]
-	h3
-	> [data-group-toggle]:focus-visible {
+[data-hub-rail] [data-sidebar-group-label] h3 > [data-group-toggle]:focus-visible {
 	color: inherit;
 }
 
 @media (hover: hover) {
-	:root[data-cds-fizzy-lake~="panels"] [data-flat-look] [data-sidebar-group-label]:hover h3 > [data-group-toggle],
-	:root[data-cds-fizzy-lake~="panels"]
-		[data-flat-look]
-		[data-sidebar-group-label]:has([data-popup-open])
-		h3
-		> [data-group-toggle] {
+	[data-hub-rail] [data-sidebar-group-label]:hover h3 > [data-group-toggle],
+	[data-hub-rail] [data-sidebar-group-label]:has([data-popup-open]) h3 > [data-group-toggle] {
 		color: inherit;
 	}
 }

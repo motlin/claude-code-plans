@@ -5,14 +5,8 @@ import {DEFAULT_VISIBLE_NAV_SECTIONS} from "../lib/nav-sections";
 import {DEFAULT_SIDEBAR_STATE} from "../lib/sidebar-store";
 import {getVisibleNavItems, navItems} from "./sidebar/navigation";
 import {SidebarToggleIcon} from "./sidebar/primitives";
-import {
-	SEARCH_FIELD_CLASS,
-	SEARCH_FIELD_WRAPPER_CLASS,
-	SearchFieldContents,
-	SearchRowContents,
-} from "./sidebar/sidebar-search-field";
+import {SearchRowContents} from "./sidebar/sidebar-search-field";
 import {NAV_ROW_CLASS as LIVE_NAV_ROW_CLASS} from "./sidebar/new-session-row";
-import {useFizzyLake} from "../lib/fizzy-lake";
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {ROW_CLASS as SESSION_ROW_CLASS} from "./sidebar/session-group-section";
 import {SessionSkeleton} from "./session-skeleton";
@@ -253,7 +247,6 @@ export function AppShellFallback({
 	const shell = fallbackShellFor(pathname);
 	const [labels] = useState(() => chin ?? readPaintedChin());
 	const {keys: searchKeys} = useShortcutKeys("search_or_start");
-	const panels = useFizzyLake("panels");
 
 	if (appMounted) return null;
 
@@ -293,34 +286,18 @@ export function AppShellFallback({
 				<div className="h-2 shrink-0" />
 
 				<div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2">
-					{panels ? (
-						<div data-nav-block="" className="shrink-0">
-							<div className="flex items-center">
-								<span data-row="" className={NAV_ROW_CLASS}>
-									{newRowContents}
-								</span>
-							</div>
-							<span data-row="" className={LIVE_NAV_ROW_CLASS}>
-								<SearchRowContents keys={searchKeys} />
+					<div data-nav-block="" className="shrink-0">
+						<div className="flex items-center">
+							<span data-row="" className={NAV_ROW_CLASS}>
+								{newRowContents}
 							</span>
-							<div aria-hidden="true" className="h-1 shrink-0" />
 						</div>
-					) : null}
-					<div data-nav-block="" className={panels ? "-mt-1 shrink-0" : "shrink-0"}>
-						{panels ? null : (
-							<>
-								<div className={SEARCH_FIELD_WRAPPER_CLASS}>
-									<span className={SEARCH_FIELD_CLASS}>
-										<SearchFieldContents keys={searchKeys} />
-									</span>
-								</div>
-								<div className="flex items-center">
-									<span data-row="" className={NAV_ROW_CLASS}>
-										{newRowContents}
-									</span>
-								</div>
-							</>
-						)}
+						<span data-row="" className={LIVE_NAV_ROW_CLASS}>
+							<SearchRowContents keys={searchKeys} />
+						</span>
+						<div aria-hidden="true" className="h-1 shrink-0" />
+					</div>
+					<div data-nav-block="" className="-mt-1 shrink-0">
 						{getVisibleNavItems(navItems, DEFAULT_VISIBLE_NAV_SECTIONS).pinned.map((item) => {
 							const Icon = item.icon;
 							return (
