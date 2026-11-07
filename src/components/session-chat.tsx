@@ -3689,6 +3689,8 @@ function VirtualizedSessionEntries({
 				role="feed"
 				aria-label="Chat messages"
 				data-testid="virtualized-transcript"
+				// Upstream's feedKeyboardNav scroll margins (on its scroller; the feed matches the same articles).
+				className="[&_[role=article]]:[scroll-margin-top:calc(max(var(--epitaxy-top-fade-height,0px),var(--fade-top,0px))+8px)] [&_[role=article]]:[scroll-margin-bottom:calc(max(var(--epitaxy-bottom-fade-height,0px)-var(--epitaxy-foot-reserve,0px),0px)+8px)]"
 				onClickCapture={(event) => {
 					if (event.target instanceof Element && event.target.closest("[aria-expanded],summary")) {
 						reusableRef.current = false;

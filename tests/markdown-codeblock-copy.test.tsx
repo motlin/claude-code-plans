@@ -71,7 +71,7 @@ describe("fenced code block copy button markup", () => {
 			},
 			strip: {
 				position: "sticky",
-				top: "calc(max(var(--fade-top, 0px), 0px) + 5px)",
+				top: "calc(max(var(--epitaxy-top-fade-height, 0px), var(--fade-top, 0px)) + 5px)",
 				"margin-top": "5px",
 				display: "flex",
 				gap: "3px",

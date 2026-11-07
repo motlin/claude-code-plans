@@ -200,6 +200,32 @@ describe("scroll-fade-strip", () => {
 	});
 });
 
+describe("transcript fade variables", () => {
+	it("compiles the feed's article scroll margins under a [role=article] descendant selector", async () => {
+		expect({
+			top: await normalized(
+				"[&_[role=article]]:[scroll-margin-top:calc(max(var(--epitaxy-top-fade-height,0px),var(--fade-top,0px))+8px)]",
+			),
+			bottom: await normalized(
+				"[&_[role=article]]:[scroll-margin-bottom:calc(max(var(--epitaxy-bottom-fade-height,0px)-var(--epitaxy-foot-reserve,0px),0px)+8px)]",
+			),
+		}).toStrictEqual({
+			top: String.raw`.\[\&_\[role\=article\]\]\:\[scroll-margin-top\:calc\(max\(var\(--epitaxy-top-fade-height\,0px\)\,var\(--fade-top\,0px\)\)\+8px\)\] [role=article] { scroll-margin-top: calc(max(var(--epitaxy-top-fade-height,0px), var(--fade-top,0px)) + 8px); }`,
+			bottom: String.raw`.\[\&_\[role\=article\]\]\:\[scroll-margin-bottom\:calc\(max\(var\(--epitaxy-bottom-fade-height\,0px\)-var\(--epitaxy-foot-reserve\,0px\)\,0px\)\+8px\)\] [role=article] { scroll-margin-bottom: calc(max(var(--epitaxy-bottom-fade-height,0px) - var(--epitaxy-foot-reserve,0px), 0px) + 8px); }`,
+		});
+	});
+
+	it("sets ScrollFade's 32px/48px fade heights only where scroll timelines exist", async () => {
+		expect({
+			top: await normalized("supports-[animation-timeline:scroll()]:[--epitaxy-top-fade-height:32px]"),
+			bottom: await normalized("supports-[animation-timeline:scroll()]:[--epitaxy-bottom-fade-height:48px]"),
+		}).toStrictEqual({
+			top: String.raw`@supports (animation-timeline:scroll()) { .supports-\[animation-timeline\:scroll\(\)\]\:\[--epitaxy-top-fade-height\:32px\] { --epitaxy-top-fade-height: 32px; } }`,
+			bottom: String.raw`@supports (animation-timeline:scroll()) { .supports-\[animation-timeline\:scroll\(\)\]\:\[--epitaxy-bottom-fade-height\:48px\] { --epitaxy-bottom-fade-height: 48px; } }`,
+		});
+	});
+});
+
 describe("u-hidden-scrollbar", () => {
 	it("ports upstream's hidden scrollbar utility", async () => {
 		expect(await normalized("u-hidden-scrollbar")).toStrictEqual(

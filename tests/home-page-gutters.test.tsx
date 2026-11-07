@@ -35,15 +35,18 @@ describe("HomePage gutters", () => {
 		}).toStrictEqual({container: true, body: tile, dock: tile});
 	});
 
-	it("keeps upstream's fade scroll padding on the landing column, and its scroll-fade-y only while it overflows", () => {
+	it("wraps the landing column in upstream's ScrollFade strips, keeps its fade scroll padding, and its scroll-fade-y only while the content overflows", () => {
 		const callbacks: ResizeObserverCallback[] = [];
+		const observed: Element[] = [];
 		vi.stubGlobal(
 			"ResizeObserver",
 			class {
 				constructor(callback: ResizeObserverCallback) {
 					callbacks.push(callback);
 				}
-				observe() {}
+				observe(element: Element) {
+					observed.push(element);
+				}
 				unobserve() {}
 				disconnect() {}
 			},
@@ -68,12 +71,22 @@ describe("HomePage gutters", () => {
 
 		expect({
 			className: body.className,
+			fades: [...body.children].map((child) => child.getAttribute("data-scroll-fade")),
+			content: body.children[1]?.hasAttribute("data-test-body"),
+			observed: observed.map((element) =>
+				element === body
+					? "scroller"
+					: (element.getAttribute("data-scroll-fade") ?? element.getAttributeNames().join()),
+			),
 			overflowing: measure(900, 600),
 			fitting: measure(600, 600),
 			withinOnePixel: measure(601, 600),
 		}).toStrictEqual({
 			className:
-				"min-h-0 flex-1 overflow-x-hidden overflow-y-auto u-hidden-scrollbar scroll-py-(--scroll-fade-size) data-[landing-overflows]:scroll-fade-y",
+				"overflow-y-auto supports-[animation-timeline:scroll()]:[--epitaxy-top-fade-height:32px] supports-[animation-timeline:scroll()]:[--epitaxy-bottom-fade-height:48px] min-h-0 flex-1 overflow-x-hidden u-hidden-scrollbar scroll-py-(--scroll-fade-size) data-[landing-overflows]:scroll-fade-y",
+			fades: ["top", null, "bottom"],
+			content: true,
+			observed: ["scroller", "data-test-body"],
 			overflowing: "",
 			fitting: null,
 			withinOnePixel: null,

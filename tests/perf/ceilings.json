@@ -58,17 +58,17 @@
 		"raisedAt": "2026-11-07"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1321491,
+		"ceiling": 1334967,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Home start-failed card (2026-11-07): a failed home launch now restores the prompt under upstream's session-error card, so the home dock statically loads SendRejectedCard (ErrorCardShell, ApprovalActionButton), the retry/dismiss hook and the HerdrRequestError launch parsing. Went from 1305089 to 1321491. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "ScrollFade home strips (2026-11-07): the scroll-fade family port (menu sheet, dialog bodies, select lists, popovers, the landing column's overflow observer) used most of the 1% headroom, and the ScrollFade primitive wrapping the home landing column tipped it over. Went from 1321491 to 1334967. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-07"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 673807,
+		"ceiling": 680796,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Transcript rewrite handling (2026-11-07): the client's session:transcript-rewritten handler (tail fetch, outright cache replace past structuralSharing, append guard while it is in flight) pushed the measurement 16 bytes past the 1% tolerance; the rest of the climb since 2026-11-03 is the features landed in between. Went from 667120 to 673807. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Transcript scroll fades (2026-11-07): the scroll-fade family port (menu sheet, dialog bodies, select lists, popovers) and the cds type gate used most of the 1% headroom, and the feed's article scroll margins and fade-height formulas tipped it over. Went from 673807 to 680796. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-07"
 	},
 	"bundle.session.raw": {

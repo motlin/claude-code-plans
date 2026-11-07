@@ -131,18 +131,3 @@ export function TranscriptHistoryLoader({sessionId, startIndex}: TranscriptHisto
 		</div>
 	);
 }
-
-/**
- * Upstream's `scroll-fade-strip-top`: a sticky strip that fades the transcript
- * out under the top of the scroller, mirroring the fade above the composer dock.
- * The negative margin keeps it from pushing the first message down.
- */
-export function TranscriptTopFade() {
-	return (
-		<div
-			aria-hidden="true"
-			data-testid="transcript-top-fade"
-			className="pointer-events-none sticky top-0 z-[1] -mb-6 h-6 bg-linear-to-b from-surface-2 to-transparent"
-		/>
-	);
-}

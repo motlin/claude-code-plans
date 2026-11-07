@@ -244,12 +244,14 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 		const dockColumn = screen.getByLabelText("Scroll to bottom", {selector: "button"}).parentElement;
 
 		expect({
-			transcriptBleed: screen.getByTestId("transcript-top-fade").parentElement?.className,
+			topFade: document.querySelector('[data-testid="transcript-top-fade"],[data-transcript-fade-strip]'),
+			transcriptBleed: screen.getByTestId("follow-end").parentElement?.className,
 			dockWrapper: dockColumn?.parentElement?.className,
 			footerBleed: [...(dockColumn?.parentElement?.parentElement?.classList ?? [])].filter((token) =>
 				/^(sm:)?-mx-/.test(token),
 			),
 		}).toStrictEqual({
+			topFade: null,
 			transcriptBleed: "flex-1",
 			dockWrapper: "",
 			footerBleed: [],

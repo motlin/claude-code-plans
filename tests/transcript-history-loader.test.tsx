@@ -4,7 +4,7 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {render, screen, waitFor} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {TranscriptHistoryLoader, TranscriptTopFade} from "../src/components/transcript-history-loader";
+import {TranscriptHistoryLoader} from "../src/components/transcript-history-loader";
 import {findScrollContainer, toObserverRoot} from "../src/components/scroll-container";
 import {sessionQueryKeys, type TranscriptData} from "../src/lib/api/sessions";
 
@@ -303,18 +303,6 @@ describe("TranscriptHistoryLoader", () => {
 
 		await waitFor(() => {
 			expect(screen.getByText("fabricated network failure")).toBeDefined();
-		});
-	});
-});
-
-describe("TranscriptTopFade", () => {
-	it("pins a gradient from the page surface to transparent to the top of the scroller, mirroring the bottom fade", () => {
-		render(<TranscriptTopFade />);
-		const fade = screen.getByTestId("transcript-top-fade");
-
-		expect({ariaHidden: fade.getAttribute("aria-hidden"), className: fade.className}).toStrictEqual({
-			ariaHidden: "true",
-			className: "pointer-events-none sticky top-0 z-[1] -mb-6 h-6 bg-linear-to-b from-surface-2 to-transparent",
 		});
 	});
 });

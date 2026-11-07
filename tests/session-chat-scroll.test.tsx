@@ -137,6 +137,25 @@ describe("SessionChat column measure", () => {
 			`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`,
 		);
 	});
+
+	it("gives feed articles upstream's 8px keyboard-nav scroll margins, widened by any edge fade", () => {
+		const view = render(
+			<SessionChat
+				sessionId="session-51"
+				shouldScrollToEnd={false}
+				lines={messages(2)}
+				toolResultMap={new Map()}
+			/>,
+		);
+		const feed = view.container.querySelector("[data-testid='virtualized-transcript']");
+
+		expect(
+			feed?.className.split(" ").filter((name) => name.startsWith("[&_[role=article]]:[scroll-margin")),
+		).toStrictEqual([
+			"[&_[role=article]]:[scroll-margin-top:calc(max(var(--epitaxy-top-fade-height,0px),var(--fade-top,0px))+8px)]",
+			"[&_[role=article]]:[scroll-margin-bottom:calc(max(var(--epitaxy-bottom-fade-height,0px)-var(--epitaxy-foot-reserve,0px),0px)+8px)]",
+		]);
+	});
 });
 
 describe("SessionChat initial scrolling", () => {

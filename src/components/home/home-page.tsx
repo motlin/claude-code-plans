@@ -1,4 +1,5 @@
 import {type ReactNode, useLayoutEffect, useRef} from "react";
+import {ScrollFade} from "../ui/scroll-fade";
 import {HOME_COLUMN} from "./home-column";
 
 /**
@@ -14,7 +15,7 @@ export function HomeTitlebar() {
 }
 
 /**
- * Upstream's /code landing shell: the "New session" titlebar, then a scrolling body and a bottom
+ * Upstream's /code landing shell: the "New session" titlebar, then a ScrollFade body and a bottom
  * dock in an 840px centered column with 32px/40px gutters (16px/24px once the tile is ≤560px).
  */
 export function HomePage({children, dock}: Readonly<{children?: ReactNode; dock?: ReactNode}>) {
@@ -24,14 +25,14 @@ export function HomePage({children, dock}: Readonly<{children?: ReactNode; dock?
 		<div className="@container/tile-slot flex h-full min-h-0 flex-col">
 			<HomeTitlebar />
 			<div className={`flex min-h-0 flex-1 flex-col ${HOME_COLUMN}`}>
-				<div
+				<ScrollFade
 					ref={bodyRef}
 					data-home-body
 					data-scroll-restoration-id="main"
-					className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto u-hidden-scrollbar scroll-py-(--scroll-fade-size) data-[landing-overflows]:scroll-fade-y"
+					className="min-h-0 flex-1 overflow-x-hidden u-hidden-scrollbar scroll-py-(--scroll-fade-size) data-[landing-overflows]:scroll-fade-y"
 				>
 					{children}
-				</div>
+				</ScrollFade>
 			</div>
 			{dock === undefined ? null : <div className={`shrink-0 ${HOME_COLUMN}`}>{dock}</div>}
 		</div>
@@ -53,7 +54,9 @@ function useLandingOverflows(ref: Readonly<{current: HTMLDivElement | null}>) {
 		sync();
 		const observer = new ResizeObserver(sync);
 		observer.observe(element);
-		if (element.firstElementChild !== null) observer.observe(element.firstElementChild);
+		// The content sits between ScrollFade's top and bottom strips.
+		const content = [...element.children].find((child) => !child.hasAttribute("data-scroll-fade"));
+		if (content !== undefined) observer.observe(content);
 		return () => {
 			observer.disconnect();
 		};

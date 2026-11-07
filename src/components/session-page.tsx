@@ -64,7 +64,7 @@ import {useExtractedSessionFiles} from "./panes/session-file-sources";
 import {TerminalPaneShortcut} from "./panes/terminal-pane-shortcut";
 import {preloadTerminalPane, useRegisterTerminalPane} from "./panes/terminal-pane-entry";
 import {BranchStrip} from "./branch-strip";
-import {TranscriptHistoryLoader, TranscriptTopFade} from "./transcript-history-loader";
+import {TranscriptHistoryLoader} from "./transcript-history-loader";
 import {Tooltip} from "./ui/tooltip";
 import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
@@ -1522,7 +1522,6 @@ function SessionView({
 
 						{/* The transcript spans the page padding; the chat column's own gutters inset it, as on upstream */}
 						<div className="flex-1">
-							<TranscriptTopFade />
 							{/* Chat messages */}
 							<AskUserQuestionProvider value={askUserQuestionCtx}>
 								<TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />

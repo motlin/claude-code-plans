@@ -47,7 +47,10 @@ export function InlinePlanApproval({
 			<span className="line-clamp-2 break-words [unicode-bidi:plaintext]">{planSubtitleLine(proposed)}</span>
 		);
 	return (
-		<div data-inline-plan="" className={`${CHAT_COLUMN_CLASS} sticky top-[5px] z-[1] bg-surface-1 pb-4`}>
+		<div
+			data-inline-plan=""
+			className={`${CHAT_COLUMN_CLASS} sticky top-[calc(max(var(--epitaxy-top-fade-height,0px),var(--fade-top,0px))+5px)] z-[1] bg-[var(--epitaxy-transcript-surface,var(--color-surface-1))] pb-4`}
+		>
 			<ApprovalCardShell
 				presentation="card"
 				compact
