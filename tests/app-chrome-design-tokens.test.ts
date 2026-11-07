@@ -83,6 +83,38 @@ describe("app chrome design tokens", () => {
 		);
 	});
 
+	it("rings and lifts the Session-files jump popover with upstream's cds shadow-panel", async () => {
+		const tailwindRoot = dirname(require.resolve("tailwindcss/package.json"));
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const designSystem = await __unstable__loadDesignSystem(
+			styles.replaceAll(/^@import (?!"tailwindcss").*$/gm, ""),
+			{
+				base: process.cwd(),
+				loadStylesheet: async (id: string, base: string) => {
+					const path = id === "tailwindcss" ? join(tailwindRoot, "index.css") : resolve(base, id);
+					return Promise.resolve({path, base: dirname(path), content: readFileSync(path, "utf8")});
+				},
+			},
+		);
+		const light = styles.slice(styles.indexOf(":root {"), styles.indexOf(".dark {"));
+		const dark = styles.slice(styles.indexOf(".dark {"));
+		const token = (block: string, name: string) =>
+			block.match(new RegExp(`${name}:\\s*([^;]+);`))?.[1]?.replaceAll(/\s+/g, " ") ?? null;
+		const [rule] = designSystem.candidatesToCss(["shadow-panel"]);
+
+		expect({
+			rule: rule?.split("@property")[0]?.replaceAll(/\s+/g, " ").trim() ?? null,
+			utility: token(styles, "--shadow-panel"),
+			light: token(light, "--upstream-shadow-panel"),
+			dark: token(dark, "--upstream-shadow-panel"),
+		}).toStrictEqual({
+			rule: ".shadow-panel { --tw-shadow: var(--upstream-shadow-panel); box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow); }",
+			utility: "var(--upstream-shadow-panel)",
+			light: "inset 0 0 0 0 rgb(11 11 11 / 0.1), 0 0 0 1px rgb(11 11 11 / 0.1), 0 8px 24px #0000001f, 0 2px 6px #00000014",
+			dark: "inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 0 0 0 rgb(255 255 255 / 0.1), 0 8px 24px #00000052, 0 2px 6px #0003",
+		});
+	});
+
 	it("floats the phone session-rail card on upstream's measured shadow-panel-md", () => {
 		const styles = readFileSync("src/styles/globals.css", "utf8");
 		const light = styles.slice(styles.indexOf(":root {"), styles.indexOf(".dark {"));

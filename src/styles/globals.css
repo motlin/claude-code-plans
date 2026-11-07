@@ -42,6 +42,18 @@
 /* Not inline, so `font-mono` and `font-sans` read their variables and Settings ▸
    Code font / Interface font can override them on <html>. */
 @theme {
+	/* Upstream cds density spacing (.cds-root, the compact base): gap-* and m*-* use the gap scale,
+	   p*-* and m*-pad-* the pad scale. The [data-density] blocks below restate or widen it. */
+	--cds-gap-xs: 0.375rem;
+	--cds-gap-sm: 0.5rem;
+	--cds-gap-md: 0.75rem;
+	--cds-gap-lg: 1.25rem;
+	--cds-gap-xl: 2rem;
+	--cds-pad-xs: 0.25rem;
+	--cds-pad-sm: 0.375rem;
+	--cds-pad-md: 0.5rem;
+	--cds-pad-lg: 0.75rem;
+	--cds-pad-xl: 1.25rem;
 	--animate-notify-tip-in: notify-tip-in 150ms ease-out;
 	--animate-approval-inline-enter: approval-inline-enter 160ms ease-out;
 	--animate-question-receipt-enter: approval-inline-enter 200ms ease-out;
@@ -269,6 +281,8 @@ html[data-interface-font="dyslexic"] {
 
 	/* Upstream claude.ai/code — side pane surface (shadow-panel-sm) */
 	--shadow-panel-sm: var(--pane-shadow);
+	/* Upstream cds shadow-panel (ring + --cds-shadow-popover): the Session-files jump popover. */
+	--shadow-panel: var(--upstream-shadow-panel);
 	/* Upstream cds shadow-panel-sm (ring + --cds-shadow-sm): the ⌘K Compose field. */
 	--shadow-panel-sm-cds: var(--upstream-shadow-panel-sm);
 	/* Upstream claude.ai/code — floating phone session rail (shadow-panel-md) */
@@ -357,6 +371,9 @@ html[data-interface-font="dyslexic"] {
 	--upstream-shadow-panel-sm:
 		inset 0 0 0 0 rgb(11 11 11 / 0.1), 0 0 0 1px rgb(11 11 11 / 0.1), 0 1px 2px rgb(11 11 11 / 0.06),
 		0 2px 8px rgb(11 11 11 / 0.08);
+	/* Upstream shadow-panel = the same rings plus --cds-shadow-popover. */
+	--upstream-shadow-panel:
+		inset 0 0 0 0 rgb(11 11 11 / 0.1), 0 0 0 1px rgb(11 11 11 / 0.1), 0 8px 24px #0000001f, 0 2px 6px #00000014;
 	--upstream-backdrop: rgb(0 0 0 / 0.4);
 	--panel-lg-shadow:
 		0 0 0 1px rgb(11 11 11 / 0.1), 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(11 11 11 / 0.08);
@@ -662,6 +679,8 @@ html[data-interface-font="dyslexic"] {
 	--upstream-shadow-panel-sm:
 		inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 0 0 0 rgb(255 255 255 / 0.1), 0 1px 2px rgb(11 11 11 / 0.06),
 		0 2px 8px rgb(0 0 0 / 0.24);
+	--upstream-shadow-panel:
+		inset 0 0 0 1px rgb(255 255 255 / 0.1), 0 0 0 0 rgb(255 255 255 / 0.1), 0 8px 24px #00000052, 0 2px 6px #0003;
 	--upstream-fill-grip: hsl(0 0% 100% / 0.2);
 	--upstream-fill-primary: #fff;
 	--upstream-fill-primary-hover: #e1e0d9;
@@ -2093,6 +2112,153 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	}
 }
 
+/* Upstream cds density spacing utilities (gap-xs, px-md, -me-pad-xs…) on the --cds-gap-* / --cds-pad-*
+   tokens. Not --spacing-*: that would also resize max-w-xs and send px-* to the gap scale. */
+@utility gap-* {
+	gap: --value(--cds-gap-*);
+}
+@utility gap-x-* {
+	column-gap: --value(--cds-gap-*);
+}
+@utility gap-y-* {
+	row-gap: --value(--cds-gap-*);
+}
+@utility p-* {
+	padding: --value(--cds-pad-*);
+}
+@utility px-* {
+	padding-inline: --value(--cds-pad-*);
+}
+@utility py-* {
+	padding-block: --value(--cds-pad-*);
+}
+@utility pt-* {
+	padding-top: --value(--cds-pad-*);
+}
+@utility pb-* {
+	padding-bottom: --value(--cds-pad-*);
+}
+@utility ps-* {
+	padding-inline-start: --value(--cds-pad-*);
+}
+@utility pe-* {
+	padding-inline-end: --value(--cds-pad-*);
+}
+@utility pl-* {
+	padding-left: --value(--cds-pad-*);
+}
+@utility pr-* {
+	padding-right: --value(--cds-pad-*);
+}
+@utility m-* {
+	margin: --value(--cds-gap-*);
+}
+@utility -m-* {
+	margin: calc(--value(--cds-gap-*) * -1);
+}
+@utility m-pad-* {
+	margin: --value(--cds-pad-*);
+}
+@utility -m-pad-* {
+	margin: calc(--value(--cds-pad-*) * -1);
+}
+@utility mx-* {
+	margin-inline: --value(--cds-gap-*);
+}
+@utility -mx-* {
+	margin-inline: calc(--value(--cds-gap-*) * -1);
+}
+@utility mx-pad-* {
+	margin-inline: --value(--cds-pad-*);
+}
+@utility -mx-pad-* {
+	margin-inline: calc(--value(--cds-pad-*) * -1);
+}
+@utility my-* {
+	margin-block: --value(--cds-gap-*);
+}
+@utility -my-* {
+	margin-block: calc(--value(--cds-gap-*) * -1);
+}
+@utility my-pad-* {
+	margin-block: --value(--cds-pad-*);
+}
+@utility -my-pad-* {
+	margin-block: calc(--value(--cds-pad-*) * -1);
+}
+@utility mt-* {
+	margin-top: --value(--cds-gap-*);
+}
+@utility -mt-* {
+	margin-top: calc(--value(--cds-gap-*) * -1);
+}
+@utility mt-pad-* {
+	margin-top: --value(--cds-pad-*);
+}
+@utility -mt-pad-* {
+	margin-top: calc(--value(--cds-pad-*) * -1);
+}
+@utility mb-* {
+	margin-bottom: --value(--cds-gap-*);
+}
+@utility -mb-* {
+	margin-bottom: calc(--value(--cds-gap-*) * -1);
+}
+@utility mb-pad-* {
+	margin-bottom: --value(--cds-pad-*);
+}
+@utility -mb-pad-* {
+	margin-bottom: calc(--value(--cds-pad-*) * -1);
+}
+@utility ms-* {
+	margin-inline-start: --value(--cds-gap-*);
+}
+@utility -ms-* {
+	margin-inline-start: calc(--value(--cds-gap-*) * -1);
+}
+@utility ms-pad-* {
+	margin-inline-start: --value(--cds-pad-*);
+}
+@utility -ms-pad-* {
+	margin-inline-start: calc(--value(--cds-pad-*) * -1);
+}
+@utility me-* {
+	margin-inline-end: --value(--cds-gap-*);
+}
+@utility -me-* {
+	margin-inline-end: calc(--value(--cds-gap-*) * -1);
+}
+@utility me-pad-* {
+	margin-inline-end: --value(--cds-pad-*);
+}
+@utility -me-pad-* {
+	margin-inline-end: calc(--value(--cds-pad-*) * -1);
+}
+@utility ml-* {
+	margin-left: --value(--cds-gap-*);
+}
+@utility -ml-* {
+	margin-left: calc(--value(--cds-gap-*) * -1);
+}
+@utility ml-pad-* {
+	margin-left: --value(--cds-pad-*);
+}
+@utility -ml-pad-* {
+	margin-left: calc(--value(--cds-pad-*) * -1);
+}
+@utility mr-* {
+	margin-right: --value(--cds-gap-*);
+}
+@utility -mr-* {
+	margin-right: calc(--value(--cds-gap-*) * -1);
+}
+@utility mr-pad-* {
+	margin-right: --value(--cds-pad-*);
+}
+@utility -mr-pad-* {
+	margin-right: calc(--value(--cds-pad-*) * -1);
+}
+
 /* Upstream claude.ai/code — compact type scale. :root carries the comfortable
    scale (upstream .cds-root[data-density=comfortable], the web shell); the Claude
    Code main column is marked compact, which is upstream's base .cds-root block.
@@ -2106,6 +2272,16 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	--upstream-leading-code: var(--epitaxy-code-leading, 19px);
 	--upstream-text-caption: 12px;
 	--upstream-leading-caption: 17px;
+	--cds-gap-xs: 0.5rem;
+	--cds-gap-sm: 0.75rem;
+	--cds-gap-md: 1rem;
+	--cds-gap-lg: 1.75rem;
+	--cds-gap-xl: 2.5rem;
+	--cds-pad-xs: 0.375rem;
+	--cds-pad-sm: 0.5rem;
+	--cds-pad-md: 0.75rem;
+	--cds-pad-lg: 1rem;
+	--cds-pad-xl: 1.5rem;
 }
 
 [data-density="compact"] {
@@ -2117,6 +2293,16 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	--upstream-leading-code: var(--epitaxy-code-leading, 17px);
 	--upstream-text-caption: 11px;
 	--upstream-leading-caption: 17px;
+	--cds-gap-xs: 0.375rem;
+	--cds-gap-sm: 0.5rem;
+	--cds-gap-md: 0.75rem;
+	--cds-gap-lg: 1.25rem;
+	--cds-gap-xl: 2rem;
+	--cds-pad-xs: 0.25rem;
+	--cds-pad-sm: 0.375rem;
+	--cds-pad-md: 0.5rem;
+	--cds-pad-lg: 0.75rem;
+	--cds-pad-xl: 1.25rem;
 }
 
 /* Settings ▸ Claude Code ▸ Transcript text size. The settings provider sets the

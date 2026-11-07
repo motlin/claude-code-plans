@@ -1,0 +1,160 @@
+// @vitest-environment jsdom
+
+import {readFileSync} from "node:fs";
+import {createRequire} from "node:module";
+import {dirname, join, resolve} from "node:path";
+import {__unstable__loadDesignSystem} from "tailwindcss";
+import {describe, expect, it} from "vite-plus/test";
+
+const require = createRequire(import.meta.url);
+const styles = readFileSync("src/styles/globals.css", "utf8");
+
+async function compileAll(candidates: readonly string[]): Promise<Record<string, string | null>> {
+	const tailwindRoot = dirname(require.resolve("tailwindcss/package.json"));
+	const css = styles.replaceAll(/^@import (?!"tailwindcss").*$/gm, "");
+	const designSystem = await __unstable__loadDesignSystem(css, {
+		base: process.cwd(),
+		loadStylesheet: async (id: string, base: string) => {
+			const path = id === "tailwindcss" ? join(tailwindRoot, "index.css") : resolve(base, id);
+			return Promise.resolve({path, base: dirname(path), content: readFileSync(path, "utf8")});
+		},
+	});
+	const rules = designSystem.candidatesToCss([...candidates]);
+	return Object.fromEntries(
+		candidates.map((candidate, index) => [candidate, rules[index]?.replaceAll(/\s+/g, " ").trim() ?? null]),
+	);
+}
+
+/** The declarations of the first top-level block whose selector is exactly `selector`. */
+function block(selector: string): Record<string, string> {
+	const start = styles.indexOf(`\n${selector} {\n`);
+	if (start === -1) throw new Error(`no ${selector} block`);
+	const body = styles.slice(start + selector.length + 4, styles.indexOf("\n}", start));
+	return Object.fromEntries(
+		[...body.matchAll(/^\s*(--cds-(?:gap|pad)-[a-z]+):\s*([^;]+);/gm)].map(([, name, value]) => [name, value]),
+	);
+}
+
+const BASE_SCALE = {
+	"--cds-gap-xs": "0.375rem",
+	"--cds-gap-sm": "0.5rem",
+	"--cds-gap-md": "0.75rem",
+	"--cds-gap-lg": "1.25rem",
+	"--cds-gap-xl": "2rem",
+	"--cds-pad-xs": "0.25rem",
+	"--cds-pad-sm": "0.375rem",
+	"--cds-pad-md": "0.5rem",
+	"--cds-pad-lg": "0.75rem",
+	"--cds-pad-xl": "1.25rem",
+};
+
+describe("cds density spacing utilities", () => {
+	it("compiles upstream's gap/pad names onto the cds tokens and leaves the stock spacing names alone", async () => {
+		expect(
+			await compileAll([
+				"gap-xs",
+				"gap-x-md",
+				"gap-y-sm",
+				"px-md",
+				"py-md",
+				"pb-md",
+				"pt-sm",
+				"pe-sm",
+				"ps-xl",
+				"p-lg",
+				"ms-md",
+				"-ms-md",
+				"-me-pad-xs",
+				"-mx-pad-md",
+				"mt-pad-sm",
+				"max-w-xs",
+				"max-w-md",
+				"gap-2",
+				"px-3",
+				"-mt-2",
+				"mx-auto",
+				"gap-g5",
+				"pt-p4",
+			]),
+		).toStrictEqual({
+			"gap-xs": ".gap-xs { gap: var(--cds-gap-xs); }",
+			"gap-x-md": ".gap-x-md { column-gap: var(--cds-gap-md); }",
+			"gap-y-sm": ".gap-y-sm { row-gap: var(--cds-gap-sm); }",
+			"px-md": ".px-md { padding-inline: var(--cds-pad-md); }",
+			"py-md": ".py-md { padding-block: var(--cds-pad-md); }",
+			"pb-md": ".pb-md { padding-bottom: var(--cds-pad-md); }",
+			"pt-sm": ".pt-sm { padding-top: var(--cds-pad-sm); }",
+			"pe-sm": ".pe-sm { padding-inline-end: var(--cds-pad-sm); }",
+			"ps-xl": ".ps-xl { padding-inline-start: var(--cds-pad-xl); }",
+			"p-lg": ".p-lg { padding: var(--cds-pad-lg); }",
+			"ms-md": ".ms-md { margin-inline-start: var(--cds-gap-md); }",
+			"-ms-md": ".-ms-md { margin-inline-start: calc(var(--cds-gap-md) * -1); }",
+			"-me-pad-xs": ".-me-pad-xs { margin-inline-end: calc(var(--cds-pad-xs) * -1); }",
+			"-mx-pad-md": ".-mx-pad-md { margin-inline: calc(var(--cds-pad-md) * -1); }",
+			"mt-pad-sm": ".mt-pad-sm { margin-top: var(--cds-pad-sm); }",
+			"max-w-xs": ".max-w-xs { max-width: var(--container-xs); }",
+			"max-w-md": ".max-w-md { max-width: var(--container-md); }",
+			"gap-2": ".gap-2 { gap: calc(var(--spacing) * 2); }",
+			"px-3": ".px-3 { padding-inline: calc(var(--spacing) * 3); }",
+			"-mt-2": ".-mt-2 { margin-top: calc(var(--spacing) * -2); }",
+			"mx-auto": ".mx-auto { margin-inline: auto; }",
+			"gap-g5": ".gap-g5 { gap: 6px; }",
+			"pt-p4": ".pt-p4 { padding-top: 5px; }",
+		});
+	});
+
+	it("declares upstream's base scale in @theme, restates it for compact scopes and widens it for comfortable ones", () => {
+		const theme = styles.slice(styles.indexOf("\n@theme {\n"));
+		const themeScale = Object.fromEntries(
+			[...theme.slice(0, theme.indexOf("\n}")).matchAll(/^\s*(--cds-(?:gap|pad)-[a-z]+):\s*([^;]+);/gm)].map(
+				([, name, value]) => [name, value],
+			),
+		);
+
+		expect({
+			theme: themeScale,
+			compact: block('[data-density="compact"]'),
+			comfortable: block('[data-density="comfortable"]'),
+		}).toStrictEqual({
+			theme: BASE_SCALE,
+			compact: BASE_SCALE,
+			comfortable: {
+				"--cds-gap-xs": "0.5rem",
+				"--cds-gap-sm": "0.75rem",
+				"--cds-gap-md": "1rem",
+				"--cds-gap-lg": "1.75rem",
+				"--cds-gap-xl": "2.5rem",
+				"--cds-pad-xs": "0.375rem",
+				"--cds-pad-sm": "0.5rem",
+				"--cds-pad-md": "0.75rem",
+				"--cds-pad-lg": "1rem",
+				"--cds-pad-xl": "1.5rem",
+			},
+		});
+	});
+
+	it("puts the spacing tokens in the same density blocks as the type tokens, so they follow the nearest scope", () => {
+		const owners = (token: string) =>
+			[...styles.matchAll(new RegExp(`^(\\S[^{\\n]*) \\{\\n(?:[^}]*\\n)?\\s*${token}:`, "gm"))]
+				.map(([, selector]) => selector ?? "")
+				.filter((selector) => selector.startsWith("[data-density"));
+		document.body.innerHTML =
+			'<div data-density="compact"><div data-density="comfortable"><div data-density="compact"><p id="probe"></p></div></div></div>';
+		const probe = document.querySelector("#probe");
+		const nearest = probe
+			?.closest('[data-density="compact"], [data-density="comfortable"]')
+			?.getAttribute("data-density");
+
+		expect({
+			type: owners("--upstream-text-body"),
+			gap: owners("--cds-gap-md"),
+			pad: owners("--cds-pad-md"),
+			nearest,
+		}).toStrictEqual({
+			type: ['[data-density="comfortable"]', '[data-density="compact"]'],
+			gap: ['[data-density="comfortable"]', '[data-density="compact"]'],
+			pad: ['[data-density="comfortable"]', '[data-density="compact"]'],
+			nearest: "compact",
+		});
+	});
+});
