@@ -234,6 +234,7 @@ describe("useRewindRequest + RewindConfirm", () => {
 		const closed = {
 			labelFor: label.getAttribute("for") === trigger?.id,
 			labelClass: label.className,
+			wrapperClass: label.parentElement?.className ?? null,
 			fieldClass: field?.className ?? null,
 			triggerClass: trigger?.className ?? null,
 			caret: trigger?.querySelector("svg") !== null,
@@ -252,8 +253,9 @@ describe("useRewindRequest + RewindConfirm", () => {
 			closed: {
 				labelFor: true,
 				labelClass: "text-body text-primary font-medium leading-none",
+				wrapperClass: "flex w-full flex-col gap-xs font-sans",
 				fieldClass:
-					"group/cbx inline-flex items-center gap-1.5 h-8 rounded-r6 font-sans text-body font-control-regular text-primary outline-none transition data-[disabled]:opacity-50 data-[disabled]:pointer-events-none bg-fill-field shadow-field-ring [&:hover:not(:has(:focus-visible)):not([data-disabled])]:shadow-field-hover ps-0 has-[:focus-visible]:shadow-focus pe-2 w-full min-w-0",
+					"group/cbx inline-flex items-center gap-1.5 h-8 rounded-r6 font-sans text-body font-control-regular text-primary outline-none transition data-[disabled]:opacity-50 data-[disabled]:pointer-events-none bg-fill-field shadow-field-ring [&:hover:not(:has(:focus-visible)):not([data-disabled])]:shadow-field-hover ps-0 has-[:focus-visible]:shadow-focus pe-sm w-full min-w-0",
 				triggerClass:
 					"flex min-w-0 flex-1 items-center gap-1.5 self-stretch ps-2 text-start border-0 bg-transparent p-0 outline-none focus-visible:outline-hidden",
 				caret: true,

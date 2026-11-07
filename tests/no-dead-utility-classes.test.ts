@@ -1,28 +1,6 @@
 import {globSync, readFileSync} from "node:fs";
-import {createRequire} from "node:module";
-import {dirname, join, resolve} from "node:path";
-import {__unstable__loadDesignSystem} from "tailwindcss";
 import {describe, expect, it} from "vite-plus/test";
-
-const require = createRequire(import.meta.url);
-
-async function loadDesignSystem() {
-	const tailwindRoot = dirname(require.resolve("tailwindcss/package.json"));
-	const animateCss = resolve("node_modules/tw-animate-css/dist/tw-animate.css");
-	const css = readFileSync("src/styles/globals.css", "utf8").replaceAll(/^@import "@fontsource\/.*$/gm, "");
-	return __unstable__loadDesignSystem(css, {
-		base: resolve("src/styles"),
-		loadStylesheet: async (id: string, base: string) => {
-			const path =
-				id === "tailwindcss"
-					? join(tailwindRoot, "index.css")
-					: id === "tw-animate-css"
-						? animateCss
-						: resolve(base, id);
-			return Promise.resolve({path, base: dirname(path), content: readFileSync(path, "utf8")});
-		},
-	});
-}
+import {loadDesignSystem} from "./helpers/tailwind-design-system";
 
 const stripComments = (code: string) =>
 	code.replaceAll(/\/\*[\s\S]*?\*\//g, "").replaceAll(/(^|[^:"'`\\])\/\/.*$/gm, "$1");
@@ -97,9 +75,7 @@ const ALLOWLIST: Record<string, string> = {
 };
 
 /** Known-dead tokens waiting on a queued task; each must stay dead, so the entry goes once the fix lands. */
-const PENDING: Record<string, string> = {
-	"leading-code": "no-dead-utility-classes-guard T3: drop the redundant class from read-renderer",
-};
+const PENDING: Record<string, string> = {};
 
 describe("no dead utility classes", () => {
 	it("compiles every static className token and *_CLASS constant, or knows why it doesn't", async () => {

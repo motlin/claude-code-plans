@@ -40,7 +40,7 @@ describe("Read body follows the active theme", () => {
 			gutterColor: gutterRow?.style.color,
 			contentColor: contentRow?.style.color,
 		}).toStrictEqual({
-			preClassName: "m-0 max-h-[400px] overflow-y-auto font-mono text-code leading-code text-primary",
+			preClassName: "m-0 max-h-[400px] overflow-y-auto font-mono text-code text-primary",
 			preBackgroundColor: "",
 			preColor: "",
 			gutterClassName: "min-h-[var(--upstream-leading-code)] select-none text-right text-secondary",

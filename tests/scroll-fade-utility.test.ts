@@ -1,22 +1,9 @@
 import {readFileSync} from "node:fs";
-import {createRequire} from "node:module";
-import {dirname, join, resolve} from "node:path";
-import {__unstable__loadDesignSystem} from "tailwindcss";
 import {describe, expect, it} from "vite-plus/test";
-
-const require = createRequire(import.meta.url);
+import {loadDesignSystem} from "./helpers/tailwind-design-system";
 
 async function compile(candidate: string): Promise<string | null> {
-	const tailwindRoot = dirname(require.resolve("tailwindcss/package.json"));
-	const css = readFileSync("src/styles/globals.css", "utf8").replaceAll(/^@import (?!"tailwindcss").*$/gm, "");
-	const designSystem = await __unstable__loadDesignSystem(css, {
-		base: process.cwd(),
-		loadStylesheet: async (id: string, base: string) => {
-			const path = id === "tailwindcss" ? join(tailwindRoot, "index.css") : resolve(base, id);
-			return Promise.resolve({path, base: dirname(path), content: readFileSync(path, "utf8")});
-		},
-	});
-	const [rule] = designSystem.candidatesToCss([candidate]);
+	const [rule] = (await loadDesignSystem()).candidatesToCss([candidate]);
 	return rule ?? null;
 }
 

@@ -2,7 +2,6 @@ import {Gauge, TriangleAlert, X} from "lucide-react";
 import type {ReactNode} from "react";
 
 import {assertNever} from "../lib/assert-never";
-import {type Density, useScopeDensity} from "./ui/density-context";
 
 type ErrorCardIcon = "warning" | "gauge";
 
@@ -33,14 +32,12 @@ interface ErrorCardShellProps {
 const ICON_CLASS = "size-4 shrink-0 text-danger-000";
 
 /*
- * Upstream's density tokens on the card: header `gap-md px-lg py-md`, Dismiss slot
- * `-me-pad-xs`, hint row `gap-md px-lg pt-lg pb-md last:pb-lg`. Under fizzy-lake `panels`
- * every scope is comfortable, so these resolve to the comfortable values.
+ * Upstream's cds density spacing, verbatim: the CSS density scope picks the values (under
+ * fizzy-lake `panels` every scope is comfortable).
  */
-const SHELL_DENSITY: Record<Density, {gap: string; header: string; dismiss: string; hint: string}> = {
-	compact: {gap: "gap-3", header: "px-3 py-2", dismiss: "-me-1", hint: "gap-3 px-3 pt-3 pb-2 last:pb-3"},
-	comfortable: {gap: "gap-4", header: "px-4 py-3", dismiss: "-me-1.5", hint: "gap-4 px-4 pt-4 pb-3 last:pb-4"},
-};
+const HEADER_SPACING = "gap-md px-lg py-md";
+const DISMISS_SPACING = "-me-pad-xs";
+const HINT_SPACING = "gap-md px-lg pt-lg pb-md last:pb-lg";
 
 /** Upstream's ghost icon-only X (cds `tw` ghost, iconOnly): 24px, muted, lifting to primary on hover. */
 export const GHOST_DISMISS_CLASS =
@@ -78,7 +75,6 @@ export function ErrorCardShell({
 	busy = false,
 	children,
 }: ErrorCardShellProps) {
-	const sizing = SHELL_DENSITY[useScopeDensity()];
 	return (
 		<div
 			{...data}
@@ -90,13 +86,13 @@ export function ErrorCardShell({
 					{`${headline} ${hint}`}
 				</span>
 			)}
-			<div className={`flex items-start ${sizing.gap} bg-alpha-1 ${sizing.header} text-body contain-inline-size`}>
+			<div className={`flex items-start ${HEADER_SPACING} bg-alpha-1 text-body contain-inline-size`}>
 				<span className="flex h-[1lh] shrink-0 items-center">
 					<CardIcon icon={icon} />
 				</span>
 				<span className="min-w-0 grow text-primary break-words">{headline}</span>
 				{onDismiss !== undefined && (
-					<span className={`${sizing.dismiss} flex h-[1lh] shrink-0 items-center`}>
+					<span className={`${DISMISS_SPACING} flex h-[1lh] shrink-0 items-center`}>
 						<button
 							type="button"
 							aria-label="Dismiss"
@@ -111,7 +107,7 @@ export function ErrorCardShell({
 					</span>
 				)}
 			</div>
-			<div className={`flex flex-col ${sizing.hint} empty:hidden contain-inline-size`}>
+			<div className={`flex flex-col ${HINT_SPACING} empty:hidden contain-inline-size`}>
 				<span className="text-body text-secondary whitespace-pre-line break-words">
 					{hint}
 					{learnMoreUrl !== undefined && (

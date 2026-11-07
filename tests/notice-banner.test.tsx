@@ -24,26 +24,31 @@ function metrics(wrap: (banner: ReactNode) => ReactNode) {
 		root: banner?.className,
 		body: banner?.children[1]?.className,
 		dismissSlot: banner?.lastElementChild?.className,
+		scope: banner?.closest("[data-density]")?.getAttribute("data-density") ?? null,
 	};
 }
 
 const SURFACE = "rounded-card bg-page shadow-card-ring text-primary @container";
+const BODY = "flex min-w-0 flex-wrap items-start gap-y-sm gap-x-md flex-1";
+const PANELS = {
+	root: `flex items-start gap-xs px-lg !py-lg font-sans text-body font-normal break-words ${SURFACE}`,
+	body: BODY,
+	dismissSlot: "-me-[calc(var(--cds-pad-md)-6px)] flex h-[1lh] shrink-0 items-center",
+};
+const BASE = {
+	root: `flex items-start gap-xs px-lg py-md font-sans text-body font-normal break-words ${SURFACE}`,
+	body: BODY,
+	dismissSlot: "-me-[calc(var(--cds-pad-md)-2px)] flex h-[1lh] shrink-0 items-center",
+};
 
 describe("NoticeBanner density", () => {
+	// The classes are upstream's verbatim cds spacing; the nearest data-density scope picks their values.
 	it("takes upstream's panels Banner under comfortable density: !py-lg and the pad-md-6px Dismiss margin", () => {
-		expect(metrics((banner): ReactNode => banner)).toStrictEqual({
-			root: `flex items-start gap-2 py-4 font-sans text-body font-normal break-words px-4 ${SURFACE}`,
-			body: "flex min-w-0 flex-wrap items-start gap-y-3 gap-x-4 flex-1",
-			dismissSlot: "-me-1.5 flex h-[1lh] shrink-0 items-center",
-		});
+		expect(metrics((banner): ReactNode => banner)).toStrictEqual({...PANELS, scope: null});
 	});
 
 	it("keeps the pre-panels compact Banner with panels off", () => {
-		expect(metrics((banner) => <CompactScope>{banner}</CompactScope>)).toStrictEqual({
-			root: `flex items-start gap-1.5 py-2 font-sans text-body font-normal break-words px-3 ${SURFACE}`,
-			body: "flex min-w-0 flex-wrap items-start gap-y-2 gap-x-3 flex-1",
-			dismissSlot: "-me-1.5 flex h-[1lh] shrink-0 items-center",
-		});
+		expect(metrics((banner) => <CompactScope>{banner}</CompactScope>)).toStrictEqual({...BASE, scope: "compact"});
 	});
 
 	it("keeps py-md and the pad-md-2px Dismiss margin in a comfortable scope with panels off", () => {
@@ -53,11 +58,7 @@ describe("NoticeBanner density", () => {
 					<DensityScope density="comfortable">{banner}</DensityScope>
 				</PanelsOff>
 			)),
-		).toStrictEqual({
-			root: `flex items-start gap-2 py-3 font-sans text-body font-normal break-words px-4 ${SURFACE}`,
-			body: "flex min-w-0 flex-wrap items-start gap-y-3 gap-x-4 flex-1",
-			dismissSlot: "-me-2.5 flex h-[1lh] shrink-0 items-center",
-		});
+		).toStrictEqual({...BASE, scope: "comfortable"});
 	});
 
 	it("takes panels' py-lg at compact tokens when an override forces compact", () => {
@@ -67,10 +68,6 @@ describe("NoticeBanner density", () => {
 					<DensityScope>{banner}</DensityScope>
 				</DensityOverride>
 			)),
-		).toStrictEqual({
-			root: `flex items-start gap-1.5 py-3 font-sans text-body font-normal break-words px-3 ${SURFACE}`,
-			body: "flex min-w-0 flex-wrap items-start gap-y-2 gap-x-3 flex-1",
-			dismissSlot: "-me-0.5 flex h-[1lh] shrink-0 items-center",
-		});
+		).toStrictEqual({...PANELS, scope: "compact"});
 	});
 });

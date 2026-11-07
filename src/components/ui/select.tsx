@@ -5,16 +5,17 @@ import {useId} from "react";
 /*
  * Upstream's cds Select: its Combobox (`u5`) in `mode:"select"` with `searchable:false`, a labelled
  * outline trigger with a CaretDown, and a popover listbox whose selected row carries a bold check.
- * Local mapping: h-control is h-8, the comfortable radius is rounded-r6, pad-sm/md are 2/3,
+ * Local mapping: h-control is h-8, the comfortable radius is rounded-r6, the field gap and the
+ * control's end pad use the cds density utilities, the trigger's pad-sm is 2,
  * opacity-disabled is opacity-50 and duration-fast is Tailwind's default transition.
  */
 
 /** Upstream's `gap-xs flex-col font-sans` field around the label and trigger. */
-const FIELD_CLASS = "flex w-full flex-col gap-1.5 font-sans";
+const FIELD_CLASS = "flex w-full flex-col gap-xs font-sans";
 const LABEL_CLASS = "text-body text-primary font-medium leading-none";
 /** Upstream's `y$ Gv.outline tt.select pe-sm w-full min-w-0`. */
 const CONTROL_CLASS =
-	"group/cbx inline-flex items-center gap-1.5 h-8 rounded-r6 font-sans text-body font-control-regular text-primary outline-none transition data-[disabled]:opacity-50 data-[disabled]:pointer-events-none bg-fill-field shadow-field-ring [&:hover:not(:has(:focus-visible)):not([data-disabled])]:shadow-field-hover ps-0 has-[:focus-visible]:shadow-focus pe-2 w-full min-w-0";
+	"group/cbx inline-flex items-center gap-1.5 h-8 rounded-r6 font-sans text-body font-control-regular text-primary outline-none transition data-[disabled]:opacity-50 data-[disabled]:pointer-events-none bg-fill-field shadow-field-ring [&:hover:not(:has(:focus-visible)):not([data-disabled])]:shadow-field-hover ps-0 has-[:focus-visible]:shadow-focus pe-sm w-full min-w-0";
 /** Upstream's `JR`: the trigger button fills the control. */
 const TRIGGER_CLASS =
 	"flex min-w-0 flex-1 items-center gap-1.5 self-stretch ps-2 text-start border-0 bg-transparent p-0 outline-none focus-visible:outline-hidden";

@@ -1,29 +1,10 @@
 // @vitest-environment jsdom
 
 import {readFileSync} from "node:fs";
-import {createRequire} from "node:module";
-import {dirname, join, resolve} from "node:path";
-import {__unstable__loadDesignSystem} from "tailwindcss";
 import {describe, expect, it} from "vite-plus/test";
+import {compileAll} from "./helpers/tailwind-design-system";
 
-const require = createRequire(import.meta.url);
 const styles = readFileSync("src/styles/globals.css", "utf8");
-
-async function compileAll(candidates: readonly string[]): Promise<Record<string, string | null>> {
-	const tailwindRoot = dirname(require.resolve("tailwindcss/package.json"));
-	const css = styles.replaceAll(/^@import (?!"tailwindcss").*$/gm, "");
-	const designSystem = await __unstable__loadDesignSystem(css, {
-		base: process.cwd(),
-		loadStylesheet: async (id: string, base: string) => {
-			const path = id === "tailwindcss" ? join(tailwindRoot, "index.css") : resolve(base, id);
-			return Promise.resolve({path, base: dirname(path), content: readFileSync(path, "utf8")});
-		},
-	});
-	const rules = designSystem.candidatesToCss([...candidates]);
-	return Object.fromEntries(
-		candidates.map((candidate, index) => [candidate, rules[index]?.replaceAll(/\s+/g, " ").trim() ?? null]),
-	);
-}
 
 /** The declarations of the first top-level block whose selector is exactly `selector`. */
 function block(selector: string): Record<string, string> {
@@ -155,6 +136,64 @@ describe("cds density spacing utilities", () => {
 			gap: ['[data-density="comfortable"]', '[data-density="compact"]'],
 			pad: ['[data-density="comfortable"]', '[data-density="compact"]'],
 			nearest: "compact",
+		});
+	});
+
+	it("remaps the pad scale inside data-size xs/sm/lg subtrees onto upstream's per-size pads, per density", () => {
+		const sizePads = (selector: string) => {
+			const start = styles.indexOf(`\n${selector} {\n`);
+			if (start === -1) throw new Error(`no ${selector} block`);
+			const body = styles.slice(start, styles.indexOf("\n}", start));
+			return Object.fromEntries(
+				[...body.matchAll(/^\s*(--cds-pad-[a-z]+--[a-z]+):\s*([^;]+);/gm)].map(([, name, value]) => [
+					name,
+					value,
+				]),
+			);
+		};
+		const remap = (size: string) => {
+			const selector = `[data-size="${size}"]`;
+			const start = styles.indexOf(`\n${selector} {\n`);
+			if (start === -1) return null;
+			const body = styles.slice(start, styles.indexOf("\n}", start));
+			return Object.fromEntries(
+				[...body.matchAll(/^\s*(--cds-pad-[a-z]+):\s*([^;]+);/gm)].map(([, name, value]) => [name, value]),
+			);
+		};
+		const steps = ["xs", "sm", "md", "lg", "xl"];
+		const sizeScale = (values: Record<string, readonly string[]>) =>
+			Object.fromEntries(
+				steps.flatMap((step, index) =>
+					["xs", "sm", "lg"].map((size) => [`--cds-pad-${step}--${size}`, values[size]?.[index] ?? ""]),
+				),
+			);
+		const compactScale = sizeScale({
+			xs: ["0.125rem", "0.25rem", "0.375rem", "0.625rem", "0.875rem"],
+			sm: ["0.125rem", "0.25rem", "0.375rem", "0.625rem", "0.875rem"],
+			lg: ["0.375rem", "0.5rem", "0.625rem", "0.875rem", "1.375rem"],
+		});
+
+		expect({
+			root: sizePads(":root"),
+			compact: sizePads('[data-density="compact"]'),
+			comfortable: sizePads('[data-density="comfortable"]'),
+			xs: remap("xs"),
+			sm: remap("sm"),
+			lg: remap("lg"),
+		}).toStrictEqual({
+			root: compactScale,
+			compact: compactScale,
+			comfortable: sizeScale({
+				xs: ["0.25rem", "0.375rem", "0.5rem", "0.75rem", "1.25rem"],
+				sm: ["0.375rem", "0.5rem", "0.625rem", "0.875rem", "1.375rem"],
+				lg: ["0.5rem", "0.75rem", "1rem", "1.25rem", "1.75rem"],
+			}),
+			...Object.fromEntries(
+				["xs", "sm", "lg"].map((size) => [
+					size,
+					Object.fromEntries(steps.map((step) => [`--cds-pad-${step}`, `var(--cds-pad-${step}--${size})`])),
+				]),
+			),
 		});
 	});
 });

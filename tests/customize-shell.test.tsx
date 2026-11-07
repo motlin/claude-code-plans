@@ -1439,7 +1439,7 @@ describe("unified search hit rows", () => {
 			row: ROW,
 			leading: ["gap-4"],
 			tile: TILE,
-			header: "flex min-h-7 items-center gap-2",
+			header: "flex min-h-7 items-center gap-xs",
 			h3: "m-0 truncate text-[15px]/[20px] font-[580] text-primary",
 			trailing: ["gap-7"],
 			meta: ["text-footnote", "text-muted-as-secondary"],
@@ -1750,7 +1750,7 @@ describe("returning to the unified search from an opened hit", () => {
 describe("SectionHeader density", () => {
 	afterEach(cleanup);
 
-	it("follows its density scope: gap-xs is 8px comfortable (the dialog) and stays 4px in the compact page column", () => {
+	it("leaves gap-xs to its density scope (8px comfortable, 6px compact) unless forced comfortable", () => {
 		const header = () => screen.getByRole("heading", {name: "Yours"}).parentElement?.className;
 		render(<SectionHeader id="h" title="Yours" count={1} />);
 		const comfortable = header();
@@ -1770,8 +1770,8 @@ describe("SectionHeader density", () => {
 		const forced = header();
 
 		expect({comfortable, compact, forced}).toStrictEqual({
-			comfortable: "flex min-h-7 items-center gap-2",
-			compact: "flex min-h-7 items-center gap-1",
+			comfortable: "flex min-h-7 items-center gap-xs",
+			compact: "flex min-h-7 items-center gap-xs",
 			forced: "flex min-h-7 items-center gap-2",
 		});
 	});

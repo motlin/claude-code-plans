@@ -143,14 +143,14 @@ describe("SendRejectedCard on the shared error card shell", () => {
 	it("draws the shell's comfortable header and hint row under fizzy-lake panels", () => {
 		expect(shell((card): ReactNode => card)).toStrictEqual({
 			alert: "alert",
-			header: "flex items-start gap-4 bg-alpha-1 px-4 py-3 text-body contain-inline-size",
+			header: "flex items-start gap-md px-lg py-md bg-alpha-1 text-body contain-inline-size",
 			slots: [
 				"flex h-[1lh] shrink-0 items-center",
 				"min-w-0 grow text-primary break-words",
-				"-me-1.5 flex h-[1lh] shrink-0 items-center",
+				"-me-pad-xs flex h-[1lh] shrink-0 items-center",
 			],
 			dismiss: "Dismiss",
-			hintRow: "flex flex-col gap-4 px-4 pt-4 pb-3 last:pb-4 empty:hidden contain-inline-size",
+			hintRow: "flex flex-col gap-md px-lg pt-lg pb-md last:pb-lg empty:hidden contain-inline-size",
 			hint: "text-body text-secondary whitespace-pre-line break-words",
 		});
 	});
@@ -158,14 +158,14 @@ describe("SendRejectedCard on the shared error card shell", () => {
 	it("draws the shell's pre-panels compact header and hint row with panels off", () => {
 		expect(shell((card) => <CompactScope>{card}</CompactScope>)).toStrictEqual({
 			alert: "alert",
-			header: "flex items-start gap-3 bg-alpha-1 px-3 py-2 text-body contain-inline-size",
+			header: "flex items-start gap-md px-lg py-md bg-alpha-1 text-body contain-inline-size",
 			slots: [
 				"flex h-[1lh] shrink-0 items-center",
 				"min-w-0 grow text-primary break-words",
-				"-me-1 flex h-[1lh] shrink-0 items-center",
+				"-me-pad-xs flex h-[1lh] shrink-0 items-center",
 			],
 			dismiss: "Dismiss",
-			hintRow: "flex flex-col gap-3 px-3 pt-3 pb-2 last:pb-3 empty:hidden contain-inline-size",
+			hintRow: "flex flex-col gap-md px-lg pt-lg pb-md last:pb-lg empty:hidden contain-inline-size",
 			hint: "text-body text-secondary whitespace-pre-line break-words",
 		});
 	});

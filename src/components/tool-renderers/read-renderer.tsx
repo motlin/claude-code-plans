@@ -83,7 +83,7 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 			{result && (
 				<pre
 					{...TOOL_OUTPUT_REGION}
-					className="m-0 max-h-[400px] overflow-y-auto font-mono text-code leading-code text-primary"
+					className="m-0 max-h-[400px] overflow-y-auto font-mono text-code text-primary"
 				>
 					<code className="grid py-1" style={{gridTemplateColumns: "auto minmax(0, 1fr)"}}>
 						{parsedLines.map((line, index) => (

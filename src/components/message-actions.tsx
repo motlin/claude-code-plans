@@ -424,8 +424,8 @@ function ActionBar({
 export function AssistantMessageActions({message, text, timestamp, details, hovered, getHtml}: MessageActionsProps) {
 	return (
 		<ActionBar
-			// Upstream sets the toolbar 6px (its column's gap-xs) under the last prose block, its left edge 2px left of the text.
-			className={`${BAR_CLASS} mt-[6px] -ms-[2px]`}
+			// Upstream sets the toolbar its column's gap-xs (6px compact, 8px comfortable) under the last prose block, its left edge 2px left of the text.
+			className={`${BAR_CLASS} mt-xs -ms-[2px]`}
 			label={`Show message actions for ${messageHeading("assistant", text)}`}
 			hovered={hovered}
 			testId="message-actions"

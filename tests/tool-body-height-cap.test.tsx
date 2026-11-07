@@ -125,7 +125,7 @@ describe("expanded tool bodies cap at 400px", () => {
 			renderedLines: container.querySelectorAll("[data-content]").length,
 			expandButtons: container.querySelectorAll("button").length,
 		}).toStrictEqual({
-			classNames: [`m-0 ${CAP} font-mono text-code leading-code text-primary`],
+			classNames: [`m-0 ${CAP} font-mono text-code text-primary`],
 			renderedLines: 60,
 			expandButtons: 1,
 		});

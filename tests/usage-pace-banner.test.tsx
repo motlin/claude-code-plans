@@ -328,7 +328,7 @@ describe("usage limit reached", () => {
 });
 
 const BANNER_CLASS =
-	"flex items-start gap-2 py-4 font-sans text-body font-normal break-words px-4 rounded-card bg-page shadow-card-ring text-primary @container";
+	"flex items-start gap-xs px-lg !py-lg font-sans text-body font-normal break-words rounded-card bg-page shadow-card-ring text-primary @container";
 
 describe("usage band as a notice card", () => {
 	it("draws the reached band through upstream's cds Banner: neutral icon and headline, sr-only absolute reset, no Dismiss", () => {
@@ -378,7 +378,7 @@ describe("usage band as a notice card", () => {
 				childCount: 2,
 				iconSlot: "flex min-h-[1lh] shrink-0 items-center text-secondary",
 				icon: "lucide lucide-gauge size-4",
-				body: "flex min-w-0 flex-wrap items-start gap-y-3 gap-x-4 flex-1",
+				body: "flex min-w-0 flex-wrap items-start gap-y-sm gap-x-md flex-1",
 				content: "max-w-full min-w-0 flex-auto",
 				words: {tag: "SPAN", atomic: "true", className: "flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75"},
 				headline: {className: "min-w-0", text: "Weekly limit reached"},
@@ -416,7 +416,7 @@ describe("usage band as a notice card", () => {
 		}).toStrictEqual({
 			text: "On pace to hit your weekly limit early29% used · Resets Tue, Oct 6, 4:00 AM",
 			lastChild: true,
-			slot: "-me-1.5 flex h-[1lh] shrink-0 items-center",
+			slot: "-me-[calc(var(--cds-pad-md)-6px)] flex h-[1lh] shrink-0 items-center",
 			dismiss:
 				"inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 p-0 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
 			glyph: "lucide lucide-x size-4",

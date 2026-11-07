@@ -123,10 +123,10 @@ describe("ApiErrorCard", () => {
 		}).toStrictEqual({
 			root: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-card select-text",
 			childCount: 3,
-			header: "flex items-start gap-4 bg-alpha-1 px-4 py-3 text-body contain-inline-size",
+			header: "flex items-start gap-md px-lg py-md bg-alpha-1 text-body contain-inline-size",
 			icon: "lucide lucide-triangle-alert size-4 shrink-0 text-danger-000",
 			headline: "Service is busy",
-			hintRow: "flex flex-col gap-4 px-4 pt-4 pb-3 last:pb-4 empty:hidden contain-inline-size",
+			hintRow: "flex flex-col gap-md px-lg pt-lg pb-md last:pb-lg empty:hidden contain-inline-size",
 			hint: "This is usually temporary.",
 			detailsRow: "flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2 px-3 pb-3 pt-2",
 			trigger: {
@@ -633,8 +633,8 @@ describe("ApiErrorCard recovery actions", () => {
 			},
 			calls: [[]],
 			after: [
-				"flex items-start gap-4 bg-alpha-1 px-4 py-3 text-body contain-inline-size",
-				"flex flex-col gap-4 px-4 pt-4 pb-3 last:pb-4 empty:hidden contain-inline-size",
+				"flex items-start gap-md px-lg py-md bg-alpha-1 text-body contain-inline-size",
+				"flex flex-col gap-md px-lg pt-lg pb-md last:pb-lg empty:hidden contain-inline-size",
 			],
 		});
 	});

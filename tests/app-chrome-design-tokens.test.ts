@@ -1,10 +1,7 @@
 import {globSync, readFileSync} from "node:fs";
-import {createRequire} from "node:module";
-import {dirname, join, resolve} from "node:path";
-import {__unstable__loadDesignSystem} from "tailwindcss";
 import {describe, expect, it} from "vite-plus/test";
+import {loadDesignSystem} from "./helpers/tailwind-design-system";
 
-const require = createRequire(import.meta.url);
 /** A `text-`, `bg-`, or `border-` utility, its arbitrary value and opacity modifier included. */
 const COLOUR_PREFIXED_UTILITY =
 	/(?<![\w\-[./])(?:text|bg|border)-[a-z][\w-]*(?:\[[^\]\s]*\])?(?:\/(?:\d+|\[[^\]\s]*\]))?/g;
@@ -26,15 +23,7 @@ describe("app chrome design tokens", () => {
 	});
 
 	it("gives every text-, bg-, and border- utility in src a rule, so no colour class names an undefined token", async () => {
-		const tailwindRoot = dirname(require.resolve("tailwindcss/package.json"));
-		const css = readFileSync("src/styles/globals.css", "utf8").replaceAll(/^@import (?!"tailwindcss").*$/gm, "");
-		const designSystem = await __unstable__loadDesignSystem(css, {
-			base: process.cwd(),
-			loadStylesheet: async (id: string, base: string) => {
-				const path = id === "tailwindcss" ? join(tailwindRoot, "index.css") : resolve(base, id);
-				return Promise.resolve({path, base: dirname(path), content: readFileSync(path, "utf8")});
-			},
-		});
+		const designSystem = await loadDesignSystem();
 		const cssClasses = new Set(
 			globSync("src/**/*.css").flatMap((path) =>
 				[...readFileSync(path, "utf8").matchAll(/\.([a-z][\w-]*)/g)].map(([, name]) => name),
@@ -84,18 +73,8 @@ describe("app chrome design tokens", () => {
 	});
 
 	it("rings and lifts the Session-files jump popover with upstream's cds shadow-panel", async () => {
-		const tailwindRoot = dirname(require.resolve("tailwindcss/package.json"));
 		const styles = readFileSync("src/styles/globals.css", "utf8");
-		const designSystem = await __unstable__loadDesignSystem(
-			styles.replaceAll(/^@import (?!"tailwindcss").*$/gm, ""),
-			{
-				base: process.cwd(),
-				loadStylesheet: async (id: string, base: string) => {
-					const path = id === "tailwindcss" ? join(tailwindRoot, "index.css") : resolve(base, id);
-					return Promise.resolve({path, base: dirname(path), content: readFileSync(path, "utf8")});
-				},
-			},
-		);
+		const designSystem = await loadDesignSystem();
 		const light = styles.slice(styles.indexOf(":root {"), styles.indexOf(".dark {"));
 		const dark = styles.slice(styles.indexOf(".dark {"));
 		const token = (block: string, name: string) =>

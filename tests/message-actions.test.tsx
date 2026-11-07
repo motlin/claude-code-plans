@@ -929,10 +929,10 @@ describe("message action toolbar sizing and reveal", () => {
 		const user = bar(
 			render(<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />).container,
 		).className.split(" ");
-		const wanted = ["gap-0", "h-6", "mt-[6px]", "-ms-[2px]", "gap-g1", "pt-[4px]"] as const;
+		const wanted = ["gap-0", "h-6", "mt-xs", "-ms-[2px]", "gap-g1", "pt-[4px]"] as const;
 
 		expect({assistant: has(assistant, wanted), user: has(user, wanted)}).toStrictEqual({
-			assistant: ["gap-0", "h-6", "mt-[6px]", "-ms-[2px]"],
+			assistant: ["gap-0", "h-6", "mt-xs", "-ms-[2px]"],
 			user: ["gap-0", "h-6"],
 		});
 	});
