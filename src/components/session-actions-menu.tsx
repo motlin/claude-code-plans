@@ -38,6 +38,7 @@ import {InlineRenameInput} from "./inline-rename-input";
 import {NewGroupDialog} from "./new-group-dialog";
 import {bulkSelectionFor, type SidebarSelectionApi, useSidebarSelection} from "./sidebar/selection-context";
 import {useHasUnseenWork} from "./use-has-unseen-work";
+import {useLiveApprovalIds} from "../lib/live-approval-sessions";
 import {
 	ContextMenu,
 	ContextMenuTrigger,
@@ -127,6 +128,7 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
 	const customGroups = useSessionGroups();
 	const {requestRename, requestNewGroup} = useRowRename();
 	const pinIndex = pinnedRow?.pinnedIds.indexOf(session.id) ?? -1;
+	const liveApproval = useLiveApprovalIds().has(session.id);
 
 	const menuSession: SessionMenuSession = {
 		title: session.title,
@@ -139,6 +141,7 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
 		cwd,
 		bridgeSessionId,
 		customGroup: {groups: customGroups.groups, current: customGroups.groupOf(session.id)},
+		liveApproval,
 	};
 	if (pinnedRow !== undefined && pinIndex !== -1) {
 		menuSession.pinPosition = {index: pinIndex, count: pinnedRow.pinnedIds.length};
@@ -146,6 +149,7 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
 
 	const run = useSessionMenuRunner({
 		sessionId: session.id,
+		mtime: session.mtime,
 		cwd,
 		bridgeSessionId,
 		prUrl: session.pr?.url ?? null,

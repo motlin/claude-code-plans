@@ -18,9 +18,10 @@ import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-pa
 import {motionReduced, rowActionsAnchorRect} from "../src/components/palette-row-actions-geometry";
 import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
-import {recentSessionsQueryOptions, sessionQueryKeys} from "../src/lib/api/sessions";
+import {recentSessionsQueryOptions, sessionQueryKeys, type SessionListItem} from "../src/lib/api/sessions";
 import {pin, readPinState} from "../src/lib/pin-store";
 import {useSessionRenameRequest} from "../src/lib/session-rename-request";
+import {__awaitingAckTesting, ackedAt} from "../src/lib/awaiting-ack-store";
 import {clearAll, hasUnseenWork} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
 import {PanelsOff} from "./fizzy-lake-off";
@@ -72,7 +73,10 @@ function Harness() {
 }
 
 async function openPalette(
-	sessions = [recentSession("sess-1", "Refactor auth module"), recentSession("sess-2", "Write release notes")],
+	sessions: SessionListItem[] = [
+		recentSession("sess-1", "Refactor auth module"),
+		recentSession("sess-2", "Write release notes"),
+	],
 ) {
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	queryClient.setQueryData(recentSessionsQueryOptions(PALETTE_RECENT_LIMIT).queryKey, {
@@ -151,6 +155,7 @@ describe("palette row actions card", () => {
 		Object.defineProperty(navigator, "clipboard", {value: {writeText}, configurable: true});
 		Element.prototype.scrollIntoView = () => {};
 		clearAll();
+		__awaitingAckTesting.reset();
 		renameRequests.length = 0;
 	});
 
@@ -341,6 +346,23 @@ describe("palette row actions card", () => {
 		fireEvent.keyDown(card, {key: "7", code: "Digit7"});
 
 		expect(hasUnseenWork("sess-1")).toBe(true);
+	});
+
+	it("Mark as completed on a waiting row acks it at the session's mtime", async () => {
+		const mtime = new Date().toISOString();
+		const {input} = await openPalette([
+			{...recentSession("sess-1", "Refactor auth module"), mtime, state: "waiting", bucket: "blocked"},
+			recentSession("sess-2", "Write release notes"),
+		]);
+		fireEvent.keyDown(input, {key: "Enter", code: "Enter", altKey: true});
+		const card = await screen.findByRole("menu", {name: "Actions"});
+
+		fireEvent.click(within(card).getByRole("menuitem", {name: /^Mark as completed/}));
+
+		expect({unseen: hasUnseenWork("sess-1"), ackedAt: ackedAt("sess-1")}).toStrictEqual({
+			unseen: false,
+			ackedAt: Date.parse(mtime),
+		});
 	});
 
 	it("archives the session from the card", async () => {

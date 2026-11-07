@@ -24,6 +24,7 @@ import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../src/lib/api/sessions";
 import type {NextStepCandidate} from "../src/lib/home-next-steps";
 import {holdAnswered, releaseAnswered} from "../src/lib/answered-sessions";
+import {__awaitingAckTesting, ack} from "../src/lib/awaiting-ack-store";
 
 const MINUTE = 60 * 1000;
 
@@ -161,6 +162,28 @@ describe("useHomeNextSteps", () => {
 		releaseAnswered("waiting");
 
 		expect(answered).toStrictEqual([]);
+	});
+
+	it("drops a waiting session's row once this browser marks it completed", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => Promise.resolve(new Response("{}", {status: 404}))),
+		);
+		const queryClient = seededClient();
+		queryClient.setQueryData(approvalsQueryOptions().queryKey, APPROVALS);
+		const frames = await renderHook(queryClient);
+		await waitFor(() => {
+			expect(frames.at(-1)).toStrictEqual(["Needs permission"]);
+		});
+		const recent = queryClient.getQueryData(recentSessionsInfiniteQueryOptions().queryKey);
+		const mtime = recent?.pages[0]?.sessions[0]?.mtime ?? "";
+		act(() => {
+			ack("waiting", Date.parse(mtime));
+		});
+		const acked = frames.at(-1);
+		__awaitingAckTesting.reset();
+
+		expect(acked).toStrictEqual([]);
 	});
 
 	it("keeps the list mounted once settled, even when a source resets and refetches", async () => {

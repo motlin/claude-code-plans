@@ -152,6 +152,7 @@ import {
 } from "../lib/api/herdr";
 import {notificationsQueryOptions} from "../lib/api/notifications";
 import {pendingQuestionQueryOptions} from "../lib/api/pending-question";
+import {useLiveApproval} from "../lib/live-approval-sessions";
 import {pendingPlanQueryOptions} from "../lib/api/pending-plan";
 import {pendingElicitationsQueryOptions} from "../lib/api/pending-elicitations";
 import {
@@ -846,6 +847,16 @@ function SessionView({
 			dockedPlan !== null ||
 			urlElicitationCard !== null,
 	});
+	// Upstream's `hasLiveApproval`: a card this tab draws keeps the row in Needs input over a Mark as completed ack.
+	useLiveApproval(
+		sessionId,
+		pendingPermission !== null ||
+			inlineQuestion !== null ||
+			hookQuestionCardShown ||
+			inlinePlanId !== null ||
+			dockedPlan !== null ||
+			urlElicitationCard !== null,
+	);
 	const hookQuestionToolUseId = hookQuestion?.toolUseId;
 	const answerHookQuestion = useCallback(
 		async (answers: Array<QuestionAnswer | null>) => {

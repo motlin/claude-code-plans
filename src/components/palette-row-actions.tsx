@@ -16,6 +16,7 @@ import {
 	sessionMenuReadState,
 } from "../lib/session-menu-items";
 import type {SessionBucket} from "../lib/session-state";
+import {ack} from "../lib/awaiting-ack-store";
 import {markSeen, markUnseen} from "../lib/unread-store";
 import {type Box, CARD_OVERLAP_PX, isAltEnter, virtualAnchor} from "./palette-row-actions-geometry";
 import {SessionRenameDialog} from "./session-rename-dialog";
@@ -157,8 +158,11 @@ export function PaletteRowActionsCard({
 				else unpin(session.id);
 				return;
 			case "mark-read":
+				markSeen(session.id);
+				return;
 			case "mark-completed":
 				markSeen(session.id);
+				ack(session.id, Date.parse(session.mtime));
 				return;
 			case "mark-unread":
 				markUnseen(session.id);

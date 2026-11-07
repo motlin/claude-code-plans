@@ -80,6 +80,17 @@ describe("getSessionMenuItems", () => {
 		]);
 	});
 
+	it("hides Mark as completed while this tab holds the waiting row's approval live", () => {
+		const readState = (liveApproval: boolean) =>
+			getSessionMenuItems(session({readState: "awaiting", liveApproval}), ALL, {surface: "row"}).filter(
+				(entry) => entry.kind === "item" && entry.id.startsWith("mark-"),
+			);
+		expect({live: readState(true), notLive: readState(false)}).toStrictEqual({
+			live: [],
+			notLive: [{kind: "item", id: "mark-completed", label: "Mark as completed", accelerator: "u"}],
+		});
+	});
+
 	it("drops the waiting acknowledgement when it is not wired", () => {
 		expect(getSessionMenuItems(session({readState: "awaiting"}), LOCAL, {surface: "row"})).toEqual([
 			{kind: "item", id: "pin", label: "Pin", accelerator: "p"},

@@ -24,6 +24,8 @@ import type {SessionBucket} from "../src/lib/session-state";
 import {readSidebarState} from "../src/lib/sidebar-store";
 import {holdAnswered, noteAnsweredSummary, releaseAnswered} from "../src/lib/answered-sessions";
 import {__unreadStoreTesting, syncUnseenFromSummaries} from "../src/lib/unread-store";
+import {__awaitingAckTesting, ack} from "../src/lib/awaiting-ack-store";
+import {registerLiveApproval} from "../src/lib/live-approval-sessions";
 import {installLocalStorage} from "./fake-storage";
 import {PIN_STORAGE_KEY} from "../src/lib/pin-store";
 import {readFileSync} from "node:fs";
@@ -166,6 +168,7 @@ afterEach(() => {
 
 beforeEach(() => {
 	installLocalStorage();
+	__awaitingAckTesting.reset();
 });
 
 describe("sidebar SessionGroups", () => {
@@ -786,6 +789,95 @@ describe("sidebar SessionGroups", () => {
 			answered: {blocked: [], working: ["Blocked one"], kinds: ["running"]},
 			confirmed: {blocked: [], working: ["Blocked one"], kinds: ["running"]},
 			rewaited: {blocked: ["Blocked one"], working: [], kinds: ["awaiting"]},
+		});
+	});
+
+	it("moves a Needs input row to Idle at Mark as completed, offers Mark as unread, and brings it back on new activity", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => new Promise<Response>(() => {})),
+		);
+		const blocked = session("b1", "Blocked one", "blocked", 3);
+		const done = session("d1", "Completed newest", "done", 5);
+		const {container, queryClient} = await renderGroups([blocked, done]);
+		const where = () => {
+			const link = [...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].find(
+				(node) => rowTitle(node) === "Blocked one",
+			);
+			return {
+				blocked: rowTitlesIn(container, "state-blocked"),
+				idle: rowTitlesIn(container, "state-done"),
+				attention: link?.querySelector("[data-row-label] .relative")?.getAttribute("data-attention") ?? null,
+				kind:
+					link?.closest("[data-session-actions]")?.querySelector(".status-dot")?.getAttribute("data-kind") ??
+					null,
+			};
+		};
+		const readStateItems = async () => {
+			fireEvent.contextMenu(screen.getByText("Blocked one"), {clientX: 40, clientY: 50});
+			const menu = await waitFor(() => screen.getByRole("menu"));
+			const items = [...menu.querySelectorAll('[role="menuitem"]')]
+				.filter((node) => node.textContent.startsWith("Mark as"))
+				.map((node) => [node.textContent, node.getAttribute("aria-keyshortcuts")]);
+			return {menu, items};
+		};
+		const before = where();
+		const {menu, items: beforeItems} = await readStateItems();
+		await act(async () => {
+			fireEvent.click(within(menu).getByRole("menuitem", {name: /^Mark as completed/}));
+			await Promise.resolve();
+		});
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		const acked = where();
+		const {menu: ackedMenu, items: ackedItems} = await readStateItems();
+		fireEvent.keyDown(ackedMenu, {key: "Escape"});
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		act(() => {
+			const next = {...blocked, mtime: new Date(Date.parse(blocked.mtime) + 1000).toISOString()};
+			queryClient.setQueryData(recentSessionsInfiniteQueryOptions(undefined, "active").queryKey, {
+				pages: [RecentSessionsResponse.parse({sessions: [next, done], nextCursor: null})],
+				pageParams: [null],
+			});
+		});
+		await waitFor(() => {
+			expect(rowTitlesIn(container, "state-blocked")).toStrictEqual(["Blocked one"]);
+		});
+		const renewed = where();
+
+		expect({before, beforeItems, acked, ackedItems, renewed}).toStrictEqual({
+			before: {blocked: ["Blocked one"], idle: ["Completed newest"], attention: "waiting", kind: "awaiting"},
+			beforeItems: [["Mark as completedU", "u"]],
+			acked: {blocked: [], idle: ["Blocked one", "Completed newest"], attention: null, kind: null},
+			ackedItems: [["Mark as unreadU", "u"]],
+			renewed: {blocked: ["Blocked one"], idle: ["Completed newest"], attention: "waiting", kind: "awaiting"},
+		});
+	});
+
+	it("keeps an acked row in Needs input while this tab holds its approval card live, and moves it to Idle when the card goes", async () => {
+		const blocked = session("b1", "Blocked one", "blocked", 3);
+		ack("b1", Date.parse(blocked.mtime));
+		let dispose = () => {};
+		act(() => {
+			dispose = registerLiveApproval("b1");
+		});
+		const {container} = await renderGroups([blocked, session("d1", "Completed newest", "done", 5)]);
+		const where = () => ({
+			blocked: rowTitlesIn(container, "state-blocked"),
+			idle: rowTitlesIn(container, "state-done"),
+		});
+		const live = where();
+		act(() => {
+			dispose();
+		});
+		const gone = where();
+
+		expect({live, gone}).toStrictEqual({
+			live: {blocked: ["Blocked one"], idle: ["Completed newest"]},
+			gone: {blocked: [], idle: ["Blocked one", "Completed newest"]},
 		});
 	});
 

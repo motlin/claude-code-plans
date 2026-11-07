@@ -21,6 +21,7 @@ import {
 	TranscriptModeSchema,
 } from "../lib/transcript-mode";
 import {assign} from "../lib/session-group-store";
+import {ack} from "../lib/awaiting-ack-store";
 import {markSeen, markUnseen} from "../lib/unread-store";
 import {useToast} from "./toast-context";
 import type {TranscriptViewActions} from "./session-actions-menu";
@@ -28,6 +29,7 @@ import type {TranscriptViewActions} from "./session-actions-menu";
 /** Runs one session menu item; shared by the row menu and the titlebar chevron menu. */
 export function useSessionMenuRunner({
 	sessionId,
+	mtime,
 	cwd,
 	bridgeSessionId,
 	prUrl,
@@ -85,8 +87,11 @@ export function useSessionMenuRunner({
 				setPinned?.(id === "pin");
 				return;
 			case "mark-read":
+				markSeen(sessionId);
+				return;
 			case "mark-completed":
 				markSeen(sessionId);
+				if (mtime !== undefined) ack(sessionId, Date.parse(mtime));
 				return;
 			case "mark-unread":
 				markUnseen(sessionId);
@@ -131,6 +136,8 @@ export function useSessionMenuRunner({
 
 export interface SessionMenuRunnerOptions {
 	sessionId: string;
+	/** The row's transcript mtime, which "Mark as completed" acks at (upstream acks at `updated_at`). */
+	mtime?: string;
 	cwd: string | null;
 	bridgeSessionId: string | null;
 	prUrl: string | null;

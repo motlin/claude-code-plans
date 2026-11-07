@@ -13,6 +13,7 @@ import {ToastProvider} from "../src/components/toast";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import type {SessionListItem} from "../src/lib/api/sessions";
 import type {SessionBucket} from "../src/lib/session-state";
+import {__awaitingAckTesting, ackedAt} from "../src/lib/awaiting-ack-store";
 import {__unreadStoreTesting, hasUnseenWork, syncUnseenFromSummaries, toggleUnseen} from "../src/lib/unread-store";
 
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
@@ -123,6 +124,7 @@ beforeEach(() => {
 	fetchMock.mockImplementation(async () => Promise.resolve(Response.json(VIEWED_STATE)));
 	vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)");
 	__unreadStoreTesting.reset();
+	__awaitingAckTesting.reset();
 });
 
 afterEach(() => {
@@ -187,13 +189,26 @@ describe("read state in the row menu", () => {
 
 	it("acknowledges a waiting row without answering it", async () => {
 		syncUnseenFromSummaries([{id: SESSION_ID, unseen: true}]);
-		await renderRow(listItem("blocked", {state: "waiting", unseen: true}));
+		await renderRow(listItem("blocked", {state: "waiting", unseen: true, mtime: "2026-11-04T10:00:00.000Z"}));
 
 		await selectItem("Mark as completed");
 
-		expect({unseen: hasUnseenWork(SESSION_ID), calls: viewedCalls()}).toStrictEqual({
+		expect({unseen: hasUnseenWork(SESSION_ID), ackedAt: ackedAt(SESSION_ID), calls: viewedCalls()}).toStrictEqual({
 			unseen: false,
+			ackedAt: Date.parse("2026-11-04T10:00:00.000Z"),
 			calls: [{url: `/api/sessions/${SESSION_ID}/viewed`, method: "PUT", body: {action: "reviewed"}}],
+		});
+	});
+
+	it("marks a finished row read without acking it", async () => {
+		syncUnseenFromSummaries([{id: SESSION_ID, unseen: true}]);
+		await renderRow(listItem("done", {unseen: true}));
+
+		await selectItem("Mark as read");
+
+		expect({unseen: hasUnseenWork(SESSION_ID), ackedAt: ackedAt(SESSION_ID)}).toStrictEqual({
+			unseen: false,
+			ackedAt: undefined,
 		});
 	});
 });

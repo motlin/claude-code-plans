@@ -8,6 +8,9 @@ import {homeDismissalsQueryOptions, postHomeDismissal, type HomeDismissals} from
 import {homeFolderPrQueryOptions} from "../../lib/api/home-folder-pr";
 import {homeFolderStatusQueryOptions} from "../../lib/api/home-folder-status";
 import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../../lib/api/sessions";
+import {withAwaitingAck} from "../../lib/awaiting-ack-overlay";
+import {ackedAt, useAwaitingAckVersion} from "../../lib/awaiting-ack-store";
+import {useLiveApprovalIds} from "../../lib/live-approval-sessions";
 import {
 	folderNextStepCandidates,
 	folderPrBranch,
@@ -88,6 +91,9 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 	const {used} = useHomeDraftUsed();
 	const latched = useRef<NextStepsListProps | undefined>(undefined);
 	const answeredIds = useAnsweredSessionIds();
+	// Re-render when this browser marks a session completed; the overlay reads the store.
+	useAwaitingAckVersion();
+	const liveApprovalIds = useLiveApprovalIds();
 
 	const dismiss = useMutation({
 		mutationFn: postHomeDismissal,
@@ -101,9 +107,11 @@ export function useHomeNextSteps(): NextStepsListProps | undefined {
 
 	if (recent === undefined || dismissals === undefined || !approvalsFetched) return latched.current;
 
-	// A session this tab just answered is working again, as the sidebar row draws it.
+	// A session marked completed is idle and one this tab just answered is working again, as the sidebar draws them.
 	const sessions = withAnsweredHolds(
-		recent.pages.flatMap((page) => page.sessions),
+		recent.pages
+			.flatMap((page) => page.sessions)
+			.map((session) => withAwaitingAck(session, ackedAt(session.id), liveApprovalIds.has(session.id))),
 		answeredIds,
 	);
 	const approvalTools = new Map(

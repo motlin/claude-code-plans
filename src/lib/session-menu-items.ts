@@ -91,6 +91,8 @@ export interface SessionMenuSession {
 	customGroup?: {groups: readonly {id: string; name: string}[]; current: string | null};
 	/** The session's transcript view; enables the header's Transcript view submenu. */
 	transcriptView?: TranscriptViewState;
+	/** This tab draws the session's approval card live (upstream `hasPendingApproval`); hides Mark as completed. */
+	liveApproval?: boolean;
 }
 
 export interface TranscriptViewState {
@@ -337,7 +339,7 @@ export function getSessionMenuItems(
 	const readState: SessionMenuItem[] = [];
 	if (surface === "row" || surface === "palette-card") {
 		if (session.readState === "awaiting") {
-			if (has("ackAwaiting")) readState.push(item("mark-completed"));
+			if (has("ackAwaiting") && session.liveApproval !== true) readState.push(item("mark-completed"));
 		} else if (session.readState !== "working" && has("readState")) {
 			readState.push(item(session.readState === "unread" ? "mark-read" : "mark-unread"));
 		}

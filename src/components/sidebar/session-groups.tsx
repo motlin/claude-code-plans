@@ -6,6 +6,9 @@ import {Ungroup} from "lucide-react";
 import {type SidebarDrop, useSidebarDrag} from "../../hooks/use-sidebar-drag";
 import {useAnsweredSessionIds, withAnsweredHold} from "../../lib/answered-sessions";
 import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../../lib/api/sessions";
+import {withAwaitingAck} from "../../lib/awaiting-ack-overlay";
+import {ackedAt, useAwaitingAckVersion} from "../../lib/awaiting-ack-store";
+import {useLiveApprovalIds} from "../../lib/live-approval-sessions";
 import {closeDragPinHint} from "../../lib/drag-pin-hint";
 import {readPinState, unpin, usePins, writePinState} from "../../lib/pin-store";
 import {dropOutcome, placePin, splitPinned, type SplitPinned} from "../../lib/pinned-sessions";
@@ -108,13 +111,25 @@ export function SessionGroups({
 
 	// A session this tab just answered draws as Working at the click, as upstream's responding row does.
 	const answeredIds = useAnsweredSessionIds();
+	// A row marked completed in this browser draws idle until new activity, as upstream's acked row does.
+	const ackVersion = useAwaitingAckVersion();
+	const liveApprovalIds = useLiveApprovalIds();
 	const split = useMemo(() => {
 		if (data === undefined) return undefined;
 		const rows = data.pages.flatMap((page) =>
-			page.sessions.map((session) => toGroupRow(withAnsweredHold(session, answeredIds.has(session.id)))),
+			page.sessions.map((session) =>
+				toGroupRow(
+					withAnsweredHold(
+						withAwaitingAck(session, ackedAt(session.id), liveApprovalIds.has(session.id)),
+						answeredIds.has(session.id),
+					),
+				),
+			),
 		);
 		return splitPinned(rows, {pinnedIds, pinnedOrder}, sessionRowComparator(prefs.sortBy, prefs.sortDirection));
-	}, [data, answeredIds, prefs.sortBy, prefs.sortDirection, pinnedIds, pinnedOrder]);
+		// ackVersion re-runs the memo when an ack changes; ackedAt reads the store.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [data, answeredIds, ackVersion, liveApprovalIds, prefs.sortBy, prefs.sortDirection, pinnedIds, pinnedOrder]);
 
 	const toast = useToast();
 	const {settings, setSetting} = useSettings();
