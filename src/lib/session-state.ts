@@ -194,6 +194,8 @@ export type PullRequestState = z.infer<typeof PullRequestStateSchema>;
 export interface SessionBucketSignals {
 	/** Main-thread state from hooks without `agent_id`; "ended" after SessionEnd or timeout. */
 	mainState: SessionSummaryState;
+	/** Bridged to claude.ai/code by Remote Control (upstream `environment_kind: "bridge"`). */
+	bridged: boolean;
 	/** A pending approval / question / permission prompt from S or any of its subagents. */
 	pendingInput: boolean;
 	/** The main thread's tool call waits on a `permission_prompt`; live however stale the hook state or file is. */
@@ -227,9 +229,10 @@ export function isRunningBackgroundTask(task: {status: string}): boolean {
 }
 
 /**
- * Pure mapping from a root session's signals to its display bucket. Unlike
- * upstream, running subagents and background tasks keep a session Working
- * after the main turn has stopped.
+ * Pure mapping from a root session's signals to its display bucket. Running
+ * subagents and background tasks keep a session Working after the main turn
+ * has stopped, except a Remote Control bridged one: upstream `sk()` sets
+ * `hasBackgroundWork: environment_kind !== "bridge"`.
  */
 export function resolveSessionBucket(signals: SessionBucketSignals): SessionBucketResolution {
 	const {mainState, now} = signals;
@@ -244,12 +247,14 @@ export function resolveSessionBucket(signals: SessionBucketSignals): SessionBuck
 	if (verdictWaits) return {bucket: "blocked", reason: "verdict-needs-input"};
 
 	if (mainState === "working") return {bucket: "working", reason: "main-working"};
-	if (signals.liveAgentCount > 0) return {bucket: "working", reason: "live-agents"};
-	if (signals.backgroundTasks.some(isRunningBackgroundTask)) {
-		return {bucket: "working", reason: "background-tasks"};
-	}
-	if (signals.lastSubagentActivityAt !== null && now - signals.lastSubagentActivityAt < RECENT_ACTIVITY_MS) {
-		return {bucket: "working", reason: "subagent-activity"};
+	if (!signals.bridged) {
+		if (signals.liveAgentCount > 0) return {bucket: "working", reason: "live-agents"};
+		if (signals.backgroundTasks.some(isRunningBackgroundTask)) {
+			return {bucket: "working", reason: "background-tasks"};
+		}
+		if (signals.lastSubagentActivityAt !== null && now - signals.lastSubagentActivityAt < RECENT_ACTIVITY_MS) {
+			return {bucket: "working", reason: "subagent-activity"};
+		}
 	}
 	if (signals.herdrStatus === "working") return {bucket: "working", reason: "herdr-working"};
 	if (mainState === "unknown") {

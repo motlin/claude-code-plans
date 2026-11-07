@@ -96,6 +96,7 @@ export function toSessionSummaryPayload(
 	}
 	const {bucket, reason} = resolveSessionBucket({
 		mainState: main.state,
+		bridged: entry.remoteControl === true,
 		pendingInput,
 		awaitingPermission,
 		unseenError: unseen && entry.erroredAt !== undefined,

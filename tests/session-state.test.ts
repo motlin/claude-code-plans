@@ -416,6 +416,7 @@ describe("resolveSessionBucket for a session blocked on a permission prompt", ()
 	function bucketFor(records: readonly unknown[]): SessionBucketResolution {
 		return resolveSessionBucket({
 			mainState: "ended",
+			bridged: false,
 			pendingInput: false,
 			awaitingPermission: isAwaitingPermission({
 				sessionId: "session-test-100",
@@ -448,6 +449,7 @@ describe("resolveSessionBucket with a post-turn needs-input verdict", () => {
 	const NOW = 946_598_400_000;
 	const BASE: SessionBucketSignals = {
 		mainState: "idle",
+		bridged: false,
 		pendingInput: false,
 		awaitingPermission: false,
 		unseenError: false,
@@ -488,6 +490,51 @@ describe("resolveSessionBucket with a post-turn needs-input verdict", () => {
 		expect(resolveSessionBucket({...BASE, verdictNeedsInput: false})).toStrictEqual({
 			bucket: "done",
 			reason: "unseen",
+		});
+	});
+});
+
+describe("resolveSessionBucket for a Remote Control bridged session", () => {
+	const NOW = 946_598_400_000;
+	const BASE: SessionBucketSignals = {
+		mainState: "idle",
+		bridged: true,
+		pendingInput: false,
+		awaitingPermission: false,
+		unseenError: false,
+		liveAgentCount: 1,
+		backgroundTasks: [{status: "running"}],
+		lastSubagentActivityAt: NOW - 1000,
+		herdrStatus: null,
+		prState: null,
+		unseen: false,
+		verdictNeedsInput: false,
+		fileMtime: NOW - 10 * 60 * 1000,
+		now: NOW,
+	};
+
+	it("is done once the turn ends, though background tasks and subagents still run", () => {
+		expect(resolveSessionBucket(BASE)).toStrictEqual({bucket: "done", reason: "idle"});
+	});
+
+	it("is working through live subagents when not bridged", () => {
+		expect(resolveSessionBucket({...BASE, bridged: false})).toStrictEqual({
+			bucket: "working",
+			reason: "live-agents",
+		});
+	});
+
+	it("is working through running background tasks when not bridged", () => {
+		expect(resolveSessionBucket({...BASE, bridged: false, liveAgentCount: 0})).toStrictEqual({
+			bucket: "working",
+			reason: "background-tasks",
+		});
+	});
+
+	it("is working while the main thread runs a turn", () => {
+		expect(resolveSessionBucket({...BASE, mainState: "working"})).toStrictEqual({
+			bucket: "working",
+			reason: "main-working",
 		});
 	});
 });
