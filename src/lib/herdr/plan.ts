@@ -4,6 +4,8 @@ import {getActiveSessionEntry} from "../active-session-store";
 import {PlanDecisionSchema, type PlanDecision, type PlanDialog, type PlanForwardMode} from "../plan-approval";
 import {rejectCrossSite} from "../same-origin-guard";
 import {herdrRequest, type HerdrResult} from "./client";
+import {OPTION_LINE} from "./dialog-rows";
+import {readHerdrScreen} from "./read-screen";
 import type {HerdrRequester} from "./panes";
 import {defaultHerdrPermissionDependencies} from "./permission";
 import {
@@ -14,7 +16,6 @@ import {
 	type HerdrPromptTarget,
 } from "./prompt";
 import type {QuestionAnswerStep} from "./question";
-import {asRecord} from "../narrow";
 import {DOMAIN_EVENTS} from "../event-names";
 import type {SessionPendingPlanChangedPayload} from "../hook-events";
 import {clearPendingPlan as clearStoredPendingPlan} from "../pending-plan-store";
@@ -33,7 +34,6 @@ const FORWARD_ROWS: Readonly<Record<string, PlanForwardMode>> = {
 	"Yes, and auto-accept edits": "acceptEdits",
 	"Yes, and bypass permissions": "bypassPermissions",
 };
-const OPTION_LINE = /^\s*(?:❯\s*)?(\d+)\.\s+(.*\S)\s*$/;
 
 /** The dialog's row numbers for each choice ccp can type; null rows are not on offer. */
 export interface PlanDialogRows {
@@ -122,27 +122,6 @@ export interface HerdrPlanDependencies {
 }
 
 const STEP_PAUSE_MS = 80;
-
-/** herdr's `pane.read` of the visible screen, as plain text or with its colour escapes (`ansi`). */
-export async function readHerdrScreen(
-	paneId: string,
-	request: HerdrRequester = herdrRequest,
-	format: "text" | "ansi" = "text",
-): Promise<HerdrResult<string>> {
-	const response = await request({
-		id: `ccp:plan-read:${crypto.randomUUID()}`,
-		method: "pane.read",
-		params:
-			format === "ansi"
-				? {pane_id: paneId, source: "visible", format: "ansi", strip_ansi: false}
-				: {pane_id: paneId, source: "visible"},
-	});
-	if (!response.ok) return response;
-	const text = asRecord(asRecord(response.value)?.["read"])?.["text"];
-	return typeof text === "string"
-		? {ok: true, value: text}
-		: {ok: false, code: "bad-response", message: "herdr returned no pane text"};
-}
 
 export const defaultHerdrPlanDependencies: HerdrPlanDependencies = {
 	rejectRequest: rejectCrossSite,

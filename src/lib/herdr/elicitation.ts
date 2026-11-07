@@ -11,7 +11,7 @@ import {
 	type ElicitationStep,
 } from "./elicitation-keys";
 import type {HerdrRequester} from "./panes";
-import {readHerdrScreen} from "./plan";
+import {readHerdrScreen} from "./read-screen";
 import {herdrWritesEnabled, resolveHerdrPromptTarget, type HerdrPromptTarget} from "./prompt";
 
 const HerdrElicitationSchema = z.strictObject({

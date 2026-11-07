@@ -4,7 +4,7 @@ import {getActiveSessionEntry} from "../active-session-store";
 import {getPendingQuestion} from "../pending-question-store";
 import {rejectCrossSite} from "../same-origin-guard";
 import {herdrRequest, type HerdrResult} from "./client";
-import {readHerdrScreen} from "./plan";
+import {readHerdrScreen} from "./read-screen";
 import type {HerdrRequester} from "./panes";
 import {herdrWritesEnabled, resolveHerdrPromptTarget, type HerdrPromptTarget} from "./prompt";
 

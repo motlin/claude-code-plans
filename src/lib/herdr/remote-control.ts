@@ -8,7 +8,7 @@ import {getRegistrySessionState} from "../session-registry-store";
 import type {RemoteControlState} from "../session-state";
 import {herdrRequest, type HerdrResult} from "./client";
 import type {HerdrRequester} from "./panes";
-import {readHerdrScreen} from "./plan";
+import {readHerdrScreen} from "./read-screen";
 import {herdrWritesEnabled, resolveHerdrPromptTarget, type HerdrPromptTarget} from "./prompt";
 import {readComposerInput, visibleText} from "./rewind";
 

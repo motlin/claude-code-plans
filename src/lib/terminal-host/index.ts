@@ -271,6 +271,8 @@ export function createTmuxTerminalHost(
 			handleHerdrPermission(request, {
 				...defaultHerdrPermissionDependencies,
 				...writes,
+				pause: io.pause,
+				readScreen: async (sessionId: string, paneId: string) => readTmuxScreen(sessionId, paneId, sources),
 				...tmuxWriteDependencies("permission", sources, io),
 			}),
 		readPlanDialog: async (request) => handleHerdrPlanDialog(request, planDependencies()),

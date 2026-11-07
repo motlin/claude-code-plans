@@ -2,6 +2,14 @@ import {describe, expect, it, vi} from "vite-plus/test";
 import {handleHerdrPermission, type HerdrPermissionDependencies} from "../src/lib/herdr/permission";
 import type {HerdrRequester} from "../src/lib/herdr/panes";
 import {rejectCrossSite} from "../src/lib/same-origin-guard";
+import {
+	BASH_FULL_NO_FEEDBACK_TYPED,
+	BASH_UNICODE_WHITESPACE,
+	CLASSIFIER_FALLBACK,
+	EDIT_ACCEPT_EDITS_ROW,
+	READ_OUTSIDE_SESSION_DIR,
+	WEBFETCH,
+} from "./fixtures/permission-screens";
 
 function request(body: unknown, headers?: HeadersInit): Request {
 	const requestHeaders = new Headers(headers);
@@ -31,6 +39,8 @@ function dependencies(overrides: Partial<HerdrPermissionDependencies> = {}): Her
 			}),
 		request: async () => Promise.resolve({ok: true, value: {type: "ok"}}),
 		createRequestId: () => "ccp:permission:test-100",
+		readScreen: async () => Promise.resolve({ok: false, code: "bad-response", message: "Fabricated read failure"}),
+		pause: async () => Promise.resolve(),
 		...overrides,
 	};
 }
@@ -164,6 +174,105 @@ describe("herdr permission decision handler", () => {
 		expect({response: await describeResponse(response), cleared}).toStrictEqual({
 			response: {body: {error: "Fabricated"}, status: 409},
 			cleared: [],
+		});
+	});
+
+	describe("with the dialog read off the screen", () => {
+		async function answer(
+			screens: readonly string[],
+			decision: "allow" | "always" | "deny",
+		): Promise<{response: {body: unknown; status: number}; keys: unknown[]; cleared: string[]}> {
+			const keys: unknown[] = [];
+			const cleared: string[] = [];
+			let reads = 0;
+			const response = await handleHerdrPermission(
+				request({sessionId: "session-test-100", decision}),
+				dependencies({
+					// The hook's suggestion would say "2"; the screen must win over it.
+					persistentAllow: () => "perChat",
+					readScreen: async () => {
+						const screen = screens[Math.min(reads, screens.length - 1)] ?? "";
+						reads++;
+						return Promise.resolve({ok: true, value: screen});
+					},
+					request: async (value) => {
+						keys.push((value as {params: {keys: unknown}}).params.keys);
+						return Promise.resolve({ok: true, value: {type: "ok"}});
+					},
+					clearPendingPermission: (sessionId) => cleared.push(sessionId),
+				}),
+			);
+			return {response: await describeResponse(response), keys, cleared};
+		}
+
+		const ok = {body: {ok: true}, status: 200};
+		const mismatch = {
+			body: {
+				error: "The terminal\u2019s permission dialog doesn\u2019t match this card",
+				code: "dialog_mismatch",
+			},
+			status: 409,
+		};
+
+		it.each([
+			{name: "WEBFETCH", screen: WEBFETCH, decision: "always", keys: [["2"]]},
+			{name: "WEBFETCH", screen: WEBFETCH, decision: "deny", keys: [["esc"]]},
+			{name: "EDIT_ACCEPT_EDITS_ROW", screen: EDIT_ACCEPT_EDITS_ROW, decision: "always", keys: [["2"]]},
+			{name: "READ_OUTSIDE_SESSION_DIR", screen: READ_OUTSIDE_SESSION_DIR, decision: "always", keys: [["2"]]},
+			{
+				name: "BASH_FULL_NO_FEEDBACK_TYPED",
+				screen: BASH_FULL_NO_FEEDBACK_TYPED,
+				decision: "allow",
+				keys: [["1"]],
+			},
+		] as const)("sends $keys for $decision on $name", async ({screen, decision, keys}) => {
+			expect(await answer([screen], decision)).toStrictEqual({
+				response: ok,
+				keys,
+				cleared: ["session-test-100"],
+			});
+		});
+
+		it("refuses always on a dialog with no persistent row, though the hook offered one", async () => {
+			expect(await answer([BASH_UNICODE_WHITESPACE], "always")).toStrictEqual({
+				response: mismatch,
+				keys: [],
+				cleared: [],
+			});
+		});
+
+		it("refuses a permission question whose rows it cannot read", async () => {
+			expect(
+				await answer(
+					[" Do you want to proceed?\n ❯ 1. Yes\n   2. Perhaps\n   3. No\n\n Esc to cancel"],
+					"allow",
+				),
+			).toStrictEqual({response: mismatch, keys: [], cleared: []});
+		});
+
+		it("falls back to the hook's keys when the screen shows no permission question", async () => {
+			expect(await answer(["$ "], "always")).toStrictEqual({
+				response: ok,
+				keys: [["2"]],
+				cleared: ["session-test-100"],
+			});
+		});
+
+		it("moves down onto Yes and presses Enter on the hidden classifier fallback", async () => {
+			const onYes = CLASSIFIER_FALLBACK.replace(" ❯ No\n   Yes", "   No\n ❯ Yes");
+			expect(await answer([CLASSIFIER_FALLBACK, onYes], "allow")).toStrictEqual({
+				response: ok,
+				keys: [["down"], ["enter"]],
+				cleared: ["session-test-100"],
+			});
+		});
+
+		it("stops after Down when the hidden classifier fallback did not move onto Yes", async () => {
+			expect(await answer([CLASSIFIER_FALLBACK], "allow")).toStrictEqual({
+				response: mismatch,
+				keys: [["down"]],
+				cleared: [],
+			});
 		});
 	});
 });
