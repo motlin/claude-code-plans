@@ -6,7 +6,7 @@ import {ArrowUpRight, ChevronDown, ChevronRight, Plus} from "lucide-react";
 import {type CSSProperties, type ReactNode, useMemo, useState} from "react";
 import {useCodeThemes} from "../../hooks/use-code-themes";
 import {LazyFileTypeIcon} from "../lazy-file-type-icon";
-import {DIFFS_STYLE_OVERRIDES} from "./diffs-config";
+import {DIFFS_STYLE_OVERRIDES, DIFFS_WRAP_STYLE} from "./diffs-config";
 import type {DiffStyle} from "../settings-context";
 import {useResolvedTheme} from "../theme-context";
 
@@ -219,12 +219,16 @@ export function DiffFile({
 		}),
 		[codeThemes, resolvedTheme, diffStyle, wordWrap, wordDiff, collapsed, onRequestChanges],
 	);
+	const style = useMemo<CSSProperties>(
+		() => (wordWrap ? {...DIFFS_STYLE_OVERRIDES, ...DIFFS_WRAP_STYLE} : DIFFS_STYLE_OVERRIDES),
+		[wordWrap],
+	);
 
 	return (
 		<FileDiff<ReactNode>
 			fileDiff={fileDiff}
 			options={options}
-			style={DIFFS_STYLE_OVERRIDES}
+			style={style}
 			disableWorkerPool
 			{...(lineAnnotations === undefined
 				? {}

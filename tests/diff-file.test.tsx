@@ -82,6 +82,26 @@ describe("DiffFile", () => {
 		});
 	});
 
+	it("sets upstream's wrap-only overflow vars on the host only when word wrap is on, so scroll mode can scroll", async () => {
+		const overflowVars = (container: HTMLElement) => {
+			const host = container.querySelector<HTMLElement>("diffs-container");
+			return {
+				overflow: host?.style.getPropertyValue("--diffs-overflow-override"),
+				gutter: host?.style.getPropertyValue("--diffs-scrollbar-gutter-override"),
+			};
+		};
+		const wrapped = render(<DiffFile patch={PATCH} />);
+		await waitFor(() => {
+			expect(overflowVars(wrapped.container)).toStrictEqual({overflow: "clip", gutter: "0px"});
+		});
+		cleanup();
+
+		const scrolled = render(<DiffFile patch={PATCH} wordWrap={false} />);
+		await waitFor(() => {
+			expect(overflowVars(scrolled.container)).toStrictEqual({overflow: "", gutter: ""});
+		});
+	});
+
 	it("renders side-by-side when diffStyle is split", async () => {
 		const {container} = render(<DiffFile patch={PATCH} diffStyle="split" />);
 

@@ -39,13 +39,22 @@ export const DIFFS_STYLE_OVERRIDES = {
 	"--diffs-bg-selection-number-override": "var(--accent-900)",
 	"--diffs-fg-conflict-marker-override": "var(--upstream-text-muted)",
 	"--diffs-gap-style": "0",
+} as CSSProperties;
+
+/**
+ * Upstream sets these only in wrap mode (ca7ba268c za(): `n==="wrap"&&{…}`).
+ * Scroll mode leaves them unset so `[data-code]` keeps `overflow: scroll clip`
+ * and long lines stay reachable.
+ */
+export const DIFFS_WRAP_STYLE = {
 	"--diffs-overflow-override": "clip",
 	"--diffs-scrollbar-gutter-override": "0px",
 } as CSSProperties;
 
-/** Upstream's transcript diffs set the same tokens at 12/17 mono. */
+/** Upstream's transcript diffs set the same tokens at 12/17 mono, always wrapped. */
 export const INLINE_DIFFS_STYLE_OVERRIDES = {
 	...DIFFS_STYLE_OVERRIDES,
+	...DIFFS_WRAP_STYLE,
 	"--diffs-font-size": "12px",
 	"--diffs-line-height": "17px",
 } as CSSProperties;
