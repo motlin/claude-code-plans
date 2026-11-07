@@ -1,11 +1,14 @@
 import {mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync} from "node:fs";
+import {open} from "node:fs/promises";
 import {homedir, tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {SessionWorkflowRunsResponse} from "../src/lib/api/session-workflow-runs";
+import {collectJsonlFiles, scanByteCount, scanTimeoutMilliseconds, selectFilesForScan} from "./jsonl-corpus";
 import {
 	WorkflowAgentMetaSchema,
 	WorkflowJournalEventSchema,
+	WorkflowLaunchResultSchema,
 	WorkflowRunFileSchema,
 	readWorkflowRuns,
 	workflowSessionIdForPath,
@@ -471,6 +474,23 @@ describe("readWorkflowRuns", () => {
 		]);
 	});
 
+	it.each([
+		{name: "an is_error tool_result", isError: true},
+		{name: "no is_error flag", isError: false},
+	])("builds no run from a compile-failed launch with $name", ({isError}) => {
+		const failed = launch("toolu_A", "w5", "2026-10-01T12:00:00.000Z");
+		const message = failed["message"] as {content: Record<string, unknown>[]};
+		const block = message.content[0];
+		if (isError && block !== undefined) block["is_error"] = true;
+		failed["toolUseResult"] = {
+			...(failed["toolUseResult"] as Record<string, unknown>),
+			error: "SyntaxError: Unexpected token (3:4)",
+		};
+		writeTranscript([failed]);
+
+		expect(readWorkflowRuns(transcriptPath)).toStrictEqual([]);
+	});
+
 	it("returns runs the API response schema accepts unchanged", () => {
 		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
 		writeJournal([
@@ -506,6 +526,42 @@ describe("workflowSessionIdForPath", () => {
 });
 
 describe("workflow schemas", () => {
+	it.each([
+		{
+			name: "remote launch",
+			result: {
+				status: "remote_launched",
+				taskId: "r9k2",
+				taskType: "remote_agent",
+				workflowName: "triage",
+				summary: "Triage open issues",
+				sessionUrl: "https://claude.ai/code/session_01ABC",
+				warning: "Local branch is 2 commits ahead of origin",
+			},
+		},
+		{
+			name: "compile-failed launch",
+			result: {
+				status: "async_launched",
+				taskId: "w5",
+				taskType: "local_workflow",
+				workflowName: "wf",
+				runId: "wf_0a1b2c3d-4e5",
+				summary: "s",
+				error: "SyntaxError: Unexpected token (3:4)",
+			},
+		},
+		{name: "pre-field launch", result: {status: "async_launched", taskId: "w6"}},
+	])("accepts a $name toolUseResult", ({result}) => {
+		expect(WorkflowLaunchResultSchema.parse(result)).toStrictEqual(result);
+	});
+
+	it("rejects an unknown key on a launch toolUseResult", () => {
+		const full = launch("toolu_A", "w1", "2026-10-01T12:00:00.000Z")["toolUseResult"] as Record<string, unknown>;
+		expect(WorkflowLaunchResultSchema.parse(full)).toStrictEqual(full);
+		expect(WorkflowLaunchResultSchema.safeParse({...full, extra: 1}).success).toBe(false);
+	});
+
 	it("accepts a result journal event with toolsUsed", () => {
 		const event = {
 			type: "result",
@@ -574,7 +630,61 @@ function listDir(dir: string, suffix: string): string[] {
 const runTranscriptDirs = (session: string): string[] =>
 	listDir(join(session, "subagents", "workflows"), "").filter((dir) => !dir.endsWith(".jsonl"));
 
+/**
+ * Session transcripts that can hold a Workflow launch: the same bounded recent
+ * sample as tests/jsonl-validation.test.ts (newest 300 from the last two days,
+ * last 4 MiB of each), or every byte with FULL_JSONL_SCAN=1.
+ */
+const fullScan = process.env["FULL_JSONL_SCAN"] === "1";
+const tailBytes = fullScan ? undefined : 4 * 1024 * 1024;
+const launchFiles = selectFilesForScan(
+	(await collectJsonlFiles(join(homedir(), ".claude", "projects"))).files.filter(
+		(file) => !file.relativePath.includes("/subagents/"),
+	),
+	fullScan,
+	Date.now(),
+	300,
+).files;
+
 describe("workflow schemas against disk", () => {
+	it(
+		"validates every Workflow launch toolUseResult",
+		async () => {
+			const failures: string[] = [];
+			for (const file of launchFiles) {
+				const start = tailBytes === undefined ? 0 : Math.max(0, file.sizeBytes - tailBytes);
+				let text: string;
+				try {
+					const handle = await open(file.path, "r");
+					try {
+						const buffer = Buffer.alloc(file.sizeBytes - start);
+						await handle.read(buffer, 0, buffer.length, start);
+						text = buffer.toString("utf8");
+					} finally {
+						await handle.close();
+					}
+				} catch {
+					continue;
+				}
+				text.split("\n").forEach((line, i) => {
+					if (!line.includes('"local_workflow"') && !line.includes('"remote_launched"')) return;
+					let result: unknown;
+					try {
+						result = (JSON.parse(line) as {toolUseResult?: unknown}).toolUseResult;
+					} catch {
+						return;
+					}
+					if (typeof result !== "object" || result === null) return;
+					if (!("taskId" in result) || "agentId" in result) return;
+					const parsed = WorkflowLaunchResultSchema.safeParse(result);
+					if (!parsed.success) failures.push(`${file.relativePath}:${i + 1}: ${parsed.error.message}`);
+				});
+			}
+			expect(failures).toStrictEqual([]);
+		},
+		scanTimeoutMilliseconds(scanByteCount(launchFiles, tailBytes)),
+	);
+
 	it("validates every workflows/<runId>.json run file", () => {
 		const failures = diskFiles((session) => listDir(join(session, "workflows"), ".json")).flatMap((file) => {
 			const result = WorkflowRunFileSchema.safeParse(JSON.parse(readFileSync(file, "utf8")));

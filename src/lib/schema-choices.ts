@@ -17,7 +17,12 @@ import type {TerminalAppearance} from "./terminal-theme";
 import type {InterfaceFont} from "./appearance";
 import type {TerminalHostSetting} from "./terminal-host-setting";
 import type {WorkflowAgentEntryStateSchema, WorkflowProgressEntrySchema} from "./workflow-progress";
-import type {WorkflowJournalEventSchema, WorkflowRunFileStatusSchema} from "./workflow-runs";
+import type {
+	WorkflowJournalEventSchema,
+	WorkflowLaunchStatusSchema,
+	WorkflowLaunchTaskTypeSchema,
+	WorkflowRunFileStatusSchema,
+} from "./workflow-runs";
 import type {McpScopeSchema, PermissionBehaviorSchema, SkillSourceSchema} from "./api/customize";
 import type {FileRefStatusSchema} from "./api/file-refs";
 import type {PluginFileSchema, PluginListResponse} from "./api/plugins";
@@ -364,6 +369,16 @@ const workflowRunFileStatuses = {
 	completed: "Completed",
 	killed: "Stopped",
 } satisfies Record<z.infer<typeof WorkflowRunFileStatusSchema>, string>;
+
+const workflowLaunchStatuses = {
+	async_launched: "Local run (readWorkflowRuns)",
+	remote_launched: "Remote CCR run (keyed by taskId)",
+} satisfies Record<z.infer<typeof WorkflowLaunchStatusSchema>, string>;
+
+const workflowLaunchTaskTypes = {
+	local_workflow: "Local run",
+	remote_agent: "Remote run",
+} satisfies Record<z.infer<typeof WorkflowLaunchTaskTypeSchema>, string>;
 
 const taskStatusLabels = {
 	pending: "Pending",
@@ -1599,6 +1614,8 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"WorkflowProgressEntrySchema.<workflow_agent>.state": workflowAgentEntryStates,
 	WorkflowJournalEventSchema: workflowJournalEventTypes,
 	"WorkflowRunFileSchema.status": workflowRunFileStatuses,
+	"WorkflowLaunchResultSchema.status": workflowLaunchStatuses,
+	"WorkflowLaunchResultSchema.taskType": workflowLaunchTaskTypes,
 	"SessionRegistryFileSchema.status": sessionRegistryStatusLabels,
 	UnifiedSearchTypeSchema: unifiedSearchTypeLabels,
 	UnifiedSearchDateSchema: unifiedSearchDateLabels,

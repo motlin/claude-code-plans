@@ -25,16 +25,31 @@ import {
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
-/** The `toolUseResult` of a `Workflow` call that launched a run. */
-const WorkflowLaunchResultSchema = z.strictObject({
-	status: z.literal("async_launched"),
+export const WorkflowLaunchStatusSchema = z.enum(["async_launched", "remote_launched"]);
+export const WorkflowLaunchTaskTypeSchema = z.enum(["local_workflow", "remote_agent"]);
+
+/**
+ * The `toolUseResult` of a `Workflow` call that launched a run: the CLI's
+ * output schema (2.1.318 `en`). Only `status` and `taskId` are always present;
+ * `taskType`/`runId` are absent on transcripts written before those fields
+ * existed, `runId` is absent for `remote_launched`, and a compile failure
+ * carries `error` with no `transcriptDir`/`scriptPath`.
+ */
+export const WorkflowLaunchResultSchema = z.strictObject({
+	status: WorkflowLaunchStatusSchema,
 	taskId: z.string(),
-	taskType: z.literal("local_workflow"),
-	workflowName: z.string(),
-	runId: z.string(),
-	summary: z.string(),
-	transcriptDir: z.string(),
-	scriptPath: z.string(),
+	taskType: WorkflowLaunchTaskTypeSchema.optional(),
+	workflowName: z.string().optional(),
+	runId: z.string().optional(),
+	summary: z.string().optional(),
+	transcriptDir: z.string().optional(),
+	scriptPath: z.string().optional(),
+	/** CCR session URL, only for `remote_launched`. */
+	sessionUrl: z.string().optional(),
+	/** Non-blocking heads-up for a remote launch. */
+	warning: z.string().optional(),
+	/** Set when the script failed its syntax check and nothing launched. */
+	error: z.string().optional(),
 });
 
 export const WorkflowRunFileStatusSchema = z.enum(["completed", "killed"]);
@@ -131,7 +146,8 @@ export interface WorkflowRun {
 interface Launch {
 	toolUseId: string;
 	timestamp: string | null;
-	result: z.infer<typeof WorkflowLaunchResultSchema>;
+	runId: string;
+	result: z.infer<typeof RuntimeLaunchResultSchema>;
 }
 
 interface Notification {
@@ -189,16 +205,27 @@ function notificationTexts(record: Readonly<Record<string, unknown>>): string[] 
 function launchOf(record: Readonly<Record<string, unknown>>): Launch | null {
 	const parsed = RuntimeLaunchResultSchema.safeParse(record["toolUseResult"]);
 	if (!parsed.success) return null;
+	// A compile-failed launch (`error`, or an `is_error` tool_result) never started a run, like upstream `Et`.
+	if (parsed.data.error !== undefined) return null;
+	// Remote launches carry no runId; they are not built into runs until one reaches disk.
+	const {runId} = parsed.data;
+	if (runId === undefined) return null;
 	const content = asRecord(record["message"])?.["content"];
 	if (!Array.isArray(content)) return null;
 	for (const block of content) {
-		const toolUseId = asString(asRecord(block)?.["tool_use_id"]);
-		if (toolUseId !== null) return {toolUseId, timestamp: asString(record["timestamp"]), result: parsed.data};
+		const toolResult = asRecord(block);
+		const toolUseId = asString(toolResult?.["tool_use_id"]);
+		if (toolUseId === null) continue;
+		if (toolResult?.["is_error"] === true) return null;
+		return {toolUseId, timestamp: asString(record["timestamp"]), runId, result: parsed.data};
 	}
 	return null;
 }
 
-/** Only these lines can hold a launch result or a notification; skip parsing the rest. */
+/**
+ * Only these lines can hold a launch result or a notification; skip parsing the rest.
+ * Pre-field transcripts whose launch has no `taskType` are deliberately skipped.
+ */
 function mightMatter(line: string): boolean {
 	return line.includes("local_workflow") || line.includes("<task-notification>");
 }
@@ -365,7 +392,7 @@ export function readWorkflowRuns(transcriptPath: string): WorkflowRun[] {
 		if (record === undefined) continue;
 		const launch = launchOf(record);
 		if (launch !== null) {
-			const runId = launch.result.runId;
+			const {runId} = launch;
 			// Re-insert so the map orders runs by their latest launch.
 			const previous = launches.get(runId) ?? [];
 			launches.delete(runId);
@@ -394,10 +421,10 @@ export function readWorkflowRuns(transcriptPath: string): WorkflowRun[] {
 				taskId,
 				toolUseId: latest.toolUseId,
 				toolUseIds: runLaunches.map((launch) => launch.toolUseId),
-				workflowName: latest.result.workflowName,
-				scriptPath: latest.result.scriptPath,
-				transcriptDir: latest.result.transcriptDir,
-				description: file?.summary ?? latest.result.summary,
+				workflowName: latest.result.workflowName ?? "",
+				scriptPath: latest.result.scriptPath ?? "",
+				transcriptDir: latest.result.transcriptDir ?? "",
+				description: file?.summary ?? latest.result.summary ?? "",
 				status: notification?.status ?? (file === null ? "running" : runFileStatus(file.status)),
 				summary: notification?.summary ?? null,
 				startedAt: file?.startTime ?? epochMs(latest.timestamp),

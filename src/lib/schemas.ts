@@ -1832,6 +1832,17 @@ export const SystemRecordSchema = z
 		scope: ModelRefusalFallbackScopeSchema.optional(),
 		fallbackModel: z.string().optional(),
 		retractedMessageUuids: z.array(z.string()).optional(),
+		// `memory_saved`: the memory files extractMemories/autoDream wrote, how many of
+		// them are team memories, and the verb ("Improved") autoDream labels them with.
+		writtenPaths: z.array(z.string()).optional(),
+		teamCount: z.number().optional(),
+		verb: z.string().optional(),
+		// `model_consent_fallback`: the usage-credit gate switched `originalModel` to
+		// `fallbackModel`; `choice` is the user's pick and `persistedAsDefault` whether
+		// the switch became the default model rather than this session's only.
+		choice: z.string().optional(),
+		originalModelName: z.string().optional(),
+		persistedAsDefault: z.boolean().optional(),
 	})
 	.strict();
 

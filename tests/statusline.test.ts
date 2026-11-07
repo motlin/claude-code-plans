@@ -1,4 +1,4 @@
-import {describe, expect, it, vi} from "vite-plus/test";
+import {describe, expect, expectTypeOf, it, vi} from "vite-plus/test";
 import {SessionMetricsBatchResponse, StatuslineSchema, toSessionMetrics} from "../src/lib/api/statusline";
 import {handleSessionStatuslineRequest} from "../src/routes/api/sessions.$id.statusline";
 import {handleStatuslineBatchRequest} from "../src/routes/api/sessions.statusline";
@@ -110,6 +110,14 @@ describe("StatuslineSchema", () => {
 		};
 
 		expect(StatuslineSchema.parse(statuslineWithUnknownFields)).toStrictEqual(statuslineWithUnknownFields);
+	});
+
+	it("declares fast_mode, the CLI's live fast-mode toggle (true during cooldown)", () => {
+		const parsed = StatuslineSchema.parse({fast_mode: true});
+		expect(parsed.fast_mode).toBe(true);
+		expectTypeOf(parsed.fast_mode).toEqualTypeOf<boolean | undefined>();
+		expect(StatuslineSchema.parse({}).fast_mode).toBeUndefined();
+		expect(StatuslineSchema.safeParse({fast_mode: "yes"}).success).toBe(false);
 	});
 
 	it("maps absent optional fields to null instead of zero", () => {

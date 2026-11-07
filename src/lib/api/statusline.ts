@@ -70,6 +70,8 @@ export const StatuslineSchema = z
 			.loose()
 			.optional(),
 		rate_limits: StatuslineRateLimitsSchema.optional(),
+		/** The CLI's live fast-mode toggle; true while fast mode is on or cooling down. */
+		fast_mode: z.boolean().optional(),
 		cost: z
 			.object({
 				total_cost_usd: z.number().optional(),

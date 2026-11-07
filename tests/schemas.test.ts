@@ -560,6 +560,41 @@ describe("SystemRecordSchema", () => {
 		expect(SystemRecordSchema.parse(record)).toStrictEqual(record);
 	});
 
+	it("parses a memory_saved record's writtenPaths, teamCount and verb", () => {
+		const record = {
+			type: "system",
+			...baseFields,
+			subtype: "memory_saved",
+			writtenPaths: [
+				"/Users/alice/.claude/projects/outline/memory/a.md",
+				"/Users/alice/.claude/projects/outline/memory/b.md",
+			],
+			teamCount: 1,
+			verb: "Improved",
+			isMeta: false,
+		};
+
+		expect(SystemRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it("parses a model_consent_fallback record's choice, originalModelName and persistedAsDefault", () => {
+		const record = {
+			type: "system",
+			...baseFields,
+			subtype: "model_consent_fallback",
+			content: "Switched to Opus 5.5 — now your default model · Fable requires usage credits · /model to change",
+			level: "warning",
+			choice: "fallback",
+			originalModel: "claude-fable-1",
+			originalModelName: "Fable",
+			fallbackModel: "claude-opus-5-5",
+			persistedAsDefault: true,
+			isMeta: false,
+		};
+
+		expect(SystemRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
 	it("parses the request retry source", () => {
 		const record = {
 			type: "system",
