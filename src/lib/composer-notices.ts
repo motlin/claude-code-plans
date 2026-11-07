@@ -1,6 +1,8 @@
 /**
  * Upstream's composer notice region renders every registered notice, stacked
- * in this fixed slot order (`un` in claude.ai/code, live crawl 2026-10-20).
+ * in this fixed slot order (`Ym` in claude.ai/code ca8b34310, crawl 2026-11-06;
+ * `eagerCookie` = cold-resume notice and `tokenLimit` = 3P token-cap band,
+ * neither has a local registrant yet).
  */
 export const NOTICE_ORDER = [
 	"ops",
@@ -8,9 +10,10 @@ export const NOTICE_ORDER = [
 	"environment",
 	"acorn",
 	"credits",
-	"effort",
 	"workflow",
+	"eagerCookie",
 	"limit",
+	"tokenLimit",
 	"refusal",
 	"sleep",
 	"keptAwake",

@@ -3,16 +3,17 @@ import {NOTICE_ORDER, orderNotices} from "../src/lib/composer-notices";
 import type {Notice, NoticeSlot} from "../src/lib/composer-notices";
 
 describe("NOTICE_ORDER", () => {
-	it("matches upstream's un order list", () => {
+	it("matches upstream's Ym order list (2026-11-06)", () => {
 		expect(NOTICE_ORDER).toStrictEqual([
 			"ops",
 			"paused",
 			"environment",
 			"acorn",
 			"credits",
-			"effort",
 			"workflow",
+			"eagerCookie",
 			"limit",
+			"tokenLimit",
 			"refusal",
 			"sleep",
 			"keptAwake",
@@ -52,6 +53,19 @@ describe("orderNotices", () => {
 		expect(orderNotices(entries)).toStrictEqual([
 			{key: "code-limit:code_usage_limit", slot: "limit", notice: limit},
 			{key: "code-sleep:sleep", slot: "sleep", notice: sleep},
+		]);
+	});
+
+	it("orders eagerCookie before limit and refusal like upstream's Ym", () => {
+		const entries = new Map<NoticeSlot, Notice>();
+		entries.set("refusal", {id: "code_refusal_fallback"});
+		entries.set("limit", {id: "code_usage_limit"});
+		entries.set("eagerCookie", {id: "code_eager_cookie"});
+
+		expect(orderNotices(entries)).toStrictEqual([
+			{key: "code-eagerCookie:code_eager_cookie", slot: "eagerCookie", notice: {id: "code_eager_cookie"}},
+			{key: "code-limit:code_usage_limit", slot: "limit", notice: {id: "code_usage_limit"}},
+			{key: "code-refusal:code_refusal_fallback", slot: "refusal", notice: {id: "code_refusal_fallback"}},
 		]);
 	});
 
