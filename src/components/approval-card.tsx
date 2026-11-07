@@ -141,7 +141,7 @@ function swallowFileDrag(event: DragEvent<HTMLDivElement>) {
 
 /**
  * Upstream's approval card shell for a pending permission: a scrolling body
- * and an action row, 10px radius and 12px padding. Each card is its own
+ * and an action row, 12px radius (cds-radius + 4px) and 12px padding. Each card is its own
  * inline-size container, and at upstream's 420px its actions stack full width.
  * Inline in the transcript ("card") it is outlined and transparent; docked above
  * the composer it takes the popover fill and shadow.
@@ -229,7 +229,7 @@ export function ApprovalCardShell({
 				onClick={(event) => {
 					event.stopPropagation();
 				}}
-				className={`@container relative isolate flex ${frame} flex-col rounded-r7 p-3 text-[13px]/[19px] text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 ${look}${enter ? " animate-approval-inline-enter motion-reduce:animate-none" : ""}`}
+				className={`@container relative isolate flex ${frame} flex-col rounded-card p-3 text-[13px]/[19px] text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 ${look}${enter ? " animate-approval-inline-enter motion-reduce:animate-none" : ""}`}
 			>
 				{band && (
 					<div

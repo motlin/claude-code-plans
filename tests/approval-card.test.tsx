@@ -22,6 +22,14 @@ function permissionChrome() {
 }
 
 describe("approval card chrome", () => {
+	it("rounds the card with upstream's rounded-card (cds radius + 4px), not the fixed 10px rounded-r7", () => {
+		const classes = permissionChrome().card?.split(/\s+/) ?? [];
+		expect({card: classes.includes("rounded-card"), r7: classes.includes("rounded-r7")}).toStrictEqual({
+			card: true,
+			r7: false,
+		});
+	});
+
 	it("makes the permission card its own container and stacks its actions and any split button full width at upstream's 420px", () => {
 		const {root, actions} = permissionChrome();
 
@@ -49,7 +57,7 @@ describe("approval card chrome", () => {
 			expected.filter((name) => !classes(value).has(name));
 		expect({
 			card: missing(chrome.card, [
-				"rounded-r7",
+				"rounded-card",
 				"p-3",
 				"card-ring",
 				"focus-visible:outline-1",

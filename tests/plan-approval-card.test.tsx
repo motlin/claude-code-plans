@@ -90,7 +90,7 @@ describe("PlanApprovalCard", () => {
 		expect(buttonNames()).toStrictEqual(["Reject", "Revise…Esc", "AcceptCtrl⏎Enter"]);
 	});
 
-	it("styles the feedback box as upstream's field: 6px radius, 5% fill, field ring, accent focus shadow", async () => {
+	it("styles the feedback box as upstream's field: bare rounded (6px compact / 8px comfortable), 5% fill, field ring, accent focus shadow", async () => {
 		const {value} = context();
 		await renderCard(value);
 		fireEvent.click(button("Revise…Esc"));
@@ -98,7 +98,7 @@ describe("PlanApprovalCard", () => {
 		expect(box.className.split(" ")).toStrictEqual([
 			"w-full",
 			"resize-none",
-			"rounded-r6",
+			"rounded",
 			"bg-alpha-1",
 			"px-md",
 			"py-sm",

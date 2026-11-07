@@ -48,9 +48,9 @@ const HINT_CLASS = "text-footnote text-secondary";
  */
 const PLAN_ACTIONS_CLASS = `flex flex-wrap justify-between gap-x-1 gap-y-2 [&>span]:grow ${STACK_ACTIONS} @max-[420px]:[&>span]:flex-col @max-[420px]:[&>span]:items-stretch @max-[420px]:[&_button]:w-full`;
 
-/** Upstream's cds TextArea (`bg-fill-field shadow-field-ring px-md py-sm rounded`): 6px radius, 5% fill, field ring, accent focus shadow. */
+/** Upstream's cds TextArea (`bg-fill-field shadow-field-ring px-md py-sm rounded`): bare rounded (6px compact / 8px comfortable), 5% fill, field ring, accent focus shadow. */
 const FEEDBACK_CLASS =
-	"w-full resize-none rounded-r6 bg-alpha-1 px-md py-sm text-body text-primary placeholder:text-ink-muted shadow-[inset_0_0_0_1px_var(--color-border)] outline-none focus-visible:shadow-[var(--focus-shadow)] hover:not-focus:shadow-[inset_0_0_0_1px_var(--color-strong)]";
+	"w-full resize-none rounded bg-alpha-1 px-md py-sm text-body text-primary placeholder:text-ink-muted shadow-[inset_0_0_0_1px_var(--color-border)] outline-none focus-visible:shadow-[var(--focus-shadow)] hover:not-focus:shadow-[inset_0_0_0_1px_var(--color-strong)]";
 
 /** Where a plan key may act: anywhere a docked card key may, plus ⇧⌘⏎ from a composer holding a draft (upstream lets it through). */
 function planKeyAllowed(target: EventTarget | null, action: PlanKeyAction): boolean {

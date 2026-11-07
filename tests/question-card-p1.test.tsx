@@ -38,6 +38,17 @@ function pressed(): Array<string | null> {
 	);
 }
 
+describe("QuestionCard root radius, as upstream's epitaxy-approval-card rounded-card", () => {
+	it("rounds the card root with rounded-card (12px comfortable), not the fixed 10px rounded-r7", () => {
+		render(<QuestionCard questions={[SINGLE]} onSubmit={async () => {}} />);
+		const classes = screen.getByRole("group", {name: "Which test runner?"}).className.split(" ");
+		expect({card: classes.includes("rounded-card"), r7: classes.includes("rounded-r7")}).toStrictEqual({
+			card: true,
+			r7: false,
+		});
+	});
+});
+
 describe("QuestionCard ArrowUp/ArrowDown roving, as upstream's st()", () => {
 	it("marks every option and the Other button with data-question-answer", () => {
 		render(<QuestionCard questions={[SINGLE]} onSubmit={async () => {}} />);

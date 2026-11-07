@@ -507,7 +507,7 @@ export function QuestionCard({
 			}}
 			onKeyDown={roveAnswers}
 			{...(skipEnter ? {"data-skip-approval-enter": ""} : {})}
-			className={`card-ring @container relative isolate flex max-w-[480px] flex-col overflow-clip rounded-r7 outline-none${
+			className={`card-ring @container relative isolate flex max-w-[480px] flex-col overflow-clip rounded-card outline-none${
 				skipEnter ? "" : " animate-approval-inline-enter motion-reduce:animate-none"
 			}`}
 		>

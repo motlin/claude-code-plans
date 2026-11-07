@@ -943,7 +943,7 @@ describe("PermissionCard", () => {
 		};
 		expect({
 			presentation: card.dataset["approvalPresentation"],
-			card: missing(card, ["card-ring", "@container", "rounded-r7", "p-3"]),
+			card: missing(card, ["card-ring", "@container", "rounded-card", "p-3"]),
 			dockLook: ["shadow-[var(--approval-card-shadow)]", "bg-surface-2"].filter((name) =>
 				card.classList.contains(name),
 			),
@@ -1070,7 +1070,7 @@ describe("PermissionCard", () => {
 			body: card.querySelector("[data-approval-card-body]")?.getAttribute("class"),
 		}).toStrictEqual({
 			region: null,
-			card: "@container relative isolate flex max-h-[60vh] flex-col rounded-r7 p-3 text-[13px]/[19px] text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 card-ring w-full max-w-[480px] gap-[24px]",
+			card: "@container relative isolate flex max-h-[60vh] flex-col rounded-card p-3 text-[13px]/[19px] text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 card-ring w-full max-w-[480px] gap-[24px]",
 			body: "-mx-3 -mt-1 -mb-2 flex min-h-0 flex-col overflow-y-auto px-3 pt-1 pb-2 gap-[24px]",
 		});
 	});

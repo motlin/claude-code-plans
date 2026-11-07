@@ -298,15 +298,16 @@ html[data-interface-font="dyslexic"] {
 	--radius-r5: 6px;
 	--radius-r6: 8px;
 	--radius-r7: 10px;
-	--radius-card: 12px;
+	/* Upstream --radius-card: calc(var(--cds-radius) + .25rem): 10px compact / 12px comfortable. */
+	--radius-card: calc(var(--upstream-radius) + 0.25rem);
 	/* Upstream cds xs Card (the composer attachment tile): 9px inside the 10px tile */
 	--radius-card-xs: 9px;
 	/* Upstream claude.ai/code — size sm Button (hover card option chips) */
 	--radius-control-sm: 7px;
 	/* Upstream claude.ai/code — Customize Discover card */
 	--radius-discover-card: 11px;
-	/* Upstream claude.ai/code — composer field (--cds-radius-composer) */
-	--radius-composer: 14px;
+	/* Upstream claude.ai/code — composer field (--cds-radius-composer): 12px compact / 14px comfortable. */
+	--radius-composer: var(--upstream-radius-composer);
 	/* Upstream comfortable menu popup: calc(var(--cds-radius) + var(--cds-menu-gutter)) = 8 + 6 */
 	--radius-menu-comfortable: 14px;
 
@@ -339,6 +340,8 @@ html[data-interface-font="dyslexic"] {
 		inset 0 0 0 var(--ring-inner) var(--card-ring-color, var(--card-outline)),
 		0 0 0 var(--ring-outer) var(--card-ring-color, var(--card-outline));
 
+	/* Upstream --radius: var(--cds-radius): bare rounded is 6px compact / 8px comfortable. */
+	--radius: var(--upstream-radius);
 	/* Upstream claude.ai/code rounded-xs is .125rem (2px): agent cells and plan-comment marks. */
 	--radius-xs: 0.125rem;
 	/* Upstream claude.ai/code rounded-sm is .25rem (4px), measured on the task-event button. */
@@ -508,6 +511,10 @@ html[data-interface-font="dyslexic"] {
 	--upstream-t7: hsl(0 0% 4% / 0.8);
 	--upstream-t8: hsl(0 0% 4% / 0.9);
 	--upstream-t9: hsl(0 0% 4% / 1);
+
+	/* Upstream .cds-root[data-density=comfortable] --cds-radius / --cds-radius-composer. */
+	--upstream-radius: 0.5rem;
+	--upstream-radius-composer: 0.875rem;
 
 	/* Upstream claude.ai/code — typography */
 	--upstream-text-body: 14px;
@@ -2770,6 +2777,8 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
    Code main column is marked compact, which is upstream's base .cds-root block.
    A comfortable scope restates :root's scale so it wins over an enclosing compact one. */
 [data-density="comfortable"] {
+	--upstream-radius: 0.5rem;
+	--upstream-radius-composer: 0.875rem;
 	--upstream-text-body: 14px;
 	--upstream-leading-body: 20px;
 	--upstream-text-footnote: 13px;
@@ -2806,6 +2815,8 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 }
 
 [data-density="compact"] {
+	--upstream-radius: 0.375rem;
+	--upstream-radius-composer: 0.75rem;
 	--upstream-text-body: 13px;
 	--upstream-leading-body: 19px;
 	--upstream-text-footnote: 12px;

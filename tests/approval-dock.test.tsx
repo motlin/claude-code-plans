@@ -253,7 +253,7 @@ describe("QuestionCard", () => {
 		expect({
 			card: card.className
 				.split(" ")
-				.filter((name) => ["@container", "max-w-[480px]", "card-ring", "rounded-r7"].includes(name)),
+				.filter((name) => ["@container", "max-w-[480px]", "card-ring", "rounded-card"].includes(name)),
 			header: card.firstElementChild?.textContent,
 			pagerMargins: screen
 				.getByRole("button", {name: "Show previous question"})
@@ -280,7 +280,7 @@ describe("QuestionCard", () => {
 				.parentElement?.className.split(" ")
 				.filter((name) => name.startsWith("gap-")),
 		}).toStrictEqual({
-			card: ["card-ring", "@container", "max-w-[480px]", "rounded-r7"],
+			card: ["card-ring", "@container", "max-w-[480px]", "rounded-card"],
 			header: "Which test runner?1 of 2",
 			pagerMargins: ["-my-1.5", "-me-2"],
 			pager: [true, false],
