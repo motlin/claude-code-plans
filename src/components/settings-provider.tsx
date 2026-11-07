@@ -1,7 +1,8 @@
 import {useCallback, useEffect, useLayoutEffect, useMemo, useState} from "react";
 
-import {appearanceCssVars} from "../lib/appearance";
+import {appearanceCssVars, applyReplyFace} from "../lib/appearance";
 import {codeFontFamily, codeFontSizeCssVars} from "../lib/code-themes";
+import {FIZZY_LAKE_TYPE} from "../lib/fizzy-lake";
 import {objectKeys} from "../lib/narrow";
 import {usePrefersReducedMotion} from "../lib/reduced-motion";
 import {
@@ -67,6 +68,10 @@ export function SettingsProvider({children}: {children: React.ReactNode}) {
 		if (settings.interfaceFont === "sans") delete root.dataset["interfaceFont"];
 		else root.dataset["interfaceFont"] = settings.interfaceFont;
 	}, [settings.interfaceFont]);
+
+	useEffect(() => {
+		applyReplyFace(document.documentElement, settings.responseFont, {type: FIZZY_LAKE_TYPE});
+	}, [settings.responseFont]);
 
 	useEffect(() => {
 		const style = document.documentElement.style;

@@ -682,3 +682,23 @@
 .markdown :is(pre, code) {
 	font-variation-settings: normal;
 }
+
+/* Upstream's serif reply heading reset (shared-styles BM0lMNTW, c6a992d55):
+   `html[data-cds-fizzy-lake~=type]:not([data-atkinson-font],[data-dyslexic-font]):not([data-reply-face=interface])
+   .prose:not([data-prose-font]) { --cds-font-weight-header: initial; --cds-font-axis-wght-header: initial }`.
+   Reply-type headings, th and their strong read
+   `var(--cds-font-weight-header, var(--_prose-heading-weight, var(--cds-font-weight-semibold,580)))`, so a serif
+   reply face falls past the fizzy header weight to semibold 580. Strong (501) is untouched. Deliberately left out:
+   the Windows/Linux `--cds-reply-weight-floor` rules (no local OS meaning) and the System-font role weight and
+   axis reset (rule 3), since local prose has no role weights to reset. */
+:global(html[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]):not([data-reply-face="interface"]))
+	:global([data-transcript-prose])
+	.markdown
+	:is(h1, h2, h3, h4, h5, h6, th),
+:global(html[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"]):not([data-reply-face="interface"]))
+	:global([data-transcript-prose])
+	.markdown
+	:is(h1, h2, h3, h4, h5, h6, th)
+	strong {
+	font-weight: 580;
+}

@@ -18,8 +18,10 @@ import {DEFAULT_TERMINAL_APPEARANCE, TerminalAppearanceSchema, type TerminalAppe
 import {TranscriptWidthSchema, type TranscriptWidth} from "../lib/transcript-width";
 import {
 	InterfaceFontSchema,
+	ResponseFontSchema,
 	TranscriptTextSizeSchema,
 	type InterfaceFont,
+	type ResponseFont,
 	type TranscriptTextSize,
 } from "../lib/appearance";
 
@@ -71,6 +73,8 @@ export interface Settings {
 	transcriptWidth: TranscriptWidth;
 	/** Interface font: the bundled sans, or the OS UI font via `--font-sans` on <html>. */
 	interfaceFont: InterfaceFont;
+	/** Response font: the transcript prose face, mirrored as `html[data-reply-face]` under fizzy `type`. */
+	responseFont: ResponseFont;
 	/** Transcript body text size, set as `--transcript-text-size` on <html>. */
 	transcriptTextSize: TranscriptTextSize;
 	/** Show the CLI's ai-title under a differing /rename title in the header and sidebar hover card. */
@@ -159,6 +163,7 @@ export const DEFAULTS: Settings = {
 	motion: "system",
 	transcriptWidth: "narrow",
 	interfaceFont: "sans",
+	responseFont: "sans",
 	transcriptTextSize: "md",
 	showAiTitles: true,
 	showChangesStrip: false,
@@ -221,6 +226,7 @@ export const STORAGE_KEYS: Record<keyof Settings, string> = {
 	motion: "ccp-motion",
 	transcriptWidth: "ccp-transcript-width",
 	interfaceFont: "ccp-interface-font",
+	responseFont: "ccp-response-font",
 	transcriptTextSize: "ccp-transcript-text-size",
 	showAiTitles: "ccp-show-ai-titles",
 	showChangesStrip: "ccp-show-changes-strip",
@@ -394,6 +400,7 @@ const STORED_VALUE_READERS: {[K in keyof Settings]: StoredValueReader<Settings[K
 	motion: readSchema(MotionSchema),
 	transcriptWidth: readSchema(TranscriptWidthSchema),
 	interfaceFont: readSchema(InterfaceFontSchema),
+	responseFont: readSchema(ResponseFontSchema),
 	transcriptTextSize: readSchema(TranscriptTextSizeSchema),
 	showAiTitles: readBoolean,
 	showChangesStrip: readBoolean,

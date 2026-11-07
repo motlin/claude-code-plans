@@ -7,6 +7,32 @@ import {TRANSCRIPT_WIDTH_PX, type TranscriptWidth} from "./transcript-width";
 export const InterfaceFontSchema = z.enum(["sans", "system", "dyslexic"]);
 export type InterfaceFont = z.infer<typeof InterfaceFontSchema>;
 
+/**
+ * Settings ▸ General ▸ Appearance ▸ Response font: the face of assistant prose in the transcript. Upstream's
+ * chat font also has `default` and legacy system / atkinson / dyslexia values; local offers only the two
+ * faces upstream lists for a fresh value.
+ */
+export const ResponseFontSchema = z.enum(["sans", "serif"]);
+export type ResponseFont = z.infer<typeof ResponseFontSchema>;
+
+/** The `html[data-reply-face]` value: upstream `dH` under fizzy `type` (sans is the interface face). */
+export type ReplyFace = "interface" | "serif";
+
+export function replyFaceFor(font: ResponseFont): ReplyFace {
+	return font === "sans" ? "interface" : "serif";
+}
+
+/**
+ * Upstream `GK` (shared-l-p-m-w-3):
+ * `if(!vF("type"))return; let t=$e(e)?"interface":dH(e); if(html.getAttribute("data-reply-face")!==t) html.setAttribute("data-reply-face",t)`.
+ * Gated on fizzy `type`, written only when the value changes, and never removed.
+ */
+export function applyReplyFace(root: HTMLElement, font: ResponseFont, {type}: {type: boolean}): void {
+	if (!type) return;
+	const face = replyFaceFor(font);
+	if (root.getAttribute("data-reply-face") !== face) root.setAttribute("data-reply-face", face);
+}
+
 /** Settings ▸ Claude Code ▸ Appearance ▸ Transcript text size: Small / Medium / Large. */
 export const TranscriptTextSizeSchema = z.enum(["sm", "md", "lg"]);
 export type TranscriptTextSize = z.infer<typeof TranscriptTextSizeSchema>;
