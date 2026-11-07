@@ -1,5 +1,5 @@
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
-import {mkdtempSync, rmSync, writeFileSync} from "node:fs";
+import {mkdtempSync, rmSync, statSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
@@ -132,27 +132,61 @@ describe("jsonlReadOffset", () => {
 		const path = join(root, "grown.jsonl");
 		writeFileSync(path, '{"a":1}\n{"b":2}\n');
 
-		expect(await jsonlReadOffset(db.index, path, '{"a":1}\n'.length)).toBe('{"a":1}\n'.length);
+		expect(await jsonlReadOffset(db.index, path, '{"a":1}\n'.length)).toStrictEqual({
+			offset: '{"a":1}\n'.length,
+			rewritten: false,
+		});
 	});
 
 	it("falls back to the resume offset without a cached one", async () => {
 		const path = join(root, "uncached.jsonl");
 		writeFileSync(path, '{"a":1}\n');
 
-		expect(await jsonlReadOffset(db.index, path, undefined)).toBe(0);
+		expect(await jsonlReadOffset(db.index, path, undefined)).toStrictEqual({offset: 0, rewritten: false});
 	});
 
 	it("moves a cached offset past the end of a rewritten transcript back to its end", async () => {
 		const path = join(root, "rewritten.jsonl");
 		writeFileSync(path, '{"a":1}\n');
 
-		expect(await jsonlReadOffset(db.index, path, 1000)).toBe('{"a":1}\n'.length);
+		expect(await jsonlReadOffset(db.index, path, 1000)).toStrictEqual({
+			offset: '{"a":1}\n'.length,
+			rewritten: true,
+		});
 	});
 
 	it("moves a cached offset past the end of a rewritten transcript back to the start of its partial last line", async () => {
 		const path = join(root, "rewritten-partial.jsonl");
 		writeFileSync(path, '{"a":1}\n{"b');
 
-		expect(await jsonlReadOffset(db.index, path, 1000)).toBe('{"a":1}\n'.length);
+		expect(await jsonlReadOffset(db.index, path, 1000)).toStrictEqual({
+			offset: '{"a":1}\n'.length,
+			rewritten: true,
+		});
+	});
+	it("reports a rewrite when the bytes before the cached offset no longer match the witness", async () => {
+		const path = join(root, "witnessed.jsonl");
+		writeFileSync(path, '{"a":1}\n{"b":2}\n');
+		const witness = {ino: statSync(path).ino, signature: Buffer.from('{"a":1}\n{"b":2}\n')};
+		writeFileSync(path, '{"a":1}\n{"c":333333}\n');
+
+		expect(await jsonlReadOffset(db.index, path, 16, witness)).toStrictEqual({offset: 21, rewritten: true});
+	});
+
+	it("keeps the cached offset when the witness still matches", async () => {
+		const path = join(root, "witnessed-append.jsonl");
+		writeFileSync(path, '{"a":1}\n{"b":2}\n');
+		const witness = {ino: statSync(path).ino, signature: Buffer.from('{"a":1}\n{"b":2}\n')};
+		writeFileSync(path, '{"a":1}\n{"b":2}\n{"c":3}\n');
+
+		expect(await jsonlReadOffset(db.index, path, 16, witness)).toStrictEqual({offset: 16, rewritten: false});
+	});
+
+	it("reports a rewrite when the inode changed", async () => {
+		const path = join(root, "renamed.jsonl");
+		writeFileSync(path, '{"a":1}\n{"b":2}\n');
+		const witness = {ino: statSync(path).ino + 1, signature: Buffer.from('{"a":1}\n{"b":2}\n')};
+
+		expect(await jsonlReadOffset(db.index, path, 16, witness)).toStrictEqual({offset: 16, rewritten: true});
 	});
 });

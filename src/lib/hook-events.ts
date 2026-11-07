@@ -178,6 +178,15 @@ export const SessionLinesAppendedPayloadSchema: z.ZodType<SessionLinesAppendedPa
 	writtenAt: z.int().nonnegative(),
 });
 
+/** Payload broadcast when a session's JSONL was rewritten below the append offset, so held rows may be gone. */
+export interface SessionTranscriptRewrittenPayload {
+	sessionId: string;
+}
+
+export const SessionTranscriptRewrittenPayloadSchema: z.ZodType<SessionTranscriptRewrittenPayload> = z.strictObject({
+	sessionId: z.string(),
+});
+
 /**
  * Payload broadcast when a `UserPromptSubmit` hook fires. Lets the session view
  * render the user's message before the JSONL file has been flushed to disk.

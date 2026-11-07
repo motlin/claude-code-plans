@@ -497,13 +497,34 @@ export async function openSessionInFinder(sessionId: string): Promise<unknown> {
 	});
 }
 
+/** The transcript's tail window, as the session page first loads it. */
+export async function fetchTranscriptTail(id: string): Promise<TranscriptData> {
+	return apiFetch(`/api/sessions/${encodeURIComponent(id)}/transcript`, TranscriptResponse);
+}
+
+/** Windows handed to `replaceTranscriptData`, which `structuralSharing` must store as they are instead of merging. */
+const transcriptReplacements = new WeakSet<object>();
+
+/**
+ * Replace the cached transcript with `data` outright, dropping every cached
+ * page. `setQueryData` runs the query's `structuralSharing`, which would merge
+ * the old window back in by index, so the replacement is marked for it to skip.
+ */
+export function replaceTranscriptData(queryClient: QueryClient, id: string, data: TranscriptData): void {
+	transcriptReplacements.add(data);
+	queryClient.setQueryData(sessionQueryKeys.transcript(id), data);
+}
+
 export const transcriptQueryOptions = (id: string) =>
 	queryOptions({
 		queryKey: sessionQueryKeys.transcript(id),
-		queryFn: async () => apiFetch(`/api/sessions/${encodeURIComponent(id)}/transcript`, TranscriptResponse),
+		queryFn: async () => fetchTranscriptTail(id),
 		structuralSharing: (oldData, newData) => {
 			const refreshed = TranscriptResponse.parse(newData);
 			if (oldData === undefined) return refreshed;
+			// The CLI rewrote the file below the cached window (upstream re-snapshots by uuid): nothing cached survives.
+			if (typeof newData === "object" && newData !== null && transcriptReplacements.has(newData))
+				return refreshed;
 			const cached = TranscriptResponse.parse(oldData);
 			// The chain forked or switched branch since the cached pages were
 			// served, so their hidden rows are stale: start again from the tail

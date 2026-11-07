@@ -39,6 +39,7 @@ import {
 	applySessionAdded,
 	applySessionLinesAppended,
 	applySessionRemoved,
+	applySessionTranscriptRewritten,
 	applySessionUpdated,
 	applyTaskChanged,
 	claudeEventsReducer,
@@ -66,6 +67,7 @@ const DOMAIN_EVENT_TYPES = [
 	DOMAIN_EVENTS.SESSION_STARTED,
 	DOMAIN_EVENTS.SESSION_ENDED,
 	DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+	DOMAIN_EVENTS.SESSION_TRANSCRIPT_REWRITTEN,
 	DOMAIN_EVENTS.SESSION_PROMPT_SUBMITTED,
 	DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED,
 	DOMAIN_EVENTS.SESSION_TOOL_PENDING,
@@ -321,6 +323,11 @@ export function ClaudeEventsProvider({children}: {children: ReactNode}) {
 						data,
 						timestamp: Date.now(),
 					});
+					break;
+				}
+				case DOMAIN_EVENTS.SESSION_TRANSCRIPT_REWRITTEN: {
+					const sessionId = data["sessionId"];
+					if (typeof sessionId === "string") void applySessionTranscriptRewritten(queryClient, sessionId);
 					break;
 				}
 				case DOMAIN_EVENTS.SESSION_PROMPT_SUBMITTED: {

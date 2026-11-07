@@ -19,7 +19,6 @@ import {
 	type NotificationPayload,
 	type TaskSummaryPayload,
 	type SessionPromptSubmittedPayload,
-	type SessionLinesAppendedPayload,
 	type SessionHookContextPayload,
 	type PendingPlan,
 	type PendingQuestion,
@@ -50,7 +49,7 @@ import {indexFile, indexJsonlFile, liveJsonlIndexCache} from "./db/indexer";
 import {isSessionArchived, setSessionArchived} from "./db/queries";
 import {resolveProjectName} from "./memory";
 import {recentlyBroadcast, sessionUpdatedDedupeKey} from "./update-dedupe";
-import {readAppendedJsonlLines, sharedJsonlOffsets} from "./jsonl-append-reader";
+import {broadcastAppendedJsonl, readAppendedJsonlLines, sharedJsonlOffsets} from "./jsonl-append-reader";
 import {toSubagentSessionId} from "./subagents";
 import {stateForEvent, type ActivityState} from "./session-state";
 import {isSessionVisible as isSessionVisibleInBrowser} from "./session-visibility";
@@ -416,22 +415,8 @@ async function appendTranscriptLines(
 
 	const sessionId = sessionIdFromTranscriptPath(transcriptPath);
 	try {
-		const {lines: newLines, nextByteOffset} = await readAppendedJsonlLines(
-			db,
-			transcriptPath,
-			state?.jsonlOffsets ?? sharedJsonlOffsets,
-		);
-		const {jsonlWrittenAt} = await import("./sessions");
-		if (newLines.length > 0) {
-			const key = `${DOMAIN_EVENTS.SESSION_LINES_APPENDED}:${sessionId}:${nextByteOffset}`;
-			if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
-				broadcast(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
-					sessionId,
-					lines: newLines,
-					writtenAt: await jsonlWrittenAt(transcriptPath),
-				} satisfies SessionLinesAppendedPayload);
-			}
-		}
+		const read = await readAppendedJsonlLines(db, transcriptPath, state?.jsonlOffsets ?? sharedJsonlOffsets);
+		await broadcastAppendedJsonl(transcriptPath, sessionId, read, broadcast, DEDUPE_TTL_MS);
 	} catch {
 		// transient read error — chokidar will retry
 	}

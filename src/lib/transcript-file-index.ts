@@ -2,6 +2,7 @@ import {closeSync, fstatSync, openSync} from "node:fs";
 import {trackedReadRange} from "./perf/tracked-fs";
 import {isCountableMessageRecord} from "./message-count";
 import {asRecord} from "./narrow";
+import {SIGNATURE_BYTES} from "./incremental-jsonl";
 import {chainSkeleton, computeAbandoned, type AbandonedBranches} from "./transcript-chain";
 
 /**
@@ -14,9 +15,12 @@ import {chainSkeleton, computeAbandoned, type AbandonedBranches} from "./transcr
  * record indices match the rest of the transcript API.
  */
 export interface TranscriptFileIndex {
-	/** File size and mtime the index was built for. */
+	/** File size, mtime and inode the index was built for. */
 	size: number;
 	mtimeMs: number;
+	ino: number;
+	/** The up to `SIGNATURE_BYTES` bytes before `consumed`, re-read before an extend to confirm the prefix is unchanged. */
+	signature: Buffer;
 	/** Byte offset just after the last line break the index has consumed. */
 	consumed: number;
 	/** True when the last indexed line has no line break yet, so an append may extend it. */
@@ -101,11 +105,19 @@ function refreshChain(index: TranscriptFileIndex): void {
 	}
 }
 
-function build(fd: number, size: number, mtimeMs: number): {index: TranscriptFileIndex; buffer: Buffer} {
+/** The up to `SIGNATURE_BYTES` bytes before `consumed`, from `buffer`, which starts at file offset `base`. */
+function signatureBefore(buffer: Buffer, base: number, consumed: number): Buffer {
+	const end = consumed - base;
+	return Buffer.from(buffer.subarray(Math.max(0, end - SIGNATURE_BYTES), end));
+}
+
+function build(fd: number, size: number, mtimeMs: number, ino: number): {index: TranscriptFileIndex; buffer: Buffer} {
 	const buffer = trackedReadRange(fd, 0, size, size);
 	const index: TranscriptFileIndex = {
 		size,
 		mtimeMs,
+		ino,
+		signature: Buffer.alloc(0),
 		consumed: 0,
 		partialTail: false,
 		starts: [],
@@ -117,19 +129,22 @@ function build(fd: number, size: number, mtimeMs: number): {index: TranscriptFil
 		hidden: [],
 	};
 	appendLines(index, buffer, 0);
+	index.signature = signatureBefore(buffer, 0, index.consumed);
 	refreshChain(index);
 	return {index, buffer};
 }
 
 /**
  * Extend `index` in place with the bytes appended since it was built. Returns
- * false when the file no longer starts with the indexed bytes as far as one
- * cheap check can tell (the byte before `consumed` is no longer a line break).
+ * false when the file may no longer start with the indexed bytes: a different
+ * inode, or the bytes before `consumed` differ from the stored signature (the
+ * CLI removed a line in place, shifting every later byte).
  */
-function extend(fd: number, index: TranscriptFileIndex, size: number, mtimeMs: number): boolean {
-	const from = Math.max(0, index.consumed - 1);
+function extend(fd: number, index: TranscriptFileIndex, size: number, mtimeMs: number, ino: number): boolean {
+	if (ino !== index.ino) return false;
+	const from = index.consumed - index.signature.length;
 	const appended = trackedReadRange(fd, from, size, size);
-	if (index.consumed > 0 && appended[0] !== NEWLINE) return false;
+	if (!appended.subarray(0, index.signature.length).equals(index.signature)) return false;
 	if (index.partialTail) {
 		index.starts.pop();
 		index.ends.pop();
@@ -138,6 +153,7 @@ function extend(fd: number, index: TranscriptFileIndex, size: number, mtimeMs: n
 		index.partialTail = false;
 	}
 	appendLines(index, appended.subarray(index.consumed - from), index.consumed);
+	index.signature = signatureBefore(appended, from, index.consumed);
 	refreshChain(index);
 	index.size = size;
 	index.mtimeMs = mtimeMs;
@@ -152,16 +168,16 @@ function extend(fd: number, index: TranscriptFileIndex, size: number, mtimeMs: n
 export function openTranscriptFile(filePath: string): OpenTranscriptFile {
 	const fd = openSync(filePath, "r");
 	try {
-		const {size, mtimeMs} = fstatSync(fd);
+		const {size, mtimeMs, ino} = fstatSync(fd);
 		const cached = cache.get(filePath);
 		cache.delete(filePath);
 		let result: OpenTranscriptFile;
-		if (cached?.size === size && cached.mtimeMs === mtimeMs) {
+		if (cached?.size === size && cached.mtimeMs === mtimeMs && cached.ino === ino) {
 			result = {fd, index: cached, buffer: undefined};
-		} else if (cached !== undefined && size > cached.size && extend(fd, cached, size, mtimeMs)) {
+		} else if (cached !== undefined && size > cached.size && extend(fd, cached, size, mtimeMs, ino)) {
 			result = {fd, index: cached, buffer: undefined};
 		} else {
-			result = {fd, ...build(fd, size, mtimeMs)};
+			result = {fd, ...build(fd, size, mtimeMs, ino)};
 		}
 		cache.set(filePath, result.index);
 		for (const key of cache.keys()) {

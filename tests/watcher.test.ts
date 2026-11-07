@@ -760,6 +760,39 @@ describe("processJsonlAppend", () => {
 			},
 		]);
 	});
+	it("after a line is removed in place and more appended, broadcasts one transcript rewrite and no appended lines", async () => {
+		const projectsDir = testDir;
+		const projectDir = join(projectsDir, "-Users-alice-projects-retract");
+		mkdirSync(projectDir, {recursive: true});
+		const line = (uuid: string, content: string) => ({
+			type: "user",
+			sessionId: "sess-retract",
+			uuid,
+			timestamp: "2000-01-01T00:00:00.000Z",
+			message: {role: "user", content},
+		});
+		const kept = line("kept", "Kept turn");
+		const retracted = line("retracted", "Retracted attempt");
+		const jsonlPath = join(projectDir, "sess-retract.jsonl");
+		writeFileSync(jsonlPath, jsonl(kept, retracted));
+		const offsets = new Map<string, number>();
+		const broadcasts: CapturedBroadcast[] = [];
+		const record = (type: string, data: Record<string, unknown>) => broadcasts.push({type, data});
+		const dirs = {projectsDir, plansDir: ""};
+		await processJsonlAppend(db.index, jsonlPath, offsets, record, dirs);
+
+		writeFileSync(jsonlPath, jsonl(kept, line("retried", "The retried attempt, longer than the retracted one")));
+		broadcasts.length = 0;
+		await processJsonlAppend(db.index, jsonlPath, offsets, record, dirs);
+
+		expect(
+			broadcasts.filter(
+				(b) =>
+					b.type === DOMAIN_EVENTS.SESSION_LINES_APPENDED ||
+					b.type === DOMAIN_EVENTS.SESSION_TRANSCRIPT_REWRITTEN,
+			),
+		).toStrictEqual([{type: DOMAIN_EVENTS.SESSION_TRANSCRIPT_REWRITTEN, data: {sessionId: "sess-retract"}}]);
+	});
 });
 
 describe("rebroadcastSessionsById", () => {

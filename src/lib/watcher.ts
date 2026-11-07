@@ -6,7 +6,7 @@ import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {awaitInitialIndexScan, awaitInitialScan, getDb} from "./db";
 import {retryWhileBusy} from "./db/busy";
 import {trackActivity, trackActivitySync} from "./perf/event-loop-stalls";
-import {readAppendedJsonlLines, sharedJsonlOffsets} from "./jsonl-append-reader";
+import {broadcastAppendedJsonl, readAppendedJsonlLines, sharedJsonlOffsets} from "./jsonl-append-reader";
 import {
 	deleteFileContent,
 	deleteMemoryFile,
@@ -38,7 +38,6 @@ import {
 	DOMAIN_EVENTS,
 	SSE_EVENTS,
 	diffEntityMaps,
-	type SessionLinesAppendedPayload,
 	type SessionSummaryPayload,
 	type TaskSummaryPayload,
 } from "./hook-events";
@@ -721,20 +720,8 @@ export async function processJsonlAppend(
 	dirs: JsonlAppendDirs = {projectsDir, plansDir},
 ): Promise<void> {
 	try {
-		const {lines: newLines, nextByteOffset} = await readAppendedJsonlLines(db, path, offsets);
-		const {jsonlWrittenAt} = await import("./sessions");
-
-		if (newLines.length > 0) {
-			const sessionId = sessionIdFromJsonlPath(path);
-			const key = `${DOMAIN_EVENTS.SESSION_LINES_APPENDED}:${sessionId}:${nextByteOffset}`;
-			if (!recentlyBroadcast(key, DEDUPE_TTL_MS)) {
-				broadcast(DOMAIN_EVENTS.SESSION_LINES_APPENDED, {
-					sessionId,
-					lines: newLines,
-					writtenAt: await jsonlWrittenAt(path),
-				} satisfies SessionLinesAppendedPayload);
-			}
-		}
+		const read = await readAppendedJsonlLines(db, path, offsets);
+		await broadcastAppendedJsonl(path, sessionIdFromJsonlPath(path), read, broadcast, DEDUPE_TTL_MS);
 	} catch {
 		// File may have been deleted between the watcher event and this read.
 	}

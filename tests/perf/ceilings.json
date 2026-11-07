@@ -65,11 +65,11 @@
 		"raisedAt": "2026-11-03"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 667120,
+		"ceiling": 673807,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Turn card sole bare row suppression (2026-11-03): the turn edits card's artifact exception and folded-notice check pull the Artifact output parser and task-notification/agent-message parsers into turn-changes, on top of the growth since the 2026-11-02 error card density raise (660488, then within tolerance). Session went to 667120 gzip, 27 bytes past the 1% tolerance. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-03"
+		"reason": "Transcript rewrite handling (2026-11-07): the client's session:transcript-rewritten handler (tail fetch, outright cache replace past structuralSharing, append guard while it is in flight) pushed the measurement 16 bytes past the 1% tolerance; the rest of the climb since 2026-11-03 is the features landed in between. Went from 667120 to 673807. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-07"
 	},
 	"bundle.session.raw": {
 		"ceiling": 2020881,

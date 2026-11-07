@@ -24,12 +24,14 @@ import {
 	type LiveSubagentNode,
 } from "../lib/live-subagent-store";
 import {
+	fetchTranscriptTail,
 	groupedSessionsQueryOptions,
 	mergeTranscriptData,
 	type ActiveSessionListItem,
 	type ProjectSessionGroup,
 	type SessionListItem,
 	recentSessionsInfiniteQueryOptions,
+	replaceTranscriptData,
 	sessionOpenInQueryOptions,
 	sessionQueryKeys,
 	transcriptEndIndex,
@@ -906,6 +908,9 @@ export function applySessionLinesAppended(
 	const cached = queryClient.getQueryData<TranscriptData>(queryKey);
 
 	if (!cached) return null;
+	// A replacement tail is on its way and already holds these lines; merging them into the stale window would key
+	// them past rows the CLI removed.
+	if (rewritingSessions.has(sessionId)) return null;
 
 	if (payload.lines.length === 0) return null;
 	const firstLine = transcriptEndIndex(cached);
@@ -925,6 +930,38 @@ export function applySessionLinesAppended(
 		void queryClient.invalidateQueries({queryKey: sessionQueryKeys.apiRequests(sessionId)});
 	}
 	return firstLine;
+}
+
+/** Each session's newest in-flight `applySessionTranscriptRewritten` fetch, so only the latest one writes. */
+const rewritingSessions = new Map<string, symbol>();
+
+/**
+ * Apply SESSION_TRANSCRIPT_REWRITTEN: the CLI removed or rewrote JSONL lines
+ * below the append offset (a retracted streaming attempt, a compaction), so
+ * the cached window may hold rows that are gone and its indices no longer
+ * match the file. Like upstream's `transcript_loaded` re-snapshot, fetch the
+ * tail and replace the cache with it outright; earlier pages are dropped and
+ * scrolling back refetches them. Appends that arrive meanwhile are skipped,
+ * since the fetched tail includes them. Nothing is fetched when no transcript
+ * is cached.
+ */
+export async function applySessionTranscriptRewritten(queryClient: QueryClient, sessionId: string): Promise<void> {
+	if (queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript(sessionId)) === undefined) return;
+	const token = Symbol(sessionId);
+	rewritingSessions.set(sessionId, token);
+	try {
+		const fresh = await fetchTranscriptTail(sessionId);
+		if (rewritingSessions.get(sessionId) === token) replaceTranscriptData(queryClient, sessionId, fresh);
+	} catch {
+		// The replacement failed: refetch the usual way rather than keep a window with removed rows.
+		if (rewritingSessions.get(sessionId) === token) {
+			void queryClient.invalidateQueries({queryKey: sessionQueryKeys.transcript(sessionId)});
+		}
+	} finally {
+		if (rewritingSessions.get(sessionId) === token) rewritingSessions.delete(sessionId);
+	}
+	void queryClient.invalidateQueries({queryKey: sessionQueryKeys.resources(sessionId)});
+	void queryClient.invalidateQueries({queryKey: sessionQueryKeys.apiRequests(sessionId)});
 }
 
 /**

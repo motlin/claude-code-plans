@@ -44,6 +44,8 @@ export const DOMAIN_EVENTS = {
 	SESSION_STARTED: "session:started",
 	SESSION_ENDED: "session:ended",
 	SESSION_LINES_APPENDED: "session:lines-appended",
+	/** The CLI removed or rewrote lines a client may already hold (a retracted attempt, a compaction): re-read the tail. */
+	SESSION_TRANSCRIPT_REWRITTEN: "session:transcript-rewritten",
 	SESSION_PROMPT_SUBMITTED: "session:prompt-submitted",
 	SESSION_HOOK_CONTEXT_CHANGED: "session:hook-context-changed",
 	SESSION_TOOL_PENDING: "session:tool-pending",

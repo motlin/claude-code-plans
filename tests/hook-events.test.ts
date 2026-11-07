@@ -5,6 +5,7 @@ import {
 	DOMAIN_EVENTS,
 	HookEventEnvelope,
 	SessionLinesAppendedPayloadSchema,
+	SessionTranscriptRewrittenPayloadSchema,
 	diffEntityMaps,
 } from "../src/lib/hook-events";
 
@@ -45,6 +46,22 @@ describe("SessionLinesAppendedPayloadSchema", () => {
 				{...payload, extra: true},
 			].map((candidate) => SessionLinesAppendedPayloadSchema.safeParse(candidate).success),
 		).toStrictEqual([false, false, false, false]);
+	});
+});
+
+describe("SessionTranscriptRewrittenPayloadSchema", () => {
+	it("carries only the session id", () => {
+		expect(SessionTranscriptRewrittenPayloadSchema.parse({sessionId: "abc123"})).toStrictEqual({
+			sessionId: "abc123",
+		});
+	});
+
+	it("rejects a payload without a session id or with unknown keys", () => {
+		expect(
+			[{}, {sessionId: "abc123", lines: []}].map(
+				(candidate) => SessionTranscriptRewrittenPayloadSchema.safeParse(candidate).success,
+			),
+		).toStrictEqual([false, false]);
 	});
 });
 

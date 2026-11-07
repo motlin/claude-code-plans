@@ -4,7 +4,7 @@ import {defined} from "./defined";
 import {trackedCreateReadStream} from "./perf/tracked-fs";
 
 /** Bytes re-read before a cached offset to confirm the file still holds what was parsed, not a rewrite. */
-const SIGNATURE_BYTES = 64;
+export const SIGNATURE_BYTES = 64;
 const NEWLINE = 0x0a;
 const EMPTY = Buffer.alloc(0);
 

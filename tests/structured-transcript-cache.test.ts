@@ -1,5 +1,5 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {appendFileSync, mkdtempSync, rmSync, statSync, utimesSync, writeFileSync} from "node:fs";
+import {appendFileSync, mkdtempSync, renameSync, rmSync, statSync, utimesSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
@@ -115,14 +115,18 @@ describe("readStructuredTranscript chain cache", () => {
 		);
 
 		const appendedBytes = Buffer.byteLength(toJsonl(appended));
+		const signatureBytes = Math.min(64, Buffer.byteLength(toJsonl(records)));
 		expect(result.records).toStrictEqual(appended);
 		expect(result.startIndex).toBe(6);
 		expect(result.precedingMessageCount).toBe(6);
 		expect(result.byteOffset).toBe(statSync(filePath).size);
-		// The appended bytes plus the byte before them, which proves the cached
-		// prefix still ends on a line break, then the one-line window without its
-		// line break.
-		expect({bytesRead, fullScans}).toStrictEqual({bytesRead: 1 + appendedBytes + appendedBytes - 1, fullScans: 0});
+		// The appended bytes plus the up to 64 bytes before them, which prove the
+		// cached prefix is still there, then the one-line window without its line
+		// break.
+		expect({bytesRead, fullScans}).toStrictEqual({
+			bytesRead: signatureBytes + appendedBytes + appendedBytes - 1,
+			fullScans: 0,
+		});
 	});
 
 	it("re-derives the hidden set when an append forks the chain", () => {
@@ -176,5 +180,36 @@ describe("readStructuredTranscript chain cache", () => {
 		touchLater();
 
 		expect(readStructuredTranscript(db.index, SESSION_ID).records).toStrictEqual(linear(2));
+	});
+
+	it("rebuilds when a line was removed in place and the first appended line is exactly as long as the removed one", () => {
+		const records = linear(6);
+		writeFileSync(filePath, toJsonl(records));
+		readStructuredTranscript(db.index, SESSION_ID);
+
+		const sameLength = assistant("u-6", "u-5");
+		const rewritten = [...records.slice(0, 3), ...records.slice(4), sameLength, user("u-7", "u-6", "prompt 7")];
+		expect(Buffer.byteLength(JSON.stringify(sameLength))).toBe(Buffer.byteLength(JSON.stringify(records[3])));
+		writeFileSync(filePath, toJsonl(rewritten));
+		const transcript = readStructuredTranscript(db.index, SESSION_ID, {maxRecords: 3});
+
+		expect({records: transcript.records, startIndex: transcript.startIndex}).toStrictEqual({
+			records: rewritten.slice(4),
+			startIndex: 4,
+		});
+		expect(vi.mocked(computeAbandoned)).toHaveBeenCalledTimes(2);
+	});
+
+	it("rebuilds when a different, larger file is renamed over the transcript", () => {
+		writeFileSync(filePath, toJsonl(linear(4)));
+		readStructuredTranscript(db.index, SESSION_ID);
+
+		const replacement = join(tempDir, "replacement.jsonl");
+		writeFileSync(replacement, toJsonl([...linear(4), ...linear(6).slice(4)]));
+		renameSync(replacement, filePath);
+		const transcript = readStructuredTranscript(db.index, SESSION_ID);
+
+		expect(transcript.records).toStrictEqual(linear(6));
+		expect(vi.mocked(computeAbandoned)).toHaveBeenCalledTimes(2);
 	});
 });

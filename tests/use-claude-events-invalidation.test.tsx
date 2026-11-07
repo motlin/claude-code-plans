@@ -598,3 +598,44 @@ describe("ClaudeEventsProvider SSE stream refused while the dev server restarts"
 		}).toStrictEqual({streams: 2, firstClosed: true, caughtUp: true, handledAfterReopen: true});
 	});
 });
+
+describe("ClaudeEventsProvider transcript rewritten", () => {
+	beforeEach(() => {
+		TestEventSource.current = null;
+		vi.stubGlobal("EventSource", TestEventSource);
+	});
+
+	afterEach(() => {
+		cleanup();
+		vi.restoreAllMocks();
+		vi.unstubAllGlobals();
+	});
+
+	it("replaces the cached transcript with a fresh tail when the CLI rewrote the file", async () => {
+		const window = (uuids: string[], startIndex: number): TranscriptData => ({
+			records: uuids.map((uuid) => ({type: "user", uuid})),
+			byteOffset: 100 + startIndex,
+			startIndex,
+			precedingMessageCount: startIndex,
+			hiddenUuids: [],
+			cuts: [],
+			chainVersion: "v-1",
+		});
+		const fresh = window(["u-2", "u-4"], 2);
+		vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+			Promise.resolve(
+				new Response(JSON.stringify(fresh), {status: 200, headers: {"Content-Type": "application/json"}}),
+			),
+		);
+		const {client, eventSource} = renderProvider();
+		client.setQueryData(sessionQueryKeys.transcript("session-r"), window(["u-0", "u-1", "u-2", "u-3"], 0));
+
+		act(() => {
+			eventSource.emit(DOMAIN_EVENTS.SESSION_TRANSCRIPT_REWRITTEN, {sessionId: "session-r"});
+		});
+
+		await waitFor(() => {
+			expect(client.getQueryData(sessionQueryKeys.transcript("session-r"))).toStrictEqual(fresh);
+		});
+	});
+});

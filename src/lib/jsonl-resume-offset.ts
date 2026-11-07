@@ -2,6 +2,7 @@ import {open, realpath} from "node:fs/promises";
 import {eq} from "drizzle-orm";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import * as schema from "./db/schema";
+import {SIGNATURE_BYTES} from "./incremental-jsonl";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -46,25 +47,73 @@ export async function jsonlResumeOffset(db: IndexDb, filePath: string): Promise<
 	}
 }
 
+/** What a reader saw at its offset: the file's inode and the bytes right before the offset. */
+export interface JsonlOffsetWitness {
+	ino: number;
+	signature: Buffer;
+}
+
+export interface JsonlReadStart {
+	offset: number;
+	/** True when the file no longer holds, before `offset`, what the `witness` saw there: the CLI removed or rewrote lines. */
+	rewritten: boolean;
+}
+
 /**
  * Where to read a transcript's appended lines from: this process's cached `offset`, or the resume offset when it has
- * none. A transcript rewritten shorter than the cached offset would otherwise hide every later append until the file
- * grew past it, so the read then restarts at the start of the rewrite's last partial line, or at its end.
+ * none. A transcript rewritten below the cached offset (the CLI removing a retracted line in place, or renaming a
+ * compacted copy over it) would otherwise be read from mid-line, cutting or hiding later appends, so when the file is
+ * shorter than the offset, or `witness` no longer matches its inode or the bytes before the offset, the read restarts
+ * at the start of the file's last partial line, or at its end, and reports the rewrite.
  */
-export async function jsonlReadOffset(db: IndexDb, filePath: string, offset: number | undefined): Promise<number> {
-	if (offset === undefined) return jsonlResumeOffset(db, filePath);
+export async function jsonlReadOffset(
+	db: IndexDb,
+	filePath: string,
+	offset: number | undefined,
+	witness?: JsonlOffsetWitness,
+): Promise<JsonlReadStart> {
+	if (offset === undefined) return {offset: await jsonlResumeOffset(db, filePath), rewritten: false};
 	let handle;
 	try {
 		handle = await open(filePath, "r");
 	} catch {
-		return offset;
+		return {offset, rewritten: false};
 	}
 	try {
-		const {size} = await handle.stat();
-		return offset > size ? await lineStartAtOrBefore(handle, size) : offset;
+		const {size, ino} = await handle.stat();
+		const rewritten =
+			offset > size ||
+			(witness !== undefined &&
+				(ino !== witness.ino ||
+					!(await bytesBefore(handle, offset, witness.signature.length)).equals(witness.signature)));
+		return rewritten
+			? {offset: await lineStartAtOrBefore(handle, size), rewritten: true}
+			: {offset, rewritten: false};
 	} finally {
 		await handle.close();
 	}
+}
+
+/** The inode of `filePath` and the up to `SIGNATURE_BYTES` bytes before `offset`, for the next `jsonlReadOffset`. */
+export async function jsonlOffsetWitness(filePath: string, offset: number): Promise<JsonlOffsetWitness | undefined> {
+	let handle;
+	try {
+		handle = await open(filePath, "r");
+	} catch {
+		return undefined;
+	}
+	try {
+		const {ino} = await handle.stat();
+		return {ino, signature: await bytesBefore(handle, offset, Math.min(offset, SIGNATURE_BYTES))};
+	} finally {
+		await handle.close();
+	}
+}
+
+async function bytesBefore(handle: Awaited<ReturnType<typeof open>>, offset: number, length: number): Promise<Buffer> {
+	const buffer = Buffer.alloc(length);
+	const {bytesRead} = await handle.read(buffer, 0, length, offset - length);
+	return buffer.subarray(0, bytesRead);
 }
 
 function indexedSizeBytes(db: IndexDb, path: string): number | undefined {
