@@ -59,8 +59,9 @@ function renderRecords(records: unknown[], showCompactSummaries: boolean): HTMLE
 
 /** The class list of the message column that wraps a user bubble and its footer. */
 function userColumnClassName(container: HTMLElement): string | null {
-	const column = Array.from(container.querySelectorAll("div")).find((element) =>
-		element.className.startsWith("flex flex-col items-"),
+	const column = Array.from(container.querySelectorAll("div")).find(
+		(element) =>
+			element.getAttribute("data-cds") === "UserMessage" || element.className.startsWith("flex flex-col items-"),
 	);
 	return column?.className ?? null;
 }
@@ -189,7 +190,7 @@ describe("SessionChat turn metadata", () => {
 describe("SessionChat user action row", () => {
 	it("keeps the user bubble column end-aligned", () => {
 		expect(userColumnClassName(renderRecords([USER_TEXT], true))).toBe(
-			"flex flex-col items-end gap-g5 comfortable:gap-g6 max-w-[85%] min-w-0",
+			"group/message-row flex w-full min-w-0 flex-col gap-g5 comfortable:gap-g6 font-sans ms-auto items-end",
 		);
 	});
 
@@ -201,7 +202,8 @@ describe("SessionChat user action row", () => {
 			command: userColumnClassName(renderRecords([COMMAND_INVOCATION], true)),
 			compactSummary: userColumnClassName(compactContainer),
 		}).toStrictEqual({
-			command: "flex flex-col items-end gap-g5 comfortable:gap-g6 max-w-[85%] min-w-0",
+			command:
+				"group/message-row flex w-full min-w-0 flex-col gap-g5 comfortable:gap-g6 font-sans ms-auto items-end",
 			compactSummary: "flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
 		});
 	});
@@ -209,8 +211,9 @@ describe("SessionChat user action row", () => {
 
 /** The row that lays a user-side column out, and whether that column is its right-most child. */
 function userRowLayout(container: HTMLElement): {rowClassName: string | null; columnIsRightMost: boolean} {
-	const column = Array.from(container.querySelectorAll("div")).find((element) =>
-		element.className.startsWith("flex flex-col items-"),
+	const column = Array.from(container.querySelectorAll("div")).find(
+		(element) =>
+			element.getAttribute("data-cds") === "UserMessage" || element.className.startsWith("flex flex-col items-"),
 	);
 	const row = column?.parentElement ?? null;
 	return {rowClassName: row?.className ?? null, columnIsRightMost: row?.lastElementChild === column};

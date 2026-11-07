@@ -995,6 +995,14 @@ function UserTurn({text, turnKey, children}: {text: string; turnKey?: string | u
 const TRANSCRIPT_ROW_CLASS =
 	"mt-6 compact:mt-5 [&>[data-turn-key]]:!my-0 [&>[data-reply-scope]>[data-turn-key]]:!my-0 [&:has(>[data-reserves-actions-gap]:not(:empty))]:pb-md [&:has(>[data-reply-scope]>[data-reserves-actions-gap]:not(:empty))]:pb-md";
 
+/**
+ * Upstream's `[data-cds=UserMessage]` column (`_w`): full width and pushed to the end, so the bubble, not the
+ * column, carries the 85% cap and a short prompt keeps its text width. `gap-g5 comfortable:gap-g6` is upstream's
+ * `gap-xs` (6px default, 8px comfortable).
+ */
+const USER_MESSAGE_CLASS =
+	"group/message-row flex w-full min-w-0 flex-col gap-g5 comfortable:gap-g6 font-sans ms-auto items-end";
+
 /** The attributes upstream puts on a human prompt's `[data-cds=UserMessage]` column, keyed like its row. */
 function userMessageAttributes(turnKey: string | undefined) {
 	return turnKey === undefined
@@ -4208,7 +4216,7 @@ function UserPromptBubble({text, children}: {text: string; children: ReactNode})
 	const {isolate, accent} = useLandedFlash(text);
 	return (
 		<div
-			className={`user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]${isolate === "" ? "" : ` ${isolate}`}`}
+			className={`user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 max-w-[85%] overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]${isolate === "" ? "" : ` ${isolate}`}`}
 		>
 			{accent}
 			{children}
@@ -4288,12 +4296,7 @@ function UserEntry({
 				sessionId={sessionId}
 				uuid={line.uuid}
 				markdown={messageText(line)}
-				render={
-					<div
-						{...userMessageAttributes(turnKey)}
-						className="flex flex-col items-end gap-g5 comfortable:gap-g6 max-w-[85%] min-w-0"
-					/>
-				}
+				render={<div {...userMessageAttributes(turnKey)} className={USER_MESSAGE_CLASS} />}
 			>
 				<UserAttachments images={images} />
 				<MessageExcerptTiles snippets={excerpts} />
@@ -4853,11 +4856,8 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 
 	return (
 		<UserTurn text={cmdArgs ? `/${name} ${cmdArgs}` : `/${name}`} turnKey={line.uuid}>
-			<div
-				{...userMessageAttributes(line.uuid)}
-				className="flex flex-col items-end gap-g5 comfortable:gap-g6 max-w-[85%] min-w-0"
-			>
-				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
+			<div {...userMessageAttributes(line.uuid)} className={USER_MESSAGE_CLASS}>
+				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 max-w-[85%] overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
 					<TruncatedContent>
 						<SlashCommandText name={name} rest={cmdArgs ?? ""} />
 					</TruncatedContent>
