@@ -41,6 +41,7 @@ import {SettingsSearch} from "./settings-search";
 import {CUSTOMIZE_SECTION_ICONS, SETTINGS_TAB_ICONS} from "./settings-tab-icons";
 import {UsageSettings} from "./usage-settings";
 import {SETTINGS_PHONE_QUERY, useMediaQuery} from "../../lib/use-phone-sheet";
+import {CDS_TAB_CLASS, CDS_TAB_LIST_CLASS} from "../ui/cds-tabs";
 import {DensityScope} from "../ui/density";
 
 const TAB_PANELS = {
@@ -107,8 +108,9 @@ function navItemWarmers(item: NavItem) {
 }
 
 /**
- * Upstream's phone-width tab strip: one horizontally scrolling `role=tablist` of 32px tabs
- * (14/20 w500, px12, inactive muted) between cds Tabs' 32px pager controls, "Scroll back"
+ * Upstream's phone-width tab strip, a cds Tabs root (`Ct.Root` > paged scroller > `Ct.List`): one horizontally
+ * scrolling `role=tablist` of cds tabs (the shared recipe at comfortable 28px; the 2026-11-01 700px dump's 32px
+ * predates fizzy-lake panels) between cds Tabs' 32px pager controls, "Scroll back"
  * (`data-toward=start`) and "Scroll forward" (`data-toward=end`), each shown only while the strip
  * can still move that way.
  */
@@ -158,62 +160,63 @@ function PhoneTabStrip({
 	}, [selectedItem]);
 
 	return (
-		<div className="flex shrink-0 items-center gap-1 pb-3">
-			<button
-				type="button"
-				aria-label="Scroll back"
-				data-toward="start"
-				hidden={edges.atStart}
-				onClick={() => {
-					page(-1, 1);
-				}}
-				className={pagerClass}
-			>
-				<ChevronLeft aria-hidden="true" className="size-5" />
-			</button>
-			<div
-				ref={listRef}
-				onScroll={measure}
-				role="tablist"
-				aria-label="Settings"
-				aria-orientation="horizontal"
-				className="flex min-w-0 flex-1 overflow-x-auto overscroll-x-contain ps-2 [scrollbar-width:none]"
-			>
-				{NAV_ITEMS.map((item) => {
-					const selected = isSelected(item);
-					return (
-						<button
-							key={navItemKey(item)}
-							type="button"
-							role="tab"
-							aria-selected={selected}
-							{...navItemWarmers(item)}
-							onClick={() => {
-								onSelect(item);
-							}}
-							className={`flex h-8 shrink-0 items-center rounded-r6 px-3 text-[14px]/[20px] font-medium whitespace-nowrap transition-colors ${
-								selected
-									? "bg-fill-control text-primary"
-									: "text-[var(--settings-muted)] hover:bg-fill-ghost-hover"
-							}`}
-						>
-							{navItemLabel(item)}
-						</button>
-					);
-				})}
+		<div data-cds="Tabs" data-orientation="horizontal" data-activation-direction="none" className="shrink-0 pb-3">
+			<div data-paged="" className="relative flow-root min-w-0">
+				<div className="flex items-center gap-1">
+					<button
+						type="button"
+						aria-label="Scroll back"
+						data-toward="start"
+						hidden={edges.atStart}
+						onClick={() => {
+							page(-1, 1);
+						}}
+						className={pagerClass}
+					>
+						<ChevronLeft aria-hidden="true" className="size-5" />
+					</button>
+					<div
+						ref={listRef}
+						onScroll={measure}
+						role="tablist"
+						aria-label="Settings"
+						aria-orientation="horizontal"
+						className={`${CDS_TAB_LIST_CLASS} min-w-0 flex-1 overflow-x-auto overscroll-x-contain ps-2 [scrollbar-width:none]`}
+					>
+						{NAV_ITEMS.map((item) => {
+							const selected = isSelected(item);
+							return (
+								<button
+									key={navItemKey(item)}
+									type="button"
+									role="tab"
+									aria-selected={selected}
+									data-active={selected ? "" : undefined}
+									{...navItemWarmers(item)}
+									onClick={() => {
+										onSelect(item);
+									}}
+									className={CDS_TAB_CLASS}
+								>
+									{navItemLabel(item)}
+								</button>
+							);
+						})}
+					</div>
+					<button
+						type="button"
+						aria-label="Scroll forward"
+						data-toward="end"
+						hidden={edges.atEnd}
+						onClick={() => {
+							page(1, 0.8);
+						}}
+						className={pagerClass}
+					>
+						<ChevronRight aria-hidden="true" className="size-5" />
+					</button>
+				</div>
 			</div>
-			<button
-				type="button"
-				aria-label="Scroll forward"
-				data-toward="end"
-				hidden={edges.atEnd}
-				onClick={() => {
-					page(1, 0.8);
-				}}
-				className={pagerClass}
-			>
-				<ChevronRight aria-hidden="true" className="size-5" />
-			</button>
 		</div>
 	);
 }

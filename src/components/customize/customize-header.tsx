@@ -5,6 +5,7 @@ import {type ReactNode, type RefObject, useEffect, useEffectEvent, useRef, useSt
 import {customizeDiscoverQueryOptions} from "../../lib/api/customize";
 import {PHONE_SHEET_QUERY, SETTINGS_WIDE_QUERY, useCoarsePointer, useMediaQuery} from "../../lib/use-phone-sheet";
 import {SegmentedControl} from "../settings/segmented-control";
+import {CDS_TAB_CLASS, CDS_TAB_LIST_CLASS} from "../ui/cds-tabs";
 import {Menu, MenuContent, MenuLabel, MenuRadioGroup, MenuRadioItem, MenuTrigger} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
 import {CustomizeAddMenu} from "./customize-add-menu";
@@ -17,9 +18,6 @@ import {
 	type MenuOption,
 	resolveOption,
 } from "./sections";
-
-const TAB_CLASS =
-	"relative isolate inline-flex h-8 shrink-0 items-center justify-center px-3 text-body font-medium whitespace-nowrap text-t6 dark:text-ink-muted no-underline outline-none select-none before:absolute before:inset-x-px before:inset-y-0 before:-z-[1] before:rounded-r6 hover:text-secondary hover:before:bg-fill-ghost-hover focus-visible:before:outline-2 focus-visible:before:outline-accent-100 aria-selected:text-primary aria-selected:before:bg-fill-ghost-hover";
 
 const ICON_BUTTON_CLASS =
 	"inline-flex size-8 shrink-0 items-center justify-center rounded-r6 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary aria-expanded:text-primary disabled:pointer-events-none disabled:opacity-50";
@@ -81,22 +79,36 @@ export function CustomizeHeader({
 				)}
 				{!embedded && (
 					<nav aria-label="Customize" className="flex shrink-0 items-center">
-						<div role="tablist" aria-label="Customize sections" className="flex items-center">
-							{CUSTOMIZE_SECTIONS.map((tab) => (
-								<Link
-									key={tab.id}
-									to={tab.to}
-									search={tab.hasDiscover && search.view !== undefined ? {view: search.view} : {}}
-									id={`customize-tab-${tab.id}`}
-									role="tab"
-									aria-selected={tab.id === section.id}
-									aria-controls="customize-pane"
-									data-testid={`customize-${tab.id}-settings`}
-									className={TAB_CLASS}
-								>
-									{tab.label}
-								</Link>
-							))}
+						{/* Upstream's cds Tabs root > contents > scroll-pager scroller > tablist; route Links stand in for its buttons. */}
+						<div data-cds="Tabs" data-orientation="horizontal" data-activation-direction="none">
+							<div className="contents">
+								<div data-cds-part="scroll-pager-scroller" className="contents">
+									<div role="tablist" aria-label="Customize sections" className={CDS_TAB_LIST_CLASS}>
+										{CUSTOMIZE_SECTIONS.map((tab) => (
+											<Link
+												key={tab.id}
+												to={tab.to}
+												search={
+													tab.hasDiscover && search.view !== undefined
+														? {view: search.view}
+														: {}
+												}
+												id={`customize-tab-${tab.id}`}
+												role="tab"
+												aria-selected={tab.id === section.id}
+												data-active={tab.id === section.id ? "" : undefined}
+												aria-controls="customize-pane"
+												data-testid={`customize-${tab.id}-settings`}
+												className={CDS_TAB_CLASS}
+											>
+												<span id={`customize-section-tab-customize-${tab.id}`}>
+													{tab.label}
+												</span>
+											</Link>
+										))}
+									</div>
+								</div>
+							</div>
 						</div>
 					</nav>
 				)}

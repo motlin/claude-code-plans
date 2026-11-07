@@ -262,6 +262,64 @@ describe("customize shell", () => {
 		});
 	});
 
+	// Upstream's cds Tabs: `div[data-cds=Tabs]` > `div.contents` > scroll-pager scroller > tablist, `data-active`
+	// on the current tab, and the shared tab recipe whose ink fizzy-lake color re-points at control-ink.
+	it("wraps the section tabs in upstream's cds Tabs root with data-active and the cds tab recipe", async () => {
+		await renderCustomize("/customize/skills");
+		const tablist = screen.getByRole("tablist", {name: "Customize sections"});
+		const root = tablist.closest('[data-cds="Tabs"]');
+		const recipe = [
+			"h-7",
+			"px-3",
+			"font-control",
+			"text-ink-muted",
+			"before:rounded-r6",
+			"data-[active]:text-primary",
+			"data-[active]:before:bg-fill-ghost-hover",
+			"[&:not([data-active])]:hover:text-secondary",
+			"[&:not([data-active])]:hover:before:bg-fill-ghost-hover",
+			"focus-visible:before:shadow-focus",
+		];
+		const dropped = ["text-t6", "h-8", "aria-selected:before:bg-fill-ghost-hover", "font-medium"];
+		const tabs = within(tablist).getAllByRole("tab");
+
+		expect({
+			orientation: root?.getAttribute("data-orientation"),
+			scroller: root?.querySelector('[data-cds-part="scroll-pager-scroller"]')?.contains(tablist),
+			tablistSans: tablist.classList.contains("font-sans"),
+			tabs: tabs.map((tab) => ({
+				active: tab.getAttribute("data-active"),
+				recipe: recipe.filter((token) => !tab.classList.contains(token)),
+				dropped: dropped.filter((token) => tab.classList.contains(token)),
+				labelId: tab.firstElementChild?.id,
+			})),
+		}).toStrictEqual({
+			orientation: "horizontal",
+			scroller: true,
+			tablistSans: true,
+			tabs: [
+				{active: "", recipe: [], dropped: [], labelId: "customize-section-tab-customize-skills"},
+				{active: null, recipe: [], dropped: [], labelId: "customize-section-tab-customize-connectors"},
+				{active: null, recipe: [], dropped: [], labelId: "customize-section-tab-customize-plugins"},
+			],
+		});
+	});
+
+	// Upstream radios are `font-normal font-control` (local `font-control-regular`) under `data-cds=SegmentedControl`.
+	it("marks Yours | Discover as a cds SegmentedControl with control-weight radios", async () => {
+		await renderCustomize("/customize/skills");
+		const group = screen.getByRole("radiogroup", {name: "Skills"});
+
+		expect({
+			cds: group.getAttribute("data-cds"),
+			radios: within(group)
+				.getAllByRole("radio")
+				.map((radio) =>
+					["font-control-regular", "font-normal"].filter((token) => radio.classList.contains(token)),
+				),
+		}).toStrictEqual({cds: "SegmentedControl", radios: [["font-control-regular"], ["font-control-regular"]]});
+	});
+
 	it("switches between Yours and Discover through the view search param", async () => {
 		const router = await renderCustomize("/customize/skills");
 		const group = screen.getByRole("radiogroup", {name: "Skills"});

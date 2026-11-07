@@ -3391,6 +3391,33 @@ html[data-motion="reduced"] [data-skeleton-group][data-motion="wave"] [data-skel
 }
 
 /*
+ * Upstream's fizzy-lake `color` cds Tabs and SegmentedControl ink (`[data-cds=Tabs] [role=tab]`,
+ * `[data-cds=SegmentedControl] [role=radio]`): --cds-text-secondary / --cds-text-muted become
+ * `--cds-fizzy-lake-color-control-ink` (= text-primary, #000000e6 / #ffffffed), so every tab and radio reads
+ * .9 ink at rest, on hover and selected, and only the pill tells them apart. The active tab's `::before` pill
+ * is `--cds-fill-ghost-selected` (#0000001a / #ffffff26). `@theme inline` compiles `text-ink-muted` and
+ * `text-secondary` to the --upstream-text-* values, so both layers are remapped.
+ */
+:root[data-cds-fizzy-lake~="color"] [data-cds="Tabs"] [role="tab"] {
+	--color-ink-muted: var(--upstream-text-primary);
+	--color-secondary: var(--upstream-text-primary);
+	--upstream-text-muted: var(--upstream-text-primary);
+	--upstream-text-secondary: var(--upstream-text-primary);
+}
+
+:root[data-cds-fizzy-lake~="color"] [data-cds="Tabs"] [role="tab"][data-active]::before {
+	background-color: var(--upstream-fill-ghost-selected);
+}
+
+:root[data-cds-fizzy-lake~="color"] [data-cds="SegmentedControl"] [role="radio"] {
+	--settings-segmented-ink: var(--upstream-text-primary);
+	--color-ink-muted: var(--upstream-text-primary);
+	--color-secondary: var(--upstream-text-primary);
+	--upstream-text-muted: var(--upstream-text-primary);
+	--upstream-text-secondary: var(--upstream-text-primary);
+}
+
+/*
  * Upstream's fizzy-lake `color` sidebar inks (`html[data-cds-fizzy-lake~=color] .dframe-sidebar`): every
  * secondary ink in the sidebar reads primary, and every muted ink reads the fizzy secondary (#0009 /
  * #ffffff91, the inherited root value, so this scope must not redefine --fizzy-lake-color-secondary).

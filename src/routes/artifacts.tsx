@@ -71,6 +71,7 @@ import {
 } from "../components/ui/menu";
 import {CodePageHeader} from "../components/code-page-header";
 import {MakeSomethingNew} from "../components/make-something-new";
+import {CDS_TAB_CLASS, CDS_TAB_LIST_CLASS} from "../components/ui/cds-tabs";
 import {Tooltip} from "../components/ui/tooltip";
 
 /** The gallery's URL state: upstream's `?search=` and `?tab=`, plus the local Filter and sort picks. */
@@ -250,9 +251,6 @@ function ArtifactsEmptyState({view}: {view: ArtifactView}) {
 /** Upstream's cds Page content box (`mx-auto w-full px-md md:px-8 max-w-5xl`), shared by the sticky header and the list. */
 const ARTIFACTS_BOX_CLASS = "mx-auto w-full max-w-5xl px-2 md:px-8";
 
-const VIEW_TAB_CLASS =
-	"inline-flex h-6 shrink-0 items-center rounded-md px-2 text-[13px] font-medium whitespace-nowrap text-ink-muted transition-colors hover:text-primary aria-selected:bg-fill-ghost-hover aria-selected:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
-
 /** Upstream's Owner/Type multi-pick summary: "Any" (or "Anyone"), the one label, or "{n} picked". */
 function pickedSummary<T extends string>(picked: readonly T[], labels: Record<T, string>, none: string): string {
 	const [only] = picked;
@@ -339,14 +337,15 @@ function ArtifactsPage() {
 				searchOpen={searchOpen}
 				tabs={
 					<Tabs.Root
+						data-cds="Tabs"
 						value={view}
 						onValueChange={(next: unknown) => {
 							if (isArtifactView(next)) updateSearch({view: next});
 						}}
 					>
-						<Tabs.List activateOnFocus={false} aria-label="Artifacts" className="flex items-center gap-1">
+						<Tabs.List activateOnFocus={false} aria-label="Artifacts" className={CDS_TAB_LIST_CLASS}>
 							{VIEW_TABS.map((tab) => (
-								<Tabs.Tab key={tab.view} value={tab.view} className={VIEW_TAB_CLASS}>
+								<Tabs.Tab key={tab.view} value={tab.view} className={CDS_TAB_CLASS}>
 									{tab.label}
 								</Tabs.Tab>
 							))}

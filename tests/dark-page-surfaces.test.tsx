@@ -52,9 +52,13 @@ describe("upstream's measured dark surfaces and inks (wave 90)", () => {
 		expect(screen.getByText(/59% used/).className).toBe("min-w-0 text-ink-muted");
 	});
 
+	// The cds tab recipe draws unselected Customize tabs in muted ink in both modes (fizzy color re-inks them).
 	it("draws unselected Customize tabs in muted ink and ordered-list markers in secondary ink in dark", () => {
 		expect({
-			tabs: source("src/components/customize/customize-header.tsx").includes("text-t6 dark:text-ink-muted"),
+			tabs:
+				source("src/components/customize/customize-header.tsx").includes("className={CDS_TAB_CLASS}") &&
+				source("src/components/ui/cds-tabs.ts").includes(" text-ink-muted ") &&
+				!source("src/components/ui/cds-tabs.ts").includes("text-t6"),
 			marker: /:global\(\.dark\) \.markdown ol > li::marker \{\s*color: var\(--color-secondary\);/.test(
 				source("src/components/markdown-article.module.css"),
 			),

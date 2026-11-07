@@ -1253,6 +1253,45 @@ describe("artifacts route", () => {
 		});
 	});
 
+	// Upstream's Artifacts view tabs are cds Tabs: abutting 28px tabs with a `::before` pill (r8, inset-x 1px).
+	it("renders the view tabs as upstream's cds Tabs with the shared tab recipe", async () => {
+		await renderArtifactsPage("/artifacts", seedMixedGallery);
+		const tablist = screen.getByRole("tablist", {name: "Artifacts"});
+		const recipe = [
+			"h-7",
+			"px-3",
+			"text-body",
+			"font-control",
+			"text-ink-muted",
+			"before:absolute",
+			"before:rounded-r6",
+			"data-[active]:text-primary",
+			"data-[active]:before:bg-fill-ghost-hover",
+			"focus-visible:before:shadow-focus",
+		];
+		const dropped = ["h-6", "text-[13px]", "rounded-md", "aria-selected:bg-fill-ghost-hover"];
+
+		expect({
+			root: tablist.closest('[data-cds="Tabs"]') !== null,
+			list: ["gap-1", "font-sans"].filter((token) => tablist.classList.contains(token)),
+			tabs: within(tablist)
+				.getAllByRole("tab")
+				.map((tab) => ({
+					active: tab.hasAttribute("data-active"),
+					recipe: recipe.filter((token) => !tab.classList.contains(token)),
+					dropped: dropped.filter((token) => tab.classList.contains(token)),
+				})),
+		}).toStrictEqual({
+			root: true,
+			list: ["font-sans"],
+			tabs: [
+				{active: true, recipe: [], dropped: []},
+				{active: false, recipe: [], dropped: []},
+				{active: false, recipe: [], dropped: []},
+			],
+		});
+	});
+
 	it("opens on the tab named by ?tab=", async () => {
 		await renderArtifactsPage("/artifacts?tab=shared", seedMixedGallery);
 

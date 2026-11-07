@@ -111,6 +111,7 @@ export function SegmentedControl<T extends string>({
 		<div
 			ref={groupRef}
 			role="radiogroup"
+			data-cds="SegmentedControl"
 			aria-label={ariaLabel}
 			aria-labelledby={ariaLabel === undefined ? row?.titleId : undefined}
 			aria-describedby={ariaDescribedBy ?? row?.descriptionId}
@@ -146,7 +147,7 @@ export function SegmentedControl<T extends string>({
 						onKeyDown={(event) => {
 							handleKeyDown(event, index);
 						}}
-						className={`relative z-[1] inline-flex h-full cursor-pointer items-center justify-center gap-1.5 rounded-r5 text-body font-normal outline-none select-none transition-shadow duration-[60ms] hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[checked]:text-primary text-[var(--settings-segmented-ink)] ${
+						className={`relative z-[1] inline-flex h-full cursor-pointer items-center justify-center gap-1.5 rounded-r5 text-body font-control-regular outline-none select-none transition-shadow duration-[60ms] hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[checked]:text-primary text-[var(--settings-segmented-ink)] ${
 							iconOnly ? "w-[30px] [&_svg]:size-4" : "px-3"
 						}`}
 					>

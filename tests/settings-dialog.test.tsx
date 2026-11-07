@@ -584,6 +584,38 @@ describe("SettingsDialog at phone width", () => {
 		});
 	});
 
+	// Upstream's phone strip is cds Tabs (`Ct.Root` > paged scroller > `Ct.List`) with the shared tab recipe.
+	it("renders the phone strip as upstream's cds Tabs with data-active and the cds tab recipe", async () => {
+		await renderAt("/#settings/general");
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const tablist = within(dialog).getByRole("tablist", {name: "Settings"});
+		const root = tablist.closest('[data-cds="Tabs"]');
+		const paged = tablist.closest("[data-paged]");
+		const recipe = [
+			"before:absolute",
+			"data-[active]:before:bg-fill-ghost-hover",
+			"text-ink-muted",
+			"font-control",
+			"focus-visible:before:shadow-focus",
+		];
+		const dropped = ["bg-fill-control", "text-[var(--settings-muted)]"];
+		const tabs = within(tablist).getAllByRole("tab");
+
+		expect({
+			pagedInRoot: paged !== null && root?.contains(paged),
+			pagedClasses: ["relative", "flow-root", "min-w-0"].filter((token) => paged?.classList.contains(token)),
+			active: tabs.filter((tab) => tab.getAttribute("data-active") === "").map((tab) => tab.textContent),
+			recipeMissing: tabs.filter((tab) => recipe.some((token) => !tab.classList.contains(token))).length,
+			droppedPresent: tabs.filter((tab) => dropped.some((token) => tab.classList.contains(token))).length,
+		}).toStrictEqual({
+			pagedInRoot: true,
+			pagedClasses: ["relative", "flow-root", "min-w-0"],
+			active: ["General"],
+			recipeMissing: 0,
+			droppedPresent: 0,
+		});
+	});
+
 	it("switches tabs from the strip through the hash", async () => {
 		const router = await renderAt("/#settings/general");
 		const dialog = await screen.findByRole("dialog", {name: "Settings"});
