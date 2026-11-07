@@ -4,6 +4,7 @@ import {tanstackStart} from "@tanstack/react-start/plugin/vite";
 import {nitro} from "nitro/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import {Features} from "lightningcss";
 import {AGENTATION_ENDPOINT, AGENTATION_SERVER} from "./src/lib/agentation-endpoint";
 import {quietDependencyDirectives} from "./src/lib/build-log-filter";
 import {clientChunkGraph} from "./src/lib/client-chunk-graph";
@@ -33,6 +34,12 @@ function buildSha(): string {
 const UNTRACKED_TASK_INPUTS = ["!.fallow/**", "!node_modules/.cache/ccb-perf/**"];
 
 export default defineConfig({
+	// Tailwind's own optimize pass excludes DirSelector, but Vite's CSS minify runs lightningcss again for the
+	// baseline-widely-available target (Chrome 111), which lowers every :dir() to a 19-language :lang() list that never
+	// matches English text under dir=rtl. Upstream ships :dir() intact; just client-boundaries guards the built CSS.
+	css: {
+		lightningcss: {exclude: Features.DirSelector},
+	},
 	define: {
 		__CCB_BUILD_SHA__: JSON.stringify(buildSha()),
 	},

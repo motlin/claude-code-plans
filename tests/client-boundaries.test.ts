@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {clientBoundaryViolations} from "../scripts/client-boundaries";
+import {clientBoundaryViolations, loweredDirSelectorViolations} from "../scripts/client-boundaries";
 import type {ClientChunk} from "../src/lib/client-chunk-graph";
 
 function chunk(fileName: string, overrides: Partial<ClientChunk> = {}): ClientChunk {
@@ -59,5 +59,29 @@ describe("client build boundaries", () => {
 		expect(clientBoundaryViolations([chunk("assets/react.js")], NO_CODE)).toStrictEqual([
 			"no client entry chunk contains src/client.tsx",
 		]);
+	});
+});
+
+describe("built CSS keeps :dir()", () => {
+	it("rejects a stylesheet whose :dir() was lowered to :lang() lists", () => {
+		expect(
+			loweredDirSelectorViolations("assets/globals-x.css", ".a:where(:root[dir=rtl] :is(:lang(ae),:lang(ar))){}"),
+		).toStrictEqual(["assets/globals-x.css: :dir() was lowered to :lang() lists"]);
+	});
+
+	it("accepts the globals sheet when its :dir(rtl) rules survive", () => {
+		expect(
+			loweredDirSelectorViolations("assets/globals-x.css", ".a:where(:root[dir=rtl] :dir(rtl)){}"),
+		).toStrictEqual([]);
+	});
+
+	it("rejects a globals sheet with no :dir(rtl) left, since its source writes many", () => {
+		expect(loweredDirSelectorViolations("assets/globals-x.css", ".a{}")).toStrictEqual([
+			"assets/globals-x.css: no :dir(rtl) rule survived the build",
+		]);
+	});
+
+	it("accepts other stylesheets that never used :dir()", () => {
+		expect(loweredDirSelectorViolations("assets/route-x.css", ".a{color:red}")).toStrictEqual([]);
 	});
 });

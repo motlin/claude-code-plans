@@ -323,6 +323,9 @@ importers:
       jsdom:
         specifier: ^30.1.3
         version: 30.1.3
+      lightningcss:
+        specifier: ^1.33.0
+        version: 1.33.0
       markdownlint-cli2:
         specifier: ^0.24.0
         version: 0.24.0

@@ -1,5 +1,6 @@
 import {readFileSync} from "node:fs";
 import {join} from "node:path";
+import {Features, transform} from "lightningcss";
 import {afterAll, describe, expect, it} from "vite-plus/test";
 import {z} from "zod";
 import {AGENTATION_ENDPOINT, AGENTATION_SERVER} from "../src/lib/agentation-endpoint";
@@ -170,5 +171,35 @@ describe("quiet output", () => {
 			reportCompressedSize: false,
 			filtersBundlerLogs: "function",
 		});
+	});
+});
+
+describe("css minify", () => {
+	// Vite's minify pass converts build.cssTarget (baseline-widely-available) to these lightningcss targets.
+	const BASELINE_TARGETS = {
+		chrome: 111 << 16,
+		edge: 111 << 16,
+		firefox: 114 << 16,
+		safari: (16 << 16) | (4 << 8),
+		ios_saf: (16 << 16) | (4 << 8),
+	};
+
+	it("keeps :dir() out of lightningcss lowering, as Tailwind's own optimize pass does", () => {
+		expect(viteConfig.css).toStrictEqual({lightningcss: {exclude: Features.DirSelector}});
+	});
+
+	it("ships :dir() rules byte-for-byte like upstream through the baseline-target minify", () => {
+		const source =
+			'.a:where(:root[dir="rtl"] :dir(rtl))::after{left:0}.b:dir(ltr){color:red}.rtl\\:-scale-x-100:where(:dir(rtl),[dir=rtl],[dir=rtl] *){scale:-1 1}';
+		const {code} = transform({
+			...viteConfig.css?.lightningcss,
+			filename: "x.css",
+			code: Buffer.from(source),
+			minify: true,
+			targets: BASELINE_TARGETS,
+		});
+		expect(code.toString()).toBe(
+			".a:where(:root[dir=rtl] :dir(rtl)):after{left:0}.b:dir(ltr){color:red}.rtl\\:-scale-x-100:where(:dir(rtl),[dir=rtl],[dir=rtl] *){scale:-1 1}",
+		);
 	});
 });

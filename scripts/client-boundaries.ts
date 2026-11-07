@@ -1,4 +1,4 @@
-import {readFileSync} from "node:fs";
+import {readFileSync, readdirSync} from "node:fs";
 import {join, resolve} from "node:path";
 import {fileURLToPath} from "node:url";
 import {z} from "zod";
@@ -7,7 +7,8 @@ import {CLIENT_CHUNK_GRAPH_FILE, type ClientChunk} from "../src/lib/client-chunk
 /**
  * `just client-boundaries`: after `vp build`, check the client chunk graph that `clientChunkGraph()` recorded. No client
  * chunk may reference a Node built-in (a route importing a server-only module at the top level), and the client
- * entry's static graph must leave Shiki grammars and markdown-it to dynamic imports.
+ * entry's static graph must leave Shiki grammars and markdown-it to dynamic imports. The built stylesheets must keep
+ * `:dir()` rather than lightningcss's lowered `:lang()` lists, which ignore direction.
  */
 
 const ClientChunkSchema = z
@@ -74,6 +75,26 @@ export function clientBoundaryViolations(
 	return [...violations].toSorted();
 }
 
+// lightningcss lowers :dir(rtl) to :is(:lang(ae),:lang(ar),…,:lang(yi)); ae is always the list's first entry.
+const LOWERED_DIR_MARKER = ":lang(ae)";
+const GLOBALS_CSS_PATTERN = /(^|\/)assets\/globals-[^/]*\.css$/;
+
+export function loweredDirSelectorViolations(fileName: string, css: string): string[] {
+	if (css.includes(LOWERED_DIR_MARKER)) return [`${fileName}: :dir() was lowered to :lang() lists`];
+	if (GLOBALS_CSS_PATTERN.test(fileName) && !css.includes(":dir(rtl)"))
+		return [`${fileName}: no :dir(rtl) rule survived the build`];
+	return [];
+}
+
+function cssViolations(publicDir: string): string[] {
+	return readdirSync(join(publicDir, "assets"))
+		.filter((name) => name.endsWith(".css"))
+		.toSorted()
+		.flatMap((name) =>
+			loweredDirSelectorViolations(`assets/${name}`, readFileSync(join(publicDir, "assets", name), "utf8")),
+		);
+}
+
 function main(): void {
 	const outputDir = join(fileURLToPath(import.meta.url), "..", "..", ".output");
 	const chunks = z
@@ -86,6 +107,14 @@ function main(): void {
 		console.error(
 			`The client build crosses a module boundary:\n${violations.map((violation) => `  - ${violation}`).join("\n")}\n\n` +
 				"A Node built-in means a route imports a server-only module at the top level: move it inside an API route handler (src/routes/api/) behind a dynamic import().",
+		);
+		process.exitCode = 1;
+	}
+	const loweredCss = cssViolations(join(outputDir, "public"));
+	if (loweredCss.length > 0) {
+		console.error(
+			`The built CSS lost its :dir() selectors:\n${loweredCss.map((violation) => `  - ${violation}`).join("\n")}\n\n` +
+				"A CSS minify pass lowered :dir() to :lang() lists; keep css.lightningcss.exclude = Features.DirSelector in vite.config.ts.",
 		);
 		process.exitCode = 1;
 	}
