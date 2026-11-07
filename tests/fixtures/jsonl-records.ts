@@ -213,6 +213,12 @@ export const jsonlRecordFixtures = {
 		organizationUuid: "org-alice",
 		sessionId: "session-alice-100",
 	},
+	"continued-in": {
+		type: "continued-in",
+		timestamp: "2000-01-01T00:00:00.000Z",
+		sessionId: "session-alice-100",
+		continuedInSessionId: "session-alice-200",
+	},
 	"api-request": {
 		type: "api-request",
 		sessionId: "session-alice-100",

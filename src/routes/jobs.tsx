@@ -21,6 +21,7 @@ const STATE_PILL_CLASSES = {
 	blocked: "bg-warning-100/15 text-warning-000",
 	done: "bg-success-900 text-success-000",
 	failed: "bg-danger-900 text-danger-000",
+	stopped: "bg-surface-2 text-muted-as-secondary",
 } satisfies Record<JobState, string>;
 
 /**

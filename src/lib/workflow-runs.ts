@@ -78,6 +78,10 @@ export const WorkflowJournalEventSchema = z.discriminatedUnion("type", [
 		key: z.string(),
 		agentId: z.string(),
 		result: JsonValueSchema,
+		// Whether the agent's result reported on a Remote Control device.
+		remoteControlDeviceReport: z.boolean().optional(),
+		// Whether the agent's result carried content read from another person's artifact.
+		foreignArtifactContent: z.boolean().optional(),
 		toolsUsed: z.array(z.string()).optional(),
 	}),
 	z.strictObject({type: z.literal("failed"), key: z.string(), agentId: z.string()}),

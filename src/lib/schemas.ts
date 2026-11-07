@@ -550,6 +550,8 @@ export const UserRecordSchema = z
 		turnCompanion: z.boolean().optional(),
 		queueSkipAttachments: z.boolean().optional(),
 		queueSkipSlashCommands: z.boolean().optional(),
+		// The prompt text was not typed by the user (e.g. pasted or injected into the queue).
+		textNotTyped: z.boolean().optional(),
 		// Parallel arrays, one entry per background-task notice joined into this message.
 		joinedNoticeLengths: z.array(z.number()).optional(),
 		joinedNoticeOwn: z.array(z.boolean()).optional(),
@@ -585,6 +587,9 @@ const RateLimitInfoSchema = z
 // How the assistant's thinking was surfaced: streamed as `updates`, or `omitted` (empty thinking text).
 export const ThinkingDisplaySchema = z.enum(["updates", "omitted"]);
 
+// The prompt-cache TTL the CLI asked for on the request that produced an assistant message.
+export const PromptCacheTtlSchema = z.enum(["5m", "1h"]);
+
 // Why the CLI cut an assistant response stream short (`stream_suspended`: the computer slept mid-response).
 export const StreamCutCauseSchema = z.enum(["stream_suspended"]);
 
@@ -596,6 +601,7 @@ export const AssistantRecordSchema = z
 		// `id` of the `api-request` record that produced this message.
 		requestRef: z.string().optional(),
 		requestedModel: z.string().optional(),
+		promptCacheRequested: PromptCacheTtlSchema.optional(),
 		effort: z.string().optional(),
 		message: z
 			.object({
@@ -676,6 +682,8 @@ export const AssistantRecordSchema = z
 		// Uuids of the earlier assistant messages this one replaces.
 		supersedesUuids: z.array(z.string()).optional(),
 		thinkingDurationMs: z.number().optional(),
+		// Milliseconds spent streaming tool-call input.
+		toolInputStreamMs: z.number().optional(),
 		truncatedAfterOutput: z.boolean().optional(),
 		// Keyed by tool_use id: the working directory each tool call ran in.
 		wireIngestContext: z.record(z.string(), z.object({cwd: z.string().optional()}).strict()).optional(),
@@ -1019,6 +1027,8 @@ const FileAttachmentPayload = z
 		content: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
 		displayPath: z.string().optional(),
 		readNotes: z.object({memoryNote: z.string().optional()}).strict().optional(),
+		// How a saved copy of the file was framed when attached.
+		savedCopyFraming: z.object({enveloped: z.boolean()}).strict().optional(),
 	})
 	.strict();
 
@@ -1973,7 +1983,12 @@ export const BridgeSessionRecordSchema = z
 	.strict();
 
 /** Why the CLI suppressed syncing this session's history to a remote bridge. */
-export const HistorySuppressionCauseSchema = z.enum(["chokepoint_veto", "migration", "restored_owner_mismatch"]);
+export const HistorySuppressionCauseSchema = z.enum([
+	"chokepoint_veto",
+	"migration",
+	"restored_owner_mismatch",
+	"fork_inherit",
+]);
 
 export const HistorySuppressionRecordSchema = z
 	.object({
@@ -2045,6 +2060,16 @@ const SessionOwnerRecordSchema = z
 		accountUuid: z.string(),
 		organizationUuid: z.string(),
 		sessionId: z.string(),
+	})
+	.strict();
+
+// Points a session at the session it was continued in.
+const ContinuedInRecordSchema = z
+	.object({
+		type: z.literal("continued-in"),
+		timestamp: z.string(),
+		sessionId: z.string(),
+		continuedInSessionId: z.string(),
 	})
 	.strict();
 
@@ -2448,6 +2473,7 @@ export const JsonlRecordSchema = z.discriminatedUnion("type", [
 	DevModsRecordSchema,
 	ToolsUsedRecordSchema,
 	SessionOwnerRecordSchema,
+	ContinuedInRecordSchema,
 	ApiRequestRecordSchema,
 	ApiRequestBlobRecordSchema,
 	ApiRequestShapeRecordSchema,

@@ -2691,6 +2691,7 @@ describe("TaskFileSchema against disk", () => {
 		}
 
 		let validated = 0;
+		let seen = 0;
 		const failures: string[] = [];
 
 		for (const projectDir of projectDirs) {
@@ -2705,6 +2706,7 @@ describe("TaskFileSchema against disk", () => {
 
 			const files = readdirSync(projectPath).filter((f) => f.endsWith(".json"));
 			for (const file of files) {
+				seen++;
 				const filePath = join(projectPath, file);
 				const raw = readFileSync(filePath, "utf-8");
 				let parsed: unknown;
@@ -2728,7 +2730,8 @@ describe("TaskFileSchema against disk", () => {
 			throw new Error(`${failures.length} task files failed validation:\n${failures.join("\n")}`);
 		}
 
-		expect(validated).toBeGreaterThan(0);
+		// The CLI deletes finished task files, so the directory can hold none at all.
+		expect(validated).toBe(seen);
 	});
 });
 

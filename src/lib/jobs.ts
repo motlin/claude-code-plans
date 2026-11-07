@@ -6,8 +6,8 @@ import {z} from "zod";
  * Background jobs page is the local analogue of claude.ai's Dispatch Tasks.
  */
 
-/** Job state; `running` only appears in timeline entries so far. */
-export const JobStateSchema = z.enum(["working", "running", "blocked", "done", "failed"]);
+/** Job state; `running` only appears in timeline entries so far; `stopped` marks a job that ended while the background service was off. */
+export const JobStateSchema = z.enum(["working", "running", "blocked", "done", "failed", "stopped"]);
 export type JobState = z.infer<typeof JobStateSchema>;
 
 export const JobTempoSchema = z.enum(["idle", "blocked"]);
@@ -89,9 +89,11 @@ export const JobStateFileSchema = z.strictObject({
 	firstTerminalAt: z.string().nullable().optional(),
 	lastTerminalAt: z.string().optional(),
 	reapedMidWorkAt: z.string().optional(),
+	deadEpochReapedAt: z.string().optional(),
 	bridgeSessionId: z.string().optional(),
 	bridgeOwnerAccountUuid: z.string().optional(),
 	bridgeOwnerOrganizationUuid: z.string().optional(),
+	bridgeNoHistoryBackfill: z.boolean().optional(),
 	bridgeOutboundOnly: z.boolean().optional(),
 	bridgeSessionSeq: z.number().optional(),
 });

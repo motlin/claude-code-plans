@@ -69,6 +69,7 @@ import type {
 	PermissionDecisionRuleSourceSchema,
 	PermissionDecisionSourceSchema,
 	PluginCatalogSourceKindSchema,
+	PromptCacheTtlSchema,
 	RenderedRoleSchema,
 	SessionRegistryStatusSchema,
 	SkillOverrideValueSchema,
@@ -165,6 +166,7 @@ const historySuppressionCauseLabels = {
 	chokepoint_veto: "Vetoed for another account",
 	migration: "Migration",
 	restored_owner_mismatch: "Restored for another account",
+	fork_inherit: "Inherited from the forked session",
 } satisfies Record<z.infer<typeof HistorySuppressionCauseSchema>, string>;
 
 /** A `history-suppression` cause's label, or undefined for a cause newer than the schema. */
@@ -552,6 +554,12 @@ const thinkingDisplayChoices = {
 const streamCutCauseChoices = {
 	stream_suspended: true,
 } satisfies Record<z.infer<typeof StreamCutCauseSchema>, true>;
+
+/** Not consumed yet — `promptCacheRequested` (the prompt-cache TTL asked for) on assistant records is only validated. */
+const promptCacheTtlChoices = {
+	"5m": true,
+	"1h": true,
+} satisfies Record<z.infer<typeof PromptCacheTtlSchema>, true>;
 
 /** Not consumed yet — `/context` twin category kinds on `system/local_command` records. */
 const contextUsageCategoryKindChoices = {
@@ -998,6 +1006,7 @@ const jsonlRecordVariants = {
 	"dev-mods": true,
 	"tools-used": true,
 	"session-owner": true,
+	"continued-in": true,
 	"api-request": true,
 	"api-request-blob": true,
 	"api-request-shape": true,
@@ -1335,6 +1344,7 @@ export const jobStateLabels = {
 	blocked: "Blocked",
 	done: "Done",
 	failed: "Failed",
+	stopped: "Stopped",
 } satisfies Record<JobState, string>;
 
 const jobTempoLabels = {
@@ -1646,6 +1656,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"JsonlRecordSchema.<attachment>.renderedRole": renderedRoleChoices,
 	"JsonlRecordSchema.<assistant>.thinkingDisplay": thinkingDisplayChoices,
 	"JsonlRecordSchema.<assistant>.streamCutCause": streamCutCauseChoices,
+	"JsonlRecordSchema.<assistant>.promptCacheRequested": promptCacheTtlChoices,
 	"JsonlRecordSchema.<system>.contextUsage.over_limit.kind": contextUsageOverLimitKindChoices,
 	"JsonlRecordSchema.<system>.contextUsage.categories[].kind": contextUsageCategoryKindChoices,
 	"ContextMirrorFileSchema.breakdown.autocompactSource": contextWindowSourceChoices,
