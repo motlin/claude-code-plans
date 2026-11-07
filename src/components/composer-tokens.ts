@@ -37,7 +37,11 @@ export const EFFORT_LABEL_CLASS = "shrink-0 whitespace-pre text-muted-as-seconda
 export const USAGE_RING_CLASS = `${CHIN_BUTTON_CLASS} aspect-square comfortable:rounded-r5`;
 
 /** The card's 28px + button (pinned by `.epitaxy-prompt`), at upstream's 6px control radius, 8px at comfortable. */
-export const ADD_BUTTON_CLASS = `${CHIN_BUTTON_CLASS.replace("h-6", "size-7").replace("rounded-r4", "rounded-r5")} comfortable:rounded-r6`;
+export const ADD_BUTTON_CLASS = `group/btn ${CHIN_BUTTON_CLASS.replace("h-6", "size-7").replace("rounded-r4", "rounded-r5")} comfortable:rounded-r6`;
+
+/** Upstream's chin icon ink (shared-33 `p`): control ink, primary on button hover, accent (local `text-upstream-accent`) while pressed. */
+export const CHIN_ICON_INK_CLASS =
+	"text-secondary-control group-hover/btn:text-primary group-aria-pressed/btn:text-upstream-accent group-hover/btn:group-aria-pressed/btn:text-upstream-accent";
 
 /** The home composer's environment bar, which takes the chin's place under the card. */
 export const ENVIRONMENT_BAR_CLASS = "@container pt-1 comfortable:pt-0.5";
@@ -54,4 +58,4 @@ export const ENVIRONMENT_PLACE_CLASS = "flex min-w-0 items-center @max-[28.75rem
 
 /** Upstream's environment-bar place button: a 24px ghost control with a 16px icon, its label gap 8px at comfortable. */
 export const PLACE_CHIP_CLASS =
-	"flex h-6 max-w-[240px] min-w-0 items-center gap-1 comfortable:gap-2 rounded-r6 px-1.5 text-[13px]/[20px] text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"flex h-6 max-w-[240px] min-w-0 items-center gap-1 comfortable:gap-2 rounded-r6 px-1.5 text-[13px]/[20px] text-secondary-control transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";

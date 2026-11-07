@@ -352,6 +352,19 @@ describe("Composer", () => {
 			});
 		});
 
+		it("inks the Add glyph with upstream's chin icon recipe under a group/btn trigger", () => {
+			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
+			const add = screen.getByRole("button", {name: "Add"});
+
+			expect({
+				group: add.className.split(" ").includes("group/btn"),
+				icon: add.querySelector("svg")?.getAttribute("class"),
+			}).toStrictEqual({
+				group: true,
+				icon: "lucide lucide-plus size-[18px] text-secondary-control group-hover/btn:text-primary group-aria-pressed/btn:text-upstream-accent group-hover/btn:group-aria-pressed/btn:text-upstream-accent",
+			});
+		});
+
 		it("uses upstream's card and chin tokens: r14 p8 card, 28px Add and Send, 24px 13/20 chin controls", () => {
 			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
 			const classes = (element: Element | null | undefined) => element?.getAttribute("class")?.split(" ") ?? [];

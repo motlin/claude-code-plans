@@ -30,7 +30,7 @@ import {useShortcutKeys} from "../hooks/use-shortcut";
 import {effortLevelLabels} from "../lib/schema-choices";
 import {ConnectorsLoadingItem} from "./composer-connectors-loading";
 import {type ChinMenu, type ChinSurface, ModeMenu, ModelMenu} from "./composer-launch-menus";
-import {ADD_BUTTON_CLASS, USAGE_RING_CLASS} from "./composer-tokens";
+import {ADD_BUTTON_CLASS, CHIN_ICON_INK_CLASS, USAGE_RING_CLASS} from "./composer-tokens";
 import {localAccountQueryOptions} from "../lib/api/local-account";
 import {settingsHash} from "../lib/settings-hash";
 import {ConfirmDialog} from "./confirm-dialog";
@@ -160,7 +160,7 @@ export const ComposerAddMenu = memo(function ComposerAddMenu({
 		<Menu onOpenChangeComplete={slashAfterClose.onOpenChangeComplete}>
 			<Tooltip content="Add" side="top" suppressAfterPopup>
 				<MenuTrigger aria-label="Add" className={ADD_BUTTON_CLASS}>
-					<Plus className="size-[18px]" aria-hidden="true" />
+					<Plus className={`size-[18px] ${CHIN_ICON_INK_CLASS}`} aria-hidden="true" />
 				</MenuTrigger>
 			</Tooltip>
 			<MenuContent side="top" sideOffset={6} finalFocus={slashAfterClose.finalFocus}>

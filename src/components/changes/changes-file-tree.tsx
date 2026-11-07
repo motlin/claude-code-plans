@@ -119,7 +119,7 @@ function TreeRows({nodes, sectionKey, flat, collapsedDirs, onToggleDir, activePa
 				className={ROW_CLASS}
 				style={{paddingLeft}}
 			>
-				<FileTypeIcon fileName={node.name} size="xs" className="text-ink-muted" />
+				<FileTypeIcon fileName={node.name} size="xs" className="text-muted-control" />
 				<span className="flex min-w-0 flex-1 items-baseline gap-1">
 					<span className={flat ? "shrink-0 truncate" : "min-w-0 truncate"}>{node.name}</span>
 					{flat && node.dir !== "" && (

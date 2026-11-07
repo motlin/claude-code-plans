@@ -1,5 +1,6 @@
 import {readFileSync} from "node:fs";
 import {describe, expect, it} from "vite-plus/test";
+import {PLACE_CHIP_CLASS} from "../src/components/composer-tokens";
 import {compileAll} from "./helpers/tailwind-design-system";
 
 const styles = readFileSync("src/styles/globals.css", "utf8");
@@ -343,5 +344,11 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () => 
 				".\\!text-muted-control { color: var(--control-ink, var(--color-ink-muted)) !important; }",
 			"text-current-control": ".text-current-control { color: var(--control-ink, currentColor); }",
 		});
+	});
+
+	it("the interactive env-bar place chip (upstream Ub/Gb) inks with text-secondary-control", () => {
+		expect(PLACE_CHIP_CLASS.split(" ").filter((name) => /^text-(secondary|primary)/.test(name))).toStrictEqual([
+			"text-secondary-control",
+		]);
 	});
 });

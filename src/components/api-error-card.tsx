@@ -136,7 +136,7 @@ function ErrorDetails({
 							setOpen(!open);
 						}}
 					>
-						<span>View details</span>
+						<span className="text-current-control">View details</span>
 						<ChevronIcon expanded={open} />
 					</button>
 				)}

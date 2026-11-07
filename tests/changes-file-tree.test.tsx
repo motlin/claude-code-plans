@@ -129,7 +129,7 @@ describe("ChangedFilesSidebar", () => {
 			file: {
 				fileTypeIcon: true,
 				width: "12px",
-				className: "shrink-0 text-ink-muted",
+				className: "shrink-0 text-muted-control",
 				fill: "var(--fti-typescript)",
 			},
 			folder: null,

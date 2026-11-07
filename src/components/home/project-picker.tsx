@@ -35,7 +35,7 @@ const WORKTREE_ROW_CLASS =
 
 /** The start card's "Choose environment" row, which opens the same picker below it. */
 const CHOOSE_CLASS =
-	"flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-[13px]/5 text-secondary outline-none group-hover/row:bg-fill-ghost-hover group-has-[:focus-visible]/row:bg-fill-ghost-hover group-has-[[aria-expanded=true]]/row:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden";
+	"flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-[13px]/5 text-secondary-control outline-none group-hover/row:bg-fill-ghost-hover group-has-[:focus-visible]/row:bg-fill-ghost-hover group-has-[[aria-expanded=true]]/row:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden";
 
 /** Upstream's CaretDown ink: muted at rest, secondary while the row is hovered, keyboard-focused or open. */
 const CHOOSE_CARET_CLASS =
@@ -171,7 +171,9 @@ export function ProjectPicker({
 						className={CHOOSE_CLASS}
 					>
 						<span className="flex min-w-0 flex-1 items-center gap-1">
-							<span className="min-w-0 max-w-full truncate">Choose environment</span>
+							<span className="min-w-0 max-w-full truncate text-secondary-control">
+								Choose environment
+							</span>
 						</span>
 						<ChevronDown aria-hidden="true" className={CHOOSE_CARET_CLASS} />
 					</Popover.Trigger>

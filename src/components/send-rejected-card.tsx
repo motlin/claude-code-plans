@@ -48,7 +48,7 @@ export function SendRejectedCard({
 						}}
 						className="inline-flex cursor-pointer items-center gap-1.5 rounded-md text-[12px]/[15px] text-secondary hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 					>
-						View details
+						<span className="text-current-control">View details</span>
 						<ChevronRight
 							aria-hidden="true"
 							className={`size-4 transition-transform motion-reduce:transition-none ${detailsOpen ? "rotate-90" : ""}`}

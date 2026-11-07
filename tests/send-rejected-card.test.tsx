@@ -40,6 +40,27 @@ describe("SendRejectedCard", () => {
 		expect(buttonNames()).toEqual(["Dismiss", "View details", "Try again", "Copy details"]);
 	});
 
+	it("wraps the View details label in upstream's text-current-control span, leaving the chevron on the button ink", () => {
+		renderCard();
+		const toggle = screen.getByRole("button", {name: "View details"});
+
+		expect(
+			[...toggle.children].map((child) => ({
+				tag: child.tagName,
+				className: child.getAttribute("class"),
+				text: child.textContent,
+			})),
+		).toStrictEqual([
+			{tag: "SPAN", className: "text-current-control", text: "View details"},
+			{
+				tag: "svg",
+				className:
+					"lucide lucide-chevron-right size-4 transition-transform motion-reduce:transition-none rotate-90",
+				text: "",
+			},
+		]);
+	});
+
 	it("opens the details by default and collapses them, unmounting the message", () => {
 		const {container} = renderCard();
 		const toggle = screen.getByRole("button", {name: "View details"});

@@ -87,11 +87,30 @@ describe("StartCard", () => {
 				text: child.textContent,
 			})),
 		).toStrictEqual([
-			{tag: "svg", className: "lucide lucide-folder size-4 shrink-0", text: ""},
-			{tag: "SPAN", className: "min-w-0 flex-1 truncate text-start", text: "p5"},
+			{tag: "svg", className: "lucide lucide-folder size-4 shrink-0 text-secondary-control", text: ""},
+			{tag: "SPAN", className: "min-w-0 flex-1 truncate text-start text-secondary-control", text: "p5"},
 			{tag: "SPAN", className: "sr-only", text: "~/projects/p5"},
 			{tag: "svg", className: "lucide lucide-check size-4 shrink-0 text-primary", text: ""},
 		]);
+	});
+
+	it("inks a non-current row, its Folder icon and title, and the Choose environment title with upstream's control ink", () => {
+		render(<StartCard projects={PROJECTS} selected={PROJECTS[4]} onSelect={() => {}} />);
+		const row = screen.getByRole("button", {name: "p1"});
+		const choose = screen.getByRole("button", {name: "Choose environment"});
+
+		expect({
+			row: row.className.split(" ").filter((token) => token.startsWith("text-secondary")),
+			children: [...row.children].map((child) => child.getAttribute("class")),
+			chooseTitle: choose.querySelector("span > span")?.className,
+		}).toStrictEqual({
+			row: ["text-secondary-control"],
+			children: [
+				"lucide lucide-folder size-4 shrink-0 text-secondary-control",
+				"min-w-0 flex-1 truncate text-start text-secondary-control",
+			],
+			chooseTitle: "min-w-0 max-w-full truncate text-secondary-control",
+		});
 	});
 
 	it("peeks Clawd over the env card as the start card's first child, marking the env card for placement", () => {
@@ -235,7 +254,7 @@ describe("StartCard", () => {
 			divider: "var(--ring-inner, 1px)",
 			row: "group/row relative",
 			expanded: "true",
-			button: "flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-[13px]/5 text-secondary outline-none group-hover/row:bg-fill-ghost-hover group-has-[:focus-visible]/row:bg-fill-ghost-hover group-has-[[aria-expanded=true]]/row:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden",
+			button: "flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-[13px]/5 text-secondary-control outline-none group-hover/row:bg-fill-ghost-hover group-has-[:focus-visible]/row:bg-fill-ghost-hover group-has-[[aria-expanded=true]]/row:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden",
 			chevron:
 				"lucide lucide-chevron-down size-3 shrink-0 text-ink-muted group-hover/row:text-secondary group-has-[:focus-visible]/row:text-secondary group-has-[[aria-expanded=true]]/row:text-secondary",
 		});

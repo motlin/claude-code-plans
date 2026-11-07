@@ -114,6 +114,7 @@ describe("ApiErrorCard", () => {
 			detailsRow: detailsRow?.className,
 			trigger: {
 				text: trigger?.textContent,
+				label: trigger?.querySelector("span")?.className,
 				className: trigger?.className,
 				expanded: trigger?.getAttribute("aria-expanded"),
 			},
@@ -131,6 +132,7 @@ describe("ApiErrorCard", () => {
 			detailsRow: "flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2 px-3 pb-3 pt-2",
 			trigger: {
 				text: "View details",
+				label: "text-current-control",
 				className:
 					"inline-flex shrink-0 cursor-pointer items-center gap-0.5 whitespace-nowrap text-footnote text-secondary hover:text-primary",
 				expanded: "false",

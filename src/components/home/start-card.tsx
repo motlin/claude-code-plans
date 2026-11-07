@@ -26,7 +26,8 @@ const ROW_LIMIT = 3;
 /** Upstream's start-card list: a 320px ringed surface-1 card. */
 const CARD_CLASS = "card-ring flex w-80 max-w-full shrink-0 flex-col rounded-card bg-surface-1";
 
-const ROW_CLASS = "flex h-8 w-full items-center gap-2 rounded-lg px-2 text-[13px]/5 text-secondary";
+/** Upstream's row ink is `text-secondary-control`: primary ink under fizzy color, secondary with it off. */
+const ROW_CLASS = "flex h-8 w-full items-center gap-2 rounded-lg px-2 text-[13px]/5 text-secondary-control";
 
 /** `/Users/me/x` or `/home/me/x` → `~/x`, like upstream's shortened local cwd. */
 function shortenCwd(path: string): string {
@@ -111,8 +112,10 @@ function RecentEnvironments({
 				const current = project.id === selected?.id;
 				const content = (
 					<>
-						<Folder aria-hidden="true" className="size-4 shrink-0" />
-						<span className="min-w-0 flex-1 truncate text-start">{project.name}</span>
+						<Folder aria-hidden="true" className="size-4 shrink-0 text-secondary-control" />
+						<span className="min-w-0 flex-1 truncate text-start text-secondary-control">
+							{project.name}
+						</span>
 					</>
 				);
 				return (
@@ -236,7 +239,7 @@ function StepLine({candidate, listed = false}: Readonly<{candidate: NextStepCand
 				data-next-step-line
 				className="flex h-5 min-w-0 items-baseline gap-x-2 overflow-hidden whitespace-nowrap flex-wrap"
 			>
-				<span className="min-w-0 max-w-full truncate text-secondary">
+				<span className="min-w-0 max-w-full truncate text-secondary-control">
 					{!listed && WAITING_IDS.has(candidate.id) && (
 						<>
 							<span className="text-upstream-warning">Waiting</span>{" "}
@@ -420,7 +423,7 @@ function WorktreeTakenRow() {
 			data-testid="start-card-worktree-apart"
 			className="flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-[13px]/5"
 		>
-			<span className="min-w-0 flex-1 truncate text-secondary">Worktree is on</span>
+			<span className="min-w-0 flex-1 truncate text-secondary-control">Worktree is on</span>
 			<Check aria-hidden="true" className="size-4 shrink-0 text-primary" />
 		</div>
 	);
@@ -519,7 +522,7 @@ function RestRow({
 			}}
 		>
 			<PopoverTrigger data-testid="start-card-blocked-sessions" data-next-step-open className={STEP_BUTTON_CLASS}>
-				<span className="min-w-0 flex-1 truncate text-secondary">{title}</span>
+				<span className="min-w-0 flex-1 truncate text-secondary-control">{title}</span>
 				<ChevronDown aria-hidden="true" className={STEP_CARET_CLASS} />
 				<StepSpacer />
 			</PopoverTrigger>
