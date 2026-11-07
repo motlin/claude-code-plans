@@ -4,6 +4,7 @@ import {readdir, readFile, stat} from "node:fs/promises";
 import {basename, dirname, join} from "node:path";
 import {bridgePushedTitle} from "./bridge-pushed-title-store";
 import {createLineReader} from "./line-reader";
+import {generatedTitleSources, isPaneNameTitle} from "./session-title-generator";
 import {decodeProjectDir, resolveProjectName} from "./memory";
 import {TypedJsonValueSchema, type JsonValue} from "./hook-events";
 import {isRecord} from "./narrow";
@@ -442,12 +443,18 @@ export async function resolveFirstPrompt(
  * then the first prompt. A session bridged to claude.ai/code (Remote Control)
  * instead puts the ai-title first, because claude.ai/code titles it by the
  * generated title and never sees a local custom title. The `title` column in
- * the index mirrors this order (see indexSessionsIndex's coalesce).
+ * the index mirrors this order (see indexSessionsIndex's coalesce). A bridged
+ * session whose custom title only repeats its pane name takes the title this
+ * app generated from its conversation (session-title-generator.ts) first, as
+ * claude.ai/code retitles it on the server; a deliberate /rename still wins.
  */
 export function resolveSessionTitle(entry: {
 	customTitle?: string | undefined;
 	aiTitle?: string | undefined;
 	bridged?: boolean | undefined;
+	generatedTitle?: string | undefined;
+	agentName?: string | undefined;
+	cwdBasename?: string | undefined;
 	summary?: string | undefined;
 	firstPrompt?: FirstUserPrompt | undefined;
 	sessionId: string;
@@ -463,12 +470,18 @@ export function resolveSessionTitle(entry: {
 	return entry.sessionId;
 }
 
-/** The custom or ai title a session is named by, in resolveSessionTitle's order, or undefined when it has neither. */
-function namedSessionTitle(sources: {
+/** The generated, custom or ai title a session is named by, in resolveSessionTitle's order, or undefined when it has none. */
+export function namedSessionTitle(sources: {
 	customTitle?: string | undefined;
 	aiTitle?: string | undefined;
 	bridged?: boolean | undefined;
+	generatedTitle?: string | undefined;
+	agentName?: string | undefined;
+	cwdBasename?: string | undefined;
 }): string | undefined {
+	if (sources.bridged && sources.generatedTitle !== undefined && isPaneNameTitle(sources.customTitle, sources)) {
+		return sources.generatedTitle;
+	}
 	const [first, second] = sources.bridged
 		? [sources.aiTitle, sources.customTitle]
 		: [sources.customTitle, sources.aiTitle];
@@ -1184,7 +1197,9 @@ export async function readSession(projectsDir: string, sessionId: string): Promi
 		await rl.close();
 	}
 
-	title = namedSessionTitle(await titleRecords.finish(filePath)) ?? title;
+	const titleSources = await titleRecords.finish(filePath);
+	title =
+		namedSessionTitle({...titleSources, ...generatedTitleSources(sessionId, titleSources.customTitle)}) ?? title;
 
 	const detail: SessionDetail = {
 		id: sessionId,

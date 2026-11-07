@@ -2,6 +2,7 @@ import {writeFileSync, mkdirSync, rmSync} from "node:fs";
 import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
+import * as schema from "../src/lib/db/schema";
 import {indexJsonlFile, indexSessionsIndex} from "../src/lib/db/indexer";
 import {
 	getActiveSessionEntries,
@@ -17,6 +18,7 @@ import {addLiveSubagent, clearLiveSubagents} from "../src/lib/live-subagent-stor
 import {addNotification, clearAllNotifications} from "../src/lib/notifications-store";
 import {clearSessionRegistry, refreshSessionRegistry} from "../src/lib/session-registry-store";
 import {startTurnVerdictWorker} from "../src/lib/turn-verdict";
+import {startSessionTitleWorker} from "../src/lib/session-title-generator";
 
 const testDir = join(tmpdir(), "claude-session-summary-test-" + process.pid);
 const PROJECT_ID = "-tmp-test-alice-project";
@@ -523,6 +525,51 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 			recovered: {bucket: "done", unseenError: undefined, erroredAt: undefined},
 			retried: {bucket: "done", unseenError: undefined, erroredAt: undefined},
 		});
+	});
+
+	it("titles a bridged session named only by its pane name from its conversation", async () => {
+		// The worker skips sessions idle for more than two weeks, so the transcript was written a minute ago.
+		const timestamp = new Date(Date.now() - 60_000).toISOString();
+		const record = (fields: Record<string, unknown>) =>
+			`${JSON.stringify({sessionId: "session-test-100", timestamp, ...fields})}\n`;
+		await indexSession(
+			record({type: "custom-title", customTitle: "alice-project"}) +
+				record({type: "bridge-session", bridgeSessionId: "session_test_bridge", lastSequenceNum: 0}) +
+				record({type: "user", uuid: "u-1", message: {role: "user", content: "Review pull request 910"}}) +
+				record({
+					type: "assistant",
+					uuid: "a-1",
+					message: {role: "assistant", content: [{type: "text", text: "It looks good."}]},
+				}),
+		);
+		await indexJsonlFile(db.index, join(testDir, PROJECT_ID, "session-test-100.jsonl"), PROJECT_ID);
+		db.index.update(schema.sessions).set({cwd: PROJECT_PATH}).run();
+		let resolve = () => {};
+		const titled = new Promise<undefined>((done) => {
+			resolve = () => {
+				done(undefined);
+			};
+		});
+		const stop = startSessionTitleWorker({
+			summariesDb: db.summaries,
+			projectsDir: testDir,
+			runModel: async () => Promise.resolve("Alice project pull request 910"),
+			onTitle: () => {
+				resolve();
+			},
+		});
+		try {
+			const titleOf = () => buildSessionSummaryPayloadFromDb(db.index, "session-test-100")?.title;
+			const before = titleOf();
+			await titled;
+
+			expect({before, after: titleOf()}).toStrictEqual({
+				before: "alice-project",
+				after: "Alice project pull request 910",
+			});
+		} finally {
+			stop();
+		}
 	});
 
 	it("puts an unread session in Needs input once its last turn's verdict asks for input", async () => {

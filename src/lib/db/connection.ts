@@ -434,6 +434,16 @@ CREATE TABLE IF NOT EXISTS turn_verdicts (
   needs_input INTEGER NOT NULL,
   generated_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS generated_titles (
+  session_id TEXT PRIMARY KEY,
+  custom_title TEXT NOT NULL,
+  pane_named INTEGER NOT NULL,
+  agent_name TEXT,
+  cwd_basename TEXT,
+  title TEXT,
+  message_count INTEGER NOT NULL,
+  generated_at INTEGER NOT NULL
+);
 `;
 
 const SchemaObjectRowsSchema = z.array(

@@ -16,6 +16,7 @@ import {getDb, getShutdownSignal, initDb, runInitialScan, shutdownDb} from "./li
 import {startSweep, stopSweep} from "./lib/active-session-store";
 import {startAutoArchive, stopAutoArchive} from "./lib/auto-archive-service";
 import {startTurnVerdictWorker} from "./lib/turn-verdict";
+import {startSessionTitleWorker} from "./lib/session-title-generator";
 import {SESSION_REGISTRY_DIR} from "./lib/session-registry";
 import {startSessionRegistryMonitor, stopSessionRegistryMonitor} from "./lib/session-registry-store";
 import {persistBridgePushedTitlesTo} from "./lib/bridge-pushed-title-store";
@@ -52,6 +53,7 @@ async function readClaudeSettings(): Promise<unknown> {
 
 let stopHerdrEventBridge: (() => void) | null = null;
 let stopTurnVerdictWorker: (() => void) | null = null;
+let stopSessionTitleWorker: (() => void) | null = null;
 
 // In dev, log every event-loop stall longer than this with the requests and scan steps that ran during it.
 const EVENT_LOOP_STALL_LOG_MS = 500;
@@ -73,6 +75,8 @@ void (async () => {
 		stopAutoArchive();
 		stopTurnVerdictWorker?.();
 		stopTurnVerdictWorker = null;
+		stopSessionTitleWorker?.();
+		stopSessionTitleWorker = null;
 		stopSessionRegistryMonitor();
 		stopNotificationsSweep();
 		stopLiveSubagentSweep();
@@ -175,6 +179,14 @@ void (async () => {
 		summariesDb: getDb().summaries,
 		projectsDir: PROJECTS_DIR,
 		onVerdict: (sessionId) => {
+			rebroadcastSessionsById(new Set([sessionId]));
+		},
+	});
+	// Title bridged sessions named only by their pane name from their conversation, as claude.ai/code does.
+	stopSessionTitleWorker = startSessionTitleWorker({
+		summariesDb: getDb().summaries,
+		projectsDir: PROJECTS_DIR,
+		onTitle: (sessionId) => {
 			rebroadcastSessionsById(new Set([sessionId]));
 		},
 	});

@@ -954,6 +954,51 @@ describe("resolveSessionTitle", () => {
 		expect(resolveSessionTitle({customTitle: "Custom", bridged: true, sessionId: "session-test-1"})).toBe("Custom");
 	});
 
+	it("prefers a generated title over a bridged session's pane-name customTitle", () => {
+		const generated = {generatedTitle: "Klass pull request 910", sessionId: "session-test-1"};
+		expect([
+			resolveSessionTitle({bridged: true, customTitle: "klass", cwdBasename: "klass", ...generated}),
+			resolveSessionTitle({
+				bridged: true,
+				customTitle: "do-all",
+				agentName: "do-all",
+				cwdBasename: "w",
+				...generated,
+			}),
+			resolveSessionTitle({
+				bridged: true,
+				customTitle: "wip",
+				agentName: "wip",
+				aiTitle: "Dev logs",
+				...generated,
+			}),
+		]).toStrictEqual(["Klass pull request 910", "Klass pull request 910", "Klass pull request 910"]);
+	});
+
+	it("keeps a deliberate /rename title over a generated title", () => {
+		expect(
+			resolveSessionTitle({
+				bridged: true,
+				customTitle: "Release checklist",
+				agentName: "klass",
+				cwdBasename: "klass",
+				generatedTitle: "Klass pull request 910",
+				sessionId: "session-test-1",
+			}),
+		).toBe("Release checklist");
+	});
+
+	it("ignores a generated title for a session that is not bridged", () => {
+		expect(
+			resolveSessionTitle({
+				customTitle: "klass",
+				cwdBasename: "klass",
+				generatedTitle: "Klass pull request 910",
+				sessionId: "session-test-1",
+			}),
+		).toBe("klass");
+	});
+
 	it("falls back to summary, then first prompt, then session id", () => {
 		expect(resolveSessionTitle({summary: "Summary", firstPrompt, sessionId: "session-test-1"})).toBe("Summary");
 		expect(resolveSessionTitle({firstPrompt, sessionId: "session-test-1"})).toBe("Fix the login bug");

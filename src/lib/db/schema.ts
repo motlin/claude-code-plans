@@ -357,6 +357,22 @@ export const turnVerdicts = sqliteTable("turn_verdicts", {
 });
 
 /**
+ * A conversation title generated for a Remote Control bridged session whose only name is its pane name (upstream
+ * retitles bridged sessions on the claude.ai server and never writes those titles to disk). `customTitle` is the
+ * custom title the row judged; `paneNamed` says it equals the agent name or cwd basename, so the title applies.
+ */
+export const generatedTitles = sqliteTable("generated_titles", {
+	sessionId: text("session_id").primaryKey(),
+	customTitle: text("custom_title").notNull(),
+	paneNamed: integer("pane_named").notNull(),
+	agentName: text("agent_name"),
+	cwdBasename: text("cwd_basename"),
+	title: text("title"),
+	messageCount: integer("message_count").notNull(),
+	generatedAt: integer("generated_at").notNull(),
+});
+
+/**
  * The last whole-transcript file and link scan per JSONL (see
  * session-resource-scan.ts), so a server restart does not rescan a 400 MB
  * session. A row answers only while the file's size and mtime, the home root

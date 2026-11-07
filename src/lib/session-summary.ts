@@ -17,6 +17,8 @@ import {getRegistrySessionState, type RegistrySessionState} from "./session-regi
 import {sessionAwaitingPermission} from "./session-permission-wait";
 import {resolveMainState, resolveSessionBucket} from "./session-state";
 import {requestTurnVerdict, turnVerdictNeedsInput} from "./turn-verdict";
+import {generatedTitleSources, requestSessionTitle} from "./session-title-generator";
+import {namedSessionTitle} from "./sessions";
 import {ownRepositoryPr, readOriginRepoName} from "./session-own-pr";
 import type {SessionEntry} from "./sessions";
 
@@ -110,11 +112,12 @@ export function toSessionSummaryPayload(
 		fileMtime: entry.mtime.getTime(),
 		now,
 	});
-	const aiTitle = secondaryAiTitle(entry.title, entry.aiTitle);
+	const title = bridgedSessionTitle(entry, now);
+	const aiTitle = secondaryAiTitle(title, entry.aiTitle);
 	const remoteControl = registryRemoteControl(registrySession);
 	return {
 		id: entry.id,
-		title: entry.title,
+		title,
 		summary: entry.summary,
 		...(aiTitle === null ? {} : {aiTitle}),
 		...(entry.lastUserMessage === undefined ? {} : {lastUserMessage: entry.lastUserMessage}),
@@ -142,6 +145,34 @@ export function toSessionSummaryPayload(
 		unseen,
 		blockedSince: blockedSince(main, registrySession, pendingInput ? pendingApproval : undefined),
 	};
+}
+
+/**
+ * The indexed title, or for a bridged session named only by its pane name the title generated from its conversation,
+ * as claude.ai/code retitles it. Queues a (re)generation when one is due.
+ */
+function bridgedSessionTitle(entry: SessionEntry, now: number): string {
+	if (entry.remoteControl !== true || entry.customTitle === undefined) return entry.title;
+	requestSessionTitle(
+		{
+			sessionId: entry.id,
+			project: entry.project,
+			customTitle: entry.customTitle,
+			cwd: entry.cwd,
+			messageCount: entry.messageCount,
+			mtimeMs: entry.mtime.getTime(),
+		},
+		now,
+	);
+	const sources = generatedTitleSources(entry.id, entry.customTitle);
+	if (sources.generatedTitle === undefined) return entry.title;
+	const named = namedSessionTitle({
+		customTitle: entry.customTitle,
+		aiTitle: entry.aiTitle,
+		bridged: true,
+		...sources,
+	});
+	return named === sources.generatedTitle ? named : entry.title;
 }
 
 /** The entry without a PR it only touched in another repository, as session detail shows it. */

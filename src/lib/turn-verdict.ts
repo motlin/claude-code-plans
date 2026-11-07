@@ -67,7 +67,8 @@ export function finalTurnFromLines(lines: Iterable<string>): FinalTurn | null {
 	return {uuid, text: texts.join("\n\n").slice(-MAX_TURN_CHARS)};
 }
 
-async function readTailLines(filePath: string): Promise<string[]> {
+/** The transcript's last TAIL_BYTES as whole lines. */
+export async function readTailLines(filePath: string): Promise<string[]> {
 	const handle = await open(filePath, "r");
 	try {
 		const {size} = await handle.stat();
