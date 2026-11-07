@@ -172,4 +172,55 @@ describe("plan selection comment popover", () => {
 
 		expect(screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Plan comment"}).value).toBe("draft");
 	});
+
+	it("gives Save aria-keyshortcuts=Enter only while the draft is non-blank", () => {
+		const pane = renderPane();
+		dragSelect(textOf(pane, "Brew one cup"), 0, 4);
+		const saveAttr = () => screen.getByRole("button", {name: "Save comment"}).getAttribute("aria-keyshortcuts");
+		const fresh = saveAttr();
+		fireEvent.change(screen.getByRole("textbox", {name: "Plan comment"}), {target: {value: "x"}});
+		const typed = saveAttr();
+		fireEvent.change(screen.getByRole("textbox", {name: "Plan comment"}), {target: {value: ""}});
+
+		expect({fresh, typed, cleared: saveAttr()}).toStrictEqual({fresh: null, typed: "Enter", cleared: null});
+	});
+
+	it("gives an edit popover's Save aria-keyshortcuts=Enter from the start", () => {
+		addPlanComment(SESSION, {selectedText: "cup", startOffset: 18, endOffset: 21, comment: "Use two cups"});
+		const pane = renderPane();
+		const mark = pane.querySelector('mark [role="button"]');
+		if (mark === null) throw new Error("no mark");
+		fireEvent.click(mark);
+
+		expect(screen.getByRole("button", {name: "Save comment"}).getAttribute("aria-keyshortcuts")).toBe("Enter");
+	});
+
+	it("opens on a drag that starts in the pane outside the plan text", () => {
+		const pane = renderPane();
+		const hint = pane.querySelector("[data-plan-hint]");
+		if (hint === null) throw new Error("no hint");
+		const node = textOf(pane, "Brew one cup");
+		fireEvent.mouseDown(hint);
+		const range = document.createRange();
+		range.setStart(node, 0);
+		range.setEnd(node, 4);
+		const selection = document.getSelection();
+		selection?.removeAllRanges();
+		selection?.addRange(range);
+		act(() => {
+			document.dispatchEvent(new Event("selectionchange"));
+		});
+		fireEvent.mouseUp(node.parentElement as Element);
+
+		expect(dialog() !== null).toBe(true);
+	});
+
+	it("does not replace a popover whose draft is only whitespace on a new selection", () => {
+		const pane = renderPane();
+		dragSelect(textOf(pane, "Brew one cup"), 0, 4);
+		fireEvent.change(screen.getByRole("textbox", {name: "Plan comment"}), {target: {value: "  "}});
+		dragSelect(textOf(pane, "Pour it"), 0, 4);
+
+		expect(screen.getByRole<HTMLTextAreaElement>("textbox", {name: "Plan comment"}).value).toBe("  ");
+	});
 });

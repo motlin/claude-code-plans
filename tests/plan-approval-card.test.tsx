@@ -323,11 +323,11 @@ describe("PlanApprovalCard with plan comments", () => {
 			listClass: "-m-2 flex max-h-[176px] scroll-p-2 flex-col gap-1 overflow-y-auto p-2",
 			rows: [
 				{
-					className: "flex items-center gap-0.5 rounded-r4 bg-alpha-1 pe-1.25 hover:bg-alpha-2",
+					className: "flex items-center gap-0.5 rounded-r6 bg-alpha-1 pe-1.25 hover:bg-alpha-2",
 					text: "about 95°C.Hotter",
 				},
 				{
-					className: "flex items-center gap-0.5 rounded-r4 bg-alpha-1 pe-1.25 hover:bg-alpha-2",
+					className: "flex items-center gap-0.5 rounded-r6 bg-alpha-1 pe-1.25 hover:bg-alpha-2",
 					text: "GreenAdd oolong",
 				},
 				{className: "sr-only", text: "2 inline comments will be sent"},
@@ -336,6 +336,27 @@ describe("PlanApprovalCard with plan comments", () => {
 			focused: false,
 			buttons: ["about 95°C.Hotter", "", "GreenAdd oolong", "", "Revise"],
 			spacer: "@max-[420px]:hidden",
+		});
+	});
+
+	it("rounds each row's button at 8px, and Delete keeps focus in the feedback textarea", async () => {
+		seedComments();
+		const {value} = context();
+		const view = await renderCard(value);
+		const box = screen.getByRole("textbox", {name: "Plan feedback"});
+		box.focus();
+		const [del] = screen.getAllByRole("button", {name: "Delete comment"});
+		if (del === undefined) throw new Error("no Delete");
+		const notPrevented = fireEvent.mouseDown(del);
+		expect({
+			rowButton: view.container.querySelector("li > button")?.className,
+			notPrevented,
+			focused: document.activeElement === box,
+		}).toStrictEqual({
+			rowButton:
+				"flex min-w-0 flex-1 flex-col gap-0.5 rounded-r6 p-1.25 text-start hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
+			notPrevented: false,
+			focused: true,
 		});
 	});
 

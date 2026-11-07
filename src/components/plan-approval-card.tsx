@@ -78,13 +78,13 @@ function PlanCommentList({sessionId}: {sessionId: string}) {
 	return (
 		<ul className="-m-2 flex max-h-[176px] scroll-p-2 flex-col gap-1 overflow-y-auto p-2">
 			{comments.map((c) => (
-				<li key={c.id} className="flex items-center gap-0.5 rounded-r4 bg-alpha-1 pe-1.25 hover:bg-alpha-2">
+				<li key={c.id} className="flex items-center gap-0.5 rounded-r6 bg-alpha-1 pe-1.25 hover:bg-alpha-2">
 					<button
 						type="button"
 						onClick={() => {
 							host?.openPane("plan");
 						}}
-						className="flex min-w-0 flex-1 flex-col gap-0.5 rounded-r4 p-1.25 text-start hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+						className="flex min-w-0 flex-1 flex-col gap-0.5 rounded-r6 p-1.25 text-start hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 					>
 						<span className="flex items-center gap-0.75 text-caption text-ink-muted">
 							<MessageCircle aria-hidden="true" className="size-3 shrink-0" />
@@ -96,6 +96,9 @@ function PlanCommentList({sessionId}: {sessionId: string}) {
 						type="button"
 						aria-label={PLAN_DELETE_COMMENT_LABEL}
 						className={DELETE_COMMENT_CLASS}
+						onMouseDown={(event) => {
+							event.preventDefault();
+						}}
 						onClick={() => {
 							removePlanComment(sessionId, c.id);
 						}}

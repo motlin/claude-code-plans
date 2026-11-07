@@ -173,6 +173,37 @@ describe("CommentEditor", () => {
 		});
 	});
 
+	it("puts aria-keyshortcuts on Save only while saveShortcut is set and Save is not blocked", () => {
+		const saveAttr = () => screen.getByRole("button", {name: "Save comment"}).getAttribute("aria-keyshortcuts");
+		const {rerender} = render(
+			<CommentEditor isEditing value="abc" onChange={() => {}} onSave={() => {}} onCancel={() => {}} />,
+		);
+		const none = saveAttr();
+		rerender(
+			<CommentEditor
+				isEditing
+				value="abc"
+				saveShortcut="enter"
+				onChange={() => {}}
+				onSave={() => {}}
+				onCancel={() => {}}
+			/>,
+		);
+		const set = saveAttr();
+		rerender(
+			<CommentEditor
+				isEditing
+				value="abc"
+				saveShortcut="enter"
+				saveDisabledReason="Posting."
+				onChange={() => {}}
+				onSave={() => {}}
+				onCancel={() => {}}
+			/>,
+		);
+		expect({none, set, blocked: saveAttr()}).toStrictEqual({none: null, set: "Enter", blocked: null});
+	});
+
 	it("renders the floating variant without border or wrapper, capped at 8lh", () => {
 		const {container} = render(<Controlled variant="floating" isEditing label="Line 3" />);
 		const textarea = screen.getByRole("textbox");

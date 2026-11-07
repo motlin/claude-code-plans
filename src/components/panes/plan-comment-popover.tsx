@@ -184,6 +184,7 @@ export function PlanCommentPopover({
 				}}
 				onCancel={onClose}
 				onDelete={onDelete}
+				{...(value.trim() === "" ? {} : {saveShortcut: "enter"})}
 			/>
 		</div>,
 		document.body,

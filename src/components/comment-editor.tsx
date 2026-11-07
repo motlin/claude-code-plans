@@ -11,6 +11,8 @@ import {
 	useRef,
 } from "react";
 
+import {useIsMac} from "../hooks/use-is-mac";
+import {toAriaKeyShortcuts} from "../lib/shortcuts/format";
 import {Tooltip} from "./ui/tooltip";
 
 /**
@@ -108,6 +110,7 @@ export function CommentEditor({
 	const textareaRef = inputRef ?? ownRef;
 	const floating = variant === "floating";
 	const blocked = saveDisabledReason !== undefined;
+	const isMac = useIsMac();
 
 	useLayoutEffect(() => {
 		const textarea = textareaRef.current;
@@ -242,6 +245,11 @@ export function CommentEditor({
 							}}
 							className={ICON_BUTTON_CLASS}
 							aria-label={saveLabel}
+							aria-keyshortcuts={
+								blocked || saveShortcut === undefined
+									? undefined
+									: toAriaKeyShortcuts(saveShortcut, isMac)
+							}
 						>
 							{saveIcon ?? <MessageSquarePlus className="size-4" aria-hidden />}
 						</button>

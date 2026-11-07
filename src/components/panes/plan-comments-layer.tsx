@@ -81,7 +81,7 @@ export function PlanCommentsLayer({
 	const [draft, setDraft] = useState("");
 	const opened = open?.mode === "editing" ? open.comment.comment : "";
 	const dirtyRef = useRef(false);
-	dirtyRef.current = open !== null && draft !== opened && draft.trim() !== "";
+	dirtyRef.current = open !== null && draft !== opened;
 	const comments = usePlanComments(sessionId);
 	const [hoveredId, setHoveredId] = useState<string | null>(null);
 	const hoveredRef = useRef(hoveredId);
@@ -189,7 +189,9 @@ export function PlanCommentsLayer({
 		};
 
 		const onMouseDown = (event: MouseEvent) => {
-			startedInside = event.target instanceof Node && rootRef.current?.contains(event.target) === true;
+			const root = rootRef.current;
+			const scope = root?.closest("[data-plan-scroll]") ?? root;
+			startedInside = event.target instanceof Node && scope?.contains(event.target) === true;
 			moved = false;
 		};
 		const onSelectionChange = () => {
