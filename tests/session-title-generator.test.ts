@@ -160,6 +160,19 @@ describe("titleNeedsGeneration", () => {
 			),
 		}).toStrictEqual({untitled: true, backingOff: false, backedOff: true, titledBackingOff: false});
 	});
+
+	it("waits for the message count to change after finding no conversation to title, however long it has been", () => {
+		const empty = {...stored, title: null, noConversationAt: 40};
+		expect({
+			sameCount: titleNeedsGeneration(
+				empty,
+				{customTitle: "klass", messageCount: 40},
+				NOW + 100 * TITLE_RETRY_MS,
+			),
+			moreMessages: titleNeedsGeneration(empty, {customTitle: "klass", messageCount: 41}, NOW),
+			renamed: titleNeedsGeneration(empty, {customTitle: "Release checklist", messageCount: 40}, NOW),
+		}).toStrictEqual({sameCount: false, moreMessages: true, renamed: true});
+	});
 });
 
 describe("conversationFromLines", () => {
@@ -461,6 +474,65 @@ describe("session title worker", () => {
 				asked: 2,
 				sources: {generatedTitle: "Klass pull request 910", cwdBasename: "klass"},
 				errors: [['Session title failed for session-test-200: The model gave no usable title: ""']],
+			});
+		} finally {
+			stop();
+			consoleError.mockRestore();
+		}
+	});
+
+	it("logs nothing when there is no conversation to title and retries only once the message count changes", async () => {
+		writeTranscript([PANE_NAME, TOOL_RESULT]);
+		const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+		const model = stubModel("Klass pull request 910");
+		const stop = startSessionTitleWorker({
+			summariesDb: db.summaries,
+			projectsDir: testDir,
+			runModel: model.run,
+			onTitle: () => {},
+		});
+		const request = {
+			sessionId: SESSION_ID,
+			project: PROJECT_ID,
+			customTitle: "klass",
+			cwd: CWD,
+			messageCount: 2,
+			mtimeMs: NOW,
+		};
+		// The queue runs in order, so once a sentinel session queued behind the test session is titled, its attempt is over.
+		const drained = async (sentinelId: string, now: number): Promise<void> => {
+			writeFileSync(
+				join(testDir, PROJECT_ID, `${sentinelId}.jsonl`),
+				`${[PANE_NAME, PROMPT, REPLY].join("\n")}\n`,
+			);
+			requestSessionTitle({...request, sessionId: sentinelId}, now);
+			await vi.waitFor(() => {
+				expect(generatedTitleSources(sentinelId, "klass")).not.toStrictEqual({});
+			});
+		};
+		try {
+			requestSessionTitle(request, NOW);
+			await drained("sentinel-1", NOW);
+			// The transcript now has a conversation, but an unchanged message count must not trigger a retry.
+			writeTranscript([PANE_NAME, TOOL_RESULT, PROMPT, REPLY]);
+			requestSessionTitle(request, NOW + TITLE_RETRY_MS);
+			await drained("sentinel-2", NOW + TITLE_RETRY_MS);
+			const unchanged = {prompts: model.prompts.length, sources: generatedTitleSources(SESSION_ID, "klass")};
+			requestSessionTitle({...request, messageCount: 4}, NOW + TITLE_RETRY_MS);
+			await vi.waitFor(() => {
+				expect(generatedTitleSources(SESSION_ID, "klass")).not.toStrictEqual({});
+			});
+
+			expect({
+				unchanged,
+				prompts: model.prompts.length,
+				sources: generatedTitleSources(SESSION_ID, "klass"),
+				errors: consoleError.mock.calls,
+			}).toStrictEqual({
+				unchanged: {prompts: 2, sources: {}},
+				prompts: 3,
+				sources: {generatedTitle: "Klass pull request 910", cwdBasename: "klass"},
+				errors: [],
 			});
 		} finally {
 			stop();

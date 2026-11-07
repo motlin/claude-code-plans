@@ -38,11 +38,21 @@ export interface StoredSessionTitle {
 	messageCount: number;
 	/** In memory only: the last attempt failed, so do not retry before this time. */
 	retryAt?: number;
+	/** In memory only: the transcript had no conversation to title at this message count, so wait for it to change. */
+	noConversationAt?: number;
+}
+
+/** The transcript has nothing to title yet; not a model failure, so it is neither logged nor retried on a timer. */
+class NoConversationError extends Error {
+	constructor() {
+		super("No conversation to title");
+	}
 }
 
 /**
  * Whether the session needs a (new) title: never judged, renamed since, pane-named but still untitled, or moved on by
- * TITLE_REGENERATE_MESSAGES. After a failed attempt it waits for `retryAt` instead.
+ * TITLE_REGENERATE_MESSAGES. After a failed attempt it waits for `retryAt` instead, and after finding no conversation
+ * it waits for the message count to change.
  */
 export function titleNeedsGeneration(
 	stored: StoredSessionTitle | undefined,
@@ -51,6 +61,7 @@ export function titleNeedsGeneration(
 ): boolean {
 	if (stored === undefined || stored.customTitle !== current.customTitle) return true;
 	if (!stored.paneNamed) return false;
+	if (stored.noConversationAt !== undefined) return current.messageCount !== stored.noConversationAt;
 	if (stored.retryAt !== undefined) return now >= stored.retryAt;
 	return stored.title === null || current.messageCount - stored.messageCount >= TITLE_REGENERATE_MESSAGES;
 }
@@ -170,7 +181,7 @@ export async function generateSessionTitle(
 	});
 	let title: string | null;
 	if (paneNamed) {
-		if (conversation === "") throw new Error("No conversation to title");
+		if (conversation === "") throw new NoConversationError();
 		const output = await runModel(titlePrompt(conversation));
 		title = parseGeneratedTitle(output);
 		if (title === null) throw new Error(`The model gave no usable title: ${JSON.stringify(output.slice(0, 200))}`);
@@ -281,6 +292,7 @@ async function drainQueue(): Promise<void> {
 				// A failed attempt keeps the previous title and backs off, so reads do not requeue it every time.
 				const previous = state.titles.get(sessionId);
 				const same = previous?.customTitle === customTitle;
+				const noConversation = err instanceof NoConversationError;
 				state.titles.set(sessionId, {
 					customTitle,
 					// Unjudged counts as pane-named so a failed first attempt retries.
@@ -289,9 +301,9 @@ async function drainQueue(): Promise<void> {
 					cwdBasename: previous?.cwdBasename ?? null,
 					title: same ? previous.title : null,
 					messageCount: same ? previous.messageCount : messageCount,
-					retryAt: requestedAt + TITLE_RETRY_MS,
+					...(noConversation ? {noConversationAt: messageCount} : {retryAt: requestedAt + TITLE_RETRY_MS}),
 				});
-				console.error(`Session title failed for ${sessionId}: ${errorLine(err)}`);
+				if (!noConversation) console.error(`Session title failed for ${sessionId}: ${errorLine(err)}`);
 			}
 		}
 	} finally {
