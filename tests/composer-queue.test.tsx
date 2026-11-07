@@ -473,6 +473,88 @@ describe("useComposerQueue", () => {
 		});
 	});
 
+	it("restores the order and never flashes landed when the Send now interrupt fails", async () => {
+		const onSendNowFailed = vi.fn<() => void>();
+		const deliver = vi.fn<Deliver>(async () => Promise.resolve("sent"));
+		const interrupt = vi.fn<() => Promise<void>>(async () => Promise.reject(new Error("herdr down")));
+		const {result, setBusy} = renderQueue({busy: true, deliver, interrupt, onSendNowFailed});
+		act(() => {
+			result.current.enqueue("Alice's first follow-up");
+			result.current.enqueue("Bob's second follow-up");
+		});
+		const bob = result.current.items[1];
+		if (bob === undefined) throw new Error("Expected Bob's queued prompt");
+		await act(async () => result.current.sendNow(bob.id));
+		const order = result.current.items.map((item) => item.text);
+		setBusy(false);
+		await waitFor(() => {
+			expect(deliver.mock.calls.length).toBe(1);
+		});
+		setBusy(false);
+		await waitFor(() => {
+			expect(deliver.mock.calls.length).toBe(2);
+		});
+		expect({
+			order,
+			delivered: deliver.mock.calls.map(([text]) => text),
+			landed: isLanded("Bob's second follow-up"),
+			failed: onSendNowFailed.mock.calls,
+		}).toStrictEqual({
+			order: ["Alice's first follow-up", "Bob's second follow-up"],
+			delivered: ["Alice's first follow-up", "Bob's second follow-up"],
+			landed: false,
+			failed: [[]],
+		});
+		clearLanded();
+	});
+
+	it("moves an idle Send now to the head without flashing landed, since it starts a new turn", async () => {
+		let releaseAlice = (_result: DeliveryResult) => {};
+		const deliver = vi.fn<Deliver>(async (text) =>
+			text === "Alice's first follow-up"
+				? new Promise<DeliveryResult>((resolve) => {
+						releaseAlice = resolve;
+					})
+				: Promise.resolve("sent"),
+		);
+		const interrupt = vi.fn<() => Promise<void>>(async () => {});
+		const {result, setBusy} = renderQueue({busy: true, deliver, interrupt});
+		act(() => {
+			result.current.enqueue("Alice's first follow-up");
+			result.current.enqueue("Bob's second follow-up");
+			result.current.enqueue("Carol's third follow-up");
+		});
+		// Alice's delivery is held in flight, so the session is idle while Bob and Carol wait.
+		setBusy(false);
+		await waitFor(() => {
+			expect(deliver.mock.calls.length).toBe(1);
+		});
+		const carol = result.current.items[1];
+		if (carol === undefined) throw new Error("Expected Carol's queued prompt");
+		await act(async () => result.current.sendNow(carol.id));
+		const order = result.current.items.map((item) => item.text);
+		await act(async () => {
+			releaseAlice("sent");
+			await Promise.resolve();
+		});
+		setBusy(false);
+		await waitFor(() => {
+			expect(deliver.mock.calls.length).toBe(2);
+		});
+		expect({
+			order,
+			delivered: deliver.mock.calls.map(([text]) => text),
+			interrupts: interrupt.mock.calls.length,
+			landed: isLanded("Carol's third follow-up"),
+		}).toStrictEqual({
+			order: ["Carol's third follow-up", "Bob's second follow-up"],
+			delivered: ["Alice's first follow-up", "Carol's third follow-up"],
+			interrupts: 0,
+			landed: false,
+		});
+		clearLanded();
+	});
+
 	it("keeps queues per session", () => {
 		const deliver = vi.fn<Deliver>(async () => Promise.resolve("sent"));
 		const alice = renderQueue({busy: true, deliver, sessionId: "session-alice"});

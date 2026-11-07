@@ -59,7 +59,7 @@ export function useComposerQueue({
 	retryMs = QUEUE_RETRY_MS,
 }: ComposerQueueOptions): ComposerQueue {
 	const items = useComposerQueueItems(sessionId);
-	// Prompts Send now promoted: each flashes as "landed" once it is delivered.
+	// Prompts Send now promoted mid-turn: each flashes as "landed" once it is delivered.
 	const promotedRef = useRef(new Set<string>());
 	const [flushing, setFlushing] = useState(false);
 	const [waiting, setWaiting] = useState(false);
@@ -113,16 +113,21 @@ export function useComposerQueue({
 	}, [sessionId]);
 	const sendNow = useCallback(
 		async (id: string) => {
+			const previousIndex = items.findIndex((item) => item.id === id);
 			dispatchComposerQueue(sessionId, {type: "reorder", id, toIndex: 0});
-			promotedRef.current.add(id);
+			// An idle Send now starts a new turn, which upstream never flashes as read mid-turn.
 			if (!busy) return;
+			promotedRef.current.add(id);
 			try {
 				await interrupt();
 			} catch {
+				// Upstream clears pending and reorders only on success, so undo both.
+				promotedRef.current.delete(id);
+				if (previousIndex >= 0) dispatchComposerQueue(sessionId, {type: "reorder", id, toIndex: previousIndex});
 				onSendNowFailed?.();
 			}
 		},
-		[busy, interrupt, onSendNowFailed, sessionId],
+		[busy, interrupt, items, onSendNowFailed, sessionId],
 	);
 	return {items, enqueue, remove, clear, sendNow};
 }
