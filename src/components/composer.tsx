@@ -1611,7 +1611,12 @@ export function Composer({
 					className={`${COMPOSER_EDITOR_ROW_CLASS} ${bashMode ? BASH_ROW_PADDING_CLASS : "pointer-coarse:pr-[51px] comfortable:pointer-coarse:pr-[53px]"}`}
 				>
 					<div data-composer-add="" className="absolute left-0 bottom-0 flex min-h-7 items-center">
-						<ComposerAddMenu onInsertSlash={insertSlash} onAddFiles={openFilePicker} active={active} />
+						<ComposerAddMenu
+							onInsertSlash={insertSlash}
+							onAddFiles={openFilePicker}
+							active={active}
+							cwd={mentionCwd}
+						/>
 					</div>
 					{slashOpen && (
 						<SlashCommandMenu

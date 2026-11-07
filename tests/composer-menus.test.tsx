@@ -1608,15 +1608,90 @@ describe("Composer + menu Connectors submenu", () => {
 		server("user:Sentry", "Sentry", true, true),
 	];
 
-	function renderWithServers(servers: McpServerSummary[] = SERVERS) {
+	function renderWithServers(servers: McpServerSummary[] = SERVERS, mentionCwd?: string) {
 		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 		queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, servers);
 		render(
 			<QueryClientProvider client={queryClient}>
-				<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() => {}}
+					chin={CHIN}
+					{...(mentionCwd === undefined ? {} : {mentionCwd})}
+				/>
 			</QueryClientProvider>,
 		);
 	}
+
+	const scoped = (
+		id: string,
+		name: string,
+		scope: McpServerSummary["scope"],
+		projectPath?: string,
+		needsAuth = false,
+	): McpServerSummary => ({
+		...server(id, name, true, needsAuth),
+		scope,
+		...(projectPath === undefined ? {} : {projectPath}),
+	});
+	const SCOPED = [
+		scoped("user:a", "a", "user"),
+		scoped("local:/p/one:b", "b", "local", "/p/one"),
+		scoped("local:/p/two:c", "c", "local", "/p/two", true),
+		scoped("project:/p/one:d", "d", "project", "/p/one"),
+		scoped("plugin:x@y:e", "e", "plugin"),
+	];
+
+	const rowTitles = (submenu: HTMLElement) =>
+		entries(submenu)
+			.slice(3)
+			.map((entry) => (typeof entry === "string" ? entry : entry.title));
+
+	it("lists only the composer's project servers plus user and plugin servers", async () => {
+		renderWithServers(SCOPED, "/p/one");
+		const {trigger, submenu} = await openConnectors();
+
+		expect({
+			rows: rowTitles(submenu),
+			note: trigger.querySelector("[data-menu-value]")?.textContent ?? null,
+		}).toStrictEqual({rows: ["a", "b", "d", "e"], note: null});
+	});
+
+	it("lists only user and plugin servers before a folder is chosen", async () => {
+		renderWithServers(SCOPED);
+		const {submenu} = await openConnectors();
+
+		expect(rowTitles(submenu)).toStrictEqual(["a", "e"]);
+	});
+
+	it("dedupes servers by name with precedence local > project > user > plugin", async () => {
+		renderWithServers(
+			[
+				scoped("plugin:x@y:imcp", "imcp", "plugin"),
+				scoped("user:imcp", "imcp", "user"),
+				scoped("project:/p/one:imcp", "imcp", "project", "/p/one"),
+				scoped("local:/p/one:imcp", "imcp", "local", "/p/one", true),
+				scoped("user:solo", "solo", "user"),
+				scoped("plugin:x@y:solo", "solo", "plugin"),
+			],
+			"/p/one",
+		);
+		const {trigger, submenu} = await openConnectors();
+
+		expect({
+			rows: entries(submenu)
+				.slice(3)
+				.map((entry) => (typeof entry === "string" ? entry : [entry.title, entry.role])),
+			note: trigger.querySelector("[data-menu-value]")?.textContent ?? null,
+		}).toStrictEqual({
+			rows: [
+				["solo", "menuitemcheckbox"],
+				["imcp", "menuitem"],
+			],
+			note: "1 needs reconnection",
+		});
+	});
 
 	async function openConnectors() {
 		fireEvent.click(screen.getByRole("button", {name: "Add"}));

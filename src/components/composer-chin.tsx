@@ -143,8 +143,11 @@ export const ComposerAddMenu = memo(function ComposerAddMenu({
 	onInsertSlash,
 	onAddFiles,
 	active,
+	cwd,
 }: {
 	onInsertSlash: () => void;
+	/** The composer's folder: the Connectors submenu lists only this project's servers. */
+	cwd?: string | undefined;
 	/** Upstream's `isPanelActive`: only the active pane's row shows the ⌘U keycap. */
 	active: boolean;
 	/** ⌘U "Add files or photos": opens the composer's file picker. */
@@ -168,7 +171,7 @@ export const ComposerAddMenu = memo(function ComposerAddMenu({
 					Slash commands
 				</MenuItem>
 				<Suspense fallback={<ConnectorsLoadingItem />}>
-					<ComposerConnectorsMenu />
+					<ComposerConnectorsMenu cwd={cwd} />
 				</Suspense>
 			</MenuContent>
 		</Menu>
