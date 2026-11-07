@@ -52,6 +52,7 @@ import {SidebarRowDecoration, SidebarRowSrText} from "../session-unread-control"
 import {type RowAttention, useRowAttention} from "../use-row-icon-kind";
 import {useSettings} from "../settings-context";
 import {PrTailGlyph, SessionStateIcon} from "../status-dot";
+import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
 import {CustomGroupHeader} from "./custom-group-header";
 import {GroupHeaderContextMenu} from "./group-header-context-menu";
@@ -204,22 +205,6 @@ function useCollapsedBadgeKind(
 	return useSyncExternalStore(subscribeUnseenWork, getSnapshot, getSnapshot);
 }
 
-/** Upstream `BO{name:"CaretRightFilled",customSize:14}`: a filled right-pointing triangle. */
-function CaretRightFilled({className}: {className: string}) {
-	return (
-		<svg
-			aria-hidden="true"
-			data-group-caret="stays"
-			viewBox="0 0 14 14"
-			fill="currentColor"
-			className={className}
-			style={{translate: "0 0.5px"}}
-		>
-			<path d="M5 3.4v7.2c0 .42.48.65.81.39l4.5-3.6a.5.5 0 0 0 0-.78l-4.5-3.6A.5.5 0 0 0 5 3.4Z" />
-		</svg>
-	);
-}
-
 const NO_SHOW_MORE = () => {};
 
 /** A collapsible sidebar group: label row (caret on hover), session rows, "Show more" / "Show less". */
@@ -346,7 +331,11 @@ export function GroupSection({
 					</span>
 				)}
 				{/* Upstream `SH` (shared-18): the caret always stays visible (`data-group-caret="stays"`). */}
-				<CaretRightFilled
+				<Icon
+					name="CaretRightFilled"
+					customSize={14}
+					data-group-caret="stays"
+					style={{translate: "0 0.5px"}}
 					className={`size-3.5 shrink-0 transition-transform duration-[60ms] motion-reduce:transition-none ${
 						expanded ? "rotate-90 " : ""
 					}group-data-[hover-within]/section:opacity-100 group-focus-visible/label:opacity-100 opacity-100`}

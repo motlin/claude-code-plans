@@ -17,6 +17,7 @@ describe("custom variants", () => {
 			'@custom-variant compact (&:where([data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *)))));',
 			'@custom-variant comfortable (&:where([data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] [data-density="compact"] *)))));',
 			"@custom-variant cds-Icon (& [data-cds=Icon]);",
+			'@custom-variant page-rtl (&:where(:root[dir="rtl"] :dir(rtl)));',
 		]);
 	});
 });

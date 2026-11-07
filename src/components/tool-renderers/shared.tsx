@@ -9,6 +9,7 @@ import {CHECK_ICON_PATH, COPY_ICON_PATH} from "../../lib/icon-paths";
 import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {FileRefTarget} from "../file-refs";
 import markdownStyles from "../markdown-article.module.css";
+import * as Collapsible from "../ui/collapsible";
 import {Tooltip} from "../ui/tooltip";
 import {TOOL_OUTPUT_REGION} from "./tool-output-region";
 
@@ -359,6 +360,7 @@ export function CopyableBody({copyText, children}: {copyText: string; children: 
 	);
 }
 
+/** Upstream's generic cds fold (`kT` with `text-footnote`): filled caret first, `text-secondary`, height-animated panel. */
 export function CollapsibleSection({
 	label,
 	defaultOpen = false,
@@ -368,26 +370,15 @@ export function CollapsibleSection({
 	defaultOpen?: boolean;
 	children: ReactNode;
 }) {
-	const [open, setOpen] = useState(defaultOpen);
-
 	return (
-		<div>
-			<button
-				type="button"
-				onClick={() => {
-					setOpen(!open);
-				}}
-				className="flex items-center gap-1 text-xs text-t6 hover:text-primary cursor-pointer"
-			>
-				<ChevronIcon expanded={open} />
-				{label}
-			</button>
-			{open && (
+		<Collapsible.Root defaultOpen={defaultOpen}>
+			<Collapsible.Trigger className="text-footnote">{label}</Collapsible.Trigger>
+			<Collapsible.Panel>
 				<div className="flow-root">
 					<div className="mt-1">{children}</div>
 				</div>
-			)}
-		</div>
+			</Collapsible.Panel>
+		</Collapsible.Root>
 	);
 }
 

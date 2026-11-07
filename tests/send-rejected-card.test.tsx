@@ -40,25 +40,34 @@ describe("SendRejectedCard", () => {
 		expect(buttonNames()).toEqual(["Dismiss", "View details", "Try again", "Copy details"]);
 	});
 
-	it("wraps the View details label in upstream's text-current-control span, leaving the chevron on the button ink", () => {
+	it("draws View details as upstream's end-caret cds fold: text-current-control label, then the filled caret", () => {
 		renderCard();
 		const toggle = screen.getByRole("button", {name: "View details"});
 
-		expect(
-			[...toggle.children].map((child) => ({
+		expect({
+			root: toggle.closest("[data-cds=Collapsible]")?.className,
+			className: toggle.className,
+			children: [...toggle.children].map((child) => ({
 				tag: child.tagName,
 				className: child.getAttribute("class"),
+				icon: child.getAttribute("data-cds"),
 				text: child.textContent,
 			})),
-		).toStrictEqual([
-			{tag: "SPAN", className: "text-current-control", text: "View details"},
-			{
-				tag: "svg",
-				className:
-					"lucide lucide-chevron-right size-4 transition-transform motion-reduce:transition-none rotate-90",
-				text: "",
-			},
-		]);
+		}).toStrictEqual({
+			root: "flex flex-col self-stretch",
+			className:
+				"group/clp inline-flex w-fit items-center gap-1.5 border-0 select-none outline-none focus-visible:outline-hidden font-sans font-control-regular transition-shadow duration-[60ms] focus-visible:shadow-focus rounded data-[disabled]:opacity-40 data-[disabled]:pointer-events-none shrink-0 whitespace-nowrap text-footnote text-secondary hover:text-primary",
+			children: [
+				{tag: "SPAN", className: "text-current-control", icon: null, text: "View details"},
+				{
+					tag: "svg",
+					className:
+						"shrink-0 transition-transform group-data-[panel-open]/clp:rotate-90 group-data-[panel-open]/clp:page-rtl:-rotate-90 motion-reduce:transition-none ms-auto",
+					icon: "Icon",
+					text: "",
+				},
+			],
+		});
 	});
 
 	it("opens the details by default and collapses them, unmounting the message", () => {
@@ -128,13 +137,16 @@ describe("SendRejectedCard", () => {
 		expect(actions?.className).toEqual("ms-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2");
 	});
 
-	it("drops every movement transition under reduced motion (the shell's colour fade stays)", () => {
+	it("gates the details panel's height animation and the caret's rotation under reduced motion", () => {
 		const {container} = renderCard();
-		const animated = [...container.querySelectorAll("[class*=transition-transform]")].map((element) => ({
-			reduced: element.getAttribute("class")?.split(/\s+/).includes("motion-reduce:transition-none"),
-		}));
+		const panel = container.querySelector("[data-send-rejected-message]")?.closest("[data-open]");
+		const caret = screen.getByRole("button", {name: "View details"}).querySelector("svg");
 
-		expect(animated).toEqual([{reduced: true}]);
+		expect({
+			panelAnimated: panel?.getAttribute("class")?.split(/\s+/).includes("transition-[height]"),
+			panelReduced: panel?.getAttribute("class")?.split(/\s+/).includes("motion-reduce:transition-none"),
+			caretReduced: caret?.getAttribute("class")?.split(/\s+/).includes("motion-reduce:transition-none"),
+		}).toStrictEqual({panelAnimated: true, panelReduced: true, caretReduced: true});
 	});
 });
 

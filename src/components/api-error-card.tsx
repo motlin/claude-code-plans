@@ -1,5 +1,5 @@
 import {Check, Copy, Gauge, TriangleAlert} from "lucide-react";
-import {type ReactNode, useEffect, useId, useRef, useState} from "react";
+import {type ReactNode, useEffect, useRef, useState} from "react";
 
 import {type ApiErrorCategory, classifyApiError, errorCopy, refusalPassthrough} from "../lib/api-error-category";
 import {parseApiErrorDetails} from "../lib/api-error-details";
@@ -9,7 +9,7 @@ import {writeClipboardText} from "../lib/clipboard";
 import {ErrorCardShell} from "./error-card-shell";
 import type {RecoveryHandlers} from "./error-recovery-actions";
 import {DeferredErrorRecoveryActions} from "./error-recovery-actions-entry";
-import {ChevronIcon} from "./tool-renderers/shared";
+import * as Collapsible from "./ui/collapsible";
 
 /** How long upstream's Copy details button shows "Copied" with a check. */
 const COPIED_MS = 1200;
@@ -111,7 +111,6 @@ function ErrorDetails({
 }) {
 	const {body, raw, status, requestId, messageId} = details ?? {};
 	const [open, setOpen] = useState(false);
-	const panelId = useId();
 	const facts =
 		status === undefined && requestId === undefined
 			? []
@@ -122,23 +121,17 @@ function ErrorDetails({
 				];
 	const copyText = raw ?? facts.join("\n");
 	return (
-		<>
+		<Collapsible.Root open={open} onOpenChange={setOpen} className="flex flex-col self-stretch">
 			<div
 				className={`flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2${inCard ? " px-3 pb-3 pt-2" : ""}`}
 			>
 				{details !== undefined && (
-					<button
-						type="button"
-						aria-expanded={open}
-						aria-controls={panelId}
-						className="inline-flex shrink-0 cursor-pointer items-center gap-0.5 whitespace-nowrap text-footnote text-secondary hover:text-primary"
-						onClick={() => {
-							setOpen(!open);
-						}}
+					<Collapsible.Trigger
+						caretPosition="end"
+						className="shrink-0 whitespace-nowrap text-footnote text-secondary hover:text-primary"
 					>
 						<span className="text-current-control">View details</span>
-						<ChevronIcon expanded={open} />
-					</button>
+					</Collapsible.Trigger>
 				)}
 				{actions !== undefined && (
 					<div
@@ -149,24 +142,26 @@ function ErrorDetails({
 					</div>
 				)}
 			</div>
-			{open && (
-				<div id={panelId} data-api-error-details="" className={inCard ? "border-t px-3 py-3" : "pt-2"}>
-					<div className="relative flex min-h-[32px] flex-col gap-1.5 rounded-card bg-alpha-1 py-1.5 ps-2 pe-[34px] text-footnote text-secondary">
-						{body !== undefined && (
-							<span className="whitespace-pre-wrap break-words select-text">{body}</span>
-						)}
-						{facts.length > 0 && (
-							<div className="flex flex-col text-ink-muted break-all select-text">
-								{facts.map((fact) => (
-									<span key={fact}>{fact}</span>
-								))}
-							</div>
-						)}
-						<CopyDetailsButton details={copyText} />
+			{details !== undefined && (
+				<Collapsible.Panel className="contain-inline-size">
+					<div data-api-error-details="" className={inCard ? "border-t px-3 py-3" : "pt-2"}>
+						<div className="relative flex min-h-[32px] flex-col gap-1.5 rounded-card bg-alpha-1 py-1.5 ps-2 pe-[34px] text-footnote text-secondary">
+							{body !== undefined && (
+								<span className="whitespace-pre-wrap break-words select-text">{body}</span>
+							)}
+							{facts.length > 0 && (
+								<div className="flex flex-col text-ink-muted break-all select-text">
+									{facts.map((fact) => (
+										<span key={fact}>{fact}</span>
+									))}
+								</div>
+							)}
+							<CopyDetailsButton details={copyText} />
+						</div>
 					</div>
-				</div>
+				</Collapsible.Panel>
 			)}
-		</>
+		</Collapsible.Root>
 	);
 }
 

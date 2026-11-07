@@ -61,6 +61,8 @@
 @custom-variant comfortable (&:where([data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] [data-density="compact"] *)))));
 /* Upstream cds `cds-Icon:*` variants: style the Icons inside an element (`cds-Icon:text-secondary`). */
 @custom-variant cds-Icon (& [data-cds=Icon]);
+/* Upstream page-rtl: the element sits in a right-to-left part of a right-to-left page (the cds Collapsible caret). */
+@custom-variant page-rtl (&:where(:root[dir="rtl"] :dir(rtl)));
 
 /* Not inline, so `font-mono` and `font-sans` read their variables and Settings ▸
    Code font / Interface font can override them on <html>. */

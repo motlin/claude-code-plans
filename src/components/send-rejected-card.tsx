@@ -1,9 +1,10 @@
 import {useState} from "react";
-import {ChevronRight, Copy} from "lucide-react";
+import {Copy} from "lucide-react";
 
 import {sendRejectedCopy} from "../lib/send-rejection";
 import {ApprovalActionButton} from "./approval-card";
 import {ErrorCardShell} from "./error-card-shell";
+import * as Collapsible from "./ui/collapsible";
 import type {SendRejection} from "./use-live-herdr-prompt";
 
 const ICON_BUTTON =
@@ -38,22 +39,14 @@ export function SendRejectedCard({
 			announce="alert"
 			onDismiss={onDismiss}
 		>
-			<div className="flex flex-col self-stretch">
+			<Collapsible.Root open={detailsOpen} onOpenChange={setDetailsOpen} className="flex flex-col self-stretch">
 				<div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-5 gap-y-2 px-3 pb-3 pt-2">
-					<button
-						type="button"
-						aria-expanded={detailsOpen}
-						onClick={() => {
-							setDetailsOpen((open) => !open);
-						}}
-						className="inline-flex cursor-pointer items-center gap-1.5 rounded-md text-[12px]/[15px] text-secondary hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+					<Collapsible.Trigger
+						caretPosition="end"
+						className="shrink-0 whitespace-nowrap text-footnote text-secondary hover:text-primary"
 					>
 						<span className="text-current-control">View details</span>
-						<ChevronRight
-							aria-hidden="true"
-							className={`size-4 transition-transform motion-reduce:transition-none ${detailsOpen ? "rotate-90" : ""}`}
-						/>
-					</button>
+					</Collapsible.Trigger>
 					{copy.retry && (
 						<div className="ms-auto flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
 							<ApprovalActionButton variant="primary" onClick={onRetry}>
@@ -62,7 +55,7 @@ export function SendRejectedCard({
 						</div>
 					)}
 				</div>
-				{detailsOpen && (
+				<Collapsible.Panel className="contain-inline-size">
 					<div className="border-t border-[var(--card-outline)] p-3">
 						<div className="flex flex-col gap-2">
 							<div className="relative flex min-h-8 flex-col gap-1.5 rounded-r7 bg-alpha-1 py-1.5 ps-2 pe-[34px] text-[12px]/[15px] text-secondary">
@@ -85,8 +78,8 @@ export function SendRejectedCard({
 							</div>
 						</div>
 					</div>
-				)}
-			</div>
+				</Collapsible.Panel>
+			</Collapsible.Root>
 		</ErrorCardShell>
 	);
 }

@@ -87,8 +87,21 @@ function CheckCircleFilled(props: GlyphProps) {
 	);
 }
 
+/** Upstream's `CaretRightFilled`: a filled right-pointing triangle (cds Collapsible's caret, the sidebar group caret). */
+function CaretRightFilled(props: GlyphProps) {
+	return createElement(
+		"svg",
+		{viewBox: "0 0 14 14", ...svgAttributes(props)},
+		createElement("path", {
+			fill: "currentColor",
+			d: "M5 3.4v7.2c0 .42.48.65.81.39l4.5-3.6a.5.5 0 0 0 0-.78l-4.5-3.6A.5.5 0 0 0 5 3.4Z",
+		}),
+	);
+}
+
 /** Upstream `_m`'s `*Filled` glyphs, drawn locally. */
 export const FILLED_GLYPHS = {
+	CaretRightFilled,
 	CheckCircleFilled,
 	StopFilled,
 } satisfies Partial<Record<AnthropiconName, ComponentType<GlyphProps>>>;

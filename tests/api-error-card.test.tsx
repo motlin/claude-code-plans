@@ -100,8 +100,10 @@ describe("ApiErrorCard", () => {
 	it("draws the 529 specimen as upstream's card: busy headline, no-composer hint, no raw prose, closed details", () => {
 		const container = renderRecords([OVERLOADED_RECORD]);
 		const card = container.querySelector("[data-api-error-card]");
-		const [header, hintRow, detailsRow] = [...(card?.children ?? [])];
+		const [header, hintRow, detailsRoot] = [...(card?.children ?? [])];
+		const detailsRow = detailsRoot?.firstElementChild;
 		const trigger = detailsRow?.querySelector("button");
+		const caret = trigger?.lastElementChild;
 
 		expect({
 			root: card?.className,
@@ -111,12 +113,19 @@ describe("ApiErrorCard", () => {
 			headline: header?.textContent,
 			hintRow: hintRow?.className,
 			hint: hintRow?.textContent,
+			detailsRoot: {cds: detailsRoot?.getAttribute("data-cds"), className: detailsRoot?.className},
 			detailsRow: detailsRow?.className,
 			trigger: {
 				text: trigger?.textContent,
 				label: trigger?.querySelector("span")?.className,
 				className: trigger?.className,
 				expanded: trigger?.getAttribute("aria-expanded"),
+				caret: {
+					icon: caret?.getAttribute("data-cds"),
+					className: caret?.getAttribute("class"),
+					translate: caret instanceof SVGElement ? caret.style.translate : null,
+				},
+				chevrons: trigger?.querySelectorAll(".lucide-chevron-right").length,
 			},
 			panel: card?.querySelector("[data-api-error-details]") ?? null,
 			rawProse: showsRawProse(container),
@@ -129,13 +138,21 @@ describe("ApiErrorCard", () => {
 			headline: "Service is busy",
 			hintRow: "flex flex-col gap-md px-lg pt-lg pb-md last:pb-lg empty:hidden contain-inline-size",
 			hint: "This is usually temporary.",
+			detailsRoot: {cds: "Collapsible", className: "flex flex-col self-stretch"},
 			detailsRow: "flex min-w-0 max-w-full flex-wrap items-center gap-x-3 gap-y-2 px-3 pb-3 pt-2",
 			trigger: {
 				text: "View details",
 				label: "text-current-control",
 				className:
-					"inline-flex shrink-0 cursor-pointer items-center gap-0.5 whitespace-nowrap text-footnote text-secondary hover:text-primary",
+					"group/clp inline-flex w-fit items-center gap-1.5 border-0 select-none outline-none focus-visible:outline-hidden font-sans font-control-regular transition-shadow duration-[60ms] focus-visible:shadow-focus rounded data-[disabled]:opacity-40 data-[disabled]:pointer-events-none shrink-0 whitespace-nowrap text-footnote text-secondary hover:text-primary",
 				expanded: "false",
+				caret: {
+					icon: "Icon",
+					className:
+						"shrink-0 transition-transform group-data-[panel-open]/clp:rotate-90 group-data-[panel-open]/clp:page-rtl:-rotate-90 motion-reduce:transition-none ms-auto",
+					translate: "0 0.5px",
+				},
+				chevrons: 0,
 			},
 			panel: null,
 			rawProse: false,
@@ -156,6 +173,9 @@ describe("ApiErrorCard", () => {
 
 		expect({
 			expanded: trigger?.getAttribute("aria-expanded"),
+			controlsPanel: trigger?.getAttribute("aria-controls") === panel?.parentElement?.id,
+			animated: panel?.parentElement?.className.split(" ").includes("transition-[height]"),
+			contained: panel?.parentElement?.className.split(" ").at(-1),
 			panel: panel?.className,
 			box: box?.className,
 			facts: {
@@ -166,6 +186,9 @@ describe("ApiErrorCard", () => {
 			rawInPanel: box?.textContent.includes("Overloaded"),
 		}).toStrictEqual({
 			expanded: "true",
+			controlsPanel: true,
+			animated: true,
+			contained: "contain-inline-size",
 			panel: "border-t px-3 py-3",
 			box: "relative flex min-h-[32px] flex-col gap-1.5 rounded-card bg-alpha-1 py-1.5 ps-2 pe-[34px] text-footnote text-secondary",
 			facts: {
@@ -448,7 +471,8 @@ describe("ApiErrorCard", () => {
 		]);
 		const markers = [...container.querySelectorAll("[data-api-error-marker]")];
 		const cards = [...container.querySelectorAll("[data-api-error-card]")];
-		const [row, detailsRow] = [...(markers[0]?.children ?? [])];
+		const [row, detailsRoot] = [...(markers[0]?.children ?? [])];
+		const detailsRow = detailsRoot?.firstElementChild;
 		const trigger = detailsRow?.querySelector("button");
 		fireEvent.click(trigger!);
 		const panel = markers[0]?.querySelector("[data-api-error-details]");

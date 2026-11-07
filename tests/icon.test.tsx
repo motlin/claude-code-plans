@@ -159,6 +159,25 @@ describe("Icon (upstream cds Icon contract, lucide glyphs)", () => {
 		});
 	});
 
+	it("draws upstream's CaretRightFilled as a solid triangle, mirrored under RTL", () => {
+		const {container} = render(<Icon name="CaretRightFilled" size="sm" />);
+		const svg = svgOf(container);
+		expect({
+			viewBox: svg.getAttribute("viewBox"),
+			fontSize: svg.style.fontSize,
+			mirror: svg.getAttribute("data-cds-mirror"),
+			path: attrs(svg.querySelector("path") as Element, ["fill", "d"]),
+		}).toStrictEqual({
+			viewBox: "0 0 14 14",
+			fontSize: "calc(1rem * var(--cds-rem-scale, 1))",
+			mirror: "",
+			path: {
+				fill: "currentColor",
+				d: "M5 3.4v7.2c0 .42.48.65.81.39l4.5-3.6a.5.5 0 0 0 0-.78l-4.5-3.6A.5.5 0 0 0 5 3.4Z",
+			},
+		});
+	});
+
 	it("rejects names outside the glyph map at the type level", () => {
 		// @ts-expect-error NotAnIcon is not an Anthropicons name with a local glyph
 		const node = <Icon name="NotAnIcon" />;
