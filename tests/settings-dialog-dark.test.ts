@@ -69,4 +69,12 @@ describe("settings dialog in dark (wave 90, W90-13)", () => {
 			dark: {track: "hsl(0 0% 100% / 0.1)", hover: "hsl(0 0% 100% / 0.2)"},
 		});
 	});
+
+	it("defines upstream's --cds-dur-base (.2s) and --cds-ease-snap motion tokens, zeroing the duration under Motion: Reduced", () => {
+		expect({
+			dur: token(":root", "--cds-dur-base"),
+			ease: token(":root", "--cds-ease-snap"),
+			reducedDur: token('html[data-motion="reduced"]', "--cds-dur-base"),
+		}).toStrictEqual({dur: "0.2s", ease: "cubic-bezier(0.32, 0.72, 0, 1)", reducedDur: "0s"});
+	});
 });

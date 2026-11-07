@@ -36,7 +36,7 @@ import {absoluteMentionPath} from "./files/mention-path";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "./ui/menu";
 import {Skeleton} from "./ui/skeleton";
 import {ExcerptQuote} from "./message-excerpt-tiles";
-import {motionReduced} from "./palette-row-actions-geometry";
+import {motionReduced} from "../lib/motion";
 import {
 	BADGE_CLASS,
 	CARD_BODY_CLASS,

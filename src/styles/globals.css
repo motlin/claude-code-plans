@@ -369,6 +369,9 @@ html[data-interface-font="dyslexic"] {
 }
 
 :root {
+	/* Upstream .cds-root motion tokens: the SegmentedControl thumb FLIP reads both (src/lib/segmented-flip.ts). */
+	--cds-dur-base: 0.2s;
+	--cds-ease-snap: cubic-bezier(0.32, 0.72, 0, 1);
 	/* Upstream semantic palette */
 	--upstream-page: #fcfcfb;
 	--upstream-surface-0: hsl(60 14% 97%);
@@ -3003,6 +3006,10 @@ html[data-motion="reduced"] .feature-anchor-row-fill::before {
 
 /* Settings ▸ General ▸ Motion: Reduced. The settings provider sets html[data-motion=reduced];
    it stops pulsing and pinging indicators and every transition regardless of the OS preference. */
+html[data-motion="reduced"] {
+	--cds-dur-base: 0s;
+}
+
 html[data-motion="reduced"] *,
 html[data-motion="reduced"] *::before,
 html[data-motion="reduced"] *::after {

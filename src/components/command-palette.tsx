@@ -173,7 +173,8 @@ import {
 	type RowActionsCloseOptions,
 	type RowActionsRepeatKey,
 } from "./palette-row-actions";
-import {isAltEnter, motionReduced, rowActionsAnchorRect} from "./palette-row-actions-geometry";
+import {motionReduced} from "../lib/motion";
+import {isAltEnter, rowActionsAnchorRect} from "./palette-row-actions-geometry";
 import {AttachedContextChips} from "./attached-context-chips";
 import {useToast} from "./toast-context";
 import {Shortcut, WIDE_KEYCAP_CLASS} from "./ui/shortcut";

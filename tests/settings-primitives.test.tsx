@@ -2,7 +2,7 @@
 
 import {cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {useState} from "react";
-import {afterEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SegmentedControl} from "../src/components/settings/segmented-control";
 import {SettingsRow, SettingsSection} from "../src/components/settings/settings-row";
@@ -388,6 +388,98 @@ describe("SegmentedControl", () => {
 			{label: "Light", text: "", checked: "false"},
 			{label: "Dark", text: "", checked: "false"},
 		]);
+	});
+});
+
+describe("SegmentedControl thumb (upstream FLIP)", () => {
+	function thumbOf(): HTMLElement {
+		const thumb = screen.getByRole("radiogroup").querySelector<HTMLElement>("[aria-hidden] > div");
+		if (thumb === null) throw new Error("no thumb");
+		return thumb;
+	}
+
+	function stubLayout() {
+		const original = HTMLElement.prototype.getBoundingClientRect;
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+			if (this.getAttribute("role") === "radio") {
+				const index = Array.from(this.parentElement?.children ?? []).indexOf(this) - 1;
+				return {
+					left: 1 + index * 40,
+					width: 40,
+					right: 41 + index * 40,
+					top: 0,
+					bottom: 30,
+					height: 30,
+					x: 0,
+					y: 0,
+					toJSON: () => ({}),
+				};
+			}
+			if (this.getAttribute("role") === "radiogroup") {
+				return {
+					left: 0,
+					width: 122,
+					right: 122,
+					top: 0,
+					bottom: 32,
+					height: 32,
+					x: 0,
+					y: 0,
+					toJSON: () => ({}),
+				};
+			}
+			return original.call(this);
+		});
+		const calls: Array<{keyframes: unknown}> = [];
+		const animate = (keyframes: unknown) => {
+			calls.push({keyframes});
+			return {cancel: () => {}, playState: "running"} as unknown as Animation;
+		};
+		Object.defineProperty(Element.prototype, "animate", {configurable: true, writable: true, value: animate});
+		Object.defineProperty(Element.prototype, "getAnimations", {
+			configurable: true,
+			writable: true,
+			value: () => [],
+		});
+		return calls;
+	}
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+		Reflect.deleteProperty(Element.prototype, "animate");
+		Reflect.deleteProperty(Element.prototype, "getAnimations");
+	});
+
+	it("carries upstream's invisible origin-left thumb class with no CSS transition", () => {
+		render(<ControlledSegmented />);
+		const classes = thumbOf().className.split(" ");
+
+		expect({
+			invisible: classes.includes("invisible"),
+			originLeft: classes.includes("origin-left"),
+			forcedColors: classes.includes("forced-colors:border-[color:Highlight]"),
+			transition: classes.some((name) => name.startsWith("transition")),
+		}).toStrictEqual({invisible: true, originLeft: true, forcedColors: true, transition: false});
+	});
+
+	it("snaps the thumb under a non-first checked radio on mount without animating", () => {
+		const calls = stubLayout();
+		render(<SegmentedControl aria-label="View" value="thinking" onValueChange={() => {}} options={VIEW_OPTIONS} />);
+
+		expect({flipAt: thumbOf().dataset["flipAt"], calls}).toStrictEqual({flipAt: "41,40", calls: []});
+	});
+
+	it("animates a value change with transform-only keyframes", () => {
+		const calls = stubLayout();
+		render(<ControlledSegmented />);
+		const normal = screen.getByRole("radio", {name: "Normal"});
+
+		fireEvent.keyDown(normal, {key: "ArrowRight"});
+
+		expect({flipAt: thumbOf().dataset["flipAt"], calls}).toStrictEqual({
+			flipAt: "41,40",
+			calls: [{keyframes: {transform: ["translateX(0px) scaleX(0)", "translateX(41px) scaleX(1)"]}}],
+		});
 	});
 });
 
