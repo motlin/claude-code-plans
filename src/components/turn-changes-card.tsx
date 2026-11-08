@@ -2,9 +2,9 @@ import {type ReactNode, useContext, useState} from "react";
 
 import {fileViewerPath} from "../lib/api/file";
 import {requestChangesScope} from "../lib/changes-scope-request";
-import {formatCount} from "../lib/pluralize";
 import {type TurnChanges, turnChangesKind} from "../lib/turn-changes";
 import {turnUndoPrompt} from "../lib/turn-undo-prompt";
+import {DiffStat} from "./diff-stat";
 import {LazyFileTypeIcon} from "./lazy-file-type-icon";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
 import {ToastContext} from "./toast-context";
@@ -70,21 +70,9 @@ function folderHints(paths: readonly string[]): Map<string, string> {
 	return hints;
 }
 
-/**
- * Upstream's DiffStat: sr-only "{n} additions, {n} deletions", the visible "+n −n" hidden from the a11y tree, its
- * order pinned left-to-right.
- */
-function Stats({added, removed}: {added: number; removed: number}) {
-	return (
-		<span dir="ltr" className="flex shrink-0 items-center gap-0.5 tabular-nums">
-			<span className="sr-only">{`${formatCount(added, "addition")}, ${formatCount(removed, "deletion")}`}</span>
-			<span aria-hidden="true" className="contents">
-				<span className="text-diff-added">+{added}</span>
-				<span className="text-diff-removed">−{removed}</span>
-			</span>
-		</span>
-	);
-}
+/** Upstream `HZ`'s stat classes: `RZ` on file rows, and `zZ` with `nX` dropping `text-footnote` for See all. */
+const ROW_STATS_CLASS = "flex shrink-0 items-center gap-0.5 text-body";
+const SEE_ALL_STATS_CLASS = "flex shrink-0 items-center gap-0.5";
 
 /** Upstream's summary card: 4px top margin, 4px 8px padding, 10px radius, 13/19 control text, inset ring. */
 const CARD_CLASS =
@@ -162,7 +150,7 @@ function RowTrailing({added, removed, undo}: {added: number; removed: number; un
 		<span className={TRAILING_CLASS}>
 			{undo !== undefined && <span className="pointer-events-auto flex items-center gap-1">{undo}</span>}
 			<span className="flex items-center gap-2.5">
-				<Stats added={added} removed={removed} />
+				<DiffStat added={added} removed={removed} className={ROW_STATS_CLASS} />
 			</span>
 		</span>
 	);
@@ -276,7 +264,7 @@ export function TurnChangesCard({
 				<span className="min-w-0 truncate text-primary">{toggles && expanded ? "Show less" : "See all"}</span>
 			</span>
 			<span className="relative flex shrink-0">
-				<Stats added={changes.added} removed={changes.removed} />
+				<DiffStat added={changes.added} removed={changes.removed} className={SEE_ALL_STATS_CLASS} />
 			</span>
 		</>
 	);

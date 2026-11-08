@@ -309,6 +309,9 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream --cds-text-git-added / --cds-text-git-removed: summary row stats. */
 	--color-diff-added: var(--upstream-git-added);
 	--color-diff-removed: var(--upstream-git-removed);
+	/* Upstream's DiffStat (`et`) classes text-git-added / text-git-removed: the same cds git tokens. */
+	--color-git-added: var(--upstream-git-added);
+	--color-git-removed: var(--upstream-git-removed);
 	--color-git-opened: var(--git-opened);
 	--color-git-draft: var(--git-draft);
 	--color-git-merged: var(--git-merged);

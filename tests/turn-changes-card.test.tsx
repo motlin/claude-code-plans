@@ -1275,6 +1275,22 @@ describe("TurnChangesCard", () => {
 		);
 	});
 
+	it("groups the stat digits and the sr counts (upstream formatNumber)", () => {
+		const {container} = render(
+			<TurnChangesCard
+				sessionId="test-session"
+				changes={changesOf([
+					{path: "/repo/a.ts", added: 1234, removed: 5},
+					{path: "/repo/b.ts", added: 1, removed: 0},
+				])}
+				undoable={false}
+			/>,
+		);
+		expect(container.querySelector("[data-turn-changes-card]")?.textContent).toBe(
+			"Edited 2 filesa.ts1,234 additions, 5 deletions+1,234\u22125b.ts1 addition, 0 deletions+1\u22120See all1,235 additions, 5 deletions+1,235\u22125",
+		);
+	});
+
 	it("draws upstream's summary card: 13/19 text on the card, 16px icons and body-size git stats", () => {
 		const {container} = render(<TurnChangesCard sessionId="test-session" changes={changesWith(2)} undoable />);
 		const card = container.querySelector<HTMLElement>("[data-turn-changes-card]")!;
@@ -1287,15 +1303,19 @@ describe("TurnChangesCard", () => {
 			iconSize: [item?.querySelector("svg")?.style.width, item?.querySelector("svg")?.style.height],
 			name: within(item!).getByText("file-1.ts").className,
 			stats: within(item!).getByText("+1").parentElement?.parentElement?.className,
+			statColors: Array.from(within(item!).getByText("+1").parentElement!.children, (glyph) => glyph.className),
 			seeAll: within(card).getByText("See all").className,
+			seeAllStats: within(card).getByText("+3").parentElement?.parentElement?.className,
 		}).toStrictEqual({
 			card: true,
 			title: "min-w-0 truncate text-primary",
 			icon: "lucide lucide-code-xml shrink-0",
 			iconSize: ["16px", "16px"],
 			name: "min-w-0 truncate text-primary",
-			stats: "flex shrink-0 items-center gap-0.5 tabular-nums",
+			stats: "tabular-nums flex shrink-0 items-center gap-0.5 text-body",
+			statColors: ["text-git-added", "text-git-removed"],
 			seeAll: "min-w-0 truncate text-primary",
+			seeAllStats: "tabular-nums flex shrink-0 items-center gap-0.5",
 		});
 	});
 
