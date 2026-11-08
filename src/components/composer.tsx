@@ -58,6 +58,7 @@ import {
 } from "../lib/composer-mentions";
 import {
 	extraLinesBody,
+	FAST_COMMAND_NOTICE_KEY,
 	fastCommandArg,
 	parseCommandShape,
 	parseHostCommand,
@@ -1246,6 +1247,7 @@ export function Composer({
 			toast?.({
 				kind: "success",
 				message: on ? "Fast mode is already on." : "Fast mode is already off.",
+				uniqueKey: FAST_COMMAND_NOTICE_KEY,
 			});
 		clearDraft();
 		return true;

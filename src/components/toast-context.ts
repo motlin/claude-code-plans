@@ -20,6 +20,8 @@ export interface ToastOptions {
 	durationMs?: number | null;
 	/** Dismisses the toast when aborted, as upstream's `clearToast` does. */
 	signal?: AbortSignal;
+	/** Upstream's uniqueKey: a toast with the same key closes the open one and enters fresh (never folds as "(×N)"). */
+	uniqueKey?: string;
 }
 
 export const ToastContext = createContext<((options: ToastOptions) => void) | null>(null);

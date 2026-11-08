@@ -1308,6 +1308,23 @@ describe("Composer host commands", () => {
 		}).toStrictEqual({sends: [], text: "", label: fastMode ? "Model: Opus 5.5 Fast High" : "Model: Opus 5.5 High"});
 	});
 
+	it("re-shows one keyed toast, not (×2), for /fast on twice while already on", async () => {
+		const {textarea} = hostSetup({chin: {...CHIN, fastMode: true}});
+
+		send(textarea, "/fast on");
+		await waitFor(() => {
+			expect(toastText()).toBe("Fast mode is already on.");
+		});
+		send(textarea, "/fast on");
+
+		await waitFor(() => {
+			expect({
+				count: document.querySelectorAll("[data-toast]").length,
+				text: toastText(),
+			}).toStrictEqual({count: 1, text: "Fast mode is already on."});
+		});
+	});
+
 	it.each([
 		["an unknown argument", CHIN, "/fast turbo"],
 		["a model without fast mode", {...CHIN, model: "Sonnet 5", modelId: "claude-sonnet-5"}, "/fast"],

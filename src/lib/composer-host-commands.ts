@@ -121,6 +121,9 @@ function parseEffort(arg: string, name: string, ctx: HostCommandContext): HostCo
 	return {kind: "open", menu: ctx.effortLevels.length <= 1 ? "model" : "effort", name};
 }
 
+/** Upstream's uniqueKey for the `/fast` no-op notice, so a repeat re-shows one toast instead of "(×2)". */
+export const FAST_COMMAND_NOTICE_KEY = "epitaxy-fast-command-notice";
+
 /** What a sent `/fast [on|off]` does: nothing new, flip fast mode, or reach the CLI as typed. */
 export type FastCommandRoute = "noop" | "toggle" | "unhandled";
 

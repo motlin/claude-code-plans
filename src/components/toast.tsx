@@ -60,7 +60,9 @@ function iconInk(variant: ToastVariant, fizzyColor: boolean): string {
 	return variant === "warning" ? "text-fill-warning" : "text-fill-danger";
 }
 
+/** Upstream `yx`'s content identity; a keyed toast has a key identity and never folds. */
 function sameToast(a: ToastOptions, b: ToastOptions): boolean {
+	if (a.uniqueKey !== undefined || b.uniqueKey !== undefined) return false;
 	return VARIANT_OF[a.kind] === VARIANT_OF[b.kind] && a.message === b.message && a.description === b.description;
 }
 
@@ -138,9 +140,10 @@ function useWindowFocused(): boolean {
  * Upstream's toasts: the cds Toast viewport (Base UI Toast) stacked bottom-right, newest first in
  * the DOM and in front, with older ones peeking 14px above it. Toasts auto-dismiss (paused while
  * the deck is hovered or focused, or the window is blurred) unless they carry an action such as
- * [Undo]. A repeat folds into the open toast as "(×2)". Every toast announces through one polite
- * Notifications region; a danger toast's alertdialog stays aria-hidden and is announced by a
- * visually hidden role=alert until the region takes focus.
+ * [Undo]. A repeat folds into the open toast as "(×2)"; a toast with the same uniqueKey replaces it
+ * instead. Every toast announces through one polite Notifications region; a danger toast's
+ * alertdialog stays aria-hidden and is announced by a visually hidden role=alert until the region
+ * takes focus.
  */
 export function ToastProvider({children}: Readonly<{children: ReactNode}>) {
 	const [toasts, setToasts] = useState<ToastEntry[]>([]);
@@ -177,6 +180,14 @@ export function ToastProvider({children}: Readonly<{children: ReactNode}>) {
 		const {signal} = options;
 		if (signal?.aborted === true) return;
 		setToasts((current) => {
+			if (options.uniqueKey !== undefined) {
+				// Upstream `ta`: close the same-key card (its action never runs) and add a new one at the front.
+				nextId.current += 1;
+				return [
+					...current.filter((entry) => entry.uniqueKey !== options.uniqueKey),
+					{...options, id: nextId.current, count: 1, repeat: 0},
+				];
+			}
 			const open = current.find((entry) => sameToast(entry, options));
 			if (open !== undefined) {
 				return current.map((entry) =>

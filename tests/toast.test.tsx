@@ -981,3 +981,142 @@ describe("ToastProvider forced colors", () => {
 		).toStrictEqual([true, true, true, true]);
 	});
 });
+
+/** Each open toast's variant and title, newest first. */
+function typedToasts(): {type: string | null; title: string}[] {
+	return Array.from(notifications().querySelectorAll("[data-toast]")).map((el) => ({
+		type: el.getAttribute("data-type"),
+		title: el.querySelector("[data-toast-message]")?.textContent ?? "",
+	}));
+}
+
+describe("ToastProvider uniqueKey", () => {
+	it("replaces the open toast with the same key, whatever its text", () => {
+		const fire = renderTriggers([
+			{
+				kind: "success",
+				message: "Already in plan mode. No plan written yet.",
+				uniqueKey: "epitaxy-plan-command-notice",
+			},
+			{kind: "success", message: "Already in plan mode.", uniqueKey: "epitaxy-plan-command-notice"},
+		]);
+		fire(0);
+		fire(1);
+
+		expect({texts: toastTexts(), count: document.querySelectorAll("[data-toast]").length}).toStrictEqual({
+			texts: ["Already in plan mode."],
+			count: 1,
+		});
+	});
+
+	it("re-enters a same-key, same-text toast as a new node with a fresh timer and no (×2)", () => {
+		const options: ToastOptions = {
+			kind: "success",
+			message: "Fast mode is already on.",
+			uniqueKey: "epitaxy-fast-command-notice",
+			durationMs: 4000,
+		};
+		const fire = renderTriggers([options, options]);
+		fire(0);
+		const first = document.querySelector("[data-toast]");
+		act(() => {
+			vi.advanceTimersByTime(3000);
+		});
+		fire(1);
+		const second = document.querySelector("[data-toast]");
+
+		expect({texts: toastTexts(), sameNode: first === second}).toStrictEqual({
+			texts: ["Fast mode is already on."],
+			sameNode: false,
+		});
+		act(() => {
+			vi.advanceTimersByTime(3999);
+		});
+		expect(toastTexts()).toStrictEqual(["Fast mode is already on."]);
+		act(() => {
+			vi.advanceTimersByTime(1);
+		});
+		expect(toastTexts()).toStrictEqual([]);
+	});
+
+	it("replaces across kinds, taking the new toast's variant", () => {
+		const fire = renderTriggers([
+			{kind: "danger", message: "Plan mode isn’t available for this session.", uniqueKey: "k"},
+			{kind: "success", message: "Already in plan mode.", uniqueKey: "k"},
+		]);
+		fire(0);
+		fire(1);
+
+		expect(typedToasts()).toStrictEqual([{type: "neutral", title: "Already in plan mode."}]);
+	});
+
+	it("stacks toasts with different keys", () => {
+		const fire = renderTriggers([
+			{kind: "success", message: "First", uniqueKey: "a"},
+			{kind: "success", message: "Second", uniqueKey: "b"},
+		]);
+		fire(0);
+		fire(1);
+
+		expect(toastTexts()).toStrictEqual(["Second", "First"]);
+	});
+
+	it("keeps a keyed and an unkeyed toast with the same text apart", () => {
+		const fire = renderTriggers([
+			{kind: "success", message: "Link copied"},
+			{kind: "success", message: "Link copied", uniqueKey: "x"},
+		]);
+		fire(0);
+		fire(1);
+
+		expect(toastTexts()).toStrictEqual(["Link copied", "Link copied"]);
+	});
+
+	it("does not fold a repeated keyed toast into an open unkeyed twin", () => {
+		const fire = renderTriggers([
+			{kind: "success", message: "Link copied", uniqueKey: "x"},
+			{kind: "success", message: "Link copied"},
+		]);
+		fire(0);
+		fire(1);
+
+		expect(toastTexts()).toStrictEqual(["Link copied", "Link copied"]);
+	});
+
+	it("does not run the replaced toast's action", () => {
+		const onAction = vi.fn<() => void>();
+		const fire = renderTriggers([
+			{kind: "success", message: "Archived 1 session", uniqueKey: "u", action: {label: "Undo", onAction}},
+			{kind: "success", message: "Restored", uniqueKey: "u"},
+		]);
+		fire(0);
+		fire(1);
+
+		expect({
+			calls: onAction.mock.calls.length,
+			undo: Array.from(notifications().querySelectorAll("button")).some((b) => b.textContent === "Undo"),
+			texts: toastTexts(),
+		}).toStrictEqual({calls: 0, undo: false, texts: ["Restored"]});
+	});
+
+	it("keeps the successor when the replaced toast's signal aborts", () => {
+		const controller = new AbortController();
+		const fire = renderTriggers([
+			{
+				kind: "success",
+				message: "Exporting session…",
+				uniqueKey: "e",
+				durationMs: null,
+				signal: controller.signal,
+			},
+			{kind: "success", message: "Session exported", uniqueKey: "e"},
+		]);
+		fire(0);
+		fire(1);
+		act(() => {
+			controller.abort();
+		});
+
+		expect(toastTexts()).toStrictEqual(["Session exported"]);
+	});
+});
