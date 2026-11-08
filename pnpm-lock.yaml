@@ -181,6 +181,15 @@ importers:
       '@base-ui/react':
         specifier: ^1.8.0
         version: 1.8.0(@types/react@19.3.0)(date-fns@4.4.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@codemirror/commands':
+        specifier: 6.11.0
+        version: 6.11.0
+      '@codemirror/state':
+        specifier: 6.7.4
+        version: 6.7.4
+      '@codemirror/view':
+        specifier: 6.43.11
+        version: 6.43.11
       '@dnd-kit/core':
         specifier: 6.3.1
         version: 6.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
