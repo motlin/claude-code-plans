@@ -224,6 +224,8 @@ html[data-interface-font="dyslexic"] {
 	--color-fill-secondary-hover: var(--upstream-fill-secondary-hover);
 	--color-fill-secondary-ring: var(--upstream-fill-secondary-ring);
 	--color-fill-danger: var(--upstream-fill-danger);
+	/* Upstream --cds-fill-warning: the toast's stacks:text-fill-warning icon ink. */
+	--color-fill-warning: var(--upstream-fill-warning);
 	--color-fill-danger-hover: var(--upstream-fill-danger-hover);
 	--color-on-danger: #fff;
 	/* Upstream claude.ai/code brand accent (palette enter cap) */

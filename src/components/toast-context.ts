@@ -1,6 +1,10 @@
 import {createContext, useContext} from "react";
 
-export type ToastKind = "success" | "warning" | "error";
+/**
+ * `error` is upstream's `addError` (renders the warning variant, as upstream's does); `danger` is
+ * `addDanger`; `warning` is `addWarning`; `success` is `addInfo`/`addSuccess` (neutral).
+ */
+export type ToastKind = "success" | "warning" | "error" | "danger";
 
 export interface ToastAction {
 	label: string;

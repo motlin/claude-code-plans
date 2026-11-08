@@ -4,7 +4,8 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ToastProvider} from "../src/components/toast";
-import {useToast, type ToastOptions} from "../src/components/toast-context";
+import {useToast, type ToastKind, type ToastOptions} from "../src/components/toast-context";
+import {FIZZY_LAKE_PARTS, FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 
 function Trigger({options}: {options: ToastOptions}) {
 	const toast = useToast();
@@ -240,11 +241,64 @@ describe("ToastProvider", () => {
 		}).toEqual({icon: "info", iconBeforeMessage: true, borderClasses: []});
 	});
 
-	it("renders upstream's WarningCircle danger icon for error toasts", () => {
-		renderWithToast({message: "Couldn’t save the new name. Try again.", kind: "error"});
+	it("renders error toasts as upstream addError's warning variant", () => {
+		renderWithToast({message: "Couldn’t archive this session. Try again.", kind: "error"});
 
-		const icon = screen.getByRole("alert").querySelector("[data-toast-icon]");
-		expect(icon?.getAttribute("data-toast-icon")).toBe("danger");
+		const el = screen.getByRole("alert").querySelector("[data-toast]");
+		expect({
+			kind: el?.getAttribute("data-kind"),
+			type: el?.getAttribute("data-type"),
+			icon: el?.querySelector("[data-toast-icon]")?.getAttribute("data-toast-icon"),
+		}).toStrictEqual({kind: "error", type: "warning", icon: "warning"});
+	});
+
+	it("renders addDanger twins as the danger variant", () => {
+		renderWithToast({message: "Failed to send response. You can try again.", kind: "danger"});
+
+		const el = screen.getByRole("alert").querySelector("[data-toast]");
+		expect({
+			kind: el?.getAttribute("data-kind"),
+			type: el?.getAttribute("data-type"),
+			icon: el?.querySelector("[data-toast-icon]")?.getAttribute("data-toast-icon"),
+		}).toStrictEqual({kind: "danger", type: "danger", icon: "danger"});
+	});
+
+	it("marks success toasts neutral and warning toasts warning, as upstream's data-type", () => {
+		const fire = renderTriggers([
+			{message: "Copied", kind: "success"},
+			{message: "Careful", kind: "warning"},
+		]);
+		fire(0);
+		fire(1);
+		const typeOf = (message: string) =>
+			screen.getByText(message).closest("[data-toast]")?.getAttribute("data-type");
+
+		expect({success: typeOf("Copied"), warning: typeOf("Careful")}).toStrictEqual({
+			success: "neutral",
+			warning: "warning",
+		});
+	});
+
+	it("folds an error and a warning with the same text, as upstream's toastType identity", () => {
+		const fire = renderTriggers([
+			{message: "Careful", kind: "error"},
+			{message: "Careful", kind: "warning"},
+		]);
+		fire(0);
+		fire(1);
+
+		expect(toastTexts("alert")).toStrictEqual(["Careful (×2)"]);
+	});
+
+	it("keeps a danger and an error with the same text as two toasts", () => {
+		const fire = renderTriggers([
+			{message: "Broke", kind: "danger"},
+			{message: "Broke", kind: "error"},
+		]);
+		fire(0);
+		fire(1);
+
+		expect(toastTexts("alert")).toStrictEqual(["Broke", "Broke"]);
 	});
 
 	it("throws when useToast is called outside a provider", () => {
@@ -310,7 +364,7 @@ describe("ToastProvider deck", () => {
 		]);
 	});
 
-	it("tints danger and warning toasts with a ring, their ink and upstream's WarningCircle / Warning icons", () => {
+	it("gives error and warning toasts upstream's warning icon on an untinted fizzy card", () => {
 		const fire = renderTriggers([
 			{message: "Broke", kind: "error"},
 			{message: "Careful", kind: "warning"},
@@ -326,8 +380,8 @@ describe("ToastProvider deck", () => {
 			};
 		};
 		expect([variant("Broke"), variant("Careful")]).toStrictEqual([
-			{kind: "error", icon: "danger", tinted: true},
-			{kind: "warning", icon: "warning", tinted: true},
+			{kind: "error", icon: "warning", tinted: false},
+			{kind: "warning", icon: "warning", tinted: false},
 		]);
 	});
 
@@ -368,5 +422,143 @@ describe("ToastProvider deck", () => {
 			vi.advanceTimersByTime(1);
 		});
 		expect(toastTexts("status")).toEqual([]);
+	});
+});
+
+const NO_FIZZY_PARTS: readonly FizzyLakePart[] = [];
+
+function renderKinds(kinds: readonly ToastKind[], fizzyColor = true) {
+	const batches = kinds.map((kind) => ({message: `toast ${kind}`, kind}));
+	render(
+		<FizzyLakeContext.Provider value={fizzyColor ? FIZZY_LAKE_PARTS : NO_FIZZY_PARTS}>
+			<ToastProvider>
+				<MultiTrigger batches={batches} />
+			</ToastProvider>
+		</FizzyLakeContext.Provider>,
+	);
+	for (const [index] of batches.entries()) {
+		fireEvent.click(screen.getByRole("button", {name: `fire ${index}`}));
+	}
+	return (kind: ToastKind) => {
+		const toast = screen.getByText(`toast ${kind}`).closest<HTMLElement>("[data-toast]");
+		if (!toast) throw new Error(`no ${kind} toast`);
+		const icon = toast.querySelector<SVGElement>("[data-toast-icon]");
+		if (!icon) throw new Error(`no ${kind} icon`);
+		return {toast, icon, classes: toast.className.split(/\s+/)};
+	};
+}
+
+const ALL_KINDS: readonly ToastKind[] = ["success", "warning", "error", "danger"];
+
+describe("ToastProvider variants", () => {
+	it("draws every fizzy-color card untinted with shadow-panel-md and primary ink, as upstream's stacks: classes", () => {
+		const of = renderKinds(ALL_KINDS);
+		const card = (kind: ToastKind) => {
+			const {classes} = of(kind);
+			return {
+				surface: classes.includes("bg-surface-popover"),
+				ink: classes.includes("text-primary"),
+				shadow: classes.includes("shadow-panel-md"),
+				leftovers: classes.filter((c) =>
+					/color-mix|shadow-\[|text-(warning|danger)-000|shadow-panel-sm/.test(c),
+				),
+			};
+		};
+		const expected = {surface: true, ink: true, shadow: true, leftovers: []};
+
+		expect(Object.fromEntries(ALL_KINDS.map((kind) => [kind, card(kind)]))).toStrictEqual({
+			success: expected,
+			warning: expected,
+			error: expected,
+			danger: expected,
+		});
+	});
+
+	it("puts the hue only on the icon wrapper: text-fill-warning, text-fill-danger, text-secondary", () => {
+		const of = renderKinds(ALL_KINDS);
+		const ink = (kind: ToastKind) =>
+			(of(kind).icon.parentElement?.getAttribute("class") ?? "")
+				.split(/\s+/)
+				.filter((c) => c.startsWith("text-"));
+
+		expect(Object.fromEntries(ALL_KINDS.map((kind) => [kind, ink(kind)]))).toStrictEqual({
+			success: ["text-secondary"],
+			warning: ["text-fill-warning"],
+			error: ["text-fill-warning"],
+			danger: ["text-fill-danger"],
+		});
+	});
+
+	it("keeps the pre-fizzy warning and danger tints when color is off", () => {
+		const of = renderKinds(["error", "danger"], false);
+		const tint = (kind: ToastKind) => {
+			const {classes} = of(kind);
+			return {
+				tint: classes.some((c) => c.includes("color-mix(in_srgb,var(--color-warning-100)_10%")),
+				dangerTint: classes.some((c) => c.includes("color-mix(in_srgb,var(--color-danger-100)_10%")),
+				ink: classes.filter((c) => /^text-(warning|danger)-000$/.test(c)),
+				shadow: classes.filter((c) => c.includes("shadow-panel")),
+			};
+		};
+
+		expect({error: tint("error"), danger: tint("danger")}).toStrictEqual({
+			error: {
+				tint: true,
+				dangerTint: false,
+				ink: ["text-warning-000"],
+				shadow: [
+					"shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-warning-100)_35%,transparent),var(--shadow-panel-md)]",
+				],
+			},
+			danger: {
+				tint: false,
+				dangerTint: true,
+				ink: ["text-danger-000"],
+				shadow: [
+					"shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-danger-100)_35%,transparent),var(--shadow-panel-md)]",
+				],
+			},
+		});
+	});
+
+	it("swaps in upstream's filled WarningFilled / WarningCircleFilled glyphs at 20px under fizzy color", () => {
+		const of = renderKinds(ALL_KINDS);
+		const glyph = (kind: ToastKind) => {
+			const {icon} = of(kind);
+			const path = icon.querySelector("path");
+			return {
+				icon: icon.getAttribute("data-toast-icon"),
+				filled: icon.hasAttribute("data-filled"),
+				width: icon.getAttribute("width"),
+				height: icon.getAttribute("height"),
+				...(icon.hasAttribute("data-filled")
+					? {fill: path?.getAttribute("fill"), stroke: path?.getAttribute("stroke") ?? null}
+					: {}),
+			};
+		};
+
+		expect(Object.fromEntries(ALL_KINDS.map((kind) => [kind, glyph(kind)]))).toStrictEqual({
+			success: {icon: "info", filled: false, width: "20", height: "20"},
+			warning: {icon: "warning", filled: true, width: "20", height: "20", fill: "currentColor", stroke: null},
+			error: {icon: "warning", filled: true, width: "20", height: "20", fill: "currentColor", stroke: null},
+			danger: {icon: "danger", filled: true, width: "20", height: "20", fill: "currentColor", stroke: null},
+		});
+	});
+
+	it("keeps the outline Warning / WarningCircle glyphs when color is off", () => {
+		const of = renderKinds(["warning", "danger"], false);
+		const glyph = (kind: ToastKind) => {
+			const {icon} = of(kind);
+			return {
+				icon: icon.getAttribute("data-toast-icon"),
+				filled: icon.hasAttribute("data-filled"),
+				width: icon.getAttribute("width"),
+			};
+		};
+
+		expect({warning: glyph("warning"), danger: glyph("danger")}).toStrictEqual({
+			warning: {icon: "warning", filled: false, width: "20"},
+			danger: {icon: "danger", filled: false, width: "20"},
+		});
 	});
 });

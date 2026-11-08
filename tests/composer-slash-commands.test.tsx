@@ -1411,7 +1411,7 @@ describe("Composer host commands", () => {
 			rewinds: 0,
 			text: "/rewind",
 			toast: "Rewind isn’t available for this session.",
-			icon: "danger",
+			icon: "warning",
 		});
 	});
 
