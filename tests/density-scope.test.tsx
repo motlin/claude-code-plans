@@ -101,11 +101,15 @@ describe("DensityScope", () => {
 		expect({
 			outer: outer?.textContent,
 			inner: inner?.textContent,
-			wrapper: {density: wrapper?.getAttribute("data-density"), className: wrapper?.className},
+			wrapper: {
+				density: wrapper?.getAttribute("data-density"),
+				className: wrapper?.className,
+				portal: wrapper?.hasAttribute("data-cds-portal"),
+			},
 		}).toStrictEqual({
 			outer: "comfortable",
 			inner: "compact",
-			wrapper: {density: "compact", className: "contents"},
+			wrapper: {density: "compact", className: "contents", portal: false},
 		});
 	});
 });
@@ -219,7 +223,8 @@ describe("DensityScope on a coarse pointer", () => {
 		expect({
 			portaled: card !== null && !row.contains(card),
 			scope: card?.closest("[data-density]")?.getAttribute("data-density"),
-		}).toStrictEqual({portaled: true, scope: "comfortable"});
+			portalMarker: card?.closest("[data-cds-portal]")?.getAttribute("data-cds-portal"),
+		}).toStrictEqual({portaled: true, scope: "comfortable", portalMarker: ""});
 	});
 });
 
@@ -304,6 +309,7 @@ describe("portals inherit their opener's density", () => {
 		expect({
 			parentIsBody: tip.parentElement?.parentElement === document.body,
 			scope: tip.closest("[data-density]")?.getAttribute("data-density"),
-		}).toStrictEqual({parentIsBody: true, scope: "compact"});
+			portalMarker: tip.parentElement?.getAttribute("data-cds-portal"),
+		}).toStrictEqual({parentIsBody: true, scope: "compact", portalMarker: ""});
 	});
 });

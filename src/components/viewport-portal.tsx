@@ -15,8 +15,8 @@ function subscribeNever(): () => void {
  * transcript instead of staying pinned to the viewport.
  *
  * Renders nothing during SSR and hydration, then portals on the client, inside
- * a `display: contents` wrapper carrying the opener's density, as upstream's
- * `data-cds-portal` copies `data-density`.
+ * a `display: contents` wrapper marked `data-cds-portal` and carrying the
+ * opener's density, as upstream's cds Portal wrapper copies `data-density`.
  */
 export function ViewportPortal({children}: {children: ReactNode}) {
 	const isClient = useSyncExternalStore(
@@ -26,5 +26,10 @@ export function ViewportPortal({children}: {children: ReactNode}) {
 	);
 	const density = useDensity();
 	if (!isClient) return null;
-	return createPortal(<DensityScope density={density}>{children}</DensityScope>, document.body);
+	return createPortal(
+		<DensityScope portal density={density}>
+			{children}
+		</DensityScope>,
+		document.body,
+	);
 }

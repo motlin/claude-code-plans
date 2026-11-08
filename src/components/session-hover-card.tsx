@@ -75,6 +75,7 @@ export function SessionHoverCard({
 						side={side}
 						align={align}
 						collisionPadding={COLLISION_PADDING}
+						data-cds-portal=""
 						data-density={density}
 						className="z-[100]"
 					>

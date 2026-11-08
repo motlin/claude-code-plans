@@ -2,11 +2,20 @@ import type {ReactNode} from "react";
 
 import {type Density, DensityContext, DensityOverrideContext, useScopeDensity} from "./density-context";
 
-export function DensityScope({density, children}: {density?: Density; children: ReactNode}) {
+export function DensityScope({
+	density,
+	portal = false,
+	children,
+}: {
+	density?: Density;
+	/** Marks the wrapper `data-cds-portal`, as upstream's cds Portal wrapper, so outside-press checks skip portaled content. */
+	portal?: boolean;
+	children: ReactNode;
+}) {
 	const resolved = useScopeDensity(density);
 	return (
 		<DensityContext.Provider value={resolved}>
-			<div data-density={resolved} className="contents">
+			<div data-cds-portal={portal ? "" : undefined} data-density={resolved} className="contents">
 				{children}
 			</div>
 		</DensityContext.Provider>
