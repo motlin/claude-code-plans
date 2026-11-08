@@ -404,20 +404,20 @@ describe("plain status marker gaps", () => {
 });
 
 describe("user bubble line box", () => {
-	it("sets the bubble on upstream's 14px/18px heading leading, as the streaming bubble does, leaving the prompt paragraph on its 20px body leading", () => {
+	it("sets the bubble on upstream's text-heading (14px/18px compact), as the streaming bubble does, leaving the prompt paragraph on text-prose (14px/20px compact)", () => {
 		const specimen = (rowSpecimens as RowSpecimen[]).find(
 			(candidate) => candidate.session === "79a0ad58" && candidate.line === 91,
 		)!;
 		const bubble = renderRecords(specimen.records).querySelector(".user-message-bubble")!;
 		expect({
-			bubble: bubble.classList.contains("leading-[1.2857]"),
-			paragraph: bubble.querySelector("p")?.classList.contains("text-body"),
+			bubble: bubble.classList.contains("text-heading"),
+			paragraph: bubble.querySelector("p")?.classList.contains("text-prose"),
 		}).toStrictEqual({bubble: true, paragraph: true});
 	});
 });
 
 describe("user bubble markdown", () => {
-	it("spaces the 75f9847c:129 ordered list as upstream: 5px below the paragraph, items 6px apart, text 20px in with no item padding", () => {
+	it("spaces the 75f9847c:129 ordered list as upstream: 5px below the paragraph (the block column's gap-1.25), items 6px apart, text 20px in with no item padding", () => {
 		const specimen = (rowSpecimens as RowSpecimen[]).find(
 			(candidate) => candidate.session === "75f9847c" && candidate.line === 129,
 		)!;
@@ -437,9 +437,10 @@ describe("user bubble markdown", () => {
 				"mt-[7px]",
 			]),
 			itemPadding: list.className.includes("[&>li]:ps-"),
+			columnGap: list.parentElement?.classList.contains("gap-1.25"),
 		}).toStrictEqual({
 			list: {
-				"mt-[5px]": true,
+				"mt-[5px]": false,
 				flex: true,
 				"flex-col": true,
 				"gap-[6px]": true,
@@ -449,6 +450,7 @@ describe("user bubble markdown", () => {
 				"mt-[7px]": false,
 			},
 			itemPadding: false,
+			columnGap: true,
 		});
 	});
 

@@ -45,7 +45,9 @@ import {
 } from "../lib/background-tasks";
 import {SlashCommandText} from "./slash-command-chip";
 import {SlashCommandsContext} from "./slash-commands-context";
-import {UserPlainText} from "./user-plain-text";
+import {AUTO_BUBBLE_CLASS, USER_BUBBLE_CLASS, USER_MESSAGE_CLASS} from "./user-bubble";
+import {USER_PARAGRAPH_CLASS, UserPlainText} from "./user-plain-text";
+import {useDensity} from "./ui/density-context";
 import {taskChecklist} from "../lib/task-checklist";
 import {splitLeadingSlashCommand, type SlashCommand} from "../lib/slash-commands";
 import {getCallRenderer} from "./tool-renderers";
@@ -963,7 +965,11 @@ const USER_ROW_GAP_CLASS = "pb-[var(--chat-user-row-gap)] empty:pb-0";
  * hidden from sight and from text selection, so copying a turn never picks it up.
  */
 function TurnHeading({speaker, text}: {speaker: "user" | "assistant"; text: string}) {
-	return <h2 className="sr-only select-none">{messageHeading(speaker, text)}</h2>;
+	return (
+		<h2 data-find-omitted="" className="sr-only select-none">
+			{messageHeading(speaker, text)}
+		</h2>
+	);
 }
 
 /**
@@ -980,13 +986,13 @@ function UserTurn({text, turnKey, children}: {text: string; turnKey?: string | u
 		);
 	}
 	// Upstream's keyed human row: [data-take-back-entry][data-row-gap] > [data-transcript-row] > h2 +
-	// [data-user-scope] > [data-cds=UserMessage][data-turn-key] (see userMessageAttributes). A user row's
+	// [data-user-scope] > [data-cds=UserMessage][data-turn-key] (see UserMessageColumn). A user row's
 	// shared-row gap is always "none", whose class cancels the transcript row's own mt-6.
 	return (
 		<div data-take-back-entry={turnKey} data-row-gap="none" className="[&>[data-transcript-row]]:!mt-0">
 			<div data-transcript-row="" className={TRANSCRIPT_ROW_CLASS}>
 				<TurnHeading speaker="user" text={text} />
-				<div data-user-scope="" className="group/msg flex justify-end w-full">
+				<div data-user-scope="" className="group/msg group/message-row min-w-0">
 					{children}
 				</div>
 			</div>
@@ -999,18 +1005,15 @@ const TRANSCRIPT_ROW_CLASS =
 	"mt-6 compact:mt-5 [&>[data-turn-key]]:!my-0 [&>[data-reply-scope]>[data-turn-key]]:!my-0 [&:has(>[data-reserves-actions-gap]:not(:empty))]:pb-md [&:has(>[data-reply-scope]>[data-reserves-actions-gap]:not(:empty))]:pb-md";
 
 /**
- * Upstream's `[data-cds=UserMessage]` column (`_w`): full width and pushed to the end, so the bubble, not the
- * column, carries the 85% cap and a short prompt keeps its text width. `gap-g5 comfortable:gap-g6` is upstream's
- * `gap-xs` (6px default, 8px comfortable).
+ * Upstream's `[data-cds=UserMessage]` column, keyed like its row. Upstream sets `data-text-size="md"` only under
+ * compact density (`Fi()`), its default.
  */
-const USER_MESSAGE_CLASS =
-	"group/message-row flex w-full min-w-0 flex-col gap-g5 comfortable:gap-g6 font-sans ms-auto items-end";
-
-/** The attributes upstream puts on a human prompt's `[data-cds=UserMessage]` column, keyed like its row. */
-function userMessageAttributes(turnKey: string | undefined) {
-	return turnKey === undefined
-		? {}
-		: ({"data-cds": "UserMessage", "data-text-size": "md", "data-turn-key": turnKey} as const);
+function UserMessageColumn({turnKey, ...props}: React.ComponentProps<"div"> & {turnKey: string | undefined}) {
+	const compact = useDensity() === "compact";
+	if (turnKey === undefined) return <div {...props} />;
+	return (
+		<div data-cds="UserMessage" data-text-size={compact ? "md" : undefined} data-turn-key={turnKey} {...props} />
+	);
 }
 
 function LineEntry({
@@ -4224,9 +4227,7 @@ function classifyUserContent(line: MessageSessionLine): UserContentKind {
 function UserPromptBubble({text, children}: {text: string; children: ReactNode}) {
 	const {isolate, accent} = useLandedFlash(text);
 	return (
-		<div
-			className={`user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 max-w-[85%] overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]${isolate === "" ? "" : ` ${isolate}`}`}
-		>
+		<div className={`${USER_BUBBLE_CLASS}${isolate === "" ? "" : ` ${isolate}`}`}>
 			{accent}
 			{children}
 		</div>
@@ -4305,7 +4306,7 @@ function UserEntry({
 				sessionId={sessionId}
 				uuid={line.uuid}
 				markdown={messageText(line)}
-				render={<div {...userMessageAttributes(turnKey)} className={USER_MESSAGE_CLASS} />}
+				render={<UserMessageColumn turnKey={turnKey} className={USER_MESSAGE_CLASS} />}
 			>
 				<UserAttachments images={images} />
 				<MessageExcerptTiles snippets={excerpts} />
@@ -4646,13 +4647,9 @@ function CompactSummaryBody({
 
 	return (
 		<div id={id} className="flex justify-end pt-p6">
-			<div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
+			<div className={USER_MESSAGE_CLASS}>
 				<UserAttachments images={images} />
-				{textNodes.length > 0 && (
-					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
-						{textNodes}
-					</div>
-				)}
+				{textNodes.length > 0 && <div className={AUTO_BUBBLE_CLASS}>{textNodes}</div>}
 				{mediaNodes}
 				<UserTurnActions line={line} sessionId={sessionId} contextText="Compacted conversation" />
 			</div>
@@ -4677,18 +4674,14 @@ function LabeledAutomatedEntry({
 
 	return (
 		<UserTurn text={messageText(line)}>
-			<div className="flex flex-col items-end gap-g6 max-w-[85%] min-w-0">
+			<div className={USER_MESSAGE_CLASS}>
 				<div className="flex items-center gap-1.5 px-1">
 					<span className="text-[10px] font-medium text-t6 bg-surface-0 rounded-full px-2 py-0.5">
 						{label}
 					</span>
 				</div>
 				<UserAttachments images={images} />
-				{textNodes.length > 0 && (
-					<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-auto-msg-bg text-auto-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
-						{textNodes}
-					</div>
-				)}
+				{textNodes.length > 0 && <div className={AUTO_BUBBLE_CLASS}>{textNodes}</div>}
 				{mediaNodes}
 				<UserTurnActions line={line} sessionId={sessionId} />
 			</div>
@@ -4882,8 +4875,8 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 
 	return (
 		<UserTurn text={cmdArgs ? `/${name} ${cmdArgs}` : `/${name}`} turnKey={line.uuid}>
-			<div {...userMessageAttributes(line.uuid)} className={USER_MESSAGE_CLASS}>
-				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 max-w-[85%] overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
+			<UserMessageColumn turnKey={line.uuid} className={USER_MESSAGE_CLASS}>
+				<div className={USER_BUBBLE_CLASS}>
 					<TruncatedContent>
 						<SlashCommandText name={name} rest={cmdArgs ?? ""} />
 					</TruncatedContent>
@@ -4895,7 +4888,7 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 					contextText={cmdArgs ? `/${name} ${cmdArgs}` : `/${name}`}
 					readByClaude
 				/>
-			</div>
+			</UserMessageColumn>
 		</UserTurn>
 	);
 }
@@ -5654,9 +5647,9 @@ function planRejectionFeedback(call: ClientToolCall): string | null {
 function PlanFeedbackBubble({text}: {text: string}) {
 	return (
 		<UserTurn text={text}>
-			<div data-plan-feedback="" className="flex flex-col items-end max-w-[85%] min-w-0">
-				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 w-full overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
-					<p className="whitespace-pre-wrap">{text}</p>
+			<div data-plan-feedback="" className={USER_MESSAGE_CLASS}>
+				<div className={USER_BUBBLE_CLASS}>
+					<p className={USER_PARAGRAPH_CLASS}>{text}</p>
 				</div>
 			</div>
 		</UserTurn>

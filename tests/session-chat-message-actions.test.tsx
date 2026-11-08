@@ -59,10 +59,7 @@ function renderRecords(records: unknown[], showCompactSummaries: boolean): HTMLE
 
 /** The class list of the message column that wraps a user bubble and its footer. */
 function userColumnClassName(container: HTMLElement): string | null {
-	const column = Array.from(container.querySelectorAll("div")).find(
-		(element) =>
-			element.getAttribute("data-cds") === "UserMessage" || element.className.startsWith("flex flex-col items-"),
-	);
+	const column = container.querySelector(".user-message-bubble")?.parentElement ?? null;
 	return column?.className ?? null;
 }
 
@@ -204,17 +201,15 @@ describe("SessionChat user action row", () => {
 		}).toStrictEqual({
 			command:
 				"group/message-row flex w-full min-w-0 flex-col gap-g5 comfortable:gap-g6 font-sans ms-auto items-end",
-			compactSummary: "flex flex-col items-end gap-g6 max-w-[85%] min-w-0",
+			compactSummary:
+				"group/message-row flex w-full min-w-0 flex-col gap-g5 comfortable:gap-g6 font-sans ms-auto items-end",
 		});
 	});
 });
 
 /** The row that lays a user-side column out, and whether that column is its right-most child. */
 function userRowLayout(container: HTMLElement): {rowClassName: string | null; columnIsRightMost: boolean} {
-	const column = Array.from(container.querySelectorAll("div")).find(
-		(element) =>
-			element.getAttribute("data-cds") === "UserMessage" || element.className.startsWith("flex flex-col items-"),
-	);
+	const column = container.querySelector(".user-message-bubble")?.parentElement ?? null;
 	const row = column?.parentElement ?? null;
 	return {rowClassName: row?.className ?? null, columnIsRightMost: row?.lastElementChild === column};
 }
@@ -229,8 +224,8 @@ describe("SessionChat user turn alignment", () => {
 			command: userRowLayout(renderRecords([COMMAND_INVOCATION], true)),
 			compactSummary: userRowLayout(compactContainer),
 		}).toStrictEqual({
-			user: {rowClassName: "group/msg flex justify-end w-full", columnIsRightMost: true},
-			command: {rowClassName: "group/msg flex justify-end w-full", columnIsRightMost: true},
+			user: {rowClassName: "group/msg group/message-row min-w-0", columnIsRightMost: true},
+			command: {rowClassName: "group/msg group/message-row min-w-0", columnIsRightMost: true},
 			compactSummary: {rowClassName: "flex justify-end pt-p6", columnIsRightMost: true},
 		});
 	});

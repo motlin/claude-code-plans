@@ -7,6 +7,8 @@ import {messageHeading} from "../lib/transcript-action-targets";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {WaitingMessageActions} from "./message-actions";
 import {Spinner} from "./ui/spinner";
+import {USER_BUBBLE_CLASS, USER_MESSAGE_CLASS} from "./user-bubble";
+import {USER_PARAGRAPH_CLASS} from "./user-plain-text";
 
 /** How long upstream's row announces "read" after Claude picks it up (`eD`). */
 const READ_ANNOUNCEMENT_MS = 1400;
@@ -166,11 +168,9 @@ export function WaitingUserTurn({
 			<span role="status" className="sr-only">
 				{delivered ? (reading ? "read" : "") : waitingStatus}
 			</span>
-			<div className="flex w-full flex-col min-w-0 ms-auto items-end gap-g5 comfortable:gap-g6">
-				<div className="user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 max-w-[85%] overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]">
-					<p className="whitespace-pre-wrap [overflow-wrap:anywhere] text-pretty [unicode-bidi:plaintext]">
-						{text}
-					</p>
+			<div className={USER_MESSAGE_CLASS}>
+				<div className={USER_BUBBLE_CLASS}>
+					<p className={USER_PARAGRAPH_CLASS}>{text}</p>
 				</div>
 				<WaitingMessageActions text={text} stacked={!head} hostHasIt={hostHasIt} onCancel={onCancel}>
 					{head && (

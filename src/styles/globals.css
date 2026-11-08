@@ -414,6 +414,12 @@ html[data-interface-font="dyslexic"] {
 	--text-body-regular: var(--upstream-text-body);
 	--text-body-regular--line-height: var(--upstream-leading-body);
 	--text-body-regular--font-weight: 400;
+	/* Upstream text-prose: 14px/20px compact, 16px/24px comfortable (the user paragraph). */
+	--text-prose: var(--upstream-text-prose);
+	--text-prose--line-height: var(--upstream-leading-prose);
+	/* Upstream text-heading: 14px/18px compact, 15px/20px comfortable (the user bubble). */
+	--text-heading: var(--upstream-text-heading);
+	--text-heading--line-height: var(--upstream-leading-heading);
 	--text-code: var(--upstream-text-code);
 	--text-code--line-height: var(--upstream-leading-code);
 	--text-footnote: var(--upstream-text-footnote);
@@ -595,6 +601,11 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream claude.ai/code — typography */
 	--upstream-text-body: 14px;
 	--upstream-leading-body: 20px;
+	/* Upstream text-prose (user paragraphs) and text-heading (the user bubble) at comfortable density. */
+	--upstream-text-prose: 16px;
+	--upstream-leading-prose: 24px;
+	--upstream-text-heading: 15px;
+	--upstream-leading-heading: 20px;
 	--upstream-text-code: 13px;
 	--upstream-leading-code: 19px;
 	/* Secondary label size (upstream --cds-font-size-footnote). */
@@ -3407,6 +3418,10 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--upstream-radius-composer: 0.875rem;
 	--upstream-text-body: 14px;
 	--upstream-leading-body: 20px;
+	--upstream-text-prose: 16px;
+	--upstream-leading-prose: 24px;
+	--upstream-text-heading: 15px;
+	--upstream-leading-heading: 20px;
 	--upstream-text-footnote: 13px;
 	--upstream-leading-footnote: 17px;
 	--upstream-text-code: 13px;
@@ -3447,6 +3462,10 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--upstream-radius-composer: 0.75rem;
 	--upstream-text-body: 13px;
 	--upstream-leading-body: 19px;
+	--upstream-text-prose: 14px;
+	--upstream-leading-prose: 20px;
+	--upstream-text-heading: 14px;
+	--upstream-leading-heading: 18px;
 	--upstream-text-footnote: 12px;
 	--upstream-leading-footnote: 15px;
 	--upstream-text-code: 12px;
@@ -3547,6 +3566,27 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 .transcript-text {
 	--upstream-text-body: var(--transcript-text-size, 0.875rem);
 	--upstream-leading-body: calc(var(--transcript-leading, 1.42857) * var(--transcript-text-size, 0.875rem));
+	/* A user paragraph's text-prose follows the same setting: the default-density size, then upstream's
+	   comfortable prose size (the chain matches markdown-article.module.css's transcript prose). */
+	--upstream-text-prose: var(--transcript-text-size, 0.875rem);
+	--upstream-leading-prose: calc(var(--transcript-leading, 1.42857) * var(--transcript-text-size, 0.875rem));
+
+	&:where([data-density="comfortable"] *):not(
+			:where([data-density="comfortable"] [data-density="compact"] *):not(
+				:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *):not(
+					:where(
+						[data-density="comfortable"]
+							[data-density="compact"]
+							[data-density="comfortable"]
+							[data-density="compact"]
+							*
+					)
+				)
+			)
+		) {
+		--upstream-text-prose: var(--transcript-comfortable-text-size, 1rem);
+		--upstream-leading-prose: var(--transcript-comfortable-leading, 1.5rem);
+	}
 }
 
 /* A standalone tool row followed by prose shares the assistant span: upstream leaves

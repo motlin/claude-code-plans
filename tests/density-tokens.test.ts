@@ -34,6 +34,10 @@ const TYPE_TOKENS = [
 	"--upstream-leading-code",
 	"--upstream-text-caption",
 	"--upstream-leading-caption",
+	"--upstream-text-prose",
+	"--upstream-leading-prose",
+	"--upstream-text-heading",
+	"--upstream-leading-heading",
 ] as const;
 
 function typeTokens(source: string): Record<string, string | null> {
@@ -64,6 +68,10 @@ describe("density type tokens", () => {
 				"--upstream-leading-code": "19px",
 				"--upstream-text-caption": "12px",
 				"--upstream-leading-caption": "17px",
+				"--upstream-text-prose": "16px",
+				"--upstream-leading-prose": "24px",
+				"--upstream-text-heading": "15px",
+				"--upstream-leading-heading": "20px",
 			},
 			comfortable: {
 				"--upstream-text-body": "14px",
@@ -74,8 +82,12 @@ describe("density type tokens", () => {
 				"--upstream-leading-code": "19px",
 				"--upstream-text-caption": "12px",
 				"--upstream-leading-caption": "17px",
+				"--upstream-text-prose": "16px",
+				"--upstream-leading-prose": "24px",
+				"--upstream-text-heading": "15px",
+				"--upstream-leading-heading": "20px",
 			},
-			comfortableDeclarations: 37,
+			comfortableDeclarations: 41,
 			compact: {
 				"--upstream-text-body": "13px",
 				"--upstream-leading-body": "19px",
@@ -85,8 +97,12 @@ describe("density type tokens", () => {
 				"--upstream-leading-code": "17px",
 				"--upstream-text-caption": "11px",
 				"--upstream-leading-caption": "17px",
+				"--upstream-text-prose": "14px",
+				"--upstream-leading-prose": "20px",
+				"--upstream-text-heading": "14px",
+				"--upstream-leading-heading": "18px",
 			},
-			compactDeclarations: 37,
+			compactDeclarations: 41,
 			caption: "var(--upstream-text-caption)",
 			captionLeading: "var(--upstream-leading-caption)",
 		});

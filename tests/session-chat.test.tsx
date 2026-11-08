@@ -158,7 +158,7 @@ describe("SessionChat body typography", () => {
 			userBubbleClassName: findClassName(userHtml, "user-message-bubble"),
 			assistantProseClassName: findClassName(assistantHtml, "relative min-w-0 text-body"),
 			streamingBubbleClassName: findClassName(streamingHtml, "user-message-bubble"),
-			streamingPromptRowClassName: findClassName(streamingHtml, "gap-1 mb-6"),
+			streamingPromptRowClassName: findClassName(streamingHtml, "items-end mb-6"),
 			streamingProseClassName: findClassName(streamingHtml, "min-w-0 text-body"),
 		}).toStrictEqual({
 			bodyFontSize: "14px",
@@ -169,11 +169,12 @@ describe("SessionChat body typography", () => {
 			legacySecondaryTextColor: null,
 			sessionColumnClassName: "chat-column pt-4 pb-4 text-body transcript-text",
 			userBubbleClassName:
-				"user-message-bubble relative flex flex-col gap-[5px] rounded-r7 bg-user-msg-bg text-user-msg-text px-3 py-2 break-words min-w-0 max-w-[85%] overflow-hidden text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]",
+				"user-message-bubble relative flex min-w-0 flex-col gap-[6px] comfortable:gap-[8px] rounded-r7 comfortable:rounded-card px-3 py-2 comfortable:px-4 comfortable:py-3 text-heading font-normal break-words select-text text-user-msg-text max-w-[85%] bg-user-msg-bg",
 			assistantProseClassName: "relative min-w-0 text-body text-primary",
 			streamingBubbleClassName:
-				"user-message-bubble flex flex-col gap-[5px] rounded-r7 px-3 py-2 break-words min-w-0 overflow-hidden bg-user-msg-bg text-user-msg-text max-w-[85%] text-body leading-[1.2857] select-text comfortable:rounded-card comfortable:px-4 comfortable:py-3 comfortable:text-[15px]/[20px]",
-			streamingPromptRowClassName: "flex flex-col items-end gap-1 mb-6",
+				"user-message-bubble relative flex min-w-0 flex-col gap-[6px] comfortable:gap-[8px] rounded-r7 comfortable:rounded-card px-3 py-2 comfortable:px-4 comfortable:py-3 text-heading font-normal break-words select-text text-user-msg-text max-w-[85%] bg-user-msg-bg",
+			streamingPromptRowClassName:
+				"group/message-row flex w-full min-w-0 flex-col gap-g5 comfortable:gap-g6 font-sans ms-auto items-end mb-6",
 			streamingProseClassName: "min-w-0 text-body text-primary",
 		});
 	});
@@ -1348,7 +1349,12 @@ describe("SessionChat failed tool row label", () => {
 			feedback: bubbles(rejection),
 			bare: bubbles("The user doesn't want to proceed with this tool use. The tool use was rejected."),
 		}).toStrictEqual({
-			feedback: [["whitespace-pre-wrap", "make it shorter"]],
+			feedback: [
+				[
+					"text-prose whitespace-pre-wrap [overflow-wrap:anywhere] text-pretty [unicode-bidi:plaintext]",
+					"make it shorter",
+				],
+			],
 			bare: [],
 		});
 	});

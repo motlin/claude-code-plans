@@ -2,7 +2,9 @@ import {lazy, type ReactNode, Suspense} from "react";
 
 import {defined} from "../lib/defined";
 
-const PARAGRAPH_CLASS = "text-body whitespace-pre-wrap [overflow-wrap:anywhere] text-pretty [unicode-bidi:plaintext]";
+/** Upstream's user paragraph: `text-body` rewritten to `text-prose`, then `[unicode-bidi:plaintext]` appended. */
+export const USER_PARAGRAPH_CLASS =
+	"text-prose whitespace-pre-wrap [overflow-wrap:anywhere] text-pretty [unicode-bidi:plaintext]";
 
 const CODE_CLASS =
 	"font-mono text-[12px]/[12px] text-code-ink bg-alpha-1 border-[0.5px] border-border rounded-[4.8px] px-[3px] py-[0.75px]";
@@ -79,8 +81,17 @@ function renderInline(text: string, style: LinkStyle = "user"): ReactNode[] {
 const LIST_CLASS =
 	"text-body flex flex-col gap-[6px] ps-5 text-pretty [&>li]:whitespace-pre-wrap [&>li]:[overflow-wrap:anywhere]";
 
-/** Spacing between a bubble's blocks, as upstream's 5px-gap markdown root spaces them. */
-const BLOCK_GAP_CLASS = "mt-[5px]";
+/**
+ * Upstream's user text root: `div[data-testid=user-message]` grid > the 5px-gap block column that spaces a
+ * prompt's paragraphs, lists and code snippets.
+ */
+function UserMessageText({children}: {children: ReactNode}) {
+	return (
+		<div data-testid="user-message" className="relative grid min-w-0 grid-cols-1 gap-2">
+			<div className="flex min-w-0 flex-col gap-1.25">{children}</div>
+		</div>
+	);
+}
 
 /** Upstream's list items: "* " or a canonical "N. ", indented in 3-space steps (a bare marker only on the last line). */
 const BULLET_ITEM = /^((?: {3})*)\*(?: (.*))?$/;
@@ -154,7 +165,7 @@ function splitBlocks(text: string): Block[] {
 }
 
 /** Runs of same-kind sibling entries at `level`, each with the deeper entries under it. */
-function renderList(entries: readonly ListEntry[], level: number, className: string, key: number): ReactNode[] {
+function renderList(entries: readonly ListEntry[], level: number, key: number): ReactNode[] {
 	const lists: ReactNode[] = [];
 	let index = 0;
 	while (index < entries.length) {
@@ -168,7 +179,7 @@ function renderList(entries: readonly ListEntry[], level: number, className: str
 			items.push(
 				<li key={index}>
 					{renderInline(entry.text)}
-					{renderList(entries.slice(index + 1, end), level + 1, "", index)}
+					{renderList(entries.slice(index + 1, end), level + 1, index)}
 				</li>,
 			);
 			index = end;
@@ -179,12 +190,12 @@ function renderList(entries: readonly ListEntry[], level: number, className: str
 				<ol
 					key={listKey}
 					start={head.start === 1 ? undefined : head.start}
-					className={`list-decimal ${LIST_CLASS} ${className}`}
+					className={`list-decimal ${LIST_CLASS}`}
 				>
 					{items}
 				</ol>
 			) : (
-				<ul key={listKey} className={`list-disc ${LIST_CLASS} ${className}`}>
+				<ul key={listKey} className={`list-disc ${LIST_CLASS}`}>
 					{items}
 				</ul>
 			),
@@ -227,17 +238,24 @@ function splitFences(text: string): Segment[] {
  * text between them drawn as lists, the rest kept as typed.
  */
 export function UserPlainText({text, prefix}: {text: string; prefix?: ReactNode}) {
+	return (
+		<UserMessageText>
+			<UserPlainBlocks text={text} prefix={prefix} />
+		</UserMessageText>
+	);
+}
+
+function UserPlainBlocks({text, prefix}: {text: string; prefix?: ReactNode}) {
 	const segments = text.includes("```") ? splitFences(text) : [];
 	if (!segments.some((segment) => segment.kind === "code")) return <UserTextBlocks text={text} prefix={prefix} />;
 	const prefixed = segments[0]?.kind === "text";
 	return (
 		<>
-			{!prefixed && prefix !== undefined && <p className={PARAGRAPH_CLASS}>{prefix}</p>}
+			{!prefixed && prefix !== undefined && <p className={USER_PARAGRAPH_CLASS}>{prefix}</p>}
 			{segments.map((segment, index) => {
-				const gap = index > 0 || (!prefixed && prefix !== undefined) ? BLOCK_GAP_CLASS : "";
 				if (segment.kind === "text") {
 					return (
-						<div key={index} className={`flex flex-col ${gap}`}>
+						<div key={index} className="flex flex-col gap-1.25">
 							<UserTextBlocks text={segment.text} prefix={index === 0 ? prefix : undefined} />
 						</div>
 					);
@@ -246,7 +264,7 @@ export function UserPlainText({text, prefix}: {text: string; prefix?: ReactNode}
 					<div
 						key={index}
 						data-user-code-block={segment.lang}
-						className={`epitaxy-diff overflow-clip rounded-r4 ${gap}`}
+						className="epitaxy-diff overflow-clip rounded-r4"
 					>
 						<Suspense
 							fallback={
@@ -272,7 +290,7 @@ function UserTextBlocks({text, prefix}: {text: string; prefix?: ReactNode}) {
 	const blocks = splitBlocks(text);
 	if (!blocks.some((block) => block.kind === "list")) {
 		return (
-			<p className={PARAGRAPH_CLASS}>
+			<p className={USER_PARAGRAPH_CLASS}>
 				{prefix}
 				{prefix !== undefined && text !== "" && " "}
 				{renderInline(text)}
@@ -282,19 +300,18 @@ function UserTextBlocks({text, prefix}: {text: string; prefix?: ReactNode}) {
 	const leadingPrefix = prefix !== undefined && blocks[0]?.kind === "list";
 	return (
 		<>
-			{leadingPrefix && <p className={PARAGRAPH_CLASS}>{prefix}</p>}
+			{leadingPrefix && <p className={USER_PARAGRAPH_CLASS}>{prefix}</p>}
 			{blocks.map((block, index) => {
-				const gap = index > 0 || leadingPrefix ? BLOCK_GAP_CLASS : "";
 				if (block.kind === "text") {
 					return (
-						<p key={index} className={`${PARAGRAPH_CLASS} ${gap}`}>
+						<p key={index} className={USER_PARAGRAPH_CLASS}>
 							{index === 0 && prefix}
 							{index === 0 && prefix !== undefined && " "}
 							{renderInline(block.text)}
 						</p>
 					);
 				}
-				return renderList(block.entries, 0, gap, index);
+				return renderList(block.entries, 0, index);
 			})}
 		</>
 	);

@@ -91,21 +91,16 @@ describe("SessionChat user bubbles as plain text", () => {
 				},
 			],
 			paragraphClass:
-				"text-body whitespace-pre-wrap [overflow-wrap:anywhere] text-pretty [unicode-bidi:plaintext]",
+				"text-prose whitespace-pre-wrap [overflow-wrap:anywhere] text-pretty [unicode-bidi:plaintext]",
 		});
 	});
 
-	it("grows the bubble to upstream's comfortable 15/20 type, 16/12 padding and 12px card radius (coarse pointer)", () => {
+	it("grows the bubble to upstream's comfortable 8px gap, 16/12 padding and 12px card radius (the 15/20 type is text-heading's comfortable token)", () => {
 		const el = bubble(renderRecords([prompt("hello")]));
 
 		expect(
 			(el.getAttribute("class") ?? "").split(" ").filter((name) => name.startsWith("comfortable:")),
-		).toStrictEqual([
-			"comfortable:rounded-card",
-			"comfortable:px-4",
-			"comfortable:py-3",
-			"comfortable:text-[15px]/[20px]",
-		]);
+		).toStrictEqual(["comfortable:gap-[8px]", "comfortable:rounded-card", "comfortable:px-4", "comfortable:py-3"]);
 	});
 
 	it("opens the user row's bubble gap from 6px to upstream's comfortable 8px (coarse pointer)", () => {
@@ -178,7 +173,7 @@ describe("SessionChat user bubbles as plain text", () => {
 			paragraphs: ["Run this:"],
 			lang: "sh",
 			body: "\n* x\n1. y",
-			shell: "epitaxy-diff overflow-clip rounded-r4 mt-[5px]",
+			shell: "epitaxy-diff overflow-clip rounded-r4",
 		});
 	});
 
@@ -346,7 +341,7 @@ describe("SessionChat user row DOM structure (upstream [data-take-back-entry] > 
 			},
 			rowChildren: ["H2", "DIV"],
 			scope: true,
-			messageAttrs: {turnKey: "user-plain-1", textSize: "md"},
+			messageAttrs: {turnKey: "user-plain-1", textSize: null},
 		});
 	});
 

@@ -87,7 +87,7 @@ describe("SessionChat long-bubble Show more toggle", () => {
 			expanded: [{text: "Show less", expanded: "true"}],
 			recollapsed: [{text: "Show more", expanded: "false"}],
 			className:
-				"h-5 cursor-pointer rounded-r4 px-1.5 text-caption font-normal text-primary transition-colors hover:bg-alpha-1",
+				"self-start h-5 cursor-pointer rounded-r4 px-1.5 text-caption font-normal text-primary transition-colors hover:bg-alpha-1",
 		});
 	});
 
