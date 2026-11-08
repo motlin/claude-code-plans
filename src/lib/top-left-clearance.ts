@@ -33,12 +33,20 @@ export function topLeftClearance(layout: SidebarLayout): {start: number; top: nu
 	}
 }
 
-/** The clearance as CSS vars for <main>; sticky titlebars read them with a 0px fallback. */
+/** The collapsed desktop toggle's right edge: 24px wide at x=12. */
+const COLLAPSED_TOGGLE_RIGHT = 36;
+
+/**
+ * The clearance as CSS vars for <main>; sticky titlebars read them with a 0px fallback. Collapsed, it also sets upstream
+ * shared-styles' `--cds-page-header-start-clearance: calc(var(--df-trigger-right) + 8px)`, the width a pinned page
+ * header's tabs row slides inward to clear the toggle (code-page-header.tsx level-mark).
+ */
 export function topLeftClearanceStyle(layout: SidebarLayout): CSSProperties | undefined {
 	const clearance = topLeftClearance(layout);
 	if (!clearance) return undefined;
 	return {
 		"--top-left-clearance-start": `${clearance.start}px`,
 		"--top-left-clearance-top": `${clearance.top}px`,
+		...(layout === "collapsed" ? {"--cds-page-header-start-clearance": `${COLLAPSED_TOGGLE_RIGHT + 8}px`} : {}),
 	};
 }

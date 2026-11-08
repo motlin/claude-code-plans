@@ -574,11 +574,49 @@ describe("artifacts route", () => {
 			// px-md is 8px (README pad-md); local spacing has no md token, so px-2.
 			parts: [
 				"h-0 -mt-9 max-sm:-mt-12",
+				"pointer-events-none shrink-0",
+				"pointer-events-none max-w-full shrink-0",
 				"sticky top-0",
 				"mx-auto w-full max-w-5xl px-2 md:px-8 flex flex-col pb-12 pt-1",
 			],
 			headerBox: "mx-auto w-full max-w-5xl px-2 md:px-8 pt-9 max-sm:pt-12 pb-6",
 		});
+	});
+
+	it("swaps the header's pb-6 / content's pt-1 for upstream's contentGap lg pb-2 / pt-5 once the title travels away on desktop", async () => {
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				observe(): void {}
+				disconnect(): void {}
+			},
+		);
+		vi.stubGlobal("matchMedia", (query: string) => ({
+			matches: query === "(min-width: 48rem)",
+			addEventListener: () => {},
+			removeEventListener: () => {},
+		}));
+		const rects = vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+			const top = ["tabs-row", "controls"].includes(this.getAttribute("data-cds-part") ?? "") ? 88 : 0;
+			return {top, left: 60, width: 300, height: 32, right: 360, bottom: top + 32, x: 60, y: top} as DOMRect;
+		});
+		try {
+			await renderArtifactsPage("/artifacts", true);
+			const page = document.body.firstElementChild?.firstElementChild;
+			const band = page?.querySelector<HTMLElement>(":scope > .sticky");
+			expect({
+				top: band?.style.top,
+				headerBox: band?.firstElementChild?.className,
+				content: page?.lastElementChild?.className,
+			}).toStrictEqual({
+				top: "-80px",
+				headerBox: "mx-auto w-full max-w-5xl px-2 md:px-8 pt-9 max-sm:pt-12 pb-2",
+				content: "mx-auto w-full max-w-5xl px-2 md:px-8 flex flex-col pb-12 pt-5",
+			});
+		} finally {
+			vi.unstubAllGlobals();
+			rects.mockRestore();
+		}
 	});
 
 	it("lays the grid out with upstream's @container auto-fill template", async () => {

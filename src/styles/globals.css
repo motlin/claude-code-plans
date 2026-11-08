@@ -1765,6 +1765,64 @@ html[data-interface-font="dyslexic"] {
 	}
 }
 
+/* Upstream c6a992d55 page-header motion: with the collapsed sidebar's toggle over the pinned tabs row, the title fades
+   and sinks over the first 28px of scroll (range 0..2800000px, gone after the .001% step) while the tabs ease from
+   their resting x (pulled back by --cds-page-header-tabs-pull) to the shifted x that clears the toggle over the first
+   --cds-page-header-tabs-travel px. PageHeaderMotion (code-page-header.tsx) sets the attributes and vars. Longhands as
+   upstream, so animation-duration:auto follows the timeline reset. */
+@keyframes cds-page-title-leaves {
+	0% {
+		opacity: 1;
+		transform: none;
+	}
+	0.001%,
+	to {
+		opacity: 0;
+		transform: translateY(20px) scale(0.96);
+	}
+}
+
+@keyframes cds-page-tabs-arrive {
+	0% {
+		translate: var(--cds-page-header-tabs-pull);
+		animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+	}
+	0.005%,
+	to {
+		translate: 0;
+	}
+}
+
+@supports (animation-timeline: scroll()) {
+	[data-cds-title-leaves] [data-cds-part="page-title-motion"] {
+		animation-name: cds-page-title-leaves;
+		animation-duration: auto;
+		animation-timing-function: linear;
+		animation-timeline: scroll();
+		animation-range: 0 2800000px;
+	}
+	[data-cds-tabs-arrive] {
+		--cds-page-header-tabs-pull: 0px;
+		--cds-page-header-tabs-travel: 1px;
+	}
+	[data-cds-tabs-arrive] [data-cds-part="tabs-row"] {
+		translate: var(--cds-page-header-tabs-pull);
+		animation-name: cds-page-tabs-arrive;
+		animation-duration: auto;
+		animation-timing-function: linear;
+		animation-timeline: scroll();
+		animation-range: 0px calc(var(--cds-page-header-tabs-travel) * 20000);
+	}
+	[data-cds-title-leaves] [data-cds-part="page-title-motion"],
+	[data-cds-tabs-arrive] [data-cds-part="tabs-row"] {
+		z-index: 1;
+	}
+	[data-cds-title-leaves]:not([data-cds-row-level]) [data-cds-part="page-title-motion"],
+	[data-cds-tabs-arrive] [data-cds-part="tabs-row"] {
+		position: relative;
+	}
+}
+
 /* Upstream `.cds-btn-squish`: pressed buttons shrink to .975 in 60ms and spring
    back over .45s. `transition` replaces `transition-colors`, so the hover fade
    rides along at upstream's 60ms paint-span timing. */

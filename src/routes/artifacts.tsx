@@ -268,6 +268,7 @@ function ArtifactsPage() {
 	const navigate = useNavigate();
 	const [layout, setLayout] = useState<ArtifactsLayout>("grid");
 	const [searchOpen, setSearchOpen] = useState(false);
+	const [titleTravel, setTitleTravel] = useState(0);
 	const [sortLanded, setSortLanded] = useState(false);
 	const now = useMemo(() => new Date(), []);
 	const {isPinned} = useArtifactPins();
@@ -329,7 +330,7 @@ function ArtifactsPage() {
 		<div data-cds="Page" data-width="content" className="flex w-full flex-col">
 			<CodePageHeader
 				title="Artifacts"
-				sticky={{box: ARTIFACTS_BOX_CLASS}}
+				sticky={{box: ARTIFACTS_BOX_CLASS, onTitleTravel: setTitleTravel}}
 				searchOpen={searchOpen}
 				tabs={
 					<Tabs.Root
@@ -390,7 +391,8 @@ function ArtifactsPage() {
 				</p>
 			</CodePageHeader>
 
-			<div className={`${ARTIFACTS_BOX_CLASS} flex flex-col pb-12 pt-1`}>
+			{/* Upstream c193cfc9b Page `contentGap: lg`: pt-1, or pt-5 once the title travels away and only the tabs row pins. */}
+			<div className={`${ARTIFACTS_BOX_CLASS} flex flex-col pb-12 ${titleTravel > 0 ? "pt-5" : "pt-1"}`}>
 				<MakeSomethingNew />
 				{inView.length === 0 && (artifacts.length === 0 || !searching) ? (
 					<ArtifactsEmptyState view={view} />
