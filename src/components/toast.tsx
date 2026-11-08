@@ -1,5 +1,15 @@
 import {CircleAlert, Info, TriangleAlert} from "lucide-react";
-import {type ReactNode, useCallback, useEffect, useRef, useState} from "react";
+import {
+	type CSSProperties,
+	type ReactNode,
+	type RefObject,
+	useCallback,
+	useEffect,
+	useId,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
 
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {ToastContext, type ToastKind, type ToastOptions} from "./toast-context";
@@ -20,8 +30,6 @@ const REPEAT_MIN_MS = 6000;
 /** Upstream's deck: each older toast sits 14px higher and 4% smaller behind the front one. */
 const DECK_OFFSET_PX = 14;
 const DECK_SCALE_STEP = 0.04;
-
-const REGION_CLASS = "pointer-events-none absolute inset-x-0 bottom-0";
 
 /** Upstream's cds Toast variant: the bridge maps `toastType` ("info" → "neutral"). */
 type ToastVariant = "neutral" | "warning" | "danger";
@@ -62,20 +70,108 @@ function durationFor(entry: ToastEntry): number | null {
 	return VARIANT_OF[entry.kind] === "neutral" ? NEUTRAL_DURATION_MS : ALERT_DURATION_MS;
 }
 
+/** Base UI's `visuallyHidden` style, which its Toast viewport uses for the danger announcer. */
+const VISUALLY_HIDDEN: CSSProperties = {
+	clipPath: "inset(50%)",
+	overflow: "hidden",
+	whiteSpace: "nowrap",
+	border: 0,
+	padding: 0,
+	width: 1,
+	height: 1,
+	margin: -1,
+	position: "fixed",
+	top: 0,
+	left: 0,
+};
+
+/** Upstream `W_`: the fixed cds Toast viewport, anchored bottom-left under RTL. */
+const VIEWPORT_CLASS =
+	"pointer-events-none fixed right-4 bottom-4 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col-reverse gap-md [&:where(:root[dir=rtl]_:dir(rtl))]:right-auto [&:where(:root[dir=rtl]_:dir(rtl))]:left-4";
+
+/** Base UI `Toast.Viewport` as upstream styles it. */
+const REGION_CLASS = "pointer-events-auto relative outline-none focus-visible:outline-hidden";
+
+/** Tracks the front toast's height, as Base UI sizes its viewport to the frontmost toast. */
+function useFrontHeight(region: RefObject<HTMLElement | null>, frontId: number | undefined): number {
+	const [height, setHeight] = useState(0);
+	useLayoutEffect(() => {
+		const front = region.current?.querySelector<HTMLElement>("[data-toast]") ?? null;
+		if (frontId === undefined || front === null) {
+			setHeight(0);
+			return undefined;
+		}
+		setHeight(front.offsetHeight);
+		if (typeof ResizeObserver === "undefined") return undefined;
+		const observer = new ResizeObserver(() => {
+			setHeight(front.offsetHeight);
+		});
+		observer.observe(front);
+		return () => {
+			observer.disconnect();
+		};
+	}, [region, frontId]);
+	return height;
+}
+
+/** Window blur pauses every toast timer and window focus resumes them, as Base UI's ToastProvider. */
+function useWindowFocused(): boolean {
+	const [focused, setFocused] = useState(true);
+	useEffect(() => {
+		const onBlur = () => {
+			setFocused(false);
+		};
+		const onFocus = () => {
+			setFocused(true);
+		};
+		window.addEventListener("blur", onBlur);
+		window.addEventListener("focus", onFocus);
+		return () => {
+			window.removeEventListener("blur", onBlur);
+			window.removeEventListener("focus", onFocus);
+		};
+	}, []);
+	return focused;
+}
+
 /**
- * Upstream's toasts: a deck stacked bottom-right (the newest in front, older ones peeking 14px
- * above it), auto-dismissing (paused while hovered or focused) unless they carry an action such as
- * [Undo]. A repeat folds into the open toast as "(×2)". Success toasts announce politely; warnings
- * and errors announce assertively.
+ * Upstream's toasts: the cds Toast viewport (Base UI Toast) stacked bottom-right, newest first in
+ * the DOM and in front, with older ones peeking 14px above it. Toasts auto-dismiss (paused while
+ * the deck is hovered or focused, or the window is blurred) unless they carry an action such as
+ * [Undo]. A repeat folds into the open toast as "(×2)". Every toast announces through one polite
+ * Notifications region; a danger toast's alertdialog stays aria-hidden and is announced by a
+ * visually hidden role=alert until the region takes focus.
  */
 export function ToastProvider({children}: Readonly<{children: ReactNode}>) {
 	const [toasts, setToasts] = useState<ToastEntry[]>([]);
 	const nextId = useRef(0);
 	const fizzyColor = useFizzyLake("color");
+	const region = useRef<HTMLDivElement>(null);
+	const [hovered, setHovered] = useState(false);
+	const [regionFocused, setRegionFocused] = useState(false);
+	const windowFocused = useWindowFocused();
+	/** Base UI `prevFocusElement`: where focus came from before it entered the deck. */
+	const prevFocus = useRef<HTMLElement | null>(null);
 
 	const dismiss = useCallback((id: number) => {
 		setToasts((current) => current.filter((t) => t.id !== id));
 	}, []);
+
+	/** Base UI `handleFocusManagement`: focus the next older toast, else the newer one, else the pre-deck element. */
+	const close = useCallback(
+		(id: number, root: HTMLElement) => {
+			const viewportRegion = root.parentElement;
+			if (viewportRegion?.contains(document.activeElement) === true) {
+				const roots = [...viewportRegion.children].filter((el) => el.hasAttribute("data-toast"));
+				const index = roots.indexOf(root);
+				const next = roots[index + 1] ?? roots[index - 1];
+				if (next instanceof HTMLElement) next.focus();
+				else prevFocus.current?.focus();
+			}
+			dismiss(id);
+		},
+		[dismiss],
+	);
 
 	const toast = useCallback((options: ToastOptions) => {
 		const {signal} = options;
@@ -99,41 +195,79 @@ export function ToastProvider({children}: Readonly<{children: ReactNode}>) {
 		);
 	}, []);
 
-	const depthOf = (entry: ToastEntry) => toasts.length - 1 - toasts.indexOf(entry);
+	const newestFirst = toasts.toReversed();
+	const frontHeight = useFrontHeight(region, newestFirst[0]?.id);
+	const expanded = hovered || regionFocused;
+	const paused = expanded || !windowFocused;
+	const dangers = newestFirst.filter((t) => VARIANT_OF[t.kind] === "danger");
 	return (
 		<ToastContext.Provider value={toast}>
 			{children}
-			<div
-				data-position="bottom-right"
-				{...(toasts.length > 0 ? {"data-focus-region": "notifications"} : {})}
-				className="pointer-events-none fixed right-4 bottom-4 z-[100] w-[360px] max-w-[calc(100vw-2rem)]"
-			>
-				<div role="status" aria-live="polite" className={REGION_CLASS}>
-					{toasts
-						.filter((t) => t.kind === "success")
-						.map((t) => (
-							<ToastItem
-								key={t.id}
-								entry={t}
-								depth={depthOf(t)}
-								fizzyColor={fizzyColor}
-								onDismiss={dismiss}
-							/>
-						))}
+			<div data-cds="Toast" data-position="bottom-right" style={{zIndex: 100}} className={VIEWPORT_CLASS}>
+				{/* Upstream `KS`: the pinned client-health notice slot, kept empty locally. */}
+				<div role="status" aria-live="polite" className="sr-only" />
+				{/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Base UI Toast.Viewport: hover/focus expand the deck, Shift+Tab on the region restores the pre-F6 element */}
+				<div
+					ref={region}
+					tabIndex={-1}
+					role="region"
+					aria-live="polite"
+					aria-atomic={false}
+					aria-relevant="additions text"
+					aria-label="Notifications"
+					{...(toasts.length > 0 ? {"data-focus-region": "notifications"} : {})}
+					data-expanded={expanded ? "" : undefined}
+					className={REGION_CLASS}
+					style={{height: frontHeight}}
+					onMouseEnter={() => {
+						setHovered(true);
+					}}
+					onMouseLeave={() => {
+						setHovered(false);
+					}}
+					onFocus={(event) => {
+						const from = event.relatedTarget;
+						if (from instanceof HTMLElement && !event.currentTarget.contains(from)) {
+							prevFocus.current = from;
+						}
+						setRegionFocused(true);
+					}}
+					onBlur={(event) => {
+						const to = event.relatedTarget;
+						if (to instanceof Node && event.currentTarget.contains(to)) return;
+						setRegionFocused(false);
+					}}
+					onKeyDown={(event) => {
+						if (event.key === "Tab" && event.shiftKey && event.target === event.currentTarget) {
+							event.preventDefault();
+							prevFocus.current?.focus();
+						}
+					}}
+				>
+					{newestFirst.map((t, depth) => (
+						<ToastItem
+							key={t.id}
+							entry={t}
+							depth={depth}
+							paused={paused}
+							expanded={expanded}
+							regionFocused={regionFocused}
+							fizzyColor={fizzyColor}
+							onDismiss={dismiss}
+							onClose={close}
+						/>
+					))}
 				</div>
-				<div role="alert" aria-live="assertive" className={REGION_CLASS}>
-					{toasts
-						.filter((t) => t.kind !== "success")
-						.map((t) => (
-							<ToastItem
-								key={t.id}
-								entry={t}
-								depth={depthOf(t)}
-								fizzyColor={fizzyColor}
-								onDismiss={dismiss}
-							/>
+				{!regionFocused && dangers.length > 0 && (
+					<div style={VISUALLY_HIDDEN}>
+						{dangers.map((t) => (
+							<div key={t.id} role="alert" aria-atomic="true">
+								<div>{t.message}</div>
+								<div>{t.description}</div>
+							</div>
 						))}
-				</div>
+					</div>
+				)}
 			</div>
 		</ToastContext.Provider>
 	);
@@ -195,26 +329,44 @@ function ToastIcon({variant, fizzyColor}: {variant: ToastVariant; fizzyColor: bo
 	);
 }
 
+/** Upstream `wS("popover")`: the card outlines itself in CanvasText under forced colors. */
+const CARD_CLASS =
+	"absolute right-0 bottom-0 flex w-full origin-bottom items-start gap-2 rounded-card forced-colors:border forced-colors:border-solid forced-colors:border-[color:CanvasText] px-4 py-3 text-body transition-transform duration-200 ease-out motion-safe:animate-[toast-in_150ms_ease-out]";
+
 function ToastItem({
 	entry,
 	depth,
+	paused,
+	expanded,
+	regionFocused,
 	fizzyColor,
 	onDismiss,
+	onClose,
 }: {
 	entry: ToastEntry;
 	/** 0 for the front toast, 1 for the one behind it, and so on. */
 	depth: number;
+	/** The deck is hovered or focused, or the window is blurred. */
+	paused: boolean;
+	/** Base UI `expanded`: the deck is hovered or focused. */
+	expanded: boolean;
+	/** Focus is inside the Notifications region. */
+	regionFocused: boolean;
 	/** Upstream `KH()`: fizzy-lake color on, so the card drops its tint and the glyphs fill. */
 	fizzyColor: boolean;
+	/** Timer expiry: drop the toast without touching focus. */
 	onDismiss: (id: number) => void;
+	/** A user close (Escape, Dismiss, action): hand focus off, then drop the toast. */
+	onClose: (id: number, root: HTMLElement) => void;
 }) {
 	const {id, message, description, kind, action, count, repeat} = entry;
-	const [hovered, setHovered] = useState(false);
-	const [focused, setFocused] = useState(false);
+	const titleId = useId();
+	const descriptionId = useId();
+	const rootRef = useRef<HTMLDivElement>(null);
+	const [closeFocused, setCloseFocused] = useState(false);
 	const duration = durationFor(entry);
 	const remaining = useRef(duration);
 	const appliedRepeat = useRef(repeat);
-	const paused = hovered || focused;
 
 	useEffect(() => {
 		// A repeat keeps the toast up at least REPEAT_MIN_MS from now; the cleanup already took off the elapsed time.
@@ -233,45 +385,58 @@ function ToastItem({
 		};
 	}, [paused, id, onDismiss, repeat]);
 
+	const close = () => {
+		if (rootRef.current !== null) onClose(id, rootRef.current);
+	};
 	const behind = depth > 0;
 	const variant = VARIANT_OF[kind];
 	return (
+		// oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- role is dialog or alertdialog (Base UI Toast.Root); Escape closes the toast
 		<div
+			ref={rootRef}
 			data-toast
-			data-cds="Toast"
 			data-kind={kind}
 			data-type={variant}
 			data-behind={behind ? "" : undefined}
+			data-expanded={expanded ? "" : undefined}
+			role={variant === "danger" ? "alertdialog" : "dialog"}
+			tabIndex={0}
+			aria-modal={false}
+			aria-labelledby={titleId}
+			aria-describedby={description === undefined ? undefined : descriptionId}
+			aria-hidden={variant === "danger" && !regionFocused ? true : undefined}
 			style={{
 				transform: `translateY(${depth * -DECK_OFFSET_PX}px) scale(${1 - depth * DECK_SCALE_STEP})`,
 				zIndex: 100 - depth,
 			}}
-			className={`pointer-events-auto absolute right-0 bottom-0 flex w-full origin-bottom items-start gap-2 rounded-card px-4 py-3 text-body transition-transform duration-200 ease-out motion-safe:animate-[toast-in_150ms_ease-out] ${fizzyColor ? STACKS_CARD : PRE_FIZZY_CARD[variant]}`}
-			onMouseEnter={() => {
-				setHovered(true);
-			}}
-			onMouseLeave={() => {
-				setHovered(false);
-			}}
-			onFocus={() => {
-				setFocused(true);
-			}}
-			onBlur={() => {
-				setFocused(false);
+			className={`${CARD_CLASS} ${fizzyColor ? STACKS_CARD : PRE_FIZZY_CARD[variant]}`}
+			onKeyDown={(event) => {
+				if (event.key === "Escape" && event.currentTarget.contains(document.activeElement)) close();
 			}}
 		>
 			<div className={`flex min-w-0 flex-1 items-start gap-2 ${behind ? "invisible opacity-0" : ""}`}>
 				<ToastIcon variant={variant} fizzyColor={fizzyColor} />
-				<div className="min-w-0 flex-1">
-					<p data-toast-message>{count > 1 ? `${message} (×${count})` : message}</p>
-					{description !== undefined && <p className="mt-0.5 text-secondary">{description}</p>}
+				<div className="min-w-0 flex-1 text-pretty break-words">
+					<h2 id={titleId} data-toast-message="" aria-atomic="true" className="font-medium">
+						<span>{message}</span>
+						{count > 1 && (
+							<span data-cds-toast-count="" aria-live={count > 2 ? "off" : undefined}>
+								{` (×${count})`}
+							</span>
+						)}
+					</h2>
+					{description !== undefined && (
+						<p id={descriptionId} className="text-secondary">
+							{description}
+						</p>
+					)}
 				</div>
 				{action && (
 					<button
 						type="button"
 						className="shrink-0 rounded-md border border-border px-2 py-0.5 text-sm font-medium hover:bg-fill-ghost-hover"
 						onClick={() => {
-							onDismiss(id);
+							close();
 							action.onAction();
 						}}
 					>
@@ -281,10 +446,16 @@ function ToastItem({
 				<button
 					type="button"
 					aria-label="Dismiss"
+					aria-hidden={!expanded && !closeFocused ? true : undefined}
+					data-type={variant}
 					className="flex size-5 shrink-0 items-center justify-center rounded-lg p-1 text-secondary hover:bg-fill-ghost-hover hover:text-primary"
-					onClick={() => {
-						onDismiss(id);
+					onFocus={() => {
+						setCloseFocused(true);
 					}}
+					onBlur={() => {
+						setCloseFocused(false);
+					}}
+					onClick={close}
 				>
 					<svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" fill="none">
 						<path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />

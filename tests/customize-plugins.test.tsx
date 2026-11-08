@@ -256,6 +256,8 @@ describe("plugin detail UI", () => {
 				.parentElement?.parentElement?.className.split(" ")
 				.includes("gap-4"),
 		}).toStrictEqual({frame: true, tileGap: true});
+		// The page title, read before Copy link's toast adds its own h2.
+		const title = screen.getByRole("heading", {level: 2});
 		fireEvent.click(copy);
 		await waitFor(() => {
 			expect(writeText).toHaveBeenCalledTimes(1);
@@ -263,7 +265,7 @@ describe("plugin detail UI", () => {
 		const classes = (element: Element | null) => element?.getAttribute("class")?.split(" ") ?? [];
 		expect({
 			copied: writeText.mock.calls[0]?.[0],
-			title: classes(screen.getByRole("heading", {level: 2})).filter((name) => /^(text-\[|font-)/.test(name)),
+			title: classes(title).filter((name) => /^(text-\[|font-)/.test(name)),
 			label: classes(screen.getByRole("heading", {name: "Description"})).filter((name) =>
 				/^(font-|text-(secondary|t6))/.test(name),
 			),

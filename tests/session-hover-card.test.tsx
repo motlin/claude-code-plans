@@ -405,8 +405,9 @@ describe("SessionHoverCard question gate", () => {
 
 		expect({
 			value: replyBox().value,
-			toast: screen.getByText("Response couldn’t be sent. You can try again.").tagName,
-		}).toStrictEqual({value: "Use DuckDB", toast: "P"});
+			toast: screen.getByText("Response couldn’t be sent. You can try again.").closest("[data-toast-message]")
+				?.tagName,
+		}).toStrictEqual({value: "Use DuckDB", toast: "H2"});
 	});
 
 	it("points at the session without a writable pane, and keeps the pointer out", async () => {
@@ -601,7 +602,9 @@ describe("SessionHoverCard plan, permission and no-gate cards", () => {
 			invalidated: invalidate.mock.calls,
 			buttons: card()?.querySelectorAll("button").length,
 			body: card()?.querySelector("[data-card-fallback]")?.textContent,
-			warning: screen.queryByText("That permission request is no longer pending")?.tagName ?? null,
+			warning:
+				screen.queryByText("That permission request is no longer pending")?.closest("[data-toast-message]")
+					?.tagName ?? null,
 			error: screen.queryByText("Response couldn’t be sent. You can try again."),
 		}).toStrictEqual({
 			posts: [["/api/herdr/permission", JSON.stringify({sessionId: SESSION_ID, decision: "deny"})]],
@@ -612,7 +615,7 @@ describe("SessionHoverCard plan, permission and no-gate cards", () => {
 			],
 			buttons: 0,
 			body: "Awaiting inputOpen the session to respond",
-			warning: "P",
+			warning: "H2",
 			error: null,
 		});
 	});

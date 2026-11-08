@@ -89,7 +89,7 @@ async function settle(): Promise<void> {
 }
 
 function dialog(): HTMLElement | null {
-	return screen.queryByRole("dialog");
+	return screen.queryAllByRole("dialog").find((element) => !element.hasAttribute("data-toast")) ?? null;
 }
 
 function toasts(): string[] {

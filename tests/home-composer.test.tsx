@@ -182,12 +182,9 @@ async function typePrompt(text: string) {
 	return textarea;
 }
 
-/** The toast's status region, not the composer's always-mounted skill-chip hint twin. */
+/** The toast deck's Notifications region. */
 async function findToast(): Promise<HTMLElement> {
-	const statuses = await screen.findAllByRole("status");
-	const toast = statuses.find((element) => !element.hasAttribute("data-skill-arg-hint-sr"));
-	if (toast === undefined) throw new Error("no toast status region");
-	return toast;
+	return screen.findByRole("region", {name: "Notifications"});
 }
 
 describe("HomeComposer", () => {
@@ -747,9 +744,7 @@ describe("HomeComposer", () => {
 				message: shown?.querySelector("[data-send-rejected-message]")?.textContent,
 				nextHoldsComposer:
 					shown?.parentElement?.nextElementSibling?.querySelector("[data-composer-card]") !== null,
-				toast: screen
-					.queryAllByRole("status")
-					.filter((each) => !each.hasAttribute("data-skill-arg-hint-sr") && each.textContent !== "").length,
+				toast: document.querySelectorAll("[data-toast]").length,
 				clipboard: writeText.mock.calls,
 			}).toStrictEqual({
 				value: "fix the flaky test",
@@ -870,9 +865,9 @@ describe("HomeComposer", () => {
 			});
 
 			await waitFor(() => {
-				expect(document.querySelector("[data-focus-region=notifications] [role=alert]")?.textContent).toBe(
-					"Your new session couldn’t start. Your prompt is back on the New session page.",
-				);
+				expect(
+					document.querySelector("[data-focus-region=notifications] [data-toast-message]")?.textContent,
+				).toBe("Your new session couldn’t start. Your prompt is back on the New session page.");
 			});
 			const stored: unknown = JSON.parse(localStorage.getItem("ccp-composer-draft:home") ?? "null");
 			await act(async () => router.navigate({to: "/"}));
