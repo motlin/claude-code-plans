@@ -88,6 +88,9 @@
 	   Settings ▸ Code font from merging "==" or "->" into ligatures. */
 	--font-mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
 	--font-mono--font-feature-settings: "liga" 0, "calt" 0;
+	/* Upstream `font-mono-ui`: the mono face in UI text, such as `code` in a session chip's title. */
+	--font-mono-ui: var(--font-mono);
+	--font-mono-ui--font-feature-settings: "liga" 0, "calt" 0;
 	--font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 	/* Upstream's anthropic-sans has no contextual arrows; Inter's calt would draw "->" as "→". */
 	--font-sans--font-feature-settings: "calt" 0;
@@ -2538,6 +2541,21 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 		opacity: 0;
 		transform: translateY(8px);
 	}
+}
+
+/* Upstream's struck-through link chip: inside <del>/<s> the chip draws its own strike line,
+   since text-decoration doesn't reach into an inline-flex box. */
+:is(del, s) .epitaxy-link-chip {
+	position: relative;
+}
+
+:is(del, s) .epitaxy-link-chip::after {
+	content: "";
+	position: absolute;
+	inset-inline: 0;
+	top: 50%;
+	border-top: 1px solid currentColor;
+	pointer-events: none;
 }
 
 /* Upstream's epitaxy-hint-fade-in: a waiting row's at-rest receipt rises into place. */

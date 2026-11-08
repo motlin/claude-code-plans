@@ -175,6 +175,7 @@ describe("root consumer and per-weight axis re-declaration (T2)", () => {
 			"font-control",
 			"font-control-regular",
 			"font-mono",
+			"font-mono-ui",
 			"font-sans",
 			"font-voice",
 			"font-size",
