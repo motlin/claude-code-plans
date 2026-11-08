@@ -71,6 +71,47 @@ const PATCH_RAIL_MARKS = [
 	"change-addition:start:end",
 ];
 
+/** Two hunks with function context; the second starts with a deletion (matched by deletionStart). */
+const HEADED_PATCH = `--- a/src/a.ts
++++ b/src/a.ts
+@@ -14,3 +14,3 @@ function foo() {
+   a
+-  b
++  B
+   c
+@@ -24,3 +24,3 @@ function second() {
+-  b
++  B
+   c
+   d
+`;
+
+/** A session-edits style hunk: bare header, no context. */
+const BARE_PATCH = `--- a/src/a.ts
++++ b/src/a.ts
+@@ -14,3 +14,3 @@
+   a
+-  b
++  B
+   c
+`;
+
+function hunkHeadingState(root: ShadowRoot) {
+	return {
+		labels: [...root.querySelectorAll("[data-gutter] [data-unmodified-lines]")]
+			.filter((label) => label.querySelector("[data-hunk-heading]"))
+			.map((label) => ({
+				count: label.querySelector("[data-unmodified-count]")?.textContent,
+				heading: label.querySelector("[data-hunk-heading]")?.textContent,
+				title: label.querySelector("[data-hunk-heading]")?.getAttribute("title"),
+			})),
+		sheet: root.adoptedStyleSheets.some((sheet) =>
+			[...sheet.cssRules].some((rule) => rule.cssText.includes("[data-hunk-heading]")),
+		),
+		outsideDeletions: root.querySelectorAll("[data-additions] [data-hunk-heading]").length,
+	};
+}
+
 function contentRowTypes(root: ShadowRoot): string[] {
 	return [...root.querySelectorAll("[data-content] > [data-line-type]")].map(
 		(row) => row.getAttribute("data-line-type") ?? "",
@@ -341,6 +382,51 @@ describe("DiffFile", () => {
 		await waitFor(() => {
 			expect(state()).toStrictEqual({...expected, addButton: true});
 		});
+	});
+
+	// Upstream c44d00c7f xn: Bn(e, fileDiff) (c91a5e4a6 g) after the other post-render passes.
+	it("heads each gutter separator with its hunk's context and adopts the hunk-heading sheet", async () => {
+		const view = render(<DiffFile patch={HEADED_PATCH} />);
+		const expected = {
+			labels: [
+				{count: "13 unmodified lines", heading: "function foo() {", title: "function foo() {"},
+				{count: "7 unmodified lines", heading: "function second() {", title: "function second() {"},
+			],
+			sheet: true,
+			outsideDeletions: 0,
+		};
+		await waitFor(() => {
+			expect(hunkHeadingState(shadowRootOf(view.container))).toStrictEqual(expected);
+		});
+
+		view.rerender(<DiffFile patch={HEADED_PATCH} wordWrap={false} />);
+		await waitFor(() => {
+			expect(shadowRootOf(view.container).querySelector("pre[data-diff]")?.getAttribute("data-overflow")).toBe(
+				"scroll",
+			);
+		});
+		expect(hunkHeadingState(shadowRootOf(view.container))).toStrictEqual(expected);
+	});
+
+	it("puts split-view headings in the deletions column only", async () => {
+		const view = render(<DiffFile patch={HEADED_PATCH} diffStyle="split" />);
+		await waitFor(() => {
+			const root = shadowRootOf(view.container);
+			expect({
+				deletions: root.querySelectorAll("[data-deletions] [data-hunk-heading]").length,
+				all: root.querySelectorAll("[data-hunk-heading]").length,
+			}).toStrictEqual({deletions: 2, all: 2});
+		});
+	});
+
+	it("gives a context-less session-edits hunk no heading", async () => {
+		const view = render(<DiffFile patch={BARE_PATCH} />);
+		await waitFor(() => {
+			expect(shadowRootOf(view.container).querySelector("[data-gutter] [data-unmodified-lines]")?.innerHTML).toBe(
+				"13 unmodified lines",
+			);
+		});
+		expect(shadowRootOf(view.container).querySelectorAll("[data-hunk-heading]").length).toBe(0);
 	});
 
 	it("moves the gutter + clear of the rail under data-add-button", () => {

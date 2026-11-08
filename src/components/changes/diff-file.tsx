@@ -16,6 +16,7 @@ import {
 	diffLineHeightStyle,
 	diffsInjectedCss,
 } from "./diffs-config";
+import {adoptHunkHeadingCss, decorateHunkHeadings} from "./diff-hunk-heading";
 import {railsPostRender} from "./diff-rails";
 import {type DiffStyle, useSettings} from "../settings-context";
 import {useResolvedTheme} from "../theme-context";
@@ -217,8 +218,9 @@ export function DiffFile({
 		[annotations],
 	);
 
-	const options = useMemo<FileDiffOptions<ReactNode, undefined>>(
-		() => ({
+	const options = useMemo<FileDiffOptions<ReactNode, undefined>>(() => {
+		const drawRails = railsPostRender(onRequestChanges !== undefined);
+		return {
 			theme: codeThemes,
 			themeType: resolvedTheme,
 			diffStyle,
@@ -229,16 +231,20 @@ export function DiffFile({
 			stickyHeader: true,
 			collapsed,
 			enableGutterUtility: onRequestChanges !== undefined,
-			// Upstream c44d00c7f `se.draw(e)`: Q(wordDiff, !readOnly).draw after each render.
-			onPostRender: railsPostRender(onRequestChanges !== undefined),
+			// Upstream c44d00c7f `xn`: `se.draw(e)` (Q(wordDiff, !readOnly).draw), then `Bn(e, fileDiff)` (c91a5e4a6 g).
+			onPostRender: (node, instance, phase) => {
+				drawRails(node, instance, phase);
+				if (phase === "unmount") return;
+				adoptHunkHeadingCss(node);
+				decorateHunkHeadings(node, fileDiff);
+			},
 			unsafeCSS: diffsInjectedCss({
 				disableFileHeader: false,
 				gutterUtility: onRequestChanges !== undefined,
 				panels,
 			}),
-		}),
-		[codeThemes, resolvedTheme, diffStyle, wordWrap, wordDiff, collapsed, onRequestChanges, panels],
-	);
+		};
+	}, [fileDiff, codeThemes, resolvedTheme, diffStyle, wordWrap, wordDiff, collapsed, onRequestChanges, panels]);
 	// Upstream sets the Changes font from JS: the pane sits outside the CSS hook classes for Code font size.
 	const style = useMemo<CSSProperties>(
 		() => ({
