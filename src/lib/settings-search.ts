@@ -1,5 +1,6 @@
 import {settingsTabLabels} from "./schema-choices";
 import {type SettingsTab, SettingsTabSchema} from "./settings-hash";
+import {type SettingsNavMemberKey, type SettingsSearchName, settingsSearchNames} from "./settings-nav";
 
 export interface SettingsIndexEntry {
 	tab: SettingsTab;
@@ -177,6 +178,8 @@ export interface RankedSettingsSection {
 	score: number;
 	/** The keyword that found a keyword-only section. */
 	keyword?: string;
+	/** The `alsoFoundBy` name (e.g. "General" for Appearance) that matched when the section name did not. */
+	alias?: string;
 	/** Matching rows, best rank first, ties in index order. */
 	rows: RankedSettingsRow[];
 }
@@ -184,17 +187,50 @@ export interface RankedSettingsSection {
 const ROW_SCORE_BASE = 5;
 const KEYWORD_SCORE = 10;
 
-/** Every section that matches `query`, by score then nav order. */
-export function rankSettingsSections(query: string): RankedSettingsSection[] {
-	if (normalizeSettingsQuery(query) === "") return [];
+/** Upstream's `gn` gate: `alsoFoundBy` names only match queries of 2+ characters. */
+const MIN_ALIAS_QUERY_LENGTH = 2;
+
+type SettingsSearchNames = Partial<Record<SettingsNavMemberKey, SettingsSearchName>>;
+
+/** The nav table's renames and aliases (upstream `searchNames`). */
+const NAV_SEARCH_NAMES: SettingsSearchNames = settingsSearchNames();
+
+/** The first `alsoFoundBy` name that matches, with its rank. */
+function matchAlias(query: string, aliases: readonly string[]): {alias: string; rank: number} | undefined {
+	for (const alias of aliases) {
+		const rank = rankSettingsLabel(query, alias);
+		if (rank !== -1) return {alias, rank};
+	}
+	return undefined;
+}
+
+/**
+ * Every section that matches `query`, by score then nav order. A section renamed by its nav row ranks by
+ * the new name, then (for 2+ character queries) by its aliases; a row titled like the new name is dropped.
+ */
+export function rankSettingsSections(
+	query: string,
+	searchNames: SettingsSearchNames = NAV_SEARCH_NAMES,
+): RankedSettingsSection[] {
+	const normalized = normalizeSettingsQuery(query);
+	if (normalized === "") return [];
+	const aliasesApply = normalized.length >= MIN_ALIAS_QUERY_LENGTH;
 	return SettingsTabSchema.options
 		.flatMap((tab): RankedSettingsSection[] => {
-			const rows = SETTINGS_INDEX.filter((entry) => entry.tab === tab)
+			const searchName = searchNames[tab];
+			const name = searchName?.name ?? settingsTabLabels[tab];
+			const rows = SETTINGS_INDEX.filter(
+				(entry) =>
+					entry.tab === tab &&
+					(searchName?.name === undefined || entry.title.toLowerCase() !== name.toLowerCase()),
+			)
 				.map((entry) => ({entry, rank: rankEntry(query, entry)}))
 				.filter((row) => row.rank !== -1)
 				.toSorted((a, b) => a.rank - b.rank);
-			const nameRank = rankSettingsLabel(query, settingsTabLabels[tab]);
+			const nameRank = rankSettingsLabel(query, name);
 			if (nameRank !== -1) return [{tab, score: nameRank, rows}];
+			const aliasMatch = aliasesApply ? matchAlias(query, searchName?.alsoFoundBy ?? []) : undefined;
+			if (aliasMatch !== undefined) return [{tab, score: aliasMatch.rank, alias: aliasMatch.alias, rows}];
 			const [best] = rows;
 			if (best !== undefined) return [{tab, score: ROW_SCORE_BASE + best.rank, rows}];
 			const keyword = SETTINGS_SECTION_KEYWORDS[tab]?.find(

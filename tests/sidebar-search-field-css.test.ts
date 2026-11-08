@@ -56,6 +56,14 @@ describe("sidebar search field CSS", () => {
 		).toStrictEqual([]);
 	});
 
+	it("gives hit-gap-y-px lists a 1px row gap and their non-last rows a 1px hit gap, as upstream", () => {
+		expect(
+			missing([
+				"@utility hit-gap-y-px { row-gap: 1px; & > :where(:not(:last-child)) { --cds-hit-gap-y: 1px; } }",
+			]),
+		).toStrictEqual([]);
+	});
+
 	it("defines upstream's light and dark field tokens", () => {
 		expect(
 			missing([

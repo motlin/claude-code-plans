@@ -3,6 +3,7 @@ import {useLocation, useNavigate} from "@tanstack/react-router";
 import {ChevronLeft, ChevronRight, X} from "lucide-react";
 import {
 	type ComponentProps,
+	Fragment,
 	Suspense,
 	use,
 	useCallback,
@@ -16,7 +17,6 @@ import {
 import {DialogPopup} from "../ui/dialog-popup";
 import {customizeSectionLabels, settingsTabLabels} from "../../lib/schema-choices";
 import {
-	type CustomizeSection,
 	CustomizeSectionSchema,
 	customizeHash,
 	parseCustomizeHash,
@@ -45,6 +45,14 @@ import {SETTINGS_PHONE_QUERY, useMediaQuery} from "../../lib/use-phone-sheet";
 import {CDS_TAB_CLASS, CDS_TAB_LIST_CLASS} from "../ui/cds-tabs";
 import {DensityScope} from "../ui/density";
 import {DIALOG_BODY_CLASS} from "../ui/dialog-classes";
+import {
+	navMemberKey,
+	navRowFor,
+	navRowLabel,
+	type SettingsNavMember,
+	type SettingsNavRow,
+	settingsNavGroups,
+} from "../../lib/settings-nav";
 
 const TAB_PANELS = {
 	general: GeneralSettings,
@@ -77,7 +85,7 @@ export function CustomizeDialogPanel(props: CustomizeDialogPanelProps) {
 	return <Panel {...props} />;
 }
 
-type NavItem = {kind: "settings"; tab: SettingsTab} | {kind: "customize"; section: CustomizeSection};
+type NavItem = SettingsNavMember;
 
 /** All local nav items; grouped below by kind while preserving each kind's relative order. */
 const NAV_ITEMS: readonly NavItem[] = SettingsTabSchema.options.flatMap((tab): NavItem[] =>
@@ -89,13 +97,11 @@ const NAV_ITEMS: readonly NavItem[] = SettingsTabSchema.options.flatMap((tab): N
 		: [{kind: "settings", tab}],
 );
 
-const NAV_GROUPS = [
-	{label: "Preferences", items: NAV_ITEMS.filter((item) => item.kind === "settings")},
-	{label: "Customize", items: NAV_ITEMS.filter((item) => item.kind === "customize")},
-];
+/** The desktop nav's row groups (upstream's grouped nav: untitled groups split by separators). */
+const NAV_ROW_GROUPS = settingsNavGroups();
 
 function navItemKey(item: NavItem): string {
-	return item.kind === "settings" ? item.tab : `customize-${item.section}`;
+	return navMemberKey(item);
 }
 
 function navItemLabel(item: NavItem): string {
@@ -354,6 +360,16 @@ export function SettingsDialog() {
 		// Upstream replaces the entry coming from a Settings tab but pushes one between customize sections.
 		else navigateHash(customizeHash({section: item.section}), customize === null);
 	};
+	const currentMember: NavItem =
+		customize === null ? {kind: "settings", tab} : {kind: "customize", section: customize.section};
+	// Upstream's standsFor: a row is current for every member, so Customize is current on any customize section.
+	const isRowSelected = (row: SettingsNavRow) => navRowFor(currentMember) === row;
+	// A row selects its first member; Customize replaces the entry and is a no-op while that member is current.
+	const selectRow = (row: SettingsNavRow) => {
+		const [first] = row.members;
+		if (first.kind === "settings") selectTab(first.tab);
+		else if (customize?.section !== first.section) navigateHash(customizeHash({section: first.section}), true);
+	};
 
 	const closeButton = (
 		<Dialog.Close
@@ -439,35 +455,27 @@ export function SettingsDialog() {
 										<SettingsSearch inputRef={searchInputRef} onSelect={selectTab} />
 									</div>
 									<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto scroll-fade-y scroll-fade-hide-top scroll-fade-size-6 scroll-pt-2 px-4 pt-3 pb-4">
-										{NAV_GROUPS.map((group) => (
-											<div key={group.label} className="flex shrink-0 flex-col gap-3">
-												<div
-													id={`${titleId}-${group.label}`}
-													className="px-0 pt-3 text-[12px]/[17px] text-ink-muted"
-												>
-													{group.label}
-												</div>
-												<ul
-													aria-labelledby={`${titleId}-${group.label}`}
-													className="flex flex-col gap-px"
-												>
-													{group.items.map((item) => {
-														const selected = isSelected(item);
+										{NAV_ROW_GROUPS.map((group, index) => (
+											<Fragment key={group.group}>
+												{index > 0 && (
+													<div aria-hidden="true" className="mx-2 border-t border-alpha-2" />
+												)}
+												<ul className="flex flex-col hit-gap-y-px">
+													{group.rows.map((row) => {
+														const selected = isRowSelected(row);
+														const [first] = row.members;
 														const Icon =
-															item.kind === "settings"
-																? SETTINGS_TAB_ICONS[item.tab]
-																: CUSTOMIZE_SECTION_ICONS[item.section];
+															first.kind === "settings"
+																? SETTINGS_TAB_ICONS[first.tab]
+																: CUSTOMIZE_SECTION_ICONS[first.section];
 														return (
-															<li
-																key={navItemKey(item)}
-																data-testid={`${navItemKey(item)}-settings`}
-															>
+															<li key={row.testId} data-testid={row.testId}>
 																<button
 																	type="button"
 																	aria-current={selected ? "page" : undefined}
-																	{...navItemWarmers(item)}
+																	{...navItemWarmers(first)}
 																	onClick={() => {
-																		selectItem(item);
+																		selectRow(row);
 																	}}
 																	className={`flex h-8 w-full shrink-0 items-center gap-3 rounded-r6 px-2 text-left text-body transition-colors focus-visible:outline-hidden not-dark:focus-visible:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#257de0,0_0_6px_1px_#cde2fb] dark:focus-visible:shadow-[inset_0_0_0_1px_rgb(21_21_21),0_0_0_1px_rgb(37_125_224),0_0_6px_1px_rgb(24_79_149/0.6)] ${
 																		selected
@@ -479,13 +487,13 @@ export function SettingsDialog() {
 																		aria-hidden="true"
 																		className="size-5 shrink-0 text-secondary"
 																	/>
-																	{navItemLabel(item)}
+																	{navRowLabel(row)}
 																</button>
 															</li>
 														);
 													})}
 												</ul>
-											</div>
+											</Fragment>
 										))}
 									</div>
 								</nav>

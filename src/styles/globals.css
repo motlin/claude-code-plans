@@ -4436,6 +4436,14 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	}
 }
 
+/* Upstream hit-gap-y-px: a 1px row gap that each non-last row's hit-row-main::before reaches across. */
+@utility hit-gap-y-px {
+	row-gap: 1px;
+	& > :where(:not(:last-child)) {
+		--cds-hit-gap-y: 1px;
+	}
+}
+
 /* Upstream .df-leading-slot: a fixed box that centers the row's icon. */
 .df-leading-slot {
 	display: flex;

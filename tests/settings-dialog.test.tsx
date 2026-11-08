@@ -227,9 +227,9 @@ describe("SettingsDialog", () => {
 		});
 	});
 
-	// Upstream's nav column: w-53 (212px) with the fizzy-lake seam, px-lg/pt-lg search, and the list's
-	// [&>.text-caption]:px-0 pulling the group labels flush; the first group is "Preferences".
-	it("sizes the nav column, search wrapper, list and group labels like upstream", async () => {
+	// Upstream's nav column: w-53 (212px) with the fizzy-lake seam, px-lg/pt-lg search, and the grouped
+	// nav's untitled lists split by hairline separators.
+	it("sizes the nav column, search wrapper, list and separators like upstream", async () => {
 		await renderAt("/#settings/general");
 
 		const dialog = await screen.findByRole("dialog", {name: "Settings"});
@@ -237,21 +237,30 @@ describe("SettingsDialog", () => {
 		const search = within(nav).getByRole("textbox", {name: "Search settings"});
 		const searchWrap = [...nav.children].find((child) => child.contains(search));
 		const lists = within(nav).getAllByRole("list");
-		const listWrap = lists[0]?.parentElement?.parentElement;
-		const labels = lists.map((list) => document.getElementById(list.getAttribute("aria-labelledby") ?? ""));
+		const listWrap = lists[0]?.parentElement;
 
 		expect({
 			nav: nav.className,
 			searchWrap: searchWrap?.className,
 			list: listWrap?.className,
-			labels: labels.map((label) => [label?.textContent, label?.className]),
+			children: [...(listWrap?.children ?? [])].map((child) => [
+				child.tagName,
+				child.className,
+				child.getAttribute("aria-hidden"),
+				child.getAttribute("aria-labelledby"),
+			]),
 		}).toStrictEqual({
 			nav: "row-start-2 flex w-[212px] min-h-0 shrink-0 flex-col border-e border-[rgb(0_0_0/0.1)] dark:border-white/10 bg-surface-1",
 			searchWrap: "shrink-0 px-4 pt-4",
 			list: "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto scroll-fade-y scroll-fade-hide-top scroll-fade-size-6 scroll-pt-2 px-4 pt-3 pb-4",
-			labels: [
-				["Preferences", "px-0 pt-3 text-[12px]/[17px] text-ink-muted"],
-				["Customize", "px-0 pt-3 text-[12px]/[17px] text-ink-muted"],
+			children: [
+				["UL", "flex flex-col hit-gap-y-px", null, null],
+				["DIV", "mx-2 border-t border-alpha-2", "true", null],
+				["UL", "flex flex-col hit-gap-y-px", null, null],
+				["DIV", "mx-2 border-t border-alpha-2", "true", null],
+				["UL", "flex flex-col hit-gap-y-px", null, null],
+				["DIV", "mx-2 border-t border-alpha-2", "true", null],
+				["UL", "flex flex-col hit-gap-y-px", null, null],
 			],
 		});
 	});
@@ -274,59 +283,40 @@ describe("SettingsDialog", () => {
 		const nav = screen.getByRole("navigation", {name: "Settings"});
 		expect(
 			[...nav.querySelectorAll("button")].map((button) => button.firstElementChild?.tagName.toLowerCase()),
-		).toStrictEqual(Array.from({length: 12}, () => "svg"));
+		).toStrictEqual(Array.from({length: 10}, () => "svg"));
 	});
 
-	it("lists every navigation item once in a ul labelled by its Preferences or Customize heading, as upstream", async () => {
+	it("lists one row per upstream nav row, in untitled groups, with the renamed Appearance, Customize and Code rows", async () => {
 		await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
 		const nav = screen.getByRole("navigation", {name: "Settings"});
 		expect(
 			within(nav)
 				.getAllByRole("list")
-				.map((list) => {
-					const labelId = list.getAttribute("aria-labelledby") ?? "";
-					const label = document.getElementById(labelId);
-					return {
-						name: within(nav).getByRole("list", {name: label?.textContent ?? ""}) === list,
-						label: {tag: label?.tagName.toLowerCase(), text: label?.textContent},
-						className: list.className,
-						items: within(list)
-							.getAllByRole("listitem")
-							.map((item) => ({
-								testId: item.getAttribute("data-testid"),
-								label: item.textContent,
-								selected: within(item).getByRole("button").getAttribute("aria-current"),
-							})),
-					};
-				}),
+				.map((list) =>
+					within(list)
+						.getAllByRole("listitem")
+						.map((item) => ({
+							testId: item.getAttribute("data-testid"),
+							label: item.textContent,
+							selected: within(item).getByRole("button").getAttribute("aria-current"),
+						})),
+				),
 		).toStrictEqual([
-			{
-				name: true,
-				label: {tag: "div", text: "Preferences"},
-				className: "flex flex-col gap-px",
-				items: [
-					{testId: "general-settings", label: "General", selected: "page"},
-					{testId: "usage-settings", label: "Usage", selected: null},
-					{testId: "claude-code-settings", label: "Claude Code", selected: null},
-					{testId: "transcript-settings", label: "Transcript", selected: null},
-					{testId: "sessions-settings", label: "Sessions", selected: null},
-					{testId: "application-settings", label: "Application", selected: null},
-					{testId: "ai-features-settings", label: "AI features", selected: null},
-					{testId: "claude-config-settings", label: "Claude Config", selected: null},
-					{testId: "setup-settings", label: "Setup", selected: null},
-				],
-			},
-			{
-				name: true,
-				label: {tag: "div", text: "Customize"},
-				className: "flex flex-col gap-px",
-				items: [
-					{testId: "customize-skills-settings", label: "Skills", selected: null},
-					{testId: "customize-connectors-settings", label: "Connectors", selected: null},
-					{testId: "customize-plugins-settings", label: "Plugins", selected: null},
-				],
-			},
+			[{testId: "usage-settings", label: "Usage", selected: null}],
+			[{testId: "general-settings", label: "Appearance", selected: "page"}],
+			[
+				{testId: "customize-connectors-settings", label: "Customize", selected: null},
+				{testId: "claude-code-settings", label: "Code", selected: null},
+				{testId: "transcript-settings", label: "Transcript", selected: null},
+				{testId: "sessions-settings", label: "Sessions", selected: null},
+			],
+			[
+				{testId: "application-settings", label: "Application", selected: null},
+				{testId: "ai-features-settings", label: "AI features", selected: null},
+				{testId: "claude-config-settings", label: "Claude Config", selected: null},
+				{testId: "setup-settings", label: "Setup", selected: null},
+			],
 		]);
 	});
 
@@ -344,7 +334,7 @@ describe("SettingsDialog", () => {
 			"not-dark:focus-visible:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#257de0,0_0_6px_1px_#cde2fb]",
 			"dark:focus-visible:shadow-[inset_0_0_0_1px_rgb(21_21_21),0_0_0_1px_rgb(37_125_224),0_0_6px_1px_rgb(24_79_149/0.6)]",
 		];
-		expect({selected: classes("General"), rest: classes("Usage")}).toStrictEqual({
+		expect({selected: classes("Appearance"), rest: classes("Usage")}).toStrictEqual({
 			selected: expected,
 			rest: [...expected, "hover:bg-fill-ghost-hover", "hover:text-primary"],
 		});
@@ -446,7 +436,7 @@ describe("SettingsDialog", () => {
 		await screen.findByRole("dialog", {name: "Settings"});
 		expect({location: location(router), current: currentTabs()}).toStrictEqual({
 			location: {pathname: "/", hash: "settings/general"},
-			current: ["General"],
+			current: ["Appearance"],
 		});
 	});
 });
@@ -741,11 +731,8 @@ describe("SettingsDialog local tabs", () => {
 		expect(tabOutline(dialog)).toStrictEqual(outline);
 	});
 
-	it("opens Skills inside the dialog by hash with the Yours/Discover control", async () => {
-		const router = await renderAt("/#settings/general");
-		await screen.findByRole("dialog", {name: "Settings"});
-
-		fireEvent.click(screen.getByRole("button", {name: "Skills"}));
+	it("opens Skills inside the dialog by hash with the Yours/Discover control, the Customize row current", async () => {
+		const router = await renderAt("/#customize/skills/yours");
 
 		const views = await screen.findByRole("radiogroup", {name: "Skills"});
 		expect({
@@ -757,7 +744,7 @@ describe("SettingsDialog local tabs", () => {
 			]),
 		}).toStrictEqual({
 			location: {pathname: "/", hash: "customize/skills/yours"},
-			current: ["Skills"],
+			current: ["Customize"],
 			views: [
 				["Yours", "true"],
 				["Discover", "false"],
@@ -822,24 +809,16 @@ describe("SettingsDialog local tabs", () => {
 			target: {value: "gh"},
 		});
 
-		fireEvent.click(screen.getByRole("button", {name: "Connectors"}));
+		fireEvent.click(screen.getByRole("button", {name: "Customize"}));
 		await waitFor(() => {
 			expect(location(router)).toStrictEqual({pathname: "/", hash: "customize/connectors/yours"});
 			expect(document.querySelector("[data-customize-dialog-pane] header h2")?.textContent).toBe("Connectors");
 		});
-		const inConnectors = screen.getByTestId<HTMLInputElement>("customize-header-search").value;
-
-		fireEvent.click(screen.getByRole("button", {name: "Skills"}));
-		await waitFor(() => {
-			expect(location(router)).toStrictEqual({pathname: "/", hash: "customize/skills/yours"});
-			expect(document.querySelector("[data-customize-dialog-pane] header h2")?.textContent).toBe("Skills");
-		});
 
 		expect({
-			inConnectors,
-			backInSkills: screen.getByTestId<HTMLInputElement>("customize-header-search").value,
+			inConnectors: screen.getByTestId<HTMLInputElement>("customize-header-search").value,
 			unified: screen.queryByTestId("customize-unified-search-results"),
-		}).toStrictEqual({inConnectors: "", backInSkills: "", unified: null});
+		}).toStrictEqual({inConnectors: "", unified: null});
 	});
 
 	it("opens the narrow Customize search on ⌘F inside the dialog with a fine pointer, as upstream does", async () => {
@@ -878,7 +857,7 @@ describe("SettingsDialog local tabs", () => {
 		await waitFor(() => {
 			expect(location(router)).toStrictEqual({pathname: "/", hash: "customize/plugins"});
 		});
-		expect(currentTabs()).toStrictEqual(["Plugins"]);
+		expect(currentTabs()).toStrictEqual(["Customize"]);
 	});
 
 	it("opens Discover for a bare #customize/<section> hash, as upstream does", async () => {
@@ -896,25 +875,30 @@ describe("SettingsDialog local tabs", () => {
 		]);
 	});
 
-	it("replaces the entry going from a Settings tab to a customize section, then pushes between sections", async () => {
+	it("opens Connectors from the Customize row, replacing the entry, and ignores a click while Connectors is current", async () => {
 		const router = await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
 		const visited: string[] = [];
-		for (const name of ["Skills", "Connectors", "Plugins"]) {
-			fireEvent.click(screen.getByRole("button", {name}));
-			await screen.findByRole("heading", {level: 2, name});
+		for (let click = 0; click < 2; click++) {
+			fireEvent.click(screen.getByRole("button", {name: "Customize"}));
+			await screen.findByRole("heading", {level: 2, name: "Connectors"});
 			visited.push(`${router.history.length}:${router.state.location.hash}`);
 		}
-		router.history.back();
-		await waitFor(() => {
-			expect(router.state.location.hash).toBe("customize/connectors/yours");
-		});
 
-		expect(visited).toStrictEqual([
-			"1:customize/skills/yours",
-			"2:customize/connectors/yours",
-			"3:customize/plugins/yours",
-		]);
+		expect({visited, current: currentTabs()}).toStrictEqual({
+			visited: ["1:customize/connectors/yours", "1:customize/connectors/yours"],
+			current: ["Customize"],
+		});
+	});
+
+	it("replaces another customize section with Connectors from the Customize row", async () => {
+		const router = await renderAt("/#customize/plugins/yours");
+		await screen.findByRole("heading", {level: 2, name: "Plugins"});
+
+		fireEvent.click(screen.getByRole("button", {name: "Customize"}));
+
+		await screen.findByRole("heading", {level: 2, name: "Connectors"});
+		expect(`${router.history.length}:${router.state.location.hash}`).toBe("1:customize/connectors/yours");
 	});
 
 	it.each(["/#customize/bogus", "/#customize/skills/mine", "/#customize"])(
@@ -953,7 +937,7 @@ describe("SettingsDialog local tabs", () => {
 		await screen.findByRole("button", {name: "Search"});
 
 		expect({current: currentTabs(), views: screen.queryByRole("radiogroup")}).toStrictEqual({
-			current: ["Connectors"],
+			current: ["Customize"],
 			views: null,
 		});
 	});
@@ -993,7 +977,7 @@ describe("SettingsDialog local tabs", () => {
 				.map((link) => [link.textContent, link.getAttribute("href"), link.getAttribute("aria-current")]),
 		}).toStrictEqual({
 			location: {pathname: "/", hash: "customize/skills/yours/id/personal%3Afoo"},
-			current: ["Skills"],
+			current: ["Customize"],
 			back: "#customize/skills/yours",
 			tabs: [
 				["Overview", "#customize/skills/yours/id/personal%3Afoo", "page"],
@@ -1167,14 +1151,14 @@ describe("SettingsDialog local tabs", () => {
 	});
 
 	it("titles each Customize section's panel header after the section", async () => {
-		await renderAt("/#customize/connectors/yours");
+		await renderAt("/#customize/plugins/yours");
 		const dialog = await screen.findByRole("dialog", {name: "Settings"});
 		await waitFor(() => {
-			expect(dialog.querySelector("[data-customize-dialog-pane] header h2")?.textContent).toBe("Connectors");
-		});
-		fireEvent.click(screen.getByRole("button", {name: "Plugins"}));
-		await waitFor(() => {
 			expect(dialog.querySelector("[data-customize-dialog-pane] header h2")?.textContent).toBe("Plugins");
+		});
+		fireEvent.click(screen.getByRole("button", {name: "Customize"}));
+		await waitFor(() => {
+			expect(dialog.querySelector("[data-customize-dialog-pane] header h2")?.textContent).toBe("Connectors");
 		});
 	});
 

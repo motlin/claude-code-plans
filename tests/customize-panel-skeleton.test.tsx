@@ -184,9 +184,9 @@ describe("Customize panel skeleton", () => {
 
 		const dialog = await screen.findByRole("dialog", {name: "Settings"});
 		const generalSection = dialog.querySelector("section[data-settings-section-titled]");
-		fireEvent.click(screen.getByRole("button", {name: "Skills"}));
+		fireEvent.click(screen.getByRole("button", {name: "Customize"}));
 		await waitFor(() => {
-			expect(screen.getByRole("button", {name: "Skills"}).getAttribute("aria-current")).toBe("page");
+			expect(screen.getByRole("button", {name: "Customize"}).getAttribute("aria-current")).toBe("page");
 		});
 
 		const scroll = generalSection?.closest<HTMLElement>(".overflow-y-auto");

@@ -99,7 +99,8 @@ describe("rankSettingsSections grouping", () => {
 		],
 		// Case-insensitive, and title-only: section headings ("Code appearance") are not indexed.
 		["THEME", [{tab: "general", rows: [["theme", "Theme"]]}]],
-		["appearance", []],
+		// The nav renames General to Appearance, so its new name finds the whole section.
+		["appearance", [{tab: "general", rows: []}]],
 		["width", [{tab: "general", rows: [["transcript-width", "Transcript width"]]}]],
 		// Title prefix matches outrank word-start matches, which outrank mid-word matches,
 		// and groups follow their best-ranked row.
@@ -224,9 +225,10 @@ describe("rankSettingsSections", () => {
 		[
 			"code",
 			[
+				// The nav renames Claude Code to Code, an exact name match.
 				{
 					tab: "claude-code",
-					score: 2,
+					score: 0,
 					rows: [
 						["code-font", 1],
 						["code-font-size", 1],
@@ -403,6 +405,42 @@ describe("buildSettingsResultRows", () => {
 			{kind: "child", tab: "general", rowSlug: "a", title: "Shared"},
 			{kind: "child", tab: "general", rowSlug: "b", title: "Shared two"},
 			{kind: "hit", tab: "sessions", via: "Shared three", rowSlug: "d"},
+		]);
+	});
+});
+
+describe("rankSettingsSections search names (upstream bc() + gn alsoFoundBy)", () => {
+	const appearance = {general: {name: "Appearance", alsoFoundBy: ["General"]}} as const;
+
+	it("finds a renamed section through its old name as an alias", () => {
+		expect(rankSettingsSections("general", appearance)[0]).toStrictEqual({
+			tab: "general",
+			score: 0,
+			alias: "General",
+			rows: [],
+		});
+	});
+
+	it("ignores aliases for 1-character queries", () => {
+		expect(rankSettingsSections("g", appearance).filter((section) => "alias" in section)).toStrictEqual([]);
+	});
+
+	it("matches the renamed name itself", () => {
+		expect(rankSettingsSections("appearance", appearance)[0]?.tab).toBe("general");
+	});
+
+	it("drops a row titled like its renamed section", () => {
+		const renamed = {general: {name: "Motion", alsoFoundBy: ["General"]}};
+		expect(rankSettingsSections("motion", renamed)).toStrictEqual([{tab: "general", score: 0, rows: []}]);
+	});
+
+	it("uses the real nav table by default: Appearance via General, Code via Claude Code", () => {
+		expect(rankSettingsSections("claude code").map(({tab, score, alias}) => ({tab, score, alias}))).toStrictEqual([
+			{tab: "claude-code", score: 0, alias: "Claude Code"},
+			{tab: "claude-config", score: 6, alias: undefined},
+		]);
+		expect(rankSettingsSections("appearance").map(({tab, score}) => ({tab, score}))).toStrictEqual([
+			{tab: "general", score: 0},
 		]);
 	});
 });
