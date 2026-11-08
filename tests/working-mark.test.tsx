@@ -159,7 +159,7 @@ describe("WorkingMark", () => {
 		const {container} = render(<WorkingMark activity="read" />);
 		await loadSheets();
 		const mark = container.querySelector('[data-cds="WorkingMark"]');
-		const strip = mark?.querySelector("[data-working-mark-strip]") as HTMLElement | null;
+		const strip = mark?.querySelector<HTMLElement>("[data-working-mark-strip]");
 		expect({
 			activity: mark?.getAttribute("data-activity"),
 			animated: mark?.getAttribute("data-animated"),
@@ -193,7 +193,7 @@ describe("WorkingMark", () => {
 		const {container} = render(<WorkingMark activity="think" animated={false} className="me-1.5" />);
 		await loadSheets();
 		const mark = container.querySelector('[data-cds="WorkingMark"]');
-		const strip = mark?.querySelector("[data-working-mark-strip]") as HTMLElement | null;
+		const strip = mark?.querySelector<HTMLElement>("[data-working-mark-strip]");
 		expect({
 			animated: mark?.getAttribute("data-animated"),
 			className: mark?.className,

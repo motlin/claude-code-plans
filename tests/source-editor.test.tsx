@@ -48,7 +48,8 @@ describe("SourceEditor read-only", () => {
 
 	it("sets tab-size on .cm-content and reconfigures it without remounting", () => {
 		const {container, rerender} = render(<SourceEditor value="a" readOnly />);
-		const content = container.querySelector(".cm-content") as HTMLElement;
+		const content = container.querySelector(".cm-content");
+		if (!(content instanceof HTMLElement)) throw new Error("no .cm-content");
 		expect(content.style.getPropertyValue("tab-size")).toBe("4");
 		rerender(<SourceEditor value="a" readOnly tabSize={2} />);
 		expect(container.querySelector(".cm-content")).toBe(content);
