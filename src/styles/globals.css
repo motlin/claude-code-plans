@@ -3465,6 +3465,43 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	margin-right: calc(--value(--cds-pad-*) * -1);
 }
 
+/* Upstream .w-stretch: TurnStatus rows fill their column less their own inset/stop margins. */
+@utility w-stretch {
+	width: -webkit-fill-available;
+	width: -moz-available;
+	width: stretch;
+}
+
+/* Upstream c6a992d55 `.cds-root [data-cds=AssistantMessage]` text inset/stop: prose pads by them and
+   TurnStatus rows (TURN_STATUS_ROW_GEOMETRY) line their label and end up with them. The stop keeps its raw
+   100%, so each use site resolves it against its own containing block. Nested cds surfaces reset both. */
+[data-cds="AssistantMessage"] {
+	--cds-assistant-message-text-inset: 4px;
+	--cds-assistant-message-text-stop: clamp(0px, (100% - 384px) * 0.175, 56px);
+}
+[data-cds="AssistantMessage"]
+	:is(
+		[data-cds="Card"],
+		[data-cds="Surface"],
+		[data-cds="Panel"],
+		[data-cds="Banner"],
+		[data-cds="Aside"],
+		[data-cds="Accordion"],
+		[data-cds="PreviewCard"],
+		[data-cds="Table"],
+		[data-cds="DataTable"],
+		[data-cds="AskUserQuestion"],
+		[data-cds="CommentCard"],
+		[data-cds="ChartContainer"],
+		[data-cds="PointChartContainer"],
+		[data-cds="CellChartContainer"],
+		[data-cds="FileDiff"],
+		[data-cds="UserMessage"]
+	) {
+	--cds-assistant-message-text-inset: 0px;
+	--cds-assistant-message-text-stop: 0px;
+}
+
 /* Upstream claude.ai/code — compact type scale. :root carries the comfortable
    scale (upstream .cds-root[data-density=comfortable], the web shell); the Claude
    Code main column is marked compact, which is upstream's base .cds-root block.

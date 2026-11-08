@@ -3,6 +3,7 @@
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
+import {TURN_STATUS_ROW_GEOMETRY} from "../src/components/turn-status-row-geometry";
 import {processTranscript} from "../src/lib/transcript";
 import type {TranscriptMode} from "../src/lib/transcript-mode";
 
@@ -221,8 +222,7 @@ describe("Stop hook feedback", () => {
 			}).toStrictEqual({
 				collapsed: {
 					ariaExpanded: "false",
-					buttonClassName:
-						"group/step flex self-stretch min-w-0 me-[52px] items-center gap-g2 px-1 py-0.5 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3",
+					buttonClassName: `group/step flex min-w-0 ${TURN_STATUS_ROW_GEOMETRY} py-0.5 items-center gap-g2 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`,
 					labelClassName: "text-body min-w-0 truncate text-secondary group-hover/step:text-secondary",
 					markerClassName: "flex flex-col w-full min-w-0 py-px",
 					rightAligned: false,

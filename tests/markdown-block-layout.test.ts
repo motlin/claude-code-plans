@@ -162,7 +162,7 @@ describe("markdown block layout", () => {
 		});
 	});
 
-	it("ends transcript prose blocks short of the column by upstream's stop: 17.5% of the width past 384px, at most 56px", () => {
+	it("insets and stops transcript prose by the AssistantMessage text tokens, not literals", () => {
 		const prose = ":global([data-transcript-prose]) .markdown >";
 		const css = markdownCss.replace(/\s+/g, " ").replaceAll("( ", "(").replaceAll(" )", ")");
 
@@ -172,11 +172,11 @@ describe("markdown block layout", () => {
 				`${prose} :is(p, h1, h2, h3, h4, h5, h6, ul:not(:global(.contains-task-list)), ol, dl)`,
 			),
 			inset: ruleDeclarations(css, `${prose} :is(p, h1, h2, h3, h4, h5, h6)`),
-			fixedStop: css.includes("56px;") && !css.includes("clamp(0px, (100% - 384px) * 0.175, 56px)"),
+			literalStop: css.includes("clamp(0px, (100% - 384px) * 0.175, 56px)"),
 		}).toStrictEqual({
-			stop: {"padding-inline-end": "clamp(0px, (100% - 384px) * 0.175, 56px)"},
-			inset: {"padding-inline-start": "4px"},
-			fixedStop: false,
+			stop: {"padding-inline-end": "var(--cds-assistant-message-text-stop, 0px)"},
+			inset: {"padding-inline-start": "var(--cds-assistant-message-text-inset, 0px)"},
+			literalStop: false,
 		});
 	});
 });

@@ -8,6 +8,7 @@ import {renderToStaticMarkup} from "react-dom/server";
 import {SessionChat} from "../src/components/session-chat";
 import {StreamingMessage} from "../src/components/streaming-message";
 import {SubagentOpenerProvider} from "../src/components/subagent-opener-context";
+import {TURN_STATUS_ROW_GEOMETRY} from "../src/components/turn-status-row-geometry";
 import {processTranscript} from "../src/lib/transcript";
 import type {Subagent} from "../src/lib/subagents";
 import type {TranscriptMode} from "../src/lib/transcript-mode";
@@ -737,7 +738,7 @@ describe("SessionChat grouped tool card", () => {
 
 // Matches both the disclosure row and the bare non-expanding row, whose class
 // list stops before `cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`.
-const TOOL_ROW = /group\/tool[^"]*">([\s\S]*?)<\/div>/g;
+const TOOL_ROW = /group\/tool[^"]*"[^>]*>([\s\S]*?)<\/div>/g;
 
 /** Class of a tool row's argument span, e.g. the filename on a Read row. */
 const ARGUMENT = "text-body text-primary truncate min-w-0";
@@ -2354,18 +2355,19 @@ function groupedBashRecords(second: "ok" | "error" | "pending"): unknown[] {
 	];
 }
 
-const STATUS_ROW_LAYOUT = "min-w-0 self-stretch me-[52px] px-1 py-0.5";
+const STATUS_ROW_LAYOUT = `min-w-0 ${TURN_STATUS_ROW_GEOMETRY} py-0.5`;
+const MARKED_ROW_MOTION = "transition-[margin-inline-start] duration-200 ease-out motion-reduce:transition-none";
 
 describe("SessionChat grouped header height", () => {
-	it("gives failed and running grouped headers the completed header's 24px padded row, as upstream does", () => {
+	it("gives failed and running grouped headers the completed header's 24px padded row, easing the running one's start margin, as upstream does", () => {
 		expect({
 			completed: disclosureClassName(renderTranscriptElement(groupedBashRecords("ok"))),
 			failed: disclosureClassName(renderTranscriptElement(groupedBashRecords("error"))),
 			running: disclosureClassName(renderTranscriptElement(groupedBashRecords("pending"))),
 		}).toStrictEqual({
-			completed: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:px-1.5 comfortable:py-1.5 comfortable:rounded-r6`,
-			failed: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:px-1.5 comfortable:py-1.5 comfortable:rounded-r6`,
-			running: `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:px-1.5 comfortable:py-1.5 comfortable:rounded-r6`,
+			completed: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6`,
+			failed: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6`,
+			running: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6 ${MARKED_ROW_MOTION}`,
 		});
 	});
 });
@@ -2379,9 +2381,9 @@ describe("SessionChat standalone status row layout", () => {
 			className: frame.querySelector(".group\\/tool")!.className,
 		};
 	};
-	const rowClass = `relative group/tool flex max-w-full items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:px-1.5 comfortable:py-1.5 comfortable:rounded-r6 comfortable:gap-g6`;
+	const rowClass = `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6 comfortable:gap-g6`;
 
-	it("draws failed and running standalone rows in the completed row's 24px padded layout, as upstream does", () => {
+	it("draws failed and running standalone rows in the completed row's 24px padded layout, easing the running one's start margin, as upstream does", () => {
 		const pending = toolResultRecords(bash, "").slice(0, 1);
 
 		expect({
@@ -2391,7 +2393,7 @@ describe("SessionChat standalone status row layout", () => {
 		}).toStrictEqual({
 			completed: {marker: true, className: rowClass},
 			failed: {marker: true, className: rowClass},
-			running: {marker: true, className: rowClass},
+			running: {marker: true, className: `${rowClass} ${MARKED_ROW_MOTION}`},
 		});
 	});
 
@@ -2402,8 +2404,8 @@ describe("SessionChat standalone status row layout", () => {
 		expect(
 			[...container.querySelectorAll<HTMLElement>('[role="button"][aria-expanded]')].map((row) => row.className),
 		).toStrictEqual([
-			"relative group/tool flex max-w-full items-center self-start py-0 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3",
-			"relative group/tool flex max-w-full items-center self-start py-0 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3",
+			"relative group/tool flex items-center max-w-full self-start py-0 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3",
+			"relative group/tool flex items-center max-w-full self-start py-0 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3",
 		]);
 	});
 });
@@ -2422,7 +2424,7 @@ describe("SessionChat TurnStatus rows at comfortable density (coarse pointer)", 
 			chevron: comfortable(control?.querySelector("svg")?.parentElement ?? null),
 		};
 	};
-	const rowTokens = ["comfortable:px-1.5", "comfortable:py-1.5", "comfortable:rounded-r6"];
+	const rowTokens = ["comfortable:py-1.5", "comfortable:rounded-r6"];
 
 	it("grows grouped and standalone tool rows to upstream's h32 6/6 r8 row with a 16px chevron and a 6px outset", () => {
 		const bash = {name: "Bash", input: {command: "git push", description: "Push the branch"}};
@@ -2463,9 +2465,8 @@ describe("SessionChat disclosure focus treatment", () => {
 			row: disclosureClassName(singleBash),
 			summary: disclosureClassName(groupedBash),
 		}).toStrictEqual({
-			row: "relative group/tool flex max-w-full items-center min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:px-1.5 comfortable:py-1.5 comfortable:rounded-r6 comfortable:gap-g6",
-			summary:
-				"relative group/tool flex max-w-full items-center min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:px-1.5 comfortable:py-1.5 comfortable:rounded-r6",
+			row: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6 comfortable:gap-g6`,
+			summary: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:py-1.5 comfortable:rounded-r6`,
 		});
 	});
 

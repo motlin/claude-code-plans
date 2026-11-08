@@ -71,6 +71,7 @@ import {TranscriptMessageMenu} from "./transcript-context-menu";
 import {TranscriptSelectionBar} from "./transcript-selection-bar";
 import {TranscriptActionsContext, type TranscriptMessageRef} from "./transcript-actions-context";
 import {AssistantMessageActions, UserMessageActions} from "./message-actions";
+import {TURN_STATUS_ROW_GEOMETRY, TURN_STATUS_ROW_STYLE} from "./turn-status-row-geometry";
 import {MessageExcerptTiles} from "./message-excerpt-tiles";
 import {defined} from "../lib/defined";
 import {narrationProse} from "../lib/thinking-narration";
@@ -3723,6 +3724,9 @@ function VirtualizedSessionEntries({
 								focusNeighbour(event, index);
 							}}
 							data-assistant-span={entry.assistantSpan?.key}
+							// Upstream's AssistantMessage carries the text inset/stop tokens every row and prose block
+							// beneath it lines up with; a prompt is a UserMessage instead.
+							data-cds={entry.isPrompt ? undefined : "AssistantMessage"}
 							data-cds-reply-type={replyType && entry.kind.startsWith("assistant") ? "" : undefined}
 							data-reply-boundary={entry.opensReply ? "" : undefined}
 							className={entry.opensReply ? "pt-p5" : undefined}
@@ -4364,7 +4368,8 @@ function StopHookMarker({line}: {line: MessageSessionLine}) {
 					setExpanded(!expanded);
 				}}
 				data-cds-row=""
-				className="group/step flex self-stretch min-w-0 me-[52px] items-center gap-g2 px-1 py-0.5 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
+				className={`group/step flex ${TURN_STATUS_ROW_LAYOUT} items-center gap-g2 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
+				style={TURN_STATUS_ROW_STYLE}
 			>
 				<span ref={rowCut} className={`text-body min-w-0 truncate ${restInk} group-hover/step:text-secondary`}>
 					{STOP_HOOK_LABEL}
@@ -4461,7 +4466,12 @@ function CompactedSessionStatus({
 		return (
 			<TurnStatusFrame leading={false}>
 				<div data-turn-status="" className={TURN_STATUS_CLASS}>
-					<div data-turn-status-marker="" data-cds-row="" className="flex min-w-0 me-[52px] px-1 py-0.5">
+					<div
+						data-turn-status-marker=""
+						data-cds-row=""
+						className={`flex ${TURN_STATUS_ROW_LAYOUT}`}
+						style={TURN_STATUS_ROW_STYLE}
+					>
 						<span ref={rowCut} className="text-body min-w-0 truncate text-ink-muted">
 							{label}
 						</span>
@@ -4481,7 +4491,8 @@ function CompactedSessionStatus({
 						setExpanded(!expanded);
 					}}
 					data-cds-row=""
-					className="group/tool flex self-stretch min-w-0 me-[52px] items-center gap-g1 px-1 py-0.5 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
+					className={`group/tool flex ${TURN_STATUS_ROW_LAYOUT} items-center gap-g1 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
+					style={TURN_STATUS_ROW_STYLE}
 				>
 					<span
 						ref={rowCut}
@@ -4528,7 +4539,12 @@ function RewindMarker({
 		return (
 			<TurnStatusFrame leading={false}>
 				<div data-turn-status="" data-testid="rewind-marker" data-find-omitted="" className={TURN_STATUS_CLASS}>
-					<div data-turn-status-marker="" data-cds-row="" className="flex min-w-0 me-[52px] px-1 py-0.5">
+					<div
+						data-turn-status-marker=""
+						data-cds-row=""
+						className={`flex ${TURN_STATUS_ROW_LAYOUT}`}
+						style={TURN_STATUS_ROW_STYLE}
+					>
 						<span ref={rowCut} className="text-body min-w-0 truncate text-ink-muted">
 							{placement.label}
 						</span>
@@ -4547,7 +4563,8 @@ function RewindMarker({
 						onToggle(placement.replacementUuid);
 					}}
 					data-cds-row=""
-					className="group/tool flex self-stretch min-w-0 me-[52px] items-center gap-g1 px-1 py-0.5 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
+					className={`group/tool flex ${TURN_STATUS_ROW_LAYOUT} items-center gap-g1 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
+					style={TURN_STATUS_ROW_STYLE}
 				>
 					<span
 						ref={rowCut}
@@ -5564,11 +5581,15 @@ function TurnStatusFrame({leading, children}: {leading: boolean; children: React
 	);
 }
 
-/** Upstream's TurnStatus row: h24 with 2/4 padding at compact (the row's own `px-1 py-0.5`). */
-const TURN_STATUS_ROW_LAYOUT = "min-w-0 self-stretch me-[52px] px-1 py-0.5";
+/** Upstream `gR`: a marked (busy) row eases a change of its start margin. */
+const TURN_STATUS_ROW_MARKED_MOTION =
+	"transition-[margin-inline-start] duration-200 ease-out motion-reduce:transition-none";
 
-/** The same row at comfortable density: h32, 6/6 padding, r8 (upstream's gap-xs/pad-xs/radius tokens). */
-const TURN_STATUS_ROW_COMFORTABLE = "comfortable:px-1.5 comfortable:py-1.5 comfortable:rounded-r6";
+/** Upstream's TurnStatus row: h24 with 2px block padding at compact, on the `qe` geometry. */
+const TURN_STATUS_ROW_LAYOUT = `min-w-0 ${TURN_STATUS_ROW_GEOMETRY} py-0.5`;
+
+/** The same row at comfortable density: h32, 6px block padding, r8 (pad-xs widens the inline padding). */
+const TURN_STATUS_ROW_COMFORTABLE = "comfortable:py-1.5 comfortable:rounded-r6";
 
 /** Upstream's status chevron grows from 12px to 16px at comfortable density. */
 const TURN_STATUS_CHEVRON_COMFORTABLE = "comfortable:[&_svg]:size-4";
@@ -5822,7 +5843,7 @@ function ToolCallRow({
 	// Upstream draws every standalone status row in one 24px padded layout, whether it
 	// completed, failed, or is still running.
 	const isTurnStatus = !isAgent && !nested;
-	const disclosureLayout = isTurnStatus ? TURN_STATUS_ROW_LAYOUT : "self-start py-0";
+	const disclosureLayout = isTurnStatus ? TURN_STATUS_ROW_LAYOUT : "max-w-full self-start py-0";
 	const paramClass =
 		isSkill || isCompletedPaneAgent
 			? "text-primary"
@@ -6090,7 +6111,8 @@ function ToolCallRow({
 							open();
 						}
 					}}
-					className={`relative group/tool flex max-w-full items-center ${isCompletedPaneAgent && !nested ? "min-w-0 self-stretch me-[52px] px-1 py-0.5 gap-1.5" : "self-start py-0 gap-g5"} text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
+					className={`relative group/tool flex items-center ${isCompletedPaneAgent && !nested ? `${TURN_STATUS_ROW_LAYOUT} gap-1.5` : "max-w-full self-start py-0 gap-g5"} text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
+					style={isCompletedPaneAgent && !nested ? TURN_STATUS_ROW_STYLE : undefined}
 				>
 					{rowLabel}
 				</div>
@@ -6177,7 +6199,8 @@ function ToolCallRow({
 						toggleExpanded();
 					}
 				}}
-				className={`relative group/tool flex max-w-full items-center ${disclosureLayout} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3${isTurnStatus ? ` ${TURN_STATUS_ROW_COMFORTABLE} comfortable:gap-g6` : ""}`}
+				className={`relative group/tool flex items-center ${disclosureLayout} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3${isTurnStatus ? ` ${TURN_STATUS_ROW_COMFORTABLE} comfortable:gap-g6` : ""}${runningRow ? ` ${TURN_STATUS_ROW_MARKED_MOTION}` : ""}`}
+				style={isTurnStatus ? TURN_STATUS_ROW_STYLE : undefined}
 			>
 				{rowLabel}
 				<span className={chevronClass}>
@@ -6323,7 +6346,8 @@ function ToolCallSummary({
 			onClick={toggleExpanded}
 			data-cds-row=""
 			data-cds-row-toggle=""
-			className={`relative group/tool flex max-w-full items-center ${hasGroupMedia ? "min-w-0" : summaryLayout} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3${hasGroupMedia ? "" : ` ${TURN_STATUS_ROW_COMFORTABLE}`}`}
+			className={`relative group/tool flex items-center ${hasGroupMedia ? "max-w-full min-w-0" : summaryLayout} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3${hasGroupMedia ? "" : ` ${TURN_STATUS_ROW_COMFORTABLE}`}${busy && !hasGroupMedia ? ` ${TURN_STATUS_ROW_MARKED_MOTION}` : ""}`}
+			style={hasGroupMedia ? undefined : TURN_STATUS_ROW_STYLE}
 		>
 			<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
 				{busy ? (
@@ -6363,7 +6387,7 @@ function ToolCallSummary({
 				<>
 					{hasGroupMedia ? (
 						// The thumbnails are buttons of their own, so they sit beside the toggle in the row, as upstream's do.
-						<div className={`flex items-center gap-g1 ${summaryLayout}`}>
+						<div className={`flex items-center gap-g1 ${summaryLayout}`} style={TURN_STATUS_ROW_STYLE}>
 							{toggle}
 							<RowMedia calls={calls} />
 						</div>

@@ -4,6 +4,7 @@ import type {AgentMessage} from "../lib/agent-message";
 import {ProseMarkdown} from "./file-refs";
 import {ChevronIcon} from "./tool-renderers/shared";
 import {TruncatedContent} from "./truncated-content";
+import {TURN_STATUS_ROW_GEOMETRY, TURN_STATUS_ROW_STYLE} from "./turn-status-row-geometry";
 
 /**
  * Upstream's "Message from subagent" row for a subagent hand-back: no bubble,
@@ -27,7 +28,8 @@ export function AgentMessageRow({message}: {message: AgentMessage}) {
 					setExpanded((value) => !value);
 				}}
 				data-cds-row=""
-				className="group/step flex self-stretch min-w-0 me-[52px] items-center gap-g5 px-1 py-0.5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
+				className={`group/step flex min-w-0 ${TURN_STATUS_ROW_GEOMETRY} py-0.5 items-center gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
+				style={TURN_STATUS_ROW_STYLE}
 			>
 				<span className="shrink-0 text-body text-ink-muted group-hover/step:text-secondary">Message from</span>
 				<bdi ref={rowCut} className="min-w-0 truncate text-body text-primary">
