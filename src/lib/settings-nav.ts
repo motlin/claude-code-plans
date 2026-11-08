@@ -69,7 +69,7 @@ export function navMemberKey(member: SettingsNavMember): SettingsNavMemberKey {
 }
 
 /** The member's own label, before any row rename. */
-function navMemberLabel(member: SettingsNavMember): string {
+export function navMemberLabel(member: SettingsNavMember): string {
 	return member.kind === "settings" ? settingsTabLabels[member.tab] : customizeSectionLabels[member.section];
 }
 

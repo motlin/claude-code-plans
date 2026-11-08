@@ -226,7 +226,7 @@ describe("settings search", () => {
 
 		const popover = await screen.findByRole("dialog", {name: "Search results"});
 		expect(popoverRows(popover)).toStrictEqual([
-			"hit: Claude CodeDefault transcript view",
+			"hit: CodeDefault transcript view",
 			"hit: Sessions",
 			"Default view in Sessions",
 			"Offer to review uncommitted changes in Sessions",
@@ -272,10 +272,10 @@ describe("settings search", () => {
 			name: lines[0]?.textContent,
 			via: shape(lines[1]),
 		}).toStrictEqual({
-			rows: ["hit: GeneralTheme"],
+			rows: ["hit: AppearanceTheme"],
 			icon: "svg",
 			iconClass: `lucide lucide-settings ${ICON}`,
-			name: "General",
+			name: "Appearance",
 			via: {
 				tag: "span",
 				className: "truncate ps-[32px] text-footnote text-[var(--settings-muted)]",
@@ -590,7 +590,7 @@ describe("settings search", () => {
 
 	it.each<[string, string, string]>([
 		// Section-name-only and keyword-only hits get rows of their own and switch the tab only.
-		["general", "hit: General", "settings/general"],
+		["appearance", "hit: Appearance", "settings/general"],
 		["tmux", "hit: Applicationtmux", "settings/application"],
 	])("gives %j a hit row that opens its tab", async (query, row, hash) => {
 		const router = await renderAt("/#settings/claude-code");
@@ -608,6 +608,40 @@ describe("settings search", () => {
 		expect({scrolled, flashing: flashingRows()}).toStrictEqual({scrolled: [], flashing: []});
 	});
 
+	it("renders an alias match as the renamed name over an accented alias via line, and Enter opens the member", async () => {
+		const router = await renderAt("/#settings/claude-code");
+		await screen.findByRole("dialog", {name: "Settings"});
+		const input = screen.getByRole("textbox", {name: "Search settings"});
+
+		fireEvent.change(input, {target: {value: "general"}});
+
+		const popover = await screen.findByRole("dialog", {name: "Search results"});
+		const hits = within(popover).getAllByRole("button");
+		const lines = hits[0]?.firstElementChild?.children ?? [];
+		expect({
+			rows: popoverRows(popover),
+			ariaLabel: hits[0]?.getAttribute("aria-label"),
+			name: shape(lines[0]?.lastElementChild ?? document.body),
+			via: shape(lines[1] ?? document.body),
+		}).toStrictEqual({
+			rows: ["hit: AppearanceGeneral"],
+			ariaLabel: null,
+			name: {tag: "span", className: TRUNCATE, children: [plain("Appearance")]},
+			via: {
+				tag: "span",
+				className: "truncate ps-[32px] text-footnote text-[var(--settings-muted)]",
+				children: [accent("General")],
+			},
+		});
+
+		fireEvent.keyDown(input, {key: "Enter"});
+
+		await waitFor(() => {
+			expect(router.state.location.hash).toBe("settings/general");
+		});
+		expect({scrolled, flashing: flashingRows()}).toStrictEqual({scrolled: [], flashing: []});
+	});
+
 	it("deep links a via-hit to its matched row and flashes it", async () => {
 		const router = await renderAt("/#settings/claude-code");
 		await screen.findByRole("dialog", {name: "Settings"});
@@ -615,7 +649,7 @@ describe("settings search", () => {
 		fireEvent.change(screen.getByRole("textbox", {name: "Search settings"}), {target: {value: "theme"}});
 
 		const popover = await screen.findByRole("dialog", {name: "Search results"});
-		expect(popoverRows(popover)).toStrictEqual(["hit: GeneralTheme"]);
+		expect(popoverRows(popover)).toStrictEqual(["hit: AppearanceTheme"]);
 		fireEvent.click(within(popover).getByRole("button"));
 
 		await waitFor(() => {
@@ -652,11 +686,11 @@ describe("settings search", () => {
 	}
 
 	const FONT_ROWS = [
-		"hit: General",
-		"Interface font in General",
-		"Code font in General",
-		"Code font size in General",
-		"1 more match in General",
+		"hit: Appearance",
+		"Interface font in Appearance",
+		"Code font in Appearance",
+		"Code font size in Appearance",
+		"1 more match in Appearance",
 	];
 	const marked = (index: number) => FONT_ROWS.map((row, i) => (i === index ? `> ${row}` : row));
 
@@ -694,7 +728,7 @@ describe("settings search", () => {
 			marked(4),
 		]);
 		expect(highlightScrolls.at(-1)).toStrictEqual({
-			row: "1 more match in General",
+			row: "1 more match in Appearance",
 			options: {block: "nearest"},
 		});
 	});
@@ -753,7 +787,7 @@ describe("settings search", () => {
 
 		fireEvent.change(input, {target: {value: "font"}});
 		const popover = await screen.findByRole("dialog", {name: "Search results"});
-		const second = within(popover).getByRole("button", {name: "Code font size in General"});
+		const second = within(popover).getByRole("button", {name: "Code font size in Appearance"});
 		fireEvent.mouseMove(second);
 		const rows = highlightedRows();
 		const notPrevented = fireEvent.mouseDown(second);

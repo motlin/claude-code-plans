@@ -2,13 +2,13 @@
 import {Popover} from "@base-ui/react/popover";
 import {type MouseEvent, type RefObject, useEffect, useId, useMemo, useRef, useState} from "react";
 import {useShortcut} from "../../hooks/use-shortcut";
-import {settingsTabLabels} from "../../lib/schema-choices";
 import type {SettingsTab} from "../../lib/settings-hash";
 import {
 	buildSettingsResultRows,
 	normalizeSettingsQuery,
 	type SettingsResultRow,
 	settingsMatchStart,
+	settingsSectionName,
 	splitMatch,
 } from "../../lib/settings-search";
 import {Icon} from "../ui/icon";
@@ -70,7 +70,7 @@ function ResultRow({
 	onChoose: (row: SettingsResultRow) => void;
 	onHighlight: () => void;
 }) {
-	const section = settingsTabLabels[row.tab];
+	const section = settingsSectionName(row.tab);
 	const rowProps = {
 		type: "button",
 		"data-highlighted": highlighted ? "" : undefined,
@@ -186,7 +186,7 @@ export function SettingsSearch({
 	const choose = (row: SettingsResultRow) => {
 		if (row.kind === "more") {
 			setExpanded((previous) => new Set([...previous, row.tab]));
-			setAnnouncement(`Showing ${moreMatches(row.count, settingsTabLabels[row.tab])}`);
+			setAnnouncement(`Showing ${moreMatches(row.count, settingsSectionName(row.tab))}`);
 			return;
 		}
 		reset();

@@ -319,7 +319,21 @@ describe("buildSettingsResultRows", () => {
 			],
 		],
 		// A section-name match with no matching rows is a bare hit.
-		["general", [{kind: "hit", tab: "general"}]],
+		["appearance", [{kind: "hit", tab: "general"}]],
+		// A renamed section found by its old name shows that alias on its via line.
+		["general", [{kind: "hit", tab: "general", via: "General"}]],
+		[
+			"claude code",
+			[
+				{kind: "hit", tab: "claude-code", via: "Claude Code"},
+				{
+					kind: "hit",
+					tab: "claude-config",
+					via: "Claude Code settings files",
+					rowSlug: "claude-code-settings-files",
+				},
+			],
+		],
 		// A keyword-only hit shows the keyword on its via line and has no row.
 		["tmux", [{kind: "hit", tab: "application", via: "tmux"}]],
 		// More than three matches: three children, then "+N more".
@@ -384,6 +398,22 @@ describe("buildSettingsResultRows", () => {
 			{kind: "child", tab: "general", rowSlug: "row-2", title: "Alpha three"},
 			{kind: "child", tab: "general", rowSlug: "row-3", title: "Alpha four"},
 			{kind: "child", tab: "general", rowSlug: "row-4", title: "Alpha five"},
+		]);
+	});
+
+	it("gives an alias match a via hit followed by its matching rows as children", () => {
+		const sections = [
+			{
+				tab: "general" as const,
+				score: 1,
+				alias: "General",
+				rows: [{entry: {tab: "general" as const, rowSlug: "a", title: "General row"}, rank: 1}],
+			},
+		];
+
+		expect(layoutSettingsResultRows(sections, "gen", new Set())).toStrictEqual([
+			{kind: "hit", tab: "general", via: "General"},
+			{kind: "child", tab: "general", rowSlug: "a", title: "General row"},
 		]);
 	});
 

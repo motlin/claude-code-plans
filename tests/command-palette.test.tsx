@@ -13,6 +13,8 @@ import {readFileSync} from "node:fs";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
+import {loadSettingsDialog} from "../src/components/settings/settings-dialog-loader";
+import {preloadCustomizeDialogPanel} from "../src/components/settings/customize-dialog-panel-loader";
 import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {onHomeComposerFocusRequest} from "../src/lib/home-composer-focus";
@@ -27,6 +29,15 @@ import {saveRecents, type RecentEntry} from "../src/lib/recents-history";
 import {holdAnswered, releaseAnswered} from "../src/lib/answered-sessions";
 import {FIZZY_LAKE_PARTS, FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 import {installPaletteFocusOrigin} from "../src/lib/palette-focus-origin";
+
+// Settings commands warm these chunks; the spies stand in for the downloads.
+vi.mock("../src/components/settings/settings-dialog-loader", async (importOriginal) => ({
+	...(await importOriginal<typeof import("../src/components/settings/settings-dialog-loader")>()),
+	loadSettingsDialog: vi.fn<() => Promise<never>>(async () => new Promise(() => {})),
+}));
+vi.mock("../src/components/settings/customize-dialog-panel-loader", () => ({
+	preloadCustomizeDialogPanel: vi.fn<() => Promise<never>>(async () => new Promise(() => {})),
+}));
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
@@ -131,6 +142,23 @@ async function renderPalette(
 function pressK(target: Element, init: KeyboardEventInit) {
 	fireEvent.keyDown(target, {key: "k", code: "KeyK", ...init});
 }
+
+/** The palette's Settings → section commands, in nav order (upstream `Ss()`). */
+const SETTINGS_COMMAND_LABELS = [
+	"Settings → Usage",
+	"Settings → Appearance",
+	"Settings → Notifications",
+	"Settings → Connectors",
+	"Settings → Skills",
+	"Settings → Plugins",
+	"Settings → Code",
+	"Settings → Transcript",
+	"Settings → Sessions",
+	"Settings → Application",
+	"Settings → AI features",
+	"Settings → Claude Config",
+	"Settings → Setup",
+];
 
 const PR_863 = {number: 863, url: "https://github.com/acme/app/pull/863", repository: "acme/app"};
 
@@ -1951,25 +1979,103 @@ describe("CommandPalette shell", () => {
 		}).toStrictEqual({starred: null, pinned: "Pinned"});
 	});
 
-	it("opens General settings over the current page and offers no settings pages", async () => {
+	it("lists a Settings → section command per nav member instead of a plain Settings action", async () => {
 		const dialog = await openPalette([], "/session/s-current");
+		const combobox = within(dialog).getByRole("combobox");
 
-		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "setup"}});
-		await waitFor(() => {
-			expect(within(dialog).queryByRole("option", {name: "Setup"})).toBeNull();
-		});
-		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "config"}});
-		await waitFor(() => {
-			expect(within(dialog).queryByRole("option", {name: "Claude Config"})).toBeNull();
-		});
-		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "settings"}});
-		fireEvent.click(await within(dialog).findByRole("option", {name: /^Settings/}));
+		fireEvent.change(combobox, {target: {value: "setup"}});
+		await within(dialog).findByRole("option", {name: "Settings → Setup"});
+		fireEvent.change(combobox, {target: {value: "config"}});
+		await within(dialog).findByRole("option", {name: "Settings → Claude Config"});
+		fireEvent.change(combobox, {target: {value: "settings"}});
+		const usage = await within(dialog).findByRole("option", {name: "Settings → Usage"});
+		expect(within(dialog).queryByRole("option", {name: "Settings"})).toBeNull();
+		fireEvent.click(usage);
 
 		await waitFor(() => {
 			expect({
 				pathname: currentRouter?.state.location.pathname,
 				hash: currentRouter?.state.location.hash,
-			}).toStrictEqual({pathname: "/session/s-current", hash: "settings/general"});
+			}).toStrictEqual({pathname: "/session/s-current", hash: "settings/usage"});
+		});
+	});
+
+	it.each<[string, string]>([
+		["appearance", "Settings → Appearance"],
+		["general", "Settings → Appearance"],
+		["claude code", "Settings → Code"],
+		["customize", "Settings → Connectors"],
+		["mcp", "Settings → Connectors"],
+		["skills", "Settings → Skills"],
+	])("finds %j through its settings command", async (query, label) => {
+		const dialog = await openPalette([], "/session/s-current");
+
+		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: query}});
+
+		expect(await within(dialog).findByRole("option", {name: label})).toBeTruthy();
+	});
+
+	it("switches an open Settings dialog to a command's section in place", async () => {
+		const dialog = await openPalette([], "/session/s-current#settings/general");
+
+		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "code"}});
+		fireEvent.click(await within(dialog).findByRole("option", {name: "Settings → Code"}));
+
+		await waitFor(() => {
+			expect({
+				pathname: currentRouter?.state.location.pathname,
+				hash: currentRouter?.state.location.hash,
+			}).toStrictEqual({pathname: "/session/s-current", hash: "settings/claude-code"});
+		});
+	});
+
+	it("warms a customize command's Settings and Customize chunks when the keyboard selects it", async () => {
+		vi.mocked(loadSettingsDialog).mockClear();
+		vi.mocked(preloadCustomizeDialogPanel).mockClear();
+		const dialog = await openPalette([], "/session/s-current");
+		const combobox = within(dialog).getByRole("combobox");
+
+		fireEvent.change(combobox, {target: {value: "skills"}});
+		const skills = await within(dialog).findByRole("option", {name: "Settings → Skills"});
+		for (let step = 0; step < 20 && skills.getAttribute("aria-selected") !== "true"; step += 1) {
+			fireEvent.keyDown(combobox, {key: "ArrowDown"});
+		}
+
+		await waitFor(() => {
+			expect({
+				selected: skills.getAttribute("aria-selected"),
+				customize: vi.mocked(preloadCustomizeDialogPanel).mock.calls.length,
+				settings: vi.mocked(loadSettingsDialog).mock.calls.length > 0,
+			}).toStrictEqual({selected: "true", customize: 1, settings: true});
+		});
+	});
+
+	it("warms only the Settings chunk when a settings tab command is hovered", async () => {
+		const dialog = await openPalette([], "/session/s-current");
+
+		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "appearance"}});
+		const appearance = await within(dialog).findByRole("option", {name: "Settings → Appearance"});
+		vi.mocked(loadSettingsDialog).mockClear();
+		vi.mocked(preloadCustomizeDialogPanel).mockClear();
+		fireEvent.pointerEnter(appearance);
+
+		expect({
+			settings: vi.mocked(loadSettingsDialog).mock.calls.length,
+			customize: vi.mocked(preloadCustomizeDialogPanel).mock.calls.length,
+		}).toStrictEqual({settings: 1, customize: 0});
+	});
+
+	it("opens a customize member's command at its Yours list over the current page", async () => {
+		const dialog = await openPalette([], "/session/s-current");
+
+		fireEvent.change(within(dialog).getByRole("combobox"), {target: {value: "mcp"}});
+		fireEvent.click(await within(dialog).findByRole("option", {name: "Settings → Connectors"}));
+
+		await waitFor(() => {
+			expect({
+				pathname: currentRouter?.state.location.pathname,
+				hash: currentRouter?.state.location.hash,
+			}).toStrictEqual({pathname: "/session/s-current", hash: "customize/connectors/yours"});
 		});
 	});
 });
@@ -2994,16 +3100,16 @@ describe("CommandPalette filter values", () => {
 
 		// cmdk's fuzzy score also reaches "sett" through Jump to input's "composer prompt" hints.
 		expect({narrowed, all: resultLabels(dialog)}).toStrictEqual({
-			narrowed: ["Settings", "Jump to input"],
+			narrowed: ["Jump to input", ...SETTINGS_COMMAND_LABELS],
 			all: [
 				"Search sessions",
 				"Keyboard shortcuts",
 				"Toggle sidebar",
-				"Settings",
 				"Mark all sessions seen",
 				"Jump to navigation",
 				"Jump to main content",
 				"Jump to input",
+				...SETTINGS_COMMAND_LABELS,
 			],
 		});
 	});
@@ -3727,11 +3833,11 @@ describe("CommandPalette pinned Jump to question row", () => {
 				"Search sessions",
 				"Keyboard shortcuts",
 				"Toggle sidebar",
-				"Settings",
 				"Mark all sessions seen",
 				"Jump to navigation",
 				"Jump to main content",
 				"Jump to input",
+				...SETTINGS_COMMAND_LABELS,
 			],
 		});
 	});

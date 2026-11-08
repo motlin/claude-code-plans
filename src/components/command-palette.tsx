@@ -28,6 +28,7 @@ import {
 	Search,
 	Home,
 	SlidersHorizontal,
+	Gauge,
 	CircleCheckBig,
 	CirclePlus,
 	Keyboard,
@@ -186,6 +187,10 @@ import {Spinner} from "./ui/spinner";
 import {ArchivedBadge} from "./archived-badge";
 import {Tooltip} from "./ui/tooltip";
 import {useOpenSettings} from "./settings/open-settings";
+import {loadSettingsDialog} from "./settings/settings-dialog-loader";
+import {preloadCustomizeDialogPanel} from "./settings/customize-dialog-panel-loader";
+import {type SettingsPaletteCommand, settingsPaletteCommands} from "../lib/palette-settings-commands";
+import {customizeHash} from "../lib/settings-hash";
 import {setKeyboardShortcutsOpen} from "./keyboard-shortcuts-open";
 
 /*
@@ -781,6 +786,19 @@ interface PaletteAction {
 	shortcut?: ShortcutId;
 	/** Extra fuzzy-match words, as upstream's `[...searchHints, bang]`. */
 	keywords?: readonly string[];
+	/** The cmdk value, when not `action:<label>`. */
+	value?: string;
+	/** Upstream's `onIntent`/`onDwell`: warms what the action opens, on hover or keyboard selection. */
+	warm?: () => void;
+}
+
+/** Upstream's `Ss()` commands: one per Settings nav member, built once. */
+const SETTINGS_COMMANDS = settingsPaletteCommands();
+
+/** Prefetches a settings command's section: the Settings dialog, plus the Customize panel for its members. */
+function warmSettingsCommand(command: SettingsPaletteCommand): void {
+	void loadSettingsDialog();
+	if (command.member.kind === "customize") void preloadCustomizeDialogPanel();
 }
 
 function useCurrentSessionId(): string | undefined {
@@ -914,6 +932,11 @@ function PalettePopup({
 	const [pendingLaunch, setPendingLaunch] = useState<PendingLaunch | null>(null);
 	// Controlled so the picker can preselect its first project; cmdk selects the first row otherwise.
 	const [selectedValue, setSelectedValue] = useState("");
+	// Upstream's onDwell: a settings command reached by the keyboard warms its section like a hover does.
+	useEffect(() => {
+		const command = SETTINGS_COMMANDS.find(({key}) => selectedValue === `settings:${key}`);
+		if (command !== undefined) warmSettingsCommand(command);
+	}, [selectedValue]);
 	// Opening a session or jumping to a question puts focus somewhere new, so closing must not pull it back.
 	const restoreFocusRef = useRef(true);
 	const restoreFocus = useCallback(() => restoreFocusRef.current, []);
@@ -1534,6 +1557,21 @@ function PalettePopup({
 		});
 	}
 
+	// A settings member opens its tab; a customize member its Yours list. Both are hash changes over the current
+	// page, so an open Settings dialog switches section in place.
+	function openSettingsMember({member}: SettingsPaletteCommand) {
+		if (member.kind === "settings") openSettings(member.tab);
+		else
+			void navigate({
+				to: ".",
+				search: true,
+				params: true,
+				hash: customizeHash({section: member.section}),
+				resetScroll: false,
+				hashScrollIntoView: false,
+			});
+	}
+
 	function regionJumpAction(id: PaletteJumpActionId, icon: ReactNode, region: JumpRegionName): PaletteAction {
 		return {
 			label: PALETTE_JUMP_ACTIONS[id].label,
@@ -1549,7 +1587,7 @@ function PalettePopup({
 	}
 
 	// Upstream's Actions minus the cloud-only ones; New session lives in Quick actions once text is typed.
-	const actions = (
+	const actions: PaletteAction[] = (
 		[
 			{
 				label: "Search sessions",
@@ -1570,14 +1608,6 @@ function PalettePopup({
 				icon: <PanelLeft />,
 				run: toggleSidebar,
 				shortcut: "toggle_sidebar",
-			},
-			{
-				label: "Settings",
-				icon: <SlidersHorizontal />,
-				run: () => {
-					openSettings("general");
-				},
-				shortcut: "settings",
 			},
 			{label: "Mark all sessions seen", icon: <CircleCheckBig />, run: clearAll},
 			...(currentSessionId !== undefined && currentDetail !== null
@@ -1606,6 +1636,19 @@ function PalettePopup({
 					]
 				: []),
 			regionJumpAction("jump_to_input", <TextCursorInput />, "composer"),
+			// Upstream appends `Ss()` after the registry, which hides its plain Settings action from the palette.
+			...SETTINGS_COMMANDS.map((command): PaletteAction => ({
+				label: command.description,
+				icon: command.icon === "usage" ? <Gauge /> : <SlidersHorizontal />,
+				keywords: command.searchHints,
+				value: `settings:${command.key}`,
+				run: () => {
+					openSettingsMember(command);
+				},
+				warm: () => {
+					warmSettingsCommand(command);
+				},
+			})),
 		] satisfies PaletteAction[]
 	).filter((action: PaletteAction) => action.shortcut === undefined || SHORTCUTS[action.shortcut].enabled);
 
@@ -2227,8 +2270,9 @@ function PalettePopup({
 										action.shortcut === undefined ? (
 											<CommandItem
 												key={action.label}
-												value={`action:${action.label}`}
+												value={action.value ?? `action:${action.label}`}
 												icon={action.icon}
+												{...(action.warm === undefined ? {} : {onPointerEnter: action.warm})}
 												onSelect={() => {
 													select(action.run);
 												}}
@@ -3022,6 +3066,7 @@ function CommandItem({
 	rowActions = false,
 	secondary,
 	badge,
+	onPointerEnter,
 }: {
 	children: ReactNode;
 	value: string;
@@ -3033,12 +3078,14 @@ function CommandItem({
 	rowActions?: boolean;
 	/** Upstream's trailing secondary text, e.g. "PR #N". */
 	secondary?: ReactNode;
+	onPointerEnter?: () => void;
 }) {
 	const keyShortcuts = rowActions ? "Alt+Enter" : shortcut?.ariaKeyShortcuts;
 	return (
 		<Command.Item
 			value={value}
 			onSelect={onSelect}
+			{...(onPointerEnter === undefined ? {} : {onPointerEnter})}
 			{...(keyShortcuts === undefined ? {} : {"aria-keyshortcuts": keyShortcuts})}
 			className={ROW_CLASS}
 		>

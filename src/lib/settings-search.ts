@@ -195,6 +195,11 @@ type SettingsSearchNames = Partial<Record<SettingsNavMemberKey, SettingsSearchNa
 /** The nav table's renames and aliases (upstream `searchNames`). */
 const NAV_SEARCH_NAMES: SettingsSearchNames = settingsSearchNames();
 
+/** The section's name in search results: its nav row's new name (Appearance, Code), else its tab label. */
+export function settingsSectionName(tab: SettingsTab): string {
+	return NAV_SEARCH_NAMES[tab]?.name ?? settingsTabLabels[tab];
+}
+
 /** The first `alsoFoundBy` name that matches, with its rank. */
 function matchAlias(query: string, aliases: readonly string[]): {alias: string; rank: number} | undefined {
 	for (const alias of aliases) {
@@ -286,7 +291,8 @@ function viaHit(tab: SettingsTab, entry: SettingsIndexEntry): SettingsResultRow 
  * first matching row (or keyword) on a via line. Longer queries give a section-name match, or a
  * section with several matching rows, a hit then up to three children and "+N more" (all children
  * when the section is in `expanded`); a single matching row becomes a via-hit, and a keyword-only
- * match a hit with the keyword as via. Row labels already shown under an earlier section are
+ * match a hit with the keyword as via. A section found by an alias (2+ characters only) is a hit with the
+ * alias as via, then its rows as children like a name match. Row labels already shown under an earlier section are
  * dropped.
  */
 export function layoutSettingsResultRows(
@@ -296,7 +302,7 @@ export function layoutSettingsResultRows(
 ): SettingsResultRow[] {
 	const short = normalizeSettingsQuery(query).length < MIN_CHILD_QUERY_LENGTH;
 	const shown = new Set<string>();
-	return sections.flatMap(({tab, score, keyword, rows}): SettingsResultRow[] => {
+	return sections.flatMap(({tab, score, keyword, alias, rows}): SettingsResultRow[] => {
 		const entries = rows.map((row) => row.entry).filter((entry) => !shown.has(entry.title));
 		const [first] = entries;
 		if (short || (score >= ROW_SCORE_BASE && entries.length === 1)) {
@@ -306,14 +312,16 @@ export function layoutSettingsResultRows(
 			}
 			return [keyword === undefined ? {kind: "hit", tab} : {kind: "hit", tab, via: keyword}];
 		}
+		// A section found by its alias (upstream `shownSectionName`) names the alias on its via line.
+		const hit: SettingsResultRow = alias === undefined ? {kind: "hit", tab} : {kind: "hit", tab, via: alias};
 		if (first === undefined) {
-			return [keyword === undefined ? {kind: "hit", tab} : {kind: "hit", tab, via: keyword}];
+			return [keyword === undefined ? hit : {kind: "hit", tab, via: keyword}];
 		}
 		const visible = expanded.has(tab) ? entries : entries.slice(0, MAX_CHILDREN);
 		for (const entry of visible) shown.add(entry.title);
 		const hidden = entries.length - visible.length;
 		return [
-			{kind: "hit", tab},
+			hit,
 			...visible.map((entry): SettingsResultRow => ({
 				kind: "child",
 				tab,
