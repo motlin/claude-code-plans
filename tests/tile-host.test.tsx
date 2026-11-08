@@ -1331,3 +1331,112 @@ describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9
 		).toStrictEqual([]);
 	});
 });
+
+describe("TileHost titlebar bleed over the chat shell inset (upstream shared-41 w5 / Bb / g_)", () => {
+	const tile = "[data-tiles-line] [data-session-tile]";
+	const header = `${tile} [data-transcript-sticky-header]`;
+	const startZero = `${tile}[data-chat-gutter-start="shave"] [data-transcript-sticky-header]`;
+	const endZero = `${tile}[data-chat-gutter-end] [data-transcript-sticky-header]`;
+	const chatTile = {kind: "tile", tileId: "chat", flex: 1};
+	const planTile = {kind: "tile", tileId: "plan", flex: 1};
+
+	function SessionTileProbe() {
+		return (
+			<div data-session-tile {...useChatGutterAttributes()}>
+				<div data-transcript-sticky-header data-testid="sticky-header" />
+			</div>
+		);
+	}
+
+	function seed(children: unknown[]) {
+		localStorage.setItem(
+			"ccb.paneLayout.v1",
+			JSON.stringify({
+				"session-bleed": {
+					root: {kind: "stack", direction: "row", flex: 1, children},
+					expanded: null,
+					focused: "chat",
+				},
+			}),
+		);
+	}
+
+	function renderBleed() {
+		render(
+			<TileHost sessionId="session-bleed">
+				<ChatContent />
+				<SessionTileProbe />
+			</TileHost>,
+		);
+	}
+
+	function bleed() {
+		const element = screen.getByTestId("sticky-header");
+		return {
+			bleeds: element.matches(header),
+			startZero: element.matches(startZero),
+			endZero: element.matches(endZero),
+		};
+	}
+
+	it("bleeds the start back over the 8px inset and zeroes the end when a pane sits to the chat's right", () => {
+		renderBleed();
+		openTestPane();
+
+		expect(bleed()).toStrictEqual({bleeds: true, startZero: false, endZero: true});
+	});
+
+	it("zeroes both sides when the chat is the top-right tile", () => {
+		seed([planTile, chatTile]);
+		renderBleed();
+
+		expect(bleed()).toStrictEqual({bleeds: true, startZero: true, endZero: true});
+	});
+
+	it("bleeds the end and zeroes the start when the chat sits under a pane in the right column", () => {
+		const unregisterFiles = registerPane("files", {title: "Files", render: () => <p>Files body</p>});
+		seed([
+			{kind: "tile", tileId: "files", flex: 1},
+			{kind: "stack", direction: "column", flex: 1, children: [planTile, chatTile]},
+		]);
+		renderBleed();
+
+		expect(bleed()).toStrictEqual({bleeds: true, startZero: true, endZero: false});
+		unregisterFiles();
+	});
+
+	it("leaves the chat alone (card mode) without the bleed", () => {
+		renderBleed();
+
+		expect(bleed()).toStrictEqual({bleeds: false, startZero: false, endZero: false});
+	});
+
+	it("copies upstream's titlebar margins and drag-backdrop insets, and lets the line-mode tile show the bleed", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
+		expect(
+			[
+				`${tile} { overflow: visible; }`,
+				`${header} { margin-inline-start: calc(-1 * var(--tiles-padding, 0px)); margin-inline-end: calc(-1 * var(--tiles-padding, 0px)); background: transparent; }`,
+				`${startZero} { margin-inline-start: 0; }`,
+				`${endZero} { margin-inline-end: 0; }`,
+				`${header}::before { content: ""; position: absolute; inset-block: 0; inset-inline-start: var(--tiles-padding, 0px); inset-inline-end: var(--tiles-padding, 0px); z-index: -1; background: var(--color-surface-2); }`,
+				`${startZero}::before { inset-inline-start: 0; }`,
+				`${endZero}::before { inset-inline-end: 0; }`,
+			].filter((rule) => !styles.includes(rule)),
+		).toStrictEqual([]);
+	});
+
+	it("keys the closed rail's end on the end gutter attribute and centres the docked column with it, as upstream g_ does", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
+		const rail = "[data-tiles-line] [data-session-rail-docked]";
+		expect(
+			[
+				"--session-rail-closed-end: var(--chat-column-end, 16px);",
+				`${rail} { --session-rail-closed-end: var(--chat-gutter, 32px); }`,
+				`${rail}[data-chat-gutter-end="shave"] { --session-rail-closed-end: calc(var(--chat-gutter) - (var(--tiles-gap) - var(--tiles-padding))); }`,
+				`${rail}[data-chat-gutter-end="bleed"] { --session-rail-closed-end: calc(var(--chat-gutter) + var(--tiles-padding)); }`,
+				"calc( ( 100cqw - 2 * var(--scroll-gutter, 0px) - var(--rail-column-box) + var(--chat-column-end, 16px) - var(--session-rail-closed-end) ) / 2 )",
+			].filter((rule) => !styles.includes(rule)),
+		).toStrictEqual([]);
+	});
+});
