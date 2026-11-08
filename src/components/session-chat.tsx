@@ -20,6 +20,7 @@ import {assertNever} from "../lib/assert-never";
 import {useFizzyLake, useRestInk} from "../lib/fizzy-lake";
 import {useTypeRowCut} from "../lib/use-row-cut";
 import {formatModelName} from "../lib/model-name";
+import {useClientRows, type ClientRow} from "../lib/client-rows-store";
 import {contextRefreshReasonLabel, contextRefreshSubjectLabels} from "../lib/schema-choices";
 import {useAskUserQuestionContext} from "./ask-user-question-context";
 import {orphansOpenQuestions} from "../lib/question-answer-route";
@@ -194,6 +195,11 @@ export interface SessionChatProps {
 	rewoundUuids?: ReadonlySet<string>;
 	/** The session's workflow runs, whose starting or running launches draw as workflow cards. */
 	workflowRuns?: readonly SessionWorkflowRun[];
+	/**
+	 * Draws the card of a host-intercepted `/status` or `/usage` (see client-rows-store) on every render,
+	 * so the card stays live rather than a snapshot. Without it only the command's user row is drawn.
+	 */
+	renderClientRowCard?: ((row: ClientRow) => React.ReactNode) | undefined;
 }
 
 const NO_REWIND_CUTS: ReadonlyMap<string, readonly TranscriptCut[]> = new Map();
@@ -648,6 +654,7 @@ export const SessionChat = React.memo(function SessionChat({
 	rewindCuts = NO_REWIND_CUTS,
 	rewoundUuids = NO_REWOUND_UUIDS,
 	workflowRuns = NO_WORKFLOW_RUNS,
+	renderClientRowCard,
 }: SessionChatProps) {
 	const measurementKey = JSON.stringify([
 		sessionId,
@@ -695,6 +702,7 @@ export const SessionChat = React.memo(function SessionChat({
 		[sendNow, pendingEntryId, onFocusComposer],
 	);
 	useTranscriptSelectionAttach(sessionId, containerRef);
+	const clientRows = useClientRows(sessionId);
 
 	useEffect(() => {
 		const container = containerRef.current;
@@ -876,6 +884,8 @@ export const SessionChat = React.memo(function SessionChat({
 													archived={archived}
 													rewindCuts={rewindCuts}
 													rewoundUuids={rewoundUuids}
+													clientRows={clientRows}
+													renderClientRowCard={renderClientRowCard}
 												/>
 												{sessionLive && (
 													<WaitingPickupStatus
@@ -3784,6 +3794,8 @@ function SessionLineList({
 	archived,
 	rewindCuts,
 	rewoundUuids,
+	clientRows,
+	renderClientRowCard,
 	...renderProps
 }: LineRenderProps & {
 	lines: SessionLine[];
@@ -3794,6 +3806,8 @@ function SessionLineList({
 	archived: boolean;
 	rewindCuts: ReadonlyMap<string, readonly TranscriptCut[]>;
 	rewoundUuids: ReadonlySet<string>;
+	clientRows: readonly ClientRow[];
+	renderClientRowCard: ((row: ClientRow) => React.ReactNode) | undefined;
 }) {
 	const verbose = useContext(TranscriptModeContext) === "verbose";
 	const [held, setHeld] = useState<HeldAssistantFooter | null>(null);
@@ -3822,12 +3836,17 @@ function SessionLineList({
 					onToggle={toggleCut}
 				/>
 			));
-	const entries = withRewoundRowsGreyed(
-		buildSessionListEntries(lines, renderProps, verbose, verbose ? null : held, turnInProgress, archived, {
-			anchors: [...rewind.markersBefore.keys()].toSorted((a, b) => a - b),
-			render: renderRewindMarkers,
-		}),
-		rewind.greyed,
+	const entries = withClientRows(
+		withRewoundRowsGreyed(
+			buildSessionListEntries(lines, renderProps, verbose, verbose ? null : held, turnInProgress, archived, {
+				anchors: [...rewind.markersBefore.keys()].toSorted((a, b) => a - b),
+				render: renderRewindMarkers,
+			}),
+			rewind.greyed,
+		),
+		lines,
+		clientRows,
+		renderClientRowCard,
 	);
 	const heldImagesCall = heldImagesCallId(lines, renderProps, verbose, turnInProgress);
 	const [expansionStore] = useState(() => new Map<string, ExpansionToggle>());
@@ -4579,6 +4598,80 @@ function RewindMarker({
 			</div>
 		</TurnStatusFrame>
 	);
+}
+
+/** The user row of a host-intercepted command: the command as sent, in a plain prompt bubble. */
+function ClientUserRow({row}: {row: ClientRow}) {
+	return (
+		<UserTurn text={row.text} turnKey={row.id}>
+			<UserMessageColumn turnKey={row.id} className={USER_MESSAGE_CLASS}>
+				<UserBubbleBox className={USER_BUBBLE_CLASS}>
+					<p className={USER_PARAGRAPH_CLASS}>{row.text}</p>
+				</UserBubbleBox>
+			</UserMessageColumn>
+		</UserTurn>
+	);
+}
+
+/**
+ * Splices each client row pair (user row, then card) in after the row that draws its anchor line, in
+ * send order; a row whose anchor is null or no longer drawn goes at the end, as upstream appends to
+ * the bucket. Later transcript lines keep drawing below them.
+ */
+function withClientRows(
+	entries: SessionListEntry[],
+	lines: readonly SessionLine[],
+	clientRows: readonly ClientRow[],
+	renderCard: ((row: ClientRow) => React.ReactNode) | undefined,
+): SessionListEntry[] {
+	if (clientRows.length === 0) return entries;
+	const lineIndexByUuid = new Map<string, number>();
+	for (const line of lines) {
+		if ("uuid" in line && line.uuid !== undefined) lineIndexByUuid.set(line.uuid, line.lineIndex);
+	}
+	const rowsAfter = new Map<number, ClientRow[]>();
+	for (const row of clientRows) {
+		const anchor = row.afterUuid === null ? undefined : lineIndexByUuid.get(row.afterUuid);
+		const after =
+			anchor === undefined
+				? entries.length - 1
+				: entries.findLastIndex((entry) => entry.startRecordIndex <= anchor);
+		rowsAfter.set(after, [...(rowsAfter.get(after) ?? []), row]);
+	}
+	const spliced: SessionListEntry[] = [...clientRowEntries(rowsAfter.get(-1), -1, renderCard)];
+	for (const [index, entry] of entries.entries()) {
+		spliced.push(entry, ...clientRowEntries(rowsAfter.get(index), entry.endRecordIndex, renderCard));
+	}
+	return spliced;
+}
+
+function clientRowEntries(
+	rows: readonly ClientRow[] | undefined,
+	recordIndex: number,
+	renderCard: ((row: ClientRow) => React.ReactNode) | undefined,
+): SessionListEntry[] {
+	if (rows === undefined) return [];
+	return rows.flatMap((row): SessionListEntry[] => {
+		const shared = {startRecordIndex: recordIndex, endRecordIndex: recordIndex, opensReply: false};
+		const prompt: SessionListEntry = {
+			...shared,
+			key: `${row.id}-u`,
+			isPrompt: true,
+			kind: "human",
+			element: <ClientUserRow row={row} />,
+		};
+		if (renderCard === undefined) return [prompt];
+		return [
+			prompt,
+			{
+				...shared,
+				key: row.id,
+				isPrompt: false,
+				kind: "marker",
+				element: <div className={TURN_GAP_CLASS}>{renderCard(row)}</div>,
+			},
+		];
+	});
 }
 
 /** Greys the abandoned rows Verbose draws behind an open rewind marker. */
