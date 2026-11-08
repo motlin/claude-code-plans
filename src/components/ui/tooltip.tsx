@@ -1,6 +1,5 @@
 import {
 	cloneElement,
-	createContext,
 	type CSSProperties,
 	type PointerEvent,
 	type ReactElement,
@@ -27,6 +26,7 @@ import {
 	TOOLTIP_CLASS,
 } from "./tooltip-classes";
 import {placeTooltip, type TooltipAlign, type TooltipPlacement} from "./tooltip-placement";
+import {TooltipGroupContext, type TooltipGroupValue} from "./tooltip-group-context";
 import {TooltipPortalContext} from "./tooltip-portal-context";
 
 /** The side classes' 4px gap widened to upstream's `sideOffset 8` (the @ mention row path tip). */
@@ -50,19 +50,11 @@ function anchorClass(className: string | undefined): string {
 	return ownDisplay ? `relative ${className}` : `relative inline-flex ${className}`;
 }
 
-/** A group's single open tip: opening another tip in the group closes it. */
-interface TooltipGroupValue {
-	claim: (hide: () => void) => void;
-	release: (hide: () => void) => void;
-}
-
-const TooltipGroupContext = createContext<TooltipGroupValue | null>(null);
-
 /**
  * Keeps at most one tooltip under it open, as Base UI's delay group does: a nested trigger's tip (a StackedMeter
  * segment) replaces its parent's (the whole meter) instead of drawing over it.
  */
-export function TooltipGroup({children}: {children: ReactNode}) {
+export function TooltipGroup({closeDelay = 0, children}: {closeDelay?: number; children: ReactNode}) {
 	const [value] = useState<TooltipGroupValue>(() => {
 		let current: (() => void) | null = null;
 		return {
@@ -73,6 +65,7 @@ export function TooltipGroup({children}: {children: ReactNode}) {
 			release: (hide) => {
 				if (current === hide) current = null;
 			},
+			closeDelay,
 		};
 	});
 	return <TooltipGroupContext.Provider value={value}>{children}</TooltipGroupContext.Provider>;
@@ -124,7 +117,8 @@ export function Tooltip({
 	style,
 	children,
 }: {
-	content: string;
+	/** The tip's text; a node (memoized by the caller, since it re-places the tip) for rich text such as `<bdi>` parts. */
+	content: ReactNode;
 	shortcut?: string;
 	/**
 	 * More actions on the same control, each stacked on its own row, e.g. Send ⏎ over Queue for later ⌘⏎ and
@@ -315,11 +309,17 @@ export function Tooltip({
 
 	hideRef.current = hide;
 
-	/** Leaving the anchor lifts the suppression, unless the popup is still open. */
+	/** Leaving the anchor lifts the suppression, unless the popup is still open, and closes after the group's delay. */
 	function leave() {
 		const anchor = anchorRef.current;
 		suppressed.current = suppressAfterPopup && anchor !== null && popupOpen(anchor);
-		hide();
+		const closeDelay = group?.closeDelay ?? 0;
+		if (closeDelay === 0 || !open) {
+			hide();
+			return;
+		}
+		clearTimeout(timer.current);
+		timer.current = setTimeout(hide, closeDelay);
 	}
 
 	const label = (

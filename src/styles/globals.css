@@ -338,6 +338,12 @@ html[data-interface-font="dyslexic"] {
 
 	/* Upstream claude.ai/code — side pane surface (shadow-panel-sm) */
 	--shadow-panel-sm: var(--pane-shadow);
+	/* Upstream cds shadow-popover: the lg StackedMeter readout card. */
+	--shadow-popover: var(--upstream-shadow-popover);
+	/* Upstream cds gray-0 / gray-900 / neutral-900: ink printed on lg StackedMeter blocks. */
+	--color-gray-0: #fff;
+	--color-gray-900: #0b0b0b;
+	--color-neutral-900: var(--upstream-neutral-900);
 	/* Upstream cds shadow-panel (ring + --cds-shadow-popover): the Session-files jump popover. */
 	--shadow-panel: var(--upstream-shadow-panel);
 	/* Upstream cds shadow-panel-sm (ring + --cds-shadow-sm): the ⌘K Compose field. */
@@ -721,6 +727,19 @@ html[data-interface-font="dyslexic"] {
 	--chart-categorical-2: #eb6834;
 	--chart-categorical-3: #1baf7a;
 	--chart-categorical-4: #eda100;
+	/* categorical-5..8 and status: the .cds-root ramp (magenta-300, green-500, violet-500, red-400; green-400,
+	   yellow-200, orange-300, red-450). The 2026-10 root-vars survey computed #ce447d/#10a122/#785ee8/#dc3c3d for 5..8. */
+	--chart-categorical-5: #e87ba4;
+	--chart-categorical-6: #008300;
+	--chart-categorical-7: #6250d6;
+	--chart-categorical-8: #e34948;
+	--chart-status-good: #0ca30c;
+	--chart-status-warning: #fab219;
+	--chart-status-serious: #ec835a;
+	--chart-status-critical: #d03b3b;
+	/* Upstream --cds-shadow-popover and --cds-neutral-900 (gray-900 in light, gray-0 in dark). */
+	--upstream-shadow-popover: 0 8px 24px #0000001f, 0 2px 6px #00000014;
+	--upstream-neutral-900: #0b0b0b;
 	/* Upstream .cds-root per-size pads (base scale); [data-size] subtrees remap --cds-pad-* onto them. */
 	--cds-pad-xs--xs: 0.125rem;
 	--cds-pad-xs--sm: 0.125rem;
@@ -956,6 +975,17 @@ html[data-interface-font="dyslexic"] {
 	--chart-categorical-2: #d95926;
 	--chart-categorical-3: #199e70;
 	--chart-categorical-4: #c98500;
+	/* Dark ramp: magenta-400, green-500, violet-350, red-350; status keeps the light ramp's tokens. */
+	--chart-categorical-5: #d55181;
+	--chart-categorical-6: #008300;
+	--chart-categorical-7: #9085e9;
+	--chart-categorical-8: #e66767;
+	--chart-status-good: #0ca30c;
+	--chart-status-warning: #fab219;
+	--chart-status-serious: #ec835a;
+	--chart-status-critical: #d03b3b;
+	--upstream-shadow-popover: 0 8px 24px #00000052, 0 2px 6px #0003;
+	--upstream-neutral-900: #fff;
 }
 
 /* Upstream cds dark-mode wght axes ([data-mode=dark] .cds-root): text thins in dark. The axis tokens end in a

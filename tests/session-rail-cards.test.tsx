@@ -198,6 +198,7 @@ afterEach(() => {
 	for (const unregister of unregisters.splice(0)) unregister();
 	cleanup();
 	vi.unstubAllGlobals();
+	vi.restoreAllMocks();
 });
 
 async function renderCards(
@@ -1081,11 +1082,15 @@ describe("Context card breakdown", () => {
 			tabIndex: 0,
 			className:
 				"relative w-full overflow-hidden forced-colors:outline forced-colors:outline-solid forced-colors:outline-[color:CanvasText] rounded-full outline-none focus-visible:outline-hidden focus-visible:shadow-focus shrink-0",
-			style: "height: 4px; background-color: var(--chart-reference-tint); container-type: inline-size;",
+			style: "background-color: var(--chart-reference-tint); container-type: inline-size; height: 4px;",
 		});
 	});
 
 	it("floors the meter's small segments to 2px plus a 1px seam at upstream's 246px rail width", async () => {
+		const measure = HTMLElement.prototype.getBoundingClientRect;
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+			return this.matches('[data-cds="StackedMeter"]') ? new DOMRect(0, 0, 246, 4) : measure.call(this);
+		});
 		await renderCards(INPUTS);
 
 		const meter = within(body()).getByRole("img", {name: /^Context window/});

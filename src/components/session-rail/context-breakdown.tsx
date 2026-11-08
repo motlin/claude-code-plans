@@ -4,7 +4,6 @@ import {
 	Component,
 	createRef,
 	useImperativeHandle,
-	useLayoutEffect,
 	useRef,
 	useState,
 	type ReactNode,
@@ -14,17 +13,12 @@ import {
 import {flushSync} from "react-dom";
 
 import {formatTokenCount} from "../../lib/composer-state";
-import {
-	buildContextLegend,
-	type ContextBreakdown,
-	type ContextLegendRow,
-	type ContextMeterCategory,
-} from "../../lib/context-breakdown";
+import {buildContextLegend, type ContextBreakdown, type ContextLegendRow} from "../../lib/context-breakdown";
 import type {McpServerSummary} from "../../lib/api/customize";
 import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
 import {toMdSlug} from "../../lib/md-slug";
-import {layoutStackedMeter, meterPercent} from "../../lib/stacked-meter-layout";
-import {Tooltip, TooltipGroup} from "../ui/tooltip";
+import {StackedMeter, StackedMeterGroup, StackedMeterSwatch} from "../ui/stacked-meter";
+import {Tooltip} from "../ui/tooltip";
 
 /* Upstream's rail Context breakdown (`I` with layout "rail"): a stacked meter, legend rows, deferred rows and expanders. */
 
@@ -45,133 +39,18 @@ const EXPANDER_SCROLL_AFTER = 12;
 /** Upstream's `Z.rail.pressScroll`: the 2px pad keeps the rows' focus rings inside the scroller. */
 const EXPANDER_SCROLL_CLASS = "-mx-0.5 max-h-73 scroll-py-0.5 overflow-y-auto overscroll-contain p-0.5";
 const OVERFLOW_NAME_CLASS = "block min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap flex-1";
-/** The meter's thickness at size sm, and the width it lays out at before it is measured (upstream's rail). */
-const METER_HEIGHT = 4;
-const METER_INITIAL_WIDTH = 246;
 
-const PERCENT = new Intl.NumberFormat("en-US", {style: "percent", minimumFractionDigits: 1, maximumFractionDigits: 1});
-const ARIA_PERCENT = new Intl.NumberFormat("en-US", {maximumSignificantDigits: 2});
+const PERCENT = new Intl.NumberFormat("en-US", {
+	style: "percent",
+	minimumFractionDigits: 1,
+	maximumFractionDigits: 1,
+});
 const COUNT = new Intl.NumberFormat("en-US");
-
-/** The chart color of a meter series: used rows cycle the four categorical tokens. */
-function seriesColor(series: string, categories: readonly ContextMeterCategory[]): string {
-	const category = categories.find((c) => c.id === series);
-	if (category?.color !== undefined) return `var(--chart-${category.color})`;
-	if (series === "other" || series === "since") return "var(--chart-reference)";
-	if (series === "buffer") return "var(--chart-muted)";
-	const index = categories.filter((c) => c.color === undefined).findIndex((c) => c.id === series);
-	return `var(--chart-categorical-${(Math.max(0, index) % 4) + 1})`;
-}
-
-/** The width of an element, tracked with a ResizeObserver; `initial` until it has laid out. */
-function useMeasuredWidth(ref: RefObject<HTMLElement | null>, initial: number): number {
-	const [width, setWidth] = useState(initial);
-	useLayoutEffect(() => {
-		const element = ref.current;
-		if (element === null) return undefined;
-		const measure = () => {
-			const measured = element.getBoundingClientRect().width;
-			if (measured > 0) setWidth(measured);
-		};
-		measure();
-		const observer = new ResizeObserver(measure);
-		observer.observe(element);
-		return () => {
-			observer.disconnect();
-		};
-	}, [ref]);
-	return width;
-}
 
 /** Whether a name's text is clipped, the only case its full-name tooltip opens (upstream's OverflowTooltip). */
 function nameOverflows(anchor: HTMLElement): boolean {
 	const name = anchor.querySelector("[data-rail-context-row-name]");
 	return name !== null && name.scrollWidth > name.clientWidth;
-}
-
-/**
- * Upstream's StackedMeter (size sm): absolutely placed segments floored to 2px plus a 1px seam, a dot when the run
- * is narrower than the meter is tall, a tooltip per segment, and a multiline tooltip listing every series.
- */
-function StackedMeter({
-	categories,
-	values,
-	total,
-}: {
-	categories: readonly ContextMeterCategory[];
-	values: Record<string, number>;
-	total: number;
-}) {
-	const root = useRef<HTMLDivElement>(null);
-	const width = useMeasuredWidth(root, METER_INITIAL_WIDTH);
-	const series = categories
-		.map((category) => {
-			const tokens = values[category.id] ?? 0;
-			return {category, tokens, share: tokens / total};
-		})
-		.filter((entry) => entry.share > 0);
-	const lines = series.map(
-		({category, tokens, share}) =>
-			`${category.label}: ${formatTokenCount(tokens)}, ${ARIA_PERCENT.format(share * 100)}%`,
-	);
-	const layout = layoutStackedMeter(
-		series.map((entry) => entry.share),
-		width,
-		METER_HEIGHT,
-	);
-	const paint = (index: number) => seriesColor(series[index]?.category.id ?? "", categories);
-	const meter = (
-		<div
-			ref={root}
-			role="img"
-			aria-label={`Context window: ${lines.join("; ")}`}
-			// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- upstream's meter is a focusable tooltip trigger that reads its series aloud
-			tabIndex={0}
-			className="relative w-full overflow-hidden forced-colors:outline forced-colors:outline-solid forced-colors:outline-[color:CanvasText] rounded-full outline-none focus-visible:outline-hidden focus-visible:shadow-focus shrink-0"
-			style={{height: METER_HEIGHT, backgroundColor: "var(--chart-reference-tint)", containerType: "inline-size"}}
-		>
-			{layout.kind === "dot" && (
-				<Tooltip portal content={lines[layout.index] ?? ""} className="absolute! inset-0">
-					<div
-						className="absolute inset-y-0 start-0 rounded-full forced-color-adjust-none"
-						style={{width: METER_HEIGHT, backgroundColor: paint(layout.index)}}
-					/>
-				</Tooltip>
-			)}
-			{layout.kind === "segments" &&
-				layout.segments.map((segment) => (
-					<Tooltip
-						key={series[segment.index]?.category.id ?? segment.index}
-						portal
-						content={lines[segment.index] ?? ""}
-						className="absolute! inset-y-0"
-						style={{
-							insetInlineStart: `calc(${meterPercent(segment.start)}% + ${segment.seam}px)`,
-							width: `calc(${meterPercent(segment.width)}% - ${segment.seam}px)`,
-						}}
-					>
-						<div
-							className="absolute inset-0 forced-color-adjust-none"
-							style={{
-								backgroundColor: paint(segment.index),
-								borderStartStartRadius: segment.radiusStart,
-								borderEndStartRadius: segment.radiusStart,
-								borderStartEndRadius: segment.radiusEnd,
-								borderEndEndRadius: segment.radiusEnd,
-							}}
-						/>
-					</Tooltip>
-				))}
-		</div>
-	);
-	if (lines.length === 0) return meter;
-	return (
-		<TooltipGroup>
-			<Tooltip multiline maxWidth="max-w-none" content={lines.join("\n")} className="block w-full">
-				{meter}
-			</Tooltip>
-		</TooltipGroup>
-	);
 }
 
 function Swatch({color}: {color: string}) {
@@ -468,22 +347,23 @@ function actionOf(row: ContextLegendRow, available: ReadonlySet<ExpanderKey>): R
 function LegendRow({
 	row,
 	rawMaxTokens,
-	meterCategories,
 	action,
 	onReveal,
 }: {
 	row: ContextLegendRow;
 	rawMaxTokens: number;
-	meterCategories: readonly ContextMeterCategory[];
 	action: RowAction | null;
 	onReveal: (key: ExpanderKey) => void;
 }) {
 	const deferred = row.kind === "deferred";
-	const color = row.meterSeries === null ? (row.color ?? "") : seriesColor(row.meterSeries, meterCategories);
 	const cells = (
 		<>
 			<span className={LEAD_CLASS}>
-				<Swatch color={color} />
+				{row.meterSeries === null ? (
+					<Swatch color={row.color ?? ""} />
+				) : (
+					<StackedMeterSwatch series={row.meterSeries} data-rail-context-swatch="" />
+				)}
 			</span>
 			<span
 				className={`min-w-0 flex-1 truncate ${deferred ? "text-ink-muted" : "text-secondary"}${action ? ` ${ACTION_NAME_CLASS}` : ""}`}
@@ -573,7 +453,6 @@ export function ContextBreakdownBody({
 				key={key}
 				row={row}
 				rawMaxTokens={breakdown.rawMaxTokens}
-				meterCategories={meterCategories}
 				action={actionOf(row, available)}
 				onReveal={reveal}
 			/>
@@ -581,38 +460,46 @@ export function ContextBreakdownBody({
 	const plain = legend.filter((row) => row.kind !== "deferred");
 	const deferred = legend.filter((row) => row.kind === "deferred");
 	return (
-		<div className="flex flex-col">
-			<div className="flex flex-col gap-1 px-1 pt-1 pb-1.5">
-				<div className="flex min-w-0 items-baseline justify-between gap-2 text-[13px]/[19px]">
-					<span className="shrink-0 text-primary tabular-nums">{rounded}% used</span>
-					<span
-						data-rail-context-summary=""
-						data-rail-context-pct={rounded}
-						className="min-w-0 truncate text-[12px]/[15px] text-ink-muted tabular-nums"
-					>
-						{formatTokenCount(usedTokens)} / {formatTokenCount(breakdown.rawMaxTokens)}
-					</span>
+		<StackedMeterGroup categories={meterCategories} size="sm" formatValue={formatTokenCount}>
+			<div className="flex flex-col">
+				<div className="flex flex-col gap-1 px-1 pt-1 pb-1.5">
+					<div className="flex min-w-0 items-baseline justify-between gap-2 text-[13px]/[19px]">
+						<span className="shrink-0 text-primary tabular-nums">{rounded}% used</span>
+						<span
+							data-rail-context-summary=""
+							data-rail-context-pct={rounded}
+							className="min-w-0 truncate text-[12px]/[15px] text-ink-muted tabular-nums"
+						>
+							{formatTokenCount(usedTokens)} / {formatTokenCount(breakdown.rawMaxTokens)}
+						</span>
+					</div>
+					<StackedMeter
+						className="shrink-0"
+						values={meterValues}
+						total={barTotal}
+						readout
+						label="Context window"
+					/>
 				</div>
-				<StackedMeter categories={meterCategories} values={meterValues} total={barTotal} />
-			</div>
-			<div className="flow-root">
-				<div className="flex flex-col gap-1.5 pb-1.5">
-					{plain.length > 0 && <FocusKeeper className="flex flex-col">{renderRows(plain)}</FocusKeeper>}
-					{deferred.length > 0 && <div className="flex flex-col">{renderRows(deferred)}</div>}
-					{lists.length > 0 && (
-						<div className="flex flex-col">
-							{lists.map((list) => (
-								<Expander
-									key={list.key}
-									{...(list.key === "mcp" ? {} : {ref: expanderRefs[list.key]})}
-									label={list.label}
-									rows={list.rows}
-								/>
-							))}
-						</div>
-					)}
+				<div className="flow-root">
+					<div className="flex flex-col gap-1.5 pb-1.5">
+						{plain.length > 0 && <FocusKeeper className="flex flex-col">{renderRows(plain)}</FocusKeeper>}
+						{deferred.length > 0 && <div className="flex flex-col">{renderRows(deferred)}</div>}
+						{lists.length > 0 && (
+							<div className="flex flex-col">
+								{lists.map((list) => (
+									<Expander
+										key={list.key}
+										{...(list.key === "mcp" ? {} : {ref: expanderRefs[list.key]})}
+										label={list.label}
+										rows={list.rows}
+									/>
+								))}
+							</div>
+						)}
+					</div>
 				</div>
 			</div>
-		</div>
+		</StackedMeterGroup>
 	);
 }

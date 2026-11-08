@@ -7,6 +7,7 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {Tooltip, TooltipGroup} from "../src/components/ui/tooltip";
+import {useInTooltipGroup} from "../src/components/ui/tooltip-group-context";
 import {TOOLTIP_CLASS} from "../src/components/ui/tooltip-classes";
 
 const globalsCss = readFileSync(resolve(__dirname, "..", "src", "styles", "globals.css"), "utf8");
@@ -88,13 +89,19 @@ describe("<Tooltip> box", () => {
 
 		expect({
 			className: tooltip.className,
-			rows: [...tooltip.children].map((row) => ({className: row.className, text: row.textContent})),
+			rows: [...tooltip.children].map((row) => ({
+				className: row.className,
+				text: row.textContent,
+			})),
 		}).toStrictEqual({
 			className:
 				"pointer-events-none absolute z-50 flex w-max flex-col items-start gap-0.5 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] bottom-full left-1/2 mb-1 -translate-x-1/2",
 			rows: [
 				{className: "inline-flex items-center gap-2", text: "Send⏎Enter"},
-				{className: "inline-flex items-center gap-2", text: "Fork with this prompt⌥Option⌘Command⏎Enter"},
+				{
+					className: "inline-flex items-center gap-2",
+					text: "Fork with this prompt⌥Option⌘Command⏎Enter",
+				},
 			],
 		});
 	});
@@ -265,7 +272,10 @@ describe('<Tooltip variant="reason">', () => {
 			vi.advanceTimersByTime(1);
 		});
 
-		expect({early, late: screen.getByRole("tooltip").textContent}).toEqual({early: null, late: "Copy"});
+		expect({early, late: screen.getByRole("tooltip").textContent}).toEqual({
+			early: null,
+			late: "Copy",
+		});
 	});
 });
 
@@ -283,7 +293,10 @@ describe('<Tooltip align="start" stacked>', () => {
 		expect({
 			align: tooltip.dataset["align"],
 			className: tooltip.className,
-			children: [...tooltip.children].map((child) => ({className: child.className, text: child.textContent})),
+			children: [...tooltip.children].map((child) => ({
+				className: child.className,
+				text: child.textContent,
+			})),
 			title: tooltip.firstElementChild?.innerHTML,
 		}).toStrictEqual({
 			align: "start",
@@ -449,7 +462,10 @@ describe("tooltip click-to-open (upstream's receipt Tooltip, closeOnClick false 
 		);
 		const trigger = screen.getByRole("button");
 		fireEvent.click(trigger);
-		const first = {tip: screen.queryByRole("tooltip")?.textContent, open: trigger.hasAttribute("data-popup-open")};
+		const first = {
+			tip: screen.queryByRole("tooltip")?.textContent,
+			open: trigger.hasAttribute("data-popup-open"),
+		};
 		fireEvent.click(trigger);
 		const second = screen.queryByRole("tooltip")?.textContent;
 		fireEvent.pointerLeave(trigger);
@@ -505,10 +521,49 @@ describe("tooltip group", () => {
 		const nested = screen.getAllByRole("tooltip").map((tip) => tip.textContent);
 		fireEvent.pointerLeave(screen.getByTestId("inner").parentElement!);
 		fireEvent.focus(screen.getByTestId("outer"));
-		expect({nested, focused: screen.getAllByRole("tooltip").map((tip) => tip.textContent)}).toStrictEqual({
+		expect({
+			nested,
+			focused: screen.getAllByRole("tooltip").map((tip) => tip.textContent),
+		}).toStrictEqual({
 			nested: ["One segment"],
 			focused: ["Whole meter"],
 		});
+	});
+
+	it("closes a tip its close delay after the pointer leaves (upstream's StackedMeter group, closeDelay 200)", () => {
+		vi.useFakeTimers();
+		render(
+			<TooltipGroup closeDelay={200}>
+				<Tooltip content="Segment">
+					<button type="button">segment</button>
+				</Tooltip>
+			</TooltipGroup>,
+		);
+		openTooltip();
+		fireEvent.pointerLeave(screen.getByRole("button").parentElement!);
+		const lingering = screen.queryAllByRole("tooltip").length;
+		act(() => {
+			vi.advanceTimersByTime(200);
+		});
+		expect({lingering, closed: screen.queryAllByRole("tooltip").length}).toStrictEqual({
+			lingering: 1,
+			closed: 0,
+		});
+	});
+
+	it("tells a component whether a group encloses it", () => {
+		function Probe() {
+			return <span data-testid={useInTooltipGroup() ? "in" : "out"} />;
+		}
+		render(
+			<>
+				<Probe />
+				<TooltipGroup>
+					<Probe />
+				</TooltipGroup>
+			</>,
+		);
+		expect([screen.getAllByTestId("out").length, screen.getAllByTestId("in").length]).toStrictEqual([1, 1]);
 	});
 
 	it("passes a style to the anchor", () => {
