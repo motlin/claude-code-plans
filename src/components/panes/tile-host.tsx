@@ -15,6 +15,8 @@ import {Maximize2, Minimize2, X} from "lucide-react";
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
 import {
 	closePane,
+	chatGutters,
+	chatShellPadding,
 	collapsePane,
 	defaultPaneLayout,
 	dropPreview,
@@ -43,7 +45,13 @@ import {
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {Tooltip} from "../ui/tooltip";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
-import {PaneHostContext, type PaneHostApi} from "./pane-host-context";
+import {
+	ChatGutterContext,
+	PaneHostContext,
+	chatGutterAttributes,
+	type ChatGutterAttributes,
+	type PaneHostApi,
+} from "./pane-host-context";
 import {type PaneDefinition, usePaneDefinitions} from "./pane-registry";
 
 /** Upstream `--tiles-gap`, mirrored by the reducer's gap maths. */
@@ -752,15 +760,37 @@ function NodeView({
 	}
 	if (node.tileId === "chat") {
 		const hidden = host.expanded !== null;
+		// Upstream's line-mode tile shell (shared-20 `it`): 8px at the bottom, and 8px on a side the chat touches
+		// without a gutter attribute. Not on a phone until a live 390px read shows upstream insets there.
+		const gutters = !host.phone && tileIdsOf(host.layout.root).length > 1 ? chatGutters(host.layout.root) : null;
+		const attributes = chatGutterAttributes(gutters);
 		return (
-			<TileSlot tileId="chat" host={host} className={slotClass} style={style} hidden={hidden}>
+			<TileSlot
+				tileId="chat"
+				host={host}
+				className={
+					gutters === null ? slotClass : `${slotClass} @container/tile-slot bg-[var(--tile-shell-ground)]`
+				}
+				style={
+					gutters === null
+						? style
+						: {
+								...style,
+								padding: chatShellPadding(gutters),
+								"--tiles-padding": "8px",
+								"--tile-shell-ground": "var(--color-page)",
+							}
+				}
+				hidden={hidden}
+				{...attributes}
+			>
 				{!hidden && tileIdsOf(host.layout.root).length > 1 && (
 					// Keep the chat's Move grip above its titlebar while the transcript scrolls.
 					<div className="sticky top-0 z-20 h-0">
 						<MoveHandle tileId="chat" host={host} />
 					</div>
 				)}
-				{chat}
+				<ChatGutterContext.Provider value={attributes}>{chat}</ChatGutterContext.Provider>
 				<MovePreviewOutline path={path} host={host} />
 			</TileSlot>
 		);
@@ -806,7 +836,7 @@ function TileSlot({
 	phone?: boolean;
 	children: ReactNode;
 	"data-pane-overlay"?: boolean;
-}) {
+} & ChatGutterAttributes) {
 	const focus = () => {
 		host.update((state) => focusPane(state, tileId));
 	};

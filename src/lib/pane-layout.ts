@@ -152,6 +152,52 @@ const DEFAULT_CHANGES_SCOPE = "branch";
 
 const PaneLayoutStoreSchema = z.record(z.string(), PaneLayoutEntrySchema);
 
+export interface ChatGutters {
+	start: "shave" | undefined;
+	end: "bleed" | "shave" | undefined;
+}
+
+/** Upstream cf53e1812 `ne`: the top-right tile (row → last child, column → first child). */
+function topRightTile(node: LayoutNode): TileId {
+	if (node.kind === "tile") return node.tileId;
+	const child = node.direction === "row" ? node.children.at(-1) : node.children[0];
+	return child === undefined ? "chat" : topRightTile(child);
+}
+
+/**
+ * Upstream cf53e1812 `Q` (side "start": row → first child) and `Z` (side
+ * "end": row → last child); a column puts every child on both edges.
+ */
+function edgeTiles(node: LayoutNode, side: "start" | "end", into = new Set<TileId>()): Set<TileId> {
+	if (node.kind === "tile") return into.add(node.tileId);
+	const children =
+		node.direction === "column" ? node.children : [side === "start" ? node.children[0] : node.children.at(-1)];
+	for (const child of children) if (child !== undefined) edgeTiles(child, side, into);
+	return into;
+}
+
+/**
+ * The chat's gutter attributes, from upstream cc43287c9:
+ * `mt = Q(tree).has("chat") ? undefined : "shave"` and
+ * `ht = ne(tree) === "chat" ? "bleed" : Z(tree).has("chat") ? undefined : "shave"`.
+ */
+export function chatGutters(root: StackNode): ChatGutters {
+	return {
+		start: edgeTiles(root, "start").has("chat") ? undefined : "shave",
+		end: topRightTile(root) === "chat" ? "bleed" : edgeTiles(root, "end").has("chat") ? undefined : "shave",
+	};
+}
+
+/**
+ * The chat tile shell's padding, upstream shared-20 `it(end, 8, start, "chat", rtl)`:
+ * 8px at the bottom always, 8px on a side the chat touches without a gutter attribute.
+ */
+export function chatShellPadding(gutters: ChatGutters, rtl = false): string {
+	const end = gutters.end === undefined ? 8 : 0;
+	const start = gutters.start === undefined ? 8 : 0;
+	return `0px ${rtl ? start : end}px 8px ${rtl ? end : start}px`;
+}
+
 export const PANE_LAYOUT_STORAGE_KEY = "ccb.paneLayout.v1";
 
 export function defaultPaneLayout(): PaneLayoutState {

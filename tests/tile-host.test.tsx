@@ -6,7 +6,7 @@ import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {registerPane} from "../src/components/panes/pane-registry";
-import {usePaneHost} from "../src/components/panes/pane-host-context";
+import {useChatGutterAttributes, usePaneHost} from "../src/components/panes/pane-host-context";
 import {TileHost} from "../src/components/panes/tile-host";
 import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 
@@ -782,6 +782,18 @@ describe("TileHost on a phone", () => {
 		});
 	});
 
+	it("leaves the phone chat slot without upstream's line-mode shell inset until a live 390px read confirms it", () => {
+		mockViewport(390);
+		renderHost("session-phone");
+		openTestPane();
+
+		const slot = document.querySelector<HTMLElement>("[data-tile-host=chat]");
+		expect({
+			padding: slot?.style.padding,
+			end: slot?.getAttribute("data-chat-gutter-end"),
+		}).toStrictEqual({padding: "", end: null});
+	});
+
 	it("hides non-owning stack wrappers while a nested phone pane is expanded", () => {
 		mockViewport(390);
 		const unregisterFiles = registerPane("files", {title: "Files", render: () => <p>Files body</p>});
@@ -1142,5 +1154,160 @@ describe("TileHost corner handle", () => {
 			},
 			cursor: true,
 		});
+	});
+});
+
+describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9 tileStyle)", () => {
+	function GutterProbe() {
+		return <output data-testid="gutter-probe">{JSON.stringify(useChatGutterAttributes())}</output>;
+	}
+
+	function seed(children: unknown[]) {
+		localStorage.setItem(
+			"ccb.paneLayout.v1",
+			JSON.stringify({
+				"session-inset": {
+					root: {kind: "stack", direction: "row", flex: 1, children},
+					expanded: null,
+					focused: "chat",
+				},
+			}),
+		);
+	}
+
+	const chatTile = {kind: "tile", tileId: "chat", flex: 1};
+	const planTile = {kind: "tile", tileId: "plan", flex: 1};
+
+	function shellState() {
+		const slot = document.querySelector<HTMLElement>("[data-tile-host=chat]");
+		if (slot === null) throw new Error("chat slot missing");
+		// jsdom collapses the shorthand ("0px 0px 8px"), so read the four longhands back in upstream's order.
+		const {paddingTop, paddingRight, paddingBottom, paddingLeft} = slot.style;
+		return {
+			padding: slot.style.padding === "" ? "" : `${paddingTop} ${paddingRight} ${paddingBottom} ${paddingLeft}`,
+			start: slot.getAttribute("data-chat-gutter-start"),
+			end: slot.getAttribute("data-chat-gutter-end"),
+			tilesPadding: slot.style.getPropertyValue("--tiles-padding"),
+			ground: slot.style.getPropertyValue("--tile-shell-ground"),
+			groundFill: slot.classList.contains("bg-[var(--tile-shell-ground)]"),
+			mirrored: screen.getByTestId("gutter-probe").textContent,
+			pane: document.querySelector<HTMLElement>("[data-tile-host=plan]")?.style.padding,
+		};
+	}
+
+	function renderInset() {
+		render(
+			<TileHost sessionId="session-inset">
+				<ChatContent />
+				<GutterProbe />
+			</TileHost>,
+		);
+	}
+
+	it("insets the chat 8px from the bottom and the sidebar, shaving its end, when a pane sits to its right", () => {
+		renderInset();
+		openTestPane();
+
+		expect(shellState()).toStrictEqual({
+			padding: "0px 0px 8px 8px",
+			start: null,
+			end: "shave",
+			tilesPadding: "8px",
+			ground: "var(--color-page)",
+			groundFill: true,
+			mirrored: JSON.stringify({"data-chat-gutter-end": "shave"}),
+			pane: "",
+		});
+	});
+
+	it("drops the start inset and bleeds the end when the chat is the top-right tile", () => {
+		seed([planTile, chatTile]);
+		renderInset();
+
+		expect(shellState()).toMatchObject({
+			padding: "0px 0px 8px 0px",
+			start: "shave",
+			end: "bleed",
+			mirrored: JSON.stringify({"data-chat-gutter-start": "shave", "data-chat-gutter-end": "bleed"}),
+		});
+	});
+
+	it("insets the end 8px with no end attribute when the chat sits under a pane in the right column", () => {
+		const unregisterFiles = registerPane("files", {title: "Files", render: () => <p>Files body</p>});
+		seed([
+			{kind: "tile", tileId: "files", flex: 1},
+			{kind: "stack", direction: "column", flex: 1, children: [planTile, chatTile]},
+		]);
+		renderInset();
+
+		expect(shellState()).toMatchObject({
+			padding: "0px 8px 8px 0px",
+			start: "shave",
+			end: null,
+			mirrored: JSON.stringify({"data-chat-gutter-start": "shave"}),
+		});
+		unregisterFiles();
+	});
+
+	it("keeps the chat alone without the shell inset while line mode stays pane-gated", () => {
+		renderInset();
+
+		expect(shellState()).toMatchObject({padding: "", start: null, end: null, mirrored: "{}"});
+	});
+
+	it("keeps the route shell's line-mode rule at padding 0, so the 8px comes only from the chat shell", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
+		const rule = styles.indexOf(
+			'[data-route-tile-shell="session"]:has([data-tiles-line]) { border-width: 0; padding: 0;',
+		);
+		const comment = styles.lastIndexOf("/*", rule);
+		expect({
+			rule: rule !== -1,
+			commentNamesChatShell: styles.slice(comment, rule).includes("chat shell"),
+			chatSlotRule: styles.includes('[data-tile-host="chat"] { padding'),
+		}).toStrictEqual({rule: true, commentNamesChatShell: true, chatSlotRule: false});
+	});
+
+	it("makes the inset chat slot upstream's tile-slot container, so a <=560px slot drops --chat-gutter to 16px", () => {
+		renderInset();
+		openTestPane();
+		const before = document.querySelector("[data-tile-host=chat]")?.classList.contains("@container/tile-slot");
+		cleanup();
+		localStorage.clear();
+		renderInset();
+		expect({
+			lineMode: before,
+			alone: document.querySelector("[data-tile-host=chat]")?.classList.contains("@container/tile-slot"),
+		}).toStrictEqual({lineMode: true, alone: false});
+	});
+
+	it("derives the chat column gutters from the gutter attributes, as upstream shared-38 MJ does", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
+		const tile = "[data-tiles-line] [data-session-tile]";
+		const shaved = "calc(var(--chat-gutter) - (var(--tiles-gap) - var(--tiles-padding)))";
+		expect(
+			[
+				'[data-tiles-line] [data-tile-host="chat"] { --chat-gutter: 32px; --tiles-gap: 1px; }',
+				`@container tile-slot (max-width: 560px) { ${tile}:is([data-chat-gutter-start], [data-chat-gutter-end]) { --chat-gutter: 16px; } }`,
+				`${tile}:is([data-chat-gutter-start], [data-chat-gutter-end]) { --chat-column-start: var(--chat-gutter); --chat-column-end: var(--chat-gutter); --chat-column-extra: calc(var(--chat-column-start) + var(--chat-column-end)); }`,
+				`${tile}[data-chat-gutter-start="shave"] { --chat-column-start: ${shaved}; }`,
+				`${tile}[data-chat-gutter-end="shave"] { --chat-column-end: ${shaved}; }`,
+				`${tile}[data-chat-gutter-end="bleed"] { --chat-column-end: calc(var(--chat-gutter) + var(--tiles-padding)); }`,
+				`${tile}[data-chat-gutter-end="shave"]:not([data-chat-gutter-start]) { --chat-column-end: calc(var(--chat-column-start) + var(--tiles-padding)); }`,
+				`${tile}[data-chat-gutter-end="bleed"]:not([data-chat-gutter-start]) { --chat-column-end: clamp( 0.75rem, (100% - var(--max-content-width, 768px) + var(--tiles-padding)) / 2, var(--chat-gutter) + var(--tiles-padding) ); --chat-column-start: calc(var(--chat-column-end) - var(--tiles-padding)); }`,
+			].filter((rule) => !styles.includes(rule)),
+		).toStrictEqual([]);
+	});
+
+	it("sets the docked rail's end inset by the end gutter attribute, as upstream shared-18 Z8 resolves it", () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8").replaceAll(/\s+/g, " ");
+		expect(
+			[
+				'[data-tiles-line] [data-session-rail-docked][data-chat-gutter-end="bleed"] { --session-rail-end: 7px; }',
+				'[data-tiles-line] [data-session-rail-docked][data-chat-gutter-end="shave"] { --session-rail-end: 0px; }',
+				"[data-tiles-line] [data-session-rail-docked]:not([data-chat-gutter-end]) { --session-rail-end: 4px; }",
+				"[data-session-rail-docked] { --session-rail-w: 17.5rem; --session-rail-gutter: 24px;",
+			].filter((rule) => !styles.includes(rule)),
+		).toStrictEqual([]);
 	});
 });

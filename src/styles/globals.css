@@ -3955,8 +3955,9 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 		}
 	}
 
-	/* Upstream's line mode: with a side pane open the tiles fill the shell with no padding or border at every width
-	   (chat at 0,0, 741px tall at 386x741; flush with the sidebar and window edges at 1032px). */
+	/* Upstream's line mode: with a side pane open the route shell has no padding or border at every width; the chat
+	   shell's own inline padding (shared-20 `it`: 8px bottom, 8px on an un-guttered side) is the only inset, and panes
+	   run flush. Phone keeps the chat at 0,0 (741px tall at 386x741). */
 	[data-route-tile-shell="session"]:has([data-tiles-line]) {
 		border-width: 0;
 		padding: 0;
@@ -3970,6 +3971,66 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 [data-route-tile-shell="session"]:has([data-tiles-line]) [data-session-tile] {
 	border-radius: 0;
 	box-shadow: none;
+}
+
+/* Upstream shared-38 `MJ`: in line mode the chat column's side gutters absorb the chat shell's 8px inset, so a shaved
+   side is 39px (32 - (1 - 8)), a bleeding end 40px, and the chat alone centres on the whole shell. The rules sit on the
+   session tile, which mirrors the slot's gutter attributes, because a container query cannot style its own container. */
+[data-tiles-line] [data-tile-host="chat"] {
+	--chat-gutter: 32px;
+	--tiles-gap: 1px;
+}
+
+@container tile-slot (max-width: 560px) {
+	[data-tiles-line] [data-session-tile]:is([data-chat-gutter-start], [data-chat-gutter-end]) {
+		--chat-gutter: 16px;
+	}
+}
+
+/* Upstream `VF`: the column's max width is max-content-width + gutter-start + gutter-end. */
+[data-tiles-line] [data-session-tile]:is([data-chat-gutter-start], [data-chat-gutter-end]) {
+	--chat-column-start: var(--chat-gutter);
+	--chat-column-end: var(--chat-gutter);
+	--chat-column-extra: calc(var(--chat-column-start) + var(--chat-column-end));
+}
+
+[data-tiles-line] [data-session-tile][data-chat-gutter-start="shave"] {
+	--chat-column-start: calc(var(--chat-gutter) - (var(--tiles-gap) - var(--tiles-padding)));
+}
+
+[data-tiles-line] [data-session-tile][data-chat-gutter-end="shave"] {
+	--chat-column-end: calc(var(--chat-gutter) - (var(--tiles-gap) - var(--tiles-padding)));
+}
+
+[data-tiles-line] [data-session-tile][data-chat-gutter-end="bleed"] {
+	--chat-column-end: calc(var(--chat-gutter) + var(--tiles-padding));
+}
+
+[data-tiles-line] [data-session-tile][data-chat-gutter-end="shave"]:not([data-chat-gutter-start]) {
+	--chat-column-end: calc(var(--chat-column-start) + var(--tiles-padding));
+}
+
+[data-tiles-line] [data-session-tile][data-chat-gutter-end="bleed"]:not([data-chat-gutter-start]) {
+	--chat-column-end: clamp(
+		0.75rem,
+		(100% - var(--max-content-width, 768px) + var(--tiles-padding)) / 2,
+		var(--chat-gutter) + var(--tiles-padding)
+	);
+	--chat-column-start: calc(var(--chat-column-end) - var(--tiles-padding));
+}
+
+/* Upstream shared-18 `Z8`: rail end = max(0, edge - tiles-padding - tiles-border - 1px), edge .5rem with an end
+   attribute (bleed drops the tiles-padding term) and 13px without one. Card mode keeps 12px. */
+[data-tiles-line] [data-session-rail-docked][data-chat-gutter-end="bleed"] {
+	--session-rail-end: 7px;
+}
+
+[data-tiles-line] [data-session-rail-docked][data-chat-gutter-end="shave"] {
+	--session-rail-end: 0px;
+}
+
+[data-tiles-line] [data-session-rail-docked]:not([data-chat-gutter-end]) {
+	--session-rail-end: 4px;
 }
 
 /* Upstream's tile shell ground: --tile-pane-ground (surface-2) for panes, --tile-page-ground (surface-1) for chat. */

@@ -9,6 +9,8 @@ import {
 	type PaneLayoutState,
 	type StackNode,
 	type TileId,
+	chatGutters,
+	chatShellPadding,
 	closePane,
 	collapsePane,
 	defaultPaneLayout,
@@ -877,5 +879,61 @@ describe("subagent pane focus persistence", () => {
 				return "ok";
 			})(),
 		]).toEqual([null, null, "ok"]);
+	});
+});
+
+describe("chatGutters and chatShellPadding (upstream cf53e1812 ne/Q/Z, shared-20 it)", () => {
+	it.each([
+		{
+			name: "[chat]",
+			root: stack("row", 1, [tile("chat", 1)]),
+			gutters: {start: undefined, end: "bleed"},
+			padding: "0px 0px 8px 8px",
+		},
+		{
+			name: "[chat, files]",
+			root: stack("row", 1, [tile("chat", 1), tile("files", 1)]),
+			gutters: {start: undefined, end: "shave"},
+			padding: "0px 0px 8px 8px",
+		},
+		{
+			name: "[files, chat]",
+			root: stack("row", 1, [tile("files", 1), tile("chat", 1)]),
+			gutters: {start: "shave", end: "bleed"},
+			padding: "0px 0px 8px 0px",
+		},
+		{
+			name: "[files, chat, changes]",
+			root: stack("row", 1, [tile("files", 1), tile("chat", 1), tile("changes", 1)]),
+			gutters: {start: "shave", end: "shave"},
+			padding: "0px 0px 8px 0px",
+		},
+		{
+			name: "[files, column[changes, chat]]",
+			root: stack("row", 1, [tile("files", 1), stack("column", 1, [tile("changes", 1), tile("chat", 1)])]),
+			gutters: {start: "shave", end: undefined},
+			padding: "0px 8px 8px 0px",
+		},
+		{
+			name: "[files, column[chat, changes]]",
+			root: stack("row", 1, [tile("files", 1), stack("column", 1, [tile("chat", 1), tile("changes", 1)])]),
+			gutters: {start: "shave", end: "bleed"},
+			padding: "0px 0px 8px 0px",
+		},
+		{
+			name: "[column[chat, files], changes]",
+			root: stack("row", 1, [stack("column", 1, [tile("chat", 1), tile("files", 1)]), tile("changes", 1)]),
+			gutters: {start: undefined, end: "shave"},
+			padding: "0px 0px 8px 8px",
+		},
+	])("$name", ({root, gutters, padding}) => {
+		const actual = chatGutters(root);
+		expect({gutters: actual, padding: chatShellPadding(actual)}).toStrictEqual({gutters, padding});
+	});
+
+	it("swaps start and end in RTL", () => {
+		expect(chatShellPadding(chatGutters(stack("row", 1, [tile("chat", 1), tile("files", 1)])), true)).toBe(
+			"0px 8px 8px 0px",
+		);
 	});
 });

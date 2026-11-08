@@ -3,6 +3,7 @@ import {sessionScrollKey} from "../lib/session-route-location";
 import {SessionTileGeometryReadyContext} from "./session-tile-geometry-context";
 import {useScrollGutterVar} from "../hooks/use-scroll-gutter-var";
 import {SESSION_TILE_CLASS} from "./dock-tokens";
+import {useChatGutterAttributes} from "./panes/pane-host-context";
 import {TooltipPortalContext} from "./ui/tooltip-portal-context";
 import {useCallback, useLayoutEffect, useRef, type ReactNode, type Ref, type RefObject} from "react";
 
@@ -42,6 +43,7 @@ export function SessionTileFrame({
 	tileRef?: Ref<HTMLDivElement> | undefined;
 }) {
 	const router = useRouter();
+	const gutterAttributes = useChatGutterAttributes();
 	const pendingRendered = useRef<(() => void) | undefined>(undefined);
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	useScrollGutterVar(scrollerRef);
@@ -126,6 +128,7 @@ export function SessionTileFrame({
 			ref={tileRef}
 			data-session-tile
 			className={SESSION_TILE_CLASS}
+			{...gutterAttributes}
 			{...(railDocked ? {"data-session-rail-docked": ""} : {})}
 		>
 			<div className="shrink-0">{header}</div>
