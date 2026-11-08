@@ -7,6 +7,7 @@ import {useShortcut} from "../../hooks/use-shortcut";
 import type {StartProject} from "../../lib/palette-start-session";
 import {PLACE_CHIP_CLASS} from "../composer-tokens";
 import {MenuSwitch} from "../ui/menu-switch";
+import {overlayAttrs} from "../../lib/overlay";
 
 /*
  * The home composer's folder picker, copied from claude.ai/code's repository
@@ -199,6 +200,7 @@ export function ProjectPicker({
 					className="z-[130] outline-none"
 				>
 					<Popover.Popup
+						{...overlayAttrs}
 						ref={popupRef}
 						initialFocus={searchRef}
 						finalFocus={() => keepFocusInPopup(popupRef.current)}

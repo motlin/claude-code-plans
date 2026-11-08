@@ -5,6 +5,7 @@ import type {SheetDetent} from "../../lib/sheet-drag";
 import {useCloseWatcher} from "../../lib/use-close-watcher";
 import {DensityProvider} from "./density";
 import {SHEET_TALL_HEIGHT, SHEET_TEXT_ENTRY, SheetDragContext, useSheetDrag} from "./menu-sheet-drag";
+import {overlayAttrs} from "../../lib/overlay";
 
 /* Upstream's gM: `duration-sheet ease-out`, which compute to 0.3s and the phone-sheet curve. */
 const SHEET_MOTION = "duration-[300ms] ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none";
@@ -373,6 +374,7 @@ export function PopoverSheetContent({
 						<BasePopover.Popup
 							ref={setPopup}
 							data-cds="Popover"
+							{...overlayAttrs}
 							data-size="lg"
 							data-presentation="sheet"
 							data-sheet-tree={treeId}

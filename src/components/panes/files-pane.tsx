@@ -11,6 +11,7 @@ import {EMPTY_EDIT_GUARD, type EditGuardEvent, editGuardReducer} from "../../lib
 import {onFileOpenRequest, takePendingFileOpen} from "../../lib/file-open-requests";
 import type {FileRef} from "../../lib/file-refs";
 import {loadFileTabs, saveFileTabs} from "../../lib/pane-layout";
+import {isAnotherOverlayOpen} from "../../lib/overlay";
 import type {SessionFiles} from "../../lib/session-files";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {FILE_TAB_SIZES, normalizeFileTabSize} from "../../lib/file-preview";
@@ -487,7 +488,8 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 		"go_to_file_in_changes",
 		() => {
 			if (host.layout.focused !== "files") return false;
-			goToFileOrSearch();
+			// Upstream KA's onMatch: consumed, but a no-op while any cds overlay is open (`zI(doc)`).
+			if (!isAnotherOverlayOpen(filterRef.current?.ownerDocument)) goToFileOrSearch();
 			return true;
 		},
 		{priority: 1},

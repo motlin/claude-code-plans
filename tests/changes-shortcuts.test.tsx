@@ -10,8 +10,10 @@ import {setKeyboardShortcutsOpen} from "../src/components/keyboard-shortcuts-ope
 import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SettingsProvider} from "../src/components/settings-provider";
+import {PopoverContent, PopoverRoot, PopoverTrigger} from "../src/components/ui/popover";
 import {SessionPaneControls} from "../src/components/view-options-menu";
 import type {SessionDiffFile, SessionDiffResponse} from "../src/lib/api/session-diff";
+import {isAnotherOverlayOpen} from "../src/lib/overlay";
 import {installLocalStorage} from "./fake-storage";
 
 const GREET_FILE: SessionDiffFile = {
@@ -169,6 +171,30 @@ describe("Changes pane shortcuts", () => {
 			openPrevented: true,
 			openCombobox: "INPUT",
 		});
+	});
+
+	it("⌘P still opens Go to file while another overlay is open, as upstream's Changes popup is ungated", () => {
+		renderSession();
+		press(CTRL_SHIFT_D);
+		render(
+			<PopoverRoot defaultOpen>
+				<PopoverTrigger>Usage</PopoverTrigger>
+				<PopoverContent>
+					<p>Usage body</p>
+				</PopoverContent>
+			</PopoverRoot>,
+		);
+		act(() => {
+			(document.activeElement as HTMLElement | null)?.blur();
+		});
+		const overlayOpen = isAnotherOverlayOpen(document);
+		const event = press(CMD_P);
+
+		expect({
+			overlayOpen,
+			prevented: event.defaultPrevented,
+			combobox: screen.getByRole("combobox", {name: "Search changed files"}).tagName,
+		}).toStrictEqual({overlayOpen: true, prevented: true, combobox: "INPUT"});
 	});
 
 	it("lists the three Changes shortcuts in the shortcuts dialog", async () => {

@@ -186,6 +186,7 @@ import {ArchivedBadge} from "./archived-badge";
 import {Tooltip} from "./ui/tooltip";
 import {useOpenSettings} from "./settings/open-settings";
 import {setKeyboardShortcutsOpen} from "./keyboard-shortcuts-open";
+import {overlayAttrs} from "../lib/overlay";
 
 /*
  * The claude.ai/code ⌘K palette shell, split Search | Compose variant
@@ -1855,6 +1856,7 @@ function PalettePopup({
 
 	return (
 		<Dialog.Popup
+			{...overlayAttrs}
 			ref={popupRef}
 			data-command-palette=""
 			data-perf-overlay="command_palette"

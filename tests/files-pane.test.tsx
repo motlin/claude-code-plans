@@ -13,6 +13,7 @@ import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ToastProvider} from "../src/components/toast";
+import {PopoverContent, PopoverRoot, PopoverTrigger} from "../src/components/ui/popover";
 import {writeClipboardText} from "../src/lib/clipboard";
 import {requestFileOpen} from "../src/lib/file-open-requests";
 import type {SessionFiles} from "../src/lib/session-files";
@@ -462,6 +463,39 @@ describe("Files pane header", () => {
 			focused: document.activeElement?.getAttribute("aria-label"),
 			selection: [input.selectionStart, input.selectionEnd],
 		}).toStrictEqual({prevented: true, focused: "Filter files", selection: [0, 5]});
+	});
+
+	function pressGoToFileFromBody(withOpenPopover: boolean) {
+		registerFilesPane();
+		renderSession();
+		press(CMD_SHIFT_F);
+		if (withOpenPopover) {
+			render(
+				<PopoverRoot defaultOpen>
+					<PopoverTrigger>Usage</PopoverTrigger>
+					<PopoverContent>
+						<p>Usage body</p>
+					</PopoverContent>
+				</PopoverRoot>,
+			);
+		}
+		act(() => {
+			(document.activeElement as HTMLElement | null)?.blur();
+		});
+		const event = press(CMD_P);
+		return {
+			prevented: event.defaultPrevented,
+			focused:
+				document.activeElement === document.body ? "body" : document.activeElement?.getAttribute("aria-label"),
+		};
+	}
+
+	it("⌘P from the body focuses the Files filter while no overlay is open", () => {
+		expect(pressGoToFileFromBody(false)).toStrictEqual({prevented: true, focused: "Filter files"});
+	});
+
+	it("⌘P does nothing while another overlay is open, as upstream's KA gates on zI(document)", () => {
+		expect(pressGoToFileFromBody(true)).toStrictEqual({prevented: true, focused: "body"});
 	});
 
 	it("Go to file or search reveals a hidden tree and focuses the filter", async () => {

@@ -38,6 +38,7 @@ import {
 	useItemClass,
 } from "./menu-internals";
 import {SHEET_TALL_HEIGHT, SheetDragContext, useSheetDrag} from "./menu-sheet-drag";
+import {overlayAttrs} from "../../lib/overlay";
 
 /*
  * The bottom-sheet presentation of the menu primitive, which ./menu loads lazily behind the
@@ -383,6 +384,7 @@ export function RootSheetContent({children, className, finalFocus, popupProps, c
 									disableAnchorTracking
 								>
 									<BaseMenu.Popup
+										{...overlayAttrs}
 										{...popupProps}
 										ref={setPopup}
 										data-cds={cds ?? kind}
@@ -446,6 +448,7 @@ export function NestedSheetContent({
 						disableAnchorTracking
 					>
 						<BaseMenu.Popup
+							{...overlayAttrs}
 							{...popupProps}
 							ref={setPopup}
 							data-cds={cds ?? kind}

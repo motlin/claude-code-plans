@@ -3,10 +3,11 @@ import {type ComponentProps, type Ref, useCallback} from "react";
 
 import {useTallWindowRef} from "./dialog-band";
 import {useDialogPad} from "./dialog-pad";
+import {overlayAttrs} from "../../lib/overlay";
 
 /**
  * Upstream's styled cds `Dialog.Popup` (shared-frame `js` rendered through `lZ`): `data-cds="Dialog"`,
- * `data-cds-fizzy` under panels, and the `An()` tall-window ref. Every styled local dialog renders its
+ * `data-cds-fizzy` under panels, upstream's `data-cds-overlay` marker, and the `An()` tall-window ref. Every styled local dialog renders its
  * popup through this wrapper so popup-level behaviour lives in one place.
  */
 export function DialogPopup({ref, ...props}: ComponentProps<typeof Dialog.Popup>) {
@@ -19,7 +20,7 @@ export function DialogPopup({ref, ...props}: ComponentProps<typeof Dialog.Popup>
 		},
 		[tallWindowRef, ref],
 	);
-	return <Dialog.Popup {...popup} {...props} ref={mergedRef} />;
+	return <Dialog.Popup {...overlayAttrs} {...popup} {...props} ref={mergedRef} />;
 }
 
 function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {

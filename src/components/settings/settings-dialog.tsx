@@ -44,6 +44,7 @@ import {SETTINGS_PHONE_QUERY, useMediaQuery} from "../../lib/use-phone-sheet";
 import {CDS_TAB_CLASS, CDS_TAB_LIST_CLASS} from "../ui/cds-tabs";
 import {DensityScope} from "../ui/density";
 import {DIALOG_BODY_CLASS} from "../ui/dialog-classes";
+import {overlayAttrs} from "../../lib/overlay";
 
 const TAB_PANELS = {
 	general: GeneralSettings,
@@ -396,6 +397,7 @@ export function SettingsDialog() {
 				<DensityScope density="comfortable">
 					<Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40 dark:bg-black/50 transition-opacity duration-200 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 motion-reduce:transition-none" />
 					<Dialog.Popup
+						{...overlayAttrs}
 						aria-labelledby={titleId}
 						initialFocus={initialFocus}
 						finalFocus={finalFocus}

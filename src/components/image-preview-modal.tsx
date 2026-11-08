@@ -6,6 +6,7 @@ import {flushSync} from "react-dom";
 import {morph, setMorphName} from "../lib/image-viewer-morph";
 import {PHONE_SHEET_QUERY, useMediaQuery} from "../lib/use-phone-sheet";
 import {DensityScope} from "./ui/density";
+import {overlayAttrs} from "../lib/overlay";
 
 const MORPH_NAME = "chat-image-preview";
 const ACTIVE_CLASS = "vt-image-preview-active";
@@ -187,6 +188,7 @@ export function ImagePreviewModal({
 							className="fixed inset-0 bg-transparent backdrop-blur-none"
 						/>
 						<Dialog.Popup
+							{...overlayAttrs}
 							ref={setPopup}
 							initialFocus={closeRef}
 							finalFocus={false}

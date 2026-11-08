@@ -14,6 +14,7 @@ import {
 import {Icon} from "../ui/icon";
 import {SHEET_BODY_CLASS} from "../ui/popover-sheet";
 import {SETTINGS_TAB_ICONS} from "./settings-tab-icons";
+import {overlayAttrs} from "../../lib/overlay";
 
 /**
  * `label` with the query's first word-start (else first) occurrence in the accent color. Like upstream,
@@ -259,6 +260,7 @@ export function SettingsSearch({
 					<Popover.Popup
 						id={listId}
 						data-cds="Popover"
+						{...overlayAttrs}
 						aria-label="Search results"
 						initialFocus={false}
 						finalFocus={false}

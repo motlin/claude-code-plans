@@ -4,6 +4,7 @@ import {useFizzyLake} from "../lib/fizzy-lake";
 import {DensityScope} from "./ui/density";
 import {DIALOG_FOOTER_CLASS} from "./ui/dialog-pad";
 import {DIALOG_BODY_CLASS} from "./ui/dialog-classes";
+import {overlayAttrs} from "../lib/overlay";
 
 const BUTTON_BASE_CLASS =
 	"h-8 rounded-r6 px-3 text-body font-medium transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
@@ -101,6 +102,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 				<DensityScope density="comfortable">
 					<AlertDialog.Backdrop className="fixed inset-0 z-50 bg-backdrop backdrop-blur-[2px] transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
 					<AlertDialog.Popup
+						{...overlayAttrs}
 						initialFocus={cancelRef}
 						data-cds="ConfirmationDialog"
 						data-cds-fizzy={panels ? "" : undefined}

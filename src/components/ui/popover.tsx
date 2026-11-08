@@ -17,6 +17,7 @@ import {
 
 import {loadedPopoverSheet, preloadPopoverSheet} from "./popover-sheet-loader";
 import {useSheetPresentation} from "./sheet-presentation";
+import {overlayAttrs} from "../../lib/overlay";
 
 interface PopoverSheet {
 	sheet: boolean;
@@ -141,6 +142,8 @@ export function PopoverContent({
 		<BasePopover.Portal>
 			<BasePopover.Positioner side={side} align={align} sideOffset={sideOffset} className="z-[130]">
 				<BasePopover.Popup
+					data-cds="Popover"
+					{...overlayAttrs}
 					{...(className === undefined ? {} : {className})}
 					{...(onPointerEnter === undefined ? {} : {onPointerEnter})}
 				>

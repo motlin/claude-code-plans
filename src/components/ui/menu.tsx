@@ -47,6 +47,7 @@ import {useSheetPresentation} from "./sheet-presentation";
 import {FORCED_COLORS_BORDER_CLASS} from "./popover-surface";
 import {Kbd, Shortcut} from "./shortcut";
 import {Tooltip} from "./tooltip";
+import {overlayAttrs} from "../../lib/overlay";
 
 const LazyRootSheetContent = lazy(async () =>
 	preloadMenuSheet().then((module) => ({default: module.RootSheetContent})),
@@ -382,6 +383,7 @@ export function MenuContent({
 						{...(collisionFallback === undefined ? {} : {"data-collision-fallback": collisionFallback})}
 					>
 						<BaseMenu.Popup
+							{...overlayAttrs}
 							{...popupProps}
 							data-cds={cds ?? kind}
 							{...(sheet ? {"data-presentation": "sheet"} : {})}

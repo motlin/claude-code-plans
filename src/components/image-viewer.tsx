@@ -25,6 +25,7 @@ import {
 } from "../lib/image-zoom";
 import {morph, setMorphName} from "../lib/image-viewer-morph";
 import type {AttachedImage} from "./user-attachments";
+import {overlayAttrs} from "../lib/overlay";
 
 /** Clicks this close to the Close button never select the neighbour slide underneath it. */
 const CLOSE_HIT_SLOP = 16;
@@ -332,6 +333,7 @@ export function ImageViewer({
 		>
 			<Dialog.Portal>
 				<Dialog.Popup
+					{...overlayAttrs}
 					ref={setPopup}
 					finalFocus={false}
 					onKeyDown={onKeyDown}
