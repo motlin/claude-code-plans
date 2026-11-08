@@ -7,8 +7,9 @@ import {EMPTY_FILE_TABS, type FileTabsState, FileTabsStateSchema} from "./file-t
  * Pure layout engine for the session tiling pane host, modelled on
  * claude.ai/code's tile tree. The root is always a row stack holding the chat
  * tile; side panes are placed the way upstream places them: the 1st splits the
- * row 2:3, the 2nd stacks under the side column and the 3rd opens a new column,
- * Changes included (checked live at desktop width, 2026-10-30).
+ * row chat 2 : pane 3 for a wide pane (Files, Changes, Artifacts) and 2:1 for
+ * the rest, the 2nd stacks under the side column and the 3rd opens a new
+ * column, Changes included (checked live at desktop width, 2026-10-30).
  * Expand is an overlay mode that hides the chat tile without touching the tree.
  */
 
@@ -421,62 +422,102 @@ function restoreSlot(state: PaneLayoutState, kind: PaneKind, slot: ClosedPaneSlo
 	return normalizeRoot(root);
 }
 
-/** Upstream's first split: chat 2 : pane 3, so a lone pane takes about 60% of the row. */
+/** Upstream's first split: chat 2 : pane 3, so a lone wide pane takes about 60% of the row. */
 const FIRST_SPLIT = {chat: 2, pane: 3} as const;
+/** A lone narrow pane's first split, chat 2 : pane 1 (about 33% of the row). */
+const NARROW_PANE_FLEX = 1;
+/** Upstream's wide kinds (`fs`: diff, file, artifact, preview…), the ones whose first split is 2:3. */
+const WIDE_PANE_KINDS: ReadonlySet<PaneKind> = new Set<PaneKind>(["files", "changes", "artifacts"]);
+
+/** Upstream's `lastPaneFlexByKind`: a lone pane's flex beside chat 2, remembered per kind from resizes. */
+export type LastPaneFlex = Partial<Record<PaneKind, number>>;
+
 /**
  * Opens a pane the way upstream does: back in the slot it was closed from
  * while that slot's anchor survives, otherwise the first side pane splits the
- * row 2:3 and every later one, Changes included, stacks under the last side
- * column (or opens a new column once that column already stacks two).
+ * row (at its remembered flex, else 2:3 wide or 2:1 narrow) and every later
+ * one, Changes included, stacks under the root row's last pane, or opens a new
+ * column when that last child is a column or the chat itself.
  */
-export function openPane(state: PaneLayoutState, kind: PaneKind): PaneLayoutState {
+export function openPane(state: PaneLayoutState, kind: PaneKind, lastFlex: LastPaneFlex = {}): PaneLayoutState {
 	if (isOpen(state, kind)) return focusPane(state, kind);
 	const slot = state.closedSlots?.[kind];
-	const root = (slot && restoreSlot(state, kind, slot)) ?? stackPane(state.root, kind);
+	const root = (slot && restoreSlot(state, kind, slot)) ?? stackPane(state.root, kind, lastFlex);
 	if (root === null) return state;
 	return withClosedSlots({root, expanded: null, focused: kind}, withoutSlot(state.closedSlots, kind));
 }
 
-function stackPane(stackRoot: StackNode, kind: PaneKind): StackNode | null {
+function stackPane(stackRoot: StackNode, kind: PaneKind, lastFlex: LastPaneFlex): StackNode | null {
 	const children = [...stackRoot.children];
-	const lastSide = children.reduce((last, child, index) => (isChat(child) ? last : index), -1);
-	const lastNode = children[lastSide];
-	if (lastNode === undefined) {
+	if (tileIds(stackRoot).every((id) => id === "chat")) {
 		const chatIndex = children.findIndex(isChat);
 		const chat = children[chatIndex];
 		if (chat === undefined) return null;
-		const scale = (FIRST_SPLIT.chat + FIRST_SPLIT.pane) / chat.flex;
-		const scaled = children.map((child) => ({...child, flex: round(child.flex * scale)}));
-		scaled.splice(chatIndex, 1, {...chat, flex: FIRST_SPLIT.chat}, tile(kind, FIRST_SPLIT.pane));
+		const paneFlex = lastFlex[kind] ?? (WIDE_PANE_KINDS.has(kind) ? FIRST_SPLIT.pane : NARROW_PANE_FLEX);
+		const scaled = children.map((child) => ({...child, flex: round((child.flex * FIRST_SPLIT.chat) / chat.flex)}));
+		scaled.splice(chatIndex, 1, {...chat, flex: FIRST_SPLIT.chat}, tile(kind, paneFlex));
 		return {...stackRoot, children: scaled};
 	}
-	if (lastNode.kind === "tile") {
-		children[lastSide] = {
+	const last = children.at(-1);
+	if (last === undefined) return null;
+	if (last.kind === "tile" && !isChat(last)) {
+		children[children.length - 1] = {
 			kind: "stack",
 			direction: "column",
-			flex: lastNode.flex,
-			children: [{...lastNode, flex: 1}, tile(kind, 1)],
+			flex: last.flex,
+			children: [{...last, flex: 1}, tile(kind, 1)],
 		};
 	} else {
-		children.splice(lastSide + 1, 0, tile(kind, 1));
+		children.push(tile(kind, 1));
 	}
 	return normalizeRoot({...stackRoot, children});
 }
 
-/** Closes a pane, remembering its slot so reopening puts it back there. */
-export function closePane(state: PaneLayoutState, kind: PaneKind): PaneLayoutState {
+export interface ClosePaneOptions {
+	/** An automatic close (upstream `closeSidePane(…, {unprompted: true})`): slots stay untouched. */
+	unprompted?: boolean;
+}
+
+/**
+ * Closes a pane, remembering its slot so reopening puts it back there. Closing
+ * the last side pane records none and drops any old one (upstream `Xc`), so it
+ * reopens at the default split.
+ */
+export function closePane(state: PaneLayoutState, kind: PaneKind, options: ClosePaneOptions = {}): PaneLayoutState {
 	if (!isOpen(state, kind)) return state;
-	const slot = captureSlot(state.root, kind);
-	const slots = withoutSlot(state.closedSlots, kind);
-	if (slot !== null) slots[kind] = slot;
+	const root = normalizeRoot(withoutTile(state.root, kind));
+	let slots = state.closedSlots ?? {};
+	if (options.unprompted !== true) {
+		const slot = tileIds(root).every((id) => id === "chat") ? null : captureSlot(state.root, kind);
+		slots = withoutSlot(state.closedSlots, kind);
+		if (slot !== null) slots[kind] = slot;
+	}
 	return withClosedSlots(
 		{
-			root: normalizeRoot(withoutTile(state.root, kind)),
+			root,
 			expanded: state.expanded === kind ? null : state.expanded,
 			focused: state.focused === kind ? "chat" : state.focused,
 		},
 		slots,
 	);
+}
+
+/**
+ * Upstream `ps`: after a resize, remembers each resized root-row tile's flex
+ * scaled to chat 2 (`2 * flex / chatFlex`), so the kind's next lone open on any
+ * session reuses it. Tiles nested in a column, or a root row without chat, are
+ * ignored. Returns `lastFlex` itself when nothing changed.
+ */
+export function rememberPaneFlex(root: StackNode, resizedIds: readonly TileId[], lastFlex: LastPaneFlex): LastPaneFlex {
+	const chat = root.children.find(isChat);
+	if (chat === undefined || chat.flex <= 0) return lastFlex;
+	const changed: LastPaneFlex = {};
+	for (const child of root.children) {
+		if (child.kind !== "tile" || child.tileId === "chat" || !resizedIds.includes(child.tileId)) continue;
+		const flex = round((2 * child.flex) / chat.flex);
+		if (lastFlex[child.tileId] !== flex) changed[child.tileId] = flex;
+	}
+	return Object.keys(changed).length === 0 ? lastFlex : {...lastFlex, ...changed};
 }
 
 export function focusPane(state: PaneLayoutState, tileId: TileId): PaneLayoutState {
@@ -530,7 +571,10 @@ export function updatePhoneView(
 	if (closed.length === 0 && opened.length === 0 && JSON.stringify(next.root) !== JSON.stringify(view.root)) {
 		return next;
 	}
-	const saved = opened.reduce(openPane, closed.reduce(closePane, state));
+	const saved = opened.reduce(
+		(acc, kind) => openPane(acc, kind),
+		closed.reduce((acc, kind) => closePane(acc, kind), state),
+	);
 	return {...saved, expanded: next.expanded, focused: next.focused};
 }
 
@@ -734,6 +778,30 @@ export function movePaneTo(
 		};
 	}
 	return {...state, root: normalizeRoot(replaceAt(root, parentPath, {...parent, children})), focused: tileId};
+}
+
+export const PANE_FLEX_STORAGE_KEY = "ccb.lastPaneFlexByKind.v1";
+
+const LastPaneFlexSchema = z.partialRecord(PaneKindSchema, FlexSchema);
+
+export function loadLastPaneFlex(storage: Storage | null = browserStorage()): LastPaneFlex {
+	try {
+		const raw = storage?.getItem(PANE_FLEX_STORAGE_KEY);
+		if (raw === null || raw === undefined) return {};
+		const parsed = LastPaneFlexSchema.safeParse(JSON.parse(raw));
+		return parsed.success ? parsed.data : {};
+	} catch {
+		return {};
+	}
+}
+
+export function saveLastPaneFlex(lastFlex: LastPaneFlex, storage: Storage | null = browserStorage()): void {
+	if (!storage) return;
+	try {
+		storage.setItem(PANE_FLEX_STORAGE_KEY, JSON.stringify(lastFlex));
+	} catch {
+		// localStorage can be denied even when window exists; ratio memory is best-effort.
+	}
 }
 
 function browserStorage(): Storage | null {

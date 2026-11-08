@@ -218,7 +218,7 @@ describe("TileHost", () => {
 			separator: {
 				label: "Resize Chat and Test pane",
 				orientation: "vertical",
-				now: "40",
+				now: "67",
 				min: "27",
 				max: "77",
 			},
@@ -310,7 +310,7 @@ describe("TileHost", () => {
 		});
 	});
 
-	it("resizes with the keyboard and clamps to the minimum tile sizes", () => {
+	it("resizes a narrow pane (chat 2 : pane 1) with the keyboard and clamps to the minimum tile sizes", () => {
 		renderHost("session-a");
 		openTestPane();
 		const separator = screen.getByRole("separator");
@@ -323,9 +323,29 @@ describe("TileHost", () => {
 		const afterManyLeft = separatorState().now;
 
 		expect({afterOneLeft, afterManyRight, afterManyLeft}).toStrictEqual({
-			afterOneLeft: "39",
+			afterOneLeft: "65",
 			afterManyRight: "77",
 			afterManyLeft: "27",
+		});
+	});
+
+	it("remembers a resized pane's flex per kind and opens it at that split on another session (upstream lastPaneFlexByKind)", () => {
+		const first = renderHost("session-a");
+		openTestPane();
+		const before = separatorState().now;
+		fireEvent.keyDown(screen.getByRole("separator"), {key: "ArrowLeft"});
+		const resized = separatorState().now;
+		const stored: unknown = JSON.parse(localStorage.getItem("ccb.lastPaneFlexByKind.v1") ?? "null");
+		first.unmount();
+
+		renderHost("session-b");
+		openTestPane();
+
+		expect({before, resized, stored, reopened: separatorState().now}).toStrictEqual({
+			before: "67",
+			resized: "65",
+			stored: {plan: 1.061276},
+			reopened: "65",
 		});
 	});
 

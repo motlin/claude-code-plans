@@ -65,17 +65,17 @@
 		"raisedAt": "2026-11-07"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 697247,
+		"ceiling": 704653,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Stacked-overlay dialog final focus (2026-11-07): upstream's Eo hook (opener chain, handoff, parent-dialog refocus, safe target) and its registries now load with every dialog popup, ConfirmDialog's included, and every Menu/Popover popup registers its opener, so the cold load carries the hook and overlay-focus helpers. Went from 688988 to 697247. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Pane stacking and closed slots (2026-11-07): openPane/closePane gain upstream's wide-kind first split, lastPaneFlexByKind ratio memory (rememberPaneFlex plus its zod-checked localStorage load/save) and the unprompted close option, on top of the tooltip-shrinkwrap and line-mode tile commits that had used up the 1% tolerance. Went from 697247 to 704653. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-07"
 	},
 	"bundle.session.raw": {
-		"ceiling": 2090331,
+		"ceiling": 2108775,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Stacked-overlay dialog final focus (2026-11-07): upstream's Eo hook (opener chain, handoff, parent-dialog refocus, safe target) and its registries now load with every dialog popup, ConfirmDialog's included, and every Menu/Popover popup registers its opener, so the cold load carries the hook and overlay-focus helpers. Went from 2065702 to 2090331. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Pane stacking and closed slots (2026-11-07): openPane/closePane gain upstream's wide-kind first split, lastPaneFlexByKind ratio memory (rememberPaneFlex plus its zod-checked localStorage load/save) and the unprompted close option, on top of the tooltip-shrinkwrap and line-mode tile commits that had used up the 1% tolerance. Went from 2090331 to 2108775. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-07"
 	},
 	"client.coldHome.default.commitsToRows": {

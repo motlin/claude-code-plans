@@ -23,6 +23,7 @@ import {
 	expandPane,
 	fitPhoneLayout,
 	focusPane,
+	loadLastPaneFlex,
 	loadPaneLayout,
 	minTileSize,
 	movePane,
@@ -30,7 +31,9 @@ import {
 	movePreview,
 	openPane,
 	parseTileId,
+	rememberPaneFlex,
 	resizeDivider,
+	saveLastPaneFlex,
 	savePaneLayout,
 	updatePhoneView,
 	type Direction,
@@ -122,7 +125,26 @@ function pruneUnregistered(
 	return tileIdsOf(state.root)
 		.filter(isPaneKind)
 		.filter((kind) => !definitions.has(kind))
-		.reduce(closePane, state);
+		.reduce((acc, kind) => closePane(acc, kind, {unprompted: true}), state);
+}
+
+/**
+ * Upstream `setTileLayout(layout, resizedIds)` → `ps`: records the resized
+ * root-row tiles' flex per kind (global, not per session) and passes the
+ * layout through unchanged.
+ */
+function rememberResize(resizedIds: readonly TileId[]): LayoutUpdate {
+	return (state) => {
+		const lastFlex = loadLastPaneFlex();
+		const next = rememberPaneFlex(state.root, resizedIds, lastFlex);
+		if (next !== lastFlex) saveLastPaneFlex(next);
+		return state;
+	};
+}
+
+/** Opens a pane, with the first split taking the kind's remembered flex. */
+function openWithMemory(kind: PaneKind): LayoutUpdate {
+	return (state) => openPane(state, kind, loadLastPaneFlex());
 }
 
 function nodeTitle(node: LayoutNode, definitions: ReadonlyMap<PaneKind, PaneDefinition>): string {
@@ -226,6 +248,7 @@ function Divider({
 	const before = stack.children[index];
 	const after = stack.children[index + 1];
 	const dragRef = useRef<number | null>(null);
+	const movedRef = useRef(false);
 	// Upstream's `is-active`: lights the line for the whole drag (pointerdown's preventDefault rules out :active).
 	const [dragging, setDragging] = useState(false);
 	if (before === undefined || after === undefined) return null;
@@ -253,13 +276,17 @@ function Divider({
 	const isRow = stack.direction === "row";
 	// Upstream's `isDisabled: isDraggingTile`: no divider takes focus or a pointer while a tile is carried.
 	const disabled = host.movingTile !== null;
+	const resizedIds = [...tileIdsOf(before), ...tileIdsOf(after)];
 
-	function resizeBy(deltaPx: number) {
+	function resizeBy(deltaPx: number, remember = false) {
 		const measured = sizeAlong(stackRef.current, stack.direction);
 		if (measured <= 0) return;
 		// The reducer subtracts 12px gaps; hand it the size those gaps would leave.
 		const reducerSizePx = measured + (TILE_GAP_PX - gapPx) * (stack.children.length - 1);
-		host.update((state) => resizeDivider(state, {path, index, deltaPx, sizePx: reducerSizePx}));
+		host.update((state) => {
+			const next = resizeDivider(state, {path, index, deltaPx, sizePx: reducerSizePx});
+			return remember ? rememberResize(resizedIds)(next) : next;
+		});
 	}
 
 	function onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
@@ -269,7 +296,7 @@ function Divider({
 		if (event.key !== decrease && event.key !== increase) return;
 		event.preventDefault();
 		const step = event.shiftKey ? RESIZE_STEP_LARGE_PX : RESIZE_STEP_PX;
-		resizeBy(event.key === increase ? step : -step);
+		resizeBy(event.key === increase ? step : -step, true);
 	}
 
 	function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
@@ -286,10 +313,13 @@ function Divider({
 		const delta = position - dragRef.current;
 		if (delta === 0) return;
 		dragRef.current = position;
+		movedRef.current = true;
 		resizeBy(delta);
 	}
 
 	function onPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+		if (movedRef.current) host.update(rememberResize(resizedIds));
+		movedRef.current = false;
 		dragRef.current = null;
 		setDragging(false);
 		event.currentTarget.releasePointerCapture(event.pointerId);
@@ -406,6 +436,13 @@ function TileCorner({
 
 	function onPointerUp(event: ReactPointerEvent<HTMLDivElement>) {
 		event.stopPropagation();
+		if (dragRef.current !== null) {
+			host.update((state) => {
+				const row = state.root.children;
+				const ids = [row[rootIndex], row[rootIndex + 1]].flatMap((node) => (node ? tileIdsOf(node) : []));
+				return rememberResize(ids)(state);
+			});
+		}
 		dragRef.current = null;
 		event.currentTarget.releasePointerCapture(event.pointerId);
 	}
@@ -897,7 +934,7 @@ export function TileHost({
 
 	useEffect(() => {
 		if (requestedPane === undefined || !loaded) return;
-		if (definitions.has(requestedPane)) update((state) => openPane(state, requestedPane));
+		if (definitions.has(requestedPane)) update(openWithMemory(requestedPane));
 		onRequestedPaneHandled?.();
 	}, [requestedPane, loaded, definitions, update, onRequestedPaneHandled]);
 	const openKinds = useMemo(() => tileIdsOf(layout.root).filter(isPaneKind), [layout.root]);
@@ -937,14 +974,14 @@ export function TileHost({
 			openKinds,
 			isOpen: (kind) => openKinds.includes(kind),
 			openPane: (kind) => {
-				update((state) => openPane(state, kind));
+				update(openWithMemory(kind));
 			},
 			closePane: (kind) => {
 				update((state) => closePane(state, kind));
 			},
 			togglePane: (kind) => {
 				update((state) =>
-					tileIdsOf(state.root).includes(kind) ? closePane(state, kind) : openPane(state, kind),
+					tileIdsOf(state.root).includes(kind) ? closePane(state, kind) : openWithMemory(kind)(state),
 				);
 			},
 		}),

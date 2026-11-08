@@ -1,5 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
 import {
+	PANE_FLEX_STORAGE_KEY,
 	PANE_LAYOUT_STORAGE_KEY,
 	type ClosedPaneSlot,
 	type LayoutNode,
@@ -26,7 +27,10 @@ import {
 	movePaneTo,
 	movePreview,
 	openPane,
+	loadLastPaneFlex,
+	rememberPaneFlex,
 	resizeDivider,
+	saveLastPaneFlex,
 	saveChangesScope,
 	savePaneLayout,
 	saveSubagentPaneAgent,
@@ -125,20 +129,20 @@ describe("defaultPaneLayout", () => {
 describe("openPane follows upstream placement", () => {
 	it.each([
 		[
-			"1st pane splits the row chat 2 : pane 3",
+			"1st narrow pane splits the row chat 2 : pane 1",
 			["background-tasks"],
-			layout([tile("chat", 2), tile("background-tasks", 3)], "background-tasks"),
+			layout([tile("chat", 2), tile("background-tasks", 1)], "background-tasks"),
 		],
 		[
 			"2nd pane stacks under the side column",
 			["background-tasks", "plan"],
-			layout([tile("chat", 2), stack("column", 3, [tile("background-tasks", 1), tile("plan", 1)])], "plan"),
+			layout([tile("chat", 2), stack("column", 1, [tile("background-tasks", 1), tile("plan", 1)])], "plan"),
 		],
 		[
 			"3rd pane opens a new column",
 			["background-tasks", "plan", "files"],
 			layout(
-				[tile("chat", 2), stack("column", 3, [tile("background-tasks", 1), tile("plan", 1)]), tile("files", 1)],
+				[tile("chat", 2), stack("column", 1, [tile("background-tasks", 1), tile("plan", 1)]), tile("files", 1)],
 				"files",
 			),
 		],
@@ -148,7 +152,7 @@ describe("openPane follows upstream placement", () => {
 			layout(
 				[
 					tile("chat", 2),
-					stack("column", 3, [tile("background-tasks", 1), tile("plan", 1)]),
+					stack("column", 1, [tile("background-tasks", 1), tile("plan", 1)]),
 					stack("column", 1, [tile("files", 1), tile("links", 1)]),
 				],
 				"links",
@@ -161,6 +165,41 @@ describe("openPane follows upstream placement", () => {
 		],
 	] satisfies Array<[string, PaneKind[], PaneLayoutState]>)("%s", (_name, kinds, expected) => {
 		expect(openAll(...kinds)).toEqual(expected);
+	});
+
+	it.each([
+		["terminal", 1],
+		["background-tasks", 1],
+		["plan", 1],
+		["subagents", 1],
+		["session-details", 1],
+		["side-chat", 1],
+		["links", 1],
+		["files", 3],
+		["changes", 3],
+		["artifacts", 3],
+	] satisfies Array<[PaneKind, number]>)(
+		"opens %s alone at chat 2 : pane %d (upstream's wide set gets 3)",
+		(kind, flex) => {
+			expect(openPane(defaultPaneLayout(), kind)).toEqual(layout([tile("chat", 2), tile(kind, flex)], kind));
+		},
+	);
+
+	it("uses the remembered per-kind flex for the first pane (upstream lastPaneFlexByKind)", () => {
+		expect([openPane(defaultPaneLayout(), "files", {files: 2}), openPane(ONE_PANE, "files", {files: 2})]).toEqual([
+			layout([tile("chat", 2), tile("files", 2)], "files"),
+			layout([tile("chat", 2), stack("column", 1, [tile("background-tasks", 1), tile("files", 1)])], "files"),
+		]);
+	});
+
+	it("appends a new column when chat is the root row's last child, as upstream's F does", () => {
+		expect([
+			openPane(layout([tile("files", 3), tile("chat", 2)], "chat"), "plan"),
+			openPane(layout([tile("chat", 2), tile("files", 3)], "chat"), "plan"),
+		]).toEqual([
+			layout([tile("files", 3), tile("chat", 2), tile("plan", 1)], "plan"),
+			layout([tile("chat", 2), stack("column", 3, [tile("files", 1), tile("plan", 1)])], "plan"),
+		]);
 	});
 
 	it("opens Files alone at chat 2 : files 3", () => {
@@ -246,16 +285,10 @@ describe("closePane", () => {
 			}),
 		],
 		[
-			"closing the last pane restores the default, remembering the pane's slot beside the chat",
+			"closing the last pane restores the default and records no slot (upstream Xc)",
 			ONE_PANE,
 			"background-tasks",
-			slotted(defaultPaneLayout(), "background-tasks", {
-				anchorIds: ["chat"],
-				otherSideIds: [],
-				direction: "row",
-				side: 1,
-				ratio: 0.5,
-			}),
+			defaultPaneLayout(),
 		],
 	] satisfies Array<[string, PaneLayoutState, PaneKind, PaneLayoutState]>)("%s", (_name, state, kind, expected) => {
 		expect(closePane(state, kind)).toEqual(expected);
@@ -273,6 +306,43 @@ describe("closePane", () => {
 
 	it("returns the same state when the pane is not open", () => {
 		expect(closePane(ONE_PANE, "files")).toBe(ONE_PANE);
+	});
+
+	it("drops the closing lone pane's existing slot but keeps other kinds' slots", () => {
+		const filesSlot: ClosedPaneSlot = {
+			anchorIds: ["changes"],
+			otherSideIds: [],
+			direction: "column",
+			side: 0,
+			ratio: 1,
+		};
+		const state: PaneLayoutState = {
+			...layout([tile("chat", 2), tile("changes", 3)], "changes"),
+			closedSlots: {changes: CHANGES_UNDER_BACKGROUND_TASKS, files: filesSlot},
+		};
+		expect(closePane(state, "changes")).toEqual({...defaultPaneLayout(), closedSlots: {files: filesSlot}});
+	});
+
+	it("reopens the lone pane at the default split, as upstream's r[chat:2,diff:3]", () => {
+		const reopened = openPane(closePane(openPane(defaultPaneLayout(), "changes"), "changes"), "changes");
+		expect(reopened).toEqual(layout([tile("chat", 2), tile("changes", 3)], "changes"));
+	});
+
+	it("leaves slots alone on an unprompted close (upstream closeSidePane {unprompted})", () => {
+		const filesSlot: ClosedPaneSlot = {
+			anchorIds: ["plan"],
+			otherSideIds: [],
+			direction: "column",
+			side: 0,
+			ratio: 1,
+		};
+		expect([
+			closePane(TWO_PANES, "changes", {unprompted: true}),
+			closePane({...TWO_PANES, closedSlots: {files: filesSlot}}, "changes", {unprompted: true}),
+		]).toEqual([
+			layout([tile("chat", 2), tile("background-tasks", 1)], "chat"),
+			{...layout([tile("chat", 2), tile("background-tasks", 1)], "chat"), closedSlots: {files: filesSlot}},
+		]);
 	});
 });
 
@@ -315,6 +385,57 @@ describe("closed pane slots", () => {
 		const closed = closePane(filesOverChanges, "files");
 		savePaneLayout("s", closed, storage);
 		expect(loadPaneLayout("s", storage)).toEqual(closed);
+	});
+});
+
+describe("rememberPaneFlex (upstream ps)", () => {
+	const resized = layout([tile("chat", 1), tile("files", 1)], "files");
+
+	it("stores 2 * flex / chat flex for a resized root-row tile beside chat", () => {
+		expect(rememberPaneFlex(resized.root, ["chat", "files"], {plan: 0.5})).toEqual({plan: 0.5, files: 2});
+	});
+
+	it("ignores a tile nested in a column and returns the same map when nothing changed", () => {
+		const lastFlex = {};
+		expect(rememberPaneFlex(TWO_PANES.root, ["background-tasks", "changes"], lastFlex)).toBe(lastFlex);
+	});
+
+	it("ignores a root row without chat", () => {
+		const lastFlex = {};
+		const noChat: StackNode = stack("row", 1, [
+			stack("column", 1, [tile("chat", 1), tile("files", 1)]),
+			tile("plan", 1),
+		]);
+		expect(rememberPaneFlex(noChat, ["plan"], lastFlex)).toBe(lastFlex);
+	});
+
+	it("round-trips through storage and falls back to {} for malformed or missing data", () => {
+		const storage = new MemoryStorage();
+		saveLastPaneFlex({files: 2, plan: 0.75}, storage);
+		const roundTrip = loadLastPaneFlex(storage);
+		const raw: unknown = JSON.parse(storage.getItem(PANE_FLEX_STORAGE_KEY) ?? "null");
+		storage.setItem(PANE_FLEX_STORAGE_KEY, "{not json");
+		const corrupt = loadLastPaneFlex(storage);
+		storage.setItem(PANE_FLEX_STORAGE_KEY, JSON.stringify({files: -1}));
+		const negative = loadLastPaneFlex(storage);
+		expect({
+			raw,
+			roundTrip,
+			corrupt,
+			negative,
+			throwing: loadLastPaneFlex(new ThrowingStorage()),
+			missing: loadLastPaneFlex(null),
+		}).toEqual({
+			raw: {files: 2, plan: 0.75},
+			roundTrip: {files: 2, plan: 0.75},
+			corrupt: {},
+			negative: {},
+			throwing: {},
+			missing: {},
+		});
+		expect(() => {
+			saveLastPaneFlex({files: 2}, new ThrowingStorage());
+		}).not.toThrow();
 	});
 });
 
