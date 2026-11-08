@@ -261,6 +261,39 @@ describe("scripts/server.sh", () => {
 		});
 	}, 120_000);
 
+	it("start shows what the dead server logged during this launch", () => {
+		const result = spawnSync("bash", [script, "start"], {
+			cwd: projectRoot,
+			encoding: "utf8",
+			env: {...env, SERVER_CMD: `node -e 'console.error("boom: EADDRINUSE"); process.exit(1)' ${instance}`},
+		});
+
+		expect({status: result.status, stderr: result.stderr}).toStrictEqual({
+			status: 1,
+			stderr: `Server exited before listening on port ${PORT}; see ${join(runDir, "server.log")}\nboom: EADDRINUSE\n`,
+		});
+	}, 120_000);
+
+	// The launched pid is only the head of the server's process group: a
+	// launcher that forks the real server and exits is not an early exit.
+	it("start keeps waiting when the launcher exits but the server it forked lives on", () => {
+		const output = execFileSync("bash", [script, "start"], {
+			cwd: projectRoot,
+			encoding: "utf8",
+			env: {
+				...env,
+				SERVER_CMD: `sh -c 'node ${fixture} ${instance} & exit 0'`,
+				FAKE_SERVER_LISTEN_DELAY_MS: "3000",
+			},
+		});
+		const pids = portOwners();
+		run("stop");
+
+		expect(output).toBe(
+			`No server running (port ${PORT})\nServer pid ${pids[0] ?? ""} listening on port ${PORT} (log: ${join(runDir, "server.log")})\n`,
+		);
+	}, 120_000);
+
 	it("stop terminates the server and is a no-op when nothing is running", () => {
 		run("start");
 		run("stop");

@@ -202,6 +202,15 @@ start_server() {
     fi
     stop_server
     mkdir -p "$(dirname "$LOG_FILE")"
+    touch "$LOG_FILE"
+    # Where this launch's output starts, so an early exit can show just that.
+    local log_offset
+    log_offset=$(wc -c <"$LOG_FILE" | tr -d ' ')
+    # Job control puts the launched job in its own process group (pgid = $!),
+    # so the liveness check below covers the server even when SERVER_CMD is a
+    # launcher that forks it and exits. It also keeps a terminal's Ctrl-C from
+    # reaching the server.
+    set -m
     (
         cd "$PROJECT_DIR"
         # No HOST: one socket cannot bind both 127.0.0.1 (Caddy's upstream) and
@@ -210,16 +219,20 @@ start_server() {
         # `exec` (both here and in bash -c) so the launched process IS the
         # server, not a wrapper shell that would leave an orphan when killed.
         PORT="$PORT" exec nohup bash -c "exec $cmd"
-    ) >>"$LOG_FILE" 2>&1 &
+    ) </dev/null >>"$LOG_FILE" 2>&1 &
     local launched=$!
+    set +m
     # A wall-clock deadline rather than an iteration count: on a loaded machine
     # each port check and curl can take seconds of their own, and the server
     # itself can take tens of seconds to bind. The deadline is generous because
     # the loop exits as soon as the server answers, or as soon as it dies.
     local pid deadline=$((SECONDS + START_TIMEOUT_SECONDS))
     while [ "$SECONDS" -lt "$deadline" ]; do
-        if ! kill -0 "$launched" 2>/dev/null; then
+        # The whole process group, not just $launched: only when every process
+        # of the launch is gone has the server really exited.
+        if ! kill -0 -- -"$launched" 2>/dev/null; then
             echo "Server exited before listening on port $PORT; see $LOG_FILE" >&2
+            tail -c +$((log_offset + 1)) "$LOG_FILE" | tail -n 20 >&2
             restore_previous_snapshot "$previous" "$id"
             return 1
         fi
