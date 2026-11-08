@@ -1000,6 +1000,57 @@ describe("artifacts route", () => {
 		});
 	});
 
+	it("gives every artifact focusable upstream's [scroll-margin-top:var(--list-header-scroll-offset)] inside a content box that maps it from the Page offset (cd75b47e6, c33ae67d6 J, c69e9937a, c8a1f083a)", async () => {
+		const margin = "[scroll-margin-top:var(--list-header-scroll-offset)]";
+		const focusables = () => {
+			const gallery = document.querySelector<HTMLElement>("[data-scrolls-under-page-header]");
+			const lacking = (selector: string) =>
+				[...(gallery?.querySelectorAll(selector) ?? [])]
+					.filter((element) => element.closest("[data-make-something-new]") === null)
+					.map((element) => element.classList.contains(margin));
+			return {
+				primary: lacking("a[data-primary]"),
+				more: lacking('[aria-label^="More options for"]'),
+				pin: lacking('button[aria-label="Pin"], button[aria-label="Unpin"]'),
+			};
+		};
+		storage.setItem(ARTIFACT_PIN_STORAGE_KEY, JSON.stringify([DOCS_URL]));
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		await renderArtifactsPage("/artifacts", true);
+		const content = document.querySelector<HTMLElement>("[data-scrolls-under-page-header]");
+		const grid = {
+			content: {
+				attribute: content?.getAttribute("data-scrolls-under-page-header"),
+				offset: content?.style.getPropertyValue("--list-header-scroll-offset"),
+			},
+			...focusables(),
+		};
+		cleanup();
+		storage.setItem(ARTIFACTS_LAYOUT_STORAGE_KEY, "list");
+		await renderArtifactsPage("/artifacts", true);
+		const list = {
+			...focusables(),
+			headings: outsideStrip(screen.getAllByRole("heading", {level: 2})).map((heading) =>
+				heading.classList.contains(margin),
+			),
+		};
+
+		expect({grid, list}).toStrictEqual({
+			grid: {
+				content: {attribute: "", offset: "var(--cds-page-header-scroll-offset)"},
+				primary: [true, true, true],
+				more: [true, true, true],
+				pin: [true, true, true],
+			},
+			list: {
+				primary: [true, true, true],
+				more: [true, true, true],
+				pin: [true, true, true],
+				headings: [true, true, true],
+			},
+		});
+	});
+
 	it("lists artifacts by date group linking out to claude.ai", async () => {
 		await renderArtifactsPage("/artifacts", true);
 

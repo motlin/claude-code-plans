@@ -2,6 +2,7 @@ import {type ReactNode, type RefObject, useEffect, useLayoutEffect, useRef, useS
 
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {useReducedMotion} from "../lib/reduced-motion";
+import {pinnedHeightCache} from "./page-header-pinned-height";
 import {findScrollContainer, toObserverRoot} from "./scroll-container";
 
 /**
@@ -88,7 +89,11 @@ export function CodePageHeader({
 	);
 	if (sticky === undefined) return header;
 	return (
-		<StickyBand box={sticky.box} onTitleTravel={sticky.onTitleTravel}>
+		<StickyBand
+			box={sticky.box}
+			onTitleTravel={sticky.onTitleTravel}
+			cacheKey={`tall|content|lg|${subtitle !== undefined}|${tabs !== undefined}`}
+		>
 			{header}
 		</StickyBand>
 	);
@@ -126,10 +131,12 @@ const SCROLL_OFFSET_VAR = "--cds-page-header-scroll-offset";
 function StickyBand({
 	box,
 	onTitleTravel,
+	cacheKey,
 	children,
 }: {
 	box: string;
 	onTitleTravel: ((px: number) => void) | undefined;
+	cacheKey: string;
 	children: ReactNode;
 }) {
 	const sentinelRef = useRef<HTMLDivElement>(null);
@@ -235,11 +242,14 @@ function StickyBand({
 		onTitleTravel?.(travel);
 	}, [onTitleTravel, travel]);
 
-	// Upstream's Page root vars: the band's pinned height (all of it, or below the travelled title) and the row scroll offset.
+	// Upstream c193cfc9b Page root vars `ne`/`te`: the band's pinned height B (all of it, or below the travelled title) and
+	// the row scroll offset B+16 (B+48 without panels), which cd75b47e6 maps to --list-header-scroll-offset in the content.
 	useEffect(() => {
 		const page = bandRef.current?.parentElement?.closest<HTMLElement>('[data-cds="Page"]');
 		if (page === null || page === undefined) return undefined;
-		const pinned = height > 0 ? height - travel : undefined;
+		const measured = height > 0 ? height - travel : undefined;
+		if (measured !== undefined) pinnedHeightCache.set(cacheKey, measured);
+		const pinned = measured ?? pinnedHeightCache.get(cacheKey);
 		page.style.setProperty(
 			SCROLL_OFFSET_VAR,
 			pinned === undefined ? (panels ? "8rem" : "10rem") : `${pinned + (panels ? 16 : 48)}px`,
@@ -249,7 +259,7 @@ function StickyBand({
 			page.style.removeProperty(SCROLL_OFFSET_VAR);
 			page.style.removeProperty(PINNED_HEIGHT_VAR);
 		};
-	}, [height, travel, panels]);
+	}, [height, travel, panels, cacheKey]);
 
 	const levelHeight = travel > 0 ? Math.max(0, travel + 8 - (tabsRowHeight + 16)) : 0;
 	const moves = travel > 0 && shift > 0;

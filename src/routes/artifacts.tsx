@@ -3,7 +3,7 @@ import {createFileRoute, Link, useNavigate} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {Tabs} from "@base-ui/react/tabs";
 import {LayoutGrid, Link as LinkIcon, List, Lock, Pin, SlidersVertical} from "lucide-react";
-import {type ReactNode, useEffect, useId, useMemo, useState} from "react";
+import {type CSSProperties, type ReactNode, useEffect, useId, useMemo, useState} from "react";
 import {artifactsQueryOptions, type ArtifactSummary} from "../lib/api/artifacts";
 import {
 	coverBlankKind,
@@ -391,8 +391,14 @@ function ArtifactsPage() {
 				</p>
 			</CodePageHeader>
 
-			{/* Upstream c193cfc9b Page `contentGap: lg`: pt-1, or pt-5 once the title travels away and only the tabs row pins. */}
-			<div className={`${ARTIFACTS_BOX_CLASS} flex flex-col pb-12 ${titleTravel > 0 ? "pt-5" : "pt-1"}`}>
+			{/* Upstream c193cfc9b Page `contentGap: lg`: pt-1, or pt-5 once the title travels away and only the tabs row pins.
+			    Upstream cd75b47e6 wraps the children in `[data-scrolls-under-page-header]` mapping the Page's measured
+			    --cds-page-header-scroll-offset to the --list-header-scroll-offset its focusables' scroll margins read. */}
+			<div
+				data-scrolls-under-page-header=""
+				className={`${ARTIFACTS_BOX_CLASS} flex flex-col pb-12 ${titleTravel > 0 ? "pt-5" : "pt-1"}`}
+				style={LIST_HEADER_SCROLL_OFFSET_STYLE}
+			>
 				<MakeSomethingNew />
 				{inView.length === 0 && (artifacts.length === 0 || !searching) ? (
 					<ArtifactsEmptyState view={view} />
@@ -811,6 +817,16 @@ function ArtifactChips({artifact}: {artifact: ArtifactSummary}) {
 	);
 }
 
+/**
+ * Upstream's list focusables (c33ae67d6 `J` primary link, c69e9937a More trigger, c8a1f083a `data-pin-inline` Pin and
+ * `je` section heading): focus-into-view and scrollIntoView land them below the pinned header band, not under it.
+ */
+const LIST_SCROLL_MARGIN_CLASS = "[scroll-margin-top:var(--list-header-scroll-offset)]";
+const LIST_HEADER_SCROLL_OFFSET_STYLE = {
+	"--list-header-scroll-offset": "var(--cds-page-header-scroll-offset)",
+} as CSSProperties;
+
+// Upstream's primary link also carries `df-link-card`, which no local stylesheet defines.
 function PrimaryLink({artifact, className}: {artifact: ArtifactSummary; className: string}) {
 	return (
 		<a
@@ -819,13 +835,13 @@ function PrimaryLink({artifact, className}: {artifact: ArtifactSummary; classNam
 			rel="noopener noreferrer"
 			data-primary="true"
 			aria-label={artifact.title}
-			className={`absolute inset-0 outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${className}`}
+			className={`absolute inset-0 outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${LIST_SCROLL_MARGIN_CLASS} ${className}`}
 		/>
 	);
 }
 
 const ROW_ACTION_CLASS =
-	"pointer-events-auto flex size-6 shrink-0 items-center justify-center rounded-r6 text-ink-muted opacity-0 transition-opacity hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus group-hover/cdsrow:opacity-100 group-has-[:focus-visible]/cdsrow:opacity-100 data-[popup-open]:opacity-100 data-[popup-open]:bg-fill-ghost-hover pointer-coarse:opacity-100";
+	"pointer-events-auto flex size-6 shrink-0 items-center justify-center rounded-r6 text-ink-muted opacity-0 transition-opacity hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus group-hover/cdsrow:opacity-100 group-has-[:focus-visible]/cdsrow:opacity-100 data-[popup-open]:opacity-100 data-[popup-open]:bg-fill-ghost-hover pointer-coarse:opacity-100 [scroll-margin-top:var(--list-header-scroll-offset)]";
 
 function useCopyArtifactLink() {
 	const toast = useToast();
@@ -904,7 +920,7 @@ const CARD_ACTION_SEAT_CLASS =
 
 /** Upstream's blurred on-content button paint (`--cds-button-on-content`, its hover and inset ring). */
 const CARD_ACTION_BUTTON_CLASS =
-	"pointer-events-auto relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-primary backdrop-blur-md bg-button-on-content shadow-[inset_0_0_0_1px_var(--color-button-on-content-ring)] hover:bg-button-on-content-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"pointer-events-auto relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-primary backdrop-blur-md bg-button-on-content shadow-[inset_0_0_0_1px_var(--color-button-on-content-ring)] hover:bg-button-on-content-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus [scroll-margin-top:var(--list-header-scroll-offset)]";
 
 /** Upstream's card/row More menu sits 6px off its trigger. */
 const ARTIFACT_MENU_OFFSET = 6;
@@ -986,7 +1002,10 @@ function ArtifactList({
 				const headingId = `${idPrefix}-group-${index}`;
 				return (
 					<section key={group.label} className="flex flex-col">
-						<h2 id={headingId} className="px-3 py-1 text-caption font-medium text-ink-muted">
+						<h2
+							id={headingId}
+							className={`px-3 py-1 text-caption font-medium text-ink-muted ${LIST_SCROLL_MARGIN_CLASS}`}
+						>
 							{group.label}
 						</h2>
 						<ul role="list" aria-labelledby={headingId} className="flex flex-col">

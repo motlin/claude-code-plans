@@ -4,6 +4,7 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {CodePageHeader} from "../src/components/code-page-header";
+import {resetPinnedHeightCache} from "../src/components/page-header-pinned-height";
 import {PanelsOff} from "./fizzy-lake-off";
 
 afterEach(cleanup);
@@ -348,6 +349,7 @@ describe("CodePageHeader sticky geometry (upstream c193cfc9b Page + pe)", () => 
 		vi.unstubAllGlobals();
 		vi.restoreAllMocks();
 		document.documentElement.removeAttribute("dir");
+		resetPinnedHeightCache();
 	});
 
 	function renderArtifacts(onTitleTravel?: (px: number) => void) {
@@ -550,6 +552,78 @@ describe("CodePageHeader sticky geometry (upstream c193cfc9b Page + pe)", () => 
 		stubGeometry({desktop: true, headerLeft: 20, scrollTimeline: false});
 		const {band} = renderArtifacts();
 		expect(motion(band).attrs).toStrictEqual([]);
+	});
+
+	function pageVars(page: HTMLElement) {
+		return {
+			offset: page.style.getPropertyValue("--cds-page-header-scroll-offset"),
+			pinned: page.style.getPropertyValue("--cds-page-header-pinned-height"),
+		};
+	}
+	function unmeasured(): void {
+		vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(0);
+	}
+	function renderPanelsOff() {
+		const view = render(
+			<PanelsOff>
+				<div data-cds="Page">
+					<CodePageHeader title="Artifacts" sticky={{box: "max-w-5xl"}} />
+				</div>
+			</PanelsOff>,
+		);
+		return view.container.querySelector<HTMLElement>('[data-cds="Page"]')!;
+	}
+
+	it("publishes upstream's c193cfc9b Page vars: B+16 under panels, 8rem/7rem before the first measurement", () => {
+		stubGeometry({desktop: false, headerLeft: 20});
+		const measured = pageVars(renderArtifacts().page);
+		cleanup();
+		resetPinnedHeightCache();
+		unmeasured();
+		expect({measured, unmeasured: pageVars(renderArtifacts().page)}).toStrictEqual({
+			measured: {offset: "156px", pinned: "140px"},
+			unmeasured: {offset: "8rem", pinned: "7rem"},
+		});
+	});
+
+	it("without panels offsets by B+48, or 10rem before the first measurement", () => {
+		stubGeometry({desktop: false, headerLeft: 20});
+		const measured = pageVars(renderPanelsOff());
+		cleanup();
+		resetPinnedHeightCache();
+		unmeasured();
+		expect({measured, unmeasured: pageVars(renderPanelsOff())}).toStrictEqual({
+			measured: {offset: "188px", pinned: "140px"},
+			unmeasured: {offset: "10rem", pinned: "7rem"},
+		});
+	});
+
+	it("paints a remount with the pinned height cached for the same header shape before it measures (upstream `me`)", () => {
+		stubGeometry({desktop: false, headerLeft: 20});
+		renderArtifacts();
+		cleanup();
+		unmeasured();
+		const cached = pageVars(renderArtifacts().page);
+		cleanup();
+		// A header without a subtitle or tabs is another key, so it falls back.
+		const otherShape = pageVars(
+			render(
+				<div data-cds="Page">
+					<CodePageHeader title="Artifacts" sticky={{box: "max-w-5xl"}} />
+				</div>,
+			).container.firstElementChild as HTMLElement,
+		);
+		expect({cached, otherShape}).toStrictEqual({
+			cached: {offset: "156px", pinned: "140px"},
+			otherShape: {offset: "8rem", pinned: "7rem"},
+		});
+	});
+
+	it("removes both Page vars on unmount", () => {
+		stubGeometry({desktop: false, headerLeft: 20});
+		const {page, unmount} = renderArtifacts();
+		unmount();
+		expect(pageVars(page)).toStrictEqual({offset: "", pinned: ""});
 	});
 
 	it("removes every attribute and var on unmount", () => {
