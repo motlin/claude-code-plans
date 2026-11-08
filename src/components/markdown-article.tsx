@@ -23,6 +23,7 @@ import {
 import type {FileRef} from "../lib/file-refs";
 import {getHighlighterSync, getHighlighterVersion, subscribeHighlighter} from "../hooks/use-shiki";
 import {useCodeThemes} from "../hooks/use-code-themes";
+import {useShrinkwrap} from "../hooks/use-shrinkwrap";
 import {handleCodeCopyClick} from "../lib/code-copy";
 import styles from "./markdown-article.module.css";
 import {OPEN_DELAY_MS, REASON_TOOLTIP_CLASS, SIDE_CLASS} from "./ui/tooltip-classes";
@@ -126,6 +127,8 @@ interface OpenReason {
  */
 function useReasonTooltip() {
 	const [reason, setReason] = useState<OpenReason | null>(null);
+	/* Upstream's DisabledReasonTooltip renders through the cds Tooltip popup, which hugs its balanced lines. */
+	const fitTip = useShrinkwrap({immediate: true});
 	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 	useEffect(
 		() => () => {
@@ -172,7 +175,12 @@ function useReasonTooltip() {
 		reason === null ? null : (
 			<ViewportPortal>
 				<span className="pointer-events-none fixed z-[140]" style={reason.anchor}>
-					<span role="tooltip" data-side="top" className={`${REASON_TOOLTIP_CLASS} ${SIDE_CLASS.top}`}>
+					<span
+						ref={fitTip}
+						role="tooltip"
+						data-side="top"
+						className={`${REASON_TOOLTIP_CLASS} text-balance ${SIDE_CLASS.top}`}
+					>
 						{reason.text}
 					</span>
 				</span>

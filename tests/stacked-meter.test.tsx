@@ -19,6 +19,7 @@ const AB: StackedMeterCategory[] = [
 
 class FakeObserver {
 	observe() {}
+	unobserve() {}
 	disconnect() {}
 }
 

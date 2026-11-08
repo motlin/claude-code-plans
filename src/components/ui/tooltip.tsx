@@ -4,6 +4,7 @@ import {
 	type PointerEvent,
 	type ReactElement,
 	type ReactNode,
+	useCallback,
 	useEffect,
 	useId,
 	useContext,
@@ -11,6 +12,8 @@ import {
 	useRef,
 	useState,
 } from "react";
+
+import {useShrinkwrap} from "../../hooks/use-shrinkwrap";
 
 import {ViewportPortal} from "../viewport-portal";
 import {Shortcut} from "./shortcut";
@@ -200,6 +203,15 @@ export function Tooltip({
 	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 	const anchorRef = useRef<HTMLSpanElement>(null);
 	const tipRef = useRef<HTMLSpanElement>(null);
+	/** Upstream's `an({immediate: true})`: hug the wrapped text before placement measures the tip. */
+	const fitTip = useShrinkwrap({immediate: true});
+	const tipCallbackRef = useCallback(
+		(el: HTMLSpanElement | null) => {
+			tipRef.current = el;
+			fitTip(el);
+		},
+		[fitTip],
+	);
 	const [placement, setPlacement] = useState<TooltipPlacement | undefined>(undefined);
 	const [anchorBox, setAnchorBox] = useState<CSSProperties | undefined>(undefined);
 	const [cursorY, setCursorY] = useState<number | undefined>(undefined);
@@ -350,16 +362,18 @@ export function Tooltip({
 						: ACTION_ROWS_TOOLTIP_CLASS
 					: STACKED_TOOLTIP_CLASS;
 	const tooltipClass = maxWidth === undefined ? variantClass : variantClass.replace(/max-w-\[[^\]]+\]/, maxWidth);
+	/** Upstream balances every tip without a primary shortcut (`!a && gp`); the shrinkwrap then hugs the shorter lines. */
+	const balanceClass = shortcut === undefined ? " text-balance" : "";
 
 	const tipElement = (
 		<span
-			ref={tipRef}
+			ref={tipCallbackRef}
 			role="tooltip"
 			id={id}
 			data-side={placedSide}
 			data-align={align}
 			data-instant={openedByFocus ? "focus" : undefined}
-			className={`${tooltipClass} ${sideClass}`}
+			className={`${tooltipClass}${balanceClass} ${sideClass}`}
 			style={trackedTop === undefined ? shiftStyle(placement) : trackedStyle(trackedTop, placement)}
 		>
 			{stackedDetail ? (
@@ -397,6 +411,8 @@ export function Tooltip({
 			className={anchorClass(className)}
 			style={style}
 			onPointerEnter={(event) => {
+				// Upstream's cds Tooltip never starts its open timer for a touch pointer.
+				if (event.pointerType === "touch") return;
 				if (trackCursor === "y") trackPointer(event);
 				show();
 			}}

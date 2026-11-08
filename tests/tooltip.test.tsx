@@ -4,10 +4,12 @@ import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
+import type {ReactElement} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {Tooltip, TooltipGroup} from "../src/components/ui/tooltip";
 import {useInTooltipGroup} from "../src/components/ui/tooltip-group-context";
+import * as tooltipClasses from "../src/components/ui/tooltip-classes";
 import {TOOLTIP_CLASS} from "../src/components/ui/tooltip-classes";
 
 const globalsCss = readFileSync(resolve(__dirname, "..", "src", "styles", "globals.css"), "utf8");
@@ -64,7 +66,7 @@ describe("<Tooltip> box", () => {
 			shortcut: tooltip.querySelector("[data-cds=Shortcut]")?.className,
 		}).toStrictEqual({
 			className:
-				"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] bottom-full left-1/2 mb-1 -translate-x-1/2",
+				"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] whitespace-normal bottom-full left-1/2 mb-1 -translate-x-1/2",
 			shortcut:
 				"inline-flex shrink-0 items-baseline gap-[0.15em] text-caption [&:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse text-[12px] whitespace-nowrap [--shortcut-cap-ink:var(--tooltip-shortcut-ink)]",
 		});
@@ -95,7 +97,7 @@ describe("<Tooltip> box", () => {
 			})),
 		}).toStrictEqual({
 			className:
-				"pointer-events-none absolute z-50 flex w-max flex-col items-start gap-0.5 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] bottom-full left-1/2 mb-1 -translate-x-1/2",
+				"pointer-events-none absolute z-50 flex w-max flex-col items-start gap-0.5 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] whitespace-normal bottom-full left-1/2 mb-1 -translate-x-1/2",
 			rows: [
 				{className: "inline-flex items-center gap-2", text: "Send⏎Enter"},
 				{
@@ -188,7 +190,7 @@ describe('<Tooltip variant="reason">', () => {
 		);
 
 		expect(openTooltip().className).toBe(
-			"pointer-events-none absolute z-50 flex w-max max-w-[240px] flex-col gap-0.5 whitespace-normal text-balance rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] bottom-full left-1/2 mb-1 -translate-x-1/2",
+			"pointer-events-none absolute z-50 flex w-max max-w-[240px] flex-col gap-0.5 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] whitespace-normal text-balance bottom-full left-1/2 mb-1 -translate-x-1/2",
 		);
 	});
 
@@ -301,7 +303,7 @@ describe('<Tooltip align="start" stacked>', () => {
 		}).toStrictEqual({
 			align: "start",
 			className:
-				"pointer-events-none absolute z-50 flex w-max max-w-[min(480px,calc(100vw-16px))] flex-col gap-0.5 whitespace-normal text-balance rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] bottom-full left-0 mb-1",
+				"pointer-events-none absolute z-50 flex w-max max-w-[min(480px,calc(100vw-16px))] flex-col gap-0.5 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] whitespace-normal text-balance bottom-full left-0 mb-1",
 			children: [
 				{className: "inline-flex min-w-0 items-center gap-2", text: "daily"},
 				{
@@ -420,7 +422,7 @@ describe('<Tooltip trackCursor="y">', () => {
 describe("TOOLTIP_CLASS", () => {
 	it("is upstream's 13px/18px single-line tooltip box, exported for row-anchored consumers", () => {
 		expect(TOOLTIP_CLASS).toBe(
-			"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)]",
+			"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] whitespace-normal",
 		);
 	});
 });
@@ -573,5 +575,91 @@ describe("tooltip group", () => {
 			</Tooltip>,
 		);
 		expect(container.firstElementChild?.getAttribute("style")).toBe("inset-inline-start: calc(2% + 1px);");
+	});
+});
+
+describe("<Tooltip> text-balance (upstream gp when there is no primary shortcut)", () => {
+	function tipClass(tooltip: ReactElement): string[] {
+		vi.useFakeTimers();
+		render(tooltip);
+		const tokens = openTooltip().className.split(" ");
+		cleanup();
+		return tokens;
+	}
+
+	it("balances shortcut-less tips, reason tips included, but not tips with a shortcut", () => {
+		const button = <button type="button">Go</button>;
+		expect({
+			plain: tipClass(<Tooltip content="Copy">{button}</Tooltip>).includes("text-balance"),
+			shortcut: tipClass(
+				<Tooltip content="Hide sidebar" shortcut="⌘B">
+					{button}
+				</Tooltip>,
+			).includes("text-balance"),
+			reason: tipClass(
+				<Tooltip content="Not available here" variant="reason">
+					{button}
+				</Tooltip>,
+			).filter((token) => token === "text-balance").length,
+		}).toStrictEqual({plain: true, shortcut: false, reason: 1});
+	});
+});
+
+describe("tooltip white-space (upstream's portalled popup always computes normal)", () => {
+	it("gives every exported box exactly one whitespace utility", () => {
+		const boxes = Object.entries(tooltipClasses).filter(
+			(entry): entry is [string, string] => entry[0].endsWith("TOOLTIP_CLASS") && typeof entry[1] === "string",
+		);
+		expect(
+			Object.fromEntries(
+				boxes.map(([name, value]) => [name, value.split(" ").filter((t) => t.startsWith("whitespace-"))]),
+			),
+		).toStrictEqual({
+			ACTION_ROWS_TOOLTIP_CLASS: ["whitespace-normal"],
+			MULTILINE_TOOLTIP_CLASS: ["whitespace-pre-line"],
+			REASON_TOOLTIP_CLASS: ["whitespace-normal"],
+			STACKED_DETAIL_TOOLTIP_CLASS: ["whitespace-normal"],
+			STACKED_TOOLTIP_CLASS: ["whitespace-normal"],
+			TOOLTIP_CLASS: ["whitespace-normal"],
+		});
+	});
+
+	it("wraps a tip anchored inside a nowrap ancestor", () => {
+		vi.useFakeTimers();
+		render(
+			<div className="whitespace-nowrap">
+				<Tooltip content="Another session is running in this folder">
+					<button type="button">Go</button>
+				</Tooltip>
+			</div>,
+		);
+		expect(openTooltip().className.split(" ")).toContain("whitespace-normal");
+	});
+});
+
+describe("<Tooltip> touch pointers (upstream Ac skips pointerType touch)", () => {
+	function hoverWith(pointerType: string, ms: number): boolean {
+		vi.useFakeTimers();
+		render(
+			<Tooltip content="Copy">
+				<button type="button">Go</button>
+			</Tooltip>,
+		);
+		fireEvent.pointerEnter(screen.getByRole("button"), {pointerType});
+		act(() => {
+			vi.advanceTimersByTime(ms);
+		});
+		const opened = screen.queryByRole("tooltip") !== null;
+		cleanup();
+		return opened;
+	}
+
+	it("never opens on a touch pointerenter, but opens for mouse and pen after the delay", () => {
+		expect({
+			touch: hoverWith("touch", 1000),
+			mouseEarly: hoverWith("mouse", 299),
+			mouse: hoverWith("mouse", 300),
+			pen: hoverWith("pen", 300),
+		}).toStrictEqual({touch: false, mouseEarly: false, mouse: true, pen: true});
 	});
 });

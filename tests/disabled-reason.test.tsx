@@ -108,7 +108,7 @@ describe("<DisabledReason>", () => {
 		});
 
 		expect(screen.getByRole("tooltip").className).toBe(
-			"pointer-events-none absolute z-50 flex w-max max-w-[240px] flex-col gap-0.5 whitespace-normal text-balance rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] bottom-full left-1/2 mb-1 -translate-x-1/2",
+			"pointer-events-none absolute z-50 flex w-max max-w-[240px] flex-col gap-0.5 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-1.5 text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] whitespace-normal text-balance bottom-full left-1/2 mb-1 -translate-x-1/2",
 		);
 	});
 

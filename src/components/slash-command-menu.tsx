@@ -1,4 +1,4 @@
-import {useLayoutEffect, useMemo, useRef, useState} from "react";
+import {useCallback, useLayoutEffect, useMemo, useRef, useState} from "react";
 
 import {
 	highlightMatches,
@@ -7,6 +7,7 @@ import {
 	type SlashCommand,
 	type SlashMenuItem,
 } from "../lib/slash-commands";
+import {useShrinkwrap} from "../hooks/use-shrinkwrap";
 import {slashCommandOptionId} from "./slash-command-option-id";
 import {type Density, useScopeDensity} from "./ui/density-context";
 import {TOOLTIP_CLASS} from "./ui/tooltip-classes";
@@ -158,6 +159,15 @@ export function SlashCommandMenu({
 	const popupRef = useRef<HTMLDivElement>(null);
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	const tooltipRef = useRef<HTMLDivElement>(null);
+	/* Upstream's row tip is the cds Tooltip popup, which hugs its wrapped text before it is placed. */
+	const fitTooltip = useShrinkwrap({immediate: true});
+	const tooltipCallbackRef = useCallback(
+		(el: HTMLDivElement | null) => {
+			tooltipRef.current = el;
+			fitTooltip(el);
+		},
+		[fitTooltip],
+	);
 	const clampRef = useRef<HTMLSpanElement>(null);
 	const detailRef = useRef<HTMLSpanElement>(null);
 	const [scrollTop, setScrollTop] = useState(0);
@@ -319,7 +329,7 @@ export function SlashCommandMenu({
 				)}
 			</div>
 			{active !== undefined && (active.description !== "" || activeDetail !== undefined) && (
-				<div ref={tooltipRef} role="tooltip" className={ROW_TOOLTIP_CLASS}>
+				<div ref={tooltipCallbackRef} role="tooltip" className={ROW_TOOLTIP_CLASS}>
 					<span className="min-w-0 break-words">
 						{/* With no description, upstream shows the plugin line as the tooltip's content. */}
 						<span ref={clampRef} className="line-clamp-[10]">

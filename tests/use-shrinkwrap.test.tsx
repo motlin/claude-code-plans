@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, render} from "@testing-library/react";
+import {useCallback, useLayoutEffect} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {useShrinkwrap} from "../src/hooks/use-shrinkwrap";
 import {attachShrinkwrap, needsRefit} from "../src/lib/shrinkwrap";
@@ -205,5 +206,46 @@ describe("useShrinkwrap (upstream an)", () => {
 		layout = installFakeLayout(bubble, {box: 652, pad: 32, lines: () => [500]});
 		await flushMicrotasks();
 		expect(bubble.style.maxWidth).toBe("");
+	});
+
+	it("fits synchronously during the commit when immediate, before any microtask", () => {
+		const seen: Record<string, string> = {};
+		function Fitted({immediate}: {immediate: boolean}) {
+			const fit = useShrinkwrap({immediate});
+			const ref = useCallback(
+				(el: HTMLElement | null) => {
+					if (el !== null) layout = installFakeLayout(el, {box: 652, pad: 32, lines: () => [148]});
+					fit(el);
+				},
+				[fit],
+			);
+			return (
+				<div>
+					<div data-testid={immediate ? "immediate" : "deferred"} ref={ref}>
+						<p>prompt</p>
+					</div>
+				</div>
+			);
+		}
+		function Probe({id}: {id: string}) {
+			useLayoutEffect(() => {
+				seen[id] = document.querySelector<HTMLElement>(`[data-testid=${id}]`)?.style.maxWidth ?? "missing";
+			});
+			return null;
+		}
+		render(
+			<>
+				<Fitted immediate />
+				<Probe id="immediate" />
+			</>,
+		);
+		layout?.uninstall();
+		render(
+			<>
+				<Fitted immediate={false} />
+				<Probe id="deferred" />
+			</>,
+		);
+		expect(seen).toStrictEqual({immediate: "180px", deferred: ""});
 	});
 });

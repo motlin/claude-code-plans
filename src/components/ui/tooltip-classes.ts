@@ -15,12 +15,18 @@ export const START_SIDE_CLASS = {
 	left: "right-full top-0 mr-1",
 } as const satisfies Record<keyof typeof SIDE_CLASS, string>;
 
-/** Upstream's 13px/18px tooltip box, shared with tooltips placed outside this component (the slash menu row tip). */
+/**
+ * Upstream's 13px/18px tooltip box, shared with tooltips placed outside this component (the slash menu row tip).
+ * `whitespace-normal` stands in for upstream's portal: a tip inside a `nowrap` row still wraps at 240px.
+ */
 export const TOOLTIP_CLASS =
-	"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)]";
+	"pointer-events-none absolute z-50 inline-flex min-h-6 w-max max-w-[240px] items-center gap-2 rounded-r5 bg-[var(--tooltip-bg)] px-2 py-[3px] text-[13px]/[18px] text-[var(--tooltip-fg)] shadow-[0_1px_2px_rgb(11_11_11/0.06)] whitespace-normal";
 
 /** The wider, wrapping box that keeps the content's line breaks. */
-export const MULTILINE_TOOLTIP_CLASS = TOOLTIP_CLASS.replace("max-w-[240px]", "max-w-[320px] whitespace-pre-line");
+export const MULTILINE_TOOLTIP_CLASS = TOOLTIP_CLASS.replace("max-w-[240px]", "max-w-[320px]").replace(
+	"whitespace-normal",
+	"whitespace-pre-line",
+);
 
 /**
  * Upstream's rich two-line tooltip (the sidebar resize edge, Rewind, Fork): the 13px/18px label row on top,
@@ -28,7 +34,7 @@ export const MULTILINE_TOOLTIP_CLASS = TOOLTIP_CLASS.replace("max-w-[240px]", "m
  */
 export const STACKED_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
 	"inline-flex min-h-6 w-max max-w-[240px] items-center gap-2",
-	"flex w-max max-w-[240px] flex-col items-start gap-0.5 whitespace-normal",
+	"flex w-max max-w-[240px] flex-col items-start gap-0.5",
 ).replace("py-[3px]", "py-1.5");
 
 /**
@@ -41,19 +47,19 @@ export const ACTION_ROWS_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
 ).replace("py-[3px]", "py-1.5");
 
 /**
- * Upstream's disabled-reason box (cds `DisabledReasonTooltip`, multiline): a balanced wrap within 240px with
- * 6px 8px padding.
+ * Upstream's disabled-reason box (cds `DisabledReasonTooltip`, multiline): a wrap within 240px with 6px 8px
+ * padding, balanced by the Tooltip's shortcut-less `text-balance`.
  */
 export const REASON_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
 	"inline-flex min-h-6 w-max max-w-[240px] items-center gap-2",
-	"flex w-max max-w-[240px] flex-col gap-0.5 whitespace-normal text-balance",
+	"flex w-max max-w-[240px] flex-col gap-0.5",
 ).replace("py-[3px]", "py-1.5");
 
 /**
  * Upstream's Home next-step row tooltip (cds Tooltip with a detail): the title over its 11px/14px detail,
- * balanced, wrapping within min(480px, the viewport less 8px each side).
+ * wrapping within min(480px, the viewport less 8px each side).
  */
 export const STACKED_DETAIL_TOOLTIP_CLASS = TOOLTIP_CLASS.replace(
 	"inline-flex min-h-6 w-max max-w-[240px] items-center gap-2",
-	"flex w-max max-w-[min(480px,calc(100vw-16px))] flex-col gap-0.5 whitespace-normal text-balance",
+	"flex w-max max-w-[min(480px,calc(100vw-16px))] flex-col gap-0.5",
 ).replace("py-[3px]", "py-1.5");
