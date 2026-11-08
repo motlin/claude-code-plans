@@ -26,6 +26,7 @@ import {
 	resolveTileLayout,
 	tileFloor,
 	dropPreview,
+	fitOpenedLayout,
 	fitPhoneLayout,
 	movePane,
 	movePaneTo,
@@ -725,10 +726,155 @@ describe("resolveFlexes (upstream xe)", () => {
 		["floors the pane and gives the chat the rest", [2, 1], [100, 280], 699, [1.198856, 0.801144]],
 		["falls back to mins-proportional when mins exhaust the space", [2, 1], [100, 280], 379, [0.526316, 1.473684]],
 		["renormalises an unfloored split to the child count", [2, 1], [100, 280], 983, [1.333333, 0.666667]],
+		["shares an unfloored 2:3 split proportionally", [2, 3], [100, 280], 699, [0.8, 1.2]],
+		["pins the pane at 280 and gives the chat the remaining 519", [2, 1], [100, 280], 799, [1.299124, 0.700876]],
 		["copies the flexes with no space", [2, 1], [100, 280], 0, [2, 1]],
 		["copies an empty stack", [], [], 500, []],
 	] satisfies Array<[string, number[], number[], number, number[]]>)("%s", (_name, flexes, mins, total, expected) => {
 		expect(resolveFlexes(flexes, mins, total).map((flex) => Math.round(flex * 1e6) / 1e6)).toStrictEqual(expected);
+	});
+});
+
+describe("fitOpenedLayout (upstream withRoomForChat)", () => {
+	const filesBeside = (chatFlex: number, filesFlex: number): StackNode =>
+		stack("row", 1, [tile("chat", chatFlex), tile("files", filesFlex)]);
+	const threeColumns = (chatFlex: number, columnFlex: number, planFlex: number): StackNode =>
+		stack("row", 1, [
+			tile("chat", chatFlex),
+			stack("column", columnFlex, [tile("changes", 1), tile("files", 1)]),
+			tile("plan", planFlex),
+		]);
+	const nestedChatRow = (filesFlex: number, columnFlex: number, chatFlex: number, planFlex: number): StackNode =>
+		stack("row", 1, [
+			tile("files", filesFlex),
+			stack("column", columnFlex, [
+				stack("row", 1, [tile("chat", chatFlex), tile("plan", planFlex)]),
+				tile("background-tasks", 1),
+			]),
+		]);
+	const tasksBeside = stack("row", 1, [tile("chat", 2), tile("background-tasks", 1)]);
+
+	it.each([
+		["the chat already reaches 320 at 1272", filesBeside(2, 3), 1272],
+		["the chat already reaches 320 at 984", filesBeside(2, 3), 984],
+		["the chat already reaches 320 at 801", filesBeside(2, 3), 801],
+		["one spare pixel cannot beat the chat's share at 382", filesBeside(2, 3), 382],
+		["a narrow pane is never grown at 800", tasksBeside, 800],
+		["a narrow pane is never grown at 1000", tasksBeside, 1000],
+		["the root is unmeasured", filesBeside(2, 3), 0],
+		["the root is a column", stack("column", 1, [tile("chat", 1), tile("files", 1)]), 500],
+	] satisfies Array<[string, StackNode, number]>)("returns the same root when %s", (_name, root, width) => {
+		expect(fitOpenedLayout(root, width, false)).toBe(root);
+	});
+
+	it.each([
+		["grows the chat to 320 at 790", filesBeside(2, 3), 790, filesBeside(0.811153, 1.188847)],
+		["grows the chat to 320 at 700", filesBeside(2, 3), 700, filesBeside(0.915594, 1.084406)],
+		["grows the chat by the spare 219 at 600", filesBeside(2, 3), 600, filesBeside(1.065109, 0.934891)],
+		["keeps the pane at 280 at 500", filesBeside(2, 3), 500, filesBeside(0.877756, 1.122244)],
+		["fits three columns at 984", threeColumns(2, 3, 1), 984, threeColumns(0.977597, 1.167006, 0.855397)],
+		["fits three columns at 900", threeColumns(2, 3, 1), 900, threeColumns(1.069042, 0.995546, 0.935412)],
+		[
+			"fits a chat right of the pane by index",
+			stack("row", 1, [tile("files", 3), tile("chat", 2)]),
+			700,
+			stack("row", 1, [tile("files", 1.084406), tile("chat", 0.915594)]),
+		],
+		[
+			"targets 320 for a column holding the chat",
+			stack("row", 1, [tile("files", 3), stack("column", 2, [tile("chat", 1), tile("plan", 1)])]),
+			700,
+			stack("row", 1, [tile("files", 1.084406), stack("column", 0.915594, [tile("chat", 1), tile("plan", 1)])]),
+		],
+		[
+			"recurses into a nested chat row",
+			nestedChatRow(3, 2, 1, 1),
+			900,
+			nestedChatRow(0.662959, 1.337041, 1.066667, 0.933333),
+		],
+	] satisfies Array<[string, StackNode, number, StackNode]>)("%s", (_name, root, width, expected) => {
+		expect(fitOpenedLayout(root, width, false)).toEqual(expected);
+	});
+
+	it("fits only the root row when the open restored a closed slot (rootRowOnly)", () => {
+		expect(fitOpenedLayout(nestedChatRow(3, 2, 1, 1), 900, true)).toEqual(nestedChatRow(0.662959, 1.337041, 1, 1));
+	});
+});
+
+describe("openPane fits user-initiated opens (upstream Ls → fitOpenedLayout)", () => {
+	function openFitted(widthPx: number, ...kinds: PaneKind[]): PaneLayoutState[] {
+		const states: PaneLayoutState[] = [];
+		kinds.reduce((state, kind) => {
+			const next = openPane(state, kind, {}, {widthPx});
+			states.push(next);
+			return next;
+		}, defaultPaneLayout());
+		return states;
+	}
+	const fittedColumns = (chatFlex: number, columnFlex: number, planFlex: number): PaneLayoutState =>
+		layout(
+			[
+				tile("chat", chatFlex),
+				stack("column", columnFlex, [tile("changes", 1), tile("files", 1)]),
+				tile("plan", planFlex),
+			],
+			"plan",
+		);
+
+	it("grows the chat to 320 on the first open at 700", () => {
+		expect(openFitted(700, "files")).toEqual([layout([tile("chat", 0.915594), tile("files", 1.084406)], "files")]);
+	});
+
+	it("leaves the default split at 1272", () => {
+		expect(openFitted(1272, "files")).toEqual([layout([tile("chat", 2), tile("files", 3)], "files")]);
+	});
+
+	it("fits the third open into a new column at 984", () => {
+		expect(openFitted(984, "changes", "files", "plan").at(-1)).toEqual(fittedColumns(0.977597, 1.167006, 0.855397));
+	});
+
+	it("fits only the third open at 900", () => {
+		expect(openFitted(900, "changes", "files", "plan")).toEqual([
+			layout([tile("chat", 2), tile("changes", 3)], "changes"),
+			layout([tile("chat", 2), stack("column", 3, [tile("changes", 1), tile("files", 1)])], "files"),
+			fittedColumns(1.069042, 0.995546, 0.935412),
+		]);
+	});
+
+	it("fits only the root row when reopening into a closed slot", () => {
+		const open: PaneLayoutState = {
+			root: stack("row", 1, [
+				tile("files", 3),
+				stack("column", 2, [stack("row", 1, [tile("chat", 1), tile("plan", 1)]), tile("background-tasks", 1)]),
+			]),
+			expanded: null,
+			focused: "background-tasks",
+		};
+		const closed = closePane(open, "background-tasks");
+		expect({
+			slotted: closed.closedSlots?.["background-tasks"] !== undefined,
+			reopened: openPane(closed, "background-tasks", {}, {widthPx: 900}),
+		}).toEqual({
+			slotted: true,
+			reopened: {
+				root: stack("row", 1, [
+					tile("files", 0.662959),
+					stack("column", 1.337041, [
+						stack("row", 1, [tile("chat", 1), tile("plan", 1)]),
+						tile("background-tasks", 1),
+					]),
+				]),
+				expanded: null,
+				focused: "background-tasks",
+			},
+		});
+	});
+
+	it("never fits a focus of an already-open pane", () => {
+		const open = layout([tile("chat", 2), tile("files", 3)], "chat");
+		expect(openPane(open, "files", {}, {widthPx: 700})).toEqual(
+			layout([tile("chat", 2), tile("files", 3)], "files"),
+		);
 	});
 });
 

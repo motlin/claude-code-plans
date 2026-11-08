@@ -81,6 +81,51 @@ function separatorState() {
 	};
 }
 
+function FilesOpener() {
+	const host = usePaneHost();
+	return (
+		<>
+			<button
+				type="button"
+				onClick={() => {
+					host.openPane("files");
+				}}
+			>
+				Open files
+			</button>
+			<button
+				type="button"
+				onClick={() => {
+					host.togglePane("files");
+				}}
+			>
+				Toggle files
+			</button>
+		</>
+	);
+}
+
+interface StoredLayouts {
+	"session-fit"?: {root: {children: Array<{tileId?: string; flex: number}>}};
+}
+
+/** Opens Files with the tile root measuring `width` and returns the saved root row's tiles and flexes. */
+function savedFlexesAfterOpeningFiles(width: number, button = "Open files"): unknown {
+	vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockReturnValue(
+		DOMRect.fromRect({x: 0, y: 0, width, height: 800}),
+	);
+	const unregisterFiles = registerPane("files", {title: "Files", render: () => <p>Files body</p>});
+	render(
+		<TileHost sessionId="session-fit" onExpandWithoutPane={vi.fn<() => void>()}>
+			<FilesOpener />
+		</TileHost>,
+	);
+	fireEvent.click(screen.getByRole("button", {name: button}));
+	const stored = JSON.parse(localStorage.getItem("ccb.paneLayout.v1") ?? "null") as StoredLayouts | null;
+	unregisterFiles();
+	return stored?.["session-fit"]?.root.children.map((child) => [child.tileId, child.flex]);
+}
+
 let unregister: () => void = () => {};
 
 /** jsdom implements neither pointer capture nor, having no layout, `elementFromPoint`. */
@@ -724,6 +769,27 @@ describe("TileHost", () => {
 		expect(layoutShape()).toStrictEqual({columns: 0, tiles: ["chat", "plan"], preview: []});
 	});
 
+	it("fits an opened pane so the chat reaches 320px on a 700px tile root (upstream withRoomForChat)", () => {
+		expect(savedFlexesAfterOpeningFiles(700)).toStrictEqual([
+			["chat", 0.915594],
+			["files", 1.084406],
+		]);
+	});
+
+	it("fits a pane opened through togglePane too", () => {
+		expect(savedFlexesAfterOpeningFiles(700, "Toggle files")).toStrictEqual([
+			["chat", 0.915594],
+			["files", 1.084406],
+		]);
+	});
+
+	it("keeps the default 2:3 split when the chat already has 320px at 1272", () => {
+		expect(savedFlexesAfterOpeningFiles(1272)).toStrictEqual([
+			["chat", 2],
+			["files", 3],
+		]);
+	});
+
 	it("persists the layout per session id across remounts", () => {
 		const first = renderHost("session-a");
 		openTestPane();
@@ -800,6 +866,14 @@ describe("TileHost on a phone", () => {
 			},
 			chat: {fixed: false, chatMin: true},
 		});
+	});
+
+	it("skips the open fit on a phone, where edits keep the saved desktop columns", () => {
+		mockViewport(390);
+		expect(savedFlexesAfterOpeningFiles(700)).toStrictEqual([
+			["chat", 2],
+			["files", 3],
+		]);
 	});
 
 	it("leaves the phone chat slot without upstream's line-mode shell inset until a live 390px read confirms it", () => {

@@ -156,9 +156,12 @@ function rememberResize(resizedIds: readonly TileId[]): LayoutUpdate {
 	};
 }
 
-/** Opens a pane, with the first split taking the kind's remembered flex. */
-function openWithMemory(kind: PaneKind): LayoutUpdate {
-	return (state) => openPane(state, kind, loadLastPaneFlex());
+/**
+ * Opens a pane, with the first split taking the kind's remembered flex. Given the tile root's measured
+ * width, the result makes room for the chat (upstream `tileHost.fitOpenedLayout`).
+ */
+function openWithMemory(kind: PaneKind, widthPx: number | undefined): LayoutUpdate {
+	return (state) => openPane(state, kind, loadLastPaneFlex(), widthPx === undefined ? undefined : {widthPx});
 }
 
 function nodeTitle(node: LayoutNode, definitions: ReadonlyMap<PaneKind, PaneDefinition>): string {
@@ -1058,6 +1061,11 @@ export function TileHost({
 		() => (rootSize.width > 0 && !phone ? resolveTileLayout(layout.root, rootSize) : null),
 		[rootSize, phone, layout.root],
 	);
+	// Upstream fits only user-initiated opens; a phone skips it, since its edits keep the saved desktop columns.
+	const fitWidth = useCallback(
+		(): number | undefined => (phone ? undefined : rootRef.current?.getBoundingClientRect().width),
+		[phone],
+	);
 	const collapsedRef = useRef<PaneKind | null>(null);
 	const collapse = useCallback(() => {
 		collapsedRef.current = layout.expanded;
@@ -1066,9 +1074,9 @@ export function TileHost({
 
 	useEffect(() => {
 		if (requestedPane === undefined || !loaded) return;
-		if (definitions.has(requestedPane)) update(openWithMemory(requestedPane));
+		if (definitions.has(requestedPane)) update(openWithMemory(requestedPane, fitWidth()));
 		onRequestedPaneHandled?.();
-	}, [requestedPane, loaded, definitions, update, onRequestedPaneHandled]);
+	}, [requestedPane, loaded, definitions, update, onRequestedPaneHandled, fitWidth]);
 	const openKinds = useMemo(() => tileIdsOf(layout.root).filter(isPaneKind), [layout.root]);
 
 	const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
@@ -1108,18 +1116,21 @@ export function TileHost({
 			openKinds,
 			isOpen: (kind) => openKinds.includes(kind),
 			openPane: (kind) => {
-				update(openWithMemory(kind));
+				update(openWithMemory(kind, fitWidth()));
 			},
 			closePane: (kind) => {
 				update((state) => closePane(state, kind));
 			},
 			togglePane: (kind) => {
+				const widthPx = fitWidth();
 				update((state) =>
-					tileIdsOf(state.root).includes(kind) ? closePane(state, kind) : openWithMemory(kind)(state),
+					tileIdsOf(state.root).includes(kind)
+						? closePane(state, kind)
+						: openWithMemory(kind, widthPx)(state),
 				);
 			},
 		}),
-		[layout, openKinds, update],
+		[layout, openKinds, update, fitWidth],
 	);
 
 	useShortcut("close_pane", () => {
