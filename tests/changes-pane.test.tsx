@@ -247,6 +247,34 @@ describe("ChangesPaneView", () => {
 		expect(screen.getByRole("button", {name: "Hide files"}).getAttribute("aria-pressed")).toBe("true");
 	});
 
+	it("keeps the Show files toggle and the file list's resize and edge handles in step", () => {
+		renderPane([GREET_FILE]);
+		const hiddenAtStart = {
+			edge: screen.getByRole("separator", {name: "Resize file list"}).getAttribute("aria-valuenow"),
+			list: document.querySelector<HTMLElement>("[data-changed-files-list]")?.hidden,
+		};
+		fireEvent.click(screen.getByRole("button", {name: "Show files"}));
+		const handle = screen.getByRole("separator", {name: "Resize file list"});
+		const shown = {
+			toggle: screen.getByRole("button", {name: "Hide files"}).getAttribute("aria-pressed"),
+			valuenow: handle.getAttribute("aria-valuenow"),
+		};
+		fireEvent.pointerDown(handle, {button: 0, clientX: 240});
+		fireEvent.pointerUp(handle, {clientX: 240});
+
+		expect({
+			hiddenAtStart,
+			shown,
+			toggle: screen.getByRole("button", {name: "Show files"}).getAttribute("aria-pressed"),
+			edge: screen.getByRole("separator", {name: "Resize file list"}).getAttribute("aria-valuenow"),
+		}).toStrictEqual({
+			hiddenAtStart: {edge: "0", list: true},
+			shown: {toggle: "true", valuenow: "240"},
+			toggle: "false",
+			edge: "0",
+		});
+	});
+
 	it("paints the pressed Hide files toggle with accent ink on a transparent background", () => {
 		renderPane([GREET_FILE]);
 

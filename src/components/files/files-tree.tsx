@@ -12,20 +12,16 @@ import {
 } from "react";
 
 import {useDebouncedValue} from "../../hooks/use-debounced-value";
-import {useResizableWidth} from "../../hooks/use-resizable-width";
+import {useFileColumnResize} from "../../hooks/use-file-column-resize";
 import {type SessionFilesResponse, sessionFilesQueryOptions} from "../../lib/api/session-files";
 import type {AttachContextHandler} from "../../lib/context-attach";
 import {parseContentSearchQuery} from "../../lib/files-content-search";
 import {FileTypeIcon} from "../file-type-icon";
 import {useSettings} from "../settings-context";
-import {
-	FILES_TREE_MAX_WIDTH,
-	FILES_TREE_MIN_WIDTH,
-	clampFilesTreeWidth,
-	goUpTarget,
-	parseTreeQuery,
-} from "./files-tree-layout";
+import {clampFilesTreeWidth, goUpTarget, parseTreeQuery} from "./files-tree-layout";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
+import {FILE_COLUMN_HANDLE_Z, FileColumnEdgeHandle} from "../ui/file-column-edge-handle";
+import {FileColumnResizeShield} from "../ui/file-column-resize-shield";
 import {ResizeHandle} from "../ui/resize-handle";
 import {RESIZE_HANDLE_HALF_CLIP_CLASS} from "../ui/resize-pill";
 import {Tooltip} from "../ui/tooltip";
@@ -63,57 +59,61 @@ function symlinkLabel(entry: WorkspaceEntry): string | undefined {
 
 /**
  * The Files pane's tree column shell: 240px wide, resizable 160–640 with a "Resize file tree" cds
- * ResizeHandle, and the width persisted across reloads. A click (or Enter/Space) on the handle
- * without a drag hides the tree, like upstream, which opens no tooltip on it. `fill` makes it the
- * pane's only column (a phone, where upstream shows the tree OR the file), with no width or handle.
+ * ResizeHandle, and the width persisted across reloads. Like upstream (c9bd7af9c over cf3dc7910), a
+ * click or Enter/Space on the handle, or a drag below 80px, hides the tree; a 3px edge handle then
+ * shows it again. The column stays mounted while hidden, keeping its filter and scroll. `fill` makes
+ * it the pane's only column (a phone, where upstream shows the tree OR the file), with no handles.
  */
 export function FilesTreeColumn({
 	children,
-	onHide,
+	shown = true,
+	onShownChange,
 	fill = false,
 }: {
 	children: ReactNode;
-	onHide?: () => void;
+	shown?: boolean;
+	onShownChange?: (shown: boolean) => void;
 	fill?: boolean;
 }) {
 	const {settings, setSetting} = useSettings();
-	const width = clampFilesTreeWidth(settings.filesTreeWidth);
-	const resizeHandleProps = useResizableWidth({
-		label: "Resize file tree",
-		min: FILES_TREE_MIN_WIDTH,
-		max: FILES_TREE_MAX_WIDTH,
-		edge: "end",
-		value: width,
-		onChange: (next) => {
+	const {columnRef, columnStyle, resizing, handleProps, edgeHandleProps} = useFileColumnResize({
+		width: clampFilesTreeWidth(settings.filesTreeWidth),
+		onWidthChange: (next) => {
 			setSetting("filesTreeWidth", next);
 		},
-		...(onHide === undefined ? {} : {onClick: onHide}),
+		shown,
+		onShownChange,
 	});
 	if (fill) {
-		return (
+		return shown ? (
 			<div data-files-tree className="relative flex min-h-0 min-w-0 flex-1 flex-col">
 				{children}
 			</div>
-		);
+		) : null;
 	}
 	return (
-		<div
-			data-files-tree
-			className="relative flex min-h-0 shrink-0 flex-col border-r border-border"
-			style={{
-				width,
-				minWidth: `min(${FILES_TREE_MIN_WIDTH}px, 100% - 160px)`,
-				maxWidth: `min(${FILES_TREE_MAX_WIDTH}px, 100% - 160px)`,
-			}}
-		>
-			{children}
-			<ResizeHandle
-				{...resizeHandleProps}
-				side="inline-end"
-				onBorder
-				className={`z-10 ${RESIZE_HANDLE_HALF_CLIP_CLASS}`}
-			/>
-		</div>
+		<>
+			<div
+				data-files-tree
+				ref={columnRef}
+				hidden={!shown}
+				className="relative flex min-h-0 shrink-0 flex-col border-r border-border"
+				style={columnStyle}
+			>
+				{children}
+				{shown && (
+					<ResizeHandle
+						{...handleProps}
+						aria-label="Resize file tree"
+						onBorder
+						className={RESIZE_HANDLE_HALF_CLIP_CLASS}
+						style={{zIndex: FILE_COLUMN_HANDLE_Z}}
+					/>
+				)}
+			</div>
+			{edgeHandleProps && <FileColumnEdgeHandle handleProps={edgeHandleProps} label="Resize file tree" />}
+			<FileColumnResizeShield active={resizing} />
+		</>
 	);
 }
 

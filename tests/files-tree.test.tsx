@@ -2,7 +2,7 @@
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
-import type {ComponentProps, ComponentType, ReactNode} from "react";
+import {type ComponentProps, type ComponentType, type ReactNode, useState} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
@@ -17,6 +17,7 @@ import {SettingsProvider} from "../src/components/settings-provider";
 import {RESIZE_GRIP_PILL, RESIZE_LINE_PILL, resizePillClass} from "../src/components/ui/resize-pill";
 import type {SessionFilesResponse} from "../src/lib/api/session-files";
 import {installLocalStorage} from "./fake-storage";
+import {stubColumnLayout} from "./helpers/column-layout";
 import {PanelsOff} from "./fizzy-lake-off";
 
 class FakeObserver {
@@ -90,8 +91,10 @@ function rowNames(): string[] {
 }
 
 let storage: ReturnType<typeof installLocalStorage>;
+let restoreLayout: () => void;
 
 beforeEach(() => {
+	restoreLayout = stubColumnLayout();
 	storage = installLocalStorage();
 	responses = new Map();
 	requests = [];
@@ -101,6 +104,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	cleanup();
+	restoreLayout();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 });
@@ -516,13 +520,14 @@ describe("FilesTreeColumn resize", () => {
 			cds: separator().dataset["cds"],
 			classes: [...separator().classList].toSorted(),
 			ringOuter: separator().style.getPropertyValue("--cds-ring-outer"),
+			zIndex: separator().style.zIndex,
 			ring: separator().firstElementChild?.classList.contains("group-focus-visible/resize:shadow-focus"),
 			pill: pill?.getAttribute("class"),
 			tabIndex: separator().tabIndex,
 		}).toStrictEqual({
 			cds: "ResizeHandle",
 			classes: [
-				"cds-reset group/resize outline-none focus-visible:outline-hidden w-3 cursor-col-resize absolute z-10",
+				"cds-reset group/resize outline-none focus-visible:outline-hidden w-3 cursor-col-resize absolute",
 				"inset-y-0 end-[calc(-6px_-_(var(--cds-ring-outer,0px)_-_var(--cds-ring-inner,0px))_/_2)]",
 				"[clip-path:inset(0_0_0_37.5%)] [&:where(:root[dir=rtl]_:dir(rtl))]:[clip-path:inset(0_37.5%_0_0)] focus-visible:[clip-path:none]",
 			]
@@ -530,6 +535,7 @@ describe("FilesTreeColumn resize", () => {
 				.split(" ")
 				.toSorted(),
 			ringOuter: "1px",
+			zIndex: "5",
 			ring: true,
 			pill: resizePillClass(RESIZE_LINE_PILL, "vertical", false),
 			tabIndex: 0,
@@ -562,45 +568,37 @@ describe("FilesTreeColumn resize", () => {
 
 	it("hides the tree on a click that stays within the drag threshold, but not on a drag", () => {
 		responses.set(key("", ""), {kind: "listing", dir: "", entries: [], partial: false});
-		const onHide = vi.fn<() => void>();
+		const onShownChange = vi.fn<(shown: boolean) => void>();
 		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 		render(
 			<QueryClientProvider client={queryClient}>
 				<SettingsProvider>
-					<FilesTreeColumn onHide={onHide}>
+					<FilesTreeColumn onShownChange={onShownChange}>
 						<FilesTree sessionId={SESSION_ID} />
 					</FilesTreeColumn>
 				</SettingsProvider>
 			</QueryClientProvider>,
 		);
 		const handle = separator();
-		const captured = new Set<number>();
-		Object.assign(handle, {
-			setPointerCapture: vi.fn<Element["setPointerCapture"]>((pointerId: number) => captured.add(pointerId)),
-			releasePointerCapture: vi.fn<Element["releasePointerCapture"]>((pointerId: number) =>
-				captured.delete(pointerId),
-			),
-			hasPointerCapture: vi.fn<Element["hasPointerCapture"]>((pointerId: number) => captured.has(pointerId)),
-		});
 
-		fireEvent.pointerDown(handle, {clientX: 240, pointerId: 1});
-		fireEvent.pointerMove(handle, {clientX: 280, pointerId: 1});
-		fireEvent.pointerUp(handle, {clientX: 280, pointerId: 1});
-		const afterDrag = onHide.mock.calls.length;
-		fireEvent.pointerDown(handle, {clientX: 280, pointerId: 2});
-		fireEvent.pointerUp(handle, {clientX: 281, pointerId: 2});
+		fireEvent.pointerDown(handle, {button: 0, clientX: 240});
+		fireEvent.pointerMove(handle, {clientX: 280});
+		fireEvent.pointerUp(handle, {clientX: 280});
+		const afterDrag = onShownChange.mock.calls.length;
+		fireEvent.pointerDown(handle, {button: 0, clientX: 280});
+		fireEvent.pointerUp(handle, {clientX: 281});
 
-		expect({afterDrag, afterClick: onHide.mock.calls.length}).toStrictEqual({afterDrag: 0, afterClick: 1});
+		expect({afterDrag, afterClick: onShownChange.mock.calls}).toStrictEqual({afterDrag: 0, afterClick: [[false]]});
 	});
 
 	it("hides the tree on Enter and Space, like a click", () => {
 		responses.set(key("", ""), {kind: "listing", dir: "", entries: [], partial: false});
-		const onHide = vi.fn<() => void>();
+		const onShownChange = vi.fn<(shown: boolean) => void>();
 		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 		render(
 			<QueryClientProvider client={queryClient}>
 				<SettingsProvider>
-					<FilesTreeColumn onHide={onHide}>
+					<FilesTreeColumn onShownChange={onShownChange}>
 						<FilesTree sessionId={SESSION_ID} />
 					</FilesTreeColumn>
 				</SettingsProvider>
@@ -610,7 +608,7 @@ describe("FilesTreeColumn resize", () => {
 		fireEvent.keyDown(separator(), {key: "Enter"});
 		fireEvent.keyDown(separator(), {key: " "});
 
-		expect(onHide).toHaveBeenCalledTimes(2);
+		expect(onShownChange.mock.calls).toStrictEqual([[false], [false]]);
 	});
 
 	it("restores a persisted width, clamped", async () => {
@@ -619,6 +617,133 @@ describe("FilesTreeColumn resize", () => {
 		renderTree();
 		await waitFor(() => {
 			expect(separator().getAttribute("aria-valuenow")).toBe("640");
+		});
+	});
+});
+
+describe("FilesTreeColumn hide and edge handle", () => {
+	function ShownHarness() {
+		const [shown, setShown] = useState(true);
+		return (
+			<FilesTreeColumn shown={shown} onShownChange={setShown}>
+				<FilesTree sessionId={SESSION_ID} />
+			</FilesTreeColumn>
+		);
+	}
+
+	function renderShown() {
+		responses.set(key("", ""), {kind: "listing", dir: "", entries: [], partial: false});
+		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		render(
+			<QueryClientProvider client={queryClient}>
+				<SettingsProvider>
+					<ShownHarness />
+				</SettingsProvider>
+			</QueryClientProvider>,
+		);
+	}
+
+	function separators(): HTMLElement[] {
+		return screen.queryAllByRole("separator", {name: "Resize file tree"});
+	}
+
+	function treeColumn(): HTMLElement {
+		const column = document.querySelector<HTMLElement>("[data-files-tree]");
+		if (column === null) throw new Error("no tree column");
+		return column;
+	}
+
+	it("(a) a click hides the tree and focuses upstream's 3px edge handle", () => {
+		renderShown();
+		const [handle] = separators();
+		handle?.focus();
+		if (handle !== undefined) {
+			fireEvent.pointerDown(handle, {button: 0, clientX: 240});
+			fireEvent.pointerUp(handle, {clientX: 240});
+		}
+		const edge = screen.getByRole("separator", {name: "Resize file tree"});
+
+		expect({
+			hidden: treeColumn().hidden,
+			count: separators().length,
+			valuenow: edge.getAttribute("aria-valuenow"),
+			valuemin: edge.getAttribute("aria-valuemin"),
+			wrapper: edge.parentElement?.getAttribute("class"),
+			wrapperFollowsColumn: edge.parentElement?.previousElementSibling === treeColumn(),
+			classes: [...edge.classList].toSorted(),
+			zIndex: edge.style.zIndex,
+			ringOuter: edge.style.getPropertyValue("--cds-ring-outer"),
+			focused: document.activeElement === edge,
+		}).toStrictEqual({
+			hidden: true,
+			count: 1,
+			valuenow: "0",
+			valuemin: "0",
+			wrapper: "relative w-0 shrink-0",
+			wrapperFollowsColumn: true,
+			classes: [
+				"cds-reset group/resize outline-none focus-visible:outline-hidden cursor-col-resize absolute inset-y-0",
+				"w-[3px] [&>*]:pointer-events-none start-0 end-auto",
+			]
+				.join(" ")
+				.split(" ")
+				.toSorted(),
+			zIndex: "5",
+			ringOuter: "",
+			focused: true,
+		});
+	});
+
+	it("(b) clicking the edge handle shows the tree and focuses the main handle", () => {
+		renderShown();
+		fireEvent.keyDown(screen.getByRole("separator", {name: "Resize file tree"}), {key: "Enter"});
+		const edge = screen.getByRole("separator", {name: "Resize file tree"});
+		edge.focus();
+		fireEvent.pointerDown(edge, {button: 0, clientX: 0});
+		fireEvent.pointerUp(edge, {clientX: 0});
+		const handle = screen.getByRole("separator", {name: "Resize file tree"});
+
+		expect({
+			hidden: treeColumn().hidden,
+			count: separators().length,
+			inColumn: treeColumn().contains(handle),
+			focused: document.activeElement === handle,
+		}).toStrictEqual({hidden: false, count: 1, inColumn: true, focused: true});
+	});
+
+	it("(c) a drag of -170px hides the column live", () => {
+		renderShown();
+		const [handle] = separators();
+		if (handle !== undefined) fireEvent.pointerDown(handle, {button: 0, clientX: 300});
+		fireEvent.pointerMove(document, {clientX: 130});
+		const display = treeColumn().style.display;
+		fireEvent.pointerUp(document, {clientX: 130});
+
+		expect({display, hiddenAfter: treeColumn().hidden}).toStrictEqual({display: "none", hiddenAfter: true});
+	});
+
+	it("(d) keeps the filter text across hide and show", () => {
+		renderShown();
+		fireEvent.change(filterInput(), {target: {value: "src/"}});
+		fireEvent.keyDown(screen.getByRole("separator", {name: "Resize file tree"}), {key: "Enter"});
+		fireEvent.keyDown(screen.getByRole("separator", {name: "Resize file tree"}), {key: "Enter"});
+
+		expect({hidden: treeColumn().hidden, filter: filterInput().value}).toStrictEqual({
+			hidden: false,
+			filter: "src/",
+		});
+	});
+
+	it("(e) mounts upstream's drag shield only while dragging", () => {
+		renderShown();
+		const [handle] = separators();
+		if (handle !== undefined) fireEvent.pointerDown(handle, {button: 0, clientX: 300});
+		const during = document.querySelector("[data-file-tree-resize-shield]")?.parentElement === document.body;
+		fireEvent.pointerUp(document, {clientX: 300});
+
+		expect({during, after: document.querySelector("[data-file-tree-resize-shield]")}).toStrictEqual({
+			during: true,
+			after: null,
 		});
 	});
 });

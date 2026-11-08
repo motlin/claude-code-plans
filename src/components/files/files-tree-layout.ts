@@ -1,8 +1,8 @@
 import {settingStorageKey} from "../settings-context";
 
 const FILES_TREE_DEFAULT_WIDTH = 240;
-export const FILES_TREE_MIN_WIDTH = 160;
-export const FILES_TREE_MAX_WIDTH = 640;
+const FILES_TREE_MIN_WIDTH = 160;
+const FILES_TREE_MAX_WIDTH = 640;
 export const FILES_TREE_WIDTH_STORAGE_KEY = settingStorageKey("filesTreeWidth");
 
 export function clampFilesTreeWidth(width: number): number {

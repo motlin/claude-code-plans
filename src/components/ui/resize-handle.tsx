@@ -32,6 +32,24 @@ const SIDE_CLASS: Record<ResizeHandleSide, string> = {
 /** Upstream's `dK`: the 1px border the onBorder offset centres on. */
 const ON_BORDER_STYLE = {"--cds-ring-outer": "1px", "--cds-ring-inner": "0px"} as CSSProperties;
 
+/** The size and offset utilities a host's className may override, like upstream's tailwind-merge (`cn`). */
+const OVERRIDABLE = /^(w|h|start|end|top|bottom)-/;
+
+function overridableGroup(token: string): string | undefined {
+	return token.includes(":") ? undefined : OVERRIDABLE.exec(token)?.[1];
+}
+
+/** Drops each base size/offset utility whose group the host's className sets, e.g. `w-[3px]` replaces `w-3`. */
+function mergeSizeClasses(base: string, className: string | undefined): string {
+	if (className === undefined || className === "") return base;
+	const overridden = new Set(className.split(" ").map(overridableGroup));
+	const kept = base.split(" ").filter((token) => {
+		const group = overridableGroup(token);
+		return group === undefined || !overridden.has(group);
+	});
+	return `${kept.join(" ")} ${className}`;
+}
+
 export interface ResizeHandleProps extends Omit<
 	HTMLAttributes<HTMLDivElement>,
 	"children" | "role" | "tabIndex" | "onResize"
@@ -149,12 +167,11 @@ export function ResizeHandle({
 		onKeyDown?.(event);
 	}
 
-	const rootClass = [
+	const baseClass = [
 		"cds-reset group/resize outline-none focus-visible:outline-hidden",
 		vertical ? "w-3 cursor-col-resize" : "h-3 cursor-row-resize",
 		side === undefined ? `relative ${vertical ? "h-full" : "w-full"}` : `absolute ${SIDE_CLASS[side]}`,
-		className,
-	];
+	].join(" ");
 	const ringClass = vertical
 		? "inset-y-0 left-1/2 w-3 -translate-x-1/2 cursor-col-resize"
 		: "inset-x-0 top-1/2 h-3 -translate-y-1/2 cursor-row-resize";
@@ -171,7 +188,7 @@ export function ResizeHandle({
 			onPointerDown={handlePointerDown}
 			onKeyDown={handleKeyDown}
 			style={onBorder ? {...ON_BORDER_STYLE, ...style} : style}
-			className={rootClass.filter(Boolean).join(" ")}
+			className={mergeSizeClasses(baseClass, className)}
 		>
 			<div
 				aria-hidden="true"

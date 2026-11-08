@@ -127,6 +127,8 @@ export interface Settings {
 	diffWordWrap: boolean;
 	diffWordDiff: boolean;
 	diffHideWhitespace: boolean;
+	/** The Changes pane's file list width in pixels, clamped to 160–640 where it is used. */
+	diffTreeWidth: number;
 
 	// The Files pane's ⋯ menu.
 	filesHideIgnored: boolean;
@@ -200,6 +202,7 @@ export const DEFAULTS: Settings = {
 	diffWordWrap: true,
 	diffWordDiff: true,
 	diffHideWhitespace: false,
+	diffTreeWidth: 240,
 
 	filesHideIgnored: false,
 	filesPreviewTabs: true,
@@ -254,6 +257,7 @@ export const STORAGE_KEYS: Record<keyof Settings, string> = {
 	diffWordWrap: "ccp-diff-word-wrap",
 	diffWordDiff: "ccp-diff-word-diff",
 	diffHideWhitespace: "ccp-diff-hide-whitespace",
+	diffTreeWidth: "ccp-diff-tree-width",
 	filesHideIgnored: "ccp-files-hide-ignored",
 	filesPreviewTabs: "ccp-files-preview-tabs",
 	filesTreeWidth: "ccp-files-tree-width",
@@ -439,6 +443,7 @@ const STORED_VALUE_READERS: {[K in keyof Settings]: StoredValueReader<Settings[K
 	diffWordWrap: readBoolean,
 	diffWordDiff: readBoolean,
 	diffHideWhitespace: readBoolean,
+	diffTreeWidth: readNumber,
 	filesHideIgnored: readBoolean,
 	filesPreviewTabs: readBoolean,
 	filesTreeWidth: readNumber,

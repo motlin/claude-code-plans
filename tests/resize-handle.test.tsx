@@ -73,6 +73,18 @@ describe("ResizeHandle", () => {
 		});
 	});
 
+	it("lets a host className override the width and side offset, like upstream's cn", () => {
+		const {handle} = renderHandle({
+			onBorder: false,
+			className: "w-[3px] [&>*]:pointer-events-none start-0 end-auto",
+		});
+		expect(sortedClasses(handle)).toStrictEqual(
+			split(
+				"cds-reset group/resize outline-none focus-visible:outline-hidden cursor-col-resize absolute inset-y-0 w-[3px] [&>*]:pointer-events-none start-0 end-auto",
+			),
+		);
+	});
+
 	it("draws the focus-ring sibling first", () => {
 		const {ring} = renderHandle();
 		expect({hidden: ring?.getAttribute("aria-hidden"), classes: sortedClasses(ring)}).toStrictEqual({

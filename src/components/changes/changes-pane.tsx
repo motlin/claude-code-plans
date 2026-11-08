@@ -730,22 +730,24 @@ export function ChangesPaneView({
 	} else if (hasFiles) {
 		body = (
 			<div className="flex min-h-0 flex-1">
-				{showFiles && (
-					<ChangedFilesSidebar
-						files={files}
-						groupByFolder={settings.diffGroupByFolder}
-						groupByKind={settings.diffGroupByKind}
-						activePath={activePath}
-						onSelectFile={selectFile}
-						{...(onOpenFile ? {onOpenFile} : {})}
-						commits={scopes?.kind === "git" ? scopes.commits : []}
-						selectedCommitSha={selectedCommitSha}
-						onSelectCommit={(sha) => {
-							onSelectScope(sha === null ? BRANCH_SCOPE : commitScope(sha));
-						}}
-						onCopyCommitSha={onCopyCommitSha}
-					/>
-				)}
+				<ChangedFilesSidebar
+					shown={showFiles}
+					onShownChange={(shown) => {
+						setSetting("diffShowTree", shown);
+					}}
+					files={files}
+					groupByFolder={settings.diffGroupByFolder}
+					groupByKind={settings.diffGroupByKind}
+					activePath={activePath}
+					onSelectFile={selectFile}
+					{...(onOpenFile ? {onOpenFile} : {})}
+					commits={scopes?.kind === "git" ? scopes.commits : []}
+					selectedCommitSha={selectedCommitSha}
+					onSelectCommit={(sha) => {
+						onSelectScope(sha === null ? BRANCH_SCOPE : commitScope(sha));
+					}}
+					onCopyCommitSha={onCopyCommitSha}
+				/>
 				<div
 					ref={bodyRef}
 					onScrollCapture={(event) => {

@@ -1,10 +1,13 @@
 import {ChevronRight, Copy} from "lucide-react";
 import {type KeyboardEvent, type MouseEvent, useState} from "react";
 
-import {useResizableWidth} from "../../hooks/use-resizable-width";
+import {clampFileColumnWidth, useFileColumnResize} from "../../hooks/use-file-column-resize";
 import {formatRelativeTimeFromIso} from "../../lib/relative-time";
 import {changedFileKindLabels} from "../../lib/schema-choices";
 import {FileTypeIcon} from "../file-type-icon";
+import {useSettings} from "../settings-context";
+import {FILE_COLUMN_HANDLE_Z, FileColumnEdgeHandle} from "../ui/file-column-edge-handle";
+import {FileColumnResizeShield} from "../ui/file-column-resize-shield";
 import {ResizeHandle} from "../ui/resize-handle";
 import {RESIZE_HANDLE_HALF_CLIP_CLASS} from "../ui/resize-pill";
 import {
@@ -14,9 +17,6 @@ import {
 	type ChangedFileTreeOptions,
 } from "./changed-file-tree";
 
-const FILE_LIST_DEFAULT_WIDTH = 240;
-const FILE_LIST_MIN_WIDTH = 160;
-const FILE_LIST_MAX_WIDTH = 640;
 const INDENT_PX = 8;
 
 const ROW_CLASS =
@@ -231,11 +231,15 @@ export interface ChangedFilesSidebarProps extends ChangedFileTreeOptions {
 	selectedCommitSha: string | null;
 	onSelectCommit: (sha: string | null) => void;
 	onCopyCommitSha: (sha: string) => void;
+	shown?: boolean;
+	/** Lets a click on the handle, or a drag below 80px, hide the list, and a 3px edge handle show it. */
+	onShownChange?: (shown: boolean) => void;
 }
 
 /**
- * claude.ai/code's Changes file list (⌃⇧Y): a resizable 240px column holding the "Changed
- * files" tree over the "Commits" toolbar.
+ * claude.ai/code's Changes file list (⌃⇧Y): a resizable 240px column, its width persisted like
+ * upstream's `epitaxy-diff-tree-width`, holding the "Changed files" tree over the "Commits" toolbar.
+ * It stays mounted while hidden, so its folders keep their collapsed state.
  */
 export function ChangedFilesSidebar({
 	files,
@@ -248,16 +252,18 @@ export function ChangedFilesSidebar({
 	selectedCommitSha,
 	onSelectCommit,
 	onCopyCommitSha,
+	shown = true,
+	onShownChange,
 }: ChangedFilesSidebarProps) {
-	const [width, setWidth] = useState(FILE_LIST_DEFAULT_WIDTH);
+	const {settings, setSetting} = useSettings();
 	const [collapsedDirs, setCollapsedDirs] = useState<ReadonlySet<string>>(new Set());
-	const resizeHandleProps = useResizableWidth({
-		label: "Resize file list",
-		min: FILE_LIST_MIN_WIDTH,
-		max: FILE_LIST_MAX_WIDTH,
-		edge: "end",
-		value: width,
-		onChange: setWidth,
+	const {columnRef, columnStyle, resizing, handleProps, edgeHandleProps} = useFileColumnResize({
+		width: clampFileColumnWidth(settings.diffTreeWidth),
+		onWidthChange: (next) => {
+			setSetting("diffTreeWidth", next);
+		},
+		shown,
+		onShownChange,
 	});
 	const sections = buildChangedFileTree(files, {groupByFolder, groupByKind});
 
@@ -279,64 +285,70 @@ export function ChangedFilesSidebar({
 	}
 
 	return (
-		<div
-			className="relative flex min-h-0 shrink-0 flex-col border-r border-border"
-			style={{
-				width,
-				minWidth: `min(${FILE_LIST_MIN_WIDTH}px, 100% - 160px)`,
-				maxWidth: `min(${FILE_LIST_MAX_WIDTH}px, 100% - 160px)`,
-			}}
-		>
-			<div className="min-h-0 flex-1 overflow-y-auto">
-				<div
-					role="tree"
-					aria-label="Changed files"
-					tabIndex={0}
-					onKeyDown={(event) => {
-						moveRowFocus(event, "[data-diff-tree-row]");
-					}}
-					className="flex h-full flex-col overflow-y-auto px-1 py-1.25 outline-none"
-				>
-					{sections.map((section) => {
-						const sectionKey = section.kind ?? "all";
-						return (
-							<div key={sectionKey} role="group" className="flex flex-col">
-								{section.kind !== null && section.kind !== "source" && (
-									<div
-										data-diff-tree-section-label
-										className="mt-2 px-2 pb-1 text-footnote text-ink-muted"
-									>
-										{changedFileKindLabels[section.kind]}
-									</div>
-								)}
-								<TreeRows
-									nodes={section.nodes}
-									sectionKey={sectionKey}
-									flat={!groupByFolder}
-									collapsedDirs={collapsedDirs}
-									onToggleDir={toggleDir}
-									activePath={activePath}
-									onFileClick={handleFileClick}
-								/>
-							</div>
-						);
-					})}
+		<>
+			<div
+				data-changed-files-list
+				ref={columnRef}
+				hidden={!shown}
+				className="relative flex min-h-0 shrink-0 flex-col border-r border-border"
+				style={columnStyle}
+			>
+				<div className="min-h-0 flex-1 overflow-y-auto">
+					<div
+						role="tree"
+						aria-label="Changed files"
+						tabIndex={0}
+						onKeyDown={(event) => {
+							moveRowFocus(event, "[data-diff-tree-row]");
+						}}
+						className="flex h-full flex-col overflow-y-auto px-1 py-1.25 outline-none"
+					>
+						{sections.map((section) => {
+							const sectionKey = section.kind ?? "all";
+							return (
+								<div key={sectionKey} role="group" className="flex flex-col">
+									{section.kind !== null && section.kind !== "source" && (
+										<div
+											data-diff-tree-section-label
+											className="mt-2 px-2 pb-1 text-footnote text-ink-muted"
+										>
+											{changedFileKindLabels[section.kind]}
+										</div>
+									)}
+									<TreeRows
+										nodes={section.nodes}
+										sectionKey={sectionKey}
+										flat={!groupByFolder}
+										collapsedDirs={collapsedDirs}
+										onToggleDir={toggleDir}
+										activePath={activePath}
+										onFileClick={handleFileClick}
+									/>
+								</div>
+							);
+						})}
+					</div>
 				</div>
+				{commits.length > 0 && (
+					<CommitList
+						commits={commits}
+						selectedCommitSha={selectedCommitSha}
+						onSelectCommit={onSelectCommit}
+						onCopyCommitSha={onCopyCommitSha}
+					/>
+				)}
+				{shown && (
+					<ResizeHandle
+						{...handleProps}
+						aria-label="Resize file list"
+						onBorder
+						className={RESIZE_HANDLE_HALF_CLIP_CLASS}
+						style={{zIndex: FILE_COLUMN_HANDLE_Z}}
+					/>
+				)}
 			</div>
-			{commits.length > 0 && (
-				<CommitList
-					commits={commits}
-					selectedCommitSha={selectedCommitSha}
-					onSelectCommit={onSelectCommit}
-					onCopyCommitSha={onCopyCommitSha}
-				/>
-			)}
-			<ResizeHandle
-				{...resizeHandleProps}
-				side="inline-end"
-				onBorder
-				className={`z-10 ${RESIZE_HANDLE_HALF_CLIP_CLASS}`}
-			/>
-		</div>
+			{edgeHandleProps && <FileColumnEdgeHandle handleProps={edgeHandleProps} label="Resize file list" />}
+			<FileColumnResizeShield active={resizing} />
+		</>
 	);
 }

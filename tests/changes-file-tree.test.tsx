@@ -1,13 +1,17 @@
 // @vitest-environment jsdom
 
 import {cleanup, fireEvent, render, screen, within} from "@testing-library/react";
-import type {ComponentType, ReactNode} from "react";
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {type ComponentType, type ReactNode, useState} from "react";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {ChangedFilesSidebar} from "../src/components/changes/changes-file-tree";
+import {settingStorageKey} from "../src/components/settings-context";
+import {SettingsProvider} from "../src/components/settings-provider";
 import {RESIZE_GRIP_PILL, RESIZE_LINE_PILL, resizePillClass} from "../src/components/ui/resize-pill";
+import {installLocalStorage} from "./fake-storage";
 import {PanelsOff} from "./fizzy-lake-off";
+import {stubColumnLayout} from "./helpers/column-layout";
 
 const FILES = [
 	{path: ".github/workflows/push.yml", additions: 3, deletions: 1},
@@ -35,22 +39,24 @@ function renderSidebar(overrides: SidebarOverrides = {}, wrapper?: ComponentType
 		onSelectCommit: vi.fn<(sha: string | null) => void>(),
 		onCopyCommitSha: vi.fn<(sha: string) => void>(),
 	};
-	render(
-		<FileTypeIconSetContext value="pierre">
-			<ChangedFilesSidebar
-				files={FILES}
-				groupByFolder
-				groupByKind={false}
-				activePath={null}
-				commits={COMMITS}
-				selectedCommitSha={null}
-				{...handlers}
-				{...overrides}
-			/>
-		</FileTypeIconSetContext>,
+	const result = render(
+		<SettingsProvider>
+			<FileTypeIconSetContext value="pierre">
+				<ChangedFilesSidebar
+					files={FILES}
+					groupByFolder
+					groupByKind={false}
+					activePath={null}
+					commits={COMMITS}
+					selectedCommitSha={null}
+					{...handlers}
+					{...overrides}
+				/>
+			</FileTypeIconSetContext>
+		</SettingsProvider>,
 		wrapper === undefined ? {} : {wrapper},
 	);
-	return handlers;
+	return {...handlers, unmount: result.unmount};
 }
 
 function treeRows(): string[] {
@@ -59,8 +65,18 @@ function treeRows(): string[] {
 		.map((row) => `${row.getAttribute("aria-level")} ${row.textContent}`);
 }
 
+let storage: ReturnType<typeof installLocalStorage>;
+let restoreLayout: () => void;
+
+beforeEach(() => {
+	storage = installLocalStorage();
+	restoreLayout = stubColumnLayout();
+});
+
 afterEach(() => {
 	cleanup();
+	restoreLayout();
+	vi.unstubAllGlobals();
 });
 
 function fileIcon(element: Element | null | undefined) {
@@ -173,13 +189,14 @@ describe("ChangedFilesSidebar", () => {
 			cds: handle.dataset["cds"],
 			classes: [...handle.classList].toSorted(),
 			ringOuter: handle.style.getPropertyValue("--cds-ring-outer"),
+			zIndex: handle.style.zIndex,
 			ring: handle.firstElementChild?.classList.contains("group-focus-visible/resize:shadow-focus"),
 			pill: pill?.getAttribute("class"),
 			tabIndex: handle.tabIndex,
 		}).toStrictEqual({
 			cds: "ResizeHandle",
 			classes: [
-				"cds-reset group/resize outline-none focus-visible:outline-hidden w-3 cursor-col-resize absolute z-10",
+				"cds-reset group/resize outline-none focus-visible:outline-hidden w-3 cursor-col-resize absolute",
 				"inset-y-0 end-[calc(-6px_-_(var(--cds-ring-outer,0px)_-_var(--cds-ring-inner,0px))_/_2)]",
 				"[clip-path:inset(0_0_0_37.5%)] [&:where(:root[dir=rtl]_:dir(rtl))]:[clip-path:inset(0_37.5%_0_0)] focus-visible:[clip-path:none]",
 			]
@@ -187,6 +204,7 @@ describe("ChangedFilesSidebar", () => {
 				.split(" ")
 				.toSorted(),
 			ringOuter: "1px",
+			zIndex: "5",
 			ring: true,
 			pill: resizePillClass(RESIZE_LINE_PILL, "vertical", false),
 			tabIndex: 0,
@@ -218,12 +236,27 @@ describe("ChangedFilesSidebar", () => {
 		});
 	});
 
-	it("steps 32px with Shift+Arrow and does nothing on Enter", () => {
+	it("steps 32px with Shift+Arrow, and Enter resets to 240 when the list cannot hide", () => {
 		renderSidebar();
 		const handle = screen.getByRole("separator", {name: "Resize file list"});
 		fireEvent.keyDown(handle, {key: "ArrowRight", shiftKey: true});
+		const stepped = handle.getAttribute("aria-valuenow");
 		fireEvent.keyDown(handle, {key: "Enter"});
-		expect(handle.getAttribute("aria-valuenow")).toBe("272");
+		expect({stepped, reset: handle.getAttribute("aria-valuenow")}).toStrictEqual({stepped: "272", reset: "240"});
+	});
+
+	it("(c) persists the width across a remount", () => {
+		const {unmount} = renderSidebar();
+		const handle = screen.getByRole("separator", {name: "Resize file list"});
+		fireEvent.keyDown(handle, {key: "ArrowRight"});
+		fireEvent.keyDown(handle, {key: "ArrowRight"});
+		unmount();
+		renderSidebar();
+
+		expect({
+			stored: storage.getItem(settingStorageKey("diffTreeWidth")),
+			width: screen.getByRole("separator", {name: "Resize file list"}).getAttribute("aria-valuenow"),
+		}).toStrictEqual({stored: "256", width: "256"});
 	});
 
 	it("resizes the file list with the keyboard between 160 and 640 pixels", () => {
@@ -299,5 +332,86 @@ describe("ChangedFilesSidebar", () => {
 			pressed: ["Fetch logs"],
 			toolbar: null,
 		});
+	});
+});
+
+describe("ChangedFilesSidebar hide and edge handle", () => {
+	function Harness({onShown}: {onShown: (shown: boolean) => void}) {
+		const [shown, setShown] = useState(true);
+		return (
+			<SettingsProvider>
+				<ChangedFilesSidebar
+					files={FILES}
+					groupByFolder
+					groupByKind={false}
+					activePath={null}
+					commits={COMMITS}
+					selectedCommitSha={null}
+					onSelectFile={vi.fn<(path: string) => void>()}
+					onSelectCommit={vi.fn<(sha: string | null) => void>()}
+					onCopyCommitSha={vi.fn<(sha: string) => void>()}
+					shown={shown}
+					onShownChange={(next) => {
+						onShown(next);
+						setShown(next);
+					}}
+				/>
+			</SettingsProvider>
+		);
+	}
+
+	function list(): HTMLElement {
+		const element = document.querySelector<HTMLElement>("[data-changed-files-list]");
+		if (element === null) throw new Error("no file list");
+		return element;
+	}
+
+	it("(a, b) a click hides the list and focuses the edge handle, whose click restores it", () => {
+		const onShown = vi.fn<(shown: boolean) => void>();
+		render(<Harness onShown={onShown} />);
+		const handle = screen.getByRole("separator", {name: "Resize file list"});
+		handle.focus();
+		fireEvent.pointerDown(handle, {button: 0, clientX: 240});
+		fireEvent.pointerUp(handle, {clientX: 240});
+		const edge = screen.getByRole("separator", {name: "Resize file list"});
+		const hidden = {
+			list: list().hidden,
+			focused: document.activeElement === edge,
+			valuenow: edge.getAttribute("aria-valuenow"),
+			wrapper: edge.parentElement?.getAttribute("class"),
+			edgeWidth: edge.classList.contains("w-[3px]"),
+		};
+		fireEvent.pointerDown(edge, {button: 0, clientX: 0});
+		fireEvent.pointerUp(edge, {clientX: 0});
+
+		expect({
+			hidden,
+			shown: list().hidden,
+			focused: document.activeElement === screen.getByRole("separator", {name: "Resize file list"}),
+			calls: onShown.mock.calls,
+		}).toStrictEqual({
+			hidden: {list: true, focused: true, valuenow: "0", wrapper: "relative w-0 shrink-0", edgeWidth: true},
+			shown: false,
+			focused: true,
+			calls: [[false], [true]],
+		});
+	});
+
+	it("(d) a -170px drag hides the list live, behind upstream's drag shield", () => {
+		render(<Harness onShown={vi.fn<(shown: boolean) => void>()} />);
+		const handle = screen.getByRole("separator", {name: "Resize file list"});
+		fireEvent.pointerDown(handle, {button: 0, clientX: 300});
+		fireEvent.pointerMove(document, {clientX: 130});
+		const during = {
+			display: list().style.display,
+			shield: document.querySelector("[data-file-tree-resize-shield]") !== null,
+		};
+		fireEvent.pointerUp(document, {clientX: 130});
+
+		expect({
+			during,
+			hidden: list().hidden,
+			shield: document.querySelector("[data-file-tree-resize-shield]"),
+		}).toStrictEqual({during: {display: "none", shield: true}, hidden: true, shield: null});
 	});
 });

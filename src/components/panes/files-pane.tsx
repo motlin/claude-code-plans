@@ -581,45 +581,38 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 				</div>
 			</div>
 			<div className="flex min-h-0 flex-1 overflow-hidden rounded-b-[inherit]">
-				{treeShown && (
-					<FilesTreeColumn
-						fill={phone}
-						onHide={() => {
-							setTreeShown(false);
-						}}
-					>
-						{sessionId === undefined ? (
-							sessionFilesList
-						) : (
-							<WorkspaceOrSessionList
-								sessionId={sessionId}
-								mode={mode}
-								onModeChange={setMode}
-								query={query}
-								onQueryChange={setQuery}
-								filterRef={filterRef}
-								sessionList={sessionFilesList}
-								onOpenFile={(relPath, {pin, line, findQuery}) => {
-									if (cwd === undefined) return;
-									const path = absoluteFromCwd(cwd, relPath);
-									openFile(path, {pin});
-									if (line !== undefined) {
-										setLineTarget({
-											path,
-											line,
-											...(findQuery === undefined ? {} : {findQuery}),
-										});
-									}
-								}}
-								activeRelPath={openPath === null ? null : relativeToCwd(cwd, openPath)}
-								pinnedRelPaths={pinnedRelPaths}
-								cwd={cwd}
-								onAttachContext={attachToChat}
-								onAsk={askInChat}
-							/>
-						)}
-					</FilesTreeColumn>
-				)}
+				<FilesTreeColumn fill={phone} shown={treeShown} onShownChange={setTreeShown}>
+					{sessionId === undefined ? (
+						sessionFilesList
+					) : (
+						<WorkspaceOrSessionList
+							sessionId={sessionId}
+							mode={mode}
+							onModeChange={setMode}
+							query={query}
+							onQueryChange={setQuery}
+							filterRef={filterRef}
+							sessionList={sessionFilesList}
+							onOpenFile={(relPath, {pin, line, findQuery}) => {
+								if (cwd === undefined) return;
+								const path = absoluteFromCwd(cwd, relPath);
+								openFile(path, {pin});
+								if (line !== undefined) {
+									setLineTarget({
+										path,
+										line,
+										...(findQuery === undefined ? {} : {findQuery}),
+									});
+								}
+							}}
+							activeRelPath={openPath === null ? null : relativeToCwd(cwd, openPath)}
+							pinnedRelPaths={pinnedRelPaths}
+							cwd={cwd}
+							onAttachContext={attachToChat}
+							onAsk={askInChat}
+						/>
+					)}
+				</FilesTreeColumn>
 				<div data-files-preview hidden={phone && treeShown} className="flex min-h-0 min-w-0 flex-1 flex-col">
 					{openPath === null ? (
 						<FilesEmpty hasTree={treeShown} tabCount={fileTabs.tabs.length} />

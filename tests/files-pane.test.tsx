@@ -266,20 +266,55 @@ describe("Files pane header", () => {
 		const before = {
 			pressed: toggle.getAttribute("aria-pressed"),
 			keyshortcuts: toggle.getAttribute("aria-keyshortcuts"),
-			tree: pane.querySelector("[data-files-tree]") !== null,
+			tree: pane.querySelector("[data-files-tree]:not([hidden])") !== null,
 			detail:
 				within(pane).queryByText("Pick a file in the tree, or click a file path in the conversation.") !== null,
 		};
 		fireEvent.click(toggle);
 		const after = {
 			pressed: within(pane).getByRole("button", {name: "Show file tree"}).getAttribute("aria-pressed"),
-			tree: pane.querySelector("[data-files-tree]") !== null,
+			tree: pane.querySelector("[data-files-tree]:not([hidden])") !== null,
 			detail: within(pane).queryByText("Click a file path in the conversation to open it.") !== null,
 		};
 
 		expect({before, after}).toStrictEqual({
 			before: {pressed: "true", keyshortcuts: "Control+Shift+y", tree: true, detail: true},
 			after: {pressed: "false", tree: false, detail: true},
+		});
+	});
+
+	it("a click on the tree's resize handle hides it, and the edge handle shows it again, in step with the toggle", () => {
+		registerFilesPane();
+		renderSession();
+		press(CMD_SHIFT_F);
+		const pane = filesPane();
+
+		const handle = within(pane).getByRole("separator", {name: "Resize file tree"});
+		handle.focus();
+		fireEvent.pointerDown(handle, {button: 0, clientX: 240});
+		fireEvent.pointerUp(handle, {clientX: 240});
+		const edge = within(pane).getByRole("separator", {name: "Resize file tree"});
+		const hidden = {
+			toggle: within(pane)
+				.getByRole("button", {name: /file tree$/})
+				.getAttribute("aria-pressed"),
+			tree: pane.querySelector("[data-files-tree]:not([hidden])") !== null,
+			edgeFocused: document.activeElement === edge,
+			valuenow: edge.getAttribute("aria-valuenow"),
+		};
+		fireEvent.pointerDown(edge, {button: 0, clientX: 0});
+		fireEvent.pointerUp(edge, {clientX: 0});
+		const shown = {
+			toggle: within(pane)
+				.getByRole("button", {name: /file tree$/})
+				.getAttribute("aria-pressed"),
+			tree: pane.querySelector("[data-files-tree]:not([hidden])") !== null,
+			handleFocused: document.activeElement === within(pane).getByRole("separator", {name: "Resize file tree"}),
+		};
+
+		expect({hidden, shown}).toStrictEqual({
+			hidden: {toggle: "false", tree: false, edgeFocused: true, valuenow: "0"},
+			shown: {toggle: "true", tree: true, handleFocused: true},
 		});
 	});
 
@@ -441,7 +476,7 @@ describe("Files pane header", () => {
 
 		await waitFor(() => {
 			expect({
-				tree: pane.querySelector("[data-files-tree]") !== null,
+				tree: pane.querySelector("[data-files-tree]:not([hidden])") !== null,
 				focused: document.activeElement?.getAttribute("aria-label"),
 			}).toStrictEqual({tree: true, focused: "Filter files"});
 		});
