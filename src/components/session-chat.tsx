@@ -115,6 +115,7 @@ import {type AttachedImage, UserAttachments} from "./user-attachments";
 import {isEditableTarget} from "../lib/shortcuts/match";
 import {findScrollContainer} from "./scroll-container";
 import {usePromptJump} from "../hooks/use-prompt-jump";
+import {useStepCollapseFocusReturn} from "../hooks/use-step-collapse-focus-return";
 import {useTranscriptSelectionAttach} from "../hooks/use-transcript-selection-attach";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {TranscriptTailContext} from "./transcript-tail-context";
@@ -5721,6 +5722,7 @@ function ToolCallRow({
 	shots?: StepShotsPlacement | undefined;
 }) {
 	const [expanded, toggleExpanded] = useModeExpansion(`row:${call.id}`);
+	const focusReturn = useStepCollapseFocusReturn(expanded);
 	const restInk = useRestInk();
 	const bodyId = useId();
 	const statusId = useId();
@@ -6151,8 +6153,10 @@ function ToolCallRow({
 		);
 	}
 
+	// Upstream returns focus to the toggle only from a root-level status (`$2`); nested steps keep no hook.
 	const disclosure = (
 		<div
+			ref={isTurnStatus ? focusReturn.rootRef : undefined}
 			data-tool-row=""
 			data-turn-status={isTurnStatus ? "" : undefined}
 			data-standalone-tool-row={isTurnStatus ? "" : undefined}
@@ -6166,6 +6170,7 @@ function ToolCallRow({
 				aria-labelledby={labelledBy}
 				data-state={busyAgent ? "busy" : undefined}
 				data-cds-row=""
+				data-cds-row-toggle={isTurnStatus ? "" : undefined}
 				onClick={toggleExpanded}
 				onKeyDown={(e) => {
 					if (fromNestedControl(e)) return;
@@ -6182,12 +6187,19 @@ function ToolCallRow({
 				</span>
 				{media}
 			</div>
-			{expanded && (
-				<div id={bodyId} className="flow-root">
-					{body}
-					{bodyImages}
-				</div>
-			)}
+			{isTurnStatus
+				? focusReturn.panelMounted && (
+						<div id={bodyId} data-cds-row-panel="" className="flow-root" hidden={!expanded}>
+							{body}
+							{bodyImages}
+						</div>
+					)
+				: expanded && (
+						<div id={bodyId} className="flow-root">
+							{body}
+							{bodyImages}
+						</div>
+					)}
 			{announcer}
 		</div>
 	);
@@ -6248,6 +6260,7 @@ function ToolCallSummary({
 	leading: boolean;
 }) {
 	const [expanded, toggleExpanded] = useModeExpansion(`group:${calls[0]?.id ?? `notice-${notices[0]?.lineIndex}`}`);
+	const {rootRef, panelMounted} = useStepCollapseFocusReturn(expanded);
 	const restInk = useRestInk();
 	const bodyId = useId();
 	const statusId = useId();
@@ -6311,6 +6324,7 @@ function ToolCallSummary({
 			aria-labelledby={busy ? `${statusId}-label ${statusId}-busy` : `${statusId}-label`}
 			onClick={toggleExpanded}
 			data-cds-row=""
+			data-cds-row-toggle=""
 			className={`relative group/tool flex max-w-full items-center ${hasGroupMedia ? "min-w-0" : summaryLayout} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3${hasGroupMedia ? "" : ` ${TURN_STATUS_ROW_COMFORTABLE}`}`}
 		>
 			<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
@@ -6341,7 +6355,7 @@ function ToolCallSummary({
 	);
 
 	const status = (
-		<div data-tool-row="" data-turn-status="" className={TURN_STATUS_CLASS}>
+		<div ref={rootRef} data-tool-row="" data-turn-status="" className={TURN_STATUS_CLASS}>
 			{(calls.length > 0 || notices.length > 0) && (
 				<>
 					{hasGroupMedia ? (
@@ -6353,8 +6367,8 @@ function ToolCallSummary({
 					) : (
 						toggle
 					)}
-					{expanded && (
-						<div id={bodyId} className="flow-root">
+					{panelMounted && (
+						<div id={bodyId} data-cds-row-panel="" className="flow-root" hidden={!expanded}>
 							{/* Upstream separates the grouped rows with hairline dividers and
                   per-child padding inside one outlined card, not with gaps
                   between rows floating on a tinted panel. */}
