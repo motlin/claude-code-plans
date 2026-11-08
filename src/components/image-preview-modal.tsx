@@ -3,10 +3,10 @@ import {X} from "lucide-react";
 import {useEffect, useLayoutEffect, useRef, useState, type DragEvent, type MouseEvent} from "react";
 import {flushSync} from "react-dom";
 
+import {DialogPopup} from "./ui/dialog-popup";
 import {morph, setMorphName} from "../lib/image-viewer-morph";
 import {PHONE_SHEET_QUERY, useMediaQuery} from "../lib/use-phone-sheet";
 import {DensityScope} from "./ui/density";
-import {overlayAttrs} from "../lib/overlay";
 
 const MORPH_NAME = "chat-image-preview";
 const ACTIVE_CLASS = "vt-image-preview-active";
@@ -187,8 +187,8 @@ export function ImagePreviewModal({
 							data-image-preview-backdrop=""
 							className="fixed inset-0 bg-transparent backdrop-blur-none"
 						/>
-						<Dialog.Popup
-							{...overlayAttrs}
+						<DialogPopup
+							unstyled
 							ref={setPopup}
 							initialFocus={closeRef}
 							finalFocus={false}
@@ -234,7 +234,7 @@ export function ImagePreviewModal({
 									</div>
 								</div>
 							</div>
-						</Dialog.Popup>
+						</DialogPopup>
 					</DensityScope>
 				</div>
 			</Dialog.Portal>

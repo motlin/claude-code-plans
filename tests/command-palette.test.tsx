@@ -2965,6 +2965,26 @@ describe("CommandPalette filter values", () => {
 		});
 	});
 
+	it("leaves focus on the region Jump to main content landed on once the palette has closed", async () => {
+		const main = document.createElement("div");
+		main.setAttribute("data-focus-region", "main");
+		main.tabIndex = -1;
+		document.body.append(main);
+		const dialog = await openPalette();
+
+		typeQuery(dialog, "actions:true jump to main");
+		fireEvent.click(within(dialog).getByRole("option", {name: "Jump to main content"}));
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Search"})).toBe(null);
+		});
+		await new Promise((resolve) => {
+			setTimeout(resolve, 50);
+		});
+
+		expect(document.activeElement).toBe(main);
+		main.remove();
+	});
+
 	it("restricts the list to Actions with actions:", async () => {
 		const dialog = await openPalette([recentSession("sess-1", "Settings refactor")]);
 

@@ -18,6 +18,7 @@ import {
 import {loadedPopoverSheet, preloadPopoverSheet} from "./popover-sheet-loader";
 import {useSheetPresentation} from "./sheet-presentation";
 import {overlayAttrs} from "../../lib/overlay";
+import {registerPopupOpener} from "../../lib/overlay-focus";
 
 interface PopoverSheet {
 	sheet: boolean;
@@ -144,6 +145,7 @@ export function PopoverContent({
 				<BasePopover.Popup
 					data-cds="Popover"
 					{...overlayAttrs}
+					ref={registerPopupOpener}
 					{...(className === undefined ? {} : {className})}
 					{...(onPointerEnter === undefined ? {} : {onPointerEnter})}
 				>

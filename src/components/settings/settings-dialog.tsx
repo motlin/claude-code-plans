@@ -13,6 +13,7 @@ import {
 	useState,
 	type ComponentType,
 } from "react";
+import {DialogPopup} from "../ui/dialog-popup";
 import {customizeSectionLabels, settingsTabLabels} from "../../lib/schema-choices";
 import {
 	type CustomizeSection,
@@ -44,7 +45,6 @@ import {SETTINGS_PHONE_QUERY, useMediaQuery} from "../../lib/use-phone-sheet";
 import {CDS_TAB_CLASS, CDS_TAB_LIST_CLASS} from "../ui/cds-tabs";
 import {DensityScope} from "../ui/density";
 import {DIALOG_BODY_CLASS} from "../ui/dialog-classes";
-import {overlayAttrs} from "../../lib/overlay";
 
 const TAB_PANELS = {
 	general: GeneralSettings,
@@ -396,8 +396,8 @@ export function SettingsDialog() {
 			<Dialog.Portal>
 				<DensityScope density="comfortable">
 					<Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40 dark:bg-black/50 transition-opacity duration-200 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 motion-reduce:transition-none" />
-					<Dialog.Popup
-						{...overlayAttrs}
+					<DialogPopup
+						unstyled
 						aria-labelledby={titleId}
 						initialFocus={initialFocus}
 						finalFocus={finalFocus}
@@ -537,7 +537,7 @@ export function SettingsDialog() {
 								)}
 							</div>
 						)}
-					</Dialog.Popup>
+					</DialogPopup>
 				</DensityScope>
 			</Dialog.Portal>
 		</Dialog.Root>

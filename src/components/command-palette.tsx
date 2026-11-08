@@ -1,3 +1,4 @@
+import {DialogPopup} from "./ui/dialog-popup";
 import {isSessionRouteAlias} from "../lib/session-route-alias";
 import {useAnsweredSessionIds, withAnsweredHolds} from "../lib/answered-sessions";
 import {useFizzyLake} from "../lib/fizzy-lake";
@@ -186,7 +187,6 @@ import {ArchivedBadge} from "./archived-badge";
 import {Tooltip} from "./ui/tooltip";
 import {useOpenSettings} from "./settings/open-settings";
 import {setKeyboardShortcutsOpen} from "./keyboard-shortcuts-open";
-import {overlayAttrs} from "../lib/overlay";
 
 /*
  * The claude.ai/code ⌘K palette shell, split Search | Compose variant
@@ -914,8 +914,9 @@ function PalettePopup({
 	const [pendingLaunch, setPendingLaunch] = useState<PendingLaunch | null>(null);
 	// Controlled so the picker can preselect its first project; cmdk selects the first row otherwise.
 	const [selectedValue, setSelectedValue] = useState("");
-	// Rename hands focus to the page title, so closing must not pull it back to the old element.
+	// Opening a session or jumping to a question puts focus somewhere new, so closing must not pull it back.
 	const restoreFocusRef = useRef(true);
+	const restoreFocus = useCallback(() => restoreFocusRef.current, []);
 	// Upstream decides "Jump to question" once per open, from the waiting card on the page at that moment.
 	const [jumpOffered] = useState(() => typeof document !== "undefined" && findWaitingCard(document) !== null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1295,7 +1296,6 @@ function PalettePopup({
 				else unpin(currentSessionId);
 				return;
 			case "rename":
-				restoreFocusRef.current = false;
 				requestSessionRename(currentSessionId);
 				return;
 			case "copy-link":
@@ -1538,9 +1538,8 @@ function PalettePopup({
 		return {
 			label: PALETTE_JUMP_ACTIONS[id].label,
 			icon,
-			// Runs after the palette closes; the next frame keeps Base UI's finalFocus from taking focus back.
+			// Runs after the palette closes; the next frame lands after the palette's final focus.
 			run: () => {
-				restoreFocusRef.current = false;
 				requestAnimationFrame(() => {
 					focusRegionByName(document, region);
 				});
@@ -1855,13 +1854,13 @@ function PalettePopup({
 	const label = MODE_LABELS[mode];
 
 	return (
-		<Dialog.Popup
-			{...overlayAttrs}
+		<DialogPopup
+			unstyled
 			ref={popupRef}
 			data-command-palette=""
 			data-perf-overlay="command_palette"
 			initialFocus={inputRef}
-			finalFocus={() => restoreFocusRef.current}
+			restoreFocus={restoreFocus}
 			// Upstream centres the card on a fixed 583.9px settled height, capped at 15vh (sm) or 25vh (lg),
 			// so it never jumps while results load or filter.
 			className={`fixed top-4 left-1/2 z-50 w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 outline-none sm:top-[max(0px,min(15vh,max(2rem,calc((100vh-583.9px)/2))))] md:w-[calc(100vw-5rem)] lg:top-[max(0px,min(25vh,max(2rem,calc((100vh-583.9px)/2))))] ${PALETTE_RADIUS}`}
@@ -2441,7 +2440,7 @@ function PalettePopup({
 					}}
 				/>
 			)}
-		</Dialog.Popup>
+		</DialogPopup>
 	);
 }
 

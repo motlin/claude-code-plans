@@ -6,6 +6,7 @@ import {useCloseWatcher} from "../../lib/use-close-watcher";
 import {DensityProvider} from "./density";
 import {SHEET_TALL_HEIGHT, SHEET_TEXT_ENTRY, SheetDragContext, useSheetDrag} from "./menu-sheet-drag";
 import {overlayAttrs} from "../../lib/overlay";
+import {registerPopupOpener} from "../../lib/overlay-focus";
 
 /* Upstream's gM: `duration-sheet ease-out`, which compute to 0.3s and the phone-sheet curve. */
 const SHEET_MOTION = "duration-[300ms] ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none";
@@ -338,6 +339,7 @@ export function PopoverSheetContent({
 	const [floor, setFloor] = useState<SheetFloor>("content");
 	/* A closed sheet reopens at its default detent; a text field on mount floors it at half height. */
 	const setPopup = useCallback((next: HTMLDivElement | null) => {
+		registerPopupOpener(next);
 		setPopupState(next);
 		if (next === null) setDetent("default");
 		else

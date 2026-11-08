@@ -48,6 +48,7 @@ import {FORCED_COLORS_BORDER_CLASS} from "./popover-surface";
 import {Kbd, Shortcut} from "./shortcut";
 import {Tooltip} from "./tooltip";
 import {overlayAttrs} from "../../lib/overlay";
+import {registerPopupOpener} from "../../lib/overlay-focus";
 
 const LazyRootSheetContent = lazy(async () =>
 	preloadMenuSheet().then((module) => ({default: module.RootSheetContent})),
@@ -385,6 +386,7 @@ export function MenuContent({
 						<BaseMenu.Popup
 							{...overlayAttrs}
 							{...popupProps}
+							ref={registerPopupOpener}
 							data-cds={cds ?? kind}
 							{...(sheet ? {"data-presentation": "sheet"} : {})}
 							className={className ? `${popupClass} ${className}` : popupClass}

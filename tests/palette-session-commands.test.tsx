@@ -419,4 +419,20 @@ describe("palette contextual session commands", () => {
 		const rename = await screen.findByRole("textbox", {name: "Rename"});
 		expect((rename as HTMLInputElement).value).toBe(TITLE);
 	});
+
+	it("leaves focus in the inline rename input when the palette closes behind it", async () => {
+		const {dialog, input} = await openPalette("/session/sess-1");
+
+		fireEvent.change(input, {target: {value: "rename"}});
+		fireEvent.click(await within(dialog).findByRole("option", {name: `Rename ${QUOTED}`}));
+		const rename = await screen.findByRole("textbox", {name: "Rename"});
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Search"})).toBe(null);
+		});
+		await new Promise((resolve) => {
+			setTimeout(resolve, 50);
+		});
+
+		expect(document.activeElement).toBe(rename);
+	});
 });

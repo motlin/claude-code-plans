@@ -39,6 +39,7 @@ import {
 } from "./menu-internals";
 import {SHEET_TALL_HEIGHT, SheetDragContext, useSheetDrag} from "./menu-sheet-drag";
 import {overlayAttrs} from "../../lib/overlay";
+import {registerPopupOpener} from "../../lib/overlay-focus";
 
 /*
  * The bottom-sheet presentation of the menu primitive, which ./menu loads lazily behind the
@@ -356,6 +357,7 @@ export function RootSheetContent({children, className, finalFocus, popupProps, c
 	const [detent, setDetent] = useState<SheetDetent>("default");
 	/* A closed sheet reopens at its default detent. */
 	const setPopup = useCallback((next: HTMLDivElement | null) => {
+		registerPopupOpener(next);
 		setPopupState(next);
 		if (next === null) setDetent("default");
 	}, []);
@@ -433,7 +435,11 @@ export function NestedSheetContent({
 	const detent = useContext(SheetDragContext)?.detent ?? "default";
 	const frame = useContext(SheetFrameContext);
 	const size = useContext(SheetSizeContext);
-	const [popup, setPopup] = useState<HTMLDivElement | null>(null);
+	const [popup, setPopupState] = useState<HTMLDivElement | null>(null);
+	const setPopup = useCallback((next: HTMLDivElement | null) => {
+		registerPopupOpener(next);
+		setPopupState(next);
+	}, []);
 	usePinLevelHeight(popup, frame);
 	useDrilledLevelLayout(popup);
 	return (

@@ -35,18 +35,13 @@ describe("data-cds-overlay popup sites", () => {
 	it("stamps every Dialog, AlertDialog, Menu and Popover popup and leaves upstream's unmarked kinds alone", () => {
 		expect(popupSites()).toStrictEqual({
 			"coach-mark.tsx:Popover": false,
-			"command-palette.tsx:Dialog": true,
 			"composer-skill-chip.tsx:PreviewCard": false,
-			"confirm-dialog.tsx:AlertDialog": true,
 			"home/project-picker.tsx:Popover": true,
-			"image-preview-modal.tsx:Dialog": true,
-			"image-viewer.tsx:Dialog": true,
-			"recents-switcher.tsx:Dialog": true,
 			"session-hover-card.tsx:PreviewCard": false,
-			"settings/settings-dialog.tsx:Dialog": true,
 			"settings/settings-search.tsx:Popover": true,
 			"slash-command-chip.tsx:PreviewCard": false,
 			"step-screenshot-strip.tsx:PreviewCard": false,
+			"ui/dialog-popup.tsx:AlertDialog": true,
 			"ui/dialog-popup.tsx:Dialog": true,
 			"ui/info-tip.tsx:Popover": false,
 			"ui/menu-sheet.tsx:BaseMenu": true,
@@ -55,5 +50,13 @@ describe("data-cds-overlay popup sites", () => {
 			"ui/popover.tsx:BasePopover": true,
 			"ui/select.tsx:BaseSelect": false,
 		});
+	});
+
+	it("renders every Dialog and AlertDialog popup through ui/dialog-popup.tsx (overlay-stacked-focus-handoff T3)", () => {
+		const direct = sources("src")
+			.toSorted()
+			.filter((path) => path !== join("src", "components", "ui", "dialog-popup.tsx"))
+			.filter((path) => /<(?:Alert)?Dialog\.Popup\b/u.test(readFileSync(path, "utf8")));
+		expect(direct).toStrictEqual([]);
 	});
 });

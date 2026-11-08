@@ -4,6 +4,7 @@ import {useNavigate, useRouterState} from "@tanstack/react-router";
 import {CodeXml, CornerDownLeft, FolderOpen} from "lucide-react";
 import {type ReactNode, useEffect, useRef, useState} from "react";
 
+import {DialogPopup} from "./ui/dialog-popup";
 import {getCachedSessionIdentity} from "../lib/api/session-identity";
 import {
 	loadRecents,
@@ -22,7 +23,6 @@ import {
 	step,
 	switchModifier,
 } from "../lib/recents-switcher-keys";
-import {overlayAttrs} from "../lib/overlay";
 
 /** Upstream's codeSession `</>` and project glyphs. */
 const KIND_ICONS = {
@@ -167,8 +167,8 @@ export function RecentsSwitcher() {
 		>
 			<Dialog.Portal>
 				<Dialog.Backdrop className="fixed inset-0 z-50 bg-backdrop backdrop-blur-[2px]" />
-				<Dialog.Popup
-					{...overlayAttrs}
+				<DialogPopup
+					unstyled
 					data-command-palette=""
 					initialFocus={listboxRef}
 					className="fixed left-1/2 z-50 w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 overflow-hidden rounded-[calc(var(--radius-composer)+0.375rem)] border-[0.5px] border-strong bg-surface-3 shadow-2xl outline-none md:w-[calc(100vw-5rem)]"
@@ -213,7 +213,7 @@ export function RecentsSwitcher() {
 							})}
 						</div>
 					)}
-				</Dialog.Popup>
+				</DialogPopup>
 			</Dialog.Portal>
 		</Dialog.Root>
 	);

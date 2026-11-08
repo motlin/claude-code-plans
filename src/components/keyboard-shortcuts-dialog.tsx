@@ -226,14 +226,8 @@ export function KeyboardShortcutsDialog() {
 	);
 	const isMac = useIsMac();
 	const isWindows = useIsWindows();
-	const returnFocusRef = useRef<HTMLElement | null>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const [find, setFind] = useState<ShortcutFind>(TEXT_FIND);
-
-	if (isOpen && returnFocusRef.current === null) {
-		const active = document.activeElement;
-		if (active instanceof HTMLElement && active !== document.body) returnFocusRef.current = active;
-	}
 
 	useShortcut(
 		"shortcuts_modal",
@@ -244,12 +238,6 @@ export function KeyboardShortcutsDialog() {
 		},
 		{allowInModal: true},
 	);
-
-	const finalFocus = useCallback(() => {
-		const target = returnFocusRef.current;
-		returnFocusRef.current = null;
-		return target?.isConnected === true ? target : true;
-	}, []);
 
 	const onOpenChange = useCallback((open: boolean) => {
 		setKeyboardShortcutsOpen(open);
@@ -280,7 +268,6 @@ export function KeyboardShortcutsDialog() {
 					<Dialog.Backdrop className="fixed inset-0 z-50 bg-backdrop transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
 					<DialogPopup
 						initialFocus={inputRef}
-						finalFocus={finalFocus}
 						tabIndex={-1}
 						data-perf-overlay="keyboard_shortcuts_dialog"
 						className="fixed top-1/2 left-1/2 z-50 flex h-dvh max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[520px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale,filter] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none motion-reduce:data-[ending-style]:scale-100 motion-reduce:data-[starting-style]:scale-100"

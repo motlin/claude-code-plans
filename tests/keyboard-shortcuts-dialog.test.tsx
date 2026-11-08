@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import {Dialog} from "@base-ui/react/dialog";
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
@@ -8,6 +9,7 @@ import {CommandPalette} from "../src/components/command-palette";
 import {ToastProvider} from "../src/components/toast";
 import {KeyboardShortcutsDialog, ShortcutRow} from "../src/components/keyboard-shortcuts-dialog";
 import {setKeyboardShortcutsOpen} from "../src/components/keyboard-shortcuts-open";
+import {DialogPopup} from "../src/components/ui/dialog-popup";
 import {shortcutSections} from "../src/components/keyboard-shortcut-sections";
 import {SHORTCUT_IDS, SHORTCUTS} from "../src/lib/shortcuts/registry";
 import {PanelsOff} from "./fizzy-lake-off";
@@ -468,6 +470,46 @@ describe("KeyboardShortcutsDialog", () => {
 		});
 		await waitFor(() => {
 			expect(document.activeElement).toBe(composer);
+		});
+	});
+
+	it("returns focus to the Settings-like dialog button it was opened from", async () => {
+		render(
+			<>
+				<Dialog.Root open>
+					<Dialog.Portal>
+						<DialogPopup aria-label="Settings">
+							<button
+								type="button"
+								onClick={() => {
+									setKeyboardShortcutsOpen(true);
+								}}
+							>
+								Shortcuts
+							</button>
+						</DialogPopup>
+					</Dialog.Portal>
+				</Dialog.Root>
+				<KeyboardShortcutsDialog />
+			</>,
+		);
+		const button = await screen.findByRole("button", {name: "Shortcuts"});
+		await waitFor(() => {
+			expect(document.activeElement).toBe(button);
+		});
+		fireEvent.click(button);
+		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
+		await waitFor(() => {
+			expect(dialog.contains(document.activeElement)).toBe(true);
+		});
+
+		fireEvent.keyDown(dialog, {key: "Escape", code: "Escape"});
+
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog", {name: "Keyboard shortcuts"})).toBeNull();
+		});
+		await waitFor(() => {
+			expect(document.activeElement).toBe(button);
 		});
 	});
 
