@@ -3045,6 +3045,45 @@ describe("JsonlRecordSchema observed on the work machine 2026-10-22", () => {
 	});
 });
 
+describe("JsonlRecordSchema observed 2026-11-08 transcript fields", () => {
+	const rendered = [{content: "<system-reminder>\nToday's date is 2026-11-08.\n</system-reminder>"}];
+
+	it("parses a user record carrying a turnAttributionKey", () => {
+		const record = {...jsonlRecordFixtures.user, turnAttributionKey: "918b81af-cec4-48fe-8579-3a6f0249333f"};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it("parses an assistant record whose thinkingDisplay is summarized", () => {
+		const record = {...jsonlRecordFixtures.assistant, thinkingDisplay: "summarized"};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it("parses a hook_success attachment flagged with accountMemoryBatch", () => {
+		const record = {
+			type: "attachment",
+			...baseFields,
+			attachment: {
+				type: "hook_success",
+				hookName: "PostToolBatch",
+				toolUseID: "hook-alice-1",
+				hookEvent: "PostToolBatch",
+				content: "",
+				stdout: "{}\n",
+				stderr: "",
+				exitCode: 0,
+				command: "alice-hook",
+				durationMs: 12,
+				accountMemoryBatch: false,
+			},
+			rendered,
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
+});
+
 describe("SessionRegistryFileSchema", () => {
 	it("parses a registry file whose bridge session was cleared to null", () => {
 		const entry = {

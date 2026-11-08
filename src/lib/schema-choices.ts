@@ -564,6 +564,7 @@ const pullRequestStateLabels = {
 const thinkingDisplayChoices = {
 	updates: true,
 	omitted: true,
+	summarized: true,
 } satisfies Record<z.infer<typeof ThinkingDisplaySchema>, true>;
 
 /** Not consumed yet — `streamCutCause` on assistant error records is only validated. */

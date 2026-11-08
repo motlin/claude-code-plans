@@ -547,6 +547,8 @@ export const UserRecordSchema = z
 			.object({promptIndex: z.number().optional(), turnIndex: z.number().optional()})
 			.strict()
 			.optional(),
+		// Groups the records of one prompt's turn for attribution (observed on sdk-origin prompts).
+		turnAttributionKey: z.string().optional(),
 		turnCompanion: z.boolean().optional(),
 		queueSkipAttachments: z.boolean().optional(),
 		queueSkipSlashCommands: z.boolean().optional(),
@@ -585,7 +587,7 @@ const RateLimitInfoSchema = z
 	.strict();
 
 // How the assistant's thinking was surfaced: streamed as `updates`, or `omitted` (empty thinking text).
-export const ThinkingDisplaySchema = z.enum(["updates", "omitted"]);
+export const ThinkingDisplaySchema = z.enum(["updates", "omitted", "summarized"]);
 
 // The prompt-cache TTL the CLI asked for on the request that produced an assistant message.
 export const PromptCacheTtlSchema = z.enum(["5m", "1h"]);
@@ -800,6 +802,8 @@ const HookSuccessAttachmentPayload = z
 		exitCode: z.number().optional(),
 		command: z.string().optional(),
 		durationMs: z.number().optional(),
+		// Whether this hook run belonged to an account-memory batch (observed false on PostToolBatch).
+		accountMemoryBatch: z.boolean().optional(),
 	})
 	.strict();
 
