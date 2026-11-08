@@ -1029,7 +1029,24 @@ html[data-interface-font="dyslexic"] {
 	--upstream-warning: #794c02;
 	/* Upstream `--cds-bg-tint-blue`, the same in both modes: the ⌘K palette's committed filter chips. */
 	--upstream-tint-blue: #257de01f;
+	/* Upstream fizzy `--cds-bg-tint-<hue>` / `--cds-text-tint-<hue>`: the ArtifactMark tiles (`vL`) and bare glyph inks (`NH`)
+	   (dumps/artifact-mark-primitive-tint-tokens-2026-11-04.txt). */
+	--upstream-bg-tint-blue: #257de01f;
 	--upstream-text-tint-blue: #1757ac;
+	--upstream-bg-tint-orange: #d25f2524;
+	--upstream-text-tint-orange: #90370f;
+	--upstream-bg-tint-violet: #785ee81f;
+	--upstream-text-tint-violet: #5437b8;
+	--upstream-bg-tint-red: #dc3c3d1f;
+	--upstream-text-tint-red: #a42528;
+	--upstream-bg-tint-aqua: #019c7f24;
+	--upstream-text-tint-aqua: #006458;
+	--upstream-bg-tint-yellow: #fbb31529;
+	--upstream-text-tint-yellow: #794c02;
+	--upstream-bg-tint-magenta: #ce447d1f;
+	--upstream-text-tint-magenta: #902552;
+	--upstream-bg-tint-green: #10a12224;
+	--upstream-text-tint-green: #006c10;
 	/* Upstream's fizzy-lake `--cds-<hue>-<step>` palette, the same in both modes: the Artifacts gallery
 	   covers and template tiles (read live 2026-11-03, dumps/artifacts-gallery-verify-2026-11-03.txt). */
 	--color-cds-gray-100: #e0e0e0;
@@ -1130,7 +1147,22 @@ html[data-interface-font="dyslexic"] {
 }
 
 :root.dark[data-cds-fizzy-lake~="color"] {
+	--upstream-bg-tint-blue: #257de01f;
 	--upstream-text-tint-blue: #6aabf1;
+	--upstream-bg-tint-orange: #d25f251f;
+	--upstream-text-tint-orange: #f18a59;
+	--upstream-bg-tint-violet: #785ee81f;
+	--upstream-text-tint-violet: #a89af0;
+	--upstream-bg-tint-red: #dc3c3d1f;
+	--upstream-text-tint-red: #f17778;
+	--upstream-bg-tint-aqua: #019c7f1f;
+	--upstream-text-tint-aqua: #2bc6a5;
+	--upstream-bg-tint-yellow: #fbb31514;
+	--upstream-text-tint-yellow: #e49c06;
+	--upstream-bg-tint-magenta: #ce447d1f;
+	--upstream-text-tint-magenta: #ee7fac;
+	--upstream-bg-tint-green: #10a1221f;
+	--upstream-text-tint-green: #53c556;
 	--upstream-fill-ghost-hover: #ffffff13;
 	--upstream-plain-secondary: #ffffff91;
 	--upstream-warning: #e49c06;
@@ -1585,6 +1617,56 @@ html[data-interface-font="dyslexic"] {
    color), falling back to secondary / muted / currentColor with color off. Upstream resets
    `[data-cds-theme] { --control-ink: initial }`; when local gains a `[data-cds-theme]` scope
    (see tooltip-content-dark-scope-wrapper), add that reset too. */
+/* Upstream `bg-tint-<hue>` / `text-tint-<hue>` (the ArtifactMark `vL` tiles and `NH` inks); separate utilities because each reads its own variable. */
+@utility bg-tint-blue {
+	background-color: var(--upstream-bg-tint-blue);
+}
+@utility text-tint-blue {
+	color: var(--upstream-text-tint-blue);
+}
+@utility bg-tint-orange {
+	background-color: var(--upstream-bg-tint-orange);
+}
+@utility text-tint-orange {
+	color: var(--upstream-text-tint-orange);
+}
+@utility bg-tint-violet {
+	background-color: var(--upstream-bg-tint-violet);
+}
+@utility text-tint-violet {
+	color: var(--upstream-text-tint-violet);
+}
+@utility bg-tint-red {
+	background-color: var(--upstream-bg-tint-red);
+}
+@utility text-tint-red {
+	color: var(--upstream-text-tint-red);
+}
+@utility bg-tint-aqua {
+	background-color: var(--upstream-bg-tint-aqua);
+}
+@utility text-tint-aqua {
+	color: var(--upstream-text-tint-aqua);
+}
+@utility bg-tint-yellow {
+	background-color: var(--upstream-bg-tint-yellow);
+}
+@utility text-tint-yellow {
+	color: var(--upstream-text-tint-yellow);
+}
+@utility bg-tint-magenta {
+	background-color: var(--upstream-bg-tint-magenta);
+}
+@utility text-tint-magenta {
+	color: var(--upstream-text-tint-magenta);
+}
+@utility bg-tint-green {
+	background-color: var(--upstream-bg-tint-green);
+}
+@utility text-tint-green {
+	color: var(--upstream-text-tint-green);
+}
+
 @utility text-secondary-control {
 	color: var(--control-ink, var(--color-secondary));
 }

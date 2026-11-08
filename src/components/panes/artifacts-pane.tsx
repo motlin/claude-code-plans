@@ -20,6 +20,7 @@ export function SessionArtifactsList({artifacts}: {artifacts: readonly SessionAr
 					<ArtifactCard
 						url={artifact.url}
 						label={artifact.title}
+						typeKind={artifact.kind}
 						previewHref={artifact.previewable ? artifactPreviewPath(artifact.id) : undefined}
 					/>
 				</li>

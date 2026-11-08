@@ -4,17 +4,13 @@ import {and, desc, eq, inArray, sql} from "drizzle-orm";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import type {ArtifactSummary, SessionArtifact} from "../api/artifacts";
 import {artifactMatchesSearch} from "../artifact-gallery";
+import {ARTIFACT_TYPE_KINDS} from "../artifact-mark";
 import {isPreviewableSourcePath} from "../artifact-source-paths";
 import * as schema from "./schema";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
 type ArtifactKind = ArtifactSummary["kind"];
-
-/** The gallery kind of each known Artifact type, keyed by the type's URL. */
-const ARTIFACT_TYPE_KINDS: Readonly<Record<string, ArtifactKind>> = {
-	"https://claude.ai/artifact/Rp9naXUCj2xozpUkyQy19W": "docs",
-};
 
 /** Upstream's classification: a type-created artifact takes its type's kind; plain publishes (and unknown types) are HTML. */
 function artifactKind(typeUrl: string | null): ArtifactKind {

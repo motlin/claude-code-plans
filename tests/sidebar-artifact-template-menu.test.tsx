@@ -201,60 +201,39 @@ describe("sidebar Artifacts template launcher", () => {
 		});
 	});
 	function readMarks(menu: HTMLElement) {
-		return [...menu.querySelectorAll<HTMLElement>('[data-artifact-mark-size="menu"]')].map((mark) => {
-			const classes = mark.className.split(" ");
-			return {
-				kind: mark.dataset["artifactMark"],
-				tile: ["size-5", "overflow-hidden", "rounded-[25%]", "text-white"].filter((name) =>
-					classes.includes(name),
-				),
-				colors: classes.filter((name) => /^(dark:)?(bg|text)-\[/.test(name)),
-				svgSize: classes.filter((name) => name.startsWith("[&_svg]")),
-				strokeWidth: mark.querySelector("svg")?.getAttribute("stroke-width"),
-			};
-		});
+		return [...menu.querySelectorAll<HTMLElement>('[data-artifact-mark-size="menu"]')].map((mark) => ({
+			kind: mark.dataset["artifactMark"],
+			className: mark.className,
+			svgSize: mark.querySelector("svg")?.style.fontSize,
+		}));
 	}
 
-	it("marks each template row with upstream's fizzy-lake color look: a bare 20px tinted outline glyph", async () => {
+	const glyph = (kind: string, hue: string) => ({
+		kind,
+		className: `flex shrink-0 items-center justify-center text-tint-${hue}`,
+		svgSize: "calc(1.25rem * var(--cds-rem-scale, 1))",
+	});
+	const MARKS = [
+		glyph("document", "blue"),
+		glyph("slides", "orange"),
+		glyph("design", "violet"),
+		glyph("chart", "red"),
+	];
+
+	it("marks each template row with upstream's ArtifactMark at menu size: a bare 20px tinted outline glyph", async () => {
 		await renderSidebar();
 		const menu = await openTemplateMenu();
-		const glyph = (kind: string, light: string, dark: string) => ({
-			kind,
-			tile: ["size-5"],
-			colors: [`text-[${light}]`, `dark:text-[${dark}]`],
-			svgSize: ["[&_svg]:!size-5"],
-			strokeWidth: "2",
-		});
 		expect({
 			marks: readMarks(menu),
 			legacyTiles: menu.querySelectorAll("[data-template-tile]").length,
-		}).toStrictEqual({
-			marks: [
-				glyph("document", "#1757ac", "#6aabf1"),
-				glyph("slides", "#90370f", "#f18a59"),
-				glyph("design", "#5437b8", "#a89af0"),
-				glyph("chart", "#a42528", "#f17778"),
-			],
-			legacyTiles: 0,
-		});
+		}).toStrictEqual({marks: MARKS, legacyTiles: 0});
 	});
 
-	it("keeps upstream's default ArtifactMark tile when the fizzy-lake color part is off", async () => {
+	// Upstream removed the fizzy-lake color fork (and its solid `pK` tile) in shared-9-7C8cOdSN.
+	it("draws the same marks when the fizzy-lake color part is off", async () => {
 		await renderSidebar(undefined, undefined, ["panels", "type"]);
 		const menu = await openTemplateMenu();
-		const tile = (kind: string, light: string, dark: string) => ({
-			kind,
-			tile: ["size-5", "overflow-hidden", "rounded-[25%]", "text-white"],
-			colors: [`bg-[${light}]`, `dark:bg-[${dark}]`],
-			svgSize: ["[&_svg]:!size-3.5"],
-			strokeWidth: "2.25",
-		});
-		expect(readMarks(menu)).toStrictEqual([
-			tile("document", "#338ced", "#257de0"),
-			tile("slides", "#f47230", "#e76624"),
-			tile("design", "#785ee8", "#6a4ce2"),
-			tile("chart", "#dc3c3d", "#c83839"),
-		]);
+		expect(readMarks(menu)).toStrictEqual(MARKS);
 	});
 
 	// Upstream's `R8` aside hard-codes data-flat-look="" and carries data-hub-rail in the hub layout.

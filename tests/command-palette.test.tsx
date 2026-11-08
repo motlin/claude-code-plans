@@ -2405,6 +2405,40 @@ describe("CommandPalette Artifacts and Scheduled tabs", () => {
 		});
 	});
 
+	// Upstream c74dd5c13 `x_(…, "palette", <Icon name={data.icon} size="md" class="shrink-0">)`.
+	it("marks a typed artifact row with the bare 20px tinted ArtifactMark and an untyped one with its own glyph", async () => {
+		const dialog = await openPalette(undefined, "/", (queryClient) => {
+			queryClient.setQueryData(artifactsQueryOptions.queryKey, [
+				{...artifact("art-docs", "Quarterly plan", 0), kind: "docs"},
+				{...artifact("art-chart", "Cash chart", HOUR_MS), icon: "chart"},
+				artifact("art-plain", "Plain page", 2 * HOUR_MS),
+			]);
+		});
+		fireEvent.click(within(dialog).getByRole("tab", {name: "Artifacts"}));
+		const icons = [...dialog.querySelectorAll('[cmdk-item][data-item-type="artifact"]')].map((row) => {
+			const mark = row.querySelector<HTMLElement>("[data-artifact-mark]");
+			const svg = row.querySelector("svg");
+			return {
+				mark:
+					mark === null
+						? null
+						: [mark.dataset["artifactMark"], mark.dataset["artifactMarkSize"], mark.className],
+				glyph: [...(svg?.classList ?? [])].find((name) => name.startsWith("lucide-")),
+				px: svg?.style.fontSize,
+			};
+		});
+		const px = "calc(1.25rem * var(--cds-rem-scale, 1))";
+		expect(icons).toStrictEqual([
+			{
+				mark: ["document", "menu", "flex shrink-0 items-center justify-center text-tint-blue"],
+				glyph: "lucide-file",
+				px,
+			},
+			{mark: null, glyph: "lucide-chart-column", px},
+			{mark: null, glyph: "lucide-shapes", px},
+		]);
+	});
+
 	it("lists active routines with their schedule on the Scheduled tab and opens /routines", async () => {
 		const dialog = await openPalette(undefined, "/", seedLocal);
 

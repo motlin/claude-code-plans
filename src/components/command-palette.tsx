@@ -68,6 +68,8 @@ import {sessionIdentityQueryOptions} from "../lib/api/session-identity";
 import {useSessionIdentity} from "../hooks/use-session-identity";
 import {useSessionArchive} from "../hooks/use-session-archive";
 import {artifactsQueryOptions, type ArtifactSummary} from "../lib/api/artifacts";
+import {isTypeMediaIconWord, resolveArtifactMark, TYPE_MEDIA_ICONS} from "../lib/artifact-mark";
+import {ArtifactGlyph, ArtifactMark} from "./artifact-mark";
 import {encodeFilePath} from "../lib/api/file";
 import {launchHerdrSession} from "../lib/api/herdr";
 import {projectMemoriesQueryOptions} from "../lib/api/memories";
@@ -277,6 +279,31 @@ interface SearchRow {
 	href: string | undefined;
 	/** Replaces the relative-time meta, e.g. a routine's next run. */
 	meta?: string;
+	/** An Artifacts-tab row's type and icon word, for its ArtifactMark. */
+	artifact?: Pick<ArtifactSummary, "kind" | "icon">;
+}
+
+/**
+ * Upstream c74dd5c13 `x_(…, "palette", fallback)`: a typed artifact gets the bare 20px tinted ArtifactMark,
+ * an untyped one its own icon at md in the row's ink (the icon word's glyph, else the Artifacts glyph).
+ */
+function ArtifactRowIcon({artifact}: {artifact: Pick<ArtifactSummary, "kind" | "icon">}) {
+	const mark = resolveArtifactMark({typeKind: artifact.kind});
+	if (mark !== undefined) return <ArtifactMark kind={mark.kind} size="menu" />;
+	const {icon} = artifact;
+	return (
+		<ArtifactGlyph
+			icon={icon !== null && isTypeMediaIconWord(icon) ? TYPE_MEDIA_ICONS[icon] : "Artifacts"}
+			size="md"
+			className="shrink-0"
+		/>
+	);
+}
+
+function rowIcon(row: SearchRow): ReactNode {
+	if (row.mark !== undefined) return <PaletteSessionIcon mark={row.mark} />;
+	if (row.artifact !== undefined) return <ArtifactRowIcon artifact={row.artifact} />;
+	return KIND_ICONS[row.kind];
 }
 
 /** Resolves a session's mark: live, or from the snapshot frozen when the palette settled. */
@@ -364,6 +391,7 @@ function artifactRows(artifacts: readonly ArtifactSummary[], text: string): Sear
 			snippet: undefined,
 			mtime: new Date(artifactTimestamp(artifact)).toISOString(),
 			href: undefined,
+			artifact: {kind: artifact.kind, icon: artifact.icon},
 		});
 		if (rows.length === PALETTE_RECENT_LIMIT) break;
 	}
@@ -2908,7 +2936,7 @@ function SearchResultItem({
 		>
 			<span className={`flex min-w-0 flex-1 items-center gap-2 ${session ? ROW_ACTIONS_LABEL_CLASS : ""}`}>
 				<span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-[18px]">
-					{row.mark === undefined ? KIND_ICONS[row.kind] : <PaletteSessionIcon mark={row.mark} />}
+					{rowIcon(row)}
 				</span>
 				<span className="flex min-w-0 flex-1 items-baseline gap-2">
 					<span data-palette-label="" className="truncate">

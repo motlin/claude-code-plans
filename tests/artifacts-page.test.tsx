@@ -786,6 +786,16 @@ describe("artifacts route", () => {
 			return {
 				className: blank?.getAttribute("class"),
 				size: [blank?.getAttribute("width"), blank?.getAttribute("height")],
+				defs: [...(blank?.querySelector("defs")?.children ?? [])].map((child) => [
+					child.tagName,
+					/(sheen|wash|soft)$/.exec(child.id)?.[1],
+				]),
+				wash: [...(blank?.querySelectorAll("radialGradient stop") ?? [])].map((stop) => [
+					stop.getAttribute("offset"),
+					stop.getAttribute("stop-opacity"),
+				]),
+				washShape: ["cx", "cy", "r"].map((name) => blank?.querySelector("radialGradient")?.getAttribute(name)),
+				blur: blank?.querySelector("filter > feGaussianBlur")?.getAttribute("stdDeviation"),
 				gradient: {
 					units: gradient?.getAttribute("gradientUnits"),
 					x2: gradient?.getAttribute("x2"),
@@ -819,6 +829,20 @@ describe("artifacts route", () => {
 			.join(", ");
 		const blankClass =
 			"pointer-events-none absolute top-0 overflow-visible fill-current start-1/2 -translate-x-1/2 rtl:translate-x-1/2 text-[color:var(--skeleton-base)]";
+		const defs = {
+			defs: [
+				["linearGradient", "sheen"],
+				["radialGradient", "wash"],
+				["filter", "soft"],
+			],
+			wash: [
+				["0", "0.4"],
+				["0.65", "0.75"],
+				["1", null],
+			],
+			washShape: ["0.5", "0.5", "0.62"],
+			blur: "0.3",
+		};
 		const sheen = {
 			units: "userSpaceOnUse",
 			stops: [
@@ -830,6 +854,7 @@ describe("artifacts route", () => {
 			other: {
 				className: blankClass,
 				size: ["202", "130"],
+				...defs,
 				gradient: {...sheen, x2: "202"},
 				groups: [
 					{fill: null, rx: ["6", "6", "6", "6", "6", "6"]},
@@ -839,6 +864,7 @@ describe("artifacts route", () => {
 			doc: {
 				className: blankClass,
 				size: ["180", "130"],
+				...defs,
 				gradient: {...sheen, x2: "180"},
 				groups: [
 					{fill: null, rx: ["5", "3", "2.5", "2.5", "2.5", "6"]},
@@ -851,6 +877,20 @@ describe("artifacts route", () => {
 				children: ["absolute inset-0 bg-surface-2 opacity-40 dark:opacity-35"],
 			},
 		});
+	});
+
+	// Upstream ignores an untyped publish's icon for the blank (c33ae67d6 `z()`): live `file|other|Chart`.
+	it("draws the other blank on a file cover for an untyped publish whose icon is chart", async () => {
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		await renderArtifactsPage("/artifacts", true);
+		const cover = screen
+			.getByRole("link", {name: "household-cash.html"})
+			.closest("li")
+			?.querySelector<HTMLElement>("[data-artifact-cover]");
+		expect({
+			cover: cover?.dataset["artifactCover"],
+			blank: cover?.querySelector("svg[data-artifact-cover-blank]")?.getAttribute("data-artifact-cover-blank"),
+		}).toStrictEqual({cover: "file", blank: "other"});
 	});
 
 	it("draws upstream's 72px mark row: a 40px ArtifactMark, a one-line title and the Opened meta with sr-only Private", async () => {
@@ -875,7 +915,7 @@ describe("artifacts route", () => {
 				mark: mark?.getAttribute("data-artifact-mark"),
 				markClass: mark?.className,
 				markSize: mark?.getAttribute("data-artifact-mark-size"),
-				glyph: mark?.querySelector("svg")?.getAttribute("class")?.includes("size-5"),
+				glyph: mark?.querySelector("svg")?.style.fontSize,
 				words: card.querySelector("[data-artifact-mark-words]")?.className,
 				title: card.querySelector("[data-card-title]")?.className,
 				meta: card.querySelector("[data-card-meta]")?.textContent,
@@ -896,9 +936,9 @@ describe("artifacts route", () => {
 				body,
 				mark: "file",
 				markClass:
-					"flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-fill-secondary text-secondary",
+					"flex items-center justify-center size-10 shrink-0 overflow-hidden rounded-lg bg-fill-secondary text-secondary",
 				markSize: "card",
-				glyph: true,
+				glyph: "calc(1.25rem * var(--cds-rem-scale, 1))",
 				words,
 				title,
 				meta: "Opened 2h agoPrivate",
@@ -909,9 +949,9 @@ describe("artifacts route", () => {
 				body,
 				mark: "document",
 				markClass:
-					"flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-upstream-tint-blue text-tint-blue-ink",
+					"flex items-center justify-center size-10 shrink-0 overflow-hidden rounded-lg bg-tint-blue text-tint-blue",
 				markSize: "card",
-				glyph: true,
+				glyph: "calc(1.25rem * var(--cds-rem-scale, 1))",
 				words,
 				title,
 				meta: expect.stringMatching(/^Edited Nov 3, 2025Private$/),
@@ -982,6 +1022,34 @@ describe("artifacts route", () => {
 				],
 			},
 		]);
+	});
+
+	it("leads each list row with upstream's 28px row ArtifactMark: a tint-blue Docs tile labelled Docs, a neutral file tile otherwise", async () => {
+		await renderArtifactsPage("/artifacts", true);
+		const markFor = (name: string) => {
+			const mark = screen
+				.getByRole("link", {name})
+				.closest("li")
+				?.querySelector<HTMLElement>('[data-artifact-mark-size="row"]');
+			const svg = mark?.querySelector("svg");
+			return {
+				kind: mark?.dataset["artifactMark"],
+				className: mark?.className,
+				glyph: svg?.style.fontSize,
+				label: svg?.getAttribute("aria-label") ?? null,
+			};
+		};
+		const row = "flex items-center justify-center size-7 shrink-0 overflow-hidden rounded-[25%]";
+		const glyph = "calc(1rem * var(--cds-rem-scale, 1))";
+		expect({
+			docs: markFor("Quarterly plan"),
+			html: markFor("Asap Ladder Queue"),
+			typeTiles: document.querySelectorAll("[data-type-tile]").length,
+		}).toStrictEqual({
+			docs: {kind: "document", className: `${row} bg-tint-blue text-tint-blue`, glyph, label: "Docs"},
+			html: {kind: "file", className: `${row} bg-fill-secondary text-secondary`, glyph, label: null},
+			typeTiles: 0,
+		});
 	});
 
 	it("shows the upstream empty state when nothing has been published", async () => {

@@ -267,6 +267,46 @@ describe("ArtifactRenderer", () => {
 		});
 	});
 
+	// Upstream c33aef2b7 `L`: `Q$(…, "sm")` puts the typed mark's ink on the slot; untyped keeps the muted fallback.
+	it("leads a Docs-type publish with the 16px tint-blue document glyph and a plain publish with the muted fallback", () => {
+		const typed = render(
+			<ArtifactRenderer
+				toolCall={transcriptCall(
+					TYPE_CREATE.input,
+					"Created a new Artifact at https://claude.ai/artifact/88kDDG41ePqvfVZNsq4HCF (version 1790103359-22eb) from the Artifact type https://claude.ai/artifact/Rp9naXUCj2xozpUkyQy19W",
+					TYPE_CREATE.toolUseResult,
+				)}
+			/>,
+		);
+		const mark = typed.container.querySelector<HTMLElement>("[data-artifact-mark]");
+		const typedState = {
+			slot: mark?.parentElement?.className,
+			mark: [mark?.dataset["artifactMark"], mark?.className],
+			px: mark?.querySelector("svg")?.style.fontSize,
+		};
+		cleanup();
+		const plain = render(
+			<ArtifactRenderer toolCall={transcriptCall(PUBLISH.input, QUARTO_TEXT, PUBLISH.toolUseResult)} />,
+		);
+		expect({
+			typed: typedState,
+			plain: {
+				marks: plain.container.querySelectorAll("[data-artifact-mark]").length,
+				fallback: plain.container.querySelector('[role="button"] > svg')?.getAttribute("class"),
+			},
+		}).toStrictEqual({
+			typed: {
+				slot: "flex shrink-0 self-center text-tint-blue",
+				mark: ["document", "flex"],
+				px: "calc(1rem * var(--cds-rem-scale, 1))",
+			},
+			plain: {
+				marks: 0,
+				fallback: "lucide lucide-app-window shrink-0 self-center text-muted-as-secondary",
+			},
+		});
+	});
+
 	it("renders an open with the artifact id when nothing else names it", () => {
 		const call = transcriptCall({action: "open", url: PIN_URL}, `Opened the Artifact at ${PIN_URL}`, undefined);
 		const {container} = render(<ArtifactRenderer toolCall={call} />);

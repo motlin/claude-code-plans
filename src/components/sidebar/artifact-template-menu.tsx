@@ -2,9 +2,8 @@ import {useNavigate} from "@tanstack/react-router";
 import {Plus} from "lucide-react";
 import {Fragment, useState, type ReactNode} from "react";
 import {ARTIFACT_TEMPLATES} from "../../lib/artifact-templates";
-import {useFizzyLake} from "../../lib/fizzy-lake";
 import {TemplateBadge} from "../make-something-new";
-import {TEMPLATE_ICONS} from "../artifact-template-icons";
+import {ArtifactMark} from "../artifact-mark";
 import {Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
 
@@ -17,7 +16,6 @@ const LABEL = "New from a template";
 export function ArtifactsNavRow({children}: Readonly<{children: ReactNode}>) {
 	const navigate = useNavigate();
 	const [open, setOpen] = useState(false);
-	const colorLook = useFizzyLake("color");
 	return (
 		<div
 			data-row=""
@@ -48,46 +46,21 @@ export function ArtifactsNavRow({children}: Readonly<{children: ReactNode}>) {
 						className="w-[240px]"
 						popupProps={{"aria-label": LABEL}}
 					>
-						{ARTIFACT_TEMPLATES.map((template) => {
-							const Icon = TEMPLATE_ICONS[template.slug];
-							return (
-								<Fragment key={template.slug}>
-									{/* Upstream's catalog separates its known types (Docs, Slides, Design) from the rest. */}
-									{template.slug === "dashboard" && <MenuSeparator />}
-									<MenuItem
-										icon={
-											colorLook ? (
-												// Upstream's fizzy-lake color ArtifactMark at menu size: a bare 20px tinted outline glyph.
-												<span
-													aria-hidden="true"
-													data-artifact-mark={template.markKind}
-													data-artifact-mark-size="menu"
-													className={`inline-flex size-5 shrink-0 items-center justify-center ${template.glyphClass} [&_svg]:!size-5`}
-												>
-													<Icon />
-												</span>
-											) : (
-												// Upstream's default ArtifactMark tile; its filled Anthropicons glyph is a bold outline here (anthropicons-glyph-icons).
-												<span
-													aria-hidden="true"
-													data-artifact-mark={template.markKind}
-													data-artifact-mark-size="menu"
-													className={`inline-flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-[25%] text-white ${template.markClass} [&_svg]:!size-3.5`}
-												>
-													<Icon strokeWidth={2.25} />
-												</span>
-											)
-										}
-										onSelect={() => void navigate({to: "/", search: {create: template.slug}})}
-									>
-										<span className="flex min-w-0 items-center">
-											<span className="truncate">{template.label}</span>
-											<TemplateBadge badge={template.badge} className="ms-2" />
-										</span>
-									</MenuItem>
-								</Fragment>
-							);
-						})}
+						{ARTIFACT_TEMPLATES.map((template) => (
+							<Fragment key={template.slug}>
+								{/* Upstream's catalog separates its known types (Docs, Slides, Design) from the rest. */}
+								{template.slug === "dashboard" && <MenuSeparator />}
+								<MenuItem
+									icon={<ArtifactMark kind={template.markKind} size="menu" />}
+									onSelect={() => void navigate({to: "/", search: {create: template.slug}})}
+								>
+									<span className="flex min-w-0 items-center">
+										<span className="truncate">{template.label}</span>
+										<TemplateBadge badge={template.badge} className="ms-2" />
+									</span>
+								</MenuItem>
+							</Fragment>
+						))}
 						<MenuSeparator />
 						<p className="px-2 pt-1.5 pb-1 text-footnote text-balance text-ink-muted">
 							Opens a new session ready to make what you pick. Nothing is created until you send.

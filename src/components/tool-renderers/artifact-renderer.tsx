@@ -1,11 +1,16 @@
 import type {KeyboardEvent} from "react";
 import {AppWindow, ChevronRight} from "lucide-react";
+import type {ArtifactSummary} from "../../lib/api/artifacts";
+import {ARTIFACT_MARK_KINDS, ARTIFACT_TYPE_KINDS, MARK_INK, resolveArtifactMark} from "../../lib/artifact-mark";
 import type {ParsedArtifact} from "../../lib/artifact-output";
 import type {ArtifactListEntry} from "../../lib/artifact-schemas";
 import {artifactPreviewPath, isPreviewableSourcePath} from "../../lib/artifact-source-paths";
+import {ArtifactGlyph} from "../artifact-mark";
 import {FallbackRenderer} from "./fallback-renderer";
 import {KeyValueCard} from "./shared";
 import {isArtifactCard, type ClientToolCall, type ToolRendererProps} from "./types";
+
+type ArtifactKind = ArtifactSummary["kind"];
 
 function basename(path: string): string {
 	return path.split("/").pop() ?? path;
@@ -31,7 +36,19 @@ function previewableSource(artifact: ParsedArtifact, input: ClientToolCall["inpu
  * A publish from a local HTML or Markdown file also gets a "Preview source"
  * link to the sandboxed local preview.
  */
-export function ArtifactCard({url, label, previewHref}: {url: string; label: string; previewHref: string | undefined}) {
+export function ArtifactCard({
+	url,
+	label,
+	previewHref,
+	typeKind,
+}: {
+	url: string;
+	label: string;
+	previewHref: string | undefined;
+	/** The artifact's type kind, when it was made from a known type. */
+	typeKind?: ArtifactKind | undefined;
+}) {
+	const mark = resolveArtifactMark({typeKind});
 	const onKeyDown = (event: KeyboardEvent<HTMLAnchorElement>) => {
 		if (event.key !== " ") return;
 		event.preventDefault();
@@ -52,7 +69,16 @@ export function ArtifactCard({url, label, previewHref}: {url: string; label: str
 					aria-hidden="true"
 					className="card-outline task-card-surface absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover"
 				/>
-				<AppWindow size={16} aria-hidden="true" className="shrink-0 self-center text-ink-muted" />
+				{mark === undefined ? (
+					<AppWindow size={16} aria-hidden="true" className="shrink-0 self-center text-muted-as-secondary" />
+				) : (
+					// Upstream c33aef2b7 `L`: `Q$(…, "sm")`'s bare glyph, its ink on the slot.
+					<span className={`flex shrink-0 self-center ${MARK_INK[mark.hue]}`}>
+						<span data-artifact-mark={mark.kind} className="flex">
+							<ArtifactGlyph icon={ARTIFACT_MARK_KINDS[mark.kind].icon} size="sm" />
+						</span>
+					</span>
+				)}
 				<span className="min-w-0 flex-1 text-body text-primary truncate">{label}</span>
 				<ChevronRight size={16} aria-hidden="true" className="shrink-0 self-center text-ink-muted" />
 			</a>
@@ -66,6 +92,14 @@ export function ArtifactCard({url, label, previewHref}: {url: string; label: str
 			)}
 		</div>
 	);
+}
+
+/** A publish's known type kind, from the type it was created from. */
+function publishTypeKind(input: ClientToolCall["input"]): ArtifactKind | undefined {
+	const typeUrl = input["type_url"];
+	return typeof typeUrl === "string" && Object.hasOwn(ARTIFACT_TYPE_KINDS, typeUrl)
+		? ARTIFACT_TYPE_KINDS[typeUrl]
+		: undefined;
 }
 
 function ArtifactListBody({toolCall, artifacts}: {toolCall: ClientToolCall; artifacts: ArtifactListEntry[]}) {
@@ -107,6 +141,7 @@ export function ArtifactRenderer({toolCall}: ToolRendererProps) {
 			<ArtifactCard
 				url={toolCall.artifact.url}
 				label={artifactLabel(toolCall.artifact, toolCall.input)}
+				typeKind={publishTypeKind(toolCall.input)}
 				previewHref={
 					previewableSource(toolCall.artifact, toolCall.input)
 						? artifactPreviewPath(toolCall.artifact.id)

@@ -2,21 +2,17 @@ import {pageTitle} from "../lib/route-title";
 import {createFileRoute, Link, useNavigate} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {Tabs} from "@base-ui/react/tabs";
-import {
-	Calendar,
-	ChartColumn,
-	CodeXml,
-	FileText,
-	LayoutGrid,
-	Link as LinkIcon,
-	List,
-	Lock,
-	Map as MapIcon,
-	Pin,
-	SlidersVertical,
-} from "lucide-react";
+import {LayoutGrid, Link as LinkIcon, List, Lock, Pin, SlidersVertical} from "lucide-react";
 import {type ReactNode, useEffect, useId, useMemo, useState} from "react";
 import {artifactsQueryOptions, type ArtifactSummary} from "../lib/api/artifacts";
+import {
+	coverBlankKind,
+	isTypeMediaIconWord,
+	resolveArtifactMark,
+	TYPE_MEDIA_ICONS,
+	type TypeMediaIconWord,
+} from "../lib/artifact-mark";
+import {ArtifactMark} from "../components/artifact-mark";
 import {
 	activeFilterCount,
 	applyArtifactFilters,
@@ -596,24 +592,6 @@ function ArtifactFilterMenu({
 	);
 }
 
-const TILE_BOX = "size-9 rounded-lg";
-const TILE_ICON = "size-5";
-
-/** The publish's icon word → its glyph; any other word falls back to the artifact's kind. */
-const TYPE_MEDIA_ICONS = {
-	chart: ChartColumn,
-	doc: FileText,
-	code: CodeXml,
-	map: MapIcon,
-	calendar: Calendar,
-} as const;
-
-type TypeMediaIconWord = keyof typeof TYPE_MEDIA_ICONS;
-
-function isTypeMediaIconWord(word: string): word is TypeMediaIconWord {
-	return Object.hasOwn(TYPE_MEDIA_ICONS, word);
-}
-
 function typeMediaIconWord(artifact: ArtifactSummary): TypeMediaIconWord {
 	const {icon} = artifact;
 	if (icon !== null && isTypeMediaIconWord(icon)) return icon;
@@ -659,8 +637,8 @@ const COVER_SURFACE_WASH = "absolute inset-0 bg-surface-2 opacity-40 dark:opacit
 type BlankBox = readonly [x: number, y: number, width: number, height: number, rx?: number];
 
 /** Upstream's blank drawings (`M` in c8a1f083a): the `other` 3 × 2 tile grid and the `document` page's text lines. */
-const BLANK_DRAWINGS: Record<CoverKind, {width: number; boxes: readonly BlankBox[]}> = {
-	file: {
+const BLANK_DRAWINGS: Record<"other" | "document", {width: number; boxes: readonly BlankBox[]}> = {
+	other: {
 		width: 202,
 		boxes: [0, 1, 2, 3, 4, 5].map((index): BlankBox => [
 			16 + (index % 3) * 59.33,
@@ -695,28 +673,38 @@ const SHEEN_STOP = "[stop-color:currentColor]";
  * Upstream's no-thumbnail front sheet (`R`): the skeleton drawing pinned to the sheet's top centre, overflowing its
  * 130px box, with a second copy filled by a sheen that fades from the skeleton ink to clear across its width.
  */
-function CoverBlank({kind}: {kind: CoverKind}) {
-	const sheenId = useId();
-	const {width, boxes} = BLANK_DRAWINGS[kind];
+function CoverBlank({artifact}: {artifact: ArtifactSummary}) {
+	const id = useId();
+	const blank = coverBlankKind(artifact);
+	const {width, boxes} = BLANK_DRAWINGS[blank];
 	return (
 		<svg
 			aria-hidden="true"
-			data-artifact-cover-blank={kind === "file" ? "other" : "document"}
+			data-artifact-cover-blank={blank}
 			width={width}
 			height={130}
 			viewBox={`0 0 ${width} 130`}
 			className="pointer-events-none absolute top-0 overflow-visible fill-current start-1/2 -translate-x-1/2 rtl:translate-x-1/2 text-[color:var(--skeleton-base)]"
 		>
 			<defs>
-				<linearGradient id={sheenId} gradientUnits="userSpaceOnUse" x1={0} x2={width} y1={0} y2={0}>
+				<linearGradient id={`${id}sheen`} gradientUnits="userSpaceOnUse" x1={0} x2={width} y1={0} y2={0}>
 					<stop offset={0} className={SHEEN_STOP} />
 					<stop offset={1} className={SHEEN_STOP} stopOpacity={0} />
 				</linearGradient>
+				{/* Upstream's `wash` and `soft` serve stroked drawings, which no kind has yet; kept for DOM parity. */}
+				<radialGradient id={`${id}wash`} cx={0.5} cy={0.5} r={0.62}>
+					<stop offset={0} className={SHEEN_STOP} stopOpacity={0.4} />
+					<stop offset={0.65} className={SHEEN_STOP} stopOpacity={0.75} />
+					<stop offset={1} className={SHEEN_STOP} />
+				</radialGradient>
+				<filter id={`${id}soft`}>
+					<feGaussianBlur stdDeviation={0.3} />
+				</filter>
 			</defs>
 			<g>
 				<BlankBoxes boxes={boxes} />
 			</g>
-			<g fill={`url(#${sheenId})`}>
+			<g fill={`url(#${id}sheen)`}>
 				<BlankBoxes boxes={boxes} />
 			</g>
 		</svg>
@@ -724,7 +712,8 @@ function CoverBlank({kind}: {kind: CoverKind}) {
 }
 
 /** Upstream's card cover: a tinted wash with a floating front sheet and a masked bottom fade. */
-function ArtifactCover({kind}: {kind: CoverKind}) {
+function ArtifactCover({artifact}: {artifact: ArtifactSummary}) {
+	const kind = coverKind(artifact.kind);
 	return (
 		<div
 			data-artifact-cover={kind}
@@ -735,7 +724,7 @@ function ArtifactCover({kind}: {kind: CoverKind}) {
 				data-cover-front=""
 				className={`absolute inset-x-0 mx-auto overflow-hidden border border-[color:var(--color-border-line)] bg-white bg-clip-padding text-primary dark:bg-surface-1 isolate shadow-lg top-[30px] z-2 rounded-xl ${COVER_FRONT_SIZE[kind]}`}
 			>
-				<CoverBlank kind={kind} />
+				<CoverBlank artifact={artifact} />
 			</div>
 			<div
 				aria-hidden="true"
@@ -748,38 +737,19 @@ function ArtifactCover({kind}: {kind: CoverKind}) {
 	);
 }
 
-/** Upstream's card-size ArtifactMark: a 40px r8 tile, neutral for files and tint-blue for documents. */
-function ArtifactMark({artifact}: {artifact: ArtifactSummary}) {
-	const kind = coverKind(artifact.kind);
-	const word = typeMediaIconWord(artifact);
-	const Glyph = TYPE_MEDIA_ICONS[word];
-	const tone = kind === "document" ? "bg-upstream-tint-blue text-tint-blue-ink" : "bg-fill-secondary text-secondary";
-	return (
-		<span
-			data-artifact-mark={kind}
-			data-artifact-mark-size="card"
-			className={`flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg ${tone}`}
-		>
-			<Glyph aria-hidden="true" data-icon={word} className="size-5" />
-		</span>
-	);
-}
-
 /**
- * Upstream's type tile: a neutral `</>` tile for HTML pages ("Other") and a blue document tile for Docs.
- * 36px in list rows.
+ * The gallery's ArtifactMark: Docs resolve to a `document` mark; an untyped publish (no mark upstream's `PO` would
+ * draw) still gets a `file` tile, with its icon word as the declared glyph.
  */
-function TypeTile({kind}: {kind: ArtifactKind}) {
-	const Glyph = kind === "docs" ? FileText : CodeXml;
-	const tone = kind === "docs" ? "bg-blue-500/10 text-blue-600 dark:text-blue-300" : "bg-alpha-1 text-secondary";
+function GalleryMark({artifact, size}: {artifact: ArtifactSummary; size: "card" | "row"}) {
+	const kind = resolveArtifactMark({typeKind: artifact.kind})?.kind ?? "file";
 	return (
-		<div
-			{...(kind === "docs" ? {role: "img", "aria-label": "Docs"} : {"aria-hidden": true})}
-			data-type-tile={kind}
-			className={`flex shrink-0 items-center justify-center overflow-hidden ${TILE_BOX} ${tone}`}
-		>
-			<Glyph aria-hidden="true" className={TILE_ICON} />
-		</div>
+		<ArtifactMark
+			kind={kind}
+			size={size}
+			glyph={kind === "file" ? TYPE_MEDIA_ICONS[typeMediaIconWord(artifact)] : undefined}
+			{...(artifact.kind === "docs" ? {label: "Docs"} : {})}
+		/>
 	);
 }
 
@@ -1023,7 +993,7 @@ function ArtifactList({
 									<ArtifactContextMenu artifact={artifact} pinned={group.pinned}>
 										<PrimaryLink artifact={artifact} className="rounded" />
 										<div className="pointer-events-none grid grid-cols-[2.25rem_minmax(0,1fr)_max-content] items-center gap-x-3 rounded px-3 py-1 group-hover/cdsrow:bg-fill-ghost-hover group-has-[:focus-visible]/cdsrow:bg-fill-ghost-hover">
-											<TypeTile kind={artifact.kind} />
+											<GalleryMark artifact={artifact} size="row" />
 											<div className="flex min-h-10 min-w-0 flex-col justify-center gap-0.5 sm:pr-8">
 												<span
 													aria-hidden="true"
@@ -1132,11 +1102,11 @@ function ArtifactCard({artifact, now, pinned}: {artifact: ArtifactSummary; now: 
 								data-card-preview=""
 								className="relative h-[152px] shrink-0 select-none overflow-hidden"
 							>
-								<ArtifactCover kind={coverKind(artifact.kind)} />
+								<ArtifactCover artifact={artifact} />
 							</div>
 							<div data-card-body="" className="relative flex min-h-18 flex-1 items-center gap-3 p-4">
 								<div aria-hidden="true">
-									<ArtifactMark artifact={artifact} />
+									<GalleryMark artifact={artifact} size="card" />
 								</div>
 								<div data-artifact-mark-words="" className="flex min-w-0 flex-1 flex-col gap-0.5">
 									<div className="flex items-start gap-2">
