@@ -550,6 +550,9 @@ export const UserRecordSchema = z
 		// Groups the records of one prompt's turn for attribution (observed on sdk-origin prompts).
 		turnAttributionKey: z.string().optional(),
 		turnCompanion: z.boolean().optional(),
+		// On a meta retry prompt: uuids of earlier messages (e.g. a failed tool-call
+		// response) the CLI logically withdrew. The lines stay in the file.
+		retractedMessageUuids: z.array(z.string()).optional(),
 		queueSkipAttachments: z.boolean().optional(),
 		queueSkipSlashCommands: z.boolean().optional(),
 		// The prompt text was not typed by the user (e.g. pasted or injected into the queue).

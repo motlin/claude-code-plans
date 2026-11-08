@@ -3082,6 +3082,22 @@ describe("JsonlRecordSchema observed 2026-11-08 transcript fields", () => {
 
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
 	});
+
+	it("parses a meta retry prompt that retracts the failed assistant message", () => {
+		const record = {
+			...jsonlRecordFixtures.user,
+			parentUuid: "assistant-failed-1",
+			isMeta: true,
+			turnCompanion: true,
+			message: {
+				role: "user",
+				content: "The previous response failed to produce a valid tool call. Please retry the tool call now.",
+			},
+			retractedMessageUuids: ["assistant-failed-1"],
+		};
+
+		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+	});
 });
 
 describe("SessionRegistryFileSchema", () => {
