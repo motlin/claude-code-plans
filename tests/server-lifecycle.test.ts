@@ -165,7 +165,7 @@ describe("scripts/server.sh", () => {
 		expect(portOwners()).toStrictEqual(secondPids);
 		// The second start replaced the first process rather than piling on.
 		expect(secondPids).not.toStrictEqual(firstPids);
-	}, 30_000);
+	}, 150_000);
 
 	it("dev refuses to compete with a wildcard-bound production listener", () => {
 		run("start");
@@ -187,7 +187,7 @@ describe("scripts/server.sh", () => {
 		});
 		expect(serverPids()).toStrictEqual(productionPids);
 		expect(portOwners()).toStrictEqual(productionPids);
-	}, 30_000);
+	}, 150_000);
 
 	it("stop finds a server renamed by process.title via the default SERVER_MATCH", async () => {
 		// Listen on a different port so only the command-line match, not the
@@ -229,6 +229,38 @@ describe("scripts/server.sh", () => {
 		});
 	}, 30_000);
 
+	// On a heavily loaded machine the server can take well over 20s to bind, so
+	// the default wait must outlast that; it polls, so a fast start stays fast.
+	it("start waits by default for a server that takes longer than 20s to listen", () => {
+		const output = execFileSync("bash", [script, "start"], {
+			cwd: projectRoot,
+			encoding: "utf8",
+			env: {...env, FAKE_SERVER_LISTEN_DELAY_MS: "21000"},
+		});
+		const pids = portOwners();
+		run("stop");
+
+		expect(output).toBe(
+			`No server running (port ${PORT})\nServer pid ${pids[0] ?? ""} listening on port ${PORT} (log: ${join(runDir, "server.log")})\n`,
+		);
+	}, 120_000);
+
+	it("start fails fast when the server exits before it listens", () => {
+		const started = Date.now();
+		const result = spawnSync("bash", [script, "start"], {
+			cwd: projectRoot,
+			encoding: "utf8",
+			env: {...env, SERVER_CMD: `node -e 'process.exit(1)' ${instance}`},
+		});
+		const elapsedMs = Date.now() - started;
+
+		expect({status: result.status, stderr: result.stderr, fast: elapsedMs < 15_000}).toStrictEqual({
+			status: 1,
+			stderr: `Server exited before listening on port ${PORT}; see ${join(runDir, "server.log")}\n`,
+			fast: true,
+		});
+	}, 120_000);
+
 	it("stop terminates the server and is a no-op when nothing is running", () => {
 		run("start");
 		run("stop");
@@ -238,5 +270,5 @@ describe("scripts/server.sh", () => {
 		// Stopping again must succeed without error.
 		run("stop");
 		expect(serverPids()).toStrictEqual([]);
-	}, 30_000);
+	}, 150_000);
 });

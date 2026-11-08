@@ -103,7 +103,7 @@ describe("scripts/server.sh snapshots", () => {
 		const [snapshot] = snapshots();
 		expect(snapshots()).toHaveLength(1);
 		expect(listenerCommand()).toBe(`node ${join(snapshotRoot, snapshot ?? "", ".output", "server", "index.mjs")}`);
-	}, 30_000);
+	}, 150_000);
 
 	it("restart reuses the last snapshot even after .output is deleted", () => {
 		run("start");
@@ -112,7 +112,7 @@ describe("scripts/server.sh snapshots", () => {
 		run("restart");
 		expect(snapshots()).toStrictEqual(before);
 		expect(listenerCommand()).toBe(`node ${join(snapshotRoot, before[0] ?? "", ".output", "server", "index.mjs")}`);
-	}, 30_000);
+	}, 150_000);
 
 	it("start takes a fresh snapshot and prunes the old one", () => {
 		run("start");
@@ -123,7 +123,7 @@ describe("scripts/server.sh snapshots", () => {
 		expect(after).toHaveLength(1);
 		expect(after).not.toStrictEqual(before);
 		expect(listenerCommand()).toBe(`node ${join(snapshotRoot, after[0] ?? "", ".output", "server", "index.mjs")}`);
-	}, 30_000);
+	}, 150_000);
 
 	it("start carries the previous snapshot's hashed assets so open tabs from the old build still load them", () => {
 		writeBuild({"tip-OLD1.js": "old tip", "shared-SAME.js": "shared"});
@@ -141,7 +141,7 @@ describe("scripts/server.sh snapshots", () => {
 			assets: {"shared-SAME.js": "shared", "tip-NEW2.js": "new tip"},
 			previous: {"shared-SAME.js": "shared", "tip-OLD1.js": "old tip"},
 		});
-	}, 60_000);
+	}, 150_000);
 
 	it("start keeps only one generation of previous assets", () => {
 		writeBuild({"tip-OLD1.js": "old tip", "shared-SAME.js": "shared"});
@@ -156,7 +156,7 @@ describe("scripts/server.sh snapshots", () => {
 			"shared-SAME.js": "shared",
 			"tip-NEW2.js": "new tip",
 		});
-	}, 60_000);
+	}, 150_000);
 
 	it("a rebuild of .output leaves the files the running server uses untouched", () => {
 		writeBuild({"tip-OLD1.js": "old tip"});
@@ -175,7 +175,7 @@ describe("scripts/server.sh snapshots", () => {
 			server: serverBefore,
 			assets: {"tip-OLD1.js": "old tip"},
 		});
-	}, 30_000);
+	}, 150_000);
 
 	it("start keeps the previous snapshot current when the new build never listens", () => {
 		run("start");
@@ -183,10 +183,8 @@ describe("scripts/server.sh snapshots", () => {
 		writeBuild();
 		writeFileSync(join(projectDir, ".output", "server", "index.mjs"), "process.exit(1);\n");
 
-		// A dead build can't answer HTTP, so don't wait out the full default deadline.
-		env = {...env, START_TIMEOUT_SECONDS: "3"};
+		// start notices the dead build exit, so this doesn't wait out the deadline.
 		expect(() => run("start")).toThrow("Command failed");
-		env = {...env, START_TIMEOUT_SECONDS: "20"};
 		expect({
 			current: readFileSync(join(snapshotRoot, "current"), "utf8").trim(),
 			kept: before.every((name) => snapshots().includes(name)),
@@ -194,11 +192,11 @@ describe("scripts/server.sh snapshots", () => {
 
 		run("restart");
 		expect(listenerCommand()).toBe(`node ${join(snapshotRoot, before[0] ?? "", ".output", "server", "index.mjs")}`);
-	}, 60_000);
+	}, 150_000);
 
 	it("stop still finds the snapshot server", () => {
 		run("start");
 		run("stop");
 		expect(run("status")).toBe(`No server running (port ${env["PORT"] ?? ""})\n`);
-	}, 30_000);
+	}, 150_000);
 });

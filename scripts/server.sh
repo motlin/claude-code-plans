@@ -26,7 +26,8 @@
 #   PROJECT_DIR   only matched processes with this cwd are managed
 #   LOG_FILE      server stdout/stderr log
 #   STOP_GRACE_SECONDS  how long stop waits after SIGTERM before force killing (default 10)
-#   START_TIMEOUT_SECONDS  how long start waits for the server to answer HTTP (default 20)
+#   START_TIMEOUT_SECONDS  how long start waits for the server to answer HTTP (default 60;
+#                 start returns as soon as it answers, or as soon as it exits)
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -42,7 +43,7 @@ SERVER_TITLE=${SERVER_TITLE:-claude-code-browser-server}
 SERVER_MATCH=${SERVER_MATCH:-"^${SERVER_TITLE}( |\$)|\\.output/server/index\\.mjs"}
 LOG_FILE=${LOG_FILE:-"$CACHE_DIR/server.log"}
 STOP_GRACE_SECONDS=${STOP_GRACE_SECONDS:-10}
-START_TIMEOUT_SECONDS=${START_TIMEOUT_SECONDS:-20}
+START_TIMEOUT_SECONDS=${START_TIMEOUT_SECONDS:-60}
 
 # PIDs listening on the port, including wildcard and IPv6 bindings.
 port_pids() {
@@ -206,14 +207,22 @@ start_server() {
         # No HOST: one socket cannot bind both 127.0.0.1 (Caddy's upstream) and
         # [::1] (local browsers), so Nitro listens on every interface and
         # server/middleware/loopback-only.ts 403s any non-loopback peer.
-        # `exec` so the launched process IS the server, not a wrapper shell
-        # that would leave an orphan when killed.
-        PORT="$PORT" nohup bash -c "exec $cmd" >>"$LOG_FILE" 2>&1 &
-    )
+        # `exec` (both here and in bash -c) so the launched process IS the
+        # server, not a wrapper shell that would leave an orphan when killed.
+        PORT="$PORT" exec nohup bash -c "exec $cmd"
+    ) >>"$LOG_FILE" 2>&1 &
+    local launched=$!
     # A wall-clock deadline rather than an iteration count: on a loaded machine
-    # each port check and curl can take seconds of their own.
+    # each port check and curl can take seconds of their own, and the server
+    # itself can take tens of seconds to bind. The deadline is generous because
+    # the loop exits as soon as the server answers, or as soon as it dies.
     local pid deadline=$((SECONDS + START_TIMEOUT_SECONDS))
     while [ "$SECONDS" -lt "$deadline" ]; do
+        if ! kill -0 "$launched" 2>/dev/null; then
+            echo "Server exited before listening on port $PORT; see $LOG_FILE" >&2
+            restore_previous_snapshot "$previous" "$id"
+            return 1
+        fi
         pid=$(port_pids | head -n 1 || true)
         if [ -n "$pid" ] && curl -sI -o /dev/null --max-time 5 "http://localhost:$PORT/"; then
             echo "Server pid $pid listening on port $PORT (log: $LOG_FILE)"
@@ -225,12 +234,18 @@ start_server() {
         sleep 0.2
     done
     echo "Server failed to listen on port $PORT within ${START_TIMEOUT_SECONDS}s; see $LOG_FILE" >&2
+    restore_previous_snapshot "$previous" "$id"
+    return 1
+}
+
+# After a failed start, make the last working snapshot current again.
+restore_previous_snapshot() {
+    local previous=$1 id=$2
     if [ -n "$previous" ] && [ "$previous" != "$id" ]; then
         printf '%s\n' "$previous" >"$SNAPSHOT_ROOT/current.tmp"
         mv -f "$SNAPSHOT_ROOT/current.tmp" "$SNAPSHOT_ROOT/current"
         echo "Kept snapshot $previous current; 'just restart' serves it again" >&2
     fi
-    return 1
 }
 
 status_server() {
