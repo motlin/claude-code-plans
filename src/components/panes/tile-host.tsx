@@ -86,9 +86,9 @@ interface InternalHost {
 	preview: MovePreview | null;
 	setPendingMove: (move: PendingMove | null) => void;
 	setPointerDrop: (drop: PointerDrop | null) => void;
-	/** Upstream's `data-tiles-moving`: true while a Move grip drag is under way. */
-	moving: boolean;
-	setMoving: (moving: boolean) => void;
+	/** The tile a Move grip drag is carrying (upstream's `dragVisualTileId`), or null; drives `data-tiles-moving`. */
+	movingTile: TileId | null;
+	setMovingTile: (tileId: TileId | null) => void;
 	expanded: PaneKind | null;
 	phone: boolean;
 	/** The root row, measured when a pane opens so Changes can be sized to its minimum. */
@@ -243,6 +243,8 @@ function Divider({
 				}
 			: {};
 	const isRow = stack.direction === "row";
+	// Upstream's `isDisabled: isDraggingTile`: no divider takes focus or a pointer while a tile is carried.
+	const disabled = host.movingTile !== null;
 
 	function resizeBy(deltaPx: number) {
 		const measured = sizeAlong(stackRef.current, stack.direction);
@@ -253,6 +255,7 @@ function Divider({
 	}
 
 	function onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+		if (disabled) return;
 		const decrease = isRow ? "ArrowLeft" : "ArrowUp";
 		const increase = isRow ? "ArrowRight" : "ArrowDown";
 		if (event.key !== decrease && event.key !== increase) return;
@@ -262,6 +265,7 @@ function Divider({
 	}
 
 	function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+		if (disabled) return;
 		event.preventDefault();
 		event.currentTarget.setPointerCapture(event.pointerId);
 		dragRef.current = isRow ? event.clientX : event.clientY;
@@ -283,12 +287,17 @@ function Divider({
 		event.currentTarget.releasePointerCapture(event.pointerId);
 	}
 
-	// z-[4] as upstream's tiles-handle, so the neighbouring tiles never paint over the hairline or its hit zone.
-	// Upstream's `[data-tiles-line][data-tiles-moving] .tiles-handle::before { opacity:0 }` drops the hairline mid-move.
+	// Upstream's line-mode tiles-handle sits at z-index 4 + depth (a column's divider above the root's), so
+	// neighbouring tiles never paint over the hairline or its hit zone. Its `::after` hit zone is asymmetric:
+	// 1px before and 6px after a column hairline, 6px above a row hairline. Mid-move the hairline drops and the
+	// 1px gap takes the pane ground, as upstream's after-line shell border paints it.
 	return (
 		<div
 			role="separator"
-			tabIndex={0}
+			tabIndex={disabled ? -1 : 0}
+			{...(disabled ? {"aria-disabled": true} : {})}
+			style={{zIndex: 4 + path.length, ...(disabled ? {pointerEvents: "none" as const} : {})}}
+			{...(corners.left === undefined ? {} : {"data-starts-at-divider": ""})}
 			data-tile-divider
 			{...(dragging ? {"data-dragging": ""} : {})}
 			aria-orientation={isRow ? "vertical" : "horizontal"}
@@ -300,10 +309,10 @@ function Divider({
 			onPointerMove={onPointerMove}
 			onPointerUp={onPointerUp}
 			onPointerCancel={onPointerUp}
-			className={`group/divider relative z-[4] flex shrink-0 touch-none items-center justify-center outline-none [[data-tiles-line][data-tiles-moving]_&]:bg-transparent ${
+			className={`group/divider relative flex shrink-0 touch-none items-center justify-center outline-none [[data-tiles-line][data-tiles-moving]_&]:bg-surface-2 ${
 				isRow
-					? "w-px cursor-col-resize bg-seam before:absolute before:inset-y-0 before:-left-1 before:w-2 before:content-['']"
-					: "h-px cursor-row-resize bg-border-line before:absolute before:inset-x-0 before:-top-1 before:h-2 before:content-['']"
+					? "w-px cursor-col-resize bg-seam before:absolute before:inset-y-0 before:-left-px before:-right-1.5 before:content-['']"
+					: "h-px cursor-row-resize bg-border-line before:absolute before:inset-x-0 before:-top-1.5 before:bottom-0 before:content-['']"
 			}`}
 		>
 			{/* Upstream's tiles-handle-line: a 2px accent line centred on the hairline, lit on hover after 100ms and at once while dragging. */}
@@ -314,11 +323,12 @@ function Divider({
 					isRow ? "inset-y-0 left-[-0.5px] w-[2px]" : "inset-x-0 top-[-0.5px] h-[2px]"
 				} bg-fill-accent opacity-0 transition-opacity duration-200 delay-100 group-hover/divider:opacity-100 group-data-dragging/divider:opacity-100 group-data-dragging/divider:duration-[120ms] group-data-dragging/divider:delay-0 group-focus-visible/divider:opacity-0`}
 			/>
-			{/* Upstream's tiles-handle-affordance: in line mode only keyboard focus shows the grip, in --tile-resize-color-focus. */}
+			{/* Upstream's tiles-handle-affordance: absolutely centred 3x56 so the 1px divider cannot shrink it; in line mode
+			    only keyboard focus shows it, in --tile-resize-color-focus. */}
 			<span
 				aria-hidden
 				data-tile-divider-grip
-				className={`rounded-full bg-fill-accent opacity-0 transition-opacity duration-[120ms] group-focus-visible/divider:opacity-100 ${
+				className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-fill-accent opacity-0 transition-opacity duration-[120ms] group-focus-visible/divider:opacity-100 ${
 					isRow ? "h-14 w-[3px]" : "h-[3px] w-14"
 				}`}
 			/>
@@ -455,7 +465,7 @@ function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost}) {
 		const drag = dragRef.current;
 		if (drag === null) return;
 		if (!drag.dragging && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < DRAG_THRESHOLD_PX) return;
-		if (!drag.dragging) host.setMoving(true);
+		if (!drag.dragging) host.setMovingTile(tileId);
 		drag.dragging = true;
 		host.setPendingMove(null);
 		host.setPointerDrop(dropAt(tileId, event.clientX, event.clientY));
@@ -466,7 +476,7 @@ function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost}) {
 		dragRef.current = null;
 		event.currentTarget.releasePointerCapture(event.pointerId);
 		host.setPointerDrop(null);
-		host.setMoving(false);
+		host.setMovingTile(null);
 		const drop = drag?.dragging === true ? dropAt(tileId, event.clientX, event.clientY) : null;
 		if (drop !== null) host.update((state) => movePaneTo(state, tileId, drop.targetId, drop.side));
 	}
@@ -475,7 +485,7 @@ function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost}) {
 		dragRef.current = null;
 		event.currentTarget.releasePointerCapture(event.pointerId);
 		host.setPointerDrop(null);
-		host.setMoving(false);
+		host.setMovingTile(null);
 	}
 
 	function onKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>) {
@@ -700,7 +710,7 @@ function StackView({
 			data-tile-stack={stack.direction}
 			// Upstream's tiles viewport switches to `data-tiles-line` whenever its panels layout holds a pane.
 			{...(isRoot && tileIdsOf(stack).length > 1 ? {"data-tiles-line": ""} : {})}
-			{...(isRoot && host.moving ? {"data-tiles-moving": ""} : {})}
+			{...(isRoot && host.movingTile !== null ? {"data-tiles-moving": ""} : {})}
 			className={`flex h-full min-h-0 min-w-0 items-stretch ${stack.direction === "row" ? "flex-row" : "flex-col"}`}
 			style={isRoot ? undefined : {flex: `${stack.flex} 1 0`}}
 		>
@@ -809,6 +819,7 @@ function TileSlot({
 			onPointerDownCapture={focus}
 			onFocusCapture={focus}
 			{...(phone ? {"data-pane-phone": ""} : {})}
+			{...(host.movingTile === tileId ? {"data-tile-moving": ""} : {})}
 			{...data}
 		>
 			{children}
@@ -863,7 +874,7 @@ export function TileHost({
 
 	const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
 	const [pointerDrop, setPointerDrop] = useState<PointerDrop | null>(null);
-	const [moving, setMoving] = useState(false);
+	const [movingTile, setMovingTile] = useState<TileId | null>(null);
 	const preview = useMemo(() => {
 		if (pointerDrop !== null)
 			return dropPreview(layout, pointerDrop.tileId, pointerDrop.targetId, pointerDrop.side);
@@ -879,15 +890,15 @@ export function TileHost({
 			preview,
 			setPendingMove,
 			setPointerDrop,
-			moving,
-			setMoving,
+			movingTile,
+			setMovingTile,
 			expanded: layout.expanded,
 			phone,
 			rootRef,
 			collapsedRef,
 			collapse,
 		}),
-		[definitions, layout, update, pendingMove, preview, moving, phone, collapse],
+		[definitions, layout, update, pendingMove, preview, movingTile, phone, collapse],
 	);
 
 	const api = useMemo<PaneHostApi>(

@@ -238,7 +238,9 @@ describe("TileHost", () => {
 			divider: {
 				seam: classesOf(separator).includes("bg-seam"),
 				border: classesOf(separator).includes("bg-border"),
-				aboveTiles: classesOf(separator).includes("z-[4]"),
+				zIndex: separator.style.zIndex,
+				startsAtDivider: separator.hasAttribute("data-starts-at-divider"),
+				hitZone: classesOf(separator).filter((name) => name.startsWith("before:")),
 			},
 			dragging: [
 				dragging(),
@@ -246,9 +248,21 @@ describe("TileHost", () => {
 				(fireEvent.pointerUp(separator, {pointerId: 1}), dragging()),
 			],
 			line: line.filter((name) => /opacity|bg-|w-|delay|duration|left/.test(name)),
-			grip: grip.filter((name) => /opacity|bg-/.test(name)),
+			grip: grip.filter((name) => /opacity|bg-|absolute|1\/2|pointer-events|^[hw]-/.test(name)),
 		}).toStrictEqual({
-			divider: {seam: true, border: false, aboveTiles: true},
+			divider: {
+				seam: true,
+				border: false,
+				zIndex: "4",
+				startsAtDivider: false,
+				hitZone: [
+					"before:absolute",
+					"before:inset-y-0",
+					"before:-left-px",
+					"before:-right-1.5",
+					"before:content-['']",
+				],
+			},
 			dragging: [false, true, false],
 			line: [
 				"left-[-0.5px]",
@@ -264,7 +278,20 @@ describe("TileHost", () => {
 				"group-data-dragging/divider:delay-0",
 				"group-focus-visible/divider:opacity-0",
 			],
-			grip: ["bg-fill-accent", "opacity-0", "transition-opacity", "group-focus-visible/divider:opacity-100"],
+			grip: [
+				"pointer-events-none",
+				"absolute",
+				"left-1/2",
+				"top-1/2",
+				"-translate-x-1/2",
+				"-translate-y-1/2",
+				"bg-fill-accent",
+				"opacity-0",
+				"transition-opacity",
+				"group-focus-visible/divider:opacity-100",
+				"h-14",
+				"w-[3px]",
+			],
 		});
 	});
 
@@ -590,11 +617,77 @@ describe("TileHost", () => {
 
 		expect({
 			states,
-			hairlineHidden: screen
+			gapPainted: screen
 				.getByRole("separator")
 				.className.split(" ")
-				.includes("[[data-tiles-line][data-tiles-moving]_&]:bg-transparent"),
-		}).toStrictEqual({states: [false, false, true, false, true, false], hairlineHidden: true});
+				.includes("[[data-tiles-line][data-tiles-moving]_&]:bg-surface-2"),
+		}).toStrictEqual({states: [false, false, true, false, true, false], gapPainted: true});
+	});
+
+	it("disables the dividers during a Move drag as upstream's isDisabled: isDraggingTile does", () => {
+		renderHost("session-a");
+		openTestPane();
+		stubElementFromPoint(document.querySelector<HTMLElement>("[data-tile-host=chat]"));
+		const grip = paneMoveButton();
+		const state = () => {
+			const separator = screen.getByRole("separator");
+			return {
+				tabIndex: separator.tabIndex,
+				disabled: separator.getAttribute("aria-disabled"),
+				pointerEvents: separator.style.pointerEvents,
+			};
+		};
+
+		fireEvent.pointerDown(grip, {pointerId: 1, clientX: 900, clientY: 10});
+		fireEvent.pointerMove(grip, {pointerId: 1, clientX: 600, clientY: 700});
+		const during = state();
+		const before = screen.getByRole("separator").getAttribute("aria-valuenow");
+		fireEvent.keyDown(screen.getByRole("separator"), {key: "ArrowLeft"});
+		fireEvent.pointerDown(screen.getByRole("separator"), {pointerId: 2});
+		const ignored = {
+			now: screen.getByRole("separator").getAttribute("aria-valuenow") === before,
+			dragging: screen.getByRole("separator").hasAttribute("data-dragging"),
+		};
+		fireEvent.pointerUp(grip, {pointerId: 1, clientX: 900, clientY: 10});
+
+		expect({during, ignored, after: state()}).toStrictEqual({
+			during: {tabIndex: -1, disabled: "true", pointerEvents: "none"},
+			ignored: {now: true, dragging: false},
+			after: {tabIndex: 0, disabled: null, pointerEvents: ""},
+		});
+	});
+
+	it("marks only the dragged tile data-tile-moving during a Move drag, for upstream's is-moving ring", () => {
+		renderHost("session-a");
+		openTestPane();
+		stubElementFromPoint(document.querySelector<HTMLElement>("[data-tile-host=chat]"));
+		const grip = paneMoveButton();
+		const marked = () =>
+			[...document.querySelectorAll<HTMLElement>("[data-tile-moving]")].map((el) => el.dataset["tileHost"]);
+
+		const states = [marked()];
+		fireEvent.pointerDown(grip, {pointerId: 1, clientX: 900, clientY: 10});
+		states.push(marked());
+		fireEvent.pointerMove(grip, {pointerId: 1, clientX: 600, clientY: 300});
+		states.push(marked());
+		fireEvent.pointerUp(grip, {pointerId: 1, clientX: 900, clientY: 10});
+		states.push(marked());
+
+		expect(states).toStrictEqual([[], [], ["plan"], []]);
+	});
+
+	it("rings the moving tile with upstream's border-strong, shell-ground and shadow-md, and CanvasText in forced colours", () => {
+		const css = readFileSync("src/styles/globals.css", "utf8");
+		expect({
+			ring: css.includes(
+				"[data-tiles-line] [data-tile-moving] {\n\tbox-shadow:\n\t\t0 0 0 1px var(--upstream-border-strong),\n\t\t0 0 0 1px var(--tile-shell-ground, transparent),\n\t\tvar(--cds-shadow-md);\n}",
+			),
+			forced: css.includes(
+				"@media (forced-colors: active) {\n\t[data-tiles-line] [data-tile-moving] {\n\t\toutline: 1px solid CanvasText;\n\t}\n}",
+			),
+			paneGround: css.includes("[data-tile-host] {\n\t--tile-shell-ground: var(--color-surface-2);\n}"),
+			chatGround: css.includes('[data-tile-host="chat"] {\n\t--tile-shell-ground: var(--color-surface-1);\n}'),
+		}).toStrictEqual({ring: true, forced: true, paneGround: true, chatGround: true});
 	});
 
 	it("ignores a Move grip press that does not leave the grip", () => {
@@ -986,6 +1079,43 @@ describe("TileHost corner handle", () => {
 		fireEvent.click(within(files).getByRole("button", {name: "Collapse"}));
 		expect(screen.getByRole("region", {name: "Background tasks"})).not.toBe(tasks);
 		expect(screen.getByRole("region", {name: "Files"})).toBe(files);
+	});
+
+	it("stacks a column divider one z-index above the root divider, marked data-starts-at-divider, with upstream's 7px upward hit zone", () => {
+		renderHost("session-a");
+		const describe = (orientation: string) => {
+			const separator = document.querySelector<HTMLElement>(`[role=separator][aria-orientation=${orientation}]`);
+			return {
+				zIndex: separator?.style.zIndex,
+				startsAtDivider: separator?.hasAttribute("data-starts-at-divider"),
+				hitZone: separator?.className.split(" ").filter((name) => name.startsWith("before:")),
+			};
+		};
+
+		expect({vertical: describe("vertical"), horizontal: describe("horizontal")}).toStrictEqual({
+			vertical: {
+				zIndex: "4",
+				startsAtDivider: false,
+				hitZone: [
+					"before:absolute",
+					"before:inset-y-0",
+					"before:-left-px",
+					"before:-right-1.5",
+					"before:content-['']",
+				],
+			},
+			horizontal: {
+				zIndex: "5",
+				startsAtDivider: true,
+				hitZone: [
+					"before:absolute",
+					"before:inset-x-0",
+					"before:-top-1.5",
+					"before:bottom-0",
+					"before:content-['']",
+				],
+			},
+		});
 	});
 
 	it("resizes the row and the column together from the corner", () => {

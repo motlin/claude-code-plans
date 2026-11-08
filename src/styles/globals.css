@@ -3972,6 +3972,29 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	box-shadow: none;
 }
 
+/* Upstream's tile shell ground: --tile-pane-ground (surface-2) for panes, --tile-page-ground (surface-1) for chat. */
+[data-tile-host] {
+	--tile-shell-ground: var(--color-surface-2);
+}
+
+[data-tile-host="chat"] {
+	--tile-shell-ground: var(--color-surface-1);
+}
+
+/* Upstream's `[data-tiles-line] .tiles-shell.is-moving`: the tile a Move grip drag carries gets a ring and shadow-md. */
+[data-tiles-line] [data-tile-moving] {
+	box-shadow:
+		0 0 0 1px var(--upstream-border-strong),
+		0 0 0 1px var(--tile-shell-ground, transparent),
+		var(--cds-shadow-md);
+}
+
+@media (forced-colors: active) {
+	[data-tiles-line] [data-tile-moving] {
+		outline: 1px solid CanvasText;
+	}
+}
+
 /*
  * Upstream .dframe-root[data-variant="web"] .dframe-sidebar-body [data-row]: every row in the
  * sidebar body ends one 2px stack gap above the next (a 34px nav pitch). Session rows already
