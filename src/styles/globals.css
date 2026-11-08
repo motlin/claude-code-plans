@@ -718,25 +718,25 @@ html[data-interface-font="dyslexic"] {
 	--sb-field-hover-ring: rgb(11 11 11 / 0.1);
 	/* Upstream --cds-ring-hairline: one device pixel (DPR media blocks below). */
 	--sb-field-hairline: 1px;
-	/* Upstream --cds-chart-* (light: reference gray-400, muted gray-200; categorical blue-450/orange-350/aqua-350/yellow-250) */
+	/* Upstream --cds-chart-* (light: reference gray-400, muted gray-200) */
 	--chart-reference: #898781;
 	--chart-muted: #c3c2b7;
 	--chart-reference-tint: hsl(from var(--chart-reference) h s l / 15%);
-	/* categorical-1 read live from .cds-root 2026-10-29. */
-	--chart-categorical-1: #257de0;
-	--chart-categorical-2: #eb6834;
-	--chart-categorical-3: #1baf7a;
-	--chart-categorical-4: #eda100;
-	/* categorical-5..8 and status: the .cds-root ramp (magenta-300, green-500, violet-500, red-400; green-400,
-	   yellow-200, orange-300, red-450). The 2026-10 root-vars survey computed #ce447d/#10a122/#785ee8/#dc3c3d for 5..8. */
-	--chart-categorical-5: #e87ba4;
-	--chart-categorical-6: #008300;
-	--chart-categorical-7: #6250d6;
-	--chart-categorical-8: #e34948;
-	--chart-status-good: #0ca30c;
-	--chart-status-warning: #fab219;
-	--chart-status-serious: #ec835a;
-	--chart-status-critical: #d03b3b;
+	/* categorical and status read live from .cds-root 2026-11-07 (fizzy-lake color on): the fizzy ramp's blue-400,
+	   orange-400, aqua-400, yellow-350, magenta-400, green-500, violet-350, red-350; status green-400, yellow-200,
+	   orange-300, red-450. Upstream defines no status-success/danger/info/neutral. */
+	--chart-categorical-1: #338ced;
+	--chart-categorical-2: #e76624;
+	--chart-categorical-3: #00a888;
+	--chart-categorical-4: #d28e05;
+	--chart-categorical-5: #e24d8b;
+	--chart-categorical-6: #008a17;
+	--chart-categorical-7: #9887ef;
+	--chart-categorical-8: #eb6263;
+	--chart-status-good: #0aac23;
+	--chart-status-warning: #fbb315;
+	--chart-status-serious: #f18a59;
+	--chart-status-critical: #dc3c3d;
 	/* Upstream --cds-shadow-popover and --cds-neutral-900 (gray-900 in light, gray-0 in dark). */
 	--upstream-shadow-popover: 0 8px 24px #0000001f, 0 2px 6px #00000014;
 	--upstream-neutral-900: #0b0b0b;
@@ -966,24 +966,23 @@ html[data-interface-font="dyslexic"] {
 		inset 0 0 0 1px hsl(0 0% 100% / 0.1), 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(0 0 0 / 0.24);
 	/* Upstream claude.ai/code — approval card (dark) */
 	--approval-card-shadow: 0 0 0 1px hsl(0 0% 100% / 0.1), 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.3);
-	/* Upstream --cds-chart-* (dark: reference gray-350, muted gray-550; categorical blue-400/orange-400/aqua-400/yellow-350) */
+	/* Upstream --cds-chart-* (dark: reference gray-350, muted gray-550) */
 	--chart-reference: #97958d;
 	--chart-muted: #5f5e5a;
 	--chart-reference-tint: hsl(from var(--chart-reference) h s l / 15%);
-	/* categorical-1 read live from .cds-root 2026-10-29. */
+	/* Same fizzy ramp as light (shared-styles dump 2026-11-06): blue-400 .. red-350; status green-400 .. red-450. */
 	--chart-categorical-1: #338ced;
-	--chart-categorical-2: #d95926;
-	--chart-categorical-3: #199e70;
-	--chart-categorical-4: #c98500;
-	/* Dark ramp: magenta-400, green-500, violet-350, red-350; status keeps the light ramp's tokens. */
-	--chart-categorical-5: #d55181;
-	--chart-categorical-6: #008300;
-	--chart-categorical-7: #9085e9;
-	--chart-categorical-8: #e66767;
-	--chart-status-good: #0ca30c;
-	--chart-status-warning: #fab219;
-	--chart-status-serious: #ec835a;
-	--chart-status-critical: #d03b3b;
+	--chart-categorical-2: #e76624;
+	--chart-categorical-3: #00a888;
+	--chart-categorical-4: #d28e05;
+	--chart-categorical-5: #e24d8b;
+	--chart-categorical-6: #008a17;
+	--chart-categorical-7: #9887ef;
+	--chart-categorical-8: #eb6263;
+	--chart-status-good: #0aac23;
+	--chart-status-warning: #fbb315;
+	--chart-status-serious: #f18a59;
+	--chart-status-critical: #dc3c3d;
 	--upstream-shadow-popover: 0 8px 24px #00000052, 0 2px 6px #0003;
 	--upstream-neutral-900: #fff;
 }

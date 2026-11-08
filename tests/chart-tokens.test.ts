@@ -17,7 +17,33 @@ const CHART_TOKENS = [
 	"--chart-categorical-2",
 	"--chart-categorical-3",
 	"--chart-categorical-4",
+	"--chart-categorical-5",
+	"--chart-categorical-6",
+	"--chart-categorical-7",
+	"--chart-categorical-8",
+	"--chart-status-good",
+	"--chart-status-warning",
+	"--chart-status-serious",
+	"--chart-status-critical",
 ] as const;
+
+/* fizzy-lake color ramp from the 2026-11-06 shared-styles dump: categorical blue-400/orange-400/aqua-400/yellow-350/
+   magenta-400/green-500/violet-350/red-350 and status green-400/yellow-200/orange-300/red-450. The light values match
+   a live claude.ai/code read of .cds-root on 2026-11-07, so both themes share them. */
+const FIZZY_PALETTE = {
+	"--chart-categorical-1": "#338ced",
+	"--chart-categorical-2": "#e76624",
+	"--chart-categorical-3": "#00a888",
+	"--chart-categorical-4": "#d28e05",
+	"--chart-categorical-5": "#e24d8b",
+	"--chart-categorical-6": "#008a17",
+	"--chart-categorical-7": "#9887ef",
+	"--chart-categorical-8": "#eb6263",
+	"--chart-status-good": "#0aac23",
+	"--chart-status-warning": "#fbb315",
+	"--chart-status-serious": "#f18a59",
+	"--chart-status-critical": "#dc3c3d",
+} as const;
 
 function tokens(selector: string): Record<string, string | null> {
 	const body = block(selector);
@@ -27,15 +53,12 @@ function tokens(selector: string): Record<string, string | null> {
 }
 
 describe("chart tokens", () => {
-	it("defines upstream's light --cds-chart-* values (fizzy-lake off; categorical-1 read live 2026-10-29)", () => {
+	it("defines upstream's light --cds-chart-* values (categorical and status read live 2026-11-07)", () => {
 		expect(tokens(":root")).toStrictEqual({
 			"--chart-reference": "#898781",
 			"--chart-muted": "#c3c2b7",
 			"--chart-reference-tint": "hsl(from var(--chart-reference) h s l / 15%)",
-			"--chart-categorical-1": "#257de0",
-			"--chart-categorical-2": "#eb6834",
-			"--chart-categorical-3": "#1baf7a",
-			"--chart-categorical-4": "#eda100",
+			...FIZZY_PALETTE,
 		});
 	});
 
@@ -44,10 +67,7 @@ describe("chart tokens", () => {
 			"--chart-reference": "#97958d",
 			"--chart-muted": "#5f5e5a",
 			"--chart-reference-tint": "hsl(from var(--chart-reference) h s l / 15%)",
-			"--chart-categorical-1": "#338ced",
-			"--chart-categorical-2": "#d95926",
-			"--chart-categorical-3": "#199e70",
-			"--chart-categorical-4": "#c98500",
+			...FIZZY_PALETTE,
 		});
 	});
 });
