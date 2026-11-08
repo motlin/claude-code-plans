@@ -25,6 +25,8 @@ import {entryIndex, transcriptRows, transcriptSpacerHeight} from "./dom-walk";
 vi.mock("../src/components/settings-context", () => ({
 	useSettings: () => ({settings: {showDebug: false, codeThemeLight: "claude-light", codeThemeDark: "github-dark"}}),
 }));
+// The shrinkwrap engine shares one ResizeObserver over every bubble's ancestors; keep it out of these scroll fakes.
+vi.mock("../src/hooks/use-shrinkwrap", () => ({useShrinkwrap: () => () => undefined}));
 vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));
 vi.mock("../src/hooks/use-claude-events", () => ({useClaudeEvents: () => ({failedTools: new Map()})}));
 

@@ -6,7 +6,8 @@ import {useCodeThemes} from "../hooks/use-code-themes";
 import {handleCodeCopyClick} from "../lib/code-copy";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import styles from "./markdown-article.module.css";
-import {USER_BUBBLE_CLASS, USER_MESSAGE_CLASS} from "./user-bubble";
+import {USER_MESSAGE_CLASS} from "./user-bubble";
+import {UserBubbleBox} from "./user-bubble-box";
 
 interface StreamingMessageProps {
 	text: string;
@@ -40,9 +41,9 @@ export function StreamingMessage({text, isComplete, error, forkedSessionId, sent
 		<div className={`${CHAT_COLUMN_CLASS} py-4`}>
 			{sentPrompt && (
 				<div className={`${USER_MESSAGE_CLASS} mb-6`} data-perf-pending-prompt="">
-					<div className={USER_BUBBLE_CLASS}>
+					<UserBubbleBox>
 						<UserPlainText text={sentPrompt} />
-					</div>
+					</UserBubbleBox>
 				</div>
 			)}
 

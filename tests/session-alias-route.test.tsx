@@ -120,6 +120,8 @@ vi.mock("../src/hooks/use-claude-events", () => ({
 	useSubscribeSessionStates: () => () => () => {},
 	useClaudeEvents: () => ({failedTools: new Map()}),
 }));
+// The shrinkwrap engine shares one ResizeObserver over every bubble's ancestors; keep it out of these scroll fakes.
+vi.mock("../src/hooks/use-shrinkwrap", () => ({useShrinkwrap: () => () => undefined}));
 vi.mock("../src/lib/hmr-persist", () => ({hmrPersist: <T,>(_key: string, initialize: () => T): T => initialize()}));
 vi.mock("../src/components/settings-context", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("../src/components/settings-context")>();

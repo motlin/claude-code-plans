@@ -46,6 +46,7 @@ import {
 import {SlashCommandText} from "./slash-command-chip";
 import {SlashCommandsContext} from "./slash-commands-context";
 import {AUTO_BUBBLE_CLASS, USER_BUBBLE_CLASS, USER_MESSAGE_CLASS} from "./user-bubble";
+import {UserBubbleBox} from "./user-bubble-box";
 import {USER_PARAGRAPH_CLASS, UserPlainText} from "./user-plain-text";
 import {useDensity} from "./ui/density-context";
 import {taskChecklist} from "../lib/task-checklist";
@@ -4227,10 +4228,10 @@ function classifyUserContent(line: MessageSessionLine): UserContentKind {
 function UserPromptBubble({text, children}: {text: string; children: ReactNode}) {
 	const {isolate, accent} = useLandedFlash(text);
 	return (
-		<div className={`${USER_BUBBLE_CLASS}${isolate === "" ? "" : ` ${isolate}`}`}>
+		<UserBubbleBox className={`${USER_BUBBLE_CLASS}${isolate === "" ? "" : ` ${isolate}`}`}>
 			{accent}
 			{children}
-		</div>
+		</UserBubbleBox>
 	);
 }
 
@@ -4649,7 +4650,7 @@ function CompactSummaryBody({
 		<div id={id} className="flex justify-end pt-p6">
 			<div className={USER_MESSAGE_CLASS}>
 				<UserAttachments images={images} />
-				{textNodes.length > 0 && <div className={AUTO_BUBBLE_CLASS}>{textNodes}</div>}
+				{textNodes.length > 0 && <UserBubbleBox className={AUTO_BUBBLE_CLASS}>{textNodes}</UserBubbleBox>}
 				{mediaNodes}
 				<UserTurnActions line={line} sessionId={sessionId} contextText="Compacted conversation" />
 			</div>
@@ -4681,7 +4682,7 @@ function LabeledAutomatedEntry({
 					</span>
 				</div>
 				<UserAttachments images={images} />
-				{textNodes.length > 0 && <div className={AUTO_BUBBLE_CLASS}>{textNodes}</div>}
+				{textNodes.length > 0 && <UserBubbleBox className={AUTO_BUBBLE_CLASS}>{textNodes}</UserBubbleBox>}
 				{mediaNodes}
 				<UserTurnActions line={line} sessionId={sessionId} />
 			</div>
@@ -4876,12 +4877,12 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 	return (
 		<UserTurn text={cmdArgs ? `/${name} ${cmdArgs}` : `/${name}`} turnKey={line.uuid}>
 			<UserMessageColumn turnKey={line.uuid} className={USER_MESSAGE_CLASS}>
-				<div className={USER_BUBBLE_CLASS}>
+				<UserBubbleBox>
 					<TruncatedContent>
 						<SlashCommandText name={name} rest={cmdArgs ?? ""} />
 					</TruncatedContent>
 					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
-				</div>
+				</UserBubbleBox>
 				<UserTurnActions
 					line={line}
 					sessionId={sessionId}
@@ -5648,9 +5649,9 @@ function PlanFeedbackBubble({text}: {text: string}) {
 	return (
 		<UserTurn text={text}>
 			<div data-plan-feedback="" className={USER_MESSAGE_CLASS}>
-				<div className={USER_BUBBLE_CLASS}>
+				<UserBubbleBox>
 					<p className={USER_PARAGRAPH_CLASS}>{text}</p>
-				</div>
+				</UserBubbleBox>
 			</div>
 		</UserTurn>
 	);

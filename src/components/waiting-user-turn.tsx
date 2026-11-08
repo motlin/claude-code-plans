@@ -7,7 +7,8 @@ import {messageHeading} from "../lib/transcript-action-targets";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {WaitingMessageActions} from "./message-actions";
 import {Spinner} from "./ui/spinner";
-import {USER_BUBBLE_CLASS, USER_MESSAGE_CLASS} from "./user-bubble";
+import {USER_MESSAGE_CLASS} from "./user-bubble";
+import {UserBubbleBox} from "./user-bubble-box";
 import {USER_PARAGRAPH_CLASS} from "./user-plain-text";
 
 /** How long upstream's row announces "read" after Claude picks it up (`eD`). */
@@ -169,9 +170,9 @@ export function WaitingUserTurn({
 				{delivered ? (reading ? "read" : "") : waitingStatus}
 			</span>
 			<div className={USER_MESSAGE_CLASS}>
-				<div className={USER_BUBBLE_CLASS}>
+				<UserBubbleBox>
 					<p className={USER_PARAGRAPH_CLASS}>{text}</p>
-				</div>
+				</UserBubbleBox>
 				<WaitingMessageActions text={text} stacked={!head} hostHasIt={hostHasIt} onCancel={onCancel}>
 					{head && (
 						<SendNowButton onSendNow={onSendNow} onFocusComposer={onFocusComposer} busy={sendNowBusy} />

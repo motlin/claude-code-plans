@@ -4,7 +4,8 @@ import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {useRovingToolbar} from "../lib/use-roving-toolbar";
 import {shimmerPhaseDelay} from "../lib/shimmer";
 import {ShimmerText} from "./shimmer-text";
-import {USER_BUBBLE_CLASS, USER_MESSAGE_CLASS} from "./user-bubble";
+import {USER_MESSAGE_CLASS} from "./user-bubble";
+import {UserBubbleBox} from "./user-bubble-box";
 import {USER_PARAGRAPH_CLASS} from "./user-plain-text";
 
 /**
@@ -115,9 +116,9 @@ function PendingUserRowShell({
 				data-delivery-status={deliveryStatus}
 			>
 				<div className={USER_MESSAGE_CLASS} data-perf-pending-prompt="">
-					<div className={USER_BUBBLE_CLASS}>
+					<UserBubbleBox>
 						<p className={USER_PARAGRAPH_CLASS}>{prompt}</p>
-					</div>
+					</UserBubbleBox>
 					{children}
 				</div>
 			</div>
