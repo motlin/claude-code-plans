@@ -43,6 +43,10 @@ export function CodePageHeader({
 	children?: ReactNode;
 }) {
 	const panels = useFizzyLake("panels");
+	// Upstream's tall band with a tabs row (cf35aed38 PageHeader + c193cfc9b Page): from md (where the title travels away) it
+	// lays out as the live 116px header, a 64px bottom-aligned title row, 24px to a 28px tabs row, so it pins 44px.
+	const tabsRow = panels && tabs !== undefined;
+	const tallTabs = tabsRow && sticky !== undefined;
 	const heading = <h1 className="min-w-0 font-voice text-[24px]/[32px] font-medium text-primary">{title}</h1>;
 	const caption = subtitle !== undefined && <p className="mt-1 text-[13px] text-t6">{subtitle}</p>;
 	const header = (
@@ -50,12 +54,18 @@ export function CodePageHeader({
 			data-cds="PageHeader"
 			data-band="tall"
 			className={
-				sticky === undefined ? "@container flex flex-col pb-4 sm:-mt-1" : "@container flex flex-col sm:-mt-1"
+				sticky === undefined
+					? "@container flex flex-col pb-4 sm:-mt-1"
+					: tallTabs
+						? "@container flex flex-col sm:-mt-1 md:mt-0"
+						: "@container flex flex-col sm:-mt-1"
 			}
 		>
 			{panels ? (
 				<div data-cds-part="page-title-motion" className={TITLE_MOTION_CLASS}>
-					<div data-cds-part="title-row">{heading}</div>
+					<div data-cds-part="title-row" className={tallTabs ? TALL_TITLE_ROW_CLASS : undefined}>
+						{heading}
+					</div>
 					{caption}
 				</div>
 			) : (
@@ -65,8 +75,12 @@ export function CodePageHeader({
 				</>
 			)}
 			{(tabs !== undefined || toolbar !== undefined) && (
-				<div className="mt-5 flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2">
-					{tabs !== undefined && panels ? (
+				<div
+					className={
+						tabsRow ? TABS_HEADER_ROW_CLASS : "mt-5 flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2"
+					}
+				>
+					{tabsRow ? (
 						<div data-cds-part="tabs-row" className={TABS_ROW_CLASS}>
 							{tabs}
 						</div>
@@ -91,6 +105,7 @@ export function CodePageHeader({
 	return (
 		<StickyBand
 			box={sticky.box}
+			tallTabs={tallTabs}
 			onTitleTravel={sticky.onTitleTravel}
 			cacheKey={`tall|content|lg|${subtitle !== undefined}|${tabs !== undefined}`}
 		>
@@ -108,6 +123,16 @@ const TITLE_MOTION_CLASS =
 	"flex min-w-0 flex-col basis-full origin-left opacity-[var(--cds-page-header-title-opacity,1)] transition-opacity duration-150 rtl:origin-right";
 const TABS_ROW_CLASS =
 	"flex min-w-0 items-center ms-[var(--cds-page-header-tabs-shift-start,0px)] me-[var(--cds-page-header-tabs-shift-end,0px)]";
+/**
+ * Upstream cf35aed38 title row `flex min-h-12 min-w-0 items-center … md:min-h-16 md:items-end` for the tall band. Below md
+ * local keeps the bare 32px row under the box's RootTopRow padding instead of upstream's min-h-12.
+ */
+const TALL_TITLE_ROW_CLASS = "flex min-w-0 md:min-h-16 md:items-end";
+/**
+ * The row holding the tabs-row and controls: upstream's header `gap-y-4` plus the tabs row's tall `mt-0 md:mt-2`, with no
+ * 32px floor, so it is as tall as the 28px tabs and controls.
+ */
+const TABS_HEADER_ROW_CLASS = "mt-4 md:mt-6 flex flex-wrap items-center gap-x-4 gap-y-2";
 
 /** Upstream's PageHeader controls: an open search grows the row (grow-[3] basis-0), or takes all of it below a 640px header. */
 const CONTROLS_CLASS =
@@ -130,11 +155,13 @@ const SCROLL_OFFSET_VAR = "--cds-page-header-scroll-offset";
 
 function StickyBand({
 	box,
+	tallTabs,
 	onTitleTravel,
 	cacheKey,
 	children,
 }: {
 	box: string;
+	tallTabs: boolean;
 	onTitleTravel: ((px: number) => void) | undefined;
 	cacheKey: string;
 	children: ReactNode;
@@ -312,7 +339,17 @@ function StickyBand({
 				className={panels ? "sticky top-0" : "sticky top-0 bg-page"}
 				style={{zIndex: 20, ...(travel > 0 ? {top: -travel} : {})}}
 			>
-				<div className={`${box} pt-9 max-sm:pt-12 ${travel > 0 ? "pb-2" : "pb-6"}`}>{children}</div>
+				{/* With a tabs row the title travels exactly from md, so the box takes its static md padding: the 64px title row
+				    already holds RootTopRow's 36px (md:pt-0), and upstream's contentGap lg pb-2 never waits for the first measure. */}
+				<div
+					className={
+						tallTabs
+							? `${box} pt-9 max-sm:pt-12 md:pt-0 pb-6 md:pb-2`
+							: `${box} pt-9 max-sm:pt-12 ${travel > 0 ? "pb-2" : "pb-6"}`
+					}
+				>
+					{children}
+				</div>
 				{panels ? <div aria-hidden="true" data-cds-part="page-header-ground" /> : null}
 				{panels ? (
 					<div

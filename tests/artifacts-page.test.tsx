@@ -579,11 +579,11 @@ describe("artifacts route", () => {
 				"sticky top-0",
 				"mx-auto w-full max-w-5xl px-2 md:px-8 flex flex-col pb-12 pt-1",
 			],
-			headerBox: "mx-auto w-full max-w-5xl px-2 md:px-8 pt-9 max-sm:pt-12 pb-6",
+			headerBox: "mx-auto w-full max-w-5xl px-2 md:px-8 pt-9 max-sm:pt-12 md:pt-0 pb-6 md:pb-2",
 		});
 	});
 
-	it("swaps the header's pb-6 / content's pt-1 for upstream's contentGap lg pb-2 / pt-5 once the title travels away on desktop", async () => {
+	it("pads the header pb-2 from md and swaps the content's pt-1 for upstream's contentGap lg pt-5 once the title travels away on desktop", async () => {
 		vi.stubGlobal(
 			"ResizeObserver",
 			class {
@@ -610,7 +610,7 @@ describe("artifacts route", () => {
 				content: page?.lastElementChild?.className,
 			}).toStrictEqual({
 				top: "-80px",
-				headerBox: "mx-auto w-full max-w-5xl px-2 md:px-8 pt-9 max-sm:pt-12 pb-2",
+				headerBox: "mx-auto w-full max-w-5xl px-2 md:px-8 pt-9 max-sm:pt-12 md:pt-0 pb-6 md:pb-2",
 				content: "mx-auto w-full max-w-5xl px-2 md:px-8 flex flex-col pb-12 pt-5",
 			});
 		} finally {

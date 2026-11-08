@@ -81,7 +81,7 @@ describe("CodePageHeader", () => {
 					"flex min-w-0 flex-col basis-full origin-left opacity-[var(--cds-page-header-title-opacity,1)] transition-opacity duration-150 rtl:origin-right",
 				tabsRow:
 					"flex min-w-0 items-center ms-[var(--cds-page-header-tabs-shift-start,0px)] me-[var(--cds-page-header-tabs-shift-end,0px)]",
-				row: "mt-5 flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2",
+				row: "mt-4 md:mt-6 flex flex-wrap items-center gap-x-4 gap-y-2",
 			},
 		});
 	});
@@ -281,7 +281,15 @@ describe("CodePageHeader sticky", () => {
 });
 
 describe("CodePageHeader sticky geometry (upstream c193cfc9b Page + pe)", () => {
-	type Geometry = {desktop: boolean; headerLeft: number; reduced?: boolean; scrollTimeline?: boolean; rtl?: boolean};
+	type Geometry = {
+		desktop: boolean;
+		headerLeft: number;
+		reduced?: boolean;
+		scrollTimeline?: boolean;
+		rtl?: boolean;
+		/** Upstream's live 2026-11-07 geometry instead: a 124px band whose tabs and controls rows are 28px tall. */
+		upstream?: boolean;
+	};
 	let observed: {callback: IntersectionObserverCallback; targets: Element[]}[] = [];
 	class TestIntersectionObserver {
 		readonly record: (typeof observed)[number];
@@ -321,9 +329,11 @@ describe("CodePageHeader sticky geometry (upstream c193cfc9b Page + pe)", () => 
 		vi.spyOn(CSS, "supports").mockImplementation(
 			(query: string) => query === "animation-timeline: scroll()" && geometry.scrollTimeline !== false,
 		);
+		const rowHeight = geometry.upstream === true ? 28 : 32;
+		const bandHeight = geometry.upstream === true ? 124 : 140;
 		vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
-			if (part(this) === "tabs-row") return rect(88, geometry.headerLeft, 300, 32);
-			if (part(this) === "controls") return rect(88, 700, 100, 32);
+			if (part(this) === "tabs-row") return rect(88, geometry.headerLeft, 300, rowHeight);
+			if (part(this) === "controls") return rect(88, 700, 100, rowHeight);
 			if (this.getAttribute("data-cds") === "PageHeader") {
 				return geometry.rtl === true
 					? rect(0, 1000 - geometry.headerLeft - 800, 800, 140)
@@ -332,7 +342,7 @@ describe("CodePageHeader sticky geometry (upstream c193cfc9b Page + pe)", () => 
 			return rect(0, 0, 900, 140);
 		});
 		vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement) {
-			return this.classList.contains("sticky") ? 140 : 0;
+			return this.classList.contains("sticky") ? bandHeight : 0;
 		});
 		vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(function (this: HTMLElement) {
 			if (part(this) === "level-mark") return 44;
@@ -432,7 +442,7 @@ describe("CodePageHeader sticky geometry (upstream c193cfc9b Page + pe)", () => 
 				marginBottom: "-40px",
 				width: "max(0px, var(--cds-page-header-start-clearance, 0px))",
 			},
-			box: "max-w-5xl pt-9 max-sm:pt-12 pb-2",
+			box: "max-w-5xl pt-9 max-sm:pt-12 md:pt-0 pb-6 md:pb-2",
 			pinned: "60px",
 			offset: "76px",
 			travel: 80,
@@ -441,7 +451,34 @@ describe("CodePageHeader sticky geometry (upstream c193cfc9b Page + pe)", () => 
 		});
 	});
 
-	it("below 48rem keeps the whole header pinned: no top, a 0px stuck-mark, pb-6", () => {
+	it("lays the desktop tabs header out like upstream's live 116px PageHeader: a 64px bottom-aligned title row, 24px to a 28px tabs row, no top padding, so it pins 44px", () => {
+		// Upstream 2026-11-07 at 1272px: PageHeader 116 = title row md:min-h-16 (64) + gap-y-4 (16) + tabs-row md:mt-2 (8)
+		// + 28px tabs; box pb-2 makes the band 124, L = 88-8 = 80, pinned 124-80 = 44, scroll offset 44+16 = 60.
+		stubGeometry({desktop: true, headerLeft: 60, upstream: true});
+		const {page, band} = renderArtifacts();
+		const header = band.querySelector("header");
+		const titleRow = band.querySelector('[data-cds-part="title-row"]');
+		expect({
+			box: band.firstElementChild?.className,
+			header: header?.className,
+			titleRow: titleRow?.getAttribute("class"),
+			row: band.querySelector('[data-cds-part="tabs-row"]')?.parentElement?.className,
+			bandTop: band.style.top,
+			pinned: page.style.getPropertyValue("--cds-page-header-pinned-height"),
+			offset: page.style.getPropertyValue("--cds-page-header-scroll-offset"),
+		}).toStrictEqual({
+			// The 36px RootTopRow compensation moves into the 64px title row from md; pb-2 is static from md, where L > 0.
+			box: "max-w-5xl pt-9 max-sm:pt-12 md:pt-0 pb-6 md:pb-2",
+			header: "@container flex flex-col sm:-mt-1 md:mt-0",
+			titleRow: "flex min-w-0 md:min-h-16 md:items-end",
+			row: "mt-4 md:mt-6 flex flex-wrap items-center gap-x-4 gap-y-2",
+			bandTop: "-80px",
+			pinned: "44px",
+			offset: "60px",
+		});
+	});
+
+	it("below 48rem keeps the whole header pinned: no top, a 0px stuck-mark, and the box's below-md pb-6", () => {
 		stubGeometry({desktop: false, headerLeft: 20});
 		const {page, stuckMark, band} = renderArtifacts();
 		expect({
@@ -453,7 +490,7 @@ describe("CodePageHeader sticky geometry (upstream c193cfc9b Page + pe)", () => 
 		}).toStrictEqual({
 			bandTop: "",
 			stuckMark: "height: 0px; margin-bottom: 0px;",
-			box: "max-w-5xl pt-9 max-sm:pt-12 pb-6",
+			box: "max-w-5xl pt-9 max-sm:pt-12 md:pt-0 pb-6 md:pb-2",
 			pinned: "140px",
 			motion: {attrs: [], vars: {}},
 		});
