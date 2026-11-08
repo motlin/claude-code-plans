@@ -110,6 +110,50 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () => {
 		});
 	});
 
+	// Upstream c81f2e888 transcript FileDiff: ne() = Q(true, false), merged into style + onPostRender.
+	it("adopts upstream's rails sheet and marks change runs, never with data-add-button", async () => {
+		const {container} = render(
+			<InlineDiff
+				filePath="/test/alice.ts"
+				oldStr={"const alice = 1;\nconst bob = 1;\nconst carol = 1;"}
+				newStr={"const alice = 2;\nconst bob = 1;\nconst carol = 2;"}
+			/>,
+		);
+		await waitFor(() => {
+			const host = container.querySelector("diffs-container");
+			const [root] = shadowRoots(container);
+			if (!root) throw new Error("no shadow root");
+			const wrapper = container.querySelector<HTMLElement>("[data-cds=FileDiff]");
+			expect({
+				rails: root.adoptedStyleSheets.some((sheet) =>
+					[...sheet.cssRules].some((rule) => rule.cssText.includes("--diff-rail-added")),
+				),
+				marks: [...root.querySelectorAll("[data-gutter] > [data-line-type]")].map((row) =>
+					[
+						row.getAttribute("data-line-type"),
+						row.hasAttribute("data-rail-start") ? "start" : "",
+						row.hasAttribute("data-rail-end") ? "end" : "",
+					]
+						.filter(Boolean)
+						.join(":"),
+				),
+				addButton: host?.hasAttribute("data-add-button"),
+				word: wrapper?.style.getPropertyValue("--diff-word-removed"),
+			}).toStrictEqual({
+				rails: true,
+				marks: [
+					"change-deletion:start",
+					"change-addition:end",
+					"context",
+					"change-deletion:start",
+					"change-addition:end",
+				],
+				addButton: false,
+				word: '"removed"',
+			});
+		});
+	});
+
 	it("renders an Edit as a unified, wrapped diff with no file header", async () => {
 		const {container} = render(
 			<EditRenderer

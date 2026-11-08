@@ -16,6 +16,7 @@ import {
 	diffLineHeightStyle,
 	diffsInjectedCss,
 } from "./diffs-config";
+import {railsPostRender} from "./diff-rails";
 import {type DiffStyle, useSettings} from "../settings-context";
 import {useResolvedTheme} from "../theme-context";
 
@@ -228,6 +229,8 @@ export function DiffFile({
 			stickyHeader: true,
 			collapsed,
 			enableGutterUtility: onRequestChanges !== undefined,
+			// Upstream c44d00c7f `se.draw(e)`: Q(wordDiff, !readOnly).draw after each render.
+			onPostRender: railsPostRender(onRequestChanges !== undefined),
 			unsafeCSS: diffsInjectedCss({
 				disableFileHeader: false,
 				gutterUtility: onRequestChanges !== undefined,

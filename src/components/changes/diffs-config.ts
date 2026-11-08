@@ -5,6 +5,7 @@ import {claudeDark} from "../../lib/claude-dark-theme";
 import {claudeLight} from "../../lib/claude-light-theme";
 import {type CodeFontSize, codeRowLeadingPx, loadCodeTheme} from "../../lib/code-themes";
 import type {Density} from "../ui/density-context";
+import {DIFF_WORD_STYLE} from "./diff-rails";
 
 // Register our claude.ai code themes with the library's shared highlighter so
 // every @pierre/diffs view (Changes pane, inline tool diffs) highlights with the
@@ -49,6 +50,8 @@ export const DIFFS_STYLE_OVERRIDES = {
 	"--cds-cursor-interactive": "pointer",
 	// Upstream's comfortable --cds-pad-md.
 	"--cds-pad-md": "8px",
+	// Upstream ca9e46d28 Q().style: the rails sheet's alt words for the hidden +/− glyphs.
+	...DIFF_WORD_STYLE,
 } as CSSProperties;
 
 /*

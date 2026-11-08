@@ -5,6 +5,7 @@ import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-p
 import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {DiffFile} from "../src/components/changes/diff-file";
 import {CA, EA, SA, TA, WA} from "../src/components/changes/diffs-config";
+import {DIFF_RAILS_CSS} from "../src/components/changes/diff-rails";
 import {PanelsOff} from "./fizzy-lake-off";
 import {DEFAULTS, SettingsContext} from "../src/components/settings-context";
 import {preloadFileTypeIcons} from "../src/components/file-type-icons-loader";
@@ -40,6 +41,35 @@ function unsafeLayer(container: HTMLElement): string {
 	const start = text.indexOf("@layer unsafe");
 	return start === -1 ? "" : text.slice(start);
 }
+
+/** Whether the rails sheet (upstream ca9e46d28 `q`) is among the shadow root's adopted sheets. */
+function hasRailsSheet(root: ShadowRoot): boolean {
+	return root.adoptedStyleSheets.some((sheet) =>
+		[...sheet.cssRules].some((rule) => rule.cssText.includes("--diff-rail-added")),
+	);
+}
+
+/** Each gutter row as `type[:start][:end]`, from the run marks `markRailRuns` sets. */
+function gutterRailMarks(root: ShadowRoot): string[] {
+	return [...root.querySelectorAll("[data-gutter] > [data-line-type]")].map((row) =>
+		[
+			row.getAttribute("data-line-type"),
+			row.hasAttribute("data-rail-start") ? "start" : "",
+			row.hasAttribute("data-rail-end") ? "end" : "",
+		]
+			.filter(Boolean)
+			.join(":"),
+	);
+}
+
+const PATCH_RAIL_MARKS = [
+	"context",
+	"change-addition:start",
+	"change-deletion",
+	"change-addition:end",
+	"context",
+	"change-addition:start:end",
+];
 
 function contentRowTypes(root: ShadowRoot): string[] {
 	return [...root.querySelectorAll("[data-content] > [data-line-type]")].map(
@@ -271,5 +301,51 @@ describe("DiffFile", () => {
 				slot: header?.querySelector("slot")?.getAttribute("name"),
 			}).toEqual({mode: "custom", changeType: "change", slot: "header-custom"});
 		});
+	});
+
+	// Upstream ca9e46d28 Q(wordDiff, !readOnly).draw from each onPostRender (Changes pane c44d00c7f `se.draw(e)`).
+	it("adopts upstream's rails sheet and marks change runs after every render, with data-add-button only when commenting", async () => {
+		const view = render(<DiffFile patch={PATCH} />);
+		const state = () => {
+			const host = view.container.querySelector("diffs-container");
+			const root = shadowRootOf(view.container);
+			return {
+				rails: hasRailsSheet(root),
+				marks: gutterRailMarks(root),
+				addButton: host?.hasAttribute("data-add-button"),
+				words: [
+					hostOf(view.container)?.style.getPropertyValue("--diff-word-added"),
+					hostOf(view.container)?.style.getPropertyValue("--diff-word-removed"),
+				],
+			};
+		};
+		const expected = {
+			rails: true,
+			marks: PATCH_RAIL_MARKS,
+			addButton: false,
+			words: ['"added"', '"removed"'],
+		};
+		await waitFor(() => {
+			expect(state()).toStrictEqual(expected);
+		});
+
+		view.rerender(<DiffFile patch={PATCH} wordWrap={false} />);
+		await waitFor(() => {
+			expect(shadowRootOf(view.container).querySelector("pre[data-diff]")?.getAttribute("data-overflow")).toBe(
+				"scroll",
+			);
+		});
+		expect(state()).toStrictEqual(expected);
+
+		view.rerender(<DiffFile patch={PATCH} onRequestChanges={() => undefined} />);
+		await waitFor(() => {
+			expect(state()).toStrictEqual({...expected, addButton: true});
+		});
+	});
+
+	it("moves the gutter + clear of the rail under data-add-button", () => {
+		expect(DIFF_RAILS_CSS).toContain(
+			":host([data-add-button]) [data-diff]:not([data-disable-line-numbers]) [data-gutter-utility-slot]{left:calc(6px + 2px + 0.125rem)}",
+		);
 	});
 });

@@ -146,3 +146,12 @@ describe("diff host bridge tokens", () => {
 		expect({light: token(":root"), dark: token(".dark")}).toStrictEqual({light: "#98801f", dark: "#ffd014"});
 	});
 });
+
+describe("DIFFS_STYLE_OVERRIDES alt words (upstream ca9e46d28 Q().style)", () => {
+	it("sets the rails sheet's --diff-word-added / --diff-word-removed", () => {
+		expect({added: OVERRIDES["--diff-word-added"], removed: OVERRIDES["--diff-word-removed"]}).toStrictEqual({
+			added: '"added"',
+			removed: '"removed"',
+		});
+	});
+});

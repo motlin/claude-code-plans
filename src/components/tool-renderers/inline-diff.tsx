@@ -4,6 +4,7 @@ import type {FileDiffOptions} from "@pierre/diffs/react";
 import {useMemo} from "react";
 import {useCodeThemes} from "../../hooks/use-code-themes";
 import {buildUnifiedHunk} from "../../lib/diff-utils";
+import {railsPostRender} from "../changes/diff-rails";
 import {DIFFS_HOST_CLASS, INLINE_DIFFS_STYLE_OVERRIDES, diffsInjectedCss} from "../changes/diffs-config";
 import {useFizzyLake} from "../../lib/fizzy-lake";
 import {useResolvedTheme} from "../theme-context";
@@ -31,6 +32,8 @@ export function InlineDiff({filePath, oldStr, newStr}: {filePath: string; oldStr
 			overflow: "wrap",
 			hunkSeparators: "simple",
 			disableFileHeader: true,
+			// Upstream c81f2e888 ne() = Q(true, false): rails, never the add button.
+			onPostRender: railsPostRender(false),
 			unsafeCSS: diffsInjectedCss({disableFileHeader: true, gutterUtility: false, panels}),
 		}),
 		[codeThemes, resolvedTheme, panels],

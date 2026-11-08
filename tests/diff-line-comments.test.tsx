@@ -571,6 +571,7 @@ describe("Changes pane gutter add-comment button", () => {
 			title: button.getAttribute("title"),
 			className: button.className,
 			position: button.style.position,
+			left: button.style.left,
 			top: button.style.top,
 			bottom: button.style.bottom,
 		}).toStrictEqual({
@@ -578,6 +579,7 @@ describe("Changes pane gutter add-comment button", () => {
 			className:
 				"flex size-4 cursor-pointer items-center justify-center rounded bg-fill-accent text-on-accent hover:bg-fill-accent-hover",
 			position: "absolute",
+			left: "",
 			top: "calc((var(--diffs-line-height, 1lh) - 1rem) / 2)",
 			bottom: "auto",
 		});
