@@ -1187,6 +1187,7 @@ export const changedFileKindLabels = {
 /** Settings dialog nav labels, in nav order. */
 export const settingsTabLabels = {
 	general: "General",
+	notifications: "Notifications",
 	usage: "Usage",
 	"claude-code": "Claude Code",
 	transcript: "Transcript",

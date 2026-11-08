@@ -269,11 +269,11 @@ describe("SettingsDialog", () => {
 		await renderAt("/#settings/sessions");
 
 		await screen.findByRole("dialog", {name: "Settings"});
-		// Upstream drops the per-tab h2: the content starts with the section headings.
+		// Upstream's panel starts with an sr-only h2 named by the nav row, then the section headings.
 		expect({
 			current: currentTabs(),
-			tabHeading: screen.queryByRole("heading", {level: 2, name: "Sessions"}),
-		}).toStrictEqual({current: ["Sessions"], tabHeading: null});
+			tabHeading: screen.getByRole("heading", {level: 2, name: "Sessions"}).className,
+		}).toStrictEqual({current: ["Sessions"], tabHeading: "sr-only"});
 	});
 
 	it("gives every nav item an icon before its label", async () => {
@@ -283,7 +283,7 @@ describe("SettingsDialog", () => {
 		const nav = screen.getByRole("navigation", {name: "Settings"});
 		expect(
 			[...nav.querySelectorAll("button")].map((button) => button.firstElementChild?.tagName.toLowerCase()),
-		).toStrictEqual(Array.from({length: 10}, () => "svg"));
+		).toStrictEqual(Array.from({length: 11}, () => "svg"));
 	});
 
 	it("lists one row per upstream nav row, in untitled groups, with the renamed Appearance, Customize and Code rows", async () => {
@@ -304,7 +304,10 @@ describe("SettingsDialog", () => {
 				),
 		).toStrictEqual([
 			[{testId: "usage-settings", label: "Usage", selected: null}],
-			[{testId: "general-settings", label: "Appearance", selected: "page"}],
+			[
+				{testId: "general-settings", label: "Appearance", selected: "page"},
+				{testId: "notifications-settings", label: "Notifications", selected: null},
+			],
 			[
 				{testId: "customize-connectors-settings", label: "Customize", selected: null},
 				{testId: "claude-code-settings", label: "Code", selected: null},
@@ -320,23 +323,56 @@ describe("SettingsDialog", () => {
 		]);
 	});
 
-	it("brightens nav item text on hover and draws upstream's shadow-focus ring on keyboard focus", async () => {
+	// Upstream S6: MV + pe-xs (not on a customize member) + Mc(active), an icon span and a truncating label span.
+	it("draws each nav row with upstream's MV/Mc classes, pe-xs except on Customize, and a truncating label", async () => {
 		await renderAt("/#settings/general");
 		await screen.findByRole("dialog", {name: "Settings"});
 		const nav = screen.getByRole("navigation", {name: "Settings"});
-		const classes = (name: string) =>
-			within(nav)
-				.getByRole("button", {name})
-				.className.split(/\s+/)
-				.filter((token) => /hover:|focus-visible:/.test(token));
-		const expected = [
+		const row = (name: string) => {
+			const button = within(nav).getByRole("button", {name});
+			return {
+				classes: button.className.split(/\s+/),
+				icon: button.firstElementChild
+					?.getAttribute("class")
+					?.split(" ")
+					.filter((token) => !token.startsWith("lucide"))
+					.join(" "),
+				label: [button.lastElementChild?.tagName, button.lastElementChild?.className],
+			};
+		};
+		const base = [
+			"hit-row",
+			"hit-row-main",
+			"flex",
+			"h-8",
+			"w-full",
+			"items-center",
+			"gap-3",
+			"rounded-r6",
+			"px-2",
+			"text-start",
+			"text-body",
 			"focus-visible:outline-hidden",
 			"not-dark:focus-visible:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#257de0,0_0_6px_1px_#cde2fb]",
 			"dark:focus-visible:shadow-[inset_0_0_0_1px_rgb(21_21_21),0_0_0_1px_rgb(37_125_224),0_0_6px_1px_rgb(24_79_149/0.6)]",
 		];
-		expect({selected: classes("Appearance"), rest: classes("Usage")}).toStrictEqual({
-			selected: expected,
-			rest: [...expected, "hover:bg-fill-ghost-hover", "hover:text-primary"],
+		const rest = ["text-secondary-control", "hover:bg-fill-ghost-hover", "hover:text-primary"];
+		const children = {icon: "size-5 shrink-0 text-secondary-control", label: ["SPAN", "min-w-0 flex-1 truncate"]};
+
+		expect({appearance: row("Appearance"), code: row("Code"), customize: row("Customize")}).toStrictEqual({
+			appearance: {
+				classes: [
+					...base,
+					"pe-1.5",
+					"bg-fill-ghost-selected",
+					"hover:layers-1-fill-ghost-hover",
+					"font-medium",
+					"text-primary",
+				],
+				...children,
+			},
+			code: {classes: [...base, "pe-1.5", ...rest], ...children},
+			customize: {classes: [...base, ...rest], ...children},
 		});
 	});
 
@@ -459,8 +495,8 @@ describe("SettingsDialog at phone width", () => {
 		expect({
 			sideNav: within(dialog).queryByRole("navigation"),
 			sideNavWidth: dialog.querySelector(".w-\\[212px\\]"),
-			heading: within(dialog).getByRole("heading", {level: 2}).textContent,
-			headingClass: within(dialog).getByRole("heading", {level: 2}).className,
+			heading: within(dialog).getByRole("heading", {level: 2, name: "Settings"}).textContent,
+			headingClass: within(dialog).getByRole("heading", {level: 2, name: "Settings"}).className,
 			orientation: tablist.getAttribute("aria-orientation"),
 			stripClasses: ["overflow-x-auto", "overscroll-x-contain"].filter((name) =>
 				tablist.classList.contains(name),
@@ -478,12 +514,11 @@ describe("SettingsDialog at phone width", () => {
 			orientation: "horizontal",
 			stripClasses: ["overflow-x-auto", "overscroll-x-contain"],
 			tabs: [
-				{label: "General", selected: "false"},
 				{label: "Usage", selected: "false"},
-				{label: "Claude Code", selected: "false"},
-				{label: "Skills", selected: "false"},
-				{label: "Connectors", selected: "false"},
-				{label: "Plugins", selected: "false"},
+				{label: "Appearance", selected: "false"},
+				{label: "Notifications", selected: "false"},
+				{label: "Customize", selected: "false"},
+				{label: "Code", selected: "false"},
 				{label: "Transcript", selected: "true"},
 				{label: "Sessions", selected: "false"},
 				{label: "Application", selected: "false"},
@@ -499,7 +534,7 @@ describe("SettingsDialog at phone width", () => {
 	it("scrolls the phone body as upstream's Xn dialog body, scroll-fade-y included", async () => {
 		await renderAt("/#settings/general");
 		const dialog = await screen.findByRole("dialog", {name: "Settings"});
-		const body = within(dialog).getByRole("heading", {level: 2}).parentElement?.parentElement;
+		const body = within(dialog).getByRole("heading", {level: 2, name: "Settings"}).parentElement?.parentElement;
 
 		expect(body?.className).toStrictEqual(`${DIALOG_BODY_CLASS} p-6`);
 	});
@@ -609,10 +644,35 @@ describe("SettingsDialog at phone width", () => {
 		}).toStrictEqual({
 			pagedInRoot: true,
 			pagedClasses: ["relative", "flow-root", "min-w-0"],
-			active: ["General"],
+			active: ["Appearance"],
 			recipeMissing: 0,
 			droppedPresent: 0,
 		});
+	});
+
+	// Upstream's phone strip has one tab per nav row, carrying the row's testid; Customize stands for its sections.
+	it("gives each phone tab its row's testid and selects Customize on any customize section", async () => {
+		await renderAt("/#customize/plugins/yours");
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const tablist = within(dialog).getByRole("tablist", {name: "Settings"});
+
+		expect(
+			within(tablist)
+				.getAllByRole("tab")
+				.map((tab) => [tab.getAttribute("data-testid"), tab.textContent, tab.getAttribute("aria-selected")]),
+		).toStrictEqual([
+			["usage-settings", "Usage", "false"],
+			["general-settings", "Appearance", "false"],
+			["notifications-settings", "Notifications", "false"],
+			["customize-connectors-settings", "Customize", "true"],
+			["claude-code-settings", "Code", "false"],
+			["transcript-settings", "Transcript", "false"],
+			["sessions-settings", "Sessions", "false"],
+			["application-settings", "Application", "false"],
+			["ai-features-settings", "AI features", "false"],
+			["claude-config-settings", "Claude Config", "false"],
+			["setup-settings", "Setup", "false"],
+		]);
 	});
 
 	it("switches tabs from the strip through the hash", async () => {
@@ -731,6 +791,48 @@ describe("SettingsDialog local tabs", () => {
 		expect(tabOutline(dialog)).toStrictEqual(outline);
 	});
 
+	// Upstream's grouped Appearance page: "General", then the Code looks (GeneralCodeLooks) moved from Code.
+	it("puts the Code looks on Appearance after General and drops them from Code", async () => {
+		await renderAt("/#settings/general");
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const headings = () => [...dialog.querySelectorAll("h2, h3")].map((h) => `${h.tagName}:${h.textContent}`);
+		const appearance = {
+			headings: headings(),
+			srTitle: within(dialog).getByRole("heading", {level: 2, name: "Appearance"}).className,
+			codeLooks: dialog.querySelector("#code-appearance")?.textContent.includes("Code font size"),
+		};
+		fireEvent.click(screen.getByRole("button", {name: "Code"}));
+		await within(dialog).findByRole("heading", {level: 2, name: "Code"});
+
+		expect({
+			appearance,
+			code: {
+				hasCodeFont: within(dialog).queryByText("Code font") !== null,
+				hasCodeAppearance: dialog.querySelector("#code-appearance") !== null,
+			},
+		}).toStrictEqual({
+			appearance: {
+				headings: ["H2:Settings", "H2:Appearance", "H3:General", "H3:Code"],
+				srTitle: "sr-only",
+				codeLooks: true,
+			},
+			code: {hasCodeFont: false, hasCodeAppearance: false},
+		});
+	});
+
+	it("gives Notifications its own tab, as upstream's Notifications row", async () => {
+		await renderAt("/#settings/notifications");
+		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+
+		expect({
+			current: currentTabs(),
+			outline: tabOutline(dialog),
+		}).toStrictEqual({
+			current: ["Notifications"],
+			outline: [["Notifications", ["Response completions", "Code permission requests", "Notification sound"]]],
+		});
+	});
+
 	it("opens Skills inside the dialog by hash with the Yours/Discover control, the Customize row current", async () => {
 		const router = await renderAt("/#customize/skills/yours");
 
@@ -812,7 +914,7 @@ describe("SettingsDialog local tabs", () => {
 		fireEvent.click(screen.getByRole("button", {name: "Customize"}));
 		await waitFor(() => {
 			expect(location(router)).toStrictEqual({pathname: "/", hash: "customize/connectors/yours"});
-			expect(document.querySelector("[data-customize-dialog-pane] header h2")?.textContent).toBe("Connectors");
+			expect(document.querySelector("[data-customize-dialog-pane] h2.sr-only")?.textContent).toBe("Connectors");
 		});
 
 		expect({
@@ -1095,7 +1197,7 @@ describe("SettingsDialog local tabs", () => {
 		const pane = dialog.querySelector<HTMLElement>("[data-customize-dialog-pane]");
 		const [chrome, crumbBar, body] = [...(pane?.children ?? [])];
 		const frame = body?.firstElementChild?.firstElementChild;
-		const [header, spacer, scroller] = [...(frame?.children ?? [])];
+		const [srTitle, header, spacer, scroller] = [...(frame?.children ?? [])];
 		const [titleGroup, controls] = [...(header?.children ?? [])];
 
 		expect({
@@ -1110,7 +1212,17 @@ describe("SettingsDialog local tabs", () => {
 			frame: frame?.className,
 			header: [header?.tagName, header?.className],
 			titleGroup: titleGroup?.className,
-			title: titleGroup?.firstElementChild?.outerHTML,
+			srTitle: srTitle?.outerHTML,
+			tablist: [...(titleGroup?.querySelectorAll('[role="tablist"]') ?? [])].map((list) => [
+				list.getAttribute("aria-label"),
+				list.className,
+				[...list.querySelectorAll('[role="tab"]')].map((tab) => [
+					tab.textContent,
+					tab.getAttribute("aria-selected"),
+					tab.getAttribute("tabindex"),
+				]),
+			]),
+			visibleTitle: dialog.querySelector("h2:not(.sr-only):not([id])"),
 			controls: controls?.className,
 			spacer: [spacer?.getAttribute("aria-hidden"), spacer?.className],
 			scroller: scroller?.className,
@@ -1138,7 +1250,19 @@ describe("SettingsDialog local tabs", () => {
 				"mx-auto w-full max-w-4xl px-5 flex shrink-0 flex-wrap items-end justify-between gap-x-4 gap-y-3 max-md:pt-3",
 			],
 			titleGroup: "flex min-w-0 items-center gap-4",
-			title: '<h2 class="min-w-0 truncate text-[22px]/[28px] font-[580] text-primary">Skills</h2>',
+			srTitle: '<h2 class="sr-only">Skills</h2>',
+			tablist: [
+				[
+					"Customize",
+					"flex items-center font-sans [&>[role=tab]:first-child]:before:start-0 [&>[role=tab]:last-child]:before:end-0 -ms-3",
+					[
+						["Connectors", "false", "-1"],
+						["Skills", "true", "0"],
+						["Plugins", "false", "-1"],
+					],
+				],
+			],
+			visibleTitle: null,
 			controls: "ms-auto flex min-w-0 items-center justify-end gap-2",
 			spacer: ["true", "shrink-0 h-4"],
 			scroller: "relative -mt-1 flex min-h-0 flex-1 flex-col overflow-y-auto pb-4 pt-1",
@@ -1150,16 +1274,59 @@ describe("SettingsDialog local tabs", () => {
 		});
 	});
 
-	it("titles each Customize section's panel header after the section", async () => {
+	it("names each Customize section's panel with an sr-only h2 and selects its header tab", async () => {
 		await renderAt("/#customize/plugins/yours");
 		const dialog = await screen.findByRole("dialog", {name: "Settings"});
+		const shown = () => {
+			const tabs = within(dialog).getByRole("tablist", {name: "Customize"});
+			return {
+				heading: dialog.querySelector("[data-customize-dialog-pane] h2")?.textContent,
+				selected: within(tabs)
+					.getAllByRole("tab")
+					.filter((tab) => tab.getAttribute("aria-selected") === "true")
+					.map((tab) => tab.textContent),
+			};
+		};
 		await waitFor(() => {
-			expect(dialog.querySelector("[data-customize-dialog-pane] header h2")?.textContent).toBe("Plugins");
+			expect(shown()).toStrictEqual({heading: "Plugins", selected: ["Plugins"]});
 		});
 		fireEvent.click(screen.getByRole("button", {name: "Customize"}));
 		await waitFor(() => {
-			expect(dialog.querySelector("[data-customize-dialog-pane] header h2")?.textContent).toBe("Connectors");
+			expect(shown()).toStrictEqual({heading: "Connectors", selected: ["Connectors"]});
 		});
+	});
+
+	// Upstream's header tabs replace the hash with the bare section (#customize/skills) and keep the Customize row current.
+	it("switches Customize sections from the header tabs, replacing the entry, with the Customize row still current", async () => {
+		const router = await renderAt("/#settings/general");
+		await screen.findByRole("dialog", {name: "Settings"});
+		fireEvent.click(screen.getByRole("button", {name: "Customize"}));
+		const tabs = await screen.findByRole("tablist", {name: "Customize"});
+
+		fireEvent.click(within(tabs).getByRole("tab", {name: "Skills"}));
+
+		await screen.findByRole("heading", {level: 2, name: "Skills"});
+		expect({
+			entry: `${router.history.length}:${router.state.location.hash}`,
+			current: currentTabs(),
+		}).toStrictEqual({entry: "1:customize/skills", current: ["Customize"]});
+	});
+
+	it("moves focus between the Customize header tabs with the arrow keys", async () => {
+		await renderAt("/#customize/connectors/yours");
+		const tabs = await screen.findByRole("tablist", {name: "Customize"});
+		const [connectors, skills, plugins] = ["Connectors", "Skills", "Plugins"].map((name) =>
+			within(tabs).getByRole("tab", {name}),
+		);
+
+		connectors?.focus();
+		fireEvent.keyDown(within(tabs).getByRole("tab", {name: "Connectors"}), {key: "ArrowRight"});
+		const afterRight = document.activeElement;
+		fireEvent.keyDown(within(tabs).getByRole("tab", {name: "Skills"}), {key: "ArrowLeft"});
+		const afterLeft = document.activeElement;
+		fireEvent.keyDown(within(tabs).getByRole("tab", {name: "Connectors"}), {key: "ArrowLeft"});
+
+		expect([afterRight, afterLeft, document.activeElement]).toStrictEqual([skills, connectors, plugins]);
 	});
 
 	it("closes the dialog from the top row's Close button while a Customize section is open", async () => {
@@ -1193,6 +1360,7 @@ describe("SettingsDialog local tabs", () => {
 		// "Settings" is the dialog's sr-only h2 label.
 		expect(screen.getAllByRole("heading").map((heading) => heading.textContent)).toStrictEqual([
 			"Settings",
+			"Setup",
 			"Hook Configuration",
 		]);
 	});

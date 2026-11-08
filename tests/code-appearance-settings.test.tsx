@@ -5,17 +5,17 @@ import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SettingsProvider} from "../src/components/settings-provider";
-import {ClaudeCodeSettings} from "../src/components/settings/settings-sections";
+import {GeneralSettings} from "../src/components/settings/settings-sections";
 import {ThemeProvider} from "../src/components/theme-provider";
 import {requestLanguage, requestTheme} from "../src/hooks/use-shiki";
 import {installLocalStorage} from "./fake-storage";
 
-async function renderClaudeCode() {
+async function renderAppearance() {
 	render(
 		<QueryClientProvider client={new QueryClient()}>
 			<ThemeProvider>
 				<SettingsProvider>
-					<ClaudeCodeSettings />
+					<GeneralSettings />
 				</SettingsProvider>
 			</ThemeProvider>
 		</QueryClientProvider>,
@@ -54,13 +54,19 @@ afterEach(() => {
 	delete document.documentElement.dataset["codeFontSize"];
 });
 
-describe("Claude Code settings ▸ Code appearance", () => {
-	it("ids its sections code-appearance, appearance, remote-control and local-sessions, like upstream's Claude Code tab", async () => {
-		await renderClaudeCode();
+describe("Appearance settings ▸ Code", () => {
+	it("ids its sections general and code-appearance, like upstream's grouped Appearance tab (GeneralCodeLooks)", async () => {
+		await renderAppearance();
 
 		expect(
-			[...document.querySelectorAll("section[data-settings-section-titled]")].map((section) => section.id),
-		).toStrictEqual(["code-appearance", "appearance", "remote-control", "local-sessions"]);
+			[...document.querySelectorAll("section[data-settings-section-titled]")].map((section) => [
+				section.id,
+				section.querySelector("h3")?.textContent,
+			]),
+		).toStrictEqual([
+			["general", "General"],
+			["code-appearance", "Code"],
+		]);
 	});
 
 	it("re-renders the dark preview with the chosen theme", async () => {
@@ -72,7 +78,7 @@ describe("Claude Code settings ▸ Code appearance", () => {
 			requestTheme("claude-dark"),
 			requestTheme("nord"),
 		]);
-		await renderClaudeCode();
+		await renderAppearance();
 
 		await waitFor(() => {
 			expect(preview("Dark code theme preview").background).toBe("rgb(25, 25, 25)");
@@ -114,7 +120,7 @@ describe("Claude Code settings ▸ Code appearance", () => {
 			requestTheme("claude-light"),
 			requestTheme("claude-dark"),
 		]);
-		await renderClaudeCode();
+		await renderAppearance();
 		await waitFor(() => {
 			expect(screen.getByRole("figure", {name: "Light code theme preview"}).style.backgroundColor).not.toBe("");
 		});
@@ -158,7 +164,7 @@ describe("Claude Code settings ▸ Code appearance", () => {
 	// Upstream `JG`: the preview's min-height is 4 code lines + 18px, the leading round(px * 1.45), 19px at Default.
 	it("scales the code theme preview's min-height and leading with Code font size", async () => {
 		await import("../src/components/settings/code-theme-preview");
-		await renderClaudeCode();
+		await renderAppearance();
 		const read = () => {
 			const figure = screen.getByRole("figure", {name: "Light code theme preview"});
 			return {
@@ -180,7 +186,7 @@ describe("Claude Code settings ▸ Code appearance", () => {
 	});
 
 	it("applies a custom code font to --font-mono and clears it when emptied", async () => {
-		await renderClaudeCode();
+		await renderAppearance();
 		const input = screen.getByRole("textbox", {name: "Code font family"});
 
 		fireEvent.change(input, {target: {value: "Fira Code"}});
@@ -207,7 +213,7 @@ describe("Claude Code settings ▸ Code appearance", () => {
 	// Upstream's 2026-11 Code font size row: a device select (11-20px, default 13) without a filter whose
 	// choice sets --epitaxy-code-font-size and --epitaxy-code-leading (round(px * 1.45)) in rem on <html>.
 	it("renders upstream's Code font size row after Code font with a filterless size select", async () => {
-		await renderClaudeCode();
+		await renderAppearance();
 		// Outside the dialog there is no tab context, so the row has its slug but no setting-<tab>- id.
 		const row = document.querySelector('[data-settings-row="code-font-size"]');
 		const trigger = screen.getByRole("combobox", {name: "Code font size"});
@@ -242,7 +248,7 @@ describe("Claude Code settings ▸ Code appearance", () => {
 	});
 
 	it("stores a picked code font size and sets upstream's rem size and leading on <html>, and Default clears both", async () => {
-		await renderClaudeCode();
+		await renderAppearance();
 		const style = document.documentElement.style;
 		const read = () => ({
 			trigger: screen.getByRole("combobox", {name: "Code font size"}).textContent,
@@ -266,7 +272,7 @@ describe("Claude Code settings ▸ Code appearance", () => {
 	});
 
 	it("lets the terminal use the Ghostty config instead of the code theme", async () => {
-		await renderClaudeCode();
+		await renderAppearance();
 		const select = screen.getByRole("combobox", {name: "Terminal colors"});
 		const initial = select.textContent;
 

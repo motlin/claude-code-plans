@@ -1469,6 +1469,17 @@ html[data-interface-font="dyslexic"] {
 	font-weight: var(--font-weight-header);
 }
 
+/* Fizzy-lake `type`: upstream's dialog nav rows (`[role=dialog] nav :is(a,button).text-body.h-list-row.px-sm`) take
+   the control weight, so rest and selected settings nav rows both render at 435. */
+:root[data-cds-fizzy-lake~="type"]:not([data-interface-font="dyslexic"])
+	[role="dialog"]
+	nav
+	:is(a, button).text-body.h-8.px-2 {
+	font-weight: var(--font-weight-control);
+	--cds-font-axis-wght: var(--cds-font-axis-wght-control, var(--cds-font-axis-wght-regular));
+	font-variation-settings: var(--font-opsz-axis,) var(--cds-font-axis-wght,) "GRAD" var(--cds-font-grad, 0);
+}
+
 /* Upstream's variable wght axes: font-variation-settings is inherited and its "wght" beats font-weight, so the
    root applies the body axis and every weight utility re-declares its own (dark only, where the axes are set).
    Light mode computes `"GRAD" 0`, which Inter and SF Pro ignore. */
@@ -1733,6 +1744,12 @@ html[data-interface-font="dyslexic"] {
 
 @utility text-current-control {
 	color: var(--control-ink, currentColor);
+}
+
+/* Upstream `hover:layers-1-fill-ghost-hover`: a selected settings nav row keeps its ghost-selected fill and lays
+   the ghost hover over it as a background-image layer (Tailwind's hover: is already gated on (hover: hover)). */
+@utility layers-1-fill-ghost-hover {
+	background-image: linear-gradient(var(--color-fill-ghost-hover) 0 0);
 }
 
 /* Upstream `cursor-interactive`: the pointer cursor on chips and other clickable inline atoms. */

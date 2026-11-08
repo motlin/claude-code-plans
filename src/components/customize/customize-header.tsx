@@ -1,8 +1,17 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
 import {ArrowDownUp, Search, SlidersHorizontal, X} from "lucide-react";
-import {type ReactNode, type RefObject, useEffect, useEffectEvent, useRef, useState} from "react";
+import {
+	type KeyboardEvent as ReactKeyboardEvent,
+	type ReactNode,
+	type RefObject,
+	useEffect,
+	useEffectEvent,
+	useRef,
+	useState,
+} from "react";
 import {customizeDiscoverQueryOptions} from "../../lib/api/customize";
+import {navRowFor} from "../../lib/settings-nav";
 import {PHONE_SHEET_QUERY, SETTINGS_WIDE_QUERY, useCoarsePointer, useMediaQuery} from "../../lib/use-phone-sheet";
 import {SegmentedControl} from "../settings/segmented-control";
 import {CDS_TAB_CLASS, CDS_TAB_LIST_CLASS} from "../ui/cds-tabs";
@@ -32,8 +41,68 @@ interface CustomizeHeaderProps {
 	search: CustomizeSearch;
 	/** Applies a change to the search state; an `undefined` value clears that key. */
 	onSearchChange: (patch: Partial<CustomizeSearch>) => void;
-	/** Inside the Settings dialog: upstream's pane header, an h2 naming the section in place of the H1 and section tabs. */
+	/** Inside the Settings dialog: upstream's pane header, a Connectors | Skills | Plugins tab strip in place of the H1. */
 	embedded?: boolean;
+	/** Embedded only: a header tab was chosen. */
+	onSectionSelect?: (section: CustomizeSectionConfig["id"]) => void;
+}
+
+/** The dialog's Customize row members, in upstream's member order (Connectors, Skills, Plugins). */
+const DIALOG_TAB_SECTIONS = navRowFor({kind: "customize", section: "connectors"}).members.flatMap((member) =>
+	member.kind === "customize" ? CUSTOMIZE_SECTIONS.filter((config) => config.id === member.section) : [],
+);
+
+/**
+ * Upstream's dialog Customize header tabs: a cds Tabs list (`aria-label=Customize`, `-ml-pad-md`) of the Customize
+ * row's members, with roving focus on the arrow keys. A tab replaces the hash, so the nav's Customize row stays current.
+ */
+function DialogSectionTabs({
+	current,
+	onSelect,
+}: {
+	current: CustomizeSectionConfig["id"];
+	onSelect: ((section: CustomizeSectionConfig["id"]) => void) | undefined;
+}) {
+	const listRef = useRef<HTMLDivElement>(null);
+	const moveFocus = (event: ReactKeyboardEvent<HTMLButtonElement>, index: number) => {
+		const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+		if (step === 0) return;
+		event.preventDefault();
+		const tabs = [...(listRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? [])];
+		tabs[(index + step + tabs.length) % tabs.length]?.focus();
+	};
+	return (
+		<div data-cds="Tabs" data-orientation="horizontal" data-activation-direction="none">
+			<div className="contents">
+				<div data-cds-part="scroll-pager-scroller" className="contents">
+					<div ref={listRef} role="tablist" aria-label="Customize" className={`${CDS_TAB_LIST_CLASS} -ms-3`}>
+						{DIALOG_TAB_SECTIONS.map((tab, index) => {
+							const active = tab.id === current;
+							return (
+								<button
+									key={tab.id}
+									type="button"
+									role="tab"
+									aria-selected={active}
+									data-active={active ? "" : undefined}
+									tabIndex={active ? 0 : -1}
+									onClick={() => {
+										if (!active) onSelect?.(tab.id);
+									}}
+									onKeyDown={(event) => {
+										moveFocus(event, index);
+									}}
+									className={CDS_TAB_CLASS}
+								>
+									{tab.label}
+								</button>
+							);
+						})}
+					</div>
+				</div>
+			</div>
+		</div>
+	);
 }
 
 /**
@@ -45,6 +114,7 @@ export function CustomizeHeader({
 	search,
 	onSearchChange: updateSearch,
 	embedded = false,
+	onSectionSelect,
 }: CustomizeHeaderProps) {
 	// Upstream's dialog keeps Filter and Sort live over its unified results; the page still disables them.
 	const menusLocked = !embedded && (search.q ?? "") !== "";
@@ -74,9 +144,7 @@ export function CustomizeHeader({
 					embedded ? "flex min-w-0 items-center gap-4" : "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2"
 				}
 			>
-				{embedded && (
-					<h2 className="min-w-0 truncate text-[22px]/[28px] font-[580] text-primary">{section.label}</h2>
-				)}
+				{embedded && <DialogSectionTabs current={section.id} onSelect={onSectionSelect} />}
 				{!embedded && (
 					<nav aria-label="Customize" className="flex shrink-0 items-center">
 						{/* Upstream's cds Tabs root > contents > scroll-pager scroller > tablist; route Links stand in for its buttons. */}

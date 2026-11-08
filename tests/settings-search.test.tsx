@@ -154,7 +154,7 @@ describe("settings search", () => {
 	});
 
 	it("deep links scroll at once, flash the row from 300ms for 1.95s, and collapse the hash", async () => {
-		const router = buildRouter("/#settings/claude-code/code-font");
+		const router = buildRouter("/#settings/general/code-font");
 		await router.load();
 		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
 		act(() => {
@@ -162,7 +162,7 @@ describe("settings search", () => {
 		});
 
 		expect({hash: router.state.location.hash, flashing: flashingRows(), scrolled}).toStrictEqual({
-			hash: "settings/claude-code",
+			hash: "settings/general",
 			flashing: [],
 			scrolled: ["code-font"],
 		});
@@ -654,10 +654,9 @@ describe("settings search", () => {
 	const FONT_ROWS = [
 		"hit: General",
 		"Interface font in General",
-		"Transcript text size in General",
-		"hit: Claude Code",
-		"Code font in Claude Code",
-		"Code font size in Claude Code",
+		"Code font in General",
+		"Code font size in General",
+		"1 more match in General",
 	];
 	const marked = (index: number) => FONT_ROWS.map((row, i) => (i === index ? `> ${row}` : row));
 
@@ -689,13 +688,13 @@ describe("settings search", () => {
 			marked(2),
 			marked(3),
 			marked(4),
-			marked(5),
 			marked(0),
-			marked(5),
+			marked(1),
+			marked(0),
 			marked(4),
 		]);
 		expect(highlightScrolls.at(-1)).toStrictEqual({
-			row: "Code font in Claude Code",
+			row: "1 more match in General",
 			options: {block: "nearest"},
 		});
 	});
@@ -725,7 +724,7 @@ describe("settings search", () => {
 	});
 
 	it("Enter picks the highlighted row and ignores key repeat", async () => {
-		const router = await renderAt("/#settings/general");
+		const router = await renderAt("/#settings/claude-code");
 		await screen.findByRole("dialog", {name: "Settings"});
 		const input = screen.getByRole("textbox", {name: "Search settings"});
 
@@ -733,17 +732,17 @@ describe("settings search", () => {
 		fireEvent.keyDown(input, {key: "ArrowUp"});
 		fireEvent.keyDown(input, {key: "Enter", repeat: true});
 		expect({hash: router.state.location.hash, rows: highlightedRows()}).toStrictEqual({
-			hash: "settings/general",
-			rows: marked(5),
+			hash: "settings/claude-code",
+			rows: marked(4),
 		});
 
 		fireEvent.keyDown(input, {key: "ArrowUp"});
 		fireEvent.keyDown(input, {key: "Enter"});
 
 		await waitFor(() => {
-			expect(router.state.location.hash).toBe("settings/claude-code");
+			expect(router.state.location.hash).toBe("settings/general");
 		});
-		expect(scrolled).toStrictEqual(["code-font"]);
+		expect(scrolled).toStrictEqual(["code-font-size"]);
 	});
 
 	it("moves the single highlight with the pointer and keeps focus in the input on mousedown", async () => {
@@ -754,13 +753,13 @@ describe("settings search", () => {
 
 		fireEvent.change(input, {target: {value: "font"}});
 		const popover = await screen.findByRole("dialog", {name: "Search results"});
-		const second = within(popover).getByRole("button", {name: "Code font in Claude Code"});
+		const second = within(popover).getByRole("button", {name: "Code font size in General"});
 		fireEvent.mouseMove(second);
 		const rows = highlightedRows();
 		const notPrevented = fireEvent.mouseDown(second);
 
 		expect({rows, notPrevented, focused: document.activeElement === input}).toStrictEqual({
-			rows: marked(4),
+			rows: marked(3),
 			notPrevented: false,
 			focused: true,
 		});

@@ -178,9 +178,15 @@ export default function CustomizeDialogPanel({location, onNavigate}: CustomizeDi
 			{location.id === null ? (
 				// Upstream's pane frame: the header stays put and only the list below it scrolls.
 				<div className="flex h-full min-h-0 flex-1 flex-col pt-1">
+					{/* Upstream names the pane with an sr-only h2; the header shows the section tabs instead of a title. */}
+					<h2 className="sr-only">{section.label}</h2>
 					<CustomizeHeader
 						embedded
 						section={section}
+						onSectionSelect={(next) => {
+							// Upstream's header tabs replace the hash with the bare section (`#customize/skills`).
+							onNavigate(customizeHash({section: next, view: "discover"}), true);
+						}}
 						search={query === "" ? search : {...search, q: query}}
 						onSearchChange={(patch) => {
 							const {view, ...rest} = patch;

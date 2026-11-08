@@ -4,7 +4,7 @@ import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SettingsProvider} from "../src/components/settings-provider";
-import {GeneralSettings} from "../src/components/settings/settings-sections";
+import {GeneralSettings, NotificationsSettings} from "../src/components/settings/settings-sections";
 import {ThemeProvider} from "../src/components/theme-provider";
 import {installLocalStorage} from "./fake-storage";
 
@@ -22,6 +22,17 @@ async function renderGeneral() {
 		<ThemeProvider>
 			<SettingsProvider>
 				<GeneralSettings />
+			</SettingsProvider>
+		</ThemeProvider>,
+	);
+	await act(async () => {});
+}
+
+async function renderNotifications() {
+	render(
+		<ThemeProvider>
+			<SettingsProvider>
+				<NotificationsSettings />
 			</SettingsProvider>
 		</ThemeProvider>,
 	);
@@ -80,7 +91,7 @@ describe("General settings ▸ Appearance", () => {
 		stubNotification("granted");
 		await renderGeneral();
 
-		const appearance = screen.getByRole("heading", {name: "Appearance"}).closest("section");
+		const appearance = screen.getByRole("heading", {name: "General"}).closest("section");
 		const rows = [...(appearance?.querySelectorAll("[data-settings-row]") ?? [])];
 		expect({
 			order: rows.map((row) => row.getAttribute("data-settings-row")),
@@ -102,7 +113,7 @@ describe("General settings ▸ Appearance", () => {
 		stubNotification("granted");
 		await renderGeneral();
 
-		const appearance = screen.getByRole("heading", {name: "Appearance"}).closest("section");
+		const appearance = screen.getByRole("heading", {name: "General"}).closest("section");
 		const titles = (scope: HTMLElement) =>
 			within(scope)
 				.queryAllByRole("group")
@@ -273,10 +284,10 @@ describe("General settings ▸ Appearance", () => {
 	});
 });
 
-describe("General settings ▸ Notifications", () => {
+describe("Notifications settings", () => {
 	it("shows completions on and permission requests off by default once permission is granted", async () => {
 		stubNotification("granted");
-		await renderGeneral();
+		await renderNotifications();
 
 		expect({
 			completions: switchState("Response completions"),
@@ -289,7 +300,7 @@ describe("General settings ▸ Notifications", () => {
 
 	it("ends with a Notification sound select offering System sound / None in a 160px slot", async () => {
 		stubNotification("granted");
-		await renderGeneral();
+		await renderNotifications();
 
 		const section = document.querySelector<HTMLElement>("section#notifications");
 		if (section === null) throw new Error("no notifications section");
@@ -320,7 +331,7 @@ describe("General settings ▸ Notifications", () => {
 
 	it("saves None as the notification sound", async () => {
 		stubNotification("granted");
-		await renderGeneral();
+		await renderNotifications();
 
 		const row = screen.getByRole("group", {name: "Notification sound"});
 		fireEvent.click(within(row).getByRole("combobox"));
@@ -336,7 +347,7 @@ describe("General settings ▸ Notifications", () => {
 
 	it("shows both off until the browser grants permission, then asks on toggle", async () => {
 		const requestPermission = stubNotification("default");
-		await renderGeneral();
+		await renderNotifications();
 
 		const before = {
 			completions: switchState("Response completions"),
@@ -358,7 +369,7 @@ describe("General settings ▸ Notifications", () => {
 	it("migrates the old desktop notifications key into both new switches", async () => {
 		stubNotification("granted");
 		localStorage.setItem("ccp-desktop-notifications", "true");
-		await renderGeneral();
+		await renderNotifications();
 
 		expect({
 			completions: switchState("Response completions"),
@@ -373,7 +384,7 @@ describe("General settings ▸ Notifications", () => {
 
 	it("shows upstream's blocked copy and disables both switches when notifications are denied", async () => {
 		stubNotification("denied");
-		await renderGeneral();
+		await renderNotifications();
 
 		expect({
 			completions: switchState("Response completions"),
@@ -389,7 +400,7 @@ describe("General settings ▸ Notifications", () => {
 	});
 
 	it("tells the user to open its own tab when notifications can't be turned on here", async () => {
-		await renderGeneral();
+		await renderNotifications();
 
 		expect({
 			completions: switchState("Response completions"),
@@ -412,7 +423,7 @@ describe("General settings ▸ Notifications", () => {
 				requestPermission: async () => Promise.resolve("denied"),
 			}),
 		);
-		await renderGeneral();
+		await renderNotifications();
 		act(() => {
 			fireEvent.click(screen.getByRole("switch", {name: "Response completions"}));
 		});

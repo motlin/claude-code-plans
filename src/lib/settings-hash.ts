@@ -3,6 +3,7 @@ import {z} from "zod";
 /** Settings dialog tabs, in nav order. Upstream deep-links them as `#settings/<tab>[/<row>]`. */
 export const SettingsTabSchema = z.enum([
 	"general",
+	"notifications",
 	"usage",
 	"claude-code",
 	"transcript",

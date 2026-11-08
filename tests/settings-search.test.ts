@@ -31,14 +31,9 @@ describe("rankSettingsSections grouping", () => {
 					tab: "general",
 					rows: [
 						["interface-font", "Interface font"],
-						["transcript-text-size", "Transcript text size"],
-					],
-				},
-				{
-					tab: "claude-code",
-					rows: [
 						["code-font", "Code font"],
 						["code-font-size", "Code font size"],
+						["transcript-text-size", "Transcript text size"],
 					],
 				},
 			],
@@ -48,7 +43,7 @@ describe("rankSettingsSections grouping", () => {
 			"codefont",
 			[
 				{
-					tab: "claude-code",
+					tab: "general",
 					rows: [
 						["code-font", "Code font"],
 						["code-font-size", "Code font size"],
@@ -60,7 +55,7 @@ describe("rankSettingsSections grouping", () => {
 			"font code",
 			[
 				{
-					tab: "claude-code",
+					tab: "general",
 					rows: [
 						["code-font", "Code font"],
 						["code-font-size", "Code font size"],
@@ -71,14 +66,19 @@ describe("rankSettingsSections grouping", () => {
 		[
 			"font size",
 			[
-				{tab: "claude-code", rows: [["code-font-size", "Code font size"]]},
-				{tab: "general", rows: [["transcript-text-size", "Transcript text size"]]},
+				{
+					tab: "general",
+					rows: [
+						["code-font-size", "Code font size"],
+						["transcript-text-size", "Transcript text size"],
+					],
+				},
 			],
 		],
 		["dark mode", [{tab: "general", rows: [["theme", "Theme"]]}]],
 		// Upstream's Code font size search phrases.
-		["editor font size", [{tab: "claude-code", rows: [["code-font-size", "Code font size"]]}]],
-		["terminal font size", [{tab: "claude-code", rows: [["code-font-size", "Code font size"]]}]],
+		["editor font size", [{tab: "general", rows: [["code-font-size", "Code font size"]]}]],
+		["terminal font size", [{tab: "general", rows: [["code-font-size", "Code font size"]]}]],
 		["terse", [{tab: "claude-code", rows: [["output-style", "Output style"]]}]],
 		["response style", [{tab: "claude-code", rows: [["output-style", "Output style"]]}]],
 		// A keyword-only section hit has no rows.
@@ -226,15 +226,17 @@ describe("rankSettingsSections", () => {
 			"code",
 			[
 				// The nav renames Claude Code to Code, an exact name match.
+				{tab: "claude-code", score: 0, rows: []},
+				// The Code looks moved to Appearance (upstream GeneralCodeLooks).
 				{
-					tab: "claude-code",
-					score: 0,
+					tab: "general",
+					score: 6,
 					rows: [
 						["code-font", 1],
 						["code-font-size", 1],
 					],
 				},
-				{tab: "general", score: 6, rows: [["code-permission-requests", 1]]},
+				{tab: "notifications", score: 6, rows: [["code-permission-requests", 1]]},
 				{tab: "claude-config", score: 7, rows: [["claude-code-settings-files", 2]]},
 			],
 		],
@@ -288,10 +290,9 @@ describe("buildSettingsResultRows", () => {
 			[
 				{kind: "hit", tab: "general"},
 				{kind: "child", tab: "general", rowSlug: "interface-font", title: "Interface font"},
-				{kind: "child", tab: "general", rowSlug: "transcript-text-size", title: "Transcript text size"},
-				{kind: "hit", tab: "claude-code"},
-				{kind: "child", tab: "claude-code", rowSlug: "code-font", title: "Code font"},
-				{kind: "child", tab: "claude-code", rowSlug: "code-font-size", title: "Code font size"},
+				{kind: "child", tab: "general", rowSlug: "code-font", title: "Code font"},
+				{kind: "child", tab: "general", rowSlug: "code-font-size", title: "Code font size"},
+				{kind: "more", tab: "general", count: 1},
 			],
 		],
 		["theme", [{kind: "hit", tab: "general", via: "Theme", rowSlug: "theme"}]],
@@ -338,12 +339,18 @@ describe("buildSettingsResultRows", () => {
 			[
 				{kind: "hit", tab: "sessions", via: "Sessions page grouping", rowSlug: "sessions-page-grouping"},
 				{kind: "hit", tab: "setup"},
+				{kind: "hit", tab: "notifications", via: "Notification sound", rowSlug: "notification-sound"},
 				{kind: "hit", tab: "usage"},
 				{kind: "hit", tab: "transcript", via: "System banners", rowSlug: "system-banners"},
 				{kind: "hit", tab: "ai-features", via: "Summary button", rowSlug: "summary-button"},
 				{kind: "hit", tab: "application", via: "Shell tabs", rowSlug: "shell-tabs"},
 				{kind: "hit", tab: "general", via: "Transcript text size", rowSlug: "transcript-text-size"},
-				{kind: "hit", tab: "claude-code", via: "Code font size", rowSlug: "code-font-size"},
+				{
+					kind: "hit",
+					tab: "claude-code",
+					via: "Connect new sessions to Remote Control",
+					rowSlug: "connect-new-sessions-to-remote-control",
+				},
 				{
 					kind: "hit",
 					tab: "claude-config",

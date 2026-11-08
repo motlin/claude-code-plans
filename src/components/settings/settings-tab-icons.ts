@@ -1,4 +1,5 @@
 import {
+	Bell,
 	Code,
 	FileCog,
 	Gauge,
@@ -18,6 +19,7 @@ import type {CustomizeSection, SettingsTab} from "../../lib/settings-hash";
 /** The glyph shown before each Settings tab in the nav and in search-result breadcrumbs. */
 export const SETTINGS_TAB_ICONS = {
 	general: Settings,
+	notifications: Bell,
 	usage: Gauge,
 	"claude-code": Code,
 	transcript: ScrollText,

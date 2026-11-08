@@ -15,14 +15,12 @@ import {
 	type ComponentType,
 } from "react";
 import {DialogPopup} from "../ui/dialog-popup";
-import {customizeSectionLabels, settingsTabLabels} from "../../lib/schema-choices";
+import {customizeSectionLabels} from "../../lib/schema-choices";
 import {
-	CustomizeSectionSchema,
 	customizeHash,
 	parseCustomizeHash,
 	parseSettingsHash,
 	settingsHash,
-	SettingsTabSchema,
 	type SettingsTab,
 } from "../../lib/settings-hash";
 import {
@@ -31,6 +29,7 @@ import {
 	ClaudeCodeSettings,
 	ClaudeConfigSettings,
 	GeneralSettings,
+	NotificationsSettings,
 	SessionsSettings,
 	SetupSettings,
 	TranscriptSettings,
@@ -46,9 +45,9 @@ import {CDS_TAB_CLASS, CDS_TAB_LIST_CLASS} from "../ui/cds-tabs";
 import {DensityScope} from "../ui/density";
 import {DIALOG_BODY_CLASS} from "../ui/dialog-classes";
 import {
-	navMemberKey,
 	navRowFor,
 	navRowLabel,
+	SETTINGS_NAV_ROWS,
 	type SettingsNavMember,
 	type SettingsNavRow,
 	settingsNavGroups,
@@ -56,6 +55,7 @@ import {
 
 const TAB_PANELS = {
 	general: GeneralSettings,
+	notifications: NotificationsSettings,
 	usage: UsageSettings,
 	"claude-code": ClaudeCodeSettings,
 	transcript: TranscriptSettings,
@@ -85,34 +85,27 @@ export function CustomizeDialogPanel(props: CustomizeDialogPanelProps) {
 	return <Panel {...props} />;
 }
 
-type NavItem = SettingsNavMember;
-
-/** All local nav items; grouped below by kind while preserving each kind's relative order. */
-const NAV_ITEMS: readonly NavItem[] = SettingsTabSchema.options.flatMap((tab): NavItem[] =>
-	tab === "claude-code"
-		? [
-				{kind: "settings", tab},
-				...CustomizeSectionSchema.options.map((section): NavItem => ({kind: "customize", section})),
-			]
-		: [{kind: "settings", tab}],
-);
-
 /** The desktop nav's row groups (upstream's grouped nav: untitled groups split by separators). */
 const NAV_ROW_GROUPS = settingsNavGroups();
 
-function navItemKey(item: NavItem): string {
-	return navMemberKey(item);
-}
-
-function navItemLabel(item: NavItem): string {
-	return item.kind === "settings" ? settingsTabLabels[item.tab] : customizeSectionLabels[item.section];
-}
-
-/** Hover and focus handlers that warm the lazily loaded Customize panel before a customize item is chosen. */
-function navItemWarmers(item: NavItem) {
-	return item.kind === "customize"
+/** Hover and focus handlers that warm the lazily loaded Customize panel before a customize row is chosen. */
+function navRowWarmers(row: SettingsNavRow) {
+	return row.members[0].kind === "customize"
 		? {onPointerEnter: warmCustomizeDialogPanel, onFocus: warmCustomizeDialogPanel}
 		: {};
+}
+
+/** Upstream's row base `MV` (comfortable: h-list-row 32, gap-sm 12, px-sm 8, rounded 8) with the shadow-focus pair. */
+const NAV_ROW_CLASS =
+	"hit-row hit-row-main flex h-8 w-full items-center gap-3 rounded-r6 px-2 text-start text-body focus-visible:outline-hidden not-dark:focus-visible:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#257de0,0_0_6px_1px_#cde2fb] dark:focus-visible:shadow-[inset_0_0_0_1px_rgb(21_21_21),0_0_0_1px_rgb(37_125_224),0_0_6px_1px_rgb(24_79_149/0.6)]";
+
+/** Upstream S6's classes: `MV`, `pe-xs` unless the row stands for customize sections (`Ko`), then `Mc(active)`. */
+function navRowClass(row: SettingsNavRow, selected: boolean): string {
+	const end = row.members[0].kind === "customize" ? "" : " pe-1.5";
+	const state = selected
+		? "bg-fill-ghost-selected hover:layers-1-fill-ghost-hover font-medium text-primary"
+		: "text-secondary-control hover:bg-fill-ghost-hover hover:text-primary";
+	return `${NAV_ROW_CLASS}${end} ${state}`;
 }
 
 /**
@@ -126,11 +119,11 @@ function PhoneTabStrip({
 	isSelected,
 	onSelect,
 }: {
-	isSelected: (item: NavItem) => boolean;
-	onSelect: (item: NavItem) => void;
+	isSelected: (row: SettingsNavRow) => boolean;
+	onSelect: (row: SettingsNavRow) => void;
 }) {
 	const listRef = useRef<HTMLDivElement>(null);
-	const selectedItem = NAV_ITEMS.find(isSelected);
+	const selectedRow = SETTINGS_NAV_ROWS.find(isSelected);
 	const [edges, setEdges] = useState({atStart: true, atEnd: true});
 	const measure = useCallback(() => {
 		const list = listRef.current;
@@ -165,7 +158,7 @@ function PhoneTabStrip({
 	useEffect(() => {
 		const tab = listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]');
 		if (typeof tab?.scrollIntoView === "function") tab.scrollIntoView({block: "nearest", inline: "nearest"});
-	}, [selectedItem]);
+	}, [selectedRow]);
 
 	return (
 		<div data-cds="Tabs" data-orientation="horizontal" data-activation-direction="none" className="shrink-0 pb-3">
@@ -191,22 +184,23 @@ function PhoneTabStrip({
 						aria-orientation="horizontal"
 						className={`${CDS_TAB_LIST_CLASS} min-w-0 flex-1 overflow-x-auto overscroll-x-contain ps-2 [scrollbar-width:none]`}
 					>
-						{NAV_ITEMS.map((item) => {
-							const selected = isSelected(item);
+						{SETTINGS_NAV_ROWS.map((row) => {
+							const selected = isSelected(row);
 							return (
 								<button
-									key={navItemKey(item)}
+									key={row.testId}
 									type="button"
 									role="tab"
+									data-testid={row.testId}
 									aria-selected={selected}
 									data-active={selected ? "" : undefined}
-									{...navItemWarmers(item)}
+									{...navRowWarmers(row)}
 									onClick={() => {
-										onSelect(item);
+										onSelect(row);
 									}}
 									className={CDS_TAB_CLASS}
 								>
-									{navItemLabel(item)}
+									{navRowLabel(row)}
 								</button>
 							);
 						})}
@@ -353,14 +347,7 @@ export function SettingsDialog() {
 
 	// Upstream's phone layout (tab strip, no search) applies at ≤767px, not the sidebar sheet's 640px.
 	const phone = useMediaQuery(SETTINGS_PHONE_QUERY);
-	const isSelected = (item: NavItem) =>
-		item.kind === "settings" ? customize === null && item.tab === tab : item.section === customize?.section;
-	const selectItem = (item: NavItem) => {
-		if (item.kind === "settings") selectTab(item.tab);
-		// Upstream replaces the entry coming from a Settings tab but pushes one between customize sections.
-		else navigateHash(customizeHash({section: item.section}), customize === null);
-	};
-	const currentMember: NavItem =
+	const currentMember: SettingsNavMember =
 		customize === null ? {kind: "settings", tab} : {kind: "customize", section: customize.section};
 	// Upstream's standsFor: a row is current for every member, so Customize is current on any customize section.
 	const isRowSelected = (row: SettingsNavRow) => navRowFor(currentMember) === row;
@@ -391,6 +378,8 @@ export function SettingsDialog() {
 			{shownCustomize === null ? (
 				<SettingsTabContext.Provider value={shownTab}>
 					<SettingsFlashContext.Provider value={flash}>
+						{/* Upstream's panel opens with an sr-only h2 named by its nav row ("Appearance", "Code"…). */}
+						<h2 className="sr-only">{navRowLabel(navRowFor({kind: "settings", tab: shownTab}))}</h2>
 						<Panel />
 					</SettingsFlashContext.Provider>
 				</SettingsTabContext.Provider>
@@ -433,7 +422,7 @@ export function SettingsDialog() {
 									</h2>
 									{closeButton}
 								</div>
-								<PhoneTabStrip isSelected={isSelected} onSelect={selectItem} />
+								<PhoneTabStrip isSelected={isRowSelected} onSelect={selectRow} />
 								<div
 									aria-busy={switching || undefined}
 									className={`min-w-0 space-y-6 pt-2${pendingClass}`}
@@ -473,21 +462,19 @@ export function SettingsDialog() {
 																<button
 																	type="button"
 																	aria-current={selected ? "page" : undefined}
-																	{...navItemWarmers(first)}
+																	{...navRowWarmers(row)}
 																	onClick={() => {
 																		selectRow(row);
 																	}}
-																	className={`flex h-8 w-full shrink-0 items-center gap-3 rounded-r6 px-2 text-left text-body transition-colors focus-visible:outline-hidden not-dark:focus-visible:shadow-[inset_0_0_0_1px_#fcfcfb,0_0_0_1px_#257de0,0_0_6px_1px_#cde2fb] dark:focus-visible:shadow-[inset_0_0_0_1px_rgb(21_21_21),0_0_0_1px_rgb(37_125_224),0_0_6px_1px_rgb(24_79_149/0.6)] ${
-																		selected
-																			? "bg-fill-control font-medium text-primary"
-																			: "font-normal text-secondary hover:bg-fill-ghost-hover hover:text-primary"
-																	}`}
+																	className={navRowClass(row, selected)}
 																>
 																	<Icon
 																		aria-hidden="true"
-																		className="size-5 shrink-0 text-secondary"
+																		className="size-5 shrink-0 text-secondary-control"
 																	/>
-																	{navRowLabel(row)}
+																	<span className="min-w-0 flex-1 truncate">
+																		{navRowLabel(row)}
+																	</span>
 																</button>
 															</li>
 														);

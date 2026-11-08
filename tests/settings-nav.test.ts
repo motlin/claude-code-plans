@@ -14,7 +14,7 @@ describe("SETTINGS_NAV_ROWS", () => {
 	it("groups rows like upstream's bc(): account, claude, apps, more, with renamed Appearance, Customize and Code", () => {
 		expect(settingsNavGroups().map((group) => [group.group, group.rows.map(navRowLabel)])).toStrictEqual([
 			["account", ["Usage"]],
-			["claude", ["Appearance"]],
+			["claude", ["Appearance", "Notifications"]],
 			["apps", ["Customize", "Code", "Transcript", "Sessions"]],
 			["more", ["Application", "AI features", "Claude Config", "Setup"]],
 		]);
@@ -31,6 +31,7 @@ describe("SETTINGS_NAV_ROWS", () => {
 		expect(SETTINGS_NAV_ROWS.map((row) => [row.testId, row.members.map(navMemberKey)])).toStrictEqual([
 			["usage-settings", ["usage"]],
 			["general-settings", ["general"]],
+			["notifications-settings", ["notifications"]],
 			["customize-connectors-settings", ["customize-connectors", "customize-skills", "customize-plugins"]],
 			["claude-code-settings", ["claude-code"]],
 			["transcript-settings", ["transcript"]],

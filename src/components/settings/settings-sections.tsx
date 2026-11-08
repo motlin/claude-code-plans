@@ -940,7 +940,7 @@ function ResetAllSettings() {
 export function GeneralSettings() {
 	return (
 		<>
-			<SettingsSection title="Appearance">
+			<SettingsSection title="General">
 				<ThemeRow />
 				<InterfaceFontRow />
 				<TranscriptTextSizeRow />
@@ -952,10 +952,15 @@ export function GeneralSettings() {
 					settingKey="chromeHidden"
 				/>
 			</SettingsSection>
-			<NotificationsSection />
+			<CodeAppearanceSection />
 			<ResetAllSettings />
 		</>
 	);
+}
+
+/** Upstream's grouped Notifications row: its own panel, moved out of General. */
+export function NotificationsSettings() {
+	return <NotificationsSection />;
 }
 
 // Lazy so the Settings dialog, which the root mounts, keeps Shiki out of the entry bundle.
@@ -1002,11 +1007,12 @@ function CodeFontSizeRow() {
 	);
 }
 
+/** Upstream's GeneralCodeLooks: the "Code" section (`id=code-appearance`) on Appearance, after General. */
 function CodeAppearanceSection() {
 	const {settings, setSetting} = useSettings();
 
 	return (
-		<SettingsSection title="Code appearance">
+		<SettingsSection id="code-appearance" title="Code">
 			<div data-settings-row="code-theme" className="grid grid-cols-2 gap-4 py-3">
 				<div className="flex min-w-0 flex-col gap-2">
 					<ThemedCombobox
@@ -1278,7 +1284,6 @@ function RemoteControlSection() {
 export function ClaudeCodeSettings() {
 	return (
 		<>
-			<CodeAppearanceSection />
 			<AppearanceSection />
 			<RemoteControlSection />
 			<LocalSessionsSection />

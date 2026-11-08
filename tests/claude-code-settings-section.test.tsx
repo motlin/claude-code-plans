@@ -148,7 +148,7 @@ describe("Claude Code settings ▸ Sessions", () => {
 				description: r.querySelector("[data-settings-desc]")?.textContent,
 			})),
 		}).toStrictEqual({
-			sections: ["code-appearance", "appearance", "remote-control", "local-sessions"],
+			sections: ["appearance", "remote-control", "local-sessions"],
 			heading: "Sessions",
 			rows: [
 				{

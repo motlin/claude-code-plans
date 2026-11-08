@@ -28,7 +28,8 @@ const settings = (tab: SettingsTab): SettingsNavMember => ({kind: "settings", ta
 const customize = (section: CustomizeSection): SettingsNavMember => ({kind: "customize", section});
 
 /**
- * The Settings nav rows in order, as upstream's grouped nav: Usage; Appearance (General renamed); then
+ * The Settings nav rows in order, as upstream's grouped nav: Usage; Appearance (General renamed) and
+ * Notifications; then
  * Customize (one row for Connectors, Skills and Plugins), Code (Claude Code renamed) and the local
  * Claude Code session extras; then the local application rows.
  */
@@ -41,6 +42,7 @@ export const SETTINGS_NAV_ROWS: readonly SettingsNavRow[] = [
 		nameWhenAlone: true,
 		testId: "general-settings",
 	},
+	{group: "claude", members: [settings("notifications")], testId: "notifications-settings"},
 	{
 		group: "apps",
 		members: [customize("connectors"), customize("skills"), customize("plugins")],

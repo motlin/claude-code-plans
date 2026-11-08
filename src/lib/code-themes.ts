@@ -2,7 +2,7 @@ import type {HighlighterCore, ThemeRegistration} from "@shikijs/core";
 import {z} from "zod";
 
 /*
- * Settings ▸ Claude Code ▸ Code appearance, as on claude.ai/code: 11 light and
+ * Settings ▸ Appearance ▸ Code, as on claude.ai/code: 11 light and
  * 19 dark Shiki themes, defaulting to the Claude pair.
  */
 export const CodeThemeLightSchema = z.enum([
