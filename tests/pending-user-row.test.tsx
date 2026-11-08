@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {HeldUserRow, SendingUserRow} from "../src/components/pending-user-row";
@@ -107,5 +107,22 @@ describe("HeldUserRow", () => {
 			clone: "Waiting for the terminal to reconnect…",
 			text: "Waiting for the terminal to reconnect…",
 		});
+	});
+});
+
+describe("HeldUserRow roving", () => {
+	it("makes Withdraw the toolbar's stop and keeps an arrow on it, as upstream's RC wraps a one-item bar", () => {
+		render(<HeldUserRow prompt="Fix Alice's test" reconnecting={false} onWithdraw={() => undefined} />);
+		const withdraw = screen.getByRole("button", {name: "Withdraw message"});
+		act(() => {
+			withdraw.focus();
+		});
+		const notPrevented = fireEvent.keyDown(withdraw, {key: "ArrowRight"});
+
+		expect({
+			tabIndex: withdraw.getAttribute("tabindex"),
+			focused: document.activeElement === withdraw,
+			prevented: !notPrevented,
+		}).toStrictEqual({tabIndex: "0", focused: true, prevented: true});
 	});
 });

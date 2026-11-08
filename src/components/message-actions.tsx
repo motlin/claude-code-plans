@@ -96,7 +96,7 @@ const NOTHING_TO_COPY = "This message has no text to copy.";
 
 /**
  * Inside a roving bar: items render the tab index the roving hook would elect at rest (the first item 0, the rest
- * -1), so the hook has nothing to rewrite after mount. Outside one (the waiting row) they keep the native tab order.
+ * -1), so the hook has nothing to rewrite after mount. Outside one they keep the native tab order.
  */
 const RovingBarContext = createContext(false);
 
@@ -648,36 +648,53 @@ export function WaitingMessageActions({
 }) {
 	const panels = useFizzyLake("panels");
 	const hoverOnly = stacked && panels;
+	const unreadAtRest = stacked && !panels;
+	// Upstream's waiting bar is a roving `n0` MessageActions toolbar too, with `RC`'s empty default options.
+	const {ref, onFocus, onKeyDown} = useRovingToolbar();
 	return (
 		<div
+			ref={ref}
 			data-message-actions
+			data-cds="MessageActions"
+			data-reveal="fade"
 			{...(hoverOnly ? {} : {"data-always-visible": ""})}
 			role="toolbar"
 			aria-label="Message actions"
+			tabIndex={-1}
 			data-testid="user-message-actions"
 			data-size="xs"
 			className="flex items-center select-none"
+			onFocus={onFocus}
+			onKeyDown={onKeyDown}
 		>
-			{stacked && !panels && (
-				<span
-					data-testid="epitaxy-receipt-at-rest"
-					className="text-body text-ink-muted tabular-nums flex min-h-6 items-center self-center ps-[5px] epitaxy-hint-fade-in"
-				>
-					<ReceiptMark
-						label="Unread"
-						icon={<Check aria-hidden className={ICON_CLASS} />}
-						className="opacity-50 hover:opacity-100 focus-visible:opacity-100 data-[popup-open]:opacity-100"
-						tabIndex={0}
-					/>
-				</span>
-			)}
-			<div data-cds-reveal-on-hover className={REVEAL_ON_HOVER_CLASS}>
-				{hoverOnly && hostHasIt && <DeliveredReceipt />}
-				<CopyAction text={text} />
-				<RewindAction message={undefined} />
-				{onCancel !== undefined && <CancelEditAction onCancel={onCancel} />}
-			</div>
+			<RovingBarContext.Provider value>
+				{unreadAtRest && <UnreadReceipt />}
+				<div data-cds-reveal-on-hover className={REVEAL_ON_HOVER_CLASS}>
+					{hoverOnly && hostHasIt && <DeliveredReceipt />}
+					<CopyAction text={text} first={!unreadAtRest} />
+					<RewindAction message={undefined} />
+					{onCancel !== undefined && <CancelEditAction onCancel={onCancel} />}
+				</div>
+			</RovingBarContext.Provider>
 			{children}
 		</div>
+	);
+}
+
+/** Upstream's at-rest "Unread" receipt on a stacked waiting row without panels: the bar's first item. */
+function UnreadReceipt() {
+	const tabIndex = useRovingTabIndex(true);
+	return (
+		<span
+			data-testid="epitaxy-receipt-at-rest"
+			className="text-body text-ink-muted tabular-nums flex min-h-6 items-center self-center ps-[5px] epitaxy-hint-fade-in"
+		>
+			<ReceiptMark
+				label="Unread"
+				icon={<Check aria-hidden className={ICON_CLASS} />}
+				className="opacity-50 hover:opacity-100 focus-visible:opacity-100 data-[popup-open]:opacity-100"
+				tabIndex={tabIndex}
+			/>
+		</span>
 	);
 }

@@ -293,7 +293,6 @@ describe("SessionTitlebar layout", () => {
 		if (lead === null || trail === null) throw new Error("titlebar lead/trail missing");
 
 		expect({
-			height: titlebar.classList.contains("h-8"),
 			lead: controlsIn(lead),
 			pills: [...lead.querySelectorAll("[data-origin-pill]")].map(
 				(pill) => `${pill.getAttribute("data-origin-pill")}:${pill.textContent}`,
@@ -302,7 +301,6 @@ describe("SessionTitlebar layout", () => {
 			trailChildren: [...trail.children].map((child) => child.getAttribute("aria-label")),
 			trailFollowsLead: Boolean(lead.compareDocumentPosition(trail) & Node.DOCUMENT_POSITION_FOLLOWING),
 		}).toStrictEqual({
-			height: true,
 			lead: [
 				"Parent session",
 				`${TITLE}, rename session`,
@@ -365,19 +363,17 @@ describe("SessionTitlebar layout", () => {
 });
 
 describe("SessionTitlebar chrome", () => {
-	it("keeps the borderless bar and omits a repository pill without known PR metadata", async () => {
+	it("keeps the borderless sticky header and omits a repository pill without known PR metadata", async () => {
 		const titlebar = await renderTitlebar(baseDetail);
 		const title = screen.getByRole("button", {name: `${TITLE}, rename session`});
 		const headerClasses = SESSION_STICKY_HEADER_CLASS.split(" ");
 
 		expect({
-			height: titlebar.classList.contains("h-8"),
 			titleType: ["text-[13px]/[19px]", "font-medium"].every((name) => title.classList.contains(name)),
 			repositoryPill: titlebar.querySelector("[data-origin-pill='repository']"),
 			headerBorder: headerClasses.filter((name) => /^border(-|$)/.test(name)),
 			headerBottomPadding: headerClasses.filter((name) => /^(pb|py|p)-/.test(name)),
 		}).toStrictEqual({
-			height: true,
 			titleType: true,
 			repositoryPill: null,
 			headerBorder: [],
@@ -475,7 +471,7 @@ describe("SessionTitlebar title and chevron", () => {
 		}).toStrictEqual({
 			title: [
 				"comfortable:-mx-3",
-				"comfortable:h-8",
+				"comfortable:h-[var(--cds-h-control)]",
 				"comfortable:px-3",
 				"comfortable:rounded-r6",
 				"comfortable:text-[14px]/[20px]",
@@ -866,5 +862,188 @@ describe("titlebar icon button press and focus (upstream cds-btn-squish + focus 
 			icon: ["btn-squish", "focus-visible:shadow-focus"],
 			rail: ["btn-squish", "focus-visible:shadow-focus"],
 		});
+	});
+});
+
+describe("SessionTitlebar Session tools toolbar (upstream cds Toolbar with tu roving)", () => {
+	const TITLE_NAME = `${TITLE}, rename session`;
+	const CHEVRON_NAME = `More options for ${TITLE}`;
+
+	function trailSlots() {
+		return {
+			paneToggles: (
+				<>
+					<button type="button" aria-label="Hide session rail" />
+					<div data-titlebar-toggles="">
+						<button type="button" aria-label="Changes" />
+						<button type="button" aria-label="Files" />
+					</div>
+				</>
+			),
+			viewOptions: <button type="button" aria-label="View options" />,
+		};
+	}
+
+	function stops(container: Element): string[] {
+		return [...container.querySelectorAll('[tabindex="0"]')].map(accessibleName);
+	}
+
+	it("names the whole row the Session tools toolbar holding the title, chevron, rail, Changes, Files and View options", async () => {
+		const titlebar = await renderTitlebar(baseDetail, trailSlots());
+		const toolbar = screen.getByRole("toolbar", {name: "Session tools"});
+
+		expect({
+			same: toolbar === titlebar,
+			cds: toolbar.getAttribute("data-cds"),
+			rootTabIndex: toolbar.getAttribute("tabindex"),
+			controls: controlsIn(toolbar),
+			focusRing: [
+				"outline-none",
+				"focus-visible:outline-hidden",
+				"forced-colors:focus-visible:-outline-offset-2",
+				"focus-visible:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent,Highlight)]",
+			].every((name) => toolbar.classList.contains(name)),
+		}).toStrictEqual({
+			same: true,
+			cds: "Toolbar",
+			rootTabIndex: null,
+			controls: [TITLE_NAME, CHEVRON_NAME, "Hide session rail", "Changes", "Files", "View options"],
+			focusRing: true,
+		});
+	});
+
+	it("is one tab stop, the title (firstUntilFocused), with every other item at -1", async () => {
+		const titlebar = await renderTitlebar(baseDetail, trailSlots());
+
+		expect({
+			stops: stops(titlebar),
+			chevron: screen.getByRole("button", {name: CHEVRON_NAME}).getAttribute("tabindex"),
+			viewOptions: screen.getByRole("button", {name: "View options"}).getAttribute("tabindex"),
+		}).toStrictEqual({stops: [TITLE_NAME], chevron: "-1", viewOptions: "-1"});
+	});
+
+	it("leads with the Parent session link on a subagent transcript", async () => {
+		const titlebar = await renderTitlebar({...baseDetail, parentSessionId: PARENT_ID}, trailSlots());
+
+		expect(stops(titlebar)).toStrictEqual(["Parent session"]);
+	});
+
+	it("roves with ArrowRight, End and Home", async () => {
+		await renderTitlebar(baseDetail, trailSlots());
+		const title = screen.getByRole("button", {name: TITLE_NAME});
+		act(() => {
+			title.focus();
+		});
+		fireEvent.keyDown(title, {key: "ArrowRight"});
+		const afterRight = accessibleName(document.activeElement ?? document.body);
+		fireEvent.keyDown(document.activeElement ?? document.body, {key: "End"});
+		const afterEnd = accessibleName(document.activeElement ?? document.body);
+		fireEvent.keyDown(document.activeElement ?? document.body, {key: "Home"});
+		const afterHome = accessibleName(document.activeElement ?? document.body);
+
+		expect({afterRight, afterEnd, afterHome}).toStrictEqual({
+			afterRight: CHEVRON_NAME,
+			afterEnd: "View options",
+			afterHome: TITLE_NAME,
+		});
+	});
+
+	it("leaves ArrowLeft to the rename input, keeping focus and the caret there", async () => {
+		await renderTitlebar(baseDetail, trailSlots());
+		fireEvent.click(screen.getByRole("button", {name: TITLE_NAME}));
+		await flush();
+		const input = screen.getByRole("textbox");
+		act(() => {
+			input.focus();
+		});
+		const notPrevented = fireEvent.keyDown(input, {key: "ArrowLeft"});
+
+		expect({focused: document.activeElement === input, notPrevented}).toStrictEqual({
+			focused: true,
+			notPrevented: true,
+		});
+	});
+
+	it("hands the stop to Files when Changes folds into View options while it is the stop", async () => {
+		const titlebar = await renderTitlebar(baseDetail, {paneToggles: <FoldProbe />, railToggleFoldable: true});
+		const changes = screen.getByRole("button", {name: "Changes"});
+		act(() => {
+			changes.focus();
+			changes.blur();
+		});
+		await flush();
+		resizeTitlebar(500);
+		resizeTitlebar(300);
+		resizeTitlebar(260);
+		await flush();
+
+		expect({hidden: screen.getByTestId("hidden").textContent, stops: stops(titlebar)}).toStrictEqual({
+			hidden: "2",
+			stops: ["Files"],
+		});
+	});
+});
+
+describe("SessionTitlebar toolbar geometry (upstream Toolbar dividers and tokens)", () => {
+	const PADDED = ["flex", "items-center", "gap-1", "px-[var(--cds-toolbar-pad-inline,0px)]"];
+	const INSIDE = [
+		"relative",
+		"pb-[calc(var(--cds-toolbar-pad-block,0.25rem)_+_var(--cds-toolbar-strip,0px))]",
+		"after:pointer-events-none",
+		"after:absolute",
+		"after:inset-x-0",
+		"after:bottom-0",
+		"after:border-b-[length:var(--cds-toolbar-line,0px)]",
+		"after:border-[color:var(--color-border-line)]",
+	];
+	const LOOK = [
+		"min-h-[min(var(--cds-h-control,0px)_+_2_*_var(--cds-toolbar-pad-block,0.25rem),var(--cds-toolbar-line,0px)_*_1000)]",
+		"border-[color:var(--color-border-line)]",
+		"border-b-[length:var(--cds-toolbar-line,0px)]",
+		"pb-[calc(var(--cds-toolbar-pad-block,0.25rem)_-_var(--cds-toolbar-line,0px))]",
+	];
+
+	function has(element: Element, names: readonly string[]) {
+		return names.filter((name) => element.classList.contains(name));
+	}
+
+	it("draws the inside divider with padded geometry under panels, without a fixed height", async () => {
+		const titlebar = await renderTitlebar(baseDetail);
+
+		expect({
+			padded: has(titlebar, PADDED),
+			top: has(titlebar, ["pt-[var(--cds-toolbar-pad-block,0.25rem)]"]),
+			inside: has(titlebar, INSIDE),
+			look: has(titlebar, LOOK),
+			flush: titlebar.getAttribute("data-flush"),
+			fixedHeight: titlebar.classList.contains("h-8"),
+		}).toStrictEqual({
+			padded: PADDED,
+			top: ["pt-[var(--cds-toolbar-pad-block,0.25rem)]"],
+			inside: INSIDE,
+			look: [],
+			flush: null,
+			fixedHeight: false,
+		});
+	});
+
+	it("uses the flush look divider without panels", async () => {
+		const titlebar = await renderTitlebar(baseDetail, {fizzyLake: ["color", "type"]});
+
+		expect({
+			padInline: titlebar.classList.contains("px-[var(--cds-toolbar-pad-inline,0px)]"),
+			inside: has(titlebar, INSIDE.slice(1)),
+			look: has(titlebar, LOOK),
+			flush: titlebar.getAttribute("data-flush"),
+			fixedHeight: titlebar.classList.contains("h-8"),
+		}).toStrictEqual({padInline: false, inside: [], look: LOOK, flush: "", fixedHeight: false});
+	});
+
+	it("gives the row's lead and trail upstream's min-h-control", async () => {
+		const titlebar = await renderTitlebar(baseDetail, {withSlots: true});
+
+		expect(
+			[...titlebar.children].map((child) => child.classList.contains("min-h-[var(--cds-h-control)]")),
+		).toStrictEqual([true, true]);
 	});
 });

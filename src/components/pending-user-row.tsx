@@ -1,6 +1,7 @@
 import {X} from "lucide-react";
 import {useState, type ReactNode} from "react";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
+import {useRovingToolbar} from "../lib/use-roving-toolbar";
 import {shimmerPhaseDelay} from "../lib/shimmer";
 import {ShimmerText} from "./shimmer-text";
 
@@ -40,10 +41,14 @@ export function HeldUserRow({
 	reconnecting: boolean;
 	onWithdraw: () => void;
 }) {
+	const {ref, onFocus, onKeyDown} = useRovingToolbar();
 	return (
 		<PendingUserRowShell prompt={prompt} rowClass="" deliveryStatus="held">
 			{/* Upstream's `tE`: an always-visible MessageActions toolbar whose X sits at the end under a right-hand bubble. */}
 			<div
+				ref={ref}
+				onFocus={onFocus}
+				onKeyDown={onKeyDown}
 				data-cds="MessageActions"
 				data-reveal="fade"
 				data-always-visible=""

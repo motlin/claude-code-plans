@@ -12,10 +12,11 @@ import {
 	Tag,
 	Users,
 } from "lucide-react";
-import type {ReactNode} from "react";
+import {type ReactNode, useCallback} from "react";
 
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {foldBudget} from "../lib/titlebar-fold";
+import {TOOLBAR_ROVING_OPTIONS, useRovingToolbar} from "../lib/use-roving-toolbar";
 
 import {useSessionRename} from "../hooks/use-session-rename";
 import {herdrPanesQueryOptions} from "../lib/api/herdr";
@@ -53,7 +54,26 @@ import {
 import {Tooltip} from "./ui/tooltip";
 
 const TITLE_CLASS =
-	"-mx-2 h-6 min-w-0 cursor-text truncate rounded-r5 border-0 bg-transparent px-2 text-left text-[13px]/[19px] font-medium text-primary select-none hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus comfortable:-mx-3 comfortable:h-8 comfortable:px-3 comfortable:rounded-r6 comfortable:text-[14px]/[20px]";
+	"-mx-2 h-6 min-w-0 cursor-text truncate rounded-r5 border-0 bg-transparent px-2 text-left text-[13px]/[19px] font-medium text-primary select-none hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus comfortable:-mx-3 comfortable:h-[var(--cds-h-control)] comfortable:px-3 comfortable:rounded-r6 comfortable:text-[14px]/[20px]";
+
+/* Upstream `qh`: the toolbar root's ring, shown when focus parks on it after losing the focused item. */
+const TOOLBAR_FOCUS_RING_CLASS =
+	"outline-none focus-visible:outline-hidden forced-colors:focus-visible:-outline-offset-2 focus-visible:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent,Highlight)]";
+
+/*
+ * Upstream `Y2`'s geometry (`Am`/`Qn`): padded under panels with the `inside` divider (a strip of padding and a
+ * `--cds-toolbar-line` hairline drawn by `::after`), flush with the `look` divider otherwise. The negative inline
+ * margin stands in for upstream's `epitaxy-titlebar` `-ms-2 -me-2`, so the content keeps its place as the pad grows.
+ */
+const TOOLBAR_PADDED_CLASS =
+	"flex items-center gap-1 px-[var(--cds-toolbar-pad-inline,0px)] -mx-[var(--cds-toolbar-pad-inline,0px)] pt-[var(--cds-toolbar-pad-block,0.25rem)]";
+const TOOLBAR_FLUSH_CLASS = "flex items-center gap-1 pt-[var(--cds-toolbar-pad-block,0.25rem)]";
+const TOOLBAR_INSIDE_CLASS =
+	"relative pb-[calc(var(--cds-toolbar-pad-block,0.25rem)_+_var(--cds-toolbar-strip,0px))] after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:border-b-[length:var(--cds-toolbar-line,0px)] after:border-[color:var(--color-border-line)] [[data-cds=Panel]>&]:after:border-b-0 [[data-cds=Panel]>.cds-root>&]:after:border-b-0";
+/* Upstream `WE` gains `min-h-control` under the `inside` divider; local has no wrapper, so the lead and trail carry it. */
+const CONTROL_ROW_CLASS = "min-h-[var(--cds-h-control)]";
+const TOOLBAR_LOOK_CLASS =
+	"relative min-h-[min(var(--cds-h-control,0px)_+_2_*_var(--cds-toolbar-pad-block,0.25rem),var(--cds-toolbar-line,0px)_*_1000)] border-[color:var(--color-border-line)] border-b-[length:var(--cds-toolbar-line,0px)] pb-[calc(var(--cds-toolbar-pad-block,0.25rem)_-_var(--cds-toolbar-line,0px))]";
 
 /* Upstream `MY`'s chevron: `lu("text-secondary")`, where `lu = Hj` drops the ink under fizzy-lake panels and the ghost button's text-primary shows. */
 function chevronClass(panels: boolean): string {
@@ -365,24 +385,41 @@ export function SessionTitlebar({
 	const menuRename = useRenameAfterMenuClose(rename.startEditing);
 	const contextRename = useRenameAfterMenuClose(rename.startEditing);
 	const {
-		ref,
+		ref: foldRef,
 		hiddenCount,
 		pillsCompact: compact,
 	} = useTitlebarFold(foldBudget({railToggleFoldable, hiddenCount: 0}).maxHidden);
 	const modelLabel = formatModelName(data.model);
 	const repositoryName = data.pr?.repository.slice(data.pr.repository.lastIndexOf("/") + 1).trim();
+	const roving = useRovingToolbar(TOOLBAR_ROVING_OPTIONS);
+	const rovingRef = roving.ref;
+	const ref = useCallback(
+		(element: HTMLDivElement | null) => {
+			foldRef.current = element;
+			rovingRef(element);
+		},
+		[foldRef, rovingRef],
+	);
 
 	return (
+		/* Upstream's header `t1` renders the row as the cds Toolbar (`Y2`) labelled "Session tools" with the `tu` roving options. */
+		// oxlint-disable-next-line jsx-a11y/interactive-supports-focus -- upstream's root has no tabindex; the roving hook keeps one item at 0 and adds 0 to the root only while focus parks on it
 		<div
 			ref={ref}
+			role="toolbar"
+			aria-label="Session tools"
+			data-cds="Toolbar"
+			onFocus={roving.onFocus}
+			onKeyDown={roving.onKeyDown}
+			{...(panels ? {} : {"data-flush": ""})}
 			data-testid="session-titlebar"
 			data-perf-region="header"
-			className="relative flex h-8 min-w-0 items-center"
+			className={`${panels ? `${TOOLBAR_PADDED_CLASS} ${TOOLBAR_INSIDE_CLASS}` : `${TOOLBAR_FLUSH_CLASS} ${TOOLBAR_LOOK_CLASS}`} ${TOOLBAR_FOCUS_RING_CLASS} min-w-0`}
 		>
 			<div
 				data-titlebar-lead=""
 				{...(compact ? {"data-pills-compact": ""} : {})}
-				className="group/lead flex min-w-0 items-center"
+				className={`group/lead flex min-w-0 items-center ${panels ? CONTROL_ROW_CLASS : ""}`}
 			>
 				{/* Upstream's lead spacer at every width, max(0px, 1rem - tiles-padding - tiles-border): 7px, so the title text clears the chat card edge (x=48 at 390). */}
 				<span aria-hidden className="w-[7px] shrink-0" />
@@ -533,7 +570,7 @@ export function SessionTitlebar({
 			</div>
 			<div
 				data-titlebar-trail=""
-				className="relative ml-auto flex shrink-0 items-center gap-1 pl-6 text-secondary"
+				className={`relative ml-auto flex shrink-0 items-center gap-1 pl-6 text-secondary ${panels ? CONTROL_ROW_CLASS : ""}`}
 			>
 				<TitlebarHiddenCountContext.Provider value={hiddenCount}>
 					{paneToggles}

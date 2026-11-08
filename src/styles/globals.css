@@ -128,6 +128,29 @@
 	--cds-toolbar-line: 1px;
 }
 
+/* Upstream's cds Toolbar tokens (.cds-root base, then the shared-styles panels rules, read 2026-11-03):
+   the panels comfortable pads apply on every pointer; the strip and the 28px icon box are fine-pointer only.
+   The base values sit in the :root block below. */
+:is(
+	[data-cds-fizzy-lake~="panels"][data-density="comfortable"],
+	[data-cds-fizzy-lake~="panels"] [data-density="comfortable"]
+) {
+	--cds-toolbar-pad-block: calc(0.5rem * var(--cds-rem-scale, 1));
+	--cds-toolbar-pad-inline: calc(0.5rem * var(--cds-rem-scale, 1));
+	--cds-toolbar-icon-box: calc(2rem * var(--cds-rem-scale, 1));
+}
+@media (hover: hover) and (pointer: fine), (hover: hover) and (pointer: none) {
+	:root[data-cds-fizzy-lake~="panels"] {
+		--cds-toolbar-strip: 1px;
+	}
+	:is(
+		[data-cds-fizzy-lake~="panels"][data-density="comfortable"],
+		[data-cds-fizzy-lake~="panels"] [data-density="comfortable"]
+	) {
+		--cds-toolbar-icon-box: calc(1.75rem * var(--cds-rem-scale, 1));
+	}
+}
+
 /* Fizzy-lake `type` rollout: upstream `.cds-root:is([data-cds-fizzy-lake~=type], …)`
    (dumps/upstream-survey-root-vars.css). */
 :root[data-cds-fizzy-lake~="type"] {
@@ -405,6 +428,13 @@ html[data-interface-font="dyslexic"] {
 :root {
 	/* Upstream .cds-root control height: the shell is a comfortable context (see [data-density] below). */
 	--cds-h-control: calc(2rem * var(--cds-rem-scale, 1));
+	/* Upstream .cds-root toolbar tokens; the fizzy-lake panels toolbar rules earlier in this file override them. */
+	--cds-toolbar-pad-block: calc(0.25rem * var(--cds-rem-scale, 1));
+	--cds-toolbar-pad-inline: calc(0rem * var(--cds-rem-scale, 1));
+	--cds-toolbar-title-pad: calc(0.25rem * var(--cds-rem-scale, 1));
+	--cds-toolbar-icon-box: calc(0rem * var(--cds-rem-scale, 1));
+	--cds-toolbar-line: 0px;
+	--cds-toolbar-strip: 0px;
 	/* Upstream .cds-root[data-density=comfortable] --cds-icon: the size-icon box and `auto` Icon size. */
 	--cds-icon: calc(1.25rem * var(--cds-rem-scale, 1));
 	/* Upstream .cds-root motion tokens: the SegmentedControl thumb FLIP reads both (src/lib/segmented-flip.ts). */

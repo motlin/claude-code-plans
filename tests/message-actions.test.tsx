@@ -1467,3 +1467,61 @@ describe("pointer-forked receipt mark (user-row-read-receipt T1)", () => {
 		}).toStrictEqual({label: true, hasPopup: false});
 	});
 });
+
+describe("waiting row toolbar roving (upstream n0 MessageActions with RC defaults)", () => {
+	function stopsIn(root: Element): string[] {
+		return [...root.querySelectorAll('[tabindex="0"]')].map(
+			(element) => element.getAttribute("aria-label") ?? element.textContent,
+		);
+	}
+
+	function activeLabel(): string | null {
+		return document.activeElement?.getAttribute("aria-label") ?? null;
+	}
+
+	it("makes a stacked non-panels waiting bar one roving stop, the Unread receipt, through Copy to Send now", () => {
+		const {container} = render(
+			<PanelsOff>
+				<WaitingMessageActions text="two" stacked onCancel={() => undefined}>
+					<button type="button" aria-label="Send now" />
+				</WaitingMessageActions>
+			</PanelsOff>,
+		);
+		const toolbar = container.querySelector<HTMLElement>("[role=toolbar]")!;
+		const unread = button(container, "Unread");
+		const stops = stopsIn(toolbar);
+		act(() => {
+			unread.focus();
+		});
+		fireEvent.keyDown(unread, {key: "ArrowRight"});
+		const afterRight = activeLabel();
+		fireEvent.keyDown(document.activeElement!, {key: "End"});
+		const afterEnd = activeLabel();
+
+		expect({
+			stops,
+			afterRight,
+			afterEnd,
+			cds: toolbar.getAttribute("data-cds"),
+			reveal: toolbar.getAttribute("data-reveal"),
+			tabIndex: toolbar.getAttribute("tabindex"),
+		}).toStrictEqual({
+			stops: ["Unread"],
+			afterRight: "Copy",
+			afterEnd: "Send now",
+			cds: "MessageActions",
+			reveal: "fade",
+			tabIndex: "-1",
+		});
+	});
+
+	it("makes Copy the single stop on the head waiting row", () => {
+		const {container} = render(
+			<WaitingMessageActions text="one">
+				<button type="button" aria-label="Send now" />
+			</WaitingMessageActions>,
+		);
+
+		expect(stopsIn(container.querySelector("[role=toolbar]")!)).toStrictEqual(["Copy"]);
+	});
+});
