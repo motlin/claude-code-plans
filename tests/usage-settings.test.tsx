@@ -311,17 +311,23 @@ describe("UsagePanel", () => {
 		expect(item?.hasAttribute("data-settings-item")).toBe(true);
 		expect(item?.closest("section")?.className).toBe("mt-2");
 
-		const link = screen.getByRole("link", {name: "Learn more about usage limits(opens in new tab)"});
+		const link = screen.getByRole("link", {
+			name: "Learn more about usage limits",
+			description: "(opens in new tab)",
+		});
+		const hint = link.querySelector("span.sr-only[hidden]");
 		expect({
 			href: link.getAttribute("href"),
 			target: link.getAttribute("target"),
 			rel: link.getAttribute("rel"),
 			wrapper: link.parentElement?.className,
+			describedByHint: hint !== null && hint.id === link.getAttribute("aria-describedby"),
 		}).toStrictEqual({
 			href: "https://support.claude.com/en/articles/11647753-understanding-usage-and-length-limits",
 			target: "_blank",
 			rel: "noopener",
 			wrapper: "flex flex-col items-start gap-2 text-footnote",
+			describedByHint: true,
 		});
 	});
 
@@ -338,7 +344,10 @@ describe("UsagePanel", () => {
 
 		expect(screen.queryByRole("button", {name: "Refresh"})).toBeNull();
 		expect(screen.queryByText(/^Last updated/)).toBeNull();
-		expect(screen.getByRole("link", {name: "Learn more about usage limits(opens in new tab)"}).tagName).toBe("A");
+		expect(
+			screen.getByRole("link", {name: "Learn more about usage limits", description: "(opens in new tab)"})
+				.tagName,
+		).toBe("A");
 	});
 });
 

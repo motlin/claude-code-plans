@@ -439,15 +439,17 @@ describe("Appearance settings", () => {
 			</FizzyLakeContext.Provider>,
 		);
 
-		const link = screen.getByRole("link", {name: /Font licenses/});
+		const link = screen.getByRole("link", {name: "Font licenses", description: "(opens in new tab)"});
 		const desc = screen.getByRole("group", {name: "Interface font"}).querySelector("[data-settings-desc]");
+		const span = link.querySelector(".sr-only[hidden]");
 		expect({
 			link: {
 				href: link.getAttribute("href"),
 				target: link.getAttribute("target"),
 				rel: link.getAttribute("rel"),
 				text: link.textContent,
-				srOnly: link.querySelector(".sr-only")?.textContent ?? null,
+				srOnly: span?.textContent ?? null,
+				describedBy: span !== null && link.getAttribute("aria-describedby") === span.id,
 			},
 			desc: desc === null ? null : {className: desc.className, text: desc.textContent},
 		}).toStrictEqual({
@@ -457,6 +459,7 @@ describe("Appearance settings", () => {
 				rel: "noopener",
 				text: "Font licenses(opens in new tab)",
 				srOnly: "(opens in new tab)",
+				describedBy: true,
 			},
 			desc: {
 				className: "text-body text-[var(--settings-muted)]",

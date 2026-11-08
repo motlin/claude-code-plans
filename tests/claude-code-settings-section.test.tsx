@@ -189,19 +189,25 @@ describe("Claude Code settings ▸ Sessions", () => {
 		await renderTab();
 		await settled();
 
-		const link = within(row("allow-bypass-permissions-mode")).getByRole("link");
+		const link = within(row("allow-bypass-permissions-mode")).getByRole("link", {
+			name: "See best practices for safe usage",
+			description: "(opens in new tab)",
+		});
+		const span = link.querySelector(".sr-only[hidden]");
 		expect({
-			name: link.textContent,
+			text: link.textContent,
 			href: link.getAttribute("href"),
 			target: link.getAttribute("target"),
 			rel: link.getAttribute("rel"),
-			srOnly: link.querySelector(".sr-only")?.textContent,
+			srOnly: span?.textContent,
+			describedBy: span !== null && link.getAttribute("aria-describedby") === span.id,
 		}).toStrictEqual({
-			name: "See best practices for safe usage(opens in new tab)",
+			text: "See best practices for safe usage(opens in new tab)",
 			href: "https://code.claude.com/docs/en/security",
 			target: "_blank",
 			rel: "noopener",
 			srOnly: "(opens in new tab)",
+			describedBy: true,
 		});
 	});
 

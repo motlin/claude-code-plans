@@ -2091,6 +2091,7 @@ describe("SessionChat tool rows labelled from the tool result", () => {
 			),
 		).querySelector(".group\\/tool")!;
 		const link = header.querySelector("a")!;
+		const hintId = link.querySelector("span")?.id ?? "";
 
 		expect({
 			param: link.parentElement?.className,
@@ -2099,7 +2100,8 @@ describe("SessionChat tool rows labelled from the tool result", () => {
 				target: link.getAttribute("target"),
 				rel: link.getAttribute("rel"),
 				className: link.className,
-				html: link.innerHTML,
+				html: link.innerHTML.replace(`id="${hintId}"`, 'id="HINT"'),
+				describedByHint: hintId !== "" && link.getAttribute("aria-describedby") === hintId,
 			},
 		}).toStrictEqual({
 			param: "truncate min-w-0 text-body text-secondary",
@@ -2109,7 +2111,8 @@ describe("SessionChat tool rows labelled from the tool result", () => {
 				rel: "noopener noreferrer",
 				className:
 					"underline decoration-[color-mix(in_srgb,currentColor_65%,transparent)] underline-offset-[3px]",
-				html: '<bdi>#42</bdi><span class="sr-only">(opens in new tab)</span>',
+				html: '<bdi>#42</bdi><span id="HINT" hidden="" class="sr-only">(opens in new tab)</span>',
+				describedByHint: true,
 			},
 		});
 	});

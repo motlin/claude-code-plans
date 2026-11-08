@@ -29,6 +29,7 @@ import {parseToolRejection} from "../lib/tool-rejection";
 import {parseAttachSnippets, type AttachSnippet} from "../lib/attach-markers";
 import {ApiErrorCard, ApiErrorMarker, type ApiErrorRecovery} from "./api-error-card";
 import {ErrorCardShell} from "./error-card-shell";
+import {ExternalTextLink} from "./external-text-link";
 import {ShimmerText} from "./shimmer-text";
 import {ProseMarkdown} from "./file-refs";
 import {MarkdownArticle} from "./markdown-article";
@@ -5878,9 +5879,8 @@ function ToolCallRow({
 	const paramContent = (
 		<>
 			{paramHref ? (
-				<a
+				<ExternalTextLink
 					href={paramHref}
-					target="_blank"
 					rel="noopener noreferrer"
 					onClick={(e) => {
 						e.stopPropagation();
@@ -5888,8 +5888,7 @@ function ToolCallRow({
 					className="underline decoration-[color-mix(in_srgb,currentColor_65%,transparent)] underline-offset-[3px]"
 				>
 					<bdi>{displayParam}</bdi>
-					<span className="sr-only">(opens in new tab)</span>
-				</a>
+				</ExternalTextLink>
 			) : paramIsCode ? (
 				<code className="font-mono">{displayParam}</code>
 			) : (

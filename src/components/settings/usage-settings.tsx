@@ -13,6 +13,7 @@ import {
 	type UsageVariant,
 	type UsageWindow,
 } from "../../lib/usage";
+import {ExternalTextLink} from "../external-text-link";
 import {Skeleton} from "../ui/skeleton";
 import {Tooltip} from "../ui/tooltip";
 import {SettingsSection} from "./settings-row";
@@ -201,15 +202,9 @@ export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRe
 				</section>
 			)}
 			<div className="flex flex-col items-start gap-2 text-footnote">
-				<a
-					data-cds="TextLink"
-					href={USAGE_LIMITS_ARTICLE}
-					target="_blank"
-					rel="noopener"
-					className="text-link inline cursor-pointer"
-				>
-					Learn more about usage limits<span className="sr-only">(opens in new tab)</span>
-				</a>
+				<ExternalTextLink href={USAGE_LIMITS_ARTICLE} rel="noopener">
+					Learn more about usage limits
+				</ExternalTextLink>
 			</div>
 		</div>
 	);

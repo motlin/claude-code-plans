@@ -45,6 +45,7 @@ import {
 	useNotificationPermission,
 } from "../../hooks/use-notification-permission";
 import {useTheme} from "../theme-context";
+import {ExternalTextLink} from "../external-text-link";
 import {HookSetup} from "../hook-setup";
 import {SegmentedControl} from "./segmented-control";
 import {SettingsRow, SettingsSection} from "./settings-row";
@@ -385,15 +386,9 @@ function InterfaceFontRow() {
 						description: (
 							<>
 								{INTERFACE_FONT_DESCRIPTION}{" "}
-								<a
-									data-cds="TextLink"
-									href="/third-party-notices.txt"
-									target="_blank"
-									rel="noopener"
-									className="text-link inline cursor-pointer"
-								>
-									Font licenses<span className="sr-only">(opens in new tab)</span>
-								</a>
+								<ExternalTextLink href="/third-party-notices.txt" rel="noopener">
+									Font licenses
+								</ExternalTextLink>
 							</>
 						),
 					})}
@@ -1226,15 +1221,9 @@ function LocalSessionsSection() {
 						like fixing lint errors or generating boilerplate code. Letting Claude run arbitrary commands is
 						risky and can result in data loss, system corruption, or data exfiltration (e.g., via prompt
 						injection attacks).{" "}
-						<a
-							data-cds="TextLink"
-							href="https://code.claude.com/docs/en/security"
-							target="_blank"
-							rel="noopener"
-							className="text-link inline cursor-pointer"
-						>
-							See best practices for safe usage<span className="sr-only">(opens in new tab)</span>
-						</a>
+						<ExternalTextLink href="https://code.claude.com/docs/en/security" rel="noopener">
+							See best practices for safe usage
+						</ExternalTextLink>
 					</>
 				}
 				settingKey="skipDangerousModePermissionPrompt"
