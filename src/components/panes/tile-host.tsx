@@ -17,12 +17,14 @@ import {
 	closePane,
 	chatGutters,
 	chatShellPadding,
+	CHAT_OVERFLOW_MIN_PX,
 	collapsePane,
 	defaultPaneLayout,
 	dropPreview,
 	expandPane,
 	fitPhoneLayout,
 	focusPane,
+	leftEdgeTiles,
 	loadLastPaneFlex,
 	loadPaneLayout,
 	minTileSize,
@@ -33,8 +35,11 @@ import {
 	parseTileId,
 	rememberPaneFlex,
 	resizeDivider,
+	resolveFlexes,
+	resolveTileLayout,
 	saveLastPaneFlex,
 	savePaneLayout,
+	tileFloor,
 	updatePhoneView,
 	type Direction,
 	type LayoutNode,
@@ -42,6 +47,7 @@ import {
 	type MovePreview,
 	type PaneKind,
 	type PaneLayoutState,
+	type ResolvedNode,
 	type StackNode,
 	type TileId,
 } from "../../lib/pane-layout";
@@ -69,6 +75,8 @@ const DRAG_THRESHOLD_PX = 4;
  */
 const PHONE_PANE_MIN_CLASS = "min-w-[280px]";
 const PHONE_CHAT_MIN_CLASS = "min-w-[100px]";
+/** Upstream `Ae` with no measured box: min(minTileBasePx, Infinity − 1). */
+const UNMEASURED_MIN_HEIGHT_PX = 100;
 /** Below 640px an expanded pane covers the viewport. */
 const PHONE_EXPANDED_SLOT_CLASSES = "fixed inset-0 z-40 w-full h-dvh";
 /** Upstream's expanded pane: maximised over the sidebar and titlebar, 9px in from the window edge. */
@@ -104,6 +112,12 @@ interface InternalHost {
 	phone: boolean;
 	/** The root row, measured when a pane opens so Changes can be sized to its minimum. */
 	rootRef: RefObject<HTMLDivElement | null>;
+	rootSize: {width: number; height: number};
+	/**
+	 * Upstream's render map (`walkResolvedFlexes` over the measured tile container): each child's resolved
+	 * flex and floors by path ("0", "1.0"). Null before the first measurement and on a phone.
+	 */
+	resolved: ReadonlyMap<string, ResolvedNode> | null;
 	/** The pane just collapsed, whose Expand button takes focus back. */
 	collapsedRef: RefObject<PaneKind | null>;
 	collapse: () => void;
@@ -227,6 +241,33 @@ function sizeAlong(element: HTMLElement | null, direction: Direction): number {
 	return direction === "row" ? rect.width : rect.height;
 }
 
+function stackAt(root: StackNode, path: readonly number[]): StackNode | null {
+	let node: LayoutNode = root;
+	for (const index of path) {
+		const child: LayoutNode | undefined = node.kind === "stack" ? node.children[index] : undefined;
+		if (child === undefined) return null;
+		node = child;
+	}
+	return node.kind === "stack" ? node : null;
+}
+
+function isRowStack(stack: StackNode): boolean {
+	return stack.direction === "row";
+}
+
+/**
+ * Upstream `Xt`: a divider starts from the stack's resolved flexes (`xe` over its children with the reachable
+ * floors and line-mode 1px gaps), or null on a phone or before the stack is measured.
+ */
+function dividerStartFlexes(stack: StackNode, sizePx: number, host: InternalHost): number[] | null {
+	if (host.phone || host.resolved === null || sizePx <= 0) return null;
+	return resolveFlexes(
+		stack.children.map((child) => child.flex),
+		stack.children.map((child) => tileFloor(child, stack.direction)),
+		sizePx - (stack.children.length - 1),
+	);
+}
+
 function Divider({
 	stack,
 	path,
@@ -253,22 +294,33 @@ function Divider({
 	const [dragging, setDragging] = useState(false);
 	if (before === undefined || after === undefined) return null;
 
-	const total = stack.children.reduce((sum, child) => sum + child.flex, 0);
-	const prefixFlex = stack.children.slice(0, index).reduce((sum, child) => sum + child.flex, 0);
-	const now = Math.round(((prefixFlex + before.flex) / total) * 100);
+	// Upstream `Xt`: the divider works from the rendered (resolved) flexes, so the first drag pixel never jumps.
+	const startFlexes = dividerStartFlexes(stack, sizePx, host);
+	const flexes = startFlexes ?? stack.children.map((child) => child.flex);
+	const total = flexes.reduce((sum, flex) => sum + flex, 0);
+	const prefixFlex = flexes.slice(0, index).reduce((sum, flex) => sum + flex, 0);
+	const beforeFlex = flexes[index] ?? before.flex;
+	const afterFlex = flexes[index + 1] ?? after.flex;
+	const now = Math.round(((prefixFlex + beforeFlex) / total) * 100);
 	// Upstream's line mode (always on once a pane opens): 1px hairlines with an 8px hit zone, not the 12px gap.
 	const gapPx = 1;
 	const available = sizePx - gapPx * (stack.children.length - 1);
+	// The keyboard's floors (upstream `Se` without options: chat 320 along a row) bound the value; a phone keeps
+	// the reducer's 320/280 floors.
+	const floorOf = (node: LayoutNode) =>
+		startFlexes === null
+			? minTileSize(node, stack.direction)
+			: node.kind === "tile" && node.tileId === "chat" && isRowStack(stack)
+				? CHAT_OVERFLOW_MIN_PX
+				: tileFloor(node, stack.direction);
 	const bounds =
 		available > 0
 			? {
 					"aria-valuemin": Math.round(
-						(((prefixFlex / total) * available + minTileSize(before, stack.direction)) / available) * 100,
+						(((prefixFlex / total) * available + floorOf(before)) / available) * 100,
 					),
 					"aria-valuemax": Math.round(
-						((((prefixFlex + before.flex + after.flex) / total) * available -
-							minTileSize(after, stack.direction)) /
-							available) *
+						((((prefixFlex + beforeFlex + afterFlex) / total) * available - floorOf(after)) / available) *
 							100,
 					),
 				}
@@ -281,10 +333,22 @@ function Divider({
 	function resizeBy(deltaPx: number, remember = false) {
 		const measured = sizeAlong(stackRef.current, stack.direction);
 		if (measured <= 0) return;
-		// The reducer subtracts 12px gaps; hand it the size those gaps would leave.
-		const reducerSizePx = measured + (TILE_GAP_PX - gapPx) * (stack.children.length - 1);
+		// A pointer drag floors the chat at its reachable 100px, a key step at its full 320px (upstream `Xt`).
+		const measuredStart = dividerStartFlexes(stack, measured, host);
+		const request =
+			measuredStart === null
+				? // The phone reducer subtracts 12px gaps; hand it the size those gaps would leave.
+					{path, index, deltaPx, sizePx: measured + (TILE_GAP_PX - gapPx) * (stack.children.length - 1)}
+				: {
+						path,
+						index,
+						deltaPx,
+						sizePx: measured,
+						startFlexes: measuredStart,
+						floor: remember ? ("full" as const) : ("reachable" as const),
+					};
 		host.update((state) => {
-			const next = resizeDivider(state, {path, index, deltaPx, sizePx: reducerSizePx});
+			const next = resizeDivider(state, request);
 			return remember ? rememberResize(resizedIds)(next) : next;
 		});
 	}
@@ -424,13 +488,29 @@ function TileCorner({
 		const rowPx = sizeAlong(host.rootRef.current, "row");
 		const columnPx = sizeAlong(columnRef.current, "column");
 		if (rowPx <= 0 || columnPx <= 0) return;
+		const column = stackAt(host.layout.root, columnPath);
+		const rowStart = dividerStartFlexes(host.layout.root, rowPx, host);
+		const columnStart = column === null ? null : dividerStartFlexes(column, columnPx, host);
+		// Both axes start from the rendered flexes, as a divider drag does (upstream `Xt`).
+		const resolvedRequest = (startFlexes: number[] | null) =>
+			startFlexes === null ? {} : {startFlexes, floor: "reachable" as const};
 		host.update((state) =>
-			resizeDivider(resizeDivider(state, {path: [], index: rootIndex, deltaPx: deltaX, sizePx: rowPx}), {
-				path: columnPath,
-				index: columnIndex,
-				deltaPx: deltaY,
-				sizePx: columnPx,
-			}),
+			resizeDivider(
+				resizeDivider(state, {
+					path: [],
+					index: rootIndex,
+					deltaPx: deltaX,
+					sizePx: rowPx,
+					...resolvedRequest(rowStart),
+				}),
+				{
+					path: columnPath,
+					index: columnIndex,
+					deltaPx: deltaY,
+					sizePx: columnPx,
+					...resolvedRequest(columnStart),
+				},
+			),
 		);
 	}
 
@@ -717,7 +797,8 @@ function StackView({
 	const localRef = useRef<HTMLDivElement>(null);
 	const isRoot = path.length === 0;
 	const ref = isRoot ? host.rootRef : localRef;
-	const size = useElementSize(ref);
+	const localSize = useElementSize(localRef);
+	const size = isRoot ? host.rootSize : localSize;
 	const sizePx = stack.direction === "row" ? size.width : size.height;
 
 	const items: ReactNode[] = [];
@@ -742,6 +823,7 @@ function StackView({
 				key={nodeKey(child)}
 				node={child}
 				path={[...path, index]}
+				parentDirection={stack.direction}
 				host={host}
 				chat={chat}
 				isRootChild={isRoot}
@@ -770,18 +852,23 @@ function NodeView({
 	host,
 	chat,
 	isRootChild,
+	parentDirection,
 }: {
 	node: LayoutNode;
 	path: readonly number[];
 	host: InternalHost;
 	chat: ReactNode;
 	isRootChild: boolean;
+	parentDirection: Direction;
 }) {
-	const style = {flex: `${node.flex} 1 0`};
+	const style = host.phone ? {flex: `${node.flex} 1 0`} : resolvedStyle(node, path, parentDirection, host.resolved);
 	const phone = isRootChild && host.phone;
 	const holdsChat = tileIdsOf(node).includes("chat");
 	const phoneMin = holdsChat ? PHONE_CHAT_MIN_CLASS : PHONE_PANE_MIN_CLASS;
-	const slotClass = `relative min-h-0 ${phone ? phoneMin : "min-w-0"}`;
+	// On desktop the inline min-width (the resolved floor) replaces min-w-0; the inline min-height overrides min-h-0.
+	const slotClass = `relative min-h-0 ${phone ? phoneMin : host.phone ? "min-w-0" : ""}`.trimEnd();
+	// Upstream tile `Q` layers: the chat wrap at z-index 0 under its overflowing shell, panes at 1 above it.
+	const layered = !host.phone && tileIdsOf(host.layout.root).length > 1;
 	if (node.kind === "stack") {
 		return (
 			<div
@@ -799,36 +886,51 @@ function NodeView({
 		const hidden = host.expanded !== null;
 		// Upstream's line-mode tile shell (shared-20 `it`): 8px at the bottom, and 8px on a side the chat touches
 		// without a gutter attribute. Not on a phone until a live 390px read shows upstream insets there.
-		const gutters = !host.phone && tileIdsOf(host.layout.root).length > 1 ? chatGutters(host.layout.root) : null;
+		const gutters = layered ? chatGutters(host.layout.root) : null;
 		const attributes = chatGutterAttributes(gutters);
+		// Upstream's `.tiles-shell[data-tile-overflow-anchor]`: pinned to the chat's outer edge at the full slot
+		// width but never under 320px, so a narrower slot slides the shell under the neighbouring pane. The chat
+		// alone keeps the same element as `display: contents`, so opening a pane never remounts the transcript.
+		const anchor = leftEdgeTiles(host.layout.root).has("chat") ? "left" : "right";
 		return (
 			<TileSlot
 				tileId="chat"
 				host={host}
-				className={
-					gutters === null ? slotClass : `${slotClass} @container/tile-slot bg-[var(--tile-shell-ground)]`
-				}
+				className={gutters === null ? slotClass : `${slotClass} @container/tile-slot z-0`}
 				style={
 					gutters === null
 						? style
-						: {
-								...style,
-								padding: chatShellPadding(gutters),
-								"--tiles-padding": "8px",
-								"--tile-shell-ground": "var(--color-page)",
-							}
+						: {...style, "--tiles-padding": "8px", "--tile-shell-ground": "var(--color-page)"}
 				}
 				hidden={hidden}
 				{...attributes}
 			>
-				{!hidden && tileIdsOf(host.layout.root).length > 1 && (
-					// Keep the chat's Move grip above its titlebar while the transcript scrolls.
-					<div className="sticky top-0 z-20 h-0">
-						<MoveHandle tileId="chat" host={host} />
-					</div>
-				)}
-				<ChatGutterContext.Provider value={attributes}>{chat}</ChatGutterContext.Provider>
-				<MovePreviewOutline path={path} host={host} />
+				<div
+					{...(gutters === null ? {} : {"data-tile-overflow-anchor": anchor})}
+					className={
+						gutters === null
+							? "contents"
+							: "absolute inset-y-0 w-full min-w-[320px] bg-[var(--tile-shell-ground)]"
+					}
+					style={
+						gutters === null
+							? undefined
+							: {
+									[anchor]: 0,
+									padding: chatShellPadding(gutters),
+									"--tile-overflow-min": `${CHAT_OVERFLOW_MIN_PX}px`,
+								}
+					}
+				>
+					{!hidden && tileIdsOf(host.layout.root).length > 1 && (
+						// Keep the chat's Move grip above its titlebar while the transcript scrolls.
+						<div className="sticky top-0 z-20 h-0">
+							<MoveHandle tileId="chat" host={host} />
+						</div>
+					)}
+					<ChatGutterContext.Provider value={attributes}>{chat}</ChatGutterContext.Provider>
+					<MovePreviewOutline path={path} host={host} />
+				</div>
 			</TileSlot>
 		);
 	}
@@ -843,7 +945,9 @@ function NodeView({
 			className={
 				expanded
 					? `min-h-0 min-w-0 ${host.phone ? PHONE_EXPANDED_SLOT_CLASSES : EXPANDED_SLOT_CLASSES}`
-					: slotClass
+					: layered
+						? `${slotClass} z-[1]`
+						: slotClass
 			}
 			style={expanded ? undefined : style}
 			phone={expanded ? host.phone : phone}
@@ -853,6 +957,29 @@ function NodeView({
 			<MovePreviewOutline path={path} host={host} />
 		</TileSlot>
 	);
+}
+
+/**
+ * Upstream's tile wrap and stack styles from the render map: the resolved flex, the row floor clamped to the
+ * allocation as min-width (0 for a stack inside a column) and a tile's min-height. Before the first measurement
+ * the flex stays raw and min-width is the bare floor (upstream `Ve`), min-height upstream `Ae`'s 100px.
+ */
+function resolvedStyle(
+	node: LayoutNode,
+	path: readonly number[],
+	parentDirection: Direction,
+	resolved: ReadonlyMap<string, ResolvedNode> | null,
+): CSSProperties {
+	const entry = resolved?.get(path.join("."));
+	const isTile = node.kind === "tile";
+	const bareFloor = isTile || parentDirection === "row" ? tileFloor(node, "row") : 0;
+	const minHeight = entry === undefined ? UNMEASURED_MIN_HEIGHT_PX : entry.minHeightPx;
+	return {
+		// Six decimals, as the live upstream values were read; browsers serialise fewer digits anyway.
+		flex: `${entry === undefined ? node.flex : Math.round(entry.flex * 1e6) / 1e6} 1 0px`,
+		minWidth: `${entry?.minWidthPx ?? bareFloor}px`,
+		...(isTile && minHeight !== null ? {minHeight: `${minHeight}px`} : {}),
+	};
 }
 
 function TileSlot({
@@ -926,6 +1053,11 @@ export function TileHost({
 		[phone, saveUpdate],
 	);
 	const rootRef = useRef<HTMLDivElement>(null);
+	const rootSize = useElementSize(rootRef);
+	const resolved = useMemo(
+		() => (rootSize.width > 0 && !phone ? resolveTileLayout(layout.root, rootSize) : null),
+		[rootSize, phone, layout.root],
+	);
 	const collapsedRef = useRef<PaneKind | null>(null);
 	const collapse = useCallback(() => {
 		collapsedRef.current = layout.expanded;
@@ -962,10 +1094,12 @@ export function TileHost({
 			expanded: layout.expanded,
 			phone,
 			rootRef,
+			rootSize,
+			resolved,
 			collapsedRef,
 			collapse,
 		}),
-		[definitions, layout, update, pendingMove, preview, movingTile, phone, collapse],
+		[definitions, layout, update, pendingMove, preview, movingTile, phone, rootSize, resolved, collapse],
 	);
 
 	const api = useMemo<PaneHostApi>(

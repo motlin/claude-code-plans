@@ -344,7 +344,7 @@ describe("TileHost", () => {
 		expect({before, resized, stored, reopened: separatorState().now}).toStrictEqual({
 			before: "67",
 			resized: "65",
-			stored: {plan: 1.061276},
+			stored: {plan: 1.061278},
 			reopened: "65",
 		});
 	});
@@ -1091,7 +1091,7 @@ describe("TileHost corner handle", () => {
 			document.querySelector<HTMLElement>(selector)?.closest<HTMLElement>("[style]")?.style.flex ?? null;
 		return {
 			chat: flexOf("[data-tile-host=chat]"),
-			column: document.querySelector<HTMLElement>("[data-tile-stack=column]")?.style.flex ?? null,
+			column: document.querySelector<HTMLElement>("[data-tile-stack=column]")?.parentElement?.style.flex ?? null,
 			files: flexOf("[data-tile-host=files]"),
 			tasks: flexOf("[data-tile-host=background-tasks]"),
 		};
@@ -1165,12 +1165,19 @@ describe("TileHost corner handle", () => {
 			after: flexes(),
 			cursor: corner.classList.contains("cursor-all-scroll"),
 		}).toStrictEqual({
-			before: {chat: "2 1 0px", column: "1 1 0px", files: "1 1 0px", tasks: "1 1 0px"},
+			// Rendered (resolved) flexes: [chat 2, column 1] at 1199px is 799/400, [files 1, tasks 1] at 799px is 400/399.
+			before: {
+				chat: "1.332777 1 0px",
+				column: "0.667223 1 0px",
+				files: "1.001252 1 0px",
+				tasks: "0.998748 1 0px",
+			},
+			// Both boundaries move 100px from their rendered spots: chat 699 / column 500, files 299 / tasks 500.
 			after: {
-				chat: "1.747475 1 0px",
-				column: "1.252525 1 0px",
-				files: "0.746193 1 0px",
-				tasks: "1.253807 1 0px",
+				chat: "1.165972 1 0px",
+				column: "0.834028 1 0px",
+				files: "0.748436 1 0px",
+				tasks: "1.251564 1 0px",
 			},
 			cursor: true,
 		});
@@ -1201,15 +1208,17 @@ describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9
 	function shellState() {
 		const slot = document.querySelector<HTMLElement>("[data-tile-host=chat]");
 		if (slot === null) throw new Error("chat slot missing");
+		// The inset and the ground sit on the overflow-anchored shell inside the slot (upstream .tiles-shell).
+		const shell = slot.querySelector<HTMLElement>(":scope > [data-tile-overflow-anchor]") ?? slot;
 		// jsdom collapses the shorthand ("0px 0px 8px"), so read the four longhands back in upstream's order.
-		const {paddingTop, paddingRight, paddingBottom, paddingLeft} = slot.style;
+		const {paddingTop, paddingRight, paddingBottom, paddingLeft} = shell.style;
 		return {
-			padding: slot.style.padding === "" ? "" : `${paddingTop} ${paddingRight} ${paddingBottom} ${paddingLeft}`,
+			padding: shell.style.padding === "" ? "" : `${paddingTop} ${paddingRight} ${paddingBottom} ${paddingLeft}`,
 			start: slot.getAttribute("data-chat-gutter-start"),
 			end: slot.getAttribute("data-chat-gutter-end"),
 			tilesPadding: slot.style.getPropertyValue("--tiles-padding"),
 			ground: slot.style.getPropertyValue("--tile-shell-ground"),
-			groundFill: slot.classList.contains("bg-[var(--tile-shell-ground)]"),
+			groundFill: shell.classList.contains("bg-[var(--tile-shell-ground)]"),
 			mirrored: screen.getByTestId("gutter-probe").textContent,
 			pane: document.querySelector<HTMLElement>("[data-tile-host=plan]")?.style.padding,
 		};
@@ -1438,5 +1447,159 @@ describe("TileHost titlebar bleed over the chat shell inset (upstream shared-41 
 				"calc( ( 100cqw - 2 * var(--scroll-gutter, 0px) - var(--rail-column-box) + var(--chat-column-end, 16px) - var(--session-rail-closed-end) ) / 2 )",
 			].filter((rule) => !styles.includes(rule)),
 		).toStrictEqual([]);
+	});
+});
+
+describe("TileHost min-floor resolver (upstream ca67f2c9d walkResolvedFlexes / tile Q)", () => {
+	const unregisterExtra: Array<() => void> = [];
+
+	beforeEach(() => {
+		unregisterExtra.push(
+			registerPane("changes", {title: "Changes", render: () => <p>Changes body</p>}),
+			registerPane("files", {title: "Files", render: () => <p>Files body</p>}),
+		);
+	});
+
+	afterEach(() => {
+		for (const fn of unregisterExtra.splice(0)) fn();
+	});
+
+	function seed(children: unknown[]) {
+		localStorage.setItem(
+			"ccb.paneLayout.v1",
+			JSON.stringify({
+				"session-floor": {
+					root: {kind: "stack", direction: "row", flex: 1, children},
+					expanded: null,
+					focused: "chat",
+				},
+			}),
+		);
+	}
+
+	function measure(width: number, height: number) {
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+			DOMRect.fromRect({x: 0, y: 0, width, height}),
+		);
+	}
+
+	function renderFloor() {
+		render(
+			<TileHost sessionId="session-floor">
+				<ChatContent />
+			</TileHost>,
+		);
+	}
+
+	function wrap(tileId: string) {
+		const element = document.querySelector<HTMLElement>(`[data-tile-host=${tileId}]`);
+		if (element === null) throw new Error(`${tileId} slot missing`);
+		return {flex: element.style.flex, minWidth: element.style.minWidth, minHeight: element.style.minHeight};
+	}
+
+	function columnWrap() {
+		const element = document.querySelector<HTMLElement>("[data-tile-stack=column]")?.parentElement;
+		if (element === null || element === undefined) throw new Error("column wrapper missing");
+		return {flex: element.style.flex, minWidth: element.style.minWidth, minHeight: element.style.minHeight};
+	}
+
+	const tile = (tileId: string, flex: number) => ({kind: "tile", tileId, flex});
+
+	it("renders resolved flexes and floors for a third root column at 984px", () => {
+		measure(984, 800);
+		seed([
+			tile("chat", 2),
+			{kind: "stack", direction: "column", flex: 3, children: [tile("changes", 1), tile("files", 1)]},
+			tile("plan", 1),
+		]);
+		renderFloor();
+
+		expect({
+			chat: wrap("chat"),
+			column: columnWrap(),
+			changes: wrap("changes"),
+			files: wrap("files"),
+			plan: wrap("plan"),
+		}).toStrictEqual({
+			chat: {flex: "0.858452 1 0px", minWidth: "100px", minHeight: "100px"},
+			column: {flex: "1.286151 1 0px", minWidth: "280px", minHeight: ""},
+			changes: {flex: "1.001252 1 0px", minWidth: "280px", minHeight: "100px"},
+			files: {flex: "0.998748 1 0px", minWidth: "280px", minHeight: "100px"},
+			plan: {flex: "0.855397 1 0px", minWidth: "280px", minHeight: "100px"},
+		});
+	});
+
+	it("floors the pane at 280px and shrinks the chat at 450px", () => {
+		measure(450, 800);
+		seed([tile("chat", 2), tile("plan", 1)]);
+		renderFloor();
+
+		expect({chat: wrap("chat").flex, plan: wrap("plan").flex}).toStrictEqual({
+			chat: "0.752784 1 0px",
+			plan: "1.247216 1 0px",
+		});
+	});
+
+	it("keeps raw flexes with the bare floors as min-width before the first measurement (upstream Ve)", () => {
+		measure(0, 0);
+		seed([tile("chat", 2), tile("plan", 1)]);
+		renderFloor();
+
+		expect({chat: wrap("chat"), plan: wrap("plan")}).toStrictEqual({
+			chat: {flex: "2 1 0px", minWidth: "100px", minHeight: "100px"},
+			plan: {flex: "1 1 0px", minWidth: "280px", minHeight: "100px"},
+		});
+	});
+
+	function shell() {
+		const element = document.querySelector<HTMLElement>("[data-tile-host=chat] [data-tile-overflow-anchor]");
+		if (element === null) return null;
+		return {
+			anchor: element.getAttribute("data-tile-overflow-anchor"),
+			classes: ["absolute", "inset-y-0", "w-full", "min-w-[320px]"].filter((name) =>
+				element.classList.contains(name),
+			),
+			left: element.style.left,
+			right: element.style.right,
+			overflowMin: element.style.getPropertyValue("--tile-overflow-min"),
+		};
+	}
+
+	function layers() {
+		const classesOf = (tileId: string) =>
+			document.querySelector(`[data-tile-host=${tileId}]`)?.className.split(" ") ?? [];
+		return {
+			chat: classesOf("chat").filter((name) => name.startsWith("z-") || name.includes("container")),
+			files: classesOf("files").filter((name) => name.startsWith("z-")),
+		};
+	}
+
+	it("anchors the chat's 320px overflow shell left when the chat leads the row, under a z-[1] pane", () => {
+		seed([tile("chat", 2), tile("files", 3)]);
+		renderFloor();
+
+		expect({shell: shell(), layers: layers()}).toStrictEqual({
+			shell: {
+				anchor: "left",
+				classes: ["absolute", "inset-y-0", "w-full", "min-w-[320px]"],
+				left: "0px",
+				right: "",
+				overflowMin: "320px",
+			},
+			layers: {chat: ["@container/tile-slot", "z-0"], files: ["z-[1]"]},
+		});
+	});
+
+	it("anchors the shell right when a pane sits left of the chat", () => {
+		seed([tile("files", 3), tile("chat", 2)]);
+		renderFloor();
+
+		expect(shell()).toMatchObject({anchor: "right", left: "", right: "0px"});
+	});
+
+	it("renders the chat alone without the overflow shell", () => {
+		renderFloor();
+
+		expect(shell()).toBe(null);
 	});
 });

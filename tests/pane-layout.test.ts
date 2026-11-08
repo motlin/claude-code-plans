@@ -21,6 +21,10 @@ import {
 	loadPaneLayout,
 	loadSubagentPaneAgent,
 	minTileSize,
+	leftEdgeTiles,
+	resolveFlexes,
+	resolveTileLayout,
+	tileFloor,
 	dropPreview,
 	fitPhoneLayout,
 	movePane,
@@ -701,6 +705,191 @@ describe("minTileSize", () => {
 	});
 });
 
+describe("tileFloor (upstream Se, overflowMinReachable)", () => {
+	it.each([
+		["chat along a row (reachable)", tile("chat", 1), "row", 100],
+		["a pane along a row", tile("files", 1), "row", 280],
+		["chat along a column", tile("chat", 1), "column", 100],
+		["a pane along a column", tile("files", 1), "column", 100],
+		["a row along a row (sum plus 1px gaps)", stack("row", 1, [tile("chat", 1), tile("plan", 1)]), "row", 381],
+		["a column along a row (max with 280)", stack("column", 1, [tile("chat", 1), tile("plan", 1)]), "row", 280],
+		["a column along a column", stack("column", 1, [tile("files", 1), tile("plan", 1)]), "column", 201],
+		["a row along a column (max with 100)", stack("row", 1, [tile("chat", 1), tile("plan", 1)]), "column", 100],
+	] satisfies Array<[string, LayoutNode, "row" | "column", number]>)("%s", (_name, node, axis, expected) => {
+		expect(tileFloor(node, axis)).toBe(expected);
+	});
+});
+
+describe("resolveFlexes (upstream xe)", () => {
+	it.each([
+		["floors the pane and gives the chat the rest", [2, 1], [100, 280], 699, [1.198856, 0.801144]],
+		["falls back to mins-proportional when mins exhaust the space", [2, 1], [100, 280], 379, [0.526316, 1.473684]],
+		["renormalises an unfloored split to the child count", [2, 1], [100, 280], 983, [1.333333, 0.666667]],
+		["copies the flexes with no space", [2, 1], [100, 280], 0, [2, 1]],
+		["copies an empty stack", [], [], 500, []],
+	] satisfies Array<[string, number[], number[], number, number[]]>)("%s", (_name, flexes, mins, total, expected) => {
+		expect(resolveFlexes(flexes, mins, total).map((flex) => Math.round(flex * 1e6) / 1e6)).toStrictEqual(expected);
+	});
+});
+
+describe("resolveTileLayout (upstream walkResolvedFlexes)", () => {
+	function entry(flex: number, width: number, height: number, minWidthPx: number, minHeightPx: number | null) {
+		return {flex, width, height, minWidthPx, minHeightPx};
+	}
+
+	function resolved(root: StackNode, box: {width: number; height: number}) {
+		return Object.fromEntries(
+			[...resolveTileLayout(root, box)].map(([key, value]) => [
+				key,
+				{...value, flex: Math.round(value.flex * 1e6) / 1e6},
+			]),
+		);
+	}
+
+	const chatPlan = stack("row", 1, [tile("chat", 2), tile("plan", 1)]);
+	const threeColumns = stack("row", 1, [
+		tile("chat", 2),
+		stack("column", 3, [tile("changes", 1), tile("files", 1)]),
+		tile("plan", 1),
+	]);
+	const nestedRow = stack("row", 1, [
+		tile("files", 3),
+		stack("column", 2, [stack("row", 1, [tile("chat", 1), tile("plan", 1)]), tile("background-tasks", 1)]),
+	]);
+	const chatColumn = stack("row", 1, [tile("chat", 1), stack("column", 1, [tile("plan", 1), tile("files", 1)])]);
+
+	it.each([
+		[
+			"[chat:2, plan:1] at 984",
+			chatPlan,
+			984,
+			800,
+			{"0": entry(1.332655, 655, 800, 100, 100), "1": entry(0.667345, 328, 800, 280, 100)},
+		],
+		[
+			"[chat:2, plan:1] at 700",
+			chatPlan,
+			700,
+			800,
+			{"0": entry(1.198856, 419, 800, 100, 100), "1": entry(0.801144, 280, 800, 280, 100)},
+		],
+		[
+			"[chat:2, plan:1] at 560",
+			chatPlan,
+			560,
+			800,
+			{"0": entry(0.998211, 279, 800, 100, 100), "1": entry(1.001789, 280, 800, 280, 100)},
+		],
+		[
+			"[chat:2, plan:1] at 450",
+			chatPlan,
+			450,
+			800,
+			{"0": entry(0.752784, 169, 800, 100, 100), "1": entry(1.247216, 280, 800, 280, 100)},
+		],
+		[
+			"[chat:2, plan:1] at 380",
+			chatPlan,
+			380,
+			800,
+			{"0": entry(0.527704, 100, 800, 100, 100), "1": entry(1.472296, 279, 800, 279, 100)},
+		],
+		[
+			"[chat:2, plan:1] at 300",
+			chatPlan,
+			300,
+			800,
+			{"0": entry(0.528428, 79, 800, 79, 100), "1": entry(1.471572, 220, 800, 220, 100)},
+		],
+		[
+			"a third root column at 984",
+			threeColumns,
+			984,
+			800,
+			{
+				"0": entry(0.858452, 281, 800, 100, 100),
+				"1": entry(1.286151, 421, 800, 280, null),
+				"1.0": entry(1.001252, 421, 400, 280, 100),
+				"1.1": entry(0.998748, 421, 399, 280, 100),
+				"2": entry(0.855397, 280, 800, 280, 100),
+			},
+		],
+		[
+			"a third root column at 800",
+			threeColumns,
+			800,
+			800,
+			{
+				"0": entry(0.778195, 207, 800, 100, 100),
+				"1": entry(1.169173, 311, 800, 280, null),
+				"1.0": entry(1.001252, 311, 400, 280, 100),
+				"1.1": entry(0.998748, 311, 399, 280, 100),
+				"2": entry(1.052632, 280, 800, 280, 100),
+			},
+		],
+		[
+			"a nested row inside a column at 900",
+			nestedRow,
+			900,
+			800,
+			{
+				"0": entry(1.152392, 518, 800, 280, 100),
+				"1": entry(0.847608, 381, 800, 381, null),
+				"1.0": entry(1.001252, 381, 400, 0, null),
+				"1.0.0": entry(0.526316, 100, 400, 100, 100),
+				"1.0.1": entry(1.473684, 280, 400, 280, 100),
+				"1.1": entry(0.998748, 381, 399, 280, 100),
+			},
+		],
+		[
+			"short column children at 900x150",
+			chatColumn,
+			900,
+			150,
+			{
+				"0": entry(1.001112, 450, 150, 100, 100),
+				"1": entry(0.998888, 449, 150, 280, null),
+				"1.0": entry(1.006711, 449, 75, 280, 74),
+				"1.1": entry(0.993289, 449, 74, 280, 73),
+			},
+		],
+		[
+			"a column floored at 280 at 500",
+			chatColumn,
+			500,
+			800,
+			{
+				"0": entry(0.877756, 219, 800, 100, 100),
+				"1": entry(1.122244, 280, 800, 280, null),
+				"1.0": entry(1.001252, 280, 400, 280, 100),
+				"1.1": entry(0.998748, 280, 399, 280, 100),
+			},
+		],
+	] satisfies Array<[string, StackNode, number, number, Record<string, ReturnType<typeof entry>>]>)(
+		"%s",
+		(_name, root, width, height, expected) => {
+			expect(resolved(root, {width, height})).toStrictEqual(expected);
+		},
+	);
+});
+
+describe("leftEdgeTiles", () => {
+	it.each([
+		[
+			"the first root child",
+			stack("row", 1, [tile("files", 1), stack("column", 1, [tile("chat", 1), tile("plan", 1)])]),
+			["files"],
+		],
+		[
+			"every tile of a first column",
+			stack("row", 1, [stack("column", 1, [tile("chat", 1), tile("plan", 1)]), tile("files", 1)]),
+			["chat", "plan"],
+		],
+	] satisfies Array<[string, StackNode, TileId[]]>)("holds %s", (_name, root, expected) => {
+		expect(leftEdgeTiles(root)).toStrictEqual(new Set(expected));
+	});
+});
+
 describe("resizeDivider", () => {
 	it.each([
 		[
@@ -762,6 +951,31 @@ describe("resizeDivider", () => {
 	])("ignores %s", (_name, request) => {
 		expect(resizeDivider(ONE_PANE, request)).toBe(ONE_PANE);
 	});
+
+	const CHAT_PLAN = layout([tile("chat", 2), tile("plan", 1)], "plan");
+	const RESOLVED_700 = [1.198856, 0.801144];
+
+	it.each([
+		["holds a pane already at its floor", 24, "full", [1.198856, 0.801144]],
+		["moves from the rendered boundary, not the raw flexes", -24, "full", [1.130186, 0.869814]],
+		["stops a pointer drag at the chat's reachable 100px floor", -400, "reachable", [0.286123, 1.713877]],
+		["stops a key step at the chat's full 320px floor", -400, "full", [0.915594, 1.084406]],
+	] satisfies Array<[string, number, "reachable" | "full", number[]]>)(
+		"%s (upstream Xt over resolved flexes)",
+		(_name, deltaPx, floor, expected) => {
+			const next = resizeDivider(CHAT_PLAN, {
+				path: [],
+				index: 0,
+				deltaPx,
+				sizePx: 700,
+				startFlexes: RESOLVED_700,
+				floor,
+			});
+			expect(next).toStrictEqual(
+				layout([tile("chat", expected[0] ?? 0), tile("plan", expected[1] ?? 0)], "plan"),
+			);
+		},
+	);
 });
 
 describe("fitPhoneLayout", () => {

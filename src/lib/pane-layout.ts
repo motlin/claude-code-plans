@@ -78,6 +78,12 @@ export interface PaneLayoutState {
 const TILE_GAP_PX = 12;
 /** Minimum tile sizes along either axis. */
 const MIN_TILE_SIZE_PX = {chat: 320, pane: 280} as const;
+/** Upstream ca67f2c9d `pU(true)`, the line-mode tiles config: `gap`, `minTileBasePx`, `minTileWidthPx`. */
+const LINE_TILE_GAP_PX = 1;
+const MIN_TILE_BASE_PX = 100;
+const MIN_TILE_WIDTH_PX = 280;
+/** Upstream cc43287c9's chat tile `overflowMin.width`: its shell keeps this width and slides under a neighbour. */
+export const CHAT_OVERFLOW_MIN_PX = 320;
 
 const FlexSchema = z.number().positive();
 
@@ -175,6 +181,11 @@ function edgeTiles(node: LayoutNode, side: "start" | "end", into = new Set<TileI
 		node.direction === "column" ? node.children : [side === "start" ? node.children[0] : node.children.at(-1)];
 	for (const child of children) if (child !== undefined) edgeTiles(child, side, into);
 	return into;
+}
+
+/** Upstream cc43287c9 `HD`/`UD`: the tiles touching the left edge (row → first child, column → every child). */
+export function leftEdgeTiles(root: StackNode): Set<TileId> {
+	return edgeTiles(root, "start");
 }
 
 /**
@@ -589,6 +600,119 @@ export function minTileSize(node: LayoutNode, axis: Direction): number {
 		: Math.max(...sizes);
 }
 
+/**
+ * Upstream ca67f2c9d `Se(node, axis, tileById, cfg, {overflowMinReachable: true})`: along a row the chat
+ * tile floors at 100 (its 320 overflow shell slides under a neighbour) and a pane at 280; along a column
+ * every tile floors at 100. A stack sums its children plus 1px gaps along its own axis and maxes across it.
+ */
+export function tileFloor(node: LayoutNode, axis: Direction): number {
+	const base = axis === "row" ? MIN_TILE_WIDTH_PX : MIN_TILE_BASE_PX;
+	if (node.kind === "tile") {
+		if (axis !== "row") return base;
+		return node.tileId === "chat" ? MIN_TILE_BASE_PX : base;
+	}
+	const floors = node.children.map((child) => tileFloor(child, axis));
+	return node.direction === axis
+		? floors.reduce((total, floor) => total + floor, 0) + LINE_TILE_GAP_PX * Math.max(0, floors.length - 1)
+		: Math.max(base, ...floors);
+}
+
+/** `tileFloor` without the overflow reach (upstream `Se` with no options): the chat floors at 320 along a row. */
+function fullTileFloor(node: LayoutNode, axis: Direction): number {
+	return node.kind === "tile" && node.tileId === "chat" && axis === "row"
+		? Math.max(CHAT_OVERFLOW_MIN_PX, MIN_TILE_BASE_PX)
+		: tileFloor(node, axis);
+}
+
+/**
+ * Upstream ca67f2c9d `xe`: shares `total` px by flex, then pins each child whose share falls under its
+ * floor (less half a pixel) and re-shares the rest among the unpinned; when the floors exhaust the space
+ * it falls back to floor-proportional. Returns flexes that sum to the child count.
+ */
+export function resolveFlexes(flexes: readonly number[], mins: readonly number[], total: number): number[] {
+	const count = flexes.length;
+	if (count === 0 || total <= 0) return [...flexes];
+	const flexSum = flexes.reduce((sum, flex) => sum + flex, 0) || count;
+	const pinned = new Set<number>();
+	const minAt = (index: number): number => mins[index] ?? 0;
+	let px = flexes.map((flex) => (flex / flexSum) * total);
+	for (;;) {
+		const under = px.findIndex((value, index) => !pinned.has(index) && value < minAt(index) - 0.5);
+		if (under === -1) break;
+		pinned.add(under);
+		const pinnedPx = [...pinned].reduce((sum, index) => sum + minAt(index), 0);
+		const freeFlex = flexes.reduce((sum, flex, index) => (pinned.has(index) ? sum : sum + flex), 0);
+		const left = total - pinnedPx;
+		if (freeFlex <= 0 || left <= 0) {
+			const minSum = mins.reduce((sum, min) => sum + min, 0) || 1;
+			px = mins.map((min) => (min / minSum) * total);
+			break;
+		}
+		px = flexes.map((flex, index) => (pinned.has(index) ? minAt(index) : (flex / freeFlex) * left));
+	}
+	const pxSum = px.reduce((sum, value) => sum + value, 0) || count;
+	return px.map((value) => (value * count) / pxSum);
+}
+
+/** One child's rendered geometry from `resolveTileLayout`. */
+export interface ResolvedNode {
+	/** The resolved flex; a stack's children sum to the child count. */
+	flex: number;
+	width: number;
+	height: number;
+	/** The wrap's `min-width`: the row floor clamped to the allocation (0 for a stack inside a column). */
+	minWidthPx: number;
+	/** A tile's `min-height` (upstream `Ae`: min(100, height − 1)); null for a stack. */
+	minHeightPx: number | null;
+}
+
+/**
+ * Upstream ca67f2c9d `we` (walkResolvedFlexes) in line mode: resolves each stack's flexes against its
+ * measured box with the reachable floors, splits the box into whole pixels by cumulative rounding, and
+ * recurses. Keyed by the child's path from the root joined with "." ("0", "1.0").
+ */
+export function resolveTileLayout(root: StackNode, box: {width: number; height: number}): Map<string, ResolvedNode> {
+	const resolved = new Map<string, ResolvedNode>();
+	const walk = (stack: StackNode, stackBox: {width: number; height: number}, path: readonly number[]): void => {
+		const isRow = stack.direction === "row";
+		const along = isRow ? stackBox.width : stackBox.height;
+		const usable = Math.max(0, along - LINE_TILE_GAP_PX * Math.max(0, stack.children.length - 1));
+		const floors = stack.children.map((child) => tileFloor(child, stack.direction));
+		const rowFloors = isRow ? floors : stack.children.map((child) => tileFloor(child, "row"));
+		const flexes = resolveFlexes(
+			stack.children.map((child) => child.flex),
+			floors,
+			usable,
+		);
+		const flexSum = flexes.reduce((sum, flex) => sum + flex, 0) || 1;
+		let running = 0;
+		let previous = 0;
+		const sizes = flexes.map((flex) => {
+			running += flex;
+			const edge = Math.round((running / flexSum) * usable);
+			const size = edge - previous;
+			previous = edge;
+			return size;
+		});
+		stack.children.forEach((child, index) => {
+			const size = sizes[index] ?? 0;
+			const childBox = isRow ? {width: size, height: stackBox.height} : {width: stackBox.width, height: size};
+			const childPath = [...path, index];
+			const isTile = child.kind === "tile";
+			resolved.set(childPath.join("."), {
+				flex: previous > 0 ? (size / previous) * flexes.length : (flexes[index] ?? child.flex),
+				width: childBox.width,
+				height: childBox.height,
+				minWidthPx: isRow || isTile ? Math.min(rowFloors[index] ?? 0, childBox.width) : 0,
+				minHeightPx: isTile ? Math.max(0, Math.min(MIN_TILE_BASE_PX, childBox.height - 1)) : null,
+			});
+			if (child.kind === "stack") walk(child, childBox, childPath);
+		});
+	};
+	walk(root, box, []);
+	return resolved;
+}
+
 export interface ResizeRequest {
 	/** Child indices from the root to the stack that owns the divider. */
 	path: readonly number[];
@@ -597,6 +721,13 @@ export interface ResizeRequest {
 	deltaPx: number;
 	/** The stack's measured size along its direction, gaps included. */
 	sizePx: number;
+	/**
+	 * The stack's rendered (resolved) flexes, upstream `Xt`: when given the drag starts from them with
+	 * line-mode 1px gaps and `tileFloor` floors, and writes every child's flex back.
+	 */
+	startFlexes?: readonly number[];
+	/** With `startFlexes`: a pointer drag floors the chat at 100 ("reachable"), a key step at 320 ("full"). */
+	floor?: "reachable" | "full";
 }
 
 export function resizeDivider(state: PaneLayoutState, request: ResizeRequest): PaneLayoutState {
@@ -605,6 +736,7 @@ export function resizeDivider(state: PaneLayoutState, request: ResizeRequest): P
 	const before = stack.children[request.index];
 	const after = stack.children[request.index + 1];
 	if (before === undefined || after === undefined) return state;
+	if (request.startFlexes !== undefined) return resizeResolved(state, stack, request, request.startFlexes);
 
 	const available = request.sizePx - TILE_GAP_PX * (stack.children.length - 1);
 	const total = sumFlex(stack.children);
@@ -617,6 +749,43 @@ export function resizeDivider(state: PaneLayoutState, request: ResizeRequest): P
 	const children = [...stack.children];
 	children[request.index] = {...before, flex: toFlex(nextBefore)};
 	children[request.index + 1] = {...after, flex: toFlex(pairPx - nextBefore)};
+	return {...state, root: replaceAt(state.root, request.path, {...stack, children})};
+}
+
+/**
+ * Upstream ca67f2c9d `Xt` + `tn`: moves the boundary from its rendered spot (the resolved flexes), clamps
+ * with the reachable or full floors, and replaces every child's flex with the moved set (summing to n).
+ */
+function resizeResolved(
+	state: PaneLayoutState,
+	stack: StackNode,
+	request: ResizeRequest,
+	startFlexes: readonly number[],
+): PaneLayoutState {
+	const count = stack.children.length;
+	if (startFlexes.length !== count) return state;
+	const available = request.sizePx - LINE_TILE_GAP_PX * (count - 1);
+	if (available <= 0) return state;
+	const floorOf = request.floor === "full" ? fullTileFloor : tileFloor;
+	const startSum = startFlexes.reduce((sum, flex) => sum + flex, 0) || count;
+	const px = startFlexes.map((flex) => (flex / startSum) * available);
+	const beforeNode = stack.children[request.index];
+	const afterNode = stack.children[request.index + 1];
+	const beforePx = px[request.index];
+	const afterPx = px[request.index + 1];
+	if (beforeNode === undefined || afterNode === undefined || beforePx === undefined || afterPx === undefined)
+		return state;
+	const pairPx = beforePx + afterPx;
+	const nextBefore = Math.max(
+		floorOf(beforeNode, stack.direction),
+		Math.min(beforePx + request.deltaPx, pairPx - floorOf(afterNode, stack.direction)),
+	);
+	px[request.index] = nextBefore;
+	px[request.index + 1] = pairPx - nextBefore;
+	const children = stack.children.map((child, index) => ({
+		...child,
+		flex: round(((px[index] ?? 0) / available) * count),
+	}));
 	return {...state, root: replaceAt(state.root, request.path, {...stack, children})};
 }
 
