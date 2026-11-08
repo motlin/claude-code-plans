@@ -912,6 +912,23 @@ describe("SessionTitlebar Session tools toolbar (upstream cds Toolbar with tu ro
 		});
 	});
 
+	it("keeps role and label after the plainWhileEmpty microtask and observer pass, since it holds the title", async () => {
+		const titlebar = await renderTitlebar(baseDetail, trailSlots());
+		await act(async () => {
+			await Promise.resolve();
+			await Promise.resolve();
+		});
+		titlebar.setAttribute("aria-hidden", "false");
+		await act(async () => {
+			await Promise.resolve();
+		});
+
+		expect({role: titlebar.getAttribute("role"), label: titlebar.getAttribute("aria-label")}).toStrictEqual({
+			role: "toolbar",
+			label: "Session tools",
+		});
+	});
+
 	it("is one tab stop, the title (firstUntilFocused), with every other item at -1", async () => {
 		const titlebar = await renderTitlebar(baseDetail, trailSlots());
 

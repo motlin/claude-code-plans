@@ -15,10 +15,12 @@ const PARAGRAPH_WIDTHS = [
  * bars in the chat column, inset by the same scrollbar gutters as the
  * transcript that replaces it. A title the session list already knows takes
  * the bar's place, beside the device glyph, as upstream's header shows it.
+ * Hidden from assistive tech, as upstream's frame is.
  */
 export function SessionSkeleton({title}: {title?: string | undefined} = {}) {
 	return (
-		<div data-testid="session-skeleton">
+		/* Upstream's whole loading frame (`Lp`) is aria-hidden, its ghost header a role-less Toolbar under it. */
+		<div data-testid="session-skeleton" aria-hidden="true">
 			<div data-skeleton-header="" className="flex items-center gap-[7px] px-[7px] pt-[6px]">
 				{title === undefined ? (
 					<>

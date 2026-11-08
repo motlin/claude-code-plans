@@ -138,6 +138,7 @@ function ShortcutsSearch({
 	}, [recording, isMac, onFind, inputRef]);
 
 	return (
+		/* Upstream's cds Toolbar has plainWhileEmpty, but this one always holds its search input, so the role never drops; a static role matches. */
 		<div
 			data-cds="Toolbar"
 			data-flush=""

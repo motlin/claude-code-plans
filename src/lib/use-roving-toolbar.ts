@@ -18,7 +18,10 @@ export type RovingToolbarOptions = {
 	standInFields?: boolean;
 	/** Losing the focused item parks focus on the toolbar root (tabindex 0, every item -1) until blur or pointerdown. */
 	restOnLoss?: boolean;
-	/** Drop role and label while the toolbar holds no focusable descendant (toolbar-plain-while-empty, not yet built). */
+	/**
+	 * Drop role and label while the toolbar has never held a focusable descendant (a ghost header), remembering the
+	 * label; once one arrives (or a stop is elected) both come back for good.
+	 */
 	plainWhileEmpty?: boolean;
 };
 
@@ -32,6 +35,40 @@ export const TOOLBAR_ROVING_OPTIONS = {
 	restOnLoss: true,
 	plainWhileEmpty: true,
 } as const satisfies Required<RovingToolbarOptions>;
+
+/** Upstream `Uw`: what counts as focusable for plainWhileEmpty (wider than the roving items: fields count). */
+export const TOOLBAR_FOCUSABLE_SELECTOR =
+	'button, a[href], summary, input:not([type="hidden"]), select, textarea, [contenteditable]:not([contenteditable="false"]), [tabindex]:not([tabindex="-1"]), [role="button"], [role="link"], [role="checkbox"], [role="switch"], [role="radio"], [role="tab"], [role^="menuitem"], [role="textbox"], [role="searchbox"], [role="combobox"], [role="spinbutton"], [role="slider"]';
+/** Upstream `qD`: the extra attributes a plainWhileEmpty toolbar observes; batches of only these skip the re-election. */
+const PLAIN_ATTRIBUTES = ["aria-label", "aria-hidden"];
+
+export type PlainWhileEmptyState = {held: boolean; label: string | null};
+
+/**
+ * Upstream `u8`: the root holds a focusable not hidden by an `[inert]`/`[aria-hidden="true"]` subtree of its own (a
+ * hiding ancestor above the root does not count).
+ */
+export function toolbarHasFocusable(root: Element): boolean {
+	return [...root.querySelectorAll(TOOLBAR_FOCUSABLE_SELECTOR)].some((element) => {
+		const hidden = element.closest('[inert], [aria-hidden="true"]');
+		return hidden === null || hidden === root || !root.contains(hidden);
+	});
+}
+
+/** Upstream `oS`: latch `held`, then restore role (and the remembered label) or strip both while never held. */
+export function applyPlainWhileEmpty(root: Element, state: PlainWhileEmptyState) {
+	state.held ||= toolbarHasFocusable(root);
+	if (state.held) {
+		if (!root.hasAttribute("role")) {
+			root.setAttribute("role", "toolbar");
+			if (state.label !== null && !root.hasAttribute("aria-label")) root.setAttribute("aria-label", state.label);
+		}
+	} else {
+		state.label = root.getAttribute("aria-label") ?? state.label;
+		root.removeAttribute("role");
+		root.removeAttribute("aria-label");
+	}
+}
 
 const ITEM_KIND = 'button:not([disabled]), a[href], [role="button"]';
 const CANDIDATES = `${ITEM_KIND}, [tabindex]`;
@@ -215,6 +252,8 @@ class Roving {
 	standIn: StandIn | null = null;
 	justFocused: EventTarget | null = null;
 	rest: Rest | null = null;
+	/** Upstream's per-hook `{held, label}`, kept across roots. */
+	plain: PlainWhileEmptyState = {held: false, label: null};
 	mutations: MutationObserver | null = null;
 	resizes: ResizeObserver | null = null;
 	listeners: AbortController | null = null;
@@ -230,6 +269,8 @@ class Roving {
 		this.stop = stop;
 		this.items = items;
 		const root = this.root;
+		this.plain.held = true;
+		if (root !== null && this.options.plainWhileEmpty === true) applyPlainWhileEmpty(root, this.plain);
 		const holder = root !== null && parkedForRest(root) ? null : stop;
 		for (const item of items) {
 			this.managed.add(item);
@@ -467,15 +508,27 @@ class Roving {
 		}
 		this.sync(root);
 		if (typeof MutationObserver === "undefined") return;
-		this.mutations = new MutationObserver(() => {
-			this.sync(root);
+		const plain = this.options.plainWhileEmpty === true;
+		this.mutations = new MutationObserver((records) => {
+			if (!records.every((record) => PLAIN_ATTRIBUTES.includes(record.attributeName ?? ""))) this.sync(root);
+			if (plain && this.root === root) applyPlainWhileEmpty(root, this.plain);
 		});
 		this.mutations.observe(root, {
 			childList: true,
 			subtree: true,
 			attributes: true,
-			attributeFilter: ["disabled", "inert", ...(this.options.softDisabled === true ? ["data-disabled"] : [])],
+			attributeFilter: [
+				"disabled",
+				"inert",
+				...(this.options.softDisabled === true ? ["data-disabled"] : []),
+				...(plain ? PLAIN_ATTRIBUTES : []),
+			],
 		});
+		if (plain) {
+			queueMicrotask(() => {
+				if (this.root === root) applyPlainWhileEmpty(root, this.plain);
+			});
+		}
 	}
 
 	/** Upstream `T`: a focused item becomes the stop. */

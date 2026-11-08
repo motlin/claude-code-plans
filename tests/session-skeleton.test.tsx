@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, render} from "@testing-library/react";
+import {cleanup, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 import {SessionSkeleton} from "../src/components/session-skeleton";
 
@@ -48,5 +48,16 @@ describe("SessionSkeleton", () => {
 			glyph: header.querySelector("svg") !== null,
 			bars: header.querySelectorAll(".animate-pulse").length,
 		}).toStrictEqual({title: "ImmutableTreeMap entrySet contains upstream PR", glyph: true, bars: 0});
+	});
+
+	it("hides the whole frame from assistive tech with a role-less ghost header, as upstream's loading frame Lp", () => {
+		const title = "ImmutableTreeMap entrySet contains upstream PR";
+		render(<SessionSkeleton title={title} />);
+
+		expect({
+			hidden: screen.getByTestId("session-skeleton").getAttribute("aria-hidden"),
+			toolbar: screen.queryByRole("toolbar", {hidden: true}),
+			titleHidden: screen.getByText(title).closest('[aria-hidden="true"]') !== null,
+		}).toStrictEqual({hidden: "true", toolbar: null, titleHidden: true});
 	});
 });

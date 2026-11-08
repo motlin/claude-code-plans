@@ -5,9 +5,12 @@ import {type ReactNode, useEffect, useRef} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {
+	applyPlainWhileEmpty,
 	rovingHeir,
+	TOOLBAR_FOCUSABLE_SELECTOR,
 	TOOLBAR_ROVING_OPTIONS,
 	type RovingToolbarOptions,
+	toolbarHasFocusable,
 	useRovingToolbar,
 } from "../src/lib/use-roving-toolbar";
 
@@ -580,5 +583,134 @@ describe("portaled forwarding", () => {
 		button("A").focus();
 		fireEvent.keyDown(button("A"), {key: "ArrowRight"});
 		expect(document.activeElement?.textContent).toBe("A");
+	});
+});
+
+describe("plainWhileEmpty (upstream u8/oS)", () => {
+	/** A labelled toolbar root over arbitrary children, with the given options. */
+	function Plain({options, children}: {options?: RovingToolbarOptions; children?: ReactNode}) {
+		const roving = useRovingToolbar(options);
+		return (
+			<div data-testid="root" role="toolbar" aria-label="X" {...roving}>
+				{children}
+			</div>
+		);
+	}
+	const root = () => screen.getByTestId("root");
+	const attributes = () => ({role: root().getAttribute("role"), label: root().getAttribute("aria-label")});
+	const on = {plainWhileEmpty: true};
+
+	it("exports upstream's Uw focusable selector", () => {
+		expect(TOOLBAR_FOCUSABLE_SELECTOR).toBe(
+			'button, a[href], summary, input:not([type="hidden"]), select, textarea, [contenteditable]:not([contenteditable="false"]), [tabindex]:not([tabindex="-1"]), [role="button"], [role="link"], [role="checkbox"], [role="switch"], [role="radio"], [role="tab"], [role^="menuitem"], [role="textbox"], [role="searchbox"], [role="combobox"], [role="spinbutton"], [role="slider"]',
+		);
+	});
+
+	it("drops role and label from an empty toolbar after a microtask", async () => {
+		render(
+			<Plain options={on}>
+				<span>Loading</span>
+			</Plain>,
+		);
+		await flush();
+		expect(attributes()).toStrictEqual({role: null, label: null});
+	});
+
+	it("restores role and the remembered label when a focusable arrives, then latches", async () => {
+		render(
+			<Plain options={on}>
+				<span>Loading</span>
+			</Plain>,
+		);
+		await flush();
+		const added = document.createElement("button");
+		added.textContent = "Go";
+		act(() => {
+			root().append(added);
+		});
+		await flush();
+		const restored = attributes();
+		act(() => {
+			added.remove();
+		});
+		await flush();
+		expect({restored, latched: attributes()}).toStrictEqual({
+			restored: {role: "toolbar", label: "X"},
+			latched: {role: "toolbar", label: "X"},
+		});
+	});
+
+	it("counts a focusable inside an aria-hidden or inert subtree of the root as empty", async () => {
+		// A field, not a button: an aria-hidden-wrapped button is still a roving item (Dl), and electing it latches.
+		render(
+			<Plain options={on}>
+				<div aria-hidden="true">
+					<input type="text" aria-label="Hidden" />
+				</div>
+				<div inert>
+					<button type="button">Inert</button>
+				</div>
+			</Plain>,
+		);
+		await flush();
+		expect(attributes()).toStrictEqual({role: null, label: null});
+	});
+
+	it("ignores an aria-hidden ancestor above the root", async () => {
+		render(
+			<div aria-hidden="true">
+				<Plain options={on}>
+					<button type="button">Go</button>
+				</Plain>
+			</div>,
+		);
+		await flush();
+		expect(attributes()).toStrictEqual({role: "toolbar", label: "X"});
+	});
+
+	it("holds on a lone text field", async () => {
+		render(
+			<Plain options={on}>
+				<input type="text" aria-label="Search" />
+			</Plain>,
+		);
+		await flush();
+		expect(attributes()).toStrictEqual({role: "toolbar", label: "X"});
+	});
+
+	it("keeps role on an empty toolbar when the option is off", async () => {
+		render(
+			<Plain>
+				<span>Loading</span>
+			</Plain>,
+		);
+		await flush();
+		expect(attributes()).toStrictEqual({role: "toolbar", label: "X"});
+	});
+
+	it("probes and applies directly", () => {
+		const element = document.createElement("div");
+		element.setAttribute("role", "toolbar");
+		element.setAttribute("aria-label", "Y");
+		const state = {held: false, label: null};
+		const empty = toolbarHasFocusable(element);
+		applyPlainWhileEmpty(element, state);
+		const plain = {role: element.getAttribute("role"), label: element.getAttribute("aria-label")};
+		element.append(document.createElement("textarea"));
+		const full = toolbarHasFocusable(element);
+		applyPlainWhileEmpty(element, state);
+		expect({
+			empty,
+			plain,
+			full,
+			state,
+			after: {role: element.getAttribute("role"), label: element.getAttribute("aria-label")},
+		}).toStrictEqual({
+			empty: false,
+			plain: {role: null, label: null},
+			full: true,
+			state: {held: true, label: "Y"},
+			after: {role: "toolbar", label: "Y"},
+		});
 	});
 });
