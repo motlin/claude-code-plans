@@ -431,7 +431,7 @@ describe("in-flight tool rows", () => {
 	it("shimmers a pending single row with its progressive label in ShimmerText", () => {
 		const html = renderRun([{...poll, pending: true}]).replaceAll(/ id="[^"]*"/g, "");
 		expect(html).toContain(
-			'<span data-cds="ShimmerText" data-shimmering="true" dir="auto" class="relative truncate min-w-0 text-body">Polling PR #1954 for new activity from Don or Moh<span data-cds-shimmer-clone="" aria-hidden="true" inert="">Polling PR #1954 for new activity from Don or Moh</span></span>',
+			'<span data-cds="ShimmerText" data-shimmering="true" data-variant="secondary" class="relative truncate min-w-0 text-body">Polling PR #1954 for new activity from Don or Moh<span data-cds-shimmer-clone="" aria-hidden="true" data-find-omitted="" inert="">Polling PR #1954 for new activity from Don or Moh</span></span>',
 		);
 	});
 
@@ -453,7 +453,7 @@ describe("in-flight tool rows", () => {
 		]);
 		const button = summaryButton(html).replaceAll(/ id="[^"]*"/g, "");
 		expect(button).toContain(
-			'<span data-cds="ShimmerText" data-shimmering="true" dir="auto" class="relative text-body truncate min-w-0">Polling PR #1954 for new activity from Don or Moh<span data-cds-shimmer-clone="" aria-hidden="true" inert="">Polling PR #1954 for new activity from Don or Moh</span></span>',
+			'<span data-cds="ShimmerText" data-shimmering="true" data-variant="secondary" class="relative text-body truncate min-w-0">Polling PR #1954 for new activity from Don or Moh<span data-cds-shimmer-clone="" aria-hidden="true" data-find-omitted="" inert="">Polling PR #1954 for new activity from Don or Moh</span></span>',
 		);
 	});
 });

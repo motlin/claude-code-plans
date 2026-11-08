@@ -100,6 +100,7 @@ function PhaseWord({word}: Readonly<{word: string}>) {
 			>
 				<ShimmerText
 					ref={rowCut}
+					variant="secondary"
 					className="min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em]"
 				>
 					{word}
@@ -195,7 +196,11 @@ export function WorkingMarker({
 										state.status === "stopping" ? ` ${STOPPING_MORPH_CLASS}` : ""
 									}`}
 								>
-									{state.status === "stopping" ? <ShimmerText>{label}</ShimmerText> : label}
+									{state.status === "stopping" ? (
+										<ShimmerText variant="secondary">{label}</ShimmerText>
+									) : (
+										label
+									)}
 								</span>
 							)}
 						</span>

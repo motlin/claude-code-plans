@@ -67,11 +67,9 @@ export function WorkflowCard({
 				className={`flex min-w-0 items-center gap-2 text-footnote text-ink-muted tabular-nums${hasName ? "" : " pb-0.75"}`}
 				style={{minHeight: "var(--text-body--line-height)"}}
 			>
-				{hasName ? (
-					<span className="shrink-0 text-secondary">{label}</span>
-				) : (
-					<ShimmerText className="shrink-0 text-secondary">{label}</ShimmerText>
-				)}
+				<ShimmerText active={!hasName} className="shrink-0 text-secondary">
+					{label}
+				</ShimmerText>
 				{counts.total > 0 && (
 					<span className="shrink-0">
 						<AgentCount total={counts.total} />

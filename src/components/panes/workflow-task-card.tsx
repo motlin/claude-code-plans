@@ -64,12 +64,12 @@ function compactCount(n: number): string {
 	return String(n);
 }
 
-/** Upstream `Ee`: shimmers only while active, otherwise plain text in its own ink. */
+/** Upstream `Ee`: shimmers only while active; settled, it stays an inactive ShimmerText in its own ink. */
 function MaybeShimmer({active, className, children}: {active: boolean; className: string; children: ReactNode}) {
-	return active ? (
-		<ShimmerText className={className}>{children}</ShimmerText>
-	) : (
-		<span className={className}>{children}</span>
+	return (
+		<ShimmerText active={active} className={className}>
+			{children}
+		</ShimmerText>
 	);
 }
 

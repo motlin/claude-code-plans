@@ -336,7 +336,7 @@ describe("an in-flight call's row", () => {
 			text: row?.textContent,
 			state: row?.getAttribute("data-state") ?? null,
 			shimmer: row?.querySelector("[data-cds=ShimmerText]")?.firstChild?.textContent ?? null,
-			clone: row?.querySelector("[data-cds-shimmer-clone][aria-hidden=true][inert]")?.textContent ?? null,
+			variant: row?.querySelector("[data-cds=ShimmerText]")?.getAttribute("data-variant") ?? null,
 			srOnly: row?.querySelector(".sr-only")?.textContent ?? null,
 		};
 	}
@@ -349,17 +349,17 @@ describe("an in-flight call's row", () => {
 			),
 		}).toStrictEqual({
 			inflected: {
-				text: "Doing task M1-42Doing task M1-42running",
+				text: "Doing task M1-42running",
 				state: "busy",
 				shimmer: "Doing task M1-42",
-				clone: "Doing task M1-42",
+				variant: "secondary",
 				srOnly: "running",
 			},
 			bare: {
-				text: "Mobile audit: session pageMobile audit: session pagerunning",
+				text: "Mobile audit: session pagerunning",
 				state: "busy",
 				shimmer: "Mobile audit: session page",
-				clone: "Mobile audit: session page",
+				variant: "secondary",
 				srOnly: "running",
 			},
 		});
@@ -370,7 +370,7 @@ describe("an in-flight call's row", () => {
 			text: "Ran agentDo task M1-42",
 			state: null,
 			shimmer: null,
-			clone: null,
+			variant: null,
 			srOnly: null,
 		});
 	});

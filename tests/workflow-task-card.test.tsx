@@ -131,6 +131,12 @@ describe("WorkflowTaskCard", () => {
 		expect(card?.className).toBe("flex flex-col gap-[24px] text-pretty rounded-r6 bg-alpha-1 p-2 pb-3");
 		const title = screen.getByText("upstream-sync-wf-test");
 		expect(title.className).toBe("flex-1 min-w-0 text-body break-words text-balance text-ink-muted");
+		// Upstream keeps a settled step label mounted as an inactive ShimmerText.
+		expect({tag: title.tagName, cds: title.dataset["cds"], shimmering: title.dataset["shimmering"]}).toStrictEqual({
+			tag: "SPAN",
+			cds: "ShimmerText",
+			shimmering: "false",
+		});
 		expect(title.nextElementSibling?.textContent).toBe("35s");
 		expect(title.nextElementSibling?.className).toBe("shrink-0 text-footnote text-ink-muted tabular-nums pe-0.75");
 		const metaRows = [...container.querySelectorAll("span.flex.flex-wrap.items-baseline")].map((row) =>
@@ -203,7 +209,7 @@ describe("WorkflowTaskCard", () => {
 	it("opens a running run's phases with its live agents table and timers", () => {
 		const {container} = render(<WorkflowTaskCard task={task({id: "wn2xo9rjo"})} run={RUNNING_RUN} />);
 		expect(container.querySelector("[data-cds=ShimmerText]")?.className).toBe(
-			"relative flex-1 min-w-0 text-body break-words text-balance text-primary",
+			"flex-1 min-w-0 text-body break-words text-balance text-primary",
 		);
 		const metaRows = [...container.querySelectorAll("span.flex.flex-wrap.items-baseline")].map((row) =>
 			[...row.children].map((child) => child.textContent),

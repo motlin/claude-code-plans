@@ -169,11 +169,30 @@ describe("WorkflowCard", () => {
 			surface: card.querySelector('span[aria-hidden="true"]')?.className,
 		}).toStrictEqual({
 			className: CARD_CLASS,
-			text: `${NAME}${NAME}Starting workflow`,
+			text: `${NAME}Starting workflow`,
 			cells: ["epitaxy-agent-cell shrink-0 rounded-xs epitaxy-agent-cell--ghost"],
 			summary: "Waiting for agents to start",
 			surface:
 				"card-outline task-card-surface absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover",
+		});
+	});
+
+	it("keeps the Workflow label a mounted, inactive default-variant ShimmerText once the card has a name", () => {
+		const labelFacts = (name: string) => {
+			const {container} = render(<WorkflowCard name={name} progress={[]} onOpen={() => {}} />);
+			const label = container.querySelector(".text-footnote > [data-cds=ShimmerText]");
+			const facts = {
+				text: label?.textContent,
+				className: label?.className,
+				shimmering: label?.getAttribute("data-shimmering"),
+				variant: label?.getAttribute("data-variant") ?? null,
+			};
+			cleanup();
+			return facts;
+		};
+		expect({named: labelFacts(NAME), unnamed: labelFacts("")}).toStrictEqual({
+			named: {text: "Workflow", className: "shrink-0 text-secondary", shimmering: "false", variant: null},
+			unnamed: {text: "Workflow", className: "shrink-0 text-secondary", shimmering: "true", variant: null},
 		});
 	});
 
@@ -231,7 +250,7 @@ describe("Workflow call in the session transcript", () => {
 		renderChat(false, []);
 		const card = await screen.findByRole("button", {name: `View workflow: ${NAME}`});
 
-		expect(card.textContent).toBe(`${NAME}${NAME}Starting workflow`);
+		expect(card.textContent).toBe(`${NAME}Starting workflow`);
 	});
 
 	it("draws a running launch as the card and opens the Background tasks pane at its task", async () => {
@@ -256,8 +275,8 @@ describe("Workflow call in the session transcript", () => {
 			launched,
 			running: screen.queryByRole("button", {name: `View workflow: ${NAME}`})?.textContent,
 		}).toStrictEqual({
-			launched: `${NAME}${NAME}Starting workflow`,
-			running: `${NAME}${NAME}Workflow3 agents13s`,
+			launched: `${NAME}Starting workflow`,
+			running: `${NAME}Workflow3 agents13s`,
 		});
 	});
 

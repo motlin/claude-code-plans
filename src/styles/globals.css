@@ -2923,62 +2923,212 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	}
 }
 
-/* Upstream's ShimmerText (claude.ai/code cds): the text in secondary ink (dark: muted)
-   with an aria-hidden clone masked to the glyphs, whose :after band sweeps a 30%-white
-   peak across them on a 3s held loop (SHIMMER_PERIOD_MS). Reduced motion hides the clone.
-   An inactive shimmer (data-shimmering=false) is plain text; the muted variant keeps the
-   ink it inherits; --shimmer-delay phase-locks remounted bands. */
+/* Upstream's ShimmerText (claude.ai/code cds, c6a992d55): a 3s held band (SHIMMER_PERIOD_MS)
+   in the variant's ink (I6: default primary, dark secondary; secondary; muted; strong with
+   the bell band). Composited, an aria-hidden clone masked to the glyphs carries the band on
+   its ::after; fallback (data-shimmer-mode) sweeps a background-clip gradient on the span.
+   An inactive shimmer (data-shimmering=false) is plain text. --cds-shimmer-text-delay
+   phase-locks remounted bands and --cds-shimmer-text-play-state pauses them. */
+[data-cds="ShimmerText"] {
+	--cds-shimmer-text-bell-stops:
+		var(--cds-shimmer-text-ink, currentcolor) 37.5%,
+		color-mix(in srgb, var(--cds-shimmer-text-peak, transparent) 16%, var(--cds-shimmer-text-ink, currentcolor)) 41%,
+		color-mix(in srgb, var(--cds-shimmer-text-peak, transparent) 46%, var(--cds-shimmer-text-ink, currentcolor)) 44%,
+		color-mix(in srgb, var(--cds-shimmer-text-peak, transparent) 83%, var(--cds-shimmer-text-ink, currentcolor)) 47%,
+		var(--cds-shimmer-text-peak, transparent) 50%,
+		color-mix(in srgb, var(--cds-shimmer-text-peak, transparent) 83%, var(--cds-shimmer-text-ink, currentcolor)) 53%,
+		color-mix(in srgb, var(--cds-shimmer-text-peak, transparent) 46%, var(--cds-shimmer-text-ink, currentcolor)) 56%,
+		color-mix(in srgb, var(--cds-shimmer-text-peak, transparent) 16%, var(--cds-shimmer-text-ink, currentcolor)) 59%,
+		var(--cds-shimmer-text-ink, currentcolor) 62.5%;
+	--cds-shimmer-text-bell-band-stops:
+		transparent 37.5%, color-mix(in srgb, var(--cds-shimmer-text-peak, transparent) 16%, transparent) 41%,
+		color-mix(in srgb, var(--cds-shimmer-text-peak, transparent) 46%, transparent) 44%,
+		color-mix(in srgb, var(--cds-shimmer-text-peak, transparent) 83%, transparent) 47%,
+		var(--cds-shimmer-text-peak, transparent) 50%,
+		color-mix(in srgb, var(--cds-shimmer-text-peak, transparent) 83%, transparent) 53%,
+		color-mix(in srgb, var(--cds-shimmer-text-peak, transparent) 46%, transparent) 56%,
+		color-mix(in srgb, var(--cds-shimmer-text-peak, transparent) 16%, transparent) 59%, transparent 62.5%;
+}
+
 [data-cds="ShimmerText"][data-shimmering="true"] {
-	--shimmer-fill: var(--upstream-text-secondary);
-	--shimmer-peak: color-mix(in srgb, var(--shimmer-fill) 30%, white);
-	-webkit-text-fill-color: var(--shimmer-fill);
+	--cds-shimmer-text-ink: var(--upstream-text-primary);
+	--cds-shimmer-text-peak: color-mix(in srgb, var(--upstream-text-primary) 30%, white);
 }
 
 .dark [data-cds="ShimmerText"][data-shimmering="true"] {
-	--shimmer-fill: var(--upstream-text-muted);
+	--cds-shimmer-text-ink: var(--upstream-text-secondary);
+	--cds-shimmer-text-peak: var(--upstream-text-primary);
+}
+
+[data-cds="ShimmerText"][data-shimmering="true"][data-variant="secondary"] {
+	--cds-shimmer-text-ink: var(--upstream-text-secondary);
+	--cds-shimmer-text-peak: color-mix(in srgb, var(--upstream-text-secondary) 30%, white);
+}
+
+.dark [data-cds="ShimmerText"][data-shimmering="true"][data-variant="secondary"] {
+	--cds-shimmer-text-ink: var(--upstream-text-muted);
+	--cds-shimmer-text-peak: color-mix(in srgb, var(--upstream-text-muted) 30%, white);
 }
 
 [data-cds="ShimmerText"][data-shimmering="true"][data-variant="muted"],
 .dark [data-cds="ShimmerText"][data-shimmering="true"][data-variant="muted"] {
-	--shimmer-fill: currentColor;
+	--cds-shimmer-text-ink: var(--upstream-text-muted);
+	--cds-shimmer-text-peak: color-mix(in srgb, var(--upstream-text-muted) 30%, white);
+}
+
+[data-cds="ShimmerText"][data-shimmering="true"][data-variant="strong"],
+.dark [data-cds="ShimmerText"][data-shimmering="true"][data-variant="strong"] {
+	--cds-shimmer-text-ink: var(--upstream-text-primary);
+	--cds-shimmer-text-peak: color-mix(in srgb, var(--upstream-text-primary) 45%, white);
+	--cds-shimmer-text-band-stops: var(--cds-shimmer-text-bell-band-stops);
+	--cds-shimmer-text-keyframes: cds-shimmer-text-band-strong;
+	--cds-shimmer-text-keyframes-rtl: cds-shimmer-text-band-strong-rtl;
+}
+
+/* Upstream --cds-gray-450. */
+.dark [data-cds="ShimmerText"][data-shimmering="true"][data-variant="strong"] {
+	--cds-shimmer-text-peak: #7b7974;
+}
+
+[data-cds="ShimmerText"][data-shimmering="true"]:not([data-shimmer-mode="fallback"]) {
+	-webkit-text-fill-color: var(--cds-shimmer-text-ink);
+}
+
+/* Upstream yI: the fallback sweeps the band through the span's own background. */
+[data-cds="ShimmerText"][data-shimmer-mode="fallback"] {
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-repeat: no-repeat;
+	background-size: 400% 100%;
+	background-position: 83.333% 0%;
+	background-image: linear-gradient(
+		var(--cds-shimmer-text-angle, 120deg),
+		var(--cds-shimmer-text-ink) 37.5%,
+		var(--cds-shimmer-text-peak) 50%,
+		var(--cds-shimmer-text-ink) 62.5%
+	);
+	animation: 3s linear infinite cds-shimmer-text-shine;
+}
+
+/* Upstream b$. */
+[data-cds="ShimmerText"][data-shimmer-mode="fallback"][data-variant="strong"] {
+	background-image: linear-gradient(var(--cds-shimmer-text-angle, 120deg), var(--cds-shimmer-text-bell-stops));
+	animation: 3s linear infinite cds-shimmer-text-shine-strong;
+}
+
+/* Upstream S8. */
+[data-cds="ShimmerText"][data-shimmer-mode="fallback"]:where(:root[dir="rtl"] :dir(rtl)) {
+	--cds-shimmer-text-angle: 240deg;
+	animation-name: cds-shimmer-text-shine-rtl;
+}
+
+[data-cds="ShimmerText"][data-shimmer-mode="fallback"][data-variant="strong"]:where(:root[dir="rtl"] :dir(rtl)) {
+	animation-name: cds-shimmer-text-shine-strong-rtl;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	[data-cds="ShimmerText"][data-shimmer-mode="fallback"] {
+		animation: none;
+		background: none;
+		color: var(--cds-shimmer-text-ink);
+		-webkit-text-fill-color: currentcolor;
+	}
+}
+
+html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fallback"] {
+	animation: none;
+	background: none;
+	color: var(--cds-shimmer-text-ink);
+	-webkit-text-fill-color: currentcolor;
 }
 
 [data-cds-shimmer-clone] {
-	box-sizing: border-box;
-	padding: inherit;
-	white-space: inherit;
-	text-overflow: inherit;
-	pointer-events: none;
-	user-select: none;
-	-webkit-text-fill-color: transparent;
-	mask-image: linear-gradient(#000 0 0);
-	-webkit-mask-clip: text;
-	mask-clip: text;
-	display: block;
-	position: absolute;
-	inset: 0;
-	overflow: clip;
+	display: none;
 }
 
-[data-cds-shimmer-clone]::after {
-	content: "";
-	background-image: linear-gradient(120deg, transparent 37.5%, var(--shimmer-peak) 50%, transparent 62.5%);
-	animation: 3s linear infinite cds-shimmer-text-band;
-	animation-delay: var(--shimmer-delay, 0ms);
-	position: absolute;
-	inset: 0 -300% 0 0;
-	translate: -62.5%;
-}
+@supports (-webkit-mask-clip: text) and (-webkit-app-region: drag) {
+	[data-cds-shimmer-clone] {
+		box-sizing: border-box;
+		padding: inherit;
+		white-space: inherit;
+		text-overflow: inherit;
+		pointer-events: none;
+		user-select: none;
+		-webkit-text-fill-color: transparent;
+		mask-image: linear-gradient(#000 0 0);
+		-webkit-mask-clip: text;
+		mask-clip: text;
+		display: block;
+		position: absolute;
+		inset: 0;
+		overflow: clip;
+	}
 
-[data-cds-shimmer-clone]:dir(rtl)::after {
-	background-image: linear-gradient(240deg, transparent 37.5%, var(--shimmer-peak) 50%, transparent 62.5%);
-	animation-name: cds-shimmer-text-band-rtl;
-	translate: -12.5%;
+	[data-cds-shimmer-clone]::after {
+		content: "";
+		background-image: linear-gradient(
+			120deg,
+			var(
+				--cds-shimmer-text-band-stops,
+				transparent 37.5%,
+				var(--cds-shimmer-text-peak, transparent) 50%,
+				transparent 62.5%
+			)
+		);
+		animation: 3s linear infinite cds-shimmer-text-band;
+		animation-name: var(--cds-shimmer-text-keyframes, cds-shimmer-text-band);
+		animation-delay: var(--cds-shimmer-text-delay, 0s);
+		animation-play-state: var(--cds-shimmer-text-play-state, running);
+		position: absolute;
+		inset: 0 -300% 0 0;
+		translate: -62.5%;
+	}
+
+	[data-cds-shimmer-clone]:where(:root[dir="rtl"] :dir(rtl))::after {
+		background-image: linear-gradient(
+			240deg,
+			var(
+				--cds-shimmer-text-band-stops,
+				transparent 37.5%,
+				var(--cds-shimmer-text-peak, transparent) 50%,
+				transparent 62.5%
+			)
+		);
+		animation-name: var(--cds-shimmer-text-keyframes-rtl, cds-shimmer-text-band-rtl);
+		translate: -12.5%;
+	}
+
+	/* Upstream QU: a strong label without emoji paints its clone in primary ink. The component
+	   sets the attribute only under fizzy-lake type. */
+	@media screen and (prefers-reduced-motion: no-preference) and (forced-colors: none) {
+		[data-cds-shimmer-copy-inks]:not([data-reduce-motion="true"] *) {
+			-webkit-text-fill-color: transparent;
+		}
+
+		[data-cds-shimmer-copy-inks]:not([data-reduce-motion="true"] *) > [inert] {
+			background-color: var(--upstream-text-primary, currentcolor);
+		}
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {
 	[data-cds-shimmer-clone] {
 		display: none;
+	}
+}
+
+@media (forced-colors: active) {
+	[data-cds="ShimmerText"][data-shimmering="true"] {
+		-webkit-text-fill-color: CanvasText;
+	}
+
+	[data-cds-shimmer-clone] {
+		display: none;
+	}
+
+	[data-cds="ShimmerText"][data-shimmer-mode="fallback"] {
+		animation: none;
+		background: none;
 	}
 }
 
@@ -3003,6 +3153,78 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	85%,
 	to {
 		translate: -62.5%;
+	}
+}
+
+@keyframes cds-shimmer-text-band-strong {
+	0%,
+	15% {
+		animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+		translate: -62.5%;
+	}
+	85%,
+	to {
+		translate: -12.5%;
+	}
+}
+
+@keyframes cds-shimmer-text-band-strong-rtl {
+	0%,
+	15% {
+		animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+		translate: -12.5%;
+	}
+	85%,
+	to {
+		translate: -62.5%;
+	}
+}
+
+@keyframes cds-shimmer-text-shine {
+	0%,
+	15% {
+		animation-timing-function: cubic-bezier(0.714, 0.121, 0.211, 0.888);
+		background-position: 83.333% 0;
+	}
+	85%,
+	to {
+		background-position: 16.667% 0;
+	}
+}
+
+@keyframes cds-shimmer-text-shine-rtl {
+	0%,
+	15% {
+		animation-timing-function: cubic-bezier(0.714, 0.121, 0.211, 0.888);
+		background-position: 16.667% 0;
+	}
+	85%,
+	to {
+		background-position: 83.333% 0;
+	}
+}
+
+@keyframes cds-shimmer-text-shine-strong {
+	0%,
+	15% {
+		animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+		background-position: 83.333% 0;
+	}
+	85%,
+	to {
+		background-position: 16.667% 0;
+	}
+}
+
+@keyframes cds-shimmer-text-shine-strong-rtl {
+	0%,
+	15% {
+		animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+		background-position: 16.667% 0;
+	}
+	85%,
+	to {
+		background-position: 83.333% 0;
 	}
 }
 

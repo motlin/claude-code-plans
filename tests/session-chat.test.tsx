@@ -1834,7 +1834,7 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 		const failed = renderWithOpener(toolResultRecords(AGENT_CALL, "Fabricated failure", true), () => {});
 
 		expect([pending, failed].map((container) => agentRow(container).textContent)).toStrictEqual([
-			"Committing lazy allocation fixupCommitting lazy allocation fixuprunning",
+			"Committing lazy allocation fixuprunning",
 			"Commit lazy allocation fixupFailed",
 		]);
 	});
@@ -1843,7 +1843,7 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 		{
 			state: "pending",
 			records: toolCallRecords([AGENT_CALL]).slice(0, 1),
-			expectedClasses: ["relative truncate min-w-0 text-body"],
+			expectedClasses: ["truncate min-w-0 text-body"],
 		},
 		{
 			state: "failed",

@@ -1118,9 +1118,8 @@ describe("WorkingMarker pre-stream phases", () => {
 			morph:
 				'<span class="group/morph inline-grid items-center justify-items-start min-w-0 max-w-full">' +
 				'<span data-morph-key="busy|Sending" class="col-start-1 row-start-1 flex min-w-0 max-w-full items-center">' +
-				'<span data-cds="ShimmerText" data-shimmering="true" dir="auto" class="relative min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em]">' +
-				'Sending<span data-cds-shimmer-clone="" aria-hidden="true" inert="">Sending</span>' +
-				"</span></span></span>",
+				'<span data-cds="ShimmerText" data-shimmering="true" data-variant="secondary" data-shimmer-mode="fallback" class="min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em]">' +
+				"Sending</span></span></span>",
 		});
 	});
 

@@ -81,7 +81,7 @@ describe("HeldUserRow", () => {
 			// Upstream keeps the muted shimmer mounted with active:false while not reconnecting.
 			statusHtml:
 				'<span data-testid="epitaxy-held-for-host" class="flex min-h-[20px] items-center text-[12px] leading-[15px] text-secondary pe-[4px] comfortable:min-h-[24px] comfortable:text-[13px] comfortable:leading-[17px] comfortable:pe-[6px]">' +
-				'<span data-cds="ShimmerText" data-shimmering="false" dir="auto" data-variant="muted" style="--shimmer-delay: -1500ms;">Waiting to deliver to the terminal…</span>' +
+				'<span data-cds="ShimmerText" data-shimmering="false" data-variant="muted">Waiting to deliver to the terminal…</span>' +
 				"</span>",
 			withdrawClass:
 				"inline-flex size-5 comfortable:size-6 shrink-0 items-center justify-center rounded-r4 comfortable:rounded-r5 text-ink-muted hover:text-primary",
@@ -98,13 +98,12 @@ describe("HeldUserRow", () => {
 			shimmering: shimmer?.getAttribute("data-shimmering"),
 			variant: shimmer?.getAttribute("data-variant"),
 			delay: shimmer?.getAttribute("style"),
-			clone: shimmer?.querySelector("[data-cds-shimmer-clone]")?.textContent,
-			text: shimmer?.firstChild?.textContent,
+			text: shimmer?.textContent,
 		}).toStrictEqual({
 			shimmering: "true",
 			variant: "muted",
-			delay: "--shimmer-delay: -1250ms;",
-			clone: "Waiting for the terminal to reconnect…",
+			// jsdom lacks glyph masks, so the shimmer runs in fallback and its delay is an animation-delay.
+			delay: "animation-delay: -1250ms;",
 			text: "Waiting for the terminal to reconnect…",
 		});
 	});

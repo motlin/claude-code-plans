@@ -260,7 +260,7 @@ describe("standalone calls end a tool run", () => {
 		const expected = [
 			human,
 			tool(["Editedfabricated-plan.md+1−11 added, 1 removed"]),
-			tool(["Proposing planProposing planFabricated planFabricated planrunning"]),
+			tool(["Proposing planFabricated planrunning"]),
 		];
 		expect(bothModes(records)).toStrictEqual({normal: expected, verbose: expected});
 	});

@@ -5535,7 +5535,12 @@ function InkedLabel({
 }) {
 	if (ink === null)
 		return (
-			<ShimmerText ref={ref} {...(className === "" ? {} : {className})} {...(id === undefined ? {} : {id})}>
+			<ShimmerText
+				ref={ref}
+				variant="secondary"
+				{...(className === "" ? {} : {className})}
+				{...(id === undefined ? {} : {id})}
+			>
 				{children}
 			</ShimmerText>
 		);
@@ -5964,7 +5969,7 @@ function ToolCallRow({
 			)}
 			{rangeLabel &&
 				(labelClass === null ? (
-					<ShimmerText id={`${statusId}-range`} className="text-body truncate min-w-0">
+					<ShimmerText id={`${statusId}-range`} variant="secondary" className="text-body truncate min-w-0">
 						{rangeLabel}
 					</ShimmerText>
 				) : (
@@ -6335,7 +6340,12 @@ function ToolCallSummary({
 							activity={toolMarkActivity(pendingCall.name, pendingCall.input)}
 							className="me-1.5"
 						/>
-						<ShimmerText ref={busyRowCut} id={`${statusId}-label`} className="text-body truncate min-w-0">
+						<ShimmerText
+							ref={busyRowCut}
+							id={`${statusId}-label`}
+							variant="secondary"
+							className="text-body truncate min-w-0"
+						>
 							{runningText}
 						</ShimmerText>
 						<RunningElapsed startedAt={pendingCall.startedAt} />
