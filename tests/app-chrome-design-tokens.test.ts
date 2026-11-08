@@ -33,7 +33,10 @@ describe("app chrome design tokens", () => {
 			const code = readFileSync(path, "utf8")
 				.replaceAll(/\/\*[\s\S]*?\*\//g, "")
 				.replaceAll(/(^|[^:])\/\/.*$/gm, "$1");
-			return [...code.matchAll(COLOUR_PREFIXED_UTILITY)].map(([utility]) => ({path, utility}));
+			// A name followed by `:` is a CSS declaration inside an injected stylesheet string, not a class.
+			return [...code.matchAll(COLOUR_PREFIXED_UTILITY)]
+				.filter(({0: utility, index}) => code[index + utility.length] !== ":")
+				.map(([utility]) => ({path, utility}));
 		});
 		const rules = designSystem.candidatesToCss(utilities.map(({utility}) => utility));
 		const violations: Record<string, string[]> = {};

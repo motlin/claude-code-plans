@@ -576,7 +576,7 @@ describe("Changes pane gutter add-comment button", () => {
 		}).toStrictEqual({
 			title: null,
 			className:
-				"-left-0.5 flex size-4 cursor-pointer items-center justify-center rounded bg-fill-accent text-on-accent hover:bg-fill-accent-hover",
+				"flex size-4 cursor-pointer items-center justify-center rounded bg-fill-accent text-on-accent hover:bg-fill-accent-hover",
 			position: "absolute",
 			top: "calc((var(--diffs-line-height, 1lh) - 1rem) / 2)",
 			bottom: "auto",

@@ -180,6 +180,7 @@ describe("root consumer and per-weight axis re-declaration (T2)", () => {
 			"font-size",
 			"font-family",
 			"font-feature-settings",
+			"font-weight",
 		]);
 		const files = readdirSync("src", {recursive: true, encoding: "utf8"}).filter((file) => /\.tsx?$/.test(file));
 		const unknown = new Set<string>();

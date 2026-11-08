@@ -6,6 +6,7 @@ import {InlineDiff} from "../src/components/tool-renderers/inline-diff";
 import {EditRenderer} from "../src/components/tool-renderers/edit-renderer";
 import {WriteRenderer} from "../src/components/tool-renderers/write-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
+import {OA, SA, WA} from "../src/components/changes/diffs-config";
 
 class FakeResizeObserver {
 	observe() {}
@@ -69,7 +70,7 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () => {
 	// Upstream _a keeps --diffs-line-height: var(--cds-leading-code) unless a caller passes metrics.lineHeight (ca7ba268c za).
 	it("reads the scope's density code tokens on the host rather than a fixed 12/17", async () => {
 		const hostVars = (container: HTMLElement) =>
-			[...container.querySelectorAll<HTMLElement>("diffs-container")].map((host) => ({
+			[...container.querySelectorAll<HTMLElement>("[data-cds=FileDiff]")].map((host) => ({
 				size: host.style.getPropertyValue("--diffs-font-size"),
 				leading: host.style.getPropertyValue("--diffs-line-height"),
 			}));
@@ -89,6 +90,23 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () => {
 		};
 		await waitFor(() => {
 			expect(hostVars(container)).toStrictEqual([tokens, tokens]);
+		});
+	});
+
+	it("injects upstream's za() list led by Sa (header disabled) and paints the transcript's surface-1 background", async () => {
+		const {container} = render(
+			<InlineDiff filePath="/test/alice.ts" oldStr="const alice = 1;" newStr="const alice = 2;" />,
+		);
+		await waitFor(() => {
+			const [root] = shadowRoots(container);
+			const text = [...(root?.querySelectorAll("style") ?? [])].map((style) => style.textContent).join("");
+			const layer = text.slice(text.indexOf("@layer unsafe"));
+			const host = container.querySelector<HTMLElement>("[data-cds=FileDiff]");
+			expect({
+				leadsWithSa: layer.replace(/^@layer unsafe\s*\{\s*/, "").startsWith(SA + WA),
+				oa: layer.includes(OA),
+				bg: host?.style.getPropertyValue("--cds-filediff-bg"),
+			}).toStrictEqual({leadsWithSa: true, oa: true, bg: "var(--cds-surface-1)"});
 		});
 	});
 

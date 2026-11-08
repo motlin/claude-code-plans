@@ -22,10 +22,10 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-/** The class list of the element wrapping each rendered pierre host. */
+/** The class list of the epitaxy-diff hook element around each rendered pierre host. */
 function hostWrappers(container: HTMLElement): (string | null)[] {
 	return [...container.querySelectorAll("diffs-container")].map(
-		(host) => host.parentElement?.getAttribute("class") ?? null,
+		(host) => host.closest(".epitaxy-diff")?.getAttribute("class") ?? null,
 	);
 }
 

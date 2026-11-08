@@ -4,15 +4,17 @@ import {FileDiff, GutterUtilitySlotStyles} from "@pierre/diffs/react";
 import type {FileDiffOptions} from "@pierre/diffs/react";
 import {ArrowUpRight, ChevronDown, ChevronRight, Plus} from "lucide-react";
 import {type CSSProperties, type ReactNode, useMemo, useState} from "react";
+import {useCodeThemeBackground} from "../../hooks/use-code-theme-background";
 import {useCodeThemes} from "../../hooks/use-code-themes";
 import {LazyFileTypeIcon} from "../lazy-file-type-icon";
 import {useFizzyLake} from "../../lib/fizzy-lake";
 import {
+	DIFFS_HOST_CLASS,
 	DIFFS_STYLE_OVERRIDES,
 	DIFFS_WRAP_STYLE,
 	changesDiffMetrics,
 	diffLineHeightStyle,
-	diffsUnsafeCss,
+	diffsInjectedCss,
 } from "./diffs-config";
 import {type DiffStyle, useSettings} from "../settings-context";
 import {useResolvedTheme} from "../theme-context";
@@ -49,10 +51,9 @@ export interface DiffLineRange {
 	line: number;
 }
 
-/** Upstream's 16px accent "+" (`Zc`) in the hovered line's gutter, centred on the line. */
 /**
- * Upstream's gutter "+" style: the library's absolute slot style, centred on the line. Absolute, the button
- * leaves the zero-width slot at the number cell's right edge and sits clear of the line number above it.
+ * Upstream's 16px accent "+" (`Zc`) in the hovered line's gutter: the library's absolute slot style, centred
+ * on the line. The injected `Ca` moves the slot to the number column's left edge (`left:5px`).
  */
 const GUTTER_BUTTON_STYLE: CSSProperties = {
 	...GutterUtilitySlotStyles,
@@ -77,7 +78,7 @@ export function AddCommentGutterButton({
 					onAddComment({side: hovered.side, line: hovered.lineNumber});
 				}
 			}}
-			className="-left-0.5 flex size-4 cursor-pointer items-center justify-center rounded bg-fill-accent text-on-accent hover:bg-fill-accent-hover"
+			className="flex size-4 cursor-pointer items-center justify-center rounded bg-fill-accent text-on-accent hover:bg-fill-accent-hover"
 			style={GUTTER_BUTTON_STYLE}
 		>
 			<Plus aria-hidden="true" className="size-3" strokeWidth={2.5} />
@@ -200,6 +201,7 @@ export function DiffFile({
 	};
 	const resolvedTheme = useResolvedTheme();
 	const codeThemes = useCodeThemes();
+	const codeThemeBg = useCodeThemeBackground();
 	const panels = useFizzyLake("panels");
 	const {codeFontSize} = useSettings().settings;
 	const metrics = useMemo(() => changesDiffMetrics(codeFontSize), [codeFontSize]);
@@ -226,7 +228,11 @@ export function DiffFile({
 			stickyHeader: true,
 			collapsed,
 			enableGutterUtility: onRequestChanges !== undefined,
-			unsafeCSS: diffsUnsafeCss({panels}),
+			unsafeCSS: diffsInjectedCss({
+				disableFileHeader: false,
+				gutterUtility: onRequestChanges !== undefined,
+				panels,
+			}),
 		}),
 		[codeThemes, resolvedTheme, diffStyle, wordWrap, wordDiff, collapsed, onRequestChanges, panels],
 	);
@@ -234,46 +240,52 @@ export function DiffFile({
 	const style = useMemo<CSSProperties>(
 		() => ({
 			...DIFFS_STYLE_OVERRIDES,
+			"--cds-filediff-bg": codeThemeBg,
 			...(wordWrap ? DIFFS_WRAP_STYLE : {}),
 			...diffLineHeightStyle(metrics),
 			...(codeFontSize === null ? {} : {"--diffs-font-size": `${codeFontSize / 16}rem`}),
 		}),
-		[wordWrap, metrics, codeFontSize],
+		[codeThemeBg, wordWrap, metrics, codeFontSize],
 	);
 
 	// Pierre 1.6.2 reads `metrics` only when the instance is created, so a new lineHeight remounts (upstream ca817835b key).
+	// Upstream's cds FileDiff (`Va`) puts the host style on a wrapping div; the vars inherit into the shadow root.
 	return (
-		<FileDiff<ReactNode>
-			key={metrics.lineHeight}
-			fileDiff={fileDiff}
-			options={options}
-			metrics={metrics}
-			style={style}
-			disableWorkerPool
-			{...(lineAnnotations === undefined
-				? {}
-				: {lineAnnotations, renderAnnotation: (annotation): ReactNode => annotation.metadata})}
-			{...(onRequestChanges === undefined
-				? {}
-				: {
-						renderGutterUtility: (getHoveredLine) => (
-							<AddCommentGutterButton getHoveredLine={getHoveredLine} onAddComment={onRequestChanges} />
-						),
-					})}
-			renderCustomHeader={(file) => {
-				const {added, removed} = countChanges(file);
-				return (
-					<DiffFileHeader
-						path={file.name}
-						prevPath={file.prevName}
-						additions={added}
-						deletions={removed}
-						collapsed={collapsed}
-						onToggle={toggle}
-						onOpenFile={onOpenFile}
-					/>
-				);
-			}}
-		/>
+		<div data-cds="FileDiff" dir="ltr" className={DIFFS_HOST_CLASS} style={style}>
+			<FileDiff<ReactNode>
+				key={metrics.lineHeight}
+				fileDiff={fileDiff}
+				options={options}
+				metrics={metrics}
+				disableWorkerPool
+				{...(lineAnnotations === undefined
+					? {}
+					: {lineAnnotations, renderAnnotation: (annotation): ReactNode => annotation.metadata})}
+				{...(onRequestChanges === undefined
+					? {}
+					: {
+							renderGutterUtility: (getHoveredLine) => (
+								<AddCommentGutterButton
+									getHoveredLine={getHoveredLine}
+									onAddComment={onRequestChanges}
+								/>
+							),
+						})}
+				renderCustomHeader={(file) => {
+					const {added, removed} = countChanges(file);
+					return (
+						<DiffFileHeader
+							path={file.name}
+							prevPath={file.prevName}
+							additions={added}
+							deletions={removed}
+							collapsed={collapsed}
+							onToggle={toggle}
+							onOpenFile={onOpenFile}
+						/>
+					);
+				}}
+			/>
+		</div>
 	);
 }

@@ -124,7 +124,7 @@ describe("code typography", () => {
 		expect(customProperty(styles, "--font-sans--font-feature-settings")).toBe('"calt" 0');
 	});
 
-	it("turns ligatures off for every code, pre and font-mono element", () => {
+	it("turns ligatures off for every code, pre and font-mono element, but not inside diffs", () => {
 		const styles = readFileSync("src/styles/globals.css", "utf8");
 		const selector = "code,\n\tkbd,\n\tsamp,\n\tpre,\n\t.font-mono {";
 		const start = styles.indexOf(selector);
@@ -138,7 +138,8 @@ describe("code typography", () => {
 		}).toStrictEqual({
 			ligatures: "none",
 			features: '"liga" 0, "calt" 0',
-			diffs: '"liga" 0, "calt" 0',
+			// Diffs follow upstream's injected Aa fallback ("liga","clig","calt") instead.
+			diffs: undefined,
 		});
 	});
 

@@ -4,7 +4,7 @@ import {cleanup, render, waitFor} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {DiffFile} from "../src/components/changes/diff-file";
-import {DIFFS_STYLE_OVERRIDES, diffsUnsafeCss} from "../src/components/changes/diffs-config";
+import {CA, EA, SA, TA, WA} from "../src/components/changes/diffs-config";
 import {PanelsOff} from "./fizzy-lake-off";
 import {DEFAULTS, SettingsContext} from "../src/components/settings-context";
 import {preloadFileTypeIcons} from "../src/components/file-type-icons-loader";
@@ -26,6 +26,19 @@ function shadowRootOf(container: HTMLElement): ShadowRoot {
 	const host = container.querySelector("diffs-container");
 	if (!host?.shadowRoot) throw new Error("diffs-container has no shadow root yet");
 	return host.shadowRoot;
+}
+
+/** The cds FileDiff wrapper div that carries upstream's host style (ca7ba268c Va). */
+function hostOf(container: HTMLElement): HTMLElement | null {
+	const parent = container.querySelector("diffs-container")?.parentElement;
+	return parent instanceof HTMLElement && parent.getAttribute("data-cds") === "FileDiff" ? parent : null;
+}
+
+/** The injected `@layer unsafe` text inside the diff's shadow root. */
+function unsafeLayer(container: HTMLElement): string {
+	const text = [...shadowRootOf(container).querySelectorAll("style")].map((style) => style.textContent).join("");
+	const start = text.indexOf("@layer unsafe");
+	return start === -1 ? "" : text.slice(start);
 }
 
 function contentRowTypes(root: ShadowRoot): string[] {
@@ -82,7 +95,7 @@ describe("DiffFile", () => {
 	// Upstream c44d00c7f passes c82eca2bd c()'s ×1.5 lineHeight, so za() writes it on the host; a size also sets the font.
 	it("sizes Changes rows from Settings ▸ Code font size at ×1.5 on the host, and remounts when the metric changes", async () => {
 		const hostVars = (container: HTMLElement) => {
-			const host = container.querySelector<HTMLElement>("diffs-container");
+			const host = hostOf(container);
 			return {
 				leading: host?.style.getPropertyValue("--diffs-line-height"),
 				size: host?.style.getPropertyValue("--diffs-font-size"),
@@ -131,7 +144,7 @@ describe("DiffFile", () => {
 
 	it("sets upstream's wrap-only overflow vars on the host only when word wrap is on, so scroll mode can scroll", async () => {
 		const overflowVars = (container: HTMLElement) => {
-			const host = container.querySelector<HTMLElement>("diffs-container");
+			const host = hostOf(container);
 			return {
 				overflow: host?.style.getPropertyValue("--diffs-overflow-override"),
 				gutter: host?.style.getPropertyValue("--diffs-scrollbar-gutter-override"),
@@ -149,32 +162,52 @@ describe("DiffFile", () => {
 		});
 	});
 
-	it("injects upstream's panels hunk-separator CSS (ca7ba268c za() Ta) only while panels is on, with the comfortable pad-md on the host", async () => {
-		const TA =
-			"[data-separator-wrapper]{padding-left:var(--cds-pad-md)}@media (pointer:fine){[data-separator-wrapper][data-separator-multi-button]{grid-template-columns:16px calc(24px - var(--cds-pad-md)) auto}}";
-		const injected = (container: HTMLElement) =>
-			[...shadowRootOf(container).querySelectorAll("style")].some((style) => style.textContent.includes(TA));
-		expect({
-			on: diffsUnsafeCss({panels: true}),
-			off: diffsUnsafeCss({panels: false}),
-			padMd: (DIFFS_STYLE_OVERRIDES as Record<string, string>)["--cds-pad-md"],
-		}).toStrictEqual({on: TA, off: "", padMd: "8px"});
-
+	it("injects upstream's za() list into the shadow root's unsafe layer, Ta only while panels is on and Ca only with the gutter +", async () => {
 		const panels = render(<DiffFile patch={PATCH} />);
 		await waitFor(() => {
-			expect(injected(panels.container)).toBe(true);
+			expect(contentRowTypes(shadowRootOf(panels.container))).toHaveLength(6);
 		});
+		const on = unsafeLayer(panels.container);
+		expect({
+			wa: on.includes(WA + TA + EA),
+			sa: on.includes(SA),
+			ca: on.includes(CA),
+		}).toStrictEqual({wa: true, sa: false, ca: false});
 		cleanup();
 
 		const off = render(
 			<PanelsOff>
-				<DiffFile patch={PATCH} />
+				<DiffFile patch={PATCH} onRequestChanges={() => undefined} />
 			</PanelsOff>,
 		);
 		await waitFor(() => {
 			expect(contentRowTypes(shadowRootOf(off.container))).toHaveLength(6);
 		});
-		expect(injected(off.container)).toBe(false);
+		const gutter = unsafeLayer(off.container);
+		expect({
+			ca: gutter.includes(CA + WA + EA),
+			ta: gutter.includes(TA),
+		}).toStrictEqual({ca: true, ta: false});
+	});
+
+	it("wraps pierre in upstream's cds FileDiff div carrying the host style and the code theme background", async () => {
+		const {container} = render(<DiffFile patch={PATCH} />);
+		await waitFor(() => {
+			const host = hostOf(container);
+			expect({
+				dir: host?.getAttribute("dir"),
+				className: host?.getAttribute("class"),
+				gap: host?.style.getPropertyValue("--diffs-gap-style"),
+				bg: host?.style.getPropertyValue("--cds-filediff-bg"),
+				pierreStyle: container.querySelector("diffs-container")?.getAttribute("style") ?? null,
+			}).toStrictEqual({
+				dir: "ltr",
+				className: "text-code text-primary font-normal",
+				gap: "0",
+				bg: "light-dark(#faf9f580, #191919)",
+				pierreStyle: null,
+			});
+		});
 	});
 
 	it("renders side-by-side when diffStyle is split", async () => {

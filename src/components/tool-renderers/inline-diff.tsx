@@ -4,7 +4,8 @@ import type {FileDiffOptions} from "@pierre/diffs/react";
 import {useMemo} from "react";
 import {useCodeThemes} from "../../hooks/use-code-themes";
 import {buildUnifiedHunk} from "../../lib/diff-utils";
-import {INLINE_DIFFS_STYLE_OVERRIDES} from "../changes/diffs-config";
+import {DIFFS_HOST_CLASS, INLINE_DIFFS_STYLE_OVERRIDES, diffsInjectedCss} from "../changes/diffs-config";
+import {useFizzyLake} from "../../lib/fizzy-lake";
 import {useResolvedTheme} from "../theme-context";
 
 /**
@@ -19,6 +20,7 @@ export function InlineDiff({filePath, oldStr, newStr}: {filePath: string; oldStr
 	);
 	const resolvedTheme = useResolvedTheme();
 	const codeThemes = useCodeThemes();
+	const panels = useFizzyLake("panels");
 
 	const options = useMemo<FileDiffOptions<undefined, undefined>>(
 		() => ({
@@ -29,14 +31,18 @@ export function InlineDiff({filePath, oldStr, newStr}: {filePath: string; oldStr
 			overflow: "wrap",
 			hunkSeparators: "simple",
 			disableFileHeader: true,
+			unsafeCSS: diffsInjectedCss({disableFileHeader: true, gutterUtility: false, panels}),
 		}),
-		[codeThemes, resolvedTheme],
+		[codeThemes, resolvedTheme, panels],
 	);
 
-	// Upstream's `epitaxy-diff` hook class carries Settings ▸ Code font size into the diff.
+	// Upstream's `epitaxy-diff` hook class carries Settings ▸ Code font size into the diff; the cds FileDiff
+	// div (`Va`) inside it carries the host style.
 	return (
 		<div className="epitaxy-diff">
-			<FileDiff fileDiff={fileDiff} options={options} style={INLINE_DIFFS_STYLE_OVERRIDES} disableWorkerPool />
+			<div data-cds="FileDiff" dir="ltr" className={DIFFS_HOST_CLASS} style={INLINE_DIFFS_STYLE_OVERRIDES}>
+				<FileDiff fileDiff={fileDiff} options={options} disableWorkerPool />
+			</div>
 		</div>
 	);
 }

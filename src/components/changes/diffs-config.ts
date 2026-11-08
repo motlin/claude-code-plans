@@ -16,14 +16,13 @@ registerCustomTheme("vscode-light", async () => loadCodeTheme("vscode-light"));
 registerCustomTheme("vscode-dark", async () => loadCodeTheme("vscode-dark"));
 
 /**
- * The `--diffs-*` variables upstream's Changes pane sets on its CodeView,
- * remapped from `--cds-*` onto our upstream tokens. Custom properties inherit
- * through the `<diffs-container>` shadow boundary, so setting them on the host
- * reaches the library's internal stylesheet.
+ * The `--diffs-*` variables upstream's Changes pane sets on its CodeView (ca7ba268c `_a`/`va`),
+ * remapped from `--cds-*` onto our upstream tokens, plus the `--cds-*` names the injected strings
+ * below read. Custom properties inherit through the `<diffs-container>` shadow boundary, so setting
+ * them on the host reaches both the library's stylesheet and the `@layer unsafe` block.
  */
 export const DIFFS_STYLE_OVERRIDES = {
 	"--diffs-font-family": "var(--font-mono)",
-	"--diffs-font-features": '"liga" 0, "calt" 0',
 	"--diffs-header-font-family": "var(--font-sans)",
 	"--diffs-font-size": "var(--upstream-text-code)",
 	"--diffs-line-height": "var(--upstream-leading-code)",
@@ -35,27 +34,110 @@ export const DIFFS_STYLE_OVERRIDES = {
 	"--diffs-fg-number-deletion-override": "var(--upstream-git-removed)",
 	"--diffs-addition-color-override": "var(--upstream-git-added)",
 	"--diffs-deletion-color-override": "var(--upstream-git-removed)",
-	"--diffs-modified-color-override": "var(--color-git-conflicting)",
-	"--diffs-selection-color-override": "var(--accent-100)",
-	"--diffs-bg-selection-override": "var(--accent-900)",
-	"--diffs-bg-selection-number-override": "var(--accent-900)",
+	"--diffs-modified-color-override": "var(--upstream-git-modified)",
+	"--diffs-selection-color-override": "var(--upstream-accent)",
+	"--diffs-bg-selection-override": "var(--upstream-fill-accent)",
+	"--diffs-bg-selection-number-override": "var(--upstream-fill-accent)",
 	"--diffs-fg-conflict-marker-override": "var(--upstream-text-muted)",
 	"--diffs-gap-style": "0",
-	// Upstream's comfortable --cds-pad-md, which the injected separator CSS reads inside the shadow root.
+	// The `--cds-*` names the injected strings read inside the shadow root (wa, Ea, Ma, Fa, Ta).
+	"--cds-text-secondary": "var(--upstream-text-secondary)",
+	"--cds-fill-accent": "var(--upstream-fill-accent)",
+	"--cds-surface-1": "var(--upstream-surface-1)",
+	"--cds-surface-2": "var(--upstream-surface-2)",
+	// Upstream's `.cds-root` cursor token (`default` only under the desktop app's [data-platform=desktop]).
+	"--cds-cursor-interactive": "pointer",
+	// Upstream's comfortable --cds-pad-md.
 	"--cds-pad-md": "8px",
 } as CSSProperties;
 
 /*
- * Upstream ca7ba268c CodeView `za()` injects `Ta` into every diff shadow root while panels is on.
- * It goes after upstream's always-on `wa` list, which local does not inject yet
- * (upstream-sync diff-codeview-injected-css); until then `Ta` stands alone.
+ * Upstream ca7ba268c `za()` injects these into every cds FileDiff/CodeView shadow root (pierre wraps
+ * `unsafeCSS` in `@layer unsafe`), verbatim. The minified names are upstream's (`Sa`, `Ca`, `wa`, ...).
+ * `xa` (wrap at 80/100/120 columns) is left out: local has no wrap-column setting.
  */
-const PANELS_SEPARATOR_CSS =
+/** `Sa`: the header is disabled; keep the top gap. */
+export const SA =
+	"[data-diffs-header]{display:none}:is([data-diffs-header]~[data-diff],[data-diffs-header]~[data-file]) [data-code],[data-diff-type=split][data-overflow=wrap]:is([data-diffs-header]~[data-diff]){padding-top:var(--diffs-gap-block,var(--diffs-gap-fallback))}";
+/** `Ca`: the gutter utility slot sits at the number column's left edge. */
+export const CA =
+	":is([data-diff],[data-file]):not([data-disable-line-numbers]) [data-gutter-utility-slot]{right:unset;left:5px;justify-content:flex-start}:is([data-diff],[data-file]):not([data-disable-line-numbers]) [data-column-number]{padding-left:calc(2ch + 5px)}";
+/** `wa`: the compact hunk separator (16px expand buttons, hover ink). */
+export const WA =
+	"[data-separator-wrapper]{padding-left:8px;grid-template-columns:16px auto;column-gap:4px}[data-separator-wrapper][data-separator-multi-button]{grid-template-columns:16px 16px auto}[data-expand-button]{min-width:16px;border-right:0}[data-separator-content]{grid-column-start:-2;padding:0}[data-separator-wrapper]:has([data-expand-button]):hover :is([data-expand-button],[data-separator-content]){color:var(--cds-text-secondary)}";
+/** `Ta`: the panels separator padding. */
+export const TA =
 	"[data-separator-wrapper]{padding-left:var(--cds-pad-md)}@media (pointer:fine){[data-separator-wrapper][data-separator-multi-button]{grid-template-columns:16px calc(24px - var(--cds-pad-md)) auto}}";
+/** `Ea`: the diff background comes from the host's `--cds-filediff-bg`. */
+export const EA = ":host{--diffs-bg:var(--cds-filediff-bg,var(--cds-surface-1))}";
+/** `Da`: selected line numbers mix from the selection override, not modified-yellow. */
+export const DA = ":host{--diffs-selection-base:var(--diffs-selection-color-override,var(--diffs-modified-base))}";
+/** `Oa`: empty wrapped lines keep one line of height. */
+export const OA = "[data-overflow=wrap] [data-line]{min-height:1lh}";
+/** `ka`: the code column can shrink below its min-content in wrap mode. */
+export const KA = "[data-overflow=wrap]{--diffs-code-grid:var(--diffs-grid-number-column-width) minmax(0,1fr)}";
+/** `Aa`: snap the advance to 1/64px; ligatures on unless `--diffs-font-features` is set. */
+export const AA =
+	'[data-diff],[data-file]{letter-spacing:calc(round(up,1ch,1px/64) - 1ch);font-feature-settings:var(--diffs-font-features,"liga","clig","calt")}';
+/** `ja`: bold theme tokens don't inherit the variable font's wght axis. */
+export const JA = '[data-line] span[style*="font-weight"],[data-error-message]{font-variation-settings:normal}';
+/** `Ma`: text selection inside the shadow root. */
+export const MA =
+	"::selection{background-color:var(--cds-code-text-selection-bg,light-dark(color-mix(in srgb,var(--cds-fill-accent) 25%,transparent),color-mix(in srgb,var(--cds-fill-accent) 30%,transparent)))}";
+/** `Na`: the number column is at least 3ch. */
+export const NA =
+	":is([data-diff],[data-file]):not([data-disable-line-numbers]) [data-line-number-content],:is([data-diff],[data-file]):not([data-disable-line-numbers]) [data-gutter-buffer]:before{min-width:var(--diffs-min-number-column-width,max(3ch,var(--diffs-min-number-column-width-default,3ch)))}";
+/** `Pa`: the "No newline" row lines up with classic `+`/`-`. */
+export const PA = '[data-indicators="classic"] [data-no-newline]{padding-inline-start:2ch}';
+/** `Fa`: interactive parts take the cursor token. */
+export const FA =
+	"[data-interactive-line-numbers] [data-column-number],[data-interactive-lines] [data-line],[data-expand-button],[data-expand-index] [data-separator-content],[data-utility-button],[data-merge-conflict-action]{cursor:var(--cds-cursor-interactive)}";
 
-/** The `unsafeCSS` upstream's CodeView injects for the given fizzy-lake state. */
-export function diffsUnsafeCss({panels}: {panels: boolean}): string {
-	return panels ? PANELS_SEPARATOR_CSS : "";
+/** Upstream's cds FileDiff wrapper classes (ca7ba268c `Va`). */
+export const DIFFS_HOST_CLASS = "text-code text-primary font-normal";
+
+/** Upstream za()'s `injectedCSS`: `[xa,Sa,Ca,wa,Ta,Ea,Da,Oa,ka,Aa,ja,Ma,Na,Pa,Fa].filter(defined).join("")`. */
+export function diffsInjectedCss({
+	disableFileHeader,
+	gutterUtility,
+	panels,
+}: {
+	disableFileHeader: boolean;
+	gutterUtility: boolean;
+	panels: boolean;
+}): string {
+	return [
+		disableFileHeader ? SA : "",
+		gutterUtility ? CA : "",
+		WA,
+		panels ? TA : "",
+		EA,
+		DA,
+		OA,
+		KA,
+		AA,
+		JA,
+		MA,
+		NA,
+		PA,
+		FA,
+	].join("");
+}
+
+const NAMED_SURFACES = new Set([
+	"surface-0",
+	"surface-1",
+	"surface-2",
+	"surface-3",
+	"surface-panel",
+	"surface-popover",
+]);
+
+/** Upstream ca7ba268c `La`: a caller's backgroundColor as the host's `--cds-filediff-bg`. */
+export function filediffBg(backgroundColor: string | undefined): string {
+	if (backgroundColor === undefined) return "var(--cds-surface-1)";
+	if (backgroundColor === "transparent") return "transparent";
+	return NAMED_SURFACES.has(backgroundColor) ? `var(--cds-${backgroundColor})` : backgroundColor;
 }
 
 /**
@@ -69,13 +151,14 @@ export const DIFFS_WRAP_STYLE = {
 } as CSSProperties;
 
 /**
- * Upstream's transcript diffs, always wrapped. Upstream `_a` keeps `--diffs-line-height: var(--cds-leading-code)`
+ * Upstream's transcript diffs, always wrapped, on the default surface-1 background (no backgroundColor). Upstream `_a` keeps `--diffs-line-height: var(--cds-leading-code)`
  * unless the caller passes metrics.lineHeight (ca7ba268c za), so rows follow the scope density (17/12 compact,
  * 19/13 comfortable); `--code-size` / `--code-leading` carry Settings ▸ Code font size inside the hook classes.
  */
 export const INLINE_DIFFS_STYLE_OVERRIDES = {
 	...DIFFS_STYLE_OVERRIDES,
 	...DIFFS_WRAP_STYLE,
+	"--cds-filediff-bg": filediffBg(undefined),
 	"--diffs-font-size": "var(--code-size, var(--upstream-text-code))",
 	"--diffs-line-height": "var(--code-leading, var(--upstream-leading-code))",
 } as CSSProperties;

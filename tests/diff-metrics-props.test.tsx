@@ -40,12 +40,14 @@ afterEach(() => {
 });
 
 describe("pierre metrics props", () => {
-	it("passes the Changes FileDiff upstream's metrics and writes their lineHeight through diffLineHeightStyle", () => {
-		render(<DiffFile patch={PATCH} />);
+	it("passes the Changes FileDiff upstream's metrics and writes their lineHeight through diffLineHeightStyle on the host div", () => {
+		const {container} = render(<DiffFile patch={PATCH} />);
 		const props = recorded.fileDiff.at(-1);
+		// The host style sits on upstream's cds FileDiff wrapper div (ca7ba268c Va), not on pierre's element.
+		const host = container.querySelector<HTMLElement>("[data-cds=FileDiff]");
 		expect({
 			metrics: props?.["metrics"],
-			leading: (props?.["style"] as Record<string, string> | undefined)?.["--diffs-line-height"],
+			leading: host?.style.getPropertyValue("--diffs-line-height"),
 		}).toStrictEqual({
 			metrics: {hunkLineCount: 50, lineHeight: 20, diffHeaderHeight: 32, spacing: 8},
 			leading: "20px",

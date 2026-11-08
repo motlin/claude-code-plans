@@ -580,6 +580,8 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream --cds-text-git-added / --cds-text-git-removed (diffs and their stats). */
 	--upstream-git-added: #1e9e3c;
 	--upstream-git-removed: #cd2054;
+	/* Upstream --cds-text-git-modified (the diffs' modified/conflict base). */
+	--upstream-git-modified: #98801f;
 	--upstream-extended-pink: hsl(342 73% 47%);
 
 	/* Upstream claude.ai/code — transparency layers (gray-900 base) */
@@ -929,6 +931,7 @@ html[data-interface-font="dyslexic"] {
 	--upstream-extended-green: hsl(134 60% 52%);
 	--upstream-git-added: #32d74b;
 	--upstream-git-removed: #ff2c56;
+	--upstream-git-modified: #ffd014;
 	--upstream-extended-pink: hsl(342 65% 62%);
 
 	/* Upstream claude.ai/code — transparency layers (white base) */
