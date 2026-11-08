@@ -26,7 +26,12 @@ function Band({slot, id, text}: {slot: NoticeSlot; id: string; text: string}) {
 function itemsOf(container: HTMLElement) {
 	const status = container.querySelectorAll('[role="status"][aria-live="polite"]');
 	expect(status).toHaveLength(1);
-	return [...status[0]!.children].map((item) => ({text: item.textContent, className: item.className}));
+	return [...status[0]!.children].map((item) => ({
+		text: item.textContent,
+		className: item.className,
+		dockCard: item.getAttribute("data-cds-dock-card"),
+		leaving: item.getAttribute("data-cds-dock-leaving"),
+	}));
 }
 
 describe("ComposerNoticeRegion", () => {
@@ -41,16 +46,16 @@ describe("ComposerNoticeRegion", () => {
 		);
 
 		const region = container.querySelector("[data-code-column-notices]");
-		expect(region?.className).toBe("-mb-1.5");
+		expect(region?.className).toBe("-mb-1.5 compact:-mb-1.5 comfortable:-mb-2");
 		const list = region?.firstElementChild;
 		expect(list?.getAttribute("data-cds")).toBe("ChatComposerNotices");
 		expect(list?.getAttribute("tabindex")).toBe("-1");
 		expect(list?.className).toBe("w-full");
 		expect(list?.firstElementChild?.getAttribute("aria-atomic")).toBe("false");
 		expect(itemsOf(container)).toStrictEqual([
-			{text: "Workflow", className: `pb-1 ${NOTICE_ENTER_CLASS}`},
-			{text: "Limit", className: `pb-1 ${NOTICE_ENTER_CLASS}`},
-			{text: "Sleeping", className: `pb-1 ${NOTICE_ENTER_CLASS}`},
+			{text: "Workflow", className: `pb-[var(--cds-gap-xs)] ${NOTICE_ENTER_CLASS}`, dockCard: "", leaving: null},
+			{text: "Limit", className: `pb-[var(--cds-gap-xs)] ${NOTICE_ENTER_CLASS}`, dockCard: "", leaving: null},
+			{text: "Sleeping", className: `pb-[var(--cds-gap-xs)] ${NOTICE_ENTER_CLASS}`, dockCard: "", leaving: null},
 		]);
 		expect(container.querySelectorAll("[data-inline-band]")).toHaveLength(0);
 	});
@@ -63,7 +68,9 @@ describe("ComposerNoticeRegion", () => {
 			</ComposerNoticeProvider>,
 		);
 
-		expect(itemsOf(container)).toStrictEqual([{text: "Limit", className: "pb-1"}]);
+		expect(itemsOf(container)).toStrictEqual([
+			{text: "Limit", className: "pb-[var(--cds-gap-xs)]", dockCard: "", leaving: null},
+		]);
 	});
 
 	it("marks a notice leaving, in its slot position, when its band unregisters", () => {
@@ -82,8 +89,13 @@ describe("ComposerNoticeRegion", () => {
 		);
 
 		expect(itemsOf(container)).toStrictEqual([
-			{text: "Limit", className: `pb-1 ${NOTICE_EXIT_CLASS} pointer-events-none`},
-			{text: "Sleeping", className: `pb-1 ${NOTICE_ENTER_CLASS}`},
+			{
+				text: "Limit",
+				className: `pb-[var(--cds-gap-xs)] ${NOTICE_EXIT_CLASS} pointer-events-none`,
+				dockCard: "",
+				leaving: "",
+			},
+			{text: "Sleeping", className: `pb-[var(--cds-gap-xs)] ${NOTICE_ENTER_CLASS}`, dockCard: "", leaving: null},
 		]);
 	});
 
@@ -124,7 +136,7 @@ describe("ComposerNoticeRegion", () => {
 		const list = container.querySelector('[data-cds="ChatComposerNotices"]');
 		const leaving = container.querySelector("[inert]");
 		expect(leaving?.outerHTML).toBe(
-			`<div class="pb-1 ${NOTICE_EXIT_CLASS} pointer-events-none" aria-hidden="true" inert=""><button type="button">Dismiss</button></div>`,
+			`<div data-cds-dock-card="" class="pb-[var(--cds-gap-xs)] ${NOTICE_EXIT_CLASS} pointer-events-none" data-cds-dock-leaving="" aria-hidden="true" inert=""><button type="button">Dismiss</button></div>`,
 		);
 		expect(document.activeElement).toBe(list);
 

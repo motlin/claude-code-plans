@@ -328,7 +328,7 @@ describe("usage limit reached", () => {
 });
 
 const BANNER_CLASS =
-	"flex items-start gap-xs px-lg !py-lg font-sans text-body font-normal break-words rounded-card bg-page shadow-card-ring text-primary @container";
+	"flex items-start gap-xs py-[calc(var(--cds-pad-md)+2px)] font-sans text-body font-normal break-words px-md rounded-composer bg-page shadow-card-ring text-primary [--card-ring-color:var(--banner-line)] @container";
 
 describe("usage band as a notice card", () => {
 	it("draws the reached band through upstream's cds Banner: neutral icon and headline, sr-only absolute reset, no Dismiss", () => {
@@ -353,6 +353,7 @@ describe("usage band as a notice card", () => {
 				childCount: banner?.children.length,
 				iconSlot: iconSlot?.className,
 				icon: iconSlot?.querySelector("svg")?.getAttribute("class"),
+				gauge: iconSlot?.querySelector("svg")?.getAttribute("data-testid"),
 				body: body?.className,
 				content: content?.className,
 				words: {tag: words?.tagName, atomic: words?.getAttribute("aria-atomic"), className: words?.className},
@@ -372,13 +373,16 @@ describe("usage band as a notice card", () => {
 					"data-icon-layout": "first-line",
 					"data-cta-layout": "inline",
 					"data-action-align": "first-line",
+					"data-composer-keyline": "glyph",
+					"data-testid": "usage-limit-reached-card",
 					role: "none",
 					class: BANNER_CLASS,
 				},
 				childCount: 2,
-				iconSlot: "flex min-h-[1lh] shrink-0 items-center text-secondary",
+				iconSlot: "flex min-h-[1lh] shrink-0 items-center ms-[4px] -me-[4px] text-secondary",
 				icon: "lucide lucide-gauge size-4",
-				body: "flex min-w-0 flex-wrap items-start gap-y-sm gap-x-md flex-1",
+				gauge: "usage-limit-card-gauge",
+				body: "flex min-w-0 flex-wrap items-start gap-y-sm gap-x-md flex-1 ms-[6px] compact:ms-[6px] comfortable:ms-[4px]",
 				content: "max-w-full min-w-0 flex-auto",
 				words: {tag: "SPAN", atomic: "true", className: "flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75"},
 				headline: {className: "min-w-0", text: "Weekly limit reached"},
@@ -407,6 +411,8 @@ describe("usage band as a notice card", () => {
 		fireEvent.click(dismiss);
 
 		expect({
+			testId: banner?.getAttribute("data-testid"),
+			gauge: banner?.querySelector('[data-testid="usage-limit-card-gauge"]')?.tagName,
 			text: banner?.textContent,
 			lastChild: banner?.lastElementChild === dismiss.parentElement,
 			slot: dismiss.parentElement?.className,
@@ -414,9 +420,11 @@ describe("usage band as a notice card", () => {
 			glyph: dismiss.querySelector("svg")?.getAttribute("class"),
 			calls: onDismiss.mock.calls.length,
 		}).toStrictEqual({
+			testId: "usage-limit-approaching-card",
+			gauge: "svg",
 			text: "On pace to hit your weekly limit early29% used · Resets Tue, Oct 6, 4:00 AM",
 			lastChild: true,
-			slot: "-me-[calc(var(--cds-pad-md)-6px)] flex h-[1lh] shrink-0 items-center",
+			slot: "-me-[2px] flex h-[1lh] shrink-0 items-center",
 			dismiss:
 				"inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 p-0 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
 			glyph: "lucide lucide-x size-4",

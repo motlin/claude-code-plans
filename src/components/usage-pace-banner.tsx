@@ -27,10 +27,15 @@ function UsageBandShell({
 	onDismiss?: () => void;
 }) {
 	// Inside the notice region the band is a cds Banner card (upstream `vr` → `tF` → `ah`): its
-	// list is the live region and its item reveals in, and the card inks nothing danger.
+	// list is the live region and its item reveals in, and the card inks nothing danger. Upstream `ir`
+	// test ids: the reached card, else the approaching one.
 	if (useInNoticeRegion()) {
 		return (
-			<NoticeBanner icon={<Gauge className="size-4" aria-hidden="true" />} {...(onDismiss ? {onDismiss} : {})}>
+			<NoticeBanner
+				icon={<Gauge className="size-4" aria-hidden="true" data-testid="usage-limit-card-gauge" />}
+				data-testid={danger ? "usage-limit-reached-card" : "usage-limit-approaching-card"}
+				{...(onDismiss ? {onDismiss} : {})}
+			>
 				<span aria-atomic="true" className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75">
 					<span className="min-w-0">{headline}</span>
 					<span className="min-w-0 text-ink-muted">{detail}</span>

@@ -130,7 +130,7 @@ export function ComposerNoticeRegion() {
 	};
 
 	return (
-		<div data-cds-dock-group="" data-code-column-notices="" className="-mb-1.5">
+		<div data-cds-dock-group="" data-code-column-notices="" className="-mb-1.5 compact:-mb-1.5 comfortable:-mb-2">
 			<div ref={listRef} data-cds="ChatComposerNotices" data-cds-dock-group="" tabIndex={-1} className="w-full">
 				<div role="status" aria-live="polite" aria-atomic="false">
 					<InRegionContext.Provider value>
@@ -162,14 +162,17 @@ function NoticeItem({
 		if (exiting && element.contains(document.activeElement)) listRef.current?.focus();
 		element.toggleAttribute("inert", exiting);
 	}, [exiting, listRef]);
+	// Upstream `Br`: each item pads by gap-xs (6px compact / 8px comfortable).
 	const className = exiting
-		? `pb-1 ${NOTICE_EXIT_CLASS} pointer-events-none`
+		? `pb-[var(--cds-gap-xs)] ${NOTICE_EXIT_CLASS} pointer-events-none`
 		: notice.early
-			? "pb-1"
-			: `pb-1 ${NOTICE_ENTER_CLASS}`;
+			? "pb-[var(--cds-gap-xs)]"
+			: `pb-[var(--cds-gap-xs)] ${NOTICE_ENTER_CLASS}`;
 	return (
 		<div
 			ref={ref}
+			data-cds-dock-card=""
+			data-cds-dock-leaving={exiting ? "" : undefined}
 			className={className}
 			aria-hidden={exiting || undefined}
 			onAnimationEnd={
