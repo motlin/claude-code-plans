@@ -7,7 +7,7 @@ import {
 	type SlashCommand,
 	type SlashMenuItem,
 } from "../lib/slash-commands";
-import {useShrinkwrap} from "../hooks/use-shrinkwrap";
+import {useLazyShrinkwrap} from "../hooks/use-lazy-shrinkwrap";
 import {slashCommandOptionId} from "./slash-command-option-id";
 import {type Density, useScopeDensity} from "./ui/density-context";
 import {TOOLTIP_CLASS} from "./ui/tooltip-classes";
@@ -160,7 +160,7 @@ export function SlashCommandMenu({
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	const tooltipRef = useRef<HTMLDivElement>(null);
 	/* Upstream's row tip is the cds Tooltip popup, which hugs its wrapped text before it is placed. */
-	const fitTooltip = useShrinkwrap({immediate: true});
+	const fitTooltip = useLazyShrinkwrap({immediate: true});
 	const tooltipCallbackRef = useCallback(
 		(el: HTMLDivElement | null) => {
 			tooltipRef.current = el;

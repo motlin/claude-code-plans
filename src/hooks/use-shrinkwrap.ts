@@ -1,29 +1,12 @@
-import {useCallback, useRef, type RefCallback} from "react";
-import {attachShrinkwrap, restoreShrinkwrap} from "../lib/shrinkwrap";
+import * as shrinkwrapEngine from "../lib/shrinkwrap";
+import {provideShrinkwrapEngine} from "../lib/shrinkwrap-loader";
+
+// The session view's user bubbles and markdown tips fit on mount, so the engine loads with them and every lazy
+// shrinkwrap (tooltips) on the page fits synchronously too.
+provideShrinkwrapEngine(shrinkwrapEngine);
 
 /**
- * Upstream's `an()` (claude.ai/code shared-frame): a ref callback that keeps the element's inline `max-width`
- * hugging its widest line. Disabled, it only restores the element's own inline max-width. Upstream remembers fits
- * across remounts when the session view turns on the CDS `shrinkWrapMemory` flag; every local consumer is in the
- * session view, so memory is on (and, as upstream, ignored when `immediate`).
+ * {@link useLazyShrinkwrap} with the engine loaded statically: for components that only render where the engine
+ * belongs on the cold load. Elsewhere (tooltips, the composer's slash menu) use `useLazyShrinkwrap` directly.
  */
-export function useShrinkwrap({
-	enabled = true,
-	immediate = false,
-}: {enabled?: boolean; immediate?: boolean} = {}): RefCallback<HTMLElement> {
-	const dispose = useRef<(() => void) | null>(null);
-	return useCallback(
-		(el: HTMLElement | null) => {
-			const previous = dispose.current;
-			dispose.current = null;
-			previous?.();
-			if (el === null) return;
-			if (!enabled) {
-				restoreShrinkwrap(el);
-				return;
-			}
-			dispose.current = attachShrinkwrap(el, {immediate, remember: true});
-		},
-		[enabled, immediate],
-	);
-}
+export {useLazyShrinkwrap as useShrinkwrap} from "./use-lazy-shrinkwrap";

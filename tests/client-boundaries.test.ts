@@ -1,5 +1,9 @@
 import {describe, expect, it} from "vite-plus/test";
-import {clientBoundaryViolations, loweredDirSelectorViolations} from "../scripts/client-boundaries";
+import {
+	clientBoundaryViolations,
+	homeColdLoadViolations,
+	loweredDirSelectorViolations,
+} from "../scripts/client-boundaries";
 import type {ClientChunk} from "../src/lib/client-chunk-graph";
 
 function chunk(fileName: string, overrides: Partial<ClientChunk> = {}): ClientChunk {
@@ -83,5 +87,55 @@ describe("built CSS keeps :dir()", () => {
 
 	it("accepts other stylesheets that never used :dir()", () => {
 		expect(loweredDirSelectorViolations("assets/route-x.css", ".a{color:red}")).toStrictEqual([]);
+	});
+});
+
+describe("home cold load keeps interaction-only code lazy", () => {
+	const HOME = "src/routes/index.tsx?tsr-split=component";
+
+	it("accepts the shrinkwrap engine, the send-rejected card and Collapsible behind dynamic imports", () => {
+		expect(
+			homeColdLoadViolations([
+				{...ENTRY, dynamicImports: ["assets/home.js"]},
+				chunk("assets/react.js", {moduleIds: ["node_modules/react/index.js"]}),
+				chunk("assets/home.js", {
+					moduleIds: [HOME],
+					dynamicImports: ["assets/shrinkwrap.js", "assets/send-rejected-card.js"],
+				}),
+				chunk("assets/shrinkwrap.js", {moduleIds: ["src/lib/shrinkwrap.ts"]}),
+				chunk("assets/send-rejected-card.js", {
+					moduleIds: [
+						"src/components/send-rejected-card.tsx",
+						"node_modules/.pnpm/@base-ui+react@1.8.0/node_modules/@base-ui/react/collapsible/root/CollapsibleRoot.mjs",
+					],
+				}),
+			]),
+		).toStrictEqual([]);
+	});
+
+	it("rejects them in the entry's or the home route's static graph", () => {
+		expect(
+			homeColdLoadViolations([
+				{...ENTRY, moduleIds: ["src/client.tsx", "src/lib/shrinkwrap.ts"], dynamicImports: ["assets/home.js"]},
+				chunk("assets/react.js", {moduleIds: ["node_modules/react/index.js"]}),
+				chunk("assets/home.js", {moduleIds: [HOME], imports: ["assets/cards.js"]}),
+				chunk("assets/cards.js", {
+					moduleIds: [
+						"src/components/send-rejected-card.tsx",
+						"node_modules/.pnpm/@base-ui+react@1.8.0/node_modules/@base-ui/react/collapsible/root/CollapsibleRoot.mjs",
+					],
+				}),
+			]),
+		).toStrictEqual([
+			"assets/cards.js: node_modules/.pnpm/@base-ui+react@1.8.0/node_modules/@base-ui/react/collapsible/root/CollapsibleRoot.mjs",
+			"assets/cards.js: src/components/send-rejected-card.tsx",
+			"assets/main.js: src/lib/shrinkwrap.ts",
+		]);
+	});
+
+	it("reports a missing home route chunk instead of passing vacuously", () => {
+		expect(homeColdLoadViolations([ENTRY, chunk("assets/react.js")])).toStrictEqual([
+			`no client chunk contains ${HOME}`,
+		]);
 	});
 });

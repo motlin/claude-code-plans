@@ -51,18 +51,18 @@
 		"raisedAt": "2026-11-02"
 	},
 	"bundle.home.gzip": {
-		"ceiling": 459538,
+		"ceiling": 452333,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Tooltip shrinkwrap (2026-11-07): every Tooltip popup (and the slash-row and markdown reason tips) now fits through upstream's shared-frame shrinkwrap engine, so the cold home load carries src/lib/shrinkwrap.ts (line-rect fit, bisect, batched queue, resize/mutation/font refit, remount memory) that only the session transcript's user bubbles loaded before. Went from 454187 to 459538. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-07"
+		"reason": "lowered from 459538 (2026-11-08): the tooltip shrinkwrap engine (src/lib/shrinkwrap.ts) now loads through src/lib/shrinkwrap-loader.ts at idle, on a tip's first hover or focus, or with the session view's static import, and the home dock's start-failed card (SendRejectedCard with ApprovalActionButton and Base UI Collapsible) loads behind a lazy boundary warmed at idle and when a launch starts; just client-boundaries keeps all three off the home cold load. The session bundle pays ~0.3% for the extra chunk boundaries. The 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-08"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1381554,
+		"ceiling": 1363664,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Tooltip shrinkwrap (2026-11-07): every Tooltip popup (and the slash-row and markdown reason tips) now fits through upstream's shared-frame shrinkwrap engine, so the cold home load carries src/lib/shrinkwrap.ts (line-rect fit, bisect, batched queue, resize/mutation/font refit, remount memory) that only the session transcript's user bubbles loaded before. Went from 1367002 to 1381554. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-07"
+		"reason": "lowered from 1381554 (2026-11-08): the tooltip shrinkwrap engine (src/lib/shrinkwrap.ts) now loads through src/lib/shrinkwrap-loader.ts at idle, on a tip's first hover or focus, or with the session view's static import, and the home dock's start-failed card (SendRejectedCard with ApprovalActionButton and Base UI Collapsible) loads behind a lazy boundary warmed at idle and when a launch starts; just client-boundaries keeps all three off the home cold load. The session bundle pays ~0.3% for the extra chunk boundaries. The 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-08"
 	},
 	"bundle.session.gzip": {
 		"ceiling": 704653,

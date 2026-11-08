@@ -4,6 +4,7 @@ import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {HOME_DOCK_CLASS} from "../dock-tokens";
 
 import {useActiveSessionsIfAvailable} from "../../hooks/use-claude-events";
+import {useIdlePrefetch} from "../../hooks/use-idle-prefetch";
 import {useSlashCommands} from "../../hooks/use-slash-commands";
 import {promptHistoryQueryOptions} from "../../lib/api/prompt-history";
 import {composerDefaultsQueryOptions} from "../../lib/api/composer-defaults";
@@ -24,7 +25,8 @@ import {
 import {findLaunchedSession, type PendingLaunch} from "../../lib/palette-start-session";
 import {assignLaunchedSession, setPendingLaunchGroup} from "../../lib/session-group-store";
 import {Composer} from "../composer";
-import {SendRejectedCard} from "../send-rejected-card";
+import {LazySendRejectedCard} from "../lazy-send-rejected-card";
+import {loadSendRejectedCard} from "../send-rejected-card-loader";
 import {useSendRejectionActions} from "../use-send-rejection-actions";
 import {useToast} from "../toast-context";
 import {UsagePaceBanner} from "../usage-pace-banner";
@@ -32,6 +34,9 @@ import {useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
 import {ProjectPicker} from "./project-picker";
 
 export {HOME_RECENT_LIMIT} from "./launch-folder";
+
+/** The failed-start card is cached by the time a launch can fail: warmed at idle and again when a launch starts. */
+const HOME_DOCK_CHUNKS = [loadSendRejectedCard];
 
 /**
  * The docked claude.ai/code home composer: the prompt card over an environment
@@ -48,6 +53,7 @@ export function HomeComposer({
 	const toast = useToast();
 	const activeSessions = useActiveSessionsIfAvailable();
 	const {data: defaults} = useQuery(composerDefaultsQueryOptions);
+	useIdlePrefetch(HOME_DOCK_CHUNKS);
 	const [pendingLaunch, setPendingLaunch] = useState<(PendingLaunch & {worktree: boolean}) | null>(null);
 	const rootRef = useRef<HTMLDivElement>(null);
 	// Upstream keeps the failed start's display error in memory only: a reload or remount drops the card.
@@ -155,6 +161,7 @@ export function HomeComposer({
 		const args = buildLaunchFlags(worktree.useWorktree ? {...launchOptions, worktree: true} : launchOptions);
 		const request = {cwd: project.projectPath, prompt, ...(args.length > 0 ? {args} : {})};
 		const since = Date.now();
+		loadSendRejectedCard().catch(() => {});
 		// A new start clears the last failure's card, as upstream does.
 		setStartFailure(null);
 		setLaunching(true);
@@ -196,7 +203,7 @@ export function HomeComposer({
 			<div className="pb-1.5 empty:hidden">
 				<UsagePaceBanner />
 				{rejection !== null && (
-					<SendRejectedCard
+					<LazySendRejectedCard
 						rejection={rejection}
 						onRetry={retryRejection}
 						onDismiss={dismissRejection}

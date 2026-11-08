@@ -13,7 +13,8 @@ import {
 	useState,
 } from "react";
 
-import {useShrinkwrap} from "../../hooks/use-shrinkwrap";
+import {useLazyShrinkwrap} from "../../hooks/use-lazy-shrinkwrap";
+import {loadShrinkwrapEngine} from "../../lib/shrinkwrap-loader";
 
 import {ViewportPortal} from "../viewport-portal";
 import {Shortcut} from "./shortcut";
@@ -204,7 +205,7 @@ export function Tooltip({
 	const anchorRef = useRef<HTMLSpanElement>(null);
 	const tipRef = useRef<HTMLSpanElement>(null);
 	/** Upstream's `an({immediate: true})`: hug the wrapped text before placement measures the tip. */
-	const fitTip = useShrinkwrap({immediate: true});
+	const fitTip = useLazyShrinkwrap({immediate: true});
 	const tipCallbackRef = useCallback(
 		(el: HTMLSpanElement | null) => {
 			tipRef.current = el;
@@ -290,6 +291,8 @@ export function Tooltip({
 
 	function show(openDelay = delay, byFocus = false) {
 		clearTimeout(timer.current);
+		// Usually loaded at idle already; otherwise the hover delay covers the download before the tip fits.
+		loadShrinkwrapEngine().catch(() => {});
 		const anchor = anchorRef.current;
 		if (suppressed.current) return;
 		if (anchor !== null && popupOpen(anchor)) return;

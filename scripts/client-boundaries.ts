@@ -26,6 +26,27 @@ const CLIENT_ENTRY_PATTERN = /(^|\/)src\/client\.tsx$/;
 const SHIKI_LANGUAGE_PATTERN = /(^|\/)shiki\/(dist\/)?langs\//;
 const MARKDOWN_IT_PATTERN = /(^|\/)node_modules\/markdown-it\//;
 
+/** The chunks a cold load of `roots` downloads: the roots and everything they import statically. */
+function staticClosureOf(
+	roots: readonly ClientChunk[],
+	byFileName: ReadonlyMap<string, ClientChunk>,
+	onMissing: (violation: string) => void,
+): Set<ClientChunk> {
+	const closure = new Set<ClientChunk>();
+	const toVisit = [...roots];
+	while (toVisit.length > 0) {
+		const chunk = toVisit.pop();
+		if (chunk === undefined || closure.has(chunk)) continue;
+		closure.add(chunk);
+		for (const imported of chunk.imports) {
+			const importedChunk = byFileName.get(imported);
+			if (importedChunk === undefined) onMissing(`${chunk.fileName}: missing static import ${imported}`);
+			else toVisit.push(importedChunk);
+		}
+	}
+	return closure;
+}
+
 export function clientBoundaryViolations(
 	chunks: readonly ClientChunk[],
 	codeOf: (fileName: string) => string,
@@ -42,18 +63,7 @@ export function clientBoundaryViolations(
 	if (entry === undefined) return ["no client entry chunk contains src/client.tsx"];
 
 	const byFileName = new Map(chunks.map((chunk) => [chunk.fileName, chunk]));
-	const staticClosure = new Set<ClientChunk>();
-	const toVisit = [entry];
-	while (toVisit.length > 0) {
-		const chunk = toVisit.pop();
-		if (chunk === undefined || staticClosure.has(chunk)) continue;
-		staticClosure.add(chunk);
-		for (const imported of chunk.imports) {
-			const importedChunk = byFileName.get(imported);
-			if (importedChunk === undefined) violations.add(`${chunk.fileName}: missing static import ${imported}`);
-			else toVisit.push(importedChunk);
-		}
-	}
+	const staticClosure = staticClosureOf([entry], byFileName, (missing) => violations.add(missing));
 
 	for (const chunk of staticClosure) {
 		for (const id of chunk.moduleIds) {
@@ -72,6 +82,34 @@ export function clientBoundaryViolations(
 		}
 	}
 
+	return [...violations].toSorted();
+}
+
+const HOME_ROUTE_MODULE = "src/routes/index.tsx?tsr-split=component";
+
+/**
+ * Code the home page only needs once the user interacts, kept out of its cold load: the tooltip shrinkwrap engine
+ * (loaded when a tip is about to open, or at idle), and the home dock's send-rejected card with Base UI Collapsible
+ * (loaded when a launch starts).
+ */
+const HOME_LAZY_PATTERNS = [
+	/(^|\/)src\/lib\/shrinkwrap\.ts$/,
+	/(^|\/)src\/components\/send-rejected-card\.tsx$/,
+	/(^|\/)@base-ui\/react\/collapsible\//,
+];
+
+export function homeColdLoadViolations(chunks: readonly ClientChunk[]): string[] {
+	const entry = chunks.find((chunk) => chunk.isEntry && chunk.moduleIds.some((id) => CLIENT_ENTRY_PATTERN.test(id)));
+	if (entry === undefined) return ["no client entry chunk contains src/client.tsx"];
+	const home = chunks.find((chunk) => chunk.moduleIds.includes(HOME_ROUTE_MODULE));
+	if (home === undefined) return [`no client chunk contains ${HOME_ROUTE_MODULE}`];
+	const violations = new Set<string>();
+	const byFileName = new Map(chunks.map((chunk) => [chunk.fileName, chunk]));
+	for (const chunk of staticClosureOf([entry, home], byFileName, (missing) => violations.add(missing))) {
+		for (const id of chunk.moduleIds) {
+			if (HOME_LAZY_PATTERNS.some((pattern) => pattern.test(id))) violations.add(`${chunk.fileName}: ${id}`);
+		}
+	}
 	return [...violations].toSorted();
 }
 
@@ -103,6 +141,14 @@ function main(): void {
 	const violations = clientBoundaryViolations(chunks, (fileName) =>
 		readFileSync(join(outputDir, "public", fileName), "utf8"),
 	);
+	const homeEager = homeColdLoadViolations(chunks);
+	if (homeEager.length > 0) {
+		console.error(
+			`The home page's cold load carries interaction-only code:\n${homeEager.map((violation) => `  - ${violation}`).join("\n")}\n\n` +
+				"Load it behind a dynamic import() (src/lib/shrinkwrap-loader.ts, the home dock's lazy SendRejectedCard).",
+		);
+		process.exitCode = 1;
+	}
 	if (violations.length > 0) {
 		console.error(
 			`The client build crosses a module boundary:\n${violations.map((violation) => `  - ${violation}`).join("\n")}\n\n` +

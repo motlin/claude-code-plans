@@ -4,15 +4,16 @@ import {warmOnIntent} from "../lib/idle-prefetch";
 import {loadCommandPalette} from "./command-palette-loader";
 import {loadKeyboardShortcutsDialog} from "./keyboard-shortcuts-dialog-module";
 import {loadSettingsDialog} from "./settings/settings-dialog-loader";
+import {loadShrinkwrapEngine} from "../lib/shrinkwrap-loader";
 
-const SHELL_CHUNKS = [loadCommandPalette, loadSettingsDialog, loadKeyboardShortcutsDialog];
+const SHELL_CHUNKS = [loadCommandPalette, loadSettingsDialog, loadKeyboardShortcutsDialog, loadShrinkwrapEngine];
 const INTENT = {
 	targets: {palette: [loadCommandPalette], settings: [loadSettingsDialog]},
 	modifier: SHELL_CHUNKS,
 };
 
 /**
- * Downloads the ⌘K palette, Settings, and Keyboard shortcuts chunks after the page goes idle, or sooner on hover or focus of a
+ * Downloads the ⌘K palette, Settings, and Keyboard shortcuts chunks and the tooltip shrinkwrap engine after the page goes idle, or sooner on hover or focus of a
  * `data-prefetch` control or a ⌘/Ctrl press, so their first open renders from cache.
  */
 export function ChunkPrefetch() {
