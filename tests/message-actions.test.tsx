@@ -782,6 +782,27 @@ describe("Rewind while Claude is working", () => {
 		]);
 	});
 
+	it("hands focus to the reason wrapper when a focused Rewind gains a reason, ahead of the roving heir", async () => {
+		const rewindTo = vi.fn<NonNullable<TranscriptActions["rewindTo"]>>();
+		const view = (reason: string | null) =>
+			withActions(
+				{rewindTo, ...(reason === null ? {} : {rewindDisabledReason: reason})},
+				<UserMessageActions message={MESSAGE} text="Hi" timestamp={TIMESTAMP} details={[]} />,
+			);
+		const {container, rerender} = render(view(null));
+		button(container, "Rewind to here").focus();
+		rerender(view(REASON));
+		await act(async () => {
+			await Promise.resolve();
+			await Promise.resolve();
+		});
+
+		expect({
+			focusedWrapper: document.activeElement?.hasAttribute("data-cds-disabled-reason-wrapper") ?? false,
+			wrapperTabIndex: rewindState(container).wrapperTabIndex,
+		}).toStrictEqual({focusedWrapper: true, wrapperTabIndex: 0});
+	});
+
 	it("reaches the reason wrapper with ArrowRight from Copy, as a roving toolbar item", () => {
 		const {container} = render(
 			withActions(
@@ -989,6 +1010,13 @@ describe("message action toolbar sizing and reveal", () => {
 			stops: ["Copy"],
 			timeTabIndex: null,
 		});
+	});
+
+	it("lets Space on the bar itself through, as upstream's unparked MessageActions root (the transcript scrolls)", () => {
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
+		expect(fireEvent.keyDown(bar(container), {key: " "})).toBe(true);
 	});
 
 	it("gives the user bar toolbar semantics and upstream's user-message-actions test id", () => {
