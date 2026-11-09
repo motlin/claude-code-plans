@@ -118,6 +118,7 @@ import {composerPendingGate, composerSendPlan, gateHoldsQueue} from "../lib/comp
 import {assertNever} from "../lib/assert-never";
 import {canApplyLive, type LaunchOptions, modeMenuItems} from "../lib/launch-options";
 import {setPendingFork} from "../lib/session-fork";
+import {requestRailContextCard} from "../lib/session-rail-store";
 import {
 	useClaudeEvents,
 	useComposerServerState,
@@ -278,6 +279,7 @@ function RailTileFrameBody({
 			tileRef={measureRef}
 			rail={
 				<SessionRailSlot
+					sessionId={railInputs.sessionId}
 					render={() => (
 						<SessionBackgroundTasksOpener
 							sessionId={railInputs.sessionId}
@@ -1075,6 +1077,9 @@ function SessionView({
 		}),
 		[composerRewindState, requestRewindPicker],
 	);
+	const openContextCard = useCallback(() => {
+		requestRailContextCard(sessionId);
+	}, [sessionId]);
 	const rewindAvailableFromComposer = useMemo(
 		() =>
 			rewindAvailable
@@ -1576,6 +1581,7 @@ function SessionView({
 															promptHistory={promptHistory?.prompts}
 															bashHistory={promptHistory?.bashCommands}
 															rewind={composerRewind}
+															onOpenContext={openContextCard}
 															onShellCommand={runShellCommand}
 														/>
 													</SessionBackgroundTasksOpener>

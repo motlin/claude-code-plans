@@ -1,11 +1,13 @@
 import {describe, expect, it} from "vite-plus/test";
 import {
+	autocompactCommand,
 	extraLinesBody,
 	fastCommandArg,
 	type HostCommandContext,
 	parseCommandShape,
 	parseHostCommand,
 	routeFastCommand,
+	SLASH_NAME,
 	trailingArgsBody,
 } from "../src/lib/composer-host-commands";
 import {EFFORT_LEVELS, effortLevelsFor, MORE_MODELS, PRIMARY_MODELS} from "../src/lib/launch-options";
@@ -164,5 +166,35 @@ describe("band bodies", () => {
 			"/permissions doesn\u2019t take arguments here. Remove the text after the command, then send it again.",
 			"/permissions only works on a single line. Remove the extra lines, then send it again.",
 		]);
+	});
+});
+
+describe("autocompactCommand", () => {
+	it("opens on a bare /autocompact (any case, surrounding spaces) and lets an argument reach the CLI", () => {
+		const inputs = [
+			"/autocompact",
+			"/AutoCompact",
+			"  /autocompact   ",
+			"/autocompact 50000",
+			"/autocompact auto",
+			"/autocompactx",
+			"/autocompact\nmore",
+			"/context",
+		];
+
+		expect(Object.fromEntries(inputs.map((input) => [input, autocompactCommand(input)]))).toStrictEqual({
+			"/autocompact": "open",
+			"/AutoCompact": "open",
+			"  /autocompact   ": "open",
+			"/autocompact 50000": null,
+			"/autocompact auto": null,
+			"/autocompactx": null,
+			"/autocompact\nmore": null,
+			"/context": null,
+		});
+	});
+
+	it("exports upstream's slash-name pattern", () => {
+		expect(SLASH_NAME.exec("/plugin:skill-x rest")?.[1]).toBe("plugin:skill-x");
 	});
 });

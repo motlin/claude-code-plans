@@ -167,7 +167,7 @@ describe("useSlashCommands", () => {
 		expect(menuState()).toStrictEqual({header: null, labels: ["standup"]});
 	});
 
-	it("adds the session-only built-ins (/rewind) to a session's list but not the home composer's", async () => {
+	it("adds the session-only built-ins (/rewind, /autocompact) to a session's list but not the home composer's", async () => {
 		vi.stubGlobal(
 			"fetch",
 			vi.fn<typeof fetch>(async () => Promise.resolve(Response.json(LOADED))),
@@ -199,7 +199,7 @@ describe("useSlashCommands", () => {
 
 		expect({home, session}).toStrictEqual({
 			home: {header: null, labels: ["standup"]},
-			session: {header: null, labels: ["rewind", "standup"]},
+			session: {header: null, labels: ["rewind", "autocompact", "standup"]},
 		});
 	});
 

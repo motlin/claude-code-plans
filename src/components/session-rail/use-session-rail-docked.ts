@@ -13,7 +13,13 @@ export interface SessionRailFit {
 	measureRef: (node: HTMLElement | null) => void;
 	/** Upstream's raised overlay: local, never the persisted rail flag. */
 	raised: boolean;
-	setRaised: (raised: boolean) => void;
+	/** Raises or lowers the overlay; a raise focuses it unless `focusOnOpen` is false (a command's raise keeps the composer focused). */
+	setRaised: (raised: boolean, focusOnOpen?: boolean) => void;
+	/** Whether the overlay takes focus when it opens: the toggle's raise does, a command's doesn't. */
+	focusOnOpen: boolean;
+	/** Upstream's `yq`: a command raised the overlay over a rail that fits but is hidden (or swapped out, or off on a phone). */
+	commandRaised: boolean;
+	setCommandRaised: (raised: boolean) => void;
 	overlayId: string;
 	toggleRef: RefObject<HTMLButtonElement | null>;
 }
@@ -24,7 +30,13 @@ export const SessionRailFitContext = createContext<SessionRailFit | null>(null);
 export function useSessionRailFitState(): SessionRailFit {
 	const panels = useFizzyLake("panels");
 	const [band, setBand] = useState<RailFit>();
-	const [raised, setRaised] = useState(false);
+	const [raised, setRaisedState] = useState(false);
+	const [focusOnOpen, setFocusOnOpen] = useState(true);
+	const [commandRaised, setCommandRaised] = useState(false);
+	const setRaised = useCallback((next: boolean, focus = true) => {
+		setRaisedState(next);
+		if (next) setFocusOnOpen(focus);
+	}, []);
 	const overlayId = useId();
 	const toggleRef = useRef<HTMLButtonElement>(null);
 	const observer = useRef<ResizeObserver>(null);
@@ -45,8 +57,18 @@ export function useSessionRailFitState(): SessionRailFit {
 		[panels],
 	);
 	return useMemo(
-		() => ({band, measureRef, raised, setRaised, overlayId, toggleRef}),
-		[band, measureRef, raised, overlayId],
+		() => ({
+			band,
+			measureRef,
+			raised,
+			setRaised,
+			focusOnOpen,
+			commandRaised,
+			setCommandRaised,
+			overlayId,
+			toggleRef,
+		}),
+		[band, measureRef, raised, setRaised, focusOnOpen, commandRaised, overlayId],
 	);
 }
 

@@ -9,7 +9,9 @@ import {
 	orderRailSections,
 	reorderRailSections,
 	readRailSectionsState,
+	readRailRaiseRequest,
 	readSessionRailShown,
+	requestRailContextCard,
 	resetRailSections,
 	toggleRailSectionHidden,
 	RAIL_SECTIONS_STORAGE_KEY,
@@ -284,5 +286,26 @@ describe("rail section order", () => {
 		reorderRailSections("progress", "connectors");
 
 		expect(isRailSectionsPristine(readRailSectionsState(), "s1")).toBe(true);
+	});
+});
+
+describe("requestRailContextCard", () => {
+	it("opens the session's Context card like upstream's setOpen, leaving the card defaults alone, and asks that session's rail on screen", () => {
+		const before = readRailSectionsState();
+		const raiseBefore = readRailRaiseRequest()?.seq ?? 0;
+		requestRailContextCard("s1");
+		const state = readRailSectionsState();
+
+		expect({
+			open: isRailSectionOpen(state, "s1", "context"),
+			startsOpen: state.startsOpen,
+			folds: state.foldsBySession["s1"],
+			raise: readRailRaiseRequest(),
+		}).toStrictEqual({
+			open: true,
+			startsOpen: before.startsOpen,
+			folds: {collapsed: [], expanded: ["context"]},
+			raise: {sessionId: "s1", seq: raiseBefore + 1},
+		});
 	});
 });

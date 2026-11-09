@@ -25,6 +25,7 @@ import {
 	RAIL_SECTIONS_STORAGE_KEY,
 	readRailSectionsState,
 	readSessionRailShown,
+	requestRailContextCard,
 	setSessionRailShown,
 } from "../src/lib/session-rail-store";
 import {installLocalStorage} from "./fake-storage";
@@ -479,7 +480,7 @@ describe("session rail fit by chat-panel width", () => {
 						<SessionPaneControls facts={{}} railAvailable />
 						<DockedProbe />
 						<p>transcript</p>
-						<SessionRailSlot render={() => <p>rail body</p>} />
+						<SessionRailSlot sessionId="rail-session" render={() => <p>rail body</p>} />
 					</FitTile>
 				</TileHost>
 			</SettingsProvider>,
@@ -761,6 +762,115 @@ describe("session rail fit by chat-panel width", () => {
 			overlay: "P",
 			pane: true,
 			stored: true,
+		});
+	});
+
+	describe("raised by /autocompact", () => {
+		function focusedPrompt(): HTMLTextAreaElement {
+			const prompt = document.createElement("textarea");
+			document.body.append(prompt);
+			prompt.focus();
+			return prompt;
+		}
+
+		async function requestContext() {
+			act(() => {
+				requestRailContextCard("rail-session");
+			});
+			await settle();
+		}
+
+		it("leaves a shown, fitting rail docked and raises nothing", async () => {
+			setSessionRailShown(true);
+			tileWidth = 1200;
+			renderFitSession();
+			await settle();
+			await requestContext();
+
+			expect({
+				overlay: document.querySelector("[data-session-rail-overlay]"),
+				column: document.querySelector("[data-epitaxy-rail-column]") !== null,
+			}).toStrictEqual({overlay: null, column: true});
+		});
+
+		it("raises a hidden, fitting rail as an unpersisted overlay without taking focus, and lowers it on an outside pointerdown", async () => {
+			tileWidth = 1200;
+			renderFitSession();
+			await settle();
+			const prompt = focusedPrompt();
+			await requestContext();
+			const overlay = document.querySelector<HTMLElement>("[data-session-rail-overlay]");
+			const raised = {
+				role: overlay?.getAttribute("role"),
+				label: overlay?.getAttribute("aria-label"),
+				body: overlay === null ? null : within(overlay).getByText("rail body").tagName,
+				focusKept: document.activeElement === prompt,
+				stored: readSessionRailShown(),
+				toggle: toggleState(),
+			};
+			fireEvent.pointerDown(document.body);
+			await settle();
+
+			expect({
+				raised,
+				lowered: {
+					overlay: document.querySelector("[data-session-rail-overlay]"),
+					stored: readSessionRailShown(),
+					pressed: toggleState().pressed,
+				},
+			}).toStrictEqual({
+				raised: {
+					role: "group",
+					label: "Session details",
+					body: "P",
+					focusKept: true,
+					stored: false,
+					toggle: {label: "Hide session rail", pressed: "true", expanded: "true", controls: overlay?.id},
+				},
+				lowered: {overlay: null, stored: false, pressed: "false"},
+			});
+		});
+
+		it("lowers the command-raised overlay from the toggle without showing the rail", async () => {
+			tileWidth = 1200;
+			renderFitSession();
+			await settle();
+			await requestContext();
+			const toggle = screen.getByRole("button", {name: /session rail/});
+			fireEvent.pointerDown(toggle);
+			fireEvent.click(toggle);
+			await settle();
+
+			expect({
+				overlay: document.querySelector("[data-session-rail-overlay]"),
+				column: document.querySelector("[data-epitaxy-rail-column]"),
+				stored: readSessionRailShown(),
+			}).toStrictEqual({overlay: null, column: null, stored: false});
+		});
+
+		it("raises the overlay below the fit without moving focus", async () => {
+			renderFitSession();
+			await settle();
+			const prompt = focusedPrompt();
+			await requestContext();
+
+			expect({
+				overlay: document.querySelector("[data-session-rail-overlay]") !== null,
+				focusKept: document.activeElement === prompt,
+				toggle: toggleState().expanded,
+			}).toStrictEqual({overlay: true, focusKept: true, toggle: "true"});
+		});
+
+		it("ignores another session's request", async () => {
+			tileWidth = 1200;
+			renderFitSession();
+			await settle();
+			act(() => {
+				requestRailContextCard("other-session");
+			});
+			await settle();
+
+			expect(document.querySelector("[data-session-rail-overlay]")).toBe(null);
 		});
 	});
 });

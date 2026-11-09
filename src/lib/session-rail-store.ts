@@ -213,6 +213,42 @@ export function setRailSectionsOpen(sessionId: string, ids: readonly RailSection
 	sectionsStore.write({...state, foldsBySession: withOpen(state, sessionId, ids, open)});
 }
 
+/** A command's ask for one session's rail on screen; `seq` tells repeated asks apart. */
+export interface RailRaiseRequest {
+	sessionId: string;
+	seq: number;
+}
+
+let railRaiseRequest: RailRaiseRequest | null = null;
+const raiseListeners = new Set<() => void>();
+
+/** The latest raise request (in memory, never persisted). */
+export function readRailRaiseRequest(): RailRaiseRequest | null {
+	return railRaiseRequest;
+}
+
+function subscribeRailRaiseRequest(listener: () => void): () => void {
+	raiseListeners.add(listener);
+	return () => raiseListeners.delete(listener);
+}
+
+/** The latest raise request; a new one means that session's rail should come on screen if it isn't. */
+export function useRailRaiseRequest(): RailRaiseRequest | null {
+	return useSyncExternalStore(subscribeRailRaiseRequest, readRailRaiseRequest, () => null);
+}
+
+/**
+ * Upstream's `openComposerMenu("context")`, as its consumers take it: the rail Context card
+ * opens through `setOpen` (only this session's fold changes, never `startsOpen`), and the
+ * rail is asked to come on screen (`yq` raises it as an overlay when hidden or off screen).
+ * A hidden Context card still records the fold; nothing card-specific shows.
+ */
+export function requestRailContextCard(sessionId: string): void {
+	setRailSectionsOpen(sessionId, ["context"], true);
+	railRaiseRequest = {sessionId, seq: (railRaiseRequest?.seq ?? 0) + 1};
+	for (const listener of raiseListeners) listener();
+}
+
 /** The sections upstream's header menu lists under Show; Environment always shows; the session rail never builds Settings (the composer chin has mode and effort), Usage (the composer ring popover and usage band have the limits) or Progress (the Plan pane has the checklist). */
 export const HIDEABLE_RAIL_SECTIONS = [
 	"goal",

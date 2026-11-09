@@ -28,10 +28,20 @@ describe("SESSION_SLASH_COMMANDS", () => {
 	it("holds the built-ins upstream offers only inside a session, which /api/commands leaves out", () => {
 		expect({
 			session: SESSION_SLASH_COMMANDS,
-			inBuiltins: BUILTIN_SLASH_COMMANDS.some((c) => c.name === "rewind"),
+			inBuiltins: BUILTIN_SLASH_COMMANDS.some((c) => c.name === "rewind" || c.name === "autocompact"),
+			knowsAutocompact: isKnownSlashCommand("autocompact", SESSION_SLASH_COMMANDS),
 		}).toStrictEqual({
-			session: [{name: "rewind", description: "Rewind the session to an earlier message", source: "builtin"}],
+			session: [
+				{name: "rewind", description: "Rewind the session to an earlier message", source: "builtin"},
+				{
+					name: "autocompact",
+					description: "Show context usage or set when auto-compact runs",
+					source: "builtin",
+					argumentHint: "[auto|<tokens>]",
+				},
+			],
 			inBuiltins: false,
+			knowsAutocompact: true,
 		});
 	});
 });

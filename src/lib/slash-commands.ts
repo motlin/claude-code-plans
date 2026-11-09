@@ -80,6 +80,12 @@ export function slashCommandLabel(command: SlashCommand): string {
  */
 export const SESSION_SLASH_COMMANDS: readonly SlashCommand[] = [
 	{name: "rewind", description: "Rewind the session to an earlier message", source: "builtin"},
+	{
+		name: "autocompact",
+		description: "Show context usage or set when auto-compact runs",
+		source: "builtin",
+		argumentHint: "[auto|<tokens>]",
+	},
 ];
 
 /**

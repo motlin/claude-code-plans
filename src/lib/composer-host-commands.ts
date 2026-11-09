@@ -60,6 +60,21 @@ export function parseCommandShape(names: readonly string[], text: string): Comma
 	return {kind: rest.trim() ? "trailing_args" : "run", name};
 }
 
+/** Upstream's `cr`: a sent command's `/name`, followed by whitespace or the end. */
+export const SLASH_NAME = /^\/(\w[\w:-]*)(?=\s|$)/;
+
+/**
+ * Upstream's `Il` for the bare-only `context-popover` action: a bare `/autocompact`
+ * (any case, surrounding whitespace allowed) opens the Context card; with an argument
+ * (`auto`, a token count) it reaches the CLI as typed.
+ */
+export function autocompactCommand(text: string): "open" | null {
+	const trimmed = text.trim();
+	const match = SLASH_NAME.exec(trimmed);
+	if (match?.[1]?.toLowerCase() !== "autocompact") return null;
+	return trimmed.slice(match[0].length).trim() === "" ? "open" : null;
+}
+
 /** Upstream's rejectTrailingArguments body (`cgTRRpTLBX`). */
 export function trailingArgsBody(name: string): string {
 	return `/${name} doesn’t take arguments here. Remove the text after the command, then send it again.`;

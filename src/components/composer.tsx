@@ -59,6 +59,7 @@ import {
 	remapMentions,
 } from "../lib/composer-mentions";
 import {
+	autocompactCommand,
 	extraLinesBody,
 	FAST_COMMAND_NOTICE_KEY,
 	fastCommandArg,
@@ -275,6 +276,13 @@ interface ComposerProps {
 	 */
 	rewind?: ComposerRewind | undefined;
 	/**
+	 * Opens the session rail's Context card for a bare `/autocompact` (upstream's `context-popover`
+	 * action), after the composer clears it. Upstream's consumers take the request in order: the rail
+	 * card first, and only where no rail card takes it, the ring popover in context mode. Absent on the
+	 * home composer, where a bare `/autocompact` is refused with a toast and kept.
+	 */
+	onOpenContext?: (() => void) | undefined;
+	/**
 	 * Runs a bash-mode command in the session's live pane; resolves false when it was refused. Present only with a
 	 * live pane: `!` in the empty composer then enters upstream's bash mode. Without it, a `! command` send is refused.
 	 */
@@ -304,6 +312,10 @@ function BashHighlight({lines}: {lines: ThemedToken[][]}) {
 		</Fragment>
 	));
 }
+
+/** Upstream's `bNdvwB`: a bare `/autocompact` on the home draft, before any session exists. */
+const AUTOCOMPACT_BEFORE_SESSION =
+	"Context settings work once this session starts. Send your first message to start it.";
 
 /** Upstream's `/rewind` toasts for a session that can't rewind, and for one whose computer is offline. */
 const REWIND_UNSUPPORTED = "Rewind isn’t available for this session.";
@@ -654,6 +666,7 @@ export function Composer({
 	subscribePrefill,
 	active = true,
 	rewind,
+	onOpenContext,
 	onShellCommand,
 }: ComposerProps) {
 	const {
@@ -1242,7 +1255,8 @@ export function Composer({
 	}
 	/** Upstream's host interception of `/model`, `/effort` and `/permissions`: true when the composer handled it. */
 	function runHostCommand(text: string): boolean {
-		if (runFastCommand(text) || runRewindCommand(text) || runWorkflowsCommand(text)) return true;
+		if (runFastCommand(text) || runRewindCommand(text) || runWorkflowsCommand(text) || runAutocompactCommand(text))
+			return true;
 		const command = parseHostCommand(text, {
 			effortLevels: effortLevelsFor(chinLaunchOptions.model ?? chin?.modelId ?? CLI_DEFAULT_MODEL),
 			models: HOST_COMMAND_MODELS,
@@ -1274,6 +1288,18 @@ export function Composer({
 				setCommandError({draftKey, body: command.text});
 				break;
 		}
+		return true;
+	}
+	/** Upstream's bare-only `/autocompact` (`context-popover`); with an argument it reaches the CLI as typed. */
+	function runAutocompactCommand(text: string): boolean {
+		if (autocompactCommand(text) === null) return false;
+		if (onOpenContext !== undefined) {
+			onOpenContext();
+			clearDraft();
+			return true;
+		}
+		if (variant !== "home") return false;
+		toast?.({kind: "error", message: AUTOCOMPACT_BEFORE_SESSION});
 		return true;
 	}
 	/** Upstream's `/rewind` (`noArgs`) dispatch: the shape band first, then the gate's outcome. */
