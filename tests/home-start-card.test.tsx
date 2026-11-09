@@ -8,6 +8,7 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {HOME_RECENT_LIMIT, useHomeLaunchFolder, useHomeWorktree} from "../src/components/home/launch-folder";
 import {HomeLaunchFolderProvider} from "../src/components/home/launch-folder-provider";
 import {ProjectPicker} from "../src/components/home/project-picker";
+import {WorktreeToggleChip} from "../src/components/home/worktree-toggle-chip";
 import {HomeStartCard, StartCard} from "../src/components/home/start-card";
 import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
@@ -359,11 +360,16 @@ function renderHomeStartCard(nextSteps?: Parameters<typeof HomeStartCard>[0]["ne
 	);
 }
 
-/** Stands in for the composer's folder chip, with the footer's Worktree switch on the shared state. */
+/** Stands in for the composer's environment bar: the folder chip and the Worktree chip on the shared state. */
 function FolderChip() {
 	const {projects, selected, select} = useHomeLaunchFolder();
 	const worktree = useHomeWorktree();
-	return <ProjectPicker projects={projects} selected={selected} onSelect={select} worktree={worktree} />;
+	return (
+		<>
+			<ProjectPicker projects={projects} selected={selected} onSelect={select} />
+			<WorktreeToggleChip on={worktree.enabled} pending={false} onChange={worktree.set} onPressed={() => {}} />
+		</>
+	);
 }
 
 /** The current row's folder name, without its sr-only path. */
@@ -435,7 +441,7 @@ describe("Next steps Turn on Worktree", () => {
 		dismissLabel: "Dismiss the Worktree suggestion",
 	};
 
-	it("flips the folder footer's Worktree switch on and stores the preference", () => {
+	it("flips the environment bar's Worktree chip on and stores the preference", () => {
 		const storage = installLocalStorage();
 		renderHomeStartCard({
 			rows: selectNextSteps({candidates: [worktreeApart], dismissed: {}}),
@@ -444,7 +450,6 @@ describe("Next steps Turn on Worktree", () => {
 		});
 
 		fireEvent.click(screen.getByRole("button", {name: /Turn on Worktree/}));
-		fireEvent.click(screen.getByRole("combobox", {name: /^Folder: /}));
 
 		expect({
 			checked: screen.getByRole("switch", {name: "Worktree"}).getAttribute("aria-checked"),

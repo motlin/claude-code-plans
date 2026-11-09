@@ -23,20 +23,29 @@ import {draftPermissionMode} from "../../lib/folder-permission-mode";
 import {
 	onHomeComposerFocusRequest,
 	onHomeComposerPrefillRequest,
+	requestHomeComposerFocus,
 	requestHomeComposerPrefill,
 } from "../../lib/home-composer-focus";
 import {findLaunchedSession, type PendingLaunch} from "../../lib/palette-start-session";
-import {assignLaunchedSession, setPendingLaunchGroup} from "../../lib/session-group-store";
+import {assignLaunchedSession, setPendingLaunchGroup, usePendingLaunchGroup} from "../../lib/session-group-store";
 import {Composer} from "../composer";
 import {LazySendRejectedCard} from "../lazy-send-rejected-card";
 import {loadSendRejectedCard} from "../send-rejected-card-loader";
 import {useSendRejectionActions} from "../use-send-rejection-actions";
 import {useToast} from "../toast-context";
 import {UsagePaceBanner} from "../usage-pace-banner";
+import {type EnvironmentBarLine, EnvironmentBarLineHost} from "./environment-bar-line";
+import {GroupLaunchNote} from "./group-launch-note";
 import {useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
 import {ProjectPicker} from "./project-picker";
+import {WorktreeToggleChip} from "./worktree-toggle-chip";
 
 export {HOME_RECENT_LIMIT} from "./launch-folder";
+
+/** Upstream's saved-environment `gone` reason, adapted to a selected folder that no longer exists. */
+function folderGoneReason(name: string, path: string): string {
+	return `${name} can’t start: ${path} no longer exists.`;
+}
 
 /** The failed-start card is cached by the time a launch can fail: warmed at idle and again when a launch starts. */
 const HOME_DOCK_CHUNKS = [loadSendRejectedCard];
@@ -48,6 +57,10 @@ const HOME_DOCK_CHUNKS = [loadSendRejectedCard];
  * equivalent shell command instead. A `prefill` replaces the draft once on mount (nothing is sent), then
  * `onPrefillApplied` lets the caller drop whatever asked for it.
  */
+function dropPendingGroup(): void {
+	setPendingLaunchGroup(null);
+}
+
 export function HomeComposer({
 	prefill,
 	onPrefillApplied,
@@ -87,8 +100,31 @@ export function HomeComposer({
 		launching,
 		setLaunching,
 	} = useHomeLaunchFolder();
-	const {data: folderStatus} = useQuery(homeFolderStatusQueryOptions(project?.projectPath));
+	const folderStatusQuery = useQuery(homeFolderStatusQueryOptions(project?.projectPath));
+	const folderStatus = folderStatusQuery.data;
 	const worktree = useHomeWorktree(folderStatus?.isGitRepo);
+	// Upstream's Worktree chip latch (`je`/`Ne`): while a new folder's git status loads, the chip keeps its last visibility.
+	const statusSettled = project === undefined || !folderStatusQuery.isPending;
+	const gitFolder = project !== undefined && folderStatus?.isGitRepo === true;
+	const [worktreeShown, setWorktreeShown] = useState(statusSettled && gitFolder);
+	if (statusSettled && worktreeShown !== gitFolder) setWorktreeShown(gitFolder);
+	const folderGone = project !== undefined && folderStatus?.exists === false;
+	const barLine = useMemo<EnvironmentBarLine | null>(
+		() =>
+			project === undefined || !folderGone
+				? null
+				: {
+						kind: "blocking",
+						content: (
+							<>
+								<bdi>{project.name}</bdi> can’t start: <bdi dir="ltr">{project.projectPath}</bdi> no
+								longer exists.
+							</>
+						),
+					},
+		[project, folderGone],
+	);
+	const pendingGroup = usePendingLaunchGroup();
 	const folderModes = useFolderModeMemory(project?.projectPath);
 	const {data: folderDefaults} = useQuery(composerFolderDefaultsQueryOptions(project?.projectPath));
 	const bypassPermissionsAllowed = defaults?.bypassPermissionsAllowed ?? false;
@@ -186,6 +222,14 @@ export function HomeComposer({
 			toast({kind: "error", message: "Choose a project to start a session in."});
 			return;
 		}
+		if (folderGone) {
+			// The composer clears its draft right after handing the prompt over, so the refill waits for that.
+			queueMicrotask(() => {
+				refillRejectedSend("home", prompt, toast);
+			});
+			toast({kind: "error", message: folderGoneReason(project.name, project.projectPath)});
+			return;
+		}
 		// The remembered mode goes on the command line only when the CLI wouldn't start in it by itself.
 		const withMode =
 			launchOptions.permissionMode === undefined && draftMode.launchFlag !== undefined
@@ -244,6 +288,17 @@ export function HomeComposer({
 					/>
 				)}
 			</div>
+			{/* Upstream unmounts the line host as soon as the draft starts spawning. */}
+			{!launching && pendingLaunch === null && (
+				<EnvironmentBarLineHost
+					line={barLine}
+					note={
+						barLine === null && pendingGroup !== null ? (
+							<GroupLaunchNote name={pendingGroup.name} placement="line" onDismiss={dropPendingGroup} />
+						) : null
+					}
+				/>
+			)}
 			<Composer
 				variant="home"
 				draftKey="home"
@@ -259,12 +314,17 @@ export function HomeComposer({
 				}
 				chin={chin}
 				environment={
-					<ProjectPicker
-						projects={startProjects}
-						selected={project}
-						onSelect={setChosenProjectId}
-						worktree={worktree}
-					/>
+					<ProjectPicker projects={startProjects} selected={project} onSelect={setChosenProjectId} />
+				}
+				worktreeToggle={
+					worktreeShown && !launching ? (
+						<WorktreeToggleChip
+							on={worktree.enabled}
+							pending={false}
+							onChange={worktree.set}
+							onPressed={requestHomeComposerFocus}
+						/>
+					) : undefined
 				}
 				{...slashMenu}
 				promptHistory={promptHistory?.prompts}
@@ -273,6 +333,9 @@ export function HomeComposer({
 				permissionCwd={project?.projectPath}
 				onPermissionModePick={folderModes.remember}
 			/>
+			{barLine !== null && pendingGroup !== null && (
+				<GroupLaunchNote name={pendingGroup.name} placement="block" onDismiss={dropPendingGroup} />
+			)}
 		</div>
 	);
 }

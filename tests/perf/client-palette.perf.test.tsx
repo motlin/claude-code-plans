@@ -106,6 +106,7 @@ const ENDPOINTS: Array<{path: string; module: string}> = [
 const STATIC_FIXTURES: Record<string, unknown> = {
 	"/api/herdr-panes": {panes: [], writesEnabled: false},
 	[`/api/home/folder-status?path=${encodeURIComponent(FIXTURE_CWD)}`]: {
+		exists: true,
 		isGitRepo: true,
 		headBranch: "main",
 		defaultBranch: "main",

@@ -30,7 +30,8 @@ import {
 	ENVIRONMENT_BAR_CLASS,
 	ENVIRONMENT_BAR_ROW_CLASS,
 	ENVIRONMENT_PICKERS_CLASS,
-	ENVIRONMENT_PLACE_CLASS,
+	ENVIRONMENT_BAR_CHIPS_CLASS,
+	ENVIRONMENT_BAR_PLACE_SLOT_CLASS,
 	PLACE_CHIP_CLASS,
 	USAGE_RING_CLASS,
 	USAGE_RING_WRAPPER_CLASS,
@@ -90,11 +91,13 @@ function FallbackComposer({
 			{environment ? (
 				<div data-fallback-environment-bar="" data-fallback-chin={painted} className={ENVIRONMENT_BAR_CLASS}>
 					<div className={ENVIRONMENT_BAR_ROW_CLASS}>
-						<div className={ENVIRONMENT_PLACE_CLASS}>
-							<span className={PLACE_CHIP_CLASS}>
-								<Folder aria-hidden="true" className="-ms-1 size-4 shrink-0" />
-								<span className={`h-3 w-16 ${BAR_CLASS}`} />
-							</span>
+						<div className={ENVIRONMENT_BAR_CHIPS_CLASS}>
+							<div className={ENVIRONMENT_BAR_PLACE_SLOT_CLASS}>
+								<span className={PLACE_CHIP_CLASS}>
+									<Folder aria-hidden="true" className="-ms-1 size-4 shrink-0" />
+									<span className={`h-3 w-16 ${BAR_CLASS}`} />
+								</span>
+							</div>
 						</div>
 						<FallbackChinControls chin={chin} surface="bar" />
 					</div>

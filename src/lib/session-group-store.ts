@@ -1,4 +1,4 @@
-import {useSyncExternalStore} from "react";
+import {useMemo, useSyncExternalStore} from "react";
 import {z} from "zod";
 
 import {applyAppearancePatch, GroupColorSchema, GroupIconSchema, type GroupAppearancePatch} from "./group-appearance";
@@ -175,20 +175,50 @@ export function assign(sessionId: string, groupId: string | null, options: Assig
 }
 
 let pendingLaunchGroupId: string | null = null;
+const pendingListeners = new Set<() => void>();
+
+function setPendingId(groupId: string | null): void {
+	pendingLaunchGroupId = groupId;
+	for (const listener of pendingListeners) listener();
+}
 
 /**
  * Upstream `setDraftCustomGroupId`: the custom group the next session launched from home joins, set
  * by that group's +, or null to drop it.
  */
 export function setPendingLaunchGroup(groupId: string | null): void {
-	pendingLaunchGroupId = groupId;
+	setPendingId(groupId);
 }
 
 /** Add a just-launched session to the pending launch group, if any, consuming it. */
 export function assignLaunchedSession(sessionId: string): void {
 	const groupId = pendingLaunchGroupId;
-	pendingLaunchGroupId = null;
+	setPendingId(null);
 	if (groupId !== null) assign(sessionId, groupId);
+}
+
+/** Calls `listener` whenever the pending launch group is set or consumed. */
+export function subscribePendingLaunchGroup(listener: () => void): () => void {
+	pendingListeners.add(listener);
+	return () => {
+		pendingListeners.delete(listener);
+	};
+}
+
+function readPendingLaunchGroupId(): string | null {
+	return pendingLaunchGroupId;
+}
+
+function noPendingLaunchGroup(): null {
+	return null;
+}
+
+/** The pending launch group (upstream `$5`): null when none is set or its group no longer exists. */
+export function usePendingLaunchGroup(): {id: string; name: string} | null {
+	const id = useSyncExternalStore(subscribePendingLaunchGroup, readPendingLaunchGroupId, noPendingLaunchGroup);
+	const {groups} = useSyncExternalStore(subscribeSessionGroups, readSessionGroupState, getServerSnapshot);
+	const name = id === null ? undefined : groups.find((group) => group.id === id)?.name;
+	return useMemo(() => (id === null || name === undefined ? null : {id, name}), [id, name]);
 }
 
 /** Replace a group's manual in-group order; an empty list clears it. Unknown groups are ignored. */

@@ -87,7 +87,7 @@ describe("density type tokens", () => {
 				"--upstream-text-heading": "15px",
 				"--upstream-leading-heading": "20px",
 			},
-			comfortableDeclarations: 41,
+			comfortableDeclarations: 42,
 			compact: {
 				"--upstream-text-body": "13px",
 				"--upstream-leading-body": "19px",
@@ -102,7 +102,7 @@ describe("density type tokens", () => {
 				"--upstream-text-heading": "14px",
 				"--upstream-leading-heading": "18px",
 			},
-			compactDeclarations: 41,
+			compactDeclarations: 42,
 			caption: "var(--upstream-text-caption)",
 			captionLeading: "var(--upstream-leading-caption)",
 		});

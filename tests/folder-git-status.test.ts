@@ -7,7 +7,7 @@ import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {homeFolderStatusQueryOptions} from "../src/lib/api/home-folder-status";
 import {folderStatusResponse, parseFolderGitStatus, readFolderGitStatus} from "../src/lib/folder-git-status";
 
-const NOT_A_REPO = {isGitRepo: false, headBranch: null, defaultBranch: null, uncommittedFiles: 0};
+const NOT_A_REPO = {exists: true, isGitRepo: false, headBranch: null, defaultBranch: null, uncommittedFiles: 0};
 
 describe("parseFolderGitStatus", () => {
 	it("counts one uncommitted file per porcelain line", () => {
@@ -17,11 +17,18 @@ describe("parseFolderGitStatus", () => {
 				originHead: "origin/main\n",
 				porcelain: " M a.ts\n?? b.ts\nA  c.ts\n",
 			}),
-		).toStrictEqual({isGitRepo: true, headBranch: "feat/x", defaultBranch: "main", uncommittedFiles: 3});
+		).toStrictEqual({
+			exists: true,
+			isGitRepo: true,
+			headBranch: "feat/x",
+			defaultBranch: "main",
+			uncommittedFiles: 3,
+		});
 	});
 
 	it("reads a detached HEAD as no branch", () => {
 		expect(parseFolderGitStatus({head: "HEAD\n", originHead: "origin/main\n", porcelain: ""})).toStrictEqual({
+			exists: true,
 			isGitRepo: true,
 			headBranch: null,
 			defaultBranch: "main",
@@ -31,6 +38,7 @@ describe("parseFolderGitStatus", () => {
 
 	it("has no default branch when origin/HEAD is unset", () => {
 		expect(parseFolderGitStatus({head: "main\n", originHead: null, porcelain: ""})).toStrictEqual({
+			exists: true,
 			isGitRepo: true,
 			headBranch: "main",
 			defaultBranch: null,
@@ -71,6 +79,7 @@ describe("folderStatusResponse", () => {
 		});
 		expect(response.status).toBe(200);
 		expect(await response.json()).toStrictEqual({
+			exists: true,
 			isGitRepo: true,
 			headBranch: "feat/x",
 			defaultBranch: "main",
@@ -110,8 +119,22 @@ describe("folderStatusResponse", () => {
 		expect(ran).toBe(false);
 	});
 
-	it("rejects a directory that does not exist with 400", async () => {
-		expect((await get(join(tempDir, "nope"))).status).toBe(400);
+	it("answers 200 exists:false for an absolute folder that no longer exists, without running git", async () => {
+		let ran = false;
+		const response = await get(join(tempDir, "nope"), async () => {
+			await Promise.resolve();
+			ran = true;
+			return "";
+		});
+		expect({status: response.status, body: await response.json(), ran}).toStrictEqual({
+			status: 200,
+			body: {exists: false, isGitRepo: false, headBranch: null, defaultBranch: null, uncommittedFiles: 0},
+			ran: false,
+		});
+	});
+
+	it("still rejects a relative path with 400", async () => {
+		expect((await get("relative/nope")).status).toBe(400);
 	});
 
 	it("reports a plain directory as not a git repo", async () => {
@@ -142,6 +165,7 @@ describe("folderStatusResponse", () => {
 		writeFileSync(join(work, "new-2.txt"), "b");
 
 		expect(await readFolderGitStatus(work)).toStrictEqual({
+			exists: true,
 			isGitRepo: true,
 			headBranch: "feat/x",
 			defaultBranch: "main",

@@ -29,7 +29,7 @@ import {Route as HomeRoute, validateHomeSearch} from "../src/routes/index";
 import {SSE_EVENTS} from "../src/lib/hook-events";
 import {HOME_WORKTREE_STORAGE_KEY} from "../src/lib/home-worktree-pref";
 import {attachContext, getContextChips, removeContextChip} from "../src/lib/context-attach";
-import {createGroup, readSessionGroupState, setPendingLaunchGroup} from "../src/lib/session-group-store";
+import {createGroup, deleteGroup, readSessionGroupState, setPendingLaunchGroup} from "../src/lib/session-group-store";
 import {installLocalStorage} from "./fake-storage";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
@@ -89,6 +89,8 @@ const PROJECTS = [
 	project("-users-dev-it-s", "it's", "/users/dev/it's", "2026-09-01T00:00:00.000Z"),
 	project("-users-dev-gone", "gone", null, "2026-09-28T00:00:00.000Z"),
 ];
+
+const GIT_STATUS = {exists: true, isGitRepo: true, headBranch: "main", defaultBranch: "main", uncommittedFiles: 0};
 
 const RECENTS = [recentSession("sess-1", "-users-dev-it-s", "it's")];
 
@@ -201,6 +203,7 @@ describe("HomeComposer", () => {
 		folderStatusResponse = null;
 		launchResponse = async () => new Promise<Response>(() => {});
 		TestEventSource.current = null;
+		setPendingLaunchGroup(null);
 		installLocalStorage();
 		vi.stubGlobal("EventSource", TestEventSource);
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
@@ -283,8 +286,8 @@ describe("HomeComposer", () => {
 			barClass: "@container flex w-full min-w-0 flex-col pt-0.5 -mb-0.5 md:pt-0 md:mb-0",
 			afterCard: true,
 			rowClass:
-				"flex min-h-6 items-center gap-x-1 gap-y-1.5 @max-[28.75rem]:flex-wrap px-2.5 text-[13px]/[20px] text-secondary [--cds-h-control:1.5rem] comfortable:[&_button]:rounded-r6",
-			placeClass: "flex min-w-0 items-center @max-[28.75rem]:basis-full",
+				"flex min-h-6 items-center gap-x-1 gap-y-1.5 @max-[28.75rem]:flex-wrap px-2.5 text-[13px]/[20px] text-secondary [--cds-h-control:1.5rem] [--cds-pad-md:0.375rem] comfortable:[&_button]:rounded-r6",
+			placeClass: "flex items-center gap-1 @max-[28.75rem]:basis-full",
 			placeButton: "Folder: it's",
 			rowItems: ["it's", "Opus 4.8 Medium", "Plan", ""],
 		});
@@ -453,16 +456,18 @@ describe("HomeComposer", () => {
 		);
 	});
 
-	it("turns Worktree on from the folder picker footer and launches with --worktree", async () => {
+	it("turns Worktree on from the environment bar's chip and launches with --worktree", async () => {
+		folderStatusResponse = () => Response.json(GIT_STATUS);
 		await renderApp();
-		fireEvent.click(screen.getByRole("combobox", {name: /^Folder: /}));
-		fireEvent.click(await screen.findByTestId("environment-bar-worktree"));
+		const toggle = await screen.findByTestId("environment-bar-worktree-toggle");
+		const slot = toggle.closest("[data-testid=environment-bar-place] ~ div");
+		fireEvent.click(toggle, {detail: 1});
 		expect({
-			checked: screen.getByRole("switch", {name: "Worktree"}).getAttribute("aria-checked"),
+			inSlotAfterPlace: slot?.contains(toggle) ?? false,
+			checked: toggle.getAttribute("aria-checked"),
 			stored: localStorage.getItem(HOME_WORKTREE_STORAGE_KEY),
-			open: screen.queryByRole("textbox", {name: "Search projects"}) !== null,
-		}).toStrictEqual({checked: "true", stored: "true", open: true});
-		fireEvent.keyDown(screen.getByRole("textbox", {name: "Search projects"}), {key: "Escape"});
+			focused: document.activeElement === screen.getByRole("textbox", {name: "Prompt"}),
+		}).toStrictEqual({inSlotAfterPlace: true, checked: "true", stored: "true", focused: true});
 		await typePrompt("hello");
 
 		fireEvent.click(screen.getByRole("button", {name: "Send"}));
@@ -470,38 +475,197 @@ describe("HomeComposer", () => {
 		await waitFor(() => {
 			expect(launchCalls.length).toBe(1);
 		});
-		expect(launchBody(launchCalls[0])).toStrictEqual({
-			cwd: "/users/dev/it's",
-			prompt: "hello",
-			args: ["--worktree"],
+		expect({
+			launch: launchBody(launchCalls[0]),
+			chipWhileLaunching: screen.queryByTestId("environment-bar-worktree-toggle"),
+		}).toStrictEqual({
+			launch: {cwd: "/users/dev/it's", prompt: "hello", args: ["--worktree"]},
+			chipWhileLaunching: null,
 		});
 	});
 
-	it("fetches the selected folder's git status and hides the Worktree footer for a non-git folder", async () => {
-		folderStatusResponse = () =>
-			Response.json({
-				isGitRepo: false,
-				headBranch: null,
-				defaultBranch: null,
-				uncommittedFiles: 0,
-			});
+	it("fetches the selected folder's git status and leaves the Worktree chip out for a non-git folder", async () => {
+		folderStatusResponse = () => Response.json({...GIT_STATUS, isGitRepo: false, headBranch: null});
 		localStorage.setItem(HOME_WORKTREE_STORAGE_KEY, "true");
 		await renderApp();
-		fireEvent.click(screen.getByRole("combobox", {name: /^Folder: /}));
 		await waitFor(() => {
-			expect(screen.queryByTestId("environment-bar-worktree")).toBeNull();
+			expect(folderStatusCalls.length).toBe(1);
 		});
-		fireEvent.keyDown(screen.getByRole("textbox", {name: "Search projects"}), {key: "Escape"});
 		await typePrompt("hello");
+		const chip = screen.queryByTestId("environment-bar-worktree-toggle");
 
 		fireEvent.click(screen.getByRole("button", {name: "Send"}));
 
 		await waitFor(() => {
 			expect(launchCalls.length).toBe(1);
 		});
-		expect({folderStatusCalls, launch: launchBody(launchCalls[0])}).toStrictEqual({
+		expect({folderStatusCalls, chip, launch: launchBody(launchCalls[0])}).toStrictEqual({
 			folderStatusCalls: ["/api/home/folder-status?path=%2Fusers%2Fdev%2Fit%27s"],
+			chip: null,
 			launch: {cwd: "/users/dev/it's", prompt: "hello"},
+		});
+	});
+
+	it("keeps the Worktree chip's visibility while a newly picked folder's git status loads", async () => {
+		let answer: ((response: Response) => void) | null = null;
+		folderStatusResponse = () => Response.json(GIT_STATUS);
+		await renderApp();
+		await screen.findByTestId("environment-bar-worktree-toggle");
+		folderStatusResponse = null;
+		const pending = new Promise<Response>((resolve) => {
+			answer = resolve;
+		});
+		vi.stubGlobal("fetch", async (url: string, init?: RequestInit) =>
+			url.startsWith("/api/home/folder-status?") ? pending : fetchMock(url, init),
+		);
+		fireEvent.click(screen.getByRole("combobox", {name: /^Folder: /}));
+		fireEvent.click(await screen.findByRole("option", {name: "newest"}));
+		await waitFor(() => {
+			expect(screen.getByRole("combobox", {name: /^Folder: /}).textContent).toBe("newest");
+		});
+		const whileLoading = screen.queryByTestId("environment-bar-worktree-toggle") !== null;
+		await act(async () => {
+			answer?.(Response.json({...GIT_STATUS, isGitRepo: false, headBranch: null}));
+			await pending;
+		});
+
+		await waitFor(() => {
+			expect(screen.queryByTestId("environment-bar-worktree-toggle")).toBeNull();
+		});
+		expect(whileLoading).toBe(true);
+	});
+
+	describe("environment bar line", () => {
+		const lineHost = () => document.querySelector("[data-environment-bar-line-host]");
+		const line = () => screen.queryByTestId("environment-bar-line");
+
+		it("puts the zero-height line host between the pace-banner slot and the composer card", async () => {
+			await renderApp();
+			await screen.findByRole("textbox", {name: "Prompt"});
+			const host = lineHost();
+
+			expect({
+				className: host?.className,
+				previous: host?.previousElementSibling?.className,
+				nextIsComposer: host?.nextElementSibling?.querySelector("[data-composer-card]") !== null,
+				line: line(),
+			}).toStrictEqual({
+				className: "relative h-0",
+				previous: "pb-1.5 empty:hidden",
+				nextIsComposer: true,
+				line: null,
+			});
+		});
+
+		it("notes the custom group a new session will join, and Don’t add drops it", async () => {
+			await renderApp();
+			act(() => {
+				setPendingLaunchGroup(createGroup("Infra").id);
+			});
+			const shown = await screen.findByTestId("environment-bar-line");
+			const note = {color: shown.className.split(" ").at(-1), text: shown.textContent};
+			fireEvent.click(screen.getByRole("button", {name: "Don’t add to Infra"}));
+
+			expect({note, after: line()}).toStrictEqual({
+				note: {
+					color: "text-muted-as-secondary",
+					text: "This session will be added to Infra in the sidebar when you start it.Don’t add",
+				},
+				after: null,
+			});
+		});
+
+		it("drops the note when its group is deleted", async () => {
+			await renderApp();
+			const infra = createGroup("Infra");
+			act(() => {
+				setPendingLaunchGroup(infra.id);
+			});
+			await screen.findByTestId("environment-bar-line");
+			act(() => {
+				deleteGroup(infra.id);
+			});
+
+			expect(line()).toBeNull();
+		});
+
+		it("hides the host while a launch is starting and brings the note back when it fails", async () => {
+			let fail: ((response: Response) => void) | null = null;
+			launchResponse = async () =>
+				new Promise<Response>((resolve) => {
+					fail = resolve;
+				});
+			await renderApp();
+			act(() => {
+				setPendingLaunchGroup(createGroup("Infra").id);
+			});
+			await screen.findByTestId("environment-bar-line");
+			await typePrompt("hello");
+			fireEvent.click(screen.getByRole("button", {name: "Send"}));
+			await waitFor(() => {
+				expect(launchCalls.length).toBe(1);
+			});
+			const whileStarting = {host: lineHost(), line: line()};
+			await act(async () => {
+				fail?.(Response.json({error: "herdr agent.start timed out", code: "timeout"}, {status: 502}));
+				await Promise.resolve();
+			});
+
+			await waitFor(() => {
+				expect(line()?.textContent).toContain("Infra");
+			});
+			expect(whileStarting).toStrictEqual({host: null, line: null});
+		});
+
+		it("blocks a folder that no longer exists: a danger line, and a refused send with the same reason", async () => {
+			folderStatusResponse = () =>
+				Response.json({
+					exists: false,
+					isGitRepo: false,
+					headBranch: null,
+					defaultBranch: null,
+					uncommittedFiles: 0,
+				});
+			await renderApp();
+			act(() => {
+				setPendingLaunchGroup(createGroup("Infra").id);
+			});
+			await waitFor(() => {
+				expect(line()?.classList.contains("text-danger")).toBe(true);
+			});
+			const shown = screen.getByTestId("environment-bar-line");
+			const bdis = Array.from(shown.querySelectorAll("bdi"), (bdi) => ({
+				text: bdi.textContent,
+				dir: bdi.getAttribute("dir"),
+			}));
+			const textarea = await typePrompt("hello");
+			fireEvent.click(screen.getByRole("button", {name: "Send"}));
+			const toast = await findToast();
+			const block = document.querySelector("[data-home-composer] > p");
+
+			expect({
+				color: shown.className.split(" ").at(-1),
+				text: shown.textContent,
+				bdis,
+				launches: launchCalls.length,
+				toast: (await within(toast).findByText(/can’t start/)).textContent,
+				value: (textarea as HTMLTextAreaElement).value,
+				block: {className: block?.className, text: block?.textContent},
+			}).toStrictEqual({
+				color: "text-danger",
+				text: "it's can’t start: /users/dev/it's no longer exists.",
+				bdis: [
+					{text: "it's", dir: null},
+					{text: "/users/dev/it's", dir: "ltr"},
+				],
+				launches: 0,
+				toast: "it's can’t start: /users/dev/it's no longer exists.",
+				value: "hello",
+				block: {
+					className: "text-center text-balance text-footnote text-secondary",
+					text: "This session will be added to Infra in the sidebar when you start it. Don’t add",
+				},
+			});
 		});
 	});
 
@@ -544,7 +708,6 @@ describe("HomeComposer", () => {
 		).toStrictEqual([
 			{name: "it's", selected: "true"},
 			{name: "newest", selected: "false"},
-			{name: "Worktree", selected: "false"},
 		]);
 
 		fireEvent.change(search, {target: {value: "dev/new"}});
@@ -751,7 +914,9 @@ describe("HomeComposer", () => {
 				alert: shown?.querySelector("[role=alert]")?.textContent,
 				message: shown?.querySelector("[data-send-rejected-message]")?.textContent,
 				nextHoldsComposer:
-					shown?.parentElement?.nextElementSibling?.querySelector("[data-composer-card]") !== null,
+					shown?.parentElement?.nextElementSibling?.nextElementSibling?.querySelector(
+						"[data-composer-card]",
+					) !== null,
 				toast: document.querySelectorAll("[data-toast]").length,
 				clipboard: writeText.mock.calls,
 			}).toStrictEqual({

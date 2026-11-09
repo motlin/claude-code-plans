@@ -127,7 +127,7 @@ export interface HomeWorktree {
 	set: (enabled: boolean) => void;
 	/** Overrides only this draft; null goes back to the preference. */
 	setForDraft: (enabled: boolean | null) => void;
-	/** The selected folder's git status, undefined while unknown (the folder picker hides its footer on false). */
+	/** The selected folder's git status, undefined while unknown. */
 	isGitRepo: boolean | undefined;
 	/** A Next steps "Turn on Worktree" press: turns Worktree on and marks the folder's row taken. */
 	takeFromRow: (folder: string) => void;

@@ -117,7 +117,7 @@ describe("selectNextSteps", () => {
 });
 
 describe("folder PR next steps", () => {
-	const GIT = {isGitRepo: true, headBranch: "feat", defaultBranch: "main", uncommittedFiles: 0};
+	const GIT = {exists: true, isGitRepo: true, headBranch: "feat", defaultBranch: "main", uncommittedFiles: 0};
 	const PR: NonNullable<FolderPr["pr"]> = {
 		repo: "owner/repo",
 		number: 7,
@@ -170,7 +170,7 @@ describe("folder PR next steps", () => {
 			folderPrBranch({...GIT, headBranch: "main"}, false),
 			folderPrBranch({...GIT, headBranch: null}, false),
 			folderPrBranch(GIT, true),
-			folderPrBranch({...GIT, isGitRepo: false}, false),
+			folderPrBranch({...GIT, exists: true, isGitRepo: false}, false),
 			folderPrBranch(undefined, false),
 		]).toStrictEqual(["feat", null, null, null, null, null]);
 	});
@@ -259,6 +259,7 @@ describe("folder PR next steps", () => {
 
 describe("folder next steps", () => {
 	const DIRTY = {
+		exists: true,
 		isGitRepo: true,
 		headBranch: "feat/x",
 		defaultBranch: "main",
@@ -308,7 +309,7 @@ describe("folder next steps", () => {
 		expect(folder({git: {...DIRTY, uncommittedFiles: 0}})).toStrictEqual([]);
 		expect(
 			folder({
-				git: {isGitRepo: false, headBranch: null, defaultBranch: null, uncommittedFiles: 0},
+				git: {exists: true, isGitRepo: false, headBranch: null, defaultBranch: null, uncommittedFiles: 0},
 				runningHere: true,
 			}),
 		).toStrictEqual([]);

@@ -47,11 +47,11 @@ describe("sidebar search field CSS", () => {
 		).toStrictEqual([]);
 	});
 
-	it("extends the hit area below the row by --cds-hit-gap-y, as upstream's hit-row-main does", () => {
+	it("extends the hit area by upstream's --cds-hit-row-reach-* vars (the hit grid, plus --cds-hit-gap-y below)", () => {
 		expect(
 			missing([
-				".hit-row { position: relative; isolation: isolate; }",
-				'.hit-row-main::before { content: ""; position: absolute; z-index: -1; inset: 0 0 calc(var(--cds-hit-gap-y, 0px) * -1); }',
+				".hit-row { position: relative; isolation: isolate; --cds-hit-row-reach-top: var(--cds-hit-grid-y, 0px); --cds-hit-row-reach-x: var(--cds-hit-grid-x, 0px); --cds-hit-row-reach-bottom: calc(var(--cds-hit-gap-y, 0px) + var(--cds-hit-grid-y, 0px)); }",
+				'.hit-row-main::before { content: ""; position: absolute; z-index: -1; inset: calc(var(--cds-hit-row-reach-top) * -1) calc(var(--cds-hit-row-reach-x) * -1) calc(var(--cds-hit-row-reach-bottom) * -1); }',
 			]),
 		).toStrictEqual([]);
 	});

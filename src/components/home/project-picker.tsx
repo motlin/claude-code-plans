@@ -6,7 +6,6 @@ import {type KeyboardEvent, type Ref, useId, useRef, useState} from "react";
 import {useShortcut} from "../../hooks/use-shortcut";
 import type {StartProject} from "../../lib/palette-start-session";
 import {PLACE_CHIP_CLASS} from "../composer-tokens";
-import {MenuSwitch} from "../ui/menu-switch";
 import {overlayAttrs} from "../../lib/overlay";
 
 /*
@@ -27,13 +26,6 @@ const SEARCH_CLASS =
 const OPTION_CLASS =
 	"flex h-6 shrink-0 cursor-default items-center gap-1 rounded-r5 px-2 select-none data-[highlighted]:bg-fill-ghost-hover";
 
-/** Upstream's compact `Menu.Separator`. */
-const SEPARATOR_CLASS = "mx-2 my-1 h-px shrink-0 bg-border";
-
-/** Upstream's compact `Menu.Item` (24px row, 6px gap, r6), as the folder menu footer's Worktree item. */
-const WORKTREE_ROW_CLASS =
-	"flex h-6 shrink-0 cursor-default items-center gap-1.5 rounded-r6 px-2 select-none data-[highlighted]:bg-fill-ghost-hover data-[disabled]:opacity-40 data-[disabled]:pointer-events-none";
-
 /** The start card's "Choose environment" row, which opens the same picker below it. */
 const CHOOSE_CLASS =
 	"flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-[13px]/5 text-secondary-control outline-none group-hover/row:bg-fill-ghost-hover group-has-[:focus-visible]/row:bg-fill-ghost-hover group-has-[[aria-expanded=true]]/row:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden";
@@ -41,15 +33,6 @@ const CHOOSE_CLASS =
 /** Upstream's CaretDown ink: muted at rest, secondary while the row is hovered, keyboard-focused or open. */
 const CHOOSE_CARET_CLASS =
 	"size-3 shrink-0 text-ink-muted group-hover/row:text-secondary group-has-[:focus-visible]/row:text-secondary group-has-[[aria-expanded=true]]/row:text-secondary";
-
-/** The folder menu footer's Worktree switch (upstream `zae`), from `useHomeWorktree`. */
-export interface ProjectPickerWorktree {
-	enabled: boolean;
-	supported: boolean;
-	set: (enabled: boolean) => void;
-	/** The selected folder's git status; false hides the footer, undefined (unknown) shows it. */
-	isGitRepo?: boolean | undefined;
-}
 
 interface ProjectPickerProps {
 	projects: readonly StartProject[];
@@ -59,8 +42,6 @@ interface ProjectPickerProps {
 	variant?: "chip" | "choose";
 	/** The trigger button, for callers that move focus to it. */
 	triggerRef?: Ref<HTMLButtonElement> | undefined;
-	/** Adds upstream's folder menu footer (Separator + Worktree row) while the search is empty. */
-	worktree?: ProjectPickerWorktree | undefined;
 }
 
 /** Restore focus to the trigger on close unless the selection handler already moved it elsewhere. */
@@ -69,14 +50,7 @@ function keepFocusInPopup(popup: HTMLElement | null): boolean {
 	return active === null || active === document.body || popup?.contains(active) === true;
 }
 
-export function ProjectPicker({
-	projects,
-	selected,
-	onSelect,
-	variant = "chip",
-	triggerRef,
-	worktree,
-}: ProjectPickerProps) {
+export function ProjectPicker({projects, selected, onSelect, variant = "chip", triggerRef}: ProjectPickerProps) {
 	const baseId = useId();
 	const popupRef = useRef<HTMLDivElement>(null);
 	const listboxId = `${baseId}-listbox`;
@@ -92,19 +66,9 @@ export function ProjectPicker({
 			: projects.filter(
 					(p) => p.name.toLowerCase().includes(needle) || p.projectPath.toLowerCase().includes(needle),
 				);
-	// Upstream shows the footer only while the menu search is empty (`m&&!e`), and only for a git checkout.
-	const showFooter = worktree !== undefined && worktree.isGitRepo !== false && needle === "";
-	const footerIndex = showFooter ? filtered.length : -1;
-	const lastIndex = showFooter ? footerIndex : filtered.length - 1;
+	const lastIndex = filtered.length - 1;
 	const active = filtered[activeIndex];
-	const worktreeRowId = `${baseId}-worktree`;
-	const activeDescendant =
-		activeIndex === footerIndex ? worktreeRowId : active === undefined ? undefined : `${baseId}-${active.id}`;
-
-	const toggleWorktree = () => {
-		if (worktree?.supported !== true) return;
-		worktree.set(!worktree.enabled);
-	};
+	const activeDescendant = active === undefined ? undefined : `${baseId}-${active.id}`;
 
 	const handleOpenChange = (next: boolean) => {
 		if (next) {
@@ -146,15 +110,7 @@ export function ProjectPicker({
 				break;
 			case "Enter":
 				event.preventDefault();
-				if (activeIndex === footerIndex) toggleWorktree();
-				else choose(active);
-				break;
-			case " ":
-				// Upstream's keepOpen item toggles on Space too; elsewhere Space types into the search.
-				if (activeIndex === footerIndex) {
-					event.preventDefault();
-					toggleWorktree();
-				}
+				choose(active);
 				break;
 			default:
 				break;
@@ -264,38 +220,6 @@ export function ProjectPicker({
 									);
 								})
 							)}
-							{showFooter ? (
-								<>
-									<div role="separator" className={SEPARATOR_CLASS} />
-									{/* Upstream's footer is a Menu.Item (`role=menuitem`, keepOpen); here it is an option of the activedescendant listbox. */}
-									{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- an aria-activedescendant option: Enter and Space are handled by the search input */}
-									<div
-										id={worktreeRowId}
-										role="option"
-										aria-selected={false}
-										data-testid="environment-bar-worktree"
-										data-highlighted={activeIndex === footerIndex ? "" : undefined}
-										{...(worktree.supported ? {} : {"aria-disabled": true, "data-disabled": ""})}
-										onMouseEnter={() => {
-											setActiveIndex(footerIndex);
-										}}
-										onMouseDown={(event) => {
-											event.preventDefault();
-										}}
-										onClick={toggleWorktree}
-										className={WORKTREE_ROW_CLASS}
-									>
-										<span className="min-w-0 flex-1 truncate">Worktree</span>
-										<span className="ms-3 flex shrink-0 items-center gap-1.5">
-											<MenuSwitch
-												checked={worktree.enabled}
-												disabled={!worktree.supported}
-												aria-label="Worktree"
-											/>
-										</span>
-									</div>
-								</>
-							) : null}
 						</div>
 					</Popover.Popup>
 				</Popover.Positioner>

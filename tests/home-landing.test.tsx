@@ -189,6 +189,7 @@ describe("HomeLanding", () => {
 			nextCursor: null,
 		});
 		queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/alpha").queryKey, {
+			exists: true,
 			isGitRepo: true,
 			headBranch: "main",
 			defaultBranch: "main",
@@ -240,6 +241,7 @@ describe("HomeLanding", () => {
 			nextCursor: null,
 		});
 		queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/alpha").queryKey, {
+			exists: true,
 			isGitRepo: true,
 			headBranch: "feat/x",
 			defaultBranch: "main",
@@ -321,6 +323,7 @@ describe("HomeLanding", () => {
 			nextCursor: null,
 		});
 		queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/alpha").queryKey, {
+			exists: true,
 			isGitRepo: true,
 			headBranch: "feat/x",
 			defaultBranch: "main",

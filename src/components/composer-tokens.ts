@@ -76,10 +76,32 @@ export const ENVIRONMENT_SLOT_CLASS =
  * tall, and their radius opens to upstream's comfortable 8px.
  */
 export const ENVIRONMENT_BAR_ROW_CLASS =
-	"flex min-h-6 items-center gap-x-1 gap-y-1.5 @max-[28.75rem]:flex-wrap px-2.5 text-[13px]/[20px] text-secondary [--cds-h-control:1.5rem] comfortable:[&_button]:rounded-r6";
+	"flex min-h-6 items-center gap-x-1 gap-y-1.5 @max-[28.75rem]:flex-wrap px-2.5 text-[13px]/[20px] text-secondary [--cds-h-control:1.5rem] [--cds-pad-md:0.375rem] comfortable:[&_button]:rounded-r6";
 
-/** The place controls' slot, a line of its own when the bar is narrow. */
-export const ENVIRONMENT_PLACE_CLASS = "flex min-w-0 items-center @max-[28.75rem]:basis-full";
+/** Upstream's bar chip slot surface (`rounded ${w}`); the local surface token stands in for `--cds-surface-1`. */
+const ENVIRONMENT_BAR_SLOT_CLASS = "rounded bg-[var(--epitaxy-transcript-surface,var(--color-surface-1))]";
+
+/** The bar's chips group (place, worktree toggle), a line of its own when the bar is narrow. */
+export const ENVIRONMENT_BAR_CHIPS_CLASS = "flex items-center gap-1 @max-[28.75rem]:basis-full";
+
+/** The place chip's slot (`environment-bar-place`), which gives way before the others. */
+export const ENVIRONMENT_BAR_PLACE_SLOT_CLASS = `flex shrink ${ENVIRONMENT_BAR_SLOT_CLASS}`;
+
+/** The worktree toggle's slot, which never shrinks (upstream gives it no testid). */
+export const ENVIRONMENT_BAR_WORKTREE_SLOT_CLASS = `flex shrink-0 ${ENVIRONMENT_BAR_SLOT_CLASS}`;
+
+/** Upstream's environment-bar line (shared-33 `t5`), plus `text-danger` (blocking) or `text-muted-as-secondary`. */
+export const ENVIRONMENT_BAR_LINE_CLASS = "pointer-events-none absolute inset-x-0 bottom-1.5 px-4 text-footnote";
+
+/**
+ * The line's zero-height host just above the home composer card (upstream `wT`). Local adaptation: the home dock
+ * is not upstream's gapped flex column, so upstream's `-mb-1.5 compact:-mb-1.5 comfortable:-mb-2` (which cancels
+ * the dock gap) would pull the card up here, and is left out.
+ */
+export const ENVIRONMENT_BAR_LINE_HOST_CLASS = "relative h-0";
+
+/** The line's note span, when the custom-group note takes the line. */
+export const ENVIRONMENT_BAR_NOTE_CLASS = "flex min-w-0 items-baseline gap-1.5 whitespace-nowrap";
 
 /** Upstream's environment-bar place button: a 24px ghost control with a 16px icon, its label gap 8px at comfortable. */
 export const PLACE_CHIP_CLASS =

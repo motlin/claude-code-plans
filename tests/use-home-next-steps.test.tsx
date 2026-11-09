@@ -241,6 +241,7 @@ describe("useHomeNextSteps", () => {
 				},
 			]);
 			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/alpha").queryKey, {
+				exists: true,
 				isGitRepo: true,
 				headBranch: "main",
 				defaultBranch: "main",
@@ -299,6 +300,7 @@ describe("useHomeNextSteps", () => {
 				},
 			]);
 			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/alpha").queryKey, {
+				exists: true,
 				isGitRepo: true,
 				headBranch: "main",
 				defaultBranch: "main",
@@ -426,6 +428,7 @@ describe("useHomeNextSteps", () => {
 				},
 			]);
 			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/alpha").queryKey, {
+				exists: true,
 				isGitRepo: true,
 				headBranch,
 				defaultBranch: "main",
@@ -498,6 +501,7 @@ describe("useHomeNextSteps", () => {
 				},
 			]);
 			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/beta").queryKey, {
+				exists: true,
 				isGitRepo: true,
 				headBranch: "main",
 				defaultBranch: "main",
@@ -592,12 +596,14 @@ describe("useHomeNextSteps", () => {
 			queryClient.setQueryData(approvalsQueryOptions().queryKey, {approvals: []});
 			queryClient.setQueryData(projectsQueryOptions().queryKey, [project("alpha"), project("beta")]);
 			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/alpha").queryKey, {
+				exists: true,
 				isGitRepo: true,
 				headBranch: "feature",
 				defaultBranch: "main",
 				uncommittedFiles: 2,
 			});
 			queryClient.setQueryData(homeFolderStatusQueryOptions("/projects/beta").queryKey, {
+				exists: true,
 				isGitRepo: true,
 				headBranch: "main",
 				defaultBranch: "main",

@@ -22,10 +22,12 @@ export interface FolderGitOutputs {
 }
 
 export function parseFolderGitStatus({head, originHead, porcelain}: FolderGitOutputs): FolderGitStatus {
-	if (head === null) return {isGitRepo: false, headBranch: null, defaultBranch: null, uncommittedFiles: 0};
+	if (head === null)
+		return {exists: true, isGitRepo: false, headBranch: null, defaultBranch: null, uncommittedFiles: 0};
 	const branch = head.trim();
 	const defaultBranch = originHead?.trim().replace(/^origin\//, "") ?? "";
 	return {
+		exists: true,
 		isGitRepo: true,
 		headBranch: branch === "HEAD" || branch === "" ? null : branch,
 		defaultBranch: defaultBranch === "" ? null : defaultBranch,
@@ -50,21 +52,43 @@ export async function readFolderGitStatus(
 	return parseFolderGitStatus({head, originHead, porcelain});
 }
 
+function wellFormedPath(path: string | null): path is string {
+	return path !== null && !path.includes("\0") && isAbsolute(path) && normalize(path) === path;
+}
+
 /** An absolute, normalized path to an existing directory; anything else (a file, `..`, a relative path) is refused. */
 export async function validFolder(path: string | null): Promise<string | null> {
-	if (path === null || path.includes("\0") || !isAbsolute(path) || normalize(path) !== path) return null;
+	if (!wellFormedPath(path)) return null;
 	const stats = await stat(path).catch(() => null);
 	return stats?.isDirectory() === true ? path : null;
 }
 
+const GONE: FolderGitStatus = {
+	exists: false,
+	isGitRepo: false,
+	headBranch: null,
+	defaultBranch: null,
+	uncommittedFiles: 0,
+};
+
 /**
  * `GET /api/home/folder-status?path=<abs>`. Only the derived status (branch names and a file count) leaves the
- * server, never file contents, and only for an existing directory.
+ * server, never file contents, and git runs only in an existing directory. A well-formed absolute path that no
+ * longer exists answers `exists: false`, so the home bar can say the folder is gone.
  */
 export async function folderStatusResponse(request: Request, exec: FolderGitExec = trackedExecFile): Promise<Response> {
-	const folder = await validFolder(new URL(request.url).searchParams.get("path"));
-	if (folder === null) {
-		return Response.json({error: "Expected ?path=<absolute directory>"}, {status: 400, headers: NO_STORE});
-	}
-	return Response.json(FolderGitStatusSchema.parse(await readFolderGitStatus(folder, exec)), {headers: NO_STORE});
+	const path = new URL(request.url).searchParams.get("path");
+	if (!wellFormedPath(path)) return badRequest();
+	const stats = await stat(path).catch((error: unknown) => (isMissing(error) ? "missing" : null));
+	if (stats === "missing") return Response.json(GONE, {headers: NO_STORE});
+	if (stats?.isDirectory() !== true) return badRequest();
+	return Response.json(FolderGitStatusSchema.parse(await readFolderGitStatus(path, exec)), {headers: NO_STORE});
+}
+
+function badRequest(): Response {
+	return Response.json({error: "Expected ?path=<absolute directory>"}, {status: 400, headers: NO_STORE});
+}
+
+function isMissing(error: unknown): boolean {
+	return error instanceof Error && "code" in error && (error.code === "ENOENT" || error.code === "ENOTDIR");
 }

@@ -97,9 +97,11 @@ import {
 	COMPOSER_CARD_CLASS,
 	COMPOSER_CHIN_CLASS,
 	COMPOSER_EDITOR_ROW_CLASS,
+	ENVIRONMENT_BAR_CHIPS_CLASS,
 	ENVIRONMENT_BAR_CLASS,
+	ENVIRONMENT_BAR_PLACE_SLOT_CLASS,
 	ENVIRONMENT_BAR_ROW_CLASS,
-	ENVIRONMENT_PLACE_CLASS,
+	ENVIRONMENT_BAR_WORKTREE_SLOT_CLASS,
 } from "./composer-tokens";
 import {preloadFileTypeIcons} from "./file-type-icons-loader";
 import {ToastContext} from "./toast-context";
@@ -227,6 +229,8 @@ interface ComposerProps {
 	 * replaces the chin row and wraps them onto their own row below 460px.
 	 */
 	environment?: ReactNode;
+	/** Home only: upstream's Worktree toggle chip, in its own slot after the place. */
+	worktreeToggle?: ReactNode;
 	/** Entries for the "/" autocomplete popup (`GET /api/commands`). */
 	slashCommands?: readonly SlashCommand[] | undefined;
 	/** Upstream's explanatory section header drawn above the "/" rows, e.g. when the command list didn't load. */
@@ -629,6 +633,7 @@ export function Composer({
 	deliveryHint,
 	chin,
 	environment,
+	worktreeToggle,
 	slashCommands = NO_COMMANDS,
 	slashMenuHeader,
 	slashCommandsLoading = false,
@@ -1967,7 +1972,14 @@ export function Composer({
 			) : (
 				<div data-testid="epitaxy-environment-bar" className={ENVIRONMENT_BAR_CLASS}>
 					<div data-testid="environment-bar-row" className={ENVIRONMENT_BAR_ROW_CLASS}>
-						<div className={ENVIRONMENT_PLACE_CLASS}>{environment}</div>
+						<div className={ENVIRONMENT_BAR_CHIPS_CLASS}>
+							<div data-testid="environment-bar-place" className={ENVIRONMENT_BAR_PLACE_SLOT_CLASS}>
+								{environment}
+							</div>
+							{worktreeToggle !== undefined && worktreeToggle !== null && (
+								<div className={ENVIRONMENT_BAR_WORKTREE_SLOT_CLASS}>{worktreeToggle}</div>
+							)}
+						</div>
 						{chin && (
 							<ComposerChin state={chin} launch={launchControls} surface="bar" pickRef={chinPickRef} />
 						)}

@@ -442,6 +442,8 @@ html[data-interface-font="dyslexic"] {
 :root {
 	/* Upstream .cds-root control height: the shell is a comfortable context (see [data-density] below). */
 	--cds-h-control: calc(2rem * var(--cds-rem-scale, 1));
+	/* Upstream --cds-switch-h, the size-less (xxs) Switch's height: 1rem at .cds-root, 1.25rem at comfortable. */
+	--cds-switch-h: calc(1.25rem * var(--cds-rem-scale, 1));
 	/* Upstream .cds-root toolbar tokens; the fizzy-lake panels toolbar rules earlier in this file override them. */
 	--cds-toolbar-pad-block: calc(0.25rem * var(--cds-rem-scale, 1));
 	--cds-toolbar-pad-inline: calc(0rem * var(--cds-rem-scale, 1));
@@ -2398,6 +2400,29 @@ html[data-interface-font="dyslexic"] {
 	box-shadow: var(--focus-shadow);
 }
 
+/* Upstream cds TextLink `inheritColor` (the group note's "Don’t add"): the surrounding ink, underlined 3px below
+   at 35% transparent, the line going solid on hover and keyboard focus. */
+.text-link-inherit {
+	--_text-link-line: color-mix(in srgb, currentColor, transparent 35%);
+	color: inherit;
+	cursor: pointer;
+	border-radius: 2px;
+	text-decoration-line: underline;
+	text-decoration-color: var(--_text-link-line);
+	text-underline-offset: 3px;
+	transition-property: text-decoration-color, box-shadow;
+	transition-duration: 60ms;
+	transition-timing-function: cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+.text-link-inherit:is(:hover, :focus-visible) {
+	--_text-link-line: currentColor;
+}
+.text-link-inherit:focus-visible {
+	outline: 2px solid transparent;
+	outline-offset: 2px;
+	box-shadow: var(--focus-shadow);
+}
+
 /* Upstream's focus-region landing ring: an F6 or jump landing marks the ring
    element `data-focus-region-landing` — `""` draws the focus shadow on the
    element itself, `"overlay"` (a positioned element) swaps its own outline for
@@ -3590,6 +3615,7 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
    A comfortable scope restates :root's scale so it wins over an enclosing compact one. */
 [data-density="comfortable"] {
 	--cds-h-control: calc(2rem * var(--cds-rem-scale, 1));
+	--cds-switch-h: calc(1.25rem * var(--cds-rem-scale, 1));
 	--cds-icon: calc(1.25rem * var(--cds-rem-scale, 1));
 	--upstream-radius: 0.5rem;
 	--upstream-radius-composer: 0.875rem;
@@ -3634,6 +3660,7 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 
 [data-density="compact"] {
 	--cds-h-control: calc(1.5rem * var(--cds-rem-scale, 1));
+	--cds-switch-h: calc(1rem * var(--cds-rem-scale, 1));
 	--cds-icon: calc(1rem * var(--cds-rem-scale, 1));
 	--upstream-radius: 0.375rem;
 	--upstream-radius-composer: 0.75rem;
@@ -4498,18 +4525,23 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	margin-inline-start: var(--sb-rail-shift, 0px);
 }
 
-/* Upstream hit-row-main: a ::before that extends the click target --cds-hit-gap-y below the row. */
+/* Upstream hit-row-main: a ::before that reaches the row's hit grid (--cds-hit-grid-x/y) and its gap below
+   (--cds-hit-gap-y) through the --cds-hit-row-reach-* vars. */
 @layer components {
 	.hit-row {
 		position: relative;
 		isolation: isolate;
+		--cds-hit-row-reach-top: var(--cds-hit-grid-y, 0px);
+		--cds-hit-row-reach-x: var(--cds-hit-grid-x, 0px);
+		--cds-hit-row-reach-bottom: calc(var(--cds-hit-gap-y, 0px) + var(--cds-hit-grid-y, 0px));
 	}
 
 	.hit-row-main::before {
 		content: "";
 		position: absolute;
 		z-index: -1;
-		inset: 0 0 calc(var(--cds-hit-gap-y, 0px) * -1);
+		inset: calc(var(--cds-hit-row-reach-top) * -1) calc(var(--cds-hit-row-reach-x) * -1)
+			calc(var(--cds-hit-row-reach-bottom) * -1);
 	}
 }
 

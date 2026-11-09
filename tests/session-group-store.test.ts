@@ -14,6 +14,8 @@ import {
 	setGroupAppearance,
 	setGroupOrder,
 	setPendingLaunchGroup,
+	subscribePendingLaunchGroup,
+	usePendingLaunchGroup,
 	useSessionGroups,
 } from "../src/lib/session-group-store";
 import {installLocalStorage} from "./fake-storage";
@@ -333,5 +335,49 @@ describe("session group store", () => {
 		assignLaunchedSession("launched");
 
 		expect(readSessionGroupState().assignments).toStrictEqual({});
+	});
+
+	it("exposes the pending launch group reactively, null once cleared or its group is deleted", () => {
+		const infra = createGroup("Infra");
+		const {result} = renderHook(() => usePendingLaunchGroup());
+		const initial = result.current;
+		act(() => {
+			setPendingLaunchGroup(infra.id);
+		});
+		const pending = result.current;
+		act(() => {
+			setPendingLaunchGroup(null);
+		});
+		const cleared = result.current;
+		act(() => {
+			setPendingLaunchGroup(infra.id);
+		});
+		act(() => {
+			deleteGroup(infra.id);
+		});
+
+		expect({initial, pending, cleared, deleted: result.current}).toStrictEqual({
+			initial: null,
+			pending: {id: infra.id, name: "Infra"},
+			cleared: null,
+			deleted: null,
+		});
+		setPendingLaunchGroup(null);
+	});
+
+	it("notifies pending launch group listeners on every set and when a launch consumes it", () => {
+		const work = createGroup("Work");
+		const listener = vi.fn<() => void>();
+		const unsubscribe = subscribePendingLaunchGroup(listener);
+		setPendingLaunchGroup(work.id);
+		setPendingLaunchGroup(work.id);
+		assignLaunchedSession("launched");
+		unsubscribe();
+		setPendingLaunchGroup(null);
+
+		expect({calls: listener.mock.calls.length, assignments: readSessionGroupState().assignments}).toStrictEqual({
+			calls: 3,
+			assignments: {launched: work.id},
+		});
 	});
 });

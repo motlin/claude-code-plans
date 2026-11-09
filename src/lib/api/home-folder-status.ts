@@ -4,6 +4,8 @@ import {apiFetch} from "./client";
 
 /** The home launch folder's working tree (upstream `dt.getWorkingTreeStatus`), for the folder-scoped Next steps rows. */
 export const FolderGitStatusSchema = z.strictObject({
+	/** False for an absolute folder that no longer exists (the home bar's blocking line); every other field is empty then. */
+	exists: z.boolean(),
 	isGitRepo: z.boolean(),
 	/** null on a detached HEAD or outside a repo. */
 	headBranch: z.string().nullable(),
