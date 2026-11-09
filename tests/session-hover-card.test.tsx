@@ -458,7 +458,7 @@ describe("SessionHoverCard question gate", () => {
 					JSON.stringify({
 						sessionId: SESSION_ID,
 						toolUseId: "toolu_ask",
-						answers: [{question: "Which database should we use?", answer: "SQLite"}],
+						answers: [{question: "Which database should we use?", response: "SQLite"}],
 					}),
 				],
 			],

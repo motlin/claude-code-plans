@@ -11,13 +11,17 @@ import {parseToolRejection} from "./tool-rejection";
 export interface QuestionLike {
 	question: string;
 	header?: string | undefined;
-	options: Array<{label: string; description?: string | undefined; preview?: string | undefined}>;
+	options: Array<{label: string; description?: string | undefined; preview?: string | null | undefined}>;
 	multiSelect?: boolean | undefined;
 }
 
 // Loose, so a question keeps the fields (`preview`, ...) the renderers read beyond these.
 const QuestionOptionsSchema = z.array(
-	z.looseObject({label: z.string(), description: z.string().optional(), preview: z.string().optional()}),
+	z.looseObject({
+		label: z.string(),
+		description: z.string().optional(),
+		preview: z.union([z.string(), z.null()]).optional(),
+	}),
 );
 const QuestionsSchema = z.array(
 	z.looseObject({
@@ -30,7 +34,8 @@ const QuestionsSchema = z.array(
 
 interface AnswerEntry {
 	question: string;
-	answer: string;
+	response: string | readonly string[];
+	preview?: string | undefined;
 }
 
 interface Envelope {
@@ -68,8 +73,13 @@ const ENVELOPES: readonly Envelope[] = [CURRENT_ENVELOPE, READ_CAREFULLY_ENVELOP
  * the answer back to the still-pending tool call. Custom 'Other' entries are
  * passed through verbatim as the answer value.
  */
-export function formatAnswerPrompt(toolUseId: string, answers: AnswerEntry[]): string {
-	const pieces = answers.map((a) => `"${escapeQuote(a.question)}"="${escapeQuote(a.answer)}"`);
+export function formatAnswerPrompt(toolUseId: string, answers: readonly AnswerEntry[]): string {
+	const pieces = answers.map(({question, response, preview}) => {
+		const answer = typeof response === "string" ? response : response.join(", ");
+		const pair = `"${escapeQuote(question)}"="${escapeQuote(answer)}"`;
+		// CLI 2.1.318's tool_result: the pair, then `selected preview:\n<preview>`, joined with a space.
+		return preview === undefined ? pair : `${pair}${PREVIEW_PREFIX}${preview}`;
+	});
 	return [
 		`(Answering AskUserQuestion ${toolUseId} from the web viewer.)`,
 		`${CURRENT_ENVELOPE.prefix}${pieces.join(", ")}${CURRENT_ENVELOPE.suffix}`,
@@ -336,7 +346,7 @@ export function parseAnswerResult(text: string, questions: QuestionLike[]): Pars
 		const parsed = readAnswer(body, valueStart, anchor.escaped, question, later);
 		if (parsed === null) return null;
 		const segmentEnd = nextPairStart(body, parsed.end, later);
-		const preview = question.options.find((option) => option.label === parsed.answer)?.preview;
+		const preview = question.options.find((option) => option.label === parsed.answer)?.preview ?? undefined;
 		const notes = extractNotes(body.slice(parsed.end, segmentEnd), preview);
 		result.push({question: question.question, answer: parsed.answer, notes});
 		cursor = segmentEnd < body.length ? segmentEnd + PAIR_SEPARATOR.length : segmentEnd;

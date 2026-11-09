@@ -5,15 +5,19 @@ import {formatAnswerPrompt} from "../../lib/ask-user-question";
 import {rejectCrossSite} from "../../lib/same-origin-guard";
 import {handleCancel, spawnResumeStream} from "../../lib/spawn-resume";
 
-const answerSchema = z.object({
+/** Upstream's response shape: a label, or every label of a multi-select, plus a single-select's picked preview. */
+export const answerQuestionBodySchema = z.object({
 	sessionId: z.string(),
 	toolUseId: z.string(),
 	answers: z
 		.array(
-			z.object({
-				question: z.string(),
-				answer: z.string(),
-			}),
+			z
+				.object({
+					question: z.string(),
+					response: z.union([z.string(), z.array(z.string()).min(1)]),
+					preview: z.string().optional(),
+				})
+				.strict(),
 		)
 		.min(1),
 });
@@ -38,7 +42,7 @@ export const Route = createFileRoute("/api/answer-question")({
 				const cancelled = handleCancel(json);
 				if (cancelled) return cancelled;
 
-				const parsed = answerSchema.safeParse(json);
+				const parsed = answerQuestionBodySchema.safeParse(json);
 				if (!parsed.success) {
 					return Response.json({error: "Invalid request", details: parsed.error.message}, {status: 400});
 				}

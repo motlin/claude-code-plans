@@ -1,12 +1,14 @@
 import {createContext, useContext} from "react";
 
 import type {QuestionLike} from "../lib/ask-user-question";
+import type {QuestionAnswer} from "../lib/hook-events";
 import type {QuestionAnswerRoute} from "../lib/question-answer-route";
 
 export interface AnswerSubmission {
 	toolUseId: string;
 	questions: readonly QuestionLike[];
-	answers: Array<{question: string; answer: string}>;
+	/** The card's picks, one per question, null for a skip. */
+	picks: ReadonlyArray<QuestionAnswer | null>;
 }
 
 export interface AskUserQuestionContextValue {

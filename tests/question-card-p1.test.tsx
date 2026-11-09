@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {QuestionCard} from "../src/components/question-card";
@@ -348,5 +348,168 @@ describe("QuestionCard after a landing", () => {
 			fresh: "VitestVite-native",
 			enter: true,
 		});
+	});
+});
+
+describe("QuestionCard option preview panel, as upstream's GF under Mt", () => {
+	const PREVIEWED: QuestionLike = {
+		question: "Layout?",
+		options: [{label: "Grid", preview: "grid **bold**"}, {label: "List", preview: "list view"}, {label: "Plain"}],
+	};
+	const PREVIEW_CLASS =
+		"px-3 max-h-[240px] overflow-y-auto pb-3 text-secondary flex flex-col gap-2 font-sans text-body";
+
+	function previews(): HTMLElement[] {
+		return Array.from(document.querySelectorAll<HTMLElement>("[data-question-option-preview]"));
+	}
+
+	function previewed(): Array<{after: string | null; text: string}> {
+		return previews().map((node) => ({
+			after: node.previousElementSibling?.textContent ?? null,
+			text: node.textContent.trim(),
+		}));
+	}
+
+	it("shows the preselected option's preview right after it at mount, as a focusable scroll region", () => {
+		render(<QuestionCard questions={[PREVIEWED]} onSubmit={async () => {}} />);
+		const [block] = previews();
+
+		expect({
+			count: previews().length,
+			afterPressed: block?.previousElementSibling?.getAttribute("aria-pressed"),
+			className: block?.className,
+			tabIndex: block?.tabIndex,
+			bold: block?.querySelector("strong")?.textContent,
+			inner: block?.firstElementChild?.className,
+		}).toStrictEqual({
+			count: 1,
+			afterPressed: "true",
+			className: PREVIEW_CLASS,
+			tabIndex: 0,
+			bold: "bold",
+			inner: "[&_pre_code]:!whitespace-pre",
+		});
+	});
+
+	it("follows the pick, and leaves for an option without one, for Other and for Skip", () => {
+		render(<QuestionCard questions={[PREVIEWED, SINGLE]} onSubmit={async () => {}} />);
+		const atMount = previewed();
+		fireEvent.click(screen.getByRole("button", {name: "List"}));
+		const onList = previewed();
+		fireEvent.click(screen.getByRole("button", {name: "Plain"}));
+		const onPlain = previewed();
+		fireEvent.click(screen.getByRole("button", {name: "Grid"}));
+		fireEvent.click(screen.getByRole("button", {name: "Other"}));
+		const onOther = previewed();
+
+		expect({atMount, onList, onPlain, onOther}).toStrictEqual({
+			atMount: [{after: "Grid", text: "grid bold"}],
+			onList: [{after: "List", text: "list view"}],
+			onPlain: [],
+			onOther: [],
+		});
+	});
+
+	it("leaves when the question is skipped", () => {
+		render(<QuestionCard questions={[PREVIEWED, SINGLE]} onSubmit={async () => {}} />);
+		fireEvent.click(screen.getByRole("button", {name: "Skip"}));
+		fireEvent.click(screen.getByRole("button", {name: "Show previous question"}));
+
+		expect(previewed()).toStrictEqual([]);
+	});
+
+	it("never shows one on a multi-select question, or for a blank or null preview", () => {
+		const {unmount} = render(
+			<QuestionCard questions={[{...PREVIEWED, multiSelect: true}]} onSubmit={async () => {}} />,
+		);
+		fireEvent.click(screen.getByRole("button", {name: "Grid"}));
+		const multi = previewed();
+		unmount();
+		const {unmount: unmountBlank} = render(
+			<QuestionCard
+				questions={[{question: "Q?", options: [{label: "A", preview: "   "}]}]}
+				onSubmit={async () => {}}
+			/>,
+		);
+		const blank = previewed();
+		unmountBlank();
+		render(
+			<QuestionCard
+				questions={[{question: "Q?", options: [{label: "A", preview: null}]}]}
+				onSubmit={async () => {}}
+			/>,
+		);
+
+		expect({multi, blank, nulled: previewed()}).toStrictEqual({multi: [], blank: [], nulled: []});
+	});
+
+	it("shows page 2's own preview after Next", () => {
+		const second: QuestionLike = {question: "Theme?", options: [{label: "Dark", preview: "dark mode"}]};
+		render(<QuestionCard questions={[PREVIEWED, second]} onSubmit={async () => {}} />);
+		fireEvent.click(screen.getByRole("button", {name: /^Next/}));
+
+		expect(previewed()).toStrictEqual([{after: "Dark", text: "dark mode"}]);
+	});
+
+	it("renders an HTML preview sanitized once its sanitizer loads, without the flex column", async () => {
+		render(
+			<QuestionCard
+				questions={[
+					{question: "Q?", options: [{label: "A", preview: '<div class="x" style="color:red">hi</div>'}]},
+				]}
+				onSubmit={async () => {}}
+			/>,
+		);
+		const block = await waitFor(() => {
+			const [found] = previews();
+			if (found === undefined) throw new Error("no preview yet");
+			return found;
+		});
+
+		expect({className: block.className, html: block.innerHTML}).toStrictEqual({
+			className: "px-3 max-h-[240px] overflow-y-auto pb-3 text-secondary font-sans text-body",
+			html: '<div style="color:red">hi</div>',
+		});
+	});
+
+	it("lets ArrowDown scroll a focused preview instead of roving", () => {
+		render(<QuestionCard questions={[PREVIEWED]} onSubmit={async () => {}} />);
+		const [block] = previews();
+		block?.focus();
+		const notPrevented = block === undefined ? null : fireEvent.keyDown(block, {key: "ArrowDown"});
+
+		expect({notPrevented, focused: document.activeElement === block}).toStrictEqual({
+			notPrevented: true,
+			focused: true,
+		});
+	});
+});
+
+describe("QuestionCard option hairlines, as upstream's .epitaxy-answer-option + .epitaxy-answer-option", () => {
+	const SIBLING = ".epitaxy-answer-option + .epitaxy-answer-option";
+
+	function hairlines(): boolean[] {
+		return Array.from(document.querySelectorAll(".epitaxy-answer-option")).map((node) => node.matches(SIBLING));
+	}
+
+	it("draws no divide-y on the options container and a hairline above every option after the first", () => {
+		render(<QuestionCard questions={[{...SINGLE, multiSelect: true}]} onSubmit={async () => {}} />);
+		const container = document.querySelector(".epitaxy-answer-option")?.parentElement;
+
+		expect({divide: container?.className.includes("divide-y"), hairlines: hairlines()}).toStrictEqual({
+			divide: false,
+			hairlines: [false, true, true],
+		});
+	});
+
+	it("draws none above the option right after an open preview", () => {
+		render(
+			<QuestionCard
+				questions={[{question: "Layout?", options: [{label: "Grid", preview: "grid"}, {label: "List"}]}]}
+				onSubmit={async () => {}}
+			/>,
+		);
+
+		expect(hairlines()).toStrictEqual([false, false, true]);
 	});
 });

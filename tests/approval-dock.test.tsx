@@ -1424,10 +1424,7 @@ describe("AskUserQuestionRenderer pending", () => {
 			submission: {
 				toolUseId: "tool-q",
 				questions: QUESTIONS,
-				answers: [
-					{question: "Which test runner?", answer: "Vitest"},
-					{question: "Which features?", answer: "Coverage"},
-				],
+				picks: [{selected: [0]}, {selected: [0]}],
 			},
 		});
 	});

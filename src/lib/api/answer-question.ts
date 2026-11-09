@@ -1,9 +1,10 @@
 import {asRecord} from "../narrow";
+import type {QuestionResponse} from "../question-card-draft";
 
 export interface AnswerQuestionRequest {
 	sessionId: string;
 	toolUseId: string;
-	answers: Array<{question: string; answer: string}>;
+	answers: QuestionResponse[];
 }
 
 /**

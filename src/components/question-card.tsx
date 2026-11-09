@@ -1,5 +1,6 @@
 import {Check, ChevronLeft, ChevronRight} from "lucide-react";
 import {
+	Fragment,
 	type KeyboardEvent as ReactKeyboardEvent,
 	type MouseEvent,
 	type RefObject,
@@ -7,6 +8,7 @@ import {
 	useId,
 	useRef,
 	useState,
+	useSyncExternalStore,
 } from "react";
 import {flushSync} from "react-dom";
 
@@ -27,16 +29,28 @@ import {
 	wasQuestionCardSeen,
 	writeQuestionCardState,
 } from "../lib/question-card-store";
-import {chooseOther, labelledAnswers, pickOption, type QuestionCardDraft, typeOther} from "../lib/question-card-draft";
+import {renderPreviewMarkdownToHtml} from "../lib/client-markdown";
+import {
+	isHtmlPreview,
+	type OptionPreview,
+	parseOptionPreview,
+	previewSanitizerLoaded,
+	subscribePreviewSanitizer,
+} from "../lib/question-option-preview";
+import {
+	chooseOther,
+	EMPTY_OTHER,
+	labelledAnswers,
+	pickOption,
+	type QuestionCardDraft,
+	typeOther,
+} from "../lib/question-card-draft";
 import {ApprovalActionButton} from "./approval-card";
 import {QuestionReceipt, type QuestionReceiptRow} from "./question-receipt";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import {Shortcut} from "./ui/shortcut";
 import {DisabledReason} from "./ui/disabled-reason";
 import {UserInlineText} from "./user-plain-text";
-
-/** Upstream sends an Other picked with nothing typed as this. */
-const EMPTY_OTHER = "Something else";
 
 /** Upstream's `@container (width <= 420px)` stack for the card's action row. */
 const STACK_ACTIONS = "@max-[420px]:flex-col @max-[420px]:items-stretch @max-[420px]:[&>*]:w-full";
@@ -321,6 +335,56 @@ function AnswerOption({
 	);
 }
 
+/** Upstream's `jt` then `max-h-[240px] overflow-y-auto pb-lg text-secondary`; `px-lg`/`pb-lg` are 12px here (16px in upstream's comfortable density). */
+const PREVIEW_CLASS = "px-3 max-h-[240px] overflow-y-auto pb-3 text-secondary";
+
+function subscribeNever(): () => void {
+	return () => {};
+}
+
+/**
+ * Upstream's `wn` → `mU`: the option's parsed preview. An HTML preview waits for the sanitizer chunk
+ * (upstream's preview renderer is lazy and client-only too), so the server draws none.
+ */
+function useOptionPreview(value: unknown): OptionPreview | undefined {
+	const html = isHtmlPreview(value);
+	const ready = useSyncExternalStore(
+		html ? subscribePreviewSanitizer : subscribeNever,
+		previewSanitizerLoaded,
+		() => false,
+	);
+	return html && !ready ? undefined : parseOptionPreview(value);
+}
+
+/** Upstream's `GF`: a text preview as its markdown, an HTML one as sanitized; both a focusable scroll region. */
+function OptionPreviewBlock({preview}: {preview: OptionPreview}) {
+	// `data-question-option-preview` is a local test hook; upstream's block has no attribute.
+	if (preview.kind === "html") {
+		return (
+			<div
+				// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- upstream's preview is a Tab stop so the keyboard can scroll it
+				tabIndex={0}
+				data-question-option-preview=""
+				className={`${PREVIEW_CLASS} font-sans text-body`}
+				dangerouslySetInnerHTML={{__html: preview.sanitizedHtml}}
+			/>
+		);
+	}
+	return (
+		<div
+			// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- upstream's preview is a Tab stop so the keyboard can scroll it
+			tabIndex={0}
+			data-question-option-preview=""
+			className={`${PREVIEW_CLASS} flex flex-col gap-2 font-sans text-body`}
+		>
+			<div
+				className="[&_pre_code]:!whitespace-pre"
+				dangerouslySetInnerHTML={{__html: renderPreviewMarkdownToHtml(preview.text)}}
+			/>
+		</div>
+	);
+}
+
 /**
  * Upstream's pending AskUserQuestion card, drawn inline at most 480px wide: the
  * question in a grey header with an "N of M" pager, radio (or checkbox) rows of
@@ -404,6 +468,10 @@ export function QuestionCard({
 	}, [index]);
 	const question = questions[index];
 	const draft = drafts[index];
+	// Upstream's `wn`: the preview follows `selected[0]` alone, never on a multi-select question.
+	const preview = useOptionPreview(
+		question?.multiSelect === true ? undefined : question?.options[draft?.selected[0] ?? -1]?.preview,
+	);
 	if (question === undefined || draft === undefined) return null;
 	if (answered !== undefined) return <QuestionReceipt rows={answered} enters={false} />;
 	// The answered card leaves at once for the receipt of what it sent, which
@@ -567,19 +635,24 @@ export function QuestionCard({
 				)}
 			</div>
 			<span className="contents" data-approval-allow="">
-				<div className="flex flex-col divide-y divide-[var(--card-outline)]">
+				<div className="flex flex-col">
 					{question.options.map((option, optionIndex) => (
-						<AnswerOption
-							key={`${optionIndex}-${option.label}`}
-							label={option.label}
-							description={option.description ?? ""}
-							checked={draft.selected.includes(optionIndex)}
-							multi={multi}
-							disabled={!editable}
-							onPick={() => {
-								update(pickOption(question, draft, optionIndex));
-							}}
-						/>
+						<Fragment key={`${optionIndex}-${option.label}`}>
+							<AnswerOption
+								label={option.label}
+								description={option.description ?? ""}
+								checked={draft.selected.includes(optionIndex)}
+								multi={multi}
+								disabled={!editable}
+								onPick={() => {
+									update(pickOption(question, draft, optionIndex));
+								}}
+							/>
+							{/* Upstream checks only selected[0]; the local draft keeps Other apart. */}
+							{preview !== undefined && draft.selected[0] === optionIndex && (
+								<OptionPreviewBlock preview={preview} />
+							)}
+						</Fragment>
 					))}
 					<div className="epitaxy-answer-option group relative grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-2 px-3 py-3">
 						<button

@@ -163,7 +163,7 @@ function QuestionQuickReply({
 				sessionId,
 				toolUseId: gate.toolUseId,
 				questions: gate.questions,
-				answers: [{question: question?.question ?? "", answer: reply}],
+				responses: [{question: question?.question ?? "", response: reply}],
 			});
 		},
 	});

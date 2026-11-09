@@ -17,7 +17,7 @@ import shapes from "./fixtures/question-outcome-shapes.json";
 
 describe("formatAnswerPrompt", () => {
 	it("formats a single answer as the canonical Claude Code reply text", () => {
-		const result = formatAnswerPrompt("toolu_abc", [{question: "Continue?", answer: "Yes"}]);
+		const result = formatAnswerPrompt("toolu_abc", [{question: "Continue?", response: "Yes"}]);
 		expect(result).toContain("toolu_abc");
 		expect(result).toContain('"Continue?"="Yes"');
 		expect(result).toContain("Your questions have been answered:");
@@ -26,16 +26,43 @@ describe("formatAnswerPrompt", () => {
 
 	it("joins multiple question/answer pairs with commas", () => {
 		const result = formatAnswerPrompt("toolu_xyz", [
-			{question: "Q1", answer: "A1"},
-			{question: "Q2", answer: "A2"},
+			{question: "Q1", response: "A1"},
+			{question: "Q2", response: "A2"},
 		]);
 		expect(result).toContain('"Q1"="A1", "Q2"="A2"');
 	});
 
 	it("escapes embedded double quotes in question and answer text", () => {
-		const result = formatAnswerPrompt("toolu_q", [{question: 'Say "hi"?', answer: 'No "thanks"'}]);
+		const result = formatAnswerPrompt("toolu_q", [{question: 'Say "hi"?', response: 'No "thanks"'}]);
 		expect(result).toContain('\\"hi\\"');
 		expect(result).toContain('\\"thanks\\"');
+	});
+});
+
+describe("formatAnswerPrompt, as CLI 2.1.318's tool_result pairs", () => {
+	const ANSWERS = [
+		{question: "Which tool?", response: ["x", "Hammer"]},
+		{question: "Layout", response: "Grid", preview: "<grid/>"},
+	];
+
+	it("joins an array response with commas and appends the selected preview", () => {
+		expect(formatAnswerPrompt("toolu_x", ANSWERS)).toBe(
+			'(Answering AskUserQuestion toolu_x from the web viewer.) Your questions have been answered: "Which tool?"="x, Hammer", "Layout"="Grid" selected preview:\n<grid/>. You can now continue with these answers in mind.',
+		);
+	});
+
+	it("reads back as the answers it was written from", () => {
+		const prompt = formatAnswerPrompt("toolu_x", ANSWERS);
+		const text = prompt.slice(prompt.indexOf("Your questions"));
+		expect(
+			parseAnswerResult(text, [
+				{question: "Which tool?", multiSelect: true, options: [{label: "Hammer"}]},
+				{question: "Layout", options: [{label: "Grid", preview: "<grid/>"}]},
+			]),
+		).toStrictEqual([
+			{question: "Which tool?", answer: "x, Hammer", notes: null},
+			{question: "Layout", answer: "Grid", notes: null},
+		]);
 	});
 });
 

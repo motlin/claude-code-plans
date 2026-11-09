@@ -641,6 +641,32 @@ function getHighlightedMarkdownIt(highlighter: HighlighterCore, options?: Markdo
 	return instance;
 }
 
+let previewInstance: MarkdownIt | null = null;
+
+/**
+ * Upstream's `PreviewMarkdown` (`ask_user_question_preview_markdown`): the shared Markdown with
+ * `renderUrlsAsText`, `renderMermaidAsCode` and `flagShowCodeHeader: false`, so URLs and links read
+ * as their text and every fence is a bare code block with no header or copy button.
+ */
+function getPreviewMarkdownIt(): MarkdownIt {
+	if (previewInstance) return previewInstance;
+	const instance = MarkdownIt({html: false, linkify: false, typographer: false});
+	const renderFence = defined(instance.renderer.rules.fence, "markdown-it fence rule");
+	applyPlugins(instance);
+	instance.core.ruler.disable([ARTIFACT_LINK_TOKEN, PR_CHIP_TOKEN]);
+	instance.renderer.rules["link_open"] = () => "";
+	instance.renderer.rules["link_close"] = () => "";
+	instance.renderer.rules.fence = renderFence;
+	previewInstance = instance;
+	return instance;
+}
+
+/** Render an AskUserQuestion option's text preview as upstream's `PreviewMarkdown` does. */
+export function renderPreviewMarkdownToHtml(markdown: string): string {
+	if (!markdown.trim()) return "";
+	return getPreviewMarkdownIt().render(markdown, toEnv());
+}
+
 /** Render markdown to HTML without syntax highlighting. */
 export function renderMarkdownToHtml(markdown: string, options?: MarkdownRenderOptions): string {
 	if (!markdown.trim()) return "";

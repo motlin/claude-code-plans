@@ -698,9 +698,9 @@ function SessionView({
 	const answerRoute = sessionAnswerRoute({sessionId, hookActive: isActive, summary: sessionSummary, herdr});
 	const answerLiveness = sessionLiveness({hookActive: isActive, summary: sessionSummary});
 	const submitAnswer = useCallback(
-		async ({toolUseId, questions, answers}: AnswerSubmission) => {
+		async ({toolUseId, questions, picks}: AnswerSubmission) => {
 			const {submitQuestionAnswer} = await import("../lib/question-answer-submit");
-			await submitQuestionAnswer(answerRoute, {sessionId, toolUseId, questions, answers});
+			await submitQuestionAnswer(answerRoute, {sessionId, toolUseId, questions, picks});
 		},
 		[answerRoute, sessionId],
 	);

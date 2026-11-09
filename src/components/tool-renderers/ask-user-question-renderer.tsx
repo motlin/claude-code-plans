@@ -9,7 +9,6 @@ import {QuestionCard} from "../question-card";
 import {QuestionReceipt} from "../question-receipt";
 import {FORK_ANSWER_LABEL} from "../../lib/question-answer-route";
 import type {QuestionAnswer} from "../../lib/hook-events";
-import {labelledAnswers} from "../../lib/question-card-draft";
 import {clearSentQuestionCard, isQuestionCardSent, useQuestionCardSent} from "../../lib/question-card-store";
 import {
 	describeAskUserQuestionResult,
@@ -157,7 +156,7 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 						ctx.submitAnswer({
 							toolUseId: toolCall.id,
 							questions,
-							answers: labelledAnswers(questions, answers),
+							picks: answers,
 						})
 				: undefined;
 		const card = (

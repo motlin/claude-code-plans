@@ -2,8 +2,8 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import type {QuestionLike} from "../src/lib/ask-user-question";
 import {questionAnswerRoute} from "../src/lib/question-answer-route";
-import {labelAnswersToPaneAnswers, submitQuestionAnswer} from "../src/lib/question-answer-submit";
-import {labelledAnswers} from "../src/lib/question-card-draft";
+import {responsesToPaneAnswers, submitQuestionAnswer} from "../src/lib/question-answer-submit";
+import {labelledAnswers, questionResponses} from "../src/lib/question-card-draft";
 
 const QUESTIONS: QuestionLike[] = [
 	{question: "Which runner?", options: [{label: "Vitest"}, {label: "Jest"}]},
@@ -61,44 +61,70 @@ describe("labelledAnswers", () => {
 	});
 });
 
-describe("labelAnswersToPaneAnswers", () => {
-	it("maps [No preference] to a skip", () => {
-		expect(
-			labelAnswersToPaneAnswers(QUESTIONS, [
-				{question: "Which runner?", answer: "[No preference]"},
-				{question: "Which features?", answer: "[No preference]"},
-			]),
-		).toStrictEqual([null, null]);
+describe("questionResponses, as upstream's bt", () => {
+	const TOOLS: QuestionLike[] = [
+		{question: "Which tool?", multiSelect: true, options: [{label: "Hammer"}, {label: "Saw, big"}]},
+		{question: "Layout", options: [{label: "Grid", preview: "<grid/>"}, {label: "List"}]},
+	];
+
+	it("answers a multi-select with Other first then the picks in option order, and a single-select with its label and preview", () => {
+		expect(questionResponses(TOOLS, [{selected: [1, 0], other: "x"}, {selected: [0]}])).toStrictEqual([
+			{question: "Which tool?", response: ["x", "Hammer", "Saw, big"]},
+			{question: "Layout", response: "Grid", preview: "<grid/>"},
+		]);
 	});
 
-	it("maps option labels to indices, typed text to Other, and blanks to skips", () => {
-		expect(
-			labelAnswersToPaneAnswers(QUESTIONS, [
-				{question: "Which runner?", answer: "Jest"},
-				{question: "Which features?", answer: "UI, Coverage"},
-			]),
-		).toStrictEqual([{selected: [1]}, {selected: [0, 2]}]);
-		expect(
-			labelAnswersToPaneAnswers(QUESTIONS, [
-				{question: "Which runner?", answer: "Mocha"},
-				{question: "Which features?", answer: ""},
-			]),
-		).toStrictEqual([{selected: [], other: "Mocha"}, null]);
+	it("answers a skip with [No preference] and leaves out a missing preview", () => {
+		expect(questionResponses(TOOLS, [null, {selected: [1]}])).toStrictEqual([
+			{question: "Which tool?", response: "[No preference]"},
+			{question: "Layout", response: "List"},
+		]);
 	});
 
-	it("treats a multi-select answer that is not all labels as Other text", () => {
+	it("sends an empty Other as Something else", () => {
 		expect(
-			labelAnswersToPaneAnswers(QUESTIONS, [
-				{question: "Which runner?", answer: "Vitest"},
-				{question: "Which features?", answer: "Coverage, snapshots"},
+			questionResponses(TOOLS, [
+				{selected: [], other: ""},
+				{selected: [], other: "  "},
 			]),
-		).toStrictEqual([{selected: [0]}, {selected: [], other: "Coverage, snapshots"}]);
+		).toStrictEqual([
+			{question: "Which tool?", response: ["Something else"]},
+			{question: "Layout", response: "Something else"},
+		]);
+	});
+});
+
+describe("responsesToPaneAnswers, as upstream's xt", () => {
+	const PICKS: QuestionLike[] = [
+		{question: "Which?", multiSelect: true, options: [{label: "Red, bright"}, {label: "Blue"}]},
+		{question: "Pick", options: [{label: "A"}, {label: "B"}]},
+	];
+
+	it("matches each element of an array response to its label exactly", () => {
+		expect(
+			responsesToPaneAnswers(PICKS, [
+				{question: "Which?", response: ["Red, bright", "Blue"]},
+				{question: "Pick", response: "B"},
+			]),
+		).toStrictEqual([{selected: [0, 1]}, {selected: [1]}]);
 	});
 
-	it("skips questions that have no answer entry", () => {
-		expect(labelAnswersToPaneAnswers(QUESTIONS, [{question: "Which runner?", answer: "Vitest"}])).toStrictEqual([
-			{selected: [0]},
+	it("maps [No preference] and a missing response to a skip", () => {
+		expect(responsesToPaneAnswers(PICKS, [{question: "Which?", response: "[No preference]"}])).toStrictEqual([
 			null,
+			null,
+		]);
+	});
+
+	it("sends a response that is no label as Other text, Something else included so the pane types it", () => {
+		expect(
+			responsesToPaneAnswers(PICKS, [
+				{question: "Which?", response: ["Blue", "Green, dark"]},
+				{question: "Pick", response: "Something else"},
+			]),
+		).toStrictEqual([
+			{selected: [1], other: "Green, dark"},
+			{selected: [], other: "Something else"},
 		]);
 	});
 });
@@ -115,20 +141,21 @@ const SUBMISSION = {
 	sessionId: "s1",
 	toolUseId: "toolu_1",
 	questions: QUESTIONS,
-	answers: [
-		{question: "Which runner?", answer: "Vitest"},
-		{question: "Which features?", answer: ""},
-	],
+	picks: [{selected: [0]}, {selected: [2], other: "Watch"}],
 };
 
 describe("submitQuestionAnswer", () => {
-	it("types a live-pane answer into the session's herdr pane", async () => {
+	it("types a live-pane answer's picks into the session's herdr pane as they are, Other text that names a label included", async () => {
 		const fetchMock = okFetch();
 		await submitQuestionAnswer("live-pane", SUBMISSION);
 		expect(fetchMock.mock.calls.map(([url, init]) => [url, init?.body])).toStrictEqual([
 			[
 				"/api/herdr/question",
-				JSON.stringify({sessionId: "s1", toolUseId: "toolu_1", answers: [{selected: [0]}, null]}),
+				JSON.stringify({
+					sessionId: "s1",
+					toolUseId: "toolu_1",
+					answers: [{selected: [0]}, {selected: [2], other: "Watch"}],
+				}),
 			],
 		]);
 	});
@@ -139,7 +166,30 @@ describe("submitQuestionAnswer", () => {
 		expect(fetchMock.mock.calls.map(([url, init]) => [url, init?.body])).toStrictEqual([
 			[
 				"/api/answer-question",
-				JSON.stringify({sessionId: "s1", toolUseId: "toolu_1", answers: SUBMISSION.answers}),
+				JSON.stringify({
+					sessionId: "s1",
+					toolUseId: "toolu_1",
+					answers: [
+						{question: "Which runner?", response: "Vitest"},
+						{question: "Which features?", response: ["Watch", "UI"]},
+					],
+				}),
+			],
+		]);
+	});
+
+	it("types a free-text reply into the pane by its label", async () => {
+		const fetchMock = okFetch();
+		await submitQuestionAnswer("live-pane", {
+			sessionId: "s1",
+			toolUseId: "toolu_1",
+			questions: QUESTIONS,
+			responses: [{question: "Which runner?", response: "Jest"}],
+		});
+		expect(fetchMock.mock.calls.map(([url, init]) => [url, init?.body])).toStrictEqual([
+			[
+				"/api/herdr/question",
+				JSON.stringify({sessionId: "s1", toolUseId: "toolu_1", answers: [{selected: [1]}, null]}),
 			],
 		]);
 	});
