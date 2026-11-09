@@ -10,6 +10,10 @@ import {clearLanding, landingSeams, recordLanding} from "../src/lib/approval-slo
 
 afterEach(cleanup);
 
+// A fake PEM armor, assembled so no literal key header sits in the source.
+const KEY_KIND = ["RSA", "PRIVATE", "KEY"].join(" ");
+const PEM_BEGIN = `-----BEGIN ${KEY_KIND}-----`;
+
 const SINGLE: QuestionLike = {
 	question: "Which test runner?",
 	header: "Runner",
@@ -511,5 +515,46 @@ describe("QuestionCard option hairlines, as upstream's .epitaxy-answer-option + 
 		);
 
 		expect(hairlines()).toStrictEqual([false, false, true]);
+	});
+});
+
+describe("QuestionCard secret masking (upstream c2f6611a3)", () => {
+	const FAKE_GH = `ghp_${"A".repeat(36)}`;
+	const MASKED_GH = `ghp_AAAA${"•".repeat(32)}`;
+	const FAKE_AWS = "AKIAEXAMPLEFAKE12345";
+
+	it("masks option labels and descriptions, and the question name compactly", () => {
+		render(
+			<QuestionCard
+				questions={[
+					{
+						question: `Use ${FAKE_AWS}?`,
+						header: "Key",
+						options: [{label: `Token ${FAKE_GH}`, description: `desc ${FAKE_GH}`}, {label: "No"}],
+					},
+				]}
+				onSubmit={async () => {}}
+			/>,
+		);
+		const root = document.querySelector("[data-approval-card-root]")!;
+		expect({
+			name: root.getAttribute("aria-label"),
+			heading: root.firstElementChild!.textContent,
+			option: document.querySelector("[data-question-answer]")!.textContent,
+		}).toStrictEqual({
+			name: `Use AKIAEXAM${"•".repeat(7)}?`,
+			heading: `Use AKIAEXAM${"•".repeat(7)}?`,
+			option: `Token ${MASKED_GH}desc ${MASKED_GH}`,
+		});
+	});
+
+	it("cuts the question name before an unterminated private key", () => {
+		render(
+			<QuestionCard
+				questions={[{question: `Paste ${PEM_BEGIN}\nMIIB`, header: "K", options: [{label: "a"}]}]}
+				onSubmit={async () => {}}
+			/>,
+		);
+		expect(document.querySelector("[data-approval-card-root]")!.getAttribute("aria-label")).toBe("Paste …");
 	});
 });

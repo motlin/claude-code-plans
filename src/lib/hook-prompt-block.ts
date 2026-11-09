@@ -5,6 +5,8 @@
  * reason and the prompt it stopped.
  */
 
+import {maskAndCap} from "./secret-mask";
+
 export type HookMessage =
 	| {kind: "blocked"; label: string; reason: string; originalPrompt?: string}
 	| {kind: "stopped"; label: string; reason: string};
@@ -38,9 +40,7 @@ export function parseHookMessage(text: string): HookMessage | null {
 	return null;
 }
 
-const DETAILS_CAP = 262144;
-
-/** Upstream `AK`'s length cap on card and marker details. */
+/** Upstream `AK` on card and marker details: secrets masked, then capped at 262144 chars plus `…`. */
 export function capDetails(text: string): string {
-	return text.length > DETAILS_CAP ? `${text.slice(0, DETAILS_CAP)}…` : text;
+	return maskAndCap(text);
 }

@@ -8,6 +8,10 @@ import type {HookNotice} from "../src/lib/transcript";
 
 afterEach(cleanup);
 
+// A fake PEM armor, assembled so no literal key header sits in the source.
+const KEY_KIND = ["RSA", "PRIVATE", "KEY"].join(" ");
+const PEM_BEGIN = `-----BEGIN ${KEY_KIND}-----`;
+
 const NOTICE: HookNotice = {message: "Compacted while idle", level: "notice", uuid: "n-1"};
 const WARNING: HookNotice = {message: "Remote Control disconnected", level: "warning", uuid: "w-1"};
 
@@ -274,6 +278,23 @@ describe("HookNoticeRow", () => {
 					{icon: true, text: "A hook stopped a message, so Claude didn’t reply to it: quota"},
 				],
 			},
+		});
+	});
+});
+
+describe("Claude Code notice secrets", () => {
+	it("masks a token and cuts before an unterminated private key with upstream's note", () => {
+		const notice: HookNotice = {
+			message: `token AKIAEXAMPLEFAKE12345 then ${PEM_BEGIN}\nMIIB`,
+			level: "warning",
+			uuid: "s-1",
+		};
+		const {container} = render(<HookNoticeRow notices={[notice]} verbose />);
+		const line = container.querySelector(".epitaxy-expanding-body .select-text")!;
+		const note = line.querySelector("span.text-caption");
+		expect({text: line.textContent, note: note?.outerHTML}).toStrictEqual({
+			text: `token AKIAEXAM${"•".repeat(12)} then (The rest of this notice is hidden because part of it looked like a private key.)`,
+			note: '<span class="text-caption text-muted-as-secondary">(The rest of this notice is hidden because part of it looked like a private key.)</span>',
 		});
 	});
 });

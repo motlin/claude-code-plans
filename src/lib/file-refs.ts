@@ -5,6 +5,8 @@
  * candidates; a ref links only once the server has confirmed the file exists.
  */
 
+import {findSecrets} from "./secret-mask";
+
 /** Why a ref renders as blocked code instead of a link, as upstream's `ir()` reasons. */
 export type FileRefBlock = "outside_roots" | "missing";
 
@@ -48,11 +50,12 @@ function lineRange(start: string | undefined, end: string | undefined): {line?: 
 
 /**
  * Split inline-code text into a path and an optional line range, or null when
- * the text doesn't match upstream's file-ref grammar. Upstream also skips
- * paths its secret scanner flags; this repo has no such scanner.
+ * the text doesn't match upstream's file-ref grammar. Like upstream
+ * (c19e90103 `Ke(path).length>0`), a path holding a secret is never a ref.
  */
 export function parseFileRefText(text: string): ParsedFileRefText | null {
 	if (text.length > MAX_PATH_LENGTH) return null;
+	if (findSecrets(text).length > 0) return null;
 	const match = FILE_REF_PATTERN.exec(text);
 	if (match === null) return null;
 	let target = match[1] ?? "";

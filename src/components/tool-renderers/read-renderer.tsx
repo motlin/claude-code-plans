@@ -4,7 +4,8 @@ import type {ThemedToken} from "@shikijs/core";
 import {extractLineNumbers, detectLanguage} from "../../lib/diff-utils";
 import {useHighlightedLines} from "../../hooks/use-shiki";
 import type {ToolRendererProps} from "./types";
-import {CopyButton, PolicyDenialReason, TruncatedFilePathHeader} from "./shared";
+import {CopyButton, PolicyDenialReason, SecretRevealButton, TruncatedFilePathHeader} from "./shared";
+import {useSecretReveal} from "./use-secret-reveal";
 import {TOOL_OUTPUT_REGION} from "./tool-output-region";
 
 interface ParsedLine {
@@ -49,7 +50,10 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 	const filePath = inputString(toolCall.input, "file_path") ?? "";
 	const {result, isError} = toolCall;
 
-	const code = result && !isError ? result : "";
+	const rawCode = result && !isError ? result : "";
+	// Masked until revealed, so the highlighter and the copy button only see bullets.
+	const secrets = useSecretReveal([rawCode]);
+	const code = secrets.show(rawCode);
 	const parsedLines = code ? parseLineNumbers(code) : [];
 
 	const {text: cleanCode} = code ? extractLineNumbers(code) : {text: ""};
@@ -83,7 +87,8 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 			{/* Header: smart-truncated file path + hover copy button */}
 			<div className="flex items-center gap-g3 px-p6 py-p5">
 				<TruncatedFilePathHeader filePath={filePath} />
-				<CopyButton text={result ?? filePath} />
+				<SecretRevealButton {...secrets} />
+				<CopyButton text={result ? code : filePath} />
 			</div>
 
 			{/* Body: syntax-highlighted code on the card background, capped at 400px */}

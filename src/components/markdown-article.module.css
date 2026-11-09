@@ -241,6 +241,13 @@
 	background: hsl(0 0% 100% / 0.08);
 }
 
+/* The revealed secret toggle: upstream sets --cds-bg-accent: fill.control and
+   --cds-text-accent: text.primary on its pressed cds ghost Button. */
+.markdown :global(.markdown-code-copy) button[aria-pressed="true"] {
+	background: var(--color-fill-control);
+	color: var(--color-primary);
+}
+
 /* The markdown is raw HTML, so the button cannot use ui/tooltip.tsx; this CSS
    tooltip mirrors it: always dark, side top, offset 4, 300ms open delay. */
 .markdown :global(.markdown-code-copy) button[data-tooltip]::after {

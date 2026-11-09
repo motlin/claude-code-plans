@@ -7,11 +7,31 @@
 import {useState} from "react";
 
 import {hookNoticeText} from "../lib/hook-notice-copy";
+import {cutUnterminatedPrivateKey, maskAndCap, stripDisplayControls} from "../lib/secret-mask";
 import type {HookNotice} from "../lib/transcript";
 import {Icon} from "./ui/icon";
 
 function WarningIcon() {
 	return <Icon name="Warning" size="sm" className="shrink-0 text-danger" alt="Warning" />;
+}
+
+/**
+ * Upstream's notice text (shared-12 `Fx`): secrets masked and capped (`AK`), cut before an unterminated
+ * private key (`_h`) with a note saying so, and display controls stripped.
+ */
+function NoticeText({text}: {text: string}) {
+	const masked = maskAndCap(text);
+	const cut = cutUnterminatedPrivateKey(masked);
+	return (
+		<>
+			{stripDisplayControls(cut)}
+			{cut !== masked && (
+				<span className="text-caption text-muted-as-secondary">
+					(The rest of this notice is hidden because part of it looked like a private key.)
+				</span>
+			)}
+		</>
+	);
 }
 
 export function HookNoticeLine({notice, markWarning}: {notice: HookNotice; markWarning: boolean}) {
@@ -23,7 +43,7 @@ export function HookNoticeLine({notice, markWarning}: {notice: HookNotice; markW
 				</span>
 			)}
 			<span className="min-w-0 text-body text-secondary whitespace-pre-wrap [overflow-wrap:anywhere]">
-				{hookNoticeText(notice.message)}
+				<NoticeText text={hookNoticeText(notice.message)} />
 			</span>
 		</div>
 	);

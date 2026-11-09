@@ -9,7 +9,15 @@ import {requestLanguage, themeOrRequest} from "../hooks/use-shiki";
 import {type CodeThemePair, DEFAULT_CODE_THEMES} from "./code-themes";
 import {type FileRef, type FileRefBlock, parseFileRefText} from "./file-refs";
 import {normalizeArtifactUrl} from "./artifact-output";
-import {ARTIFACT_ICON_SVG, COPY_ICON_SVG, PR_ICON_SVG} from "./icon-paths";
+import {ARTIFACT_ICON_SVG, COPY_ICON_SVG, EYE_ICON_SVG, PR_ICON_SVG} from "./icon-paths";
+import {
+	type SecretMatch,
+	findSecrets,
+	maskSecretValue,
+	maskSecrets,
+	secretLabel,
+	secretToggleLabel,
+} from "./secret-mask";
 import {mdFileHref, resolveRelativeMdHref} from "./md-links";
 import {afterBreak, afterOpaque, newQuoteState, smartenQuotes} from "./smart-quotes";
 import {SHIKI_TOKENIZE_OPTIONS} from "./shiki-tokenize-options";
@@ -177,7 +185,60 @@ const CODEBLOCK_COPY_CLASS = "markdown-code-copy";
 /** Marks the copy button itself, so one delegated listener can find it. */
 export const CODEBLOCK_COPY_ATTR = "data-copy-code";
 
-const COPY_STRIP = `<div class="${CODEBLOCK_COPY_RAIL_CLASS}"><div class="${CODEBLOCK_COPY_CLASS}"><button type="button" ${CODEBLOCK_COPY_ATTR} aria-label="Copy code" data-tooltip="Copy code">${COPY_ICON_SVG}</button></div></div>`;
+const COPY_BUTTON = `<button type="button" ${CODEBLOCK_COPY_ATTR} aria-label="Copy code" data-tooltip="Copy code">${COPY_ICON_SVG}</button>`;
+
+const COPY_STRIP = `<div class="${CODEBLOCK_COPY_RAIL_CLASS}"><div class="${CODEBLOCK_COPY_CLASS}">${COPY_BUTTON}</div></div>`;
+
+/** The fence's "Reveal N secrets" toggle (upstream cb557955f `D`), handled by {@link handleSecretRevealClick}. */
+export const SECRET_REVEAL_ATTR = "data-reveal-secrets";
+
+/** A `<template>` holding the raw markup a masked secret stands in for; it is not rendered or searched. */
+export const SECRET_RAW_ATTR = "data-secret-raw";
+
+function secretCopyStrip(count: number): string {
+	const label = secretToggleLabel(count, false);
+	return `<div class="${CODEBLOCK_COPY_RAIL_CLASS}"><div class="${CODEBLOCK_COPY_CLASS}"><button type="button" ${SECRET_REVEAL_ATTR} aria-pressed="false" aria-label="${label}" data-tooltip="${label}">${EYE_ICON_SVG}</button>${COPY_BUTTON}</div></div>`;
+}
+
+/** The per-secret reveal button's classes, verbatim from upstream's cloak `v`. */
+const SECRET_CLOAK_BUTTON_CLASS =
+	"inline-flex shrink-0 translate-y-[1px] items-center justify-center rounded-r2 text-secondary focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus hover:text-primary";
+
+/** Upstream cloak `v`: a masked secret with its own Eye button; the raw value waits in a template. */
+function secretCloakHtml(match: SecretMatch, escape: (value: string) => string): string {
+	const label = secretLabel(match.patternId);
+	return `<span data-redacted-secret="" class="inline-flex max-w-full items-baseline gap-[2px] align-baseline"><span class="break-all"><span data-find-omitted="" class="sr-only select-none">Redacted ${label}</span><span aria-hidden="true">${escape(maskSecretValue(match.value, match.keep))}</span><template ${SECRET_RAW_ATTR}>${escape(match.value)}</template></span><button type="button" aria-pressed="false" aria-label="Reveal ${label}" class="${SECRET_CLOAK_BUTTON_CLASS}">${EYE_ICON_SVG}</button></span>`;
+}
+
+/** Upstream `_o`: inline code text with each secret drawn as a cloak. */
+function cloakedCodeHtml(text: string, matches: readonly SecretMatch[], escape: (value: string) => string): string {
+	let html = "";
+	let pos = 0;
+	for (const match of matches) {
+		html += escape(text.slice(pos, match.start)) + secretCloakHtml(match, escape);
+		pos = match.end;
+	}
+	return html + escape(text.slice(pos));
+}
+
+/**
+ * Upstream masks link labels and image alts (c19e90103 `Je`) and does not linkify a URL that holds a
+ * secret; text inside links and images is masked here before rendering.
+ */
+function maskLinkText(state: StateCore): void {
+	for (const block of state.tokens) {
+		if (block.type !== "inline" || block.children === null) continue;
+		let depth = 0;
+		for (const token of block.children) {
+			if (token.type === "link_open") depth++;
+			else if (token.type === "link_close") depth = Math.max(0, depth - 1);
+			else if (token.type === "image") {
+				token.content = maskSecrets(token.content);
+				for (const child of token.children ?? []) child.content = maskSecrets(child.content);
+			} else if (depth > 0 && token.type === "text") token.content = maskSecrets(token.content);
+		}
+	}
+}
 
 /**
  * Memory files cross-reference each other with `[[name]]`, which plain markdown
@@ -498,6 +559,7 @@ function applyPlugins(instance: MarkdownIt): void {
 	instance.core.ruler.push("numeric_table_columns", numericTableColumns);
 	instance.core.ruler.push("smart_quotes", smartQuotes);
 	instance.core.ruler.push(ZONED_TIME_TOKEN, zonedTimes);
+	instance.core.ruler.push("mask_link_secrets", maskLinkText);
 	instance.renderer.rules[ZONED_TIME_TOKEN] = (tokens, idx) =>
 		defined(timeWithZone, "zoned time token before its parser loaded").zonedTimeHtml(
 			defined(tokens[idx], "zoned time token index").content,
@@ -512,6 +574,11 @@ function applyPlugins(instance: MarkdownIt): void {
 	const renderCodeInline = defined(instance.renderer.rules.code_inline, "markdown-it code_inline rule");
 	instance.renderer.rules.code_inline = (tokens, idx, options, env, self) => {
 		const text = defined(tokens[idx], "code_inline token").content;
+		const secrets = findSecrets(text);
+		if (secrets.length > 0) {
+			const escape = instance.utils.escapeHtml;
+			return `<code data-code-text="${escape(maskSecrets(text))}">${cloakedCodeHtml(text, secrets, escape)}</code>`;
+		}
 		const ref = envOf(env)?.fileRefs?.get(text);
 		return ref === undefined
 			? renderCodeInline(tokens, idx, options, env, self)
@@ -527,6 +594,13 @@ function applyPlugins(instance: MarkdownIt): void {
 		const markdownEnv = envOf(env);
 		const fileRefs = markdownEnv?.fileRefs;
 		const key = fileRefs === undefined || href === null ? null : fileRefLinkKey(href);
+		if (href !== null && findSecrets(href).length > 0) {
+			const secretClose = tokens.slice(idx + 1).find((other) => other.type === "link_close");
+			if (secretClose !== undefined) {
+				secretClose.meta = {fileRefClose: ""};
+				return "";
+			}
+		}
 		const close = key === null ? undefined : tokens.slice(idx + 1).find((other) => other.type === "link_close");
 		if (key !== null && close !== undefined) {
 			const ref = fileRefs?.get(key);
@@ -564,8 +638,20 @@ function applyPlugins(instance: MarkdownIt): void {
 	// positioned top-right control strip with an icon-only copy button; a bare
 	// markdown-it `<pre>` has nowhere to anchor one.
 	const renderFence = defined(instance.renderer.rules.fence, "markdown-it fence rule");
-	instance.renderer.rules.fence = (tokens, idx, options, env, self) =>
-		`<div class="${CODEBLOCK_CLASS} epitaxy-codeblock">${renderFence(tokens, idx, options, env, self).trimEnd()}${COPY_STRIP}</div>\n`;
+	// A fence holding secrets draws masked text with a Reveal toggle before Copy (upstream code card
+	// c5071af19); the raw highlighted block waits in a template the toggle swaps in.
+	instance.renderer.rules.fence = (tokens, idx, options, env, self) => {
+		const token = defined(tokens[idx], "fence token");
+		const raw = token.content;
+		const secrets = findSecrets(raw);
+		if (secrets.length === 0)
+			return `<div class="${CODEBLOCK_CLASS} epitaxy-codeblock">${renderFence(tokens, idx, options, env, self).trimEnd()}${COPY_STRIP}</div>\n`;
+		token.content = maskSecrets(raw);
+		const masked = renderFence(tokens, idx, options, env, self).trimEnd();
+		token.content = raw;
+		const revealed = renderFence(tokens, idx, options, env, self).trimEnd();
+		return `<div class="${CODEBLOCK_CLASS} epitaxy-codeblock">${masked}${secretCopyStrip(secrets.length)}<template ${SECRET_RAW_ATTR}>${revealed}</template></div>\n`;
+	};
 
 	// Upstream renders every table inside an `overflow-x-auto` div so a table wider
 	// than the transcript column scrolls on its own instead of stretching the column.

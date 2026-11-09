@@ -1,6 +1,7 @@
 import {lazy, type ReactNode, Suspense} from "react";
 
 import {defined} from "../lib/defined";
+import {maskSecrets} from "../lib/secret-mask";
 
 /** Upstream's user paragraph: `text-body` rewritten to `text-prose`, then `[unicode-bidi:plaintext]` appended. */
 export const USER_PARAGRAPH_CLASS =
@@ -57,7 +58,8 @@ function linkify(text: string, keyPrefix: number, style: LinkStyle = "user"): Re
  * TextLink. Upstream's question card header passes `codeSpans={false}` to keep
  * backticks literal.
  */
-export function UserInlineText({text, codeSpans = true}: {text: string; codeSpans?: boolean}) {
+export function UserInlineText({text: raw, codeSpans = true}: {text: string; codeSpans?: boolean}) {
+	const text = maskSecrets(raw);
 	return <>{codeSpans ? renderInline(text, "textLink") : linkify(text, 0, "textLink")}</>;
 }
 
@@ -238,9 +240,10 @@ function splitFences(text: string): Segment[] {
  * text between them drawn as lists, the rest kept as typed.
  */
 export function UserPlainText({text, prefix}: {text: string; prefix?: ReactNode}) {
+	// Upstream (c59c32499) masks secrets in a user turn with plain `XF`: no reveal control.
 	return (
 		<UserMessageText>
-			<UserPlainBlocks text={text} prefix={prefix} />
+			<UserPlainBlocks text={maskSecrets(text)} prefix={prefix} />
 		</UserMessageText>
 	);
 }

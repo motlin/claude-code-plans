@@ -3,6 +3,8 @@ import {renderMarkdownWithHighlighting} from "../../lib/client-markdown";
 import {getHighlighterSync, getHighlighterVersion, subscribeHighlighter} from "../../hooks/use-shiki";
 import {useCodeThemes} from "../../hooks/use-code-themes";
 import {parseAnsiCodes} from "../../lib/ansi-codes";
+import {maskSecrets, secretToggleLabel} from "../../lib/secret-mask";
+import {type SecretReveal, useSecretReveal} from "./use-secret-reveal";
 import {handleCodeCopyClick} from "../../lib/code-copy";
 import {formatDuration} from "../../lib/format-duration";
 import {CHECK_ICON_PATH, COPY_ICON_PATH} from "../../lib/icon-paths";
@@ -10,12 +12,33 @@ import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {FileRefTarget} from "../file-refs";
 import markdownStyles from "../markdown-article.module.css";
 import * as Collapsible from "../ui/collapsible";
+import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
 import {TOOL_OUTPUT_REGION} from "./tool-output-region";
 import {BlockedCallContext, type PolicyDenial} from "./blocked-call-context";
 
-export function AnsiText({content}: {content: string}) {
-	const parts = parseAnsiCodes(content);
+type AnsiPart = ReturnType<typeof parseAnsiCodes>[number];
+
+/**
+ * Upstream's ansi code card masks secrets on the visible text with offsets carried across the styled
+ * runs (c5071af19 `Ft`). Masking keeps the text length, so each run takes its slice of the masked text.
+ */
+function maskAnsiParts(parts: AnsiPart[]): AnsiPart[] {
+	const plain = parts.map((part) => part.text).join("");
+	const masked = maskSecrets(plain);
+	if (masked === plain) return parts;
+	let pos = 0;
+	return parts.map((part) => {
+		const text = masked.slice(pos, pos + part.text.length);
+		pos += part.text.length;
+		return {...part, text};
+	});
+}
+
+/** Draws ANSI-styled output; secrets are masked unless `masked` is false (revealed). */
+export function AnsiText({content, masked = true}: {content: string; masked?: boolean}) {
+	const parsed = parseAnsiCodes(content);
+	const parts = masked ? maskAnsiParts(parsed) : parsed;
 
 	return (
 		<>
@@ -192,17 +215,58 @@ export function TerminalOutput({content}: {content: string}) {
 	const exitCode = exitCodeMatch?.[1] ? parseInt(exitCodeMatch[1], 10) : null;
 	const contentWithoutExitCode = exitCodeMatch ? content.replace(/^Exit code \d+\n?/, "") : content;
 	const inkClass = exitCode !== null && exitCode !== 0 ? "text-danger-ink" : "text-secondary";
+	const secrets = useSecretReveal([contentWithoutExitCode]);
+	const exitLine = exitCode !== null && <div className={inkClass}>Exit code {exitCode}</div>;
 
 	return (
 		<div className="text-code font-mono">
-			{exitCode !== null && <div className={inkClass}>Exit code {exitCode}</div>}
+			{secrets.count > 0 ? (
+				<div className="flex items-start justify-between gap-g3">
+					{exitLine || <span />}
+					<SecretRevealButton {...secrets} />
+				</div>
+			) : (
+				exitLine
+			)}
 			<pre
 				{...TOOL_OUTPUT_REGION}
 				className={`max-h-[400px] overflow-y-auto whitespace-pre-wrap break-all ${inkClass}`}
 			>
-				<AnsiText content={contentWithoutExitCode} />
+				<AnsiText content={contentWithoutExitCode} masked={!secrets.revealed} />
 			</pre>
 		</div>
+	);
+}
+
+/**
+ * Upstream's block toggle (cb557955f `D`): a ghost icon button, Eye / EyeSlash, "Reveal N secrets" /
+ * "Hide N secrets", pressed while revealed with the fill-control accent. Sized like {@link CopyButton}
+ * and placed before it. Nothing renders when there is no secret.
+ */
+export function SecretRevealButton({
+	count,
+	revealed,
+	onToggle,
+	size,
+}: Pick<SecretReveal, "count" | "revealed" | "onToggle"> & {size?: "xs"}) {
+	if (count === 0) return null;
+	const label = secretToggleLabel(count, revealed);
+	return (
+		<Tooltip content={label}>
+			<button
+				type="button"
+				data-reveal-secrets=""
+				aria-pressed={revealed}
+				aria-label={label}
+				onMouseDown={(event) => {
+					event.preventDefault();
+				}}
+				onClick={onToggle}
+				className={`inline-flex ${size === "xs" ? "size-5" : "size-6"} shrink-0 items-center justify-center border-0 cursor-default select-none rounded-r4 hover:text-primary hover:bg-t2 transition-colors ${revealed ? "bg-fill-control text-primary" : "text-secondary"}`}
+			>
+				<Icon name={revealed ? "EyeSlash" : "Eye"} size={size === "xs" ? "xs" : "sm"} />
+			</button>
+		</Tooltip>
 	);
 }
 

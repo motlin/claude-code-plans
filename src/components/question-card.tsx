@@ -51,6 +51,7 @@ import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import {Shortcut} from "./ui/shortcut";
 import {DisabledReason} from "./ui/disabled-reason";
 import {UserInlineText} from "./user-plain-text";
+import {cutUnterminatedPrivateKey, maskSecrets, maskSecretsCompact} from "../lib/secret-mask";
 
 /** Upstream's `@container (width <= 420px)` stack for the card's action row. */
 const STACK_ACTIONS = "@max-[420px]:flex-col @max-[420px]:items-stretch @max-[420px]:[&>*]:w-full";
@@ -353,7 +354,18 @@ function useOptionPreview(value: unknown): OptionPreview | undefined {
 		previewSanitizerLoaded,
 		() => false,
 	);
-	return html && !ready ? undefined : parseOptionPreview(value);
+	// Upstream masks a string preview (`b(wn)`) before parsing it.
+	return html && !ready ? undefined : parseOptionPreview(typeof value === "string" ? maskSecrets(value) : value);
+}
+
+/**
+ * Upstream's question name (c2f6611a3 `ht`): secrets collapse to 7 bullets (`I6`), and a name holding an
+ * unterminated private key is cut before it (`_h`) with a trailing ellipsis.
+ */
+function questionName(question: string): string {
+	const compact = maskSecretsCompact(question);
+	const cut = cutUnterminatedPrivateKey(compact);
+	return cut === compact ? compact : `${cut.trimEnd()} \u2026`;
 }
 
 /** Upstream's `GF`: a text preview as its markdown, an HTML one as sanitized; both a focusable scroll region. */
@@ -581,7 +593,7 @@ export function QuestionCard({
 			ref={cardRootRef}
 			role="group"
 			tabIndex={-1}
-			aria-label={question.question}
+			aria-label={questionName(question.question)}
 			data-approval-card-root=""
 			data-focus-region="question"
 			data-approval-presentation="card"
@@ -596,7 +608,7 @@ export function QuestionCard({
 		>
 			<div className="flex items-center gap-3 bg-alpha-1 px-3 py-2">
 				<div className="min-w-0 flex-1 text-body text-primary select-text break-words [unicode-bidi:plaintext]">
-					<UserInlineText text={question.question} codeSpans={false} />
+					<UserInlineText text={questionName(question.question)} codeSpans={false} />
 				</div>
 				{questions.length > 1 && (
 					<span className="-my-1.5 -me-2 flex shrink-0 items-center gap-1.5 text-caption text-ink-muted">
@@ -639,8 +651,8 @@ export function QuestionCard({
 					{question.options.map((option, optionIndex) => (
 						<Fragment key={`${optionIndex}-${option.label}`}>
 							<AnswerOption
-								label={option.label}
-								description={option.description ?? ""}
+								label={maskSecrets(option.label)}
+								description={maskSecrets(option.description ?? "")}
 								checked={draft.selected.includes(optionIndex)}
 								multi={multi}
 								disabled={!editable}
@@ -682,7 +694,7 @@ export function QuestionCard({
 								dir="auto"
 								placeholder="Type your own answer here"
 								rows={1}
-								value={draft.other}
+								value={editable ? draft.other : maskSecrets(draft.other)}
 								disabled={!editable}
 								onChange={(event) => {
 									update(typeOther(question, draft, event.target.value));
