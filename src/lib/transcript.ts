@@ -1017,8 +1017,10 @@ function* processRecordBatchSteps(
 	// Per deferred_tools_delta uuid, the description each surfaced tool resolved to.
 	const surfacedDescriptions = new Map<string, Map<string, string | undefined>>();
 	// Adjacent notices share one line (upstream `Jd` merges adjacent plugin-less `hook_notice` items).
+	// A turn_duration line between them doesn't split them: upstream's stand-in for it, the `result`
+	// event, adds no item to the entry, so the last item is still the notice.
 	const pushHookNotice = (notice: HookNotice, lineIndex: number, timestamp: string | undefined) => {
-		const previous = sessionLines.at(-1);
+		const previous = sessionLines.findLast((line) => !(line.type === "system" && line.subtype === "turn_duration"));
 		if (previous?.type === "hook-notice") {
 			previous.notices.push(notice);
 			return;

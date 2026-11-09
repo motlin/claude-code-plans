@@ -14,7 +14,7 @@ function WarningIcon() {
 	return <Icon name="Warning" size="sm" className="shrink-0 text-danger" alt="Warning" />;
 }
 
-function HookNoticeLine({notice, markWarning}: {notice: HookNotice; markWarning: boolean}) {
+export function HookNoticeLine({notice, markWarning}: {notice: HookNotice; markWarning: boolean}) {
 	return (
 		<div className="flex items-start gap-1 select-text">
 			{markWarning && notice.level === "warning" && (

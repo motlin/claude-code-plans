@@ -30,7 +30,8 @@ import {parseToolRejection} from "../lib/tool-rejection";
 import {parseAttachSnippets, type AttachSnippet} from "../lib/attach-markers";
 import {ApiErrorCard, ApiErrorMarker, type ApiErrorRecovery} from "./api-error-card";
 import {HookBlockedPromptCard, HookBlockedPromptMarker} from "./hook-blocked-prompt";
-import {HookNoticeRow} from "./hook-notice-row";
+import {HookNoticeLine, HookNoticeRow} from "./hook-notice-row";
+import * as Collapsible from "./ui/collapsible";
 import {prefillComposer, useHasComposer} from "../lib/context-attach";
 import {ErrorCardShell} from "./error-card-shell";
 import {ExternalTextLink} from "./external-text-link";
@@ -95,6 +96,7 @@ import {useSettings} from "./settings-context";
 import {ToastContext} from "./toast-context";
 import type {TranscriptMode} from "../lib/transcript-mode";
 import {hmrPersist} from "../lib/hmr-persist";
+import {foldsIntoToolRun} from "../lib/hook-notice-copy";
 import type {MessageSessionLine, SessionLine, SessionContentBlock, ToolResultInfo} from "../lib/sessions";
 import type {SessionWorkflowRun, TranscriptCut} from "../lib/api/sessions";
 import {workflowCallName, workflowSummary} from "../lib/workflow-name";
@@ -1321,7 +1323,17 @@ interface HookNotice {
 	line: MessageSessionLine;
 }
 
-type FoldedNotice = BackgroundNotice | PeerNotice | HookNotice;
+/**
+ * A notice-level "Claude Code notice" line rolled up into the tool run before it (upstream `Yl`,
+ * rule notice-without-warning-or-recap). Each of its notices draws its own step.
+ */
+interface ClaudeCodeNotice {
+	kind: "claude-notice";
+	lineIndex: number;
+	notices: Extract<SessionLine, {type: "hook-notice"}>["notices"];
+}
+
+type FoldedNotice = BackgroundNotice | PeerNotice | HookNotice | ClaudeCodeNotice;
 
 const NO_NOTICES: readonly FoldedNotice[] = [];
 
@@ -1674,17 +1686,20 @@ function splitNotices(notices: readonly FoldedNotice[]): {
 	leadingPeers: PeerNotice[];
 	trailingPeers: PeerNotice[];
 	hooks: HookNotice[];
+	claudeNotices: ClaudeCodeNotice[];
 } {
 	const taskNotices: BackgroundNotice[] = [];
 	const leadingPeers: PeerNotice[] = [];
 	const trailingPeers: PeerNotice[] = [];
 	const hooks: HookNotice[] = [];
+	const claudeNotices: ClaudeCodeNotice[] = [];
 	for (const notice of notices) {
 		if (notice.kind === "task") taskNotices.push(notice);
 		else if (notice.kind === "hook") hooks.push(notice);
+		else if (notice.kind === "claude-notice") claudeNotices.push(notice);
 		else (notice.leads ? leadingPeers : trailingPeers).push(notice);
 	}
-	return {taskNotices, leadingPeers, trailingPeers, hooks};
+	return {taskNotices, leadingPeers, trailingPeers, hooks, claudeNotices};
 }
 
 function FoldedNoticeRow({notice}: {notice: FoldedNotice}) {
@@ -1695,6 +1710,8 @@ function FoldedNoticeRow({notice}: {notice: FoldedNotice}) {
 			return <AgentMessageRow message={notice.message} />;
 		case "hook":
 			return <StopHookMarker line={notice.line} />;
+		case "claude-notice":
+			return <ClaudeCodeNoticeSteps notice={notice} />;
 		default:
 			return assertNever(notice);
 	}
@@ -1864,7 +1881,7 @@ function AgentCompletionRow({completion, footer}: {completion: TaskNotification;
 
 type NoticeSegment =
 	| {kind: "run"; lineIndex: number; events: TaskEvent[]}
-	| {kind: "notice"; lineIndex: number; notice: PeerNotice | HookNotice};
+	| {kind: "notice"; lineIndex: number; notice: PeerNotice | HookNotice | ClaudeCodeNotice};
 
 /** Each maximal run of consecutive task notices becomes one segment; peer and hook notices keep their own. */
 function noticeSegments(notices: readonly FoldedNotice[]): NoticeSegment[] {
@@ -2860,6 +2877,19 @@ function buildSessionListEntries(
 					continue;
 				}
 				if (crossesHeldEntry(startRecordIndex, nextLine.lineIndex)) break;
+				// Upstream rolls a notice-level "Claude Code notice" into the tool run it follows; a warning or recap stands alone.
+				// A notice belongs to no display span (it never moves the turn's footer), so only its session must match.
+				if (nextLine.type === "hook-notice") {
+					if (
+						!foldsIntoToolRun(nextLine.notices) ||
+						getSourceSessionId(nextLine, renderProps.sessionId) !==
+							getSourceSessionId(line, renderProps.sessionId)
+					)
+						break;
+					notices.push({kind: "claude-notice", lineIndex: nextLine.lineIndex, notices: nextLine.notices});
+					j++;
+					continue;
+				}
 				const next = noticeOf(j);
 				if (next !== null) {
 					if (next.kind === "hook" || !sameSpan(line, nextLine)) break;
@@ -4401,6 +4431,48 @@ const STOP_HOOK_LABEL = "Hook re-prompted Claude";
  * Upstream's "Hook re-prompted Claude" marker: a muted 24px disclosure in the
  * assistant column whose body is the hook's feedback without its prefix.
  */
+/** Each notice of a rolled-up "Claude Code notice" line as its own event step in the tool run (upstream `NQ`/`afe`). */
+function ClaudeCodeNoticeSteps({notice}: {notice: ClaudeCodeNotice}) {
+	return notice.notices.map((hookNotice, index) => (
+		<ClaudeCodeNoticeStep key={hookNotice.uuid ?? index} notice={hookNotice} />
+	));
+}
+
+const CLAUDE_CODE_NOTICE_LABEL = "Claude Code notice";
+
+function ClaudeCodeNoticeStep({notice}: {notice: ClaudeCodeNotice["notices"][number]}) {
+	const [expanded, setExpanded] = useState(false);
+	const restInk = useRestInk();
+	const rowCut = useTypeRowCut(CLAUDE_CODE_NOTICE_LABEL);
+	return (
+		<Collapsible.Root
+			open={expanded}
+			onOpenChange={setExpanded}
+			data-hook-notice-step=""
+			className="flex flex-col w-full min-w-0 py-px"
+		>
+			<Collapsible.Trigger
+				hideCaret
+				data-cds-row=""
+				className={`group/step flex ${TURN_STATUS_ROW_LAYOUT} items-center gap-g2 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
+				style={TURN_STATUS_ROW_STYLE}
+			>
+				<span ref={rowCut} className={`text-body min-w-0 truncate ${restInk} group-hover/step:text-secondary`}>
+					{CLAUDE_CODE_NOTICE_LABEL}
+				</span>
+				<span className="shrink-0 text-secondary">
+					<ChevronIcon expanded={expanded} size={12} />
+				</span>
+			</Collapsible.Trigger>
+			<Collapsible.Panel>
+				<div data-hook-notice-step-body="" className="flex flex-col gap-1 ps-p6 comfortable:ps-p8">
+					<HookNoticeLine notice={notice} markWarning />
+				</div>
+			</Collapsible.Panel>
+		</Collapsible.Root>
+	);
+}
+
 function StopHookMarker({line}: {line: MessageSessionLine}) {
 	const [expanded, setExpanded] = useState(false);
 	const restInk = useRestInk();
@@ -6535,7 +6607,10 @@ function ToolCallSummary({
 	const bodyId = useId();
 	const statusId = useId();
 	const backgroundOutcomes = useContext(BackgroundOutcomeContext);
-	const {taskNotices, leadingPeers, trailingPeers, hooks} = useMemo(() => splitNotices(notices), [notices]);
+	const {taskNotices, leadingPeers, trailingPeers, hooks, claudeNotices} = useMemo(
+		() => splitNotices(notices),
+		[notices],
+	);
 	const summary = useMemo(
 		() =>
 			summarizeToolCallStats(
@@ -6745,6 +6820,9 @@ function ToolCallSummary({
 								)}
 								{trailingPeers.map((notice) => (
 									<AgentMessageRow key={`notice-${notice.lineIndex}`} message={notice.message} />
+								))}
+								{claudeNotices.map((notice) => (
+									<ClaudeCodeNoticeSteps key={`notice-${notice.lineIndex}`} notice={notice} />
 								))}
 								<BackgroundNoticeRun notices={settledNotices} />
 							</div>

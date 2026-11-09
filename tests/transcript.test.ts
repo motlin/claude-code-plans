@@ -1986,6 +1986,39 @@ describe("system record lines", () => {
 				},
 			]);
 		});
+
+		it("merges notices across a turn_duration line, which upstream's event stream never carries as an item", () => {
+			const records = [
+				{type: "system", subtype: "informational", content: "first", isMeta: true, uuid: "i-1"},
+				sys("turn_duration", {durationMs: 1200, uuid: "d-1"}),
+				sys("agents_killed", {uuid: "k-1"}),
+			];
+			expect(processTranscript(records).lines).toStrictEqual([
+				{
+					type: "hook-notice",
+					notices: [
+						{message: "first", level: "notice", uuid: "i-1"},
+						{message: {notice: "agents_killed"}, level: "notice", uuid: "k-1"},
+					],
+					uuid: "i-1",
+					lineIndex: 0,
+				},
+				{type: "system", subtype: "turn_duration", durationMs: 1200, uuid: "d-1", lineIndex: 1},
+			]);
+		});
+
+		it("still splits notices across a line upstream draws", () => {
+			const records = [
+				{type: "system", subtype: "informational", content: "first", isMeta: true, uuid: "i-1"},
+				sys("compact_boundary", {content: "Conversation compacted", uuid: "c-1"}),
+				{type: "system", subtype: "informational", content: "second", isMeta: true, uuid: "i-2"},
+			];
+			expect(processTranscript(records).lines.map((line) => line.type)).toStrictEqual([
+				"hook-notice",
+				"system",
+				"hook-notice",
+			]);
+		});
 	});
 
 	it("turns a hook-blocked prompt record into one prompt-blocked line", () => {
