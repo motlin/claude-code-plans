@@ -1565,10 +1565,25 @@ export const remoteTriggerActionLabels = {
 	run: "Ran routine",
 } satisfies Record<z.infer<typeof RemoteTriggerActionSchema>, string>;
 
+/** Upstream's failed verb for an errored `RemoteTrigger` per `action`. */
+export const remoteTriggerActionFailedVerbs = {
+	list: "Failed to list routines",
+	get: "Failed to read routine",
+	create: "Failed to create routine",
+	update: "Failed to update routine",
+	run: "Failed to start routine run",
+} satisfies Record<z.infer<typeof RemoteTriggerActionSchema>, string>;
+
 /** `ExitWorktree` `action` (src/lib/tool-input-schemas.ts); upstream reads "Left the worktree" for both. */
 export const exitWorktreeActionLabels = {
 	keep: "Left the worktree",
 	remove: "Left the worktree",
+} satisfies Record<z.infer<typeof ExitWorktreeActionSchema>, string>;
+
+/** Upstream's failed verb for an errored `ExitWorktree` per `action`. */
+export const exitWorktreeActionFailedVerbs = {
+	keep: "Failed to leave the worktree",
+	remove: "Failed to remove the worktree",
 } satisfies Record<z.infer<typeof ExitWorktreeActionSchema>, string>;
 
 /** Agent `run_in_background` / Monitor `persistent` sent as strings (src/lib/tool-input-schemas.ts). */

@@ -1,3 +1,4 @@
+import {infinitive} from "../src/lib/past-tense";
 import {runningToolLabel, toolLabel, toolResultMetaFrom} from "../src/lib/tool-labels";
 import type {ToolLabelCall} from "../src/lib/tool-labels";
 
@@ -103,7 +104,7 @@ describe("toolLabel", () => {
 			noHeading: {verb: "Proposed plan"},
 			planlessApproved: {verb: "Finished planning"},
 			planlessPending: {verb: "Proposed plan"},
-			planlessRejected: {verb: "Proposed plan"},
+			planlessRejected: {verb: "Proposed plan", failedVerb: "Failed to propose plan"},
 			running: {verb: "Proposing plan", meta: "Water"},
 		});
 	});
@@ -561,7 +562,7 @@ describe("benign tool errors", () => {
 			noOpNotErrored: toolLabel({name: "ExitWorktree", input: {action: "keep"}, result: noOp}),
 		}).toStrictEqual({
 			noOp: {verb: "Left the worktree", failedVerb: "No worktree to leave", errorIsBenign: true},
-			otherError: {verb: "Left the worktree"},
+			otherError: {verb: "Left the worktree", failedVerb: "Failed to leave the worktree"},
 			noOpNotErrored: {verb: "Left the worktree"},
 		});
 	});
@@ -577,6 +578,229 @@ describe("runningToolLabel upstream running verbs", () => {
 			enterPlanMode: {verb: "Making a plan"},
 			clearTodos: {verb: "Updating todos"},
 			updateTodos: {verb: "Updating todos"},
+		});
+	});
+});
+
+describe("failed verbs", () => {
+	const failed = (name: string, input: Record<string, unknown> = {}, resultMeta?: ToolLabelCall["resultMeta"]) =>
+		toolLabel(resultMeta === undefined ? {name, input, isError: true} : {name, input, isError: true, resultMeta});
+
+	it("names each errored tool with upstream's failed verb", () => {
+		expect({
+			bashDescribed: failed("Bash", {command: "npm test", description: "Run the tests"}),
+			bashRunning: failed("Bash", {command: "npm test", description: "Running tests"}),
+			bashNoVerb: failed("Bash", {command: "npm test", description: "Mobile audit"}),
+			bashBare: failed("Bash", {command: "npm test"}),
+			bashGit: failed("Bash", {command: "git push"}, {gitOperation: {push: {branch: "main"}}}),
+			read: failed("Read", {file_path: "/a/x.ts"}),
+			write: failed("Write", {file_path: "/a/x.ts"}),
+			edit: failed("Edit", {file_path: "/a/x.ts"}),
+			multiEdit: failed("MultiEdit", {file_path: "/a/x.ts"}),
+			notebookEdit: failed("NotebookEdit", {notebook_path: "/a/x.ipynb"}),
+			grep: failed("Grep", {pattern: "TODO"}),
+			glob: failed("Glob", {pattern: "*.ts"}),
+			ls: failed("LS", {path: "/repo"}),
+			webFetch: failed("WebFetch", {url: "https://x.dev"}),
+			webSearch: failed("WebSearch", {query: "zod"}),
+			agent: failed("Agent", {description: "Audit the sidebar", prompt: "go"}),
+			agentNoVerb: failed("Agent", {description: "Sidebar audit", prompt: "go"}),
+			agentBare: failed("Agent", {prompt: "go"}),
+			skill: failed("Skill", {skill: "git:commit"}),
+			taskGet: failed("TaskGet", {taskId: "3"}),
+			taskList: failed("TaskList"),
+			taskCreate: failed("TaskCreate", {subject: "Ship it"}),
+			taskUpdate: failed("TaskUpdate", {taskId: "3", status: "completed"}),
+			taskStop: failed("TaskStop", {task_id: "b1"}),
+			todoWrite: failed("TodoWrite", {todos: [{content: "x"}]}),
+			askUserQuestion: failed("AskUserQuestion", {questions: [{header: "Pick"}]}),
+			enterPlanMode: failed("EnterPlanMode"),
+			exitPlanMode: failed("ExitPlanMode", {plan: "## Plan"}),
+			enterWorktreePath: failed("EnterWorktree", {path: "/w/feature"}),
+			enterWorktreeNew: failed("EnterWorktree", {name: "feature"}),
+			exitWorktreeKeep: failed("ExitWorktree", {action: "keep"}),
+			exitWorktreeRemove: failed("ExitWorktree", {action: "remove"}),
+			artifactPublish: failed("Artifact", {file_path: "/a/page.html"}),
+			artifactPin: failed("Artifact", {action: "pin"}),
+			artifactUnpin: failed("Artifact", {action: "unpin"}),
+			artifactList: failed("Artifact", {action: "list"}),
+			artifactRead: failed("Artifact", {action: "read"}),
+			sendUserMessage: failed("SendUserMessage", {message: "hi"}),
+			sendUserFile: failed("SendUserFile"),
+			pushNotification: failed("PushNotification"),
+			messageAgent: failed("SendMessage", {to: "a0123456789abcdef", message: "hi"}),
+			messageSession: failed("SendMessage", {to: "uds:/tmp/x", message: "hi"}),
+			messageTeammate: failed("SendMessage", {to: "lead", message: "hi"}),
+			wakeup: failed("ScheduleWakeup", {reason: "poll"}),
+			wakeupStop: failed("ScheduleWakeup", {stop: true}),
+			cronOnce: failed("CronCreate", {prompt: "<<tick>>", recurring: false}),
+			cronLoop: failed("CronCreate", {prompt: "<<tick>>"}),
+			routinesList: failed("RemoteTrigger", {action: "list"}),
+			routinesGet: failed("RemoteTrigger", {action: "get"}),
+			routinesCreate: failed("RemoteTrigger", {action: "create"}),
+			routinesUpdate: failed("RemoteTrigger", {action: "update"}),
+			routinesRun: failed("RemoteTrigger", {action: "run"}),
+			monitor: failed("Monitor", {command: "tail"}),
+			workflow: failed("Workflow", {scriptPath: "/x/wf.js"}),
+			cronDelete: failed("CronDelete", {id: "1"}),
+			cronList: failed("CronList"),
+			reportFindings: failed("ReportFindings"),
+			toolSearch: failed("ToolSearch", {query: "x"}),
+			lsp: failed("LSP"),
+			listMcpResources: failed("ListMcpResourcesTool"),
+			readMcpResource: failed("ReadMcpResourceTool"),
+			readMcpResourceDir: failed("ReadMcpResourceDirTool"),
+			taskOutput: failed("TaskOutput"),
+			waitForMcpServers: failed("WaitForMcpServers"),
+			refreshMcpTools: failed("RefreshMcpTools"),
+			sendFeedback: failed("SendFeedback"),
+			mcp: failed("mcp__claude-in-chrome__navigate", {url: "https://x.dev"}),
+			unknown: failed("Mystery"),
+		}).toStrictEqual({
+			bashDescribed: {
+				verb: "Ran",
+				meta: "Run the tests",
+				doneLabel: "Ran the tests",
+				failedVerb: "Failed to run",
+				failedLabel: "Failed to run the tests",
+			},
+			bashRunning: {
+				verb: "Ran",
+				meta: "Running tests",
+				doneLabel: "Running tests",
+				failedVerb: "Failed to run",
+				failedLabel: "Failed to run tests",
+			},
+			bashNoVerb: {verb: "Ran", meta: "Mobile audit", doneLabel: "Mobile audit", failedVerb: "Failed to run"},
+			bashBare: {verb: "Ran", meta: "npm test", doneLabel: "npm test", failedVerb: "Failed to run"},
+			bashGit: {verb: "Ran", meta: "git push", doneLabel: "git push", failedVerb: "Failed to run"},
+			read: {verb: "Read", failedVerb: "Failed to read"},
+			write: {verb: "Created", failedVerb: "Failed to write"},
+			edit: {verb: "Edited", failedVerb: "Failed to edit"},
+			multiEdit: {verb: "Edited", failedVerb: "Failed to edit"},
+			notebookEdit: {verb: "Edited", failedVerb: "Failed to edit"},
+			grep: {verb: "Searched", failedVerb: "Failed to search"},
+			glob: {verb: "Searched", failedVerb: "Failed to search files"},
+			ls: {verb: "Listed", failedVerb: "Failed to list"},
+			webFetch: {verb: "Fetched", failedVerb: "Failed to fetch"},
+			webSearch: {verb: "Searched web", failedVerb: "Failed to search web"},
+			agent: {
+				verb: "Ran agent",
+				meta: "Audit the sidebar",
+				doneLabel: "Audited the sidebar",
+				failedVerb: "Failed to run agent",
+				failedLabel: "Failed to audit the sidebar",
+			},
+			agentNoVerb: {
+				verb: "Ran agent",
+				meta: "Sidebar audit",
+				doneLabel: "Sidebar audit",
+				failedVerb: "Failed to run agent",
+			},
+			agentBare: {verb: "Ran agent", failedVerb: "Failed to run agent"},
+			skill: {verb: "Ran skill", meta: "/git:commit", metaIsCode: true, failedVerb: "Failed to run skill"},
+			taskGet: {verb: "Read task", failedVerb: "Failed to read task"},
+			taskList: {verb: "Listed tasks", failedVerb: "Failed to list tasks"},
+			taskCreate: {verb: "Added task", failedVerb: "Failed to add task"},
+			taskUpdate: {verb: "Completed task", failedVerb: "Failed to update task"},
+			taskStop: {verb: "Stopped task", failedVerb: "Failed to stop task"},
+			todoWrite: {verb: "Updated todos"},
+			askUserQuestion: {verb: "Asked", meta: "“Pick”", doneLabel: "Asked “Pick”"},
+			enterPlanMode: {verb: "Started planning", failedVerb: "Failed to start planning"},
+			exitPlanMode: {verb: "Proposed plan", meta: "Plan", failedVerb: "Failed to propose plan"},
+			enterWorktreePath: {
+				verb: "Entered a worktree",
+				meta: "feature",
+				failedVerb: "Failed to enter the worktree",
+			},
+			enterWorktreeNew: {verb: "Created a worktree", meta: "feature", failedVerb: "Failed to create a worktree"},
+			exitWorktreeKeep: {verb: "Left the worktree", failedVerb: "Failed to leave the worktree"},
+			exitWorktreeRemove: {verb: "Left the worktree", failedVerb: "Failed to remove the worktree"},
+			artifactPublish: {verb: "Published artifact", meta: "page.html", failedVerb: "Failed to publish artifact"},
+			artifactPin: {verb: "Pinned artifact", failedVerb: "Failed to pin artifact"},
+			artifactUnpin: {verb: "Unpinned artifact", failedVerb: "Failed to unpin artifact"},
+			artifactList: {verb: "Listed artifacts", failedVerb: "Failed to list artifacts"},
+			artifactRead: {verb: "Used artifact tool", meta: "read", failedVerb: "Failed to run artifact action"},
+			sendUserMessage: {verb: "Sent", failedVerb: "Failed to send"},
+			sendUserFile: {verb: "Sent", failedVerb: "Failed to send"},
+			pushNotification: {verb: "Sent notification", failedVerb: "Failed to send notification"},
+			messageAgent: {verb: "Messaged agent", meta: "hi", failedVerb: "Failed to message agent"},
+			messageSession: {verb: "Messaged another session", failedVerb: "Failed to message another session"},
+			messageTeammate: {verb: "Messaged @lead", meta: "hi", failedVerb: "Failed to message @lead"},
+			wakeup: {verb: "Scheduled check-in", meta: "poll", failedVerb: "Failed to schedule check-in"},
+			wakeupStop: {verb: "Stopped loop", failedVerb: "Failed to stop loop"},
+			cronOnce: {verb: "Scheduled prompt", failedVerb: "Failed to schedule prompt"},
+			cronLoop: {verb: "Started loop", failedVerb: "Failed to start loop"},
+			routinesList: {verb: "Listed routines", failedVerb: "Failed to list routines"},
+			routinesGet: {verb: "Read routine", failedVerb: "Failed to read routine"},
+			routinesCreate: {verb: "Created routine", failedVerb: "Failed to create routine"},
+			routinesUpdate: {verb: "Updated routine", failedVerb: "Failed to update routine"},
+			routinesRun: {verb: "Ran routine", failedVerb: "Failed to start routine run"},
+			monitor: {verb: "Started watching background command", failedVerb: "Failed to start watching"},
+			workflow: {verb: "Ran workflow", meta: "wf", failedVerb: "Failed to run workflow"},
+			cronDelete: {verb: "Stopped scheduled prompt", failedVerb: "Failed to stop scheduled prompt"},
+			cronList: {verb: "Listed scheduled prompts", failedVerb: "Failed to list scheduled prompts"},
+			reportFindings: {verb: "Reported review findings", failedVerb: "Failed to report review findings"},
+			toolSearch: {verb: "Loaded tools", failedVerb: "Failed to load tools"},
+			lsp: {verb: "Inspected code", failedVerb: "Failed to inspect code"},
+			listMcpResources: {verb: "Listed resources", failedVerb: "Failed to list resources"},
+			readMcpResource: {verb: "Read resource", failedVerb: "Failed to read resource"},
+			readMcpResourceDir: {verb: "Listed resource folder", failedVerb: "Failed to list resource folder"},
+			taskOutput: {verb: "Read task output", failedVerb: "Failed to read task output"},
+			waitForMcpServers: {verb: "Loaded connectors", failedVerb: "Failed to load connectors"},
+			refreshMcpTools: {verb: "Refreshed tools", failedVerb: "Failed to refresh tools"},
+			sendFeedback: {verb: "Sent feedback", failedVerb: "Failed to send feedback"},
+			mcp: {verb: "Used claude-in-chrome: navigate", failedVerb: "Failed to use claude-in-chrome: navigate"},
+			unknown: {verb: "Used Mystery", failedVerb: "Failed to use Mystery"},
+		});
+	});
+
+	it("leaves the failed forms off a call that did not error", () => {
+		expect(toolLabel({name: "Read", input: {file_path: "/a/x.ts"}, isError: false})).toStrictEqual({verb: "Read"});
+	});
+});
+
+describe("infinitive", () => {
+	it("reads a description's leading verb as an infinitive", () => {
+		expect({
+			base: infinitive("Run the tests"),
+			running: infinitive("Running tests"),
+			writing: infinitive("Writing config"),
+			polling: infinitive("Polling PR #1"),
+			checking: infinitive("Checking status"),
+			lower: infinitive("check status"),
+			noVerb: infinitive("foo bar"),
+			empty: infinitive(""),
+		}).toStrictEqual({
+			base: "run the tests",
+			running: "run tests",
+			writing: "write config",
+			polling: "poll PR #1",
+			checking: "check status",
+			lower: "check status",
+			noVerb: undefined,
+			empty: undefined,
+		});
+	});
+});
+
+describe("completed-but-failed task calls", () => {
+	const labelOf = (name: string, input: Record<string, unknown>, toolUseResult: unknown) =>
+		toolLabel({name, input, resultMeta: toolResultMetaFrom(toolUseResult, {name, input})});
+
+	it("names a TaskGet that found no task and a TaskUpdate that reports failure as failed, done", () => {
+		expect({
+			taskGetMissing: labelOf("TaskGet", {taskId: "3"}, {task: null}),
+			taskGetFound: labelOf("TaskGet", {taskId: "3"}, {task: {id: "3", subject: "Ship it"}}),
+			taskUpdateFailed: labelOf("TaskUpdate", {taskId: "3", status: "completed"}, {success: false}),
+			taskUpdateOk: labelOf("TaskUpdate", {taskId: "3", status: "completed"}, {success: true}),
+			otherToolNullTask: labelOf("TaskList", {}, {task: null}),
+		}).toStrictEqual({
+			taskGetMissing: {verb: "Failed to read task"},
+			taskGetFound: {verb: "Read task"},
+			taskUpdateFailed: {verb: "Failed to update task"},
+			taskUpdateOk: {verb: "Completed task"},
+			otherToolNullTask: {verb: "Listed tasks"},
 		});
 	});
 });

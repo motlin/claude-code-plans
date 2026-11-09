@@ -428,3 +428,25 @@ export function pastTense(description: string): string {
 	if (!isBareWord(word) || !KNOWN_VERBS.has(word.toLowerCase())) return description;
 	return indent + matchCapital(word, pastOf(word)) + pastTenseFollowingVerbs(rest);
 }
+
+/** The known base verb a progressive word ("running", "writing", "polling") inflects, if any. */
+function baseOfProgressive(word: string): string | undefined {
+	if (word.length <= 4 || !word.endsWith("ing")) return undefined;
+	const stem = word.slice(0, -3);
+	const candidates = [stem, `${stem}e`, stem.slice(0, -1), stem.endsWith("y") ? `${stem.slice(0, -1)}ie` : ""];
+	return candidates.find((candidate) => (candidate.length > 1 ? KNOWN_VERBS.has(candidate) : false));
+}
+
+/**
+ * Upstream's infinitive of a Bash or subagent description, for its failed label
+ * ("Failed to run the tests"): the leading known verb lowercased, or the base of a
+ * leading progressive verb ("Running tests" -> "run tests"). Undefined when the
+ * description opens with no verb upstream knows.
+ */
+export function infinitive(description: string): string | undefined {
+	const [, word, rest] = /^\s*([A-Za-z]+)((?![-\w])[\s\S]*)$/.exec(description) ?? [];
+	if (word === undefined || rest === undefined) return undefined;
+	const lower = word.toLowerCase();
+	const base = KNOWN_VERBS.has(lower) ? lower : baseOfProgressive(lower);
+	return base === undefined ? undefined : base + rest;
+}

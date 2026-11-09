@@ -2,15 +2,17 @@ import type {z} from "zod";
 import type {GitOperation} from "./schemas";
 import {FileEditToolUseResultSchema, GitOperationSchema} from "./runtime-schemas";
 import {
+	exitWorktreeActionFailedVerbs,
 	exitWorktreeActionLabels,
 	gitBranchActionLabels,
 	gitCommitKindLabels,
 	gitPrActionLabels,
+	remoteTriggerActionFailedVerbs,
 	remoteTriggerActionLabels,
 } from "./schema-choices";
 import {planHeadingMeta, planText} from "./exit-plan-mode";
 import {isRecord} from "./narrow";
-import {pastTense, startsWithKnownVerb} from "./past-tense";
+import {infinitive, pastTense, startsWithKnownVerb} from "./past-tense";
 import type {ReadFileLines} from "./tool-runs";
 import {AskUserQuestionResultSchema, ExitWorktreeActionSchema, RemoteTriggerActionSchema} from "./tool-input-schemas";
 import {workflowCallName} from "./workflow-name";
@@ -34,6 +36,11 @@ export interface ToolResultMeta {
 	answers?: Readonly<Record<string, {answer: string; notes: string | null}>>;
 	/** The lines a Read result reports it returned, for upstream's range suffix. */
 	readFile?: ReadFileLines;
+	/**
+	 * A TaskGet that found no task or a TaskUpdate that reported `success: false`:
+	 * upstream names the call failed though its result is not an error.
+	 */
+	taskFailed?: true;
 }
 
 export interface ToolLabelCall {
@@ -69,8 +76,13 @@ export interface ToolLabel {
 	metaIsCode?: true;
 	metaHref?: string;
 	doneLabel?: string;
-	/** Upstream's `failedVerb`: what an errored call is named where its error is benign. */
+	/**
+	 * Upstream's `failedVerb`, set on errored calls only: what the call is named once
+	 * it failed ("Failed to read"), and the done label of a benign error.
+	 */
 	failedVerb?: string;
+	/** Upstream's `failedLabel` for an errored Bash or subagent call: "Failed to {infinitive(description)}". */
+	failedLabel?: string;
 	/** Upstream's `errorIsBenign`: the call errored, but the row settles done under its `failedVerb`. */
 	errorIsBenign?: true;
 }
@@ -159,8 +171,16 @@ function readFileLines(file: unknown): ReadFileLines | undefined {
 		: {filePath, startLine, numLines, endsWithNewline};
 }
 
+/** Upstream's completed-but-failed task call: a TaskGet with `task: null`, a TaskUpdate with `success: false`. */
+function reportsTaskFailure(toolUseResult: Record<string, unknown>, call: ToolResultCall | undefined): boolean {
+	if (call?.name === "TaskGet") return "task" in toolUseResult && toolUseResult["task"] === null;
+	if (call?.name === "TaskUpdate") return toolUseResult["success"] === false;
+	return false;
+}
+
 export function toolResultMetaFrom(toolUseResult: unknown, call?: ToolResultCall): ToolResultMeta | undefined {
 	if (typeof toolUseResult !== "object" || toolUseResult === null) return undefined;
+	if (isRecord(toolUseResult) && reportsTaskFailure(toolUseResult, call)) return {taskFailed: true};
 	if ("type" in toolUseResult && toolUseResult.type === "text" && "file" in toolUseResult) {
 		const readFile = readFileLines(toolUseResult.file);
 		return readFile === undefined ? undefined : {readFile};
@@ -403,7 +423,8 @@ function gitLabel(git: GitOperation): ToolLabel | null {
 }
 
 function bashLabel(call: ToolLabelCall): ToolLabel {
-	const git = call.resultMeta?.gitOperation;
+	// Upstream reads no git action from an errored call's result.
+	const git = call.isError === true ? undefined : call.resultMeta?.gitOperation;
 	const gitVerb = git === undefined ? null : gitLabel(git);
 	if (gitVerb !== null) return gitVerb;
 	const description = stringInput(call.input, "description");
@@ -582,9 +603,132 @@ export function runningToolLabelText(label: RunningToolLabel): string {
 	return label.label ?? (label.meta === undefined ? label.verb : `${label.verb} ${label.meta}`);
 }
 
+/**
+ * Upstream's label record for a tool call. An errored call also carries the
+ * `failedVerb` (and, for a described Bash or subagent call, the `failedLabel`)
+ * upstream names it with once it failed.
+ */
 export function toolLabel(call: ToolLabelCall): ToolLabel {
+	const label = baseToolLabel(call);
+	if (call.isError !== true || label.failedVerb !== undefined) return label;
+	const failedVerb = failedVerbOf(call, label);
+	if (failedVerb === undefined) return label;
+	const failedLabel = failedLabelOf(call);
+	return failedLabel === undefined ? {...label, failedVerb} : {...label, failedVerb, failedLabel};
+}
+
+/** Upstream's failed verbs for tools whose failed name does not depend on the input. */
+const FIXED_FAILED_VERBS: Readonly<Record<string, string>> = {
+	Bash: "Failed to run",
+	PowerShell: "Failed to run",
+	Read: "Failed to read",
+	Write: "Failed to write",
+	Edit: "Failed to edit",
+	MultiEdit: "Failed to edit",
+	NotebookEdit: "Failed to edit",
+	Grep: "Failed to search",
+	Glob: "Failed to search files",
+	LS: "Failed to list",
+	WebFetch: "Failed to fetch",
+	WebSearch: "Failed to search web",
+	Agent: "Failed to run agent",
+	Task: "Failed to run agent",
+	Skill: "Failed to run skill",
+	TaskGet: "Failed to read task",
+	TaskList: "Failed to list tasks",
+	TaskCreate: "Failed to add task",
+	TaskUpdate: "Failed to update task",
+	TaskStop: "Failed to stop task",
+	EnterPlanMode: "Failed to start planning",
+	ExitPlanMode: "Failed to propose plan",
+	SendUserMessage: "Failed to send",
+	SendUserFile: "Failed to send",
+	PushNotification: "Failed to send notification",
+	Monitor: "Failed to start watching",
+	Workflow: "Failed to run workflow",
+	CronDelete: "Failed to stop scheduled prompt",
+	CronList: "Failed to list scheduled prompts",
+	ReportFindings: "Failed to report review findings",
+	ToolSearch: "Failed to load tools",
+	LSP: "Failed to inspect code",
+	ListMcpResourcesTool: "Failed to list resources",
+	ReadMcpResourceTool: "Failed to read resource",
+	ReadMcpResourceDirTool: "Failed to list resource folder",
+	TaskOutput: "Failed to read task output",
+	WaitForMcpServers: "Failed to load connectors",
+	RefreshMcpTools: "Failed to refresh tools",
+	SendFeedback: "Failed to send feedback",
+};
+
+function artifactFailedVerb(input: Record<string, unknown>): string {
+	switch (stringInput(input, "action")) {
+		case null:
+		case "publish":
+			return "Failed to publish artifact";
+		case "pin":
+			return "Failed to pin artifact";
+		case "unpin":
+			return "Failed to unpin artifact";
+		case "list":
+			return "Failed to list artifacts";
+		default:
+			return "Failed to run artifact action";
+	}
+}
+
+function sendMessageFailedVerb(call: ToolLabelCall, verb: string): string {
+	if (verb === "Messaged agent") return "Failed to message agent";
+	if (verb === "Messaged another session") return "Failed to message another session";
+	return `Failed to message @${stringInput(call.input, "to") ?? ""}`;
+}
+
+/** Upstream's failed verb for an errored call, or undefined for a tool upstream gives none. */
+function failedVerbOf(call: ToolLabelCall, label: ToolLabel): string | undefined {
+	const {name, input} = call;
+	const generic = label.verb.startsWith("Used ") ? `Failed to use ${label.verb.slice("Used ".length)}` : undefined;
+	if (call.invalidInput === true) return generic;
+	const fixed = FIXED_FAILED_VERBS[name];
+	if (fixed !== undefined) return fixed;
+	switch (name) {
+		case "EnterWorktree":
+			return stringInput(input, "path") === null ? "Failed to create a worktree" : "Failed to enter the worktree";
+		case "ExitWorktree": {
+			const action = ExitWorktreeActionSchema.safeParse(input["action"]);
+			return exitWorktreeActionFailedVerbs[action.success ? action.data : "keep"];
+		}
+		case "Artifact":
+			return artifactFailedVerb(input);
+		case "SendMessage":
+			return sendMessageFailedVerb(call, label.verb);
+		case "ScheduleWakeup":
+			return input["stop"] === true ? "Failed to stop loop" : "Failed to schedule check-in";
+		case "CronCreate":
+			return input["recurring"] === false ? "Failed to schedule prompt" : "Failed to start loop";
+		case "RemoteTrigger": {
+			const action = RemoteTriggerActionSchema.safeParse(input["action"]);
+			return action.success ? remoteTriggerActionFailedVerbs[action.data] : generic;
+		}
+		case "TodoWrite":
+		case "AskUserQuestion":
+		case "SubagentHandback":
+			return undefined;
+	}
+	return generic;
+}
+
+/** "Failed to run the tests" for a Bash or subagent description that opens with a known verb. */
+function failedLabelOf(call: ToolLabelCall): string | undefined {
+	if (call.invalidInput === true) return undefined;
+	if (!["Bash", "PowerShell", "Agent", "Task"].includes(call.name)) return undefined;
+	const description = stringInput(call.input, "description");
+	const action = description === null ? undefined : infinitive(description);
+	return action === undefined ? undefined : `Failed to ${action}`;
+}
+
+function baseToolLabel(call: ToolLabelCall): ToolLabel {
 	const {name, input} = call;
 	if (call.invalidInput === true) return genericToolLabel(name);
+	if (name === "TaskGet" && call.resultMeta?.taskFailed === true) return {verb: "Failed to read task"};
 	const fixed = FIXED_LABELS[name];
 	if (fixed) return {...fixed};
 
@@ -616,7 +760,7 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
 		case "RemoteTrigger":
 			return remoteTriggerLabel(input);
 		case "TaskUpdate":
-			return {verb: taskUpdateVerb(input)};
+			return {verb: call.resultMeta?.taskFailed === true ? "Failed to update task" : taskUpdateVerb(input)};
 		case "TodoWrite": {
 			const todos = input["todos"];
 			const cleared = Array.isArray(todos) && todos.length === 0;
