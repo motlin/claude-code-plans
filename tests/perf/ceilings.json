@@ -91,10 +91,10 @@
 		"raisedAt": "2026-11-09"
 	},
 	"client.coldHome.default.responseBytes": {
-		"ceiling": 7441,
+		"ceiling": 7471,
 		"unit": "bytes",
 		"tolerance": 0,
-		"reason": "The composer defaults carry repoDefaultMode, and the home composer also fetches them for the selected folder (folder-permission-mode-memory T4): +171 bytes (7270 to 7441). Before that: session list items carry lastUserMessage (sidebar-row-metadata-line T2), +663 bytes (6607 to 7270).",
+		"reason": "/api/prompt-history returns {prompts, bashCommands} instead of a bare array, so bash mode's ↑/↓ walk the session's shell commands (composer-bash-mode T4): +30 bytes (7441 to 7471). Before that: the composer defaults carry repoDefaultMode, and the home composer also fetches them for the selected folder (folder-permission-mode-memory T4): +171 bytes (7270 to 7441). Before that: session list items carry lastUserMessage (sidebar-row-metadata-line T2), +663 bytes (6607 to 7270).",
 		"raisedAt": "2026-11-09"
 	},
 	"client.composer.home.slashMenu.claudeEventsConsumers": {
@@ -663,9 +663,11 @@
 		"tolerance": 0
 	},
 	"server.coldLoad.promptHistory.resp.bytes": {
-		"ceiling": 2,
+		"ceiling": 32,
 		"unit": "bytes",
-		"tolerance": 0
+		"tolerance": 0,
+		"reason": "The empty response is {\"prompts\":[],\"bashCommands\":[]} instead of [], so bash mode's ↑/↓ walk the session's shell commands (composer-bash-mode T4): 2 to 32 bytes.",
+		"raisedAt": "2026-11-09"
 	},
 	"server.coldLoad.promptHistory.sql.count": {
 		"ceiling": 0,

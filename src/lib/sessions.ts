@@ -346,17 +346,6 @@ export class FirstUserMessageCollector {
  * once the harness tags the bubble hides (`<task-notification>`,
  * `<system-reminder>`, ...) are stripped.
  */
-function typedPromptText(line: string): string | null {
-	let obj: unknown;
-	try {
-		obj = JSON.parse(line);
-	} catch {
-		return null;
-	}
-	return typedRecordPromptText(obj);
-}
-
-/** typedPromptText for a record the caller already parsed. */
 export function typedRecordPromptText(obj: unknown): string | null {
 	if (!isRecord(obj) || obj["type"] !== "user") return null;
 	if (obj["isMeta"] === true || obj["isCompactSummary"] === true || obj["isVisibleInTranscriptOnly"] === true) {
@@ -377,20 +366,49 @@ export function typedRecordPromptText(obj: unknown): string | null {
 	return null;
 }
 
-/** Every prompt the user typed into a session, oldest first, as its bubble shows it; harness-injected records are skipped. */
-export async function readSessionPrompts(filePath: string): Promise<string[]> {
+/** The command of a typed `! command` record (`<bash-input>`), as upstream's bash history extractor reads it. */
+function typedRecordBashCommand(obj: unknown): string | null {
+	if (!isRecord(obj) || obj["type"] !== "user" || obj["isMeta"] === true) return null;
+	const message = RawMessageSchema.safeParse(obj["message"]);
+	const content = message.success ? message.data.content : undefined;
+	if (content === undefined) return null;
+	const texts =
+		typeof content === "string"
+			? [content]
+			: content.flatMap((block) => (block.type === "text" && typeof block.text === "string" ? [block.text] : []));
+	for (const text of texts) {
+		const command = parseBashInput(text)?.command;
+		if (command !== undefined && command.trim() !== "") return command;
+	}
+	return null;
+}
+
+/**
+ * Every prompt the user typed into a session, oldest first, as its bubble shows it, and every `! command` they
+ * ran, oldest first; harness-injected records are skipped.
+ */
+export async function readSessionPrompts(filePath: string): Promise<{prompts: string[]; bashCommands: string[]}> {
 	const rl = createLineReader(createReadStream(filePath, {encoding: "utf-8"}));
 	const prompts: string[] = [];
+	const bashCommands: string[] = [];
 	try {
 		for await (const line of rl) {
 			if (!line.trim()) continue;
-			const prompt = typedPromptText(line);
+			let obj: unknown;
+			try {
+				obj = JSON.parse(line);
+			} catch {
+				continue;
+			}
+			const prompt = typedRecordPromptText(obj);
 			if (prompt !== null) prompts.push(prompt);
+			const command = typedRecordBashCommand(obj);
+			if (command !== null) bashCommands.push(command);
 		}
 	} finally {
 		await rl.close();
 	}
-	return prompts;
+	return {prompts, bashCommands};
 }
 
 async function readSessionMessageCount(filePath: string): Promise<number> {

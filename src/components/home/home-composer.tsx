@@ -267,7 +267,7 @@ export function HomeComposer({
 					/>
 				}
 				{...slashMenu}
-				promptHistory={promptHistory}
+				promptHistory={promptHistory?.prompts}
 				subscribePrefill={onHomeComposerPrefillRequest}
 				bypassPermissionsAllowed={bypassPermissionsAllowed}
 				permissionCwd={project?.projectPath}

@@ -1570,7 +1570,8 @@ function SessionView({
 															live={liveLaunchAvailable ? liveLaunch : undefined}
 															mentionSessionId={sessionId}
 															mentionCwd={sessionDirectory}
-															promptHistory={promptHistory}
+															promptHistory={promptHistory?.prompts}
+															bashHistory={promptHistory?.bashCommands}
 															rewind={composerRewind}
 															onShellCommand={runShellCommand}
 														/>

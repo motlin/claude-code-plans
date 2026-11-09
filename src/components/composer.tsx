@@ -110,11 +110,17 @@ import {Icon} from "./ui/icon";
 import {Tooltip} from "./ui/tooltip";
 import {startComposerKeystrokeJourney, startComposerSubmitJourneys} from "../lib/perf/field-journeys";
 import {SESSION_COMPOSER_PLACEHOLDER} from "../lib/composer-pending-gate";
-import {isShellCommandText, shellCommandUnavailableMessage} from "../lib/composer-shell-command";
+import {
+	HIDDEN_CHARACTERS_REFUSAL,
+	hasHiddenCharacters,
+	isShellCommandText,
+	shellCommandUnavailableMessage,
+} from "../lib/composer-shell-command";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
 import {WorkingPlaceholderText} from "./composer-working-placeholder";
 import {showsWorkingPlaceholder, workingPlaceholder} from "../lib/working-placeholder";
 import {useBashHighlight} from "../hooks/use-bash-highlight";
+import {useIsOverflowing} from "../hooks/use-is-overflowing";
 import {type SplitItem, SplitDropdownButton} from "./ui/split-dropdown-button";
 import {useFileDropTarget} from "./composer-drop-scrim";
 import {ComposerSkillChip} from "./composer-skill-chip";
@@ -150,6 +156,11 @@ const PAINTED_OVERLAY_CLASS = `${GHOST_OVERLAY_CLASS} left-[30px] comfortable:le
  * the empty editor past h28. The second line of a too-wide placeholder is clipped.
  */
 const PLACEHOLDER_OVERLAY_CLASS = `${PAINTED_OVERLAY_CLASS} text-placeholder select-none`;
+
+/** Upstream `.epitaxy-prompt[data-bash-mode]`: the editor, placeholder, probe and painted command take the mono face. */
+function bashFont(className: string, bashMode: boolean): string {
+	return bashMode ? className.replace("font-sans", "font-mono") : className;
+}
 
 /** Upstream's inline visually-hidden style for the argument hint's live twin. */
 const SR_ONLY_STYLE: CSSProperties = {
@@ -246,6 +257,8 @@ interface ComposerProps {
 	forkLabel?: string | undefined;
 	/** Prior prompts, newest first, that ↑/↓ walk like a shell history. */
 	promptHistory?: readonly string[] | undefined;
+	/** The session's prior shell commands, newest first, that ↑/↓ walk in bash mode (upstream getBashHistory). */
+	bashHistory?: readonly string[] | undefined;
 	/** Subscribes to requests that replace the draft, focus it and put the caret at the end. */
 	subscribePrefill?: ((listener: (text: string) => void) => () => void) | undefined;
 	/** Upstream's `isPanelActive`: only the active pane's composer gives its file input the upload id and takes type-to-focus keys. */
@@ -291,11 +304,22 @@ const REWIND_UNSUPPORTED = "Rewind isn’t available for this session.";
 const REWIND_OFFLINE = "Rewind is unavailable while the computer running this session is offline.";
 /** Upstream's bash-mode placeholder for a session whose terminal runs the command (`voKGw/`). */
 const BASH_PLACEHOLDER = "Run a shell command in the terminal and send the output to Claude";
-/** Upstream gUdQrb: prefilled or taken-back text refused while bash mode holds a command. */
-const BASH_ADD_REFUSAL =
+/** Upstream yg5Igg: the bash placeholder when the full one doesn't fit on one line. */
+const BASH_COMPACT_PLACEHOLDER = "Run, send output to Claude";
+/** Upstream's placeholder fit probe (`[data-placeholder-fit-probe]`): the full text on one invisible line. */
+const PLACEHOLDER_FIT_PROBE_CLASS =
+	"invisible me-px whitespace-nowrap before:content-[attr(data-placeholder-fit-probe)]";
+/** Upstream gUdQrb: text added while chat text reads as a `! command`. */
+const COMMAND_IN_BOX_REFUSAL =
 	"A command is in the message box, so nothing was added. Send or clear it first, then try again.";
-/** Upstream `Pu.bashStatus`, the editor's `aria-description` in bash mode. */
+/** Upstream uXFFUp (`Tu.bashRefusal`): text added while bash mode is on. */
+const BASH_MODE_REFUSAL =
+	"Bash mode is on, so nothing was added. Press Backspace in the empty message box to return to chat, then try again.";
+/** Upstream UfDkK7: a take-back refused over a draft, bash mode included. */
+const TAKE_BACK_DRAFT_REFUSAL = "The input already has a draft. Clear it to pull this message back in.";
+/** Upstream `Pu.bashStatus` / "Chat mode": the sr-only status region's text where bash mode is available. */
 const BASH_STATUS = "Bash mode. Press Escape to return to chat.";
+const CHAT_STATUS = "Chat mode";
 /** Upstream's Badge `variant:"pro" size:"sm"` pill in the actions' trailing slot. */
 const BASH_PILL_CLASS =
 	"inline-flex h-5 shrink-0 items-center whitespace-nowrap rounded-full px-2 align-middle font-sans text-caption font-medium bg-[var(--pro-tint)] text-[var(--text-pro)]";
@@ -619,6 +643,7 @@ export function Composer({
 	onSendAndStay,
 	forkLabel = "Fork with this prompt",
 	promptHistory = NO_HISTORY,
+	bashHistory = NO_HISTORY,
 	subscribePrefill,
 	active = true,
 	rewind,
@@ -632,8 +657,6 @@ export function Composer({
 		clear: clearDraft,
 	} = useComposerDraft(draftKey);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
-	// Only the active pane's composer takes keys typed outside any field (upstream `paneOwnsTypeToFocus`).
-	useTypeToFocus(textareaRef, active && !disabled);
 	// Optional: composers rendered outside the app shell (tests, previews) have no toaster.
 	const toast = useContext(ToastContext);
 	// The session's Background tasks pane, which `/workflows` opens; null on the home composer.
@@ -778,17 +801,44 @@ export function Composer({
 	const draftKeyRef = useRef(draftKey);
 	draftKeyRef.current = draftKey;
 	const waitingSendRef = useRef(false);
-	/** Upstream's prefill and take-back paths add nothing while a command is in the box (`isBashMode()`, gUdQrb). */
-	const refuseInBashMode = useCallback((): boolean => {
-		if (!bashModeRef.current) return false;
-		toast?.({kind: "error", message: BASH_ADD_REFUSAL});
-		return true;
-	}, [toast]);
+	/**
+	 * Upstream's prefill, insert and take-back paths add nothing while a command is in the box: bash mode refuses
+	 * an add with uXFFUp and a take-back with the draft message, and chat text reading as `! command` refuses an add.
+	 */
+	const refuseCommandInBox = useCallback(
+		(kind: "add" | "takeBack"): boolean => {
+			const message = bashModeRef.current
+				? kind === "add"
+					? BASH_MODE_REFUSAL
+					: TAKE_BACK_DRAFT_REFUSAL
+				: kind === "add" && isShellCommandText(promptRef.current)
+					? COMMAND_IN_BOX_REFUSAL
+					: null;
+			if (message === null) return false;
+			toast?.({kind: "error", message});
+			return true;
+		},
+		[toast],
+	);
+	const bashAvailableRef = useRef(false);
+	bashAvailableRef.current = onShellCommand !== undefined;
+	/** Upstream `Tc`: a routed `!` into the empty composer enters bash mode instead of typing. */
+	const enterBashFromRoutedText = useCallback(
+		(text: string): boolean => {
+			if (text !== "!" || !bashAvailableRef.current || bashModeRef.current || promptRef.current !== "")
+				return false;
+			setBashMode(true);
+			return true;
+		},
+		[setBashMode],
+	);
+	// Only the active pane's composer takes keys typed outside any field (upstream `paneOwnsTypeToFocus`).
+	useTypeToFocus(textareaRef, active && !disabled, enterBashFromRoutedText);
 	useEffect(
 		() =>
 			registerComposer(draftKey, {
 				insertText: (text) => {
-					if (refuseInBashMode()) return;
+					if (refuseCommandInBox("add")) return;
 					const next = appendAttachment(promptRef.current, text);
 					promptRef.current = next;
 					setPrompt(next);
@@ -805,7 +855,7 @@ export function Composer({
 					handleSubmitRef.current();
 				},
 				takeBack: (text) => {
-					if (refuseInBashMode()) return false;
+					if (refuseCommandInBox("takeBack")) return false;
 					const next = mergeTakeBack(text, promptRef.current);
 					promptRef.current = next;
 					pendingCaretRef.current = text.length;
@@ -815,13 +865,13 @@ export function Composer({
 					return true;
 				},
 			}),
-		[draftKey, setPrompt, refuseInBashMode],
+		[draftKey, setPrompt, refuseCommandInBox],
 	);
 
 	useEffect(
 		() =>
 			subscribePrefill?.((text) => {
-				if (refuseInBashMode()) return;
+				if (refuseCommandInBox("add")) return;
 				const textarea = textareaRef.current;
 				textarea?.focus();
 				// An unchanged prompt skips the caret layout effect, so place the caret now.
@@ -831,7 +881,7 @@ export function Composer({
 				setCaret(text.length);
 				setPrompt(text);
 			}),
-		[subscribePrefill, setPrompt, refuseInBashMode],
+		[subscribePrefill, setPrompt, refuseCommandInBox],
 	);
 
 	// Upstream disables the "/" and "@" suggestions in bash mode.
@@ -892,12 +942,18 @@ export function Composer({
 	} | null>(null);
 	const mentions =
 		mentionState?.draftKey === draftKey && mentionState.text === prompt ? mentionState.mentions : NO_MENTIONS;
-	// Upstream's epitaxyBashHighlight: the command takes Shiki's bash colours in the composer's own font.
+	// Upstream's epitaxyBashHighlight: the command takes Shiki's bash colours, in the bash-mode mono face.
 	const bashLines = useBashHighlight(prompt, bashMode && prompt !== "");
 	const bashPainted = bashMode && bashLines !== null;
 	const painted = bashPainted || chip !== null || mentions.length > 0;
-	// Upstream's bash-mode status rides on the editor as its aria-description.
-	const bashStatusProps = bashMode ? {"aria-description": BASH_STATUS} : {};
+	// Upstream's fit probe: bash mode shows its compact placeholder when the full one overflows one line.
+	const [fitProbe, setFitProbe] = useState<HTMLDivElement | null>(null);
+	const bashCompact = useIsOverflowing(bashMode ? fitProbe : null, BASH_PLACEHOLDER);
+	const bashPlaceholder = bashCompact ? BASH_COMPACT_PLACEHOLDER : BASH_PLACEHOLDER;
+	// Upstream's editor hint in bash mode: the full placeholder as aria-description, and as title while compact.
+	const bashHintProps = bashMode
+		? {"aria-description": BASH_PLACEHOLDER, ...(bashCompact ? {title: BASH_PLACEHOLDER} : {})}
+		: {};
 	const showWorking =
 		!bashMode &&
 		showsWorkingPlaceholder({
@@ -906,7 +962,7 @@ export function Composer({
 			coarse: coarsePointer,
 			isWindows,
 		});
-	const placeholder = bashMode ? BASH_PLACEHOLDER : showWorking ? workingPlaceholder(isMac) : PLACEHOLDER[variant];
+	const placeholder = bashMode ? bashPlaceholder : showWorking ? workingPlaceholder(isMac) : PLACEHOLDER[variant];
 	// The textarea's selection end, so a selection spanning exactly one chip paints it selected.
 	const [selectionEnd, setSelectionEnd] = useState(0);
 	const selectedMention = mentions.find((m) => m.start === caret && m.end === selectionEnd);
@@ -1083,7 +1139,9 @@ export function Composer({
 		setUnknownCommand(null);
 		setCommandError(null);
 		if (bashMode) {
-			runShellCommand(trimmed);
+			// Upstream zO: a command hiding characters stays in the box rather than running.
+			if (hasHiddenCharacters(trimmed)) toast?.({kind: "error", message: HIDDEN_CHARACTERS_REFUSAL});
+			else runShellCommand(trimmed);
 			return;
 		}
 		// Upstream refuses a typed `! command` where nothing can run it, rather than sending it as a prompt.
@@ -1287,11 +1345,13 @@ export function Composer({
 		else handleSubmitRef.current();
 	}, []);
 
+	// Upstream keys the walk on `${historyResetKey}:${bash|chat}`, so toggling bash mode drops an active walk.
 	const [historyWalk, setHistoryWalk] = useState<{
 		draftKey: string;
+		bashMode: boolean;
 		nav: HistoryNavigator;
 	} | null>(null);
-	const historyNav = historyWalk?.draftKey === draftKey ? historyWalk.nav : null;
+	const historyNav = historyWalk?.draftKey === draftKey && historyWalk.bashMode === bashMode ? historyWalk.nav : null;
 
 	function showPrompt(text: string, caretAt: number) {
 		pendingCaretRef.current = caretAt;
@@ -1309,14 +1369,15 @@ export function Composer({
 		} else {
 			const {selectionStart, selectionEnd} = e.currentTarget;
 			if (!historyKeyApplies(e.key, prompt, selectionStart, selectionEnd)) return false;
-			const lastQueued = queue?.items.at(-1);
+			// Bash mode walks the session's shell commands (upstream getBashHistory) and never pulls a queued prompt back.
+			const lastQueued = bashMode ? undefined : queue?.items.at(-1);
 			if (e.key === "ArrowUp" && historyNav === null && prompt === "" && lastQueued) {
 				editQueuedPrompt(lastQueued);
 			} else {
-				const from = historyNav ?? historyNavigator(promptHistory, prompt);
+				const from = historyNav ?? historyNavigator(bashMode ? bashHistory : promptHistory, prompt);
 				const next = e.key === "ArrowUp" ? from.up() : from.down();
 				if (next === null) return false;
-				setHistoryWalk(next.active ? {draftKey, nav: next} : null);
+				setHistoryWalk(next.active ? {draftKey, bashMode, nav: next} : null);
 				showPrompt(next.text, e.key === "ArrowUp" ? 0 : next.text.length);
 			}
 		}
@@ -1556,7 +1617,12 @@ export function Composer({
 	}
 
 	return (
-		<div data-cds="ChatComposer" data-focus-region="composer" className="flex w-full min-w-0 flex-col font-sans">
+		<div
+			data-cds="ChatComposer"
+			data-focus-region="composer"
+			data-bash-mode={bashMode ? "true" : undefined}
+			className="flex w-full min-w-0 flex-col font-sans"
+		>
 			{queue !== undefined && (
 				<>
 					<p aria-live="polite" aria-atomic="true" data-testid="coach-queued-status" className="sr-only">
@@ -1613,7 +1679,6 @@ export function Composer({
 			<div
 				ref={cardRef}
 				data-composer-card
-				data-bash-mode={bashMode ? "" : undefined}
 				className={bashMode ? `${COMPOSER_CARD_CLASS} ${BASH_CARD_CLASS}` : COMPOSER_CARD_CLASS}
 				onClick={(event) => {
 					// A portaled menu's click bubbles here through the React tree; only clicks on the card itself focus.
@@ -1672,7 +1737,9 @@ export function Composer({
 							aria-hidden="true"
 							data-bash-highlight={bashPainted ? "" : undefined}
 							className={
-								bashMode ? `${PAINTED_OVERLAY_CLASS} ${BASH_OVERLAY_CLASS}` : PAINTED_OVERLAY_CLASS
+								bashMode
+									? `${bashFont(PAINTED_OVERLAY_CLASS, true)} ${BASH_OVERLAY_CLASS}`
+									: PAINTED_OVERLAY_CLASS
 							}
 						>
 							{bashPainted ? (
@@ -1752,11 +1819,24 @@ export function Composer({
 							</span>
 						</div>
 					)}
+					{bashMode && (
+						<div
+							aria-hidden="true"
+							className={`${bashFont(PLACEHOLDER_OVERLAY_CLASS, true)} ${BASH_OVERLAY_CLASS}`}
+						>
+							<div
+								ref={setFitProbe}
+								aria-hidden="true"
+								data-placeholder-fit-probe={BASH_PLACEHOLDER}
+								className={PLACEHOLDER_FIT_PROBE_CLASS}
+							/>
+						</div>
+					)}
 					{prompt === "" && (
 						<div
 							data-testid="composer-placeholder"
 							aria-hidden="true"
-							className={`${PLACEHOLDER_OVERLAY_CLASS}${bashMode ? ` ${BASH_OVERLAY_CLASS}` : ""}${isStreaming || disabled ? " opacity-50" : ""}`}
+							className={`${bashFont(PLACEHOLDER_OVERLAY_CLASS, bashMode)}${bashMode ? ` ${BASH_OVERLAY_CLASS}` : ""}${isStreaming || disabled ? " opacity-50" : ""}`}
 						>
 							{showWorking ? <WorkingPlaceholderText isMac={isMac} /> : placeholder}
 						</div>
@@ -1817,13 +1897,19 @@ export function Composer({
 									: undefined
 						}
 						aria-placeholder={placeholder}
-						{...bashStatusProps}
+						{...bashHintProps}
 						disabled={isStreaming || disabled}
 						rows={1}
 						enterKeyHint="enter"
-						className={`${EDITOR_CLASS} ${painted ? "text-transparent caret-primary" : "text-primary"}`}
+						className={`${bashFont(EDITOR_CLASS, bashMode)} ${painted ? "text-transparent caret-primary" : "text-primary"}`}
 						style={{minHeight: "28px", maxHeight: "min(24rem, 40svh)"}}
 					/>
+					{/* Upstream's bash/chat announcement, rendered only where bash mode is available. */}
+					{onShellCommand !== undefined && (
+						<span role="status" className="sr-only">
+							{bashMode ? BASH_STATUS : CHAT_STATUS}
+						</span>
+					)}
 					{/* Upstream `Wn`: always mounted so the live region exists before the hint fills it. */}
 					<span
 						id={argumentHintSrId}

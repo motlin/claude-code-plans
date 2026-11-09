@@ -203,17 +203,14 @@ describe("readPromptHistory", () => {
 			].join("\n"),
 		);
 
-		expect(await readPromptHistory({claudeDir: root, sessionId})).toStrictEqual([
-			"now water them",
-			"plant tomatoes",
-			"unrelated newer prompt",
-			"unrelated older prompt",
-		]);
-		expect(await readPromptHistory({claudeDir: root})).toStrictEqual([
-			"unrelated newer prompt",
-			"unrelated older prompt",
-			"plant tomatoes",
-		]);
+		expect(await readPromptHistory({claudeDir: root, sessionId})).toStrictEqual({
+			prompts: ["now water them", "plant tomatoes", "unrelated newer prompt", "unrelated older prompt"],
+			bashCommands: [],
+		});
+		expect(await readPromptHistory({claudeDir: root})).toStrictEqual({
+			prompts: ["unrelated newer prompt", "unrelated older prompt", "plant tomatoes"],
+			bashCommands: [],
+		});
 	});
 
 	it("recalls only the prompts typed into the transcript, never harness-injected user records", async () => {
@@ -245,14 +242,44 @@ describe("readPromptHistory", () => {
 			].join("\n"),
 		);
 
-		expect(await readPromptHistory({claudeDir: root, sessionId})).toStrictEqual([
-			"water them",
-			"prune the basil",
-			"plant tomatoes",
-		]);
+		expect(await readPromptHistory({claudeDir: root, sessionId})).toStrictEqual({
+			prompts: ["water them", "prune the basil", "plant tomatoes"],
+			bashCommands: ["ls"],
+		});
 	});
 
 	it("returns nothing when history.jsonl is missing", async () => {
-		expect(await readPromptHistory({claudeDir: root})).toStrictEqual([]);
+		expect(await readPromptHistory({claudeDir: root})).toStrictEqual({prompts: [], bashCommands: []});
+	});
+
+	it("splits the session's bash commands from its prompts, as upstream's getBashHistory does", async () => {
+		const sessionId = "a1b2c3d4-0000-4000-8000-000000000003";
+		const user = (content: unknown) => JSON.stringify({type: "user", message: {role: "user", content}});
+		write(
+			join(root, "projects", "-Users-alice-projects-garden", `${sessionId}.jsonl`),
+			[
+				user("plant tomatoes"),
+				user("<bash-input>ls</bash-input>"),
+				user("<bash-stdout>seeds</bash-stdout><bash-stderr></bash-stderr>"),
+				user("<bash-input>git status</bash-input>"),
+				user("<bash-input>git status</bash-input>"),
+				user("<bash-input>ls</bash-input>"),
+			].join("\n"),
+		);
+		write(
+			join(root, "history.jsonl"),
+			[
+				historyLine("!pwd", "s-bob", 1),
+				historyLine("plant tomatoes", sessionId, 2),
+				historyLine("! git status", sessionId, 3),
+				historyLine("!  npm test", sessionId, 4),
+				historyLine("water the basil", "s-bob", 5),
+			].join("\n"),
+		);
+
+		expect(await readPromptHistory({claudeDir: root, sessionId})).toStrictEqual({
+			prompts: ["plant tomatoes", "water the basil"],
+			bashCommands: ["ls", "git status", "ls", "npm test", "pwd"],
+		});
 	});
 });

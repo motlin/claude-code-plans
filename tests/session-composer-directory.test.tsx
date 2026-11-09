@@ -308,8 +308,8 @@ describe("session composer bash mode", () => {
 		fireEvent.keyDown(textarea, {key: "Enter"});
 
 		expect({
-			toast: (await screen.findByText("Shell commands are only available in local sessions.")).textContent,
+			toast: (await screen.findByText("Shell command runner unavailable.")).textContent,
 			value: textarea.value,
-		}).toStrictEqual({toast: "Shell commands are only available in local sessions.", value: "! ls"});
+		}).toStrictEqual({toast: "Shell command runner unavailable.", value: "! ls"});
 	});
 });

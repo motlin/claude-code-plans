@@ -8,6 +8,7 @@ import {requestComposerInsert, requestComposerTakeBack} from "../src/lib/context
 import {ToastContext, type ToastOptions} from "../src/components/toast-context";
 import {HerdrRequestError} from "../src/lib/api/herdr";
 import {
+	hasHiddenCharacters,
 	isShellCommandText,
 	runShellCommandInPane,
 	shellCommandUnavailableMessage,
@@ -65,6 +66,8 @@ interface RenderOptions {
 	working?: boolean;
 	coarse?: boolean;
 	subscribePrefill?: ((listener: (text: string) => void) => () => void) | undefined;
+	promptHistory?: readonly string[];
+	bashHistory?: readonly string[];
 }
 
 function renderComposer({
@@ -73,6 +76,8 @@ function renderComposer({
 	working = false,
 	coarse = false,
 	subscribePrefill,
+	promptHistory,
+	bashHistory,
 }: RenderOptions = {}) {
 	stubPointer(coarse);
 	const handlers = {
@@ -93,6 +98,8 @@ function renderComposer({
 				onQueueForLater={working ? handlers.onQueueForLater : undefined}
 				onShellCommand={onShellCommand}
 				subscribePrefill={subscribePrefill}
+				promptHistory={promptHistory}
+				bashHistory={bashHistory}
 			/>
 		</ToastContext.Provider>,
 	);
@@ -106,23 +113,46 @@ function card(): HTMLElement {
 	return element;
 }
 
+function composerRoot(): HTMLElement {
+	const element = document.querySelector<HTMLElement>('[data-cds="ChatComposer"]');
+	if (element === null) throw new Error("no composer root");
+	return element;
+}
+
+/** Upstream's `<span role="status" class="sr-only">` bash/chat announcements. */
+function statusTexts(): string[] {
+	return [...document.querySelectorAll('span[role="status"].sr-only')].map((node) => node.textContent);
+}
+
 function bashState(textarea: HTMLTextAreaElement) {
 	return {
-		bashMode: card().hasAttribute("data-bash-mode"),
+		bashMode: composerRoot().getAttribute("data-bash-mode") === "true",
 		pill: document.querySelector("[data-bash-pill]")?.textContent ?? null,
 		placeholder: screen.queryByTestId("composer-placeholder")?.textContent ?? null,
 		description: textarea.getAttribute("aria-description"),
+		status: statusTexts(),
 		value: textarea.value,
 	};
 }
 
 const CHAT_PLACEHOLDER = "Type / for commands";
+const BASH_PLACEHOLDER = "Run a shell command in the terminal and send the output to Claude";
 
 const BASH_STATE = {
 	bashMode: true,
 	pill: "bash",
-	placeholder: "Run a shell command in the terminal and send the output to Claude",
-	description: "Bash mode. Press Escape to return to chat.",
+	placeholder: BASH_PLACEHOLDER,
+	description: BASH_PLACEHOLDER,
+	status: ["Bash mode. Press Escape to return to chat."],
+	value: "",
+};
+
+const CHAT_STATE = {
+	bashMode: false,
+	pill: null,
+	placeholder: CHAT_PLACEHOLDER,
+	description: null,
+	status: ["Chat mode"],
 	value: "",
 };
 
@@ -167,7 +197,7 @@ describe("Composer bash mode with a live pane", () => {
 
 		expect({notCancelled, state: bashState(textarea)}).toStrictEqual({
 			notCancelled: false,
-			state: {bashMode: false, pill: null, placeholder: CHAT_PLACEHOLDER, description: null, value: ""},
+			state: CHAT_STATE,
 		});
 	});
 
@@ -228,7 +258,7 @@ describe("Composer bash mode with a live pane", () => {
 		}).toStrictEqual({
 			commands: [["ls -la"]],
 			sent: [],
-			state: {bashMode: false, pill: null, placeholder: CHAT_PLACEHOLDER, description: null, value: ""},
+			state: CHAT_STATE,
 		});
 	});
 
@@ -392,6 +422,9 @@ describe("Composer bash mode drafts", () => {
 });
 
 const COMMAND_IN_BOX = "A command is in the message box, so nothing was added. Send or clear it first, then try again.";
+const BASH_MODE_ON =
+	"Bash mode is on, so nothing was added. Press Backspace in the empty message box to return to chat, then try again.";
+const HAS_DRAFT = "The input already has a draft. Clear it to pull this message back in.";
 
 describe("Composer bash mode refuses added text", () => {
 	it("refuses a take-back, so the caller keeps the cancelled message", () => {
@@ -406,7 +439,7 @@ describe("Composer bash mode refuses added text", () => {
 		expect({taken, value: textarea.value, toasts: handlers.toast.mock.calls}).toStrictEqual({
 			taken: false,
 			value: "ls",
-			toasts: [[{kind: "error", message: COMMAND_IN_BOX}]],
+			toasts: [[{kind: "error", message: HAS_DRAFT}]],
 		});
 	});
 
@@ -419,7 +452,7 @@ describe("Composer bash mode refuses added text", () => {
 
 		expect({state: bashState(textarea), toasts: handlers.toast.mock.calls}).toStrictEqual({
 			state: BASH_STATE,
-			toasts: [[{kind: "error", message: COMMAND_IN_BOX}]],
+			toasts: [[{kind: "error", message: BASH_MODE_ON}]],
 		});
 	});
 
@@ -440,8 +473,42 @@ describe("Composer bash mode refuses added text", () => {
 
 		expect({value: textarea.value, toasts: handlers.toast.mock.calls}).toStrictEqual({
 			value: "pwd",
-			toasts: [[{kind: "error", message: COMMAND_IN_BOX}]],
+			toasts: [[{kind: "error", message: BASH_MODE_ON}]],
 		});
+	});
+
+	it("refuses an insert or prefill while chat text reads as a `! command`", () => {
+		const listeners: Array<(text: string) => void> = [];
+		const {handlers, textarea} = renderComposer({
+			onShellCommand: ALLOW,
+			subscribePrefill: (listener) => {
+				listeners.push(listener);
+				return () => undefined;
+			},
+		});
+		fireEvent.change(textarea, {target: {value: "! ls"}});
+		act(() => {
+			requestComposerInsert("session-alice", "Fix this finding");
+		});
+		act(() => {
+			for (const listener of listeners) listener("Summarize the repo");
+		});
+
+		expect({value: textarea.value, toasts: handlers.toast.mock.calls}).toStrictEqual({
+			value: "! ls",
+			toasts: [[{kind: "error", message: COMMAND_IN_BOX}], [{kind: "error", message: COMMAND_IN_BOX}]],
+		});
+	});
+
+	it("still takes a cancelled message back over `! command` chat text", () => {
+		const {handlers, textarea} = renderComposer({onShellCommand: ALLOW});
+		fireEvent.change(textarea, {target: {value: "! ls"}});
+		let taken = false;
+		act(() => {
+			taken = requestComposerTakeBack("session-alice", "Fix the tests");
+		});
+
+		expect({taken, toasts: handlers.toast.mock.calls}).toStrictEqual({taken: true, toasts: []});
 	});
 
 	it("still takes a cancelled message back in chat mode", () => {
@@ -452,6 +519,247 @@ describe("Composer bash mode refuses added text", () => {
 		});
 
 		expect({taken, value: textarea.value}).toStrictEqual({taken: true, value: "Fix the tests"});
+	});
+});
+
+function fontClasses(element: Element | null): string[] {
+	return (element?.className.split(/\s+/) ?? []).filter((name) => name === "font-sans" || name === "font-mono");
+}
+
+function editorFonts(textarea: HTMLTextAreaElement) {
+	return {
+		root: composerRoot().getAttribute("data-bash-mode"),
+		card: card().hasAttribute("data-bash-mode"),
+		editor: fontClasses(textarea),
+		placeholder: fontClasses(screen.queryByTestId("composer-placeholder")),
+		painted: fontClasses(document.querySelector("[data-bash-highlight]")),
+	};
+}
+
+describe("Composer bash mode font", () => {
+	it("marks the composer root data-bash-mode=true and sets the editor, placeholder and painted command in mono", () => {
+		const {textarea} = renderComposer({onShellCommand: ALLOW});
+		const chat = editorFonts(textarea);
+		pressBang(textarea);
+		const empty = editorFonts(textarea);
+		fireEvent.change(textarea, {target: {value: "ls"}});
+
+		expect({chat, empty, typed: editorFonts(textarea)}).toStrictEqual({
+			chat: {root: null, card: false, editor: ["font-sans"], placeholder: ["font-sans"], painted: []},
+			empty: {root: "true", card: false, editor: ["font-mono"], placeholder: ["font-mono"], painted: []},
+			typed: {root: "true", card: false, editor: ["font-mono"], placeholder: [], painted: ["font-mono"]},
+		});
+	});
+});
+
+describe("Composer bash mode status region", () => {
+	it("announces chat and bash mode in one sr-only status span instead of an aria-description", () => {
+		const {textarea} = renderComposer({onShellCommand: ALLOW});
+		const chat = {status: statusTexts(), description: textarea.getAttribute("aria-description")};
+		pressBang(textarea);
+		const bash = statusTexts();
+		fireEvent.keyDown(textarea, {key: "Backspace"});
+
+		expect({chat, bash, back: statusTexts()}).toStrictEqual({
+			chat: {status: ["Chat mode"], description: null},
+			bash: ["Bash mode. Press Escape to return to chat."],
+			back: ["Chat mode"],
+		});
+	});
+
+	it("renders no status span where bash mode is unavailable", () => {
+		renderComposer();
+
+		expect(statusTexts()).toStrictEqual([]);
+	});
+});
+
+describe("Composer bash mode history", () => {
+	it("walks the bash history with ↑/↓ in bash mode and stays in bash mode", () => {
+		const {textarea} = renderComposer({
+			onShellCommand: ALLOW,
+			promptHistory: ["Fix the tests"],
+			bashHistory: ["git status", "ls -la"],
+		});
+		pressBang(textarea);
+		fireEvent.keyDown(textarea, {key: "ArrowUp"});
+		const newest = {value: textarea.value, bashMode: bashState(textarea).bashMode};
+		fireEvent.keyDown(textarea, {key: "ArrowUp"});
+		const older = textarea.value;
+		fireEvent.keyDown(textarea, {key: "ArrowDown"});
+		fireEvent.keyDown(textarea, {key: "ArrowDown"});
+
+		expect({newest, older, back: {value: textarea.value, bashMode: bashState(textarea).bashMode}}).toStrictEqual({
+			newest: {value: "git status", bashMode: true},
+			older: "ls -la",
+			back: {value: "", bashMode: true},
+		});
+	});
+
+	it("keeps walking chat prompts in chat mode", () => {
+		const {textarea} = renderComposer({
+			onShellCommand: ALLOW,
+			promptHistory: ["Fix the tests"],
+			bashHistory: ["git status"],
+		});
+		fireEvent.keyDown(textarea, {key: "ArrowUp"});
+
+		expect(textarea.value).toBe("Fix the tests");
+	});
+
+	it("resets an active walk when bash mode toggles", () => {
+		const {textarea} = renderComposer({
+			onShellCommand: ALLOW,
+			promptHistory: ["Fix the tests"],
+			bashHistory: ["git status"],
+		});
+		pressBang(textarea);
+		fireEvent.keyDown(textarea, {key: "ArrowUp"});
+		fireEvent.change(textarea, {target: {value: ""}});
+		fireEvent.keyDown(textarea, {key: "Backspace"});
+		fireEvent.keyDown(textarea, {key: "ArrowUp"});
+
+		expect({value: textarea.value, bashMode: bashState(textarea).bashMode}).toStrictEqual({
+			value: "Fix the tests",
+			bashMode: false,
+		});
+	});
+});
+
+describe("Composer bash mode type-to-focus", () => {
+	function blurToBody(): void {
+		if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+	}
+
+	it("enters bash mode for a ! typed outside any field into the empty composer", () => {
+		const {textarea} = renderComposer({onShellCommand: ALLOW});
+		blurToBody();
+		const dispatched = fireEvent.keyDown(document.body, {key: "!"});
+
+		expect({
+			dispatched,
+			focused: document.activeElement === textarea,
+			value: textarea.value,
+			bashMode: bashState(textarea).bashMode,
+		}).toStrictEqual({dispatched: false, focused: true, value: "", bashMode: true});
+	});
+
+	it("types the ! as text when the composer has text or no live pane", () => {
+		const withText = renderComposer({onShellCommand: ALLOW});
+		fireEvent.change(withText.textarea, {target: {value: "wow"}});
+		blurToBody();
+		fireEvent.keyDown(document.body, {key: "!"});
+		const typed = {value: withText.textarea.value, bashMode: bashState(withText.textarea).bashMode};
+		cleanup();
+		localStorage.clear();
+		const noPane = renderComposer();
+		blurToBody();
+		fireEvent.keyDown(document.body, {key: "!"});
+
+		expect({
+			typed,
+			noPane: {value: noPane.textarea.value, bashMode: bashState(noPane.textarea).bashMode},
+		}).toStrictEqual({typed: {value: "wow!", bashMode: false}, noPane: {value: "!", bashMode: false}});
+	});
+});
+
+describe("Composer bash mode hidden characters", () => {
+	it("refuses a command with hidden characters and keeps it in bash mode", async () => {
+		const onShellCommand = vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true);
+		const {handlers, textarea} = renderComposer({onShellCommand});
+		pressBang(textarea);
+		fireEvent.change(textarea, {target: {value: "rm\u202Efoo"}});
+		fireEvent.keyDown(textarea, {key: "Enter"});
+		await flush();
+
+		expect({
+			commands: onShellCommand.mock.calls,
+			toasts: handlers.toast.mock.calls,
+			value: textarea.value,
+			bashMode: bashState(textarea).bashMode,
+		}).toStrictEqual({
+			commands: [],
+			toasts: [
+				[
+					{
+						kind: "error",
+						message: "This command contains hidden characters, so it wasn’t run. Retype it to run it.",
+					},
+				],
+			],
+			value: "rm\u202Efoo",
+			bashMode: true,
+		});
+	});
+});
+
+function placeholderProbe() {
+	const probe = document.querySelector<HTMLElement>("[data-placeholder-fit-probe]");
+	if (probe === null) return null;
+	return {
+		text: probe.getAttribute("data-placeholder-fit-probe"),
+		hidden: probe.getAttribute("aria-hidden"),
+		className: probe.className,
+	};
+}
+
+function stubProbeWidths(scrollWidth: number, clientWidth: number) {
+	vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockImplementation(function (this: HTMLElement) {
+		return this.hasAttribute("data-placeholder-fit-probe") ? scrollWidth : 0;
+	});
+	vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (this: HTMLElement) {
+		return this.hasAttribute("data-placeholder-fit-probe") ? clientWidth : 0;
+	});
+}
+
+describe("Composer bash mode compact placeholder", () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("probes the full placeholder in mono and keeps it while it fits", () => {
+		stubProbeWidths(231, 231);
+		const {textarea} = renderComposer({onShellCommand: ALLOW});
+		const chatProbe = placeholderProbe();
+		pressBang(textarea);
+
+		expect({
+			chatProbe,
+			probe: placeholderProbe(),
+			probeFont: fontClasses(document.querySelector("[data-placeholder-fit-probe]")?.parentElement ?? null),
+			placeholder: screen.getByTestId("composer-placeholder").textContent,
+			ariaPlaceholder: textarea.getAttribute("aria-placeholder"),
+			title: textarea.getAttribute("title"),
+		}).toStrictEqual({
+			chatProbe: null,
+			probe: {
+				text: BASH_PLACEHOLDER,
+				hidden: "true",
+				className: "invisible me-px whitespace-nowrap before:content-[attr(data-placeholder-fit-probe)]",
+			},
+			probeFont: ["font-mono"],
+			placeholder: BASH_PLACEHOLDER,
+			ariaPlaceholder: BASH_PLACEHOLDER,
+			title: null,
+		});
+	});
+
+	it("switches to upstream's compact text, with the full text as title, when the full one overflows", () => {
+		stubProbeWidths(232, 231);
+		const {textarea} = renderComposer({onShellCommand: ALLOW});
+		pressBang(textarea);
+
+		expect({
+			placeholder: screen.getByTestId("composer-placeholder").textContent,
+			ariaPlaceholder: textarea.getAttribute("aria-placeholder"),
+			description: textarea.getAttribute("aria-description"),
+			title: textarea.getAttribute("title"),
+		}).toStrictEqual({
+			placeholder: "Run, send output to Claude",
+			ariaPlaceholder: "Run, send output to Claude",
+			description: BASH_PLACEHOLDER,
+			title: BASH_PLACEHOLDER,
+		});
 	});
 });
 
@@ -466,7 +774,7 @@ describe("Composer shell commands without a live pane", () => {
 		});
 	});
 
-	it("refuses a `! command` send in a session with upstream's local-session message", () => {
+	it("refuses a `! command` send in a local session without a runner with upstream's feQzH0 message", () => {
 		const {handlers, textarea} = renderComposer();
 		fireEvent.change(textarea, {target: {value: "! ls"}});
 		fireEvent.keyDown(textarea, {key: "Enter"});
@@ -477,7 +785,7 @@ describe("Composer shell commands without a live pane", () => {
 			value: textarea.value,
 		}).toStrictEqual({
 			sent: [],
-			toasts: [[{kind: "error", message: "Shell commands are only available in local sessions."}]],
+			toasts: [[{kind: "error", message: "Shell command runner unavailable."}]],
 			value: "! ls",
 		});
 	});
@@ -517,9 +825,26 @@ describe("composer-shell-command", () => {
 
 	it("names upstream's refusal per composer", () => {
 		expect([shellCommandUnavailableMessage("session"), shellCommandUnavailableMessage("home")]).toStrictEqual([
-			"Shell commands are only available in local sessions.",
+			"Shell command runner unavailable.",
 			"Start a local session first to run shell commands.",
 		]);
+	});
+
+	it("finds upstream's hidden characters, but not plain text or emoji ZWJ sequences", () => {
+		expect(
+			[
+				"ls\u200B -la",
+				"rm\u202Afoo",
+				"rm\u202Efoo",
+				"rm\u2066foo",
+				"rm\u2069foo",
+				"echo\u00A0hi",
+				"ls -la",
+				"echo 👨‍👩‍👧 done",
+				"git commit -m 'a'\ngit push",
+				"echo שלום",
+			].map(hasHiddenCharacters),
+		).toStrictEqual([true, true, true, true, true, true, false, false, false, false]);
 	});
 
 	it("types !<command> into the live pane through the prompt write path", async () => {

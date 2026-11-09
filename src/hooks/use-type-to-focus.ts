@@ -1,4 +1,4 @@
-import {type RefObject, useEffect} from "react";
+import {type RefObject, useEffect, useRef} from "react";
 
 import {isEditableTarget, isInModalLayer} from "../lib/shortcuts/match";
 
@@ -38,8 +38,16 @@ function insertedText(event: InputEvent): string {
  * active composer and types the character there at its caret. Dictated, composed or pasted text inserted with
  * no editable focus (no keydown at all) takes the same route. The insert goes through `setRangeText`
  * and an `input` event, so React's onChange (and the draft store) sees it like a real keystroke.
+ * `onRoutedText` sees routed text first (upstream's `Tc`); when it returns true the composer is focused and the
+ * text isn't inserted.
  */
-export function useTypeToFocus(textareaRef: RefObject<HTMLTextAreaElement | null>, enabled: boolean): void {
+export function useTypeToFocus(
+	textareaRef: RefObject<HTMLTextAreaElement | null>,
+	enabled: boolean,
+	onRoutedText?: (text: string) => boolean,
+): void {
+	const onRoutedTextRef = useRef(onRoutedText);
+	onRoutedTextRef.current = onRoutedText;
 	useEffect(() => {
 		if (!enabled) return undefined;
 		const target = (): HTMLTextAreaElement | null => {
@@ -48,6 +56,7 @@ export function useTypeToFocus(textareaRef: RefObject<HTMLTextAreaElement | null
 		};
 		const insert = (textarea: HTMLTextAreaElement, text: string) => {
 			textarea.focus();
+			if (onRoutedTextRef.current?.(text) === true) return;
 			// setRangeText skips React's value tracker, so the input event reads as a change.
 			textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, "end");
 			textarea.dispatchEvent(new Event("input", {bubbles: true}));

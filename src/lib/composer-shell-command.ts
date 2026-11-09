@@ -9,11 +9,46 @@ export function isShellCommandText(text: string): boolean {
 	return SHELL_COMMAND_TEXT.test(text);
 }
 
-/** Upstream's refusal: QrY1V2 for a session without a live pane, AYbIPZ before any session exists. */
+/**
+ * Upstream's refusal: feQzH0 for a local session without a runner (a local CLI session with no live pane),
+ * AYbIPZ before any session exists.
+ */
 export function shellCommandUnavailableMessage(variant: "session" | "home"): string {
 	return variant === "home"
 		? "Start a local session first to run shell commands."
-		: "Shell commands are only available in local sessions.";
+		: "Shell command runner unavailable.";
+}
+
+/** Upstream WeHyjY: a bash-mode command with hidden characters is refused rather than run. */
+export const HIDDEN_CHARACTERS_REFUSAL =
+	"This command contains hidden characters, so it wasn’t run. Retype it to run it.";
+
+// Upstream c052f2a6a `E`/`D`, with shared-0 `Ak` (minus its right-to-left script ranges) and `mZ`.
+const SKIN_TONE = String.raw`[\u{1F3FB}-\u{1F3FF}]`;
+const KEYCAP_FLAG = String.raw`\p{Regional_Indicator}{2}|[#*0-9]\uFE0F?\u20E3|\u{1F3F4}\u{E0067}\u{E0062}(?:\u{E0065}\u{E006E}\u{E0067}|\u{E0073}\u{E0063}\u{E0074}|\u{E0077}\u{E006C}\u{E0073})\u{E007F}`;
+const ZWJ_PART = String.raw`(?:${KEYCAP_FLAG}|(?!\p{Regional_Indicator})\p{Emoji_Presentation}\uFE0F?${SKIN_TONE}?|\p{Extended_Pictographic}(?:\uFE0F${SKIN_TONE}?|${SKIN_TONE}))`;
+const LONE_EMOJI = String.raw`(?:${KEYCAP_FLAG}|\p{Extended_Pictographic}[\uFE0E\uFE0F]?${SKIN_TONE}?)`;
+const EMOJI_SEQUENCE = new RegExp(String.raw`${ZWJ_PART}(?:\u200D${ZWJ_PART})+|${LONE_EMOJI}`, "gu");
+const RGI_ZWJ_SEQUENCE = ((): RegExp | null => {
+	try {
+		return new RegExp(String.raw`^\p{RGI_Emoji_ZWJ_Sequence}$`, "v");
+	} catch {
+		return null;
+	}
+})();
+const ZWJ = "\u200D";
+// oxlint-disable-next-line no-control-regex -- upstream `Ak` flags C0/C1 controls as hidden characters
+const INVISIBLE = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]|\p{Default_Ignorable_Code_Point}|\p{Cf}/u;
+const ODD_SPACE = /(?:[^\P{Zs} ]|[\u{2800}\u{fffc}\u{1d159}\u{13441}\u{13442}\u{16910}\u{16fe4}])/u;
+
+/** Upstream `D`: zero-width, bidi-control and look-alike space characters, newlines read as spaces and RGI emoji spared. */
+export function hasHiddenCharacters(text: string): boolean {
+	const stripped = text
+		.replace(/\r?\n/g, " ")
+		.replace(EMOJI_SEQUENCE, (match) =>
+			!match.includes(ZWJ) || RGI_ZWJ_SEQUENCE?.test(match) === true ? "" : match,
+		);
+	return INVISIBLE.test(stripped) || ODD_SPACE.test(stripped);
 }
 
 interface RunShellCommandDependencies {
