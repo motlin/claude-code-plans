@@ -1,6 +1,16 @@
-import {useCallback, useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject} from "react";
+import {
+	useCallback,
+	useEffect,
+	useId,
+	useRef,
+	useState,
+	type ReactElement,
+	type ReactNode,
+	type RefObject,
+} from "react";
 
 import {useIsMac} from "../hooks/use-is-mac";
+import {assertNever} from "../lib/assert-never";
 import {useRowsReadGate} from "../hooks/use-rows-read-gate";
 import {
 	acknowledgeApproval,
@@ -24,10 +34,11 @@ import type {PermissionDialogShape} from "../lib/herdr/permission-screen";
 import type {PermissionRow} from "../lib/permission-rows";
 import {toAriaKeyShortcuts} from "../lib/shortcuts/format";
 import {
-	PERSISTENT_ALLOW_LABELS,
-	PERSISTENT_ALLOW_SCOPES,
+	PERSISTENT_ALLOW_LABEL,
 	type PersistentAllowKind,
+	type PersistentAllowSave,
 } from "../lib/permission-suggestions";
+import {visibleSingleLine} from "../lib/visible-text";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {APPROVAL_SENDING_LABEL, ApprovalActionButton, ApprovalCardShell} from "./approval-card";
 import {PermissionFileChangePreview} from "./permission-file-change-body";
@@ -42,9 +53,10 @@ import {SplitDropdownButton} from "./ui/split-dropdown-button";
  * The tool-permission card, drawn inline as claude.ai/code's approvals:
  * "Allow Claude to <action> <meta>?" in a tinted title band, the detail block, and [Deny] then the allow
  * group [Allow once ⌘⏎]. When the CLI's dialog offers a persistent option, the allow group is a
- * primary split button that leads with upstream's stored preference: the persistent option ("Always allow" /
- * "Allow for this session", tipped with its scope) with Allow once in the menu, or the reverse. Picking the
- * non-leading option from the menu makes it the lead for the next card.
+ * primary split button that leads with upstream's stored preference: the persistent option ("Always allow",
+ * with no scope tip, as upstream's web card) with Allow once in the menu, or the reverse. Picking the
+ * non-leading option from the menu makes it the lead for the next card. The body then lists what
+ * "Always allow" adds, as upstream's web saves block.
  * Upstream's keys (Esc deny, ⌘⏎ allow once, ⇧⌘⏎ the persistent option) and no digits, which are dock-only.
  * A decision hides the card at once, with no busy state; a failed answer brings it back with the error.
  * With `sessionId` and `answerKey` the decision also marks the prompt answered for every view,
@@ -74,6 +86,7 @@ export function PermissionCard({
 	toolInput = null,
 	canAnswer,
 	persistentAllow: hookPersistentAllow = null,
+	persistentAllowSaves = null,
 	dialog,
 	onDecision,
 	footer,
@@ -112,6 +125,8 @@ export function PermissionCard({
 	canAnswer: boolean;
 	/** The dialog's persistent allow option, from the PermissionRequest hook; null hides it. */
 	persistentAllow?: PersistentAllowKind | null;
+	/** What the persistent option adds, listed in the body while it is offered; null lists nothing. */
+	persistentAllowSaves?: readonly PersistentAllowSave[] | null;
 	/**
 	 * The shape of the terminal's dialog, or "unknown" until it is read; undefined keeps the hook's card
 	 * (no dialog to read, as an elicitation's).
@@ -285,6 +300,9 @@ export function PermissionCard({
 					{detailFirst && detailBlock}
 					{description !== null && <div className={DESCRIPTION_CLASS}>{description}</div>}
 					{!rowsTrail && hasRows && <PermissionRowsList rows={rows} />}
+					{persistentAllow !== null && persistentAllowSaves !== null && (
+						<AlwaysAllowSaves saves={persistentAllowSaves} />
+					)}
 					{fileChange === "too_large" && <p className={TOO_LARGE_CLASS}>{FILE_CHANGE_TOO_LARGE}</p>}
 					{!detailFirst && detailBlock}
 					{tokenWarning && <TokenWarning />}
@@ -375,12 +393,10 @@ export function PermissionCard({
 									className="max-w-full min-w-0"
 									{...(lead === "always"
 										? {
-												groupLabel: PERSISTENT_ALLOW_LABELS[persistentAllow],
-												tooltip: PERSISTENT_ALLOW_SCOPES[persistentAllow],
+												groupLabel: PERSISTENT_ALLOW_LABEL,
 												label: (
 													<span data-approval-digit="2" data-approval-primary="">
-														{PERSISTENT_ALLOW_LABELS[persistentAllow]}
-														<span className="sr-only select-none">{`, ${PERSISTENT_ALLOW_SCOPES[persistentAllow]}`}</span>
+														{PERSISTENT_ALLOW_LABEL}
 													</span>
 												),
 												items: [
@@ -403,8 +419,7 @@ export function PermissionCard({
 												"aria-keyshortcuts": toAriaKeyShortcuts("cmd+enter", isMac),
 												items: [
 													{
-														label: PERSISTENT_ALLOW_LABELS[persistentAllow],
-														description: PERSISTENT_ALLOW_SCOPES[persistentAllow],
+														label: PERSISTENT_ALLOW_LABEL,
 														onSelect: persistentFromMenu,
 													},
 												],
@@ -512,6 +527,64 @@ function RowsPanel({rows, foldable, clamp}: {rows: readonly PermissionRow[]; fol
 				{PERMISSION_ROWS_LABEL}
 			</span>
 			<PermissionRowsList rows={rows} foldable={foldable} clamp={clamp} />
+		</div>
+	);
+}
+
+/** Upstream's saves lead (`XcdDjt`): the same copy whatever the rules' destination. */
+const SAVES_LEAD = "\u201CAlways allow\u201D lasts for this session and covers:";
+const ACCEPT_EDITS_MODE_SAVE =
+	"Accept edits mode (file edits, and file commands such as rm and mv, in this session\u2019s folders)";
+
+/** Upstream's rule code (`Xb`, now `Cx`): one line, its hidden characters shown. */
+function SaveCode({text}: {text: string}) {
+	return <code className="text-code-medium break-all [unicode-bidi:plaintext]">{visibleSingleLine(text)}</code>;
+}
+
+function saveItem(save: PersistentAllowSave): ReactNode {
+	switch (save.kind) {
+		case "rule":
+			return save.ruleContent === undefined ? (
+				<>
+					every use of <SaveCode text={save.toolName} />
+				</>
+			) : (
+				<SaveCode text={`${save.toolName}(${save.ruleContent})`} />
+			);
+		case "acceptEditsMode":
+			return ACCEPT_EDITS_MODE_SAVE;
+		default:
+			return assertNever(save);
+	}
+}
+
+/**
+ * Upstream's web saves block (cc32965c2 `Zb`, now `wx`): what "Always allow" adds, after the lead. One item
+ * shares the lead's paragraph; otherwise the items are a list labelled by the lead, empty when nothing listable
+ * is saved. `gap-xs` is 6px at the default density the local app copies.
+ */
+function AlwaysAllowSaves({saves}: {saves: readonly PersistentAllowSave[]}) {
+	const leadId = useId();
+	const items = saves.map(saveItem);
+	if (items.length === 1) {
+		return (
+			<p data-testid="approval-always-allow-saves" className="text-body text-secondary select-text">
+				{SAVES_LEAD} {items[0]}
+			</p>
+		);
+	}
+	return (
+		<div
+			data-testid="approval-always-allow-saves"
+			className="flex flex-col gap-[6px] text-body text-secondary select-text"
+		>
+			<span id={leadId}>{SAVES_LEAD}</span>
+			<ul role="list" aria-labelledby={leadId} className="flex flex-col gap-[6px]">
+				{items.map((item, index) => (
+					// oxlint-disable-next-line react/no-array-index-key -- the saves are fixed for the card's life
+					<li key={index}>{item}</li>
+				))}
+			</ul>
 		</div>
 	);
 }

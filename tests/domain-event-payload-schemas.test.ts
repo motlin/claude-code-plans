@@ -307,6 +307,26 @@ describe("domain event payload schemas accept the payloads the server emits", ()
 		expect(notification).toStrictEqual({success: true, data: sent});
 	});
 
+	it("NotificationEntryPayload with a persistent option and its saves", () => {
+		const sent = {
+			id: "notification-test-300",
+			sessionId: SESSION_ID,
+			projectId: "project-test-300",
+			projectName: "alice-project",
+			message: "Claude needs your permission to use Bash",
+			title: undefined,
+			notificationType: "permission_prompt",
+			persistentAllow: "always",
+			persistentAllowSaves: [
+				{kind: "rule", toolName: "Bash", ruleContent: "npm run *"},
+				{kind: "acceptEditsMode"},
+			],
+			createdAt: 1,
+			createdAtIso: "1970-01-01T00:00:00.001Z",
+		};
+		expect(NotificationEntryPayloadSchema.safeParse(overTheWire(sent))).toStrictEqual({success: true, data: sent});
+	});
+
 	it("LiveSubagentNode in the subagents snapshot, running and ended", () => {
 		addLiveSubagent({
 			parentSessionId: SESSION_ID,

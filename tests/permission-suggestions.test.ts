@@ -1,6 +1,11 @@
 import {describe, expect, it} from "vite-plus/test";
 import {HookEventEnvelope, type PermissionUpdate} from "../src/lib/hook-events";
-import {PERSISTENT_ALLOW_LABELS, permissionDialogKey, persistentAllowKind} from "../src/lib/permission-suggestions";
+import {
+	PERSISTENT_ALLOW_LABEL,
+	permissionDialogKey,
+	persistentAllowKind,
+	persistentAllowSaves,
+} from "../src/lib/permission-suggestions";
 
 const baseEnvelope = {
 	session_id: "session-test-200",
@@ -145,11 +150,58 @@ describe("persistentAllowKind", () => {
 		expect(persistentAllowKind(suggestions)).toStrictEqual(kind);
 	});
 
-	it("labels each kind with upstream's copy", () => {
-		expect(PERSISTENT_ALLOW_LABELS).toStrictEqual({
-			always: "Always allow",
-			perChat: "Allow for this session",
-		});
+	it("labels both kinds with upstream's web copy", () => {
+		expect(PERSISTENT_ALLOW_LABEL).toStrictEqual("Always allow");
+	});
+});
+
+describe("persistentAllowSaves", () => {
+	it.each<{name: string; suggestions: PermissionUpdate[]; saves: ReturnType<typeof persistentAllowSaves>}>([
+		{
+			name: "a rule with content",
+			suggestions: [
+				{
+					type: "addRules",
+					rules: [{toolName: "Bash", ruleContent: "npm run *"}],
+					behavior: "allow",
+					destination: "localSettings",
+				},
+			],
+			saves: [{kind: "rule", toolName: "Bash", ruleContent: "npm run *"}],
+		},
+		{
+			name: "a whole-tool rule and the accept-edits mode",
+			suggestions: [
+				{type: "addRules", rules: [{toolName: "Read"}], behavior: "allow", destination: "session"},
+				{type: "setMode", mode: "acceptEdits", destination: "session"},
+			],
+			saves: [{kind: "rule", toolName: "Read"}, {kind: "acceptEditsMode"}],
+		},
+		{
+			name: "directories only",
+			suggestions: [{type: "addDirectories", directories: ["/tmp"], destination: "session"}],
+			saves: [],
+		},
+		{
+			name: "every rule of a multi-rule update, whatever its behavior, skipping removals",
+			suggestions: [
+				{
+					type: "addRules",
+					rules: [{toolName: "Bash", ruleContent: "ls"}, {toolName: "Grep"}],
+					behavior: "deny",
+					destination: "userSettings",
+				},
+				{type: "removeRules", rules: [{toolName: "Edit"}], behavior: "allow", destination: "session"},
+				{type: "replaceRules", rules: [{toolName: "Write"}], behavior: "allow", destination: "session"},
+				{type: "removeDirectories", directories: ["/tmp"], destination: "session"},
+			],
+			saves: [
+				{kind: "rule", toolName: "Bash", ruleContent: "ls"},
+				{kind: "rule", toolName: "Grep"},
+			],
+		},
+	])("lists $name", ({suggestions, saves}) => {
+		expect(persistentAllowSaves(suggestions)).toStrictEqual(saves);
 	});
 });
 

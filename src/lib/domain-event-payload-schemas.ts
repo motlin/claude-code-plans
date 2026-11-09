@@ -1,4 +1,4 @@
-import {PersistentAllowKindSchema} from "./permission-suggestions";
+import {PersistentAllowKindSchema, PersistentAllowSaveSchema} from "./permission-suggestions";
 import {z} from "zod";
 import {SessionSummaryStateSchema} from "./api/sessions";
 import type {
@@ -90,6 +90,7 @@ export const NotificationEntryPayloadSchema: z.ZodType<NotificationEntryPayload>
 		title: z.string().optional(),
 		notificationType: z.string(),
 		persistentAllow: PersistentAllowKindSchema.optional(),
+		persistentAllowSaves: z.array(PersistentAllowSaveSchema).optional(),
 		createdAt: z.number(),
 		createdAtIso: z.string(),
 	})

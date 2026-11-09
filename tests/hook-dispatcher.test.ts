@@ -1118,9 +1118,10 @@ describe("dispatchHookEvent", () => {
 		for (const event of events) {
 			await dispatchHookEvent({event, db: db.index, store, broadcast: () => {}, reportHerdrState: () => {}});
 		}
-		const prompted = getNotifications().map(({notificationType, persistentAllow}) => ({
+		const prompted = getNotifications().map(({notificationType, persistentAllow, persistentAllowSaves}) => ({
 			notificationType,
 			persistentAllow,
+			persistentAllowSaves,
 		}));
 		await dispatchHookEvent({
 			event: {...base, hook_event_name: "PostToolUse", tool_name: "Bash", tool_input: {command: "rm -rf dist"}},
@@ -1131,7 +1132,13 @@ describe("dispatchHookEvent", () => {
 		});
 
 		expect({prompted, pendingPermissionCalls}).toStrictEqual({
-			prompted: [{notificationType: "permission_prompt", persistentAllow: "always"}],
+			prompted: [
+				{
+					notificationType: "permission_prompt",
+					persistentAllow: "always",
+					persistentAllowSaves: [{kind: "rule", toolName: "Bash", ruleContent: "rm -rf dist"}],
+				},
+			],
 			pendingPermissionCalls: [
 				{sessionId: "session-test-200", request: {toolName: "Bash", suggestions: [suggestion]}},
 				{sessionId: "session-test-200", request: null},
@@ -1198,6 +1205,7 @@ describe("dispatchHookEvent", () => {
 			expect({
 				pendingPermissionCalls,
 				persistentAllow: getNotifications().map((notification) => notification.persistentAllow ?? null),
+				saves: getNotifications().map((notification) => Object.hasOwn(notification, "persistentAllowSaves")),
 				configReads,
 			}).toStrictEqual({
 				pendingPermissionCalls: [
@@ -1207,6 +1215,7 @@ describe("dispatchHookEvent", () => {
 					},
 				],
 				persistentAllow: [persistentAllow],
+				saves: [persistentAllow !== null],
 				configReads: ["/tmp/cfg"],
 			});
 			clearAllNotifications();

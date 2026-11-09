@@ -11,16 +11,47 @@ import type {PermissionDialogKind} from "./outside-read-prompt";
 export const PersistentAllowKindSchema = z.enum(["always", "perChat"]);
 export type PersistentAllowKind = z.infer<typeof PersistentAllowKindSchema>;
 
-export const PERSISTENT_ALLOW_LABELS = {
-	always: "Always allow",
-	perChat: "Allow for this session",
-} as const satisfies Record<PersistentAllowKind, string>;
+/**
+ * The persistent option's label. Upstream's web card (cc32965c2 `Ln`) always says "Always allow": its
+ * "Allow for this session" label and destination scope copy (`Jb`, formerly `Sb`) are desktop-only (ipc
+ * transport), and the web drops the scope tooltip whenever it lists the saves (`Zr`/`Bn`, formerly `Jr`/`Fn`).
+ */
+export const PERSISTENT_ALLOW_LABEL = "Always allow";
 
-/** Upstream's sr-only scope after the persistent label, saying how long the grant lasts. */
-export const PERSISTENT_ALLOW_SCOPES = {
-	always: "Don\u2019t ask again for this tool",
-	perChat: "Applies to this session only",
-} as const satisfies Record<PersistentAllowKind, string>;
+/** One thing "Always allow" adds, as upstream's saves block lists it. */
+export type PersistentAllowSave = {kind: "rule"; toolName: string; ruleContent?: string} | {kind: "acceptEditsMode"};
+
+export const PersistentAllowSaveSchema: z.ZodType<PersistentAllowSave> = z.union([
+	z.strictObject({kind: z.literal("rule"), toolName: z.string(), ruleContent: z.string().exactOptional()}),
+	z.strictObject({kind: z.literal("acceptEditsMode")}),
+]);
+
+function savesOf(update: PermissionUpdate): PersistentAllowSave[] {
+	switch (update.type) {
+		case "addRules":
+			return update.rules.map(({toolName, ruleContent}) =>
+				ruleContent === undefined ? {kind: "rule", toolName} : {kind: "rule", toolName, ruleContent},
+			);
+		case "setMode":
+			return [{kind: "acceptEditsMode"}];
+		case "addDirectories":
+		case "replaceRules":
+		case "removeRules":
+		case "removeDirectories":
+			return [];
+		default:
+			return assertNever(update);
+	}
+}
+
+/**
+ * What "Always allow" adds, from the hook's `permission_suggestions`, as upstream's web card lists it
+ * (cc32965c2 `Zb`/`$b`/`ex`, now `wx`/`Ex`/`Dx`): every rule of an `addRules` whatever its behavior, the
+ * accept-edits mode for any `setMode`, and nothing for directories, replacements or removals.
+ */
+export function persistentAllowSaves(suggestions: readonly PermissionUpdate[]): PersistentAllowSave[] {
+	return suggestions.flatMap(savesOf);
+}
 
 export type PermissionDialogDecision = "allow" | "deny" | "always";
 

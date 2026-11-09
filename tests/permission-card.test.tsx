@@ -20,7 +20,7 @@ import {
 	type PermissionNotification,
 } from "../src/lib/permission-card";
 import type {PermissionDialogShape} from "../src/lib/herdr/permission-screen";
-import type {PersistentAllowKind} from "../src/lib/permission-suggestions";
+import type {PersistentAllowKind, PersistentAllowSave} from "../src/lib/permission-suggestions";
 
 afterEach(() => {
 	cleanup();
@@ -190,7 +190,12 @@ describe("findPendingPermission", () => {
 			findPendingPermission({
 				sessionId: "session-test-100",
 				isActive: true,
-				notifications: [permissionNotification({persistentAllow: "always"})],
+				notifications: [
+					permissionNotification({
+						persistentAllow: "always",
+						persistentAllowSaves: [{kind: "rule", toolName: "Bash", ruleContent: "rm -rf dist"}],
+					}),
+				],
 				records: BASH_RECORDS,
 			}),
 		).toStrictEqual({
@@ -202,6 +207,7 @@ describe("findPendingPermission", () => {
 			clampTitle: true,
 			description: "Remove the build output",
 			persistentAllow: "always",
+			persistentAllowSaves: [{kind: "rule", toolName: "Bash", ruleContent: "rm -rf dist"}],
 		});
 	});
 
@@ -1215,9 +1221,9 @@ describe("PermissionCard", () => {
 			grouped: [...(group?.querySelectorAll("button") ?? [])].map((button) => button.textContent),
 		}).toStrictEqual({
 			row: ["flex", "flex-wrap", "items-start", "justify-end", "gap-x-3", "gap-y-2"],
-			children: ["Deny", "Always allow, Don’t ask again for this tool"],
+			children: ["Deny", "Always allow"],
 			group: ["flex", "min-w-0", "flex-wrap", "items-start", "gap-2"],
-			grouped: ["Always allow, Don’t ask again for this tool", ""],
+			grouped: ["Always allow", ""],
 		});
 	});
 
@@ -1450,14 +1456,11 @@ describe("PermissionCard", () => {
 		]);
 	});
 
-	it.each([
-		{persistentAllow: "always", label: "Always allow", scope: "Don’t ask again for this tool"},
-		{persistentAllow: "perChat", label: "Allow for this session", scope: "Applies to this session only"},
-	] as const)(
-		"leads with upstream's primary $label split button and sends the persistent decision",
-		({persistentAllow, label, scope}) => {
+	it.each(["always", "perChat"] as const)(
+		"leads with upstream's web Always allow split button, with no scope, for a %s option and sends the persistent decision",
+		(persistentAllow) => {
 			const {onDecision} = renderCard({persistentAllow});
-			const persistent = screen.getByRole("button", {name: `${label}, ${scope}`});
+			const persistent = screen.getByRole("button", {name: "Always allow"});
 			const split = persistent.closest<HTMLElement>("[data-cds=SplitDropdownButton]");
 			const labelSpan = persistent.querySelector<HTMLElement>("[data-approval-digit]");
 			const facts = {
@@ -1471,11 +1474,11 @@ describe("PermissionCard", () => {
 			};
 			fireEvent.click(persistent);
 			expect({...facts, calls: onDecision.mock.calls}).toStrictEqual({
-				buttons: ["Deny", `${label}, ${scope}`, "More allow options"],
-				group: label,
+				buttons: ["Deny", "Always allow", "More allow options"],
+				group: "Always allow",
 				primaryFill: true,
 				labelData: {approvalDigit: "2", approvalPrimary: ""},
-				scope: [["sr-only select-none", `, ${scope}`]],
+				scope: [],
 				calls: [["always"]],
 			});
 		},
@@ -1504,7 +1507,7 @@ describe("PermissionCard", () => {
 			vi.useRealTimers();
 		});
 
-		it("leads with Allow once and keeps Always allow, with its scope, in the menu when the stored lead is once", async () => {
+		it("leads with Allow once and keeps Always allow, with no description, in the menu when the stored lead is once", async () => {
 			localStorage.setItem(APPROVAL_LEADING_ALLOW_KEY, "once");
 			const {onDecision} = renderCard({persistentAllow: "always"});
 			const primary = screen.getByRole("button", {name: /^Allow once/});
@@ -1530,7 +1533,7 @@ describe("PermissionCard", () => {
 				buttons: ["Deny", "Allow onceCtrl⏎Enter", "More allow options"],
 				shortcut: "Control+Enter",
 				labelData: {approvalDigit: "2", approvalPrimary: ""},
-				items: ["Always allowDon’t ask again for this tool"],
+				items: ["Always allow"],
 				calls: [["always"]],
 				stored: "always",
 			});
@@ -1568,27 +1571,156 @@ describe("PermissionCard", () => {
 			renderCard({persistentAllow: "always"});
 			expect(screen.getAllByRole("button").map((button) => button.textContent)).toStrictEqual([
 				"Deny",
-				"Always allow, Don’t ask again for this tool",
+				"Always allow",
 				"",
 			]);
 		});
 
-		it.each([
-			{persistentAllow: "always", label: "Always allow", scope: "Don’t ask again for this tool"},
-			{persistentAllow: "perChat", label: "Allow for this session", scope: "Applies to this session only"},
-		] as const)("tips the leading $label with its scope", ({persistentAllow, label, scope}) => {
-			renderCard({persistentAllow});
-			const primary = screen.getByRole("button", {name: `${label}, ${scope}`});
-			vi.useFakeTimers();
-			fireEvent.pointerEnter(primary.parentElement!);
-			act(() => {
-				vi.advanceTimersByTime(300);
+		it.each(["always", "perChat"] as const)(
+			"tips the leading Always allow with no scope for a %s option, as upstream's web card",
+			(persistentAllow) => {
+				renderCard({persistentAllow});
+				const primary = screen.getByRole("button", {name: "Always allow"});
+				vi.useFakeTimers();
+				fireEvent.pointerEnter(primary.parentElement!);
+				act(() => {
+					vi.advanceTimersByTime(300);
+				});
+				expect({
+					tooltips: screen.queryAllByRole("tooltip").length,
+					describedBy: primary.getAttribute("aria-describedby"),
+				}).toStrictEqual({tooltips: 0, describedBy: null});
+			},
+		);
+	});
+
+	describe("upstream's web saves block (cc32965c2 Zb, now wx)", () => {
+		const LEAD = "“Always allow” lasts for this session and covers:";
+		const CODE = '<code class="text-code-medium break-all [unicode-bidi:plaintext]">';
+
+		function renderSaves(
+			saves: readonly PersistentAllowSave[] | null,
+			persistentAllow: PersistentAllowKind | null = "always",
+		) {
+			const {container} = render(
+				<PermissionCard
+					title={{action: "run this command", meta: null}}
+					detail="npm run build"
+					detailLang="bash"
+					canAnswer
+					persistentAllow={persistentAllow}
+					persistentAllowSaves={saves}
+					onDecision={async () => {}}
+				/>,
+			);
+			return container.querySelector("[data-testid=approval-always-allow-saves]");
+		}
+
+		it("lists one rule in a paragraph after the lead", () => {
+			expect(renderSaves([{kind: "rule", toolName: "Bash", ruleContent: "npm run *"}])?.outerHTML).toStrictEqual(
+				`<p data-testid="approval-always-allow-saves" class="text-body text-secondary select-text">${LEAD} ${CODE}Bash(npm run *)</code></p>`,
+			);
+		});
+
+		it("says every use of a tool for a rule with no content", () => {
+			expect(renderSaves([{kind: "rule", toolName: "Read"}])?.outerHTML).toStrictEqual(
+				`<p data-testid="approval-always-allow-saves" class="text-body text-secondary select-text">${LEAD} every use of ${CODE}Read</code></p>`,
+			);
+		});
+
+		it("lists two or more items under a labelled list, the mode as its own item", () => {
+			const block = renderSaves([
+				{kind: "rule", toolName: "Bash", ruleContent: "echo a\nb"},
+				{kind: "acceptEditsMode"},
+			]);
+			const id = block?.querySelector("span")?.id ?? "";
+			expect({id: id !== "", html: block?.outerHTML}).toStrictEqual({
+				id: true,
+				html:
+					`<div data-testid="approval-always-allow-saves" class="flex flex-col gap-[6px] text-body text-secondary select-text">` +
+					`<span id="${id}">${LEAD}</span>` +
+					`<ul role="list" aria-labelledby="${id}" class="flex flex-col gap-[6px]">` +
+					`<li>${CODE}Bash(echo a[U+000A]b)</code></li>` +
+					"<li>Accept edits mode (file edits, and file commands such as rm and mv, in this session’s folders)</li>" +
+					"</ul></div>",
 			});
-			const tooltip = screen.getByRole("tooltip");
-			expect({
-				text: tooltip.textContent,
-				describedBy: primary.getAttribute("aria-describedby") === tooltip.id,
-			}).toStrictEqual({text: scope, describedBy: true});
+		});
+
+		it("keeps the lead over an empty list when nothing listable is saved", () => {
+			const block = renderSaves([]);
+			const id = block?.querySelector("span")?.id ?? "";
+			expect(block?.outerHTML).toStrictEqual(
+				`<div data-testid="approval-always-allow-saves" class="flex flex-col gap-[6px] text-body text-secondary select-text">` +
+					`<span id="${id}">${LEAD}</span>` +
+					`<ul role="list" aria-labelledby="${id}" class="flex flex-col gap-[6px]"></ul></div>`,
+			);
+		});
+
+		it.each([
+			{name: "no persistent option", saves: [{kind: "acceptEditsMode"}] as const, persistentAllow: null},
+			{name: "no saves (an elicitation's verdict)", saves: null, persistentAllow: "always"},
+		] as const)("draws nothing for $name", ({saves, persistentAllow}) => {
+			expect(renderSaves(saves, persistentAllow)).toBeNull();
+		});
+
+		it("draws nothing once a dialog without a persistent row drops the option", () => {
+			const {container} = render(
+				<PermissionCard
+					title={{action: "run this command", meta: null}}
+					detail="ls"
+					canAnswer
+					persistentAllow="always"
+					persistentAllowSaves={[{kind: "acceptEditsMode"}]}
+					dialog={{denyFirst: false, persistent: false, auto: false}}
+					onDecision={async () => {}}
+				/>,
+			);
+			expect(container.querySelector("[data-testid=approval-always-allow-saves]")).toBeNull();
+		});
+
+		it("follows a detail-first card's detail, its note and description", () => {
+			const {container} = render(
+				<PermissionCard
+					title={{action: "run this command", meta: null}}
+					detail="npm run build"
+					detailLang="bash"
+					detailFirst
+					detailNote="Keeps running in the background."
+					description="Build the app"
+					canAnswer
+					persistentAllow="always"
+					persistentAllowSaves={[{kind: "rule", toolName: "Bash", ruleContent: "npm run *"}]}
+					onDecision={async () => {}}
+				/>,
+			);
+			const body = container.querySelector("[data-testid=approval-always-allow-saves]")?.parentElement;
+			expect(
+				[...(body?.children ?? [])].map((child) =>
+					child.hasAttribute("data-permission-detail")
+						? "detail"
+						: (child.getAttribute("data-testid") ?? child.textContent),
+				),
+			).toStrictEqual([
+				"detail",
+				"Keeps running in the background.",
+				"Build the app",
+				"approval-always-allow-saves",
+			]);
+		});
+
+		it("leads a card whose detail comes last, sitting right before the detail", () => {
+			const {container} = render(
+				<PermissionCard
+					title={{action: "read", meta: "a.ts"}}
+					detail="/repo/a.ts"
+					canAnswer
+					persistentAllow="always"
+					persistentAllowSaves={[{kind: "rule", toolName: "Read"}]}
+					onDecision={async () => {}}
+				/>,
+			);
+			const saves = container.querySelector("[data-testid=approval-always-allow-saves]");
+			expect(saves?.nextElementSibling?.hasAttribute("data-permission-detail")).toBe(true);
 		});
 	});
 
@@ -1859,7 +1991,7 @@ describe("PermissionCard", () => {
 			renderCard({persistentAllow: "always", dialog: {denyFirst: false, persistent: true, auto: false}});
 			expect(
 				screen.getAllByRole("button").map((button) => button.getAttribute("aria-label") ?? button.textContent),
-			).toStrictEqual(["Deny", "Always allow, Don’t ask again for this tool", "More allow options"]);
+			).toStrictEqual(["Deny", "Always allow", "More allow options"]);
 		});
 
 		describe("keys", () => {
@@ -1891,7 +2023,7 @@ describe("PermissionCard", () => {
 				vi.advanceTimersByTime(400);
 				fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
 				expect({buttons, calls: onDecision.mock.calls}).toStrictEqual({
-					buttons: ["Deny", "Always allow, Don’t ask again for this tool", "More allow options"],
+					buttons: ["Deny", "Always allow", "More allow options"],
 					calls: [["allow"]],
 				});
 			});
@@ -2109,7 +2241,7 @@ describe("PermissionCard", () => {
 			card.focus();
 			fireEvent.keyDown(card, {key: "Enter"});
 			seen.push(focusedLabel());
-			expect(seen).toStrictEqual(["Deny", "More allow options", "Always allow, Don’t ask again for this tool"]);
+			expect(seen).toStrictEqual(["Deny", "More allow options", "Always allow"]);
 		});
 
 		it("keeps clicks inside the card from reaching the transcript", () => {

@@ -8,7 +8,7 @@ import type {NotificationEntryPayload} from "./hook-events";
 import {broadcastTyped} from "./sse-broadcast";
 import {hmrPersist, hmrDispose} from "./hmr-persist";
 import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-prompt";
-import type {PersistentAllowKind} from "./permission-suggestions";
+import type {PersistentAllowKind, PersistentAllowSave} from "./permission-suggestions";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
@@ -29,6 +29,8 @@ export interface NotificationEntry {
 	notificationType: string;
 	/** A permission prompt's persistent allow option, from the session's PermissionRequest hook. */
 	persistentAllow?: PersistentAllowKind;
+	/** What that option adds, listed under the card body as upstream's web card does. */
+	persistentAllowSaves?: PersistentAllowSave[];
 	createdAt: number;
 	createdAtIso: string;
 }
@@ -93,6 +95,7 @@ function toPayload(entry: NotificationEntry): NotificationEntryPayload {
 		createdAt: entry.createdAt,
 		createdAtIso: entry.createdAtIso,
 		...(entry.persistentAllow === undefined ? {} : {persistentAllow: entry.persistentAllow}),
+		...(entry.persistentAllowSaves === undefined ? {} : {persistentAllowSaves: entry.persistentAllowSaves}),
 	};
 }
 
@@ -170,6 +173,7 @@ export function addNotification(
 		title?: string;
 		notificationType: string;
 		persistentAllow?: PersistentAllowKind;
+		persistentAllowSaves?: PersistentAllowSave[];
 	},
 ): NotificationEntry {
 	const {projectId, projectName} = resolveProject(db, input.sessionId, input.cwd);
@@ -186,6 +190,7 @@ export function addNotification(
 	};
 	if (input.title !== undefined) entry.title = input.title;
 	if (input.persistentAllow !== undefined) entry.persistentAllow = input.persistentAllow;
+	if (input.persistentAllowSaves !== undefined) entry.persistentAllowSaves = input.persistentAllowSaves;
 
 	// Supersede rather than append: a session's newest state notification
 	// replaces its previous one, so repeated "waiting for your input" /

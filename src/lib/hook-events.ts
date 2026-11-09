@@ -1,4 +1,4 @@
-import type {PersistentAllowKind} from "./permission-suggestions";
+import type {PersistentAllowKind, PersistentAllowSave} from "./permission-suggestions";
 import {z} from "zod";
 import type {RemoteControlState, SessionBucket, SessionSummaryState} from "./session-state";
 import {toolInputSchemas} from "./tool-input-schemas";
@@ -291,6 +291,8 @@ export interface NotificationEntryPayload {
 	notificationType: string;
 	/** A permission prompt's persistent allow option; absent when the dialog offers none. */
 	persistentAllow?: PersistentAllowKind | undefined;
+	/** What the persistent option adds; set with `persistentAllow`. */
+	persistentAllowSaves?: PersistentAllowSave[] | undefined;
 	createdAt: number;
 	createdAtIso: string;
 }

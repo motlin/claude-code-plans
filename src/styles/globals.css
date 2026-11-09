@@ -1746,6 +1746,15 @@ html[data-interface-font="dyslexic"] {
 	color: var(--control-ink, currentColor);
 }
 
+/* Upstream's `.text-code-medium`: the code size and leading in the mono face at the control (medium) weight. */
+@utility text-code-medium {
+	font-family: var(--font-mono);
+	font-feature-settings: var(--font-mono--font-feature-settings);
+	font-size: var(--text-code);
+	line-height: var(--text-code--line-height);
+	font-weight: 500;
+}
+
 /* Upstream `hover:layers-1-fill-ghost-hover`: a selected settings nav row keeps its ghost-selected fill and lays
    the ghost hover over it as a background-image layer (Tailwind's hover: is already gated on (hover: hover)). */
 @utility layers-1-fill-ghost-hover {

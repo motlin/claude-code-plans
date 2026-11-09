@@ -1657,6 +1657,7 @@ function SessionView({
 												// The CLI can refuse an early Enter, so the elicitation's ElicitationResult clears its card.
 												hideOnDecision={!answersElicitation}
 												persistentAllow={shownPermission.persistentAllow ?? null}
+												persistentAllowSaves={shownPermission.persistentAllowSaves ?? null}
 												dialog={permissionDialog}
 												onDecision={answerPermission}
 												footer={

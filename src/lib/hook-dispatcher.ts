@@ -5,7 +5,12 @@ import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import * as schema from "./db/schema";
 import type {ActiveSessionEntry, PendingPermissionRequest} from "./active-session-store";
 import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-prompt";
-import {persistentAllowKind, type PersistentAllowKind} from "./permission-suggestions";
+import {
+	persistentAllowKind,
+	persistentAllowSaves,
+	type PersistentAllowKind,
+	type PersistentAllowSave,
+} from "./permission-suggestions";
 import {outsideReadDialogKind, readHasSeenOutsideReadPrompt} from "./outside-read-prompt";
 import {
 	DOMAIN_EVENTS,
@@ -887,6 +892,7 @@ export async function dispatchHookEvent({
 				title?: string;
 				notificationType: string;
 				persistentAllow?: PersistentAllowKind;
+				persistentAllowSaves?: PersistentAllowSave[];
 			} = {
 				sessionId: event.session_id,
 				cwd: event.cwd,
@@ -902,7 +908,10 @@ export async function dispatchHookEvent({
 				const request = entry?.pendingPermissionRequest;
 				const dialogKind = await outsideReadDialogKind(request, entry?.claudeEnv ?? {}, readHasSeen);
 				const persistentAllow = dialogKind === "generic" ? persistentAllowKind(request?.suggestions) : null;
-				if (persistentAllow !== null) notificationInput.persistentAllow = persistentAllow;
+				if (persistentAllow !== null) {
+					notificationInput.persistentAllow = persistentAllow;
+					notificationInput.persistentAllowSaves = persistentAllowSaves(request?.suggestions ?? []);
+				}
 			}
 			addNotification(db, notificationInput);
 			break;

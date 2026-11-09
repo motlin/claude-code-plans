@@ -3,7 +3,7 @@ import type {PendingElicitation} from "./domain-event-payload-schemas";
 import {asRecord} from "./narrow";
 import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-prompt";
 import {clampRows, inputRows, rowsFitBudget, type PermissionRow} from "./permission-rows";
-import type {PermissionDialogDecision, PersistentAllowKind} from "./permission-suggestions";
+import type {PermissionDialogDecision, PersistentAllowKind, PersistentAllowSave} from "./permission-suggestions";
 import {markerEventsFromRecords} from "./working-marker";
 
 export type PermissionDecision = PermissionDialogDecision;
@@ -15,6 +15,8 @@ export interface PermissionNotification {
 	message: string;
 	/** The dialog's persistent allow option, from the PermissionRequest hook; absent when it has none. */
 	persistentAllow?: PersistentAllowKind | undefined;
+	/** What the persistent option adds; set with `persistentAllow`. */
+	persistentAllowSaves?: PersistentAllowSave[] | undefined;
 }
 
 /**
@@ -55,6 +57,8 @@ export interface PendingPermission {
 	/** The previewed file tool's input, for its diff. */
 	toolInput?: Record<string, unknown>;
 	persistentAllow?: PersistentAllowKind;
+	/** What the persistent option adds, listed in the body; absent for an elicitation's verdict. */
+	persistentAllowSaves?: PersistentAllowSave[];
 }
 
 /** Tools with their own docked card, which never show the permission card. */
@@ -250,9 +254,11 @@ function elicitationKey(entry: PendingElicitation): string {
 }
 
 function withPersistentAllow(permission: PendingPermission, notification: PermissionNotification): PendingPermission {
-	return notification.persistentAllow === undefined
-		? permission
-		: {...permission, persistentAllow: notification.persistentAllow};
+	const {persistentAllow, persistentAllowSaves} = notification;
+	if (persistentAllow === undefined) return permission;
+	return persistentAllowSaves === undefined
+		? {...permission, persistentAllow}
+		: {...permission, persistentAllow, persistentAllowSaves};
 }
 
 function permissionFor(notificationId: string, toolUse: PendingToolUse): PendingPermission {
