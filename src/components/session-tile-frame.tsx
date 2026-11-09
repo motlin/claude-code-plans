@@ -5,7 +5,9 @@ import {useScrollGutterVar} from "../hooks/use-scroll-gutter-var";
 import {SESSION_TILE_CLASS} from "./dock-tokens";
 import {useChatGutterAttributes} from "./panes/pane-host-context";
 import {TooltipPortalContext} from "./ui/tooltip-portal-context";
-import {useCallback, useLayoutEffect, useRef, type ReactNode, type Ref, type RefObject} from "react";
+import {ChatFileDropContext, type ChatFileDropHandler} from "./chat-file-drop-context";
+import {ChatFileDropZone} from "./chat-file-drop-zone";
+import {useCallback, useLayoutEffect, useRef, useState, type ReactNode, type Ref, type RefObject} from "react";
 
 /** The one live chat tile's offset while a pane move reparents it; never a cross-route cache. */
 export interface SessionTileScrollPosition {
@@ -44,6 +46,21 @@ export function SessionTileFrame({
 }) {
 	const router = useRouter();
 	const gutterAttributes = useChatGutterAttributes();
+	// The session composer's attach, registered through ChatFileDropContext; none while archived or chrome-hidden.
+	const [chatDrop, setChatDrop] = useState<{handler: ChatFileDropHandler} | null>(null);
+	const registerChatDrop = useCallback((handler: ChatFileDropHandler) => {
+		const entry = {handler};
+		setChatDrop(entry);
+		return () => {
+			setChatDrop((current) => (current === entry ? null : current));
+		};
+	}, []);
+	const dropIntoComposer = useCallback(
+		(files: readonly File[]) => {
+			chatDrop?.handler(files);
+		},
+		[chatDrop],
+	);
 	const pendingRendered = useRef<(() => void) | undefined>(undefined);
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	useScrollGutterVar(scrollerRef);
@@ -131,40 +148,53 @@ export function SessionTileFrame({
 			{...gutterAttributes}
 			{...(railDocked ? {"data-session-rail-docked": ""} : {})}
 		>
-			<div className="shrink-0">{header}</div>
-			<div className="relative flex min-h-0 flex-1 flex-col">
-				<div
-					ref={scrollerRef}
-					onWheelCapture={cancelPendingRestore}
-					onTouchMoveCapture={cancelPendingRestore}
-					onPointerDownCapture={cancelPendingRestore}
-					onKeyDownCapture={(event) => {
-						if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(event.key))
-							cancelPendingRestore();
-					}}
-					data-session-scrollport
-					data-scroll-restoration-id="main"
-					onScroll={(event) => {
-						if (event.currentTarget.clientHeight > 0)
-							positionRef.current = {
-								visitKey,
-								top: event.currentTarget.scrollTop,
-							};
-					}}
-					className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto [contain:strict] [overflow-anchor:none] [scrollbar-gutter:stable_both-edges]"
+			<ChatFileDropContext.Provider value={registerChatDrop}>
+				{/* Upstream wraps the chat column in its FileDropZone; inside the card so the badge clips to its corners. */}
+				<ChatFileDropZone
+					onDrop={dropIntoComposer}
+					disabled={chatDrop === null}
+					className="h-full min-w-0 flex flex-col"
 				>
-					{/* The scroller clips at its edges, so tooltips inside it portal over the viewport. */}
-					<TooltipPortalContext.Provider value>
-						<div ref={anchorRef} className="flex min-h-full flex-col">
-							<SessionTileGeometryReadyContext.Provider value={restoreGeometry}>
-								<div className="flex-1">{children}</div>
-							</SessionTileGeometryReadyContext.Provider>
-							{footer}
+					<div className="shrink-0">{header}</div>
+					<div className="relative flex min-h-0 flex-1 flex-col">
+						<div
+							ref={scrollerRef}
+							onWheelCapture={cancelPendingRestore}
+							onTouchMoveCapture={cancelPendingRestore}
+							onPointerDownCapture={cancelPendingRestore}
+							onKeyDownCapture={(event) => {
+								if (
+									["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End", " "].includes(
+										event.key,
+									)
+								)
+									cancelPendingRestore();
+							}}
+							data-session-scrollport
+							data-scroll-restoration-id="main"
+							onScroll={(event) => {
+								if (event.currentTarget.clientHeight > 0)
+									positionRef.current = {
+										visitKey,
+										top: event.currentTarget.scrollTop,
+									};
+							}}
+							className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto [contain:strict] [overflow-anchor:none] [scrollbar-gutter:stable_both-edges]"
+						>
+							{/* The scroller clips at its edges, so tooltips inside it portal over the viewport. */}
+							<TooltipPortalContext.Provider value>
+								<div ref={anchorRef} className="flex min-h-full flex-col">
+									<SessionTileGeometryReadyContext.Provider value={restoreGeometry}>
+										<div className="flex-1">{children}</div>
+									</SessionTileGeometryReadyContext.Provider>
+									{footer}
+								</div>
+							</TooltipPortalContext.Provider>
 						</div>
-					</TooltipPortalContext.Provider>
-				</div>
-				{rail}
-			</div>
+						{rail}
+					</div>
+				</ChatFileDropZone>
+			</ChatFileDropContext.Provider>
 		</div>
 	);
 }

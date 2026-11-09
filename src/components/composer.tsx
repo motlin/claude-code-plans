@@ -6,6 +6,7 @@ import {
 	useCallback,
 	useContext,
 	useEffect,
+	useEffectEvent,
 	useId,
 	useLayoutEffect,
 	useMemo,
@@ -126,6 +127,7 @@ import {useBashHighlight} from "../hooks/use-bash-highlight";
 import {useIsOverflowing} from "../hooks/use-is-overflowing";
 import {type SplitItem, SplitDropdownButton} from "./ui/split-dropdown-button";
 import {useFileDropTarget} from "./composer-drop-scrim";
+import {ChatFileDropContext} from "./chat-file-drop-context";
 import {ComposerSkillChip} from "./composer-skill-chip";
 import {type MentionChipActions, paintMentions} from "./composer-mention-paint";
 
@@ -222,6 +224,11 @@ interface ComposerProps {
 	/** While a live session is working, the send slot becomes Stop response. */
 	onStop?: (() => void) | undefined;
 	disabled?: boolean;
+	/**
+	 * Where dropped files land: upstream's page-wide hook and scrim (the home composer), or the chat tile's drop zone
+	 * (the session composer registers its attach through ChatFileDropContext).
+	 */
+	dropScope?: "page" | "chat-panel";
 	deliveryHint?: string | undefined;
 	/** Mode / model / effort / usage readouts; the chin stays empty without them. */
 	chin?: ComposerState | undefined;
@@ -642,6 +649,7 @@ export function Composer({
 	isStreaming = false,
 	onStop,
 	disabled = false,
+	dropScope = "page",
 	deliveryHint,
 	chin,
 	environment,
@@ -1456,7 +1464,16 @@ export function Composer({
 	// Upstream's page-scoped drop: a drop anywhere attaches. The hook stays on while launching so the drop
 	// toasts instead of opening the file, but the scrim only shows once files can attach.
 	const cardRef = useRef<HTMLDivElement>(null);
-	const dropState = useFileDropTarget({onFileDrop: attachFiles, targetRef: cardRef});
+	const chatPanelDrop = dropScope === "chat-panel";
+	const dropState = useFileDropTarget({onFileDrop: attachFiles, targetRef: cardRef, disabled: chatPanelDrop});
+	const registerChatDrop = useContext(ChatFileDropContext);
+	const dropFromChatPanel = useEffectEvent(attachFiles);
+	useEffect(() => {
+		if (!chatPanelDrop || registerChatDrop === null) return undefined;
+		return registerChatDrop((files) => {
+			dropFromChatPanel(files);
+		});
+	}, [chatPanelDrop, registerChatDrop]);
 
 	function handlePaste(e: React.ClipboardEvent) {
 		// Upstream's paste guard (`c1958b152` `_c`): a clipboard holding a folder isn't pasted as text, and only the

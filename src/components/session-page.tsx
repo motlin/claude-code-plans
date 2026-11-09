@@ -1533,6 +1533,7 @@ function SessionView({
 														<Composer
 															variant="session"
 															draftKey={sessionId}
+															dropScope="chat-panel"
 															onSend={(prompt, launchOptions) => {
 																if (
 																	handleBtwPrompt(prompt, {

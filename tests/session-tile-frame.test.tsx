@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import {act, cleanup, fireEvent, render} from "@testing-library/react";
-import {useContext, useLayoutEffect, useRef} from "react";
-import {afterEach, beforeEach, expect, it, vi} from "vite-plus/test";
+import {useContext, useEffect, useLayoutEffect, useRef, type ReactNode} from "react";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {ChatFileDropContext} from "../src/components/chat-file-drop-context";
 import {AssistantMessageActions} from "../src/components/message-actions";
 import {SessionTileFrame, type SessionTileScrollPosition} from "../src/components/session-tile-frame";
 import {SessionTileGeometryReadyContext} from "../src/components/session-tile-geometry-context";
@@ -217,4 +218,54 @@ it("portals a transcript toolbar tooltip out of the contain:strict scroller and 
 	});
 	vi.useRealTimers();
 	vi.restoreAllMocks();
+});
+
+describe("chat panel file drop zone", () => {
+	const png = new File([new Uint8Array([1])], "dropped.png", {type: "image/png"});
+	const files = () => ({dataTransfer: {types: ["Files"], files: [png], items: [], dropEffect: "none"}});
+	function Registers({onDrop}: {onDrop: (files: readonly File[]) => void}) {
+		const register = useContext(ChatFileDropContext);
+		useEffect(() => register?.(onDrop), [register, onDrop]);
+		return <p>Example composer</p>;
+	}
+	function DropVisit({footer}: {footer: ReactNode}) {
+		return (
+			<SessionTileFrame
+				sessionId="example-alice"
+				visitKey="example-entry"
+				positionRef={{current: null}}
+				anchorRef={{current: null}}
+				restoredScrollY={undefined}
+				header={<p>Example header</p>}
+				footer={footer}
+			>
+				<p>Example transcript</p>
+			</SessionTileFrame>
+		);
+	}
+
+	it("shows the badge inside the tile for a Files drag over the transcript and drops into the registered composer", () => {
+		const onDrop = vi.fn<(files: readonly File[]) => void>();
+		const {container} = render(<DropVisit footer={<Registers onDrop={onDrop} />} />);
+		const scrollport = container.querySelector("[data-session-scrollport]")!;
+		fireEvent.dragEnter(scrollport, files());
+		const shown = container.querySelector("[data-session-tile] .dframe-drop-overlay-badge") !== null;
+		const notPrevented = fireEvent.drop(scrollport, files());
+		expect({shown, notPrevented, calls: onDrop.mock.calls}).toStrictEqual({
+			shown: true,
+			notPrevented: false,
+			calls: [[[png]]],
+		});
+	});
+
+	it("is disabled with no composer registered: no badge, but the drop is still swallowed", () => {
+		const {container} = render(<DropVisit footer={<p>Archived</p>} />);
+		const scrollport = container.querySelector("[data-session-scrollport]")!;
+		fireEvent.dragEnter(scrollport, files());
+		const shown = container.querySelector(".dframe-drop-overlay-badge");
+		expect({shown, notPrevented: fireEvent.drop(scrollport, files())}).toStrictEqual({
+			shown: null,
+			notPrevented: false,
+		});
+	});
 });

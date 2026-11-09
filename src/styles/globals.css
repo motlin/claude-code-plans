@@ -440,6 +440,8 @@ html[data-interface-font="dyslexic"] {
 }
 
 :root {
+	/* Upstream --df-ease-out-cubic, the dframe chrome's transition curve. */
+	--df-ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
 	/* Upstream .cds-root control height: the shell is a comfortable context (see [data-density] below). */
 	--cds-h-control: calc(2rem * var(--cds-rem-scale, 1));
 	/* Upstream --cds-switch-h, the size-less (xxs) Switch's height: 1rem at .cds-root, 1.25rem at comfortable. */
@@ -2600,6 +2602,71 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 		opacity: 0;
 		transform: translateY(8px);
 	}
+}
+
+/* Upstream shared-styles .dframe-drop-overlay-badge: the chat panel's "Drop files here" badge while files are dragged
+   over the chat column (ChatFileDropZone). */
+.dframe-drop-overlay-badge {
+	border-radius: var(--df-radius-card, 8px);
+	border: 1px solid var(--color-strong);
+	background: color-mix(in srgb, var(--color-surface-0) 40%, transparent);
+	backdrop-filter: blur(2px);
+	font-variation-settings: normal;
+	box-shadow: inset 0 0 0 2px var(--color-fill-accent);
+	pointer-events: none;
+	transition:
+		left 0.12s var(--df-ease-out-cubic),
+		top 0.12s var(--df-ease-out-cubic),
+		width 0.12s var(--df-ease-out-cubic),
+		height 0.12s var(--df-ease-out-cubic),
+		opacity 0.12s var(--df-ease-out-cubic);
+	justify-content: center;
+	align-items: center;
+	font-size: 0.875rem;
+	font-weight: 500;
+	display: flex;
+	position: absolute;
+}
+
+.dframe-drop-overlay-badge:where(:root[dir="rtl"] :dir(rtl)) {
+	transition:
+		right 0.12s var(--df-ease-out-cubic),
+		top 0.12s var(--df-ease-out-cubic),
+		width 0.12s var(--df-ease-out-cubic),
+		height 0.12s var(--df-ease-out-cubic),
+		opacity 0.12s var(--df-ease-out-cubic);
+}
+
+.dframe-drop-overlay-label {
+	background: var(--color-fill-accent);
+	color: var(--color-gray-0);
+	transition:
+		background-color 0.12s var(--df-ease-out-cubic),
+		color 0.12s var(--df-ease-out-cubic);
+	border-radius: 9999px;
+	padding: 4px 10px;
+}
+
+.dframe-drop-overlay-badge::before {
+	content: "";
+	border-radius: inherit;
+	box-shadow: inset 0 0 24px 0 color-mix(in srgb, var(--color-fill-accent) 20%, transparent);
+	pointer-events: none;
+	position: absolute;
+	inset: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.dframe-drop-overlay-badge,
+	.dframe-drop-overlay-badge::before,
+	.dframe-drop-overlay-label {
+		transition: none;
+	}
+}
+
+[data-reduce-motion="true"] .dframe-drop-overlay-badge,
+[data-reduce-motion="true"] .dframe-drop-overlay-label {
+	transition: none;
 }
 
 /* Upstream's struck-through link chip: inside <del>/<s> the chip draws its own strike line,

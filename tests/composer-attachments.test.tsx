@@ -3,6 +3,7 @@
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {ChatFileDropContext} from "../src/components/chat-file-drop-context";
 import {Composer} from "../src/components/composer";
 import {ToastContext, type ToastOptions} from "../src/components/toast-context";
 import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
@@ -115,6 +116,14 @@ function chipNames(): string[] {
 
 const png = (name: string) => new File([new Uint8Array([1, 2, 3])], name, {type: "image/png"});
 
+const chatDropHandlers: ((files: readonly File[]) => void)[] = [];
+function registerChatDrop(handler: (files: readonly File[]) => void) {
+	chatDropHandlers.push(handler);
+	return () => {
+		chatDropHandlers.splice(chatDropHandlers.indexOf(handler), 1);
+	};
+}
+
 beforeEach(() => {
 	vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
 	Object.assign(URL, {createObjectURL: () => "blob:preview", revokeObjectURL: () => {}});
@@ -204,6 +213,38 @@ describe("Composer attachments", () => {
 			overlayAfterDrop: false,
 			uploads: ["dropped.png"],
 		});
+	});
+
+	it("hands a chat-panel composer's attach to the chat tile's drop zone instead of the page scrim", async () => {
+		mockUploads(savedAs(`${ATTACHMENTS}/0003.png`));
+		const queryClient = new QueryClient();
+		queryClient.setQueryData(customizeMcpServersQueryOptions.queryKey, []);
+		const {unmount} = render(
+			<QueryClientProvider client={queryClient}>
+				<ToastContext.Provider value={toasts}>
+					<ChatFileDropContext.Provider value={registerChatDrop}>
+						<Composer variant="session" draftKey={SESSION} onSend={() => {}} dropScope="chat-panel" />
+					</ChatFileDropContext.Provider>
+				</ToastContext.Provider>
+			</QueryClientProvider>,
+		);
+
+		const pageDragNotPrevented = fireEvent.dragOver(document.body, {dataTransfer: {types: ["Files"], files: []}});
+		const scrim = document.querySelector('[data-cds="ChatComposerDropScrim"]');
+		const registered = chatDropHandlers.length;
+		chatDropHandlers[0]?.([png("dropped.png")]);
+		await screen.findByRole("button", {name: "dropped.png"});
+		unmount();
+
+		expect({pageDragNotPrevented, scrim, registered, uploads, afterUnmount: chatDropHandlers.length}).toStrictEqual(
+			{
+				pageDragNotPrevented: true,
+				scrim: null,
+				registered: 1,
+				uploads: ["dropped.png"],
+				afterUnmount: 0,
+			},
+		);
 	});
 
 	describe("dropped and pasted folders (upstream zt + cc970fefe WJ)", () => {
