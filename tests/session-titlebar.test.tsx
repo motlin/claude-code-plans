@@ -170,6 +170,22 @@ function uninstallRowModel() {
 	}
 }
 
+/**
+ * Animation frames run only when a test calls {@link nextFrame}: jsdom's own fire on a wall-clock interval, so a
+ * frame the roving toolbar's watchHidden observer schedules would otherwise land before or after an assertion
+ * depending on load.
+ */
+const frames = new Map<number, FrameRequestCallback>();
+let frameId = 0;
+
+function nextFrame() {
+	const due = [...frames.values()];
+	frames.clear();
+	act(() => {
+		for (const callback of due) callback(performance.now());
+	});
+}
+
 function resizeTitlebar(width: number) {
 	rowPx = width;
 	act(() => {
@@ -264,6 +280,15 @@ beforeEach(() => {
 	resizeCallbacks.length = 0;
 	installRowModel();
 	vi.stubGlobal("ResizeObserver", TestResizeObserver);
+	frames.clear();
+	vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
+		frameId += 1;
+		frames.set(frameId, callback);
+		return frameId;
+	});
+	vi.spyOn(window, "cancelAnimationFrame").mockImplementation((id) => {
+		frames.delete(id);
+	});
 	vi.stubGlobal("fetch", fetchMock);
 	vi.stubGlobal("open", openMock);
 	fetchMock.mockReset();
@@ -981,7 +1006,7 @@ describe("SessionTitlebar Session tools toolbar (upstream cds Toolbar with tu ro
 		});
 	});
 
-	it("hands the stop to Files when Changes folds into View options while it is the stop", async () => {
+	it("hands the stop to Files when Changes folds into View options while it is the stop, then the next frame re-elects the title", async () => {
 		const titlebar = await renderTitlebar(baseDetail, {paneToggles: <FoldProbe />, railToggleFoldable: true});
 		const changes = screen.getByRole("button", {name: "Changes"});
 		act(() => {
@@ -993,10 +1018,13 @@ describe("SessionTitlebar Session tools toolbar (upstream cds Toolbar with tu ro
 		resizeTitlebar(300);
 		resizeTitlebar(260);
 		await flush();
+		const handedOff = {hidden: screen.getByTestId("hidden").textContent, stops: stops(titlebar)};
+		nextFrame();
 
-		expect({hidden: screen.getByTestId("hidden").textContent, stops: stops(titlebar)}).toStrictEqual({
-			hidden: "2",
-			stops: ["Files"],
+		expect({handedOff, nextFrame: stops(titlebar)}).toStrictEqual({
+			handedOff: {hidden: "2", stops: ["Files"]},
+			// watchHidden's frame re-elects the first item: focus left the toolbar, so firstUntilFocused holds again.
+			nextFrame: [TITLE_NAME],
 		});
 	});
 });
