@@ -2614,6 +2614,31 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	}
 }
 
+/* Upstream's epitaxy-check-draw: an accepted promote's ✓ Sent check wipes in left to right. */
+@keyframes epitaxy-check-draw {
+	0% {
+		clip-path: inset(0 100% 0 0);
+	}
+	100% {
+		clip-path: inset(0);
+	}
+}
+
+.epitaxy-check-draw {
+	animation: epitaxy-check-draw 0.18s cubic-bezier(0.215, 0.61, 0.355, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.epitaxy-check-draw {
+		animation: none;
+	}
+}
+
+/* Upstream's h-control: the density control height. */
+@utility h-control {
+	height: var(--cds-h-control);
+}
+
 /* Upstream's "landed" flash on a promoted queued message's row (`animate-code-reply-flash-accent`). */
 @keyframes code-reply-flash-accent {
 	0% {

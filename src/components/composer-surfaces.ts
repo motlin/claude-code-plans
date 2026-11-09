@@ -2,5 +2,5 @@
 export {AttachedContextChips} from "./attached-context-chips";
 export {ComposerDropScrim} from "./composer-drop-scrim-overlay";
 export {FileMentionMenu} from "./file-mention-menu";
-export {QueuedMessageBar} from "./queued-message-bar";
+export {QueuedMessageBar, QueuedPromoteStatus} from "./queued-message-bar";
 export {SlashCommandMenu} from "./slash-command-menu";

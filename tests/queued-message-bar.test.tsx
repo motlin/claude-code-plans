@@ -13,14 +13,21 @@ afterEach(() => {
 const ALICE: QueuedPrompt = {id: "q1", text: "Alice's first\n\n  follow-up"};
 const BOB: QueuedPrompt = {id: "q2", text: "Bob's second follow-up"};
 
-function renderBar(items: readonly QueuedPrompt[], sessionId = "session-alice") {
+function renderBar(items: readonly QueuedPrompt[], sessionId = "session-alice", acceptedIds?: ReadonlySet<string>) {
 	const handlers = {
 		onEdit: vi.fn<(item: QueuedPrompt) => void>(),
 		onSendNow: vi.fn<(id: string) => Promise<void>>(async () => {}),
 		onRemove: vi.fn<(id: string) => void>(),
 		onClearAll: vi.fn<() => void>(),
 	};
-	const view = render(<QueuedMessageBar sessionId={sessionId} items={items} {...handlers} />);
+	const view = render(
+		<QueuedMessageBar
+			sessionId={sessionId}
+			items={items}
+			{...(acceptedIds === undefined ? {} : {acceptedIds})}
+			{...handlers}
+		/>,
+	);
 	return {...handlers, ...view};
 }
 
@@ -37,6 +44,48 @@ describe("queuedPreview", () => {
 });
 
 describe("QueuedMessageBar", () => {
+	it("replaces an accepted entry's Send now with upstream's ✓ Sent chip", () => {
+		renderBar([ALICE], "session-alice", new Set([ALICE.id]));
+		const sent = screen.getByTestId("queued-row-sent");
+		const chip = sent.firstElementChild;
+		const draw = chip?.firstElementChild;
+		expect({
+			sendNow: screen.queryByRole("button", {name: "Send now"}),
+			className: sent.className,
+			chip: chip?.className,
+			draw: draw?.className,
+			icon: draw?.firstElementChild?.getAttribute("aria-hidden"),
+			text: sent.textContent,
+		}).toStrictEqual({
+			sendNow: null,
+			className:
+				"flex shrink-0 items-center px-xs text-body text-muted-as-secondary epitaxy-hint-fade-in h-control",
+			chip: "inline-flex items-center gap-0.75",
+			draw: "epitaxy-check-draw inline-flex",
+			icon: "true",
+			text: "Sent",
+		});
+	});
+
+	it("shows the ✓ Sent chip at the small size on an accepted list row", () => {
+		renderBar([ALICE, BOB], "session-alice-sent-rows", new Set([BOB.id]));
+		fireEvent.click(screen.getByRole("button", {name: /messages queued/}));
+		const rows = screen.getAllByRole("listitem");
+		expect(
+			rows.map((row) => {
+				const sent = within(row).queryByTestId("queued-row-sent");
+				return sent === null ? null : {className: sent.className, text: sent.textContent};
+			}),
+		).toStrictEqual([
+			null,
+			{
+				className:
+					"flex shrink-0 items-center px-xs text-body text-muted-as-secondary epitaxy-hint-fade-in h-5",
+				text: "Sent",
+			},
+		]);
+	});
+
 	it("renders nothing without queued prompts", () => {
 		const {container} = renderBar([]);
 		expect(container.innerHTML).toBe("");

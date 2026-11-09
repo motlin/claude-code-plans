@@ -7,7 +7,7 @@ import {
 	type QueuedPrompt,
 	useComposerQueueItems,
 } from "../lib/composer-queue";
-import {markLanded} from "../lib/landed-store";
+import {announce, markLanded} from "../lib/landed-store";
 
 /** How a prompt delivery ended; `not-ready` is herdr's 409 agent_not_ready. */
 export type DeliveryResult = "sent" | "not-ready" | "failed";
@@ -17,6 +17,8 @@ export const SEND_NOW_FAILED_MESSAGE = "Couldn’t send the message now. It’s 
 
 /** A not-ready delivery goes back to the head of the queue and retries after this delay. */
 const QUEUE_RETRY_MS = 1000;
+
+const NO_IDS: ReadonlySet<string> = new Set();
 
 export interface ComposerQueueOptions {
 	sessionId: string;
@@ -35,6 +37,8 @@ export interface ComposerQueueOptions {
 
 export interface ComposerQueue {
 	items: readonly QueuedPrompt[];
+	/** Prompts whose Send now was accepted and that are still queued: upstream's ✓ "Sent" rows. */
+	acceptedIds: ReadonlySet<string>;
 	/** Queue at the back, or a mid-turn prompt at the head to go as soon as no dialog is open. */
 	enqueue: (text: string, options?: {midTurn: true}) => void;
 	remove: (id: string) => void;
@@ -59,8 +63,22 @@ export function useComposerQueue({
 	retryMs = QUEUE_RETRY_MS,
 }: ComposerQueueOptions): ComposerQueue {
 	const items = useComposerQueueItems(sessionId);
+	const itemsRef = useRef(items);
+	useEffect(() => {
+		itemsRef.current = items;
+	}, [items]);
 	// Prompts Send now promoted mid-turn: each flashes as "landed" once it is delivered.
 	const promotedRef = useRef(new Set<string>());
+	const [acceptedIds, setAcceptedIds] = useState<ReadonlySet<string>>(NO_IDS);
+	const dropAccepted = useCallback((id: string | null) => {
+		setAcceptedIds((current) => {
+			if (id === null) return current.size === 0 ? current : NO_IDS;
+			if (!current.has(id)) return current;
+			const next = new Set(current);
+			next.delete(id);
+			return next;
+		});
+	}, []);
 	const [flushing, setFlushing] = useState(false);
 	const [waiting, setWaiting] = useState(false);
 
@@ -83,13 +101,16 @@ export function useComposerQueue({
 		const delivery = next.midTurn === true ? deliver(next.text, {midTurn: true}) : deliver(next.text);
 		void delivery.then((result) => {
 			setFlushing(false);
-			if (result !== "not-ready" && promotedRef.current.delete(next.id) && result === "sent")
+			if (result !== "not-ready") dropAccepted(next.id);
+			if (result !== "not-ready" && promotedRef.current.delete(next.id) && result === "sent") {
 				markLanded(next.text);
+				announce(sessionId, "read");
+			}
 			if (result !== "not-ready") return;
 			dispatchComposerQueue(sessionId, {type: "enqueue", item: next, position: "front"});
 			setWaiting(true);
 		});
-	}, [busy, deliver, dialogOpen, flushing, items, sessionId, waiting]);
+	}, [busy, deliver, dialogOpen, dropAccepted, flushing, items, sessionId, waiting]);
 
 	const enqueue = useCallback(
 		(text: string, options?: {midTurn: true}) => {
@@ -105,21 +126,37 @@ export function useComposerQueue({
 	const remove = useCallback(
 		(id: string) => {
 			dispatchComposerQueue(sessionId, {type: "remove", id});
+			dropAccepted(id);
 		},
-		[sessionId],
+		[dropAccepted, sessionId],
 	);
 	const clear = useCallback(() => {
 		dispatchComposerQueue(sessionId, {type: "clear"});
-	}, [sessionId]);
+		dropAccepted(null);
+	}, [dropAccepted, sessionId]);
+	// Upstream `markAccepted`: the row shows ✓ Sent and the session announces "Sent".
+	const accept = useCallback(
+		(id: string) => {
+			announce(sessionId, "sent");
+			// The pane may have gone idle and delivered it before the interrupt request settled.
+			if (!itemsRef.current.some((item) => item.id === id)) return;
+			setAcceptedIds((current) => new Set(current).add(id));
+		},
+		[sessionId],
+	);
 	const sendNow = useCallback(
 		async (id: string) => {
 			const previousIndex = items.findIndex((item) => item.id === id);
 			dispatchComposerQueue(sessionId, {type: "reorder", id, toIndex: 0});
 			// An idle Send now starts a new turn, which upstream never flashes as read mid-turn.
-			if (!busy) return;
+			if (!busy) {
+				accept(id);
+				return;
+			}
 			promotedRef.current.add(id);
 			try {
 				await interrupt();
+				accept(id);
 			} catch {
 				// Upstream clears pending and reorders only on success, so undo both.
 				promotedRef.current.delete(id);
@@ -127,7 +164,7 @@ export function useComposerQueue({
 				onSendNowFailed?.();
 			}
 		},
-		[busy, interrupt, items, onSendNowFailed, sessionId],
+		[accept, busy, interrupt, items, onSendNowFailed, sessionId],
 	);
-	return {items, enqueue, remove, clear, sendNow};
+	return {items, acceptedIds, enqueue, remove, clear, sendNow};
 }

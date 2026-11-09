@@ -1,7 +1,8 @@
 import {type KeyboardEvent, type MouseEvent, useCallback, useId, useRef, useState} from "react";
-import {ChevronDown, ChevronUp, CornerDownLeft, Pencil, X} from "lucide-react";
+import {Check, ChevronDown, ChevronUp, CornerDownLeft, Pencil, X} from "lucide-react";
 
 import {type QueuedPrompt, queueBandExpanded, queuedPreview, setQueueBandExpanded} from "../lib/composer-queue";
+import {useAnnouncement} from "../lib/landed-store";
 import {Icon} from "./ui/icon";
 import {Spinner} from "./ui/spinner";
 import {ContextMenu, ContextMenuTrigger, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./ui/menu";
@@ -16,10 +17,48 @@ function keepComposerFocus(event: MouseEvent) {
 	event.preventDefault();
 }
 
+const NO_IDS: ReadonlySet<string> = new Set();
+
+/** Upstream's `he` + `Fo`: an accepted promote's ✓ "Sent" chip in place of Send now (`base` band, `sm` row). */
+function QueuedRowSent({size}: {size: "base" | "sm"}) {
+	return (
+		<span
+			data-testid="queued-row-sent"
+			className={`flex shrink-0 items-center px-xs text-body text-muted-as-secondary epitaxy-hint-fade-in ${size === "base" ? "h-control" : "h-5"}`}
+		>
+			<span className="inline-flex items-center gap-0.75">
+				<span className="epitaxy-check-draw inline-flex">
+					<Check aria-hidden="true" className="size-4" />
+				</span>
+				Sent
+			</span>
+		</span>
+	);
+}
+
+/**
+ * Upstream's `${sessionId}:queued-status` (`NSe`): one persistent sr-only status that says "Sent"
+ * when a promote is accepted and "Read" once it lands, for announcements newer than its mount.
+ */
+export function QueuedPromoteStatus({sessionId}: {sessionId: string}) {
+	const announcement = useAnnouncement(sessionId);
+	const [mountedSeq] = useState(() => announcement?.seq ?? 0);
+	let text = "";
+	if (announcement !== undefined && announcement.seq > mountedSeq)
+		text = announcement.kind === "sent" ? "Sent" : "Read";
+	return (
+		<span role="status" className="sr-only" data-queued-promote-status="">
+			{text}
+		</span>
+	);
+}
+
 export interface QueuedMessageBarProps {
 	/** Keys the remembered expansion, like upstream's per-session queue store. */
 	sessionId: string;
 	items: readonly QueuedPrompt[];
+	/** Entries whose Send now was accepted: each shows ✓ Sent instead of Send now until it leaves. */
+	acceptedIds?: ReadonlySet<string>;
 	onEdit: (item: QueuedPrompt) => void;
 	/** Settles when the interrupt request does; Send now stays busy until then. */
 	onSendNow: (id: string) => Promise<void>;
@@ -35,7 +74,15 @@ const NO_ITEMS: readonly QueuedPrompt[] = [];
  * more collapse to "N messages queued · Next: …" and expand into a list with per-row menus and
  * Clear all. When the last entry leaves, the band plays its exit animation before unmounting.
  */
-export function QueuedMessageBar({sessionId, items, onEdit, onSendNow, onRemove, onClearAll}: QueuedMessageBarProps) {
+export function QueuedMessageBar({
+	sessionId,
+	items,
+	acceptedIds = NO_IDS,
+	onEdit,
+	onSendNow,
+	onRemove,
+	onClearAll,
+}: QueuedMessageBarProps) {
 	const [lastItems, setLastItems] = useState(items);
 	if (items.length > 0 && items !== lastItems) setLastItems(items);
 	const exiting = items.length === 0 && lastItems.length > 0;
@@ -87,25 +134,29 @@ export function QueuedMessageBar({sessionId, items, onEdit, onSendNow, onRemove,
 			>
 				<span className="shrink-0 text-body font-medium text-primary">{count}</span>
 				<span className="min-w-0 flex-1 truncate text-body text-secondary">{queuedPreview(first.text)}</span>
-				<button
-					type="button"
-					aria-label="Send now"
-					aria-describedby={sendNowDescriptionId}
-					aria-busy={sending ? true : undefined}
-					aria-disabled={sending ? true : undefined}
-					className={`relative ${BAND_BUTTON_CLASS}`}
-					onMouseDown={keepComposerFocus}
-					onClick={() => {
-						sendFirstNow(first.id);
-					}}
-				>
-					<CornerDownLeft aria-hidden="true" className={sending ? "size-4 opacity-0" : "size-4"} />
-					{sending && (
-						<span className="absolute inset-0 grid place-items-center leading-[0]">
-							<Spinner size="sm" label="Sending…" />
-						</span>
-					)}
-				</button>
+				{acceptedIds.has(first.id) && !exiting ? (
+					<QueuedRowSent size="base" />
+				) : (
+					<button
+						type="button"
+						aria-label="Send now"
+						aria-describedby={sendNowDescriptionId}
+						aria-busy={sending ? true : undefined}
+						aria-disabled={sending ? true : undefined}
+						className={`relative ${BAND_BUTTON_CLASS}`}
+						onMouseDown={keepComposerFocus}
+						onClick={() => {
+							sendFirstNow(first.id);
+						}}
+					>
+						<CornerDownLeft aria-hidden="true" className={sending ? "size-4 opacity-0" : "size-4"} />
+						{sending && (
+							<span className="absolute inset-0 grid place-items-center leading-[0]">
+								<Spinner size="sm" label="Sending…" />
+							</span>
+						)}
+					</button>
+				)}
 				<span id={sendNowDescriptionId} hidden>
 					{SEND_NOW_DESCRIPTION}
 				</span>
@@ -181,6 +232,7 @@ export function QueuedMessageBar({sessionId, items, onEdit, onSendNow, onRemove,
 							key={item.id}
 							item={item}
 							separated={index > 0}
+							accepted={acceptedIds.has(item.id) && !exiting}
 							onEdit={onEdit}
 							onSendNow={onSendNow}
 							onRemove={onRemove}
@@ -264,12 +316,14 @@ function QueuedRowItems({
 function QueuedRow({
 	item,
 	separated,
+	accepted,
 	onEdit,
 	onSendNow,
 	onRemove,
 }: {
 	item: QueuedPrompt;
 	separated: boolean;
+	accepted: boolean;
 	onEdit: (item: QueuedPrompt) => void;
 	onSendNow: (id: string) => Promise<void>;
 	onRemove: (id: string) => void;
@@ -293,6 +347,7 @@ function QueuedRow({
 						{item.text}
 					</span>
 					<div className="absolute end-1.25 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
+						{accepted && <QueuedRowSent size="sm" />}
 						<Menu>
 							<MenuTrigger
 								aria-label="Queued message actions"

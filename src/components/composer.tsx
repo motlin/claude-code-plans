@@ -189,6 +189,8 @@ const ICON_BUTTON_CLASS =
 /** Prompts waiting for the live session to go idle, with their chip actions. */
 export interface ComposerQueueView {
 	items: readonly QueuedPrompt[];
+	/** Prompts whose Send now was accepted; each shows upstream's ✓ Sent chip. */
+	acceptedIds?: ReadonlySet<string>;
 	sendNow: (id: string) => Promise<void>;
 	remove: (id: string) => void;
 	clear: () => void;
@@ -989,8 +991,14 @@ export function Composer({
 	useEffect(() => {
 		if (mentionSessionId !== undefined) void preloadFileTypeIcons();
 	}, [mentionSessionId]);
-	const {AttachedContextChips, ComposerDropScrim, FileMentionMenu, QueuedMessageBar, SlashCommandMenu} =
-		useComposerSurfaces();
+	const {
+		AttachedContextChips,
+		ComposerDropScrim,
+		FileMentionMenu,
+		QueuedMessageBar,
+		QueuedPromoteStatus,
+		SlashCommandMenu,
+	} = useComposerSurfaces();
 	useEffect(() => {
 		preloadComposerSurfaces().catch(() => {});
 	}, []);
@@ -1628,11 +1636,13 @@ export function Composer({
 					<p aria-live="polite" aria-atomic="true" data-testid="coach-queued-status" className="sr-only">
 						{laterItems.length > 0 ? queuedStatusText(laterItems.length) : ""}
 					</p>
+					<QueuedPromoteStatus key={`${draftKey}:queued-status`} sessionId={draftKey} />
 					{/* Upstream's QueuedMessageBar band sits in the dock, 6px above the composer card */}
 					<div ref={queueBandSlot} className="mb-1.5 empty:hidden">
 						<QueuedMessageBar
 							sessionId={draftKey}
 							items={laterItems}
+							{...(queue.acceptedIds === undefined ? {} : {acceptedIds: queue.acceptedIds})}
 							onEdit={editQueuedPrompt}
 							onSendNow={queue.sendNow}
 							onRemove={queue.remove}

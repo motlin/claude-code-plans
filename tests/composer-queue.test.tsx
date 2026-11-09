@@ -10,7 +10,7 @@ import {ToastContext, type ToastOptions} from "../src/components/toast-context";
 import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
 import {type DeliveryResult, SEND_NOW_FAILED_MESSAGE, useComposerQueue} from "../src/hooks/use-composer-queue";
 import {useStopResponse} from "../src/hooks/use-stop-response";
-import {clearLanded, isLanded} from "../src/lib/landed-store";
+import {clearAnnouncements, clearLanded, isLanded, peekAnnouncement} from "../src/lib/landed-store";
 import {HerdrRequestError, isAgentNotReady, sendHerdrPrompt} from "../src/lib/api/herdr";
 import {
 	clearComposerQueues,
@@ -450,6 +450,67 @@ describe("useComposerQueue", () => {
 			other: false,
 		});
 		clearLanded();
+	});
+
+	it("holds a promoted prompt accepted until it is delivered, announcing Sent then Read", async () => {
+		const deliver = vi.fn<Deliver>(async () => Promise.resolve("sent"));
+		const {result, setBusy} = renderQueue({busy: true, deliver, sessionId: "session-accepted"});
+		act(() => {
+			result.current.enqueue("Alice's first follow-up");
+			result.current.enqueue("Bob's second follow-up");
+		});
+		const bob = result.current.items[1];
+		if (bob === undefined) throw new Error("Expected Bob's queued prompt");
+		const beforeSend = [...result.current.acceptedIds];
+		await act(async () => result.current.sendNow(bob.id));
+		const accepted = [...result.current.acceptedIds];
+		const sentAnnouncement = peekAnnouncement("session-accepted")?.kind;
+		setBusy(false);
+		await waitFor(() => {
+			expect(deliver.mock.calls.length).toBe(1);
+		});
+		await waitFor(() => {
+			expect(result.current.acceptedIds.size).toBe(0);
+		});
+		expect({
+			beforeSend,
+			accepted,
+			sentAnnouncement,
+			readAnnouncement: peekAnnouncement("session-accepted")?.kind,
+		}).toStrictEqual({beforeSend: [], accepted: [bob.id], sentAnnouncement: "sent", readAnnouncement: "read"});
+		clearLanded();
+		clearAnnouncements();
+	});
+
+	it("never accepts a Send now whose interrupt fails", async () => {
+		const interrupt = vi.fn<() => Promise<void>>(async () => Promise.reject(new Error("herdr down")));
+		const {result} = renderQueue({busy: true, deliver: vi.fn<Deliver>(), interrupt, sessionId: "session-rejected"});
+		act(() => {
+			result.current.enqueue("Alice's first follow-up");
+		});
+		const alice = result.current.items[0];
+		if (alice === undefined) throw new Error("Expected Alice's queued prompt");
+		await act(async () => result.current.sendNow(alice.id));
+		expect({
+			accepted: [...result.current.acceptedIds],
+			announcement: peekAnnouncement("session-rejected"),
+		}).toStrictEqual({accepted: [], announcement: undefined});
+	});
+
+	it("drops an accepted prompt removed from the queue", async () => {
+		const {result} = renderQueue({busy: true, deliver: vi.fn<Deliver>()});
+		act(() => {
+			result.current.enqueue("Alice's first follow-up");
+		});
+		const alice = result.current.items[0];
+		if (alice === undefined) throw new Error("Expected Alice's queued prompt");
+		await act(async () => result.current.sendNow(alice.id));
+		const accepted = [...result.current.acceptedIds];
+		act(() => {
+			result.current.remove(alice.id);
+		});
+		expect({accepted, after: [...result.current.acceptedIds]}).toStrictEqual({accepted: [alice.id], after: []});
+		clearAnnouncements();
 	});
 
 	it("reports a failed Send now interrupt and keeps the prompt queued", async () => {

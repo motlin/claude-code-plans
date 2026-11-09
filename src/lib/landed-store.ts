@@ -68,3 +68,36 @@ export function useLanded(text: string): boolean {
 		() => false,
 	);
 }
+
+/** Upstream's per-session promote announcement: "sent" on accept, "read" once landed. */
+export interface PromoteAnnouncement {
+	kind: "sent" | "read";
+	seq: number;
+}
+
+const announcements = new Map<string, PromoteAnnouncement>();
+
+/** Upstream `markAccepted` / `markLanded`'s `announcements[sessionId] = {kind, seq + 1}`. */
+export function announce(sessionId: string, kind: PromoteAnnouncement["kind"]): void {
+	announcements.set(sessionId, {kind, seq: (announcements.get(sessionId)?.seq ?? 0) + 1});
+	emit();
+}
+
+export function peekAnnouncement(sessionId: string): PromoteAnnouncement | undefined {
+	return announcements.get(sessionId);
+}
+
+/** Drops every announcement; for tests. */
+export function clearAnnouncements(): void {
+	announcements.clear();
+	emit();
+}
+
+/** Upstream `useAnnouncement(sessionId)`. */
+export function useAnnouncement(sessionId: string): PromoteAnnouncement | undefined {
+	return useSyncExternalStore(
+		subscribe,
+		() => announcements.get(sessionId),
+		() => undefined,
+	);
+}

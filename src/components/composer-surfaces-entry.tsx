@@ -3,11 +3,19 @@ import {deferredComponent, deferredModule, useLoadedModule} from "./deferred-com
 // The composer's on-demand surfaces stay off the cold load; the composer warms them on mount, before a first / or @.
 const composerSurfaces = deferredModule(async () =>
 	import("./composer-surfaces").then(
-		({AttachedContextChips, ComposerDropScrim, FileMentionMenu, QueuedMessageBar, SlashCommandMenu}) => ({
+		({
 			AttachedContextChips,
 			ComposerDropScrim,
 			FileMentionMenu,
 			QueuedMessageBar,
+			QueuedPromoteStatus,
+			SlashCommandMenu,
+		}) => ({
+			AttachedContextChips,
+			ComposerDropScrim,
+			FileMentionMenu,
+			QueuedMessageBar,
+			QueuedPromoteStatus,
 			SlashCommandMenu,
 		}),
 	),
@@ -20,6 +28,7 @@ const deferredSurfaces = {
 	ComposerDropScrim: deferredComponent(composerSurfaces, "ComposerDropScrim"),
 	FileMentionMenu: deferredComponent(composerSurfaces, "FileMentionMenu"),
 	QueuedMessageBar: deferredComponent(composerSurfaces, "QueuedMessageBar"),
+	QueuedPromoteStatus: deferredComponent(composerSurfaces, "QueuedPromoteStatus"),
 	SlashCommandMenu: deferredComponent(composerSurfaces, "SlashCommandMenu"),
 };
 
