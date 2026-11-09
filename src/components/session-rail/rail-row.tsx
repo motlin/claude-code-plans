@@ -61,6 +61,9 @@ export function RailRow(props: {
 	);
 }
 
+/** Upstream's `data-rail-card` slot around each card; its radius follows `RAIL_CARD_CLASS`. Upstream's `contents has-[[data-rail-section]]:flex` only matters for empty slots, which never render here. */
+export const RAIL_SLOT_CLASS = "relative flex flex-col rounded-r7";
+
 /** Upstream's lined card (`epitaxy-rail-lined`): py-md 8px, pb-sm 6px while open, and the card ring, outset in light and inset in dark. */
 export const RAIL_CARD_CLASS =
 	"group/railcard epitaxy-rail-lined flex shrink-0 flex-col rounded-r7 pt-2 pb-2 data-open:pb-1.5 shadow-[0_0_0_1px_var(--color-border)] dark:shadow-[inset_0_0_0_1px_var(--color-border)]";

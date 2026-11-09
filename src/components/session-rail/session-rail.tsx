@@ -19,7 +19,7 @@ import {ChevronRight} from "lucide-react";
 import {useId, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode} from "react";
 
 import {animateRailDrop, blurOnPointerDragStart, lockRailDragToVerticalAxis} from "./rail-drag-physics";
-import {RAIL_CARD_CLASS} from "./rail-row";
+import {RAIL_CARD_CLASS, RAIL_SLOT_CLASS} from "./rail-row";
 import {railSectionAccessibility} from "./rail-section-accessibility";
 
 import {
@@ -164,77 +164,83 @@ function RailSection({
 		Object.entries(listeners ?? {}).filter(([name]) => name !== "onPointerDown"),
 	);
 	return (
-		<ContextMenu>
-			<section
-				ref={setNodeRef}
-				style={{transform: CSS.Translate.toString(transform), transition}}
-				{...(isDragging ? {"data-dragging": ""} : {})}
-				data-rail-section={card.id}
-				{...(open ? {"data-open": ""} : {})}
-				aria-labelledby={headingId}
-				className={RAIL_CARD_CLASS}
-			>
-				<ContextMenuTrigger className="group/railtop relative flex min-h-6 min-w-0 items-center gap-1.5 px-1.5">
-					<div
-						id={headingId}
-						className="flex min-w-0 flex-1 rounded group-data-[popup-open]/railtop:bg-alpha-1"
-					>
-						<button
-							type="button"
-							aria-expanded={open}
-							onClick={onToggle}
-							onPointerDown={(event) => {
-								// Upstream's grab zone sits inside the trigger: a press there can start a drag, and a click still toggles.
-								if (event.target instanceof Element && event.target.closest("[data-rail-grab]")) {
-									listeners?.["onPointerDown"]?.(event);
-								}
-							}}
-							className={HEAD_CLASS}
+		// Upstream's `Nj` slot: the sortable node, lifted above its siblings while dragging.
+		<div
+			ref={setNodeRef}
+			data-rail-card={card.id}
+			style={{transform: CSS.Translate.toString(transform), transition, zIndex: isDragging ? 1 : undefined}}
+			{...(isDragging ? {"data-dragging": ""} : {})}
+			className={isDragging ? `${RAIL_SLOT_CLASS} bg-page` : RAIL_SLOT_CLASS}
+		>
+			<ContextMenu>
+				<section
+					data-rail-section={card.id}
+					{...(open ? {"data-open": ""} : {})}
+					aria-labelledby={headingId}
+					className={RAIL_CARD_CLASS}
+				>
+					<ContextMenuTrigger className="group/railtop relative flex min-h-6 min-w-0 items-center gap-1.5 px-1.5">
+						<div
+							id={headingId}
+							className="flex min-w-0 flex-1 rounded group-data-[popup-open]/railtop:bg-alpha-1"
 						>
-							<span className="shrink-0">{RAIL_SECTION_TITLES[card.id]}</span>
-							<ChevronRight
-								aria-hidden
-								className={`size-3 shrink-0 text-ink-muted transition-transform motion-reduce:transition-none ${open ? `rotate-90 ${OPEN_CARET_CLASS}` : ""}`}
-							/>
-							{(card.summary !== undefined || card.rollupPct !== undefined) && (
+							<button
+								type="button"
+								aria-expanded={open}
+								onClick={onToggle}
+								onPointerDown={(event) => {
+									// Upstream's grab zone sits inside the trigger: a press there can start a drag, and a click still toggles.
+									if (event.target instanceof Element && event.target.closest("[data-rail-grab]")) {
+										listeners?.["onPointerDown"]?.(event);
+									}
+								}}
+								className={HEAD_CLASS}
+							>
+								<span className="shrink-0">{RAIL_SECTION_TITLES[card.id]}</span>
+								<ChevronRight
+									aria-hidden
+									className={`size-3 shrink-0 text-ink-muted transition-transform motion-reduce:transition-none ${open ? `rotate-90 ${OPEN_CARET_CLASS}` : ""}`}
+								/>
+								{(card.summary !== undefined || card.rollupPct !== undefined) && (
+									<span
+										data-rail-summary=""
+										{...(open ? {"aria-hidden": true} : {})}
+										className={`ms-auto min-w-0 truncate ps-1.5 text-[12px]/[15px] font-normal text-ink-muted group-hover/railtop:opacity-0 group-has-[[data-rail-grip]:focus-visible]/railtop:opacity-0 ${open ? "invisible" : ""}`}
+									>
+										{card.rollupPct === undefined ? (
+											card.summary
+										) : (
+											<RollupSummary pct={card.rollupPct} />
+										)}
+									</span>
+								)}
 								<span
-									data-rail-summary=""
-									{...(open ? {"aria-hidden": true} : {})}
-									className={`ms-auto min-w-0 truncate ps-1.5 text-[12px]/[15px] font-normal text-ink-muted group-hover/railtop:opacity-0 group-has-[[data-rail-grip]:focus-visible]/railtop:opacity-0 ${open ? "invisible" : ""}`}
-								>
-									{card.rollupPct === undefined ? (
-										card.summary
-									) : (
-										<RollupSummary pct={card.rollupPct} />
-									)}
-								</span>
-							)}
-							<span
-								aria-hidden
-								data-rail-grab=""
-								className="absolute inset-y-0 end-0 w-20 cursor-grab touch-none active:cursor-grabbing"
-							/>
-						</button>
-					</div>
-					<div
-						ref={setActivatorNodeRef}
-						data-rail-grip=""
-						{...attributes}
-						{...keyboardListeners}
-						aria-label={`Reorder ${title}`}
-						className="group/railgrip pointer-events-none absolute inset-y-0 end-0 flex w-20 items-center justify-end pe-2.5 text-ink-muted opacity-0 group-hover/railtop:opacity-100 focus-visible:opacity-100 outline-hidden"
-					>
-						<GripDots />
-					</div>
-				</ContextMenuTrigger>
-				{open && (
-					<div data-rail-body="" className="flex flex-col px-1.5 pt-1">
-						{card.body}
-					</div>
-				)}
-			</section>
-			<RailHeaderMenu sessionId={sessionId} sections={sections} />
-		</ContextMenu>
+									aria-hidden
+									data-rail-grab=""
+									className="absolute inset-y-0 end-0 w-20 cursor-grab touch-none active:cursor-grabbing"
+								/>
+							</button>
+						</div>
+						<div
+							ref={setActivatorNodeRef}
+							data-rail-grip=""
+							{...attributes}
+							{...keyboardListeners}
+							aria-label={`Reorder ${title}`}
+							className="group/railgrip pointer-events-none absolute inset-y-0 end-0 flex w-20 items-center justify-end pe-2.5 text-ink-muted opacity-0 group-hover/railtop:opacity-100 focus-visible:opacity-100 outline-hidden"
+						>
+							<GripDots />
+						</div>
+					</ContextMenuTrigger>
+					{open && (
+						<div data-rail-body="" className="flex flex-col px-1.5 pt-1">
+							{card.body}
+						</div>
+					)}
+				</section>
+				<RailHeaderMenu sessionId={sessionId} sections={sections} />
+			</ContextMenu>
+		</div>
 	);
 }
 
@@ -260,7 +266,7 @@ export function SessionRail({sessionId, cards}: {sessionId: string; cards: reado
 	const [drop, setDrop] = useState<{id: RailSectionId; top: number} | null>(null);
 	useLayoutEffect(() => {
 		if (drop === null) return;
-		const element = listRef.current?.querySelector<HTMLElement>(`[data-rail-section="${drop.id}"]`);
+		const element = listRef.current?.querySelector<HTMLElement>(`[data-rail-card="${drop.id}"]`);
 		if (element) animateRailDrop(element, drop.top);
 	}, [drop]);
 	const onDragStart = ({activatorEvent}: DragStartEvent) => {

@@ -1000,8 +1000,8 @@ describe("session rail reorder", () => {
 
 	it("announces a keyboard pick-up, move-over and cancel with upstream's section strings", async () => {
 		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
-			const section = this.closest("[data-rail-section]");
-			const index = section ? [...document.querySelectorAll("[data-rail-section]")].indexOf(section) : 0;
+			const slot = this.closest("[data-rail-card]");
+			const index = slot ? [...document.querySelectorAll("[data-rail-card]")].indexOf(slot) : 0;
 			return DOMRect.fromRect({x: 0, y: index * 100, width: 280, height: 80});
 		});
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
@@ -1076,6 +1076,58 @@ describe("session rail reorder", () => {
 		expect({row: gaps(RAIL_ROW_ACTION_CLASS), railtop: gaps(railtop?.className)}).toStrictEqual({
 			row: ["gap-2.5"],
 			railtop: ["gap-1.5"],
+		});
+	});
+	it("wraps each card in upstream's div[data-rail-card] sortable slot, in card order", () => {
+		render(<SessionRail sessionId="s1" cards={CARDS} />);
+		const slots = [...document.querySelectorAll<HTMLElement>("section[data-rail-section]")].map((section) => {
+			const parent = section.parentElement;
+			return {
+				section: section.dataset["railSection"],
+				tag: parent?.tagName,
+				railCard: parent?.dataset["railCard"],
+				className: parent?.className,
+			};
+		});
+
+		expect({
+			slots,
+			order: [...document.querySelectorAll<HTMLElement>("[data-rail-card]")].map(
+				(each) => each.dataset["railCard"],
+			),
+		}).toStrictEqual({
+			slots: ["environment", "context", "progress"].map((id) => ({
+				section: id,
+				tag: "DIV",
+				railCard: id,
+				className: "relative flex flex-col rounded-r7",
+			})),
+			order: ["environment", "context", "progress"],
+		});
+	});
+
+	it("lifts the slot with bg-page and z-index 1 while a keyboard drag is active, leaving the section untransformed", async () => {
+		render(<SessionRail sessionId="s1" cards={CARDS} />);
+		const grip = screen.getByRole("button", {name: "Reorder Context"});
+		await act(async () => {
+			fireEvent.keyDown(grip, {code: "Space", key: " "});
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
+		});
+		const slot = document.querySelector<HTMLElement>('[data-rail-card="context"]');
+		const section = document.querySelector<HTMLElement>('[data-rail-section="context"]');
+
+		expect({
+			slotClasses: slot?.className.split(" ").filter((c) => c === "bg-page"),
+			zIndex: slot?.style.zIndex,
+			slotDragging: slot?.hasAttribute("data-dragging"),
+			sectionStyle: section?.getAttribute("style"),
+		}).toStrictEqual({
+			slotClasses: ["bg-page"],
+			zIndex: "1",
+			slotDragging: true,
+			sectionStyle: null,
 		});
 	});
 });

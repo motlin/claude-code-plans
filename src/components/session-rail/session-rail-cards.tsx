@@ -601,33 +601,48 @@ interface DevServer {
 	live: boolean;
 }
 
+/** Upstream's `zM`: four servers before its Show more row. */
+const SERVERS_SHOWN = 4;
+
+function ServersBody({servers}: {servers: readonly DevServer[]}) {
+	const showMore = useShowMore();
+	const shown = showMore.expanded ? servers : servers.slice(0, SERVERS_SHOWN);
+	return (
+		<div data-testid="rail-rows" tabIndex={-1} className="flex flex-col outline-none">
+			{shown.map((server, index) => {
+				const hostLabel = server.url.replace(/^https?:\/\//, "");
+				const label = server.name ?? hostLabel;
+				const icon = <Icon icon={Server} />;
+				// Local adaptation: upstream drops stopped servers; a probe that fails here leaves a row with nothing to open.
+				if (!server.live) return <RailRow key={server.url} icon={icon} label={label} hint="Not responding" />;
+				return (
+					<a
+						key={server.url}
+						ref={index === SERVERS_SHOWN ? showMore.firstNewRow : undefined}
+						href={server.url}
+						target="_blank"
+						rel="noopener noreferrer"
+						title={server.url}
+						aria-label={`Open ${label} in Browser`}
+						className={`${RAIL_ROW_ACTION_CLASS} flex-1`}
+					>
+						{/* Upstream trails `localhost:<port>` only when the label is something else. */}
+						<RailRowContent icon={icon} label={label} {...(label === hostLabel ? {} : {hint: hostLabel})} />
+					</a>
+				);
+			})}
+			{servers.length > SERVERS_SHOWN && <ShowMoreButton state={showMore} />}
+		</div>
+	);
+}
+
+/** Upstream's Servers card: "{count} running", always shown, then each server, launch.json's first. */
 function serversCard(servers: readonly DevServer[]): RailCard | null {
 	if (servers.length === 0) return null;
 	return {
 		id: "servers",
-		body: (
-			<Rows>
-				{servers.map((server) => {
-					const hostLabel = server.url.replace(/^https?:\/\//, "");
-					return (
-						<a
-							key={server.url}
-							href={server.url}
-							target="_blank"
-							rel="noopener noreferrer"
-							title={server.url}
-							className={RAIL_ROW_ACTION_CLASS}
-						>
-							<RailRowContent
-								icon={<Icon icon={Server} />}
-								label={server.name === undefined ? hostLabel : `${server.name} · ${hostLabel}`}
-								hint={server.live ? "Running" : "Not responding"}
-							/>
-						</a>
-					);
-				})}
-			</Rows>
-		),
+		summary: `${servers.filter((server) => server.live).length} running`,
+		body: <ServersBody servers={servers} />,
 	};
 }
 

@@ -756,7 +756,7 @@ describe("cards from local data", () => {
 			["connectors", "1 to reconnect"],
 			["outputs", "1"],
 			["pullRequests", "1 pull request"],
-			["servers", null],
+			["servers", "1 running"],
 			["backgroundTasks", "1 running"],
 		]);
 	});
@@ -785,7 +785,7 @@ describe("cards from local data", () => {
 				["#42 Sync fork with upstream", "Open"],
 				["Uncommitted changes", "+120 −8"],
 			],
-			servers: [["localhost:7611", "Running"]],
+			servers: [["localhost:7611", null]],
 			backgroundTasks: [
 				["Run the dev server", null],
 				["1 finished", null],
@@ -1596,6 +1596,120 @@ describe("Outputs card", () => {
 				["Artifact 1", null],
 			],
 			pane: ["P"],
+		});
+	});
+});
+
+describe("Servers card", () => {
+	function withServers(servers: ReadonlyArray<{url: string; name?: string; live: boolean}>) {
+		return (client: QueryClient) => {
+			client.setQueryData(sessionDevServersQueryOptions(SESSION_ID, true).queryKey, {servers: [...servers]});
+		};
+	}
+
+	function ports(...numbers: number[]) {
+		return numbers.map((port) => ({url: `http://localhost:${port}`, live: true}));
+	}
+
+	it("opens a running server in the browser under upstream's Open {name} in Browser name", async () => {
+		await renderCards(BASE, withServers(ports(7611)));
+		const link = within(screen.getByRole("region", {name: /^Servers/})).getByRole("link");
+
+		expect({
+			name: link.getAttribute("aria-label"),
+			href: link.getAttribute("href"),
+			target: link.getAttribute("target"),
+			rel: link.getAttribute("rel"),
+		}).toStrictEqual({
+			name: "Open localhost:7611 in Browser",
+			href: "http://localhost:7611",
+			target: "_blank",
+			rel: "noopener noreferrer",
+		});
+	});
+
+	it("labels a named server by its name with localhost:<port> trailing", async () => {
+		await renderCards(BASE, withServers([{url: "http://localhost:5173", name: "web", live: true}]));
+
+		expect({
+			rows: rows("Servers"),
+			name: screen.getByRole("link", {name: "Open web in Browser"}).tagName,
+		}).toStrictEqual({rows: [["web", "localhost:5173"]], name: "A"});
+	});
+
+	it("counts only live servers and draws a dead one as a plain Not responding row", async () => {
+		await renderCards(
+			BASE,
+			withServers([
+				{url: "http://localhost:7611", live: true},
+				{url: "http://localhost:9000", live: false},
+			]),
+		);
+		const card = screen.getByRole("region", {name: /^Servers/});
+
+		expect({
+			summary: cards().find(([id]) => id === "servers")?.[1],
+			rows: rows("Servers"),
+			links: within(card)
+				.queryAllByRole("link")
+				.map((link) => link.getAttribute("aria-label")),
+			deadTag: within(card).getByText("localhost:9000").closest("[data-rail-row-label]")?.parentElement?.tagName,
+		}).toStrictEqual({
+			summary: "1 running",
+			rows: [
+				["localhost:7611", null],
+				["localhost:9000", "Not responding"],
+			],
+			links: ["Open localhost:7611 in Browser"],
+			deadTag: "DIV",
+		});
+	});
+
+	it("says 0 running when no server responds", async () => {
+		await renderCards(BASE, withServers([{url: "http://localhost:9000", live: false}]));
+
+		expect(cards().find(([id]) => id === "servers")?.[1]).toBe("0 running");
+	});
+
+	it("lists four servers, then Show more, which expands in place and back", async () => {
+		await renderCards(BASE, withServers(ports(1, 2, 3, 4, 5, 6)));
+		const collapsed = {
+			rows: rows("Servers").map(([label]) => label),
+			expanded: screen.getByRole("button", {name: "Show more"}).getAttribute("aria-expanded"),
+		};
+		fireEvent.click(screen.getByRole("button", {name: "Show more"}));
+
+		expect({collapsed, expanded: rows("Servers").map(([label]) => label)}).toStrictEqual({
+			collapsed: {
+				rows: ["localhost:1", "localhost:2", "localhost:3", "localhost:4", "Show more"],
+				expanded: "false",
+			},
+			expanded: [
+				"localhost:1",
+				"localhost:2",
+				"localhost:3",
+				"localhost:4",
+				"localhost:5",
+				"localhost:6",
+				"Show less",
+			],
+		});
+	});
+
+	it("focuses the fifth server when Show more is pressed from the keyboard", async () => {
+		await renderCards(BASE, withServers(ports(1, 2, 3, 4, 5, 6)));
+		fireEvent.click(screen.getByRole("button", {name: "Show more"}), {detail: 0});
+
+		expect(document.activeElement?.getAttribute("aria-label")).toBe("Open localhost:5 in Browser");
+	});
+
+	it("wraps its rows in upstream's unfocusable flex column", async () => {
+		await renderCards(BASE, withServers(ports(7611)));
+		const list = within(screen.getByRole("region", {name: /^Servers/})).getByTestId("rail-rows");
+
+		expect({tabIndex: list.getAttribute("tabindex"), className: list.className}).toStrictEqual({
+			tabIndex: "-1",
+			className: "flex flex-col outline-none",
 		});
 	});
 });
