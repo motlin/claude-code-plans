@@ -14,6 +14,7 @@ import {installLandingKeys} from "../lib/approval-slot-landing";
 import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, isIdleComposer, onScreen} from "../lib/dock-keys";
 import {storeLeadingAllow, useLeadingAllow} from "../lib/approval-leading-allow";
 import {
+	type FileChangeKind,
 	permissionDecisionForKey,
 	type PermissionDecision,
 	type PermissionDetailLang,
@@ -29,6 +30,7 @@ import {
 } from "../lib/permission-suggestions";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {APPROVAL_SENDING_LABEL, ApprovalActionButton, ApprovalCardShell} from "./approval-card";
+import {PermissionFileChangePreview} from "./permission-file-change-body";
 import {PermissionRowsList, PERMISSION_ROWS_LABEL} from "./permission-rows";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import {HighlightedCommand} from "./tool-renderers/bash-renderer";
@@ -67,6 +69,9 @@ export function PermissionCard({
 	rows = null,
 	rowsTrail = false,
 	rowsGate = false,
+	fileChange = null,
+	toolName = null,
+	toolInput = null,
 	canAnswer,
 	persistentAllow: hookPersistentAllow = null,
 	dialog,
@@ -97,6 +102,12 @@ export function PermissionCard({
 	rowsTrail?: boolean;
 	/** Upstream's loose rows read gate: Allow waits until a trail panel that scrolls has been read to its end. */
 	rowsGate?: boolean;
+	/** Upstream's `fileChange`: a Write/Edit/MultiEdit card draws its change, or says it is too large to. */
+	fileChange?: FileChangeKind | null;
+	/** The previewed file tool's name, for its diff. */
+	toolName?: string | null;
+	/** The previewed file tool's input, for its diff. */
+	toolInput?: Record<string, unknown> | null;
 	/** False without a live herdr pane that accepts writes. */
 	canAnswer: boolean;
 	/** The dialog's persistent allow option, from the PermissionRequest hook; null hides it. */
@@ -197,13 +208,40 @@ export function PermissionCard({
 
 	if ((decided || answered) && hideOnDecision) return null;
 
-	const detailBlock = (
+	const pathDetail = (path: string) => (
+		<div data-permission-detail data-approval-value className={DETAIL_CLASS}>
+			{path}
+		</div>
+	);
+	/** Upstream's `a(note)` for a previewed change: the path, grouped with its note when there is one. */
+	const drawFileDetail = (note: string | null) =>
+		detail === null ? null : note === null ? (
+			pathDetail(detail)
+		) : (
+			<div className="flex flex-col gap-[12px]">
+				{pathDetail(detail)}
+				<p data-testid="approval-detail-note" className={DETAIL_NOTE_CLASS}>
+					{note}
+				</p>
+			</div>
+		);
+	const previews = fileChange === "preview" && toolName !== null && toolInput !== null;
+	const detailBlock = previews ? (
+		<div className="flow-root">
+			<div data-approval-value className="flex flex-col gap-md">
+				<PermissionFileChangePreview
+					toolName={toolName}
+					toolInput={toolInput}
+					copyNote={detailNote}
+					drawDetail={drawFileDetail}
+				/>
+			</div>
+		</div>
+	) : (
 		<>
 			{detail !== null &&
 				(detailLang === null ? (
-					<div data-permission-detail data-approval-value className={DETAIL_CLASS}>
-						{detail}
-					</div>
+					pathDetail(detail)
 				) : (
 					<div data-permission-detail className="flow-root">
 						<div data-approval-value>
@@ -247,6 +285,7 @@ export function PermissionCard({
 					{detailFirst && detailBlock}
 					{description !== null && <div className={DESCRIPTION_CLASS}>{description}</div>}
 					{!rowsTrail && hasRows && <PermissionRowsList rows={rows} />}
+					{fileChange === "too_large" && <p className={TOO_LARGE_CLASS}>{FILE_CHANGE_TOO_LARGE}</p>}
 					{!detailFirst && detailBlock}
 					{tokenWarning && <TokenWarning />}
 					{rowsTrail &&
@@ -451,6 +490,10 @@ const DETAIL_CLASS =
 /** Upstream's command detail (`epitaxy-code-card`): the code theme's background at default density. */
 const CODE_CARD_CLASS =
 	"epitaxy-code-size flex overflow-clip rounded-lg px-2 py-1 text-code bg-surface-1 dark:bg-surface-2 select-text [unicode-bidi:plaintext]";
+/** Upstream's `U` paragraph (`gy`) for a change over the preview cap. */
+const TOO_LARGE_CLASS = "text-body text-secondary select-text break-words";
+const FILE_CHANGE_TOO_LARGE =
+	"Preview unavailable — this change is too large to show here (over 200,000 characters). The full change appears in the conversation after it runs.";
 const DETAIL_NOTE_CLASS = "text-footnote text-ink-muted select-text break-words [unicode-bidi:plaintext]";
 const DESCRIPTION_CLASS =
 	"text-body text-secondary select-text break-words max-h-[calc(3*var(--text-body--line-height))] overflow-y-auto [unicode-bidi:plaintext]";

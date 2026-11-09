@@ -219,6 +219,9 @@ describe("findPendingPermission", () => {
 			title: {action: "write", meta: "b.ts"},
 			detail: "/repo/b.ts",
 			clampTitle: true,
+			fileChange: "preview",
+			toolName: "Write",
+			toolInput: {file_path: "/repo/b.ts", content: "x"},
 		});
 	});
 
@@ -354,6 +357,9 @@ describe("findPendingPermission", () => {
 			title: {action: "edit", meta: "a"},
 			detail: "/repo/a",
 			clampTitle: true,
+			fileChange: "preview",
+			toolName: "Edit",
+			toolInput: {file_path: "/repo/a", old_string: "x", new_string: "y"},
 		};
 
 		it.each([true, false])("describes a serial batch's first call, not its last (active %s)", (isActive) => {
@@ -767,7 +773,59 @@ describe("permission title copy", () => {
 				detail: "/repo/b.ts",
 				detailNote: "Replaces every match in the file.",
 				clampTitle: true,
+				fileChange: "preview",
 			},
+		},
+		{
+			tool: "Edit",
+			input: {file_path: "/a/b.ts", old_string: "x", new_string: "y"},
+			expected: {
+				title: {action: "edit", meta: "b.ts"},
+				detail: "/a/b.ts",
+				clampTitle: true,
+				fileChange: "preview",
+			},
+		},
+		{
+			tool: "Edit",
+			input: {file_path: "/a/b.ts", old_string: 5, new_string: "y"},
+			expected: {title: {action: "edit", meta: "b.ts"}, detail: "/a/b.ts", clampTitle: true},
+		},
+		{
+			tool: "Write",
+			input: {file_path: "/a/b.ts", content: "x".repeat(200_001)},
+			expected: {
+				title: {action: "write", meta: "b.ts"},
+				detail: "/a/b.ts",
+				clampTitle: true,
+				fileChange: "too_large",
+			},
+		},
+		{
+			tool: "Write",
+			input: {file_path: "/a/b.ts", content: "x".repeat(200_000)},
+			expected: {
+				title: {action: "write", meta: "b.ts"},
+				detail: "/a/b.ts",
+				clampTitle: true,
+				fileChange: "preview",
+			},
+		},
+		{
+			tool: "MultiEdit",
+			input: {file_path: "/a/b.ts", edits: [{old_string: "a", new_string: "b", replace_all: true}]},
+			expected: {
+				title: {action: "edit", meta: "b.ts"},
+				detail: "/a/b.ts",
+				detailNote: "Replaces every match in the file.",
+				clampTitle: true,
+				fileChange: "preview",
+			},
+		},
+		{
+			tool: "MultiEdit",
+			input: {file_path: "/a/b.ts", edits: [{old_string: "a", new_string: "b"}, "c"]},
+			expected: {title: {action: "edit", meta: "b.ts"}, detail: "/a/b.ts", clampTitle: true},
 		},
 		{
 			tool: "MultiEdit",
@@ -957,6 +1015,8 @@ describe("permission title copy", () => {
 			const {
 				notificationId: _notificationId,
 				toolUseId: _toolUseId,
+				toolName: _toolName,
+				toolInput: _toolInput,
 				...copy
 			} = findPendingPermission({
 				sessionId: "session-test-100",
@@ -967,6 +1027,28 @@ describe("permission title copy", () => {
 			expect(copy).toStrictEqual(expected);
 		},
 	);
+
+	it("carries a previewed file tool's name and input for its diff, and no other tool's", () => {
+		const pendingFor = (tool: string, input: Record<string, unknown>) => {
+			const pending = findPendingPermission({
+				sessionId: "session-test-100",
+				isActive: true,
+				notifications: [permissionNotification()],
+				records: [assistantToolUse("t9", tool, input)],
+			})!;
+			return {toolName: pending.toolName, toolInput: pending.toolInput};
+		};
+		const edit = {file_path: "/a/b.ts", old_string: "x", new_string: "y"};
+		expect([
+			pendingFor("Edit", edit),
+			pendingFor("Write", {file_path: "/a/b.ts", content: ""}),
+			pendingFor("Read", {file_path: "/a/b.ts"}),
+		]).toStrictEqual([
+			{toolName: "Edit", toolInput: edit},
+			{toolName: undefined, toolInput: undefined},
+			{toolName: undefined, toolInput: undefined},
+		]);
+	});
 
 	it("holds its session as answered at the click, before the decision settles", () => {
 		render(
@@ -2367,6 +2449,116 @@ describe("PermissionCard rows read gate", () => {
 		expect({disabled: allowButton().hasAttribute("disabled"), hint: hint(container)}).toStrictEqual({
 			disabled: false,
 			hint: null,
+		});
+	});
+});
+
+describe("PermissionCard file change preview", () => {
+	beforeEach(() => {
+		vi.stubGlobal(
+			"ResizeObserver",
+			class {
+				observe() {}
+				unobserve() {}
+				disconnect() {}
+			},
+		);
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<typeof fetch>(async () => Promise.resolve(Response.json({error: "File not found"}, {status: 404}))),
+		);
+	});
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	const TOO_LARGE =
+		"Preview unavailable — this change is too large to show here (over 200,000 characters). The full change appears in the conversation after it runs.";
+
+	it("says a too-large change can't be previewed, after the description and before the path", () => {
+		const {container} = render(
+			<PermissionCard
+				title={{action: "write", meta: "b.ts"}}
+				detail="/repo/b.ts"
+				clampTitle
+				fileChange="too_large"
+				canAnswer
+				onDecision={async () => {}}
+			/>,
+		);
+		const body = container.querySelector("[data-permission-detail]")!.parentElement!;
+		expect(
+			[...body.children].map((child) => ({
+				tag: child.tagName,
+				className: child.getAttribute("class"),
+				text: child.textContent,
+			})),
+		).toStrictEqual([
+			{tag: "P", className: "text-body text-secondary select-text break-words", text: TOO_LARGE},
+			{
+				tag: "DIV",
+				className: expect.stringContaining("bg-alpha-1") as unknown as string,
+				text: "/repo/b.ts",
+			},
+		]);
+	});
+
+	it("draws a previewed change as upstream's flow-root value column: the path, then the diff", async () => {
+		const {container} = render(
+			<PermissionCard
+				title={{action: "edit", meta: "b.ts"}}
+				detail="/repo/b.ts"
+				clampTitle
+				fileChange="preview"
+				toolName="Edit"
+				toolInput={{file_path: "/repo/b.ts", old_string: "a", new_string: "b"}}
+				canAnswer
+				onDecision={async () => {}}
+			/>,
+		);
+		await screen.findByRole("group", {name: "Code"});
+		const column = container.querySelector(".flow-root > [data-approval-value]")!;
+		expect({
+			className: column.getAttribute("class"),
+			children: [...column.children].map((child) =>
+				child.hasAttribute("data-permission-detail")
+					? `detail:${child.textContent}`
+					: child.querySelector("[data-cds=FileDiff]") === null
+						? child.tagName
+						: "diff",
+			),
+		}).toStrictEqual({className: "flex flex-col gap-md", children: ["detail:/repo/b.ts", "diff"]});
+	});
+
+	it("groups the path with its note in a 12px column when the change has a note", async () => {
+		const {container} = render(
+			<PermissionCard
+				title={{action: "edit", meta: "b.ts"}}
+				detail="/repo/b.ts"
+				clampTitle
+				detailNote="Replaces every match in the file."
+				fileChange="preview"
+				toolName="MultiEdit"
+				toolInput={{file_path: "/repo/b.ts", edits: [{old_string: "a", new_string: "b", replace_all: true}]}}
+				canAnswer
+				onDecision={async () => {}}
+			/>,
+		);
+		await screen.findByRole("group", {name: "Code"});
+		const group = container.querySelector(".flow-root > [data-approval-value] > div:first-child")!;
+		expect({
+			className: group.getAttribute("class"),
+			children: [...group.children].map((child) => ({
+				detail: child.hasAttribute("data-permission-detail"),
+				testId: child.getAttribute("data-testid"),
+				text: child.textContent,
+			})),
+		}).toStrictEqual({
+			className: "flex flex-col gap-[12px]",
+			children: [
+				{detail: true, testId: null, text: "/repo/b.ts"},
+				{detail: false, testId: "approval-detail-note", text: "Replaces every match in the file."},
+			],
 		});
 	});
 });

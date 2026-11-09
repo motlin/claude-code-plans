@@ -48,6 +48,12 @@ export interface PendingPermission {
 	rowsTrail?: true;
 	/** Upstream's loose rows read gate (`rowsReadGate {loose: true}`). */
 	rowsGate?: true;
+	/** Upstream's `fileChange`: a Write/Edit/MultiEdit card previews its change, or says it is too large to. */
+	fileChange?: FileChangeKind;
+	/** The previewed file tool's name, for its diff. */
+	toolName?: string;
+	/** The previewed file tool's input, for its diff. */
+	toolInput?: Record<string, unknown>;
 	persistentAllow?: PersistentAllowKind;
 }
 
@@ -251,7 +257,14 @@ function withPersistentAllow(permission: PendingPermission, notification: Permis
 
 function permissionFor(notificationId: string, toolUse: PendingToolUse): PendingPermission {
 	const {action, meta = null, detail = null, ...extras} = withRowsBudget(permissionCopy(toolUse));
-	return {notificationId, toolUseId: toolUse.id, title: {action, meta}, detail, ...extras};
+	return {
+		notificationId,
+		toolUseId: toolUse.id,
+		title: {action, meta},
+		detail,
+		...extras,
+		...(extras.fileChange === undefined ? {} : {toolName: toolUse.name, toolInput: toolUse.input}),
+	};
 }
 
 /**
@@ -278,6 +291,44 @@ interface PermissionCopy {
 	rows?: PermissionRow[];
 	rowsTrail?: true;
 	rowsGate?: true;
+	fileChange?: FileChangeKind;
+}
+
+/** Upstream's `fileChange`: "preview" draws the change's diff, "too_large" says why it can't. */
+export type FileChangeKind = "preview" | "too_large";
+
+/** Upstream's `Jq`/`gy` cap: a change string over 200,000 characters is too large to preview. */
+export const FILE_CHANGE_PREVIEW_MAX_CHARS = 200_000;
+
+/**
+ * Upstream's `Dv`: whether a Write/Edit/MultiEdit call can preview its change. Nothing without a string
+ * path or when a changed string isn't a string; "too_large" once any string passes the cap.
+ */
+function fileChangeKind(name: string, input: Record<string, unknown>): Pick<PermissionCopy, "fileChange"> {
+	if (typeof input["file_path"] !== "string") return {};
+	let strings: unknown[];
+	const edits = input["edits"];
+	if (name === "Write") strings = [input["content"]];
+	else if (name === "Edit") strings = [input["old_string"], input["new_string"]];
+	else if (Array.isArray(edits) && edits.length > 0)
+		strings = edits.flatMap((edit: unknown) => {
+			const record = asRecord(edit);
+			return record === undefined ? [undefined] : [record["old_string"], record["new_string"]];
+		});
+	else return {};
+	if (!strings.every((value): value is string => typeof value === "string")) return {};
+	return {
+		fileChange: strings.every((value) => value.length <= FILE_CHANGE_PREVIEW_MAX_CHARS) ? "preview" : "too_large",
+	};
+}
+
+/** Upstream's `xh`: the edit replaces every match, at the top level or in any of its edits. */
+function replacesEveryMatch(input: Record<string, unknown>): boolean {
+	const edits = input["edits"];
+	return (
+		input["replace_all"] === true ||
+		(Array.isArray(edits) && edits.some((edit: unknown) => asRecord(edit)?.["replace_all"] === true))
+	);
 }
 
 function numberInput(input: Record<string, unknown>, key: string): number | null {
@@ -527,14 +578,15 @@ function permissionCopy({name, input}: PendingToolUse): PermissionCopy {
 			return {
 				...fileCopy("write", text("file_path")),
 				clampTitle: true,
-				...notes([input["content"] === "" ? "Leaves the file empty." : null]),
+				...(input["content"] === "" ? notes(["Leaves the file empty."]) : fileChangeKind(name, input)),
 			};
 		case "Edit":
 		case "MultiEdit":
 			return {
 				...fileCopy("edit", text("file_path")),
 				clampTitle: true,
-				...notes([input["replace_all"] === true ? "Replaces every match in the file." : null]),
+				...fileChangeKind(name, input),
+				...notes([replacesEveryMatch(input) ? "Replaces every match in the file." : null]),
 			};
 		case "NotebookEdit":
 			return {...fileCopy("edit", text("notebook_path")), ...notes([notebookNote(input)])};

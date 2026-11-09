@@ -556,6 +556,58 @@ describe("SessionPage dock composition", () => {
 			presentation: card.getAttribute("data-approval-presentation"),
 		}).toStrictEqual({dock: ["pr", "usage", "composer"], inline: true, presentation: "card"});
 	});
+	it("previews a pending Edit's change inside the inline permission card", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async (input: RequestInfo | URL) =>
+				String(input).startsWith("/api/file/")
+					? Response.json({error: "File not found"}, {status: 404})
+					: new Promise<Response>(() => {}),
+			),
+		);
+		await renderSessionPage(
+			detail,
+			[],
+			(queryClient) => {
+				seedUsage(queryClient);
+				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+					pages: [
+						{sessions: [{id: SESSION_ID, state: "waiting", awaitingPermission: true}], nextCursor: null},
+					],
+					pageParams: [null],
+				} as never);
+			},
+			[
+				{
+					type: "assistant",
+					uuid: "a1",
+					sessionId: SESSION_ID,
+					timestamp: "2026-09-28T10:00:01.000Z",
+					message: {
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_waiting",
+								name: "Edit",
+								input: {
+									file_path: "/repo/src/a.ts",
+									old_string: "const a = 1;",
+									new_string: "const a = 2;",
+								},
+							},
+						],
+					},
+				},
+			],
+		);
+		const card = screen.getByRole("group", {name: "Permission request: edit"});
+		const code = await within(card).findByRole("group", {name: "Code"});
+		expect({
+			inline: card.closest("[data-inline-permission]") !== null,
+			diff: code.querySelector("[data-cds=FileDiff]") !== null,
+		}).toStrictEqual({inline: true, diff: true});
+	});
 	it("nests the working line under the last assistant reply, as upstream's last AssistantMessage column", async () => {
 		await renderSessionPage(detail, [], seedUsage, [
 			{

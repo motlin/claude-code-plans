@@ -1650,6 +1650,9 @@ function SessionView({
 												rows={shownPermission.rows ?? null}
 												rowsTrail={shownPermission.rowsTrail === true}
 												rowsGate={shownPermission.rowsGate === true}
+												fileChange={shownPermission.fileChange ?? null}
+												toolName={shownPermission.toolName ?? null}
+												toolInput={shownPermission.toolInput ?? null}
 												canAnswer={permissionCanAnswer}
 												// The CLI can refuse an early Enter, so the elicitation's ElicitationResult clears its card.
 												hideOnDecision={!answersElicitation}

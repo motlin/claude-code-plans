@@ -146,6 +146,32 @@ export function buildUnifiedHunk(oldStr: string, newStr: string, filePath = "fil
 	].join("\n");
 }
 
+/**
+ * Upstream's input-only MultiEdit diff: every edit's lines in one hunk, the
+ * edits separated by a context row holding "…".
+ */
+export function buildMultiEditHunk(
+	edits: ReadonlyArray<{oldString: string; newString: string}>,
+	filePath = "file",
+): string {
+	const body: string[] = [];
+	edits.forEach(({oldString, newString}, index) => {
+		if (index > 0) body.push(" …");
+		for (const [type, line] of computeDiff(splitDiffLines(oldString), splitDiffLines(newString))) {
+			body.push((type === "equal" ? " " : type === "add" ? "+" : "-") + line);
+		}
+	});
+	const oldCount = body.filter((line) => !line.startsWith("+")).length;
+	const newCount = body.filter((line) => !line.startsWith("-")).length;
+	return [
+		`diff --git a/${filePath} b/${filePath}`,
+		`--- a/${filePath}`,
+		`+++ b/${filePath}`,
+		`@@ -${oldCount === 0 ? 0 : 1},${oldCount} +${newCount === 0 ? 0 : 1},${newCount} @@`,
+		...body,
+	].join("\n");
+}
+
 interface FilePatch {
 	patch: string;
 	additions: number;
@@ -158,28 +184,32 @@ function contentLines(text: string): string[] {
 	return (text.endsWith("\n") ? text.slice(0, -1) : text).split("\n");
 }
 
+/** One unified-diff hunk, as a tool's `structuredPatch` holds it: each line led by " ", "-" or "+". */
+export interface PatchHunk {
+	oldStart: number;
+	oldLines: number;
+	newStart: number;
+	newLines: number;
+	lines: string[];
+}
+
 /**
- * Build a git-style unified diff of two full file versions with `context`
- * lines around each change, merging changes whose context would overlap.
- * `oldText === null` marks a newly created file.
+ * The hunks of a line diff of two full file versions with `context` lines
+ * around each change, merging changes whose context would overlap.
  */
-export function buildFilePatch(oldText: string | null, newText: string, filePath: string, context = 3): FilePatch {
-	const ops = computeDiff(contentLines(oldText ?? ""), contentLines(newText));
+export function buildFileHunks(oldText: string, newText: string, context = 3): PatchHunk[] {
+	const ops = computeDiff(contentLines(oldText), contentLines(newText));
 
 	const oldLineBefore: number[] = [];
 	const newLineBefore: number[] = [];
 	const changed: number[] = [];
 	let oldLine = 0;
 	let newLine = 0;
-	let additions = 0;
-	let deletions = 0;
 	ops.forEach(([type], index) => {
 		oldLineBefore.push(oldLine);
 		newLineBefore.push(newLine);
 		if (type !== "add") oldLine++;
 		if (type !== "remove") newLine++;
-		if (type === "add") additions++;
-		if (type === "remove") deletions++;
 		if (type !== "equal") changed.push(index);
 	});
 
@@ -193,18 +223,38 @@ export function buildFilePatch(oldText: string | null, newText: string, filePath
 		}
 	}
 
-	const body: string[] = [];
-	for (const {first, last} of groups) {
+	return groups.map(({first, last}) => {
 		const from = Math.max(0, first - context);
 		const to = Math.min(ops.length - 1, last + context);
 		const hunkOps = ops.slice(from, to + 1);
 		const oldCount = hunkOps.filter(([type]) => type !== "add").length;
 		const newCount = hunkOps.filter(([type]) => type !== "remove").length;
-		const oldStart = defined(oldLineBefore[from], "hunk start out of range") + (oldCount === 0 ? 0 : 1);
-		const newStart = defined(newLineBefore[from], "hunk start out of range") + (newCount === 0 ? 0 : 1);
-		body.push(`@@ -${oldStart},${oldCount} +${newStart},${newCount} @@`);
-		for (const [type, line] of hunkOps) {
-			body.push((type === "equal" ? " " : type === "add" ? "+" : "-") + line);
+		return {
+			oldStart: defined(oldLineBefore[from], "hunk start out of range") + (oldCount === 0 ? 0 : 1),
+			oldLines: oldCount,
+			newStart: defined(newLineBefore[from], "hunk start out of range") + (newCount === 0 ? 0 : 1),
+			newLines: newCount,
+			lines: hunkOps.map(([type, line]) => (type === "equal" ? " " : type === "add" ? "+" : "-") + line),
+		};
+	});
+}
+
+/**
+ * Build a git-style unified diff of two full file versions with `context`
+ * lines around each change, merging changes whose context would overlap.
+ * `oldText === null` marks a newly created file.
+ */
+export function buildFilePatch(oldText: string | null, newText: string, filePath: string, context = 3): FilePatch {
+	const hunks = buildFileHunks(oldText ?? "", newText, context);
+	const body: string[] = [];
+	let additions = 0;
+	let deletions = 0;
+	for (const hunk of hunks) {
+		body.push(`@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@`);
+		for (const line of hunk.lines) {
+			body.push(line);
+			if (line.startsWith("+")) additions++;
+			else if (line.startsWith("-")) deletions++;
 		}
 	}
 
