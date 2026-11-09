@@ -378,6 +378,11 @@ describe("WorkflowProgressEntrySchema", () => {
 		expect(WorkflowProgressEntrySchema.parse(entry)).toStrictEqual(entry);
 	});
 
+	it("accepts an agent that runs in an isolated worktree", () => {
+		const entry = {type: "workflow_agent", index: 1, label: "bench", state: "start", isolation: "worktree"};
+		expect(WorkflowProgressEntrySchema.parse(entry)).toStrictEqual(entry);
+	});
+
 	it("validates every workflowProgress entry on disk", () => {
 		const projectsDir = join(homedir(), ".claude", "projects");
 		let projects: string[];

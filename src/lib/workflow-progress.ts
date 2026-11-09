@@ -29,6 +29,8 @@ const WorkflowAgentEntrySchema = z.strictObject({
 	phaseIndex: z.number().optional(),
 	phaseTitle: z.string().optional(),
 	model: z.string().optional(),
+	/** The script's `agent({isolation})` option, e.g. "worktree". */
+	isolation: z.string().optional(),
 	startedAt: z.number().optional(),
 	queuedAt: z.number().optional(),
 	lastProgressAt: z.number().optional(),
