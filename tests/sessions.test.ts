@@ -452,7 +452,7 @@ describe("summarizeToolCallsStructured", () => {
 
 	it("single Read returns one segment with filename", () => {
 		expect(summarizeToolCallsStructured([{name: "Read", input: {file_path: "/src/lib/foo.ts"}}])).toEqual([
-			{verb: "Read", rest: "foo.ts"},
+			{verb: "Read", rest: "foo.ts", file: {path: "/src/lib/foo.ts", preferDiff: false}},
 		]);
 	});
 
@@ -511,7 +511,9 @@ describe("summarizeToolCallsStructured", () => {
 			{name: "Read", input: {file_path: "/src/lib/cache.ts"}},
 			{name: "Edit", input: {file_path: "/src/lib/cache.ts", old_string: "a", new_string: "b"}},
 		];
-		expect(summarizeToolCallsStructured(calls)).toEqual([{verb: "Read and edited", rest: "cache.ts"}]);
+		expect(summarizeToolCallsStructured(calls)).toEqual([
+			{verb: "Read and edited", rest: "cache.ts", file: {path: "/src/lib/cache.ts", preferDiff: true}},
+		]);
 	});
 
 	it("collapses Edit then Read of the same file into one compound segment", () => {
@@ -519,7 +521,9 @@ describe("summarizeToolCallsStructured", () => {
 			{name: "Edit", input: {file_path: "/src/lib/cache.ts", old_string: "a", new_string: "b"}},
 			{name: "Read", input: {file_path: "/src/lib/cache.ts"}},
 		];
-		expect(summarizeToolCallsStructured(calls)).toEqual([{verb: "Edited and read", rest: "cache.ts"}]);
+		expect(summarizeToolCallsStructured(calls)).toEqual([
+			{verb: "Edited and read", rest: "cache.ts", file: {path: "/src/lib/cache.ts", preferDiff: true}},
+		]);
 	});
 
 	it("counts a read and an edit of different files rather than naming either", () => {
@@ -541,7 +545,7 @@ describe("summarizeToolCallsStructured", () => {
 		];
 		expect(summarizeToolCallsStructured(calls)).toEqual([
 			{verb: "Ran", rest: "a command"},
-			{verb: "read and created", rest: "cache.ts"},
+			{verb: "read and created", rest: "cache.ts", file: {path: "/src/lib/cache.ts", preferDiff: true}},
 		]);
 	});
 
@@ -550,7 +554,9 @@ describe("summarizeToolCallsStructured", () => {
 	// index.ts" (.llm/ui-sync/upstream/code-rich-normal.tree.json, class 41).
 	it("gives a lone Write its own Created segment", () => {
 		const calls = [{name: "Write", input: {file_path: "/src/lib/cache.ts", content: "a\nb"}}];
-		expect(summarizeToolCallsStructured(calls)).toEqual([{verb: "Created", rest: "cache.ts"}]);
+		expect(summarizeToolCallsStructured(calls)).toEqual([
+			{verb: "Created", rest: "cache.ts", file: {path: "/src/lib/cache.ts", preferDiff: true}},
+		]);
 	});
 
 	it("keeps a Write and an Edit in separate segments with their own stats", () => {
@@ -569,7 +575,9 @@ describe("summarizeToolCallsStructured", () => {
 			{name: "Read", input: {file_path: "/src/lib/index.ts"}},
 			{name: "Write", input: {file_path: "/src/lib/index.ts", content: "a\nb"}},
 		];
-		expect(summarizeToolCallsStructured(calls)).toEqual([{verb: "Read and created", rest: "index.ts"}]);
+		expect(summarizeToolCallsStructured(calls)).toEqual([
+			{verb: "Read and created", rest: "index.ts", file: {path: "/src/lib/index.ts", preferDiff: true}},
+		]);
 	});
 
 	it("collapses Write then Read of the same file into one compound segment", () => {
@@ -577,7 +585,9 @@ describe("summarizeToolCallsStructured", () => {
 			{name: "Write", input: {file_path: "/src/lib/index.ts", content: "a\nb"}},
 			{name: "Read", input: {file_path: "/src/lib/index.ts"}},
 		];
-		expect(summarizeToolCallsStructured(calls)).toEqual([{verb: "Created and read", rest: "index.ts"}]);
+		expect(summarizeToolCallsStructured(calls)).toEqual([
+			{verb: "Created and read", rest: "index.ts", file: {path: "/src/lib/index.ts", preferDiff: true}},
+		]);
 	});
 
 	it("names every verb when a Read, an Edit, and a Write all touched the file", () => {
@@ -586,7 +596,9 @@ describe("summarizeToolCallsStructured", () => {
 			{name: "Edit", input: {file_path: "/src/lib/index.ts", old_string: "a", new_string: "b"}},
 			{name: "Write", input: {file_path: "/src/lib/index.ts", content: "a\nb"}},
 		];
-		expect(summarizeToolCallsStructured(calls)).toEqual([{verb: "Read, edited, and created", rest: "index.ts"}]);
+		expect(summarizeToolCallsStructured(calls)).toEqual([
+			{verb: "Read, edited, and created", rest: "index.ts", file: {path: "/src/lib/index.ts", preferDiff: true}},
+		]);
 	});
 
 	it('folds unknown and MCP tools into upstream\'s "Used N tools" segment', () => {
@@ -602,7 +614,7 @@ describe("summarizeToolCallsStructured", () => {
 		}).toStrictEqual({
 			repeated: [{verb: "Used", rest: "2 tools"}],
 			mcp: [
-				{verb: "Read", rest: "b.ts"},
+				{verb: "Read", rest: "b.ts", file: {path: "/a/b.ts", preferDiff: false}},
 				{verb: "used", rest: "a tool"},
 			],
 		});

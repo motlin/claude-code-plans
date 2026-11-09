@@ -141,9 +141,13 @@ const FRAME_ENDPOINTS: Array<{path: string; module: string}> = [
 	{path: "/api/application-settings", module: "../../src/routes/api/application-settings"},
 ];
 
-/** herdr is a live process the lab never talks to; it answers as an installation with no panes. */
+/**
+ * herdr is a live process the lab never talks to; it answers as an installation with no panes. The
+ * transcript's file links check their paths, none of which exist under the fixture HOME.
+ */
 const STATIC_FIXTURES: Record<string, unknown> = {
 	"/api/herdr-panes": {panes: [], writesEnabled: false},
+	"/api/file-refs": {statuses: {}},
 };
 
 let root: string;

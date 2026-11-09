@@ -32,7 +32,7 @@ import {ApiErrorCard, ApiErrorMarker, type ApiErrorRecovery} from "./api-error-c
 import {ErrorCardShell} from "./error-card-shell";
 import {ExternalTextLink} from "./external-text-link";
 import {ShimmerText} from "./shimmer-text";
-import {ProseMarkdown} from "./file-refs";
+import {FileRefTarget, ProseMarkdown} from "./file-refs";
 import {MarkdownArticle} from "./markdown-article";
 import {TruncatedContent} from "./truncated-content";
 import {AgentMessageRow} from "./agent-message-row";
@@ -109,6 +109,7 @@ import {
 	summarizeToolCallStats,
 	countedLabelText,
 	summaryNamesText,
+	splitTrailingFile,
 	diffStatsForCall,
 	isRequestInterrupted,
 } from "../lib/session-utils";
@@ -6418,11 +6419,29 @@ function SummarySpans({segments}: {segments: SummarySegment[]}) {
  * actions" -- when the counted line (shared-80 `Tl`) clips the phrases in
  * their own span and draws the trailing part after them, unclipped.
  */
-function CountedLine({id, segments, trailing}: {id: string; segments: SummarySegment[]; trailing: string | null}) {
+function CountedLine({
+	id,
+	segments,
+	trailing,
+	beforeMeta = false,
+}: {
+	id: string;
+	segments: SummarySegment[];
+	trailing: string | null;
+	/** A meta slot follows, so the label keeps its width and the meta truncates first. */
+	beforeMeta?: boolean;
+}) {
 	const rowCut = useTypeRowCut(summaryNamesText(segments));
 	if (trailing === null) {
 		return (
-			<span ref={rowCut} id={id} className="block min-w-0 truncate text-body" data-cds-phrases-seat="">
+			<span
+				ref={rowCut}
+				id={id}
+				className={
+					beforeMeta ? "block min-w-0 truncate text-body shrink-0" : "block min-w-0 truncate text-body"
+				}
+				data-cds-phrases-seat=""
+			>
 				<SummarySpans segments={segments} />
 			</span>
 		);
@@ -6510,49 +6529,112 @@ function ToolCallSummary({
 	}, [calls]);
 	const hasGroupMedia = !expanded && [...shotPlacements.values()].some((placement) => placement.total > 0);
 
+	// Upstream's settled header moves a trailing sole file into the row's meta slot (c24951e9f `j`):
+	// "Ran 2 commands, read" + a link to input-debug.png. A file link can't sit inside the
+	// toggle, so the row then holds the label and meta beside a toggle of just the pill and chevron.
+	const fileMeta =
+		!busy && summary.failed === 0 && summary.trailing === null ? splitTrailingFile(summary.segments) : undefined;
+	// The row is the toggle itself unless a meta slot splits them, when the focus ring moves to the toggle.
+	const rowFocus = fileMeta === undefined ? " outline-none hide-focus-ring focus-visible:ring-focus" : "";
+	const rowClass = `relative group/tool flex items-center ${hasGroupMedia ? "max-w-full min-w-0" : summaryLayout} gap-g1 text-left cursor-pointer${rowFocus} rounded-r3${hasGroupMedia ? "" : ` ${TURN_STATUS_ROW_COMFORTABLE}`}`;
+	const rowStyle = hasGroupMedia ? undefined : TURN_STATUS_ROW_STYLE;
+	let labelledBy = `${statusId}-label`;
+	if (busy) labelledBy = `${statusId}-label ${statusId}-busy`;
+	else if (fileMeta !== undefined) labelledBy = `${statusId}-label ${statusId}-meta`;
+
 	const toggle = (
 		<button
 			type="button"
 			aria-expanded={expanded}
 			aria-controls={bodyId}
-			aria-labelledby={busy ? `${statusId}-label ${statusId}-busy` : `${statusId}-label`}
-			onClick={toggleExpanded}
-			data-cds-row=""
+			aria-labelledby={labelledBy}
+			// With a meta slot the row's own click toggles, so the button's bubbles up to it.
+			onClick={fileMeta === undefined ? toggleExpanded : undefined}
+			data-cds-row={fileMeta === undefined ? "" : undefined}
 			data-cds-row-toggle=""
-			className={`relative group/tool flex items-center ${hasGroupMedia ? "max-w-full min-w-0" : summaryLayout} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3${hasGroupMedia ? "" : ` ${TURN_STATUS_ROW_COMFORTABLE}`}${busy && !hasGroupMedia ? ` ${TURN_STATUS_ROW_MARKED_MOTION}` : ""}`}
-			style={hasGroupMedia ? undefined : TURN_STATUS_ROW_STYLE}
+			className={
+				fileMeta === undefined
+					? `${rowClass}${busy && !hasGroupMedia ? ` ${TURN_STATUS_ROW_MARKED_MOTION}` : ""}`
+					: "flex shrink-0 items-center gap-g1 cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
+			}
+			style={fileMeta === undefined ? rowStyle : undefined}
 		>
-			<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
-				{busy ? (
-					// Upstream leads a busy group header like a busy row: the call's mark, its label, elapsed, sr "running".
-					<>
-						<WorkingMark
-							activity={toolMarkActivity(pendingCall.name, pendingCall.input)}
-							className="me-1.5"
-						/>
-						<ShimmerText
-							ref={busyRowCut}
-							id={`${statusId}-label`}
-							variant="secondary"
-							className="text-body truncate min-w-0"
-						>
-							{runningText}
-						</ShimmerText>
-						<RunningElapsed startedAt={pendingCall.startedAt} />
-						<span id={`${statusId}-busy`} className="sr-only">
-							running
-						</span>
-					</>
-				) : (
-					<CountedLine id={`${statusId}-label`} segments={summary.segments} trailing={summary.trailing} />
-				)}
-			</span>
+			{fileMeta === undefined && (
+				<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
+					{busy ? (
+						// Upstream leads a busy group header like a busy row: the call's mark, its label, elapsed, sr "running".
+						<>
+							<WorkingMark
+								activity={toolMarkActivity(pendingCall.name, pendingCall.input)}
+								className="me-1.5"
+							/>
+							<ShimmerText
+								ref={busyRowCut}
+								id={`${statusId}-label`}
+								variant="secondary"
+								className="text-body truncate min-w-0"
+							>
+								{runningText}
+							</ShimmerText>
+							<RunningElapsed startedAt={pendingCall.startedAt} />
+							<span id={`${statusId}-busy`} className="sr-only">
+								running
+							</span>
+						</>
+					) : (
+						<CountedLine id={`${statusId}-label`} segments={summary.segments} trailing={summary.trailing} />
+					)}
+				</span>
+			)}
 			{hasDiffStats(summary) && <DiffStatPill added={summary.added} removed={summary.removed} />}
 			<span className={`shrink-0 ${ink} ${TURN_STATUS_CHEVRON_COMFORTABLE}`}>
 				<ChevronIcon expanded={expanded} size={12} />
 			</span>
 		</button>
 	);
+
+	const header =
+		fileMeta === undefined ? (
+			toggle
+		) : (
+			// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- the row's click mirrors the toggle button, which keyboard users reach
+			<div
+				data-cds-row=""
+				title={fileMeta.file.path}
+				onClick={(event) => {
+					if (event.target instanceof Element && event.target.closest("[data-file-ref]") !== null) return;
+					toggleExpanded();
+				}}
+				className={rowClass}
+				style={rowStyle}
+			>
+				<span id={`${statusId}-text`} className={`flex min-w-0 gap-xs items-center ${ink}`}>
+					<CountedLine id={`${statusId}-label`} segments={fileMeta.segments} trailing={null} beforeMeta />
+					<span
+						id={`${statusId}-meta`}
+						className="min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-secondary group-hover/tool:text-primary group-has-[:focus-visible]/tool:text-primary"
+						title={fileMeta.file.path}
+					>
+						<FileRefTarget
+							path={fileMeta.file.path}
+							render={(props) =>
+								props === null ? (
+									<bdi>{fileMeta.name}</bdi>
+								) : (
+									<span
+										{...props}
+										className="block min-w-0 truncate text-primary hover:underline underline-offset-[3px] focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-sm"
+									>
+										<bdi>{fileMeta.name}</bdi>
+									</span>
+								)
+							}
+						/>
+					</span>
+				</span>
+				{toggle}
+			</div>
+		);
 
 	const status = (
 		<div ref={rootRef} data-tool-row="" data-turn-status="" className={TURN_STATUS_CLASS}>
@@ -6561,11 +6643,11 @@ function ToolCallSummary({
 					{hasGroupMedia ? (
 						// The thumbnails are buttons of their own, so they sit beside the toggle in the row, as upstream's do.
 						<div className={`flex items-center gap-g1 ${summaryLayout}`} style={TURN_STATUS_ROW_STYLE}>
-							{toggle}
+							{header}
 							<RowMedia calls={calls} />
 						</div>
 					) : (
-						toggle
+						header
 					)}
 					{panelMounted && (
 						<div id={bodyId} data-cds-row-panel="" className="flow-root" hidden={!expanded}>

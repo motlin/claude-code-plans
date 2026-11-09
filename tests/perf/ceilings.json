@@ -460,11 +460,11 @@
 		"tolerance": 0
 	},
 	"client.sessionOpen.typical.fetches": {
-		"ceiling": 13,
+		"ceiling": 14,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The session page fetches the ccb-context-mirror mod's context breakdown (/api/sessions/$id/context-breakdown) for the rail's Context card, one request per session opened.",
-		"raisedAt": "2026-10-11"
+		"reason": "A collapsed tool group whose last segment names its one file links that file in the header's meta slot (group-label-file-meta-slot), so the session page's batched POST /api/file-refs existence check now runs on open; one request per session opened.",
+		"raisedAt": "2026-11-09"
 	},
 	"client.sessionOpen.typical.mountedRows": {
 		"ceiling": 4,
@@ -533,11 +533,11 @@
 		"tolerance": 0
 	},
 	"client.sessionSwitch.typical.fetches": {
-		"ceiling": 10,
+		"ceiling": 11,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The session page fetches the ccb-context-mirror mod's context breakdown (/api/sessions/$id/context-breakdown) for the rail's Context card, one request per session opened.",
-		"raisedAt": "2026-10-11"
+		"reason": "A collapsed tool group whose last segment names its one file links that file in the header's meta slot (group-label-file-meta-slot), so the session page's batched POST /api/file-refs existence check now runs on open; one request per session opened.",
+		"raisedAt": "2026-11-09"
 	},
 	"client.sessionSwitch.typical.hoverPrefetch.fetches": {
 		"ceiling": 4,

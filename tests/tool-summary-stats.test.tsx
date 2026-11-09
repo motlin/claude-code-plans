@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render} from "@testing-library/react";
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import {cleanup, fireEvent, render, waitFor} from "@testing-library/react";
 import {renderToStaticMarkup} from "react-dom/server";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {FileRefsProvider} from "../src/components/file-refs-context";
 import {SessionChat} from "../src/components/session-chat";
+import type {FileRef} from "../src/lib/file-refs";
 import {summarizeToolCalls, summarizeToolCallStats} from "../src/lib/session-utils";
 import {processTranscript} from "../src/lib/transcript";
 
@@ -95,10 +98,12 @@ function summaryButton(html: string): string {
 	return match?.[0] ?? "";
 }
 
+/** The group header's label, read by the id its toggle is labelled by (it sits outside the toggle beside a meta slot). */
 function summaryLabel(html: string): string {
 	const root = document.createElement("div");
-	root.innerHTML = summaryButton(html);
-	return root.querySelector("[id$=-label]")?.textContent ?? "";
+	root.innerHTML = html;
+	const labelId = root.querySelector("button[aria-expanded]")?.getAttribute("aria-labelledby")?.split(" ")[0];
+	return labelId === undefined ? "" : (root.querySelector(`[id="${labelId}"]`)?.textContent ?? "");
 }
 
 /** The group header's diff stat pill: each segment's ink and text, and the screen-reader line. */
@@ -484,6 +489,162 @@ describe("ToolCallSummary stats and ink", () => {
 			expanded: "true",
 			ink: "inline-flex items-center gap-g3 min-w-0 text-secondary",
 		});
+	});
+});
+
+describe("group header file meta slot", () => {
+	const META_CLASS =
+		"min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-secondary group-hover/tool:text-primary group-has-[:focus-visible]/tool:text-primary";
+	const commandsThenRead = (readError = false): FakeCall[] => [
+		{id: "t1", name: "Bash", input: {command: "ls"}},
+		{id: "t2", name: "Bash", input: {command: "pwd"}},
+		{id: "t3", name: "Read", input: {file_path: "/r/input-debug.png"}, isError: readError},
+	];
+
+	function mount(calls: FakeCall[]): HTMLElement {
+		const root = document.createElement("div");
+		root.innerHTML = renderRun(calls);
+		return root;
+	}
+
+	it("moves the trailing sole file out of the phrases into a meta slot beside the toggle, as upstream's j() does", () => {
+		const root = mount(commandsThenRead());
+		const toggle = root.querySelector("button[aria-expanded]");
+		const meta = root.querySelector("[id$=-meta]");
+		const text = meta?.parentElement;
+		expect({
+			label: root.querySelector("[id$=-label]")?.textContent,
+			labelClass: root.querySelector("[id$=-label]")?.className,
+			metaClass: meta?.className,
+			metaTitle: meta?.getAttribute("title"),
+			metaText: meta?.textContent,
+			metaInToggle: toggle?.contains(meta ?? null),
+			textClass: text?.className.split(" ").slice(0, 4).join(" "),
+			labelledBy: toggle
+				?.getAttribute("aria-labelledby")
+				?.split(" ")
+				.map((id) => id.slice(id.lastIndexOf("-"))),
+			rowTitle: text?.parentElement?.getAttribute("title"),
+			rowHoldsToggle: text?.parentElement?.contains(toggle ?? null),
+			status: root.querySelector("[role=status]")?.textContent,
+		}).toStrictEqual({
+			label: "Ran 2 commands, read",
+			labelClass: "block min-w-0 truncate text-body shrink-0",
+			metaClass: META_CLASS,
+			metaTitle: "/r/input-debug.png",
+			metaText: "input-debug.png",
+			metaInToggle: false,
+			textClass: "flex min-w-0 gap-xs items-center",
+			labelledBy: ["-label", "-meta"],
+			rowTitle: "/r/input-debug.png",
+			rowHoldsToggle: true,
+			status: "Ran 2 commands, read input-debug.png",
+		});
+	});
+
+	const LINK_CLASS =
+		"block min-w-0 truncate text-primary hover:underline underline-offset-[3px] focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-sm";
+
+	function chat(calls: FakeCall[]) {
+		const {lines, toolResultMap} = processTranscript(toolRunRecords(calls));
+		return (
+			<SessionChat
+				sessionId="test-session"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				showCompactSummaries
+				showTranscriptOnly
+			/>
+		);
+	}
+
+	async function mountLinked(open: (ref: FileRef) => void): Promise<{root: HTMLElement; link: HTMLElement}> {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+				if (String(input) !== "/api/file-refs")
+					return Promise.resolve(Response.json({error: "not found"}, {status: 404}));
+				const {paths} = JSON.parse(String(init?.body)) as {paths: string[]};
+				return Promise.resolve(
+					Response.json({statuses: Object.fromEntries(paths.map((path) => [path, "exists"]))}),
+				);
+			}),
+		);
+		const client = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		const {container} = render(
+			<QueryClientProvider client={client}>
+				<FileRefsProvider value={{sessionId: "meta-link", cwd: "/r", sessionPaths: [], open}}>
+					{chat(commandsThenRead())}
+				</FileRefsProvider>
+			</QueryClientProvider>,
+		);
+		const link = await waitFor(() => {
+			const found = container.querySelector<HTMLElement>("[id$=-meta] > [data-file-ref]");
+			expect(found).not.toBeNull();
+			return found!;
+		});
+		return {root: container, link};
+	}
+
+	it("makes the meta name a file link that opens the file without toggling the group", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		const {root, link} = await mountLinked(open);
+		fireEvent.click(link);
+		const afterClick = open.mock.calls.length;
+		fireEvent.keyDown(link, {key: "Enter"});
+		expect({
+			tag: link.tagName,
+			role: link.getAttribute("role"),
+			tabIndex: link.getAttribute("tabindex"),
+			className: link.className,
+			inner: link.innerHTML,
+			afterClick,
+			opened: open.mock.calls.map(([ref]) => ref.path),
+			expanded: root.querySelector("button[aria-expanded]")?.getAttribute("aria-expanded"),
+		}).toStrictEqual({
+			tag: "SPAN",
+			role: "button",
+			tabIndex: "0",
+			className: LINK_CLASS,
+			inner: "<bdi>input-debug.png</bdi>",
+			afterClick: 1,
+			opened: ["/r/input-debug.png", "/r/input-debug.png"],
+			expanded: "false",
+		});
+	});
+
+	it("still toggles the group from a click on the row's label", async () => {
+		const {root} = await mountLinked(vi.fn());
+		fireEvent.click(root.querySelector("[id$=-label]")!);
+		expect(root.querySelector("button[aria-expanded]")?.getAttribute("aria-expanded")).toBe("true");
+	});
+
+	it("draws a plain bdi name outside a file-refs provider", () => {
+		const root = mount(commandsThenRead());
+		expect(root.querySelector("[id$=-meta]")?.innerHTML).toBe("<bdi>input-debug.png</bdi>");
+	});
+
+	it("keeps a failed read's name in the counted line, with no meta slot", () => {
+		const root = mount(commandsThenRead(true));
+		expect({
+			meta: root.querySelector("[id$=-meta]"),
+			names: root.querySelector("[data-testid=counted-line-names]")?.textContent,
+			labelledBy: root
+				.querySelector("button[aria-expanded]")
+				?.getAttribute("aria-labelledby")
+				?.endsWith("-label"),
+		}).toStrictEqual({meta: null, names: "Ran 2 commands, read input-debug.png", labelledBy: true});
+	});
+
+	it("shows no file link while the sole file's meta carries a stop note", () => {
+		const root = mount([
+			{id: "t1", name: "Read", input: {file_path: "/r/x.ts"}},
+			{id: "t2", name: "Edit", input: {file_path: "/r/x.ts"}, isError: true, denialKind: "user-rejected"},
+		]);
+		expect({
+			meta: root.querySelector("[id$=-meta]"),
+			label: root.querySelector("[id$=-label]")?.textContent,
+		}).toStrictEqual({meta: null, label: "Read and edited x.ts (1 stopped)"});
 	});
 });
 

@@ -91,12 +91,22 @@ function renderRecords(records: unknown[], subagents: Subagent[] = []): HTMLElem
 }
 
 /** The label of every grouped status header in the rendered transcript, without its diff stats. */
+/**
+ * A group header's words: its label, then the trailing file a meta slot draws
+ * beside the toggle ("Ran 2 commands, read" + "settings.json"), read through
+ * the toggle's aria-labelledby as upstream's accessible name joins them.
+ */
+function groupHeaderText(toggle: Element): string | null {
+	const ids = toggle.getAttribute("aria-labelledby")?.split(" ") ?? [];
+	if (ids.at(-1)?.endsWith("-meta") !== true)
+		return toggle.querySelector(":scope > span:first-child")?.textContent ?? null;
+	const root = toggle.closest("[data-turn-status]");
+	return ids.map((id) => root?.querySelector(`[id="${id}"]`)?.textContent ?? "").join(" ");
+}
+
 function groupLabels(records: unknown[]): (string | null)[] {
 	const container = renderRecords(records);
-	return Array.from(
-		container.querySelectorAll("[data-turn-status] button[aria-expanded] > span:first-child"),
-		(label) => label.textContent,
-	);
+	return Array.from(container.querySelectorAll("[data-turn-status] button[aria-expanded]"), groupHeaderText);
 }
 
 describe("group label golden specimens rendered from JSONL", () => {
@@ -138,8 +148,8 @@ function spanText(span: Element): string {
 }
 
 function statusText(status: Element): string {
-	const groupLabel = status.querySelector(":scope > button > span:first-child");
-	if (groupLabel !== null) return `status: ${groupLabel.textContent}`;
+	const groupToggle = status.querySelector(":scope > button, :scope > [data-cds-row] > button[aria-expanded]");
+	if (groupToggle !== null) return `status: ${groupHeaderText(groupToggle)}`;
 	const marker = status.querySelector(":scope > [data-turn-status-marker]");
 	if (marker !== null) return `status: ${marker.textContent}`;
 	const rowLabel = status.querySelector(":scope > [role=button]");

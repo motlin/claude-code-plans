@@ -1,5 +1,6 @@
 import {
 	countedLabelText,
+	splitTrailingFile,
 	summarizeToolCallStats,
 	type BackgroundCompletionLike,
 	type ToolCallLike,
@@ -279,6 +280,74 @@ describe("group label: one file", () => {
 		},
 	])("names the file only when the whole group touches just it: $expected", ({calls, expected}) => {
 		expect(label(calls)).toBe(expected);
+	});
+});
+
+describe("group label: trailing file meta", () => {
+	const split = (calls: ToolCallLike[]) => splitTrailingFile(summarizeToolCallStats(calls).segments);
+	const stopped = {isError: true, stopped: true};
+
+	it("splits the trailing sole file off the phrases, as upstream's j() moves it to the meta slot", () => {
+		expect({
+			afterCommands: split([bash(), bash(), read("/r/a.png")]),
+			alone: split([read("/r/x.ts"), edit("/r/x.ts")]),
+			retried: split([edit("/r/x.ts", {isError: true}), edit("/r/x.ts")]),
+			multiEdit: split([{name: "MultiEdit", input: {file_path: "/r/x.ts", edits: []}}]),
+		}).toStrictEqual({
+			afterCommands: {
+				segments: [
+					{verb: "Ran", rest: "2 commands"},
+					{verb: "read", rest: ""},
+				],
+				name: "a.png",
+				file: {path: "/r/a.png", preferDiff: false},
+			},
+			alone: {
+				segments: [{verb: "Read and edited", rest: ""}],
+				name: "x.ts",
+				file: {path: "/r/x.ts", preferDiff: true},
+			},
+			retried: {
+				segments: [{verb: "Edited", rest: ""}],
+				name: "x.ts",
+				file: {path: "/r/x.ts", preferDiff: true},
+			},
+			multiEdit: {
+				segments: [{verb: "Edited", rest: ""}],
+				name: "x.ts",
+				file: {path: "/r/x.ts", preferDiff: true},
+			},
+		});
+	});
+
+	it.each([
+		{name: "the file segment is not last", calls: [read("/r/x.ts"), bash()]},
+		{name: "a call on it failed", calls: [edit("/r/x.ts", {isError: true})]},
+		{name: "its meta carries a stop note", calls: [read("/r/x.ts"), edit("/r/x.ts", stopped)]},
+		{name: "its meta carries a block note", calls: [edit("/r/x.ts", {blocked: true})]},
+		{name: "the group trails a failure", calls: [bash({isError: true}), read("/r/x.ts")]},
+		{name: "the path holds an invisible character", calls: [read("/r/a\u200b.png")]},
+		{name: "the path holds a control character", calls: [read("/r/a\u0007.png")]},
+		{
+			name: "a file call is not Read/Write/Edit/MultiEdit/NotebookEdit",
+			calls: [read("/r/x.ts"), {name: "mcp__fs__read", input: {file_path: "/r/x.ts"}}],
+		},
+		{
+			name: "the header folds into and N more actions",
+			calls: [
+				{name: "Grep", input: {}},
+				{name: "Glob", input: {}},
+				bash(),
+				{name: "WebFetch", input: {}},
+				read("/r/x.ts"),
+			],
+		},
+	])("keeps the name in the phrases when $name", ({calls}) => {
+		expect(split(calls)).toBeUndefined();
+	});
+
+	it("leaves the unsplit header text as is", () => {
+		expect(label([read("/r/x.ts"), edit("/r/x.ts")])).toBe("Read and edited x.ts");
 	});
 });
 

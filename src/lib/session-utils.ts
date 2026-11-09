@@ -541,6 +541,34 @@ export function truncateResult(text: string, maxLines: number): string {
 export interface SummarySegment {
 	verb: string;
 	rest: string;
+	/**
+	 * The group's one file, when this segment names it with no note (c24951e9f
+	 * `Te`): a trailing one moves to the header's meta slot as a file link.
+	 */
+	file?: SummaryFile;
+}
+
+/** The file a sole-file segment names; `preferDiff` once a write or edit to it succeeded. */
+export interface SummaryFile {
+	path: string;
+	preferDiff: boolean;
+}
+
+/**
+ * Upstream's `j()` (c24951e9f): when the last segment names the group's one
+ * file, the phrases stop at its verb ("Ran 2 commands, read") and the name
+ * leaves for the row's meta slot.
+ */
+export function splitTrailingFile(
+	segments: readonly SummarySegment[],
+): {segments: SummarySegment[]; name: string; file: SummaryFile} | undefined {
+	const last = segments.at(-1);
+	if (last?.file === undefined) return undefined;
+	return {
+		segments: [...segments.slice(0, -1).map(({verb, rest}) => ({verb, rest})), {verb: last.verb, rest: ""}],
+		name: last.rest,
+		file: last.file,
+	};
 }
 
 /** A background task whose completion notification folded into a tool group. */
@@ -717,6 +745,7 @@ interface CountedSegment extends SummarySegment, SegmentOutcomes {
 function soleFileSegment(
 	path: string,
 	outcomes: Map<ToolCategory, Map<string, CallOutcome | undefined>>,
+	link: {linkable: boolean; preferDiff: boolean},
 ): CountedSegment {
 	const byVerb = new Map<string, Set<CallOutcome | undefined>>();
 	for (const [cat, byKey] of outcomes) {
@@ -726,7 +755,7 @@ function soleFileSegment(
 	}
 	const verbsHolding = (outcome: CallOutcome) => [...byVerb.values()].filter((held) => held.has(outcome)).length;
 	const verbs = VERB_LIST.format(byVerb.keys());
-	return {
+	const segment: CountedSegment = {
 		verb: verbs.charAt(0).toUpperCase() + verbs.slice(1),
 		rest: basenameFromPath(path),
 		count: byVerb.size,
@@ -734,6 +763,35 @@ function soleFileSegment(
 		stopped: verbsHolding("stopped"),
 		blocked: verbsHolding("blocked"),
 	};
+	if (link.linkable && !SUSPECT_PATH_CHARS.test(path)) segment.file = {path, preferDiff: link.preferDiff};
+	return segment;
+}
+
+/** The tools whose sole file upstream links (c24951e9f `b`). */
+const FILE_LINK_TOOLS: ReadonlySet<string> = new Set(["Read", "Write", "Edit", "MultiEdit", "NotebookEdit"]);
+
+/** Control, format, or invisible characters in a path, which upstream never links (`gL`). */
+const SUSPECT_PATH_CHARS = /[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}\p{Default_Ignorable_Code_Point}]/u;
+
+/**
+ * Whether the group's file calls may link their sole file -- every one a
+ * file-editing built-in -- and whether a write, edit, or notebook edit of it
+ * succeeded, so upstream opens the diff.
+ */
+function soleFileLink(
+	calls: ToolCallLike[],
+	categories: (ToolCategory | null)[],
+	failedLaunches: ReadonlySet<string>,
+): {linkable: boolean; preferDiff: boolean} {
+	let linkable = true;
+	let preferDiff = false;
+	for (const [index, call] of calls.entries()) {
+		const cat = categories[index];
+		if (cat === null || cat === undefined || !FILE_CATEGORIES.has(cat)) continue;
+		if (!FILE_LINK_TOOLS.has(call.name)) linkable = false;
+		if (cat !== "read" && callOutcome(call, failedLaunches) === "succeeded") preferDiff = true;
+	}
+	return {linkable, preferDiff};
 }
 
 function labelledSegment(label: SegmentLabel, count: number, outcomes: SegmentOutcomes = NO_OUTCOMES): CountedSegment {
@@ -763,7 +821,13 @@ function outcomesText(failed: number, blocked: number): string | null {
 }
 
 function withNote(segment: CountedSegment, note: string | null): SummarySegment {
-	if (note === null) return {verb: segment.verb, rest: segment.rest};
+	if (note === null) {
+		// Upstream links the file only while its meta is undecorated and nothing on it failed or was blocked.
+		const clean = segment.failed === 0 && segment.blocked === 0;
+		return clean && segment.file !== undefined
+			? {verb: segment.verb, rest: segment.rest, file: segment.file}
+			: {verb: segment.verb, rest: segment.rest};
+	}
 	return {verb: segment.verb, rest: segment.rest ? `${segment.rest} ${note}` : note};
 }
 
@@ -787,7 +851,9 @@ function shapeSegments(segments: CountedSegment[]): {segments: SummarySegment[];
 	);
 	if (segments.length >= SHOWN_SEGMENTS + 2) {
 		const count = segments.slice(SHOWN_SEGMENTS).reduce((sum, segment) => sum + segment.count, 0);
-		const shown = segments.slice(0, SHOWN_SEGMENTS).map((segment) => withNote(segment, plainNote(segment)));
+		const shown = segments
+			.slice(0, SHOWN_SEGMENTS)
+			.map(({file: _file, ...segment}) => withNote(segment, plainNote(segment)));
 		const last = shown.at(-1);
 		if (last !== undefined) {
 			if (last.rest) last.rest = `${last.rest},`;
@@ -797,7 +863,10 @@ function shapeSegments(segments: CountedSegment[]): {segments: SummarySegment[];
 		return {segments: shown, trailing: ` and ${more}${outcomes === null ? "" : `, ${outcomes}`}`};
 	}
 	if (segments.length > 1 && outcomes !== null) {
-		return {segments: segments.map((segment) => withNote(segment, plainNote(segment))), trailing: `, ${outcomes}`};
+		return {
+			segments: segments.map(({file: _file, ...segment}) => withNote(segment, plainNote(segment))),
+			trailing: `, ${outcomes}`,
+		};
 	}
 	return {segments: segments.map((segment) => withNote(segment, inlineNote(segment))), trailing: null};
 }
@@ -874,10 +943,11 @@ function buildSummarySegments(
 	// Each segment counts its own outcomes, which shapeSegments notes inline or totals in the trailing part.
 	const segments: CountedSegment[] = [];
 	const solePath = soleFilePath(calls, categories);
+	const link = soleFileLink(calls, categories, failedLaunches);
 	let soleFileNamed = false;
 	for (const [cat, byKey] of outcomes) {
 		if (solePath !== null && FILE_CATEGORIES.has(cat)) {
-			if (!soleFileNamed) segments.push(soleFileSegment(solePath, outcomes));
+			if (!soleFileNamed) segments.push(soleFileSegment(solePath, outcomes, link));
 			soleFileNamed = true;
 			continue;
 		}
@@ -914,7 +984,10 @@ function buildSummarySegments(
 	const shaped = shapeSegments(segments);
 	// Upstream capitalizes only the leading verb: "Ran 2 commands, read cache.ts".
 	return {
-		segments: shaped.segments.map(({verb, rest}, i) => ({verb: i === 0 ? verb : lowercaseFirst(verb), rest})),
+		segments: shaped.segments.map((segment, i) => ({
+			...segment,
+			verb: i === 0 ? segment.verb : lowercaseFirst(segment.verb),
+		})),
 		trailing: shaped.trailing,
 		added,
 		removed,

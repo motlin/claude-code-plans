@@ -140,7 +140,8 @@ describe("tool-row screenshot media slots", () => {
 		]);
 		const slot = container.querySelector("[data-cds-row-media]");
 		expect(slot?.closest("button")).toBeNull();
-		expect(slot?.previousElementSibling).toBe(groupToggle(container));
+		// The trailing file's meta slot splits the row from its toggle, so the strip follows the whole row.
+		expect(slot?.previousElementSibling).toBe(groupToggle(container).closest("[data-cds-row]"));
 	});
 
 	it("does not toggle the group when its thumbnail is clicked", () => {

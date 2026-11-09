@@ -166,7 +166,7 @@ describe("MultiEdit diff stats", () => {
 		expect(
 			summarizeToolCallStats([{name: "MultiEdit", input: {file_path: FILE_PATH, edits: EDITS}}]),
 		).toStrictEqual({
-			segments: [{verb: "Edited", rest: "cache.ts"}],
+			segments: [{verb: "Edited", rest: "cache.ts", file: {path: FILE_PATH, preferDiff: true}}],
 			trailing: null,
 			added: 4,
 			removed: 3,
