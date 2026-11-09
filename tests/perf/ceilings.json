@@ -577,16 +577,16 @@
 		"tolerance": 0
 	},
 	"hot.processTranscript.small.calls": {
-		"reason": "Claude Code notice rows (2026-11-09): every plain system/informational record now becomes a hook-notice line instead of being skipped, so each fixture informational record makes the stripAnsi, parseHookMessage, hookNotice and capDetails calls. Ceiling raised to the measurement.",
+		"reason": "Notice subtypes on the hook-notice line (2026-11-09): informational and away_summary/agents_killed/memory_saved/model_consent_fallback notices now share one pushHookNotice merge helper, one extra call per fixture informational record. Ceiling raised to the measurement.",
 		"raisedAt": "2026-11-09",
-		"ceiling": 3575,
+		"ceiling": 3576,
 		"unit": "calls",
 		"tolerance": 0
 	},
 	"hot.processTranscript.typical.calls": {
-		"reason": "Claude Code notice rows (2026-11-09): every plain system/informational record now becomes a hook-notice line instead of being skipped, so each fixture informational record makes the stripAnsi, parseHookMessage, hookNotice and capDetails calls. Ceiling raised to the measurement.",
+		"reason": "Notice subtypes on the hook-notice line (2026-11-09): informational and away_summary/agents_killed/memory_saved/model_consent_fallback notices now share one pushHookNotice merge helper, one extra call per fixture informational record. Ceiling raised to the measurement.",
 		"raisedAt": "2026-11-09",
-		"ceiling": 2504,
+		"ceiling": 2505,
 		"unit": "calls",
 		"tolerance": 0
 	},

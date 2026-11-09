@@ -6,6 +6,7 @@
  */
 import {useState} from "react";
 
+import {hookNoticeText} from "../lib/hook-notice-copy";
 import type {HookNotice} from "../lib/transcript";
 import {Icon} from "./ui/icon";
 
@@ -22,7 +23,7 @@ function HookNoticeLine({notice, markWarning}: {notice: HookNotice; markWarning:
 				</span>
 			)}
 			<span className="min-w-0 text-body text-secondary whitespace-pre-wrap [overflow-wrap:anywhere]">
-				{notice.message}
+				{hookNoticeText(notice.message)}
 			</span>
 		</div>
 	);

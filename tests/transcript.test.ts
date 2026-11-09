@@ -1875,6 +1875,119 @@ describe("system record lines", () => {
 		});
 	});
 
+	describe("notice subtypes as hook-notice lines", () => {
+		const RECAP =
+			"We revived the Mnemonica Playdate game: crashes fixed, screens redesigned, Simon fixed with sounds, and the crank made less sensitive, all committed locally on main. Next: run `just run` and upload the build to your Playdate.";
+		const sys = (subtype: string, extra: Record<string, unknown> = {}) => ({
+			type: "system",
+			subtype,
+			isMeta: false,
+			isSidechain: false,
+			...extra,
+		});
+		const notices = (record: unknown) =>
+			processTranscript([record]).lines.map((line) => (line.type === "hook-notice" ? line.notices : line));
+
+		it("turns the away_summary specimen into one recap hook-notice line", () => {
+			const record = sys("away_summary", {
+				content: RECAP,
+				uuid: "8cdbfaf5-da11-4377-a2d7-da286fb75930",
+				timestamp: "2026-09-23T23:57:25.845Z",
+			});
+			expect(processTranscript([record]).lines).toStrictEqual([
+				{
+					type: "hook-notice",
+					notices: [
+						{
+							message: {notice: "away_summary", recap: RECAP},
+							level: "notice",
+							uuid: "8cdbfaf5-da11-4377-a2d7-da286fb75930",
+						},
+					],
+					uuid: "8cdbfaf5-da11-4377-a2d7-da286fb75930",
+					timestamp: "2026-09-23T23:57:25.845Z",
+					lineIndex: 0,
+				},
+			]);
+		});
+
+		it("normalises a recap and skips an empty or non-string one", () => {
+			expect([
+				notices(sys("away_summary", {content: "a\n\n  b"})),
+				notices(sys("away_summary", {content: "\x1b[1mbold\x1b[0m (disable recaps in /config)"})),
+				notices(sys("away_summary", {content: "   "})),
+				notices(sys("away_summary", {})),
+			]).toStrictEqual([
+				[[{message: {notice: "away_summary", recap: "a b"}, level: "notice"}]],
+				[[{message: {notice: "away_summary", recap: "bold (disable recaps in /config)"}, level: "notice"}]],
+				[],
+				[],
+			]);
+		});
+
+		it("caps a 600-character recap at 500 characters plus an ellipsis", () => {
+			expect(notices(sys("away_summary", {content: "x".repeat(600)}))).toStrictEqual([
+				[{message: {notice: "away_summary", recap: `${"x".repeat(500)}…`}, level: "notice"}],
+			]);
+		});
+
+		it("turns agents_killed into a notice and skips it on a sidechain", () => {
+			expect([
+				notices(sys("agents_killed", {uuid: "k-1"})),
+				notices(sys("agents_killed", {isSidechain: true})),
+			]).toStrictEqual([[[{message: {notice: "agents_killed"}, level: "notice", uuid: "k-1"}]], []]);
+		});
+
+		it("counts memory_saved paths, clamping and flooring the team count", () => {
+			expect([
+				notices(sys("memory_saved", {writtenPaths: ["a", "b", "c"], teamCount: 1})),
+				notices(sys("memory_saved", {writtenPaths: ["a"], teamCount: 5})),
+				notices(sys("memory_saved", {writtenPaths: ["a", "b"], teamCount: 1.7})),
+				notices(sys("memory_saved", {writtenPaths: ["a", "b"], teamCount: -1})),
+				notices(sys("memory_saved", {writtenPaths: [], teamCount: 1})),
+				notices(sys("memory_saved", {})),
+				notices(sys("memory_saved", {writtenPaths: ["a"], verb: " Improved "})),
+				notices(sys("memory_saved", {writtenPaths: ["a"], verb: "  "})),
+			]).toStrictEqual([
+				[[{message: {notice: "memory_saved", count: 2, teamCount: 1}, level: "notice"}]],
+				[[{message: {notice: "memory_saved", count: 0, teamCount: 1}, level: "notice"}]],
+				[[{message: {notice: "memory_saved", count: 1, teamCount: 1}, level: "notice"}]],
+				[[{message: {notice: "memory_saved", count: 2, teamCount: 0}, level: "notice"}]],
+				[],
+				[],
+				[[{message: {notice: "memory_saved", count: 1, teamCount: 0, verb: "Improved"}, level: "notice"}]],
+				[[{message: {notice: "memory_saved", count: 1, teamCount: 0}, level: "notice"}]],
+			]);
+		});
+
+		it("turns model_consent_fallback content into a warning without a colon trim", () => {
+			const content =
+				"Switched to Opus 4.7 — for this session · Fable 5 requires usage credits · /model to change:";
+			expect([
+				notices(sys("model_consent_fallback", {content: ` ${content} `, level: "warning"})),
+				notices(sys("model_consent_fallback", {content: "  ", level: "warning"})),
+			]).toStrictEqual([[[{message: content, level: "warning"}]], []]);
+		});
+
+		it("merges a recap into the informational notice before it", () => {
+			const records = [
+				{type: "system", subtype: "informational", content: "plugin says hi", isMeta: true, uuid: "i-1"},
+				sys("away_summary", {content: "x", uuid: "r-1"}),
+			];
+			expect(processTranscript(records).lines).toStrictEqual([
+				{
+					type: "hook-notice",
+					notices: [
+						{message: "plugin says hi", level: "notice", uuid: "i-1"},
+						{message: {notice: "away_summary", recap: "x"}, level: "notice", uuid: "r-1"},
+					],
+					uuid: "i-1",
+					lineIndex: 0,
+				},
+			]);
+		});
+	});
+
 	it("turns a hook-blocked prompt record into one prompt-blocked line", () => {
 		const records = [
 			{

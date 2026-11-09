@@ -156,6 +156,57 @@ describe("HookNoticeRow", () => {
 		});
 	});
 
+	it("draws a lone recap collapsed and words it as Recap: in the body", () => {
+		const recap: HookNotice = {message: {notice: "away_summary", recap: "Fixed it."}, level: "notice", uuid: "r-1"};
+		const {container} = render(<HookNoticeRow notices={[recap]} verbose={false} />);
+		const closed = snapshot(container);
+		const button = container.querySelector("button");
+		if (button === null) throw new Error("no button");
+		fireEvent.click(button);
+		expect([closed.expanded, closed.label, snapshot(container).body?.lines]).toStrictEqual([
+			"false",
+			"Claude Code notice",
+			[{icon: false, text: "Recap: Fixed it."}],
+		]);
+	});
+
+	it("opens a lone model_consent_fallback warning with the header icon", () => {
+		const fallback: HookNotice = {
+			message: "Switched to Opus 4.7 — for this session · Fable 5 requires usage credits · /model to change",
+			level: "warning",
+		};
+		const {container} = render(<HookNoticeRow notices={[fallback]} verbose={false} />);
+		expect(snapshot(container)).toStrictEqual({
+			label: "Claude Code notice",
+			expanded: "true",
+			headerIcons: 1,
+			body: {
+				hidden: false,
+				className: "epitaxy-expanding-body flow-root",
+				lines: [
+					{
+						icon: false,
+						text: "Switched to Opus 4.7 — for this session · Fable 5 requires usage credits · /model to change",
+					},
+				],
+			},
+		});
+	});
+
+	it("words merged structured notices line by line", () => {
+		const merged: HookNotice[] = [
+			{message: {notice: "away_summary", recap: "x"}, level: "notice", uuid: "a"},
+			{message: {notice: "agents_killed"}, level: "notice", uuid: "b"},
+			{message: {notice: "memory_saved", count: 2, teamCount: 1}, level: "notice", uuid: "c"},
+		];
+		const {container} = render(<HookNoticeRow notices={merged} verbose />);
+		expect(snapshot(container).body?.lines.map((line) => line.text)).toStrictEqual([
+			"Recap: x",
+			"All background agents stopped",
+			"Saved 2 memories · 1 team memory",
+		]);
+	});
+
 	it("keeps line breaks in a multi-line message", () => {
 		const {container} = render(
 			<HookNoticeRow notices={[{message: "Version 2.1.227:\n· Fixed a", level: "warning"}]} verbose={false} />,

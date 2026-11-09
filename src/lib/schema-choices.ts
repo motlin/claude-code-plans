@@ -749,6 +749,16 @@ const hookNoticeLevelChoices = {
 	warning: true,
 } satisfies Record<Extract<ProcessedLine, {type: "hook-notice"}>["notices"][number]["level"], true>;
 
+/** Exhaustive handler: hookNoticeText (src/lib/hook-notice-copy.ts) words each structured notice kind. */
+const hookNoticeKindChoices = {
+	away_summary: true,
+	agents_killed: true,
+	memory_saved: true,
+} satisfies Record<
+	Exclude<Extract<ProcessedLine, {type: "hook-notice"}>["notices"][number]["message"], string>["notice"],
+	true
+>;
+
 /** How the transcript's context-refresh meta line opens, by the attachment it announces. */
 export const contextRefreshSubjectLabels = {
 	instructions: "Instructions re-read",
@@ -1703,6 +1713,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"AttachmentPayloadSchema.<instructions>.reason": contextRefreshReasonLabels,
 	"RenderedLineSchema.<attachment>.contextRefresh.subject": contextRefreshSubjectLabels,
 	"RenderedLineSchema.<hook-notice>.notices[].level": hookNoticeLevelChoices,
+	"RenderedLineSchema.<hook-notice>.notices[].message|1": hookNoticeKindChoices,
 	"JsonlRecordSchema.<attachment>.renderedRole": renderedRoleChoices,
 	"JsonlRecordSchema.<assistant>.thinkingDisplay": thinkingDisplayChoices,
 	"JsonlRecordSchema.<assistant>.streamCutCause": streamCutCauseChoices,

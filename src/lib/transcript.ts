@@ -30,6 +30,7 @@ import {
 } from "./schemas";
 import {autoModeDenial} from "./auto-mode-denial";
 import {stripAnsi} from "./ansi-codes";
+import {recapText} from "./recap-text";
 import {capDetails, parseHookMessage} from "./hook-prompt-block";
 import {JsonlRecordSchema} from "./runtime-schemas";
 import {
@@ -316,8 +317,28 @@ const PromptBlockedLineSchema = z.object({
  * One or more adjacent `system/informational` records that are not a hook
  * block or stop (upstream `hook_notice` item): a "Claude Code notice" row.
  */
+/**
+ * A notice's message: an informational record's text, or a structured notice from one of the `system`
+ * subtypes upstream maps through `hf` (adapter c06cf64bb), worded by `hookNoticeText`.
+ */
+const HookNoticeMessageSchema = z.union([
+	z.string(),
+	z.discriminatedUnion("notice", [
+		z.object({notice: z.literal("away_summary"), recap: z.string()}),
+		z.object({notice: z.literal("agents_killed")}),
+		z.object({
+			notice: z.literal("memory_saved"),
+			count: z.number(),
+			teamCount: z.number(),
+			verb: z.string().optional(),
+		}),
+	]),
+]);
+
+export type HookNoticeMessage = z.infer<typeof HookNoticeMessageSchema>;
+
 const HookNoticeSchema = z.object({
-	message: z.string(),
+	message: HookNoticeMessageSchema,
 	level: z.enum(["warning", "notice"]),
 	uuid: z.string().optional(),
 });
@@ -440,6 +461,60 @@ function hookNotice(text: string, level: string | undefined, uuid: string | unde
 	if (message === "" || level === "info") return null;
 	const notice: HookNotice = {message: capDetails(message), level: level === "warning" ? "warning" : "notice"};
 	if (uuid !== undefined) notice.uuid = uuid;
+	return notice;
+}
+
+/**
+ * A notice from one of the `system` subtypes upstream draws as a "Claude Code notice" (adapter `hf`).
+ * Null when the record carries nothing to show.
+ */
+const NOTICE_SUBTYPES: ReadonlySet<string> = new Set([
+	"agents_killed",
+	"away_summary",
+	"memory_saved",
+	"model_consent_fallback",
+]);
+
+function subtypeNotice(record: Extract<JsonlRecord, {type: "system"}>): HookNotice | null {
+	const raw: Record<string, unknown> = record;
+	const {content} = record;
+	let notice: HookNotice;
+	switch (record.subtype) {
+		case "agents_killed":
+			notice = {message: {notice: "agents_killed"}, level: "notice"};
+			break;
+		case "away_summary": {
+			const recap = typeof content === "string" ? recapText(stripAnsi(content)) : undefined;
+			if (recap === undefined) return null;
+			notice = {message: {notice: "away_summary", recap}, level: "notice"};
+			break;
+		}
+		case "memory_saved": {
+			const paths = record.writtenPaths ?? raw["written_paths"];
+			const pathCount = Array.isArray(paths) ? paths.length : 0;
+			if (pathCount === 0) return null;
+			const team = record.teamCount ?? raw["team_count"];
+			const teamCount = typeof team === "number" && team > 0 ? Math.min(Math.floor(team), pathCount) : 0;
+			const verb = typeof record.verb === "string" ? stripAnsi(record.verb).trim() : "";
+			const message: Extract<HookNoticeMessage, {notice: "memory_saved"}> = {
+				notice: "memory_saved",
+				count: pathCount - teamCount,
+				teamCount,
+			};
+			if (verb !== "") message.verb = verb;
+			notice = {message, level: "notice"};
+			break;
+		}
+		case "model_consent_fallback": {
+			const message = typeof content === "string" ? stripAnsi(content).trim() : "";
+			if (message === "") return null;
+			notice = {message, level: "warning"};
+			break;
+		}
+		default:
+			return null;
+	}
+	if (record.uuid !== undefined) notice.uuid = record.uuid;
 	return notice;
 }
 
@@ -941,6 +1016,18 @@ function* processRecordBatchSteps(
 	const delivered = new Set<ProcessedLine>();
 	// Per deferred_tools_delta uuid, the description each surfaced tool resolved to.
 	const surfacedDescriptions = new Map<string, Map<string, string | undefined>>();
+	// Adjacent notices share one line (upstream `Jd` merges adjacent plugin-less `hook_notice` items).
+	const pushHookNotice = (notice: HookNotice, lineIndex: number, timestamp: string | undefined) => {
+		const previous = sessionLines.at(-1);
+		if (previous?.type === "hook-notice") {
+			previous.notices.push(notice);
+			return;
+		}
+		const noticeLine: z.infer<typeof HookNoticeLineSchema> = {type: "hook-notice", notices: [notice], lineIndex};
+		if (notice.uuid !== undefined) noticeLine.uuid = notice.uuid;
+		if (timestamp !== undefined) noticeLine.timestamp = timestamp;
+		sessionLines.push(noticeLine);
+	};
 
 	for (let i = 0; i < records.length; i++) {
 		if (i > 0 && i % RECORD_BATCH_STEP === 0) yield;
@@ -1230,20 +1317,12 @@ function* processRecordBatchSteps(
 					continue;
 				}
 				const notice = hookNotice(text, record.level, uuid);
-				if (notice === null) continue;
-				const previous = sessionLines.at(-1);
-				if (previous?.type === "hook-notice") {
-					previous.notices.push(notice);
-					continue;
-				}
-				const noticeLine: z.infer<typeof HookNoticeLineSchema> = {
-					type: "hook-notice",
-					notices: [notice],
-					lineIndex,
-				};
-				if (uuid !== undefined) noticeLine.uuid = uuid;
-				if (record.timestamp !== undefined) noticeLine.timestamp = record.timestamp;
-				sessionLines.push(noticeLine);
+				if (notice !== null) pushHookNotice(notice, lineIndex, record.timestamp);
+				continue;
+			}
+			if (record.subtype !== undefined && NOTICE_SUBTYPES.has(record.subtype)) {
+				const notice = record.isSidechain === true ? null : subtypeNotice(record);
+				if (notice !== null) pushHookNotice(notice, lineIndex, record.timestamp);
 				continue;
 			}
 			const subtype = RenderedSystemSubtypeSchema.safeParse(record.subtype);

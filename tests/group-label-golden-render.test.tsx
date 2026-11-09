@@ -362,10 +362,11 @@ describe("plain status marker gaps", () => {
 			element.closest("[data-testid=transcript-row]")!,
 		);
 
+	// 5f402159:2267's "Kept model" prose is followed by its agents_killed "Claude Code notice", not the marker.
 	it.each([
-		["01d132c8", 1249, 0],
-		["5f402159", 2267, 1],
-		["5f402159", 2172, 0],
+		["01d132c8", 1249, [0]],
+		["5f402159", 2267, []],
+		["5f402159", 2172, [0]],
 	])(
 		"leaves upstream's 16px between %s:%i's prose and its plain marker, not a tool status's 12px",
 		(session, line, prose) => {
@@ -379,7 +380,7 @@ describe("plain status marker gaps", () => {
 			expect({
 				marker: matched(rule("Assistant prose followed by a plain status marker", 16)),
 				status: matched(rule("Assistant prose followed by a status", 12)),
-			}).toStrictEqual({marker: [prose], status: []});
+			}).toStrictEqual({marker: prose, status: []});
 		},
 	);
 
@@ -507,10 +508,46 @@ describe("background task stopped row", () => {
 				footer: row.querySelector("[data-assistant-span-footer]") !== null,
 				disclosures: row.querySelectorAll("[data-turn-status] [aria-expanded], [data-turn-status] svg").length,
 				bubble: row.querySelector(".user-message-bubble") !== null,
+				notice: row.querySelector("[data-hook-notice] button[aria-expanded]")?.textContent ?? null,
 			})),
 		).toStrictEqual([
-			{status: null, secondary: [], precedesStatus: false, footer: false, disclosures: 0, bubble: false},
-			{status: null, secondary: [], precedesStatus: true, footer: false, disclosures: 0, bubble: false},
+			{
+				status: null,
+				secondary: [],
+				precedesStatus: false,
+				footer: false,
+				disclosures: 0,
+				bubble: false,
+				notice: null,
+			},
+			// The away_summary recap, then the "Kept model" prose, then the agents_killed notice (bundle order).
+			{
+				status: null,
+				secondary: [],
+				precedesStatus: false,
+				footer: false,
+				disclosures: 0,
+				bubble: false,
+				notice: "Claude Code notice",
+			},
+			{
+				status: null,
+				secondary: [],
+				precedesStatus: false,
+				footer: false,
+				disclosures: 0,
+				bubble: false,
+				notice: null,
+			},
+			{
+				status: null,
+				secondary: [],
+				precedesStatus: false,
+				footer: false,
+				disclosures: 0,
+				bubble: false,
+				notice: "Claude Code notice",
+			},
 			{
 				status: "Background task stopped·You are doing a behaviour-preserving refactor of a...",
 				secondary: [true, true, true],
@@ -518,8 +555,17 @@ describe("background task stopped row", () => {
 				footer: true,
 				disclosures: 0,
 				bubble: false,
+				notice: null,
 			},
-			{status: null, secondary: [], precedesStatus: false, footer: false, disclosures: 0, bubble: true},
+			{
+				status: null,
+				secondary: [],
+				precedesStatus: false,
+				footer: false,
+				disclosures: 0,
+				bubble: true,
+				notice: null,
+			},
 		]);
 	});
 });
