@@ -277,3 +277,37 @@ describe("SessionChat agents_killed specimen sequences", () => {
 		});
 	});
 });
+
+describe("SessionChat hook-stopped prompt", () => {
+	it("draws the prompt_stopped notice after the prompt's bubble, with no bubble for the meta echo", () => {
+		const container = renderRecords([
+			user("hi", "u1"),
+			{...user("Operation stopped by hook: quota", "m1"), isMeta: true},
+			{
+				type: "system",
+				subtype: "informational",
+				level: "warning",
+				preventContinuation: true,
+				content: "Operation stopped by hook: quota",
+				uuid: "s1",
+				timestamp: "2026-11-05T10:00:01.000Z",
+				isMeta: false,
+			},
+		]);
+		expect({
+			rows: rowProbe(container),
+			bubbles: Array.from(container.querySelectorAll(".user-message-bubble"), (bubble) => bubble.textContent),
+			lines: Array.from(
+				container.querySelectorAll("[data-hook-notice] .epitaxy-expanding-body .select-text"),
+				(line) => line.textContent,
+			),
+		}).toStrictEqual({
+			rows: [
+				{bubble: true, notice: null, footer: false},
+				{bubble: false, notice: "Claude Code notice", footer: false},
+			],
+			bubbles: ["hi"],
+			lines: ["A hook stopped a message, so Claude didn’t reply to it: quota"],
+		});
+	});
+});

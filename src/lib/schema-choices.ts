@@ -66,6 +66,7 @@ import type {
 	JsonlRecordSchema,
 	ModelRefusalFallbackDirectionSchema,
 	ModelRefusalFallbackScopeSchema,
+	PromptSubmitEndingSchema,
 	PermissionDecisionCircuitBreakerSchema,
 	PermissionDecisionClassifierCategorySchema,
 	PermissionDecisionDecisionSchema,
@@ -594,6 +595,13 @@ const contextUsageOverLimitKindChoices = {
 	compaction_window: true,
 } satisfies Record<z.infer<typeof ContextUsageOverLimitKindSchema>, true>;
 
+/** Not consumed — upstream web ignores `promptSubmitEnding`; the transcript reads the record's content instead. */
+const promptSubmitEndingKindChoices = {
+	stopped_by_hook: true,
+	blocked_by_hook: true,
+	no_verdict: true,
+} satisfies Record<z.infer<typeof PromptSubmitEndingSchema>["ending"]["kind"], true>;
+
 /** Not consumed yet — how the ccb-context-mirror breakdown's window was settled (`autocompactSource`). */
 const contextWindowSourceChoices = {
 	env: true,
@@ -755,6 +763,7 @@ const hookNoticeKindChoices = {
 	away_summary: true,
 	agents_killed: true,
 	memory_saved: true,
+	prompt_stopped: true,
 } satisfies Record<
 	Exclude<Extract<ProcessedLine, {type: "hook-notice"}>["notices"][number]["message"], string>["notice"],
 	true
@@ -1728,6 +1737,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"ClaudeSettingsSchema.askUserQuestionTimeout": askUserQuestionTimeoutLabels,
 	"JsonlRecordSchema.<system>.direction": modelRefusalFallbackDirectionLabels,
 	"JsonlRecordSchema.<system>.scope": modelRefusalFallbackScopeLabels,
+	"JsonlRecordSchema.<system>.promptSubmitEnding.ending": promptSubmitEndingKindChoices,
 	ToolUseUnion: toolNames,
 	HookEventEnvelope: hookEventNames,
 	"HookEventEnvelope.<SessionStart>.source": sessionStartSourceLabels,

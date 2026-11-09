@@ -1784,6 +1784,21 @@ export const ModelRefusalFallbackDirectionSchema = z.enum(["retry", "revert", "s
 /** `model_refusal_fallback`: whether the model switch holds for the session or only the refused turn. */
 export const ModelRefusalFallbackScopeSchema = z.enum(["session", "local"]);
 
+/**
+ * How a UserPromptSubmit hook ended a prompt (CLI 2.1.319 `promptSubmitEnding`, forwarded to SDK streams as
+ * `prompt_submit_outcome`); upstream web never reads it.
+ */
+export const PromptSubmitEndingSchema = z
+	.object({
+		ending: z.discriminatedUnion("kind", [
+			z.object({kind: z.literal("stopped_by_hook"), reason: z.string().optional()}).strict(),
+			z.object({kind: z.literal("blocked_by_hook"), reason: z.string().optional()}).strict(),
+			z.object({kind: z.literal("no_verdict"), noVerdictKind: z.string()}).strict(),
+		]),
+		promptKept: z.boolean(),
+	})
+	.strict();
+
 export const SystemRecordSchema = z
 	.object({
 		type: z.literal("system"),
@@ -1802,6 +1817,7 @@ export const SystemRecordSchema = z
 		preventedContinuation: z.boolean().optional(),
 		preventContinuation: z.boolean().optional(),
 		stopReason: z.string().optional(),
+		promptSubmitEnding: PromptSubmitEndingSchema.optional(),
 		hasOutput: z.boolean().optional(),
 		error: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
 		messageCount: z.number().optional(),

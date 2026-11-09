@@ -609,6 +609,47 @@ describe("SystemRecordSchema", () => {
 		expect(SystemRecordSchema.parse(record)).toStrictEqual(record);
 	});
 
+	it("parses a hook-stopped informational record's promptSubmitEnding", () => {
+		const record = {
+			type: "system",
+			subtype: "informational",
+			level: "warning",
+			preventContinuation: true,
+			content: "Operation stopped by hook: quota",
+			promptSubmitEnding: {ending: {kind: "stopped_by_hook", reason: "quota"}, promptKept: true},
+			uuid: "u",
+			timestamp: "t",
+		};
+
+		expect(SystemRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it("parses a no_verdict promptSubmitEnding", () => {
+		const record = {
+			type: "system",
+			subtype: "informational",
+			level: "warning",
+			preventContinuation: true,
+			content: "Operation stopped by hook: quota",
+			promptSubmitEnding: {ending: {kind: "no_verdict", noVerdictKind: "timeout"}, promptKept: false},
+			uuid: "u",
+			timestamp: "t",
+		};
+
+		expect(SystemRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
+	it("rejects an unknown promptSubmitEnding kind", () => {
+		expect(
+			SystemRecordSchema.safeParse({
+				type: "system",
+				subtype: "informational",
+				content: "Operation stopped by hook",
+				promptSubmitEnding: {ending: {kind: "vanished"}, promptKept: true},
+			}).success,
+		).toBe(false);
+	});
+
 	it("parses the request retry source", () => {
 		const record = {
 			type: "system",

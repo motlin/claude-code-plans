@@ -1867,12 +1867,133 @@ describe("system record lines", () => {
 			expect(lines.map((line) => line.type)).toStrictEqual(["hook-notice", "user", "hook-notice"]);
 		});
 
-		it("leaves hook block and stop forms to their own rules", () => {
+		it("leaves the hook block form to its own rule and words a stop without preventContinuation as a notice", () => {
 			const records = [
 				info("UserPromptSubmit operation blocked by hook:\n[cmd]: nope", {level: "warning"}),
 				info("Operation stopped by hook: done"),
 			];
-			expect(processTranscript(records).lines.map((line) => line.type)).toStrictEqual(["prompt-blocked"]);
+			expect(processTranscript(records).lines.map((line) => line.type)).toStrictEqual([
+				"prompt-blocked",
+				"hook-notice",
+			]);
+		});
+	});
+
+	describe("hook-stopped prompts as prompt_stopped notices", () => {
+		const IDLE =
+			'Compacted while idle, before the prompt cache expired · turn off with "idleCompaction": false in settings.json';
+		const stop = (content: string, extra: Record<string, unknown> = {}) => ({
+			type: "system",
+			subtype: "informational",
+			level: "warning",
+			preventContinuation: true,
+			content,
+			isMeta: false,
+			...extra,
+		});
+		const user = (content: unknown, extra: Record<string, unknown> = {}) => ({
+			type: "user",
+			message: {role: "user", content},
+			...extra,
+		});
+		const noticeLines = (records: unknown[]) =>
+			processTranscript(records).lines.filter((line) => line.type === "hook-notice");
+
+		it("turns a typed prompt's stop into a warning prompt_stopped notice", () => {
+			const records = [
+				user("hi", {uuid: "u1"}),
+				user("Operation stopped by hook: quota", {uuid: "m1", isMeta: true}),
+				stop("Operation stopped by hook: quota", {uuid: "s1", timestamp: "2026-11-07T10:00:00.000Z"}),
+			];
+			expect(noticeLines(records)).toStrictEqual([
+				{
+					type: "hook-notice",
+					notices: [{message: {notice: "prompt_stopped", reason: "quota"}, level: "warning", uuid: "s1"}],
+					uuid: "s1",
+					timestamp: "2026-11-07T10:00:00.000Z",
+					lineIndex: 2,
+				},
+			]);
+		});
+
+		it("drops the reason key when the stop names none", () => {
+			expect([
+				noticeLines([stop("Operation stopped by hook")]),
+				noticeLines([stop("Operation stopped by hook:   ")]),
+			]).toStrictEqual([
+				[
+					{
+						type: "hook-notice",
+						notices: [{message: {notice: "prompt_stopped"}, level: "warning"}],
+						lineIndex: 0,
+					},
+				],
+				[
+					{
+						type: "hook-notice",
+						notices: [{message: {notice: "prompt_stopped"}, level: "warning"}],
+						lineIndex: 0,
+					},
+				],
+			]);
+		});
+
+		it("suppresses the stop after a visible user bubble with the same text, ANSI or not", () => {
+			expect([
+				noticeLines([user("Operation stopped by hook: x"), stop("Operation stopped by hook: x")]),
+				noticeLines([
+					user([{type: "text", text: "\x1b[1mOperation stopped by hook: x\x1b[0m"}]),
+					stop("Operation stopped by hook: x"),
+				]),
+			]).toStrictEqual([[], []]);
+		});
+
+		it("shows the stop after an assistant reply", () => {
+			const records = [
+				{type: "assistant", message: {role: "assistant", content: [{type: "text", text: "ok"}]}},
+				stop("Operation stopped by hook: x"),
+			];
+			expect(noticeLines(records)).toStrictEqual([
+				{
+					type: "hook-notice",
+					notices: [{message: {notice: "prompt_stopped", reason: "x"}, level: "warning"}],
+					lineIndex: 1,
+				},
+			]);
+		});
+
+		it("merges the stop into an adjacent notice line", () => {
+			const records = [
+				{type: "system", subtype: "informational", level: "notice", content: IDLE, uuid: "n1"},
+				stop("Operation stopped by hook: x", {uuid: "s1"}),
+			];
+			expect(processTranscript(records).lines).toStrictEqual([
+				{
+					type: "hook-notice",
+					notices: [
+						{message: IDLE, level: "notice", uuid: "n1"},
+						{message: {notice: "prompt_stopped", reason: "x"}, level: "warning", uuid: "s1"},
+					],
+					uuid: "n1",
+					lineIndex: 0,
+				},
+			]);
+		});
+
+		it("keeps the stop text a plain notice without preventContinuation, and skips a sidechain stop", () => {
+			expect([
+				processTranscript([stop("Operation stopped by hook: x", {preventContinuation: false})]).lines,
+				processTranscript([stop("Operation stopped by hook: x", {isSidechain: true})]).lines,
+			]).toStrictEqual([
+				[
+					{
+						type: "hook-notice",
+						notices: [{message: "Operation stopped by hook: x", level: "warning"}],
+						lineIndex: 0,
+					},
+				],
+				[],
+			]);
 		});
 	});
 
@@ -2082,7 +2203,7 @@ describe("system record lines", () => {
 		]);
 	});
 
-	it("skips a stopped-by-hook record with preventContinuation", () => {
+	it("leaves a stopped-by-hook record with preventContinuation to the prompt_stopped notice", () => {
 		const records = [
 			{
 				type: "system",
@@ -2091,7 +2212,7 @@ describe("system record lines", () => {
 				content: "Operation stopped by hook: x",
 			},
 		];
-		expect(processTranscript(records).lines).toStrictEqual([]);
+		expect(processTranscript(records).lines.map((line) => line.type)).toStrictEqual(["hook-notice"]);
 	});
 
 	it("emits scheduled_task_fire with its task, cron, prompt, and no-op streak", () => {

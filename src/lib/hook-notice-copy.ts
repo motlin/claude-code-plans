@@ -3,6 +3,7 @@
  * a structured one is worded per notice kind.
  */
 import {assertNever} from "./assert-never";
+import {capDetails} from "./hook-prompt-block";
 import type {HookNotice, HookNoticeMessage} from "./transcript";
 
 function plural(n: number, one: string, other: string): string {
@@ -23,6 +24,13 @@ export function hookNoticeText(message: HookNoticeMessage): string {
 			const saved = parts.join(" · ");
 			return message.verb === undefined ? `Saved ${saved}` : `${message.verb} ${saved}`;
 		}
+		case "prompt_stopped":
+			// Upstream runs the formatted line through `Bt`'s length cap; a string notice is capped when parsed.
+			return capDetails(
+				message.reason === undefined
+					? "A hook stopped a message, so Claude didn’t reply to it. To find out why, check your hook settings or ask your admin."
+					: `A hook stopped a message, so Claude didn’t reply to it: ${message.reason}`,
+			);
 		default:
 			return assertNever(message);
 	}

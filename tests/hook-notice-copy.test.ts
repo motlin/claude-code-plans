@@ -28,6 +28,27 @@ describe("hookNoticeText", () => {
 	});
 });
 
+describe("hookNoticeText prompt_stopped", () => {
+	it("words a hook stop with or without its reason", () => {
+		expect([
+			hookNoticeText({notice: "prompt_stopped", reason: "quota"}),
+			hookNoticeText({notice: "prompt_stopped"}),
+		]).toStrictEqual([
+			"A hook stopped a message, so Claude didn’t reply to it: quota",
+			"A hook stopped a message, so Claude didn’t reply to it. To find out why, check your hook settings or ask your admin.",
+		]);
+	});
+
+	it("caps a long reason at 262144 characters plus an ellipsis", () => {
+		const text = hookNoticeText({notice: "prompt_stopped", reason: "a".repeat(262200)});
+		expect([text.length, text.endsWith("a…")]).toStrictEqual([262145, true]);
+	});
+
+	it("keeps prompt_stopped a warning that never rolls into a tool run", () => {
+		expect(foldsIntoToolRun([{message: {notice: "prompt_stopped"}, level: "warning"}])).toBe(false);
+	});
+});
+
 describe("foldsIntoToolRun", () => {
 	it("folds notice-level lines unless a notice is a warning or a recap", () => {
 		expect([

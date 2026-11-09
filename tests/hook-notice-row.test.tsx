@@ -213,4 +213,67 @@ describe("HookNoticeRow", () => {
 		);
 		expect(container.querySelector(".select-text")?.textContent).toBe("Version 2.1.227:\n· Fixed a");
 	});
+
+	it("opens a prompt_stopped warning with upstream's stop copy", () => {
+		const stopped = (message: HookNotice["message"]) =>
+			snapshot(
+				render(<HookNoticeRow notices={[{message, level: "warning", uuid: "s-1"}]} verbose={false} />)
+					.container,
+			);
+		expect([
+			stopped({notice: "prompt_stopped", reason: "quota"}),
+			stopped({notice: "prompt_stopped"}),
+		]).toStrictEqual([
+			{
+				label: "Claude Code notice",
+				expanded: "true",
+				headerIcons: 1,
+				body: {
+					hidden: false,
+					className: "epitaxy-expanding-body flow-root",
+					lines: [{icon: false, text: "A hook stopped a message, so Claude didn’t reply to it: quota"}],
+				},
+			},
+			{
+				label: "Claude Code notice",
+				expanded: "true",
+				headerIcons: 1,
+				body: {
+					hidden: false,
+					className: "epitaxy-expanding-body flow-root",
+					lines: [
+						{
+							icon: false,
+							text: "A hook stopped a message, so Claude didn’t reply to it. To find out why, check your hook settings or ask your admin.",
+						},
+					],
+				},
+			},
+		]);
+	});
+
+	it("marks only the stop line when a stop merges with a notice", () => {
+		const {container} = render(
+			<HookNoticeRow
+				notices={[
+					NOTICE,
+					{message: {notice: "prompt_stopped", reason: "quota"}, level: "warning", uuid: "s-1"},
+				]}
+				verbose={false}
+			/>,
+		);
+		expect(snapshot(container)).toStrictEqual({
+			label: "2 Claude Code notices",
+			expanded: "true",
+			headerIcons: 1,
+			body: {
+				hidden: false,
+				className: "epitaxy-expanding-body flow-root",
+				lines: [
+					{icon: false, text: "Compacted while idle"},
+					{icon: true, text: "A hook stopped a message, so Claude didn’t reply to it: quota"},
+				],
+			},
+		});
+	});
 });

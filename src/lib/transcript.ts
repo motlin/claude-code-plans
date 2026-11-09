@@ -326,6 +326,7 @@ const HookNoticeMessageSchema = z.union([
 	z.discriminatedUnion("notice", [
 		z.object({notice: z.literal("away_summary"), recap: z.string()}),
 		z.object({notice: z.literal("agents_killed")}),
+		z.object({notice: z.literal("prompt_stopped"), reason: z.string().optional()}),
 		z.object({
 			notice: z.literal("memory_saved"),
 			count: z.number(),
@@ -434,21 +435,35 @@ interface IncrementalResult {
 /**
  * The prompt-blocked line for an informational record (upstream adapter
  * c06cf64bb): a parsed hook block, or any preventContinuation text that isn't
- * a "stopped" notice. Null for everything else.
+ * a "stopped" notice (the caller routes those to the prompt_stopped notice).
  */
-function promptBlockedLine(
-	content: string,
-	preventContinuation: boolean,
-	lineIndex: number,
-): z.infer<typeof PromptBlockedLineSchema> | null {
+function promptBlockedLine(content: string, lineIndex: number): z.infer<typeof PromptBlockedLineSchema> {
 	const parsed = parseHookMessage(content);
-	if (preventContinuation && parsed?.kind === "stopped") return null;
 	if (parsed?.kind === "blocked") {
 		return parsed.originalPrompt === undefined
 			? {type: "prompt-blocked", reason: parsed.reason, lineIndex}
 			: {type: "prompt-blocked", reason: parsed.reason, originalPrompt: parsed.originalPrompt, lineIndex};
 	}
-	return preventContinuation ? {type: "prompt-blocked", reason: content, lineIndex} : null;
+	return {type: "prompt-blocked", reason: content, lineIndex};
+}
+
+/** A line upstream keeps as a transcript entry: an assistant line, or a user line that is neither meta nor only tool results. */
+function isEntryLine(line: ProcessedLine): line is MessageProcessedLine {
+	if (line.type === "assistant") return true;
+	if (line.type !== "user" || line.isMeta === true) return false;
+	const content = line.message?.content;
+	return !(Array.isArray(content) && content.length > 0 && content.every((block) => block.type === "tool_result"));
+}
+
+/**
+ * Whether the previous entry is a user bubble already reading `text` (upstream `fd`): a forked slash
+ * dispatch echoes the stop as a visible user message, so the notice would repeat it.
+ */
+function repeatsUserText(previous: MessageProcessedLine | undefined, text: string): boolean {
+	if (previous?.type !== "user") return false;
+	const content = previous.message?.content;
+	if (typeof content === "string") return stripAnsi(content) === text;
+	return (content ?? []).some((block) => block.type === "text" && stripAnsi(block.text) === text);
 }
 
 /**
@@ -1303,19 +1318,30 @@ function* processRecordBatchSteps(
 
 		if (record.type === "system") {
 			if (record.subtype === "informational") {
-				// Most informational records are plain notices; only a block or a preventContinuation record can
-				// become a line, so skip the parse for the rest.
+				// A preventContinuation stop is a prompt_stopped notice; a block or any other preventContinuation
+				// record is a prompt-blocked card; the rest are plain notices.
 				const content = record.content;
 				const preventContinuation = record.preventContinuation === true;
 				if (typeof content !== "string" || record.isSidechain === true) continue;
 				const text = stripAnsi(content);
-				if (preventContinuation || parseHookMessage(text) !== null) {
-					const blocked = promptBlockedLine(text, preventContinuation, lineIndex);
-					if (blocked !== null) {
-						if (uuid !== undefined) blocked.uuid = uuid;
-						if (record.timestamp !== undefined) blocked.timestamp = record.timestamp;
-						sessionLines.push(blocked);
+				const parsedHook = parseHookMessage(text);
+				if (preventContinuation && parsedHook?.kind === "stopped") {
+					if (!repeatsUserText(sessionLines.findLast(isEntryLine), text.trim())) {
+						const message: HookNoticeMessage =
+							parsedHook.reason === ""
+								? {notice: "prompt_stopped"}
+								: {notice: "prompt_stopped", reason: parsedHook.reason};
+						const notice: HookNotice = {message, level: "warning"};
+						if (uuid !== undefined) notice.uuid = uuid;
+						pushHookNotice(notice, lineIndex, record.timestamp);
 					}
+					continue;
+				}
+				if (preventContinuation || parsedHook?.kind === "blocked") {
+					const blocked = promptBlockedLine(text, lineIndex);
+					if (uuid !== undefined) blocked.uuid = uuid;
+					if (record.timestamp !== undefined) blocked.timestamp = record.timestamp;
+					sessionLines.push(blocked);
 					continue;
 				}
 				const notice = hookNotice(text, record.level, uuid);
