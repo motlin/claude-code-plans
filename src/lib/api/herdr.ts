@@ -1,6 +1,7 @@
 import {queryOptions} from "@tanstack/react-query";
 import {z} from "zod";
 import type {QuestionAnswer} from "../hook-events";
+import type {PermissionDialogShape} from "../herdr/permission-screen";
 import type {LiveOptionChange} from "../launch-options";
 import type {PermissionDialogDecision} from "../permission-suggestions";
 import {PlanDialogSchema, type PlanDecision, type PlanDialog} from "../plan-approval";
@@ -72,6 +73,11 @@ export function isNoTerminalHost(error: unknown): boolean {
 /** The server holds no permission prompt for the session: the card answered is already gone. */
 export function isPermissionNotPending(error: unknown): boolean {
 	return error instanceof HerdrRequestError && error.status === 409 && error.code === "not_pending";
+}
+
+/** The pane isn't showing the permission dialog (yet): the CLI may still be drawing it. */
+export function isPermissionDialogNotShown(error: unknown): boolean {
+	return error instanceof HerdrRequestError && error.status === 409 && error.code === "dialog_not_shown";
 }
 
 /** herdr refused the prompt because the agent is still working: queue it instead. */
@@ -167,6 +173,27 @@ export async function sendHerdrPermissionDecision(
 	}
 
 	HerdrPromptSuccessResponse.parse(json);
+}
+
+/** Mirrors `PermissionDialogShape` (`../herdr/permission-screen`): the permission dialog read off a pane. */
+const HerdrPermissionDialogResponse = z.strictObject({
+	dialog: z.strictObject({denyFirst: z.boolean(), persistent: z.boolean(), auto: z.boolean()}),
+});
+
+/** The shape of the session's permission dialog as its pane shows it; rejects when the pane is not showing it. */
+export async function fetchHerdrPermissionDialog(
+	sessionId: string,
+	fetcher: typeof fetch = fetch,
+): Promise<PermissionDialogShape> {
+	const response = await fetcher(`/api/herdr/permission?sessionId=${encodeURIComponent(sessionId)}`, {
+		credentials: "same-origin",
+	});
+	const json: unknown = await response.json();
+	if (!response.ok) {
+		const {error, code} = HerdrPromptErrorResponse.parse(json);
+		throw new HerdrRequestError(error, response.status, code);
+	}
+	return HerdrPermissionDialogResponse.parse(json).dialog;
 }
 
 /**

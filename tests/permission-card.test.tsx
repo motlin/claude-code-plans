@@ -18,6 +18,7 @@ import {
 	permissionWaitToolUseId,
 	type PermissionNotification,
 } from "../src/lib/permission-card";
+import type {PermissionDialogShape} from "../src/lib/herdr/permission-screen";
 import type {PersistentAllowKind} from "../src/lib/permission-suggestions";
 
 afterEach(() => {
@@ -854,9 +855,14 @@ function heldButtons() {
 function renderCard({
 	canAnswer = true,
 	persistentAllow = null,
-}: {canAnswer?: boolean; persistentAllow?: PersistentAllowKind | null} = {}) {
+	dialog,
+}: {
+	canAnswer?: boolean;
+	persistentAllow?: PersistentAllowKind | null;
+	dialog?: PermissionDialogShape | "unknown";
+} = {}) {
 	const onDecision = vi.fn<ComponentProps<typeof PermissionCard>["onDecision"]>(async () => {});
-	const utils = render(
+	const card = (shape: PermissionDialogShape | "unknown" | undefined) => (
 		<div>
 			<div data-focus-region="composer">
 				<div data-composer-card>
@@ -871,11 +877,19 @@ function renderCard({
 				description="Remove the build output"
 				canAnswer={canAnswer}
 				persistentAllow={persistentAllow}
+				{...(shape === undefined ? {} : {dialog: shape})}
 				onDecision={onDecision}
 			/>
-		</div>,
+		</div>
 	);
-	return {...utils, onDecision};
+	const utils = render(card(dialog));
+	return {
+		...utils,
+		onDecision,
+		rerenderDialog: (shape: PermissionDialogShape | "unknown") => {
+			utils.rerender(card(shape));
+		},
+	};
 }
 
 describe("PermissionCard", () => {
@@ -1521,6 +1535,94 @@ describe("PermissionCard", () => {
 		const {onDecision} = renderCard();
 		fireEvent.click(screen.getByRole("button", {name: /^Allow once/}));
 		expect(onDecision.mock.calls).toStrictEqual([["allow"]]);
+	});
+
+	describe("deny-first, as upstream's defaultToNo card (the classifier fallback's No-first dialog)", () => {
+		const DENY_FIRST = {denyFirst: true, persistent: false, auto: false} as const;
+
+		function actions() {
+			const deny = screen.getByRole("button", {name: /^Deny/});
+			const allow = screen.getByRole("button", {name: /^Allow once/});
+			return {
+				buttons: screen.getAllByRole("button").map((button) => button.textContent),
+				denyData: Object.fromEntries(Object.entries(deny.dataset)),
+				allowData: Object.fromEntries(Object.entries(allow.dataset)),
+				denyShortcut: deny.getAttribute("aria-keyshortcuts"),
+				allowShortcut: allow.getAttribute("aria-keyshortcuts"),
+				allowKeys: allow.querySelectorAll("kbd").length,
+				denyFill: deny.className.split(/\s+/).includes("bg-primary"),
+				allowFill: allow.className.split(/\s+/).includes("bg-primary"),
+			};
+		}
+
+		const denyFirstActions = {
+			buttons: ["Deny", "Allow once"],
+			denyData: {approvalVariant: "primary", approvalPrimary: ""},
+			allowData: {approvalVariant: "secondary"},
+			denyShortcut: null,
+			allowShortcut: null,
+			allowKeys: 0,
+			denyFill: true,
+			allowFill: false,
+		};
+
+		it.each([
+			{name: "a deny-first dialog", dialog: DENY_FIRST},
+			{name: "a dialog whose shape is still unknown", dialog: "unknown"},
+		] as const)("draws Deny primary and Allow once secondary with no keycap or split on $name", ({dialog}) => {
+			renderCard({persistentAllow: "always", dialog});
+			expect(actions()).toStrictEqual(denyFirstActions);
+		});
+
+		it("drops the persistent option the hook offered when the dialog on screen has no persistent row", () => {
+			renderCard({persistentAllow: "always", dialog: {denyFirst: false, persistent: false, auto: true}});
+			expect(screen.getAllByRole("button").map((button) => button.textContent)).toStrictEqual([
+				"Deny",
+				"Allow onceCtrl⏎Enter",
+			]);
+		});
+
+		it("keeps the hook's persistent option when the dialog on screen has its row", () => {
+			renderCard({persistentAllow: "always", dialog: {denyFirst: false, persistent: true, auto: false}});
+			expect(
+				screen.getAllByRole("button").map((button) => button.getAttribute("aria-label") ?? button.textContent),
+			).toStrictEqual(["Deny", "Always allow, Don’t ask again for this tool", "More allow options"]);
+		});
+
+		describe("keys", () => {
+			beforeEach(() => {
+				vi.useFakeTimers({toFake: ["performance"]});
+			});
+			afterEach(() => {
+				vi.useRealTimers();
+			});
+
+			it.each([{dialog: DENY_FIRST}, {dialog: "unknown"}] as const)(
+				"leaves ⌘⏎, ⇧⌘⏎ and Esc inert on $dialog, as upstream's vn",
+				({dialog}) => {
+					const {onDecision} = renderCard({persistentAllow: "always", dialog});
+					vi.advanceTimersByTime(400);
+					fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+					fireEvent.keyDown(document.body, {key: "Enter", metaKey: true, shiftKey: true});
+					fireEvent.keyDown(document.body, {key: "Escape"});
+					expect(onDecision.mock.calls).toStrictEqual([]);
+				},
+			);
+
+			it("redraws as the shape on screen once it arrives, with the split and ⌘⏎ back", () => {
+				const {onDecision, rerenderDialog} = renderCard({persistentAllow: "always", dialog: "unknown"});
+				rerenderDialog({denyFirst: false, persistent: true, auto: false});
+				const buttons = screen
+					.getAllByRole("button")
+					.map((button) => button.getAttribute("aria-label") ?? button.textContent);
+				vi.advanceTimersByTime(400);
+				fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+				expect({buttons, calls: onDecision.mock.calls}).toStrictEqual({
+					buttons: ["Deny", "Always allow, Don’t ask again for this tool", "More allow options"],
+					calls: [["allow"]],
+				});
+			});
+		});
 	});
 
 	describe("keys", () => {

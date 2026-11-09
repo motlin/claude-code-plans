@@ -84,6 +84,7 @@ import {UsagePaceBanner} from "./usage-pace-banner";
 import {WorkingMarker} from "./working-marker";
 import {useWorkingMarkerState} from "./use-working-marker-state";
 import {usePermissionAnswer} from "./use-permission-answer";
+import {usePermissionDialogShape} from "./use-permission-dialog-shape";
 import {SideChat} from "./side-chat";
 import {preloadSideChatPanel} from "./side-chat-panel-module";
 import {preloadErrorRecoveryActions} from "./error-recovery-actions-entry";
@@ -826,6 +827,13 @@ function SessionView({
 		send: sendPermissionDecision,
 	});
 	const shownPermission = permissionDropped ? null : candidatePermission;
+	const permissionCanAnswer = promptBehavior.hasLivePane && herdr.writesEnabled;
+	// The terminal's dialog stands in for upstream's ask flags; an elicitation's has no permission rows.
+	const permissionDialog = usePermissionDialogShape(
+		sessionId,
+		permissionKey,
+		shownPermission !== null && permissionCanAnswer && !answersElicitation,
+	);
 	// The gates (working line, Stop, composer) release at the click; the card hides itself and returns on a failure.
 	const permissionAnswered = useApprovalAnswered(sessionId, permissionKey);
 	const pendingPermission = permissionAnswered ? null : shownPermission;
@@ -1625,10 +1633,11 @@ function SessionView({
 											detailNote={shownPermission.detailNote ?? null}
 											description={shownPermission.description ?? null}
 											tokenWarning={shownPermission.tokenWarning === true}
-											canAnswer={promptBehavior.hasLivePane && herdr.writesEnabled}
+											canAnswer={permissionCanAnswer}
 											// The CLI can refuse an early Enter, so the elicitation's ElicitationResult clears its card.
 											hideOnDecision={!answersElicitation}
 											persistentAllow={shownPermission.persistentAllow ?? null}
+											dialog={permissionDialog}
 											onDecision={answerPermission}
 											footer={
 												<Suspense fallback={null}>

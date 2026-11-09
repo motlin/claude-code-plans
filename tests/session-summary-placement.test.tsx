@@ -1040,3 +1040,93 @@ describe("SessionPage dock composition", () => {
 		expect(dockContents()).toStrictEqual(["pr", "usage", "composer"]);
 	});
 });
+
+describe("the inline permission card's dialog shape, as upstream's ask flags", () => {
+	const herdrPane = {
+		host: "herdr" as const,
+		paneId: "w100:p100",
+		terminalId: "terminal-test-100",
+		workspaceId: "w100",
+		tabId: "w100:t100",
+		focused: false,
+		cwd: PROJECT_PATH,
+		foregroundCwd: PROJECT_PATH,
+		agentStatus: "blocked",
+		agent: "claude",
+		terminalTitle: null,
+		agentSessionId: SESSION_ID,
+		revision: 100,
+		sessionId: SESSION_ID,
+		via: "agent-session" as const,
+		viewedState: detail.viewedState,
+	};
+	const DIALOG_URL = `/api/herdr/permission?sessionId=${encodeURIComponent(SESSION_ID)}`;
+
+	async function renderWaitingPermission(dialog: (() => Promise<Response>) | null) {
+		const fetchMock = vi.fn<typeof fetch>(async (input) =>
+			String(input) === DIALOG_URL && dialog !== null ? dialog() : new Promise<Response>(() => {}),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+		await renderSessionPage(
+			detail,
+			[],
+			(queryClient) => {
+				queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [herdrPane], writesEnabled: true});
+				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+					pages: [
+						{sessions: [{id: SESSION_ID, state: "waiting", awaitingPermission: true}], nextCursor: null},
+					],
+					pageParams: [null],
+				} as never);
+			},
+			[
+				{
+					type: "assistant",
+					uuid: "a1",
+					sessionId: SESSION_ID,
+					timestamp: "2026-09-28T10:00:01.000Z",
+					message: {
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_waiting",
+								name: "Bash",
+								input: {command: "npm run build", description: "Build the project"},
+							},
+						],
+					},
+				},
+			],
+		);
+		await flush();
+		const card = within(screen.getByRole("group", {name: "Permission request: run this command"}));
+		return {
+			dialogReads: fetchMock.mock.calls.filter(([input]) => String(input) === DIALOG_URL).length,
+			primary: card
+				.getAllByRole("button")
+				.filter((button) => button.matches("[data-approval-primary], :has([data-approval-primary])"))
+				.map((button) => button.textContent),
+		};
+	}
+
+	it("draws Deny primary while the terminal's dialog is being read, as upstream's askFlagsUnknown", async () => {
+		expect(await renderWaitingPermission(null)).toStrictEqual({dialogReads: 1, primary: ["Deny"]});
+	});
+
+	it("draws Deny primary when the terminal's dialog is deny-first", async () => {
+		expect(
+			await renderWaitingPermission(async () =>
+				Promise.resolve(Response.json({dialog: {denyFirst: true, persistent: false, auto: false}})),
+			),
+		).toStrictEqual({dialogReads: 1, primary: ["Deny"]});
+	});
+
+	it("draws Allow once primary once the terminal's dialog reads as an ordinary ask", async () => {
+		expect(
+			await renderWaitingPermission(async () =>
+				Promise.resolve(Response.json({dialog: {denyFirst: false, persistent: false, auto: false}})),
+			),
+		).toStrictEqual({dialogReads: 1, primary: ["Allow onceCtrl⏎Enter"]});
+	});
+});

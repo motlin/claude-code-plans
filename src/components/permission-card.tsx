@@ -17,6 +17,7 @@ import {
 	type PermissionDetailLang,
 	type PermissionTitle,
 } from "../lib/permission-card";
+import type {PermissionDialogShape} from "../lib/herdr/permission-screen";
 import {toAriaKeyShortcuts} from "../lib/shortcuts/format";
 import {
 	PERSISTENT_ALLOW_LABELS,
@@ -44,6 +45,10 @@ import {SplitDropdownButton} from "./ui/split-dropdown-button";
  * With `hideOnDecision` false the card stays until its parent drops it: the chosen action busy ("Sending…")
  * and the others disabled, as upstream's held form and link cards.
  * A live arrival fades in over 160ms; a remount or reload of the same prompt (`enterKey`) does not.
+ * With `dialog`, the terminal's dialog shapes the card as upstream's ask flags do: a deny-first dialog,
+ * or one whose shape is still unknown (upstream's askFlagsUnknown), draws upstream's defaultToNo card
+ * (Deny primary, Allow once secondary, no keys, no persistent option); a dialog with no persistent row
+ * drops the hook's persistent option.
  */
 export function PermissionCard({
 	title,
@@ -54,7 +59,8 @@ export function PermissionCard({
 	description = null,
 	tokenWarning = false,
 	canAnswer,
-	persistentAllow = null,
+	persistentAllow: hookPersistentAllow = null,
+	dialog,
 	onDecision,
 	footer,
 	enterKey,
@@ -78,6 +84,11 @@ export function PermissionCard({
 	canAnswer: boolean;
 	/** The dialog's persistent allow option, from the PermissionRequest hook; null hides it. */
 	persistentAllow?: PersistentAllowKind | null;
+	/**
+	 * The shape of the terminal's dialog, or "unknown" until it is read; undefined keeps the hook's card
+	 * (no dialog to read, as an elicitation's).
+	 */
+	dialog?: PermissionDialogShape | "unknown" | undefined;
 	onDecision: (decision: PermissionDecision) => Promise<void>;
 	/** Rendered under the actions; the session page passes the notify tip. */
 	footer?: ReactNode;
@@ -106,6 +117,9 @@ export function PermissionCard({
 	const markKey = markSession === undefined ? undefined : answerKey;
 	const answered = useApprovalAnswered(markSession ?? "", markKey ?? null);
 	const enabled = canAnswer && !decided && !answered;
+	// Upstream's `hn`/`vn`: a defaultToNo (or askFlagsUnknown) card leads with Deny and binds no keys.
+	const denyFirst = dialog === "unknown" || dialog?.denyFirst === true;
+	const persistentAllow = denyFirst || dialog?.persistent === false ? null : hookPersistentAllow;
 
 	const decide = useCallback(
 		async (decision: PermissionDecision) => {
@@ -139,7 +153,7 @@ export function PermissionCard({
 	};
 
 	const cardRootRef = useRef<HTMLDivElement>(null);
-	usePermissionHotkeys(cardRootRef, {enabled, persistent: persistentAllow !== null, decide});
+	usePermissionHotkeys(cardRootRef, {enabled: enabled && !denyFirst, persistent: persistentAllow !== null, decide});
 
 	if ((decided || answered) && hideOnDecision) return null;
 
@@ -191,8 +205,8 @@ export function PermissionCard({
 				<>
 					<span className="contents">
 						<ApprovalActionButton
-							variant="secondary"
-							aria-keyshortcuts="Escape"
+							variant={denyFirst ? "primary" : "secondary"}
+							{...(denyFirst ? {"data-approval-primary": ""} : {"aria-keyshortcuts": "Escape"})}
 							busy={sent === "deny"}
 							busyLabel={APPROVAL_SENDING_LABEL}
 							disabled={!enabled && sent !== "deny"}
@@ -202,7 +216,17 @@ export function PermissionCard({
 						</ApprovalActionButton>
 					</span>
 					<div data-approval-allow className="flex min-w-0 flex-wrap items-start gap-2">
-						{persistentAllow === null ? (
+						{denyFirst ? (
+							<ApprovalActionButton
+								variant="secondary"
+								busy={sent === "allow"}
+								busyLabel={APPROVAL_SENDING_LABEL}
+								disabled={!enabled && sent !== "allow"}
+								onClick={() => void decide("allow")}
+							>
+								<span data-approval-digit="2">Allow once</span>
+							</ApprovalActionButton>
+						) : persistentAllow === null ? (
 							<ApprovalActionButton
 								variant="primary"
 								data-approval-primary=""

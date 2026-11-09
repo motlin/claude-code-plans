@@ -1,8 +1,16 @@
 import {describe, expect, it, vi} from "vite-plus/test";
-import {handleHerdrPermission, type HerdrPermissionDependencies} from "../src/lib/herdr/permission";
+import {readFileSync} from "node:fs";
+import {join} from "node:path";
+import {
+	handleHerdrPermission,
+	handleHerdrPermissionDialog,
+	type HerdrPermissionDependencies,
+} from "../src/lib/herdr/permission";
 import type {HerdrRequester} from "../src/lib/herdr/panes";
 import {rejectCrossSite} from "../src/lib/same-origin-guard";
 import {
+	BASH_ASK_RULE,
+	BASH_FULL,
 	BASH_FULL_NO_FEEDBACK_TYPED,
 	BASH_UNICODE_WHITESPACE,
 	CLASSIFIER_FALLBACK,
@@ -11,6 +19,10 @@ import {
 	READ_OUTSIDE_SESSION_DIR,
 	WEBFETCH,
 } from "./fixtures/permission-screens";
+
+const PLAN_DIALOG = readFileSync(join(import.meta.dirname, "fixtures/plan-approval-dialog.txt"), "utf8");
+/** The pane once the CLI has taken the answer: the dialog is gone. */
+const ANSWERED = "$ ";
 
 function request(body: unknown, headers?: HeadersInit): Request {
 	const requestHeaders = new Headers(headers);
@@ -112,30 +124,37 @@ describe("herdr permission decision handler", () => {
 		});
 	});
 
-	it("refuses the persistent option when the CLI's dialog does not offer it, since 2 would mean No", async () => {
-		const sendRequest = vi.fn<HerdrRequester>();
-		const response = await handleHerdrPermission(
-			request({sessionId: "session-test-100", decision: "always"}),
-			dependencies({persistentAllow: () => null, request: sendRequest}),
-		);
-		expect({
-			response: await describeResponse(response),
-			sendRequestCalls: sendRequest.mock.calls,
-		}).toStrictEqual({
-			response: {body: {error: "This permission request has no persistent allow option"}, status: 409},
-			sendRequestCalls: [],
-		});
-	});
+	it.each([{persistent: null}, {persistent: "always"}, {persistent: "perChat"}] as const)(
+		"refuses always without a readable screen, though the hook's persistent option is $persistent, as upstream forces suppressAlwaysAllowRule while the ask flags are unknown",
+		async ({persistent}) => {
+			const sendRequest = vi.fn<HerdrRequester>();
+			const response = await handleHerdrPermission(
+				request({sessionId: "session-test-100", decision: "always"}),
+				dependencies({persistentAllow: () => persistent, request: sendRequest}),
+			);
+			expect({
+				response: await describeResponse(response),
+				sendRequestCalls: sendRequest.mock.calls,
+			}).toStrictEqual({
+				response: {
+					body: {
+						error: "The terminal\u2019s permission dialog doesn\u2019t match this card",
+						code: "dialog_mismatch",
+					},
+					status: 409,
+				},
+				sendRequestCalls: [],
+			});
+		},
+	);
 
 	it.each([
 		{decision: "allow", persistent: null, keys: ["1"]},
 		{decision: "deny", persistent: null, keys: ["esc"]},
 		{decision: "allow", persistent: "always", keys: ["1"]},
-		{decision: "always", persistent: "always", keys: ["2"]},
-		{decision: "always", persistent: "perChat", keys: ["2"]},
 		{decision: "deny", persistent: "perChat", keys: ["esc"]},
 	] as const)(
-		"sends $keys for $decision on a dialog whose persistent option is $persistent and clears the pending prompt",
+		"sends $keys for $decision without a readable screen when the hook's persistent option is $persistent and clears the pending prompt",
 		async ({decision, persistent, keys}) => {
 			const requests: object[] = [];
 			const cleared: string[] = [];
@@ -268,6 +287,7 @@ describe("herdr permission decision handler", () => {
 		};
 
 		it.each([
+			{name: "BASH_FULL", screen: BASH_FULL, decision: "always", keys: [["2"]]},
 			{name: "WEBFETCH", screen: WEBFETCH, decision: "always", keys: [["2"]]},
 			{name: "WEBFETCH", screen: WEBFETCH, decision: "deny", keys: [["esc"]]},
 			{name: "EDIT_ACCEPT_EDITS_ROW", screen: EDIT_ACCEPT_EDITS_ROW, decision: "always", keys: [["2"]]},
@@ -279,7 +299,7 @@ describe("herdr permission decision handler", () => {
 				keys: [["1"]],
 			},
 		] as const)("sends $keys for $decision on $name", async ({screen, decision, keys}) => {
-			expect(await answer([screen], decision)).toStrictEqual({
+			expect(await answer([screen, ANSWERED], decision)).toStrictEqual({
 				response: ok,
 				keys,
 				cleared: ["session-test-100"],
@@ -313,7 +333,7 @@ describe("herdr permission decision handler", () => {
 
 		it("moves down onto Yes and presses Enter on the hidden classifier fallback", async () => {
 			const onYes = CLASSIFIER_FALLBACK.replace(" ❯ No\n   Yes", "   No\n ❯ Yes");
-			expect(await answer([CLASSIFIER_FALLBACK, onYes], "allow")).toStrictEqual({
+			expect(await answer([CLASSIFIER_FALLBACK, onYes, ANSWERED], "allow")).toStrictEqual({
 				response: ok,
 				keys: [["down"], ["enter"]],
 				cleared: ["session-test-100"],
@@ -327,5 +347,84 @@ describe("herdr permission decision handler", () => {
 				cleared: [],
 			});
 		});
+
+		it("keeps the prompt pending when the dialog is still on screen after the keys, as a disabled Yes row ignores its digit", async () => {
+			expect(await answer([BASH_ASK_RULE], "allow")).toStrictEqual({
+				response: {
+					body: {
+						error: "The terminal\u2019s permission dialog didn\u2019t take the answer",
+						code: "not_accepted",
+					},
+					status: 409,
+				},
+				keys: [["1"]],
+				cleared: [],
+			});
+		});
+	});
+});
+
+describe("herdr permission dialog shape", () => {
+	async function readShape(
+		screen: string,
+		overrides: Partial<HerdrPermissionDependencies> = {},
+	): Promise<{body: unknown; status: number}> {
+		const response = await handleHerdrPermissionDialog(
+			new Request("http://127.0.0.1:7526/api/herdr/permission?sessionId=session-test-100"),
+			dependencies({readScreen: async () => Promise.resolve({ok: true, value: screen}), ...overrides}),
+		);
+		return describeResponse(response);
+	}
+
+	it.each([
+		{name: "BASH_FULL", screen: BASH_FULL, dialog: {denyFirst: false, persistent: true, auto: true}},
+		{
+			name: "CLASSIFIER_FALLBACK",
+			screen: CLASSIFIER_FALLBACK,
+			dialog: {denyFirst: true, persistent: false, auto: false},
+		},
+		{
+			name: "BASH_UNICODE_WHITESPACE",
+			screen: BASH_UNICODE_WHITESPACE,
+			dialog: {denyFirst: false, persistent: false, auto: true},
+		},
+		{name: "BASH_ASK_RULE", screen: BASH_ASK_RULE, dialog: {denyFirst: false, persistent: false, auto: false}},
+		{name: "WEBFETCH", screen: WEBFETCH, dialog: {denyFirst: false, persistent: true, auto: false}},
+	])("reads $name as $dialog", async ({screen, dialog}) => {
+		expect(await readShape(screen)).toStrictEqual({body: {dialog}, status: 200});
+	});
+
+	it("reads auto mode's first outside-read prompt as a card with no persistent option", async () => {
+		expect(
+			await readShape(READ_OUTSIDE_AUTO_FIRST_PROMPT, {
+				dialogKind: async () => Promise.resolve("outsideReadFirstPrompt"),
+			}),
+		).toStrictEqual({body: {dialog: {denyFirst: false, persistent: false, auto: false}}, status: 200});
+	});
+
+	it("answers 409 dialog_not_shown when the screen shows no permission dialog", async () => {
+		expect(await readShape(PLAN_DIALOG)).toStrictEqual({
+			body: {error: "The terminal is not showing the permission dialog", code: "dialog_not_shown"},
+			status: 409,
+		});
+	});
+
+	it("answers 409 not_pending without reading the screen when no prompt is pending", async () => {
+		const readScreen = vi.fn<HerdrPermissionDependencies["readScreen"]>();
+		expect({
+			response: await readShape(BASH_FULL, {hasPendingPermission: () => false, readScreen}),
+			reads: readScreen.mock.calls,
+		}).toStrictEqual({
+			response: {body: {error: "No permission request is pending", code: "not_pending"}, status: 409},
+			reads: [],
+		});
+	});
+
+	it("answers 400 without a sessionId", async () => {
+		const response = await handleHerdrPermissionDialog(
+			new Request("http://127.0.0.1:7526/api/herdr/permission"),
+			dependencies(),
+		);
+		expect(await describeResponse(response)).toStrictEqual({body: {error: "sessionId is required"}, status: 400});
 	});
 });

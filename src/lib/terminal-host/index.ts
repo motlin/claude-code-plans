@@ -30,7 +30,12 @@ import {defaultHerdrInterruptDependencies, handleHerdrInterrupt} from "../herdr/
 import {defaultHerdrLaunchDependencies, handleHerdrLaunch} from "../herdr/launch";
 import {defaultHerdrLiveOptionDependencies, handleHerdrLiveOption} from "../herdr/live-option";
 import {createHerdrPlacementProvider, getHerdrPanes, type HerdrPaneLink} from "../herdr/panes";
-import {defaultHerdrPermissionDependencies, handleHerdrPermission} from "../herdr/permission";
+import {
+	defaultHerdrPermissionDependencies,
+	handleHerdrPermission,
+	handleHerdrPermissionDialog,
+	type HerdrPermissionDependencies,
+} from "../herdr/permission";
 import {defaultHerdrPlanDependencies, handleHerdrPlan, handleHerdrPlanDialog} from "../herdr/plan";
 import {defaultHerdrRemoteControlDependencies, handleHerdrRemoteControl} from "../herdr/remote-control";
 import {defaultHerdrRewindDependencies, handleHerdrRewind} from "../herdr/rewind";
@@ -86,6 +91,8 @@ export interface TerminalHost {
 	answerQuestion: (request: Request) => Promise<Response>;
 	/** Send the keys that answer a permission prompt. */
 	answerPermission: (request: Request) => Promise<Response>;
+	/** Read the session's permission dialog off its pane: deny-first, persistent row, auto row. */
+	readPermissionDialog: (request: Request) => Promise<Response>;
 	/** Read the session's open plan approval dialog: what it offers to accept into. */
 	readPlanDialog: (request: Request) => Promise<Response>;
 	/** Send the keys and feedback text that answer a plan approval dialog. */
@@ -134,6 +141,7 @@ const herdrTerminalHost: TerminalHost = {
 	interrupt: async (request) => handleHerdrInterrupt(request),
 	answerQuestion: async (request) => handleHerdrQuestion(request),
 	answerPermission: async (request) => handleHerdrPermission(request),
+	readPermissionDialog: async (request) => handleHerdrPermissionDialog(request),
 	readPlanDialog: async (request) => handleHerdrPlanDialog(request),
 	answerPlan: async (request) => handleHerdrPlan(request),
 	readElicitationDialog: async (request) => handleHerdrElicitationDialog(request),
@@ -173,6 +181,7 @@ const noTerminalHost: TerminalHost = {
 	interrupt: noHostWrite,
 	answerQuestion: noHostWrite,
 	answerPermission: noHostWrite,
+	readPermissionDialog: noHostWrite,
 	readPlanDialog: noHostWrite,
 	answerPlan: noHostWrite,
 	readElicitationDialog: noHostWrite,
@@ -204,6 +213,13 @@ export function createTmuxTerminalHost(
 	streamIo: TmuxTerminalStreamIo = defaultTmuxTerminalStreamIo,
 ): TerminalHost {
 	const writes = {writesEnabled: io.writesEnabled};
+	const permissionDependencies = (): HerdrPermissionDependencies => ({
+		...defaultHerdrPermissionDependencies,
+		...writes,
+		pause: io.pause,
+		readScreen: async (sessionId: string, paneId: string) => readTmuxScreen(sessionId, paneId, sources),
+		...tmuxWriteDependencies("permission", sources, io),
+	});
 	const planDependencies = () => ({
 		...defaultHerdrPlanDependencies,
 		...writes,
@@ -267,14 +283,8 @@ export function createTmuxTerminalHost(
 				pause: io.pause,
 				...tmuxWriteDependencies("question", sources, io),
 			}),
-		answerPermission: async (request) =>
-			handleHerdrPermission(request, {
-				...defaultHerdrPermissionDependencies,
-				...writes,
-				pause: io.pause,
-				readScreen: async (sessionId: string, paneId: string) => readTmuxScreen(sessionId, paneId, sources),
-				...tmuxWriteDependencies("permission", sources, io),
-			}),
+		answerPermission: async (request) => handleHerdrPermission(request, permissionDependencies()),
+		readPermissionDialog: async (request) => handleHerdrPermissionDialog(request, permissionDependencies()),
 		readPlanDialog: async (request) => handleHerdrPlanDialog(request, planDependencies()),
 		answerPlan: async (request) => handleHerdrPlan(request, planDependencies()),
 		readElicitationDialog: async (request) => handleHerdrElicitationDialog(request, elicitationDependencies()),

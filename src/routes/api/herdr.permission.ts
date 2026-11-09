@@ -6,6 +6,10 @@ import {expediteSessionJsonlRead} from "../../lib/watcher";
 export const Route = createFileRoute("/api/herdr/permission")({
 	server: {
 		handlers: withMethodNotAllowed({
+			GET: async ({request}: {request: Request}) => {
+				const {getTerminalHost} = await import("../../lib/terminal-host");
+				return (await getTerminalHost()).readPermissionDialog(request);
+			},
 			POST: async ({request}: {request: Request}) => {
 				const {getTerminalHost} = await import("../../lib/terminal-host");
 				const host = await getTerminalHost();

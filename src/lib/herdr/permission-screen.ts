@@ -17,6 +17,17 @@ export interface PermissionDialogRows {
 	focused: number;
 }
 
+/**
+ * What the dialog on screen offers, the local analogue of upstream's ask flags:
+ * `denyFirst` (No first or hidden digits: the classifier fallback's defaultToNo),
+ * and whether the persistent and auto rows are there to press.
+ */
+export interface PermissionDialogShape {
+	denyFirst: boolean;
+	persistent: boolean;
+	auto: boolean;
+}
+
 const QUESTION_PREFIX = "Do you want to";
 const FOOTER_PREFIX = "Esc to cancel";
 /** WebFetch's dialog has no footer; its No row says Esc picks it instead. */
@@ -187,4 +198,13 @@ export function permissionDialogSteps(
 	if (row === dialog.focused) return [["enter"]];
 	if (row === dialog.focused + 1 && dialog.rows[dialog.focused]?.kind === "no") return [["down"], ["enter"]];
 	return null;
+}
+
+/** The card shape of a dialog read off the screen. */
+export function permissionDialogShape(dialog: PermissionDialogRows): PermissionDialogShape {
+	return {
+		denyFirst: dialog.rows[0]?.kind === "no" || !dialog.indexed,
+		persistent: dialog.indexed && dialog.rows.some((row) => row.kind === "persistent"),
+		auto: dialog.indexed && dialog.rows.some((row) => row.kind === "auto"),
+	};
 }
