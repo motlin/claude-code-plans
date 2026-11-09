@@ -13,6 +13,7 @@ import {flushSync} from "react-dom";
 import {acknowledgeApproval} from "../lib/answered-approvals";
 import {holdAnswered, releaseAnswered} from "../lib/answered-sessions";
 import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, onScreen} from "../lib/dock-keys";
+import {installLandingKeys, landingAllowsPick} from "../lib/approval-slot-landing";
 import type {QuestionAnswer} from "../lib/hook-events";
 import {OUTCOME_LABEL, type QuestionLike} from "../lib/ask-user-question";
 import {
@@ -116,6 +117,7 @@ const HAS_URL = /https?:\/\//;
  * at both ends; from the root they go to the first / last answer (a repeat is
  * swallowed without moving). A link inside an answer row moves from its row.
  * Modified keys and IME composition pass through; the selection never changes.
+ * On a card focus landed on, the root branch waits for a fresh pick.
  */
 function roveAnswers(event: ReactKeyboardEvent<HTMLDivElement>) {
 	const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
@@ -135,7 +137,18 @@ function roveAnswers(event: ReactKeyboardEvent<HTMLDivElement>) {
 		stops[at + step]?.focus({focusVisible: true});
 		return;
 	}
-	if (!event.repeat) stops.at(step === 1 ? 0 : -1)?.focus({focusVisible: true});
+	// Upstream's root branch moves only on a pick the landing allows (`d_`): none under 400ms after focus landed here.
+	if (!event.repeat && landingAllowsPick(event.nativeEvent, false))
+		stops.at(step === 1 ? 0 : -1)?.focus({focusVisible: true});
+}
+
+/**
+ * Upstream's card `onKeyDown` guard: on a card focus landed on, an arrow runs only as a fresh pick, which it marks
+ * picked (upstream marks it with the card's digit shortcuts on, as its inline card has them).
+ */
+function onCardKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+	if ((event.key === "ArrowDown" || event.key === "ArrowUp") && !landingAllowsPick(event.nativeEvent, true)) return;
+	roveAnswers(event);
 }
 
 /** Upstream's `dt()`: the click landed in the row and not on a link or another button inside it. */
@@ -177,6 +190,8 @@ function selectionInside(event: MouseEvent<HTMLElement>): boolean {
 function useApprovalHotkey(cardRootRef: RefObject<HTMLDivElement | null>, hotkeyRef: RefObject<(() => void) | null>) {
 	useEffect(() => {
 		const armedAt = performance.now();
+		// The landing keys go first, so a landed card's ⇧⌘⏎ is theirs to swallow.
+		installLandingKeys(window);
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.key !== "Enter" || !(event.metaKey || event.ctrlKey)) return;
 			const card = cardRootRef.current;
@@ -505,7 +520,7 @@ export function QuestionCard({
 			onClick={(event) => {
 				event.stopPropagation();
 			}}
-			onKeyDown={roveAnswers}
+			onKeyDown={onCardKeyDown}
 			{...(skipEnter ? {"data-skip-approval-enter": ""} : {})}
 			className={`card-ring @container relative isolate flex max-w-[480px] flex-col overflow-clip rounded-card outline-none${
 				skipEnter ? "" : " animate-approval-inline-enter motion-reduce:animate-none"

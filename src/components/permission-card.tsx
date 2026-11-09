@@ -9,6 +9,7 @@ import {
 } from "../lib/answered-approvals";
 import {holdAnswered, releaseAnswered} from "../lib/answered-sessions";
 import {approvalEnterSeen, markApprovalEnterSeen} from "../lib/approval-enter-seen";
+import {installLandingKeys} from "../lib/approval-slot-landing";
 import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, isIdleComposer, onScreen} from "../lib/dock-keys";
 import {storeLeadingAllow, useLeadingAllow} from "../lib/approval-leading-allow";
 import {
@@ -296,7 +297,8 @@ export function PermissionCard({
  * Upstream's approval hotkeys (`c5`) on window in the capture phase. They act with focus in the card,
  * on the page body or in the idle composer, and yield to IME, popups and other fields, and while the card is
  * off-screen. ⌘⏎ also yields to alt and a composer draft. A repeat, or a key within the 400ms arm grace,
- * is swallowed with no action. ⇧⌘⏎ needs a persistent option and focus in the card or the composer.
+ * is swallowed with no action. ⇧⌘⏎ needs a persistent option and focus in the card or the composer, and
+ * is refused on a card focus landed on (upstream's landing keys, installed ahead of this listener).
  */
 function usePermissionHotkeys(
 	cardRootRef: RefObject<HTMLDivElement | null>,
@@ -312,6 +314,8 @@ function usePermissionHotkeys(
 	}, []);
 	useEffect(() => {
 		if (!enabled) return undefined;
+		// The landing keys go first, so ⇧⌘⏎ on a card focus merely landed on never reaches this listener.
+		installLandingKeys(window);
 		const onKeyDown = (event: KeyboardEvent) => {
 			const card = cardRootRef.current;
 			const decision = permissionDecisionForKey(event);

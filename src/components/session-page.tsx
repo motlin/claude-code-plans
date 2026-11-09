@@ -78,6 +78,8 @@ import {tailMarkerQuiet, turnTokenEstimate, workingLineWaitsOnUser} from "../lib
 import {WaitingForInputNotice} from "./approval-card";
 import {UrlElicitationDock} from "./url-elicitation-dock";
 import {QuestionCard} from "./question-card";
+import {ApprovalSlot} from "./approval-slot";
+import {sessionApprovalSlotCard} from "../lib/approval-slot-card";
 import {showsWaitingForInputNotice} from "./waiting-for-input-notice";
 import {NotifyMePrompt} from "./notify-me-prompt";
 import {UsagePaceBanner} from "./usage-pace-banner";
@@ -837,6 +839,15 @@ function SessionView({
 	// The gates (working line, Stop, composer) release at the click; the card hides itself and returns on a failure.
 	const permissionAnswered = useApprovalAnswered(sessionId, permissionKey);
 	const pendingPermission = permissionAnswered ? null : shownPermission;
+	// The trailing approval slot's drawn card: the permission card, else the plan card, else the hook question card.
+	const approvalSlotCard = sessionApprovalSlotCard({
+		permission:
+			pendingPermission === null || permissionKey === null
+				? null
+				: {key: permissionKey, dialog: permissionDialog},
+		planId: inlinePlanCard?.toolUseId ?? null,
+		questionId: hookQuestionCardShown && !hookQuestionSent ? (hookQuestion?.toolUseId ?? null) : null,
+	});
 	// A form or url elicitation stays with the terminal dialog, but the waiting notice names its server.
 	const elicitationNotice = useMemo(
 		() => findElicitationWaitingNotice(pendingElicitations ?? []),
@@ -1614,62 +1625,65 @@ function SessionView({
 								</SessionFileRefs>
 							</AskUserQuestionProvider>
 
-							{/* Upstream draws every pending approval inline; a permission prompt is not on disk, so it follows the transcript */}
-							{shownPermission && permissionKey !== null && (
-								<div data-inline-permission="" className={`${CHAT_COLUMN_CLASS} pb-4 empty:hidden`}>
-									<SessionBackgroundTasksOpener
-										sessionId={sessionId}
-										running={runningBackgroundLaunches}
-									>
-										<DeferredPermissionCard
-											key={permissionKey}
-											enterKey={permissionKey}
+							{/* Upstream's approval slot: a keyboard-answered card hands focus to the next card or the composer */}
+							<ApprovalSlot sessionId={sessionId} {...approvalSlotCard}>
+								{/* Upstream draws every pending approval inline; a permission prompt is not on disk, so it follows the transcript */}
+								{shownPermission && permissionKey !== null && (
+									<div data-inline-permission="" className={`${CHAT_COLUMN_CLASS} pb-4 empty:hidden`}>
+										<SessionBackgroundTasksOpener
 											sessionId={sessionId}
-											answerKey={permissionKey}
-											title={shownPermission.title}
-											detail={shownPermission.detail}
-											detailLang={shownPermission.detailLang ?? null}
-											clampTitle={shownPermission.clampTitle === true}
-											detailNote={shownPermission.detailNote ?? null}
-											description={shownPermission.description ?? null}
-											tokenWarning={shownPermission.tokenWarning === true}
-											canAnswer={permissionCanAnswer}
-											// The CLI can refuse an early Enter, so the elicitation's ElicitationResult clears its card.
-											hideOnDecision={!answersElicitation}
-											persistentAllow={shownPermission.persistentAllow ?? null}
-											dialog={permissionDialog}
-											onDecision={answerPermission}
-											footer={
-												<Suspense fallback={null}>
-													<ToolApprovalNotifyTip sessionId={sessionId} />
-												</Suspense>
-											}
-										/>
-									</SessionBackgroundTasksOpener>
-								</div>
-							)}
-							{/* Upstream draws a pending plan's approval as its own sticky card after the transcript, whether
+											running={runningBackgroundLaunches}
+										>
+											<DeferredPermissionCard
+												key={permissionKey}
+												enterKey={permissionKey}
+												sessionId={sessionId}
+												answerKey={permissionKey}
+												title={shownPermission.title}
+												detail={shownPermission.detail}
+												detailLang={shownPermission.detailLang ?? null}
+												clampTitle={shownPermission.clampTitle === true}
+												detailNote={shownPermission.detailNote ?? null}
+												description={shownPermission.description ?? null}
+												tokenWarning={shownPermission.tokenWarning === true}
+												canAnswer={permissionCanAnswer}
+												// The CLI can refuse an early Enter, so the elicitation's ElicitationResult clears its card.
+												hideOnDecision={!answersElicitation}
+												persistentAllow={shownPermission.persistentAllow ?? null}
+												dialog={permissionDialog}
+												onDecision={answerPermission}
+												footer={
+													<Suspense fallback={null}>
+														<ToolApprovalNotifyTip sessionId={sessionId} />
+													</Suspense>
+												}
+											/>
+										</SessionBackgroundTasksOpener>
+									</div>
+								)}
+								{/* Upstream draws a pending plan's approval as its own sticky card after the transcript, whether
 							    the record is on disk or only the hooks carry it yet */}
-							{inlinePlanCard !== null && (
-								<DeferredInlinePlanApproval
-									key={inlinePlanCard.toolUseId}
-									toolUseId={inlinePlanCard.toolUseId}
-									planText={inlinePlanCard.planText}
-									plan={planApprovalCtx}
-								/>
-							)}
-							{/* Until the question's record is on disk, its hook copy is drawn inline at the transcript's end */}
-							{hookQuestionCardShown && hookQuestion && (
-								<div data-hook-question="" className={`${CHAT_COLUMN_CLASS} pb-4`}>
-									<QuestionCard
-										key={hookQuestion.toolUseId}
-										draftKey={hookQuestion.toolUseId}
-										questions={hookQuestion.questions}
-										onSubmit={answerRoute === "live-pane" ? answerHookQuestion : undefined}
-										sessionId={sessionId}
+								{inlinePlanCard !== null && (
+									<DeferredInlinePlanApproval
+										key={inlinePlanCard.toolUseId}
+										toolUseId={inlinePlanCard.toolUseId}
+										planText={inlinePlanCard.planText}
+										plan={planApprovalCtx}
 									/>
-								</div>
-							)}
+								)}
+								{/* Until the question's record is on disk, its hook copy is drawn inline at the transcript's end */}
+								{hookQuestionCardShown && hookQuestion && (
+									<div data-hook-question="" className={`${CHAT_COLUMN_CLASS} pb-4`}>
+										<QuestionCard
+											key={hookQuestion.toolUseId}
+											draftKey={hookQuestion.toolUseId}
+											questions={hookQuestion.questions}
+											onSubmit={answerRoute === "live-pane" ? answerHookQuestion : undefined}
+											sessionId={sessionId}
+										/>
+									</div>
+								)}
+							</ApprovalSlot>
 							{(chatStream.state.isStreaming || chatStream.state.isComplete) && (
 								<StreamingMessage
 									text={chatStream.state.text}

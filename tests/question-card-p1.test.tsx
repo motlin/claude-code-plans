@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 
 import {cleanup, fireEvent, render, screen} from "@testing-library/react";
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {QuestionCard} from "../src/components/question-card";
 import {QuestionReceipt} from "../src/components/question-receipt";
 import type {QuestionLike} from "../src/lib/ask-user-question";
+import {clearLanding, landingSeams, recordLanding} from "../src/lib/approval-slot-landing";
 
 afterEach(cleanup);
 
@@ -308,5 +309,44 @@ describe("QuestionCard marks, as upstream's cds Checkbox / Radio edge", () => {
 		render(<QuestionCard questions={[MULTI]} onSubmit={async () => {}} />);
 
 		expect(marks()).toStrictEqual([UNCHECKED, UNCHECKED, UNCHECKED, UNCHECKED]);
+	});
+});
+
+describe("QuestionCard after a landing", () => {
+	let now = 0;
+	beforeEach(() => {
+		now = 1000;
+		vi.spyOn(performance, "now").mockImplementation(() => now);
+		vi.spyOn(landingSeams, "isTrusted").mockReturnValue(true);
+	});
+	afterEach(() => {
+		clearLanding(window);
+		vi.restoreAllMocks();
+	});
+
+	it("keeps an arrow under 400ms on the landed root, then roves on a fresh pick and lets the next key through", () => {
+		render(<QuestionCard questions={[SINGLE]} onSubmit={async () => {}} />);
+		const root = screen.getByRole("group", {name: "Which test runner?"});
+		root.focus();
+		recordLanding(window, {
+			at: root,
+			onCard: true,
+			from: root.parentElement!,
+			drawn: () => ({chordActsAnywhere: false, toComposer: () => undefined}),
+		});
+		now += 100;
+		fireEvent.keyDown(root, {key: "ArrowDown"});
+		const early = focusedName();
+		const earlyEnter = fireEvent.keyDown(root, {key: "Enter"});
+		now += 350;
+		fireEvent.keyDown(root, {key: "ArrowDown"});
+		const fresh = focusedName();
+		const enter = fireEvent.keyDown(document.activeElement!, {key: "Enter"});
+		expect({early, earlyEnter, fresh, enter}).toStrictEqual({
+			early: "root",
+			earlyEnter: false,
+			fresh: "VitestVite-native",
+			enter: true,
+		});
 	});
 });

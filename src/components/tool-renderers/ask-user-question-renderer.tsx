@@ -3,6 +3,8 @@ import {type ReactNode, useEffect, useRef} from "react";
 import type {ClientToolCall, ToolRendererProps} from "./types";
 import {useAskUserQuestionContext} from "../ask-user-question-context";
 import {MarkdownArticle} from "../markdown-article";
+import {ApprovalSlot} from "../approval-slot";
+import {sessionApprovalSlotCard} from "../../lib/approval-slot-card";
 import {QuestionCard} from "../question-card";
 import {QuestionReceipt} from "../question-receipt";
 import {FORK_ANSWER_LABEL} from "../../lib/question-answer-route";
@@ -158,7 +160,7 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 							answers: labelledAnswers(questions, answers),
 						})
 				: undefined;
-		return (
+		const card = (
 			<QuestionCard
 				draftKey={toolCall.id}
 				questions={questions}
@@ -167,6 +169,16 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 				sessionId={route === "live-pane" ? ctx?.sessionId : undefined}
 				{...(route === "fork" ? {submitLabel: FORK_ANSWER_LABEL} : {})}
 			/>
+		);
+		if (ctx?.sessionId === undefined) return card;
+		// Upstream's slot for a question drawn in its transcript row: a keyboard answer hands focus to the composer.
+		return (
+			<ApprovalSlot
+				sessionId={ctx.sessionId}
+				{...sessionApprovalSlotCard({permission: null, planId: null, questionId: sentNow ? null : toolCall.id})}
+			>
+				{card}
+			</ApprovalSlot>
 		);
 	}
 

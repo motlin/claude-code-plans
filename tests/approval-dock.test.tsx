@@ -5,6 +5,12 @@ import type {ReactNode} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {AskUserQuestionProvider} from "../src/components/ask-user-question-context";
+import {ApprovalSlot} from "../src/components/approval-slot";
+import {sessionApprovalSlotCard} from "../src/lib/approval-slot-card";
+import {PermissionCard} from "../src/components/permission-card";
+import {clearApprovalAnswered, useApprovalAnswered} from "../src/lib/answered-approvals";
+import {clearLanding} from "../src/lib/approval-slot-landing";
+import {registerComposer} from "../src/lib/context-attach";
 import {QuestionCard} from "../src/components/question-card";
 import {isAnsweredHeld, releaseAnswered} from "../src/lib/answered-sessions";
 import {AskUserQuestionRenderer} from "../src/components/tool-renderers/ask-user-question-renderer";
@@ -1677,3 +1683,97 @@ describe("useQuestionCardSent", () => {
 		expect(seen).toStrictEqual([false, true, false]);
 	});
 });
+
+describe("the session approval slot", () => {
+	afterEach(() => {
+		endEnterSwallows();
+		clearLanding(window);
+		vi.useRealTimers();
+	});
+
+	function PermissionDock({sessionId, onDecision}: {sessionId: string; onDecision: () => Promise<void>}) {
+		const answered = useApprovalAnswered(sessionId, "toolu_slot");
+		const slot = sessionApprovalSlotCard({
+			permission: answered ? null : {key: "toolu_slot", dialog: undefined},
+			planId: null,
+			questionId: null,
+		});
+		return (
+			<div>
+				<ApprovalSlot sessionId={sessionId} {...slot}>
+					{!answered && (
+						<PermissionCard
+							title={{action: "run this command", meta: null}}
+							detail="ls"
+							canAnswer
+							sessionId={sessionId}
+							answerKey="toolu_slot"
+							onDecision={onDecision}
+						/>
+					)}
+				</ApprovalSlot>
+				<textarea aria-label="Prompt" />
+			</div>
+		);
+	}
+
+	it("hands focus to the composer when a keyboard-answered permission card leaves, and swallows a held Enter", async () => {
+		vi.useFakeTimers({toFake: ["performance"]});
+		const sessionId = "slot-session";
+		const onDecision = vi.fn<() => Promise<void>>(async () => {});
+		render(<PermissionDock sessionId={sessionId} onDecision={onDecision} />);
+		const composer = screen.getByRole("textbox", {name: "Prompt"});
+		const unregister = registerComposer(sessionId, {
+			insertText: () => undefined,
+			focus: () => {
+				composer.focus();
+			},
+			getText: () => (composer as HTMLTextAreaElement).value,
+		});
+		vi.advanceTimersByTime(500);
+		const root = document.querySelector<HTMLElement>("[data-approval-card-root]")!;
+		root.focus();
+		await act(async () => {
+			fireEvent.keyDown(root, {key: "Enter", metaKey: true});
+			await Promise.resolve();
+		});
+		const active = document.activeElement === composer;
+		vi.advanceTimersByTime(100);
+		const held = fireEvent.keyDown(composer, {key: "Enter"});
+		unregister();
+		clearApprovalAnswered(sessionId, "toolu_slot");
+		releaseAnswered(sessionId);
+		expect({decisions: onDecision.mock.calls, active, held}).toStrictEqual({
+			decisions: [["allow"]],
+			active: true,
+			held: false,
+		});
+	});
+
+	it("draws the first waiting card as the slot's card, and a deny-first permission doesn't take focus", () => {
+		expect([
+			sessionApprovalSlotCard({permission: {key: "p", dialog: undefined}, planId: "plan", questionId: "q"}),
+			sessionApprovalSlotCard({
+				permission: {key: "p", dialog: {denyFirst: true, persistent: false, auto: false}},
+				planId: null,
+				questionId: null,
+			}),
+			sessionApprovalSlotCard({permission: {key: "p", dialog: "unknown"}, planId: null, questionId: null}),
+			sessionApprovalSlotCard({permission: null, planId: "plan", questionId: "q"}),
+			sessionApprovalSlotCard({permission: null, planId: null, questionId: "q"}),
+			sessionApprovalSlotCard({permission: null, planId: null, questionId: null}),
+		]).toStrictEqual([
+			{card: "permission:p", takesFocus: true, chordActsAnywhere: false},
+			{card: "permission:p", takesFocus: false, chordActsAnywhere: false},
+			{card: "permission:p", takesFocus: false, chordActsAnywhere: false},
+			{card: "plan:plan", takesFocus: true, chordActsAnywhere: true},
+			{card: "ask_user_question:q", takesFocus: true, chordActsAnywhere: false},
+			{card: undefined, takesFocus: false, chordActsAnywhere: false},
+		]);
+	});
+});
+
+/** Ends any Enter swallow a landing left on the shared document (it ends on the next plain key). */
+function endEnterSwallows() {
+	document.dispatchEvent(new KeyboardEvent("keydown", {key: "Unidentified"}));
+}

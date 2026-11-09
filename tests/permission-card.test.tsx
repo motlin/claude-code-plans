@@ -9,6 +9,7 @@ import {BackgroundTasksOpenerProvider} from "../src/components/background-tasks-
 import {ApprovalCardShell, WaitingForInputNotice} from "../src/components/approval-card";
 import {PermissionCard} from "../src/components/permission-card";
 import {APPROVAL_LEADING_ALLOW_KEY} from "../src/lib/approval-leading-allow";
+import {clearLanding, recordLanding} from "../src/lib/approval-slot-landing";
 import {isAnsweredHeld, releaseAnswered} from "../src/lib/answered-sessions";
 import {clearApprovalAnswered, isApprovalAnswered, useApprovalAnswered} from "../src/lib/answered-approvals";
 import {
@@ -2031,5 +2032,50 @@ describe("permission prompt answered across a signal handoff", () => {
 			gate: container.querySelector("[data-gate]")?.getAttribute("data-gate"),
 			error: container.querySelector("[data-approval-card-root] .text-extended-pink")?.textContent,
 		}).toStrictEqual({markedAtClick: true, marked: false, gate: "pending", error: "herdr pane is gone"});
+	});
+});
+
+describe("PermissionCard after a landing", () => {
+	beforeEach(() => {
+		vi.useFakeTimers({toFake: ["performance"]});
+	});
+	afterEach(() => {
+		clearLanding(window);
+		vi.useRealTimers();
+	});
+
+	function landOn(root: HTMLElement) {
+		root.focus();
+		recordLanding(window, {
+			at: root,
+			onCard: true,
+			from: root.parentElement!,
+			drawn: () => ({chordActsAnywhere: false, toComposer: () => undefined}),
+		});
+	}
+
+	it("refuses ⇧⌘⏎ on a card focus landed on, as upstream's landing keys, but ⌘⏎ still allows once", () => {
+		const {container, onDecision} = renderCard({persistentAllow: "always"});
+		const root = container.querySelector<HTMLElement>("[data-approval-card-root]")!;
+		vi.advanceTimersByTime(400);
+		landOn(root);
+		vi.advanceTimersByTime(600);
+		const shifted = fireEvent.keyDown(root, {key: "Enter", metaKey: true, shiftKey: true});
+		const afterShifted = onDecision.mock.calls.length;
+		fireEvent.keyDown(root, {key: "Enter", metaKey: true});
+		expect({shifted, afterShifted, calls: onDecision.mock.calls}).toStrictEqual({
+			shifted: false,
+			afterShifted: 0,
+			calls: [["allow"]],
+		});
+	});
+
+	it("acts on ⇧⌘⏎ with focus in the card when nothing landed", () => {
+		const {container, onDecision} = renderCard({persistentAllow: "always"});
+		const root = container.querySelector<HTMLElement>("[data-approval-card-root]")!;
+		vi.advanceTimersByTime(400);
+		root.focus();
+		fireEvent.keyDown(root, {key: "Enter", metaKey: true, shiftKey: true});
+		expect(onDecision.mock.calls).toStrictEqual([["always"]]);
 	});
 });
