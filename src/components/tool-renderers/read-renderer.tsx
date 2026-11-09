@@ -4,7 +4,7 @@ import type {ThemedToken} from "@shikijs/core";
 import {extractLineNumbers, detectLanguage} from "../../lib/diff-utils";
 import {useHighlightedLines} from "../../hooks/use-shiki";
 import type {ToolRendererProps} from "./types";
-import {CopyButton, TruncatedFilePathHeader} from "./shared";
+import {CopyButton, PolicyDenialReason, TruncatedFilePathHeader} from "./shared";
 import {TOOL_OUTPUT_REGION} from "./tool-output-region";
 
 interface ParsedLine {
@@ -58,6 +58,13 @@ export function ReadRenderer({toolCall}: ToolRendererProps) {
 
 	// A failed read has no file content to highlight -- upstream just prints the
 	// failure message in the error color.
+	if (toolCall.blocked === true) {
+		return (
+			<div className="px-p6 py-p5">
+				<PolicyDenialReason call={toolCall} />
+			</div>
+		);
+	}
 	if (isError) {
 		return (
 			<div className="px-p6 py-p5">

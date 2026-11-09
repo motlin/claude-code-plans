@@ -28,6 +28,7 @@ import {
 	TurnOriginSchema,
 	WakeupSourceSchema,
 } from "./schemas";
+import {autoModeDenial} from "./auto-mode-denial";
 import {JsonlRecordSchema} from "./runtime-schemas";
 import {
 	extractSessionTitle,
@@ -447,7 +448,8 @@ const REJECTION_WITH_FEEDBACK_PREFIX = "The user doesn't want to proceed with th
 /**
  * How upstream labels a call the user turned down: "Stopped" when they rejected
  * or interrupted it outright, "Denied" when they rejected it with a typed reply.
- * Rule, auto-mode, and plain tool errors are neither; they read "Failed".
+ * Auto-mode denials read "Blocked" (see `autoModeDenial`); rule denials and plain
+ * tool errors read "Failed".
  */
 function userDenial(kind: string | undefined, toolUseResult: unknown, resultText: string): "stopped" | "denied" | null {
 	if (kind !== "user-rejected" && kind !== "interrupted") return null;
@@ -972,6 +974,14 @@ function* processRecordBatchSteps(
 							: null;
 						if (denial === "stopped") info.stopped = true;
 						if (denial === "denied") info.denied = true;
+						const autoMode =
+							info.isError && denial === null ? autoModeDenial(record.toolDenialKind, resultText) : null;
+						if (autoMode !== null) {
+							info.blocked = true;
+							if (autoMode.blockedReason !== undefined) info.blockedReason = autoMode.blockedReason;
+							if (autoMode.blockedNoVerdict !== undefined)
+								info.blockedNoVerdict = autoMode.blockedNoVerdict;
+						}
 						const name = toolNames.get(block.tool_use_id);
 						const input = toolInputs.get(block.tool_use_id);
 						const resultMeta = toolResultMetaFrom(

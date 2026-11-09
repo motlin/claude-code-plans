@@ -2174,3 +2174,131 @@ describe("artifact records", () => {
 		expect(processTranscript(records).lines).toStrictEqual([]);
 	});
 });
+
+// ---------------------------------------------------------------------------
+// Auto-mode classifier denials
+// ---------------------------------------------------------------------------
+
+describe("auto-mode denials", () => {
+	const CLASSIFIER = "Permission for this action was denied by the Claude Code auto mode classifier. Reason: ";
+	const TAIL =
+		". If you have other tasks that don't depend on this action, continue working on those. IMPORTANT: You *may* attempt to accomplish this action using other tools.";
+	const resultFor = (kind: string, content: string) =>
+		processTranscript([
+			assistantRecord([{type: "tool_use", id: "tool-1", name: "Bash", input: {command: "ls"}}], {uuid: "a-1"}),
+			userRecord([{type: "tool_result", tool_use_id: "tool-1", content, is_error: true}], {
+				uuid: "u-1",
+				toolDenialKind: kind,
+			}),
+		]).toolResultMap.get("tool-1");
+	const blockedFields = (kind: string, content: string) => {
+		const info = resultFor(kind, content)!;
+		return {
+			blocked: info.blocked,
+			blockedReason: info.blockedReason,
+			blockedNoVerdict: info.blockedNoVerdict,
+			stopped: info.stopped,
+			denied: info.denied,
+		};
+	};
+
+	it("marks an automode-blocked result blocked with the classifier's reason", () => {
+		expect(blockedFields("automode-blocked", `${CLASSIFIER}[Credential Materialization]${TAIL}`)).toStrictEqual({
+			blocked: true,
+			blockedReason: "[Credential Materialization]",
+			blockedNoVerdict: undefined,
+			stopped: undefined,
+			denied: undefined,
+		});
+	});
+
+	it("drops a placeholder reason like upstream's Fc set", () => {
+		expect(blockedFields("automode-blocked", `${CLASSIFIER}Blocked by classifier${TAIL}`)).toStrictEqual({
+			blocked: true,
+			blockedReason: undefined,
+			blockedNoVerdict: undefined,
+			stopped: undefined,
+			denied: undefined,
+		});
+	});
+
+	it("collapses whitespace and takes the whole rest when the tail is absent", () => {
+		expect(blockedFields("automode-blocked", `${CLASSIFIER}  Deletes\n  the   repo  `).blockedReason).toBe(
+			"Deletes the repo",
+		);
+	});
+
+	it("drops the reason when the text lacks the classifier prefix", () => {
+		expect(blockedFields("automode-blocked", "Something else entirely").blockedReason).toBeUndefined();
+	});
+
+	it("marks automode-unavailable and automode-parsing-error blocked with no verdict", () => {
+		const noVerdict = {
+			blocked: true,
+			blockedReason: undefined,
+			blockedNoVerdict: "unanswered",
+			stopped: undefined,
+			denied: undefined,
+		};
+		expect([
+			blockedFields("automode-unavailable", "The server-side auto mode classifier gave no verdict (error)."),
+			blockedFields("automode-parsing-error", "Parse failure"),
+		]).toStrictEqual([noVerdict, noVerdict]);
+	});
+
+	it("leaves a permission-rule denial a plain failure", () => {
+		expect(blockedFields("permission-rule", "Permission to use Bash has been denied.")).toStrictEqual({
+			blocked: undefined,
+			blockedReason: undefined,
+			blockedNoVerdict: undefined,
+			stopped: undefined,
+			denied: undefined,
+		});
+	});
+
+	it("keeps a user-rejected call stopped, never blocked", () => {
+		expect(blockedFields("user-rejected", "Rejected")).toStrictEqual({
+			blocked: undefined,
+			blockedReason: undefined,
+			blockedNoVerdict: undefined,
+			stopped: true,
+			denied: undefined,
+		});
+	});
+
+	it("clips a reason over 1000 chars at a word boundary with an ellipsis", () => {
+		const reason = blockedFields("automode-blocked", `${CLASSIFIER}${"word ".repeat(240)}${TAIL}`).blockedReason!;
+		expect({ends: reason.endsWith("…"), length: reason.length, text: reason}).toStrictEqual({
+			ends: true,
+			length: 1000,
+			text: `${"word ".repeat(199)}word…`,
+		});
+	});
+
+	it("copies the blocked fields onto the client tool call", () => {
+		const {toolResultMap} = processTranscript([
+			assistantRecord([{type: "tool_use", id: "tool-1", name: "Bash", input: {command: "ls"}}], {uuid: "a-1"}),
+			userRecord(
+				[
+					{
+						type: "tool_result",
+						tool_use_id: "tool-1",
+						content: `${CLASSIFIER}[Auto-Mode Bypass]${TAIL}`,
+						is_error: true,
+					},
+				],
+				{uuid: "u-1", toolDenialKind: "automode-blocked"},
+			),
+		]);
+		const call = buildClientToolCall(
+			{type: "tool_use", id: "tool-1", name: "Bash", input: {command: "ls"}},
+			"a-1",
+			toolResultMap,
+		);
+		expect([call.blocked, call.blockedReason, call.blockedNoVerdict]).toStrictEqual([
+			true,
+			"[Auto-Mode Bypass]",
+			undefined,
+		]);
+	});
+});

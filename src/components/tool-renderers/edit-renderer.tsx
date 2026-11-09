@@ -2,7 +2,7 @@ import {inputString} from "../../lib/tool-utils";
 import {useMemo} from "react";
 import type {ToolRendererProps} from "./types";
 import {InlineDiff} from "./inline-diff";
-import {CopyButton, TruncatedFilePathHeader} from "./shared";
+import {CopyButton, PolicyDenialReason, TruncatedFilePathHeader} from "./shared";
 import {editDiffEntries} from "../../lib/session-utils";
 
 /**
@@ -42,6 +42,13 @@ export function EditRenderer({toolCall}: ToolRendererProps) {
 	const filePath = inputString(input, "file_path") ?? "";
 	const entries = useMemo(() => editDiffEntries(input), [input]);
 
+	if (toolCall.blocked === true && entries.length === 0) {
+		return (
+			<div className="px-p6 py-p5">
+				<PolicyDenialReason call={toolCall} />
+			</div>
+		);
+	}
 	if (entries.length === 0) {
 		return (
 			<div className="px-p6 py-p5">
@@ -69,8 +76,13 @@ export function EditRenderer({toolCall}: ToolRendererProps) {
 				/>
 			))}
 
+			{toolCall.blocked === true && (
+				<div className="px-p6 pb-p8">
+					<PolicyDenialReason call={toolCall} />
+				</div>
+			)}
 			{/* Error result text (shown below the diffs when the edit failed) */}
-			{isError && result && (
+			{isError && result && toolCall.blocked !== true && (
 				<div className="px-p6 pb-p8">
 					<pre className="max-h-[400px] overflow-y-auto text-code font-mono whitespace-pre-wrap break-all text-danger-ink">
 						{result}

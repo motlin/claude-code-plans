@@ -3,7 +3,7 @@ import type {ReactNode} from "react";
 import type {ThemedToken} from "@shikijs/core";
 import {useHighlightedLines} from "../../hooks/use-shiki";
 import type {ToolRendererProps} from "./types";
-import {AnsiText, CopyButton} from "./shared";
+import {AnsiText, CopyButton, PolicyDenialReason} from "./shared";
 import {TOOL_OUTPUT_REGION} from "./tool-output-region";
 import {getMcpRenderer} from "./mcp-registry";
 
@@ -69,7 +69,10 @@ export function HighlightedCommand({command, language = "shellscript"}: {command
 
 export function BashRenderer({toolCall, nested = false}: ToolRendererProps) {
 	const command = inputString(toolCall.input, "command") ?? "";
-	const {result, isError} = toolCall;
+	const {isError} = toolCall;
+	// A blocked call never ran, so upstream shows why in place of its raw denial text.
+	const blocked = toolCall.blocked === true;
+	const result = blocked ? undefined : toolCall.result;
 	const resultContent = result ? stripCommandPrefix(result, command) : null;
 
 	const [, mcpServer, mcpTool] = MCP_CLI_RE.exec(command) ?? [];
@@ -109,6 +112,7 @@ export function BashRenderer({toolCall, nested = false}: ToolRendererProps) {
 					<AnsiText content={resultContent} />
 				</div>
 			)}
+			{blocked && <PolicyDenialReason call={toolCall} />}
 		</>
 	);
 

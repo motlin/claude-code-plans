@@ -3,7 +3,7 @@ import {Link} from "@tanstack/react-router";
 import {FileText} from "lucide-react";
 import type {ToolRendererProps} from "./types";
 import {InlineDiff} from "./inline-diff";
-import {CopyButton, TruncatedFilePathHeader} from "./shared";
+import {CopyButton, PolicyDenialReason, TruncatedFilePathHeader} from "./shared";
 import {TOOL_OUTPUT_REGION} from "./tool-output-region";
 import {toMdSlug} from "../../lib/md-slug";
 
@@ -16,6 +16,13 @@ export function WriteRenderer({toolCall}: ToolRendererProps) {
 	const planFile = filePath.match(PLAN_RE)?.[1];
 	const copyText = content ?? result ?? filePath;
 
+	if (!content && toolCall.blocked === true) {
+		return (
+			<div className="px-p6 py-p5">
+				<PolicyDenialReason call={toolCall} />
+			</div>
+		);
+	}
 	if (!content) {
 		return (
 			<div className="px-p6 py-p5">
@@ -52,8 +59,13 @@ export function WriteRenderer({toolCall}: ToolRendererProps) {
 				<InlineDiff filePath={filePath} oldStr="" newStr={content} />
 			</div>
 
+			{toolCall.blocked === true && (
+				<div className="px-p6 pb-p8">
+					<PolicyDenialReason call={toolCall} />
+				</div>
+			)}
 			{/* Error result text (shown below diff when write failed) */}
-			{isError && result && (
+			{isError && result && toolCall.blocked !== true && (
 				<div className="px-p6 pb-p8">
 					<pre
 						{...TOOL_OUTPUT_REGION}

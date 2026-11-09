@@ -206,18 +206,19 @@ export interface AskedCall {
 	isError?: boolean | undefined;
 	stopped?: boolean | undefined;
 	denied?: boolean | undefined;
+	blocked?: boolean | undefined;
 	resultMeta?: ToolResultMeta | undefined;
 }
 
 /**
  * Whether the user turned the question away rather than answering it: they
- * rejected or interrupted the call, dismissed the prompt (newer Claude Code
+ * rejected or interrupted the call, auto mode blocked it, dismissed the prompt (newer Claude Code
  * records a "[User dismissed — ...]" answer to every question), or the call
  * completed without a single real answer. Upstream draws such a question as a
  * compact "Asked “<header>”" / "Asked N questions" step, not a receipt.
  */
 export function isWithdrawnQuestion(call: AskedCall): boolean {
-	if (call.stopped === true || call.denied === true) return true;
+	if (call.stopped === true || call.denied === true || call.blocked === true) return true;
 	const {result} = call;
 	if (result === undefined) return false;
 	if (parseToolRejection(result.trim()) !== null) return true;

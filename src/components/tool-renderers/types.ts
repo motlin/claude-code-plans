@@ -50,6 +50,12 @@ export interface ClientToolCall {
 	stopped?: boolean | undefined;
 	/** The user rejected the call with a typed reply; see `ToolResultInfo.denied`. */
 	denied?: boolean | undefined;
+	/** The auto-mode classifier refused the call; see `ToolResultInfo.blocked`. */
+	blocked?: boolean | undefined;
+	/** See `ToolResultInfo.blockedReason`. */
+	blockedReason?: string | undefined;
+	/** See `ToolResultInfo.blockedNoVerdict`. */
+	blockedNoVerdict?: "unanswered" | undefined;
 	/** An open question whose CLI died; see `ToolResultInfo.orphaned`. */
 	orphaned?: boolean | undefined;
 	duration?: number | undefined;
@@ -253,6 +259,9 @@ export function buildClientToolCall(
 		if (resultInfo.isError) call.isError = true;
 		if (resultInfo.stopped === true) call.stopped = true;
 		if (resultInfo.denied === true) call.denied = true;
+		if (resultInfo.blocked === true) call.blocked = true;
+		if (resultInfo.blockedReason !== undefined) call.blockedReason = resultInfo.blockedReason;
+		if (resultInfo.blockedNoVerdict !== undefined) call.blockedNoVerdict = resultInfo.blockedNoVerdict;
 		if (resultInfo.orphaned === true) call.orphaned = true;
 		call.resultUuid = resultInfo.resultUuid;
 		if (resultInfo.duration !== undefined) call.duration = resultInfo.duration;

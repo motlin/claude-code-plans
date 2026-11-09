@@ -1142,6 +1142,63 @@ describe("SessionChat failed tool row label", () => {
 		]);
 	});
 
+	const CLASSIFIER_DENIAL =
+		"Permission for this action was denied by the Claude Code auto mode classifier. Reason: [Credential Materialization]. If you have other tasks that don't depend on this action, continue working on those. IMPORTANT: You *may* attempt it another way.";
+	const BLOCKED_SUFFIX = {text: "Blocked", className: "shrink-0 text-body text-secondary"};
+
+	it('appends a secondary "Blocked" to a row the auto-mode classifier refused, with no danger ink', () => {
+		const records = toolResultRecords(bash("Rebase and push X"), CLASSIFIER_DENIAL, true, {
+			toolDenialKind: "automode-blocked",
+		});
+
+		expect({
+			children: rowHeaderChildren(records),
+			danger: renderTranscript(records).includes("text-danger"),
+		}).toStrictEqual({
+			children: [
+				{text: "Rebase and push X", className: `truncate min-w-0 ${MUTED_LABEL}`},
+				BLOCKED_SUFFIX,
+				ROW_CHEVRON,
+			],
+			danger: false,
+		});
+	});
+
+	it('reads "Blocked" when auto mode\'s check gave no verdict', () => {
+		expect(denied("automode-unavailable")).toStrictEqual([
+			{text: "Rebase and push X", className: `truncate min-w-0 ${MUTED_LABEL}`},
+			BLOCKED_SUFFIX,
+			ROW_CHEVRON,
+		]);
+	});
+
+	it('keeps a permission-rule denial a danger "Failed"', () => {
+		expect(denied("permission-rule")).toStrictEqual([
+			{text: "Rebase and push X", className: `truncate min-w-0 ${MUTED_LABEL}`},
+			FAILED_SUFFIX,
+			ROW_CHEVRON,
+		]);
+	});
+
+	it('names a blocked AskUserQuestion row in the running tense, "Asking", as upstream\'s neverAsked label does', () => {
+		const records = toolResultRecords(
+			{
+				name: "AskUserQuestion",
+				input: {
+					questions: [{header: "Change", question: "Which change?", options: [{label: "A"}, {label: "B"}]}],
+				},
+			},
+			CLASSIFIER_DENIAL,
+			true,
+			{toolDenialKind: "automode-blocked"},
+		);
+		expect(rowHeaderChildren(records)).toStrictEqual([
+			{text: "Asking \u201cChange\u201d", className: `truncate min-w-0 ${MUTED_LABEL}`},
+			BLOCKED_SUFFIX,
+			ROW_CHEVRON,
+		]);
+	});
+
 	it('appends a secondary "Stopped" to a row the user rejected, with no danger ink', () => {
 		const records = toolResultRecords(bash("Get first incomplete task"), "Rejected", true, {
 			toolDenialKind: "user-rejected",
@@ -1376,19 +1433,6 @@ describe("SessionChat failed tool row label", () => {
 			FAILED_SUFFIX,
 			ROW_CHEVRON,
 		]);
-	});
-
-	it('marks permission-rule and automode-blocked denials "Failed", not "Stopped"', () => {
-		const failed = [
-			{text: "Rebase and push X", className: `truncate min-w-0 ${MUTED_LABEL}`},
-			FAILED_SUFFIX,
-			ROW_CHEVRON,
-		];
-
-		expect({
-			permissionRule: denied("permission-rule"),
-			automodeBlocked: denied("automode-blocked"),
-		}).toStrictEqual({permissionRule: failed, automodeBlocked: failed});
 	});
 
 	it('keeps the success verb on a failed Edit, with the file name in primary ink, and appends "Failed"', () => {
@@ -2648,6 +2692,65 @@ describe("SessionChat usage-limit card", () => {
 			hint: "Send a message after your weekly limit resets.",
 			settings: null,
 			rawText: false,
+		});
+	});
+});
+
+describe("SessionChat auto-mode blocked specimens (live upstream, 2026-11-05)", () => {
+	const specimen = (file: string): unknown[] =>
+		readFileSync(join(__dirname, "fixtures", file), "utf8")
+			.trim()
+			.split("\n")
+			.map((line) => JSON.parse(line) as unknown);
+
+	const settled = async (file: string) => {
+		const container = renderTranscriptElement(specimen(file));
+		const header = container.querySelector(".group\\/tool")!;
+		await expandSingleToolRow(container);
+		const body = container.querySelector(".group\\/body")!;
+		// The renderer is lazy, so wait for its reason line to mount.
+		await waitFor(() => {
+			if (body.querySelector("bdi, [data-find-omitted]") === null) throw new Error("reason not mounted");
+		});
+		return {
+			children: Array.from(header.children, (child) => ({text: child.textContent, className: child.className})),
+			reason: body.querySelector("[class*='font-sans text-body text-secondary']")?.textContent,
+			rawOutput: body.textContent.includes("IMPORTANT:") || body.textContent.includes("transient failure"),
+			danger: container.innerHTML.includes("text-danger"),
+		};
+	};
+	const BLOCKED = {text: "Blocked", className: "shrink-0 text-body text-secondary"};
+
+	it('settles cbe014a6\'s classifier-blocked Bash "Blocked" with its reason', async () => {
+		expect(await settled("cbe014a6-automode-blocked.jsonl")).toStrictEqual({
+			children: [
+				{
+					text: "Inspect candidate OpenRewrite session transcripts",
+					className: "truncate min-w-0 text-body text-secondary",
+				},
+				BLOCKED,
+				{...ROW_CHEVRON, className: ROW_CHEVRON.className.replace(" group-hover/tool:text-secondary", "")},
+			],
+			reason: "Blocked by auto mode: [Credential Materialization]",
+			rawOutput: false,
+			danger: false,
+		});
+	});
+
+	it("settles 0999816d's no-verdict Bash \"Blocked\" with upstream's sentence", async () => {
+		expect(await settled("0999816d-automode-unavailable.jsonl")).toStrictEqual({
+			children: [
+				{
+					// The local row clips a long description; upstream clips it with CSS.
+					text: "Verify the worktree, the new commit, the test gate, and the ...",
+					className: "truncate min-w-0 text-body text-secondary",
+				},
+				BLOCKED,
+				{...ROW_CHEVRON, className: ROW_CHEVRON.className.replace(" group-hover/tool:text-secondary", "")},
+			],
+			reason: "This did not run because auto mode’s check had no usable answer.",
+			rawOutput: false,
+			danger: false,
 		});
 	});
 });

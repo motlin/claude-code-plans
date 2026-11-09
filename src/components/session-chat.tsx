@@ -62,6 +62,7 @@ import type {SlowCommand} from "../lib/slow-commands";
 import {useSubagentOpener} from "./subagent-opener-context";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {useClaudeEvents} from "../hooks/use-claude-events";
+import {BlockedCallContext} from "./tool-renderers/blocked-call-context";
 import {ChevronIcon, CopyButton, DiffStatPill, TerminalOutput} from "./tool-renderers/shared";
 import {SystemBanner, type CompactMetadata} from "./system-banner";
 import {compactBoundaryLabel, localCommandOutput} from "./system-banner-text";
@@ -5848,7 +5849,8 @@ function ToolCallRow({
 	const paneAgentId = isAgent && openSubagent !== null ? call.subagentInfo?.agentId : undefined;
 	// Upstream's settled workflow row is a plain label with no body; only Verbose discloses the call.
 	const isWorkflow = call.name === "Workflow";
-	const hasBody = !rendersEmptyBody(call) && !(isWorkflow && !verbose);
+	// Upstream's `GN` always discloses a blocked call, to show why it did not run.
+	const hasBody = call.blocked === true || (!rendersEmptyBody(call) && !(isWorkflow && !verbose));
 	// An artifact card is the row's whole body and stays visible, as upstream
 	// draws it under the "Published artifact" label.
 	const expandable = hasBody && !NON_EXPANDING_TOOLS.has(call.name) && !isArtifactCard(call);
@@ -5906,10 +5908,13 @@ function ToolCallRow({
 						: "Stopped"
 					: call.denied === true
 						? "Denied"
-						: // A failed verb ("Failed to run workflow") already names the failure, so upstream adds no status.
-							toolRowLabel.failedVerb === true
-							? null
-							: "Failed"
+						: // Upstream settles an auto-mode classifier refusal "Blocked" (`qUJTsT`) in secondary ink.
+							call.blocked === true
+							? "Blocked"
+							: // A failed verb ("Failed to run workflow") already names the failure, so upstream adds no status.
+								toolRowLabel.failedVerb === true
+								? null
+								: "Failed"
 			: call.name === "AskUserQuestion"
 				? // A completed question nobody answered notes why, as upstream does.
 					(questionOutcomeNote(call) ?? null)
@@ -6159,6 +6164,9 @@ function ToolCallRow({
 		</>
 	);
 
+	// Upstream's `B_` hides a blocked call's raw denial; the renderers show its reason instead.
+	const blockedCall = call.blocked === true ? call : null;
+	const rendererCall = useMemo(() => (call.blocked === true ? {...call, result: undefined} : call), [call]);
 	const body = hasBody ? (
 		isCardStyle ? (
 			<div className="epitaxy-code-size group/body py-p6">
@@ -6166,7 +6174,9 @@ function ToolCallRow({
 					className={`card-outline ${isCodeCard ? "code-card " : ""}rounded-r6 overflow-clip flex flex-col relative`}
 				>
 					<Suspense fallback={null}>
-						<Renderer toolCall={call} verbose={verbose} />
+						<BlockedCallContext value={blockedCall}>
+							<Renderer toolCall={rendererCall} verbose={verbose} />
+						</BlockedCallContext>
 					</Suspense>
 					<DebugLink sessionId={sessionId} uuid={call.sourceUuid} className="absolute top-1 right-1" />
 				</div>
@@ -6174,7 +6184,9 @@ function ToolCallRow({
 		) : (
 			<div className={bodyClass}>
 				<Suspense fallback={null}>
-					<Renderer toolCall={call} nested={nested} verbose={verbose} />
+					<BlockedCallContext value={blockedCall}>
+						<Renderer toolCall={rendererCall} nested={nested} verbose={verbose} />
+					</BlockedCallContext>
 				</Suspense>
 			</div>
 		)

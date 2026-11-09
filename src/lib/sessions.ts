@@ -145,6 +145,12 @@ export interface ToolResultInfo {
 	stopped?: boolean | undefined;
 	/** The user rejected the call with a typed reply, so upstream labels it "Denied" rather than "Failed". */
 	denied?: boolean | undefined;
+	/** The auto-mode classifier refused the call or gave no verdict, so upstream labels it "Blocked" rather than "Failed". */
+	blocked?: boolean | undefined;
+	/** The classifier's reason for a blocked call; see `autoModeDenial`. */
+	blockedReason?: string | undefined;
+	/** The classifier gave no verdict for a blocked call. */
+	blockedNoVerdict?: "unanswered" | undefined;
 	/** An open question whose CLI died, drawn stopped with upstream's "Not answered" note; see `withOrphanedQuestions`. */
 	orphaned?: boolean | undefined;
 	resultUuid: string;

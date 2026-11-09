@@ -50,6 +50,8 @@ export interface ToolLabelCall {
 	stopped?: boolean | undefined;
 	/** The user rejected the call. */
 	denied?: boolean | undefined;
+	/** The auto-mode classifier refused the call or gave no verdict. */
+	blocked?: boolean | undefined;
 }
 
 /**
@@ -586,7 +588,8 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
 		case "Workflow": {
 			// Upstream's settled row names the run beside the verb; an errored call (not
 			// one the user stopped or rejected) takes its failedVerb instead.
-			const failed = call.isError === true && call.stopped !== true && call.denied !== true;
+			const failed =
+				call.isError === true && call.stopped !== true && call.denied !== true && call.blocked !== true;
 			return withMeta(
 				failed ? {verb: "Failed to run workflow", failedVerb: true} : {verb: "Ran workflow"},
 				workflowCallName(input) ?? null,
@@ -605,7 +608,9 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
 		case "AskUserQuestion": {
 			const meta = askedMeta(input);
 			// Upstream draws "Asked “<header>”" / "Asked N questions" as one text run, not a verb and a param.
-			return meta === null ? {verb: "Asked"} : {verb: "Asked", meta, doneLabel: `Asked ${meta}`};
+			// A blocked question was never asked, so upstream's `neverAsked` label keeps the running verb.
+			const verb = call.blocked === true ? "Asking" : "Asked";
+			return meta === null ? {verb} : {verb, meta, doneLabel: `${verb} ${meta}`};
 		}
 	}
 

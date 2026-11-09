@@ -14,6 +14,8 @@ export interface ToolCallLike {
 	stopped?: boolean | undefined;
 	/** The user rejected the call with a typed reply, so it settled without failing. */
 	denied?: boolean | undefined;
+	/** The auto-mode classifier refused the call or gave no verdict, so it settled "Blocked". */
+	blocked?: boolean | undefined;
 	/**
 	 * Whether a Write created its file or updated one that existed, and the
 	 * lines the result's patch says a file edit added and removed.

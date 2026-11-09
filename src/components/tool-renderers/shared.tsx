@@ -1,4 +1,4 @@
-import {type ReactNode, useCallback, useMemo, useState, useSyncExternalStore} from "react";
+import {type ReactNode, useCallback, useContext, useMemo, useState, useSyncExternalStore} from "react";
 import {renderMarkdownWithHighlighting} from "../../lib/client-markdown";
 import {getHighlighterSync, getHighlighterVersion, subscribeHighlighter} from "../../hooks/use-shiki";
 import {useCodeThemes} from "../../hooks/use-code-themes";
@@ -12,6 +12,7 @@ import markdownStyles from "../markdown-article.module.css";
 import * as Collapsible from "../ui/collapsible";
 import {Tooltip} from "../ui/tooltip";
 import {TOOL_OUTPUT_REGION} from "./tool-output-region";
+import {BlockedCallContext, type PolicyDenial} from "./blocked-call-context";
 
 export function AnsiText({content}: {content: string}) {
 	const parts = parseAnsiCodes(content);
@@ -410,6 +411,35 @@ export interface KeyValueParam {
 	markdown?: boolean;
 }
 
+const POLICY_REASON_CLASS = "text-primary whitespace-pre-wrap break-words select-text";
+
+/**
+ * Upstream's `Ox`: why an auto-mode-blocked call did not run, drawn where its
+ * error output would go. Find skips the "Blocked by auto mode" prefix but
+ * matches the reason. Upstream's empty retry slot only hosts its gated Retry
+ * button, so it is left out.
+ */
+export function PolicyDenialReason({call}: {call: PolicyDenial}) {
+	return (
+		<div className="flex flex-col items-start gap-xs font-sans text-body text-secondary">
+			{call.blockedNoVerdict === "unanswered" ? (
+				<bdi data-find-included="" className={POLICY_REASON_CLASS}>
+					This did not run because auto mode’s check had no usable answer.
+				</bdi>
+			) : call.blockedReason === undefined ? (
+				<div data-find-omitted="">Blocked by auto mode</div>
+			) : (
+				<div data-find-omitted="">
+					Blocked by auto mode:{" "}
+					<bdi data-find-included="" className={POLICY_REASON_CLASS}>
+						{call.blockedReason}
+					</bdi>
+				</div>
+			)}
+		</div>
+	);
+}
+
 /**
  * Upstream-style key-value card used by Grep, Glob, Agent, WebFetch,
  * WebSearch, and most non-file tools.
@@ -440,9 +470,14 @@ export function KeyValueCard({
 	isError?: boolean | undefined;
 	children?: ReactNode;
 }) {
-	const derivedCopyText = [...params.map((p) => `${p.key}: ${p.value}`), ...(result ? [result] : [])].join("\n");
-	const errorMessage = isError ? result : undefined;
-	const body = isError ? undefined : result;
+	// A blocked call's raw denial gives way to upstream's reason line (`kx`).
+	const blocked = useContext(BlockedCallContext);
+	const shownResult = blocked === null ? result : undefined;
+	const derivedCopyText = [...params.map((p) => `${p.key}: ${p.value}`), ...(shownResult ? [shownResult] : [])].join(
+		"\n",
+	);
+	const errorMessage = isError ? shownResult : undefined;
+	const body = isError ? undefined : shownResult;
 
 	return (
 		<div className="flex w-full">
@@ -450,6 +485,7 @@ export function KeyValueCard({
 				className={`flex-1 min-w-0 flex flex-col gap-g4 text-body${isError ? "" : " text-secondary"} whitespace-pre-wrap break-words`}
 			>
 				<div {...TOOL_CALL_DETAILS_REGION} className="max-h-[400px] overflow-y-auto flex flex-col gap-g4">
+					{blocked !== null && <PolicyDenialReason call={blocked} />}
 					{errorMessage && <div className="text-danger-ink">{errorMessage}</div>}
 					{params.length > 0 && (
 						<div className="text-secondary flex flex-col gap-g2">
