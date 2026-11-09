@@ -65,18 +65,18 @@
 		"raisedAt": "2026-11-08"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 704653,
+		"ceiling": 711940,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Pane stacking and closed slots (2026-11-07): openPane/closePane gain upstream's wide-kind first split, lastPaneFlexByKind ratio memory (rememberPaneFlex plus its zod-checked localStorage load/save) and the unprompted close option, on top of the tooltip-shrinkwrap and line-mode tile commits that had used up the 1% tolerance. Went from 697247 to 704653. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-07"
+		"reason": "Composer env bar menus and per-model effort rows (2026-11-08): the static per-model effort catalog (effortOptionsFor/defaultEffortFor), the Ultracode switch row with its launch settings and live /effort ultracode change, the Max-warning trigger/hint gating, the account-limits ring fallback and the labelled menu groups, on top of the settings-nav and palette commits that had used up the 1% tolerance. Went from 704653 to 711940. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-08"
 	},
 	"bundle.session.raw": {
-		"ceiling": 2108775,
+		"ceiling": 2127755,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Pane stacking and closed slots (2026-11-07): openPane/closePane gain upstream's wide-kind first split, lastPaneFlexByKind ratio memory (rememberPaneFlex plus its zod-checked localStorage load/save) and the unprompted close option, on top of the tooltip-shrinkwrap and line-mode tile commits that had used up the 1% tolerance. Went from 2090331 to 2108775. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-07"
+		"reason": "Composer env bar menus and per-model effort rows (2026-11-08): the static per-model effort catalog (effortOptionsFor/defaultEffortFor), the Ultracode switch row with its launch settings and live /effort ultracode change, the Max-warning trigger/hint gating, the account-limits ring fallback and the labelled menu groups, on top of the settings-nav and palette commits that had used up the 1% tolerance. Went from 2108775 to 2127755. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-08"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 9,

@@ -1424,7 +1424,6 @@ export const effortLevelLabels = {
 	high: "High",
 	xhigh: "Extra-high",
 	max: "Max",
-	ultracode: "Ultracode",
 } satisfies Record<EffortLevel, string>;
 
 /** The effort slider's tick tooltips, which shorten Extra-high. */
@@ -1434,7 +1433,6 @@ export const effortLevelShortLabels = {
 	high: "High",
 	xhigh: "Extra",
 	max: "Max",
-	ultracode: "Ultracode",
 } satisfies Record<EffortLevel, string>;
 
 /** Chin picks applied to a live herdr pane (src/lib/herdr/live-option.ts). */
@@ -1442,6 +1440,7 @@ const liveOptionChangeVariants = {
 	model: true,
 	effort: true,
 	fast: true,
+	ultracode: true,
 	mode: true,
 } satisfies Record<LiveOptionChange["kind"], true>;
 

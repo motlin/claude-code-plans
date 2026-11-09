@@ -17,8 +17,8 @@ import {
 } from "../lib/composer-state";
 import {
 	type EffortLevel,
-	effortLevelsFor,
 	EffortLevelSchema,
+	effortOptionsFor,
 	fastModeSupported,
 	type LaunchOptions,
 	modeTriggerLabel,
@@ -30,7 +30,15 @@ import {useShortcutKeys} from "../hooks/use-shortcut";
 import {effortLevelLabels} from "../lib/schema-choices";
 import {ConnectorsLoadingItem} from "./composer-connectors-loading";
 import {type ChinMenu, type ChinSurface, ModeMenu, ModelMenu} from "./composer-launch-menus";
-import {ADD_BUTTON_CLASS, CHIN_ICON_INK_CLASS, USAGE_RING_CLASS} from "./composer-tokens";
+import {
+	ADD_BUTTON_CLASS,
+	CHIN_ICON_INK_CLASS,
+	CHIN_PICKERS_CLASS,
+	ENVIRONMENT_PICKERS_CLASS,
+	ENVIRONMENT_SLOT_CLASS,
+	USAGE_RING_CLASS,
+	USAGE_RING_WRAPPER_CLASS,
+} from "./composer-tokens";
 import {localAccountQueryOptions} from "../lib/api/local-account";
 import {settingsHash} from "../lib/settings-hash";
 import {ConfirmDialog} from "./confirm-dialog";
@@ -107,9 +115,17 @@ export function UsageRing({usage}: {usage: ComposerUsage | null}) {
 			<Tooltip content={formatUsageTooltipRows(usage, now).join("\n")} multiline>
 				<PopoverTrigger aria-label={formatUsageAriaLabel(usage, now)} className={USAGE_RING_CLASS}>
 					<svg width="14" height="14" viewBox="0 0 14 14" className="-rotate-90" aria-hidden="true">
-						<circle cx="7" cy="7" r="6" fill="none" strokeWidth="2" stroke="var(--color-alpha-4)" />
 						<circle
-							data-usage-ring-arc
+							data-ring-track=""
+							cx="7"
+							cy="7"
+							r="6"
+							fill="none"
+							strokeWidth="2"
+							stroke="var(--color-alpha-3)"
+						/>
+						<circle
+							data-ring-arc=""
 							cx="7"
 							cy="7"
 							r="6"
@@ -210,8 +226,8 @@ function effortText(effort: string): string {
 }
 
 /**
- * The claude.ai/code composer chin: the permission mode on the left; the model +
- * effort picker and the 14px context-usage ring on the right. Mode, model and
+ * The claude.ai/code composer chin: an empty leading slot, then the trailing model + effort picker, the permission
+ * mode and the 14px usage ring, in that order on both the session chin and the new-session bar. Mode, model and
  * effort open menus whose choices apply to the live pane or the next fork or launch.
  */
 export const ComposerChin = memo(function ComposerChin({
@@ -239,6 +255,10 @@ export const ComposerChin = memo(function ComposerChin({
 			onOpenMenuChange(null);
 			setEffortConfirm({effort, open: true});
 		}
+	};
+	const ultracode = launchOptions.ultracode ?? false;
+	const selectUltracode = (on: boolean) => {
+		onLaunchOptionsChange({...launchOptions, ultracode: on});
 	};
 	const selectModel = (model: string) => {
 		onLaunchOptionsChange(withModel(launchOptions, model));
@@ -282,48 +302,76 @@ export const ComposerChin = memo(function ComposerChin({
 		const {model: _cleared, ...rest} = launchOptions;
 		onLaunchOptionsChange(rest);
 	};
+	const modelMenu = (
+		/* Upstream's one model + effort picker; ⇧⌘E opens it on its Effort submenu in a chin, plain on the bar */
+		<ModelMenu
+			open={openMenu === "model" || openMenu === "effort"}
+			onOpenChange={(open) => {
+				onOpenMenuChange(open ? "model" : null);
+			}}
+			surface={surface}
+			effortOpen={openMenu === "effort" && surface === "chin"}
+			current={currentModel}
+			currentLabel={modelText}
+			currentEffort={currentEffort}
+			onSelect={selectModel}
+			settingsOverride={overridden ? {label: modelLabel(settingsModel), onUse: clearModel} : null}
+			onSelectEffort={selectEffort}
+			effortOptions={effortOptionsFor(currentModel ?? state.modelId)}
+			ultracode={ultracode}
+			onUltracodeChange={selectUltracode}
+			fastMode={fastMode}
+			fastModeBlocked={fastModeBlocked}
+			onFastModeChange={selectFastMode}
+		/>
+	);
+	const modeMenu = (
+		<ModeMenu
+			{...menuProps("mode")}
+			surface={surface}
+			current={launchOptions.permissionMode ?? state.mode?.id ?? "default"}
+			currentLabel={modeLabel}
+			bypassPermissionsAllowed={launch.bypassPermissionsAllowed}
+			onSelect={(permissionMode) => {
+				onLaunchOptionsChange({...launchOptions, permissionMode});
+			}}
+		/>
+	);
+	const ring = (
+		<span className={USAGE_RING_WRAPPER_CLASS}>
+			<UsageRing usage={state.usage} />
+		</span>
+	);
 	return (
 		<>
-			<div className="flex min-w-0 items-center self-start">
-				<ModeMenu
-					{...menuProps("mode")}
-					surface={surface}
-					current={launchOptions.permissionMode ?? state.mode?.id ?? "default"}
-					currentLabel={modeLabel}
-					bypassPermissionsAllowed={launch.bypassPermissionsAllowed}
-					onSelect={(permissionMode) => {
-						onLaunchOptionsChange({...launchOptions, permissionMode});
-					}}
-				/>
-			</div>
-			<div className="ms-auto flex min-w-0 items-center gap-1 ps-2">
-				{/* Upstream's one model + effort picker; ⇧⌘E opens it on its Effort submenu in a chin, plain on the bar */}
-				<ModelMenu
-					open={openMenu === "model" || openMenu === "effort"}
-					onOpenChange={(open) => {
-						onOpenMenuChange(open ? "model" : null);
-					}}
-					surface={surface}
-					effortOpen={openMenu === "effort" && surface === "chin"}
-					current={currentModel}
-					currentLabel={modelText}
-					currentEffort={currentEffort}
-					onSelect={selectModel}
-					settingsOverride={overridden ? {label: modelLabel(settingsModel), onUse: clearModel} : null}
-					onSelectEffort={selectEffort}
-					effortLevels={effortLevelsFor(currentModel ?? state.modelId)}
-					fastMode={fastMode}
-					fastModeBlocked={fastModeBlocked}
-					onFastModeChange={selectFastMode}
-				/>
-				{/* Upstream's session chin announces the fast state at rest on every model; the new-session bar has no live region. */}
-				{surface === "chin" && (
-					<span data-fast-mode-status="" role="status" aria-live="polite" className="sr-only">
-						{fastMode ? "Fast mode on" : "Fast mode off"}
-					</span>
-				)}
-				<UsageRing usage={state.usage} />
-			</div>
+			{surface === "chin" ? (
+				<>
+					{/* Upstream's leading slot, empty for a CLI session. */}
+					<div className="flex items-center self-start" />
+					<div className="ms-auto flex min-w-0 items-center gap-1 ps-2">
+						<div className={CHIN_PICKERS_CLASS}>
+							{modelMenu}
+							<span className="inline-flex min-w-0">{modeMenu}</span>
+							{ring}
+							{/* Upstream's session chin announces the fast state at rest on every model. */}
+							<span data-fast-mode-status="" role="status" aria-live="polite" className="sr-only">
+								{fastMode ? "Fast mode on" : "Fast mode off"}
+							</span>
+						</div>
+					</div>
+				</>
+			) : (
+				/* The new-session bar's pickers group; it has no live region. */
+				<div className={ENVIRONMENT_PICKERS_CLASS}>
+					<div data-testid="environment-bar-model" className="flex items-center gap-1">
+						<div className={ENVIRONMENT_SLOT_CLASS}>{modelMenu}</div>
+					</div>
+					<div data-testid="environment-bar-mode" className={`${ENVIRONMENT_SLOT_CLASS} shrink-0`}>
+						{modeMenu}
+					</div>
+					<div className={ENVIRONMENT_SLOT_CLASS}>{ring}</div>
+				</div>
+			)}
 			<ConfirmDialog
 				open={effortConfirm.open}
 				onOpenChange={(open) => {

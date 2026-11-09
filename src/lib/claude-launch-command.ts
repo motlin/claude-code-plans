@@ -1,6 +1,6 @@
-import {FAST_MODE_SETTINGS} from "./launch-options";
+import {EFFORT_LEVELS as LAUNCH_EFFORT_LEVELS, LAUNCH_SETTINGS_VALUES} from "./launch-options";
 
-const EFFORT_LEVELS = new Set(["low", "medium", "high", "xhigh", "max", "ultracode"]);
+const EFFORT_LEVELS: ReadonlySet<string> = new Set(LAUNCH_EFFORT_LEVELS);
 const PERMISSION_MODES = new Set(["acceptEdits", "auto", "bypassPermissions", "default", "manual", "dontAsk", "plan"]);
 
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*$/;
@@ -14,8 +14,8 @@ const VALUE_FLAGS: Record<string, (value: string) => boolean> = {
 	"--model": (value) => /^[A-Za-z0-9][A-Za-z0-9._[\]-]*$/.test(value),
 	"--effort": (value) => EFFORT_LEVELS.has(value),
 	"--permission-mode": (value) => PERMISSION_MODES.has(value),
-	// Only fast mode; arbitrary settings JSON could set hooks or an apiKeyHelper.
-	"--settings": (value) => value === FAST_MODE_SETTINGS,
+	// Only fast mode and Ultracode; arbitrary settings JSON could set hooks or an apiKeyHelper.
+	"--settings": (value) => LAUNCH_SETTINGS_VALUES.has(value),
 };
 
 /** Returns an error message, or null when `args` only uses the supported launch flags. */

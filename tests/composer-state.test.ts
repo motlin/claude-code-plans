@@ -14,6 +14,7 @@ import {
 	usageRingDashoffset,
 	usageRingPercent,
 	usageRingSeverity,
+	withAccountLimits,
 } from "../src/lib/composer-state";
 import {type ComposerStateDependencies, getComposerState, managedSettingsPath} from "../src/lib/composer-state-server";
 import {handleComposerStateRequest} from "../src/routes/api/sessions.$id.composer-state";
@@ -168,9 +169,18 @@ describe("resolveComposerState precedence", () => {
 		{settings: "medium", expected: {id: "medium", label: "Medium"}},
 		{settings: "xhigh", expected: {id: "xhigh", label: "Extra-high"}},
 		{settings: "max", expected: {id: "max", label: "Max"}},
-		{settings: null, expected: {id: "high", label: "High"}},
+		{settings: null, expected: {id: "medium", label: "Medium"}},
 	])("effort: settings=$settings", ({settings, expected}) => {
 		const state = resolveComposerState({...EMPTY_SOURCES, settingsEffortLevel: settings});
+		expect(state.effort).toStrictEqual(expected);
+	});
+
+	it.each([
+		{modelId: "claude-opus-4-7", expected: {id: "xhigh", label: "Extra-high"}},
+		{modelId: "claude-fable-5-1", expected: {id: "high", label: "High"}},
+		{modelId: "claude-haiku-4-5-20251001", expected: {id: "high", label: "High"}},
+	])("effort: with no pick, the model's own default for $modelId", ({modelId, expected}) => {
+		const state = resolveComposerState({...EMPTY_SOURCES, statuslineModelId: modelId});
 		expect(state.effort).toStrictEqual(expected);
 	});
 
@@ -705,5 +715,60 @@ describe("managedSettingsPath", () => {
 			"/etc/claude-code/managed-settings.json",
 			"C:\\Program Files\\ClaudeCode\\managed-settings.json",
 		]);
+	});
+});
+
+describe("withAccountLimits", () => {
+	const summary = {
+		fiveHour: {usedPct: 22, resetsAt: NOW_SEC + 3600},
+		sevenDay: {usedPct: 50, resetsAt: NOW_SEC + 3 * 86_400},
+		updatedAt: "2026-09-29T08:00:00.000Z",
+	};
+
+	it("fills a chin with no usage from the account limits, so the home ring shows Weekly 50%", () => {
+		const usage = withAccountLimits(null, summary);
+
+		expect({
+			usage,
+			percent: usageRingPercent(usage),
+			offset: usageRingDashoffset(usageRingPercent(usage)),
+		}).toStrictEqual({
+			usage: {
+				contextTokens: null,
+				contextWindowSize: null,
+				contextPercent: null,
+				fiveHour: {usedPercentage: 22, resetsAt: NOW_SEC + 3600},
+				weekly: {usedPercentage: 50, resetsAt: NOW_SEC + 3 * 86_400},
+				updatedAt: "2026-09-29T08:00:00.000Z",
+			},
+			percent: 50,
+			offset: usageRingDashoffset(50),
+		});
+	});
+
+	it("keeps a session's context usage and adds limits only when the statusline has none", () => {
+		const contextOnly = {
+			contextTokens: 4_000,
+			contextWindowSize: 200_000,
+			contextPercent: 2,
+			fiveHour: null,
+			weekly: null,
+			updatedAt: "2026-09-29T09:00:00.000Z",
+		};
+		const withLimits = {...contextOnly, weekly: {usedPercentage: 9, resetsAt: NOW_SEC}};
+
+		expect({
+			filled: withAccountLimits(contextOnly, summary),
+			kept: withAccountLimits(withLimits, summary),
+			noSummary: withAccountLimits(contextOnly, undefined),
+		}).toStrictEqual({
+			filled: {
+				...contextOnly,
+				fiveHour: {usedPercentage: 22, resetsAt: NOW_SEC + 3600},
+				weekly: {usedPercentage: 50, resetsAt: NOW_SEC + 3 * 86_400},
+			},
+			kept: withLimits,
+			noSummary: contextOnly,
+		});
 	});
 });

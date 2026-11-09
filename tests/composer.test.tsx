@@ -318,19 +318,84 @@ describe("Composer", () => {
 			},
 		};
 
-		it("shows the mode, then the model + effort picker and the usage ring left to right", () => {
+		it("shows the model + effort picker, then the mode and the usage ring, all in upstream's trailing grid", () => {
 			vi.useFakeTimers({now: NOW_MS, toFake: ["Date"]});
 			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={CHIN} />);
 			const chin = document.querySelector('[data-cds="ChatComposerChin"]');
 			const labels = Array.from(chin?.querySelectorAll("[aria-label], [data-chin-mode]") ?? []).map(
 				(element) => element.getAttribute("aria-label") ?? element.textContent,
 			);
+			const [leading, trailing] = Array.from(chin?.children ?? []);
+			const grid = trailing?.firstElementChild;
+			const ring = screen.getByRole("button", {name: /^Usage:/});
 
-			expect(labels).toStrictEqual([
-				"Accept edits",
-				"Model: Opus 5.5 Extra",
-				"Usage: Weekly · all models: 65%, Resets in 14 hr 31 min",
-			]);
+			expect({
+				labels,
+				leading: {className: leading?.className, children: leading?.childElementCount},
+				trailing: trailing?.className,
+				grid: grid?.className,
+				gridChildren: Array.from(grid?.children ?? [], (child) =>
+					child.matches('[data-cds="ModelSelector"]') ? "model" : child.className,
+				),
+				mode: document.querySelector("[data-chin-mode]")?.closest(".inline-flex.min-w-0") !== null,
+				ringWrapper: ring.closest(".ms-px")?.parentElement === grid,
+			}).toStrictEqual({
+				labels: [
+					"Model: Opus 5.5 Extra",
+					"Accept edits",
+					"Usage: Weekly · all models: 65%, Resets in 14 hr 31 min",
+				],
+				leading: {className: "flex items-center self-start", children: 0},
+				trailing: "ms-auto flex min-w-0 items-center gap-1 ps-2",
+				grid: "grid min-w-0 grid-flow-col auto-cols-[minmax(0,max-content)] items-center gap-1 compact:me-1",
+				gridChildren: ["model", "inline-flex min-w-0", "flex shrink-0 ms-px", "sr-only"],
+				mode: true,
+				ringWrapper: true,
+			});
+		});
+
+		it("lays the home bar's pickers out as upstream's: model, permissions, ring, each in its surface slot", () => {
+			render(
+				<Composer
+					variant="home"
+					draftKey="home-alice"
+					onSend={() => {}}
+					chin={CHIN}
+					environment={<span>Alice's project</span>}
+				/>,
+			);
+			const row = screen.getByTestId("environment-bar-row");
+			const pickers = row.lastElementChild;
+			const model = screen.getByRole("button", {name: /^Model:/});
+			const name = model.firstElementChild?.firstElementChild;
+			const SLOT = "flex empty:hidden rounded bg-[var(--epitaxy-transcript-surface,var(--color-surface-1))]";
+
+			expect({
+				pickers: pickers?.className,
+				order: Array.from(
+					pickers?.children ?? [],
+					(child) => child.getAttribute("data-testid") ?? child.className,
+				),
+				modelSlot: screen.getByTestId("environment-bar-model").className,
+				modelWrapper: model.parentElement?.closest(`[class="${SLOT}"]`) !== null,
+				mode: screen.getByTestId("environment-bar-mode").className,
+				ringSlot: screen.getByRole("button", {name: /^Usage:/}).closest(".ms-px")?.parentElement?.className,
+				label: model.firstElementChild?.className,
+				name: name?.className,
+				effort: name?.nextElementSibling?.className,
+				collapse: model.getAttribute("data-collapse"),
+			}).toStrictEqual({
+				pickers: "flex grow items-center justify-end gap-x-1",
+				order: ["environment-bar-model", "environment-bar-mode", SLOT],
+				modelSlot: "flex items-center gap-1",
+				modelWrapper: true,
+				mode: `${SLOT} shrink-0`,
+				ringSlot: SLOT,
+				label: "flex min-w-0 items-center gap-1",
+				name: "text-start whitespace-nowrap supports-[min-width:calc-size(auto,size)]:line-clamp-1 supports-[min-width:calc-size(auto,size)]:break-all supports-[min-width:calc-size(auto,size)]:whitespace-normal supports-[min-width:calc-size(auto,size)]:min-w-[calc-size(max-content,min(size,10ch))]",
+				effort: "shrink-0 whitespace-pre text-muted-as-secondary",
+				collapse: null,
+			});
 		});
 
 		it("puts + inside the 44px composer card at its left edge, as upstream does", () => {
@@ -393,7 +458,7 @@ describe("Composer", () => {
 				mode: pick(document.querySelector("[data-chin-mode]"), ["h-6", "px-1.5", "text-secondary-control"]),
 				model: {
 					height: pick(model, ["h-6"]),
-					parts: Array.from(model.children, (part) => ({
+					parts: Array.from(model.firstElementChild?.children ?? [], (part) => ({
 						text: part.textContent,
 						classes: classes(part),
 					})),
@@ -414,11 +479,8 @@ describe("Composer", () => {
 				model: {
 					height: ["h-6"],
 					parts: [
-						{text: "Opus 5.5", classes: ["truncate"]},
-						{
-							text: " Extra",
-							classes: ["shrink-0", "whitespace-pre", "text-muted-as-secondary", "@max-[280px]:hidden"],
-						},
+						{text: "Opus 5.5", classes: ["min-w-6", "truncate"]},
+						{text: " Extra", classes: ["shrink-0", "whitespace-pre", "text-ink-muted", "ms-1"]},
 					],
 				},
 				ring: {height: ["h-6", "aspect-square"], svg: ["14", "14"]},
@@ -432,7 +494,12 @@ describe("Composer", () => {
 
 			expect({
 				viewBox: svg?.getAttribute("viewBox"),
-				track: [track?.getAttribute("r"), track?.getAttribute("stroke")],
+				track: [
+					track?.getAttribute("r"),
+					track?.getAttribute("stroke"),
+					track?.hasAttribute("data-ring-track"),
+				],
+				arcMarked: arc?.hasAttribute("data-ring-arc"),
 				arc: {
 					r: arc?.getAttribute("r"),
 					stroke: arc?.getAttribute("stroke"),
@@ -442,7 +509,8 @@ describe("Composer", () => {
 				},
 			}).toStrictEqual({
 				viewBox: "0 0 14 14",
-				track: ["6", "var(--color-alpha-4)"],
+				track: ["6", "var(--color-alpha-3)", true],
+				arcMarked: true,
 				arc: {
 					r: "6",
 					stroke: "var(--color-fill-accent)",
@@ -463,7 +531,7 @@ describe("Composer", () => {
 				weekly: {...CHIN.usage.weekly!, usedPercentage: weekly},
 			};
 			render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} chin={{...CHIN, usage}} />);
-			expect(document.querySelector("[data-usage-ring-arc]")?.getAttribute("stroke")).toBe(stroke);
+			expect(document.querySelector("[data-ring-arc]")?.getAttribute("stroke")).toBe(stroke);
 		});
 
 		const renderWithAccount = (planDetail?: string) => {

@@ -12,6 +12,11 @@ export const MenuKindContext = createContext<MenuKind>("Menu");
 /* Upstream's size:"auto" icons follow --cds-icon (16px compact, 20px comfortable), which the
    popup's data-density sets, so one slot string serves both densities. */
 const ICON_GLYPH_CLASS = "[&_svg]:size-icon";
+/* Literals, so Tailwind's scanner emits both. */
+const TWO_LINE_PB_CLASS =
+	"pb-[calc((var(--cds-h-control)-var(--upstream-text-body)-var(--upstream-leading-footnote)+var(--upstream-text-footnote))/2)]";
+const PANELS_TWO_LINE_PB_CLASS =
+	"panels-fine:pb-[calc((var(--cds-h-control)-var(--upstream-text-body)-var(--upstream-leading-footnote)+var(--upstream-text-footnote))/2)]";
 export const DENSITY_CLASSES = {
 	compact: {
 		popup: "rounded-r7",
@@ -19,8 +24,8 @@ export const DENSITY_CLASSES = {
 		text: "text-[13px]/[19px]",
 		item: "rounded-r5 px-2 py-[2.5px]",
 		singleLine: "h-6 items-center",
-		/* Upstream pads compact two-line rows 2.5px 8px 4px. */
-		twoLine: "items-start pb-1",
+		/* Upstream pads two-line rows' bottom (h-control − body size − footnote leading + footnote size) / 2: 4px compact. */
+		twoLine: `items-start ${TWO_LINE_PB_CLASS}`,
 		separator: "mx-2",
 		icon: ICON_GLYPH_CLASS,
 		/* Upstream's row gap-xs and size-icon slot (--cds-icon 1rem), which may overflow a short line. */
@@ -43,7 +48,9 @@ export const DENSITY_CLASSES = {
 		/* Rows are upstream's h-control (32, 28 under panels on a fine pointer) with py (h-control - 20) / 2. */
 		item: "rounded-r6 px-2.5 py-1.5 panels-fine:py-1",
 		singleLine: "h-8 panels-fine:h-7 items-center",
-		twoLine: "min-h-8 panels-fine:min-h-7 items-start",
+		/* The same formula: 5px under panels on a fine pointer (28px control), 7px otherwise; restated under panels-fine
+		   so the item's `panels-fine:py-1` doesn't win. */
+		twoLine: `min-h-8 panels-fine:min-h-7 items-start ${TWO_LINE_PB_CLASS} ${PANELS_TWO_LINE_PB_CLASS}`,
 		separator: "mx-2.5",
 		icon: ICON_GLYPH_CLASS,
 		gap: "gap-2",

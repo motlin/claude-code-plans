@@ -16,16 +16,24 @@ import {HomeTitlebar} from "./home/home-page";
 import type {ShellChinLabels} from "../lib/shell-chin-store";
 import {
 	ADD_BUTTON_CLASS,
+	BAR_EFFORT_LABEL_CLASS,
+	BAR_MODEL_LABEL_CLASS,
+	BAR_MODEL_NAME_CLASS,
+	CHIN_EFFORT_LABEL_CLASS,
+	CHIN_MODEL_LABEL_CLASS,
+	CHIN_MODEL_NAME_CLASS,
+	CHIN_PICKERS_CLASS,
 	CHIN_TRIGGER_CLASS,
 	COMPOSER_CARD_CLASS,
 	COMPOSER_CHIN_CLASS,
 	COMPOSER_EDITOR_ROW_CLASS,
-	EFFORT_LABEL_CLASS,
 	ENVIRONMENT_BAR_CLASS,
 	ENVIRONMENT_BAR_ROW_CLASS,
+	ENVIRONMENT_PICKERS_CLASS,
 	ENVIRONMENT_PLACE_CLASS,
 	PLACE_CHIP_CLASS,
 	USAGE_RING_CLASS,
+	USAGE_RING_WRAPPER_CLASS,
 } from "./composer-tokens";
 import {HOME_DOCK_CLASS, SESSION_DOCK_COLUMN_CLASS, SESSION_FOOTER_CLASS, SESSION_TILE_CLASS} from "./dock-tokens";
 import {fallbackShellFor} from "./fallback-shell";
@@ -88,41 +96,59 @@ function FallbackComposer({
 								<span className={`h-3 w-16 ${BAR_CLASS}`} />
 							</span>
 						</div>
-						<FallbackChinControls chin={chin} />
+						<FallbackChinControls chin={chin} surface="bar" />
 					</div>
 				</div>
 			) : (
 				<div data-cds="ChatComposerChin" data-fallback-chin={painted} className={COMPOSER_CHIN_CLASS}>
-					<FallbackChinControls chin={chin} />
+					<FallbackChinControls chin={chin} surface="chin" />
 				</div>
 			)}
 		</div>
 	);
 }
 
-/** The chin's mode, then its model and effort beside the usage ring, as the live ComposerChin lays them out. */
-function FallbackChinControls({chin}: {chin: ShellChinLabels | null}) {
-	return (
+/** The chin's model and effort, then its mode, then the usage ring, as the live ComposerChin lays them out. */
+function FallbackChinControls({chin, surface}: {chin: ShellChinLabels | null; surface: "bar" | "chin"}) {
+	const bar = surface === "bar";
+	const controls = (
 		<>
-			<span className="flex min-w-0 items-center self-start">
+			<span data-fallback-chin-readout="" className={CHIN_TRIGGER_CLASS}>
+				{chin && (
+					<span className={bar ? BAR_MODEL_LABEL_CLASS : CHIN_MODEL_LABEL_CLASS}>
+						<span className={bar ? BAR_MODEL_NAME_CLASS : CHIN_MODEL_NAME_CLASS}>{chin.model}</span>
+						<span
+							className={bar ? BAR_EFFORT_LABEL_CLASS : CHIN_EFFORT_LABEL_CLASS}
+						>{` ${chin.effort}`}</span>
+					</span>
+				)}
+			</span>
+			<span className="inline-flex min-w-0">
 				<span data-fallback-chin-readout="" className={CHIN_TRIGGER_CLASS}>
 					{chin?.mode}
 				</span>
 			</span>
-			<span data-fallback-chin-end="" className="ms-auto flex min-w-0 items-center gap-1 ps-2">
-				<span data-fallback-chin-readout="" className={CHIN_TRIGGER_CLASS}>
-					{chin && (
-						<>
-							<span className="truncate">{chin.model}</span>
-							<span className={EFFORT_LABEL_CLASS}>{` ${chin.effort}`}</span>
-						</>
-					)}
-				</span>
+			<span className={USAGE_RING_WRAPPER_CLASS}>
 				<span className={USAGE_RING_CLASS}>
 					<svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true">
 						<circle cx="6" cy="6" r="5" fill="none" strokeWidth="2" stroke="var(--color-alpha-2)" />
 					</svg>
 				</span>
+			</span>
+		</>
+	);
+	if (bar) {
+		return (
+			<span data-fallback-chin-end="" className={ENVIRONMENT_PICKERS_CLASS}>
+				{controls}
+			</span>
+		);
+	}
+	return (
+		<>
+			<span className="flex items-center self-start" />
+			<span data-fallback-chin-end="" className="ms-auto flex min-w-0 items-center gap-1 ps-2">
+				<span className={CHIN_PICKERS_CLASS}>{controls}</span>
 			</span>
 		</>
 	);

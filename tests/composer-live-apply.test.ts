@@ -118,8 +118,23 @@ describe("herdr live-option handler", () => {
 			sessionId: "session-grace",
 			change: {kind: "fast", on: false},
 		});
+		const ultracode = await callHandler({
+			sessionId: "session-grace",
+			change: {kind: "ultracode", on: true},
+		});
 
-		expect({model, effort, mode, fastOn, fastOff}).toStrictEqual({
+		expect({model, effort, mode, fastOn, fastOff, ultracode}).toStrictEqual({
+			ultracode: {
+				status: 200,
+				body: {ok: true},
+				herdrCalls: [
+					{
+						id: "ccp:live-option:test-200",
+						method: "agent.prompt",
+						params: {target: "w200:p200", text: "/effort ultracode on"},
+					},
+				],
+			},
 			model: {
 				status: 200,
 				body: {ok: true},

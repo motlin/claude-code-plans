@@ -15,7 +15,8 @@ import {restoreStoredDraft} from "../../hooks/use-composer-draft";
 import {startFailedOffscreenToast, type StartFailure} from "../../lib/send-rejection";
 import {buildClaudeCopyCommand} from "../../lib/claude-launch-command";
 import {writeClipboardText} from "../../lib/clipboard";
-import {resolveComposerState} from "../../lib/composer-state";
+import {usageQueryOptions} from "../../lib/api/usage";
+import {resolveComposerState, withComposerAccountLimits} from "../../lib/composer-state";
 import {buildLaunchFlags, type LaunchOptions} from "../../lib/launch-options";
 import {
 	onHomeComposerFocusRequest,
@@ -89,27 +90,32 @@ export function HomeComposer({
 	const slashMenu = useSlashCommands(project?.projectPath ?? undefined);
 	const {data: promptHistory} = useQuery(promptHistoryQueryOptions(undefined));
 
+	// The home bar has no statusline, so its ring reads the account's plan limits.
+	const {data: accountUsage} = useQuery(usageQueryOptions);
 	const chin = useMemo(
 		() =>
 			defaults === undefined
 				? undefined
-				: resolveComposerState({
-						hookPermissionMode: null,
-						jsonlPermissionMode: null,
-						settingsDefaultMode: defaults.defaultMode,
-						statuslineModel: null,
-						statuslineModelId: null,
-						lastAssistantModel: null,
-						lastAssistantUsage: null,
-						lastAssistantEffort: null,
-						fastMode: defaults.fastMode,
-						fastModeBlocked: defaults.fastModeBlocked,
-						settingsModel: defaults.model,
-						settingsEffortLevel: defaults.effortLevel,
-						statusline: null,
-						statuslineUpdatedAt: null,
-					}),
-		[defaults],
+				: withComposerAccountLimits(
+						resolveComposerState({
+							hookPermissionMode: null,
+							jsonlPermissionMode: null,
+							settingsDefaultMode: defaults.defaultMode,
+							statuslineModel: null,
+							statuslineModelId: null,
+							lastAssistantModel: null,
+							lastAssistantUsage: null,
+							lastAssistantEffort: null,
+							fastMode: defaults.fastMode,
+							fastModeBlocked: defaults.fastModeBlocked,
+							settingsModel: defaults.model,
+							settingsEffortLevel: defaults.effortLevel,
+							statusline: null,
+							statuslineUpdatedAt: null,
+						}),
+						accountUsage,
+					),
+		[defaults, accountUsage],
 	);
 
 	useEffect(

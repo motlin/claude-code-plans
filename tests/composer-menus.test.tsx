@@ -93,6 +93,12 @@ function radioRows(menu: HTMLElement) {
 		}));
 }
 
+/** Upstream's two-line row bottom pad: (h-control − body size − footnote leading + footnote size) / 2. */
+const TWO_LINE_PB =
+	"pb-[calc((var(--cds-h-control)-var(--upstream-text-body)-var(--upstream-leading-footnote)+var(--upstream-text-footnote))/2)]";
+/** Upstream's 500-weight footnote menu header. */
+const MENU_HEADER = "px-2 comfortable:px-2.5 py-1 text-footnote font-medium text-[var(--menu-muted)]";
+
 beforeEach(() => {
 	vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
 });
@@ -151,7 +157,7 @@ describe("Composer mode menu", () => {
 				return {
 					twoLine: classes.includes("items-start"),
 					singleLine: classes.includes("h-6"),
-					paddedBottom: classes.includes("pb-1"),
+					paddedBottom: classes.includes(TWO_LINE_PB),
 					description: item.querySelector("[data-menu-item-description]")?.className,
 					trailing: item.querySelector("[data-menu-item-trailing]")?.className,
 				};
@@ -161,7 +167,7 @@ describe("Composer mode menu", () => {
 			twoLine: true,
 			singleLine: false,
 			paddedBottom: true,
-			description: "break-words text-[12px]/[15px] text-[var(--menu-muted)]",
+			description: "break-words text-footnote text-[var(--menu-muted)]",
 			trailing: "flex shrink-0 items-center gap-1.5 ms-3 h-[1lh] self-start",
 		};
 		expect({rows, fixedWidth: popup?.classList.contains("w-[280px]")}).toStrictEqual({
@@ -346,7 +352,7 @@ describe("Composer home bar model menu", () => {
 
 		expect(modelHeader(menu)).toStrictEqual({
 			role: "presentation",
-			labelClass: "px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]",
+			labelClass: MENU_HEADER,
 			wrapperClass: "shrink-0 px-1 pt-1",
 			insideScroller: false,
 		});
@@ -639,7 +645,7 @@ describe("Composer model menu Fast mode section", () => {
 			parentRole: "none",
 			reason: ENV_BLOCKED.reason,
 			labelNest: FAST_LABEL_NEST([
-				{tag: "span", attrs: {class: "mt-1 block text-[12px]/[15px] text-[var(--menu-muted)]"}, children: []},
+				{tag: "span", attrs: {class: "mt-1 block text-footnote text-[var(--menu-muted)]"}, children: []},
 			]),
 			description: "Off for this session",
 			calls: [["Continue Peggy's test", {}]],
@@ -716,7 +722,7 @@ describe("Composer model menu Fast mode section", () => {
 			separator: "separator",
 			header: {
 				role: "presentation",
-				className: "px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]",
+				className: MENU_HEADER,
 				inner: {tag: "span", attrs: {class: "flex items-center gap-1"}, children: []},
 				text: "Fast mode",
 			},
@@ -853,7 +859,9 @@ describe("Composer model trigger Fast word and live status", () => {
 		const trigger = screen.getByRole("button", {name: /^Model:/});
 		return {
 			label: trigger.getAttribute("aria-label"),
-			children: Array.from(trigger.children).map((child) => ({
+			collapse: trigger.getAttribute("data-collapse"),
+			wrapper: trigger.firstElementChild?.getAttribute("class"),
+			children: Array.from(trigger.firstElementChild?.children ?? []).map((child) => ({
 				fast: child.hasAttribute("data-fast-label"),
 				className: child.getAttribute("class"),
 				text: child.textContent,
@@ -866,7 +874,10 @@ describe("Composer model trigger Fast word and live status", () => {
 		return status === null ? null : {className: status.getAttribute("class"), text: status.textContent};
 	}
 
-	const TAIL_CLASS = "shrink-0 whitespace-pre text-muted-as-secondary @max-[280px]:hidden";
+	/** Upstream's chin "pill" trigger: a clipping baseline row, a name truncating to 1.5rem and a never-hidden muted tail. */
+	const PILL_CLASS = "flex min-w-0 items-baseline overflow-hidden";
+	const NAME_CLASS = "min-w-6 truncate";
+	const TAIL_CLASS = "shrink-0 whitespace-pre text-ink-muted ms-1";
 
 	it("puts upstream's Fast word between the model and the effort while the session is fast", () => {
 		renderComposer({chin: {...CHIN, fastMode: true}});
@@ -874,8 +885,10 @@ describe("Composer model trigger Fast word and live status", () => {
 		expect({trigger: triggerParts(), status: liveStatus()}).toStrictEqual({
 			trigger: {
 				label: "Model: Opus 5.5 Fast High",
+				collapse: "name",
+				wrapper: PILL_CLASS,
 				children: [
-					{fast: false, className: "truncate", text: "Opus 5.5"},
+					{fast: false, className: NAME_CLASS, text: "Opus 5.5"},
 					{fast: true, className: TAIL_CLASS, text: " Fast"},
 					{fast: false, className: TAIL_CLASS, text: " High"},
 				],
@@ -899,8 +912,10 @@ describe("Composer model trigger Fast word and live status", () => {
 			before: {
 				trigger: {
 					label: "Model: Opus 5.5 High",
+					collapse: "name",
+					wrapper: PILL_CLASS,
 					children: [
-						{fast: false, className: "truncate", text: "Opus 5.5"},
+						{fast: false, className: NAME_CLASS, text: "Opus 5.5"},
 						{fast: false, className: TAIL_CLASS, text: " High"},
 					],
 				},
@@ -989,16 +1004,31 @@ describe("Composer effort submenu", () => {
 		return submenu;
 	}
 
-	it("opens the model menu on ⇧⌘E at upstream's Effort submenu: its hint, then Low … Max and Ultracode with the Recommended and Max chips", async () => {
+	function effortRows(submenu: HTMLElement) {
+		return within(submenu)
+			.getAllByRole("menuitemradio")
+			.map((item) => ({
+				id: item.getAttribute("data-effort-id"),
+				recommended: item.querySelector("[data-effort-recommended]") !== null,
+				warning: item.querySelector("[data-effort-warning]") !== null,
+				info: item.querySelector("svg[data-effort-info-icon]")?.getAttribute("class") ?? null,
+			}));
+	}
+
+	it("opens the model menu on ⇧⌘E at upstream's Effort submenu: its hint, Low … Max with the Recommended and Max chips, then the Ultracode switch", async () => {
 		renderComposer();
 		const submenu = await openEffortMenu();
 		const main = screen.getAllByRole("menu")[0];
+		const ultracode = within(submenu).getByRole("menuitemcheckbox", {name: "Ultracode"});
 
 		expect({
 			main: within(main!)
 				.getAllByRole("menuitem")
 				.map((item) => item.textContent),
-			hint: submenu.querySelector("[data-menu-label]")?.textContent,
+			hint: {
+				text: submenu.querySelector("[data-menu-label]")?.textContent,
+				className: submenu.querySelector("[data-menu-label]")?.className,
+			},
 			side: submenu.getAttribute("data-side"),
 			align: submenu.getAttribute("data-align"),
 			rows: within(submenu)
@@ -1015,10 +1045,21 @@ describe("Composer effort submenu", () => {
 				text: submenu.querySelector("[data-effort-warning]")?.textContent,
 				icon: submenu.querySelector("[data-effort-warning] svg")?.getAttribute("class"),
 			},
+			info: submenu.querySelector("[data-effort-info-icon]"),
+			afterRadios: ultracode.previousElementSibling?.getAttribute("role"),
+			ultracode: {
+				checked: ultracode.getAttribute("aria-checked"),
+				switchSize: ultracode
+					.querySelector('div[aria-hidden="true"].pointer-events-none [role=switch]')
+					?.getAttribute("data-size"),
+			},
 		}).toStrictEqual({
 			main: ["EffortHigh", "More models"],
-			hint: "Higher effort means more thorough responses, but takes longer and uses your limits faster.",
-			side: "inline-start",
+			hint: {
+				text: "Higher effort means more thorough responses, but takes longer and uses your limits faster.",
+				className: "px-2 comfortable:px-2.5 py-1 text-footnote font-normal text-[var(--menu-muted)]",
+			},
+			side: "right",
 			align: "end",
 			rows: [
 				{id: "low", label: "Low", labelClass: "truncate", checked: "false"},
@@ -1026,12 +1067,6 @@ describe("Composer effort submenu", () => {
 				{id: "high", label: "High", labelClass: "truncate", checked: "true"},
 				{id: "xhigh", label: "Extra", labelClass: "truncate", checked: "false"},
 				{id: "max", label: "Max", labelClass: "truncate", checked: "false"},
-				{
-					id: "ultracode",
-					label: "Ultracode",
-					labelClass: "truncate font-medium text-[var(--text-pro)]",
-					checked: "false",
-				},
 			],
 			recommended:
 				"inline-flex items-center gap-1 h-5 whitespace-nowrap rounded-full px-1.5 text-[11px] font-medium bg-alpha-1 text-secondary",
@@ -1041,10 +1076,57 @@ describe("Composer effort submenu", () => {
 				text: "3.5× or more usage",
 				icon: "lucide lucide-triangle-alert size-3 shrink-0",
 			},
+			info: null,
+			afterRadios: "separator",
+			ultracode: {checked: "false", switchSize: "sm"},
 		});
 	});
 
-	it("opens More models to the inline start as well", async () => {
+	it.each([
+		{
+			name: "Fable 5.1",
+			modelId: "claude-fable-5-1",
+			ids: ["low", "medium", "high", "xhigh", "max"],
+			recommended: "high",
+		},
+		{
+			name: "Opus 4.7",
+			modelId: "claude-opus-4-7",
+			ids: ["low", "medium", "high", "xhigh", "max"],
+			recommended: "xhigh",
+		},
+		{name: "Opus 4.6", modelId: "claude-opus-4-6", ids: ["low", "medium", "high", "max"], recommended: "high"},
+	])(
+		"lists $name's own catalog rows: Recommended on $recommended, and a plain Max with an Info glyph",
+		async ({name, modelId, ids, recommended}) => {
+			renderComposer({chin: {...CHIN, model: name, modelId}});
+			const submenu = await openEffortMenu();
+
+			expect(effortRows(submenu)).toStrictEqual(
+				ids.map((id) => ({
+					id,
+					recommended: id === recommended,
+					warning: false,
+					info: id === "max" ? "lucide lucide-info size-3 shrink-0 text-ink-muted" : null,
+				})),
+			);
+		},
+	);
+
+	it("shows upstream's generic Max tooltip on a model without the Max warning", async () => {
+		renderComposer({chin: {...CHIN, model: "Fable 5.1", modelId: "claude-fable-5-1"}});
+		const submenu = await openEffortMenu();
+		const anchor = within(submenu).getByRole("menuitemradio", {name: /^Max/}).parentElement;
+		if (anchor === null) throw new Error("Max row has no tooltip anchor");
+		fireEvent.pointerEnter(anchor);
+		const tooltip = await screen.findByRole("tooltip");
+
+		expect(tooltip.textContent).toBe(
+			"May use excessive tokens resulting in long response times and may hit token limits. Use sparingly for the hardest tasks.",
+		);
+	});
+
+	it("opens More models to the inline end, capped at half the viewport, with each row's model id", async () => {
 		renderComposer();
 		openModelMenu();
 		const main = await screen.findByRole("menu");
@@ -1052,8 +1134,32 @@ describe("Composer effort submenu", () => {
 		await waitFor(() => {
 			expect(screen.getAllByRole("menu")).toHaveLength(2);
 		});
+		const more = screen.getAllByRole("menu")[1]!;
 
-		expect(screen.getAllByRole("menu")[1]?.getAttribute("data-side")).toBe("inline-start");
+		expect({
+			side: more.getAttribute("data-side"),
+			capped: more.closest('[class*="max-h-[min(50vh,var(--available-height))]"]') !== null,
+			primary: within(main)
+				.getAllByRole("menuitemradio")
+				.map((item) => item.getAttribute("data-model-id")),
+			ids: within(more)
+				.getAllByRole("menuitemradio")
+				.map((item) => item.getAttribute("data-model-id")),
+		}).toStrictEqual({
+			side: "right",
+			capped: true,
+			primary: ["claude-opus-5-5", "claude-fable-5-1", "claude-sonnet-5-5", "claude-haiku-5-5"],
+			ids: [
+				"claude-haiku-4-5-20251001",
+				"claude-sonnet-5",
+				"claude-opus-5",
+				"claude-fable-5",
+				"claude-opus-4-8",
+				"claude-opus-4-7",
+				"claude-opus-4-6",
+				"claude-sonnet-4-6",
+			],
+		});
 	});
 
 	it("shows upstream's Max usage tooltip on the right when hovering the Max row", async () => {
@@ -1070,21 +1176,39 @@ describe("Composer effort submenu", () => {
 		});
 	});
 
-	it("picks Ultracode and sends it as the effort", async () => {
+	it("toggles Ultracode with the menu kept open, beside the effort: the trigger's pro tail, the hint and the launch", async () => {
 		const onSend = renderComposer();
 		const submenu = await openEffortMenu();
-		fireEvent.click(within(submenu).getByRole("menuitemradio", {name: "Ultracode"}));
+		fireEvent.click(within(submenu).getByRole("menuitemcheckbox", {name: "Ultracode"}));
+		await waitFor(() => {
+			expect(
+				within(submenu).getByRole("menuitemcheckbox", {name: "Ultracode"}).getAttribute("aria-checked"),
+			).toBe("true");
+		});
+		const main = screen.getAllByRole("menu")[0]!;
+		const hint = within(main)
+			.getByRole("menuitem", {name: /^Effort/})
+			.querySelector("[data-menu-value]")?.textContent;
+		const menus = screen.getAllByRole("menu").length;
+		fireEvent.keyDown(main, {key: "Escape"});
 		await waitFor(() => {
 			expect(screen.queryByRole("menu")).toBeNull();
 		});
+		const trigger = screen.getByRole("button", {name: /^Model:/});
 		sendPrompt("Continue Erin's test");
 
 		expect({
-			name: screen.getByRole("button", {name: /^Model:/}).getAttribute("aria-label"),
+			menus,
+			hint,
+			name: trigger.getAttribute("aria-label"),
+			tail: trigger.querySelector("[data-ultracode-label]")?.outerHTML,
 			calls: onSend.mock.calls,
 		}).toStrictEqual({
-			name: "Model: Opus 5.5 Ultracode",
-			calls: [["Continue Erin's test", {effort: "ultracode"}]],
+			menus: 2,
+			hint: "High · Ultracode",
+			name: "Model: Opus 5.5 High · Ultracode",
+			tail: '<span data-ultracode-label="" class="shrink-0 whitespace-pre ms-1 font-medium text-[var(--text-pro)]"> · Ultracode</span>',
+			calls: [["Continue Erin's test", {ultracode: true}]],
 		});
 	});
 
@@ -1107,6 +1231,70 @@ describe("Composer effort submenu", () => {
 			text: "Opus 5.5 Extra",
 			calls: [["Continue Erin's test", {effort: "xhigh"}]],
 		});
+	});
+
+	it("drops a picked Extra when switching to a model without it", async () => {
+		const onSend = renderComposer();
+		const submenu = await openEffortMenu();
+		fireEvent.click(within(submenu).getByRole("menuitemradio", {name: /^Extra/}));
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		openModelMenu();
+		const main = await screen.findByRole("menu");
+		fireEvent.click(within(main).getByRole("menuitem", {name: "More models"}));
+		await waitFor(() => {
+			expect(screen.getAllByRole("menu")).toHaveLength(2);
+		});
+		fireEvent.click(within(screen.getAllByRole("menu")[1]!).getByRole("menuitemradio", {name: "Opus 4.6"}));
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		sendPrompt("Continue Erin's test");
+
+		expect({
+			name: screen.getByRole("button", {name: /^Model:/}).getAttribute("aria-label"),
+			calls: onSend.mock.calls,
+		}).toStrictEqual({
+			name: "Model: Opus 4.6 High",
+			calls: [["Continue Erin's test", {model: "claude-opus-4-6"}]],
+		});
+	});
+
+	it("trails the Effort hint with a 12px warning icon at Opus 5.5's Max, and plain text otherwise", async () => {
+		renderComposer({chin: {...CHIN, effort: {id: "max", label: "Max"}}});
+		openModelMenu();
+		const main = await screen.findByRole("menu");
+		const effort = within(main).getByRole("menuitem", {name: /^Effort/});
+		const hint = effort.querySelector("[data-effort-warning-hint]");
+
+		expect({
+			className: hint?.className,
+			text: hint?.textContent,
+			name: hint?.firstElementChild?.className,
+			icon: hint?.querySelector("svg")?.getAttribute("class"),
+			plainValue: effort.querySelector("[data-menu-value]"),
+		}).toStrictEqual({
+			className: "flex items-center gap-1 text-footnote text-[var(--menu-muted)]",
+			text: "Max",
+			name: "max-w-[160px] truncate",
+			icon: "lucide lucide-triangle-alert size-3 shrink-0 text-warning-100",
+			plainValue: null,
+		});
+	});
+
+	it("shows Fable's Max as a plain hint with no warning icon", async () => {
+		renderComposer({
+			chin: {...CHIN, model: "Fable 5.1", modelId: "claude-fable-5-1", effort: {id: "max", label: "Max"}},
+		});
+		openModelMenu();
+		const main = await screen.findByRole("menu");
+		const effort = within(main).getByRole("menuitem", {name: /^Effort/});
+
+		expect({
+			hint: effort.querySelector("[data-effort-warning-hint]"),
+			value: effort.querySelector("[data-menu-value]")?.textContent,
+		}).toStrictEqual({hint: null, value: "Max"});
 	});
 });
 
@@ -1409,29 +1597,57 @@ describe("Composer chin tooltips and contrast", () => {
 		}).toStrictEqual({
 			focus: ["focus-visible:shadow-focus"],
 			expanded: ["aria-expanded:bg-fill-ghost-hover"],
-			effort: "shrink-0 whitespace-pre text-muted-as-secondary @max-[280px]:hidden",
+			effort: "shrink-0 whitespace-pre text-ink-muted ms-1",
 		});
 	});
 
-	it("ends the model trigger in a 12px warning icon at Max effort", () => {
-		renderComposer({chin: {...CHIN, effort: {id: "max", label: "Max"}}});
-		const trigger = screen.getByRole("button", {name: "Model: Opus 5.5 Max"});
-		const last = trigger.lastElementChild;
+	it("ends the model trigger in a 12px warning icon at Opus 5.5's Max, named by the badge message, with the Max tooltip", () => {
+		vi.useFakeTimers();
+		try {
+			renderComposer({chin: {...CHIN, effort: {id: "max", label: "Max"}}});
+			const trigger = screen.getByRole("button", {name: "Model: Opus 5.5 Max 3.5× or more usage"});
+			const last = trigger.lastElementChild;
 
-		expect({
-			tag: last?.tagName.toLowerCase(),
-			hidden: last?.getAttribute("aria-hidden"),
-			warning: last?.hasAttribute("data-effort-warning-icon"),
-			sized: last
-				?.getAttribute("class")
-				?.split(" ")
-				.filter((name) => name.startsWith("size-") || name.startsWith("text-")),
-		}).toStrictEqual({
-			tag: "svg",
-			hidden: "true",
-			warning: true,
-			sized: ["size-3", "text-warning-100"],
-		});
+			expect({
+				tag: last?.tagName.toLowerCase(),
+				role: last?.getAttribute("role"),
+				label: last?.getAttribute("aria-label"),
+				hidden: last?.getAttribute("aria-hidden"),
+				warning: last?.hasAttribute("data-effort-warning-icon"),
+				sized: last
+					?.getAttribute("class")
+					?.split(" ")
+					.filter((name) => name.startsWith("size-") || name.startsWith("text-")),
+				tooltip: hoverTooltip(trigger),
+			}).toStrictEqual({
+				tag: "svg",
+				role: "img",
+				label: "3.5× or more usage",
+				hidden: null,
+				warning: true,
+				sized: ["size-3", "text-warning-100"],
+				tooltip: "Claude thinks longer with Max effort and can consume 3.5× or more usage than Medium.",
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("has no warning icon, aria suffix or tooltip at Max on a model without the Max warning", () => {
+		vi.useFakeTimers();
+		try {
+			renderComposer({
+				chin: {...CHIN, model: "Fable 5.1", modelId: "claude-fable-5-1", effort: {id: "max", label: "Max"}},
+			});
+			const trigger = screen.getByRole("button", {name: "Model: Fable 5.1 Max"});
+
+			expect({
+				icon: document.querySelector("[data-effort-warning-icon]"),
+				tooltip: hoverTooltip(trigger),
+			}).toStrictEqual({icon: null, tooltip: null});
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("has no warning icon below Max", () => {
@@ -1470,13 +1686,19 @@ describe("Composer chin tooltips and contrast", () => {
 		}
 	});
 
-	it("heads the Mode menu with a 500-weight label padded 4px 8px", async () => {
+	it("heads the Mode menu with upstream's 500-weight footnote label, inside the group it names", async () => {
 		renderComposer();
 		openModeMenu();
 		const menu = await screen.findByRole("menu");
 		const label = within(menu).getByText("Mode");
 
-		expect(label.getAttribute("class")).toBe("px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]");
+		const group = within(menu).getByRole("group");
+
+		expect({
+			className: label.getAttribute("class"),
+			hidden: label.getAttribute("aria-hidden"),
+			labels: group.getAttribute("aria-labelledby") === label.id && label.parentElement === group,
+		}).toStrictEqual({className: MENU_HEADER, hidden: "true", labels: true});
 	});
 });
 

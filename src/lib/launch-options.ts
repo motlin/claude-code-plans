@@ -12,7 +12,7 @@ import {launchPermissionModeLabels} from "./schema-choices";
 export const LaunchPermissionModeSchema = z.enum(["auto", "default", "acceptEdits", "plan", "bypassPermissions"]);
 export type LaunchPermissionMode = z.infer<typeof LaunchPermissionModeSchema>;
 
-export const EffortLevelSchema = z.enum(["low", "medium", "high", "xhigh", "max", "ultracode"]);
+export const EffortLevelSchema = z.enum(["low", "medium", "high", "xhigh", "max"]);
 export type EffortLevel = z.infer<typeof EffortLevelSchema>;
 
 export const EFFORT_LEVELS = EffortLevelSchema.options;
@@ -26,26 +26,51 @@ export const LaunchOptionsSchema = z.strictObject({
 	model: ModelIdSchema.optional(),
 	effort: EffortLevelSchema.optional(),
 	fastMode: z.boolean().optional(),
+	/**
+	 * Upstream's Ultracode switch: a thinking mode that combines with any effort. The CLI arms it per session through its
+	 * `ultracode` settings key (`--settings`, or `/effort ultracode on|off` live).
+	 */
+	ultracode: z.boolean().optional(),
 	/** The CLI's `-w, --worktree [name]`: start in a new git worktree with a generated name. */
 	worktree: z.literal(true).optional(),
 });
 export type LaunchOptions = z.infer<typeof LaunchOptionsSchema>;
 
 /** CLI flags for the chosen options, one argv entry per word; never joined into a shell string. */
-export function buildLaunchFlags({permissionMode, model, effort, fastMode, worktree}: LaunchOptions): string[] {
+export function buildLaunchFlags({
+	permissionMode,
+	model,
+	effort,
+	fastMode,
+	ultracode,
+	worktree,
+}: LaunchOptions): string[] {
 	const flags: string[] = [];
 	if (permissionMode !== undefined) flags.push("--permission-mode", permissionMode);
 	if (model !== undefined) flags.push("--model", model);
 	if (effort !== undefined) flags.push("--effort", effort);
-	// Flag settings win over `fastModePerSessionOptIn`, so the session starts fast.
-	if (fastMode === true) flags.push("--settings", FAST_MODE_SETTINGS);
+	const settings = launchSettings(fastMode === true, ultracode === true);
+	if (settings !== null) flags.push("--settings", settings);
 	// Last, so the flag's optional name can never take the next flag's value.
 	if (worktree === true) flags.push("--worktree");
 	return flags;
 }
 
-/** The `--settings` JSON that starts a session in fast mode. */
-export const FAST_MODE_SETTINGS = JSON.stringify({fastMode: true});
+/**
+ * The `--settings` JSON for a fast and/or Ultracode start, or null for neither. Flag settings win over
+ * `fastModePerSessionOptIn`, so the session starts fast.
+ */
+function launchSettings(fastMode: boolean, ultracode: boolean): string | null {
+	if (!fastMode && !ultracode) return null;
+	return JSON.stringify({...(fastMode ? {fastMode: true} : {}), ...(ultracode ? {ultracode: true} : {})});
+}
+
+/** Every `--settings` JSON a launch may pass: only fast mode and Ultracode, never arbitrary settings. */
+export const LAUNCH_SETTINGS_VALUES: ReadonlySet<string> = new Set(
+	[launchSettings(true, false), launchSettings(false, true), launchSettings(true, true)].filter(
+		(value) => value !== null,
+	),
+);
 
 export interface ModeMenuItem {
 	id: LaunchPermissionMode;
@@ -168,23 +193,100 @@ export function fastModeSupported(model: string): boolean {
 	return FAST_MODE_MODELS.has(resolveLaunchModel(model.replace(/\[[^\]]*\]$/, "")));
 }
 
+/** Upstream's Max row tooltip for a model whose Max carries the usage warning badge. */
+export const MAX_EFFORT_TOOLTIP =
+	"Claude thinks longer with Max effort and can consume 3.5× or more usage than Medium.";
+/** Upstream's Max row tooltip on every other model. */
+export const MAX_EFFORT_GENERIC_TOOLTIP =
+	"May use excessive tokens resulting in long response times and may hit token limits. Use sparingly for the hardest tasks.";
+
+const ALL_LEVELS: readonly EffortLevel[] = EFFORT_LEVELS;
+const NO_XHIGH: readonly EffortLevel[] = ["low", "medium", "high", "max"];
+
 /**
- * Models with no effort parameter. The local server has no model capability data, so this is
- * hard-coded: the Haiku 4.5 family offers no Effort section (see model-menu-catalog-row-badges).
+ * Each model's `thinking.effort_options` from the live claude.ai catalog (mirrored by the CLI's embedded
+ * `surfaces.cc`): its levels in catalog order and the one badged Recommended (also the model's default effort).
+ * Keyed by full id without a date suffix. Models absent here take Opus 5.5's rows without its Max warning; the
+ * Haiku 4.5 family (`thinking.type: "none"`) offers no Effort section.
  */
-const NO_EFFORT_MODELS: ReadonlySet<string> = new Set(["claude-haiku-4-5"]);
+const EFFORT_CATALOG: Readonly<Record<string, {levels: readonly EffortLevel[]; recommended: EffortLevel}>> = {
+	"claude-opus-5-5": {levels: ALL_LEVELS, recommended: "medium"},
+	"claude-fable-5-1": {levels: ALL_LEVELS, recommended: "high"},
+	"claude-sonnet-5-5": {levels: ALL_LEVELS, recommended: "medium"},
+	"claude-haiku-5-5": {levels: ALL_LEVELS, recommended: "medium"},
+	"claude-sonnet-5": {levels: ALL_LEVELS, recommended: "high"},
+	"claude-opus-5": {levels: ALL_LEVELS, recommended: "high"},
+	"claude-fable-5": {levels: ALL_LEVELS, recommended: "high"},
+	"claude-opus-4-8": {levels: ALL_LEVELS, recommended: "high"},
+	"claude-opus-4-7": {levels: ALL_LEVELS, recommended: "xhigh"},
+	"claude-opus-4-6": {levels: NO_XHIGH, recommended: "high"},
+	"claude-sonnet-4-6": {levels: NO_XHIGH, recommended: "high"},
+	"claude-haiku-4-5": {levels: [], recommended: "medium"},
+};
+const UNKNOWN_MODEL_EFFORT = {levels: ALL_LEVELS, recommended: "medium"} as const;
+
+/** Only the web catalog badges Opus 5.5's Max "3.5× or more usage"; the CLI's copy gives it the generic tooltip. */
+const MAX_WARNING_MODELS: ReadonlySet<string> = new Set(["claude-opus-5-5"]);
+
+/** One Effort submenu row: upstream's catalog option with its Recommended badge, Max warning badge and tooltip. */
+export interface EffortOption {
+	id: EffortLevel;
+	recommended: boolean;
+	/** Upstream's warning badge (`badge.variant === "warning"`): the chip, trigger icon and aria suffix. */
+	maxWarning: boolean;
+	tooltip?: string;
+}
+
+function catalogKey(model: string): string {
+	return resolveLaunchModel(model.replace(/\[[^\]]*\]$/, "")).replace(/-\d{8}$/, "");
+}
+
+function catalogEntry(model: string) {
+	const key = catalogKey(model);
+	return {key, entry: Object.hasOwn(EFFORT_CATALOG, key) ? EFFORT_CATALOG[key] : undefined};
+}
+
+/** The Effort submenu rows a model id or alias offers, in catalog order; empty when it has no Effort section. */
+export function effortOptionsFor(model: string): EffortOption[] {
+	const {key, entry} = catalogEntry(model);
+	const {levels, recommended} = entry ?? UNKNOWN_MODEL_EFFORT;
+	const warning = MAX_WARNING_MODELS.has(key);
+	return levels.map((id) =>
+		id === "max"
+			? {
+					id,
+					recommended: false,
+					maxWarning: warning,
+					tooltip: warning ? MAX_EFFORT_TOOLTIP : MAX_EFFORT_GENERIC_TOOLTIP,
+				}
+			: {id, recommended: id === recommended, maxWarning: false},
+	);
+}
 
 /** The effort levels a model id or alias offers; empty when it has no Effort section. */
 export function effortLevelsFor(model: string): readonly EffortLevel[] {
-	const bare = resolveLaunchModel(model.replace(/\[[^\]]*\]$/, "")).replace(/-\d{8}$/, "");
-	return NO_EFFORT_MODELS.has(bare) ? [] : EFFORT_LEVELS;
+	return effortOptionsFor(model).map((option) => option.id);
 }
 
-/** Options with a new model; fast mode is dropped when that model lacks it, as the CLI turns it off. */
+/** The effort a model runs at when nothing picked one (its Recommended level), or null when it has no effort. */
+export function defaultEffortFor(model: string): EffortLevel | null {
+	const {entry} = catalogEntry(model);
+	const {levels, recommended} = entry ?? UNKNOWN_MODEL_EFFORT;
+	return levels.length === 0 ? null : recommended;
+}
+
+/**
+ * Options with a new model. Fast mode is dropped when that model lacks it, as the CLI turns it off; so is an effort
+ * it doesn't offer, so the chin falls back to the session's or the model's own effort, as upstream's per-model memory.
+ */
 export function withModel(options: LaunchOptions, model: string): LaunchOptions {
-	if (fastModeSupported(model)) return {...options, model};
-	const {fastMode: _dropped, ...rest} = options;
-	return {...rest, model};
+	const {fastMode, effort, ...rest} = options;
+	return {
+		...rest,
+		...(effort !== undefined && effortLevelsFor(model).includes(effort) ? {effort} : {}),
+		...(fastMode !== undefined && fastModeSupported(model) ? {fastMode} : {}),
+		model,
+	};
 }
 
 export function modelLabel(id: string): string {
@@ -230,11 +332,12 @@ export function canApplyLive({
 	return hasLivePane && writesEnabled && !working;
 }
 
-/** One chin pick applied to a live pane: a `/model`, `/effort` or `/fast` prompt, or shift+tab presses. */
+/** One chin pick applied to a live pane: a `/model`, `/effort`, `/effort ultracode` or `/fast` prompt, or shift+tab presses. */
 export const LiveOptionChangeSchema = z.discriminatedUnion("kind", [
 	z.strictObject({kind: z.literal("model"), model: ModelIdSchema}),
 	z.strictObject({kind: z.literal("effort"), effort: EffortLevelSchema}),
 	z.strictObject({kind: z.literal("fast"), on: z.boolean()}),
+	z.strictObject({kind: z.literal("ultracode"), on: z.boolean()}),
 	z.strictObject({
 		kind: z.literal("mode"),
 		presses: z

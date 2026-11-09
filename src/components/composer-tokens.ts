@@ -28,10 +28,28 @@ const CHIN_BUTTON_CLASS =
 export const CHIN_TRIGGER_CLASS = `${CHIN_BUTTON_CLASS} truncate px-1.5 comfortable:rounded-r5`;
 
 /**
- * Upstream mutes the effort with `text-muted-as-secondary` (the muted ink, secondary under fizzy color) and drops it when the
- * chin is under 280px.
+ * The session chin's "pill" model trigger (`data-collapse="name"`): the name truncates first, down to 1.5rem, in a
+ * baseline row that clips, and the effort tail is muted ink (upstream `text-muted`) that never hides.
  */
-export const EFFORT_LABEL_CLASS = "shrink-0 whitespace-pre text-muted-as-secondary @max-[280px]:hidden";
+export const CHIN_MODEL_LABEL_CLASS = "flex min-w-0 items-baseline overflow-hidden";
+export const CHIN_MODEL_NAME_CLASS = "min-w-6 truncate";
+export const CHIN_EFFORT_LABEL_CLASS = "shrink-0 whitespace-pre text-ink-muted ms-1";
+
+/**
+ * The new-session bar's model trigger (upstream `renderTrigger`): a one-line name that keeps at least 10ch, and the
+ * effort tail in `text-muted-as-secondary` (the muted ink, secondary under fizzy color).
+ */
+export const BAR_MODEL_LABEL_CLASS = "flex min-w-0 items-center gap-1";
+export const BAR_MODEL_NAME_CLASS =
+	"text-start whitespace-nowrap supports-[min-width:calc-size(auto,size)]:line-clamp-1 supports-[min-width:calc-size(auto,size)]:break-all supports-[min-width:calc-size(auto,size)]:whitespace-normal supports-[min-width:calc-size(auto,size)]:min-w-[calc-size(max-content,min(size,10ch))]";
+export const BAR_EFFORT_LABEL_CLASS = "shrink-0 whitespace-pre text-muted-as-secondary";
+
+/** Upstream's trailing chin group: the model, the mode and the ring in one max-content grid. */
+export const CHIN_PICKERS_CLASS =
+	"grid min-w-0 grid-flow-col auto-cols-[minmax(0,max-content)] items-center gap-1 compact:me-1";
+
+/** The usage ring's wrapper (upstream `span.flex.shrink-0.ms-px`). */
+export const USAGE_RING_WRAPPER_CLASS = "flex shrink-0 ms-px";
 
 /** The usage ring's 24px square button. */
 export const USAGE_RING_CLASS = `${CHIN_BUTTON_CLASS} aspect-square comfortable:rounded-r5`;
@@ -44,7 +62,14 @@ export const CHIN_ICON_INK_CLASS =
 	"text-secondary-control group-hover/btn:text-primary group-aria-pressed/btn:text-upstream-accent group-hover/btn:group-aria-pressed/btn:text-upstream-accent";
 
 /** The home composer's environment bar, which takes the chin's place under the card. */
-export const ENVIRONMENT_BAR_CLASS = "@container pt-1 comfortable:pt-0.5";
+export const ENVIRONMENT_BAR_CLASS = "@container flex w-full min-w-0 flex-col pt-0.5 -mb-0.5 md:pt-0 md:mb-0";
+
+/** The bar's trailing pickers group: model, then permissions, then the ring, pushed to the end. */
+export const ENVIRONMENT_PICKERS_CLASS = "flex grow items-center justify-end gap-x-1";
+
+/** Each bar control's surface slot (upstream's `rounded bg-[var(--epitaxy-transcript-surface,var(--cds-surface-1))]`). */
+export const ENVIRONMENT_SLOT_CLASS =
+	"flex empty:hidden rounded bg-[var(--epitaxy-transcript-surface,var(--color-surface-1))]";
 
 /**
  * The environment bar's row: the place controls, then the chin's mode, model and ring. Its pills stay 24px

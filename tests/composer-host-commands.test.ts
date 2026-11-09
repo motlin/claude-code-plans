@@ -8,7 +8,7 @@ import {
 	routeFastCommand,
 	trailingArgsBody,
 } from "../src/lib/composer-host-commands";
-import {EFFORT_LEVELS, MORE_MODELS, PRIMARY_MODELS} from "../src/lib/launch-options";
+import {EFFORT_LEVELS, effortLevelsFor, MORE_MODELS, PRIMARY_MODELS} from "../src/lib/launch-options";
 
 const ctx: HostCommandContext = {
 	effortLevels: EFFORT_LEVELS,
@@ -81,6 +81,16 @@ describe("parseHostCommand", () => {
 			expect(parseHostCommand(text, ctx)).toBeNull();
 		},
 	);
+
+	it("sends /effort xhigh as typed on a model whose catalog has no Extra, as an unknown level is", () => {
+		expect(
+			parseHostCommand("/effort xhigh", {...ctx, effortLevels: effortLevelsFor("claude-sonnet-4-6")}),
+		).toBeNull();
+	});
+
+	it("leaves /effort ultracode to the CLI, whose /effort toggles it", () => {
+		expect(parseHostCommand("/effort ultracode", ctx)).toBeNull();
+	});
 
 	it("leaves /effort to the CLI when the model has no effort levels", () => {
 		expect(parseHostCommand("/effort", {...ctx, effortLevels: []})).toBeNull();

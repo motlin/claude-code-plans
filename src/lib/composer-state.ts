@@ -1,8 +1,8 @@
 import {z} from "zod";
 import {type Statusline, StatuslineSchema} from "./api/statusline";
-import {resolveLaunchModel} from "./launch-options";
+import {defaultEffortFor, resolveLaunchModel} from "./launch-options";
 import {formatModelName, SYNTHETIC_MODEL} from "./model-name";
-import {formatWeeklyReset} from "./usage";
+import {formatWeeklyReset, type UsageSummary} from "./usage";
 import {nonEmpty} from "./non-empty";
 import type {FastModeBlocked} from "./session-fast-mode";
 
@@ -28,7 +28,8 @@ const EFFORT_LABELS: Record<string, string> = {
 	max: "Max",
 };
 
-const DEFAULT_EFFORT = "high";
+/** For a model with no effort of its own (Haiku 4.5), whose chin hides the effort word anyway. */
+const NO_EFFORT_FALLBACK = "high";
 
 /** 2πr for the upstream ring's r=6 circle, rounded exactly as upstream writes it. */
 export const USAGE_RING_CIRCUMFERENCE = 37.699;
@@ -158,7 +159,7 @@ function resolveComposerUsage(sources: ComposerStateSources, modelId: string): C
 
 /**
  * mode = hook ?? JSONL ?? settings; model = statusline ?? last assistant ?? settings ?? the CLI default;
- * effort = last assistant ?? settings ?? "high"; usage = statusline ?? the last assistant record's usage.
+ * effort = last assistant ?? settings ?? the model's default (its catalog Recommended); usage = statusline ?? the last assistant record's usage.
  */
 export function resolveComposerState(sources: ComposerStateSources): ComposerState {
 	const modeId =
@@ -166,11 +167,15 @@ export function resolveComposerState(sources: ComposerStateSources): ComposerSta
 		nonEmpty(sources.jsonlPermissionMode) ??
 		nonEmpty(sources.settingsDefaultMode) ??
 		null;
-	const effortId = nonEmpty(sources.lastAssistantEffort) ?? nonEmpty(sources.settingsEffortLevel) ?? DEFAULT_EFFORT;
 	const modelId =
 		nonEmpty(sources.statuslineModelId) ??
 		nonEmpty(sources.lastAssistantModel) ??
 		resolveLaunchModel(sources.settingsModel);
+	const effortId =
+		nonEmpty(sources.lastAssistantEffort) ??
+		nonEmpty(sources.settingsEffortLevel) ??
+		defaultEffortFor(modelId) ??
+		NO_EFFORT_FALLBACK;
 	return {
 		mode: modeId === null ? null : {id: modeId, label: MODE_LABELS[modeId] ?? modeId},
 		model: nonEmpty(sources.statuslineModel) ?? formatModelName(modelId) ?? modelId,
@@ -290,6 +295,34 @@ export function formatResetLabel(resetsAtSec: number, nowMs: number, timeZone?: 
 export function formatContextSummary(usage: ComposerUsage | null): string {
 	if (!usage || usage.contextTokens === null || usage.contextWindowSize === null) return "0";
 	return `${formatTokenCount(usage.contextTokens)} / ${formatTokenCount(usage.contextWindowSize)}`;
+}
+
+/**
+ * Fills the ring's plan limits from the account usage (`/api/usage`) when the statusline reported none, as on the home
+ * bar (no statusline) or a session whose statusline lacks `rate_limits`. Context usage stays the session's own.
+ */
+export function withComposerAccountLimits(state: ComposerState, summary: UsageSummary | undefined): ComposerState {
+	const usage = withAccountLimits(state.usage, summary);
+	return usage === state.usage ? state : {...state, usage};
+}
+
+/** The usage half of `withComposerAccountLimits`. */
+export function withAccountLimits(
+	usage: ComposerUsage | null,
+	summary: UsageSummary | undefined,
+): ComposerUsage | null {
+	if (summary === undefined || (summary.fiveHour === null && summary.sevenDay === null)) return usage;
+	if (usage !== null && (usage.fiveHour !== null || usage.weekly !== null)) return usage;
+	const toLimit = (window: UsageSummary["fiveHour"]): RateLimitWindow | null =>
+		window === null ? null : {usedPercentage: window.usedPct, resetsAt: window.resetsAt};
+	return {
+		contextTokens: usage?.contextTokens ?? null,
+		contextWindowSize: usage?.contextWindowSize ?? null,
+		contextPercent: usage?.contextPercent ?? null,
+		fiveHour: toLimit(summary.fiveHour),
+		weekly: toLimit(summary.sevenDay),
+		updatedAt: usage?.updatedAt ?? summary.updatedAt,
+	};
 }
 
 export const FIVE_HOUR_LABEL = "Session limit";

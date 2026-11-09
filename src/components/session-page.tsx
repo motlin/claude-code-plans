@@ -9,6 +9,7 @@ import {Minimize2} from "lucide-react";
 import {SessionTileFrame, type SessionTileScrollPosition} from "./session-tile-frame";
 import {latestBreakdown, preferNewerBreakdown} from "../lib/context-breakdown";
 import {sessionContextBreakdownQueryOptions} from "../lib/api/context-breakdown";
+import {usageQueryOptions} from "../lib/api/usage";
 import {focusComposer, refillComposer, refillRejectedSend, requestComposerTakeBack} from "../lib/context-attach";
 import {rewindStepsBack, rewindTurns} from "../lib/rewind-picker";
 import {SessionRailSlot} from "./session-rail/session-rail-slot";
@@ -124,6 +125,7 @@ import {
 	lastAssistantUsageFromRecords,
 	lastPermissionModeFromRecords,
 	resolveComposerState,
+	withComposerAccountLimits,
 } from "../lib/composer-state";
 import {useSessionViewedState} from "../hooks/use-session-viewed-state";
 import {usePendingMessageJump} from "../hooks/use-pending-message-jump";
@@ -634,25 +636,30 @@ function SessionView({
 	const commandBreakdown = useMemo(() => latestBreakdown(transcript.records), [transcript.records]);
 	const {data: modBreakdown = null} = useQuery(sessionContextBreakdownQueryOptions(sessionId));
 	const contextBreakdown = preferNewerBreakdown(commandBreakdown, modBreakdown);
+	// A statusline without `rate_limits` leaves the ring to the account's plan limits.
+	const {data: accountUsage} = useQuery(usageQueryOptions);
 	const composerChin = useMemo(
 		() =>
-			resolveComposerState({
-				hookPermissionMode: hookContext?.permissionMode,
-				jsonlPermissionMode: lastPermissionModeFromRecords(transcript.records),
-				settingsDefaultMode: composerServerState?.settingsDefaultMode ?? null,
-				statuslineModel: composerServerState?.statusline?.model?.display_name ?? null,
-				statuslineModelId: composerServerState?.statusline?.model?.id ?? null,
-				lastAssistantModel: lastAssistantModelFromRecords(transcript.records),
-				lastAssistantUsage: lastAssistantUsageFromRecords(transcript.records),
-				lastAssistantEffort: lastAssistantEffortFromRecords(transcript.records),
-				fastMode: sessionFastMode(transcript.records, {fastMode: composerServerState?.settingsFastMode}),
-				fastModeBlocked: composerServerState?.fastModeBlocked ?? null,
-				settingsModel: composerServerState?.settingsModel ?? null,
-				settingsEffortLevel: composerServerState?.settingsEffortLevel ?? null,
-				statusline: composerServerState?.statusline ?? null,
-				statuslineUpdatedAt: composerServerState?.statuslineUpdatedAt ?? null,
-			}),
-		[hookContext?.permissionMode, transcript.records, composerServerState],
+			withComposerAccountLimits(
+				resolveComposerState({
+					hookPermissionMode: hookContext?.permissionMode,
+					jsonlPermissionMode: lastPermissionModeFromRecords(transcript.records),
+					settingsDefaultMode: composerServerState?.settingsDefaultMode ?? null,
+					statuslineModel: composerServerState?.statusline?.model?.display_name ?? null,
+					statuslineModelId: composerServerState?.statusline?.model?.id ?? null,
+					lastAssistantModel: lastAssistantModelFromRecords(transcript.records),
+					lastAssistantUsage: lastAssistantUsageFromRecords(transcript.records),
+					lastAssistantEffort: lastAssistantEffortFromRecords(transcript.records),
+					fastMode: sessionFastMode(transcript.records, {fastMode: composerServerState?.settingsFastMode}),
+					fastModeBlocked: composerServerState?.fastModeBlocked ?? null,
+					settingsModel: composerServerState?.settingsModel ?? null,
+					settingsEffortLevel: composerServerState?.settingsEffortLevel ?? null,
+					statusline: composerServerState?.statusline ?? null,
+					statuslineUpdatedAt: composerServerState?.statuslineUpdatedAt ?? null,
+				}),
+				accountUsage,
+			),
+		[hookContext?.permissionMode, transcript.records, composerServerState, accountUsage],
 	);
 	// Upstream lets the user comment on the plan in plan mode or while a plan waits for approval.
 	useRegisterPlanPane(data.planFilename, planModel, {

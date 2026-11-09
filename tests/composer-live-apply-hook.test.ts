@@ -137,6 +137,32 @@ describe("useLiveLaunchOptions", () => {
 		});
 	});
 
+	it("toggles Ultracode with /effort ultracode on and off, keeping the effort", async () => {
+		const send = vi.fn<Send>(async () => {});
+		const {result, toast} = renderLive({send});
+
+		await act(async () => result.current.apply({effort: "high"}));
+		await act(async () => result.current.apply({effort: "high", ultracode: true}));
+		const afterOn = result.current.options;
+		await act(async () => result.current.apply({effort: "high", ultracode: false}));
+
+		expect({
+			sends: send.mock.calls,
+			afterOn,
+			afterOff: result.current.options,
+			toasts: toast.mock.calls,
+		}).toStrictEqual({
+			sends: [
+				["session-ivan", {kind: "effort", effort: "high"}],
+				["session-ivan", {kind: "ultracode", on: true}],
+				["session-ivan", {kind: "ultracode", on: false}],
+			],
+			afterOn: {effort: "high", ultracode: true},
+			afterOff: {effort: "high", ultracode: false},
+			toasts: [],
+		});
+	});
+
 	it("drops the fast pick when the live model switches to one without fast mode", async () => {
 		const send = vi.fn<Send>(async () => {});
 		const {result} = renderLive({send});

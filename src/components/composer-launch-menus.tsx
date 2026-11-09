@@ -1,12 +1,14 @@
-import {TriangleAlert} from "lucide-react";
+import {Info, TriangleAlert} from "lucide-react";
 import {useState} from "react";
 
 import {useShortcutKeys} from "../hooks/use-shortcut";
 
 import {
 	type EffortLevel,
+	type EffortOption,
 	EffortLevelSchema,
 	fastModeSupported,
+	MAX_EFFORT_TOOLTIP,
 	type LaunchPermissionMode,
 	LaunchPermissionModeSchema,
 	MORE_MODELS,
@@ -14,12 +16,22 @@ import {
 	moreModelsMenuValue,
 	PRIMARY_MODELS,
 	primaryModelMenuValue,
+	resolveLaunchModel,
 } from "../lib/launch-options";
 import {effortLevelShortLabels} from "../lib/schema-choices";
 import type {FastModeBlocked} from "../lib/session-fast-mode";
 import {ConfirmDialog} from "./confirm-dialog";
-import {CHIN_TRIGGER_CLASS, EFFORT_LABEL_CLASS} from "./composer-tokens";
 import {
+	BAR_EFFORT_LABEL_CLASS,
+	BAR_MODEL_LABEL_CLASS,
+	BAR_MODEL_NAME_CLASS,
+	CHIN_EFFORT_LABEL_CLASS,
+	CHIN_MODEL_LABEL_CLASS,
+	CHIN_MODEL_NAME_CLASS,
+	CHIN_TRIGGER_CLASS,
+} from "./composer-tokens";
+import {
+	MENU_HEADER_CLASS,
 	Menu,
 	MenuCheckboxSwitchItem,
 	MenuContent,
@@ -41,6 +53,10 @@ import {Tooltip} from "./ui/tooltip";
  */
 
 const EFFORT_HELP = "Higher effort means more thorough responses, but takes longer and uses your limits faster.";
+/** Upstream's Effort hint header: the footnote type at regular weight. */
+const EFFORT_HELP_CLASS = "px-2 comfortable:px-2.5 py-1 text-footnote font-normal text-[var(--menu-muted)]";
+/** Upstream's Max warning badge message, also the trigger's aria suffix and its Warning icon's alt. */
+const MAX_WARNING_MESSAGE = "3.5× or more usage";
 
 export type ChinMenu = "mode" | "model" | "effort";
 
@@ -80,14 +96,19 @@ export function ModeMenu({
 						className={CHIN_TRIGGER_CLASS}
 						{...(bar ? {"aria-label": `Permissions: ${currentLabel}`} : {})}
 					>
-						{currentLabel}
+						{bar ? (
+							currentLabel
+						) : (
+							/* Upstream's chin Mode label: a one-column grid whose cell ellipsises. */
+							<span className="grid grid-cols-[minmax(0,1fr)]">
+								<span className="overflow-x-clip text-ellipsis whitespace-nowrap">{currentLabel}</span>
+							</span>
+						)}
 					</MenuTrigger>
 				</Tooltip>
 				<MenuContent side="top">
-					<MenuLabel className="px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]">
-						{bar ? "Permissions · this session" : "Mode"}
-					</MenuLabel>
 					<MenuRadioGroup
+						label={bar ? "Permissions · this session" : "Mode"}
 						value={current}
 						onValueChange={(value: string) => {
 							const mode = LaunchPermissionModeSchema.parse(value);
@@ -130,40 +151,38 @@ export function ModeMenu({
 	);
 }
 
-/** Upstream's Effort list badges Medium as Recommended. */
-const RECOMMENDED_EFFORT: EffortLevel = "medium";
 const FABLE_TOOLTIP = "Fable is the most capable model and draws down usage much faster than Opus";
-const MAX_EFFORT_TOOLTIP = "Claude thinks longer with Max effort and can consume 3.5× or more usage than Medium.";
 /** Upstream's cds Badge chip, sized for the compact menu. */
 const EFFORT_BADGE_CLASS =
 	"inline-flex items-center gap-1 h-5 whitespace-nowrap rounded-full px-1.5 text-[11px] font-medium";
 
 /**
- * An Effort row's label line, as upstream's: the label and its chip share one non-wrapping flex line, so the
- * Recommended and Max chips never push the row onto a second line. Ultracode's label is pro ink.
+ * An Effort row's label line, as upstream's `ON`: the name, then the catalog badge (a neutral Recommended, or the
+ * warning "3.5× or more usage"), on one non-wrapping flex line. A tooltipped row without a warning badge (every Max
+ * but Opus 5.5's) ends in a muted 12px Info glyph instead.
  */
-function EffortRowLabel({effort}: {effort: EffortLevel}) {
+function EffortRowLabel({option}: {option: EffortOption}) {
 	return (
 		<span className="flex min-w-0 items-center gap-1">
-			<span
-				data-menu-item-label=""
-				className={effort === "ultracode" ? "truncate font-medium text-[var(--text-pro)]" : "truncate"}
-			>
-				{effortLevelShortLabels[effort]}
+			<span data-menu-item-label="" className="truncate">
+				{effortLevelShortLabels[option.id]}
 			</span>
-			{effort === RECOMMENDED_EFFORT && (
+			{option.recommended && (
 				<span data-effort-recommended="" className={`${EFFORT_BADGE_CLASS} bg-alpha-1 text-secondary`}>
 					Recommended
 				</span>
 			)}
-			{effort === "max" && (
+			{option.maxWarning && (
 				<span
 					data-effort-warning=""
 					className={`${EFFORT_BADGE_CLASS} min-w-0 shrink bg-[var(--warning-tint)] text-warning-000`}
 				>
 					<TriangleAlert aria-hidden="true" className="size-3 shrink-0" />
-					3.5× or more usage
+					{MAX_WARNING_MESSAGE}
 				</span>
+			)}
+			{!option.maxWarning && option.tooltip !== undefined && (
+				<Info data-effort-info-icon="" aria-hidden="true" className="size-3 shrink-0 text-ink-muted" />
 			)}
 		</span>
 	);
@@ -184,7 +203,9 @@ export function ModelMenu({
 	currentEffort,
 	onSelect,
 	onSelectEffort,
-	effortLevels,
+	effortOptions,
+	ultracode,
+	onUltracodeChange,
 	fastMode,
 	fastModeBlocked,
 	onFastModeChange,
@@ -200,8 +221,11 @@ export function ModelMenu({
 	currentEffort: string;
 	onSelect: (model: string) => void;
 	onSelectEffort: (effort: EffortLevel) => void;
-	/** The current model's effort levels; the Effort submenu is hidden when it offers none. */
-	effortLevels: readonly EffortLevel[];
+	/** The current model's catalog effort rows; the Effort submenu is hidden when it offers none. */
+	effortOptions: readonly EffortOption[];
+	/** Upstream's Ultracode switch, a thinking mode that combines with the effort. */
+	ultracode: boolean;
+	onUltracodeChange: (on: boolean) => void;
 	/** Already false while blocked. */
 	fastMode: boolean;
 	/** The CLI can't use fast mode here: upstream's greyed row with this line and reason tooltip. */
@@ -215,56 +239,85 @@ export function ModelMenu({
 	const level = EffortLevelSchema.safeParse(currentEffort);
 	const effortLabel = level.success ? effortLevelShortLabels[level.data] : currentEffort;
 	/** Upstream's trigger has no effort word (nor Max's warning) for a model with no effort levels. */
-	const effortShown = effortLevels.length > 0;
+	const effortShown = effortOptions.length > 0;
+	const ultracodeShown = effortShown && ultracode;
+	/** Only a catalog warning badge (Opus 5.5's Max) gets the trigger icon, aria suffix, tooltip and hint icon. */
+	const maxWarning =
+		effortShown && effortOptions.find((option) => level.success && option.id === level.data)?.maxWarning === true;
 	const modelKeys = useShortcutKeys("open_model_menu").keys;
 	const fastShown = fastMode && current !== undefined && fastModeSupported(current);
+	const chin = surface === "chin";
+	const tailClass = chin ? CHIN_EFFORT_LABEL_CLASS : BAR_EFFORT_LABEL_CLASS;
+	const name = <span className={chin ? CHIN_MODEL_NAME_CLASS : BAR_MODEL_NAME_CLASS}>{currentLabel}</span>;
 	const trigger = (
 		<MenuTrigger
 			data-cds="ModelSelector"
-			aria-label={`Model: ${currentLabel}${fastShown ? " Fast" : ""}${effortShown ? ` ${effortLabel}` : ""}`}
+			{...(chin ? {"data-collapse": "name"} : {})}
+			aria-label={`Model: ${currentLabel}${fastShown ? " Fast" : ""}${effortShown ? ` ${effortLabel}` : ""}${ultracodeShown ? " · Ultracode" : ""}${maxWarning ? ` ${MAX_WARNING_MESSAGE}` : ""}`}
 			className={CHIN_TRIGGER_CLASS}
 		>
-			{settingsOverride === null ? (
-				<span className="truncate">{currentLabel}</span>
-			) : (
-				<span data-overridden="" className="flex min-w-0 items-center gap-1 text-accent-100">
-					<span className="truncate">{currentLabel}</span>
-				</span>
-			)}
-			{/* Upstream's tail order: the " Fast" word, then the effort. */}
-			{fastShown && (
-				<span data-fast-label="" className={EFFORT_LABEL_CLASS}>
-					{" Fast"}
-				</span>
-			)}
-			{effortShown && <span className={EFFORT_LABEL_CLASS}> {effortLabel}</span>}
-			{effortShown && level.success && level.data === "max" && (
+			<span className={chin ? CHIN_MODEL_LABEL_CLASS : BAR_MODEL_LABEL_CLASS}>
+				{settingsOverride === null ? (
+					name
+				) : (
+					<span data-overridden="" className="flex min-w-0 items-center gap-1 text-accent-100">
+						{name}
+					</span>
+				)}
+				{/* Upstream's tail order: the " Fast" word, the effort, then the Ultracode toggle. */}
+				{fastShown && (
+					<span data-fast-label="" className={tailClass}>
+						{" Fast"}
+					</span>
+				)}
+				{effortShown && <span className={tailClass}> {effortLabel}</span>}
+				{ultracodeShown && (
+					<span
+						data-ultracode-label=""
+						className={`${chin ? "shrink-0 whitespace-pre ms-1" : "shrink-0 whitespace-pre"} font-medium text-[var(--text-pro)]`}
+					>
+						{" · Ultracode"}
+					</span>
+				)}
+			</span>
+			{maxWarning && (
 				<TriangleAlert
 					data-effort-warning-icon=""
-					aria-hidden="true"
+					role="img"
+					aria-label={MAX_WARNING_MESSAGE}
 					className="ms-1 size-3 shrink-0 text-warning-100"
 				/>
 			)}
 		</MenuTrigger>
 	);
-	return (
-		<Menu open={open} onOpenChange={onOpenChange}>
-			{/* Upstream's new-session bar tooltips the model "Model ⇧⌘I"; session chins have none unless overridden. */}
-			{surface === "bar" || settingsOverride !== null ? (
-				<Tooltip
-					content={
+	/** Upstream's `content = tooltip ?? (warning ? effort tooltip : undefined)`. */
+	const tooltip =
+		surface === "bar" || settingsOverride !== null
+			? {
+					content:
 						settingsOverride === null
 							? "Model"
-							: `Model for this session (settings: ${settingsOverride.label})`
-					}
-					shortcut={modelKeys}
+							: `Model for this session (settings: ${settingsOverride.label})`,
+					shortcut: modelKeys,
+				}
+			: maxWarning
+				? {content: MAX_EFFORT_TOOLTIP, shortcut: undefined}
+				: null;
+	const effortHint = ultracodeShown ? `${effortLabel} · Ultracode` : effortLabel;
+	return (
+		<Menu open={open} onOpenChange={onOpenChange}>
+			{/* Upstream's new-session bar tooltips the model "Model ⇧⌘I"; session chins only when overridden or warned. */}
+			{tooltip === null ? (
+				trigger
+			) : (
+				<Tooltip
+					content={tooltip.content}
+					{...(tooltip.shortcut === undefined ? {} : {shortcut: tooltip.shortcut})}
 					side="top"
 					suppressAfterPopup
 				>
 					{trigger}
 				</Tooltip>
-			) : (
-				trigger
 			)}
 			<MenuContent
 				side="top"
@@ -274,10 +327,7 @@ export function ModelMenu({
 				{...(surface === "bar"
 					? {
 							header: (
-								<div
-									role="presentation"
-									className="px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]"
-								>
+								<div role="presentation" className={MENU_HEADER_CLASS}>
 									Model · this session
 								</div>
 							),
@@ -295,6 +345,7 @@ export function ModelMenu({
 							<MenuRadioItem
 								key={model.id}
 								value={model.id}
+								data-model-id={resolveLaunchModel(model.id)}
 								accelerator={String(index + 1)}
 								acceleratorInSlot
 								closeOnClick
@@ -311,15 +362,33 @@ export function ModelMenu({
 						);
 					})}
 				</MenuRadioGroup>
-				{effortLevels.length > 0 && (
+				{effortShown && (
 					<>
 						<MenuSeparator />
 						<MenuSub defaultOpen={effortOpen}>
-							<MenuSubTrigger value={effortLabel}>Effort</MenuSubTrigger>
-							<MenuSubContent side="inline-start" align="end" className="w-[320px]">
-								<MenuLabel className="px-2 pt-1.5 pb-1 text-[12px]/[16px] text-[var(--menu-muted)]">
-									{EFFORT_HELP}
-								</MenuLabel>
+							<MenuSubTrigger
+								value={effortHint}
+								{...(maxWarning
+									? {
+											trailing: (
+												<span
+													data-effort-warning-hint=""
+													className="flex items-center gap-1 text-footnote text-[var(--menu-muted)]"
+												>
+													<span className="max-w-[160px] truncate">{effortHint}</span>
+													<TriangleAlert
+														aria-hidden="true"
+														className="size-3 shrink-0 text-warning-100"
+													/>
+												</span>
+											),
+										}
+									: {})}
+							>
+								Effort
+							</MenuSubTrigger>
+							<MenuSubContent align="end" className="w-[320px]">
+								<MenuLabel className={EFFORT_HELP_CLASS}>{EFFORT_HELP}</MenuLabel>
 								<MenuRadioGroup
 									value={level.success ? level.data : ""}
 									onValueChange={(value: unknown) => {
@@ -329,32 +398,41 @@ export function ModelMenu({
 										onOpenChange(false);
 									}}
 								>
-									{effortLevels.map((effort) => {
+									{effortOptions.map((option) => {
 										const row = (
 											<MenuRadioItem
-												key={effort}
-												value={effort}
-												data-effort-id={effort}
+												key={option.id}
+												value={option.id}
+												data-effort-id={option.id}
 												closeOnClick
 											>
-												<EffortRowLabel effort={effort} />
+												<EffortRowLabel option={option} />
 											</MenuRadioItem>
 										);
-										return effort === "max" ? (
+										return option.tooltip === undefined ? (
+											row
+										) : (
 											<Tooltip
-												key={effort}
-												content={MAX_EFFORT_TOOLTIP}
+												key={option.id}
+												content={option.tooltip}
 												side="right"
 												portal
 												className="flex w-full"
 											>
 												{row}
 											</Tooltip>
-										) : (
-											row
 										);
 									})}
 								</MenuRadioGroup>
+								<MenuSeparator />
+								{/* Upstream's `CU`: a keep-open switch row, a thinking mode that combines with any effort. */}
+								<MenuCheckboxSwitchItem
+									decorative
+									checked={ultracode}
+									onCheckedChange={onUltracodeChange}
+								>
+									Ultracode
+								</MenuCheckboxSwitchItem>
 							</MenuSubContent>
 						</MenuSub>
 					</>
@@ -362,7 +440,7 @@ export function ModelMenu({
 				<MenuSeparator />
 				<MenuSub>
 					<MenuSubTrigger>More models</MenuSubTrigger>
-					<MenuSubContent side="inline-start">
+					<MenuSubContent className="max-h-[min(50vh,var(--available-height))]">
 						<MenuRadioGroup
 							value={moreModelsMenuValue(current)}
 							onValueChange={(value: string) => {
@@ -371,7 +449,7 @@ export function ModelMenu({
 							}}
 						>
 							{MORE_MODELS.map((model) => (
-								<MenuRadioItem key={model.id} value={model.id} closeOnClick>
+								<MenuRadioItem key={model.id} value={model.id} data-model-id={model.id} closeOnClick>
 									<span data-menu-item-label="">{model.label}</span>
 								</MenuRadioItem>
 							))}
@@ -382,10 +460,7 @@ export function ModelMenu({
 				{current !== undefined && fastModeSupported(current) && (
 					<>
 						<MenuSeparator />
-						<div
-							role="presentation"
-							className="px-2 py-1 text-[12px]/[15px] font-medium text-[var(--menu-muted)]"
-						>
+						<div role="presentation" className={MENU_HEADER_CLASS}>
 							<span className="flex items-center gap-1">Fast mode</span>
 						</div>
 						{/* Upstream's blocked row: greyed, with the reason line and tooltip; blocked already forces it off. */}

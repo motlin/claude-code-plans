@@ -296,8 +296,58 @@ describe("Menu", () => {
 			rowHeight: rowClasses.filter((value) => /^(min-h-|h-\d|py-|pt-|pb-|items-)/.test(value)),
 			description: row.querySelector("[data-menu-item-description]")?.className,
 		}).toStrictEqual({
-			rowHeight: ["items-start", "pb-1", "py-[2.5px]"],
-			description: "break-words text-[12px]/[15px] text-[var(--menu-muted)]",
+			rowHeight: [
+				"items-start",
+				"pb-[calc((var(--cds-h-control)-var(--upstream-text-body)-var(--upstream-leading-footnote)+var(--upstream-text-footnote))/2)]",
+				"py-[2.5px]",
+			],
+			description: "break-words text-footnote text-[var(--menu-muted)]",
+		});
+	});
+
+	it("pads a comfortable two-line row's bottom by upstream's formula (also under panels) and sizes its check to the 20px comfortable size-icon", () => {
+		render(
+			<PanelsOff>
+				<Menu defaultOpen>
+					<MenuTrigger aria-label="Mode">Mode</MenuTrigger>
+					<MenuContent density="comfortable">
+						<MenuRadioGroup value="auto" label="Permissions · this session">
+							<MenuRadioItem value="auto" description="Claude handles permission decisions">
+								Auto
+							</MenuRadioItem>
+						</MenuRadioGroup>
+					</MenuContent>
+				</Menu>
+			</PanelsOff>,
+		);
+		const row = screen.getByRole("menuitemradio", {name: /Auto/});
+		const group = screen.getByRole("group");
+		const labelId = group.getAttribute("aria-labelledby");
+		const label = labelId === null ? null : document.getElementById(labelId);
+
+		expect({
+			padding: row.className.split(" ").filter((value) => /^(panels-fine:)?(py-|pb-)/.test(value)),
+			check: row.querySelector<SVGElement>('[data-cds="Icon"]')?.style.fontSize,
+			label: {
+				text: label?.textContent,
+				hidden: label?.getAttribute("aria-hidden"),
+				inGroup: label?.parentElement === group,
+				className: label?.className,
+			},
+		}).toStrictEqual({
+			padding: [
+				"pb-[calc((var(--cds-h-control)-var(--upstream-text-body)-var(--upstream-leading-footnote)+var(--upstream-text-footnote))/2)]",
+				"panels-fine:pb-[calc((var(--cds-h-control)-var(--upstream-text-body)-var(--upstream-leading-footnote)+var(--upstream-text-footnote))/2)]",
+				"py-1.5",
+				"panels-fine:py-1",
+			],
+			check: "calc(1.25rem * var(--cds-rem-scale, 1))",
+			label: {
+				text: "Permissions · this session",
+				hidden: "true",
+				inGroup: true,
+				className: "px-2 comfortable:px-2.5 py-1 text-footnote font-medium text-[var(--menu-muted)]",
+			},
 		});
 	});
 

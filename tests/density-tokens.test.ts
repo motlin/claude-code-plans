@@ -275,12 +275,12 @@ describe("density variants", () => {
 });
 
 describe("main-column comfortable variants", () => {
-	it("opens the dock column gap to 8px and closes the environment bar's top pad to 2px at comfortable, as upstream's compact:/comfortable: pairs", () => {
+	it("opens the dock column gap to 8px at comfortable, and pads the environment bar by viewport, not density, as upstream", () => {
 		const comfortable = (classes: string) => classes.split(" ").filter((name) => name.startsWith("comfortable:"));
 
-		expect({dock: comfortable(SESSION_DOCK_COLUMN_CLASS), bar: comfortable(ENVIRONMENT_BAR_CLASS)}).toStrictEqual({
+		expect({dock: comfortable(SESSION_DOCK_COLUMN_CLASS), bar: ENVIRONMENT_BAR_CLASS}).toStrictEqual({
 			dock: ["comfortable:gap-2"],
-			bar: ["comfortable:pt-0.5"],
+			bar: "@container flex w-full min-w-0 flex-col pt-0.5 -mb-0.5 md:pt-0 md:mb-0",
 		});
 	});
 });

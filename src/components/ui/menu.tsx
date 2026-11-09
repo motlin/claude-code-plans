@@ -101,15 +101,18 @@ const ITEM_VARIANT_CLASS = {
 	danger: "text-danger-100 data-[highlighted]:bg-[var(--menu-danger-fill)] data-[highlighted]:text-[var(--menu-on-danger)] data-[highlighted]:[--shortcut-cap-ink:currentColor]",
 } as const;
 
-/** Upstream's description wraps rather than truncates and has no top padding, so a two-line row is 40.5px. */
-const DESCRIPTION_CLASS = "break-words text-[12px]/[15px] text-[var(--menu-muted)]";
+/**
+ * Upstream's description wraps rather than truncates and has no top padding, in the density's footnote type (12/15
+ * compact, 13/17 comfortable), so a two-line row is 40.5px compact and 46px comfortable.
+ */
+const DESCRIPTION_CLASS = "break-words text-footnote text-[var(--menu-muted)]";
 const TRAILING_CLASS = "ml-auto flex shrink-0 items-center gap-1";
 /** Pins a two-line row's keycap and check to its first line. */
 const FIRST_LINE_TRAILING_CLASS = `${TRAILING_CLASS} h-[1lh] self-start`;
 const DIGIT_CHECK_SLOT_CLASS = "flex size-4 shrink-0 items-center justify-center pointer-coarse:-me-1";
 const CHECK_SLOT_CLASS = "-mr-1 flex size-icon shrink-0 items-center justify-center";
-/** Upstream's checked tick: a bold sm Check Icon (16px) in fill-accent ink. */
-const CHECK_ICON = <Icon name="Check" size="sm" bold className="text-fill-accent" />;
+/** Upstream's checked tick: a bold `size-icon` Check Icon (16px compact, 20px comfortable) in fill-accent ink. */
+const CHECK_ICON = <Icon name="Check" size="auto" bold className="text-fill-accent" />;
 /** Hover dwell before a submenu opens. */
 const SUBMENU_HOVER_DELAY_MS = 100;
 /** Upstream's `size-icon` leading slot; a two-line row pins it to the first line. */
@@ -735,9 +738,7 @@ export function MenuCheckboxSwitchItem({
 							<span className="truncate">{children}</span>
 						</span>
 						{description !== undefined && (
-							<span className="mt-1 block text-[12px]/[15px] text-[var(--menu-muted)]">
-								{description}
-							</span>
+							<span className="mt-1 block text-footnote text-[var(--menu-muted)]">{description}</span>
 						)}
 					</span>
 				) : (
@@ -772,7 +773,30 @@ export function MenuCheckboxSwitchItem({
 	);
 }
 
-export const MenuRadioGroup = BaseMenu.RadioGroup;
+/**
+ * A radio section. With `label`, upstream's labelled group: the header sits inside the `role="group"`, `aria-hidden`,
+ * and names the group through `aria-labelledby`.
+ */
+export function MenuRadioGroup({
+	label,
+	labelClassName = MENU_HEADER_CLASS,
+	children,
+	...props
+}: ComponentProps<typeof BaseMenu.RadioGroup> & {label?: ReactNode; labelClassName?: string}) {
+	const labelId = useId();
+	if (label === undefined) return <BaseMenu.RadioGroup {...props}>{children}</BaseMenu.RadioGroup>;
+	return (
+		<BaseMenu.RadioGroup {...props} aria-labelledby={labelId}>
+			<div id={labelId} data-menu-label="" aria-hidden="true" className={labelClassName}>
+				{label}
+			</div>
+			{children}
+		</BaseMenu.RadioGroup>
+	);
+}
+
+/** Upstream's 500-weight section header (`compact:px-2 comfortable:px-2.5 py-1 text-footnote font-medium text-muted`). */
+export const MENU_HEADER_CLASS = "px-2 comfortable:px-2.5 py-1 text-footnote font-medium text-[var(--menu-muted)]";
 
 /** One menu section, `role="group"`, as upstream wraps each run between separators. */
 export function MenuGroup(props: ComponentProps<typeof BaseMenu.Group>) {
@@ -927,12 +951,14 @@ export interface MenuSubTriggerProps extends Omit<
 	icon?: ReactNode;
 	/** Muted trailing value, e.g. the current radio choice. */
 	value?: ReactNode;
+	/** Replaces the trailing value with custom content (upstream's warning hint: the name plus a Warning icon). */
+	trailing?: ReactNode;
 	/** Render the trailing value in accent, for non-default choices. */
 	valueAccent?: boolean;
 }
 
 /** Submenu trigger: opens on hover, click, Enter or ArrowRight. */
-export function MenuSubTrigger({children, icon, value, valueAccent, ...props}: MenuSubTriggerProps) {
+export function MenuSubTrigger({children, icon, value, valueAccent, trailing, ...props}: MenuSubTriggerProps) {
 	const itemClass = useItemClass();
 	const sizing = useMenuSizing();
 	const triggerRef = useContext(SubmenuTriggerContext);
@@ -954,7 +980,8 @@ export function MenuSubTrigger({children, icon, value, valueAccent, ...props}: M
 			</span>
 			{/* Upstream's `ms-md gap-xs` trailing group around a `max-w-[160px] text-footnote` value. */}
 			<span className={sizing.trailingGroup}>
-				{value !== undefined && (
+				{trailing}
+				{trailing === undefined && value !== undefined && (
 					<span
 						data-menu-value=""
 						className={
@@ -1011,7 +1038,7 @@ export function MenuSeparator() {
 
 export function MenuLabel({
 	children,
-	className = "px-2 pt-1.5 pb-1 text-[12px]/[15px] text-[var(--menu-muted)]",
+	className = MENU_HEADER_CLASS,
 }: {
 	children: ReactNode;
 	/** Replaces the default classes, e.g. upstream's 500-weight Mode header padded 4px 8px. */

@@ -19,7 +19,11 @@ import {
 	CHIN_TRIGGER_CLASS,
 	COMPOSER_CARD_CLASS,
 	COMPOSER_CHIN_CLASS,
-	EFFORT_LABEL_CLASS,
+	CHIN_EFFORT_LABEL_CLASS,
+	CHIN_MODEL_LABEL_CLASS,
+	CHIN_MODEL_NAME_CLASS,
+	ENVIRONMENT_PICKERS_CLASS,
+	USAGE_RING_WRAPPER_CLASS,
 	ENVIRONMENT_BAR_CLASS,
 	ENVIRONMENT_BAR_ROW_CLASS,
 	ENVIRONMENT_PLACE_CLASS,
@@ -292,7 +296,7 @@ describe("AppShellFallback", () => {
 		});
 	});
 
-	it("fills the loading chin with the settings defaults the live chin shows: +, the mode, then model and effort beside the usage ring", () => {
+	it("fills the loading chin with the settings defaults the live chin shows: +, the model and effort, the mode, then the usage ring", () => {
 		const host = document.createElement("div");
 		const chin = resolveShellChinLabels({
 			model: "opus",
@@ -308,7 +312,7 @@ describe("AppShellFallback", () => {
 		expect({
 			readouts: chinReadouts(chinRow),
 			ring: chinRow.querySelectorAll("[data-fallback-chin-end] svg circle").length,
-		}).toStrictEqual({readouts: ["+", "Auto", "Opus 5.5 High"], ring: 1});
+		}).toStrictEqual({readouts: ["+", "Opus 5.5 High", "Auto"], ring: 1});
 	});
 
 	it("labels the loading chin as the live chin does when settings.json is missing", () => {
@@ -317,8 +321,8 @@ describe("AppShellFallback", () => {
 
 		expect(chinReadouts(host.querySelector('[data-cds="ChatComposerChin"]')!)).toStrictEqual([
 			"+",
+			"Opus 5.5 Medium",
 			"Manual",
-			"Opus 5.5 High",
 		]);
 	});
 
@@ -366,7 +370,7 @@ describe("AppShellFallback", () => {
 			consoleErrors: errors.mock.calls.length,
 		}).toStrictEqual({
 			shell: true,
-			hydratedReadouts: ["+", "Plan", "Opus 5.5 Max"],
+			hydratedReadouts: ["+", "Opus 5.5 Max", "Plan"],
 			recoverableErrors: 0,
 			consoleErrors: 0,
 		});
@@ -495,8 +499,8 @@ describe("AppShellFallback", () => {
 		);
 		const card = host.querySelector("[data-fallback-composer]")!;
 		const chin = host.querySelector('[data-cds="ChatComposerChin"]')!;
-		const [mode, model] = Array.from(chin.querySelectorAll("[data-fallback-chin-readout]"));
-		const ring = chin.querySelector("[data-fallback-chin-end] > span:last-child");
+		const [model, mode] = Array.from(chin.querySelectorAll("[data-fallback-chin-readout]"));
+		const ring = chin.querySelector("[data-fallback-chin-end] > span > span:last-child");
 
 		expect({
 			card: card.className,
@@ -506,8 +510,13 @@ describe("AppShellFallback", () => {
 			chin: chin.className,
 			mode: mode?.className,
 			model: model?.className,
-			modelSpans: Array.from(model?.children ?? [], (span) => [span.className, span.textContent]),
-			ring: ring?.className,
+			modelLabel: model?.firstElementChild?.className,
+			modelSpans: Array.from(model?.firstElementChild?.children ?? [], (span) => [
+				span.className,
+				span.textContent,
+			]),
+			ringWrapper: ring?.className,
+			ring: ring?.firstElementChild?.className,
 			ringSize: [
 				ring?.querySelector("svg")?.getAttribute("width"),
 				ring?.querySelector("svg")?.getAttribute("height"),
@@ -520,10 +529,12 @@ describe("AppShellFallback", () => {
 			chin: COMPOSER_CHIN_CLASS,
 			mode: CHIN_TRIGGER_CLASS,
 			model: CHIN_TRIGGER_CLASS,
+			modelLabel: CHIN_MODEL_LABEL_CLASS,
 			modelSpans: [
-				["truncate", "Opus 5.5"],
-				[EFFORT_LABEL_CLASS, " High"],
+				[CHIN_MODEL_NAME_CLASS, "Opus 5.5"],
+				[CHIN_EFFORT_LABEL_CLASS, " High"],
 			],
+			ringWrapper: USAGE_RING_WRAPPER_CLASS,
 			ring: USAGE_RING_CLASS,
 			ringSize: ["14", "14"],
 		});
@@ -559,7 +570,7 @@ describe("AppShellFallback dock frame", () => {
 		});
 	});
 
-	it("docks the home composer as the hydrated home does: the home dock's bottom inset, and the environment bar with a place chip before the mode instead of the chin", () => {
+	it("docks the home composer as the hydrated home does: the home dock's bottom inset, and the environment bar with a place chip before the model, mode and ring instead of the chin", () => {
 		const host = document.createElement("div");
 		host.innerHTML = renderToStaticMarkup(
 			<AppShellFallback
@@ -577,7 +588,7 @@ describe("AppShellFallback dock frame", () => {
 		const composer = host.querySelector('[data-cds="ChatComposer"]')!;
 		const bar = composer.querySelector("[data-fallback-environment-bar]");
 		const row = bar?.firstElementChild;
-		const [place, mode, end] = Array.from(row?.children ?? []);
+		const [place, pickers] = Array.from(row?.children ?? []);
 
 		expect({
 			dock: composer.parentElement?.className,
@@ -586,8 +597,7 @@ describe("AppShellFallback dock frame", () => {
 			row: row?.className,
 			place: place?.className,
 			chip: place?.firstElementChild?.className,
-			mode: mode?.textContent,
-			end: end?.textContent,
+			pickers: pickers?.className,
 			readouts: chinReadouts(bar!),
 		}).toStrictEqual({
 			dock: HOME_DOCK_CLASS,
@@ -596,9 +606,8 @@ describe("AppShellFallback dock frame", () => {
 			row: ENVIRONMENT_BAR_ROW_CLASS,
 			place: ENVIRONMENT_PLACE_CLASS,
 			chip: PLACE_CHIP_CLASS,
-			mode: "Auto",
-			end: "Opus 5.5 High",
-			readouts: ["+", "Auto", "Opus 5.5 High"],
+			pickers: ENVIRONMENT_PICKERS_CLASS,
+			readouts: ["+", "Opus 5.5 High", "Auto"],
 		});
 	});
 });

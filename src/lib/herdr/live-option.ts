@@ -45,6 +45,11 @@ function liveOptionCall(paneId: string, change: LiveOptionChange): {method: stri
 			};
 		case "fast":
 			return {method: "agent.prompt", params: {target: paneId, text: `/fast ${change.on ? "on" : "off"}`}};
+		case "ultracode":
+			return {
+				method: "agent.prompt",
+				params: {target: paneId, text: `/effort ultracode ${change.on ? "on" : "off"}`},
+			};
 		case "mode":
 			return {
 				method: "agent.send_keys",

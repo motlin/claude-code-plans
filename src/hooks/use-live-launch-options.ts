@@ -41,6 +41,7 @@ export const FAILURE_MESSAGE: Record<LiveOptionChange["kind"], string> = {
 	effort: "Effort change couldn’t be applied. You can try again.",
 	mode: "Mode change couldn’t be applied. You can try again.",
 	fast: "Fast mode couldn’t be applied. You can try again.",
+	ultracode: "Ultracode couldn’t be applied. You can try again.",
 };
 
 function modeLabel(mode: string): string {
@@ -160,6 +161,9 @@ function nextChange(
 	}
 	if (next.fastMode !== undefined && next.fastMode !== current.fastMode) {
 		return {change: {kind: "fast", on: next.fastMode}, applied: {fastMode: next.fastMode}};
+	}
+	if (next.ultracode !== undefined && next.ultracode !== current.ultracode) {
+		return {change: {kind: "ultracode", on: next.ultracode}, applied: {ultracode: next.ultracode}};
 	}
 	const target = next.permissionMode;
 	if (target === undefined || target === current.permissionMode) return null;
