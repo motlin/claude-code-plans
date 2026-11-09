@@ -16260,7 +16260,7 @@
 	{
 		"session": "f20bec67",
 		"line": 477,
-		"upstream": ["status: Hook re-prompted Claude, ran a command (1 failed)"],
+		"upstream": ["status: Hook re-prompted Claude, ran a command, 1 blocked"],
 		"records": [
 			{
 				"parentUuid": "24d32ca8-ae7e-475c-bfe7-e6c5afa2808f",

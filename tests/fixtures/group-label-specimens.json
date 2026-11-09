@@ -2,7 +2,7 @@
 	{
 		"session": "1c1e1b07",
 		"line": 2584,
-		"upstream": "Ran 3 commands",
+		"upstream": "Ran 3 commands (1 stopped)",
 		"calls": [
 			{
 				"id": "toolu_01J6vGssiFzSC6H8h4vbdC3P",
@@ -20,6 +20,89 @@
 				"input": {},
 				"isError": true,
 				"stopped": true
+			}
+		]
+	},
+	{
+		"session": "cbe014a6",
+		"line": 713,
+		"upstream": "Ran 2 commands (1 stopped), read a file, edited a file (1 stopped), created a file (1 stopped)",
+		"calls": [
+			{
+				"id": "toolu_017s8NyrGM3M9siNqsHRrrrB",
+				"name": "Bash",
+				"input": {}
+			},
+			{
+				"id": "toolu_01YP7xeLpuSFNg8pXhZEUwPg",
+				"name": "Read",
+				"input": {
+					"file_path": "/Users/craig/Downloads/CLAUDE.md"
+				}
+			},
+			{
+				"id": "toolu_01AHgdd3gfq7H8LtogBJ1SKE",
+				"name": "Edit",
+				"input": {
+					"file_path": "/Users/craig/Downloads/CLAUDE.md"
+				},
+				"isError": true,
+				"denied": true
+			},
+			{
+				"id": "toolu_01LLAYyQWPevVnxfpPUtXfcA",
+				"name": "Write",
+				"input": {
+					"file_path": "/Users/craig/.claude/projects/-Users-craig-Downloads/memory/fix-skill-not-memory.md"
+				},
+				"isError": true,
+				"denied": true
+			},
+			{
+				"id": "toolu_01NuRLjMwsb2rvTWrgpejhud",
+				"name": "Bash",
+				"input": {},
+				"isError": true,
+				"denied": true
+			}
+		]
+	},
+	{
+		"session": "cbe014a6",
+		"line": 182,
+		"upstream": "Ran 6 commands (1 blocked)",
+		"calls": [
+			{
+				"id": "toolu_01RpC2JUmSrAZ7cEkA5Jok3V",
+				"name": "Bash",
+				"input": {}
+			},
+			{
+				"id": "toolu_01XiRZbdw4FRcEq9mWzWzVSM",
+				"name": "Bash",
+				"input": {}
+			},
+			{
+				"id": "toolu_01QETsx4ZptNXP8nDwskSRd9",
+				"name": "Bash",
+				"input": {}
+			},
+			{
+				"id": "toolu_01Tp72oguSx7v8WMY96fDY57",
+				"name": "Bash",
+				"input": {}
+			},
+			{
+				"id": "toolu_01RmhjokimBeZD3orgGfTq98",
+				"name": "Bash",
+				"input": {},
+				"isError": true,
+				"blocked": true
+			},
+			{
+				"id": "toolu_01QqYMnjzJR86QFX4qnUS3Qs",
+				"name": "Bash",
+				"input": {}
 			}
 		]
 	},
@@ -1066,7 +1149,7 @@
 	{
 		"session": "54e53f89",
 		"line": 808,
-		"upstream": "Ran 2 commands (1 failed), used 2 tools",
+		"upstream": "Ran 2 commands, used 2 tools, 1 blocked",
 		"calls": [
 			{
 				"id": "toolu_014LBVdKFJaaRZbKReX6RgFj",
@@ -1077,7 +1160,8 @@
 				"id": "toolu_01QvCEb4DTRXD4kAarR58qa9",
 				"name": "Bash",
 				"input": {},
-				"isError": true
+				"isError": true,
+				"blocked": true
 			},
 			{
 				"id": "toolu_01Mjxf23zHB25MBaK4Bxc3Jy",

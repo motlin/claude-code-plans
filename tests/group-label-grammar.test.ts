@@ -110,10 +110,10 @@ describe("group label: failure count", () => {
 	const mcp = (extra: Partial<ToolCallLike> = {}): ToolCallLike => ({name: "mcp__x__y", input: {}, ...extra});
 
 	it.each([
-		{calls: [edit("/r/k.ts", {isError: true}), bash()], expected: "Edited k.ts, ran a command (1 failed)"},
+		{calls: [edit("/r/k.ts", {isError: true}), bash()], expected: "Edited k.ts, ran a command, 1 failed"},
 		{
 			calls: [read("/r/a", {isError: true}), bash(), read("/r/b"), read("/r/c"), read("/r/d"), bash()],
-			expected: "Read 4 files, ran 2 commands (1 failed)",
+			expected: "Read 4 files, ran 2 commands, 1 failed",
 		},
 		{
 			calls: [
@@ -122,25 +122,109 @@ describe("group label: failure count", () => {
 				read("/r/b", {isError: true}),
 				read("/r/c", {isError: true}),
 			],
-			expected: "Ran a command, read 3 files (4 failed)",
+			expected: "Ran a command, read 3 files, 4 failed",
 		},
-		{calls: [mcp({isError: true}), bash(), mcp()], expected: "Ran a command, used 2 tools (1 failed)"},
-	])("totals every failure in one trailing count: $expected", ({calls, expected}) => {
-		expect(label(calls)).toBe(expected);
-	});
+		{calls: [mcp({isError: true}), bash(), mcp()], expected: "Ran a command, used 2 tools, 1 failed"},
+		{calls: [bash({isError: true}), bash()], expected: "Ran 2 commands (1 failed)"},
+	])(
+		"totals every failure in one trailing outcomes part, or inline on a lone segment: $expected",
+		({calls, expected}) => {
+			expect(label(calls)).toBe(expected);
+		},
+	);
 });
 
 describe("group label: rejected and interrupted calls", () => {
+	const tool = (name: string, extra: Partial<ToolCallLike> = {}): ToolCallLike => ({name, input: {}, ...extra});
+	const write = (filePath: string, extra: Partial<ToolCallLike> = {}): ToolCallLike => ({
+		name: "Write",
+		input: {file_path: filePath, content: "x"},
+		...extra,
+	});
+
 	it.each([
-		{calls: [bash(), bash(), bash({isError: true, stopped: true})], expected: "Ran 3 commands"},
-		{calls: [bash({isError: true, denied: true}), bash()], expected: "Ran 2 commands"},
+		{calls: [bash(), bash(), bash({isError: true, stopped: true})], expected: "Ran 3 commands (1 stopped)"},
+		{calls: [bash({isError: true, denied: true}), bash()], expected: "Ran 2 commands (1 stopped)"},
 		{calls: [{name: "mcp__x__y", input: {}, isError: true, stopped: true}], expected: "Used a tool"},
 		{calls: [edit("/r/a.ts"), edit("/r/a.ts", {isError: true, stopped: true})], expected: "Edited a.ts"},
 		{
 			calls: [edit("/r/a.ts", {isError: true}), edit("/r/a.ts", {isError: true, denied: true})],
 			expected: "Edited a.ts (1 failed)",
 		},
-	])("counts the call with no failure, keeping its file's earlier status: $expected", ({calls, expected}) => {
+		{
+			calls: [edit("/r/a.ts"), edit("/r/b.ts", {isError: true, stopped: true})],
+			expected: "Edited 2 files (1 stopped)",
+		},
+		{
+			calls: [
+				bash({id: "b1"}),
+				read("/d/CLAUDE.md"),
+				edit("/d/CLAUDE.md", {isError: true, stopped: true}),
+				write("/m/x.md", {isError: true, stopped: true}),
+				bash({id: "b2", isError: true, stopped: true}),
+			],
+			expected: "Ran 2 commands (1 stopped), read a file, edited a file (1 stopped), created a file (1 stopped)",
+		},
+		{
+			calls: [
+				bash(),
+				tool("Grep"),
+				tool("Glob"),
+				tool("WebSearch", {isError: true, stopped: true}),
+				tool("WebFetch"),
+			],
+			expected: "Ran a command, searched code, found files, and 2 more actions",
+		},
+	])("adds an inline stopped count to the segment: $expected", ({calls, expected}) => {
+		expect(label(calls)).toBe(expected);
+	});
+});
+
+describe("group label: failed and stopped in one segment", () => {
+	it.each([
+		{
+			calls: [bash({id: "b1"}), bash({id: "b2", isError: true}), bash({id: "b3", isError: true, stopped: true})],
+			expected: "Ran 3 commands (1 failed, 1 stopped)",
+		},
+		{
+			calls: [bash({id: "b1", isError: true}), bash({id: "b2", isError: true, stopped: true}), read("/r/a.ts")],
+			expected: "Ran 2 commands (1 stopped), read a.ts, 1 failed",
+		},
+	])("keeps both inline on a lone segment, else trails the failures: $expected", ({calls, expected}) => {
+		expect(label(calls)).toBe(expected);
+	});
+});
+
+describe("group label: auto-mode blocked calls", () => {
+	const blocked = {isError: true, blocked: true} as const;
+
+	it.each([
+		{
+			calls: [
+				bash({id: "1"}),
+				bash({id: "2"}),
+				bash({id: "3"}),
+				bash({id: "4"}),
+				bash({id: "5"}),
+				bash({id: "6", ...blocked}),
+			],
+			expected: "Ran 6 commands (1 blocked)",
+		},
+		{
+			calls: [bash({id: "1", isError: true}), bash({id: "2", ...blocked}), bash({id: "3"})],
+			expected: "Ran 3 commands (1 failed, 1 blocked)",
+		},
+		{
+			calls: [bash({id: "1", ...blocked}), bash({id: "2", isError: true, stopped: true}), bash({id: "3"})],
+			expected: "Ran 3 commands (1 blocked)",
+		},
+		{calls: [bash({id: "1", ...blocked}), read("/r/a.ts")], expected: "Ran a command, read a.ts, 1 blocked"},
+		{
+			calls: [bash({id: "1", ...blocked}), bash({id: "2"}), read("/r/a.ts", {isError: true})],
+			expected: "Ran 2 commands, read a.ts, 1 failed, 1 blocked",
+		},
+		{calls: [edit("/r/a.ts", {isError: true}), edit("/r/a.ts", blocked)], expected: "Edited a.ts (1 blocked)"},
+	])("counts the block instead of a failure: $expected", ({calls, expected}) => {
 		expect(label(calls)).toBe(expected);
 	});
 });
@@ -181,6 +265,18 @@ describe("group label: one file", () => {
 			calls: [read("/r/x.ts", {isError: true}), edit("/r/x.ts", {isError: true})],
 			expected: "Read and edited x.ts (2 failed)",
 		},
+		{
+			calls: [read("/r/x.ts"), edit("/r/x.ts", {isError: true, stopped: true})],
+			expected: "Read and edited x.ts (1 stopped)",
+		},
+		{
+			calls: [read("/r/x.ts", {isError: true}), edit("/r/x.ts", {isError: true, stopped: true})],
+			expected: "Read and edited x.ts (1 failed, 1 stopped)",
+		},
+		{
+			calls: [read("/r/x.ts", {isError: true}), edit("/r/x.ts", {isError: true, stopped: true}), bash()],
+			expected: "Read and edited x.ts (1 stopped), ran a command, 1 failed",
+		},
 	])("names the file only when the whole group touches just it: $expected", ({calls, expected}) => {
 		expect(label(calls)).toBe(expected);
 	});
@@ -220,27 +316,41 @@ describe("group label: cap", () => {
 		},
 		{
 			calls: [bash(), tool("Grep"), tool("Glob"), tool("WebSearch"), tool("mcp__x__y", {isError: true})],
-			expected: "Ran a command, searched code, found files, and 2 more actions (1 failed)",
+			expected: "Ran a command, searched code, found files, and 2 more actions, 1 failed",
 		},
 	])("keeps the first three of five or more segments: $expected", ({calls, expected}) => {
 		expect(label(calls)).toBe(expected);
 	});
 
-	it("counts background completions among the dropped actions", () => {
-		const segments = summarizeToolCallStats(
+	it("counts background completions among the dropped actions, folded into the trailing part", () => {
+		const {segments, trailing} = summarizeToolCallStats(
 			[bash(), tool("Grep"), tool("Glob"), tool("WebSearch")],
 			[
 				{command: true, status: "completed"},
 				{command: true, status: "completed"},
 			],
-		).segments;
+		);
 
-		expect(segments).toStrictEqual([
-			{verb: "Ran", rest: "a command"},
-			{verb: "searched", rest: "code"},
-			{verb: "found", rest: "files"},
-			{verb: "and", rest: "3 more actions"},
-		]);
+		expect({segments, trailing}).toStrictEqual({
+			segments: [
+				{verb: "Ran", rest: "a command"},
+				{verb: "searched", rest: "code"},
+				{verb: "found", rest: "files,"},
+			],
+			trailing: " and 3 more actions",
+		});
+	});
+
+	it("totals failures and blocks over every segment, folded ones too, after the fold", () => {
+		expect(
+			label([
+				bash({isError: true, blocked: true}),
+				tool("Grep"),
+				tool("Glob"),
+				tool("WebSearch"),
+				tool("mcp__x__y", {isError: true}),
+			]),
+		).toBe("Ran a command, searched code, found files, and 2 more actions, 1 failed, 1 blocked");
 	});
 });
 
@@ -271,7 +381,7 @@ describe("group label: received messages", () => {
 			failed: received([bash()], {leading: 1, trailing: 0}, [failedTask]),
 			settled: received([bash()], {leading: 0, trailing: 1}, [finishedCommand]),
 		}).toStrictEqual({
-			failed: "Finished a background task, received a message, ran a command (1 failed)",
+			failed: "Finished a background task, received a message, ran a command, 1 failed",
 			settled: "Ran a command, received a message, finished a background command",
 		});
 	});

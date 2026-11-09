@@ -347,7 +347,7 @@ describe("summarizeToolCallStats with background completions", () => {
 		]);
 	});
 
-	it('leads with a failed completion: "Finished a background command, ran a command (1 failed)"', () => {
+	it('leads with a failed completion: "Finished a background command, ran a command, 1 failed"', () => {
 		const stats = summarizeToolCallStats(
 			[{name: "Bash", input: {command: "dig neighbors.motlin.com"}}],
 			[{command: true, status: "failed"}],
@@ -362,7 +362,7 @@ describe("summarizeToolCallStats with background completions", () => {
 		});
 	});
 
-	it('leads with a failed task completion: "Finished a background task, used a tool (1 failed)"', () => {
+	it('leads with a failed task completion: "Finished a background task, used a tool, 1 failed"', () => {
 		expect(
 			summarizeToolCallStats([{name: "Mystery", input: {}}], [{command: false, status: "failed"}]).segments,
 		).toStrictEqual([
@@ -371,7 +371,7 @@ describe("summarizeToolCallStats with background completions", () => {
 		]);
 	});
 
-	it('fails the launch in its own group instead: "Ran 2 commands, finished a background command (1 failed)"', () => {
+	it('fails the launch in its own group instead: "Ran 2 commands, finished a background command, 1 failed"', () => {
 		const stats = summarizeToolCallStats(
 			[
 				{id: "toolu_launch", name: "Bash", input: {command: "just dev", run_in_background: true}},
@@ -399,7 +399,7 @@ describe("summarizeToolCallStats with background completions", () => {
 				[],
 				new Set(["toolu_launch"]),
 			).segments,
-		).toStrictEqual([{verb: "Ran", rest: "2 commands"}]);
+		).toStrictEqual([{verb: "Ran", rest: "2 commands (1 failed)"}]);
 	});
 
 	it("settles one failed completion per failed launch in the group, whichever launch the completion reports", () => {
@@ -468,7 +468,7 @@ describe("task notifications in the transcript", () => {
 			"toolu_agent_elsewhere",
 		);
 		const container = renderLines(laterRecords(agentNotice));
-		fireEvent.click(summaryButton(container, "Finished a background task, ran a command (1 failed)"));
+		fireEvent.click(summaryButton(container, "Finished a background task, ran a command, 1 failed"));
 		const notice = container.querySelector("[data-background-notice]");
 		expect({
 			children: noticeChildren(container),
@@ -505,7 +505,7 @@ describe("task notifications in the transcript", () => {
 		const container = renderLines(
 			laterRecords(notification("failed", 'Background command "Run the test suite" failed with exit code 7')),
 		);
-		fireEvent.click(summaryButton(container, "Finished a background command, ran a command (1 failed)"));
+		fireEvent.click(summaryButton(container, "Finished a background command, ran a command, 1 failed"));
 		expect({
 			groupRows: groupRowTexts(container),
 			notice: noticeChildren(container),
@@ -525,7 +525,7 @@ describe("task notifications in the transcript", () => {
 		const container = renderLines(
 			records(notification("failed", 'Background command "Run the test suite" failed with exit code 7')),
 		);
-		fireEvent.click(summaryButton(container, "Ran a command, finished a background command (1 failed)"));
+		fireEvent.click(summaryButton(container, "Ran a command, finished a background command, 1 failed"));
 		expect(groupRowTexts(container)).toStrictEqual([
 			"Run the test suiteFailed",
 			"Background commandRun the test suiteFailed",
@@ -582,7 +582,7 @@ describe("background launch row status", () => {
 			expandedLaunchRow(
 				"failed",
 				'Background command "Run the test suite" failed with exit code 7',
-				"Ran a command, finished a background command (1 failed)",
+				"Ran a command, finished a background command, 1 failed",
 			),
 		).toStrictEqual([
 			{text: "Run the test suite", className: MUTED_PHRASE},
@@ -1191,7 +1191,7 @@ describe("a run of notices inside an expanded group", () => {
 				message: {role: "assistant", content: [{type: "text", text: "Lint failed."}]},
 			},
 		]);
-		fireEvent.click(summaryButton(container, "Ran 2 commands, finished 2 background commands (1 failed)"));
+		fireEvent.click(summaryButton(container, "Ran 2 commands, finished 2 background commands, 1 failed"));
 		const notices = [...container.querySelectorAll("[data-background-notice]")];
 		expect(
 			notices.map((notice) => ({

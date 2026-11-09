@@ -452,7 +452,8 @@ const REJECTION_WITH_FEEDBACK_PREFIX = "The user doesn't want to proceed with th
  * tool errors read "Failed".
  */
 function userDenial(kind: string | undefined, toolUseResult: unknown, resultText: string): "stopped" | "denied" | null {
-	if (kind !== "user-rejected" && kind !== "interrupted") return null;
+	// Upstream's adapter (c06cf64bb `Ll`) reads a cancelled call as interrupted.
+	if (kind !== "user-rejected" && kind !== "interrupted" && kind !== "cancelled") return null;
 	const interrupted =
 		toolUseResult === USER_REJECTED_TOOL_USE ||
 		resultText === "Tool execution was interrupted." ||

@@ -2266,6 +2266,16 @@ describe("auto-mode denials", () => {
 		});
 	});
 
+	it("stops a cancelled call like an interrupted one (upstream Ll)", () => {
+		expect(blockedFields("cancelled", "Tool execution was interrupted.")).toStrictEqual({
+			blocked: undefined,
+			blockedReason: undefined,
+			blockedNoVerdict: undefined,
+			stopped: true,
+			denied: undefined,
+		});
+	});
+
 	it("clips a reason over 1000 chars at a word boundary with an ellipsis", () => {
 		const reason = blockedFields("automode-blocked", `${CLASSIFIER}${"word ".repeat(240)}${TAIL}`).blockedReason!;
 		expect({ends: reason.endsWith("…"), length: reason.length, text: reason}).toStrictEqual({

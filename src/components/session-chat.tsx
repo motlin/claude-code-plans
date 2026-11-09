@@ -108,7 +108,7 @@ import {
 	hasDiffStats,
 	summarizeToolCallStats,
 	countedLabelText,
-	failedCountText,
+	summaryNamesText,
 	diffStatsForCall,
 	isRequestInterrupted,
 } from "../lib/session-utils";
@@ -6413,21 +6413,28 @@ function SummarySpans({segments}: {segments: SummarySegment[]}) {
 }
 
 /**
- * Upstream's counted line (shared-80 `Tl`): the phrases clip in their own
- * span, and the group's one failure count trails them unclipped.
+ * Upstream's group label (c24951e9f `j`): the bare phrases, seated in the
+ * label, until a trailing part exists -- ", 1 failed" or " and 2 more
+ * actions" -- when the counted line (shared-80 `Tl`) clips the phrases in
+ * their own span and draws the trailing part after them, unclipped.
  */
-function CountedLine({id, segments, failed}: {id: string; segments: SummarySegment[]; failed: number}) {
-	const rowCut = useTypeRowCut(countedLabelText({segments, failed: 0}));
+function CountedLine({id, segments, trailing}: {id: string; segments: SummarySegment[]; trailing: string | null}) {
+	const rowCut = useTypeRowCut(summaryNamesText(segments));
+	if (trailing === null) {
+		return (
+			<span ref={rowCut} id={id} className="block min-w-0 truncate text-body" data-cds-phrases-seat="">
+				<SummarySpans segments={segments} />
+			</span>
+		);
+	}
 	return (
 		<span id={id} className="flex min-w-0 text-body">
 			<span ref={rowCut} className="min-w-0 truncate" data-testid="counted-line-names">
 				<SummarySpans segments={segments} />
 			</span>
-			{failed > 0 && (
-				<bdi className="shrink-0 whitespace-pre" data-testid="counted-line-count">
-					{failedCountText(failed)}
-				</bdi>
-			)}
+			<bdi className="shrink-0 whitespace-pre" data-testid="counted-line-count">
+				{trailing}
+			</bdi>
 		</span>
 	);
 }
@@ -6537,7 +6544,7 @@ function ToolCallSummary({
 						</span>
 					</>
 				) : (
-					<CountedLine id={`${statusId}-label`} segments={summary.segments} failed={summary.failed} />
+					<CountedLine id={`${statusId}-label`} segments={summary.segments} trailing={summary.trailing} />
 				)}
 			</span>
 			{hasDiffStats(summary) && <DiffStatPill added={summary.added} removed={summary.removed} />}

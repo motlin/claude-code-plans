@@ -563,31 +563,30 @@ export interface ReceivedMessages {
 const NO_RECEIVED: ReceivedMessages = {leading: 0, trailing: 0};
 
 /**
- * A summary row's label segments plus the totals upstream renders beside them:
- * the git-coloured `+added -removed` span and the trailing " (N failed)" count,
- * which totals the whole group's failures.
+ * A summary row's label segments plus what upstream renders beside them: the
+ * trailing part its counted line draws unclipped after the phrases (c24951e9f
+ * `oe`) -- ", 1 failed", or " and 2 more actions, 1 blocked" -- and the
+ * git-coloured `+added -removed` span. `failed` and `blocked` total the whole
+ * group's.
  */
 export interface ToolCallSummaryStats {
 	segments: SummarySegment[];
+	/** The text after the phrases, or null when the label is the bare phrases. */
+	trailing: string | null;
 	added: number;
 	removed: number;
 	failed: number;
+	blocked: number;
 }
 
-/**
- * Upstream's counted-line count (shared-80 `Tl`): one trailing " (N failed)"
- * after the phrases, outside their clip, or nothing when no call failed.
- */
-export function failedCountText(failed: number): string {
-	return failed > 0 ? ` (${failed} failed)` : "";
+/** The group's phrases as text, without the trailing part. */
+export function summaryNamesText(segments: readonly SummarySegment[]): string {
+	return segments.map((segment) => (segment.rest ? `${segment.verb} ${segment.rest}` : segment.verb)).join(", ");
 }
 
-/** The group header as text: its phrases, then the trailing failure count. */
-export function countedLabelText(stats: Pick<ToolCallSummaryStats, "segments" | "failed">): string {
-	const names = stats.segments
-		.map((segment) => (segment.rest ? `${segment.verb} ${segment.rest}` : segment.verb))
-		.join(", ");
-	return `${names}${failedCountText(stats.failed)}`;
+/** The group header as text: its phrases, then the trailing part. */
+export function countedLabelText(stats: Pick<ToolCallSummaryStats, "segments" | "trailing">): string {
+	return `${summaryNamesText(stats.segments)}${stats.trailing ?? ""}`;
 }
 
 function basenameFromPath(path: string): string {
@@ -641,7 +640,8 @@ function soleFilePath(calls: ToolCallLike[], categories: (ToolCategory | null)[]
 
 const VERB_LIST = new Intl.ListFormat("en", {type: "conjunction"});
 
-type CallOutcome = "succeeded" | "failed";
+/** Upstream's per-call outcome (c24951e9f `X`), less the pending and held ones local never counts. */
+type CallOutcome = "succeeded" | "failed" | "stopped" | "blocked";
 
 /**
  * What upstream counts once in a segment: the file a call touches, so three
@@ -656,80 +656,150 @@ function callKey(call: ToolCallLike, index: number): string {
 }
 
 /**
- * A call the user rejected or interrupted has no outcome: upstream counts it in
- * its segment but adds no "(N failed)" for it.
+ * A call the user rejected or interrupted is "stopped" and one the auto-mode
+ * classifier refused is "blocked" (c06cf64bb `Cl`/`qc`): upstream counts both
+ * in the segment but neither as a failure.
  */
-function callOutcome(call: ToolCallLike, failedLaunches: ReadonlySet<string>): CallOutcome | undefined {
-	if (call.stopped === true || call.denied === true) return undefined;
+function callOutcome(call: ToolCallLike, failedLaunches: ReadonlySet<string>): CallOutcome {
+	if (call.stopped === true || call.denied === true) return "stopped";
+	if (call.blocked === true) return "blocked";
 	// Upstream settles a benign error (`errorIsBenign`) done, so it is no failure.
 	if (isBenignToolError(call)) return "succeeded";
 	const failedLaunch = call.id !== undefined && failedLaunches.has(call.id);
 	return call.isError === true || failedLaunch ? "failed" : "succeeded";
 }
 
-function countFailed(byKey: Map<string, CallOutcome | undefined>): number {
-	let failed = 0;
-	for (const outcome of byKey.values()) if (outcome === "failed") failed++;
-	return failed;
+/**
+ * Upstream's per-key merge (c24951e9f `Z`): a stopped retry keeps the key's
+ * earlier outcome, so only a key whose every call stopped reads stopped; any
+ * other outcome replaces it.
+ */
+function mergeOutcome(prev: CallOutcome | undefined, next: CallOutcome): CallOutcome | undefined {
+	return next === "stopped" && prev !== undefined ? prev : next;
+}
+
+function countOutcome(byKey: Map<string, CallOutcome | undefined>, outcome: CallOutcome): number {
+	let count = 0;
+	for (const keyOutcome of byKey.values()) if (keyOutcome === outcome) count++;
+	return count;
+}
+
+/** The calls, files, or verbs in a segment that failed, stopped, or were blocked. */
+interface SegmentOutcomes {
+	failed: number;
+	stopped: number;
+	blocked: number;
+}
+
+const NO_OUTCOMES: SegmentOutcomes = {failed: 0, stopped: 0, blocked: 0};
+
+function keyOutcomes(byKey: Map<string, CallOutcome | undefined>): SegmentOutcomes {
+	return {
+		failed: countOutcome(byKey, "failed"),
+		stopped: countOutcome(byKey, "stopped"),
+		blocked: countOutcome(byKey, "blocked"),
+	};
 }
 
 /**
- * A segment before its failure suffix, with the actions it stands for -- files,
+ * A segment before its outcome notes, with the actions it stands for -- files,
  * calls, or verbs -- so a capped header can total the ones it drops.
  */
-interface CountedSegment extends SummarySegment {
+interface CountedSegment extends SummarySegment, SegmentOutcomes {
 	count: number;
-	failed: number;
 }
 
 /**
  * One segment for every file call when they all touched one file: the verbs in
  * the order first used, then its name -- "Read, edited, and created x.ts" --
- * with one failure per verb that failed.
+ * with one failure, stop, or block per verb that holds one (upstream `A`).
  */
 function soleFileSegment(
 	path: string,
 	outcomes: Map<ToolCategory, Map<string, CallOutcome | undefined>>,
 ): CountedSegment {
-	const failedByVerb = new Map<string, boolean>();
+	const byVerb = new Map<string, Set<CallOutcome | undefined>>();
 	for (const [cat, byKey] of outcomes) {
 		if (!FILE_CATEGORIES.has(cat)) continue;
 		const verb = CATEGORY_LABELS[cat].verb.toLowerCase();
-		failedByVerb.set(verb, failedByVerb.get(verb) === true || countFailed(byKey) > 0);
+		byVerb.set(verb, new Set([...(byVerb.get(verb) ?? []), ...byKey.values()]));
 	}
-	const verbs = VERB_LIST.format(failedByVerb.keys());
+	const verbsHolding = (outcome: CallOutcome) => [...byVerb.values()].filter((held) => held.has(outcome)).length;
+	const verbs = VERB_LIST.format(byVerb.keys());
 	return {
 		verb: verbs.charAt(0).toUpperCase() + verbs.slice(1),
 		rest: basenameFromPath(path),
-		count: failedByVerb.size,
-		failed: [...failedByVerb.values()].filter(Boolean).length,
+		count: byVerb.size,
+		failed: verbsHolding("failed"),
+		stopped: verbsHolding("stopped"),
+		blocked: verbsHolding("blocked"),
 	};
 }
 
-function labelledSegment(label: SegmentLabel, count: number, failed: number): CountedSegment {
-	return {verb: label.verb, rest: pluralize(count, label.one, label.many), count, failed};
+function labelledSegment(label: SegmentLabel, count: number, outcomes: SegmentOutcomes = NO_OUTCOMES): CountedSegment {
+	return {verb: label.verb, rest: pluralize(count, label.one, label.many), count, ...outcomes};
+}
+
+/**
+ * A segment's inline note (c24951e9f `ye`): a block wins and drops any stop,
+ * "(1 failed, 1 blocked)"; else stops and failures, "(1 failed, 1 stopped)".
+ */
+function inlineNote({failed, stopped, blocked}: SegmentOutcomes): string | null {
+	if (blocked > 0) return failed > 0 ? `(${failed} failed, ${blocked} blocked)` : `(${blocked} blocked)`;
+	if (stopped > 0) return failed > 0 ? `(${failed} failed, ${stopped} stopped)` : `(${stopped} stopped)`;
+	return failed > 0 ? `(${failed} failed)` : null;
+}
+
+/** The note left inline when failures and blocks trail (`plainMeta`): only an unblocked segment's stops. */
+function plainNote({stopped, blocked}: SegmentOutcomes): string | null {
+	return blocked === 0 && stopped > 0 ? `(${stopped} stopped)` : null;
+}
+
+/** Upstream's outcomes part (`V`): "1 failed", "1 blocked", or "1 failed, 1 blocked". */
+function outcomesText(failed: number, blocked: number): string | null {
+	const parts = [failed > 0 ? `${failed} failed` : null, blocked > 0 ? `${blocked} blocked` : null];
+	const shown = parts.filter((part) => part !== null);
+	return shown.length > 0 ? shown.join(", ") : null;
+}
+
+function withNote(segment: CountedSegment, note: string | null): SummarySegment {
+	if (note === null) return {verb: segment.verb, rest: segment.rest};
+	return {verb: segment.verb, rest: segment.rest ? `${segment.rest} ${note}` : note};
 }
 
 /** Segments upstream shows before folding the rest into "and N more actions". */
 const SHOWN_SEGMENTS = 3;
 
 /**
- * Five or more segments keep the first three and total the rest: "Ran a
- * command, browsed the web, fetched 4 pages, and 2 more actions". Four still
- * show in full, as folding one would save nothing.
+ * Upstream's trailing mode (c24951e9f `oe`, which transcript groups always
+ * use). Five or more segments keep the first three, the last ending in ",",
+ * and trail "and N more actions" plus the whole group's failures and blocks:
+ * "Ran a command, searched code, found files, and 2 more actions, 1 failed".
+ * Two to four with a failure or block trail the outcomes part: "Ran 2
+ * commands, read a file, 1 failed". Otherwise each segment keeps its note
+ * inline: "Ran 3 commands (1 failed, 1 stopped)". Trailing segments keep only
+ * their stops inline.
  */
-function capSegments(segments: CountedSegment[]): CountedSegment[] {
-	if (segments.length < SHOWN_SEGMENTS + 2) return segments;
-	const dropped = segments.slice(SHOWN_SEGMENTS);
-	const count = dropped.reduce((sum, segment) => sum + segment.count, 0);
-	const failed = dropped.reduce((sum, segment) => sum + segment.failed, 0);
-	const more: CountedSegment = {
-		verb: "and",
-		rest: pluralize(count, "1 more action", "{n} more actions"),
-		count,
-		failed,
-	};
-	return [...segments.slice(0, SHOWN_SEGMENTS), more];
+function shapeSegments(segments: CountedSegment[]): {segments: SummarySegment[]; trailing: string | null} {
+	const outcomes = outcomesText(
+		segments.reduce((sum, segment) => sum + segment.failed, 0),
+		segments.reduce((sum, segment) => sum + segment.blocked, 0),
+	);
+	if (segments.length >= SHOWN_SEGMENTS + 2) {
+		const count = segments.slice(SHOWN_SEGMENTS).reduce((sum, segment) => sum + segment.count, 0);
+		const shown = segments.slice(0, SHOWN_SEGMENTS).map((segment) => withNote(segment, plainNote(segment)));
+		const last = shown.at(-1);
+		if (last !== undefined) {
+			if (last.rest) last.rest = `${last.rest},`;
+			else last.verb = `${last.verb},`;
+		}
+		const more = pluralize(count, "1 more action", "{n} more actions");
+		return {segments: shown, trailing: ` and ${more}${outcomes === null ? "" : `, ${outcomes}`}`};
+	}
+	if (segments.length > 1 && outcomes !== null) {
+		return {segments: segments.map((segment) => withNote(segment, plainNote(segment))), trailing: `, ${outcomes}`};
+	}
+	return {segments: segments.map((segment) => withNote(segment, inlineNote(segment))), trailing: null};
 }
 
 /**
@@ -771,7 +841,8 @@ function buildSummarySegments(
 	// segments follow the order each tool was first called.
 	const outcomes = new Map<ToolCategory, Map<string, CallOutcome | undefined>>();
 	let otherTools = 0;
-	let otherFailed = 0;
+	// Upstream's generic bucket notes failures and blocks only (`z`), never stops.
+	const otherOutcomes = {...NO_OUTCOMES};
 	let added = 0;
 	let removed = 0;
 
@@ -781,7 +852,8 @@ function buildSummarySegments(
 		const outcome = callOutcome(call, failedLaunches);
 		if (cat === null) {
 			otherTools++;
-			if (outcome === "failed") otherFailed++;
+			if (outcome === "failed") otherOutcomes.failed++;
+			if (outcome === "blocked") otherOutcomes.blocked++;
 			return;
 		}
 		let byKey = outcomes.get(cat);
@@ -790,7 +862,7 @@ function buildSummarySegments(
 			outcomes.set(cat, byKey);
 		}
 		const key = callKey(call, index);
-		byKey.set(key, outcome ?? byKey.get(key));
+		byKey.set(key, mergeOutcome(byKey.get(key), outcome));
 		// A failed edit changed nothing, so upstream leaves it out of the totals.
 		if (isMutation(cat) && call.isError !== true) {
 			const s = diffStatsForCall(call);
@@ -799,7 +871,7 @@ function buildSummarySegments(
 		}
 	});
 
-	// Each segment counts its own failures, which the header totals in one trailing count.
+	// Each segment counts its own outcomes, which shapeSegments notes inline or totals in the trailing part.
 	const segments: CountedSegment[] = [];
 	const solePath = soleFilePath(calls, categories);
 	let soleFileNamed = false;
@@ -809,17 +881,18 @@ function buildSummarySegments(
 			soleFileNamed = true;
 			continue;
 		}
-		segments.push(labelledSegment(CATEGORY_LABELS[cat], byKey.size, countFailed(byKey)));
+		segments.push(labelledSegment(CATEGORY_LABELS[cat], byKey.size, keyOutcomes(byKey)));
 	}
 
-	if (otherTools > 0) segments.push(labelledSegment(OTHER_TOOLS_LABEL, otherTools, otherFailed));
+	if (otherTools > 0) segments.push(labelledSegment(OTHER_TOOLS_LABEL, otherTools, otherOutcomes));
 
 	// Upstream names agent messages where they arrived: "Received a message, ran
 	// a command" when they led the run, "Ran 2 commands, received a message" after.
-	if (received.leading > 0) segments.unshift(labelledSegment(RECEIVED_LABEL, received.leading, 0));
-	if (received.trailing > 0) segments.push(labelledSegment(RECEIVED_LABEL, received.trailing, 0));
+	if (received.leading > 0) segments.unshift(labelledSegment(RECEIVED_LABEL, received.leading));
+	if (received.trailing > 0) segments.push(labelledSegment(RECEIVED_LABEL, received.trailing));
 	// Upstream leads with the re-prompt that started the run: "Hook re-prompted Claude, ran a command".
-	if (received.reprompted === true) segments.unshift({verb: "Hook", rest: "re-prompted Claude", count: 1, failed: 0});
+	if (received.reprompted === true)
+		segments.unshift({verb: "Hook", rest: "re-prompted Claude", count: 1, ...NO_OUTCOMES});
 
 	// Upstream folds background completions in last: "Ran a command, finished
 	// a background command", "Used a tool, finished a background task (1 stopped)",
@@ -832,23 +905,21 @@ function buildSummarySegments(
 		const rest = pluralize(completions.length, `a background ${noun}`, `{n} background ${noun}s`);
 		const count = completions.length;
 		if (failedCompletions > 0) {
-			segments.unshift({verb: "Finished", rest, count, failed: failedCompletions});
+			segments.unshift({verb: "Finished", rest, count, ...NO_OUTCOMES, failed: failedCompletions});
 		} else {
-			segments.push({
-				verb: "Finished",
-				rest: stopped > 0 ? `${rest} (${stopped} stopped)` : rest,
-				count,
-				failed: 0,
-			});
+			segments.push({verb: "Finished", rest, count, ...NO_OUTCOMES, stopped});
 		}
 	}
 
+	const shaped = shapeSegments(segments);
 	// Upstream capitalizes only the leading verb: "Ran 2 commands, read cache.ts".
 	return {
-		segments: capSegments(segments).map(({verb, rest}, i) => ({verb: i === 0 ? verb : lowercaseFirst(verb), rest})),
+		segments: shaped.segments.map(({verb, rest}, i) => ({verb: i === 0 ? verb : lowercaseFirst(verb), rest})),
+		trailing: shaped.trailing,
 		added,
 		removed,
 		failed: segments.reduce((sum, segment) => sum + segment.failed, 0),
+		blocked: segments.reduce((sum, segment) => sum + segment.blocked, 0),
 	};
 }
 
@@ -879,6 +950,6 @@ export function hasDiffStats(stats: {added: number; removed: number}): boolean {
 export function summarizeToolCalls(calls: ToolCallLike[]): string {
 	const summary = buildSummarySegments(calls);
 	const names = summary.segments.map((s) => `${lowercaseFirst(s.verb)} ${s.rest}`.trimEnd()).join(", ");
-	const label = `${names}${failedCountText(summary.failed)}`;
+	const label = `${names}${summary.trailing ?? ""}`;
 	return hasDiffStats(summary) ? `${label} +${summary.added} -${summary.removed}` : label;
 }

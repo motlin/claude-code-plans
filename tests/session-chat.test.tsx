@@ -793,8 +793,8 @@ function summaryLabels(html: string): string[] {
 	const root = document.createElement("div");
 	root.innerHTML = html;
 	return Array.from(
-		root.querySelectorAll("[data-testid=counted-line-names]"),
-		(names) => names.parentElement?.textContent ?? "",
+		root.querySelectorAll("[data-turn-status] button[aria-controls] [id$=-label]"),
+		(label) => label.textContent,
 	);
 }
 
@@ -2248,8 +2248,7 @@ describe("SessionChat tool row hover treatment", () => {
 	it("colors the collapsed group summary muted from its wrapper so the whole label lifts on hover", () => {
 		expect(rowHeaderSpanClasses(renderTranscript(groupedToolCallRecords()))).toStrictEqual([
 			"inline-flex items-center gap-g3 min-w-0 text-secondary group-hover/tool:text-secondary",
-			"flex min-w-0 text-body",
-			"min-w-0 truncate",
+			"block min-w-0 truncate text-body",
 			"text-body",
 			"",
 			"shrink-0 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",

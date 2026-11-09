@@ -167,9 +167,11 @@ describe("MultiEdit diff stats", () => {
 			summarizeToolCallStats([{name: "MultiEdit", input: {file_path: FILE_PATH, edits: EDITS}}]),
 		).toStrictEqual({
 			segments: [{verb: "Edited", rest: "cache.ts"}],
+			trailing: null,
 			added: 4,
 			removed: 3,
 			failed: 0,
+			blocked: 0,
 		});
 	});
 });

@@ -38,6 +38,8 @@ interface FakeCall {
 	input: Record<string, unknown>;
 	isError?: boolean;
 	pending?: true;
+	/** The result's `toolDenialKind`, such as "user-rejected". */
+	denialKind?: string;
 }
 
 /** One assistant record per call, each followed by its tool_result. */
@@ -58,6 +60,7 @@ function toolRunRecords(calls: FakeCall[]): unknown[] {
 						type: "user",
 						uuid: `r-${call.id}`,
 						parentUuid: `a-${call.id}`,
+						...(call.denialKind === undefined ? {} : {toolDenialKind: call.denialKind}),
 						message: {
 							role: "user",
 							content: [
@@ -95,7 +98,7 @@ function summaryButton(html: string): string {
 function summaryLabel(html: string): string {
 	const root = document.createElement("div");
 	root.innerHTML = summaryButton(html);
-	return root.querySelector("[data-testid=counted-line-names]")?.parentElement?.textContent ?? "";
+	return root.querySelector("[id$=-label]")?.textContent ?? "";
 }
 
 /** The group header's diff stat pill: each segment's ink and text, and the screen-reader line. */
@@ -119,7 +122,7 @@ describe("ExitPlanMode in a summary", () => {
 });
 
 describe("summarizeToolCallStats", () => {
-	it("counts failed calls in the total, not in the bash segment", () => {
+	it("keeps a lone segment's failure inline, with no trailing part", () => {
 		expect(
 			summarizeToolCallStats([
 				{name: "Bash", input: {command: "ls"}},
@@ -127,10 +130,12 @@ describe("summarizeToolCallStats", () => {
 				{name: "Bash", input: {command: "pwd"}},
 			]),
 		).toStrictEqual({
-			segments: [{verb: "Ran", rest: "3 commands"}],
+			segments: [{verb: "Ran", rest: "3 commands (1 failed)"}],
+			trailing: null,
 			added: 0,
 			removed: 0,
 			failed: 1,
+			blocked: 0,
 		});
 	});
 
@@ -145,13 +150,15 @@ describe("summarizeToolCallStats", () => {
 				{verb: "Read", rest: "a file"},
 				{verb: "edited", rest: "a file"},
 			],
+			trailing: null,
 			added: 1,
 			removed: 2,
 			failed: 0,
+			blocked: 0,
 		});
 	});
 
-	it("keeps the failure count out of the segments and totals it", () => {
+	it("keeps the failure count out of several segments and trails it", () => {
 		expect(
 			summarizeToolCallStats([
 				{name: "Read", input: {file_path: "/repo/a.ts"}, isError: true},
@@ -162,9 +169,11 @@ describe("summarizeToolCallStats", () => {
 				{verb: "Read", rest: "a.ts"},
 				{verb: "searched", rest: "code"},
 			],
+			trailing: ", 1 failed",
 			added: 0,
 			removed: 0,
 			failed: 1,
+			blocked: 0,
 		});
 	});
 
@@ -175,7 +184,7 @@ describe("summarizeToolCallStats", () => {
 				{name: "Bash", input: {command: "ls"}},
 				{name: "Edit", input: {file_path: "/repo/b.ts", old_string: "a\nb", new_string: ""}},
 			]),
-		).toBe("ran 2 commands, edited b.ts (1 failed) +0 -2");
+		).toBe("ran 2 commands, edited b.ts, 1 failed +0 -2");
 	});
 });
 
@@ -300,10 +309,13 @@ describe("ToolCallSummary stats and ink", () => {
 				{id: "t3", name: "Agent", input: {description: "Say ok", prompt: "Reply ok"}},
 			]),
 		);
+		const label = root.querySelector("[id$=-label]");
 		const names = root.querySelector("[data-testid=counted-line-names]");
 		const count = root.querySelector("[data-testid=counted-line-count]");
 		expect({
-			line: names?.parentElement?.className,
+			labelIsLine: names?.parentElement === label,
+			line: label?.className,
+			seat: label?.hasAttribute("data-cds-phrases-seat"),
 			names: names?.textContent,
 			namesClass: names?.className,
 			count: count?.textContent,
@@ -311,17 +323,51 @@ describe("ToolCallSummary stats and ink", () => {
 			countClass: count?.className,
 			countFollowsNames: names?.nextElementSibling === count,
 		}).toStrictEqual({
+			labelIsLine: true,
 			line: "flex min-w-0 text-body",
+			seat: false,
 			names: "Fetched 2 pages, ran an agent",
 			namesClass: "min-w-0 truncate",
-			count: " (2 failed)",
+			count: ", 2 failed",
 			countTag: "BDI",
 			countClass: "shrink-0 whitespace-pre",
 			countFollowsNames: true,
 		});
 	});
 
-	it("draws no counted-line count when nothing failed", () => {
+	it("keeps a lone segment's failure inline in the bare phrases, with no counted line", () => {
+		const root = document.createElement("div");
+		root.innerHTML = summaryButton(
+			renderRun([
+				{id: "t1", name: "Bash", input: {command: "false"}, isError: true},
+				{id: "t2", name: "Bash", input: {command: "ls"}},
+			]),
+		);
+		const label = root.querySelector("[id$=-label]");
+		expect({
+			names: root.querySelector("[data-testid=counted-line-names]"),
+			count: root.querySelector("[data-testid=counted-line-count]"),
+			text: label?.textContent,
+			seat: label?.getAttribute("data-cds-phrases-seat"),
+		}).toStrictEqual({names: null, count: null, text: "Ran 2 commands (1 failed)", seat: ""});
+	});
+
+	it("keeps a lone segment's failed and stopped counts inline, with no counted-line count", () => {
+		const root = document.createElement("div");
+		root.innerHTML = summaryButton(
+			renderRun([
+				{id: "t1", name: "Bash", input: {command: "ls"}},
+				{id: "t2", name: "Bash", input: {command: "false"}, isError: true},
+				{id: "t3", name: "Bash", input: {command: "rm"}, isError: true, denialKind: "user-rejected"},
+			]),
+		);
+		expect({
+			count: root.querySelector("[data-testid=counted-line-count]"),
+			text: root.querySelector("[id$=-label]")?.textContent,
+		}).toStrictEqual({count: null, text: "Ran 3 commands (1 failed, 1 stopped)"});
+	});
+
+	it("draws neither counted-line names nor count when nothing failed", () => {
 		const root = document.createElement("div");
 		root.innerHTML = summaryButton(
 			renderRun([
@@ -329,7 +375,27 @@ describe("ToolCallSummary stats and ink", () => {
 				{id: "t2", name: "Bash", input: {command: "pwd"}},
 			]),
 		);
-		expect(root.querySelector("[data-testid=counted-line-count]")).toBeNull();
+		expect({
+			names: root.querySelector("[data-testid=counted-line-names]"),
+			count: root.querySelector("[data-testid=counted-line-count]"),
+		}).toStrictEqual({names: null, count: null});
+	});
+
+	it("moves a fold into the unclipped count, after names ending in a comma", () => {
+		const root = document.createElement("div");
+		root.innerHTML = summaryButton(
+			renderRun([
+				{id: "t1", name: "Bash", input: {command: "ls"}},
+				{id: "t2", name: "Grep", input: {pattern: "x"}},
+				{id: "t3", name: "Glob", input: {pattern: "*"}},
+				{id: "t4", name: "WebSearch", input: {query: "q"}},
+				{id: "t5", name: "WebFetch", input: {url: "https://example.invalid/a"}},
+			]),
+		);
+		expect({
+			names: root.querySelector("[data-testid=counted-line-names]")?.textContent,
+			count: root.querySelector("[data-testid=counted-line-count]")?.textContent,
+		}).toStrictEqual({names: "Ran a command, searched code, found files,", count: " and 2 more actions"});
 	});
 
 	it("renders diff stats as upstream's trailing two-tone pill, separate from the label", () => {
