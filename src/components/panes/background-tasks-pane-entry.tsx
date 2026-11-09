@@ -23,6 +23,7 @@ export function useRegisterBackgroundTasksPane(
 		() =>
 			registerPane("background-tasks", {
 				title: "Background tasks",
+				resetKey: sessionId,
 				render: () => (
 					<DeferredBackgroundTasksList
 						key={sessionId}

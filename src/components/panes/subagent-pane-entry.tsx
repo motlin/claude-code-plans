@@ -18,6 +18,7 @@ export function useRegisterSubagentPane({sessionId, subagents, records}: Subagen
 		() =>
 			registerPane("subagents", {
 				title: "Subagents",
+				resetKey: sessionId,
 				header: "custom",
 				render: (chrome) => (
 					<SubagentPane sessionId={sessionId} subagents={subagents} prompts={prompts} chrome={chrome} />

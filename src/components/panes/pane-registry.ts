@@ -21,6 +21,8 @@ export interface PaneDefinition {
 	header?: "custom";
 	/** Extra icon buttons for the host's default header, before Expand/Collapse and Close. */
 	headerActions?: ReactNode;
+	/** The pane's current target (session, file, plan…); a change clears a body render crash. */
+	resetKey?: string;
 	render: (chrome: PaneChrome) => ReactNode;
 }
 

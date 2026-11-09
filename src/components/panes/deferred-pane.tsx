@@ -1,5 +1,8 @@
-import {CatchBoundary} from "@tanstack/react-router";
-import {lazy, Suspense, useState, type ComponentType} from "react";
+import {lazy, Suspense, useState, type ComponentType, type ReactNode} from "react";
+
+import {isStaleChunkError} from "../../lib/stale-chunk-reload";
+import {RenderErrorBoundary} from "../render-error-boundary";
+import {DeferredChunkFailure, DeferredPaneLoading} from "./chunk-error-view";
 import {DeferredPaneStatus} from "./deferred-pane-status";
 import type {PaneChrome} from "./pane-registry";
 
@@ -10,17 +13,31 @@ interface DeferredPaneProps<P> {
 	props: P;
 }
 
+export interface DeferredPaneOptions {
+	/**
+	 * Upstream's chunk-only boundary fallback (the terminal's `sw`): drawn instead of the inline ErrorView
+	 * once a reload already failed to bring the chunk back. It fills a `relative` pane body.
+	 */
+	unrecoverable?: (reload: () => void) => ReactNode;
+}
+
 /** A deferred pane, plus the module download it shares with idle and intent warm-ups. */
 export type DeferredPaneComponent<P> = ComponentType<DeferredPaneProps<P>> & {preload: () => Promise<ComponentType<P>>};
 
+function reportChunkError(error: unknown) {
+	console.error("[pane-chunk]", error);
+}
+
 /**
- * A pane renderer kept off the cold load until the pane first shows. Its fallback and its Retry keep the header
- * controls in place, and a pane whose module already settled, from an earlier show or a `preload`, renders in the
- * first pass without flashing the fallback.
+ * A pane renderer kept off the cold load until the pane first shows. A failed download shows upstream's inline
+ * ErrorView with the header controls kept in place; render crashes pass through to the pane crash boundary. A pane
+ * whose module already settled, from an earlier show or a `preload`, renders in the first pass without flashing
+ * the fallback.
  */
 export function deferredPane<P extends object>(
 	title: string,
 	load: () => Promise<ComponentType<P>>,
+	{unrecoverable}: DeferredPaneOptions = {},
 ): DeferredPaneComponent<P> {
 	let pending: Promise<ComponentType<P>> | undefined;
 	let Loaded: ComponentType<P> | undefined;
@@ -34,6 +51,7 @@ export function deferredPane<P extends object>(
 			(error: unknown) => {
 				// A failed download is retried on the next show or Retry.
 				pending = undefined;
+				Renderer = lazy(loadDefault);
 				throw error;
 			},
 		);
@@ -43,36 +61,40 @@ export function deferredPane<P extends object>(
 	let Renderer = lazy(loadDefault);
 	function DeferredPane({resetKey, chrome, props}: DeferredPaneProps<P>) {
 		const [Pane, setPane] = useState(() => Loaded ?? Renderer);
+		const [retries, setRetries] = useState(0);
 		return (
-			<CatchBoundary
-				getResetKey={() => resetKey}
-				errorComponent={({reset}) => (
-					<DeferredPaneStatus title={title} chrome={chrome}>
-						<p role="alert">Couldn't load {title}.</p>
-						<button
-							type="button"
-							className="rounded-r5 border border-border px-3 py-1 text-primary hover:bg-fill-ghost-hover"
-							onClick={() => {
+			<RenderErrorBoundary
+				resetOn={resetKey}
+				report={reportChunkError}
+				fallback={(error, reset) => {
+					// Upstream's chunk boundaries (`hv`, `aw`) catch only chunk-load errors.
+					if (!isStaleChunkError(error)) throw error;
+					return (
+						<DeferredChunkFailure
+							title={title}
+							chrome={chrome}
+							retried={retries > 0}
+							unrecoverable={unrecoverable}
+							onRetry={() => {
 								Renderer = lazy(loadDefault);
 								setPane(() => Renderer);
+								setRetries((count) => count + 1);
 								reset();
 							}}
-						>
-							Retry
-						</button>
-					</DeferredPaneStatus>
-				)}
+						/>
+					);
+				}}
 			>
 				<Suspense
 					fallback={
 						<DeferredPaneStatus title={title} chrome={chrome}>
-							<p role="status">Loading {title.toLowerCase()}…</p>
+							<DeferredPaneLoading title={title} />
 						</DeferredPaneStatus>
 					}
 				>
 					<Pane {...props} />
 				</Suspense>
-			</CatchBoundary>
+			</RenderErrorBoundary>
 		);
 	}
 	return Object.assign(DeferredPane, {preload});

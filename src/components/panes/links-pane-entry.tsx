@@ -14,6 +14,7 @@ export function useRegisterLinksPane({sessionId, lines, windowStartIndex, jumpTa
 		() =>
 			registerPane("links", {
 				title: "Links",
+				resetKey: sessionId,
 				render: () => (
 					<DeferredLinksPane
 						resetKey={sessionId}

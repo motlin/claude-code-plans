@@ -13,6 +13,8 @@ import {
 import {Maximize2, Minimize2, X} from "lucide-react";
 
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
+import {PaneChromeHeader} from "./deferred-pane-status";
+import {PaneCrashBoundary} from "./pane-crash-boundary";
 import {
 	closePane,
 	chatGutters,
@@ -699,6 +701,8 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 	}, [isExpanded, kind, host.collapsedRef]);
 
 	const moveHandle = isExpanded ? null : <MoveHandle tileId={kind} host={host} />;
+	// Upstream joins the pane's target ids into `resetOn`, so pointing the pane elsewhere clears a crash.
+	const crashResetKey = `${kind}:${definition.resetKey ?? ""}`;
 
 	const controls = (
 		<>
@@ -749,7 +753,12 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 			}`}
 		>
 			{definition.header === "custom" ? (
-				definition.render({moveHandle, controls})
+				<PaneCrashBoundary
+					resetKey={crashResetKey}
+					header={<PaneChromeHeader title={definition.title} chrome={{moveHandle, controls}} />}
+				>
+					{definition.render({moveHandle, controls})}
+				</PaneCrashBoundary>
 			) : (
 				<>
 					<div className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
@@ -764,7 +773,9 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 					</div>
 					<div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit]">
 						<div className="h-full scroll-py-2.5 overflow-y-auto [scrollbar-gutter:stable_both-edges]">
-							{definition.render({moveHandle, controls})}
+							<PaneCrashBoundary resetKey={crashResetKey}>
+								{definition.render({moveHandle, controls})}
+							</PaneCrashBoundary>
 						</div>
 					</div>
 				</>

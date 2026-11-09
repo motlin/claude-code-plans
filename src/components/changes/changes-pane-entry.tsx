@@ -12,6 +12,7 @@ export function useRegisterChangesPane(sessionId: string): void {
 		() =>
 			registerPane("changes", {
 				title: "Changes",
+				resetKey: sessionId,
 				header: "custom",
 				render: (chrome) => (
 					<DeferredChangesPane resetKey={sessionId} chrome={chrome} props={{sessionId, chrome}} />

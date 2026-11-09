@@ -29,7 +29,10 @@ vi.mock("../src/components/changes/changes-pane", async (importOriginal) => {
 	return {
 		...actual,
 		get ChangesPane() {
-			if (harness.fail) throw new Error("Example changes chunk unavailable");
+			if (harness.fail)
+				throw new Error(
+					"Failed to fetch dynamically imported module: https://example.com/assets/changes-pane.js",
+				);
 			return actual.ChangesPane;
 		},
 	};
@@ -39,6 +42,7 @@ const LOADED_STATE = {
 	buttons: ["Diff scope: Session edits", "Move", "Changes settings", "Expand", "Close"],
 	error: null,
 	loading: null,
+	chunkError: null,
 };
 const SESSION = "session-alice";
 let queryClient: QueryClient;
@@ -92,11 +96,20 @@ function renderApp(requested?: PaneKind) {
 	);
 }
 
+function chunkErrorOf(pane: HTMLElement) {
+	const root = pane.querySelector<HTMLElement>("[data-chunk-error]");
+	const copy = root?.querySelector(":scope > div:last-child > span.text-muted-as-secondary");
+	return root === null
+		? null
+		: {state: root.dataset["chunkError"], copy: copy?.textContent, role: copy?.getAttribute("role")};
+}
+
 function paneState() {
 	const pane = screen.getByRole("region", {name: "Changes"});
 	return {
 		loading: within(pane).queryByRole("status")?.textContent ?? null,
 		error: within(pane).queryByRole("alert")?.textContent ?? null,
+		chunkError: chunkErrorOf(pane),
 		buttons: within(pane)
 			.getAllByRole("button")
 			.map((button) => button.getAttribute("aria-label") ?? button.textContent),
@@ -138,7 +151,11 @@ describe("deferred Changes renderer", () => {
 		act(() => {
 			harness.finish();
 		});
-		await within(screen.getByRole("region", {name: "Changes"})).findByRole("alert", {}, {timeout: 10_000});
+		await within(screen.getByRole("region", {name: "Changes"})).findByText(
+			"Couldn’t load this.",
+			{},
+			{timeout: 10_000},
+		);
 		const failed = paneState();
 		harness.fail = false;
 		fireEvent.click(screen.getByRole("button", {name: "Retry"}));
@@ -170,8 +187,13 @@ describe("deferred Changes renderer", () => {
 					],
 				},
 			},
-			loading: {buttons: ["Move", "Expand", "Close"], error: null, loading: "Loading changes…"},
-			failed: {buttons: ["Move", "Expand", "Close", "Retry"], error: "Couldn't load Changes.", loading: null},
+			loading: {buttons: ["Move", "Expand", "Close"], error: null, loading: "Loading changes…", chunkError: null},
+			failed: {
+				buttons: ["Move", "Expand", "Close", "Retry"],
+				error: null,
+				loading: "Couldn’t load this.",
+				chunkError: {state: "retry", copy: "Couldn’t load this.", role: "status"},
+			},
 			loaded: LOADED_STATE,
 			reopened: LOADED_STATE,
 			body: "No changes to show",

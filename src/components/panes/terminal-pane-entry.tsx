@@ -1,11 +1,32 @@
 import {useEffect, useState} from "react";
 
+import {ApprovalActionButton} from "../approval-card";
 import {deferredPane} from "./deferred-pane";
+import {PanePlaceholder} from "./pane-placeholder";
 import {registerPane} from "./pane-registry";
 import type {TerminalPaneAvailability} from "./terminal-pane";
 
-const DeferredTerminalPane = deferredPane("Terminal", async () =>
-	import("./terminal-pane").then((module) => module.TerminalPane),
+const DeferredTerminalPane = deferredPane(
+	"Terminal",
+	async () => import("./terminal-pane").then((module) => module.TerminalPane),
+	{
+		// Upstream's ShellTerminalChunk fallback (`sw`).
+		unrecoverable: (reload) => (
+			<div className="absolute inset-0">
+				<PanePlaceholder
+					role="alert"
+					icon="Warning"
+					title="Couldn’t load the terminal"
+					body="Reload the page to try again."
+					actions={
+						<ApprovalActionButton variant="secondary" size="sm" onClick={reload}>
+							Reload
+						</ApprovalActionButton>
+					}
+				/>
+			</div>
+		),
+	},
 );
 
 /** Downloads the Terminal pane renderer ahead of its first show. */
@@ -32,6 +53,7 @@ export function useRegisterTerminalPane(
 		if (!livePane && !shells && !claudeEnded) return undefined;
 		return registerPane("terminal", {
 			title: "Terminal",
+			resetKey: sessionId,
 			header: "custom",
 			render: (chrome) => (
 				<DeferredTerminalPane

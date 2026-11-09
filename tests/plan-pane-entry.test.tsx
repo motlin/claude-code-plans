@@ -51,6 +51,13 @@ function headerActionLabels(container: HTMLElement) {
 }
 
 describe("planPaneDefinition", () => {
+	it("keys body crash resets on the session and the linked plan file", () => {
+		expect({
+			linked: planPaneDefinition("alpha.md", MODEL, PANE_OPTIONS).resetKey,
+			unlinked: planPaneDefinition(undefined, MODEL, PANE_OPTIONS).resetKey,
+		}).toStrictEqual({linked: `${PANE_OPTIONS.sessionId}:alpha.md`, unlinked: `${PANE_OPTIONS.sessionId}:`});
+	});
+
 	it("has no header action without plan text or a plan file", () => {
 		expect(
 			planPaneDefinition(undefined, {content: null, todos: [], editsPlanFile: false}, PANE_OPTIONS).headerActions,

@@ -15,7 +15,7 @@ export interface StaleChunkReloadDeps {
 	now: () => number;
 }
 
-const browserDeps: StaleChunkReloadDeps = {
+export const browserStaleChunkDeps: StaleChunkReloadDeps = {
 	storage: () => window.sessionStorage,
 	reload: () => {
 		window.location.reload();
@@ -27,8 +27,18 @@ export function isStaleChunkError(error: unknown): boolean {
 	return error instanceof Error && STALE_CHUNK_MESSAGE.test(error.message);
 }
 
+/** Whether a stale-chunk reload already happened within the guard window, so another one would loop. */
+export function staleChunkReloadRecent(deps: StaleChunkReloadDeps = browserStaleChunkDeps): boolean {
+	try {
+		const last = Number(deps.storage().getItem(STALE_CHUNK_RELOAD_KEY));
+		return Number.isFinite(last) && last > 0 && deps.now() - last < STALE_CHUNK_GUARD_MS;
+	} catch {
+		return false;
+	}
+}
+
 /** Reloads the page unless one already happened within the guard window; returns whether it reloaded. */
-export function reloadForStaleChunk(deps: StaleChunkReloadDeps = browserDeps): boolean {
+export function reloadForStaleChunk(deps: StaleChunkReloadDeps = browserStaleChunkDeps): boolean {
 	const now = deps.now();
 	try {
 		const storage = deps.storage();
@@ -44,7 +54,10 @@ export function reloadForStaleChunk(deps: StaleChunkReloadDeps = browserDeps): b
 }
 
 /** Listens for Vite's preload errors and bare dynamic-import rejections; returns the uninstaller. */
-export function installStaleChunkReload(target: EventTarget, deps: StaleChunkReloadDeps = browserDeps): () => void {
+export function installStaleChunkReload(
+	target: EventTarget,
+	deps: StaleChunkReloadDeps = browserStaleChunkDeps,
+): () => void {
 	const onPreloadError = (event: Event): void => {
 		if (reloadForStaleChunk(deps)) event.preventDefault();
 	};

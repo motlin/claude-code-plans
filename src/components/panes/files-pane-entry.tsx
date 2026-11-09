@@ -20,6 +20,7 @@ export function useRegisterFilesPane({
 		() =>
 			registerPane("files", {
 				title: "Files",
+				resetKey: sessionId,
 				header: "custom",
 				render: (chrome) => (
 					<DeferredFilesPane

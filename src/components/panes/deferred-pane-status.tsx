@@ -1,6 +1,19 @@
 import type {ReactNode} from "react";
 import type {PaneChrome} from "./pane-registry";
 
+/** The host's default header row, drawn for a custom-header pane while its own renderer is unavailable. */
+export function PaneChromeHeader({title, chrome}: {title: string; chrome: PaneChrome}) {
+	return (
+		<div className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
+			<span data-pane-title className="truncate pl-1 text-pane text-secondary select-none">
+				{title}
+			</span>
+			{chrome.moveHandle}
+			<div className="relative flex shrink-0 items-center gap-0.5">{chrome.controls}</div>
+		</div>
+	);
+}
+
 /**
  * Keep host controls available while an optional renderer loads or cannot be downloaded. Panes that draw their own
  * header pass `chrome`; the host draws the header of the rest.
@@ -16,15 +29,7 @@ export function DeferredPaneStatus({
 }) {
 	return (
 		<>
-			{chrome !== undefined && (
-				<div className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
-					<span data-pane-title className="truncate pl-1 text-pane text-secondary select-none">
-						{title}
-					</span>
-					{chrome.moveHandle}
-					<div className="relative flex shrink-0 items-center gap-0.5">{chrome.controls}</div>
-				</div>
-			)}
+			{chrome !== undefined && <PaneChromeHeader title={title} chrome={chrome} />}
 			<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-4 text-body text-ink-muted">
 				{children}
 			</div>

@@ -27,11 +27,13 @@ export function planPaneDefinition(
 	model: SessionPlanModel,
 	{sessionId, commentsEnabled}: PlanPaneOptions,
 ): PaneDefinition {
+	const target = `${sessionId}:${planFilename ?? ""}`;
 	const definition: PaneDefinition = {
 		title: "Plan",
+		resetKey: target,
 		render: () => (
 			<SessionPlanPane
-				key={`${sessionId}:${planFilename ?? ""}`}
+				key={target}
 				sessionId={sessionId}
 				planFilename={planFilename}
 				model={model}

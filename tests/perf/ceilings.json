@@ -65,17 +65,17 @@
 		"raisedAt": "2026-11-09"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 734620,
+		"ceiling": 742397,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Claude Code notice rows (2026-11-09): src/components/hook-notice-row.tsx, the hook-notice line routing in session-chat and the stripAnsi helper (upstream draws every informational record, so the row ships with the transcript), on top of the cold-resume notice, group label file meta slot and hook-blocked prompt commits that had used up the 1% tolerance. Went from 727507 to 734620. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Pane crash and chunk fallbacks (2026-11-09): src/components/panes/pane-placeholder.tsx, pane-crash-boundary.tsx, chunk-error-view.tsx and src/lib/chunk-error-state.ts (about 2.2 KB gzip on their own; every pane body is wrapped, so the fallbacks ship with the tile host), on top of the transcript crash boundaries and refusal band commits that had used up the 1% tolerance. Went from 734620 to 742397. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-09"
 	},
 	"bundle.session.raw": {
-		"ceiling": 2196191,
+		"ceiling": 2219284,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Claude Code notice rows (2026-11-09): src/components/hook-notice-row.tsx, the hook-notice line routing in session-chat and the stripAnsi helper (upstream draws every informational record, so the row ships with the transcript), on top of the cold-resume notice, group label file meta slot and hook-blocked prompt commits that had used up the 1% tolerance. Went from 2173316 to 2196191. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Pane crash and chunk fallbacks (2026-11-09): src/components/panes/pane-placeholder.tsx, pane-crash-boundary.tsx, chunk-error-view.tsx and src/lib/chunk-error-state.ts (about 2.2 KB gzip on their own; every pane body is wrapped, so the fallbacks ship with the tile host), on top of the transcript crash boundaries and refusal band commits that had used up the 1% tolerance. Went from 2196191 to 2219284. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-09"
 	},
 	"client.coldHome.default.commitsToRows": {
