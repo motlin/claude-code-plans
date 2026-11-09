@@ -1,10 +1,14 @@
 import {mkdirSync, rmSync, writeFileSync} from "node:fs";
-import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
 import {indexJsonlFile, indexSessionsIndex} from "../src/lib/db/indexer";
+import {startSessionTitleWorker} from "../src/lib/session-title-generator";
+import {Route as projectSessionsRoute} from "../src/routes/api/projects.$id.sessions";
+import {Route as sessionDetailRoute} from "../src/routes/api/sessions.$id";
+import {Route as sessionsLookupRoute} from "../src/routes/api/sessions.lookup";
+import {Route as sessionTitlesRoute} from "../src/routes/api/sessions.titles";
 
 /**
  * A Remote Control bridged session named only by its pane name shows the title generated from its conversation on
@@ -14,7 +18,20 @@ import {indexJsonlFile, indexSessionsIndex} from "../src/lib/db/indexer";
 
 type ApiHandler = (context: {params: {id: string}; request: Request}) => Response | Promise<Response>;
 
-const homeRoot = join(tmpdir(), `claude-generated-title-paths-${process.pid}`);
+// The routes' module graphs load once, at file import, where no test or hook timeout applies: cold-importing four
+// routes inside the test could outlast its budget on a loaded machine.
+const state = vi.hoisted(() => ({home: "", db: undefined as AppDb | undefined}));
+
+vi.mock("node:os", async () => {
+	const os = await vi.importActual<typeof import("node:os")>("node:os");
+	state.home = `${os.tmpdir()}/claude-generated-title-paths-${process.pid}`;
+	const homedir = (): string => state.home;
+	return {...os, homedir, default: {...os, homedir}};
+});
+vi.mock("../src/lib/db", () => ({getDb: () => state.db}));
+
+const homeRoot = state.home;
+if (homeRoot === "") throw new Error("node:os was not mocked before the routes loaded");
 const projectsDir = join(homeRoot, ".claude", "projects");
 const projectId = "-Users-alice-projects-workflowy";
 const projectPath = "/Users/alice/projects/workflowy";
@@ -53,6 +70,7 @@ function transcript(sessionId: string, bridged: boolean): string {
 
 beforeEach(async () => {
 	db = openTestDb();
+	state.db = db;
 	mkdirSync(projectDir, {recursive: true});
 	const entries = [BRIDGED, LOCAL].map((sessionId) => {
 		const fullPath = join(projectDir, `${sessionId}.jsonl`);
@@ -82,17 +100,10 @@ beforeEach(async () => {
 afterEach(() => {
 	db.close();
 	rmSync(homeRoot, {recursive: true, force: true});
-	vi.doUnmock("../src/lib/db");
-	vi.doUnmock("node:os");
-	vi.resetModules();
 });
 
-/** Load the stored titles the way the server does, in the module registry the routes import from. */
-async function startTitles(): Promise<() => void> {
-	vi.doMock("../src/lib/db", () => ({getDb: () => db}));
-	const os = await vi.importActual<typeof import("node:os")>("node:os");
-	vi.doMock("node:os", () => ({...os, homedir: () => homeRoot, default: {...os, homedir: () => homeRoot}}));
-	const {startSessionTitleWorker} = await import("../src/lib/session-title-generator");
+/** Load the stored titles the way the server does. */
+function startTitles(): () => void {
 	return startSessionTitleWorker({
 		summariesDb: db.summaries,
 		projectsDir,
@@ -101,9 +112,7 @@ async function startTitles(): Promise<() => void> {
 	});
 }
 
-async function getJson(route: string, url: string, params: {id: string} = {id: ""}): Promise<unknown> {
-	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- route modules only export their Route
-	const {Route} = (await import(`../src/routes/api/${route}.ts`)) as {Route: unknown};
+async function getJson(Route: unknown, url: string, params: {id: string} = {id: ""}): Promise<unknown> {
 	// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- TanStack keeps the handlers on options.server
 	const handlers = (Route as {options: {server: {handlers: Record<string, ApiHandler>}}}).options.server.handlers;
 	const response = await handlers["GET"]!({params, request: new Request(`http://localhost${url}`)});
@@ -116,23 +125,23 @@ function titlesById(sessions: Array<{id: string; title: string}>): Record<string
 
 describe("a pane-named bridged session's generated title", () => {
 	it("names the session on every list, lookup and title path, and leaves a local session alone", async () => {
-		const stop = await startTitles();
+		const stop = startTitles();
 		try {
 			const ids = `${BRIDGED},${LOCAL}`;
-			const lookup = (await getJson("sessions.lookup", `/api/sessions/lookup?ids=${ids}`)) as Array<{
+			const lookup = (await getJson(sessionsLookupRoute, `/api/sessions/lookup?ids=${ids}`)) as Array<{
 				id: string;
 				title: string;
 			}>;
-			const titles = (await getJson("sessions.titles", `/api/sessions/titles?ids=${ids}`)) as {
+			const titles = (await getJson(sessionTitlesRoute, `/api/sessions/titles?ids=${ids}`)) as {
 				titles: Record<string, string>;
 			};
-			const project = (await getJson("projects.$id.sessions", `/api/projects/${projectId}/sessions`, {
+			const project = (await getJson(projectSessionsRoute, `/api/projects/${projectId}/sessions`, {
 				id: projectId,
 			})) as Array<{id: string; title: string}>;
-			const bridgedDetail = (await getJson("sessions.$id", `/api/sessions/${BRIDGED}`, {id: BRIDGED})) as {
+			const bridgedDetail = (await getJson(sessionDetailRoute, `/api/sessions/${BRIDGED}`, {id: BRIDGED})) as {
 				title: string;
 			};
-			const localDetail = (await getJson("sessions.$id", `/api/sessions/${LOCAL}`, {id: LOCAL})) as {
+			const localDetail = (await getJson(sessionDetailRoute, `/api/sessions/${LOCAL}`, {id: LOCAL})) as {
 				title: string;
 			};
 

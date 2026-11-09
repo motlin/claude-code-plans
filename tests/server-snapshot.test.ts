@@ -88,14 +88,19 @@ beforeEach(async () => {
 		SERVER_TITLE: `claude-code-browser-server-${basename(runDir)}`,
 	};
 	delete env["SERVER_CMD"];
-	delete env["SERVER_MATCH"];
+	// Match only this test's servers. The default pattern also matches every other `.output/server/index.mjs` on
+	// the machine (other worktrees' servers, parallel test files), and the script asks lsof for each one's cwd, which
+	// can stall for seconds apiece under load. The last case below checks the default pattern itself.
+	env["SERVER_MATCH"] = `^${env["SERVER_TITLE"] ?? ""}( |$)|${snapshotRoot}/[^/]+/\\.output/server/index\\.mjs`;
 	delete env["LOG_FILE"];
 });
 
+// Sized for stop's own worst case on a loaded machine: SIGTERM, up to STOP_GRACE_SECONDS (10s) of waiting, then
+// SIGKILL, with pgrep and netstat each slow under load. The 10s hook default is shorter than the grace period alone.
 afterEach(() => {
 	run("stop");
 	rmSync(runDir, {recursive: true, force: true});
-});
+}, 60_000);
 
 describe("scripts/server.sh snapshots", () => {
 	it("start runs the server from a snapshot outside the worktree's .output", () => {
@@ -194,7 +199,8 @@ describe("scripts/server.sh snapshots", () => {
 		expect(listenerCommand()).toBe(`node ${join(snapshotRoot, before[0] ?? "", ".output", "server", "index.mjs")}`);
 	}, 150_000);
 
-	it("stop still finds the snapshot server", () => {
+	it("stop still finds the snapshot server with the default SERVER_MATCH", () => {
+		delete env["SERVER_MATCH"];
 		run("start");
 		run("stop");
 		expect(run("status")).toBe(`No server running (port ${env["PORT"] ?? ""})\n`);

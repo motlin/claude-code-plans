@@ -1,4 +1,4 @@
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {mkdirSync, mkdtempSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
@@ -6,9 +6,15 @@ import {openTestDb, type AppDb} from "../../src/lib/db/connection";
 import * as schema from "../../src/lib/db/schema";
 import {currentPerfCounters, withPerfScope} from "../../src/lib/perf/server-scope";
 import {trackedExecFile} from "../../src/lib/perf/tracked-process";
+import {Route} from "../../src/routes/api/sessions.$id";
 import {runGit} from "../git-fixture";
 
 type ApiHandler = (context: {params: {id: string}; request: Request}) => Response | Promise<Response>;
+
+// The route's module graph loads once, at file import, where no test or hook timeout applies: a cold import on a
+// loaded machine can outlast a test's budget. Each test swaps in its own database instead.
+const state = vi.hoisted(() => ({db: undefined as AppDb | undefined}));
+vi.mock("../../src/lib/db", () => ({getDb: () => state.db}));
 
 const SESSION_ID = "0b6f2b4e-2222-4222-8333-944455556666";
 const PROJECT_ID = "-tmp-tracked-process-project";
@@ -18,7 +24,9 @@ let repoDir: string;
 let db: AppDb;
 let originalHome: string | undefined;
 
-beforeEach(() => {
+// No test writes to the repo, so the git fixture (three spawns) is built once for the file. Its hook gets a
+// timeout sized for spawning git on a loaded machine rather than the 10s default.
+beforeAll(() => {
 	tempDir = mkdtempSync(join(tmpdir(), "tracked-process-test-"));
 	repoDir = join(tempDir, "repo");
 	mkdirSync(repoDir);
@@ -29,23 +37,26 @@ beforeEach(() => {
 	writeFileSync(join(repoDir, "README.md"), "hello\n");
 	git("add", "README.md");
 	git("-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "--quiet", "--message", "init");
-	db = openTestDb();
 	originalHome = process.env["HOME"];
 	process.env["HOME"] = tempDir;
+}, 60_000);
+
+afterAll(() => {
+	if (originalHome === undefined) delete process.env["HOME"];
+	else process.env["HOME"] = originalHome;
+	rmSync(tempDir, {recursive: true, force: true});
+});
+
+beforeEach(() => {
+	db = openTestDb();
+	state.db = db;
 });
 
 afterEach(() => {
-	if (originalHome === undefined) delete process.env["HOME"];
-	else process.env["HOME"] = originalHome;
 	db.close();
-	rmSync(tempDir, {recursive: true, force: true});
-	vi.doUnmock("../../src/lib/db");
-	vi.resetModules();
 });
 
 async function getSessionDetail(sessionId: string): Promise<Response> {
-	vi.doMock("../../src/lib/db", () => ({getDb: () => db}));
-	const {Route} = await import("../../src/routes/api/sessions.$id");
 	const handlers = (Route as unknown as {options: {server: {handlers: Record<string, ApiHandler>}}}).options.server
 		.handlers;
 	return handlers["GET"]!({
@@ -100,14 +111,11 @@ describe("GET /api/sessions/$id", () => {
 			})
 			.run();
 
-		// The route's dynamic imports resolve against the module registry that `vi.resetModules` refreshes,
-		// so the scope has to come from that same registry to share its AsyncLocalStorage.
-		const scope = await import("../../src/lib/perf/server-scope");
-		const {spawned, body} = await scope.withPerfScope("detail", async () => {
+		const {spawned, body} = await withPerfScope("detail", async () => {
 			const response = await getSessionDetail(SESSION_ID);
 			const json = (await response.json()) as {gitClean: boolean | null; gitSha: string | null};
 			return {
-				spawned: scope.currentPerfCounters()?.proc.spawned,
+				spawned: currentPerfCounters()?.proc.spawned,
 				body: {gitClean: json.gitClean, hasSha: json.gitSha !== null},
 			};
 		});
