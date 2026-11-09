@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import type {ReactNode} from "react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ChangesPaneView} from "../src/components/changes/changes-pane";
@@ -9,6 +10,7 @@ import {AddCommentGutterButton} from "../src/components/changes/diff-file";
 import {Composer} from "../src/components/composer";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ToastProvider} from "../src/components/toast";
+import {Menu, MenuContent, MenuItem, MenuTrigger} from "../src/components/ui/menu";
 import type {SessionDiffResponse} from "../src/lib/api/session-diff";
 import {registerComposer, takeContextChips} from "../src/lib/context-attach";
 import {clearDiffComments, getDiffComments, openDiffCommentDraft, saveDiffComment} from "../src/lib/diff-comments";
@@ -77,7 +79,7 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-function renderPane(onSend: (prompt: string) => void = () => {}) {
+function renderPane(onSend: (prompt: string) => void = () => {}, extra: ReactNode = null) {
 	return render(
 		<SettingsProvider>
 			<ToastProvider>
@@ -90,6 +92,7 @@ function renderPane(onSend: (prompt: string) => void = () => {}) {
 					sessionId={SESSION}
 				/>
 				<Composer variant="session" draftKey={SESSION} onSend={onSend} />
+				{extra}
 			</ToastProvider>
 		</SettingsProvider>,
 	);
@@ -486,19 +489,37 @@ describe("Changes pane right-click menu", () => {
 });
 
 describe("Changes pane selection Add comment chip", () => {
-	/** Selects lines 2-3 inside the diff's shadow root, as Chrome's ShadowRoot.getSelection reports it. */
-	async function selectLines(container: HTMLElement): Promise<{row: Element; cleared: () => number}> {
-		const [root, first, last] = await waitFor(() => {
+	type RowType = "change-addition" | "change-deletion";
+
+	/** The rendered diff's shadow root and its `diffs-container` host. */
+	async function diffRoot(container: HTMLElement): Promise<ShadowRoot> {
+		return waitFor(() => {
 			const found = container.querySelector("diffs-container")?.shadowRoot;
-			const start = found?.querySelector('[data-line-type="change-addition"][data-line="2"]');
-			const end = found?.querySelector('[data-line-type="change-addition"][data-line="3"]');
-			if (!found || !start || !end) throw new Error("diff not rendered yet");
-			return [found, start, end] as const;
+			if (!found?.querySelector('[data-line-type="change-addition"][data-line="3"]'))
+				throw new Error("diff not rendered yet");
+			return found;
 		});
+	}
+
+	function rowAt(root: ShadowRoot, type: RowType, line: number, column?: "deletions" | "additions"): Element {
+		const scope = column === undefined ? "" : `[data-${column}] `;
+		const found = root.querySelector(`${scope}[data-line-type="${type}"][data-line="${line}"]`);
+		if (found === null) throw new Error(`no ${type} row ${line}`);
+		return found;
+	}
+
+	/**
+	 * Stands in for Chrome's ShadowRoot.getSelection over the diff, from `anchor` to `focus`.
+	 * `select` moves it, as a keyboard Shift+Arrow or a programmatic change would.
+	 */
+	function fakeSelection(root: ShadowRoot, anchor: Element, focus: Element) {
 		let clears = 0;
 		let collapsed = false;
+		let ends = {anchor, focus};
 		const range = {
-			commonAncestorContainer: first.parentNode,
+			get commonAncestorContainer() {
+				return ends.anchor.parentNode;
+			},
 			getBoundingClientRect: () => new DOMRect(100, 200, 60, 40),
 			getClientRects: () => [new DOMRect(100, 200, 60, 20)],
 		};
@@ -509,8 +530,12 @@ describe("Changes pane selection Add comment chip", () => {
 			get isCollapsed() {
 				return collapsed;
 			},
-			anchorNode: first.firstChild,
-			focusNode: last.firstChild,
+			get anchorNode() {
+				return ends.anchor.firstChild;
+			},
+			get focusNode() {
+				return ends.focus.firstChild;
+			},
 			getRangeAt: () => range,
 			removeAllRanges: () => {
 				clears += 1;
@@ -518,19 +543,55 @@ describe("Changes pane selection Add comment chip", () => {
 			},
 		};
 		Object.defineProperty(root, "getSelection", {configurable: true, value: () => selection});
-		return {row: last, cleared: () => clears};
+		return {
+			cleared: () => clears,
+			select: (nextAnchor: Element, nextFocus: Element) => {
+				ends = {anchor: nextAnchor, focus: nextFocus};
+				act(() => {
+					document.dispatchEvent(new Event("selectionchange"));
+				});
+			},
+		};
 	}
+
+	/** Selects addition lines 2-3 inside the diff's shadow root. */
+	async function selectLines(container: HTMLElement) {
+		const root = await diffRoot(container);
+		const row = rowAt(root, "change-addition", 3);
+		return {root, row, ...fakeSelection(root, rowAt(root, "change-addition", 2), row)};
+	}
+
+	function mockRect(element: Element, rect: () => DOMRect): void {
+		Object.defineProperty(element, "getBoundingClientRect", {configurable: true, value: rect});
+	}
+
+	/** The per-file chip wrapper the mouse-up lands on (the context-menu trigger). */
+	function chipWrapper(container: HTMLElement): HTMLElement {
+		let element = container.querySelector("diffs-container")?.parentElement ?? null;
+		while (element !== null && element.className !== "relative") element = element.parentElement;
+		if (element === null) throw new Error("no chip wrapper");
+		return element;
+	}
+
+	function chipHost(chip: HTMLElement): HTMLElement {
+		const host = chip.closest<HTMLElement>("[data-pane-editor]");
+		if (host === null) throw new Error("no chip host");
+		return host;
+	}
+
+	const CHIP = {name: "Add comment on lines 2–3"};
 
 	it("floats upstream's Add comment chip over a diff selection and opens a card on its lines", async () => {
 		const {container} = renderPane();
 		const {row, cleared} = await selectLines(container);
-		fireEvent.mouseUp(row);
-		const chip = await screen.findByRole("button", {name: "Add comment on lines 2–3"});
-		const host = chip.closest("[data-pane-editor]");
+		fireEvent.mouseUp(row, {clientY: 200});
+		const chip = await screen.findByRole("button", CHIP);
+		const host = chipHost(chip);
 		const shown = {
 			text: chip.textContent,
-			hostClass: host?.className,
-			transform: host instanceof HTMLElement ? host.style.transform : null,
+			hostClass: host.className,
+			transform: host.style.transform,
+			zIndex: host.style.zIndex,
 		};
 
 		fireEvent.mouseDown(chip);
@@ -541,12 +602,13 @@ describe("Changes pane selection Add comment chip", () => {
 			shown,
 			drafts: getDiffComments(SESSION).drafts.map(({path, side, line, endLine}) => ({path, side, line, endLine})),
 			cleared: cleared(),
-			chip: screen.queryByRole("button", {name: "Add comment on lines 2–3"}),
+			chip: screen.queryByRole("button", CHIP),
 		}).toStrictEqual({
 			shown: {
 				text: "Add comment",
 				hostClass: "absolute isolate",
 				transform: "translate(-50%, calc(-100% - 8px))",
+				zIndex: "4",
 			},
 			drafts: [{path: "src/greet.ts", side: "additions", line: 2, endLine: 3}],
 			cleared: 1,
@@ -558,14 +620,307 @@ describe("Changes pane selection Add comment chip", () => {
 		const {container} = renderPane();
 		const {row} = await selectLines(container);
 		fireEvent.mouseUp(row);
-		await screen.findByRole("button", {name: "Add comment on lines 2–3"});
+		await screen.findByRole("button", CHIP);
 
 		fireEvent.contextMenu(row);
 
 		expect({
-			chip: screen.queryByRole("button", {name: "Add comment on lines 2–3"}),
-			menuItem: (await screen.findByRole("menuitem", {name: "Add comment on lines 2–3"})).textContent,
+			chip: screen.queryByRole("button", CHIP),
+			menuItem: (await screen.findByRole("menuitem", CHIP)).textContent,
 		}).toStrictEqual({chip: null, menuItem: "Add comment"});
+	});
+
+	it("anchors the chip to the pointer, clamped 72px inside the wrapper, and flips below near the scroller's top", async () => {
+		const {container} = renderPane();
+		const {row} = await selectLines(container);
+		mockRect(chipWrapper(container), () => new DOMRect(0, 0, 400, 600));
+		const place = (init: {clientX: number; clientY: number}) => {
+			fireEvent.mouseUp(row, init);
+			const host = chipHost(screen.getByRole("button", CHIP));
+			return {left: host.style.left, top: host.style.top, transform: host.style.transform};
+		};
+		const left = place({clientX: 10, clientY: 200});
+		const right = place({clientX: 390, clientY: 200});
+		const scroller = container.querySelector("diffs-container")?.closest<HTMLElement>('[class*="overflow-y-auto"]');
+		if (!scroller) throw new Error("no scroller");
+		scroller.style.overflowY = "auto";
+		mockRect(scroller, () => new DOMRect(0, 180, 400, 400));
+		const flipped = place({clientX: 200, clientY: 200});
+
+		expect({left, right, flipped}).toStrictEqual({
+			left: {left: "72px", top: "200px", transform: "translate(-50%, calc(-100% - 8px))"},
+			right: {left: "328px", top: "200px", transform: "translate(-50%, calc(-100% - 8px))"},
+			flipped: {left: "200px", top: "200px", transform: "translate(-50%, 8px)"},
+		});
+	});
+
+	it("leaves the chip alone on a non-primary mouse-up or a mouse-up on the file header", async () => {
+		const {container} = renderPane();
+		const {row, root} = await selectLines(container);
+		fireEvent.mouseUp(row);
+		await screen.findByRole("button", CHIP);
+		const header = container.querySelector("[data-diff-file-header]");
+		if (header === null) throw new Error("no header");
+		// A different selection the gated mouse-ups must not pick up.
+		const other = rowAt(root, "change-addition", 5);
+		Object.defineProperty(root, "getSelection", {
+			configurable: true,
+			value: () => ({
+				rangeCount: 1,
+				isCollapsed: false,
+				anchorNode: other.firstChild,
+				focusNode: other.firstChild,
+				getRangeAt: () => ({commonAncestorContainer: other.parentNode}),
+			}),
+		});
+
+		fireEvent.mouseUp(row, {button: 2});
+		const afterSecondary = screen.queryByRole("button", CHIP) !== null;
+		fireEvent.mouseUp(header);
+		const afterHeader = screen.queryByRole("button", CHIP) !== null;
+
+		expect({afterSecondary, afterHeader}).toStrictEqual({afterSecondary: true, afterHeader: true});
+	});
+
+	it("waits 250ms after a double or triple click, and a wheel or a moved host cancels it", async () => {
+		const {container} = renderPane();
+		const {row} = await selectLines(container);
+		const diffHost = container.querySelector("diffs-container");
+		if (diffHost === null) throw new Error("no diff host");
+		let hostTop = 0;
+		mockRect(diffHost, () => new DOMRect(0, hostTop, 400, 300));
+		vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
+		try {
+			const visible = () => screen.queryByRole("button", CHIP) !== null;
+			fireEvent.mouseUp(row, {detail: 2});
+			const atStart = visible();
+			act(() => {
+				vi.advanceTimersByTime(249);
+			});
+			const at249 = visible();
+			act(() => {
+				vi.advanceTimersByTime(1);
+			});
+			const at250 = visible();
+			act(() => {
+				document.dispatchEvent(new Event("selectionchange"));
+			});
+
+			fireEvent.contextMenu(row);
+			fireEvent.mouseUp(row, {detail: 3});
+			fireEvent.wheel(document);
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+			const afterWheel = visible();
+
+			fireEvent.mouseUp(row, {detail: 2});
+			hostTop = 40;
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+			const afterMove = visible();
+
+			expect({atStart, at249, at250, afterWheel, afterMove}).toStrictEqual({
+				atStart: false,
+				at249: false,
+				at250: true,
+				afterWheel: false,
+				afterMove: false,
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("takes the addition rows of a unified selection that spans deletions and additions", async () => {
+		const {container} = renderPane();
+		const root = await diffRoot(container);
+		const row = rowAt(root, "change-deletion", 2);
+		fakeSelection(root, rowAt(root, "change-addition", 3), row);
+		fireEvent.mouseUp(row);
+		// The library paints addition 2 ahead of deletion 2, so this selection covers deletion 2 and addition 3.
+		fireEvent.click(await screen.findByRole("button", {name: "Add comment on line 3"}));
+
+		expect(getDiffComments(SESSION).drafts.map(({side, line, endLine}) => ({side, line, endLine}))).toStrictEqual([
+			{side: "additions", line: 3, endLine: undefined},
+		]);
+	});
+
+	it("shows no chip for a split selection across both columns", async () => {
+		localStorage.setItem("ccp-diff-style", "split");
+		class WideObserver {
+			constructor(private readonly callback: ResizeObserverCallback) {}
+			observe(target: Element) {
+				this.callback(
+					[
+						{
+							target,
+							contentRect: new DOMRect(0, 0, 900, 600),
+							borderBoxSize: [{inlineSize: 900, blockSize: 600}],
+							contentBoxSize: [{inlineSize: 900, blockSize: 600}],
+						} as unknown as ResizeObserverEntry,
+					],
+					this,
+				);
+			}
+			unobserve() {}
+			disconnect() {}
+		}
+		vi.stubGlobal("ResizeObserver", WideObserver);
+		const {container} = renderPane();
+		const root = await waitFor(() => {
+			const found = container.querySelector("diffs-container")?.shadowRoot;
+			if (!found?.querySelector("[data-additions] [data-line]")) throw new Error("split diff not rendered yet");
+			return found;
+		});
+		const focus = rowAt(root, "change-addition", 3, "additions");
+		fakeSelection(root, rowAt(root, "change-deletion", 2, "deletions"), focus);
+		fireEvent.mouseUp(focus);
+		const across = screen.queryByRole("button", {name: /^Add comment on lines? \d/});
+		fakeSelection(root, rowAt(root, "change-addition", 2, "additions"), focus);
+		fireEvent.mouseUp(focus);
+
+		expect({
+			across,
+			oneColumn: (await screen.findByRole("button", {name: /^Add comment on lines? \d/})).getAttribute(
+				"aria-label",
+			),
+		}).toStrictEqual({across: null, oneColumn: "Add comment on lines 2–3"});
+	});
+
+	it("hides on a selection moved to other lines but keeps it for the same lines", async () => {
+		const {container} = renderPane();
+		const {row, root, select} = await selectLines(container);
+		fireEvent.mouseUp(row);
+		await screen.findByRole("button", CHIP);
+
+		select(rowAt(root, "change-addition", 3), rowAt(root, "change-addition", 2));
+		const sameLines = screen.queryByRole("button", CHIP) !== null;
+		select(rowAt(root, "change-addition", 2), rowAt(root, "change-addition", 5));
+		const otherLines = screen.queryByRole("button", {name: /^Add comment on lines? \d/}) !== null;
+
+		expect({sameLines, otherLines}).toStrictEqual({sameLines: true, otherLines: false});
+	});
+
+	it("hides on Escape (claiming it) but not while typing in a field, and keeps the text selection", async () => {
+		const {container} = renderPane();
+		const {row, cleared} = await selectLines(container);
+		fireEvent.mouseUp(row);
+		await screen.findByRole("button", CHIP);
+		const field = document.createElement("textarea");
+		document.body.append(field);
+		field.focus();
+
+		const fieldEscapeNotCanceled = fireEvent.keyDown(field, {key: "Escape"});
+		const afterField = screen.queryByRole("button", CHIP) !== null;
+		field.remove();
+		const escapeNotCanceled = fireEvent.keyDown(document.body, {key: "Escape"});
+
+		expect({
+			fieldEscapeNotCanceled,
+			afterField,
+			escapeNotCanceled,
+			afterEscape: screen.queryByRole("button", CHIP),
+			cleared: cleared(),
+		}).toStrictEqual({
+			fieldEscapeNotCanceled: true,
+			afterField: true,
+			escapeNotCanceled: false,
+			afterEscape: null,
+			cleared: 0,
+		});
+	});
+
+	it("hides on a wheel, and on a scroll that moves the diff host", async () => {
+		const {container} = renderPane();
+		const {row} = await selectLines(container);
+		const diffHost = container.querySelector("diffs-container");
+		if (diffHost === null) throw new Error("no diff host");
+		let hostTop = 0;
+		mockRect(diffHost, () => new DOMRect(0, hostTop, 400, 300));
+
+		fireEvent.mouseUp(row);
+		await screen.findByRole("button", CHIP);
+		fireEvent.wheel(document);
+		const afterWheel = screen.queryByRole("button", CHIP) !== null;
+
+		fireEvent.mouseUp(row);
+		await screen.findByRole("button", CHIP);
+		fireEvent.scroll(window);
+		const afterStillScroll = screen.queryByRole("button", CHIP) !== null;
+		hostTop = 30;
+		fireEvent.scroll(window);
+		const afterMovingScroll = screen.queryByRole("button", CHIP) !== null;
+
+		expect({afterWheel, afterStillScroll, afterMovingScroll}).toStrictEqual({
+			afterWheel: false,
+			afterStillScroll: true,
+			afterMovingScroll: false,
+		});
+	});
+
+	it("hides the chip surface while another menu is open, keeping it mounted", async () => {
+		const {container} = renderPane(
+			() => {},
+			<Menu>
+				<MenuTrigger aria-label="More options">...</MenuTrigger>
+				<MenuContent>
+					<MenuItem>Rename</MenuItem>
+				</MenuContent>
+			</Menu>,
+		);
+		const {row} = await selectLines(container);
+		fireEvent.mouseUp(row);
+		const surface = (await screen.findByRole("button", CHIP)).closest<HTMLElement>('[data-surface="popover"]');
+		const state = () => ({mounted: surface?.isConnected, visibility: surface?.style.visibility});
+		const before = state();
+
+		fireEvent.click(screen.getByRole("button", {name: "More options"}));
+		await screen.findByRole("menuitem", {name: "Rename"});
+		const whileOpen = state();
+		fireEvent.keyDown(screen.getByRole("menuitem", {name: "Rename"}), {key: "Escape"});
+		await waitFor(() => {
+			if (screen.queryByRole("menuitem", {name: "Rename"}) !== null) throw new Error("menu still open");
+		});
+
+		expect({before, whileOpen, after: state()}).toStrictEqual({
+			before: {mounted: true, visibility: ""},
+			whileOpen: {mounted: true, visibility: "hidden"},
+			after: {mounted: true, visibility: ""},
+		});
+	});
+
+	it("renders upstream's cds ghost Button with its paint layer and label, following the density scope", async () => {
+		const {container} = renderPane();
+		const {row} = await selectLines(container);
+		fireEvent.mouseUp(row);
+		const chip = await screen.findByRole("button", CHIP);
+		const paintLayer = chip.firstElementChild;
+		const paint = paintLayer?.firstElementChild;
+		const label = chip.lastElementChild;
+
+		expect({
+			cds: chip.getAttribute("data-cds"),
+			ghost: chip.hasAttribute("data-cds-ghost"),
+			button: chip.className,
+			surface: chip.closest('[data-surface="popover"]')?.className,
+			paintLayer: [paintLayer?.getAttribute("aria-hidden"), paintLayer?.className],
+			paint: [paint?.getAttribute("data-cds-part"), paint?.className],
+			label: [label?.tagName, label?.className, label?.textContent],
+		}).toStrictEqual({
+			cds: "Button",
+			ghost: true,
+			button: "group/btn relative isolate inline-flex h-6 shrink-0 items-center justify-center whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none focus-visible:shadow-focus comfortable:h-7 comfortable:px-3 comfortable:rounded-r6",
+			surface:
+				"rounded-r5 bg-surface-3 shadow-[var(--menu-shadow)] forced-colors:border forced-colors:border-solid forced-colors:border-[color:CanvasText] group/split flex comfortable:rounded-r6",
+			paintLayer: ["true", "absolute -z-[1] rounded-[inherit] inset-0"],
+			paint: [
+				"paint",
+				"absolute inset-0 rounded-[inherit] bg-transparent transition-[box-shadow,color] duration-[60ms] ease-[cubic-bezier(.165,.84,.44,1)] group-hover/btn:bg-fill-button-ghost-hover group-focus-visible/btn:shadow-[inset_0_0_0_1px_var(--cds-page-bg)]",
+			],
+			label: ["SPAN", "inline-flex min-w-0 items-center gap-1", "Add comment"],
+		});
 	});
 });
 

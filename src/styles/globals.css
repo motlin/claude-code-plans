@@ -212,6 +212,8 @@ html[data-interface-font="dyslexic"] {
 	--color-backdrop: var(--upstream-backdrop);
 	--color-fill-control: var(--upstream-fill-control);
 	--color-fill-ghost-hover: var(--upstream-fill-ghost-hover);
+	/* Upstream --cds-fill-button-ghost-hover: a cds ghost Button's hover paint (the `stacks:` variant). */
+	--color-fill-button-ghost-hover: var(--upstream-fill-button-ghost-hover);
 	--color-fill-ghost-selected: var(--upstream-fill-ghost-selected);
 	/* The ⌘K palette's selected row: ghost hover until fizzy-lake color, then upstream's measured ghost-selected. */
 	--color-palette-selected: var(--palette-selected);
@@ -502,6 +504,8 @@ html[data-interface-font="dyslexic"] {
 		0 0 0 1px rgb(11 11 11 / 0.1), 0 4px 8px 0 rgb(11 11 11 / 0.08), 0 12px 28px -2px rgb(11 11 11 / 0.08);
 	--upstream-fill-control: hsl(0 0% 4% / 0.1);
 	--upstream-fill-ghost-hover: hsl(0 0% 4% / 0.05);
+	/* Pre-rollout a cds ghost Button hovers like every other ghost. */
+	--upstream-fill-button-ghost-hover: var(--upstream-fill-ghost-hover);
 	/* Upstream's pressed rail toggle (session-presets gate): 10% ink. */
 	--upstream-fill-ghost-selected: rgb(11 11 11 / 0.1);
 	--palette-selected: var(--upstream-fill-ghost-hover);
@@ -1079,6 +1083,8 @@ html[data-interface-font="dyslexic"] {
 	--upstream-accent-layer: #257de00f;
 	/* Upstream `--cds-fill-ghost-hover`: every ghost hover (pre-rollout 4% ink). */
 	--upstream-fill-ghost-hover: #0000000d;
+	/* Upstream `--cds-fill-button-ghost-hover`: the cds ghost Button's `stacks:` hover paint. */
+	--upstream-fill-button-ghost-hover: #0000001a;
 	/* Upstream `--cds-fizzy-lake-color-plain-secondary`: the message toolbar's button ink. */
 	--upstream-plain-secondary: #0009;
 	/* Upstream `--cds-text-warning` (pre-rollout yellow-600 / yellow-300). */
@@ -1222,6 +1228,7 @@ html[data-interface-font="dyslexic"] {
 	--upstream-bg-tint-green: #10a1221f;
 	--upstream-text-tint-green: #53c556;
 	--upstream-fill-ghost-hover: #ffffff13;
+	--upstream-fill-button-ghost-hover: #ffffff13;
 	--upstream-plain-secondary: #ffffff91;
 	--upstream-warning: #e49c06;
 	--upstream-text-primary: #ffffffed;

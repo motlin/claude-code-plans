@@ -1,4 +1,4 @@
-import {Fragment, type RefObject, useEffect, useLayoutEffect, useRef, useState} from "react";
+import {type ComponentProps, Fragment, type RefObject, useEffect, useLayoutEffect, useRef, useState} from "react";
 
 import {type TranscriptSelection, useTranscriptSelection} from "../hooks/use-transcript-selection";
 import {attachContext, hasComposer} from "../lib/context-attach";
@@ -18,11 +18,28 @@ const EXCERPT_MAX_LENGTH = 1500;
 
 const HOST_CLASS =
 	"text-body text-primary break-words pointer-events-auto fixed left-0 top-0 will-change-transform isolate draggable-none";
-/** The floating selection action bar shared with the diff selection chip (upstream `Ml`/`sn`). */
-export const SELECTION_BAR_CLASS = `rounded-r5 bg-surface-3 shadow-[var(--menu-shadow)] ${FORCED_COLORS_BORDER_CLASS} group/split flex`;
-/** Upstream's cds ghost Button: 24px tall, 8px inline padding, 6px radius, ghost hover paint. */
-export const SELECTION_BAR_BUTTON_CLASS =
-	"inline-flex h-6 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none hover:bg-fill-ghost-hover focus-visible:shadow-focus";
+/** The floating selection action bar shared with the diff selection chip (upstream `Ml`/`sn`): radius 6px compact, 8px comfortable. */
+export const SELECTION_BAR_CLASS = `rounded-r5 bg-surface-3 shadow-[var(--menu-shadow)] ${FORCED_COLORS_BORDER_CLASS} group/split flex comfortable:rounded-r6`;
+/** Upstream's cds ghost Button: 24px / 8px / 6px compact, 28px / 12px / 8px comfortable; the hover lives on the paint layer. */
+const SELECTION_BAR_BUTTON_CLASS =
+	"group/btn relative isolate inline-flex h-6 shrink-0 items-center justify-center whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none focus-visible:shadow-focus comfortable:h-7 comfortable:px-3 comfortable:rounded-r6";
+const PAINT_LAYER_CLASS = "absolute -z-[1] rounded-[inherit] inset-0";
+/** Upstream's ghost paint under fizzy-lake `color` (`stacks:`): a 60ms box-shadow/color transition and the button ghost hover. */
+const PAINT_CLASS =
+	"absolute inset-0 rounded-[inherit] bg-transparent transition-[box-shadow,color] duration-[60ms] ease-[cubic-bezier(.165,.84,.44,1)] group-hover/btn:bg-fill-button-ghost-hover group-focus-visible/btn:shadow-[inset_0_0_0_1px_var(--cds-page-bg)]";
+const LABEL_CLASS = "inline-flex min-w-0 items-center gap-1";
+
+/** One action of the selection bar or diff chip: upstream's cds ghost `Button` with its paint layer and label. */
+export function SelectionBarButton({children, ...props}: Omit<ComponentProps<"button">, "type" | "className">) {
+	return (
+		<button type="button" data-cds="Button" data-cds-ghost="" className={SELECTION_BAR_BUTTON_CLASS} {...props}>
+			<span aria-hidden="true" className={PAINT_LAYER_CLASS}>
+				<span data-cds-part="paint" className={PAINT_CLASS} />
+			</span>
+			<span className={LABEL_CLASS}>{children}</span>
+		</button>
+	);
+}
 const SEPARATOR_CLASS =
 	"w-px my-[7px] bg-alpha-2 shrink-0 transition-opacity motion-reduce:transition-none group-hover/split:opacity-0 group-focus-within/split:opacity-0";
 
@@ -202,9 +219,7 @@ function SelectionBarHost({
 				{actions.map((action, index) => (
 					<Fragment key={action.label}>
 						{index > 0 && <span aria-hidden="true" className={SEPARATOR_CLASS} />}
-						<button
-							type="button"
-							className={SELECTION_BAR_BUTTON_CLASS}
+						<SelectionBarButton
 							onMouseDown={(event) => {
 								event.preventDefault();
 							}}
@@ -213,7 +228,7 @@ function SelectionBarHost({
 							}}
 						>
 							{action.label}
-						</button>
+						</SelectionBarButton>
 					</Fragment>
 				))}
 			</div>

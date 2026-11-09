@@ -20,6 +20,7 @@ import {
 import {useIsMac} from "../../hooks/use-is-mac";
 import {toAriaKeyShortcuts} from "../../lib/shortcuts/format";
 import {DensityProvider} from "./density";
+import {useOpenMenuCount} from "./menu-open-count";
 import {type Density, useScopeDensity} from "./density-context";
 import {
 	DENSITY_CLASSES,
@@ -210,6 +211,7 @@ function useMenuRootSheet<P extends MenuRootProps>(
 		closable: open === undefined || onOpenChange !== undefined,
 	});
 	const treeId = useId();
+	useOpenMenuCount(resolvedOpen);
 	useEffect(() => {
 		if (sheet) void preloadMenuSheet();
 	}, [sheet]);

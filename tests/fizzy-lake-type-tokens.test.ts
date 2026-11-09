@@ -47,4 +47,18 @@ describe("fizzy-lake type tokens (upstream data-cds-fizzy-lake~=type)", () => {
 			combobox: ["font-control-regular"],
 		});
 	});
+
+	it("--color-fill-button-ghost-hover is the ghost hover pre-rollout, and upstream's #0000001a / #ffffff13 under fizzy-lake color", () => {
+		expect({
+			theme: token(block("@theme inline"), "--color-fill-button-ghost-hover"),
+			base: token(block(":root"), "--upstream-fill-button-ghost-hover"),
+			color: token(block(':root[data-cds-fizzy-lake~="color"]'), "--upstream-fill-button-ghost-hover"),
+			dark: token(block(':root.dark[data-cds-fizzy-lake~="color"]'), "--upstream-fill-button-ghost-hover"),
+		}).toStrictEqual({
+			theme: "var(--upstream-fill-button-ghost-hover)",
+			base: "var(--upstream-fill-ghost-hover)",
+			color: "#0000001a",
+			dark: "#ffffff13",
+		});
+	});
 });

@@ -366,7 +366,7 @@ describe("transcript selection bar", () => {
 		renderBar();
 		select("Hermit crabs");
 		advance(250);
-		const separator = bar()?.querySelector("span[aria-hidden]");
+		const separator = bar()?.querySelector(":scope > span[aria-hidden]");
 
 		expect({
 			bar: bar()?.className,
@@ -377,18 +377,18 @@ describe("transcript selection bar", () => {
 			})),
 			separator: separator?.className,
 		}).toStrictEqual({
-			bar: "rounded-r5 bg-surface-3 shadow-[var(--menu-shadow)] forced-colors:border forced-colors:border-solid forced-colors:border-[color:CanvasText] group/split flex",
+			bar: "rounded-r5 bg-surface-3 shadow-[var(--menu-shadow)] forced-colors:border forced-colors:border-solid forced-colors:border-[color:CanvasText] group/split flex comfortable:rounded-r6",
 			surface: "popover",
 			buttons: [
 				{
 					type: "button",
 					className:
-						"inline-flex h-6 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none hover:bg-fill-ghost-hover focus-visible:shadow-focus",
+						"group/btn relative isolate inline-flex h-6 shrink-0 items-center justify-center whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none focus-visible:shadow-focus comfortable:h-7 comfortable:px-3 comfortable:rounded-r6",
 				},
 				{
 					type: "button",
 					className:
-						"inline-flex h-6 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none hover:bg-fill-ghost-hover focus-visible:shadow-focus",
+						"group/btn relative isolate inline-flex h-6 shrink-0 items-center justify-center whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none focus-visible:shadow-focus comfortable:h-7 comfortable:px-3 comfortable:rounded-r6",
 				},
 			],
 			separator:
@@ -420,10 +420,12 @@ describe("transcript selection bar", () => {
 		select("Hermit crabs");
 		advance(250);
 
-		expect({labels: labels(), separator: bar()?.querySelector("span[aria-hidden]") ?? null}).toStrictEqual({
-			labels: ["Reply"],
-			separator: null,
-		});
+		expect({labels: labels(), separator: bar()?.querySelector(":scope > span[aria-hidden]") ?? null}).toStrictEqual(
+			{
+				labels: ["Reply"],
+				separator: null,
+			},
+		);
 	});
 
 	it("offers only the side chat without a composer", () => {

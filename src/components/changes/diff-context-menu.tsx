@@ -1,13 +1,14 @@
-import {type MouseEvent, type ReactNode, useEffect, useState} from "react";
+import {type MouseEvent, type ReactNode, useCallback, useEffect, useRef, useState} from "react";
 
 import {writeClipboardText} from "../../lib/clipboard";
 import {attachContext} from "../../lib/context-attach";
 import {type DiffSide, openDiffCommentDraft} from "../../lib/diff-comments";
 import {detectLanguage} from "../../lib/diff-utils";
 import {useToast} from "../toast-context";
-import {SELECTION_BAR_BUTTON_CLASS, SELECTION_BAR_CLASS} from "../transcript-selection-bar";
+import {SELECTION_BAR_CLASS, SelectionBarButton} from "../transcript-selection-bar";
 import {findScrollContainer} from "../scroll-container";
 import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "../ui/menu";
+import {useAnyMenuOpen} from "../ui/menu-open-count";
 
 /** The diff lines a right-click lands on: the selection inside the diff, or the clicked line. */
 interface DiffLineSelection {
@@ -43,15 +44,12 @@ function rowOf(node: Node | null): Element | null {
 	return code.querySelector(`[data-line][data-line-index="${CSS.escape(index)}"]`);
 }
 
-/** The rows from `first` to `last` in document order that sit on `last`'s side. */
-function rowsBetween(first: Element, last: Element): Element[] {
-	const code = last.closest("[data-code]");
-	if (code === null) return [last];
-	const rows = [...code.querySelectorAll("[data-line]")];
-	const [from, to] = [rows.indexOf(first), rows.indexOf(last)].toSorted((a, b) => a - b);
+/** Every diff row from `first` to `last` in document order, across both columns of a split diff. */
+function rowsBetween(root: ShadowRoot, first: Element, last: Element): Element[] {
+	const rows = [...root.querySelectorAll("[data-line]")];
+	const [from, to] = [rows.indexOf(first), rows.indexOf(last)].toSorted((x, y) => x - y);
 	if (from === undefined || to === undefined || from === -1) return [last];
-	const side = rowSide(last);
-	return rows.slice(from, to + 1).filter((row) => rowSide(row) === side);
+	return rows.slice(from, to + 1);
 }
 
 function selectionIn(root: ShadowRoot): Selection | null {
@@ -62,14 +60,28 @@ function selectionIn(root: ShadowRoot): Selection | null {
 	return node.getRootNode() === root ? selection : null;
 }
 
-function selectionOf(rows: Element[]): DiffLineSelection | null {
-	const first = rows[0];
-	const last = rows.at(-1);
+/**
+ * Upstream `p`: the addition rows if any were selected, else the deletion rows; none for a
+ * split diff selection that spans both columns.
+ */
+function spanOf(root: ShadowRoot, rows: Element[]): DiffLineSelection | null {
+	const additions = rows.filter((row) => rowSide(row) === "additions");
+	const deletions = rows.filter((row) => rowSide(row) === "deletions");
+	const split = root.querySelector("[data-deletions], [data-additions]") !== null;
+	if (split && additions.length > 0 && deletions.length > 0) return null;
+	const side: DiffSide = additions.length > 0 ? "additions" : "deletions";
+	const numbered = (side === "additions" ? additions : deletions)
+		.map((row) => ({row, line: Number(row.getAttribute("data-line"))}))
+		.filter(({line}) => Number.isSafeInteger(line))
+		.toSorted((x, y) => x.line - y.line);
+	const first = numbered[0];
+	const last = numbered.at(-1);
 	if (first === undefined || last === undefined) return null;
-	const line = Number(first.getAttribute("data-line"));
-	const endLine = Number(last.getAttribute("data-line"));
-	if (!Number.isSafeInteger(line) || !Number.isSafeInteger(endLine)) return null;
-	return {side: rowSide(last), line, endLine, text: rows.map(rowText).join("\n")};
+	return {side, line: first.line, endLine: last.line, text: numbered.map(({row}) => rowText(row)).join("\n")};
+}
+
+function sameSpan(a: DiffLineSelection, b: DiffLineSelection): boolean {
+	return a.line === b.line && a.endLine === b.endLine && a.side === b.side;
 }
 
 /** Upstream's "line N" / "lines A–B" for a comment's accessible name. */
@@ -83,61 +95,152 @@ function eventRow(event: MouseEvent): Element | null {
 	return rowOf(path.find((target): target is Element => target instanceof Element) ?? null);
 }
 
-/** The rows a selection inside the row's shadow root spans, or null without one. */
-function selectedRows(row: Element): {root: ShadowRoot; selection: Selection; rows: Element[]} | null {
-	const root = row.getRootNode();
-	const selection = root instanceof ShadowRoot ? selectionIn(root) : null;
-	if (!(root instanceof ShadowRoot) || selection === null) return null;
+/** The rows a selection inside `root` spans, or null without one. */
+function selectedRows(root: ShadowRoot): Element[] | null {
+	const selection = selectionIn(root);
+	if (selection === null) return null;
 	const anchor = rowOf(selection.anchorNode);
 	const focus = rowOf(selection.focusNode);
 	if (anchor === null || focus === null) return null;
-	return {root, selection, rows: rowsBetween(anchor, focus)};
+	return rowsBetween(root, anchor, focus);
+}
+
+/** Upstream `Cr`: the span the selection inside `root` covers, or null. */
+function selectionSpan(root: ShadowRoot): DiffLineSelection | null {
+	const rows = selectedRows(root);
+	return rows === null ? null : spanOf(root, rows);
 }
 
 /** Resolves a right-click inside a `@pierre/diffs` shadow root to diff lines. */
 function diffLinesAt(event: MouseEvent): DiffLineSelection | null {
 	const clicked = eventRow(event);
-	if (clicked === null) return null;
-	const selected = selectedRows(clicked);
-	if (selected?.rows.includes(clicked)) return selectionOf(selected.rows);
-	return selectionOf([clicked]);
+	const root = clicked?.getRootNode();
+	if (clicked === null || !(root instanceof ShadowRoot)) return null;
+	const rows = selectedRows(root);
+	return (rows?.includes(clicked) ? spanOf(root, rows) : null) ?? spanOf(root, [clicked]);
 }
 
-/** Upstream `Wl`: the gap between the selection and the chip. */
+/** Upstream `Vd`: the gap between the pointer and the chip. */
 const CHIP_GAP = 8;
-/** The chip's height: one 24px cds ghost button. */
-const CHIP_HEIGHT = 24;
+/** Upstream `Bd`: the pointer x is clamped this far inside the wrapper so the chip never clips. */
+const CHIP_EDGE = 72;
+/** Upstream `Hd`: a release this close to the scroller's top flips the chip below the pointer. */
+const CHIP_FLIP_ZONE = 48;
+/** Upstream `zd`: a double or triple click waits this long for its word or line selection to settle. */
+const MULTI_CLICK_DELAY = 250;
+/** Upstream `Kd`: how far the diff host may move before the chip counts as scrolled away. */
+const HOST_MOVE_TOLERANCE = 1;
+/** Upstream's layer base + 4 inside the pane: above the diff rows, below the menus. */
+const CHIP_Z_INDEX = 4;
 
 /** The floating chip over a diff selection, placed in the file wrapper's coordinates. */
 interface SelectionChip {
 	root: ShadowRoot;
+	host: Element;
 	lines: DiffLineSelection;
 	x: number;
 	y: number;
 	flipBelow: boolean;
+	hostTop: number;
 }
 
-/** Upstream's mouse-up chip: centred on the selection, above it unless the scroller's top cuts it off. */
-function selectionChipAt(event: MouseEvent<HTMLElement>): SelectionChip | null {
-	const row = eventRow(event);
-	const selected = row === null ? null : selectedRows(row);
-	const lines = selected === null ? null : selectionOf(selected.rows);
-	if (selected === null || lines === null) return null;
-	const rect = selected.selection.getRangeAt(0).getBoundingClientRect();
-	const host = event.currentTarget.getBoundingClientRect();
-	const scroller = findScrollContainer(event.currentTarget);
-	const top =
-		scroller === document.scrollingElement || scroller === document.documentElement
-			? 0
-			: scroller.getBoundingClientRect().top;
-	const flipBelow = rect.top - CHIP_GAP - CHIP_HEIGHT < top;
+/** Upstream `Gd`: the top of the nearest scrolling ancestor, or 0 when the document scrolls. */
+function scrollerTop(host: Element): number {
+	const scroller = findScrollContainer(host);
+	return scroller === document.scrollingElement || scroller === document.documentElement
+		? 0
+		: scroller.getBoundingClientRect().top;
+}
+
+/** Upstream `ie`: the chip anchored to the pointer, clamped inside the wrapper, flipped below near the scroller's top. */
+function chipAt(wrapper: Element, host: Element, clientX: number, clientY: number): SelectionChip | null {
+	const root = host.shadowRoot;
+	const lines = root === null ? null : selectionSpan(root);
+	if (root === null || lines === null) return null;
+	const bounds = wrapper.getBoundingClientRect();
 	return {
-		root: selected.root,
+		root,
+		host,
 		lines,
-		x: Math.round(rect.left + rect.width / 2 - host.left),
-		y: Math.round((flipBelow ? rect.bottom : rect.top) - host.top),
-		flipBelow,
+		x: Math.min(Math.max(clientX - bounds.left, CHIP_EDGE), Math.max(bounds.width - CHIP_EDGE, CHIP_EDGE)),
+		y: clientY - bounds.top,
+		flipBelow: clientY - scrollerTop(host) < CHIP_FLIP_ZONE,
+		hostTop: host.getBoundingClientRect().top,
 	};
+}
+
+/** Upstream `_r`: the `diffs-container` host a mouse-up landed in, outside any file header. */
+function diffHostOf(target: EventTarget | null): Element | null {
+	if (!(target instanceof Element) || target.closest("[data-diff-file-header]") !== null) return null;
+	return target.closest("diffs-container");
+}
+
+function isEditable(element: Element | null): boolean {
+	return (
+		element instanceof HTMLInputElement ||
+		element instanceof HTMLTextAreaElement ||
+		(element instanceof HTMLElement && element.isContentEditable)
+	);
+}
+
+/** Upstream `Wd`: another dialog or popup (a menu included) owns Escape. */
+function dialogOpen(): boolean {
+	return document.querySelector('[role="dialog"], [role="alertdialog"], [role="menu"]') !== null;
+}
+
+/** Hides the chip on Escape, a wheel, a scroll that moves the host, or a selection of other lines. */
+function useChipDismissal(chip: SelectionChip | null, hide: () => void) {
+	useEffect(() => {
+		if (chip === null) return undefined;
+		const recheck = () => {
+			const lines = selectionSpan(chip.root);
+			if (lines === null || !sameSpan(lines, chip.lines)) hide();
+		};
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== "Escape" || event.isComposing) return;
+			if (isEditable(document.activeElement) || dialogOpen()) return;
+			event.preventDefault();
+			event.stopPropagation();
+			hide();
+		};
+		const onScroll = () => {
+			if (Math.abs(chip.host.getBoundingClientRect().top - chip.hostTop) > HOST_MOVE_TOLERANCE) hide();
+			else recheck();
+		};
+		document.addEventListener("selectionchange", recheck);
+		document.addEventListener("keydown", onKeyDown, true);
+		document.addEventListener("wheel", hide, {capture: true, passive: true});
+		window.addEventListener("scroll", onScroll, {capture: true, passive: true});
+		return () => {
+			document.removeEventListener("selectionchange", recheck);
+			document.removeEventListener("keydown", onKeyDown, true);
+			document.removeEventListener("wheel", hide, true);
+			window.removeEventListener("scroll", onScroll, true);
+		};
+	}, [chip, hide]);
+}
+
+/** A double or triple click's deferred chip: the timer and the wheel listener that cancels it. */
+function usePendingChip() {
+	const cancelRef = useRef<(() => void) | null>(null);
+	const cancel = () => {
+		cancelRef.current?.();
+		cancelRef.current = null;
+	};
+	useEffect(() => cancel, []);
+	const defer = (run: () => void) => {
+		cancel();
+		const timer = setTimeout(() => {
+			cancel();
+			run();
+		}, MULTI_CLICK_DELAY);
+		document.addEventListener("wheel", cancel, {capture: true, passive: true});
+		cancelRef.current = () => {
+			clearTimeout(timer);
+			document.removeEventListener("wheel", cancel, true);
+		};
+	};
+	return {defer, cancel};
 }
 
 /**
@@ -148,17 +251,12 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 	const [target, setTarget] = useState<DiffLineSelection | null>(null);
 	const [chip, setChip] = useState<SelectionChip | null>(null);
 	const toast = useToast();
-
-	useEffect(() => {
-		if (chip === null) return undefined;
-		const hideWhenCleared = () => {
-			if (selectionIn(chip.root) === null) setChip(null);
-		};
-		document.addEventListener("selectionchange", hideWhenCleared);
-		return () => {
-			document.removeEventListener("selectionchange", hideWhenCleared);
-		};
-	}, [chip]);
+	const menuOpen = useAnyMenuOpen();
+	const pending = usePendingChip();
+	const hideChip = useCallback(() => {
+		setChip(null);
+	}, []);
+	useChipDismissal(chip, hideChip);
 
 	function comment(lines: DiffLineSelection) {
 		const lang = detectLanguage(path);
@@ -200,13 +298,26 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 			<ContextMenuTrigger
 				render={<div className="relative" />}
 				onContextMenu={(event: MouseEvent) => {
+					pending.cancel();
 					setChip(null);
 					setTarget(diffLinesAt(event));
 				}}
 				onMouseUp={(event: MouseEvent<HTMLElement>) => {
-					// A press on the chip itself keeps it, so its click still lands.
-					if (event.target instanceof Element && event.target.closest("[data-pane-editor]")) return;
-					setChip(selectionChipAt(event));
+					pending.cancel();
+					// Upstream `U`: only a primary release inside a diff (not on a file header or the chip) places it.
+					const host = diffHostOf(event.target);
+					if (event.button !== 0 || host === null) return;
+					const wrapper = event.currentTarget;
+					const {clientX, clientY} = event;
+					if (event.detail < 2) {
+						setChip(chipAt(wrapper, host, clientX, clientY));
+						return;
+					}
+					const pressTop = host.getBoundingClientRect().top;
+					pending.defer(() => {
+						if (Math.abs(host.getBoundingClientRect().top - pressTop) > HOST_MOVE_TOLERANCE) return;
+						setChip(chipAt(wrapper, host, clientX, clientY));
+					});
 				}}
 			>
 				{children}
@@ -220,13 +331,15 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 							transform: chip.flipBelow
 								? `translate(-50%, ${CHIP_GAP}px)`
 								: `translate(-50%, calc(-100% - ${CHIP_GAP}px))`,
-							zIndex: 20,
+							zIndex: CHIP_Z_INDEX,
 						}}
 					>
-						<div data-surface="popover" className={SELECTION_BAR_CLASS}>
-							<button
-								type="button"
-								className={SELECTION_BAR_BUTTON_CLASS}
+						<div
+							data-surface="popover"
+							className={SELECTION_BAR_CLASS}
+							style={menuOpen ? {visibility: "hidden"} : undefined}
+						>
+							<SelectionBarButton
 								aria-label={`Add comment on ${linesLabel(chip.lines)}`}
 								onMouseDown={(event) => {
 									event.preventDefault();
@@ -238,7 +351,7 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 								}}
 							>
 								Add comment
-							</button>
+							</SelectionBarButton>
 						</div>
 					</div>
 				)}
