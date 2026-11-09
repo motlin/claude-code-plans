@@ -90,6 +90,7 @@ import {useLandedFlash} from "./landed-flash";
 import {usePickupSettling} from "../lib/pickup-settling";
 import {assistantTurnDetails, userTurnDetails} from "../lib/turn-metadata";
 import {TurnChangesCard} from "./turn-changes-card";
+import {TurnMarkCarrier} from "./turn-mark-outlet";
 import {StaleCompactBand, type StaleCompactBandProps} from "./stale-compact-band";
 import {lastAssistantReplyEntry} from "../lib/stale-compact";
 import {collectTurnChanges, lastTurnChangesAnchor, type TurnChanges} from "../lib/turn-changes";
@@ -6570,7 +6571,14 @@ function ToolCallRow({
 		</div>
 	);
 	return withHoistedImages(
-		isTurnStatus ? <TurnStatusFrame leading={leading}>{disclosure}</TurnStatusFrame> : disclosure,
+		isTurnStatus ? (
+			// Upstream `St`: a marked row is carried into the turn-mark outlet below a docked card.
+			<TurnMarkCarrier holds={runningRow} inFlight={pending}>
+				<TurnStatusFrame leading={leading}>{disclosure}</TurnStatusFrame>
+			</TurnMarkCarrier>
+		) : (
+			disclosure
+		),
 	);
 }
 
@@ -6889,5 +6897,10 @@ function ToolCallSummary({
 			)}
 		</div>
 	);
-	return <TurnStatusFrame leading={leading}>{status}</TurnStatusFrame>;
+	return (
+		// Upstream's group TurnStatus carrier: a busy group header goes below a docked card too.
+		<TurnMarkCarrier holds={busy}>
+			<TurnStatusFrame leading={leading}>{status}</TurnStatusFrame>
+		</TurnMarkCarrier>
+	);
 }

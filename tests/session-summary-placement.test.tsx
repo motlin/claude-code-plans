@@ -671,6 +671,82 @@ describe("SessionPage dock composition", () => {
 				(card.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
 		}).toStrictEqual({lines: 1, inRow: false, followsCard: true});
 	});
+	function waitingBashRecords(): Record<string, unknown>[] {
+		return [
+			{
+				type: "assistant",
+				uuid: "a1",
+				sessionId: SESSION_ID,
+				timestamp: "2026-09-28T10:00:01.000Z",
+				message: {
+					role: "assistant",
+					content: [
+						{
+							type: "tool_use",
+							id: "toolu_waiting",
+							name: "Bash",
+							input: {command: "gh pr create --draft", description: "Open the draft PR"},
+						},
+					],
+				},
+			},
+		];
+	}
+	function seedWaiting(awaitingPermission: boolean) {
+		return (queryClient: QueryClient) => {
+			seedUsage(queryClient);
+			queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+				pages: [{sessions: [{id: SESSION_ID, state: "waiting", awaitingPermission}], nextCursor: null}],
+				pageParams: [null],
+			} as never);
+		};
+	}
+	it("carries the running row into upstream's turn-mark outlet below the docked permission card", async () => {
+		await renderSessionPage(detail, [], seedWaiting(true), waitingBashRecords());
+		await flush();
+		const card = document.querySelector("[data-inline-permission]");
+		const outlet = document.querySelector("[data-turn-mark-outlet]");
+		const line = document.querySelector('[data-testid="code-working-line"]');
+		const grid = outlet?.parentElement;
+		const chrome = grid?.parentElement;
+		const home = document.querySelector('[data-testid="transcript-row"] [data-turn-mark-home]');
+		expect({
+			cardFirst:
+				card !== null &&
+				outlet !== null &&
+				(card.compareDocumentPosition(outlet) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+			cardClass: card?.className,
+			carried:
+				outlet?.querySelector("[data-turn-mark-box] [data-standalone-tool-row] [data-cds=WorkingMark]") !==
+				null,
+			homeEmpty: home?.childElementCount,
+			lineBesideOutlet: line?.parentElement === grid,
+			gridClass: grid?.className,
+			chrome: [chrome?.hasAttribute("data-transcript-tail-chrome"), chrome?.className],
+		}).toStrictEqual({
+			cardFirst: true,
+			cardClass: "chat-column empty:hidden",
+			carried: true,
+			homeEmpty: 0,
+			lineBesideOutlet: true,
+			gridClass:
+				"grid grid-cols-[minmax(0,1fr)] gap-y-[var(--chat-turn-gap,15px)] [&>*]:min-w-0 [&>:empty]:invisible [&>:empty]:[grid-area:1/1] [&>[data-quiet]]:[grid-area:1/1] [&>[data-turn-mark-outlet]]:[grid-area:1/1]",
+			chrome: [
+				true,
+				"chat-column flex w-full flex-col gap-[var(--chat-turn-gap)] pt-[var(--chat-turn-gap)] empty:hidden",
+			],
+		});
+	});
+	it("keeps the running row in the transcript, with no outlet, while no card is docked", async () => {
+		await renderSessionPage(detail, [], seedWaiting(false), waitingBashRecords());
+		await flush();
+		expect({
+			outlets: document.querySelectorAll("[data-turn-mark-outlet]").length,
+			homes: document.querySelectorAll("[data-turn-mark-home]").length,
+			rowInTranscript:
+				document.querySelector('[data-testid="transcript-row"] [data-standalone-tool-row]') !== null,
+		}).toStrictEqual({outlets: 0, homes: 0, rowInTranscript: true});
+	});
 	it("draws the stored question once, inline in the transcript, not a permission card, when the registry's permission wait is really a question", async () => {
 		await renderSessionPage(
 			{...detail, pr},

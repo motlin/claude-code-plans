@@ -135,6 +135,7 @@ export function WorkingMarker({
 	quiet = false,
 	waitingOnUser = false,
 	inline = false,
+	bare = false,
 	sending = false,
 	tokens = 0,
 }: Readonly<{
@@ -144,6 +145,8 @@ export function WorkingMarker({
 	waitingOnUser?: boolean;
 	/** Nested under the last assistant reply, as upstream's `ps-[inset] -mt-pad-xs` wrapper, not in its own column. */
 	inline?: boolean;
+	/** A child of upstream's tail-chrome grid (`si`), which places the line itself, so no column wrapper. */
+	bare?: boolean;
 	/** A prompt sent to the live pane has not reached the transcript yet. */
 	sending?: boolean;
 	/** The turn's token estimate (`turnTokenEstimate`); shown after the clock while working. */
@@ -228,6 +231,7 @@ export function WorkingMarker({
 			)}
 		</div>
 	);
+	if (bare) return line;
 	return inline ? (
 		<div data-perf-row="marker" className="-mt-1">
 			{line}

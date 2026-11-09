@@ -585,6 +585,14 @@ function visibleLineText(root: ParentNode): string | null {
 }
 
 describe("WorkingMarker", () => {
+	it("renders the bare line as a tail-chrome grid child, with no column wrapper", () => {
+		stubReducedMotion(false);
+		const {container} = render(<WorkingMarker state={{status: "idle"}} bare />);
+		expect({
+			first: container.firstElementChild?.getAttribute("data-testid"),
+			wrappers: container.querySelectorAll('[data-perf-row="marker"]').length,
+		}).toStrictEqual({first: "code-working-line", wrappers: 0});
+	});
 	it("keeps a 24px code-working-line mounted when idle, holding upstream's h-control placeholder and no status", () => {
 		stubReducedMotion(false);
 		const {container} = render(<WorkingMarker state={{status: "idle"}} />);
