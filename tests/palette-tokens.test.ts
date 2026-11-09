@@ -1,5 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
 import {
+	activationDirection,
 	applyPaletteFilters,
 	commitPaletteTokens,
 	paletteChips,
@@ -583,6 +584,21 @@ describe("paletteTypeStep", () => {
 		["digits and spaces in an LTR UI", key(), field("12 3"), false, 1],
 	] as const)("%s → %d", (_name, event, input, rtl, expected) => {
 		expect(paletteTypeStep(event, input, rtl)).toBe(expected);
+	});
+});
+
+describe("activationDirection", () => {
+	const types = PaletteTypeSchema.options;
+
+	it.each([
+		["no previous value", undefined, "all", "none"],
+		["the same value", "artifacts", "artifacts", "none"],
+		["a higher index", "all", "artifacts", "right"],
+		["a lower index", "artifacts", "all", "left"],
+		["a positional wrap from Files to All", "files", "all", "left"],
+		["a positional wrap from All to Files", "all", "files", "right"],
+	] as const)("%s", (_name, previous, next, expected) => {
+		expect(activationDirection(types, previous, next)).toBe(expected);
 	});
 });
 

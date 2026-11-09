@@ -661,3 +661,15 @@ export function nextPaletteType<T>(list: readonly T[], current: T, direction: -1
 	const next = wrap ? list[(target + list.length) % list.length] : list[target];
 	return next === current ? undefined : next;
 }
+
+/** Base UI Tabs' `data-activation-direction`. */
+export type ActivationDirection = "left" | "right" | "none";
+
+/**
+ * Base UI Tabs' positional activation direction: `right` for a higher index, `left` for a lower one,
+ * so a wrap from the last tab to the first reports `left`. `none` without a previous value or a change.
+ */
+export function activationDirection<T>(list: readonly T[], previous: T | undefined, next: T): ActivationDirection {
+	if (previous === undefined || previous === next) return "none";
+	return list.indexOf(next) > list.indexOf(previous) ? "right" : "left";
+}

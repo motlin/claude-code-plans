@@ -569,8 +569,8 @@ describe("CommandPalette shell", () => {
 			missingPill: tabs.flatMap((tab) => pillClasses.filter((name) => !tab.className.split(" ").includes(name))),
 			hoverPrimary: tabs.filter((tab) => tab.className.split(" ").includes("hover:text-primary")).length,
 			edgePills: [
-				tablist.includes("[&>[role=tab]:first-child]:before:start-0"),
-				tablist.includes("[&>[role=tab]:last-child]:before:end-0"),
+				tablist.includes("data-[orientation=horizontal]:[&>[role=tab]:first-child]:before:start-0"),
+				tablist.includes("data-[orientation=horizontal]:[&>[role=tab]:last-child]:before:end-0"),
 			],
 			tablistFontSans: tablist.includes("font-sans"),
 		}).toStrictEqual({
@@ -614,6 +614,53 @@ describe("CommandPalette shell", () => {
 			pager: ["scroll-pager-scroller", "contents"],
 			sizeParentIsRoot: true,
 			tablistMinWMax: false,
+		});
+	});
+
+	it("carries Base UI's orientation, activation-direction, size, disabled and composite-active attributes", async () => {
+		const dialog = await openPalette();
+		await within(dialog).findByRole("option", {name: /Refactor auth module/});
+		const input = within(dialog).getByRole("combobox");
+		const tablist = within(dialog).getByRole("tablist", {name: "Type"});
+		const root = tablist.closest<HTMLElement>('[data-cds="Tabs"]');
+		const tabs = () => within(dialog).getAllByRole("tab");
+		const directions = () => [
+			root?.getAttribute("data-activation-direction"),
+			tablist.getAttribute("data-activation-direction"),
+			...new Set(tabs().map((tab) => tab.getAttribute("data-activation-direction"))),
+		];
+		const atOpen = {
+			orientation: [
+				root?.getAttribute("data-orientation"),
+				tablist.getAttribute("data-orientation"),
+				...new Set(tabs().map((tab) => tab.getAttribute("data-orientation"))),
+			],
+			directions: directions(),
+			ariaDisabled: [...new Set(tabs().map((tab) => tab.getAttribute("aria-disabled")))],
+			tablistSize: tablist.getAttribute("data-size"),
+			compositeActive: tabs().map((tab) => tab.getAttribute("data-composite-item-active")),
+		};
+
+		fireEvent.keyDown(input, {key: "ArrowRight", code: "ArrowRight"});
+		const afterRight = {
+			directions: directions(),
+			compositeActive: tabs().map((tab) => tab.getAttribute("data-composite-item-active")),
+		};
+		fireEvent.keyDown(input, {key: "Backspace", code: "Backspace"});
+
+		expect({atOpen, afterRight, afterBackspace: directions()}).toStrictEqual({
+			atOpen: {
+				orientation: ["horizontal", "horizontal", "horizontal"],
+				directions: ["none", "none", "none"],
+				ariaDisabled: ["false"],
+				tablistSize: "sm",
+				compositeActive: ["", null, null, null, null, null, null, null],
+			},
+			afterRight: {
+				directions: ["right", "right", "right"],
+				compositeActive: [null, "", null, null, null, null, null, null],
+			},
+			afterBackspace: ["left", "left", "left"],
 		});
 	});
 

@@ -117,6 +117,7 @@ import {
 	commitPaletteTokens,
 	shouldCommitPaletteTokens,
 	isClientPaletteType,
+	activationDirection,
 	paletteChips,
 	popPaletteFilter,
 	paletteDateCutoff,
@@ -131,6 +132,7 @@ import {
 	paletteTypeStep,
 	parsePaletteTokens,
 	scrollIntoStrip,
+	type ActivationDirection,
 	type PaletteChip,
 	type PaletteChipFilter,
 	type PaletteFilter,
@@ -2721,6 +2723,21 @@ function ChipClearButton({label, onClear}: {label: string; onClear: () => void})
 /** `value` is null in Actions mode, where upstream shows no active tab. */
 function TypeTabs({value, onChange}: {value: PaletteType | null; onChange: (type: PaletteType) => void}) {
 	const scrollerRef = useRef<HTMLDivElement>(null);
+	// Base UI keeps the last change's direction until the next one, so track it across renders.
+	const [shown, setShown] = useState<{value: PaletteType | null; direction: ActivationDirection}>({
+		value,
+		direction: "none",
+	});
+	if (shown.value !== value) {
+		setShown({
+			value,
+			direction:
+				value === null || shown.value === null
+					? "none"
+					: activationDirection(PaletteTypeSchema.options, shown.value, value),
+		});
+	}
+	const direction = value === null ? "none" : shown.direction;
 	useLayoutEffect(() => {
 		const scroller = scrollerRef.current;
 		const tab = scroller?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
@@ -2753,13 +2770,21 @@ function TypeTabs({value, onChange}: {value: PaletteType | null; onChange: (type
 			>
 				{/* Upstream's cds Tabs root > data-size contents > scroll-pager scroller > tablist; the fizzy-lake
 				    `color` ink and ghost-selected pill rules in globals.css key off [data-cds="Tabs"]. */}
-				<div data-cds="Tabs" data-orientation="horizontal" className="min-w-max">
+				<div
+					data-cds="Tabs"
+					data-orientation="horizontal"
+					data-activation-direction={direction}
+					className="min-w-max"
+				>
 					<div data-size="sm" className="contents">
 						<div data-cds-part="scroll-pager-scroller" className="contents">
 							<div
 								role="tablist"
 								aria-label="Type"
-								className="flex items-center font-sans [&>[role=tab]:first-child]:before:start-0 [&>[role=tab]:last-child]:before:end-0"
+								data-size="sm"
+								data-orientation="horizontal"
+								data-activation-direction={direction}
+								className="flex items-center font-sans data-[orientation=horizontal]:[&>[role=tab]:first-child]:before:start-0 data-[orientation=horizontal]:[&>[role=tab]:last-child]:before:end-0"
 							>
 								{PaletteTypeSchema.options.map((type) => {
 									const selected = type === value;
@@ -2770,6 +2795,10 @@ function TypeTabs({value, onChange}: {value: PaletteType | null; onChange: (type
 											role="tab"
 											aria-selected={selected}
 											data-active={selected ? "" : undefined}
+											data-orientation="horizontal"
+											data-activation-direction={direction}
+											aria-disabled="false"
+											data-composite-item-active={selected ? "" : undefined}
 											tabIndex={selected || (value === null && type === "all") ? 0 : -1}
 											onMouseDown={(event) => {
 												event.preventDefault();
