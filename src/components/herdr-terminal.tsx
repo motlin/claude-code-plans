@@ -2,6 +2,7 @@ import {useEffect, useRef, useState} from "react";
 import {createTerminalFrameConsumer} from "../lib/herdr/terminal-protocol";
 import {useTerminalTheme} from "../hooks/use-terminal-theme";
 import type {GhosttyAppearance} from "../lib/server-fns";
+import {installTerminalContrast} from "../lib/terminal-contrast";
 import {applyTerminalTheme} from "../lib/terminal-theme";
 import {TerminalPlaceholder} from "./terminal-placeholder";
 import {TerminalSelectionStatus} from "./terminal-selection-status";
@@ -73,6 +74,7 @@ export function HerdrTerminal({
 			const fitAddon = new ghostty.FitAddon();
 			terminal.loadAddon(fitAddon);
 			terminal.open(element);
+			const removeContrast = installTerminalContrast(terminal);
 			installTerminalInput(terminal, selectionActions);
 
 			let socket: WebSocket | null = null;
@@ -170,6 +172,7 @@ export function HerdrTerminal({
 				resizeObserver.disconnect();
 				dataSubscription?.dispose();
 				socket?.close(1000, "terminal view closed");
+				removeContrast();
 				terminal.dispose();
 			};
 		};

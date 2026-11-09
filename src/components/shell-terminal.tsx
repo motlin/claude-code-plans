@@ -7,6 +7,7 @@ import {
 } from "../lib/herdr/terminal-protocol";
 import {useTerminalTheme} from "../hooks/use-terminal-theme";
 import type {GhosttyAppearance} from "../lib/server-fns";
+import {installTerminalContrast} from "../lib/terminal-contrast";
 import {applyTerminalTheme} from "../lib/terminal-theme";
 import {
 	formatLinkMessage,
@@ -110,6 +111,7 @@ export function ShellTerminal({
 			const fitAddon = new ghostty.FitAddon();
 			terminal.loadAddon(fitAddon);
 			terminal.open(element);
+			const removeContrast = installTerminalContrast(terminal);
 			terminalWrite = (text) => {
 				terminal.write(text);
 			};
@@ -216,6 +218,7 @@ export function ShellTerminal({
 				resizeObserver.disconnect();
 				dataSubscription.dispose();
 				socket?.close(1000, "shell view closed");
+				removeContrast();
 				terminal.dispose();
 			};
 		};
