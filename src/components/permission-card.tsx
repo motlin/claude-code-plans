@@ -541,10 +541,10 @@ function usePermissionHotkeys(
 
 /** Upstream's body classes (`epitaxy-code-size` hooks, held at the default size by the card's data-fixed-code-size): the detail block (`Lg`), its footnote (`kg`) and the description line (`Dg`). */
 const DETAIL_CLASS =
-	"epitaxy-code-size bg-alpha-1 rounded-r4 py-2 px-3 text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]";
+	"epitaxy-code-size bg-alpha-1 rounded-r4 py-2 px-3 text-code font-mono text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]";
 /** Upstream's command detail (`epitaxy-code-card`): the code theme's background at default density. */
 const CODE_CARD_CLASS =
-	"epitaxy-code-size flex overflow-clip rounded-lg px-2 py-1 text-code bg-surface-1 dark:bg-surface-2 select-text [unicode-bidi:plaintext]";
+	"epitaxy-code-size flex overflow-clip rounded-lg px-2 py-1 text-code font-mono bg-surface-1 dark:bg-surface-2 select-text [unicode-bidi:plaintext]";
 /** Upstream's `U` paragraph (`gy`) for a change over the preview cap. */
 const TOO_LARGE_CLASS = "text-body text-secondary select-text break-words";
 const FILE_CHANGE_TOO_LARGE =
