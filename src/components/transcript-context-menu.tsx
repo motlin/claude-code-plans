@@ -7,6 +7,7 @@ import {fileRefStatusQueryOptions} from "../lib/api/file-refs";
 import {writeClipboardText} from "../lib/clipboard";
 import {attachContext} from "../lib/context-attach";
 import {markdownToPlainText} from "../lib/markdown-plain-text";
+import {createPressRecorder, touchOnTextOrSelection, wantsNativeContextMenu} from "../lib/native-context-menu";
 import {useFileRefsCwd} from "./file-refs-context";
 import {FileActionsMenuItems} from "./files/file-actions-menu";
 import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "./ui/menu";
@@ -27,6 +28,11 @@ const READ_ALOUD_MENU_LABELS: Record<ReadAloudStatus, string> = {
  * ref opens only the shared file actions menu, as on desktop, or, without an
  * absolute path, the prose menu led by Copy path (upstream's browser `jb`).
  * A text selection in the turn adds Copy and attaches as an Excerpt.
+ *
+ * As upstream's host (`Qx`), the browser's own menu opens instead when a
+ * right-click lands on the selection over a tool row (which has no Attach
+ * selection row), and a touch on transcript text is left to the browser's
+ * text selection rather than the long-press menu.
  */
 
 type TranscriptMenuTarget =
@@ -131,6 +137,7 @@ export function TranscriptMessageMenu({
 	const [gone, setGone] = useState(false);
 	const goneCheck = useRef<Promise<boolean> | null>(null);
 	const fallback = markdown === "" ? "tool" : "prose";
+	const [pressRecorder] = useState(createPressRecorder);
 	return (
 		<ContextMenu
 			open={open}
@@ -161,11 +168,32 @@ export function TranscriptMessageMenu({
 			<ContextMenuTrigger
 				data-transcript-message-menu
 				render={render}
+				onPointerDown={pressRecorder.onPointerDown}
+				onPointerUp={pressRecorder.onPointerUp}
+				onContextMenuCapture={pressRecorder.onContextMenuCapture}
+				onTouchStart={(event) => {
+					const touch = event.touches[0];
+					if (
+						event.touches.length === 1 &&
+						touch !== undefined &&
+						touchOnTextOrSelection(event.currentTarget, touch.clientX, touch.clientY)
+					) {
+						// Upstream opens its long-press menu only off text and the selection.
+						event.preventBaseUIHandler();
+					}
+				}}
 				onContextMenu={(event) => {
 					const nextTarget = resolveMenuTarget(
 						event.target instanceof Element ? event.target : null,
 						fallback,
 					);
+					// Only a tool row lacks upstream's Attach selection row (`fe`).
+					if (wantsNativeContextMenu(event, nextTarget.kind !== "tool")) {
+						event.preventBaseUIHandler();
+						// Keep Base UI's document listener (and any outer menu) from preventing the native menu.
+						event.stopPropagation();
+						return;
+					}
 					setTarget(nextTarget);
 					setSelectionText(snapshotSelection(event.currentTarget));
 					setGone(false);

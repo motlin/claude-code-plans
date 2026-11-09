@@ -505,6 +505,174 @@ describe("transcript context menu with a text selection", () => {
 	});
 });
 
+/** Dispatches `type` on `element`, returning whether a handler prevented the default action. */
+function dispatchPrevented(element: Element, type: "contextmenu", init: MouseEventInit = {}): boolean {
+	const event = new MouseEvent(type, {bubbles: true, cancelable: true, button: 2, clientX: 5, clientY: 5, ...init});
+	act(() => {
+		element.dispatchEvent(event);
+	});
+	return event.defaultPrevented;
+}
+
+/** A pointerdown as a right press (or touch) at 5,5 dispatches it. */
+function pressAt(element: Element, init: {button: number; pointerType: string}): void {
+	const event = new MouseEvent("pointerdown", {
+		bubbles: true,
+		cancelable: true,
+		button: init.button,
+		clientX: 5,
+		clientY: 5,
+	});
+	Object.defineProperty(event, "pointerType", {value: init.pointerType});
+	act(() => {
+		element.dispatchEvent(event);
+	});
+}
+
+/** Points jsdom's caret hit test at `node`:`offset`, and lays every range out as one 100×20 box at 0,0. */
+function stubCaretAt(node: Node, offset: number): void {
+	Object.defineProperty(document, "caretRangeFromPoint", {
+		configurable: true,
+		value: () => {
+			const range = document.createRange();
+			range.setStart(node, offset);
+			return range;
+		},
+	});
+	Object.defineProperty(Range.prototype, "getClientRects", {
+		configurable: true,
+		value: () => [new DOMRect(0, 0, 100, 20)],
+	});
+}
+
+/** The first text node under `element`. */
+function textNodeOf(element: Element): Text {
+	const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+	const node = walker.nextNode();
+	if (!(node instanceof Text)) throw new Error("no text node");
+	return node;
+}
+
+const TOOL_OUTPUT_RECORDS: unknown[] = [
+	{type: "user", uuid: "user-1", message: {role: "user", content: "Please run the tests"}},
+	{
+		type: "assistant",
+		uuid: "assistant-2",
+		message: {
+			role: "assistant",
+			content: [{type: "tool_use", id: "toolu_1", name: "Bash", input: {command: "npm test"}}],
+		},
+	},
+	{
+		type: "user",
+		uuid: "user-2",
+		message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_1", content: "ok"}]},
+	},
+];
+
+describe("native context menu over a text selection (upstream PS/Qx)", () => {
+	afterEach(() => {
+		window.getSelection()?.removeAllRanges();
+		Reflect.deleteProperty(document, "caretRangeFromPoint");
+		Reflect.deleteProperty(Range.prototype, "getClientRects");
+	});
+
+	function toolRowText(container: HTMLElement): Element {
+		return find(container, "[data-tool-row] *", "npm test");
+	}
+
+	it("lets the browser menu (Copy) open over a tool row selection, keeping the selection", () => {
+		const container = renderChat(undefined, TOOL_OUTPUT_RECORDS);
+		const text = toolRowText(container);
+		const selection = selectText(textNodeOf(text).parentElement ?? text, 0, 3);
+		stubCaretAt(textNodeOf(text), 1);
+		pressAt(text, {button: 2, pointerType: "mouse"});
+		const prevented = dispatchPrevented(text, "contextmenu");
+
+		expect({prevented, menus: screen.queryAllByRole("menu").length, selected: selection.toString()}).toStrictEqual({
+			prevented: false,
+			menus: 0,
+			selected: "npm",
+		});
+	});
+
+	it("falls through to the browser menu for a keyboard contextmenu while a selection touches the tool row", () => {
+		const container = renderChat(undefined, TOOL_OUTPUT_RECORDS);
+		const text = toolRowText(container);
+		selectText(textNodeOf(text).parentElement ?? text, 0, 3);
+		Object.defineProperty(MouseEvent.prototype, "pointerType", {configurable: true, value: ""});
+		try {
+			expect(dispatchPrevented(text, "contextmenu", {button: 0})).toBe(false);
+		} finally {
+			Reflect.deleteProperty(MouseEvent.prototype, "pointerType");
+		}
+	});
+
+	it("keeps the tool row menu for a right press off the selection, or with no selection", () => {
+		const container = renderChat(undefined, TOOL_OUTPUT_RECORDS);
+		const text = toolRowText(container);
+		selectText(textNodeOf(text).parentElement ?? text, 0, 3);
+		stubCaretAt(textNodeOf(text), 5);
+		pressAt(text, {button: 2, pointerType: "mouse"});
+		const offSelection = dispatchPrevented(text, "contextmenu");
+		const offRows = menuRows(screen.getAllByRole("menu").at(-1) ?? document.body);
+		cleanup();
+		const again = renderChat(undefined, TOOL_OUTPUT_RECORDS);
+		const noSelection = dispatchPrevented(toolRowText(again), "contextmenu");
+
+		expect({offSelection, offRows, noSelection}).toStrictEqual({
+			offSelection: true,
+			offRows: ["Pin as chapter", "---", "Fork from here / Starts a new session, keeps this one"],
+			noSelection: true,
+		});
+	});
+
+	it("keeps the custom menu, led by Copy, for a right press on prose selection, and leaves the selection alone", () => {
+		const container = renderChat();
+		const strong = find(container, "strong", "details");
+		const paragraph = strong.parentElement;
+		if (paragraph === null) throw new Error("no paragraph");
+		const selection = selectText(paragraph, 0, 3);
+		stubCaretAt(textNodeOf(paragraph), 1);
+		pressAt(paragraph, {button: 2, pointerType: "mouse"});
+		const prevented = dispatchPrevented(paragraph, "contextmenu");
+
+		expect({
+			prevented,
+			first: menuRows(screen.getAllByRole("menu").at(-1) ?? document.body)[0],
+			selected: selection.toString(),
+		}).toStrictEqual({prevented: true, first: "Copy", selected: "Run"});
+	});
+
+	it("leaves a touch press on transcript text to the browser (text selection), with no custom menu", () => {
+		vi.useFakeTimers();
+		try {
+			const container = renderChat();
+			const strong = find(container, "strong", "details");
+			stubCaretAt(textNodeOf(strong), 1);
+			pressAt(strong, {button: 0, pointerType: "touch"});
+			Object.defineProperty(MouseEvent.prototype, "pointerType", {configurable: true, value: "touch"});
+			let prevented: boolean;
+			try {
+				prevented = dispatchPrevented(strong, "contextmenu", {button: 0});
+			} finally {
+				Reflect.deleteProperty(MouseEvent.prototype, "pointerType");
+			}
+			fireEvent.touchStart(strong, {touches: [{clientX: 5, clientY: 5}]});
+			act(() => {
+				vi.advanceTimersByTime(600);
+			});
+
+			expect({prevented, menus: screen.queryAllByRole("menu").length}).toStrictEqual({
+				prevented: false,
+				menus: 0,
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+});
+
 describe("transcript context menu on a coarse pointer under 640px", () => {
 	function stubCoarsePhone() {
 		vi.stubGlobal(
