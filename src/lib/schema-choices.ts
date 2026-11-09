@@ -743,6 +743,12 @@ const contextRefreshReasonLabels = {
 	auto_memory_back_on: "after auto memory was turned back on",
 } satisfies Record<z.infer<typeof ContextRefreshReasonSchema>, string>;
 
+/** Exhaustive handler: HookNoticeRow (src/components/hook-notice-row.tsx) draws a warning icon only for `warning`. */
+const hookNoticeLevelChoices = {
+	notice: true,
+	warning: true,
+} satisfies Record<Extract<ProcessedLine, {type: "hook-notice"}>["notices"][number]["level"], true>;
+
 /** How the transcript's context-refresh meta line opens, by the attachment it announces. */
 export const contextRefreshSubjectLabels = {
 	instructions: "Instructions re-read",
@@ -1067,6 +1073,7 @@ const renderedLineVariants = {
 	attachment: true,
 	system: true,
 	"prompt-blocked": true,
+	"hook-notice": true,
 	worktree: true,
 	unparsed: true,
 } satisfies Record<ProcessedLine["type"], true>;
@@ -1695,6 +1702,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"JsonlRecordSchema.<system>.compactMetadata.trigger": compactTriggerLabels,
 	"AttachmentPayloadSchema.<instructions>.reason": contextRefreshReasonLabels,
 	"RenderedLineSchema.<attachment>.contextRefresh.subject": contextRefreshSubjectLabels,
+	"RenderedLineSchema.<hook-notice>.notices[].level": hookNoticeLevelChoices,
 	"JsonlRecordSchema.<attachment>.renderedRole": renderedRoleChoices,
 	"JsonlRecordSchema.<assistant>.thinkingDisplay": thinkingDisplayChoices,
 	"JsonlRecordSchema.<assistant>.streamCutCause": streamCutCauseChoices,

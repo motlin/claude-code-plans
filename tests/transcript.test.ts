@@ -1756,7 +1756,123 @@ describe("system record lines", () => {
 			{type: "system", subtype: "informational", content: "x"},
 			{type: "system", subtype: "local_command", content: "y"},
 		];
-		expect(processTranscript(records).lines).toStrictEqual([]);
+		expect(processTranscript(records).lines).toStrictEqual([
+			{type: "hook-notice", notices: [{message: "x", level: "notice"}], lineIndex: 0},
+		]);
+	});
+
+	describe("informational records as hook-notice lines", () => {
+		const IDLE =
+			'Compacted while idle, before the prompt cache expired · turn off with "idleCompaction": false in settings.json';
+		const info = (content: unknown, extra: Record<string, unknown> = {}) => ({
+			type: "system",
+			subtype: "informational",
+			content,
+			isMeta: true,
+			...extra,
+		});
+
+		it("turns a notice record into one hook-notice line", () => {
+			const records = [info(IDLE, {level: "notice", uuid: "n-1", timestamp: "2026-11-05T10:00:00.000Z"})];
+			expect(processTranscript(records).lines).toStrictEqual([
+				{
+					type: "hook-notice",
+					notices: [{message: IDLE, level: "notice", uuid: "n-1"}],
+					uuid: "n-1",
+					timestamp: "2026-11-05T10:00:00.000Z",
+					lineIndex: 0,
+				},
+			]);
+		});
+
+		it("keeps warning, defaults a missing or unknown level to notice, and skips info", () => {
+			const lines = (record: unknown) => processTranscript([record]).lines;
+			expect([
+				lines(info("Remote Control disconnected", {level: "warning"})),
+				lines(info("old cli")),
+				lines(info("odd", {level: "error"})),
+				lines(info("Worktree creation took 3s", {level: "info"})),
+			]).toStrictEqual([
+				[
+					{
+						type: "hook-notice",
+						notices: [{message: "Remote Control disconnected", level: "warning"}],
+						lineIndex: 0,
+					},
+				],
+				[{type: "hook-notice", notices: [{message: "old cli", level: "notice"}], lineIndex: 0}],
+				[{type: "hook-notice", notices: [{message: "odd", level: "notice"}], lineIndex: 0}],
+				[],
+			]);
+		});
+
+		it("drops one trailing colon, strips ANSI, and skips empty text", () => {
+			const lines = (content: unknown) => processTranscript([info(content)]).lines;
+			expect([
+				lines("Version 1.2.3:"),
+				lines("Version 1:\n· a"),
+				lines("\x1b[31mred\x1b[0m"),
+				lines("  Saved:  "),
+				lines("   "),
+				lines(":"),
+			]).toStrictEqual([
+				[{type: "hook-notice", notices: [{message: "Version 1.2.3", level: "notice"}], lineIndex: 0}],
+				[{type: "hook-notice", notices: [{message: "Version 1:\n· a", level: "notice"}], lineIndex: 0}],
+				[{type: "hook-notice", notices: [{message: "red", level: "notice"}], lineIndex: 0}],
+				[{type: "hook-notice", notices: [{message: "Saved", level: "notice"}], lineIndex: 0}],
+				[],
+				[],
+			]);
+		});
+
+		it("caps a huge message at 262144 characters plus an ellipsis", () => {
+			const [line] = processTranscript([info("a".repeat(262150))]).lines;
+			expect(line).toStrictEqual({
+				type: "hook-notice",
+				notices: [{message: `${"a".repeat(262144)}…`, level: "notice"}],
+				lineIndex: 0,
+			});
+		});
+
+		it("skips sidechain notices", () => {
+			expect(processTranscript([info("in a subagent", {isSidechain: true})]).lines).toStrictEqual([]);
+		});
+
+		it("merges adjacent records into one line and splits on a record in between", () => {
+			const records = [
+				info("first", {uuid: "a"}),
+				info("second", {level: "warning", uuid: "b"}),
+				{type: "user", uuid: "u-1", message: {role: "user", content: "hi"}},
+				info("third", {uuid: "c"}),
+			];
+			const lines = processTranscript(records).lines;
+			expect([lines[0], lines[2]]).toStrictEqual([
+				{
+					type: "hook-notice",
+					notices: [
+						{message: "first", level: "notice", uuid: "a"},
+						{message: "second", level: "warning", uuid: "b"},
+					],
+					uuid: "a",
+					lineIndex: 0,
+				},
+				{
+					type: "hook-notice",
+					notices: [{message: "third", level: "notice", uuid: "c"}],
+					uuid: "c",
+					lineIndex: 3,
+				},
+			]);
+			expect(lines.map((line) => line.type)).toStrictEqual(["hook-notice", "user", "hook-notice"]);
+		});
+
+		it("leaves hook block and stop forms to their own rules", () => {
+			const records = [
+				info("UserPromptSubmit operation blocked by hook:\n[cmd]: nope", {level: "warning"}),
+				info("Operation stopped by hook: done"),
+			];
+			expect(processTranscript(records).lines.map((line) => line.type)).toStrictEqual(["prompt-blocked"]);
+		});
 	});
 
 	it("turns a hook-blocked prompt record into one prompt-blocked line", () => {

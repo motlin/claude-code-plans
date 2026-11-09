@@ -29,7 +29,8 @@ import {
 	WakeupSourceSchema,
 } from "./schemas";
 import {autoModeDenial} from "./auto-mode-denial";
-import {parseHookMessage} from "./hook-prompt-block";
+import {stripAnsi} from "./ansi-codes";
+import {capDetails, parseHookMessage} from "./hook-prompt-block";
 import {JsonlRecordSchema} from "./runtime-schemas";
 import {
 	extractSessionTitle,
@@ -312,6 +313,26 @@ const PromptBlockedLineSchema = z.object({
 });
 
 /**
+ * One or more adjacent `system/informational` records that are not a hook
+ * block or stop (upstream `hook_notice` item): a "Claude Code notice" row.
+ */
+const HookNoticeSchema = z.object({
+	message: z.string(),
+	level: z.enum(["warning", "notice"]),
+	uuid: z.string().optional(),
+});
+
+const HookNoticeLineSchema = z.object({
+	type: z.literal("hook-notice"),
+	notices: z.array(HookNoticeSchema),
+	uuid: z.string().optional(),
+	timestamp: z.string().optional(),
+	lineIndex: z.number(),
+});
+
+export type HookNotice = z.infer<typeof HookNoticeSchema>;
+
+/**
  * A record the schema rejected. Rendered as a visible gap so schema drift
  * surfaces in the transcript instead of silently deleting messages.
  */
@@ -340,6 +361,7 @@ export const RenderedLineSchema = z.discriminatedUnion("type", [
 	AttachmentLineSchema,
 	SystemLineSchema,
 	PromptBlockedLineSchema,
+	HookNoticeLineSchema,
 	WorktreeLineSchema,
 	UnparsedLineSchema,
 ]);
@@ -406,6 +428,19 @@ function promptBlockedLine(
 			: {type: "prompt-blocked", reason: parsed.reason, originalPrompt: parsed.originalPrompt, lineIndex};
 	}
 	return preventContinuation ? {type: "prompt-blocked", reason: content, lineIndex} : null;
+}
+
+/**
+ * One notice from a plain informational record's ANSI-stripped text (upstream
+ * adapter c06cf64bb): trimmed with one trailing colon dropped, `info` level
+ * skipped, any other level but `warning` read as `notice`. Null when skipped.
+ */
+function hookNotice(text: string, level: string | undefined, uuid: string | undefined): HookNotice | null {
+	const message = text.trim().replace(/:$/, "").trimEnd();
+	if (message === "" || level === "info") return null;
+	const notice: HookNotice = {message: capDetails(message), level: level === "warning" ? "warning" : "notice"};
+	if (uuid !== undefined) notice.uuid = uuid;
+	return notice;
 }
 
 function buildUnparsedLine(
@@ -1183,14 +1218,32 @@ function* processRecordBatchSteps(
 				// become a line, so skip the parse for the rest.
 				const content = record.content;
 				const preventContinuation = record.preventContinuation === true;
-				if (typeof content !== "string") continue;
-				if (!preventContinuation && !content.includes(" operation blocked by hook:")) continue;
-				const blocked = promptBlockedLine(content, preventContinuation, lineIndex);
-				if (blocked !== null) {
-					if (uuid !== undefined) blocked.uuid = uuid;
-					if (record.timestamp !== undefined) blocked.timestamp = record.timestamp;
-					sessionLines.push(blocked);
+				if (typeof content !== "string" || record.isSidechain === true) continue;
+				const text = stripAnsi(content);
+				if (preventContinuation || parseHookMessage(text) !== null) {
+					const blocked = promptBlockedLine(text, preventContinuation, lineIndex);
+					if (blocked !== null) {
+						if (uuid !== undefined) blocked.uuid = uuid;
+						if (record.timestamp !== undefined) blocked.timestamp = record.timestamp;
+						sessionLines.push(blocked);
+					}
+					continue;
 				}
+				const notice = hookNotice(text, record.level, uuid);
+				if (notice === null) continue;
+				const previous = sessionLines.at(-1);
+				if (previous?.type === "hook-notice") {
+					previous.notices.push(notice);
+					continue;
+				}
+				const noticeLine: z.infer<typeof HookNoticeLineSchema> = {
+					type: "hook-notice",
+					notices: [notice],
+					lineIndex,
+				};
+				if (uuid !== undefined) noticeLine.uuid = uuid;
+				if (record.timestamp !== undefined) noticeLine.timestamp = record.timestamp;
+				sessionLines.push(noticeLine);
 				continue;
 			}
 			const subtype = RenderedSystemSubtypeSchema.safeParse(record.subtype);

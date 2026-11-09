@@ -30,6 +30,7 @@ import {
 	Sheet,
 	Square,
 	StickyNote,
+	TriangleAlert,
 	Workflow,
 	X,
 } from "lucide-react";
@@ -73,6 +74,7 @@ export const ICON_GLYPHS = {
 	Slides: Presentation,
 	Spreadsheet: Sheet,
 	Stop: Square,
+	Warning: TriangleAlert,
 	X,
 } satisfies Partial<Record<AnthropiconName, LucideIcon>>;
 

@@ -201,3 +201,13 @@ export function parseAnsiCodes(text: string): StyledPart[] {
 
 	return parts;
 }
+
+// eslint-disable-next-line no-control-regex -- matching ESC is the point
+const CSI_PATTERN = /\x1b\[[0-9;:?]*[ -/]*[@-~]/g;
+// eslint-disable-next-line no-control-regex -- matching ESC and BEL is the point
+const OSC_PATTERN = /\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g;
+
+/** Remove ANSI CSI and OSC escape sequences (upstream `Or`), keeping the text. */
+export function stripAnsi(text: string): string {
+	return text.replace(OSC_PATTERN, "").replace(CSI_PATTERN, "");
+}

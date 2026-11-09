@@ -1,5 +1,5 @@
 import {describe, it, expect} from "vite-plus/test";
-import {parseAnsiCodes} from "../src/lib/ansi-codes";
+import {parseAnsiCodes, stripAnsi} from "../src/lib/ansi-codes";
 
 /**
  * Comprehensive test cases for ANSI code parsing
@@ -165,5 +165,16 @@ describe("parseAnsiCodes function", () => {
 		expect(result[0]?.text).toBe("Text");
 		expect(result[0]?.bold).toBe(true);
 		expect(result[0]?.fg).toBe("#cc0000");
+	});
+});
+
+describe("stripAnsi", () => {
+	it("removes CSI sequences, OSC sequences with either terminator, and keeps plain text", () => {
+		expect([
+			stripAnsi("\x1b[31mred\x1b[0m"),
+			stripAnsi("\x1b[1;38:5:208mbold\x1b[?25l"),
+			stripAnsi("\x1b]8;;https://x.test\x07link\x1b]8;;\x1b\\"),
+			stripAnsi("plain: text"),
+		]).toStrictEqual(["red", "bold", "link", "plain: text"]);
 	});
 });

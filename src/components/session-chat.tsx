@@ -30,6 +30,7 @@ import {parseToolRejection} from "../lib/tool-rejection";
 import {parseAttachSnippets, type AttachSnippet} from "../lib/attach-markers";
 import {ApiErrorCard, ApiErrorMarker, type ApiErrorRecovery} from "./api-error-card";
 import {HookBlockedPromptCard, HookBlockedPromptMarker} from "./hook-blocked-prompt";
+import {HookNoticeRow} from "./hook-notice-row";
 import {prefillComposer, useHasComposer} from "../lib/context-attach";
 import {ErrorCardShell} from "./error-card-shell";
 import {ExternalTextLink} from "./external-text-link";
@@ -4033,6 +4034,8 @@ function isLineVisible(
 	if (line.type === "agent-name" || line.type === "agent-color" || line.type === "permission-mode")
 		return showSystemBanners;
 	if (line.type === "worktree") return showSystemBanners;
+	// Upstream always draws its "Claude Code notice" rows; no banner setting hides them.
+	if (line.type === "hook-notice") return true;
 	if (line.type === "system") {
 		if (line.subtype === "stop_hook_summary") return verbose;
 		return showSystemBanners;
@@ -4146,6 +4149,8 @@ function renderSessionMessage({
 			return <SystemBanner line={line} sessionId={sourceSessionId} />;
 		case "prompt-blocked":
 			return <PromptBlockedForLine line={line} sessionId={sourceSessionId} />;
+		case "hook-notice":
+			return <HookNoticeForLine notices={line.notices} />;
 		case "worktree":
 			return (
 				<Banner icon={<GitBranch className="h-3.5 w-3.5" />} label={`Worktree: ${line.worktreeName}`}>
@@ -4457,6 +4462,11 @@ const LastErrorLineContext = createContext<{
 	recovery: undefined,
 	blockedLine: null,
 });
+
+function HookNoticeForLine({notices}: {notices: Extract<SessionLine, {type: "hook-notice"}>["notices"]}) {
+	const verbose = useContext(TranscriptModeContext) === "verbose";
+	return <HookNoticeRow notices={notices} verbose={verbose} />;
+}
 
 function isErrorLine(line: SessionLine): boolean {
 	return line.type === "assistant" && (line.isApiErrorMessage === true || line.stopReason === "refusal");
