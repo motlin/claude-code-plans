@@ -1228,7 +1228,7 @@ describe("PermissionCard", () => {
 	});
 
 	it("draws upstream's inline card presentation: outlined, transparent, unshadowed, its own container", () => {
-		// Upstream's `.text-code` carries the mono face; local's `text-code` is only the size token.
+		// Upstream's class strings carry `text-code` alone: the utility itself brings the mono face.
 		const pathCard = render(
 			<PermissionCard
 				title={{action: "find files", meta: null}}
@@ -1283,9 +1283,9 @@ describe("PermissionCard", () => {
 			title: "text-[13px]/[19px] font-normal min-w-0 break-words",
 			value: "flow-root",
 			codeCard:
-				"epitaxy-code-size flex overflow-clip rounded-lg px-2 py-1 text-code font-mono bg-surface-1 dark:bg-surface-2 select-text [unicode-bidi:plaintext]",
+				"epitaxy-code-size flex overflow-clip rounded-lg px-2 py-1 text-code bg-surface-1 dark:bg-surface-2 select-text [unicode-bidi:plaintext]",
 			pathDetail:
-				"epitaxy-code-size bg-alpha-1 rounded-r4 py-2 px-3 text-code font-mono text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]",
+				"epitaxy-code-size bg-alpha-1 rounded-r4 py-2 px-3 text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]",
 			gutter: "$ ",
 			deny: [],
 			allow: [],

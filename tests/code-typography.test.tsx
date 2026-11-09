@@ -8,6 +8,7 @@ import {EditRenderer} from "../src/components/tool-renderers/edit-renderer";
 import {ReadRenderer} from "../src/components/tool-renderers/read-renderer";
 import {WriteRenderer} from "../src/components/tool-renderers/write-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
+import {compileAll} from "./helpers/tailwind-design-system";
 
 vi.mock("../src/components/tool-renderers/inline-diff", () => ({
 	InlineDiff: () => <div data-testid="diff-view" />,
@@ -46,6 +47,15 @@ describe("code typography", () => {
 		}).toStrictEqual({
 			fontSize: "13px",
 			lineHeight: "19px",
+		});
+	});
+
+	it("compiles text-code and text-code-medium in the mono face like upstream's .text-code family", async () => {
+		expect(await compileAll(["text-code", "text-code-medium"])).toStrictEqual({
+			"text-code":
+				".text-code { font-family: var(--font-mono); font-feature-settings: var(--font-mono--font-feature-settings); font-size: var(--upstream-text-code); line-height: var(--tw-leading, var(--upstream-leading-code)); }",
+			"text-code-medium":
+				".text-code-medium { font-family: var(--font-mono); font-feature-settings: var(--font-mono--font-feature-settings); font-size: var(--text-code); line-height: var(--text-code--line-height); font-weight: 500; }",
 		});
 	});
 
