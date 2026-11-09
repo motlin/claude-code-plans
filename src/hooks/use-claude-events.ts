@@ -25,7 +25,6 @@ import {
 } from "../lib/live-subagent-store";
 import {
 	fetchTranscriptTail,
-	groupedSessionsQueryOptions,
 	mergeTranscriptData,
 	type ActiveSessionListItem,
 	type ProjectSessionGroup,
@@ -597,18 +596,42 @@ export function useIsSessionActive(sessionId: string): boolean {
 	return activeSessions.has(sessionId);
 }
 
-/** The session's row in the loaded session list caches, read once without subscribing. */
+type SessionListPage = {sessions: SessionSummaryPayload[]};
+
+/** A cached session list's pages, in any of its shapes: infinite pages, one page, or project groups. */
+function cachedListPages(queryClient: QueryClient, queryKey: readonly unknown[]): readonly SessionListPage[] {
+	if (queryKey[1] === "grouped") return queryClient.getQueryData<SessionListPage[]>(queryKey) ?? [];
+	if (queryKey[2] === "infinite") {
+		return queryClient.getQueryData<{pages: SessionListPage[]}>(queryKey)?.pages ?? [];
+	}
+	const page = queryClient.getQueryData<SessionListPage>(queryKey);
+	return page === undefined ? [] : [page];
+}
+
+/**
+ * The session's row in the loaded session list caches, read once without subscribing. The most
+ * recently fetched copy wins: a list no view observes keeps the row it held when last fetched,
+ * so a page reading it would hold a Needs input the sidebar's own list has since dropped.
+ */
 export function cachedSessionSummary(queryClient: QueryClient, sessionId: string): SessionSummaryPayload | undefined {
-	const recent = queryClient.getQueryData<{
-		pages: Array<{sessions: SessionSummaryPayload[]}>;
-	}>(recentSessionsInfiniteQueryOptions().queryKey);
-	const grouped = queryClient.getQueryData<Array<{sessions: SessionSummaryPayload[]}>>(
-		groupedSessionsQueryOptions().queryKey,
-	);
-	return (
-		recent?.pages.flatMap((page) => page.sessions).find((session) => session.id === sessionId) ??
-		grouped?.flatMap((group) => group.sessions).find((session) => session.id === sessionId)
-	);
+	const cache = queryClient.getQueryCache();
+	let freshest: SessionSummaryPayload | undefined;
+	let freshestAt = Number.NEGATIVE_INFINITY;
+	for (const query of [
+		...cache.findAll({queryKey: sessionQueryKeys.recentLists()}),
+		...cache.findAll({queryKey: sessionQueryKeys.groupedLists()}),
+	]) {
+		if (query.state.dataUpdatedAt <= freshestAt) continue;
+		for (const page of cachedListPages(queryClient, query.queryKey)) {
+			const row = page.sessions.find((session) => session.id === sessionId);
+			if (row !== undefined) {
+				freshest = row;
+				freshestAt = query.state.dataUpdatedAt;
+				break;
+			}
+		}
+	}
+	return freshest;
 }
 
 /**
@@ -660,6 +683,13 @@ export function useHookSchemaDrifts(): {
 function invalidateSessionLists(queryClient: QueryClient): void {
 	void queryClient.invalidateQueries({queryKey: sessionQueryKeys.groupedLists()});
 	void queryClient.invalidateQueries({queryKey: sessionQueryKeys.recentLists()});
+	// Session pages read their summary from the default recent list (it carries every live
+	// session), so it refetches even while the sidebar is hidden or shows another Status.
+	void queryClient.refetchQueries({
+		queryKey: recentSessionsInfiniteQueryOptions().queryKey,
+		exact: true,
+		type: "inactive",
+	});
 }
 
 export function applySessionAdded(queryClient: QueryClient, session: SessionSummaryPayload): void {

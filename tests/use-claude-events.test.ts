@@ -1,4 +1,4 @@
-import {describe, it, expect} from "vite-plus/test";
+import {describe, it, expect, vi} from "vite-plus/test";
 import {QueryClient} from "@tanstack/react-query";
 import {
 	applyMemoryChanged,
@@ -12,6 +12,7 @@ import {
 	applySessionRemoved,
 	applySessionUpdated,
 	applyTaskChanged,
+	cachedSessionSummary,
 	claudeEventsReducer,
 	type ClaudeEventsState,
 	type ClaudeEventsAction,
@@ -572,6 +573,22 @@ describe("applySessionUpdated", () => {
 		]).toStrictEqual([true, true, true]);
 	});
 
+	it("refetches the default recent list that session pages read even while no list observes it", async () => {
+		const queryClient = new QueryClient();
+		const queryFn = vi.fn<() => Promise<{sessions: SessionSummaryPayload[]; nextCursor: null}>>(async () =>
+			Promise.resolve({sessions: [], nextCursor: null}),
+		);
+		await queryClient.infiniteQuery({
+			queryKey: sessionQueryKeys.recentInfinite(),
+			queryFn,
+			initialPageParam: null,
+		});
+
+		applySessionUpdated(queryClient, makeSession({id: "a1", project: "proj-a", state: "working"}));
+
+		expect(queryFn).toHaveBeenCalledTimes(2);
+	});
+
 	it("invalidates session detail without invalidating its transcript", () => {
 		const queryClient = new QueryClient();
 		const detailKey = sessionQueryKeys.detail("a1");
@@ -621,6 +638,28 @@ describe("applySessionUpdated", () => {
 			ended: invalidatedAfter("off", undefined),
 			stillEnded: invalidatedAfter(null, undefined),
 		}).toStrictEqual({same: false, tornDown: true, bridged: true, ended: true, stillEnded: false});
+	});
+});
+
+describe("cachedSessionSummary", () => {
+	it("reads the most recently fetched list's copy, so the session page agrees with the sidebar's filtered list", () => {
+		const queryClient = new QueryClient();
+		const answered = makeSession({id: "a1", project: "proj-a", state: "working", bucket: "working"});
+		const stale = makeSession({id: "a1", project: "proj-a", state: "waiting", bucket: "blocked"});
+		// The default list was fetched while the question waited and has had no observer since.
+		queryClient.setQueryData(
+			sessionQueryKeys.recentInfinite(),
+			{pages: [{sessions: [stale], nextCursor: null}], pageParams: [null]},
+			{updatedAt: 1000},
+		);
+		queryClient.setQueryData(
+			sessionQueryKeys.recentInfinite(undefined, "all"),
+			{pages: [{sessions: [answered], nextCursor: null}], pageParams: [null]},
+			{updatedAt: 2000},
+		);
+		queryClient.setQueryData(sessionQueryKeys.grouped(), [{sessions: [stale]}], {updatedAt: 1500});
+
+		expect(cachedSessionSummary(queryClient, "a1")).toStrictEqual(answered);
 	});
 });
 

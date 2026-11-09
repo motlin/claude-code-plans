@@ -579,9 +579,13 @@ export async function dispatchHookEvent({
 		// notification:cleared so a client never holds "no notification, still
 		// awaiting" while the working hook's own summary is still in flight.
 		if (clearedNotificationIds.length > 0 || questionCleared) {
-			const summary = buildSessionSummaryPayloadFromDb(db, event.session_id, (sessionId) =>
-				store.getActiveSessionEntry(sessionId),
-			);
+			// This hook is the session's newest activity, so its working state outranks a registry
+			// `waiting` the CLI wrote while the dialog showed; the case below touches the store only later.
+			const now = Date.now();
+			const summary = buildSessionSummaryPayloadFromDb(db, event.session_id, (sessionId) => {
+				const entry = store.getActiveSessionEntry(sessionId);
+				return entry === null ? null : {...entry, lastActivity: Math.max(entry.lastActivity, now)};
+			});
 			if (summary && !recentlyBroadcast(sessionUpdatedDedupeKey(summary), DEDUPE_TTL_MS)) {
 				broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
 			}

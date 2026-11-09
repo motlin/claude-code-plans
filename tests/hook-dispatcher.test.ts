@@ -10,6 +10,7 @@ import type {HookBackgroundTaskPayload, HookEvent, HookSessionCronPayload} from 
 import {addNotification, getNotifications, clearAllNotifications} from "../src/lib/notifications-store";
 import {addClient, removeClient} from "../src/lib/sse-broadcast";
 import {clearLiveSubagents} from "../src/lib/live-subagent-store";
+import {clearSessionRegistry, refreshSessionRegistry} from "../src/lib/session-registry-store";
 import * as schema from "../src/lib/db/schema";
 import {getSessionViewedState} from "../src/lib/db/viewed-state";
 import type {ActiveSessionEntry, PendingPermissionRequest} from "../src/lib/active-session-store";
@@ -2805,5 +2806,80 @@ describe("dispatchHookEvent re-broadcasts the session summary when a working hoo
 			questionCleared: true,
 			states: ["working"],
 		});
+	});
+
+	it("PostToolUse(AskUserQuestion) reads working over the CLI registry's waiting status written after the PreToolUse hook", async () => {
+		clearAllNotifications();
+		const sessionId = "question-answered-603";
+		await indexSession(sessionId);
+		const base = {
+			session_id: sessionId,
+			transcript_path: `/tmp/${sessionId}.jsonl`,
+			cwd: "/Users/craig/projects/app",
+		};
+		const toolInput = {
+			questions: [
+				{question: "Which?", header: "Pick", multiSelect: false, options: [{label: "A"}, {label: "B"}]},
+			],
+		};
+		// The CLI marks itself waiting once its dialog shows, after the PreToolUse hook last touched the session.
+		const registryDir = join(testDir, "sessions");
+		mkdirSync(registryDir, {recursive: true});
+		const waitingSince = Date.now() - 60_000;
+		writeFileSync(
+			join(registryDir, "4603.json"),
+			JSON.stringify({
+				pid: 4603,
+				sessionId,
+				cwd: "/Users/craig/projects/app",
+				startedAt: 946_598_400_000,
+				procStart: "Fri Dec 31 00:00:00 1999",
+				version: "2.1.321",
+				kind: "interactive",
+				entrypoint: "cli",
+				pidDomain: "darwin",
+				status: "waiting",
+				waitingFor: "input needed",
+				updatedAt: waitingSince,
+				statusUpdatedAt: waitingSince,
+			}),
+		);
+		await refreshSessionRegistry(registryDir, {
+			isAlive: () => true,
+			readStartTimes: async () => Promise.resolve(null),
+		});
+		try {
+			const timeline = await dispatchAll([
+				{...base, hook_event_name: "SessionStart", source: "startup"},
+				{
+					...base,
+					hook_event_name: "PreToolUse",
+					tool_name: "AskUserQuestion",
+					tool_input: toolInput,
+					tool_use_id: "toolu_603",
+				},
+				{
+					...base,
+					hook_event_name: "PostToolUse",
+					tool_name: "AskUserQuestion",
+					tool_input: toolInput,
+					tool_use_id: "toolu_603",
+				},
+			]);
+
+			const questionClearedIndex = timeline.findIndex(
+				(b) => b.type === DOMAIN_EVENTS.SESSION_PENDING_QUESTION_CHANGED && b.data["pendingQuestion"] === null,
+			);
+			const cleared = timeline
+				.slice(questionClearedIndex)
+				.filter((b) => b.type === DOMAIN_EVENTS.SESSION_UPDATED)
+				.map((b) => {
+					const session = b.data["session"] as {state: string; bucket: string};
+					return {state: session.state, bucket: session.bucket};
+				});
+			expect(cleared).toStrictEqual([{state: "working", bucket: "working"}]);
+		} finally {
+			clearSessionRegistry();
+		}
 	});
 });
