@@ -10,7 +10,7 @@ import {SessionTileFrame, type SessionTileScrollPosition} from "./session-tile-f
 import {latestBreakdown, preferNewerBreakdown} from "../lib/context-breakdown";
 import {sessionContextBreakdownQueryOptions} from "../lib/api/context-breakdown";
 import {usageQueryOptions} from "../lib/api/usage";
-import {focusComposer, refillComposer, refillRejectedSend, requestComposerTakeBack} from "../lib/context-attach";
+import {focusComposer, refillComposer, refillRejectedSend, takeBackSend} from "../lib/context-attach";
 import {rewindStepsBack, rewindTurns} from "../lib/rewind-picker";
 import {SessionRailSlot} from "./session-rail/session-rail-slot";
 import {
@@ -737,7 +737,10 @@ function SessionView({
 			: (target: {sessionId: string; atMessage: string}) => {
 					forkSession({...target, cwd: forkCwd});
 				};
-	const refillRejectedPrompt = useCallback((prompt: string) => refillRejectedSend(sessionId, prompt), [sessionId]);
+	const refillRejectedPrompt = useCallback(
+		(id: string, prompt: string) => refillRejectedSend(id, prompt, toast),
+		[toast],
+	);
 	const promptBehavior = getSessionPromptBehavior(sessionId, isActive, herdr);
 	const liveHerdrPrompt = useLiveHerdrPrompt(
 		sessionId,
@@ -978,9 +981,9 @@ function SessionView({
 	const {enqueue: enqueuePrompt, items: queuedPrompts, remove: removeQueuedPrompt} = composerQueue;
 	const cancelHeldSteer = useCallback(
 		(item: QueuedPrompt) => {
-			if (requestComposerTakeBack(sessionId, item.text)) removeQueuedPrompt(item.id);
+			if (takeBackSend(sessionId, item.text, toast)) removeQueuedPrompt(item.id);
 		},
-		[removeQueuedPrompt, sessionId],
+		[removeQueuedPrompt, sessionId, toast],
 	);
 	const stopResponse = useStopResponse({
 		sessionId,

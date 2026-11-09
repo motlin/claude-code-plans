@@ -12,6 +12,7 @@ import {useComposerQueue} from "../src/hooks/use-composer-queue";
 import {HerdrRequestError} from "../src/lib/api/herdr";
 import {clearComposerQueues, dispatchComposerQueue} from "../src/lib/composer-queue";
 import {attachContext, getContextChips, refillRejectedSend, removeContextChip} from "../src/lib/context-attach";
+import {clearDiffComments, getDiffComments, openDiffCommentDraft, saveDiffComment} from "../src/lib/diff-comments";
 
 afterEach(() => {
 	cleanup();
@@ -25,7 +26,7 @@ type PostPrompt = (sessionId: string, prompt: string, options: {midTurn?: true})
 const boom = () => new HerdrRequestError("boom", 502, "herdr_error");
 
 function Harness({postPrompt, busy = false}: {postPrompt: PostPrompt; busy?: boolean}) {
-	const refill = useCallback((prompt: string) => refillRejectedSend("s1", prompt), []);
+	const refill = useCallback((sessionId: string, prompt: string) => refillRejectedSend(sessionId, prompt), []);
 	const live = useLiveHerdrPrompt("s1", 0, [], postPrompt, refill);
 	const {retryRejection, dismissRejection} = useSendRejectionActions("s1", live.state.rejection, live.clearRejection);
 	useComposerQueue({sessionId: "s1", busy, deliver: live.send, interrupt: async () => {}});
@@ -186,6 +187,45 @@ describe("send-rejected with attachment tiles", () => {
 			alert: "Something went wrong Your message didn’t send. Check the error details before sending it again.",
 			buttons: null,
 		});
+	});
+
+	it("brings the tiles back as fresh adds, without the restored marker", async () => {
+		render(<Harness postPrompt={vi.fn<PostPrompt>().mockRejectedValueOnce(boom())} />);
+		act(() => {
+			attachContext("s1", {kind: "file", path: "alice.ts"});
+		});
+		fireEvent.change(textarea(), {target: {value: "hi"}});
+		fireEvent.keyDown(textarea(), {key: "Enter"});
+		await waitFor(() => {
+			expect(card()).not.toBeNull();
+		});
+
+		const tile = await screen.findByRole("listitem");
+		expect({
+			label: tile.getAttribute("data-chip-label"),
+			restored: tile.getAttribute("data-cds-attachment-restored"),
+		}).toStrictEqual({label: "alice.ts", restored: null});
+	});
+
+	it("keeps queued diff comments queued and refills only the typed text", async () => {
+		clearDiffComments("s1");
+		const draftId = openDiffCommentDraft("s1", {path: "a.ts", side: "additions", line: 3});
+		saveDiffComment("s1", draftId, "Rename this");
+		const queued = getDiffComments("s1").queued;
+		render(<Harness postPrompt={vi.fn<PostPrompt>().mockRejectedValueOnce(boom())} />);
+		fireEvent.change(textarea(), {target: {value: "hi"}});
+		fireEvent.keyDown(textarea(), {key: "Enter"});
+		await waitFor(() => {
+			expect(card()).not.toBeNull();
+		});
+
+		const result = {
+			value: textarea().value,
+			queued: getDiffComments("s1").queued,
+			buttons: screen.queryByRole("button", {name: "Try again"}),
+		};
+		clearDiffComments("s1");
+		expect(result).toStrictEqual({value: "hi", queued, buttons: null});
 	});
 });
 

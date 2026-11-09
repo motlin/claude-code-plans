@@ -1161,7 +1161,7 @@ export function Composer({
 			const sentChips = takeContextChips(draftKey);
 			const comments = takeQueuedDiffComments(draftKey);
 			const composed = composePrompt(trimmed, sentChips, comments);
-			recordSentAttachments(draftKey, composed, composePrompt(trimmed, [], comments), sentChips);
+			recordSentAttachments(draftKey, composed, trimmed, sentChips, comments);
 			send(composed);
 			clearDraft();
 		};

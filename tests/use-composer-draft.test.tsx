@@ -8,6 +8,7 @@ import {
 	composerDraftStorageKey,
 	markFailedSend,
 	readFailedSend,
+	storeRejectedDraft,
 	useComposerDraft,
 } from "../src/hooks/use-composer-draft";
 import {installLocalStorage} from "./fake-storage";
@@ -192,6 +193,34 @@ describe("failedSend draft marker", () => {
 			unchanged: {"ccp-composer-draft:session-bob": JSON.stringify({text: "hi", failedSend: "hi"})},
 			edited: {"ccp-composer-draft:session-bob": JSON.stringify({text: "hi edited"})},
 			editedBack: {"ccp-composer-draft:session-bob": JSON.stringify({text: "hi"})},
+		});
+	});
+});
+
+describe("rejected prompt merged into a stored draft", () => {
+	it("puts the rejected prompt above newer stored text, marking failedSend only when nothing else is there", () => {
+		storage.setItem("ccp-composer-draft:session-alice", JSON.stringify({text: "newer"}));
+
+		markFailedSend("session-alice", "hi");
+		markFailedSend("session-bob", "hi");
+		storeRejectedDraft("session-carol", "hi");
+		storage.setItem("ccp-composer-draft:session-dave", JSON.stringify({text: "newer", bashMode: true}));
+		storeRejectedDraft("session-dave", "hi");
+
+		expect(storedDrafts()).toStrictEqual({
+			"ccp-composer-draft:session-alice": JSON.stringify({text: "hi\n\nnewer"}),
+			"ccp-composer-draft:session-bob": JSON.stringify({text: "hi", failedSend: "hi"}),
+			"ccp-composer-draft:session-carol": JSON.stringify({text: "hi"}),
+			"ccp-composer-draft:session-dave": JSON.stringify({text: "hi\n\nnewer"}),
+		});
+	});
+
+	it("doesn't add the prompt twice when the stored draft already starts with it", () => {
+		storeRejectedDraft("session-alice", "hi");
+		markFailedSend("session-alice", "hi");
+
+		expect(storedDrafts()).toStrictEqual({
+			"ccp-composer-draft:session-alice": JSON.stringify({text: "hi", failedSend: "hi"}),
 		});
 	});
 });

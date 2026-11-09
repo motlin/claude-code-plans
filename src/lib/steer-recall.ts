@@ -1,4 +1,4 @@
-import {getComposerText, requestComposerTakeBack} from "./context-attach";
+import {getComposerText, takeBackSend} from "./context-attach";
 import type {QueuedPrompt} from "./composer-queue";
 
 /**
@@ -14,7 +14,7 @@ export function recallLastHeldSteer(
 	const last = held.at(-1);
 	if (last === undefined) return false;
 	if ((getComposerText(sessionId) ?? "").trim() !== "") return false;
-	if (!requestComposerTakeBack(sessionId, last.text)) return false;
+	if (!takeBackSend(sessionId, last.text)) return false;
 	remove(last.id);
 	return true;
 }

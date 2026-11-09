@@ -261,6 +261,17 @@ export function takeQueuedDiffComments(sessionId: string): readonly QueuedDiffCo
 	return sent;
 }
 
+/**
+ * Puts comments a rejected send took back in the queue, ahead of any queued since, skipping ids still
+ * queued: upstream removes annotations only once a send lands.
+ */
+export function restoreQueuedDiffComments(sessionId: string, comments: readonly QueuedDiffComment[]): void {
+	const queuedIds = new Set(getDiffComments(sessionId).queued.map((comment) => comment.id));
+	const missing = comments.filter((comment) => !queuedIds.has(comment.id));
+	if (missing.length === 0) return;
+	update(sessionId, (current) => ({...current, queued: [...missing, ...current.queued]}));
+}
+
 export function clearDiffComments(sessionId: string): void {
 	hydrate();
 	if (sessions.has(sessionId)) update(sessionId, () => EMPTY);

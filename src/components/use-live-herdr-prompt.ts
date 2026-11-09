@@ -2,7 +2,7 @@ import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {markFailedSend, readFailedSend} from "../hooks/use-composer-draft";
 import type {DeliveryResult} from "../hooks/use-composer-queue";
 import {HerdrRequestError, isAgentNotReady, sendHerdrPrompt} from "../lib/api/herdr";
-import {type RejectedRefill, requestComposerTakeBack} from "../lib/context-attach";
+import {type RejectedRefill, takeBackSend} from "../lib/context-attach";
 import type {SessionLine} from "../lib/transcript";
 
 /**
@@ -15,8 +15,8 @@ export function useLiveHerdrPrompt(
 	transcriptRecordCount: number,
 	lines: readonly SessionLine[],
 	postPrompt: (sessionId: string, prompt: string, options: {midTurn?: true}) => Promise<void> = sendHerdrPrompt,
-	/** Hands a rejected prompt back, as upstream's composer catch refills the composer. */
-	onRejected?: (prompt: string) => RejectedRefill,
+	/** Hands a rejected prompt back to the session that sent it, as upstream's composer catch refills the composer. */
+	onRejected?: (sessionId: string, prompt: string) => RejectedRefill,
 	/** Whether the session has a live pane now; a held prompt is delivered when this turns true. */
 	hasLivePane = true,
 	/** Changes whenever the session's herdr pane list or revision does; a held prompt is re-sent on each change. */
@@ -29,6 +29,8 @@ export function useLiveHerdrPrompt(
 	const pendingRecordCountRef = useRef<number | null>(null);
 	const onRejectedRef = useRef(onRejected);
 	onRejectedRef.current = onRejected;
+	const sessionIdRef = useRef(sessionId);
+	sessionIdRef.current = sessionId;
 
 	useEffect(() => {
 		pendingRecordCountRef.current = null;
@@ -83,7 +85,10 @@ export function useLiveHerdrPrompt(
 				}
 				// Upstream `local_send_rejected`: the bubble goes, the card and the refilled composer take over.
 				// A prompt whose tiles came back can't be resent as is, and its draft carries no failedSend.
-				const nonResendable = onRejectedRef.current?.(prompt).restoredAttachments === true;
+				// It goes back to the session that sent it; a view since moved to another session keeps its own state.
+				const nonResendable = onRejectedRef.current?.(sessionId, prompt).restoredAttachments === true;
+				if (!nonResendable) markFailedSend(sessionId, prompt);
+				if (sessionIdRef.current !== sessionId) return "failed";
 				setState({
 					phase: "idle",
 					prompt: "",
@@ -93,7 +98,6 @@ export function useLiveHerdrPrompt(
 						nonResendable,
 					},
 				});
-				if (!nonResendable) markFailedSend(sessionId, prompt);
 				return "failed";
 			}
 		},
@@ -129,7 +133,7 @@ export function useLiveHerdrPrompt(
 	/** Upstream `onRecallHeld`: the held row goes and its text returns to the composer above the draft. */
 	const withdraw = useCallback(() => {
 		// A composer that refuses it (a command in bash mode) leaves the held row in place.
-		if (stored.phase !== "held" || !requestComposerTakeBack(sessionId, stored.prompt)) return;
+		if (stored.phase !== "held" || !takeBackSend(sessionId, stored.prompt)) return;
 		setHeldRetries(0);
 		setState(EMPTY_LIVE_HERDR_PROMPT_STATE);
 	}, [sessionId, stored.phase, stored.prompt]);

@@ -1,10 +1,20 @@
 // @vitest-environment jsdom
 
 import {act, renderHook} from "@testing-library/react";
-import {describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
 import {HerdrRequestError} from "../src/lib/api/herdr";
-import type {RejectedRefill} from "../src/lib/context-attach";
+import {
+	attachContext,
+	composePrompt,
+	getContextChips,
+	recordSentAttachments,
+	refillRejectedSend,
+	registerComposer,
+	removeContextChip,
+	takeContextChips,
+	type RejectedRefill,
+} from "../src/lib/context-attach";
 import {type SessionLine, processTranscript} from "../src/lib/transcript";
 
 const PENDING = {phase: "sent", isPending: true, prompt: "Fix Alice's test", rejection: null};
@@ -164,7 +174,7 @@ describe("useLiveHerdrPrompt tracks the send phase", () => {
 describe("useLiveHerdrPrompt records a rejected send", () => {
 	const rejectingHook = (error: Error, restoredAttachments = false) => {
 		const postPrompt = vi.fn<(sessionId: string, prompt: string) => Promise<void>>().mockRejectedValue(error);
-		const onRejected = vi.fn<(prompt: string) => RejectedRefill>(() => ({restoredAttachments}));
+		const onRejected = vi.fn<(sessionId: string, prompt: string) => RejectedRefill>(() => ({restoredAttachments}));
 		const hook = renderHook(() => useLiveHerdrPrompt("s1", 100, [], postPrompt, onRejected));
 		return {hook, onRejected};
 	};
@@ -184,7 +194,7 @@ describe("useLiveHerdrPrompt records a rejected send", () => {
 				prompt: "",
 				rejection: {prompt: "hi", message: "boom", nonResendable: false},
 			},
-			refills: [["hi"]],
+			refills: [["s1", "hi"]],
 		});
 	});
 
@@ -228,5 +238,100 @@ describe("useLiveHerdrPrompt records a rejected send", () => {
 			state: CLEARED,
 			refills: [],
 		});
+	});
+});
+
+describe("useLiveHerdrPrompt routes a rejection to the session that sent it", () => {
+	afterEach(() => {
+		localStorage.clear();
+		for (const id of ["a", "b"]) for (const chip of getContextChips(id)) removeContextChip(id, chip.id);
+	});
+
+	it("refills the sending session's stored draft, not the session now on screen", async () => {
+		let rejectSend: (error: Error) => void = () => {};
+		const postPrompt = vi.fn<(sessionId: string, prompt: string) => Promise<void>>(
+			async () =>
+				new Promise<void>((_resolve, reject) => {
+					rejectSend = reject;
+				}),
+		);
+		const onRejected = vi.fn<(sessionId: string, prompt: string) => RejectedRefill>((sessionId, prompt) =>
+			refillRejectedSend(sessionId, prompt),
+		);
+		const bText: string[] = [];
+		const stopB = registerComposer("b", {
+			insertText: () => {},
+			focus: () => {},
+			setText: (text) => bText.push(text),
+			getText: () => "",
+		});
+		const hook = renderHook(({id}) => useLiveHerdrPrompt(id, 100, [], postPrompt, onRejected), {
+			initialProps: {id: "a"},
+		});
+		let sent: Promise<unknown> = Promise.resolve();
+		act(() => {
+			sent = hook.result.current.send("hi");
+		});
+		hook.rerender({id: "b"});
+		await act(async () => {
+			rejectSend(new HerdrRequestError("boom", 502, "x"));
+			await sent;
+		});
+		stopB();
+
+		expect({
+			refills: onRejected.mock.calls,
+			bText,
+			rejection: hook.result.current.state.rejection,
+			draft: localStorage.getItem("ccp-composer-draft:a"),
+		}).toStrictEqual({
+			refills: [["a", "hi"]],
+			bText: [],
+			rejection: null,
+			draft: JSON.stringify({text: "hi", failedSend: "hi"}),
+		});
+	});
+
+	it("keeps the typed text and tiles of a send rejected with no composer mounted", async () => {
+		const stop = registerComposer("a", {insertText: () => {}, focus: () => {}});
+		attachContext("a", {kind: "file", path: "alice.ts"});
+		const sentChips = takeContextChips("a");
+		const composed = composePrompt("hi", sentChips, []);
+		recordSentAttachments("a", composed, "hi", sentChips);
+		stop();
+		const postPrompt = vi
+			.fn<(sessionId: string, prompt: string) => Promise<void>>()
+			.mockRejectedValue(new HerdrRequestError("boom", 502, "x"));
+		const hook = renderHook(() =>
+			useLiveHerdrPrompt("a", 100, [], postPrompt, (sessionId, prompt) => refillRejectedSend(sessionId, prompt)),
+		);
+		await act(async () => {
+			await hook.result.current.send(composed);
+		});
+
+		expect({
+			draft: localStorage.getItem("ccp-composer-draft:a"),
+			attachments: localStorage.getItem("ccp-composer-attachments:a"),
+			nonResendable: hook.result.current.state.rejection?.nonResendable,
+		}).toStrictEqual({
+			draft: JSON.stringify({text: "hi"}),
+			attachments: JSON.stringify([{kind: "file", path: "alice.ts"}]),
+			nonResendable: true,
+		});
+	});
+
+	it("merges a text-only rejection above newer stored text, without failedSend", async () => {
+		localStorage.setItem("ccp-composer-draft:a", JSON.stringify({text: "newer"}));
+		const postPrompt = vi
+			.fn<(sessionId: string, prompt: string) => Promise<void>>()
+			.mockRejectedValue(new HerdrRequestError("boom", 502, "x"));
+		const hook = renderHook(() =>
+			useLiveHerdrPrompt("a", 100, [], postPrompt, (sessionId, prompt) => refillRejectedSend(sessionId, prompt)),
+		);
+		await act(async () => {
+			await hook.result.current.send("hi");
+		});
+
+		expect(localStorage.getItem("ccp-composer-draft:a")).toBe(JSON.stringify({text: "hi\n\nnewer"}));
 	});
 });

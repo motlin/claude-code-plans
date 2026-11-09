@@ -1,4 +1,5 @@
-import {afterEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import type {ToastOptions} from "../src/components/toast-context";
 import {
 	attachContext,
 	attachPendingUpload,
@@ -18,7 +19,15 @@ import {
 	formatReviewComments,
 	recordSentAttachments,
 	restoreRejectedAttachments,
+	takeBackSend,
 } from "../src/lib/context-attach";
+import {
+	clearDiffComments,
+	getDiffComments,
+	openDiffCommentDraft,
+	saveDiffComment,
+	takeQueuedDiffComments,
+} from "../src/lib/diff-comments";
 import {schemaChoiceRegistry} from "../src/lib/schema-choices";
 
 describe("formatAttachContext", () => {
@@ -304,7 +313,7 @@ describe("attachContext", () => {
 		expect(events).toStrictEqual(["one left", "settled", "none pending resolves at once"]);
 	});
 
-	it("puts a rejected send's tiles back ahead of the strip and hands back its typed text, once", () => {
+	it("appends a rejected send's tiles after the strip and hands back its typed text, once", () => {
 		const stop = registerComposer(SESSION, {insertText: () => {}, focus: () => {}});
 		attachContext(SESSION, {kind: "file", path: "alice.ts"});
 		attachContext(SESSION, {kind: "image", path: "/cache/bob.png", name: "bob.png"});
@@ -315,20 +324,137 @@ describe("attachContext", () => {
 
 		const restored = restoreRejectedAttachments(SESSION, composed);
 		const chips = getContextChips(SESSION).map(({id: _id, ...rest}) => rest);
+		const freshIds = getContextChips(SESSION).every((chip) => !sent.some((each) => each.id === chip.id));
 		const again = restoreRejectedAttachments(SESSION, composed);
 		const unknown = restoreRejectedAttachments(SESSION, "never sent");
 		stop();
 
-		expect({restored, chips, again, unknown}).toStrictEqual({
+		expect({restored, chips, freshIds, again, unknown}).toStrictEqual({
 			restored: "hi",
 			chips: [
+				{kind: "terminal", text: "carol"},
 				{kind: "file", path: "alice.ts"},
 				{kind: "image", path: "/cache/bob.png", name: "bob.png"},
-				{kind: "terminal", text: "carol"},
 			],
+			freshIds: true,
 			again: null,
 			unknown: null,
 		});
+	});
+
+	it("restores a rejected send's images through the 5-image cap, warning once", () => {
+		const stop = registerComposer(SESSION, {insertText: () => {}, focus: () => {}});
+		attachContext(SESSION, {kind: "image", path: "/cache/alice.png", name: "alice.png"});
+		attachContext(SESSION, {kind: "image", path: "/cache/bob.png", name: "bob.png"});
+		attachContext(SESSION, {kind: "file", path: "carol.ts"});
+		const sent = takeContextChips(SESSION);
+		const composed = composePrompt("hi", sent, []);
+		recordSentAttachments(SESSION, composed, "hi", sent);
+		for (const name of ["d", "e", "f", "g"])
+			attachContext(SESSION, {kind: "image", path: `/cache/${name}.png`, name});
+		const notify = vi.fn<(options: ToastOptions) => void>();
+
+		const restored = restoreRejectedAttachments(SESSION, composed, notify);
+		const chips = getContextChips(SESSION).map(({id: _id, ...rest}) => rest);
+		stop();
+
+		expect({restored, chips, toasts: notify.mock.calls}).toStrictEqual({
+			restored: "hi",
+			chips: [
+				{kind: "image", path: "/cache/d.png", name: "d"},
+				{kind: "image", path: "/cache/e.png", name: "e"},
+				{kind: "image", path: "/cache/f.png", name: "f"},
+				{kind: "image", path: "/cache/g.png", name: "g"},
+				{kind: "image", path: "/cache/alice.png", name: "alice.png"},
+				{kind: "file", path: "carol.ts"},
+			],
+			toasts: [[{kind: "warning", message: "Maximum of 5 images allowed.", durationMs: 8000}]],
+		});
+	});
+
+	it("takes a sent prompt back as its typed text plus its tiles", () => {
+		const takenBack: string[] = [];
+		const stop = registerComposer(SESSION, {
+			insertText: () => {},
+			focus: () => {},
+			takeBack: (text) => {
+				takenBack.push(text);
+				return true;
+			},
+		});
+		attachContext(SESSION, {kind: "file", path: "alice.ts"});
+		const sent = takeContextChips(SESSION);
+		const composed = composePrompt("hi", sent, []);
+		recordSentAttachments(SESSION, composed, "hi", sent);
+		attachContext(SESSION, {kind: "terminal", text: "bob"});
+
+		const taken = takeBackSend(SESSION, composed);
+		const chips = getContextChips(SESSION).map(({id: _id, ...rest}) => rest);
+		const unrecorded = takeBackSend(SESSION, "plain prompt");
+		const after = getContextChips(SESSION).map(({id: _id, ...rest}) => rest);
+		stop();
+
+		expect({taken, takenBack, chips, unrecorded, after}).toStrictEqual({
+			taken: true,
+			takenBack: ["hi", "plain prompt"],
+			chips: [
+				{kind: "terminal", text: "bob"},
+				{kind: "file", path: "alice.ts"},
+			],
+			unrecorded: true,
+			after: [
+				{kind: "terminal", text: "bob"},
+				{kind: "file", path: "alice.ts"},
+			],
+		});
+	});
+
+	it("keeps the record and adds no tiles when the composer refuses a take-back", () => {
+		let accept = false;
+		const takenBack: string[] = [];
+		const stop = registerComposer(SESSION, {
+			insertText: () => {},
+			focus: () => {},
+			takeBack: (text) => {
+				takenBack.push(text);
+				return accept;
+			},
+		});
+		attachContext(SESSION, {kind: "file", path: "alice.ts"});
+		const sent = takeContextChips(SESSION);
+		const composed = composePrompt("hi", sent, []);
+		recordSentAttachments(SESSION, composed, "hi", sent);
+
+		const refused = takeBackSend(SESSION, composed);
+		const chipsAfterRefusal = getContextChips(SESSION).length;
+		accept = true;
+		const accepted = takeBackSend(SESSION, composed);
+		const chips = getContextChips(SESSION).map(({id: _id, ...rest}) => rest);
+		stop();
+
+		expect({refused, chipsAfterRefusal, accepted, takenBack, chips}).toStrictEqual({
+			refused: false,
+			chipsAfterRefusal: 0,
+			accepted: true,
+			takenBack: ["hi", "hi"],
+			chips: [{kind: "file", path: "alice.ts"}],
+		});
+	});
+
+	it("re-queues a rejected send's diff comments and hands back only its typed text", () => {
+		clearDiffComments(SESSION);
+		const draftId = openDiffCommentDraft(SESSION, {path: "a.ts", side: "additions", line: 3});
+		saveDiffComment(SESSION, draftId, "Rename this");
+		const queued = getDiffComments(SESSION).queued;
+		const comments = takeQueuedDiffComments(SESSION);
+		const composed = composePrompt("hi", [], comments);
+		recordSentAttachments(SESSION, composed, "hi", [], comments);
+
+		const restored = restoreRejectedAttachments(SESSION, composed);
+		const after = getDiffComments(SESSION).queued;
+		clearDiffComments(SESSION);
+
+		expect({restored, after}).toStrictEqual({restored: "hi", after: queued});
 	});
 
 	it("records nothing for a send without tiles", () => {

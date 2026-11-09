@@ -171,11 +171,11 @@ export function HomeComposer({
 	 */
 	function restoreFailedStart(prompt: string, error: unknown) {
 		if (!mountedRef.current) {
-			restoreStoredDraft("home", restoreRejectedAttachments("home", prompt) ?? prompt);
+			restoreStoredDraft("home", restoreRejectedAttachments("home", prompt, toast) ?? prompt);
 			toast({kind: "error", message: startFailedOffscreenToast({promptIsBack: prompt.trim() !== ""})});
 			return;
 		}
-		refillRejectedSend("home", prompt);
+		refillRejectedSend("home", prompt, toast);
 		const message = error instanceof Error && error.message !== "" ? error.message : "Send failed";
 		setStartFailure({message, restoredDraft: getComposerText("home") ?? prompt});
 	}

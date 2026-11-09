@@ -5,7 +5,16 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
 import {type DeliveryResult} from "../src/hooks/use-composer-queue";
 import {HerdrRequestError} from "../src/lib/api/herdr";
-import {type RejectedRefill, registerComposer} from "../src/lib/context-attach";
+import {
+	attachContext,
+	composePrompt,
+	getContextChips,
+	recordSentAttachments,
+	registerComposer,
+	removeContextChip,
+	takeContextChips,
+	type RejectedRefill,
+} from "../src/lib/context-attach";
 
 afterEach(() => {
 	cleanup();
@@ -16,7 +25,7 @@ type PostPrompt = (sessionId: string, prompt: string, options: {midTurn?: true})
 
 function renderHeld(
 	postPrompt: PostPrompt,
-	onRejected = vi.fn<(prompt: string) => RejectedRefill>(() => ({restoredAttachments: false})),
+	onRejected = vi.fn<(sessionId: string, prompt: string) => RejectedRefill>(() => ({restoredAttachments: false})),
 ) {
 	return renderHook(
 		({hasLivePane}: {hasLivePane: boolean}) =>
@@ -30,7 +39,9 @@ describe("useLiveHerdrPrompt held for the terminal", () => {
 		"holds a prompt rejected with %s instead of failing it",
 		async (code) => {
 			const postPrompt = vi.fn<PostPrompt>().mockRejectedValue(new HerdrRequestError("no live pane", 502, code));
-			const onRejected = vi.fn<(prompt: string) => RejectedRefill>(() => ({restoredAttachments: false}));
+			const onRejected = vi.fn<(sessionId: string, prompt: string) => RejectedRefill>(() => ({
+				restoredAttachments: false,
+			}));
 			const {result} = renderHeld(postPrompt, onRejected);
 
 			let delivery: DeliveryResult | undefined;
@@ -113,6 +124,35 @@ describe("useLiveHerdrPrompt held for the terminal", () => {
 		expect({takeBack: takeBack.mock.calls, state: result.current.state}).toStrictEqual({
 			takeBack: [["Alice's prompt"]],
 			state: {phase: "idle", isPending: false, prompt: "", rejection: null},
+		});
+	});
+
+	it("withdraw takes back a held prompt's typed text and its tiles", async () => {
+		const postPrompt = vi
+			.fn<PostPrompt>()
+			.mockRejectedValue(new HerdrRequestError("no live pane", 502, "pane-not-found"));
+		const takeBack = vi.fn<(text: string) => boolean>().mockReturnValue(true);
+		const stop = registerComposer("session-alice", {insertText: () => {}, focus: () => {}, takeBack});
+		attachContext("session-alice", {kind: "file", path: "alice.ts"});
+		const sentChips = takeContextChips("session-alice");
+		const composed = composePrompt("Alice's prompt", sentChips, []);
+		recordSentAttachments("session-alice", composed, "Alice's prompt", sentChips);
+		const {result} = renderHeld(postPrompt);
+
+		await act(async () => {
+			await result.current.send(composed);
+		});
+		act(() => {
+			result.current.withdraw();
+		});
+		const chips = getContextChips("session-alice").map(({id: _id, ...rest}) => rest);
+		for (const chip of getContextChips("session-alice")) removeContextChip("session-alice", chip.id);
+		stop();
+
+		expect({takeBack: takeBack.mock.calls, chips, phase: result.current.state.phase}).toStrictEqual({
+			takeBack: [["Alice's prompt"]],
+			chips: [{kind: "file", path: "alice.ts"}],
+			phase: "idle",
 		});
 	});
 

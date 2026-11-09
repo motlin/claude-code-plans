@@ -1,6 +1,8 @@
 import {useCallback, useEffect, useRef, useState} from "react";
 import {z} from "zod";
 
+import {mergeRefill} from "../lib/send-rejection";
+
 /** Upstream writes on every input; we coalesce keystrokes but stay within one frame budget. */
 export const COMPOSER_DRAFT_DEBOUNCE_MS = 150;
 
@@ -71,9 +73,20 @@ export function restoreStoredDraft(draftKey: string, text: string): void {
 	storeDraft(draftKey, {text});
 }
 
-/** Records a rejected prompt in the draft, so the send-rejected card comes back after a reload. */
+/** Puts a rejected prompt above the stored draft while its composer is unmounted (upstream's off-screen `restoreDraftStash`). */
+export function storeRejectedDraft(draftKey: string, text: string): void {
+	storeDraft(draftKey, {text: mergeRefill(text, readStoredDraft(draftKey)?.text ?? "")});
+}
+
+/**
+ * Records a rejected prompt in the draft, so the send-rejected card comes back after a reload: merged above
+ * newer stored text unless the draft already starts with it, and marked `failedSend` only while the draft
+ * holds the prompt alone.
+ */
 export function markFailedSend(draftKey: string, prompt: string): void {
-	storeDraft(draftKey, {text: prompt, failedSend: prompt});
+	const stored = readStoredDraft(draftKey)?.text ?? "";
+	const text = stored.startsWith(prompt) ? stored : mergeRefill(prompt, stored);
+	storeDraft(draftKey, {text, ...(text === prompt && {failedSend: prompt})});
 }
 
 /** The rejected prompt to show again, only while the stored draft text still equals it. */

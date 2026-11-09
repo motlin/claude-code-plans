@@ -85,6 +85,23 @@ describe("diff comment persistence", () => {
 		});
 	});
 
+	it("puts taken comments back in the queue, ahead of newer ones, once per id", async () => {
+		const store = await freshStore();
+		const alice = store.openDiffCommentDraft(SESSION, {path: "a.ts", side: "additions", line: 1});
+		store.saveDiffComment(SESSION, alice, "for alice");
+		const taken = store.takeQueuedDiffComments(SESSION);
+		const bob = store.openDiffCommentDraft(SESSION, {path: "b.ts", side: "additions", line: 2});
+		store.saveDiffComment(SESSION, bob, "for bob");
+
+		store.restoreQueuedDiffComments(SESSION, taken);
+		store.restoreQueuedDiffComments(SESSION, taken);
+
+		expect(store.getDiffComments(SESSION).queued).toStrictEqual([
+			{id: alice, path: "a.ts", side: "additions", line: 1, text: "for alice"},
+			{id: bob, path: "b.ts", side: "additions", line: 2, text: "for bob"},
+		]);
+	});
+
 	it("hydrates a corrupt value to empty without throwing", async () => {
 		localStorage.setItem("diff-annotations", "{not json");
 		const store = await freshStore();

@@ -2,7 +2,9 @@ import {useMemo, useSyncExternalStore} from "react";
 import {z} from "zod";
 
 import type {ToastOptions} from "../components/toast-context";
+import {storeRejectedDraft} from "../hooks/use-composer-draft";
 import {MAX_ATTACHMENT_BYTES, uploadAttachment} from "./api/attachments";
+import {type QueuedDiffComment, restoreQueuedDiffComments} from "./diff-comments";
 import {mergeRefill} from "./send-rejection";
 
 /**
@@ -266,7 +268,7 @@ function readStagedChips(sessionId: string): readonly StagedChip[] {
 	}
 }
 
-/** Ids of tiles put back from storage or a rejected send: upstream's restored tiles, which skip the enter motion. */
+/** Ids of tiles put back from storage: upstream's restored tiles, which skip the enter motion. */
 const restoredIds = new Set<string>();
 
 function restoredChip(attachment: ContextAttachment): ContextChip {
@@ -315,44 +317,96 @@ function dropIfGone(sessionId: string, id: string, previewUrl: string): void {
 
 interface SentAttachments {
 	prompt: string;
+	/** The typed text alone, without tiles or comments. */
 	text: string;
 	chips: readonly ContextChip[];
+	comments: readonly QueuedDiffComment[];
 }
 
-/** Recent sends that carried tiles, per session, so a rejection can put the tiles back. */
+/** Recent sends that carried tiles or diff comments, per session, so a rejection or take-back can put them back. */
 const sentAttachments = new Map<string, readonly SentAttachments[]>();
 const MAX_SENT_ATTACHMENTS = 10;
 
-/** Remembers the tiles a send carried, keyed by the composed prompt it sent; a send without tiles records nothing. */
+/**
+ * Remembers the tiles and diff comments a send carried, keyed by the composed prompt it sent; a send with
+ * neither records nothing.
+ */
 export function recordSentAttachments(
 	sessionId: string,
 	prompt: string,
 	text: string,
 	sent: readonly ContextChip[],
+	comments: readonly QueuedDiffComment[] = [],
 ): void {
-	if (sent.length === 0) return;
+	if (sent.length === 0 && comments.length === 0) return;
 	const recent = (sentAttachments.get(sessionId) ?? []).filter((each) => each.prompt !== prompt);
-	sentAttachments.set(sessionId, [...recent, {prompt, text, chips: sent}].slice(-MAX_SENT_ATTACHMENTS));
+	sentAttachments.set(sessionId, [...recent, {prompt, text, chips: sent, comments}].slice(-MAX_SENT_ATTACHMENTS));
+}
+
+function findSent(sessionId: string, prompt: string): SentAttachments | undefined {
+	return sentAttachments.get(sessionId)?.find((each) => each.prompt === prompt);
+}
+
+/** Puts a recorded send's tiles and comments back and forgets the record. */
+function restoreSent(sessionId: string, match: SentAttachments, notify?: (options: ToastOptions) => void): void {
+	sentAttachments.set(
+		sessionId,
+		(sentAttachments.get(sessionId) ?? []).filter((each) => each !== match),
+	);
+	appendRestoredChips(sessionId, match.chips, notify);
+	if (match.comments.length > 0) restoreQueuedDiffComments(sessionId, match.comments);
 }
 
 /**
- * Upstream's composer restore after a rejected send (changelog cb63ed069): the
- * tiles the prompt carried go back ahead of the strip, and the typed text
- * comes back; null when the prompt carried no tiles.
+ * Upstream's `addImageFiles`/`addFileAttachments` on a give-back: the tiles are appended as fresh adds (new
+ * ids, so they play the enter motion), images only while the 5-image cap has room, with one warning toast.
  */
-export function restoreRejectedAttachments(sessionId: string, prompt: string): string | null {
-	const recent = sentAttachments.get(sessionId) ?? [];
-	const match = recent.find((each) => each.prompt === prompt);
+function appendRestoredChips(
+	sessionId: string,
+	restored: readonly ContextChip[],
+	notify?: (options: ToastOptions) => void,
+): void {
+	if (restored.length === 0) return;
+	const current = getContextChips(sessionId);
+	let room = MAX_IMAGES - current.filter((chip) => chip.kind === "image").length;
+	const fresh: ContextChip[] = [];
+	for (const {id: _id, ...chip} of restored) {
+		if (chip.kind === "image") {
+			if (room <= 0) continue;
+			room--;
+		}
+		fresh.push({...chip, id: `context-chip-${nextChipId++}`});
+	}
+	if (fresh.length < restored.length)
+		notify?.({kind: "warning", message: MAX_IMAGES_MESSAGE, durationMs: ATTACH_WARNING_MS});
+	setChips(sessionId, [...current, ...fresh]);
+}
+
+/**
+ * Upstream's composer restore after a rejected send (changelog cb63ed069): the tiles the prompt carried are
+ * appended to the strip, its diff comments go back in the queue, and the typed text comes back; null when
+ * the prompt carried neither tiles nor comments.
+ */
+export function restoreRejectedAttachments(
+	sessionId: string,
+	prompt: string,
+	notify?: (options: ToastOptions) => void,
+): string | null {
+	const match = findSent(sessionId, prompt);
 	if (match === undefined) return null;
-	sentAttachments.set(
-		sessionId,
-		recent.filter((each) => each !== match),
-	);
-	setChips(sessionId, [
-		...match.chips.map(({id: _id, ...chip}) => restoredChip(chip)),
-		...getContextChips(sessionId),
-	]);
+	restoreSent(sessionId, match, notify);
 	return match.text;
+}
+
+/**
+ * Upstream's take-back (held withdraw, cancelled steer, Esc recall): the composer gets the typed text and
+ * the tiles come back; false, keeping the record and adding nothing, when the composer refuses it.
+ */
+export function takeBackSend(sessionId: string, prompt: string, notify?: (options: ToastOptions) => void): boolean {
+	const match = findSent(sessionId, prompt);
+	if (!requestComposerTakeBack(sessionId, match?.text ?? prompt)) return false;
+	if (match !== undefined) restoreSent(sessionId, match, notify);
+	return true;
 }
 
 function mounted(sessionId: string): readonly ComposerHandle[] {
@@ -505,19 +559,28 @@ export function requestComposerTakeBack(sessionId: string, text: string): boolea
 export function refillComposer(sessionId: string, text: string): boolean {
 	const handle = mounted(sessionId).find((each) => each.setText !== undefined && each.getText !== undefined);
 	if (handle?.setText === undefined || handle.getText === undefined) return false;
-	handle.setText(mergeRefill(text, handle.getText()));
+	if (text !== "") handle.setText(mergeRefill(text, handle.getText()));
 	return true;
 }
 
-/** What a rejected send put back: with tiles, the prompt can't be resent as is (upstream `nonResendable`). */
+/** What a rejected send put back: with tiles or comments, the prompt can't be resent as is (upstream `nonResendable`). */
 export interface RejectedRefill {
 	restoredAttachments: boolean;
 }
 
-/** Puts a rejected send back: its tiles and typed text when it carried tiles, else the prompt as text. */
-export function refillRejectedSend(sessionId: string, prompt: string): RejectedRefill {
-	const text = restoreRejectedAttachments(sessionId, prompt);
-	refillComposer(sessionId, text ?? prompt);
+/**
+ * Puts a rejected send back: its tiles, comments and typed text when it carried any, else the prompt as
+ * text. With no composer mounted for the session, the text goes above the session's stored draft
+ * (upstream's off-screen `restoreDraftStash`).
+ */
+export function refillRejectedSend(
+	sessionId: string,
+	prompt: string,
+	notify?: (options: ToastOptions) => void,
+): RejectedRefill {
+	const text = restoreRejectedAttachments(sessionId, prompt, notify);
+	const refill = text ?? prompt;
+	if (!refillComposer(sessionId, refill) && refill !== "") storeRejectedDraft(sessionId, refill);
 	return {restoredAttachments: text !== null};
 }
 
