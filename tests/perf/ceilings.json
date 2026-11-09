@@ -65,17 +65,17 @@
 		"raisedAt": "2026-11-09"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 719240,
+		"ceiling": 727507,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Permission card Allow and switch to Auto (2026-11-09): the offer rule (autoSwitchOffered with its shift+tab reach check), the allowAuto client call and the session page wiring that feeds the deferred SessionPermissionCard, on top of the Auto/Bypass consent guard commit that had used up the 1% tolerance. Went from 711940 to 719240. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Cold-resume idle notice (2026-11-09): src/lib/cold-resume-notice.ts and the ColdResumeNotice card with its focus/visibility idle checks, mounted in the session dock (it must decide on the idle session's first paint, so it can't sit behind a lazy boundary), on top of the chat-panel file drop badge and /autocompact commits that had used up the 1% tolerance. Went from 719240 to 727507. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-09"
 	},
 	"bundle.session.raw": {
-		"ceiling": 2149184,
+		"ceiling": 2173316,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Permission card Allow and switch to Auto (2026-11-09): the offer rule (autoSwitchOffered with its shift+tab reach check), the allowAuto client call and the session page wiring that feeds the deferred SessionPermissionCard, on top of the Auto/Bypass consent guard commit that had used up the 1% tolerance. Went from 2127755 to 2149184. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"reason": "Cold-resume idle notice (2026-11-09): src/lib/cold-resume-notice.ts and the ColdResumeNotice card with its focus/visibility idle checks, mounted in the session dock (it must decide on the idle session's first paint, so it can't sit behind a lazy boundary), on top of the chat-panel file drop badge and /autocompact commits that had used up the 1% tolerance. Went from 2149184 to 2173316. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-09"
 	},
 	"client.coldHome.default.commitsToRows": {

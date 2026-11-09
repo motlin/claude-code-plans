@@ -2,7 +2,7 @@ import {SESSION_FOOTER_CLASS} from "./dock-tokens";
 import {SessionSkeleton} from "./session-skeleton";
 import {SessionNotFound} from "./session-unavailable";
 import {sessionScrollKey} from "../lib/session-route-location";
-import {useLocation} from "@tanstack/react-router";
+import {useLocation, useNavigate} from "@tanstack/react-router";
 import {useQuery, useQueryClient} from "@tanstack/react-query";
 import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps} from "react";
 import {Minimize2} from "lucide-react";
@@ -83,6 +83,9 @@ import {sessionApprovalSlotCard} from "../lib/approval-slot-card";
 import {showsWaitingForInputNotice} from "./waiting-for-input-notice";
 import {NotifyMePrompt} from "./notify-me-prompt";
 import {UsagePaceBanner} from "./usage-pace-banner";
+import {ColdResumeNotice} from "./cold-resume-notice";
+import {newestRecordMs, usageWindowSpent} from "../lib/cold-resume-notice";
+import {requestHomeComposerFocus, requestHomeLaunchFolder} from "../lib/home-composer-focus";
 import {WorkingMarker} from "./working-marker";
 import {useWorkingMarkerState} from "./use-working-marker-state";
 import {usePermissionAnswer} from "./use-permission-answer";
@@ -1089,6 +1092,28 @@ function SessionView({
 				: undefined,
 		[rewindAvailable, requestRewindPicker],
 	);
+	// The cold-resume notice's inputs: the idle start, busy/held state and the Compact / New session actions.
+	const navigate = useNavigate();
+	const coldResumeLastRecordMs = useMemo(() => newestRecordMs(transcript.records), [transcript.records]);
+	const coldResumeRunning =
+		paneBusy || dialogOpen || sessionSummaryState === "working" || sessionSummaryState === "waiting";
+	const coldResumeHeld = queuedPrompts.length > 0 || liveHerdrPrompt.state.phase === "held";
+	const coldResumeCompact = useMemo(
+		() =>
+			promptBehavior.hasLivePane && herdr.writesEnabled
+				? () => {
+						void liveHerdrPrompt.send("/compact").then((result) => {
+							if (result === "not-ready") enqueuePrompt("/compact");
+						});
+					}
+				: undefined,
+		[promptBehavior.hasLivePane, herdr.writesEnabled, liveHerdrPrompt, enqueuePrompt],
+	);
+	const sessionProjectId = data.projectId;
+	const coldResumeNewSession = useCallback(() => {
+		requestHomeLaunchFolder(sessionProjectId);
+		void navigate({to: "/"}).then(requestHomeComposerFocus);
+	}, [navigate, sessionProjectId]);
 	const sendErrorRecoveryPrompt = liveHerdrPrompt.send;
 	const currentModelId = composerChin.modelId;
 	const errorRecovery = useMemo(
@@ -1513,6 +1538,25 @@ function SessionView({
 												{!chromeHidden && sessionDirectory && <UsagePaceBanner />}
 												{!chromeHidden && sessionDirectory && (
 													<NotifyMePrompt sessionId={sessionId} />
+												)}
+												{!chromeHidden && sessionDirectory && !data.archived && (
+													<ColdResumeNotice
+														sessionId={sessionId}
+														lastRecordMs={coldResumeLastRecordMs}
+														running={coldResumeRunning}
+														heldInput={coldResumeHeld}
+														contextTokens={composerChin.usage?.contextTokens ?? null}
+														fiveHourPct={
+															composerChin.usage?.fiveHour?.usedPercentage ?? null
+														}
+														anyWindowSpent={usageWindowSpent(
+															composerChin.usage,
+															Date.now(),
+														)}
+														onStay={focusSessionComposer}
+														onCompact={coldResumeCompact}
+														onNewSession={coldResumeNewSession}
+													/>
 												)}
 												{/* Upstream's notice region: registered bands (usage → `limit`) stacked in NOTICE_ORDER */}
 												{!chromeHidden && sessionDirectory && <ComposerNoticeRegion />}
