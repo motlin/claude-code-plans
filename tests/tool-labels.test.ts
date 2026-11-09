@@ -529,3 +529,54 @@ describe("SendMessage labels", () => {
 		});
 	});
 });
+
+describe("toolResultMetaFrom Read lines", () => {
+	it("keeps the lines a Read result reports, not its content", () => {
+		const file = {filePath: "/a.ts", content: "x\ny\n", numLines: 3, startLine: 1, totalLines: 3};
+		expect({
+			read: toolResultMetaFrom({type: "text", file}),
+			noNewline: toolResultMetaFrom({type: "text", file: {...file, content: "x\ny"}}),
+			noTotal: toolResultMetaFrom({
+				type: "text",
+				file: {filePath: "/a.ts", content: "", numLines: 0, startLine: 1},
+			}),
+			image: toolResultMetaFrom({type: "image", file: {base64: "", type: "image/png"}}),
+		}).toStrictEqual({
+			read: {readFile: {filePath: "/a.ts", startLine: 1, numLines: 3, totalLines: 3, endsWithNewline: true}},
+			noNewline: {
+				readFile: {filePath: "/a.ts", startLine: 1, numLines: 3, totalLines: 3, endsWithNewline: false},
+			},
+			noTotal: {readFile: {filePath: "/a.ts", startLine: 1, numLines: 0, endsWithNewline: false}},
+			image: undefined,
+		});
+	});
+});
+
+describe("benign tool errors", () => {
+	const noOp = "No-op: there is no active EnterWorktree session to exit. This tool only operates on worktrees.";
+	it("names a no-op ExitWorktree without failing it", () => {
+		expect({
+			noOp: toolLabel({name: "ExitWorktree", input: {action: "keep"}, isError: true, result: noOp}),
+			otherError: toolLabel({name: "ExitWorktree", input: {action: "keep"}, isError: true, result: "boom"}),
+			noOpNotErrored: toolLabel({name: "ExitWorktree", input: {action: "keep"}, result: noOp}),
+		}).toStrictEqual({
+			noOp: {verb: "Left the worktree", failedVerb: "No worktree to leave", errorIsBenign: true},
+			otherError: {verb: "Left the worktree"},
+			noOpNotErrored: {verb: "Left the worktree"},
+		});
+	});
+});
+
+describe("runningToolLabel upstream running verbs", () => {
+	it("copies the running verbs that are not the done verb's progressive", () => {
+		expect({
+			enterPlanMode: runningToolLabel({name: "EnterPlanMode", input: {}}),
+			clearTodos: runningToolLabel({name: "TodoWrite", input: {todos: []}}),
+			updateTodos: runningToolLabel({name: "TodoWrite", input: {todos: [{content: "x"}]}}),
+		}).toStrictEqual({
+			enterPlanMode: {verb: "Making a plan"},
+			clearTodos: {verb: "Updating todos"},
+			updateTodos: {verb: "Updating todos"},
+		});
+	});
+});

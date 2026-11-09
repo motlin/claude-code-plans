@@ -410,7 +410,7 @@ describe("settled Workflow row", () => {
 			text: "Failed",
 			tabIndex: 0,
 			statusClass:
-				"shrink-0 text-body outline-none hide-focus-ring focus-visible:ring-focus rounded-r2 text-danger-ink",
+				"shrink-0 text-body outline-none hide-focus-ring focus-visible:ring-focus rounded-r2 text-danger",
 			tooltip: '<span class="line-clamp-3 whitespace-pre-wrap">Agent crashed\nwhile exploring</span>',
 			coarse: '<span class="hidden [@media(pointer:coarse)]:block text-body text-secondary truncate min-w-0">Agent crashed\nwhile exploring</span>',
 		});
@@ -437,9 +437,7 @@ describe("settled Workflow row", () => {
 		);
 		await screen.findByText("Ran workflow");
 
-		expect(launchRow(container).querySelector('[id$="-label"]')?.className).toBe(
-			"shrink-0 text-body text-danger-ink",
-		);
+		expect(launchRow(container).querySelector('[id$="-label"]')?.className).toBe("shrink-0 text-body text-danger");
 	});
 
 	it("marks the row Stopped when a TaskStop ended its task", async () => {
@@ -451,7 +449,7 @@ describe("settled Workflow row", () => {
 });
 
 describe("errored Workflow call", () => {
-	it("reads Failed to run workflow with the name and no separate Failed status, as upstream's generic failed row", async () => {
+	it("reads Running workflow with the name and a Failed status, as upstream's failed step", async () => {
 		const [call] = records(false);
 		const {container} = render(
 			chat(
@@ -478,9 +476,9 @@ describe("errored Workflow call", () => {
 				[],
 			),
 		);
-		await screen.findByText("Failed to run workflow");
+		await screen.findByText("Running workflow");
 		const row = [...container.querySelectorAll<HTMLElement>("[data-tool-row]")].find((element) =>
-			element.textContent.startsWith("Failed to run workflow"),
+			element.textContent.startsWith("Running workflow"),
 		);
 
 		expect({
@@ -490,9 +488,9 @@ describe("errored Workflow call", () => {
 			outcome: row?.querySelector('[id$="-outcome"]')?.textContent ?? null,
 		}).toStrictEqual({
 			cards: 0,
-			label: "Failed to run workflow",
+			label: "Running workflow",
 			meta: NAME,
-			outcome: null,
+			outcome: "Failed",
 		});
 	});
 });

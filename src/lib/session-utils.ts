@@ -1,4 +1,5 @@
 import {isKeyOf, isRecord} from "./narrow";
+import {isBenignToolError} from "./tool-labels";
 
 /**
  * Minimal shape needed by summarizeToolCalls, categorize, and diffStatsForCall.
@@ -10,6 +11,8 @@ export interface ToolCallLike {
 	name: string;
 	input: Record<string, unknown>;
 	isError?: boolean | undefined;
+	/** The call's result text, which can mark an error benign. */
+	result?: string | undefined;
 	/** The user rejected or interrupted the call, so it settled without failing. */
 	stopped?: boolean | undefined;
 	/** The user rejected the call with a typed reply, so it settled without failing. */
@@ -658,6 +661,8 @@ function callKey(call: ToolCallLike, index: number): string {
  */
 function callOutcome(call: ToolCallLike, failedLaunches: ReadonlySet<string>): CallOutcome | undefined {
 	if (call.stopped === true || call.denied === true) return undefined;
+	// Upstream settles a benign error (`errorIsBenign`) done, so it is no failure.
+	if (isBenignToolError(call)) return "succeeded";
 	const failedLaunch = call.id !== undefined && failedLaunches.has(call.id);
 	return call.isError === true || failedLaunch ? "failed" : "succeeded";
 }

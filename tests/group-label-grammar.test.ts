@@ -276,3 +276,16 @@ describe("group label: received messages", () => {
 		});
 	});
 });
+
+describe("group label: benign errors", () => {
+	it("counts no failure for a no-op ExitWorktree", () => {
+		const exit: ToolCallLike = {
+			id: "x1",
+			name: "ExitWorktree",
+			input: {action: "keep"},
+			isError: true,
+			result: "No-op: there is no active EnterWorktree session to exit.",
+		};
+		expect(label([bash(), exit])).toBe("Ran a command, used a tool");
+	});
+});

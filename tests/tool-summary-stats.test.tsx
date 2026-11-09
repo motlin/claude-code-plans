@@ -232,7 +232,7 @@ describe("failed edits in diff stats", () => {
 		expect({
 			text: row.querySelector(".group\\/tool")?.textContent,
 			stats: Array.from(row.querySelectorAll("[class*='text-diff-']"), (span) => span.textContent),
-		}).toStrictEqual({text: "Editeda.tsxFailed", stats: []});
+		}).toStrictEqual({text: "Editinga.tsxFailed", stats: []});
 	});
 
 	function lonePathRow(call: FakeCall): {text: string | null; stats: (string | null)[]; pill?: boolean} {
@@ -274,7 +274,7 @@ describe("failed edits in diff stats", () => {
 				input: {file_path: "/repo/x.mjs", content: "a\nb\n"},
 				isError: true,
 			}),
-		).toStrictEqual({text: "Createdx.mjsFailed", stats: []});
+		).toStrictEqual({text: "Writingx.mjsFailed", stats: []});
 	});
 });
 

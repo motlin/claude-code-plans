@@ -481,8 +481,8 @@ describe("a status row's accessible name", () => {
 				(status) => status.textContent,
 			),
 		}).toStrictEqual({
-			toggles: [{name: "Fetched https://example.com Failed", ids: ["label", "meta", "outcome"]}],
-			announced: ["Fetched https://example.com Failed"],
+			toggles: [{name: "Fetching https://example.com Failed", ids: ["label", "meta", "outcome"]}],
+			announced: ["Fetching https://example.com Failed"],
 		});
 	});
 

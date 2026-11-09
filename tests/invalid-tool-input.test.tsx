@@ -178,7 +178,8 @@ describe("a schema-invalid tool input in the transcript", () => {
 		expect({
 			unreadable: text.includes("Unreadable"),
 			prose: text.includes("Checking the shared exports before the build."),
-			read: text.includes("Used Read"),
+			// The invalid call errored, so upstream's failed step reads the generic label's running form.
+			read: text.includes("Using Read"),
 			bash: text.includes("Built the shared package"),
 		}).toStrictEqual({unreadable: false, prose: true, read: true, bash: true});
 	});

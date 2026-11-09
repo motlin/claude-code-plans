@@ -136,7 +136,7 @@ describe("worktree, scheduling, notification and workflow labels", () => {
 			workflowScript: {verb: "Ran workflow", meta: "deep-research"},
 			workflowNamed: {verb: "Ran workflow", meta: "triage"},
 			workflowNameless: {verb: "Ran workflow"},
-			workflowFailed: {verb: "Failed to run workflow", meta: "wf", failedVerb: true},
+			workflowFailed: {verb: "Ran workflow", meta: "wf"},
 			workflowStopped: {verb: "Ran workflow", meta: "wf"},
 			workflowDenied: {verb: "Ran workflow", meta: "wf"},
 			lsp: {verb: "Inspected code"},

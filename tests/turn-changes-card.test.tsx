@@ -795,6 +795,33 @@ describe("collectTurnChanges", () => {
 });
 
 describe("SessionChat end-of-turn card", () => {
+	it("draws no card for a turn whose only tools are two Edits of one file, drawn as one row with the summed stats", () => {
+		const {lines, toolResultMap} = processTranscript(
+			turnRecords([
+				{tool: "Edit", id: "e1", input: {file_path: "/repo/a.ts", old_string: "a", new_string: "b\nc"}},
+				{tool: "Edit", id: "e2", input: {file_path: "/repo/a.ts", old_string: "d", new_string: "e\nf\ng"}},
+				{text: "done"},
+			]),
+			0,
+		);
+		const {container} = render(
+			<SettingsProvider>
+				<SessionChat
+					sessionId="test-session"
+					lines={lines}
+					toolResultMap={toolResultMap}
+					shouldScrollToEnd={false}
+				/>
+			</SettingsProvider>,
+		);
+		expect({
+			cards: container.querySelectorAll("[data-turn-changes-card]").length,
+			rows: [...container.querySelectorAll('[data-tool-row] > [role="button"], [data-tool-row] > button')].map(
+				(row) => row.textContent,
+			),
+		}).toStrictEqual({cards: 0, rows: ["Editeda.ts+5−25 added, 2 removed"]});
+	});
+
 	it("draws no card for Hello2's last turn, whose plan Write is a sole bare edit row", () => {
 		const {lines, toolResultMap} = processTranscript(turnRecords(HELLO2_LAST_TURN), 0);
 		const {container} = render(

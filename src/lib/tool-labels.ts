@@ -11,6 +11,7 @@ import {
 import {planHeadingMeta, planText} from "./exit-plan-mode";
 import {isRecord} from "./narrow";
 import {pastTense, startsWithKnownVerb} from "./past-tense";
+import type {ReadFileLines} from "./tool-runs";
 import {AskUserQuestionResultSchema, ExitWorktreeActionSchema, RemoteTriggerActionSchema} from "./tool-input-schemas";
 import {workflowCallName} from "./workflow-name";
 
@@ -31,6 +32,8 @@ export interface ToolResultMeta {
 	agentId?: string;
 	/** An AskUserQuestion call's answers keyed by question text, with any notes the user typed. */
 	answers?: Readonly<Record<string, {answer: string; notes: string | null}>>;
+	/** The lines a Read result reports it returned, for upstream's range suffix. */
+	readFile?: ReadFileLines;
 }
 
 export interface ToolLabelCall {
@@ -66,8 +69,10 @@ export interface ToolLabel {
 	metaIsCode?: true;
 	metaHref?: string;
 	doneLabel?: string;
-	/** The verb is upstream's `failedVerb`, which names the failure, so the row adds no "Failed" status. */
-	failedVerb?: true;
+	/** Upstream's `failedVerb`: what an errored call is named where its error is benign. */
+	failedVerb?: string;
+	/** Upstream's `errorIsBenign`: the call errored, but the row settles done under its `failedVerb`. */
+	errorIsBenign?: true;
 }
 
 type FileEditToolUseResult = z.infer<typeof FileEditToolUseResultSchema>;
@@ -143,8 +148,23 @@ function fileEditMeta(result: FileEditToolUseResult, call: ToolResultCall | unde
 	return Object.keys(meta).length > 0 ? meta : undefined;
 }
 
+/** A Read result's `file` block: where the returned lines start and how many there are. */
+function readFileLines(file: unknown): ReadFileLines | undefined {
+	if (!isRecord(file)) return undefined;
+	const {filePath, startLine, numLines, totalLines, content} = file;
+	if (typeof filePath !== "string" || typeof startLine !== "number" || typeof numLines !== "number") return undefined;
+	const endsWithNewline = typeof content === "string" && content.endsWith("\n");
+	return typeof totalLines === "number"
+		? {filePath, startLine, numLines, totalLines, endsWithNewline}
+		: {filePath, startLine, numLines, endsWithNewline};
+}
+
 export function toolResultMetaFrom(toolUseResult: unknown, call?: ToolResultCall): ToolResultMeta | undefined {
 	if (typeof toolUseResult !== "object" || toolUseResult === null) return undefined;
+	if ("type" in toolUseResult && toolUseResult.type === "text" && "file" in toolUseResult) {
+		const readFile = readFileLines(toolUseResult.file);
+		return readFile === undefined ? undefined : {readFile};
+	}
 	if ("gitOperation" in toolUseResult) {
 		const git = GitOperationSchema.safeParse(toolUseResult.gitOperation);
 		return git.success ? {gitOperation: git.data} : undefined;
@@ -334,9 +354,22 @@ function enterWorktreeLabel(input: Record<string, unknown>): ToolLabel {
 	return withMeta({verb: "Created a worktree"}, stringInput(input, "name"));
 }
 
-function exitWorktreeLabel(input: Record<string, unknown>): ToolLabel {
-	const action = ExitWorktreeActionSchema.safeParse(input["action"]);
-	return {verb: exitWorktreeActionLabels[action.success ? action.data : "keep"]};
+/** Upstream's ExitWorktree result when no EnterWorktree session was active: a harmless no-op. */
+const EXIT_WORKTREE_NO_OP = "No-op: there is no active EnterWorktree session";
+
+/** An errored call whose error upstream treats as harmless (`errorIsBenign`). */
+export function isBenignToolError(call: {
+	name: string;
+	isError?: boolean | undefined;
+	result?: string | undefined;
+}): boolean {
+	return call.isError === true && call.name === "ExitWorktree" && (call.result ?? "").startsWith(EXIT_WORKTREE_NO_OP);
+}
+
+function exitWorktreeLabel(call: ToolLabelCall): ToolLabel {
+	const action = ExitWorktreeActionSchema.safeParse(call.input["action"]);
+	const verb = exitWorktreeActionLabels[action.success ? action.data : "keep"];
+	return isBenignToolError(call) ? {verb, failedVerb: "No worktree to leave", errorIsBenign: true} : {verb};
 }
 
 function scheduleWakeupLabel(input: Record<string, unknown>): ToolLabel {
@@ -514,6 +547,12 @@ function progressive(description: string): string {
 	});
 }
 
+/** Upstream `runningVerb`s that are not the done verb's progressive form. */
+const RUNNING_VERBS: Readonly<Record<string, string>> = {
+	EnterPlanMode: "Making a plan",
+	TodoWrite: "Updating todos",
+};
+
 export function runningToolLabel(call: ToolLabelCall): RunningToolLabel {
 	const done = toolLabel({
 		name: call.name,
@@ -521,7 +560,7 @@ export function runningToolLabel(call: ToolLabelCall): RunningToolLabel {
 		invalidInput: call.invalidInput,
 		recipientDescription: call.recipientDescription,
 	});
-	const verb = call.name === "Write" ? "Writing" : progressiveOfPast(done.verb);
+	const verb = RUNNING_VERBS[call.name] ?? (call.name === "Write" ? "Writing" : progressiveOfPast(done.verb));
 	const running: RunningToolLabel = {verb};
 	if (done.doneLabel !== undefined) {
 		const description = stringInput(call.input, "description");
@@ -569,7 +608,7 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
 		case "EnterWorktree":
 			return enterWorktreeLabel(input);
 		case "ExitWorktree":
-			return exitWorktreeLabel(input);
+			return exitWorktreeLabel(call);
 		case "ScheduleWakeup":
 			return scheduleWakeupLabel(input);
 		case "CronCreate":
@@ -586,14 +625,8 @@ export function toolLabel(call: ToolLabelCall): ToolLabel {
 		case "Artifact":
 			return artifactLabel(input);
 		case "Workflow": {
-			// Upstream's settled row names the run beside the verb; an errored call (not
-			// one the user stopped or rejected) takes its failedVerb instead.
-			const failed =
-				call.isError === true && call.stopped !== true && call.denied !== true && call.blocked !== true;
-			return withMeta(
-				failed ? {verb: "Failed to run workflow", failedVerb: true} : {verb: "Ran workflow"},
-				workflowCallName(input) ?? null,
-			);
+			// Upstream's settled row names the run beside the verb.
+			return withMeta({verb: "Ran workflow"}, workflowCallName(input) ?? null);
 		}
 		case "SendMessage":
 			return sendMessageLabel(call);

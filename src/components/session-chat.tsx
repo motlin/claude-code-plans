@@ -97,7 +97,7 @@ import type {SessionWorkflowRun, TranscriptCut} from "../lib/api/sessions";
 import {workflowCallName, workflowSummary} from "../lib/workflow-name";
 import {rewindLayout, type RewindMarkerPlacement} from "../lib/rewind-layout";
 import type {ToolUseBlock} from "../lib/schemas";
-import {toolBucket, type ToolBucket} from "../lib/tool-runs";
+import {coalesceSameTarget, runSuffix, sameTarget, toolBucket, type ToolBucket} from "../lib/tool-runs";
 import {AttachmentBanner, Banner} from "./attachment-banner";
 import {
 	stripCommandTags,
@@ -5458,35 +5458,9 @@ function ContentBlock({
 	return null;
 }
 
-/**
- * A Read bound (`offset`/`limit`) as a positive integer. Claude Code has
- * written these as strings on disk (`"offset": "55, "`), so parse rather than
- * cast, and treat anything non-positive as absent.
- */
-function readBound(value: unknown): number | null {
-	const parsed = typeof value === "number" ? value : typeof value === "string" ? Number.parseInt(value, 10) : NaN;
-	if (!Number.isFinite(parsed) || parsed < 1) return null;
-	return Math.trunc(parsed);
-}
-
-/**
- * The line range of a partial Read, as upstream appends it to the row
- * ("Read archive-completed.ts (220-239)"), so a slice is distinguishable from
- * a whole-file read. Null when the call read the whole file.
- *
- * Upstream also merges the ranges of repeated reads of one file into a single
- * row ("(220-239, 465-47...)"); we keep every call on its own row instead, so
- * that no per-call duration, result, or debug link is lost.
- */
-function readRangeLabel(call: ClientToolCall): string | null {
-	if (call.name !== "Read") return null;
-	const offset = readBound(call.input["offset"]);
-	const limit = readBound(call.input["limit"]);
-	if (offset === null && limit === null) return null;
-	const start = offset ?? 1;
-	if (limit === null) return `(${start}–)`;
-	const end = start + limit - 1;
-	return end === start ? `(${start})` : `(${start}–${end})`;
+/** A row's range suffix (upstream `_`): a Read's line ranges, or a notebook run's `×N`. */
+function rowRangeLabel(calls: readonly ClientToolCall[]): string | null {
+	return runSuffix(calls.map((c) => ({name: c.name, input: c.input, readFile: c.resultMeta?.readFile}))) ?? null;
 }
 
 /**
@@ -5516,13 +5490,23 @@ function ToolCallSection({
 	const prominentCalls = calls.filter(isProminentCall);
 	const backgroundCalls = calls.filter((c) => !isProminentCall(c));
 	const [loneBackgroundCall] = backgroundCalls;
+	const sameTargetRun = backgroundCalls.length > 1 && notices.length === 0 && sameTarget(backgroundCalls);
 
 	return (
 		<>
 			{backgroundCalls.length === 1 && notices.length === 0 && loneBackgroundCall !== undefined && (
 				<LoneToolCall call={loneBackgroundCall} sessionId={sessionId} leading={leading} />
 			)}
-			{(backgroundCalls.length > 1 || notices.length > 0) && (
+			{sameTargetRun && (
+				// Upstream draws a run of calls on one target as the group's sole step (`LQ`, `sole`).
+				<ToolCallRow
+					call={runLabelCall(backgroundCalls)}
+					run={backgroundCalls}
+					sessionId={sessionId}
+					leading={leading}
+				/>
+			)}
+			{(backgroundCalls.length > 1 || notices.length > 0) && !sameTargetRun && (
 				<ToolCallSummary calls={backgroundCalls} sessionId={sessionId} notices={notices} leading={leading} />
 			)}
 			{prominentCalls.map((call, i) => {
@@ -5608,13 +5592,31 @@ const DIFF_STAT_TOOLS = new Set(["Edit", "MultiEdit", "Write"]);
  * A row's diff stat, counted as the group header counts it. Upstream draws none
  * on a call that failed, since it changed nothing, nor on one that changed no lines.
  */
-function useEditDiffStats(call: ClientToolCall): {added: number; removed: number} | null {
+function useEditDiffStats(calls: readonly ClientToolCall[]): {added: number; removed: number} | null {
 	return useMemo(() => {
-		if (!DIFF_STAT_TOOLS.has(call.name) || call.isError === true) return null;
-		const stats = diffStatsForCall(call);
-		return stats.added === 0 && stats.removed === 0 ? null : stats;
-	}, [call]);
+		// Upstream leaves a run's summed diff out while any of its calls is running.
+		if (calls.length > 1 && calls.some(isPendingToolCall)) return null;
+		let added = 0;
+		let removed = 0;
+		for (const c of calls) {
+			if (!DIFF_STAT_TOOLS.has(c.name) || c.isError === true) continue;
+			const stats = diffStatsForCall(c);
+			added += stats.added;
+			removed += stats.removed;
+		}
+		return added === 0 && removed === 0 ? null : {added, removed};
+	}, [calls]);
 }
+
+/** Upstream `zJ`: a same-target run is named by its last running call, else its last call. */
+function runLabelCall(run: readonly ClientToolCall[]): ClientToolCall {
+	// oxlint-disable-next-line unicorn/prefer-array-find -- findLast is not in the ES2022 lib
+	const label = run.findLast(isPendingToolCall) ?? run.at(-1);
+	if (label === undefined) throw new Error("empty same-target run");
+	return label;
+}
+
+const NO_RUN: readonly ClientToolCall[] = [];
 
 /** A call whose tool_result has not arrived yet. */
 function isPendingToolCall(call: ClientToolCall): boolean {
@@ -5842,12 +5844,16 @@ function LoneToolCall({call, sessionId, leading}: {call: ClientToolCall; session
 
 function ToolCallRow({
 	call,
+	run = NO_RUN,
 	sessionId,
 	nested = false,
 	leading = false,
 	shots,
 }: {
+	/** The call that names the row: the call itself, or a run's `runLabelCall`. */
 	call: ClientToolCall;
+	/** A same-target run drawn as this one row, its bodies stacked in the disclosure. */
+	run?: readonly ClientToolCall[];
 	sessionId: string;
 	nested?: boolean;
 	/** The row is the first thing drawn in the transcript row that opens a reply. */
@@ -5855,7 +5861,10 @@ function ToolCallRow({
 	/** A grouped step's place in its group's screenshot strip; omitted outside a group. */
 	shots?: StepShotsPlacement | undefined;
 }) {
-	const [expanded, toggleExpanded] = useModeExpansion(`row:${call.id}`);
+	const members = useMemo(() => (run.length > 0 ? run : [call]), [run, call]);
+	const firstMember = members[0] ?? call;
+	// Upstream keys a run's open state by its first call (`setOpen(first.key)`).
+	const [expanded, toggleExpanded] = useModeExpansion(`row:${firstMember.id}`);
 	const focusReturn = useStepCollapseFocusReturn(expanded);
 	const restInk = useRestInk();
 	const bodyId = useId();
@@ -5891,7 +5900,7 @@ function ToolCallRow({
 	const busy = pending || busyAgent;
 	const running = busy ? runningToolLabel(withPermissionWait(labelCall, permissionWaitId)) : null;
 	const isFileParam = FILE_PARAM_TOOLS.has(call.name);
-	const diffStats = useEditDiffStats(call);
+	const diffStats = useEditDiffStats(members);
 	const isCardStyle = CARD_STYLE_TOOLS.has(call.name) && !nested;
 	const isCodeCard = CODE_CARD_TOOLS.has(call.name);
 	// Renderers that draw nothing leave no padded gap. Every tool body carries upstream's
@@ -5916,25 +5925,28 @@ function ToolCallRow({
 	// A background launch takes the status its later notification reports.
 	const backgroundOutcomes = useContext(BackgroundOutcomeContext);
 	const backgroundOutcome = backgroundOutcomes.byLaunch.get(call.id);
+	// Upstream `yX`: a run is stopped or blocked when any call was, else it settles as its last call.
+	const statusCall =
+		members.length > 1 && !pending ? (members.find((m) => m.stopped === true || m.blocked === true) ?? call) : call;
 	const status =
-		call.isError === true
-			? call.name === "ExitPlanMode" && (call.stopped === true || call.denied === true)
+		statusCall.isError === true
+			? statusCall.name === "ExitPlanMode" && (statusCall.stopped === true || statusCall.denied === true)
 				? PLAN_NOT_APPROVED
-				: call.stopped === true
+				: statusCall.stopped === true
 					? // Upstream notes an orphaned open question "Not answered" in place of "Stopped".
-						call.orphaned === true
+						statusCall.orphaned === true
 						? OUTCOME_LABEL.dismissed
 						: "Stopped"
-					: call.denied === true
+					: statusCall.denied === true
 						? "Denied"
 						: // Upstream settles an auto-mode classifier refusal "Blocked" (`qUJTsT`) in secondary ink.
-							call.blocked === true
+							statusCall.blocked === true
 							? "Blocked"
-							: // A failed verb ("Failed to run workflow") already names the failure, so upstream adds no status.
-								toolRowLabel.failedVerb === true
+							: // Upstream settles a benign error (`errorIsBenign`) done, under its failed verb.
+								toolRowLabel.errorIsBenign === true
 								? null
 								: "Failed"
-			: call.name === "AskUserQuestion"
+			: statusCall.name === "AskUserQuestion"
 				? // A completed question nobody answered notes why, as upstream does.
 					(questionOutcomeNote(call) ?? null)
 				: backgroundOutcome === "stopped"
@@ -5950,8 +5962,7 @@ function ToolCallRow({
 	// Upstream's `Rw` row: a lone launched workflow sits in a 3px-gap rounded-sm shell with no hover recolour.
 	const settledWorkflowRow = isWorkflow && call.isError !== true && !nested && !verbose;
 	// A settled workflow reads in secondary ink, or danger once it failed, as upstream's `S1` draws it.
-	const workflowInk =
-		isWorkflow && !call.isError ? (status === "Failed" ? "text-danger-ink" : "text-secondary") : null;
+	const workflowInk = isWorkflow && !call.isError ? (status === "Failed" ? "text-danger" : "text-secondary") : null;
 	// A null ink marks an in-flight label, which upstream draws as ShimmerText.
 	const labelClass = call.isError ? ink : busy ? null : isSkill ? "text-secondary" : (workflowInk ?? ink);
 	const isCompletedPaneAgent = paneAgentId !== undefined && !call.isError && !busy;
@@ -5978,27 +5989,36 @@ function ToolCallRow({
 	// written ("Rebase and push X"); upstream past-tenses it only on success.
 	// A workflow keeps its name instead.
 	const failedDescription = status === null || isWorkflow ? null : getToolDescription(call.name, call.input);
+	// Upstream's failed step (`state=failed`) reads the running verb ("Reading a.ts · Failed"),
+	// or a Bash or Agent call's description as written.
+	const failed = call.isError === true && status === "Failed";
+	const benignError = call.isError === true && toolRowLabel.errorIsBenign === true;
 	const phrase =
 		failedDescription ??
-		(isAgent && (nested || !busy)
+		(failed || (isAgent && (nested || !busy))
 			? null
 			: running === null
 				? (toolRowLabel.doneLabel ?? null)
 				: (running.label ?? null));
-	const label = phrase ?? running?.verb ?? toolRowLabel.verb;
+	const label =
+		phrase ??
+		(benignError ? toolRowLabel.failedVerb : undefined) ??
+		(failed ? runningToolLabel(labelCall).verb : undefined) ??
+		running?.verb ??
+		toolRowLabel.verb;
 	// A label that is a whole phrase owns the row and truncates; a bare verb
 	// keeps its width so the param beside it truncates instead.
 	const isPhraseLabel = phrase !== null;
 
 	const displayParam =
-		RENDERER_HANDLES_PARAM.has(call.name) || PARAMLESS_TOOLS.has(call.name) || isPhraseLabel
+		RENDERER_HANDLES_PARAM.has(call.name) || PARAMLESS_TOOLS.has(call.name) || isPhraseLabel || benignError
 			? ""
 			: isFileParam
 				? (call.param.split("/").pop() ?? call.param)
 				: (toolRowLabel.meta ?? call.param);
 	const paramHref = displayParam === toolRowLabel.meta ? toolRowLabel.metaHref : undefined;
 	const paramIsCode = displayParam === toolRowLabel.meta && toolRowLabel.metaIsCode === true && !isFailedSkill;
-	const rangeLabel = displayParam ? readRangeLabel(call) : null;
+	const rangeLabel = displayParam ? rowRangeLabel(members) : null;
 	// What allowed or blocked the call is a diagnostic upstream never shows, so only Verbose names it.
 	const permissionLabel = verbose && call.permission !== undefined ? permissionDecisionLabel(call.permission) : null;
 	// Likewise whether a Bash call ran inside the sandbox.
@@ -6141,7 +6161,7 @@ function ToolCallRow({
 				(workflowStatusSummary === undefined ? (
 					<span
 						id={`${statusId}-outcome`}
-						className={`shrink-0 text-body ${status === "Failed" ? "text-danger-ink" : "text-secondary"}`}
+						className={`shrink-0 text-body ${status === "Failed" ? "text-danger" : "text-secondary"}`}
 					>
 						{status}
 					</span>
@@ -6152,7 +6172,7 @@ function ToolCallRow({
 								id={`${statusId}-outcome`}
 								// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- upstream's status is a tab stop that reaches its summary tooltip
 								tabIndex={0}
-								className={`shrink-0 text-body outline-none hide-focus-ring focus-visible:ring-focus rounded-r2 ${status === "Failed" ? "text-danger-ink" : "text-secondary"}`}
+								className={`shrink-0 text-body outline-none hide-focus-ring focus-visible:ring-focus rounded-r2 ${status === "Failed" ? "text-danger" : "text-secondary"}`}
 							>
 								{status}
 							</span>
@@ -6184,32 +6204,49 @@ function ToolCallRow({
 	);
 
 	// Upstream's `B_` hides a blocked call's raw denial; the renderers show its reason instead.
-	const blockedCall = call.blocked === true ? call : null;
-	const rendererCall = useMemo(() => (call.blocked === true ? {...call, result: undefined} : call), [call]);
-	const body = hasBody ? (
-		isCardStyle ? (
+	const memberBody = (member: ClientToolCall) => {
+		const MemberRenderer = member === call ? Renderer : getCallRenderer(member);
+		const blockedCall = member.blocked === true ? member : null;
+		const rendererCall = member.blocked === true ? {...member, result: undefined} : member;
+		return isCardStyle ? (
 			<div className="epitaxy-code-size group/body py-p6">
 				<div
 					className={`card-outline ${isCodeCard ? "code-card " : ""}rounded-r6 overflow-clip flex flex-col relative`}
 				>
 					<Suspense fallback={null}>
 						<BlockedCallContext value={blockedCall}>
-							<Renderer toolCall={rendererCall} verbose={verbose} />
+							<MemberRenderer toolCall={rendererCall} verbose={verbose} />
 						</BlockedCallContext>
 					</Suspense>
-					<DebugLink sessionId={sessionId} uuid={call.sourceUuid} className="absolute top-1 right-1" />
+					<DebugLink sessionId={sessionId} uuid={member.sourceUuid} className="absolute top-1 right-1" />
 				</div>
 			</div>
 		) : (
 			<div className={bodyClass}>
 				<Suspense fallback={null}>
 					<BlockedCallContext value={blockedCall}>
-						<Renderer toolCall={rendererCall} nested={nested} verbose={verbose} />
+						<MemberRenderer toolCall={rendererCall} nested={nested} verbose={verbose} />
 					</BlockedCallContext>
 				</Suspense>
 			</div>
+		);
+	};
+	// Upstream's run step stacks every call's body, with no header of its own (`sg`).
+	const body = hasBody ? (
+		members.length === 1 ? (
+			memberBody(call)
+		) : (
+			<div className="flex min-w-0 flex-col gap-sm">
+				{members.map((member) => (
+					<div key={member.id} className="min-w-0" data-step-key={member.id}>
+						{memberBody(member)}
+					</div>
+				))}
+			</div>
 		)
 	) : null;
+	// Upstream's run lists every call it stands for, so find and jump land on the one row.
+	const toolAnchor = members.length > 1 ? members.map((member) => member.id).join(" ") : undefined;
 
 	if (paneAgentId !== undefined && openSubagent !== null) {
 		const open = () => {
@@ -6249,15 +6286,16 @@ function ToolCallRow({
 	// A grouped step shows its own screenshots, numbered group-wide, until it expands to its body.
 	const media = expanded ? null : shots === undefined ? (
 		holdsImages ? (
-			<RowMedia calls={[call]} step lazy={false} />
+			<RowMedia calls={members} step lazy={false} />
 		) : null
 	) : (
-		<RowMedia calls={[call]} from={shots.from} total={shots.total} step />
+		<RowMedia calls={members} from={shots.from} total={shots.total} step />
 	);
 	// An expanded grouped step ends its body with the full screenshots; a lone row hoists them
 	// into a card after the row, as upstream's `code.tool_images` does.
-	const images = call.outputImages !== undefined && call.outputImages.length > 0 ? call.outputImages : null;
-	const imageCaptions = images?.map(() => screenshotCaption(call)) ?? [];
+	const memberImages = members.flatMap((member) => member.outputImages ?? []);
+	const images = memberImages.length > 0 ? memberImages : null;
+	const imageCaptions = members.flatMap((member) => (member.outputImages ?? []).map(() => screenshotCaption(member)));
 	const bodyImages =
 		images !== null && (nested || holdsImages) ? (
 			<StepScreenshots images={images} captions={imageCaptions} />
@@ -6278,7 +6316,7 @@ function ToolCallRow({
 
 	if (!expandable) {
 		return withHoistedImages(
-			<div data-tool-row="" className="flex flex-col w-full">
+			<div data-tool-row="" data-tool-anchor={toolAnchor} className="flex flex-col w-full">
 				<div
 					data-state={busyAgent ? "busy" : undefined}
 					data-cds-row=""
@@ -6302,6 +6340,7 @@ function ToolCallRow({
 		<div
 			ref={isTurnStatus ? focusReturn.rootRef : undefined}
 			data-tool-row=""
+			data-tool-anchor={toolAnchor}
 			data-turn-status={isTurnStatus ? "" : undefined}
 			data-standalone-tool-row={isTurnStatus ? "" : undefined}
 			className={isTurnStatus ? TURN_STATUS_CLASS : "flex flex-col w-full"}
@@ -6453,13 +6492,16 @@ function ToolCallSummary({
 	const shotPlacements = useMemo(() => {
 		const total = calls.reduce((sum, call) => sum + (call.outputImages?.length ?? 0), 0);
 		let from = 0;
-		return calls.map((call) => {
-			const placement = {from, total};
-			from += call.outputImages?.length ?? 0;
-			return placement;
-		});
+		// Keyed by call id; a coalesced run takes its first call's place and strips every call's shots.
+		return new Map(
+			calls.map((call) => {
+				const placement = {from, total};
+				from += call.outputImages?.length ?? 0;
+				return [call.id, placement];
+			}),
+		);
 	}, [calls]);
-	const hasGroupMedia = !expanded && (shotPlacements[0]?.total ?? 0) > 0;
+	const hasGroupMedia = !expanded && [...shotPlacements.values()].some((placement) => placement.total > 0);
 
 	const toggle = (
 		<button
@@ -6532,15 +6574,26 @@ function ToolCallSummary({
 								{leadingPeers.map((notice) => (
 									<AgentMessageRow key={`notice-${notice.lineIndex}`} message={notice.message} />
 								))}
-								{calls.map((call, i) => (
-									<ToolCallRow
-										key={i}
-										call={call}
-										sessionId={sessionId}
-										nested
-										shots={shotPlacements[i]}
-									/>
-								))}
+								{coalesceSameTarget(calls).map((item) =>
+									"kind" in item ? (
+										<ToolCallRow
+											key={item.members[0]?.id}
+											call={runLabelCall(item.members)}
+											run={item.members}
+											sessionId={sessionId}
+											nested
+											shots={shotPlacements.get(item.members[0]?.id ?? "")}
+										/>
+									) : (
+										<ToolCallRow
+											key={item.id}
+											call={item}
+											sessionId={sessionId}
+											nested
+											shots={shotPlacements.get(item.id)}
+										/>
+									),
+								)}
 								{trailingPeers.map((notice) => (
 									<AgentMessageRow key={`notice-${notice.lineIndex}`} message={notice.message} />
 								))}

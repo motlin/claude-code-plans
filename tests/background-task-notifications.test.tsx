@@ -586,7 +586,7 @@ describe("background launch row status", () => {
 			),
 		).toStrictEqual([
 			{text: "Run the test suite", className: MUTED_PHRASE},
-			{text: "Failed", className: "shrink-0 text-body text-danger-ink"},
+			{text: "Failed", className: "shrink-0 text-body text-danger"},
 			CHEVRON,
 		]);
 	});

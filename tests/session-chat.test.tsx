@@ -1033,7 +1033,7 @@ function rowHeaderChildren(records: unknown[]): {text: string | null; className:
 }
 
 const MUTED_LABEL = "text-body text-secondary group-hover/tool:text-secondary";
-const FAILED_SUFFIX = {text: "Failed", className: "shrink-0 text-body text-danger-ink"};
+const FAILED_SUFFIX = {text: "Failed", className: "shrink-0 text-body text-danger"};
 const STOPPED_SUFFIX = {text: "Stopped", className: "shrink-0 text-body text-secondary"};
 const ROW_CHEVRON = {
 	text: "",
@@ -1428,14 +1428,14 @@ describe("SessionChat failed tool row label", () => {
 				}),
 			),
 		).toStrictEqual([
-			{text: "Messaged @slotter", className: `shrink-0 ${MUTED_LABEL}`},
+			{text: "Messaging @slotter", className: `shrink-0 ${MUTED_LABEL}`},
 			{text: "hi", className: `truncate min-w-0 ${MUTED_LABEL}`},
 			FAILED_SUFFIX,
 			ROW_CHEVRON,
 		]);
 	});
 
-	it('keeps the success verb on a failed Edit, with the file name in primary ink, and appends "Failed"', () => {
+	it('gives a failed Edit the running verb, with the file name in primary ink, and appends "Failed"', () => {
 		const children = rowHeaderChildren(
 			toolResultRecords(
 				{name: "Edit", input: {file_path: "/repo/src/pages.tsx", old_string: "a", new_string: "b"}},
@@ -1445,7 +1445,7 @@ describe("SessionChat failed tool row label", () => {
 		);
 
 		expect(children.filter((child) => child.text !== "" && !/^[+-]\d/.test(child.text ?? ""))).toStrictEqual([
-			{text: "Edited", className: `shrink-0 ${MUTED_LABEL}`},
+			{text: "Editing", className: `shrink-0 ${MUTED_LABEL}`},
 			{text: "pages.tsx", className: "text-body text-primary truncate min-w-0"},
 			FAILED_SUFFIX,
 		]);
@@ -1476,7 +1476,7 @@ describe("SessionChat Skill row label", () => {
 		});
 	});
 
-	it('keeps a failed Skill row on "Ran skill /name" and appends a danger "Failed", as upstream does', () => {
+	it('gives a failed Skill row "Running skill /name" and appends a danger "Failed", as upstream does', () => {
 		const records = toolResultRecords({name: "Skill", input: {skill: "nextdns:report"}}, "Unknown skill", true);
 		const html = renderTranscript(records);
 		const header = renderTranscriptElement(records).querySelector(".group\\/tool")!;
@@ -1487,11 +1487,11 @@ describe("SessionChat Skill row label", () => {
 			code: html.includes("<code"),
 			oldLabel: html.includes("Failed to run skill"),
 		}).toStrictEqual({
-			text: ["Ran skill", "/nextdns:report", "Failed", ""],
+			text: ["Running skill", "/nextdns:report", "Failed", ""],
 			spans: [
 				"shrink-0 text-body text-secondary group-hover/tool:text-secondary",
 				"truncate min-w-0 text-body text-secondary",
-				"shrink-0 text-body text-danger-ink",
+				"shrink-0 text-body text-danger",
 				"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 			],
 			code: false,
@@ -1510,7 +1510,7 @@ describe("SessionChat Skill row label", () => {
 });
 
 describe("SessionChat failed tool row label text", () => {
-	it('keeps a failed row on its success verb and appends "Failed", keeping the file path primary', () => {
+	it('gives a failed row the running verb and appends "Failed", keeping the file path primary', () => {
 		const editInput = {
 			file_path: "/repo/src/cache.ts",
 			old_string: "a",
@@ -1526,18 +1526,18 @@ describe("SessionChat failed tool row label text", () => {
 			okGrep: toolRowLabelSpans(renderTranscript(failedToolCallRecords(false))),
 		}).toStrictEqual({
 			failedEdit: [
-				["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Edited"],
+				["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Editing"],
 				["text-body text-primary truncate min-w-0", "cache.ts"],
-				["shrink-0 text-body text-danger-ink", "Failed"],
+				["shrink-0 text-body text-danger", "Failed"],
 			],
 			okEdit: [
 				["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Edited"],
 				["text-body text-primary truncate min-w-0", "cache.ts"],
 			],
 			failedGrep: [
-				["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Searched"],
+				["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Searching"],
 				["truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary", "alice"],
-				["shrink-0 text-body text-danger-ink", "Failed"],
+				["shrink-0 text-body text-danger", "Failed"],
 			],
 			okGrep: [
 				["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Searched"],
@@ -1561,7 +1561,7 @@ describe("SessionChat failed tool row label text", () => {
 					"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
 					"Install dependencies and build",
 				],
-				["shrink-0 text-body text-danger-ink", "Failed"],
+				["shrink-0 text-body text-danger", "Failed"],
 			],
 			ok: [
 				[
@@ -1572,7 +1572,7 @@ describe("SessionChat failed tool row label text", () => {
 		});
 	});
 
-	it('keeps "Used {server: tool name}" on a failed tool with no verb of its own', () => {
+	it('gives a failed tool with no verb of its own "Using {server: tool name}"', () => {
 		const html = renderTranscript(
 			failedToolCallRecords(true, {
 				name: "mcp__sentry__search_issues",
@@ -1581,9 +1581,9 @@ describe("SessionChat failed tool row label text", () => {
 		);
 
 		expect(toolRowLabelSpans(html)).toStrictEqual([
-			["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Used sentry: search issues"],
+			["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Using sentry: search issues"],
 			["truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary", "unhandled"],
-			["shrink-0 text-body text-danger-ink", "Failed"],
+			["shrink-0 text-body text-danger", "Failed"],
 		]);
 	});
 });
@@ -1646,11 +1646,11 @@ describe("SessionChat file-param tool row argument", () => {
 		]);
 	});
 
-	it("names a single-line read once instead of as an empty range", () => {
+	it("names a single-line read as a range, as upstream never collapses one", () => {
 		expect(readRow({file_path: "/repo/src/cache.ts", offset: 220, limit: 1})).toStrictEqual([
 			[VERB, "Read"],
 			[ARGUMENT, "cache.ts"],
-			[RANGE, "(220)"],
+			[RANGE, "(220–220)"],
 		]);
 	});
 
@@ -1767,7 +1767,7 @@ describe("SessionChat Agent row label", () => {
 			),
 		).toStrictEqual([
 			[DESCRIPTION, "Implement pending approvals fix"],
-			["shrink-0 text-body text-danger-ink", "Failed"],
+			["shrink-0 text-body text-danger", "Failed"],
 		]);
 	});
 });
@@ -1901,7 +1901,7 @@ describe("SessionChat Agent row opening the Subagent pane", () => {
 			records: toolResultRecords(AGENT_CALL, "Fabricated failure", true),
 			expectedClasses: [
 				"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
-				"shrink-0 text-body text-danger-ink",
+				"shrink-0 text-body text-danger",
 			],
 		},
 	])("preserves the $state resolved agent label treatment", ({records, expectedClasses}) => {
@@ -1997,14 +1997,15 @@ describe("SessionChat Bash row label", () => {
 		expect(bashLabel({command: "pnpm run build"})).toStrictEqual([[PHRASE, "pnpm run build"]]);
 	});
 
-	it('keeps the raw command and appends "Failed" when an undescribed call errors', () => {
+	it('reads "Running" + the raw command and appends "Failed" when an undescribed call errors', () => {
 		expect(
 			toolRowLabelSpans(
 				renderTranscript(failedToolCallRecords(true, {name: "Bash", input: {command: "pnpm run build"}})),
 			),
 		).toStrictEqual([
+			["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Running"],
 			[PHRASE, "pnpm run build"],
-			["shrink-0 text-body text-danger-ink", "Failed"],
+			["shrink-0 text-body text-danger", "Failed"],
 		]);
 	});
 });
@@ -2049,7 +2050,7 @@ describe("SessionChat tool row verbs", () => {
 		});
 	});
 
-	it('keeps those rows on their success labels and appends "Failed" when the call errored', () => {
+	it('gives those rows upstream\'s running verbs and appends "Failed" when the call errored', () => {
 		const label = (call: {name: string; input: unknown}) =>
 			toolRowLabelSpans(renderTranscript(failedToolCallRecords(true, call))).map(([, text]) => text);
 
@@ -2061,12 +2062,12 @@ describe("SessionChat tool row verbs", () => {
 			cronCreate: label({name: "CronCreate", input: {cron: "0 9 * * 1", prompt: "p"}}),
 			toolSearch: label({name: "ToolSearch", input: {query: "select:Read"}}),
 		}).toStrictEqual({
-			glob: ["Searched", "*.yml", "Failed"],
-			todoWrite: ["Cleared todos", "Failed"],
-			enterPlanMode: ["Started planning", "Failed"],
-			exitPlanMode: ["Proposed plan", "Failed"],
-			cronCreate: ["Started loop", "p", "Failed"],
-			toolSearch: ["Loaded tools", "Failed"],
+			glob: ["Searching", "*.yml", "Failed"],
+			todoWrite: ["Updating todos", "Failed"],
+			enterPlanMode: ["Making a plan", "Failed"],
+			exitPlanMode: ["Proposing plan", "Failed"],
+			cronCreate: ["Starting loop", "p", "Failed"],
+			toolSearch: ["Loading tools", "Failed"],
 		});
 	});
 });
@@ -2239,7 +2240,7 @@ describe("SessionChat tool row hover treatment", () => {
 		expect(rowHeaderSpanClasses(renderTranscript(failedToolCallRecords(true)))).toStrictEqual([
 			"shrink-0 text-body text-secondary group-hover/tool:text-secondary",
 			"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
-			"shrink-0 text-body text-danger-ink",
+			"shrink-0 text-body text-danger",
 			"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 		]);
 	});
