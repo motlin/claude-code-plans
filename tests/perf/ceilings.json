@@ -51,18 +51,18 @@
 		"raisedAt": "2026-11-02"
 	},
 	"bundle.home.gzip": {
-		"ceiling": 452333,
+		"ceiling": 457515,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "lowered from 459538 (2026-11-08): the tooltip shrinkwrap engine (src/lib/shrinkwrap.ts) now loads through src/lib/shrinkwrap-loader.ts at idle, on a tip's first hover or focus, or with the session view's static import, and the home dock's start-failed card (SendRejectedCard with ApprovalActionButton and Base UI Collapsible) loads behind a lazy boundary warmed at idle and when a launch starts; just client-boundaries keeps all three off the home cold load. The session bundle pays ~0.3% for the extra chunk boundaries. The 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-08"
+		"reason": "raised from 452333 (2026-11-09): per-folder remembered permission mode (folder-permission-mode-memory T1-T4) adds src/lib/folder-permission-mode.ts and the useFolderModeMemory store to the home composer, which must resolve the draft's mode on first paint after hydration, so it can't sit behind a lazy boundary. The 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-09"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1363664,
+		"ceiling": 1379313,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "lowered from 1381554 (2026-11-08): the tooltip shrinkwrap engine (src/lib/shrinkwrap.ts) now loads through src/lib/shrinkwrap-loader.ts at idle, on a tip's first hover or focus, or with the session view's static import, and the home dock's start-failed card (SendRejectedCard with ApprovalActionButton and Base UI Collapsible) loads behind a lazy boundary warmed at idle and when a launch starts; just client-boundaries keeps all three off the home cold load. The session bundle pays ~0.3% for the extra chunk boundaries. The 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-08"
+		"reason": "raised from 1363664 (2026-11-09): per-folder remembered permission mode (folder-permission-mode-memory T1-T4) adds src/lib/folder-permission-mode.ts and the useFolderModeMemory store to the home composer, which must resolve the draft's mode on first paint after hydration, so it can't sit behind a lazy boundary. The 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-09"
 	},
 	"bundle.session.gzip": {
 		"ceiling": 719240,
@@ -84,18 +84,18 @@
 		"tolerance": 0
 	},
 	"client.coldHome.default.fetches": {
-		"ceiling": 20,
+		"ceiling": 21,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "The home composer reads the selected launch folder's git status (/api/home/folder-status, upstream's getWorkingTreeStatus) so the folder menu hides its Worktree row for a non-git folder, +1 fetch (19 to 20); it runs only while a folder is selected.",
-		"raisedAt": "2026-10-27"
+		"reason": "The home composer reads the selected launch folder's project defaultMode (/api/composer-defaults?cwd=, upstream's repo_settings_default_mode) so a new draft resolves user default, then the folder's remembered mode, then the project default (folder-permission-mode-memory T4), +1 fetch (20 to 21); it runs only while a folder is selected. Before that: the folder's git status (/api/home/folder-status), +1 fetch (19 to 20).",
+		"raisedAt": "2026-11-09"
 	},
 	"client.coldHome.default.responseBytes": {
-		"ceiling": 7270,
+		"ceiling": 7441,
 		"unit": "bytes",
 		"tolerance": 0,
-		"reason": "Session list items carry lastUserMessage (the first line of the newest typed prompt, capped at 200 chars) for the described sidebar row's message (sidebar-row-metadata-line T2): +663 bytes (6607 to 7270).",
-		"raisedAt": "2026-11-03"
+		"reason": "The composer defaults carry repoDefaultMode, and the home composer also fetches them for the selected folder (folder-permission-mode-memory T4): +171 bytes (7270 to 7441). Before that: session list items carry lastUserMessage (sidebar-row-metadata-line T2), +663 bytes (6607 to 7270).",
+		"raisedAt": "2026-11-09"
 	},
 	"client.composer.home.slashMenu.claudeEventsConsumers": {
 		"ceiling": 1,
@@ -601,11 +601,11 @@
 		"tolerance": 0
 	},
 	"server.coldLoad.composerDefaults.resp.bytes": {
-		"ceiling": 125,
+		"ceiling": 148,
 		"unit": "bytes",
 		"tolerance": 0,
-		"reason": "The response carries fastModeBlocked (the CLI's fast-mode disabled reason) for upstream's blocked Fast mode row, +23 bytes (102 to 125).",
-		"raisedAt": "2026-11-03"
+		"reason": "The response carries repoDefaultMode (the ?cwd= project folder's permissions.defaultMode, null without one) for the per-folder mode resolver (folder-permission-mode-memory T4), +23 bytes (125 to 148). Before that: fastModeBlocked, +23 bytes (102 to 125).",
+		"raisedAt": "2026-11-09"
 	},
 	"server.coldLoad.composerDefaults.sql.count": {
 		"ceiling": 0,

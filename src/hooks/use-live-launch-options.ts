@@ -27,6 +27,8 @@ export interface LiveLaunchOptionsInput {
 	hookContext: LiveHookContext | undefined;
 	toast: (options: ToastOptions) => void;
 	send?: (sessionId: string, change: LiveOptionChange) => Promise<void>;
+	/** A chin mode pick didn't take (unreachable, send failed, or the CLI reports another mode): undo its memory. */
+	onModeFailed?: ((expected: LaunchPermissionMode) => void) | undefined;
 }
 
 export interface LiveLaunchControls {
@@ -62,6 +64,8 @@ interface PendingMode {
 	sessionId: string;
 	expected: LaunchPermissionMode;
 	baseline: LiveHookContext | undefined;
+	/** A chin pick, rather than a change made elsewhere (`expectMode`), so its failure rolls the memory back. */
+	picked: boolean;
 }
 
 /** A hook event after the baseline that reports a (non-cleared) permission mode. */
@@ -85,6 +89,7 @@ export function useLiveLaunchOptions({
 	hookContext,
 	toast,
 	send = sendHerdrLiveOption,
+	onModeFailed,
 }: LiveLaunchOptionsInput): LiveLaunchSession {
 	const [applied, setApplied] = useState<{
 		sessionId: string;
@@ -109,18 +114,20 @@ export function useLiveLaunchOptions({
 		}
 		if (toastedRef.current === sessionPending) return;
 		toastedRef.current = sessionPending;
+		if (sessionPending.picked) onModeFailed?.(sessionPending.expected);
 		toast({
 			kind: "error",
 			message: FAILURE_MESSAGE.mode,
 			description: `Claude Code reports ${modeLabel(reported)} instead of ${modeLabel(sessionPending.expected)}.`,
 		});
-	}, [reported, sessionPending, toast]);
+	}, [reported, sessionPending, toast, onModeFailed]);
 
 	const apply = useCallback(
 		async (next: LaunchOptions) => {
 			const change = nextChange(next, options, currentMode, availableModes);
 			if (change === null) return;
 			if ("error" in change) {
+				if (next.permissionMode !== undefined) onModeFailed?.(next.permissionMode);
 				toast({kind: "error", message: FAILURE_MESSAGE.mode, description: change.error});
 				return;
 			}
@@ -128,6 +135,7 @@ export function useLiveLaunchOptions({
 			try {
 				await send(sessionId, change.change);
 			} catch (error) {
+				if ("mode" in change) onModeFailed?.(change.mode);
 				toast({
 					kind: "error",
 					message: FAILURE_MESSAGE[change.change.kind],
@@ -136,18 +144,18 @@ export function useLiveLaunchOptions({
 				return;
 			}
 			if ("mode" in change) {
-				setPendingMode({sessionId, expected: change.mode, baseline});
+				setPendingMode({sessionId, expected: change.mode, baseline, picked: true});
 			} else {
 				const merged = {...sessionOptions, ...change.applied};
 				setApplied({sessionId, options: next.model === undefined ? merged : withModel(merged, next.model)});
 			}
 		},
-		[availableModes, currentMode, hookContext, options, send, sessionId, sessionOptions, toast],
+		[availableModes, currentMode, hookContext, options, send, sessionId, sessionOptions, toast, onModeFailed],
 	);
 
 	const expectMode = useCallback(
 		(mode: LaunchPermissionMode) => {
-			setPendingMode({sessionId, expected: mode, baseline: hookContext});
+			setPendingMode({sessionId, expected: mode, baseline: hookContext, picked: false});
 		},
 		[hookContext, sessionId],
 	);

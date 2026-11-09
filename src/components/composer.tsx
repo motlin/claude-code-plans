@@ -25,6 +25,7 @@ import {assertNever} from "../lib/assert-never";
 import type {ComposerState} from "../lib/composer-state";
 import {type QueuedPrompt, queuedForLater, queuedStatusText} from "../lib/composer-queue";
 import {consentWorkspaceKey} from "../lib/permission-mode-consent";
+import {carryPickToFolder, folderModeKey} from "../lib/folder-permission-mode";
 import {type HistoryNavigator, historyKeyApplies, historyNavigator} from "../lib/prompt-history";
 import {
 	appendAttachment,
@@ -71,6 +72,7 @@ import {
 	effortLevelsFor,
 	type LaunchOptions,
 	LaunchOptionsSchema,
+	type LaunchPermissionMode,
 	MORE_MODELS,
 	PRIMARY_MODELS,
 } from "../lib/launch-options";
@@ -222,8 +224,10 @@ interface ComposerProps {
 	onSlashMenuOpen?: (() => void) | undefined;
 	/** Settings allow launching in Bypass permissions mode. */
 	bypassPermissionsAllowed?: boolean | undefined;
-	/** The session's or chosen folder's working directory, which a Bypass consent is remembered for. */
+	/** The session's or chosen folder's working directory, which a Bypass consent and mode pick are remembered for. */
 	permissionCwd?: string | undefined;
+	/** A Mode menu pick, remembered for `permissionCwd`'s folder (upstream's per-folder mode memory). */
+	onPermissionModePick?: ((mode: LaunchPermissionMode) => void) | undefined;
 	/** An idle live pane: chin picks steer it instead of becoming launch flags. */
 	live?: LiveLaunchControls | undefined;
 	/** The session whose working directory feeds the "@" file mention popup. */
@@ -605,6 +609,7 @@ export function Composer({
 	onSlashMenuOpen,
 	bypassPermissionsAllowed = false,
 	permissionCwd,
+	onPermissionModePick,
 	live,
 	mentionSessionId,
 	mentionCwd,
@@ -665,6 +670,18 @@ export function Composer({
 		options: {},
 	});
 	const launchOptions = launch.draftKey === draftKey ? launch.options : NO_LAUNCH_OPTIONS;
+	// Upstream's folder-transfer effect (cf6ae6197 `Jt`): a Manual, Accept edits or Plan pick stays with the draft in
+	// the new folder, while an Auto or Bypass pick is dropped so that folder's own memory or default takes over.
+	const launchFolder = folderModeKey(permissionCwd);
+	const [pickFolder, setPickFolder] = useState(launchFolder);
+	if (pickFolder !== launchFolder) {
+		setPickFolder(launchFolder);
+		const pick = launchOptions.permissionMode;
+		if (pick !== undefined && !carryPickToFolder({pick})) {
+			const {permissionMode: _dropped, ...kept} = launchOptions;
+			setLaunch({draftKey, options: kept});
+		}
+	}
 	const [openMenu, setOpenMenu] = useState<ChinMenu | null>(null);
 	const chinPickRef = useRef<ChinPickHandle>(null);
 	// Upstream's literal error band: kept while typing, cleared by Dismiss or the next submit.
@@ -1379,8 +1396,9 @@ export function Composer({
 			onOpenMenuChange: setOpenMenu,
 			bypassPermissionsAllowed,
 			permissionWorkspace: consentWorkspaceKey(permissionCwd),
+			onPermissionModePick,
 		}),
-		[chinLaunchOptions, live, draftKey, openMenu, bypassPermissionsAllowed, permissionCwd],
+		[chinLaunchOptions, live, draftKey, openMenu, bypassPermissionsAllowed, permissionCwd, onPermissionModePick],
 	);
 
 	/** Upstream `Cq` is an atom: Backspace after it (or Delete before it) selects it instead of eating a character. */

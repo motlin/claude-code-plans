@@ -21,6 +21,7 @@ import {
 	effortOptionsFor,
 	fastModeSupported,
 	type LaunchOptions,
+	type LaunchPermissionMode,
 	modeTriggerLabel,
 	modelLabel,
 	modelMenuValue,
@@ -209,6 +210,8 @@ export interface ChinLaunchControls {
 	bypassPermissionsAllowed: boolean;
 	/** The folder the Bypass ack is kept for (`consentWorkspaceKey`), or "" before one is known. */
 	permissionWorkspace: string;
+	/** A Mode menu pick that passed the consent guard, for the folder's remembered mode. */
+	onPermissionModePick?: ((mode: LaunchPermissionMode) => void) | undefined;
 	/** A live session is cached at its effort, so changing it asks first. */
 	confirmEffortChange?: boolean;
 }
@@ -336,6 +339,7 @@ export const ComposerChin = memo(function ComposerChin({
 			bypassPermissionsAllowed={launch.bypassPermissionsAllowed}
 			workspace={launch.permissionWorkspace}
 			onSelect={(permissionMode) => {
+				launch.onPermissionModePick?.(permissionMode);
 				onLaunchOptionsChange({...launchOptions, permissionMode});
 			}}
 		/>

@@ -426,6 +426,8 @@ export interface ComposerDefaults {
 	model: string | null;
 	effortLevel: string | null;
 	defaultMode: string | null;
+	/** The `?cwd=` project folder's `permissions.defaultMode` (settings.local.json over settings.json), or null. */
+	repoDefaultMode: string | null;
 	bypassPermissionsAllowed: boolean;
 	/** A fresh session starts in fast mode (`sessionFastMode` with no turns). */
 	fastMode: boolean;
@@ -437,6 +439,7 @@ export const ComposerDefaultsResponse: z.ZodType<ComposerDefaults> = z.strictObj
 	model: z.string().nullable(),
 	effortLevel: z.string().nullable(),
 	defaultMode: z.string().nullable(),
+	repoDefaultMode: z.string().nullable(),
 	bypassPermissionsAllowed: z.boolean(),
 	fastMode: z.boolean(),
 	fastModeBlocked: FastModeBlockedResponse.nullable(),

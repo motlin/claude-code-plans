@@ -87,6 +87,10 @@ const ENDPOINTS: Array<{path: string; module: string; params?: Record<string, st
 	{path: "/api/commands", module: "../../src/routes/api/commands"},
 	{path: `/api/commands?cwd=${encodeURIComponent(FIXTURE_CWD)}`, module: "../../src/routes/api/commands"},
 	{path: "/api/composer-defaults", module: "../../src/routes/api/composer-defaults"},
+	{
+		path: `/api/composer-defaults?cwd=${encodeURIComponent(FIXTURE_CWD)}`,
+		module: "../../src/routes/api/composer-defaults",
+	},
 	{path: "/api/home/dismissals", module: "../../src/routes/api/home.dismissals"},
 	{path: "/api/home-stats", module: "../../src/routes/api/home-stats"},
 	{path: "/api/usage", module: "../../src/routes/api/usage"},

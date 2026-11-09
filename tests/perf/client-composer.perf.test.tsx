@@ -125,6 +125,11 @@ function composerEndpoints(
 		{path: "/api/prompt-history", module: "../../src/routes/api/prompt-history", params: {}},
 		{path: "/api/commands", module: "../../src/routes/api/commands", params: {}},
 		{path: "/api/composer-defaults", module: "../../src/routes/api/composer-defaults", params: {}},
+		{
+			path: `/api/composer-defaults?cwd=${encodeURIComponent(projectPath)}`,
+			module: "../../src/routes/api/composer-defaults",
+			params: {},
+		},
 		{path: "/api/home/dismissals", module: "../../src/routes/api/home.dismissals", params: {}},
 		{path: "/api/home-stats", module: "../../src/routes/api/home-stats", params: {}},
 		{path: "/api/usage", module: "../../src/routes/api/usage", params: {}},

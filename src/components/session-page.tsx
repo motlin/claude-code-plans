@@ -102,6 +102,7 @@ import {promptHistoryQueryOptions} from "../lib/api/prompt-history";
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {useSlashCommands} from "../hooks/use-slash-commands";
 import {useLiveLaunchOptions} from "../hooks/use-live-launch-options";
+import {useFolderModeMemory} from "../hooks/use-folder-mode-memory";
 import {useRewindPicker} from "../hooks/use-rewind-shortcut";
 import {useRewindRequest} from "../hooks/use-rewind-request";
 import {canStopResponse, useStopResponse} from "../hooks/use-stop-response";
@@ -766,12 +767,14 @@ function SessionView({
 		() => modeMenuItems(bypassPermissionsAllowed).map((item) => item.id),
 		[bypassPermissionsAllowed],
 	);
+	const folderModes = useFolderModeMemory(sessionDirectory ?? undefined);
 	const liveLaunch = useLiveLaunchOptions({
 		sessionId,
 		currentMode: composerChin.mode?.id ?? "default",
 		availableModes: liveModes,
 		hookContext,
 		toast,
+		onModeFailed: folderModes.rollback,
 	});
 	const liveLaunchAvailable = canApplyLive({
 		hasLivePane: promptBehavior.hasLivePane,
@@ -1563,6 +1566,7 @@ function SessionView({
 															{...slashMenu}
 															bypassPermissionsAllowed={bypassPermissionsAllowed}
 															permissionCwd={sessionDirectory}
+															onPermissionModePick={folderModes.remember}
 															live={liveLaunchAvailable ? liveLaunch : undefined}
 															mentionSessionId={sessionId}
 															mentionCwd={sessionDirectory}

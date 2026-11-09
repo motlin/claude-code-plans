@@ -3,6 +3,9 @@
 import {act, cleanup, renderHook} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {type LiveLaunchOptionsInput, useLiveLaunchOptions} from "../src/hooks/use-live-launch-options";
+import {useFolderModeMemory} from "../src/hooks/use-folder-mode-memory";
+import {FOLDER_PERMISSION_MODE_STORAGE_KEY} from "../src/lib/folder-permission-mode";
+import {installLocalStorage} from "./fake-storage";
 import type {LaunchPermissionMode, LiveOptionChange} from "../src/lib/launch-options";
 
 afterEach(() => {
@@ -239,5 +242,89 @@ describe("useLiveLaunchOptions", () => {
 		rerender({...base, hookContext: {permissionMode: "auto", promptId: "prompt-2"}});
 
 		expect({options: result.current.options, toasts: toast.mock.calls}).toStrictEqual({options: {}, toasts: []});
+	});
+});
+
+describe("session mode picks remember the session's folder", () => {
+	const WORKTREE = "/w/.claude/worktrees/x";
+
+	function renderSession(send: Send) {
+		installLocalStorage();
+		const toast = vi.fn<LiveLaunchOptionsInput["toast"]>();
+		const base: LiveLaunchOptionsInput = {
+			sessionId: "session-ivan",
+			currentMode: "default",
+			availableModes: WITHOUT_BYPASS,
+			hookContext: {permissionMode: "default", promptId: "prompt-1"},
+			toast,
+			send,
+		};
+		const hook = renderHook(
+			(props: LiveLaunchOptionsInput) => {
+				const memory = useFolderModeMemory(WORKTREE);
+				const live = useLiveLaunchOptions({...props, onModeFailed: memory.rollback});
+				return {
+					pick: async (mode: LaunchPermissionMode) => {
+						memory.remember(mode);
+						await live.apply({permissionMode: mode});
+					},
+				};
+			},
+			{initialProps: base},
+		);
+		return {...hook, base};
+	}
+
+	function stored(): unknown {
+		const raw = localStorage.getItem(FOLDER_PERMISSION_MODE_STORAGE_KEY);
+		return raw === null ? null : JSON.parse(raw);
+	}
+
+	it("writes a worktree session's pick under its repo and rolls it back when the CLI reports another mode", async () => {
+		const {result, rerender, base} = renderSession(vi.fn<Send>(async () => {}));
+
+		await act(async () => result.current.pick("acceptEdits"));
+		const afterPick = stored();
+		rerender({...base, hookContext: {permissionMode: "default", promptId: "prompt-2"}});
+
+		expect({afterPick, afterMismatch: stored()}).toStrictEqual({
+			afterPick: {"/w": "acceptEdits"},
+			afterMismatch: {},
+		});
+	});
+
+	it("restores the previous entry when the live switch fails", async () => {
+		const {result} = renderSession(vi.fn<Send>(async () => Promise.reject(new Error("pane busy"))));
+		localStorage.setItem(FOLDER_PERMISSION_MODE_STORAGE_KEY, JSON.stringify({"/w": "auto"}));
+
+		await act(async () => result.current.pick("acceptEdits"));
+
+		expect(stored()).toStrictEqual({"/w": "auto"});
+	});
+
+	it("keeps a second pick made before the first one failed", async () => {
+		let failFirst: (error: Error) => void = () => {};
+		const send = vi
+			.fn<Send>()
+			.mockImplementationOnce(
+				async () =>
+					new Promise<void>((_resolve, reject) => {
+						failFirst = reject;
+					}),
+			)
+			.mockImplementation(async () => {});
+		const {result} = renderSession(send);
+
+		let first: Promise<void> = Promise.resolve();
+		act(() => {
+			first = result.current.pick("acceptEdits");
+		});
+		await act(async () => result.current.pick("auto"));
+		await act(async () => {
+			failFirst(new Error("pane busy"));
+			await first;
+		});
+
+		expect(stored()).toStrictEqual({"/w": "auto"});
 	});
 });

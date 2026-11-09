@@ -121,17 +121,38 @@ export async function getComposerState(
 	return {...settings, ...statusline};
 }
 
+/** A project folder's settings files under `<cwd>/.claude/`. */
+export type ReadProjectSettings = (file: "settings.local.json" | "settings.json") => Promise<unknown>;
+
+/**
+ * The folder's `permissions.defaultMode` as the CLI merges it: `settings.local.json` beats `settings.json`. Upstream
+ * (ca8b34310 `xo`) ranks this repo default below the folder's remembered mode.
+ */
+async function readRepoDefaultMode(readProjectSettings: ReadProjectSettings | undefined): Promise<string | null> {
+	if (readProjectSettings === undefined) return null;
+	const [local, shared] = await Promise.all([
+		readSettingsData(async () => readProjectSettings("settings.local.json")),
+		readSettingsData(async () => readProjectSettings("settings.json")),
+	]);
+	return local?.permissions?.defaultMode ?? shared?.permissions?.defaultMode ?? null;
+}
+
 export async function getComposerDefaults(
 	readSettings: () => Promise<unknown>,
 	blockDependencies: FastModeBlockDependencies = {},
+	readProjectSettings?: ReadProjectSettings,
 ): Promise<ComposerDefaults> {
-	const settings = await readSettingsData(readSettings);
+	const [settings, repoDefaultMode] = await Promise.all([
+		readSettingsData(readSettings),
+		readRepoDefaultMode(readProjectSettings),
+	]);
 	const fastModeBlocked = await readFastModeBlocked(settings?.env, blockDependencies);
 	if (settings === null) {
 		return {
 			model: null,
 			effortLevel: null,
 			defaultMode: null,
+			repoDefaultMode,
 			bypassPermissionsAllowed: false,
 			fastMode: false,
 			fastModeBlocked,
@@ -141,6 +162,7 @@ export async function getComposerDefaults(
 		model: settings.model ?? null,
 		effortLevel: settings.effortLevel ?? null,
 		defaultMode: settings.permissions?.defaultMode ?? null,
+		repoDefaultMode,
 		bypassPermissionsAllowed: isBypassPermissionsAllowed({
 			defaultMode: settings.permissions?.defaultMode,
 			skipDangerousModePermissionPrompt: settings.skipDangerousModePermissionPrompt,
@@ -148,6 +170,38 @@ export async function getComposerDefaults(
 		fastMode: sessionFastMode([], settings),
 		fastModeBlocked,
 	};
+}
+
+export interface ComposerDefaultsRequestDependencies {
+	readSettings: () => Promise<unknown>;
+	blockDependencies: FastModeBlockDependencies;
+	readJson: (path: string) => Promise<unknown>;
+	/** The indexed projects' folders; only these may be asked about by `?cwd=`. */
+	knownProjectPaths: () => Promise<readonly string[]>;
+}
+
+const DEFAULTS_HEADERS = {"Cache-Control": "private, max-age=0, must-revalidate"};
+
+/** `GET /api/composer-defaults[?cwd=<project folder>]`: the user defaults, plus that folder's `defaultMode`. */
+export async function handleComposerDefaultsRequest(
+	request: Request,
+	dependencies: ComposerDefaultsRequestDependencies,
+): Promise<Response> {
+	const cwd = new URL(request.url).searchParams.get("cwd");
+	if (cwd !== null && (!cwd.startsWith("/") || !(await dependencies.knownProjectPaths()).includes(cwd))) {
+		return Response.json(
+			{error: "Expected ?cwd=<a known project folder>"},
+			{status: 400, headers: DEFAULTS_HEADERS},
+		);
+	}
+	const readProjectSettings: ReadProjectSettings | undefined =
+		cwd === null ? undefined : async (file) => dependencies.readJson(`${cwd}/.claude/${file}`);
+	const defaults = await getComposerDefaults(
+		dependencies.readSettings,
+		dependencies.blockDependencies,
+		readProjectSettings,
+	);
+	return Response.json(defaults, {headers: DEFAULTS_HEADERS});
 }
 
 /** Where the CLI reads managed (policy) settings on each platform. */

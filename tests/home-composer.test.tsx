@@ -21,6 +21,8 @@ import {usageQueryOptions} from "../src/lib/api/usage";
 import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
 import {getComposerDefaults} from "../src/lib/composer-state-server";
+import type {ComposerDefaults} from "../src/lib/composer-state";
+import {FOLDER_PERMISSION_MODE_STORAGE_KEY} from "../src/lib/folder-permission-mode";
 import {requestHomeComposerPrefill} from "../src/lib/home-composer-focus";
 import {HomeDock} from "../src/components/home/home-dock";
 import {Route as HomeRoute, validateHomeSearch} from "../src/routes/index";
@@ -117,6 +119,7 @@ async function renderApp(
 	settingsModel: string | null = "claude-opus-4-8[1m]",
 	seed: (queryClient: QueryClient) => void = () => {},
 	fastMode = false,
+	defaultsOverride: Partial<ComposerDefaults> = {},
 ) {
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	seed(queryClient);
@@ -129,9 +132,11 @@ async function renderApp(
 		model: settingsModel,
 		effortLevel: "medium",
 		defaultMode: "plan",
+		repoDefaultMode: null,
 		bypassPermissionsAllowed: false,
 		fastMode,
 		fastModeBlocked: null,
+		...defaultsOverride,
 	});
 	const rootRoute = createRootRoute({
 		component: () => (
@@ -904,6 +909,138 @@ describe("HomeComposer", () => {
 		});
 	});
 
+	describe("per-folder remembered permission mode", () => {
+		const HERE = "/users/dev/it's";
+		const OTHER = "/users/dev/newest";
+
+		function rememberModes(modes: Record<string, string>) {
+			localStorage.setItem(FOLDER_PERMISSION_MODE_STORAGE_KEY, JSON.stringify(modes));
+		}
+
+		function storedModes(): unknown {
+			const raw = localStorage.getItem(FOLDER_PERMISSION_MODE_STORAGE_KEY);
+			return raw === null ? null : JSON.parse(raw);
+		}
+
+		function modeReadout(): string | null | undefined {
+			return document.querySelector("[data-chin-mode]")?.textContent;
+		}
+
+		async function pickMode(name: RegExp) {
+			fireEvent.click(screen.getByRole("button", {name: /^Permissions: /}));
+			fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitemradio", {name}));
+			await waitFor(() => {
+				expect(screen.queryByRole("menu")).toBeNull();
+			});
+		}
+
+		async function chooseFolder(name: string) {
+			fireEvent.click(screen.getByRole("combobox", {name: /^Folder: /}));
+			fireEvent.click(await screen.findByRole("option", {name}));
+			await waitFor(() => {
+				expect(screen.getByRole("combobox", {name: /^Folder: /}).textContent).toBe(name);
+			});
+		}
+
+		function consentToAuto() {
+			vi.stubGlobal("fetch", async (url: string, init?: RequestInit) =>
+				url === "/api/permission-mode-consent"
+					? Response.json({autoModeIsDefault: false, autoConsented: true, acks: []})
+					: fetchMock(url, init),
+			);
+		}
+
+		it("starts the draft in the folder's remembered mode and launches with it", async () => {
+			rememberModes({[HERE]: "acceptEdits"});
+			await renderApp("/", "claude-opus-4-8[1m]", () => {}, false, {defaultMode: null});
+			await waitFor(() => {
+				expect(modeReadout()).toBe("Accept edits");
+			});
+			await typePrompt("hello");
+
+			fireEvent.click(screen.getByRole("button", {name: "Send"}));
+
+			await waitFor(() => {
+				expect(launchCalls.length).toBe(1);
+			});
+			expect(launchBody(launchCalls[0])).toStrictEqual({
+				cwd: HERE,
+				prompt: "hello",
+				args: ["--permission-mode", "acceptEdits"],
+			});
+		});
+
+		it("lets the user-scope default beat the folder memory and launches without a flag", async () => {
+			rememberModes({[HERE]: "acceptEdits"});
+			await renderApp("/", "claude-opus-4-8[1m]", () => {}, false, {defaultMode: "auto"});
+			await typePrompt("hello");
+			const readout = modeReadout();
+
+			fireEvent.click(screen.getByRole("button", {name: "Send"}));
+
+			await waitFor(() => {
+				expect(launchCalls.length).toBe(1);
+			});
+			expect({readout, body: launchBody(launchCalls[0])}).toStrictEqual({
+				readout: "Auto",
+				body: {cwd: HERE, prompt: "hello"},
+			});
+		});
+
+		it("remembers a Manual pick for the folder but never a Plan pick", async () => {
+			await renderApp("/", "claude-opus-4-8[1m]", () => {}, false, {defaultMode: null});
+			await pickMode(/^Plan/);
+			const afterPlan = storedModes();
+			await pickMode(/^Manual/);
+
+			expect({afterPlan, afterManual: storedModes()}).toStrictEqual({
+				afterPlan: null,
+				afterManual: {[HERE]: "default"},
+			});
+		});
+
+		it("carries an Accept edits pick to another folder without writing it there", async () => {
+			await renderApp("/", "claude-opus-4-8[1m]", () => {}, false, {defaultMode: null});
+			await pickMode(/^Accept edits/);
+			await chooseFolder("newest");
+
+			expect({readout: modeReadout(), stored: storedModes()}).toStrictEqual({
+				readout: "Accept edits",
+				stored: {[HERE]: "acceptEdits"},
+			});
+		});
+
+		it("drops an Auto pick on a folder switch so the new folder's memory shows", async () => {
+			rememberModes({[OTHER]: "acceptEdits"});
+			consentToAuto();
+			await renderApp("/", "claude-opus-4-8[1m]", () => {}, false, {defaultMode: null});
+			await pickMode(/^Auto/);
+			await waitFor(() => {
+				expect(modeReadout()).toBe("Auto");
+			});
+			const afterPick = modeReadout();
+			await chooseFolder("newest");
+
+			expect({afterPick, afterSwitch: modeReadout(), stored: storedModes()}).toStrictEqual({
+				afterPick: "Auto",
+				afterSwitch: "Accept edits",
+				stored: {[OTHER]: "acceptEdits", [HERE]: "auto"},
+			});
+		});
+
+		it("reads Manual for a remembered Bypass once bypass is no longer offered", async () => {
+			rememberModes({[HERE]: "bypassPermissions"});
+			await renderApp("/", "claude-opus-4-8[1m]", () => {}, false, {
+				defaultMode: null,
+				bypassPermissionsAllowed: false,
+			});
+
+			await waitFor(() => {
+				expect(modeReadout()).toBe("Manual");
+			});
+		});
+	});
+
 	it("focuses the composer on ⇧⌘O while already home", async () => {
 		await renderApp();
 		const textarea = await screen.findByRole("textbox", {name: "Prompt"});
@@ -1013,6 +1150,7 @@ describe("getComposerDefaults", () => {
 			model: "opus",
 			effortLevel: "xhigh",
 			defaultMode: "acceptEdits",
+			repoDefaultMode: null,
 			bypassPermissionsAllowed: false,
 			fastMode: false,
 			fastModeBlocked: null,
@@ -1030,6 +1168,7 @@ describe("getComposerDefaults", () => {
 				model: null,
 				effortLevel: null,
 				defaultMode: null,
+				repoDefaultMode: null,
 				bypassPermissionsAllowed: false,
 				fastMode: true,
 				fastModeBlocked: null,
@@ -1038,6 +1177,7 @@ describe("getComposerDefaults", () => {
 				model: null,
 				effortLevel: null,
 				defaultMode: null,
+				repoDefaultMode: null,
 				bypassPermissionsAllowed: false,
 				fastMode: false,
 				fastModeBlocked: null,
@@ -1069,6 +1209,7 @@ describe("getComposerDefaults", () => {
 			model: null,
 			effortLevel: null,
 			defaultMode: null,
+			repoDefaultMode: null,
 			bypassPermissionsAllowed: false,
 			fastMode: false,
 			fastModeBlocked: null,

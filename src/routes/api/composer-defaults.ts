@@ -4,19 +4,24 @@ import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
 export const Route = createFileRoute("/api/composer-defaults")({
 	server: {
 		handlers: withMethodNotAllowed({
-			GET: async () => {
+			GET: async ({request}: {request: Request}) => {
 				const {join} = await import("node:path");
 				const {homedir} = await import("node:os");
 				const {readFile} = await import("node:fs/promises");
-				const {getComposerDefaults, nodeFastModeBlockDependencies} =
+				const {handleComposerDefaultsRequest, nodeFastModeBlockDependencies} =
 					await import("../../lib/composer-state-server");
-				const defaults = await getComposerDefaults(
-					async () =>
-						JSON.parse(await readFile(join(homedir(), ".claude", "settings.json"), "utf-8")) as unknown,
-					await nodeFastModeBlockDependencies(),
-				);
-				return Response.json(defaults, {
-					headers: {"Cache-Control": "private, max-age=0, must-revalidate"},
+				const readJson = async (path: string) => JSON.parse(await readFile(path, "utf-8")) as unknown;
+				return handleComposerDefaultsRequest(request, {
+					readSettings: async () => readJson(join(homedir(), ".claude", "settings.json")),
+					blockDependencies: await nodeFastModeBlockDependencies(),
+					readJson,
+					knownProjectPaths: async () => {
+						const [{getDb}, {listFileSearchProjectPathsFromDb}] = await Promise.all([
+							import("../../lib/db"),
+							import("../../lib/db/queries"),
+						]);
+						return listFileSearchProjectPathsFromDb(getDb().index);
+					},
 				});
 			},
 		}),

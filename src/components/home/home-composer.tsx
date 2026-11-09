@@ -7,7 +7,7 @@ import {useActiveSessionsIfAvailable} from "../../hooks/use-claude-events";
 import {useIdlePrefetch} from "../../hooks/use-idle-prefetch";
 import {useSlashCommands} from "../../hooks/use-slash-commands";
 import {promptHistoryQueryOptions} from "../../lib/api/prompt-history";
-import {composerDefaultsQueryOptions} from "../../lib/api/composer-defaults";
+import {composerDefaultsQueryOptions, composerFolderDefaultsQueryOptions} from "../../lib/api/composer-defaults";
 import {homeFolderStatusQueryOptions} from "../../lib/api/home-folder-status";
 import {HerdrRequestError, isNoTerminalHost, launchHerdrSession} from "../../lib/api/herdr";
 import {getComposerText, refillRejectedSend, restoreRejectedAttachments} from "../../lib/context-attach";
@@ -17,7 +17,9 @@ import {buildClaudeCopyCommand} from "../../lib/claude-launch-command";
 import {writeClipboardText} from "../../lib/clipboard";
 import {usageQueryOptions} from "../../lib/api/usage";
 import {resolveComposerState, withComposerAccountLimits} from "../../lib/composer-state";
-import {buildLaunchFlags, type LaunchOptions} from "../../lib/launch-options";
+import {buildLaunchFlags, type LaunchOptions, modeMenuItems} from "../../lib/launch-options";
+import {useFolderModeMemory} from "../../hooks/use-folder-mode-memory";
+import {draftPermissionMode} from "../../lib/folder-permission-mode";
 import {
 	onHomeComposerFocusRequest,
 	onHomeComposerPrefillRequest,
@@ -87,6 +89,26 @@ export function HomeComposer({
 	} = useHomeLaunchFolder();
 	const {data: folderStatus} = useQuery(homeFolderStatusQueryOptions(project?.projectPath));
 	const worktree = useHomeWorktree(folderStatus?.isGitRepo);
+	const folderModes = useFolderModeMemory(project?.projectPath);
+	const {data: folderDefaults} = useQuery(composerFolderDefaultsQueryOptions(project?.projectPath));
+	const bypassPermissionsAllowed = defaults?.bypassPermissionsAllowed ?? false;
+	const draftMode = useMemo(
+		() =>
+			draftPermissionMode({
+				cwd: project?.projectPath,
+				modes: folderModes.modes,
+				userSettingsDefault: defaults?.defaultMode ?? null,
+				repoSettingsDefault: folderDefaults?.repoDefaultMode ?? null,
+				available: modeMenuItems(bypassPermissionsAllowed).map((item) => item.id),
+			}),
+		[
+			project?.projectPath,
+			folderModes.modes,
+			defaults?.defaultMode,
+			folderDefaults?.repoDefaultMode,
+			bypassPermissionsAllowed,
+		],
+	);
 	const slashMenu = useSlashCommands(project?.projectPath ?? undefined);
 	const {data: promptHistory} = useQuery(promptHistoryQueryOptions(undefined));
 
@@ -100,7 +122,7 @@ export function HomeComposer({
 						resolveComposerState({
 							hookPermissionMode: null,
 							jsonlPermissionMode: null,
-							settingsDefaultMode: defaults.defaultMode,
+							settingsDefaultMode: draftMode.mode,
 							statuslineModel: null,
 							statuslineModelId: null,
 							lastAssistantModel: null,
@@ -115,7 +137,7 @@ export function HomeComposer({
 						}),
 						accountUsage,
 					),
-		[defaults, accountUsage],
+		[defaults, accountUsage, draftMode.mode],
 	);
 
 	useEffect(
@@ -164,7 +186,12 @@ export function HomeComposer({
 			toast({kind: "error", message: "Choose a project to start a session in."});
 			return;
 		}
-		const args = buildLaunchFlags(worktree.useWorktree ? {...launchOptions, worktree: true} : launchOptions);
+		// The remembered mode goes on the command line only when the CLI wouldn't start in it by itself.
+		const withMode =
+			launchOptions.permissionMode === undefined && draftMode.launchFlag !== undefined
+				? {...launchOptions, permissionMode: draftMode.launchFlag}
+				: launchOptions;
+		const args = buildLaunchFlags(worktree.useWorktree ? {...withMode, worktree: true} : withMode);
 		const request = {cwd: project.projectPath, prompt, ...(args.length > 0 ? {args} : {})};
 		const since = Date.now();
 		loadSendRejectedCard().catch(() => {});
@@ -242,8 +269,9 @@ export function HomeComposer({
 				{...slashMenu}
 				promptHistory={promptHistory}
 				subscribePrefill={onHomeComposerPrefillRequest}
-				bypassPermissionsAllowed={defaults?.bypassPermissionsAllowed ?? false}
+				bypassPermissionsAllowed={bypassPermissionsAllowed}
 				permissionCwd={project?.projectPath}
+				onPermissionModePick={folderModes.remember}
 			/>
 		</div>
 	);

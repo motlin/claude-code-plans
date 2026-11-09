@@ -16,7 +16,15 @@ import {
 	usageRingSeverity,
 	withAccountLimits,
 } from "../src/lib/composer-state";
-import {type ComposerStateDependencies, getComposerState, managedSettingsPath} from "../src/lib/composer-state-server";
+import {
+	type ComposerDefaultsRequestDependencies,
+	type ComposerStateDependencies,
+	getComposerDefaults,
+	getComposerState,
+	handleComposerDefaultsRequest,
+	managedSettingsPath,
+} from "../src/lib/composer-state-server";
+import {resolveDraftBaseMode} from "../src/lib/folder-permission-mode";
 import {handleComposerStateRequest} from "../src/routes/api/sessions.$id.composer-state";
 
 const NOW_MS = Date.UTC(2026, 8, 29, 12, 0, 0);
@@ -770,5 +778,133 @@ describe("withAccountLimits", () => {
 			kept: withLimits,
 			noSummary: contextOnly,
 		});
+	});
+});
+
+describe("composer defaults for a project folder", () => {
+	const USER_SETTINGS = {permissions: {}};
+
+	function projectFiles(files: Record<string, unknown>) {
+		return async (file: "settings.local.json" | "settings.json") =>
+			file in files ? Promise.resolve(files[file]) : Promise.reject(new Error("ENOENT"));
+	}
+
+	it("reads the project's defaultMode, with settings.local.json beating settings.json", async () => {
+		const [shared, local, none] = await Promise.all([
+			getComposerDefaults(
+				async () => Promise.resolve(USER_SETTINGS),
+				{},
+				projectFiles({
+					"settings.json": {permissions: {defaultMode: "plan"}},
+				}),
+			),
+			getComposerDefaults(
+				async () => Promise.resolve(USER_SETTINGS),
+				{},
+				projectFiles({
+					"settings.json": {permissions: {defaultMode: "plan"}},
+					"settings.local.json": {permissions: {defaultMode: "acceptEdits"}},
+				}),
+			),
+			getComposerDefaults(async () => Promise.resolve(USER_SETTINGS), {}, projectFiles({})),
+		]);
+		expect([shared, local, none]).toStrictEqual([
+			{
+				model: null,
+				effortLevel: null,
+				defaultMode: null,
+				repoDefaultMode: "plan",
+				bypassPermissionsAllowed: false,
+				fastMode: false,
+				fastModeBlocked: null,
+			},
+			{
+				model: null,
+				effortLevel: null,
+				defaultMode: null,
+				repoDefaultMode: "acceptEdits",
+				bypassPermissionsAllowed: false,
+				fastMode: false,
+				fastModeBlocked: null,
+			},
+			{
+				model: null,
+				effortLevel: null,
+				defaultMode: null,
+				repoDefaultMode: null,
+				bypassPermissionsAllowed: false,
+				fastMode: false,
+				fastModeBlocked: null,
+			},
+		]);
+	});
+
+	it("serves ?cwd= only for a known project folder", async () => {
+		const reads: string[] = [];
+		const dependencies: ComposerDefaultsRequestDependencies = {
+			readSettings: async () => Promise.resolve(USER_SETTINGS),
+			blockDependencies: {},
+			readJson: async (path) => {
+				reads.push(path);
+				return path === "/w/app/.claude/settings.json"
+					? Promise.resolve({permissions: {defaultMode: "plan"}})
+					: Promise.reject(new Error("ENOENT"));
+			},
+			knownProjectPaths: async () => Promise.resolve(["/w/app"]),
+		};
+		const responses = await Promise.all(
+			[
+				"http://x/api/composer-defaults?cwd=%2Fw%2Fapp",
+				"http://x/api/composer-defaults?cwd=%2Fw%2Fother",
+				"http://x/api/composer-defaults?cwd=w%2Fapp",
+				"http://x/api/composer-defaults",
+			].map(async (url) => {
+				const response = await handleComposerDefaultsRequest(new Request(url), dependencies);
+				return {status: response.status, body: (await response.json()) as unknown};
+			}),
+		);
+		expect({responses, reads: reads.toSorted()}).toStrictEqual({
+			responses: [
+				{
+					status: 200,
+					body: {
+						model: null,
+						effortLevel: null,
+						defaultMode: null,
+						repoDefaultMode: "plan",
+						bypassPermissionsAllowed: false,
+						fastMode: false,
+						fastModeBlocked: null,
+					},
+				},
+				{status: 400, body: {error: "Expected ?cwd=<a known project folder>"}},
+				{status: 400, body: {error: "Expected ?cwd=<a known project folder>"}},
+				{
+					status: 200,
+					body: {
+						model: null,
+						effortLevel: null,
+						defaultMode: null,
+						repoDefaultMode: null,
+						bypassPermissionsAllowed: false,
+						fastMode: false,
+						fastModeBlocked: null,
+					},
+				},
+			],
+			reads: ["/w/app/.claude/settings.json", "/w/app/.claude/settings.local.json"],
+		});
+	});
+
+	it("lets a remembered folder mode beat the project default", () => {
+		expect(
+			resolveDraftBaseMode({
+				userChoice: null,
+				userSettingsDefault: undefined,
+				folderChoice: "acceptEdits",
+				repoSettingsDefault: "plan",
+				fallback: "default",
+			}).mode,
+		).toBe("acceptEdits");
 	});
 });
