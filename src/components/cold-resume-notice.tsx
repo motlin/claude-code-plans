@@ -82,6 +82,7 @@ export function ColdResumeNotice({
 	onStay,
 	onCompact,
 	onNewSession,
+	onHoldChange,
 }: {
 	sessionId: string;
 	lastRecordMs: number | null;
@@ -94,6 +95,8 @@ export function ColdResumeNotice({
 	onStay: () => void;
 	onCompact?: (() => void) | undefined;
 	onNewSession?: (() => void) | undefined;
+	/** Upstream `coldResumeNoticeHolds`: whether the card is showing, so the stale-compact line yields. */
+	onHoldChange?: ((holds: boolean) => void) | undefined;
 }) {
 	const checkedAt = useIdleCheckTime();
 	const [, setVersion] = useState(0);
@@ -191,6 +194,16 @@ export function ColdResumeNotice({
 			),
 		};
 	}
+	const holds = decision !== null;
+	useLayoutEffect(() => {
+		onHoldChange?.(holds);
+	}, [onHoldChange, holds]);
+	useLayoutEffect(
+		() => () => {
+			onHoldChange?.(false);
+		},
+		[onHoldChange],
+	);
 	const claimed = useComposerNotice("eagerCookie", notice);
 	return claimed ? null : (notice?.content ?? null);
 }

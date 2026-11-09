@@ -1743,6 +1743,11 @@ html[data-interface-font="dyslexic"] {
 	color: var(--upstream-text-tint-green);
 }
 
+/* Upstream `opacity-disabled`: var(--cds-opacity-disabled), 0.4 at rest. */
+@utility opacity-disabled {
+	opacity: 0.4;
+}
+
 @utility text-secondary-control {
 	color: var(--control-ink, var(--color-secondary));
 }

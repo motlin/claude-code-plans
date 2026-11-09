@@ -40,6 +40,7 @@ describe("data-cds-overlay popup sites", () => {
 			"session-hover-card.tsx:PreviewCard": false,
 			"settings/settings-search.tsx:Popover": true,
 			"slash-command-chip.tsx:PreviewCard": false,
+			"stale-compact-band.tsx:Popover": false,
 			"step-screenshot-strip.tsx:PreviewCard": false,
 			"ui/dialog-popup.tsx:AlertDialog": true,
 			"ui/dialog-popup.tsx:Dialog": true,

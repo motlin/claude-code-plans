@@ -274,7 +274,8 @@ function trimDecimal(value: number): string {
 /** `190200` → `190.2k`, `1000000` → `1M`, as upstream prints token counts. */
 export function formatTokenCount(count: number): string {
 	if (count >= 1_000_000) return `${trimDecimal(count / 1_000_000)}M`;
-	if (count >= 1_000) return `${trimDecimal(count / 1_000)}k`;
+	// Upstream `vj` promotes a value that rounds up to 1000k ("1M", not "1000k").
+	if (count >= 1_000) return Math.round(count / 100) >= 10_000 ? "1M" : `${trimDecimal(count / 1_000)}k`;
 	return String(count);
 }
 

@@ -83,6 +83,8 @@ import {useLandedFlash} from "./landed-flash";
 import {usePickupSettling} from "../lib/pickup-settling";
 import {assistantTurnDetails, userTurnDetails} from "../lib/turn-metadata";
 import {TurnChangesCard} from "./turn-changes-card";
+import {StaleCompactBand, type StaleCompactBandProps} from "./stale-compact-band";
+import {lastAssistantReplyEntry} from "../lib/stale-compact";
 import {collectTurnChanges, lastTurnChangesAnchor, type TurnChanges} from "../lib/turn-changes";
 import {taskDescriptionSegments} from "../lib/task-description-segments";
 import {agentCompletionOf, foldedTaskNotificationOf, taskNotificationOf} from "../lib/task-notification-lines";
@@ -164,6 +166,8 @@ export interface SessionChatProps {
 	transcriptMode?: TranscriptMode;
 	/** The live session's recovery handlers for the last API error card, when it is the transcript's last entry. */
 	errorRecovery?: ApiErrorRecovery;
+	/** The stale-session compact line, shown under the last assistant reply when that reply is the last entry. */
+	staleCompact?: StaleCompactBandProps | undefined;
 	initialScrollKey?: string;
 	/** Stable raw transcript payload identity; changed content makes retained geometry unsafe. */
 	measurementSource?: object;
@@ -651,6 +655,7 @@ export const SessionChat = React.memo(function SessionChat({
 	onSendNow,
 	onFocusComposer,
 	errorRecovery,
+	staleCompact,
 	sideChatAvailable = false,
 	rewindCuts = NO_REWIND_CUTS,
 	rewoundUuids = NO_REWOUND_UUIDS,
@@ -694,6 +699,11 @@ export const SessionChat = React.memo(function SessionChat({
 	const compactBoundaries = useMemo(() => compactBoundariesBySummary(lines), [lines]);
 	const fullErrorLine = useMemo(() => lastErrorLine(lines), [lines]);
 	const lastError = useMemo(() => ({line: fullErrorLine, recovery: errorRecovery}), [fullErrorLine, errorRecovery]);
+	const staleCompactEntry = useMemo(() => lastAssistantReplyEntry(lines), [lines]);
+	const staleCompactTail = useMemo(
+		() => (staleCompact === undefined ? null : {line: staleCompactEntry, band: staleCompact}),
+		[staleCompactEntry, staleCompact],
+	);
 	const listedLines = useMemo(() => withQueuedPromptsAtTail(lines, sessionLive), [lines, sessionLive]);
 	const waitingIds = useMemo(() => queuedEntryIds(listedLines), [listedLines]);
 	const waitingEntries = useMemo(() => queuedEntries(listedLines), [listedLines]);
@@ -849,57 +859,59 @@ export const SessionChat = React.memo(function SessionChat({
 								<WorkflowRunsContext.Provider value={workflowRunsByLaunch}>
 									<CompactBoundaryContext.Provider value={compactBoundaries}>
 										<LastErrorLineContext.Provider value={lastError}>
-											<div
-												ref={containerRef}
-												className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
-											>
-												{summary !== null && summary !== "" && (
-													<p
-														data-testid="session-summary-row"
-														title={summary}
-														className="mb-4 truncate text-sm text-t6"
-													>
-														{summary}
-													</p>
-												)}
-												<SessionLineList
-													key={sessionId}
-													lines={listedLines}
-													sessionId={sessionId}
-													toolResultMap={toolResultMap}
-													allowedImageRoots={allowedImageRoots}
-													subagentLookup={subagentLookup}
-													isSubagentSession={isSubagentSession}
-													showThinking={showThinking}
-													showTools={showTools}
-													showPassedHooks={showPassedHooks}
-													showHookWarnings={showHookWarnings}
-													showHookErrors={showHookErrors}
-													showSystemBanners={showSystemBanners}
-													showCompactSummaries={showCompactSummaries}
-													showTranscriptOnly={showTranscriptOnly}
-													shouldScrollToEnd={shouldScrollToEnd}
-													measurementKey={measurementKey}
-													measurementSource={measurementSource}
-													turnInProgress={turnInProgress}
-													archived={archived}
-													rewindCuts={rewindCuts}
-													rewoundUuids={rewoundUuids}
-													clientRows={clientRows}
-													renderClientRowCard={renderClientRowCard}
-												/>
-												{sessionLive && (
-													<WaitingPickupStatus
-														key={`pickup-${sessionId}`}
-														waiting={waitingEntries}
+											<StaleCompactTailContext.Provider value={staleCompactTail}>
+												<div
+													ref={containerRef}
+													className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
+												>
+													{summary !== null && summary !== "" && (
+														<p
+															data-testid="session-summary-row"
+															title={summary}
+															className="mb-4 truncate text-sm text-t6"
+														>
+															{summary}
+														</p>
+													)}
+													<SessionLineList
+														key={sessionId}
+														lines={listedLines}
+														sessionId={sessionId}
+														toolResultMap={toolResultMap}
+														allowedImageRoots={allowedImageRoots}
+														subagentLookup={subagentLookup}
+														isSubagentSession={isSubagentSession}
+														showThinking={showThinking}
+														showTools={showTools}
+														showPassedHooks={showPassedHooks}
+														showHookWarnings={showHookWarnings}
+														showHookErrors={showHookErrors}
+														showSystemBanners={showSystemBanners}
+														showCompactSummaries={showCompactSummaries}
+														showTranscriptOnly={showTranscriptOnly}
+														shouldScrollToEnd={shouldScrollToEnd}
+														measurementKey={measurementKey}
+														measurementSource={measurementSource}
+														turnInProgress={turnInProgress}
+														archived={archived}
+														rewindCuts={rewindCuts}
+														rewoundUuids={rewoundUuids}
+														clientRows={clientRows}
+														renderClientRowCard={renderClientRowCard}
 													/>
-												)}
-												<TranscriptSelectionBar
-													sessionId={sessionId}
-													containerRef={containerRef}
-													sideChatAvailable={sideChatAvailable}
-												/>
-											</div>
+													{sessionLive && (
+														<WaitingPickupStatus
+															key={`pickup-${sessionId}`}
+															waiting={waitingEntries}
+														/>
+													)}
+													<TranscriptSelectionBar
+														sessionId={sessionId}
+														containerRef={containerRef}
+														sideChatAvailable={sideChatAvailable}
+													/>
+												</div>
+											</StaleCompactTailContext.Provider>
 										</LastErrorLineContext.Provider>
 									</CompactBoundaryContext.Provider>
 								</WorkflowRunsContext.Provider>
@@ -1063,6 +1075,7 @@ function LineEntry({
 		...renderProps,
 		nextLine,
 	});
+	const staleCompactTail = useContext(StaleCompactTailContext);
 
 	const isAssistant = line.type === "assistant";
 	const wrapperClassName = [
@@ -1088,6 +1101,9 @@ function LineEntry({
 			{content}
 			{turnChanges && (
 				<TurnChangesCard sessionId={renderProps.sessionId} changes={turnChanges} undoable={undoable} />
+			)}
+			{staleCompactTail !== null && staleCompactTail.line === line && (
+				<StaleCompactBand {...staleCompactTail.band} />
 			)}
 			{isAssistant &&
 				(footer === undefined ? (
@@ -4419,6 +4435,9 @@ function StopHookMarker({line}: {line: MessageSessionLine}) {
  * that prompt has no full card. It carries the live session's recovery
  * handlers for that card.
  */
+/** Upstream `Xu`'s staleCompact closing line: the band and the last entry it may close (an assistant reply). */
+const StaleCompactTailContext = createContext<{line: SessionLine | null; band: StaleCompactBandProps} | null>(null);
+
 const LastErrorLineContext = createContext<{
 	line: SessionLine | null;
 	recovery: ApiErrorRecovery | undefined;

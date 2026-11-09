@@ -85,6 +85,15 @@ import {NotifyMePrompt} from "./notify-me-prompt";
 import {UsagePaceBanner} from "./usage-pace-banner";
 import {ColdResumeNotice} from "./cold-resume-notice";
 import {newestRecordMs, usageWindowSpent} from "../lib/cold-resume-notice";
+import {
+	STALE_COMPACT_FLOOR,
+	decideStaleCompact,
+	lastEntryIsAssistantReply,
+	staleCompactSlot,
+	type StaleCompactAdvisory,
+} from "../lib/stale-compact";
+import {useStaleCompactIdle} from "../hooks/use-stale-compact-idle";
+import type {StaleCompactBandProps} from "./stale-compact-band";
 import {requestHomeComposerFocus, requestHomeLaunchFolder} from "../lib/home-composer-focus";
 import {WorkingMarker} from "./working-marker";
 import {useWorkingMarkerState} from "./use-working-marker-state";
@@ -1098,16 +1107,77 @@ function SessionView({
 	const coldResumeRunning =
 		paneBusy || dialogOpen || sessionSummaryState === "working" || sessionSummaryState === "waiting";
 	const coldResumeHeld = queuedPrompts.length > 0 || liveHerdrPrompt.state.phase === "held";
+	const canTypeCompact = promptBehavior.hasLivePane && herdr.writesEnabled;
+	const sendCompactPrompt = liveHerdrPrompt.send;
+	const typeCompact = useCallback(async () => {
+		const result = await sendCompactPrompt("/compact");
+		if (result === "not-ready") enqueuePrompt("/compact");
+	}, [sendCompactPrompt, enqueuePrompt]);
 	const coldResumeCompact = useMemo(
 		() =>
-			promptBehavior.hasLivePane && herdr.writesEnabled
+			canTypeCompact
 				? () => {
-						void liveHerdrPrompt.send("/compact").then((result) => {
-							if (result === "not-ready") enqueuePrompt("/compact");
-						});
+						void typeCompact();
 					}
 				: undefined,
-		[promptBehavior.hasLivePane, herdr.writesEnabled, liveHerdrPrompt, enqueuePrompt],
+		[canTypeCompact, typeCompact],
+	);
+	// The stale-session compact line (upstream `nke` via host `wke`): it yields to the cold-resume card (`LMe`).
+	const [coldResumeHolds, setColdResumeHolds] = useState(false);
+	// Like upstream's effect outside the experiment, the clock stays off where the line could never show.
+	const staleCompactIdle = useStaleCompactIdle({
+		anchorMs: canTypeCompact && !data.archived ? coldResumeLastRecordMs : null,
+		responding: coldResumeRunning,
+		hidden: chromeHidden,
+	});
+	const staleCompactEligible =
+		canTypeCompact &&
+		!coldResumeRunning &&
+		!coldResumeHeld &&
+		!data.archived &&
+		!chromeHidden &&
+		!coldResumeHolds &&
+		staleCompactSlot({lastEntryIsAssistant: lastEntryIsAssistantReply(processed.lines)});
+	const staleCompactAdvisory =
+		staleCompactIdle === null || staleCompactIdle.anchor !== coldResumeLastRecordMs
+			? null
+			: decideStaleCompact({
+					nowMs: staleCompactIdle.anchor + staleCompactIdle.ageMs,
+					anchorMs: staleCompactIdle.anchor,
+					contextTokens: composerChin.usage?.contextTokens ?? null,
+					contextWindow: composerChin.usage?.contextWindowSize ?? null,
+					floor: STALE_COMPACT_FLOOR,
+					eligible: staleCompactEligible,
+				});
+	// Upstream's compacting episode `K`: the band it started stays mounted while the compact runs.
+	const [staleCompactEpisode, setStaleCompactEpisode] = useState<StaleCompactAdvisory | null>(null);
+	const staleCompactShown = staleCompactEpisode ?? staleCompactAdvisory;
+	const staleCompactRef = useRef(staleCompactShown);
+	staleCompactRef.current = staleCompactShown;
+	const staleCompactEpisodeRef = useRef(staleCompactEpisode);
+	staleCompactEpisodeRef.current = staleCompactEpisode;
+	const compactStaleSession = useCallback(() => {
+		const advisory = staleCompactRef.current;
+		if (staleCompactEpisodeRef.current !== null || advisory === null) return;
+		staleCompactEpisodeRef.current = advisory;
+		setStaleCompactEpisode(advisory);
+		void typeCompact().finally(() => {
+			setStaleCompactEpisode((current) => (current === advisory ? null : current));
+		});
+	}, [typeCompact]);
+	const staleCompact = useMemo<StaleCompactBandProps | undefined>(
+		() =>
+			staleCompactShown === null
+				? undefined
+				: {
+						ageMinutes: staleCompactShown.ageMinutes,
+						contextTokens: staleCompactShown.contextTokens,
+						tokensInLine: staleCompactShown.tokensInLine,
+						compacting: staleCompactEpisode !== null,
+						onCompact: compactStaleSession,
+						focusComposer: focusSessionComposer,
+					},
+		[staleCompactShown, staleCompactEpisode, compactStaleSession, focusSessionComposer],
 	);
 	const sessionProjectId = data.projectId;
 	const coldResumeNewSession = useCallback(() => {
@@ -1556,6 +1626,7 @@ function SessionView({
 														onStay={focusSessionComposer}
 														onCompact={coldResumeCompact}
 														onNewSession={coldResumeNewSession}
+														onHoldChange={setColdResumeHolds}
 													/>
 												)}
 												{/* Upstream's notice region: registered bands (usage → `limit`) stacked in NOTICE_ORDER */}
@@ -1710,6 +1781,7 @@ function SessionView({
 															summary={aiSummary}
 															{...(slashCommands === undefined ? {} : {slashCommands})}
 															{...(errorRecovery !== undefined && {errorRecovery})}
+															staleCompact={staleCompact}
 														/>
 													</TranscriptTailContext.Provider>
 												</TurnUndoSendContext.Provider>
