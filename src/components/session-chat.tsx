@@ -455,7 +455,8 @@ function collectAssistantDisplaySpans(
 		}
 		// Upstream sends a hook's message as a synthetic assistant text between a call and its result,
 		// and draws a compaction's status row inside the span it follows, the span's actions after it.
-		if (isHookSystemMessageLine(line) || compactionStatuses.has(line.lineIndex)) {
+		// A hook_notice is an item pushed into the open assistant entry, so the actions follow it too.
+		if (isHookSystemMessageLine(line) || line.type === "hook-notice" || compactionStatuses.has(line.lineIndex)) {
 			if (current !== undefined) {
 				current.anchorLineIndex = line.lineIndex;
 				byLine.set(line.lineIndex, current);
@@ -1121,7 +1122,10 @@ function LineEntry({
 				) : (
 					footer
 				))}
-			{(isHookSystemMessageLine(line) || (line.type === "user" && line.isCompactSummary === true)) && footer}
+			{(isHookSystemMessageLine(line) ||
+				line.type === "hook-notice" ||
+				(line.type === "user" && line.isCompactSummary === true)) &&
+				footer}
 		</>
 	);
 	if (line.type !== "assistant") return React.cloneElement(wrapper, undefined, children);

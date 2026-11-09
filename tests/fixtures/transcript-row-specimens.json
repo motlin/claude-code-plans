@@ -23349,5 +23349,121 @@
 				"gitBranch": "collie"
 			}
 		]
+	},
+	{
+		"session": "9b04df69",
+		"line": 1794,
+		"upstream": null,
+		"records": [
+			{
+				"parentUuid": "9b04-prev",
+				"isSidechain": false,
+				"type": "system",
+				"subtype": "away_summary",
+				"timestamp": "2026-08-11T22:57:30.000Z",
+				"uuid": "9b04-summary",
+				"isMeta": false,
+				"content": "x"
+			},
+			{
+				"type": "queue-operation",
+				"operation": "enqueue",
+				"timestamp": "2026-08-11T22:57:40.554Z",
+				"content": "Background agent \"a...\" was stopped by the user."
+			},
+			{
+				"type": "queue-operation",
+				"operation": "dequeue",
+				"timestamp": "2026-08-11T22:57:40.571Z"
+			},
+			{
+				"parentUuid": "9b04-summary",
+				"isSidechain": false,
+				"type": "system",
+				"subtype": "agents_killed",
+				"timestamp": "2026-08-11T22:57:40.554Z",
+				"uuid": "9b04-killed",
+				"isMeta": false
+			},
+			{
+				"parentUuid": "9b04-killed",
+				"isSidechain": false,
+				"type": "system",
+				"subtype": "turn_duration",
+				"timestamp": "2026-08-11T22:57:40.570Z",
+				"uuid": "9b04-duration",
+				"isMeta": false,
+				"durationMs": 98741675,
+				"messageCount": 1443
+			},
+			{
+				"parentUuid": "9b04-duration",
+				"isSidechain": false,
+				"type": "user",
+				"message": {
+					"role": "user",
+					"content": "Background agent \"a...\" was stopped by the user."
+				},
+				"uuid": "9b04-notice",
+				"timestamp": "2026-08-11T22:57:40.594Z",
+				"origin": {
+					"kind": "task-notification"
+				},
+				"promptSource": "system"
+			}
+		]
+	},
+	{
+		"session": "6d735487",
+		"line": 1683,
+		"upstream": null,
+		"records": [
+			{
+				"type": "queue-operation",
+				"operation": "enqueue",
+				"timestamp": "2026-08-09T17:31:18.371Z",
+				"content": "3 background agents were stopped by the user: \"a...\", \"b...\", \"c...\"."
+			},
+			{
+				"type": "queue-operation",
+				"operation": "dequeue",
+				"timestamp": "2026-08-09T17:31:18.382Z"
+			},
+			{
+				"parentUuid": "6d73-prev",
+				"isSidechain": false,
+				"type": "system",
+				"subtype": "agents_killed",
+				"timestamp": "2026-08-09T17:31:18.371Z",
+				"uuid": "6d73-killed",
+				"isMeta": false
+			},
+			{
+				"parentUuid": "6d73-killed",
+				"isSidechain": false,
+				"type": "system",
+				"subtype": "turn_duration",
+				"timestamp": "2026-08-09T17:31:18.381Z",
+				"uuid": "6d73-duration",
+				"isMeta": false,
+				"durationMs": 347480958,
+				"messageCount": 1344
+			},
+			{
+				"parentUuid": "6d73-duration",
+				"isSidechain": false,
+				"type": "user",
+				"message": {
+					"role": "user",
+					"content": "3 background agents were stopped by the user: \"a...\", \"b...\", \"c...\"."
+				},
+				"uuid": "6d73-notice",
+				"timestamp": "2026-08-09T17:31:18.398Z",
+				"origin": {
+					"kind": "task-notification"
+				},
+				"promptSource": "system"
+			}
+		]
 	}
 ]

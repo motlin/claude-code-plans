@@ -133,7 +133,8 @@ describe("group label golden specimens rendered from JSONL", () => {
 interface RowSpecimen {
 	session: string;
 	line: number;
-	upstream: string[];
+	/** Upstream's rows as captured, or null for a sequence guard with no upstream capture yet. */
+	upstream: string[] | null;
 	records: unknown[];
 	/** The records run to the turn's real end, so its changes card sits where upstream draws it. */
 	turnEnd?: true;
@@ -192,7 +193,10 @@ function transcriptRows({records, turnEnd, subagents}: RowSpecimen): string[] {
 }
 
 describe("transcript row golden specimens rendered from JSONL", () => {
-	it.each(rowSpecimens as RowSpecimen[])("$session:$line", (specimen) => {
+	const captured = (rowSpecimens as RowSpecimen[]).flatMap((specimen) =>
+		specimen.upstream === null ? [] : [{...specimen, upstream: specimen.upstream}],
+	);
+	it.each(captured)("$session:$line", (specimen) => {
 		expect(transcriptRows(specimen)).toStrictEqual(specimen.upstream.map(withTrailingFailedCount));
 	});
 });

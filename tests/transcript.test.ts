@@ -1,5 +1,6 @@
 import {describe, it, expect} from "vite-plus/test";
 import {processTranscript, processNewRecords} from "../src/lib/transcript";
+import rowSpecimens from "./fixtures/transcript-row-specimens.json";
 import {buildClientToolCall} from "../src/components/tool-renderers/types";
 import {
 	extractToolResultContent,
@@ -2005,6 +2006,34 @@ describe("system record lines", () => {
 				},
 				{type: "system", subtype: "turn_duration", durationMs: 1200, uuid: "d-1", lineIndex: 1},
 			]);
+		});
+
+		it("merges the 9b04df69 recap and agents_killed across the queue-operation records upstream drops", () => {
+			const specimen = rowSpecimens.find(
+				(candidate) => candidate.session === "9b04df69" && candidate.line === 1794,
+			)!;
+			expect(processTranscript(specimen.records.slice(0, 4)).lines).toStrictEqual([
+				{
+					type: "hook-notice",
+					notices: [
+						{message: {notice: "away_summary", recap: "x"}, level: "notice", uuid: "9b04-summary"},
+						{message: {notice: "agents_killed"}, level: "notice", uuid: "9b04-killed"},
+					],
+					uuid: "9b04-summary",
+					timestamp: "2026-08-11T22:57:30.000Z",
+					lineIndex: 0,
+				},
+			]);
+		});
+
+		it("drops the 6d735487 agents_killed record copied onto a sidechain", () => {
+			const specimen = rowSpecimens.find(
+				(candidate) => candidate.session === "6d735487" && candidate.line === 1683,
+			)!;
+			const killed = specimen.records.find(
+				(record) => "subtype" in record && record.subtype === "agents_killed",
+			)!;
+			expect(processTranscript([{...killed, isSidechain: true}]).lines).toStrictEqual([]);
 		});
 
 		it("still splits notices across a line upstream draws", () => {
