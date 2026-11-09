@@ -160,7 +160,7 @@ describe("rail section visibility and reset", () => {
 		toggleRailSectionHidden("servers");
 		toggleRailSectionHidden("context");
 		toggleRailSectionHidden("servers");
-		reorderRailSections(["environment", "context"], "context", "environment");
+		reorderRailSections("context", "environment");
 		toggleRailSection("s1", "progress");
 		setRailSectionsOpen("s2", ["goal"], false);
 		const changed = readRailSectionsState();
@@ -211,27 +211,78 @@ describe("rail section visibility and reset", () => {
 });
 
 describe("rail section order", () => {
-	it("sorts cards by the saved order, leaving unsaved ones in upstream's default order after it", () => {
-		expect(
-			orderRailSections(["environment", "context", "progress", "backgroundTasks"], ["progress", "environment"]),
-		).toStrictEqual(["progress", "environment", "context", "backgroundTasks"]);
-	});
-
-	it("moves the dropped card to the target's place and saves the whole shown order", () => {
-		reorderRailSections(["environment", "context", "progress"], "progress", "environment");
-		const first = readRailSectionsState().order;
-		reorderRailSections(["progress", "environment", "context"], "progress", "progress");
-
-		expect({first, unchanged: readRailSectionsState().order}).toStrictEqual({
-			first: ["progress", "environment", "context"],
-			unchanged: ["progress", "environment", "context"],
+	it("fills the saved ids into the default slots they name, leaving unsaved ids at their default slot", () => {
+		expect({
+			named: orderRailSections(
+				["environment", "context", "outputs", "backgroundTasks"],
+				["environment", "backgroundTasks", "context"],
+			),
+			swapped: orderRailSections(
+				["environment", "context", "progress", "backgroundTasks"],
+				["progress", "environment"],
+			),
+		}).toStrictEqual({
+			named: ["environment", "backgroundTasks", "outputs", "context"],
+			swapped: ["progress", "context", "environment", "backgroundTasks"],
 		});
 	});
 
-	it("keeps the place of saved cards that are not shown right now", () => {
-		reorderRailSections(["environment", "servers", "context"], "context", "environment");
-		reorderRailSections(["context", "environment"], "environment", "context");
+	it("anchors Servers just before Background tasks when the saved order predates it", () => {
+		expect(
+			orderRailSections(
+				["environment", "context", "outputs", "servers", "backgroundTasks"],
+				["backgroundTasks", "environment", "context", "outputs"],
+			),
+		).toStrictEqual(["servers", "backgroundTasks", "environment", "context", "outputs"]);
+	});
 
-		expect(readRailSectionsState().order).toStrictEqual(["environment", "context", "servers"]);
+	it("moves the dropped card to the target's slot and saves every section's slot", () => {
+		reorderRailSections("progress", "environment");
+		const first = readRailSectionsState().order;
+		reorderRailSections("progress", "progress");
+
+		expect({first, unchanged: readRailSectionsState().order}).toStrictEqual({
+			first: [
+				"progress",
+				"environment",
+				"goal",
+				"settings",
+				"context",
+				"usage",
+				"connectors",
+				"outputs",
+				"pullRequests",
+				"servers",
+				"backgroundTasks",
+			],
+			unchanged: [
+				"progress",
+				"environment",
+				"goal",
+				"settings",
+				"context",
+				"usage",
+				"connectors",
+				"outputs",
+				"pullRequests",
+				"servers",
+				"backgroundTasks",
+			],
+		});
+	});
+
+	it("keeps a section that was empty during a drag at its default place once it shows", () => {
+		reorderRailSections("environment", "backgroundTasks");
+
+		expect(
+			orderRailSections(["environment", "context", "outputs", "backgroundTasks"], readRailSectionsState().order),
+		).toStrictEqual(["context", "outputs", "backgroundTasks", "environment"]);
+	});
+
+	it("counts a saved order that merges back to the default as pristine", () => {
+		reorderRailSections("progress", "environment");
+		reorderRailSections("progress", "connectors");
+
+		expect(isRailSectionsPristine(readRailSectionsState(), "s1")).toBe(true);
 	});
 });

@@ -695,6 +695,20 @@ describe("Environment card", () => {
 		});
 	});
 
+	it("lines the folder menu button like upstream: 32px tall, its label 38px in past an icon padded 8px", async () => {
+		await renderCards(BASE);
+		const card = screen.getByRole("region", {name: /^Environment/});
+		const trigger = within(card).getByRole("button", {name: /avalonlogs/});
+		const overlay = trigger.parentElement?.querySelector(".pointer-events-none");
+		const picked = (element: Element | null | undefined, wanted: readonly string[]) =>
+			wanted.filter((each) => element?.className.split(" ").includes(each));
+
+		expect({
+			trigger: picked(trigger, ["h-8", "h-6.5", "gap-2.5", "ps-[38px]", "ps-8", "pe-2", "pe-1"]),
+			overlay: picked(overlay, ["ps-2", "ps-1"]),
+		}).toStrictEqual({trigger: ["h-8", "gap-2.5", "ps-[38px]", "pe-2"], overlay: ["ps-2"]});
+	});
+
 	it("opens a branch menu to copy the branch name, without GitHub for a repo with no GitHub remote", async () => {
 		await renderCards(BASE);
 
@@ -846,6 +860,19 @@ describe("Background tasks card", () => {
 		});
 	});
 
+	it("lines the task rows and Show more at upstream's 32px with an 8px row pad", async () => {
+		await renderCards(withTasks(SIX));
+		const picked = (element: Element | null | undefined) =>
+			["min-h-8", "min-h-6.5", "gap-2.5", "px-2", "px-1"].filter((each) =>
+				element?.className.split(" ").includes(each),
+			);
+
+		expect({
+			row: picked(screen.getByRole("button", {name: "Open Task 1 in Background tasks"})),
+			showMore: picked(screen.getByRole("button", {name: "Show more"})),
+		}).toStrictEqual({row: ["min-h-8", "gap-2.5", "px-2"], showMore: ["min-h-8", "px-2"]});
+	});
+
 	it("expands in place to every running task with Show less, and collapses back", async () => {
 		await renderCards(withTasks(SIX));
 		fireEvent.click(screen.getByRole("button", {name: "Show more"}));
@@ -974,7 +1001,7 @@ describe("Context card", () => {
 		});
 	});
 
-	const HINT_CLASS = "mt-1 flex min-h-6 items-center px-1 pb-1 text-[12px]/[15px] text-secondary";
+	const HINT_CLASS = "mt-1 flex min-h-6 items-center px-2 pb-1 text-[12px]/[15px] text-secondary";
 
 	it("says a message brings the breakdown, with no Last updated footer, when only window totals are known", async () => {
 		await renderCards(contextInputs(SIXTEEN_HOURS_AGO()));
@@ -1444,7 +1471,7 @@ describe("Context card breakdown", () => {
 			};
 		}
 
-		const className = "mt-1 px-1 pb-1 text-[12px]/[15px] text-secondary";
+		const className = "mt-1 px-2 pb-1 text-[12px]/[15px] text-secondary";
 
 		it("dates a /context breakdown by its run and says a new run refreshes it", async () => {
 			const results = [await footer("context-command", false)];

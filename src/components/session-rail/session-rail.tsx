@@ -62,8 +62,12 @@ export interface RailCard {
 
 const RAIL_DRAG_MODIFIERS = [lockRailDragToVerticalAxis];
 
+/** Upstream's `R0`: an open card's caret shows only while its header is hovered, focused within or touched. */
+const OPEN_CARET_CLASS =
+	"opacity-0 group-hover/railtop:opacity-100 group-focus-within/railtop:opacity-100 touch:opacity-100";
+
 const HEAD_CLASS =
-	"group/railhead flex min-h-6.5 w-full min-w-0 cursor-pointer items-center gap-1 rounded-r5 px-1 text-left text-[12px]/[15px] font-medium text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"group/railhead relative flex min-h-6 w-full min-w-0 cursor-pointer items-center gap-1 rounded-r5 px-2 text-left text-[12px]/[16px] font-medium text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /** Upstream's header menu: a Show checkbox per hideable section, then Reset to defaults. */
 function RailHeaderMenu({sessionId, sections}: {sessionId: string; sections: RailSectionsState}) {
@@ -155,6 +159,10 @@ function RailSection({
 		attributes: {roleDescription: "Draggable section"},
 	});
 	const title = RAIL_SECTION_TITLES[card.id];
+	// Upstream's grip is keyboard-only: pointer drags start from the grab zone inside the header button.
+	const keyboardListeners = Object.fromEntries(
+		Object.entries(listeners ?? {}).filter(([name]) => name !== "onPointerDown"),
+	);
 	return (
 		<ContextMenu>
 			<section
@@ -166,16 +174,27 @@ function RailSection({
 				aria-labelledby={headingId}
 				className={RAIL_CARD_CLASS}
 			>
-				<ContextMenuTrigger className="group/railtop relative flex min-h-6.5 min-w-0 items-center gap-1.5 px-2">
-					<h3
+				<ContextMenuTrigger className="group/railtop relative flex min-h-6 min-w-0 items-center gap-1.5 px-1.5">
+					<div
 						id={headingId}
 						className="flex min-w-0 flex-1 rounded group-data-[popup-open]/railtop:bg-alpha-1"
 					>
-						<button type="button" aria-expanded={open} onClick={onToggle} className={HEAD_CLASS}>
+						<button
+							type="button"
+							aria-expanded={open}
+							onClick={onToggle}
+							onPointerDown={(event) => {
+								// Upstream's grab zone sits inside the trigger: a press there can start a drag, and a click still toggles.
+								if (event.target instanceof Element && event.target.closest("[data-rail-grab]")) {
+									listeners?.["onPointerDown"]?.(event);
+								}
+							}}
+							className={HEAD_CLASS}
+						>
 							<span className="shrink-0">{RAIL_SECTION_TITLES[card.id]}</span>
 							<ChevronRight
 								aria-hidden
-								className={`size-3 shrink-0 text-ink-muted transition-transform motion-reduce:transition-none ${open ? "rotate-90" : ""}`}
+								className={`size-3 shrink-0 text-ink-muted transition-transform motion-reduce:transition-none ${open ? `rotate-90 ${OPEN_CARET_CLASS}` : ""}`}
 							/>
 							{(card.summary !== undefined || card.rollupPct !== undefined) && (
 								<span
@@ -190,21 +209,26 @@ function RailSection({
 									)}
 								</span>
 							)}
+							<span
+								aria-hidden
+								data-rail-grab=""
+								className="absolute inset-y-0 end-0 w-20 cursor-grab touch-none active:cursor-grabbing"
+							/>
 						</button>
-					</h3>
+					</div>
 					<div
 						ref={setActivatorNodeRef}
 						data-rail-grip=""
 						{...attributes}
-						{...listeners}
+						{...keyboardListeners}
 						aria-label={`Reorder ${title}`}
-						className="group/railgrip absolute inset-y-0 end-0 flex w-20 cursor-grab touch-none items-center justify-end pe-2.5 text-ink-muted opacity-0 group-hover/railtop:opacity-100 focus-visible:opacity-100 outline-hidden active:cursor-grabbing"
+						className="group/railgrip pointer-events-none absolute inset-y-0 end-0 flex w-20 items-center justify-end pe-2.5 text-ink-muted opacity-0 group-hover/railtop:opacity-100 focus-visible:opacity-100 outline-hidden"
 					>
 						<GripDots />
 					</div>
 				</ContextMenuTrigger>
 				{open && (
-					<div data-rail-body="" className="px-2">
+					<div data-rail-body="" className="flex flex-col px-1.5 pt-1">
 						{card.body}
 					</div>
 				)}
@@ -246,7 +270,7 @@ export function SessionRail({sessionId, cards}: {sessionId: string; cards: reado
 		const from = RailSectionIdSchema.safeParse(active.id);
 		const to = RailSectionIdSchema.safeParse(over?.id);
 		if (!from.success) return;
-		if (to.success) reorderRailSections(shownIds, from.data, to.data);
+		if (to.success) reorderRailSections(from.data, to.data);
 		const dropTop = active.rect.current.translated?.top;
 		if (dropTop !== undefined) setDrop({id: from.data, top: dropTop});
 	};

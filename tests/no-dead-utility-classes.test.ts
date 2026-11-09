@@ -66,6 +66,7 @@ const ALLOWLIST: Record<string, string> = {
 	"epitaxy-answer-option": HOOK,
 	"epitaxy-approval-actions": HOOK,
 	"epitaxy-diff": HOOK,
+	"epitaxy-rail-lined": HOOK,
 	"epitaxy-reply-flash-accent": HOOK,
 	"epitaxy-root": HOOK,
 	"epitaxy-status-control": HOOK,

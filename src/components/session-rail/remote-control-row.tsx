@@ -17,7 +17,7 @@ import {Tooltip} from "../ui/tooltip";
  * the bridged session or copy its link.
  */
 
-const ROW_CLASS = "group/setting flex min-h-6.5 w-full min-w-0 items-center gap-2 px-1 text-[13px]/[19px]";
+const ROW_CLASS = "group/setting flex min-h-8 w-full min-w-0 items-center gap-2.5 px-2 text-[13px]/[19px]";
 const ICON_SLOT_CLASS = "flex size-5 shrink-0 items-center justify-center text-secondary [&_svg]:size-4";
 const LABEL_CLASS = "min-w-0 flex-1 cursor-pointer truncate text-primary";
 /* Upstream `Ae`: hidden until the row is hovered or focused, its menu is open, or on touch. */

@@ -773,14 +773,13 @@ const CARDS: RailCard[] = [
 
 function cardStates(): Array<[string, string | null, boolean]> {
 	return within(screen.getByRole("complementary", {name: "Session details"}))
-		.getAllByRole("heading", {level: 3})
-		.map((heading) => {
-			const button = within(heading).getByRole("button");
-			const section = heading.closest("section");
+		.getAllByRole("region")
+		.map((section) => {
+			const button = section.querySelector("button[aria-expanded]");
 			return [
-				button.textContent,
-				button.getAttribute("aria-expanded"),
-				section?.querySelector("[data-rail-body]") !== null,
+				button?.textContent ?? "",
+				button?.getAttribute("aria-expanded") ?? null,
+				section.querySelector("[data-rail-body]") !== null,
 			];
 		});
 }
@@ -966,7 +965,8 @@ describe("session rail reorder", () => {
 		);
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
 
-		expect(cardStates().map(([title]) => title)).toStrictEqual(["Progress1 of 3", "Environment", "Context12%"]);
+		// Upstream's merge: the saved ids fill the slots they name, and Context keeps its default slot between them.
+		expect(cardStates().map(([title]) => title)).toStrictEqual(["Progress1 of 3", "Context12%", "Environment"]);
 	});
 
 	it("gives each header upstream's hover-only Reorder grip, a keyboard-sortable handle", () => {
@@ -1068,14 +1068,100 @@ describe("session rail reorder", () => {
 		});
 	});
 
-	it("uses upstream's gap-sm 8px between row slots and gap-xs 6px across the header row", () => {
+	it("uses upstream's lined 10px word gap between row slots and gap-xs 6px across the header row", () => {
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
 		const railtop = screen.getByRole("button", {name: "Reorder Progress"}).closest(".group\\/railtop");
 		const gaps = (className: string | undefined) => className?.split(" ").filter((c) => c.startsWith("gap-"));
 
 		expect({row: gaps(RAIL_ROW_ACTION_CLASS), railtop: gaps(railtop?.className)}).toStrictEqual({
-			row: ["gap-2"],
+			row: ["gap-2.5"],
 			railtop: ["gap-1.5"],
 		});
+	});
+});
+
+describe("session rail lined layout", () => {
+	/** The classes of `element` that appear in `wanted`, in `wanted`'s order. */
+	function picked(element: Element | null | undefined, wanted: readonly string[]): string[] {
+		const classes = new Set(element?.getAttribute("class")?.split(" "));
+		return wanted.filter((each) => classes.has(each));
+	}
+
+	it("lines each card like upstream: a 24px header, 8px row pad, a 4px body top pad and pb 6px while open", () => {
+		render(<SessionRail sessionId="s1" cards={CARDS} />);
+		const section = document.querySelector('[data-rail-section="progress"]');
+		const button = screen.getByRole("button", {name: /^Progress/});
+		const railtop = button.closest(".group\\/railtop");
+		const body = section?.querySelector("[data-rail-body]");
+
+		expect({
+			section: picked(section, ["epitaxy-rail-lined", "pt-2", "pb-2", "data-open:pb-1.5"]),
+			railtop: picked(railtop, ["min-h-6", "min-h-6.5", "gap-1.5", "px-1.5", "px-2"]),
+			button: picked(button, ["relative", "min-h-6", "min-h-6.5", "px-1", "px-2", "text-[12px]/[16px]"]),
+			body: picked(body, ["flex", "flex-col", "px-1.5", "px-2", "pt-1"]),
+		}).toStrictEqual({
+			section: ["epitaxy-rail-lined", "pt-2", "pb-2", "data-open:pb-1.5"],
+			railtop: ["min-h-6", "gap-1.5", "px-1.5"],
+			button: ["relative", "min-h-6", "px-2", "text-[12px]/[16px]"],
+			body: ["flex", "flex-col", "px-1.5", "pt-1"],
+		});
+	});
+
+	it("gives rows upstream's 32px list-row height, 10px word gap and 8px row pad", () => {
+		const row = RAIL_ROW_ACTION_CLASS.split(" ");
+
+		expect(["min-h-8", "min-h-6.5", "gap-2.5", "px-2", "px-1"].filter((each) => row.includes(each))).toStrictEqual([
+			"min-h-8",
+			"gap-2.5",
+			"px-2",
+		]);
+	});
+
+	it("hides an open card's caret until the header is hovered, focused within or touched", () => {
+		render(<SessionRail sessionId="s1" cards={CARDS} />);
+		const caret = (name: RegExp) => screen.getByRole("button", {name}).querySelector("svg");
+		const fade = [
+			"opacity-0",
+			"group-hover/railtop:opacity-100",
+			"group-focus-within/railtop:opacity-100",
+			"touch:opacity-100",
+		];
+
+		expect({open: picked(caret(/^Progress/), fade), collapsed: picked(caret(/^Context/), fade)}).toStrictEqual({
+			open: fade,
+			collapsed: [],
+		});
+	});
+
+	it("toggles a card from a click on the grab zone inside the header button", () => {
+		render(<SessionRail sessionId="s1" cards={CARDS} />);
+		const button = screen.getByRole("button", {name: /^Progress/});
+		const grab = button.querySelector<HTMLElement>("[data-rail-grab]");
+		if (grab === null) throw new Error("no grab zone");
+		fireEvent.pointerDown(grab, {button: 0, isPrimary: true, clientX: 260, clientY: 10});
+		fireEvent.pointerUp(grab, {button: 0, isPrimary: true, clientX: 260, clientY: 10});
+		fireEvent.click(grab);
+
+		expect({
+			grab: [
+				grab.getAttribute("aria-hidden"),
+				picked(grab, ["absolute", "inset-y-0", "end-0", "w-20", "cursor-grab"]),
+			],
+			open: document.querySelector('[data-rail-section="progress"]')?.hasAttribute("data-open"),
+		}).toStrictEqual({
+			grab: ["true", ["absolute", "inset-y-0", "end-0", "w-20", "cursor-grab"]],
+			open: false,
+		});
+	});
+
+	it("keeps the grip keyboard-only and labels each card by a div, like upstream", () => {
+		render(<SessionRail sessionId="s1" cards={CARDS} />);
+		const section = document.querySelector('[data-rail-section="context"]');
+		const labelledBy = section?.getAttribute("aria-labelledby") ?? "";
+
+		expect({
+			grip: picked(screen.getByRole("button", {name: "Reorder Context"}), ["pointer-events-none"]),
+			label: document.getElementById(labelledBy)?.tagName,
+		}).toStrictEqual({grip: ["pointer-events-none"], label: "DIV"});
 	});
 });

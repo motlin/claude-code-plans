@@ -137,7 +137,7 @@ function EnvironmentMenuRow({
 				</MenuTrigger>
 				<MenuContent>{children}</MenuContent>
 			</Menu>
-			<span className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-1">
+			<span className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-2">
 				<span className="flex size-5 shrink-0 items-center justify-center text-secondary [&_svg]:size-4">
 					<Icon icon={icon} />
 				</span>
@@ -289,7 +289,7 @@ function ContextUpdated({
 	source?: ContextBreakdown["source"] | null;
 }) {
 	return (
-		<div data-rail-context-updated="" className="mt-1 px-1 pb-1 text-[12px]/[15px] text-secondary">
+		<div data-rail-context-updated="" className="mt-1 px-2 pb-1 text-[12px]/[15px] text-secondary">
 			Last updated <time dateTime={updatedAt}>{formatUpdatedAgo(updatedAt, Date.now())}</time>.{" "}
 			{refreshHint(working, source)}
 		</div>
@@ -320,7 +320,7 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 	if (usage?.contextTokens == null || usage.contextWindowSize === null) {
 		return {
 			id: "context",
-			body: <p className="px-1 pb-1 text-[12px]/[15px] text-secondary">Send a message to see context usage.</p>,
+			body: <p className="px-2 pb-1 text-[12px]/[15px] text-secondary">Send a message to see context usage.</p>,
 		};
 	}
 	const percent = Math.min(
@@ -333,7 +333,7 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 		rollupPct: rounded,
 		body: (
 			<div className="flex flex-col">
-				<div className="flex flex-col gap-1 px-1 pt-1 pb-1.5">
+				<div className="flex flex-col gap-1 px-2 pt-1 pb-1.5">
 					<div className="flex min-w-0 items-baseline justify-between gap-2 text-[13px]/[19px]">
 						<span className="shrink-0 text-primary tabular-nums">{rounded}% used</span>
 						<span
@@ -360,7 +360,7 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 				{!working && (
 					<div
 						data-rail-context-hint=""
-						className="mt-1 flex min-h-6 items-center px-1 pb-1 text-[12px]/[15px] text-secondary"
+						className="mt-1 flex min-h-6 items-center px-2 pb-1 text-[12px]/[15px] text-secondary"
 					>
 						Send a message to see the breakdown.
 					</div>
@@ -404,7 +404,7 @@ function connectorsCard(servers: readonly McpServerSummary[]): RailCard | null {
 				</Rows>
 				<Link
 					to="/customize/connectors"
-					className="flex min-h-6.5 items-center px-1 text-[12px]/[15px] text-ink-muted hover:text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+					className="flex min-h-8 items-center px-2 text-[12px]/[15px] text-ink-muted hover:text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 				>
 					Manage connectors
 				</Link>
@@ -414,7 +414,7 @@ function connectorsCard(servers: readonly McpServerSummary[]): RailCard | null {
 }
 
 const SHOW_MORE_CLASS =
-	"flex min-h-6.5 w-full min-w-0 cursor-pointer items-center rounded px-1 text-start text-[13px]/[19px] text-ink-muted hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"flex min-h-8 w-full min-w-0 cursor-pointer items-center rounded px-2 text-start text-[13px]/[19px] text-ink-muted hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 interface ShowMoreState {
 	expanded: boolean;

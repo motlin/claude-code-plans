@@ -99,4 +99,16 @@ describe("PlanContextHeader", () => {
 		);
 		expect(screen.getByTestId("host").innerHTML).toBe("");
 	});
+
+	it("shares the session rail's lined 32px rows", async () => {
+		await renderWithRouter(
+			<PlanContextHeader links={[link("sess-new", null, "2026-10-17T10:00:00Z")]} now={NOW} />,
+		);
+		const header = screen.getByTestId("plan-context");
+
+		expect({
+			card: header.className.split(" ").includes("epitaxy-rail-lined"),
+			rows: Array.from(header.querySelectorAll("a, button"), (el) => el.className.split(" ").includes("min-h-8")),
+		}).toStrictEqual({card: true, rows: [true, true]});
+	});
 });

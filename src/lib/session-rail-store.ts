@@ -234,7 +234,7 @@ export function toggleRailSectionHidden(id: RailSectionId): void {
 export function isRailSectionsPristine(state: RailSectionsState, sessionId: string): boolean {
 	return (
 		state.hidden.length === 0 &&
-		orderRailSections(RAIL_SECTION_IDS, state.order).every((id, index) => RAIL_SECTION_IDS[index] === id) &&
+		mergeRailSectionOrder(state.order).every((id, index) => RAIL_SECTION_IDS[index] === id) &&
 		RAIL_SECTION_IDS.every(
 			(id) =>
 				state.startsOpen[id] !== !defaultOpen(id) &&
@@ -252,29 +252,35 @@ export function resetRailSections(sessionId: string): void {
 	});
 }
 
-/** `ids` in the saved order; cards it does not name keep their default order after the named ones. */
-export function orderRailSections<T extends RailSectionId>(ids: readonly T[], order: readonly RailSectionId[]): T[] {
-	const rank = (id: T) => {
-		const saved = order.indexOf(id);
-		return saved === -1 ? order.length + ids.indexOf(id) : saved;
-	};
-	return ids.toSorted((a, b) => rank(a) - rank(b));
+/** Upstream's `q`: ids added after orders were first saved, placed just before their anchor in an order that lacks them. */
+const RAIL_SECTION_ANCHORS: Partial<Record<RailSectionId, RailSectionId>> = {servers: "backgroundTasks"};
+
+/** Upstream's `J`: the saved ids fill the default slots they name, unsaved ids keep their default slot, and anchored ids sit before their anchor. */
+function mergeRailSectionOrder(order: readonly RailSectionId[]): RailSectionId[] {
+	const anchored = RAIL_SECTION_IDS.flatMap((id) => {
+		const before = RAIL_SECTION_ANCHORS[id];
+		return before !== undefined && !order.includes(id) && order.includes(before) ? [{id, before}] : [];
+	});
+	const queue = [...order];
+	const merged = RAIL_SECTION_IDS.filter((id) => !anchored.some((each) => each.id === id)).map((id) =>
+		order.includes(id) ? (queue.shift() ?? id) : id,
+	);
+	for (const {id, before} of anchored) merged.splice(merged.indexOf(before), 0, id);
+	return merged;
 }
 
-/**
- * Upstream's drop: `active` takes `over`'s place among the shown cards, and the
- * new sequence fills the shown cards' slots in the saved order, so hidden or
- * empty sections keep theirs.
- */
-export function reorderRailSections(shown: readonly RailSectionId[], active: RailSectionId, over: RailSectionId): void {
-	const from = shown.indexOf(active);
-	const to = shown.indexOf(over);
-	if (from === -1 || to === -1 || from === to) return;
-	const moved = [...shown];
-	moved.splice(to, 0, ...moved.splice(from, 1));
+/** `ids` in upstream's merged order. */
+export function orderRailSections<T extends RailSectionId>(ids: readonly T[], order: readonly RailSectionId[]): T[] {
+	return mergeRailSectionOrder(order).filter((id): id is T => (ids as readonly RailSectionId[]).includes(id));
+}
+
+/** Upstream's drop: `active` takes `over`'s slot, and every section's slot is saved, so hidden or empty sections keep theirs. */
+export function reorderRailSections(active: RailSectionId, over: RailSectionId): void {
 	const state = readRailSectionsState();
-	const shownSet = new Set(shown);
-	const queue = [...moved];
-	const order = state.order.map((id) => (shownSet.has(id) ? (queue.shift() ?? id) : id));
-	sectionsStore.write({...state, order: [...order, ...queue]});
+	const order = mergeRailSectionOrder(state.order);
+	const from = order.indexOf(active);
+	const to = order.indexOf(over);
+	if (from === -1 || to === -1 || from === to) return;
+	order.splice(to, 0, ...order.splice(from, 1));
+	sectionsStore.write({...state, order});
 }
