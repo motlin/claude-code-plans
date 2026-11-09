@@ -6209,6 +6209,8 @@ function ToolCallRow({
 
 	// Upstream leads a standalone in-flight row with its activity WorkingMark and follows the label with the elapsed time.
 	const runningRow = pending && isTurnStatus;
+	// Upstream marks a pending top-level Agent step as well, keeping its navigating-row look.
+	const markedRow = pending && !nested;
 	const liveTaskId = call.name === "Bash" ? backgroundTasks?.running.get(call.id) : undefined;
 	const liveOutput =
 		backgroundTasks !== null && liveTaskId !== undefined
@@ -6257,7 +6259,7 @@ function ToolCallRow({
 	) : null;
 	const rowLabel = (
 		<>
-			{runningRow && <WorkingMark activity={toolMarkActivity(call.name, call.input)} className="me-1.5" />}
+			{markedRow && <WorkingMark activity={toolMarkActivity(call.name, call.input)} className="me-1.5" />}
 			{joinedLabel ? (
 				// Upstream's grouped row: label and parameter in one <bdi>, joined by a plain space.
 				<bdi ref={rowCut} id={`${statusId}-label`} className="truncate min-w-0 text-body">
@@ -6575,6 +6577,10 @@ function ToolCallRow({
 			// Upstream `St`: a marked row is carried into the turn-mark outlet below a docked card.
 			<TurnMarkCarrier holds={runningRow} inFlight={pending}>
 				<TurnStatusFrame leading={leading}>{disclosure}</TurnStatusFrame>
+			</TurnMarkCarrier>
+		) : markedRow ? (
+			<TurnMarkCarrier holds inFlight>
+				{disclosure}
 			</TurnMarkCarrier>
 		) : (
 			disclosure

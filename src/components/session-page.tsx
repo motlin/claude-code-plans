@@ -613,7 +613,7 @@ function SessionView({
 		interruptedAt: lastInterrupt?.sessionId === sessionId ? lastInterrupt.at : null,
 		awaitingPermission: awaitingPermission && !answeredHeld,
 	});
-	// The turn's in-flight call has its own running row in the transcript (a subagent's row stays a plain link).
+	// The turn's in-flight call has its own running row in the transcript; upstream marks an Agent step too.
 	const pendingCall = useMemo(() => findLastPendingToolUse(transcript.records), [transcript.records]);
 	const waitingPlanId = inlinePlanToolUseId(sessionSummaryState, pendingCall);
 	const inlinePlanAnswered = useApprovalAnswered(sessionId, waitingPlanId);
@@ -623,11 +623,7 @@ function SessionView({
 		if (dockedPlan === null) return null;
 		return {toolUseId: dockedPlan.toolUseId, planText: dockedPlan.plan};
 	}, [inlinePlanId, pendingCall, dockedPlan]);
-	const inFlightRow =
-		workingMarkerState.status === "working" &&
-		pendingCall !== null &&
-		pendingCall.name !== "Agent" &&
-		pendingCall.name !== "Task";
+	const inFlightRow = workingMarkerState.status === "working" && pendingCall !== null;
 	const backgroundTasks = useMemo(
 		() =>
 			extractBackgroundTasks(transcript.records, {

@@ -215,6 +215,78 @@ export function workingLineWaitsOnUser({
 	return (awaitingPermission || sessionState === "waiting") && !cardShown;
 }
 
+/**
+ * A row's running words handed to the working line when the row cannot hold
+ * the mark (upstream's `toolLabel`/`toolLabelUnspoken`/`toolLabelSince`).
+ * `unspoken` words come from a grouped step, so the line announces them;
+ * `since` is the call's clock start (`toolLabelSince`), null for the turn's.
+ */
+export interface WorkingLineToolLabel {
+	words: string;
+	unspoken: boolean;
+	since: number | null;
+}
+
+/** What the busy line's label shows, in upstream's `h ?? toolLabel` priority. */
+export type WorkingLineLabelSource = "stopping" | "retry" | "phase" | "tool" | "stats";
+
+export function workingLineLabelSource({
+	state,
+	phase,
+	toolLabel,
+}: Readonly<{
+	state: WorkingMarkerState;
+	phase: string | null;
+	toolLabel: WorkingLineToolLabel | null;
+}>): WorkingLineLabelSource {
+	if (state.status === "stopping") return "stopping";
+	if (state.status === "retrying") return "retry";
+	if (phase !== null) return "phase";
+	return toolLabel !== null && state.status === "working" ? "tool" : "stats";
+}
+
+/** One permission-wait interval; `to` is null while it is still open. */
+export interface PermissionWait {
+	from: number;
+	to: number | null;
+}
+
+/** Upstream's `waitedMsSince`: the permission-wait time after `since`, an open wait counting nothing. */
+export function waitedMsSince(waits: readonly PermissionWait[], since: number): number {
+	return waits.reduce((sum, {from, to}) => sum + Math.max(0, (to ?? from) - Math.max(from, since)), 0);
+}
+
+/** Upstream's `bSe`: the call clock starts at the call (never before the turn), pushed on by its permission waits. */
+export function toolLabelSince({
+	callStartedAt,
+	turnStartedAt,
+	waits,
+}: Readonly<{callStartedAt: number | null; turnStartedAt: number; waits: readonly PermissionWait[]}>): number {
+	const start = Math.max(callStartedAt ?? turnStartedAt, turnStartedAt);
+	return start + waitedMsSince(waits, start);
+}
+
+/** Upstream's `clockNotBefore = toolLabelEndedAt + 2e3`: no clock for 2s after a call's words clear. */
+export const TOOL_CLOCK_HOLD_MS = 2000;
+
+export function clockHidden({now, endedAt}: Readonly<{now: number; endedAt: number | null}>): boolean {
+	return endedAt !== null && now < endedAt + TOOL_CLOCK_HOLD_MS;
+}
+
+/**
+ * The working line's stats while a tool's words show: the call clock (from 2s)
+ * and the token stat, never the Thinking word.
+ */
+export function toolLabelStats(
+	state: Extract<WorkingMarkerState, {status: "working"}>,
+	since: number | null,
+	tokens: number,
+): string[] {
+	const now = state.turnStartedAt + state.elapsedSeconds * 1000;
+	const elapsed = Math.max(0, Math.floor((now - (since ?? state.turnStartedAt)) / 1000));
+	return [...liveElapsedStats(elapsed), ...tokenStats(elapsed, tokens)];
+}
+
 /** Upstream's settle (`TTe`) before one phase word swaps for the next. */
 export const PHASE_SETTLE_MS = 150;
 
@@ -246,8 +318,11 @@ export interface WorkingLineParts {
 	stats: string[];
 }
 
-/** `tokens` is the turn's token estimate (`turnTokenEstimate`), shown only while working. */
-export function workingLineParts(state: WorkingMarkerState, tokens = 0): WorkingLineParts {
+/**
+ * `tokens` is the turn's token estimate (`turnTokenEstimate`), shown only while working.
+ * `showClock` false drops the elapsed clock (upstream's 2s hold after a call's words clear).
+ */
+export function workingLineParts(state: WorkingMarkerState, tokens = 0, showClock = true): WorkingLineParts {
 	switch (state.status) {
 		case "idle":
 		case "waiting":
@@ -260,7 +335,7 @@ export function workingLineParts(state: WorkingMarkerState, tokens = 0): Working
 			return {
 				label: "",
 				stats: [
-					...liveElapsedStats(state.elapsedSeconds),
+					...(showClock ? liveElapsedStats(state.elapsedSeconds) : []),
 					...tokenStats(state.elapsedSeconds, tokens),
 					...(state.thinking ? [THINKING_STAT] : []),
 				],
@@ -268,7 +343,7 @@ export function workingLineParts(state: WorkingMarkerState, tokens = 0): Working
 		case "retrying":
 			return {
 				label: retryLabel(state),
-				stats: liveElapsedStats(state.elapsedSeconds),
+				stats: showClock ? liveElapsedStats(state.elapsedSeconds) : [],
 			};
 		default:
 			return assertNever(state);

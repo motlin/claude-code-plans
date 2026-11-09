@@ -747,6 +747,47 @@ describe("SessionPage dock composition", () => {
 				document.querySelector('[data-testid="transcript-row"] [data-standalone-tool-row]') !== null,
 		}).toStrictEqual({outlets: 0, homes: 0, rowInTranscript: true});
 	});
+	function seedWorking(queryClient: QueryClient) {
+		seedUsage(queryClient);
+		queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+			pages: [{sessions: [{id: SESSION_ID, state: "working"}], nextCursor: null}],
+			pageParams: [null],
+		} as never);
+	}
+	function pendingCallRecords(name: string, input: Record<string, unknown>): Record<string, unknown>[] {
+		return [
+			{
+				type: "user",
+				uuid: "u1",
+				sessionId: SESSION_ID,
+				timestamp: "2026-09-28T10:00:00.000Z",
+				message: {role: "user", content: "Fabricated prompt: survey the repo."},
+			},
+			{
+				type: "assistant",
+				uuid: "a1",
+				sessionId: SESSION_ID,
+				timestamp: "2026-09-28T10:00:01.000Z",
+				message: {role: "assistant", content: [{type: "tool_use", id: "toolu_running", name, input}]},
+			},
+		];
+	}
+	it.each([
+		{name: "Bash", input: {command: "ls", description: "List files"}},
+		{name: "Agent", input: {description: "Survey the repo", prompt: "Look around", subagent_type: "Explore"}},
+	])(
+		"marks a pending top-level $name row and quiets the working line, as upstream's marked step",
+		async ({name, input}) => {
+			await renderSessionPage(detail, [], seedWorking, pendingCallRecords(name, input));
+			await flush();
+			const row = [...document.querySelectorAll('[data-testid="transcript-row"] [data-tool-row]')].at(-1);
+			const line = document.querySelector('[data-testid="code-working-line"]');
+			expect({
+				rowMark: row?.querySelector("[data-cds=WorkingMark]") !== null,
+				quiet: line?.getAttribute("data-quiet"),
+			}).toStrictEqual({rowMark: true, quiet: "true"});
+		},
+	);
 	it("draws the stored question once, inline in the transcript, not a permission card, when the registry's permission wait is really a question", async () => {
 		await renderSessionPage(
 			{...detail, pr},

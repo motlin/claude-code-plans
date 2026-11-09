@@ -5,13 +5,17 @@ import {useReducedMotion} from "../lib/reduced-motion";
 import {useTypeRowCut} from "../lib/use-row-cut";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {
+	clockHidden,
 	CONNECTING_PHASE_LABEL,
 	PHASE_SETTLE_MS,
 	phaseLabel,
 	stripTrailingEllipsis,
+	toolLabelStats,
 	workingLineAnnouncement,
+	workingLineLabelSource,
 	workingLineParts,
 	workingMarkerText,
+	type WorkingLineToolLabel,
 	type WorkingMarkerState,
 } from "../lib/working-marker";
 import {RunningTasksControl} from "./running-tasks-control";
@@ -138,6 +142,8 @@ export function WorkingMarker({
 	bare = false,
 	sending = false,
 	tokens = 0,
+	toolLabel = null,
+	toolLabelEndedAt = null,
 }: Readonly<{
 	state: WorkingMarkerState;
 	runningTasks?: number;
@@ -151,31 +157,50 @@ export function WorkingMarker({
 	sending?: boolean;
 	/** The turn's token estimate (`turnTokenEstimate`); shown after the clock while working. */
 	tokens?: number;
+	/** A row's running words handed to the line while it holds the mark (upstream's `toolLabel`). */
+	toolLabel?: WorkingLineToolLabel | null;
+	/** When the last handed-off words cleared; the clock stays hidden for 2s after. */
+	toolLabelEndedAt?: number | null;
 }>) {
 	const reduceMotion = useReducedMotion();
 	const restInk = useRestInk();
 	const phase = useSettledPhase(useLinePhase(state, sending, waitingOnUser));
 	// Upstream draws no mark while the turn waits on the user.
 	const turnWorking = !waitingOnUser && (phase !== null || (state.status !== "idle" && state.status !== "waiting"));
-	const busy = turnWorking && !quiet;
-	const parts = workingLineParts(state, tokens);
+	const source = workingLineLabelSource({state, phase, toolLabel});
+	const tool = source === "tool" && state.status === "working" ? toolLabel : null;
+	// Holding a row's words, the line holds the mark itself and is never quiet.
+	const lineQuiet = quiet && tool === null;
+	const busy = turnWorking && !lineQuiet;
+	const now = "turnStartedAt" in state ? state.turnStartedAt + state.elapsedSeconds * 1000 : null;
+	const showClock = now === null || !clockHidden({now, endedAt: toolLabelEndedAt});
+	const parts = workingLineParts(state, tokens, showClock);
 	const phaseWord = phase === null ? null : stripTrailingEllipsis(phase);
-	const label = phaseWord ?? parts.label;
-	const stats = phase === null ? parts.stats : [];
+	const toolWord = tool === null ? null : stripTrailingEllipsis(tool.words);
+	const morphWord = phaseWord ?? toolWord;
+	const label = morphWord ?? parts.label;
+	const stats =
+		phase === null
+			? tool !== null && state.status === "working"
+				? toolLabelStats(state, tool.since, tokens)
+				: parts.stats
+			: [];
+	const rowTitle = phase ?? tool?.words;
+	const announcement = phaseWord ?? (tool?.unspoken === true ? (toolWord ?? "") : workingLineAnnouncement(state));
 	const tasks = runningTasks > 0;
-	const labelRowCut = useTypeRowCut(phaseWord === null ? label : "");
+	const labelRowCut = useTypeRowCut(morphWord === null ? label : "");
 	const line = (
 		<div
 			data-testid="code-working-line"
 			data-turn-working={turnWorking ? "true" : "false"}
-			{...(quiet && turnWorking ? {"data-quiet": "true", "aria-hidden": true} : {})}
-			className={`${quiet && turnWorking ? "invisible " : ""}flex min-h-6 flex-col comfortable:min-h-8`}
+			{...(lineQuiet && turnWorking ? {"data-quiet": "true", "aria-hidden": true} : {})}
+			className={`${lineQuiet && turnWorking ? "invisible " : ""}flex min-h-6 flex-col comfortable:min-h-8`}
 		>
 			{waitingOnUser && <BlockedStatus reduceMotion={reduceMotion} />}
 			{busy && (
 				<div data-cds="TurnStatus" data-state="busy" className="group/status flex w-full min-w-0 flex-col">
 					<div
-						{...(phase === null ? {} : {title: phase})}
+						{...(rowTitle === undefined ? {} : {title: rowTitle})}
 						data-cds-row=""
 						className="flex min-w-0 items-center gap-1.5 px-1 py-0.5 text-body comfortable:px-1.5 comfortable:py-1.5"
 					>
@@ -185,13 +210,15 @@ export function WorkingMarker({
 							className="relative me-[6px] flex h-[1lh] w-[20px] shrink-0 items-center justify-center"
 						>
 							<WorkingMark
-								activity={workingLineActivity(state.status === "working" && state.thinking)}
+								activity={workingLineActivity(
+									state.status === "working" && state.thinking && tool === null,
+								)}
 								animated={!reduceMotion}
 							/>
 						</span>
 						<span className="inline-flex min-w-0 items-center text-secondary">
-							{phaseWord !== null && <PhaseWord word={phaseWord} />}
-							{phaseWord === null && label !== "" && (
+							{morphWord !== null && <PhaseWord word={morphWord} />}
+							{morphWord === null && label !== "" && (
 								<span
 									ref={labelRowCut}
 									title={workingMarkerText(state, tokens)}
@@ -223,7 +250,7 @@ export function WorkingMarker({
 			)}
 			{turnWorking || waitingOnUser ? (
 				<span role="status" aria-live="polite" className="sr-only">
-					{waitingOnUser ? NEEDS_INPUT_LABEL : (phaseWord ?? workingLineAnnouncement(state))}
+					{waitingOnUser ? NEEDS_INPUT_LABEL : announcement}
 				</span>
 			) : (
 				// Upstream's done line holds one control-height placeholder and drops its status.

@@ -1272,3 +1272,90 @@ describe("retry wording", () => {
 		});
 	});
 });
+
+describe("WorkingMarker tool label hand-off", () => {
+	const WORKING = {
+		status: "working",
+		label: "Working…",
+		thinking: false,
+		replied: true,
+		turnStartedAt: at(0),
+		elapsedSeconds: 20,
+	} as const;
+	const READING = {words: "Reading foo.ts", unspoken: false, since: at(15)} as const;
+
+	function toolView(container: HTMLElement) {
+		const line = container.querySelector('[data-testid="code-working-line"]');
+		return {
+			quiet: line?.getAttribute("data-quiet") ?? null,
+			state: container.querySelector('[data-cds="TurnStatus"]')?.getAttribute("data-state") ?? null,
+			title: container.querySelector('[data-cds="TurnStatus"] > div')?.getAttribute("title") ?? null,
+			shimmer: container.querySelector('[data-morph-key] [data-cds="ShimmerText"]')?.textContent ?? null,
+			morphKey: container.querySelector("[data-morph-key]")?.getAttribute("data-morph-key") ?? null,
+			visible: visibleLineText(container),
+			announcer: container.querySelector("[role=status]")?.textContent,
+		};
+	}
+
+	it("shows the tool's running words as ShimmerText with the call's clock, announcing Working…, even while quiet", () => {
+		stubReducedMotion(false);
+		const {container} = render(<WorkingMarker state={WORKING} toolLabel={READING} tokens={1200} quiet />);
+		expect(toolView(container)).toStrictEqual({
+			quiet: null,
+			state: "busy",
+			title: "Reading foo.ts",
+			shimmer: "Reading foo.ts",
+			morphKey: "busy|Reading foo.ts",
+			visible: "Reading foo.ts·5s·1.2k tokens",
+			announcer: "Working…",
+		});
+	});
+
+	it("announces the words themselves when they are unspoken (a grouped step's), without the ellipsis", () => {
+		stubReducedMotion(false);
+		const {container} = render(
+			<WorkingMarker state={WORKING} toolLabel={{words: "Reading foo.ts…", unspoken: true, since: at(15)}} />,
+		);
+		expect({
+			shimmer: toolView(container).shimmer,
+			title: toolView(container).title,
+			announcer: toolView(container).announcer,
+		}).toStrictEqual({shimmer: "Reading foo.ts", title: "Reading foo.ts…", announcer: "Reading foo.ts"});
+	});
+
+	it("drops the Thinking stat while the words show", () => {
+		stubReducedMotion(false);
+		const {container} = render(<WorkingMarker state={{...WORKING, thinking: true}} toolLabel={READING} />);
+		expect(visibleLineText(container)).toBe("Reading foo.ts·5s");
+	});
+
+	it("shows no clock while the call is under 2s old, though the line is busy", () => {
+		stubReducedMotion(false);
+		const {container} = render(<WorkingMarker state={WORKING} toolLabel={{...READING, since: at(19)}} />);
+		expect(visibleLineText(container)).toBe("Reading foo.ts");
+	});
+
+	it("counts from the turn start when the call has no start", () => {
+		stubReducedMotion(false);
+		const {container} = render(<WorkingMarker state={WORKING} toolLabel={{...READING, since: null}} />);
+		expect(visibleLineText(container)).toBe("Reading foo.ts·20s");
+	});
+
+	it("lets Stopping win over the words", () => {
+		stubReducedMotion(false);
+		const {container} = render(<WorkingMarker state={{status: "stopping"}} toolLabel={READING} />);
+		expect(visibleLineText(container)).toBe("Stopping");
+	});
+
+	it("hides the turn clock for 2s after the call's words clear", () => {
+		stubReducedMotion(false);
+		const held = render(<WorkingMarker state={WORKING} toolLabelEndedAt={at(20) - 1500} />);
+		const heldText = visibleLineText(held.container);
+		cleanup();
+		const released = render(<WorkingMarker state={WORKING} toolLabelEndedAt={at(20) - 2100} />);
+		expect({held: heldText, released: visibleLineText(released.container)}).toStrictEqual({
+			held: "",
+			released: "20s",
+		});
+	});
+});
