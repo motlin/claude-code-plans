@@ -297,4 +297,43 @@ describe("inline code secret cloak behaviour", () => {
 			again: masked,
 		});
 	});
+
+	it("omits the sr-only label from find and hides the masked value from AT until revealed", () => {
+		const fake = `ghp_${"A".repeat(36)}`;
+		const {container} = render(<MarkdownArticle markdown={`\`${fake}\``} />);
+		const state = () => {
+			const value = container.querySelector("[data-redacted-secret] > span.break-all")!;
+			const button = container.querySelector("[data-redacted-secret] > button")!;
+			const omitted = [...value.querySelectorAll("[data-find-omitted]")];
+			const hidden = value.querySelector('[data-find-omitted] + [aria-hidden="true"]');
+			return {
+				omitted: omitted.map((label) => ({className: label.className, text: label.textContent})),
+				ariaHidden: [...value.querySelectorAll("[aria-hidden]")].length,
+				hiddenText: hidden?.textContent ?? null,
+				text: value.textContent,
+				pressed: button.getAttribute("aria-pressed"),
+				label: button.getAttribute("aria-label"),
+			};
+		};
+		const masked = state();
+		fireEvent.click(container.querySelector("[data-redacted-secret] > button")!);
+		expect({masked, revealed: state()}).toStrictEqual({
+			masked: {
+				omitted: [{className: "sr-only select-none", text: "Redacted GitHub token"}],
+				ariaHidden: 1,
+				hiddenText: `ghp_AAAA${"•".repeat(32)}`,
+				text: `Redacted GitHub tokenghp_AAAA${"•".repeat(32)}`,
+				pressed: "false",
+				label: "Reveal GitHub token",
+			},
+			revealed: {
+				omitted: [],
+				ariaHidden: 0,
+				hiddenText: null,
+				text: fake,
+				pressed: "true",
+				label: "Hide GitHub token",
+			},
+		});
+	});
 });
