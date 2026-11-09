@@ -52,7 +52,7 @@ export const WorkflowLaunchResultSchema = z.strictObject({
 	error: z.string().optional(),
 });
 
-export const WorkflowRunFileStatusSchema = z.enum(["completed", "killed"]);
+export const WorkflowRunFileStatusSchema = z.enum(["completed", "failed", "killed"]);
 
 /** `<session>/workflows/<runId>.json`, written when a run ends. */
 export const WorkflowRunFileSchema = z.strictObject({
@@ -134,7 +134,7 @@ export interface WorkflowRun {
 	transcriptDir: string;
 	description: string;
 	status: WorkflowRunStatus;
-	/** The latest launch's `<task-notification>` summary. */
+	/** The latest launch's `<task-notification>` summary, else the run file's `error`. */
 	summary: string | null;
 	/** Epoch ms. */
 	startedAt: number | null;
@@ -427,7 +427,8 @@ export function readWorkflowRuns(transcriptPath: string): WorkflowRun[] {
 				transcriptDir: latest.result.transcriptDir ?? "",
 				description: file?.summary ?? latest.result.summary ?? "",
 				status: notification?.status ?? (file === null ? "running" : runFileStatus(file.status)),
-				summary: notification?.summary ?? null,
+				// A failed run's file carries its error; it stands in when no notification reached the transcript.
+				summary: notification?.summary ?? file?.error ?? null,
 				startedAt: file?.startTime ?? epochMs(latest.timestamp),
 				durationMs: file?.durationMs ?? notification?.durationMs ?? null,
 				totalTokens: file?.totalTokens ?? null,

@@ -367,6 +367,7 @@ const workflowJournalEventTypes = {
 /** How src/lib/workflow-runs.ts maps a run file's `status` (via notificationStatus). */
 const workflowRunFileStatuses = {
 	completed: "Completed",
+	failed: "Failed",
 	killed: "Stopped",
 } satisfies Record<z.infer<typeof WorkflowRunFileStatusSchema>, string>;
 

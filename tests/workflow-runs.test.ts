@@ -427,6 +427,46 @@ describe("readWorkflowRuns", () => {
 		]);
 	});
 
+	it("reads a failed run's status and error from workflows/<runId>.json when no task-notification arrived", () => {
+		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
+		writeRunFile({
+			runId: RUN,
+			timestamp: "2026-10-01T12:10:00.000Z",
+			taskId: "wxkmbdj52",
+			script: "export const meta = {name: 'outline-upstream-sync'}",
+			scriptPath: join(sessionDir, "workflows", "scripts", `outline-upstream-sync-${RUN}.js`),
+			result: null,
+			error: "TelemetrySafeError: WorktreeCreate hook failed",
+			agentCount: 1,
+			logs: [],
+			durationMs: 1_709_896,
+			summary: "Feature-by-feature parity investigation",
+			workflowName: "outline-upstream-sync",
+			status: "failed",
+			startTime: 1_790_971_610_323,
+			phases: [{title: "Broad", detail: "inventory"}],
+			defaultModel: "claude-opus-5-5",
+			workflowProgress: [{type: "workflow_phase", index: 1, title: "Broad"}],
+			totalTokens: 0,
+			totalToolCalls: 0,
+		});
+
+		expect(readWorkflowRuns(transcriptPath)).toStrictEqual<WorkflowRun[]>([
+			{
+				...launchFields(),
+				taskId: "wxkmbdj52",
+				toolUseId: "toolu_A",
+				toolUseIds: ["toolu_A"],
+				status: "failed",
+				summary: "TelemetrySafeError: WorktreeCreate hook failed",
+				startedAt: 1_790_971_610_323,
+				durationMs: 1_709_896,
+				totalTokens: 0,
+				progress: [{type: "workflow_phase", index: 1, title: "Broad"}],
+			},
+		]);
+	});
+
 	it("keeps one run per runId and lets the latest launch of a resumed run win", () => {
 		writeTranscript([
 			launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z"),
