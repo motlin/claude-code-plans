@@ -54,6 +54,7 @@ export function InlinePlanApproval({
 			<ApprovalCardShell
 				presentation="card"
 				compact
+				roam={false}
 				enter={enter}
 				title={
 					<div className="flex min-h-6 shrink-0 items-center gap-1 text-primary">

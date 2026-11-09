@@ -159,6 +159,7 @@ export function ApprovalCardShell({
 	presentation = "dock",
 	enter = false,
 	compact = false,
+	roam = true,
 	onKeyDown,
 }: {
 	rootRef?: Ref<HTMLDivElement>;
@@ -186,6 +187,11 @@ export function ApprovalCardShell({
 	 * empty body takes no room (`epitaxy-approval-body … empty:hidden`).
 	 */
 	compact?: boolean;
+	/**
+	 * Upstream's focusable root with its arrow roam and Enter-to-primary (`Fa`). False is upstream's plan card
+	 * shell (`Fs`): no tab stop and no root keys, though a caller `onKeyDown` still runs.
+	 */
+	roam?: boolean;
 	/** Runs before the root's own keys; a handler that calls preventDefault keeps that key from them. */
 	onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
 }) {
@@ -216,13 +222,13 @@ export function ApprovalCardShell({
 				{...(enter ? {} : {"data-skip-approval-enter": ""})}
 				role={label === undefined ? undefined : "group"}
 				aria-label={label}
-				tabIndex={0}
+				tabIndex={roam ? 0 : undefined}
 				onKeyDown={(event) => {
 					if (onKeyDown !== undefined) {
 						onKeyDown(event);
 						if (event.defaultPrevented) return;
 					}
-					onApprovalRootKeyDown(event);
+					if (roam) onApprovalRootKeyDown(event);
 				}}
 				onDragEnter={swallowFileDrag}
 				onDragOver={swallowFileDrag}

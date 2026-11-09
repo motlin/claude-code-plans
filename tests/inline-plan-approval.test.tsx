@@ -231,3 +231,93 @@ describe("InlinePlanApproval", () => {
 		expect(decide.mock.calls).toStrictEqual([[{kind: "accept", mode: "default"}]]);
 	});
 });
+
+describe("InlinePlanApproval keys (upstream's keyless plan root)", () => {
+	async function renderPlan() {
+		const view = render(<InlinePlanApproval toolUseId="toolu_plan_keys" planText="# P" plan={PLAN} />);
+		await act(async () => Promise.resolve());
+		const root = view.container.querySelector<HTMLElement>("[data-approval-card-root]");
+		if (root === null) throw new Error("No card root");
+		const buttons = screen.getAllByRole("button");
+		const byText = (prefix: string) => {
+			const button = buttons.find((b) => b.textContent.startsWith(prefix));
+			if (button === undefined) throw new Error(`No ${prefix} button`);
+			return button;
+		};
+		return {root, byText};
+	}
+
+	it("gives the plan card root no tab stop and no role, like upstream's `Fs` shell", async () => {
+		const {root} = await renderPlan();
+		expect({tabindex: root.getAttribute("tabindex"), role: root.getAttribute("role")}).toStrictEqual({
+			tabindex: null,
+			role: null,
+		});
+	});
+
+	it("leaves arrows on a focused action alone: not prevented, and focus stays put", async () => {
+		const {byText} = await renderPlan();
+		const reject = byText("Reject");
+		reject.focus();
+		const results = ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].map((key) => ({
+			key,
+			notPrevented: fireEvent.keyDown(reject, {key}),
+			focusedReject: document.activeElement === reject,
+		}));
+		expect(results).toStrictEqual([
+			{key: "ArrowRight", notPrevented: true, focusedReject: true},
+			{key: "ArrowDown", notPrevented: true, focusedReject: true},
+			{key: "ArrowLeft", notPrevented: true, focusedReject: true},
+			{key: "ArrowUp", notPrevented: true, focusedReject: true},
+		]);
+	});
+
+	it("does not move focus to Accept on an Enter at the root", async () => {
+		const {root} = await renderPlan();
+		root.focus();
+		const before = document.activeElement;
+		const notPrevented = fireEvent.keyDown(root, {key: "Enter"});
+		expect({notPrevented, unmoved: document.activeElement === before}).toStrictEqual({
+			notPrevented: true,
+			unmoved: true,
+		});
+	});
+
+	it("swallows a held Enter/Space and any modified Enter on an accept button, as upstream's `hh`, even inside the arm grace", async () => {
+		const {byText} = await renderPlan();
+		const accept = byText("Accept and");
+		const prevented = (init: KeyboardEventInit) => !fireEvent.keyDown(accept, init);
+		expect({
+			repeatEnter: prevented({key: "Enter", repeat: true}),
+			repeatSpace: prevented({key: " ", repeat: true}),
+			metaEnter: prevented({key: "Enter", metaKey: true}),
+			ctrlEnter: prevented({key: "Enter", ctrlKey: true}),
+			altEnter: prevented({key: "Enter", altKey: true}),
+			shiftEnter: prevented({key: "Enter", shiftKey: true}),
+			plainEnter: prevented({key: "Enter"}),
+			plainSpace: prevented({key: " "}),
+		}).toStrictEqual({
+			repeatEnter: true,
+			repeatSpace: true,
+			metaEnter: true,
+			ctrlEnter: true,
+			altEnter: true,
+			shiftEnter: true,
+			plainEnter: false,
+			plainSpace: false,
+		});
+	});
+
+	it("lets a held Enter through inside a menu within the accept group", async () => {
+		const {byText} = await renderPlan();
+		const group = byText("Accept and").closest("[data-plan-accept-group]");
+		if (group === null) throw new Error("No accept group");
+		const menu = document.createElement("div");
+		menu.setAttribute("role", "menu");
+		const item = document.createElement("button");
+		menu.append(item);
+		group.append(menu);
+		expect(fireEvent.keyDown(item, {key: "Enter", repeat: true})).toBe(true);
+		menu.remove();
+	});
+});

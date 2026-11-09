@@ -1,5 +1,12 @@
 import {MessageCircle, X} from "lucide-react";
-import {type RefObject, useCallback, useEffect, useRef, useState} from "react";
+import {
+	type KeyboardEvent as ReactKeyboardEvent,
+	type RefObject,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 
 import {
 	acknowledgeApproval,
@@ -330,7 +337,11 @@ function PlanApprovalActions({
 								{docked && <Shortcut keys="esc" className="pointer-coarse:hidden" />}
 							</ApprovalActionButton>
 						</span>
-						<span className="flex flex-wrap justify-end gap-2">
+						<span
+							data-plan-accept-group=""
+							className="flex flex-wrap justify-end gap-2"
+							onKeyDownCapture={swallowAcceptRepeat}
+						>
 							{/* Upstream's arming group around the accepts (`data-approval-allow`). */}
 							<span className="contents" data-approval-allow="">
 								{primary !== null && primary !== "default" && dialog.manual && (
@@ -365,6 +376,19 @@ function PlanApprovalActions({
 			)}
 		</div>
 	);
+}
+
+/**
+ * Upstream's accept-group capture guard (`hh`): a held Enter or Space, or an Enter with any modifier, never
+ * reaches a focused accept button's native activation, unless it is inside a menu.
+ */
+function swallowAcceptRepeat(event: ReactKeyboardEvent<HTMLElement>) {
+	const held = event.repeat && (event.key === "Enter" || event.key === " ");
+	const chord = event.key === "Enter" && (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey);
+	if (!held && !chord) return;
+	if (event.target instanceof Element && event.target.closest('[role="menu"]') !== null) return;
+	event.preventDefault();
+	event.stopPropagation();
 }
 
 /**
