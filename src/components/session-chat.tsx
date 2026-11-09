@@ -29,6 +29,8 @@ import {PLAN_NOT_APPROVED} from "../lib/exit-plan-mode";
 import {parseToolRejection} from "../lib/tool-rejection";
 import {parseAttachSnippets, type AttachSnippet} from "../lib/attach-markers";
 import {ApiErrorCard, ApiErrorMarker, type ApiErrorRecovery} from "./api-error-card";
+import {HookBlockedPromptCard, HookBlockedPromptMarker} from "./hook-blocked-prompt";
+import {prefillComposer, useHasComposer} from "../lib/context-attach";
 import {ErrorCardShell} from "./error-card-shell";
 import {ExternalTextLink} from "./external-text-link";
 import {ShimmerText} from "./shimmer-text";
@@ -699,7 +701,11 @@ export const SessionChat = React.memo(function SessionChat({
 	);
 	const compactBoundaries = useMemo(() => compactBoundariesBySummary(lines), [lines]);
 	const fullErrorLine = useMemo(() => lastErrorLine(lines), [lines]);
-	const lastError = useMemo(() => ({line: fullErrorLine, recovery: errorRecovery}), [fullErrorLine, errorRecovery]);
+	const blockedLine = useMemo(() => lastEntryPromptBlocked(lines), [lines]);
+	const lastError = useMemo(
+		() => ({line: fullErrorLine, recovery: errorRecovery, blockedLine}),
+		[fullErrorLine, errorRecovery, blockedLine],
+	);
 	const staleCompactEntry = useMemo(() => lastAssistantReplyEntry(lines), [lines]);
 	const staleCompactTail = useMemo(
 		() => (staleCompact === undefined ? null : {line: staleCompactEntry, band: staleCompact}),
@@ -4138,6 +4144,8 @@ function renderSessionMessage({
 			);
 		case "system":
 			return <SystemBanner line={line} sessionId={sourceSessionId} />;
+		case "prompt-blocked":
+			return <PromptBlockedForLine line={line} sessionId={sourceSessionId} />;
 		case "worktree":
 			return (
 				<Banner icon={<GitBranch className="h-3.5 w-3.5" />} label={`Worktree: ${line.worktreeName}`}>
@@ -4442,9 +4450,12 @@ const StaleCompactTailContext = createContext<{line: SessionLine | null; band: S
 const LastErrorLineContext = createContext<{
 	line: SessionLine | null;
 	recovery: ApiErrorRecovery | undefined;
+	/** The hook-blocked prompt that is the transcript's last entry, drawn as the full card. */
+	blockedLine: SessionLine | null;
 }>({
 	line: null,
 	recovery: undefined,
+	blockedLine: null,
 });
 
 function isErrorLine(line: SessionLine): boolean {
@@ -4454,9 +4465,24 @@ function isErrorLine(line: SessionLine): boolean {
 function lastErrorLine(lines: readonly SessionLine[]): SessionLine | null {
 	for (const line of lines.toReversed()) {
 		if (isErrorLine(line)) return line;
-		if (isPromptLine(line)) return null;
+		// A blocked prompt ends the turn like a prompt does (upstream `cd`).
+		if (isPromptLine(line) || line.type === "prompt-blocked") return null;
 	}
 	return null;
+}
+
+/**
+ * The hook-blocked prompt when it is the transcript's last entry: no later user or
+ * assistant entry or block (system and attachment records don't count).
+ */
+function lastEntryPromptBlocked(lines: readonly SessionLine[]): SessionLine | null {
+	const last = lines.findLast(
+		(line) =>
+			line.type === "assistant" ||
+			line.type === "prompt-blocked" ||
+			(line.type === "user" && line.isMeta !== true),
+	);
+	return last?.type === "prompt-blocked" ? last : null;
 }
 
 const CompactBoundaryContext = createContext<ReadonlyMap<number, {meta: CompactMetadata}>>(new Map());
@@ -5341,6 +5367,30 @@ function AttributionRow({line, verbose}: {line: MessageSessionLine; verbose: boo
 function UsageLimitCardView({card}: {card: UsageLimitCard}) {
 	return (
 		<ErrorCardShell data={{"data-usage-limit-card": ""}} headline={card.headline} hint={card.hint} icon="gauge" />
+	);
+}
+
+/**
+ * A hook-blocked prompt: upstream's card when it is the last entry, else its marker.
+ * Edit prompt shows only while the session's composer is mounted.
+ */
+function PromptBlockedForLine({
+	line,
+	sessionId,
+}: {
+	line: Extract<SessionLine, {type: "prompt-blocked"}>;
+	sessionId: string;
+}) {
+	const {blockedLine} = useContext(LastErrorLineContext);
+	const composerMounted = useHasComposer(sessionId);
+	if (blockedLine !== line) return <HookBlockedPromptMarker reason={line.reason} />;
+	return (
+		<HookBlockedPromptCard
+			entryKey={`${sessionId}:${line.uuid ?? line.lineIndex}`}
+			reason={line.reason}
+			originalPrompt={line.originalPrompt}
+			onEditPrompt={composerMounted ? (text) => prefillComposer(sessionId, text) : undefined}
+		/>
 	);
 }
 

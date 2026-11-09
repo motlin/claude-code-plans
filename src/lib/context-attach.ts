@@ -193,6 +193,11 @@ export interface ComposerHandle {
 	 * Absent where steers can't be sent.
 	 */
 	takeBack?: (text: string) => boolean;
+	/**
+	 * Upstream's session prefill (`Gh`): appends text at the end of the draft and focuses; false, adding
+	 * nothing, when refused (bash mode, or a command in the draft).
+	 */
+	prefill?: (text: string) => boolean;
 }
 
 const composers = new Map<string, Set<ComposerHandle>>();
@@ -607,14 +612,49 @@ export function focusComposer(sessionId: string): boolean {
 	return handles.length > 0;
 }
 
+const composerListeners = new Set<() => void>();
+
+function notifyComposers(): void {
+	for (const listener of composerListeners) listener();
+}
+
 export function registerComposer(sessionId: string, handle: ComposerHandle): () => void {
 	const sessionComposers = composers.get(sessionId) ?? new Set();
 	sessionComposers.add(handle);
 	composers.set(sessionId, sessionComposers);
+	notifyComposers();
 	return () => {
 		sessionComposers.delete(handle);
 		if (sessionComposers.size === 0) composers.delete(sessionId);
+		notifyComposers();
 	};
+}
+
+/** Whether a composer is mounted for the session, re-rendering as composers mount and unmount. */
+export function useHasComposer(sessionId: string): boolean {
+	return useSyncExternalStore(
+		(listener) => {
+			composerListeners.add(listener);
+			return () => composerListeners.delete(listener);
+		},
+		() => hasComposer(sessionId),
+		() => false,
+	);
+}
+
+/**
+ * Upstream's prefill join (`C8`): the text goes at the end of the draft with no separator, except one
+ * space when the draft ends in an @mention token that has none after it.
+ */
+export function joinPrefill(draft: string, text: string): string {
+	const spaced = /(?:^|\s)@\S*$/.test(draft) && !/^\s/.test(text);
+	return `${draft}${spaced ? " " : ""}${text}`;
+}
+
+/** Hands text to the session's first composer that takes a prefill; false when none is mounted or it refused. */
+export function prefillComposer(sessionId: string, text: string): boolean {
+	const handle = mounted(sessionId).find((each) => each.prefill !== undefined);
+	return handle?.prefill?.(text) ?? false;
 }
 
 /** Upstream epitaxy's failed-image toast copy (`Ie`). */

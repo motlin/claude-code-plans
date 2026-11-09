@@ -20,6 +20,8 @@ import {
 	recordSentAttachments,
 	restoreRejectedAttachments,
 	takeBackSend,
+	joinPrefill,
+	prefillComposer,
 } from "../src/lib/context-attach";
 import {
 	clearDiffComments,
@@ -482,5 +484,40 @@ describe("attachContext", () => {
 				"pasted-text": "Pasted text",
 			},
 		});
+	});
+});
+
+describe("joinPrefill", () => {
+	it("appends with no separator, spacing only after an unspaced @mention token", () => {
+		expect([
+			joinPrefill("", "orig"),
+			joinPrefill("abc", "orig"),
+			joinPrefill("see @src/a.ts", "orig"),
+			joinPrefill("mail a@b.com", "x"),
+			joinPrefill("see @a ", "orig"),
+			joinPrefill("@a", " orig"),
+		]).toStrictEqual(["orig", "abcorig", "see @src/a.ts orig", "mail a@b.comx", "see @a orig", "@a orig"]);
+	});
+});
+
+describe("prefillComposer", () => {
+	it("is false with no composer mounted", () => {
+		expect(prefillComposer("prefill-none", "orig")).toBe(false);
+	});
+
+	it("passes on a refusal from the mounted composer", () => {
+		const prefill = vi.fn<(text: string) => boolean>(() => false);
+		const unregister = registerComposer("prefill-refused", {insertText: () => {}, focus: () => {}, prefill});
+		expect({result: prefillComposer("prefill-refused", "orig"), calls: prefill.mock.calls}).toStrictEqual({
+			result: false,
+			calls: [["orig"]],
+		});
+		unregister();
+	});
+
+	it("is true when the composer took it", () => {
+		const unregister = registerComposer("prefill-ok", {insertText: () => {}, focus: () => {}, prefill: () => true});
+		expect(prefillComposer("prefill-ok", "orig")).toBe(true);
+		unregister();
 	});
 });

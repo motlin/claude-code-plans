@@ -4,7 +4,7 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import {composerDraftStorageKey} from "../src/hooks/use-composer-draft";
-import {requestComposerInsert, requestComposerTakeBack} from "../src/lib/context-attach";
+import {prefillComposer, requestComposerInsert, requestComposerTakeBack} from "../src/lib/context-attach";
 import {ToastContext, type ToastOptions} from "../src/components/toast-context";
 import {HerdrRequestError} from "../src/lib/api/herdr";
 import {
@@ -869,6 +869,56 @@ describe("composer-shell-command", () => {
 		expect({ran, toasts: toast.mock.calls}).toStrictEqual({
 			ran: false,
 			toasts: [[{kind: "error", message: "Couldn’t run the shell command", description: "agent is not ready"}]],
+		});
+	});
+});
+
+describe("Composer Edit prompt prefill (upstream Gh)", () => {
+	it("appends to the draft with no separator, focuses and puts the caret at the end", () => {
+		const {handlers, textarea} = renderComposer({onShellCommand: ALLOW});
+		fireEvent.change(textarea, {target: {value: "abc"}});
+		let result = false;
+		act(() => {
+			result = prefillComposer("session-alice", "orig");
+		});
+
+		expect({
+			result,
+			value: textarea.value,
+			focused: document.activeElement === textarea,
+			caret: textarea.selectionStart,
+			toasts: handlers.toast.mock.calls,
+		}).toStrictEqual({result: true, value: "abcorig", focused: true, caret: 7, toasts: []});
+	});
+
+	it.each(["/model", "  !ls"])("refuses with a warning while the draft %j starts a command", (draft) => {
+		const {handlers, textarea} = renderComposer({onShellCommand: ALLOW});
+		fireEvent.change(textarea, {target: {value: draft}});
+		let result = true;
+		act(() => {
+			result = prefillComposer("session-alice", "orig");
+		});
+
+		expect({result, value: textarea.value, toasts: handlers.toast.mock.calls}).toStrictEqual({
+			result: false,
+			value: draft,
+			toasts: [[{kind: "warning", message: COMMAND_IN_BOX}]],
+		});
+	});
+
+	it("refuses with a warning in bash mode", () => {
+		const {handlers, textarea} = renderComposer({onShellCommand: ALLOW});
+		pressBang(textarea);
+		fireEvent.change(textarea, {target: {value: "pwd"}});
+		let result = true;
+		act(() => {
+			result = prefillComposer("session-alice", "orig");
+		});
+
+		expect({result, value: textarea.value, toasts: handlers.toast.mock.calls}).toStrictEqual({
+			result: false,
+			value: "pwd",
+			toasts: [[{kind: "warning", message: BASH_MODE_ON}]],
 		});
 	});
 });

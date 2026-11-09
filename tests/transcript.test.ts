@@ -1759,6 +1759,50 @@ describe("system record lines", () => {
 		expect(processTranscript(records).lines).toStrictEqual([]);
 	});
 
+	it("turns a hook-blocked prompt record into one prompt-blocked line", () => {
+		const records = [
+			{
+				type: "system",
+				subtype: "informational",
+				level: "warning",
+				preventContinuation: true,
+				content:
+					"UserPromptSubmit operation blocked by hook:\n[cmd]: worker unreachable\n\n\nOriginal prompt: what's next?",
+				uuid: "blk-1",
+				timestamp: "2026-11-03T10:00:00.000Z",
+			},
+		];
+		expect(processTranscript(records).lines).toStrictEqual([
+			{
+				type: "prompt-blocked",
+				reason: "[cmd]: worker unreachable",
+				originalPrompt: "what's next?",
+				uuid: "blk-1",
+				timestamp: "2026-11-03T10:00:00.000Z",
+				lineIndex: 0,
+			},
+		]);
+	});
+
+	it("uses the whole content as the reason when preventContinuation text doesn't parse", () => {
+		const records = [{type: "system", subtype: "informational", preventContinuation: true, content: "custom text"}];
+		expect(processTranscript(records).lines).toStrictEqual([
+			{type: "prompt-blocked", reason: "custom text", lineIndex: 0},
+		]);
+	});
+
+	it("skips a stopped-by-hook record with preventContinuation", () => {
+		const records = [
+			{
+				type: "system",
+				subtype: "informational",
+				preventContinuation: true,
+				content: "Operation stopped by hook: x",
+			},
+		];
+		expect(processTranscript(records).lines).toStrictEqual([]);
+	});
+
 	it("emits scheduled_task_fire with its task, cron, prompt, and no-op streak", () => {
 		const records = [
 			{

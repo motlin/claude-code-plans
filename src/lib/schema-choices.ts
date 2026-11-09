@@ -1066,6 +1066,7 @@ const renderedLineVariants = {
 	"queued-prompt": true,
 	attachment: true,
 	system: true,
+	"prompt-blocked": true,
 	worktree: true,
 	unparsed: true,
 } satisfies Record<ProcessedLine["type"], true>;

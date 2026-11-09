@@ -97,13 +97,13 @@ function CopyDetailsButton({details}: {details: string}) {
  * Copy details copies the raw error text (upstream's `jW({details})`), or the
  * lines when there is none.
  */
-function ErrorDetails({
+export function ErrorDetails({
 	details,
 	inCard,
 	actions,
 }: {
 	/** Undefined hides View details; the row still shows for the actions. */
-	details: ResolvedApiError["details"];
+	details: ErrorDetailsContent | undefined;
 	/** In the card the row and panel carry the card's padding; the marker's sit flush with `pt-2`. */
 	inCard: boolean;
 	/** Upstream's action group, pushed to the row's trailing edge. */
@@ -165,6 +165,17 @@ function ErrorDetails({
 	);
 }
 
+/** What View details shows. */
+export interface ErrorDetailsContent {
+	/** The parsed body (upstream's `eX`): no API Error prefix, a JSON body unwrapped. */
+	body?: string;
+	/** The unparsed error text, which Copy details copies. */
+	raw?: string;
+	status?: number | string;
+	requestId?: string;
+	messageId?: string;
+}
+
 interface ResolvedApiError {
 	category: ApiErrorCategory;
 	status?: number;
@@ -175,15 +186,7 @@ interface ResolvedApiError {
 	icon: "warning" | "gauge";
 	learnMoreUrl?: string;
 	/** The View details props, or undefined when upstream shows no View details. */
-	details?: {
-		/** The parsed body (upstream's `eX`): no API Error prefix, a JSON body unwrapped. */
-		body?: string;
-		/** The unparsed error text, which Copy details copies. */
-		raw?: string;
-		status?: number | string;
-		requestId?: string;
-		messageId?: string;
-	};
+	details?: ErrorDetailsContent;
 }
 
 /**
@@ -328,6 +331,15 @@ function cardRecovery(
 
 const MARKER_ICON_CLASS = "size-4 shrink-0 text-danger-000";
 
+/** The marker's danger warning icon, shared with the hook-blocked prompt marker. */
+export function MarkerWarningIcon() {
+	return <TriangleAlert aria-hidden="true" className={MARKER_ICON_CLASS} />;
+}
+
+/** Upstream's earlier-error marker root (`Ek`), inset like assistant text. */
+export const MARKER_ROOT_CLASS =
+	"flex w-full max-w-[480px] flex-col items-start gap-1 self-start ps-[var(--cds-assistant-message-text-inset,0px)]";
+
 /**
  * Upstream's collapsed form for an error that is not the last error of the
  * last entry (c44e562e8 `$U`, gated by `G_e`): the danger icon, the past-tense
@@ -337,7 +349,7 @@ export function ApiErrorMarker(props: ApiErrorCardProps) {
 	const error = resolveApiError(props);
 	const Icon = error.icon === "gauge" ? Gauge : TriangleAlert;
 	return (
-		<div data-api-error-marker="" className="flex w-full max-w-[480px] flex-col items-start gap-1 self-start">
+		<div data-api-error-marker="" className={MARKER_ROOT_CLASS}>
 			<div className="flex max-w-full min-w-0 items-center gap-1.25 select-text">
 				<Icon aria-hidden="true" className={MARKER_ICON_CLASS} />
 				<span className="min-w-0 text-body text-secondary break-words">{error.markerLabel}</span>

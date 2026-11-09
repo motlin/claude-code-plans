@@ -32,6 +32,7 @@ import {
 	appendAttachment,
 	attachUploadedFiles,
 	composePrompt,
+	joinPrefill,
 	mergeTakeBack,
 	hydrateStagedChips,
 	recordSentAttachments,
@@ -338,6 +339,9 @@ const PLACEHOLDER_FIT_PROBE_CLASS =
 const COMMAND_IN_BOX_REFUSAL =
 	"A command is in the message box, so nothing was added. Send or clear it first, then try again.";
 /** Upstream uXFFUp (`Tu.bashRefusal`): text added while bash mode is on. */
+/** Upstream's command-draft test for a prefill (c8f38bf1f `l`), after stripping leading whitespace and format chars. */
+const COMMAND_DRAFT_PATTERN = /^[/!]/;
+
 const BASH_MODE_REFUSAL =
 	"Bash mode is on, so nothing was added. Press Backspace in the empty message box to return to chat, then try again.";
 /** Upstream UfDkK7: a take-back refused over a draft, bash mode included. */
@@ -882,6 +886,24 @@ export function Composer({
 				submit: () => {
 					handleSubmitRef.current();
 				},
+				prefill: (text) => {
+					const refusal = bashModeRef.current
+						? BASH_MODE_REFUSAL
+						: COMMAND_DRAFT_PATTERN.test(promptRef.current.replace(/^[\s\p{Cf}]+/u, ""))
+							? COMMAND_IN_BOX_REFUSAL
+							: null;
+					if (refusal !== null) {
+						toast?.({kind: "warning", message: refusal});
+						return false;
+					}
+					const next = joinPrefill(promptRef.current, text);
+					promptRef.current = next;
+					pendingCaretRef.current = next.length;
+					setCaret(next.length);
+					setPrompt(next);
+					textareaRef.current?.focus();
+					return true;
+				},
 				takeBack: (text) => {
 					if (refuseCommandInBox("takeBack")) return false;
 					const next = mergeTakeBack(text, promptRef.current);
@@ -893,7 +915,7 @@ export function Composer({
 					return true;
 				},
 			}),
-		[draftKey, setPrompt, refuseCommandInBox],
+		[draftKey, setPrompt, refuseCommandInBox, toast],
 	);
 
 	useEffect(

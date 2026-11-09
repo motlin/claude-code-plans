@@ -29,6 +29,7 @@ import {
 	WakeupSourceSchema,
 } from "./schemas";
 import {autoModeDenial} from "./auto-mode-denial";
+import {parseHookMessage} from "./hook-prompt-block";
 import {JsonlRecordSchema} from "./runtime-schemas";
 import {
 	extractSessionTitle,
@@ -297,6 +298,20 @@ const QueuedPromptLineSchema = z.object({
 });
 
 /**
+ * A prompt a UserPromptSubmit/UserPromptExpansion hook blocked (a
+ * `system/informational` record with preventContinuation). Upstream's
+ * `prompt_blocked` entry: a card when last, a marker otherwise.
+ */
+const PromptBlockedLineSchema = z.object({
+	type: z.literal("prompt-blocked"),
+	reason: z.string(),
+	originalPrompt: z.string().optional(),
+	uuid: z.string().optional(),
+	timestamp: z.string().optional(),
+	lineIndex: z.number(),
+});
+
+/**
  * A record the schema rejected. Rendered as a visible gap so schema drift
  * surfaces in the transcript instead of silently deleting messages.
  */
@@ -324,6 +339,7 @@ export const RenderedLineSchema = z.discriminatedUnion("type", [
 	QueuedPromptLineSchema,
 	AttachmentLineSchema,
 	SystemLineSchema,
+	PromptBlockedLineSchema,
 	WorktreeLineSchema,
 	UnparsedLineSchema,
 ]);
@@ -372,6 +388,26 @@ interface IncrementalResult {
  * Describe a schema-rejected record well enough to render a placeholder and
  * diagnose the drift, reading only fields we cannot trust to be present.
  */
+/**
+ * The prompt-blocked line for an informational record (upstream adapter
+ * c06cf64bb): a parsed hook block, or any preventContinuation text that isn't
+ * a "stopped" notice. Null for everything else.
+ */
+function promptBlockedLine(
+	content: string,
+	preventContinuation: boolean,
+	lineIndex: number,
+): z.infer<typeof PromptBlockedLineSchema> | null {
+	const parsed = parseHookMessage(content);
+	if (preventContinuation && parsed?.kind === "stopped") return null;
+	if (parsed?.kind === "blocked") {
+		return parsed.originalPrompt === undefined
+			? {type: "prompt-blocked", reason: parsed.reason, lineIndex}
+			: {type: "prompt-blocked", reason: parsed.reason, originalPrompt: parsed.originalPrompt, lineIndex};
+	}
+	return preventContinuation ? {type: "prompt-blocked", reason: content, lineIndex} : null;
+}
+
 function buildUnparsedLine(
 	obj: unknown,
 	lineIndex: number,
@@ -1142,6 +1178,21 @@ function* processRecordBatchSteps(
 		}
 
 		if (record.type === "system") {
+			if (record.subtype === "informational") {
+				// Most informational records are plain notices; only a block or a preventContinuation record can
+				// become a line, so skip the parse for the rest.
+				const content = record.content;
+				const preventContinuation = record.preventContinuation === true;
+				if (typeof content !== "string") continue;
+				if (!preventContinuation && !content.includes(" operation blocked by hook:")) continue;
+				const blocked = promptBlockedLine(content, preventContinuation, lineIndex);
+				if (blocked !== null) {
+					if (uuid !== undefined) blocked.uuid = uuid;
+					if (record.timestamp !== undefined) blocked.timestamp = record.timestamp;
+					sessionLines.push(blocked);
+				}
+				continue;
+			}
 			const subtype = RenderedSystemSubtypeSchema.safeParse(record.subtype);
 			if (!subtype.success) continue;
 			// The input-echo half of a local command carries no commandRun; the
