@@ -77,7 +77,7 @@ format: install
     pre-commit run just-fmt --all-files
     vp fmt {{ if ci != "" { "--check" } else { "" } }}
 
-# Run checks (format + lint + typecheck)
+# Run checks (format + lint; `typecheck` runs tsc)
 check *args: install
     scripts/clean-env.sh vp run --cache check {{ if ci != "" { "" } else { "--fix" } }} {{ args }}
 
@@ -205,8 +205,9 @@ _verify-read-only: _build-bundle fallow-check _verify-pre-commit
 _verify-pre-commit: install
     SKIP=oxfmt,fallow pre-commit run --all-files
 
+# typecheck after build, which regenerates the gitignored src/routeTree.gen.ts that tsc reads
 [private]
-_build-bundle: build perf-bundle client-boundaries
+_build-bundle: build perf-bundle client-boundaries typecheck
 
 # Last, because the tests read the build's .output
 [private]

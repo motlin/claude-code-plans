@@ -71,7 +71,7 @@ import {Icon} from "../components/ui/icon";
 import {Tooltip} from "../components/ui/tooltip";
 
 /** The gallery's URL state: upstream's `?search=` and `?tab=`, plus the local Filter and sort picks. */
-interface ArtifactsSearch {
+export interface ArtifactsSearch {
 	search?: string;
 	tab?: ArtifactTabParam;
 	/** Comma list of Type keys (`docs,other`); a single `?type=docs` reads the same. */

@@ -39,7 +39,7 @@ describe("bundle byte gate", () => {
 		expect(just("--evaluate", "PATH").split(":")[0]).toBe(join(REPO_ROOT, "node_modules", ".bin"));
 	});
 
-	it("ratchets the bundle bytes in `just verify` right after the build, beside the other read-only gates, before the tests read .output", () => {
+	it("ratchets the bundle bytes and runs tsc in `just verify` right after the build, beside the other read-only gates, before the tests read .output", () => {
 		const {recipes} = JustDumpSchema.parse(JSON.parse(just("--dump", "--dump-format", "json")));
 		const dependenciesOf = (name: string) =>
 			recipes[name]?.dependencies.map(({recipe, arguments: args}) =>
@@ -54,7 +54,8 @@ describe("bundle byte gate", () => {
 			verify: ["check --quiet", "_fallow-fix", "_verify-read-only", "_verify-test quick"],
 			readOnly: ["_build-bundle", "fallow-check", "_verify-pre-commit"],
 			readOnlyRunsInParallel: true,
-			buildThenBundle: ["build", "perf-bundle", "client-boundaries"],
+			// typecheck follows the build, which regenerates the gitignored src/routeTree.gen.ts that tsc reads.
+			buildThenBundle: ["build", "perf-bundle", "client-boundaries", "typecheck"],
 		});
 	});
 

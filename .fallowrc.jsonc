@@ -29,6 +29,11 @@
 			"file": "src/components/markdown-article.module.css",
 			"exports": ["*"],
 		},
+		// Named by the gitignored src/routeTree.gen.ts, which fallow skips; tsc's declaration check (TS4023) needs it exported.
+		{
+			"file": "src/routes/artifacts.tsx",
+			"exports": ["ArtifactsSearch"],
+		},
 		{
 			"file": "src/components/session-chat.tsx",
 			"exports": ["SessionChatProps"],
