@@ -338,6 +338,7 @@ export const PermissionDecisionClassifierCategorySchema = z.enum([
 	"account_standing_rule_changes",
 	"auto_mode_bypass",
 	"blind_apply",
+	"bot_check_circumvention",
 	"browser_file_upload_exfil",
 	"browser_input_exfil",
 	"browser_js_exfil",

@@ -2553,6 +2553,13 @@ describe("JsonlRecordSchema observed 2026-10-22 permission decisions", () => {
 			toolResultRecord({
 				decision: "reject",
 				source: "config",
+				reasonType: "classifier",
+				reasonCode: "classifier:auto-mode",
+				classifierCategory: "bot_check_circumvention",
+			}),
+			toolResultRecord({
+				decision: "reject",
+				source: "config",
 				reasonType: "safetyCheck",
 				reasonCode: "unknown",
 				circuitBreaker: "dangerousRemoval",

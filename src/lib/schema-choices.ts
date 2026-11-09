@@ -264,6 +264,7 @@ const permissionDecisionClassifierCategories = {
 	account_standing_rule_changes: true,
 	auto_mode_bypass: true,
 	blind_apply: true,
+	bot_check_circumvention: true,
 	browser_file_upload_exfil: true,
 	browser_input_exfil: true,
 	browser_js_exfil: true,
