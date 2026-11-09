@@ -1,4 +1,4 @@
-import {existsSync, mkdtempSync, readFileSync, rmSync} from "node:fs";
+import {existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {dirname, join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
@@ -27,6 +27,17 @@ async function postHandler(): Promise<ApiHandler> {
 	const handlers = (Route as unknown as {options: {server: {handlers: Record<string, ApiHandler>}}}).options.server
 		.handlers;
 	return handlers["POST"]!;
+}
+
+async function getHandler(): Promise<ApiHandler> {
+	const {Route} = await import("../src/routes/api/attachments");
+	const handlers = (Route as unknown as {options: {server: {handlers: Record<string, ApiHandler>}}}).options.server
+		.handlers;
+	return handlers["GET"]!;
+}
+
+function read(path: string): Request {
+	return new Request(`${URL_}?path=${encodeURIComponent(path)}`);
 }
 
 function upload(file: File, headers: Record<string, string> = {}): Request {
@@ -138,6 +149,44 @@ describe("POST /api/attachments", () => {
 			binary: 415,
 			missing: 400,
 		});
+	});
+});
+
+describe("GET /api/attachments", () => {
+	function savedDir(): string {
+		const dir = join(cacheHome, "claude-code-plans", "attachments");
+		mkdirSync(dir, {recursive: true});
+		return dir;
+	}
+
+	it("serves a saved attachment's bytes as UTF-8 text", async () => {
+		const path = join(savedDir(), "notes.md");
+		writeFileSync(path, "# Notes\n\n- one");
+		const get = await getHandler();
+
+		const response = await get({request: read(path)});
+
+		expect({
+			status: response.status,
+			type: response.headers.get("Content-Type"),
+			body: await response.text(),
+		}).toStrictEqual({status: 200, type: "text/plain; charset=utf-8", body: "# Notes\n\n- one"});
+	});
+
+	it("refuses paths outside the attachments folder, through .. or a symlink, and 404s a missing file", async () => {
+		const dir = savedDir();
+		const outside = join(cacheHome, "secret.txt");
+		writeFileSync(outside, "secret");
+		symlinkSync(outside, join(dir, "link.md"));
+		const get = await getHandler();
+
+		const statuses = await Promise.all(
+			[outside, `${dir}/../../secret.txt`, join(dir, "link.md"), join(dir, "gone.md"), "relative.md"].map(
+				async (path) => (await get({request: read(path)})).status,
+			),
+		);
+
+		expect(statuses).toStrictEqual([403, 403, 403, 404, 400]);
 	});
 });
 

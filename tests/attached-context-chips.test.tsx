@@ -7,6 +7,9 @@ import {ToastProvider} from "../src/components/toast";
 import {
 	attachContext,
 	type ContextChip,
+	getContextChips,
+	hydrateStagedChips,
+	removeContextChip,
 	registerComposer,
 	takeContextChips,
 	useContextChips,
@@ -247,7 +250,7 @@ describe("AttachedContextChips cds tiles", () => {
 		const badge = tile?.querySelector("[data-cds=Badge]") ?? null;
 		expect({
 			tile: classes(tile ?? null),
-			srName: tile?.querySelector("[data-cds-card-body] > span.sr-only")?.textContent,
+			srName: tile?.querySelector("[data-cds-card-body] span.sr-only")?.textContent,
 			name: {
 				title: name?.getAttribute("title"),
 				classes: classes(name),
@@ -1057,6 +1060,79 @@ describe("AttachedContextChips last-tile keyboard removal", () => {
 			before: false,
 			after: true,
 			tiles: 0,
+		});
+	});
+});
+
+describe("AttachedContextChips restored file tiles", () => {
+	const KEY = `ccp-composer-attachments:${SESSION}`;
+	const NOTES = "# Notes\n\n- one";
+
+	function Live() {
+		return <AttachedContextChips sessionId={SESSION} context={useContextChips(SESSION)} comments={[]} />;
+	}
+
+	function restore(name: string): HTMLElement {
+		localStorage.setItem(KEY, JSON.stringify([{kind: "file", path: `/cache/attachments/${name}`, name}]));
+		hydrateStagedChips(SESSION);
+		const {container} = render(<Live />);
+		return container.querySelector<HTMLElement>(`li[data-chip-label="${name}"]`)!;
+	}
+
+	afterEach(() => {
+		for (const chip of getContextChips(SESSION)) removeContextChip(SESSION, chip.id);
+		localStorage.clear();
+		vi.unstubAllGlobals();
+	});
+
+	it("gives a restored text file a keyboard-focusable CardLink", () => {
+		const link = restore("notes.md").querySelector("[data-cds=CardLink]");
+		expect({role: link?.getAttribute("role"), tabIndex: link?.getAttribute("tabindex")}).toStrictEqual({
+			role: "button",
+			tabIndex: "0",
+		});
+	});
+
+	it("gives a restored .png-named or non-previewable file no CardLink", () => {
+		const png = restore("shot.png").querySelector("[data-cds=CardLink]");
+		cleanup();
+		for (const chip of getContextChips(SESSION)) removeContextChip(SESSION, chip.id);
+		const zip = restore("bundle.zip").querySelector("[data-cds=CardLink]");
+		expect({png, zip}).toStrictEqual({png: null, zip: null});
+	});
+
+	it("fetches a restored file's saved bytes once and opens the same preview a live upload opens", async () => {
+		const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response(NOTES));
+		vi.stubGlobal("fetch", fetchMock);
+		restore("notes.md");
+		const link = () => document.querySelector<HTMLElement>('li[data-chip-label="notes.md"] [data-cds=CardLink]')!;
+
+		fireEvent.click(link());
+		const first = await screen.findByRole("dialog");
+		const opened = {
+			title: first.querySelector("h2")?.textContent,
+			description: first.querySelector("p")?.textContent,
+			body: first.querySelector("div[dir=auto]")?.textContent,
+		};
+		fireEvent.keyDown(first, {key: "Escape"});
+		await act(async () => {
+			await new Promise((resolve) => {
+				setTimeout(resolve, 0);
+			});
+		});
+		fireEvent.click(link());
+		await screen.findByRole("dialog");
+
+		expect({
+			opened,
+			fetches: fetchMock.mock.calls.map(([url]) => url),
+		}).toStrictEqual({
+			opened: {
+				title: "notes.md",
+				description: "0.01 KB\u00A0•3 lines•Formatting may be inconsistent from source",
+				body: NOTES,
+			},
+			fetches: ["/api/attachments?path=%2Fcache%2Fattachments%2Fnotes.md"],
 		});
 	});
 });

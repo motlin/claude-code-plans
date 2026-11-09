@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import {
+	cacheChipFile,
 	type ContextChip,
 	contextChipLabel,
 	focusComposer,
@@ -461,9 +462,25 @@ function extensionBadge(name: string): string | undefined {
 	return dot > 0 && dot < name.length - 1 ? name.slice(dot + 1).toUpperCase() : undefined;
 }
 
-/** Whether a file tile opens upstream's text preview: a settled upload with bytes and a text extension. */
+/**
+ * Whether a file tile opens upstream's text preview: a settled upload with a
+ * text extension, whose bytes are in memory or, restored after a reload, saved.
+ */
 function opensTextPreview(chip: ContextChip): boolean {
-	return chip.file !== undefined && chip.status !== "pending" && isTextPreviewable(contextChipLabel(chip));
+	return (
+		(chip.file !== undefined || chip.path !== undefined) &&
+		chip.status !== "pending" &&
+		isTextPreviewable(contextChipLabel(chip))
+	);
+}
+
+/** A restored file tile's bytes, fetched from its saved copy and kept on the tile. */
+async function fetchChipFile(sessionId: string, chip: ContextChip): Promise<File> {
+	const response = await fetch(`/api/attachments?path=${encodeURIComponent(chip.path ?? "")}`);
+	if (!response.ok) throw new Error(`Attachment read failed: ${response.status}`);
+	const file = new File([await response.blob()], contextChipLabel(chip));
+	cacheChipFile(sessionId, chip.id, file);
+	return file;
 }
 
 /**
@@ -707,24 +724,21 @@ export function AttachedContextChips({
 		setTextPreview({chipId: chip.id, opener});
 	};
 	const openFilePreview = (chip: ContextChip, opener: HTMLElement) => {
-		const {file} = chip;
-		if (file === undefined) return;
 		const open = (opens.current += 1);
-		file.slice(0, TEXT_PREVIEW_LIMIT)
-			.text()
-			.then(
-				(text) => {
-					if (open !== opens.current) return;
-					setTextPreview({
-						chipId: chip.id,
-						opener,
-						read: {title: contextChipLabel(chip), text, variant: "file", size: file.size},
-					});
-				},
-				() => {
-					// An unreadable file opens nothing, as upstream's `Yi` swallows the error.
-				},
-			);
+		const read = async (file: File) => ({file, text: await file.slice(0, TEXT_PREVIEW_LIMIT).text()});
+		(chip.file === undefined ? fetchChipFile(sessionId, chip).then(read) : read(chip.file)).then(
+			({file, text}) => {
+				if (open !== opens.current) return;
+				setTextPreview({
+					chipId: chip.id,
+					opener,
+					read: {title: contextChipLabel(chip), text, variant: "file", size: file.size},
+				});
+			},
+			() => {
+				// An unreadable file opens nothing, as upstream's `Yi` swallows the error.
+			},
+		);
 	};
 	return (
 		<div

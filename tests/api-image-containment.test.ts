@@ -279,3 +279,35 @@ describe("image path containment", () => {
 		});
 	});
 });
+
+describe("HEAD /api/image", () => {
+	type ApiHandler = (context: {request: Request}) => Response | Promise<Response>;
+
+	it("answers HEAD with the GET status and headers but no body, so a restored tile can check its file", async () => {
+		const imagePath = join(allowedRoot, "alice.png");
+		writeFileSync(imagePath, "png");
+		const {Route} = await import("../src/routes/api/image");
+		const handlers = (Route as unknown as {options: {server: {handlers: Record<string, ApiHandler>}}}).options
+			.server.handlers;
+		const head = handlers["HEAD"];
+		const direct = await handleImageRequest(
+			new Request(`http://127.0.0.1:7526/api/image?path=${encodeURIComponent(imagePath)}`, {method: "HEAD"}),
+			configPath,
+		);
+		const gone = await handleImageRequest(
+			new Request(`http://127.0.0.1:7526/api/image?path=${encodeURIComponent(join(allowedRoot, "gone.png"))}`, {
+				method: "HEAD",
+			}),
+			configPath,
+		);
+
+		expect({
+			route: typeof head,
+			status: direct.status,
+			type: direct.headers.get("Content-Type"),
+			length: direct.headers.get("Content-Length"),
+			body: direct.body,
+			gone: gone.status,
+		}).toStrictEqual({route: "function", status: 200, type: "image/png", length: "3", body: null, gone: 404});
+	});
+});

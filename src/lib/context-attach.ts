@@ -284,17 +284,33 @@ export function hydrateStagedChips(sessionId: string): boolean {
 	if (getContextChips(sessionId).length > 0) return false;
 	const saved = readStagedChips(sessionId);
 	if (saved.length === 0) return false;
-	setChips(
-		sessionId,
-		saved.map((chip) =>
-			restoredChip({
-				...chip,
-				...(chip.kind === "image" &&
-					chip.path !== undefined && {previewUrl: `/api/image?path=${encodeURIComponent(chip.path)}`}),
-			}),
-		),
+	const restored = saved.map((chip) =>
+		restoredChip({
+			...chip,
+			...(chip.kind === "image" &&
+				chip.path !== undefined && {previewUrl: `/api/image?path=${encodeURIComponent(chip.path)}`}),
+		}),
 	);
+	setChips(sessionId, restored);
+	for (const chip of restored) {
+		if (chip.kind === "image" && chip.previewUrl !== undefined) dropIfGone(sessionId, chip.id, chip.previewUrl);
+	}
 	return true;
+}
+
+/**
+ * Drops a restored image tile, silently, once its saved file turns out to be
+ * gone, as upstream skips a stored image it can't use; a failed check keeps it.
+ */
+function dropIfGone(sessionId: string, id: string, previewUrl: string): void {
+	fetch(previewUrl, {method: "HEAD"}).then(
+		(response) => {
+			if (response.status === 404 || response.status === 403) removeContextChip(sessionId, id);
+		},
+		() => {
+			// Offline or interrupted: the file may well still be there.
+		},
+	);
 }
 
 interface SentAttachments {
@@ -381,6 +397,17 @@ export function resolvePendingUpload(sessionId: string, id: string, attachment: 
 	setChips(
 		sessionId,
 		current.map((chip) => (chip.id === id ? {...attachment, id} : chip)),
+	);
+	return true;
+}
+
+/** Keeps a restored tile's fetched bytes on it in place, so its preview opens without another fetch; false when it was removed meanwhile. */
+export function cacheChipFile(sessionId: string, id: string, file: File): boolean {
+	const current = getContextChips(sessionId);
+	if (!current.some((chip) => chip.id === id)) return false;
+	setChips(
+		sessionId,
+		current.map((chip) => (chip.id === id ? {...chip, file} : chip)),
 	);
 	return true;
 }

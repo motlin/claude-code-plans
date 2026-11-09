@@ -8,6 +8,10 @@ export const Route = createFileRoute("/api/image")({
 				const {handleImageRequest} = await import("../../lib/image-serving");
 				return handleImageRequest(request);
 			},
+			HEAD: async ({request}: {request: Request}) => {
+				const {handleImageRequest} = await import("../../lib/image-serving");
+				return handleImageRequest(request);
+			},
 		}),
 	},
 });

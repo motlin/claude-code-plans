@@ -1,6 +1,6 @@
 import {randomUUID} from "node:crypto";
-import {mkdir, writeFile} from "node:fs/promises";
-import {join} from "node:path";
+import {mkdir, readFile, realpath, writeFile} from "node:fs/promises";
+import {isAbsolute, join, sep} from "node:path";
 
 import {AttachmentUploadResponse, MAX_ATTACHMENT_BYTES} from "./api/attachments";
 import {getCacheDir} from "./db/connection";
@@ -80,4 +80,27 @@ export async function handleAttachmentUpload(request: Request, dir: string = att
 	return Response.json(AttachmentUploadResponse.parse({path, name: file.name, mediaType, size: file.size}), {
 		status: 201,
 	});
+}
+
+/**
+ * `GET /api/attachments?path=`: a saved attachment's bytes as text, so a tile
+ * restored after a reload can still open its preview. Only files inside the
+ * attachments folder (after resolving symlinks) are served.
+ */
+export async function handleAttachmentRead(request: Request, dir: string = attachmentsDir()): Promise<Response> {
+	const requested = new URL(request.url).searchParams.get("path");
+	if (requested === null || !isAbsolute(requested)) return error("An absolute attachment path is required", 400);
+
+	let resolved: string;
+	try {
+		resolved = await realpath(requested);
+	} catch {
+		return error("Attachment not found", 404);
+	}
+	const root = await realpath(dir).catch(() => null);
+	if (root === null || !resolved.startsWith(root + sep)) return error("Attachment path is not allowed", 403);
+
+	const bytes = await readFile(resolved).catch(() => null);
+	if (bytes === null) return error("Attachment not found", 404);
+	return new Response(bytes, {headers: {"Content-Type": "text/plain; charset=utf-8"}});
 }

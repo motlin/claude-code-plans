@@ -85,7 +85,7 @@ export async function handleImageRequest(
 		return new Response(null, {status: 304, headers: cacheHeaders});
 	}
 
-	const body = fileBodyStream(resolvedPath);
+	const body = request.method === "HEAD" ? null : fileBodyStream(resolvedPath);
 	return new Response(body, {
 		headers: {
 			...cacheHeaders,
