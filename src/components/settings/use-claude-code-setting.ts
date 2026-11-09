@@ -30,6 +30,8 @@ interface ClaudeCodeSettingBinding {
 	state: ClaudeCodeSettingsState | undefined;
 	writeFailed: boolean;
 	write: (value: SettingValue) => void;
+	/** `write`, resolving true once the file holds the value and false when the write was refused. */
+	save: (value: SettingValue) => Promise<boolean>;
 }
 
 /**
@@ -44,28 +46,32 @@ export function useClaudeCodeSetting(key: ClaudeCodeSettingKey): ClaudeCodeSetti
 	const [writeFailed, setWriteFailed] = useState(false);
 	const sequence = useRef(0);
 
-	const write = (value: SettingValue) => {
+	const save = async (value: SettingValue): Promise<boolean> => {
 		sequence.current += 1;
 		const mine = sequence.current;
 		setOptimistic({value});
 		setWriteFailed(false);
-		void enqueue(queryClient, async () => {
+		return enqueue(queryClient, async () => {
 			const current = queryClient.getQueryData(claudeCodeSettingsQueryOptions.queryKey);
 			const saved = await postClaudeCodeSetting({key, value, expectedMtimeMs: current?.mtimeMs ?? null});
 			if (saved !== null) queryClient.setQueryData(claudeCodeSettingsQueryOptions.queryKey, saved);
 			return saved;
 		}).then((saved) => {
-			if (mine !== sequence.current) return;
+			if (mine !== sequence.current) return saved !== null;
 			setOptimistic(null);
 			if (saved === null) {
 				setWriteFailed(true);
 				void queryClient.invalidateQueries({queryKey: claudeCodeSettingsQueryOptions.queryKey});
-				return;
+				return false;
 			}
 			if (key === "skipDangerousModePermissionPrompt") {
 				void queryClient.invalidateQueries({queryKey: composerDefaultsQueryOptions.queryKey});
 			}
+			return true;
 		});
+	};
+	const write = (value: SettingValue) => {
+		void save(value);
 	};
 
 	return {
@@ -75,5 +81,6 @@ export function useClaudeCodeSetting(key: ClaudeCodeSettingKey): ClaudeCodeSetti
 		state: query.data,
 		writeFailed,
 		write,
+		save,
 	};
 }

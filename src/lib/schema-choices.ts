@@ -196,7 +196,7 @@ export const permissionDecisionSourceLabels = {
 	user_temporary: "User (once)",
 } satisfies Record<z.infer<typeof PermissionDecisionSourceSchema>, string>;
 
-/** `model_refusal_fallback` system record `direction`; validated only, not rendered yet. */
+/** `model_refusal_fallback` system record `direction`; only `retry` raises the refusal band (src/lib/refusal-fallback.ts). */
 const modelRefusalFallbackDirectionLabels = {
 	retry: "Retried on the fallback model",
 	revert: "Reverted to the original model",

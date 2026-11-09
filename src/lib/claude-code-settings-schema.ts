@@ -15,6 +15,7 @@ export const CLAUDE_CODE_SETTING_KEYS = [
 	"skipDangerousModePermissionPrompt",
 	"sandbox.enabled",
 	"enableWorkflows",
+	"switchModelsOnFlag",
 ] as const;
 
 export type ClaudeCodeSettingKey = (typeof CLAUDE_CODE_SETTING_KEYS)[number];

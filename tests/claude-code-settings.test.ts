@@ -56,6 +56,7 @@ describe("CLAUDE_CODE_SETTING_KEYS", () => {
 			"skipDangerousModePermissionPrompt",
 			"sandbox.enabled",
 			"enableWorkflows",
+			"switchModelsOnFlag",
 		]);
 	});
 });

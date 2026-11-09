@@ -84,6 +84,9 @@ import {showsWaitingForInputNotice} from "./waiting-for-input-notice";
 import {NotifyMePrompt} from "./notify-me-prompt";
 import {UsagePaceBanner} from "./usage-pace-banner";
 import {ColdResumeNotice} from "./cold-resume-notice";
+import {RefusalFallbackBand} from "./refusal-fallback-card";
+import {startSessionOnModel} from "../lib/start-session-on-model";
+import {activeRefusalFallback} from "../lib/refusal-fallback";
 import {newestRecordMs, usageWindowSpent} from "../lib/cold-resume-notice";
 import {
 	STALE_COMPACT_FLOOR,
@@ -1179,6 +1182,30 @@ function SessionView({
 					},
 		[staleCompactShown, staleCompactEpisode, compactStaleSession, focusSessionComposer],
 	);
+	// Upstream's refusal band shows only for fallbacks that arrive live: the records the page opened with
+	// are history (upstream's restored, dismissed fallback).
+	const [refusalLiveSince, setRefusalLiveSince] = useState({sessionId, index: endIndex});
+	if (refusalLiveSince.sessionId !== sessionId) setRefusalLiveSince({sessionId, index: endIndex});
+	const refusalLiveSinceIndex = refusalLiveSince.sessionId === sessionId ? refusalLiveSince.index : endIndex;
+	const refusalFallback = useMemo(
+		() => activeRefusalFallback(transcript.records, transcript.startIndex, refusalLiveSinceIndex, hiddenUuids),
+		[transcript.records, transcript.startIndex, refusalLiveSinceIndex, hiddenUuids],
+	);
+	const refusalNewSession = useMemo(
+		() =>
+			sessionDirectory
+				? (model: string) => {
+						void startSessionOnModel(sessionDirectory, model, {
+							launch: launchHerdrSession,
+							toast,
+							open: (id) => {
+								void navigate({to: "/session/$id", params: {id}});
+							},
+						});
+					}
+				: undefined,
+		[sessionDirectory, toast, navigate],
+	);
 	const sessionProjectId = data.projectId;
 	const coldResumeNewSession = useCallback(() => {
 		requestHomeLaunchFolder(sessionProjectId);
@@ -1627,6 +1654,13 @@ function SessionView({
 														onCompact={coldResumeCompact}
 														onNewSession={coldResumeNewSession}
 														onHoldChange={setColdResumeHolds}
+													/>
+												)}
+												{!chromeHidden && sessionDirectory && !data.archived && (
+													<RefusalFallbackBand
+														sessionId={sessionId}
+														fallback={refusalFallback}
+														onNewSession={refusalNewSession}
 													/>
 												)}
 												{/* Upstream's notice region: registered bands (usage → `limit`) stacked in NOTICE_ORDER */}
