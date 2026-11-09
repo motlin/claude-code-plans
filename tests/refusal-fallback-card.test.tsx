@@ -52,10 +52,18 @@ interface Props {
 	optOut?: RefusalOptOutBinding;
 	onNewSession?: ((model: string) => void) | undefined;
 	onDismiss?: () => void;
+	onEditRetry?: (() => boolean) | undefined;
 	withLimit?: boolean;
 }
 
-function ui({fallback = FALLBACK, optOut = OFFER, onNewSession, onDismiss = () => {}, withLimit = false}: Props) {
+function ui({
+	fallback = FALLBACK,
+	optOut = OFFER,
+	onNewSession,
+	onDismiss = () => {},
+	onEditRetry,
+	withLimit = false,
+}: Props) {
 	return (
 		<ComposerNoticeProvider>
 			<ComposerNoticeRegion />
@@ -66,6 +74,7 @@ function ui({fallback = FALLBACK, optOut = OFFER, onNewSession, onDismiss = () =
 				optOut={optOut}
 				onNewSession={onNewSession}
 				onDismiss={onDismiss}
+				onEditRetry={onEditRetry}
 			/>
 		</ComposerNoticeProvider>
 	);
@@ -250,6 +259,48 @@ describe("RefusalFallbackNotice", () => {
 		it("offers no new session without a launcher", () => {
 			render(ui({fallback: {...FALLBACK, strike: 2}, onNewSession: undefined}));
 			expect(screen.queryByRole("button", {name: "Start a new session"})).toBeNull();
+		});
+	});
+
+	describe("Rewind and retry", () => {
+		it("is the primary CTA at strike 1, before the opt-out, as a secondary button", () => {
+			const onEditRetry = vi.fn<() => boolean>(() => true);
+			render(ui({onEditRetry}));
+			expect(buttonNames()).toStrictEqual([
+				"Why",
+				"Rewind and retry",
+				"Don’t switch models automatically",
+				"Dismiss",
+			]);
+			const button = screen.getByRole("button", {name: "Rewind and retry"});
+			expect({tag: button.tagName, variant: button.getAttribute("data-approval-variant")}).toStrictEqual({
+				tag: "BUTTON",
+				variant: "secondary",
+			});
+			fireEvent.click(button);
+			expect(onEditRetry.mock.calls).toStrictEqual([[]]);
+		});
+
+		it("is absent without a handler", () => {
+			render(ui({onEditRetry: undefined}));
+			expect(screen.queryByRole("button", {name: "Rewind and retry"})).toBeNull();
+		});
+
+		it("gives way to Start a new session when escalated", () => {
+			render(ui({fallback: {...FALLBACK, strike: 2}, onNewSession: () => {}, onEditRetry: () => true}));
+			expect(buttonNames()).toStrictEqual([
+				"Why",
+				"Start a new session",
+				"Don’t switch models automatically",
+				"Dismiss",
+			]);
+		});
+
+		it("is not offered when escalated without a launcher", () => {
+			render(
+				ui({fallback: {...FALLBACK, strike: 2}, onEditRetry: () => true, optOut: {...OFFER, view: "hidden"}}),
+			);
+			expect(buttonNames()).toStrictEqual(["Why", "Dismiss"]);
 		});
 	});
 });

@@ -72,7 +72,8 @@ function WhyCard({fallback}: {fallback: RefusalFallback}) {
  * Upstream's refusal band as a notice-region card (cf74bc599 `xO` → `wO`, slot `refusal`, id
  * `model-switched`): after a live safeguards refusal moved the turn to a fallback model, "Switched to
  * {fallback} Why", with "Automatic switching is off." once the opt-out is off. Actions: escalated
- * (strike 2+) "Start a new session" on the streak's original model, then the opt-out's "Don’t switch
+ * (strike 2+) "Start a new session" on the streak's original model, else "Rewind and retry" when the
+ * session can rewind, then the opt-out's "Don’t switch
  * models automatically" (busy while writing) or "Open settings". The X hides it for that fallback.
  */
 export function RefusalFallbackNotice({
@@ -80,19 +81,24 @@ export function RefusalFallbackNotice({
 	optOut,
 	onNewSession,
 	onDismiss,
+	onEditRetry,
 }: {
 	fallback: RefusalFallback | null;
 	optOut: RefusalOptOutBinding;
 	/** Starts a new session on the given model; undefined when the session's folder is unknown. */
 	onNewSession?: ((model: string) => void) | undefined;
 	onDismiss?: () => void;
+	/** Upstream's `onEditPromptRetry` (refusal-edit-retry-rewind); undefined when the session can't rewind now. */
+	onEditRetry?: (() => boolean) | undefined;
 }) {
 	const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
 	const shown = fallback !== null && !dismissed.has(fallback.uuid) ? fallback : null;
 	let notice = null;
 	if (shown !== null) {
-		const newSession = shown.strike >= 2 && onNewSession !== undefined;
-		const hasAction = newSession || optOut.view !== "hidden";
+		const escalated = shown.strike >= 2;
+		const newSession = escalated && onNewSession !== undefined;
+		const editRetry = escalated ? undefined : onEditRetry;
+		const hasAction = newSession || editRetry !== undefined || optOut.view !== "hidden";
 		notice = {
 			id: "model-switched",
 			content: (
@@ -114,6 +120,16 @@ export function RefusalFallbackNotice({
 										}}
 									>
 										Start a new session
+									</ApprovalActionButton>
+								)}
+								{editRetry !== undefined && (
+									<ApprovalActionButton
+										variant="secondary"
+										onClick={() => {
+											editRetry();
+										}}
+									>
+										Rewind and retry
 									</ApprovalActionButton>
 								)}
 								{optOut.view === "offer" && (
@@ -150,17 +166,27 @@ export function RefusalFallbackNotice({
 	return claimed ? null : (notice?.content ?? null);
 }
 
+interface BandProps {
+	sessionId: string;
+	onNewSession?: ((model: string) => void) | undefined;
+	onEditRetry?: (() => boolean) | undefined;
+}
+
 function BoundRefusalFallbackNotice({
 	sessionId,
 	fallback,
 	onNewSession,
-}: {
-	sessionId: string;
-	fallback: RefusalFallback;
-	onNewSession?: ((model: string) => void) | undefined;
-}) {
+	onEditRetry,
+}: BandProps & {fallback: RefusalFallback}) {
 	const optOut = useRefusalOptOut(sessionId);
-	return <RefusalFallbackNotice fallback={fallback} optOut={optOut} onNewSession={onNewSession} />;
+	return (
+		<RefusalFallbackNotice
+			fallback={fallback}
+			optOut={optOut}
+			onNewSession={onNewSession}
+			onEditRetry={onEditRetry}
+		/>
+	);
 }
 
 /**
@@ -171,12 +197,14 @@ export function RefusalFallbackBand({
 	sessionId,
 	fallback,
 	onNewSession,
-}: {
-	sessionId: string;
-	fallback: RefusalFallback | null;
-	onNewSession?: ((model: string) => void) | undefined;
-}) {
+	onEditRetry,
+}: BandProps & {fallback: RefusalFallback | null}) {
 	return fallback === null ? null : (
-		<BoundRefusalFallbackNotice sessionId={sessionId} fallback={fallback} onNewSession={onNewSession} />
+		<BoundRefusalFallbackNotice
+			sessionId={sessionId}
+			fallback={fallback}
+			onNewSession={onNewSession}
+			onEditRetry={onEditRetry}
+		/>
 	);
 }

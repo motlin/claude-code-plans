@@ -120,6 +120,7 @@ import {useLiveLaunchOptions} from "../hooks/use-live-launch-options";
 import {useFolderModeMemory} from "../hooks/use-folder-mode-memory";
 import {useRewindPicker} from "../hooks/use-rewind-shortcut";
 import {useRewindRequest} from "../hooks/use-rewind-request";
+import {useRefusalEditRetry} from "../hooks/use-refusal-edit-retry";
 import {canStopResponse, useStopResponse} from "../hooks/use-stop-response";
 import {SEND_NOW_FAILED_MESSAGE, useComposerQueue} from "../hooks/use-composer-queue";
 import {
@@ -1191,6 +1192,13 @@ function SessionView({
 		() => activeRefusalFallback(transcript.records, transcript.startIndex, refusalLiveSinceIndex, hiddenUuids),
 		[transcript.records, transcript.startIndex, refusalLiveSinceIndex, hiddenUuids],
 	);
+	// Upstream's band "Rewind and retry" (`Mx`): only while the live CLI can rewind to the refused prompt.
+	const refusalEditRetry = useRefusalEditRetry({
+		sessionId,
+		refusedUuid: refusalFallback?.refusedUserMessageUuid ?? null,
+		available: rewindAvailable && !rewindBusy,
+		turns: rewindTurnList,
+	});
 	const refusalNewSession = useMemo(
 		() =>
 			sessionDirectory
@@ -1661,6 +1669,7 @@ function SessionView({
 														sessionId={sessionId}
 														fallback={refusalFallback}
 														onNewSession={refusalNewSession}
+														onEditRetry={refusalEditRetry}
 													/>
 												)}
 												{/* Upstream's notice region: registered bands (usage → `limit`) stacked in NOTICE_ORDER */}
