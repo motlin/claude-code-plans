@@ -296,7 +296,8 @@ function withJournalToolsUsed(entries: WorkflowProgressEntry[], transcriptDir: s
 	const toolsUsed = journalToolsUsed(journalEvents(transcriptDir));
 	if (toolsUsed.size === 0) return entries;
 	return entries.map((entry) => {
-		if (entry.type !== "workflow_agent" || entry.toolsUsed !== undefined) return entry;
+		if (entry.type !== "workflow_agent" || entry.toolsUsed !== undefined || entry.agentId === undefined)
+			return entry;
 		const tools = toolsUsed.get(entry.agentId);
 		return tools === undefined ? entry : {...entry, toolsUsed: tools};
 	});

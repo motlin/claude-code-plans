@@ -96,6 +96,7 @@ function parseRunProgress(text: string): Map<string, ProgressAgent> {
 		const entry = RuntimeWorkflowProgressEntrySchema.safeParse(raw);
 		if (!entry.success || entry.data.type !== "workflow_agent") continue;
 		const {agentId, label, phaseIndex, phaseTitle} = entry.data;
+		if (agentId === undefined) continue;
 		agents.set(agentId, {
 			label: stringOrNull(label),
 			phaseTitle: stringOrNull(phaseTitle),

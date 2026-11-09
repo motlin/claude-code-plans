@@ -23,7 +23,8 @@ const WorkflowAgentEntrySchema = z.strictObject({
 	type: z.literal("workflow_agent"),
 	index: z.number(),
 	label: z.string(),
-	agentId: z.string(),
+	/** Absent while the agent is still queued (no subagent spawned yet). */
+	agentId: z.string().optional(),
 	state: WorkflowAgentEntryStateSchema,
 	phaseIndex: z.number().optional(),
 	phaseTitle: z.string().optional(),

@@ -373,6 +373,11 @@ describe("WorkflowProgressEntrySchema", () => {
 		});
 	});
 
+	it("accepts a queued agent that has no agentId yet", () => {
+		const entry = {type: "workflow_agent", index: 3, label: "poem-3", state: "start", queuedAt: 1_700_000_000_000};
+		expect(WorkflowProgressEntrySchema.parse(entry)).toStrictEqual(entry);
+	});
+
 	it("validates every workflowProgress entry on disk", () => {
 		const projectsDir = join(homedir(), ".claude", "projects");
 		let projects: string[];

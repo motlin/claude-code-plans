@@ -90,7 +90,8 @@ function parseRunFile(text: string, path: string): WorkflowRunFile | null {
 	const ids = new Set<string>();
 	for (const raw of progress) {
 		const entry = RuntimeWorkflowProgressEntrySchema.safeParse(raw);
-		if (entry.success && entry.data.type === "workflow_agent") ids.add(entry.data.agentId);
+		if (entry.success && entry.data.type === "workflow_agent" && entry.data.agentId !== undefined)
+			ids.add(entry.data.agentId);
 	}
 	const timestamp = record?.["timestamp"];
 	return {agentIds: ids, writtenAt: typeof timestamp === "string" ? timestamp : fileMtime(path)};

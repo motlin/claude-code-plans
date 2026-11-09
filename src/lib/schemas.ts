@@ -1850,6 +1850,8 @@ export const SystemRecordSchema = z
 		choice: z.string().optional(),
 		originalModelName: z.string().optional(),
 		persistedAsDefault: z.boolean().optional(),
+		// `informational` "Started in the background: …": the background agent it launched.
+		launchedAgentId: z.string().optional(),
 	})
 	.strict();
 

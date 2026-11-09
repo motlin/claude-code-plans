@@ -158,6 +158,14 @@ describe("sessionSubagentsWithStops workflow attempts", () => {
 						agentId: "a2",
 						state: "error",
 					},
+					{
+						type: "workflow_agent",
+						index: 3,
+						label: "poem-4",
+						phaseIndex: 1,
+						phaseTitle: "Draft",
+						state: "start",
+					},
 				],
 			}),
 		);

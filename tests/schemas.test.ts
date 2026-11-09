@@ -595,6 +595,20 @@ describe("SystemRecordSchema", () => {
 		expect(SystemRecordSchema.parse(record)).toStrictEqual(record);
 	});
 
+	it("parses an informational background-launch record's launchedAgentId", () => {
+		const record = {
+			type: "system",
+			...baseFields,
+			subtype: "informational",
+			content: "Started in the background: summarize the poems",
+			level: "info",
+			launchedAgentId: "asummarize-the-p-1a2b3c4d5e6f7a8b",
+			isMeta: false,
+		};
+
+		expect(SystemRecordSchema.parse(record)).toStrictEqual(record);
+	});
+
 	it("parses the request retry source", () => {
 		const record = {
 			type: "system",
