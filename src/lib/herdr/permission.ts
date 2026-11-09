@@ -14,11 +14,11 @@ import {sessionAwaitingPermission} from "../session-permission-wait";
 import {herdrRequest, type HerdrResult} from "./client";
 import type {HerdrRequester} from "./panes";
 import {
+	parseOutsideReadFirstPrompt,
 	parsePermissionDialog,
 	permissionDialogShape,
 	permissionDialogSteps,
 	showsPermissionQuestion,
-	type PermissionDialogRows,
 } from "./permission-screen";
 import {herdrWritesEnabled, resolveHerdrPromptTarget, type HerdrPromptTarget} from "./prompt";
 import {readHerdrScreen} from "./read-screen";
@@ -95,6 +95,9 @@ const NOT_ACCEPTED = {
 	code: "not_accepted",
 } as const;
 
+/** Auto mode's first outside-read prompt: its rows are one-time or lasting grants, never a session one, so the card offers Allow once only. */
+const NO_PERSISTENT_SHAPE = {denyFirst: false, persistent: false, auto: false} as const;
+
 const NOT_PENDING = {error: "No permission request is pending", code: "not_pending"} as const;
 
 const NO_SESSION_GRANT = {
@@ -103,14 +106,22 @@ const NO_SESSION_GRANT = {
 } as const;
 
 /** The keys for `decision`, and the screen they were planned from (none on the hook's legacy path). */
-type PlannedSteps = {ok: true; steps: string[][]; dialog: {rows: PermissionDialogRows; screen: string} | null};
+type PlannedSteps = {ok: true; steps: string[][]; screen: string | null};
+
+/** Whether the screen shows a dialog this card answers: a tool permission dialog or the outside-read first prompt. */
+function showsAnswerableDialog(screen: string): boolean {
+	return parsePermissionDialog(screen) !== null || parseOutsideReadFirstPrompt(screen) !== null;
+}
 
 /**
  * The keys for `decision`, read from the dialog on screen. A screen that shows
  * no "Do you want to …?" question falls back to the hook's fixed digits; one that
  * can't be read does too, except for the persistent option, which upstream never
  * offers while the ask flags are unknown. A question whose rows don't fit the
- * card, or lack the chosen row, is refused rather than typed into.
+ * card, or lack the chosen row, is refused rather than typed into. Auto mode's
+ * first outside-read prompt on screen wins over the hook state: Allow takes its
+ * one-time "Yes, but ask again next time" digit, and always is refused, as no
+ * row there is a session-only grant.
  */
 async function permissionSteps(
 	sessionId: string,
@@ -121,6 +132,12 @@ async function permissionSteps(
 	const screen = await dependencies.readScreen(sessionId, paneId);
 	if (!screen.ok && decision === "always") {
 		return {ok: false, response: Response.json(DIALOG_MISMATCH, {status: 409})};
+	}
+	const outsideRead = screen.ok ? parseOutsideReadFirstPrompt(screen.value) : null;
+	if (screen.ok && outsideRead !== null) {
+		if (decision === "always") return {ok: false, response: Response.json(NO_SESSION_GRANT, {status: 409})};
+		const keys = decision === "allow" ? [String(outsideRead.rows.yesAskAgain)] : ["esc"];
+		return {ok: true, steps: [keys], screen: screen.value};
 	}
 	if (!screen.ok || !showsPermissionQuestion(screen.value)) {
 		const dialogKind = await dependencies.dialogKind(sessionId);
@@ -137,13 +154,13 @@ async function permissionSteps(
 						{status: 409},
 					),
 				}
-			: {ok: true, steps: [[key]], dialog: null};
+			: {ok: true, steps: [[key]], screen: null};
 	}
 	const rows = parsePermissionDialog(screen.value);
 	const steps = rows === null ? null : permissionDialogSteps(rows, decision);
 	return steps === null || rows === null
 		? {ok: false, response: Response.json(DIALOG_MISMATCH, {status: 409})}
-		: {ok: true, steps, dialog: {rows, screen: screen.value}};
+		: {ok: true, steps, screen: screen.value};
 }
 
 /** How many times the screen is re-read for the dialog to go after the last key. */
@@ -171,7 +188,7 @@ async function dialogTookAnswer(
 	for (let read = 0; read < ACCEPT_READS; read++) {
 		await dependencies.pause();
 		const screen = await dependencies.readScreen(sessionId, paneId);
-		if (!screen.ok || parsePermissionDialog(screen.value) === null || dialogBlock(screen.value) !== block) {
+		if (!screen.ok || !showsAnswerableDialog(screen.value) || dialogBlock(screen.value) !== block) {
 			return true;
 		}
 	}
@@ -230,7 +247,7 @@ export async function handleHerdrPermission(
 	const planned = await permissionSteps(sessionId, paneId, decision, dependencies);
 	if (!planned.ok) return planned.response;
 
-	let lastScreen = planned.dialog?.screen ?? null;
+	let lastScreen = planned.screen;
 	for (const [index, keys] of planned.steps.entries()) {
 		if (index > 0) {
 			await dependencies.pause();
@@ -287,12 +304,12 @@ export async function handleHerdrPermissionDialog(
 	if (!screen.ok) return Response.json({error: screen.message}, {status: 502});
 	const rows = parsePermissionDialog(screen.value);
 	if (rows !== null) return Response.json({dialog: permissionDialogShape(rows)});
+	if (parseOutsideReadFirstPrompt(screen.value) !== null) return Response.json({dialog: NO_PERSISTENT_SHAPE});
 	if (
 		!showsPermissionQuestion(screen.value) &&
 		(await dependencies.dialogKind(sessionId)) === "outsideReadFirstPrompt"
 	) {
-		// Its rows are one-time or lasting grants, never a session one, so the card offers Allow once only.
-		return Response.json({dialog: {denyFirst: false, persistent: false, auto: false}});
+		return Response.json({dialog: NO_PERSISTENT_SHAPE});
 	}
 	return Response.json(
 		{error: "The terminal is not showing the permission dialog", code: "dialog_not_shown"},

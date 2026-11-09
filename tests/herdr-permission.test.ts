@@ -183,56 +183,94 @@ describe("herdr permission decision handler", () => {
 		},
 	);
 
-	describe("on auto mode's first outside-read prompt", () => {
-		async function answerFirstPrompt(
-			decision: "allow" | "always" | "deny",
-		): Promise<{response: {body: unknown; status: number}; keys: unknown[]; cleared: string[]}> {
-			const keys: unknown[] = [];
-			const cleared: string[] = [];
-			const response = await handleHerdrPermission(
-				request({sessionId: "session-test-100", decision}),
-				dependencies({
-					// The hook's session suggestion would say "2", which blocks outside reads everywhere.
-					persistentAllow: () => "perChat",
-					dialogKind: async () => Promise.resolve("outsideReadFirstPrompt"),
-					readScreen: async () => Promise.resolve({ok: true, value: READ_OUTSIDE_AUTO_FIRST_PROMPT}),
-					request: async (value) => {
-						keys.push((value as {params: {keys: unknown}}).params.keys);
-						return Promise.resolve({ok: true, value: {type: "ok"}});
+	describe.each(["outsideReadFirstPrompt", "generic"] as const)(
+		"on auto mode's first outside-read prompt, with the hook state read as %s",
+		(dialogKind) => {
+			async function answerFirstPrompt(
+				decision: "allow" | "always" | "deny",
+				screens: readonly string[] = [READ_OUTSIDE_AUTO_FIRST_PROMPT, ANSWERED],
+			): Promise<{response: {body: unknown; status: number}; keys: unknown[]; cleared: string[]}> {
+				const keys: unknown[] = [];
+				const cleared: string[] = [];
+				let reads = 0;
+				const response = await handleHerdrPermission(
+					request({sessionId: "session-test-100", decision}),
+					dependencies({
+						// The hook's session suggestion would say "2", which blocks outside reads everywhere.
+						persistentAllow: () => "perChat",
+						dialogKind: async () => Promise.resolve(dialogKind),
+						readScreen: async () => {
+							const screen = screens[Math.min(reads, screens.length - 1)] ?? "";
+							reads++;
+							return Promise.resolve({ok: true, value: screen});
+						},
+						request: async (value) => {
+							keys.push((value as {params: {keys: unknown}}).params.keys);
+							return Promise.resolve({ok: true, value: {type: "ok"}});
+						},
+						clearPendingPermission: (sessionId) => cleared.push(sessionId),
+					}),
+				);
+				return {response: await describeResponse(response), keys, cleared};
+			}
+
+			it("allows once with row 4, which writes nothing lasting", async () => {
+				expect(await answerFirstPrompt("allow")).toStrictEqual({
+					response: {body: {ok: true}, status: 200},
+					keys: [["4"]],
+					cleared: ["session-test-100"],
+				});
+			});
+
+			it("takes the one-time row's digit from the screen, not a constant", async () => {
+				const swapped = READ_OUTSIDE_AUTO_FIRST_PROMPT.replace(
+					"3. No, and ask again next time\n   4. Yes, but ask again next time",
+					"3. Yes, but ask again next time\n   4. No, and ask again next time",
+				);
+				expect(await answerFirstPrompt("allow", [swapped, ANSWERED])).toStrictEqual({
+					response: {body: {ok: true}, status: 200},
+					keys: [["3"]],
+					cleared: ["session-test-100"],
+				});
+			});
+
+			it("denies with Esc", async () => {
+				expect(await answerFirstPrompt("deny")).toStrictEqual({
+					response: {body: {ok: true}, status: 200},
+					keys: [["esc"]],
+					cleared: ["session-test-100"],
+				});
+			});
+
+			it("refuses always, since no row is a session-only grant", async () => {
+				expect(await answerFirstPrompt("always")).toStrictEqual({
+					response: {
+						body: {
+							error: "The terminal offers no session-only grant for this read",
+							code: "dialog_mismatch",
+						},
+						status: 409,
 					},
-					clearPendingPermission: (sessionId) => cleared.push(sessionId),
-				}),
-			);
-			return {response: await describeResponse(response), keys, cleared};
-		}
-
-		it("allows once with row 4, which writes nothing lasting", async () => {
-			expect(await answerFirstPrompt("allow")).toStrictEqual({
-				response: {body: {ok: true}, status: 200},
-				keys: [["4"]],
-				cleared: ["session-test-100"],
+					keys: [],
+					cleared: [],
+				});
 			});
-		});
 
-		it("denies with Esc", async () => {
-			expect(await answerFirstPrompt("deny")).toStrictEqual({
-				response: {body: {ok: true}, status: 200},
-				keys: [["esc"]],
-				cleared: ["session-test-100"],
+			it("keeps the prompt pending when the prompt is still on screen after the keys", async () => {
+				expect(await answerFirstPrompt("allow", [READ_OUTSIDE_AUTO_FIRST_PROMPT])).toStrictEqual({
+					response: {
+						body: {
+							error: "The terminal\u2019s permission dialog didn\u2019t take the answer",
+							code: "not_accepted",
+						},
+						status: 409,
+					},
+					keys: [["4"]],
+					cleared: [],
+				});
 			});
-		});
-
-		it("refuses always, since no row is a session-only grant", async () => {
-			expect(await answerFirstPrompt("always")).toStrictEqual({
-				response: {
-					body: {error: "The terminal offers no session-only grant for this read", code: "dialog_mismatch"},
-					status: 409,
-				},
-				keys: [],
-				cleared: [],
-			});
-		});
-	});
+		},
+	);
 
 	it("keeps the prompt pending when herdr rejects the keys", async () => {
 		const cleared: string[] = [];
@@ -394,13 +432,17 @@ describe("herdr permission dialog shape", () => {
 		expect(await readShape(screen)).toStrictEqual({body: {dialog}, status: 200});
 	});
 
-	it("reads auto mode's first outside-read prompt as a card with no persistent option", async () => {
-		expect(
-			await readShape(READ_OUTSIDE_AUTO_FIRST_PROMPT, {
-				dialogKind: async () => Promise.resolve("outsideReadFirstPrompt"),
-			}),
-		).toStrictEqual({body: {dialog: {denyFirst: false, persistent: false, auto: false}}, status: 200});
-	});
+	it.each(["outsideReadFirstPrompt", "generic"] as const)(
+		"reads auto mode's first outside-read prompt as a card with no persistent option, with the hook state read as %s",
+		async (dialogKind) => {
+			expect(
+				await readShape(READ_OUTSIDE_AUTO_FIRST_PROMPT, {
+					persistentAllow: () => "perChat",
+					dialogKind: async () => Promise.resolve(dialogKind),
+				}),
+			).toStrictEqual({body: {dialog: {denyFirst: false, persistent: false, auto: false}}, status: 200});
+		},
+	);
 
 	it("answers 409 dialog_not_shown when the screen shows no permission dialog", async () => {
 		expect(await readShape(PLAN_DIALOG)).toStrictEqual({

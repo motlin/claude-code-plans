@@ -179,6 +179,53 @@ export function parsePermissionDialog(screen: string): PermissionDialogRows | nu
 	return {indexed, rows, focused};
 }
 
+/** The rows of auto mode's first outside-read prompt, each the digit the screen gives it. */
+export interface OutsideReadFirstPrompt {
+	kind: "outsideReadFirstPrompt";
+	rows: {keepAllowing: number; blockFromNowOn: number; noAskAgain: number; yesAskAgain: number};
+}
+
+const OUTSIDE_READ_QUESTION = "Allow this read outside the working directories?";
+/** The row labels of the CLI's `ZVt` map (2.1.319). */
+const OUTSIDE_READ_ROW_LABELS = {
+	keepAllowing: "Yes, and keep allowing any reads outside the working directories",
+	blockFromNowOn: "No, and block reads outside the working directories from now on",
+	noAskAgain: "No, and ask again next time",
+	yesAskAgain: "Yes, but ask again next time",
+} as const;
+
+/**
+ * Read auto mode's first outside-read prompt (CLI 2.1.319 `UZt`) off the screen:
+ * the last `Allow this read outside the working directories?` line, then the
+ * numbered rows up to the first blank line, each matched by its exact label.
+ * Null unless all four rows are there.
+ */
+export function parseOutsideReadFirstPrompt(screen: string): OutsideReadFirstPrompt | null {
+	const lines = screen.split("\n");
+	const anchor = lines.findLastIndex((line) => line.trim() === OUTSIDE_READ_QUESTION);
+	if (anchor < 0) return null;
+	const digits = new Map<string, number>();
+	for (const line of lines.slice(anchor + 1)) {
+		if (line.trim() === "") break;
+		const match = OPTION_LINE.exec(line);
+		if (match === null) return null;
+		digits.set(match[2] ?? "", Number(match[1]));
+	}
+	const keepAllowing = digits.get(OUTSIDE_READ_ROW_LABELS.keepAllowing);
+	const blockFromNowOn = digits.get(OUTSIDE_READ_ROW_LABELS.blockFromNowOn);
+	const noAskAgain = digits.get(OUTSIDE_READ_ROW_LABELS.noAskAgain);
+	const yesAskAgain = digits.get(OUTSIDE_READ_ROW_LABELS.yesAskAgain);
+	if (
+		keepAllowing === undefined ||
+		blockFromNowOn === undefined ||
+		noAskAgain === undefined ||
+		yesAskAgain === undefined
+	) {
+		return null;
+	}
+	return {kind: "outsideReadFirstPrompt", rows: {keepAllowing, blockFromNowOn, noAskAgain, yesAskAgain}};
+}
+
 /**
  * The keys that pick `decision` in the dialog on screen, one array per send.
  * Indexed rows take their digit; the hidden form has no digits, so Allow moves

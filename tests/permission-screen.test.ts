@@ -2,6 +2,7 @@ import {readFileSync} from "node:fs";
 import {join} from "node:path";
 import {describe, expect, it} from "vite-plus/test";
 import {
+	parseOutsideReadFirstPrompt,
 	parsePermissionDialog,
 	permissionDialogSteps,
 	showsPermissionQuestion,
@@ -171,6 +172,46 @@ describe("parsePermissionDialog", () => {
 		},
 	])("refuses $name", ({screen}) => {
 		expect(parsePermissionDialog(screen)).toBeNull();
+	});
+});
+
+describe("parseOutsideReadFirstPrompt", () => {
+	it("reads the four rows of auto mode's first outside-read prompt by label", () => {
+		expect(parseOutsideReadFirstPrompt(READ_OUTSIDE_AUTO_FIRST_PROMPT)).toStrictEqual({
+			kind: "outsideReadFirstPrompt",
+			rows: {keepAllowing: 1, blockFromNowOn: 2, noAskAgain: 3, yesAskAgain: 4},
+		});
+	});
+
+	it("takes each digit from its label, wherever the row sits", () => {
+		const swapped = READ_OUTSIDE_AUTO_FIRST_PROMPT.replace(
+			"3. No, and ask again next time\n   4. Yes, but ask again next time",
+			"3. Yes, but ask again next time\n   4. No, and ask again next time",
+		);
+		expect(parseOutsideReadFirstPrompt(swapped)).toStrictEqual({
+			kind: "outsideReadFirstPrompt",
+			rows: {keepAllowing: 1, blockFromNowOn: 2, noAskAgain: 4, yesAskAgain: 3},
+		});
+	});
+
+	it.each([
+		{
+			name: "the prompt without its one-time Yes row",
+			screen: READ_OUTSIDE_AUTO_FIRST_PROMPT.replace("   4. Yes, but ask again next time\n", ""),
+		},
+		{
+			name: "the prompt with a relabelled row",
+			screen: READ_OUTSIDE_AUTO_FIRST_PROMPT.replace("No, and ask again next time", "No, ask later"),
+		},
+		{
+			name: "the rows without their question",
+			screen: READ_OUTSIDE_AUTO_FIRST_PROMPT.replace(" Allow this read outside the working directories?\n", ""),
+		},
+		{name: "the default-mode outside-read dialog", screen: READ_OUTSIDE_SESSION_DIR},
+		{name: "BASH_FULL", screen: BASH_FULL},
+		{name: "a bare shell", screen: "$ "},
+	])("refuses $name", ({screen}) => {
+		expect(parseOutsideReadFirstPrompt(screen)).toBeNull();
 	});
 });
 
