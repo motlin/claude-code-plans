@@ -2,6 +2,7 @@ import {findPendingToolUses, matchPendingToolUse, type PendingToolUse, type Perm
 import type {PendingElicitation} from "./domain-event-payload-schemas";
 import {asRecord} from "./narrow";
 import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-prompt";
+import {clampRows, inputRows, rowsFitBudget, type PermissionRow} from "./permission-rows";
 import type {PermissionDialogDecision, PersistentAllowKind} from "./permission-suggestions";
 import {markerEventsFromRecords} from "./working-marker";
 
@@ -39,6 +40,14 @@ export interface PendingPermission {
 	description?: string;
 	/** Upstream's "Dynamic workflows … tasks pane." callout. */
 	tokenWarning?: true;
+	/** Upstream's `detailFirst`: the detail leads the body. */
+	detailFirst?: true;
+	/** Upstream's input rows: the call's other input as key/value rows. */
+	rows?: PermissionRow[];
+	/** Upstream's `rowsTrail`: the rows close the body in the "What Claude sent" panel. */
+	rowsTrail?: true;
+	/** Upstream's loose rows read gate (`rowsReadGate {loose: true}`). */
+	rowsGate?: true;
 	persistentAllow?: PersistentAllowKind;
 }
 
@@ -241,7 +250,7 @@ function withPersistentAllow(permission: PendingPermission, notification: Permis
 }
 
 function permissionFor(notificationId: string, toolUse: PendingToolUse): PendingPermission {
-	const {action, meta = null, detail = null, ...extras} = permissionCopy(toolUse);
+	const {action, meta = null, detail = null, ...extras} = withRowsBudget(permissionCopy(toolUse));
 	return {notificationId, toolUseId: toolUse.id, title: {action, meta}, detail, ...extras};
 }
 
@@ -265,6 +274,10 @@ interface PermissionCopy {
 	detailNote?: string;
 	description?: string;
 	tokenWarning?: true;
+	detailFirst?: true;
+	rows?: PermissionRow[];
+	rowsTrail?: true;
+	rowsGate?: true;
 }
 
 function numberInput(input: Record<string, unknown>, key: string): number | null {
@@ -312,14 +325,19 @@ function commandCopy(input: Record<string, unknown>, detailLang: PermissionDetai
 	};
 }
 
+/** Upstream's Workflow copy: its args other than the script (and the name it is titled by) as gated trail rows. */
 function workflowCopy(input: Record<string, unknown>): PermissionCopy {
 	const name = stringInput(input, "name");
 	const description = stringInput(input, "description");
+	const args = Object.fromEntries(
+		Object.entries(input).filter(([key, value]) => key !== "script" && (key !== "name" || value !== name)),
+	);
 	return {
 		action: name === null ? "run a workflow" : "run the workflow",
 		meta: name,
 		...(description === null ? {} : {description}),
 		tokenWarning: true,
+		...gatedTrail(inputRows(args)),
 	};
 }
 
@@ -341,8 +359,22 @@ function readNote(input: Record<string, unknown>): string | null {
 	} else if (limit !== null) {
 		lines = `First ${plural(limit, "line")}`;
 	}
-	const page = pages === null ? null : /^\d+$/.test(pages.trim()) ? `Page ${pages.trim()}` : `Pages ${pages.trim()}`;
+	const page =
+		pages === null || !PAGE_LIST.test(pages)
+			? null
+			: /^\d+$/.test(pages.trim())
+				? `Page ${pages.trim()}`
+				: `Pages ${pages.trim()}`;
 	return [lines, page].filter((part) => part !== null).join(", ") || null;
+}
+
+/** Upstream's `Ch` page list: anything else is drawn as a "Pages" row instead of the note. */
+const PAGE_LIST = /^ *\d[\d ,-]{0,39}$/;
+
+/** Upstream's Read rows: a `pages` value that isn't a plain page list, as a bare row. */
+function readRows(input: Record<string, unknown>): Pick<PermissionCopy, "rows"> {
+	const pages = input["pages"];
+	return typeof pages === "string" && pages !== "" && !PAGE_LIST.test(pages) ? {rows: inputRows({pages})} : {};
 }
 
 /** Upstream's NotebookEdit notes: what happens to which cell, then its type. */
@@ -384,9 +416,95 @@ const TOOL_VERBS: Readonly<Record<string, string>> = {
 	JavaScript: "run code",
 };
 
-/** The input as upstream's generic JSON detail, or nothing for an empty input (upstream's rows stand in later). */
-function jsonDetail(input: Record<string, unknown>): string | null {
-	return Object.keys(input).length === 0 ? null : JSON.stringify(input, null, 2);
+/** Upstream's `_h`: verb tools whose rows hold Allow behind the loose read gate instead of clamping. */
+const GATED_VERB_TOOLS = new Set(["REPL", "JavaScript", "SendMessage", "ScheduleWakeup", "TaskCreate", "TaskUpdate"]);
+
+/** Upstream's `yh`: a SendMessage input without the fields its message summary repeats. */
+function sendMessageInput(input: Record<string, unknown>): Record<string, unknown> {
+	const summary: Record<string, unknown> = {
+		type: "message",
+		recipient: input["to"],
+		recipient_kind: "name",
+		content: input["message"],
+	};
+	return Object.fromEntries(
+		Object.entries(input).filter(([key, value]) => !(key in summary && value === summary[key])),
+	);
+}
+
+/** Upstream's `bh`: the input without a string description, which the body already shows. */
+function withoutDescription(input: Record<string, unknown>): Record<string, unknown> {
+	return Object.fromEntries(
+		Object.entries(input).filter(([key, value]) => key !== "description" || typeof value !== "string"),
+	);
+}
+
+/**
+ * Upstream's `jv`: the main key as a leading detail and every other key as rows. A non-string main value
+ * stays among the rows.
+ */
+function withRows(
+	input: Record<string, unknown>,
+	mainKey?: string,
+): Pick<PermissionCopy, "detail" | "detailFirst" | "rows"> {
+	const main = mainKey === undefined ? undefined : input[mainKey];
+	const detail = typeof main === "string" ? main : undefined;
+	const rows = inputRows(
+		Object.fromEntries(Object.entries(input).filter(([key]) => detail === undefined || key !== mainKey)),
+	);
+	return {
+		...(detail === undefined ? {} : {detail, detailFirst: true as const}),
+		...(rows.length > 0 ? {rows} : {}),
+	};
+}
+
+/** Rows in the trail panel behind upstream's loose read gate (`b`), when there are any. */
+function gatedTrail(rows: PermissionRow[]): Pick<PermissionCopy, "rows" | "rowsTrail" | "rowsGate"> {
+	return rows.length > 0 ? {rows, rowsTrail: true, rowsGate: true} : {};
+}
+
+/** Rows in the trail panel, clamped to 6 lines and ungated (upstream's `te(P())`). */
+function clampedTrail(rows: PermissionRow[]): Pick<PermissionCopy, "rows" | "rowsTrail"> {
+	return rows.length > 0 ? {rows: clampRows(rows), rowsTrail: true} : {};
+}
+
+/** Upstream's `te` over `jv`: bare rows clamped to 6 lines. */
+function clampedBare(copy: PermissionCopy): PermissionCopy {
+	return copy.rows === undefined ? copy : {...copy, rows: clampRows(copy.rows)};
+}
+
+/** Gates a copy's trail rows when it has rows (upstream spreads `b` whether or not rows exist). */
+function gateRows(copy: PermissionCopy): PermissionCopy {
+	return copy.rows === undefined ? copy : {...copy, rowsTrail: true, rowsGate: true};
+}
+
+/** Upstream's post-pass `N_`: ungated rows beyond the budget move to the trail panel behind the loose gate. */
+function withRowsBudget(copy: PermissionCopy): PermissionCopy {
+	if (copy.rows === undefined || copy.rows.length === 0 || copy.rowsGate === true || rowsFitBudget(copy.rows)) {
+		return copy;
+	}
+	return {...copy, rowsTrail: true, rowsGate: true};
+}
+
+function hostOf(url: string): string | null {
+	try {
+		const host = new URL(url).hostname;
+		return host === "" ? null : host;
+	} catch {
+		return null;
+	}
+}
+
+/** Upstream's WebFetch copy: "fetch {host}" with the url leading, and a non-blank prompt as a gated trail row. */
+function webFetchCopy(input: Record<string, unknown>): PermissionCopy {
+	const url = stringInput(input, "url");
+	const host = url === null ? null : hostOf(url);
+	const prompt = stringInput(input, "prompt");
+	return {
+		...(host === null ? {action: "fetch a web page"} : {action: "fetch", meta: host}),
+		...(url === null ? {} : {detail: url, detailFirst: true}),
+		...gatedTrail(prompt === null ? [] : inputRows({prompt})),
+	};
 }
 
 /** Upstream's per-tool action, meta and detail (claude.ai/code's permission copy builder). */
@@ -399,7 +517,12 @@ function permissionCopy({name, input}: PendingToolUse): PermissionCopy {
 		case "PowerShell":
 			return commandCopy(input, "powershell");
 		case "Read":
-			return {...fileCopy("read", text("file_path")), clampTitle: true, ...notes([readNote(input)])};
+			return {
+				...fileCopy("read", text("file_path")),
+				clampTitle: true,
+				...notes([readNote(input)]),
+				...readRows(input),
+			};
 		case "Write":
 			return {
 				...fileCopy("write", text("file_path")),
@@ -416,11 +539,13 @@ function permissionCopy({name, input}: PendingToolUse): PermissionCopy {
 		case "NotebookEdit":
 			return {...fileCopy("edit", text("notebook_path")), ...notes([notebookNote(input)])};
 		case "Glob":
-			return {action: "find files", detail: text("pattern")};
+			return clampedBare({action: "find files", ...withRows(input, "pattern")});
 		case "Grep":
-			return {action: "search files", detail: text("pattern")};
+			return clampedBare({action: "search files", ...withRows(input, "pattern")});
+		case "WebFetch":
+			return webFetchCopy(input);
 		case "WebSearch":
-			return {action: "search the web", detail: text("query")};
+			return clampedBare({action: "search the web", ...withRows(input, "query")});
 		case "Skill": {
 			const skill = text("skill");
 			return {action: "run skill", meta: skill === null ? null : `/${skill}`, detail: text("args")};
@@ -428,31 +553,39 @@ function permissionCopy({name, input}: PendingToolUse): PermissionCopy {
 		case "Task":
 		case "Agent": {
 			const description = text("description");
-			return {action: "run an agent", ...(description === null ? {} : {description})};
+			return {
+				action: "run an agent",
+				...(description === null ? {} : {description}),
+				...gatedTrail(inputRows(withoutDescription(input))),
+			};
 		}
 		case "Workflow":
 			return workflowCopy(input);
 		case "Monitor": {
-			const command = text("command");
-			return command === null
-				? {action: "open and watch a connection", detail: jsonDetail(input)}
-				: {action: "run and watch a command", detail: command, detailLang: "bash"};
+			const rows = withRows(withoutDescription(input), "command");
+			return gateRows(
+				rows.detail === undefined
+					? {action: "open and watch a connection", ...rows}
+					: {action: "run and watch a command", ...rows, detailLang: "bash"},
+			);
 		}
 		case "CronCreate":
-			return {action: "schedule a prompt", detail: text("prompt")};
-		case "EnterWorktree": {
-			const path = text("path");
-			return path === null
-				? {action: "create a worktree", detail: text("name")}
-				: {action: "move to a worktree", detail: path};
-		}
+			return gateRows({action: "schedule a prompt", ...withRows(input, "prompt")});
+		case "EnterWorktree":
+			return {
+				action: text("path") === null ? "create a worktree" : "move to a worktree",
+				...clampedTrail(inputRows(input)),
+			};
 		case "ExitWorktree":
-			return {action: text("action") === "remove" ? "delete the worktree and its branch" : "leave the worktree"};
+			return {
+				action: text("action") === "remove" ? "delete the worktree and its branch" : "leave the worktree",
+				...clampedTrail(inputRows(input)),
+			};
 		default: {
 			const verb = TOOL_VERBS[name];
-			return verb === undefined
-				? {action: `use ${name}`, detail: JSON.stringify(input, null, 2)}
-				: {action: verb, detail: jsonDetail(input)};
+			if (verb === undefined) return {action: `use ${name}`, ...gatedTrail(inputRows(input))};
+			const rows = inputRows(name === "SendMessage" ? sendMessageInput(input) : input);
+			return {action: verb, ...(GATED_VERB_TOOLS.has(name) ? gatedTrail(rows) : clampedTrail(rows))};
 		}
 	}
 }

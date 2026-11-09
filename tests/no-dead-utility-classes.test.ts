@@ -65,6 +65,7 @@ const ALLOWLIST: Record<string, string> = {
 	"df-sortable-section": HOOK,
 	"epitaxy-answer-option": HOOK,
 	"epitaxy-approval-actions": HOOK,
+	"epitaxy-approval-read-hint": HOOK,
 	"epitaxy-diff": HOOK,
 	"epitaxy-rail-lined": HOOK,
 	"epitaxy-reply-flash-accent": HOOK,

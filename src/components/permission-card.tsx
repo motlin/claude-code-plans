@@ -1,6 +1,7 @@
-import {useCallback, useEffect, useRef, useState, type ReactNode, type RefObject} from "react";
+import {useCallback, useEffect, useRef, useState, type ReactElement, type ReactNode, type RefObject} from "react";
 
 import {useIsMac} from "../hooks/use-is-mac";
+import {useRowsReadGate} from "../hooks/use-rows-read-gate";
 import {
 	acknowledgeApproval,
 	clearApprovalAnswered,
@@ -19,6 +20,7 @@ import {
 	type PermissionTitle,
 } from "../lib/permission-card";
 import type {PermissionDialogShape} from "../lib/herdr/permission-screen";
+import type {PermissionRow} from "../lib/permission-rows";
 import {toAriaKeyShortcuts} from "../lib/shortcuts/format";
 import {
 	PERSISTENT_ALLOW_LABELS,
@@ -27,8 +29,10 @@ import {
 } from "../lib/permission-suggestions";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {APPROVAL_SENDING_LABEL, ApprovalActionButton, ApprovalCardShell} from "./approval-card";
+import {PermissionRowsList, PERMISSION_ROWS_LABEL} from "./permission-rows";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import {HighlightedCommand} from "./tool-renderers/bash-renderer";
+import {DisabledReason} from "./ui/disabled-reason";
 import {Shortcut} from "./ui/shortcut";
 import {SplitDropdownButton} from "./ui/split-dropdown-button";
 
@@ -59,6 +63,10 @@ export function PermissionCard({
 	detailNote = null,
 	description = null,
 	tokenWarning = false,
+	detailFirst = false,
+	rows = null,
+	rowsTrail = false,
+	rowsGate = false,
 	canAnswer,
 	persistentAllow: hookPersistentAllow = null,
 	dialog,
@@ -81,6 +89,14 @@ export function PermissionCard({
 	description?: string | null;
 	/** Upstream's Workflow callout about usage, linking the Background tasks pane. */
 	tokenWarning?: boolean;
+	/** Upstream's `detailFirst`: the detail leads the body (Grep's pattern, WebFetch's url). */
+	detailFirst?: boolean;
+	/** Upstream's input rows: the tool call's other input as key/value rows. */
+	rows?: readonly PermissionRow[] | null;
+	/** Upstream's `rowsTrail`: the rows close the body in the tinted "What Claude sent" panel. */
+	rowsTrail?: boolean;
+	/** Upstream's loose rows read gate: Allow waits until a trail panel that scrolls has been read to its end. */
+	rowsGate?: boolean;
 	/** False without a live herdr pane that accepts writes. */
 	canAnswer: boolean;
 	/** The dialog's persistent allow option, from the PermissionRequest hook; null hides it. */
@@ -153,10 +169,60 @@ export function PermissionCard({
 		void decide("always");
 	};
 
+	// Upstream's loose rows gate (`ml` + `lr`): enforced only while the body scrolls, or before it has a layout.
+	const rowsPanelRef = useRef<HTMLDivElement>(null);
+	const hasRows = rows !== null && rows.length > 0;
+	const rowsKey = hasRows ? JSON.stringify(rows) : "";
+	const rowsGated = rowsGate && rowsTrail && hasRows;
+	const rowsRead = useRowsReadGate({ref: rowsPanelRef, watched: rowsGated, gateKey: rowsKey});
+	const readHeld = rowsGated && (rowsRead.fits === false || rowsRead.state === "unlaid") && rowsRead.state !== "read";
+	// The hint mounts once the gate has held, then stays (invisible once read) so the card doesn't jump.
+	const [hinted, setHinted] = useState(false);
+	useEffect(() => {
+		if (readHeld) setHinted(true);
+	}, [readHeld]);
+	const [heldAttempts, setHeldAttempts] = useState(0);
+	const onHeldAttempt = useCallback(() => {
+		setHeldAttempts((count) => count + 1);
+	}, []);
+
 	const cardRootRef = useRef<HTMLDivElement>(null);
-	usePermissionHotkeys(cardRootRef, {enabled: enabled && !denyFirst, persistent: persistentAllow !== null, decide});
+	usePermissionHotkeys(cardRootRef, {
+		enabled: enabled && !denyFirst,
+		persistent: persistentAllow !== null,
+		held: readHeld,
+		onHeldAttempt,
+		decide,
+	});
 
 	if ((decided || answered) && hideOnDecision) return null;
+
+	const detailBlock = (
+		<>
+			{detail !== null &&
+				(detailLang === null ? (
+					<div data-permission-detail data-approval-value className={DETAIL_CLASS}>
+						{detail}
+					</div>
+				) : (
+					<div data-permission-detail className="flow-root">
+						<div data-approval-value>
+							<div className={CODE_CARD_CLASS}>
+								<HighlightedCommand
+									command={detail}
+									language={detailLang === "bash" ? "shellscript" : detailLang}
+								/>
+							</div>
+						</div>
+					</div>
+				))}
+			{detailNote !== null && <p className={DETAIL_NOTE_CLASS}>{detailNote}</p>}
+		</>
+	);
+	/** The allow buttons' disabled reason while the rows gate holds them. */
+	const allowReason = readHeld ? ROWS_READ_HINT : null;
+	const withAllowReason = (control: ReactElement) =>
+		rowsGated ? <DisabledReason reason={allowReason}>{control}</DisabledReason> : control;
 
 	return (
 		<ApprovalCardShell
@@ -178,29 +244,50 @@ export function PermissionCard({
 			}
 			body={
 				<div className="flex flex-col gap-[12px] empty:hidden">
+					{detailFirst && detailBlock}
 					{description !== null && <div className={DESCRIPTION_CLASS}>{description}</div>}
-					{detail !== null &&
-						(detailLang === null ? (
-							<div data-permission-detail data-approval-value className={DETAIL_CLASS}>
-								{detail}
+					{!rowsTrail && hasRows && <PermissionRowsList rows={rows} />}
+					{!detailFirst && detailBlock}
+					{tokenWarning && <TokenWarning />}
+					{rowsTrail &&
+						hasRows &&
+						(rowsGated ? (
+							// Upstream's `ml` wrapper, keyed by the rows so new rows start unread.
+							<div ref={rowsPanelRef} key={rowsKey} data-testid="approval-read-rows">
+								{/* A gated panel never clamps; its groups fold only once a scrolled panel is read. */}
+								<RowsPanel
+									rows={rows}
+									foldable={rowsRead.fits === false && rowsRead.state === "read"}
+									clamp={false}
+								/>
 							</div>
 						) : (
-							<div data-permission-detail className="flow-root">
-								<div data-approval-value>
-									<div className={CODE_CARD_CLASS}>
-										<HighlightedCommand
-											command={detail}
-											language={detailLang === "bash" ? "shellscript" : detailLang}
-										/>
-									</div>
-								</div>
-							</div>
+							<RowsPanel rows={rows} foldable clamp />
 						))}
-					{detailNote !== null && <p className={DETAIL_NOTE_CLASS}>{detailNote}</p>}
-					{tokenWarning && <TokenWarning />}
 					{!canAnswer && <ReadOnlyAnswerHint className="text-footnote text-secondary" />}
 					{error && <p className="text-footnote text-extended-pink">{error}</p>}
 				</div>
+			}
+			note={
+				rowsGated ? (
+					<>
+						{/* Upstream's re-announcing live region: a trailing NBSP on even attempts. */}
+						<p aria-live="polite" className="sr-only">
+							{readHeld && heldAttempts > 0
+								? `${ROWS_READ_HINT}${heldAttempts % 2 === 0 ? " " : ""}`
+								: ""}
+						</p>
+						{(hinted || heldAttempts > 0) && (
+							<p
+								aria-hidden
+								data-testid="approval-read-hint"
+								className={`${READ_HINT_CLASS}${readHeld ? "" : " invisible"}`}
+							>
+								{ROWS_READ_HINT}
+							</p>
+						)}
+					</>
+				) : undefined
 			}
 			actions={
 				<>
@@ -228,63 +315,67 @@ export function PermissionCard({
 								<span data-approval-digit="2">Allow once</span>
 							</ApprovalActionButton>
 						) : persistentAllow === null ? (
-							<ApprovalActionButton
-								variant="primary"
-								data-approval-primary=""
-								aria-keyshortcuts={toAriaKeyShortcuts("cmd+enter", isMac)}
-								busy={sent === "allow"}
-								busyLabel={APPROVAL_SENDING_LABEL}
-								disabled={!enabled && sent !== "allow"}
-								onClick={() => void decide("allow")}
-							>
-								<span data-approval-digit="2">Allow once</span>
-								<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
-							</ApprovalActionButton>
+							withAllowReason(
+								<ApprovalActionButton
+									variant="primary"
+									data-approval-primary=""
+									aria-keyshortcuts={toAriaKeyShortcuts("cmd+enter", isMac)}
+									busy={sent === "allow"}
+									busyLabel={APPROVAL_SENDING_LABEL}
+									disabled={(!enabled && sent !== "allow") || readHeld}
+									onClick={() => void decide("allow")}
+								>
+									<span data-approval-digit="2">Allow once</span>
+									<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
+								</ApprovalActionButton>,
+							)
 						) : (
-							<SplitDropdownButton
-								variant="primary"
-								className="max-w-full min-w-0"
-								{...(lead === "always"
-									? {
-											groupLabel: PERSISTENT_ALLOW_LABELS[persistentAllow],
-											tooltip: PERSISTENT_ALLOW_SCOPES[persistentAllow],
-											label: (
-												<span data-approval-digit="2" data-approval-primary="">
-													{PERSISTENT_ALLOW_LABELS[persistentAllow]}
-													<span className="sr-only select-none">{`, ${PERSISTENT_ALLOW_SCOPES[persistentAllow]}`}</span>
-												</span>
-											),
-											items: [
-												{
-													label: "Allow once",
-													shortcut: "cmd+enter",
-													onSelect: allowOnceFromMenu,
-												},
-											],
-											onPrimaryClick: () => void decide("always"),
-										}
-									: {
-											groupLabel: "Allow once",
-											label: (
-												<span data-approval-digit="2" data-approval-primary="">
-													Allow once
-												</span>
-											),
-											shortcut: "cmd+enter",
-											"aria-keyshortcuts": toAriaKeyShortcuts("cmd+enter", isMac),
-											items: [
-												{
-													label: PERSISTENT_ALLOW_LABELS[persistentAllow],
-													description: PERSISTENT_ALLOW_SCOPES[persistentAllow],
-													onSelect: persistentFromMenu,
-												},
-											],
-											onPrimaryClick: () => void decide("allow"),
-										})}
-								menuLabel="More allow options"
-								busy={sent === "allow" || sent === "always"}
-								disabled={!enabled}
-							/>
+							withAllowReason(
+								<SplitDropdownButton
+									variant="primary"
+									className="max-w-full min-w-0"
+									{...(lead === "always"
+										? {
+												groupLabel: PERSISTENT_ALLOW_LABELS[persistentAllow],
+												tooltip: PERSISTENT_ALLOW_SCOPES[persistentAllow],
+												label: (
+													<span data-approval-digit="2" data-approval-primary="">
+														{PERSISTENT_ALLOW_LABELS[persistentAllow]}
+														<span className="sr-only select-none">{`, ${PERSISTENT_ALLOW_SCOPES[persistentAllow]}`}</span>
+													</span>
+												),
+												items: [
+													{
+														label: "Allow once",
+														shortcut: "cmd+enter",
+														onSelect: allowOnceFromMenu,
+													},
+												],
+												onPrimaryClick: () => void decide("always"),
+											}
+										: {
+												groupLabel: "Allow once",
+												label: (
+													<span data-approval-digit="2" data-approval-primary="">
+														Allow once
+													</span>
+												),
+												shortcut: "cmd+enter",
+												"aria-keyshortcuts": toAriaKeyShortcuts("cmd+enter", isMac),
+												items: [
+													{
+														label: PERSISTENT_ALLOW_LABELS[persistentAllow],
+														description: PERSISTENT_ALLOW_SCOPES[persistentAllow],
+														onSelect: persistentFromMenu,
+													},
+												],
+												onPrimaryClick: () => void decide("allow"),
+											})}
+									menuLabel="More allow options"
+									busy={sent === "allow" || sent === "always"}
+									disabled={!enabled || readHeld}
+								/>,
+							)
 						)}
 					</div>
 				</>
@@ -305,8 +396,17 @@ function usePermissionHotkeys(
 	{
 		enabled,
 		persistent,
+		held,
+		onHeldAttempt,
 		decide,
-	}: {enabled: boolean; persistent: boolean; decide: (decision: PermissionDecision) => unknown},
+	}: {
+		enabled: boolean;
+		persistent: boolean;
+		/** A read gate holds the allow decisions: they are swallowed and reported as attempts. */
+		held: boolean;
+		onHeldAttempt: () => void;
+		decide: (decision: PermissionDecision) => unknown;
+	},
 ) {
 	const armedAtRef = useRef<number | null>(null);
 	useEffect(() => {
@@ -332,13 +432,17 @@ function usePermissionHotkeys(
 			const armedAt = armedAtRef.current ?? performance.now();
 			if (event.repeat || performance.now() - armedAt < APPROVAL_ARM_GRACE_MS) return;
 			if (decision === "always" && !(persistent && (card.contains(active) || isIdleComposer(active)))) return;
+			if (held && decision !== "deny") {
+				onHeldAttempt();
+				return;
+			}
 			decide(decision);
 		};
 		window.addEventListener("keydown", onKeyDown, true);
 		return () => {
 			window.removeEventListener("keydown", onKeyDown, true);
 		};
-	}, [cardRootRef, enabled, persistent, decide]);
+	}, [cardRootRef, enabled, persistent, held, onHeldAttempt, decide]);
 }
 
 /** Upstream's body classes (`epitaxy-code-size` hooks, held at the default size by the card's data-fixed-code-size): the detail block (`Lg`), its footnote (`kg`) and the description line (`Dg`). */
@@ -350,6 +454,24 @@ const CODE_CARD_CLASS =
 const DETAIL_NOTE_CLASS = "text-footnote text-ink-muted select-text break-words [unicode-bidi:plaintext]";
 const DESCRIPTION_CLASS =
 	"text-body text-secondary select-text break-words max-h-[calc(3*var(--text-body--line-height))] overflow-y-auto [unicode-bidi:plaintext]";
+
+/** Upstream's rows gate hint (`ph.rowsHint`). */
+const ROWS_READ_HINT = "Scroll to the end to allow this.";
+/** Upstream's read hint above the actions, centred in a stacked (≤420px) card. */
+const READ_HINT_CLASS =
+	"epitaxy-approval-read-hint text-footnote text-muted-as-secondary text-end text-balance @max-[420px]:text-center";
+
+/** Upstream's trail rows panel: the tinted "What Claude sent" block closing the card body. */
+function RowsPanel({rows, foldable, clamp}: {rows: readonly PermissionRow[]; foldable: boolean; clamp: boolean}) {
+	return (
+		<div data-permission-rows-panel className="flex flex-col gap-1 rounded-lg bg-alpha-1 px-3 py-2">
+			<span aria-hidden className="text-footnote text-muted-as-secondary">
+				{PERMISSION_ROWS_LABEL}
+			</span>
+			<PermissionRowsList rows={rows} foldable={foldable} clamp={clamp} />
+		</div>
+	);
+}
 
 /** Upstream's Workflow callout; "tasks pane" opens the Background tasks pane where one can host it. */
 function TokenWarning() {

@@ -6,9 +6,11 @@ import {describe, expect, it} from "vite-plus/test";
  * does. This ratchet counts the hand-rolled ones left in src/components: `<details>` elements and
  * `aria-expanded={…}` toggles that aren't menu or popover triggers (`aria-haspopup` on the same element).
  * It only falls: when a migration removes one, lower the ceiling to the new count. The sidebar group header,
- * diff-file header and subagent tree stay hand-rolled; upstream draws those with their own components.
+ * diff-file header and subagent tree stay hand-rolled; upstream draws those with their own components. The
+ * permission rows' Show more (upstream's cds Button with aria-expanded over a line-clamped value) toggles a clamp,
+ * not a hidden panel, so a Collapsible can't draw it; it raised the ceiling from 45.
  */
-const DISCLOSURE_CEILING = 45;
+const DISCLOSURE_CEILING = 46;
 
 /** The opening tag around `index`: from the nearest `<Name` before it to the next `<` after it. */
 function enclosingTag(source: string, index: number): string {

@@ -179,6 +179,9 @@ describe("findPendingPermission", () => {
 			detail: null,
 			description: "Replies ok",
 			tokenWarning: true,
+			rows: [{label: "Description", value: "Replies ok"}],
+			rowsTrail: true,
+			rowsGate: true,
 		});
 	});
 
@@ -388,14 +391,22 @@ describe("findPendingPermission", () => {
 				inactive: {
 					notificationId: "notification-test-100",
 					toolUseId: "f1",
-					title: {action: "use WebFetch", meta: null},
-					detail: JSON.stringify({url: "https://a", prompt: "p"}, null, 2),
+					title: {action: "fetch", meta: "a"},
+					detail: "https://a",
+					detailFirst: true,
+					rows: [{label: "Prompt", value: "p"}],
+					rowsTrail: true,
+					rowsGate: true,
 				},
 				active: {
 					notificationId: "notification-test-100",
 					toolUseId: "f1",
-					title: {action: "use WebFetch", meta: null},
-					detail: JSON.stringify({url: "https://a", prompt: "p"}, null, 2),
+					title: {action: "fetch", meta: "a"},
+					detail: "https://a",
+					detailFirst: true,
+					rows: [{label: "Prompt", value: "p"}],
+					rowsTrail: true,
+					rowsGate: true,
 				},
 				waiting: "f1",
 			});
@@ -415,8 +426,12 @@ describe("findPendingPermission", () => {
 				card: {
 					notificationId: "notification-test-100",
 					toolUseId: "f2",
-					title: {action: "use WebFetch", meta: null},
-					detail: JSON.stringify({url: "https://b", prompt: "p"}, null, 2),
+					title: {action: "fetch", meta: "b"},
+					detail: "https://b",
+					detailFirst: true,
+					rows: [{label: "Prompt", value: "p"}],
+					rowsTrail: true,
+					rowsGate: true,
 				},
 				waiting: "f2",
 			});
@@ -487,7 +502,7 @@ describe("permission title copy", () => {
 			parts: [[PRIMARY, "use mcp__github__create_issue"]],
 			valueClass: null,
 			label: "Permission request: use mcp__github__create_issue",
-			detail: '{\n  "title": "Bug",\n  "labels": [\n    "a"\n  ]\n}',
+			detail: null,
 		},
 	])("titles $tool $input as upstream does", ({tool, input, title, parts, valueClass, label, detail}) => {
 		const pending = findPendingPermission({
@@ -529,17 +544,83 @@ describe("permission title copy", () => {
 		{
 			tool: "Glob",
 			input: {pattern: "**/*.ts"},
-			expected: {title: {action: "find files", meta: null}, detail: "**/*.ts"},
+			expected: {title: {action: "find files", meta: null}, detail: "**/*.ts", detailFirst: true},
 		},
 		{
 			tool: "Grep",
 			input: {pattern: "TODO", path: "/repo"},
-			expected: {title: {action: "search files", meta: null}, detail: "TODO"},
+			expected: {
+				title: {action: "search files", meta: null},
+				detail: "TODO",
+				detailFirst: true,
+				rows: [{label: "Path", value: "/repo", clampLines: 6}],
+			},
+		},
+		{
+			tool: "Grep",
+			input: {pattern: "foo", path: "src", output_mode: "content", "-i": true},
+			expected: {
+				title: {action: "search files", meta: null},
+				detail: "foo",
+				detailFirst: true,
+				rows: [
+					{label: "Path", value: "src", clampLines: 6},
+					{label: "Output mode", value: "content", clampLines: 6},
+					{label: "-i", labelCode: true, value: "true", code: true, clampLines: 6},
+				],
+			},
+		},
+		{
+			tool: "Grep",
+			input: {
+				pattern: "foo",
+				...Object.fromEntries(Array.from({length: 13}, (_, index) => [`opt${index}`, "x"])),
+			},
+			expected: {
+				title: {action: "search files", meta: null},
+				detail: "foo",
+				detailFirst: true,
+				rows: Array.from({length: 13}, (_, index) => ({label: `Opt${index}`, value: "x", clampLines: 6})),
+				rowsTrail: true,
+				rowsGate: true,
+			},
 		},
 		{
 			tool: "WebSearch",
 			input: {query: "vitest jsdom"},
-			expected: {title: {action: "search the web", meta: null}, detail: "vitest jsdom"},
+			expected: {title: {action: "search the web", meta: null}, detail: "vitest jsdom", detailFirst: true},
+		},
+		{
+			tool: "WebSearch",
+			input: {query: "vitest", allowed_domains: ["a.com", "b.com"]},
+			expected: {
+				title: {action: "search the web", meta: null},
+				detail: "vitest",
+				detailFirst: true,
+				rows: [{label: "Allowed domains", value: "• a.com\n• b.com", code: true, clampLines: 6}],
+			},
+		},
+		{
+			tool: "WebFetch",
+			input: {url: "https://a.com/x", prompt: "sum"},
+			expected: {
+				title: {action: "fetch", meta: "a.com"},
+				detail: "https://a.com/x",
+				detailFirst: true,
+				rows: [{label: "Prompt", value: "sum"}],
+				rowsTrail: true,
+				rowsGate: true,
+			},
+		},
+		{
+			tool: "WebFetch",
+			input: {url: "https://a.com/x", prompt: " "},
+			expected: {title: {action: "fetch", meta: "a.com"}, detail: "https://a.com/x", detailFirst: true},
+		},
+		{
+			tool: "WebFetch",
+			input: {},
+			expected: {title: {action: "fetch a web page", meta: null}, detail: null},
 		},
 		{
 			tool: "Skill",
@@ -549,12 +630,26 @@ describe("permission title copy", () => {
 		{
 			tool: "Agent",
 			input: {description: "Find the bug", prompt: "look"},
-			expected: {title: {action: "run an agent", meta: null}, detail: null, description: "Find the bug"},
+			expected: {
+				title: {action: "run an agent", meta: null},
+				detail: null,
+				description: "Find the bug",
+				rows: [{label: "Prompt", value: "look"}],
+				rowsTrail: true,
+				rowsGate: true,
+			},
 		},
 		{
 			tool: "Task",
 			input: {description: "Find the bug", prompt: "look"},
-			expected: {title: {action: "run an agent", meta: null}, detail: null, description: "Find the bug"},
+			expected: {
+				title: {action: "run an agent", meta: null},
+				detail: null,
+				description: "Find the bug",
+				rows: [{label: "Prompt", value: "look"}],
+				rowsTrail: true,
+				rowsGate: true,
+			},
 		},
 		{
 			tool: "Workflow",
@@ -564,6 +659,24 @@ describe("permission title copy", () => {
 				detail: null,
 				description: "Does nothing",
 				tokenWarning: true,
+				rows: [{label: "Description", value: "Does nothing"}],
+				rowsTrail: true,
+				rowsGate: true,
+			},
+		},
+		{
+			tool: "Agent",
+			input: {description: "Find x", prompt: "Look", subagent_type: "Explore"},
+			expected: {
+				title: {action: "run an agent", meta: null},
+				detail: null,
+				description: "Find x",
+				rows: [
+					{label: "Prompt", value: "Look"},
+					{label: "Subagent type", value: "Explore"},
+				],
+				rowsTrail: true,
+				rowsGate: true,
 			},
 		},
 		{
@@ -624,6 +737,16 @@ describe("permission title copy", () => {
 				detail: "/repo/a.pdf",
 				detailNote: "Pages 1-3",
 				clampTitle: true,
+			},
+		},
+		{
+			tool: "Read",
+			input: {file_path: "/repo/a.pdf", pages: "intro"},
+			expected: {
+				title: {action: "read", meta: "a.pdf"},
+				detail: "/repo/a.pdf",
+				clampTitle: true,
+				rows: [{label: "Pages", value: "intro"}],
 			},
 		},
 		{
@@ -700,6 +823,7 @@ describe("permission title copy", () => {
 				title: {action: "run and watch a command", meta: null},
 				detail: "tail -f log",
 				detailLang: "bash",
+				detailFirst: true,
 			},
 		},
 		{
@@ -707,29 +831,54 @@ describe("permission title copy", () => {
 			input: {url: "wss://example.test"},
 			expected: {
 				title: {action: "open and watch a connection", meta: null},
-				detail: '{\n  "url": "wss://example.test"\n}',
+				detail: null,
+				rows: [{label: "URL", value: "wss://example.test"}],
+				rowsTrail: true,
+				rowsGate: true,
 			},
 		},
 		{
 			tool: "CronCreate",
 			input: {cron: "0 9 * * *", prompt: "Check the build"},
-			expected: {title: {action: "schedule a prompt", meta: null}, detail: "Check the build"},
+			expected: {
+				title: {action: "schedule a prompt", meta: null},
+				detail: "Check the build",
+				detailFirst: true,
+				rows: [{label: "Cron", value: "0 9 * * *"}],
+				rowsTrail: true,
+				rowsGate: true,
+			},
 		},
 		{
 			tool: "EnterWorktree",
 			input: {name: "feature-a"},
-			expected: {title: {action: "create a worktree", meta: null}, detail: "feature-a"},
+			expected: {
+				title: {action: "create a worktree", meta: null},
+				detail: null,
+				rows: [{label: "Name", value: "feature-a", clampLines: 6}],
+				rowsTrail: true,
+			},
 		},
 		{
 			tool: "EnterWorktree",
 			input: {path: "/repo/.worktrees/a"},
-			expected: {title: {action: "move to a worktree", meta: null}, detail: "/repo/.worktrees/a"},
+			expected: {
+				title: {action: "move to a worktree", meta: null},
+				detail: null,
+				rows: [{label: "Path", value: "/repo/.worktrees/a", clampLines: 6}],
+				rowsTrail: true,
+			},
 		},
 		{tool: "ExitWorktree", input: {}, expected: {title: {action: "leave the worktree", meta: null}, detail: null}},
 		{
 			tool: "ExitWorktree",
 			input: {action: "remove"},
-			expected: {title: {action: "delete the worktree and its branch", meta: null}, detail: null},
+			expected: {
+				title: {action: "delete the worktree and its branch", meta: null},
+				detail: null,
+				rows: [{label: "Action", value: "remove", clampLines: 6}],
+				rowsTrail: true,
+			},
 		},
 		...(
 			[
@@ -759,7 +908,48 @@ describe("permission title copy", () => {
 		{
 			tool: "ToolSearch",
 			input: {query: "select:Read"},
-			expected: {title: {action: "load tools", meta: null}, detail: '{\n  "query": "select:Read"\n}'},
+			expected: {
+				title: {action: "load tools", meta: null},
+				detail: null,
+				rows: [{label: "Query", value: "select:Read", clampLines: 6}],
+				rowsTrail: true,
+			},
+		},
+		{
+			tool: "TaskCreate",
+			input: {subject: "x"},
+			expected: {
+				title: {action: "create a task", meta: null},
+				detail: null,
+				rows: [{label: "Subject", value: "x"}],
+				rowsTrail: true,
+				rowsGate: true,
+			},
+		},
+		{
+			tool: "SendMessage",
+			input: {type: "message", recipient: "a", content: "hi"},
+			expected: {
+				title: {action: "send a message to an agent", meta: null},
+				detail: null,
+				rows: [
+					{label: "Recipient", value: "a"},
+					{label: "Content", value: "hi"},
+				],
+				rowsTrail: true,
+				rowsGate: true,
+			},
+		},
+		{
+			tool: "mcp__srv__do",
+			input: {q: "a"},
+			expected: {
+				title: {action: "use mcp__srv__do", meta: null},
+				detail: null,
+				rows: [{label: "Q", value: "a"}],
+				rowsTrail: true,
+				rowsGate: true,
+			},
 		},
 	] as {tool: string; input: Record<string, unknown>; expected: Record<string, unknown>}[])(
 		"copies upstream's $tool permission copy for $input",
@@ -2077,5 +2267,106 @@ describe("PermissionCard after a landing", () => {
 		root.focus();
 		fireEvent.keyDown(root, {key: "Enter", metaKey: true, shiftKey: true});
 		expect(onDecision.mock.calls).toStrictEqual([["always"]]);
+	});
+});
+
+describe("PermissionCard rows read gate", () => {
+	const HINT = "Scroll to the end to allow this.";
+
+	function mockScroller({scrollHeight, clientHeight}: {scrollHeight: number; clientHeight: number}) {
+		vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(scrollHeight);
+		vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(clientHeight);
+	}
+
+	function renderGated(onDecision = vi.fn<ComponentProps<typeof PermissionCard>["onDecision"]>(async () => {})) {
+		const utils = render(
+			<PermissionCard
+				title={{action: "run an agent", meta: null}}
+				detail={null}
+				description="Find x"
+				rows={[{label: "Prompt", value: "Look", clampLines: 6}]}
+				rowsTrail
+				rowsGate
+				canAnswer
+				onDecision={onDecision}
+			/>,
+		);
+		return {...utils, onDecision};
+	}
+
+	const allowButton = () => screen.getByRole("button", {name: /^Allow once/});
+	const hint = (container: HTMLElement) => container.querySelector("[data-testid=approval-read-hint]");
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+		vi.useRealTimers();
+	});
+
+	it("holds Allow with the hint above the actions until the rows panel is scrolled to its end", () => {
+		mockScroller({scrollHeight: 900, clientHeight: 300});
+		const {container} = renderGated();
+		const panelGate = container.querySelector<HTMLElement>("[data-testid=approval-read-rows]")!;
+		const held = {
+			disabled: allowButton().hasAttribute("disabled"),
+			hint: hint(container)?.className,
+			hintText: hint(container)?.textContent,
+			hintHidden: hint(container)?.getAttribute("aria-hidden"),
+			beforeActions:
+				hint(container)?.nextElementSibling === container.querySelector("[data-approval-card-actions]"),
+			clamped: panelGate.querySelector("[data-approval-value]")?.classList.contains("line-clamp-6"),
+			panel: panelGate.firstElementChild?.hasAttribute("data-permission-rows-panel"),
+		};
+		panelGate.style.lineHeight = "19px";
+		vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(
+			DOMRect.fromRect({x: 0, y: 0, width: 400, height: 300}),
+		);
+		act(() => {
+			fireEvent.scroll(container.querySelector("[data-approval-card-body]")!);
+		});
+		expect({
+			held,
+			read: {disabled: allowButton().hasAttribute("disabled"), hint: hint(container)?.className},
+		}).toStrictEqual({
+			held: {
+				disabled: true,
+				hint: "epitaxy-approval-read-hint text-footnote text-muted-as-secondary text-end text-balance @max-[420px]:text-center",
+				hintText: HINT,
+				hintHidden: "true",
+				beforeActions: true,
+				clamped: false,
+				panel: true,
+			},
+			read: {
+				disabled: false,
+				hint: "epitaxy-approval-read-hint text-footnote text-muted-as-secondary text-end text-balance @max-[420px]:text-center invisible",
+			},
+		});
+	});
+
+	it("swallows ⌘⏎ while held and repeats the hint in a polite live region, but Deny still works", () => {
+		vi.useFakeTimers({toFake: ["performance"]});
+		mockScroller({scrollHeight: 900, clientHeight: 300});
+		const {container, onDecision} = renderGated();
+		vi.advanceTimersByTime(400);
+		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		const live = () => container.querySelector("p[aria-live=polite]");
+		const first = {calls: [...onDecision.mock.calls], text: live()?.textContent, className: live()?.className};
+		fireEvent.keyDown(document.body, {key: "Enter", metaKey: true});
+		const second = live()?.textContent;
+		fireEvent.click(screen.getByRole("button", {name: "Deny"}));
+		expect({first, second, calls: onDecision.mock.calls}).toStrictEqual({
+			first: {calls: [], text: HINT, className: "sr-only"},
+			second: `${HINT} `,
+			calls: [["deny"]],
+		});
+	});
+
+	it("leaves a loose gate whose rows fit unenforced: Allow is live and no hint mounts", () => {
+		mockScroller({scrollHeight: 300, clientHeight: 300});
+		const {container} = renderGated();
+		expect({disabled: allowButton().hasAttribute("disabled"), hint: hint(container)}).toStrictEqual({
+			disabled: false,
+			hint: null,
+		});
 	});
 });
