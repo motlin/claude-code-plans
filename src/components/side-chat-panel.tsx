@@ -29,7 +29,8 @@ import {
 } from "../lib/side-chat-store";
 import {CARD_BODY_CLASS, CARD_CLASS, CARD_FILL_CLASS, TILE_CLASS, TILE_REMOVE_CLASS} from "./attachment-tile-classes";
 import {MarkdownArticle} from "./markdown-article";
-import {ExcerptQuote, MessageExcerptTiles} from "./message-excerpt-tiles";
+import {ExcerptQuote} from "./excerpt-quote";
+import {MessageExcerptTiles} from "./message-excerpt-tiles";
 import type {PaneChrome} from "./panes/pane-registry";
 import {useToast} from "./toast-context";
 import {Shortcut} from "./ui/shortcut";

@@ -15,8 +15,7 @@ import {
 	dropPendingUpload,
 	takeContextChips,
 	waitForPendingUploads,
-	formatReviewComment,
-	formatReviewComments,
+	formatDiffAnnotations,
 	recordSentAttachments,
 	restoreRejectedAttachments,
 	takeBackSend,
@@ -53,40 +52,76 @@ describe("formatAttachContext", () => {
 	});
 });
 
-describe("review comments", () => {
-	it("formats a comment as a path:line block, with a line range when it spans lines", () => {
-		expect({
-			line: formatReviewComment({path: "src/greet.ts", line: 3, text: "Use a constant"}),
-			range: formatReviewComment({
-				path: "src/greet.ts",
-				line: 3,
-				endLine: 5,
-				text: "Extract this\ninto a helper",
-			}),
-		}).toStrictEqual({
-			line: "src/greet.ts:3 — Use a constant",
-			range: "src/greet.ts:3-5 — Extract this\ninto a helper",
-		});
-	});
-
-	it("separates comment blocks with a blank line", () => {
+describe("diff annotations", () => {
+	it("serializes a comment as upstream's In `path` at line N block, fenced snippet, then body, before the prompt", () => {
 		expect(
-			formatReviewComments([
-				{path: "src/greet.ts", line: 3, text: "Use a constant"},
-				{path: "README.md", line: 1, endLine: 1, text: "Typo in the title"},
-			]),
-		).toBe("src/greet.ts:3 — Use a constant\n\nREADME.md:1 — Typo in the title");
+			formatDiffAnnotations(
+				[
+					{
+						path: "src/demo.ts",
+						side: "additions",
+						line: 3,
+						text: "Rename",
+						snippet: "const answer = 42;",
+						lang: "ts",
+					},
+				],
+				"Go",
+			),
+		).toBe("In `src/demo.ts` at line 3:\n```ts\nconst answer = 42;\n```\nRename\n\n\nGo");
 	});
 
-	it("prepends queued comments to the prompt, or sends them alone", () => {
-		const comments = [{path: "src/greet.ts", line: 3, text: "Use a constant"}];
+	it("marks a deletions range (before changes) and skips an absent snippet", () => {
+		expect(
+			formatDiffAnnotations([{path: "src/demo.ts", side: "deletions", line: 5, endLine: 7, text: "Why?"}], ""),
+		).toBe("In `src/demo.ts` at lines 5-7 (before changes):\nWhy?");
+	});
+
+	it("groups by file in first-seen order, sorts each file by line, and joins blocks with a blank line", () => {
+		expect(
+			formatDiffAnnotations(
+				[
+					{path: "b.ts", side: "additions", line: 9, text: "Nine"},
+					{path: "a.ts", side: "additions", line: 1, text: "One"},
+					{path: "b.ts", side: "additions", line: 2, endLine: 2, text: "Two"},
+				],
+				"",
+			),
+		).toBe("In `b.ts` at line 2:\nTwo\n\nIn `b.ts` at line 9:\nNine\n\nIn `a.ts` at line 1:\nOne");
+	});
+
+	it("fences a snippet one backtick longer than its longest run, sanitizes the path and collapses body blank lines", () => {
+		expect(
+			formatDiffAnnotations(
+				[
+					{
+						path: "we`ird\nname.md",
+						side: "additions",
+						line: 4,
+						text: "a\n\n\n\nb",
+						snippet: "```js\nx\n```",
+					},
+				],
+				"",
+			),
+		).toBe("In `we'ird name.md` at line 4:\n````\n```js\nx\n```\n````\na\n\nb");
+	});
+
+	it("puts the comments ahead of context chips and the prompt, or sends them alone", () => {
+		const comments = [{path: "src/greet.ts", side: "additions", line: 3, text: "Use a constant"}] as const;
+		const context = [
+			{kind: "file", path: "src/alice.ts"},
+			{kind: "terminal", text: "bob"},
+		] as const;
 		expect({
-			withPrompt: composePrompt("Please address these", [], comments),
+			all: composePrompt("Please look", context, comments),
 			alone: composePrompt("", [], comments),
+			contextOnly: composePrompt("", context, []),
 			none: composePrompt("Just a prompt", [], []),
 		}).toStrictEqual({
-			withPrompt: "src/greet.ts:3 — Use a constant\n\nPlease address these",
-			alone: "src/greet.ts:3 — Use a constant",
+			all: "In `src/greet.ts` at line 3:\nUse a constant\n\n\n@src/alice.ts\n\n```\nbob\n```\n\nPlease look",
+			alone: "In `src/greet.ts` at line 3:\nUse a constant",
+			contextOnly: "@src/alice.ts\n\n```\nbob\n```",
 			none: "Just a prompt",
 		});
 	});
@@ -165,23 +200,6 @@ describe("context attachments", () => {
 			emptyLine: "<!-- attach -->\n> a\n> \n> b",
 			label: "Excerpt",
 			composed: "<!-- attach -->\n> x\n\n<!-- attach -->\n> y\n\nhi",
-		});
-	});
-
-	it("serializes context, then review comments, then the prompt", () => {
-		const context = [
-			{kind: "file", path: "src/alice.ts"},
-			{kind: "terminal", text: "bob"},
-		] as const;
-		const comments = [{path: "src/greet.ts", line: 3, text: "Use a constant"}];
-		expect({
-			all: composePrompt("Please look", context, comments),
-			contextOnly: composePrompt("", context, []),
-			none: composePrompt("Just a prompt", [], []),
-		}).toStrictEqual({
-			all: "@src/alice.ts\n\n```\nbob\n```\n\nsrc/greet.ts:3 — Use a constant\n\nPlease look",
-			contextOnly: "@src/alice.ts\n\n```\nbob\n```",
-			none: "Just a prompt",
 		});
 	});
 });

@@ -408,7 +408,7 @@ describe("openSideChatWithContext", () => {
 			placeholder: input.getAttribute("placeholder"),
 		}).toStrictEqual({
 			open: true,
-			tiles: ["Hermit crabs\nlive in shells"],
+			tiles: ["Hermit crabs live in shells"],
 			badges: ["Excerpt"],
 			focused: true,
 			placeholder: "Ask a quick question…",
@@ -431,7 +431,7 @@ describe("openSideChatWithContext", () => {
 				question: "<!-- attach -->\n> Hermit crabs\n> live in shells\n\nWhat are these?",
 			},
 			pendingExcerpts: [],
-			sentTiles: ["Hermit crabs\nlive in shells"],
+			sentTiles: ["Hermit crabs live in shells"],
 		});
 	});
 

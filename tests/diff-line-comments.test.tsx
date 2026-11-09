@@ -4,6 +4,7 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ChangesPaneView} from "../src/components/changes/changes-pane";
+import {diffSideSnippet} from "../src/components/changes/diff-annotations";
 import {AddCommentGutterButton} from "../src/components/changes/diff-file";
 import {Composer} from "../src/components/composer";
 import {SettingsProvider} from "../src/components/settings-provider";
@@ -176,7 +177,7 @@ describe("Changes pane line comments", () => {
 		fireEvent.keyDown(textarea, {key: "Enter", metaKey: true});
 
 		expect({sent: onSend.mock.calls, comments: getDiffComments(SESSION)}).toStrictEqual({
-			sent: [["src/greet.ts:2-3 — Extract a helper", {}]],
+			sent: [["In `src/greet.ts` at lines 2-3:\nExtract a helper", {}]],
 			comments: {drafts: [], queued: []},
 		});
 	});
@@ -271,7 +272,7 @@ describe("Changes pane line comments", () => {
 				saved: "Lines 2–3Extract a helper",
 				sendEnabled: true,
 			},
-			sent: [["src/greet.ts:2-3 — Extract a helper\n\nPlease address these", {}]],
+			sent: [["In `src/greet.ts` at lines 2-3:\nExtract a helper\n\n\nPlease address these", {}]],
 			chipsAfter: null,
 			comments: {drafts: [], queued: []},
 		});
@@ -397,7 +398,7 @@ describe("Changes pane saved comments", () => {
 		fireEvent.change(prompt, {target: {value: "Go"}});
 		fireEvent.keyDown(prompt, {key: "Enter"});
 
-		expect(onSend.mock.calls).toStrictEqual([["src/greet.ts:5 — Rename it\n\nGo", {}]]);
+		expect(onSend.mock.calls).toStrictEqual([["In `src/greet.ts` at line 5:\nRename it\n\n\nGo", {}]]);
 	});
 });
 
@@ -455,8 +456,14 @@ describe("Changes pane right-click menu", () => {
 		await rightClickLine(container, 3);
 		fireEvent.click(await screen.findByRole("menuitem", {name: "Add comment on line 3"}));
 
-		expect(getDiffComments(SESSION).drafts.map(({path, side, line}) => ({path, side, line}))).toStrictEqual([
-			{path: "src/greet.ts", side: "additions", line: 3},
+		expect(getDiffComments(SESSION).drafts.map(({id: _id, ...draft}) => draft)).toStrictEqual([
+			{
+				path: "src/greet.ts",
+				side: "additions",
+				line: 3,
+				snippet: '  return greeting + " " + name;',
+				lang: "typescript",
+			},
 		]);
 		expect(commentCard(container, "annotation-additions-3")).not.toBeNull();
 	});
@@ -607,6 +614,22 @@ describe("Changes pane gutter add-comment button", () => {
 		const card = commentCard(container, "annotation-additions-3");
 		if (card === null) throw new Error("no comment card");
 		expect(document.activeElement).toBe(within(card).getByRole("textbox", {name: "Comment on line 3"}));
+	});
+});
+
+describe("diffSideSnippet", () => {
+	it("returns a side's lines in the range without their diff markers, or undefined outside the diff", () => {
+		expect({
+			additions: diffSideSnippet(PATCH, "additions", 2, 3),
+			deletions: diffSideSnippet(PATCH, "deletions", 2, 2),
+			context: diffSideSnippet(PATCH, "deletions", 1, 3),
+			outside: diffSideSnippet(PATCH, "additions", 40, 40),
+		}).toStrictEqual({
+			additions: '  const greeting = "hello";\n  return greeting + " " + name;',
+			deletions: '  return "hi " + name;',
+			context: 'export function greet(name: string) {\n  return "hi " + name;\n}',
+			outside: undefined,
+		});
 	});
 });
 

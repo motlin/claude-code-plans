@@ -21,6 +21,35 @@ export function diffLineRanges(patch: string): DiffLineRanges {
 }
 
 /**
+ * The text of lines `start`-`end` on one side of a unified patch, without diff markers: context lines
+ * count on both sides. Undefined when the diff shows none of them.
+ */
+export function diffSideSnippet(patch: string, side: DiffSide, start: number, end: number): string | undefined {
+	const picked: string[] = [];
+	let oldLine = 0;
+	let newLine = 0;
+	let inHunk = false;
+	for (const row of patch.split("\n")) {
+		const header = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(row);
+		if (header !== null) {
+			oldLine = Number(header[1]);
+			newLine = Number(header[2]);
+			inHunk = true;
+			continue;
+		}
+		if (!inHunk) continue;
+		const marker = row[0];
+		if (marker !== " " && marker !== "+" && marker !== "-") continue;
+		const onSide = side === "additions" ? marker !== "-" : marker !== "+";
+		const current = side === "additions" ? newLine : oldLine;
+		if (onSide && current >= start && current <= end) picked.push(row.slice(1));
+		if (marker !== "-") newLine++;
+		if (marker !== "+") oldLine++;
+	}
+	return picked.length === 0 ? undefined : picked.join("\n");
+}
+
+/**
  * Where a saved comment sits in the current diff: its own line when the diff still shows it, otherwise the
  * nearest shown line on its side (or the file end), flagged outdated as upstream's "Outdated" badge.
  */

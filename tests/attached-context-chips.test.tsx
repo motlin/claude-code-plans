@@ -331,7 +331,7 @@ describe("AttachedContextChips cds tiles", () => {
 				],
 			},
 			srName: "Even so, they’re ful",
-			row: ["flex", "gap-1.5", "min-h-0", "min-w-0"],
+			row: ["flex", "gap-xs", "min-h-0", "min-w-0"],
 			rail: ["bg-border", "rounded-full", "self-stretch", "shrink-0", "w-[3px]"],
 			quote: {
 				dir: "auto",

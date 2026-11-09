@@ -1,7 +1,5 @@
 import {useSyncExternalStore} from "react";
 
-import type {ReviewComment} from "./context-attach";
-
 /**
  * Comments on Changes pane diff lines, per session. An open comment card is a draft; Save comment queues it, and
  * the session's composer sends the queued comments with its next prompt. Saved comments persist per browser in
@@ -16,13 +14,20 @@ export interface DiffCommentTarget {
 	/** First commented line; the card sits under `endLine ?? line`. */
 	line: number;
 	endLine?: number | undefined;
+	/** The commented lines' text, sent as the comment's fenced snippet. */
+	snippet?: string | undefined;
+	/** The snippet's fence language. */
+	lang?: string | undefined;
 }
 
 export interface DiffCommentDraft extends DiffCommentTarget {
 	id: string;
 }
 
-export interface QueuedDiffComment extends DiffCommentDraft, ReviewComment {}
+/** A saved comment; it serializes as a ReviewComment. */
+export interface QueuedDiffComment extends DiffCommentDraft {
+	text: string;
+}
 
 export interface DiffComments {
 	drafts: readonly DiffCommentDraft[];
@@ -55,11 +60,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** Reads one stored comment, or undefined when it is malformed (hand-checked to keep zod out of the client bundle). */
 function readStoredComment(value: unknown): QueuedDiffComment | undefined {
 	if (!isRecord(value)) return undefined;
-	const {id, path, side, line, endLine, text} = value;
+	const {id, path, side, line, endLine, snippet, lang, text} = value;
 	if (typeof id !== "string" || typeof path !== "string" || typeof text !== "string") return undefined;
 	if ((side !== "additions" && side !== "deletions") || typeof line !== "number") return undefined;
 	if (endLine !== undefined && typeof endLine !== "number") return undefined;
-	return endLine === undefined ? {id, path, side, line, text} : {id, path, side, line, endLine, text};
+	if (snippet !== undefined && typeof snippet !== "string") return undefined;
+	if (lang !== undefined && typeof lang !== "string") return undefined;
+	return {
+		id,
+		path,
+		side,
+		line,
+		...(endLine === undefined ? {} : {endLine}),
+		...(snippet === undefined ? {} : {snippet}),
+		...(lang === undefined ? {} : {lang}),
+		text,
+	};
 }
 
 function readStored(value: unknown): Map<string, DiffComments> | undefined {
@@ -184,6 +200,8 @@ export function openDiffCommentDraft(sessionId: string, target: DiffCommentTarge
 		side: target.side,
 		line: target.line,
 		...(target.endLine === undefined || target.endLine === target.line ? {} : {endLine: target.endLine}),
+		...(target.snippet === undefined ? {} : {snippet: target.snippet}),
+		...(target.lang === undefined ? {} : {lang: target.lang}),
 	};
 	update(sessionId, (comments) => ({...comments, drafts: [...comments.drafts, draft]}));
 	updateEditing(sessionId, (state) => ({...state, activeId: draft.id}));

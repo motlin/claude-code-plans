@@ -36,7 +36,7 @@ import {FileActionsMenuItems} from "./files/file-actions-menu";
 import {absoluteMentionPath} from "./files/mention-path";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "./ui/menu";
 import {Skeleton} from "./ui/skeleton";
-import {ExcerptQuote} from "./message-excerpt-tiles";
+import {ExcerptQuote} from "./excerpt-quote";
 import {isMotionReduced} from "../lib/reduced-motion";
 import {
 	BADGE_CLASS,

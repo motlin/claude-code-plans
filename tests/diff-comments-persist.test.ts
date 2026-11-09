@@ -48,6 +48,32 @@ describe("diff comment persistence", () => {
 		expect(reloaded.getDiffCommentEditing(SESSION)).toStrictEqual({bodies: {}, editBodies: {}, activeId: null});
 	});
 
+	it("keeps a comment's snippet and language through save and reload", async () => {
+		const store = await freshStore();
+		const id = store.openDiffCommentDraft(SESSION, {
+			path: "src/demo.ts",
+			side: "deletions",
+			line: 5,
+			endLine: 7,
+			snippet: "removedA();\nremovedB();\nremovedC();",
+			lang: "typescript",
+		});
+		store.saveDiffComment(SESSION, id, "Why?");
+		const expected = {
+			id,
+			path: "src/demo.ts",
+			side: "deletions",
+			line: 5,
+			endLine: 7,
+			snippet: "removedA();\nremovedB();\nremovedC();",
+			lang: "typescript",
+			text: "Why?",
+		};
+
+		const reloaded = await freshStore();
+		expect(reloaded.getDiffComments(SESSION)).toStrictEqual({drafts: [], queued: [expected]});
+	});
+
 	it("gives new comments after a reload ids that do not collide with restored ones", async () => {
 		const store = await freshStore();
 		const first = store.openDiffCommentDraft(SESSION, {path: "a.ts", side: "additions", line: 1});

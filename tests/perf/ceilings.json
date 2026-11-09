@@ -51,10 +51,10 @@
 		"raisedAt": "2026-11-02"
 	},
 	"bundle.home.gzip": {
-		"ceiling": 457515,
+		"ceiling": 462268,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "raised from 452333 (2026-11-09): per-folder remembered permission mode (folder-permission-mode-memory T1-T4) adds src/lib/folder-permission-mode.ts and the useFolderModeMemory store to the home composer, which must resolve the draft's mode on first paint after hydration, so it can't sit behind a lazy boundary. The 1% tolerance is unchanged.",
+		"reason": "raised from 457515 (2026-11-09): main had drifted to 462038, inside the 1% tolerance, and transcript-diff-comment-chips T1 moves the home composer's diff-comment serializer to upstream's wire format (formatDiffAnnotations in src/lib/context-attach.ts: per-file grouping, line sort, fenced snippet, sanitized header path), which the composer needs on send, so it can't sit behind a lazy boundary. The 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-09"
 	},
 	"bundle.home.raw": {

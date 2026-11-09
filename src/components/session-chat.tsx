@@ -28,6 +28,7 @@ import {isWithdrawnQuestion, OUTCOME_LABEL, questionOutcomeNote, type AskedCall}
 import {PLAN_NOT_APPROVED} from "../lib/exit-plan-mode";
 import {parseToolRejection} from "../lib/tool-rejection";
 import {parseAttachSnippets, type AttachSnippet} from "../lib/attach-markers";
+import {type DiffAnnotation, parseDiffAnnotations} from "../lib/diff-annotation-markers";
 import {ApiErrorCard, ApiErrorMarker, type ApiErrorRecovery} from "./api-error-card";
 import {HookBlockedPromptCard, HookBlockedPromptMarker} from "./hook-blocked-prompt";
 import {HookNoticeLine, HookNoticeRow} from "./hook-notice-row";
@@ -80,7 +81,7 @@ import {TranscriptSelectionBar} from "./transcript-selection-bar";
 import {TranscriptActionsContext, type TranscriptMessageRef} from "./transcript-actions-context";
 import {AssistantMessageActions, UserMessageActions} from "./message-actions";
 import {TURN_STATUS_ROW_GEOMETRY, TURN_STATUS_ROW_STYLE} from "./turn-status-row-geometry";
-import {MessageExcerptTiles} from "./message-excerpt-tiles";
+import {MessageQuoteTiles} from "./message-excerpt-tiles";
 import {defined} from "../lib/defined";
 import {narrationProse} from "../lib/thinking-narration";
 import {messageHeading, messageText} from "../lib/transcript-action-targets";
@@ -4396,7 +4397,11 @@ function UserEntry({
 		);
 	}
 
-	const {textNodes, mediaNodes, images, excerpts} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
+	const {textNodes, mediaNodes, images, excerpts, annotations} = renderUserContentBlocks(
+		line,
+		sessionId,
+		allowedImageRoots,
+	);
 
 	const turnKey = line.turnKey ?? line.uuid;
 	const row = (
@@ -4409,7 +4414,7 @@ function UserEntry({
 				render={<UserMessageColumn turnKey={turnKey} className={USER_MESSAGE_CLASS} />}
 			>
 				<UserAttachments images={images} />
-				<MessageExcerptTiles snippets={excerpts} />
+				<MessageQuoteTiles snippets={excerpts} annotations={annotations} />
 				{textNodes.length > 0 && <UserPromptBubble text={messageText(line)}>{textNodes}</UserPromptBubble>}
 				{mediaNodes}
 				<UserTurnActions line={line} sessionId={sessionId} readByClaude />
@@ -5007,11 +5012,18 @@ interface UserContentBlocks {
 	images: AttachedImage[];
 	/** Upstream's `<!-- attach -->` snippets, shown as Excerpt tiles above the bubble. */
 	excerpts: AttachSnippet[];
+	/** Upstream's `In \`path\` at line N:` diff comments, shown as Comment tiles after the excerpts. */
+	annotations: DiffAnnotation[];
 }
 
-/** The prompt text minus harness tags, with its `<!-- attach -->` blocks split out as snippets. */
-function cleanPromptParts(text: string): {snippets: AttachSnippet[]; rest: string} {
-	return parseAttachSnippets(cleanPromptText(text));
+/**
+ * The prompt text minus harness tags, with its `<!-- attach -->` blocks split out as snippets and then its
+ * diff comment blocks as annotations (upstream `Q`: `B` first, then the fences).
+ */
+function cleanPromptParts(text: string): {snippets: AttachSnippet[]; annotations: DiffAnnotation[]; rest: string} {
+	const {snippets, rest} = parseAttachSnippets(cleanPromptText(text));
+	const parsed = parseDiffAnnotations(rest);
+	return {snippets, annotations: parsed.annotations, rest: parsed.rest};
 }
 
 /** A prompt's text; the first block of a prompt opens with a slash-command chip when it starts with `/name`. */
@@ -5027,13 +5039,14 @@ function renderUserContentBlocks(
 	allowedImageRoots: readonly string[],
 ): UserContentBlocks {
 	const content = line.message?.content;
-	if (!content) return {textNodes: [], mediaNodes: [], images: [], excerpts: []};
+	if (!content) return {textNodes: [], mediaNodes: [], images: [], excerpts: [], annotations: []};
 
 	if (typeof content === "string") {
-		const {snippets: excerpts, rest: cleaned} = cleanPromptParts(content);
-		if (!cleaned) return {textNodes: [], mediaNodes: [], images: [], excerpts};
+		const {snippets: excerpts, annotations, rest: cleaned} = cleanPromptParts(content);
+		if (!cleaned) return {textNodes: [], mediaNodes: [], images: [], excerpts, annotations};
 		return {
 			excerpts,
+			annotations,
 			textNodes: [
 				<React.Fragment key={0}>
 					<TruncatedContent>
@@ -5051,12 +5064,14 @@ function renderUserContentBlocks(
 	const mediaNodes: React.ReactNode[] = [];
 	const images: AttachedImage[] = [];
 	const excerpts: AttachSnippet[] = [];
+	const annotations: DiffAnnotation[] = [];
 	const inlineImageText: string[] = [];
 	for (const [i, block] of content.entries()) {
 		if (block.type === "text" && typeof block.text === "string") {
 			if (block.text.includes("<local-command-caveat>")) continue;
-			const {snippets, rest: cleaned} = cleanPromptParts(block.text);
+			const {snippets, annotations: blockAnnotations, rest: cleaned} = cleanPromptParts(block.text);
 			excerpts.push(...snippets);
+			annotations.push(...blockAnnotations);
 			if (!cleaned) continue;
 			inlineImageText.push(cleaned);
 			textNodes.push(
@@ -5099,7 +5114,7 @@ function renderUserContentBlocks(
 		// tool_result blocks are intentionally skipped in user rendering
 	}
 	if (inlineImageText.length > 0) images.push(...inlinePathImages(inlineImageText.join("\n"), allowedImageRoots));
-	return {textNodes, mediaNodes, images, excerpts};
+	return {textNodes, mediaNodes, images, excerpts, annotations};
 }
 
 function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: string}) {

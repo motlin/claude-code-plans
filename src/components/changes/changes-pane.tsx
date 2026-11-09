@@ -44,11 +44,12 @@ import {useToast} from "../toast-context";
 import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
 import {ChangedFilesSidebar} from "./changes-file-tree";
-import {openDiffCommentDraft, useDiffComments} from "../../lib/diff-comments";
+import {type DiffCommentTarget, openDiffCommentDraft, useDiffComments} from "../../lib/diff-comments";
+import {detectLanguage} from "../../lib/diff-utils";
 import {DiffContextMenu} from "./diff-context-menu";
 import {DiffFile, type DiffFileAnnotation, DiffFileHeader, type DiffLineRange} from "./diff-file";
 import {GoToFile} from "./go-to-file";
-import {commentAnnotations, diffLineRanges, findingAnnotations} from "./diff-annotations";
+import {commentAnnotations, diffLineRanges, diffSideSnippet, findingAnnotations} from "./diff-annotations";
 import {isLargeDiff} from "./large-diff";
 
 /** Upstream offers "Side by side" only when the pane is at least this wide. */
@@ -622,6 +623,17 @@ function fileInView(scroller: EventTarget): string | null {
 	return inView;
 }
 
+/** The gutter-commented line's text and language from the file's patch, sent as the comment's snippet. */
+function commentSnippet(
+	file: SessionDiffFile,
+	{side, line}: DiffLineRange,
+): Pick<DiffCommentTarget, "snippet" | "lang"> {
+	const snippet = file.patch === null || file.binary ? undefined : diffSideSnippet(file.patch, side, line, line);
+	if (snippet === undefined) return {};
+	const lang = detectLanguage(file.path);
+	return lang === null ? {snippet} : {snippet, lang};
+}
+
 function isUnavailable(file: SessionDiffFile): boolean {
 	return file.binary;
 }
@@ -801,7 +813,13 @@ export function ChangesPaneView({
 									onRequestChanges={
 										sessionId === undefined
 											? undefined
-											: (target) => openDiffCommentDraft(sessionId, {path: file.path, ...target})
+											: (target) => {
+													openDiffCommentDraft(sessionId, {
+														path: file.path,
+														...target,
+														...commentSnippet(file, target),
+													});
+												}
 									}
 								/>
 							);

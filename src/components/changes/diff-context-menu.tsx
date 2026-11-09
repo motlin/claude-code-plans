@@ -161,7 +161,15 @@ export function DiffContextMenu({sessionId, path, children}: {sessionId: string;
 	}, [chip]);
 
 	function comment(lines: DiffLineSelection) {
-		openDiffCommentDraft(sessionId, {path, side: lines.side, line: lines.line, endLine: lines.endLine});
+		const lang = detectLanguage(path);
+		openDiffCommentDraft(sessionId, {
+			path,
+			side: lines.side,
+			line: lines.line,
+			endLine: lines.endLine,
+			...(lines.text === "" ? {} : {snippet: lines.text}),
+			...(lang === null ? {} : {lang}),
+		});
 	}
 
 	function attach(lines: DiffLineSelection) {

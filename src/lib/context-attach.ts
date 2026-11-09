@@ -57,19 +57,44 @@ export function formatAttachContext({path, range, text, language}: AttachContext
 /** A diff comment on a line, or a range of lines, of a diff. */
 export interface ReviewComment {
 	path: string;
+	/** "deletions" comments on the old side, serialized as "(before changes)". */
+	side?: "additions" | "deletions" | undefined;
 	line: number;
 	endLine?: number | undefined;
 	text: string;
+	/** The commented lines' text, sent as a fenced block under the header. */
+	snippet?: string | undefined;
+	/** The snippet fence's info string, such as "typescript". */
+	lang?: string | undefined;
 }
 
-/** `path:line — comment`, or `path:start-end — comment` for a range. */
-export function formatReviewComment({path, line, endLine, text}: ReviewComment): string {
-	const lines = endLine === undefined || endLine === line ? `${line}` : `${line}-${endLine}`;
-	return `${path}:${lines} — ${text}`;
+/** Upstream `jl`: a path that can't break the header line or its backtick quoting. */
+function headerPath(path: string): string {
+	return path.replace(/[\r\n\u2028\u2029]+/g, " ").replace(/`/g, "'");
 }
 
-export function formatReviewComments(comments: readonly ReviewComment[]): string {
-	return comments.map(formatReviewComment).join("\n\n");
+/** One comment as upstream's `In \`path\` at line N:` header, fenced snippet and body. */
+function formatDiffAnnotation({path, side, line, endLine, text, snippet, lang}: ReviewComment): string {
+	const lines = endLine === undefined || endLine === line ? `line ${line}` : `lines ${line}-${endLine}`;
+	const parts = [`In \`${headerPath(path)}\` at ${lines}${side === "deletions" ? " (before changes)" : ""}:`];
+	if (snippet !== undefined) parts.push(formatFencedExcerpt(snippet, lang));
+	parts.push(text.replace(/\n{3,}/g, "\n\n"));
+	return parts.join("\n");
+}
+
+/**
+ * Upstream's diff-annotation serializer `dl`: comments grouped by file in first-seen order and sorted by
+ * line, blocks joined by a blank line, then `\n\n\n` and the prompt when there is one.
+ */
+export function formatDiffAnnotations(comments: readonly ReviewComment[], prompt: string): string {
+	if (comments.length === 0) return prompt;
+	const byPath = new Map<string, ReviewComment[]>();
+	for (const comment of comments) byPath.set(comment.path, [...(byPath.get(comment.path) ?? []), comment]);
+	const blocks = [...byPath.values()].flatMap((group) =>
+		group.toSorted((a, b) => a.line - b.line).map(formatDiffAnnotation),
+	);
+	const annotations = blocks.join("\n\n");
+	return prompt === "" ? annotations : `${annotations}\n\n\n${prompt}`;
 }
 
 /**
@@ -167,16 +192,15 @@ export function contextChipLabel({kind, path, range, text, name: displayName}: C
 	return range.start === range.end ? `${name}:${range.start}` : `${name}:${range.start}-${range.end}`;
 }
 
-/** Attached context in attach order, then queued review comments, then the prompt. */
+/** Queued diff comments first (upstream `dl`), then attached context in attach order, then the prompt. */
 export function composePrompt(
 	prompt: string,
 	context: readonly ContextAttachment[],
 	comments: readonly ReviewComment[],
 ): string {
 	const blocks = context.map(formatContextAttachment);
-	if (comments.length > 0) blocks.push(formatReviewComments(comments));
 	if (prompt !== "") blocks.push(prompt);
-	return blocks.join("\n\n");
+	return formatDiffAnnotations(comments, blocks.join("\n\n"));
 }
 
 /** A mounted composer: text requests land in its prompt, attachments as chips. */
