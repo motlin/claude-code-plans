@@ -2606,6 +2606,53 @@ describe("dispatchHookEvent for the turn-failure, denial, model-switch and elici
 		});
 	});
 
+	it("a background subagent's PostToolUse and SubagentStop keep the parent's pending permission request and prompt", async () => {
+		clearAllNotifications();
+		const harness = makeStore();
+		harness.store.markSessionActive("abc-123", {cwd: "/Users/u/projects/app"});
+		harness.store.setPendingPermissionRequest("abc-123", {toolName: "Bash", suggestions: []});
+		addNotification(db.index, {
+			sessionId: "abc-123",
+			cwd: "/Users/u/projects/app",
+			message: "Claude needs your permission to use Bash",
+			notificationType: "permission_prompt",
+		});
+		const subagent = {
+			session_id: "abc-123",
+			transcript_path: "/Users/u/.claude/projects/app/abc-123.jsonl",
+			cwd: "/Users/u/projects/app",
+			agent_id: "agent-bob",
+			agent_type: "general-purpose",
+		} as const;
+		await dispatch(
+			{
+				...subagent,
+				hook_event_name: "PostToolUse",
+				tool_name: "Bash",
+				tool_use_id: "toolu_bob",
+				tool_input: {command: "true"},
+				tool_response: {stdout: "", stderr: "", interrupted: false, isImage: false},
+			},
+			harness,
+		);
+		const {pendingPermissionCalls} = await dispatch(
+			{
+				...subagent,
+				hook_event_name: "SubagentStop",
+				stop_hook_active: false,
+				agent_transcript_path: "/Users/u/.claude/projects/app/abc-123/subagents/agent-bob.jsonl",
+			},
+			harness,
+		);
+		expect({
+			pendingPermissionCalls,
+			notificationTypes: storedNotifications().map((notification) => notification.notificationType),
+		}).toStrictEqual({
+			pendingPermissionCalls: [{sessionId: "abc-123", request: {toolName: "Bash", suggestions: []}}],
+			notificationTypes: ["permission_prompt"],
+		});
+	});
+
 	it("PostModelSwitch broadcasts the new model as hook context", async () => {
 		const {broadcasts, touchedCalls} = await dispatch(postModelSwitchFixture);
 		expect({broadcasts, touchedCalls}).toStrictEqual({

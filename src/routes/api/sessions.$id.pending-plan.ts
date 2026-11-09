@@ -1,15 +1,18 @@
 import {createFileRoute} from "@tanstack/react-router";
 import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
 import type {PendingPlanData} from "../../lib/api/pending-plan";
-import {clearPendingPlan, getPendingPlan} from "../../lib/pending-plan-store";
-import {getRegistrySessionState} from "../../lib/session-registry-store";
+import {clearPendingPlan, getPendingPlan, pendingPlanWasReloaded} from "../../lib/pending-plan-store";
+import {registrySessionAtPrompt} from "../../lib/session-registry-store";
 
-/** The session's pending plan, unless its process has since stopped waiting without a hook saying so. */
+/**
+ * The session's pending plan, unless it was reloaded after a restart and its
+ * process has since gone back to its prompt without a hook saying so. A plan
+ * this process saw proposed stays until its own hooks resolve it.
+ */
 function currentPendingPlan(sessionId: string) {
 	const pending = getPendingPlan(sessionId);
 	if (pending === null) return null;
-	const registry = getRegistrySessionState(sessionId);
-	if (registry === null || registry.status === "waiting") return pending;
+	if (!pendingPlanWasReloaded(sessionId) || !registrySessionAtPrompt(sessionId)) return pending;
 	clearPendingPlan(sessionId);
 	return null;
 }

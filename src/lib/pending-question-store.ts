@@ -52,6 +52,11 @@ export function getPendingQuestion(sessionId: string): PendingQuestion | null {
 	return store.get(sessionId);
 }
 
+/** Whether the session's pending question was reloaded from disk at startup, so its answer may have gone unseen. */
+export function pendingQuestionWasReloaded(sessionId: string): boolean {
+	return store.wasReloaded(sessionId);
+}
+
 /** Forget every pending question in memory and stop mirroring to disk, as a fresh process starts. */
 export function clearAllPendingQuestions(): void {
 	store.reset();

@@ -32,6 +32,16 @@ export function getRegistrySessionState(sessionId: string): RegistrySessionState
 	return live.get(sessionId) ?? null;
 }
 
+/**
+ * Whether the CLI registry says the session sits at its prompt (idle, or a `!` shell there),
+ * so no dialog of its can still be up. A `busy` status proves nothing: the CLI can write it
+ * while a dialog is still open, as when a background task finishes.
+ */
+export function registrySessionAtPrompt(sessionId: string): boolean {
+	const status = live.get(sessionId)?.status;
+	return status === "idle" || status === "shell";
+}
+
 export function getRegistrySessionStates(): RegistrySessionState[] {
 	return [...live.values()];
 }

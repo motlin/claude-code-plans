@@ -192,4 +192,46 @@ describe("pending AskUserQuestion from hooks", () => {
 			pending: null,
 		});
 	});
+	it.each([
+		{
+			name: "a PostToolUse for another AskUserQuestion call",
+			event: {
+				...base,
+				hook_event_name: "PostToolUse",
+				tool_name: "AskUserQuestion",
+				tool_use_id: "toolu_bob",
+				tool_input: QUESTIONS_INPUT,
+			},
+		},
+		{
+			name: "a subagent's PostToolUse for its own AskUserQuestion",
+			event: {
+				...base,
+				hook_event_name: "PostToolUse",
+				tool_name: "AskUserQuestion",
+				tool_use_id: "toolu_alice",
+				tool_input: QUESTIONS_INPUT,
+				agent_id: "agent-bob",
+				agent_type: "general-purpose",
+			},
+		},
+		{
+			name: "a background subagent's SubagentStop",
+			event: {
+				...base,
+				hook_event_name: "SubagentStop",
+				stop_hook_active: false,
+				agent_id: "agent-bob",
+				agent_type: "general-purpose",
+				agent_transcript_path: "/tmp/pending-question-test/session-alice/subagents/agent-bob.jsonl",
+			},
+		},
+	] as Array<{name: string; event: unknown}>)("keeps it across $name", async ({event}) => {
+		const broadcasts = await dispatchAll([ASK, event as HookEvent]);
+
+		expect({count: broadcasts.length, pending: getPendingQuestion("session-alice")}).toStrictEqual({
+			count: 1,
+			pending: PENDING,
+		});
+	});
 });

@@ -189,4 +189,39 @@ describe("pending ExitPlanMode from hooks", () => {
 			pending: null,
 		});
 	});
+
+	it.each([
+		{
+			name: "a PostToolUse for another ExitPlanMode call",
+			event: {...PRE_TOOL_USE, hook_event_name: "PostToolUse", tool_use_id: "toolu_plan_bob", tool_response: {}},
+		},
+		{
+			name: "a subagent's PostToolUse for its own ExitPlanMode",
+			event: {
+				...PRE_TOOL_USE,
+				hook_event_name: "PostToolUse",
+				tool_response: {},
+				agent_id: "agent-bob",
+				agent_type: "Plan",
+			},
+		},
+		{
+			name: "a background subagent's SubagentStop",
+			event: {
+				...base,
+				hook_event_name: "SubagentStop",
+				stop_hook_active: false,
+				agent_id: "agent-bob",
+				agent_type: "Plan",
+				agent_transcript_path: "/tmp/agent-bob.jsonl",
+			},
+		},
+	] as Array<{name: string; event: unknown}>)("keeps it across $name", async ({event}) => {
+		const broadcasts = await dispatchAll([PRE_TOOL_USE, event as HookEvent]);
+
+		expect({count: broadcasts.length, pending: getPendingPlan("session-alice")}).toStrictEqual({
+			count: 1,
+			pending: PENDING,
+		});
+	});
 });

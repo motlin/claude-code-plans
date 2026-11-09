@@ -14,6 +14,8 @@ export interface PersistedSessionMap<T> {
 	set(sessionId: string, value: T): void;
 	/** Forget the session's entry; true when there was one. */
 	delete(sessionId: string): boolean;
+	/** Whether the session's entry came from the file at startup rather than a `set` in this process. */
+	wasReloaded(sessionId: string): boolean;
 	/** Forget every entry in memory and stop mirroring to disk, as a fresh process starts. */
 	reset(): void;
 }
@@ -21,6 +23,7 @@ export interface PersistedSessionMap<T> {
 export function persistedSessionMap<T>(key: string, schema: z.ZodType<T>): PersistedSessionMap<T> {
 	const store = hmrPersist(`${key}Store`, () => new Map<string, T>());
 	const persistence = hmrPersist(`${key}File`, () => ({file: null as string | null}));
+	const reloaded = hmrPersist(`${key}Reloaded`, () => new Set<string>());
 	const fileSchema = z.record(z.string(), schema);
 
 	function save(): void {
@@ -35,6 +38,7 @@ export function persistedSessionMap<T>(key: string, schema: z.ZodType<T>): Persi
 		persistTo(file) {
 			persistence.file = file;
 			store.clear();
+			reloaded.clear();
 			let json: unknown;
 			try {
 				json = JSON.parse(readFileSync(file, "utf8"));
@@ -43,20 +47,27 @@ export function persistedSessionMap<T>(key: string, schema: z.ZodType<T>): Persi
 			}
 			const saved = fileSchema.safeParse(json);
 			if (!saved.success) return;
-			for (const [sessionId, value] of Object.entries(saved.data)) store.set(sessionId, value);
+			for (const [sessionId, value] of Object.entries(saved.data)) {
+				store.set(sessionId, value);
+				reloaded.add(sessionId);
+			}
 		},
 		get: (sessionId) => store.get(sessionId) ?? null,
 		set(sessionId, value) {
 			store.set(sessionId, value);
+			reloaded.delete(sessionId);
 			save();
 		},
 		delete(sessionId) {
+			reloaded.delete(sessionId);
 			const deleted = store.delete(sessionId);
 			if (deleted) save();
 			return deleted;
 		},
+		wasReloaded: (sessionId) => reloaded.has(sessionId),
 		reset() {
 			store.clear();
+			reloaded.clear();
 			persistence.file = null;
 		},
 	};

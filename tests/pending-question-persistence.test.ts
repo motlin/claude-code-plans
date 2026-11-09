@@ -42,7 +42,7 @@ function restart(): void {
 	persistPendingQuestionsTo(file);
 }
 
-async function registerProcess(status: "idle" | "waiting"): Promise<void> {
+async function registerProcess(status: "idle" | "busy" | "waiting"): Promise<void> {
 	const dir = join(testDir, "sessions");
 	mkdirSync(dir, {recursive: true});
 	writeFileSync(
@@ -107,5 +107,28 @@ describe("pending-question persistence", () => {
 			idle: {pendingQuestion: null},
 			afterRestart: null,
 		});
+	});
+	it("keeps a question this process saw asked whatever the registry reads, since its hooks report the answer", async () => {
+		persistPendingQuestionsTo(file);
+		setPendingQuestion("session-alice", PENDING);
+		await registerProcess("busy");
+		const busy = (await handlePendingQuestionRequest("session-alice").json()) as unknown;
+		await registerProcess("idle");
+		const idle = (await handlePendingQuestionRequest("session-alice").json()) as unknown;
+
+		expect({busy, idle}).toStrictEqual({
+			busy: {pendingQuestion: PENDING},
+			idle: {pendingQuestion: PENDING},
+		});
+	});
+
+	it("keeps a reloaded question while the registry reads busy, which a background task can write mid-dialog", async () => {
+		persistPendingQuestionsTo(file);
+		setPendingQuestion("session-alice", PENDING);
+		restart();
+		await registerProcess("busy");
+		const busy = (await handlePendingQuestionRequest("session-alice").json()) as unknown;
+
+		expect(busy).toStrictEqual({pendingQuestion: PENDING});
 	});
 });

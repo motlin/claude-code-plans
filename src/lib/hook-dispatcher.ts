@@ -63,7 +63,12 @@ import {expirePendingApprovalForSession, resumePendingApprovalsForSession} from 
 import {nonEmpty} from "./non-empty";
 import {defined} from "./defined";
 import {asRecord} from "./narrow";
-import {clearPendingQuestion, pendingQuestionFromToolInput, setPendingQuestion} from "./pending-question-store";
+import {
+	clearPendingQuestion,
+	getPendingQuestion,
+	pendingQuestionFromToolInput,
+	setPendingQuestion,
+} from "./pending-question-store";
 import {clearPendingPlan, getPendingPlan, pendingPlanFromToolInput, setPendingPlan} from "./pending-plan-store";
 import {forgetHookContext, recordHookContext} from "./hook-context-store";
 import {
@@ -176,12 +181,28 @@ function broadcastHookContext(
 	broadcast(DOMAIN_EVENTS.SESSION_HOOK_CONTEXT_CHANGED, {...payload});
 }
 
+/**
+ * Whether a tool hook belongs to the pending call: its tool_use_id matches,
+ * or either side lacks one to compare (a plan stored from its PermissionRequest).
+ */
+function sameToolCall(event: {tool_use_id?: string | undefined}, pendingToolUseId: string | undefined): boolean {
+	return (
+		event.tool_use_id === undefined ||
+		pendingToolUseId === undefined ||
+		pendingToolUseId === "" ||
+		event.tool_use_id === pendingToolUseId
+	);
+}
+
 /** Hooks after which the session no longer waits on its AskUserQuestion. */
 function resolvesPendingQuestion(event: HookEvent): boolean {
 	switch (event.hook_event_name) {
 		case "PostToolUse":
 		case "PostToolUseFailure":
-			return event.tool_name === "AskUserQuestion";
+			return (
+				event.tool_name === "AskUserQuestion" &&
+				sameToolCall(event, getPendingQuestion(event.session_id)?.toolUseId)
+			);
 		case "Stop":
 		case "SessionEnd":
 		case "SessionStart":
@@ -439,7 +460,9 @@ function resolvesPendingPlan(event: HookEvent): boolean {
 		case "PostToolUse":
 		case "PostToolUseFailure":
 		case "PermissionDenied":
-			return event.tool_name === "ExitPlanMode";
+			return (
+				event.tool_name === "ExitPlanMode" && sameToolCall(event, getPendingPlan(event.session_id)?.toolUseId)
+			);
 		case "Stop":
 		case "StopFailure":
 		case "SessionEnd":

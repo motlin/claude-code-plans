@@ -40,6 +40,11 @@ export function getPendingPlan(sessionId: string): PendingPlan | null {
 	return store.get(sessionId);
 }
 
+/** Whether the session's pending plan was reloaded from disk at startup, so its answer may have gone unseen. */
+export function pendingPlanWasReloaded(sessionId: string): boolean {
+	return store.wasReloaded(sessionId);
+}
+
 /** Forget every pending plan in memory and stop mirroring to disk, as a fresh process starts. */
 export function clearAllPendingPlans(): void {
 	store.reset();
