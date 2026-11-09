@@ -122,6 +122,13 @@ export const FIELD_DEFINITIONS: FieldDefinition[] = [
 		section: "Permissions",
 	},
 	{
+		key: "skipAutoPermissionPrompt",
+		label: "Skip auto mode prompt",
+		description: "Whether the user has accepted the auto mode opt-in dialog",
+		type: "boolean",
+		section: "Permissions",
+	},
+	{
 		key: "teammateMode",
 		label: "Teammate mode",
 		description: "How Claude Code runs as a teammate / background agent",

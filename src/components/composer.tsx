@@ -24,6 +24,7 @@ import {useTypeToFocus} from "../hooks/use-type-to-focus";
 import {assertNever} from "../lib/assert-never";
 import type {ComposerState} from "../lib/composer-state";
 import {type QueuedPrompt, queuedForLater, queuedStatusText} from "../lib/composer-queue";
+import {consentWorkspaceKey} from "../lib/permission-mode-consent";
 import {type HistoryNavigator, historyKeyApplies, historyNavigator} from "../lib/prompt-history";
 import {
 	appendAttachment,
@@ -221,6 +222,8 @@ interface ComposerProps {
 	onSlashMenuOpen?: (() => void) | undefined;
 	/** Settings allow launching in Bypass permissions mode. */
 	bypassPermissionsAllowed?: boolean | undefined;
+	/** The session's or chosen folder's working directory, which a Bypass consent is remembered for. */
+	permissionCwd?: string | undefined;
 	/** An idle live pane: chin picks steer it instead of becoming launch flags. */
 	live?: LiveLaunchControls | undefined;
 	/** The session whose working directory feeds the "@" file mention popup. */
@@ -601,6 +604,7 @@ export function Composer({
 	slashCommandsLoading = false,
 	onSlashMenuOpen,
 	bypassPermissionsAllowed = false,
+	permissionCwd,
 	live,
 	mentionSessionId,
 	mentionCwd,
@@ -1374,8 +1378,9 @@ export function Composer({
 			openMenu,
 			onOpenMenuChange: setOpenMenu,
 			bypassPermissionsAllowed,
+			permissionWorkspace: consentWorkspaceKey(permissionCwd),
 		}),
-		[chinLaunchOptions, live, draftKey, openMenu, bypassPermissionsAllowed],
+		[chinLaunchOptions, live, draftKey, openMenu, bypassPermissionsAllowed, permissionCwd],
 	);
 
 	/** Upstream `Cq` is an atom: Backspace after it (or Delete before it) selects it instead of eating a character. */

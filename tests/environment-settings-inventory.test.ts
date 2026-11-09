@@ -20,6 +20,8 @@ const EXPECTED_ENVIRONMENT_READS = [
 ];
 
 const EXPECTED_INJECTED_RUNTIME_READS = [
+	// The CLI's config dir, which holds the .claude.json the permission mode consent reads and writes.
+	"src/lib/cli-global-config.ts:CLAUDE_CONFIG_DIR",
 	"src/lib/herdr/socket-path.ts:HERDR_SESSION",
 	"src/lib/herdr/socket-path.ts:HERDR_SOCKET_PATH",
 	"src/lib/herdr/socket-path.ts:HOME",

@@ -287,6 +287,11 @@ CREATE TABLE IF NOT EXISTS home_dismissals (
   session_id TEXT PRIMARY KEY,
   dismissed_at INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS permission_mode_acks (
+  key TEXT PRIMARY KEY,
+  acked_at INTEGER NOT NULL
+);
 `;
 
 // FTS5 tables can only seek by rowid or MATCH, so a `DELETE ... WHERE path = ?`

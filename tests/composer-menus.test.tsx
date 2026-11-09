@@ -193,40 +193,211 @@ describe("Composer mode menu", () => {
 		});
 	});
 
-	it("offers Bypass permissions only when settings allow it, behind a confirm", async () => {
+	it("offers Bypass permissions only when settings allow it", async () => {
 		renderComposer();
 		openModeMenu();
 		const withoutBypass = radioRows(await screen.findByRole("menu")).map((row) => row.label);
 		cleanup();
 
-		const onSend = renderComposer({bypassPermissionsAllowed: true});
+		renderComposer({bypassPermissionsAllowed: true});
 		openModeMenu();
-		const menu = await screen.findByRole("menu");
-		const bypass = within(menu).getByRole("menuitemradio", {name: /Bypass permissions/});
-		const variant = bypass.getAttribute("data-variant");
-		fireEvent.click(bypass);
-		const confirm = await screen.findByRole("alertdialog");
-		const confirmText = confirm.textContent;
-		fireEvent.click(within(confirm).getByRole("button", {name: "Enable"}));
+		const bypass = within(await screen.findByRole("menu")).getByRole("menuitemradio", {
+			name: /Bypass permissions/,
+		});
+
+		expect({withoutBypass, variant: bypass.getAttribute("data-variant")}).toStrictEqual({
+			withoutBypass: ["Auto", "Manual", "Accept edits", "Plan"],
+			variant: "warning",
+		});
+	});
+});
+
+const BYPASS_DIALOG_TEXT =
+	"Bypass all permissions?Claude will read, edit, and execute files without asking — including potentially destructive commands. Only use this in isolated or disposable environments./wYou won’t be asked again for this workspace. Read our security guide(opens in new tab) for details.CancelBypass permissions";
+const AUTO_DIALOG_TEXT =
+	"Enable auto mode?Claude will decide which actions are safe to run without asking. Longer tasks run uninterrupted, with extra safeguards against prompt injection./wYou won’t be asked again. Read our security guide(opens in new tab) for details.CancelEnable auto mode";
+
+describe("Composer mode menu consent guard", () => {
+	interface Consent {
+		autoModeIsDefault: boolean;
+		autoConsented: boolean;
+		acks: string[];
+	}
+
+	/** A session composer in `cwd` over a stubbed consent store; returns the sends and the store's POST bodies. */
+	function renderGuarded({
+		consent = {autoModeIsDefault: false, autoConsented: false, acks: []},
+		cwd = "/w",
+		live,
+	}: {consent?: Consent; cwd?: string; live?: LiveLaunchControls} = {}) {
+		let stored = consent;
+		const posts: unknown[] = [];
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+			if (String(input) !== "/api/permission-mode-consent") throw new Error(`unexpected fetch ${String(input)}`);
+			if (init?.method === "POST") {
+				const body = JSON.parse(String(init.body)) as {mode: string; workspace: string};
+				posts.push(body);
+				stored =
+					body.mode === "auto"
+						? {...stored, autoConsented: true}
+						: {...stored, acks: [...stored.acks, `${body.workspace}:bypassPermissions`]};
+			}
+			return Promise.resolve(Response.json(stored));
+		});
+		const onSend = vi.fn<OnSend>();
+		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		render(
+			<QueryClientProvider client={queryClient}>
+				<CompactScope>
+					<Composer
+						variant="session"
+						draftKey="session-erin"
+						onSend={onSend}
+						chin={CHIN}
+						bypassPermissionsAllowed
+						permissionCwd={cwd}
+						{...(live === undefined ? {} : {live})}
+					/>
+				</CompactScope>
+			</QueryClientProvider>,
+		);
+		return {onSend, posts};
+	}
+
+	async function pickMode(name: RegExp) {
+		openModeMenu();
+		fireEvent.click(within(await screen.findByRole("menu")).getByRole("menuitemradio", {name}));
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+	}
+
+	const readout = () => document.querySelector("[data-chin-mode]")?.textContent;
+
+	it("asks before the first Bypass in a folder, stores the ack on confirm, then applies the pick", async () => {
+		const {onSend, posts} = renderGuarded();
+		await pickMode(/Bypass permissions/);
+		const dialog = await screen.findByRole("alertdialog");
+		const text = dialog.textContent;
+		const before = readout();
+		fireEvent.click(within(dialog).getByRole("button", {name: "Bypass permissions"}));
 		await waitFor(() => {
 			expect(screen.queryByRole("alertdialog")).toBeNull();
 		});
-		const readout = document.querySelector("[data-chin-mode]")?.textContent;
-		sendPrompt("Continue Bob's test");
+		await waitFor(() => {
+			expect(posts).toHaveLength(1);
+		});
+		sendPrompt("Continue Erin's test");
+
+		expect({text, before, after: readout(), posts, calls: onSend.mock.calls}).toStrictEqual({
+			text: BYPASS_DIALOG_TEXT,
+			before: "Manual",
+			after: "Bypass",
+			posts: [{mode: "bypassPermissions", workspace: "/w"}],
+			calls: [["Continue Erin's test", {permissionMode: "bypassPermissions"}]],
+		});
+	});
+
+	it("applies Bypass at once in an acked folder and in its worktrees, but asks again in another folder", async () => {
+		const consent = {autoModeIsDefault: true, autoConsented: false, acks: ["/w:bypassPermissions"]};
+		renderGuarded({consent});
+		await pickMode(/Bypass permissions/);
+		await waitFor(() => {
+			expect(readout()).toBe("Bypass");
+		});
+		const acked = screen.queryByRole("alertdialog");
+		cleanup();
+
+		renderGuarded({consent, cwd: "/w/.claude/worktrees/feat"});
+		await pickMode(/Bypass permissions/);
+		await waitFor(() => {
+			expect(readout()).toBe("Bypass");
+		});
+		const worktree = screen.queryByRole("alertdialog");
+		cleanup();
+
+		renderGuarded({consent, cwd: "/other"});
+		await pickMode(/Bypass permissions/);
+		const other = await screen.findByRole("alertdialog");
+
+		expect({acked, worktree, other: other.textContent.includes("/other")}).toStrictEqual({
+			acked: null,
+			worktree: null,
+			other: true,
+		});
+	});
+
+	it("asks before Auto unless auto is the default or already consented", async () => {
+		const {posts} = renderGuarded();
+		await pickMode(/^Auto/);
+		const dialog = await screen.findByRole("alertdialog");
+		const text = dialog.textContent;
+		fireEvent.click(within(dialog).getByRole("button", {name: "Enable auto mode"}));
+		await waitFor(() => {
+			expect(posts).toHaveLength(1);
+		});
+		const confirmed = readout();
+		cleanup();
+
+		renderGuarded({consent: {autoModeIsDefault: true, autoConsented: false, acks: []}});
+		await pickMode(/^Auto/);
+		await waitFor(() => {
+			expect(readout()).toBe("Auto");
+		});
+		const asDefault = screen.queryByRole("alertdialog");
+		cleanup();
+
+		renderGuarded({consent: {autoModeIsDefault: false, autoConsented: true, acks: []}});
+		await pickMode(/^Auto/);
+		await waitFor(() => {
+			expect(readout()).toBe("Auto");
+		});
 
 		expect({
-			withoutBypass,
-			variant,
-			confirmText,
-			readout,
-			calls: onSend.mock.calls,
+			text,
+			posts,
+			confirmed,
+			asDefault,
+			consented: screen.queryByRole("alertdialog"),
 		}).toStrictEqual({
-			withoutBypass: ["Auto", "Manual", "Accept edits", "Plan"],
-			variant: "warning",
-			confirmText:
-				"Enable bypass permissionsClaude will read, edit, and execute files without asking — including potentially destructive commands. Only use this in isolated or disposable environments.CancelEnable",
-			readout: "Bypass",
-			calls: [["Continue Bob's test", {permissionMode: "bypassPermissions"}]],
+			text: AUTO_DIALOG_TEXT,
+			posts: [{mode: "auto", workspace: "/w"}],
+			confirmed: "Auto",
+			asDefault: null,
+			consented: null,
+		});
+	});
+
+	it("keeps the previous mode on Cancel and stores nothing", async () => {
+		const {onSend, posts} = renderGuarded();
+		await pickMode(/Bypass permissions/);
+		fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", {name: "Cancel"}));
+		await waitFor(() => {
+			expect(screen.queryByRole("alertdialog")).toBeNull();
+		});
+		sendPrompt("Continue Frank's test");
+
+		expect({readout: readout(), posts, calls: onSend.mock.calls}).toStrictEqual({
+			readout: "Manual",
+			posts: [],
+			calls: [["Continue Frank's test", {}]],
+		});
+	});
+
+	it("holds a live pane's mode change until the consent is confirmed", async () => {
+		const apply = vi.fn<LiveLaunchControls["apply"]>(async () => {});
+		renderGuarded({live: {options: {}, apply}});
+		await pickMode(/Bypass permissions/);
+		const dialog = await screen.findByRole("alertdialog");
+		const whileAsking = [...apply.mock.calls];
+		fireEvent.click(within(dialog).getByRole("button", {name: "Bypass permissions"}));
+		await waitFor(() => {
+			expect(apply).toHaveBeenCalled();
+		});
+
+		expect({whileAsking, applied: apply.mock.calls}).toStrictEqual({
+			whileAsking: [],
+			applied: [[{permissionMode: "bypassPermissions"}]],
 		});
 	});
 });

@@ -1,5 +1,4 @@
 import {Info, TriangleAlert} from "lucide-react";
-import {useState} from "react";
 
 import {useShortcutKeys} from "../hooks/use-shortcut";
 
@@ -20,7 +19,6 @@ import {
 } from "../lib/launch-options";
 import {effortLevelShortLabels} from "../lib/schema-choices";
 import type {FastModeBlocked} from "../lib/session-fast-mode";
-import {ConfirmDialog} from "./confirm-dialog";
 import {
 	BAR_EFFORT_LABEL_CLASS,
 	BAR_MODEL_LABEL_CLASS,
@@ -46,6 +44,7 @@ import {
 	MenuTrigger,
 } from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
+import {usePermissionModeGuard} from "./use-permission-mode-guard";
 
 /*
  * The claude.ai/code chin menus (⌥⌘M mode, ⇧⌘I model, ⇧⌘E effort). A choice
@@ -74,6 +73,7 @@ export function ModeMenu({
 	current,
 	currentLabel,
 	bypassPermissionsAllowed,
+	workspace,
 	onSelect,
 	surface,
 }: ControlledMenuProps & {
@@ -82,9 +82,11 @@ export function ModeMenu({
 	current: string;
 	currentLabel: string;
 	bypassPermissionsAllowed: boolean;
+	/** The consent workspace key (`consentWorkspaceKey`), or "" before a folder is known. */
+	workspace: string;
 	onSelect: (mode: LaunchPermissionMode) => void;
 }) {
-	const [confirmBypass, setConfirmBypass] = useState(false);
+	const {guard, gate} = usePermissionModeGuard(workspace);
 	const modeKeys = useShortcutKeys("open_mode_menu").keys;
 	const bar = surface === "bar";
 	return (
@@ -112,8 +114,10 @@ export function ModeMenu({
 						value={current}
 						onValueChange={(value: string) => {
 							const mode = LaunchPermissionModeSchema.parse(value);
-							if (mode === "bypassPermissions") setConfirmBypass(true);
-							else onSelect(mode);
+							// Upstream's `Ei`: the pick (and a live pane's shift+tab presses) waits for any consent owed.
+							guard(mode, () => {
+								onSelect(mode);
+							});
 						}}
 					>
 						{modeMenuItems(bypassPermissionsAllowed).map((item, index) => (
@@ -136,17 +140,7 @@ export function ModeMenu({
 					</MenuRadioGroup>
 				</MenuContent>
 			</Menu>
-			<ConfirmDialog
-				open={confirmBypass}
-				onOpenChange={setConfirmBypass}
-				title="Enable bypass permissions"
-				body="Claude will read, edit, and execute files without asking — including potentially destructive commands. Only use this in isolated or disposable environments."
-				confirmLabel="Enable"
-				variant="danger"
-				onConfirm={() => {
-					onSelect("bypassPermissions");
-				}}
-			/>
+			{gate}
 		</>
 	);
 }

@@ -2701,6 +2701,7 @@ export const ClaudeSettingsSchema = z
 		enableAllProjectMcpServers: z.boolean().optional(),
 		enabledMcpjsonServers: z.array(z.string()).optional(),
 		skipDangerousModePermissionPrompt: z.boolean().optional(),
+		skipAutoPermissionPrompt: z.boolean().optional(),
 		skipWorkflowUsageWarning: z.boolean().optional(),
 		enableWorkflows: z.boolean().optional(),
 		disableWorkflows: z.boolean().optional(),

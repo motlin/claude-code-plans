@@ -40,8 +40,15 @@ describe("hand-rolled focus rings", () => {
 			"focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2";
 		// Upstream's screenshot thumbnails (shared-13 `Q8`) draw a 2px fill-accent ring, measured rgb(42,120,214).
 		const screenshotThumb = "focus-visible:ring-2 focus-visible:ring-fill-accent";
+		// Upstream's overflowing workspace folder region (c2d1aeb56) draws an inset 2px fill-accent ring, verified live.
+		const workspaceRegion = "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-fill-accent";
 		const offenders = sources("src").filter((path) =>
-			banned.test(readFileSync(path, "utf8").replaceAll(approvalCardRoot, "").replaceAll(screenshotThumb, "")),
+			banned.test(
+				readFileSync(path, "utf8")
+					.replaceAll(approvalCardRoot, "")
+					.replaceAll(workspaceRegion, "")
+					.replaceAll(screenshotThumb, ""),
+			),
 		);
 		expect(offenders).toStrictEqual([]);
 	});

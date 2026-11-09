@@ -50,6 +50,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 	title,
 	body,
 	details,
+	children,
 	confirmLabel,
 	cancelLabel = "Cancel",
 	variant = "primary",
@@ -62,6 +63,8 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 	body?: ReactNode;
 	/** Block content below the body, such as a list of affected items. */
 	details?: ReactNode;
+	/** Upstream's ConfirmationDialog children: drawn as they are between the description and the buttons. */
+	children?: ReactNode;
 	confirmLabel: string;
 	cancelLabel?: string;
 	variant?: keyof typeof CONFIRM_VARIANT_CLASS;
@@ -74,6 +77,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 	const rest = (
 		<>
 			{details !== undefined && <div className="mt-2 min-h-0 overflow-y-auto">{details}</div>}
+			{children}
 			<div className={DIALOG_FOOTER_CLASS}>
 				<AlertDialog.Close
 					ref={cancelRef}

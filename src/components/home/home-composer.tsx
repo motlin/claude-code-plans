@@ -243,6 +243,7 @@ export function HomeComposer({
 				promptHistory={promptHistory}
 				subscribePrefill={onHomeComposerPrefillRequest}
 				bypassPermissionsAllowed={defaults?.bypassPermissionsAllowed ?? false}
+				permissionCwd={project?.projectPath}
 			/>
 		</div>
 	);

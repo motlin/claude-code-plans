@@ -207,6 +207,8 @@ export interface ChinLaunchControls {
 	openMenu: ChinMenu | null;
 	onOpenMenuChange: (menu: ChinMenu | null) => void;
 	bypassPermissionsAllowed: boolean;
+	/** The folder the Bypass ack is kept for (`consentWorkspaceKey`), or "" before one is known. */
+	permissionWorkspace: string;
 	/** A live session is cached at its effort, so changing it asks first. */
 	confirmEffortChange?: boolean;
 }
@@ -332,6 +334,7 @@ export const ComposerChin = memo(function ComposerChin({
 			current={launchOptions.permissionMode ?? state.mode?.id ?? "default"}
 			currentLabel={modeLabel}
 			bypassPermissionsAllowed={launch.bypassPermissionsAllowed}
+			workspace={launch.permissionWorkspace}
 			onSelect={(permissionMode) => {
 				onLaunchOptionsChange({...launchOptions, permissionMode});
 			}}

@@ -336,6 +336,12 @@ export const homeDismissals = sqliteTable("home_dismissals", {
 	dismissedAt: integer("dismissed_at").notNull(),
 });
 
+/** Upstream's per-workspace Bypass permissions acks (`epitaxy-perm-mode-acks-v2`), `${workspace}:bypassPermissions`. */
+export const permissionModeAcks = sqliteTable("permission_mode_acks", {
+	key: text("key").primaryKey(),
+	ackedAt: integer("acked_at").notNull(),
+});
+
 export const summaries = sqliteTable("summaries", {
 	sessionId: text("session_id").primaryKey(),
 	lastMessageId: text("last_message_id").notNull(),

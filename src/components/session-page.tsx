@@ -1528,6 +1528,7 @@ function SessionView({
 															chin={composerChin}
 															{...slashMenu}
 															bypassPermissionsAllowed={bypassPermissionsAllowed}
+															permissionCwd={sessionDirectory}
 															live={liveLaunchAvailable ? liveLaunch : undefined}
 															mentionSessionId={sessionId}
 															mentionCwd={sessionDirectory}

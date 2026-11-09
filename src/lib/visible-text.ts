@@ -42,3 +42,31 @@ export function visibleSingleLine(text: string): string {
 	});
 	return hiddenChars(unspoofed).replace(LINE_RE, codePointTag);
 }
+
+/** Strong right-to-left letters: Hebrew, Arabic, Syriac, Thaana, NKo, Samaritan, Mandaic and their presentation forms. */
+const RTL_CHAR = String.raw`[֐-ࣿיִ-﷿ﹰ-ﻼ\u{10800}-\u{10FFF}\u{1E800}-\u{1EFFF}]`;
+/** A run of RTL letters, keeping the spaces and marks between two of them. */
+const RTL_RUN_RE = new RegExp(String.raw`${RTL_CHAR}(?:[\s\p{M}]*${RTL_CHAR})*`, "gu");
+
+export interface BidiRun {
+	text: string;
+	rtl: boolean;
+}
+
+/** Split text into left-to-right and right-to-left runs, as upstream's path rendering (cf0704cb0 `s`) does. */
+export function bidiRuns(text: string): BidiRun[] {
+	const runs: BidiRun[] = [];
+	let last = 0;
+	for (const match of text.matchAll(RTL_RUN_RE)) {
+		if (match.index > last) runs.push({text: text.slice(last, match.index), rtl: false});
+		runs.push({text: match[0], rtl: true});
+		last = match.index + match[0].length;
+	}
+	if (last < text.length) runs.push({text: text.slice(last), rtl: false});
+	return runs;
+}
+
+/** Plain text for a `title`: each RTL run wrapped in a right-to-left isolate (U+2067 … U+2069). */
+export function bidiIsolatedText(runs: readonly BidiRun[]): string {
+	return runs.map((run) => (run.rtl ? `⁧${run.text}⁩` : run.text)).join("");
+}
