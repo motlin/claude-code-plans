@@ -17,7 +17,8 @@ import type {FileRef} from "../lib/file-refs";
 import {markFileRefMissing, missingFileRefs, subscribeMissingFileRefs} from "../lib/missing-file-refs";
 import type {SessionFiles} from "../lib/session-files";
 import {relativeToCwd} from "./files/mention-path";
-import {MarkdownArticle} from "./markdown-article";
+import {MarkdownArticle, PlainTextArticle} from "./markdown-article";
+import {RenderErrorBoundary} from "./render-error-boundary";
 import {usePaneHost} from "./panes/pane-host-context";
 import {useOpenInDefaultApp} from "./use-open-in-default-app";
 import {FileRefsContext, FileRefsProvider, useFileRefsCwd} from "./file-refs-context";
@@ -259,14 +260,27 @@ function LinkedProseMarkdown({
  */
 export function ProseMarkdown({markdown, smartQuotes = false}: {markdown: string; smartQuotes?: boolean}) {
 	const context = useContext(FileRefsContext);
-	return context === null ? (
-		<MarkdownArticle markdown={markdown} smartQuotes={smartQuotes} zonedTimes={smartQuotes} />
-	) : (
-		<LinkedProseMarkdown
-			markdown={markdown}
-			sessionId={context.sessionId}
-			open={context.open}
-			smartQuotes={smartQuotes}
-		/>
+	// Upstream's ChatText boundary (`bS`): a markdown crash falls back to the plain text until the text changes.
+	return (
+		<RenderErrorBoundary
+			resetOn={markdown}
+			fallback={<PlainTextArticle text={markdown} />}
+			report={reportProseCrash}
+		>
+			{context === null ? (
+				<MarkdownArticle markdown={markdown} smartQuotes={smartQuotes} zonedTimes={smartQuotes} />
+			) : (
+				<LinkedProseMarkdown
+					markdown={markdown}
+					sessionId={context.sessionId}
+					open={context.open}
+					smartQuotes={smartQuotes}
+				/>
+			)}
+		</RenderErrorBoundary>
 	);
+}
+
+function reportProseCrash(error: unknown) {
+	console.error("[chat-text]", error);
 }

@@ -189,6 +189,15 @@ function useReasonTooltip() {
 	return {handlers, tooltip};
 }
 
+/** Upstream `EM`: prose whose markdown render crashed, drawn as its raw text inside the same prose wrapper. */
+export function PlainTextArticle({text}: {text: string}) {
+	return (
+		<article className={styles["markdown"]}>
+			<div className="whitespace-pre-wrap">{text}</div>
+		</article>
+	);
+}
+
 export function MarkdownArticle(props: MarkdownArticleProps) {
 	const highlighterVersion = useSyncExternalStore(subscribeHighlighter, getHighlighterVersion, () => 0);
 	// Re-render once the lazily loaded zoned-time parser lands, but only prose that may hold a time.

@@ -7,6 +7,7 @@ import {
 	ChevronDown,
 	ChevronRight,
 	ChevronUp,
+	CircleAlert,
 	Clapperboard,
 	CodeXml,
 	CornerDownLeft,
@@ -75,6 +76,7 @@ export const ICON_GLYPHS = {
 	Spreadsheet: Sheet,
 	Stop: Square,
 	Warning: TriangleAlert,
+	WarningCircle: CircleAlert,
 	X,
 } satisfies Partial<Record<AnthropiconName, LucideIcon>>;
 

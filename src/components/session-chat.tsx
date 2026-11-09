@@ -73,6 +73,8 @@ import {compactBoundaryLabel, localCommandOutput} from "./system-banner-text";
 import {ArtifactLinkBanner, ArtifactWatchBanner} from "./artifact-banner";
 import {permissionDecisionLabel, permissionDecisionTitle} from "../lib/permission-decision";
 import {DebugLink} from "./debug-link";
+import {ToolCardBoundary} from "./tool-card-boundary";
+import {TranscriptRowBoundary} from "./transcript-row-boundary";
 import {TranscriptMessageMenu} from "./transcript-context-menu";
 import {TranscriptSelectionBar} from "./transcript-selection-bar";
 import {TranscriptActionsContext, type TranscriptMessageRef} from "./transcript-actions-context";
@@ -103,6 +105,7 @@ import {workflowCallName, workflowSummary} from "../lib/workflow-name";
 import {rewindLayout, type RewindMarkerPlacement} from "../lib/rewind-layout";
 import type {ToolUseBlock} from "../lib/schemas";
 import {coalesceSameTarget, runSuffix, sameTarget, toolBucket, type ToolBucket} from "../lib/tool-runs";
+import {toolCardStage, toolGroupStage} from "../lib/tool-card-stage";
 import {AttachmentBanner, Banner} from "./attachment-banner";
 import {
 	stripCommandTags,
@@ -3806,7 +3809,14 @@ function VirtualizedSessionEntries({
 							data-perf-last={isLast ? "" : undefined}
 						>
 							<AssistantSpanEntryContext.Provider value={entry}>
-								{entry.element}
+								{/* Upstream's TranscriptRow boundary: a crash replaces only this row. Its record range
+								    stands in for upstream's row stamp, so new lines joining the row redraw it. */}
+								<TranscriptRowBoundary
+									kind={entry.kind.startsWith("assistant") ? "reply" : "row"}
+									resetOn={`${entry.startRecordIndex}:${entry.endRecordIndex}`}
+								>
+									{entry.element}
+								</TranscriptRowBoundary>
 							</AssistantSpanEntryContext.Provider>
 							{isLast && tailInline && <TranscriptTail />}
 						</div>
@@ -5631,33 +5641,53 @@ function ToolCallSection({
 
 	return (
 		<>
+			{/* Upstream's ChatToolCard boundary wraps each whole card, keyed by its tool stage (`Vh`), and
+			    a multi-call group by every call's stage (`t8`). */}
 			{backgroundCalls.length === 1 && notices.length === 0 && loneBackgroundCall !== undefined && (
-				<LoneToolCall call={loneBackgroundCall} sessionId={sessionId} leading={leading} />
+				<ToolCardBoundary resetOn={toolCardStage(loneBackgroundCall)}>
+					<LoneToolCall call={loneBackgroundCall} sessionId={sessionId} leading={leading} />
+				</ToolCardBoundary>
 			)}
 			{sameTargetRun && (
 				// Upstream draws a run of calls on one target as the group's sole step (`LQ`, `sole`).
-				<ToolCallRow
-					call={runLabelCall(backgroundCalls)}
-					run={backgroundCalls}
-					sessionId={sessionId}
-					leading={leading}
-				/>
+				<ToolCardBoundary resetOn={toolGroupStage(backgroundCalls)}>
+					<ToolCallRow
+						call={runLabelCall(backgroundCalls)}
+						run={backgroundCalls}
+						sessionId={sessionId}
+						leading={leading}
+					/>
+				</ToolCardBoundary>
 			)}
 			{(backgroundCalls.length > 1 || notices.length > 0) && !sameTargetRun && (
-				<ToolCallSummary calls={backgroundCalls} sessionId={sessionId} notices={notices} leading={leading} />
+				<ToolCardBoundary resetOn={toolGroupStage(backgroundCalls)}>
+					<ToolCallSummary
+						calls={backgroundCalls}
+						sessionId={sessionId}
+						notices={notices}
+						leading={leading}
+					/>
+				</ToolCardBoundary>
 			)}
-			{prominentCalls.map((call, i) => {
-				const Renderer = getCallRenderer(call);
-				return (
-					<div key={`prominent-${i}`} className="relative">
-						<Suspense fallback={null}>
-							<Renderer toolCall={call} />
-						</Suspense>
-						<DebugLink sessionId={sessionId} uuid={call.sourceUuid} className="absolute top-1 right-1" />
-					</div>
-				);
-			})}
+			{prominentCalls.map((call, i) => (
+				<ToolCardBoundary key={`prominent-${i}`} resetOn={toolCardStage(call)}>
+					<ProminentCall call={call} sessionId={sessionId} />
+				</ToolCardBoundary>
+			))}
 		</>
+	);
+}
+
+/** A prominent call's card: its renderer drawn in full, with the debug link in its corner. */
+function ProminentCall({call, sessionId}: {call: ClientToolCall; sessionId: string}) {
+	const Renderer = getCallRenderer(call);
+	return (
+		<div className="relative">
+			<Suspense fallback={null}>
+				<Renderer toolCall={call} />
+			</Suspense>
+			<DebugLink sessionId={sessionId} uuid={call.sourceUuid} className="absolute top-1 right-1" />
+		</div>
 	);
 }
 
@@ -6804,22 +6834,27 @@ function ToolCallSummary({
 								))}
 								{coalesceSameTarget(calls).map((item) =>
 									"kind" in item ? (
-										<ToolCallRow
+										<ToolCardBoundary
 											key={item.members[0]?.id}
-											call={runLabelCall(item.members)}
-											run={item.members}
-											sessionId={sessionId}
-											nested
-											shots={shotPlacements.get(item.members[0]?.id ?? "")}
-										/>
+											resetOn={toolGroupStage(item.members)}
+										>
+											<ToolCallRow
+												call={runLabelCall(item.members)}
+												run={item.members}
+												sessionId={sessionId}
+												nested
+												shots={shotPlacements.get(item.members[0]?.id ?? "")}
+											/>
+										</ToolCardBoundary>
 									) : (
-										<ToolCallRow
-											key={item.id}
-											call={item}
-											sessionId={sessionId}
-											nested
-											shots={shotPlacements.get(item.id)}
-										/>
+										<ToolCardBoundary key={item.id} resetOn={toolCardStage(item)}>
+											<ToolCallRow
+												call={item}
+												sessionId={sessionId}
+												nested
+												shots={shotPlacements.get(item.id)}
+											/>
+										</ToolCardBoundary>
 									),
 								)}
 								{trailingPeers.map((notice) => (
