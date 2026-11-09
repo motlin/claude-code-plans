@@ -10,21 +10,22 @@ function isConsentMode(mode: LaunchPermissionMode): mode is ConsentMode {
 /**
  * Upstream's permission mode guard (ca8b34310 `Xm`): `guard(mode, proceed)` runs `proceed` straight away for a mode
  * that never asks, and otherwise only once the Auto consent or this workspace's Bypass ack is on file or the user
- * confirms the dialog. Cancel, Escape and the backdrop drop the pick. Render `gate` beside the menu.
+ * confirms the dialog. Cancel, Escape and the backdrop drop the pick, calling `decline` when given (upstream's card
+ * still allows the tool once). Render `gate` beside the menu.
  */
 export function usePermissionModeGuard(workspace: string): {
-	guard: (mode: LaunchPermissionMode, proceed: () => void) => void;
+	guard: (mode: LaunchPermissionMode, proceed: () => void, decline?: () => void) => void;
 	gate: ReactNode;
 } {
 	const [request, setRequest] = useState<GuardRequest | null>(null);
 	const [gateMounted, setGateMounted] = useState(false);
-	const guard = (mode: LaunchPermissionMode, proceed: () => void) => {
+	const guard = (mode: LaunchPermissionMode, proceed: () => void, decline?: () => void) => {
 		if (!isConsentMode(mode)) {
 			proceed();
 			return;
 		}
 		setGateMounted(true);
-		setRequest({mode, proceed});
+		setRequest(decline === undefined ? {mode, proceed} : {mode, proceed, decline});
 	};
 	const gate = gateMounted ? (
 		<PermissionModeConsentGate

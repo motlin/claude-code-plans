@@ -52,6 +52,22 @@ export function showsPermissionQuestion(screen: string): boolean {
 	return screen.split("\n").some(isQuestionLine);
 }
 
+/** A numbered row with the focus marker: every CLI select dialog draws one, the prompt input never does. */
+const FOCUSED_OPTION_LINE = /^\s*❯\s*\d+\.\s/u;
+
+/**
+ * Whether the screen shows any CLI dialog that a key could answer: a tool permission question, auto mode's
+ * first outside-read prompt, or any select dialog with a focused numbered row (plan approval, elicitation, a
+ * question). Keys meant for the prompt input are held while one is up.
+ */
+export function showsAnyDialog(screen: string): boolean {
+	return (
+		showsPermissionQuestion(screen) ||
+		parseOutsideReadFirstPrompt(screen) !== null ||
+		screen.split("\n").some((line) => FOCUSED_OPTION_LINE.test(line))
+	);
+}
+
 interface RawRow {
 	label: string;
 	focused: boolean;

@@ -2694,3 +2694,166 @@ describe("PermissionCard file change preview", () => {
 		});
 	});
 });
+
+describe("PermissionCard Allow and switch to Auto, as upstream's approval_card auto switch", () => {
+	const AUTO_ROW = "Allow and switch to AutoAuto reviews the rest of this session.";
+	const SHAPE: PermissionDialogShape = {denyFirst: false, persistent: true, auto: true};
+
+	beforeEach(() => {
+		vi.useFakeTimers({toFake: ["performance"]});
+	});
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	function renderAutoCard({
+		persistentAllow = null,
+		offered = true,
+		dialog = SHAPE,
+		onAllowAndSwitch = vi.fn<() => Promise<void>>(async () => {}),
+	}: {
+		persistentAllow?: PersistentAllowKind | null;
+		offered?: boolean;
+		dialog?: PermissionDialogShape | "unknown";
+		onAllowAndSwitch?: () => Promise<void>;
+	} = {}) {
+		const onDecision = vi.fn<ComponentProps<typeof PermissionCard>["onDecision"]>(async () => {});
+		const card = (props: {offered: boolean; dialog: PermissionDialogShape | "unknown"}) => (
+			<PermissionCard
+				title={{action: "run this command", meta: null}}
+				detail="npm run build"
+				detailLang="bash"
+				canAnswer
+				persistentAllow={persistentAllow}
+				dialog={props.dialog}
+				autoSwitch={{offered: props.offered, onAllowAndSwitch}}
+				onDecision={onDecision}
+			/>
+		);
+		const utils = render(card({offered, dialog}));
+		return {
+			...utils,
+			onDecision,
+			onAllowAndSwitch,
+			rerenderWith: (props: {offered: boolean; dialog: PermissionDialogShape | "unknown"}) => {
+				utils.rerender(card(props));
+			},
+		};
+	}
+
+	function buttons(): (string | null)[] {
+		return screen.getAllByRole("button").map((button) => button.getAttribute("aria-label") ?? button.textContent);
+	}
+
+	async function menuItems(): Promise<(string | null)[]> {
+		await actAndSettle(() => {
+			fireEvent.click(screen.getByRole("button", {name: "More allow options"}));
+		});
+		return screen.getAllByRole("menuitem").map((item) => item.textContent);
+	}
+
+	it("makes Allow once a split button whose menu holds only the auto row when there's no persistent option", async () => {
+		renderAutoCard();
+		const primary = screen.getByRole("button", {name: /^Allow once/});
+		const facts = {
+			buttons: buttons(),
+			group: primary.closest("[data-cds=SplitDropdownButton]")?.getAttribute("aria-label"),
+			shortcut: primary.getAttribute("aria-keyshortcuts"),
+			labelData: Object.fromEntries(
+				Object.entries(primary.querySelector<HTMLElement>("[data-approval-digit]")?.dataset ?? {}),
+			),
+		};
+		expect({...facts, items: await menuItems()}).toStrictEqual({
+			buttons: ["Deny", "Allow onceCtrl⏎Enter", "More allow options"],
+			group: "Allow once",
+			shortcut: "Control+Enter",
+			labelData: {approvalDigit: "2", approvalPrimary: ""},
+			items: [AUTO_ROW],
+		});
+	});
+
+	it("keeps the plain Allow once button when the row isn't offered", () => {
+		renderAutoCard({offered: false});
+		expect(buttons()).toStrictEqual(["Deny", "Allow onceCtrl⏎Enter"]);
+	});
+
+	it("appends the row after Allow once in an always-led menu", async () => {
+		renderAutoCard({persistentAllow: "always"});
+		expect(await menuItems()).toStrictEqual(["Allow onceCtrl+Enter", AUTO_ROW]);
+	});
+
+	it("appends the row after Always allow in a once-led menu", async () => {
+		localStorage.setItem(APPROVAL_LEADING_ALLOW_KEY, "once");
+		renderAutoCard({persistentAllow: "always"});
+		expect(await menuItems()).toStrictEqual(["Always allow", AUTO_ROW]);
+	});
+
+	it("keeps the row as first painted when the offer changes underneath (paint latch)", async () => {
+		const {rerenderWith} = renderAutoCard();
+		rerenderWith({offered: false, dialog: SHAPE});
+		expect(await menuItems()).toStrictEqual([AUTO_ROW]);
+	});
+
+	it("never adds the row after a card painted without it", () => {
+		const {rerenderWith} = renderAutoCard({offered: false});
+		rerenderWith({offered: true, dialog: SHAPE});
+		expect(buttons()).toStrictEqual(["Deny", "Allow onceCtrl⏎Enter"]);
+	});
+
+	it("latches only once the terminal's dialog has been read", async () => {
+		const {rerenderWith} = renderAutoCard({offered: false, dialog: "unknown"});
+		rerenderWith({offered: true, dialog: SHAPE});
+		expect(await menuItems()).toStrictEqual([AUTO_ROW]);
+	});
+
+	it("allows and switches through onAllowAndSwitch alone, hiding the card at once", async () => {
+		const {onDecision, onAllowAndSwitch} = renderAutoCard();
+		vi.advanceTimersByTime(400);
+		await menuItems();
+		await actAndSettle(() => {
+			fireEvent.click(screen.getByRole("menuitem", {name: /^Allow and switch to Auto/}));
+		});
+		expect({
+			switches: vi.mocked(onAllowAndSwitch).mock.calls.length,
+			decisions: onDecision.mock.calls,
+			card: screen.queryByRole("group", {name: /^Permission request/}),
+		}).toStrictEqual({switches: 1, decisions: [], card: null});
+	});
+
+	it("swallows the row within upstream's 400ms arm grace", async () => {
+		const {onDecision, onAllowAndSwitch} = renderAutoCard();
+		vi.advanceTimersByTime(399);
+		await menuItems();
+		await actAndSettle(() => {
+			fireEvent.click(screen.getByRole("menuitem", {name: /^Allow and switch to Auto/}));
+		});
+		expect({
+			switches: vi.mocked(onAllowAndSwitch).mock.calls.length,
+			decisions: onDecision.mock.calls,
+			buttons: buttons(),
+		}).toStrictEqual({
+			switches: 0,
+			decisions: [],
+			buttons: ["Deny", "Allow onceCtrl⏎Enter", "More allow options"],
+		});
+	});
+
+	it("brings the card back with the error when the switch fails", async () => {
+		renderAutoCard({
+			onAllowAndSwitch: async () =>
+				Promise.reject(new Error("The terminal’s permission dialog doesn’t match this card")),
+		});
+		vi.advanceTimersByTime(400);
+		await menuItems();
+		await actAndSettle(() => {
+			fireEvent.click(screen.getByRole("menuitem", {name: /^Allow and switch to Auto/}));
+		});
+		expect({
+			buttons: buttons(),
+			error: screen.getByText(/doesn’t match this card/).textContent,
+		}).toStrictEqual({
+			buttons: ["Deny", "Allow onceCtrl⏎Enter", "More allow options"],
+			error: "The terminal’s permission dialog doesn’t match this card",
+		});
+	});
+});

@@ -140,6 +140,8 @@ export function PermissionModeConsentDialog({
 export interface GuardRequest {
 	mode: ConsentMode;
 	proceed: () => void;
+	/** Cancel, Escape or the backdrop. */
+	decline?: () => void;
 }
 
 /** Until the store answers, nothing counts as consented: the dialog asks. */
@@ -209,6 +211,7 @@ export function PermissionModeConsentGate({
 			onCancel={() => {
 				setAsking(null);
 				onSettled();
+				asking?.decline?.();
 			}}
 		/>
 	);

@@ -198,4 +198,46 @@ describe("useLiveLaunchOptions", () => {
 			],
 		});
 	});
+
+	it("shows an expected mode until the next hook reports it, toasting when the CLI reports another", () => {
+		const send = vi.fn<Send>(async () => {});
+		const {result, rerender, toast, base} = renderLive({send});
+
+		act(() => {
+			result.current.expectMode("auto");
+		});
+		const beforeHook = result.current.options;
+		rerender({...base, hookContext: {permissionMode: "acceptEdits", promptId: "prompt-2"}});
+
+		expect({
+			sends: send.mock.calls,
+			beforeHook,
+			afterHook: result.current.options,
+			toasts: toast.mock.calls,
+		}).toStrictEqual({
+			sends: [],
+			beforeHook: {permissionMode: "auto"},
+			afterHook: {},
+			toasts: [
+				[
+					{
+						kind: "error",
+						message: "Mode change couldn’t be applied. You can try again.",
+						description: "Claude Code reports Accept edits instead of Auto.",
+					},
+				],
+			],
+		});
+	});
+
+	it("clears an expected mode quietly once the hook reports it", () => {
+		const {result, rerender, toast, base} = renderLive({send: vi.fn<Send>(async () => {})});
+
+		act(() => {
+			result.current.expectMode("auto");
+		});
+		rerender({...base, hookContext: {permissionMode: "auto", promptId: "prompt-2"}});
+
+		expect({options: result.current.options, toasts: toast.mock.calls}).toStrictEqual({options: {}, toasts: []});
+	});
 });

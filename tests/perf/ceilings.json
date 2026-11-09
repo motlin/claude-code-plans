@@ -65,18 +65,18 @@
 		"raisedAt": "2026-11-08"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 711940,
+		"ceiling": 719240,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Composer env bar menus and per-model effort rows (2026-11-08): the static per-model effort catalog (effortOptionsFor/defaultEffortFor), the Ultracode switch row with its launch settings and live /effort ultracode change, the Max-warning trigger/hint gating, the account-limits ring fallback and the labelled menu groups, on top of the settings-nav and palette commits that had used up the 1% tolerance. Went from 704653 to 711940. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-08"
+		"reason": "Permission card Allow and switch to Auto (2026-11-09): the offer rule (autoSwitchOffered with its shift+tab reach check), the allowAuto client call and the session page wiring that feeds the deferred SessionPermissionCard, on top of the Auto/Bypass consent guard commit that had used up the 1% tolerance. Went from 711940 to 719240. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-09"
 	},
 	"bundle.session.raw": {
-		"ceiling": 2127755,
+		"ceiling": 2149184,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "Composer env bar menus and per-model effort rows (2026-11-08): the static per-model effort catalog (effortOptionsFor/defaultEffortFor), the Ultracode switch row with its launch settings and live /effort ultracode change, the Max-warning trigger/hint gating, the account-limits ring fallback and the labelled menu groups, on top of the settings-nav and palette commits that had used up the 1% tolerance. Went from 2108775 to 2127755. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-08"
+		"reason": "Permission card Allow and switch to Auto (2026-11-09): the offer rule (autoSwitchOffered with its shift+tab reach check), the allowAuto client call and the session page wiring that feeds the deferred SessionPermissionCard, on top of the Auto/Bypass consent guard commit that had used up the 1% tolerance. Went from 2127755 to 2149184. Ceiling raised to the measurement; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-09"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 9,

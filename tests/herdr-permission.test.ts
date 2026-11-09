@@ -102,7 +102,7 @@ describe("herdr permission decision handler", () => {
 			sendRequestCalls: sendRequest.mock.calls,
 		}).toStrictEqual({
 			response: {
-				body: {error: 'sessionId is required and decision must be "allow", "always", or "deny"'},
+				body: {error: 'sessionId is required and decision must be "allow", "always", "deny", or "allowAuto"'},
 				status: 400,
 			},
 			sendRequestCalls: [],
@@ -398,6 +398,166 @@ describe("herdr permission decision handler", () => {
 				keys: [["1"]],
 				cleared: [],
 			});
+		});
+	});
+});
+
+describe("herdr permission allow and switch to auto", () => {
+	const SHIFT_TAB_3 = ["shift+tab", "shift+tab", "shift+tab"];
+	const mismatch = {
+		body: {
+			error: "The terminal\u2019s permission dialog doesn\u2019t match this card",
+			code: "dialog_mismatch",
+		},
+		status: 409,
+	};
+
+	async function allowAuto(
+		screens: readonly string[] | null,
+		body: Record<string, unknown> = {presses: 3},
+		overrides: Partial<HerdrPermissionDependencies> = {},
+	): Promise<{response: {body: unknown; status: number}; keys: unknown[]; cleared: string[]; reads: number}> {
+		const keys: unknown[] = [];
+		const cleared: string[] = [];
+		let reads = 0;
+		const response = await handleHerdrPermission(
+			request({sessionId: "session-test-100", decision: "allowAuto", ...body}),
+			dependencies({
+				readScreen: async () => {
+					reads++;
+					if (screens === null) {
+						return Promise.resolve({ok: false, code: "bad-response", message: "Fabricated read failure"});
+					}
+					return Promise.resolve({ok: true, value: screens[Math.min(reads - 1, screens.length - 1)] ?? ""});
+				},
+				request: async (value) => {
+					keys.push((value as {params: {keys: unknown}}).params.keys);
+					return Promise.resolve({ok: true, value: {type: "ok"}});
+				},
+				clearPendingPermission: (sessionId) => cleared.push(sessionId),
+				...overrides,
+			}),
+		);
+		return {response: await describeResponse(response), keys, cleared, reads};
+	}
+
+	it('presses the CLI\'s own "Yes, and switch to auto mode" row when it is on screen', async () => {
+		expect(await allowAuto([BASH_FULL, ANSWERED])).toStrictEqual({
+			response: {body: {ok: true, via: "row"}, status: 200},
+			keys: [["3"]],
+			cleared: ["session-test-100"],
+			reads: 2,
+		});
+	});
+
+	it("presses the auto row's own digit when the persistent row is withheld", async () => {
+		expect((await allowAuto([BASH_UNICODE_WHITESPACE, ANSWERED])).keys).toStrictEqual([["2"]]);
+	});
+
+	it("allows once, then steps the mode with shift+tab once the screen shows no dialog", async () => {
+		expect(await allowAuto([BASH_ASK_RULE, ANSWERED, ANSWERED])).toStrictEqual({
+			response: {body: {ok: true, via: "shiftTab"}, status: 200},
+			keys: [["1"], SHIFT_TAB_3],
+			cleared: ["session-test-100"],
+			reads: 3,
+		});
+	});
+
+	it.each([
+		{name: "the next permission dialog", next: BASH_FULL},
+		{name: "a plan dialog", next: PLAN_DIALOG},
+		{name: "auto mode's first outside-read prompt", next: READ_OUTSIDE_AUTO_FIRST_PROMPT},
+	])("sends no shift+tab when $name takes the screen after the allow", async ({next}) => {
+		expect(await allowAuto([BASH_ASK_RULE, next, next])).toStrictEqual({
+			response: {body: {ok: true, via: "none"}, status: 200},
+			keys: [["1"]],
+			cleared: ["session-test-100"],
+			reads: 3,
+		});
+	});
+
+	it("sends no shift+tab when the screen can't be read after the allow", async () => {
+		let reads = 0;
+		const result = await allowAuto(
+			[],
+			{presses: 3},
+			{
+				readScreen: async () => {
+					reads++;
+					return Promise.resolve(
+						reads === 1
+							? {ok: true, value: BASH_ASK_RULE}
+							: {ok: false, code: "bad-response", message: "Fabricated read failure"},
+					);
+				},
+			},
+		);
+		expect({response: result.response, keys: result.keys}).toStrictEqual({
+			response: {body: {ok: true, via: "none"}, status: 200},
+			keys: [["1"]],
+		});
+	});
+
+	it.each([
+		{name: "an unreadable screen", screens: null},
+		{name: "a screen with no dialog", screens: [ANSWERED]},
+		{name: "a deny-first dialog", screens: [CLASSIFIER_FALLBACK]},
+		{name: "auto mode's first outside-read prompt", screens: [READ_OUTSIDE_AUTO_FIRST_PROMPT]},
+	])("refuses $name without sending a key", async ({screens}) => {
+		const result = await allowAuto(screens);
+		expect({response: result.response, keys: result.keys, cleared: result.cleared}).toStrictEqual({
+			response: mismatch,
+			keys: [],
+			cleared: [],
+		});
+	});
+
+	it("answers 409 not_accepted when the dialog stays after the auto row's digit", async () => {
+		const result = await allowAuto([BASH_FULL]);
+		expect({response: result.response, keys: result.keys, cleared: result.cleared}).toStrictEqual({
+			response: {
+				body: {
+					error: "The terminal\u2019s permission dialog didn\u2019t take the answer",
+					code: "not_accepted",
+				},
+				status: 409,
+			},
+			keys: [["3"]],
+			cleared: [],
+		});
+	});
+
+	it("refuses with no pending prompt before reading the screen", async () => {
+		expect(await allowAuto([BASH_FULL], {presses: 3}, {hasPendingPermission: () => false})).toStrictEqual({
+			response: {body: {error: "No permission request is pending", code: "not_pending"}, status: 409},
+			keys: [],
+			cleared: [],
+			reads: 0,
+		});
+	});
+
+	it("presses the auto row without a shift+tab count", async () => {
+		expect((await allowAuto([BASH_FULL, ANSWERED], {})).keys).toStrictEqual([["3"]]);
+	});
+
+	it("refuses without a shift+tab count when the auto row isn't on screen", async () => {
+		const result = await allowAuto([BASH_ASK_RULE, ANSWERED], {});
+		expect({response: result.response, keys: result.keys, cleared: result.cleared}).toStrictEqual({
+			response: mismatch,
+			keys: [],
+			cleared: [],
+		});
+	});
+
+	it.each([{presses: 0}, {presses: 5}, {presses: 1.5}, {presses: "3"}])("returns 400 for %o", async (body) => {
+		expect(await allowAuto([BASH_FULL], body)).toStrictEqual({
+			response: {
+				body: {error: 'sessionId is required and decision must be "allow", "always", "deny", or "allowAuto"'},
+				status: 400,
+			},
+			keys: [],
+			cleared: [],
+			reads: 0,
 		});
 	});
 });

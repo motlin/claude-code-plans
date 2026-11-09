@@ -8,6 +8,7 @@ import {
 	isPermissionNotPending,
 	launchHerdrSession,
 	sendHerdrElicitationDecision,
+	sendHerdrPermissionAllowAuto,
 	sendHerdrPermissionDecision,
 	sendHerdrPrompt,
 	sendHerdrQuestionAnswer,
@@ -234,6 +235,39 @@ describe("fetchHerdrElicitationDialog", () => {
 		await expect(fetchHerdrElicitationDialog("session-test-100", fetcher)).rejects.toThrow(
 			"The terminal is not showing this elicitation",
 		);
+	});
+});
+
+describe("sendHerdrPermissionAllowAuto", () => {
+	it.each([
+		{presses: 3, body: {sessionId: "session-test-100", decision: "allowAuto", presses: 3}},
+		{presses: null, body: {sessionId: "session-test-100", decision: "allowAuto"}},
+	])("posts allowAuto with presses $presses and returns how the mode was reached", async ({presses, body}) => {
+		const fetcher = vi.fn<typeof fetch>();
+		fetcher.mockResolvedValue(Response.json({ok: true, via: "shiftTab"}));
+
+		const via = await sendHerdrPermissionAllowAuto("session-test-100", presses, fetcher);
+
+		expect({
+			via,
+			calls: fetcher.mock.calls.map(([url, init]) => [url, init?.method, JSON.parse(String(init?.body))]),
+		}).toStrictEqual({
+			via: "shiftTab",
+			calls: [["/api/herdr/permission", "POST", body]],
+		});
+	});
+
+	it("rejects with a not-pending error the card can recognise", async () => {
+		const fetcher = vi.fn<typeof fetch>();
+		fetcher.mockResolvedValue(
+			Response.json({error: "No permission request is pending", code: "not_pending"}, {status: 409}),
+		);
+
+		const error: unknown = await sendHerdrPermissionAllowAuto("session-test-100", 3, fetcher).catch(
+			(caught: unknown) => caught,
+		);
+
+		expect(isPermissionNotPending(error)).toStrictEqual(true);
 	});
 });
 

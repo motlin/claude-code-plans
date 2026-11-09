@@ -31,6 +31,7 @@ import {
 	type PermissionTitle,
 } from "../lib/permission-card";
 import type {PermissionDialogShape} from "../lib/herdr/permission-screen";
+import {allowMenuItems, AUTO_SWITCH_DESCRIPTION, AUTO_SWITCH_LABEL} from "../lib/permission-auto-switch";
 import type {PermissionRow} from "../lib/permission-rows";
 import {toAriaKeyShortcuts} from "../lib/shortcuts/format";
 import {
@@ -47,7 +48,17 @@ import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import {HighlightedCommand} from "./tool-renderers/bash-renderer";
 import {DisabledReason} from "./ui/disabled-reason";
 import {Shortcut} from "./ui/shortcut";
-import {SplitDropdownButton} from "./ui/split-dropdown-button";
+import {type SplitItem, SplitDropdownButton} from "./ui/split-dropdown-button";
+
+/** Upstream's "Allow and switch to Auto" (cc32965c2 `ei`/`$i`): whether it is offered, and the press. */
+export interface PermissionAutoSwitch {
+	offered: boolean;
+	/** Allows the tool and switches the session to Auto; a rejection brings the card back with its message. */
+	onAllowAndSwitch: () => Promise<void>;
+}
+
+/** What the card is sending: a dialog decision, or upstream's allow-and-switch-to-Auto. */
+type SentAnswer = PermissionDecision | "allowAuto";
 
 /**
  * The tool-permission card, drawn inline as claude.ai/code's approvals:
@@ -68,6 +79,9 @@ import {SplitDropdownButton} from "./ui/split-dropdown-button";
  * or one whose shape is still unknown (upstream's askFlagsUnknown), draws upstream's defaultToNo card
  * (Deny primary, Allow once secondary, no keys, no persistent option); a dialog with no persistent row
  * drops the hook's persistent option.
+ * With `autoSwitch` offered, "More allow options" ends with upstream's "Allow and switch to Auto" row; with no
+ * persistent option it makes Allow once a split button holding that row alone. The row is latched as the card
+ * first paints with its dialog read, so it never appears or vanishes under the pointer.
  */
 export function PermissionCard({
 	title,
@@ -88,6 +102,7 @@ export function PermissionCard({
 	persistentAllow: hookPersistentAllow = null,
 	persistentAllowSaves = null,
 	dialog,
+	autoSwitch = null,
 	onDecision,
 	footer,
 	enterKey,
@@ -132,6 +147,8 @@ export function PermissionCard({
 	 * (no dialog to read, as an elicitation's).
 	 */
 	dialog?: PermissionDialogShape | "unknown" | undefined;
+	/** Upstream's "Allow and switch to Auto" row; null never offers it. */
+	autoSwitch?: PermissionAutoSwitch | null;
 	onDecision: (decision: PermissionDecision) => Promise<void>;
 	/** Rendered under the actions; the session page passes the notify tip. */
 	footer?: ReactNode;
@@ -152,7 +169,7 @@ export function PermissionCard({
 	useEffect(() => {
 		if (enterKey !== undefined) markApprovalEnterSeen(enterKey);
 	}, [enterKey]);
-	const [sent, setSent] = useState<PermissionDecision | null>(null);
+	const [sent, setSent] = useState<SentAnswer | null>(null);
 	const decided = sent !== null;
 	const [error, setError] = useState<string | null>(null);
 	// An elicitation's card stays up after a decision, so only a hiding card marks its prompt answered.
@@ -164,14 +181,14 @@ export function PermissionCard({
 	const denyFirst = dialog === "unknown" || dialog?.denyFirst === true;
 	const persistentAllow = denyFirst || dialog?.persistent === false ? null : hookPersistentAllow;
 
-	const decide = useCallback(
-		async (decision: PermissionDecision) => {
+	const decideWith = useCallback(
+		async (answer: SentAnswer, send: () => Promise<void>) => {
 			setError(null);
-			setSent(decision);
+			setSent(answer);
 			if (markSession !== undefined && markKey !== undefined) markApprovalAnswered(markSession, markKey);
 			if (sessionId !== undefined && answerKey !== undefined) holdAnswered(sessionId, answerKey);
 			try {
-				await onDecision(decision);
+				await send();
 				// The card carries no tool name, and nothing reads the stored one.
 				if (markSession !== undefined && markKey !== undefined) acknowledgeApproval(markSession, markKey, "");
 			} catch (err) {
@@ -181,8 +198,26 @@ export function PermissionCard({
 				setSent(null);
 			}
 		},
-		[onDecision, markSession, markKey, sessionId, answerKey],
+		[markSession, markKey, sessionId, answerKey],
 	);
+	const decide = useCallback(
+		async (decision: PermissionDecision) => decideWith(decision, async () => onDecision(decision)),
+		[decideWith, onDecision],
+	);
+
+	// Upstream's paint latch (`si`/`ii`): the offer is read once the dialog's shape is known, then kept.
+	const [autoLatched, setAutoLatched] = useState<boolean | null>(null);
+	if (autoLatched === null && dialog !== "unknown") setAutoLatched(autoSwitch?.offered === true);
+	const mountedAtRef = useRef<number | null>(null);
+	useEffect(() => {
+		mountedAtRef.current = performance.now();
+	}, []);
+	// Upstream's `$i`: swallowed within the arm grace, as the hotkeys are.
+	const allowAndSwitch = () => {
+		const mountedAt = mountedAtRef.current ?? performance.now();
+		if (autoSwitch === null || performance.now() - mountedAt < APPROVAL_ARM_GRACE_MS) return;
+		void decideWith("allowAuto", autoSwitch.onAllowAndSwitch);
+	};
 
 	const lead = useLeadingAllow();
 	// Upstream's `ui`: picking the non-leading option from the menu makes it the lead.
@@ -274,6 +309,23 @@ export function PermissionCard({
 	);
 	/** The allow buttons' disabled reason while the rows gate holds them. */
 	const allowReason = readHeld ? ROWS_READ_HINT : null;
+	// Upstream hides the row while the read gate is unmet (`!lr`), and draws none on a deny-first card.
+	const autoOffered = autoLatched === true && !readHeld && !denyFirst;
+	const menuItems = allowMenuItems({persistent: persistentAllow !== null, lead, autoOffered}).map(
+		(item): SplitItem => {
+			switch (item) {
+				case "once":
+					return {label: "Allow once", shortcut: "cmd+enter", onSelect: allowOnceFromMenu};
+				case "persistent":
+					return {label: PERSISTENT_ALLOW_LABEL, onSelect: persistentFromMenu};
+				case "auto":
+					return {label: AUTO_SWITCH_LABEL, description: AUTO_SWITCH_DESCRIPTION, onSelect: allowAndSwitch};
+				default:
+					return assertNever(item);
+			}
+		},
+	);
+	const leadsAlways = persistentAllow !== null && lead === "always";
 	const withAllowReason = (control: ReactElement) =>
 		rowsGated ? <DisabledReason reason={allowReason}>{control}</DisabledReason> : control;
 
@@ -371,7 +423,7 @@ export function PermissionCard({
 							>
 								<span data-approval-digit="2">Allow once</span>
 							</ApprovalActionButton>
-						) : persistentAllow === null ? (
+						) : menuItems.length === 0 ? (
 							withAllowReason(
 								<ApprovalActionButton
 									variant="primary"
@@ -391,7 +443,8 @@ export function PermissionCard({
 								<SplitDropdownButton
 									variant="primary"
 									className="max-w-full min-w-0"
-									{...(lead === "always"
+									items={menuItems}
+									{...(leadsAlways
 										? {
 												groupLabel: PERSISTENT_ALLOW_LABEL,
 												label: (
@@ -399,13 +452,6 @@ export function PermissionCard({
 														{PERSISTENT_ALLOW_LABEL}
 													</span>
 												),
-												items: [
-													{
-														label: "Allow once",
-														shortcut: "cmd+enter",
-														onSelect: allowOnceFromMenu,
-													},
-												],
 												onPrimaryClick: () => void decide("always"),
 											}
 										: {
@@ -417,16 +463,10 @@ export function PermissionCard({
 												),
 												shortcut: "cmd+enter",
 												"aria-keyshortcuts": toAriaKeyShortcuts("cmd+enter", isMac),
-												items: [
-													{
-														label: PERSISTENT_ALLOW_LABEL,
-														onSelect: persistentFromMenu,
-													},
-												],
 												onPrimaryClick: () => void decide("allow"),
 											})}
 									menuLabel="More allow options"
-									busy={sent === "allow" || sent === "always"}
+									busy={sent === "allow" || sent === "always" || sent === "allowAuto"}
 									disabled={!enabled || readHeld}
 								/>,
 							)

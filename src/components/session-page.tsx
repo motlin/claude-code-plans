@@ -87,6 +87,9 @@ import {WorkingMarker} from "./working-marker";
 import {useWorkingMarkerState} from "./use-working-marker-state";
 import {usePermissionAnswer} from "./use-permission-answer";
 import {usePermissionDialogShape} from "./use-permission-dialog-shape";
+import type {SessionAutoSwitch} from "./session-permission-card";
+import {autoSwitchOffered} from "../lib/permission-auto-switch";
+import {consentWorkspaceKey} from "../lib/permission-mode-consent";
 import {SideChat} from "./side-chat";
 import {preloadSideChatPanel} from "./side-chat-panel-module";
 import {preloadErrorRecoveryActions} from "./error-recovery-actions-entry";
@@ -150,6 +153,7 @@ import {
 	sendHerdrRewind,
 	sendHerdrLiveOption,
 	sendHerdrElicitationDecision,
+	sendHerdrPermissionAllowAuto,
 	sendHerdrPermissionDecision,
 	sendHerdrPlanDecision,
 	fetchHerdrPlanDialog,
@@ -162,7 +166,7 @@ import {pendingPlanQueryOptions} from "../lib/api/pending-plan";
 import {pendingElicitationsQueryOptions} from "../lib/api/pending-elicitations";
 import {
 	DeferredInlinePlanApproval,
-	DeferredPermissionCard,
+	DeferredSessionPermissionCard,
 	DeferredSendRejectedCard,
 	loadSessionPromptCards,
 } from "./session-prompt-cards-entry";
@@ -824,7 +828,11 @@ function SessionView({
 	// Keyed by its tool call, so a handoff between the signals that describe it neither remounts nor redraws it.
 	const permissionKey = candidatePermission === null ? null : permissionAnswerKey(candidatePermission);
 	// A card the server says isn't pending is stale: it drops and the lists that drew it refetch.
-	const {dropped: permissionDropped, answer: answerPermission} = usePermissionAnswer({
+	const {
+		dropped: permissionDropped,
+		answer: answerPermission,
+		answerWith: answerPermissionWith,
+	} = usePermissionAnswer({
 		permissionId: permissionKey,
 		send: sendPermissionDecision,
 	});
@@ -836,6 +844,32 @@ function SessionView({
 		permissionKey,
 		shownPermission !== null && permissionCanAnswer && !answersElicitation,
 	);
+	// Upstream's "Allow and switch to Auto": offered from Manual or Accept edits once the terminal's dialog is read.
+	const permissionMode = composerChin.mode?.id ?? "default";
+	const permissionAutoOffered = autoSwitchOffered({
+		mode: permissionMode,
+		availableModes: liveModes,
+		canAnswer: permissionCanAnswer,
+		readGated: false,
+		elicitation: answersElicitation,
+		dialog: permissionDialog,
+	});
+	const sendAllowAuto = useCallback(
+		async (presses: number | null) => sendHerdrPermissionAllowAuto(sessionId, presses),
+		[sessionId],
+	);
+	const answerAllowOnce = useCallback(async () => sendPermissionDecision("allow"), [sendPermissionDecision]);
+	const permissionAutoSwitch: SessionAutoSwitch = {
+		offered: permissionAutoOffered,
+		answerWith: answerPermissionWith,
+		workspace: consentWorkspaceKey(sessionDirectory ?? undefined),
+		mode: permissionMode,
+		availableModes: liveModes,
+		sendAllowAuto,
+		answerAllow: answerAllowOnce,
+		expectMode: liveLaunch.expectMode,
+		toast,
+	};
 	// The gates (working line, Stop, composer) release at the click; the card hides itself and returns on a failure.
 	const permissionAnswered = useApprovalAnswered(sessionId, permissionKey);
 	const pendingPermission = permissionAnswered ? null : shownPermission;
@@ -1635,7 +1669,7 @@ function SessionView({
 											sessionId={sessionId}
 											running={runningBackgroundLaunches}
 										>
-											<DeferredPermissionCard
+											<DeferredSessionPermissionCard
 												key={permissionKey}
 												enterKey={permissionKey}
 												sessionId={sessionId}
@@ -1660,6 +1694,7 @@ function SessionView({
 												persistentAllow={shownPermission.persistentAllow ?? null}
 												persistentAllowSaves={shownPermission.persistentAllowSaves ?? null}
 												dialog={permissionDialog}
+												autoSwitch={permissionAutoSwitch}
 												onDecision={answerPermission}
 												footer={
 													<Suspense fallback={null}>

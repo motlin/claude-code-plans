@@ -175,6 +175,33 @@ export async function sendHerdrPermissionDecision(
 	HerdrPromptSuccessResponse.parse(json);
 }
 
+const HerdrAllowAutoResponse = z.strictObject({ok: z.literal(true), via: z.enum(["row", "shiftTab", "none"])});
+/** Mirrors `AllowAutoVia` (`../herdr/permission`): how the mode reached Auto, or "none" when only the allow went. */
+export type HerdrAllowAutoVia = z.infer<typeof HerdrAllowAutoResponse>["via"];
+
+/**
+ * Upstream's "Allow and switch to Auto" through the pane's permission dialog. `presses` is the shift+tab count from
+ * the session's mode to Auto, or null when shift+tab can't reach it (only the CLI's own auto row can then switch).
+ */
+export async function sendHerdrPermissionAllowAuto(
+	sessionId: string,
+	presses: number | null,
+	fetcher: typeof fetch = fetch,
+): Promise<HerdrAllowAutoVia> {
+	const response = await fetcher("/api/herdr/permission", {
+		method: "POST",
+		credentials: "same-origin",
+		headers: {"Content-Type": "application/json"},
+		body: JSON.stringify({sessionId, decision: "allowAuto", ...(presses === null ? {} : {presses})}),
+	});
+	const json: unknown = await response.json();
+	if (!response.ok) {
+		const {error, code} = HerdrPromptErrorResponse.parse(json);
+		throw new HerdrRequestError(error, response.status, code);
+	}
+	return HerdrAllowAutoResponse.parse(json).via;
+}
+
 /** Mirrors `PermissionDialogShape` (`../herdr/permission-screen`): the permission dialog read off a pane. */
 const HerdrPermissionDialogResponse = z.strictObject({
 	dialog: z.strictObject({denyFirst: z.boolean(), persistent: z.boolean(), auto: z.boolean()}),

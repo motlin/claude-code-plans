@@ -18,17 +18,28 @@ import {
 	parsePermissionDialog,
 	permissionDialogShape,
 	permissionDialogSteps,
+	showsAnyDialog,
 	showsPermissionQuestion,
 } from "./permission-screen";
 import {herdrWritesEnabled, resolveHerdrPromptTarget, type HerdrPromptTarget} from "./prompt";
 import {readHerdrScreen} from "./read-screen";
 
-const HerdrPermissionSchema = z
-	.object({
+/** The most shift+tab presses the mode cycle can need: one short of its five modes. */
+const MAX_MODE_PRESSES = 4;
+
+const HerdrPermissionSchema = z.union([
+	z.strictObject({
 		sessionId: z.string().min(1),
 		decision: z.enum(["allow", "always", "deny"]),
-	})
-	.strict();
+	}),
+	// Upstream's "Allow and switch to Auto": `presses` is the client's shift+tab count from its mode to Auto, absent
+	// when shift+tab can't reach Auto, so only the CLI's own auto row can switch.
+	z.strictObject({
+		sessionId: z.string().min(1),
+		decision: z.literal("allowAuto"),
+		presses: z.number().int().min(1).max(MAX_MODE_PRESSES).optional(),
+	}),
+]);
 
 export interface HerdrPermissionDependencies {
 	rejectRequest: (request: Request) => Response | null;
@@ -208,6 +219,87 @@ async function focusedOnYes(
 }
 
 /**
+ * Send each step's keys, pausing between them. Before a hidden-form Enter the focus must sit on Yes. Returns the
+ * last screen the keys were planned from (null on the hook's legacy path), or the error response.
+ */
+async function sendSteps(
+	sessionId: string,
+	paneId: string,
+	steps: readonly string[][],
+	screen: string | null,
+	dependencies: HerdrPermissionDependencies,
+): Promise<{ok: true; lastScreen: string | null} | {ok: false; response: Response}> {
+	let lastScreen = screen;
+	for (const [index, keys] of steps.entries()) {
+		if (index > 0) {
+			await dependencies.pause();
+			if (keys[0] === "enter") {
+				lastScreen = await focusedOnYes(sessionId, paneId, dependencies);
+				if (lastScreen === null) return {ok: false, response: Response.json(DIALOG_MISMATCH, {status: 409})};
+			}
+		}
+		const response = await dependencies.request({
+			id: dependencies.createRequestId(),
+			method: "agent.send_keys",
+			params: {target: paneId, keys},
+		});
+		if (!response.ok) {
+			return {
+				ok: false,
+				response: Response.json({error: response.message}, {status: errorStatus(response.code)}),
+			};
+		}
+	}
+	return {ok: true, lastScreen};
+}
+
+/** How the mode reached Auto: the CLI's own row, shift+tab after the allow, or not at all (the tool was still allowed). */
+type AllowAutoVia = "row" | "shiftTab" | "none";
+
+/**
+ * Upstream's "Allow and switch to Auto" through the CLI dialog on screen, never blind. With the CLI's own
+ * "Yes, and switch to auto mode" row up, its digit allows and switches in one press. Otherwise "Yes" allows once,
+ * and only once the dialog is gone and no other dialog has taken the screen do `presses` shift+tabs step the mode:
+ * the dialog binds shift+tab to `confirm:cycleMode`, so a press onto the next prompt would accept its session
+ * option. A screen that can't be read, shows no dialog, or shows a deny-first one, is refused.
+ */
+async function answerAllowAuto(
+	sessionId: string,
+	paneId: string,
+	presses: number | undefined,
+	dependencies: HerdrPermissionDependencies,
+): Promise<Response> {
+	const screen = await dependencies.readScreen(sessionId, paneId);
+	const dialog = screen.ok ? parsePermissionDialog(screen.value) : null;
+	if (!screen.ok || dialog === null || permissionDialogShape(dialog).denyFirst) {
+		return Response.json(DIALOG_MISMATCH, {status: 409});
+	}
+	const autoRow = dialog.rows.findIndex((row) => row.kind === "auto");
+	const steps =
+		autoRow >= 0 ? [[String(autoRow + 1)]] : presses === undefined ? null : permissionDialogSteps(dialog, "allow");
+	if (steps === null) return Response.json(DIALOG_MISMATCH, {status: 409});
+
+	const sent = await sendSteps(sessionId, paneId, steps, screen.value, dependencies);
+	if (!sent.ok) return sent.response;
+	if (sent.lastScreen !== null && !(await dialogTookAnswer(sessionId, paneId, sent.lastScreen, dependencies))) {
+		return Response.json(NOT_ACCEPTED, {status: 409});
+	}
+	dependencies.clearPendingPermission(sessionId);
+	if (autoRow >= 0) return Response.json({ok: true, via: "row" satisfies AllowAutoVia});
+
+	await dependencies.pause();
+	const after = await dependencies.readScreen(sessionId, paneId);
+	if (!after.ok || showsAnyDialog(after.value)) return Response.json({ok: true, via: "none" satisfies AllowAutoVia});
+	const response = await dependencies.request({
+		id: dependencies.createRequestId(),
+		method: "agent.send_keys",
+		params: {target: paneId, keys: Array.from({length: presses ?? 0}, () => "shift+tab")},
+	});
+	const via: AllowAutoVia = response.ok ? "shiftTab" : "none";
+	return Response.json({ok: true, via});
+}
+
+/**
  * Answer the CLI's tool permission prompt in the session's live herdr pane.
  * Keys are only sent while the hook state or the CLI registry still shows the prompt, so a stale
  * card can never type "1" into the composer of a pane that moved on. The digits
@@ -228,11 +320,11 @@ export async function handleHerdrPermission(
 	const parsed = HerdrPermissionSchema.safeParse(await request.json());
 	if (!parsed.success) {
 		return Response.json(
-			{error: 'sessionId is required and decision must be "allow", "always", or "deny"'},
+			{error: 'sessionId is required and decision must be "allow", "always", "deny", or "allowAuto"'},
 			{status: 400},
 		);
 	}
-	const {sessionId, decision} = parsed.data;
+	const {sessionId} = parsed.data;
 
 	if (!dependencies.hasPendingPermission(sessionId)) {
 		return Response.json(NOT_PENDING, {status: 409});
@@ -244,27 +336,16 @@ export async function handleHerdrPermission(
 	}
 	const {paneId} = target.value;
 
-	const planned = await permissionSteps(sessionId, paneId, decision, dependencies);
+	if (parsed.data.decision === "allowAuto") {
+		return answerAllowAuto(sessionId, paneId, parsed.data.presses, dependencies);
+	}
+
+	const planned = await permissionSteps(sessionId, paneId, parsed.data.decision, dependencies);
 	if (!planned.ok) return planned.response;
 
-	let lastScreen = planned.screen;
-	for (const [index, keys] of planned.steps.entries()) {
-		if (index > 0) {
-			await dependencies.pause();
-			if (keys[0] === "enter") {
-				lastScreen = await focusedOnYes(sessionId, paneId, dependencies);
-				if (lastScreen === null) return Response.json(DIALOG_MISMATCH, {status: 409});
-			}
-		}
-		const response = await dependencies.request({
-			id: dependencies.createRequestId(),
-			method: "agent.send_keys",
-			params: {target: paneId, keys},
-		});
-		if (!response.ok) {
-			return Response.json({error: response.message}, {status: errorStatus(response.code)});
-		}
-	}
+	const sent = await sendSteps(sessionId, paneId, planned.steps, planned.screen, dependencies);
+	if (!sent.ok) return sent.response;
+	const {lastScreen} = sent;
 
 	if (lastScreen !== null && !(await dialogTookAnswer(sessionId, paneId, lastScreen, dependencies))) {
 		return Response.json(NOT_ACCEPTED, {status: 409});

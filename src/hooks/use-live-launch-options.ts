@@ -35,6 +35,14 @@ export interface LiveLaunchControls {
 	apply: (next: LaunchOptions) => Promise<void>;
 }
 
+export interface LiveLaunchSession extends LiveLaunchControls {
+	/**
+	 * A mode change made outside the chin (the permission card's switch to Auto): shown until the next hook
+	 * reports the CLI's mode, with the mismatch toast when it reports another.
+	 */
+	expectMode: (mode: LaunchPermissionMode) => void;
+}
+
 /** The chin's failure toast copy per live option kind. */
 export const FAILURE_MESSAGE: Record<LiveOptionChange["kind"], string> = {
 	model: "Model change couldn’t be applied. You can try again.",
@@ -77,7 +85,7 @@ export function useLiveLaunchOptions({
 	hookContext,
 	toast,
 	send = sendHerdrLiveOption,
-}: LiveLaunchOptionsInput): LiveLaunchControls {
+}: LiveLaunchOptionsInput): LiveLaunchSession {
 	const [applied, setApplied] = useState<{
 		sessionId: string;
 		options: Omit<LaunchOptions, "permissionMode">;
@@ -137,7 +145,14 @@ export function useLiveLaunchOptions({
 		[availableModes, currentMode, hookContext, options, send, sessionId, sessionOptions, toast],
 	);
 
-	return {options, apply};
+	const expectMode = useCallback(
+		(mode: LaunchPermissionMode) => {
+			setPendingMode({sessionId, expected: mode, baseline: hookContext});
+		},
+		[hookContext, sessionId],
+	);
+
+	return {options, apply, expectMode};
 }
 
 type NextChange =

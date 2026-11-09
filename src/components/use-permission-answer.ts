@@ -18,14 +18,19 @@ export function usePermissionAnswer({
 }: {
 	permissionId: string | null;
 	send: (decision: PermissionDecision) => Promise<void>;
-}): {dropped: boolean; answer: (decision: PermissionDecision) => Promise<void>} {
+}): {
+	dropped: boolean;
+	answer: (decision: PermissionDecision) => Promise<void>;
+	/** Runs another answer to the same prompt (the card's switch to Auto) with the same not-pending handling. */
+	answerWith: (run: () => Promise<void>) => Promise<void>;
+} {
 	const queryClient = useQueryClient();
 	const toast = useToast();
 	const [droppedId, setDroppedId] = useState<string | null>(null);
-	const answer = useCallback(
-		async (decision: PermissionDecision) => {
+	const answerWith = useCallback(
+		async (run: () => Promise<void>) => {
 			try {
-				await send(decision);
+				await run();
 			} catch (error) {
 				if (!isPermissionNotPending(error)) throw error;
 				setDroppedId(permissionId);
@@ -35,7 +40,11 @@ export function usePermissionAnswer({
 				toast({kind: "warning", message: "That permission request is no longer pending"});
 			}
 		},
-		[permissionId, queryClient, send, toast],
+		[permissionId, queryClient, toast],
 	);
-	return {dropped: permissionId !== null && droppedId === permissionId, answer};
+	const answer = useCallback(
+		async (decision: PermissionDecision) => answerWith(async () => send(decision)),
+		[answerWith, send],
+	);
+	return {dropped: permissionId !== null && droppedId === permissionId, answer, answerWith};
 }
