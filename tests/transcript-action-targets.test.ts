@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
 
-import {chapterFor, forkPointFor} from "../src/lib/transcript-action-targets";
+import {chapterFor, chapterTitle, forkPointFor} from "../src/lib/transcript-action-targets";
 import {processTranscript} from "../src/lib/transcript";
 
 const RECORDS: unknown[] = [
@@ -51,21 +51,34 @@ describe("forkPointFor", () => {
 });
 
 describe("chapterFor", () => {
-	it("labels a chapter with the message's first line of plain text, clipped, at its record index", () => {
+	it("titles a chapter with the message's first line of plain text at its record index", () => {
 		expect({
 			reply: chapterFor(lines, "reply-1"),
 			prompt: chapterFor(lines, "prompt-2"),
 			tools: chapterFor(lines, "tools-1"),
 			unknown: chapterFor(lines, "not-loaded"),
 		}).toStrictEqual({
-			reply: {uuid: "reply-1", label: "Done", recordIndex: 11},
-			prompt: {
-				uuid: "prompt-2",
-				label: "Now write a very long follow-up prompt that goes on and on…",
-				recordIndex: 12,
-			},
-			tools: {uuid: "tools-1", label: "Tool calls", recordIndex: 13},
+			reply: {afterId: "reply-1", title: "Done", recordIndex: 11},
+			prompt: {afterId: "prompt-2", title: "Now write a very long follow-up prompt t…", recordIndex: 12},
+			tools: {afterId: "tools-1", title: "Tool calls", recordIndex: 13},
 			unknown: null,
+		});
+	});
+});
+
+describe("chapterTitle", () => {
+	it("cuts the first non-empty line at upstream's 40 characters, with an ellipsis only when it was longer", () => {
+		const forty = "a".repeat(40);
+		expect({
+			forty: chapterTitle(forty),
+			fortyOne: chapterTitle(`${forty}b`),
+			skipsBlankLines: chapterTitle("\n  \n  Second line  \nThird"),
+			blank: chapterTitle("  \n "),
+		}).toStrictEqual({
+			forty,
+			fortyOne: `${forty}…`,
+			skipsBlankLines: "Second line",
+			blank: "",
 		});
 	});
 });

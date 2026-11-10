@@ -4,9 +4,12 @@
  * session page or the home composer into the shell bundle.
  */
 
-/** Upstream's rounded chat card, which holds the transcript and the composer dock. */
+/**
+ * Upstream's rounded chat card, which holds the transcript and the composer dock. `epitaxy-chat-panel` is upstream's
+ * name for it, which the session outline's gutter variants select on.
+ */
 export const SESSION_TILE_CLASS =
-	"@container flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-r7 bg-surface-2 shadow-panel-sm";
+	"epitaxy-chat-panel @container flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-r7 bg-surface-2 shadow-panel-sm";
 
 /** The session's sticky footer: the composer dock, opaque to the viewport bottom with a fade over the transcript. */
 export const SESSION_FOOTER_CLASS =

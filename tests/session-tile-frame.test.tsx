@@ -170,7 +170,7 @@ it("docks the session rail beside the scrollport, under the header, and marks th
 it("wraps the chat tile in upstream's rounded surface-2 card", () => {
 	const {container} = render(<Visit visitKey="example-alice-entry" />);
 	expect((container.firstElementChild as HTMLElement).className).toBe(
-		"@container flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-r7 bg-surface-2 shadow-panel-sm",
+		"epitaxy-chat-panel @container flex h-full min-h-0 min-w-0 flex-col overflow-hidden rounded-r7 bg-surface-2 shadow-panel-sm",
 	);
 });
 

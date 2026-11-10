@@ -3,7 +3,7 @@
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
-import {readChapters, toggleChapter} from "../src/lib/chapter-store";
+import {addUserChapter, readSessionChapters, renameChapter, setChapterHidden} from "../src/lib/chapter-store";
 import {processTranscript} from "../src/lib/transcript";
 import {ESTIMATED_TURN_HEIGHT_PIXELS, estimatedRowHeight} from "../src/lib/transcript-row-estimate";
 import type {TranscriptMode} from "../src/lib/transcript-mode";
@@ -180,9 +180,24 @@ describe("a mark_chapter call draws as a chapter heading, not a tool row", () =>
 	});
 });
 
+describe("a Claude chapter follows the outline's edits", () => {
+	it("draws under the user's rename, and not at all once deleted from the outline", () => {
+		const records = [prompt, ...call(chapter(MARKED))];
+		renameChapter("test-session", "toolu_ch1", "Renamed in the outline");
+		const renamed = rows(records).observed;
+		setChapterHidden("test-session", "toolu_ch1", true);
+
+		expect({renamed, hidden: rows(records).observed}).toStrictEqual({
+			renamed: [human, {...heading, headings: ["epitaxy-ch-toolu_ch1 Renamed in the outline"]}],
+			hidden: [human, {...heading, headings: []}],
+		});
+	});
+});
+
 describe("a pinned message draws its chapter heading above it", () => {
 	it("heads the pinned prompt's row with the chapter, renamed in place by double-click", () => {
-		toggleChapter("test-session", {uuid: "u-prompt", label: "Kickoff", recordIndex: 0});
+		vi.spyOn(crypto, "randomUUID").mockReturnValue("fake-uuid-1" as ReturnType<typeof crypto.randomUUID>);
+		addUserChapter("test-session", "u-prompt", "Kickoff", 0);
 		const records = [prompt, ...call(read("one"))];
 		const {lines, toolResultMap} = processTranscript(records);
 		const {container} = render(
@@ -211,11 +226,15 @@ describe("a pinned message draws its chapter heading above it", () => {
 
 		expect({
 			before,
-			stored: readChapters("test-session"),
-			after: container.querySelector("h3[id='epitaxy-ch-u-prompt']")?.textContent,
+			stored: readSessionChapters("test-session"),
+			after: container.querySelector("h3[id='epitaxy-ch-uch-fake-uuid-1']")?.textContent,
 		}).toStrictEqual({
-			before: {id: "epitaxy-ch-u-prompt", text: "Kickoff", leads: true, headings: 1},
-			stored: [{uuid: "u-prompt", label: "Opening moves", recordIndex: 0}],
+			before: {id: "epitaxy-ch-uch-fake-uuid-1", text: "Kickoff", leads: true, headings: 1},
+			stored: {
+				renames: {},
+				hidden: [],
+				userChapters: [{id: "uch-fake-uuid-1", afterId: "u-prompt", title: "Opening moves", recordIndex: 0}],
+			},
 			after: "Opening moves",
 		});
 	});

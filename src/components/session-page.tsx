@@ -21,7 +21,7 @@ import {
 import type {SessionRailInputs} from "./session-rail/session-rail-cards";
 import {SessionChat} from "./session-chat";
 import {TranscriptTailContext} from "./transcript-tail-context";
-import {ChapterChips} from "./chapter-chips";
+import {SessionChaptersToc} from "./session-chapters-toc";
 import {TranscriptActionsProvider} from "./transcript-actions-provider";
 import {TurnUndoSendContext} from "./turn-undo-send-context";
 import {useSessionFork} from "../hooks/use-session-fork";
@@ -154,6 +154,9 @@ import {
 } from "../lib/composer-state";
 import {useSessionViewedState} from "../hooks/use-session-viewed-state";
 import {usePendingMessageJump} from "../hooks/use-pending-message-jump";
+import {useChapterJump} from "../hooks/use-chapter-jump";
+import {useSessionChapters} from "../lib/chapter-store";
+import {buildSessionChapters} from "../lib/session-chapters";
 import {useMainScrollRestoration, type MainScrollRestorationSnapshot} from "../hooks/use-main-scroll-restoration";
 import {
 	findLastPendingToolUse,
@@ -268,6 +271,19 @@ interface RequestedPaneProps {
 const SessionRailCards = lazy(async () =>
 	import("./session-rail/session-rail-cards").then((module) => ({default: module.SessionRailCards})),
 );
+
+/** The session outline in the chat tile's start gutter, jumping through the transcript's own scroller. */
+function SessionOutline({
+	requestMessageJump,
+	windowStartIndex,
+	...props
+}: Omit<ComponentProps<typeof SessionChaptersToc>, "onJump"> & {
+	requestMessageJump: (uuid: string) => void;
+	windowStartIndex: number;
+}) {
+	const jump = useChapterJump(props.scrollRef, requestMessageJump, windowStartIndex);
+	return <SessionChaptersToc {...props} onJump={jump} />;
+}
 
 type RailTileFrameProps = Omit<ComponentProps<typeof SessionTileFrame>, "rail" | "railDocked" | "tileRef"> & {
 	railInputs: SessionRailInputs;
@@ -502,6 +518,18 @@ function SessionView({
 	const hasWorkflowCall = useMemo(() => linesHaveWorkflowCall(processed.lines), [processed.lines]);
 	const workflowRuns = useQuery({...sessionWorkflowRunsQueryOptions(sessionId), enabled: hasWorkflowCall}).data;
 	const requestMessageJump = usePendingMessageJump(sessionId, transcript.startIndex, processed.uuidToLine);
+	const chapterEdits = useSessionChapters(sessionId);
+	const firstEntryUuid = firstRecordKey(transcript);
+	const outlineChapters = useMemo(
+		() =>
+			buildSessionChapters({
+				claudeChapters: transcript.chapters,
+				store: chapterEdits,
+				firstEntryUuid,
+				sessionStartTitle: "Session start",
+			}),
+		[transcript.chapters, chapterEdits, firstEntryUuid],
+	);
 	useRegisterChangesPane(sessionId);
 	// A whole-session inventory costs a full pass over the JSONL, so only an open
 	// Files or Links pane asks for it; this read just shares whatever they fetched.
@@ -1514,6 +1542,16 @@ function SessionView({
 							visitKey={initialScrollKey}
 							positionRef={tileScrollPosition}
 							restoredScrollY={restoredScrollPosition?.scrollY}
+							outline={(scrollRef) => (
+								<SessionOutline
+									sessionId={sessionId}
+									chapters={outlineChapters}
+									scrollRef={scrollRef}
+									scrollKey={initialScrollKey}
+									requestMessageJump={requestMessageJump}
+									windowStartIndex={transcript.startIndex}
+								/>
+							)}
 							header={
 								<>
 									{/* Sticky header: titlebar + hook context */}
@@ -1562,7 +1600,6 @@ function SessionView({
 													verbose={transcriptMode === "verbose"}
 												/>
 											)}
-											<ChapterChips sessionId={sessionId} onJump={requestMessageJump} />
 										</div>
 									)}
 

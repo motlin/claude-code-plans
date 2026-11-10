@@ -72,11 +72,11 @@
 		"raisedAt": "2026-11-09"
 	},
 	"bundle.session.raw": {
-		"ceiling": 2248992,
+		"ceiling": 2281042,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "raised from 2219284 (2026-11-09): secret-pattern-masking T1-T4 adds src/lib/secret-mask.ts (upstream's shared-m-0 detector and masker: 13 credential patterns, the invisible-char shadow scan and windowed masking) plus the fence Reveal toggle, inline-code cloak and tool-output toggle. Every transcript text path (markdown fences and inline code, user turns, tool output, notices) masks before its first paint, so the masker can't sit behind a lazy boundary. Went to 2248992; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-09"
+		"reason": "raised from 2248992 (2026-11-10): session-chapters-toc T2-T3 and T5-T7 add the session outline (src/components/session-chapters-toc.tsx: dash rail, popover list, row context menu and rename), the active-chapter scroll tracker, the chapter jump, the outline builder and the v2 chapter store with its v1 migration. The outline is positioned and marked from the first scroll pass of a session with chapters, and the store feeds the inline headings on first paint. Went to 2281042, 9560 bytes past the old ceiling plus tolerance; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-10"
 	},
 	"client.coldHome.default.commitsToRows": {
 		"ceiling": 9,

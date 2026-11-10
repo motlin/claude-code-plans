@@ -3,13 +3,31 @@ const HIGHLIGHT_DURATION_MS = 2_000;
 
 export const TRANSCRIPT_JUMP_REQUEST_EVENT = "transcript-jump-request";
 
+export const TRANSCRIPT_RELEASE_END_FOLLOW_EVENT = "transcript-release-end-follow";
+
+/**
+ * Tell the transcript in `scroller` to stop following its end, as a reader's own upward scroll
+ * does. A jump made while the transcript still follows its end is otherwise pulled back down by
+ * the next row measurement.
+ */
+export function releaseEndFollow(scroller: Element): void {
+	scroller.dispatchEvent(new Event(TRANSCRIPT_RELEASE_END_FOLLOW_EVENT, {bubbles: true}));
+}
+
+const HIGHLIGHT_CLASS = "message-highlight";
+
 function flash(element: Element): true {
 	element.scrollIntoView({block: "center", behavior: "smooth"});
-	element.classList.add("message-highlight");
+	element.classList.add(HIGHLIGHT_CLASS);
 	setTimeout(() => {
-		element.classList.remove("message-highlight");
+		element.classList.remove(HIGHLIGHT_CLASS);
 	}, HIGHLIGHT_DURATION_MS);
 	return true;
+}
+
+/** Drop the jump flash from every row in `root`, for a jump that lands on something other than the flashed row. */
+export function clearJumpFlash(root: Element): void {
+	for (const element of root.querySelectorAll(`.${HIGHLIGHT_CLASS}`)) element.classList.remove(HIGHLIGHT_CLASS);
 }
 
 /**

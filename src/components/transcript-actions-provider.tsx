@@ -1,6 +1,6 @@
 import {type ReactNode, useEffect, useMemo, useRef} from "react";
 
-import {toggleChapter} from "../lib/chapter-store";
+import {toggleUserChapterAt} from "../lib/chapter-store";
 import {FORK_NO_DIRECTORY_REASON} from "../lib/session-fork";
 import type {SessionLine} from "../lib/transcript";
 import {chapterFor, forkPointFor} from "../lib/transcript-action-targets";
@@ -55,7 +55,8 @@ export function TranscriptActionsProvider({
 	const actions = useMemo<TranscriptActions>(() => {
 		const pinChapter = (message: TranscriptMessageRef) => {
 			const chapter = chapterFor(latest.current.lines, message.uuid);
-			if (chapter !== null) toggleChapter(message.sessionId, chapter);
+			if (chapter !== null)
+				toggleUserChapterAt(message.sessionId, chapter.afterId, chapter.title, chapter.recordIndex);
 		};
 		const rewindTo = (message: TranscriptMessageRef) => {
 			if (message.sessionId !== sessionId) {

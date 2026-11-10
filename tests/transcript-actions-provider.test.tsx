@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {ChapterChips} from "../src/components/chapter-chips";
 import {AssistantMessageActions, UserMessageActions} from "../src/components/message-actions";
 import {ToastProvider} from "../src/components/toast";
 import {TranscriptActionsProvider} from "../src/components/transcript-actions-provider";
-import {readChapters} from "../src/lib/chapter-store";
+import {readSessionChapters} from "../src/lib/chapter-store";
 import {processTranscript} from "../src/lib/transcript";
 import {installLocalStorage} from "./fake-storage";
 
@@ -49,7 +48,6 @@ function renderTranscript(
 				working={working}
 				archived={archived}
 			>
-				<ChapterChips sessionId={SESSION_ID} onJump={() => {}} />
 				<div data-turn="reply-1">
 					<AssistantMessageActions
 						message={{sessionId: SESSION_ID, uuid: "reply-1"}}
@@ -124,24 +122,23 @@ describe("TranscriptActionsProvider", () => {
 		expect(labels).toStrictEqual(["Show message actions for You said: Now add tests", "Copy", "Fork from here"]);
 	});
 
-	it("pins a turn as a chapter that the chapter chips list, and unpins it on a second press", () => {
+	it("pins a turn as a chapter titled by its first line, and unpins it on a second press", () => {
+		vi.spyOn(crypto, "randomUUID").mockReturnValue("fake-uuid-1" as ReturnType<typeof crypto.randomUUID>);
 		const container = renderTranscript(undefined);
 
 		fireEvent.click(turnButton(container, "reply-1", "Pin as chapter"));
 		const pinned = {
-			stored: readChapters(SESSION_ID),
-			chips: screen.getAllByRole("button", {name: /^Jump to chapter/}).map((chip) => chip.textContent),
+			stored: readSessionChapters(SESSION_ID).userChapters,
 			pressed: turnButton(container, "reply-1", "Pin as chapter").getAttribute("aria-pressed"),
 		};
 		fireEvent.click(turnButton(container, "reply-1", "Pin as chapter"));
 
-		expect({pinned, after: readChapters(SESSION_ID)}).toStrictEqual({
+		expect({pinned, after: readSessionChapters(SESSION_ID)}).toStrictEqual({
 			pinned: {
-				stored: [{uuid: "reply-1", label: "The repo is ready.", recordIndex: 1}],
-				chips: ["The repo is ready."],
+				stored: [{id: "uch-fake-uuid-1", afterId: "reply-1", title: "The repo is ready.", recordIndex: 1}],
 				pressed: "true",
 			},
-			after: [],
+			after: {renames: {}, hidden: [], userChapters: []},
 		});
 	});
 

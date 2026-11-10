@@ -108,9 +108,9 @@ import {rewindLayout, type RewindMarkerPlacement} from "../lib/rewind-layout";
 import type {ToolUseBlock} from "../lib/schemas";
 import {coalesceSameTarget, runSuffix, sameTarget, toolBucket, type ToolBucket} from "../lib/tool-runs";
 import {chapterDisposition, isChapterTool, type ChapterDisposition} from "../lib/chapter-tool";
-import {ChapterHeading} from "./chapter-heading";
+import {ChapterHeading, ClaudeChapterHeading} from "./chapter-heading";
 import {estimatedRowHeight} from "../lib/transcript-row-estimate";
-import {renameChapter, useChapters, type Chapter} from "../lib/chapter-store";
+import {renameChapter, useSessionChapters, type UserChapter} from "../lib/chapter-store";
 import {toolCardStage, toolGroupStage} from "../lib/tool-card-stage";
 import {AttachmentBanner, Banner} from "./attachment-banner";
 import {
@@ -153,7 +153,11 @@ import {
 	type TranscriptReadingAnchor,
 } from "../lib/transcript-measurements";
 import {ApiRequestDisclosure} from "./api-request-disclosure";
-import {jumpToMessage, TRANSCRIPT_JUMP_REQUEST_EVENT} from "../lib/jump-to-message";
+import {
+	jumpToMessage,
+	TRANSCRIPT_JUMP_REQUEST_EVENT,
+	TRANSCRIPT_RELEASE_END_FOLLOW_EVENT,
+} from "../lib/jump-to-message";
 import {asRecord, isKeyOf} from "../lib/narrow";
 import {toolMarkActivity} from "../lib/working-mark-activity";
 import {WorkingMark} from "./working-mark";
@@ -844,6 +848,7 @@ export const SessionChat = React.memo(function SessionChat({
 		if (scrollContentRef?.current && scrollContentRef.current !== container)
 			resizeObserver.observe(scrollContentRef.current);
 		scrollEventTarget.addEventListener("scroll", updateFollowsEnd, {passive: true});
+		scrollEventTarget.addEventListener(TRANSCRIPT_RELEASE_END_FOLLOW_EVENT, cancelLayoutFollow);
 		const inputs = [
 			["wheel", onWheel],
 			["keydown", onKeyDown],
@@ -865,6 +870,7 @@ export const SessionChat = React.memo(function SessionChat({
 		return () => {
 			resizeObserver.disconnect();
 			scrollEventTarget.removeEventListener("scroll", updateFollowsEnd);
+			scrollEventTarget.removeEventListener(TRANSCRIPT_RELEASE_END_FOLLOW_EVENT, cancelLayoutFollow);
 			for (const [type, handler] of inputs) scrollEventTarget.removeEventListener(type, handler, true);
 			if (initialFrame !== undefined) cancelAnimationFrame(initialFrame);
 			if (paintedFrame !== undefined) cancelAnimationFrame(paintedFrame);
@@ -3062,7 +3068,11 @@ function buildSessionListEntries(
 				replyHead: line,
 				element: (
 					<>
-						<ChapterHeading id={chapter.chapter.id} title={chapter.chapter.title} />
+						<ClaudeChapterHeading
+							sessionId={renderProps.sessionId}
+							id={chapter.chapter.id}
+							title={chapter.chapter.title}
+						/>
 						{footerFor(line)}
 					</>
 				),
@@ -3972,7 +3982,7 @@ function SessionLineList({
 		});
 	}, []);
 	const {lines} = rewind;
-	const pinnedChapters = useChapters(renderProps.sessionId);
+	const pinnedChapters = useSessionChapters(renderProps.sessionId).userChapters;
 	const renderRewindMarkers = (anchor: number) =>
 		rewind.markersBefore
 			.get(anchor)
@@ -4924,7 +4934,7 @@ function clientRowEntries(
 function withPinnedChapterHeadings(
 	entries: SessionListEntry[],
 	lines: readonly SessionLine[],
-	chapters: readonly Chapter[],
+	chapters: readonly UserChapter[],
 	sessionId: string,
 ): SessionListEntry[] {
 	if (chapters.length === 0) return entries;
@@ -4932,9 +4942,9 @@ function withPinnedChapterHeadings(
 	for (const line of lines) {
 		if ("uuid" in line && typeof line.uuid === "string") lineIndexByUuid.set(line.uuid, line.lineIndex);
 	}
-	const headingsByEntry = new Map<number, Chapter[]>();
+	const headingsByEntry = new Map<number, UserChapter[]>();
 	for (const chapter of chapters) {
-		const at = lineIndexByUuid.get(chapter.uuid);
+		const at = lineIndexByUuid.get(chapter.afterId);
 		if (at === undefined) continue;
 		const entryIndex = entries.findIndex((entry) => entry.startRecordIndex <= at && at <= entry.endRecordIndex);
 		if (entryIndex === -1) continue;
@@ -4950,11 +4960,11 @@ function withPinnedChapterHeadings(
 				<>
 					{headings.map((chapter) => (
 						<ChapterHeading
-							key={chapter.uuid}
-							id={chapter.uuid}
-							title={chapter.label}
+							key={chapter.id}
+							id={chapter.id}
+							title={chapter.title}
 							onRename={(title) => {
-								renameChapter(sessionId, chapter.uuid, title);
+								renameChapter(sessionId, chapter.id, title);
 							}}
 						/>
 					))}

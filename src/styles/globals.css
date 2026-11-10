@@ -204,6 +204,8 @@ html[data-interface-font="dyslexic"] {
 	--color-alpha-2: var(--upstream-alpha-2);
 	--color-alpha-3: var(--upstream-alpha-3);
 	--color-alpha-4: var(--upstream-alpha-4);
+	--color-alpha-5: var(--upstream-alpha-5);
+	--color-alpha-8: var(--upstream-alpha-8);
 	--color-usage-warning: var(--upstream-fill-warning);
 	--color-usage-danger: var(--upstream-fill-danger);
 	/* Upstream --cds-bg-warning / --cds-bg-danger (Settings ▸ Usage meter tracks at ≥75% / ≥90%). */
@@ -485,6 +487,11 @@ html[data-interface-font="dyslexic"] {
 	--upstream-alpha-3: rgb(11 11 11 / 0.2);
 	/* Upstream --cds-alpha-4: neutral-900 at 35% (the usage ring track). */
 	--upstream-alpha-4: rgb(11 11 11 / 0.35);
+	/* Upstream --cds-alpha-5/8: neutral-900 at 50% and 85% (the session outline's hovered and active dashes). */
+	--upstream-alpha-5: rgb(11 11 11 / 0.5);
+	--upstream-alpha-8: rgb(11 11 11 / 0.85);
+	/* Upstream .epitaxy-root --chat-gutter: the chat column's side gutter, which the session outline sits in. */
+	--chat-gutter: 32px;
 	/* Upstream --cds-fill-warning / --cds-fill-danger(-hover) (usage ring arc at ≥75% / ≥90%; danger split button). */
 	--upstream-fill-warning: #fbb315;
 	--upstream-fill-danger: #d03b3b;
@@ -868,6 +875,8 @@ html[data-interface-font="dyslexic"] {
 	--upstream-alpha-2: rgb(255 255 255 / 0.1);
 	--upstream-alpha-3: rgb(255 255 255 / 0.2);
 	--upstream-alpha-4: rgb(255 255 255 / 0.35);
+	--upstream-alpha-5: rgb(255 255 255 / 0.5);
+	--upstream-alpha-8: rgb(255 255 255 / 0.85);
 	--upstream-backdrop: rgb(0 0 0 / 0.5);
 	--upstream-fill-control: hsl(0 0% 100% / 0.1);
 	--upstream-fill-ghost-hover: hsl(0 0% 100% / 0.075);
@@ -2752,6 +2761,31 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 /* Upstream's h-control: the density control height. */
 @utility h-control {
 	height: var(--cds-h-control);
+}
+
+/* Upstream's h-list-row: a list row's height (the session outline's rows), 32px at every density. */
+@utility h-list-row {
+	height: calc(2rem * var(--cds-rem-scale, 1));
+}
+
+/* Upstream's session outline fade (injected style c2e28a737): it appears once its active chapter is known. */
+@keyframes epitaxy-toc-fade-in {
+	0% {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.epitaxy-toc-fade-in {
+	animation: 0.18s ease-out 0.12s both epitaxy-toc-fade-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.epitaxy-toc-fade-in {
+		animation-duration: 1ms;
+	}
 }
 
 /* Upstream's "landed" flash on a promoted queued message's row (`animate-code-reply-flash-accent`). */
@@ -4640,6 +4674,14 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	row-gap: 1px;
 	& > :where(:not(:last-child)) {
 		--cds-hit-gap-y: 1px;
+	}
+}
+
+/* Upstream hit-gap-y-<n>: a spacing-scale row gap that each non-last row's hit-row-main::before reaches across. */
+@utility hit-gap-y-* {
+	row-gap: calc(var(--spacing) * --value(number));
+	& > :where(:not(:last-child)) {
+		--cds-hit-gap-y: calc(var(--spacing) * --value(number));
 	}
 }
 

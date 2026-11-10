@@ -10,7 +10,7 @@ import {
 	useState,
 } from "react";
 
-import {useChapters} from "../lib/chapter-store";
+import {useSessionChapters} from "../lib/chapter-store";
 import {writeClipboardText} from "../lib/clipboard";
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {messageHeading} from "../lib/transcript-action-targets";
@@ -251,8 +251,8 @@ function ForkAction({message}: {message: TranscriptMessageRef | undefined}) {
 
 function PinAction({message}: {message: TranscriptMessageRef | undefined}) {
 	const {pinChapter} = useContext(TranscriptActionsContext);
-	const chapters = useChapters(message?.sessionId ?? "");
-	const pinned = message !== undefined && chapters.some((chapter) => chapter.uuid === message.uuid);
+	const {userChapters} = useSessionChapters(message?.sessionId ?? "");
+	const pinned = message !== undefined && userChapters.some((chapter) => chapter.afterId === message.uuid);
 	return (
 		<ActionButton label="Pin as chapter" pressed={pinned} onClick={bound(pinChapter, message)}>
 			<Pin aria-hidden="true" className={ICON_CLASS} />

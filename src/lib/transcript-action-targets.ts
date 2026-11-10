@@ -1,11 +1,17 @@
-import type {Chapter} from "./chapter-store";
 import {markdownToPlainText} from "./markdown-plain-text";
 import {stripCommandTags} from "./session-utils";
 import {narrationProse} from "./thinking-narration";
 import type {MessageSessionLine, SessionLine} from "./transcript";
 
-/** Upstream-length chapter chip labels; longer first lines are clipped with an ellipsis. */
-const CHAPTER_LABEL_LIMIT = 60;
+/** Upstream's pin title length (`tk`). */
+const CHAPTER_TITLE_LIMIT = 40;
+
+/** What a "Pin as chapter" adds: the pinned message, the chapter's title and the message's record index. */
+export interface ChapterPin {
+	afterId: string;
+	title: string;
+	recordIndex: number;
+}
 
 /** The existing transcript heading excerpt, shared with its action trigger. */
 export function messageHeading(speaker: "user" | "assistant", text: string): string {
@@ -46,19 +52,18 @@ export function forkPointFor(lines: readonly SessionLine[], uuid: string): strin
 	return uuid;
 }
 
-function clip(text: string): string {
-	if (text.length <= CHAPTER_LABEL_LIMIT) return text;
-	return `${text.slice(0, CHAPTER_LABEL_LIMIT - 1).trimEnd()}…`;
+/** Upstream's pin title (`ik`): the first non-empty line, trimmed and cut at 40 characters, with an ellipsis when it was longer. */
+export function chapterTitle(text: string): string {
+	const line = (text.split("\n").find((part) => part.trim().length > 0) ?? text).trim();
+	const title = line.slice(0, CHAPTER_TITLE_LIMIT);
+	return line.length > CHAPTER_TITLE_LIMIT ? `${title}…` : title;
 }
 
 /** The chapter a "Pin as chapter" on this message would add, or null when the page does not hold it. */
-export function chapterFor(lines: readonly SessionLine[], uuid: string): Chapter | null {
+export function chapterFor(lines: readonly SessionLine[], uuid: string): ChapterPin | null {
 	const line = findMessage(lines, uuid);
 	if (line === undefined) return null;
 	const text = line.type === "assistant" ? markdownToPlainText(messageText(line)) : messageText(line);
-	const firstLine = text
-		.split("\n")
-		.map((part) => part.trim())
-		.find((part) => part !== "");
-	return {uuid, label: firstLine === undefined ? "Tool calls" : clip(firstLine), recordIndex: line.lineIndex};
+	const title = chapterTitle(text);
+	return {afterId: uuid, title: title === "" ? "Tool calls" : title, recordIndex: line.lineIndex};
 }

@@ -8,7 +8,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {AssistantMessageActions, UserMessageActions, WaitingMessageActions} from "../src/components/message-actions";
 import {type TranscriptActions, TranscriptActionsContext} from "../src/components/transcript-actions-context";
-import {removeChapter, toggleChapter} from "../src/lib/chapter-store";
+import {toggleUserChapterAt} from "../src/lib/chapter-store";
 import {writeClipboardText} from "../src/lib/clipboard";
 import {PanelsOff} from "./fizzy-lake-off";
 
@@ -121,13 +121,13 @@ describe("AssistantMessageActions", () => {
 	});
 
 	it("paints a pinned Pin as chapter with upstream's pressed accent ink and fill", () => {
-		toggleChapter(MESSAGE.sessionId, {uuid: MESSAGE.uuid, label: "Hello", recordIndex: 0});
+		toggleUserChapterAt(MESSAGE.sessionId, MESSAGE.uuid, "Hello", 0);
 		const {container} = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
 		);
 		const pin = button(container, "Pin as chapter");
 		const classes = pin.className.split(" ");
-		removeChapter(MESSAGE.sessionId, MESSAGE.uuid);
+		toggleUserChapterAt(MESSAGE.sessionId, MESSAGE.uuid, "Hello", 0);
 
 		expect({
 			pressed: pin.getAttribute("aria-pressed"),

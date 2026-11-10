@@ -26,6 +26,7 @@ export function SessionTileFrame({
 	positionRef,
 	restoredScrollY,
 	rail = null,
+	outline,
 	railDocked = false,
 	tileRef,
 }: {
@@ -39,6 +40,8 @@ export function SessionTileFrame({
 	restoredScrollY: number | undefined;
 	/** The session rail's column, docked over the scrollport's end below the header. */
 	rail?: ReactNode;
+	/** The session outline, drawn over the scrollport's start gutter; it reads the scroller it is handed. */
+	outline?: ((scrollRef: RefObject<HTMLDivElement | null>) => ReactNode) | undefined;
 	/** Re-centres the chat column in the room the docked rail leaves. */
 	railDocked?: boolean;
 	/** The tile root, which the session rail measures to decide whether it fits. */
@@ -191,6 +194,7 @@ export function SessionTileFrame({
 								</div>
 							</TooltipPortalContext.Provider>
 						</div>
+						{outline?.(scrollerRef)}
 						{rail}
 					</div>
 				</ChatFileDropZone>

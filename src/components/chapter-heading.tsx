@@ -1,11 +1,14 @@
 import {useEffect, useRef, useState} from "react";
 
+import {renameChapter, useSessionChapters} from "../lib/chapter-store";
+import {chapterAnchorId} from "../lib/session-chapters";
+
 const HEADING_CLASS_NAME = "text-body-semibold text-primary select-text scroll-mt-[56px]";
 const INPUT_CLASS_NAME =
 	"min-w-0 max-w-full rounded-r2 border-0 bg-transparent p-0 outline outline-[1.5px] outline-fill-accent outline-offset-[1px] [field-sizing:content]";
 
 interface ChapterHeadingProps {
-	/** The chapter's id: a chapter tool call's tool_use id, or a pinned message's uuid. */
+	/** The chapter's id: a chapter tool call's tool_use id, or a user chapter's `uch-` id. */
 	id: string;
 	title: string;
 	/** Commits a rename; without it (or with an empty title) double-click does nothing, as upstream gates it. */
@@ -34,7 +37,7 @@ export function ChapterHeading({id, title, onRename}: ChapterHeadingProps) {
 			) : (
 				// oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- upstream's heading takes double-click as a pointer shortcut to rename, with no keyboard path of its own
 				<h3
-					id={`epitaxy-ch-${id}`}
+					id={chapterAnchorId(id)}
 					title={title}
 					aria-hidden={title === "" ? true : undefined}
 					className={`line-clamp-2 ${HEADING_CLASS_NAME}`}
@@ -50,6 +53,24 @@ export function ChapterHeading({id, title, onRename}: ChapterHeadingProps) {
 				</h3>
 			)}
 		</div>
+	);
+}
+
+/**
+ * One of Claude's chapters (upstream's `IA`): drawn under the user's rename of it, renamed in place
+ * by double-click, and not drawn at all once the user deleted it from the outline.
+ */
+export function ClaudeChapterHeading({sessionId, id, title}: {sessionId: string; id: string; title: string}) {
+	const {hidden, renames} = useSessionChapters(sessionId);
+	if (hidden.includes(id)) return null;
+	return (
+		<ChapterHeading
+			id={id}
+			title={renames[id] ?? title}
+			onRename={(next) => {
+				renameChapter(sessionId, id, next);
+			}}
+		/>
 	);
 }
 

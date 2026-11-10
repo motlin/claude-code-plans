@@ -3,7 +3,7 @@
 import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
-import {jumpToMessage} from "../src/lib/jump-to-message";
+import {jumpToMessage, releaseEndFollow} from "../src/lib/jump-to-message";
 import type {SessionLine} from "../src/lib/sessions";
 import {CHAT_COLUMN_CLASS} from "../src/lib/transcript-width";
 
@@ -263,6 +263,36 @@ describe("SessionChat initial scrolling", () => {
 		}).toStrictEqual({
 			scrollIntoViewCalls: [],
 			scrollToCalls: [[{top: 10_000}], [{top: 10_000}]],
+		});
+	});
+
+	it("stops following the end once a jump releases it", () => {
+		const view = render(
+			<SessionChat
+				sessionId="session-100"
+				initialScrollKey="history-entry-release"
+				lines={messages(100)}
+				toolResultMap={new Map()}
+			/>,
+		);
+		const resize = () => {
+			act(() => {
+				observerFor(view.container.firstElementChild!).resize();
+			});
+			act(flushAnimationFrames);
+		};
+		act(flushAnimationFrames);
+		const initial = scrollTo.mock.calls.length;
+		resize();
+		const followed = scrollTo.mock.calls.length - initial;
+		act(() => {
+			releaseEndFollow(document.documentElement);
+		});
+		resize();
+
+		expect({followed, afterRelease: scrollTo.mock.calls.length - initial - followed}).toStrictEqual({
+			followed: 1,
+			afterRelease: 0,
 		});
 	});
 
