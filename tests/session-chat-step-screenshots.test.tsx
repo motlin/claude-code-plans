@@ -394,6 +394,49 @@ describe("tool-row screenshot viewer", () => {
 	});
 });
 
+/** Obviously fake: a GitHub-token-shaped run of A's. */
+const FAKE_GH = `ghp_${"A".repeat(36)}`;
+/** A right-to-left override and a zero-width space, which upstream's Iv strips from tool labels. */
+const CONTROLS = "\u202E\u200B";
+const MASKED_CAPTION = "Read ghp_AAAA••••••••••••••••••••••••••••••••.png";
+
+describe("tool-row screenshot captions mask secrets (upstream Iv)", () => {
+	/** The group records with the Read's file named after a fake token and display controls. */
+	function secretRecords(): unknown[] {
+		const records = groupRecords() as {message: {content: {input?: Record<string, unknown>}[]}}[];
+		const read = records[0]!.message.content[1]!;
+		read.input = {file_path: `/repo/shots/${FAKE_GH}${CONTROLS}.png`};
+		return records;
+	}
+
+	it("masks the strip caption, its preview card and its viewer caption and hover title", async () => {
+		const container = renderTranscript(secretRecords());
+		expect(mediaSlots(container).map((slot) => slot.captions)).toStrictEqual([[MASKED_CAPTION]]);
+
+		const thumb = container.querySelector<HTMLElement>('[data-cds-row-media] button[aria-label="Screenshot"]')!;
+		fireEvent.focus(thumb);
+		const preview = await screen.findByText(MASKED_CAPTION, {selector: "[data-screenshot-preview] bdi"});
+		expect(preview.textContent).toBe(MASKED_CAPTION);
+
+		fireEvent.click(thumb);
+		const dialog = await screen.findByRole("dialog", {name: "Image preview"});
+		const caption = dialog.querySelector("bdi");
+		expect({
+			caption: caption?.textContent,
+			title: caption?.getAttribute("title"),
+			zoom: dialog.querySelector('[data-viewer-slide][role="button"]')?.getAttribute("aria-label"),
+			raw: [container.querySelector("[data-cds-row-media]"), dialog].some((node) =>
+				node?.innerHTML.includes(FAKE_GH),
+			),
+		}).toStrictEqual({
+			caption: MASKED_CAPTION,
+			title: MASKED_CAPTION,
+			zoom: `Zoom image: ${MASKED_CAPTION}`,
+			raw: false,
+		});
+	});
+});
+
 /**
  * Browser-MCP screenshot specimens, shaped like real `~/.claude/projects` records (ids
  * and tab details anonymised, the jpeg cut to a stub). Upstream draws every tool's

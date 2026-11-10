@@ -5902,14 +5902,17 @@ const ROW_MEDIA_CLASS = "order-last ms-auto inline-flex h-[1lh] shrink-0 items-c
 /**
  * A screenshot's caption: the step label its row shows, verb then subject
  * ("Read input-debug.png"), as upstream joins `[title ?? displayName, subject]`.
+ * Masked and stripped of display controls like the row's own label (`Iv`), so
+ * the strip, its preview card and the viewer never show a secret. The caption
+ * is plain text everywhere it is drawn, so there is no link to drop.
  */
 function screenshotCaption(call: ClientToolCall): string {
 	const label = toolLabel(call);
-	if (label.doneLabel !== undefined) return label.doneLabel;
+	if (label.doneLabel !== undefined) return stripControlsAndMask(label.doneLabel);
 	const subject = FILE_PARAM_TOOLS.has(call.name)
 		? (call.param.split("/").pop() ?? call.param)
 		: (label.meta ?? call.param);
-	return [label.verb, subject].filter((part) => part !== "").join(" ");
+	return stripControlsAndMask([label.verb, subject].filter((part) => part !== "").join(" "));
 }
 
 /** Where a step's screenshots sit in its group's strip, so its own strip keeps group-wide numbering. */
