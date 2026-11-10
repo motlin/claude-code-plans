@@ -371,6 +371,7 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: "v1",
+			chapters: [],
 		};
 		const tail: TranscriptData = {
 			records: [record("uuid-1"), record("uuid-2")],
@@ -380,6 +381,7 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: "v1",
+			chapters: [],
 		};
 		const fetchMock = vi.fn<typeof fetch>(async () => Promise.resolve(Response.json(tail)));
 		vi.stubGlobal("fetch", fetchMock);
@@ -413,6 +415,7 @@ describe("ClaudeEventsProvider SSE reconnect", () => {
 				hiddenUuids: [],
 				cuts: [],
 				chainVersion: "v1",
+				chapters: [],
 			});
 		});
 		expect(fetchMock.mock.calls.map(([url]) => String(url))).toStrictEqual([
@@ -625,6 +628,7 @@ describe("ClaudeEventsProvider transcript rewritten", () => {
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: "v-1",
+			chapters: [],
 		});
 		const fresh = window(["u-2", "u-4"], 2);
 		vi.spyOn(globalThis, "fetch").mockImplementation(async () =>

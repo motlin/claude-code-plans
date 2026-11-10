@@ -424,6 +424,10 @@ html[data-interface-font="dyslexic"] {
 	--text-body-regular: var(--upstream-text-body);
 	--text-body-regular--line-height: var(--upstream-leading-body);
 	--text-body-regular--font-weight: 400;
+	/* Upstream text-body-semibold: text-body at weight 600 (the transcript's chapter headings). */
+	--text-body-semibold: var(--upstream-text-body);
+	--text-body-semibold--line-height: var(--upstream-leading-body);
+	--text-body-semibold--font-weight: 600;
 	/* Upstream text-prose: 14px/20px compact, 16px/24px comfortable (the user paragraph). */
 	--text-prose: var(--upstream-text-prose);
 	--text-prose--line-height: var(--upstream-leading-prose);

@@ -42,6 +42,7 @@ function transcript(records: TranscriptRecord[], startIndex: number): Transcript
 		hiddenUuids: [],
 		cuts: [],
 		chainVersion: "v-1",
+		chapters: [],
 	};
 }
 

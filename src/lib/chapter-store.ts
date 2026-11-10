@@ -93,6 +93,16 @@ export function removeChapter(sessionId: string, uuid: string): void {
 	);
 }
 
+/** Retitle a pinned chapter, as its inline heading's rename commits; an unpinned uuid is left alone. */
+export function renameChapter(sessionId: string, uuid: string, label: string): void {
+	const chapters = readChapters(sessionId);
+	if (!chapters.some((chapter) => chapter.uuid === uuid)) return;
+	writeChapters(
+		sessionId,
+		chapters.map((chapter) => (chapter.uuid === uuid ? {...chapter, label} : chapter)),
+	);
+}
+
 function onStorage(event: StorageEvent): void {
 	if (event.key === null || event.key === CHAPTER_STORAGE_KEY) {
 		for (const listener of listeners) listener();

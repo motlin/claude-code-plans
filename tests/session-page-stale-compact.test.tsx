@@ -157,6 +157,7 @@ function seededQueryClient(seed: Seed) {
 		hiddenUuids: [],
 		cuts: [],
 		chainVersion: "v1",
+		chapters: [],
 	});
 	queryClient.setQueryData(sessionSubagentsQueryOptions(SESSION_ID).queryKey, []);
 	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, seed.herdr ?? {panes: [], writesEnabled: false});

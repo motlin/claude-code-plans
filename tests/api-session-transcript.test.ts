@@ -127,6 +127,40 @@ describe("GET /api/sessions/$id/transcript", () => {
 		expect(typeof body["chainVersion"]).toBe("string");
 	});
 
+	it("serves the chapters of the whole file, including one before the tail window", async () => {
+		const chapter = {
+			type: "assistant",
+			uuid: "a-chapter",
+			message: {
+				role: "assistant",
+				content: [
+					{
+						type: "tool_use",
+						id: "toolu_chapter",
+						name: "mcp__ccd_session__mark_chapter",
+						input: {title: "Opening"},
+					},
+				],
+			},
+		};
+		const records = [
+			chapter,
+			...Array.from({length: TRANSCRIPT_WINDOW_MAX_RECORDS + 5}, (_, i) => ({
+				type: "user",
+				uuid: `u-${i}`,
+				message: {role: "user", content: `m${i}`},
+			})),
+		];
+		seedSession("chaptered", records);
+
+		const body = (await (await getTranscript("chaptered")).json()) as Record<string, unknown>;
+
+		expect({startIndex: body["startIndex"], chapters: body["chapters"]}).toStrictEqual({
+			startIndex: 6,
+			chapters: [{id: "toolu_chapter", title: "Opening", uuid: "a-chapter", recordIndex: 0}],
+		});
+	});
+
 	it("ignores a malformed before parameter and serves the tail", async () => {
 		const records = Array.from({length: 3}, (_, i) => ({
 			type: "user",

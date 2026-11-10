@@ -42,6 +42,7 @@ import {
 	LiveSubagentNodeSchema,
 } from "../lib/domain-event-payload-schemas";
 import {toMdSlug} from "../lib/md-slug";
+import {appendClaudeChapters} from "../lib/session-chapters";
 import {isPrompt} from "../lib/transcript-chain";
 import {getSubagentLifecycleKey, toSubagentSessionId} from "../lib/subagents";
 import {isLiveSessionState, type ActivityState} from "../lib/session-state";
@@ -902,19 +903,22 @@ function mergeAppendedLines(
 ): void {
 	queryClient.setQueryData<TranscriptData>(queryKey, (old) => {
 		if (!old) return old;
-		return mergeTranscriptData(old, {
+		// The cached window always runs to the end of the JSONL, so appended
+		// lines start exactly where it stops.
+		const startIndex = transcriptEndIndex(old);
+		const merged = mergeTranscriptData(old, {
 			records: lines,
 			byteOffset: old.byteOffset,
-			// The cached window always runs to the end of the JSONL, so appended
-			// lines start exactly where it stops.
-			startIndex: transcriptEndIndex(old),
+			startIndex,
 			precedingMessageCount: old.precedingMessageCount,
 			// Only the server knows the whole file's chain, so an append hides
 			// nothing new until the next fetch recomputes it.
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: old.chainVersion,
+			chapters: [],
 		});
+		return {...merged, chapters: appendClaudeChapters(old.chapters, lines, startIndex)};
 	});
 }
 

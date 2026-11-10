@@ -94,6 +94,7 @@ const EMPTY_TRANSCRIPT: TranscriptData = {
 	hiddenUuids: [],
 	cuts: [],
 	chainVersion: "v1",
+	chapters: [],
 };
 
 class FakeObserver {

@@ -3,7 +3,14 @@
 import {act, renderHook} from "@testing-library/react";
 import {beforeEach, describe, expect, it} from "vite-plus/test";
 
-import {CHAPTER_STORAGE_KEY, readChapters, removeChapter, toggleChapter, useChapters} from "../src/lib/chapter-store";
+import {
+	CHAPTER_STORAGE_KEY,
+	readChapters,
+	removeChapter,
+	renameChapter,
+	toggleChapter,
+	useChapters,
+} from "../src/lib/chapter-store";
 import {installLocalStorage} from "./fake-storage";
 
 const INTRO = {uuid: "message-intro", label: "Set up the repo", recordIndex: 4};
@@ -48,6 +55,15 @@ describe("chapter store", () => {
 			chapters: readChapters("session-alice"),
 			stored: JSON.parse(localStorage.getItem(CHAPTER_STORAGE_KEY) ?? "null"),
 		}).toStrictEqual({chapters: [], stored: {}});
+	});
+
+	it("renames a pinned chapter in place and ignores an unpinned uuid", () => {
+		toggleChapter("session-alice", INTRO);
+		toggleChapter("session-alice", TESTS);
+		renameChapter("session-alice", INTRO.uuid, "Bootstrap");
+		renameChapter("session-alice", "message-missing", "Nothing");
+
+		expect(readChapters("session-alice")).toStrictEqual([{...INTRO, label: "Bootstrap"}, TESTS]);
 	});
 
 	it("re-renders subscribers when a chapter is pinned", () => {

@@ -210,6 +210,7 @@ async function renderSessionPage(
 		startIndex: START_INDEX,
 		precedingMessageCount: 0,
 		chainVersion: "v1",
+		chapters: [],
 	});
 	queryClient.setQueryData(sessionSubagentsQueryOptions(SESSION_ID).queryKey, []);
 	await renderInRouter(queryClient, <SessionPage sessionId={SESSION_ID} />);

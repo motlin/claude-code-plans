@@ -448,6 +448,37 @@ describe("assistant display-span actions", () => {
 		});
 	});
 
+	it("copies a chapter heading's title in its place in the turn", async () => {
+		const view = render(
+			chat([
+				text("example-first", "Example introduction."),
+				{
+					type: "assistant",
+					uuid: "example-chapter",
+					sessionId: "example-main",
+					message: {
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_example_chapter",
+								name: "mcp__ccd_session__mark_chapter",
+								input: {title: "Example chapter"},
+							},
+						],
+					},
+				},
+				text("example-last", "Example conclusion."),
+			]),
+		);
+		const footer = footers(view.container)[0]!;
+		fireEvent.click(button(footer, "Copy"));
+		await act(async () => {});
+		expect(vi.mocked(writeClipboardText).mock.calls.map(([plain]) => plain)).toStrictEqual([
+			"Example introduction.\n\nExample chapter\n\nExample conclusion.",
+		]);
+	});
+
 	it("freezes the focused DOM, text, endpoint, and timestamp until focus leaves", async () => {
 		const initial = [text("example-first", "Example first.")];
 		const view = render(chat(initial));

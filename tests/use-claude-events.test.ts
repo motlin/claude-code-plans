@@ -928,6 +928,7 @@ function makeTranscriptCache(overrides?: Partial<TranscriptData>): TranscriptDat
 		hiddenUuids: [],
 		cuts: [],
 		chainVersion: "v1",
+		chapters: [],
 		...overrides,
 	};
 }
@@ -986,7 +987,49 @@ describe("applySessionLinesAppended", () => {
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: "v1",
+			chapters: [],
 		});
+	});
+
+	it("adds an appended chapter call to the cached chapters and drops one a failed result removes", () => {
+		const queryClient = new QueryClient();
+		const early = {id: "toolu_early", title: "Early", uuid: "a-0", recordIndex: 0};
+		const failed = {id: "toolu_failed", title: "Failed", uuid: "a-1", recordIndex: 1};
+		queryClient.setQueryData(
+			sessionQueryKeys.transcript("sess-1"),
+			makeTranscriptCache({
+				records: [
+					{type: "user", uuid: "u-0"},
+					{type: "user", uuid: "u-1"},
+				],
+				chapters: [early, failed],
+			}),
+		);
+
+		applySessionLinesAppended(queryClient, "sess-1", {
+			sessionId: "sess-1",
+			lines: [
+				{
+					type: "user",
+					uuid: "r-1",
+					message: {
+						role: "user",
+						content: [{type: "tool_result", tool_use_id: "toolu_failed", content: "boom", is_error: true}],
+					},
+				},
+				{
+					type: "assistant",
+					uuid: "a-3",
+					message: {
+						role: "assistant",
+						content: [{type: "tool_use", id: "toolu_late", name: "MarkChapter", input: {title: "Late"}}],
+					},
+				},
+			],
+		});
+
+		const cached = queryClient.getQueryData<TranscriptData>(sessionQueryKeys.transcript("sess-1"))!;
+		expect(cached.chapters).toStrictEqual([early, {id: "toolu_late", title: "Late", uuid: "a-3", recordIndex: 3}]);
 	});
 
 	it("marks the api request log stale only when api request records are appended", () => {
@@ -1048,6 +1091,7 @@ describe("applySessionLinesAppended", () => {
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: "v1",
+			chapters: [],
 		});
 	});
 
@@ -1093,6 +1137,7 @@ describe("applySessionLinesAppended", () => {
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: "v1",
+			chapters: [],
 		});
 	});
 
@@ -1130,6 +1175,7 @@ describe("applySessionLinesAppended", () => {
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: "v1",
+			chapters: [],
 		});
 	});
 });

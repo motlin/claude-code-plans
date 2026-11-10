@@ -107,6 +107,10 @@ import {workflowCallName, workflowSummary} from "../lib/workflow-name";
 import {rewindLayout, type RewindMarkerPlacement} from "../lib/rewind-layout";
 import type {ToolUseBlock} from "../lib/schemas";
 import {coalesceSameTarget, runSuffix, sameTarget, toolBucket, type ToolBucket} from "../lib/tool-runs";
+import {chapterDisposition, isChapterTool, type ChapterDisposition} from "../lib/chapter-tool";
+import {ChapterHeading} from "./chapter-heading";
+import {estimatedRowHeight} from "../lib/transcript-row-estimate";
+import {renameChapter, useChapters, type Chapter} from "../lib/chapter-store";
 import {toolCardStage, toolGroupStage} from "../lib/tool-card-stage";
 import {AttachmentBanner, Banner} from "./attachment-banner";
 import {
@@ -470,7 +474,9 @@ function collectAssistantDisplaySpans(
 			continue;
 		}
 		if (line.type !== "assistant") continue;
-		const text = messageText(line);
+		// Upstream's turn copy writes a chapter as its title (`b8` `case"chapter"`).
+		const chapter = chapterLineDisposition(line, renderProps.toolResultMap);
+		const text = chapter?.kind === "heading" ? chapter.chapter.title : messageText(line);
 		if (current === undefined) {
 			current = {
 				key: `assistant-span-${line.lineIndex}`,
@@ -2045,6 +2051,23 @@ function isAssistantProseBlock(block: SessionContentBlock): boolean {
 	return narrationProse(block) !== null;
 }
 
+/**
+ * How a line holding a lone chapter tool call draws (see `chapterDisposition`), else null. CLI
+ * JSONL writes one content block per record, so a chapter call sharing a line with other blocks
+ * keeps the ordinary tool row.
+ */
+function chapterLineDisposition(
+	line: SessionLine,
+	toolResultMap: ReadonlyMap<string, ToolResultInfo>,
+): ChapterDisposition | null {
+	if (line.type !== "assistant") return null;
+	const content = line.message?.content;
+	if (!Array.isArray(content) || content.length !== 1) return null;
+	const [block] = content;
+	if (block?.type !== "tool_use" || !isChapterTool(block.name)) return null;
+	return chapterDisposition(block, toolResultMap.get(block.id));
+}
+
 function toolBucketOf(block: ToolUseBlock, toolResultMap: ReadonlyMap<string, ToolResultInfo>): ToolBucket {
 	const info = toolResultMap.get(block.id);
 	return toolBucket({
@@ -2090,6 +2113,9 @@ function toolOnlyBuckets(
 	if (line.type !== "assistant" || line.stopReason === "refusal") return null;
 	const content = line.message?.content;
 	if (!Array.isArray(content) || content.length === 0) return null;
+	// Upstream lifts a chapter out of its run (`g=null`), and a failed one draws as a lone row.
+	const chapter = chapterLineDisposition(line, toolResultMap);
+	if (chapter !== null) return chapter.kind === "failedTool" ? ["standalone"] : null;
 	const buckets: ToolBucket[] = [];
 	for (const b of content) {
 		if (b.type === "tool_use") buckets.push(toolBucketOf(b, toolResultMap));
@@ -2143,7 +2169,14 @@ function isToolResultOnlyUserLine(line: SessionLine): boolean {
 }
 
 /** Upstream claude.ai/code's `data-perf-row` value on each `[data-testid=transcript-row]`. */
-type TranscriptRowKind = "human" | "assistant_text" | "assistant_tool" | "assistant_thinking" | "assistant" | "marker";
+type TranscriptRowKind =
+	| "human"
+	| "assistant_text"
+	| "assistant_tool"
+	| "assistant_thinking"
+	| "assistant_other"
+	| "assistant"
+	| "marker";
 
 /** The upstream row type for a single line drawn as its own transcript row. */
 function transcriptRowKind(line: SessionLine): TranscriptRowKind {
@@ -2230,7 +2263,7 @@ interface VirtualRange {
 	endIndex: number;
 }
 
-export const ESTIMATED_TURN_HEIGHT_PIXELS = 320;
+export {ESTIMATED_TURN_HEIGHT_PIXELS} from "../lib/transcript-row-estimate";
 export const TRANSCRIPT_OVERSCAN_PIXELS = 320;
 export const INITIAL_MOUNTED_TURN_COUNT = 8;
 
@@ -3017,6 +3050,27 @@ function buildSessionListEntries(
 			continue;
 		}
 
+		const chapter = chapterLineDisposition(line, renderProps.toolResultMap);
+		if (chapter?.kind === "heading") {
+			prevVisibleType = "assistant";
+			entries.push({
+				key: `chapter-${chapter.chapter.id}`,
+				startRecordIndex: line.lineIndex,
+				isPrompt: false,
+				kind: "assistant_other",
+				assistantSpan: displaySpans?.get(line.lineIndex),
+				replyHead: line,
+				element: (
+					<>
+						<ChapterHeading id={chapter.chapter.id} title={chapter.chapter.title} />
+						{footerFor(line)}
+					</>
+				),
+			});
+			i++;
+			continue;
+		}
+
 		const undelivered = undeliveredRows.get(i);
 		if (undelivered !== undefined) {
 			prevVisibleType = "assistant";
@@ -3435,7 +3489,7 @@ function VirtualizedSessionEntries({
 		let total = 0;
 		const result = [total];
 		for (const entry of entries) {
-			total += measuredHeights.get(entry.key) ?? ESTIMATED_TURN_HEIGHT_PIXELS;
+			total += measuredHeights.get(entry.key) ?? estimatedRowHeight(entry.kind);
 			result.push(total);
 		}
 		return result;
@@ -3535,7 +3589,7 @@ function VirtualizedSessionEntries({
 			if (!entry) continue;
 			const height = row.getBoundingClientRect().height;
 			if (height === 0) continue;
-			const previousHeight = measuredHeightsRef.current.get(entry.key) ?? ESTIMATED_TURN_HEIGHT_PIXELS;
+			const previousHeight = measuredHeightsRef.current.get(entry.key) ?? estimatedRowHeight(entry.kind);
 			if (Math.abs(previousHeight - height) < 0.5) continue;
 			measuredHeightsRef.current.set(entry.key, height);
 			changed = true;
@@ -3588,7 +3642,7 @@ function VirtualizedSessionEntries({
 				const entry = entries[index];
 				if (!entry) continue;
 				const height = observation.borderBoxSize[0]?.blockSize ?? element.getBoundingClientRect().height;
-				const previousHeight = measuredHeightsRef.current.get(entry.key) ?? ESTIMATED_TURN_HEIGHT_PIXELS;
+				const previousHeight = measuredHeightsRef.current.get(entry.key) ?? estimatedRowHeight(entry.kind);
 				if (Math.abs(previousHeight - height) < 0.5) continue;
 				measuredHeightsRef.current.set(entry.key, height);
 				changed = true;
@@ -3918,6 +3972,7 @@ function SessionLineList({
 		});
 	}, []);
 	const {lines} = rewind;
+	const pinnedChapters = useChapters(renderProps.sessionId);
 	const renderRewindMarkers = (anchor: number) =>
 		rewind.markersBefore
 			.get(anchor)
@@ -3932,10 +3987,15 @@ function SessionLineList({
 			));
 	const entries = withClientRows(
 		withRewoundRowsGreyed(
-			buildSessionListEntries(lines, renderProps, verbose, verbose ? null : held, turnInProgress, archived, {
-				anchors: [...rewind.markersBefore.keys()].toSorted((a, b) => a - b),
-				render: renderRewindMarkers,
-			}),
+			withPinnedChapterHeadings(
+				buildSessionListEntries(lines, renderProps, verbose, verbose ? null : held, turnInProgress, archived, {
+					anchors: [...rewind.markersBefore.keys()].toSorted((a, b) => a - b),
+					render: renderRewindMarkers,
+				}),
+				lines,
+				pinnedChapters,
+				renderProps.sessionId,
+			),
 			rewind.greyed,
 		),
 		lines,
@@ -4091,6 +4151,7 @@ function isLineVisible(
 		showTranscriptOnly,
 		showThinking,
 		showTools,
+		toolResultMap,
 	}: Pick<
 		LineRenderProps,
 		| "showPassedHooks"
@@ -4100,6 +4161,7 @@ function isLineVisible(
 		| "showTranscriptOnly"
 		| "showThinking"
 		| "showTools"
+		| "toolResultMap"
 	>,
 	verbose: boolean,
 ): boolean {
@@ -4137,6 +4199,10 @@ function isLineVisible(
 		// UserEntry draws nothing for these in any mode, so an entry would only defeat the reply boundary.
 		if (kind === "tool-result-only" || kind === "slash-command-body") return false;
 	}
+	// A chapter heading is transcript content, not a tool, so hiding tools keeps it; a swallowed call never draws.
+	const chapter = chapterLineDisposition(line, toolResultMap);
+	if (chapter?.kind === "heading") return true;
+	if (chapter?.kind === "drop") return false;
 	if (!hasAssistantVisibleContent(line, showThinking, showTools)) return false;
 	return true;
 }
@@ -4850,6 +4916,54 @@ function clientRowEntries(
 }
 
 /** Greys the abandoned rows Verbose draws behind an open rewind marker. */
+/**
+ * Heads each pinned message's row with its chapter heading, which upstream draws just before the
+ * pinned item; inside the row, so the prompt/reply boundaries the rows were built with still hold.
+ */
+function withPinnedChapterHeadings(
+	entries: SessionListEntry[],
+	lines: readonly SessionLine[],
+	chapters: readonly Chapter[],
+	sessionId: string,
+): SessionListEntry[] {
+	if (chapters.length === 0) return entries;
+	const lineIndexByUuid = new Map<string, number>();
+	for (const line of lines) {
+		if ("uuid" in line && typeof line.uuid === "string") lineIndexByUuid.set(line.uuid, line.lineIndex);
+	}
+	const headingsByEntry = new Map<number, Chapter[]>();
+	for (const chapter of chapters) {
+		const at = lineIndexByUuid.get(chapter.uuid);
+		if (at === undefined) continue;
+		const entryIndex = entries.findIndex((entry) => entry.startRecordIndex <= at && at <= entry.endRecordIndex);
+		if (entryIndex === -1) continue;
+		headingsByEntry.set(entryIndex, [...(headingsByEntry.get(entryIndex) ?? []), chapter]);
+	}
+	if (headingsByEntry.size === 0) return entries;
+	return entries.map((entry, index) => {
+		const headings = headingsByEntry.get(index);
+		if (headings === undefined) return entry;
+		return {
+			...entry,
+			element: (
+				<>
+					{headings.map((chapter) => (
+						<ChapterHeading
+							key={chapter.uuid}
+							id={chapter.uuid}
+							title={chapter.label}
+							onRename={(title) => {
+								renameChapter(sessionId, chapter.uuid, title);
+							}}
+						/>
+					))}
+					{entry.element}
+				</>
+			),
+		};
+	});
+}
+
 function withRewoundRowsGreyed(entries: SessionListEntry[], greyed: ReadonlySet<number>): SessionListEntry[] {
 	if (greyed.size === 0) return entries;
 	return entries.map((entry) =>

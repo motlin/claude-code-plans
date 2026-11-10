@@ -80,6 +80,7 @@ function mockPagedHistory() {
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: "v1",
+			chapters: [],
 		};
 		return Promise.resolve(
 			new Response(JSON.stringify(page), {
@@ -98,6 +99,7 @@ const TAIL: TranscriptData = {
 	hiddenUuids: [],
 	cuts: [],
 	chainVersion: "v1",
+	chapters: [],
 };
 const EARLIER_PAGE: TranscriptData = {
 	records: [record(0), record(1)],
@@ -107,6 +109,7 @@ const EARLIER_PAGE: TranscriptData = {
 	hiddenUuids: [],
 	cuts: [],
 	chainVersion: "v1",
+	chapters: [],
 };
 
 describe("TranscriptHistoryLoader", () => {
@@ -132,6 +135,7 @@ describe("TranscriptHistoryLoader", () => {
 				hiddenUuids: [],
 				cuts: [],
 				chainVersion: "v1",
+				chapters: [],
 			});
 		});
 	});

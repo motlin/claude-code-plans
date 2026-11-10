@@ -14,6 +14,7 @@ import {
 	type TranscriptFileIndex,
 } from "./transcript-file-index";
 import type {TranscriptCut} from "./api/sessions";
+import type {ClaudeChapterEntry} from "./session-chapters";
 
 export {parseTranscriptLine} from "./transcript-file-index";
 
@@ -51,6 +52,8 @@ export interface StructuredTranscript {
 	cuts: TranscriptCut[];
 	/** See `transcriptChainVersion`. */
 	chainVersion: string;
+	/** Claude's chapters across the whole file, not just this window, minus those on abandoned branches. */
+	chapters: ClaudeChapterEntry[];
 }
 
 export interface TranscriptWindowOptions {
@@ -79,6 +82,7 @@ const EMPTY_TRANSCRIPT: StructuredTranscript = {
 	hiddenUuids: [],
 	cuts: [],
 	chainVersion: transcriptChainVersion([]),
+	chapters: [],
 };
 
 /**
@@ -168,6 +172,7 @@ export function readStructuredTranscript(
 			hiddenUuids,
 			cuts,
 			chainVersion: transcriptChainVersion(index.abandoned.cuts),
+			chapters: index.chapters.filter((chapter) => index.hidden[chapter.recordIndex] !== true),
 		};
 	} catch {
 		return EMPTY_TRANSCRIPT;

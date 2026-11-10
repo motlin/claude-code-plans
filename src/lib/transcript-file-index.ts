@@ -4,6 +4,7 @@ import {isCountableMessageRecord} from "./message-count";
 import {asRecord} from "./narrow";
 import {SIGNATURE_BYTES} from "./incremental-jsonl";
 import {chainSkeleton, computeAbandoned, type AbandonedBranches} from "./transcript-chain";
+import {collectClaudeChapters, type ClaudeChapterEntry} from "./session-chapters";
 
 /**
  * A per-file index of a transcript JSONL: where each non-blank line sits, the
@@ -41,6 +42,8 @@ export interface TranscriptFileIndex {
 	abandoned: AbandonedBranches;
 	/** Whether each line's uuid is on an abandoned branch. */
 	hidden: boolean[];
+	/** Claude's chapters across the whole file (session-chapters.ts), abandoned branches included. */
+	chapters: ClaudeChapterEntry[];
 }
 
 export interface OpenTranscriptFile {
@@ -82,6 +85,7 @@ function appendLines(index: TranscriptFileIndex, buffer: Buffer, base: number): 
 			index.ends.push(base + end);
 			index.skeletons.push(record === undefined ? undefined : chainSkeleton(record));
 			index.countable.push(isCountableMessageRecord(record));
+			collectClaudeChapters(index.chapters, record, index.starts.length - 1);
 			index.partialTail = newline === -1;
 		}
 		if (newline === -1) break;
@@ -127,6 +131,7 @@ function build(fd: number, size: number, mtimeMs: number, ino: number): {index: 
 		countableBefore: [0],
 		abandoned: {hidden: new Set(), cuts: []},
 		hidden: [],
+		chapters: [],
 	};
 	appendLines(index, buffer, 0);
 	index.signature = signatureBefore(buffer, 0, index.consumed);
@@ -150,6 +155,8 @@ function extend(fd: number, index: TranscriptFileIndex, size: number, mtimeMs: n
 		index.ends.pop();
 		index.skeletons.pop();
 		index.countable.pop();
+		const popped = index.starts.length;
+		index.chapters = index.chapters.filter((chapter) => chapter.recordIndex !== popped);
 		index.partialTail = false;
 	}
 	appendLines(index, appended.subarray(index.consumed - from), index.consumed);

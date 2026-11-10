@@ -210,6 +210,7 @@ describe("readStructuredTranscript", () => {
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: transcriptChainVersion([]),
+			chapters: [],
 		});
 	});
 });
@@ -307,5 +308,44 @@ describe("readStructuredTranscript active chain", () => {
 		expect(transcript.hiddenUuids).toStrictEqual([]);
 		expect(transcript.cuts).toStrictEqual([]);
 		expect(transcript.chainVersion).toBe(transcriptChainVersion([]));
+	});
+
+	it("serves every chapter in the file, including those before the window, and not one on an abandoned branch", () => {
+		const chapter = (index: number, title: string, parentUuid: string) => ({
+			type: "assistant",
+			uuid: `a-${index}`,
+			parentUuid,
+			message: {
+				role: "assistant",
+				content: [
+					{type: "tool_use", id: `toolu_${index}`, name: "mcp__ccd_session__mark_chapter", input: {title}},
+				],
+			},
+		});
+		const prompt = (index: number, parentUuid: string | null, timestamp: string) => ({
+			type: "user",
+			uuid: `u-${index}`,
+			parentUuid,
+			timestamp,
+			message: {role: "user", content: `message ${index}`},
+		});
+		seedSession("chapters", [
+			prompt(0, null, "2026-10-20T10:00:00.000Z"),
+			chapter(1, "Early chapter", "u-0"),
+			prompt(2, "a-1", "2026-10-20T10:01:00.000Z"),
+			chapter(3, "Abandoned chapter", "u-2"),
+			prompt(4, "a-1", "2026-10-20T10:02:00.000Z"),
+			chapter(5, "Late chapter", "u-4"),
+		]);
+
+		const tail = readStructuredTranscript(db.index, "chapters", {maxRecords: 1});
+
+		expect({startIndex: tail.startIndex, chapters: tail.chapters}).toStrictEqual({
+			startIndex: 5,
+			chapters: [
+				{id: "toolu_1", title: "Early chapter", uuid: "a-1", recordIndex: 1},
+				{id: "toolu_5", title: "Late chapter", uuid: "a-5", recordIndex: 5},
+			],
+		});
 	});
 });

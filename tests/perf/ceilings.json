@@ -65,10 +65,10 @@
 		"raisedAt": "2026-11-09"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 753014,
+		"ceiling": 760586,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "raised from 742397 (2026-11-09): secret-pattern-masking T1-T4 adds src/lib/secret-mask.ts (upstream's shared-m-0 detector and masker: 13 credential patterns, the invisible-char shadow scan and windowed masking) plus the fence Reveal toggle, inline-code cloak and tool-output toggle. Every transcript text path (markdown fences and inline code, user turns, tool output, notices) masks before its first paint, so the masker can't sit behind a lazy boundary. Went to 753014; the 1% tolerance is unchanged.",
+		"reason": "raised from 753014 (2026-11-09): mark-chapter-tool-heading-row T1-T4 / session-chapters-toc T1 and T4 add the chapter tool classifier (src/lib/chapter-tool.ts), the inline ChapterHeading with its rename input, the whole-file chapter list folded on append (src/lib/session-chapters.ts) and pinned-chapter headings; the transcript draws chapter calls on first paint, so none of it can sit behind a lazy boundary. Went to 760586, 42 bytes past the old ceiling plus tolerance; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-09"
 	},
 	"bundle.session.raw": {
@@ -1073,11 +1073,11 @@
 		"tolerance": 0
 	},
 	"server.sessionOpen.small.transcript.resp.bytes": {
-		"ceiling": 500135,
+		"ceiling": 500149,
 		"unit": "bytes",
 		"tolerance": 0,
-		"reason": "Transcript responses now carry hiddenUuids, cuts and chainVersion (active-chain paging task 2): +61 bytes of empty arrays and a 16-hex version",
-		"raisedAt": "2026-10-24"
+		"reason": "raised from 500135 (2026-11-09): transcript responses now carry the whole file's Claude chapters (session-chapters-toc T1), +14 bytes for an empty chapters array",
+		"raisedAt": "2026-11-09"
 	},
 	"server.sessionOpen.small.transcript.sql.count": {
 		"ceiling": 1,
@@ -1145,11 +1145,11 @@
 		"tolerance": 0
 	},
 	"server.sessionOpen.typical.transcript.resp.bytes": {
-		"ceiling": 495857,
+		"ceiling": 495871,
 		"unit": "bytes",
 		"tolerance": 0,
-		"reason": "Transcript responses now carry hiddenUuids, cuts and chainVersion (active-chain paging task 2): +61 bytes of empty arrays and a 16-hex version",
-		"raisedAt": "2026-10-24"
+		"reason": "raised from 495857 (2026-11-09): transcript responses now carry the whole file's Claude chapters (session-chapters-toc T1), +14 bytes for an empty chapters array",
+		"raisedAt": "2026-11-09"
 	},
 	"server.sessionOpen.typical.transcript.sql.count": {
 		"ceiling": 1,

@@ -9,6 +9,7 @@ import {PrStatusSchema} from "../pr-status";
 import {SessionCostStateSchema} from "../session-cost";
 import {ApiRequestLogSchema} from "../api-request-log";
 import {ApiRequestMessagesSchema} from "../api-request-messages";
+import {ClaudeChapterEntrySchema} from "../session-chapters";
 import type {SessionStatusFilter} from "../session-groups";
 
 export const SessionSummaryStateSchema = z.enum(["idle", "working", "waiting", "unknown", "ended"]);
@@ -196,6 +197,8 @@ export const TranscriptResponse = z.object({
 	cuts: z.array(TranscriptCutSchema),
 	/** Identifies the set of cuts over the whole file; it changes only when the chain forks or switches branch. */
 	chainVersion: z.string(),
+	/** Claude's chapters across the whole file (session-chapters.ts), so the outline lists those on unloaded pages. */
+	chapters: z.array(ClaudeChapterEntrySchema),
 });
 export type TranscriptData = z.infer<typeof TranscriptResponse>;
 
@@ -267,6 +270,7 @@ export function mergeTranscriptData(primary: TranscriptData, secondary: Transcri
 		hiddenUuids: [...new Set([...primary.hiddenUuids, ...secondary.hiddenUuids])],
 		cuts: [...cuts.values()],
 		chainVersion: primary.chainVersion,
+		chapters: primary.chapters,
 	};
 }
 

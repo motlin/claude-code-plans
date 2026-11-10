@@ -32,6 +32,7 @@ function window_(startIndex: number, count: number, overrides?: Partial<Transcri
 		hiddenUuids: [],
 		cuts: [],
 		chainVersion: "v1",
+		chapters: [],
 		...overrides,
 	};
 }
@@ -50,6 +51,7 @@ describe("mergeTranscriptData", () => {
 			hiddenUuids: ["u-3", "u-2"],
 			cuts: [cut],
 			chainVersion: "v2",
+			chapters: [],
 		});
 	});
 
@@ -65,6 +67,7 @@ describe("mergeTranscriptData", () => {
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: "v1",
+			chapters: [],
 		});
 	});
 
@@ -89,6 +92,7 @@ describe("mergeTranscriptData", () => {
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: "v1",
+			chapters: [],
 		});
 	});
 
@@ -111,6 +115,7 @@ describe("mergeTranscriptData", () => {
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: cached.chainVersion,
+			chapters: [],
 		});
 		const appended = mergeTranscriptData(rebroadcast, {
 			records: [record(5), record(6)],
@@ -120,6 +125,7 @@ describe("mergeTranscriptData", () => {
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: rebroadcast.chainVersion,
+			chapters: [],
 		});
 
 		expect(appended).toStrictEqual({
@@ -130,6 +136,7 @@ describe("mergeTranscriptData", () => {
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: "v1",
+			chapters: [],
 		});
 	});
 });
@@ -162,6 +169,7 @@ describe("fetchEarlierTranscript", () => {
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: "v1",
+			chapters: [],
 		});
 	});
 
@@ -195,6 +203,7 @@ describe("fetchEarlierTranscript", () => {
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: "v1",
+			chapters: [],
 		});
 	});
 
@@ -278,6 +287,7 @@ describe("fetchEarlierTranscript", () => {
 			hiddenUuids: [],
 			cuts: [],
 			chainVersion: "v2",
+			chapters: [],
 		});
 	});
 

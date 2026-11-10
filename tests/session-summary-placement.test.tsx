@@ -203,6 +203,7 @@ function seedSession(
 		hiddenUuids: [],
 		cuts: [],
 		chainVersion: "v1",
+		chapters: [],
 	});
 	queryClient.setQueryData(sessionSubagentsQueryOptions(sessionId).queryKey, subagents);
 }
