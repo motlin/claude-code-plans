@@ -17,3 +17,14 @@ export function replaceHiddenChars(text: string): string {
 		return code === 127 ? "\u2421" : "\uFFFD";
 	});
 }
+
+/**
+ * Upstream's `sV` (shared-frame): every hidden character removed, a lone high surrogate kept. Callers use it
+ * to ask whether text has anything visible.
+ */
+export function stripHiddenChars(text: string): string {
+	return text.replace(HIDDEN_RE, (char) => {
+		const code = char.codePointAt(0) ?? 0;
+		return code >= 0xd800 && code <= 0xdbff ? char : "";
+	});
+}

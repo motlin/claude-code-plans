@@ -798,3 +798,13 @@
 	strong {
 	font-weight: 580;
 }
+
+/* Upstream's Prose `size="inherit"` (shared-80 `BE` wraps the thinking body's Engine in `K$ size:"inherit"`): the
+   prose takes its container's size, leading and ink, so a thinking step's body reads in the step's text-body
+   secondary type. `1em` and `1lh` resolve against the container; the doubled class outranks the transcript and
+   comfortable size rules above. */
+:global([data-prose-size="inherit"]) > .markdown.markdown {
+	--md-prose-size: 1em;
+	--md-prose-leading: 1lh;
+	color: inherit;
+}

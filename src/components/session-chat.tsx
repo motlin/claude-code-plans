@@ -37,6 +37,7 @@ import {prefillComposer, useHasComposer} from "../lib/context-attach";
 import {ErrorCardShell} from "./error-card-shell";
 import {ExternalTextLink} from "./external-text-link";
 import {ShimmerText} from "./shimmer-text";
+import {ThinkingStep} from "./thinking-step";
 import {FileRefTarget, ProseMarkdown} from "./file-refs";
 import {MarkdownArticle} from "./markdown-article";
 import {TruncatedContent} from "./truncated-content";
@@ -96,7 +97,6 @@ import {lastAssistantReplyEntry} from "../lib/stale-compact";
 import {collectTurnChanges, lastTurnChangesAnchor, type TurnChanges} from "../lib/turn-changes";
 import {taskDescriptionSegments} from "../lib/task-description-segments";
 import {agentCompletionOf, foldedTaskNotificationOf, taskNotificationOf} from "../lib/task-notification-lines";
-import {useSettings} from "./settings-context";
 import {ToastContext} from "./toast-context";
 import type {TranscriptMode} from "../lib/transcript-mode";
 import {hmrPersist} from "../lib/hmr-persist";
@@ -3857,6 +3857,28 @@ function heldImagesCallId(
 	return tail?.type === "tool_use" ? tail.id : null;
 }
 
+/**
+ * The expansion key of the thinking block a still-running turn is streaming: the last visible line's last block,
+ * past blank text, is thinking. Null once the turn settles or moves on.
+ */
+function liveThinkingKey(
+	lines: readonly SessionLine[],
+	renderProps: LineRenderProps,
+	verbose: boolean,
+	turnInProgress: boolean,
+): string | null {
+	if (!turnInProgress) return null;
+	const last = lines.findLast((line) => isLineVisible(line, renderProps, verbose));
+	if (last?.type !== "assistant") return null;
+	const content = last.message?.content;
+	if (!Array.isArray(content)) return null;
+	const index = content.findLastIndex((block) => !(block.type === "text" && block.text.trim() === ""));
+	return content[index]?.type === "thinking" ? `${last.uuid}:thinking:${index}` : null;
+}
+
+/** The thinking block the running turn is still streaming, drawn busy (see {@link liveThinkingKey}). */
+const LiveThinkingContext = createContext<string | null>(null);
+
 function SessionLineList({
 	lines: chainLines,
 	shouldScrollToEnd,
@@ -3921,20 +3943,23 @@ function SessionLineList({
 		renderClientRowCard,
 	);
 	const heldImagesCall = heldImagesCallId(lines, renderProps, verbose, turnInProgress);
+	const liveThinking = liveThinkingKey(lines, renderProps, verbose, turnInProgress);
 	const [expansionStore] = useState(() => new Map<string, ExpansionToggle>());
 	return (
 		<ExpansionStoreContext.Provider value={expansionStore}>
-			<HeldImagesCallContext.Provider value={heldImagesCall}>
-				<AssistantSpanInteractions held={held} setHeld={setHeld}>
-					<VirtualizedSessionEntries
-						key={measurementSource === undefined ? undefined : measurementKey}
-						entries={entries}
-						shouldScrollToEnd={shouldScrollToEnd}
-						measurementKey={measurementKey}
-						measurementSource={measurementSource}
-					/>
-				</AssistantSpanInteractions>
-			</HeldImagesCallContext.Provider>
+			<LiveThinkingContext.Provider value={liveThinking}>
+				<HeldImagesCallContext.Provider value={heldImagesCall}>
+					<AssistantSpanInteractions held={held} setHeld={setHeld}>
+						<VirtualizedSessionEntries
+							key={measurementSource === undefined ? undefined : measurementKey}
+							entries={entries}
+							shouldScrollToEnd={shouldScrollToEnd}
+							measurementKey={measurementKey}
+							measurementSource={measurementSource}
+						/>
+					</AssistantSpanInteractions>
+				</HeldImagesCallContext.Provider>
+			</LiveThinkingContext.Provider>
 		</ExpansionStoreContext.Provider>
 	);
 }
@@ -5246,28 +5271,26 @@ function BashEntry({
 }
 
 /**
- * Thinking text, rendered the way upstream claude.ai/code does: always visible,
- * inline italic body type in the 50%-ink layer behind a left rail. The right
- * padding reserves the gutter the hover-revealed controls sit in.
- *
- * The group is named `body` rather than upstream's `thinking` so the shared
- * `CopyButton` hover reveal applies unchanged.
+ * A thinking block as upstream's thinking step, keyed per block in the session's expansion store like the tool
+ * rows: open by default only in Verbose. Local extras: the duration becomes the row's tooltip and the DebugLink
+ * joins the Thinking actions toolbar.
  */
 function ThinkingBlock({
 	thinking,
+	expansionKey,
+	live,
 	sessionId,
 	sourceUuid,
 	durationMs,
 }: {
 	thinking: string;
+	expansionKey: string;
+	live: boolean;
 	sessionId: string;
 	sourceUuid: string | undefined;
 	durationMs: number | undefined;
 }) {
-	const {settings} = useSettings();
-	// Upstream's pr-6 fits the copy button alone. When DebugLink renders it
-	// shares the overlay, so the gutter has to grow or long lines run under it.
-	const gutterClass = settings.showDebug && sourceUuid ? "pr-10" : "pr-6";
+	const [expanded, toggleExpanded] = useModeExpansion(expansionKey);
 	// Upstream's $X confirms the copy with a "Copied" toast and relabels the
 	// button "Copied" for its copy hook's 2000ms default. Read the context
 	// directly so a SessionChat rendered without a ToastProvider still copies.
@@ -5275,34 +5298,40 @@ function ThinkingBlock({
 	const handleCopied = useCallback(() => {
 		toast?.({message: "Copied", kind: "success"});
 	}, [toast]);
+	const handleOpenChange = useCallback(
+		(open: boolean) => {
+			if (open !== expanded) toggleExpanded();
+		},
+		[expanded, toggleExpanded],
+	);
 	return (
-		<div className="border-l-2 border-t2 pl-3">
-			{durationMs !== undefined && (
-				<div className="text-xs text-t6 mb-1">Thought for {formatThinkingDuration(durationMs)}</div>
-			)}
-			<div className="group/body relative">
-				<div className={`text-body text-t6 italic whitespace-pre-wrap break-words ${gutterClass}`}>
-					{thinking}
-				</div>
-				<div className="absolute right-0 top-0 flex items-center gap-g3">
-					<DebugLink sessionId={sessionId} uuid={sourceUuid} />
+		<ThinkingStep
+			text={thinking}
+			open={expanded}
+			onOpenChange={handleOpenChange}
+			live={live}
+			title={durationMs === undefined ? undefined : `Thought for ${formatThinkingDuration(durationMs)}`}
+			actions={
+				<>
 					<CopyButton
 						text={toMarkdownQuote(thinking)}
 						label="Copy as quote"
 						copiedLabel="Copied"
+						size="xs"
 						resetMs={2000}
 						onCopied={handleCopied}
 					/>
-				</div>
-			</div>
-		</div>
+					<DebugLink sessionId={sessionId} uuid={sourceUuid} />
+				</>
+			}
+		/>
 	);
 }
 
 /**
  * A turn whose thinking the CLI withheld (`thinkingDisplay: "omitted"`): the
- * same rail and duration label as ThinkingBlock, with a placeholder where the
- * text would be and nothing to copy.
+ * legacy rail with its duration label, a placeholder where the text would be and
+ * nothing to copy.
  */
 function OmittedThinkingBlock({durationMs}: {durationMs: number | undefined}) {
 	return (
@@ -5549,6 +5578,7 @@ function ContentBlock({
 	showTools: boolean;
 	toolCalls: ClientToolCall[];
 }) {
+	const liveThinking = useContext(LiveThinkingContext);
 	const prose = block.type === "text" ? block.text : narrationProse(block);
 	if (typeof prose === "string") {
 		if (!prose.trim()) return null;
@@ -5565,9 +5595,12 @@ function ContentBlock({
 		if (!block.thinking.trim()) {
 			return line.thinkingOmitted === true ? <OmittedThinkingBlock durationMs={line.thinkingDurationMs} /> : null;
 		}
+		const expansionKey = `${line.uuid}:thinking:${blockIndex}`;
 		return (
 			<ThinkingBlock
 				thinking={block.thinking}
+				expansionKey={expansionKey}
+				live={liveThinking === expansionKey}
 				sessionId={sessionId}
 				sourceUuid={line.uuid}
 				durationMs={line.thinkingDurationMs}
