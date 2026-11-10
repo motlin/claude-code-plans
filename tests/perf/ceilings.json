@@ -51,11 +51,11 @@
 		"raisedAt": "2026-11-02"
 	},
 	"bundle.home.gzip": {
-		"ceiling": 466990,
+		"ceiling": 471780,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "raised from 462268 (2026-11-09): secret-pattern-masking T1-T4 adds src/lib/secret-mask.ts (upstream's shared-m-0 detector and masker: 13 credential patterns, the invisible-char shadow scan and windowed masking) plus the fence Reveal toggle, inline-code cloak and tool-output toggle. Every transcript text path (markdown fences and inline code, user turns, tool output, notices) masks before its first paint, so the masker can't sit behind a lazy boundary. Went to 466990; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-09"
+		"reason": "raised from 466990 (2026-11-10): tool-output-details-for-claude-fold T1-T5 / tool-output-body-kinds T1-T5 rebuild the generic tool body (KeyValueCard): the output classifier (src/lib/tool-output-shape.ts), the body kind classifier with the JSON pretty-printer and markdown sniff (src/lib/tool-body-kind.ts, src/lib/pretty-json.ts), the Input/Output sections with the saved/preview notes and the Details for Claude fold (tool-output-section.tsx), the JSON code tile and linkified plain body (tool-output-body.tsx, linkify-plain.tsx) and the headingsUnder markdown rule. The transcript reader classifies every result as it pairs it, and expanded tool bodies draw with no lazy boundary. Went to 471780; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-10"
 	},
 	"bundle.home.raw": {
 		"ceiling": 1404579,
@@ -65,11 +65,11 @@
 		"raisedAt": "2026-11-09"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 760586,
+		"ceiling": 770094,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "raised from 753014 (2026-11-09): mark-chapter-tool-heading-row T1-T4 / session-chapters-toc T1 and T4 add the chapter tool classifier (src/lib/chapter-tool.ts), the inline ChapterHeading with its rename input, the whole-file chapter list folded on append (src/lib/session-chapters.ts) and pinned-chapter headings; the transcript draws chapter calls on first paint, so none of it can sit behind a lazy boundary. Went to 760586, 42 bytes past the old ceiling plus tolerance; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-09"
+		"reason": "raised from 760586 (2026-11-10): tool-output-details-for-claude-fold T1-T5 / tool-output-body-kinds T1-T5 rebuild the generic tool body (KeyValueCard): the output classifier (src/lib/tool-output-shape.ts), the body kind classifier with the JSON pretty-printer and markdown sniff (src/lib/tool-body-kind.ts, src/lib/pretty-json.ts), the Input/Output sections with the saved/preview notes and the Details for Claude fold (tool-output-section.tsx), the JSON code tile and linkified plain body (tool-output-body.tsx, linkify-plain.tsx) and the headingsUnder markdown rule. The transcript reader classifies every result as it pairs it, and expanded tool bodies draw with no lazy boundary. Went to 770094; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-10"
 	},
 	"bundle.session.raw": {
 		"ceiling": 2281042,
@@ -577,16 +577,16 @@
 		"tolerance": 0
 	},
 	"hot.processTranscript.small.calls": {
-		"reason": "Notice subtypes on the hook-notice line (2026-11-09): informational and away_summary/agents_killed/memory_saved/model_consent_fallback notices now share one pushHookNotice merge helper, one extra call per fixture informational record. Ceiling raised to the measurement.",
-		"raisedAt": "2026-11-09",
-		"ceiling": 3576,
+		"reason": "Generic tool output shape (2026-11-10, tool-output-details-for-claude-fold / tool-output-body-kinds): every paired tool result goes through one addOutputShape call that screens for note, No output and JSON results before classifying, one extra call per fixture tool result. Ceiling raised to the measurement.",
+		"raisedAt": "2026-11-10",
+		"ceiling": 3656,
 		"unit": "calls",
 		"tolerance": 0
 	},
 	"hot.processTranscript.typical.calls": {
-		"reason": "Notice subtypes on the hook-notice line (2026-11-09): informational and away_summary/agents_killed/memory_saved/model_consent_fallback notices now share one pushHookNotice merge helper, one extra call per fixture informational record. Ceiling raised to the measurement.",
-		"raisedAt": "2026-11-09",
-		"ceiling": 2505,
+		"reason": "Generic tool output shape (2026-11-10, tool-output-details-for-claude-fold / tool-output-body-kinds): every paired tool result goes through one addOutputShape call that screens for note, No output and JSON results before classifying, one extra call per fixture tool result. Ceiling raised to the measurement.",
+		"raisedAt": "2026-11-10",
+		"ceiling": 2572,
 		"unit": "calls",
 		"tolerance": 0
 	},

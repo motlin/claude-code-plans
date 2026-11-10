@@ -15,34 +15,13 @@ import type {ThemedToken} from "@shikijs/core";
 import type {ToolRendererProps} from "./types";
 import {CollapsibleSection, CopyableBody, ErrorBorder, ExpandableBlock, NavigateUrl} from "./shared";
 import {MarkdownArticle} from "../markdown-article";
-import {looksLikeMarkdown} from "../../lib/client-markdown";
+import {classifyToolBody} from "../../lib/tool-body-kind";
 import {useHighlightedLines} from "../../hooks/use-shiki";
 import {defined} from "../../lib/defined";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function looksLikeJson(text: string): boolean {
-	const trimmed = text.trim();
-	if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
-		try {
-			JSON.parse(trimmed);
-			return true;
-		} catch {
-			return false;
-		}
-	}
-	return false;
-}
-
-function formatJson(text: string): string {
-	try {
-		return JSON.stringify(JSON.parse(text.trim()), null, 2);
-	} catch {
-		return text;
-	}
-}
 
 /**
  * Renders JSON with Shiki syntax highlighting, falling back to plain text
@@ -81,7 +60,9 @@ function HighlightedJson({code}: {code: string}) {
 function SmartResultContent({text, maxLines = 20}: {text: string; maxLines?: number}) {
 	if (!text) return null;
 
-	if (looksLikeMarkdown(text)) {
+	// Upstream's generic body kinds (`o_`), kept in this renderer's richer local frame.
+	const body = classifyToolBody(text, {allowMarkdown: true});
+	if (body.kind === "markdown") {
 		const lineCount = text.split("\n").length;
 		return (
 			<ExpandableBlock lineCount={lineCount} maxLines={maxLines}>
@@ -92,12 +73,11 @@ function SmartResultContent({text, maxLines = 20}: {text: string; maxLines?: num
 		);
 	}
 
-	if (looksLikeJson(text)) {
-		const formatted = formatJson(text);
-		const lineCount = formatted.split("\n").length;
+	if (body.kind === "json") {
+		const lineCount = body.text.split("\n").length;
 		return (
 			<ExpandableBlock lineCount={lineCount} maxLines={maxLines}>
-				<HighlightedJson code={formatted} />
+				<HighlightedJson code={body.text} />
 			</ExpandableBlock>
 		);
 	}

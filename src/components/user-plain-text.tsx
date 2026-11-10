@@ -2,6 +2,7 @@ import {lazy, type ReactNode, Suspense} from "react";
 
 import {defined} from "../lib/defined";
 import {maskSecrets} from "../lib/secret-mask";
+import {trimUrl} from "./linkify-plain";
 
 /** Upstream's user paragraph: `text-body` rewritten to `text-prose`, then `[unicode-bidi:plaintext]` appended. */
 export const USER_PARAGRAPH_CLASS =
@@ -14,17 +15,6 @@ const CODE_CLASS =
 const CODE_SPAN = /(?<!`)(`+)(?!`)([\s\S]+?)(?<!`)\1(?!`)/g;
 
 const URL_PATTERN = /https?:\/\/[^\s<>`]+/g;
-
-/** Trailing sentence punctuation, and a closing paren with no opener inside the URL, are not part of it. */
-function trimUrl(url: string): string {
-	let end = url.length;
-	for (;;) {
-		const last = url[end - 1];
-		if (last !== undefined && ".,;:!?'\"]".includes(last)) end--;
-		else if (last === ")" && url.slice(0, end).split("(").length < url.slice(0, end).split(")").length) end--;
-		else return url.slice(0, end);
-	}
-}
 
 /** How a linked URL is drawn: a user message's accent link, or upstream's TextLink (`dir="ltr"`, `rel="noreferrer"`). */
 type LinkStyle = "user" | "textLink";

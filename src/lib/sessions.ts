@@ -169,10 +169,15 @@ export interface ToolResultInfo {
 	sandboxed?: boolean | undefined;
 	/** The images the result returned, such as a Read of a .png or a browser screenshot. */
 	images?: readonly ToolResultImage[] | undefined;
+	/** Upstream's generic output shape, kept only when it carries a note or reads "No output"; see `classifyToolOutput`. */
+	outputShape?: ToolOutputShape | undefined;
+	/** The whole result pretty-printed, when it is JSON short enough for a code tile; `result` may be cut. */
+	resultJson?: string | undefined;
 }
 
 import type {ToolResultImage} from "./session-utils";
 import type {ToolResultMeta} from "./tool-labels";
+import type {ToolOutputShape} from "./tool-output-shape";
 import type {ParsedArtifact} from "./artifact-output";
 import type {ArtifactListEntry} from "./artifact-schemas";
 import type {PermissionDecision} from "./permission-decision";

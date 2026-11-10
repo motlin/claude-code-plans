@@ -11,5 +11,5 @@ export function ToolSearchRenderer({toolCall}: ToolRendererProps) {
 	if (query) params.push({key: "query", value: query});
 	if (maxResults !== undefined) params.push({key: "max_results", value: String(maxResults)});
 
-	return <KeyValueCard isError={isError} params={params} result={result ?? undefined} />;
+	return <KeyValueCard call={toolCall} isError={isError} params={params} result={result ?? undefined} />;
 }

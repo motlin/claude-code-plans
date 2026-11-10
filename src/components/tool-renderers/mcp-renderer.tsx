@@ -10,5 +10,5 @@ export function McpRenderer({toolCall}: ToolRendererProps) {
 		value: typeof value === "string" ? value : JSON.stringify(value),
 	}));
 
-	return <KeyValueCard isError={isError} params={params} result={result ?? undefined} />;
+	return <KeyValueCard call={toolCall} isError={isError} params={params} result={result ?? undefined} />;
 }

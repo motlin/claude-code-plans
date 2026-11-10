@@ -108,7 +108,7 @@ function ArtifactListBody({toolCall, artifacts}: {toolCall: ClientToolCall; arti
 		value: typeof value === "string" ? value : JSON.stringify(value),
 	}));
 	return (
-		<KeyValueCard params={params} copyText={toolCall.result}>
+		<KeyValueCard call={toolCall} params={params} copyText={toolCall.result}>
 			<div className="flex flex-col gap-g2">
 				{artifacts.map((artifact) => (
 					<a

@@ -105,10 +105,10 @@ function disclosures(container: HTMLElement): Disclosure[] {
 const EXPANDED_GROUP: Disclosure[] = [
 	{
 		expanded: "true",
-		body: "Searched pattern-1pattern: pattern-11 matchSearched pattern-2pattern: pattern-22 match",
+		body: "Searched pattern-1Inputpattern: pattern-1Output1 matchSearched pattern-2Inputpattern: pattern-2Output2 match",
 	},
-	{expanded: "true", body: "pattern: pattern-11 match"},
-	{expanded: "true", body: "pattern: pattern-22 match"},
+	{expanded: "true", body: "Inputpattern: pattern-1Output1 match"},
+	{expanded: "true", body: "Inputpattern: pattern-2Output2 match"},
 ];
 const COLLAPSED_GROUP: Disclosure[] = [{expanded: "false", body: null}];
 
@@ -142,7 +142,7 @@ describe("Verbose transcript mode pre-expands tool rows", () => {
 			expect(disclosures(container)).toStrictEqual([
 				{
 					expanded: "true",
-					body: "description: Find the schemaprompt: Look for schema.tsFound it in src/lib/db",
+					body: "Inputdescription: Find the schemaprompt: Look for schema.tsOutputFound it in src/lib/db",
 				},
 			]);
 		});

@@ -1,7 +1,5 @@
 import type {ToolRendererProps} from "./types";
 import {KeyValueCard} from "./shared";
-import {MarkdownArticle} from "../markdown-article";
-import {looksLikeMarkdown} from "../../lib/client-markdown";
 
 export function Context7Renderer({toolCall}: ToolRendererProps) {
 	const {input, result, isError} = toolCall;
@@ -12,16 +10,5 @@ export function Context7Renderer({toolCall}: ToolRendererProps) {
 		value: typeof value === "string" ? value : JSON.stringify(value),
 	}));
 
-	const resultText = result ?? "";
-	const isMarkdownResult = resultText.length > 0 && looksLikeMarkdown(resultText);
-
-	return (
-		<KeyValueCard isError={isError} params={params} result={isMarkdownResult ? undefined : resultText || undefined}>
-			{isMarkdownResult && (
-				<div className="text-xs text-primary leading-relaxed">
-					<MarkdownArticle markdown={resultText} />
-				</div>
-			)}
-		</KeyValueCard>
-	);
+	return <KeyValueCard call={toolCall} isError={isError} params={params} result={result ?? undefined} />;
 }

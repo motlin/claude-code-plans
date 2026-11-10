@@ -39,7 +39,12 @@ export function AgentRenderer({toolCall}: ToolRendererProps) {
 	return (
 		<>
 			{notes.length > 0 && <div className="mb-1 text-body text-secondary">{notes.join(" · ")}</div>}
-			<KeyValueCard isError={isError} params={params} result={displayResult ?? undefined} />
+			<KeyValueCard
+				call={{name: toolCall.name}}
+				isError={isError}
+				params={params}
+				result={displayResult ?? undefined}
+			/>
 		</>
 	);
 }

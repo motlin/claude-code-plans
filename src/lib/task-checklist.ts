@@ -12,7 +12,7 @@ const CC_MEMORY_TAG = /<cc-memory(?:\s[^>]*)?>|<\/cc-memory>/g;
 const WORD_CHAR = /\w/;
 
 /** Drop `<cc-memory>` tags, joining the words around one with a word joiner as upstream does. */
-function stripMemoryTags(text: string): string {
+export function stripMemoryTags(text: string): string {
 	return text.replace(CC_MEMORY_TAG, (tag: string, offset: number) =>
 		WORD_CHAR.test(text.charAt(offset - 1)) && WORD_CHAR.test(text.charAt(offset + tag.length)) ? "⁠" : "",
 	);

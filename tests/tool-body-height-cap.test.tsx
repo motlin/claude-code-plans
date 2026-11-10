@@ -46,33 +46,31 @@ function cappedClassNames(container: HTMLElement): string[] {
 afterEach(cleanup);
 
 describe("expanded tool bodies cap at 400px", () => {
-	it("wraps KeyValueCard content in one scroller, leaving the copy button outside it", () => {
+	it("clamps KeyValueCard input to max-h-40 and its output to 400px, leaving the copy button outside both", () => {
 		const {container} = render(
 			<KeyValueCard params={[{key: "pattern", value: "alice"}]} result="one\ntwo">
 				<div data-testid="extra-child" />
 			</KeyValueCard>,
 		);
 
+		const input = container.querySelector<HTMLElement>('[aria-label="Tool call input"]');
 		const scrollers = cappedElements(container);
-		const scroller = scrollers[0];
-		const column = scroller?.parentElement;
 
 		expect({
-			scrollerCount: scrollers.length,
-			scrollerClass: scroller?.className,
-			columnClass: column?.className,
-			holdsParams: scroller?.textContent.includes("pattern: alice") ?? false,
-			holdsResult: scroller?.textContent.includes("one\\ntwo") ?? false,
-			holdsChildren: scroller?.querySelector("[data-testid='extra-child']") !== null,
-			copyButtonInsideScroller: scroller?.querySelector("button[aria-label='Copy']") !== null,
+			inputClass: input?.className,
+			inputText: input?.textContent,
+			scrollers: scrollers.map((scroller) => [scroller.className, scroller.textContent]),
+			childAfterOutput:
+				container.querySelector("[data-testid='extra-child']")?.previousElementSibling?.textContent,
+			copyButtonInsideScroller: scrollers.some(
+				(scroller) => scroller.querySelector("button[aria-label='Copy']") !== null,
+			),
 			copyButtonInsideCard: container.querySelector("button[aria-label='Copy']") !== null,
 		}).toStrictEqual({
-			scrollerCount: 1,
-			scrollerClass: `${CAP} flex flex-col gap-g4`,
-			columnClass: "flex-1 min-w-0 flex flex-col gap-g4 text-body text-secondary whitespace-pre-wrap break-words",
-			holdsParams: true,
-			holdsResult: true,
-			holdsChildren: true,
+			inputClass: "max-h-40 overflow-y-auto",
+			inputText: "pattern: alice",
+			scrollers: [[CAP, "one\\ntwo"]],
+			childAfterOutput: "Outputone\\ntwo",
 			copyButtonInsideScroller: false,
 			copyButtonInsideCard: true,
 		});
@@ -185,7 +183,7 @@ describe("expanded tool bodies cap at 400px", () => {
 		]);
 	});
 
-	it("lets the Context7 markdown result ride the KeyValueCard scroller", () => {
+	it("lets the Context7 result ride the KeyValueCard output scroller", () => {
 		const {container} = render(
 			<Context7Renderer
 				toolCall={toolCall(
@@ -196,6 +194,6 @@ describe("expanded tool bodies cap at 400px", () => {
 			/>,
 		);
 
-		expect(cappedClassNames(container)).toStrictEqual([`${CAP} flex flex-col gap-g4`]);
+		expect(cappedClassNames(container)).toStrictEqual([CAP]);
 	});
 });

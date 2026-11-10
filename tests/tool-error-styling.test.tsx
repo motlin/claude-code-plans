@@ -98,17 +98,23 @@ describe("failed tool bodies", () => {
 		});
 	});
 
-	it("keeps the successful KeyValueCard column secondary with the result below the params", () => {
+	it("keeps the successful KeyValueCard column secondary with the result in an Output section below the Input", () => {
 		const {container} = render(<KeyValueCard params={[{key: "pattern", value: "alice"}]} result="alice.ts" />);
 		const column = container.querySelector<HTMLElement>('[class*="flex-1"]');
-		const scroller = firstCapped(container);
 
 		expect({
 			columnClass: column?.className,
-			texts: [...(scroller?.children ?? [])].map((child) => child.textContent),
+			regions: [...container.querySelectorAll('[role="group"]')].map((region) => [
+				region.getAttribute("aria-label"),
+				region.textContent,
+			]),
 		}).toStrictEqual({
-			columnClass: "flex-1 min-w-0 flex flex-col gap-g4 text-body text-secondary whitespace-pre-wrap break-words",
-			texts: ["pattern: alice", "alice.ts"],
+			columnClass:
+				"flex-1 min-w-0 flex flex-col justify-center gap-sm text-body text-secondary whitespace-pre-wrap break-words",
+			regions: [
+				["Tool call input", "pattern: alice"],
+				["Tool output", "alice.ts"],
+			],
 		});
 	});
 

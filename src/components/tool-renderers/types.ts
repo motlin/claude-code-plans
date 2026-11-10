@@ -1,6 +1,7 @@
 import type {ToolResultInfo} from "../../lib/sessions";
 import type {ToolUseBlock} from "../../lib/schemas";
 import type {ToolResultMeta} from "../../lib/tool-labels";
+import type {ToolOutputShape} from "../../lib/tool-output-shape";
 import {isArtifactCardCall, type ParsedArtifact} from "../../lib/artifact-output";
 import type {ArtifactListEntry} from "../../lib/artifact-schemas";
 import type {PermissionDecision} from "../../lib/permission-decision";
@@ -71,6 +72,10 @@ export interface ClientToolCall {
 	sandboxed?: boolean | undefined;
 	/** The images the result returned; see `ToolResultInfo.images`. */
 	outputImages?: readonly ToolResultImage[] | undefined;
+	/** See `ToolResultInfo.outputShape`. */
+	outputShape?: ToolOutputShape | undefined;
+	/** See `ToolResultInfo.resultJson`. */
+	resultJson?: string | undefined;
 	/** The input failed the tool's schema, so the call renders raw under a generic label. */
 	invalidInput?: true | undefined;
 	/** When the assistant record that made the call was written, for an in-flight row's elapsed time. */
@@ -271,6 +276,8 @@ export function buildClientToolCall(
 		if (resultInfo.permission !== undefined) call.permission = resultInfo.permission;
 		if (resultInfo.sandboxed !== undefined) call.sandboxed = resultInfo.sandboxed;
 		if (resultInfo.images !== undefined) call.outputImages = resultInfo.images;
+		if (resultInfo.outputShape !== undefined) call.outputShape = resultInfo.outputShape;
+		if (resultInfo.resultJson !== undefined) call.resultJson = resultInfo.resultJson;
 	}
 
 	// Live failure override: if SSE told us this tool_use_id failed but the

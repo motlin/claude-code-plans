@@ -12,6 +12,8 @@ import {z} from "zod";
 import type {ToolResultInfo} from "./sessions";
 import type {TranscriptCut} from "./api/sessions";
 import {toolResultMetaFrom} from "./tool-labels";
+import {classifyToolOutput} from "./tool-output-shape";
+import {JSON_TILE_MAX_LINES, prettyJson} from "./pretty-json";
 import {formatModelName} from "./model-name";
 import {isRecord} from "./narrow";
 import {UsageLimitSchema} from "./usage-limit-notice";
@@ -790,6 +792,30 @@ function deduplicateCommandGroups(lines: ProcessedLine[], onFold?: CommandGroupF
  * tool_use was seen in this batch, or when its structured `toolUseResult`
  * matches the strict Artifact result schemas (the tool_use arrived earlier).
  */
+/**
+ * Upstream's generic tool body inputs that the 150-line `result` cut would lose: the output shape when it
+ * carries a note or reads "No output" (`classifyToolOutput`), and a JSON result pretty-printed in full when it
+ * fits a code tile.
+ */
+function addOutputShape(info: ToolResultInfo, name: string, resultText: string, toolUseResult: unknown): void {
+	// Only an empty, "(X completed with no output)" or tool-results output can carry a note or read "No output";
+	// screening here keeps the classifier off every other result.
+	if (resultText === "" || resultText.endsWith(" completed with no output)") || resultText.includes("tool-results")) {
+		const shape = classifyToolOutput({
+			name,
+			running: false,
+			output: resultText,
+			toolUseResult,
+			hasImages: (info.images?.length ?? 0) > 0,
+		});
+		if ("note" in shape || "status" in shape) info.outputShape = shape;
+	}
+	const first = resultText.trimStart().charAt(0);
+	if (first !== "{" && first !== "[") return;
+	const pretty = prettyJson(resultText);
+	if (pretty !== undefined && pretty.split("\n").length <= JSON_TILE_MAX_LINES) info.resultJson = pretty;
+}
+
 function addArtifactDecoration(
 	info: ToolResultInfo,
 	resultText: string,
@@ -1187,6 +1213,7 @@ function* processRecordBatchSteps(
 							const images = extractToolResultImages(block.content);
 							if (images.length > 0) info.images = images;
 						}
+						if (!info.isError) addOutputShape(info, name ?? "", resultText, record.toolUseResult);
 						if (!info.isError) {
 							addArtifactDecoration(
 								info,

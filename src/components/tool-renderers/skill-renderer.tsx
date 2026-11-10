@@ -11,5 +11,5 @@ export function SkillRenderer({toolCall}: ToolRendererProps) {
 	if (skill) params.push({key: "skill", value: skill});
 	if (args) params.push({key: "args", value: args});
 
-	return <KeyValueCard isError={isError} params={params} result={result ?? undefined} />;
+	return <KeyValueCard call={toolCall} isError={isError} params={params} result={result ?? undefined} />;
 }

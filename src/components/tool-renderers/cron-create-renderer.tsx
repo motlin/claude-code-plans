@@ -14,5 +14,12 @@ export function CronCreateRenderer({toolCall}: ToolRendererProps) {
 	if (recurring !== undefined) params.push({key: "recurring", value: String(recurring)});
 	if (durable !== undefined) params.push({key: "durable", value: String(durable)});
 
-	return <KeyValueCard isError={toolCall.isError} params={params} result={toolCall.result ?? undefined} />;
+	return (
+		<KeyValueCard
+			call={toolCall}
+			isError={toolCall.isError}
+			params={params}
+			result={toolCall.result ?? undefined}
+		/>
+	);
 }

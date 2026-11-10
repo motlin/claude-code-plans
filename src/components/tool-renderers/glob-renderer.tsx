@@ -11,5 +11,5 @@ export function GlobRenderer({toolCall}: ToolRendererProps) {
 	if (pattern) params.push({key: "pattern", value: pattern});
 	if (path) params.push({key: "path", value: path});
 
-	return <KeyValueCard isError={isError} params={params} result={result ?? undefined} />;
+	return <KeyValueCard call={toolCall} isError={isError} params={params} result={result ?? undefined} />;
 }

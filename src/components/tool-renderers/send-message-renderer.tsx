@@ -12,5 +12,12 @@ export function SendMessageRenderer({toolCall}: ToolRendererProps) {
 	if (summary) params.push({key: "summary", value: summary});
 	if (message) params.push({key: "message", value: message});
 
-	return <KeyValueCard isError={toolCall.isError} params={params} result={toolCall.result ?? undefined} />;
+	return (
+		<KeyValueCard
+			call={toolCall}
+			isError={toolCall.isError}
+			params={params}
+			result={toolCall.result ?? undefined}
+		/>
+	);
 }

@@ -3836,6 +3836,19 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	}
 }
 
+/* Upstream's `.epitaxy-root .epitaxy-code-chip` (c19e90103): a mono path chip one pixel under the body size on
+   the alpha-1 wash, as the tool output notes draw their saved file. */
+.epitaxy-code-chip {
+	font-family: var(--font-mono);
+	font-size: calc(var(--text-body) - 1px);
+	background: var(--color-alpha-1);
+	color: var(--code-chip-ink, var(--upstream-text-primary));
+	border-radius: 4px;
+	padding-block: 1px;
+	padding-inline: 2px;
+	line-height: 1.4;
+}
+
 /* Upstream Settings ▸ Code font size: the --epitaxy-code-* vars on <html> only reach the code tokens
    inside upstream's four hook classes, so chrome text-code (composer, sidebar, inline chips) stays at
    the density default. --code-size / --code-leading are unset by default so hardcoded consumers keep

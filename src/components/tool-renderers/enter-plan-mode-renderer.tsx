@@ -20,5 +20,5 @@ export function EnterPlanModeRenderer({toolCall}: ToolRendererProps) {
 	const isBoilerplate = !result || result === "success" || result.startsWith(INSTRUCTION_RESULT_PREFIX);
 	if (!toolCall.isError && isBoilerplate) return null;
 
-	return <KeyValueCard isError={toolCall.isError} params={[]} result={result} />;
+	return <KeyValueCard call={toolCall} isError={toolCall.isError} params={[]} result={result} />;
 }

@@ -104,7 +104,7 @@ describe("SessionChat disclosure accessibility", () => {
 				ariaExpanded: "true",
 				controlsBody: true,
 				bodyClassName: "flow-root",
-				bodyText: "pattern: pattern-t11 match",
+				bodyText: "Inputpattern: pattern-t1Output1 match",
 			});
 		});
 
@@ -122,7 +122,7 @@ describe("SessionChat disclosure accessibility", () => {
 				ariaExpanded: "true",
 				controlsBody: true,
 				bodyClassName: "flow-root",
-				bodyText: "pattern: pattern-t11 match",
+				bodyText: "Inputpattern: pattern-t1Output1 match",
 			},
 			collapsedAgain: {
 				ariaExpanded: "false",

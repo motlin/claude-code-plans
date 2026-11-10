@@ -195,6 +195,65 @@ describe("processTranscript", () => {
 		});
 	});
 
+	it("carries upstream's output shape for saved, previewed and empty results, and full pretty JSON past the line cap", () => {
+		const saved =
+			"Error: result (75,442 characters across 1,903 lines) exceeds maximum allowed tokens. Output has been saved to /x/tool-results/mcp-1.txt.\nFormat: Plain text";
+		const preview =
+			"<persisted-output>\nOutput too large (74.1KB). Full output saved to: /x/tool-results/a.txt\n\nPreview (first 2KB):\nline1\nline2\n...\n</persisted-output>";
+		const bigJson = JSON.stringify(Array.from({length: 300}, (_, i) => i));
+		const call = (id: string, name: string) => ({type: "tool_use", id, name, input: {}});
+		const records = [
+			assistantRecord(
+				[
+					call("t-saved", "mcp__gmail__search"),
+					call("t-preview", "Grep"),
+					call("t-empty", "Glob"),
+					call("t-plain", "Grep"),
+					call("t-json", "mcp__db__query"),
+					call("t-error", "mcp__gmail__search"),
+				],
+				{uuid: "a-1"},
+			),
+			userRecord([{type: "tool_result", tool_use_id: "t-saved", content: saved}], {
+				uuid: "u-1",
+				toolUseResult: saved,
+			}),
+			userRecord([{type: "tool_result", tool_use_id: "t-preview", content: preview}], {uuid: "u-2"}),
+			userRecord([{type: "tool_result", tool_use_id: "t-empty", content: "(Glob completed with no output)"}], {
+				uuid: "u-3",
+			}),
+			userRecord([{type: "tool_result", tool_use_id: "t-plain", content: "a.ts"}], {uuid: "u-4"}),
+			userRecord([{type: "tool_result", tool_use_id: "t-json", content: bigJson.replaceAll(",", ",\n")}], {
+				uuid: "u-5",
+			}),
+			userRecord([{type: "tool_result", tool_use_id: "t-error", content: saved, is_error: true}], {
+				uuid: "u-6",
+				toolUseResult: saved,
+			}),
+		];
+		const map = processTranscript(records).toolResultMap;
+		const json = map.get("t-json");
+		expect({
+			saved: map.get("t-saved")?.outputShape,
+			preview: map.get("t-preview")?.outputShape,
+			empty: map.get("t-empty")?.outputShape,
+			plainKeys: Object.keys(map.get("t-plain") ?? {}),
+			jsonHead: json?.resultJson?.slice(0, 4),
+			jsonLines: json?.resultJson?.split("\n").length,
+			jsonResultTail: json?.result.split("\n").at(-1),
+			errorShape: map.get("t-error")?.outputShape,
+		}).toStrictEqual({
+			saved: {note: {kind: "saved", path: "/x/tool-results/mcp-1.txt"}, toldClaude: saved},
+			preview: {note: {kind: "preview", path: "/x/tool-results/a.txt"}, body: "line1\nline2"},
+			empty: {status: "empty"},
+			plainKeys: ["result", "isError", "resultUuid"],
+			jsonHead: "[\n  ",
+			jsonLines: 302,
+			jsonResultTail: "... (150 more lines)",
+			errorShape: undefined,
+		});
+	});
+
 	it("carries the sandboxed flag onto the tool result", () => {
 		const records = [
 			assistantRecord([{type: "tool_use", id: "tool-1", name: "Bash", input: {command: "ls"}}], {uuid: "a-1"}),

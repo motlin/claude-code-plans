@@ -96,13 +96,14 @@ function regions(container: HTMLElement): Region[] {
 }
 
 describe("expanded tool bodies expose labelled, focusable scroll regions", () => {
-	it("names an expanded Skill row's scroller 'Tool call details'", async () => {
+	it("names an expanded Skill row's input scroller 'Tool call input' and its output 'Tool output'", async () => {
 		const container = renderTranscript(oneToolCall("Skill", {skill: "alice-skill"}, "Launching skill"));
 		fireEvent.click(container.querySelector('[role="button"]')!);
 
 		await waitFor(() => {
 			expect(regions(container)).toStrictEqual([
-				{label: "Tool call details", tabIndex: 0, text: "skill: alice-skillLaunching skill"},
+				{label: "Tool call input", tabIndex: 0, text: "skill: alice-skill"},
+				{label: "Tool output", tabIndex: 0, text: "Launching skill"},
 			]);
 		});
 	});

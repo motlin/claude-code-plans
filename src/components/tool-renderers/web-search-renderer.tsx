@@ -17,5 +17,5 @@ export function WebSearchRenderer({toolCall}: ToolRendererProps) {
 		params.push({key: "blocked_domains", value: blockedDomains.join(", ")});
 	}
 
-	return <KeyValueCard isError={isError} params={params} result={result ?? undefined} />;
+	return <KeyValueCard call={toolCall} isError={isError} params={params} result={result ?? undefined} />;
 }

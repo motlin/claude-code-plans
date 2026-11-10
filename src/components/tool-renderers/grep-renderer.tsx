@@ -21,5 +21,5 @@ export function GrepRenderer({toolCall}: ToolRendererProps) {
 	if (caseInsensitive) params.push({key: "-i", value: "true"});
 	if (headLimit !== undefined) params.push({key: "head_limit", value: String(headLimit)});
 
-	return <KeyValueCard isError={isError} params={params} result={result ?? undefined} />;
+	return <KeyValueCard call={toolCall} isError={isError} params={params} result={result ?? undefined} />;
 }

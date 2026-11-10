@@ -6,7 +6,6 @@ import {
 	renderInlineMarkdownToHtml,
 	renderMarkdownToHtml,
 	renderMarkdownWithHighlighting,
-	looksLikeMarkdown,
 	renderArtifactLinkCard,
 	fileRefTexts,
 } from "../src/lib/client-markdown";
@@ -57,44 +56,6 @@ describe("renderInlineMarkdownToHtml", () => {
 		expect(renderInlineMarkdownToHtml("see https://example.com")).toBe(
 			'see <a href="https://example.com" target="_blank" rel="noreferrer">https://example.com</a>',
 		);
-	});
-});
-
-describe("looksLikeMarkdown", () => {
-	it("returns true for text with 2+ markdown indicators", () => {
-		// heading + bullet list
-		expect(looksLikeMarkdown("# Title\n- item 1\n- item 2")).toBe(true);
-		// bold + link
-		expect(looksLikeMarkdown("**bold text** and [a link](http://example.com)")).toBe(true);
-		// code fence + heading
-		expect(looksLikeMarkdown("# Code\n```\nconst x = 1;\n```")).toBe(true);
-		// bullet list + bold
-		expect(looksLikeMarkdown("- **bold item**\n- another item")).toBe(true);
-	});
-
-	it("returns false for text with fewer than 2 indicators", () => {
-		// just a bullet list (1 indicator)
-		expect(looksLikeMarkdown("- item 1\n- item 2\n- item 3")).toBe(false);
-		// just a heading (1 indicator)
-		expect(looksLikeMarkdown("# Title\nSome plain text here")).toBe(false);
-		// plain text (0 indicators)
-		expect(looksLikeMarkdown("Just some regular text on multiple lines\nMore text here")).toBe(false);
-	});
-
-	it("returns false for empty or whitespace text", () => {
-		expect(looksLikeMarkdown("")).toBe(false);
-		expect(looksLikeMarkdown("   ")).toBe(false);
-	});
-
-	it("detects computer tool results with markdown formatting", () => {
-		// Typical claude-in-chrome computer tool result with markdown
-		const computerResult = `## Page Content
-
-The page shows:
-- **Navigation bar** at the top
-- A search input field
-- [Documentation link](https://docs.example.com)`;
-		expect(looksLikeMarkdown(computerResult)).toBe(true);
 	});
 });
 
@@ -608,5 +569,19 @@ describe("markdown links to files", () => {
 		expect(renderMarkdownToHtml("[the guide](docs/guide.md#install)")).toBe(
 			'<p><a href="docs/guide.md#install">the guide</a></p>\n',
 		);
+	});
+});
+
+describe("headingsUnder (upstream na headingsUnder with c59c32499 Bi)", () => {
+	it("keeps each heading's tag and announces it below the page outline, one level per shallower level used", () => {
+		expect({
+			under: renderMarkdownToHtml("## A\n#### B\n## C", {headingsUnder: 3}),
+			plain: renderMarkdownToHtml("## A"),
+			deep: renderMarkdownToHtml("# A\n## B\n### C\n#### D", {headingsUnder: 3}),
+		}).toStrictEqual({
+			under: '<h2 aria-level="4">A</h2>\n<h4 aria-level="5">B</h4>\n<h2 aria-level="4">C</h2>\n',
+			plain: "<h2>A</h2>\n",
+			deep: '<h1 aria-level="4">A</h1>\n<h2 aria-level="5">B</h2>\n<h3 aria-level="6">C</h3>\n<h4 aria-level="6">D</h4>\n',
+		});
 	});
 });

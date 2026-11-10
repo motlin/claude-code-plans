@@ -1,21 +1,21 @@
-import {type ReactNode, useCallback, useContext, useMemo, useState, useSyncExternalStore} from "react";
-import {renderMarkdownWithHighlighting} from "../../lib/client-markdown";
-import {getHighlighterSync, getHighlighterVersion, subscribeHighlighter} from "../../hooks/use-shiki";
-import {useCodeThemes} from "../../hooks/use-code-themes";
+import {type ReactNode, useCallback, useContext, useMemo, useState} from "react";
 import {parseAnsiCodes} from "../../lib/ansi-codes";
 import {maskSecrets, maskUrlSecrets, secretToggleLabel} from "../../lib/secret-mask";
 import {type SecretReveal, useSecretReveal} from "./use-secret-reveal";
-import {handleCodeCopyClick} from "../../lib/code-copy";
 import {formatDuration} from "../../lib/format-duration";
 import {CHECK_ICON_PATH, COPY_ICON_PATH} from "../../lib/icon-paths";
 import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {FileRefTarget} from "../file-refs";
-import markdownStyles from "../markdown-article.module.css";
 import * as Collapsible from "../ui/collapsible";
 import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
 import {TOOL_OUTPUT_REGION} from "./tool-output-region";
 import {BlockedCallContext, type PolicyDenial} from "./blocked-call-context";
+import {InlineMarkdown} from "./inline-markdown";
+import {LabelledSection, ToolOutputSection} from "./tool-output-section";
+import type {ClientToolCall} from "./types";
+import {allowsMarkdownBody} from "../../lib/tool-body-kind";
+import {resolveToolOutput, toolOutputCopyText} from "../../lib/tool-output-resolve";
 
 type AnsiPart = ReturnType<typeof parseAnsiCodes>[number];
 
@@ -358,6 +358,8 @@ export function ChevronIcon({expanded, size = 14}: {expanded: boolean; size?: nu
 }
 
 const TOOL_CALL_DETAILS_REGION = {role: "group", "aria-label": "Tool call details", tabIndex: 0} as const;
+/** Upstream's `Z slot="details-input"`. */
+const TOOL_CALL_INPUT_REGION = {role: "group", "aria-label": "Tool call input", tabIndex: 0} as const;
 
 function CopyIcon({size}: {size: number}) {
 	return (
@@ -475,27 +477,6 @@ export function CollapsibleSection({
 	);
 }
 
-/**
- * Inline markdown renderer for KeyValueCard param values.
- * Memoizes the HTML output to avoid re-rendering on every parent render.
- */
-function InlineMarkdown({text}: {text: string}) {
-	const highlighterVersion = useSyncExternalStore(subscribeHighlighter, getHighlighterVersion, () => 0);
-	const codeThemes = useCodeThemes();
-	const html = useMemo(() => {
-		void highlighterVersion;
-		return renderMarkdownWithHighlighting(text, getHighlighterSync(), {codeThemes});
-	}, [text, codeThemes, highlighterVersion]);
-	return (
-		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- delegates clicks from the rendered links and copy buttons inside it, which are keyboard-reachable themselves
-		<div
-			className={markdownStyles["markdown"]}
-			onClick={handleCodeCopyClick}
-			dangerouslySetInnerHTML={{__html: html}}
-		/>
-	);
-}
-
 export interface KeyValueParam {
 	key: string;
 	value: string;
@@ -532,30 +513,51 @@ export function PolicyDenialReason({call}: {call: PolicyDenial}) {
 	);
 }
 
+/** The param rows: a muted mono key, a space, then the value as plain body text (upstream's generic row). */
+function ParamRows({params}: {params: KeyValueParam[]}) {
+	return (
+		<div className="text-secondary flex flex-col gap-g2">
+			{params.map((p) => (
+				<div key={p.key} className="break-words">
+					<span className="text-[12px]/[17px] font-mono opacity-70">{`${p.key}:`}</span>{" "}
+					{p.markdown ? <InlineMarkdown text={p.value} /> : p.value}
+				</div>
+			))}
+		</div>
+	);
+}
+
+/** The bits of a tool call the output section reads. */
+export type KeyValueCardCall = Pick<ClientToolCall, "name" | "outputShape" | "resultJson">;
+
 /**
  * Upstream-style key-value card used by Grep, Glob, Agent, WebFetch,
  * WebSearch, and most non-file tools.
  *
- * Layout:
+ * Layout (upstream `Q` content column > `qx`):
  *   flex w-full
- *     flex-1 column
- *       max-h-[400px] scroller (error + params + result + children)
- *     CopyButton (hover-visible, outside the scroller)
+ *     flex-1 column (gap-sm)
+ *       flex flex-col gap-sm
+ *         "Input" section: the param rows in a max-h-40 "Tool call input" scroller (only with params)
+ *         output section (`ToolOutputSection`), labelled "Output" and ruled only below an Input section
+ *         children
+ *     CopyButton (hover-visible; none for a paramless "No output")
  *
  * A failed call drops the column's `text-secondary` and renders the
- * result as a danger-red error message above the params, matching upstream.
+ * result as a danger-red error message above the params in one scroller, matching upstream's error branch.
  */
 export function KeyValueCard({
 	params,
 	result,
-	markdownResult,
+	call,
 	copyText,
 	isError,
 	children,
 }: {
 	params: KeyValueParam[];
 	result?: string | undefined;
-	markdownResult?: boolean | undefined;
+	/** The call the result belongs to: its name gates markdown, and its output shape and full JSON shape the body. */
+	call?: KeyValueCardCall | undefined;
 	/** Overrides the default params + result copy payload. */
 	copyText?: string | undefined;
 	/** Renders the result as the failure message: danger red, above the params. */
@@ -565,36 +567,70 @@ export function KeyValueCard({
 	// A blocked call's raw denial gives way to upstream's reason line (`kx`).
 	const blocked = useContext(BlockedCallContext);
 	const shownResult = blocked === null ? result : undefined;
-	const derivedCopyText = [...params.map((p) => `${p.key}: ${p.value}`), ...(shownResult ? [shownResult] : [])].join(
-		"\n",
+	const failed = isError === true || blocked !== null;
+	const outputShape = call?.outputShape;
+	const resultJson = call?.resultJson;
+	const allowMarkdown = call === undefined || allowsMarkdownBody(call.name);
+	const output = useMemo(
+		() =>
+			failed
+				? {}
+				: resolveToolOutput(outputShape ?? (shownResult ? {body: shownResult} : {}), {
+						allowMarkdown,
+						json: resultJson,
+					}),
+		[failed, outputShape, shownResult, allowMarkdown, resultJson],
 	);
-	const errorMessage = isError ? shownResult : undefined;
-	const body = isError ? undefined : shownResult;
+
+	if (failed) {
+		const derivedCopyText = [
+			...params.map((p) => `${p.key}: ${p.value}`),
+			...(shownResult ? [shownResult] : []),
+		].join("\n");
+		return (
+			<div className="flex w-full">
+				<div
+					className={`flex-1 min-w-0 flex flex-col gap-g4 text-body${isError ? "" : " text-secondary"} whitespace-pre-wrap break-words`}
+				>
+					<div {...TOOL_CALL_DETAILS_REGION} className="max-h-[400px] overflow-y-auto flex flex-col gap-g4">
+						{blocked !== null && <PolicyDenialReason call={blocked} />}
+						{isError && shownResult && <div className="text-danger-ink">{shownResult}</div>}
+						{params.length > 0 && <ParamRows params={params} />}
+						{children}
+					</div>
+				</div>
+				<CopyButton text={copyText ?? derivedCopyText} />
+			</div>
+		);
+	}
+
+	const hasParams = params.length > 0;
+	// Upstream `q_` over `I_` and `J_`: the input lines, a blank line, then the output's copy text.
+	const derivedCopyText = [
+		params.map((p) => `${p.key}: ${p.value}`).join("\n"),
+		toolOutputCopyText(output, shownResult),
+	]
+		.filter(Boolean)
+		.join("\n\n");
+	const copyButton =
+		!hasParams && output.status === "empty" ? null : <CopyButton text={copyText ?? derivedCopyText} />;
 
 	return (
 		<div className="flex w-full">
-			<div
-				className={`flex-1 min-w-0 flex flex-col gap-g4 text-body${isError ? "" : " text-secondary"} whitespace-pre-wrap break-words`}
-			>
-				<div {...TOOL_CALL_DETAILS_REGION} className="max-h-[400px] overflow-y-auto flex flex-col gap-g4">
-					{blocked !== null && <PolicyDenialReason call={blocked} />}
-					{errorMessage && <div className="text-danger-ink">{errorMessage}</div>}
-					{params.length > 0 && (
-						<div className="text-secondary flex flex-col gap-g2">
-							{params.map((p) => (
-								<div key={p.key} className="break-words">
-									{/* Upstream's generic row: a muted mono key, a space, then the value as plain body text. */}
-									<span className="text-[12px]/[17px] font-mono opacity-70">{`${p.key}:`}</span>{" "}
-									{p.markdown ? <InlineMarkdown text={p.value} /> : p.value}
-								</div>
-							))}
-						</div>
+			<div className="flex-1 min-w-0 flex flex-col justify-center gap-sm text-body text-secondary whitespace-pre-wrap break-words">
+				<div className="flex flex-col gap-sm">
+					{hasParams && (
+						<LabelledSection label="Input">
+							<div {...TOOL_CALL_INPUT_REGION} className="max-h-40 overflow-y-auto">
+								<ParamRows params={params} />
+							</div>
+						</LabelledSection>
 					)}
-					{body && (markdownResult ? <InlineMarkdown text={body} /> : <div>{body}</div>)}
+					<ToolOutputSection output={output} label={hasParams ? "Output" : undefined} />
 					{children}
 				</div>
 			</div>
-			<CopyButton text={copyText ?? derivedCopyText} />
+			{copyButton}
 		</div>
 	);
 }

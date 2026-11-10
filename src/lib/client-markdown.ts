@@ -47,6 +47,8 @@ interface MarkdownRenderOptions {
 	smartQuotes?: boolean;
 	/** Underline zoned clock times ("19:24 UTC") with the reader's local time, as upstream's assistant text does. */
 	zonedTimes?: boolean;
+	/** Upstream `headingsUnder`: headings keep their tag but announce as levels below this one; see `headingsUnder`. */
+	headingsUnder?: number;
 }
 
 /**
@@ -59,6 +61,7 @@ class MarkdownEnv {
 	readonly artifactTitles: ReadonlyMap<string, string> | undefined;
 	readonly smartQuotes: boolean;
 	readonly zonedTimes: boolean;
+	readonly headingsUnder: number | undefined;
 
 	constructor(options?: MarkdownRenderOptions) {
 		this.mdLinkBase = options?.mdLinkBase;
@@ -66,6 +69,7 @@ class MarkdownEnv {
 		this.artifactTitles = options?.artifactTitles;
 		this.smartQuotes = options?.smartQuotes === true;
 		this.zonedTimes = options?.zonedTimes === true;
+		this.headingsUnder = options?.headingsUnder;
 	}
 }
 
@@ -547,6 +551,22 @@ function isFileRefClose(meta: unknown): meta is {fileRefClose: string} {
 	return typeof meta === "object" && meta !== null && "fileRefClose" in meta && typeof meta.fileRefClose === "string";
 }
 
+/**
+ * Upstream `Bi`: under `headingsUnder`, a heading announces `aria-level` = under + 1 + the number of distinct
+ * shallower heading levels the document uses (capped at 6), so a tool body never joins the page's h1-h3 outline.
+ */
+function headingsUnder(state: StateCore): void {
+	const under = envOf(state.env)?.headingsUnder;
+	if (under === undefined) return;
+	const level = (token: Token) => Number(token.tag.slice(1));
+	const headings = state.tokens.filter((token) => token.type === "heading_open");
+	const used = new Set(headings.map(level));
+	for (const heading of headings) {
+		const shallower = [...used].filter((other) => other < level(heading)).length;
+		heading.attrSet("aria-level", String(Math.min(under + 1 + shallower, 6)));
+	}
+}
+
 /** The plugins and renderer overrides every cached instance shares. */
 function applyPlugins(instance: MarkdownIt): void {
 	instance.use(taskLists);
@@ -560,6 +580,7 @@ function applyPlugins(instance: MarkdownIt): void {
 	instance.core.ruler.push("smart_quotes", smartQuotes);
 	instance.core.ruler.push(ZONED_TIME_TOKEN, zonedTimes);
 	instance.core.ruler.push("mask_link_secrets", maskLinkText);
+	instance.core.ruler.push("headings_under", headingsUnder);
 	instance.renderer.rules[ZONED_TIME_TOKEN] = (tokens, idx) =>
 		defined(timeWithZone, "zoned time token before its parser loaded").zonedTimeHtml(
 			defined(tokens[idx], "zoned time token index").content,
@@ -802,14 +823,4 @@ export function renderMarkdownWithHighlighting(
 	if (!markdown.trim()) return "";
 	if (!highlighter) return renderMarkdownToHtml(markdown, options);
 	return getHighlightedMarkdownIt(highlighter, options).render(markdown, toEnv(options));
-}
-
-export function looksLikeMarkdown(text: string): boolean {
-	let indicators = 0;
-	if (/^#{1,6}\s/m.test(text)) indicators++;
-	if (text.includes("```")) indicators++;
-	if (/^\s*[-*]\s/m.test(text)) indicators++;
-	if (/\*\*[^*]+\*\*/.test(text)) indicators++;
-	if (/\[[^\]]+\]\([^)]+\)/.test(text)) indicators++;
-	return indicators >= 2;
 }

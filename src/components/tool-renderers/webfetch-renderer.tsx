@@ -13,5 +13,5 @@ export function WebFetchRenderer({toolCall}: ToolRendererProps) {
 	if (prompt) params.push({key: "prompt", value: prompt});
 	if (offset !== undefined) params.push({key: "offset", value: String(offset)});
 
-	return <KeyValueCard isError={isError} params={params} result={result ?? undefined} />;
+	return <KeyValueCard call={toolCall} isError={isError} params={params} result={result ?? undefined} />;
 }

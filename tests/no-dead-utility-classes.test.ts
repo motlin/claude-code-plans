@@ -67,6 +67,7 @@ const ALLOWLIST: Record<string, string> = {
 	"epitaxy-approval-actions": HOOK,
 	"epitaxy-approval-read-hint": HOOK,
 	"epitaxy-chat-panel": "upstream's chat panel class, which the session outline's gutter variants select on",
+	"epitaxy-code-card": HOOK,
 	"epitaxy-diff": HOOK,
 	"epitaxy-rail-lined": HOOK,
 	"epitaxy-reply-flash-accent": HOOK,
