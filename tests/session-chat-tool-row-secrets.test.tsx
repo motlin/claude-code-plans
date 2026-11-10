@@ -156,7 +156,7 @@ describe("tool row labels mask secrets (upstream Iv)", () => {
 	});
 });
 
-describe("settled group header masks secrets (upstream Iv)", () => {
+describe("settled group header keeps raw phrases (upstream c24951e9f)", () => {
 	function settled(path: string): HTMLElement {
 		return draw([
 			{id: "b1", name: "Bash", input: {command: "true"}},
@@ -167,28 +167,26 @@ describe("settled group header masks secrets (upstream Iv)", () => {
 		return {
 			label: container.querySelector("[data-cds-row-toggle]")?.textContent ?? null,
 			announcement: container.querySelector('[data-turn-status] [role="status"]')?.textContent ?? null,
-			fileRefs: container.querySelectorAll("[data-turn-status] > [data-cds-row] [data-file-ref]").length,
 			titles: [...container.querySelectorAll("[data-turn-status] [title]")].map((el) => el.getAttribute("title")),
 		};
 	}
 
-	it("masks a secret in the trailing file name and drops its link", () => {
-		const container = settled(`/repo/${FAKE_GH}${CONTROLS}.txt`);
+	it("keeps a secret raw in the phrases and drops the link only for the path's display controls", () => {
+		const name = `${FAKE_GH}${CONTROLS}.txt`;
+		const container = settled(`/repo/${name}`);
 		expect(texts(container)).toStrictEqual({
-			label: "Ran a command, read ghp_AAAA••••••••••••••••••••••••••••••••.txt",
-			announcement: "Ran a command, read ghp_AAAA••••••••••••••••••••••••••••••••.txt",
-			fileRefs: 0,
+			label: `Ran a command, read ${name}`,
+			announcement: `Ran a command, read ${name}`,
 			titles: [],
 		});
 	});
 
-	it("drops the file link and title when a secret sits in the file's directory", () => {
+	it("keeps the file link and hover path when a secret sits in the file's directory", () => {
 		const container = settled(`/repo/${FAKE_GH}/a.ts`);
 		expect(texts(container)).toStrictEqual({
-			label: "Ran a command, read a.ts",
+			label: "",
 			announcement: "Ran a command, read a.ts",
-			fileRefs: 0,
-			titles: [],
+			titles: [`/repo/${FAKE_GH}/a.ts`, `/repo/${FAKE_GH}/a.ts`],
 		});
 	});
 
@@ -197,7 +195,6 @@ describe("settled group header masks secrets (upstream Iv)", () => {
 		expect(texts(container)).toStrictEqual({
 			label: "",
 			announcement: "Ran a command, read a.ts",
-			fileRefs: 0,
 			titles: ["/repo/a.ts", "/repo/a.ts"],
 		});
 	});

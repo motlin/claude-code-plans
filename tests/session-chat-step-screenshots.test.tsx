@@ -396,43 +396,55 @@ describe("tool-row screenshot viewer", () => {
 
 /** Obviously fake: a GitHub-token-shaped run of A's. */
 const FAKE_GH = `ghp_${"A".repeat(36)}`;
-/** A right-to-left override and a zero-width space, which upstream's Iv strips from tool labels. */
+/** A right-to-left override and a zero-width space: display controls upstream's viewer title drops. */
 const CONTROLS = "\u202E\u200B";
-const MASKED_CAPTION = "Read ghp_AAAA••••••••••••••••••••••••••••••••.png";
 
-describe("tool-row screenshot captions mask secrets (upstream Iv)", () => {
-	/** The group records with the Read's file named after a fake token and display controls. */
-	function secretRecords(): unknown[] {
+describe("tool-row screenshot captions match upstream (Ka raw, CP viewer title)", () => {
+	/** The group records with the Read's file renamed. */
+	function renamedRecords(name: string): unknown[] {
 		const records = groupRecords() as {message: {content: {input?: Record<string, unknown>}[]}}[];
 		const read = records[0]!.message.content[1]!;
-		read.input = {file_path: `/repo/shots/${FAKE_GH}${CONTROLS}.png`};
+		read.input = {file_path: `/repo/shots/${name}`};
 		return records;
 	}
 
-	it("masks the strip caption, its preview card and its viewer caption and hover title", async () => {
-		const container = renderTranscript(secretRecords());
-		expect(mediaSlots(container).map((slot) => slot.captions)).toStrictEqual([[MASKED_CAPTION]]);
-
+	async function captionTexts(name: string) {
+		const container = renderTranscript(renamedRecords(name));
+		const slots = mediaSlots(container).map((slot) => slot.captions);
 		const thumb = container.querySelector<HTMLElement>('[data-cds-row-media] button[aria-label="Screenshot"]')!;
 		fireEvent.focus(thumb);
-		const preview = await screen.findByText(MASKED_CAPTION, {selector: "[data-screenshot-preview] bdi"});
-		expect(preview.textContent).toBe(MASKED_CAPTION);
-
+		const preview = await screen.findByText(`Read ${name}`, {selector: "[data-screenshot-preview] bdi"});
 		fireEvent.click(thumb);
 		const dialog = await screen.findByRole("dialog", {name: "Image preview"});
 		const caption = dialog.querySelector("bdi");
-		expect({
+		return {
+			slots,
+			preview: preview.textContent,
 			caption: caption?.textContent,
-			title: caption?.getAttribute("title"),
+			title: caption?.getAttribute("title") ?? null,
 			zoom: dialog.querySelector('[data-viewer-slide][role="button"]')?.getAttribute("aria-label"),
-			raw: [container.querySelector("[data-cds-row-media]"), dialog].some((node) =>
-				node?.innerHTML.includes(FAKE_GH),
-			),
-		}).toStrictEqual({
-			caption: MASKED_CAPTION,
-			title: MASKED_CAPTION,
-			zoom: `Zoom image: ${MASKED_CAPTION}`,
-			raw: false,
+		};
+	}
+
+	it("builds the caption raw, secret and controls included, and drops the controls from the viewer title", async () => {
+		const name = `${FAKE_GH}${CONTROLS}.png`;
+		expect(await captionTexts(name)).toStrictEqual({
+			slots: [[`Read ${name}`]],
+			preview: `Read ${name}`,
+			caption: `Read ${name}`,
+			title: `Read ${FAKE_GH}.png`,
+			zoom: `Zoom image: Read ${name}`,
+		});
+	});
+
+	it("gives the viewer caption no hover title when it holds right-to-left text", async () => {
+		const name = "\u05E9\u05DC\u05D5\u05DD.png";
+		expect(await captionTexts(name)).toStrictEqual({
+			slots: [[`Read ${name}`]],
+			preview: `Read ${name}`,
+			caption: `Read ${name}`,
+			title: null,
+			zoom: `Zoom image: Read ${name}`,
 		});
 	});
 });

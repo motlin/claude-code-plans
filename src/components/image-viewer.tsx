@@ -25,6 +25,7 @@ import {
 } from "../lib/image-zoom";
 import {DialogPopup} from "./ui/dialog-popup";
 import {morph, setMorphName} from "../lib/image-viewer-morph";
+import {nativeTitle} from "../lib/visible-text";
 import type {AttachedImage} from "./user-attachments";
 
 /** Clicks this close to the Close button never select the neighbour slide underneath it. */
@@ -442,7 +443,7 @@ export function ImageViewer({
 									<div className="flex-1 flex justify-start items-center">
 										{caption !== undefined && (
 											<bdi
-												title={caption}
+												title={nativeTitle(caption)}
 												className="block truncate text-body text-white/80 max-sm:absolute max-sm:inset-x-6 max-sm:bottom-full max-sm:text-center sm:max-w-[calc(50vw-7rem)]"
 											>
 												{caption}

@@ -70,3 +70,25 @@ export function bidiRuns(text: string): BidiRun[] {
 export function bidiIsolatedText(runs: readonly BidiRun[]): string {
 	return runs.map((run) => (run.rtl ? `⁧${run.text}⁩` : run.text)).join("");
 }
+
+/**
+ * Upstream's `_n` (shared-frame): a hidden character (control, format, separator, default-ignorable,
+ * blank-looking or noncharacter) with any surrogates around it, else a run of lone high surrogates (kept).
+ */
+const TITLE_HIDDEN_RE =
+	/[\uD800-\uDBFF]*[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Default_Ignorable_Code_Point}⠀￼\u{1D159}\u{13441}\u{13442}\u{16910}\u{16FE4}﷐-﷯￾￿\u{1FFFE}\u{1FFFF}\u{2FFFE}\u{2FFFF}\u{3FFFE}\u{3FFFF}\u{4FFFE}\u{4FFFF}\u{5FFFE}\u{5FFFF}\u{6FFFE}\u{6FFFF}\u{7FFFE}\u{7FFFF}\u{8FFFE}\u{8FFFF}\u{9FFFE}\u{9FFFF}\u{AFFFE}\u{AFFFF}\u{BFFFE}\u{BFFFF}\u{CFFFE}\u{CFFFF}\u{DFFFE}\u{DFFFF}\u{EFFFE}\u{EFFFF}\u{FFFFE}\u{FFFFF}\u{10FFFE}\u{10FFFF}][\uDC00-\uDFFF]*|([\uD800-\uDBFF]+)/gu;
+/** Right-to-left letters or U+FFFD, which upstream won't put in a native tooltip. */
+const TITLE_RTL_RE = /[֐-ࣿיִ-﷿ﹰ-﻿\u{10800}-\u{10FFF}\u{1E800}-\u{1EFFF}�]/u;
+/** A lone surrogate. */
+const LONE_SURROGATE_RE = /[\uD800-\uDFFF]/u;
+
+/**
+ * A native `title` for display text, as upstream's `CP` (shared-frame): hidden characters dropped
+ * (`sV`), and no title at all when the result is empty, holds right-to-left text or U+FFFD, or the
+ * text has a lone surrogate -- a browser tooltip can't isolate those, so it would show them reordered.
+ */
+export function nativeTitle(text: string): string | undefined {
+	const cleaned = text.replace(TITLE_HIDDEN_RE, "$1");
+	if (cleaned === "" || TITLE_RTL_RE.test(cleaned) || LONE_SURROGATE_RE.test(text)) return undefined;
+	return cleaned;
+}
