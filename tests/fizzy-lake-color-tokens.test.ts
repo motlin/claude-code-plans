@@ -792,10 +792,15 @@ describe("fizzy-lake color rings (upstream --cds-border = --cds-ring-color)", ()
 
 	it("the contrast:more field ring still comes after the fizzy blocks, so it wins", () =>
 	{
+		const beforeContrast = (selector: string) =>
+		{
+			const start = ruleStart(styles, `\n${selector}`);
+			return start !== -1 && start < CONTRAST_START;
+		};
 		expect(
 			{
-				fizzyLightBeforeContrast: ruleStart(styles, `\n${FIZZY_LIGHT}`) < CONTRAST_START,
-				fizzyDarkBeforeContrast: ruleStart(styles, `\n${FIZZY_DARK}`) < CONTRAST_START,
+				fizzyLightBeforeContrast: beforeContrast(FIZZY_LIGHT),
+				fizzyDarkBeforeContrast: beforeContrast(FIZZY_DARK),
 			},
 		).toStrictEqual(
 			{
