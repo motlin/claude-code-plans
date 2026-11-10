@@ -3,7 +3,7 @@ import {cpSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync} fro
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {
-	freePort,
+	reservePort,
 	isolatedServerEnv,
 	newServerScriptRun,
 	portOwners,
@@ -71,7 +71,7 @@ beforeEach(async () => {
 	snapshotRoot = join(runDir, "cache", "claude-code-plans", "server-build");
 	mkdirSync(projectDir, {recursive: true});
 	writeBuild();
-	env = isolatedServerEnv(serverRun, {port: await freePort(), projectDir});
+	env = isolatedServerEnv(serverRun, {port: await reservePort(), projectDir});
 });
 
 // Sized for stop's own worst case on a loaded machine: SIGTERM, up to STOP_GRACE_SECONDS (10s) of waiting, then

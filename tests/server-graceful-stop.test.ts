@@ -2,7 +2,13 @@ import {existsSync, mkdirSync, readFileSync, rmSync, symlinkSync} from "node:fs"
 import {get, type ClientRequest} from "node:http";
 import {join} from "node:path";
 import {afterAll, beforeAll, describe, expect, it} from "vite-plus/test";
-import {freePort, isolatedServerEnv, newServerScriptRun, projectRoot, runServerScript} from "./helpers/server-script";
+import {
+	reservePort,
+	isolatedServerEnv,
+	newServerScriptRun,
+	projectRoot,
+	runServerScript,
+} from "./helpers/server-script";
 
 // `scripts/server.sh stop` must let the real production server exit on its
 // own after SIGTERM. Long-lived handles (file watcher, sweep timers, SSE
@@ -74,7 +80,7 @@ function shutdownLogLines(): string[] {
 }
 
 beforeAll(async () => {
-	PORT = await freePort();
+	PORT = await reservePort();
 	// The server must behave as in production: vitest's VITEST/TEST/NODE_ENV
 	// would disable srvx's graceful shutdown and swap in test-only DB paths.
 	const {VITEST: _vitest, TEST: _test, NODE_ENV: _nodeEnv, ...baseEnv} = process.env;

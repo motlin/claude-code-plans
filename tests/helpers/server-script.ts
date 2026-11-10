@@ -1,5 +1,6 @@
 import {execFile, execFileSync} from "node:child_process";
-import {mkdirSync, mkdtempSync, realpathSync, writeFileSync} from "node:fs";
+import {randomInt} from "node:crypto";
+import {mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync} from "node:fs";
 import {createServer} from "node:net";
 import {tmpdir} from "node:os";
 import {basename, join, resolve} from "node:path";
@@ -76,21 +77,91 @@ export function isolatedServerEnv(
 	};
 }
 
-export async function freePort(): Promise<string> {
-	return new Promise((resolvePort, reject) => {
+// Ports come from a range below every OS's ephemeral range (macOS 49152+, Linux 32768+), so no listen(0) anywhere
+// on the machine is ever handed one. Each is claimed with an exclusive lock file naming the claiming pid and held
+// until that process exits, so no two test processes, in this file or any other, ever share a port. A port picked
+// by listen(0) and released, as before, could be handed to any other process before server.sh bound it.
+const RESERVED_PORTS = {first: 20_000, last: 29_999};
+const reservationDir = join(tmpdir(), "ccb-test-port-reservations");
+const heldReservations = new Set<string>();
+let releaseRegistered = false;
+
+function isAlive(pid: number): boolean {
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch (error) {
+		return errorField(error, "code") === "EPERM";
+	}
+}
+
+function claimLock(lock: string): boolean {
+	try {
+		writeFileSync(lock, `${String(process.pid)}\n`, {flag: "wx"});
+		return true;
+	} catch (error) {
+		if (errorField(error, "code") !== "EEXIST") {
+			throw error;
+		}
+	}
+	const owner = Number.parseInt(readFileSync(lock, "utf8"), 10);
+	if (Number.isInteger(owner) && isAlive(owner)) {
+		return false;
+	}
+	// The claimant died without releasing it.
+	rmSync(lock, {force: true});
+	try {
+		writeFileSync(lock, `${String(process.pid)}\n`, {flag: "wx"});
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+async function canBind(port: number): Promise<boolean> {
+	return new Promise((resolveBindable) => {
 		const probe = createServer();
-		probe.once("error", reject);
-		probe.listen(0, () => {
-			const address = probe.address();
-			if (address === null || typeof address === "string") {
-				reject(new Error(`Unexpected probe address: ${String(address)}`));
-				return;
-			}
+		probe.once("error", () => {
+			resolveBindable(false);
+		});
+		probe.listen(port, () => {
 			probe.close(() => {
-				resolvePort(String(address.port));
+				resolveBindable(true);
 			});
 		});
 	});
+}
+
+function releaseReservations(): void {
+	for (const lock of heldReservations) {
+		rmSync(lock, {force: true});
+	}
+	heldReservations.clear();
+}
+
+/** A port no other test process holds and nothing is listening on, reserved for this process until it exits. */
+export async function reservePort(): Promise<string> {
+	mkdirSync(reservationDir, {recursive: true});
+	if (!releaseRegistered) {
+		releaseRegistered = true;
+		process.once("exit", releaseReservations);
+	}
+	const span = RESERVED_PORTS.last - RESERVED_PORTS.first + 1;
+	const offset = randomInt(span);
+	for (let index = 0; index < span; index++) {
+		const port = RESERVED_PORTS.first + ((offset + index) % span);
+		const lock = join(reservationDir, String(port));
+		if (!claimLock(lock)) {
+			continue;
+		}
+		if (await canBind(port)) {
+			heldReservations.add(lock);
+			return String(port);
+		}
+		// Something outside the tests listens here; leave the port for a later claim to retry.
+		rmSync(lock, {force: true});
+	}
+	throw new Error(`No free port in ${String(RESERVED_PORTS.first)}-${String(RESERVED_PORTS.last)}`);
 }
 
 const execFileAsync = promisify(execFile);
@@ -184,4 +255,48 @@ export function decoyOnlyPgrep(dir: string, decoyPids: readonly number[]): strin
 		{mode: 0o755},
 	);
 	return join(dir, "patterns");
+}
+
+/**
+ * Times a test's phases against budgets that sum to less than the test's own timeout, so a stall fails as "<phase>
+ * did not finish within <budget>" with every phase's start offset and duration, never as a bare test timeout that
+ * hides which step hung.
+ */
+export class PhaseTimer {
+	private readonly started = Date.now();
+	private readonly lines: string[] = [];
+
+	async step<T>(name: string, budgetMs: number, action: () => Promise<T> | T): Promise<T> {
+		const at = Date.now();
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const overBudget = new Promise<never>((_resolve, reject) => {
+			timer = setTimeout(() => {
+				reject(new Error(`${name} did not finish within ${String(budgetMs)}ms`));
+			}, budgetMs);
+		});
+		try {
+			const result = await Promise.race([Promise.resolve().then(action), overBudget]);
+			// A synchronous action blocks the timer, so check its duration too.
+			if (Date.now() - at > budgetMs) {
+				throw new Error(`${name} did not finish within ${String(budgetMs)}ms`);
+			}
+			this.record(name, at, "ok");
+			return result;
+		} catch (error) {
+			this.record(name, at, "FAILED");
+			const reason = error instanceof Error ? error.message : String(error);
+			throw new Error(`${reason}\n--- phases ---\n${this.report()}`, {cause: error});
+		} finally {
+			clearTimeout(timer);
+		}
+	}
+
+	report(): string {
+		return this.lines.join("\n");
+	}
+
+	private record(name: string, at: number, outcome: string): void {
+		const now = Date.now();
+		this.lines.push(`+${String(at - this.started)}ms ${name}: ${outcome} in ${String(now - at)}ms`);
+	}
 }

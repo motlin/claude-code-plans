@@ -2,13 +2,15 @@ import {type ChildProcess, execFile, execFileSync, execSync, spawn, spawnSync} f
 import {mkdirSync, writeFileSync} from "node:fs";
 import {join} from "node:path";
 import {promisify} from "node:util";
-import {afterAll, beforeAll, describe, expect, it} from "vite-plus/test";
+import {afterAll, beforeEach, describe, expect, it} from "vite-plus/test";
 import {
-	freePort,
 	isolatedServerEnv,
+	PhaseTimer,
 	newServerScriptRun,
 	portOwners as listeningPids,
 	projectRoot,
+	reservePort,
+	runServerScript,
 	serverScript as script,
 } from "./helpers/server-script";
 
@@ -18,25 +20,32 @@ import {
 
 const fixture = join(projectRoot, "tests", "fixtures", "fake-server.mjs");
 
-// Concurrent runs (e.g. several worktrees testing at once) must not share a
-// port or see each other's fake servers, so each run gets a free port and a
-// unique instance marker on the fake server's command line. The shared helper
-// gives the run its own temp project directory, cache and process title.
-const serverRun = newServerScriptRun("server-lifecycle");
-const {runDir, instance} = serverRun;
-const MATCH = `fixtures/fake-server\\.mjs ${instance}`;
-// The real server renames itself via process.title; this per-run title stands
+// Every test gets its own run: a temp project directory (the only cwd server.sh
+// manages), cache, process title, fake-server instance marker and reserved
+// port. A process one test leaves behind therefore matches no other test's
+// SERVER_MATCH, title, PROJECT_DIR or port, whether the other test is in this
+// file or in another file running at the same time. vitest runs this file's
+// tests one after another (none is .concurrent); files run in parallel workers.
+let runDir = "";
+let instance = "";
+let MATCH = "";
+// The real server renames itself via process.title; the run's own title stands
 // in for it so SERVER_MATCH's title alternative can be tested concurrently.
-const TITLE = serverRun.title;
-// This run-specific pattern matches nothing, so the renamed-server test
-// exercises only the title alternative and leaves its entry-point decoy alone.
-const ENTRY_MATCH = `${instance}/never-matches\\.mjs`;
-
+let TITLE = "";
+// A run-specific pattern that matches nothing, so the renamed-server tests
+// exercise only the title alternative and leave their entry-point decoy alone.
+let ENTRY_MATCH = "";
 let PORT = "";
 let env: NodeJS.ProcessEnv = {};
+const runEnvs: NodeJS.ProcessEnv[] = [];
 
-beforeAll(async () => {
-	PORT = await freePort();
+beforeEach(async () => {
+	const serverRun = newServerScriptRun("server-lifecycle");
+	({runDir, instance} = serverRun);
+	MATCH = `fixtures/fake-server\\.mjs ${instance}`;
+	TITLE = serverRun.title;
+	ENTRY_MATCH = `${instance}/never-matches\\.mjs`;
+	PORT = await reservePort();
 	env = isolatedServerEnv(serverRun, {
 		port: PORT,
 		overrides: {
@@ -45,6 +54,7 @@ beforeAll(async () => {
 			LOG_FILE: join(runDir, "server.log"),
 		},
 	});
+	runEnvs.push(env);
 });
 
 function run(command: string): string {
@@ -67,7 +77,7 @@ function titledPids(): string[] {
 	try {
 		// macOS pgrep -f sees environment data after a rewritten title, so the
 		// title is anchored with ( |$) rather than $.
-		return execFileSync("pgrep", ["-f", `^${TITLE}( |$)`], {encoding: "utf8"})
+		return execFileSync("pgrep", ["-f", `^${TITLE}( |$)`], {encoding: "utf8", timeout: 2000})
 			.trim()
 			.split("\n")
 			.filter(Boolean);
@@ -78,7 +88,10 @@ function titledPids(): string[] {
 
 function entryPids(): string[] {
 	try {
-		return execFileSync("pgrep", ["-f", `${instance}/\\.output/server/index\\.mjs`], {encoding: "utf8"})
+		return execFileSync("pgrep", ["-f", `${instance}/\\.output/server/index\\.mjs`], {
+			encoding: "utf8",
+			timeout: 2000,
+		})
 			.trim()
 			.split("\n")
 			.filter(Boolean);
@@ -147,50 +160,65 @@ function listenerAddresses(): string[] {
 		.map((line) => line.slice(1));
 }
 
+// A safety net: each test stops what it starts.
 afterAll(() => {
-	run("stop");
+	for (const runEnv of runEnvs) {
+		execFileSync("bash", [script, "stop"], {cwd: projectRoot, encoding: "utf8", env: runEnv});
+	}
 });
 
 describe("scripts/server.sh", () => {
 	it("starting twice leaves exactly one process and it owns the port", () => {
-		run("start");
-		const firstPids = serverPids();
-		expect(firstPids.length).toBe(1);
+		try {
+			run("start");
+			const firstPids = serverPids();
+			expect(firstPids.length).toBe(1);
 
-		run("start");
-		const secondPids = serverPids();
-		expect(secondPids.length).toBe(1);
-		expect(portOwners()).toStrictEqual(secondPids);
-		// The second start replaced the first process rather than piling on.
-		expect(secondPids).not.toStrictEqual(firstPids);
+			run("start");
+			const secondPids = serverPids();
+			expect(secondPids.length).toBe(1);
+			expect(portOwners()).toStrictEqual(secondPids);
+			// The second start replaced the first process rather than piling on.
+			expect(secondPids).not.toStrictEqual(firstPids);
+		} finally {
+			run("stop");
+		}
 	}, 150_000);
 
 	it("dev refuses to compete with a wildcard-bound production listener", () => {
-		run("start");
-		const productionPids = serverPids();
-		expect(productionPids.length).toBe(1);
-		expect(portOwners()).toStrictEqual(productionPids);
-		expect(listenerAddresses()).toStrictEqual([`*:${PORT}`]);
+		try {
+			run("start");
+			const productionPids = serverPids();
+			expect(productionPids.length).toBe(1);
+			expect(portOwners()).toStrictEqual(productionPids);
+			expect(listenerAddresses()).toStrictEqual([`*:${PORT}`]);
 
-		const result = spawnSync("bash", [script, "dev", "node", fixture, instance], {
-			cwd: projectRoot,
-			encoding: "utf8",
-			env,
-		});
+			const result = spawnSync("bash", [script, "dev", "node", fixture, instance], {
+				cwd: projectRoot,
+				encoding: "utf8",
+				env,
+			});
 
-		expect({status: result.status, stdout: result.stdout, stderr: result.stderr}).toStrictEqual({
-			status: 1,
-			stdout: "",
-			stderr: `Port ${PORT} is already in use by pid(s): ${productionPids[0]}. Run 'just stop' before 'just dev'.\n`,
-		});
-		expect(serverPids()).toStrictEqual(productionPids);
-		expect(portOwners()).toStrictEqual(productionPids);
+			expect({status: result.status, stdout: result.stdout, stderr: result.stderr}).toStrictEqual({
+				status: 1,
+				stdout: "",
+				stderr: `Port ${PORT} is already in use by pid(s): ${productionPids[0]}. Run 'just stop' before 'just dev'.\n`,
+			});
+			expect(serverPids()).toStrictEqual(productionPids);
+			expect(portOwners()).toStrictEqual(productionPids);
+		} finally {
+			run("stop");
+		}
 	}, 150_000);
 
+	// Each phase has a budget and the budgets sum to under the test's 30s, so a
+	// stall fails naming its phase, with every phase's timing, instead of as a
+	// bare test timeout.
 	it("stop finds a server renamed by process.title via SERVER_MATCH's title alternative", async () => {
+		const phases = new PhaseTimer();
 		// Listen on a different port so only the command-line match, not the
 		// port fallback, can find this process.
-		const otherPort = await freePort();
+		const otherPort = await phases.step("reserve the fixture's port", 2000, reservePort);
 		const child = spawn("node", [fixture, instance], {
 			cwd: runDir,
 			detached: true,
@@ -210,22 +238,24 @@ describe("scripts/server.sh", () => {
 			{cwd: runDir, detached: true, stdio: ["ignore", "pipe", "ignore"]},
 		);
 		try {
-			expect(await Promise.all([readyLine(child), readyLine(decoy)])).toStrictEqual([
-				`listening on ${otherPort}`,
-				"ready",
+			expect(
+				await phases.step("fixture and decoy ready", 6000, async () =>
+					Promise.all([readyLine(child), readyLine(decoy)]),
+				),
+			).toStrictEqual([`listening on ${otherPort}`, "ready"]);
+			expect(await phases.step("pgrep the title before stop", 2000, titledPids)).toStrictEqual([
+				String(child.pid),
 			]);
-			expect(titledPids()).toStrictEqual([String(child.pid)]);
 			const {SERVER_MATCH: _unused, ...defaultMatchEnv} = env;
-			// Async with its own timeout, under the test's, so a slow stop fails
-			// as "stop timed out" with its output rather than as a bare test
-			// timeout that hides which step stalled.
-			await execFileAsync("bash", [script, "stop"], {
-				cwd: projectRoot,
-				encoding: "utf8",
-				timeout: 20_000,
-				env: {...defaultMatchEnv, SERVER_TITLE: TITLE, SERVER_ENTRY_MATCH: ENTRY_MATCH},
-			});
-			expect({titled: titledPids(), decoy: entryPids()}).toStrictEqual({titled: [], decoy: [String(decoy.pid)]});
+			await phases.step("server.sh stop", 15_000, async () =>
+				runServerScript("stop", {
+					env: {...defaultMatchEnv, SERVER_TITLE: TITLE, SERVER_ENTRY_MATCH: ENTRY_MATCH},
+					timeoutMs: 15_000,
+				}),
+			);
+			expect(
+				await phases.step("pgrep after stop", 2000, () => ({titled: titledPids(), decoy: entryPids()})),
+			).toStrictEqual({titled: [], decoy: [String(decoy.pid)]});
 		} finally {
 			child.kill("SIGKILL");
 			decoy.kill("SIGKILL");
@@ -235,7 +265,8 @@ describe("scripts/server.sh", () => {
 	// lsof can stall for minutes on a loaded machine. The cwd check must give up
 	// after CWD_LOOKUP_TIMEOUT_SECONDS rather than hang stop with it.
 	it("stop gives up on a stalled cwd lookup after CWD_LOOKUP_TIMEOUT_SECONDS", async () => {
-		const otherPort = await freePort();
+		const phases = new PhaseTimer();
+		const otherPort = await phases.step("reserve the fixture's port", 2000, reservePort);
 		const child = spawn("node", [fixture, instance], {
 			cwd: runDir,
 			detached: true,
@@ -246,21 +277,25 @@ describe("scripts/server.sh", () => {
 		mkdirSync(fakeBin, {recursive: true});
 		writeFileSync(join(fakeBin, "lsof"), "#!/bin/sh\nexec sleep 60\n", {mode: 0o755});
 		try {
-			expect(await readyLine(child)).toBe(`listening on ${otherPort}`);
+			expect(await phases.step("fixture ready", 8000, async () => readyLine(child))).toBe(
+				`listening on ${otherPort}`,
+			);
 			const {SERVER_MATCH: _unused, ...defaultMatchEnv} = env;
 			const started = Date.now();
-			const result = await execFileAsync("bash", [script, "stop"], {
-				cwd: projectRoot,
-				encoding: "utf8",
-				timeout: 20_000,
-				env: {
-					...defaultMatchEnv,
-					PATH: `${fakeBin}:${process.env["PATH"] ?? ""}`,
-					SERVER_TITLE: TITLE,
-					SERVER_ENTRY_MATCH: ENTRY_MATCH,
-					CWD_LOOKUP_TIMEOUT_SECONDS: "1",
-				},
-			});
+			const result = await phases.step("server.sh stop", 15_000, async () =>
+				execFileAsync("bash", [script, "stop"], {
+					cwd: projectRoot,
+					encoding: "utf8",
+					timeout: 15_000,
+					env: {
+						...defaultMatchEnv,
+						PATH: `${fakeBin}:${process.env["PATH"] ?? ""}`,
+						SERVER_TITLE: TITLE,
+						SERVER_ENTRY_MATCH: ENTRY_MATCH,
+						CWD_LOOKUP_TIMEOUT_SECONDS: "1",
+					},
+				}),
+			);
 			expect({...result, fast: Date.now() - started < 10_000}).toStrictEqual({
 				stdout: `No server running (port ${PORT})\n`,
 				stderr: `lsof did not report the cwd of pid(s) ${String(child.pid)} within 1s; leaving them alone\n`,
