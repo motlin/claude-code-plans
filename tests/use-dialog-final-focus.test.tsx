@@ -16,11 +16,22 @@ afterEach(() => {
 	vi.restoreAllMocks();
 });
 
-/** Base UI queues initial focus on a rAF and return focus on a microtask; the parent refocus waits a setTimeout(0). */
+/**
+ * Base UI queues initial focus on a rAF from a microtask and return focus on a microtask; the parent refocus waits a
+ * setTimeout(0). Wait for those signals, not a wall-clock delay: jsdom starts its frame timer only when a frame is
+ * requested, so a frame requested after a fixed timer started can fire after it on a loaded machine.
+ */
 async function settle() {
 	await act(async () => {
+		// Let the microtask that requests the focus frame run, so the frame below is queued after it.
+		await Promise.resolve();
+		await new Promise<void>((resolve) => {
+			requestAnimationFrame(() => {
+				resolve();
+			});
+		});
 		await new Promise((resolve) => {
-			setTimeout(resolve, 30);
+			setTimeout(resolve, 0);
 		});
 	});
 }

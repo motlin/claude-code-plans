@@ -61,10 +61,15 @@ if (typeof window !== "undefined") {
 	// requestAnimationFrame, which then lands in a later test and spends a focus() call there. Track pending frames
 	// and drop them after cleanup (registered first, so it runs after cleanup and catches frames an unmount queues),
 	// as leaving the page would. Wrap once: a shared-dom worker runs this file again for every test file.
+	// Base UI batches its frames through one module-level scheduler that marks itself scheduled until its frame runs, so
+	// cancelling that frame would leave it marked forever and no Base UI frame callback (transition status, open-change
+	// complete) would run again in this worker. Replace the scheduler too, dropping what it held as leaving the page would.
 	const pendingFrames = trackAnimationFrames(window);
+	const {resetAnimationFrameScheduler} = await import("@base-ui/utils/useAnimationFrame");
 	afterEach(() => {
 		for (const id of pendingFrames) window.cancelAnimationFrame(id);
 		pendingFrames.clear();
+		resetAnimationFrameScheduler();
 	});
 	// Cleanup only unmounts what render() mounted; a test that writes document.body itself leaves its nodes for the
 	// next file in a shared-dom worker, which one that runs there depends on scheduling. Empty the body after cleanup.
