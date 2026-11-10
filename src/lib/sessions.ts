@@ -502,7 +502,7 @@ export function resolveSessionTitle(entry: {
 }
 
 /** The generated, custom or ai title a session is named by, in resolveSessionTitle's order, or undefined when it has none. */
-export function namedSessionTitle(sources: {
+function namedSessionTitle(sources: {
 	customTitle?: string | undefined;
 	aiTitle?: string | undefined;
 	bridged?: boolean | undefined;
