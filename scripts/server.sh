@@ -31,6 +31,8 @@
 #   STOP_GRACE_SECONDS  how long stop waits after SIGTERM before force killing (default 10)
 #   START_TIMEOUT_SECONDS  how long start waits for the server to answer HTTP (default 60;
 #                 start returns as soon as it answers, or as soon as it exits)
+#   CWD_LOOKUP_TIMEOUT_SECONDS  how long to wait for lsof to report matched processes'
+#                 cwds before leaving them alone (default 15)
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -48,6 +50,7 @@ SERVER_MATCH=${SERVER_MATCH:-"^${SERVER_TITLE}( |\$)|${SERVER_ENTRY_MATCH}"}
 LOG_FILE=${LOG_FILE:-"$CACHE_DIR/server.log"}
 STOP_GRACE_SECONDS=${STOP_GRACE_SECONDS:-10}
 START_TIMEOUT_SECONDS=${START_TIMEOUT_SECONDS:-60}
+CWD_LOOKUP_TIMEOUT_SECONDS=${CWD_LOOKUP_TIMEOUT_SECONDS:-15}
 
 # PIDs listening on the port, including wildcard and IPv6 bindings.
 port_pids() {
@@ -64,22 +67,43 @@ port_pids() {
 # servers are left alone). A matched process that already holds the port is
 # taken without asking lsof for its cwd: lsof can stall for minutes under load.
 server_pids() {
-    local pid cwd port_holders
+    local pid port_holders candidates=()
     port_holders=$(port_pids)
     for pid in $(pgrep -f "$SERVER_MATCH" || true); do
-        if printf '%s\n' "$port_holders" | grep -qx "$pid"; then
-            continue
-        fi
-        # -b skips lsof's stat of every mount point, which blocks for up to 15s
-        # whenever a network mount (an SMB or Time Machine share) is slow.
-        cwd=$(lsof -b -w -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1 || true)
-        if [ "$cwd" = "$PROJECT_DIR" ]; then
-            echo "$pid"
+        if ! printf '%s\n' "$port_holders" | grep -qx "$pid"; then
+            candidates+=("$pid")
         fi
     done
+    if [ "${#candidates[@]}" -gt 0 ]; then
+        pids_in_project_dir "${candidates[@]}"
+    fi
     if [ -n "$port_holders" ]; then
         echo "$port_holders"
     fi
+}
+
+# Which of the given PIDs have PROJECT_DIR as their cwd. One lsof call covers
+# every PID (lsof's fixed cost dwarfs the per-PID one), and it is killed after
+# CWD_LOOKUP_TIMEOUT_SECONDS: PIDs it has not reported by then are left alone.
+pids_in_project_dir() {
+    local out lsof_pid deadline pid_list
+    out=$(mktemp)
+    pid_list=$(printf '%s,' "$@")
+    # -b skips lsof's stat of every mount point, which blocks for up to 15s
+    # whenever a network mount (an SMB or Time Machine share) is slow.
+    lsof -b -w -a -p "${pid_list%,}" -d cwd -Fpn >"$out" 2>/dev/null &
+    lsof_pid=$!
+    deadline=$((SECONDS + CWD_LOOKUP_TIMEOUT_SECONDS))
+    while kill -0 "$lsof_pid" 2>/dev/null && [ "$SECONDS" -lt "$deadline" ]; do
+        sleep 0.05
+    done
+    if kill -0 "$lsof_pid" 2>/dev/null; then
+        kill -9 "$lsof_pid" 2>/dev/null || true
+        echo "lsof did not report the cwd of pid(s) $* within ${CWD_LOOKUP_TIMEOUT_SECONDS}s; leaving them alone" >&2
+    fi
+    wait "$lsof_pid" 2>/dev/null || true
+    awk -v dir="$PROJECT_DIR" '/^p/ { pid = substr($0, 2) } /^n/ && substr($0, 2) == dir { print pid }' "$out"
+    rm -f "$out"
 }
 
 # Which of the given (already vetted) PIDs are still running a server: still

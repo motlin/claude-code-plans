@@ -1,5 +1,5 @@
 import {type ChildProcess, execFile, execFileSync, execSync, spawn, spawnSync} from "node:child_process";
-import {mkdtempSync, realpathSync} from "node:fs";
+import {mkdirSync, mkdtempSync, realpathSync, writeFileSync} from "node:fs";
 import {createServer} from "node:net";
 import {tmpdir} from "node:os";
 import {basename, join, resolve} from "node:path";
@@ -250,17 +250,58 @@ describe("scripts/server.sh", () => {
 			]);
 			expect(titledPids()).toStrictEqual([String(child.pid)]);
 			const {SERVER_MATCH: _unused, ...defaultMatchEnv} = env;
-			// Async so a slow stop surfaces as this test's timeout rather than
-			// blocking the event loop past it.
+			// Async with its own timeout, under the test's, so a slow stop fails
+			// as "stop timed out" with its output rather than as a bare test
+			// timeout that hides which step stalled.
 			await execFileAsync("bash", [script, "stop"], {
 				cwd: projectRoot,
 				encoding: "utf8",
+				timeout: 20_000,
 				env: {...defaultMatchEnv, SERVER_TITLE: TITLE, SERVER_ENTRY_MATCH: ENTRY_MATCH},
 			});
 			expect({titled: titledPids(), decoy: entryPids()}).toStrictEqual({titled: [], decoy: [String(decoy.pid)]});
 		} finally {
 			child.kill("SIGKILL");
 			decoy.kill("SIGKILL");
+		}
+	}, 30_000);
+
+	// lsof can stall for minutes on a loaded machine. The cwd check must give up
+	// after CWD_LOOKUP_TIMEOUT_SECONDS rather than hang stop with it.
+	it("stop gives up on a stalled cwd lookup after CWD_LOOKUP_TIMEOUT_SECONDS", async () => {
+		const otherPort = await freePort();
+		const child = spawn("node", [fixture, instance], {
+			cwd: runDir,
+			detached: true,
+			stdio: ["ignore", "pipe", "ignore"],
+			env: {...process.env, PORT: otherPort, FAKE_SERVER_TITLE: TITLE},
+		});
+		const fakeBin = join(runDir, "stalled-lsof-bin");
+		mkdirSync(fakeBin, {recursive: true});
+		writeFileSync(join(fakeBin, "lsof"), "#!/bin/sh\nexec sleep 60\n", {mode: 0o755});
+		try {
+			expect(await readyLine(child)).toBe(`listening on ${otherPort}`);
+			const {SERVER_MATCH: _unused, ...defaultMatchEnv} = env;
+			const started = Date.now();
+			const result = await execFileAsync("bash", [script, "stop"], {
+				cwd: projectRoot,
+				encoding: "utf8",
+				timeout: 20_000,
+				env: {
+					...defaultMatchEnv,
+					PATH: `${fakeBin}:${process.env["PATH"] ?? ""}`,
+					SERVER_TITLE: TITLE,
+					SERVER_ENTRY_MATCH: ENTRY_MATCH,
+					CWD_LOOKUP_TIMEOUT_SECONDS: "1",
+				},
+			});
+			expect({...result, fast: Date.now() - started < 10_000}).toStrictEqual({
+				stdout: `No server running (port ${PORT})\n`,
+				stderr: `lsof did not report the cwd of pid(s) ${String(child.pid)} within 1s; leaving them alone\n`,
+				fast: true,
+			});
+		} finally {
+			child.kill("SIGKILL");
 		}
 	}, 30_000);
 
