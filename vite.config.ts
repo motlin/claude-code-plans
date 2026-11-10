@@ -34,6 +34,10 @@ function buildSha(): string {
 // the test run merges into. Tracking them would make every verify rerun miss.
 const UNTRACKED_TASK_INPUTS = ["!.fallow/**", "!node_modules/.cache/ccb-perf/**"];
 
+// Gitignored scratch the build's file scans still read (Playwright dumps, agent caches, worktrees, the .llm task list and
+// investigation files). Tracking them made every todo edit a build cache miss.
+const NON_SOURCE_BUILD_INPUTS = ["!.llm/**", "!.playwright-mcp/**", "!.serena/**", "!.claude/worktrees/**"];
+
 export default defineConfig({
 	// Tailwind's own optimize pass excludes DirSelector, but Vite's CSS minify runs lightningcss again for the
 	// baseline-widely-available target (Chrome 111), which lowers every :dir() to a 19-language :lang() list that never
@@ -88,7 +92,7 @@ export default defineConfig({
 				command: "node scripts/check-build-output.mjs vp build --logLevel warn",
 				cache: {
 					env: ["CCB_BUILD_SHA"],
-					input: [{auto: true}, ...UNTRACKED_TASK_INPUTS],
+					input: [{auto: true}, ...UNTRACKED_TASK_INPUTS, ...NON_SOURCE_BUILD_INPUTS],
 					output: [".output/**", "src/routeTree.gen.ts"],
 				},
 			},
@@ -433,6 +437,10 @@ export default defineConfig({
 		chunkSizeWarningLimit: 800,
 		rolldownOptions: {
 			onLog: quietDependencyDirectives,
+			// Rolldown reports PLUGIN_TIMINGS only when plugin callbacks dominate a build, which depends on cache state and
+			// machine load, so the warning gate in scripts/check-build-output.mjs failed builds at random. Every other check
+			// reports something about the code or config, the same on every run.
+			checks: {pluginTimings: false},
 			// Zod schema builders (`z.object(...)`, `z.enum(...).optional()`, ...) only construct values, but the
 			// bundler can't tell, so every top-level schema in a reached module stayed in the bundle whether or not
 			// anything used it. Marking `z` pure lets unused schemas tree-shake away.

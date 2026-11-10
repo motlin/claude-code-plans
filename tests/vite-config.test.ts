@@ -142,7 +142,15 @@ describe("build task cache", () => {
 				command: "node scripts/check-build-output.mjs vp build --logLevel warn",
 				cache: {
 					env: ["CCB_BUILD_SHA"],
-					input: [{auto: true}, "!.fallow/**", "!node_modules/.cache/ccb-perf/**"],
+					input: [
+						{auto: true},
+						"!.fallow/**",
+						"!node_modules/.cache/ccb-perf/**",
+						"!.llm/**",
+						"!.playwright-mcp/**",
+						"!.serena/**",
+						"!.claude/worktrees/**",
+					],
 					output: [".output/**", "src/routeTree.gen.ts"],
 				},
 			},
@@ -151,7 +159,7 @@ describe("build task cache", () => {
 });
 
 describe("quiet output", () => {
-	it("reports only failures from vitest and keeps the build's size table and dependency warnings out of verify", () => {
+	it("reports only failures from vitest and keeps the build's size table, dependency warnings and load-dependent plugin-timings report out of verify", () => {
 		expect({
 			reporters: vitestConfig.test?.reporters,
 			silent: vitestConfig.test?.silent,
@@ -161,6 +169,7 @@ describe("quiet output", () => {
 			reportCompressedSize: viteConfig.build?.reportCompressedSize,
 			chunkSizeWarningLimit: viteConfig.build?.chunkSizeWarningLimit,
 			filtersBundlerLogs: typeof viteConfig.build?.rolldownOptions?.onLog,
+			bundlerChecks: viteConfig.build?.rolldownOptions?.checks,
 		}).toStrictEqual({
 			reporters: process.env["GITHUB_ACTIONS"] === "true" ? ["minimal", "github-actions"] : ["minimal"],
 			silent: "passed-only",
@@ -172,6 +181,7 @@ describe("quiet output", () => {
 			reportCompressedSize: false,
 			chunkSizeWarningLimit: 800,
 			filtersBundlerLogs: "function",
+			bundlerChecks: {pluginTimings: false},
 		});
 	});
 });
