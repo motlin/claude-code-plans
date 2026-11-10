@@ -225,6 +225,10 @@ describe("scripts/server.sh", () => {
 			stdio: ["ignore", "pipe", "ignore"],
 			env: {...process.env, PORT: otherPort, FAKE_SERVER_TITLE: TITLE},
 		});
+		// lsof stats mounts and stalled stop for over 15s under load; stop must not need it at all.
+		const stalledLsofBin = join(runDir, "stalled-lsof-bin");
+		mkdirSync(stalledLsofBin, {recursive: true});
+		writeFileSync(join(stalledLsofBin, "lsof"), "#!/bin/sh\nexec sleep 60\n", {mode: 0o755});
 		// Shaped like an unrenamed production server's command line and sharing
 		// PROJECT_DIR as its cwd: stop must leave it alone when SERVER_ENTRY_MATCH
 		// says not to match entry points.
@@ -249,7 +253,12 @@ describe("scripts/server.sh", () => {
 			const {SERVER_MATCH: _unused, ...defaultMatchEnv} = env;
 			await phases.step("server.sh stop", 15_000, async () =>
 				runServerScript("stop", {
-					env: {...defaultMatchEnv, SERVER_TITLE: TITLE, SERVER_ENTRY_MATCH: ENTRY_MATCH},
+					env: {
+						...defaultMatchEnv,
+						PATH: `${stalledLsofBin}:${process.env["PATH"] ?? ""}`,
+						SERVER_TITLE: TITLE,
+						SERVER_ENTRY_MATCH: ENTRY_MATCH,
+					},
 					timeoutMs: 15_000,
 				}),
 			);
@@ -262,49 +271,65 @@ describe("scripts/server.sh", () => {
 		}
 	}, 30_000);
 
-	// lsof can stall for minutes on a loaded machine. The cwd check must give up
-	// after CWD_LOOKUP_TIMEOUT_SECONDS rather than hang stop with it.
-	it("stop gives up on a stalled cwd lookup after CWD_LOOKUP_TIMEOUT_SECONDS", async () => {
-		const phases = new PhaseTimer();
-		const otherPort = await phases.step("reserve the fixture's port", 2000, reservePort);
-		const child = spawn("node", [fixture, instance], {
-			cwd: runDir,
-			detached: true,
-			stdio: ["ignore", "pipe", "ignore"],
-			env: {...process.env, PORT: otherPort, FAKE_SERVER_TITLE: TITLE},
-		});
-		const fakeBin = join(runDir, "stalled-lsof-bin");
-		mkdirSync(fakeBin, {recursive: true});
-		writeFileSync(join(fakeBin, "lsof"), "#!/bin/sh\nexec sleep 60\n", {mode: 0o755});
-		try {
-			expect(await phases.step("fixture ready", 8000, async () => readyLine(child))).toBe(
-				`listening on ${otherPort}`,
-			);
-			const {SERVER_MATCH: _unused, ...defaultMatchEnv} = env;
-			const started = Date.now();
-			const result = await phases.step("server.sh stop", 15_000, async () =>
-				execFileAsync("bash", [script, "stop"], {
-					cwd: projectRoot,
-					encoding: "utf8",
-					timeout: 15_000,
-					env: {
-						...defaultMatchEnv,
-						PATH: `${fakeBin}:${process.env["PATH"] ?? ""}`,
-						SERVER_TITLE: TITLE,
-						SERVER_ENTRY_MATCH: ENTRY_MATCH,
-						CWD_LOOKUP_TIMEOUT_SECONDS: "1",
-					},
-				}),
-			);
-			expect({...result, fast: Date.now() - started < 10_000}).toStrictEqual({
-				stdout: `No server running (port ${PORT})\n`,
-				stderr: `lsof did not report the cwd of pid(s) ${String(child.pid)} within 1s; leaving them alone\n`,
-				fast: true,
+	// A lookup that cannot finish must not read as "no server": stop gives up
+	// after LOOKUP_TIMEOUT_SECONDS and fails loudly, stopping nothing. The cwd
+	// lookup is a libproc call made through perl on macOS.
+	it.skipIf(process.platform !== "darwin")(
+		"stop fails loudly when the cwd lookup stalls past LOOKUP_TIMEOUT_SECONDS",
+		async () => {
+			const phases = new PhaseTimer();
+			const otherPort = await phases.step("reserve the fixture's port", 2000, reservePort);
+			const child = spawn("node", [fixture, instance], {
+				cwd: runDir,
+				detached: true,
+				stdio: ["ignore", "pipe", "ignore"],
+				env: {...process.env, PORT: otherPort, FAKE_SERVER_TITLE: TITLE},
 			});
-		} finally {
-			child.kill("SIGKILL");
-		}
-	}, 30_000);
+			const fakeBin = join(runDir, "stalled-perl-bin");
+			mkdirSync(fakeBin, {recursive: true});
+			writeFileSync(join(fakeBin, "perl"), "#!/bin/sh\nexec sleep 60\n", {mode: 0o755});
+			try {
+				expect(await phases.step("fixture ready", 8000, async () => readyLine(child))).toBe(
+					`listening on ${otherPort}`,
+				);
+				const {SERVER_MATCH: _unused, ...defaultMatchEnv} = env;
+				const started = Date.now();
+				const failure: unknown = await phases.step("server.sh stop", 15_000, async () =>
+					execFileAsync("bash", [script, "stop"], {
+						cwd: projectRoot,
+						encoding: "utf8",
+						timeout: 15_000,
+						env: {
+							...defaultMatchEnv,
+							PATH: `${fakeBin}:${process.env["PATH"] ?? ""}`,
+							SERVER_TITLE: TITLE,
+							SERVER_ENTRY_MATCH: ENTRY_MATCH,
+							LOOKUP_TIMEOUT_SECONDS: "1",
+						},
+					}).then(
+						() => "stop succeeded",
+						(error: unknown) => error,
+					),
+				);
+				expect({
+					code: Reflect.get(Object(failure), "code"),
+					stdout: Reflect.get(Object(failure), "stdout"),
+					stderr: Reflect.get(Object(failure), "stderr"),
+					fast: Date.now() - started < 10_000,
+					titled: titledPids(),
+				}).toStrictEqual({
+					code: 1,
+					stdout: "",
+					stderr: `Reading the cwd of pid(s) ${String(child.pid)} did not finish within 1s\nCould not tell which server processes are running; stopped nothing\n`,
+					fast: true,
+					titled: [String(child.pid)],
+				});
+			} finally {
+				child.kill("SIGKILL");
+			}
+		},
+		30_000,
+	);
 
 	it("start gives up on a server that does not listen within START_TIMEOUT_SECONDS", () => {
 		const result = spawnSync("bash", [script, "start"], {

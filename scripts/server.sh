@@ -32,8 +32,8 @@
 #   STOP_GRACE_SECONDS  how long stop waits after SIGTERM before force killing (default 10)
 #   START_TIMEOUT_SECONDS  how long start waits for the server to answer HTTP (default 60;
 #                 start returns as soon as it answers, or as soon as it exits)
-#   CWD_LOOKUP_TIMEOUT_SECONDS  how long to wait for lsof to report matched processes'
-#                 cwds before leaving them alone (default 15)
+#   LOOKUP_TIMEOUT_SECONDS  how long each process, port or cwd lookup may take; one that
+#                 overruns is killed and the command fails rather than report no server (default 15)
 set -euo pipefail
 
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -46,7 +46,7 @@ SERVER_TITLE=${SERVER_TITLE:-claude-code-browser-server}
 # The server renames itself to SERVER_TITLE once its Nitro plugins run; the
 # command-line alternative catches it before then. It names this script's own
 # snapshots by absolute path rather than any .output/server/index.mjs, so other
-# projects' servers are never candidates (each candidate costs an lsof cwd
+# projects' servers are never candidates (each candidate costs a cwd
 # lookup). macOS pgrep -f sees environment data after a rewritten title, hence
 # ( |$) instead of $.
 SERVER_ENTRY_MATCH=${SERVER_ENTRY_MATCH:-"$(printf '%s' "$SNAPSHOT_ROOT" | sed 's/[][\\.*^$+?(){}|]/\\&/g')/[^/]+/\\.output/server/index\\.mjs"}
@@ -54,83 +54,137 @@ SERVER_MATCH=${SERVER_MATCH:-"^${SERVER_TITLE}( |\$)|${SERVER_ENTRY_MATCH}"}
 LOG_FILE=${LOG_FILE:-"$CACHE_DIR/server.log"}
 STOP_GRACE_SECONDS=${STOP_GRACE_SECONDS:-10}
 START_TIMEOUT_SECONDS=${START_TIMEOUT_SECONDS:-60}
-CWD_LOOKUP_TIMEOUT_SECONDS=${CWD_LOOKUP_TIMEOUT_SECONDS:-15}
+LOOKUP_TIMEOUT_SECONDS=${LOOKUP_TIMEOUT_SECONDS:-15}
+OS=$(uname -s)
 
-# PIDs listening on the port, including wildcard and IPv6 bindings.
+# Each lookup reports its exit status on one FIFO, opened read-write on fd 3
+# and unlinked at once so nothing needs cleaning up; read -t then waits for a
+# lookup without polling (each poll's sleep costs a fork under load).
+lookup_fifo_dir=$(mktemp -d)
+mkfifo "$lookup_fifo_dir/done"
+exec 3<>"$lookup_fifo_dir/done"
+rm -f "$lookup_fifo_dir/done"
+rmdir "$lookup_fifo_dir"
+
+# `bounded <what> <command> [args...]` runs a lookup, printing its stdout and
+# returning its status. One still running after LOOKUP_TIMEOUT_SECONDS is
+# killed and reported as an error (status 124), never as an empty answer: a
+# stalled lookup must not read as "no server".
+bounded() {
+    local what=$1 out job status
+    shift
+    out=$(mktemp)
+    # Job control gives the lookup its own process group, so a timeout kills
+    # the command along with the subshell waiting on it.
+    set -m
+    {
+        "$@" >"$out" 2>/dev/null
+        echo "$?" >&3
+    } &
+    job=$!
+    set +m
+    if ! read -r -t "$LOOKUP_TIMEOUT_SECONDS" -u 3 status; then
+        # No wait afterwards: a command blocked in the kernel (a hung NFS or SMB
+        # mount) cannot die until that call returns, and waiting would hang
+        # with it. disown keeps bash from reporting the kill.
+        kill -9 -- -"$job" 2>/dev/null || true
+        disown "$job" 2>/dev/null || true
+        rm -f "$out"
+        echo "$what did not finish within ${LOOKUP_TIMEOUT_SECONDS}s" >&2
+        return 124
+    fi
+    wait "$job" 2>/dev/null || true
+    cat "$out"
+    rm -f "$out"
+    return "$status"
+}
+
+# PIDs whose command line matches SERVER_MATCH. pgrep exits 1 when none do.
+matched_pids() {
+    local status=0
+    bounded "Looking up processes matching SERVER_MATCH" pgrep -f "$SERVER_MATCH" || status=$?
+    [ "$status" -le 1 ]
+}
+
+# PIDs listening on the port, including wildcard and IPv6 bindings. Never
+# lsof -i on macOS: it stats every mount point, and one call took 51s with
+# slow SMB/NFS mounts under load.
 port_pids() {
-    if [ "$(uname -s)" = "Darwin" ]; then
-        netstat -anv -p tcp | awk -v port="$PORT" \
+    local status=0
+    if [ "$OS" = "Darwin" ]; then
+        bounded "Looking up port $PORT's listeners" netstat -anv -p tcp | awk -v port="$PORT" \
             '$1 ~ /^tcp/ && $4 ~ ("[.:]" port "$") && $6 == "LISTEN" { print $11 }'
         return
     fi
-    lsof -nP -t -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null || true
+    # -b skips the mount-point stats; lsof exits 1 when nothing listens.
+    bounded "Looking up port $PORT's listeners" lsof -b -w -nP -t -iTCP:"$PORT" -sTCP:LISTEN || status=$?
+    [ "$status" -le 1 ]
+}
+
+# "<pid>\t<cwd>" for each given PID whose cwd can be read. On macOS one libproc
+# proc_pidinfo(PROC_PIDVNODEPATHINFO) call per PID (the proc_info syscall, 336,
+# through perl, which macOS always ships): unlike lsof it never scans the
+# process table or stats mount points. On Linux, /proc/<pid>/cwd.
+read_cwds() {
+    if [ "$OS" = "Darwin" ]; then
+        perl -e 'for my $pid (@ARGV) {
+            my $info = "\0" x 2352;
+            next unless syscall(336, 2, $pid + 0, 9, 0, $info, 2352) == 2352;
+            print "$pid\t", unpack("Z*", substr($info, 152, 1024)), "\n";
+        }' "$@"
+        return
+    fi
+    local pid cwd
+    for pid in "$@"; do
+        if cwd=$(readlink "/proc/$pid/cwd" 2>/dev/null); then
+            printf '%s\t%s\n' "$pid" "$cwd"
+        fi
+    done
 }
 
 # PIDs of server processes we own: port holders, plus processes whose command
 # line matches SERVER_MATCH and whose cwd is PROJECT_DIR (so other projects'
 # servers are left alone). A matched process that already holds the port is
-# taken without asking lsof for its cwd: lsof can stall for minutes under load.
+# taken without reading its cwd. Fails if any lookup fails or times out.
 server_pids() {
-    local pid port_holders candidates=()
-    port_holders=$(port_pids)
-    for pid in $(pgrep -f "$SERVER_MATCH" || true); do
+    local pid port_holders matched candidates=()
+    port_holders=$(port_pids) || return 1
+    matched=$(matched_pids) || return 1
+    for pid in $matched; do
         if ! printf '%s\n' "$port_holders" | grep -qx "$pid"; then
             candidates+=("$pid")
         fi
     done
     if [ "${#candidates[@]}" -gt 0 ]; then
-        pids_in_project_dir "${candidates[@]}"
+        pids_in_project_dir "${candidates[@]}" || return 1
     fi
     if [ -n "$port_holders" ]; then
         echo "$port_holders"
     fi
 }
 
-# Which of the given PIDs have PROJECT_DIR as their cwd. One lsof call covers
-# every PID (lsof's fixed cost dwarfs the per-PID one), and it is killed after
-# CWD_LOOKUP_TIMEOUT_SECONDS: PIDs it has not reported by then are left alone.
+# Which of the given PIDs have PROJECT_DIR as their cwd.
 pids_in_project_dir() {
-    local out lsof_pid deadline pid_list
-    out=$(mktemp)
-    pid_list=$(printf '%s,' "$@")
-    # -b skips lsof's stat of every mount point, which blocks for up to 15s
-    # whenever a network mount (an SMB or Time Machine share) is slow.
-    lsof -b -w -a -p "${pid_list%,}" -d cwd -Fpn >"$out" 2>/dev/null &
-    lsof_pid=$!
-    deadline=$((SECONDS + CWD_LOOKUP_TIMEOUT_SECONDS))
-    while kill -0 "$lsof_pid" 2>/dev/null && [ "$SECONDS" -lt "$deadline" ]; do
-        sleep 0.05
-    done
-    if kill -0 "$lsof_pid" 2>/dev/null; then
-        # No wait afterwards: an lsof blocked in the kernel (a hung NFS or SMB
-        # mount) cannot die until that call returns, and waiting would hang
-        # with it. disown keeps bash from reporting the kill.
-        kill -9 "$lsof_pid" 2>/dev/null || true
-        disown "$lsof_pid" 2>/dev/null || true
-        echo "lsof did not report the cwd of pid(s) $* within ${CWD_LOOKUP_TIMEOUT_SECONDS}s; leaving them alone" >&2
-    else
-        wait "$lsof_pid" 2>/dev/null || true
-    fi
-    awk -v dir="$PROJECT_DIR" '/^p/ { pid = substr($0, 2) } /^n/ && substr($0, 2) == dir { print pid }' "$out"
-    rm -f "$out"
+    local cwds
+    cwds=$(bounded "Reading the cwd of pid(s) $*" read_cwds "$@") || return 1
+    printf '%s\n' "$cwds" | awk -F '\t' -v dir="$PROJECT_DIR" '$2 == dir { print $1 }'
 }
 
 # Which of the given (already vetted) PIDs are still running a server: still
 # matched by SERVER_MATCH or still holding the port. Polling this rather than
-# server_pids skips the per-pid lsof cwd check. pgrep, unlike kill -0, does
+# server_pids skips the per-pid cwd check. pgrep, unlike kill -0, does
 # not count an exited child its parent has yet to reap.
 remaining_pids() {
-    local running
-    running=$({
-        pgrep -f "$SERVER_MATCH" || true
-        port_pids
-    } | sort -u)
+    local matched holders running
+    matched=$(matched_pids) || return 1
+    holders=$(port_pids) || return 1
+    running=$(printf '%s\n%s\n' "$matched" "$holders" | sort -u)
     printf '%s\n' "$@" | sort -u | comm -12 - <(printf '%s\n' "$running")
 }
 
 dev_server() {
     local pids
-    pids=$(port_pids | sort -u)
+    pids=$(port_pids | sort -u) || return 1
     if [ -n "$pids" ]; then
         echo "Port $PORT is already in use by pid(s): $pids. Run 'just stop' before 'just dev'." >&2
         return 1
@@ -139,12 +193,19 @@ dev_server() {
         echo "Usage: $0 dev <command> [args...]" >&2
         return 64
     fi
+    exec 3>&-
     exec env PORT="$PORT" "$@"
+}
+
+# A failed lookup stops nothing and fails: it must never read as "no server".
+lookup_failed() {
+    echo "Could not tell which server processes are running; $1" >&2
+    return 1
 }
 
 stop_server() {
     local pids
-    pids=$(server_pids | sort -u)
+    pids=$(server_pids | sort -u) || lookup_failed "stopped nothing" || return 1
     if [ -z "$pids" ]; then
         echo "No server running (port $PORT)"
         return 0
@@ -152,20 +213,23 @@ stop_server() {
     echo "Stopping server pid(s): $pids"
     # shellcheck disable=SC2086
     kill $pids 2>/dev/null || true
-    local deadline=$((SECONDS + STOP_GRACE_SECONDS))
-    # shellcheck disable=SC2086
-    while [ -n "$(remaining_pids $pids)" ] && [ "$SECONDS" -lt "$deadline" ]; do
+    local remaining deadline=$((SECONDS + STOP_GRACE_SECONDS))
+    while true; do
+        # shellcheck disable=SC2086
+        remaining=$(remaining_pids $pids) || lookup_failed "sent SIGTERM to pid(s) $pids" || return 1
+        if [ -z "$remaining" ] || [ "$SECONDS" -ge "$deadline" ]; then
+            break
+        fi
         sleep 0.2
     done
-    # shellcheck disable=SC2086
-    pids=$(remaining_pids $pids)
+    pids=$remaining
     if [ -n "$pids" ]; then
         echo "Force killing pid(s): $pids"
         # shellcheck disable=SC2086
         kill -9 $pids 2>/dev/null || true
         sleep 0.5
     fi
-    pids=$(server_pids | sort -u)
+    pids=$(server_pids | sort -u) || lookup_failed "could not confirm the stop" || return 1
     if [ -n "$pids" ]; then
         echo "Failed to stop server pid(s): $pids" >&2
         return 1
@@ -237,7 +301,7 @@ start_server() {
         id=$(current_snapshot)
         cmd="node $SNAPSHOT_ROOT/$id/.output/server/index.mjs"
     fi
-    stop_server
+    stop_server || return 1
     mkdir -p "$(dirname "$LOG_FILE")"
     touch "$LOG_FILE"
     # Where this launch's output starts, so an early exit can show just that.
@@ -250,6 +314,7 @@ start_server() {
     set -m
     (
         cd "$PROJECT_DIR"
+        exec 3>&-
         # No HOST: one socket cannot bind both 127.0.0.1 (Caddy's upstream) and
         # [::1] (local browsers), so Nitro listens on every interface and
         # server/middleware/loopback-only.ts 403s any non-loopback peer.
@@ -300,7 +365,7 @@ restore_previous_snapshot() {
 
 status_server() {
     local pids
-    pids=$(server_pids | sort -u)
+    pids=$(server_pids | sort -u) || lookup_failed "no status" || return 1
     if [ -z "$pids" ]; then
         echo "No server running (port $PORT)"
         return 0
@@ -309,7 +374,7 @@ status_server() {
     ps -o pid,ppid,pcpu,etime,command -p $pids
     # port_pids, not lsof -i: lsof stats every mount and stalls on a slow one.
     local listeners
-    listeners=$(port_pids | sort -u | paste -sd ' ' -)
+    listeners=$(port_pids | sort -u | paste -sd ' ' -) || return 1
     echo "Port $PORT: ${listeners:-no listener}"
 }
 
