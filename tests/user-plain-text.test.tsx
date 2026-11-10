@@ -34,21 +34,25 @@ describe("user text secret masking (upstream c59c32499 XF)", () => {
 describe("linkifyPlain (upstream c40ad8c1e y with the tool body policy Zx and cap Qx)", () => {
 	function anchors(text: string, maxLinks = Infinity) {
 		const {container} = render(<div>{linkifyPlain(text, {maxLinks})}</div>);
+		// The external TextLink's hidden "(opens in new tab)" hint is its description, not visible text.
+		const visible = container.cloneNode(true) as HTMLElement;
+		for (const hint of visible.querySelectorAll("[hidden]")) hint.remove();
 		return {
-			text: container.textContent,
-			links: [...container.querySelectorAll("a")].map((a) => ({
+			text: visible.textContent,
+			links: [...visible.querySelectorAll("a")].map((a) => ({
 				href: a.getAttribute("href"),
 				text: a.textContent,
 				target: a.getAttribute("target"),
 				rel: a.getAttribute("rel"),
 				dir: a.getAttribute("dir"),
+				cds: a.getAttribute("data-cds"),
 				className: a.className,
 			})),
 			words: [...container.querySelectorAll("span[dir=ltr]")].map((span) => span.textContent),
 		};
 	}
 
-	it("links URLs as TextLinks, trimming trailing punctuation and an unbalanced paren", () => {
+	it("links URLs as external TextLinks (upstream jq), trimming trailing punctuation and an unbalanced paren", () => {
 		expect(anchors("see https://e.com/x).")).toStrictEqual({
 			text: "see https://e.com/x).",
 			links: [
@@ -56,8 +60,9 @@ describe("linkifyPlain (upstream c40ad8c1e y with the tool body policy Zx and ca
 					href: "https://e.com/x",
 					text: "https://e.com/x",
 					target: "_blank",
-					rel: "noreferrer",
+					rel: "noopener noreferrer",
 					dir: "ltr",
+					cds: "TextLink",
 					className: "text-link inline cursor-pointer",
 				},
 			],

@@ -13,11 +13,12 @@ import {TileHost} from "../src/components/panes/tile-host";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ToastProvider} from "../src/components/toast";
 import {TruncatedFilePathHeader} from "../src/components/tool-renderers/shared";
+import {ToolOutputSection} from "../src/components/tool-renderers/tool-output-section";
 import type {FileRef} from "../src/lib/file-refs";
 import type {SessionFiles} from "../src/lib/session-files";
 import {installLocalStorage} from "./fake-storage";
 
-const EXISTING = ["/repo/.mise/config.toml", "/repo/src/app.ts"];
+const EXISTING = ["/repo/.mise/config.toml", "/repo/src/app.ts", "/repo/tool-results/mcp-search-1.txt"];
 const OUTSIDE = new Set(["/tmp/outside/notes.txt"]);
 
 const MISSING_REASON =
@@ -395,6 +396,32 @@ describe("TruncatedFilePathHeader file refs", () => {
 			deletedIsButton: screen.queryByRole("button", {name: "/repo/deleted.ts"}) !== null,
 			outsideIsButton: screen.queryByRole("button", {name: "/tmp/outside/notes.txt"}) !== null,
 		}).toStrictEqual({calls: [[{path: "/repo/src/app.ts"}]], deletedIsButton: false, outsideIsButton: false});
+	});
+});
+
+describe("ToolOutputSection saved-file link (upstream Rv > La)", () => {
+	it("links the saved file by its last name with upstream's inline link classes, opening it in the Files pane", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		const path = "/repo/tool-results/mcp-search-1.txt";
+		render(
+			withQueryClient(
+				<FileRefsProvider value={{sessionId: "saved-file", cwd: "/repo", sessionPaths: [], open}}>
+					<ToolOutputSection output={{note: {kind: "saved", path}, toldClaude: "told"}} />
+				</FileRefsProvider>,
+			),
+		);
+		const link = await screen.findByRole("button", {name: "mcp-search-1.txt"});
+		fireEvent.click(link);
+		expect({
+			className: link.className,
+			path: link.getAttribute("data-file-path"),
+			opened: open.mock.calls,
+		}).toStrictEqual({
+			className:
+				"inline box-decoration-clone text-upstream-accent hover:underline underline-offset-[1px] focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-r2 break-words",
+			path,
+			opened: [[{path}]],
+		});
 	});
 });
 

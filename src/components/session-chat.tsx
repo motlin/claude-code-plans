@@ -69,6 +69,7 @@ import {useSubagentOpener} from "./subagent-opener-context";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {useClaudeEvents} from "../hooks/use-claude-events";
 import {BlockedCallContext} from "./tool-renderers/blocked-call-context";
+import {ToolAwaitingResultContext} from "./tool-renderers/tool-awaiting-result-context";
 import {ChevronIcon, CopyButton, DiffStatPill, TerminalOutput} from "./tool-renderers/shared";
 import {SystemBanner, type CompactMetadata} from "./system-banner";
 import {compactBoundaryLabel, localCommandOutput} from "./system-banner-text";
@@ -6569,6 +6570,8 @@ function ToolCallRow({
 		const MemberRenderer = member === call ? Renderer : getCallRenderer(member);
 		const blockedCall = member.blocked === true ? member : null;
 		const rendererCall = member.blocked === true ? {...member, result: undefined} : member;
+		// Upstream `xu`: in flight and not held by the permission prompt.
+		const awaitingResult = isPendingToolCall(member) && permissionWaitId !== member.id;
 		return isCardStyle ? (
 			<div className="epitaxy-code-size group/body py-p6">
 				<div
@@ -6576,7 +6579,9 @@ function ToolCallRow({
 				>
 					<Suspense fallback={null}>
 						<BlockedCallContext value={blockedCall}>
-							<MemberRenderer toolCall={rendererCall} verbose={verbose} />
+							<ToolAwaitingResultContext value={awaitingResult}>
+								<MemberRenderer toolCall={rendererCall} verbose={verbose} />
+							</ToolAwaitingResultContext>
 						</BlockedCallContext>
 					</Suspense>
 					<DebugLink sessionId={sessionId} uuid={member.sourceUuid} className="absolute top-1 right-1" />
@@ -6586,7 +6591,9 @@ function ToolCallRow({
 			<div className={bodyClass}>
 				<Suspense fallback={null}>
 					<BlockedCallContext value={blockedCall}>
-						<MemberRenderer toolCall={rendererCall} nested={nested} verbose={verbose} />
+						<ToolAwaitingResultContext value={awaitingResult}>
+							<MemberRenderer toolCall={rendererCall} nested={nested} verbose={verbose} />
+						</ToolAwaitingResultContext>
 					</BlockedCallContext>
 				</Suspense>
 			</div>

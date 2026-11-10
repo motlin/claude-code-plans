@@ -1,5 +1,5 @@
 import {type ReactNode, useCallback, useContext, useMemo, useState} from "react";
-import {parseAnsiCodes} from "../../lib/ansi-codes";
+import {ansiPartStyle, parseAnsiCodes} from "../../lib/ansi-codes";
 import {maskSecrets, maskUrlSecrets, secretToggleLabel} from "../../lib/secret-mask";
 import {type SecretReveal, useSecretReveal} from "./use-secret-reveal";
 import {formatDuration} from "../../lib/format-duration";
@@ -11,6 +11,7 @@ import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
 import {TOOL_OUTPUT_REGION} from "./tool-output-region";
 import {BlockedCallContext, type PolicyDenial} from "./blocked-call-context";
+import {ToolAwaitingResultContext} from "./tool-awaiting-result-context";
 import {InlineMarkdown} from "./inline-markdown";
 import {LabelledSection, ToolOutputSection} from "./tool-output-section";
 import type {ClientToolCall} from "./types";
@@ -71,17 +72,7 @@ export function AnsiText({content, masked = true}: {content: string; masked?: bo
 	return (
 		<>
 			{parts.map((part, i) => (
-				<span
-					key={i}
-					style={{
-						color: part.fg,
-						backgroundColor: part.bg,
-						fontWeight: part.bold ? "bold" : undefined,
-						opacity: part.dim ? 0.7 : undefined,
-						fontStyle: part.italic ? "italic" : undefined,
-						textDecoration: part.underline ? "underline" : undefined,
-					}}
-				>
+				<span key={i} style={ansiPartStyle(part)}>
 					{part.text}
 				</span>
 			))}
@@ -571,16 +562,18 @@ export function KeyValueCard({
 	const outputShape = call?.outputShape;
 	const resultJson = call?.resultJson;
 	const allowMarkdown = call === undefined || allowsMarkdownBody(call.name);
-	const output = useMemo(
-		() =>
-			failed
-				? {}
-				: resolveToolOutput(outputShape ?? (shownResult ? {body: shownResult} : {}), {
-						allowMarkdown,
-						json: resultJson,
-					}),
-		[failed, outputShape, shownResult, allowMarkdown, resultJson],
-	);
+	const awaitingResult = useContext(ToolAwaitingResultContext);
+	const hasParams = params.length > 0;
+	const output = useMemo(() => {
+		if (failed) return {};
+		// Upstream `Hp`'s waiting status, shown (`Lv`) only while `xu` holds and only below an Input section (`ym`).
+		if (!shownResult && outputShape === undefined)
+			return awaitingResult && hasParams ? {status: "waiting" as const} : {};
+		return resolveToolOutput(outputShape ?? (shownResult ? {body: shownResult} : {}), {
+			allowMarkdown,
+			json: resultJson,
+		});
+	}, [failed, outputShape, shownResult, allowMarkdown, resultJson, awaitingResult, hasParams]);
 
 	if (failed) {
 		const derivedCopyText = [
@@ -604,7 +597,8 @@ export function KeyValueCard({
 		);
 	}
 
-	const hasParams = params.length > 0;
+	// Upstream `ym`: a body with no input rows and no output, short of "No output", draws nothing.
+	if (!hasParams && Object.keys(output).length === 0 && children === undefined) return null;
 	// Upstream `q_` over `I_` and `J_`: the input lines, a blank line, then the output's copy text.
 	const derivedCopyText = [
 		params.map((p) => `${p.key}: ${p.value}`).join("\n"),

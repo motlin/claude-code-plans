@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, render} from "@testing-library/react";
+import {cleanup, fireEvent, render, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
@@ -89,5 +89,35 @@ describe("a call held at its permission prompt", () => {
 			waiting: waiting.includes("Open draft PR for the AssertJ branch") && !waiting.includes("Opening"),
 			running: running.includes("Opening draft PR for the AssertJ branch"),
 		}).toStrictEqual({waiting: true, running: true});
+	});
+
+	it("says Waiting for the result in an open generic body only while the call is not held (upstream xu)", async () => {
+		const grep = [
+			RECORDS[0],
+			{
+				type: "assistant",
+				uuid: "assistant-1",
+				message: {
+					role: "assistant",
+					content: [{type: "tool_use", id: "toolu_grep", name: "Grep", input: {pattern: "alice"}}],
+				},
+			},
+		];
+		// Open the turn's step list, then the Grep row inside it.
+		const openBody = async (container: HTMLElement) => {
+			for (let toggle = container.querySelector<HTMLElement>('[aria-expanded="false"]'); toggle !== null;) {
+				fireEvent.click(toggle);
+				toggle = container.querySelector<HTMLElement>('[aria-expanded="false"]');
+			}
+			// The renderer chunk loads lazily; the Input section shows once it has.
+			await waitFor(() => {
+				expect(container.textContent).toContain("pattern: alice");
+			});
+			return container.textContent.includes("Waiting for the result");
+		};
+		const running = await openBody(renderRecords(grep));
+		cleanup();
+		const held = await openBody(renderRecords(grep, "toolu_grep"));
+		expect({running, held}).toStrictEqual({running: true, held: false});
 	});
 });

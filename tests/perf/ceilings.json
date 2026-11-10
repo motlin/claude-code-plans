@@ -58,11 +58,11 @@
 		"raisedAt": "2026-11-10"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1404579,
+		"ceiling": 1421338,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "raised from 1379313 (2026-11-09): secret-pattern-masking T1-T4 adds src/lib/secret-mask.ts (upstream's shared-m-0 detector and masker: 13 credential patterns, the invisible-char shadow scan and windowed masking) plus the fence Reveal toggle, inline-code cloak and tool-output toggle. Every transcript text path (markdown fences and inline code, user turns, tool output, notices) masks before its first paint, so the masker can't sit behind a lazy boundary. Went to 1404579; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-09"
+		"reason": "raised from 1404579 (2026-11-10): the tool output follow-up to e17d7d4f2 ports upstream's plain transcript text renderer for tool bodies (plain-text.tsx: ANSI runs and per-secret reveal cloaks, secret-cloak.tsx), the tool body's external-link confirm (confirm-external-link.tsx with the Open external link dialog, its Don't ask again domain store and punycode decoding in src/lib/external-nav.ts) and the saved-file link. Tool bodies draw on first expand with no lazy boundary, and linkify-plain now links through the confirm. Went to 1421338; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-10"
 	},
 	"bundle.session.gzip": {
 		"ceiling": 770094,

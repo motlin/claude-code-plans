@@ -1,3 +1,5 @@
+import type {CSSProperties} from "react";
+
 // ANSI color code to CSS color mapping
 const BASIC_COLORS: Record<number, string> = {
 	30: "#000000", // black
@@ -45,6 +47,18 @@ interface StyledPart {
 	dim?: boolean;
 	italic?: boolean;
 	underline?: boolean;
+}
+
+/** The inline style one ANSI run paints with. */
+export function ansiPartStyle(part: StyledPart): CSSProperties {
+	return {
+		color: part.fg,
+		backgroundColor: part.bg,
+		fontWeight: part.bold ? "bold" : undefined,
+		opacity: part.dim ? 0.7 : undefined,
+		fontStyle: part.italic ? "italic" : undefined,
+		textDecoration: part.underline ? "underline" : undefined,
+	};
 }
 
 export function parseAnsiCodes(text: string): StyledPart[] {

@@ -14,8 +14,11 @@ const CONFIRM_VARIANT_CLASS = {
 	danger: "bg-[var(--menu-danger-fill)] text-[var(--menu-on-danger)] hover:opacity-90",
 } as const;
 
-const POPUP_CLASS =
-	"fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[400px] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none";
+/** Upstream shared-frame `kV`: the dialog's width per size. */
+const SIZE_CLASS = {sm: "max-w-[400px]", md: "max-w-[520px]"} as const;
+
+const POPUP_BASE_CLASS =
+	"fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-card bg-surface-3 text-body text-primary shadow-panel-lg outline-none transition-[opacity,scale] duration-200 ease-out data-[ending-style]:scale-[0.98] data-[ending-style]:opacity-0 data-[starting-style]:scale-[0.98] data-[starting-style]:opacity-0 motion-reduce:transition-none";
 
 /*
  * Upstream shared-frame ConfirmationDialog under fizzy-lake panels. Comfortable tokens:
@@ -54,6 +57,8 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 	confirmLabel,
 	cancelLabel = "Cancel",
 	variant = "primary",
+	size = "sm",
+	confirmDisabled = false,
 	onConfirm,
 	onCancel,
 }: {
@@ -68,12 +73,16 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 	confirmLabel: string;
 	cancelLabel?: string;
 	variant?: keyof typeof CONFIRM_VARIANT_CLASS;
+	size?: keyof typeof SIZE_CLASS;
+	/** Upstream ConfirmationDialog `disabled`: the confirm button can't be pressed yet. */
+	confirmDisabled?: boolean;
 	onConfirm: () => void;
 	/** Runs only when the cancel button itself is clicked, not on Escape or a backdrop click. */
 	onCancel?: () => void;
 }) {
 	const cancelRef = useRef<HTMLButtonElement>(null);
 	const panels = useFizzyLake("panels");
+	const popupClass = `${POPUP_BASE_CLASS} ${SIZE_CLASS[size]}`;
 	const rest = (
 		<>
 			{details !== undefined && <div className="mt-2 min-h-0 overflow-y-auto">{details}</div>}
@@ -89,11 +98,12 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 				</AlertDialog.Close>
 				<button
 					type="button"
+					disabled={confirmDisabled}
 					onClick={() => {
 						onConfirm();
 						onOpenChange(false);
 					}}
-					className={`${BUTTON_BASE_CLASS} ${CONFIRM_VARIANT_CLASS[variant]}`}
+					className={`${BUTTON_BASE_CLASS} ${CONFIRM_VARIANT_CLASS[variant]} disabled:opacity-disabled disabled:pointer-events-none`}
 				>
 					{confirmLabel}
 				</button>
@@ -109,7 +119,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 						initialFocus={cancelRef}
 						data-cds="ConfirmationDialog"
 						data-cds-fizzy={panels ? "" : undefined}
-						className={panels ? POPUP_CLASS : `${POPUP_CLASS} p-6`}
+						className={panels ? popupClass : `${popupClass} p-6`}
 					>
 						{panels ? (
 							<div className={PANELS_BODY_CLASS}>

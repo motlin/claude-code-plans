@@ -1,6 +1,7 @@
 import type {ReactNode} from "react";
 
 import {maskSecrets} from "../lib/secret-mask";
+import {ConfirmExternalLink} from "./confirm-external-link";
 
 /** Trailing sentence punctuation, and a closing paren with no opener inside the URL, are not part of it. */
 export function trimUrl(url: string): string {
@@ -46,9 +47,9 @@ function urlHidesSecret(url: string): boolean {
 }
 
 /**
- * Upstream's plain tool-body linkify (`eS` = c40ad8c1e `y(text, $x, 200)`): URLs become TextLinks, at most
- * `maxLinks` of them; a URL hiding a secret renders as `span[dir=ltr]` words (`Zx` "words"). Upstream asks before
- * opening an external link ("confirm"); local links open directly.
+ * Upstream's plain tool-body linkify (`eS` = c40ad8c1e `y(text, $x, 200)`): URLs become external TextLinks that
+ * ask before leaving (`Zx` "confirm"), at most `maxLinks` of them; a URL hiding a secret renders as
+ * `span[dir=ltr]` words (`Zx` "words").
  */
 export function linkifyPlain(text: string, {maxLinks}: {maxLinks: number}): ReactNode[] {
 	const nodes: ReactNode[] = [];
@@ -67,16 +68,9 @@ export function linkifyPlain(text: string, {maxLinks}: {maxLinks: number}): Reac
 					{shown}
 				</span>
 			) : (
-				<a
-					key={match.index}
-					href={href}
-					target="_blank"
-					rel="noreferrer"
-					dir="ltr"
-					className="text-link inline cursor-pointer"
-				>
+				<ConfirmExternalLink key={match.index} href={href}>
 					{shown}
-				</a>
+				</ConfirmExternalLink>
 			),
 		);
 		cursor = match.index + shown.length;

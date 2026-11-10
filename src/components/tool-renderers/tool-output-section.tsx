@@ -1,9 +1,10 @@
 import type {ReactNode} from "react";
-import {mentionPath} from "../files/mention-path";
-import {useFileRefsCwd} from "../file-refs-context";
+import {stripControlsAndMask} from "../../lib/secret-mask";
+import {FileRefTarget} from "../file-refs";
 import type {ResolvedToolOutput} from "../../lib/tool-output-resolve";
 import type {ToolOutputNote} from "../../lib/tool-output-shape";
 import * as Collapsible from "../ui/collapsible";
+import {PlainText} from "./plain-text";
 import {ToolOutputBody} from "./tool-output-body";
 import {TOOL_OUTPUT_CLAMP, TOOL_OUTPUT_REGION} from "./tool-output-region";
 
@@ -34,16 +35,34 @@ export function LabelledSection({
 	);
 }
 
+/** Upstream c40ad8c1e `u` + `break-words` (its accent ink and 3px radius as local tokens): the saved file's inline link (`Rv` > `La`). */
+const SAVED_FILE_LINK_CLASS =
+	"inline box-decoration-clone text-upstream-accent hover:underline underline-offset-[1px] focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-r2 break-words";
+
+/** Upstream shared-29 `K7`: a path's last name, by either separator; the path itself when it has none. */
+function lastName(path: string): string {
+	return path.split(/[/\\]/).findLast((name) => name !== "") ?? path;
+}
+
 /**
- * Upstream `rS`: the saved file, relative to the session's working directory when inside it. Upstream wraps
- * the chip in a file-ref link (tool-output-saved-file-ref-chip); here it is the chip alone.
+ * Upstream `Rv`: the saved file named by its last name (masked and stripped of display controls), linked through
+ * the transcript's file refs to open in the Files pane; plain text when it can't link.
  */
-function SavedFileChip({path}: {path: string}) {
-	const cwd = useFileRefsCwd();
+function SavedFileLink({path}: {path: string}) {
+	const name = stripControlsAndMask(lastName(path));
 	return (
-		<code className="epitaxy-code-chip">
-			<bdi>{mentionPath(path, cwd)}</bdi>
-		</code>
+		<FileRefTarget
+			path={path}
+			render={(refProps) =>
+				refProps === null ? (
+					<span>{name}</span>
+				) : (
+					<span {...refProps} className={SAVED_FILE_LINK_CLASS}>
+						{name}
+					</span>
+				)
+			}
+		/>
 	);
 }
 
@@ -53,7 +72,7 @@ function OutputNote({note}: {note: ToolOutputNote}) {
 	if (note.kind === "wholeResultShown") {
 		copy = "Claude received only the start of this result. More of it is in a saved file.";
 	} else {
-		const file = <SavedFileChip path={note.path} />;
+		const file = <SavedFileLink path={note.path} />;
 		copy =
 			note.kind === "cappedPreview" ? (
 				<>This is the start of a longer result. Only part of the rest is saved, in {file}.</>
@@ -101,7 +120,7 @@ export function ToolOutputSection({output, label}: {output: ResolvedToolOutput; 
 					<Collapsible.Trigger className={MUTED_FOOTNOTE}>Details for Claude</Collapsible.Trigger>
 					<Collapsible.Panel>
 						<div {...TOOL_OUTPUT_REGION} className={TOOL_OUTPUT_CLAMP}>
-							{toldClaude}
+							<PlainText>{toldClaude}</PlainText>
 						</div>
 					</Collapsible.Panel>
 				</Collapsible.Root>

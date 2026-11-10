@@ -6,6 +6,7 @@ import {Context7Renderer} from "../src/components/tool-renderers/context7-render
 import {GrepRenderer} from "../src/components/tool-renderers/grep-renderer";
 import {GlobRenderer} from "../src/components/tool-renderers/glob-renderer";
 import {McpRenderer} from "../src/components/tool-renderers/mcp-renderer";
+import {ToolAwaitingResultContext} from "../src/components/tool-renderers/tool-awaiting-result-context";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 
 vi.mock("../src/hooks/use-shiki", () => ({
@@ -82,12 +83,12 @@ describe("KeyValueCard Input/Output sections (upstream qx / Xx / tS)", () => {
 		fireEvent.click(screen.getByRole("button", {name: "Details for Claude"}));
 		expect({
 			visibleBefore,
-			note: container.querySelector("code.epitaxy-code-chip")?.textContent,
+			note: container.querySelector(".text-footnote[data-find-omitted] > span")?.textContent,
 			visibleAfter: container.textContent.includes("exceeds maximum allowed tokens"),
 			copy,
 		}).toStrictEqual({
 			visibleBefore: false,
-			note: "/x/tool-results/mcp-1.txt",
+			note: "mcp-1.txt",
 			visibleAfter: true,
 			copy: `query: x\n\n${TOLD}`,
 		});
@@ -103,6 +104,37 @@ describe("KeyValueCard Input/Output sections (upstream qx / Xx / tS)", () => {
 			text: container.textContent,
 			copy: screen.queryByRole("button", {name: "Copy"}),
 		}).toStrictEqual({text: "No output", copy: null});
+	});
+
+	it("says Waiting for the result under Output for a call awaiting its result, copying just the input", () => {
+		const {container} = render(
+			<ToolAwaitingResultContext value>
+				<GrepRenderer toolCall={call("Grep", {pattern: "p"})} />
+			</ToolAwaitingResultContext>,
+		);
+		expect({
+			labels: [...container.querySelectorAll(".text-footnote[data-find-omitted]")].map((l) => l.textContent),
+			waiting: container.querySelector("div.text-muted-as-secondary[data-find-omitted]:not(.text-footnote)")
+				?.textContent,
+			copy: copiedText(),
+		}).toStrictEqual({labels: ["Input", "Output"], waiting: "Waiting for the result", copy: "pattern: p"});
+	});
+
+	it("shows no output section for a call without a result that is not awaiting one (upstream xu gate)", () => {
+		const {container} = render(<GrepRenderer toolCall={call("Grep", {pattern: "p"})} />);
+		expect({
+			text: container.textContent,
+			labels: [...container.querySelectorAll(".text-footnote[data-find-omitted]")].map((l) => l.textContent),
+		}).toStrictEqual({text: "Inputpattern: p", labels: ["Input"]});
+	});
+
+	it("draws nothing for a paramless call awaiting its result (upstream ym)", () => {
+		const {container} = render(
+			<ToolAwaitingResultContext value>
+				<McpRenderer toolCall={call("mcp__x__y", {})} />
+			</ToolAwaitingResultContext>,
+		);
+		expect(container.innerHTML).toBe("");
 	});
 
 	it("copies the whole output for a preview, not just the preview body", () => {

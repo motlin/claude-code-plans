@@ -402,11 +402,13 @@ describe("ArtifactRenderer", () => {
 		const call = transcriptCall({action, url: PIN_URL}, `${action}ned ${PIN_URL}`, undefined);
 		const {container} = render(<ArtifactRenderer toolCall={call} />);
 		const expected = render(<FallbackRenderer toolCall={call} />).container;
+		// The linked URL's "(opens in new tab)" hint takes a per-render useId.
+		const html = (element: HTMLElement) => element.innerHTML.replaceAll(/_r_\w+_/g, "id");
 
 		expect({
 			cards: container.querySelectorAll('[role="button"]').length,
-			html: container.innerHTML,
-		}).toStrictEqual({cards: 0, html: expected.innerHTML});
+			html: html(container),
+		}).toStrictEqual({cards: 0, html: html(expected)});
 	});
 
 	it("shows a failed publish as the key/value error body", () => {

@@ -32,6 +32,12 @@ function noteText(container: HTMLElement): string | null | undefined {
 	return container.querySelector(".text-footnote.text-muted-as-secondary[data-find-omitted]")?.textContent;
 }
 
+/** Upstream `Rv`: the saved file's element, its class and its text (the path's last name, `K7`). */
+function noteFile(container: HTMLElement): [string, string | null, string | null] | undefined {
+	const file = container.querySelector(".text-footnote.text-muted-as-secondary[data-find-omitted] > *");
+	return file === null ? undefined : [file.tagName, file.getAttribute("class"), file.textContent];
+}
+
 describe("ToolOutputSection (upstream tS / Xx / iS)", () => {
 	it("explains a saved result with a note and a closed Details for Claude fold", () => {
 		const container = draw({note: {kind: "saved", path: "/x/tool-results/a.txt"}, toldClaude: TOLD});
@@ -40,7 +46,8 @@ describe("ToolOutputSection (upstream tS / Xx / iS)", () => {
 		const triggerClasses = trigger.className.split(" ");
 		expect({
 			note: noteText(container),
-			chip: container.querySelector("code.epitaxy-code-chip")?.textContent,
+			chip: container.querySelector("code.epitaxy-code-chip"),
+			file: noteFile(container),
 			expanded: trigger.getAttribute("aria-expanded"),
 			classes: ["text-footnote", "text-muted-as-secondary", "group/clp", "text-body", "text-secondary"].map((c) =>
 				triggerClasses.includes(c),
@@ -48,8 +55,9 @@ describe("ToolOutputSection (upstream tS / Xx / iS)", () => {
 			root: [root?.getAttribute("data-cds"), root?.hasAttribute("data-find-omitted")],
 			toldInDom: container.textContent.includes("exceeds maximum allowed tokens"),
 		}).toStrictEqual({
-			note: "This result is too long to show here. It’s saved in /x/tool-results/a.txt.",
-			chip: "/x/tool-results/a.txt",
+			note: "This result is too long to show here. It’s saved in a.txt.",
+			chip: null,
+			file: ["SPAN", null, "a.txt"],
 			expanded: "false",
 			classes: [true, true, true, false, false],
 			root: ["Collapsible", true],
@@ -72,10 +80,26 @@ describe("ToolOutputSection (upstream tS / Xx / iS)", () => {
 		cleanup();
 		const whole = noteText(draw({note: {kind: "wholeResultShown"}, body: "x"}));
 		expect([preview, capped, whole]).toStrictEqual([
-			"This is the start of a longer result. The rest is saved in /x/tool-results/b.txt.",
-			"This is the start of a longer result. Only part of the rest is saved, in /x/tool-results/c.txt.",
+			"This is the start of a longer result. The rest is saved in b.txt.",
+			"This is the start of a longer result. Only part of the rest is saved, in c.txt.",
 			"Claude received only the start of this result. More of it is in a saved file.",
 		]);
+	});
+
+	it("names a Windows saved path by its last name too", () => {
+		const container = draw({note: {kind: "preview", path: "C:\\x\\tool-results\\w.txt"}, body: "x"});
+		expect(noteFile(container)).toStrictEqual(["SPAN", null, "w.txt"]);
+	});
+
+	it("draws the told-Claude text plain in the fold: secrets cloaked, URLs not linked (upstream H, no renderPlain)", () => {
+		const told = `${TOLD}\nSee https://e.com/x with ghp_${"A".repeat(36)}`;
+		const container = draw({note: {kind: "saved", path: "/x/tool-results/a.txt"}, toldClaude: told});
+		fireEvent.click(screen.getByRole("button", {name: "Details for Claude"}));
+		const panelRegion = container.querySelector('[role="group"][aria-label="Tool output"]');
+		expect({
+			links: panelRegion?.querySelectorAll("a").length,
+			cloaks: panelRegion?.querySelectorAll("[data-redacted-secret]").length,
+		}).toStrictEqual({links: 0, cloaks: 1});
 	});
 
 	it("says No output or Waiting for the result in muted body text, find-omitted", () => {
