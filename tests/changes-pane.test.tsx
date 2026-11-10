@@ -5,6 +5,7 @@ import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ChangesPaneView} from "../src/components/changes/changes-pane";
+import {GoToFile} from "../src/components/changes/go-to-file";
 import {isLargeDiff, LARGE_DIFF_MAX_FILES, LARGE_DIFF_MAX_LINES} from "../src/components/changes/large-diff";
 import {SettingsProvider} from "../src/components/settings-provider";
 import type {SessionDiffFile, SessionDiffResponse, SessionDiffScopesResponse} from "../src/lib/api/session-diff";
@@ -456,11 +457,17 @@ describe("ChangesPaneView file list", () => {
 		});
 
 		it("caps the list at 100 files with a keep-typing footer", () => {
+			// GoToFile alone: the full pane would mount 103 collapsed diffs that the cap never touches.
 			const files = Array.from({length: 103}, (_, index) => ({
-				...GREET_FILE,
 				path: `src/f${index}.ts`,
+				additions: 2,
+				deletions: 1,
 			}));
-			renderPane(files);
+			render(
+				<SettingsProvider>
+					<GoToFile files={files} onSelectFile={() => {}} />
+				</SettingsProvider>,
+			);
 			openGoToFile();
 
 			expect({
