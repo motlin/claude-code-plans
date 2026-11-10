@@ -155,3 +155,50 @@ describe("tool row labels mask secrets (upstream Iv)", () => {
 		expect(summary).toBe("Using ghp_AAAA••••••••••••••••••••••••••••••••running");
 	});
 });
+
+describe("settled group header masks secrets (upstream Iv)", () => {
+	function settled(path: string): HTMLElement {
+		return draw([
+			{id: "b1", name: "Bash", input: {command: "true"}},
+			{id: "r1", name: "Read", input: {file_path: path}, result: "1\tx"},
+		]);
+	}
+	function texts(container: HTMLElement) {
+		return {
+			label: container.querySelector("[data-cds-row-toggle]")?.textContent ?? null,
+			announcement: container.querySelector('[data-turn-status] [role="status"]')?.textContent ?? null,
+			fileRefs: container.querySelectorAll("[data-turn-status] > [data-cds-row] [data-file-ref]").length,
+			titles: [...container.querySelectorAll("[data-turn-status] [title]")].map((el) => el.getAttribute("title")),
+		};
+	}
+
+	it("masks a secret in the trailing file name and drops its link", () => {
+		const container = settled(`/repo/${FAKE_GH}${CONTROLS}.txt`);
+		expect(texts(container)).toStrictEqual({
+			label: "Ran a command, read ghp_AAAA••••••••••••••••••••••••••••••••.txt",
+			announcement: "Ran a command, read ghp_AAAA••••••••••••••••••••••••••••••••.txt",
+			fileRefs: 0,
+			titles: [],
+		});
+	});
+
+	it("drops the file link and title when a secret sits in the file's directory", () => {
+		const container = settled(`/repo/${FAKE_GH}/a.ts`);
+		expect(texts(container)).toStrictEqual({
+			label: "Ran a command, read a.ts",
+			announcement: "Ran a command, read a.ts",
+			fileRefs: 0,
+			titles: [],
+		});
+	});
+
+	it("keeps a clean trailing file as a linked meta", () => {
+		const container = settled("/repo/a.ts");
+		expect(texts(container)).toStrictEqual({
+			label: "",
+			announcement: "Ran a command, read a.ts",
+			fileRefs: 0,
+			titles: ["/repo/a.ts", "/repo/a.ts"],
+		});
+	});
+});

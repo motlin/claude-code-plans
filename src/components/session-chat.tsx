@@ -127,7 +127,7 @@ import {
 	diffStatsForCall,
 	isRequestInterrupted,
 } from "../lib/session-utils";
-import type {BackgroundCompletionLike, SummarySegment} from "../lib/session-utils";
+import type {BackgroundCompletionLike, SummarySegment, ToolCallSummaryStats} from "../lib/session-utils";
 import {pastTense} from "../lib/past-tense";
 import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
 import {stripControlsAndMask} from "../lib/secret-mask";
@@ -6808,6 +6808,23 @@ function CountedLine({
 	);
 }
 
+/**
+ * The settled header's phrases go through `Iv` like a row's label, so its text,
+ * meta and announcement never show a secret; a file whose name or path held one
+ * (or display controls) loses its link and hover path.
+ */
+function maskSummarySegments(stats: ToolCallSummaryStats): ToolCallSummaryStats {
+	return {
+		...stats,
+		segments: stats.segments.map(({verb, rest, file}) => {
+			const masked = {verb: stripControlsAndMask(verb), rest: stripControlsAndMask(rest)};
+			return file !== undefined && masked.rest === rest && stripControlsAndMask(file.path) === file.path
+				? {...masked, file}
+				: masked;
+		}),
+	};
+}
+
 function ToolCallSummary({
 	calls,
 	sessionId,
@@ -6831,15 +6848,20 @@ function ToolCallSummary({
 	);
 	const summary = useMemo(
 		() =>
-			summarizeToolCallStats(
-				calls,
-				[...taskNotices.map((notice) => notice.notification), ...stopCompletions(calls, backgroundOutcomes)],
-				failedLaunchIds(backgroundOutcomes),
-				{
-					leading: leadingPeers.length,
-					trailing: trailingPeers.length,
-					reprompted: hooks.length > 0,
-				},
+			maskSummarySegments(
+				summarizeToolCallStats(
+					calls,
+					[
+						...taskNotices.map((notice) => notice.notification),
+						...stopCompletions(calls, backgroundOutcomes),
+					],
+					failedLaunchIds(backgroundOutcomes),
+					{
+						leading: leadingPeers.length,
+						trailing: trailingPeers.length,
+						reprompted: hooks.length > 0,
+					},
+				),
 			),
 		[calls, taskNotices, leadingPeers, trailingPeers, hooks, backgroundOutcomes],
 	);
