@@ -1,5 +1,5 @@
 import {type CSSProperties, type FocusEvent, type PointerEvent, useEffect, useRef, useState} from "react";
-import {DISABLED_REASON_WRAPPER_ATTR} from "../lib/file-refs";
+import {DISABLED_REASON_ATTR, DISABLED_REASON_WRAPPER_ATTR} from "../lib/file-refs";
 import {useShrinkwrap} from "../hooks/use-shrinkwrap";
 import {OPEN_DELAY_MS, REASON_TOOLTIP_CLASS, SIDE_CLASS} from "./ui/tooltip-classes";
 import {ViewportPortal} from "./viewport-portal";
@@ -21,7 +21,7 @@ interface OpenReason {
 /**
  * The disabled-reason tooltip for blocked file refs: side top, opened after the
  * hover delay or at once on focus, showing the wrapper's hidden
- * `[data-disabled-reason]`. Its handlers delegate, so they go on the wrapper
+ * `[data-cds-disabled-reason]`. Its handlers delegate, so they go on the wrapper
  * itself or on any ancestor (rendered HTML can't hold a {@link Tooltip} element).
  */
 export function useReasonTooltip() {
@@ -40,7 +40,7 @@ export function useReasonTooltip() {
 		clearTimeout(timer.current);
 		const reveal = () => {
 			const {left, top, width, height} = wrapper.getBoundingClientRect();
-			const text = wrapper.querySelector("[data-disabled-reason]")?.textContent ?? "";
+			const text = wrapper.querySelector(`[${DISABLED_REASON_ATTR}]`)?.textContent ?? "";
 			setReason({text, anchor: {left, top, width, height}});
 		};
 		if (delay === 0) reveal();

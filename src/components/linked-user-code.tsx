@@ -1,9 +1,15 @@
-import {useLayoutEffect, useRef} from "react";
+import {useCallback, useRef} from "react";
 
-import {DISABLED_REASON_WRAPPER_ATTR, FILE_REF_BLOCK_REASONS, fileRefReasonId} from "../lib/file-refs";
-import {type CheckedOpenResult, useUserCodeFileRef} from "./use-file-ref-link";
+import {
+	DISABLED_REASON_ATTR,
+	DISABLED_REASON_WRAPPER_ATTR,
+	FILE_REF_BLOCK_REASONS,
+	fileRefReasonId,
+} from "../lib/file-refs";
+import {useUserCodeFileRef} from "./use-file-ref-link";
 import {BLOCKED_WRAPPER_CLASS, USER_CODE_CLASS, USER_LINK_CLASS} from "./user-code-classes";
 import {PlainUserCode} from "./plain-user-code";
+import {useFocusSlot} from "./use-focus-slot";
 import {useReasonTooltip} from "./use-reason-tooltip";
 
 /**
@@ -12,24 +18,19 @@ import {useReasonTooltip} from "./use-reason-tooltip";
  * disabled-reason wrapper once it is blocked (outside the roots, or missing).
  */
 export function LinkedUserCode({text}: {text: string}) {
-	const link = useRef<HTMLSpanElement>(null);
-	const wrapper = useRef<HTMLSpanElement>(null);
-	// Upstream's focus slot: a clicked ref found missing hands focus to its blocked wrapper.
-	const focusOnBlock = useRef(false);
+	const link = useRef<HTMLSpanElement | null>(null);
+	// Upstream's focus slot: a focused link replaced by its missing wrapper hands focus to the wrapper.
+	const focusSlot = useFocusSlot();
+	const linkRef = useCallback(
+		(node: HTMLSpanElement | null) => {
+			link.current = node;
+			focusSlot(node);
+		},
+		[focusSlot],
+	);
 	const reasonTooltip = useReasonTooltip();
-	const {ref, buttonProps} = useUserCodeFileRef(text, (result: Promise<CheckedOpenResult>) => {
-		focusOnBlock.current = true;
-		void result.then((outcome) => {
-			if (outcome !== "missing") focusOnBlock.current = false;
-		});
-	});
+	const {ref, buttonProps} = useUserCodeFileRef(text);
 	const block = ref?.block;
-	useLayoutEffect(() => {
-		if (block === undefined || !focusOnBlock.current || wrapper.current === null) return;
-		focusOnBlock.current = false;
-		const active = document.activeElement;
-		if (active === null || active === document.body) wrapper.current.focus({preventScroll: true});
-	}, [block]);
 
 	if (ref === undefined) return <PlainUserCode text={text} />;
 	if (block !== undefined) {
@@ -37,7 +38,6 @@ export function LinkedUserCode({text}: {text: string}) {
 		return (
 			<bdi key="blocked" dir="ltr">
 				<span
-					ref={wrapper}
 					// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- upstream's disabled-reason wrapper is a tab stop that reaches its reason tooltip
 					tabIndex={0}
 					{...{[DISABLED_REASON_WRAPPER_ATTR]: ""}}
@@ -46,7 +46,8 @@ export function LinkedUserCode({text}: {text: string}) {
 					{...reasonTooltip.handlers}
 				>
 					<code className={USER_CODE_CLASS}>{text}</code>
-					<span id={id} hidden data-disabled-reason="">
+					{block === "missing" && <span ref={focusSlot} hidden />}
+					<span id={id} hidden {...{[DISABLED_REASON_ATTR]: ""}}>
 						{FILE_REF_BLOCK_REASONS[block]}
 					</span>
 				</span>
@@ -56,7 +57,7 @@ export function LinkedUserCode({text}: {text: string}) {
 	}
 	return (
 		<bdi key="link" dir="ltr">
-			<span ref={link} {...buttonProps(() => link.current)} className={USER_LINK_CLASS}>
+			<span ref={linkRef} {...buttonProps(() => link.current)} className={USER_LINK_CLASS}>
 				{text}
 			</span>
 		</bdi>

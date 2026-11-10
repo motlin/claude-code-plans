@@ -17,6 +17,7 @@ import {ToolOutputSection} from "../src/components/tool-renderers/tool-output-se
 import type {FileRef} from "../src/lib/file-refs";
 import type {SessionFiles} from "../src/lib/session-files";
 import {UserPlainText} from "../src/components/user-plain-text";
+import {markFileRefMissing} from "../src/lib/missing-file-refs";
 import {installLocalStorage} from "./fake-storage";
 
 const EXISTING = ["/repo/.mise/config.toml", "/repo/src/app.ts", "/repo/tool-results/mcp-search-1.txt"];
@@ -195,7 +196,7 @@ describe("ProseMarkdown file refs", () => {
 		);
 
 		const wrapper = await waitFor(() => {
-			const found = container.querySelector<HTMLElement>("[data-disabled-reason-wrapper]");
+			const found = container.querySelector<HTMLElement>("[data-cds-disabled-reason-wrapper]");
 			expect(found).not.toBeNull();
 			return found!;
 		});
@@ -204,7 +205,7 @@ describe("ProseMarkdown file refs", () => {
 			html: wrapper.outerHTML,
 			refs: container.querySelectorAll("[data-file-ref]").length,
 		}).toStrictEqual({
-			html: `<span tabindex="0" data-disabled-reason-wrapper="" aria-describedby="${reasonId}" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus"><code data-inline-code="" data-file-ref-blocked="">/tmp/outside/notes.txt</code><span id="${reasonId}" hidden="" data-disabled-reason="">${OUTSIDE_REASON}</span></span>`,
+			html: `<span tabindex="0" data-cds-disabled-reason-wrapper="" aria-describedby="${reasonId}" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus"><code data-inline-code="" data-file-ref-blocked="">/tmp/outside/notes.txt</code><span id="${reasonId}" hidden="" data-cds-disabled-reason="">${OUTSIDE_REASON}</span></span>`,
 			refs: 0,
 		});
 
@@ -255,14 +256,67 @@ describe("ProseMarkdown file refs", () => {
 		expect(link.getAttribute("aria-busy")).toBe("true");
 		await act(async () => vi.advanceTimersByTimeAsync(100));
 
-		const wrapper = container.querySelector<HTMLElement>("[data-disabled-reason-wrapper]");
+		const wrapper = container.querySelector<HTMLElement>("[data-cds-disabled-reason-wrapper]");
+		const reasonId = wrapper?.getAttribute("aria-describedby") ?? "";
 		expect({
 			refs: container.querySelectorAll("[data-file-ref]").length,
-			code: wrapper?.querySelector("code")?.textContent,
-			reason: wrapper?.querySelector("[data-disabled-reason]")?.textContent,
+			html: wrapper?.outerHTML,
 			focused: document.activeElement === wrapper,
 			opened: open.mock.calls,
-		}).toStrictEqual({refs: 0, code: "src/new.ts:3", reason: MISSING_REASON, focused: true, opened: []});
+		}).toStrictEqual({
+			refs: 0,
+			html: `<span tabindex="0" data-cds-disabled-reason-wrapper="" aria-describedby="${reasonId}" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus"><code data-inline-code="" data-file-ref-blocked="">src/new.ts:3</code><span hidden=""></span><span id="${reasonId}" hidden="" data-cds-disabled-reason="">${MISSING_REASON}</span></span>`,
+			focused: true,
+			opened: [],
+		});
+	});
+
+	it("hands focus to the focus slot's wrapper when a focused ref turns missing without being clicked", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		const {container} = render(
+			withQueryClient(
+				<FileRefsProvider value={{sessionId: "missing-elsewhere", cwd: "/repo", sessionPaths: [], open}}>
+					<ProseMarkdown markdown="Create `src/new.ts` next." />
+				</FileRefsProvider>,
+			),
+		);
+		const link = await waitFor(() => {
+			const found = container.querySelector<HTMLElement>("[data-file-ref]");
+			expect(found).not.toBeNull();
+			return found!;
+		});
+		link.focus();
+		act(() => {
+			markFileRefMissing("missing-elsewhere", "/repo/src/new.ts");
+		});
+
+		const wrapper = container.querySelector<HTMLElement>("[data-cds-disabled-reason-wrapper]");
+		expect({blocked: wrapper !== null, focused: document.activeElement === wrapper}).toStrictEqual({
+			blocked: true,
+			focused: true,
+		});
+	});
+
+	it("leaves focus alone when an unfocused ref turns missing", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		const {container} = render(
+			withQueryClient(
+				<FileRefsProvider value={{sessionId: "missing-unfocused", cwd: "/repo", sessionPaths: [], open}}>
+					<ProseMarkdown markdown="Create `src/new.ts` next." />
+				</FileRefsProvider>,
+			),
+		);
+		await waitFor(() => {
+			expect(container.querySelector("[data-file-ref]")).not.toBeNull();
+		});
+		act(() => {
+			markFileRefMissing("missing-unfocused", "/repo/src/new.ts");
+		});
+
+		expect({
+			blocked: container.querySelector("[data-cds-disabled-reason-wrapper]") !== null,
+			focused: document.activeElement === document.body,
+		}).toStrictEqual({blocked: true, focused: true});
 	});
 
 	it("never shows busy when the missing check settles within 150ms", async () => {
@@ -291,7 +345,8 @@ describe("ProseMarkdown file refs", () => {
 
 		expect({
 			busy,
-			blocked: container.querySelector("[data-disabled-reason-wrapper] [data-disabled-reason]")?.textContent,
+			blocked: container.querySelector("[data-cds-disabled-reason-wrapper] [data-cds-disabled-reason]")
+				?.textContent,
 			opened: open.mock.calls,
 		}).toStrictEqual({busy: [], blocked: MISSING_REASON, opened: []});
 	});
@@ -378,7 +433,7 @@ describe("ProseMarkdown file refs", () => {
 });
 
 const USER_LINK_CLASS =
-	"aria-busy:cursor-progress aria-busy:opacity-60 inline text-code leading-none text-danger bg-alpha-1 border-[0.5px] border-border rounded-[0.4em] px-[0.25em] py-[0.0625em] [overflow-wrap:anywhere] hover:bg-alpha-2 underline underline-offset-[3px] decoration-[color-mix(in_srgb,currentColor,transparent_60%)] hover:decoration-current focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus";
+	"aria-busy:cursor-progress aria-busy:opacity-60 inline text-code leading-none text-danger bg-alpha-1 border-0.5 border-border rounded-[0.4em] px-[0.25em] py-[0.0625em] [overflow-wrap:anywhere] hover:bg-alpha-2 underline underline-offset-[3px] decoration-[color-mix(in_srgb,currentColor,transparent_60%)] hover:decoration-current focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus";
 
 function userRow(text: string, open: (ref: FileRef) => void, sessionId = "user-refs", nonInteractive = false) {
 	return render(
@@ -404,7 +459,7 @@ function bdis(container: HTMLElement): string[] {
 }
 
 const USER_CODE = (text: string) =>
-	`<bdi dir="ltr"><code class="text-code leading-none text-danger bg-alpha-1 border-[0.5px] border-border rounded-[0.4em] px-[0.25em] py-[0.0625em] [overflow-wrap:anywhere]">${text}</code></bdi>`;
+	`<bdi dir="ltr"><code class="text-code leading-none text-danger bg-alpha-1 border-0.5 border-border rounded-[0.4em] px-[0.25em] py-[0.0625em] [overflow-wrap:anywhere]">${text}</code></bdi>`;
 
 describe("UserPlainText code-span file links (upstream U > Ir)", () => {
 	it("links only a path-shaped span as upstream's underlined code-chip button, opening it on click and Enter", async () => {
@@ -441,7 +496,7 @@ describe("UserPlainText code-span file links (upstream U > Ir)", () => {
 		expect(link.getAttribute("aria-busy")).toBe("true");
 		await act(async () => vi.advanceTimersByTimeAsync(100));
 
-		const wrapper = container.querySelector<HTMLElement>("[data-disabled-reason-wrapper]");
+		const wrapper = container.querySelector<HTMLElement>("[data-cds-disabled-reason-wrapper]");
 		const reasonId = wrapper?.getAttribute("aria-describedby") ?? "";
 		expect({
 			bdis: bdis(container),
@@ -449,10 +504,26 @@ describe("UserPlainText code-span file links (upstream U > Ir)", () => {
 			opened: open.mock.calls,
 		}).toStrictEqual({
 			bdis: [
-				`<bdi dir="ltr"><span tabindex="0" data-disabled-reason-wrapper="" aria-describedby="${reasonId}" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus"><code class="text-code leading-none text-danger bg-alpha-1 border-[0.5px] border-border rounded-[0.4em] px-[0.25em] py-[0.0625em] [overflow-wrap:anywhere]">src/new.ts</code><span id="${reasonId}" hidden="" data-disabled-reason="">${MISSING_REASON}</span></span></bdi>`,
+				`<bdi dir="ltr"><span tabindex="0" data-cds-disabled-reason-wrapper="" aria-describedby="${reasonId}" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus"><code class="text-code leading-none text-danger bg-alpha-1 border-0.5 border-border rounded-[0.4em] px-[0.25em] py-[0.0625em] [overflow-wrap:anywhere]">src/new.ts</code><span hidden=""></span><span id="${reasonId}" hidden="" data-cds-disabled-reason="">${MISSING_REASON}</span></span></bdi>`,
 			],
 			focused: true,
 			opened: [],
+		});
+	});
+
+	it("hands focus to the focus slot's wrapper when a focused user-row link turns missing without being clicked", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		const container = userRow("create `src/new.ts`", open, "user-missing-elsewhere");
+		const link = await userLink(container);
+		link.focus();
+		act(() => {
+			markFileRefMissing("user-missing-elsewhere", "/repo/src/new.ts");
+		});
+
+		const wrapper = container.querySelector<HTMLElement>("bdi > [data-cds-disabled-reason-wrapper]");
+		expect({blocked: wrapper !== null, focused: document.activeElement === wrapper}).toStrictEqual({
+			blocked: true,
+			focused: true,
 		});
 	});
 
@@ -460,14 +531,14 @@ describe("UserPlainText code-span file links (upstream U > Ir)", () => {
 		const open = vi.fn<(ref: FileRef) => void>();
 		const container = userRow("notes in `/tmp/outside/notes.txt`", open);
 		const wrapper = await waitFor(() => {
-			const found = container.querySelector<HTMLElement>("bdi > [data-disabled-reason-wrapper]");
+			const found = container.querySelector<HTMLElement>("bdi > [data-cds-disabled-reason-wrapper]");
 			expect(found).not.toBeNull();
 			return found!;
 		});
 		const reasonId = wrapper.getAttribute("aria-describedby") ?? "";
 
 		expect(bdis(container)).toStrictEqual([
-			`<bdi dir="ltr"><span tabindex="0" data-disabled-reason-wrapper="" aria-describedby="${reasonId}" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus"><code class="text-code leading-none text-danger bg-alpha-1 border-[0.5px] border-border rounded-[0.4em] px-[0.25em] py-[0.0625em] [overflow-wrap:anywhere]">/tmp/outside/notes.txt</code><span id="${reasonId}" hidden="" data-disabled-reason="">${OUTSIDE_REASON}</span></span></bdi>`,
+			`<bdi dir="ltr"><span tabindex="0" data-cds-disabled-reason-wrapper="" aria-describedby="${reasonId}" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus"><code class="text-code leading-none text-danger bg-alpha-1 border-0.5 border-border rounded-[0.4em] px-[0.25em] py-[0.0625em] [overflow-wrap:anywhere]">/tmp/outside/notes.txt</code><span id="${reasonId}" hidden="" data-cds-disabled-reason="">${OUTSIDE_REASON}</span></span></bdi>`,
 		]);
 
 		fireEvent.pointerOver(wrapper.querySelector("code")!);

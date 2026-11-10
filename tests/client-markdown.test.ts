@@ -524,6 +524,7 @@ describe("markdown links to files", () => {
 		["docs/guide.md", {path: "/repo/docs/guide.md"}],
 		["src/a.ts:12", {path: "/repo/src/a.ts", line: 12}],
 		["/tmp/outside/notes.txt", {path: "/tmp/outside/notes.txt", block: "outside_roots"}],
+		["src/gone.ts", {path: "/repo/src/gone.ts", block: "missing"}],
 	]);
 
 	it("collect a link's file path, decoded and without its fragment, beside inline code", () => {
@@ -549,7 +550,14 @@ describe("markdown links to files", () => {
 	it("render a link to a blocked file as the disabled-reason wrapper around the link text", () => {
 		const html = renderMarkdownToHtml("[notes](/tmp/outside/notes.txt)", {fileRefs: refs});
 		expect(html).toMatch(
-			/^<p><span tabindex="0" data-disabled-reason-wrapper="" aria-describedby="(file-ref-reason-\w+)" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus">notes<span id="\1" hidden data-disabled-reason="">This file is outside this session’s folders, so it can’t be opened here.<\/span><\/span><\/p>\n$/,
+			/^<p><span tabindex="0" data-cds-disabled-reason-wrapper="" aria-describedby="(file-ref-reason-\w+)" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus">notes<span id="\1" hidden data-cds-disabled-reason="">This file is outside this session’s folders, so it can’t be opened here.<\/span><\/span><\/p>\n$/,
+		);
+	});
+
+	it("give a missing file's wrapper upstream's hidden focus slot after its content", () => {
+		const html = renderMarkdownToHtml("[gone](src/gone.ts)", {fileRefs: refs});
+		expect(html).toMatch(
+			/^<p><span tabindex="0" data-cds-disabled-reason-wrapper="" aria-describedby="(file-ref-reason-\w+)" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus">gone<span hidden><\/span><span id="\1" hidden data-cds-disabled-reason="">Couldn’t find this file, so it can’t be opened. You can ask Claude to create it or check the path.<\/span><\/span><\/p>\n$/,
 		);
 	});
 

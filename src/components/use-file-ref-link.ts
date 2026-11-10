@@ -145,12 +145,12 @@ const NO_REF = undefined;
  * Upstream `Ir`'s state for one user-row code span, inside a {@link FileRefsProvider}:
  * its resolved ref (undefined until resolved or when it names no file), linked
  * optimistically until a click finds it missing, with button props whose click
- * and Enter/Space recheck existence (busy after 150ms) and report the result.
+ * and Enter/Space recheck existence (busy after 150ms).
  */
-export function useUserCodeFileRef(
-	text: string,
-	onOpened: (result: Promise<CheckedOpenResult>) => void,
-): {ref: FileRef | undefined; buttonProps: (element: () => HTMLElement | null) => FileRefButtonProps | null} {
+export function useUserCodeFileRef(text: string): {
+	ref: FileRef | undefined;
+	buttonProps: (element: () => HTMLElement | null) => FileRefButtonProps | null;
+} {
 	const context = useContext(FileRefsContext);
 	const texts = useMemo(() => [text], [text]);
 	const ref = useFileRefs(texts, true).get(text) ?? NO_REF;
@@ -165,7 +165,7 @@ export function useUserCodeFileRef(
 						ref,
 						(target) => {
 							const node = element();
-							if (node !== null) onOpened(checkedOpen(target, node));
+							if (node !== null) void checkedOpen(target, node);
 						},
 						openDefaultApp,
 					),

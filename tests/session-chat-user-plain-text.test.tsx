@@ -91,7 +91,7 @@ describe("SessionChat user bubbles as plain text", () => {
 				{
 					text: "code",
 					className:
-						"text-code leading-none text-danger bg-alpha-1 border-[0.5px] border-border rounded-[0.4em] px-[0.25em] py-[0.0625em] [overflow-wrap:anywhere]",
+						"text-code leading-none text-danger bg-alpha-1 border-0.5 border-border rounded-[0.4em] px-[0.25em] py-[0.0625em] [overflow-wrap:anywhere]",
 					parent: "BDI",
 					dir: "ltr",
 				},

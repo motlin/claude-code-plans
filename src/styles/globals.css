@@ -1785,6 +1785,12 @@ html[data-interface-font="dyslexic"] {
 	color: var(--control-ink, currentColor);
 }
 
+/* Upstream's `.border-0.5`: a half-pixel border (Tailwind's own `border-<n>` takes integers only). */
+@utility border-0.5 {
+	border-style: var(--tw-border-style);
+	border-width: 0.5px;
+}
+
 /* Upstream's `.text-code` carries the mono face along with the code size and leading; the size and leading
    come from the `--text-code` theme token, this adds the family. */
 @utility text-code {

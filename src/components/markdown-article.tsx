@@ -1,4 +1,12 @@
-import {type KeyboardEvent, type MouseEvent, useLayoutEffect, useMemo, useRef, useSyncExternalStore} from "react";
+import {
+	type FocusEvent,
+	type KeyboardEvent,
+	type MouseEvent,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useSyncExternalStore,
+} from "react";
 import {
 	FILE_REF_ATTR,
 	fileRefFromElement,
@@ -17,8 +25,8 @@ interface FileRefProps {
 	/** Inline code rendered as clickable file refs, keyed by the code's text. */
 	fileRefs?: ReadonlyMap<string, FileRef> | undefined;
 	/**
-	 * Opens a clicked ref. A `"missing"` result means the ref re-renders as
-	 * blocked; focus then moves to its wrapper if it would fall to the body.
+	 * Opens a clicked ref. A ref found missing re-renders as blocked; if it held
+	 * focus, focus then moves to its wrapper instead of falling to the body.
 	 */
 	onFileRef?: ((ref: FileRef, element: HTMLElement) => unknown) | undefined;
 	/** Handles a ⌘/Ctrl-click on a ref instead of `onFileRef`; true when it opened the ref. */
@@ -48,46 +56,61 @@ function targetFileRef(event: MouseEvent | KeyboardEvent): {ref: FileRef; elemen
 	return element === null || ref === null ? null : {ref, element};
 }
 
-interface PendingFocus {
+interface FocusedRef {
 	path: string;
-	/** Which of the article's refs to this path was clicked; its blocked wrapper takes focus. */
+	/** Which of the article's refs to this path holds focus; its missing wrapper takes focus over. */
 	index: number;
 }
 
+/** The article's file-ref links to one path, in document order. */
+function refsToPath(article: HTMLElement, path: string): HTMLElement[] {
+	return [...article.querySelectorAll<HTMLElement>(`[${FILE_REF_ATTR}]`)].filter(
+		(element) => element.getAttribute("data-file-path") === path,
+	);
+}
+
 /**
- * Upstream's `or()` focus slot: a clicked ref that turns out missing is
- * replaced by its blocked wrapper, so focus moves there (without scrolling)
- * instead of falling to the body.
+ * Upstream's file-link focus slot (`or()`) for rendered HTML: a focused ref
+ * replaced by its `missing` wrapper (the one holding the hidden focus-slot
+ * span) hands focus to that wrapper, without scrolling, instead of letting it
+ * fall to the body. Focus is tracked as it enters and leaves the refs, since
+ * a re-render replaces the focused element before any effect sees it.
  */
-function useMissingRefFocus(rendered: string) {
+function useProseFocusSlot(rendered: string) {
 	const article = useRef<HTMLElement>(null);
-	const pending = useRef<PendingFocus | null>(null);
+	const focused = useRef<FocusedRef | null>(null);
 	useLayoutEffect(() => {
-		const target = pending.current;
+		const target = focused.current;
 		if (target === null || article.current === null) return;
-		const id = fileRefReasonId(target.path, "missing");
-		const wrappers = [...article.current.querySelectorAll<HTMLElement>(`[${DISABLED_REASON_WRAPPER_ATTR}]`)].filter(
-			(wrapper) => wrapper.getAttribute("aria-describedby") === id,
-		);
-		const wrapper = wrappers[target.index] ?? wrappers[0];
-		if (wrapper === undefined) return;
-		pending.current = null;
 		const active = document.activeElement;
-		if (active === null || active === document.body) wrapper.focus({preventScroll: true});
+		if (active !== null && active !== document.body) return;
+		focused.current = null;
+		const id = fileRefReasonId(target.path, "missing");
+		const wrappers = [
+			...article.current.querySelectorAll<HTMLElement>(
+				`[${DISABLED_REASON_WRAPPER_ATTR}][aria-describedby="${id}"]`,
+			),
+		].filter((wrapper) => wrapper.querySelector(":scope > span[hidden]:not([id])") !== null);
+		(wrappers[target.index] ?? wrappers[0])?.focus({preventScroll: true});
 	}, [rendered]);
 
-	function opening(ref: FileRef, element: HTMLElement, result: unknown) {
-		const siblings = [...(article.current?.querySelectorAll(`[${FILE_REF_ATTR}]`) ?? [])].filter(
-			(other) => other.getAttribute("data-file-path") === ref.path,
-		);
-		const target = {path: ref.path, index: Math.max(0, siblings.indexOf(element))};
-		pending.current = target;
-		void Promise.resolve(result).then((outcome) => {
-			if (outcome !== "missing" && pending.current === target) pending.current = null;
-		});
-	}
+	const handlers = {
+		onFocus: (event: FocusEvent<HTMLElement>) => {
+			const element =
+				event.target instanceof Element ? event.target.closest<HTMLElement>(`[${FILE_REF_ATTR}]`) : null;
+			const path = element?.getAttribute("data-file-path") ?? null;
+			focused.current =
+				element === null || path === null || article.current === null
+					? null
+					: {path, index: Math.max(0, refsToPath(article.current, path).indexOf(element))};
+		},
+		onBlur: (event: FocusEvent<HTMLElement>) => {
+			// Focus moving to another element forgets the ref; focus dropped by its removal keeps it.
+			if (event.relatedTarget !== null) focused.current = null;
+		},
+	};
 
-	return {article, opening};
+	return {article, handlers};
 }
 
 /** Upstream `EM`: prose whose markdown render crashed, drawn as its raw text inside the same prose wrapper. */
@@ -138,10 +161,10 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
 	]);
 
 	const reasonTooltip = useReasonTooltip();
-	const missingFocus = useMissingRefFocus(rendered);
+	const focusSlot = useProseFocusSlot(rendered);
 	const {onFileRef, onFileRefDefaultApp} = props;
 	const openRef = ({ref, element}: {ref: FileRef; element: HTMLElement}) => {
-		missingFocus.opening(ref, element, onFileRef?.(ref, element));
+		onFileRef?.(ref, element);
 	};
 	const handleClick = (event: MouseEvent<HTMLElement>) => {
 		const target = onFileRef === undefined ? null : targetFileRef(event);
@@ -160,13 +183,26 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
 		<>
 			{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- delegates clicks from the rendered links and copy buttons inside it, which are keyboard-reachable themselves */}
 			<article
-				ref={missingFocus.article}
+				ref={focusSlot.article}
 				className={
 					props.document === true ? `${styles["markdown"]} epitaxy-document-prose` : styles["markdown"]
 				}
 				{...(props.document === true ? {"data-document": ""} : {})}
 				onClick={handleClick}
-				{...(onFileRef === undefined ? {} : {onKeyDown: handleKeyDown, ...reasonTooltip.handlers})}
+				{...(onFileRef === undefined
+					? {}
+					: {
+							onKeyDown: handleKeyDown,
+							...reasonTooltip.handlers,
+							onFocus: (event: FocusEvent<HTMLElement>) => {
+								focusSlot.handlers.onFocus(event);
+								reasonTooltip.handlers.onFocus(event);
+							},
+							onBlur: (event: FocusEvent<HTMLElement>) => {
+								focusSlot.handlers.onBlur(event);
+								reasonTooltip.handlers.onBlur(event);
+							},
+						})}
 				dangerouslySetInnerHTML={{__html: rendered}}
 			/>
 			{reasonTooltip.tooltip}

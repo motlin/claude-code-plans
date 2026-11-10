@@ -10,8 +10,11 @@ import {findSecrets} from "./secret-mask";
 /** Why a ref renders as blocked code instead of a link, as upstream's `ir()` reasons. */
 export type FileRefBlock = "outside_roots" | "missing";
 
-/** Marks the cds disabled-reason wrapper around a blocked file ref; its `[data-disabled-reason]` child holds the reason. */
-export const DISABLED_REASON_WRAPPER_ATTR = "data-disabled-reason-wrapper";
+/** Marks upstream's cds disabled-reason wrapper around a blocked file ref. */
+export const DISABLED_REASON_WRAPPER_ATTR = "data-cds-disabled-reason-wrapper";
+
+/** Marks the wrapper's hidden child that holds the reason (upstream `data-cds-disabled-reason`). */
+export const DISABLED_REASON_ATTR = "data-cds-disabled-reason";
 
 /** Upstream's `ir()` reason copy for each block. */
 export const FILE_REF_BLOCK_REASONS = {

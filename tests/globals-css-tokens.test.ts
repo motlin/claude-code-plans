@@ -266,3 +266,12 @@ describe("described row meta line (upstream sidebar-row-metadata-line)", () => {
 		});
 	});
 });
+
+describe("border-0.5 utility (upstream `.border-0\\.5`)", () => {
+	it("draws a half-pixel border in the current border style", () => {
+		expect(tokens(block("@utility border-0.5"), ["border-style", "border-width"])).toStrictEqual({
+			"border-style": "var(--tw-border-style)",
+			"border-width": "0.5px",
+		});
+	});
+});

@@ -8,6 +8,7 @@ import footnote from "markdown-it-footnote";
 import {requestLanguage, themeOrRequest} from "../hooks/use-shiki";
 import {type CodeThemePair, DEFAULT_CODE_THEMES} from "./code-themes";
 import {
+	DISABLED_REASON_ATTR,
 	DISABLED_REASON_WRAPPER_ATTR,
 	FILE_REF_BLOCK_REASONS,
 	type FileRef,
@@ -114,8 +115,10 @@ function fileRefButtonOpen(ref: FileRef, escape: (value: string) => string): str
 }
 
 /**
- * Upstream's `sr`: the opening and closing HTML of the focusable disabled-reason
+ * Upstream's `Br`: the opening and closing HTML of the focusable disabled-reason
  * wrapper around a blocked ref's content, with the reason hidden for `aria-describedby`.
+ * A missing ref also carries upstream's hidden focus-slot span, which hands focus to
+ * the wrapper when it replaces a focused link.
  */
 function blockedFileRefWrapper(
 	path: string,
@@ -125,7 +128,7 @@ function blockedFileRefWrapper(
 	const id = fileRefReasonId(path, block);
 	return [
 		`<span tabindex="0" ${DISABLED_REASON_WRAPPER_ATTR}="" aria-describedby="${id}" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus">`,
-		`<span id="${id}" hidden data-disabled-reason="">${escape(FILE_REF_BLOCK_REASONS[block])}</span></span>`,
+		`${block === "missing" ? "<span hidden></span>" : ""}<span id="${id}" hidden ${DISABLED_REASON_ATTR}="">${escape(FILE_REF_BLOCK_REASONS[block])}</span></span>`,
 	];
 }
 

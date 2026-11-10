@@ -180,12 +180,12 @@ describe("hand-rolled tooltip popups shrinkwrap", () => {
 		engine.width = 150;
 		const {container} = render(
 			<MarkdownArticle
-				html='<p><span tabindex="0" data-disabled-reason-wrapper=""><code>/tmp/x</code><span hidden="" data-disabled-reason="">Outside this session’s folders</span></span></p>'
+				html='<p><span tabindex="0" data-cds-disabled-reason-wrapper=""><code>/tmp/x</code><span hidden="" data-cds-disabled-reason="">Outside this session’s folders</span></span></p>'
 				onFileRef={vi.fn<(ref: FileRef) => void>()}
 			/>,
 		);
 		act(() => {
-			container.querySelector<HTMLElement>("[data-disabled-reason-wrapper]")!.focus();
+			container.querySelector<HTMLElement>("[data-cds-disabled-reason-wrapper]")!.focus();
 		});
 		const tooltip = screen.getByRole("tooltip");
 		expect({text: tooltip.textContent, width: tooltip.style.maxWidth}).toStrictEqual({
