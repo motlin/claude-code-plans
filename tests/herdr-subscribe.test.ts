@@ -252,7 +252,7 @@ describe("herdr event bridge", () => {
 			statusEvents: tracker.handleStatusEvent.mock.calls,
 		}).toStrictEqual({
 			writes: [
-				'{"id":"ccp:sub","method":"events.subscribe","params":{"subscriptions":[{"type":"pane.created"},{"type":"pane.closed"},{"type":"pane.updated"},{"type":"pane.moved"},{"type":"pane.exited"},{"type":"pane.agent_detected"},{"type":"pane.agent_status_changed","pane_id":"workspace-100:pane-100"}]}}\n',
+				'{"id":"ccp:sub","method":"events.subscribe","params":{"subscriptions":[{"type":"pane.created"},{"type":"pane.closed"},{"type":"pane.updated"},{"type":"pane.moved"},{"type":"pane.exited"},{"type":"pane.agent_detected"},{"type":"tab.created"},{"type":"tab.closed"},{"type":"tab.renamed"},{"type":"pane.agent_status_changed","pane_id":"workspace-100:pane-100"}]}}\n',
 			],
 			broadcasts: [
 				{type: HERDR_EVENTS.PANES_SNAPSHOT, data: {panes: []}},
@@ -550,6 +550,79 @@ describe("herdr event bridge", () => {
 				data: {pane: {pane_id: "w19:p9", revision: 229}},
 			},
 		]);
+		stop();
+	});
+
+	it("announces tab changes from a fresh snapshot, never from herdr's replayed tab events, and never reconnects on them", async () => {
+		const sockets: FakeSocket[] = [];
+		const lineReaders: FakeLineReader[] = [];
+		const broadcasts: Broadcast[] = [];
+		const tab = (label: string) => ({
+			tab_id: "w1:t1",
+			workspace_id: "w1",
+			number: 1,
+			label,
+			focused: false,
+			pane_count: 1,
+			agent_status: "unknown",
+		});
+		const snapshots = [tab("shell"), tab("build"), tab("build")];
+		const stop = __testing.createBridge({
+			probe: available,
+			connect: () => {
+				const socket = new FakeSocket();
+				sockets.push(socket);
+				return socket as unknown as Socket;
+			},
+			createLineReader: () => {
+				const lineReader = new FakeLineReader();
+				lineReaders.push(lineReader);
+				return lineReader as unknown as ReadlineInterface;
+			},
+			getSnapshot: async () =>
+				Promise.resolve({
+					workspaces: [],
+					panes: [wirePane("w1:p1", 0)],
+					tabs: [snapshots.shift() ?? tab("build")],
+				}),
+			getPanes: async () => Promise.resolve([]),
+			paneTable: createHerdrPaneTable(),
+			broadcast: (type, data) => broadcasts.push({type, data}),
+			schedule: setTimeout,
+			cancel: clearTimeout,
+			viewedStateTracker: viewedStateTracker(),
+			setReconnecting: () => {},
+		});
+		await flushPromises();
+		sockets[0]!.emit("connect");
+		await flushPromises();
+
+		// A genuine rename: the hint resync's snapshot shows the new label.
+		lineReaders[0]!.send({event: "tab_renamed", data: {tab_id: "w1:t1", workspace_id: "w1", label: "build"}});
+		await flushPromises();
+		const afterPush = broadcasts.length;
+		await vi.advanceTimersByTimeAsync(250);
+		// The same rename replayed, plus an old create and close: the snapshot is unchanged, so nothing is announced.
+		lineReaders[0]!.send({event: "tab_renamed", data: {tab_id: "w1:t1", workspace_id: "w1", label: "shell"}});
+		lineReaders[0]!.send({event: "tab_created", data: {tab: tab("old")}});
+		lineReaders[0]!.send({event: "tab_closed", data: {tab_id: "w1:t9", workspace_id: "w1"}});
+		await flushPromises();
+		await vi.advanceTimersByTimeAsync(1_000);
+
+		expect({
+			afterPush,
+			tabBroadcasts: broadcasts.filter((b) => b.type === HERDR_EVENTS.TABS_CHANGED),
+			socketCount: sockets.length,
+		}).toStrictEqual({
+			afterPush: 1,
+			tabBroadcasts: [
+				{
+					type: HERDR_EVENTS.TABS_CHANGED,
+					data: {tabs: [{tabId: "w1:t1", workspaceId: "w1", number: 1, label: "build"}]},
+				},
+			],
+			socketCount: 1,
+		});
 		stop();
 	});
 

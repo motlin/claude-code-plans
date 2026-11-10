@@ -52,6 +52,7 @@ import {
 	type TerminalObserver,
 	type TerminalObserverSocket,
 } from "../herdr/terminal-observer";
+import {getHerdrTerminals, handleHerdrTerminalAction, type HerdrTerminalWorkspace} from "../herdr/terminals";
 import {getHerdrWorkspaces, type HerdrWorkspace} from "../herdr/workspaces";
 import {defaultTerminalHostProbes, selectTerminalHost, type TerminalHostProbes} from "./selection";
 
@@ -81,6 +82,10 @@ export interface TerminalHost {
 	listPanes: () => Promise<HerdrPaneLink[]>;
 	/** Every pane by workspace, including panes no Claude session owns. */
 	listWorkspaces: () => Promise<HerdrWorkspace[]>;
+	/** Every herdr tab and pane, with each pane's foreground command; empty for a host that has none. */
+	listTerminals: () => Promise<HerdrTerminalWorkspace[]>;
+	/** Create, split, close, rename or focus a herdr tab or pane (see `herdr/terminals.ts`). */
+	manageTerminal: (request: Request) => Promise<Response>;
 	/** Session to pane: placements of sessions in this host's panes, or null for none. */
 	placementProvider: () => TerminalPlacementProvider | null;
 	/** Prompt the session's agent (refused while it is not ready). */
@@ -136,6 +141,8 @@ const herdrTerminalHost: TerminalHost = {
 	...TERMINAL_HOST_CAPABILITIES.herdr,
 	listPanes: async () => getHerdrPanes(),
 	listWorkspaces: async () => getHerdrWorkspaces(),
+	listTerminals: async () => getHerdrTerminals(),
+	manageTerminal: async (request) => handleHerdrTerminalAction(request),
 	placementProvider: () => createHerdrPlacementProvider(),
 	prompt: async (request) => handleHerdrPrompt(request),
 	interrupt: async (request) => handleHerdrInterrupt(request),
@@ -176,6 +183,8 @@ const noTerminalHost: TerminalHost = {
 	canStream: false,
 	listPanes: async () => Promise.resolve([]),
 	listWorkspaces: async () => Promise.resolve([]),
+	listTerminals: async () => Promise.resolve([]),
+	manageTerminal: noHostWrite,
 	placementProvider: () => null,
 	prompt: noHostWrite,
 	interrupt: noHostWrite,

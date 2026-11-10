@@ -30,6 +30,8 @@ export const HERDR_EVENTS = {
 	PANE_AGENT_STATUS_CHANGED: "herdr:pane-agent-status-changed",
 	/** Whether a bridge is resubscribing after losing herdr: `{reconnecting: boolean}`, across all herdr servers. */
 	CONNECTION_CHANGED: "herdr:connection-changed",
+	/** herdr's tabs changed (created, closed or renamed), confirmed by a fresh snapshot: `{tabs: [{tabId, workspaceId, number, label}]}`. */
+	TABS_CHANGED: "herdr:tabs-changed",
 } as const;
 
 /**

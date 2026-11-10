@@ -90,21 +90,34 @@ describe("resolveTerminalHost", () => {
 		}).toStrictEqual({herdr: "herdr", autoWithHerdr: "herdr", autoWithTmuxOnly: "tmux", tmux: "tmux"});
 	});
 
-	it("gives the tmux host no workspaces yet", async () => {
+	it("gives the tmux host no workspaces or herdr terminals yet, and refuses herdr terminal actions", async () => {
 		const host = createTmuxTerminalHost({
 			entries: () => [],
 			registry: () => [],
 			listPanes: async () => Promise.resolve(""),
 			processTable: async () => Promise.resolve(""),
 		});
+		const action = await host.manageTerminal(
+			new Request("http://127.0.0.1:7526/api/herdr/terminals", {
+				method: "POST",
+				body: JSON.stringify({action: "close-pane", paneId: "w1:p1"}),
+			}),
+		);
 
 		expect({
 			panes: await host.listPanes(),
 			workspaces: await host.listWorkspaces(),
+			terminals: await host.listTerminals(),
+			action: {status: action.status, body: await action.json()},
 			placementProvider: host.placementProvider()?.id,
 		}).toStrictEqual({
 			panes: [],
 			workspaces: [],
+			terminals: [],
+			action: {
+				status: 503,
+				body: {error: "No terminal host is available for live input", code: "no-terminal-host"},
+			},
 			placementProvider: "tmux",
 		});
 	});

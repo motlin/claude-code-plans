@@ -21,6 +21,7 @@ describe("HERDR_EVENTS", () => {
 			PANE_AGENT_DETECTED: "herdr:pane-agent-detected",
 			PANE_AGENT_STATUS_CHANGED: "herdr:pane-agent-status-changed",
 			CONNECTION_CHANGED: "herdr:connection-changed",
+			TABS_CHANGED: "herdr:tabs-changed",
 		});
 	});
 });

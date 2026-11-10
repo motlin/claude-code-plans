@@ -51,7 +51,7 @@ function placeholderWorkspace(workspaceId: string): HerdrWorkspace {
 }
 
 /** A named herdr session's workspaces carry the session name, since its labels can repeat the default server's. */
-function workspaceLabel(workspaceId: string, label: string): string {
+export function workspaceLabel(workspaceId: string, label: string): string {
 	const {session} = splitHerdrId(workspaceId);
 	return session === null ? label : `${label} (${session})`;
 }

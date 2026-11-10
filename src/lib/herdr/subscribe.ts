@@ -1,4 +1,5 @@
 import {createConnection, type Socket} from "node:net";
+import type {z} from "zod";
 import {createInterface, type Interface as ReadlineInterface} from "node:readline";
 import {HERDR_EVENTS} from "../hook-events";
 import {hmrDispose, hmrPersist} from "../hmr-persist";
@@ -26,6 +27,7 @@ import {
 	discoverLiveHerdrServers,
 	qualifyHerdrEventData,
 	qualifyHerdrPaneState,
+	qualifyHerdrTabs,
 	setKnownHerdrServers,
 	type HerdrServer,
 } from "./servers";
@@ -38,7 +40,26 @@ const UNPARAMETERIZED_SUBSCRIPTIONS = [
 	{type: "pane.moved"},
 	{type: "pane.exited"},
 	{type: "pane.agent_detected"},
+	// Tab pushes are only hints: herdr replays them on every subscribe, so the snapshot decides what changed.
+	{type: "tab.created"},
+	{type: "tab.closed"},
+	{type: "tab.renamed"},
 ] as const;
+
+const TAB_HINT_EVENTS: ReadonlySet<string> = new Set(["tab_created", "tab_closed", "tab_renamed"]);
+
+/** What a tab-change announcement carries per tab. */
+interface AnnouncedTab {
+	tabId: string;
+	workspaceId: string;
+	number: number;
+	label: string;
+}
+
+/** The pane state plus herdr's tabs, which only the bridge's tab announcements consume. */
+type BridgeSnapshot = HerdrPaneState & {
+	tabs?: z.infer<typeof HerdrSessionSnapshotResultSchema>["snapshot"]["tabs"];
+};
 
 function subscriptionRequest(paneIds: string[]): string {
 	// herdr 0.8 requires pane_id on each agent-status subscription, so the
@@ -77,7 +98,7 @@ interface BridgeDependencies {
 	connect: (socketPath: string) => Socket;
 	createLineReader: (socket: Socket) => ReadlineInterface;
 	/** Ask herdr itself for a snapshot, bypassing the pane table, with ids already qualified. */
-	getSnapshot: () => Promise<HerdrPaneState | null>;
+	getSnapshot: () => Promise<BridgeSnapshot | null>;
 	/** Read the joined pane links, which come from `paneTable` while it is current. */
 	getPanes: () => Promise<HerdrPaneLink[]>;
 	paneTable: HerdrPaneTable;
@@ -144,8 +165,11 @@ function bridgeDependenciesFor(server: HerdrServer): BridgeDependencies {
 			if (!response.ok) return null;
 			const parsed = HerdrSessionSnapshotResultSchema.safeParse(response.value);
 			if (!parsed.success) return null;
-			const {workspaces, panes} = parsed.data.snapshot;
-			return qualifyHerdrPaneState({workspaces, panes}, server.session);
+			const {workspaces, panes, tabs} = parsed.data.snapshot;
+			return {
+				...qualifyHerdrPaneState({workspaces, panes}, server.session),
+				tabs: qualifyHerdrTabs(tabs, server.session),
+			};
 		},
 		getPanes: async () => getHerdrPanes(),
 		paneTable: herdrPaneTables.forServer(server.socketPath),
@@ -203,6 +227,22 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 	const paneDiffer = createHerdrPaneDiffer();
 	const {paneTable} = dependencies;
 	const session = dependencies.session ?? null;
+	// The tabs last seen in a snapshot; the first snapshot records them without announcing.
+	let knownTabs: string | null = null;
+
+	const announceTabChanges = (snapshot: BridgeSnapshot): void => {
+		if (snapshot.tabs === undefined) return;
+		const tabs: AnnouncedTab[] = snapshot.tabs.map((tab) => ({
+			tabId: tab.tab_id,
+			workspaceId: tab.workspace_id,
+			number: tab.number,
+			label: tab.label,
+		}));
+		const signature = JSON.stringify(tabs);
+		const previous = knownTabs;
+		knownTabs = signature;
+		if (previous !== null && previous !== signature) dependencies.broadcast(HERDR_EVENTS.TABS_CHANGED, {tabs});
+	};
 
 	/**
 	 * Seed the pane table from herdr. Returns the snapshot, or null after
@@ -211,8 +251,12 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 	const reseedPaneTable = async (): Promise<HerdrPaneState | null> => {
 		const snapshot = await dependencies.getSnapshot();
 		if (isStopped()) return null;
-		if (snapshot === null) paneTable.invalidate();
-		else paneTable.seed(snapshot);
+		if (snapshot === null) {
+			paneTable.invalidate();
+		} else {
+			paneTable.seed(snapshot);
+			announceTabChanges(snapshot);
+		}
 		return snapshot;
 	};
 
@@ -333,6 +377,11 @@ function createBridge(dependencies: BridgeDependencies): () => void {
 			const rawData = message["data"];
 			if (typeof pushedEvent !== "string" || !isRecord(rawData)) return;
 			const data = qualifyHerdrEventData(rawData, session);
+
+			if (TAB_HINT_EVENTS.has(pushedEvent)) {
+				scheduleHintResync();
+				return;
+			}
 
 			const sseEvent = PUSH_EVENT_TO_SSE_EVENT[pushedEvent];
 			if (!sseEvent) return;

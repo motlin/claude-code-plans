@@ -219,6 +219,18 @@ export function qualifyHerdrPaneState<
 	};
 }
 
+/** Qualify a named server's tab ids, like `qualifyHerdrPaneState` does for its workspaces and panes. */
+export function qualifyHerdrTabs<T extends {tab_id: string; workspace_id: string}>(
+	tabs: readonly T[],
+	session: string | null,
+): T[] {
+	return tabs.map((tab) => ({
+		...tab,
+		tab_id: qualifyHerdrId(tab.tab_id, session),
+		workspace_id: qualifyHerdrId(tab.workspace_id, session),
+	}));
+}
+
 function isQualifiablePane(value: unknown): value is QualifiablePane {
 	if (value === null || typeof value !== "object") return false;
 	const fields: Record<string, unknown> = {...value};

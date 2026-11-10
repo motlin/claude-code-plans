@@ -234,3 +234,31 @@ export const HerdrPaneAgentStatusChangedEventSchema = z
 		title: z.string().nullish(),
 	})
 	.loose();
+
+export const HerdrPaneProcessInfoResultSchema = z
+	.object({
+		type: z.literal("pane_process_info"),
+		process_info: z
+			.object({
+				pane_id: z.string(),
+				shell_pid: NonnegativeIntegerSchema.nullish(),
+				foreground_process_group_id: NonnegativeIntegerSchema.nullish(),
+				foreground_processes: z
+					.array(
+						z
+							.object({
+								pid: NonnegativeIntegerSchema,
+								name: z.string(),
+								argv0: z.string().nullish(),
+								argv: z.array(z.string()).nullish(),
+								cmdline: z.string().nullish(),
+								cwd: z.string().nullish(),
+							})
+							.loose(),
+					)
+					.optional(),
+				tty: z.string().nullish(),
+			})
+			.loose(),
+	})
+	.loose();
