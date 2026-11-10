@@ -16,5 +16,9 @@ const server = createServer((_req, res) => {
 // Stands in for a production server whose startup is slow on a loaded machine.
 const listenDelayMs = Number(process.env["FAKE_SERVER_LISTEN_DELAY_MS"] ?? 0);
 setTimeout(() => {
-	server.listen(port);
+	server.listen(port, () => {
+		// Readiness signal for tests that spawn this fixture directly; by now
+		// process.title is already set.
+		console.log(`listening on ${port}`);
+	});
 }, listenDelayMs);

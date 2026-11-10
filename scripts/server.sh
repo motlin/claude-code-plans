@@ -22,7 +22,10 @@
 #                 (default: node SNAPSHOT_ROOT/<id>/.output/server/index.mjs)
 #   SNAPSHOT_ROOT where build snapshots live (default: $XDG_CACHE_HOME/claude-code-plans/server-build)
 #   SERVER_TITLE  process.title the server sets (src/lib/server-process-title.ts)
+#   SERVER_ENTRY_MATCH  pgrep -f pattern for a server's command line before it
+#                 renames itself (default: \.output/server/index\.mjs)
 #   SERVER_MATCH  pgrep -f pattern identifying server processes
+#                 (default: the SERVER_TITLE title or SERVER_ENTRY_MATCH)
 #   PROJECT_DIR   only matched processes with this cwd are managed
 #   LOG_FILE      server stdout/stderr log
 #   STOP_GRACE_SECONDS  how long stop waits after SIGTERM before force killing (default 10)
@@ -40,7 +43,8 @@ SERVER_TITLE=${SERVER_TITLE:-claude-code-browser-server}
 # The server renames itself to SERVER_TITLE once its Nitro plugins run; the
 # command-line alternative catches it before then. macOS pgrep -f sees
 # environment data after a rewritten title, hence ( |$) instead of $.
-SERVER_MATCH=${SERVER_MATCH:-"^${SERVER_TITLE}( |\$)|\\.output/server/index\\.mjs"}
+SERVER_ENTRY_MATCH=${SERVER_ENTRY_MATCH:-"\\.output/server/index\\.mjs"}
+SERVER_MATCH=${SERVER_MATCH:-"^${SERVER_TITLE}( |\$)|${SERVER_ENTRY_MATCH}"}
 LOG_FILE=${LOG_FILE:-"$CACHE_DIR/server.log"}
 STOP_GRACE_SECONDS=${STOP_GRACE_SECONDS:-10}
 START_TIMEOUT_SECONDS=${START_TIMEOUT_SECONDS:-60}
