@@ -94,11 +94,13 @@ function LinkedProseMarkdown({
 	sessionId,
 	open,
 	smartQuotes,
+	diagrams,
 }: {
 	markdown: string;
 	sessionId: string;
 	open: (ref: FileRef) => void;
 	smartQuotes: boolean;
+	diagrams: boolean;
 }) {
 	const texts = useMemo(() => fileRefTexts(markdown), [markdown]);
 	const refs = useFileRefs(texts, true);
@@ -114,6 +116,7 @@ function LinkedProseMarkdown({
 			artifactTitles={artifactTitles}
 			smartQuotes={smartQuotes}
 			zonedTimes={smartQuotes}
+			diagrams={diagrams}
 		/>
 	);
 }
@@ -121,9 +124,18 @@ function LinkedProseMarkdown({
 /**
  * Assistant prose whose inline-code paths become clickable file refs; with
  * `smartQuotes`, its quotes curl and its zoned clock times underline as
- * upstream's assistant text does.
+ * upstream's assistant text does. With `diagrams` (upstream's "diagram" context, assistant transcript text
+ * only), mermaid fences draw as diagrams.
  */
-export function ProseMarkdown({markdown, smartQuotes = false}: {markdown: string; smartQuotes?: boolean}) {
+export function ProseMarkdown({
+	markdown,
+	smartQuotes = false,
+	diagrams = false,
+}: {
+	markdown: string;
+	smartQuotes?: boolean;
+	diagrams?: boolean;
+}) {
 	const context = useContext(FileRefsContext);
 	// Upstream's ChatText boundary (`bS`): a markdown crash falls back to the plain text until the text changes.
 	return (
@@ -133,13 +145,19 @@ export function ProseMarkdown({markdown, smartQuotes = false}: {markdown: string
 			report={reportProseCrash}
 		>
 			{context === null ? (
-				<MarkdownArticle markdown={markdown} smartQuotes={smartQuotes} zonedTimes={smartQuotes} />
+				<MarkdownArticle
+					markdown={markdown}
+					smartQuotes={smartQuotes}
+					zonedTimes={smartQuotes}
+					diagrams={diagrams}
+				/>
 			) : (
 				<LinkedProseMarkdown
 					markdown={markdown}
 					sessionId={context.sessionId}
 					open={context.open}
 					smartQuotes={smartQuotes}
+					diagrams={diagrams}
 				/>
 			)}
 		</RenderErrorBoundary>

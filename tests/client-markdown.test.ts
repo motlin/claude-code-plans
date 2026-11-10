@@ -593,3 +593,62 @@ describe("headingsUnder (upstream na headingsUnder with c59c32499 Bi)", () => {
 		});
 	});
 });
+
+describe("mermaid fences in the diagram context (upstream c5071af19 dispatch)", () => {
+	function parse(html: string): HTMLTemplateElement {
+		const template = document.createElement("template");
+		template.innerHTML = html;
+		return template;
+	}
+
+	function fences(html: string): {index: string | null; source: string | null; firstChild: string | undefined}[] {
+		return [...parse(html).content.querySelectorAll("[data-mermaid-fence]")].map((fence) => ({
+			index: fence.getAttribute("data-mermaid-fence"),
+			source: fence.getAttribute("data-mermaid-source"),
+			firstChild: fence.firstElementChild?.className,
+		}));
+	}
+
+	const fence = "```mermaid\ngraph TD; A-->B\n```";
+
+	it("wraps the unchanged code block in a placeholder carrying the exact source", () => {
+		const html = renderMarkdownWithHighlighting(fence, null, {diagrams: true});
+		expect(fences(html)).toStrictEqual([
+			{index: "0", source: "graph TD; A-->B", firstChild: "markdown-codeblock epitaxy-codeblock"},
+		]);
+		const inner = parse(html).content.querySelector("[data-mermaid-fence]")?.innerHTML;
+		expect(inner).toStrictEqual(parse(renderMarkdownToHtml(fence)).innerHTML.trimEnd());
+	});
+
+	it("leaves the output byte-identical without the diagram context", () => {
+		const plain = renderMarkdownToHtml(fence);
+		expect([
+			renderMarkdownWithHighlighting(fence, null, {diagrams: false}),
+			renderMarkdownWithHighlighting(fence, null),
+		]).toStrictEqual([plain, plain]);
+		expect(plain).not.toContain("data-mermaid-fence");
+	});
+
+	it("matches the language case-insensitively and only the exact tag", () => {
+		const marked = (lang: string) =>
+			fences(renderMarkdownToHtml(`\`\`\`${lang}\ngraph TD\n\`\`\``, {diagrams: true})).length;
+		expect(["Mermaid", "MERMAID", "mermaid title", "mmd", "mermaidjs", ""].map(marked)).toStrictEqual([
+			1, 1, 1, 0, 0, 0,
+		]);
+	});
+
+	it("numbers each fence in a render", () => {
+		const html = renderMarkdownToHtml(`${fence}\n\ntext\n\n\`\`\`mermaid\npie\n\`\`\``, {diagrams: true});
+		expect(fences(html).map(({index, source}) => [index, source])).toStrictEqual([
+			["0", "graph TD; A-->B"],
+			["1", "pie"],
+		]);
+	});
+
+	it("keeps a fence holding a secret as its masked code block (upstream pre-gate Z)", () => {
+		const html = renderMarkdownToHtml(`\`\`\`mermaid\ngraph TD; A[ghp_${"a".repeat(36)}]-->B\n\`\`\``, {
+			diagrams: true,
+		});
+		expect(fences(html)).toStrictEqual([]);
+	});
+});

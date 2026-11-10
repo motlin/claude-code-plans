@@ -1791,6 +1791,12 @@ html[data-interface-font="dyslexic"] {
 	border-width: 0.5px;
 }
 
+/* Upstream's cds `duration-base` (--cds-dur-base, 0.2s); reduced motion drops the transition with motion-reduce:. */
+@utility duration-base {
+	--tw-duration: 200ms;
+	transition-duration: 200ms;
+}
+
 /* Upstream's `.text-code` carries the mono face along with the code size and leading; the size and leading
    come from the `--text-code` theme token, this adds the family. */
 @utility text-code {

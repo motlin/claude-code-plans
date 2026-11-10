@@ -8,6 +8,8 @@ import {EYE_ICON_SVG} from "../src/lib/icon-paths";
 import {markdownCss, ruleDeclarations} from "./markdown-css";
 
 const FENCE = "```js\nconst x = 1;\n```";
+/** The mermaid fence's corner toolbar buttons share the code card's Copy button look. */
+const MERMAID_TOOLBAR_BUTTON = '.markdown [data-testid="epitaxy-mermaid-fence"] > [data-placement] button';
 
 describe("fenced code block copy button markup", () => {
 	it("wraps every fence in a codeblock wrapper carrying one Copy code button with a tooltip", () => {
@@ -82,10 +84,16 @@ describe("fenced code block copy button markup", () => {
 		});
 	});
 
-	it("sizes the button like upstream: 24px square, radius 6, 16px icon", () => {
+	it("sizes the button like upstream: 24px square, radius 6, 16px icon, shared with the mermaid fence toolbar", () => {
 		expect({
-			button: ruleDeclarations(markdownCss, ".markdown :global(.markdown-code-copy) button"),
-			icon: ruleDeclarations(markdownCss, ".markdown :global(.markdown-code-copy) button svg"),
+			button: ruleDeclarations(
+				markdownCss,
+				`.markdown :global(.markdown-code-copy) button,\n${MERMAID_TOOLBAR_BUTTON}`,
+			),
+			icon: ruleDeclarations(
+				markdownCss,
+				`.markdown :global(.markdown-code-copy) button svg,\n${MERMAID_TOOLBAR_BUTTON} svg`,
+			),
 		}).toStrictEqual({
 			button: {
 				position: "relative",
@@ -106,9 +114,8 @@ describe("fenced code block copy button markup", () => {
 	});
 
 	it("shows a dark tooltip matching ui/tooltip.tsx after the 300ms open delay", () => {
-		const tooltip = ".markdown :global(.markdown-code-copy) button[data-tooltip]::after";
-		const shown =
-			".markdown :global(.markdown-code-copy) button[data-tooltip]:hover::after,\n.markdown :global(.markdown-code-copy) button[data-tooltip]:focus-visible::after";
+		const tooltip = `.markdown :global(.markdown-code-copy) button[data-tooltip]::after,\n${MERMAID_TOOLBAR_BUTTON}[data-tooltip]::after`;
+		const shown = `.markdown :global(.markdown-code-copy) button[data-tooltip]:hover::after,\n.markdown :global(.markdown-code-copy) button[data-tooltip]:focus-visible::after,\n${MERMAID_TOOLBAR_BUTTON}[data-tooltip]:hover::after,\n${MERMAID_TOOLBAR_BUTTON}[data-tooltip]:focus-visible::after`;
 
 		expect({
 			tooltip: ruleDeclarations(markdownCss, tooltip),

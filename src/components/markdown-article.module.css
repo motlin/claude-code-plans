@@ -202,7 +202,8 @@
 	pointer-events: none;
 }
 
-/* Always visible, like upstream: `sticky top-[calc(max(fade)+5px)]`. */
+/* Always visible, like upstream: `sticky top-[calc(max(fade)+5px)]`. The mermaid fence's corner toolbar
+   buttons are the same cds ghost iconOnly Button as the code card's Copy, so they share its look below. */
 .markdown :global(.markdown-code-copy) {
 	position: sticky;
 	top: calc(max(var(--epitaxy-top-fade-height, 0px), var(--fade-top, 0px)) + 5px);
@@ -212,7 +213,8 @@
 	pointer-events: auto;
 }
 
-.markdown :global(.markdown-code-copy) button {
+.markdown :global(.markdown-code-copy) button,
+.markdown [data-testid="epitaxy-mermaid-fence"] > [data-placement] button {
 	position: relative;
 	display: inline-flex;
 	align-items: center;
@@ -227,17 +229,20 @@
 	cursor: pointer;
 }
 
-.markdown :global(.markdown-code-copy) button svg {
+.markdown :global(.markdown-code-copy) button svg,
+.markdown [data-testid="epitaxy-mermaid-fence"] > [data-placement] button svg {
 	width: 16px;
 	height: 16px;
 }
 
-.markdown :global(.markdown-code-copy) button:hover {
+.markdown :global(.markdown-code-copy) button:hover,
+.markdown [data-testid="epitaxy-mermaid-fence"] > [data-placement] button:hover {
 	color: var(--color-primary);
 	background: hsl(0 0% 4.3137% / 0.06);
 }
 
-:global(.dark) .markdown :global(.markdown-code-copy) button:hover {
+:global(.dark) .markdown :global(.markdown-code-copy) button:hover,
+:global(.dark) .markdown [data-testid="epitaxy-mermaid-fence"] > [data-placement] button:hover {
 	background: hsl(0 0% 100% / 0.08);
 }
 
@@ -250,7 +255,8 @@
 
 /* The markdown is raw HTML, so the button cannot use ui/tooltip.tsx; this CSS
    tooltip mirrors it: always dark, side top, offset 4, 300ms open delay. */
-.markdown :global(.markdown-code-copy) button[data-tooltip]::after {
+.markdown :global(.markdown-code-copy) button[data-tooltip]::after,
+.markdown [data-testid="epitaxy-mermaid-fence"] > [data-placement] button[data-tooltip]::after {
 	content: attr(data-tooltip);
 	position: absolute;
 	bottom: calc(100% + 4px);
@@ -274,7 +280,9 @@
 }
 
 .markdown :global(.markdown-code-copy) button[data-tooltip]:hover::after,
-.markdown :global(.markdown-code-copy) button[data-tooltip]:focus-visible::after {
+.markdown :global(.markdown-code-copy) button[data-tooltip]:focus-visible::after,
+.markdown [data-testid="epitaxy-mermaid-fence"] > [data-placement] button[data-tooltip]:hover::after,
+.markdown [data-testid="epitaxy-mermaid-fence"] > [data-placement] button[data-tooltip]:focus-visible::after {
 	visibility: visible;
 	transition-delay: 300ms;
 }

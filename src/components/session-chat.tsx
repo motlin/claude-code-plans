@@ -5864,7 +5864,8 @@ function ContentBlock({
 		if (!prose.trim()) return null;
 		return (
 			<div className="relative min-w-0 text-body text-primary" data-transcript-prose>
-				<ProseMarkdown markdown={prose} smartQuotes />
+				{/* Upstream's Wbe: transcript text items are the "diagram" context, so mermaid fences draw. */}
+				<ProseMarkdown markdown={prose} smartQuotes diagrams />
 				<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-0 right-0" />
 			</div>
 		);

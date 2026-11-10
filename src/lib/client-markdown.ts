@@ -57,6 +57,11 @@ interface MarkdownRenderOptions {
 	zonedTimes?: boolean;
 	/** Upstream `headingsUnder`: headings keep their tag but announce as levels below this one; see `headingsUnder`. */
 	headingsUnder?: number;
+	/**
+	 * Upstream's "diagram" markdown context (assistant transcript text): each mermaid fence is wrapped in a
+	 * `data-mermaid-fence` placeholder the article mounts a diagram into; see {@link MERMAID_FENCE_ATTR}.
+	 */
+	diagrams?: boolean;
 }
 
 /**
@@ -70,6 +75,9 @@ class MarkdownEnv {
 	readonly smartQuotes: boolean;
 	readonly zonedTimes: boolean;
 	readonly headingsUnder: number | undefined;
+	readonly diagrams: boolean;
+	/** Mermaid fences marked so far in this render; the next one's index. */
+	mermaidFences = 0;
 
 	constructor(options?: MarkdownRenderOptions) {
 		this.mdLinkBase = options?.mdLinkBase;
@@ -78,6 +86,7 @@ class MarkdownEnv {
 		this.smartQuotes = options?.smartQuotes === true;
 		this.zonedTimes = options?.zonedTimes === true;
 		this.headingsUnder = options?.headingsUnder;
+		this.diagrams = options?.diagrams === true;
 	}
 }
 
@@ -172,6 +181,19 @@ const boundHighlighters = new Map<string, HighlighterCore>();
 
 function getMarkdownVariant(options?: MarkdownRenderOptions): MarkdownVariant {
 	return options?.typographer ? "typographer" : "default";
+}
+
+/**
+ * Marks a mermaid fence's placeholder in the diagram context; its value is the fence's index in the render
+ * and {@link MERMAID_SOURCE_ATTR} holds the source. The placeholder wraps the ordinary code block.
+ */
+export const MERMAID_FENCE_ATTR = "data-mermaid-fence";
+/** The mermaid source a {@link MERMAID_FENCE_ATTR} placeholder draws, without the fence's trailing newline. */
+export const MERMAID_SOURCE_ATTR = "data-mermaid-source";
+
+/** Upstream's code-block dispatch: only a fence whose language is `mermaid`, in any case, may draw. */
+function isMermaidFence(info: string): boolean {
+	return info.trim().split(/\s+/)[0]?.toLowerCase() === "mermaid";
 }
 
 /** Marks the wrapper `<div>` a fenced code block and its copy button share. */
@@ -659,8 +681,15 @@ function applyPlugins(instance: MarkdownIt): void {
 		const token = defined(tokens[idx], "fence token");
 		const raw = token.content;
 		const secrets = findSecrets(raw);
-		if (secrets.length === 0)
-			return `<div class="${CODEBLOCK_CLASS} epitaxy-codeblock">${renderFence(tokens, idx, options, env, self).trimEnd()}${COPY_STRIP}</div>\n`;
+		if (secrets.length === 0) {
+			const block = `<div class="${CODEBLOCK_CLASS} epitaxy-codeblock">${renderFence(tokens, idx, options, env, self).trimEnd()}${COPY_STRIP}</div>`;
+			const markdownEnv = envOf(env);
+			// Upstream's pre-gate `Z` keeps a fence holding a secret as its (masked) code block.
+			if (markdownEnv?.diagrams !== true || !isMermaidFence(token.info)) return `${block}\n`;
+			const index = markdownEnv.mermaidFences++;
+			const source = raw.endsWith("\n") ? raw.slice(0, -1) : raw;
+			return `<div ${MERMAID_FENCE_ATTR}="${index}" ${MERMAID_SOURCE_ATTR}="${instance.utils.escapeHtml(source)}">${block}</div>\n`;
+		}
 		token.content = maskSecrets(raw);
 		const masked = renderFence(tokens, idx, options, env, self).trimEnd();
 		token.content = raw;

@@ -5,10 +5,14 @@ import {
 	useLayoutEffect,
 	useMemo,
 	useRef,
+	useState,
 	useSyncExternalStore,
 } from "react";
+import {createPortal} from "react-dom";
 import {
 	FILE_REF_ATTR,
+	MERMAID_FENCE_ATTR,
+	MERMAID_SOURCE_ATTR,
 	fileRefFromElement,
 	renderMarkdownWithHighlighting,
 	subscribeZonedTimes,
@@ -20,6 +24,7 @@ import {useCodeThemes} from "../hooks/use-code-themes";
 import {handleCodeCopyClick} from "../lib/code-copy";
 import styles from "./markdown-article.module.css";
 import {useReasonTooltip} from "./use-reason-tooltip";
+import {MermaidFenceGate} from "./mermaid-fence-gate";
 
 interface FileRefProps {
 	/** Inline code rendered as clickable file refs, keyed by the code's text. */
@@ -42,6 +47,11 @@ interface FileRefProps {
 	 * remark-breaks: soft line breaks wrap as spaces instead of breaking lines.
 	 */
 	document?: boolean | undefined;
+	/**
+	 * Upstream's "diagram" markdown context (assistant transcript text): mermaid fences draw as diagrams
+	 * instead of code blocks.
+	 */
+	diagrams?: boolean | undefined;
 }
 
 type MarkdownArticleProps = FileRefProps &
@@ -113,6 +123,42 @@ function useProseFocusSlot(rendered: string) {
 	return {article, handlers};
 }
 
+interface MermaidIsland {
+	element: HTMLElement;
+	code: string;
+	codeBlockHtml: string;
+}
+
+/** The code block HTML each placeholder held before its island took it over (kept for a re-run effect). */
+const islandCodeBlocks = new WeakMap<HTMLElement, string>();
+
+/**
+ * The mermaid fences in the rendered HTML, each taken over by a React island: its placeholder is emptied and the
+ * island renders the diagram fence (and its code block) into it through a portal.
+ */
+function useMermaidIslands(article: {readonly current: HTMLElement | null}, rendered: string, diagrams: boolean) {
+	const [islands, setIslands] = useState<MermaidIsland[]>([]);
+	useLayoutEffect(() => {
+		const found =
+			!diagrams || article.current === null
+				? []
+				: [...article.current.querySelectorAll<HTMLElement>(`[${MERMAID_FENCE_ATTR}]`)].map((element) => {
+						const codeBlockHtml = islandCodeBlocks.get(element) ?? element.innerHTML;
+						islandCodeBlocks.set(element, codeBlockHtml);
+						element.replaceChildren();
+						return {element, code: element.getAttribute(MERMAID_SOURCE_ATTR) ?? "", codeBlockHtml};
+					});
+		setIslands((previous) => (previous.length === 0 && found.length === 0 ? previous : found));
+	}, [article, rendered, diagrams]);
+	return islands.map((island) =>
+		createPortal(
+			<MermaidFenceGate code={island.code} codeBlockHtml={island.codeBlockHtml} />,
+			island.element,
+			island.element.getAttribute(MERMAID_FENCE_ATTR),
+		),
+	);
+}
+
 /** Upstream `EM`: prose whose markdown render crashed, drawn as its raw text inside the same prose wrapper. */
 export function PlainTextArticle({text}: {text: string}) {
 	return (
@@ -141,6 +187,7 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
 			typographer: props.typographer ?? false,
 			smartQuotes: props.smartQuotes ?? false,
 			zonedTimes: props.zonedTimes ?? false,
+			diagrams: props.diagrams ?? false,
 			codeThemes,
 			...(props.mdLinkBase === undefined ? {} : {mdLinkBase: props.mdLinkBase}),
 			...(props.fileRefs === undefined ? {} : {fileRefs: props.fileRefs}),
@@ -155,6 +202,7 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
 		props.artifactTitles,
 		props.smartQuotes,
 		props.zonedTimes,
+		props.diagrams,
 		codeThemes,
 		highlighterVersion,
 		timesVersion,
@@ -162,6 +210,7 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
 
 	const reasonTooltip = useReasonTooltip();
 	const focusSlot = useProseFocusSlot(rendered);
+	const islands = useMermaidIslands(focusSlot.article, rendered, props.diagrams ?? false);
 	const {onFileRef, onFileRefDefaultApp} = props;
 	const openRef = ({ref, element}: {ref: FileRef; element: HTMLElement}) => {
 		onFileRef?.(ref, element);
@@ -205,6 +254,7 @@ export function MarkdownArticle(props: MarkdownArticleProps) {
 						})}
 				dangerouslySetInnerHTML={{__html: rendered}}
 			/>
+			{islands}
 			{reasonTooltip.tooltip}
 		</>
 	);
