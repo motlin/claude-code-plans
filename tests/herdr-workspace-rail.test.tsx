@@ -35,13 +35,17 @@ function workspace(overrides: Partial<HerdrWorkspaceData> & {workspaceId: string
 	};
 }
 
-async function renderRail(workspaces: HerdrWorkspaceData[], selectedSessionId: string | null = null): Promise<void> {
+async function renderRail(
+	workspaces: HerdrWorkspaceData[],
+	selectedSessionId: string | null = null,
+	selectedPaneId: string | null = null,
+): Promise<void> {
 	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	queryClient.setQueryData(herdrWorkspacesQueryOptions.queryKey, {workspaces});
 	const rootRoute = createRootRoute({
 		component: () => (
 			<QueryClientProvider client={queryClient}>
-				<HerdrWorkspaceRail selectedSessionId={selectedSessionId} />
+				<HerdrWorkspaceRail selectedSessionId={selectedSessionId} selectedPaneId={selectedPaneId} />
 			</QueryClientProvider>
 		),
 	});
@@ -54,7 +58,7 @@ async function renderRail(workspaces: HerdrWorkspaceData[], selectedSessionId: s
 }
 
 describe("HerdrWorkspaceRail", () => {
-	it("links Claude panes to their live terminal and leaves unlinked agents inert", async () => {
+	it("links Claude panes to their session's live terminal and every other pane to its own", async () => {
 		await renderRail([
 			workspace({
 				workspaceId: "wA",
@@ -78,7 +82,6 @@ describe("HerdrWorkspaceRail", () => {
 				href: link.getAttribute("href"),
 				label: link.getAttribute("aria-label"),
 			})),
-			unlinked: screen.getAllByTitle(/no indexed Claude transcript/).map((row) => row.getAttribute("title")),
 			statuses: screen.getAllByLabelText(/^Herdr agent status:/).map((el) => el.textContent),
 		}).toStrictEqual({
 			links: [
@@ -86,8 +89,11 @@ describe("HerdrWorkspaceRail", () => {
 					href: "/terminals/session-test-100",
 					label: "Open live terminal for ✓ kalshi in workspace kalshi",
 				},
+				{
+					href: "/terminals/pane/wA%3Ap2",
+					label: "Open live terminal for codex kalshi in workspace kalshi",
+				},
 			],
-			unlinked: ["codex kalshi has no indexed Claude transcript to open"],
 			statuses: ["idle", "blocked", "working"],
 		});
 	});
@@ -113,10 +119,17 @@ describe("HerdrWorkspaceRail", () => {
 
 		expect({
 			shells: screen.getAllByText(/^shell /).map((element) => element.textContent),
+			shellLinks: screen
+				.getAllByRole("link", {name: /^Open live terminal for shell/})
+				.map((link) => link.getAttribute("href")),
 			collapseLabel: screen
 				.getByRole("button", {name: "Hide 2 shell panes in kalshi"})
 				.getAttribute("aria-expanded"),
-		}).toStrictEqual({shells: ["shell one", "shell two"], collapseLabel: "true"});
+		}).toStrictEqual({
+			shells: ["shell one", "shell two"],
+			shellLinks: ["/terminals/pane/wA%3Ap2", "/terminals/pane/wA%3Ap3"],
+			collapseLabel: "true",
+		});
 	});
 
 	it("collapses a workspace so its panes leave the rail", async () => {
@@ -173,6 +186,33 @@ describe("HerdrWorkspaceRail", () => {
 		).toStrictEqual([
 			{href: "/terminals/session-test-100", current: "page"},
 			{href: "/terminals/session-test-200", current: null},
+		]);
+	});
+
+	it("marks an open shell pane as the current rail page, revealing the workspace's shells", async () => {
+		await renderRail(
+			[
+				workspace({
+					workspaceId: "wA",
+					label: "kalshi",
+					shellPanes: [
+						pane({paneId: "wA:p2", title: "shell one"}),
+						pane({paneId: "wA:p3", title: "shell two"}),
+					],
+				}),
+			],
+			null,
+			"wA:p3",
+		);
+
+		expect(
+			screen.getAllByRole("link").map((link) => ({
+				href: link.getAttribute("href"),
+				current: link.getAttribute("aria-current"),
+			})),
+		).toStrictEqual([
+			{href: "/terminals/pane/wA%3Ap2", current: null},
+			{href: "/terminals/pane/wA%3Ap3", current: "page"},
 		]);
 	});
 

@@ -68,8 +68,18 @@ function TestTerminalToggle() {
 	);
 }
 
-function Harness({available, interactive, shells}: {available: boolean; interactive: boolean; shells: boolean}) {
-	useRegisterTerminalPane(SESSION_ID, {livePane: available, interactive, shells});
+function Harness({
+	available,
+	interactive,
+	shells,
+	openTerminalHere,
+}: {
+	available: boolean;
+	interactive: boolean;
+	shells: boolean;
+	openTerminalHere?: (() => Promise<void>) | undefined;
+}) {
+	useRegisterTerminalPane(SESSION_ID, {livePane: available, interactive, shells}, openTerminalHere);
 	return (
 		<>
 			<TerminalPaneShortcut available={available || shells} />
@@ -85,6 +95,7 @@ interface SessionOptions {
 	onHandled?: () => void;
 	interactive?: boolean;
 	shells?: boolean;
+	openTerminalHere?: () => Promise<void>;
 }
 
 function sessionTree(available: boolean, requested: SessionOptions) {
@@ -100,6 +111,7 @@ function sessionTree(available: boolean, requested: SessionOptions) {
 					available={available}
 					interactive={requested.interactive ?? false}
 					shells={requested.shells ?? false}
+					openTerminalHere={requested.openTerminalHere}
 				/>
 			</TileHost>
 		</SettingsProvider>
@@ -631,6 +643,31 @@ describe("Terminal pane header menu", () => {
 		}).toStrictEqual({
 			items: ["Open in new window"],
 			opened: [[`/terminals/${SESSION_ID}`, "_blank", "noopener"]],
+		});
+	});
+});
+
+describe("Terminal pane Open terminal here", () => {
+	it("opens a herdr shell in the session's directory from the header menu, showing why it failed", async () => {
+		const openTerminalHere = vi.fn<() => Promise<void>>().mockRejectedValue(new Error("herdr is not running"));
+		renderSession(true, {openTerminalHere});
+		act(() => {
+			screen.getByRole("button", {name: "Terminal"}).click();
+		});
+
+		fireEvent.click(screen.getByRole("button", {name: "More options"}));
+		const menu = await waitFor(() => screen.getByRole("menu"));
+		const items = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+		fireEvent.click(items.find((node) => node.textContent === "Open terminal here")!);
+
+		expect({
+			items: items.map((node) => node.textContent),
+			calls: openTerminalHere.mock.calls.length,
+			failure: (await screen.findByRole("alert")).textContent,
+		}).toStrictEqual({
+			items: ["Open in new window", "Open terminal here"],
+			calls: 1,
+			failure: "herdr is not running",
 		});
 	});
 });

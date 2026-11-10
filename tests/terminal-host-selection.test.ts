@@ -110,6 +110,9 @@ describe("resolveTerminalHost", () => {
 			terminals: await host.listTerminals(),
 			action: {status: action.status, body: await action.json()},
 			placementProvider: host.placementProvider()?.id,
+			paneStream: await host
+				.observePane("w1:p1", 80, 24, {send: () => undefined, close: () => undefined})
+				.catch((error: unknown) => (error instanceof Error ? error.message : String(error))),
 		}).toStrictEqual({
 			panes: [],
 			workspaces: [],
@@ -119,6 +122,7 @@ describe("resolveTerminalHost", () => {
 				body: {error: "No terminal host is available for live input", code: "no-terminal-host"},
 			},
 			placementProvider: "tmux",
+			paneStream: "No terminal host can stream this pane",
 		});
 	});
 });

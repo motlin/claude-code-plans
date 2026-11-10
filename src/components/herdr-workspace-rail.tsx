@@ -49,34 +49,28 @@ function PaneRow({
 		</>
 	);
 
-	/**
-	 * Only Claude panes ccp has indexed can open a detail view — the live
-	 * terminal route resolves a herdr pane through the session transcript id, so
-	 * Codex panes and unindexed Claude panes have nothing to navigate to.
-	 */
-	if (pane.sessionId === null) {
-		return (
-			<div
-				className={`${RAIL_ROW} pl-4 text-t6`}
-				title={`${pane.title} has no indexed Claude transcript to open`}
-			>
-				{body}
-			</div>
-		);
-	}
+	const className = `${RAIL_ROW} rounded-r3 pl-4 pr-1 no-underline transition-colors ${
+		selected
+			? "bg-fill-ghost-hover font-medium text-primary"
+			: "text-secondary hover:bg-fill-ghost-hover hover:text-primary"
+	}`;
+	const linkProps = {
+		"aria-label": `Open live terminal for ${pane.title} in workspace ${workspaceLabel}`,
+		...(selected ? {"aria-current": "page" as const} : {}),
+		className,
+	};
 
-	return (
-		<Link
-			to="/terminals/$sessionId"
-			params={{sessionId: pane.sessionId}}
-			aria-label={`Open live terminal for ${pane.title} in workspace ${workspaceLabel}`}
-			{...(selected ? {"aria-current": "page" as const} : {})}
-			className={`${RAIL_ROW} rounded-r3 pl-4 pr-1 no-underline transition-colors ${
-				selected
-					? "bg-fill-ghost-hover font-medium text-primary"
-					: "text-secondary hover:bg-fill-ghost-hover hover:text-primary"
-			}`}
-		>
+	/**
+	 * An indexed Claude pane opens its session's terminal, which links back to
+	 * the transcript; any other pane (a shell, Codex, an unindexed Claude) opens
+	 * its own live terminal by pane id.
+	 */
+	return pane.sessionId === null ? (
+		<Link to="/terminals/pane/$paneId" params={{paneId: pane.paneId}} {...linkProps}>
+			{body}
+		</Link>
+	) : (
+		<Link to="/terminals/$sessionId" params={{sessionId: pane.sessionId}} {...linkProps}>
 			{body}
 		</Link>
 	);
@@ -85,12 +79,16 @@ function PaneRow({
 function WorkspaceGroup({
 	workspace,
 	selectedSessionId,
+	selectedPaneId,
 }: {
 	workspace: HerdrWorkspaceData;
 	selectedSessionId: string | null;
+	selectedPaneId: string | null;
 }) {
 	const [expanded, setExpanded] = useState(true);
-	const [shellsShown, setShellsShown] = useState(false);
+	const [shellsShown, setShellsShown] = useState(() =>
+		workspace.shellPanes.some((pane) => pane.paneId === selectedPaneId),
+	);
 	const shellCount = workspace.shellPanes.length;
 
 	return (
@@ -124,7 +122,11 @@ function WorkspaceGroup({
 							key={pane.paneId}
 							pane={pane}
 							workspaceLabel={workspace.label}
-							selected={pane.sessionId === selectedSessionId}
+							selected={
+								pane.sessionId === null
+									? pane.paneId === selectedPaneId
+									: pane.sessionId === selectedSessionId
+							}
 						/>
 					))}
 					{shellCount > 0 && (
@@ -148,7 +150,7 @@ function WorkspaceGroup({
 										key={pane.paneId}
 										pane={pane}
 										workspaceLabel={workspace.label}
-										selected={false}
+										selected={pane.paneId === selectedPaneId}
 									/>
 								))}
 						</>
@@ -164,7 +166,14 @@ function WorkspaceGroup({
  * navigation into a pane's detail view so switching panes never requires going
  * back to the index list.
  */
-export function HerdrWorkspaceRail({selectedSessionId}: {selectedSessionId: string | null}) {
+export function HerdrWorkspaceRail({
+	selectedSessionId,
+	selectedPaneId = null,
+}: {
+	selectedSessionId: string | null;
+	/** The `/terminals/pane/$paneId` view's pane, for panes no indexed session owns. */
+	selectedPaneId?: string | null;
+}) {
 	const {data} = useQuery(herdrWorkspacesQueryOptions);
 
 	return (
@@ -182,6 +191,7 @@ export function HerdrWorkspaceRail({selectedSessionId}: {selectedSessionId: stri
 						key={workspace.workspaceId}
 						workspace={workspace}
 						selectedSessionId={selectedSessionId}
+						selectedPaneId={selectedPaneId}
 					/>
 				))
 			)}

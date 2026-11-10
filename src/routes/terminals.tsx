@@ -20,10 +20,11 @@ export const Route = createFileRoute("/terminals")({
 function TerminalsLayout() {
 	const params = useParams({strict: false});
 	const selectedSessionId = params.sessionId ?? null;
+	const selectedPaneId = params.paneId ?? null;
 
 	return (
 		<div className="relative -mx-4 flex sm:-mx-8">
-			<HerdrWorkspaceRail selectedSessionId={selectedSessionId} />
+			<HerdrWorkspaceRail selectedSessionId={selectedSessionId} selectedPaneId={selectedPaneId} />
 			<div className="min-w-0 flex-1 px-4 sm:px-8">
 				<Outlet />
 			</div>

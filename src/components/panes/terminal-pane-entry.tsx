@@ -38,10 +38,13 @@ export const preloadTerminalPane = DeferredTerminalPane.preload;
  * whose herdr pane has since closed, mirroring upstream showing the toggle
  * only when a transport exists. `interactive` follows the herdr writes
  * setting; without it the Claude tab stays a read-only observer.
+ *
+ * `openTerminalHere` (stable) adds the header menu's "Open terminal here".
  */
 export function useRegisterTerminalPane(
 	sessionId: string,
 	{livePane, interactive, shells}: TerminalPaneAvailability,
+	openTerminalHere?: () => Promise<void>,
 ): void {
 	const [livePaneSeenFor, setLivePaneSeenFor] = useState<string | null>(null);
 	useEffect(() => {
@@ -59,9 +62,15 @@ export function useRegisterTerminalPane(
 				<DeferredTerminalPane
 					resetKey={sessionId}
 					chrome={chrome}
-					props={{sessionId, availability: {livePane, interactive, shells}, claudeEnded, chrome}}
+					props={{
+						sessionId,
+						availability: {livePane, interactive, shells},
+						claudeEnded,
+						chrome,
+						onOpenTerminalHere: openTerminalHere,
+					}}
 				/>
 			),
 		});
-	}, [sessionId, livePane, interactive, shells, claudeEnded]);
+	}, [sessionId, livePane, interactive, shells, claudeEnded, openTerminalHere]);
 }

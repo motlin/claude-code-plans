@@ -12,11 +12,15 @@ import {loadGhostty} from "./load-ghostty";
 
 export type ConnectionStatus = "connecting" | "live" | "reconnecting" | "closed" | "error";
 
-function streamUrl(interactive: boolean, sessionId: string, columns: number, rows: number): string {
+/** What a live terminal streams: a Claude session's pane, or any herdr pane by id (a plain shell, say). */
+type HerdrTerminalTarget = {sessionId: string; paneId?: undefined} | {paneId: string; sessionId?: undefined};
+
+function streamUrl(interactive: boolean, target: HerdrTerminalTarget, columns: number, rows: number): string {
 	const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 	const path = interactive ? "/api/herdr/control" : "/api/herdr/observe";
 	const url = new URL(path, `${protocol}//${window.location.host}`);
-	url.searchParams.set("sessionId", sessionId);
+	if (target.paneId === undefined) url.searchParams.set("sessionId", target.sessionId);
+	else url.searchParams.set("paneId", target.paneId);
 	url.searchParams.set("columns", String(columns));
 	url.searchParams.set("rows", String(rows));
 	return url.toString();
@@ -30,14 +34,17 @@ function streamUrl(interactive: boolean, sessionId: string, columns: number, row
  * `interactive` (only when herdr writes are enabled) swaps the read-only
  * observe socket for the control socket: keystrokes go out as `data` frames
  * and resizes as `resize` frames instead of reconnecting.
+ *
+ * `paneId` in place of `sessionId` streams a herdr pane no Claude session owns;
+ * its selection can be copied but has no composer to attach to.
  */
 export function HerdrTerminal({
 	sessionId,
+	paneId,
 	variant = "page",
 	interactive = false,
 	onStatusChange,
-}: {
-	sessionId: string;
+}: HerdrTerminalTarget & {
 	variant?: "page" | "pane";
 	interactive?: boolean;
 	onStatusChange?: (status: ConnectionStatus) => void;
@@ -46,7 +53,7 @@ export function HerdrTerminal({
 	const [status, setStatus] = useState<ConnectionStatus>("connecting");
 	const [error, setError] = useState("");
 	const [appearance, setAppearance] = useState<GhosttyAppearance | null>(null);
-	const {actions: selectionActions, announcement} = useTerminalSelectionActions(sessionId);
+	const {actions: selectionActions, announcement} = useTerminalSelectionActions(sessionId ?? null);
 	const {ready: themeReady, theme: codeTheme, fontSize: codeFontSize} = useTerminalTheme();
 
 	useEffect(() => {
@@ -100,7 +107,14 @@ export function HerdrTerminal({
 				}
 				fitAddon.fit();
 				viewport = {columns: terminal.cols, rows: terminal.rows};
-				const nextSocket = new WebSocket(streamUrl(interactive, sessionId, viewport.columns, viewport.rows));
+				const nextSocket = new WebSocket(
+					streamUrl(
+						interactive,
+						paneId === undefined ? {sessionId} : {paneId},
+						viewport.columns,
+						viewport.rows,
+					),
+				);
 				const oscFilter = createOscFilter();
 				const consumer = createTerminalFrameConsumer({
 					reset: () => {
@@ -193,7 +207,7 @@ export function HerdrTerminal({
 			disposed = true;
 			teardown?.();
 		};
-	}, [sessionId, interactive, selectionActions, themeReady, codeTheme, codeFontSize]);
+	}, [sessionId, paneId, interactive, selectionActions, themeReady, codeTheme, codeFontSize]);
 
 	useEffect(() => {
 		onStatusChange?.(status);

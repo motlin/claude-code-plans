@@ -3,7 +3,9 @@ import type {Readable} from "node:stream";
 import {z} from "zod";
 import {hmrDispose} from "../hmr-persist";
 import {qualifyHerdrId, splitHerdrId} from "./herdr-id";
-import {getHerdrPanes, type HerdrPaneLink, type HerdrServerLister} from "./panes";
+import {herdrRequest} from "./client";
+import {getHerdrPanes, type HerdrPaneLink, type HerdrRequester, type HerdrServerLister} from "./panes";
+import {HerdrPaneInfoResultSchema} from "./schema";
 import {herdrSocketPathForServer, knownOrDiscoveredHerdrServers} from "./servers";
 import {HerdrTerminalRecordSchema, type HerdrTerminalRecord} from "./terminal-protocol";
 
@@ -252,6 +254,29 @@ export async function resolveSessionTerminal(
 	const pane = (await listPanes(servers)).find((candidate) => candidate.sessionId === sessionId);
 	if (!pane) throw new Error("No live herdr pane is linked to this session");
 	return qualifyHerdrId(pane.terminalId, splitHerdrId(pane.paneId).session);
+}
+
+/**
+ * Any herdr pane's terminal id by pane id, Claude or not (a plain shell has no
+ * session to resolve through), qualified by the pane's herdr session.
+ */
+export async function resolvePaneTerminal(paneId: string, request: HerdrRequester = herdrRequest): Promise<string> {
+	const response = await request({id: "ccp:terminal:pane", method: "pane.get", params: {pane_id: paneId}});
+	const parsed = response.ok ? HerdrPaneInfoResultSchema.safeParse(response.value) : null;
+	if (!parsed?.success) throw new Error(`No live herdr pane ${paneId}`);
+	return qualifyHerdrId(parsed.data.pane.terminal_id, splitHerdrId(paneId).session);
+}
+
+/** Stream any herdr pane read-only by its id. */
+export async function observeHerdrPane(
+	paneId: string,
+	columns: number,
+	rows: number,
+	socket: TerminalObserverSocket,
+	spawnObserver: SpawnObserver = spawn,
+): Promise<TerminalObserver> {
+	const target = await resolvePaneTerminal(paneId);
+	return startTerminalObserver({target, columns, rows}, socket, spawnObserver);
 }
 
 const defaultDependencies: TerminalObserverDependencies = {

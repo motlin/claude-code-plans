@@ -64,6 +64,7 @@ import {FilesPaneShortcut} from "./panes/files-pane-shortcut";
 import {useExtractedSessionFiles} from "./panes/session-file-sources";
 import {TerminalPaneShortcut} from "./panes/terminal-pane-shortcut";
 import {preloadTerminalPane, useRegisterTerminalPane} from "./panes/terminal-pane-entry";
+import {useStartHerdrTerminal} from "../hooks/use-herdr-terminal";
 import {BranchStrip} from "./branch-strip";
 import {TranscriptHistoryLoader} from "./transcript-history-loader";
 import {Tooltip} from "./ui/tooltip";
@@ -1338,11 +1339,24 @@ function SessionView({
 			await saveApplicationSettings({...applicationSettings, terminalWritesEnabled: true});
 		};
 	}, [promptBehavior.hasLivePane, herdr.writesEnabled, applicationSettings, saveApplicationSettings]);
-	useRegisterTerminalPane(sessionId, {
-		livePane: promptBehavior.hasLivePane,
-		interactive: promptBehavior.hasLivePane && herdr.writesEnabled,
-		shells: shellsEnabled,
-	});
+	const startHerdrTerminal = useStartHerdrTerminal();
+	const terminalDirectory = data.cwd ?? data.projectPath;
+	const openTerminalHere = useMemo(
+		() =>
+			herdr.writesEnabled && terminalDirectory !== null
+				? async () => startHerdrTerminal(terminalDirectory)
+				: undefined,
+		[herdr.writesEnabled, terminalDirectory, startHerdrTerminal],
+	);
+	useRegisterTerminalPane(
+		sessionId,
+		{
+			livePane: promptBehavior.hasLivePane,
+			interactive: promptBehavior.hasLivePane && herdr.writesEnabled,
+			shells: shellsEnabled,
+		},
+		openTerminalHere,
+	);
 	const prevSessionIdRef = useRef(sessionId);
 
 	useEffect(() => {

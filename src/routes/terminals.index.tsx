@@ -1,10 +1,13 @@
 import {pageTitle} from "../lib/route-title";
-import {useQueryClient, useSuspenseQuery} from "@tanstack/react-query";
+import {useQuery, useQueryClient, useSuspenseQuery} from "@tanstack/react-query";
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {Info, MessagesSquare} from "lucide-react";
 import {HerdrStatusIndicator} from "../components/herdr-status-indicator";
+import {HerdrTerminalList} from "../components/herdr-terminal-list";
+import {NewTerminalControl} from "../components/new-terminal";
 import {NeedsReviewMarker, SessionReviewAction} from "../components/session-reviewed-toggle";
 import {StatusDot} from "../components/sidebar/primitives/StatusDot";
+import {herdrTerminalsQueryOptions} from "../lib/api/herdr-terminals";
 import {sessionQueryKeys} from "../lib/api/sessions";
 import {terminalPlacementsQueryOptions} from "../lib/api/terminal-placements";
 import {updateSessionViewedState} from "../lib/api/viewed-state";
@@ -113,6 +116,7 @@ function TerminalsPage() {
 	const {data} = useSuspenseQuery(terminalPlacementsQueryOptions);
 	const queryClient = useQueryClient();
 	const placements = data.placements;
+	const terminals = useQuery(herdrTerminalsQueryOptions).data;
 
 	const markReviewed = async (sessionId: string, messageIndex: number): Promise<void> => {
 		const viewedState = await updateSessionViewedState(sessionId, "reviewed", messageIndex);
@@ -135,14 +139,19 @@ function TerminalsPage() {
 	};
 
 	return (
-		<div>
-			<div className="flex items-center gap-3">
+		<div className="pb-12">
+			<div className="flex flex-wrap items-center gap-3">
 				<h1 className="text-lg font-semibold">Terminals</h1>
 				<span className="text-sm text-t6">{placements.length} tracked Claude sessions</span>
 				<span role="img" aria-label={TRACKED_CLAUDE_SCOPE} title={TRACKED_CLAUDE_SCOPE} className="text-t6">
 					<Info aria-hidden="true" className="h-3.5 w-3.5" />
 				</span>
 				<span className="text-xs text-t6">(live updates via SSE)</span>
+				{data.writesEnabled && (
+					<div className="ms-auto">
+						<NewTerminalControl />
+					</div>
+				)}
 			</div>
 
 			{placements.length === 0 ? (
@@ -251,6 +260,8 @@ function TerminalsPage() {
 					})}
 				</div>
 			)}
+
+			{terminals !== undefined && <HerdrTerminalList workspaces={terminals.workspaces} />}
 		</div>
 	);
 }

@@ -5,12 +5,13 @@ import {
 	__testing,
 	createTerminalRecordParser,
 	observeHerdrSession,
+	resolvePaneTerminal,
 	resolveSessionTerminal,
 	startTerminalObserver,
 	stopAllTerminalObservers,
 	type TerminalObserverDependencies,
 } from "../src/lib/herdr/terminal-observer";
-import type {HerdrPaneLink, HerdrServerLister} from "../src/lib/herdr/panes";
+import type {HerdrPaneLink, HerdrRequester, HerdrServerLister} from "../src/lib/herdr/panes";
 import {herdrNamedSessionSocketPath} from "../src/lib/herdr/socket-path";
 import type {HerdrTerminalRecord} from "../src/lib/herdr/terminal-protocol";
 
@@ -319,5 +320,45 @@ describe("resolveSessionTerminal", () => {
 		await expect(resolveSessionTerminal("alice-session", panesOn, servers)).rejects.toThrow(
 			"No live herdr pane is linked to this session",
 		);
+	});
+});
+
+describe("resolvePaneTerminal", () => {
+	function paneInfo(terminalId: string) {
+		return {
+			type: "pane_info",
+			pane: {
+				pane_id: "wM:p4",
+				terminal_id: terminalId,
+				workspace_id: "wM",
+				tab_id: "wM:t2",
+				focused: false,
+				cwd: "/tmp/test/home",
+				agent_status: "unknown",
+				revision: 1,
+			},
+		};
+	}
+
+	it("asks herdr for the pane and qualifies its terminal by the pane's herdr session", async () => {
+		const requests: object[] = [];
+		const request = vi.fn<HerdrRequester>(async (body: object) => {
+			requests.push(body);
+			return Promise.resolve({ok: true as const, value: paneInfo("term_shell")});
+		});
+
+		expect({
+			terminal: await resolvePaneTerminal("wM:p4@later", request),
+			requests,
+		}).toStrictEqual({
+			terminal: "term_shell@later",
+			requests: [{id: "ccp:terminal:pane", method: "pane.get", params: {pane_id: "wM:p4@later"}}],
+		});
+	});
+
+	it("reports a missing pane when herdr does not know it", async () => {
+		const request = async () =>
+			Promise.resolve({ok: false as const, code: "pane_not_found", message: "pane wM:p9 not found"});
+		await expect(resolvePaneTerminal("wM:p9", request)).rejects.toThrow("No live herdr pane wM:p9");
 	});
 });

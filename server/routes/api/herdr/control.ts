@@ -1,19 +1,13 @@
 import {defineWebSocketHandler} from "nitro";
-import {z} from "zod";
 import {
 	authorizeTerminalControl,
 	getTerminalHost,
+	TerminalStreamQuerySchema,
 	type TerminalController,
 	type TerminalObserverSocket,
 } from "../../../../src/lib/terminal-host";
 import {hmrDispose} from "../../../../src/lib/hmr-persist";
 import {isLoopbackPeer, LOCAL_ONLY_CLOSE_REASON} from "../../../../src/lib/loopback-guard";
-
-const QuerySchema = z.object({
-	sessionId: z.string().min(1),
-	columns: z.coerce.number().int().positive().max(500),
-	rows: z.coerce.number().int().positive().max(500),
-});
 
 interface Connection {
 	close: () => void;
@@ -42,16 +36,17 @@ export default defineWebSocketHandler({
 		if (rejection) throw rejection;
 
 		const url = new URL(request.url);
-		const query = QuerySchema.safeParse(Object.fromEntries(url.searchParams));
+		const searchParams = Object.fromEntries(url.searchParams);
+		const query = TerminalStreamQuerySchema.safeParse(searchParams);
 		if (!query.success) throw new Response("Invalid terminal control query", {status: 400});
-		return {context: query.data};
+		return {context: searchParams};
 	},
 	async open(peer) {
 		if (!isLoopbackPeer(peer.remoteAddress)) {
 			peer.close(1008, LOCAL_ONLY_CLOSE_REASON);
 			return;
 		}
-		const query = QuerySchema.parse(peer.context);
+		const query = TerminalStreamQuerySchema.parse(peer.context);
 		const connection: Connection = {
 			close: () => {
 				peer.close(1012, "terminal control server restarted");
@@ -73,7 +68,11 @@ export default defineWebSocketHandler({
 
 		try {
 			const host = await getTerminalHost();
-			const controller = await host.control(query.sessionId, query.columns, query.rows, socket);
+			const {target, columns, rows} = query;
+			const controller =
+				target.kind === "pane"
+					? await host.controlPane(target.paneId, columns, rows, socket)
+					: await host.control(target.sessionId, columns, rows, socket);
 			if (connection.stopped) {
 				controller.stop();
 				return;

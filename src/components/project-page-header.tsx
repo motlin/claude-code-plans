@@ -4,6 +4,8 @@ import {ArrowLeft} from "lucide-react";
 import type {ReactNode} from "react";
 import {projectDetailQueryOptions, projectsQueryOptions} from "../lib/api/projects";
 import {CodePageHeader} from "./code-page-header";
+import {useTerminalWritesEnabled} from "../hooks/use-herdr-terminal";
+import {OpenTerminalHereButton} from "./new-terminal";
 import {DETAIL_TAB_CLASS, DetailTabLabel, DetailTabs} from "./customize/detail-tabs";
 
 export type ProjectSection = "overview" | "sessions" | "tasks" | "memories" | "plans" | "subagents";
@@ -34,11 +36,13 @@ export function ProjectPage({children}: {children: ReactNode}) {
 /**
  * The project pages' shared header: a "← Projects" back link, upstream's serif page title over the project path, and
  * underline tabs linking Overview and each section with its " · N" count, as the Customize plugin and skill details
- * do. An empty section's tab is left out unless it is the page being shown.
+ * do. An empty section's tab is left out unless it is the page being shown. While Live terminal input is on, the
+ * toolbar offers "Open terminal here": a herdr shell in the project's directory.
  */
 export function ProjectPageHeader({projectId, section}: {projectId: string; section: ProjectSection}) {
 	const {data: detail} = useSuspenseQuery(projectDetailQueryOptions(projectId));
 	const {data: projects} = useSuspenseQuery(projectsQueryOptions());
+	const writesEnabled = useTerminalWritesEnabled();
 	if (!detail) return null;
 	const summary = projects.find((project) => project.id === projectId);
 	const counted: CountedTab[] = [
@@ -55,7 +59,13 @@ export function ProjectPageHeader({projectId, section}: {projectId: string; sect
 				<ArrowLeft aria-hidden="true" className="size-4 rtl:-scale-x-100" />
 				Projects
 			</Link>
-			<CodePageHeader title={detail.name} {...(detail.projectPath ? {subtitle: detail.projectPath} : {})}>
+			<CodePageHeader
+				title={detail.name}
+				{...(detail.projectPath ? {subtitle: detail.projectPath} : {})}
+				{...(writesEnabled && detail.projectPath
+					? {toolbar: <OpenTerminalHereButton cwd={detail.projectPath} />}
+					: {})}
+			>
 				<div className="mt-4">
 					<DetailTabs label="Project sections">
 						<Link

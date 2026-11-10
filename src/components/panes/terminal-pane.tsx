@@ -118,8 +118,17 @@ function terminalPopOutHref(sessionId: string): string {
 	return `/terminals/${encodeURIComponent(sessionId)}`;
 }
 
-/** Upstream's pane header menu; locally only "Open in new window" applies. */
-function PaneHeaderMenu({sessionId}: {sessionId: string}) {
+/**
+ * Upstream's pane header menu: "Open in new window", plus locally "Open terminal
+ * here" (a herdr shell tab in the session's directory) when the page offers it.
+ */
+function PaneHeaderMenu({
+	sessionId,
+	onOpenTerminalHere,
+}: {
+	sessionId: string;
+	onOpenTerminalHere?: (() => void) | undefined;
+}) {
 	return (
 		<Menu>
 			<MenuTrigger aria-label="More options" title="More options" className={GHOST_ICON_BUTTON}>
@@ -129,6 +138,9 @@ function PaneHeaderMenu({sessionId}: {sessionId: string}) {
 				<MenuItem onSelect={() => window.open(terminalPopOutHref(sessionId), "_blank", "noopener")}>
 					Open in new window
 				</MenuItem>
+				{onOpenTerminalHere !== undefined && (
+					<MenuItem onSelect={onOpenTerminalHere}>Open terminal here</MenuItem>
+				)}
 			</MenuContent>
 		</Menu>
 	);
@@ -149,12 +161,15 @@ export function TerminalPane({
 	claudeEnded,
 	chrome,
 	standalone = false,
+	onOpenTerminalHere,
 }: {
 	sessionId: string;
 	availability: TerminalPaneAvailability;
 	claudeEnded: boolean;
 	chrome?: PaneChrome;
 	standalone?: boolean;
+	/** Opens a herdr shell in the session's directory; a rejection shows in the pane's error line. */
+	onOpenTerminalHere?: (() => Promise<void>) | undefined;
 }) {
 	const {livePane, interactive, shells} = availability;
 	const showClaude = livePane || claudeEnded;
@@ -296,7 +311,19 @@ export function TerminalPane({
 				{chrome?.moveHandle}
 				{!standalone && (
 					<div className="relative z-[1] flex shrink-0 items-center gap-0.5">
-						<PaneHeaderMenu sessionId={sessionId} />
+						<PaneHeaderMenu
+							sessionId={sessionId}
+							onOpenTerminalHere={
+								onOpenTerminalHere === undefined
+									? undefined
+									: () => {
+											setError("");
+											onOpenTerminalHere().catch((cause: unknown) => {
+												setError(cause instanceof Error ? cause.message : String(cause));
+											});
+										}
+							}
+						/>
 						{chrome?.controls}
 					</div>
 				)}

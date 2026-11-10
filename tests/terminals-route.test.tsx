@@ -24,11 +24,17 @@ import {redirectLegacyTmux} from "../src/routes/tmux";
 import {Route as HerdrLayoutRoute} from "../src/routes/terminals";
 import {Route as HerdrRoute} from "../src/routes/terminals.index";
 import {Route as HerdrTerminalRoute} from "../src/routes/terminals.$sessionId";
+import {Route as HerdrPaneTerminalRoute} from "../src/routes/terminals.pane.$paneId";
+import {herdrTerminalsQueryOptions, type HerdrTerminalWorkspaceData} from "../src/lib/api/herdr-terminals";
 
 vi.mock("../src/components/herdr-terminal", () => ({
-	HerdrTerminal: ({sessionId, interactive}: {sessionId: string; interactive?: boolean}) => (
-		<section aria-label="Live read-only terminal" data-interactive={String(interactive ?? false)}>
-			{sessionId}
+	HerdrTerminal: ({sessionId, paneId, interactive}: {sessionId?: string; paneId?: string; interactive?: boolean}) => (
+		<section
+			aria-label="Live read-only terminal"
+			data-interactive={String(interactive ?? false)}
+			data-pane-id={paneId}
+		>
+			{sessionId ?? paneId}
 		</section>
 	),
 }));
@@ -1056,5 +1062,304 @@ describe("legacy /herdr and /tmux redirects", () => {
 		["/tmux/terminal/session-test-100?tab=shell#bottom", "/terminals/session-test-100?tab=shell#bottom"],
 	])("sends %s to %s", async (from, to) => {
 		await expect(landingHref(from)).resolves.toBe(to);
+	});
+});
+
+/** One herdr workspace with a Claude tab and a tab of two plain shells, one idle and one running a command. */
+function terminalWorkspaces(): HerdrTerminalWorkspaceData[] {
+	const pane = {
+		focused: false,
+		agent: null,
+		agentStatus: "unknown",
+		claudeSessionId: null,
+		process: "idle" as const,
+	};
+	return [
+		{
+			workspaceId: "w1",
+			number: 1,
+			label: "kalshi",
+			focused: true,
+			tabs: [
+				{
+					tabId: "w1:t1",
+					number: 1,
+					label: "claude",
+					focused: true,
+					panes: [
+						{
+							...pane,
+							paneId: "w1:p1",
+							terminalId: "term_1",
+							title: "Alice session",
+							cwd: "/tmp/test/kalshi",
+							agent: "claude",
+							agentStatus: "working",
+							claudeSessionId: "session-test-100",
+							command: "claude",
+							process: "running",
+						},
+					],
+				},
+				{
+					tabId: "w1:t2",
+					number: 2,
+					label: "shells",
+					focused: false,
+					panes: [
+						{
+							...pane,
+							paneId: "w1:p2",
+							terminalId: "term_2",
+							title: "zsh",
+							cwd: "/tmp/test/home",
+							command: "-zsh",
+						},
+						{
+							...pane,
+							paneId: "w1:p3@later",
+							terminalId: "term_3",
+							title: "tests",
+							cwd: "/tmp/test/kalshi",
+							command: "pnpm test",
+							process: "running",
+						},
+					],
+				},
+			],
+		},
+	];
+}
+
+function renderTerminalsAt(
+	path: string,
+	{
+		writesEnabled = true,
+		workspaces = terminalWorkspaces(),
+	}: {writesEnabled?: boolean; workspaces?: HerdrTerminalWorkspaceData[]} = {},
+) {
+	const HerdrLayout = HerdrLayoutRoute.options.component;
+	const HerdrIndex = HerdrRoute.options.component;
+	const PaneTerminal = HerdrPaneTerminalRoute.options.component;
+	if (!HerdrLayout || !HerdrIndex || !PaneTerminal) throw new Error("Expected every Terminals route component");
+
+	const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+	queryClient.setQueryData(terminalPlacementsQueryOptions.queryKey, {placements: [], writesEnabled});
+	seedTerminalQueries(queryClient, {livePane: false, writesEnabled});
+	queryClient.setQueryData(herdrWorkspacesQueryOptions.queryKey, {workspaces: []});
+	queryClient.setQueryData(herdrTerminalsQueryOptions.queryKey, {workspaces});
+
+	const rootRoute = createRootRoute({
+		component: () => (
+			<QueryClientProvider client={queryClient}>
+				<Outlet />
+			</QueryClientProvider>
+		),
+	});
+	const layoutRoute = createRoute({getParentRoute: () => rootRoute, path: "/terminals", component: HerdrLayout});
+	const indexRoute = createRoute({getParentRoute: () => layoutRoute, path: "/", component: HerdrIndex});
+	const paneRoute = createRoute({getParentRoute: () => layoutRoute, path: "/pane/$paneId", component: PaneTerminal});
+	const router = createRouter({
+		routeTree: rootRoute.addChildren([layoutRoute.addChildren([indexRoute, paneRoute])]),
+		history: createMemoryHistory({initialEntries: [path]}),
+	});
+	return {router, queryClient};
+}
+
+describe("Terminals page: every herdr terminal", () => {
+	it("lists each workspace's tabs and panes, Claude and plain shells, each opening its live terminal", async () => {
+		const {router} = renderTerminalsAt("/terminals");
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		const section = screen.getByRole("region", {name: "All herdr terminals"});
+		expect({
+			workspaces: within(section)
+				.getAllByRole("heading", {level: 3})
+				.map((heading) => heading.textContent),
+			tabs: within(section)
+				.getAllByRole("list")
+				.map((list) => list.getAttribute("aria-label")),
+			rows: within(section)
+				.getAllByRole("link")
+				.map((link) => ({
+					name: link.getAttribute("aria-label"),
+					href: link.getAttribute("href"),
+					cells: Array.from(link.children).map((cell) => cell.textContent),
+				})),
+		}).toStrictEqual({
+			workspaces: ["1kalshi"],
+			tabs: ["Tab 1 claude", "Tab 2 shells"],
+			rows: [
+				{
+					name: "Open live terminal for Alice session",
+					href: "/terminals/session-test-100",
+					cells: ["claude", "Alice session", "/tmp/test/kalshi", "working"],
+				},
+				{
+					name: "Open live terminal for zsh",
+					href: "/terminals/pane/w1%3Ap2",
+					cells: ["shell", "zsh-zsh", "/tmp/test/home", "idle"],
+				},
+				{
+					name: "Open live terminal for tests",
+					href: "/terminals/pane/w1%3Ap3%40later",
+					cells: ["shell", "testspnpm test", "/tmp/test/kalshi", "running"],
+				},
+			],
+		});
+	});
+
+	it("says so when herdr has no terminals open", async () => {
+		const {router} = renderTerminalsAt("/terminals", {workspaces: []});
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		expect(screen.getByRole("region", {name: "All herdr terminals"}).textContent).toBe(
+			"All herdr terminalsNo herdr terminals are open.",
+		);
+	});
+
+	it("starts a shell in the home directory by default, or in the chosen directory, and opens it", async () => {
+		const bodies: unknown[] = [];
+		const paneIds = ["w1:p7", "w1:p8@later"];
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+			if (init?.method !== "POST") {
+				// The refetch after a create lists the new tab's pane.
+				const [workspace] = terminalWorkspaces();
+				const [tab] = workspace?.tabs ?? [];
+				const [pane] = tab?.panes ?? [];
+				if (workspace === undefined || tab === undefined || pane === undefined) throw new Error("fixture");
+				const created = paneIds
+					.slice(0, bodies.length)
+					.map((paneId) => ({...pane, paneId, claudeSessionId: null}));
+				return Promise.resolve(
+					Response.json({
+						workspaces: [
+							{...workspace, tabs: [...workspace.tabs, {...tab, tabId: "w1:t9", panes: created}]},
+						],
+					}),
+				);
+			}
+			bodies.push(JSON.parse(String(init.body)));
+			const paneId = paneIds[bodies.length - 1] ?? "";
+			return Promise.resolve(Response.json({ok: true, tabId: "w1:t9", paneId}));
+		});
+		const {router} = renderTerminalsAt("/terminals");
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		fireEvent.click(screen.getByRole("button", {name: "New terminal"}));
+		const directory = screen.getByRole("textbox", {name: "Directory"});
+		const placeholder = directory.getAttribute("placeholder");
+		fireEvent.click(screen.getByRole("button", {name: "Start terminal"}));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/terminals/pane/w1%3Ap7");
+		});
+		const opened = screen.getByRole("region", {name: "Live read-only terminal"});
+		const firstPane = {
+			paneId: opened.getAttribute("data-pane-id"),
+			interactive: opened.getAttribute("data-interactive"),
+		};
+
+		await router.navigate({to: "/terminals"});
+		fireEvent.click(await screen.findByRole("button", {name: "New terminal"}));
+		fireEvent.change(screen.getByRole("textbox", {name: "Directory"}), {target: {value: "/tmp/test/kalshi"}});
+		fireEvent.click(screen.getByRole("button", {name: "Start terminal"}));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/terminals/pane/w1%3Ap8%40later");
+		});
+
+		expect({placeholder, bodies, firstPane}).toStrictEqual({
+			placeholder: "Home directory",
+			bodies: [{action: "create-tab"}, {action: "create-tab", cwd: "/tmp/test/kalshi"}],
+			firstPane: {paneId: "w1:p7", interactive: "true"},
+		});
+	});
+
+	it("shows why a new terminal failed to start, and offers none while Live terminal input is off", async () => {
+		vi.spyOn(globalThis, "fetch").mockResolvedValue(
+			Response.json({error: "herdr is not running", code: "herdr_unavailable"}, {status: 502}),
+		);
+		const {router} = renderTerminalsAt("/terminals");
+		await router.load();
+		const view = render(<RouterProvider router={router} />);
+
+		fireEvent.click(screen.getByRole("button", {name: "New terminal"}));
+		fireEvent.click(screen.getByRole("button", {name: "Start terminal"}));
+		const alert = await screen.findByRole("alert");
+		const failure = {text: alert.textContent, path: router.state.location.pathname};
+		view.unmount();
+
+		const disabled = renderTerminalsAt("/terminals", {writesEnabled: false});
+		await disabled.router.load();
+		render(<RouterProvider router={disabled.router} />);
+
+		expect({failure, offered: screen.queryByRole("button", {name: "New terminal"})}).toStrictEqual({
+			failure: {text: "herdr is not running", path: "/terminals"},
+			offered: null,
+		});
+	});
+});
+
+describe("Herdr pane terminal page", () => {
+	it("opens a plain shell pane in the standalone terminal, typing enabled with Live terminal input", async () => {
+		const {router} = renderTerminalsAt("/terminals/pane/w1:p3@later");
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		const terminal = screen.getByRole("region", {name: "Live read-only terminal"});
+		expect({
+			breadcrumb: screen.getByRole("link", {name: "Terminals"}).getAttribute("href"),
+			heading: screen.getByRole("heading", {level: 1}).textContent,
+			cwd: screen.getByTestId("terminal-cwd").textContent,
+			standalone: document.querySelector('[data-pane-kind="terminal"]')?.getAttribute("data-terminal-standalone"),
+			terminal: {
+				paneId: terminal.getAttribute("data-pane-id"),
+				interactive: terminal.getAttribute("data-interactive"),
+			},
+			routeMeta: routeMeta(HerdrPaneTerminalRoute as unknown as typeof HerdrRoute),
+		}).toStrictEqual({
+			breadcrumb: "/terminals",
+			heading: "tests",
+			cwd: "/tmp/test/kalshi",
+			standalone: "",
+			terminal: {paneId: "w1:p3@later", interactive: "true"},
+			routeMeta: [{name: "ccb-page-title", content: "Live terminal"}],
+		});
+	});
+
+	it("streams read-only while Live terminal input is off", async () => {
+		const {router} = renderTerminalsAt("/terminals/pane/w1:p2", {writesEnabled: false});
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		expect(screen.getByRole("region", {name: "Live read-only terminal"}).getAttribute("data-interactive")).toBe(
+			"false",
+		);
+	});
+
+	it("shows Terminal closed once herdr's refetched list no longer has the pane", async () => {
+		vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+			Promise.resolve(Response.json({workspaces: terminalWorkspaces()})),
+		);
+		const {router} = renderTerminalsAt("/terminals/pane/w1:p9");
+		await router.load();
+		render(<RouterProvider router={router} />);
+		const whileRefetching = screen
+			.queryByRole("region", {name: "Live read-only terminal"})
+			?.getAttribute("data-pane-id");
+
+		expect({
+			whileRefetching,
+			heading: screen.getByRole("heading", {level: 1}).textContent,
+			closed: (await screen.findByText("Terminal closed")).textContent,
+			terminal: screen.queryByRole("region", {name: "Live read-only terminal"}),
+		}).toStrictEqual({
+			whileRefetching: "w1:p9",
+			heading: "Live terminal",
+			closed: "Terminal closed",
+			terminal: null,
+		});
 	});
 });

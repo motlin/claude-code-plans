@@ -8,12 +8,13 @@ import {
 	RouterProvider,
 	type AnyRoute,
 } from "@tanstack/react-router";
-import {cleanup, render, screen, within} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {z} from "zod";
 import {MemoryListResponse, projectMemoriesQueryOptions} from "../src/lib/api/memories";
 import {projectApprovalsQueryOptions} from "../src/lib/api/approvals";
+import {applicationSettingsQueryOptions} from "../src/lib/api/application-settings";
 import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
 import type {SessionListItem} from "../src/lib/api/sessions";
 import {ToastProvider} from "../src/components/toast";
@@ -37,7 +38,10 @@ vi.mock("../src/hooks/use-claude-events", () => ({
 	useClaudeEvents: () => ({activeSessions: new Map()}),
 }));
 
-afterEach(cleanup);
+afterEach(() => {
+	cleanup();
+	vi.restoreAllMocks();
+});
 
 const ID = "does-not-exist";
 
@@ -65,8 +69,18 @@ const cases: Array<{id: string; path: string; url: string; route: AnyRoute}> = [
 		url: `/project/${ID}/sessions`,
 		route: ProjectSessionsRoute,
 	},
-	{id: "/project/$id_/plans", path: "/project/$id/plans", url: `/project/${ID}/plans`, route: ProjectPlansRoute},
-	{id: "/project/$id_/tasks", path: "/project/$id/tasks", url: `/project/${ID}/tasks`, route: ProjectTasksRoute},
+	{
+		id: "/project/$id_/plans",
+		path: "/project/$id/plans",
+		url: `/project/${ID}/plans`,
+		route: ProjectPlansRoute,
+	},
+	{
+		id: "/project/$id_/tasks",
+		path: "/project/$id/tasks",
+		url: `/project/${ID}/tasks`,
+		route: ProjectTasksRoute,
+	},
 	{
 		id: "/project/$id_/memories",
 		path: "/project/$id/memories",
@@ -147,7 +161,9 @@ function session(id: string, title: string, mtime: string): SessionListItem {
 
 function projectClient(): QueryClient {
 	const queryClient = new QueryClient({
-		defaultOptions: {queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false}},
+		defaultOptions: {
+			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
+		},
 	});
 	const detail: ProjectDetail = {
 		id: PROJECT,
@@ -181,7 +197,14 @@ function projectClient(): QueryClient {
 	});
 	const memories: ProjectMemories = {
 		project: {id: PROJECT, name: "demo", projectPath: "/Users/alice/projects/demo"},
-		memories: [{filename: "notes.md", title: "Project notes", mtime: "2026-11-07T10:00:00.000Z", project: PROJECT}],
+		memories: [
+			{
+				filename: "notes.md",
+				title: "Project notes",
+				mtime: "2026-11-07T10:00:00.000Z",
+				project: PROJECT,
+			},
+		],
 	};
 	queryClient.setQueryData(projectMemoriesQueryOptions(PROJECT).queryKey, memories);
 	queryClient.setQueryData(projectApprovalsQueryOptions(PROJECT).queryKey, {approvals: []});
@@ -289,4 +312,58 @@ describe("existing project", () => {
 			]);
 		},
 	);
+
+	async function renderOverviewWithWrites(writesEnabled: boolean) {
+		const queryClient = projectClient();
+		queryClient.setQueryData(applicationSettingsQueryOptions.queryKey, {
+			terminalWritesEnabled: writesEnabled,
+			terminalHost: "auto",
+			shellPaneEnabled: false,
+			visibleNavSections: [],
+			ignoredDirs: ["node_modules"],
+		});
+		const [overview] = sectionCases;
+		if (overview === undefined) throw new Error("Expected the overview case");
+		const root = createRootRouteWithContext<{queryClient: QueryClient}>()();
+		overview.route.update({
+			id: overview.id,
+			path: overview.path,
+			getParentRoute: () => root,
+		} as Parameters<AnyRoute["update"]>[0]);
+		const router = createRouter({
+			routeTree: root.addChildren([overview.route]),
+			context: {queryClient},
+			history: createMemoryHistory({initialEntries: [overview.url]}),
+		});
+		await router.load();
+		render(
+			<QueryClientProvider client={queryClient}>
+				<ToastProvider>
+					<RouterProvider router={router} />
+				</ToastProvider>
+			</QueryClientProvider>,
+		);
+		await screen.findByRole("heading", {level: 1});
+		return router;
+	}
+
+	it("opens a herdr shell in the project's directory with Open terminal here", async () => {
+		const bodies: unknown[] = [];
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+			bodies.push(JSON.parse(String(init?.body)));
+			return Promise.resolve(Response.json({ok: true, tabId: "w1:t5", paneId: "w1:p5"}));
+		});
+		const router = await renderOverviewWithWrites(true);
+
+		fireEvent.click(screen.getByRole("button", {name: "Open terminal here"}));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/terminals/pane/w1%3Ap5");
+		});
+		expect(bodies).toStrictEqual([{action: "create-tab", cwd: "/Users/alice/projects/demo"}]);
+	});
+
+	it("offers no Open terminal here while Live terminal input is off", async () => {
+		await renderOverviewWithWrites(false);
+		expect(screen.queryByRole("button", {name: "Open terminal here"})).toBeNull();
+	});
 });

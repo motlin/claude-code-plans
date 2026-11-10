@@ -56,6 +56,7 @@ function renderProvider(children: ReactNode = <div />): {
 	client.setQueryData(["terminal", "placements"], []);
 	client.setQueryData(["herdr", "panes"], []);
 	client.setQueryData(["herdr", "workspaces"], []);
+	client.setQueryData(["herdr", "terminals"], {workspaces: []});
 
 	render(
 		<QueryClientProvider client={client}>
@@ -72,6 +73,7 @@ function invalidationState(client: QueryClient) {
 	return {
 		herdrPanes: client.getQueryState(["herdr", "panes"])?.isInvalidated,
 		herdrWorkspaces: client.getQueryState(["herdr", "workspaces"])?.isInvalidated,
+		herdrTerminals: client.getQueryState(["herdr", "terminals"])?.isInvalidated,
 		terminalPlacements: client.getQueryState(["terminal", "placements"])?.isInvalidated,
 	};
 }
@@ -100,6 +102,7 @@ describe("ClaudeEventsProvider terminal placement invalidation", () => {
 		expect(invalidationState(client)).toStrictEqual({
 			herdrPanes: false,
 			herdrWorkspaces: false,
+			herdrTerminals: false,
 			terminalPlacements: true,
 		});
 	});
@@ -116,11 +119,12 @@ describe("ClaudeEventsProvider terminal placement invalidation", () => {
 		expect(invalidationState(client)).toStrictEqual({
 			herdrPanes: false,
 			herdrWorkspaces: false,
+			herdrTerminals: false,
 			terminalPlacements: true,
 		});
 	});
 
-	it("invalidates terminal placements and both Herdr read models on Herdr events", () => {
+	it("invalidates terminal placements and every Herdr read model on Herdr events", () => {
 		const {client, eventSource} = renderProvider();
 
 		act(() => {
@@ -130,6 +134,7 @@ describe("ClaudeEventsProvider terminal placement invalidation", () => {
 		expect(invalidationState(client)).toStrictEqual({
 			herdrPanes: true,
 			herdrWorkspaces: true,
+			herdrTerminals: true,
 			terminalPlacements: true,
 		});
 	});
@@ -196,7 +201,7 @@ describe("ClaudeEventsProvider terminal placement invalidation", () => {
 			invalidation: invalidationState(client),
 		}).toStrictEqual({
 			connection: {reconnecting: true},
-			invalidation: {herdrPanes: false, herdrWorkspaces: false, terminalPlacements: false},
+			invalidation: {herdrPanes: false, herdrWorkspaces: false, herdrTerminals: false, terminalPlacements: false},
 		});
 	});
 

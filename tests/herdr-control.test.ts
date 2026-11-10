@@ -1,6 +1,7 @@
 import {EventEmitter} from "node:events";
 import {PassThrough} from "node:stream";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {TerminalStreamQuerySchema} from "../src/lib/terminal-stream-query";
 import {
 	authorizeTerminalControl,
 	controlHerdrSession,
@@ -185,5 +186,25 @@ describe("herdr terminal control authorization", () => {
 				{writesEnabled: () => true},
 			),
 		).toBeNull();
+	});
+});
+
+describe("terminal stream query", () => {
+	it("targets a Claude session or a herdr pane, exactly one of them", () => {
+		const parse = (query: Record<string, string>) => {
+			const parsed = TerminalStreamQuerySchema.safeParse(query);
+			return parsed.success ? parsed.data : "invalid";
+		};
+		expect({
+			session: parse({sessionId: "alice-session", columns: "80", rows: "24"}),
+			pane: parse({paneId: "w1:p3@later", columns: "80", rows: "24"}),
+			both: parse({sessionId: "alice-session", paneId: "w1:p3", columns: "80", rows: "24"}),
+			neither: parse({columns: "80", rows: "24"}),
+		}).toStrictEqual({
+			session: {target: {kind: "session", sessionId: "alice-session"}, columns: 80, rows: 24},
+			pane: {target: {kind: "pane", paneId: "w1:p3@later"}, columns: 80, rows: 24},
+			both: "invalid",
+			neither: "invalid",
+		});
 	});
 });

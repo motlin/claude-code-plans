@@ -44,8 +44,9 @@ import {getPendingQuestion} from "../pending-question-store";
 import {defaultHerdrQuestionDependencies, handleHerdrQuestion} from "../herdr/question";
 import {reportHookStateToHerdr} from "../herdr/report-state";
 import {startHerdrEventBridge} from "../herdr/subscribe";
-import {controlHerdrSession, type TerminalController} from "../herdr/terminal-controller";
+import {controlHerdrPane, controlHerdrSession, type TerminalController} from "../herdr/terminal-controller";
 import {
+	observeHerdrPane,
 	observeHerdrSession,
 	stopAllTerminalObservers,
 	parseViewport,
@@ -57,6 +58,7 @@ import {getHerdrWorkspaces, type HerdrWorkspace} from "../herdr/workspaces";
 import {defaultTerminalHostProbes, selectTerminalHost, type TerminalHostProbes} from "./selection";
 
 export type {TerminalController, TerminalObserver, TerminalObserverSocket};
+export {TerminalStreamQuerySchema} from "../terminal-stream-query";
 export {addViewedStateToHerdrPanes as addViewedStateToPanes} from "../herdr/pane-viewed-state";
 /** Upgrade gate for a control stream, whatever the host: same-origin and Live terminal input on. */
 export {authorizeTerminalControl} from "../herdr/terminal-controller";
@@ -132,6 +134,20 @@ export interface TerminalHost {
 		rows: number,
 		socket: TerminalObserverSocket,
 	) => Promise<TerminalController>;
+	/** Live terminal: stream any pane by its id read-only, plain shells included. */
+	observePane: (
+		paneId: string,
+		columns: number,
+		rows: number,
+		socket: TerminalObserverSocket,
+	) => Promise<TerminalObserver>;
+	/** Live terminal: stream any pane by its id and accept keyboard frames. */
+	controlPane: (
+		paneId: string,
+		columns: number,
+		rows: number,
+		socket: TerminalObserverSocket,
+	) => Promise<TerminalController>;
 	/** Stop every live terminal stream this host has open. */
 	stopAllStreams: () => void;
 }
@@ -163,6 +179,8 @@ const herdrTerminalHost: TerminalHost = {
 	startPaneEvents: startHerdrEventBridge,
 	observe: async (sessionId, columns, rows, socket) => observeHerdrSession(sessionId, columns, rows, socket),
 	control: async (sessionId, columns, rows, socket) => controlHerdrSession(sessionId, columns, rows, socket),
+	observePane: async (paneId, columns, rows, socket) => observeHerdrPane(paneId, columns, rows, socket),
+	controlPane: async (paneId, columns, rows, socket) => controlHerdrPane(paneId, columns, rows, socket),
 	stopAllStreams: stopAllTerminalObservers,
 };
 
@@ -174,6 +192,10 @@ async function noHostWrite(): Promise<Response> {
 
 async function noHostStream(): Promise<never> {
 	return Promise.reject(new Error("No terminal host can stream this session"));
+}
+
+async function noHostPaneStream(): Promise<never> {
+	return Promise.reject(new Error("No terminal host can stream this pane"));
 }
 
 /** No host: no panes, and every write is refused. */
@@ -203,6 +225,8 @@ const noTerminalHost: TerminalHost = {
 	startPaneEvents: () => () => undefined,
 	observe: noHostStream,
 	control: noHostStream,
+	observePane: noHostPaneStream,
+	controlPane: noHostPaneStream,
 	stopAllStreams: () => undefined,
 };
 

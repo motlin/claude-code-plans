@@ -404,6 +404,26 @@ describe("live herdr terminal UI", () => {
 		});
 	});
 
+	it("streams any herdr pane by its id, typing into a plain shell over the control socket", async () => {
+		render(<HerdrTerminal paneId="w1:p3@later" variant="pane" interactive />);
+		releaseFonts();
+		await waitFor(() => {
+			expect(terminalState.socketUrls.length).toBe(1);
+		});
+
+		act(() => {
+			for (const listener of terminalState.dataListeners) listener("ls\r");
+		});
+
+		expect({
+			socketUrls: terminalState.socketUrls,
+			sentMessages: terminalState.sentMessages,
+		}).toStrictEqual({
+			socketUrls: ["ws://localhost:3000/api/herdr/control?paneId=w1%3Ap3%40later&columns=80&rows=24"],
+			sentMessages: [JSON.stringify({type: "data", data: "ls\r"})],
+		});
+	});
+
 	it("never sends data frames from the read-only observer", async () => {
 		render(<HerdrTerminal sessionId="session-test-100" variant="pane" />);
 		releaseFonts();

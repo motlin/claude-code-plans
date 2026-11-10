@@ -19,7 +19,7 @@ const ANNOUNCEMENT_MS = 3000;
  * Copy and ⇧⌘L-attach for one terminal view. `actions` stays stable so the
  * terminal's key handler can hold it; `announcement` feeds the sr-only status.
  */
-export function useTerminalSelectionActions(sessionId: string): {
+export function useTerminalSelectionActions(sessionId: string | null): {
 	actions: SelectionActions;
 	announcement: string;
 } {
@@ -36,7 +36,7 @@ export function useTerminalSelectionActions(sessionId: string): {
 	);
 
 	const attach = useCallback((text: string) => {
-		if (!attachTerminalSelection(sessionRef.current, text)) return;
+		if (sessionRef.current === null || !attachTerminalSelection(sessionRef.current, text)) return;
 		setAnnouncement(TERMINAL_ATTACHED_MESSAGE);
 		if (clearTimer.current) clearTimeout(clearTimer.current);
 		clearTimer.current = setTimeout(() => {

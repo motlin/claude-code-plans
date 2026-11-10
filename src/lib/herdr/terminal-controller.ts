@@ -7,6 +7,7 @@ import {
 	bridgeTerminalStream,
 	herdrTerminalSpawnTarget,
 	parseViewport,
+	resolvePaneTerminal,
 	resolveSessionTerminal,
 	sessionStreamArguments,
 	type ObserverOptions,
@@ -117,6 +118,18 @@ export async function controlHerdrSession(
 ): Promise<TerminalController> {
 	const target = await dependencies.resolveTarget(sessionId);
 	return startTerminalController({target, columns, rows}, socket, dependencies.spawnController);
+}
+
+/** Stream any herdr pane by its id, plain shells included, and accept keyboard frames. */
+export async function controlHerdrPane(
+	paneId: string,
+	columns: number,
+	rows: number,
+	socket: TerminalObserverSocket,
+	spawnController: SpawnController = spawn,
+): Promise<TerminalController> {
+	const target = await resolvePaneTerminal(paneId);
+	return startTerminalController({target, columns, rows}, socket, spawnController);
 }
 
 /** Upgrade gate: same-origin only, and only while herdr writes are enabled. */
