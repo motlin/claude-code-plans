@@ -58,7 +58,13 @@ function snapshotFiles(snapshot: string, dir: string): Record<string, string> {
 }
 
 function run(command: string): string {
-	return execFileSync("bash", [script, command], {cwd: projectRoot, encoding: "utf8", env});
+	// stderr is piped, not inherited, so the deliberate failed start below doesn't print into the test run's output.
+	return execFileSync("bash", [script, command], {
+		cwd: projectRoot,
+		encoding: "utf8",
+		env,
+		stdio: ["ignore", "pipe", "pipe"],
+	});
 }
 
 function listenerCommand(): string {
@@ -189,7 +195,17 @@ describe("scripts/server.sh snapshots", () => {
 		writeFileSync(join(projectDir, ".output", "server", "index.mjs"), "process.exit(1);\n");
 
 		// start notices the dead build exit, so this doesn't wait out the deadline.
-		expect(() => run("start")).toThrow("Command failed");
+		const failure = (() => {
+			try {
+				run("start");
+				return undefined;
+			} catch (error) {
+				return error as {stderr: string};
+			}
+		})();
+		expect(failure?.stderr).toBe(
+			`Server exited before listening on port ${env["PORT"] ?? ""}; see ${join(runDir, "cache", "claude-code-plans", "server.log")}\nKept snapshot ${before[0] ?? ""} current; 'just restart' serves it again\n`,
+		);
 		expect({
 			current: readFileSync(join(snapshotRoot, "current"), "utf8").trim(),
 			kept: before.every((name) => snapshots().includes(name)),

@@ -8,6 +8,7 @@ import {Features} from "lightningcss";
 import {AGENTATION_ENDPOINT, AGENTATION_SERVER} from "./src/lib/agentation-endpoint";
 import {quietDependencyDirectives} from "./src/lib/build-log-filter";
 import {clientChunkGraph} from "./src/lib/client-chunk-graph";
+import {nameCodeSplittingGroups} from "./src/lib/code-splitting-debug-names";
 import {closeNitroRunnerOnServerClose} from "./src/lib/dev-env-runner-teardown";
 import {holdNitroRequestsUntilReady} from "./src/lib/dev-env-ready-gate";
 import {serializeDevServerRestarts} from "./src/lib/dev-restart-serializer";
@@ -82,8 +83,9 @@ export default defineConfig({
 				command: "tsc --noEmit",
 				cache: false,
 			},
+			// scripts/check-build-output.mjs fails the build on any warning, so a new one fails the gate.
 			"build:app": {
-				command: "vp build --logLevel warn",
+				command: "node scripts/check-build-output.mjs vp build --logLevel warn",
 				cache: {
 					env: ["CCB_BUILD_SHA"],
 					input: [{auto: true}, ...UNTRACKED_TASK_INPUTS],
@@ -424,6 +426,11 @@ export default defineConfig({
 	build: {
 		// The per-file gzip table is hundreds of lines on every build; just perf-bundle ratchets the sizes that matter.
 		reportCompressedSize: false,
+		// In kB. Past Vite's 500 kB default sit single modules that cannot split further, each loaded on demand: shiki's
+		// emacs-lisp (790) and cpp (786) grammars, ghostty-web (637) and shiki's inlined onig wasm (622); the lazy
+		// markdown editor (756), already behind its own import(); and the home and session route chunks (~615), where
+		// more chunks would raise the browser.J1/J2 request ceilings. just perf-bundle ratchets the route sizes.
+		chunkSizeWarningLimit: 800,
 		rolldownOptions: {
 			onLog: quietDependencyDirectives,
 			// Zod schema builders (`z.object(...)`, `z.enum(...).optional()`, ...) only construct values, but the
@@ -446,6 +453,15 @@ export default defineConfig({
 			serverDir: "./server",
 			// node-pty loads its native addon and spawn-helper from prebuilds/ at runtime.
 			traceDeps: ["node-pty*"],
+			// The only wasm the server reaches is shiki's onig.wasm, whose emscripten `env` imports unwasm cannot
+			// resolve, so it fell back to module mode on every build. Without unwasm, shiki/wasm resolves to the
+			// inlined-wasm module that instantiates itself in Node.
+			wasm: false,
+			hooks: {
+				"rollup:before": (_nitro: unknown, config: unknown) => {
+					nameCodeSplittingGroups(config, "nitro-node-modules");
+				},
+			},
 		}),
 		tailwindcss(),
 		tanstackStart(),

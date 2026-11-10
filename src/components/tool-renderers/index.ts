@@ -3,6 +3,11 @@ import type {ClientToolCall, ToolRendererProps} from "./types";
 import {getMcpRenderer} from "./mcp-registry";
 // Question cards are always visible, so they must not wait behind a blank lazy-loading fallback.
 import {AskUserQuestionRenderer} from "./ask-user-question-renderer";
+// The Artifacts and Plan panes import these statically on the session page, so a lazy() here never split them out,
+// and the artifact and report-findings renderers import the fallback renderer statically.
+import {ArtifactRenderer} from "./artifact-renderer";
+import {FallbackRenderer, InvalidInputRenderer} from "./fallback-renderer";
+import {TaskChecklistRenderer} from "./task-checklist-renderer";
 
 const EditRenderer = lazy(async () => import("./edit-renderer").then((m) => ({default: m.EditRenderer})));
 const BashRenderer = lazy(async () => import("./bash-renderer").then((m) => ({default: m.BashRenderer})));
@@ -11,9 +16,6 @@ const WriteRenderer = lazy(async () => import("./write-renderer").then((m) => ({
 const GlobRenderer = lazy(async () => import("./glob-renderer").then((m) => ({default: m.GlobRenderer})));
 const GrepRenderer = lazy(async () => import("./grep-renderer").then((m) => ({default: m.GrepRenderer})));
 const AgentRenderer = lazy(async () => import("./agent-renderer").then((m) => ({default: m.AgentRenderer})));
-const TaskChecklistRenderer = lazy(async () =>
-	import("./task-checklist-renderer").then((m) => ({default: m.TaskChecklistRenderer})),
-);
 const ExitPlanModeRenderer = lazy(async () =>
 	import("./exit-plan-mode-renderer").then((m) => ({
 		default: m.ExitPlanModeRenderer,
@@ -46,15 +48,10 @@ const ToolSearchRenderer = lazy(async () =>
 		default: m.ToolSearchRenderer,
 	})),
 );
-const ArtifactRenderer = lazy(async () => import("./artifact-renderer").then((m) => ({default: m.ArtifactRenderer})));
 const ReportFindingsRenderer = lazy(async () =>
 	import("./report-findings-renderer").then((m) => ({
 		default: m.ReportFindingsRenderer,
 	})),
-);
-const FallbackRenderer = lazy(async () => import("./fallback-renderer").then((m) => ({default: m.FallbackRenderer})));
-const InvalidInputRenderer = lazy(async () =>
-	import("./fallback-renderer").then((m) => ({default: m.InvalidInputRenderer})),
 );
 
 const registry: Record<string, ComponentType<ToolRendererProps>> = {

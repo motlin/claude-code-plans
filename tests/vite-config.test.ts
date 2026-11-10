@@ -139,7 +139,7 @@ describe("build task cache", () => {
 		}).toStrictEqual({
 			define: {__CCB_BUILD_SHA__: JSON.stringify("abc1234")},
 			buildApp: {
-				command: "vp build --logLevel warn",
+				command: "node scripts/check-build-output.mjs vp build --logLevel warn",
 				cache: {
 					env: ["CCB_BUILD_SHA"],
 					input: [{auto: true}, "!.fallow/**", "!node_modules/.cache/ccb-perf/**"],
@@ -159,6 +159,7 @@ describe("quiet output", () => {
 				typeof project === "object" && "test" in project ? [project.test.name, project.test.isolate] : project,
 			),
 			reportCompressedSize: viteConfig.build?.reportCompressedSize,
+			chunkSizeWarningLimit: viteConfig.build?.chunkSizeWarningLimit,
 			filtersBundlerLogs: typeof viteConfig.build?.rolldownOptions?.onLog,
 		}).toStrictEqual({
 			reporters: process.env["GITHUB_ACTIONS"] === "true" ? ["minimal", "github-actions"] : ["minimal"],
@@ -169,6 +170,7 @@ describe("quiet output", () => {
 				["isolated", true],
 			],
 			reportCompressedSize: false,
+			chunkSizeWarningLimit: 800,
 			filtersBundlerLogs: "function",
 		});
 	});

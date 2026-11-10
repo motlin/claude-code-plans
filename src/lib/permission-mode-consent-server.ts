@@ -4,7 +4,7 @@ import {
 	PermissionModeConsentBodySchema,
 	type PermissionModeConsentBody,
 } from "./api/permission-mode-consent";
-import {readCliConfigFlag, setCliConfigFlag} from "./cli-global-config";
+import {defaultCliConfigDir, readCliConfigFlag, setCliConfigFlag} from "./cli-global-config";
 import type * as schema from "./db/schema";
 import {addPermissionModeAck, getPermissionModeAcks} from "./db/permission-mode-acks";
 import {recordAck} from "./permission-mode-consent";
@@ -112,10 +112,9 @@ export async function handlePermissionModeConsentPost(
 
 /** The real index.db, settings dir, CLI config dir and managed settings, for the route. */
 export async function nodeConsentStoreDependencies(): Promise<ConsentStoreDependencies> {
-	const [{getDb}, {defaultClaudeDir}, {defaultCliConfigDir}, {nodeFastModeBlockDependencies}] = await Promise.all([
+	const [{getDb}, {defaultClaudeDir}, {nodeFastModeBlockDependencies}] = await Promise.all([
 		import("./db"),
 		import("./settings-file"),
-		import("./cli-global-config"),
 		import("./composer-state-server"),
 	]);
 	return {

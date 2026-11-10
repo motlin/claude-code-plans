@@ -21,7 +21,12 @@
 }
 
 @custom-variant dark (&:is(.dark *));
-@custom-variant touch (@media (pointer: coarse), (hover: none));
+/* Block form: the shorthand splits on the comma, so `(hover: none)` became a dangling descendant selector. */
+@custom-variant touch {
+	@media (pointer: coarse), (hover: none) {
+		@slot;
+	}
+}
 /* Upstream's fizzy-lake `panels` control sizes (28px comfortable controls, the toolbar icon box, the
    6px menu gutter) sit in this fine-pointer query, so a coarse device keeps the classic 32px controls.
    The query is FIZZY_LAKE_PANELS_FINE_POINTER_QUERY in src/lib/fizzy-lake.ts. */

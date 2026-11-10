@@ -1,4 +1,4 @@
-import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, describe, expect, it, onTestFinished, vi} from "vite-plus/test";
 import type {ToastOptions} from "../src/components/toast-context";
 import {
 	attachContext,
@@ -30,6 +30,7 @@ import {
 	takeQueuedDiffComments,
 } from "../src/lib/diff-comments";
 import {schemaChoiceRegistry} from "../src/lib/schema-choices";
+import {installLocalStorage} from "./fake-storage";
 
 describe("formatAttachContext", () => {
 	it("formats a file, a line, a line range and a fenced selection", () => {
@@ -462,6 +463,14 @@ describe("attachContext", () => {
 	});
 
 	it("re-queues a rejected send's diff comments and hands back only its typed text", () => {
+		// The diff comment store persists to localStorage; without a fake, Node's own unconfigured global prints an
+		// ExperimentalWarning into the test run.
+		const original = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+		installLocalStorage();
+		onTestFinished(() => {
+			if (original === undefined) Reflect.deleteProperty(globalThis, "localStorage");
+			else Object.defineProperty(globalThis, "localStorage", original);
+		});
 		clearDiffComments(SESSION);
 		const draftId = openDiffCommentDraft(SESSION, {path: "a.ts", side: "additions", line: 3});
 		saveDiffComment(SESSION, draftId, "Rename this");
