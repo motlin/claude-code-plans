@@ -1,15 +1,18 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, render} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {MermaidDiagram} from "../src/components/mermaid-diagram";
 import {
 	cachedDiagram,
 	drawnKey,
 	rememberDrawn,
 	rememberRefusal,
+	loadMermaidWithGuard,
+	loadMermaidGuard,
 	resetMermaidCachesForTests,
 } from "../src/lib/mermaid-render";
+import {guardedRender} from "./helpers/mermaid-sandbox";
 
 const {renderDiagram} = vi.hoisted(() => ({
 	renderDiagram: vi.fn<(id: string, code: string, host: HTMLElement) => Promise<{svg: string}>>(),
@@ -18,24 +21,26 @@ const {renderDiagram} = vi.hoisted(() => ({
 vi.mock("mermaid", () => ({default: {initialize: vi.fn<(config: unknown) => void>(), render: renderDiagram}}));
 
 async function settle() {
-	for (let i = 0; i < 5; i++) {
+	for (let i = 0; i < 20; i++) {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
 	}
 }
 
+// The guard and mermaid load through dynamic imports, which the fake clock cannot hurry.
+beforeAll(async () => {
+	await Promise.all([loadMermaidGuard(), loadMermaidWithGuard()]);
+});
+
 beforeEach(() => {
 	vi.useFakeTimers();
 	vi.stubGlobal("innerWidth", 1000);
 	resetMermaidCachesForTests();
 	renderDiagram.mockReset();
-	renderDiagram.mockImplementation(async (id, _code, host) => {
-		host.appendChild(document.createElement("iframe"));
-		return Promise.resolve({
-			svg: `<iframe src="data:text/html;base64,${btoa(`<svg id="${id}"><style>#${id} .node{fill:red}</style></svg>`)}"></iframe>`,
-		});
-	});
+	renderDiagram.mockImplementation(
+		guardedRender((id) => `<svg id="${id}"><style>#${id} .node{fill:red}</style></svg>`),
+	);
 });
 
 afterEach(() => {

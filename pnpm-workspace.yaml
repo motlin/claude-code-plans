@@ -33,3 +33,7 @@ allowBuilds:
   fallow: true
   node-pty: true
   unrs-resolver: true
+patchedDependencies:
+  # Upstream's mermaid guard (src/lib/mermaid-guard.ts) needs mermaid to hand it each parsed diagram and to charge
+  # each label it measures; without the patch every diagram is refused (MermaidGuardNotRun). Re-apply on upgrades.
+  mermaid@11.17.2: patches/mermaid@11.17.2.patch

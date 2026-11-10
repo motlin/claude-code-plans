@@ -12,6 +12,7 @@ import {useReducedMotion} from "../lib/reduced-motion";
 import {useResolvedTheme} from "./theme-context";
 import {MermaidDiagram, type MermaidStatus} from "./mermaid-diagram";
 import {Icon} from "./ui/icon";
+import {Tooltip} from "./ui/tooltip";
 
 /*
  * Upstream's mermaid fence (c9e4d0c57 EpitaxyMermaidFence `we`, dumps/mermaid-fence-secret-fallback-c9e4d0c57.js.txt):
@@ -20,11 +21,15 @@ import {Icon} from "./ui/icon";
  * the row toolbar), the document figure width, in-page find, and the withheld state of the post-draw secret audit.
  */
 
+/** Upstream's note above a failed diagram (`GVQKxz`), shown on every render error. */
+const MERMAID_RENDER_FAILED_NOTE = "This diagram couldn\u2019t be drawn. Showing its source.";
+
 /**
- * Upstream's note above a failed diagram (`d7uh3a`). TODO(markdown-mermaid-diagram-render): the copy has no
- * defaultMessage in the chunk and the live catalog was not read; replace this with the resolved string.
+ * Upstream's toolbar button: cds `Button` ghost, iconOnly, size base, the same component as the code card's Copy,
+ * so it takes the Copy button's look (24px, 6px radius, t6 ink lifting to primary on the ghost hover).
  */
-export const MERMAID_RENDER_FAILED_NOTE = "Couldn't draw this diagram, so here's its source.";
+const TOOLBAR_BUTTON_CLASS =
+	"inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 border-0 bg-transparent p-0 text-t6 hover:bg-[hsl(0_0%_4.3137%_/_0.06)] hover:text-primary dark:hover:bg-[hsl(0_0%_100%_/_0.08)] [&_svg]:size-4";
 
 /** Upstream `ve`. */
 const MOTION = "duration-base ease-out motion-reduce:transition-none";
@@ -273,17 +278,22 @@ export function MermaidFence({
 			</div>
 			{toolbarShown && (
 				<div data-placement="corner" className="absolute right-1.75 top-1.25 flex gap-0.5">
-					<button
-						type="button"
-						data-testid="epitaxy-mermaid-fence-view"
-						aria-label={label}
-						data-tooltip={label}
-						onClick={() => {
-							setViewSource((value) => !value);
-						}}
-					>
-						<Icon name={viewSource ? "Eye" : "Code"} />
-					</button>
+					<Tooltip content={label}>
+						<button
+							type="button"
+							data-cds="Button"
+							data-cds-icon-only=""
+							data-cds-ghost=""
+							data-testid="epitaxy-mermaid-fence-view"
+							aria-label={label}
+							className={TOOLBAR_BUTTON_CLASS}
+							onClick={() => {
+								setViewSource((value) => !value);
+							}}
+						>
+							<Icon name={viewSource ? "Eye" : "Code"} />
+						</button>
+					</Tooltip>
 				</div>
 			)}
 		</div>

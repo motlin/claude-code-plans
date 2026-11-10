@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, fireEvent, render} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
-import {MERMAID_RENDER_FAILED_NOTE, MermaidFence} from "../src/components/mermaid-fence";
+import {MermaidFence} from "../src/components/mermaid-fence";
 import {MermaidPlaceholder} from "../src/components/mermaid-fence-gate";
 import type {MermaidStatus} from "../src/components/mermaid-diagram";
 
@@ -151,6 +151,39 @@ describe("MermaidFence (upstream EpitaxyMermaidFence)", () => {
 		});
 	});
 
+	it("draws the toolbar's toggle as upstream's cds ghost icon-only Button with its label as a tooltip", () => {
+		const {container} = fence();
+		report("success");
+		act(() => {
+			vi.advanceTimersByTime(400);
+		});
+		const button = container.querySelector<HTMLElement>("[data-testid=epitaxy-mermaid-fence-view]")!;
+		fireEvent.pointerEnter(button.parentElement!);
+		act(() => {
+			vi.advanceTimersByTime(300);
+		});
+		expect({
+			type: button.getAttribute("type"),
+			cds: button.dataset["cds"],
+			ghost: button.getAttribute("data-cds-ghost"),
+			iconOnly: button.getAttribute("data-cds-icon-only"),
+			cssTooltip: button.getAttribute("data-tooltip"),
+			className: button.className,
+			icon: button.querySelector("svg")?.getAttribute("aria-hidden"),
+			tooltip: screen.getByRole("tooltip").textContent,
+		}).toStrictEqual({
+			type: "button",
+			cds: "Button",
+			ghost: "",
+			iconOnly: "",
+			cssTooltip: null,
+			className:
+				"inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 border-0 bg-transparent p-0 text-t6 hover:bg-[hsl(0_0%_4.3137%_/_0.06)] hover:text-primary dark:hover:bg-[hsl(0_0%_100%_/_0.08)] [&_svg]:size-4",
+			icon: "true",
+			tooltip: "View source",
+		});
+	});
+
 	it("ends the fade on the leaving layer's opacity transitionend", () => {
 		const {container} = fence();
 		report("success");
@@ -213,7 +246,13 @@ describe("MermaidFence (upstream EpitaxyMermaidFence)", () => {
 			layers: layers(container).map(({layer, state, holds}) => [layer, state, holds]),
 			toolbar: container.querySelector("[data-placement]"),
 		}).toStrictEqual({
-			note: ["p", "note", "text-footnote text-muted-as-secondary", MERMAID_RENDER_FAILED_NOTE],
+			// Upstream GVQKxz (current c9e4d0c57), shown on every render error.
+			note: [
+				"p",
+				"note",
+				"text-footnote text-muted-as-secondary",
+				"This diagram couldn\u2019t be drawn. Showing its source.",
+			],
 			layers: [["code", "shown", "markdown-codeblock"]],
 			toolbar: null,
 		});

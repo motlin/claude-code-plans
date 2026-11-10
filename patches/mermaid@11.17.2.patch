@@ -1,0 +1,31 @@
+diff --git a/dist/chunks/mermaid.core/chunk-75Z2AOVW.mjs b/dist/chunks/mermaid.core/chunk-75Z2AOVW.mjs
+index 96e985e3d6417ca18673900cd4d0348a4bd47301..0340f85336226d38cb2467b1efde7560d7d381dc 100644
+--- a/dist/chunks/mermaid.core/chunk-75Z2AOVW.mjs
++++ b/dist/chunks/mermaid.core/chunk-75Z2AOVW.mjs
+@@ -408,6 +408,7 @@ function calculateTextWidth(text, config) {
+ __name(calculateTextWidth, "calculateTextWidth");
+ var calculateTextDimensions = memoize(
+   (text, config) => {
++    globalThis.__antMermaidGuard?.fit?.("text", text);
+     const { fontSize = 12, fontFamily = "Arial", fontWeight = 400 } = config;
+     if (!text) {
+       return { width: 0, height: 0 };
+diff --git a/dist/mermaid.core.mjs b/dist/mermaid.core.mjs
+index 5ca5273d690e26374ea7dd3719ae1461ba6fad6d..e23bc4aaf81d89c27de4ae598ddddab40dabafa1 100644
+--- a/dist/mermaid.core.mjs
++++ b/dist/mermaid.core.mjs
+@@ -1321,6 +1321,14 @@ var render = /* @__PURE__ */ __name(async function(id39, text, svgContainingElem
+     diag = await Diagram.fromText("error");
+     parseEncounteredException = error;
+   }
++  if (!parseEncounteredException) {
++    try {
++      globalThis.__antMermaidGuard?.parsed?.(diag, id39);
++    } catch (error) {
++      removeTempElements();
++      throw error;
++    }
++  }
+   const element = root.select(enclosingDivID_selector).node();
+   const diagramType = diag.type;
+   const svg = element.firstChild;

@@ -3,18 +3,22 @@ import {
 	MERMAID_DRAW_LIMIT_MS,
 	MERMAID_SHADOW_STYLE,
 	MERMAID_SHADOW_STYLE_AUTO_DIRECTION,
+	asMermaidRefusal,
 	cachedDiagram,
 	drawMermaid,
 	drawnKey,
+	loadMermaidWithGuard,
+	mermaidGuardLoaded,
 	mermaidScopeId,
 	refusalFor,
 	rememberDrawn,
+	rememberRefusal,
+	rememberedRefusal,
 	sanitizeMermaidSvg,
 	touchDrawn,
 	writeShadowSvg,
 } from "../lib/mermaid-render";
 import {type MermaidThemeMode, themeFor} from "../lib/mermaid-theme";
-import {loadMermaid} from "../lib/mermaid-gate";
 
 export type MermaidStatus = "loading" | "success" | "error";
 
@@ -92,7 +96,7 @@ export function MermaidDiagram({
 		void (async () => {
 			let loaded = false;
 			try {
-				const mermaid = await loadMermaid();
+				const mermaid = await loadMermaidWithGuard();
 				loaded = true;
 				const result = await drawMermaid(
 					mermaid,
@@ -107,7 +111,7 @@ export function MermaidDiagram({
 					},
 					scopeId,
 					code,
-					{signal: controller.signal, limitMs: MERMAID_DRAW_LIMIT_MS},
+					{signal: controller.signal, limitMs: MERMAID_DRAW_LIMIT_MS, dimUnreadableBands: true},
 				);
 				if (controller.signal.aborted) return;
 				setState({
@@ -118,11 +122,25 @@ export function MermaidDiagram({
 					width: window.innerWidth,
 				});
 			} catch (error) {
+				// A refusal the guard will refuse again is remembered, so a remount does not draw it again.
+				const refusal = asMermaidRefusal(error);
+				if (refusal?.refusedBy !== undefined && rememberedRefusal(refusal))
+					rememberRefusal(code, refusal.refusedBy);
 				if (controller.signal.aborted) return;
-				setState({status: "error", cause: loaded ? "render" : "load"});
-				const name = error instanceof Error ? (/^\w{1,64}$/.exec(error.name)?.[0] ?? "Error") : typeof error;
+				const drew = loaded && mermaidGuardLoaded();
+				setState(
+					refusal?.refusedBy === undefined ? {status: "error", cause: drew ? "render" : "load"} : REFUSED,
+				);
+				if (refusal?.refusedBy !== undefined) {
+					console.info(`Mermaid diagram in markdown ${refusal.message}`);
+					return;
+				}
+				const name =
+					error instanceof Error
+						? (/^\w{1,64}$/.exec(error.name)?.[0] ?? "Error")
+						: `a non-Error ${typeof error}`;
 				console.warn(
-					`Failed to render mermaid diagram in markdown: ${loaded ? "drawing" : "loading mermaid, its limits or its theme"} threw ${name}`,
+					`Failed to render mermaid diagram in markdown: ${drew ? "drawing" : "loading mermaid, its limits or its theme"} threw ${name}`,
 				);
 			}
 		})();

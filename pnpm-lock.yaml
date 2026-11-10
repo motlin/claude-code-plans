@@ -175,6 +175,9 @@ overrides:
   '@tanstack/router-core': 1.171.7
   '@tailwindcss/node>lightningcss': 1.33.0
 
+patchedDependencies:
+  mermaid@11.17.2: 6ab6e483bd7f80c85111431c8481dc95c3483058cd983e10085c1ad7f0378e3b
+
 importers:
 
   .:
@@ -265,7 +268,7 @@ importers:
         version: 2.1.1
       mermaid:
         specifier: 11.17.2
-        version: 11.17.2
+        version: 11.17.2(patch_hash=6ab6e483bd7f80c85111431c8481dc95c3483058cd983e10085c1ad7f0378e3b)
       nitro:
         specifier: 3.0.260522-beta
         version: 3.0.260522-beta(@voidzero-dev/vite-plus-core@1.1.0(@types/node@26.6.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2))(better-sqlite3@13.0.3)(chokidar@5.0.0)(drizzle-orm@0.45.4(@types/better-sqlite3@9.6.0)(better-sqlite3@13.0.3))(jiti@2.7.0)(lru-cache@11.5.3)
@@ -10967,7 +10970,7 @@ snapshots:
 
   merge2@1.4.1: {}
 
-  mermaid@11.17.2:
+  mermaid@11.17.2(patch_hash=6ab6e483bd7f80c85111431c8481dc95c3483058cd983e10085c1ad7f0378e3b):
     dependencies:
       '@braintree/sanitize-url': 7.1.2
       '@iconify/utils': 3.1.7
