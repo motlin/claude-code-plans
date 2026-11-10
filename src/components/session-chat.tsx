@@ -144,6 +144,8 @@ import {usePromptJump} from "../hooks/use-prompt-jump";
 import {useStepCollapseFocusReturn} from "../hooks/use-step-collapse-focus-return";
 import {useTranscriptSelectionAttach} from "../hooks/use-transcript-selection-attach";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
+import {glideScrollTo} from "../lib/glide-scroll";
+import {isMotionReduced} from "../lib/reduced-motion";
 import {stickyPromptText} from "../lib/sticky-prompt";
 import {StickyPromptOverlay, type StickyPromptCandidate} from "./sticky-prompt-overlay";
 import {TranscriptOverlayHostContext} from "./transcript-overlay-host-context";
@@ -2283,6 +2285,9 @@ function stickyTextEntry(line: SessionLine, renderProps: LineRenderProps): {stic
 }
 
 /** Height of the sticky session header that covers the top of the scroller. */
+/** Upstream c1c1ec7b9 `Fe`: a smooth jump lands the row's content this far below the scroller's top. */
+const SMOOTH_ENTRY_LANDING_OFFSET = 20;
+
 function stickyHeaderInset(scroller: Element): number {
 	return scroller.querySelector("[data-transcript-sticky-header]")?.getBoundingClientRect().height ?? 0;
 }
@@ -3321,11 +3326,14 @@ function VirtualizedSessionEntries({
 	shouldScrollToEnd,
 	measurementKey,
 	measurementSource,
+	scrollKey,
 }: {
 	entries: SessionListEntry[];
 	shouldScrollToEnd: boolean;
 	measurementKey: string;
 	measurementSource: object | undefined;
+	/** Upstream's transcript `scrollKey` (its session's transcript key): a new one re-runs the sticky prompt's detection. */
+	scrollKey: string;
 }) {
 	const geometryReady = useContext(SessionTileGeometryReadyContext);
 	// Upstream AssistantMessage `data-cds-reply-type` (shared-9 `nB`): under fizzy-lake `type` it opts the
@@ -3775,17 +3783,50 @@ function VirtualizedSessionEntries({
 	}, [entries, jumpVersion, prefixHeights, range.endIndex, range.startIndex, updateVisibleRange]);
 
 	const promptIndices = useMemo(() => entries.flatMap((entry, index) => (entry.isPrompt ? [index] : [])), [entries]);
-	/** Brings an entry's top to the scroller's top edge, instantly for ⌥⌘↑ / ⌥⌘↓, smoothly from the sticky prompt. */
+	/**
+	 * Brings an entry's top to the scroller's top edge for ⌥⌘↑ / ⌥⌘↓. From the sticky prompt
+	 * ("smooth"), upstream c1c1ec7b9 `Fe` lands the row's content 20px below the top instead: a
+	 * glide re-aimed every frame, or one jump under reduced motion or once the row unmounts.
+	 */
 	const scrollToEntry = (index: number, behavior?: ScrollBehavior) => {
 		const list = listRef.current;
 		const scroller = scrollerRef.current;
 		if (!list || !scroller) return;
 		const viewport = scrollerViewport(scroller);
 		const listOffset = list.getBoundingClientRect().top - viewport.top + scroller.scrollTop;
-		const top = Math.max(0, listOffset + prefixHeightAt(prefixHeights, index) - stickyHeaderInset(scroller));
-		if (behavior === undefined) scroller.scrollTop = top;
-		else scroller.scrollTo({top, behavior});
-		updateVisibleRange();
+		if (behavior !== "smooth") {
+			scroller.scrollTop = Math.max(
+				0,
+				listOffset + prefixHeightAt(prefixHeights, index) - stickyHeaderInset(scroller),
+			);
+			updateVisibleRange();
+			return;
+		}
+		const clamp = (top: number) =>
+			Math.max(0, Math.min(Math.max(0, scroller.scrollHeight - scroller.clientHeight), top));
+		const landing = () => {
+			const row = list.querySelector(`[data-transcript-entry-index="${index}"]`);
+			if (row === null) return null;
+			const content = row.firstElementChild ?? row;
+			return clamp(
+				scroller.scrollTop + content.getBoundingClientRect().top - viewport.top - SMOOTH_ENTRY_LANDING_OFFSET,
+			);
+		};
+		const jump = () => {
+			scroller.scrollTop = clamp(
+				landing() ?? listOffset + prefixHeightAt(prefixHeights, index) - SMOOTH_ENTRY_LANDING_OFFSET,
+			);
+			updateVisibleRange();
+		};
+		if (!(scroller instanceof HTMLElement) || isMotionReduced(scroller.ownerDocument)) {
+			jump();
+			return;
+		}
+		glideScrollTo(scroller, () => {
+			const top = landing();
+			if (top === null) jump();
+			return top;
+		});
 	};
 	usePromptJump({
 		promptIndices,
@@ -3937,6 +3978,7 @@ function VirtualizedSessionEntries({
 					<StickyPromptOverlay
 						candidates={stickyCandidates}
 						scroller={() => (listRef.current ? findScrollContainer(listRef.current) : null)}
+						scrollKey={scrollKey}
 						scrollToEntry={scrollToEntry}
 					/>,
 					overlayHost,
@@ -4071,6 +4113,7 @@ function SessionLineList({
 							shouldScrollToEnd={shouldScrollToEnd}
 							measurementKey={measurementKey}
 							measurementSource={measurementSource}
+							scrollKey={renderProps.sessionId}
 						/>
 					</AssistantSpanInteractions>
 				</HeldImagesCallContext.Provider>

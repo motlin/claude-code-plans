@@ -77,12 +77,18 @@ function renderOverlay(
 	scroller: Element,
 	candidates = CANDIDATES,
 	scrollToEntry = vi.fn<(index: number, behavior: ScrollBehavior) => void>(),
+	scrollKey = "fabricated-session",
 ) {
 	const host = document.createElement("div");
 	host.dataset["transcriptOverlayHost"] = "";
 	document.body.append(host);
 	const utils = render(
-		<StickyPromptOverlay candidates={candidates} scroller={() => scroller} scrollToEntry={scrollToEntry} />,
+		<StickyPromptOverlay
+			candidates={candidates}
+			scroller={() => scroller}
+			scrollKey={scrollKey}
+			scrollToEntry={scrollToEntry}
+		/>,
 		{container: host},
 	);
 	return {...utils, host, scrollToEntry};
@@ -210,6 +216,31 @@ describe("StickyPromptOverlay (upstream $w)", () => {
 		expect({shown, hidden: host.style.getPropertyValue("--epitaxy-sticky-prompt-end")}).toStrictEqual({
 			shown: "40px",
 			hidden: "",
+		});
+	});
+
+	it("re-detects when the scroll key changes, with no scroll event", () => {
+		const boxes = new Map<number, Box>([[0, {top: -200, bottom: -20}]]);
+		const {scroller, sync} = makeScroller(boxes);
+		const {rerender, scrollToEntry} = renderOverlay(scroller);
+		const before = button()?.textContent;
+		boxes.set(0, {top: 100, bottom: 200});
+		sync();
+		const overlay = (scrollKey: string) => (
+			<StickyPromptOverlay
+				candidates={CANDIDATES}
+				scroller={() => scroller}
+				scrollKey={scrollKey}
+				scrollToEntry={scrollToEntry}
+			/>
+		);
+		rerender(overlay("fabricated-session"));
+		const sameKey = button()?.textContent;
+		rerender(overlay("fabricated-session:loading"));
+		expect({before, sameKey, newKey: button()}).toStrictEqual({
+			before: "first prompt",
+			sameKey: "first prompt",
+			newKey: null,
 		});
 	});
 

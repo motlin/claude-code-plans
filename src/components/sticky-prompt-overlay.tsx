@@ -81,10 +81,13 @@ function wheelUnit(deltaMode: number): number {
 export function StickyPromptOverlay({
 	candidates,
 	scroller: getScroller,
+	scrollKey,
 	scrollToEntry,
 }: {
 	candidates: readonly StickyPromptCandidate[];
 	scroller: () => Element | null;
+	/** Upstream `scrollKey`: a new key re-runs detection, clearing the bubble first, with no scroll needed. */
+	scrollKey: string;
 	scrollToEntry: (index: number, behavior: ScrollBehavior) => void;
 }) {
 	const [shownKey, setShownKey] = useState<string | null>(null);
@@ -120,7 +123,7 @@ export function StickyPromptOverlay({
 			if (frame) cancelAnimationFrame(frame);
 			setShownKey(null);
 		};
-	}, [candidates.length]);
+	}, [scrollKey, candidates.length]);
 
 	const shown = shownKey === null ? undefined : candidates.find((candidate) => candidate.key === shownKey);
 	const visible = shown !== undefined;
