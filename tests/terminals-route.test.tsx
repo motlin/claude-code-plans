@@ -1363,3 +1363,307 @@ describe("Herdr pane terminal page", () => {
 		});
 	});
 });
+
+/**
+ * herdr's terminal API for the management tests: each POST is recorded and
+ * succeeds (a split answers with `w1:p5`, which later lists join the shells
+ * tab), and each GET lists the fixture.
+ */
+function mockTerminalActions(): unknown[] {
+	const bodies: unknown[] = [];
+	vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+		if (init?.method === "POST") {
+			const body = JSON.parse(String(init.body)) as {action: string};
+			bodies.push(body);
+			return Promise.resolve(
+				Response.json({ok: true, ...(body.action === "split-pane" ? {paneId: "w1:p5"} : {})}),
+			);
+		}
+		const workspaces = terminalWorkspaces();
+		const shells = workspaces[0]?.tabs[1];
+		const [first] = shells?.panes ?? [];
+		if (bodies.some((body) => (body as {action: string}).action === "split-pane") && first !== undefined) {
+			shells?.panes.push({...first, paneId: "w1:p5", terminalId: "term_5", title: "new shell"});
+		}
+		return Promise.resolve(Response.json({workspaces}));
+	});
+	return bodies;
+}
+
+async function openMenu(name: string): Promise<HTMLElement[]> {
+	fireEvent.click(screen.getByRole("button", {name}));
+	const menu = await waitFor(() => screen.getByRole("menu"));
+	return [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+}
+
+function clickItem(items: HTMLElement[], label: string): void {
+	const item = items.find((node) => node.textContent === label);
+	if (item === undefined) throw new Error(`No menu item ${label}`);
+	fireEvent.click(item);
+}
+
+/** The non-mac chord (jsdom's user agent is not a Mac) for a herdr terminal shortcut. */
+function pressTerminalKey(init: {key: string; code: string; shiftKey?: boolean}): void {
+	fireEvent.keyDown(document.body, {ctrlKey: true, altKey: true, ...init});
+}
+
+describe("Terminals page: managing herdr tabs and panes", () => {
+	it("offers split and close on each pane and rename and close on each tab", async () => {
+		const {router} = renderTerminalsAt("/terminals");
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		const paneItems = (await openMenu("Pane actions for zsh")).map((node) => node.textContent);
+		fireEvent.keyDown(screen.getByRole("menu"), {key: "Escape"});
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		const tabItems = (await openMenu("Tab actions for Tab 2 shells")).map((node) => node.textContent);
+
+		expect({paneItems, tabItems}).toStrictEqual({
+			paneItems: ["Split right", "Split down", "Close pane"],
+			tabItems: ["Rename tab", "Close tab"],
+		});
+	});
+
+	it("splits a pane and opens the new one", async () => {
+		const bodies = mockTerminalActions();
+		const {router} = renderTerminalsAt("/terminals");
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		clickItem(await openMenu("Pane actions for zsh"), "Split down");
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/terminals/pane/w1%3Ap5");
+		});
+
+		expect(bodies).toStrictEqual([{action: "split-pane", paneId: "w1:p2", direction: "down"}]);
+	});
+
+	it("closes an idle shell at once but asks before closing a pane whose command is still running", async () => {
+		const bodies = mockTerminalActions();
+		const {router} = renderTerminalsAt("/terminals");
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		clickItem(await openMenu("Pane actions for zsh"), "Close pane");
+		await waitFor(() => {
+			expect(bodies).toHaveLength(1);
+		});
+		const idleAsked = screen.queryByRole("alertdialog");
+
+		clickItem(await openMenu("Pane actions for tests"), "Close pane");
+		const confirm = await screen.findByRole("alertdialog");
+		const asked = {text: confirm.textContent, sentBeforeConfirm: bodies.length};
+		fireEvent.click(within(confirm).getByRole("button", {name: "Close pane"}));
+		await waitFor(() => {
+			expect(bodies).toHaveLength(2);
+		});
+
+		expect({idleAsked, asked, bodies}).toStrictEqual({
+			idleAsked: null,
+			asked: {
+				text: "Close pane?tests is still running pnpm test. Closing the pane stops it.CancelClose pane",
+				sentBeforeConfirm: 1,
+			},
+			bodies: [
+				{action: "close-pane", paneId: "w1:p2"},
+				{action: "close-pane", paneId: "w1:p3@later"},
+			],
+		});
+	});
+
+	it("renames a tab and closes it after confirming its running pane", async () => {
+		const bodies = mockTerminalActions();
+		const {router} = renderTerminalsAt("/terminals");
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		clickItem(await openMenu("Tab actions for Tab 2 shells"), "Rename tab");
+		const dialog = await screen.findByRole("dialog", {name: "Rename tab"});
+		const field = within(dialog).getByRole("textbox", {name: "Tab name"});
+		const initial = (field as HTMLInputElement).value;
+		fireEvent.change(field, {target: {value: "  servers  "}});
+		fireEvent.click(within(dialog).getByRole("button", {name: "Save"}));
+		await waitFor(() => {
+			expect(bodies).toHaveLength(1);
+		});
+
+		clickItem(await openMenu("Tab actions for Tab 2 shells"), "Close tab");
+		const confirm = await screen.findByRole("alertdialog");
+		const asked = confirm.textContent;
+		fireEvent.click(within(confirm).getByRole("button", {name: "Close tab"}));
+		await waitFor(() => {
+			expect(bodies).toHaveLength(2);
+		});
+
+		expect({initial, asked, bodies}).toStrictEqual({
+			initial: "shells",
+			asked: "Close tab?tests is still running pnpm test. Closing the tab stops it.CancelClose tab",
+			bodies: [
+				{action: "rename-tab", tabId: "w1:t2", label: "servers"},
+				{action: "close-tab", tabId: "w1:t2"},
+			],
+		});
+	});
+
+	it("offers no tab or pane actions while Live terminal input is off", async () => {
+		const {router} = renderTerminalsAt("/terminals", {writesEnabled: false});
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		expect(screen.queryAllByRole("button", {name: /actions for/})).toStrictEqual([]);
+	});
+});
+
+describe("Herdr pane terminal page: managing its tab", () => {
+	it("switches between the panes of its tab", async () => {
+		const {router} = renderTerminalsAt("/terminals/pane/w1:p2");
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		const switcher = screen.getByRole("navigation", {name: "Panes in Tab 2 shells"});
+		const panes = within(switcher)
+			.getAllByRole("link")
+			.map((link) => ({
+				name: link.textContent,
+				href: link.getAttribute("href"),
+				current: link.getAttribute("aria-current"),
+			}));
+		pressTerminalKey({key: "]", code: "BracketRight"});
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/terminals/pane/w1%3Ap3%40later");
+		});
+		const afterNext = router.state.location.pathname;
+		pressTerminalKey({key: "]", code: "BracketRight"});
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/terminals/pane/w1%3Ap2");
+		});
+		pressTerminalKey({key: "[", code: "BracketLeft"});
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/terminals/pane/w1%3Ap3%40later");
+		});
+
+		expect({panes, afterNext}).toStrictEqual({
+			panes: [
+				{name: "zsh", href: "/terminals/pane/w1%3Ap2", current: "page"},
+				{name: "tests", href: "/terminals/pane/w1%3Ap3%40later", current: null},
+			],
+			afterNext: "/terminals/pane/w1%3Ap3%40later",
+		});
+	});
+
+	it("shows no pane switcher for a one-pane tab", async () => {
+		const {router} = renderTerminalsAt("/terminals/pane/w1:p1");
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		expect(screen.queryByRole("navigation", {name: /Panes in/})).toBeNull();
+	});
+
+	it("splits right from its toolbar and down from its shortcut, opening each new pane", async () => {
+		const bodies = mockTerminalActions();
+		const {router} = renderTerminalsAt("/terminals/pane/w1:p2");
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		const toolbar = screen.getByRole("toolbar", {name: "Terminal actions"});
+		const buttons = within(toolbar)
+			.getAllByRole("button")
+			.map((button) => ({
+				name: button.getAttribute("aria-label"),
+				keys: button.getAttribute("aria-keyshortcuts"),
+			}));
+		fireEvent.click(within(toolbar).getByRole("button", {name: "Split right"}));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/terminals/pane/w1%3Ap5");
+		});
+		// The new pane is manageable once the refreshed list has it.
+		await screen.findByRole("heading", {level: 1, name: "new shell"});
+		pressTerminalKey({key: "D", code: "KeyD", shiftKey: true});
+		await waitFor(() => {
+			expect(bodies).toHaveLength(2);
+		});
+
+		expect({buttons, bodies}).toStrictEqual({
+			buttons: [
+				{name: "Split right", keys: "Control+Alt+d"},
+				{name: "Split down", keys: "Control+Alt+Shift+d"},
+				{name: "Rename tab", keys: "Control+Alt+e"},
+				{name: "Close pane", keys: "Control+Alt+\\"},
+			],
+			bodies: [
+				{action: "split-pane", paneId: "w1:p2", direction: "right"},
+				{action: "split-pane", paneId: "w1:p5", direction: "down"},
+			],
+		});
+	});
+
+	it("closes its running pane from the shortcut after confirming, then shows the tab's other pane", async () => {
+		const bodies = mockTerminalActions();
+		const {router} = renderTerminalsAt("/terminals/pane/w1:p3@later");
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		pressTerminalKey({key: "\\", code: "Backslash"});
+		const confirm = await screen.findByRole("alertdialog");
+		fireEvent.click(within(confirm).getByRole("button", {name: "Close pane"}));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/terminals/pane/w1%3Ap2");
+		});
+
+		expect(bodies).toStrictEqual([{action: "close-pane", paneId: "w1:p3@later"}]);
+	});
+
+	it("returns to the Terminals list after closing a tab's only pane", async () => {
+		const bodies = mockTerminalActions();
+		const {router} = renderTerminalsAt("/terminals/pane/w1:p2", {
+			workspaces: terminalWorkspaces().map((workspace) => ({
+				...workspace,
+				tabs: workspace.tabs.map((tab) => ({...tab, panes: tab.panes.slice(0, 1)})),
+			})),
+		});
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		fireEvent.click(screen.getByRole("button", {name: "Close pane"}));
+		await waitFor(() => {
+			expect(router.state.location.pathname).toBe("/terminals");
+		});
+
+		expect(bodies).toStrictEqual([{action: "close-pane", paneId: "w1:p2"}]);
+	});
+
+	it("renames its tab from the shortcut", async () => {
+		const bodies = mockTerminalActions();
+		const {router} = renderTerminalsAt("/terminals/pane/w1:p2");
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		pressTerminalKey({key: "e", code: "KeyE"});
+		const dialog = await screen.findByRole("dialog", {name: "Rename tab"});
+		fireEvent.change(within(dialog).getByRole("textbox", {name: "Tab name"}), {target: {value: "logs"}});
+		fireEvent.click(within(dialog).getByRole("button", {name: "Save"}));
+		await waitFor(() => {
+			expect(bodies).toHaveLength(1);
+		});
+
+		expect(bodies).toStrictEqual([{action: "rename-tab", tabId: "w1:t2", label: "logs"}]);
+	});
+
+	it("offers no management toolbar or shortcuts while Live terminal input is off", async () => {
+		const bodies = mockTerminalActions();
+		const {router} = renderTerminalsAt("/terminals/pane/w1:p2", {writesEnabled: false});
+		await router.load();
+		render(<RouterProvider router={router} />);
+
+		pressTerminalKey({key: "d", code: "KeyD"});
+		pressTerminalKey({key: "e", code: "KeyE"});
+
+		expect({
+			toolbar: screen.queryByRole("toolbar", {name: "Terminal actions"}),
+			dialog: screen.queryByRole("dialog"),
+			bodies,
+		}).toStrictEqual({toolbar: null, dialog: null, bodies: []});
+	});
+});

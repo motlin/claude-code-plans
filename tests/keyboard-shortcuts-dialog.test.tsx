@@ -160,7 +160,7 @@ describe("KeyboardShortcutsDialog", () => {
 		const dialog = await screen.findByRole("dialog", {name: "Keyboard shortcuts"});
 		const region = within(dialog).getByRole("region", {name: "Shortcuts"});
 		expect({sections: sectionHeadings(region), rows: rowLabels(region)}).toStrictEqual({
-			sections: ["General", "Panes", "Composer"],
+			sections: ["General", "Panes", "Composer", "Terminals"],
 			rows: [
 				"Search or start a session",
 				"Search",
@@ -201,6 +201,12 @@ describe("KeyboardShortcutsDialog", () => {
 				"Queue for later (while Claude is working)",
 				"Send and stay on the new session page",
 				"Fork with this prompt",
+				"Split terminal right",
+				"Split terminal down",
+				"Close terminal pane",
+				"Rename terminal tab",
+				"Next pane in terminal tab",
+				"Previous pane in terminal tab",
 			],
 		});
 	});
@@ -579,9 +585,17 @@ describe("KeyboardShortcutsDialog search", () => {
 			status: region.querySelector(":scope > [role=status]")?.innerHTML,
 			tabIndex: region.getAttribute("tabindex"),
 		}).toStrictEqual({
-			rows: ["Toggle terminal"],
+			rows: [
+				"Toggle terminal",
+				"Split terminal right",
+				"Split terminal down",
+				"Close terminal pane",
+				"Rename terminal tab",
+				"Next pane in terminal tab",
+				"Previous pane in terminal tab",
+			],
 			hidden: ["General", "Composer"],
-			status: '<p class="sr-only">1 shortcut found</p>',
+			status: '<p class="sr-only">7 shortcuts found</p>',
 			tabIndex: "0",
 		});
 	});
@@ -733,6 +747,7 @@ describe("KeyboardShortcutsDialog search", () => {
 				"Jump to next prompt",
 				"Attach selection as context",
 				"Expand or collapse pane",
+				"Next pane in terminal tab",
 			],
 		});
 	});
@@ -753,7 +768,7 @@ describe("KeyboardShortcutsDialog search", () => {
 });
 
 describe("shortcutSections", () => {
-	it("groups General, Panes, Composer and drops empty groups", () => {
+	it("groups General, Panes, Composer, Terminals and drops empty groups", () => {
 		const allEnabled = shortcutSections(SHORTCUT_IDS, () => true);
 		const noneInComposer = shortcutSections(SHORTCUT_IDS, (id) => SHORTCUTS[id].group !== "composer");
 
@@ -763,10 +778,10 @@ describe("shortcutSections", () => {
 			lastComposer: allEnabled[2]?.ids.at(-1),
 			noComposer: noneInComposer.map((section) => section.title),
 		}).toStrictEqual({
-			all: ["General", "Panes", "Composer"],
+			all: ["General", "Panes", "Composer", "Terminals"],
 			firstComposer: "open_mode_menu",
 			lastComposer: "fork_with_prompt",
-			noComposer: ["General", "Panes"],
+			noComposer: ["General", "Panes", "Terminals"],
 		});
 	});
 });

@@ -23,6 +23,8 @@ export function SessionRenameDialog({
 	onRename,
 	onClosed,
 	finalFocus,
+	title: titleOverride,
+	fieldLabel = "Rename session",
 }: {
 	open: boolean;
 	initialName: string;
@@ -33,6 +35,10 @@ export function SessionRenameDialog({
 	onClosed?: () => void;
 	/** Where focus goes once the dialog closes. */
 	finalFocus?: RefObject<HTMLElement | null>;
+	/** Heading for renaming something other than a session, such as a terminal tab. */
+	title?: string;
+	/** The name field's accessible label. */
+	fieldLabel?: string;
 }) {
 	const [name, setName] = useState(initialName);
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -41,7 +47,8 @@ export function SessionRenameDialog({
 	const pad = useDialogPad();
 	const bandBody = useDialogBandBodyClass();
 	// Upstream's `renameDialogTitle` is "Rename" in the session vocabulary; the flag-off copy keeps "Rename session".
-	const title = useFizzyLake("panels") ? "Rename" : "Rename session";
+	const sessionTitle = useFizzyLake("panels") ? "Rename" : "Rename session";
+	const title = titleOverride ?? sessionTitle;
 
 	const submit = (event: SubmitEvent<HTMLFormElement>) => {
 		event.preventDefault();
@@ -95,7 +102,7 @@ export function SessionRenameDialog({
 										setName(event.target.value);
 									}}
 									onFocus={selectOnFirstFocus}
-									aria-label="Rename session"
+									aria-label={fieldLabel}
 									autoComplete="off"
 									className="h-8 w-full rounded-r6 border border-strong bg-surface-1 px-2.5 text-body text-primary outline-none placeholder:text-t6 focus:border-accent-100/60"
 								/>

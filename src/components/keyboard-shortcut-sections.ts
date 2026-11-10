@@ -5,6 +5,7 @@ const SECTION_TITLES = {
 	general: "General",
 	panes: "Panes",
 	composer: "Composer",
+	terminals: "Terminals",
 } as const satisfies Record<ShortcutGroup, string>;
 
 const SECTION_ORDER = objectKeys(SECTION_TITLES);
@@ -14,7 +15,7 @@ export interface ShortcutSection {
 	ids: ShortcutId[];
 }
 
-/** Registry ids grouped General → Panes → Composer in registry order, skipping empty groups. */
+/** Registry ids grouped General → Panes → Composer → Terminals in registry order, skipping empty groups. */
 export function shortcutSections(ids: readonly ShortcutId[], include: (id: ShortcutId) => boolean): ShortcutSection[] {
 	return SECTION_ORDER.map((group) => ({
 		title: SECTION_TITLES[group],

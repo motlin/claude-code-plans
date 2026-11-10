@@ -11,7 +11,7 @@ import {objectKeys} from "../narrow";
 export type ShortcutModifier = "cmd" | "ctrl" | "alt" | "shift";
 /** "non-mac" covers both Windows and Linux; "windows" and "linux" narrow it. */
 export type ShortcutPlatform = "mac" | "non-mac" | "windows" | "linux";
-export type ShortcutGroup = "general" | "panes" | "composer";
+export type ShortcutGroup = "general" | "panes" | "composer" | "terminals";
 
 export interface Binding {
 	/** `KeyboardEvent.key`, lower-cased. */
@@ -447,6 +447,55 @@ export const SHORTCUTS = {
 		group: "composer",
 		bindings: cmdOrCtrl("enter", ["alt"], "Enter"),
 		ownerSlug: "composer",
+		enabled: true,
+	},
+	/*
+	 * Terminals: local herdr pane management on /terminals/pane/$paneId (upstream has no equivalent).
+	 * Every chord carries ⌥ so it collides with no upstream entry, no browser chord (⌘D, ⌘[ and ⌘]
+	 * are bookmark and history keys) and no plain shell control key; `terminalHandlesKey` lets them
+	 * out of the focused terminal.
+	 */
+	split_terminal_right: {
+		description: "Split terminal right",
+		group: "terminals",
+		bindings: cmdOrCtrl("d", ["alt"], letterCode("d")),
+		ownerSlug: "herdr-web",
+		enabled: true,
+	},
+	split_terminal_down: {
+		description: "Split terminal down",
+		group: "terminals",
+		bindings: cmdOrCtrl("d", ["alt", "shift"], letterCode("d")),
+		ownerSlug: "herdr-web",
+		enabled: true,
+	},
+	close_terminal_pane: {
+		description: "Close terminal pane",
+		group: "terminals",
+		// ⌘\ closes an app pane; ⌥ makes it the herdr pane.
+		bindings: cmdOrCtrl("\\", ["alt"], "Backslash"),
+		ownerSlug: "herdr-web",
+		enabled: true,
+	},
+	rename_terminal_tab: {
+		description: "Rename terminal tab",
+		group: "terminals",
+		bindings: cmdOrCtrl("e", ["alt"], letterCode("e")),
+		ownerSlug: "herdr-web",
+		enabled: true,
+	},
+	next_terminal_pane: {
+		description: "Next pane in terminal tab",
+		group: "terminals",
+		bindings: cmdOrCtrl("]", ["alt"], "BracketRight"),
+		ownerSlug: "herdr-web",
+		enabled: true,
+	},
+	prev_terminal_pane: {
+		description: "Previous pane in terminal tab",
+		group: "terminals",
+		bindings: cmdOrCtrl("[", ["alt"], "BracketLeft"),
+		ownerSlug: "herdr-web",
 		enabled: true,
 	},
 } as const satisfies Record<string, ShortcutDefinition>;

@@ -261,7 +261,9 @@ function TerminalsPage() {
 				</div>
 			)}
 
-			{terminals !== undefined && <HerdrTerminalList workspaces={terminals.workspaces} />}
+			{terminals !== undefined && (
+				<HerdrTerminalList workspaces={terminals.workspaces} manageable={data.writesEnabled} />
+			)}
 		</div>
 	);
 }

@@ -404,6 +404,39 @@ describe("live herdr terminal UI", () => {
 		});
 	});
 
+	it("resizes the herdr pane to the view once the control socket attaches, even if the view resized while connecting", async () => {
+		render(<HerdrTerminal paneId="w1:p3@later" variant="pane" interactive />);
+		releaseFonts();
+		await waitFor(() => {
+			expect(terminalState.socketUrls.length).toBe(1);
+		});
+		const socket = currentWebSocket();
+		socket.readyState = 0;
+
+		terminalState.fitSize = {cols: 120, rows: 40};
+		act(() => {
+			for (const callback of terminalState.resizeCallbacks) callback();
+		});
+		await new Promise((resolve) => {
+			setTimeout(resolve, 200);
+		});
+		const whileConnecting = [...terminalState.sentMessages];
+		socket.readyState = 1;
+		act(() => {
+			socket.dispatchEvent(new Event("open"));
+		});
+
+		expect({
+			socketUrls: terminalState.socketUrls,
+			whileConnecting,
+			sentMessages: terminalState.sentMessages,
+		}).toStrictEqual({
+			socketUrls: ["ws://localhost:3000/api/herdr/control?paneId=w1%3Ap3%40later&columns=80&rows=24"],
+			whileConnecting: [],
+			sentMessages: [JSON.stringify({type: "resize", cols: 120, rows: 40})],
+		});
+	});
+
 	it("streams any herdr pane by its id, typing into a plain shell over the control socket", async () => {
 		render(<HerdrTerminal paneId="w1:p3@later" variant="pane" interactive />);
 		releaseFonts();

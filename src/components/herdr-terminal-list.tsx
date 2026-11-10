@@ -1,6 +1,8 @@
 import {Link} from "@tanstack/react-router";
 import type {HerdrTerminalPaneData, HerdrTerminalWorkspaceData} from "../lib/api/herdr-terminals";
 import {splitTerminalTitleGlyph} from "../lib/herdr/terminal-title";
+import {tabName} from "../lib/herdr/terminal-tab-nav";
+import {PaneActionsMenu, TabActionsMenu} from "./herdr-terminal-actions";
 import {HerdrStatusIndicator} from "./herdr-status-indicator";
 
 /**
@@ -9,7 +11,7 @@ import {HerdrStatusIndicator} from "./herdr-status-indicator";
  * on its own line.
  */
 const PANE_ROW =
-	"grid grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,14rem)_5rem] items-center gap-2 rounded-md border border-border p-3 no-underline transition-colors hover:bg-surface-0 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus max-sm:flex max-sm:flex-wrap";
+	"grid min-w-0 flex-1 grid-cols-[3.5rem_minmax(0,1fr)_minmax(0,14rem)_5rem] items-center gap-2 rounded-md border border-border p-3 no-underline transition-colors hover:bg-surface-0 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus max-sm:flex max-sm:flex-wrap";
 
 const KIND_BADGE = "rounded bg-surface-0/60 px-1.5 py-0.5 text-center text-[10px] text-t6";
 
@@ -85,9 +87,17 @@ function PaneRow({pane}: {pane: HerdrTerminalPaneData}) {
 
 /**
  * Every herdr terminal by workspace and tab, Claude, other agents and plain
- * shells alike, each row opening the pane's live terminal.
+ * shells alike, each row opening the pane's live terminal. While Live
+ * terminal input is on (`manageable`), each tab and pane gets a trailing
+ * actions menu: split, close and rename.
  */
-export function HerdrTerminalList({workspaces}: {workspaces: readonly HerdrTerminalWorkspaceData[]}) {
+export function HerdrTerminalList({
+	workspaces,
+	manageable = false,
+}: {
+	workspaces: readonly HerdrTerminalWorkspaceData[];
+	manageable?: boolean;
+}) {
 	return (
 		<section aria-labelledby="all-herdr-terminals" className="mt-8">
 			<h2 id="all-herdr-terminals" className="border-b border-border pb-1 text-sm font-semibold">
@@ -104,13 +114,17 @@ export function HerdrTerminalList({workspaces}: {workspaces: readonly HerdrTermi
 						</h3>
 						{workspace.tabs.map((tab) => (
 							<div key={tab.tabId} className="mt-2">
-								<p aria-hidden="true" className="mb-1 text-[11px] text-t6">
-									Tab {tab.number} · {tab.label}
-								</p>
-								<ul aria-label={`Tab ${tab.number} ${tab.label}`} className="space-y-1">
+								<div className="mb-1 flex items-center gap-1">
+									<p aria-hidden="true" className="text-[11px] text-t6">
+										Tab {tab.number} · {tab.label}
+									</p>
+									{manageable && <TabActionsMenu tab={tab} />}
+								</div>
+								<ul aria-label={tabName(tab)} className="space-y-1">
 									{tab.panes.map((pane) => (
-										<li key={pane.paneId}>
+										<li key={pane.paneId} className="flex items-center gap-1">
 											<PaneRow pane={pane} />
+											{manageable && <PaneActionsMenu pane={pane} />}
 										</li>
 									))}
 								</ul>

@@ -1,9 +1,11 @@
 import {pageTitle} from "../lib/route-title";
 import {useQuery} from "@tanstack/react-query";
-import {createFileRoute, Link} from "@tanstack/react-router";
+import {createFileRoute, Link, useNavigate} from "@tanstack/react-router";
 import {HerdrTerminal} from "../components/herdr-terminal";
+import {PaneSwitcher, PaneTerminalToolbar} from "../components/herdr-terminal-actions";
 import {herdrPanesQueryOptions} from "../lib/api/herdr";
 import {herdrTerminalsQueryOptions} from "../lib/api/herdr-terminals";
+import {findTerminalPane, paneAfterClose} from "../lib/herdr/terminal-tab-nav";
 
 export const Route = createFileRoute("/terminals/pane/$paneId")({
 	component: PaneTerminalPage,
@@ -17,17 +19,19 @@ export const Route = createFileRoute("/terminals/pane/$paneId")({
  * while Live terminal input is on. Until herdr's terminal list loads (or while
  * it refetches) the pane is assumed live; once it has loaded without it, the
  * view shows it closed.
+ *
+ * The header switches between the panes of the pane's tab and, while Live
+ * terminal input is on, splits, renames the tab and closes the pane.
  */
 function PaneTerminalPage() {
 	const {paneId} = Route.useParams();
 	const terminals = useQuery(herdrTerminalsQueryOptions);
 	const workspaces = terminals.data?.workspaces;
 	const writesEnabled = useQuery(herdrPanesQueryOptions).data?.writesEnabled ?? false;
-	const pane =
-		workspaces
-			?.flatMap((workspace) => workspace.tabs)
-			.flatMap((tab) => tab.panes)
-			.find((candidate) => candidate.paneId === paneId) ?? null;
+	const navigate = useNavigate();
+	const found = findTerminalPane(workspaces, paneId);
+	const pane = found?.pane ?? null;
+	const tab = found?.tab ?? null;
 	// A pane opened a moment ago is missing from the list until its refetch lands.
 	const live = workspaces === undefined || pane !== null || terminals.isFetching;
 
@@ -44,6 +48,18 @@ function PaneTerminalPage() {
 						{pane.cwd}
 					</span>
 				)}
+				<div className="ms-auto flex min-w-0 items-center gap-2">
+					{tab !== null && <PaneSwitcher tab={tab} paneId={paneId} />}
+					<PaneTerminalToolbar
+						tab={tab}
+						pane={pane}
+						writesEnabled={writesEnabled}
+						nextPaneAfterClose={tab === null ? null : paneAfterClose(tab, paneId)}
+						onNavigate={(target) => {
+							void navigate({to: "/terminals/pane/$paneId", params: {paneId: target}});
+						}}
+					/>
+				</div>
 			</div>
 			<section
 				data-pane-kind="terminal"

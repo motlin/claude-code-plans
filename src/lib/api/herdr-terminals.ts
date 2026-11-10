@@ -53,21 +53,40 @@ export const herdrTerminalsQueryOptions = queryOptions({
 	queryFn: async () => apiFetch("/api/herdr/terminals", HerdrTerminalIndexResponse),
 });
 
-const CreatedTerminalResponse = z.object({ok: z.literal(true), tabId: z.string(), paneId: z.string()}).strict();
+const TerminalActionResponse = z
+	.object({ok: z.literal(true), tabId: z.string().optional(), paneId: z.string().optional()})
+	.strict();
 const TerminalActionErrorResponse = z.object({error: z.string()}).loose();
 
-/** Open a new herdr tab running the login shell in `cwd` (the home directory when absent); resolves to its pane id. */
-export async function createHerdrTerminal(cwd: string | null): Promise<string> {
+/** The `POST /api/herdr/terminals` actions the browser sends (see `handleHerdrTerminalAction`). */
+export type HerdrTerminalActionRequest =
+	| {action: "create-tab"; cwd?: string}
+	| {action: "split-pane"; paneId: string; direction: "right" | "down"}
+	| {action: "close-pane"; paneId: string}
+	| {action: "close-tab"; tabId: string}
+	| {action: "rename-tab"; tabId: string; label: string};
+
+/** Run one herdr tab or pane action; resolves to the ids it created, rejects with herdr's reason. */
+export async function runHerdrTerminalAction(
+	action: HerdrTerminalActionRequest,
+): Promise<z.infer<typeof TerminalActionResponse>> {
 	const response = await fetch("/api/herdr/terminals", {
 		method: "POST",
 		credentials: "same-origin",
 		headers: {"Content-Type": "application/json"},
-		body: JSON.stringify({action: "create-tab", ...(cwd === null ? {} : {cwd})}),
+		body: JSON.stringify(action),
 	});
 	const body: unknown = await response.json().catch(() => null);
 	if (!response.ok) {
 		const failure = TerminalActionErrorResponse.safeParse(body);
-		throw new Error(failure.success ? failure.data.error : "Failed to open a terminal");
+		throw new Error(failure.success ? failure.data.error : "The terminal action failed");
 	}
-	return CreatedTerminalResponse.parse(body).paneId;
+	return TerminalActionResponse.parse(body);
+}
+
+/** Open a new herdr tab running the login shell in `cwd` (the home directory when absent); resolves to its pane id. */
+export async function createHerdrTerminal(cwd: string | null): Promise<string> {
+	const {paneId} = await runHerdrTerminalAction({action: "create-tab", ...(cwd === null ? {} : {cwd})});
+	if (paneId === undefined) throw new Error("herdr did not name the new terminal's pane");
+	return paneId;
 }

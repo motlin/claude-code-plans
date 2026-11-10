@@ -18,8 +18,83 @@ function chord(binding: Binding): string {
 }
 
 describe("shortcut registry", () => {
-	it("lists the 43 upstream web entries plus the page-scoped and Settings ⌘F searches and the desktop-only ⌥⌘F", () => {
-		expect(SHORTCUT_IDS).toHaveLength(46);
+	it("lists the 43 upstream web entries plus the page-scoped and Settings ⌘F searches, the desktop-only ⌥⌘F and the six local herdr terminal keys", () => {
+		expect(SHORTCUT_IDS).toHaveLength(52);
+	});
+
+	it("binds the local herdr terminal keys as ⌥⌘ chords on mac and Ctrl+Alt elsewhere, in their own Terminals group", () => {
+		const ids = [
+			"split_terminal_right",
+			"split_terminal_down",
+			"close_terminal_pane",
+			"rename_terminal_tab",
+			"next_terminal_pane",
+			"prev_terminal_pane",
+		] as const;
+		expect(
+			Object.fromEntries(
+				ids.map((id) => [
+					id,
+					{
+						description: SHORTCUTS[id].description,
+						group: SHORTCUTS[id].group,
+						enabled: SHORTCUTS[id].enabled,
+						mac: bindingsFor(id, true).map(bindingToKeys),
+						windows: bindingsFor(id, false, true).map(bindingToKeys),
+						linux: bindingsFor(id, false, false).map(bindingToKeys),
+					},
+				]),
+			),
+		).toStrictEqual({
+			split_terminal_right: {
+				description: "Split terminal right",
+				group: "terminals",
+				enabled: true,
+				mac: ["cmd+alt+d"],
+				windows: ["ctrl+alt+d"],
+				linux: ["ctrl+alt+d"],
+			},
+			split_terminal_down: {
+				description: "Split terminal down",
+				group: "terminals",
+				enabled: true,
+				mac: ["cmd+alt+shift+d"],
+				windows: ["ctrl+alt+shift+d"],
+				linux: ["ctrl+alt+shift+d"],
+			},
+			close_terminal_pane: {
+				description: "Close terminal pane",
+				group: "terminals",
+				enabled: true,
+				mac: ["cmd+alt+\\"],
+				windows: ["ctrl+alt+\\"],
+				linux: ["ctrl+alt+\\"],
+			},
+			rename_terminal_tab: {
+				description: "Rename terminal tab",
+				group: "terminals",
+				enabled: true,
+				mac: ["cmd+alt+e"],
+				windows: ["ctrl+alt+e"],
+				linux: ["ctrl+alt+e"],
+			},
+			next_terminal_pane: {
+				description: "Next pane in terminal tab",
+				group: "terminals",
+				enabled: true,
+				mac: ["cmd+alt+]"],
+				windows: ["ctrl+alt+]"],
+				linux: ["ctrl+alt+]"],
+			},
+			prev_terminal_pane: {
+				description: "Previous pane in terminal tab",
+				group: "terminals",
+				enabled: true,
+				mac: ["cmd+alt+["],
+				windows: ["ctrl+alt+["],
+				linux: ["ctrl+alt+["],
+			},
+		});
 	});
 
 	it("binds upstream's Settings ⌘F search, sharing the page ⌘F and kept out of the ⌘/ dialog", () => {
@@ -247,6 +322,12 @@ describe("shortcut registry", () => {
 			"queue_for_later",
 			"send_and_stay",
 			"fork_with_prompt",
+			"split_terminal_right",
+			"split_terminal_down",
+			"close_terminal_pane",
+			"rename_terminal_tab",
+			"next_terminal_pane",
+			"prev_terminal_pane",
 		]);
 	});
 

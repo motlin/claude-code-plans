@@ -33,7 +33,8 @@ function streamUrl(interactive: boolean, target: HerdrTerminalTarget, columns: n
  *
  * `interactive` (only when herdr writes are enabled) swaps the read-only
  * observe socket for the control socket: keystrokes go out as `data` frames
- * and resizes as `resize` frames instead of reconnecting.
+ * and resizes as `resize` frames instead of reconnecting. The control session
+ * sizes the herdr pane to the view when it attaches.
  *
  * `paneId` in place of `sessionId` streams a herdr pane no Claude session owns;
  * its selection can be copied but has no composer to attach to.
@@ -148,6 +149,15 @@ export function HerdrTerminal({
 						setStatus("error");
 						nextSocket.close(4000, "invalid terminal stream");
 					}
+				});
+				// The control session sizes the herdr pane from the URL; a resize while connecting was dropped.
+				const attached = viewport;
+				nextSocket.addEventListener("open", () => {
+					if (!interactive || socket !== nextSocket) return;
+					fitAddon.fit();
+					viewport = {columns: terminal.cols, rows: terminal.rows};
+					if (viewport.columns === attached.columns && viewport.rows === attached.rows) return;
+					sendFrame({type: "resize", cols: viewport.columns, rows: viewport.rows});
 				});
 				nextSocket.addEventListener("close", (event) => {
 					if (stopped || socket !== nextSocket || event.code === 1000) return;
