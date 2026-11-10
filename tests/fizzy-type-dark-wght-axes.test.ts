@@ -184,6 +184,8 @@ describe("root consumer and per-weight axis re-declaration (T2)", () => {
 			"font-weight",
 			// The CSP directive mermaid-render.ts injects into its sandbox frame.
 			"font-src",
+			// The CSS property and SVG attribute the mermaid drawing audit refuses.
+			"font-variant",
 		]);
 		const files = readdirSync("src", {recursive: true, encoding: "utf8"}).filter((file) => /\.tsx?$/.test(file));
 		const unknown = new Set<string>();

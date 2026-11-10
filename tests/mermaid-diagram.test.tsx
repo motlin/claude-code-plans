@@ -167,6 +167,32 @@ describe("MermaidDiagram (upstream shared-41 x2)", () => {
 			statuses: ["loading", "error"],
 		});
 	});
+
+	it("gives up on a draw still running after upstream's 30 s limit and shows the source", async () => {
+		vi.spyOn(console, "warn").mockImplementation(() => {});
+		renderDiagram.mockImplementation(async (_id, _code, host) => {
+			host.appendChild(sandboxFrame());
+			return new Promise(() => {});
+		});
+		const statuses: string[] = [];
+		const {container} = render(
+			<MermaidDiagram code="graph TD; A-->B" mode="light" onStatusChange={(status) => statuses.push(status)} />,
+		);
+		await settle();
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(29_999);
+		});
+		const before = [...statuses];
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(1);
+		});
+		await settle();
+		expect({before, statuses, tag: container.firstElementChild?.localName}).toStrictEqual({
+			before: ["loading"],
+			statuses: ["loading", "error"],
+			tag: "pre",
+		});
+	});
 });
 
 describe("MermaidDiagram with upstream's guard (c763d2034) and source rewrites (c$, Us, cx)", () => {

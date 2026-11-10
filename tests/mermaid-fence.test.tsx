@@ -7,23 +7,32 @@ import {MermaidPlaceholder} from "../src/components/mermaid-fence-gate";
 import type {MermaidStatus} from "../src/components/mermaid-diagram";
 
 const {diagram} = vi.hoisted(() => {
-	const state: {report: ((status: MermaidStatus) => void) | undefined; first: MermaidStatus} = {
-		report: undefined,
-		first: "loading",
-	};
+	const state: {
+		report: ((status: MermaidStatus) => void) | undefined;
+		first: MermaidStatus;
+		host: HTMLElement | null;
+	} = {report: undefined, first: "loading", host: null};
 	return {diagram: state};
 });
 
-// The renderer is covered in mermaid-diagram.test.tsx; here the test decides when it finishes.
+const SVG_NS = "http://www.w3.org/2000/svg";
+const CLEAN_SVG = `<svg xmlns="${SVG_NS}"><text>A</text><text>B</text></svg>`;
+/** Two labels that join into one fake GitHub token, which upstream's audit reads across the seam. */
+const SPLIT_SECRET_SVG = `<svg xmlns="${SVG_NS}"><text>ghp_${"x".repeat(16)}</text><text>${"x".repeat(20)}</text></svg>`;
+
+// The renderer is covered in mermaid-diagram.test.tsx; here the test decides when it finishes and what it drew.
 vi.mock("../src/components/mermaid-diagram", async () => {
-	const {useEffect} = await import("react");
+	const {useEffect, useRef} = await import("react");
 	return {
-		MermaidDiagram: ({code, onStatusChange}: {code: string; onStatusChange?: (status: MermaidStatus) => void}) => {
+		MermaidDiagram: ({onStatusChange}: {code: string; onStatusChange?: (status: MermaidStatus) => void}) => {
+			const host = useRef<HTMLDivElement>(null);
 			useEffect(() => {
 				diagram.report = onStatusChange;
+				diagram.host = host.current;
+				if (diagram.first === "success" && host.current) host.current.innerHTML = CLEAN_SVG;
 				onStatusChange?.(diagram.first);
 			}, [onStatusChange]);
-			return <div data-testid="diagram">{code}</div>;
+			return <div ref={host} data-testid="diagram" />;
 		},
 	};
 });
@@ -34,8 +43,10 @@ function fence() {
 	return render(<MermaidFence code="graph TD; A-->B" codeBlock={CODE_BLOCK} placeholder={<MermaidPlaceholder />} />);
 }
 
-function report(status: MermaidStatus) {
+/** The renderer finishing with `status`; a success first draws `svg` into its host, as the real one does. */
+function report(status: MermaidStatus, svg = CLEAN_SVG) {
 	act(() => {
+		if (status === "success" && diagram.host) diagram.host.innerHTML = svg;
 		diagram.report?.(status);
 	});
 }
@@ -61,6 +72,7 @@ beforeEach(() => {
 	vi.useFakeTimers();
 	diagram.report = undefined;
 	diagram.first = "loading";
+	diagram.host = null;
 });
 
 afterEach(() => {
@@ -268,5 +280,51 @@ describe("MermaidFence (upstream EpitaxyMermaidFence)", () => {
 				"transition-none duration-base ease-out motion-reduce:transition-none relative flow-root",
 			],
 		]);
+	});
+
+	it("withholds a drawing whose labels split a secret: the code block shows at once, with no diagram, note or toolbar", () => {
+		const {container} = fence();
+		report("success", SPLIT_SECRET_SVG);
+		const root = container.firstElementChild as HTMLElement;
+		expect({
+			className: root.className,
+			busy: root.getAttribute("aria-busy"),
+			layers: layers(container).map(({layer, state, holds}) => [layer, state, holds]),
+			svgs: container.querySelectorAll("svg").length,
+			note: container.querySelector("[role=note]"),
+			toolbar: container.querySelector("[data-placement]"),
+		}).toStrictEqual({
+			className: ROOT,
+			busy: null,
+			layers: [["code", "shown", "markdown-codeblock"]],
+			svgs: 0,
+			note: null,
+			toolbar: null,
+		});
+	});
+
+	it("withholds a shown diagram once a secret is written into its drawing", async () => {
+		const {container} = fence();
+		report("success");
+		act(() => {
+			vi.advanceTimersByTime(400);
+		});
+		await act(async () => {
+			const label = document.createElementNS(SVG_NS, "text");
+			label.textContent = `ghp_${"x".repeat(36)}`;
+			container.querySelector("svg")!.append(label);
+			await Promise.resolve();
+		});
+		expect({
+			layers: layers(container).map(({layer, state, holds}) => [layer, state, holds]),
+			svgs: container.querySelectorAll("svg").length,
+			note: container.querySelector("[role=note]"),
+			toolbar: container.querySelector("[data-placement]"),
+		}).toStrictEqual({
+			layers: [["code", "shown", "markdown-codeblock"]],
+			svgs: 0,
+			note: null,
+			toolbar: null,
+		});
 	});
 });

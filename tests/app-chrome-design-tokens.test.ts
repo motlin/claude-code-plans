@@ -6,6 +6,9 @@ import {loadDesignSystem} from "./helpers/tailwind-design-system";
 const COLOUR_PREFIXED_UTILITY =
 	/(?<![\w\-[./])(?:text|bg|border)-[a-z][\w-]*(?:\[[^\]\s]*\])?(?:\/(?:\d+|\[[^\]\s]*\]))?/g;
 
+/** CSS property names that are not classes: the ones mermaid-svg-audit.ts refuses in a drawing's styles. */
+const CSS_PROPERTY_NAMES = new Set(["text-transform", "text-orientation", "text-combine"]);
+
 const RETIRED_CHROME_UTILITY = /(?:text-text|bg-bg|border-border)-[A-Za-z0-9]+|rounded-\[[0-9]+px\]/g;
 
 describe("app chrome design tokens", () => {
@@ -35,7 +38,9 @@ describe("app chrome design tokens", () => {
 				.replaceAll(/(^|[^:])\/\/.*$/gm, "$1");
 			// A name followed by `:` is a CSS declaration inside an injected stylesheet string, not a class.
 			return [...code.matchAll(COLOUR_PREFIXED_UTILITY)]
-				.filter(({0: utility, index}) => code[index + utility.length] !== ":")
+				.filter(
+					({0: utility, index}) => code[index + utility.length] !== ":" && !CSS_PROPERTY_NAMES.has(utility),
+				)
 				.map(([utility]) => ({path, utility}));
 		});
 		const rules = designSystem.candidatesToCss(utilities.map(({utility}) => utility));

@@ -1,4 +1,5 @@
 import type {Mermaid} from "mermaid";
+import {findSecrets} from "./secret-mask";
 
 /*
  * Upstream's mermaid gate (c5071af19 `hn` and the pre-gate `Z`): whether a fence may try to draw at all. It stays
@@ -9,11 +10,11 @@ import type {Mermaid} from "mermaid";
 const MERMAID_MAX_SOURCE = 262_144;
 
 /**
- * Upstream's pre-gate `Z(code, true)`: a source this long stays a code block. Hook point for
- * mermaid-fence-secret-fallback, which adds upstream's secret check (`s0(code).length === 0`) here.
+ * Upstream's pre-gate `Z(code, true)`: a source this long, or with any secret in it, stays a code block (where the
+ * secret cloak masks it) and never loads mermaid.
  */
 export function mermaidSourceDrawable(code: string): boolean {
-	return code.length <= MERMAID_MAX_SOURCE;
+	return code.length <= MERMAID_MAX_SOURCE && findSecrets(code).length === 0;
 }
 
 let mermaidModule: Promise<Mermaid> | undefined;

@@ -35,7 +35,7 @@ function lazy<T>(make: () => T): () => T {
 export const MASK_CHAR = "•";
 
 /** KG (shared-l-p-m-w-0): control, format, ignorable and noncharacter code points. */
-const INVISIBLE_BASE = new RegExp(
+export const INVISIBLE_BASE = new RegExp(
 	String.raw`[\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}\p{Default_Ignorable_Code_Point}\u2800\uFFFC\u{1D159}\u{13441}\u{13442}\u{16910}\u{16FE4}\uFDD0-\uFDEF\uFFFE\uFFFF\u{1FFFE}\u{1FFFF}\u{2FFFE}\u{2FFFF}\u{3FFFE}\u{3FFFF}\u{4FFFE}\u{4FFFF}\u{5FFFE}\u{5FFFF}\u{6FFFE}\u{6FFFF}\u{7FFFE}\u{7FFFF}\u{8FFFE}\u{8FFFF}\u{9FFFE}\u{9FFFF}\u{AFFFE}\u{AFFFF}\u{BFFFE}\u{BFFFF}\u{CFFFE}\u{CFFFF}\u{DFFFE}\u{DFFFF}\u{EFFFE}\u{EFFFF}\u{FFFFE}\u{FFFFF}\u{10FFFE}\u{10FFFF}]`,
 	"u",
 );
@@ -62,7 +62,7 @@ const INLINE_SPACES = `[ \\t${WIDE_SPACES}]*`;
 /** ii */
 const PRIVATE_KEY_TAIL = new RegExp(`PRIVATE${SPACES}KEY(?:${SPACES}BLOCK)?${INLINE_SPACES}${DASHES}`);
 /** dA */
-const PEM_BEGIN = new RegExp(`${DASHES}${INLINE_SPACES}BEGIN[A-Z0-9${ANY_SPACE}]*${PRIVATE_KEY_TAIL.source}`);
+export const PEM_BEGIN = new RegExp(`${DASHES}${INLINE_SPACES}BEGIN[A-Z0-9${ANY_SPACE}]*${PRIVATE_KEY_TAIL.source}`);
 /** Tp */
 const PEM_END = new RegExp(`${DASHES}${INLINE_SPACES}END[A-Z0-9${ANY_SPACE}]*${PRIVATE_KEY_TAIL.source}`);
 /** mL */

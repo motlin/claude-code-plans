@@ -8,6 +8,8 @@ import {
 	useRef,
 	useState,
 } from "react";
+import {flushSync} from "react-dom";
+import {svgWithheld} from "../lib/mermaid-svg-audit";
 import {useReducedMotion} from "../lib/reduced-motion";
 import {useResolvedTheme} from "./theme-context";
 import {MermaidDiagram, type MermaidStatus} from "./mermaid-diagram";
@@ -17,8 +19,10 @@ import {Tooltip} from "./ui/tooltip";
 /*
  * Upstream's mermaid fence (c9e4d0c57 EpitaxyMermaidFence `we`, dumps/mermaid-fence-secret-fallback-c9e4d0c57.js.txt):
  * a code layer and a diagram layer stacked in one box. The diagram draws hidden under a placeholder and fades in on
- * success; View source fades back to the code block. Left out here, as separate features: the lightbox (Expand and
- * the row toolbar), the document figure width, in-page find, and the withheld state of the post-draw secret audit.
+ * success; View source fades back to the code block. A drawing that fails upstream's post-draw audit (secrets, even
+ * split across labels, or glyph-bending styles) is withheld: the code block shows at once, with no note and no fade.
+ * Left out here, as separate features: the lightbox (Expand and the row toolbar), the document figure width, and
+ * in-page find.
  */
 
 /** Upstream's note above a failed diagram (`GVQKxz`), shown on every render error. */
@@ -82,19 +86,29 @@ function FenceLayer({
 	);
 }
 
+/** The renderer's status, or "withheld" when its drawing failed the audit. */
+type FenceStatusName = MermaidStatus | "withheld";
+
 interface FenceStatus {
 	code: string;
-	status: MermaidStatus;
+	status: FenceStatusName;
 	/** The first status reported for this code; "success" means the drawing came from the cache. */
-	first: MermaidStatus | null;
+	first: FenceStatusName | null;
 }
 
-/** Upstream `ge`, without the withheld audit: the diagram's status for the current code. */
-function useFenceStatus(code: string) {
+/** How {@link useFenceStatus}'s `askAgain` applies its update: at once, or through `flushSync`. */
+type ApplyUpdate = (update: () => void) => void;
+
+/**
+ * Upstream `_e`: the diagram's status for the current code. A success whose drawing fails `passes` becomes
+ * "withheld"; `askAgain` re-runs the audit on a shown drawing and withholds it if it now fails.
+ */
+function useFenceStatus(code: string, passes: () => boolean) {
 	const [state, setState] = useState<FenceStatus>({code, status: "loading", first: null});
 	if (state.code !== code) setState({code, status: "loading", first: null});
 	const onStatusChange = useCallback(
-		(status: MermaidStatus) => {
+		(reported: MermaidStatus) => {
+			const status: FenceStatusName = reported === "success" && !passes() ? "withheld" : reported;
 			setState((previous) => {
 				const first = previous.code === code && previous.first !== null ? previous.first : status;
 				return previous.code === code && previous.status === status && previous.first === first
@@ -102,14 +116,99 @@ function useFenceStatus(code: string) {
 					: {code, status, first};
 			});
 		},
-		[code],
+		[code, passes],
+	);
+	const askAgain = useCallback(
+		(apply?: ApplyUpdate) => {
+			if (passes()) return;
+			const update = () => {
+				setState((previous) =>
+					previous.code === code && previous.status === "success"
+						? {...previous, status: "withheld"}
+						: previous,
+				);
+			};
+			if (apply) apply(update);
+			else update();
+		},
+		[code, passes],
 	);
 	return {
 		status: state.code === code ? state.status : "loading",
 		alreadyDrawn: state.code === code && state.first === "success",
 		onStatusChange,
+		askAgain,
 	};
 }
+
+/** Upstream `G`: the mutations that can change what a drawing reads as. */
+const DRAWING_MUTATIONS: MutationObserverInit = {
+	subtree: true,
+	childList: true,
+	characterData: true,
+	attributeFilter: [
+		"style",
+		"direction",
+		"unicode-bidi",
+		"writing-mode",
+		"font-variant",
+		"word-spacing",
+		"letter-spacing",
+	],
+};
+
+/** Upstream `K`: `visit` on `root` and on every shadow root beneath it. */
+function eachRoot(root: ParentNode, visit: (root: ParentNode) => void): void {
+	visit(root);
+	for (const element of root.querySelectorAll("*")) if (element.shadowRoot) eachRoot(element.shadowRoot, visit);
+}
+
+/** Upstream `q`: the first `<svg>` under `root`, shadow roots included. */
+function findDrawing(root: ParentNode | null): SVGSVGElement | null {
+	let drawing: SVGSVGElement | null = null;
+	if (root) eachRoot(root, (each) => (drawing ??= each.querySelector("svg")));
+	return drawing;
+}
+
+interface DrawingWatcher {
+	/** Observes the layer and any shadow root not yet observed; true when it found a new one. */
+	arm: () => boolean;
+	stop: () => void;
+}
+
+/** Upstream `xe`: watches the diagram layer and its shadow roots, calling `changed` on every mutation. */
+function watchDrawing(layer: () => HTMLElement | null, changed: () => void): DrawingWatcher {
+	let observer: MutationObserver | null = null;
+	const observed = new Set<ParentNode>();
+	const arm = (): boolean => {
+		const root = layer();
+		if (!root) return false;
+		const active =
+			observer ??
+			new MutationObserver(() => {
+				arm();
+				changed();
+			});
+		observer = active;
+		let found = false;
+		eachRoot(root, (each) => {
+			found ||= !observed.has(each);
+			observed.add(each);
+			active.observe(each, DRAWING_MUTATIONS);
+		});
+		return found;
+	};
+	return {
+		arm,
+		stop: () => {
+			observer?.disconnect();
+			observed.clear();
+		},
+	};
+}
+
+/** Upstream `Ee`. */
+function ignore(): void {}
 
 interface Swap {
 	showing: LayerName;
@@ -143,8 +242,38 @@ export function MermaidFence({
 	const mode = useResolvedTheme();
 	const [viewSource, setViewSource] = useState(false);
 	const layerRefs = useRef<Record<LayerName, HTMLDivElement | null>>({code: null, diagram: null});
-	const {status, alreadyDrawn, onStatusChange} = useFenceStatus(code);
-	const failed = status === "error";
+	const askAgainRef = useRef<(apply?: ApplyUpdate) => void>(ignore);
+	const lastDrawing = useRef<SVGSVGElement | null>(null);
+	const audit = useRef<{drawing: SVGSVGElement; passes: boolean} | null>(null);
+	const watcherRef = useRef<DrawingWatcher | null>(null);
+	const watcher = useCallback(
+		() =>
+			(watcherRef.current ??= watchDrawing(
+				() => layerRefs.current.diagram,
+				() => {
+					audit.current = null;
+					if (findDrawing(layerRefs.current.diagram)) askAgainRef.current(flushSync);
+				},
+			)),
+		[],
+	);
+	// Upstream's audit, cached per drawing until the drawing or its shadow roots change.
+	const passes = useCallback(() => {
+		if (watcher().arm()) audit.current = null;
+		const drawing = findDrawing(layerRefs.current.diagram);
+		lastDrawing.current = drawing;
+		if (drawing !== null && drawing === audit.current?.drawing) return audit.current.passes;
+		const passed = !svgWithheld(layerRefs.current.diagram);
+		audit.current = drawing === null ? null : {drawing, passes: passed};
+		return passed;
+	}, [watcher]);
+	const {status, alreadyDrawn, onStatusChange, askAgain} = useFenceStatus(code, passes);
+	useEffect(() => {
+		askAgainRef.current = askAgain;
+	}, [askAgain]);
+	useEffect(() => () => watcherRef.current?.stop(), []);
+	const withheld = status === "withheld";
+	const failed = status === "error" || withheld;
 	const success = status === "success";
 	const label = viewSource ? "Preview" : "View source";
 
@@ -163,7 +292,10 @@ export function MermaidFence({
 		setSwap({
 			showing,
 			code,
-			leaving: !reducedMotion && swap.code === code && swap.showing !== showing && !instant ? swap.showing : null,
+			leaving:
+				!reducedMotion && swap.code === code && swap.showing !== showing && !withheld && !instant
+					? swap.showing
+					: null,
 			instant,
 			standIn: showing === "code" ? standIn : swap.standIn,
 		});
@@ -184,7 +316,7 @@ export function MermaidFence({
 		};
 	}, [leaving, showing, fadedOut]);
 
-	const showNote = failed;
+	const showNote = status === "error";
 	const rootRef = useRef<HTMLDivElement>(null);
 	const stackRef = useRef<HTMLDivElement>(null);
 	const lastStackTop = useRef(0);
@@ -226,13 +358,25 @@ export function MermaidFence({
 	const setCodeLayer = useCallback((element: HTMLDivElement | null) => {
 		layerRefs.current.code = element;
 	}, []);
-	const setDiagramLayer = useCallback((element: HTMLDivElement | null) => {
-		layerRefs.current.diagram = element;
-	}, []);
+	const setDiagramLayer = useCallback(
+		(element: HTMLDivElement | null) => {
+			layerRefs.current.diagram = element;
+			audit.current = null;
+			watcher().stop();
+			watcher().arm();
+			const drawing = findDrawing(element);
+			if (drawing && drawing !== lastDrawing.current) askAgainRef.current();
+		},
+		[watcher],
+	);
 	const layerState = (layer: LayerName): LayerState =>
 		showing === layer ? "shown" : leaving === layer ? "leaving" : "preparing";
 	const codeMounted = showing === "code" || leaving === "code";
-	const diagramMounted = !(viewSource || failed) || leaving === "diagram";
+	const diagramMounted = !(viewSource || failed) || (leaving === "diagram" && !withheld);
+	// Upstream `Se`: a drawing already in the layer while the status still reads loading counts as drawn.
+	useLayoutEffect(() => {
+		if (status === "loading" && findDrawing(layerRefs.current.diagram)) onStatusChange("success");
+	}, [status, onStatusChange, diagramMounted]);
 
 	return (
 		<div
