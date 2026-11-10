@@ -249,6 +249,9 @@ describe("Message from subagent rows", () => {
 			sender: container.querySelector("bdi")?.textContent,
 			...rowState(container),
 			trailer: container.textContent.includes("other Claude session"),
+			// Upstream's p8 drops a carded turn's ["copy"] action (shared-80 `Gq`), so no Copy toolbar mounts.
+			toolbars: container.querySelectorAll('[data-testid="user-message-actions"]').length,
+			copyButtons: container.querySelectorAll('[data-testid="user-message-copy"]').length,
 		}).toStrictEqual({
 			sender: "subagent",
 			text: true,
@@ -258,6 +261,8 @@ describe("Message from subagent rows", () => {
 			rawTag: false,
 			frame: false,
 			trailer: false,
+			toolbars: 0,
+			copyButtons: 0,
 		});
 	});
 });

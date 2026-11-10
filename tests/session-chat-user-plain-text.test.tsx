@@ -434,13 +434,14 @@ describe("SessionChat user row DOM structure (upstream [data-take-back-entry] > 
 		}).toStrictEqual({turnKey: "user-slash-1", entry: "user-slash-1"});
 	});
 
-	it("puts no trailing strip on a plain prompt row", () => {
+	it("puts no trailing strip on a plain prompt row, only its frame's Copy toolbar", () => {
 		const container = renderRecords([prompt("hello")]);
 
 		expect({
 			strips: container.querySelectorAll("[data-user-trailing]").length,
 			reserved: container.querySelectorAll("[data-reserves-actions-gap]").length,
-		}).toStrictEqual({strips: 0, reserved: 0});
+			...copyToolbars(container),
+		}).toStrictEqual({strips: 0, reserved: 0, toolbars: 1, copyButtons: 1});
 	});
 });
 
@@ -450,6 +451,14 @@ const STRIP = {
 	"data-reserves-actions-gap": "",
 	class: "flex w-full flex-col gap-5 compact:gap-4 print:block print:[&>:where(:not(:first-child))]:!mt-5 compact:print:[&>:where(:not(:first-child))]:!mt-4 empty:hidden [&>*]:!my-0 items-end",
 };
+
+/** Upstream's user Copy toolbar and its Copy button, by their test ids. */
+function copyToolbars(container: HTMLElement) {
+	return {
+		toolbars: container.querySelectorAll('[data-testid="user-message-actions"]').length,
+		copyButtons: container.querySelectorAll('[data-testid="user-message-copy"]').length,
+	};
+}
 
 /** A carded turn's keyed tree: entry, row, the row's children and the strip's children. */
 function cardedTree(container: HTMLElement) {
@@ -481,6 +490,7 @@ describe("SessionChat carded user turns reserve the actions gap (upstream div[da
 			...cardedTree(container),
 			heading: container.querySelector("[data-transcript-row] > h2")?.textContent ?? null,
 			command: container.querySelector("[data-user-trailing] > *")?.textContent.includes("echo hi") ?? null,
+			...copyToolbars(container),
 		}).toStrictEqual({
 			entries: ["user-bash-1"],
 			row: ROW,
@@ -489,6 +499,8 @@ describe("SessionChat carded user turns reserve the actions gap (upstream div[da
 			stripChildren: 1,
 			heading: "You said: echo hi",
 			command: true,
+			toolbars: 0,
+			copyButtons: 0,
 		});
 	});
 
@@ -505,6 +517,7 @@ describe("SessionChat carded user turns reserve the actions gap (upstream div[da
 		expect({
 			...cardedTree(container),
 			card: container.querySelector("[data-user-trailing] > [data-agent-message-from]") !== null,
+			...copyToolbars(container),
 		}).toStrictEqual({
 			entries: ["user-handback-1"],
 			row: ROW,
@@ -512,6 +525,8 @@ describe("SessionChat carded user turns reserve the actions gap (upstream div[da
 			strip: STRIP,
 			stripChildren: 1,
 			card: true,
+			toolbars: 0,
+			copyButtons: 0,
 		});
 	});
 

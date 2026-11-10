@@ -117,9 +117,12 @@ function ActionButton({
 	readAloud,
 	disabledReason,
 	first = false,
+	testId,
 	children,
 }: {
 	label: string;
+	/** Upstream's `data-testid` on the control itself. */
+	testId?: string | undefined;
 	/** The bar's first item, its tab stop at rest. */
 	first?: boolean;
 	/**
@@ -146,6 +149,7 @@ function ActionButton({
 				{...(blocked || description === undefined ? {} : {"aria-description": description})}
 				{...(pressed === undefined ? {} : {"aria-pressed": pressed})}
 				{...(readAloud ? {"data-read-aloud": ""} : {})}
+				{...(testId === undefined ? {} : {"data-testid": testId})}
 				{...(tabIndex === undefined ? {} : {tabIndex})}
 				disabled={onClick === undefined || blocked}
 				// Pressing keeps focus where it was (the composer), as upstream's toolbar buttons do.
@@ -171,14 +175,20 @@ function ActionButton({
  * Upstream's Copy: writes the trimmed text (plus the turn's rendered HTML when `getHtml` reads it), swaps to a
  * check for 2000ms, and is disabled with a reason when the turn has no text.
  */
+/** Upstream's user Copy button test id (shared-80 `eb`); the assistant's Copy button has none. */
+const USER_COPY_TEST_ID = "user-message-copy";
+
 function CopyAction({
 	text,
 	getHtml,
 	first = false,
+	testId,
 }: {
 	text: string;
 	getHtml?: (() => string | undefined) | undefined;
 	first?: boolean;
+	/** Upstream (shared-80 `eb`) tags only a user turn's Copy button, `user-message-copy`. */
+	testId?: string;
 }) {
 	const [copied, setCopied] = useState(false);
 	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -196,6 +206,7 @@ function CopyAction({
 			<ActionButton
 				label={empty ? `Copy: ${NOTHING_TO_COPY}` : "Copy"}
 				first={first}
+				testId={testId}
 				{...(empty ? {disabledReason: NOTHING_TO_COPY} : {})}
 				onClick={() => {
 					const html = getHtml?.();
@@ -540,7 +551,7 @@ export function UserMessageActions({
 		>
 			<MessageTime timestamp={timestamp} details={details} inner="right" settling={settling} />
 			{readByClaude && <ReadByClaudeReceipt />}
-			<CopyAction text={text} first={!readByClaude} />
+			<CopyAction text={text} first={!readByClaude} testId={USER_COPY_TEST_ID} />
 			<RewindAction message={message} />
 			<ForkAction message={message} />
 		</ActionBar>
@@ -671,7 +682,7 @@ export function WaitingMessageActions({
 				{unreadAtRest && <UnreadReceipt />}
 				<div data-cds-reveal-on-hover className={REVEAL_ON_HOVER_CLASS}>
 					{hoverOnly && hostHasIt && <DeliveredReceipt />}
-					<CopyAction text={text} first={!unreadAtRest} />
+					<CopyAction text={text} first={!unreadAtRest} testId={USER_COPY_TEST_ID} />
 					<RewindAction message={undefined} />
 					{onCancel !== undefined && <CancelEditAction onCancel={onCancel} />}
 				</div>

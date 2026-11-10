@@ -58,7 +58,7 @@ describe("WaitingUserTurn", () => {
 				label: "Message actions",
 				alwaysVisible: true,
 				buttons: [
-					{name: "Copy", disabled: false, testId: null, inRevealGroup: true},
+					{name: "Copy", disabled: false, testId: "user-message-copy", inRevealGroup: true},
 					{name: "Rewind to here", disabled: true, testId: null, inRevealGroup: true},
 					{name: "Send now", disabled: false, testId: "awaiting-turn-send-now", inRevealGroup: false},
 				],
@@ -502,7 +502,7 @@ describe("Cancel and edit on a browser-held waiting row", () => {
 				label: "Message actions",
 				alwaysVisible: true,
 				buttons: [
-					{name: "Copy", disabled: false, testId: null, inRevealGroup: true},
+					{name: "Copy", disabled: false, testId: "user-message-copy", inRevealGroup: true},
 					{name: "Rewind to here", disabled: true, testId: null, inRevealGroup: true},
 					{name: "Cancel and edit message", disabled: false, testId: null, inRevealGroup: true},
 					{name: "Send now", disabled: false, testId: "awaiting-turn-send-now", inRevealGroup: false},

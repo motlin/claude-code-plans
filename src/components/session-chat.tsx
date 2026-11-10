@@ -1067,7 +1067,10 @@ function UserTurn({
 	children?: React.ReactNode;
 	/** A carded turn's card, drawn in upstream's trailing strip as the row's last child (keyed shape only). */
 	trailing?: React.ReactNode;
-	/** The frame above renders tiles, a bubble, a failed footer or actions, so the strip gets its top margin. */
+	/**
+	 * The frame above renders tiles, a bubble, a failed footer or actions, so the strip gets its top margin
+	 * (upstream p8 `qe`). Code's carded turns never have one; see user-carded-turn-copy-actions.
+	 */
 	frameHasContent?: boolean;
 }) {
 	if (turnKey === undefined) {
@@ -4599,9 +4602,10 @@ function UserEntry({
 		return <CommandEntry line={line} sessionId={sessionId} />;
 	}
 
-	// Carded turns (upstream cbb2d9547 `tbe`/`ebe`): the card lands in the trailing strip, with no frame above.
-	// Upstream gives a carded non-synthetic turn with text a ["copy"] toolbar in that frame (and the strip its
-	// mt-5); local carded rows have no message actions yet, so frameHasContent stays false.
+	// Carded turns (upstream code-core `tbe`/`ebe`): the card lands in the trailing strip, with no frame above.
+	// Upstream annotates a carded non-synthetic turn with ["copy"], but p8 drops it (shared-80 `Gq`: none of the
+	// turn's items is text, an attachment or a placed card) and its extras/receipt slots skip carded turns, so no
+	// Copy toolbar, timestamp or frame mounts and the strip never gets its mt-5 (user-carded-turn-copy-actions).
 	if (kind === "bash") {
 		const coalesceNext = hasBashInput(line) && nextLine?.type === "user" && hasBashOutput(nextLine);
 		const outputLine = coalesceNext ? nextLine : undefined;
