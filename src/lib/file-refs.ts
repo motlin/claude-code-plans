@@ -10,6 +10,22 @@ import {findSecrets} from "./secret-mask";
 /** Why a ref renders as blocked code instead of a link, as upstream's `ir()` reasons. */
 export type FileRefBlock = "outside_roots" | "missing";
 
+/** Marks the cds disabled-reason wrapper around a blocked file ref; its `[data-disabled-reason]` child holds the reason. */
+export const DISABLED_REASON_WRAPPER_ATTR = "data-disabled-reason-wrapper";
+
+/** Upstream's `ir()` reason copy for each block. */
+export const FILE_REF_BLOCK_REASONS = {
+	outside_roots: "This file is outside this session’s folders, so it can’t be opened here.",
+	missing: "Couldn’t find this file, so it can’t be opened. You can ask Claude to create it or check the path.",
+} as const satisfies Record<FileRefBlock, string>;
+
+/** A stable id for a reason element: the same path and block always share one, and they say the same thing. */
+export function fileRefReasonId(path: string, block: FileRefBlock): string {
+	let hash = 5381;
+	for (const char of `${block}\0${path}`) hash = (Math.imul(hash, 33) ^ (char.codePointAt(0) ?? 0)) >>> 0;
+	return `file-ref-reason-${hash.toString(36)}`;
+}
+
 export interface FileRef {
 	/** Absolute path of the confirmed file, or of the blocked path. */
 	path: string;
@@ -29,7 +45,7 @@ export interface ParsedFileRefText {
 /**
  * Upstream's file-ref grammar (claude.ai/code `B` in c4aef5f87): at least one
  * `/`, a last segment with an extension, and an optional `:line`, `:line-end`
- * or `:line:col` suffix (the column is dropped).
+ * or `:line:col` suffix (the column is dropped); a file directly under `/` is not a ref.
  */
 const NAME_CHARACTERS = String.raw`\p{L}\p{N}\p{M}_`;
 const FILE_REF_PATTERN = new RegExp(
@@ -59,6 +75,8 @@ export function parseFileRefText(text: string): ParsedFileRefText | null {
 	const match = FILE_REF_PATTERN.exec(text);
 	if (match === null) return null;
 	let target = match[1] ?? "";
+	// Upstream's `W` rejects a file directly under the filesystem root.
+	if (/^\/[^/]+$/.test(target)) return null;
 	while (target.startsWith("./")) target = target.slice(2);
 	return {target, ...lineRange(match[2], match[3])};
 }

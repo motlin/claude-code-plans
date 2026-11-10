@@ -42,7 +42,7 @@ export function StreamingMessage({text, isComplete, error, forkedSessionId, sent
 			{sentPrompt && (
 				<div className={`${USER_MESSAGE_CLASS} mb-6`} data-perf-pending-prompt="">
 					<UserBubbleBox>
-						<UserPlainText text={sentPrompt} />
+						<UserPlainText text={sentPrompt} nonInteractive />
 					</UserBubbleBox>
 				</div>
 			)}

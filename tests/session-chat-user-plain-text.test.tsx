@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
-import {cleanup, render} from "@testing-library/react";
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import {cleanup, render, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {FileRefsProvider} from "../src/components/file-refs-context";
 import {SessionChat} from "../src/components/session-chat";
 import {processTranscript} from "../src/lib/transcript";
 
@@ -78,6 +80,8 @@ describe("SessionChat user bubbles as plain text", () => {
 			code: Array.from(el.querySelectorAll("code")).map((code) => ({
 				text: code.textContent,
 				className: code.className,
+				parent: code.parentElement?.tagName,
+				dir: code.parentElement?.getAttribute("dir"),
 			})),
 			paragraphClass: el.querySelector("p")?.className ?? null,
 		}).toStrictEqual({
@@ -87,7 +91,9 @@ describe("SessionChat user bubbles as plain text", () => {
 				{
 					text: "code",
 					className:
-						"font-mono text-[12px]/[12px] text-code-ink bg-alpha-1 border-[0.5px] border-border rounded-[4.8px] px-[3px] py-[0.75px]",
+						"text-code leading-none text-danger bg-alpha-1 border-[0.5px] border-border rounded-[0.4em] px-[0.25em] py-[0.0625em] [overflow-wrap:anywhere]",
+					parent: "BDI",
+					dir: "ltr",
 				},
 			],
 			paragraphClass:
@@ -217,6 +223,49 @@ describe("SessionChat user bubbles as plain text", () => {
 		}).toStrictEqual({chips: 1, strong: 0, code: ["5m"], text: "/loop **every** 5m"});
 	});
 
+	it("links a path-shaped code span after the slash chip inside a session's file refs", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+				const {paths} = JSON.parse(String(init?.body)) as {paths: string[]};
+				return Promise.resolve(
+					Response.json({statuses: Object.fromEntries(paths.map((path) => [path, "exists"]))}),
+				);
+			}),
+		);
+		const {lines, toolResultMap} = processTranscript([prompt("/review `src/a.ts` and `npm test`")]);
+		const {container} = render(
+			<QueryClientProvider client={new QueryClient({defaultOptions: {queries: {retry: false}}})}>
+				<FileRefsProvider
+					value={{sessionId: "slash-refs", cwd: "/repo", sessionPaths: [], open: vi.fn<() => void>()}}
+				>
+					<SessionChat
+						sessionId="slash-refs"
+						lines={lines}
+						toolResultMap={toolResultMap}
+						showCompactSummaries={true}
+						showTranscriptOnly={true}
+						shouldScrollToEnd={false}
+						transcriptMode="normal"
+					/>
+				</FileRefsProvider>
+			</QueryClientProvider>,
+		);
+		const el = bubble(container);
+		await waitFor(() => {
+			expect(el.querySelector("bdi > [data-file-ref]")).not.toBeNull();
+		});
+
+		expect({
+			chips: el.querySelectorAll("[data-slash-command-chip]").length,
+			links: Array.from(el.querySelectorAll("bdi > [data-file-ref]"), (link) => [
+				link.getAttribute("data-file-path"),
+				link.textContent,
+			]),
+			code: Array.from(el.querySelectorAll("bdi > code"), (code) => code.textContent),
+		}).toStrictEqual({chips: 1, links: [["/repo/src/a.ts", "src/a.ts"]], code: ["npm test"]});
+	});
+
 	it("autolinks bare URLs as accent links opening in a new tab", () => {
 		const el = bubble(
 			renderRecords([
@@ -253,6 +302,27 @@ describe("SessionChat user bubbles as plain text", () => {
 					className: "text-link",
 				},
 			],
+		});
+	});
+
+	it("pairs single backticks within one line, as upstream's /`([^`\\n]+)`/g does", () => {
+		const codes = (text: string) => {
+			cleanup();
+			const el = bubble(renderRecords([prompt(text)]));
+			return {
+				text: el.textContent,
+				code: Array.from(el.querySelectorAll("code")).map((code) => code.textContent),
+			};
+		};
+
+		expect({
+			runs: codes("x ``double `tick` span`` y"),
+			newline: codes("a `one\ntwo` b"),
+			unclosed: codes("`unclosed"),
+		}).toStrictEqual({
+			runs: {text: "x `double tick span` y", code: ["double ", " span"]},
+			newline: {text: "a `one\ntwo` b", code: []},
+			unclosed: {text: "`unclosed", code: []},
 		});
 	});
 

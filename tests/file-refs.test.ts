@@ -47,6 +47,8 @@ describe("parseFileRefText", () => {
 		".gitignore",
 		"docs/guide.md#install",
 		"/etc/hostname",
+		"/a.ts",
+		"/a.ts:3",
 		"C:\\x\\y.ts",
 		"",
 	])("%s is not a file ref", (text) => {

@@ -3,16 +3,14 @@ import {lazy, type ReactNode, Suspense} from "react";
 import {defined} from "../lib/defined";
 import {maskSecrets} from "../lib/secret-mask";
 import {trimUrl} from "./linkify-plain";
+import {UserCodeSpan} from "./user-code-span";
 
 /** Upstream's user paragraph: `text-body` rewritten to `text-prose`, then `[unicode-bidi:plaintext]` appended. */
 export const USER_PARAGRAPH_CLASS =
 	"text-prose whitespace-pre-wrap [overflow-wrap:anywhere] text-pretty [unicode-bidi:plaintext]";
 
-const CODE_CLASS =
-	"font-mono text-[12px]/[12px] text-code-ink bg-alpha-1 border-[0.5px] border-border rounded-[4.8px] px-[3px] py-[0.75px]";
-
-/** A backtick run, its content, and the same-length closing run (CommonMark code span delimiters). */
-const CODE_SPAN = /(?<!`)(`+)(?!`)([\s\S]+?)(?<!`)\1(?!`)/g;
+/** Upstream's single-backtick code span (`W` in c8a6d9da5): no backtick runs, never across a line. */
+const CODE_SPAN = /`([^`\n]+)`/g;
 
 const URL_PATTERN = /https?:\/\/[^\s<>`]+/g;
 
@@ -53,16 +51,12 @@ export function UserInlineText({text: raw, codeSpans = true}: {text: string; cod
 	return <>{codeSpans ? renderInline(text, "textLink") : linkify(text, 0, "textLink")}</>;
 }
 
-function renderInline(text: string, style: LinkStyle = "user"): ReactNode[] {
+function renderInline(text: string, style: LinkStyle = "user", nonInteractive = false): ReactNode[] {
 	const nodes: ReactNode[] = [];
 	let cursor = 0;
 	for (const match of text.matchAll(CODE_SPAN)) {
 		if (match.index > cursor) nodes.push(...linkify(text.slice(cursor, match.index), cursor, style));
-		nodes.push(
-			<code key={match.index} className={CODE_CLASS}>
-				{match[2]}
-			</code>,
-		);
+		nodes.push(<UserCodeSpan key={match.index} text={match[1] ?? ""} nonInteractive={nonInteractive} />);
 		cursor = match.index + match[0].length;
 	}
 	if (cursor < text.length) nodes.push(...linkify(text.slice(cursor), cursor, style));
@@ -157,7 +151,7 @@ function splitBlocks(text: string): Block[] {
 }
 
 /** Runs of same-kind sibling entries at `level`, each with the deeper entries under it. */
-function renderList(entries: readonly ListEntry[], level: number, key: number): ReactNode[] {
+function renderList(entries: readonly ListEntry[], level: number, key: number, nonInteractive: boolean): ReactNode[] {
 	const lists: ReactNode[] = [];
 	let index = 0;
 	while (index < entries.length) {
@@ -170,8 +164,8 @@ function renderList(entries: readonly ListEntry[], level: number, key: number): 
 			while (end < entries.length && defined(entries[end], "end is in range").level > level) end++;
 			items.push(
 				<li key={index}>
-					{renderInline(entry.text)}
-					{renderList(entries.slice(index + 1, end), level + 1, index)}
+					{renderInline(entry.text, "user", nonInteractive)}
+					{renderList(entries.slice(index + 1, end), level + 1, index, nonInteractive)}
 				</li>,
 			);
 			index = end;
@@ -225,22 +219,30 @@ function splitFences(text: string): Segment[] {
 	return segments;
 }
 
+interface UserTextProps {
+	text: string;
+	prefix?: ReactNode;
+	/** Upstream's `nonInteractive` (queued or pending prompts): code spans never become file links. */
+	nonInteractive?: boolean;
+}
+
 /**
  * A user prompt as upstream shows it: ``` fences as code snippets, lists in the
  * text between them drawn as lists, the rest kept as typed.
  */
-export function UserPlainText({text, prefix}: {text: string; prefix?: ReactNode}) {
+export function UserPlainText({text, prefix, nonInteractive = false}: UserTextProps) {
 	// Upstream (c59c32499) masks secrets in a user turn with plain `XF`: no reveal control.
 	return (
 		<UserMessageText>
-			<UserPlainBlocks text={maskSecrets(text)} prefix={prefix} />
+			<UserPlainBlocks text={maskSecrets(text)} prefix={prefix} nonInteractive={nonInteractive} />
 		</UserMessageText>
 	);
 }
 
-function UserPlainBlocks({text, prefix}: {text: string; prefix?: ReactNode}) {
+function UserPlainBlocks({text, prefix, nonInteractive = false}: UserTextProps) {
 	const segments = text.includes("```") ? splitFences(text) : [];
-	if (!segments.some((segment) => segment.kind === "code")) return <UserTextBlocks text={text} prefix={prefix} />;
+	if (!segments.some((segment) => segment.kind === "code"))
+		return <UserTextBlocks text={text} prefix={prefix} nonInteractive={nonInteractive} />;
 	const prefixed = segments[0]?.kind === "text";
 	return (
 		<>
@@ -249,7 +251,11 @@ function UserPlainBlocks({text, prefix}: {text: string; prefix?: ReactNode}) {
 				if (segment.kind === "text") {
 					return (
 						<div key={index} className="flex flex-col gap-1.25">
-							<UserTextBlocks text={segment.text} prefix={index === 0 ? prefix : undefined} />
+							<UserTextBlocks
+								text={segment.text}
+								prefix={index === 0 ? prefix : undefined}
+								nonInteractive={nonInteractive}
+							/>
 						</div>
 					);
 				}
@@ -279,14 +285,14 @@ function UserPlainBlocks({text, prefix}: {text: string; prefix?: ReactNode}) {
  * optional leading slash-command chip) are styled and bare http(s) URLs outside
  * code spans become accent links.
  */
-function UserTextBlocks({text, prefix}: {text: string; prefix?: ReactNode}) {
+function UserTextBlocks({text, prefix, nonInteractive = false}: UserTextProps) {
 	const blocks = splitBlocks(text);
 	if (!blocks.some((block) => block.kind === "list")) {
 		return (
 			<p className={USER_PARAGRAPH_CLASS}>
 				{prefix}
 				{prefix !== undefined && text !== "" && " "}
-				{renderInline(text)}
+				{renderInline(text, "user", nonInteractive)}
 			</p>
 		);
 	}
@@ -300,11 +306,11 @@ function UserTextBlocks({text, prefix}: {text: string; prefix?: ReactNode}) {
 						<p key={index} className={USER_PARAGRAPH_CLASS}>
 							{index === 0 && prefix}
 							{index === 0 && prefix !== undefined && " "}
-							{renderInline(block.text)}
+							{renderInline(block.text, "user", nonInteractive)}
 						</p>
 					);
 				}
-				return renderList(block.entries, 0, index);
+				return renderList(block.entries, 0, index, nonInteractive);
 			})}
 		</>
 	);

@@ -7,7 +7,14 @@ import taskLists from "markdown-it-task-lists";
 import footnote from "markdown-it-footnote";
 import {requestLanguage, themeOrRequest} from "../hooks/use-shiki";
 import {type CodeThemePair, DEFAULT_CODE_THEMES} from "./code-themes";
-import {type FileRef, type FileRefBlock, parseFileRefText} from "./file-refs";
+import {
+	DISABLED_REASON_WRAPPER_ATTR,
+	FILE_REF_BLOCK_REASONS,
+	type FileRef,
+	type FileRefBlock,
+	fileRefReasonId,
+	parseFileRefText,
+} from "./file-refs";
 import {normalizeArtifactUrl} from "./artifact-output";
 import {ARTIFACT_ICON_SVG, COPY_ICON_SVG, EYE_ICON_SVG, PR_ICON_SVG} from "./icon-paths";
 import {
@@ -104,22 +111,6 @@ function fileRefButtonOpen(ref: FileRef, escape: (value: string) => string): str
 		...(ref.endLine === undefined ? [] : [`data-file-end-line="${ref.endLine}"`]),
 	];
 	return `<span ${attrs.join(" ")}>`;
-}
-
-/** Marks the cds disabled-reason wrapper around a blocked file ref; its `[data-disabled-reason]` child holds the reason. */
-export const DISABLED_REASON_WRAPPER_ATTR = "data-disabled-reason-wrapper";
-
-/** Upstream's `ir()` reason copy for each block. */
-const FILE_REF_BLOCK_REASONS = {
-	outside_roots: "This file is outside this session’s folders, so it can’t be opened here.",
-	missing: "Couldn’t find this file, so it can’t be opened. You can ask Claude to create it or check the path.",
-} as const satisfies Record<FileRefBlock, string>;
-
-/** A stable id for a reason element: the same path and block always share one, and they say the same thing. */
-export function fileRefReasonId(path: string, block: FileRefBlock): string {
-	let hash = 5381;
-	for (const char of `${block}\0${path}`) hash = (Math.imul(hash, 33) ^ (char.codePointAt(0) ?? 0)) >>> 0;
-	return `file-ref-reason-${hash.toString(36)}`;
 }
 
 /**

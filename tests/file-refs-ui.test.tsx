@@ -16,6 +16,7 @@ import {TruncatedFilePathHeader} from "../src/components/tool-renderers/shared";
 import {ToolOutputSection} from "../src/components/tool-renderers/tool-output-section";
 import type {FileRef} from "../src/lib/file-refs";
 import type {SessionFiles} from "../src/lib/session-files";
+import {UserPlainText} from "../src/components/user-plain-text";
 import {installLocalStorage} from "./fake-storage";
 
 const EXISTING = ["/repo/.mise/config.toml", "/repo/src/app.ts", "/repo/tool-results/mcp-search-1.txt"];
@@ -373,6 +374,145 @@ describe("ProseMarkdown file refs", () => {
 			refs: container.querySelectorAll("[data-file-ref]").length,
 			fetches: statRequests.length,
 		}).toStrictEqual({refs: 0, fetches: 0});
+	});
+});
+
+const USER_LINK_CLASS =
+	"aria-busy:cursor-progress aria-busy:opacity-60 inline text-code leading-none text-danger bg-alpha-1 border-[0.5px] border-border rounded-[0.4em] px-[0.25em] py-[0.0625em] [overflow-wrap:anywhere] hover:bg-alpha-2 underline underline-offset-[3px] decoration-[color-mix(in_srgb,currentColor,transparent_60%)] hover:decoration-current focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus";
+
+function userRow(text: string, open: (ref: FileRef) => void, sessionId = "user-refs", nonInteractive = false) {
+	return render(
+		withQueryClient(
+			<FileRefsProvider value={{sessionId, cwd: "/repo", sessionPaths: [], open}}>
+				<UserPlainText text={text} nonInteractive={nonInteractive} />
+			</FileRefsProvider>,
+		),
+	).container;
+}
+
+async function userLink(container: HTMLElement): Promise<HTMLElement> {
+	return waitFor(() => {
+		const found = container.querySelector<HTMLElement>("bdi > span[role=button]");
+		expect(found).not.toBeNull();
+		return found!;
+	});
+}
+
+/** Each code span's isolating bdi, drawn as its outer HTML. */
+function bdis(container: HTMLElement): string[] {
+	return Array.from(container.querySelectorAll("bdi"), (bdi) => bdi.outerHTML);
+}
+
+const USER_CODE = (text: string) =>
+	`<bdi dir="ltr"><code class="text-code leading-none text-danger bg-alpha-1 border-[0.5px] border-border rounded-[0.4em] px-[0.25em] py-[0.0625em] [overflow-wrap:anywhere]">${text}</code></bdi>`;
+
+describe("UserPlainText code-span file links (upstream U > Ir)", () => {
+	it("links only a path-shaped span as upstream's underlined code-chip button, opening it on click and Enter", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		const container = userRow("see `src/app.ts:3` and `README.md` and `npm run build`", open);
+		const link = await userLink(container);
+
+		expect(bdis(container)).toStrictEqual([
+			`<bdi dir="ltr"><span role="button" tabindex="0" data-file-ref="" data-file-path="/repo/src/app.ts" data-file-line="3" class="${USER_LINK_CLASS}">src/app.ts:3</span></bdi>`,
+			USER_CODE("README.md"),
+			USER_CODE("npm run build"),
+		]);
+
+		fireEvent.click(link);
+		fireEvent.keyDown(link, {key: "Enter"});
+		await waitFor(() => {
+			expect(open.mock.calls).toStrictEqual([
+				[{path: "/repo/src/app.ts", line: 3}],
+				[{path: "/repo/src/app.ts", line: 3}],
+			]);
+		});
+	});
+
+	it("turns busy while a slow check runs past 150ms, then re-renders missing as the blocked wrapper with focus on it", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		const container = userRow("create `src/new.ts`", open, "user-missing");
+		const link = await userLink(container);
+
+		vi.useFakeTimers();
+		statDelayMs = 200;
+		link.focus();
+		fireEvent.click(link);
+		await act(async () => vi.advanceTimersByTimeAsync(160));
+		expect(link.getAttribute("aria-busy")).toBe("true");
+		await act(async () => vi.advanceTimersByTimeAsync(100));
+
+		const wrapper = container.querySelector<HTMLElement>("[data-disabled-reason-wrapper]");
+		const reasonId = wrapper?.getAttribute("aria-describedby") ?? "";
+		expect({
+			bdis: bdis(container),
+			focused: document.activeElement === wrapper,
+			opened: open.mock.calls,
+		}).toStrictEqual({
+			bdis: [
+				`<bdi dir="ltr"><span tabindex="0" data-disabled-reason-wrapper="" aria-describedby="${reasonId}" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus"><code class="text-code leading-none text-danger bg-alpha-1 border-[0.5px] border-border rounded-[0.4em] px-[0.25em] py-[0.0625em] [overflow-wrap:anywhere]">src/new.ts</code><span id="${reasonId}" hidden="" data-disabled-reason="">${MISSING_REASON}</span></span></bdi>`,
+			],
+			focused: true,
+			opened: [],
+		});
+	});
+
+	it("blocks an outside-roots path with its reason in a top tooltip on hover and focus", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		const container = userRow("notes in `/tmp/outside/notes.txt`", open);
+		const wrapper = await waitFor(() => {
+			const found = container.querySelector<HTMLElement>("bdi > [data-disabled-reason-wrapper]");
+			expect(found).not.toBeNull();
+			return found!;
+		});
+		const reasonId = wrapper.getAttribute("aria-describedby") ?? "";
+
+		expect(bdis(container)).toStrictEqual([
+			`<bdi dir="ltr"><span tabindex="0" data-disabled-reason-wrapper="" aria-describedby="${reasonId}" class="inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus"><code class="text-code leading-none text-danger bg-alpha-1 border-[0.5px] border-border rounded-[0.4em] px-[0.25em] py-[0.0625em] [overflow-wrap:anywhere]">/tmp/outside/notes.txt</code><span id="${reasonId}" hidden="" data-disabled-reason="">${OUTSIDE_REASON}</span></span></bdi>`,
+		]);
+
+		fireEvent.pointerOver(wrapper.querySelector("code")!);
+		const tooltip = await screen.findByRole("tooltip");
+		expect({text: tooltip.textContent, side: tooltip.getAttribute("data-side")}).toStrictEqual({
+			text: OUTSIDE_REASON,
+			side: "top",
+		});
+		fireEvent.pointerOut(wrapper, {relatedTarget: document.body});
+		expect(screen.queryByRole("tooltip")).toBeNull();
+		act(() => {
+			wrapper.focus();
+		});
+		expect(screen.getByRole("tooltip").textContent).toBe(OUTSIDE_REASON);
+	});
+
+	it("⌘-click opens the file with its default app instead of the Files pane", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		const link = await userLink(userRow("see `src/app.ts`", open));
+		fireEvent.click(link, {metaKey: true});
+		const openFileBodies = () =>
+			vi
+				.mocked(fetch)
+				.mock.calls.filter(([url]) => String(url) === "/api/open-file")
+				.map(([, init]) => JSON.parse(String(init?.body)) as unknown);
+		await waitFor(() => {
+			expect(openFileBodies()).toHaveLength(1);
+		});
+		expect({opened: openFileBodies(), paneOpens: open.mock.calls}).toStrictEqual({
+			opened: [{path: "/repo/src/app.ts"}],
+			paneOpens: [],
+		});
+	});
+
+	it("never links a nonInteractive (pending) prompt or a prompt outside a file-refs provider", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		const pending = userRow("see `src/app.ts`", open, "user-refs", true);
+		const bare = render(<UserPlainText text="see `src/app.ts`" />).container;
+		await act(async () => Promise.resolve());
+
+		expect({pending: bdis(pending), bare: bdis(bare), stats: statRequests}).toStrictEqual({
+			pending: [USER_CODE("src/app.ts")],
+			bare: [USER_CODE("src/app.ts")],
+			stats: [],
+		});
 	});
 });
 

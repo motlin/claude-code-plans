@@ -59,6 +59,19 @@ describe("code typography", () => {
 		});
 	});
 
+	it("compiles a user code span's text-danger to upstream's danger ink (#a42528 light, #f17778 dark)", async () => {
+		const styles = readFileSync("src/styles/globals.css", "utf8");
+		const dangers = [...styles.matchAll(/--upstream-text-danger:\s*([^;]+);/g)].map((match) => match[1]);
+
+		expect({
+			css: await compileAll(["text-danger"]),
+			dangers,
+		}).toStrictEqual({
+			css: {"text-danger": ".text-danger { color: var(--upstream-text-danger); }"},
+			dangers: ["#a42528", "#f17778"],
+		});
+	});
+
 	// Upstream scopes Settings ▸ Code font size to four hook classes under html[data-code-font-size], and
 	// exempts document prose and approval cards ([data-fixed-code-size]), so chrome text-code stays fixed.
 	it("scopes the Code font size override to upstream's hook classes and exempts documents and approval cards", () => {
