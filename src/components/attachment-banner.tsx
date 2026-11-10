@@ -800,6 +800,7 @@ function AttachmentContent({
 		case "bash_output_audience_note":
 		case "batching_reminder_sent":
 		case "silent_turn_reminder":
+		case "critical_system_reminder":
 			return (
 				<Banner
 					icon={<Pin className="h-3.5 w-3.5" />}
@@ -867,6 +868,7 @@ const CONTEXT_ATTACHMENT_LABELS = {
 	bash_output_audience_note: "Bash output audience note",
 	batching_reminder_sent: "Batching reminder",
 	silent_turn_reminder: "Silent turn reminder",
+	critical_system_reminder: "Critical system reminder",
 } satisfies Partial<Record<AttachmentPayload["type"], string>>;
 
 /**

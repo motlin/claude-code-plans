@@ -999,6 +999,7 @@ const attachmentVariants = {
 	remote_session_change: true,
 	session_context: true,
 	silent_turn_reminder: true,
+	critical_system_reminder: true,
 	thinking_drop: true,
 	thinking_stripped: true,
 	structured_output: true,

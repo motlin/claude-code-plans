@@ -1834,6 +1834,7 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 				clearAt: "next_user_message",
 			}),
 			attachmentRecord({type: "silent_turn_reminder", text: "Say what you're doing."}),
+			attachmentRecord({type: "critical_system_reminder", content: "<remote-control-device-report/>"}),
 			attachmentRecord({
 				type: "hook_permission_decision",
 				decision: "allow",
@@ -1887,6 +1888,7 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 				restoredNames: ["Edit"],
 				retractedTools: [{name: "Edit", cause: "denied"}],
 				failedMcpServers: [{name: "imcp", errorCode: "CONNECT_TIMEOUT", error: "timed out"}],
+				runsAgainNames: ["ReadNotifications"],
 			}),
 			attachmentRecord({
 				type: "deferred_tools_delta",
@@ -2335,6 +2337,7 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () => {
 			error: "server_error",
 			isApiErrorMessage: true,
 			streamCutCause: "stream_suspended",
+			failedResponseHadNoToolCall: true,
 		};
 
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);

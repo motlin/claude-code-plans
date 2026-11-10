@@ -122,6 +122,7 @@ const MINIMAL_BY_TYPE: Record<string, AttachmentPayload> = {
 	remote_session_change: {type: "remote_session_change"},
 	session_context: {type: "session_context"},
 	silent_turn_reminder: {type: "silent_turn_reminder"},
+	critical_system_reminder: {type: "critical_system_reminder"},
 	thinking_drop: {type: "thinking_drop"},
 	thinking_stripped: {type: "thinking_stripped"},
 	structured_output: {type: "structured_output", toolUseID: "toolu_100", data: {}},

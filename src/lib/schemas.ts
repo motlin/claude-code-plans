@@ -660,6 +660,8 @@ export const AssistantRecordSchema = z
 			})
 			.strict(),
 		isApiErrorMessage: z.boolean().optional(),
+		// Synthetic API-error record: the failed response carried no tool call.
+		failedResponseHadNoToolCall: z.boolean().optional(),
 		apiErrorStatus: z.union([z.number(), z.string()]).optional(),
 		apiError: z.string().optional(),
 		apiErrorParams: z.object({rate_limit_info: RateLimitInfoSchema}).strict().optional(),
@@ -896,6 +898,7 @@ const DeferredToolsDeltaAttachmentPayload = z
 		addedLines: z.array(z.string()).optional(),
 		removedNames: z.array(z.string()).optional(),
 		readdedNames: z.array(z.string()).optional(),
+		runsAgainNames: z.array(z.string()).optional(),
 		pendingMcpServers: z.array(z.string()).optional(),
 		needsAuthMcpServers: z.array(z.string()).optional(),
 		wireHiddenNames: z.array(z.string()).optional(),
@@ -1467,6 +1470,13 @@ const InlinedImagePathsAttachmentPayload = z
 	})
 	.strict();
 
+const CriticalSystemReminderAttachmentPayload = z
+	.object({
+		type: z.literal("critical_system_reminder"),
+		content: z.string().optional(),
+	})
+	.strict();
+
 const SilentTurnReminderAttachmentPayload = z
 	.object({
 		type: z.literal("silent_turn_reminder"),
@@ -1588,6 +1598,7 @@ export const AttachmentPayloadSchema = z.discriminatedUnion("type", [
 	RemoteSessionChangeAttachmentPayload,
 	SessionContextAttachmentPayload,
 	SilentTurnReminderAttachmentPayload,
+	CriticalSystemReminderAttachmentPayload,
 	SkillMentionAttachmentPayload,
 	ThinkingDropAttachmentPayload,
 	ThinkingStrippedAttachmentPayload,

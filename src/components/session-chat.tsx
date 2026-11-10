@@ -4073,6 +4073,7 @@ const SYSTEM_BANNER_SUBTYPES = new Set([
 	"remote_session_change",
 	"session_context",
 	"silent_turn_reminder",
+	"critical_system_reminder",
 	"thinking_drop",
 	"thinking_stripped",
 	"skill_mention",
