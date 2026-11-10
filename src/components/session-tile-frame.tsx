@@ -7,6 +7,7 @@ import {useChatGutterAttributes} from "./panes/pane-host-context";
 import {TooltipPortalContext} from "./ui/tooltip-portal-context";
 import {ChatFileDropContext, type ChatFileDropHandler} from "./chat-file-drop-context";
 import {ChatFileDropZone} from "./chat-file-drop-zone";
+import {TranscriptOverlayHostContext} from "./transcript-overlay-host-context";
 import {useCallback, useLayoutEffect, useRef, useState, type ReactNode, type Ref, type RefObject} from "react";
 
 /** The one live chat tile's offset while a pane move reparents it; never a cross-route cache. */
@@ -64,6 +65,8 @@ export function SessionTileFrame({
 		},
 		[chatDrop],
 	);
+	// Overlays pinned to the transcript's top edge (the sticky prompt bubble) portal into the scrollport's wrapper.
+	const [overlayHost, setOverlayHost] = useState<HTMLDivElement | null>(null);
 	const pendingRendered = useRef<(() => void) | undefined>(undefined);
 	const scrollerRef = useRef<HTMLDivElement>(null);
 	useScrollGutterVar(scrollerRef);
@@ -159,7 +162,11 @@ export function SessionTileFrame({
 					className="h-full min-w-0 flex flex-col"
 				>
 					<div className="shrink-0">{header}</div>
-					<div className="relative flex min-h-0 flex-1 flex-col">
+					<div
+						ref={setOverlayHost}
+						data-transcript-overlay-host
+						className="relative flex min-h-0 flex-1 flex-col"
+					>
 						<div
 							ref={scrollerRef}
 							onWheelCapture={cancelPendingRestore}
@@ -188,7 +195,9 @@ export function SessionTileFrame({
 							<TooltipPortalContext.Provider value>
 								<div ref={anchorRef} className="flex min-h-full flex-col">
 									<SessionTileGeometryReadyContext.Provider value={restoreGeometry}>
-										<div className="flex-1">{children}</div>
+										<TranscriptOverlayHostContext.Provider value={overlayHost}>
+											<div className="flex-1">{children}</div>
+										</TranscriptOverlayHostContext.Provider>
 									</SessionTileGeometryReadyContext.Provider>
 									{footer}
 								</div>

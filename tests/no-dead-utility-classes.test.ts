@@ -74,6 +74,8 @@ const ALLOWLIST: Record<string, string> = {
 	"epitaxy-root": HOOK,
 	"epitaxy-status-control": HOOK,
 	"epitaxy-toc": HOOK,
+	"epitaxy-transcript-typography":
+		"upstream's transcript typography scope on the sticky prompt bubble's row; its rules reach only descendants the bubble does not have",
 	"mdx-editor-wrapper": HOOK,
 	"settings-row-title": HOOK,
 	spark: HOOK,

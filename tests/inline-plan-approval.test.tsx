@@ -127,7 +127,7 @@ describe("InlinePlanApproval", () => {
 			].map((button) => button.textContent),
 			opened: openPane.mock.calls,
 		}).toStrictEqual({
-			wrapper: `${CHAT_COLUMN_CLASS} sticky top-[calc(max(var(--epitaxy-top-fade-height,0px),var(--fade-top,0px))+5px)] z-[1] bg-[var(--epitaxy-transcript-surface,var(--color-surface-1))] pb-4`,
+			wrapper: `${CHAT_COLUMN_CLASS} sticky top-[calc(max(var(--epitaxy-top-fade-height,0px),var(--fade-top,0px),var(--epitaxy-suggested-task-end,0px),var(--epitaxy-sticky-prompt-end,0px))+5px)] z-[1] bg-[var(--epitaxy-transcript-surface,var(--color-surface-1))] pb-4`,
 			rootHas: ["!pt-0", "overflow-clip", "gap-3", "max-h-[60vh]"],
 			rootLacks: [],
 			band: "-mx-3 flex flex-col gap-1.5 bg-alpha-1 px-3 py-2",

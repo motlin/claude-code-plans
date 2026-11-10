@@ -14,7 +14,7 @@ import React, {
 	type ReactNode,
 	type RefCallback,
 } from "react";
-import {flushSync} from "react-dom";
+import {createPortal, flushSync} from "react-dom";
 import {Bot, FileWarning, GitBranch, Lock, Palette, Plug, Zap} from "lucide-react";
 import {assertNever} from "../lib/assert-never";
 import {useFizzyLake, useRestInk} from "../lib/fizzy-lake";
@@ -144,6 +144,9 @@ import {usePromptJump} from "../hooks/use-prompt-jump";
 import {useStepCollapseFocusReturn} from "../hooks/use-step-collapse-focus-return";
 import {useTranscriptSelectionAttach} from "../hooks/use-transcript-selection-attach";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
+import {stickyPromptText} from "../lib/sticky-prompt";
+import {StickyPromptOverlay, type StickyPromptCandidate} from "./sticky-prompt-overlay";
+import {TranscriptOverlayHostContext} from "./transcript-overlay-host-context";
 import {TranscriptTailContext} from "./transcript-tail-context";
 import {
 	readTranscriptMeasurements,
@@ -2215,6 +2218,8 @@ interface SessionListEntry {
 	endRecordIndex: number;
 	/** A user prompt, a stop for ⌥⌘↑ / ⌥⌘↓. */
 	isPrompt: boolean;
+	/** A typed prompt's tail-clipped, masked text for the sticky prompt bubble (upstream `qw`/`Jw`). */
+	stickyText?: string;
 	kind: TranscriptRowKind;
 	assistantSpan?: AssistantDisplaySpan | undefined;
 	/**
@@ -2268,6 +2273,13 @@ function isOrdinaryPromptLine(line: SessionLine, renderProps: LineRenderProps): 
 		line.isCompactSummary !== true &&
 		ORDINARY_PROMPT_KINDS.has(classifyUserContent(line))
 	);
+}
+
+/** Upstream `qw`: only the user's own typed prompts with text are sticky prompt candidates. */
+function stickyTextEntry(line: SessionLine, renderProps: LineRenderProps): {stickyText?: string} {
+	if (line.type !== "user" || !isOrdinaryPromptLine(line, renderProps)) return {};
+	const text = stickyPromptText(messageText(line));
+	return text === null ? {} : {stickyText: text};
 }
 
 /** Height of the sticky session header that covers the top of the scroller. */
@@ -3224,6 +3236,7 @@ function buildSessionListEntries(
 			...(line.type === "assistant" ? {replyHead: line} : {}),
 			...(compactionStatuses.has(line.lineIndex) ? {opensWithStatus: "marker"} : {}),
 			...(!verbose && isOrdinaryPromptLine(line, renderProps) ? {prompt: {line, render: renderLine}} : {}),
+			...stickyTextEntry(line, renderProps),
 			...(!verbose && (isProseOnlyAssistantLine(line) || isHookSystemMessageLine(line))
 				? {
 						prose: {render: (precedesStatus: OpeningStatus) => renderLine(false, precedesStatus)},
@@ -3762,6 +3775,18 @@ function VirtualizedSessionEntries({
 	}, [entries, jumpVersion, prefixHeights, range.endIndex, range.startIndex, updateVisibleRange]);
 
 	const promptIndices = useMemo(() => entries.flatMap((entry, index) => (entry.isPrompt ? [index] : [])), [entries]);
+	/** Brings an entry's top to the scroller's top edge, instantly for ⌥⌘↑ / ⌥⌘↓, smoothly from the sticky prompt. */
+	const scrollToEntry = (index: number, behavior?: ScrollBehavior) => {
+		const list = listRef.current;
+		const scroller = scrollerRef.current;
+		if (!list || !scroller) return;
+		const viewport = scrollerViewport(scroller);
+		const listOffset = list.getBoundingClientRect().top - viewport.top + scroller.scrollTop;
+		const top = Math.max(0, listOffset + prefixHeightAt(prefixHeights, index) - stickyHeaderInset(scroller));
+		if (behavior === undefined) scroller.scrollTop = top;
+		else scroller.scrollTo({top, behavior});
+		updateVisibleRange();
+	};
 	usePromptJump({
 		promptIndices,
 		entryOffset: (index) => prefixHeightAt(prefixHeights, index),
@@ -3773,18 +3798,17 @@ function VirtualizedSessionEntries({
 			return viewport.top + stickyHeaderInset(scroller) - list.getBoundingClientRect().top;
 		},
 		scrollToEntry: (index) => {
-			const list = listRef.current;
-			const scroller = scrollerRef.current;
-			if (!list || !scroller) return;
-			const viewport = scrollerViewport(scroller);
-			const listOffset = list.getBoundingClientRect().top - viewport.top + scroller.scrollTop;
-			scroller.scrollTop = Math.max(
-				0,
-				listOffset + prefixHeightAt(prefixHeights, index) - stickyHeaderInset(scroller),
-			);
-			updateVisibleRange();
+			scrollToEntry(index);
 		},
 	});
+	const overlayHost = useContext(TranscriptOverlayHostContext);
+	const stickyCandidates = useMemo(
+		(): StickyPromptCandidate[] =>
+			entries.flatMap((entry, index) =>
+				entry.stickyText === undefined ? [] : [{key: entry.key, index, text: entry.stickyText}],
+			),
+		[entries],
+	);
 
 	useLayoutEffect(() => {
 		const index = pendingFocusIndexRef.current;
@@ -3908,6 +3932,15 @@ function VirtualizedSessionEntries({
 				/>
 			</div>
 			{!tailInline && <TranscriptTail />}
+			{overlayHost !== null &&
+				createPortal(
+					<StickyPromptOverlay
+						candidates={stickyCandidates}
+						scroller={() => (listRef.current ? findScrollContainer(listRef.current) : null)}
+						scrollToEntry={scrollToEntry}
+					/>,
+					overlayHost,
+				)}
 		</>
 	);
 }

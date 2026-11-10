@@ -72,10 +72,10 @@
 		"raisedAt": "2026-11-10"
 	},
 	"bundle.session.raw": {
-		"ceiling": 2281042,
+		"ceiling": 2304076,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "raised from 2248992 (2026-11-10): session-chapters-toc T2-T3 and T5-T7 add the session outline (src/components/session-chapters-toc.tsx: dash rail, popover list, row context menu and rename), the active-chapter scroll tracker, the chapter jump, the outline builder and the v2 chapter store with its v1 migration. The outline is positioned and marked from the first scroll pass of a session with chapters, and the store feeds the inline headings on first paint. Went to 2281042, 9560 bytes past the old ceiling plus tolerance; the 1% tolerance is unchanged.",
+		"reason": "raised from 2281042 (2026-11-10): transcript-sticky-prompt-bubble T1-T6 add upstream's sticky prompt bubble to the session transcript (src/components/sticky-prompt-overlay.tsx: the detection walk, wheel forwarding and the --epitaxy-sticky-prompt-end writer; src/lib/sticky-prompt.ts; the overlay host context), which mounts with every virtualized transcript. Went to 2304076, 224 bytes past the old ceiling plus tolerance; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-10"
 	},
 	"client.coldHome.default.commitsToRows": {

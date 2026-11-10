@@ -6,6 +6,7 @@ import {ChatFileDropContext} from "../src/components/chat-file-drop-context";
 import {AssistantMessageActions} from "../src/components/message-actions";
 import {SessionTileFrame, type SessionTileScrollPosition} from "../src/components/session-tile-frame";
 import {SessionTileGeometryReadyContext} from "../src/components/session-tile-geometry-context";
+import {TranscriptOverlayHostContext} from "../src/components/transcript-overlay-host-context";
 
 const fakeRouter = vi.hoisted(() => ({
 	state: {
@@ -166,6 +167,40 @@ it("docks the session rail beside the scrollport, under the header, and marks th
 		docked: {marked: true, railBesideScrollport: "Session details", headerOutside: false},
 		undocked: false,
 	});
+});
+it("hands the scrollport's positioned wrapper to transcript overlays as their host", () => {
+	let host: HTMLElement | null = null;
+	function ReadsHost() {
+		const value = useContext(TranscriptOverlayHostContext);
+		useEffect(() => {
+			host = value;
+		}, [value]);
+		return <p>Example transcript</p>;
+	}
+	function HostVisit() {
+		const positionRef = useRef<SessionTileScrollPosition | null>(null);
+		const anchorRef = useRef<HTMLDivElement>(null);
+		return (
+			<SessionTileFrame
+				sessionId="example-alice"
+				visitKey="example-entry"
+				positionRef={positionRef}
+				anchorRef={anchorRef}
+				restoredScrollY={undefined}
+				header={<p>Example header</p>}
+				footer={<p>Example composer</p>}
+			>
+				<ReadsHost />
+			</SessionTileFrame>
+		);
+	}
+	const {container} = render(<HostVisit />);
+	const wrapper = container.querySelector("[data-session-scrollport]")?.parentElement;
+	expect({
+		isWrapper: host === wrapper,
+		marked: wrapper?.hasAttribute("data-transcript-overlay-host"),
+		className: wrapper?.className,
+	}).toStrictEqual({isWrapper: true, marked: true, className: "relative flex min-h-0 flex-1 flex-col"});
 });
 it("wraps the chat tile in upstream's rounded surface-2 card", () => {
 	const {container} = render(<Visit visitKey="example-alice-entry" />);

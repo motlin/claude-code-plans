@@ -5255,3 +5255,67 @@ html[data-reduce-motion="true"] [data-cds-composer-attachments] [data-cds-attach
 :root[dir="rtl"] [data-cds="Icon"][data-cds-rotate]:dir(rtl) {
 	rotate: calc(var(--cds-icon-rotate) * -1);
 }
+
+/* Upstream's sticky prompt bubble (cf74bc599 `$w`, inline style c499e192a), with upstream's tokens mapped to the
+   local ones that follow density the same way: --cds-leading-body / --cds-font-size-body → --upstream-leading-body /
+   --upstream-text-body, --cds-radius → --upstream-radius, --cds-bg-user-message → --user-msg-bg. */
+@keyframes epitaxy-sticky-prompt-enter {
+	0% {
+		transform: translateY(calc(-1 * var(--epitaxy-sticky-peek)));
+	}
+	to {
+		transform: none;
+	}
+}
+.epitaxy-sticky-prompt-clip {
+	--epitaxy-sticky-line: var(--upstream-leading-body);
+	--epitaxy-sticky-peek: calc(var(--epitaxy-sticky-line) + var(--cds-pad-md));
+	max-height: var(--epitaxy-sticky-peek);
+	text-align: start;
+	border-radius: 0 0 calc(var(--upstream-radius) + 4px) calc(var(--upstream-radius) + 4px);
+	box-shadow: var(--cds-shadow-md);
+	outline: none;
+	flex-direction: column;
+	justify-content: flex-end;
+	transition: max-height 0.22s cubic-bezier(0.215, 0.61, 0.355, 1);
+	display: flex;
+	overflow: hidden;
+}
+.epitaxy-sticky-prompt-clip:hover,
+.epitaxy-sticky-prompt-clip:focus-visible {
+	max-height: calc(var(--epitaxy-sticky-peek) + var(--epitaxy-sticky-line) * 4 + var(--cds-pad-md));
+}
+.epitaxy-sticky-prompt-clip:focus-visible {
+	outline: 1px solid var(--cds-fill-accent);
+	outline-offset: 2px;
+}
+.epitaxy-sticky-prompt-bubble {
+	padding: var(--cds-pad-md) var(--cds-pad-lg);
+	border-radius: 0 0 calc(var(--upstream-radius) + 4px) calc(var(--upstream-radius) + 4px);
+	background:
+		linear-gradient(var(--user-msg-bg), var(--user-msg-bg)),
+		var(--epitaxy-transcript-surface, var(--color-surface-1));
+	color: var(--upstream-text-primary);
+	font-family: var(--font-sans);
+	font-size: var(--upstream-text-body);
+	line-height: var(--upstream-leading-body);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	text-wrap: pretty;
+	animation: 0.22s cubic-bezier(0.215, 0.61, 0.355, 1) epitaxy-sticky-prompt-enter;
+	display: block;
+}
+@media (prefers-reduced-motion: reduce) {
+	.epitaxy-sticky-prompt-clip {
+		transition: none;
+	}
+	.epitaxy-sticky-prompt-bubble {
+		animation: none;
+	}
+}
+[data-reduce-motion="true"] .epitaxy-sticky-prompt-clip {
+	transition: none;
+}
+[data-reduce-motion="true"] .epitaxy-sticky-prompt-bubble {
+	animation: none;
+}
