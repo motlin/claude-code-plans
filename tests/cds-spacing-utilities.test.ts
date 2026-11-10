@@ -84,6 +84,20 @@ describe("cds density spacing utilities", () => {
 		});
 	});
 
+	it("compiles the transcript row's copied reserves-actions-gap arms to a pb-md band under a non-empty marked child", async () => {
+		expect(
+			await compileAll([
+				"[&:has(>[data-reserves-actions-gap]:not(:empty))]:pb-md",
+				"[&:has(>[data-reply-scope]>[data-reserves-actions-gap]:not(:empty))]:pb-md",
+			]),
+		).toStrictEqual({
+			"[&:has(>[data-reserves-actions-gap]:not(:empty))]:pb-md":
+				".\\[\\&\\:has\\(\\>\\[data-reserves-actions-gap\\]\\:not\\(\\:empty\\)\\)\\]\\:pb-md:has( > [data-reserves-actions-gap]:not(:empty)) { padding-bottom: var(--cds-pad-md); }",
+			"[&:has(>[data-reply-scope]>[data-reserves-actions-gap]:not(:empty))]:pb-md":
+				".\\[\\&\\:has\\(\\>\\[data-reply-scope\\]\\>\\[data-reserves-actions-gap\\]\\:not\\(\\:empty\\)\\)\\]\\:pb-md:has( > [data-reply-scope] > [data-reserves-actions-gap]:not(:empty)) { padding-bottom: var(--cds-pad-md); }",
+		});
+	});
+
 	it("declares upstream's base scale in @theme, restates it for compact scopes and widens it for comfortable ones", () => {
 		const theme = styles.slice(styles.indexOf("\n@theme {\n"));
 		const themeScale = Object.fromEntries(

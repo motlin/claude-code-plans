@@ -166,6 +166,14 @@ import {
 } from "../lib/jump-to-message";
 import {asRecord, isKeyOf} from "../lib/narrow";
 import {toolMarkActivity} from "../lib/working-mark-activity";
+import {
+	CODE_RESERVES_ACTIONS_GAP,
+	RESERVES_ACTIONS_GAP_ATTR,
+	USER_TRAILING_AFTER_FRAME_CLASS,
+	USER_TRAILING_CLASS,
+	USER_TRAILING_SIDE_CLASS,
+	reservesUserActionsGap,
+} from "../lib/user-trailing";
 import {WorkingMark} from "./working-mark";
 import {StepScreenshotStrip, StepScreenshots} from "./step-screenshot-strip";
 import {Tooltip} from "./ui/tooltip";
@@ -1047,7 +1055,21 @@ function TurnHeading({speaker, text}: {speaker: "user" | "assistant"; text: stri
  * The row wrapper every user-side entry shares, heading included, so a new
  * entry variant cannot render a user turn without naming the speaker.
  */
-function UserTurn({text, turnKey, children}: {text: string; turnKey?: string | undefined; children: React.ReactNode}) {
+function UserTurn({
+	text,
+	turnKey,
+	children,
+	trailing,
+	frameHasContent = false,
+}: {
+	text: string;
+	turnKey?: string | undefined;
+	children?: React.ReactNode;
+	/** A carded turn's card, drawn in upstream's trailing strip as the row's last child (keyed shape only). */
+	trailing?: React.ReactNode;
+	/** The frame above renders tiles, a bubble, a failed footer or actions, so the strip gets its top margin. */
+	frameHasContent?: boolean;
+}) {
 	if (turnKey === undefined) {
 		return (
 			<div className="group/msg flex justify-end w-full">
@@ -1063,9 +1085,34 @@ function UserTurn({text, turnKey, children}: {text: string; turnKey?: string | u
 		<div data-take-back-entry={turnKey} data-row-gap="none" className="[&>[data-transcript-row]]:!mt-0">
 			<div data-transcript-row="" className={TRANSCRIPT_ROW_CLASS}>
 				<TurnHeading speaker="user" text={text} />
-				<div data-user-scope="" className="group/msg group/message-row min-w-0">
-					{children}
-				</div>
+				{children !== undefined && (
+					<div data-user-scope="" className="group/msg group/message-row min-w-0">
+						{children}
+					</div>
+				)}
+				{trailing !== undefined && (
+					// Upstream p8's trailing strip. Code has no author layout, so no data-side and the end side class.
+					// Local rows are one per turn ("only"), never stacked or inside a reply scope.
+					<div
+						data-user-trailing=""
+						{...(reservesUserActionsGap({
+							reservesActionsGap: CODE_RESERVES_ACTIONS_GAP,
+							position: "only",
+							awaiting: undefined,
+							insideReply: false,
+							trailingCount: 1,
+						})
+							? {[RESERVES_ACTIONS_GAP_ATTR]: ""}
+							: {})}
+						className={[
+							USER_TRAILING_CLASS,
+							USER_TRAILING_SIDE_CLASS.end,
+							...(frameHasContent ? [USER_TRAILING_AFTER_FRAME_CLASS] : []),
+						].join(" ")}
+					>
+						{trailing}
+					</div>
+				)}
 			</div>
 		</div>
 	);
@@ -4552,9 +4599,21 @@ function UserEntry({
 		return <CommandEntry line={line} sessionId={sessionId} />;
 	}
 
+	// Carded turns (upstream cbb2d9547 `tbe`/`ebe`): the card lands in the trailing strip, with no frame above.
+	// Upstream gives a carded non-synthetic turn with text a ["copy"] toolbar in that frame (and the strip its
+	// mt-5); local carded rows have no message actions yet, so frameHasContent stays false.
 	if (kind === "bash") {
 		const coalesceNext = hasBashInput(line) && nextLine?.type === "user" && hasBashOutput(nextLine);
-		return <BashEntry line={line} outputLine={coalesceNext ? nextLine : undefined} sessionId={sessionId} />;
+		const outputLine = coalesceNext ? nextLine : undefined;
+		const bash = extractBash(line, outputLine);
+		if (!bash.command && !bash.stdout && !bash.stderr) return null;
+		return (
+			<UserTurn
+				text={bash.command}
+				turnKey={line.turnKey ?? line.uuid}
+				trailing={<BashCard bash={bash} line={line} outputUuid={outputLine?.uuid} sessionId={sessionId} />}
+			/>
+		);
 	}
 
 	// Upstream never shows the CLI-injected skill expansion or meta notes; the invoking prompt stands alone.
@@ -4565,9 +4624,11 @@ function UserEntry({
 	if (kind === "agent-message") {
 		const message = parseAgentMessage(getUserContentText(line));
 		return message === null ? null : (
-			<UserTurn text={message.body}>
-				<AgentMessageRow message={message} />
-			</UserTurn>
+			<UserTurn
+				text={message.body}
+				turnKey={line.turnKey ?? line.uuid}
+				trailing={<AgentMessageRow message={message} />}
+			/>
 		);
 	}
 
@@ -5403,82 +5464,84 @@ function CommandEntry({line, sessionId}: {line: MessageSessionLine; sessionId: s
 	);
 }
 
-function BashEntry({
-	line,
-	outputLine,
-	sessionId,
-}: {
-	line: MessageSessionLine;
-	outputLine?: MessageSessionLine | undefined;
-	sessionId: string;
-}) {
-	let command = "";
-	let stdout: string | undefined;
-	let stderr: string | undefined;
-	const outputUuid = outputLine?.uuid;
+interface BashParts {
+	command: string;
+	stdout: string | undefined;
+	stderr: string | undefined;
+}
 
-	function extractBash(content: string | SessionContentBlock[] | undefined) {
-		if (!content) return;
-		if (typeof content === "string") {
-			const bashIn = parseBashInput(content);
-			if (bashIn) command = bashIn.command;
-			const bashOut = parseBashOutput(content);
-			if (bashOut) {
-				stdout = bashOut.stdout;
-				stderr = bashOut.stderr;
-			}
-		} else if (Array.isArray(content)) {
-			for (const block of content) {
-				if (block.type !== "text" || typeof block.text !== "string") continue;
-				const bashIn = parseBashInput(block.text);
-				if (bashIn) command = bashIn.command;
-				const bashOut = parseBashOutput(block.text);
-				if (bashOut) {
-					stdout = bashOut.stdout;
-					stderr = bashOut.stderr;
-				}
-			}
+/** A `!` command's input and its (possibly coalesced) output, read from the CLI's bash tags. */
+function extractBash(line: MessageSessionLine, outputLine: MessageSessionLine | undefined): BashParts {
+	const parts: BashParts = {command: "", stdout: undefined, stderr: undefined};
+
+	function read(text: string) {
+		const bashIn = parseBashInput(text);
+		if (bashIn) parts.command = bashIn.command;
+		const bashOut = parseBashOutput(text);
+		if (bashOut) {
+			parts.stdout = bashOut.stdout;
+			parts.stderr = bashOut.stderr;
 		}
 	}
 
-	extractBash(line.message?.content);
-	if (outputLine) extractBash(outputLine.message?.content);
+	function readContent(content: string | SessionContentBlock[] | undefined) {
+		if (!content) return;
+		if (typeof content === "string") {
+			read(content);
+			return;
+		}
+		for (const block of content) {
+			if (block.type === "text" && typeof block.text === "string") read(block.text);
+		}
+	}
 
-	if (!command && !stdout && !stderr) return null;
+	readContent(line.message?.content);
+	if (outputLine) readContent(outputLine.message?.content);
+	return parts;
+}
 
+function BashCard({
+	bash: {command, stdout, stderr},
+	line,
+	outputUuid,
+	sessionId,
+}: {
+	bash: BashParts;
+	line: MessageSessionLine;
+	outputUuid: string | undefined;
+	sessionId: string;
+}) {
 	return (
-		<div className="flex flex-col items-end gap-1">
-			<div className="relative rounded-lg p-2 bg-surface-1 text-primary max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] min-w-0">
-				{command && (
-					<div className="bg-surface-0 rounded px-2 py-1.5 font-mono text-xs flex items-start gap-2">
-						<span className="text-t6">! </span>
-						<span className="text-success-000 break-all flex-1">{command}</span>
-						<DebugLink sessionId={sessionId} uuid={line.uuid} />
-					</div>
-				)}
-				{stdout && (
-					<div className="mt-1 relative">
-						<TerminalOutput content={stdout} />
+		<div className="relative rounded-lg p-2 bg-surface-1 text-primary max-w-[90%] sm:max-w-[80%] md:max-w-[70%] lg:max-w-[65%] min-w-0">
+			{command && (
+				<div className="bg-surface-0 rounded px-2 py-1.5 font-mono text-xs flex items-start gap-2">
+					<span className="text-t6">! </span>
+					<span className="text-success-000 break-all flex-1">{command}</span>
+					<DebugLink sessionId={sessionId} uuid={line.uuid} />
+				</div>
+			)}
+			{stdout && (
+				<div className="mt-1 relative">
+					<TerminalOutput content={stdout} />
+					<DebugLink
+						sessionId={sessionId}
+						uuid={outputUuid ?? line.uuid}
+						className="absolute top-1 right-1"
+					/>
+				</div>
+			)}
+			{stderr && (
+				<div className="mt-1 border-l-2 border-danger-000 bg-danger-000/10 rounded-r relative">
+					<TerminalOutput content={stderr} />
+					{!stdout && (
 						<DebugLink
 							sessionId={sessionId}
 							uuid={outputUuid ?? line.uuid}
 							className="absolute top-1 right-1"
 						/>
-					</div>
-				)}
-				{stderr && (
-					<div className="mt-1 border-l-2 border-danger-000 bg-danger-000/10 rounded-r relative">
-						<TerminalOutput content={stderr} />
-						{!stdout && (
-							<DebugLink
-								sessionId={sessionId}
-								uuid={outputUuid ?? line.uuid}
-								className="absolute top-1 right-1"
-							/>
-						)}
-					</div>
-				)}
-			</div>
+					)}
+				</div>
+			)}
 		</div>
 	);
 }

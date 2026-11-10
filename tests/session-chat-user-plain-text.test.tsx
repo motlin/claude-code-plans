@@ -363,4 +363,137 @@ describe("SessionChat user row DOM structure (upstream [data-take-back-entry] > 
 			entry: message?.closest("[data-take-back-entry]")?.getAttribute("data-take-back-entry") ?? null,
 		}).toStrictEqual({turnKey: "user-slash-1", entry: "user-slash-1"});
 	});
+
+	it("puts no trailing strip on a plain prompt row", () => {
+		const container = renderRecords([prompt("hello")]);
+
+		expect({
+			strips: container.querySelectorAll("[data-user-trailing]").length,
+			reserved: container.querySelectorAll("[data-reserves-actions-gap]").length,
+		}).toStrictEqual({strips: 0, reserved: 0});
+	});
+});
+
+const STRIP = {
+	tag: "DIV",
+	"data-user-trailing": "",
+	"data-reserves-actions-gap": "",
+	class: "flex w-full flex-col gap-5 compact:gap-4 print:block print:[&>:where(:not(:first-child))]:!mt-5 compact:print:[&>:where(:not(:first-child))]:!mt-4 empty:hidden [&>*]:!my-0 items-end",
+};
+
+/** A carded turn's keyed tree: entry, row, the row's children and the strip's children. */
+function cardedTree(container: HTMLElement) {
+	const entries = Array.from(container.querySelectorAll("[data-take-back-entry]"));
+	const row = entries[0]?.firstElementChild ?? null;
+	const strip = row?.lastElementChild ?? null;
+	return {
+		entries: entries.map((entry) => entry.getAttribute("data-take-back-entry")),
+		row: describeTree(row),
+		rowChildren: Array.from(row?.children ?? []).map((child) => child.tagName),
+		strip: describeTree(strip),
+		stripChildren: strip?.children.length ?? null,
+	};
+}
+
+const ROW = {
+	tag: "DIV",
+	"data-transcript-row": "",
+	class: "mt-6 compact:mt-5 [&>[data-turn-key]]:!my-0 [&>[data-reply-scope]>[data-turn-key]]:!my-0 [&:has(>[data-reserves-actions-gap]:not(:empty))]:pb-md [&:has(>[data-reply-scope]>[data-reserves-actions-gap]:not(:empty))]:pb-md",
+};
+
+describe("SessionChat carded user turns reserve the actions gap (upstream div[data-user-trailing][data-reserves-actions-gap])", () => {
+	it("routes a `!` bash command through the keyed row with the bash card as the strip's only child", () => {
+		const container = renderRecords([
+			{type: "user", uuid: "user-bash-1", message: {role: "user", content: "<bash-input>echo hi</bash-input>"}},
+		]);
+
+		expect({
+			...cardedTree(container),
+			heading: container.querySelector("[data-transcript-row] > h2")?.textContent ?? null,
+			command: container.querySelector("[data-user-trailing] > *")?.textContent.includes("echo hi") ?? null,
+		}).toStrictEqual({
+			entries: ["user-bash-1"],
+			row: ROW,
+			rowChildren: ["H2", "DIV"],
+			strip: STRIP,
+			stripChildren: 1,
+			heading: "You said: echo hi",
+			command: true,
+		});
+	});
+
+	it("routes an agent-message hand-back through the keyed row with the Message from row as the strip's only child", () => {
+		const container = renderRecords([
+			{
+				type: "user",
+				uuid: "user-handback-1",
+				isMeta: true,
+				message: {role: "user", content: '<agent-message from="fake-agent-1">\nall done\n</agent-message>'},
+			},
+		]);
+
+		expect({
+			...cardedTree(container),
+			card: container.querySelector("[data-user-trailing] > [data-agent-message-from]") !== null,
+		}).toStrictEqual({
+			entries: ["user-handback-1"],
+			row: ROW,
+			rowChildren: ["H2", "DIV"],
+			strip: STRIP,
+			stripChildren: 1,
+			card: true,
+		});
+	});
+
+	it("renders nothing for a bash record with no command, stdout or stderr, so no empty strip mounts", () => {
+		const container = renderRecords([
+			{
+				type: "user",
+				uuid: "user-bash-empty",
+				message: {role: "user", content: "<bash-stdout></bash-stdout><bash-stderr></bash-stderr>"},
+			},
+		]);
+
+		expect({
+			entries: container.querySelectorAll("[data-take-back-entry]").length,
+			rows: container.querySelectorAll("[data-transcript-row]").length,
+			strips: container.querySelectorAll("[data-user-trailing]").length,
+		}).toStrictEqual({entries: 0, rows: 0, strips: 0});
+	});
+
+	it("never marks an assistant message in Code: only the bash turn's strip carries the attribute", () => {
+		const container = renderRecords([
+			{type: "user", uuid: "user-bash-2", message: {role: "user", content: "<bash-input>ls</bash-input>"}},
+			{
+				type: "assistant",
+				uuid: "assistant-1",
+				message: {
+					role: "assistant",
+					content: [
+						{type: "text", text: "Listing again."},
+						{type: "tool_use", id: "toolu_fake_1", name: "Bash", input: {command: "ls"}},
+					],
+				},
+			},
+			{
+				type: "user",
+				uuid: "user-result-1",
+				message: {
+					role: "user",
+					content: [{type: "tool_result", tool_use_id: "toolu_fake_1", content: "a.txt"}],
+				},
+			},
+			{
+				type: "assistant",
+				uuid: "assistant-2",
+				message: {role: "assistant", content: [{type: "text", text: "One file."}]},
+			},
+		]);
+
+		expect(
+			Array.from(container.querySelectorAll("[data-reserves-actions-gap]"), (el) =>
+				el.hasAttribute("data-user-trailing"),
+			),
+		).toStrictEqual([true]);
+	});
 });
