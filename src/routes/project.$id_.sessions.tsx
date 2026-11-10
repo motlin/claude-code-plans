@@ -1,13 +1,13 @@
 import {pageTitle} from "../lib/route-title";
-import {createFileRoute, Link, useNavigate} from "@tanstack/react-router";
+import {createFileRoute, useNavigate} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
-import {ArrowLeft, GitBranch, X} from "lucide-react";
+import {GitBranch, X} from "lucide-react";
 import {useMemo} from "react";
 import {z} from "zod";
-import {projectDetailQueryOptions, projectSessionsQueryOptions} from "../lib/api/projects";
-import {DetailTopBar} from "../components/detail-top-bar";
+import {projectDetailQueryOptions, projectSessionsQueryOptions, projectsQueryOptions} from "../lib/api/projects";
 import {NotFoundContent} from "../components/not-found-content";
-import {pillStyles} from "../components/pill-styles";
+import {ProjectPage, ProjectPageHeader} from "../components/project-page-header";
+import {SessionRow} from "../components/session-row";
 import {useClaudeEvents} from "../hooks/use-claude-events";
 import {formatCount} from "../lib/pluralize";
 
@@ -22,6 +22,7 @@ export const Route = createFileRoute("/project/$id_/sessions")({
 		const [detail] = await Promise.all([
 			queryClient.query({...projectDetailQueryOptions(params.id), staleTime: "static"}),
 			queryClient.query({...projectSessionsQueryOptions(params.id), staleTime: "static"}),
+			queryClient.query({...projectsQueryOptions(), staleTime: "static"}),
 		]);
 		return detail;
 	},
@@ -29,16 +30,6 @@ export const Route = createFileRoute("/project/$id_/sessions")({
 		meta: [pageTitle(loaderData ? `${loaderData.name} sessions` : "Project Not Found")],
 	}),
 });
-
-function formatDate(iso: string): string {
-	return new Date(iso).toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-	});
-}
 
 function ProjectSessionsPage() {
 	const {id} = Route.useParams();
@@ -69,19 +60,13 @@ function ProjectSessionsPage() {
 	}
 
 	return (
-		<div>
-			<DetailTopBar>
-				<Link to="/project/$id" params={{id: project.id}} className={pillStyles.primary}>
-					<ArrowLeft className="h-3.5 w-3.5" />
-					{project.name}
-				</Link>
-			</DetailTopBar>
-
-			<h1 className="text-lg font-semibold">{project.name} sessions</h1>
-			<p className="mt-0.5 text-xs text-t6">
-				{sessions.length} {sessions.length === 1 ? "session" : "sessions"}
-				{branch && ` on ${branch}`}
-			</p>
+		<ProjectPage>
+			<ProjectPageHeader projectId={id} section="sessions" />
+			{branch && (
+				<p className="text-[13px] text-t6">
+					{formatCount(sessions.length, "session")} on {branch}
+				</p>
+			)}
 
 			{uniqueBranches.length > 1 && (
 				<div className="mt-2 flex flex-wrap gap-1.5">
@@ -122,59 +107,16 @@ function ProjectSessionsPage() {
 				<p className="mt-4 text-t6">No sessions for this project.</p>
 			) : (
 				<ul className="mt-4 space-y-1">
-					{sessions.map((sess) => {
-						const isActive = activeIds.has(sess.id);
-						return (
-							<li key={sess.id}>
-								<Link
-									to="/session/$id"
-									params={{id: sess.id}}
-									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-surface-0"
-								>
-									<div
-										className="flex items-center gap-1.5 truncate"
-										style={{fontSize: "14px", fontWeight: 430}}
-									>
-										{isActive && (
-											<span
-												className="inline-block h-2 w-2 shrink-0 rounded-full bg-success-000"
-												title="Active"
-											/>
-										)}
-										<span className="truncate">{sess.title}</span>
-									</div>
-									<div className="mt-0.5 flex items-center gap-2 text-xs text-t6">
-										<span>{formatDate(sess.mtime)}</span>
-										{sess.messageCount > 0 && (
-											<>
-												<span>&middot;</span>
-												<span>{formatCount(sess.messageCount, "msg")}</span>
-											</>
-										)}
-										{sess.subagentCount > 0 && (
-											<>
-												<span>&middot;</span>
-												<span>{formatCount(sess.subagentCount, "subagent")}</span>
-											</>
-										)}
-										{sess.gitBranch && (
-											<>
-												<span>&middot;</span>
-												<span className="rounded bg-surface-0 px-1.5 py-0.5 font-mono text-[10px]">
-													{sess.gitBranch}
-												</span>
-											</>
-										)}
-									</div>
-									{sess.summary && sess.summary !== sess.title && (
-										<div className="mt-0.5 truncate text-xs text-t6 italic">{sess.summary}</div>
-									)}
-								</Link>
-							</li>
-						);
-					})}
+					{sessions.map((sess) => (
+						<SessionRow
+							key={sess.id}
+							session={sess}
+							isActive={activeIds.has(sess.id)}
+							showProject={false}
+						/>
+					))}
 				</ul>
 			)}
-		</div>
+		</ProjectPage>
 	);
 }

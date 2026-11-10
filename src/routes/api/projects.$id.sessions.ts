@@ -3,6 +3,7 @@ import {withMethodNotAllowed} from "../../lib/api/method-not-allowed";
 import {ProjectSessionListResponse} from "../../lib/api/projects";
 import {invalidSessionStatusResponse, parseSessionStatusParam} from "../../lib/api/session-status-param";
 
+/** A project's sessions as the same summary rows `/api/sessions/grouped` serves, so every session list draws one row. */
 export const Route = createFileRoute("/api/projects/$id/sessions")({
 	server: {
 		handlers: withMethodNotAllowed({
@@ -10,41 +11,24 @@ export const Route = createFileRoute("/api/projects/$id/sessions")({
 				const status = parseSessionStatusParam(new URL(request.url));
 				if (status === null) return invalidSessionStatusResponse();
 				const {getDb} = await import("../../lib/db");
-				const {listSessionsForProjectFromDb, getSubagentsForProject} = await import("../../lib/db/queries");
+				const {listSessionsForProjectFromDb, getArchivedSessionIds} = await import("../../lib/db/queries");
+				const {toSessionSummaryPayload} = await import("../../lib/session-summary");
+				const {getSessionTerminalHosts} = await import("../../lib/session-terminal-hosts");
+				const {getUnseenSessionIds} = await import("../../lib/db/viewed-state");
 
 				const {index} = getDb();
-				const sessions = listSessionsForProjectFromDb(index, params.id, {status});
-				const allSubagents = getSubagentsForProject(index, params.id);
+				const unseenIds = getUnseenSessionIds(index);
+				const archivedIds = getArchivedSessionIds(index);
+				const terminalHosts = getSessionTerminalHosts();
+				const sessions = listSessionsForProjectFromDb(index, params.id, {status}).map((s) =>
+					toSessionSummaryPayload(s, {
+						unseen: unseenIds.has(s.id),
+						archived: archivedIds.has(s.id),
+						terminalHost: terminalHosts.get(s.id) ?? null,
+					}),
+				);
 
-				const subagentBySession = new Map<string, number>();
-				for (const a of allSubagents) {
-					subagentBySession.set(a.sessionId, (subagentBySession.get(a.sessionId) ?? 0) + 1);
-				}
-
-				const serialized = sessions.map((s) => {
-					const item: {
-						id: string;
-						title: string;
-						summary?: string;
-						mtime: string;
-						created: string;
-						messageCount: number;
-						gitBranch?: string;
-						subagentCount: number;
-					} = {
-						id: s.id,
-						title: s.title,
-						mtime: s.mtime.toISOString(),
-						created: s.created.toISOString(),
-						messageCount: s.messageCount,
-						subagentCount: subagentBySession.get(s.id) ?? 0,
-					};
-					if (s.summary !== undefined) item.summary = s.summary;
-					if (s.gitBranch !== undefined) item.gitBranch = s.gitBranch;
-					return item;
-				});
-
-				return Response.json(ProjectSessionListResponse.parse(serialized), {
+				return Response.json(ProjectSessionListResponse.parse(sessions), {
 					headers: {"Cache-Control": "private, max-age=0, must-revalidate"},
 				});
 			},

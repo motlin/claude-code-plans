@@ -6,6 +6,7 @@ import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import {resetBridgePushedTitles, setBridgePushedTitle} from "../src/lib/bridge-pushed-title-store";
 import {
 	BRIDGED_TITLE_REINDEX_KEY,
+	SKILL_LAUNCH_TITLE_REINDEX_KEY,
 	fullScan,
 	indexFile,
 	indexJsonlFile,
@@ -1248,6 +1249,99 @@ describe("indexer", () => {
 			{id: "session-bridged", title: "claude.ai"},
 			{id: "session-local", title: "Stale local"},
 		]);
+	});
+
+	it("re-indexes once a skill-launched session whose stored title is the skill's base-directory line", async () => {
+		const project = "-Users-alice-projects-skills";
+		const projectDir = join(testDir, project);
+		mkdirSync(projectDir, {recursive: true});
+		const body =
+			"Base directory for this skill: /Users/alice/.claude/plugins/cache/example-market/git/1.2.3/skills/conflicts\n\n# Conflicts";
+		writeFileSync(
+			join(projectDir, "session-skill.jsonl"),
+			jsonl(
+				{
+					type: "user",
+					message: {
+						role: "user",
+						content:
+							"<command-message>git:conflicts</command-message>\n<command-name>/git:conflicts</command-name>",
+					},
+				},
+				{type: "user", isMeta: true, message: {role: "user", content: [{type: "text", text: body}]}},
+			),
+		);
+		writeFileSync(
+			join(projectDir, "session-plain.jsonl"),
+			jsonl({type: "user", message: {role: "user", content: "Fix the logout bug"}}),
+		);
+		await fullScan(db.index, db.summaries, testDir);
+
+		const staleTitles = () => {
+			db.index
+				.update(schema.sessions)
+				.set({title: "Base directory for this skill: /Users/alice/.claude/plugins/cache/example-..."})
+				.where(eq(schema.sessions.id, "session-skill"))
+				.run();
+			db.index
+				.update(schema.sessions)
+				.set({title: "Stale plain"})
+				.where(eq(schema.sessions.id, "session-plain"))
+				.run();
+		};
+		const titles = () =>
+			db.index
+				.select({id: schema.sessions.id, title: schema.sessions.title})
+				.from(schema.sessions)
+				.orderBy(schema.sessions.id)
+				.all();
+		staleTitles();
+		db.index.delete(schema.metadata).where(eq(schema.metadata.key, SKILL_LAUNCH_TITLE_REINDEX_KEY)).run();
+
+		await fullScan(db.index, db.summaries, testDir);
+		expect(titles()).toStrictEqual([
+			{id: "session-plain", title: "Stale plain"},
+			{id: "session-skill", title: "/git:conflicts"},
+		]);
+
+		staleTitles();
+		await fullScan(db.index, db.summaries, testDir);
+		expect(titles()).toStrictEqual([
+			{id: "session-plain", title: "Stale plain"},
+			{
+				id: "session-skill",
+				title: "Base directory for this skill: /Users/alice/.claude/plugins/cache/example-...",
+			},
+		]);
+	});
+
+	it("lists a session with no title source as an untitled session instead of by its id", async () => {
+		const project = "-Users-alice-projects-untitled";
+		const projectDir = join(testDir, project);
+		mkdirSync(projectDir, {recursive: true});
+		writeFileSync(
+			join(projectDir, "session-empty.jsonl"),
+			jsonl({type: "permission-mode", permissionMode: "auto", sessionId: "session-empty"}),
+		);
+		writeFileSync(
+			join(projectDir, "session-named.jsonl"),
+			jsonl({type: "user", message: {role: "user", content: "Fix the logout bug"}}),
+		);
+		await fullScan(db.index, db.summaries, testDir);
+
+		const listed = listSessionsForProjectFromDb(db.index, project)
+			.map((session) => ({id: session.id, title: session.title}))
+			.toSorted((a, b) => a.id.localeCompare(b.id));
+		expect({
+			project: listed,
+			byId: getSessionTitlesByIds(db.index, ["session-empty", "session-named"]),
+		}).toStrictEqual({
+			project: [
+				{id: "session-empty", title: "Untitled session"},
+				{id: "session-named", title: "Fix the logout bug"},
+			],
+			byId: {"session-empty": "Untitled session", "session-named": "Fix the logout bug"},
+		});
 	});
 
 	it("derives parent/worktree display names for worktree and nested checkout projects", async () => {

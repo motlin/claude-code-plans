@@ -393,12 +393,19 @@ describe("GET list routes", () => {
 				(await get(
 					"../src/routes/api/projects.$id.sessions",
 					`/api/projects/${PROJECT_ID}/sessions${query}`,
-				)) as Array<{id: string}>
-			).map((s) => s.id);
+				)) as Array<{id: string; archived: boolean}>
+			).map((s) => [s.id, s.archived]);
 
 		expect({default: await ids(""), all: await ids("?status=all")}).toStrictEqual({
-			default: [ALICE, CAROL],
-			all: [ALICE, BOB, CAROL],
+			default: [
+				[ALICE, false],
+				[CAROL, false],
+			],
+			all: [
+				[ALICE, false],
+				[BOB, true],
+				[CAROL, false],
+			],
 		});
 	});
 

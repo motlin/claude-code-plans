@@ -8,12 +8,18 @@ import {
 	RouterProvider,
 	type AnyRoute,
 } from "@tanstack/react-router";
-import {cleanup, render, screen} from "@testing-library/react";
+import {cleanup, render, screen, within} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {projectMemoriesQueryOptions} from "../src/lib/api/memories";
+import {z} from "zod";
+import {MemoryListResponse, projectMemoriesQueryOptions} from "../src/lib/api/memories";
 import {projectApprovalsQueryOptions} from "../src/lib/api/approvals";
+import {herdrPanesQueryOptions} from "../src/lib/api/herdr";
+import type {SessionListItem} from "../src/lib/api/sessions";
+import {ToastProvider} from "../src/components/toast";
 import {
+	ProjectDetailResponse,
+	projectsQueryOptions,
 	projectDetailQueryOptions,
 	projectPlansQueryOptions,
 	projectSessionsQueryOptions,
@@ -47,6 +53,7 @@ function seededClient(): QueryClient {
 	});
 	queryClient.setQueryData(projectMemoriesQueryOptions(ID).queryKey, null);
 	queryClient.setQueryData(projectApprovalsQueryOptions(ID).queryKey, {approvals: []});
+	queryClient.setQueryData(projectsQueryOptions().queryKey, []);
 	return queryClient;
 }
 
@@ -110,6 +117,176 @@ describe("missing project", () => {
 				projectNotFound: null,
 				projectLine: null,
 			});
+		},
+	);
+});
+
+const PROJECT = "-Users-alice-projects-demo";
+
+type ProjectDetail = NonNullable<z.infer<typeof ProjectDetailResponse>>;
+type ProjectMemories = NonNullable<z.infer<typeof MemoryListResponse>>;
+
+function session(id: string, title: string, mtime: string): SessionListItem {
+	return {
+		id,
+		title,
+		mtime,
+		created: mtime,
+		project: PROJECT,
+		projectName: "demo",
+		messageCount: 4,
+		gitBranch: "main",
+		archived: false,
+		state: "ended",
+		bucket: "done",
+		liveAgentCount: 0,
+		unseen: false,
+		blockedSince: null,
+	};
+}
+
+function projectClient(): QueryClient {
+	const queryClient = new QueryClient({
+		defaultOptions: {queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false}},
+	});
+	const detail: ProjectDetail = {
+		id: PROJECT,
+		name: "demo",
+		projectPath: "/Users/alice/projects/demo",
+		subagentCount: 3,
+	};
+	queryClient.setQueryData(projectDetailQueryOptions(PROJECT).queryKey, detail);
+	queryClient.setQueryData(projectsQueryOptions().queryKey, [
+		{
+			id: PROJECT,
+			name: "demo",
+			projectPath: "/Users/alice/projects/demo",
+			sessionCount: 2,
+			memoryCount: 1,
+			planCount: 0,
+			taskCount: 0,
+			activeCount: 0,
+			lastActivity: "2026-11-09T10:00:00.000Z",
+		},
+	]);
+	queryClient.setQueryData(projectSessionsQueryOptions(PROJECT).queryKey, [
+		session("11111111-1111-4111-8111-111111111111", "Fix the flaky test", "2026-11-09T10:00:00.000Z"),
+		session("22222222-2222-4222-8222-222222222222", "Untitled session", "2026-11-08T10:00:00.000Z"),
+	]);
+	queryClient.setQueryData(projectPlansQueryOptions(PROJECT).queryKey, []);
+	queryClient.setQueryData(projectSubagentsQueryOptions(PROJECT).queryKey, []);
+	queryClient.setQueryData(projectTasksQueryOptions(PROJECT).queryKey, {
+		todos: [],
+		todoCounts: {total: 0, pending: 0, inProgress: 0, completed: 0},
+	});
+	const memories: ProjectMemories = {
+		project: {id: PROJECT, name: "demo", projectPath: "/Users/alice/projects/demo"},
+		memories: [{filename: "notes.md", title: "Project notes", mtime: "2026-11-07T10:00:00.000Z", project: PROJECT}],
+	};
+	queryClient.setQueryData(projectMemoriesQueryOptions(PROJECT).queryKey, memories);
+	queryClient.setQueryData(projectApprovalsQueryOptions(PROJECT).queryKey, {approvals: []});
+	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [], writesEnabled: false});
+	return queryClient;
+}
+
+const sectionCases = cases.map((c) => ({...c, url: c.url.replace(ID, PROJECT)}));
+
+describe("existing project", () => {
+	it.each(sectionCases)(
+		"$url draws the shared page header with linked section counts, hiding empty sections",
+		async ({id, path, url, route}) => {
+			const queryClient = projectClient();
+			const root = createRootRouteWithContext<{queryClient: QueryClient}>()();
+			route.update({id, path, getParentRoute: () => root} as Parameters<AnyRoute["update"]>[0]);
+			const router = createRouter({
+				routeTree: root.addChildren([route]),
+				context: {queryClient},
+				history: createMemoryHistory({initialEntries: [url]}),
+			});
+			await router.load();
+			render(
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						<RouterProvider router={router} />
+					</ToastProvider>
+				</QueryClientProvider>,
+			);
+
+			const heading = await screen.findByRole("heading", {level: 1});
+			const tabs = screen.getByRole("navigation", {name: "Project sections"});
+			const back = screen.getByRole("link", {name: "Projects"});
+			expect({
+				inPageHeader: heading.closest('[data-cds="PageHeader"]') !== null,
+				heading: heading.textContent,
+				path: screen.getByText("/Users/alice/projects/demo").tagName,
+				backHref: back.getAttribute("href"),
+				tabs: within(tabs)
+					.getAllByRole("link")
+					.map((link) => [link.textContent, link.getAttribute("href"), link.getAttribute("aria-current")]),
+				topBar: document.querySelector(".-mt-9"),
+			}).toStrictEqual({
+				inPageHeader: true,
+				heading: "demo",
+				path: "P",
+				backHref: "/projects",
+				tabs: [
+					["Overview", `/project/${PROJECT}`, url === `/project/${PROJECT}` ? "page" : null],
+					["Sessions · 2", `/project/${PROJECT}/sessions`, url.endsWith("/sessions") ? "page" : null],
+					...(url.endsWith("/tasks") ? [["Tasks · 0", `/project/${PROJECT}/tasks`, "page"]] : []),
+					["Memories · 1", `/project/${PROJECT}/memories`, url.endsWith("/memories") ? "page" : null],
+					...(url.endsWith("/plans") ? [["Plans · 0", `/project/${PROJECT}/plans`, "page"]] : []),
+					["Subagents · 3", `/project/${PROJECT}/subagents`, url.endsWith("/subagents") ? "page" : null],
+				],
+				topBar: null,
+			});
+		},
+	);
+
+	it.each(sectionCases.filter((c) => c.url.endsWith(PROJECT) || c.url.endsWith("/sessions")))(
+		"$url lists sessions with the shared session row",
+		async ({id, path, url, route}) => {
+			const queryClient = projectClient();
+			const root = createRootRouteWithContext<{queryClient: QueryClient}>()();
+			route.update({id, path, getParentRoute: () => root} as Parameters<AnyRoute["update"]>[0]);
+			const router = createRouter({
+				routeTree: root.addChildren([route]),
+				context: {queryClient},
+				history: createMemoryHistory({initialEntries: [url]}),
+			});
+			await router.load();
+			render(
+				<QueryClientProvider client={queryClient}>
+					<ToastProvider>
+						<RouterProvider router={router} />
+					</ToastProvider>
+				</QueryClientProvider>,
+			);
+
+			await screen.findByRole("heading", {level: 1});
+			const rows = screen
+				.getAllByRole("link")
+				.filter((link) => link.getAttribute("href")?.startsWith("/session/"));
+			expect(
+				rows.map((row) => ({
+					href: row.getAttribute("href"),
+					title: row.firstElementChild?.textContent,
+					time: row.querySelector("time")?.getAttribute("dateTime"),
+					branch: within(row).getByText("main").className.includes("font-mono"),
+				})),
+			).toStrictEqual([
+				{
+					href: "/session/11111111-1111-4111-8111-111111111111",
+					title: "Fix the flaky test",
+					time: "2026-11-09T10:00:00.000Z",
+					branch: true,
+				},
+				{
+					href: "/session/22222222-2222-4222-8222-222222222222",
+					title: "Untitled session",
+					time: "2026-11-08T10:00:00.000Z",
+					branch: true,
+				},
+			]);
 		},
 	);
 });

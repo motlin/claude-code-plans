@@ -2000,6 +2000,37 @@ function invalidateBridgedTitlesOnce(db: IndexDb): void {
 	});
 }
 
+/**
+ * Stamped once sessions titled by a skill launch body ("Base directory for this skill: ...") are re-indexed under the
+ * rule that titles them by their arguments or slash command instead (session-utils.ts skillLaunchTitle).
+ */
+export const SKILL_LAUNCH_TITLE_REINDEX_KEY = "skill_launch_title_reindex";
+const SKILL_LAUNCH_TITLE_REINDEX_VERSION = "1";
+
+/** Forget the indexed mtimes of skill-launched transcripts once, so the scan re-indexes them and recomputes their titles. */
+function invalidateSkillLaunchTitlesOnce(db: IndexDb): void {
+	db.transaction(() => {
+		const marker = db
+			.select({value: schema.metadata.value})
+			.from(schema.metadata)
+			.where(eq(schema.metadata.key, SKILL_LAUNCH_TITLE_REINDEX_KEY))
+			.get();
+		if (marker?.value === SKILL_LAUNCH_TITLE_REINDEX_VERSION) return;
+		db.delete(schema.indexedFiles)
+			.where(
+				sql`${schema.indexedFiles.path} IN (
+					SELECT ${schema.sessions.filePath} FROM ${schema.sessions}
+					WHERE ${schema.sessions.title} LIKE 'Base directory for this skill:%'
+				)`,
+			)
+			.run();
+		db.insert(schema.metadata)
+			.values({key: SKILL_LAUNCH_TITLE_REINDEX_KEY, value: SKILL_LAUNCH_TITLE_REINDEX_VERSION})
+			.onConflictDoUpdate({target: schema.metadata.key, set: {value: SKILL_LAUNCH_TITLE_REINDEX_VERSION}})
+			.run();
+	});
+}
+
 type ReadDirectory = (path: string) => Promise<string[]>;
 
 /** Slack for coarse filesystem mtimes, so a transcript written as the scan began still counts as written during it. */
@@ -2110,6 +2141,9 @@ export async function fullScan(
 		});
 		await step("bridged titles", () => {
 			invalidateBridgedTitlesOnce(indexDb);
+		});
+		await step("skill launch titles", () => {
+			invalidateSkillLaunchTitlesOnce(indexDb);
 		});
 
 		let projectDirs: string[];

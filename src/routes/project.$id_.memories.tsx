@@ -1,32 +1,28 @@
 import {pageTitle} from "../lib/route-title";
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
-import {ArrowLeft} from "lucide-react";
 import {projectMemoriesQueryOptions} from "../lib/api/memories";
+import {projectDetailQueryOptions, projectsQueryOptions} from "../lib/api/projects";
 import {toMdSlug} from "../lib/md-slug";
-import {DetailTopBar} from "../components/detail-top-bar";
 import {NotFoundContent} from "../components/not-found-content";
-import {pillStyles} from "../components/pill-styles";
+import {ProjectPage, ProjectPageHeader} from "../components/project-page-header";
 import {DebugLink} from "../components/debug-link";
+import {ListItemDate} from "../components/list-item-date";
 
 export const Route = createFileRoute("/project/$id_/memories")({
 	component: ProjectMemoriesPage,
-	loader: async ({context: {queryClient}, params}) =>
-		queryClient.query({...projectMemoriesQueryOptions(params.id), staleTime: "static"}),
+	loader: async ({context: {queryClient}, params}) => {
+		const [memories] = await Promise.all([
+			queryClient.query({...projectMemoriesQueryOptions(params.id), staleTime: "static"}),
+			queryClient.query({...projectDetailQueryOptions(params.id), staleTime: "static"}),
+			queryClient.query({...projectsQueryOptions(), staleTime: "static"}),
+		]);
+		return memories;
+	},
 	head: ({loaderData}) => ({
 		meta: [pageTitle(loaderData ? `${loaderData.project.name} memories` : "Project Not Found")],
 	}),
 });
-
-function formatDate(iso: string): string {
-	return new Date(iso).toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-	});
-}
 
 function ProjectMemoriesPage() {
 	const {id} = Route.useParams();
@@ -36,21 +32,11 @@ function ProjectMemoriesPage() {
 		return <NotFoundContent />;
 	}
 
-	const {project, memories} = data;
+	const {memories} = data;
 
 	return (
-		<div>
-			<DetailTopBar>
-				<Link to="/project/$id" params={{id: project.id}} className={pillStyles.primary}>
-					<ArrowLeft className="h-3.5 w-3.5" />
-					{project.name}
-				</Link>
-			</DetailTopBar>
-
-			<h1 className="text-lg font-semibold">{project.name} memories</h1>
-			<p className="mt-0.5 text-xs text-t6">
-				{memories.length} {memories.length === 1 ? "memory" : "memories"}
-			</p>
+		<ProjectPage>
+			<ProjectPageHeader projectId={id} section="memories" />
 
 			{memories.length === 0 ? (
 				<p className="mt-4 text-t6">No memories for this project.</p>
@@ -64,7 +50,7 @@ function ProjectMemoriesPage() {
 								className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-surface-0"
 							>
 								<span className="text-sm font-medium">{mem.title}</span>
-								<span className="ml-4 shrink-0 text-xs text-t6">{formatDate(mem.mtime)}</span>
+								<ListItemDate iso={mem.mtime} />
 							</Link>
 							<DebugLink
 								kind="memory"
@@ -75,6 +61,6 @@ function ProjectMemoriesPage() {
 					))}
 				</ul>
 			)}
-		</div>
+		</ProjectPage>
 	);
 }

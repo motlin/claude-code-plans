@@ -80,9 +80,16 @@ export function getSessionPrLink(db: IndexDb, sessionId: string): SessionPrLink 
 	return row === undefined ? null : (sessionPrLink(row) ?? null);
 }
 
-/** The row's displayed title: a pane-named bridged session's generated title, else the indexed one. */
+/** Upstream's label for a session nothing names; the index falls back to the bare session id. */
+const UNTITLED_SESSION_TITLE = "Untitled session";
+
+/**
+ * The row's displayed title: a pane-named bridged session's generated title, else the indexed one, with the
+ * index's last-resort session id shown as upstream's "Untitled session" so a bare UUID never titles a list row.
+ */
 function rowTitle(row: Pick<SessionRow, "id" | "title" | "customTitle">, remoteControl: number): string {
-	return displayedSessionTitle({...row, bridged: remoteControl === 1});
+	const title = displayedSessionTitle({...row, bridged: remoteControl === 1});
+	return title === row.id ? UNTITLED_SESSION_TITLE : title;
 }
 
 function rowToSessionEntry(row: SessionEntryRow, projectNames: Map<string, string>): SessionEntry {
@@ -390,25 +397,8 @@ export function listSessionsForProjectFromDb(
 		.orderBy(desc(schema.sessions.mtimeMs))
 		.all();
 
-	return rows.map((row) => ({
-		id: row.id,
-		title: rowTitle(row, row.remoteControl),
-		firstPrompt: row.firstPrompt ?? undefined,
-		lastUserMessage: row.lastUserMessage ?? undefined,
-		summary: row.summary ?? undefined,
-		customTitle: row.customTitle ?? undefined,
-		aiTitle: row.aiTitle ?? undefined,
-		mtime: new Date(row.mtimeMs),
-		created: new Date(row.createdAt),
-		project: row.projectId,
-		projectName,
-		messageCount: row.messageCount,
-		gitBranch: row.gitBranch ?? undefined,
-		cwd: row.cwd ?? undefined,
-		isSidechain: false,
-		pr: sessionPrLink(row),
-		...remoteControlField(row.remoteControl),
-	}));
+	const projectNames = new Map([[projectId, projectName]]);
+	return rows.map((row) => rowToSessionEntry(row, projectNames));
 }
 
 interface DbBranchSummary {

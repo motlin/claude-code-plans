@@ -1,11 +1,9 @@
 import {pageTitle} from "../lib/route-title";
-import {createFileRoute, Link} from "@tanstack/react-router";
+import {createFileRoute} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
-import {ArrowLeft} from "lucide-react";
-import {projectDetailQueryOptions, projectSubagentsQueryOptions} from "../lib/api/projects";
-import {DetailTopBar} from "../components/detail-top-bar";
+import {projectDetailQueryOptions, projectsQueryOptions, projectSubagentsQueryOptions} from "../lib/api/projects";
 import {NotFoundContent} from "../components/not-found-content";
-import {pillStyles} from "../components/pill-styles";
+import {ProjectPage, ProjectPageHeader} from "../components/project-page-header";
 import {SubagentGantt} from "../components/subagent-gantt";
 import {SubagentSequence} from "../components/subagent-sequence";
 import {SubagentTree} from "../components/subagent-tree";
@@ -16,6 +14,7 @@ export const Route = createFileRoute("/project/$id_/subagents")({
 	loader: async ({context: {queryClient}, params}) => {
 		const [detail] = await Promise.all([
 			queryClient.query({...projectDetailQueryOptions(params.id), staleTime: "static"}),
+			queryClient.query({...projectsQueryOptions(), staleTime: "static"}),
 			queryClient.query({...projectSubagentsQueryOptions(params.id), staleTime: "static"}),
 		]);
 		return detail;
@@ -39,18 +38,8 @@ function ProjectSubagentsPage() {
 	const subagentCount = agents.length;
 
 	return (
-		<div>
-			<DetailTopBar>
-				<Link to="/project/$id" params={{id: project.id}} className={pillStyles.primary}>
-					<ArrowLeft className="h-3.5 w-3.5" />
-					{project.name}
-				</Link>
-			</DetailTopBar>
-
-			<h1 className="text-lg font-semibold">{project.name} subagents</h1>
-			<p className="mt-0.5 text-xs text-t6">
-				{subagentCount} {subagentCount === 1 ? "subagent" : "subagents"}
-			</p>
+		<ProjectPage>
+			<ProjectPageHeader projectId={id} section="subagents" />
 
 			{subagentCount === 0 ? (
 				<p className="mt-4 text-t6">No subagents for this project.</p>
@@ -65,6 +54,6 @@ function ProjectSubagentsPage() {
 					)}
 				</section>
 			)}
-		</div>
+		</ProjectPage>
 	);
 }

@@ -2,6 +2,7 @@ import {z} from "zod";
 import {queryOptions} from "@tanstack/react-query";
 import {apiFetch} from "./client";
 import {JsonValueSchema} from "../json-value-schema";
+import {SessionsByIdsResponse} from "./sessions";
 
 const ProjectListItemSchema = z.object({
 	id: z.string(),
@@ -41,17 +42,8 @@ export const projectDetailQueryOptions = (id: string) =>
 		gcTime: Infinity,
 	});
 
-const ProjectSessionItemSchema = z.object({
-	id: z.string(),
-	title: z.string(),
-	summary: z.string().optional(),
-	mtime: z.string(),
-	created: z.string(),
-	messageCount: z.number(),
-	gitBranch: z.string().optional(),
-	subagentCount: z.number(),
-});
-export const ProjectSessionListResponse = z.array(ProjectSessionItemSchema);
+/** A project's sessions, as the same summary rows every other session list draws. */
+export const ProjectSessionListResponse = SessionsByIdsResponse;
 
 export const projectSessionsQueryOptions = (id: string) =>
 	queryOptions({

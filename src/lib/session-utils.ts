@@ -177,9 +177,32 @@ export function isRequestInterrupted(text: string): boolean {
 	return REQUEST_INTERRUPTED_RE.test(text.trim());
 }
 
+const SKILL_LAUNCH_RE = /^Base directory for this skill: (\S+)/;
+const PLUGIN_SKILL_DIR_RE = /\/plugins\/cache\/[^/]+\/([^/]+)\/[^/]+\/skills\/([^/]+)\/?$/;
+const SKILL_ARGUMENTS_RE = /\nARGUMENTS: ([\s\S]*)$/;
+
+/**
+ * The words a skill launch body stands for: the arguments the user passed, else
+ * the slash command (`/plugin:skill`, `/skill` for a project or user skill).
+ * The CLI injects the skill's whole SKILL.md behind its base-directory line, and
+ * the slash command record itself carries no title, so this body is all a
+ * session started by a bare skill has to be titled by.
+ */
+function skillLaunchTitle(text: string): string | null {
+	const dir = text.match(SKILL_LAUNCH_RE)?.[1];
+	if (dir === undefined) return null;
+	const args = text.match(SKILL_ARGUMENTS_RE)?.[1]?.trim();
+	if (args) return args;
+	const plugin = dir.match(PLUGIN_SKILL_DIR_RE);
+	if (plugin) return `/${plugin[1]}:${plugin[2]}`;
+	return `/${dir.replace(/\/+$/, "").split("/").pop() ?? ""}`;
+}
+
 /** The user's own words, with command scaffolding and line breaks removed. */
 function titleText(text: string, options?: {isMeta?: boolean}): string {
 	const command = cleanCommandText(text);
+	const skill = options?.isMeta === true ? skillLaunchTitle(command) : null;
+	if (skill !== null) return skill.replace(/\s+/g, " ").trim();
 	const boilerplateFree = options?.isMeta === true ? stripCommandBoilerplate(command) : command;
 	return boilerplateFree.replace(/\s+/g, " ").trim();
 }

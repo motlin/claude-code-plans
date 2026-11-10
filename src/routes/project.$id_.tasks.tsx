@@ -1,12 +1,11 @@
 import {pageTitle} from "../lib/route-title";
 import {useMemo, useState} from "react";
-import {createFileRoute, Link} from "@tanstack/react-router";
+import {createFileRoute} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
-import {ArrowLeft, CheckCircle, Circle, Ban} from "lucide-react";
-import {projectDetailQueryOptions, projectTasksQueryOptions} from "../lib/api/projects";
-import {DetailTopBar} from "../components/detail-top-bar";
+import {CheckCircle, Circle, Ban} from "lucide-react";
+import {projectDetailQueryOptions, projectsQueryOptions, projectTasksQueryOptions} from "../lib/api/projects";
 import {NotFoundContent} from "../components/not-found-content";
-import {pillStyles} from "../components/pill-styles";
+import {ProjectPage, ProjectPageHeader} from "../components/project-page-header";
 import {DebugLink} from "../components/debug-link";
 import {MarkdownInline, MarkdownView} from "../components/markdown-view";
 import {TaskMetadata} from "../components/task-metadata";
@@ -18,6 +17,7 @@ export const Route = createFileRoute("/project/$id_/tasks")({
 	loader: async ({context: {queryClient}, params}) => {
 		const [detail] = await Promise.all([
 			queryClient.query({...projectDetailQueryOptions(params.id), staleTime: "static"}),
+			queryClient.query({...projectsQueryOptions(), staleTime: "static"}),
 			queryClient.query({...projectTasksQueryOptions(params.id), staleTime: "static"}),
 		]);
 		return detail;
@@ -52,23 +52,19 @@ function ProjectTasksPage() {
 	}
 
 	return (
-		<div>
-			<DetailTopBar>
-				<Link to="/project/$id" params={{id: project.id}} className={pillStyles.primary}>
-					<ArrowLeft className="h-3.5 w-3.5" />
-					{project.name}
-				</Link>
-			</DetailTopBar>
-
-			<h1 className="text-lg font-semibold">{project.name} tasks</h1>
-			<p className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-t6">
-				<span>{todoCounts.total} total</span>
-				{todoCounts.pending > 0 && <span>{todoCounts.pending} pending</span>}
-				{todoCounts.inProgress > 0 && (
-					<span className="text-blue-500">{todoCounts.inProgress} in progress</span>
-				)}
-				{todoCounts.completed > 0 && <span className="text-green-500">{todoCounts.completed} completed</span>}
-			</p>
+		<ProjectPage>
+			<ProjectPageHeader projectId={id} section="tasks" />
+			{todoCounts.total > 0 && (
+				<p className="flex flex-wrap items-center gap-x-3 text-[13px] text-t6">
+					{todoCounts.pending > 0 && <span>{todoCounts.pending} pending</span>}
+					{todoCounts.inProgress > 0 && (
+						<span className="text-blue-500">{todoCounts.inProgress} in progress</span>
+					)}
+					{todoCounts.completed > 0 && (
+						<span className="text-green-500">{todoCounts.completed} completed</span>
+					)}
+				</p>
+			)}
 
 			<input
 				type="search"
@@ -128,6 +124,6 @@ function ProjectTasksPage() {
 					))}
 				</div>
 			)}
-		</div>
+		</ProjectPage>
 	);
 }

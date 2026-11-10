@@ -1,40 +1,34 @@
 import {pageTitle} from "../lib/route-title";
 import {createFileRoute, Link} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
-import {
-	ArrowLeft,
-	ArrowRight,
-	Brain,
-	Bot,
-	CheckSquare,
-	CheckCircle,
-	Circle,
-	FileText,
-	MessageSquare,
-} from "lucide-react";
-import type {ComponentType, SVGProps} from "react";
+import {Circle} from "lucide-react";
+import type {ReactNode} from "react";
 import {
 	projectDetailQueryOptions,
 	projectSessionsQueryOptions,
 	projectPlansQueryOptions,
 	projectTasksQueryOptions,
+	projectsQueryOptions,
 } from "../lib/api/projects";
 import {projectMemoriesQueryOptions} from "../lib/api/memories";
 import {projectApprovalsQueryOptions} from "../lib/api/approvals";
 import {toMdSlug} from "../lib/md-slug";
 import {formatRelativeTimeFromIso} from "../lib/relative-time";
-import {formatCount} from "../lib/pluralize";
-import {DetailTopBar} from "../components/detail-top-bar";
+import {useClaudeEvents} from "../hooks/use-claude-events";
+import {ListItemDate} from "../components/list-item-date";
 import {NotFoundContent} from "../components/not-found-content";
 import {pillStyles} from "../components/pill-styles";
 import {MarkdownInline} from "../components/markdown-view";
+import {ProjectPage, ProjectPageHeader} from "../components/project-page-header";
+import {SessionRow} from "../components/session-row";
 import {TaskOwner} from "../components/task-owner";
 
 export const Route = createFileRoute("/project/$id")({
-	component: ProjectPage,
+	component: ProjectOverviewPage,
 	loader: async ({context: {queryClient}, params}) => {
 		const [detail] = await Promise.all([
 			queryClient.query({...projectDetailQueryOptions(params.id), staleTime: "static"}),
+			queryClient.query({...projectsQueryOptions(), staleTime: "static"}),
 			queryClient.query({...projectSessionsQueryOptions(params.id), staleTime: "static"}),
 			queryClient.query({...projectPlansQueryOptions(params.id), staleTime: "static"}),
 			queryClient.query({...projectTasksQueryOptions(params.id), staleTime: "static"}),
@@ -48,48 +42,45 @@ export const Route = createFileRoute("/project/$id")({
 	}),
 });
 
-function formatDate(iso: string): string {
-	return new Date(iso).toLocaleDateString("en-US", {
-		month: "short",
-		day: "numeric",
-		year: "numeric",
-		hour: "2-digit",
-		minute: "2-digit",
-	});
-}
+/** How many of each section's newest items the overview previews before its "View all" link. */
+const SESSION_PREVIEW = 10;
+const ITEM_PREVIEW = 5;
 
-interface NavCardProps {
-	to: string;
-	params: {id: string};
-	icon: ComponentType<SVGProps<SVGSVGElement>>;
-	label: string;
-	count: number;
-	hint?: string;
-}
+const ROW_CLASS =
+	"flex items-center justify-between rounded-md border border-border px-4 py-3 no-underline transition-colors hover:bg-surface-0";
 
-function NavCard({to, params, icon: Icon, label, count, hint}: NavCardProps) {
+/** One overview section: the list pages' group heading, its rows, and a link to the full section when it holds more. */
+function OverviewSection({
+	title,
+	more,
+	children,
+}: {
+	title: string;
+	more?: {
+		to: "/project/$id/sessions" | "/project/$id/tasks" | "/project/$id/memories" | "/project/$id/plans";
+		id: string;
+		count: number;
+	};
+	children: ReactNode;
+}) {
 	return (
-		<Link
-			to={to}
-			params={params}
-			className="group flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-surface-0"
-		>
-			<div className="flex items-center gap-3">
-				<Icon className="h-4 w-4 text-t6" />
-				<div>
-					<div className="text-sm font-medium">{label}</div>
-					{hint && <div className="text-xs text-t6">{hint}</div>}
-				</div>
-			</div>
-			<div className="flex items-center gap-2 text-t6">
-				<span className="text-sm">{count}</span>
-				<ArrowRight className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" />
-			</div>
-		</Link>
+		<section className="mt-6 first:mt-2">
+			<h2 className="border-b border-border pb-1 text-sm font-semibold">{title}</h2>
+			{children}
+			{more && more.count > 0 && (
+				<Link
+					to={more.to}
+					params={{id: more.id}}
+					className="mt-1 block px-2 text-xs text-accent-100 hover:underline"
+				>
+					View all {more.count} &rarr;
+				</Link>
+			)}
+		</section>
 	);
 }
 
-function ProjectPage() {
+function ProjectOverviewPage() {
 	const {id} = Route.useParams();
 	const {data: detail} = useSuspenseQuery(projectDetailQueryOptions(id));
 	const {data: sessions} = useSuspenseQuery(projectSessionsQueryOptions(id));
@@ -97,42 +88,33 @@ function ProjectPage() {
 	const {data: tasksData} = useSuspenseQuery(projectTasksQueryOptions(id));
 	const {data: memoriesData} = useSuspenseQuery(projectMemoriesQueryOptions(id));
 	const {data: approvalsData} = useSuspenseQuery(projectApprovalsQueryOptions(id));
+	const {activeSessions} = useClaudeEvents();
 
 	if (!detail) {
 		return <NotFoundContent />;
 	}
 
 	const memories = memoriesData?.memories ?? [];
-	const {todos, todoCounts} = tasksData;
-	const planCount = new Set(plans.map((p) => p.filename)).size;
-	const taskHint =
-		todoCounts.inProgress > 0
-			? `${todoCounts.inProgress} in progress, ${todoCounts.pending} pending`
-			: todoCounts.pending > 0
-				? `${todoCounts.pending} pending`
-				: todoCounts.completed > 0
-					? `${todoCounts.completed} completed`
-					: undefined;
+	const openTasks = tasksData.todos.filter((task) => task.status !== "completed");
+	const uniquePlans = [...new Map(plans.map((plan) => [plan.filename, plan])).values()];
+	const approvals = approvalsData.approvals;
+	const isEmpty =
+		approvals.length === 0 &&
+		sessions.length === 0 &&
+		openTasks.length === 0 &&
+		memories.length === 0 &&
+		uniquePlans.length === 0;
 
 	return (
-		<div>
-			<DetailTopBar>
-				<Link to="/projects" className={pillStyles.primary}>
-					<ArrowLeft className="h-3.5 w-3.5" />
-					All Projects
-				</Link>
-			</DetailTopBar>
+		<ProjectPage>
+			<ProjectPageHeader projectId={id} section="overview" />
 
-			<h1 className="text-lg font-semibold">{detail.name}</h1>
-			{detail.projectPath && <p className="mt-0.5 text-xs text-t6">{detail.projectPath}</p>}
+			{isEmpty && <p className="mt-2 text-t6">Nothing in this project yet.</p>}
 
-			{approvalsData.approvals.length > 0 && (
-				<section className="mt-6">
-					<h2 className="border-b border-border pb-1 text-sm font-semibold">
-						Awaiting approval ({approvalsData.approvals.length})
-					</h2>
-					<ul className="mt-2 space-y-1">
-						{approvalsData.approvals.map((approval) => {
+			{approvals.length > 0 && (
+				<OverviewSection title={`Awaiting approval · ${approvals.length}`}>
+					<ul className="mt-2 space-y-2">
+						{approvals.map((approval) => {
 							const linkProps = approval.planFilename
 								? ({
 										to: "/plan/$filename",
@@ -144,12 +126,9 @@ function ProjectPage() {
 									} as const);
 							return (
 								<li key={`${approval.sessionId}:${approval.toolUseId}`}>
-									<Link
-										{...linkProps}
-										className="flex items-center gap-2 rounded-md border border-border px-4 py-3 no-underline transition-colors hover:bg-surface-0"
-									>
+									<Link {...linkProps} className={ROW_CLASS}>
 										<span className={pillStyles.outline}>{approval.toolName}</span>
-										<span className="ml-auto text-xs text-t6">
+										<span className="ml-4 shrink-0 text-xs text-t6">
 											{formatRelativeTimeFromIso(approval.blockedSince)}
 										</span>
 									</Link>
@@ -157,144 +136,46 @@ function ProjectPage() {
 							);
 						})}
 					</ul>
-				</section>
+				</OverviewSection>
 			)}
 
-			{/* Sub-route nav cards */}
-			<div className="mt-6 grid grid-cols-1 gap-2 sm:grid-cols-2">
-				<NavCard
-					to="/project/$id/sessions"
-					params={{id: detail.id}}
-					icon={MessageSquare}
-					label="Sessions"
-					count={sessions.length}
-				/>
-				<NavCard
-					to="/project/$id/tasks"
-					params={{id: detail.id}}
-					icon={CheckSquare}
-					label="Tasks"
-					count={todoCounts.total}
-					{...(taskHint ? {hint: taskHint} : {})}
-				/>
-				<NavCard
-					to="/project/$id/memories"
-					params={{id: detail.id}}
-					icon={Brain}
-					label="Memories"
-					count={memories.length}
-				/>
-				<NavCard
-					to="/project/$id/plans"
-					params={{id: detail.id}}
-					icon={FileText}
-					label="Plans"
-					count={planCount}
-				/>
-				{detail.subagentCount > 0 && (
-					<NavCard
-						to="/project/$id/subagents"
-						params={{id: detail.id}}
-						icon={Bot}
-						label="Subagents"
-						count={detail.subagentCount}
-					/>
-				)}
-			</div>
-
-			{/* Sessions */}
-			<section className="mt-8">
-				<h2 className="border-b border-border pb-1 text-sm font-semibold">Sessions ({sessions.length})</h2>
-				{sessions.length === 0 ? (
-					<p className="mt-2 text-sm text-t6">No sessions.</p>
-				) : (
-					<ul className="mt-2 space-y-1">
-						{sessions.map((sess) => (
-							<li key={sess.id}>
-								<Link
-									to="/session/$id"
-									params={{id: sess.id}}
-									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-surface-0"
-								>
-									<div className="truncate" style={{fontSize: "14px", fontWeight: 430}}>
-										{sess.title}
-									</div>
-									<div className="mt-0.5 flex items-center gap-2 text-xs text-t6">
-										<span>{formatDate(sess.mtime)}</span>
-										{sess.messageCount > 0 && (
-											<>
-												<span>&middot;</span>
-												<span>{formatCount(sess.messageCount, "msg")}</span>
-											</>
-										)}
-										{sess.subagentCount > 0 && (
-											<>
-												<span>&middot;</span>
-												<span>{formatCount(sess.subagentCount, "subagent")}</span>
-											</>
-										)}
-										{sess.gitBranch && (
-											<>
-												<span>&middot;</span>
-												<span className="rounded bg-surface-0 px-1.5 py-0.5 font-mono text-[10px]">
-													{sess.gitBranch}
-												</span>
-											</>
-										)}
-									</div>
-									{sess.summary && sess.summary !== sess.title && (
-										<div className="mt-0.5 truncate text-xs text-t6 italic">{sess.summary}</div>
-									)}
-								</Link>
-							</li>
+			{sessions.length > 0 && (
+				<OverviewSection
+					title="Recent sessions"
+					more={{
+						to: "/project/$id/sessions",
+						id,
+						count: sessions.length > SESSION_PREVIEW ? sessions.length : 0,
+					}}
+				>
+					<ul className="mt-1 space-y-1">
+						{sessions.slice(0, SESSION_PREVIEW).map((session) => (
+							<SessionRow
+								key={session.id}
+								session={session}
+								isActive={activeSessions.has(session.id)}
+								showProject={false}
+							/>
 						))}
 					</ul>
-				)}
-			</section>
-
-			{/* Subagents */}
-			{detail.subagentCount > 0 && (
-				<section className="mt-8">
-					<h2 className="border-b border-border pb-1 text-sm font-semibold">
-						Subagents ({detail.subagentCount})
-					</h2>
-					<div className="mt-2">
-						<Link
-							to="/project/$id/subagents"
-							params={{id}}
-							className="text-xs text-accent-100 hover:underline inline-flex items-center gap-1"
-						>
-							<Bot className="h-3 w-3" />
-							View all subagents
-						</Link>
-					</div>
-				</section>
+				</OverviewSection>
 			)}
 
-			{/* Tasks */}
-			{todos.length > 0 && (
-				<section className="mt-8">
-					<h2 className="border-b border-border pb-1 text-sm font-semibold">
-						Tasks ({todoCounts.total})
-						{todoCounts.pending > 0 && (
-							<span className="ml-2 text-xs font-normal text-t6">{todoCounts.pending} pending</span>
-						)}
-						{todoCounts.inProgress > 0 && (
-							<span className="ml-2 text-xs font-normal text-blue-500">
-								{todoCounts.inProgress} in progress
-							</span>
-						)}
-					</h2>
-					<div className="mt-2 space-y-1">
-						{todos.map((task) => (
-							<div key={task.taskId} className="flex items-start gap-2 rounded-md p-2">
-								{task.status === "completed" ? (
-									<CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
-								) : (
-									<Circle
-										className={`mt-0.5 h-4 w-4 shrink-0 ${task.status === "in_progress" ? "text-blue-500" : "text-t6"}`}
-									/>
-								)}
+			{openTasks.length > 0 && (
+				<OverviewSection
+					title="Open tasks"
+					more={{
+						to: "/project/$id/tasks",
+						id,
+						count: openTasks.length > ITEM_PREVIEW ? tasksData.todos.length : 0,
+					}}
+				>
+					<ul className="mt-1 space-y-1">
+						{openTasks.slice(0, ITEM_PREVIEW).map((task) => (
+							<li key={task.taskId} className="flex items-start gap-2 rounded-md p-2">
+								<Circle
+									className={`mt-0.5 h-4 w-4 shrink-0 ${task.status === "in_progress" ? "text-blue-500" : "text-t6"}`}
+								/>
 								<div className="min-w-0 flex-1">
 									<div className="text-sm text-primary">
 										#{task.taskId} <MarkdownInline markdown={task.subject} />
@@ -306,58 +187,63 @@ function ProjectPage() {
 										</div>
 									)}
 								</div>
-							</div>
+							</li>
 						))}
-					</div>
-				</section>
+					</ul>
+				</OverviewSection>
 			)}
 
-			{/* Memories */}
-			<section className="mt-8">
-				<h2 className="border-b border-border pb-1 text-sm font-semibold">Memories ({memories.length})</h2>
-				{memories.length === 0 ? (
-					<p className="mt-2 text-sm text-t6">No memories.</p>
-				) : (
-					<ul className="mt-2 space-y-1">
-						{memories.map((mem) => (
+			{memories.length > 0 && (
+				<OverviewSection
+					title="Memories"
+					more={{
+						to: "/project/$id/memories",
+						id,
+						count: memories.length > ITEM_PREVIEW ? memories.length : 0,
+					}}
+				>
+					<ul className="mt-2 space-y-2">
+						{memories.slice(0, ITEM_PREVIEW).map((mem) => (
 							<li key={mem.filename}>
 								<Link
 									to="/memory/$project/$filename"
 									params={{project: mem.project, filename: toMdSlug(mem.filename)}}
-									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-surface-0"
+									className={ROW_CLASS}
 								>
-									<div className="truncate" style={{fontSize: "14px", fontWeight: 430}}>
-										{mem.title}
-									</div>
-									<div className="mt-0.5 text-xs text-t6">{formatDate(mem.mtime)}</div>
+									<span className="truncate text-sm font-medium">{mem.title}</span>
+									<ListItemDate iso={mem.mtime} />
 								</Link>
 							</li>
 						))}
 					</ul>
-				)}
-			</section>
+				</OverviewSection>
+			)}
 
-			{/* Linked Plans */}
-			{plans.length > 0 && (
-				<section className="mt-8">
-					<h2 className="border-b border-border pb-1 text-sm font-semibold">Linked Plans ({plans.length})</h2>
-					<ul className="mt-2 space-y-1">
-						{plans.map((plan) => (
+			{uniquePlans.length > 0 && (
+				<OverviewSection
+					title="Plans"
+					more={{
+						to: "/project/$id/plans",
+						id,
+						count: uniquePlans.length > ITEM_PREVIEW ? uniquePlans.length : 0,
+					}}
+				>
+					<ul className="mt-2 space-y-2">
+						{uniquePlans.slice(0, ITEM_PREVIEW).map((plan) => (
 							<li key={plan.filename}>
 								<Link
 									to="/plan/$filename"
 									params={{filename: toMdSlug(plan.filename)}}
-									className="block rounded-md p-2 cursor-pointer transition-colors hover:bg-surface-0"
+									className={ROW_CLASS}
 								>
-									<div className="truncate" style={{fontSize: "14px", fontWeight: 430}}>
-										{plan.title}
-									</div>
+									<span className="truncate text-sm font-medium">{plan.title}</span>
+									{plan.mtime && <ListItemDate iso={plan.mtime} />}
 								</Link>
 							</li>
 						))}
 					</ul>
-				</section>
+				</OverviewSection>
 			)}
-		</div>
+		</ProjectPage>
 	);
 }

@@ -143,6 +143,27 @@ describe("extractSessionTitle", () => {
 		expect(extractSessionTitle(text, undefined, {isMeta: true})).toBe("Process all tasks automatically.");
 	});
 
+	it.each([
+		["/Users/alice/.claude/plugins/cache/example-market/git/1.2.3/skills/conflicts", "/git:conflicts"],
+		["/Users/alice/projects/demo/.claude/skills/schema-sync", "/schema-sync"],
+	])("titles a skill launch body under %s by its slash command", (dir, title) => {
+		const text = `Base directory for this skill: ${dir}\n\n# Conflicts\n\nFix all merge conflicts and continue.`;
+		expect(extractSessionTitle(text, undefined, {isMeta: true})).toBe(title);
+	});
+
+	it("titles a skill launch body by the arguments the user passed", () => {
+		const text = [
+			"Base directory for this skill: /Users/alice/.claude/plugins/cache/example-market/build/1.0.0/skills/dev-server",
+			"",
+			"# Dev Server",
+			"",
+			"Start the dev server.",
+			"",
+			"ARGUMENTS: port 7526",
+		].join("\n");
+		expect(extractSessionTitle(text, undefined, {isMeta: true})).toBe("port 7526");
+	});
+
 	it("keeps the trailing prompt when an empty argument block opens the text", () => {
 		expect(
 			extractSessionTitle("<instructions>\n\n</instructions>\nship the release", undefined, {
