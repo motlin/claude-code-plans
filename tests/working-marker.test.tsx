@@ -1323,6 +1323,28 @@ describe("WorkingMarker tool label hand-off", () => {
 		}).toStrictEqual({shimmer: "Reading foo.ts", title: "Reading foo.ts…", announcer: "Reading foo.ts"});
 	});
 
+	it("masks a secret in the handed-off words as seven bullets (upstream VS)", () => {
+		stubReducedMotion(false);
+		const fakeJwt = "eyJGQUtFRkFLRQ.eyJGQUtFRkFLRQ.FAKESIGNATUREFAKE";
+		const words = `curl -H "Authorization: Bearer ${fakeJwt}"`;
+		const {container} = render(<WorkingMarker state={WORKING} toolLabel={{...READING, words}} />);
+		const masked = `curl -H "Authorization: Bearer •••••••"`;
+		expect({
+			title: toolView(container).title,
+			shimmer: toolView(container).shimmer,
+			visible: toolView(container).visible,
+		}).toStrictEqual({title: masked, shimmer: masked, visible: `${masked}·5s`});
+	});
+
+	it("cuts the words before an unterminated private key (upstream _h after VS)", () => {
+		stubReducedMotion(false);
+		const keyHeader = `-----BEGIN ${["RSA", "PRIVATE", "KEY"].join(" ")}-----`;
+		const fakeGh = `ghp_${"A".repeat(36)}`;
+		const words = `Pushing ${fakeGh} then ${keyHeader} FAKEBODY`;
+		const {container} = render(<WorkingMarker state={WORKING} toolLabel={{...READING, words}} />);
+		expect(toolView(container).title).toBe("Pushing ••••••• then ");
+	});
+
 	it("drops the Thinking stat while the words show", () => {
 		stubReducedMotion(false);
 		const {container} = render(<WorkingMarker state={{...WORKING, thinking: true}} toolLabel={READING} />);

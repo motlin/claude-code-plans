@@ -3,7 +3,7 @@ import {renderMarkdownWithHighlighting} from "../../lib/client-markdown";
 import {getHighlighterSync, getHighlighterVersion, subscribeHighlighter} from "../../hooks/use-shiki";
 import {useCodeThemes} from "../../hooks/use-code-themes";
 import {parseAnsiCodes} from "../../lib/ansi-codes";
-import {maskSecrets, secretToggleLabel} from "../../lib/secret-mask";
+import {maskSecrets, maskUrlSecrets, secretToggleLabel} from "../../lib/secret-mask";
 import {type SecretReveal, useSecretReveal} from "./use-secret-reveal";
 import {handleCodeCopyClick} from "../../lib/code-copy";
 import {formatDuration} from "../../lib/format-duration";
@@ -33,6 +33,34 @@ function maskAnsiParts(parts: AnsiPart[]): AnsiPart[] {
 		pos += part.text.length;
 		return {...part, text};
 	});
+}
+
+const NAVIGATE_URL_CLASS = "text-body text-accent-100 truncate min-w-0";
+
+/**
+ * A navigate call's target URL. Upstream masks a URL that holds a secret
+ * (`$2`, keeping the host legible) and does not link it.
+ */
+export function NavigateUrl({url}: {url: string}) {
+	const masked = maskUrlSecrets(url);
+	if (masked !== url) {
+		return (
+			<span data-navigate-url className={NAVIGATE_URL_CLASS}>
+				{masked}
+			</span>
+		);
+	}
+	return (
+		<a
+			data-navigate-url
+			href={url}
+			target="_blank"
+			rel="noopener noreferrer"
+			className={`${NAVIGATE_URL_CLASS} hover:underline`}
+		>
+			{url}
+		</a>
+	);
 }
 
 /** Draws ANSI-styled output; secrets are masked unless `masked` is false (revealed). */

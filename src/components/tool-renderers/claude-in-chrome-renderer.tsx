@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import type {ThemedToken} from "@shikijs/core";
 import type {ToolRendererProps} from "./types";
-import {CollapsibleSection, CopyableBody, ErrorBorder, ExpandableBlock} from "./shared";
+import {CollapsibleSection, CopyableBody, ErrorBorder, ExpandableBlock, NavigateUrl} from "./shared";
 import {MarkdownArticle} from "../markdown-article";
 import {looksLikeMarkdown} from "../../lib/client-markdown";
 import {useHighlightedLines} from "../../hooks/use-shiki";
@@ -191,16 +191,7 @@ function NavigateRenderer({input, resultText}: {input: Record<string, unknown>; 
 					<Globe className="h-4 w-4 text-blue-500" />
 				)}
 				<span className="text-body text-primary">{isSuccess ? "Navigated to" : "Navigate to"}</span>
-				{url && (
-					<a
-						href={url}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="text-body text-accent-100 hover:underline truncate min-w-0"
-					>
-						{url}
-					</a>
-				)}
+				{url && <NavigateUrl url={url} />}
 			</div>
 			{cleanedResult && <ResultSummary resultText={cleanedResult} />}
 		</div>

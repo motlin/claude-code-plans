@@ -6,6 +6,7 @@ import {useTypeRowCut} from "../lib/use-row-cut";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 import {
 	clockHidden,
+	maskWorkingLabel,
 	CONNECTING_PHASE_LABEL,
 	PHASE_SETTLE_MS,
 	phaseLabel,
@@ -176,7 +177,8 @@ export function WorkingMarker({
 	const showClock = now === null || !clockHidden({now, endedAt: toolLabelEndedAt});
 	const parts = workingLineParts(state, tokens, showClock);
 	const phaseWord = phase === null ? null : stripTrailingEllipsis(phase);
-	const toolWord = tool === null ? null : stripTrailingEllipsis(tool.words);
+	const toolWords = tool === null ? null : maskWorkingLabel(tool.words);
+	const toolWord = toolWords === null ? null : stripTrailingEllipsis(toolWords);
 	const morphWord = phaseWord ?? toolWord;
 	const label = morphWord ?? parts.label;
 	const stats =
@@ -185,7 +187,7 @@ export function WorkingMarker({
 				? toolLabelStats(state, tool.since, tokens)
 				: parts.stats
 			: [];
-	const rowTitle = phase ?? tool?.words;
+	const rowTitle = phase ?? toolWords ?? undefined;
 	const announcement = phaseWord ?? (tool?.unspoken === true ? (toolWord ?? "") : workingLineAnnouncement(state));
 	const tasks = runningTasks > 0;
 	const labelRowCut = useTypeRowCut(morphWord === null ? label : "");

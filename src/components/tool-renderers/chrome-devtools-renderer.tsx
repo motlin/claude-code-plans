@@ -14,7 +14,7 @@ import {
 	ArrowLeft,
 } from "lucide-react";
 import type {ToolRendererProps} from "./types";
-import {CopyableBody, ErrorBorder} from "./shared";
+import {CopyableBody, ErrorBorder, NavigateUrl} from "./shared";
 import {
 	type ConsoleMessage,
 	type NetworkRequest,
@@ -150,16 +150,7 @@ function NavigatePageRenderer({input, resultText}: {input: Record<string, unknow
 			<div className="flex items-center gap-2">
 				<CheckCircle className="h-4 w-4 text-green-500" />
 				<span className="text-body text-primary">Navigated to</span>
-				{url && (
-					<a
-						href={url}
-						target="_blank"
-						rel="noopener noreferrer"
-						className="text-body text-accent-100 hover:underline truncate min-w-0"
-					>
-						{url}
-					</a>
-				)}
+				{url && <NavigateUrl url={url} />}
 			</div>
 			<PageList pages={pages} />
 		</div>

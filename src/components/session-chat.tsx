@@ -126,6 +126,7 @@ import {
 import type {BackgroundCompletionLike, SummarySegment} from "../lib/session-utils";
 import {pastTense} from "../lib/past-tense";
 import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
+import {stripControlsAndMask} from "../lib/secret-mask";
 import {ELAPSED_MIN_SECONDS, formatElapsed} from "../lib/working-marker";
 import {NoticeParts, TaskDescriptionLinks, type TaskEvent, TaskEventRun} from "./task-event-run-row";
 import {usageLimitCard, type UsageLimitCard} from "../lib/usage-limit-notice";
@@ -6183,24 +6184,28 @@ function ToolCallRow({
 			: running === null
 				? (toolRowLabel.doneLabel ?? null)
 				: (running.label ?? null));
-	const label =
+	// Upstream's `Iv`: a row's label and param are masked and stripped of display controls.
+	const label = stripControlsAndMask(
 		phrase ??
-		(benignError ? toolRowLabel.failedVerb : undefined) ??
-		(failed ? runningToolLabel(labelCall).verb : undefined) ??
-		running?.verb ??
-		toolRowLabel.verb;
+			(benignError ? toolRowLabel.failedVerb : undefined) ??
+			(failed ? runningToolLabel(labelCall).verb : undefined) ??
+			running?.verb ??
+			toolRowLabel.verb,
+	);
 	// A label that is a whole phrase owns the row and truncates; a bare verb
 	// keeps its width so the param beside it truncates instead.
 	const isPhraseLabel = phrase !== null;
 
-	const displayParam =
+	const rawParam =
 		RENDERER_HANDLES_PARAM.has(call.name) || PARAMLESS_TOOLS.has(call.name) || isPhraseLabel || benignError
 			? ""
 			: isFileParam
 				? (call.param.split("/").pop() ?? call.param)
 				: (toolRowLabel.meta ?? call.param);
-	const paramHref = displayParam === toolRowLabel.meta ? toolRowLabel.metaHref : undefined;
-	const paramIsCode = displayParam === toolRowLabel.meta && toolRowLabel.metaIsCode === true && !isFailedSkill;
+	const displayParam = stripControlsAndMask(rawParam);
+	// A meta link whose text held a secret is not linked.
+	const paramHref = rawParam === toolRowLabel.meta && displayParam === rawParam ? toolRowLabel.metaHref : undefined;
+	const paramIsCode = rawParam === toolRowLabel.meta && toolRowLabel.metaIsCode === true && !isFailedSkill;
 	const rangeLabel = displayParam ? rowRangeLabel(members) : null;
 	// What allowed or blocked the call is a diagnostic upstream never shows, so only Verbose names it.
 	const permissionLabel = verbose && call.permission !== undefined ? permissionDecisionLabel(call.permission) : null;
@@ -6696,7 +6701,9 @@ function ToolCallSummary({
 	const runningText =
 		pendingCall === undefined
 			? null
-			: runningToolLabelText(runningToolLabel(withPermissionWait(pendingCall, permissionWaitId)));
+			: stripControlsAndMask(
+					runningToolLabelText(runningToolLabel(withPermissionWait(pendingCall, permissionWaitId))),
+				);
 	// A failed completion leads only when its launch is outside the group; a
 	// launch inside it takes the failure, so its notice trails like any other.
 	const leadsLabel = (notice: BackgroundNotice) =>

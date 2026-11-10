@@ -2,6 +2,7 @@ import {z} from "zod";
 import {isRequestInterrupted} from "./session-utils";
 import {assertNever} from "./assert-never";
 import type {SessionSummaryState} from "./session-state";
+import {cutUnterminatedPrivateKey, maskSecretsFixed} from "./secret-mask";
 
 /**
  * One signal in a session's current turn, normalized from transcript records
@@ -225,6 +226,11 @@ export interface WorkingLineToolLabel {
 	words: string;
 	unspoken: boolean;
 	since: number | null;
+}
+
+/** Upstream's working-activity label (`ct`): every secret becomes seven bullets, then an unterminated private key is cut. */
+export function maskWorkingLabel(words: string): string {
+	return cutUnterminatedPrivateKey(maskSecretsFixed(words));
 }
 
 /** What the busy line's label shows, in upstream's `h ?? toolLabel` priority. */
