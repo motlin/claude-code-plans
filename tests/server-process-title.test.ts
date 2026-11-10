@@ -17,6 +17,13 @@ describe("production server process title", () => {
 		});
 	});
 
+	// scripts/server.sh passes its SERVER_TITLE, so a test run can give its server a title no real server has.
+	it("takes the title scripts/server.sh passes in SERVER_TITLE", () => {
+		setServerProcessTitle({dev: false, env: {SERVER_TITLE: "ccb-test-server-fake-run"}});
+
+		expect(process.title).toBe("ccb-test-server-fake-run");
+	});
+
 	it("leaves the dev process title alone", () => {
 		setServerProcessTitle({dev: true});
 

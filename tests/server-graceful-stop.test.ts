@@ -1,29 +1,25 @@
-import {execFileSync} from "node:child_process";
-import {existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync} from "node:fs";
+import {existsSync, mkdirSync, readFileSync, rmSync, symlinkSync} from "node:fs";
 import {get, type ClientRequest} from "node:http";
-import {createServer} from "node:net";
-import {tmpdir} from "node:os";
-import {join, resolve} from "node:path";
+import {join} from "node:path";
 import {afterAll, beforeAll, describe, expect, it} from "vite-plus/test";
+import {freePort, isolatedServerEnv, newServerScriptRun, projectRoot, runServerScript} from "./helpers/server-script";
 
 // `scripts/server.sh stop` must let the real production server exit on its
 // own after SIGTERM. Long-lived handles (file watcher, sweep timers, SSE
 // streams, the herdr bridge) used to keep the event loop alive, so every
-// stop ended in "Force killing". The script's default SERVER_MATCH is kept:
-// the listener closes immediately on SIGTERM, so only the command-line match
-// (scoped to this checkout's cwd) sees a process that lingers afterwards.
+// stop ended in "Force killing". SERVER_MATCH is left to the script: the
+// listener closes immediately on SIGTERM, so only the title match (scoped to
+// the run directory's cwd) sees a process that lingers afterwards.
 
-const projectRoot = resolve(process.cwd());
-const script = join(projectRoot, "scripts", "server.sh");
 const builtServer = join(projectRoot, ".output", "server", "index.mjs");
 
-// server.sh manages every server whose cwd is PROJECT_DIR, and the user's
-// real server runs `node .output/server/index.mjs` from a checkout of this
-// repo. Launching from a per-run directory (with .output symlinked in) means
-// PROJECT_DIR can only ever match the process this test starts, while the
-// script's default SERVER_MATCH still sees a server that lingers after its
-// listener closes. realpath because lsof reports the resolved cwd.
-const runDir = realpathSync(mkdtempSync(join(tmpdir(), "server-graceful-stop-")));
+// The shared helper gives the run its own process title (server.sh passes it to
+// the server, which renames itself to it), entry-point pattern and cache, so
+// the script's matching can never see the user's real server. Launching from a
+// per-run directory (with .output symlinked in) means PROJECT_DIR can only ever
+// match the process this test starts.
+const serverRun = newServerScriptRun("server-graceful-stop");
+const {runDir} = serverRun;
 const appDir = join(runDir, "app");
 mkdirSync(appDir);
 if (existsSync(builtServer)) {
@@ -37,29 +33,12 @@ for (const directory of ["projects", "plans", "commands", join("plugins", "cache
 let PORT = "";
 let env: NodeJS.ProcessEnv = {};
 
-async function freePort(): Promise<string> {
-	return new Promise((resolvePort, reject) => {
-		const probe = createServer();
-		probe.once("error", reject);
-		probe.listen(0, () => {
-			const address = probe.address();
-			if (address === null || typeof address === "string") {
-				reject(new Error(`Unexpected probe address: ${String(address)}`));
-				return;
-			}
-			probe.close(() => {
-				resolvePort(String(address.port));
-			});
-		});
-	});
-}
+// Each step has its own timeout, under the test's, so a stall names the step (status, start, stop) that hung.
+// Sized for the worst cases below: start's 60s START_TIMEOUT_SECONDS, stop's 45s STOP_GRACE_SECONDS.
+const stepTimeoutsMs: Record<string, number> = {status: 20_000, start: 80_000, stop: 60_000};
 
-function run(command: string): string {
-	return execFileSync("bash", [script, command], {
-		cwd: appDir,
-		encoding: "utf8",
-		env,
-	});
+async function run(command: "status" | "start" | "stop"): Promise<string> {
+	return runServerScript(command, {env, cwd: appDir, timeoutMs: stepTimeoutsMs[command] ?? 20_000});
 }
 
 function isAlive(pid: number): boolean {
@@ -99,41 +78,43 @@ beforeAll(async () => {
 	// The server must behave as in production: vitest's VITEST/TEST/NODE_ENV
 	// would disable srvx's graceful shutdown and swap in test-only DB paths.
 	const {VITEST: _vitest, TEST: _test, NODE_ENV: _nodeEnv, ...baseEnv} = process.env;
-	env = {
-		...baseEnv,
-		PORT,
-		HOME: home,
-		XDG_CACHE_HOME: join(runDir, "cache"),
-		XDG_CONFIG_HOME: join(runDir, "config"),
-		HERDR_SOCKET_PATH: join(runDir, "herdr.sock"),
-		PROJECT_DIR: appDir,
-		LOG_FILE: join(runDir, "server.log"),
-		// The assertion is that the server exits on its own after SIGTERM, not how fast: on a loaded machine its
-		// shutdown (closing the watcher, waiting out the scan, closing SQLite) can outrun the default 10s grace period
-		// that the script then ends with "Force killing". A server held open by a leaked handle never exits, so a
-		// long grace period still fails it, just later.
-		STOP_GRACE_SECONDS: "45",
-		// Likewise startup: under the full parallel suite the built server can take longer than the default 20s to
-		// answer its first request, so start would give up on a healthy server.
-		START_TIMEOUT_SECONDS: "60",
-	};
+	env = isolatedServerEnv(serverRun, {
+		port: PORT,
+		projectDir: appDir,
+		base: baseEnv,
+		overrides: {
+			HOME: home,
+			XDG_CONFIG_HOME: join(runDir, "config"),
+			HERDR_SOCKET_PATH: join(runDir, "herdr.sock"),
+			LOG_FILE: join(runDir, "server.log"),
+			// The assertion is that the server exits on its own after SIGTERM, not how fast: on a loaded machine its
+			// shutdown (closing the watcher, waiting out the scan, closing SQLite) can outrun the default 10s grace period
+			// that the script then ends with "Force killing". A server held open by a leaked handle never exits, so a
+			// long grace period still fails it, just later.
+			STOP_GRACE_SECONDS: "45",
+			// Likewise startup: under the full parallel suite the built server can take longer than the default 20s to
+			// answer its first request, so start would give up on a healthy server.
+			START_TIMEOUT_SECONDS: "60",
+		},
+	});
 });
 
-afterAll(() => {
-	run("stop");
+// The stop's own 60s timeout fits inside this one; the 10s hook default is shorter than its 45s grace period.
+afterAll(async () => {
+	await run("stop");
 	rmSync(runDir, {recursive: true, force: true});
-});
+}, 80_000);
 
 describe.skipIf(!existsSync(builtServer))("scripts/server.sh with the built server", () => {
 	it("stop lets the server exit gracefully instead of force killing it", async () => {
 		// Guard: the effective match must not see any existing server (e.g. the
 		// user's production server in this checkout) before we start ours.
 		expect(appDir).not.toBe(projectRoot);
-		expect(run("status")).toBe(`No server running (port ${PORT})\n`);
+		expect(await run("status")).toBe(`No server running (port ${PORT})\n`);
 
 		let started: string;
 		try {
-			started = run("start");
+			started = await run("start");
 		} catch (error) {
 			// afterAll removes runDir, so surface the server's own log while it still exists.
 			throw new Error(
@@ -154,7 +135,7 @@ describe.skipIf(!existsSync(builtServer))("scripts/server.sh with the built serv
 		});
 
 		try {
-			const stopped = run("stop");
+			const stopped = await run("stop");
 
 			// server.sh prints "Force killing" when the process outlives SIGTERM, and srvx logs whether it closed
 			// the HTTP server cleanly or gave up waiting on open connections (the SSE stream) and forced them shut.
@@ -166,5 +147,5 @@ describe.skipIf(!existsSync(builtServer))("scripts/server.sh with the built serv
 		} finally {
 			stream.destroy();
 		}
-	}, 150_000);
+	}, 180_000);
 });

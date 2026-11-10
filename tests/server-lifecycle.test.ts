@@ -1,69 +1,50 @@
 import {type ChildProcess, execFile, execFileSync, execSync, spawn, spawnSync} from "node:child_process";
-import {mkdirSync, mkdtempSync, realpathSync, writeFileSync} from "node:fs";
-import {createServer} from "node:net";
-import {tmpdir} from "node:os";
-import {basename, join, resolve} from "node:path";
+import {mkdirSync, writeFileSync} from "node:fs";
+import {join} from "node:path";
 import {promisify} from "node:util";
 import {afterAll, beforeAll, describe, expect, it} from "vite-plus/test";
+import {
+	freePort,
+	isolatedServerEnv,
+	newServerScriptRun,
+	portOwners as listeningPids,
+	projectRoot,
+	serverScript as script,
+} from "./helpers/server-script";
 
 // Regression test for the orphaned duplicate production server
 // (.llm/plans/2026-08-08-user-review-bug-sweep.md, step 3): starting the
 // server twice must leave exactly one process, and it must own the port.
 
-const projectRoot = resolve(process.cwd());
-const script = join(projectRoot, "scripts", "server.sh");
 const fixture = join(projectRoot, "tests", "fixtures", "fake-server.mjs");
 
 // Concurrent runs (e.g. several worktrees testing at once) must not share a
 // port or see each other's fake servers, so each run gets a free port and a
-// unique instance marker on the fake server's command line.
-// realpath: lsof reports a process's cwd resolved (/private/var/... on macOS),
-// and server.sh compares it to PROJECT_DIR verbatim.
-const runDir = realpathSync(mkdtempSync(join(tmpdir(), "server-lifecycle-")));
-const instance = basename(runDir);
+// unique instance marker on the fake server's command line. The shared helper
+// gives the run its own temp project directory, cache and process title.
+const serverRun = newServerScriptRun("server-lifecycle");
+const {runDir, instance} = serverRun;
 const MATCH = `fixtures/fake-server\\.mjs ${instance}`;
 // The real server renames itself via process.title; this per-run title stands
-// in for it so the script's default SERVER_MATCH can be tested concurrently.
-const TITLE = `claude-code-browser-server-${instance}`;
-// The default SERVER_MATCH also matches any `.output/server/index.mjs` command
-// line: the real production server (cwd = this worktree) before it renames
-// itself, and other projects' servers, each costing an lsof that can stall for
-// minutes under load. This run-specific pattern matches nothing, so the
-// default-match test exercises only the title alternative.
+// in for it so SERVER_MATCH's title alternative can be tested concurrently.
+const TITLE = serverRun.title;
+// This run-specific pattern matches nothing, so the renamed-server test
+// exercises only the title alternative and leaves its entry-point decoy alone.
 const ENTRY_MATCH = `${instance}/never-matches\\.mjs`;
 
 let PORT = "";
 let env: NodeJS.ProcessEnv = {};
 
-async function freePort(): Promise<string> {
-	return new Promise((resolvePort, reject) => {
-		const probe = createServer();
-		probe.once("error", reject);
-		probe.listen(0, () => {
-			const address = probe.address();
-			if (address === null || typeof address === "string") {
-				reject(new Error(`Unexpected probe address: ${String(address)}`));
-				return;
-			}
-			probe.close(() => {
-				resolvePort(String(address.port));
-			});
-		});
-	});
-}
-
 beforeAll(async () => {
 	PORT = await freePort();
-	env = {
-		...process.env,
-		PORT,
-		SERVER_CMD: `node ${fixture} ${instance}`,
-		SERVER_MATCH: MATCH,
-		// The real server runs with this worktree as its cwd; managing only
-		// processes whose cwd is the run directory keeps every test away from it.
-		PROJECT_DIR: runDir,
-		LOG_FILE: join(runDir, "server.log"),
-	};
+	env = isolatedServerEnv(serverRun, {
+		port: PORT,
+		overrides: {
+			SERVER_CMD: `node ${fixture} ${instance}`,
+			SERVER_MATCH: MATCH,
+			LOG_FILE: join(runDir, "server.log"),
+		},
+	});
 });
 
 function run(command: string): string {
@@ -151,22 +132,7 @@ function darwinListeners(): Array<{address: string; processId: string}> {
 }
 
 function portOwners(): string[] {
-	if (process.platform === "darwin") {
-		return darwinListeners()
-			.map(({processId}) => processId)
-			.toSorted();
-	}
-	try {
-		return execFileSync("lsof", ["-nP", "-t", `-iTCP:${PORT}`, "-sTCP:LISTEN"], {
-			encoding: "utf8",
-		})
-			.trim()
-			.split("\n")
-			.filter(Boolean)
-			.toSorted();
-	} catch {
-		return [];
-	}
+	return listeningPids(PORT);
 }
 
 function listenerAddresses(): string[] {
@@ -221,7 +187,7 @@ describe("scripts/server.sh", () => {
 		expect(portOwners()).toStrictEqual(productionPids);
 	}, 150_000);
 
-	it("stop finds a server renamed by process.title via the default SERVER_MATCH", async () => {
+	it("stop finds a server renamed by process.title via SERVER_MATCH's title alternative", async () => {
 		// Listen on a different port so only the command-line match, not the
 		// port fallback, can find this process.
 		const otherPort = await freePort();

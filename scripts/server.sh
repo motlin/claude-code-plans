@@ -15,15 +15,16 @@
 # current again so `restart` brings the last working build back. Each snapshot
 # keeps a copy of the previous one's public/assets as .output/previous-assets.
 #
-# Environment overrides (used by tests/server-lifecycle.test.ts and
-# tests/server-snapshot.test.ts):
+# Environment overrides (tests set them through tests/helpers/server-script.ts so
+# that no test matches a real server):
 #   PORT          port to serve on (default 7526)
 #   SERVER_CMD    command that launches the server; when set, no snapshot is taken
 #                 (default: node SNAPSHOT_ROOT/<id>/.output/server/index.mjs)
 #   SNAPSHOT_ROOT where build snapshots live (default: $XDG_CACHE_HOME/claude-code-plans/server-build)
-#   SERVER_TITLE  process.title the server sets (src/lib/server-process-title.ts)
+#   SERVER_TITLE  process.title the server sets (src/lib/server-process-title.ts);
+#                 passed to the server, which takes it as its title
 #   SERVER_ENTRY_MATCH  pgrep -f pattern for a server's command line before it
-#                 renames itself (default: \.output/server/index\.mjs)
+#                 renames itself (default: a snapshot under SNAPSHOT_ROOT)
 #   SERVER_MATCH  pgrep -f pattern identifying server processes
 #                 (default: the SERVER_TITLE title or SERVER_ENTRY_MATCH)
 #   PROJECT_DIR   only matched processes with this cwd are managed
@@ -43,9 +44,12 @@ CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/claude-code-plans"
 SNAPSHOT_ROOT=${SNAPSHOT_ROOT:-"$CACHE_DIR/server-build"}
 SERVER_TITLE=${SERVER_TITLE:-claude-code-browser-server}
 # The server renames itself to SERVER_TITLE once its Nitro plugins run; the
-# command-line alternative catches it before then. macOS pgrep -f sees
-# environment data after a rewritten title, hence ( |$) instead of $.
-SERVER_ENTRY_MATCH=${SERVER_ENTRY_MATCH:-"\\.output/server/index\\.mjs"}
+# command-line alternative catches it before then. It names this script's own
+# snapshots by absolute path rather than any .output/server/index.mjs, so other
+# projects' servers are never candidates (each candidate costs an lsof cwd
+# lookup). macOS pgrep -f sees environment data after a rewritten title, hence
+# ( |$) instead of $.
+SERVER_ENTRY_MATCH=${SERVER_ENTRY_MATCH:-"$(printf '%s' "$SNAPSHOT_ROOT" | sed 's/[][\\.*^$+?(){}|]/\\&/g')/[^/]+/\\.output/server/index\\.mjs"}
 SERVER_MATCH=${SERVER_MATCH:-"^${SERVER_TITLE}( |\$)|${SERVER_ENTRY_MATCH}"}
 LOG_FILE=${LOG_FILE:-"$CACHE_DIR/server.log"}
 STOP_GRACE_SECONDS=${STOP_GRACE_SECONDS:-10}
@@ -98,10 +102,15 @@ pids_in_project_dir() {
         sleep 0.05
     done
     if kill -0 "$lsof_pid" 2>/dev/null; then
+        # No wait afterwards: an lsof blocked in the kernel (a hung NFS or SMB
+        # mount) cannot die until that call returns, and waiting would hang
+        # with it. disown keeps bash from reporting the kill.
         kill -9 "$lsof_pid" 2>/dev/null || true
+        disown "$lsof_pid" 2>/dev/null || true
         echo "lsof did not report the cwd of pid(s) $* within ${CWD_LOOKUP_TIMEOUT_SECONDS}s; leaving them alone" >&2
+    else
+        wait "$lsof_pid" 2>/dev/null || true
     fi
-    wait "$lsof_pid" 2>/dev/null || true
     awk -v dir="$PROJECT_DIR" '/^p/ { pid = substr($0, 2) } /^n/ && substr($0, 2) == dir { print pid }' "$out"
     rm -f "$out"
 }
@@ -246,7 +255,7 @@ start_server() {
         # server/middleware/loopback-only.ts 403s any non-loopback peer.
         # `exec` (both here and in bash -c) so the launched process IS the
         # server, not a wrapper shell that would leave an orphan when killed.
-        PORT="$PORT" exec nohup bash -c "exec $cmd"
+        PORT="$PORT" SERVER_TITLE="$SERVER_TITLE" exec nohup bash -c "exec $cmd"
     ) </dev/null >>"$LOG_FILE" 2>&1 &
     local launched=$!
     set +m
@@ -298,7 +307,10 @@ status_server() {
     fi
     # shellcheck disable=SC2086
     ps -o pid,ppid,pcpu,etime,command -p $pids
-    lsof -iTCP:"$PORT" -sTCP:LISTEN -P -n 2>/dev/null || echo "Port $PORT: no listener"
+    # port_pids, not lsof -i: lsof stats every mount and stalls on a slow one.
+    local listeners
+    listeners=$(port_pids | sort -u | paste -sd ' ' -)
+    echo "Port $PORT: ${listeners:-no listener}"
 }
 
 case "${1:-}" in
