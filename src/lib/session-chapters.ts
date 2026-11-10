@@ -1,7 +1,8 @@
 import {z} from "zod";
 
 import type {SessionChapters} from "./chapter-store";
-import {chapterDisposition, isChapterTool, isInterruptedChapterResult} from "./chapter-tool";
+import {chapterDisposition, isChapterTool} from "./chapter-tool";
+import {isInterruptedToolResult} from "./tool-interruption";
 import {asRecord} from "./narrow";
 
 /**
@@ -55,7 +56,11 @@ export function collectClaudeChapters(
 	const type = record?.["type"];
 	if (record === undefined || (type !== "assistant" && type !== "user")) return;
 	const uuid = typeof record["uuid"] === "string" ? record["uuid"] : "";
-	for (const block of contentBlocks(record)) {
+	const blocks = contentBlocks(record);
+	// Upstream reads the record's denial kind and toolUseResult only for its lone result.
+	const lone = blocks.filter((block) => block["type"] === "tool_result").length === 1;
+	const toolDenialKind = typeof record["toolDenialKind"] === "string" ? record["toolDenialKind"] : undefined;
+	for (const block of blocks) {
 		if (type === "assistant" && block["type"] === "tool_use") {
 			const {id, name} = block;
 			if (typeof id !== "string" || typeof name !== "string" || !isChapterTool(name)) continue;
@@ -63,7 +68,11 @@ export function collectClaudeChapters(
 			if (disposition.kind === "heading") chapters.push({...disposition.chapter, uuid, recordIndex});
 		} else if (type === "user" && block["type"] === "tool_result" && block["is_error"] === true) {
 			const index = chapters.findIndex((chapter) => chapter.id === block["tool_use_id"]);
-			if (index !== -1 && !isInterruptedChapterResult(resultText(block["content"]))) chapters.splice(index, 1);
+			const interrupted = isInterruptedToolResult({
+				text: resultText(block["content"]),
+				...(lone ? {toolUseResult: record["toolUseResult"], toolDenialKind} : {}),
+			});
+			if (index !== -1 && !interrupted) chapters.splice(index, 1);
 		}
 	}
 }

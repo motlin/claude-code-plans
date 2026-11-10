@@ -5,6 +5,7 @@ import {removeUserChapter, renameChapter, setChapterHidden} from "../lib/chapter
 import {hasOutline, type SessionChapter} from "../lib/session-chapters";
 import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "./ui/menu";
 import {Tooltip, TooltipGroup} from "./ui/tooltip";
+import {ChapterTitleReveal} from "./reveal-text";
 
 // Upstream claude.ai/code's session outline (cf74bc599 `PO`/`FO`/`IO`), class for class, but for two local
 // conventions: `rounded-r4` is the token for upstream's 5px row radius, and the rail dash's scale transition is gated
@@ -203,7 +204,7 @@ const ChapterRow = memo(function ChapterRow({
 			/>
 			<Tooltip portal content={chapter.title} side="right" openWhen={titleOverflows} className="min-w-0 flex-1">
 				<span data-chapter-title="" className="block truncate">
-					{chapter.title}
+					<ChapterTitleReveal text={chapter.title} />
 				</span>
 			</Tooltip>
 			{chapter.summary !== undefined && (

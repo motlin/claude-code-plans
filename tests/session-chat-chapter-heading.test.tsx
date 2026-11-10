@@ -52,9 +52,11 @@ interface Call {
 	input: Record<string, unknown>;
 	result?: string;
 	isError?: boolean;
+	/** Extra fields on the result record, such as `toolDenialKind`. */
+	resultRecord?: Record<string, unknown>;
 }
 
-function call({id, name, input, result, isError}: Call): unknown[] {
+function call({id, name, input, result, isError, resultRecord}: Call): unknown[] {
 	const assistant = {
 		type: "assistant",
 		uuid: `a-${id}`,
@@ -66,6 +68,7 @@ function call({id, name, input, result, isError}: Call): unknown[] {
 		{
 			type: "user",
 			uuid: `r-${id}`,
+			...resultRecord,
 			message: {
 				role: "user",
 				content: [
@@ -172,6 +175,23 @@ describe("a mark_chapter call draws as a chapter heading, not a tool row", () =>
 	it("keeps the heading of an interrupted call and draws no tool row", () => {
 		const records = [prompt, ...call(chapter("Tool execution was interrupted.", true))];
 		expect(rows(records)).toStrictEqual({observed: [human, heading], mentionsMcpRow: false});
+	});
+
+	it("keeps the heading for upstream's other interruptions: the denial kind, the CLI's result and the long notices", () => {
+		const stoppedWhileRunning =
+			"The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed. Correction to the text above: this call was stopped while running, not refused before it ran. It may have run in part or in full, and its changes may have been written. No permission prompt was involved. Work it started elsewhere (a remote command, a background process) may still be running, so check before starting the same work again. The instruction to stop and wait still stands.";
+		const interrupted = (result: string, resultRecord: Record<string, unknown> = {}) =>
+			rows([prompt, ...call({...chapter(result, true), resultRecord})]);
+		const kept = {observed: [human, heading], mentionsMcpRow: false};
+		const cases = {
+			cancelledKind: interrupted("Example stop notice.", {toolDenialKind: "cancelled"}),
+			userRejected: interrupted(
+				"The user doesn't want to proceed with this tool use. The tool use was rejected (eg. if it was a file edit, the new_string was NOT written to the file). STOP what you are doing and wait for the user to tell you how to proceed.",
+				{toolDenialKind: "user-rejected", toolUseResult: "User rejected tool use"},
+			),
+			stoppedWhileRunning: interrupted(stoppedWhileRunning),
+		};
+		expect(cases).toStrictEqual({cancelledKind: kept, userRejected: kept, stoppedWhileRunning: kept});
 	});
 
 	it("still draws the heading with tools hidden", () => {

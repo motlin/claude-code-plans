@@ -39,7 +39,9 @@ export function clearJumpFlash(root: Element): void {
  * either -- a run of tool calls collapses into one row carrying the run's first
  * record, bash output folds into the command above it, and tool_result records
  * render nothing at all -- so walk backwards a bounded distance to find the row
- * that swallowed it. Returns false when nothing matched, which is also what a
+ * that swallowed it. A row whose transcript entry (`data-record-end-index`) ends
+ * before the target did not swallow it, so the walk stops there and asks the
+ * transcript to mount the target's entry instead. Returns false when nothing matched, which is also what a
  * jump into a record the client has not paged in yet does, and is why the
  * caller must not treat false as "close enough".
  */
@@ -49,7 +51,12 @@ export function jumpToMessage(recordIndex: number): boolean {
 		if (candidateIndex < 0) break;
 
 		const element = document.querySelector(`[data-record-index="${candidateIndex}"]`);
-		if (element) return flash(element);
+		if (element === null) continue;
+		// A row whose transcript entry ends before the target did not swallow it: the target sits in
+		// a later entry the virtualized transcript has not mounted, so reveal that instead.
+		const entryEnd = element.closest<HTMLElement>("[data-record-end-index]")?.dataset["recordEndIndex"];
+		if (entryEnd !== undefined && Number(entryEnd) < recordIndex) break;
+		return flash(element);
 	}
 
 	window.dispatchEvent(new CustomEvent<number>(TRANSCRIPT_JUMP_REQUEST_EVENT, {detail: recordIndex}));

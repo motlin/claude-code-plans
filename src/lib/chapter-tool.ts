@@ -26,33 +26,19 @@ export function chapterFromInput(id: string, input: Record<string, unknown>): Cl
 	return chapter;
 }
 
-/** Upstream `vl`'s interruption tests on an errored result's text. */
-const CHAPTER_INTERRUPTED_PATTERNS: {readonly exact: readonly string[]; readonly prefix: readonly string[]} = {
-	exact: ["User rejected tool use", "Tool execution was interrupted."],
-	prefix: ["[Request interrupted by user"],
-};
-
-/** Whether an errored result's text reports an interruption, which keeps the chapter. */
-export function isInterruptedChapterResult(text: string): boolean {
-	const trimmed = text.trim();
-	return (
-		CHAPTER_INTERRUPTED_PATTERNS.exact.includes(trimmed) ||
-		CHAPTER_INTERRUPTED_PATTERNS.prefix.some((prefix) => trimmed.startsWith(prefix))
-	);
-}
-
 export type ChapterDisposition = {kind: "heading"; chapter: ClaudeChapter} | {kind: "drop"} | {kind: "failedTool"};
 
 /**
- * How a chapter call draws. An errored result that is not an interruption removes the heading
+ * How a chapter call draws. An errored result that is not an interruption (`interrupted`, see
+ * `isInterruptedToolResult`) removes the heading
  * and leaves a lone failed tool row (upstream `Ll` + `Rl`), checked before the title as in `Il`;
  * otherwise an empty title swallows the call and anything else is a heading.
  */
 export function chapterDisposition(
 	block: {id: string; name: string; input: Record<string, unknown>},
-	result: {result: string; isError: boolean} | undefined,
+	result: {isError: boolean; interrupted?: boolean | undefined} | undefined,
 ): ChapterDisposition {
-	if (result?.isError === true && !isInterruptedChapterResult(result.result)) return {kind: "failedTool"};
+	if (result?.isError === true && result.interrupted !== true) return {kind: "failedTool"};
 	const chapter = chapterFromInput(block.id, block.input);
 	return chapter.title === "" ? {kind: "drop"} : {kind: "heading", chapter};
 }

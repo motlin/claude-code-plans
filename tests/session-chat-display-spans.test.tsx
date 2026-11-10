@@ -475,7 +475,7 @@ describe("assistant display-span actions", () => {
 		fireEvent.click(button(footer, "Copy"));
 		await act(async () => {});
 		expect(vi.mocked(writeClipboardText).mock.calls.map(([plain]) => plain)).toStrictEqual([
-			"Example introduction.\n\nExample chapter\n\nExample conclusion.",
+			"Example introduction.\n\nExample chapter\nExample conclusion.",
 		]);
 	});
 

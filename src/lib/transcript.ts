@@ -31,6 +31,7 @@ import {
 import {autoModeDenial} from "./auto-mode-denial";
 import {stripAnsi} from "./ansi-codes";
 import {recapText} from "./recap-text";
+import {isInterruptedToolResult} from "./tool-interruption";
 import {capDetails, parseHookMessage} from "./hook-prompt-block";
 import {JsonlRecordSchema} from "./runtime-schemas";
 import {
@@ -623,6 +624,18 @@ function userDenial(kind: string | undefined, toolUseResult: unknown, resultText
 	return "stopped";
 }
 
+/** Upstream `vl`'s interrupted test for one errored result; the record's denial kind and toolUseResult count only for its lone result. */
+function interruptedResult(
+	content: readonly {type: string}[],
+	record: {toolUseResult?: unknown; toolDenialKind?: string | undefined},
+	text: string,
+): boolean {
+	const lone = content.filter((part) => part.type === "tool_result").length === 1;
+	return isInterruptedToolResult(
+		lone ? {text, toolUseResult: record.toolUseResult, toolDenialKind: record.toolDenialKind} : {text},
+	);
+}
+
 function queuePairingKeys(commandUuid: string | undefined, deliveryId: string | undefined): string[] {
 	const keys: string[] = [];
 	if (commandUuid) keys.push(`command:${commandUuid}`);
@@ -1148,6 +1161,7 @@ function* processRecordBatchSteps(
 						const denial = info.isError
 							? userDenial(record.toolDenialKind, record.toolUseResult, resultText)
 							: null;
+						if (info.isError && interruptedResult(content, record, resultText)) info.interrupted = true;
 						if (denial === "stopped") info.stopped = true;
 						if (denial === "denied") info.denied = true;
 						const autoMode =

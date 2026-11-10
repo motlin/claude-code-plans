@@ -2,7 +2,7 @@
 
 import {readFileSync} from "node:fs";
 
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ChapterHeading} from "../src/components/chapter-heading";
@@ -37,6 +37,34 @@ describe("ChapterHeading", () => {
 			text: "Staging refinement nodes",
 			findOmitted: null,
 		});
+	});
+
+	it("reveals a renamed title with upstream's NA, then draws it plain again 1.5s later", () => {
+		vi.useFakeTimers();
+		try {
+			const view = render(<ChapterHeading id="toolu_ch1" title="Plan" />);
+			const initial = headingOf(view.container).innerHTML;
+			view.rerender(<ChapterHeading id="toolu_ch1" title="Ship" />);
+			act(() => {
+				vi.advanceTimersByTime(200);
+			});
+			const heading = headingOf(view.container);
+			const revealing = {
+				title: heading.getAttribute("title"),
+				srOnly: heading.querySelector(".sr-only")?.textContent,
+				visual: heading.querySelector("[data-revealing]")?.textContent,
+			};
+			act(() => {
+				vi.advanceTimersByTime(1300);
+			});
+			expect({initial, revealing, settled: headingOf(view.container).innerHTML}).toStrictEqual({
+				initial: "Plan",
+				revealing: {title: "Ship", srOnly: "Ship", visual: "Ship"},
+				settled: "Ship",
+			});
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it("hides an empty title from assistive tech", () => {

@@ -394,6 +394,8 @@ interface AssistantDisplaySpan {
 	endpoint: MessageSessionLine;
 	anchorLineIndex: number;
 	text: string;
+	/** The copy text ends with a chapter title's newline, so the next item joins it without a blank line. */
+	endsWithChapter?: boolean;
 }
 
 /** Whether the line asks an AskUserQuestion that has no answer yet. */
@@ -478,9 +480,10 @@ function collectAssistantDisplaySpans(
 			continue;
 		}
 		if (line.type !== "assistant") continue;
-		// Upstream's turn copy writes a chapter as its title (`b8` `case"chapter"`).
+		// Upstream's turn copy writes a chapter as its title and one newline (`b8` `case"chapter"`:
+		// `title + "\n"`), so whatever follows it starts on the next line, not after a blank one.
 		const chapter = chapterLineDisposition(line, renderProps.toolResultMap);
-		const text = chapter?.kind === "heading" ? chapter.chapter.title : messageText(line);
+		const text = chapter?.kind === "heading" ? `${chapter.chapter.title}\n` : messageText(line);
 		if (current === undefined) {
 			current = {
 				key: `assistant-span-${line.lineIndex}`,
@@ -492,11 +495,18 @@ function collectAssistantDisplaySpans(
 		} else {
 			current.endpoint = line;
 			current.anchorLineIndex = line.lineIndex;
-			if (text !== "") current.text = current.text === "" ? text : `${current.text}\n\n${text}`;
+			if (text !== "") current.text = joinSpanText(current.text, text, current.endsWithChapter === true);
 		}
+		if (text !== "") current.endsWithChapter = chapter?.kind === "heading";
 		byLine.set(line.lineIndex, current);
 	}
 	return byLine;
+}
+
+/** A span's copy text with the next item's appended: after a blank line, or straight on after a chapter's own newline. */
+function joinSpanText(spanText: string, text: string, endsWithChapter: boolean): string {
+	if (spanText === "" || endsWithChapter) return `${spanText}${text}`;
+	return `${spanText}\n\n${text}`;
 }
 
 interface HeldAssistantFooter {
@@ -3873,6 +3883,7 @@ function VirtualizedSessionEntries({
 							data-testid="transcript-row"
 							data-perf-row={entry.kind}
 							data-perf-line={entry.startRecordIndex}
+							data-record-end-index={entry.endRecordIndex}
 							data-perf-last={isLast ? "" : undefined}
 						>
 							<AssistantSpanEntryContext.Provider value={entry}>

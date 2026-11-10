@@ -198,6 +198,35 @@ describe("SessionChat initial scrolling", () => {
 		expect(scrollIntoView.mock.calls).toStrictEqual([[{block: "center", behavior: "smooth"}]]);
 	});
 
+	it("reveals an unmounted target a few records after a mounted turn instead of flashing that earlier turn", () => {
+		const view = render(
+			<SessionChat
+				sessionId="session-110"
+				shouldScrollToEnd={false}
+				lines={messages(100)}
+				toolResultMap={new Map()}
+			/>,
+		);
+
+		let jumpRequested = true;
+		act(() => {
+			jumpRequested = jumpToMessage(30);
+		});
+		const flashedBeforeReveal = [...view.container.querySelectorAll<HTMLElement>(".message-highlight")].map(
+			(element) => element.dataset["recordIndex"],
+		);
+
+		act(flushAnimationFrames);
+
+		expect({
+			jumpRequested,
+			flashedBeforeReveal,
+			scrolledTo: scrollIntoView.mock.instances.map((element) =>
+				element instanceof HTMLElement ? element.dataset["recordIndex"] : undefined,
+			),
+		}).toStrictEqual({jumpRequested: false, flashedBeforeReveal: [], scrolledTo: ["30"]});
+	});
+
 	it("derives the mounted window from the scroll event, not again from a range commit's clamped offset", () => {
 		const view = render(
 			<SessionChat

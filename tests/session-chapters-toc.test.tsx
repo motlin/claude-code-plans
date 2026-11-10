@@ -331,6 +331,28 @@ describe("SessionChaptersToc", () => {
 		});
 	});
 
+	it("reveals a row's changed title with upstream's NA and draws a first title plain", () => {
+		const {rerender} = renderToc();
+		const titleOf = () => rowButton("Plan").querySelector<HTMLElement>("[data-chapter-title]")!;
+		const initial = titleOf().innerHTML;
+		rerender(
+			<SessionChaptersToc
+				sessionId={SESSION_ID}
+				chapters={[START, {...PLAN, title: "Planning"}, PIN]}
+				scrollRef={{current: document.querySelector("div")}}
+				scrollKey="visit"
+				onJump={vi.fn<(chapter: SessionChapter) => void>()}
+			/>,
+		);
+		const title = titleOf();
+
+		expect({
+			initial,
+			srOnly: title.querySelector(".sr-only")?.textContent,
+			fading: title.querySelector<HTMLElement>("[aria-hidden='true']")?.style.opacity,
+		}).toStrictEqual({initial: "Plan the work", srOnly: "Planning", fading: "0"});
+	});
+
 	it("renames a row in place on double-click: Enter and blur commit, Escape cancels, and the list holds open", () => {
 		const onDocumentKeyDown = vi.fn<(event: KeyboardEvent) => void>();
 		document.addEventListener("keydown", onDocumentKeyDown);

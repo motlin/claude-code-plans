@@ -2,6 +2,7 @@ import {useEffect, useRef, useState} from "react";
 
 import {renameChapter, useSessionChapters} from "../lib/chapter-store";
 import {chapterAnchorId} from "../lib/session-chapters";
+import {ChapterTitleReveal} from "./reveal-text";
 
 const HEADING_CLASS_NAME = "text-body-semibold text-primary select-text scroll-mt-[56px]";
 const INPUT_CLASS_NAME =
@@ -49,7 +50,7 @@ export function ChapterHeading({id, title, onRename}: ChapterHeadingProps) {
 							: undefined
 					}
 				>
-					{title}
+					<ChapterTitleReveal text={title} />
 				</h3>
 			)}
 		</div>

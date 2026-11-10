@@ -18,10 +18,11 @@ function chapterCall(
 	return {type: "assistant", uuid, message: {role: "assistant", content: [{type: "tool_use", id, name, input}]}};
 }
 
-function result(uuid: string, id: string, content: string, isError = false) {
+function result(uuid: string, id: string, content: string, isError = false, fields: Record<string, unknown> = {}) {
 	return {
 		type: "user",
 		uuid,
+		...fields,
 		message: {
 			role: "user",
 			content: [{type: "tool_result", tool_use_id: id, content, ...(isError ? {is_error: true} : {})}],
@@ -64,6 +65,24 @@ describe("extractClaudeChapters", () => {
 		];
 		expect(extractClaudeChapters(records)).toStrictEqual([
 			{id: "toolu_stopped", title: "Stopped", uuid: "a-3", recordIndex: 3},
+		]);
+	});
+
+	it("keeps a chapter whose lone result upstream reads as interrupted by its denial kind or toolUseResult", () => {
+		const records = [
+			chapterCall("a-0", "toolu_cancelled", {title: "Cancelled"}),
+			result("r-0", "toolu_cancelled", "Example stop notice.", true, {toolDenialKind: "cancelled"}),
+			chapterCall("a-2", "toolu_rejected", {title: "Rejected"}),
+			result("r-2", "toolu_rejected", "Example refusal.", true, {
+				toolDenialKind: "user-rejected",
+				toolUseResult: "User rejected tool use",
+			}),
+			chapterCall("a-4", "toolu_refused", {title: "Refused"}),
+			result("r-4", "toolu_refused", "Example refusal.", true, {toolDenialKind: "user-rejected"}),
+		];
+		expect(extractClaudeChapters(records)).toStrictEqual([
+			{id: "toolu_cancelled", title: "Cancelled", uuid: "a-0", recordIndex: 0},
+			{id: "toolu_rejected", title: "Rejected", uuid: "a-2", recordIndex: 2},
 		]);
 	});
 
