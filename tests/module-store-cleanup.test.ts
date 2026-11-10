@@ -47,3 +47,17 @@ describe("module-level stores reset after every test, as a fresh module would st
 		});
 	});
 });
+
+// A test that writes document.body directly leaves nodes Testing Library's cleanup never mounted, and under the
+// shared-dom pool they turned up in whichever file the worker ran next (a stray <p> broke a getByRole("paragraph")).
+describe("the shared document's body empties after every test, as a fresh page would start", () => {
+	it("writes the body directly without cleaning up", () => {
+		document.body.innerHTML = '<p id="leak">left behind</p>';
+
+		expect(document.querySelector("#leak")?.textContent).toStrictEqual("left behind");
+	});
+
+	it("starts with an empty body", () => {
+		expect(document.body.innerHTML).toStrictEqual("");
+	});
+});

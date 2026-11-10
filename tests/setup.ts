@@ -66,6 +66,11 @@ if (typeof window !== "undefined") {
 		for (const id of pendingFrames) window.cancelAnimationFrame(id);
 		pendingFrames.clear();
 	});
+	// Cleanup only unmounts what render() mounted; a test that writes document.body itself leaves its nodes for the
+	// next file in a shared-dom worker, which one that runs there depends on scheduling. Empty the body after cleanup.
+	afterEach(() => {
+		document.body.replaceChildren();
+	});
 	afterEach(() => {
 		cleanup();
 	});

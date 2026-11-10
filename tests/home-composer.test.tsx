@@ -189,9 +189,16 @@ async function typePrompt(text: string) {
 	return textarea;
 }
 
-/** The toast deck's Notifications region. */
+/**
+ * The toast deck's Notifications region, once it holds a toast. The region is always mounted, so finding it alone
+ * returned before a toast that waits on a slower step (the clipboard write on a loaded machine) arrived.
+ */
 async function findToast(): Promise<HTMLElement> {
-	return screen.findByRole("region", {name: "Notifications"});
+	return waitFor(() => {
+		const region = screen.getByRole("region", {name: "Notifications"});
+		if (region.querySelector("[data-toast]") === null) throw new Error("no toast in the Notifications region yet");
+		return region;
+	});
 }
 
 describe("HomeComposer", () => {
@@ -973,6 +980,13 @@ describe("HomeComposer", () => {
 		it("still copies the command when herdr itself can't be reached", async () => {
 			launchResponse = async () =>
 				Promise.resolve(Response.json({error: "connect ENOENT", code: "connect-failed"}, {status: 502}));
+			// The copy finishes a task later, as it can on a loaded machine, so the toast can't be there on the first look.
+			writeText.mockImplementationOnce(
+				async () =>
+					new Promise((resolve) => {
+						setTimeout(resolve, 0);
+					}),
+			);
 			await renderApp();
 			await typePrompt("hello");
 

@@ -43,65 +43,96 @@ async function sleep(ms: number): Promise<void> {
 	});
 }
 
+const INTERVAL_MS = 50;
+
+/**
+ * Drives the monitor's interval and clock by hand, so a test's stalls are exactly the ones it makes. On the real clock
+ * a loaded machine descheduled the thread past the threshold on its own, adding a stall with no activity to the list.
+ */
+function fakeEventLoop(): {block: (ms: number) => void; idle: (ms: number) => void} {
+	vi.useFakeTimers({toFake: ["setInterval", "clearInterval"]});
+	let nowMs = 0;
+	let cpuMs = 0;
+	vi.spyOn(performance, "now").mockImplementation(() => nowMs);
+	vi.spyOn(process, "threadCpuUsage").mockImplementation(() => ({user: cpuMs * 1000, system: 0}));
+	return {
+		/** Synchronous work on the CPU: time passes and the monitor's timer can't fire. */
+		block: (ms) => {
+			nowMs += ms;
+			cpuMs += ms;
+		},
+		/** A free event loop: the monitor's timer fires on time once per interval. */
+		idle: (ms) => {
+			for (let elapsed = 0; elapsed < ms; elapsed += INTERVAL_MS) {
+				nowMs += INTERVAL_MS;
+				vi.advanceTimersByTime(INTERVAL_MS);
+			}
+		},
+	};
+}
+
 describe("startStallMonitor", () => {
 	const stops: (() => void)[] = [];
 
 	afterEach(() => {
 		for (const stop of stops.splice(0)) stop();
+		vi.restoreAllMocks();
+		vi.useRealTimers();
 	});
 
 	function monitor(thresholdMs: number): EventLoopStall[] {
 		const stalls: EventLoopStall[] = [];
-		stops.push(startStallMonitor({thresholdMs, intervalMs: 50, onStall: (stall) => stalls.push(stall)}));
+		stops.push(startStallMonitor({thresholdMs, intervalMs: INTERVAL_MS, onStall: (stall) => stalls.push(stall)}));
 		return stalls;
 	}
 
 	it("reports a stall longer than the threshold with the activity that was running", async () => {
+		const loop = fakeEventLoop();
 		const stalls = monitor(200);
-		await sleep(60);
+		loop.idle(50);
 
 		await trackActivity("GET /api/slow", async () => {
-			await sleep(10);
-			blockFor(400);
+			await Promise.resolve();
+			loop.block(400);
 		});
-		await sleep(120);
+		loop.idle(100);
 
-		expect(
-			stalls.map((stall) => ({longEnough: stall.durationMs >= 350, activities: stall.activities})),
-		).toStrictEqual([{longEnough: true, activities: ["GET /api/slow"]}]);
+		expect(stalls).toStrictEqual([{durationMs: 400, cpuMs: 400, activities: ["GET /api/slow"]}]);
 	});
 
 	it("leaves out activities that ended before the stalled window", async () => {
+		const loop = fakeEventLoop();
 		const stalls = monitor(200);
 		await trackActivity("GET /api/early", () => undefined);
-		await sleep(150);
+		loop.idle(150);
 
 		await trackActivity("scan jsonl /a.jsonl", () => {
-			blockFor(400);
+			loop.block(400);
 		});
-		await sleep(120);
+		loop.idle(100);
 
-		expect(stalls.map((stall) => stall.activities)).toStrictEqual([["scan jsonl /a.jsonl"]]);
+		expect(stalls).toStrictEqual([{durationMs: 400, cpuMs: 400, activities: ["scan jsonl /a.jsonl"]}]);
 	});
 
 	it("restores the outer activity when a nested one ends and clears both once they end", async () => {
+		const loop = fakeEventLoop();
 		const stalls = monitor(200);
-		await sleep(60);
+		loop.idle(50);
 
 		await trackActivity("index /a.jsonl", async () => {
-			await trackActivity("jsonl append /a.jsonl", async () => sleep(10));
-			await sleep(120);
-			blockFor(400);
+			await trackActivity("jsonl append /a.jsonl", async () => Promise.resolve());
+			loop.idle(100);
+			loop.block(400);
 		});
-		await sleep(120);
+		loop.idle(100);
 		trackActivitySync("GET /api/sessions/recent", () => {
-			blockFor(400);
+			loop.block(400);
 		});
-		await sleep(120);
+		loop.idle(100);
 
-		expect(stalls.map((stall) => stall.activities)).toStrictEqual([
-			["index /a.jsonl"],
-			["GET /api/sessions/recent"],
+		expect(stalls).toStrictEqual([
+			{durationMs: 400, cpuMs: 400, activities: ["index /a.jsonl"]},
+			{durationMs: 400, cpuMs: 400, activities: ["GET /api/sessions/recent"]},
 		]);
 	});
 
@@ -113,16 +144,17 @@ describe("startStallMonitor", () => {
 			await watcher.close();
 			const settled = await Promise.race([waited.then(() => "settled"), sleep(2000).then(() => "pending")]);
 
+			const loop = fakeEventLoop();
 			const stalls = monitor(200);
-			await sleep(60);
+			loop.idle(50);
 			trackActivitySync("GET /api/sessions/recent", () => {
-				blockFor(400);
+				loop.block(400);
 			});
-			await sleep(120);
+			loop.idle(100);
 
-			expect({settled, activities: stalls.map((stall) => stall.activities)}).toStrictEqual({
+			expect({settled, stalls}).toStrictEqual({
 				settled: "settled",
-				activities: [["GET /api/sessions/recent"]],
+				stalls: [{durationMs: 400, cpuMs: 400, activities: ["GET /api/sessions/recent"]}],
 			});
 		} finally {
 			await rm(root, {recursive: true, force: true});
@@ -190,22 +222,32 @@ describe("trackActivity", () => {
 });
 
 describe("trackActivitySync", () => {
-	it("returns the result and names a stall inside a synchronous phase", async () => {
+	it("returns the result and names a stall inside a synchronous phase", () => {
+		const loop = fakeEventLoop();
 		const stalls: EventLoopStall[] = [];
-		const stop = startStallMonitor({thresholdMs: 200, intervalMs: 50, onStall: (stall) => stalls.push(stall)});
-		await sleep(60);
-
-		const value = trackActivitySync("session diff -repo", () => {
-			blockFor(400);
-			return 7;
+		const stop = startStallMonitor({
+			thresholdMs: 200,
+			intervalMs: INTERVAL_MS,
+			onStall: (stall) => stalls.push(stall),
 		});
-		await sleep(120);
-		stop();
+		try {
+			loop.idle(50);
 
-		expect({value, activities: stalls.map((stall) => stall.activities)}).toStrictEqual({
-			value: 7,
-			activities: [["session diff -repo"]],
-		});
+			const value = trackActivitySync("session diff -repo", () => {
+				loop.block(400);
+				return 7;
+			});
+			loop.idle(100);
+
+			expect({value, stalls}).toStrictEqual({
+				value: 7,
+				stalls: [{durationMs: 400, cpuMs: 400, activities: ["session diff -repo"]}],
+			});
+		} finally {
+			stop();
+			vi.restoreAllMocks();
+			vi.useRealTimers();
+		}
 	});
 });
 
