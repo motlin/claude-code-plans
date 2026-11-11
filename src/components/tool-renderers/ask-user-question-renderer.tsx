@@ -84,6 +84,8 @@ function UnansweredQuestion({question, header, options}: QuestionLike) {
  * secondary text over its answer, or, when the call asked several questions,
  * its outcome's word ("Not answered" when the call was stopped). A single
  * unanswered question shows only itself, since the row's note already says why.
+ * The question line is masked: upstream draws it as `_i({text: u9(ME(question))})`
+ * (cb6930dae, 2026-11-10), where ME is the secret masker and `_i` paints code chips.
  */
 function QuestionOutcomeList({toolCall}: {toolCall: ClientToolCall}) {
 	const entries = questionOutcomes(toolCall);

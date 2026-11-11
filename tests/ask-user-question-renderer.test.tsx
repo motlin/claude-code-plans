@@ -145,6 +145,39 @@ describe("AskUserQuestionRenderer", () => {
 			});
 		});
 
+		it("masks a secret in the question as upstream's Asked row does (ME before its chip paint)", () => {
+			const fakeToken = `ghp_${"A".repeat(36)}`;
+			const masked = `ghp_AAAA${"\u2022".repeat(32)}`;
+			const {container} = render(
+				<AskUserQuestionRenderer
+					toolCall={makeCall({
+						input: {
+							questions: [
+								{
+									question: `Rotate ${fakeToken} or \`${fakeToken}\`?`,
+									header: "Token",
+									options: [{label: "Yes"}, {label: "No"}],
+									multiSelect: false,
+								},
+							],
+						},
+						result: REJECTION_RESULT,
+						isError: true,
+						stopped: true,
+					})}
+				/>,
+			);
+			const line = container.querySelector(".text-secondary")!;
+
+			expect({
+				codes: Array.from(line.querySelectorAll("code")).map((code) => code.textContent),
+				text: line.textContent,
+			}).toStrictEqual({
+				codes: [masked],
+				text: `Rotate ${masked} or ${masked}?`,
+			});
+		});
+
 		it("prints Skipped under each question of an all-[No preference] call", () => {
 			expect(
 				outcomeList(
