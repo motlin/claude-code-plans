@@ -43,7 +43,7 @@ describe("ExternalTextLink", () => {
 				href: "https://x.test",
 				target: "_blank",
 				rel: "noopener",
-				className: "text-link inline cursor-pointer",
+				className: "cds-reset text-link inline cursor-pointer",
 				describedBy: `other ${span.id}`,
 				text: "Docs(opens in new tab)",
 			},

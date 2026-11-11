@@ -37,7 +37,7 @@ function WhyCard({fallback}: {fallback: RefusalFallback}) {
 			<PreviewCard.Trigger
 				delay={200}
 				render={<button type="button" data-cds="TextLink" />}
-				className="text-link shrink-0 text-body cursor-pointer"
+				className="cds-reset text-link shrink-0 text-body cursor-pointer"
 			>
 				Why
 			</PreviewCard.Trigger>

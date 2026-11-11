@@ -63,7 +63,7 @@ describe("linkifyPlain (upstream c40ad8c1e y with the tool body policy Zx and ca
 					rel: "noopener noreferrer",
 					dir: "ltr",
 					cds: "TextLink",
-					className: "text-link inline cursor-pointer",
+					className: "cds-reset text-link inline cursor-pointer",
 				},
 			],
 			words: [],

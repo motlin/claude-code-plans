@@ -423,10 +423,10 @@ describe("Composer", () => {
 			const add = screen.getByRole("button", {name: "Add"});
 
 			expect({
-				group: add.className.split(" ").includes("group/btn"),
+				lead: add.className.split(" ").slice(0, 2),
 				icon: add.querySelector("svg")?.getAttribute("class"),
 			}).toStrictEqual({
-				group: true,
+				lead: ["cds-reset", "group/btn"],
 				icon: "lucide lucide-plus size-[18px] text-secondary-control group-hover/btn:text-primary group-aria-pressed/btn:text-upstream-accent group-hover/btn:group-aria-pressed/btn:text-upstream-accent",
 			});
 		});

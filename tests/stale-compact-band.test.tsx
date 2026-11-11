@@ -98,7 +98,7 @@ describe("StaleCompactBand (upstream bTe)", () => {
 				tag: "BUTTON",
 				cds: "TextLink",
 				type: "button",
-				className: "text-link inline cursor-pointer shrink-0",
+				className: "cds-reset text-link inline cursor-pointer shrink-0",
 				text: "Compact session",
 				disabled: false,
 				busy: null,
@@ -163,7 +163,7 @@ describe("StaleCompactBand (upstream bTe)", () => {
 			text: "Compacting…",
 			disabled: true,
 			busy: "true",
-			className: "text-link inline cursor-default opacity-disabled shrink-0",
+			className: "cds-reset text-link inline cursor-default opacity-disabled shrink-0",
 			calls: [],
 		});
 	});

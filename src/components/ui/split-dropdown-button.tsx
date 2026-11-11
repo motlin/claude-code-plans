@@ -71,7 +71,7 @@ function tooltipText(tooltip: boolean | string | undefined, name: string | undef
 
 const ROOT_CLASS = "relative inline-flex w-fit shrink-0 items-stretch";
 const ROOT_GROUP_CLASS = "group/split";
-const BUTTON_CLASS = "relative outline-none focus-visible:shadow-focus disabled:opacity-40";
+const BUTTON_CLASS = "cds-reset relative outline-none focus-visible:shadow-focus disabled:opacity-40";
 const PAINT_TRANSITION =
 	"transition-[background-color,box-shadow,color] duration-[60ms] ease-[cubic-bezier(.165,.84,.44,1)]";
 const SEAM_BASE_CLASS = "w-px shrink-0 self-stretch";

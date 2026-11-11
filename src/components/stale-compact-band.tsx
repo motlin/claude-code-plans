@@ -62,7 +62,7 @@ export function StaleCompactBand({
 				data-cds="TextLink"
 				disabled={compacting}
 				aria-busy={compacting ? true : undefined}
-				className={`text-link inline ${compacting ? "cursor-default opacity-disabled" : "cursor-pointer"} shrink-0`}
+				className={`cds-reset text-link inline ${compacting ? "cursor-default opacity-disabled" : "cursor-pointer"} shrink-0`}
 				onClick={() => {
 					// Upstream moves focus first so it isn't stranded when the line unmounts.
 					if (rootRef.current?.contains(document.activeElement) === true) focusComposer();

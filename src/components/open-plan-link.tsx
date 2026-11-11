@@ -10,7 +10,7 @@ export function OpenPlanLink({onOpen}: {onOpen: () => void}) {
 			role="button"
 			tabIndex={0}
 			data-cds="TextLink"
-			className="text-link inline cursor-pointer text-footnote"
+			className="cds-reset text-link inline cursor-pointer text-footnote"
 			onClick={onOpen}
 			onKeyDown={(event) => {
 				if (event.key !== "Enter" && event.key !== " ") return;

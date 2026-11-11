@@ -29,7 +29,7 @@ function linkify(text: string, keyPrefix: number, style: LinkStyle = "user"): Re
 				href={url}
 				target="_blank"
 				{...(style === "textLink"
-					? {rel: "noreferrer", dir: "ltr", className: "text-link inline cursor-pointer"}
+					? {rel: "noreferrer", dir: "ltr", className: "cds-reset text-link inline cursor-pointer"}
 					: {rel: "noopener noreferrer", className: "text-link"})}
 			>
 				{url}

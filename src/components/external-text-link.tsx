@@ -21,7 +21,7 @@ type ExternalTextLinkProps = ComponentProps<"a"> & {href: string};
  */
 export function ExternalTextLink({
 	children,
-	className = "text-link inline cursor-pointer",
+	className = "cds-reset text-link inline cursor-pointer",
 	"aria-describedby": describedBy,
 	...rest
 }: ExternalTextLinkProps) {

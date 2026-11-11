@@ -973,7 +973,7 @@ describe("QuestionCard", () => {
 					target: "_blank",
 					rel: "noreferrer",
 					dir: "ltr",
-					className: "text-link inline cursor-pointer",
+					className: "cds-reset text-link inline cursor-pointer",
 				},
 			],
 			headerCode: 0,

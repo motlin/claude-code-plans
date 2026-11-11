@@ -55,7 +55,7 @@ export const USAGE_RING_WRAPPER_CLASS = "flex shrink-0 ms-px";
 export const USAGE_RING_CLASS = `${CHIN_BUTTON_CLASS} aspect-square comfortable:rounded-r5`;
 
 /** The card's 28px + button (pinned by `.epitaxy-prompt`), at upstream's 6px control radius, 8px at comfortable. */
-export const ADD_BUTTON_CLASS = `group/btn ${CHIN_BUTTON_CLASS.replace("h-6", "size-7").replace("rounded-r4", "rounded-r5")} comfortable:rounded-r6`;
+export const ADD_BUTTON_CLASS = `cds-reset group/btn ${CHIN_BUTTON_CLASS.replace("h-6", "size-7").replace("rounded-r4", "rounded-r5")} comfortable:rounded-r6`;
 
 /** Upstream's chin icon ink (shared-33 `p`): control ink, primary on button hover, accent (local `text-upstream-accent`) while pressed. */
 export const CHIN_ICON_INK_CLASS =

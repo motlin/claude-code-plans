@@ -240,7 +240,7 @@ describe("SplitDropdownButton", () => {
 			"duration-[60ms]",
 			"ease-[cubic-bezier(.165,.84,.44,1)]",
 		];
-		const BASE = ["relative", "outline-none", "focus-visible:shadow-focus", "disabled:opacity-40"];
+		const BASE = ["cds-reset", "relative", "outline-none", "focus-visible:shadow-focus", "disabled:opacity-40"];
 		const PRIMARY_SEGMENT = [
 			"inline-flex",
 			"items-center",
@@ -389,7 +389,7 @@ describe("SplitDropdownButton", () => {
 	});
 
 	describe("ghost look", () => {
-		const BASE = ["relative", "outline-none", "focus-visible:shadow-focus", "disabled:opacity-40"];
+		const BASE = ["cds-reset", "relative", "outline-none", "focus-visible:shadow-focus", "disabled:opacity-40"];
 		const GHOST_BUTTON = ["group/btn", "isolate", "inline-flex", "items-center", "rounded-r5"];
 		const RING = [
 			"shadow-[inset_0_0_0_1px_var(--split-ring,transparent)]",

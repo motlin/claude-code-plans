@@ -152,7 +152,7 @@ function ExternalLinkDialog({
 export function ConfirmExternalLink({
 	href,
 	children,
-	className = "text-link inline cursor-pointer",
+	className = "cds-reset text-link inline cursor-pointer",
 }: {
 	href: string;
 	children: ReactNode;

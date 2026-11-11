@@ -107,7 +107,7 @@ describe("RefusalFallbackNotice", () => {
 		const why = screen.getByRole("button", {name: "Why"});
 		expect({cds: why.dataset["cds"], className: why.className}).toStrictEqual({
 			cds: "TextLink",
-			className: "text-link shrink-0 text-body cursor-pointer",
+			className: "cds-reset text-link shrink-0 text-body cursor-pointer",
 		});
 		expect(card().getAttribute("data-icon-layout")).toBe("first-line");
 		// No icon slot: the body is the Banner's first child.

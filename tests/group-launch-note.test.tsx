@@ -48,7 +48,7 @@ describe("GroupLaunchNote", () => {
 							{tag: "span", class: "shrink-0 whitespace-pre", text: " in the sidebar when you start it."},
 						],
 					},
-					{tag: "button", class: "text-link-inherit shrink-0 whitespace-nowrap", text: "Don’t add"},
+					{tag: "button", class: "cds-reset text-link-inherit shrink-0 whitespace-nowrap", text: "Don’t add"},
 				],
 			},
 			button: {type: "button", cds: "TextLink"},
@@ -63,7 +63,7 @@ describe("GroupLaunchNote", () => {
 			class: "text-center text-balance text-footnote text-secondary",
 			children: [
 				{tag: "span", class: "font-medium text-primary", text: "Infra"},
-				{tag: "button", class: "text-link-inherit", text: "Don’t add"},
+				{tag: "button", class: "cds-reset text-link-inherit", text: "Don’t add"},
 			],
 		});
 		expect(container.textContent).toBe(

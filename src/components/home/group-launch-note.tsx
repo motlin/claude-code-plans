@@ -20,7 +20,8 @@ export function GroupLaunchNote({name, placement, onDismiss}: GroupLaunchNotePro
 			<p className="text-center text-balance text-footnote text-secondary">
 				{WILL_BE_ADDED_BEFORE}
 				<span className="font-medium text-primary">{name}</span>
-				{WILL_BE_ADDED_AFTER} <DontAddLink name={name} onDismiss={onDismiss} className="text-link-inherit" />
+				{WILL_BE_ADDED_AFTER}{" "}
+				<DontAddLink name={name} onDismiss={onDismiss} className="cds-reset text-link-inherit" />
 			</p>
 		);
 	}
@@ -33,7 +34,11 @@ export function GroupLaunchNote({name, placement, onDismiss}: GroupLaunchNotePro
 				</span>
 				<span className="shrink-0 whitespace-pre">{WILL_BE_ADDED_AFTER}</span>
 			</span>
-			<DontAddLink name={name} onDismiss={onDismiss} className="text-link-inherit shrink-0 whitespace-nowrap" />
+			<DontAddLink
+				name={name}
+				onDismiss={onDismiss}
+				className="cds-reset text-link-inherit shrink-0 whitespace-nowrap"
+			/>
 		</span>
 	);
 }

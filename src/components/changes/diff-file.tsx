@@ -261,7 +261,7 @@ const VIEWED_STALE = "Changed since you viewed it";
  * verbatim: a pressed check draws no selected paint, only the filled glyph, and keeps the ghost hover.
  */
 const VIEWED_BUTTON_CLASS =
-	"group/btn relative isolate flex size-6 cursor-pointer items-center justify-center rounded-r5 text-secondary hover:text-primary hide-focus-ring focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-disabled aria-pressed:[&_[data-cds-part=paint]]:bg-transparent aria-pressed:hover:[&_[data-cds-part=paint]]:bg-fill-ghost-hover aria-pressed:hover:[&_[data-cds-part=paint]]:bg-none";
+	"cds-reset group/btn relative isolate flex size-6 cursor-pointer items-center justify-center rounded-r5 text-secondary hover:text-primary hide-focus-ring focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-disabled aria-pressed:[&_[data-cds-part=paint]]:bg-transparent aria-pressed:hover:[&_[data-cds-part=paint]]:bg-fill-ghost-hover aria-pressed:hover:[&_[data-cds-part=paint]]:bg-none";
 const PAINT_LAYER_CLASS = "absolute -z-[1] rounded-[inherit] inset-0";
 const VIEWED_PAINT_CLASS = "absolute inset-0 rounded-[inherit] bg-transparent group-hover/btn:bg-fill-ghost-hover";
 

@@ -22,7 +22,7 @@ const HOST_CLASS =
 export const SELECTION_BAR_CLASS = `rounded-r5 bg-surface-3 shadow-[var(--menu-shadow)] ${FORCED_COLORS_BORDER_CLASS} group/split flex comfortable:rounded-r6`;
 /** Upstream's cds ghost Button: 24px / 8px / 6px compact, 28px / 12px / 8px comfortable; the hover lives on the paint layer. */
 const SELECTION_BAR_BUTTON_CLASS =
-	"group/btn relative isolate inline-flex h-6 shrink-0 items-center justify-center whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none focus-visible:shadow-focus comfortable:h-7 comfortable:px-3 comfortable:rounded-r6";
+	"cds-reset group/btn relative isolate inline-flex h-6 shrink-0 items-center justify-center whitespace-nowrap rounded-r5 px-2 text-body font-control-regular text-primary select-none outline-none focus-visible:shadow-focus comfortable:h-7 comfortable:px-3 comfortable:rounded-r6";
 const PAINT_LAYER_CLASS = "absolute -z-[1] rounded-[inherit] inset-0";
 /** Upstream's ghost paint under fizzy-lake `color` (`stacks:`): a 60ms box-shadow/color transition and the button ghost hover. */
 const PAINT_CLASS =

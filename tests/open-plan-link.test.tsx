@@ -21,7 +21,7 @@ describe("OpenPlanLink", () => {
 			outer: link.outerHTML,
 			calls: onOpen.mock.calls.length,
 		}).toStrictEqual({
-			outer: '<span role="button" tabindex="0" data-cds="TextLink" class="text-link inline cursor-pointer text-footnote">Open plan</span>',
+			outer: '<span role="button" tabindex="0" data-cds="TextLink" class="cds-reset text-link inline cursor-pointer text-footnote">Open plan</span>',
 			calls: 3,
 		});
 	});
