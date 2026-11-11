@@ -3972,6 +3972,16 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--cds-pad-xl: var(--cds-pad-xl--lg);
 }
 
+/* Upstream's transcript root (`.epitaxy-root .epitaxy-transcript-typography`): a 15px / 1.4 chat body, so
+   the item gap is 10.5px. The root element's own `[--chat-turn-gap:calc(var(--spacing)*5)]!` class then sets
+   the turn gap to 20px (16px compact). Panes outside the transcript keep the :root 15px / 10px. */
+.epitaxy-transcript-typography {
+	--chat-body: calc(0.9375rem * var(--cds-rem-scale, 1));
+	--chat-leading: 1.4;
+	--chat-turn-gap: calc(var(--chat-body) * var(--chat-leading) * 0.75);
+	--chat-item-gap: calc(var(--chat-body) * var(--chat-leading) * 0.5);
+}
+
 /* Settings ▸ Claude Code ▸ Transcript text size. The settings provider sets the
    size (rem) and unitless leading on <html>; every `text-body` inside the transcript
    follows. The body leading stays a length (its consumers size boxes with it) but is

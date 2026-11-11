@@ -244,7 +244,15 @@ describe("session page stale-compact line", () => {
 			expect(element).not.toBeNull();
 			return element!;
 		});
-		expect(found.querySelector('[role="status"]')?.textContent).toBe(LINE);
+		expect({
+			line: found.querySelector('[role="status"]')?.textContent,
+			// Upstream's transcript root carries the transcript-scoped turn gap: 20px, 16px compact.
+			transcriptRoot: found.closest(".epitaxy-transcript-typography")?.className ?? null,
+		}).toStrictEqual({
+			line: LINE,
+			transcriptRoot:
+				"flex-1 epitaxy-transcript-typography [--chat-turn-gap:calc(var(--spacing)*5)]! compact:[--chat-turn-gap:calc(var(--spacing)*4)]!",
+		});
 	});
 
 	it.each<[string, Seed]>([

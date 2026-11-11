@@ -275,3 +275,25 @@ describe("border-0.5 utility (upstream `.border-0\\.5`)", () => {
 		});
 	});
 });
+
+describe("transcript typography tokens (upstream .epitaxy-root .epitaxy-transcript-typography)", () => {
+	it("sizes the turn and item gaps from the 15px / 1.4 chat body inside the transcript, leaving :root at 15px / 10px", () => {
+		const transcript = block(".epitaxy-transcript-typography");
+		expect({
+			declarations: transcript
+				.slice(transcript.indexOf("{") + 1)
+				.split(";")
+				.map((declaration) => declaration.trim().replaceAll(/\s+/g, " "))
+				.filter((declaration) => declaration !== ""),
+			root: tokens(block(":root"), ["--chat-turn-gap", "--chat-item-gap"]),
+		}).toStrictEqual({
+			declarations: [
+				"--chat-body: calc(0.9375rem * var(--cds-rem-scale, 1))",
+				"--chat-leading: 1.4",
+				"--chat-turn-gap: calc(var(--chat-body) * var(--chat-leading) * 0.75)",
+				"--chat-item-gap: calc(var(--chat-body) * var(--chat-leading) * 0.5)",
+			],
+			root: {"--chat-turn-gap": "15px", "--chat-item-gap": "10px"},
+		});
+	});
+});

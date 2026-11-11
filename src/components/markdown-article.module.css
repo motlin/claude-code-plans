@@ -651,14 +651,39 @@
 	padding-inline-start: var(--cds-assistant-message-text-inset, 0px);
 }
 
-/* Upstream's prose flow on top of the 7px gap: 10.5px above each flow block,
-   21px after a list or table, and 7px (two-thirds) after a heading. */
+/* Upstream's prose flow (`.prose`): blocks are spaced by em-based margins instead of the 7px flex gap,
+   .75em between blocks (11.25px at the 15px body) and twice that after a list or table. The two flow
+   lengths are registered, so the em resolves once on the article and every child inherits that px
+   value: a 17px h2 still multiplies the article's 11.25px. */
+@property --_prose-flow-base {
+	syntax: "<length>";
+	inherits: true;
+	initial-value: 0;
+}
+
+@property --_prose-flow {
+	syntax: "<length>";
+	inherits: true;
+	initial-value: 0;
+}
+
+:global([data-transcript-prose]) .markdown {
+	display: block;
+	--_prose-flow-base: 0.75em;
+	--_prose-flow: var(--_prose-flow-base);
+	--_prose-x-after-heading: 0.667;
+	--_prose-x-break: 2;
+	--_prose-x-after-table: 2;
+	--_prose-x-li-child: 0.333;
+}
+
+/* Upstream's @scope (.prose) stops at not-prose blocks, so a fence's own pre keeps its zero margin. The
+   exclusion sits in :where() so the after-list, after-table and first-child rules below still win. */
 :global([data-transcript-prose])
 	.markdown
-	> *
-	+ :is(
+	:is(
 		p,
-		ul:not(:global(.contains-task-list)),
+		ul,
 		ol,
 		dl,
 		blockquote,
@@ -666,17 +691,19 @@
 		figure,
 		details,
 		:global(.markdown-codeblock),
-		:global(.markdown-table-wrapper)
-	) {
-	margin-top: 3.5px;
+		:global(.markdown-table-wrapper),
+		:global([data-mermaid-fence])
+	):not(:where(:global(.markdown-codeblock), :global([data-mermaid-fence])) *) {
+	margin-block-start: var(--_prose-flow);
+	margin-block-end: 0;
 }
 
 :global([data-transcript-prose])
 	.markdown
-	> :is(ul:not(:global(.contains-task-list)), ol, dl, :global(.markdown-table-wrapper))
+	:is(ul, ol, dl)
 	+ :is(
 		p,
-		ul:not(:global(.contains-task-list)),
+		ul,
 		ol,
 		dl,
 		blockquote,
@@ -684,17 +711,18 @@
 		figure,
 		details,
 		:global(.markdown-codeblock),
-		:global(.markdown-table-wrapper)
+		:global(.markdown-table-wrapper),
+		:global([data-mermaid-fence])
 	) {
-	margin-top: 14px;
+	margin-block-start: calc(var(--_prose-flow) * var(--_prose-x-break));
 }
 
 :global([data-transcript-prose])
 	.markdown
-	> :is(h1, h2, h3, h4, h5, h6)
+	:global(.markdown-table-wrapper)
 	+ :is(
 		p,
-		ul:not(:global(.contains-task-list)),
+		ul,
 		ol,
 		dl,
 		blockquote,
@@ -702,9 +730,17 @@
 		figure,
 		details,
 		:global(.markdown-codeblock),
-		:global(.markdown-table-wrapper)
+		:global(.markdown-table-wrapper),
+		:global([data-mermaid-fence])
 	) {
-	margin-top: 0;
+	margin-block-start: calc(var(--_prose-flow) * var(--_prose-x-after-table));
+}
+
+/* Upstream's `:first-child { margin-block-start: 0 }`: the article's first block and the first block
+   of each list item and box sit flush. */
+:global([data-transcript-prose]) .markdown > :first-child,
+:global([data-transcript-prose]) .markdown :is(li, blockquote, details, th, td) > :first-child {
+	margin-block-start: 0;
 }
 
 :global([data-transcript-prose]) .markdown > ul:not(:global(.contains-task-list)) > li {

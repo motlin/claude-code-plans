@@ -1811,7 +1811,8 @@ function SessionView({
 							<LegacyMessageLinkNotice hash={locationHash} />
 
 							{/* The transcript spans the page padding; the chat column's own gutters inset it, as on upstream */}
-							<div className="flex-1">
+							{/* Upstream's transcript root: transcript-scoped turn (20px, 16px compact) and item (10.5px) gaps */}
+							<div className="flex-1 epitaxy-transcript-typography [--chat-turn-gap:calc(var(--spacing)*5)]! compact:[--chat-turn-gap:calc(var(--spacing)*4)]!">
 								{/* Chat messages */}
 								<AskUserQuestionProvider value={askUserQuestionCtx}>
 									<TranscriptHistoryLoader sessionId={sessionId} startIndex={transcript.startIndex} />

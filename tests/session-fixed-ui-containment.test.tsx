@@ -253,7 +253,8 @@ describe("fixed-position session UI and the contained transcript scroller", () =
 			),
 		}).toStrictEqual({
 			topFade: null,
-			transcriptBleed: "flex-1",
+			transcriptBleed:
+				"flex-1 epitaxy-transcript-typography [--chat-turn-gap:calc(var(--spacing)*5)]! compact:[--chat-turn-gap:calc(var(--spacing)*4)]!",
 			dockWrapper: "",
 			footerBleed: [],
 		});

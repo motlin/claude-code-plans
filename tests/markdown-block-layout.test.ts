@@ -135,30 +135,49 @@ describe("markdown block layout", () => {
 		});
 	});
 
-	it("spaces transcript prose by upstream's 10.5px flow: 21px after a list or table, 7px after a heading", () => {
+	it("spaces transcript prose by upstream's em-based --_prose-flow margins: .75em between blocks, twice that after a list or table, none above the first", () => {
 		const flow =
-			"p, ul:not(:global(.contains-task-list)), ol, dl, blockquote, pre, figure, details, :global(.markdown-codeblock), :global(.markdown-table-wrapper)";
-		const prose = ":global([data-transcript-prose]) .markdown >";
+			"p, ul, ol, dl, blockquote, pre, figure, details, :global(.markdown-codeblock), :global(.markdown-table-wrapper), :global([data-mermaid-fence])";
+		const prose = ":global([data-transcript-prose]) .markdown";
+		// Upstream's @scope stops at not-prose blocks, so a fence's own pre keeps its zero margin.
+		const notProse = ":not(:where(:global(.markdown-codeblock), :global([data-mermaid-fence])) *)";
 		// The formatter breaks these long selectors over several lines.
 		const css = markdownCss.replace(/\s+/g, " ").replaceAll("( ", "(").replaceAll(" )", ")");
 
 		expect({
-			base: ruleDeclarations(css, `${prose} * + :is(${flow})`),
-			afterListOrTable: ruleDeclarations(
-				css,
-				`${prose} :is(ul:not(:global(.contains-task-list)), ol, dl, :global(.markdown-table-wrapper)) + :is(${flow})`,
-			),
-			afterHeading: ruleDeclarations(css, `${prose} :is(h1, h2, h3, h4, h5, h6) + :is(${flow})`),
-			oldPairRules: [
-				css.includes(`${prose} p + p`),
-				css.includes(`${prose} * + blockquote`),
-				css.includes(`${prose} ul:not(:global(.contains-task-list)) + p`),
+			root: ruleDeclarations(css, prose),
+			flowProperties: [
+				ruleDeclarations(css, "@property --_prose-flow-base"),
+				ruleDeclarations(css, "@property --_prose-flow"),
 			],
+			base: ruleDeclarations(css, `${prose} :is(${flow})${notProse}`),
+			afterList: ruleDeclarations(css, `${prose} :is(ul, ol, dl) + :is(${flow})`),
+			afterTable: ruleDeclarations(css, `${prose} :global(.markdown-table-wrapper) + :is(${flow})`),
+			firstChild: ruleDeclarations(
+				css,
+				`${prose} > :first-child, ${prose} :is(li, blockquote, details, th, td) > :first-child`,
+			),
+			oldPxRules: [css.includes("margin-top: 3.5px"), css.includes("margin-top: 14px")],
 		}).toStrictEqual({
-			base: {"margin-top": "3.5px"},
-			afterListOrTable: {"margin-top": "14px"},
-			afterHeading: {"margin-top": "0"},
-			oldPairRules: [false, false, false],
+			root: {
+				display: "block",
+				"--_prose-flow-base": "0.75em",
+				"--_prose-flow": "var(--_prose-flow-base)",
+				"--_prose-x-after-heading": "0.667",
+				"--_prose-x-break": "2",
+				"--_prose-x-after-table": "2",
+				"--_prose-x-li-child": "0.333",
+			},
+			// Registered lengths, so the em resolves once on the article and children inherit the px value.
+			flowProperties: [
+				{syntax: '"<length>"', inherits: "true", "initial-value": "0"},
+				{syntax: '"<length>"', inherits: "true", "initial-value": "0"},
+			],
+			base: {"margin-block-start": "var(--_prose-flow)", "margin-block-end": "0"},
+			afterList: {"margin-block-start": "calc(var(--_prose-flow) * var(--_prose-x-break))"},
+			afterTable: {"margin-block-start": "calc(var(--_prose-flow) * var(--_prose-x-after-table))"},
+			firstChild: {"margin-block-start": "0"},
+			oldPxRules: [false, false],
 		});
 	});
 
