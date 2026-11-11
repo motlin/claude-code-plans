@@ -27,7 +27,8 @@ const ROW_LIMIT = 3;
 const CARD_CLASS = "card-ring flex w-80 max-w-full shrink-0 flex-col rounded-card bg-surface-1";
 
 /** Upstream's row ink is `text-secondary-control`: primary ink under fizzy color, secondary with it off. */
-const ROW_CLASS = "flex h-8 w-full items-center gap-2 rounded-lg px-2 text-[13px]/5 text-secondary-control";
+const ROW_CLASS =
+	"flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-body leading-5 text-secondary-control";
 
 /** `/Users/me/x` or `/home/me/x` → `~/x`, like upstream's shortened local cwd. */
 function shortenCwd(path: string): string {
