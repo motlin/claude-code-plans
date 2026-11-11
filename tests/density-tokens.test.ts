@@ -87,7 +87,7 @@ describe("density type tokens", () => {
 				"--upstream-text-heading": "15px",
 				"--upstream-leading-heading": "20px",
 			},
-			comfortableDeclarations: 43,
+			comfortableDeclarations: 45,
 			compact: {
 				"--upstream-text-body": "13px",
 				"--upstream-leading-body": "19px",
@@ -102,7 +102,7 @@ describe("density type tokens", () => {
 				"--upstream-text-heading": "14px",
 				"--upstream-leading-heading": "18px",
 			},
-			compactDeclarations: 43,
+			compactDeclarations: 45,
 			caption: "var(--upstream-text-caption)",
 			captionLeading: "var(--upstream-leading-caption)",
 		});
@@ -127,6 +127,25 @@ describe("control height token", () => {
 			compact: "calc(1.5rem * var(--cds-rem-scale, 1))",
 			panelsComfortable:
 				'[data-cds-fizzy-lake~="panels"][data-density="comfortable"],\n\t[data-cds-fizzy-lake~="panels"] [data-density="comfortable"] {\n\t\t--cds-h-control: calc(1.75rem * var(--cds-rem-scale, 1));\n\t\t--cds-button-pad-max: calc(0.5625rem * var(--cds-rem-scale, 1));\n\t',
+		});
+	});
+});
+
+describe("checkbox tokens", () => {
+	it("copies upstream's --cds-checkbox and --cds-checkbox-radius: 16px / 4px on the base and compact, 20px / 5px comfortable", () => {
+		const pair = (source: string) => ({
+			size: token(source, "--cds-checkbox"),
+			radius: token(source, "--cds-checkbox-radius"),
+		});
+
+		expect({
+			base: pair(block("@theme")),
+			compact: pair(block('[data-density="compact"]')),
+			comfortable: pair(block('[data-density="comfortable"]')),
+		}).toStrictEqual({
+			base: {size: "1rem", radius: "0.25rem"},
+			compact: {size: "1rem", radius: "0.25rem"},
+			comfortable: {size: "1.25rem", radius: "0.3125rem"},
 		});
 	});
 });

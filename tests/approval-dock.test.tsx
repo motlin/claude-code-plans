@@ -288,7 +288,7 @@ describe("QuestionCard", () => {
 		}).toStrictEqual({
 			card: ["card-ring", "@container", "max-w-[480px]", "rounded-card"],
 			header: "Which test runner?1 of 2",
-			pagerMargins: ["-my-1.5", "-me-2"],
+			pagerMargins: ["-my-xs", "-me-sm"],
 			pager: [true, false],
 			options: [
 				["VitestVite-native", "true"],
@@ -297,7 +297,7 @@ describe("QuestionCard", () => {
 			],
 			otherBox: null,
 			actions: ["Skip", false],
-			actionsGap: ["gap-2"],
+			actionsGap: ["gap-sm"],
 		});
 	});
 
@@ -339,7 +339,7 @@ describe("QuestionCard", () => {
 			}).toStrictEqual({calls: 0, pressed: "true"});
 		});
 
-		it("wraps the options in a data-approval-allow contents span, rings focus with a shadow, keeps label and description bidi-plaintext, and draws 20px pager buttons", () => {
+		it("wraps the options in a data-approval-allow contents span, rings focus with a shadow, keeps label and description bidi-plaintext, and draws control-height square pager buttons", () => {
 			render(<QuestionCard questions={QUESTIONS} onSubmit={async () => {}} />);
 			const option = screen.getByRole("button", {name: /^Vitest/});
 			const [label, description] = Array.from(option.querySelector(".select-text")?.children ?? []);
@@ -351,7 +351,7 @@ describe("QuestionCard", () => {
 				focus: option.className.split(" ").filter((name) => /focus|outline|ring/.test(name)),
 				label: label?.className,
 				description: description?.className,
-				pager: previous.className.split(" ").filter((name) => /^(size-|rounded-)/.test(name)),
+				pager: previous.className.split(" ").filter((name) => /^(size-|h-|aspect-|rounded-)/.test(name)),
 				caret: previous
 					.querySelector("svg")
 					?.getAttribute("class")
@@ -363,8 +363,8 @@ describe("QuestionCard", () => {
 				label: "text-body text-primary [unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]",
 				description:
 					"whitespace-pre-wrap text-body text-secondary [unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]",
-				pager: ["size-5", "rounded-r5"],
-				caret: ["size-4"],
+				pager: ["h-control", "aspect-square", "rounded-[var(--upstream-radius)]"],
+				caret: ["size-icon"],
 			});
 		});
 	});
@@ -409,7 +409,7 @@ describe("QuestionCard", () => {
 		}).toStrictEqual({
 			card: false,
 			className:
-				"card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text animate-question-receipt-enter motion-reduce:animate-none",
+				"card-ring mb-[var(--chat-item-gap)] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text animate-question-receipt-enter motion-reduce:animate-none",
 			rows: [
 				["Which test runner?", "Vitest"],
 				["Which features?", "Mutation, Coverage, Watch"],
@@ -592,7 +592,7 @@ describe("QuestionCard", () => {
 		expect({single, multi}).toStrictEqual({single: true, multi: true});
 	});
 
-	it("styles the Other box as upstream's cds TextArea field: 13/19 type, one-line minimum, field fill and ring, 6/8 padding, hover ring, focus-visible ring, disabled opacity", () => {
+	it("styles the Other box as upstream's cds TextArea field: body type, one-line minimum, field fill and ring, pad-sm/pad-md padding, hover ring, focus-visible ring, disabled opacity", () => {
 		render(<QuestionCard questions={[QUESTIONS[0]!]} onSubmit={async () => {}} />);
 		fireEvent.click(screen.getByRole("button", {name: "Other"}));
 		const box = screen.getByRole("textbox", {name: "Other option"});
@@ -609,14 +609,14 @@ describe("QuestionCard", () => {
 		}).toStrictEqual({
 			dir: "auto",
 			classes: [
-				"min-h-[calc(1lh+0.75rem)]",
-				"max-h-[calc(4lh+0.75rem)]",
-				"rounded-r5",
+				"min-h-[calc(1lh+2*var(--cds-pad-sm))]",
+				"max-h-[calc(4lh+2*var(--cds-pad-sm))]",
+				"rounded-[var(--upstream-radius)]",
 				"bg-fill-field",
-				"px-2",
-				"py-1.5",
+				"px-md",
+				"py-sm",
 				"font-sans",
-				"text-[13px]/[19px]",
+				"text-body",
 				"text-primary",
 				"shadow-field-ring",
 				"transition",
@@ -934,7 +934,7 @@ describe("QuestionCard", () => {
 		expect(onSubmit.mock.calls[0]?.[0]).toStrictEqual([null, {selected: [0]}]);
 	});
 
-	it("keeps backticks literal in the header question and links its URLs as upstream's TextLink, keeps option labels plain, and links option descriptions", () => {
+	it("draws the header question's code as upstream's chip and links its URLs as upstream's TextLink, keeps option labels plain, and links option descriptions", () => {
 		render(
 			<QuestionCard
 				questions={[
@@ -965,7 +965,7 @@ describe("QuestionCard", () => {
 				.getAllByRole("link")
 				.map((a) => a.getAttribute("href")),
 		}).toStrictEqual({
-			headerText: "Use the docs at https://example.com/guide? Run `npm test`.",
+			headerText: "Use the docs at https://example.com/guide? Run npm test.",
 			headerLinks: [
 				{
 					href: "https://example.com/guide",
@@ -976,7 +976,7 @@ describe("QuestionCard", () => {
 					className: "cds-reset text-link inline cursor-pointer",
 				},
 			],
-			headerCode: 0,
+			headerCode: 1,
 			links: ["https://example.com/guide", "https://example.com/d"],
 		});
 	});

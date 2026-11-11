@@ -19,15 +19,15 @@ function notesAddInformation(notes: string | null, answerValue: string): notes i
 }
 
 /**
- * One row of upstream's question receipt: the question in primary w500 over the
+ * One row of upstream's question receipt: the question in primary at the control weight (435 under fizzy type) over the
  * chosen answer (or the Other text, or the unanswered outcome's word) in secondary,
  * its newlines kept and capped at 250px with its own scroll. Unchosen options are omitted.
  */
 function AnsweredQuestion({question, answer, notes}: QuestionReceiptRow) {
 	const trimmed = answer.trim();
 	return (
-		<div data-answered-question className="flex flex-col gap-0.5 px-3 py-2">
-			<div className="text-body font-medium text-primary break-words [unicode-bidi:plaintext]">{question}</div>
+		<div data-answered-question className="flex flex-col gap-0.5 px-lg py-md">
+			<div className="text-body font-control text-primary break-words [unicode-bidi:plaintext]">{question}</div>
 			{trimmed !== "" && (
 				<div className="max-h-[250px] overflow-y-auto whitespace-pre-wrap text-body text-secondary [overflow-wrap:anywhere] [unicode-bidi:plaintext]">
 					{trimmed}
@@ -45,8 +45,7 @@ function AnsweredQuestion({question, answer, notes}: QuestionReceiptRow) {
 
 /**
  * Upstream's `epitaxy-question-receipt`: every answered pair of one call in a
- * 480px card, divided by its ring's hairline, 3px nearer the row above and 7px
- * further from the next. With `enters` it fades in, as when it replaces a live card.
+ * 480px card, divided by its ring's hairline, with the transcript item gap below it. With `enters` it fades in, as when it replaces a live card.
  * Like upstream's `wd` it reads `enters` once, so a later `true` never restarts the
  * fade; a later `false` drops the class, which ends it without replaying.
  */
@@ -56,7 +55,7 @@ export function QuestionReceipt({rows, enters}: {rows: readonly QuestionReceiptR
 	return (
 		<div
 			data-question-receipt=""
-			className={`card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text${
+			className={`card-ring mb-[var(--chat-item-gap)] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text${
 				fades ? " animate-question-receipt-enter motion-reduce:animate-none" : ""
 			}`}
 		>

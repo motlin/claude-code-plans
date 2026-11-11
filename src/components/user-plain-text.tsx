@@ -42,13 +42,46 @@ function linkify(text: string, keyPrefix: number, style: LinkStyle = "user"): Re
 }
 
 /**
- * A user message's inline paint without its block layout, its URLs as upstream's
- * TextLink. Upstream's question card header passes `codeSpans={false}` to keep
- * backticks literal.
+ * Upstream's question-text code chip (`rounded-chip bg-alpha-1 px-xs text-code-regular`), where
+ * `rounded-chip` is a quarter of --cds-h-control-nested (5.5px comfortable).
  */
-export function UserInlineText({text: raw, codeSpans = true}: {text: string; codeSpans?: boolean}) {
+const CODE_CHIP_CLASS =
+	"rounded-[calc(var(--cds-h-control-nested)/4)] bg-alpha-1 px-xs font-mono text-code font-normal";
+
+/** How an inline code span is drawn: a user message's code span, or upstream's question-text chip. */
+type CodeLook = "message" | "chip";
+
+interface UserInlineTextProps {
+	text: string;
+	/** False keeps backticks literal (an option description). */
+	codeSpans?: boolean;
+	codeLook?: CodeLook;
+	/** False leaves URLs as plain text, as upstream's Asked row body. */
+	links?: boolean;
+}
+
+/**
+ * A user message's inline paint without its block layout, its URLs as upstream's
+ * TextLink. Upstream's question card header draws code spans as its chip (`codeLook="chip"`).
+ */
+export function UserInlineText({text: raw, codeSpans = true, codeLook = "message", links = true}: UserInlineTextProps) {
 	const text = maskSecrets(raw);
-	return <>{codeSpans ? renderInline(text, "textLink") : linkify(text, 0, "textLink")}</>;
+	const plain = (part: string, at: number): ReactNode[] => (links ? linkify(part, at, "textLink") : [part]);
+	if (!codeSpans) return <>{plain(text, 0)}</>;
+	if (codeLook === "message") return <>{renderInline(text, "textLink")}</>;
+	const nodes: ReactNode[] = [];
+	let cursor = 0;
+	for (const match of text.matchAll(CODE_SPAN)) {
+		if (match.index > cursor) nodes.push(...plain(text.slice(cursor, match.index), cursor));
+		nodes.push(
+			<code key={`code-${match.index}`} dir="ltr" className={CODE_CHIP_CLASS}>
+				{match[1]}
+			</code>,
+		);
+		cursor = match.index + match[0].length;
+	}
+	if (cursor < text.length) nodes.push(...plain(text.slice(cursor), cursor));
+	return <>{nodes}</>;
 }
 
 function renderInline(text: string, style: LinkStyle = "user", nonInteractive = false): ReactNode[] {

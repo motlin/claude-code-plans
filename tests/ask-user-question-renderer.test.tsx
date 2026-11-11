@@ -103,6 +103,48 @@ describe("AskUserQuestionRenderer", () => {
 			});
 		});
 
+		it("paints code in the question as upstream's chip and leaves a URL as plain text", () => {
+			const {container} = render(
+				<AskUserQuestionRenderer
+					toolCall={makeCall({
+						input: {
+							questions: [
+								{
+									question: "See `docs/a.md` or https://example.com/a",
+									header: "Doc",
+									options: [{label: "Yes"}, {label: "No"}],
+									multiSelect: false,
+								},
+							],
+						},
+						result: REJECTION_RESULT,
+						isError: true,
+						stopped: true,
+					})}
+				/>,
+			);
+			const line = container.querySelector(".text-secondary")!;
+
+			expect({
+				codes: Array.from(line.querySelectorAll("code")).map((code) => ({
+					className: code.className,
+					text: code.textContent,
+				})),
+				links: line.querySelectorAll("a").length,
+				text: line.textContent,
+			}).toStrictEqual({
+				codes: [
+					{
+						className:
+							"rounded-[calc(var(--cds-h-control-nested)/4)] bg-alpha-1 px-xs font-mono text-code font-normal",
+						text: "docs/a.md",
+					},
+				],
+				links: 0,
+				text: "See docs/a.md or https://example.com/a",
+			});
+		});
+
 		it("prints Skipped under each question of an all-[No preference] call", () => {
 			expect(
 				outcomeList(
@@ -167,7 +209,7 @@ describe("AskUserQuestionRenderer", () => {
 		});
 	});
 
-	it("renders an answered question as upstream's 480px question receipt: question primary w500, answer secondary", () => {
+	it("renders an answered question as upstream's 480px question receipt: question primary at the control weight, answer secondary", () => {
 		const {container} = render(<AskUserQuestionRenderer toolCall={makeCall({result: ANSWERED_RESULT})} />);
 
 		const cards = [...container.querySelectorAll(".card-ring")];
@@ -180,16 +222,18 @@ describe("AskUserQuestionRenderer", () => {
 		expect({
 			cardCount: cards.length,
 			cardClassName: card.className,
+			rowClassNames: [...card.querySelectorAll("[data-answered-question]")].map((row) => row.className),
 			paragraphs,
 			mentionsUnchosen: container.textContent.includes("Jest"),
 			buttons: container.querySelectorAll("button").length,
 		}).toStrictEqual({
 			cardCount: 1,
 			cardClassName:
-				"card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
+				"card-ring mb-[var(--chat-item-gap)] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
+			rowClassNames: ["flex flex-col gap-0.5 px-lg py-md"],
 			paragraphs: [
 				{
-					className: "text-body font-medium text-primary break-words [unicode-bidi:plaintext]",
+					className: "text-body font-control text-primary break-words [unicode-bidi:plaintext]",
 					text: "Which test runner?",
 				},
 				{
@@ -221,9 +265,9 @@ describe("AskUserQuestionRenderer", () => {
 		const sent = className("tool-auq-sent");
 
 		expect({unseen, seen, sent}).toStrictEqual({
-			unseen: "card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
-			seen: "card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
-			sent: "card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text animate-question-receipt-enter motion-reduce:animate-none",
+			unseen: "card-ring mb-[var(--chat-item-gap)] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
+			seen: "card-ring mb-[var(--chat-item-gap)] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
+			sent: "card-ring mb-[var(--chat-item-gap)] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text animate-question-receipt-enter motion-reduce:animate-none",
 		});
 	});
 
@@ -268,14 +312,14 @@ describe("AskUserQuestionRenderer", () => {
 		expect(cards).toStrictEqual([
 			{
 				className:
-					"card-ring -mt-[3px] mb-[7px] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
+					"card-ring mb-[var(--chat-item-gap)] flex w-full max-w-[480px] flex-col divide-y divide-[var(--card-outline)] overflow-clip rounded-r6 select-text",
 				pairs: [
 					{
-						className: "flex flex-col gap-0.5 px-3 py-2",
+						className: "flex flex-col gap-0.5 px-lg py-md",
 						lines: ["How should the JOL test treat LinkedHashMap?", "Exact, JDK-version-aware"],
 					},
 					{
-						className: "flex flex-col gap-0.5 px-3 py-2",
+						className: "flex flex-col gap-0.5 px-lg py-md",
 						lines: ["Which runner?", "Bun", "Notes: Fastest locally"],
 					},
 				],

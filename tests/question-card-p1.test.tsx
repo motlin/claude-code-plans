@@ -55,6 +55,130 @@ describe("QuestionCard root radius, as upstream's epitaxy-approval-card rounded-
 	});
 });
 
+describe("QuestionCard pad, gap and checkbox tokens, as upstream's comfortable card", () => {
+	it("draws the header, pager, options, marks, Other row, textarea and actions on the density tokens", () => {
+		render(<QuestionCard questions={[SINGLE, MULTI]} onSubmit={async () => {}} />);
+		const card = screen.getByRole("group", {name: "Which test runner?"});
+		const header = card.firstElementChild!;
+		const option = screen.getByRole("button", {name: "VitestVite-native"});
+		const radioMarks = Array.from(card.querySelectorAll("[data-checked], [data-unchecked]")).map((mark) => ({
+			className: mark.className,
+			inner: mark.firstElementChild?.getAttribute("class") ?? null,
+		}));
+		fireEvent.click(screen.getByRole("button", {name: "Other"}));
+		const otherRow = screen.getByRole("button", {name: "Other"}).parentElement!;
+		const textarea = screen.getByRole("textbox", {name: "Other option"});
+		fireEvent.click(screen.getByRole("button", {name: "Show next question"}));
+		fireEvent.click(screen.getByRole("button", {name: "Coverage"}));
+		const checkbox = screen.getByRole("button", {name: "Coverage"}).querySelector("[data-checked]")!;
+		const actions = card.querySelector(".epitaxy-approval-actions")!;
+
+		expect({
+			header: header.className,
+			pager: header.lastElementChild?.className,
+			pagerIcons: Array.from(header.querySelectorAll("button svg")).map((icon) => icon.getAttribute("class")),
+			option: option.className,
+			optionText: option.querySelector("div")?.className,
+			radioMarks,
+			checkbox: {className: checkbox.className, check: checkbox.firstElementChild?.getAttribute("class")},
+			otherRow: otherRow.className,
+			textarea: textarea.className,
+			actions: actions.className,
+		}).toStrictEqual({
+			header: "bg-alpha-1 px-lg flex gap-md py-md items-center",
+			pager: "flex shrink-0 items-center -my-xs -me-sm gap-xs text-caption text-muted-as-secondary",
+			pagerIcons: ["lucide lucide-chevron-left size-icon", "lucide lucide-chevron-right size-icon"],
+			option: "epitaxy-answer-option group flex w-full items-start gap-md px-lg py-lg text-start cursor-pointer focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus disabled:cursor-default",
+			optionText: "relative flex min-w-0 flex-1 flex-col gap-xs select-text",
+			radioMarks: [
+				{
+					className:
+						"mt-[calc((1lh-var(--cds-checkbox,1rem))/2)] flex size-[var(--cds-checkbox)] shrink-0 items-center justify-center rounded-full bg-fill-accent text-white",
+					inner: "size-[calc(var(--cds-checkbox)-0.625rem)] rounded-full bg-white",
+				},
+				{
+					className:
+						"mt-[calc((1lh-var(--cds-checkbox,1rem))/2)] flex size-[var(--cds-checkbox)] shrink-0 items-center justify-center rounded-full shadow-[inset_0_0_0_1px_var(--color-checkbox-edge)] group-hover:shadow-[inset_0_0_0_1px_var(--color-checkbox-edge-hover)]",
+					inner: null,
+				},
+				{
+					className:
+						"mt-[calc((1lh-var(--cds-checkbox,1rem))/2)] flex size-[var(--cds-checkbox)] shrink-0 items-center justify-center rounded-full shadow-[inset_0_0_0_1px_var(--color-checkbox-edge)] group-hover:shadow-[inset_0_0_0_1px_var(--color-checkbox-edge-hover)]",
+					inner: null,
+				},
+			],
+			checkbox: {
+				className:
+					"mt-[calc((1lh-var(--cds-checkbox,1rem))/2)] flex size-[var(--cds-checkbox)] shrink-0 items-center justify-center rounded-[var(--cds-checkbox-radius)] bg-fill-accent text-white",
+				check: "lucide lucide-check size-[calc(var(--cds-checkbox)-0.25rem)]",
+			},
+			otherRow:
+				"epitaxy-answer-option group relative grid grid-cols-[auto_1fr] items-start gap-x-md gap-y-sm px-lg py-lg",
+			textarea:
+				"relative z-[1] col-start-2 row-start-2 min-h-[calc(1lh+2*var(--cds-pad-sm))] max-h-[calc(4lh+2*var(--cds-pad-sm))] w-full resize-none rounded-[var(--upstream-radius)] bg-fill-field px-md py-sm font-sans text-body text-primary outline-none [field-sizing:content] placeholder:text-ink-muted shadow-field-ring transition duration-150 hover:shadow-field-hover focus-visible:shadow-focus disabled:opacity-50",
+			actions:
+				"epitaxy-approval-actions flex items-center justify-end gap-sm px-lg pb-lg pt-md @max-[420px]:flex-col @max-[420px]:items-stretch @max-[420px]:[&>*]:w-full",
+		});
+	});
+
+	it("compiles the mark, dot, check and textarea sizes from the checkbox and pad tokens", async () => {
+		const candidates = [
+			"size-[var(--cds-checkbox)]",
+			"mt-[calc((1lh-var(--cds-checkbox,1rem))/2)]",
+			"size-[calc(var(--cds-checkbox)-0.625rem)]",
+			"size-[calc(var(--cds-checkbox)-0.25rem)]",
+			"rounded-[var(--cds-checkbox-radius)]",
+			"max-h-[calc(4lh+2*var(--cds-pad-sm))]",
+		];
+		const css = await compileAll(candidates);
+		expect(candidates.map((candidate) => css[candidate]?.replace(/^[^{]*\{ | \}$/g, ""))).toStrictEqual([
+			"width: var(--cds-checkbox); height: var(--cds-checkbox);",
+			"margin-top: calc((1lh - var(--cds-checkbox,1rem)) / 2);",
+			"width: calc(var(--cds-checkbox) - 0.625rem); height: calc(var(--cds-checkbox) - 0.625rem);",
+			"width: calc(var(--cds-checkbox) - 0.25rem); height: calc(var(--cds-checkbox) - 0.25rem);",
+			"border-radius: var(--cds-checkbox-radius);",
+			"max-height: calc(4lh + 2 * var(--cds-pad-sm));",
+		]);
+	});
+
+	it("pads the read-only hint by the card's pad tokens", () => {
+		render(<QuestionCard questions={[SINGLE]} />);
+		const actions = document.querySelector(".epitaxy-approval-actions")!;
+
+		expect(actions.previousElementSibling?.className).toStrictEqual("px-lg pt-sm text-footnote text-secondary");
+	});
+});
+
+describe("QuestionCard question text, as upstream's code chip and TextLink header", () => {
+	it("paints a backtick run as upstream's code chip and a URL as a TextLink, keeping the raw text in the label", () => {
+		const question = "See `docs/a.md` or https://example.com/a";
+		render(<QuestionCard questions={[{question, options: [{label: "Yes"}]}]} onSubmit={async () => {}} />);
+		const card = screen.getByRole("group", {name: question});
+		const title = card.firstElementChild!.firstElementChild!;
+
+		expect({
+			codes: Array.from(title.querySelectorAll("code")).map((code) => ({
+				className: code.className,
+				dir: code.getAttribute("dir"),
+				text: code.textContent,
+			})),
+			links: Array.from(title.querySelectorAll("a")).map((link) => link.getAttribute("href")),
+			text: title.textContent,
+		}).toStrictEqual({
+			codes: [
+				{
+					className:
+						"rounded-[calc(var(--cds-h-control-nested)/4)] bg-alpha-1 px-xs font-mono text-code font-normal",
+					dir: "ltr",
+					text: "docs/a.md",
+				},
+			],
+			links: ["https://example.com/a"],
+			text: "See docs/a.md or https://example.com/a",
+		});
+	});
+});
+
 describe("QuestionCard Skip while read-only, as upstream's disabled cds Button", () => {
 	it("keeps the disabled Skip at opacity 1 with the fizzy disabled ink and fill, opacity .4 elsewhere, and no pointer events", () => {
 		render(<QuestionCard questions={[SINGLE]} />);
@@ -84,7 +208,7 @@ describe("QuestionCard pager arrows, as upstream's ghost icon-only cds Buttons",
 			(name) => screen.getByRole("button", {name}).className,
 		);
 		const arrow =
-			"flex size-5 cursor-pointer items-center justify-center rounded-r5 hover:bg-fill-ghost-hover [&:disabled:not([aria-busy])]:opacity-disabled disabled:pointer-events-none stacks:[&:disabled:not([aria-busy])]:opacity-100 stacks:[&:disabled:not([aria-busy])]:text-button-disabled stacks:[&:disabled:not([aria-busy])]:[--shortcut-cap-ink:currentColor] stacks:[&:disabled:not([aria-busy])]:not-in-data-[cds=SplitDropdownButton]:[--upstream-text-button-disabled:var(--upstream-icon-only-disabled)]";
+			"flex h-control aspect-square cursor-pointer items-center justify-center rounded-[var(--upstream-radius)] hover:bg-fill-ghost-hover [&:disabled:not([aria-busy])]:opacity-disabled disabled:pointer-events-none stacks:[&:disabled:not([aria-busy])]:opacity-100 stacks:[&:disabled:not([aria-busy])]:text-button-disabled stacks:[&:disabled:not([aria-busy])]:[--shortcut-cap-ink:currentColor] stacks:[&:disabled:not([aria-busy])]:not-in-data-[cds=SplitDropdownButton]:[--upstream-text-button-disabled:var(--upstream-icon-only-disabled)]";
 		expect(classes).toStrictEqual([arrow, arrow]);
 	});
 
@@ -215,7 +339,7 @@ describe("QuestionReceipt answer line, as upstream's Cd", () => {
 			question: [question?.tagName, question?.className],
 			answer: [answer?.tagName, answer?.className, answer?.textContent],
 		}).toStrictEqual({
-			question: ["DIV", "text-body font-medium text-primary break-words [unicode-bidi:plaintext]"],
+			question: ["DIV", "text-body font-control text-primary break-words [unicode-bidi:plaintext]"],
 			answer: [
 				"DIV",
 				"max-h-[250px] overflow-y-auto whitespace-pre-wrap text-body text-secondary [overflow-wrap:anywhere] [unicode-bidi:plaintext]",
@@ -404,7 +528,7 @@ describe("QuestionCard option preview panel, as upstream's GF under Mt", () => {
 		options: [{label: "Grid", preview: "grid **bold**"}, {label: "List", preview: "list view"}, {label: "Plain"}],
 	};
 	const PREVIEW_CLASS =
-		"px-3 max-h-[240px] overflow-y-auto pb-3 text-secondary flex flex-col gap-2 font-sans text-body";
+		"px-lg max-h-[240px] overflow-y-auto pb-lg text-secondary flex flex-col gap-2 font-sans text-body";
 
 	function previews(): HTMLElement[] {
 		return Array.from(document.querySelectorAll<HTMLElement>("[data-question-option-preview]"));
@@ -514,7 +638,7 @@ describe("QuestionCard option preview panel, as upstream's GF under Mt", () => {
 		});
 
 		expect({className: block.className, html: block.innerHTML}).toStrictEqual({
-			className: "px-3 max-h-[240px] overflow-y-auto pb-3 text-secondary font-sans text-body",
+			className: "px-lg max-h-[240px] overflow-y-auto pb-lg text-secondary font-sans text-body",
 			html: '<div style="color:red">hi</div>',
 		});
 	});

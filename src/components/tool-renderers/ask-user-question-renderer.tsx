@@ -7,6 +7,7 @@ import {ApprovalSlot} from "../approval-slot";
 import {sessionApprovalSlotCard} from "../../lib/approval-slot-card";
 import {QuestionCard} from "../question-card";
 import {QuestionReceipt} from "../question-receipt";
+import {UserInlineText} from "../user-plain-text";
 import {FORK_ANSWER_LABEL} from "../../lib/question-answer-route";
 import type {QuestionAnswer} from "../../lib/hook-events";
 import {clearSentQuestionCard, isQuestionCardSent, useQuestionCardSent} from "../../lib/question-card-store";
@@ -94,7 +95,9 @@ function QuestionOutcomeList({toolCall}: {toolCall: ClientToolCall}) {
 					entry.answer ?? (kind !== undefined && entries.length > 1 ? OUTCOME_LABEL[kind] : undefined);
 				return (
 					<div key={i} className="flex flex-col text-body [overflow-wrap:anywhere]">
-						<div className="text-secondary">{entry.question}</div>
+						<div className="text-secondary">
+							<UserInlineText text={entry.question} codeLook="chip" links={false} />
+						</div>
 						{line !== undefined && <div className="text-ink-muted">{line}</div>}
 					</div>
 				);

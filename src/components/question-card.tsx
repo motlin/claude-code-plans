@@ -57,8 +57,8 @@ import {cutUnterminatedPrivateKey, maskSecrets, maskSecretsCompact} from "../lib
 /** Upstream's `@container (width <= 420px)` stack for the card's action row. */
 const STACK_ACTIONS = "@max-[420px]:flex-col @max-[420px]:items-stretch @max-[420px]:[&>*]:w-full";
 
-/** The pager's previous/next arrows: upstream's ghost icon-only cds Buttons, with their disabled look. */
-const PAGER_ARROW_CLASS = `flex size-5 cursor-pointer items-center justify-center rounded-r5 hover:bg-fill-ghost-hover ${CDS_BUTTON_DISABLED} ${CDS_ICON_ONLY_DISABLED}`;
+/** The pager's previous/next arrows: upstream's ghost icon-only `sm` cds Buttons (`h-control aspect-square`), with their disabled look. */
+const PAGER_ARROW_CLASS = `flex h-control aspect-square cursor-pointer items-center justify-center rounded-[var(--upstream-radius)] hover:bg-fill-ghost-hover ${CDS_BUTTON_DISABLED} ${CDS_ICON_ONLY_DISABLED}`;
 
 /** Upstream opens a single-select question on its first option. */
 function initialDraft(question: QuestionLike): QuestionCardDraft {
@@ -91,14 +91,17 @@ function sentReceiptRows(
 	}));
 }
 
-/** Upstream cds Checkbox / Radio indicator: unchecked, its edge reads --cds-checkbox-edge (hover -hover). */
+/**
+ * Upstream cds Checkbox / Radio indicator, sized by --cds-checkbox (20px comfortable, 16px compact) with a
+ * --cds-checkbox-radius corner: unchecked, its edge reads --cds-checkbox-edge (hover -hover).
+ */
 function Mark({checked, multi}: {checked: boolean; multi: boolean}) {
-	const shape = multi ? "rounded-r3" : "rounded-full";
+	const shape = multi ? "rounded-[var(--cds-checkbox-radius)]" : "rounded-full";
 	return (
 		<span
 			aria-hidden="true"
 			{...(checked ? {"data-checked": ""} : {"data-unchecked": ""})}
-			className={`mt-[calc((1lh-1rem)/2)] flex size-4 shrink-0 items-center justify-center ${shape} ${
+			className={`mt-[calc((1lh-var(--cds-checkbox,1rem))/2)] flex size-[var(--cds-checkbox)] shrink-0 items-center justify-center ${shape} ${
 				checked
 					? "bg-fill-accent text-white"
 					: "shadow-[inset_0_0_0_1px_var(--color-checkbox-edge)] group-hover:shadow-[inset_0_0_0_1px_var(--color-checkbox-edge-hover)]"
@@ -106,9 +109,9 @@ function Mark({checked, multi}: {checked: boolean; multi: boolean}) {
 		>
 			{checked &&
 				(multi ? (
-					<Check className="size-3" strokeWidth={3} />
+					<Check className="size-[calc(var(--cds-checkbox)-0.25rem)]" strokeWidth={3} />
 				) : (
-					<span className="size-1.5 rounded-full bg-white" />
+					<span className="size-[calc(var(--cds-checkbox)-0.625rem)] rounded-full bg-white" />
 				))}
 		</span>
 	);
@@ -122,7 +125,7 @@ const ANSWER_ROW_ATTR = "data-question-answer-row";
 
 const OPTION_FOCUS = "focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus";
 
-const OPTION_CLASS = "epitaxy-answer-option group flex w-full items-start gap-3 px-3 py-3 text-start";
+const OPTION_CLASS = "epitaxy-answer-option group flex w-full items-start gap-md px-lg py-lg text-start";
 
 const OPTION_TEXT_CLASS =
 	"[unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]";
@@ -279,7 +282,7 @@ function AnswerOption({
 	const pressStartedOnControl = useRef(false);
 	const linked = HAS_URL.test(description);
 	const text = (
-		<div id={textId} className="relative flex min-w-0 flex-1 flex-col gap-1.5 select-text">
+		<div id={textId} className="relative flex min-w-0 flex-1 flex-col gap-xs select-text">
 			<span className={`text-body text-primary ${OPTION_TEXT_CLASS}`}>{label}</span>
 			{description !== "" && (
 				<span className={`whitespace-pre-wrap text-body text-secondary ${OPTION_TEXT_CLASS}`}>
@@ -341,7 +344,7 @@ function AnswerOption({
 }
 
 /** Upstream's `jt` then `max-h-[240px] overflow-y-auto pb-lg text-secondary`; `px-lg`/`pb-lg` are 12px here (16px in upstream's comfortable density). */
-const PREVIEW_CLASS = "px-3 max-h-[240px] overflow-y-auto pb-3 text-secondary";
+const PREVIEW_CLASS = "px-lg max-h-[240px] overflow-y-auto pb-lg text-secondary";
 
 function subscribeNever(): () => void {
 	return () => {};
@@ -610,12 +613,12 @@ export function QuestionCard({
 				skipEnter ? "" : " animate-approval-inline-enter motion-reduce:animate-none"
 			}`}
 		>
-			<div className="flex items-center gap-3 bg-alpha-1 px-3 py-2">
+			<div className="bg-alpha-1 px-lg flex gap-md py-md items-center">
 				<div className="min-w-0 flex-1 text-body text-primary select-text break-words [unicode-bidi:plaintext]">
-					<UserInlineText text={questionName(question.question)} codeSpans={false} />
+					<UserInlineText text={questionName(question.question)} codeLook="chip" />
 				</div>
 				{questions.length > 1 && (
-					<span className="-my-1.5 -me-2 flex shrink-0 items-center gap-1.5 text-caption text-ink-muted">
+					<span className="flex shrink-0 items-center -my-xs -me-sm gap-xs text-caption text-muted-as-secondary">
 						<button
 							type="button"
 							aria-label="Show previous question"
@@ -628,7 +631,7 @@ export function QuestionCard({
 							}}
 							className={PAGER_ARROW_CLASS}
 						>
-							<ChevronLeft aria-hidden="true" className="size-4" />
+							<ChevronLeft aria-hidden="true" className="size-icon" />
 						</button>
 						<span className="tabular-nums">
 							{index + 1} of {questions.length}
@@ -645,7 +648,7 @@ export function QuestionCard({
 							}}
 							className={PAGER_ARROW_CLASS}
 						>
-							<ChevronRight aria-hidden="true" className="size-4" />
+							<ChevronRight aria-hidden="true" className="size-icon" />
 						</button>
 					</span>
 				)}
@@ -670,7 +673,7 @@ export function QuestionCard({
 							)}
 						</Fragment>
 					))}
-					<div className="epitaxy-answer-option group relative grid grid-cols-[auto_1fr] items-start gap-x-3 gap-y-2 px-3 py-3">
+					<div className="epitaxy-answer-option group relative grid grid-cols-[auto_1fr] items-start gap-x-md gap-y-sm px-lg py-lg">
 						<button
 							type="button"
 							{...{[ANSWER_ATTR]: ""}}
@@ -709,7 +712,7 @@ export function QuestionCard({
 									event.preventDefault();
 									cardRootRef.current?.focus({preventScroll: true});
 								}}
-								className="relative z-[1] col-start-2 row-start-2 min-h-[calc(1lh+0.75rem)] max-h-[calc(4lh+0.75rem)] w-full resize-none rounded-r5 bg-fill-field px-2 py-1.5 font-sans text-[13px]/[19px] text-primary outline-none [field-sizing:content] placeholder:text-ink-muted shadow-field-ring transition duration-150 hover:shadow-field-hover focus-visible:shadow-focus disabled:opacity-50"
+								className="relative z-[1] col-start-2 row-start-2 min-h-[calc(1lh+2*var(--cds-pad-sm))] max-h-[calc(4lh+2*var(--cds-pad-sm))] w-full resize-none rounded-[var(--upstream-radius)] bg-fill-field px-md py-sm font-sans text-body text-primary outline-none [field-sizing:content] placeholder:text-ink-muted shadow-field-ring transition duration-150 hover:shadow-field-hover focus-visible:shadow-focus disabled:opacity-50"
 							/>
 						)}
 					</div>
@@ -720,10 +723,10 @@ export function QuestionCard({
 					{draft.selected.length + (draft.otherChosen ? 1 : 0)} selected
 				</span>
 			)}
-			{error !== null && <p className="px-3 pt-2 text-footnote text-danger-ink">{error}</p>}
-			{onSubmit === undefined && <ReadOnlyAnswerHint className="px-3 pt-2 text-footnote text-secondary" />}
+			{error !== null && <p className="px-lg pt-sm text-footnote text-danger-ink">{error}</p>}
+			{onSubmit === undefined && <ReadOnlyAnswerHint className="px-lg pt-sm text-footnote text-secondary" />}
 			<div
-				className={`epitaxy-approval-actions flex items-center justify-end gap-2 px-3 pt-2 pb-3 ${STACK_ACTIONS}`}
+				className={`epitaxy-approval-actions flex items-center justify-end gap-sm px-lg pb-lg pt-md ${STACK_ACTIONS}`}
 			>
 				<ApprovalActionButton variant="secondary" disabled={!editable} onMouseDown={keepFocus} onClick={skip}>
 					Skip

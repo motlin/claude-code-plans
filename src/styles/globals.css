@@ -95,6 +95,9 @@
 	--cds-pad-md: 0.5rem;
 	--cds-pad-lg: 0.75rem;
 	--cds-pad-xl: 1.25rem;
+	/* Upstream .cds-root cds Checkbox / Radio box and checkbox corner (the compact base). */
+	--cds-checkbox: 1rem;
+	--cds-checkbox-radius: 0.25rem;
 	--animate-notify-tip-in: notify-tip-in 150ms ease-out;
 	--animate-approval-inline-enter: approval-inline-enter 160ms ease-out;
 	--animate-question-receipt-enter: approval-inline-enter 200ms ease-out;
@@ -3851,6 +3854,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--upstream-leading-code: 19px;
 	--upstream-text-caption: 12px;
 	--upstream-leading-caption: 17px;
+	--cds-checkbox: 1.25rem;
+	--cds-checkbox-radius: 0.3125rem;
 	--cds-gap-xs: 0.5rem;
 	--cds-gap-sm: 0.75rem;
 	--cds-gap-md: 1rem;
@@ -3897,6 +3902,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--upstream-leading-code: 17px;
 	--upstream-text-caption: 11px;
 	--upstream-leading-caption: 17px;
+	--cds-checkbox: 1rem;
+	--cds-checkbox-radius: 0.25rem;
 	--cds-gap-xs: 0.375rem;
 	--cds-gap-sm: 0.5rem;
 	--cds-gap-md: 0.75rem;
