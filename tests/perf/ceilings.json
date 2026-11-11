@@ -669,17 +669,17 @@
 	},
 	"hot.processTranscript.large-long.calls":
 	{
-		"reason": "Time-sliced resources scan (5307d996c, 2026-10-31): processTranscript now drains a generator (processTranscriptSteps / processRecordBatchSteps) that pauses every 64 records; V8 coverage counts each resumption and the drain helper as calls. That commit raised the small and typical ceilings but missed the large tier, which only runs in merge-group CI. Ceiling raised to the measurement.",
-		"raisedAt": "2026-11-10",
-		"ceiling": 2286,
+		"reason": "Claude Code notice rows (f53828072, 2026-11-09, +6), notice subtypes (d1b09646b, 2026-11-09, +1) and the generic tool output shape (e17d7d4f2, 2026-11-10, +52): every plain system/informational record becomes a hook-notice line (stripAnsi, parseHookMessage, hookNotice, capDetails) merged through one pushHookNotice helper, and every paired tool result goes through one addOutputShape call. Those commits raised the small and typical ceilings but missed the large tier, which only runs in merge-group CI. Raised from 2286 to the measurement.",
+		"raisedAt": "2026-11-11",
+		"ceiling": 2345,
 		"unit": "calls",
 		"tolerance": 0
 	},
 	"hot.processTranscript.large-wide.calls":
 	{
-		"reason": "Time-sliced resources scan (5307d996c, 2026-10-31): processTranscript now drains a generator (processTranscriptSteps / processRecordBatchSteps) that pauses every 64 records; V8 coverage counts each resumption and the drain helper as calls. That commit raised the small and typical ceilings but missed the large tier, which only runs in merge-group CI. Ceiling raised to the measurement.",
-		"raisedAt": "2026-11-10",
-		"ceiling": 870,
+		"reason": "Claude Code notice rows (f53828072, 2026-11-09, +6), notice subtypes (d1b09646b, 2026-11-09, +1) and the generic tool output shape (e17d7d4f2, 2026-11-10, +15): every plain system/informational record becomes a hook-notice line (stripAnsi, parseHookMessage, hookNotice, capDetails) merged through one pushHookNotice helper, and every paired tool result goes through one addOutputShape call. Those commits raised the small and typical ceilings but missed the large tier, which only runs in merge-group CI. Raised from 870 to the measurement.",
+		"raisedAt": "2026-11-11",
+		"ceiling": 892,
 		"unit": "calls",
 		"tolerance": 0
 	},
