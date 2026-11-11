@@ -32,6 +32,7 @@ import {
 	focusNeighbour,
 	focusPane,
 	hiddenWhileExpanded,
+	isNodeHidden,
 	leftEdgeTiles,
 	loadLastPaneFlex,
 	loadPaneLayout,
@@ -48,6 +49,7 @@ import {
 	saveLastPaneFlex,
 	savePaneLayout,
 	tileFloor,
+	tileShellEdges,
 	updatePhoneView,
 	type Direction,
 	type LayoutNode,
@@ -58,6 +60,7 @@ import {
 	type ResolvedNode,
 	type StackNode,
 	type TileId,
+	type TileShellEdges,
 } from "../../lib/pane-layout";
 import {siblingMovedAhead, TileContentHosts} from "../../lib/tile-content-hosts";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
@@ -147,6 +150,10 @@ interface InternalHost {
 	expanded: PaneKind | null;
 	/** Upstream `hiddenTileIds`: kept tiles other than the expanded one, mounted but inert and hidden. */
 	hidden: ReadonlySet<TileId>;
+	/** Upstream `data-tiles-mounted`: the tiles the viewport renders, hidden ones included. */
+	mountedCount: number;
+	/** Each shell's line-mode edge attributes; empty outside line mode and while a tile is expanded. */
+	shellEdges: ReadonlyMap<TileId, TileShellEdges>;
 	phone: boolean;
 	/** The root row, measured when a pane opens so Changes can be sized to its minimum. */
 	rootRef: RefObject<HTMLDivElement | null>;
@@ -912,6 +919,7 @@ function StackView({
 			ref={ref}
 			data-tile-stack={stack.direction}
 			// Upstream's tiles viewport switches to `data-tiles-line` whenever its panels layout holds a pane.
+			{...(isRoot ? {"data-tiles-viewport": "", "data-tiles-mounted": String(host.mountedCount)} : {})}
 			{...(isRoot && tileIdsOf(stack).length > 1 ? {"data-tiles-line": ""} : {})}
 			{...(isRoot && host.movingTile !== null ? {"data-tiles-moving": ""} : {})}
 			className={`flex h-full min-h-0 min-w-0 items-stretch ${stack.direction === "row" ? "flex-row" : "flex-col"}`}
@@ -949,11 +957,14 @@ function NodeView({
 	// Upstream tile `Q` layers: the chat wrap at z-index 0 under its overflowing shell, panes at 1 above it.
 	const layered = !host.phone && tileIdsOf(host.layout.root).length > 1;
 	if (node.kind === "stack") {
+		// Upstream ft's `P`: a stack whose every tile is hidden or dropped merges rt; no `inert`, its tiles carry their own.
+		const hidden =
+			host.expanded !== null &&
+			isNodeHidden(node, host.hidden, (id) => id === host.expanded || host.hidden.has(id));
 		return (
 			<div
 				className={`flex ${slotClass}`}
-				style={style}
-				hidden={host.expanded !== null && !tileIdsOf(node).includes(host.expanded)}
+				style={hidden ? {...style, ...HIDDEN_TILE_STYLE} : style}
 				{...(phone ? {"data-pane-phone": ""} : {})}
 			>
 				<StackView stack={node} path={path} orderKey={orderKey} aheadKey={aheadKey} host={host} />
@@ -1095,6 +1106,7 @@ function TileSlot({
 	"data-pane-overlay"?: boolean;
 } & ChatGutterAttributes) {
 	const {contentHosts} = host;
+	const edges = host.shellEdges.get(tileId);
 	const cellRef = useRef<HTMLDivElement | null>(null);
 	// Upstream's shell ref: adopt the host on mount; the cleanup snapshots and parks it if it is still here.
 	const adopt = useCallback(
@@ -1135,6 +1147,11 @@ function TileSlot({
 				className={`tiles-shell ${shellClassName}`}
 				style={shellStyle}
 				{...(overflowAnchor === undefined ? {} : {"data-tile-overflow-anchor": overflowAnchor})}
+				{...(edges?.afterLineX === true ? {"data-after-line-x": ""} : {})}
+				{...(edges?.afterLineY === true ? {"data-after-line-y": ""} : {})}
+				{...(edges?.stripOverStart === true ? {"data-strip-over-start": ""} : {})}
+				{...(edges?.stripOverFoot === true ? {"data-strip-over-foot": ""} : {})}
+				{...(edges?.stripOverEnd === true ? {"data-strip-over-end": ""} : {})}
 			>
 				{children}
 			</div>
@@ -1276,6 +1293,14 @@ export function TileHost({
 		[layout.root, layout.expanded, hidden],
 	);
 	const liveTileIds = useMemo(() => new Set(mountedTiles), [mountedTiles]);
+	// Upstream recomputes the edges against out-of-flow neighbours, so an expanded tile leaves every shell without them.
+	const shellEdges = useMemo(
+		() =>
+			layout.expanded === null && tileIdsOf(layout.root).length > 1
+				? tileShellEdges(layout.root)
+				: new Map<TileId, TileShellEdges>(),
+		[layout.root, layout.expanded],
+	);
 	// Upstream `setInteractHandler(onTileInteract)`: focus entering a tile, or a press in it, makes it the focused tile.
 	useLayoutEffect(() => {
 		contentHosts.setInteractHandler((id) => {
@@ -1371,6 +1396,8 @@ export function TileHost({
 			setMovingTile,
 			expanded: layout.expanded,
 			hidden,
+			mountedCount: mountedTiles.length,
+			shellEdges,
 			phone,
 			rootRef,
 			rootSize,
@@ -1387,6 +1414,8 @@ export function TileHost({
 			contentHosts,
 			movingTile,
 			hidden,
+			mountedTiles,
+			shellEdges,
 			phone,
 			rootSize,
 			resolved,

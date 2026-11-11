@@ -1024,7 +1024,7 @@ describe("TileHost on a phone", () => {
 		}).toStrictEqual({padding: "", end: null});
 	});
 
-	it("hides non-owning stack wrappers while a nested phone pane is expanded", () => {
+	it("hides non-owning stack wrappers with upstream rt, never inert, while a nested phone pane is expanded", () => {
 		mockViewport(390);
 		const unregisterFiles = registerPane("files", {title: "Files", render: () => <p>Files body</p>});
 		const unregisterTasks = registerPane("background-tasks", {title: "Tasks", render: () => <p>Tasks body</p>});
@@ -1067,13 +1067,28 @@ describe("TileHost on a phone", () => {
 		const wrappers = Array.from(document.querySelectorAll<HTMLElement>("[data-tile-stack=column]")).map(
 			(stack) => stack.parentElement!,
 		);
+		// Upstream ft: a fully hidden stack merges rt into its style but never takes `inert`; its tiles carry their own.
+		const wrapperState = (wrapper: HTMLElement) => ({
+			fixed: wrapper.classList.contains("fixed"),
+			hidden: wrapper.hidden,
+			inert: wrapper.hasAttribute("inert"),
+			hiddenStyle:
+				wrapper.style.position === "absolute" &&
+				wrapper.style.visibility === "hidden" &&
+				wrapper.style.contentVisibility === "hidden" &&
+				wrapper.style.pointerEvents === "none",
+		});
 		fireEvent.click(within(pane).getByRole("button", {name: "Expand"}));
-		expect(
-			wrappers.map((wrapper) => ({fixed: wrapper.classList.contains("fixed"), hidden: wrapper.hidden})),
-		).toStrictEqual([
-			{fixed: false, hidden: false},
-			{fixed: false, hidden: true},
-		]);
+		expect({
+			wrappers: wrappers.map(wrapperState),
+			filesInert: document.querySelector("[data-tile-slot=files]")?.hasAttribute("inert"),
+		}).toStrictEqual({
+			wrappers: [
+				{fixed: false, hidden: false, inert: false, hiddenStyle: false},
+				{fixed: false, hidden: false, inert: false, hiddenStyle: true},
+			],
+			filesInert: true,
+		});
 		expect(screen.getByRole("region", {name: "Test pane"})).toBe(pane);
 		expect(paneSlotState()).toStrictEqual({
 			phone: true,
@@ -1083,7 +1098,10 @@ describe("TileHost on a phone", () => {
 			separators: [],
 		});
 		fireEvent.click(within(pane).getByRole("button", {name: "Collapse"}));
-		expect(wrappers.map((wrapper) => wrapper.hidden)).toStrictEqual([false, false]);
+		expect(wrappers.map(wrapperState)).toStrictEqual([
+			{fixed: false, hidden: false, inert: false, hiddenStyle: false},
+			{fixed: false, hidden: false, inert: false, hiddenStyle: false},
+		]);
 		unregisterFiles();
 		unregisterTasks();
 	});
@@ -1916,6 +1934,79 @@ describe("TileHost persistent content hosts (upstream c9bc99274 data-tile-host /
 			count: "1",
 			columns: 0,
 			changesHost: null,
+		});
+	});
+
+	it("marks the viewport with its tile count and each line-mode shell with upstream's edge attributes", () => {
+		const shellAttributes = [
+			"data-after-line-x",
+			"data-after-line-y",
+			"data-strip-over-start",
+			"data-strip-over-foot",
+			"data-strip-over-end",
+		];
+		function viewportState() {
+			const viewport = document.querySelector<HTMLElement>("[data-tiles-viewport]");
+			return {
+				viewport: viewport?.getAttribute("data-tiles-viewport") ?? null,
+				mounted: viewport?.getAttribute("data-tiles-mounted") ?? null,
+				shells: Object.fromEntries(
+					Array.from(document.querySelectorAll<HTMLElement>(".tiles-shell")).map((shell) => [
+						shell.closest("[data-tile-slot]")?.getAttribute("data-tile-slot"),
+						shellAttributes.filter((name) => shell.getAttribute(name) === ""),
+					]),
+				),
+			};
+		}
+		localStorage.setItem(
+			"ccb.paneLayout.v1",
+			JSON.stringify({
+				"session-edges": {
+					root: {
+						kind: "stack",
+						direction: "row",
+						flex: 1,
+						children: [
+							{kind: "tile", tileId: "chat", flex: 2},
+							{
+								kind: "stack",
+								direction: "column",
+								flex: 1,
+								children: [
+									{kind: "tile", tileId: "files", flex: 1},
+									{kind: "tile", tileId: "changes", flex: 1},
+								],
+							},
+						],
+					},
+					expanded: null,
+					focused: "changes",
+				},
+			}),
+		);
+		renderHost("session-edges");
+		const resting = viewportState();
+		const changes = screen.getByRole("region", {name: "Changes"});
+		fireEvent.click(within(changes).getByRole("button", {name: "Expand"}));
+		const expanded = viewportState();
+		fireEvent.click(within(changes).getByRole("button", {name: "Collapse"}));
+		const collapsed = viewportState();
+		cleanup();
+		renderHost("session-chat-only");
+		expect({resting, expanded, collapsed, chatOnly: viewportState()}).toStrictEqual({
+			resting: {
+				viewport: "",
+				mounted: "3",
+				shells: {
+					chat: ["data-strip-over-end"],
+					files: ["data-after-line-x", "data-strip-over-start", "data-strip-over-foot"],
+					changes: ["data-after-line-x", "data-after-line-y", "data-strip-over-start"],
+				},
+			},
+			// Upstream recomputes the edges against out-of-flow neighbours: expanding drops every attribute.
+			expanded: {viewport: "", mounted: "3", shells: {chat: [], files: [], changes: []}},
+			collapsed: resting,
+			chatOnly: {viewport: "", mounted: "1", shells: {chat: []}},
 		});
 	});
 

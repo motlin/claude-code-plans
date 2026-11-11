@@ -255,6 +255,59 @@ export function isNodeHidden(node: LayoutNode, hidden: ReadonlySet<TileId>, moun
 	return node.children.every((child) => isNodeHidden(child, hidden, mounted));
 }
 
+/** The line-mode shell edge attributes upstream ca67f2c9d `wt` sets on `.tiles-shell`. */
+export interface TileShellEdges {
+	/** Not at the left edge (upstream `data-after-line-x`). */
+	afterLineX: boolean;
+	/** Not at the top edge (`data-after-line-y`). */
+	afterLineY: boolean;
+	/** After-line-x with a divider on its left (`data-strip-over-start`). */
+	stripOverStart: boolean;
+	/** A divider below it (`data-strip-over-foot`). */
+	stripOverFoot: boolean;
+	/** A divider on its right (`data-strip-over-end`). */
+	stripOverEnd: boolean;
+}
+
+interface EdgeHandles {
+	left: boolean;
+	right: boolean;
+	top: boolean;
+	bottom: boolean;
+}
+
+/**
+ * Upstream `wt`'s `atEdge`/`edgeHandles` for every tile of an all-in-flow layout: a child inherits its stack's
+ * handles on the sides it shares with the stack, and gets the divider between it and a sibling on the others. Every
+ * in-flow sibling boundary holds a divider, so a tile is off an edge exactly when a divider sits on that side.
+ */
+export function tileShellEdges(root: StackNode): Map<TileId, TileShellEdges> {
+	const edges = new Map<TileId, TileShellEdges>();
+	const walk = (node: LayoutNode, handles: EdgeHandles) => {
+		if (node.kind === "tile") {
+			edges.set(node.tileId, {
+				afterLineX: handles.left,
+				afterLineY: handles.top,
+				stripOverStart: handles.left,
+				stripOverFoot: handles.bottom,
+				stripOverEnd: handles.right,
+			});
+			return;
+		}
+		const last = node.children.length - 1;
+		node.children.forEach((child, index) => {
+			walk(
+				child,
+				node.direction === "row"
+					? {...handles, left: index > 0 || handles.left, right: index < last || handles.right}
+					: {...handles, top: index > 0 || handles.top, bottom: index < last || handles.bottom},
+			);
+		});
+	};
+	walk(root, {left: false, right: false, top: false, bottom: false});
+	return edges;
+}
+
 function isOpen(state: PaneLayoutState, tileId: TileId): boolean {
 	return tileIds(state.root).includes(tileId);
 }
