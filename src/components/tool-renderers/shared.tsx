@@ -1,6 +1,7 @@
 import {type ReactNode, useCallback, useContext, useMemo, useState} from "react";
 import {ansiPartStyle, parseAnsiCodes} from "../../lib/ansi-codes";
 import {maskSecrets, maskUrlSecrets, secretToggleLabel} from "../../lib/secret-mask";
+import {revealSpoofing} from "../../lib/visible-text";
 import {type SecretReveal, useSecretReveal} from "./use-secret-reveal";
 import {formatDuration} from "../../lib/format-duration";
 import {CHECK_ICON_PATH, COPY_ICON_PATH} from "../../lib/icon-paths";
@@ -503,13 +504,23 @@ export function PolicyDenialReason({call}: {call: PolicyDenial}) {
 }
 
 /** The param rows: a muted mono key, a space, then the value as plain body text (upstream's generic row). */
+/** Upstream's `Wv` (cb6930dae): the input keys whose string value is drawn as a path. */
+const PATH_PARAM_KEYS = new Set(["file_path", "notebook_path"]);
+
 function ParamRows({params}: {params: KeyValueParam[]}) {
 	return (
 		<div className="text-secondary flex flex-col gap-g2">
 			{params.map((p) => (
 				<div key={p.key} className="break-words">
 					<span className="text-[12px]/[17px] font-mono opacity-70">{`${p.key}:`}</span>{" "}
-					{p.markdown ? <InlineMarkdown text={p.value} /> : p.value}
+					{p.markdown ? (
+						<InlineMarkdown text={p.value} />
+					) : PATH_PARAM_KEYS.has(p.key) ? (
+						// Upstream's `Xv` draws a path row as `u9(ME(path))`.
+						revealSpoofing(maskSecrets(p.value))
+					) : (
+						p.value
+					)}
 				</div>
 			))}
 		</div>

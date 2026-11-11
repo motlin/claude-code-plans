@@ -54,4 +54,24 @@ describe("KeyValueCard params", () => {
 			],
 		});
 	});
+
+	it("draws a file_path or notebook_path value as upstream's Xv does: u9(ME(path)), other values as written", () => {
+		const rlo = String.fromCodePoint(0x202e);
+		const token = `ghp_${"A".repeat(36)}`;
+		const {container} = render(
+			<KeyValueCard
+				params={[
+					{key: "file_path", value: `/x/${rlo}gpj.exe`},
+					{key: "notebook_path", value: `/x/${token}/a.ipynb`},
+					{key: "note", value: `${rlo}raw`},
+				]}
+			/>,
+		);
+
+		expect([...paramsContainer(container).children].map((row) => row.lastChild?.textContent)).toStrictEqual([
+			"/x/[U+202E]gpj.exe",
+			`/x/ghp_AAAA${"•".repeat(32)}/a.ipynb`,
+			`${rlo}raw`,
+		]);
+	});
 });
