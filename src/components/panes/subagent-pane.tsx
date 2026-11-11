@@ -11,6 +11,7 @@ import {processTranscript} from "../../lib/transcript";
 import {SessionChat} from "../session-chat";
 import {Tooltip} from "../ui/tooltip";
 import type {PaneChrome} from "./pane-registry";
+import {PaneHeaderRow} from "./pane-header-row";
 
 const GHOST_ICON_BUTTON =
 	"flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary";
@@ -104,30 +105,34 @@ export function SubagentPane({sessionId, subagents, prompts, chrome}: SubagentPa
 
 	return (
 		<>
-			<div data-subagent-header className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
-				<div className="flex min-w-0 flex-1 items-center gap-1">
-					{agent !== undefined && (
-						<Tooltip content="Back">
-							<button
-								type="button"
-								aria-label="Back"
-								onClick={() => {
-									focus(null);
-								}}
-								className={GHOST_ICON_BUTTON}
-							>
-								<ChevronLeft aria-hidden="true" className="size-4" />
-							</button>
-						</Tooltip>
-					)}
-					<h2 data-pane-title className="truncate pl-1 text-body font-normal text-secondary select-none">
-						{agent === undefined ? "Subagents" : (agent.description ?? agent.id)}
-					</h2>
-				</div>
-				{chrome.moveHandle}
-				<div className="relative flex shrink-0 items-center gap-0.5">{chrome.controls}</div>
-			</div>
-			<div className="min-h-0 flex-1 overflow-y-auto rounded-b-[inherit]">
+			<PaneHeaderRow
+				label="Subagents"
+				rowAttributes={{"data-subagent-header": ""}}
+				title={
+					<div className="flex min-w-0 flex-1 items-center gap-1">
+						{agent !== undefined && (
+							<Tooltip content="Back">
+								<button
+									type="button"
+									aria-label="Back"
+									onClick={() => {
+										focus(null);
+									}}
+									className={GHOST_ICON_BUTTON}
+								>
+									<ChevronLeft aria-hidden="true" className="size-4" />
+								</button>
+							</Tooltip>
+						)}
+						<h2 data-pane-title className="truncate pl-1 text-body font-normal text-secondary select-none">
+							{agent === undefined ? "Subagents" : (agent.description ?? agent.id)}
+						</h2>
+					</div>
+				}
+				actions={chrome.controls}
+				moveHandle={chrome.moveHandle}
+			/>
+			<div data-pane-body className="min-h-0 flex-1 overflow-y-auto rounded-b-[inherit]">
 				{agent === undefined ? (
 					subagents.length === 0 ? (
 						<p className="px-4 py-8 text-center text-xs text-t6">No subagents in this session.</p>

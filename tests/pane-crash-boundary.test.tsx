@@ -144,7 +144,7 @@ describe("PaneCrashBoundary", () => {
 			},
 		}).toStrictEqual({
 			crashed: {
-				headerButtons: ["Move", "Expand", "Close"],
+				headerButtons: ["Expand", "Close", "Move"],
 				alert: "Something went wrongTry again",
 				crashButtons: ["Try again"],
 			},

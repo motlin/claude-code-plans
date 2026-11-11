@@ -175,7 +175,7 @@ describe("Subagent pane", () => {
 			showMore: region.getByRole("button", {name: "Show more"}).getAttribute("aria-expanded"),
 			activity: region.getByText("No activity yet").tagName,
 		}).toEqual({
-			controls: ["Back", "Move", "Expand", "Close"],
+			controls: ["Back", "Expand", "Close", "Move"],
 			title: "Audit pane registrations",
 			footnote: "Model Fable 5.1",
 			prompt: "true",

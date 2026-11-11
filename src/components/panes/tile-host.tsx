@@ -18,6 +18,7 @@ import {Maximize2, Minimize2, X} from "lucide-react";
 
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
 import {PaneChromeHeader} from "./deferred-pane-status";
+import {PANE_CLOSE_CONTROL_CLASS, PaneHeaderRow} from "./pane-header-row";
 import {PaneCrashBoundary} from "./pane-crash-boundary";
 import {
 	closePane,
@@ -779,10 +780,13 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 					type="button"
 					aria-label="Close"
 					aria-keyshortcuts={closeKeys.ariaKeyShortcuts}
+					onMouseDown={(event) => {
+						event.preventDefault();
+					}}
 					onClick={() => {
 						host.update((state) => closePane(state, kind));
 					}}
-					className={PANE_HEADER_ICON_BUTTON_CLASS}
+					className={`${PANE_HEADER_ICON_BUTTON_CLASS} ${PANE_CLOSE_CONTROL_CLASS}`}
 				>
 					<X className="h-4 w-4" />
 				</button>
@@ -813,17 +817,22 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 				</PaneCrashBoundary>
 			) : (
 				<>
-					<div className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
-						<span data-pane-title className="truncate pl-1 text-pane text-secondary select-none">
-							{definition.title}
-						</span>
-						{moveHandle}
-						<div className="relative flex shrink-0 items-center gap-0.5">
-							{definition.headerActions}
-							{controls}
-						</div>
-					</div>
-					<div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit]">
+					<PaneHeaderRow
+						label={definition.title}
+						title={
+							<span data-pane-title className="truncate pl-1 text-pane text-secondary select-none">
+								{definition.title}
+							</span>
+						}
+						actions={
+							<>
+								{definition.headerActions}
+								{controls}
+							</>
+						}
+						moveHandle={moveHandle}
+					/>
+					<div data-pane-body className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit]">
 						<div className="h-full scroll-py-2.5 overflow-y-auto [scrollbar-gutter:stable_both-edges]">
 							<PaneCrashBoundary resetKey={crashResetKey}>
 								{definition.render({moveHandle, controls})}

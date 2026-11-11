@@ -39,6 +39,7 @@ import {
 import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
+import {PaneHeaderRow} from "./pane-header-row";
 import {consumePendingFilterFocus} from "./files-filter-focus";
 import {usePaneHost} from "./pane-host-context";
 import type {PaneChrome} from "./pane-registry";
@@ -534,55 +535,61 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 
 	return (
 		<FileTypeIconSetContext value={iconSet}>
-			<div data-files-header className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
-				<div className="flex min-w-0 flex-1 items-center gap-1">
-					<TreeToggle
-						shown={treeShown}
-						onToggle={() => {
-							setTreeShown((shown) => !shown);
-						}}
-					/>
-					{fileTabs.tabs.length === 0 ? (
-						<span data-pane-title className="truncate text-pane text-secondary select-none">
-							Files
-						</span>
-					) : (
-						<FileTabsStrip
-							state={fileTabs}
-							dispatch={dispatchFileTabs}
-							cwd={cwd}
-							onAttachContext={attachToChat}
-							onRevealInTree={revealInTree}
+			<PaneHeaderRow
+				label="Files"
+				rowAttributes={{"data-files-header": ""}}
+				title={
+					<div className="relative flex min-w-0 flex-1 items-center gap-1">
+						<TreeToggle
+							shown={treeShown}
+							onToggle={() => {
+								setTreeShown((shown) => !shown);
+							}}
 						/>
-					)}
-					{chrome.moveHandle}
-				</div>
-				<div className="relative flex shrink-0 items-center gap-0.5">
-					<Tooltip content="Go to file or search" shortcut={goToFileKeys.keys}>
-						<button
-							type="button"
-							aria-label="Go to file or search"
-							aria-keyshortcuts={goToFileKeys.ariaKeyShortcuts}
-							onClick={goToFileOrSearch}
-							className={PANE_HEADER_ICON_BUTTON_CLASS}
-						>
-							<Search aria-hidden="true" className="size-4" />
-						</button>
-					</Tooltip>
-					<FilesSettingsMenu
-						treeShown={treeShown}
-						onTreeShownChange={setTreeShown}
-						sources={{
-							counts: sessionFiles.counts,
-							sourceSelection,
-							onSourceSelectedChange: setSourceSelected,
-							onUnselectAll: unselectAllSources,
-						}}
-					/>
-					{chrome.controls}
-				</div>
-			</div>
-			<div className="flex min-h-0 flex-1 overflow-hidden rounded-b-[inherit]">
+						{fileTabs.tabs.length === 0 ? (
+							<span data-pane-title className="truncate text-pane text-secondary select-none">
+								Files
+							</span>
+						) : (
+							<FileTabsStrip
+								state={fileTabs}
+								dispatch={dispatchFileTabs}
+								cwd={cwd}
+								onAttachContext={attachToChat}
+								onRevealInTree={revealInTree}
+							/>
+						)}
+					</div>
+				}
+				actions={
+					<>
+						<Tooltip content="Go to file or search" shortcut={goToFileKeys.keys}>
+							<button
+								type="button"
+								aria-label="Go to file or search"
+								aria-keyshortcuts={goToFileKeys.ariaKeyShortcuts}
+								onClick={goToFileOrSearch}
+								className={PANE_HEADER_ICON_BUTTON_CLASS}
+							>
+								<Search aria-hidden="true" className="size-4" />
+							</button>
+						</Tooltip>
+						<FilesSettingsMenu
+							treeShown={treeShown}
+							onTreeShownChange={setTreeShown}
+							sources={{
+								counts: sessionFiles.counts,
+								sourceSelection,
+								onSourceSelectedChange: setSourceSelected,
+								onUnselectAll: unselectAllSources,
+							}}
+						/>
+						{chrome.controls}
+					</>
+				}
+				moveHandle={chrome.moveHandle}
+			/>
+			<div data-pane-body className="flex min-h-0 flex-1 overflow-hidden rounded-b-[inherit]">
 				<FilesTreeColumn fill={phone} shown={treeShown} onShownChange={setTreeShown}>
 					{sessionId === undefined ? (
 						sessionFilesList

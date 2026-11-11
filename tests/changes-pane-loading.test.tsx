@@ -39,7 +39,7 @@ vi.mock("../src/components/changes/changes-pane", async (importOriginal) => {
 });
 
 const LOADED_STATE = {
-	buttons: ["Diff scope: Session edits", "Move", "Changes settings", "Expand", "Close"],
+	buttons: ["Diff scope: Session edits", "Changes settings", "Expand", "Close", "Move"],
 	error: null,
 	loading: null,
 	chunkError: null,
@@ -187,9 +187,9 @@ describe("deferred Changes renderer", () => {
 					],
 				},
 			},
-			loading: {buttons: ["Move", "Expand", "Close"], error: null, loading: "Loading changes…", chunkError: null},
+			loading: {buttons: ["Expand", "Close", "Move"], error: null, loading: "Loading changes…", chunkError: null},
 			failed: {
-				buttons: ["Move", "Expand", "Close", "Retry"],
+				buttons: ["Expand", "Close", "Move", "Retry"],
 				error: null,
 				loading: "Couldn’t load this.",
 				chunkError: {state: "retry", copy: "Couldn’t load this.", role: "status"},

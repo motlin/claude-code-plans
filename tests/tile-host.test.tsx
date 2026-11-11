@@ -226,7 +226,7 @@ describe("TileHost", () => {
 		]);
 	});
 
-	it("puts a pane's header actions after Move, before Expand and Close", () => {
+	it("frames a pane's header as upstream's corner-row toolbar: actions, Expand and Close, then Move", () => {
 		unregister();
 		unregister = registerPane("plan", {
 			title: "Test pane",
@@ -241,11 +241,47 @@ describe("TileHost", () => {
 		openTestPane();
 
 		const root = screen.getByText("Test pane body").closest("[data-pane-root]");
-		expect(
-			[...(root?.querySelector("[data-pane-title]")?.parentElement?.querySelectorAll("button") ?? [])].map(
-				(button) => button.getAttribute("aria-label"),
+		const toolbar = root?.querySelector(":scope > [data-pane-corner-row] > [role=toolbar]");
+		expect({
+			cornerRow: [
+				...(root?.querySelector(":scope > [data-pane-corner-row]")?.querySelectorAll("button") ?? []),
+			].map((button) => button.getAttribute("aria-label")),
+			toolbar: {
+				label: toolbar?.getAttribute("aria-label"),
+				cds: toolbar?.getAttribute("data-cds"),
+				classes: toolbar?.className.split(" "),
+			},
+			actions: [...(toolbar?.querySelectorAll("[data-pane-actions] button") ?? [])].map((button) =>
+				button.getAttribute("aria-label"),
 			),
-		).toStrictEqual(["Move", "Pane action", "Expand", "Close"]);
+			closeControl: toolbar
+				?.querySelector("[data-pane-actions] button[aria-label=Close]")
+				?.classList.contains("epitaxy-pane-close-control"),
+			moveInToolbar: toolbar?.querySelector("[aria-label=Move]") !== null,
+			tabStops: [...(toolbar?.querySelectorAll("button") ?? [])].map((button) => button.tabIndex),
+			body: root?.querySelector("[data-pane-body]")?.textContent,
+		}).toStrictEqual({
+			cornerRow: ["Pane action", "Expand", "Close", "Move"],
+			toolbar: {
+				label: "Test pane controls",
+				cds: "Toolbar",
+				classes: [
+					"flex",
+					"shrink-0",
+					"items-center",
+					"gap-xs",
+					"px-[var(--cds-toolbar-pad-block)]",
+					"pt-[var(--cds-toolbar-pad-block,0.5rem)]",
+					"pb-[calc(var(--cds-toolbar-pad-block,0.5rem)+var(--cds-toolbar-strip,0px))]",
+					"outline-none",
+				],
+			},
+			actions: ["Pane action", "Expand", "Close"],
+			closeControl: true,
+			moveInToolbar: false,
+			tabStops: [0, -1, -1],
+			body: "Test pane body",
+		});
 	});
 
 	it("renders an opened pane with its surface header", () => {
@@ -267,9 +303,9 @@ describe("TileHost", () => {
 			buttons: [
 				{name: "Move", keys: null},
 				{name: "Open test pane", keys: null},
-				{name: "Move", keys: null},
 				{name: "Expand", keys: "Shift+Meta+\\"},
 				{name: "Close", keys: "Meta+\\"},
+				{name: "Move", keys: null},
 			],
 			separator: {
 				label: "Resize Chat and Test pane",

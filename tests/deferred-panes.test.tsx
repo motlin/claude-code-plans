@@ -104,6 +104,13 @@ describe("deferred Files, Links, Terminal and Background tasks panes", () => {
 			terminal: paneText("Terminal"),
 			backgroundTasks: paneText("Background tasks"),
 		};
+		const loadingFrames = ["Files", "Terminal"].map((name) => {
+			const row = screen.getByRole("region", {name}).querySelector(":scope > [data-pane-corner-row]");
+			return {
+				toolbar: row?.querySelector(":scope > [role=toolbar]")?.getAttribute("aria-label"),
+				actions: row?.querySelector("[role=toolbar] [data-pane-actions]") !== null,
+			};
+		});
 		act(() => {
 			harness.finish();
 		});
@@ -114,6 +121,7 @@ describe("deferred Files, Links, Terminal and Background tasks panes", () => {
 		expect({
 			registered,
 			loading,
+			loadingFrames,
 			loaded: {
 				files: paneText("Files"),
 				links: paneText("Links"),
@@ -129,6 +137,10 @@ describe("deferred Files, Links, Terminal and Background tasks panes", () => {
 				terminal: "TerminalMoveLoading terminal…",
 				backgroundTasks: "Loading background tasks…",
 			},
+			loadingFrames: [
+				{toolbar: "Files controls", actions: true},
+				{toolbar: "Terminal controls", actions: true},
+			],
 			loaded: {
 				files: "Files of session-alice",
 				links: "Links of session-alice",

@@ -228,7 +228,7 @@ describe("Files pane header", () => {
 			labels: [...(header?.querySelectorAll("button") ?? [])].map((button) => button.getAttribute("aria-label")),
 			title: header?.querySelector("[data-pane-title]")?.textContent,
 		}).toStrictEqual({
-			labels: ["Hide file tree", "Move", "Go to file or search", "Files settings", "Expand", "Close"],
+			labels: ["Hide file tree", "Go to file or search", "Files settings", "Expand", "Close", "Move"],
 			title: "Files",
 		});
 	});

@@ -64,6 +64,7 @@ import {OpenInSubmenu, ShowInFinderItem} from "../files/file-actions-menu";
 import {mentionPath} from "../files/mention-path";
 import {FileTypeIconSetContext, useActiveFileTypeIconSet} from "../file-type-icon-set-context";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "../panes/pane-classes";
+import {PaneHeaderRow} from "../panes/pane-header-row";
 import type {PaneChrome} from "../panes/pane-registry";
 import {type Settings, useSettings} from "../settings-context";
 import {
@@ -1484,56 +1485,69 @@ export function ChangesPaneView({
 
 	return (
 		<FileTypeIconSetContext value={iconSet}>
-			<div ref={headerRef} className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
-				<div className="relative z-[1] flex min-w-0 items-center gap-1 pl-1">
-					{hasFiles && (
-						<ShowFilesToggle
-							ref={setShowFilesButton}
-							pressed={showFiles}
-							onToggle={() => {
-								setSetting("diffShowTree", !showFiles);
+			<PaneHeaderRow
+				label="Changes"
+				rowRef={headerRef}
+				title={
+					<div className="relative z-[1] flex min-w-0 items-center gap-1 pl-1">
+						{hasFiles && (
+							<ShowFilesToggle
+								ref={setShowFilesButton}
+								pressed={showFiles}
+								onToggle={() => {
+									setSetting("diffShowTree", !showFiles);
+								}}
+							/>
+						)}
+						<CoachMark
+							open={fileListTipOpen}
+							anchor={showFilesButton}
+							side="bottom"
+							title={`Browse all ${files.length} changed files`}
+							message="Open the file list to see everything this diff touches and jump between files."
+							action={{
+								label: "Show files",
+								onClick: () => {
+									fileListTip.markSeen();
+									setSetting("diffShowTree", true);
+								},
 							}}
+							onDismiss={fileListTip.markSeen}
+							onClose={fileListTip.close}
 						/>
-					)}
-					<CoachMark
-						open={fileListTipOpen}
-						anchor={showFilesButton}
-						side="bottom"
-						title={`Browse all ${files.length} changed files`}
-						message="Open the file list to see everything this diff touches and jump between files."
-						action={{
-							label: "Show files",
-							onClick: () => {
-								fileListTip.markSeen();
-								setSetting("diffShowTree", true);
-							},
-						}}
-						onDismiss={fileListTip.markSeen}
-						onClose={fileListTip.close}
-					/>
-					{scopeLabel && (
-						<ScopeButton label={scopeLabel} scope={scope} scopes={scopes} onSelectScope={onSelectScope} />
-					)}
-				</div>
-				{moveHandle}
-				<div className="relative z-[1] flex shrink-0 items-center gap-0.5">
-					{hasFiles && <GoToFile files={files} onSelectFile={selectFile} />}
-					<SettingsMenu
-						hasFiles={hasFiles}
-						large={large}
-						sideBySideAvailable={sideBySideAvailable}
-						onCollapseAll={() => {
-							setAllCollapsed(true);
-						}}
-						onExpandAll={() => {
-							setAllCollapsed(false);
-						}}
-						onRefresh={onRefresh}
-					/>
-					{controls}
-				</div>
+						{scopeLabel && (
+							<ScopeButton
+								label={scopeLabel}
+								scope={scope}
+								scopes={scopes}
+								onSelectScope={onSelectScope}
+							/>
+						)}
+					</div>
+				}
+				actions={
+					<>
+						{hasFiles && <GoToFile files={files} onSelectFile={selectFile} />}
+						<SettingsMenu
+							hasFiles={hasFiles}
+							large={large}
+							sideBySideAvailable={sideBySideAvailable}
+							onCollapseAll={() => {
+								setAllCollapsed(true);
+							}}
+							onExpandAll={() => {
+								setAllCollapsed(false);
+							}}
+							onRefresh={onRefresh}
+						/>
+						{controls}
+					</>
+				}
+				moveHandle={moveHandle}
+			/>
+			<div data-pane-body className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit]">
+				{body}
 			</div>
-			<div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit]">{body}</div>
 		</FileTypeIconSetContext>
 	);
 }

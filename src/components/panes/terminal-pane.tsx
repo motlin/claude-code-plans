@@ -9,6 +9,7 @@ import {type ConnectionStatus, HerdrTerminal} from "../herdr-terminal";
 import {ShellTerminal} from "../shell-terminal";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import type {PaneChrome} from "./pane-registry";
+import {PaneHeaderRow} from "./pane-header-row";
 import {consumePendingTerminalFocus} from "./pending-terminal-focus";
 import {GHOST_ICON_BUTTON, type TerminalTabActions, TerminalTabStrip} from "./terminal-tab-strip";
 import {useOptionalPaneHost} from "./pane-host-context";
@@ -285,49 +286,54 @@ export function TerminalPane({
 
 	const surface = (
 		<>
-			<div className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
-				<div className="flex min-w-0 items-center gap-1.5">
-					<TerminalTabStrip
-						showClaude={showClaude}
-						tabs={shellTabs.tabs}
-						active={active}
-						actions={tabActions}
-						onActivate={activate}
-					/>
-					{shells && (
-						<button
-							type="button"
-							aria-label="New terminal"
-							title="New terminal"
-							disabled={starting}
-							onClick={() => void newTerminal()}
-							className={GHOST_ICON_BUTTON}
-						>
-							<Plus aria-hidden="true" className="size-4" />
-						</button>
-					)}
-					{activeStatus !== null && <StatusChip status={activeStatus} />}
-				</div>
-				{chrome?.moveHandle}
-				{!standalone && (
-					<div className="relative z-[1] flex shrink-0 items-center gap-0.5">
-						<PaneHeaderMenu
-							sessionId={sessionId}
-							onOpenTerminalHere={
-								onOpenTerminalHere === undefined
-									? undefined
-									: () => {
-											setError("");
-											onOpenTerminalHere().catch((cause: unknown) => {
-												setError(cause instanceof Error ? cause.message : String(cause));
-											});
-										}
-							}
+			<PaneHeaderRow
+				label="Terminal"
+				title={
+					<div className="flex min-w-0 items-center gap-1.5">
+						<TerminalTabStrip
+							showClaude={showClaude}
+							tabs={shellTabs.tabs}
+							active={active}
+							actions={tabActions}
+							onActivate={activate}
 						/>
-						{chrome?.controls}
+						{shells && (
+							<button
+								type="button"
+								aria-label="New terminal"
+								title="New terminal"
+								disabled={starting}
+								onClick={() => void newTerminal()}
+								className={GHOST_ICON_BUTTON}
+							>
+								<Plus aria-hidden="true" className="size-4" />
+							</button>
+						)}
+						{activeStatus !== null && <StatusChip status={activeStatus} />}
 					</div>
-				)}
-			</div>
+				}
+				actions={
+					standalone ? null : (
+						<>
+							<PaneHeaderMenu
+								sessionId={sessionId}
+								onOpenTerminalHere={
+									onOpenTerminalHere === undefined
+										? undefined
+										: () => {
+												setError("");
+												onOpenTerminalHere().catch((cause: unknown) => {
+													setError(cause instanceof Error ? cause.message : String(cause));
+												});
+											}
+								}
+							/>
+							{chrome?.controls}
+						</>
+					)
+				}
+				moveHandle={chrome?.moveHandle}
+			/>
 			{error && (
 				<p role="alert" className="px-3 py-1 text-caption text-danger-000">
 					{error}

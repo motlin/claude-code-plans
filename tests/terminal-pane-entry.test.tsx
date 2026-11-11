@@ -93,7 +93,7 @@ describe("Terminal pane chunk fallbacks", () => {
 				frame: "absolute inset-0",
 				alert: ["Couldn’t load the terminal", "Reload the page to try again."],
 				chunkError: null,
-				buttons: ["Move", "Expand", "Close", "Reload"],
+				buttons: ["Expand", "Close", "Move", "Reload"],
 			},
 			reloads: 1,
 		});
@@ -105,7 +105,7 @@ describe("Terminal pane chunk fallbacks", () => {
 			frame: null,
 			alert: [],
 			chunkError: "Couldn’t load this.",
-			buttons: ["Move", "Expand", "Close", "Retry"],
+			buttons: ["Expand", "Close", "Move", "Retry"],
 		});
 	});
 
@@ -116,7 +116,7 @@ describe("Terminal pane chunk fallbacks", () => {
 			frame: "contents",
 			alert: ["Something went wrong"],
 			chunkError: null,
-			buttons: ["Move", "Expand", "Close", "Try again"],
+			buttons: ["Expand", "Close", "Move", "Try again"],
 		});
 	});
 });

@@ -438,7 +438,7 @@ describe("plan pane", () => {
 		expect({before, expanded}).toStrictEqual({
 			before: {
 				title: "Plan",
-				buttons: ["Move", "Expand", "Close"],
+				buttons: ["Expand", "Close", "Move"],
 				empty: ["No plan yet", "Claude writes the plan here as it explores. Keep chatting."],
 			},
 			expanded: ["Collapse", "Close"],

@@ -1,16 +1,20 @@
 import type {ReactNode} from "react";
+import {PaneHeaderRow} from "./pane-header-row";
 import type {PaneChrome} from "./pane-registry";
 
 /** The host's default header row, drawn for a custom-header pane while its own renderer is unavailable. */
 export function PaneChromeHeader({title, chrome}: {title: string; chrome: PaneChrome}) {
 	return (
-		<div className="relative flex h-8 shrink-0 items-center justify-between gap-2 px-1">
-			<span data-pane-title className="truncate pl-1 text-pane text-secondary select-none">
-				{title}
-			</span>
-			{chrome.moveHandle}
-			<div className="relative flex shrink-0 items-center gap-0.5">{chrome.controls}</div>
-		</div>
+		<PaneHeaderRow
+			label={title}
+			title={
+				<span data-pane-title className="truncate pl-1 text-pane text-secondary select-none">
+					{title}
+				</span>
+			}
+			actions={chrome.controls}
+			moveHandle={chrome.moveHandle}
+		/>
 	);
 }
 
