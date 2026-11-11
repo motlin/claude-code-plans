@@ -82,7 +82,7 @@ const SEAM_FADE_CLASS =
 const SOLID_SEAM_DISABLED_CLASS = "[[data-cds-segment]:has(:disabled)+&:has(+[data-cds-segment]_:disabled)]:opacity-40";
 
 /** Upstream's cds secondary frame: an inset 1px `fill-secondary-ring` drawn on `::after` over the fill. */
-export const SECONDARY_RING_CLASS =
+const SECONDARY_RING_CLASS =
 	"after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)]";
 
 type JoinedVariant = "primary" | "secondary" | "danger";

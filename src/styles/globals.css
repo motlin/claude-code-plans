@@ -3902,11 +3902,13 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 }
 
 /* Upstream --cds-h-control under fizzy-lake panels: comfortable controls are 28px on a fine (or no) pointer;
-   compact stays 24px and a coarse pointer keeps 32px. The query equals FIZZY_LAKE_PANELS_FINE_POINTER_QUERY. */
+   compact stays 24px and a coarse pointer keeps 32px. The query equals FIZZY_LAKE_PANELS_FINE_POINTER_QUERY.
+   --cds-button-pad-max caps a cds Button's inline pad (pad-md 12px) at 9px there; it is unset elsewhere. */
 @media (hover: hover) and (pointer: fine), (hover: hover) and (pointer: none) {
 	[data-cds-fizzy-lake~="panels"][data-density="comfortable"],
 	[data-cds-fizzy-lake~="panels"] [data-density="comfortable"] {
 		--cds-h-control: calc(1.75rem * var(--cds-rem-scale, 1));
+		--cds-button-pad-max: calc(0.5625rem * var(--cds-rem-scale, 1));
 	}
 }
 

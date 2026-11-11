@@ -4,26 +4,38 @@ import type {ElicitationFocus} from "../lib/herdr/elicitation-keys";
 import {StatusPulse} from "./status-dot";
 import {DisabledReason} from "./ui/disabled-reason";
 import {Spinner} from "./ui/spinner";
-import {SECONDARY_RING_CLASS} from "./ui/split-dropdown-button";
 
 const ACTION_BUTTON =
-	"relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-r5 whitespace-nowrap select-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-50 [&_kbd]:text-[11px]";
+	"relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-[var(--upstream-radius)] whitespace-nowrap select-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-50";
+
+/** Upstream's `stacks:shadow-none`: the secondary's drop shadow and inset ring only paint outside fizzy colour. */
+const PRE_FIZZY = "[:root:not([data-cds-fizzy-lake~=color])_&]";
 
 const ACTION_VARIANTS = {
-	secondary: `bg-fill-secondary shadow-field-drop ${SECONDARY_RING_CLASS} text-primary hover:bg-fill-secondary-hover`,
-	primary: "bg-primary font-medium text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-primary/80",
+	secondary: `bg-fill-secondary font-control-regular ${PRE_FIZZY}:shadow-field-drop after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] ${PRE_FIZZY}:after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)] text-primary hover:bg-fill-secondary-hover`,
+	primary: "bg-primary font-control text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-primary/80",
 } as const;
 
-/** The approval-card 24px button, or upstream's cds `size="sm"` button (20px, padding 0 6px, 12/17). */
+/** Upstream's cds Button inline pad: pad-md, capped by --cds-button-pad-max (9px under fizzy panels). */
+const BUTTON_PAD = "px-[min(var(--cds-pad-md),var(--cds-button-pad-max,var(--cds-pad-md)))]";
+
+/** Upstream's cds Button at the density control height and body text, or its `size="sm"` button (20px, padding 0 6px, 12/17). */
 const ACTION_SIZES = {
-	default: "h-6 px-2 text-[13px]/[19px]",
+	default: `h-control ${BUTTON_PAD} text-body`,
 	sm: "h-5 px-1.5 text-[12px]/[17px]",
 } as const;
+
+/**
+ * Upstream's cds Button shortcut: `ms-1` after the label, and as the button's last child an end margin
+ * that centres the last keycap in the button's end padding (-4px at 28px with a 9px pad).
+ */
+export const APPROVAL_ACTION_SHORTCUT_CLASS =
+	"pointer-coarse:hidden ms-1 me-[calc((var(--cds-h-control)-1em-6px)/2-min(var(--cds-pad-md),var(--cds-button-pad-max,var(--cds-pad-md))))]";
 
 export type ApprovalActionVariant = keyof typeof ACTION_VARIANTS;
 export type ApprovalActionSize = keyof typeof ACTION_SIZES;
 
-/** Classes for an approval card action: upstream's filled, inset-ringed secondary or a black primary, 24px (or sm 20px) tall with 11px keycaps. */
+/** Classes for an approval card action: upstream's filled secondary or black primary cds Button, control height (or sm 20px). */
 function approvalActionClass(variant: ApprovalActionVariant, size: ApprovalActionSize): string {
 	return `${ACTION_BUTTON} ${ACTION_SIZES[size]} ${ACTION_VARIANTS[variant]}`;
 }

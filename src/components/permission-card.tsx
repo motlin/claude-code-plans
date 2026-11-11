@@ -41,7 +41,12 @@ import {
 } from "../lib/permission-suggestions";
 import {visibleSingleLine} from "../lib/visible-text";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
-import {APPROVAL_SENDING_LABEL, ApprovalActionButton, ApprovalCardShell} from "./approval-card";
+import {
+	APPROVAL_ACTION_SHORTCUT_CLASS,
+	APPROVAL_SENDING_LABEL,
+	ApprovalActionButton,
+	ApprovalCardShell,
+} from "./approval-card";
 import {PermissionFileChangePreview} from "./permission-file-change-body";
 import {PermissionRowsList, PERMISSION_ROWS_LABEL} from "./permission-rows";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
@@ -435,7 +440,7 @@ export function PermissionCard({
 									onClick={() => void decide("allow")}
 								>
 									<span data-approval-digit="2">Allow once</span>
-									<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
+									<Shortcut keys="cmd+enter" className={APPROVAL_ACTION_SHORTCUT_CLASS} />
 								</ApprovalActionButton>,
 							)
 						) : (

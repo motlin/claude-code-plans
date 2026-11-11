@@ -51,11 +51,11 @@
 		"raisedAt": "2026-11-02"
 	},
 	"bundle.home.gzip": {
-		"ceiling": 471780,
+		"ceiling": 476760,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "raised from 466990 (2026-11-10): tool-output-details-for-claude-fold T1-T5 / tool-output-body-kinds T1-T5 rebuild the generic tool body (KeyValueCard): the output classifier (src/lib/tool-output-shape.ts), the body kind classifier with the JSON pretty-printer and markdown sniff (src/lib/tool-body-kind.ts, src/lib/pretty-json.ts), the Input/Output sections with the saved/preview notes and the Details for Claude fold (tool-output-section.tsx), the JSON code tile and linkified plain body (tool-output-body.tsx, linkify-plain.tsx) and the headingsUnder markdown rule. The transcript reader classifies every result as it pairs it, and expanded tool bodies draw with no lazy boundary. Went to 471780; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-10"
+		"reason": "raised from 471780 (2026-11-11): approval-card-answered-states-typography T1 moves the approval action buttons onto upstream's cds Button tokens (h-control, the min(pad-md, button-pad-max) pad, --cds-radius, control weights), guards the secondary's pre-fizzy ring and drop shadow behind a not-fizzy-colour selector and gives the in-button Shortcut upstream's ms-1 and end-pad pull; the long token class strings ship in the home entry with the permission and question cards. The previous commits had already used most of the 1% headroom (476223). Went to 476760; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-11"
 	},
 	"bundle.home.raw": {
 		"ceiling": 1421338,

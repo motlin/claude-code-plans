@@ -110,7 +110,7 @@ describe("density type tokens", () => {
 });
 
 describe("control height token", () => {
-	it("copies upstream's --cds-h-control: 24px compact, 32px comfortable (and on :root), 28px comfortable under panels on a fine pointer", () => {
+	it("copies upstream's --cds-h-control: 24px compact, 32px comfortable (and on :root), 28px comfortable under panels on a fine pointer, where cds Buttons cap their pad at 9px", () => {
 		const mediaStart = styles.indexOf(
 			`@media ${FIZZY_LAKE_PANELS_FINE_POINTER_QUERY} {\n\t[data-cds-fizzy-lake~="panels"][data-density="comfortable"]`,
 		);
@@ -126,7 +126,7 @@ describe("control height token", () => {
 			comfortable: "calc(2rem * var(--cds-rem-scale, 1))",
 			compact: "calc(1.5rem * var(--cds-rem-scale, 1))",
 			panelsComfortable:
-				'[data-cds-fizzy-lake~="panels"][data-density="comfortable"],\n\t[data-cds-fizzy-lake~="panels"] [data-density="comfortable"] {\n\t\t--cds-h-control: calc(1.75rem * var(--cds-rem-scale, 1));\n\t',
+				'[data-cds-fizzy-lake~="panels"][data-density="comfortable"],\n\t[data-cds-fizzy-lake~="panels"] [data-density="comfortable"] {\n\t\t--cds-h-control: calc(1.75rem * var(--cds-rem-scale, 1));\n\t\t--cds-button-pad-max: calc(0.5625rem * var(--cds-rem-scale, 1));\n\t',
 		});
 	});
 });

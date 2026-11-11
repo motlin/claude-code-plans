@@ -45,7 +45,7 @@ import {
 	type QuestionCardDraft,
 	typeOther,
 } from "../lib/question-card-draft";
-import {ApprovalActionButton} from "./approval-card";
+import {APPROVAL_ACTION_SHORTCUT_CLASS, ApprovalActionButton} from "./approval-card";
 import {QuestionReceipt, type QuestionReceiptRow} from "./question-receipt";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import {Shortcut} from "./ui/shortcut";
@@ -583,7 +583,7 @@ export function QuestionCard({
 			onClick={advance}
 		>
 			{isLast ? submitLabel : "Next"}
-			<Shortcut keys="cmd+enter" className="pointer-coarse:hidden" />
+			<Shortcut keys="cmd+enter" className={APPROVAL_ACTION_SHORTCUT_CLASS} />
 		</ApprovalActionButton>
 	);
 

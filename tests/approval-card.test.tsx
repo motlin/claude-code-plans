@@ -4,6 +4,7 @@ import {cleanup, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
 import {PermissionCard} from "../src/components/permission-card";
+import {compileAll} from "./helpers/tailwind-design-system";
 
 afterEach(cleanup);
 
@@ -61,47 +62,40 @@ describe("approval card chrome", () => {
 		});
 	});
 
-	it("uses upstream's filled, inset-ringed secondary and black primary variants with 11px keycaps and a focus shadow", () => {
+	it("uses upstream's control-token secondary and primary cds Buttons: h-control, text-body, the button pad, --cds-radius, the control weight, no ring or drop shadow under fizzy colour", () => {
 		const chrome = permissionChrome();
-		const classes = (value: string | null) => new Set(value?.split(/\s+/));
-		const missing = (value: string | null, expected: string[]) =>
-			expected.filter((name) => !classes(value).has(name));
+		const base =
+			"relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-[var(--upstream-radius)] whitespace-nowrap select-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-50 h-control px-[min(var(--cds-pad-md),var(--cds-button-pad-max,var(--cds-pad-md)))] text-body";
 		expect({
-			card: missing(chrome.card, [
+			card: [
 				"rounded-card",
 				"p-3",
 				"card-ring",
 				"focus-visible:outline-1",
 				"focus-visible:outline-fill-accent",
 				"focus-visible:outline-offset-2",
-			]),
-			secondary: missing(chrome.secondary, [
-				"h-6",
-				"rounded-r5",
-				"px-2",
-				"bg-fill-secondary",
-				"shadow-field-drop",
-				"after:pointer-events-none",
-				"after:absolute",
-				"after:inset-0",
-				"after:rounded-[inherit]",
-				"after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)]",
-				"text-primary",
-				"hover:bg-fill-secondary-hover",
-				"focus-visible:shadow-focus",
-				"[&_kbd]:text-[11px]",
-			]),
-			secondaryBorder: [...classes(chrome.secondary)].filter((name) => name.startsWith("border")),
-			primary: missing(chrome.primary, [
-				"h-6",
-				"rounded-r5",
-				"px-2",
-				"bg-primary",
-				"text-surface-1",
-				"focus-visible:shadow-focus",
-				"[&_kbd]:text-[11px]",
-			]),
-		}).toStrictEqual({card: [], secondary: [], secondaryBorder: [], primary: []});
+			].filter((name) => !chrome.card?.split(/\s+/).includes(name)),
+			secondary: chrome.secondary,
+			primary: chrome.primary,
+			shortcut: chrome.root?.querySelector("[data-approval-primary] [data-cds=Shortcut]")?.getAttribute("class"),
+		}).toStrictEqual({
+			card: [],
+			secondary: `${base} bg-fill-secondary font-control-regular [:root:not([data-cds-fizzy-lake~=color])_&]:shadow-field-drop after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] [:root:not([data-cds-fizzy-lake~=color])_&]:after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)] text-primary hover:bg-fill-secondary-hover`,
+			primary: `${base} bg-primary font-control text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-primary/80`,
+			shortcut:
+				"inline-flex shrink-0 items-center gap-[2px] text-caption [&:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse pointer-coarse:hidden ms-1 me-[calc((var(--cds-h-control)-1em-6px)/2-min(var(--cds-pad-md),var(--cds-button-pad-max,var(--cds-pad-md))))]",
+		});
+	});
+
+	it("compiles the pre-fizzy secondary depth only outside fizzy colour, like upstream's stacks:shadow-none", async () => {
+		const compiled = await compileAll([
+			"[:root:not([data-cds-fizzy-lake~=color])_&]:shadow-field-drop",
+			"[:root:not([data-cds-fizzy-lake~=color])_&]:after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)]",
+		]);
+		expect(Object.values(compiled).map((css) => css?.slice(0, css.indexOf(" {")).split(" .")[0])).toStrictEqual([
+			":root:not([data-cds-fizzy-lake~=color])",
+			":root:not([data-cds-fizzy-lake~=color])",
+		]);
 	});
 });
 
