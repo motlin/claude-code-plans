@@ -3,7 +3,6 @@ import {Virtualizer} from "@pierre/diffs/react";
 import {useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
 import {ArrowRight, ChevronDown, List, Loader2, TriangleAlert} from "lucide-react";
 import {
-	Fragment,
 	type ReactNode,
 	type RefObject,
 	useCallback,
@@ -28,8 +27,23 @@ import {
 	sessionDiffQueryOptions,
 	sessionDiffScopesQueryOptions,
 } from "../../lib/api/session-diff";
-import {CHANGES_REVIEW_REQUEST_EVENT, formatFixFindingPrompt, loadChangesReview} from "../../lib/changes-review";
+import {
+	CHANGES_REVIEW_REQUEST_EVENT,
+	findingAfterDismiss,
+	formatFixFindingPrompt,
+	loadChangesReview,
+	scrollToFinding,
+	scrollToFirstOpenFinding,
+} from "../../lib/changes-review";
 import {CHANGES_SCOPE_REQUEST_EVENT} from "../../lib/changes-scope-request";
+import {codeRowLeadingPx} from "../../lib/code-themes";
+import {type DiffLineAnchor, startScrollToLine} from "../../lib/diff-scroll-to-line";
+import {
+	clearDiffScrollTarget,
+	resolveFuzzyDiffPath,
+	scrollToDiffLine,
+	useDiffScrollTarget,
+} from "../../lib/diff-scroll-target";
 import {writeClipboardText} from "../../lib/clipboard";
 import {attachContext, requestComposerInsert} from "../../lib/context-attach";
 import {requestFileOpen} from "../../lib/file-open-requests";
@@ -482,6 +496,8 @@ interface WholeFileProps {
 	onRendered: () => void;
 	/** Whether the file menu offers Show whole file, which also shows the header's More button. */
 	offered: boolean;
+	/** Hands a lazily fetched patch to the pane, which decides comment locks and hidden-line jumps from it. */
+	onPatch: (patch: string) => void;
 }
 
 function wholeFileDiffProps(whole: WholeFileProps, patch: string) {
@@ -526,6 +542,10 @@ function LazyDiffFile({
 		enabled: !collapsed,
 	});
 	const patch = query.data?.file.patch;
+	const {onPatch} = whole;
+	useEffect(() => {
+		if (patch) onPatch(patch);
+	}, [patch, onPatch]);
 	const menuButton = diffFileMenuButtonShown({path: file.path, mark, wholeFileOffered: whole.offered});
 	if (!collapsed && patch) {
 		return (
@@ -813,6 +833,7 @@ function sameMarkScope(a: DiffMarkScope, b: DiffMarkScope): boolean {
 
 /** Upstream `hs`: each file's patch by path, first file wins. */
 const NO_PATHS: ReadonlySet<string> = new Set();
+const NO_LAZY_PATCHES: ReadonlyMap<string, string> = new Map();
 const NO_PATCHES: ReadonlyMap<string, string | null> = new Map();
 
 function patchMap(files: readonly SessionDiffFile[]): ReadonlyMap<string, string | null> {
@@ -1056,6 +1077,23 @@ export function ChangesPaneView({
 	const unreadPatches = unreadFiles.scope === servedScope ? unreadFiles.patches : NO_PATCHES;
 	const fileLoader = diff?.source === "git" ? loadFileSides : undefined;
 	const canLoadFiles = fileLoader !== undefined;
+	// The patches of files fetched lazily (too large to inline): upstream decides `Id` and hidden-line jumps on the
+	// rendered fileDiff, which for such a file is the fetched patch.
+	const [lazyPatches, setLazyPatches] = useState<{scope: string | undefined; patches: ReadonlyMap<string, string>}>(
+		() => ({scope: undefined, patches: new Map()}),
+	);
+	const fetchedPatches = lazyPatches.scope === servedScope ? lazyPatches.patches : NO_LAZY_PATCHES;
+	const patchOf = (file: SessionDiffFile): string | null => file.patch ?? fetchedPatches.get(file.path) ?? null;
+	const notePatch = useCallback(
+		(path: string, patch: string) => {
+			setLazyPatches((previous) => {
+				const known = previous.scope === servedScope ? previous.patches : NO_LAZY_PATCHES;
+				if (known.get(path) === patch) return previous;
+				return {scope: servedScope, patches: new Map(known).set(path, patch)};
+			});
+		},
+		[servedScope],
+	);
 
 	/** Upstream `Jt`'s anchor: a line kept in place across the whole-file toggle until the user scrolls. */
 	const pendingAnchor = useRef<LineAnchor | null>(null);
@@ -1108,6 +1146,91 @@ export function ChangesPaneView({
 				: findLineAnchor(scroller, offset);
 	}
 
+	/** Upstream `Qe`: adds a file to the whole-file set (never removes one). */
+	const addWholeFile = useCallback(
+		(path: string) => {
+			setWholeFileToggles((previous) => {
+				const paths = previous.scope === servedScope ? previous.paths : NO_PATHS;
+				if (previous.scope === servedScope && paths.has(path)) return previous;
+				return {scope: servedScope, paths: new Set(paths).add(path)};
+			});
+		},
+		[servedScope],
+	);
+	/** Upstream `Ld`/`Fd`: the jump's line sits in a collapsed gap of the file's patch, so the file must show whole. */
+	const jumpNeedsWholeFile = useCallback(
+		(file: SessionDiffFile, patch: string, anchor: DiffLineAnchor) =>
+			canLoadFiles && !file.binary && !lineInHunks(getSingularPatch(patch), anchor.side, anchor.line),
+		[canLoadFiles],
+	);
+	/** A jump into a lazily fetched file whose patch hadn't arrived: decided once it does (upstream's pending `mn`). */
+	const pendingJump = useRef<{scope: string | undefined; path: string; anchor: DiffLineAnchor} | null>(null);
+	useEffect(() => {
+		const pending = pendingJump.current;
+		if (pending === null) return;
+		const file = files.find((candidate) => candidate.path === pending.path);
+		if (pending.scope !== servedScope || file === undefined) {
+			pendingJump.current = null;
+			return;
+		}
+		const patch = file.patch ?? fetchedPatches.get(file.path);
+		if (patch === undefined) return;
+		pendingJump.current = null;
+		if (jumpNeedsWholeFile(file, patch, pending.anchor)) addWholeFile(file.path);
+	});
+
+	// Upstream's scroll-target consumers (c44d00c7f `yi` for fuzzy paths; the single-file card's `Ac` loop, which
+	// matches local's one FileDiff per file; the multi-file `of`'s whole-file-on-hidden-line rule).
+	const scrollTarget = useDiffScrollTarget(sessionId);
+	const cancelScroll = useRef<(() => void) | null>(null);
+	useEffect(
+		() => () => {
+			cancelScroll.current?.();
+		},
+		[],
+	);
+	const codeFontSize = settings.codeFontSize;
+	useEffect(() => {
+		const body = bodyRef.current;
+		// Upstream `Yn`: a hidden pane leaves the target for when it shows.
+		if (sessionId === undefined || scrollTarget === undefined || body?.offsetParent == null) return;
+		if (scrollTarget.fuzzy === true) {
+			const path = resolveFuzzyDiffPath(
+				scrollTarget.filePath,
+				files.map((file) => file.path),
+			);
+			if (path === null) clearDiffScrollTarget(sessionId);
+			else
+				scrollToDiffLine(
+					sessionId,
+					path,
+					scrollTarget.anchor === undefined ? {} : {anchor: scrollTarget.anchor},
+				);
+			return;
+		}
+		clearDiffScrollTarget(sessionId);
+		const file = files.find((candidate) => candidate.path === scrollTarget.filePath);
+		if (file === undefined) return;
+		setActivePath(file.path);
+		setCollapsedOverrides((previous) => ({...previous, [file.path]: false}));
+		cancelScroll.current?.();
+		cancelScroll.current = null;
+		const {anchor} = scrollTarget;
+		if (anchor === undefined) {
+			fileHeader(body, file.path)?.scrollIntoView({block: "start"});
+			return;
+		}
+		const patch = file.patch ?? fetchedPatches.get(file.path);
+		pendingJump.current = null;
+		if (patch === undefined) pendingJump.current = {scope: servedScope, path: file.path, anchor};
+		else if (jumpNeedsWholeFile(file, patch, anchor)) addWholeFile(file.path);
+		requestAnimationFrame(() => {
+			const root = body.querySelector(`[data-diff-file-path="${CSS.escape(file.path)}"]`);
+			if (root !== null) cancelScroll.current = startScrollToLine(root, anchor, codeRowLeadingPx(codeFontSize));
+		});
+		// Each request is cleared as it's taken, so a re-run for any other dependency finds no target.
+	}, [scrollTarget, files, sessionId, servedScope, fetchedPatches, codeFontSize, jumpNeedsWholeFile, addWholeFile]);
+
 	const setAllCollapsed = (collapsed: boolean) => {
 		setCollapsedOverrides(Object.fromEntries(files.map((file) => [file.path, collapsed])));
 	};
@@ -1141,7 +1264,8 @@ export function ChangesPaneView({
 							sessionId === undefined
 								? undefined
 								: (path, isDirectory) => {
-										// Upstream `fp`: the header's menu plus Open file ⌘↵; folders get no Open file.
+										// Upstream `fp`: the header's menu plus Open file ⌘↵; folders get no Open file. Upstream's
+										// tree-row menu (c44d00c7f `vp`) passes no wholeFile, so Show whole file stays a header item.
 										const cannotOpen =
 											!isDirectory &&
 											files.find((file) => file.path === path)?.status === "deleted";
@@ -1206,11 +1330,12 @@ export function ChangesPaneView({
 											line: comment.endLine ?? comment.line,
 										}));
 									// Upstream `Id`: a comment on an unmodified line needs the whole file to sit on its line.
+									const shownPatch = patchOf(file);
 									const commentLocked =
 										fileCanLoad &&
-										file.patch !== null &&
+										shownPatch !== null &&
 										commentLines.length > 0 &&
-										commentsNeedWholeFile(getSingularPatch(file.patch), commentLines);
+										commentsNeedWholeFile(getSingularPatch(shownPatch), commentLines);
 									const locked = findingCount > 0 || commentLocked;
 									const shown = locked || wholeFilePaths.has(file.path);
 									const expandUnchanged = fileCanLoad && shown;
@@ -1240,6 +1365,9 @@ export function ChangesPaneView({
 										expandUnchanged,
 										onRendered: restoreAnchor,
 										offered: canLoadFiles,
+										onPatch: (patch) => {
+											notePatch(file.path, patch);
+										},
 									};
 									const annotations = [
 										...findingAnnotations(findings, file.path, {
@@ -1253,9 +1381,9 @@ export function ChangesPaneView({
 													comments.drafts,
 													comments.queued,
 													file.path,
-													file.patch === null || file.binary || expandUnchanged
+													shownPatch === null || file.binary || expandUnchanged
 														? undefined
-														: diffLineRanges(file.patch),
+														: diffLineRanges(shownPatch),
 												)),
 									];
 									const absolutePath = resolveAbsoluteDiffPath(diff.root, file.path);
@@ -1317,12 +1445,17 @@ export function ChangesPaneView({
 											}
 										/>
 									);
-									return sessionId === undefined ? (
-										<Fragment key={file.path}>{changesFile}</Fragment>
-									) : (
-										<DiffContextMenu key={file.path} sessionId={sessionId} path={file.path}>
-											{changesFile}
-										</DiffContextMenu>
+									// Upstream's `[data-diff-file-path]` file root: the scroll-to-line loop runs inside it.
+									return (
+										<div key={file.path} data-diff-file-path={file.path}>
+											{sessionId === undefined ? (
+												changesFile
+											) : (
+												<DiffContextMenu sessionId={sessionId} path={file.path}>
+													{changesFile}
+												</DiffContextMenu>
+											)}
+										</div>
 									);
 								})}
 								{unavailableCount > 0 && (
@@ -1460,6 +1593,10 @@ function useReviewFindings(sessionId: string, scope: string) {
 	const reviewQueries = useQueries({queries: reviewQueryList});
 	const review = reviewQueries[0];
 	const findings = review?.data?.findings ?? NO_FINDINGS;
+	const loadedFindings = review?.data?.findings;
+	useEffect(() => {
+		if (loadedFindings !== undefined) scrollToFirstOpenFinding(sessionId, loadedFindings);
+	}, [sessionId, loadedFindings]);
 
 	function fix(finding: ReviewFinding): void {
 		if (!requestComposerInsert(sessionId, formatFixFindingPrompt(finding))) {
@@ -1476,6 +1613,9 @@ function useReviewFindings(sessionId: string, scope: string) {
 		try {
 			const updated = await replaceReviewFindings(reviewId, next);
 			queryClient.setQueryData(reviewQueryOptions(reviewId).queryKey, updated);
+			// Upstream `dismissReviewFinding`: the next finding becomes current and is scrolled to.
+			const following = findingAfterDismiss(bundle.findings, finding.id);
+			if (following !== undefined) scrollToFinding(sessionId, following);
 		} catch {
 			toast({kind: "error", message: "Couldn’t dismiss the finding. Try again."});
 		}

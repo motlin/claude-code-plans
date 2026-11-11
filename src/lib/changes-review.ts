@@ -2,6 +2,7 @@ import {z} from "zod";
 
 import {requestChangesScope} from "./changes-scope-request";
 import {formatAttachContext} from "./context-attach";
+import {scrollToDiffLine} from "./diff-scroll-target";
 import type {ReviewFinding} from "./review-diff";
 
 /** The working-copy review whose findings a session's Changes pane shows on its Uncommitted scope. */
@@ -62,6 +63,7 @@ export interface ReviewChangesTarget {
  */
 export function openReviewInChanges(sessionId: string, reviewId: string): ReviewChangesTarget {
 	saveChangesReview(sessionId, reviewId);
+	reviewScrollRequests.add(sessionId);
 	requestChangesScope(sessionId, "uncommitted");
 	if (typeof window !== "undefined") {
 		window.dispatchEvent(
@@ -71,6 +73,40 @@ export function openReviewInChanges(sessionId: string, reviewId: string): Review
 		);
 	}
 	return {to: "/session/$id", params: {id: sessionId}, search: {pane: "changes"}};
+}
+
+/** Sessions whose review was just opened: their pane scrolls to the first open finding once it loads. */
+const reviewScrollRequests = new Set<string>();
+
+/** Upstream `scrollToAnnotation(session, finding.filePath, {fuzzy: true, anchor: {side, line: endLine}})`. */
+export function scrollToFinding(sessionId: string, finding: ReviewFinding): void {
+	scrollToDiffLine(sessionId, finding.file, {
+		fuzzy: true,
+		anchor: {side: finding.side === "old" ? "deletions" : "additions", line: finding.endLine ?? finding.line},
+	});
+}
+
+/**
+ * Upstream c3fef5c6f's open findings: the first open finding becomes the target, once per `openReviewInChanges`.
+ * True when it scrolled.
+ */
+export function scrollToFirstOpenFinding(sessionId: string, findings: readonly ReviewFinding[]): boolean {
+	if (!reviewScrollRequests.delete(sessionId)) return false;
+	const first = findings.find((finding) => !finding.resolved);
+	if (first === undefined) return false;
+	scrollToFinding(sessionId, first);
+	return true;
+}
+
+/** Upstream `dismissReviewFinding`: the open finding after the dismissed one, else the one before it. */
+export function findingAfterDismiss(
+	findings: readonly ReviewFinding[],
+	dismissedId: string,
+): ReviewFinding | undefined {
+	const open = findings.filter((finding) => !finding.resolved);
+	const index = open.findIndex((finding) => finding.id === dismissedId);
+	if (index < 0) return undefined;
+	return open[index + 1] ?? open[index - 1];
 }
 
 /** `openReviewInChanges`'s target as an href. */

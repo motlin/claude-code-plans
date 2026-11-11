@@ -12,6 +12,7 @@ import {SettingsProvider} from "../src/components/settings-provider";
 import {DEFAULTS} from "../src/components/settings-context";
 import {ToastProvider} from "../src/components/toast";
 import {
+	sessionDiffFileQueryOptions,
 	sessionDiffQueryOptions,
 	sessionDiffScopesQueryOptions,
 	type SessionDiffFile,
@@ -24,6 +25,7 @@ import {registerComposer, takeContextChips} from "../src/lib/context-attach";
 import {installLocalStorage} from "./fake-storage";
 import {type DiffMarkScope, fileMarkStatus, setFileMarked} from "../src/lib/diff-file-marks";
 import {clearDiffComments, openDiffCommentDraft, saveDiffComment} from "../src/lib/diff-comments";
+import {clearDiffScrollTarget, diffScrollTarget, scrollToDiffLine} from "../src/lib/diff-scroll-target";
 import type {ReviewFinding} from "../src/lib/review-diff";
 
 const GREET_PATCH = `diff --git a/src/greet.ts b/src/greet.ts
@@ -1055,6 +1057,7 @@ index 1111111..2222222 100644
 		scope?: string;
 		source?: "git" | "session-edits";
 		findings?: ReviewFinding[];
+		fetchContext?: {sessionId: string; scope: string};
 		load?: (
 			path: string,
 			patch: string,
@@ -1062,7 +1065,10 @@ index 1111111..2222222 100644
 		) => Promise<{oldText: string | null; newText: string | null}>;
 	}
 
-	function element({scope = "branch", source = "git", findings = [], load}: Options, files: SessionDiffFile[]) {
+	function element(
+		{scope = "branch", source = "git", findings = [], fetchContext, load}: Options,
+		files: SessionDiffFile[],
+	) {
 		return (
 			<SettingsProvider>
 				<ToastProvider>
@@ -1074,6 +1080,7 @@ index 1111111..2222222 100644
 						scope={scope}
 						sessionId={SESSION}
 						findings={findings}
+						{...(fetchContext === undefined ? {} : {fetchContext})}
 						{...(load === undefined
 							? {}
 							: {
@@ -1230,6 +1237,147 @@ index 1111111..2222222 100644
 
 		await waitFor(async () => {
 			expect(await menuItem("src/a.ts")).toStrictEqual({label: "Show whole file", disabled: true});
+		});
+	});
+
+	describe("scroll targets (upstream scrollToAnnotation consumers: c44d00c7f yi, of and the card's Ac loop)", () => {
+		const scrolled: {line: string | null; options: unknown}[] = [];
+
+		beforeEach(() => {
+			scrolled.length = 0;
+			// jsdom lays nothing out: every element is visible, and the Changes body scrolls.
+			Object.defineProperty(HTMLElement.prototype, "offsetParent", {
+				configurable: true,
+				get: () => document.body,
+			});
+			Element.prototype.scrollIntoView = function scrollIntoView(this: Element, options?: unknown) {
+				scrolled.push({line: this.getAttribute("data-line"), options});
+			};
+		});
+
+		afterEach(() => {
+			Reflect.deleteProperty(HTMLElement.prototype, "offsetParent");
+			clearDiffScrollTarget(SESSION);
+		});
+
+		function makeBodyScroll() {
+			const scroller = document.querySelector("[data-diff-file-path]")?.closest(".overflow-y-auto");
+			if (!(scroller instanceof HTMLElement)) throw new Error("no Changes scroller");
+			scroller.style.overflowY = "auto";
+			Object.defineProperty(scroller, "scrollHeight", {configurable: true, value: 5000});
+			// A zero-height client box puts every unlaid-out row at its centre, so the loop lands without recentring.
+			Object.defineProperty(scroller, "clientHeight", {configurable: true, value: 0});
+		}
+
+		it("shows a file whole to reach a line hidden in a collapsed gap, and clears the target", async () => {
+			const load = loader();
+			render(element({load}, [A, B]));
+			await waitFor(() => {
+				expect(separatorCount("src/b.ts")).toBe(3);
+			});
+
+			act(() => {
+				scrollToDiffLine(SESSION, "src/b.ts", {anchor: {side: "additions", line: 30}});
+			});
+			await waitFor(() => {
+				expect(separatorCount("src/b.ts")).toBe(0);
+			});
+
+			expect({
+				target: diffScrollTarget(SESSION),
+				calls: load.mock.calls.map(([path]) => path),
+				a: separatorCount("src/a.ts"),
+			}).toStrictEqual({target: undefined, calls: ["src/b.ts"], a: 3});
+		});
+
+		it("centres a shown line without loading the file, again for a repeat request, and expands a collapsed file", async () => {
+			const load = loader();
+			render(element({load}, [A, B]));
+			await waitFor(() => {
+				expect(separatorCount("src/b.ts")).toBe(3);
+			});
+			makeBodyScroll();
+			fireEvent.click(headerButton("src/b.ts"));
+
+			act(() => {
+				scrollToDiffLine(SESSION, "src/b.ts", {anchor: {side: "additions", line: 21}});
+			});
+			await waitFor(() => {
+				expect(scrolled).toStrictEqual([{line: "21", options: {behavior: "instant", block: "center"}}]);
+			});
+			act(() => {
+				scrollToDiffLine(SESSION, "src/b.ts", {anchor: {side: "additions", line: 21}});
+			});
+			await waitFor(() => {
+				expect(scrolled).toHaveLength(2);
+			});
+
+			expect({
+				expanded: headerButton("src/b.ts").getAttribute("aria-expanded"),
+				separators: separatorCount("src/b.ts"),
+				calls: load.mock.calls.length,
+			}).toStrictEqual({expanded: "true", separators: 3, calls: 0});
+		});
+
+		it("resolves a fuzzy path to its one suffix match, and drops an unknown one", async () => {
+			const load = loader();
+			render(element({load}, [A, B]));
+			await waitFor(() => {
+				expect(separatorCount("src/a.ts")).toBe(3);
+			});
+
+			act(() => {
+				scrollToDiffLine(SESSION, "nowhere.ts", {fuzzy: true, anchor: {side: "additions", line: 30}});
+			});
+			const unknown = diffScrollTarget(SESSION);
+			act(() => {
+				scrollToDiffLine(SESSION, "a.ts", {fuzzy: true, anchor: {side: "additions", line: 30}});
+			});
+			await waitFor(() => {
+				expect(separatorCount("src/a.ts")).toBe(0);
+			});
+
+			expect({unknown, target: diffScrollTarget(SESSION), b: separatorCount("src/b.ts")}).toStrictEqual({
+				unknown: undefined,
+				target: undefined,
+				b: 3,
+			});
+		});
+
+		it("scrolls an anchorless target's header to the top", async () => {
+			render(element({load: loader()}, [A, B]));
+			act(() => {
+				scrollToDiffLine(SESSION, "src/b.ts");
+			});
+			await waitFor(() => {
+				expect(scrolled).toStrictEqual([{line: null, options: {block: "start"}}]);
+			});
+		});
+	});
+
+	it("shows a lazily fetched file whole for a comment on an unmodified line once its patch arrives", async () => {
+		const draft = openDiffCommentDraft(SESSION, {path: "src/a.ts", side: "additions", line: 30});
+		saveDiffComment(SESSION, draft, "Fake comment on line 30");
+		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		const lazy: SessionDiffFile = {...A, patch: null};
+		queryClient.setQueryData(sessionDiffFileQueryOptions(SESSION, "branch", "src/a.ts").queryKey, {
+			scope: "branch",
+			root: "/repo",
+			file: A,
+		});
+		const load = loader();
+		render(
+			<QueryClientProvider client={queryClient}>
+				{element({load, fetchContext: {sessionId: SESSION, scope: "branch"}}, [lazy])}
+			</QueryClientProvider>,
+		);
+
+		await waitFor(() => {
+			expect(separatorCount("src/a.ts")).toBe(0);
+		});
+		expect({calls: load.mock.calls.map(([path]) => path), menu: await menuItem("src/a.ts")}).toStrictEqual({
+			calls: ["src/a.ts"],
+			menu: {label: "Show changes only", disabled: true},
 		});
 	});
 
