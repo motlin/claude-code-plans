@@ -84,7 +84,7 @@ describe("TextInput", () => {
 			cds: "TextInput",
 			classes: [...SHELL, "pe-md", ...TAIL],
 			start: "flex shrink-0 items-center text-secondary",
-			input: "cds-input min-w-0 flex-1 h-full bg-transparent border-0 p-0 outline-none focus-visible:outline-hidden text-body font-normal text-primary focus-visible:shadow-none placeholder:text-ink-muted disabled:opacity-100",
+			input: "cds-input cds-reset min-w-0 flex-1 h-full bg-transparent border-0 p-0 outline-none focus-visible:outline-hidden text-body font-normal text-primary focus-visible:shadow-none placeholder:text-ink-muted disabled:opacity-100",
 			type: null,
 			clear: null,
 			endSlot: null,
@@ -208,7 +208,7 @@ describe("TextInput", () => {
 
 	it("marks the shell, the input and the Field invalid inside an invalid Field", () => {
 		render(
-			<Field invalid filled className="min-w-0 flex-1">
+			<Field invalid className="min-w-0 flex-1">
 				<TextInput aria-label="Filter files" value="(" onChange={() => {}} slotStart={<span />} />
 			</Field>,
 		);
@@ -216,6 +216,7 @@ describe("TextInput", () => {
 		const field = input.closest("[data-cds=Field]");
 		expect({
 			field: {
+				tag: field?.tagName,
 				className: field?.className,
 				invalid: field?.getAttribute("data-invalid"),
 				filled: field?.getAttribute("data-filled"),
@@ -223,10 +224,82 @@ describe("TextInput", () => {
 			shell: input.parentElement?.getAttribute("data-invalid"),
 			ariaInvalid: input.getAttribute("aria-invalid"),
 		}).toStrictEqual({
-			field: {className: "flex flex-col gap-xs font-sans min-w-0 flex-1", invalid: "", filled: ""},
+			field: {tag: "DIV", className: "flex flex-col gap-xs font-sans min-w-0 flex-1", invalid: "", filled: ""},
 			shell: "",
 			ariaInvalid: "true",
 		});
+	});
+
+	it("wires the input to upstream's Base UI Field.Root: filled, focused and touched track the control", () => {
+		render(
+			<Field>
+				<Filter />
+			</Field>,
+		);
+		const input = screen.getByRole("textbox", {name: "Filter files"});
+		const field = input.closest("[data-cds=Field]");
+		const read = () => ({
+			filled: field?.hasAttribute("data-filled"),
+			focused: field?.hasAttribute("data-focused"),
+			touched: field?.hasAttribute("data-touched"),
+		});
+		const empty = read();
+		fireEvent.focus(input);
+		fireEvent.change(input, {target: {value: "src"}});
+		const typing = read();
+		fireEvent.blur(input);
+		expect({empty, typing, blurred: read(), hasId: input.id !== ""}).toStrictEqual({
+			empty: {filled: false, focused: false, touched: false},
+			typing: {filled: true, focused: true, touched: false},
+			blurred: {filled: true, focused: false, touched: true},
+			hasId: true,
+		});
+	});
+
+	it("disables the input and drops Clear inside a disabled Field", () => {
+		render(
+			<Field disabled>
+				<Filter initial="a" />
+			</Field>,
+		);
+		const input = screen.getByRole("textbox", {name: "Filter files"});
+		expect({
+			disabled: (input as HTMLInputElement).disabled,
+			clear: screen.queryByRole("button"),
+			cursor: input.parentElement?.className.split(" ").includes("cursor-default"),
+		}).toStrictEqual({disabled: true, clear: null, cursor: true});
+	});
+
+	it("marks a sized TextInput with data-size and nests an xs Clear under sm, as upstream's size prop does", () => {
+		const {unmount} = render(
+			<TextInput aria-label="Search" size="sm" value="a" onChange={() => {}} clearable onClear={() => {}} />,
+		);
+		const sm = {
+			shell: screen.getByRole("textbox").parentElement?.getAttribute("data-size"),
+			clear: screen.getByRole("button", {name: "Clear"}).getAttribute("data-size"),
+		};
+		unmount();
+		const base = render(<TextInput aria-label="Search" size="base" />);
+		const bareBase = screen.getByRole("textbox").getAttribute("data-size");
+		base.unmount();
+		render(<TextInput aria-label="Search" size="lg" />);
+		expect({sm, bareBase, bareLg: screen.getByRole("textbox").getAttribute("data-size")}).toStrictEqual({
+			sm: {shell: "sm", clear: "xs"},
+			bareBase: null,
+			bareLg: "lg",
+		});
+	});
+
+	it("leaves the width to the consumer when fullWidth is off", () => {
+		const {unmount} = render(<TextInput aria-label="Search" slotStart={<span />} fullWidth={false} />);
+		const slot = screen.getByRole("textbox").parentElement?.className.split(" ") ?? [];
+		unmount();
+		render(<TextInput aria-label="Search" fullWidth={false} />);
+		const bare = screen.getByRole("textbox").className.split(" ");
+		expect({
+			slot: {wFull: slot.includes("w-full"), minW0: slot.includes("min-w-0")},
+			bare: bare.includes("w-full"),
+		}).toStrictEqual({slot: {wFull: false, minW0: false}, bare: false});
 	});
 
 	it("renders the bare form as one input carrying the shell when there are no slots", () => {
@@ -236,6 +309,7 @@ describe("TextInput", () => {
 			cds: "TextInput",
 			classes: [
 				"cds-input",
+				"cds-reset",
 				...SHELL,
 				"pe-md",
 				"w-full",

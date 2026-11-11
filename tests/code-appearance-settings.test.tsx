@@ -196,14 +196,16 @@ describe("Appearance settings ▸ Code", () => {
 
 		expect({
 			placeholder: input.getAttribute("placeholder"),
+			cds: input.getAttribute("data-cds"),
 			className: input.className,
 			custom,
 			cleared,
 			stored: localStorage.getItem("ccp-code-font"),
 		}).toStrictEqual({
 			placeholder: "e.g. JetBrains Mono",
+			cds: "TextInput",
 			className:
-				"h-8 w-56 rounded-r6 bg-[var(--settings-field-bg)] px-3 text-body text-primary outline-none placeholder:text-[var(--settings-muted)] shadow-field-ring transition duration-150 enabled:[&:hover:not(:focus)]:shadow-field-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
+				"cds-input cds-reset h-control ps-md rounded bg-fill-field shadow-field-ring data-[invalid]:shadow-field-invalid font-sans text-body font-normal text-primary transition duration-fast pe-md placeholder:text-ink-muted outline-none focus-visible:outline-hidden enabled:[&:hover:not(:focus):not([data-invalid])]:shadow-field-hover disabled:opacity-disabled focus-visible:shadow-focus data-[invalid]:focus-visible:shadow-focus-danger w-56",
 			custom: '"Fira Code", "SF Mono", ui-monospace, Menlo, Consolas, monospace',
 			cleared: "",
 			stored: "",

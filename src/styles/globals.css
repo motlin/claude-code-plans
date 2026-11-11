@@ -2634,6 +2634,16 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 		outline-offset: 2px;
 		transition: outline 0.2s !important;
 	}
+	/* Upstream's `.cds-reset` (`.cds-root` is local `:root`): no focus outline, but a transparent one on
+	   focus-visible so forced-colors mode still draws a ring. */
+	:where(:root) .cds-reset:focus,
+	:where(:root) .cds-reset:focus-visible {
+		outline: none;
+	}
+	:where(:root) .cds-reset:focus-visible {
+		outline-offset: 2px;
+		outline: 2px solid #0000;
+	}
 	* {
 		@apply border-border;
 		scrollbar-width: thin;

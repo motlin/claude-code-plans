@@ -258,6 +258,12 @@ describe("upstream cds TextInput tokens", () => {
 				/input\.cds-input::-webkit-search-cancel-button \{\s*-webkit-appearance: none;\s*display: none;\s*\}/.test(
 					css,
 				),
+			// Upstream's `.cds-reset` rules, `.cds-root` being local `:root`, in the base layer.
+			cdsReset: [
+				...css
+					.slice(css.indexOf("@layer base {"))
+					.matchAll(/((?::where\(:root\) \.cds-reset:focus(?:-visible)?,?\s*)+)\{([^}]*)\}/g),
+			].map((m) => [m[1]?.replace(/\s+/g, " ").trim(), m[2]?.replace(/\s+/g, " ").trim()]),
 		}).toStrictEqual({
 			// :root is a comfortable context (like --cds-h-control), then [data-density=comfortable] and compact.
 			nested: [
@@ -269,6 +275,10 @@ describe("upstream cds TextInput tokens", () => {
 			invalidUtility: ["var(--field-invalid-shadow)"],
 			durationFast: true,
 			searchCancel: true,
+			cdsReset: [
+				[":where(:root) .cds-reset:focus, :where(:root) .cds-reset:focus-visible", "outline: none;"],
+				[":where(:root) .cds-reset:focus-visible", "outline-offset: 2px; outline: 2px solid #0000;"],
+			],
 		});
 	});
 });

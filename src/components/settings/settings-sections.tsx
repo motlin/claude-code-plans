@@ -56,6 +56,7 @@ import type {ClaudeCodeSettingKey, ClaudeCodeSettingsState} from "../../lib/clau
 import {ThemedCombobox} from "./themed-combobox";
 import {outputStylesQueryOptions} from "../../lib/api/output-styles";
 import {DEFAULT_OUTPUT_STYLE, outputStyleOptions} from "../../lib/output-style-options";
+import {TextInput} from "../ui/text-input";
 import {applicationSettingsQueryOptions, useSaveApplicationSettings} from "../../lib/api/application-settings";
 import {autoArchiveQueryOptions, useSaveAutoArchiveDays} from "../../lib/api/auto-archive";
 import {autoArchiveDayOptions} from "../../lib/auto-archive-options";
@@ -1065,8 +1066,7 @@ function CodeAppearanceSection() {
 				title="Code font"
 				description="Set a custom monospace font for code and terminal."
 			>
-				<input
-					type="text"
+				<TextInput
 					aria-label="Code font family"
 					placeholder={
 						settings.interfaceFont === "dyslexic" ? "e.g. OpenDyslexic Mono" : "e.g. JetBrains Mono"
@@ -1075,7 +1075,7 @@ function CodeAppearanceSection() {
 					onChange={(event) => {
 						setSetting("codeFont", event.target.value);
 					}}
-					className="h-8 w-56 rounded-r6 bg-[var(--settings-field-bg)] px-3 text-body text-primary outline-none placeholder:text-[var(--settings-muted)] shadow-field-ring transition duration-150 enabled:[&:hover:not(:focus)]:shadow-field-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+					className="w-56"
 				/>
 			</SettingsRow>
 			<CodeFontSizeRow />

@@ -7,17 +7,21 @@
  * while it has something to clear), Escape-to-clear after the consumer's handler, and the Field's
  * `data-invalid` / `data-filled` with `aria-invalid` on the input.
  *
- * Local tokens: `cds-reset` is dropped (Tailwind preflight already resets the input); upstream's
- * `--cds-radius` is `--upstream-radius`, its stays-secondary slot ink is `text-secondary` and its
- * `placeholder:text-muted` is `placeholder:text-ink-muted`. Upstream's tailwind-merge only matters here for a
- * consumer width, so a `w-*` className drops `w-full`.
+ * `Field` is Base UI's Field.Root (validationMode "onBlur" by default) rendering a div that provides
+ * `{invalid, disabled}` to the TextInput (upstream `Tb` / `Hr`); the TextInput's input is a Field.Control, so
+ * the Field tracks filled/focused/touched/dirty and labels/describes the input. `size` sets `data-size`
+ * (not "base") and shrinks the nested Clear to xs under sm/xs; `fullWidth` (default on) adds the width.
  *
- * Not copied: Base UI's Field.Root/Field.Control wiring (touched/dirty/focused state, validation) and the
- * `size` prop; no local consumer uses either.
+ * Local tokens: upstream's `--cds-radius` is `--upstream-radius`, its stays-secondary slot ink is
+ * `text-secondary` and its `placeholder:text-muted` is `placeholder:text-ink-muted`. Upstream's tailwind-merge
+ * only matters here for a consumer width, so a `w-*` className drops `w-full`.
  */
+import {Field as BaseField} from "@base-ui/react/field";
 import {
 	type ChangeEvent,
+	type ComponentProps,
 	createContext,
+	type HTMLAttributes,
 	type InputHTMLAttributes,
 	type KeyboardEvent,
 	type MouseEvent,
@@ -32,28 +36,39 @@ import {Icon} from "./icon";
 
 const FIELD_CLASS = "flex flex-col gap-xs font-sans";
 
-const FieldInvalidContext = createContext(false);
+interface FieldState {
+	invalid: boolean;
+	disabled: boolean;
+}
 
-export function Field({
-	invalid = false,
-	filled = false,
-	className,
-	children,
-}: {
-	invalid?: boolean;
-	filled?: boolean;
-	className?: string;
-	children: ReactNode;
-}) {
+/** Upstream `Hr`: the Field's invalid/disabled state for the TextInput inside it. */
+const FieldStateContext = createContext<FieldState | null>(null);
+
+/** Upstream `pb`: one stable state object per (disabled, invalid) pair. */
+const FIELD_STATES = {
+	false: {false: {invalid: false, disabled: false}, true: {invalid: true, disabled: false}},
+	true: {false: {invalid: false, disabled: true}, true: {invalid: true, disabled: true}},
+} as const;
+
+/** Upstream `Tb`: Field.Root's render, a div under the state provider. */
+function renderField(props: HTMLAttributes<HTMLDivElement>, state: BaseField.Root.State) {
 	return (
-		<div
+		<FieldStateContext value={FIELD_STATES[`${state.disabled}`][`${state.valid === false}`]}>
+			<div {...props} />
+		</FieldStateContext>
+	);
+}
+
+/** Upstream `$_`: cds Field, Base UI Field.Root. */
+export function Field({className, validationMode = "onBlur", ...props}: ComponentProps<typeof BaseField.Root>) {
+	return (
+		<BaseField.Root
 			data-cds="Field"
-			data-invalid={invalid ? "" : undefined}
-			data-filled={filled ? "" : undefined}
-			className={className === undefined ? FIELD_CLASS : `${FIELD_CLASS} ${className}`}
-		>
-			<FieldInvalidContext value={invalid}>{children}</FieldInvalidContext>
-		</div>
+			validationMode={validationMode}
+			{...props}
+			className={typeof className === "string" ? `${FIELD_CLASS} ${className}` : FIELD_CLASS}
+			render={renderField}
+		/>
 	);
 }
 
@@ -74,13 +89,18 @@ const FOCUS_WITHIN = "has-[:focus-visible]:shadow-focus data-[invalid]:has-[:foc
 const FOCUS_SELF = "focus-visible:shadow-focus data-[invalid]:focus-visible:shadow-focus-danger";
 /** Upstream `Q2`, with the slot form's `disabled:opacity-100` (the wrapper dims instead). */
 const SLOT_INPUT_CLASS =
-	"cds-input min-w-0 flex-1 h-full bg-transparent border-0 p-0 outline-none focus-visible:outline-hidden text-body font-normal text-primary focus-visible:shadow-none placeholder:text-ink-muted disabled:opacity-100";
+	"cds-input cds-reset min-w-0 flex-1 h-full bg-transparent border-0 p-0 outline-none focus-visible:outline-hidden text-body font-normal text-primary focus-visible:shadow-none placeholder:text-ink-muted disabled:opacity-100";
 /** Upstream `qf`: the slots' stays-secondary ink. */
 const SLOT_INK = "text-secondary";
 /** Upstream `a0`: sizes a solid button nested in the end slot. */
 const NESTED_BUTTON_SIZING =
 	"[&_[data-cds=Button]:not([data-cds-ghost])]:h-[var(--fhn)] [&_[data-cds=Button]:not([data-cds-ghost])]:rounded-[calc(var(--fr)-(var(--fh)-var(--fhn))/2)] [&_[data-cds=Button][data-cds-icon-only]:not([data-cds-ghost])]:w-[var(--fhn)]";
 const END_SLOT_CLASS = `flex shrink-0 items-center gap-[var(--cds-pad-sm,6px)] ${SLOT_INK} [--fh:var(--cds-h-control)] [--fr:var(--upstream-radius)] [--fhn:var(--cds-h-control-nested)] ${NESTED_BUTTON_SIZING}`;
+/** Upstream `ta`: a non-base size is marked with `data-size`. */
+function sizeAttr(size: TextInputSize | undefined) {
+	return size !== undefined && size !== "base" ? {"data-size": size} : {};
+}
+
 /** Upstream's sm ghost icon-only Button with the nested `!size-[var(--fhn)]` / radius overrides. */
 export const TEXT_INPUT_CLEAR_CLASS =
 	"flex shrink-0 items-center justify-center size-[var(--fhn)] rounded-[calc(var(--fr)-(var(--fh)-var(--fhn))/2)] text-primary hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
@@ -102,8 +122,13 @@ function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
 	else if (ref) ref.current = value;
 }
 
-export interface TextInputProps extends InputHTMLAttributes<HTMLInputElement> {
+export type TextInputSize = "xs" | "sm" | "base" | "lg";
+
+export interface TextInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, "size"> {
 	ref?: Ref<HTMLInputElement>;
+	size?: TextInputSize;
+	/** Fill the container (default); off leaves the width to the consumer. */
+	fullWidth?: boolean;
 	slotStart?: ReactNode;
 	slotEnd?: ReactNode;
 	/** Offer Clear while there is a value, or always ("always"). */
@@ -115,6 +140,8 @@ export interface TextInputProps extends InputHTMLAttributes<HTMLInputElement> {
 export function TextInput({
 	ref,
 	className,
+	size,
+	fullWidth = true,
 	slotStart,
 	slotEnd,
 	clearable = false,
@@ -122,9 +149,15 @@ export function TextInput({
 	onClear,
 	onChange,
 	onKeyDown,
+	id,
+	"aria-describedby": ariaDescribedBy,
+	"aria-invalid": ariaInvalidProp,
+	disabled: disabledProp,
 	...props
 }: TextInputProps) {
-	const fieldInvalid = useContext(FieldInvalidContext);
+	const field = useContext(FieldStateContext);
+	const fieldInvalid = field?.invalid ?? false;
+	const control = {id, "aria-describedby": ariaDescribedBy, disabled: disabledProp};
 	const inputRef = useRef<HTMLInputElement | null>(null);
 	const clearingEscape = useRef(false);
 	const controlled = props.value !== undefined;
@@ -132,8 +165,8 @@ export function TextInput({
 		() => props.defaultValue !== undefined && String(props.defaultValue).length > 0,
 	);
 	const filled = controlled ? String(props.value).length > 0 : uncontrolledFilled;
-	const disabled = props.disabled === true;
-	const ariaInvalid = fieldInvalid || props["aria-invalid"];
+	const disabled = disabledProp === true || (field?.disabled ?? false);
+	const ariaInvalid = fieldInvalid || ariaInvalidProp;
 
 	const setRef = (element: HTMLInputElement | null) => {
 		inputRef.current = element;
@@ -195,18 +228,24 @@ export function TextInput({
 
 	if (slotStart === undefined && slotEnd === undefined && clearable === false) {
 		return (
-			<input
+			<BaseField.Control
 				ref={setRef}
-				data-cds="TextInput"
-				data-invalid={fieldInvalid ? "" : undefined}
-				{...props}
-				aria-invalid={ariaInvalid}
-				onChange={change}
-				onKeyDown={keyDown}
-				className={withConsumer(
-					`cds-input ${TEXT_INPUT_SHELL} pe-md w-full placeholder:text-ink-muted outline-none focus-visible:outline-hidden enabled:[&:hover:not(:focus):not([data-invalid])]:shadow-field-hover disabled:opacity-disabled ${FOCUS_SELF}`,
-					className,
-				)}
+				{...control}
+				render={
+					<input
+						data-cds="TextInput"
+						{...sizeAttr(size)}
+						data-invalid={fieldInvalid ? "" : undefined}
+						aria-invalid={ariaInvalid}
+						{...props}
+						onChange={change}
+						onKeyDown={keyDown}
+						className={withConsumer(
+							`cds-input cds-reset ${TEXT_INPUT_SHELL} pe-md${fullWidth ? " w-full" : ""} placeholder:text-ink-muted outline-none focus-visible:outline-hidden enabled:[&:hover:not(:focus):not([data-invalid])]:shadow-field-hover disabled:opacity-disabled ${FOCUS_SELF}`,
+							className,
+						)}
+					/>
+				}
 			/>
 		);
 	}
@@ -217,7 +256,7 @@ export function TextInput({
 			data-cds="Button"
 			data-cds-ghost=""
 			data-cds-icon-only=""
-			data-size="sm"
+			data-size={size === "sm" || size === "xs" ? "xs" : "sm"}
 			aria-label={clearLabel}
 			tabIndex={clearsValue ? -1 : undefined}
 			onMouseDown={preventMouseDown}
@@ -233,7 +272,7 @@ export function TextInput({
 			TEXT_INPUT_SHELL,
 			clearButton === null ? "pe-md" : NESTED_END_PAD,
 			SOLID_END_BUTTON_PAD,
-			"inline-flex w-full min-w-0",
+			fullWidth ? "inline-flex w-full min-w-0" : "inline-flex",
 			disabled ? "cursor-default" : "cursor-text",
 			"items-center gap-[var(--cds-pad-sm,6px)]",
 			FOCUS_WITHIN,
@@ -247,6 +286,7 @@ export function TextInput({
 		// oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- upstream's click-to-focus; the input inside is the keyboard control
 		<div
 			data-cds="TextInput"
+			{...sizeAttr(size)}
 			data-invalid={fieldInvalid ? "" : undefined}
 			onMouseDown={(event) => {
 				const input = inputRef.current;
@@ -259,13 +299,18 @@ export function TextInput({
 			className={shell}
 		>
 			{slotStart !== undefined && <span className={`flex shrink-0 items-center ${SLOT_INK}`}>{slotStart}</span>}
-			<input
-				ref={setRef}
-				{...props}
-				aria-invalid={ariaInvalid}
-				onChange={change}
-				onKeyDown={keyDown}
-				className={SLOT_INPUT_CLASS}
+			<BaseField.Control
+				{...control}
+				render={
+					<input
+						ref={setRef}
+						aria-invalid={ariaInvalid}
+						{...props}
+						onChange={change}
+						onKeyDown={keyDown}
+						className={SLOT_INPUT_CLASS}
+					/>
+				}
 			/>
 			{(clearButton !== null || slotEnd !== undefined) && (
 				<span data-cds-end-slot="" className={END_SLOT_CLASS}>
