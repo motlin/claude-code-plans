@@ -137,7 +137,6 @@ function find(container: HTMLElement, selector: string, text?: string): Element 
 const ASSISTANT_ROWS = [
 	"Copy message",
 	"Copy message as Markdown",
-	"Read aloud",
 	"---",
 	"Attach message as context",
 	"Pin as chapter",
@@ -402,7 +401,6 @@ describe("transcript context menu with a text selection", () => {
 				"---",
 				"Copy message",
 				"Copy message as Markdown",
-				"Read aloud",
 				"---",
 				"Attach selection as context",
 				"Pin as chapter",

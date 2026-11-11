@@ -1,7 +1,6 @@
 import {type QueryClient, QueryClientContext} from "@tanstack/react-query";
 import {type ComponentProps, type ReactNode, useContext, useRef, useState} from "react";
 
-import {type ReadAloudStatus, useReadAloud} from "../hooks/use-read-aloud";
 import {MIN_EXCERPT_LENGTH} from "../hooks/use-transcript-selection-attach";
 import {fileRefStatusQueryOptions} from "../lib/api/file-refs";
 import {writeClipboardText} from "../lib/clipboard";
@@ -13,13 +12,6 @@ import {FileActionsMenuItems} from "./files/file-actions-menu";
 import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "./ui/menu";
 import {TranscriptActionsContext, type TranscriptMessageRef} from "./transcript-actions-context";
 import {useOpenInDefaultApp} from "./use-open-in-default-app";
-
-const READ_ALOUD_MENU_LABELS: Record<ReadAloudStatus, string> = {
-	idle: "Read aloud",
-	loading: "Stop reading aloud",
-	playing: "Pause reading aloud",
-	paused: "Resume reading aloud",
-};
 
 /*
  * claude.ai/code's right-click menus on transcript turns: assistant prose,
@@ -127,7 +119,6 @@ export function TranscriptMessageMenu({
 	render,
 	children,
 }: TranscriptMessageMenuProps) {
-	const readAloud = useReadAloud(markdown);
 	const [target, setTarget] = useState<TranscriptMenuTarget>({kind: "prose"});
 	const [selectionText, setSelectionText] = useState<string | null>(null);
 	const [keyboardArticle, setKeyboardArticle] = useState<HTMLElement | null>(null);
@@ -247,7 +238,6 @@ export function TranscriptMessageMenu({
 					markdown={markdown}
 					message={uuid === undefined ? undefined : {sessionId, uuid}}
 					sessionId={sessionId}
-					readAloud={readAloud}
 					gone={gone}
 				/>
 			</MenuContent>
@@ -278,7 +268,6 @@ function TranscriptMenuItems({
 	markdown,
 	message,
 	sessionId,
-	readAloud,
 	gone,
 }: {
 	speaker: Speaker;
@@ -288,7 +277,6 @@ function TranscriptMenuItems({
 	markdown: string;
 	message: TranscriptMessageRef | undefined;
 	sessionId: string;
-	readAloud: ReturnType<typeof useReadAloud>;
 	/** The right-clicked file ref no longer exists. */
 	gone: boolean;
 }) {
@@ -406,11 +394,6 @@ function TranscriptMenuItems({
 			>
 				Copy message as Markdown
 			</MenuItem>
-			{speaker === "assistant" && (
-				<MenuItem {...(readAloud.toggle === undefined ? {disabled: true} : {onSelect: readAloud.toggle})}>
-					{READ_ALOUD_MENU_LABELS[readAloud.status]}
-				</MenuItem>
-			)}
 			<MenuSeparator />
 			{excerpt === "" ? (
 				<MenuItem onSelect={() => attachContext(sessionId, {kind: "message", text: markdown})}>

@@ -693,19 +693,28 @@ describe("assistant display-span actions", () => {
 		},
 	);
 
-	it("reads the chosen record after its menu closes and cancels only when its owner unmounts", () => {
+	it("reads aloud from the action bar only, not the context menu, and cancels when its owner unmounts", () => {
 		const view = render(chat([text("example-first", "Example **first**."), text("example-last", "Example last.")]));
 		const prose = view.container.querySelector("strong")!;
 		fireEvent.contextMenu(prose, {clientX: 10, clientY: 10});
-		fireEvent.click(screen.getByRole("menuitem", {name: /^Read aloud$/}));
-		const afterClose = {
+		const menuRows = screen.getAllByRole("menuitem").map((row) => row.textContent);
+		fireEvent.keyDown(screen.getByRole("menu"), {key: "Escape"});
+		fireEvent.click(button(footers(view.container)[0]!, "Read aloud"));
+		const afterClick = {
 			texts: speak.mock.calls.map(([utterance]) => utterance.text),
 			cancels: cancel.mock.calls.map((args) => [...args]),
 			menus: screen.queryAllByRole("menu").length,
 		};
 		view.unmount();
-		expect({afterClose, afterUnmount: cancel.mock.calls}).toStrictEqual({
-			afterClose: {texts: ["Example first."], cancels: [[]], menus: 0},
+		expect({menuRows, afterClick, afterUnmount: cancel.mock.calls}).toStrictEqual({
+			menuRows: [
+				"Copy message",
+				"Copy message as Markdown",
+				"Attach message as context",
+				"Pin as chapter",
+				"Fork from hereStarts a new session, keeps this one",
+			],
+			afterClick: {texts: ["Example first.\n\nExample last."], cancels: [[]], menus: 0},
 			afterUnmount: [[], []],
 		});
 	});
