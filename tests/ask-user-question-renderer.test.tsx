@@ -178,6 +178,33 @@ describe("AskUserQuestionRenderer", () => {
 			});
 		});
 
+		it("draws **text** in the question as upstream's strong.font-medium around its chips, never inside a code span", () => {
+			const {container} = render(
+				<AskUserQuestionRenderer
+					toolCall={makeCall({
+						input: {
+							questions: [
+								{
+									question: "Pick **one `cmd` only** of `a**b**` or x**y**",
+									header: "Pick",
+									options: [{label: "Yes"}, {label: "No"}],
+									multiSelect: false,
+								},
+							],
+						},
+						result: REJECTION_RESULT,
+						isError: true,
+						stopped: true,
+					})}
+				/>,
+			);
+			const chip = `<code dir="ltr" class="rounded-[calc(var(--cds-h-control-nested)/4)] bg-alpha-1 px-xs font-mono text-code font-normal">`;
+
+			expect(container.querySelector(".text-secondary")!.innerHTML).toStrictEqual(
+				`Pick <strong class="font-medium">one ${chip}cmd</code> only</strong> of ${chip}a**b**</code> or x**y**`,
+			);
+		});
+
 		it("prints Skipped under each question of an all-[No preference] call", () => {
 			expect(
 				outcomeList(

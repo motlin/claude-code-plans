@@ -58,11 +58,11 @@
 		"raisedAt": "2026-11-11"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1421338,
+		"ceiling": 1436401,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "raised from 1404579 (2026-11-10): the tool output follow-up to e17d7d4f2 ports upstream's plain transcript text renderer for tool bodies (plain-text.tsx: ANSI runs and per-secret reveal cloaks, secret-cloak.tsx), the tool body's external-link confirm (confirm-external-link.tsx with the Open external link dialog, its Don't ask again domain store and punycode decoding in src/lib/external-nav.ts) and the saved-file link. Tool bodies draw on first expand with no lazy boundary, and linkify-plain now links through the confirm. Went to 1421338; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-10"
+		"reason": "raised from 1421338 (2026-11-11): the question text bold follow-up to 71d0f69dc ports upstream's `_i` question-text paint for the card header and Asked row (`**text**` as strong.font-medium around its code chips, the flank and double-backtick guards and the masked read-text fallback) into user-plain-text.tsx, which ships in the home entry with the question card (+851 bytes). The previous commits had already used the 1% headroom (1435552). Went to 1436401; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-11"
 	},
 	"bundle.session.gzip": {
 		"ceiling": 778154,

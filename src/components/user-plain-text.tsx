@@ -1,4 +1,4 @@
-import {lazy, type ReactNode, Suspense} from "react";
+import {Fragment, lazy, type ReactNode, Suspense} from "react";
 
 import {defined} from "../lib/defined";
 import {maskSecrets} from "../lib/secret-mask";
@@ -62,26 +62,104 @@ interface UserInlineTextProps {
 
 /**
  * A user message's inline paint without its block layout, its URLs as upstream's
- * TextLink. Upstream's question card header draws code spans as its chip (`codeLook="chip"`).
+ * TextLink. Upstream's question card header draws code spans as its chip and `**text**` bold (`codeLook="chip"`).
  */
 export function UserInlineText({text: raw, codeSpans = true, codeLook = "message", links = true}: UserInlineTextProps) {
 	const text = maskSecrets(raw);
 	const plain = (part: string, at: number): ReactNode[] => (links ? linkify(part, at, "textLink") : [part]);
 	if (!codeSpans) return <>{plain(text, 0)}</>;
 	if (codeLook === "message") return <>{renderInline(text, "textLink")}</>;
-	const nodes: ReactNode[] = [];
+	return <>{chipText(text, plain)}</>;
+}
+
+/** Upstream's question-text code span (`h` in c8a73d209): any backtick-free run, newlines included. */
+const CHIP_CODE_SPAN = /`[^`]+`/g;
+
+interface ChipPart {
+	text: string;
+	isCode: boolean;
+}
+
+/** Upstream's `j` (c8a73d209): the text split into code spans (backticks dropped) and the runs between. */
+function chipCodeParts(text: string): ChipPart[] {
+	const parts: ChipPart[] = [];
 	let cursor = 0;
-	for (const match of text.matchAll(CODE_SPAN)) {
-		if (match.index > cursor) nodes.push(...plain(text.slice(cursor, match.index), cursor));
-		nodes.push(
-			<code key={`code-${match.index}`} dir="ltr" className={CODE_CHIP_CLASS}>
-				{match[1]}
-			</code>,
-		);
+	for (const match of text.matchAll(CHIP_CODE_SPAN)) {
+		if (match.index > cursor) parts.push({text: text.slice(cursor, match.index), isCode: false});
+		parts.push({text: match[0].slice(1, -1), isCode: true});
 		cursor = match.index + match[0].length;
 	}
-	if (cursor < text.length) nodes.push(...plain(text.slice(cursor), cursor));
-	return <>{nodes}</>;
+	if (cursor < text.length) parts.push({text: text.slice(cursor), isCode: false});
+	return parts.length > 0 ? parts : [{text, isCode: false}];
+}
+
+/** Upstream's `po`: a single-line code span, or a `**` run whose inner text neither starts nor ends with space or `*`. */
+const CHIP_MARKUP = /(`[^`\n]+`|\*\*[^\s*](?:[^*\n]*[^\s*])?\*\*)/;
+/** Upstream's `mo`: a `**` run flanked by one of these stays literal. */
+const BOLD_FLANK = /[\p{L}\p{N}/*]/u;
+
+interface BoldPart {
+	text: string;
+	bold: boolean;
+}
+
+/** Upstream's `ho` (c59c32499): bold runs split out with their `**` dropped; a double backtick anywhere disables both. */
+function boldParts(text: string): BoldPart[] {
+	if (text.includes("``")) return [{text, bold: false}];
+	return text.split(CHIP_MARKUP).map((part, index, parts) => {
+		const bold =
+			index % 2 === 1 &&
+			part.startsWith("**") &&
+			!BOLD_FLANK.test(parts[index - 1]?.at(-1) ?? "") &&
+			!BOLD_FLANK.test(parts[index + 1]?.[0] ?? "");
+		return {text: bold ? part.slice(2, -2) : part, bold};
+	});
+}
+
+/** Upstream's `uo`: the text as read, code backticks dropped. */
+function chipPlainText(text: string): string {
+	return text.includes("``")
+		? text
+		: chipCodeParts(text)
+				.map((part) => part.text)
+				.join("");
+}
+
+type Paint = (part: string, at: number) => ReactNode[];
+
+/** Upstream's `fo`: code spans as its chip, the rest painted. */
+function chipCode(text: string, paint: Paint, key: string): ReactNode[] {
+	if (text.includes("``")) return paint(text, 0);
+	return chipCodeParts(text).map((part, index) =>
+		part.isCode ? (
+			<code key={`${key}-${index}`} dir="ltr" className={CODE_CHIP_CLASS}>
+				{part.text}
+			</code>
+		) : (
+			<Fragment key={`${key}-${index}`}>{paint(part.text, 0)}</Fragment>
+		),
+	);
+}
+
+/**
+ * Upstream's `_i` (`vo` in c59c32499): `**text**` as `strong.font-medium` with code chips inside, the
+ * rest as `fo`. When masking the read text (markup dropped) hides a secret the markup split, the whole
+ * text is drawn masked and unstyled.
+ */
+function chipText(text: string, paint: Paint): ReactNode[] {
+	const parts = boldParts(text);
+	const read = parts.map((part) => chipPlainText(part.text)).join("");
+	const masked = maskSecrets(read);
+	if (masked !== read) return paint(masked, 0);
+	return parts.map((part, index) =>
+		part.bold ? (
+			<strong key={index} className="font-medium">
+				{chipCode(part.text, paint, String(index))}
+			</strong>
+		) : (
+			<Fragment key={index}>{chipCode(part.text, paint, String(index))}</Fragment>
+		),
+	);
 }
 
 function renderInline(text: string, style: LinkStyle = "user", nonInteractive = false): ReactNode[] {
