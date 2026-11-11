@@ -780,8 +780,8 @@ export const SessionChat = React.memo(function SessionChat({
 		const scrollEventTarget = isDocumentScrollContainer(scroller) ? window : scroller;
 		let pendingLayoutFollow = false;
 		const previousMetrics = scrollMetrics(scroller);
-		// Pane moves remount this effect after restoring the scrollport. Reattach
-		// follow at that restored position without repeating the fresh-visit jump.
+		// A rerun (a new visit key on the mounted transcript) reattaches follow at the
+		// scrollport's current position without repeating the fresh-visit jump.
 		let followsEnd =
 			previousMetrics.clientHeight > 0 &&
 			previousMetrics.scrollHeight - previousMetrics.scrollTop - previousMetrics.clientHeight <=

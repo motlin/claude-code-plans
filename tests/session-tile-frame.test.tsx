@@ -4,7 +4,7 @@ import {useContext, useEffect, useLayoutEffect, useRef, type ReactNode} from "re
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {ChatFileDropContext} from "../src/components/chat-file-drop-context";
 import {AssistantMessageActions} from "../src/components/message-actions";
-import {SessionTileFrame, type SessionTileScrollPosition} from "../src/components/session-tile-frame";
+import {SessionTileFrame} from "../src/components/session-tile-frame";
 import {SessionTileGeometryReadyContext} from "../src/components/session-tile-geometry-context";
 import {TranscriptOverlayHostContext} from "../src/components/transcript-overlay-host-context";
 
@@ -38,13 +38,11 @@ function Ready() {
 	return <p>Example transcript</p>;
 }
 function Visit({visitKey}: {visitKey: string}) {
-	const positionRef = useRef<SessionTileScrollPosition | null>(null);
 	const anchorRef = useRef<HTMLDivElement>(null);
 	return (
 		<SessionTileFrame
 			sessionId="example-alice"
 			visitKey={visitKey}
-			positionRef={positionRef}
 			anchorRef={anchorRef}
 			restoredScrollY={200}
 			header={<p>Example header</p>}
@@ -135,13 +133,11 @@ it("does not hand a stale rendered event to a cold restore after departure", () 
 });
 it("docks the session rail beside the scrollport, under the header, and marks the tile while docked", () => {
 	function RailVisit({docked}: {docked: boolean}) {
-		const positionRef = useRef<SessionTileScrollPosition | null>(null);
 		const anchorRef = useRef<HTMLDivElement>(null);
 		return (
 			<SessionTileFrame
 				sessionId="example-alice"
 				visitKey="example-entry"
-				positionRef={positionRef}
 				anchorRef={anchorRef}
 				restoredScrollY={undefined}
 				header={<p>Example header</p>}
@@ -178,13 +174,11 @@ it("hands the scrollport's positioned wrapper to transcript overlays as their ho
 		return <p>Example transcript</p>;
 	}
 	function HostVisit() {
-		const positionRef = useRef<SessionTileScrollPosition | null>(null);
 		const anchorRef = useRef<HTMLDivElement>(null);
 		return (
 			<SessionTileFrame
 				sessionId="example-alice"
 				visitKey="example-entry"
-				positionRef={positionRef}
 				anchorRef={anchorRef}
 				restoredScrollY={undefined}
 				header={<p>Example header</p>}
@@ -213,12 +207,10 @@ it("portals a transcript toolbar tooltip out of the contain:strict scroller and 
 	vi.useFakeTimers({toFake: ["setTimeout", "clearTimeout"]});
 	vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(300);
 	vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(40);
-	const positionRef = {current: null};
 	const {container} = render(
 		<SessionTileFrame
 			sessionId="example-alice"
 			visitKey="example-alice-entry"
-			positionRef={positionRef}
 			anchorRef={{current: null}}
 			restoredScrollY={undefined}
 			header={<p>Example header</p>}
@@ -268,7 +260,6 @@ describe("chat panel file drop zone", () => {
 			<SessionTileFrame
 				sessionId="example-alice"
 				visitKey="example-entry"
-				positionRef={{current: null}}
 				anchorRef={{current: null}}
 				restoredScrollY={undefined}
 				header={<p>Example header</p>}

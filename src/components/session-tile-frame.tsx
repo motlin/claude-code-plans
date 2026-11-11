@@ -10,12 +10,6 @@ import {ChatFileDropZone} from "./chat-file-drop-zone";
 import {TranscriptOverlayHostContext} from "./transcript-overlay-host-context";
 import {useCallback, useLayoutEffect, useRef, useState, type ReactNode, type Ref, type RefObject} from "react";
 
-/** The one live chat tile's offset while a pane move reparents it; never a cross-route cache. */
-export interface SessionTileScrollPosition {
-	visitKey: string;
-	top: number;
-}
-
 /** Upstream's rounded chat card; its chrome stays outside the single scroll/restoration owner. */
 export function SessionTileFrame({
 	sessionId,
@@ -24,7 +18,6 @@ export function SessionTileFrame({
 	children,
 	footer,
 	visitKey,
-	positionRef,
 	restoredScrollY,
 	rail = null,
 	outline,
@@ -37,7 +30,6 @@ export function SessionTileFrame({
 	children: ReactNode;
 	footer: ReactNode;
 	visitKey: string;
-	positionRef: RefObject<SessionTileScrollPosition | null>;
 	restoredScrollY: number | undefined;
 	/** The session rail's column, docked over the scrollport's end below the header. */
 	rail?: ReactNode;
@@ -86,11 +78,7 @@ export function SessionTileFrame({
 			(restoredHost.current?.node === scroller && restoredHost.current.visitKey === visitKey)
 		)
 			return;
-		const saved = positionRef.current;
-		if (saved?.visitKey === visitKey) {
-			if (scroller.scrollTop !== saved.top) scroller.scrollTop = saved.top;
-			restoredHost.current = {node: scroller, visitKey};
-		} else if (restoredScrollY === undefined) {
+		if (restoredScrollY === undefined) {
 			restoredHost.current = {node: scroller, visitKey};
 		} else {
 			// A pending navigation can change the router location while this departing
@@ -123,19 +111,16 @@ export function SessionTileFrame({
 					if (sessionScrollKey(router.state.location, sessionId) === visitKey) scheduleFallback();
 				});
 		}
-	}, [positionRef, visitKey, restoredScrollY, router, sessionId]);
+	}, [visitKey, restoredScrollY, router, sessionId]);
 	useLayoutEffect(() => {
-		const scroller = scrollerRef.current;
 		if (geometryReady.current === visitKey) restoreGeometry();
 		return () => {
 			pendingRendered.current?.();
 			pendingRendered.current = undefined;
 			if (pendingFrame.current !== undefined) cancelAnimationFrame(pendingFrame.current);
 			pendingFrame.current = undefined;
-			if (scroller && restoredHost.current?.node === scroller && scroller.clientHeight > 0)
-				positionRef.current = {visitKey, top: scroller.scrollTop};
 		};
-	}, [positionRef, visitKey, restoreGeometry]);
+	}, [visitKey, restoreGeometry]);
 	const cancelPendingRestore = () => {
 		if (pendingFrame.current === undefined && pendingRendered.current === undefined) return;
 		pendingRendered.current?.();
@@ -182,13 +167,6 @@ export function SessionTileFrame({
 							}}
 							data-session-scrollport
 							data-scroll-restoration-id="main"
-							onScroll={(event) => {
-								if (event.currentTarget.clientHeight > 0)
-									positionRef.current = {
-										visitKey,
-										top: event.currentTarget.scrollTop,
-									};
-							}}
 							className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto [contain:strict] [overflow-anchor:none] [scrollbar-gutter:stable_both-edges]"
 						>
 							{/* The scroller clips at its edges, so tooltips inside it portal over the viewport. */}

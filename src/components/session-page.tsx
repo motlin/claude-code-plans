@@ -6,7 +6,7 @@ import {useLocation, useNavigate} from "@tanstack/react-router";
 import {useQuery, useQueryClient} from "@tanstack/react-query";
 import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps} from "react";
 import {Minimize2} from "lucide-react";
-import {SessionTileFrame, type SessionTileScrollPosition} from "./session-tile-frame";
+import {SessionTileFrame} from "./session-tile-frame";
 import {latestBreakdown, preferNewerBreakdown} from "../lib/context-breakdown";
 import {sessionContextBreakdownQueryOptions} from "../lib/api/context-breakdown";
 import {usageQueryOptions} from "../lib/api/usage";
@@ -464,7 +464,6 @@ function SessionView({
 	const sessionDirectory = data.projectPath ?? data.cwd;
 	const archivedNoteEnters = useArchivedSinceOpen(sessionId, data.archived);
 	const scrollAnchorRef = useRef<HTMLDivElement>(null);
-	const tileScrollPosition = useRef<SessionTileScrollPosition | null>(null);
 	const locationHash = useLocation({select: (location) => location.hash});
 	// Viewed positions are stored in message units (see message-count.ts) so
 	// they line up with messageCount and newMessageCount on every surface. The
@@ -1540,7 +1539,6 @@ function SessionView({
 							sessionId={sessionId}
 							anchorRef={sessionViewRef}
 							visitKey={initialScrollKey}
-							positionRef={tileScrollPosition}
 							restoredScrollY={restoredScrollPosition?.scrollY}
 							outline={(scrollRef) => (
 								<SessionOutline

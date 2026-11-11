@@ -21,7 +21,7 @@ import {AppFrame} from "../src/components/app-frame";
 import {usePaneHost} from "../src/components/panes/pane-host-context";
 import {TileHost} from "../src/components/panes/tile-host";
 import {registerPane} from "../src/components/panes/pane-registry";
-import {SessionTileFrame, type SessionTileScrollPosition} from "../src/components/session-tile-frame";
+import {SessionTileFrame} from "../src/components/session-tile-frame";
 import type {SessionLine} from "../src/lib/sessions";
 import {ancestorWith, entryIndex, transcriptRows, transcriptSpacerHeight} from "./dom-walk";
 
@@ -286,7 +286,6 @@ function ShellVisit({
 	scrollKey: string;
 	restoredScrollY: number | undefined;
 }) {
-	const positionRef = useRef<SessionTileScrollPosition | null>(null);
 	const anchorRef = useRef<HTMLDivElement>(null);
 	return (
 		<AppFrame collapsed={false} tileShell>
@@ -296,7 +295,6 @@ function ShellVisit({
 					header={<PaneOpenButton />}
 					anchorRef={anchorRef}
 					visitKey={scrollKey}
-					positionRef={positionRef}
 					restoredScrollY={restoredScrollY}
 					footer={
 						<SessionDock anchorRef={anchorRef}>

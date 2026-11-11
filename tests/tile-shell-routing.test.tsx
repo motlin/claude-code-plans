@@ -18,7 +18,7 @@ import {Route as SubagentsRoute} from "../src/routes/session.$id_.subagents";
 import {Route as ArtifactsRoute} from "../src/routes/artifacts";
 import {Route as CustomizeRoute} from "../src/routes/customize";
 import {HomePage} from "../src/components/home/home-page";
-import {SessionTileFrame, type SessionTileScrollPosition} from "../src/components/session-tile-frame";
+import {SessionTileFrame} from "../src/components/session-tile-frame";
 import {localAccountQueryOptions} from "../src/lib/api/local-account";
 
 // Keep the actual root component, route metadata, AppFrame and home/chat frames.
@@ -69,7 +69,6 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 function Chat() {
-	const position = useRef<SessionTileScrollPosition | null>(null);
 	const anchor = useRef<HTMLDivElement>(null);
 	return (
 		<SessionTileFrame
@@ -77,7 +76,6 @@ function Chat() {
 			header={<p>Fabricated header</p>}
 			footer={<p>Fabricated composer</p>}
 			anchorRef={anchor}
-			positionRef={position}
 			visitKey="example-visit"
 			restoredScrollY={undefined}
 		>
