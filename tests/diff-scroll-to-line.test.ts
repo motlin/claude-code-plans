@@ -41,7 +41,8 @@ function buildDiff(rows: string[]) {
 	const file = document.createElement("div");
 	setBox(file, () => rect(100 - scroller.scrollTop, 10000));
 	const host = document.createElement("diffs-container");
-	const shadow = host.attachShadow({mode: "open"});
+	// @pierre/diffs' element attaches its own shadow root once another shared-dom file has registered it.
+	const shadow = host.shadowRoot ?? host.attachShadow({mode: "open"});
 	const code = document.createElement("div");
 	code.innerHTML = rows.join("");
 	shadow.append(code);

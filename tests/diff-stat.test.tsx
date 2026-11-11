@@ -39,6 +39,13 @@ describe("git stat colors", () => {
 			"text-git-removed": ".text-git-removed { color: var(--upstream-git-removed); }",
 		});
 	});
+
+	it("compiles the env-bar stat's text-body-medium to upstream's body size at the control weight", async () => {
+		expect(await compileAll(["text-body-medium"])).toStrictEqual({
+			"text-body-medium":
+				".text-body-medium { font-size: var(--upstream-text-body); line-height: var(--tw-leading, var(--upstream-leading-body)); font-weight: var(--tw-font-weight, var(--font-weight-control)); }",
+		});
+	});
 });
 
 describe("AnimatedDiffStat", () => {

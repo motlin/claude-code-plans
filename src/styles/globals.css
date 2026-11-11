@@ -431,6 +431,10 @@ html[data-interface-font="dyslexic"] {
 	--text-body-regular: var(--upstream-text-body);
 	--text-body-regular--line-height: var(--upstream-leading-body);
 	--text-body-regular--font-weight: 400;
+	/* Upstream text-body-medium: text-body at the control weight (the env bar's diff stat, running task titles). */
+	--text-body-medium: var(--upstream-text-body);
+	--text-body-medium--line-height: var(--upstream-leading-body);
+	--text-body-medium--font-weight: var(--font-weight-control);
 	/* Upstream text-body-semibold: text-body at weight 600 (the transcript's chapter headings). */
 	--text-body-semibold: var(--upstream-text-body);
 	--text-body-semibold--line-height: var(--upstream-leading-body);

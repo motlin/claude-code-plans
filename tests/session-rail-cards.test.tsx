@@ -25,6 +25,7 @@ import type {ContextBreakdown} from "../src/lib/context-breakdown";
 import {toConnectorSlug} from "../src/lib/customize/mcp-tool-permissions";
 import {DEFAULT_RAIL_SECTIONS_STATE, RAIL_SECTIONS_STORAGE_KEY} from "../src/lib/session-rail-store";
 import {installLocalStorage} from "./fake-storage";
+import {installFrameQueue, stubReducedMotion} from "./helpers/frame-queue";
 
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
 
@@ -266,8 +267,14 @@ function rows(section: string): Array<[string, string | null]> {
 	const card = screen.getByRole("region", {name: new RegExp(`^${section}`)});
 	return [...within(card).getByTestId("rail-rows").children].map((row) => [
 		row.querySelector("[data-rail-row-label]")?.textContent ?? "",
-		row.querySelector("[data-rail-row-hint]")?.textContent ?? null,
+		hintText(row.querySelector("[data-rail-row-hint]")),
 	]);
+}
+
+/** A hint's visible text: a diff stat's aria-hidden digits, else the hint itself. */
+function hintText(hint: Element | null): string | null {
+	if (hint === null) return null;
+	return (hint.querySelector("[aria-hidden='true']") ?? hint).textContent;
 }
 
 describe("Environment card", () => {
@@ -784,7 +791,7 @@ describe("cards from local data", () => {
 			outputs: [["Rail report", null]],
 			changes: [
 				["#42 Sync fork with upstream", "Open"],
-				["Uncommitted changes", "+120 −8"],
+				["Uncommitted changes", "+120−8"],
 			],
 			servers: [["localhost:7611", null]],
 			backgroundTasks: [
@@ -793,6 +800,90 @@ describe("cards from local data", () => {
 			],
 			context: "19",
 			usage: null,
+		});
+	});
+
+	describe("Uncommitted changes stat", () => {
+		const DIFF_KEY = sessionDiffQueryOptions(SESSION_ID, "uncommitted").queryKey;
+
+		async function renderChanges(): Promise<QueryClient> {
+			let captured: QueryClient | undefined;
+			await renderCards(FULL, (client) => {
+				seed(client);
+				captured = client;
+			});
+			fireEvent.click(screen.getByRole("button", {name: /^Connectors/}), {altKey: true});
+			if (captured === undefined) throw new Error("renderCards did not prepare a client");
+			return captured;
+		}
+
+		/** Writes new diff stats; the query cache notifies observers on a 0ms timer. */
+		async function setDiff(client: QueryClient, additions: number, deletions: number) {
+			await act(async () => {
+				client.setQueryData(DIFF_KEY, {
+					scope: "uncommitted",
+					source: "git",
+					root: "/repo",
+					stats: {files: 3, additions, deletions},
+					files: [],
+				});
+				await new Promise((resolve) => {
+					setTimeout(resolve, 0);
+				});
+			});
+		}
+
+		function changesRow(): HTMLElement {
+			return screen.getByRole("button", {name: /^Open changes,/});
+		}
+
+		it("renders upstream's animated rail stat with the Open changes label", async () => {
+			stubReducedMotion(false);
+			await renderChanges();
+			const row = changesRow();
+			expect({
+				label: row.getAttribute("aria-label"),
+				hint: row.querySelector("[data-rail-row-hint]")?.innerHTML,
+			}).toStrictEqual({
+				label: "Open changes, 120 added, 8 removed",
+				hint: '<span dir="ltr" class="tabular-nums inline-flex shrink-0 gap-1 text-body"><span class="sr-only">120 additions, 8 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+120</span><span class="text-git-removed">−8</span></span></span>',
+			});
+		});
+
+		it("eases the hint to new diff counts, with the label and sr line at the new counts at once", async () => {
+			stubReducedMotion(false);
+			const client = await renderChanges();
+			const frames = installFrameQueue();
+			await setDiff(client, 1220, 8);
+			const read = () => ({
+				label: changesRow().getAttribute("aria-label"),
+				visible: hintText(changesRow().querySelector("[data-rail-row-hint]")),
+				sr: changesRow().querySelector("[data-rail-row-hint] .sr-only")?.textContent,
+			});
+			const seen = [read()];
+			for (const ts of [200, 400]) {
+				act(() => {
+					frames.frame(ts);
+				});
+				seen.push(read());
+			}
+			const final = {label: "Open changes, 1,220 added, 8 removed", sr: "1,220 additions, 8 deletions"};
+			expect(seen).toStrictEqual([
+				{...final, visible: "+120−8"},
+				{...final, visible: "+1,083−8"},
+				{...final, visible: "+1,220−8"},
+			]);
+		});
+
+		it("snaps the hint to new diff counts under reduced motion", async () => {
+			stubReducedMotion(true);
+			const client = await renderChanges();
+			const frames = installFrameQueue();
+			await setDiff(client, 220, 8);
+			expect({
+				visible: hintText(changesRow().querySelector("[data-rail-row-hint]")),
+				pending: frames.pending(),
+			}).toStrictEqual({visible: "+220−8", pending: []});
 		});
 	});
 

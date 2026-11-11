@@ -8,6 +8,7 @@ import {BranchStrip} from "../src/components/branch-strip";
 import {type BranchStripSession, branchStripVisible, middleTruncate} from "../src/components/branch-strip-model";
 import {ToastProvider} from "../src/components/toast";
 import {sessionOpenInQueryOptions} from "../src/lib/api/sessions";
+import {installFrameQueue, stubReducedMotion} from "./helpers/frame-queue";
 
 let stripWidth = 800;
 
@@ -43,7 +44,7 @@ function renderStrip(
 	session: BranchStripSession = SESSION,
 	sessionId = "session-1",
 	statusline: Record<string, unknown> | null = STATUSLINE,
-): RenderResult {
+): RenderResult & {setStatusline: (next: Record<string, unknown>) => void} {
 	const queryClient = new QueryClient({
 		defaultOptions: {queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false}},
 	});
@@ -54,13 +55,20 @@ function renderStrip(
 		remoteHistory: null,
 		githubUrl: null,
 	});
-	return render(
+	const tree = (line: Record<string, unknown> | null) => (
 		<QueryClientProvider client={queryClient}>
 			<ToastProvider>
-				<BranchStrip sessionId={sessionId} session={session} statusline={statusline} />
+				<BranchStrip sessionId={sessionId} session={session} statusline={line} />
 			</ToastProvider>
-		</QueryClientProvider>,
+		</QueryClientProvider>
 	);
+	const view = render(tree(statusline));
+	return {
+		...view,
+		setStatusline: (next) => {
+			view.rerender(tree(next));
+		},
+	};
 }
 
 function strip(view: RenderResult): Element | null {
@@ -75,6 +83,8 @@ beforeEach(() => {
 
 afterEach(() => {
 	cleanup();
+	vi.unstubAllGlobals();
+	vi.restoreAllMocks();
 });
 
 describe("BranchStrip", () => {
@@ -105,7 +115,52 @@ describe("BranchStrip", () => {
 		expect({
 			visible: button.querySelector("[aria-hidden]")?.textContent,
 			sr: button.querySelector(".sr-only")?.textContent,
-		}).toStrictEqual({visible: "+3,093 −1", sr: "3,093 additions, 1 deletion"});
+		}).toStrictEqual({visible: "+3,093−1", sr: "3,093 additions, 1 deletion"});
+	});
+
+	it("renders the counts as upstream's animated env-bar stat inside a View changes button", () => {
+		const view = renderStrip();
+		const button = view.getByRole("button", {name: "3,093 additions, 1 deletion"});
+		expect({
+			dir: button.getAttribute("dir"),
+			title: button.getAttribute("title"),
+			stat: button.innerHTML,
+		}).toStrictEqual({
+			dir: "ltr",
+			title: "View changes",
+			stat: '<span dir="ltr" class="tabular-nums contents text-body-medium"><span class="sr-only">3,093 additions, 1 deletion</span><span aria-hidden="true" class="contents"><span class="text-git-added">+3,093</span><span class="text-git-removed">−1</span></span></span>',
+		});
+	});
+
+	it("eases the visible counts to a new statusline total while the sr line reads the total at once", () => {
+		const frames = installFrameQueue();
+		stubReducedMotion(false);
+		const view = renderStrip(SESSION, "session-1", {cost: {total_lines_added: 10, total_lines_removed: 1}});
+		act(() => {
+			view.setStatusline({cost: {total_lines_added: 110, total_lines_removed: 1}});
+		});
+		const read = () => {
+			const button = view.getByRole("button", {name: /additions?/});
+			return {
+				visible: button.querySelector("[aria-hidden]")?.textContent,
+				sr: button.querySelector(".sr-only")?.textContent,
+			};
+		};
+		const seen = [read()];
+		for (const ts of [200, 400]) {
+			act(() => {
+				frames.frame(ts);
+			});
+			seen.push(read());
+		}
+		expect({seen, pending: frames.pending()}).toStrictEqual({
+			seen: [
+				{visible: "+10−1", sr: "110 additions, 1 deletion"},
+				{visible: "+98−1", sr: "110 additions, 1 deletion"},
+				{visible: "+110−1", sr: "110 additions, 1 deletion"},
+			],
+			pending: [],
+		});
 	});
 
 	it("shows the project and the full branch name", () => {

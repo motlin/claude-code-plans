@@ -11,7 +11,7 @@ import {useCallback, useEffect, useRef, useState} from "react";
 
 import {requestChangesScope} from "../lib/changes-scope-request";
 import {type BranchStripSession, type LineCounts, branchStripVisible, middleTruncate} from "./branch-strip-model";
-import {pluralize} from "../lib/pluralize";
+import {AnimatedDiffStat} from "./diff-stat";
 import {isRecord} from "../lib/narrow";
 import {prGlyph} from "../lib/pr-status";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
@@ -91,26 +91,21 @@ function useContainerWidth() {
 	return {ref, width};
 }
 
+/** Upstream's clickable env-bar diff button (`pr` in c390f938b): the animated `Qe` stat, tooltip "View changes". */
 function DiffStatButton({sessionId, additions, deletions}: {sessionId: string; additions: number; deletions: number}) {
 	const host = useOptionalPaneHost();
-	const added = additions.toLocaleString("en-US");
-	const removed = deletions.toLocaleString("en-US");
 	return (
 		<button
 			type="button"
-			title="Show changes"
-			className={`${GHOST_BUTTON} tabular-nums`}
+			dir="ltr"
+			title="View changes"
+			className={GHOST_BUTTON}
 			onClick={() => {
 				requestChangesScope(sessionId, "branch");
 				host?.openPane("changes");
 			}}
 		>
-			<span aria-hidden="true">
-				<span className="text-diff-added">+{added}</span> <span className="text-diff-removed">−{removed}</span>
-			</span>
-			<span className="sr-only">
-				{`${added} ${pluralize(additions, "addition")}, ${removed} ${pluralize(deletions, "deletion")}`}
-			</span>
+			<AnimatedDiffStat added={additions} removed={deletions} className="contents text-body-medium" />
 		</button>
 	);
 }
