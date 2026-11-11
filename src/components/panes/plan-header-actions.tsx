@@ -1,7 +1,6 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
 import {Check, Copy, FileText} from "lucide-react";
-import {useEffect, useRef, useState} from "react";
 
 import {planQueryOptions} from "../../lib/api/plans";
 import {writeClipboardText} from "../../lib/clipboard";
@@ -10,6 +9,7 @@ import {toMdSlug} from "../../lib/md-slug";
 import type {SessionPlanModel} from "../../lib/session-plan-model";
 import {Tooltip} from "../ui/tooltip";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
+import {useTimedFlag} from "../../hooks/use-timed-flag";
 
 /** How long upstream's Copy plan button shows "Copied" with a check. */
 const COPIED_MS = 1500;
@@ -19,14 +19,7 @@ const COPIED_MS = 1500;
  * "Copied" with a check for a moment. Upstream draws it only while the plan has text.
  */
 export function CopyPlanButton({content}: {content: string}) {
-	const [copied, setCopied] = useState(false);
-	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-	useEffect(
-		() => () => {
-			clearTimeout(timer.current);
-		},
-		[],
-	);
+	const [copied, showCopied] = useTimedFlag(COPIED_MS);
 	const label = copied ? "Copied" : "Copy plan";
 	const Icon = copied ? Check : Copy;
 	return (
@@ -41,11 +34,7 @@ export function CopyPlanButton({content}: {content: string}) {
 				onClick={() => {
 					void writeClipboardText(content).then((ok) => {
 						if (!ok) return;
-						setCopied(true);
-						clearTimeout(timer.current);
-						timer.current = setTimeout(() => {
-							setCopied(false);
-						}, COPIED_MS);
+						showCopied();
 					});
 				}}
 			>

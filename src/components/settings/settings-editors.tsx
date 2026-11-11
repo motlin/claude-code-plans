@@ -2,6 +2,7 @@ import type {ThemedToken} from "@shikijs/core";
 import {AlertCircle, Check, ChevronDown, ChevronRight, Plus, RotateCcw, Save, Trash2, X} from "lucide-react";
 import {useCallback, useEffect, useId, useRef, useState} from "react";
 import {useHighlightedLines} from "../../hooks/use-shiki";
+import {useTimedFlag} from "../../hooks/use-timed-flag";
 import {useSaveSettingsFile} from "../../lib/api/settings";
 import {asRecord, errorMessage} from "../../lib/narrow";
 import {withoutKey} from "../../lib/without-key";
@@ -78,7 +79,7 @@ export function JsonEditor({filename, initialContent, path}: {filename: string; 
 	const [savedContent, setSavedContent] = useState(initialContent);
 	const [feedback, setFeedback] = useState<Feedback | null>(null);
 	const [validationError, setValidationError] = useState<string | null>(null);
-	const [formatFeedback, setFormatFeedback] = useState(false);
+	const [formatFeedback, showFormatFeedback] = useTimedFlag(1500);
 	const saveMutation = useSaveSettingsFile();
 	const saving = saveMutation.isPending;
 
@@ -149,11 +150,8 @@ export function JsonEditor({filename, initialContent, path}: {filename: string; 
 		draftRef.current = pretty;
 		setEditorValue(pretty);
 		setValidationError(null);
-		setFormatFeedback(true);
-		setTimeout(() => {
-			setFormatFeedback(false);
-		}, 1500);
-	}, [validate]);
+		showFormatFeedback();
+	}, [validate, showFormatFeedback]);
 
 	const isDirty = editorValue !== savedContent;
 	const lineCount = editorValue.split("\n").length;

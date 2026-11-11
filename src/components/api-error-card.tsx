@@ -1,5 +1,5 @@
 import {Check, Copy, Gauge, TriangleAlert} from "lucide-react";
-import {type ReactNode, useEffect, useRef, useState} from "react";
+import {type ReactNode, useState} from "react";
 
 import {type ApiErrorCategory, classifyApiError, errorCopy, refusalPassthrough} from "../lib/api-error-category";
 import {parseApiErrorDetails} from "../lib/api-error-details";
@@ -10,6 +10,7 @@ import {ErrorCardShell} from "./error-card-shell";
 import type {RecoveryHandlers} from "./error-recovery-actions";
 import {DeferredErrorRecoveryActions} from "./error-recovery-actions-entry";
 import * as Collapsible from "./ui/collapsible";
+import {useTimedFlag} from "../hooks/use-timed-flag";
 
 /** How long upstream's Copy details button shows "Copied" with a check. */
 const COPIED_MS = 1200;
@@ -50,14 +51,7 @@ function numericStatus(status: number | string | undefined): number | undefined 
 
 /** Upstream's ghost icon-only "Copy details" (cb1a6e506 `C`): Check + "Copied" for 1200ms. */
 function CopyDetailsButton({details}: {details: string}) {
-	const [copied, setCopied] = useState(false);
-	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-	useEffect(
-		() => () => {
-			clearTimeout(timer.current);
-		},
-		[],
-	);
+	const [copied, showCopied] = useTimedFlag(COPIED_MS);
 	const label = copied ? "Copied" : "Copy details";
 	const Icon = copied ? Check : Copy;
 	return (
@@ -72,11 +66,7 @@ function CopyDetailsButton({details}: {details: string}) {
 				onClick={() => {
 					void writeClipboardText(details).then((ok) => {
 						if (!ok) return;
-						setCopied(true);
-						clearTimeout(timer.current);
-						timer.current = setTimeout(() => {
-							setCopied(false);
-						}, COPIED_MS);
+						showCopied();
 					});
 				}}
 			>

@@ -7,6 +7,7 @@ import type {HookStatusResponse} from "../lib/api/hooks";
 import type {z} from "zod";
 import {errorMessage} from "../lib/narrow";
 import {useSettings} from "./settings-context";
+import {useTimedFlag} from "../hooks/use-timed-flag";
 
 type HookStatus = z.infer<typeof HookStatusResponse>;
 
@@ -45,7 +46,7 @@ const FEATURE_STATE_CLASS = {
 export function HookSetup() {
 	const {settings} = useSettings();
 	const [port, setPort] = useState(DEFAULT_HOOK_PORT);
-	const [copied, setCopied] = useState(false);
+	const [copied, showCopied] = useTimedFlag(1500);
 	const [message, setMessage] = useState<{
 		type: "success" | "error";
 		text: string;
@@ -63,10 +64,7 @@ export function HookSetup() {
 
 	function handleCopy() {
 		void navigator.clipboard.writeText(json);
-		setCopied(true);
-		setTimeout(() => {
-			setCopied(false);
-		}, 1500);
+		showCopied();
 	}
 
 	const changes = status ? pendingChanges(status) : [];

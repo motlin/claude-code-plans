@@ -35,6 +35,7 @@ import type {PaneChrome} from "./panes/pane-registry";
 import {useToast} from "./toast-context";
 import {Shortcut} from "./ui/shortcut";
 import {Tooltip} from "./ui/tooltip";
+import {useTimedFlag} from "../hooks/use-timed-flag";
 
 const ICON_BUTTON_CLASS =
 	"flex size-6 shrink-0 items-center justify-center rounded-r5 text-t6 transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-40";
@@ -281,14 +282,11 @@ function pendingLabel(entry: SideChatEntry): string {
 function SideChatItem({sessionId, entry}: {sessionId: string; entry: SideChatEntry}) {
 	const navigate = useNavigate();
 	const toast = useToast();
-	const [copied, setCopied] = useState(false);
+	const [copied, showCopied] = useTimedFlag(1500);
 
 	async function copy() {
 		if (await writeClipboardText(entry.answer)) {
-			setCopied(true);
-			setTimeout(() => {
-				setCopied(false);
-			}, 1500);
+			showCopied();
 		}
 	}
 

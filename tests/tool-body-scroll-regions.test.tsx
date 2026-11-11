@@ -195,6 +195,24 @@ describe("CopyButton", () => {
 		expect(screen.getByRole("tooltip").textContent).toBe("Copy");
 	});
 
+	it("clears its Copied reset timer when unmounted mid-reset", () => {
+		vi.useFakeTimers();
+		Object.defineProperty(navigator, "clipboard", {
+			configurable: true,
+			value: {writeText: async () => Promise.resolve()},
+		});
+		const {unmount} = render(<CopyButton text="alice" />);
+		fireEvent.click(screen.getByRole("button", {name: "Copy"}));
+		const pendingWhileCopied = vi.getTimerCount();
+
+		unmount();
+
+		expect({pendingWhileCopied, pendingAfterUnmount: vi.getTimerCount()}).toStrictEqual({
+			pendingWhileCopied: 1,
+			pendingAfterUnmount: 0,
+		});
+	});
+
 	it("reveals its hover-only wrapper on touch", () => {
 		const {container} = render(<CopyButton text="alice" />);
 

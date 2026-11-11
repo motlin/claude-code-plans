@@ -5,6 +5,7 @@ import {type SecretReveal, useSecretReveal} from "./use-secret-reveal";
 import {formatDuration} from "../../lib/format-duration";
 import {CHECK_ICON_PATH, COPY_ICON_PATH} from "../../lib/icon-paths";
 import {TOUCH_REVEAL} from "../../lib/touch-reveal";
+import {useTimedFlag} from "../../hooks/use-timed-flag";
 import {FileRefTarget} from "../file-refs";
 import * as Collapsible from "../ui/collapsible";
 import {Icon} from "../ui/icon";
@@ -397,16 +398,13 @@ export function CopyButton({
 	copiedLabel?: string;
 	resetMs?: number;
 }) {
-	const [copied, setCopied] = useState(false);
+	const [copied, showCopied] = useTimedFlag(resetMs);
 
 	const handleClick = useCallback(() => {
 		void navigator.clipboard.writeText(text);
 		onCopied?.();
-		setCopied(true);
-		setTimeout(() => {
-			setCopied(false);
-		}, resetMs);
-	}, [text, onCopied, resetMs]);
+		showCopied();
+	}, [text, onCopied, showCopied]);
 	const currentLabel = copied ? copiedLabel : label;
 	const iconSize = size === "xs" ? 12 : 16;
 

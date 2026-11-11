@@ -24,6 +24,7 @@ import {DisabledReason} from "./ui/disabled-reason";
 import {InfoTip} from "./ui/info-tip";
 import {Spinner} from "./ui/spinner";
 import {Tooltip} from "./ui/tooltip";
+import {useTimedFlag} from "../hooks/use-timed-flag";
 
 /*
  * claude.ai/code's hover toolbars under a transcript turn. Assistant turns get
@@ -190,14 +191,7 @@ function CopyAction({
 	/** Upstream (shared-80 `eb`) tags only a user turn's Copy button, `user-message-copy`. */
 	testId?: string;
 }) {
-	const [copied, setCopied] = useState(false);
-	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-	useEffect(
-		() => () => {
-			clearTimeout(timer.current);
-		},
-		[],
-	);
+	const [copied, showCopied] = useTimedFlag(COPIED_MS);
 	const trimmed = text.trim();
 	const empty = trimmed === "";
 
@@ -213,11 +207,7 @@ function CopyAction({
 					const write = html === undefined ? writeClipboardText(trimmed) : writeClipboardText(trimmed, html);
 					void write.then((ok) => {
 						if (!ok) return;
-						setCopied(true);
-						clearTimeout(timer.current);
-						timer.current = setTimeout(() => {
-							setCopied(false);
-						}, COPIED_MS);
+						showCopied();
 					});
 				}}
 			>
