@@ -1,6 +1,6 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
-import {ArrowDownUp, Search, SlidersHorizontal, X} from "lucide-react";
+import {ArrowDownUp, Search, SlidersHorizontal} from "lucide-react";
 import {
 	type KeyboardEvent as ReactKeyboardEvent,
 	type ReactNode,
@@ -15,7 +15,9 @@ import {navRowFor} from "../../lib/settings-nav";
 import {PHONE_SHEET_QUERY, SETTINGS_WIDE_QUERY, useCoarsePointer, useMediaQuery} from "../../lib/use-phone-sheet";
 import {SegmentedControl} from "../settings/segmented-control";
 import {CDS_TAB_CLASS, CDS_TAB_LIST_CLASS} from "../ui/cds-tabs";
+import {Icon} from "../ui/icon";
 import {Menu, MenuContent, MenuLabel, MenuRadioGroup, MenuRadioItem, MenuTrigger} from "../ui/menu";
+import {TextInput} from "../ui/text-input";
 import {Tooltip} from "../ui/tooltip";
 import {CustomizeAddMenu} from "./customize-add-menu";
 import {DISCOVER_SORT_OPTIONS, discoverCategoryOptions, discoverForSection} from "./discover-view";
@@ -370,12 +372,6 @@ function focusAtEnd(input: HTMLInputElement | null) {
 	input.setSelectionRange(input.value.length, input.value.length);
 }
 
-const SEARCH_INPUT_CLASS =
-	"min-w-0 flex-1 bg-transparent text-body text-primary outline-none placeholder:text-t6 [&::-webkit-search-cancel-button]:hidden";
-
-const CLEAR_BUTTON_CLASS =
-	"inline-flex size-5 shrink-0 items-center justify-center rounded-r3 text-t6 hover:text-primary";
-
 /**
  * Upstream's ≥768px dialog header search (`le` with `collapsible: false`): an always-visible 256px
  * field. Escape with text clears it without closing the dialog; on an empty field Escape reaches the
@@ -394,40 +390,25 @@ function FixedSearchField({placeholder, value, onChange}: SearchFieldProps) {
 	});
 
 	return (
-		<div className="inline-flex h-8 w-64 min-w-0 cursor-text items-center gap-2 rounded-r6 ps-3 pe-3 bg-[var(--settings-field-bg)] shadow-field-ring [&:hover:not(:focus-visible):not(:has(:focus-visible))]:shadow-field-hover has-[:focus-visible]:shadow-focus">
-			<Search aria-hidden="true" className="size-4 shrink-0 text-t6" />
-			<input
-				ref={input}
-				type="search"
-				placeholder={placeholder}
-				aria-label="Search"
-				maxLength={200}
-				value={draft}
-				onChange={(event) => {
-					change(event.target.value);
-				}}
-				onKeyDown={(event) => {
-					if (event.key !== "Escape" || event.nativeEvent.isComposing || draft === "") return;
-					event.stopPropagation();
-					change("");
-				}}
-				data-testid="customize-header-search"
-				className={SEARCH_INPUT_CLASS}
-			/>
-			{draft !== "" && (
-				<button
-					type="button"
-					aria-label="Clear search"
-					onClick={() => {
-						change("");
-						input.current?.focus();
-					}}
-					className={CLEAR_BUTTON_CLASS}
-				>
-					<X aria-hidden="true" className="size-3.5" />
-				</button>
-			)}
-		</div>
+		<TextInput
+			ref={input}
+			type="search"
+			placeholder={placeholder}
+			aria-label="Search"
+			maxLength={200}
+			value={draft}
+			onChange={(event) => {
+				change(event.target.value);
+			}}
+			data-testid="customize-header-search"
+			className="w-64"
+			slotStart={<Icon name="Search" size="sm" />}
+			clearable
+			clearLabel="Clear search"
+			onClear={() => {
+				change("");
+			}}
+		/>
 	);
 }
 
@@ -497,51 +478,45 @@ function CollapsibleSearchField({placeholder, value, onChange, findShortcut}: Co
 			role="search"
 			className={`flex max-w-full min-w-40 grow items-center gap-2 md:justify-end ${phone ? "w-48" : "w-64"}`}
 		>
-			<div className="inline-flex h-8 min-w-0 flex-1 cursor-text items-center gap-1.5 rounded-r6 ps-2 pe-2 bg-[var(--settings-field-bg)] shadow-field-ring [&:hover:not(:focus-visible):not(:has(:focus-visible))]:shadow-field-hover has-[:focus-visible]:shadow-focus md:max-w-sm">
-				<Search aria-hidden="true" className="size-4 shrink-0 text-t6" />
-				<input
-					ref={input}
-					type="search"
-					// oxlint-disable-next-line jsx-a11y/no-autofocus -- the field replaces the magnifier the user just pressed
-					autoFocus
-					autoComplete="off"
-					placeholder={placeholder}
-					aria-label="Search"
-					maxLength={200}
-					value={draft}
-					onChange={(event) => {
-						change(event.target.value);
-					}}
-					onKeyDown={(event) => {
-						if (event.key !== "Escape" || event.nativeEvent.isComposing) return;
-						// An empty field lets Escape reach the Settings dialog, which closes. With text, Escape only
-						// clears it: stopping propagation keeps Base UI's dismiss from closing the dialog too.
-						if (draft === "") {
-							collapse();
-							return;
-						}
-						event.preventDefault();
-						event.stopPropagation();
-						change("");
-					}}
-					onBlur={() => {
-						if (draft === "") setExpanded(false);
-					}}
-					className={SEARCH_INPUT_CLASS}
-				/>
-				{/* Upstream's open field always offers Clear search, which also collapses it */}
-				<button
-					type="button"
-					aria-label="Clear search"
-					onClick={() => {
-						change("");
+			<TextInput
+				ref={input}
+				type="search"
+				// oxlint-disable-next-line jsx-a11y/no-autofocus -- the field replaces the magnifier the user just pressed
+				autoFocus
+				autoComplete="off"
+				placeholder={placeholder}
+				aria-label="Search"
+				maxLength={200}
+				value={draft}
+				onChange={(event) => {
+					change(event.target.value);
+				}}
+				onKeyDown={(event) => {
+					if (event.key !== "Escape" || event.nativeEvent.isComposing) return;
+					// An empty field lets Escape reach the Settings dialog, which closes. With text, Escape only
+					// clears it (the preventDefault keeps the TextInput's own Escape-clear, which collapses, out):
+					// stopping propagation keeps Base UI's dismiss from closing the dialog too.
+					if (draft === "") {
 						collapse();
-					}}
-					className={CLEAR_BUTTON_CLASS}
-				>
-					<X aria-hidden="true" className="size-3.5" />
-				</button>
-			</div>
+						return;
+					}
+					event.preventDefault();
+					event.stopPropagation();
+					change("");
+				}}
+				onBlur={() => {
+					if (draft === "") setExpanded(false);
+				}}
+				className="flex-1 md:max-w-sm"
+				slotStart={<Icon name="Search" size="sm" />}
+				// Upstream's open field always offers Clear search, which also collapses it.
+				clearable="always"
+				clearLabel="Clear search"
+				onClear={() => {
+					change("");
+					collapse();
+				}}
+			/>
 		</div>
 	);
 }

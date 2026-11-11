@@ -401,6 +401,7 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream claude.ai/code — cds-input text fields (shadow-field-ring / -hover, shadow-focus) */
 	--shadow-field-ring: var(--field-ring-shadow);
 	--shadow-field-hover: var(--field-hover-shadow);
+	--shadow-field-invalid: var(--field-invalid-shadow);
 	--shadow-focus: var(--focus-shadow);
 	--shadow-focus-danger: var(--focus-shadow-danger);
 	/* Upstream claude.ai/code — joined secondary split button (shadow-field-drop) */
@@ -461,6 +462,8 @@ html[data-interface-font="dyslexic"] {
 	--df-ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
 	/* Upstream .cds-root control height: the shell is a comfortable context (see [data-density] below). */
 	--cds-h-control: calc(2rem * var(--cds-rem-scale, 1));
+	/* Upstream --cds-h-control-nested, a control nested in a field (TextInput's Clear): 1.125rem at .cds-root, 1.375rem at comfortable. */
+	--cds-h-control-nested: calc(1.375rem * var(--cds-rem-scale, 1));
 	/* Upstream --cds-switch-h, the size-less (xxs) Switch's height: 1rem at .cds-root, 1.25rem at comfortable. */
 	--cds-switch-h: calc(1.25rem * var(--cds-rem-scale, 1));
 	/* Upstream .cds-root toolbar tokens; the fizzy-lake panels toolbar rules earlier in this file override them. */
@@ -675,6 +678,8 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream claude.ai/code — cds-input field ring (10% ink, 20% on hover) and focus ring */
 	--field-ring-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.1);
 	--field-hover-shadow: inset 0 0 0 1px rgb(11 11 11 / 0.2);
+	/* Upstream data-[invalid]:shadow-field-invalid, measured inset 0 0 0 1px rgb(220,60,61). */
+	--field-invalid-shadow: inset 0 0 0 1px #dc3c3d;
 	--focus-shadow: inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #257de0, 0 0 6px 1px #cde2fb;
 	/* Upstream --cds-btn-spring: the overshoot curve a squished button springs back on. */
 	--btn-spring: linear(
@@ -998,6 +1003,8 @@ html[data-interface-font="dyslexic"] {
 	/* Upstream claude.ai/code — cds-input field ring and focus ring (dark) */
 	--field-ring-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.1);
 	--field-hover-shadow: inset 0 0 0 1px hsl(0 0% 100% / 0.2);
+	/* Dark unmeasured: the same #dc3c3d ring as the dark --focus-shadow-danger. */
+	--field-invalid-shadow: inset 0 0 0 1px #dc3c3d;
 	/* Upstream dark glow is hsl(from --cds-role-accent-600 / --cds-role-danger-600 h s l / 60%); accent-600 = #1757ac (live read 2026-10-29). */
 	--focus-shadow: inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #257de0, 0 0 6px 1px rgb(23 87 172 / 0.6);
 	--focus-shadow-danger: inset 0 0 0 1px var(--upstream-page), 0 0 0 1px #dc3c3d, 0 0 6px 1px rgb(142 38 38 / 0.6);
@@ -1821,6 +1828,18 @@ html[data-interface-font="dyslexic"] {
 @utility duration-base {
 	--tw-duration: 200ms;
 	transition-duration: 200ms;
+}
+
+/* Upstream hides the native search clear on a cds TextInput; its own Clear button replaces it. */
+input.cds-input::-webkit-search-cancel-button {
+	-webkit-appearance: none;
+	display: none;
+}
+
+/* Upstream's cds `duration-fast` (60ms): the TextInput field's ring transition. */
+@utility duration-fast {
+	--tw-duration: 60ms;
+	transition-duration: 60ms;
 }
 
 /* Upstream's `.text-code` carries the mono face along with the code size and leading; the size and leading
@@ -3782,6 +3801,7 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
    A comfortable scope restates :root's scale so it wins over an enclosing compact one. */
 [data-density="comfortable"] {
 	--cds-h-control: calc(2rem * var(--cds-rem-scale, 1));
+	--cds-h-control-nested: calc(1.375rem * var(--cds-rem-scale, 1));
 	--cds-switch-h: calc(1.25rem * var(--cds-rem-scale, 1));
 	--cds-icon: calc(1.25rem * var(--cds-rem-scale, 1));
 	--upstream-radius: 0.5rem;
@@ -3827,6 +3847,7 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 
 [data-density="compact"] {
 	--cds-h-control: calc(1.5rem * var(--cds-rem-scale, 1));
+	--cds-h-control-nested: calc(1.125rem * var(--cds-rem-scale, 1));
 	--cds-switch-h: calc(1rem * var(--cds-rem-scale, 1));
 	--cds-icon: calc(1rem * var(--cds-rem-scale, 1));
 	--upstream-radius: 0.375rem;

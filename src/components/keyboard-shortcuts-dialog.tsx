@@ -1,5 +1,5 @@
 import {Dialog} from "@base-ui/react/dialog";
-import {Keyboard, Search, X} from "lucide-react";
+import {Keyboard} from "lucide-react";
 import {Fragment, useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type RefObject} from "react";
 
 import {useIsMac, useIsWindows} from "../hooks/use-is-mac";
@@ -25,6 +25,8 @@ import {DensityScope} from "./ui/density";
 import {GHOST_ICON_BUTTON} from "./ui/dialog-band";
 import {DialogHeader} from "./ui/dialog-header";
 import {DialogPopup} from "./ui/dialog-popup";
+import {Icon} from "./ui/icon";
+import {TextInput} from "./ui/text-input";
 
 function rowKeys(definition: ShortcutDefinition, isMac: boolean, isWindows: boolean): string[] {
 	const keys = platformBindings(definition, isMac, isWindows).map(bindingToKeys);
@@ -77,10 +79,6 @@ function NbspGap() {
 
 const TEXT_FIND: ShortcutFind = {by: "text", text: ""};
 const PRESS_FIND: ShortcutFind = {by: "press", pressed: null};
-
-/** Upstream's 28px dialog cds TextInput (comfortable `h-control`, r8, 12px insets). */
-const SEARCH_FIELD_CLASS =
-	"inline-flex h-7 w-full min-w-0 flex-1 cursor-text items-center gap-1.5 rounded-r6 bg-fill-field ps-3 pe-3 font-sans text-body font-normal text-primary shadow-field-ring transition duration-150 has-[:focus-visible]:shadow-focus [&:hover:not(:focus-visible):not(:has(:focus-visible))]:shadow-field-hover";
 
 /**
  * Upstream's Search shortcuts toolbar (`Vt`): a text filter plus a Record keys toggle that turns the
@@ -147,55 +145,42 @@ function ShortcutsSearch({
 			className="flex shrink-0 items-center gap-1 py-2"
 		>
 			<div className="flex min-w-0 flex-1 items-center gap-1 self-stretch">
-				<div data-cds="TextInput" className={SEARCH_FIELD_CLASS}>
-					<Search aria-hidden="true" className="size-4 shrink-0 text-ink-muted" />
-					<input
-						ref={inputRef}
-						type="search"
-						autoComplete="off"
-						aria-label="Search shortcuts"
-						aria-describedby={recording ? hintId : undefined}
-						placeholder={recording ? "Press a shortcut" : "Search shortcuts"}
-						value={value}
-						onChange={(event) => {
-							setRecording(false);
-							onFind({
-								by: "text",
-								text: stripChordPrefix(
-									event.target.value,
-									chordText,
-									event.target.selectionStart ?? undefined,
-								),
-							});
-						}}
-						onBlur={() => {
-							setRecording(false);
-						}}
-						className="h-full min-w-0 flex-1 border-0 bg-transparent p-0 text-body font-normal text-primary outline-none placeholder:text-ink-muted [&::-webkit-search-cancel-button]:hidden"
-					/>
-					{(value !== "" || recording) && (
-						<span data-cds-end-slot="" className="flex shrink-0 items-center gap-1.5 text-ink-muted">
-							{recording && (
-								<span id={hintId} className="flex items-center gap-2 text-caption">
-									<Kbd>Esc</Kbd> to stop
-								</span>
-							)}
-							{value !== "" && (
-								<button
-									type="button"
-									aria-label="Clear"
-									className={`${GHOST_ICON_BUTTON} size-5 rounded-r3 text-ink-muted hover:text-primary`}
-									onClick={() => {
-										onFind(recording ? PRESS_FIND : TEXT_FIND);
-										inputRef.current?.focus();
-									}}
-								>
-									<X aria-hidden="true" className="size-4" />
-								</button>
-							)}
-						</span>
-					)}
-				</div>
+				<TextInput
+					ref={inputRef}
+					type="search"
+					autoComplete="off"
+					aria-label="Search shortcuts"
+					aria-describedby={recording ? hintId : undefined}
+					placeholder={recording ? "Press a shortcut" : "Search shortcuts"}
+					value={value}
+					onChange={(event) => {
+						setRecording(false);
+						onFind({
+							by: "text",
+							text: stripChordPrefix(
+								event.target.value,
+								chordText,
+								event.target.selectionStart ?? undefined,
+							),
+						});
+					}}
+					onBlur={() => {
+						setRecording(false);
+					}}
+					className="flex-1"
+					slotStart={<Icon name="Search" size="sm" />}
+					slotEnd={
+						recording ? (
+							<span id={hintId} className="flex items-center gap-2 text-caption">
+								<Kbd>Esc</Kbd> to stop
+							</span>
+						) : undefined
+					}
+					clearable
+					onClear={() => {
+						onFind(recording ? PRESS_FIND : TEXT_FIND);
+					}}
+				/>
 			</div>
 			<button
 				type="button"

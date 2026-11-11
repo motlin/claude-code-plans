@@ -241,3 +241,34 @@ describe("upstream focus shadow tokens", () => {
 		});
 	});
 });
+
+describe("upstream cds TextInput tokens", () => {
+	const css = readFileSync("src/styles/globals.css", "utf8");
+	const values = (name: string) => [...css.matchAll(new RegExp(`${name}:\\s*([^;]+);`, "g"))].map((m) => m[1]);
+
+	it("defines the nested control height, the invalid field ring and duration-fast", () => {
+		expect({
+			nested: values("--cds-h-control-nested"),
+			invalid: values("--field-invalid-shadow"),
+			invalidUtility: values("--shadow-field-invalid"),
+			durationFast: /@utility duration-fast \{\s*--tw-duration: 60ms;\s*transition-duration: 60ms;\s*\}/.test(
+				css,
+			),
+			searchCancel:
+				/input\.cds-input::-webkit-search-cancel-button \{\s*-webkit-appearance: none;\s*display: none;\s*\}/.test(
+					css,
+				),
+		}).toStrictEqual({
+			// :root is a comfortable context (like --cds-h-control), then [data-density=comfortable] and compact.
+			nested: [
+				"calc(1.375rem * var(--cds-rem-scale, 1))",
+				"calc(1.375rem * var(--cds-rem-scale, 1))",
+				"calc(1.125rem * var(--cds-rem-scale, 1))",
+			],
+			invalid: ["inset 0 0 0 1px #dc3c3d", "inset 0 0 0 1px #dc3c3d"],
+			invalidUtility: ["var(--field-invalid-shadow)"],
+			durationFast: true,
+			searchCancel: true,
+		});
+	});
+});

@@ -548,22 +548,30 @@ describe("settings search", () => {
 				role: input.getAttribute("role"),
 				expanded: input.getAttribute("aria-expanded"),
 				autocomplete: input.getAttribute("aria-autocomplete"),
+				className: input.className,
 			},
 			focusedByClick,
 			spaceTypes: space,
 		}).toStrictEqual({
 			trigger: {tag: "div", role: "button", hasPopup: "dialog", expanded: "true", controls: true},
-			// h-control 32, px-sm 8, gap-sm 12 and radius 8 (rounded-r6) at comfortable density.
-			field: "flex h-8 w-full cursor-text items-center gap-3 rounded-r6 px-2 bg-[var(--settings-field-bg)] shadow-field-ring transition duration-150 [&:hover:not(:focus-within)]:shadow-field-hover has-[:focus-visible]:shadow-focus",
+			// Upstream's own field shell (not the cds TextInput), on the density tokens: h-control, gap-sm, px-sm, rounded.
+			field: "flex h-control w-full cursor-text items-center gap-sm rounded px-sm bg-fill-field shadow-field-ring transition duration-fast [&:hover:not(:focus-within)]:shadow-field-hover has-[:focus-visible]:shadow-focus",
 			// Upstream's md Search glyph: 20px at a 1.25px stroke (wght 433.3).
 			icon: {
 				ariaHidden: "true",
-				className: "lucide lucide-search text-[var(--settings-muted)]",
+				className: "lucide lucide-search shrink-0 text-muted-as-secondary",
 				cds: "Icon",
 				stroke: "1.5",
 				fontSize: "calc(1.25rem * var(--cds-rem-scale, 1))",
 			},
-			input: {type: "text", role: null, expanded: null, autocomplete: null},
+			input: {
+				type: "text",
+				role: null,
+				expanded: null,
+				autocomplete: null,
+				className:
+					"cds-input hide-focus-ring min-w-0 flex-1 border-0 bg-transparent p-0 text-body text-primary outline-none placeholder:text-ink-muted focus-visible:!shadow-none",
+			},
 			focusedByClick: true,
 			spaceTypes: true,
 		});

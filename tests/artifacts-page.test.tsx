@@ -32,7 +32,7 @@ import * as schema from "../src/lib/db/schema";
 import {Route as ArtifactsRoute} from "../src/routes/artifacts";
 import {artifactPreviewPath} from "../src/lib/artifact-source-paths";
 import {ToastProvider} from "../src/components/toast";
-import {TOOLBAR_SEARCH_CLEAR_CLASS, TOOLBAR_SEARCH_FIELD_CLASS} from "../src/components/toolbar-search";
+import {TEXT_INPUT_CLEAR_CLASS} from "../src/components/ui/text-input";
 import {ARTIFACT_PIN_STORAGE_KEY} from "../src/lib/artifact-pins";
 import {installLocalStorage} from "./fake-storage";
 
@@ -1301,7 +1301,7 @@ describe("artifacts route", () => {
 		});
 	});
 
-	it("grows the toolbar to upstream's fizzy-lake panels 28px r8 controls on a fine pointer", async () => {
+	it("grows the toolbar buttons to upstream's fizzy-lake panels 28px r8 controls on a fine pointer; the field follows h-control", async () => {
 		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
 		await renderArtifactsPage("/artifacts", true);
 		const panelsFine = (element: Element | null | undefined) =>
@@ -1316,7 +1316,7 @@ describe("artifacts route", () => {
 			field: panelsFine(screen.getByRole("search").querySelector("[data-cds=TextInput]")),
 		}).toStrictEqual({
 			buttons: Array.from({length: 3}, () => ["panels-fine:size-7", "panels-fine:rounded-r6"]),
-			field: ["panels-fine:h-7", "panels-fine:rounded-r6"],
+			field: [],
 		});
 	});
 
@@ -1336,13 +1336,16 @@ describe("artifacts route", () => {
 			box: field?.parentElement?.className,
 			field: field?.className,
 			clear: within(search).getByRole("button", {name: "Clear search"}).className,
+			clearTabIndex: within(search).getByRole("button", {name: "Clear search"}).tabIndex,
 		}).toStrictEqual({
 			closedOpenAttr: false,
 			openAttr: true,
 			search: "flex max-w-full min-w-40 grow items-center gap-3 @min-[640px]:justify-end basis-40",
 			box: "w-0 min-w-40 flex-1 @min-[640px]:max-w-sm",
-			field: TOOLBAR_SEARCH_FIELD_CLASS,
-			clear: TOOLBAR_SEARCH_CLEAR_CLASS,
+			// Upstream's TextInput with clearable "always": Clear always shows, so the end inset is the nested one.
+			field: "h-control ps-md rounded bg-fill-field shadow-field-ring data-[invalid]:shadow-field-invalid font-sans text-body font-normal text-primary transition duration-fast pe-[calc((var(--cds-h-control)-var(--cds-h-control-nested))/2)] has-[[data-cds-end-slot]_[data-cds=Button]:not([data-cds-ghost])]:pe-[calc((var(--cds-h-control)-var(--cds-h-control-nested))/2)] inline-flex w-full min-w-0 cursor-text items-center gap-[var(--cds-pad-sm,6px)] has-[:focus-visible]:shadow-focus data-[invalid]:has-[:focus-visible]:shadow-focus-danger has-[input:disabled]:opacity-disabled [&:hover:not(:focus-visible):not(:has(:focus-visible)):not([data-invalid]):not([data-disabled])]:shadow-field-hover",
+			clear: TEXT_INPUT_CLEAR_CLASS,
+			clearTabIndex: 0,
 		});
 	});
 

@@ -560,16 +560,18 @@ describe("KeyboardShortcutsDialog search", () => {
 				className: toolbar.className,
 			},
 			inToolbar: toolbar.contains(input),
-			field: ["h-7", "rounded-r6", "ps-3", "pe-3", "bg-fill-field", "shadow-field-ring"].filter((name) =>
+			field: ["h-control", "rounded", "ps-md", "pe-md", "bg-fill-field", "shadow-field-ring"].filter((name) =>
 				input.closest("[data-cds=TextInput]")?.className.split(" ").includes(name),
 			),
+			input: input.className.split(" ").includes("cds-input"),
 			status: dialog.querySelector("[role=region] > [role=status]:first-child")?.innerHTML,
 		}).toStrictEqual({
 			type: "search",
 			placeholder: "Search shortcuts",
 			toolbar: {cds: "Toolbar", flush: true, className: "flex shrink-0 items-center gap-1 py-2"},
 			inToolbar: true,
-			field: ["h-7", "rounded-r6", "ps-3", "pe-3", "bg-fill-field", "shadow-field-ring"],
+			field: ["h-control", "rounded", "ps-md", "pe-md", "bg-fill-field", "shadow-field-ring"],
+			input: true,
 			status: "",
 		});
 	});
@@ -635,10 +637,13 @@ describe("KeyboardShortcutsDialog search", () => {
 		const before = within(dialog).queryByRole("button", {name: "Clear"});
 
 		typeQuery(input, "terminal");
-		fireEvent.click(within(dialog).getByRole("button", {name: "Clear"}));
+		const clear = within(dialog).getByRole("button", {name: "Clear"});
+		const nested = {tabIndex: clear.tabIndex, endSlot: clear.parentElement?.hasAttribute("data-cds-end-slot")};
+		fireEvent.click(clear);
 
-		expect({before, value: input.value, rows: visibleRowLabels(region).length}).toStrictEqual({
+		expect({before, nested, value: input.value, rows: visibleRowLabels(region).length}).toStrictEqual({
 			before: null,
+			nested: {tabIndex: -1, endSlot: true},
 			value: "",
 			rows: rowLabels(region).length,
 		});

@@ -210,13 +210,13 @@ export function SettingsSearch({
 		>
 			{/* Upstream's field is the popover's trigger: a non-native button div around a plain input. */}
 			<Popover.Trigger nativeButton={false} render={<div ref={anchorRef} />}>
-				{/* Comfortable density: h-control 32, px-sm 8, gap-sm 12, radius 8. Clicking anywhere focuses the input. */}
+				{/* Upstream's own field shell (not the cds TextInput) on the density tokens. Clicking anywhere focuses the input. */}
 				{/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- upstream's pointer shortcut; the input inside is the keyboard control */}
 				<div
 					onClick={() => inputRef.current?.focus()}
-					className="flex h-8 w-full cursor-text items-center gap-3 rounded-r6 px-2 bg-[var(--settings-field-bg)] shadow-field-ring transition duration-150 [&:hover:not(:focus-within)]:shadow-field-hover has-[:focus-visible]:shadow-focus"
+					className="flex h-control w-full cursor-text items-center gap-sm rounded px-sm bg-fill-field shadow-field-ring transition duration-fast [&:hover:not(:focus-within)]:shadow-field-hover has-[:focus-visible]:shadow-focus"
 				>
-					<Icon name="Search" className="text-[var(--settings-muted)]" />
+					<Icon name="Search" className="shrink-0 text-muted-as-secondary" />
 					<input
 						ref={inputRef}
 						type="text"
@@ -251,7 +251,7 @@ export function SettingsSearch({
 								reset();
 							}
 						}}
-						className="min-w-0 flex-1 border-0 bg-transparent p-0 text-body text-primary outline-none placeholder:text-[var(--settings-muted)]"
+						className="cds-input hide-focus-ring min-w-0 flex-1 border-0 bg-transparent p-0 text-body text-primary outline-none placeholder:text-ink-muted focus-visible:!shadow-none"
 					/>
 				</div>
 			</Popover.Trigger>
