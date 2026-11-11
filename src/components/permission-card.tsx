@@ -345,7 +345,6 @@ export function PermissionCard({
 			label={"action" in title ? `Permission request: ${title.action}` : "Permission request"}
 			footer={footer}
 			presentation="card"
-			approvalPrompt
 			enter={enter}
 			title={
 				<div className="text-primary min-h-[24px] shrink-0 flex items-center gap-1">

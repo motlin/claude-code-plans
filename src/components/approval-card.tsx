@@ -148,7 +148,6 @@ export function ApprovalCardShell({
 	enter = false,
 	compact = false,
 	roam = true,
-	approvalPrompt = false,
 	onKeyDown,
 }: {
 	rootRef?: Ref<HTMLDivElement>;
@@ -181,11 +180,6 @@ export function ApprovalCardShell({
 	 * shell (`Fs`): no tab stop and no root keys, though a caller `onKeyDown` still runs.
 	 */
 	roam?: boolean;
-	/**
-	 * Upstream's cds host shell `Re` (shared-40) marks an un-themed approval card root `data-approval-prompt=""`;
-	 * its only reader is a desktop-glass background rule, so on the web it is DOM parity.
-	 */
-	approvalPrompt?: boolean;
 	/** Runs before the root's own keys; a handler that calls preventDefault keeps that key from them. */
 	onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
 }) {
@@ -219,7 +213,10 @@ export function ApprovalCardShell({
 				data-focus-region="question"
 				data-approval-card-digits={digits}
 				data-approval-presentation={presentation}
-				{...(approvalPrompt ? {"data-approval-prompt": ""} : {})}
+				// Upstream's cds host shell `Re` (shared-40) marks every un-themed approval card root, and its approval host
+				// (c2d1aeb56 `J`) never themes: the permission, plan and elicitation cards all carry it. Its only reader is a
+				// desktop-glass background rule, so on the web it is DOM parity.
+				data-approval-prompt=""
 				{...(enter ? {} : {"data-skip-approval-enter": ""})}
 				role={label === undefined ? undefined : "group"}
 				aria-label={label}

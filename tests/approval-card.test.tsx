@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 
-import {cleanup, render, screen} from "@testing-library/react";
+import {act, cleanup, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
+import {UrlElicitationCard} from "../src/components/approval-card";
+import {ElicitationFormCard} from "../src/components/elicitation-form-card";
+import {InlinePlanApproval} from "../src/components/inline-plan-approval";
 import {PermissionCard} from "../src/components/permission-card";
 import {QuestionCard} from "../src/components/question-card";
 import {compileAll, loadDesignSystem} from "./helpers/tailwind-design-system";
@@ -35,18 +38,63 @@ describe("approval card chrome", () => {
 		}).toStrictEqual({fixed: "", detail: true});
 	});
 
-	// Upstream's cds host shell `Re` (shared-40, 2026-11-10) marks every un-themed approval card root; the themed
-	// AskUserQuestion card (`epitaxy-question-card`) has no mark.
-	it("marks the permission card root with upstream's data-approval-prompt, and not the question card", () => {
+	// Upstream's cds host shell `Re` (shared-40, 2026-11-10) marks every un-themed approval card root. The approval
+	// host `J` (c2d1aeb56) never passes `themed`, and the permission, plan (`Ud`), form (`Nd`) and url (`Fd`)
+	// elicitation cards all draw through it; only the AskUserQuestion card (`epitaxy-question-card`) is themed.
+	it("marks the permission, plan and elicitation card roots with upstream's data-approval-prompt, and not the question card", async () => {
 		const {root} = permissionChrome();
+		cleanup();
+		const markOf = (container: HTMLElement) =>
+			container.querySelector("[data-approval-card-root]")?.getAttribute("data-approval-prompt") ?? null;
+		const plan = render(
+			<InlinePlanApproval
+				toolUseId="toolu_plan_1"
+				planText="# Plan: X"
+				plan={{
+					sessionId: "sess_1",
+					answerRoute: "live-pane",
+					loadDialog: async () => Promise.resolve({forwardMode: "auto", manual: true}),
+					decide: async () => Promise.resolve(),
+				}}
+			/>,
+		).container;
+		await act(async () => Promise.resolve());
+		const planMark = markOf(plan);
+		cleanup();
+		const form = markOf(
+			render(
+				<ElicitationFormCard
+					serverName="fake-server"
+					message="Name?"
+					schema={{type: "object", properties: {name: {type: "string", title: "Name"}}}}
+					fieldNames={["name"]}
+					onAnswer={async () => {}}
+				/>,
+			).container,
+		);
+		cleanup();
+		const url = markOf(
+			render(
+				<UrlElicitationCard
+					serverName="fake-server"
+					message=""
+					url="https://example.com/fake"
+					dialogFocus={null}
+					onDecision={async () => {}}
+				/>,
+			).container,
+		);
 		cleanup();
 		const question = render(
 			<QuestionCard questions={[{question: "Pick one?", options: [{label: "Yes"}]}]} onSubmit={async () => {}} />,
 		).container.querySelector("[data-approval-card-root]");
 		expect({
 			permission: root?.getAttribute("data-approval-prompt"),
+			plan: planMark,
+			form,
+			url,
 			question: question?.hasAttribute("data-approval-prompt"),
-		}).toStrictEqual({permission: "", question: false});
+		}).toStrictEqual({permission: "", plan: "", form: "", url: "", question: false});
 	});
 
 	it("rounds the card with upstream's rounded-card (cds radius + 4px), not the fixed 10px rounded-r7", () => {

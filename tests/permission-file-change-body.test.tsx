@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {DirectionProvider} from "@base-ui/react/direction-provider";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {encodeFilePath} from "../src/lib/api/file";
 import {PermissionFileChangePreview} from "../src/components/permission-file-change-body";
@@ -293,10 +294,58 @@ describe("PermissionFileChangePreview, upstream's plain body (uw/fw/dw)", () => 
 		]);
 	});
 
-	it("shows hidden characters in the plain text", () => {
+	/** The plain text box's children: a bare string, or upstream's per-line spans. */
+	function textLines(container: HTMLElement) {
+		const box = container.querySelector("[data-testid=approval-file-change-plain] > div > div");
+		return [...(box?.childNodes ?? [])].map((node) =>
+			node instanceof HTMLElement
+				? [node.tagName, node.className, node.getAttribute("data-code-line-group"), node.textContent]
+				: node.textContent,
+		);
+	}
+
+	// Upstream's plain text goes through shared-38 `VP`, a bidi line splitter: no hidden-character reveal.
+	it("draws left-to-right text raw, hidden characters and all (upstream's VP)", () => {
 		neverServe();
-		const {container} = preview("Write", {file_path: "/repo/a.ts", content: "a\u0007b\n"});
-		expect(plainBody(container)?.text).toBe("a[U+0007]b\n");
+		const {container} = preview("Write", {file_path: "/repo/a.ts", content: "a\u0007b\n\u200Bc"});
+		expect(textLines(container)).toStrictEqual(["a\u0007b\n\u200Bc"]);
+	});
+
+	it("splits multi-line text with right-to-left letters into isolated lines (upstream's VP and hz)", () => {
+		neverServe();
+		const {container} = preview("Write", {file_path: "/repo/a.ts", content: "\u05E9\u05DC\u05D5\u05DD\nab\n"});
+		expect(textLines(container)).toStrictEqual([
+			[
+				"SPAN",
+				"block whitespace-pre-wrap [overflow-wrap:anywhere] [unicode-bidi:inherit]",
+				"",
+				"\u05E9\u05DC\u05D5\u05DD\n",
+			],
+			["SPAN", "block [unicode-bidi:inherit]", "", "ab\n"],
+		]);
+	});
+
+	it("keeps a single right-to-left line whole (upstream's VP)", () => {
+		neverServe();
+		const {container} = preview("Write", {file_path: "/repo/a.ts", content: "\u05E9\u05DC\u05D5\u05DD"});
+		expect(textLines(container)).toStrictEqual(["\u05E9\u05DC\u05D5\u05DD"]);
+	});
+
+	it("splits every line under a right-to-left direction (upstream's VP and hz)", () => {
+		neverServe();
+		const {container} = render(
+			<DirectionProvider direction="rtl">
+				<PermissionFileChangePreview
+					toolName="Write"
+					toolInput={{file_path: "/repo/a.ts", content: "ab"}}
+					copyNote={null}
+					drawDetail={drawDetail}
+				/>
+			</DirectionProvider>,
+		);
+		expect(textLines(container)).toStrictEqual([
+			["SPAN", "block whitespace-pre-wrap [overflow-wrap:anywhere] [unicode-bidi:plaintext]", "", "ab"],
+		]);
 	});
 
 	it("keeps the plain body after the user scrolled it when the read gives no disk diff", async () => {

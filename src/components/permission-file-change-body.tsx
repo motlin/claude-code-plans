@@ -14,7 +14,7 @@ import {
 	plainFileChangeParts,
 	shownFileChangeNote,
 } from "../lib/permission-file-change";
-import {revealControlChars, revealSpoofing} from "../lib/visible-text";
+import {BidiLines} from "./bidi-lines";
 import {DIFFS_HOST_CLASS, INLINE_DIFFS_STYLE_OVERRIDES} from "./changes/diffs-config";
 import {useResolvedTheme} from "./theme-context";
 import {InlinePatchDiff} from "./tool-renderers/inline-diff";
@@ -133,7 +133,7 @@ const PLAIN_CLASS =
 	"epitaxy-scroll-clamp scroll-fade-y focus-visible:outline-hidden focus-visible:shadow-focus flex max-h-[400px] flex-col gap-sm overflow-y-auto";
 /** Upstream's `yC`: a part's label. */
 const PLAIN_LABEL_CLASS = "text-footnote text-muted-as-secondary select-text break-words [unicode-bidi:plaintext]";
-/** Upstream's `DC`: a part's text. */
+/** Upstream's `DC`: a part's text, drawn through upstream's bidi line splitter (`Ca`). */
 const PLAIN_TEXT_CLASS =
 	"bg-alpha-1 rounded-lg py-md px-lg text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]";
 
@@ -181,7 +181,9 @@ function PlainFileChange({
 				// oxlint-disable-next-line react/no-array-index-key -- the parts are fixed for one tool input
 				<div key={index} className="flex shrink-0 flex-col gap-1">
 					{part.label === undefined ? null : <p className={PLAIN_LABEL_CLASS}>{part.label}</p>}
-					<div className={PLAIN_TEXT_CLASS}>{revealControlChars(revealSpoofing(part.text))}</div>
+					<div className={PLAIN_TEXT_CLASS}>
+						<BidiLines>{part.text}</BidiLines>
+					</div>
 				</div>
 			))}
 		</div>

@@ -1,6 +1,7 @@
 import {useDirection} from "@base-ui/react/direction-provider";
 import {type CSSProperties, useEffect, useEffectEvent, useRef, useState} from "react";
 
+import {RTL_LETTER} from "./bidi-lines";
 import styles from "./reveal-text.module.css";
 
 /** Upstream's per-grapheme stagger (`Y_`), in ms. */
@@ -14,9 +15,6 @@ const FADE_TRANSITION = `opacity ${FADE_OUT_MS}ms ease-out, filter ${FADE_OUT_MS
 const FADING_OUT: CSSProperties = {opacity: 0, filter: "blur(6px)", transition: FADE_TRANSITION};
 /** The style while the old text comes back (`eL`). */
 const RECOVERING: CSSProperties = {transition: FADE_TRANSITION};
-
-/** Strong right-to-left letters (upstream `FN`). */
-const RTL_LETTER = /[֐-ࣿיִ-﷿ﹰ-﻿\u{10800}-\u{10FFF}\u{1E800}-\u{1EFFF}]/u;
 
 let segmenter: Intl.Segmenter | null | undefined;
 
