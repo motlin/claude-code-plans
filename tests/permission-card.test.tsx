@@ -1215,15 +1215,60 @@ describe("PermissionCard", () => {
 		const classes = (element: Element | null) => new Set(element?.getAttribute("class")?.split(/\s+/));
 		const has = (element: Element | null, names: string[]) => names.filter((name) => classes(element).has(name));
 		expect({
-			row: has(row, ["flex", "flex-wrap", "items-start", "justify-end", "justify-between", "gap-x-3", "gap-y-2"]),
+			row: has(row, [
+				"flex",
+				"flex-wrap",
+				"items-start",
+				"justify-end",
+				"justify-between",
+				"gap-x-md",
+				"gap-y-sm",
+			]),
 			children: [...row.children].map((child) => child.textContent),
-			group: has(group, ["flex", "min-w-0", "flex-wrap", "items-start", "gap-2"]),
+			group: group?.getAttribute("class"),
 			grouped: [...(group?.querySelectorAll("button") ?? [])].map((button) => button.textContent),
+			split: (() => {
+				const split = group?.querySelector<HTMLElement>("[data-cds=SplitDropdownButton]");
+				const [primary, caret] = [...(split?.querySelectorAll("button") ?? [])];
+				const sizing = [
+					"h-control",
+					"text-body",
+					"px-[min(var(--cds-pad-md),var(--cds-button-pad-max,var(--cds-pad-md)))]",
+					"rounded-[var(--upstream-radius)]",
+					"w-[var(--split-h)]",
+					"px-1",
+					"h-6",
+					"text-[13px]/[19px]",
+					"px-2",
+					"rounded-r5",
+				];
+				const pick = (element: Element | undefined) =>
+					sizing.filter((name) => element?.classList.contains(name));
+				return {
+					h: split?.style.getPropertyValue("--split-h"),
+					root: pick(split ?? undefined),
+					primary: pick(primary),
+					caret: pick(caret),
+					caretIcon: caret?.querySelector("svg")?.classList.contains("size-4"),
+				};
+			})(),
 		}).toStrictEqual({
-			row: ["flex", "flex-wrap", "items-start", "justify-end", "gap-x-3", "gap-y-2"],
+			row: ["flex", "flex-wrap", "items-start", "justify-end", "gap-x-md", "gap-y-sm"],
 			children: ["Deny", "Always allow"],
-			group: ["flex", "min-w-0", "flex-wrap", "items-start", "gap-2"],
+			group: "flex min-w-0 flex-wrap items-start gap-sm",
 			grouped: ["Always allow", ""],
+			split: {
+				h: "var(--cds-h-control)",
+				root: ["rounded-[var(--upstream-radius)]"],
+				primary: [
+					"h-control",
+					"text-body",
+					"px-[min(var(--cds-pad-md),var(--cds-button-pad-max,var(--cds-pad-md)))]",
+					"rounded-[var(--upstream-radius)]",
+				],
+				caret: ["h-control", "rounded-[var(--upstream-radius)]", "w-[var(--split-h)]", "px-1"],
+				caretIcon: true,
+			},
 		});
 	});
 
@@ -1249,7 +1294,7 @@ describe("PermissionCard", () => {
 		};
 		expect({
 			presentation: card.dataset["approvalPresentation"],
-			card: missing(card, ["card-ring", "@container", "rounded-card", "p-3"]),
+			card: missing(card, ["card-ring", "@container", "rounded-card", "p-lg", "text-body"]),
 			dockLook: ["shadow-[var(--approval-card-shadow)]", "bg-surface-2"].filter((name) =>
 				card.classList.contains(name),
 			),
@@ -1280,12 +1325,12 @@ describe("PermissionCard", () => {
 			presentation: "card",
 			card: [],
 			dockLook: [],
-			title: "text-[13px]/[19px] font-normal min-w-0 break-words",
+			title: "text-body min-w-0 break-words",
 			value: "flow-root",
 			codeCard:
-				"epitaxy-code-size flex overflow-clip rounded-lg px-2 py-1 text-code bg-surface-1 dark:bg-surface-2 select-text [unicode-bidi:plaintext]",
+				"epitaxy-code-size flex overflow-clip rounded-lg px-md py-xs text-code bg-surface-1 dark:bg-surface-2 select-text [unicode-bidi:plaintext]",
 			pathDetail:
-				"epitaxy-code-size bg-alpha-1 rounded-r4 py-2 px-3 text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]",
+				"epitaxy-code-size bg-alpha-1 rounded-r4 py-md px-lg text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]",
 			gutter: "$ ",
 			deny: [],
 			allow: [],
@@ -1315,8 +1360,13 @@ describe("PermissionCard", () => {
 			regionIsFirstChild: card.firstElementChild === region,
 			region: region?.getAttribute("class"),
 			band: region?.firstElementChild?.getAttribute("class"),
-			titleRow: title.parentElement?.getAttribute("class"),
-			titleRowInBand: title.parentElement?.parentElement === region?.firstElementChild,
+			titleChain: [
+				title.parentElement?.getAttribute("class"),
+				title.parentElement?.parentElement?.getAttribute("class"),
+				title.parentElement?.parentElement?.parentElement?.getAttribute("class"),
+			],
+			titleRowInBand:
+				title.parentElement?.parentElement?.parentElement?.parentElement === region?.firstElementChild,
 			body: has(body, ["gap-[24px]", "gap-2.5", "-mt-[18px]", "-mt-1"]),
 			details: value.parentElement?.getAttribute("class"),
 			detailsAreBodyChild: value.parentElement?.parentElement === body,
@@ -1331,9 +1381,13 @@ describe("PermissionCard", () => {
 				"max-h-[max(60vh,calc(16rem*var(--cds-rem-scale,1)))]",
 			],
 			regionIsFirstChild: true,
-			region: "shrink-0 overflow-y-auto max-h-[max(2rem,min(30vh,calc(60vh-10rem)))] -mx-3 px-3",
-			band: "-mx-3 flex flex-col gap-1.5 bg-alpha-1 px-3 py-2",
-			titleRow: "text-primary min-h-6 shrink-0 flex items-center gap-1",
+			region: "shrink-0 overflow-y-auto max-h-[max(2rem,min(30vh,calc(60vh-10rem)))] -mx-pad-lg px-lg",
+			band: "-mx-pad-lg flex flex-col gap-xs px-lg bg-alpha-1 py-md",
+			titleChain: [
+				"flex items-start gap-xs min-w-0",
+				"flex flex-1 min-w-0 flex-col gap-[2px]",
+				"text-primary min-h-[24px] shrink-0 flex items-center gap-1",
+			],
 			titleRowInBand: true,
 			body: ["gap-[24px]", "-mt-[18px]"],
 			details: "flex flex-col gap-[12px] empty:hidden",
@@ -1355,10 +1409,18 @@ describe("PermissionCard", () => {
 			</>,
 		);
 		const has = (element: Element | null) => look.filter((name) => element?.classList.contains(name));
+		const pads = ["p-3", "p-lg", "-mx-3", "px-3", "-mx-pad-lg", "px-lg", "text-body"];
+		const pad = (element: Element | null | undefined) => pads.filter((name) => element?.classList.contains(name));
+		const dock = container.querySelector("[data-approval-card-root]");
 		expect({
-			dock: has(container.querySelector("[data-approval-card-root]")),
+			// Upstream's root carries a literal p-[12px]; only the inline "card" presentation's rule lifts it to pad-lg.
+			dockPad: pad(dock),
+			dockBodyPad: pad(dock?.querySelector("[data-approval-card-body]")),
+			dock: has(dock),
 			notice: has(container.querySelector("[data-waiting-input-notice]")),
 		}).toStrictEqual({
+			dockPad: ["p-3", "text-body"],
+			dockBodyPad: ["-mx-3", "px-3"],
 			dock: ["bg-surface-2", "shadow-[var(--approval-card-shadow)]"],
 			notice: ["bg-surface-2", "shadow-[var(--approval-card-shadow)]"],
 		});
@@ -1379,8 +1441,8 @@ describe("PermissionCard", () => {
 			body: card.querySelector("[data-approval-card-body]")?.getAttribute("class"),
 		}).toStrictEqual({
 			region: null,
-			card: "@container relative isolate flex max-h-[60vh] flex-col rounded-card p-3 text-[13px]/[19px] text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 card-ring w-full max-w-[480px] gap-[24px]",
-			body: "-mx-3 -mt-1 -mb-2 flex min-h-0 flex-col overflow-y-auto px-3 pt-1 pb-2 gap-[24px]",
+			card: "@container relative isolate flex max-h-[60vh] flex-col rounded-card p-lg text-body text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 card-ring w-full max-w-[480px] gap-[24px]",
+			body: "-mx-pad-lg -mt-1 -mb-2 flex min-h-0 flex-col overflow-y-auto px-lg pt-1 pb-2 gap-[24px]",
 		});
 	});
 
@@ -1430,7 +1492,7 @@ describe("PermissionCard", () => {
 		const note = value.nextElementSibling;
 		expect({tag: note?.tagName, className: note?.getAttribute("class"), text: note?.textContent}).toStrictEqual({
 			tag: "P",
-			className: "text-footnote text-ink-muted select-text break-words [unicode-bidi:plaintext]",
+			className: "text-footnote text-muted-as-secondary select-text break-words [unicode-bidi:plaintext]",
 			text: "Keeps running in the background.",
 		});
 	});
@@ -1456,7 +1518,7 @@ describe("PermissionCard", () => {
 				"Replies ok",
 			],
 			[
-				"rounded-lg bg-alpha-1 px-3 py-2.5 text-body text-secondary select-text break-words",
+				"rounded-lg bg-alpha-1 px-lg py-2.5 text-body text-secondary select-text break-words",
 				"Dynamic workflows run many subagents in parallel and can use a lot of your usage limit. Stop them any time from the tasks pane.",
 			],
 		]);

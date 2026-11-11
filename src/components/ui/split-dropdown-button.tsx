@@ -1,6 +1,7 @@
 import {ChevronDown, Loader2} from "lucide-react";
 import {type CSSProperties, Fragment, type ReactElement, type ReactNode, useRef, useState} from "react";
 
+import {CDS_BUTTON_PAD} from "./cds-button";
 import {CDS_BUTTON_DISABLED, CDS_BUTTON_DISABLED_FILL, CDS_GHOST_PAINT_DISABLED} from "./cds-button-disabled";
 import {Menu, MenuContent, type MenuContentProps, MenuItem, MenuSeparator, MenuTrigger} from "./menu";
 import {Shortcut} from "./shortcut";
@@ -28,7 +29,8 @@ export type SplitItem =
 
 export interface SplitDropdownButtonProps {
 	variant?: "primary" | "secondary" | "ghost" | "danger";
-	size?: "default" | "sm" | "touch";
+	/** `control` is upstream's cds Button scale on the density tokens (h-control, text-body, the button pad). */
+	size?: "default" | "sm" | "touch" | "control";
 	label?: ReactNode;
 	icon?: ReactNode;
 	"aria-label"?: string;
@@ -162,34 +164,52 @@ const STATUS_PRIMARY_CLASS = "peer/slot";
 
 type SplitSize = NonNullable<SplitDropdownButtonProps["size"]>;
 
-/* Upstream's control scale: compact 24px, sm 20px, and the coarse-pointer comfortable 28px. */
-const SIZES: Record<SplitSize, {h: string; height: string; text: string; padX: string; radius: string; icon: string}> =
-	{
-		default: {
-			h: "24px",
-			height: "h-6",
-			text: "text-[13px]/[19px]",
-			padX: "px-2",
-			radius: "rounded-r5",
-			icon: "size-4",
-		},
-		sm: {
-			h: "20px",
-			height: "h-5",
-			text: "text-[12px]/[17px]",
-			padX: "px-1.5",
-			radius: "rounded-r4",
-			icon: "size-3",
-		},
-		touch: {
-			h: "28px",
-			height: "h-7",
-			text: "text-[13px]/[19px]",
-			padX: "px-2",
-			radius: "rounded-r6",
-			icon: "size-4",
-		},
-	};
+/*
+ * Upstream's control scale: compact 24px, sm 20px, the coarse-pointer comfortable 28px, and `control`, which follows
+ * the density tokens like upstream's cds Button (28px comfortable under fizzy panels, 24px compact). Its caret is the
+ * icon-only Button's square (`caretW`); the fixed sizes' carets are already square at w-auto.
+ */
+const SIZES: Record<
+	SplitSize,
+	{h: string; height: string; text: string; padX: string; radius: string; icon: string; caretW: string}
+> = {
+	default: {
+		h: "24px",
+		height: "h-6",
+		text: "text-[13px]/[19px]",
+		padX: "px-2",
+		radius: "rounded-r5",
+		icon: "size-4",
+		caretW: "w-auto",
+	},
+	sm: {
+		h: "20px",
+		height: "h-5",
+		text: "text-[12px]/[17px]",
+		padX: "px-1.5",
+		radius: "rounded-r4",
+		icon: "size-3",
+		caretW: "w-auto",
+	},
+	touch: {
+		h: "28px",
+		height: "h-7",
+		text: "text-[13px]/[19px]",
+		padX: "px-2",
+		radius: "rounded-r6",
+		icon: "size-4",
+		caretW: "w-auto",
+	},
+	control: {
+		h: "var(--cds-h-control)",
+		height: "h-control",
+		text: "text-body",
+		padX: CDS_BUTTON_PAD,
+		radius: "rounded-[var(--upstream-radius)]",
+		icon: "size-4",
+		caretW: "w-[var(--split-h)]",
+	},
+};
 
 function rootStyle(size: SplitSize, ghost: boolean): CSSProperties {
 	const height: CSSProperties = {"--split-h": SIZES[size].h};
@@ -333,7 +353,8 @@ export function SplitDropdownButton({
 				BUTTON_CLASS,
 				"inline-flex items-center justify-center",
 				scale.height,
-				"w-auto px-1",
+				scale.caretW,
+				"px-1",
 				scale.radius,
 				"rounded-s-none",
 				joined.fill,

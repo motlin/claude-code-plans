@@ -342,13 +342,17 @@ export function PermissionCard({
 			presentation="card"
 			enter={enter}
 			title={
-				<div className="text-primary min-h-6 shrink-0 flex items-center gap-1">
-					<span
-						data-permission-title
-						data-approval-card-title
-						className="text-[13px]/[19px] font-normal min-w-0 break-words"
-					>
-						<PermissionTitleText title={title} clamp={clampTitle} />
+				<div className="text-primary min-h-[24px] shrink-0 flex items-center gap-1">
+					<span className="flex flex-1 min-w-0 flex-col gap-[2px]">
+						<span className="flex items-start gap-xs min-w-0">
+							<span
+								data-permission-title
+								data-approval-card-title
+								className="text-body min-w-0 break-words"
+							>
+								<PermissionTitleText title={title} clamp={clampTitle} />
+							</span>
+						</span>
 					</span>
 				</div>
 			}
@@ -417,7 +421,7 @@ export function PermissionCard({
 							<span data-approval-digit="1">Deny</span>
 						</ApprovalActionButton>
 					</span>
-					<div data-approval-allow className="flex min-w-0 flex-wrap items-start gap-2">
+					<div data-approval-allow className="flex min-w-0 flex-wrap items-start gap-sm">
 						{denyFirst ? (
 							<ApprovalActionButton
 								variant="secondary"
@@ -447,6 +451,7 @@ export function PermissionCard({
 							withAllowReason(
 								<SplitDropdownButton
 									variant="primary"
+									size="control"
 									className="max-w-full min-w-0"
 									items={menuItems}
 									{...(leadsAlways
@@ -546,15 +551,15 @@ function usePermissionHotkeys(
 
 /** Upstream's body classes (`epitaxy-code-size` hooks, held at the default size by the card's data-fixed-code-size): the detail block (`Lg`), its footnote (`kg`) and the description line (`Dg`). */
 const DETAIL_CLASS =
-	"epitaxy-code-size bg-alpha-1 rounded-r4 py-2 px-3 text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]";
+	"epitaxy-code-size bg-alpha-1 rounded-r4 py-md px-lg text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]";
 /** Upstream's command detail (`epitaxy-code-card`): the code theme's background at default density. */
 const CODE_CARD_CLASS =
-	"epitaxy-code-size flex overflow-clip rounded-lg px-2 py-1 text-code bg-surface-1 dark:bg-surface-2 select-text [unicode-bidi:plaintext]";
+	"epitaxy-code-size flex overflow-clip rounded-lg px-md py-xs text-code bg-surface-1 dark:bg-surface-2 select-text [unicode-bidi:plaintext]";
 /** Upstream's `U` paragraph (`gy`) for a change over the preview cap. */
 const TOO_LARGE_CLASS = "text-body text-secondary select-text break-words";
 const FILE_CHANGE_TOO_LARGE =
 	"Preview unavailable — this change is too large to show here (over 200,000 characters). The full change appears in the conversation after it runs.";
-const DETAIL_NOTE_CLASS = "text-footnote text-ink-muted select-text break-words [unicode-bidi:plaintext]";
+const DETAIL_NOTE_CLASS = "text-footnote text-muted-as-secondary select-text break-words [unicode-bidi:plaintext]";
 const DESCRIPTION_CLASS =
 	"text-body text-secondary select-text break-words max-h-[calc(3*var(--text-body--line-height))] overflow-y-auto [unicode-bidi:plaintext]";
 
@@ -638,7 +643,7 @@ function AlwaysAllowSaves({saves}: {saves: readonly PersistentAllowSave[]}) {
 function TokenWarning() {
 	const backgroundTasks = useBackgroundTasksOpener();
 	return (
-		<div className="rounded-lg bg-alpha-1 px-3 py-2.5 text-body text-secondary select-text break-words">
+		<div className="rounded-lg bg-alpha-1 px-lg py-2.5 text-body text-secondary select-text break-words">
 			Dynamic workflows run many subagents in parallel and can use a lot of your usage limit. Stop them any time
 			from the{" "}
 			{backgroundTasks === null ? (

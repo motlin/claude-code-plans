@@ -61,7 +61,7 @@ export function ApprovalActionButton({
 /** Upstream's busyLabel on a held approval card's chosen action. */
 export const APPROVAL_SENDING_LABEL = "Sending…";
 
-export const APPROVAL_CARD_TITLE = "flex min-h-6 items-center text-[13px]/[19px] font-[580]";
+export const APPROVAL_CARD_TITLE = "flex min-h-6 items-center text-body font-[580]";
 
 /**
  * Upstream's `@container (width <= 420px)` stack: the action row and its allow
@@ -197,6 +197,12 @@ export function ApprovalCardShell({
 			? "max-h-[60vh] !pt-0 overflow-clip"
 			: "max-h-[max(60vh,calc(16rem*var(--cds-rem-scale,1)))] !pt-0 overflow-clip"
 		: "max-h-[60vh]";
+	// Upstream's root carries a literal 12px pad; `.epitaxy-approval-card[data-approval-presentation="card"]` lifts the
+	// inline card's to pad-lg (16px comfortable, 12px compact). Title band and body bleed to the same inset.
+	const inset =
+		presentation === "card"
+			? {pad: "p-lg", bleed: "-mx-pad-lg", px: "px-lg"}
+			: {pad: "p-3", bleed: "-mx-3", px: "px-3"};
 	return (
 		<div className="@container/approval-dock [--approval-dock-floor:144px] @max-[500px]/approval-dock:[--approval-dock-floor:208px]">
 			{/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-element-interactions -- upstream's focusable card root: arrows roam its action buttons, Enter focuses the primary, and clicks stop short of the transcript */}
@@ -225,26 +231,26 @@ export function ApprovalCardShell({
 				onClick={(event) => {
 					event.stopPropagation();
 				}}
-				className={`@container relative isolate flex ${frame} flex-col rounded-card p-3 text-[13px]/[19px] text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 ${look}${enter ? " animate-approval-inline-enter motion-reduce:animate-none" : ""}`}
+				className={`@container relative isolate flex ${frame} flex-col rounded-card ${inset.pad} text-body text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 ${look}${enter ? " animate-approval-inline-enter motion-reduce:animate-none" : ""}`}
 			>
 				{band && (
 					<div
 						data-testid="approval-title-region"
-						className="shrink-0 overflow-y-auto max-h-[max(2rem,min(30vh,calc(60vh-10rem)))] -mx-3 px-3"
+						className="shrink-0 overflow-y-auto max-h-[max(2rem,min(30vh,calc(60vh-10rem)))] -mx-pad-lg px-lg"
 					>
-						<div className="-mx-3 flex flex-col gap-1.5 bg-alpha-1 px-3 py-2">{title}</div>
+						<div className="-mx-pad-lg flex flex-col gap-xs px-lg bg-alpha-1 py-md">{title}</div>
 					</div>
 				)}
 				<div
 					data-approval-card-body
-					className={`-mx-3 ${band ? "-mt-[18px]" : "-mt-1"} -mb-2 flex min-h-0 flex-col overflow-y-auto px-3 pt-1 pb-2 ${bodyGap}`}
+					className={`${inset.bleed} ${band ? "-mt-[18px]" : "-mt-1"} -mb-2 flex min-h-0 flex-col overflow-y-auto ${inset.px} pt-1 pb-2 ${bodyGap}`}
 				>
 					{body}
 				</div>
 				{note}
 				<div
 					data-approval-card-actions
-					className={`flex flex-wrap items-start justify-end gap-x-3 gap-y-2 ${STACK_ACTIONS}`}
+					className={`flex flex-wrap items-start justify-end gap-x-md gap-y-sm ${STACK_ACTIONS}`}
 				>
 					{actions}
 				</div>

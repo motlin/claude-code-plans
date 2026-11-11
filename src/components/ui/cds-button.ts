@@ -12,11 +12,11 @@ const CDS_BUTTON_VARIANTS = {
 } as const;
 
 /** Upstream's cds Button inline pad: pad-md, capped by --cds-button-pad-max (9px under fizzy panels). */
-const BUTTON_PAD = "px-[min(var(--cds-pad-md),var(--cds-button-pad-max,var(--cds-pad-md)))]";
+export const CDS_BUTTON_PAD = "px-[min(var(--cds-pad-md),var(--cds-button-pad-max,var(--cds-pad-md)))]";
 
 /** Upstream's cds Button at the density control height and body text, or its `size="sm"` button (20px, padding 0 6px, 12/17). */
 const CDS_BUTTON_SIZES = {
-	default: `h-control ${BUTTON_PAD} text-body`,
+	default: `h-control ${CDS_BUTTON_PAD} text-body`,
 	sm: "h-5 px-1.5 text-[12px]/[17px]",
 } as const;
 

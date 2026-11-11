@@ -69,7 +69,7 @@ describe("approval card chrome", () => {
 		expect({
 			card: [
 				"rounded-card",
-				"p-3",
+				"p-lg",
 				"card-ring",
 				"focus-visible:outline-1",
 				"focus-visible:outline-fill-accent",
