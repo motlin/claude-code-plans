@@ -72,7 +72,7 @@ const HEAD_CLASS =
 /** Upstream's header menu: a Show checkbox per hideable section, then Reset to defaults. */
 function RailHeaderMenu({sessionId, sections}: {sessionId: string; sections: RailSectionsState}) {
 	return (
-		<MenuContent density="compact" className="w-[152px]">
+		<MenuContent density="compact">
 			<MenuLabel>Show</MenuLabel>
 			{HIDEABLE_RAIL_SECTIONS.map((id) => (
 				<MenuCheckboxItem

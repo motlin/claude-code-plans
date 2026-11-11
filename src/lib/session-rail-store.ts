@@ -7,7 +7,7 @@ export const SESSION_RAIL_STORAGE_KEY = "ccb-session-rail";
 /** Upstream's `epitaxy.sessionRailSections`, under our own key: folds per session, plus hidden and order. */
 export const RAIL_SECTIONS_STORAGE_KEY = "ccb-session-rail-sections";
 
-/** Upstream's card ids, in its default order. Upstream also has `flask` (internal safety section, anchored before connectors, collapsed by default); it has no local source. */
+/** Upstream's card ids, in its default order. Upstream also has `flask` (an internal-gated opaque module, `__gb__428353835` / `cai_keen_flask`, anchored before connectors, collapsed by default); it has no local source. */
 const RAIL_SECTION_IDS = [
 	"environment",
 	"goal",

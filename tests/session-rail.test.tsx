@@ -1023,7 +1023,11 @@ describe("session rail header menu", () => {
 	it("lists upstream's Show checkboxes and a disabled Reset to defaults on right-click", async () => {
 		render(<SessionRail sessionId="s1" cards={CARDS} />);
 		await openHeaderMenu(/^Progress/);
+		const widthClasses = [...screen.getByRole("menu").classList].filter(
+			(name) => name.startsWith("w-") || name.startsWith("min-w-") || name.startsWith("max-w-"),
+		);
 
+		expect(widthClasses).toStrictEqual(["min-w-[128px]", "max-w-[320px]"]);
 		expect(menuRows()).toStrictEqual([
 			[null, "Show", null],
 			["menuitemcheckbox", "Goal", "true"],
