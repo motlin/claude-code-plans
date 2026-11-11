@@ -4,6 +4,7 @@ import {cleanup, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
 import {PermissionCard} from "../src/components/permission-card";
+import {QuestionCard} from "../src/components/question-card";
 import {compileAll, loadDesignSystem} from "./helpers/tailwind-design-system";
 
 afterEach(cleanup);
@@ -32,6 +33,20 @@ describe("approval card chrome", () => {
 			fixed: root?.getAttribute("data-fixed-code-size"),
 			detail: root?.querySelector("[data-permission-detail]")?.classList.contains("epitaxy-code-size"),
 		}).toStrictEqual({fixed: "", detail: true});
+	});
+
+	// Upstream's cds host shell `Re` (shared-40, 2026-11-10) marks every un-themed approval card root; the themed
+	// AskUserQuestion card (`epitaxy-question-card`) has no mark.
+	it("marks the permission card root with upstream's data-approval-prompt, and not the question card", () => {
+		const {root} = permissionChrome();
+		cleanup();
+		const question = render(
+			<QuestionCard questions={[{question: "Pick one?", options: [{label: "Yes"}]}]} onSubmit={async () => {}} />,
+		).container.querySelector("[data-approval-card-root]");
+		expect({
+			permission: root?.getAttribute("data-approval-prompt"),
+			question: question?.hasAttribute("data-approval-prompt"),
+		}).toStrictEqual({permission: "", question: false});
 	});
 
 	it("rounds the card with upstream's rounded-card (cds radius + 4px), not the fixed 10px rounded-r7", () => {

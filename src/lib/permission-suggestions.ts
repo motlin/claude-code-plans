@@ -14,9 +14,15 @@ export type PersistentAllowKind = z.infer<typeof PersistentAllowKindSchema>;
 /**
  * The persistent option's label. Upstream's web card (cc32965c2 `Ln`) always says "Always allow": its
  * "Allow for this session" label and destination scope copy (`Jb`, formerly `Sb`) are desktop-only (ipc
- * transport), and the web drops the scope tooltip whenever it lists the saves (`Zr`/`Bn`, formerly `Jr`/`Fn`).
+ * transport).
  */
 export const PERSISTENT_ALLOW_LABEL = "Always allow";
+
+/**
+ * Upstream's default scope tooltip (`Zr`, `AfvuXL`) on the persistent option. The web card drops it whenever it
+ * lists the saves (`Bn`), so it shows only when the saves are unknown.
+ */
+export const PERSISTENT_ALLOW_SCOPE = "Don’t ask again for this tool";
 
 /** One thing "Always allow" adds, as upstream's saves block lists it. */
 export type PersistentAllowSave = {kind: "rule"; toolName: string; ruleContent?: string} | {kind: "acceptEditsMode"};

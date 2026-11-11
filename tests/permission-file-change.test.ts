@@ -2,9 +2,9 @@ import {describe, expect, it} from "vite-plus/test";
 import {analyzeFileChange, fileChangeNote, shownFileChangeNote} from "../src/lib/permission-file-change";
 
 describe("analyzeFileChange (upstream's zu)", () => {
-	it("marks a Write over an existing file as replacing it, with a one-hunk patch of the file's real lines", () => {
+	it("marks a Write over an existing file as replaced by its diff, with a one-hunk patch of the file's real lines", () => {
 		expect(analyzeFileChange("Write", {file_path: "/repo/a.ts", content: "b\n"}, "a\n")).toStrictEqual({
-			replacesFile: true,
+			diffShowsReplaced: true,
 			patch: {
 				hunks: [{oldStart: 1, oldLines: 1, newStart: 1, newLines: 1, lines: ["-a", "+b"]}],
 				context: 1,
@@ -25,7 +25,7 @@ describe("analyzeFileChange (upstream's zu)", () => {
 			{file_path: "/repo/a.ts", old_string: "x", new_string: "y", replace_all: true},
 			"x x x",
 		);
-		expect({matches: analysis.matches, note: fileChangeNote(analysis)}).toStrictEqual({
+		expect({matches: analysis.matches, note: fileChangeNote(analysis, true)}).toStrictEqual({
 			matches: 3,
 			note: "Replaces all 3 matches in the file.",
 		});
@@ -39,13 +39,14 @@ describe("analyzeFileChange (upstream's zu)", () => {
 					{file_path: "/repo/a.ts", old_string: "x", new_string: "y", replace_all: true},
 					"x",
 				),
+				true,
 			),
 		).toBe("Replaces 1 match in the file.");
 	});
 
 	it("says the file already holds an Edit whose result equals the file", () => {
 		const analysis = analyzeFileChange("Edit", {file_path: "/repo/a.ts", old_string: "a", new_string: "a"}, "a\n");
-		expect({analysis, note: fileChangeNote(analysis)}).toStrictEqual({
+		expect({analysis, note: fileChangeNote(analysis, true)}).toStrictEqual({
 			analysis: {alreadySo: true},
 			note: "The file already holds this, so nothing would change.",
 		});
@@ -109,16 +110,39 @@ describe("analyzeFileChange (upstream's zu)", () => {
 
 	it("notes a Write that keeps the file's lines but swaps their endings alongside a change", () => {
 		expect(
-			fileChangeNote(analyzeFileChange("Write", {file_path: "/repo/a.ts", content: "a\r\nc\r\n"}, "a\nb\n")),
+			fileChangeNote(
+				analyzeFileChange("Write", {file_path: "/repo/a.ts", content: "a\r\nc\r\n"}, "a\nb\n"),
+				false,
+			),
 		).toBe("Replaces the existing file. Also changes line endings.");
+	});
+
+	// Upstream's `mw` (2026-11-10): the diff shows the replaced lines itself, so the note goes once it is drawn.
+	it("says a Write replaces the file only while its disk diff is not shown", () => {
+		const analysis = analyzeFileChange("Write", {file_path: "/repo/a.ts", content: "b\n"}, "a\n");
+		expect([fileChangeNote(analysis, true), fileChangeNote(analysis, false)]).toStrictEqual([
+			null,
+			"Replaces the existing file.",
+		]);
+	});
+
+	it("keeps the replace note for a Write too large to diff, shown or not", () => {
+		const analysis = analyzeFileChange("Write", {file_path: "/repo/a.ts", content: "b".repeat(200_001)}, "a\n");
+		expect({
+			analysis,
+			notes: [fileChangeNote(analysis, true), fileChangeNote(analysis, false)],
+		}).toStrictEqual({
+			analysis: {replacesFile: true},
+			notes: ["Replaces the existing file.", "Replaces the existing file."],
+		});
 	});
 });
 
 describe("shownFileChangeNote (upstream's cx)", () => {
 	it("says an unreadable file shows only what Claude sent, unless the copy has its own note", () => {
 		expect([
-			shownFileChangeNote({kind: "unreadable"}, null),
-			shownFileChangeNote({kind: "unreadable"}, "Replaces every match in the file."),
+			shownFileChangeNote({kind: "unreadable"}, null, true),
+			shownFileChangeNote({kind: "unreadable"}, "Replaces every match in the file.", true),
 		]).toStrictEqual([
 			"Couldn’t check this file, so this shows only what Claude sent.",
 			"Replaces every match in the file.",
@@ -127,9 +151,9 @@ describe("shownFileChangeNote (upstream's cx)", () => {
 
 	it("puts the disk note in place of the copy note, and keeps the copy note when the disk has none", () => {
 		expect([
-			shownFileChangeNote({kind: "read", analysis: {matches: 3}}, "Replaces every match in the file."),
-			shownFileChangeNote({kind: "read", analysis: {}}, "Replaces every match in the file."),
-			shownFileChangeNote({kind: "none"}, null),
+			shownFileChangeNote({kind: "read", analysis: {matches: 3}}, "Replaces every match in the file.", true),
+			shownFileChangeNote({kind: "read", analysis: {}}, "Replaces every match in the file.", true),
+			shownFileChangeNote({kind: "none"}, null, true),
 		]).toStrictEqual(["Replaces all 3 matches in the file.", "Replaces every match in the file.", null]);
 	});
 });

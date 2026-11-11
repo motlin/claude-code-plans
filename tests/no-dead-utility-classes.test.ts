@@ -85,7 +85,10 @@ const ALLOWLIST: Record<string, string> = {
 };
 
 /** Known-dead tokens waiting on a queued task; each must stay dead, so the entry goes once the fix lands. */
-const PENDING: Record<string, string> = {};
+const PENDING: Record<string, string> = {
+	"epitaxy-scroll-clamp":
+		"upstream's scroll clamp edge shadows (`.epitaxy-root .epitaxy-scroll-clamp`), drawn by approval-scroll-clamp-regions",
+};
 
 describe("no dead utility classes", () => {
 	it("compiles every static className token and *_CLASS constant, or knows why it doesn't", async () => {

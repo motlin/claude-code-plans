@@ -1,3 +1,4 @@
+import {asRecord} from "./narrow";
 import {buildFileHunks, type PatchHunk} from "./diff-utils";
 import {FILE_CHANGE_PREVIEW_MAX_CHARS} from "./permission-card";
 
@@ -7,7 +8,10 @@ import {FILE_CHANGE_PREVIEW_MAX_CHARS} from "./permission-card";
  */
 export interface FileChangeAnalysis {
 	matches?: number;
+	/** The note holds whether or not a diff is drawn: no disk patch shows the replaced lines. */
 	replacesFile?: true;
+	/** Upstream's `diffShowsReplaced`: a Write's disk patch shows the replaced lines, so the note goes once it is drawn. */
+	diffShowsReplaced?: true;
 	lineEndingsChange?: true;
 	alreadySo?: true;
 	patch?: {hunks: PatchHunk[]; context: number};
@@ -92,6 +96,7 @@ function stringField(input: Record<string, unknown>, key: string): string | unde
 function compact(analysis: {
 	matches: number | undefined;
 	replacesFile?: boolean;
+	diffShowsReplaced?: boolean;
 	lineEndingsChange?: boolean;
 	alreadySo?: boolean;
 	patch?: FileChangeAnalysis["patch"];
@@ -99,6 +104,7 @@ function compact(analysis: {
 	return {
 		...(analysis.matches === undefined ? {} : {matches: analysis.matches}),
 		...(analysis.replacesFile === true ? {replacesFile: true as const} : {}),
+		...(analysis.diffShowsReplaced === true ? {diffShowsReplaced: true as const} : {}),
 		...(analysis.lineEndingsChange === true ? {lineEndingsChange: true as const} : {}),
 		...(analysis.alreadySo === true ? {alreadySo: true as const} : {}),
 		...(analysis.patch === undefined ? {} : {patch: analysis.patch}),
@@ -150,7 +156,7 @@ export function analyzeFileChange(name: string, input: Record<string, unknown>, 
 	}
 	return compact({
 		matches,
-		replacesFile: isWrite,
+		diffShowsReplaced: isWrite,
 		lineEndingsChange: isWrite
 			? changesLineEndings(text, next, hunks)
 			: oldString !== undefined && newString !== undefined && changesLineEndings(oldString, newString, []),
@@ -158,8 +164,11 @@ export function analyzeFileChange(name: string, input: Record<string, unknown>, 
 	});
 }
 
-/** Upstream's `ux`: the disk note, or null when the file earns none. */
-export function fileChangeNote(analysis: FileChangeAnalysis): string | null {
+/**
+ * Upstream's `mw` (was `ux`): the disk note, or null when the file earns none. "Replaces the existing file." holds
+ * for a Write with no disk patch, and for one with a patch only until its diff is drawn (`diffShown`).
+ */
+export function fileChangeNote(analysis: FileChangeAnalysis, diffShown: boolean): string | null {
 	if (analysis.alreadySo === true) return "The file already holds this, so nothing would change.";
 	const parts = [
 		analysis.matches === undefined
@@ -167,7 +176,9 @@ export function fileChangeNote(analysis: FileChangeAnalysis): string | null {
 			: analysis.matches === 1
 				? "Replaces 1 match in the file."
 				: `Replaces all ${analysis.matches} matches in the file.`,
-		analysis.replacesFile === true ? "Replaces the existing file." : null,
+		analysis.replacesFile === true || (analysis.diffShowsReplaced === true && !diffShown)
+			? "Replaces the existing file."
+			: null,
 		analysis.lineEndingsChange === true ? "Also changes line endings." : null,
 	].filter((part) => part !== null);
 	return parts.length > 0 ? parts.join(" ") : null;
@@ -180,7 +191,32 @@ export type FileChangeRead = {kind: "none"} | {kind: "unreadable"} | {kind: "rea
 const UNREADABLE_FILE_NOTE = "Couldn’t check this file, so this shows only what Claude sent.";
 
 /** Upstream's `cx` note: unreadable says so (unless the copy has a note); else the disk note over the copy's. */
-export function shownFileChangeNote(read: FileChangeRead, copyNote: string | null): string | null {
+export function shownFileChangeNote(read: FileChangeRead, copyNote: string | null, diffShown: boolean): string | null {
 	if (read.kind === "unreadable") return copyNote ?? UNREADABLE_FILE_NOTE;
-	return (read.kind === "read" ? fileChangeNote(read.analysis) : null) ?? copyNote;
+	return (read.kind === "read" ? fileChangeNote(read.analysis, diffShown) : null) ?? copyNote;
+}
+
+export interface PlainFileChangePart {
+	label?: string;
+	text: string;
+}
+
+/**
+ * Upstream's `dw`: a Write's content as one unlabelled part; an Edit's (or each MultiEdit edit's) old and new text
+ * as "Removed text" then "Added text". Empty texts are dropped.
+ */
+export function plainFileChangeParts(name: string, input: Record<string, unknown>): PlainFileChangePart[] {
+	if (name === "Write") return [{text: String(input["content"])}];
+	const edits: unknown[] = name !== "Edit" && Array.isArray(input["edits"]) ? input["edits"] : [input];
+	return edits
+		.flatMap((edit) => {
+			const record = asRecord(edit);
+			return record === undefined
+				? []
+				: [
+						{label: "Removed text", text: String(record["old_string"])},
+						{label: "Added text", text: String(record["new_string"])},
+					];
+		})
+		.filter(({text}) => text !== "");
 }

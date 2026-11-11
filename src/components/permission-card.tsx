@@ -36,6 +36,7 @@ import type {PermissionRow} from "../lib/permission-rows";
 import {toAriaKeyShortcuts} from "../lib/shortcuts/format";
 import {
 	PERSISTENT_ALLOW_LABEL,
+	PERSISTENT_ALLOW_SCOPE,
 	type PersistentAllowKind,
 	type PersistentAllowSave,
 } from "../lib/permission-suggestions";
@@ -316,13 +317,17 @@ export function PermissionCard({
 	const allowReason = readHeld ? ROWS_READ_HINT : null;
 	// Upstream hides the row while the read gate is unmet (`!lr`), and draws none on a deny-first card.
 	const autoOffered = autoLatched === true && !readHeld && !denyFirst;
+	// Upstream's `Zr`: the persistent option's scope, dropped once the saves block lists what it adds (`Bn`).
+	const scopeTooltip = persistentAllowSaves === null ? PERSISTENT_ALLOW_SCOPE : undefined;
 	const menuItems = allowMenuItems({persistent: persistentAllow !== null, lead, autoOffered}).map(
 		(item): SplitItem => {
 			switch (item) {
 				case "once":
 					return {label: "Allow once", shortcut: "cmd+enter", onSelect: allowOnceFromMenu};
 				case "persistent":
-					return {label: PERSISTENT_ALLOW_LABEL, onSelect: persistentFromMenu};
+					return scopeTooltip === undefined
+						? {label: PERSISTENT_ALLOW_LABEL, onSelect: persistentFromMenu}
+						: {label: PERSISTENT_ALLOW_LABEL, description: scopeTooltip, onSelect: persistentFromMenu};
 				case "auto":
 					return {label: AUTO_SWITCH_LABEL, description: AUTO_SWITCH_DESCRIPTION, onSelect: allowAndSwitch};
 				default:
@@ -340,6 +345,7 @@ export function PermissionCard({
 			label={"action" in title ? `Permission request: ${title.action}` : "Permission request"}
 			footer={footer}
 			presentation="card"
+			approvalPrompt
 			enter={enter}
 			title={
 				<div className="text-primary min-h-[24px] shrink-0 flex items-center gap-1">
@@ -457,6 +463,7 @@ export function PermissionCard({
 									{...(leadsAlways
 										? {
 												groupLabel: PERSISTENT_ALLOW_LABEL,
+												...(scopeTooltip === undefined ? {} : {tooltip: scopeTooltip}),
 												label: (
 													<span data-approval-digit="2" data-approval-primary="">
 														{PERSISTENT_ALLOW_LABEL}
@@ -639,7 +646,7 @@ function AlwaysAllowSaves({saves}: {saves: readonly PersistentAllowSave[]}) {
 	);
 }
 
-/** Upstream's Workflow callout; "tasks pane" opens the Background tasks pane where one can host it. */
+/** Upstream's Workflow callout (`PPAbdB`); "background tasks pane" opens the Background tasks pane where one can host it. */
 function TokenWarning() {
 	const backgroundTasks = useBackgroundTasksOpener();
 	return (
@@ -647,7 +654,7 @@ function TokenWarning() {
 			Dynamic workflows run many subagents in parallel and can use a lot of your usage limit. Stop them any time
 			from the{" "}
 			{backgroundTasks === null ? (
-				"tasks pane"
+				"background tasks pane"
 			) : (
 				<button
 					type="button"
@@ -656,7 +663,7 @@ function TokenWarning() {
 						backgroundTasks.open();
 					}}
 				>
-					tasks pane
+					background tasks pane
 				</button>
 			)}
 			.

@@ -1,6 +1,6 @@
 import type {FileOptions} from "@pierre/diffs/react";
 import {File} from "@pierre/diffs/react";
-import {type CSSProperties, type ReactNode, useEffect, useMemo, useState} from "react";
+import {type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState} from "react";
 
 import {useCodeThemeBackground} from "../hooks/use-code-theme-background";
 import {useCodeThemes} from "../hooks/use-code-themes";
@@ -8,7 +8,13 @@ import {fileContentUrl, FileViewerResponse} from "../lib/api/file";
 import {resolveUrl} from "../lib/api/client";
 import {buildMultiEditHunk, buildPatchFromHunks, buildUnifiedHunk} from "../lib/diff-utils";
 import {asRecord} from "../lib/narrow";
-import {analyzeFileChange, type FileChangeRead, shownFileChangeNote} from "../lib/permission-file-change";
+import {
+	analyzeFileChange,
+	type FileChangeRead,
+	plainFileChangeParts,
+	shownFileChangeNote,
+} from "../lib/permission-file-change";
+import {revealControlChars, revealSpoofing} from "../lib/visible-text";
 import {DIFFS_HOST_CLASS, INLINE_DIFFS_STYLE_OVERRIDES} from "./changes/diffs-config";
 import {useResolvedTheme} from "./theme-context";
 import {InlinePatchDiff} from "./tool-renderers/inline-diff";
@@ -16,8 +22,6 @@ import {InlinePatchDiff} from "./tool-renderers/inline-diff";
 /** Upstream's `Hx`/`Ux`: each row reserves 16px of the scroller, which caps at 400px. */
 const ROW_RESERVE_PX = 16;
 const SCROLLER_MAX_PX = 400;
-/** Upstream's `Sb`: the skeleton is at most 16 lines tall. */
-const SKELETON_MAX_LINES = 16;
 
 /** Upstream's in-card `Yx` scroller (`Lx` + the code card); local's `card-ring` stands in for `epitaxy-code-card`'s ring. */
 const SCROLLER_CLASS = "max-h-[400px] overflow-y-auto epitaxy-diff card-ring rounded-lg overflow-clip";
@@ -83,8 +87,9 @@ function useFileChangeRead(name: string, input: Record<string, unknown>): FileCh
 }
 
 /**
- * Upstream's `cx`: a previewed Write/Edit/MultiEdit card's path detail (drawn by the card, with the note the
- * file read earns) and then the change itself, or upstream's skeleton while the file read is pending.
+ * Upstream's `uw` (was `cx`): a previewed Write/Edit/MultiEdit card's path detail (drawn by the card, with the note
+ * the file read earns) and then the change, in one grid cell: the plain body while the file read is pending, then
+ * the diff in its place. A plain body the user touched stays when the read brings no disk diff.
  */
 export function PermissionFileChangePreview({
 	toolName,
@@ -99,33 +104,87 @@ export function PermissionFileChangePreview({
 	drawDetail: (note: string | null) => ReactNode;
 }) {
 	const read = useFileChangeRead(toolName, toolInput);
+	// Upstream keys the touch to the tool call (`d === t.id`); the input object stands for it here.
+	const [usedInput, setUsedInput] = useState<object | null>(null);
+	const keepsPlain = usedInput === toolInput && (read?.kind !== "read" || read.analysis.patch === undefined);
+	const diffShown = read !== null && !keepsPlain;
 	return (
 		<>
-			{drawDetail(read === null ? copyNote : shownFileChangeNote(read, copyNote))}
-			{read === null ? (
-				<FileChangeSkeleton toolInput={toolInput} />
-			) : (
-				<FileChangeBody toolName={toolName} toolInput={toolInput} read={read} />
-			)}
+			{drawDetail(read === null ? copyNote : shownFileChangeNote(read, copyNote, diffShown))}
+			<div className="grid [&>*]:[grid-area:1/1] [&>*]:min-w-0">
+				{diffShown ? (
+					<FileChangeBody toolName={toolName} toolInput={toolInput} read={read} />
+				) : (
+					<PlainFileChange
+						toolName={toolName}
+						toolInput={toolInput}
+						onUsed={() => {
+							setUsedInput(toolInput);
+						}}
+					/>
+				)}
+			</div>
 		</>
 	);
 }
 
-function countNewlines(text: string): number {
-	return text.split("\n").length - 1;
-}
+/** Upstream's scroll clamp (c2d1aeb56 `J`) around the plain body (`fw`). */
+const PLAIN_CLASS =
+	"epitaxy-scroll-clamp scroll-fade-y focus-visible:outline-hidden focus-visible:shadow-focus flex max-h-[400px] flex-col gap-sm overflow-y-auto";
+/** Upstream's `yC`: a part's label. */
+const PLAIN_LABEL_CLASS = "text-footnote text-muted-as-secondary select-text break-words [unicode-bidi:plaintext]";
+/** Upstream's `DC`: a part's text. */
+const PLAIN_TEXT_CLASS =
+	"bg-alpha-1 rounded-lg py-md px-lg text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]";
 
-/** Upstream's `lx`: a placeholder as tall as the change's first 16 lines. */
-function FileChangeSkeleton({toolInput}: {toolInput: Record<string, unknown>}) {
-	const content = toolInput["content"];
-	const text = typeof content === "string" ? content : (stringField(toolInput, "new_string") ?? "");
-	const lines = Math.min(countNewlines(text) + 1, SKELETON_MAX_LINES);
+/**
+ * Upstream's `fw`: the change as plain text, drawn at once. Its scroll clamp is a labelled "Code" tab stop only
+ * while it overflows; focusing, pressing or scrolling it reports the touch.
+ */
+function PlainFileChange({
+	toolName,
+	toolInput,
+	onUsed,
+}: {
+	toolName: string;
+	toolInput: Record<string, unknown>;
+	onUsed: () => void;
+}) {
+	const parts = useMemo(() => plainFileChangeParts(toolName, toolInput), [toolName, toolInput]);
+	const ref = useRef<HTMLDivElement>(null);
+	const [overflows, setOverflows] = useState(false);
+	useLayoutEffect(() => {
+		const node = ref.current;
+		if (node === null) return undefined;
+		const measure = () => {
+			setOverflows(node.scrollHeight > node.clientHeight);
+		};
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(node);
+		return () => {
+			observer.disconnect();
+		};
+	}, [parts]);
 	return (
 		<div
-			aria-hidden
-			className="rounded-lg bg-alpha-1"
-			style={{height: `calc(${lines} * var(--upstream-leading-code) + 2 * var(--cds-pad-md, 8px))`}}
-		/>
+			ref={ref}
+			data-testid="approval-file-change-plain"
+			data-fixed-code-size=""
+			className={PLAIN_CLASS}
+			{...(overflows ? {tabIndex: 0, role: "group", "aria-label": "Code"} : {})}
+			onFocus={onUsed}
+			onPointerDown={onUsed}
+			onScroll={onUsed}
+		>
+			{parts.map((part, index) => (
+				// oxlint-disable-next-line react/no-array-index-key -- the parts are fixed for one tool input
+				<div key={index} className="flex shrink-0 flex-col gap-1">
+					{part.label === undefined ? null : <p className={PLAIN_LABEL_CLASS}>{part.label}</p>}
+					<div className={PLAIN_TEXT_CLASS}>{revealControlChars(revealSpoofing(part.text))}</div>
+				</div>
+			))}
+		</div>
 	);
 }
 

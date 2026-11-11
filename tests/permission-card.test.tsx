@@ -1134,10 +1134,12 @@ function heldButtons() {
 function renderCard({
 	canAnswer = true,
 	persistentAllow = null,
+	saves = null,
 	dialog,
 }: {
 	canAnswer?: boolean;
 	persistentAllow?: PersistentAllowKind | null;
+	saves?: readonly PersistentAllowSave[] | null;
 	dialog?: PermissionDialogShape | "unknown";
 } = {}) {
 	const onDecision = vi.fn<ComponentProps<typeof PermissionCard>["onDecision"]>(async () => {});
@@ -1156,6 +1158,7 @@ function renderCard({
 				description="Remove the build output"
 				canAnswer={canAnswer}
 				persistentAllow={persistentAllow}
+				persistentAllowSaves={saves}
 				{...(shape === undefined ? {} : {dialog: shape})}
 				onDecision={onDecision}
 			/>
@@ -1497,7 +1500,7 @@ describe("PermissionCard", () => {
 		});
 	});
 
-	it("draws a Workflow's description and upstream's token warning, whose tasks pane link opens Background tasks", () => {
+	it("draws a Workflow's description and upstream's token warning, whose background tasks pane link opens Background tasks", () => {
 		const open = vi.fn<() => void>();
 		const {container} = render(
 			<BackgroundTasksOpenerProvider value={{open, running: new Map()}}>
@@ -1519,10 +1522,10 @@ describe("PermissionCard", () => {
 			],
 			[
 				"rounded-lg bg-alpha-1 px-lg py-2.5 text-body text-secondary select-text break-words",
-				"Dynamic workflows run many subagents in parallel and can use a lot of your usage limit. Stop them any time from the tasks pane.",
+				"Dynamic workflows run many subagents in parallel and can use a lot of your usage limit. Stop them any time from the background tasks pane.",
 			],
 		]);
-		fireEvent.click(screen.getByRole("button", {name: "tasks pane"}));
+		fireEvent.click(screen.getByRole("button", {name: "background tasks pane"}));
 		expect(open).toHaveBeenCalledTimes(1);
 	});
 
@@ -1585,9 +1588,9 @@ describe("PermissionCard", () => {
 			vi.useRealTimers();
 		});
 
-		it("leads with Allow once and keeps Always allow, with no description, in the menu when the stored lead is once", async () => {
+		it("leads with Allow once and keeps Always allow, with no description beside listed saves, in the menu when the stored lead is once", async () => {
 			localStorage.setItem(APPROVAL_LEADING_ALLOW_KEY, "once");
-			const {onDecision} = renderCard({persistentAllow: "always"});
+			const {onDecision} = renderCard({persistentAllow: "always", saves: [{kind: "rule", toolName: "Bash"}]});
 			const primary = screen.getByRole("button", {name: /^Allow once/});
 			const labelSpan = primary.querySelector<HTMLElement>("[data-approval-digit]");
 			const facts = {
@@ -1654,22 +1657,55 @@ describe("PermissionCard", () => {
 			]);
 		});
 
+		/** Hovers the leading Always allow and reads the tooltip it opens. */
+		function hoverAlwaysAllow() {
+			const primary = screen.getByRole("button", {name: "Always allow"});
+			vi.useFakeTimers();
+			fireEvent.pointerEnter(primary.parentElement!);
+			act(() => {
+				vi.advanceTimersByTime(300);
+			});
+			const describedBy = primary.getAttribute("aria-describedby");
+			return {
+				tooltips: screen.queryAllByRole("tooltip").map((tip) => tip.textContent),
+				described: describedBy === null ? null : document.getElementById(describedBy)?.textContent,
+			};
+		}
+
+		// Upstream's `Zr`: no scope tooltip once the saves block lists what the option adds (`Bn`).
 		it.each(["always", "perChat"] as const)(
-			"tips the leading Always allow with no scope for a %s option, as upstream's web card",
+			"leaves the leading Always allow untipped for a %s option whose saves are listed, as upstream's web card",
 			(persistentAllow) => {
-				renderCard({persistentAllow});
-				const primary = screen.getByRole("button", {name: "Always allow"});
-				vi.useFakeTimers();
-				fireEvent.pointerEnter(primary.parentElement!);
-				act(() => {
-					vi.advanceTimersByTime(300);
-				});
-				expect({
-					tooltips: screen.queryAllByRole("tooltip").length,
-					describedBy: primary.getAttribute("aria-describedby"),
-				}).toStrictEqual({tooltips: 0, describedBy: null});
+				renderCard({persistentAllow, saves: [{kind: "rule", toolName: "Bash", ruleContent: "npm run *"}]});
+				expect(hoverAlwaysAllow()).toStrictEqual({tooltips: [], described: null});
 			},
 		);
+
+		// Upstream's `Zr` default when no saves are known: "Don’t ask again for this tool" (`AfvuXL`).
+		it.each(["always", "perChat"] as const)(
+			"tips the leading Always allow with upstream's scope for a %s option whose saves are unknown",
+			(persistentAllow) => {
+				renderCard({persistentAllow});
+				expect(hoverAlwaysAllow()).toStrictEqual({
+					tooltips: ["Don’t ask again for this tool"],
+					described: "Don’t ask again for this tool",
+				});
+			},
+		);
+
+		it("describes the Always allow menu row with the scope only while the saves are unknown", async () => {
+			localStorage.setItem(APPROVAL_LEADING_ALLOW_KEY, "once");
+			const descriptions = [];
+			for (const saves of [null, [{kind: "rule", toolName: "Bash"}] as const]) {
+				const {unmount} = renderCard({persistentAllow: "always", saves});
+				await actAndSettle(() => {
+					fireEvent.click(screen.getByRole("button", {name: "More allow options"}));
+				});
+				descriptions.push(screen.getByRole("menuitem", {name: /^Always allow/}).textContent);
+				unmount();
+			}
+			expect(descriptions).toStrictEqual(["Always allowDon’t ask again for this tool", "Always allow"]);
+		});
 	});
 
 	describe("upstream's web saves block (cc32965c2 Zb, now wx)", () => {
@@ -2863,7 +2899,7 @@ describe("PermissionCard Allow and switch to Auto, as upstream's approval_card a
 	it("appends the row after Always allow in a once-led menu", async () => {
 		localStorage.setItem(APPROVAL_LEADING_ALLOW_KEY, "once");
 		renderAutoCard({persistentAllow: "always"});
-		expect(await menuItems()).toStrictEqual(["Always allow", AUTO_ROW]);
+		expect(await menuItems()).toStrictEqual(["Always allowDon’t ask again for this tool", AUTO_ROW]);
 	});
 
 	it("keeps the row as first painted when the offer changes underneath (paint latch)", async () => {

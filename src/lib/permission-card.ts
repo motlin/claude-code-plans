@@ -40,7 +40,7 @@ export interface PendingPermission {
 	detailNote?: string;
 	/** The description line in the body: a Bash command's, an agent's or a Workflow's. */
 	description?: string;
-	/** Upstream's "Dynamic workflows … tasks pane." callout. */
+	/** Upstream's "Dynamic workflows … background tasks pane." callout. */
 	tokenWarning?: true;
 	/** Upstream's `detailFirst`: the detail leads the body. */
 	detailFirst?: true;
