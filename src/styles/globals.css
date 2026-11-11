@@ -487,6 +487,10 @@ html[data-interface-font="dyslexic"] {
 	--composer-shadow-idle: 0 4px 20px rgb(0 0 0 / 0.035), 0 0 0 1px rgb(11 11 11 / 0.1);
 	--composer-shadow-focus: 0 4px 20px rgb(0 0 0 / 0.075), 0 0 0 1px rgb(11 11 11 / 0.2);
 	--upstream-alpha-1: rgb(11 11 11 / 0.05);
+	/* Upstream `--cds-fill-disabled: var(--cds-alpha-1)` and `--cds-opacity-disabled: .4`: the disabled cds Button
+	   paint and pre-fizzy dimming. `.dark` restates alpha-1, so the dark paint follows without a restatement. */
+	--upstream-fill-disabled: var(--upstream-alpha-1);
+	--upstream-opacity-disabled: 0.4;
 	/* Upstream --cds-skeleton-base/-sheen: alpha-1 in light, neutral-900 at 7.5% in dark. */
 	--skeleton-base: var(--upstream-alpha-1);
 	--skeleton-sheen: var(--upstream-alpha-1);
@@ -1095,6 +1099,11 @@ html[data-interface-font="dyslexic"] {
    dropping `color` from FIZZY_LAKE_PARTS falls back to them. The light block outranks `.dark`, so
    a value that differs in dark is restated in the dark block. */
 :root[data-cds-fizzy-lake~="color"] {
+	/* Upstream fizzy `--cds-fill-disabled`, `--cds-text-button-disabled` and
+	   `--cds-fizzy-lake-color-icon-only-disabled`: a disabled cds Button keeps opacity 1 with this paint and ink. */
+	--upstream-fill-disabled: #00000006;
+	--upstream-text-button-disabled: #0007;
+	--upstream-icon-only-disabled: #0006;
 	/* Upstream `--control-ink: var(--cds-fizzy-lake-color-control-ink, var(--cds-text-primary))`
 	   (.9 light / .93 dark): the `text-*-control` utilities' ink. The dark value follows from
 	   `--upstream-text-primary`, so the dark block needs no restatement. */
@@ -1233,6 +1242,9 @@ html[data-interface-font="dyslexic"] {
 }
 
 :root.dark[data-cds-fizzy-lake~="color"] {
+	--upstream-fill-disabled: #ffffff0d;
+	--upstream-text-button-disabled: #fff6;
+	--upstream-icon-only-disabled: #fff6;
 	--upstream-bg-tint-blue: #257de01f;
 	--upstream-text-tint-blue: #6aabf1;
 	--upstream-bg-tint-orange: #d25f251f;
@@ -1774,7 +1786,17 @@ html[data-interface-font="dyslexic"] {
 
 /* Upstream `opacity-disabled`: var(--cds-opacity-disabled), 0.4 at rest. */
 @utility opacity-disabled {
-	opacity: 0.4;
+	opacity: var(--upstream-opacity-disabled, 0.4);
+}
+
+/* Upstream `text-button-disabled`: var(--cds-text-button-disabled, var(--cds-text-disabled)). */
+@utility text-button-disabled {
+	color: var(--upstream-text-button-disabled, var(--upstream-text-disabled, currentColor));
+}
+
+/* Upstream `bg-fill-disabled`: var(--cds-fill-disabled). */
+@utility bg-fill-disabled {
+	background-color: var(--upstream-fill-disabled);
 }
 
 @utility text-secondary-control {

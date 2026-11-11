@@ -627,4 +627,46 @@ describe("fizzy-lake color rings (upstream --cds-border = --cds-ring-color)", ()
 			baseDark: {"--ring-inner": "1px", "--ring-outer": "0px"},
 		});
 	});
+
+	it("the disabled cds Button tokens are upstream's --cds-fill-disabled, --cds-text-button-disabled and icon-only ink", () => {
+		const names = [
+			"--upstream-fill-disabled",
+			"--upstream-text-button-disabled",
+			"--upstream-icon-only-disabled",
+			"--upstream-opacity-disabled",
+		] as const;
+		expect({
+			base: tokens(block(":root"), names),
+			light: tokens(block(FIZZY_LIGHT), names),
+			dark: tokens(block(FIZZY_DARK), names),
+		}).toStrictEqual({
+			base: {
+				"--upstream-fill-disabled": "var(--upstream-alpha-1)",
+				"--upstream-text-button-disabled": null,
+				"--upstream-icon-only-disabled": null,
+				"--upstream-opacity-disabled": "0.4",
+			},
+			light: {
+				"--upstream-fill-disabled": "#00000006",
+				"--upstream-text-button-disabled": "#0007",
+				"--upstream-icon-only-disabled": "#0006",
+				"--upstream-opacity-disabled": null,
+			},
+			dark: {
+				"--upstream-fill-disabled": "#ffffff0d",
+				"--upstream-text-button-disabled": "#fff6",
+				"--upstream-icon-only-disabled": "#fff6",
+				"--upstream-opacity-disabled": null,
+			},
+		});
+	});
+
+	it("the disabled cds Button utilities compile to upstream's text-button-disabled, bg-fill-disabled and opacity-disabled", async () => {
+		expect(await compileAll(["text-button-disabled", "bg-fill-disabled", "opacity-disabled"])).toStrictEqual({
+			"text-button-disabled":
+				".text-button-disabled { color: var(--upstream-text-button-disabled, var(--upstream-text-disabled, currentColor)); }",
+			"bg-fill-disabled": ".bg-fill-disabled { background-color: var(--upstream-fill-disabled); }",
+			"opacity-disabled": ".opacity-disabled { opacity: var(--upstream-opacity-disabled, 0.4); }",
+		});
+	});
 });
