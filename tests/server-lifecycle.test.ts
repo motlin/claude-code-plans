@@ -335,7 +335,8 @@ describe("scripts/server.sh", () =>
 				},
 			},
 		);
-		// lsof stats mounts and stalled stop for over 15s under load; stop must not need it at all.
+		// lsof stats mounts and stalled stop for over 15s under load on macOS, so stop must not need it there at
+		// all. Linux keeps `lsof -b` (which skips the mount stats) for the port lookup, so only macOS gets the stall.
 		const stalledLsofBin = join(runDir, "stalled-lsof-bin");
 		mkdirSync(
 			stalledLsofBin,
@@ -350,6 +351,10 @@ describe("scripts/server.sh", () =>
 				mode: 0o755,
 			},
 		);
+		const stopPath =
+			process.platform === "darwin"
+				? `${stalledLsofBin}:${process.env["PATH"] ?? ""}`
+				: (process.env["PATH"] ?? "");
 		// Shaped like an unrenamed production server's command line and sharing
 		// PROJECT_DIR as its cwd: stop must leave it alone when SERVER_ENTRY_MATCH
 		// says not to match entry points.
@@ -387,7 +392,7 @@ describe("scripts/server.sh", () =>
 						env:
 						{
 							...defaultMatchEnv,
-							PATH: `${stalledLsofBin}:${process.env["PATH"] ?? ""}`,
+							PATH: stopPath,
 							SERVER_TITLE: TITLE,
 							SERVER_ENTRY_MATCH: ENTRY_MATCH,
 						},
