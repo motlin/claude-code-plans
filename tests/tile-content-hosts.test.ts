@@ -2,7 +2,8 @@
 
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
-import {TileContentHosts} from "../src/lib/tile-content-hosts";
+import {registerScrollSetter} from "../src/lib/scroll-setter";
+import {TileContentHosts, siblingMovedAhead} from "../src/lib/tile-content-hosts";
 
 /** jsdom has no `moveBefore`; this stand-in moves like `insertBefore`, as Chrome's state-preserving move does. */
 function stubMoveBefore() {
@@ -234,6 +235,59 @@ describe("TileContentHosts scroll memory, as upstream's v / A / j", () => {
 		body.scrollTop = 0;
 		hosts.slotMoved("files", slot);
 		expect(body.scrollTop).toBe(120);
+	});
+
+	it("writes restored offsets through a scroller's registered setter (upstream gT), plain scrollTop otherwise", () => {
+		const hosts = new TileContentHosts(document);
+		const host = hosts.host("chat");
+		const owned = scroller(host);
+		const plain = scroller(host);
+		const writes: number[] = [];
+		const unregister = registerScrollSetter(owned, (top) => {
+			writes.push(top);
+		});
+		const release = hosts.adopt("chat", cell());
+		scrollTo(owned, 120);
+		scrollTo(plain, 90);
+		release();
+		owned.scrollTop = 0;
+		plain.scrollTop = 0;
+		hosts.adopt("chat", cell());
+		unregister();
+		const releaseAgain = hosts.adopt("chat", cell());
+		scrollTo(owned, 60);
+		releaseAgain();
+		owned.scrollTop = 0;
+		hosts.adopt("chat", cell());
+		expect({writes, owned: owned.scrollTop, plain: plain.scrollTop}).toStrictEqual({
+			writes: [120],
+			owned: 60,
+			plain: 90,
+		});
+	});
+});
+
+describe("in-place slot moves, as upstream's wt orderKey effect and yt", () => {
+	it("parks an iframe host before a move only when a sibling moves ahead of the tile", () => {
+		stubMoveBefore();
+		const hosts = new TileContentHosts(document);
+		const host = hosts.host("preview");
+		host.append(document.createElement("iframe"));
+		const slot = cell();
+		hosts.adopt("preview", slot);
+		hosts.slotWillMove("preview", slot, false);
+		const keptInPlace = host.parentNode === slot;
+		hosts.slotWillMove("preview", slot, true);
+		expect({keptInPlace, parked: pen()?.contains(host)}).toStrictEqual({keptInPlace: true, parked: true});
+	});
+
+	it("derives the sibling-ahead test from the old order and ahead keys and the new ahead key", () => {
+		expect({
+			unchanged: siblingMovedAhead("/chat,files", "/chat", "/chat"),
+			siblingNowAhead: siblingMovedAhead("/files,chat", "/", "/files"),
+			siblingNoLongerAhead: siblingMovedAhead("/chat,files", "/chat", "/"),
+			deeper: siblingMovedAhead("/chat,files", "/chat", "/chat/changes"),
+		}).toStrictEqual({unchanged: false, siblingNowAhead: true, siblingNoLongerAhead: false, deeper: true});
 	});
 });
 

@@ -700,20 +700,6 @@ it.each([false, true])(
 	},
 );
 
-it("does not hand off geometry after a compact-summary disclosure", async () => {
-	const records = lines.map((line, index) => (index === 0 ? {...line, isCompactSummary: true} : line));
-	await renderShell(false, LOCAL_ID, false, records);
-	fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
-	settleMeasurements(actualScrollport());
-	fireEvent.click(screen.getByRole("button", {name: "Compacted conversation"}));
-	settleMeasurements(actualScrollport());
-	const remember = vi.spyOn(measurements, "rememberTranscriptHandoff");
-	listWidth = 640;
-	fireEvent.keyDown(paneMove(), {key: "ArrowDown"});
-	fireEvent.keyDown(paneMove(), {key: "Enter"});
-	expect(remember.mock.calls).toStrictEqual([]);
-});
-
 it("waits for invalid-width geometry to commit before restoring Back", async () => {
 	const router = await renderShell(false);
 	const initial = actualScrollport();

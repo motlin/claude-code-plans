@@ -6,6 +6,8 @@
  * host remembers its scrolled elements, focus and caret to restore after a move.
  */
 
+import {setScrollTop} from "./scroll-setter";
+
 const HOST_ATTRIBUTE = "data-tile-host";
 const PEN_ATTRIBUTE = "data-tile-host-pen";
 const PEN_STYLE =
@@ -83,10 +85,16 @@ export class TileContentHosts {
 		};
 	}
 
-	/** Snapshots a host whose cell React is about to move in place (upstream's orderKey effect cleanup). */
-	slotWillMove(id: string, cell: Element): void {
+	/**
+	 * Snapshots a host whose cell React is about to move in place (upstream's orderKey effect cleanup). With
+	 * `parkIframes` (a sibling moves ahead of the tile), a host holding an iframe is parked first, so React's move of
+	 * the cell never reloads the frame.
+	 */
+	slotWillMove(id: string, cell: Element, parkIframes = false): void {
 		const record = this.records.get(id);
-		if (record?.host.parentNode === cell) snapshot(record);
+		if (record?.host.parentNode !== cell) return;
+		snapshot(record);
+		if (parkIframes && record.host.querySelector("iframe") !== null) this.park(id, record, undefined);
 	}
 
 	/** Restores a host after its cell moved in place, re-placing it if it was parked meanwhile. */
@@ -215,6 +223,24 @@ export class TileContentHosts {
 	}
 }
 
+/**
+ * Upstream `yt`: whether an in-place move puts a sibling ahead of the tile that was not ahead before. Keys are
+ * `/`-joined levels of `,`-joined node ids: `orderKey` lists the tile's parents' children, `aheadKey` the ones before it.
+ */
+export function siblingMovedAhead(orderKey: string, aheadKey: string, nextAheadKey: string): boolean {
+	const order = orderKey.split("/");
+	const ahead = aheadKey.split("/");
+	return nextAheadKey.split("/").some((level, index) => {
+		const wasAhead = ahead.at(index)?.split(",");
+		const siblings = order.at(index)?.split(",");
+		return (
+			wasAhead === undefined ||
+			siblings === undefined ||
+			level.split(",").some((id) => siblings.includes(id) && !wasAhead.includes(id))
+		);
+	});
+}
+
 /** Upstream `v`: a capture-phase scroll listener keeping the last 32 distinct scrolled elements (weakly). */
 function rememberScrollers(host: Element): ScrollMemory {
 	const seen = new WeakSet<Element>();
@@ -324,9 +350,9 @@ function restore(record: HostRecord, wasParked = false): void {
 		if (!host.contains(el)) continue;
 		if (atBottom && el.scrollTop < top) {
 			const bottom = el.scrollHeight - el.clientHeight;
-			if (bottom - el.scrollTop > AT_BOTTOM_SLOP_PX) el.scrollTop = bottom;
+			if (bottom - el.scrollTop > AT_BOTTOM_SLOP_PX) setScrollTop(el, bottom);
 		} else if (top !== 0 && (el.scrollTop === 0 || (wasParked && el.scrollTop < top))) {
-			el.scrollTop = top;
+			setScrollTop(el, top);
 		}
 		if (left !== 0 && el.scrollLeft === 0) el.scrollLeft = left;
 	}

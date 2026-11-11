@@ -10,6 +10,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {useChatGutterAttributes, usePaneHost} from "../src/components/panes/pane-host-context";
 import {TileHost} from "../src/components/panes/tile-host";
+import {TileContentHosts} from "../src/lib/tile-content-hosts";
 import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 
 class FakeStorage implements Storage {
@@ -1804,6 +1805,50 @@ describe("TileHost persistent content hosts (upstream c9bc99274 data-tile-host /
 			columns: 0,
 			changesHost: null,
 		});
+	});
+
+	it("snapshots every tile whose sibling list changes, as upstream's orderKey / aheadKey effect", () => {
+		localStorage.setItem(
+			"ccb.paneLayout.v1",
+			JSON.stringify({
+				"session-a": {
+					root: {
+						kind: "stack",
+						direction: "row",
+						flex: 1,
+						children: [
+							{kind: "tile", tileId: "chat", flex: 2},
+							{kind: "tile", tileId: "files", flex: 1},
+							{kind: "tile", tileId: "changes", flex: 1},
+						],
+					},
+					expanded: null,
+					focused: "changes",
+				},
+			}),
+		);
+		renderHost("session-a");
+		const willMove = vi.spyOn(TileContentHosts.prototype, "slotWillMove");
+		// Files keeps its index, so a path key would never see it move; upstream's sibling-list key does.
+		fireEvent.click(within(screen.getByRole("region", {name: "Changes"})).getByRole("button", {name: "Close"}));
+		expect({
+			count: willMove.mock.calls.length,
+			parkIframes: Object.fromEntries(willMove.mock.calls.map(([id, , parkIframes]) => [id, parkIframes])),
+		}).toStrictEqual({count: 3, parkIframes: {changes: false, chat: false, files: false}});
+	});
+
+	it("asks to park iframe hosts only for the tile a sibling moves ahead of (upstream yt)", () => {
+		renderHost("session-a");
+		openTestPane();
+		const move = within(document.querySelector<HTMLElement>("[data-tile-host=plan]")!).getByRole("button", {
+			name: "Move",
+		});
+		const willMove = vi.spyOn(TileContentHosts.prototype, "slotWillMove");
+		fireEvent.keyDown(move, {key: "ArrowLeft"});
+		expect({
+			count: willMove.mock.calls.length,
+			parkIframes: Object.fromEntries(willMove.mock.calls.map(([id, , parkIframes]) => [id, parkIframes])),
+		}).toStrictEqual({count: 2, parkIframes: {chat: true, plan: false}});
 	});
 
 	it("keeps the chat's content and state when a split moves it into a column", () => {

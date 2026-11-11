@@ -4,6 +4,7 @@ import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {jumpToMessage, releaseEndFollow} from "../src/lib/jump-to-message";
+import {setScrollTop} from "../src/lib/scroll-setter";
 import type {SessionLine} from "../src/lib/sessions";
 import {CHAT_COLUMN_CLASS} from "../src/lib/transcript-width";
 
@@ -323,6 +324,34 @@ describe("SessionChat initial scrolling", () => {
 			followed: 1,
 			afterRelease: 0,
 		});
+	});
+
+	it("resumes following the end when a tile move restores its scroller to the bottom through upstream's gT", () => {
+		const view = render(
+			<div data-testid="example-scroller" style={{overflowY: "auto"}}>
+				<SessionChat
+					sessionId="session-100"
+					initialScrollKey="history-entry-tile-move"
+					shouldScrollToEnd={false}
+					lines={messages(100)}
+					toolResultMap={new Map()}
+				/>
+			</div>,
+		);
+		const scroller = view.getByTestId("example-scroller");
+		const scrollerTo = vi.fn<(options: ScrollToOptions) => void>();
+		Object.defineProperty(scroller, "scrollHeight", {configurable: true, value: 5_000});
+		Object.defineProperty(scroller, "clientHeight", {configurable: true, value: 500});
+		Object.defineProperty(scroller, "scrollTo", {configurable: true, value: scrollerTo});
+		act(flushAnimationFrames);
+		act(() => {
+			// The restore writes before the browser's scroll event; a resize may land in between.
+			setScrollTop(scroller, 4_500);
+			observerFor(view.container.firstElementChild!.firstElementChild!).resize();
+		});
+		act(flushAnimationFrames);
+
+		expect(scrollerTo.mock.calls).toStrictEqual([[{top: 5_000}]]);
 	});
 
 	it("leaves a restored session entry at its saved scroll position", () => {

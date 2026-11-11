@@ -2,6 +2,7 @@ import {
 	Component,
 	useCallback,
 	useEffect,
+	useEffectEvent,
 	useLayoutEffect,
 	useMemo,
 	useRef,
@@ -57,7 +58,7 @@ import {
 	type StackNode,
 	type TileId,
 } from "../../lib/pane-layout";
-import {TileContentHosts} from "../../lib/tile-content-hosts";
+import {siblingMovedAhead, TileContentHosts} from "../../lib/tile-content-hosts";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {Tooltip} from "../ui/tooltip";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
@@ -824,7 +825,32 @@ function cornersOf(path: readonly number[], host: InternalHost): Partial<Record<
 	return corners;
 }
 
-function StackView({stack, path, host}: {stack: StackNode; path: readonly number[]; host: InternalHost}) {
+/**
+ * Upstream `ft`'s child keys: each child's orderKey is its parent's plus a level listing every sibling's id, and its
+ * aheadKey its parent's plus a level listing the siblings before it (upstream `pt`, the URI-encoded node id; a local
+ * stack has no id, so its React key stands in).
+ */
+function childSlotKeys(stack: StackNode, orderKey: string, aheadKey: string) {
+	const ids = stack.children.map((child) => encodeURIComponent(nodeKey(child)));
+	return {
+		orderKey: `${orderKey}/${ids.join(",")}`,
+		aheadKeys: ids.map((_, index) => `${aheadKey}/${ids.slice(0, index).join(",")}`),
+	};
+}
+
+function StackView({
+	stack,
+	path,
+	orderKey,
+	aheadKey,
+	host,
+}: {
+	stack: StackNode;
+	path: readonly number[];
+	orderKey: string;
+	aheadKey: string;
+	host: InternalHost;
+}) {
 	const localRef = useRef<HTMLDivElement>(null);
 	const isRoot = path.length === 0;
 	const ref = isRoot ? host.rootRef : localRef;
@@ -832,6 +858,7 @@ function StackView({stack, path, host}: {stack: StackNode; path: readonly number
 	const size = isRoot ? host.rootSize : localSize;
 	const sizePx = stack.direction === "row" ? size.width : size.height;
 
+	const childKeys = childSlotKeys(stack, orderKey, aheadKey);
 	const items: ReactNode[] = [];
 	// Keep the expanded pane and chat on their keyed paths so their reader state survives.
 	stack.children.forEach((child, index) => {
@@ -854,6 +881,8 @@ function StackView({stack, path, host}: {stack: StackNode; path: readonly number
 				key={nodeKey(child)}
 				node={child}
 				path={[...path, index]}
+				orderKey={childKeys.orderKey}
+				aheadKey={childKeys.aheadKeys[index] ?? ""}
 				parentDirection={stack.direction}
 				host={host}
 				isRootChild={isRoot}
@@ -879,12 +908,17 @@ function StackView({stack, path, host}: {stack: StackNode; path: readonly number
 function NodeView({
 	node,
 	path,
+	orderKey,
+	aheadKey,
 	host,
 	isRootChild,
 	parentDirection,
 }: {
 	node: LayoutNode;
 	path: readonly number[];
+	/** Upstream's slot keys: the tile's sibling ids at every level, and the ones ahead of it. */
+	orderKey: string;
+	aheadKey: string;
 	host: InternalHost;
 	isRootChild: boolean;
 	parentDirection: Direction;
@@ -905,7 +939,7 @@ function NodeView({
 				hidden={host.expanded !== null && !tileIdsOf(node).includes(host.expanded)}
 				{...(phone ? {"data-pane-phone": ""} : {})}
 			>
-				<StackView stack={node} path={path} host={host} />
+				<StackView stack={node} path={path} orderKey={orderKey} aheadKey={aheadKey} host={host} />
 				<MovePreviewOutline path={path} host={host} />
 			</div>
 		);
@@ -923,7 +957,8 @@ function NodeView({
 			<TileSlot
 				tileId="chat"
 				host={host}
-				orderKey={path.join(".")}
+				orderKey={orderKey}
+				aheadKey={aheadKey}
 				className={gutters === null ? slotClass : `${slotClass} @container/tile-slot z-0`}
 				style={
 					gutters === null
@@ -962,7 +997,8 @@ function NodeView({
 		<TileSlot
 			tileId={node.tileId}
 			host={host}
-			orderKey={path.join(".")}
+			orderKey={orderKey}
+			aheadKey={aheadKey}
 			shellClassName="h-full"
 			className={
 				expanded
@@ -1013,6 +1049,7 @@ function TileSlot({
 	tileId,
 	host,
 	orderKey,
+	aheadKey,
 	className,
 	style,
 	hidden,
@@ -1025,8 +1062,10 @@ function TileSlot({
 }: {
 	tileId: TileId;
 	host: InternalHost;
-	/** The slot's place in the tree; when it changes in place, the host is snapshotted and restored around the move. */
+	/** The slot's sibling ids at every level; when they change, the host is snapshotted and restored around the move. */
 	orderKey: string;
+	/** The siblings ahead of the slot at every level. */
+	aheadKey: string;
 	className?: string;
 	style?: CSSProperties | undefined;
 	/** Kept mounted while another tile is expanded: `inert` plus upstream's `rt` hide, never `display: none`. */
@@ -1054,14 +1093,15 @@ function TileSlot({
 		[contentHosts, tileId],
 	);
 	// Upstream's orderKey effect: React moves a reordered shell with insertBefore, which resets scroll and focus.
+	const nextAheadKey = useEffectEvent(() => aheadKey);
 	useLayoutEffect(() => {
 		const cell = cellRef.current;
 		if (cell === null) return undefined;
 		contentHosts.slotMoved(tileId, cell);
 		return () => {
-			contentHosts.slotWillMove(tileId, cell);
+			contentHosts.slotWillMove(tileId, cell, siblingMovedAhead(orderKey, aheadKey, nextAheadKey()));
 		};
-	}, [contentHosts, tileId, orderKey]);
+	}, [contentHosts, tileId, orderKey, aheadKey]);
 	return (
 		<div
 			data-tile-slot={tileId}
@@ -1331,7 +1371,7 @@ export function TileHost({
 				structureKey={structureKey(layout.root)}
 				liveTileIds={liveTileIds}
 			/>
-			<StackView stack={layout.root} path={[]} host={internal} />
+			<StackView stack={layout.root} path={[]} orderKey="" aheadKey="" host={internal} />
 			{mountedTiles.map((tileId) => (
 				<TileContent key={tileId} tileId={tileId} host={internal} chat={children} />
 			))}

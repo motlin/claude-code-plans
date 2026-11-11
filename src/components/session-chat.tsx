@@ -154,11 +154,9 @@ import {
 	readTranscriptMeasurements,
 	discardTranscriptMeasurements,
 	rememberTranscriptMeasurements,
-	rememberTranscriptHandoff,
-	takeTranscriptHandoff,
-	type TranscriptReadingAnchor,
 } from "../lib/transcript-measurements";
 import {ApiRequestDisclosure} from "./api-request-disclosure";
+import {registerScrollSetter} from "../lib/scroll-setter";
 import {
 	jumpToMessage,
 	TRANSCRIPT_JUMP_REQUEST_EVENT,
@@ -882,6 +880,11 @@ export const SessionChat = React.memo(function SessionChat({
 			resizeObserver.observe(scrollContentRef.current);
 		scrollEventTarget.addEventListener("scroll", updateFollowsEnd, {passive: true});
 		scrollEventTarget.addEventListener(TRANSCRIPT_RELEASE_END_FOLLOW_EVENT, cancelLayoutFollow);
+		// Upstream's transcript registers its gT setter, so a tile move's scroll restore updates follow at once.
+		const unregisterScrollSetter = registerScrollSetter(scroller, (top) => {
+			scroller.scrollTop = top;
+			updateFollowsEnd();
+		});
 		const inputs = [
 			["wheel", onWheel],
 			["keydown", onKeyDown],
@@ -902,6 +905,7 @@ export const SessionChat = React.memo(function SessionChat({
 		}
 		return () => {
 			resizeObserver.disconnect();
+			unregisterScrollSetter();
 			scrollEventTarget.removeEventListener("scroll", updateFollowsEnd);
 			scrollEventTarget.removeEventListener(TRANSCRIPT_RELEASE_END_FOLLOW_EVENT, cancelLayoutFollow);
 			for (const [type, handler] of inputs) scrollEventTarget.removeEventListener(type, handler, true);
@@ -3399,8 +3403,7 @@ function VirtualizedSessionEntries({
 	// reply into the reply-type prose CSS. User rows never carry it.
 	const replyType = useFizzyLake("type");
 	const managesTileGeometry = geometryReady !== undefined;
-	const handoffAttempted = useRef(false);
-	const pendingHandoff = useRef<Map<string, number> | null>(null);
+	const pendingGeometry = useRef<Map<string, number> | null>(null);
 	const listRef = useRef<HTMLDivElement>(null);
 	const scrollerRef = useRef<Element | null>(null);
 	const expansionStore = useProvidedContext(ExpansionStoreContext, "ExpansionStoreContext");
@@ -3413,12 +3416,9 @@ function VirtualizedSessionEntries({
 	});
 	const measuredHeightsRef = useRef(restoration.heights);
 	const reusableRef = useRef(true);
-	const handoffCompatibleRef = useRef(true);
 	const restoringRangeRef = useRef((restoration.saved?.range.startIndex ?? 0) > 0);
 	const savedRangeRef = useRef(restoration.saved?.range);
 	const measurementWidthRef = useRef(0);
-	const readingAnchorRef = useRef<TranscriptReadingAnchor | undefined>(undefined);
-	const handoffAnchorRef = useRef<TranscriptReadingAnchor | undefined>(undefined);
 	const scrollAnchorRef = useRef<ScrollAnchor | null>(null);
 	const prependAnchorRef = useRef<ScrollAnchor | null>(null);
 	const discardedGeometryRef = useRef<Map<string, number> | null>(null);
@@ -3440,67 +3440,29 @@ function VirtualizedSessionEntries({
 			: {startIndex: 0, endIndex: INITIAL_MOUNTED_TURN_COUNT};
 	});
 	useLayoutEffect(() => {
-		if (measurementSource !== restoration.source) {
-			reusableRef.current = false;
-			handoffCompatibleRef.current = false;
-		}
+		if (measurementSource !== restoration.source) reusableRef.current = false;
 	}, [measurementSource, restoration.source]);
 	useLayoutEffect(() => {
 		const list = listRef.current;
 		const source = restoration.source;
 		if (!list || source === undefined) return undefined;
 		const hidden = inHiddenTile(list);
-		let width = hidden
+		const width = hidden
 			? (restoration.saved?.width ?? measurementWidthRef.current)
 			: list.getBoundingClientRect().width;
-		// A nested pane move renders this instance before the old instance's
-		// cleanup retains its geometry. Claim that one same-commit handoff here.
-		if (managesTileGeometry && !handoffAttempted.current && !restoration.saved && expansionStore.size === 0) {
-			handoffAttempted.current = true;
-			const handoff = takeTranscriptHandoff(measurementKey, source);
-			const saved = handoff ?? readTranscriptMeasurements(measurementKey, source);
-			if (saved && (handoff || hidden || saved.width === width)) {
-				if (handoff && !hidden && saved.width !== width) {
-					handoffAnchorRef.current = handoff.anchor;
-				}
-				if (hidden) width = saved.width;
-				const heights = new Map(saved.heights);
-				pendingHandoff.current = heights;
-				measuredHeightsRef.current = heights;
-				savedRangeRef.current = saved.range;
-				restoringRangeRef.current = saved.range.startIndex > 0;
-				setMeasuredHeights(heights);
-				setRange(saved.range);
-			}
-		}
 		// Rendering only reads/clones. A committed mount owns the retained generation.
 		discardTranscriptMeasurements(measurementKey);
 		measurementWidthRef.current = width;
 		if (!hidden && restoration.saved && restoration.saved.width !== width) {
 			restoringRangeRef.current = false;
 			measuredHeightsRef.current = new Map();
-			if (managesTileGeometry) pendingHandoff.current = measuredHeightsRef.current;
+			if (managesTileGeometry) pendingGeometry.current = measuredHeightsRef.current;
 			discardedGeometryRef.current = measuredHeightsRef.current;
 			setMeasuredHeights(measuredHeightsRef.current);
 		}
 		return () => {
-			if (pendingHandoff.current) return;
+			if (pendingGeometry.current) return;
 			const savedRange = savedRangeRef.current;
-			if (
-				savedRange !== undefined &&
-				managesTileGeometry &&
-				handoffCompatibleRef.current &&
-				expansionStore.size === 0 &&
-				readingAnchorRef.current
-			) {
-				rememberTranscriptHandoff(measurementKey, {
-					width: inHiddenTile(list) ? measurementWidthRef.current : list.getBoundingClientRect().width,
-					heights: new Map(measuredHeightsRef.current),
-					range: savedRange,
-					source,
-					anchor: readingAnchorRef.current,
-				});
-			}
 			if (
 				savedRange === undefined ||
 				!reusableRef.current ||
@@ -3523,34 +3485,14 @@ function VirtualizedSessionEntries({
 	}, [measurementKey, restoration, expansionStore, managesTileGeometry]);
 
 	useLayoutEffect(() => {
-		if (!pendingHandoff.current || pendingHandoff.current === measuredHeights) savedRangeRef.current = range;
+		if (!pendingGeometry.current || pendingGeometry.current === measuredHeights) savedRangeRef.current = range;
 	}, [range, measuredHeights]);
 	useLayoutEffect(() => {
-		if (pendingHandoff.current && pendingHandoff.current !== measuredHeights) return;
-		const list = listRef.current;
-		if (handoffAnchorRef.current && pendingHandoff.current && list) {
-			// Measure the bounded carried window at its new width before restoring its
-			// record anchor. Later observer delivery must not compensate these rows twice.
-			const heights = new Map(measuredHeightsRef.current);
-			let changed = false;
-			for (const row of list.querySelectorAll<HTMLElement>("[data-transcript-entry-index]")) {
-				const entry = entries[Number(row.dataset["transcriptEntryIndex"])];
-				if (!entry) continue;
-				const height = row.getBoundingClientRect().height;
-				if (heights.get(entry.key) !== height) changed = true;
-				heights.set(entry.key, height);
-			}
-			if (changed) {
-				measuredHeightsRef.current = heights;
-				pendingHandoff.current = heights;
-				setMeasuredHeights(heights);
-				return;
-			}
-		}
-		pendingHandoff.current = null;
+		if (pendingGeometry.current && pendingGeometry.current !== measuredHeights) return;
+		pendingGeometry.current = null;
 		if (listRef.current !== null && inHiddenTile(listRef.current)) return;
 		geometryReady?.();
-	}, [geometryReady, measuredHeights, range, entries]);
+	}, [geometryReady, measuredHeights, range]);
 
 	// An earlier page landing prepends rows, which moves every window index. Translate the window
 	// to the same records in this render and re-read the reader's row from the painted DOM, so the
@@ -3601,7 +3543,7 @@ function VirtualizedSessionEntries({
 	 * height differs from its estimate, or a mounted row resizing, moves everything
 	 * after it; the transcript scroller opts out of native scroll anchoring, so put
 	 * that row back before the browser paints the move. Returns false while a jump,
-	 * focus move or geometry handoff owns the scroll position.
+	 * focus move or pending geometry owns the scroll position.
 	 */
 	const holdScrollAnchor = useCallback((): boolean => {
 		const list = listRef.current;
@@ -3611,8 +3553,7 @@ function VirtualizedSessionEntries({
 			!scroller ||
 			pendingJumpRef.current !== null ||
 			pendingFocusIndexRef.current !== null ||
-			pendingHandoff.current ||
-			handoffAnchorRef.current ||
+			pendingGeometry.current ||
 			inHiddenTile(list)
 		) {
 			// The scroll subscription re-attaches the scroller later in the same commit (whenever the
@@ -3659,17 +3600,6 @@ function VirtualizedSessionEntries({
 		const listTop = list.getBoundingClientRect().top;
 		const viewportStart = Math.max(0, viewport.top - listTop);
 		const viewportEnd = Math.max(viewportStart, viewport.top + viewport.height - listTop);
-		const anchorIndex = entryIndexAtOffset(prefixHeights, viewportStart);
-		const row = list.querySelector<HTMLElement>(`[data-transcript-entry-index="${anchorIndex}"]`);
-		const anchorEntry = entries[anchorIndex];
-		if (row && anchorEntry !== undefined) {
-			const {scrollTop, scrollHeight, clientHeight} = scrollMetrics(scroller);
-			readingAnchorRef.current = {
-				entryKey: anchorEntry.key,
-				offset: row.getBoundingClientRect().top - viewport.top,
-				atEnd: scrollHeight - scrollTop - clientHeight <= END_FOLLOW_THRESHOLD_PIXELS,
-			};
-		}
 		const nextRange = rangeForViewport(prefixHeights, viewportStart, viewportEnd);
 		setRange((current) =>
 			current.startIndex === nextRange.startIndex && current.endIndex === nextRange.endIndex
@@ -3762,30 +3692,7 @@ function VirtualizedSessionEntries({
 	}, [entries, range.startIndex, range.endIndex, managesTileGeometry, holdScrollAnchor, restoration.source]);
 
 	useLayoutEffect(() => {
-		const scroller = scrollerRef.current;
-		const anchor = handoffAnchorRef.current;
-		const list = listRef.current;
-		if (anchor && !pendingHandoff.current && scroller) {
-			const index = entries.findIndex((entry) => entry.key === anchor.entryKey);
-			const row = list?.querySelector<HTMLElement>(`[data-transcript-entry-index="${index}"]`);
-			if (row && list) {
-				scroller.scrollTop = anchor.atEnd
-					? scroller.scrollHeight
-					: scroller.scrollTop +
-						row.getBoundingClientRect().top -
-						scrollerViewport(scroller).top -
-						anchor.offset;
-				const viewport = scrollerViewport(scroller);
-				const start = Math.max(0, viewport.top - list.getBoundingClientRect().top);
-				const nextRange = rangeForViewport(prefixHeights, start, start + viewport.height);
-				if (nextRange.startIndex !== range.startIndex || nextRange.endIndex !== range.endIndex) {
-					pendingHandoff.current = measuredHeights;
-					setRange(nextRange);
-					return;
-				}
-			}
-			handoffAnchorRef.current = undefined;
-		} else if (
+		if (
 			rangeSyncInputsRef.current.heights === measuredHeights &&
 			rangeSyncInputsRef.current.update === updateVisibleRange
 		) {
@@ -3796,7 +3703,7 @@ function VirtualizedSessionEntries({
 		}
 		rangeSyncInputsRef.current = {heights: measuredHeights, update: updateVisibleRange};
 		updateVisibleRange();
-	}, [measuredHeights, updateVisibleRange, entries, prefixHeights, range]);
+	}, [measuredHeights, updateVisibleRange]);
 
 	useEffect(() => {
 		function requestJump(event: Event) {
@@ -3973,10 +3880,8 @@ function VirtualizedSessionEntries({
 				// Upstream's feedKeyboardNav scroll margins (on its scroller; the feed matches the same articles).
 				className="[&_[role=article]]:[scroll-margin-top:calc(max(var(--epitaxy-top-fade-height,0px),var(--fade-top,0px))+8px)] [&_[role=article]]:[scroll-margin-bottom:calc(max(var(--epitaxy-bottom-fade-height,0px)-var(--epitaxy-foot-reserve,0px),0px)+8px)]"
 				onClickCapture={(event) => {
-					if (event.target instanceof Element && event.target.closest("[aria-expanded],summary")) {
+					if (event.target instanceof Element && event.target.closest("[aria-expanded],summary"))
 						reusableRef.current = false;
-						handoffCompatibleRef.current = false;
-					}
 				}}
 			>
 				<div className="sr-only">Use the up and down arrow keys to move between messages</div>
