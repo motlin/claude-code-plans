@@ -207,6 +207,63 @@ describe("QuestionCard question text, as upstream's code chip and TextLink heade
 			"Run x [U+202E] now",
 		]);
 	});
+	it("paints markdown links and Slack-style tokens as upstream's yr does under the header's Zt paint", () => {
+		const titleHtml = (question: string) => {
+			render(<QuestionCard questions={[{question, options: [{label: "Yes"}]}]} onSubmit={async () => {}} />);
+			const html =
+				document.querySelector("[data-approval-card-root]")!.firstElementChild!.firstElementChild!.innerHTML;
+			cleanup();
+			return html;
+		};
+		const link = (href: string, children: string) =>
+			`<a href="${href}" target="_blank" rel="noreferrer" dir="ltr" class="cds-reset text-link inline cursor-pointer">${children}</a>`;
+		const host = (shown: string) => `<span dir="ltr" class="opacity-70"> (→ ${shown})</span>`;
+		const pill = `<span class="inline-flex items-center px-0.75 rounded-full bg-alpha-1 font-medium [overflow-wrap:anywhere]">`;
+
+		expect(
+			[
+				"See [the docs](https://example.com/docs) or https://example.com/a",
+				"Open [example.com](https://example.com/x) and [Example.com:443/y](https://example.com/y)",
+				"Open [http://example.com](https://example.com) or [a](https://example.com:8443/b)",
+				"Open [a‮b](https://example.com/c) or [x](https://a:b:c)",
+				`Key [ghp_${"A".repeat(36)}](https://example.com/k)?`,
+				"Ping <@U12345678|alice> in <#C12345678> about [it](https://example.com/i)",
+			].map(titleHtml),
+		).toStrictEqual([
+			`See ${link("https://example.com/docs", `<bdi>the docs</bdi>${host("example.com")}`)} or ${link("https://example.com/a", "https://example.com/a")}`,
+			`Open ${link("https://example.com/x", "<bdi>example.com</bdi>")} and ${link("https://example.com/y", "<bdi>Example.com:443/y</bdi>")}`,
+			`Open ${link("https://example.com/", `<bdi>http://example.com</bdi>${host("https://example.com")}`)} or ${link("https://example.com:8443/b", `<bdi>a</bdi>${host("example.com:8443")}`)}`,
+			`Open ${link("https://example.com/c", `<bdi>ab</bdi>${host("example.com")}`)} or [x](https://a:b:c)`,
+			`Key ${link("https://example.com/k", `<bdi>ghp_AAAA${"•".repeat(32)}</bdi>${host("example.com")}`)}?`,
+			`Ping ${pill}@alice</span> in ${pill}#C12345678</span> about ${link("https://example.com/i", `<bdi>it</bdi>${host("example.com")}`)}`,
+		]);
+	});
+	it("ends a masked link label word with upstream's left-to-right mark and lets token pills pick their direction on a right-to-left page", () => {
+		document.documentElement.dir = "rtl";
+		try {
+			render(
+				<QuestionCard
+					questions={[
+						{
+							question: `Key [ghp_${"A".repeat(36)}](https://example.com/k) <@U12345678>`,
+							options: [{label: "Yes"}],
+						},
+					]}
+					onSubmit={async () => {}}
+				/>,
+			);
+			const title = document.querySelector("[data-approval-card-root]")!.firstElementChild!.firstElementChild!;
+			expect({
+				label: title.querySelector("bdi")!.innerHTML,
+				pill: title.querySelector("span.rounded-full")!.getAttribute("dir"),
+			}).toStrictEqual({
+				label: `<span class="after:content-['\\200E']">ghp_AAAA${"•".repeat(32)}</span>`,
+				pill: "auto",
+			});
+		} finally {
+			document.documentElement.removeAttribute("dir");
+		}
+	});
 });
 
 describe("QuestionCard Skip while read-only, as upstream's disabled cds Button", () => {

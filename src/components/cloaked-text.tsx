@@ -1,19 +1,36 @@
 import {Fragment, type ReactNode} from "react";
 
-import {findSecrets, type SecretMatch} from "../lib/secret-mask";
+import {pageIsRtl} from "../lib/page-direction";
+import {findSecrets, maskSecrets, type SecretMatch} from "../lib/secret-mask";
 import {revealSpoofing} from "../lib/visible-text";
 import {SecretCloak} from "./secret-cloak";
 
-/** Upstream's `qM` (shared-41): each line break drawn as a `<br>`. */
-function withBreaks(text: string, key: string): ReactNode {
+/** Upstream's `qM` (shared-41): each line break drawn as a `<br>`, each line through `paintLine` when given. */
+function withBreaks(text: string, key: string, paintLine?: (line: string) => ReactNode): ReactNode {
 	const lines = text.split(/\r\n?|\n/);
-	if (lines.length === 1) return text;
+	if (lines.length === 1) return paintLine === undefined ? text : paintLine(text);
 	return lines.map((line, index) => (
 		<Fragment key={`${key}-${index}`}>
 			{index > 0 && <br />}
-			{line}
+			{paintLine === undefined ? line : paintLine(line)}
 		</Fragment>
 	));
+}
+
+/** Upstream's `E` (cb557955f): a word ending in 7+ bullets, as masking leaves a secret. */
+const MASKED_WORD = /((?<![^\s\u2022])[^\s\u2022]+\u2022{7,})/;
+
+/** Upstream's `D`: on a right-to-left page, a masked word holding a letter ends in a left-to-right mark. */
+function markMaskedWords(line: string): ReactNode {
+	return line.split(MASKED_WORD).map((part, index) =>
+		index % 2 === 1 && /[a-z]/i.test(part) ? (
+			<span key={index} className={String.raw`after:content-['\200E']`}>
+				{part}
+			</span>
+		) : (
+			part
+		),
+	);
 }
 
 /** Private-use ranges upstream's `k` searches for a separator the text does not hold. */
@@ -53,12 +70,15 @@ function revealedRuns(text: string, secrets: readonly SecretMatch[]): string[] |
 }
 
 /**
- * Upstream's interactive cloak paint with `revealCloaks` (cb557955f `w`): text without a secret as `u9` of it,
- * otherwise each secret behind its own reveal button and the runs between shown through `u9`; line breaks drawn.
+ * Upstream's cloak paint with `revealCloaks` (cb557955f `w`): text without a secret as `u9` of it, otherwise each
+ * secret behind its own reveal button and the runs between shown through `u9`; line breaks drawn. With
+ * `nonInteractive`, `u9` of the masked text, without buttons.
  */
-export function CloakedText({text}: {text: string}) {
+export function CloakedText({text, nonInteractive = false}: {text: string; nonInteractive?: boolean}) {
 	const secrets = findSecrets(text);
 	if (secrets.length === 0) return <>{withBreaks(revealSpoofing(text), "t")}</>;
+	if (nonInteractive)
+		return <>{withBreaks(revealSpoofing(maskSecrets(text)), "t", pageIsRtl() ? markMaskedWords : undefined)}</>;
 	const runs = revealedRuns(text, secrets);
 	const nodes: ReactNode[] = [];
 	let cursor = 0;

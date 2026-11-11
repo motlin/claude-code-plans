@@ -1,6 +1,8 @@
 import {Fragment, lazy, type ReactNode, Suspense} from "react";
 
 import {defined} from "../lib/defined";
+import {BIDI_CONTROLS, MARKDOWN_LINK, markdownLinkTarget, SLACK_TOKEN} from "../lib/markdown-link";
+import {pageIsRtl} from "../lib/page-direction";
 import {maskSecrets, maskUrlSecrets} from "../lib/secret-mask";
 import {revealSpoofing} from "../lib/visible-text";
 import {CloakedText} from "./cloaked-text";
@@ -141,28 +143,88 @@ function chipPlainText(text: string): string {
 
 type Paint = (part: string, at: number) => ReactNode[];
 
+/** Upstream's `ja` (cf6507c5a): an http(s) URL the `yr` paint links. */
+const PAINT_URL = /https?:\/\/[^\s<>"]+/g;
+
+/** Upstream's TextLink anchor (`m` rendering an `a`), as `pr` draws a live link. */
+function TextLink({href, children}: {href: string; children: ReactNode}) {
+	return (
+		<a href={href} target="_blank" rel="noreferrer" dir="ltr" className="cds-reset text-link inline cursor-pointer">
+			{children}
+		</a>
+	);
+}
+
+/** Upstream's `Qn` (cbb72cde9): the pill `tr` draws a Slack-style token in. */
+const TOKEN_PILL_CLASS =
+	"inline-flex items-center px-0.75 rounded-full bg-alpha-1 font-medium [overflow-wrap:anywhere]";
+
 /**
- * Upstream's `yr` paint with `revealCloaks` (cbb72cde9, as the question header's `Zt` calls it): each URL a
- * TextLink drawn as `u9` of its masked form (`$2`), every other run cloaked.
+ * Upstream's `yr` (cbb72cde9) as the question header's `Zt` calls it (c2f6611a3): `revealCloaks` and
+ * model-authored, with no people mentions, session mentions or conversation links passed. First Slack-style
+ * `<@…>` / `<#…>` tokens as `tr` pills, then `[label](url)` markdown links as TextLinks whose label is the
+ * non-interactive cloak paint in a `bdi` with the host disclosed (`_r`), then bare URLs as TextLinks drawn as
+ * `u9` of their masked form (`$2`); every other run cloaked.
  */
 const cloakPaint: Paint = (part, at) => {
+	const pieces = (from: number, to: number) => cloakPaint(part.slice(from, to), at + from);
+	if (part.includes("<@") || part.includes("<#")) {
+		const nodes: ReactNode[] = [];
+		let cursor = 0;
+		for (const match of part.matchAll(SLACK_TOKEN)) {
+			if (match.index > cursor) nodes.push(...pieces(cursor, match.index));
+			nodes.push(
+				<span key={`${at}-s${match.index}`} dir={pageIsRtl() ? "auto" : undefined} className={TOKEN_PILL_CLASS}>
+					{match[1]}
+					<CloakedText text={match[3] ?? match[2] ?? ""} />
+				</span>,
+			);
+			cursor = match.index + match[0].length;
+		}
+		if (cursor > 0) {
+			if (cursor < part.length) nodes.push(...pieces(cursor, part.length));
+			return nodes;
+		}
+	}
+	if (part.includes("](")) {
+		const nodes: ReactNode[] = [];
+		let cursor = 0;
+		for (const match of part.matchAll(MARKDOWN_LINK)) {
+			if (match.index > cursor) nodes.push(...pieces(cursor, match.index));
+			const label = (match[1] ?? "").replace(BIDI_CONTROLS, "");
+			const target = markdownLinkTarget(label, match[2] ?? "");
+			nodes.push(
+				target.kind === "plain" ? (
+					<CloakedText key={`${at}-m${match.index}`} text={match[0]} />
+				) : (
+					<TextLink key={`${at}-m${match.index}`} href={target.href}>
+						<bdi>
+							<CloakedText text={label} nonInteractive />
+						</bdi>
+						{target.discloseHost !== null && (
+							<span dir="ltr" className="opacity-70">{` (\u2192 ${target.discloseHost})`}</span>
+						)}
+					</TextLink>
+				),
+			);
+			cursor = match.index + match[0].length;
+		}
+		if (cursor > 0) {
+			if (cursor < part.length) nodes.push(...pieces(cursor, part.length));
+			return nodes;
+		}
+	}
+	if (!part.includes("://")) return [<CloakedText key={`${at}-t`} text={part} />];
 	const nodes: ReactNode[] = [];
 	let cursor = 0;
-	for (const match of part.matchAll(URL_PATTERN)) {
+	for (const match of part.matchAll(PAINT_URL)) {
 		const url = trimUrl(match[0]);
 		if (match.index > cursor)
 			nodes.push(<CloakedText key={`${at}-t${cursor}`} text={part.slice(cursor, match.index)} />);
 		nodes.push(
-			<a
-				key={`${at}-u${match.index}`}
-				href={url}
-				target="_blank"
-				rel="noreferrer"
-				dir="ltr"
-				className="cds-reset text-link inline cursor-pointer"
-			>
+			<TextLink key={`${at}-u${match.index}`} href={url}>
 				{revealSpoofing(maskUrlSecrets(url))}
-			</a>,
+			</TextLink>,
 		);
 		cursor = match.index + url.length;
 	}
