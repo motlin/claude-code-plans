@@ -646,13 +646,18 @@ it.each([false, true])(
 		fireEvent.click(screen.getByRole("button", {name: "Expand"}));
 		const hiddenHost = actualScrollport();
 		expect(hiddenHost).toBe(moved);
+		// Upstream rt keeps the inert tile's box, and content-visibility keeps its rendering state.
 		expect({
-			hidden: hiddenHost.closest("[hidden]") !== null,
-			height: hiddenHost.clientHeight,
-			width: hiddenHost.getBoundingClientRect().width,
-			scrollHeight: hiddenHost.scrollHeight,
-		}).toStrictEqual({hidden: true, height: 0, width: 0, scrollHeight: 0});
+			hiddenAttr: hiddenHost.closest("[hidden]") !== null,
+			inert: hiddenHost.closest("[data-tile-host][inert]") !== null,
+		}).toStrictEqual({hiddenAttr: false, inert: true});
+		// The inert wrap sits at inset 0 of its stack, so a forced read sees another width; that is no new measurement.
+		const restingWidth = hostWidths.get(hiddenHost);
+		widthDependentRows = true;
+		hostWidths.set(hiddenHost, 640);
 		await settleFresh(hiddenHost);
+		widthDependentRows = false;
+		if (restingWidth !== undefined) hostWidths.set(hiddenHost, restingWidth);
 		expect(mountedRows(hiddenHost)).toStrictEqual(beforeRows);
 		expect({
 			paneCount: screen.getAllByText("Alice pane").length,

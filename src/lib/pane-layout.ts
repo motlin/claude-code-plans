@@ -236,6 +236,25 @@ function tileIds(node: LayoutNode): TileId[] {
 	return node.kind === "tile" ? [node.tileId] : node.children.flatMap(tileIds);
 }
 
+/**
+ * Upstream cc43287c9 `q9` (`file` → files, `diff` → changes): tiles kept mounted,
+ * hidden, while another tile is expanded; every other tile unmounts. The tabbed
+ * side panel's `Y9` extras (plan, tasks, preview) wait for side-panel-tabbed-mode.
+ */
+export const TILES_KEPT_WHILE_EXPANDED: ReadonlySet<TileId> = new Set<TileId>(["chat", "files", "terminal", "changes"]);
+
+/** Upstream cc43287c9 `hiddenTileIds`: the kept tiles other than the expanded one. */
+export function hiddenWhileExpanded(root: StackNode, expanded: PaneKind | null): ReadonlySet<TileId> {
+	if (expanded === null) return new Set();
+	return new Set(tileIds(root).filter((id) => id !== expanded && TILES_KEPT_WHILE_EXPANDED.has(id)));
+}
+
+/** Upstream cf53e1812 `z`: a tile is hidden when in `hidden` or unmounted; a stack when every child is. */
+export function isNodeHidden(node: LayoutNode, hidden: ReadonlySet<TileId>, mounted: (id: TileId) => boolean): boolean {
+	if (node.kind === "tile") return hidden.has(node.tileId) || !mounted(node.tileId);
+	return node.children.every((child) => isNodeHidden(child, hidden, mounted));
+}
+
 function isOpen(state: PaneLayoutState, tileId: TileId): boolean {
 	return tileIds(state.root).includes(tileId);
 }

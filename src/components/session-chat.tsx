@@ -366,6 +366,15 @@ const NO_SUBAGENTS: Subagent[] = [];
 const EMPTY_SLASH_COMMANDS: readonly SlashCommand[] = [];
 const END_FOLLOW_THRESHOLD_PIXELS = 32;
 
+/**
+ * Whether the transcript sits in a tile hidden while another pane is expanded: inert and visibility-hidden
+ * (upstream rt) or an older `[hidden]` wrapper. Its rectangles are not row measurements. Once
+ * tile-host-guest-layer moves `inert` to the wrap above the host, add `[inert] [data-tile-host]`.
+ */
+function inHiddenTile(el: Element): boolean {
+	return el.closest("[hidden], [data-tile-host][inert]") !== null;
+}
+
 function isDocumentScrollContainer(scroller: Element): boolean {
 	return scroller === document.documentElement || scroller === document.scrollingElement;
 }
@@ -3440,7 +3449,7 @@ function VirtualizedSessionEntries({
 		const list = listRef.current;
 		const source = restoration.source;
 		if (!list || source === undefined) return undefined;
-		const hidden = list.closest("[hidden]") !== null;
+		const hidden = inHiddenTile(list);
 		let width = hidden
 			? (restoration.saved?.width ?? measurementWidthRef.current)
 			: list.getBoundingClientRect().width;
@@ -3485,7 +3494,7 @@ function VirtualizedSessionEntries({
 				readingAnchorRef.current
 			) {
 				rememberTranscriptHandoff(measurementKey, {
-					width: list.closest("[hidden]") ? measurementWidthRef.current : list.getBoundingClientRect().width,
+					width: inHiddenTile(list) ? measurementWidthRef.current : list.getBoundingClientRect().width,
 					heights: new Map(measuredHeightsRef.current),
 					range: savedRange,
 					source,
@@ -3496,7 +3505,7 @@ function VirtualizedSessionEntries({
 				savedRange === undefined ||
 				!reusableRef.current ||
 				expansionStore.size !== 0 ||
-				(!list.closest("[hidden]") && list.getBoundingClientRect().width !== measurementWidthRef.current)
+				(!inHiddenTile(list) && list.getBoundingClientRect().width !== measurementWidthRef.current)
 			) {
 				discardTranscriptMeasurements(measurementKey);
 				return;
@@ -3539,7 +3548,7 @@ function VirtualizedSessionEntries({
 			}
 		}
 		pendingHandoff.current = null;
-		if (listRef.current?.closest("[hidden]")) return;
+		if (listRef.current !== null && inHiddenTile(listRef.current)) return;
 		geometryReady?.();
 	}, [geometryReady, measuredHeights, range, entries]);
 
@@ -3604,7 +3613,7 @@ function VirtualizedSessionEntries({
 			pendingFocusIndexRef.current !== null ||
 			pendingHandoff.current ||
 			handoffAnchorRef.current ||
-			list.closest("[hidden]")
+			inHiddenTile(list)
 		) {
 			// The scroll subscription re-attaches the scroller later in the same commit (whenever the
 			// measured heights change), and the reader's row waits for it like a landed page does.
@@ -3715,8 +3724,8 @@ function VirtualizedSessionEntries({
 		const list = listRef.current;
 		if (!list || typeof ResizeObserver === "undefined") return undefined;
 		const observer = new ResizeObserver((observations) => {
-			// Expanded panes hide chat with display:none; zero rectangles are not new row measurements.
-			if (list.closest("[hidden]")) return;
+			// Expanded panes make chat inert and visibility-hidden; its rectangles are not new row measurements.
+			if (inHiddenTile(list)) return;
 			let changed = false;
 			for (const observation of observations) {
 				if (observation.target === list) {

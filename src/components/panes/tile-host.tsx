@@ -26,6 +26,7 @@ import {
 	expandPane,
 	fitPhoneLayout,
 	focusPane,
+	hiddenWhileExpanded,
 	leftEdgeTiles,
 	loadLastPaneFlex,
 	loadPaneLayout,
@@ -83,6 +84,17 @@ const UNMEASURED_MIN_HEIGHT_PX = 100;
 const PHONE_EXPANDED_SLOT_CLASSES = "fixed inset-0 z-40 w-full h-dvh";
 /** Upstream's expanded pane: maximised over the sidebar and titlebar, 9px in from the window edge. */
 const EXPANDED_SLOT_CLASSES = "fixed inset-[9px] z-40";
+/**
+ * Upstream ca67f2c9d `rt`: a tile kept mounted while another is expanded leaves the flow but keeps its box,
+ * and content-visibility keeps its rendering state (scroll offsets) without painting it.
+ */
+const HIDDEN_TILE_STYLE = {
+	position: "absolute",
+	inset: 0,
+	visibility: "hidden",
+	contentVisibility: "hidden",
+	pointerEvents: "none",
+} as const satisfies CSSProperties;
 
 type LayoutUpdate = (state: PaneLayoutState) => PaneLayoutState;
 
@@ -111,6 +123,8 @@ interface InternalHost {
 	movingTile: TileId | null;
 	setMovingTile: (tileId: TileId | null) => void;
 	expanded: PaneKind | null;
+	/** Upstream `hiddenTileIds`: kept tiles other than the expanded one, mounted but inert and hidden. */
+	hidden: ReadonlySet<TileId>;
 	phone: boolean;
 	/** The root row, measured when a pane opens so Changes can be sized to its minimum. */
 	rootRef: RefObject<HTMLDivElement | null>;
@@ -700,7 +714,8 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 		toggleRef.current?.focus();
 	}, [isExpanded, kind, host.collapsedRef]);
 
-	const moveHandle = isExpanded ? null : <MoveHandle tileId={kind} host={host} />;
+	// Upstream renders no drag-line affordance on a hidden tile.
+	const moveHandle = isExpanded || host.hidden.has(kind) ? null : <MoveHandle tileId={kind} host={host} />;
 	// Upstream joins the pane's target ids into `resetOn`, so pointing the pane elsewhere clears a crash.
 	const crashResetKey = `${kind}:${definition.resetKey ?? ""}`;
 
@@ -897,7 +912,7 @@ function NodeView({
 		);
 	}
 	if (node.tileId === "chat") {
-		const hidden = host.expanded !== null;
+		const hidden = host.hidden.has("chat");
 		// Upstream's line-mode tile shell (shared-20 `it`): 8px at the bottom, and 8px on a side the chat touches
 		// without a gutter attribute. Not on a phone until a live 390px read shows upstream insets there.
 		const gutters = layered ? chatGutters(host.layout.root) : null;
@@ -948,10 +963,12 @@ function NodeView({
 			</TileSlot>
 		);
 	}
-	if (host.expanded !== null && host.expanded !== node.tileId) return null;
+	const expanded = host.expanded === node.tileId;
+	const hidden = host.hidden.has(node.tileId);
+	// Upstream's solo layout drops every tile that is neither expanded nor kept (`q9`), so it unmounts.
+	if (host.expanded !== null && !expanded && !hidden) return null;
 	const definition = host.definitions.get(node.tileId);
 	if (definition === undefined) return null;
-	const expanded = host.expanded === node.tileId;
 	return (
 		<TileSlot
 			tileId={node.tileId}
@@ -964,6 +981,7 @@ function NodeView({
 						: slotClass
 			}
 			style={expanded ? undefined : style}
+			hidden={hidden}
 			phone={expanded ? host.phone : phone}
 			{...(expanded ? {"data-pane-overlay": true} : {})}
 		>
@@ -1010,6 +1028,7 @@ function TileSlot({
 	host: InternalHost;
 	className?: string;
 	style?: CSSProperties | undefined;
+	/** Kept mounted while another tile is expanded: `inert` plus upstream's `rt` hide, never `display: none`. */
 	hidden?: boolean;
 	phone?: boolean;
 	children: ReactNode;
@@ -1022,8 +1041,9 @@ function TileSlot({
 		<div
 			data-tile-host={tileId}
 			className={className}
-			style={style}
-			hidden={hidden}
+			// Upstream wt: the hide merges after the flex and floors, with the solo layout's min-width 0.
+			style={hidden ? {...style, minWidth: 0, ...HIDDEN_TILE_STYLE} : style}
+			inert={hidden}
 			onPointerDownCapture={focus}
 			onFocusCapture={focus}
 			{...(phone ? {"data-pane-phone": ""} : {})}
@@ -1111,6 +1131,7 @@ export function TileHost({
 			movingTile,
 			setMovingTile,
 			expanded: layout.expanded,
+			hidden: hiddenWhileExpanded(layout.root, layout.expanded),
 			phone,
 			rootRef,
 			rootSize,

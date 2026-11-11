@@ -416,14 +416,19 @@ describe("TileHost", () => {
 		openTestPane();
 		const chatTile = document.querySelector<HTMLElement>("[data-tile-host=chat]");
 		press({key: "|", code: "Backslash", metaKey: true, shiftKey: true});
+		const chatState = () => ({
+			hidden: chatTile?.hidden,
+			inert: chatTile?.hasAttribute("inert"),
+			style: chatTile?.getAttribute("style"),
+		});
 		const expanded = {
-			chatHidden: chatTile?.hidden,
+			chat: chatState(),
 			overlay: document.querySelector("[data-pane-overlay]") !== null,
 			toggle: screen.queryByRole("button", {name: "Collapse"}) !== null,
 		};
 		press({key: "|", code: "Backslash", metaKey: true, shiftKey: true});
 		const collapsed = {
-			chatHidden: chatTile?.hidden,
+			chat: chatState(),
 			overlay: document.querySelector("[data-pane-overlay]") !== null,
 			toggle: screen.queryByRole("button", {name: "Collapse"}) !== null,
 		};
@@ -435,8 +440,24 @@ describe("TileHost", () => {
 			calls: onExpandWithoutPane.mock.calls.length,
 		}).toStrictEqual({
 			callsWithoutPane: 1,
-			expanded: {chatHidden: true, overlay: true, toggle: true},
-			collapsed: {chatHidden: false, overlay: false, toggle: false},
+			expanded: {
+				chat: {
+					hidden: false,
+					inert: true,
+					style: "flex: 1.332777 1 0px; min-width: 0px; min-height: 100px; --tiles-padding: 8px; --tile-shell-ground: var(--color-page); position: absolute; inset: 0px; visibility: hidden; content-visibility: hidden; pointer-events: none;",
+				},
+				overlay: true,
+				toggle: true,
+			},
+			collapsed: {
+				chat: {
+					hidden: false,
+					inert: false,
+					style: "flex: 1.332777 1 0px; min-width: 100px; min-height: 100px; --tiles-padding: 8px; --tile-shell-ground: var(--color-page);",
+				},
+				overlay: false,
+				toggle: false,
+			},
 			calls: 1,
 		});
 	});
@@ -525,14 +546,14 @@ describe("TileHost", () => {
 				left: reader.scrollLeft,
 				draft: draft.value,
 				open: disclosure.open,
-				chatHidden: chat.hidden,
+				chatInert: chat.hasAttribute("inert"),
 				readers: screen.getAllByTestId("pane-reader").length,
 			}).toStrictEqual({
 				top: 300,
 				left: 100,
 				draft: "Alice's draft",
 				open: true,
-				chatHidden: toggle === "Expand",
+				chatInert: toggle === "Expand",
 				readers: 1,
 			});
 		}
@@ -1185,6 +1206,23 @@ describe("TileHost corner handle", () => {
 		fireEvent.click(within(files).getByRole("button", {name: "Collapse"}));
 		expect(screen.getByRole("region", {name: "Background tasks"})).not.toBe(tasks);
 		expect(screen.getByRole("region", {name: "Files"})).toBe(files);
+
+		// Upstream q9 keeps Files mounted, inert and hidden, while another pane is expanded.
+		const tasksAgain = screen.getByRole("region", {name: "Background tasks"});
+		fireEvent.click(within(tasksAgain).getByRole("button", {name: "Expand"}));
+		const filesSlot = document.querySelector<HTMLElement>("[data-tile-host=files]");
+		expect({
+			// Inert content has no accessible name, so find the same section through its slot.
+			files: filesSlot?.querySelector("[data-pane-root]") === files,
+			inert: filesSlot?.hasAttribute("inert"),
+			hidden: filesSlot?.hidden,
+			overlays: document.querySelectorAll("[data-pane-overlay]").length,
+		}).toStrictEqual({files: true, inert: true, hidden: false, overlays: 1});
+		fireEvent.click(within(tasksAgain).getByRole("button", {name: "Collapse"}));
+		expect({
+			files: screen.getByRole("region", {name: "Files"}) === files,
+			inert: filesSlot?.hasAttribute("inert"),
+		}).toStrictEqual({files: true, inert: false});
 	});
 
 	it("stacks a column divider one z-index above the root divider, marked data-starts-at-divider, with upstream's 7px upward hit zone", () => {

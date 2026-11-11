@@ -17,6 +17,9 @@ import {
 	defaultPaneLayout,
 	expandPane,
 	focusPane,
+	hiddenWhileExpanded,
+	isNodeHidden,
+	TILES_KEPT_WHILE_EXPANDED,
 	loadChangesScope,
 	loadPaneLayout,
 	loadSubagentPaneAgent,
@@ -467,6 +470,27 @@ describe("expand / collapse / focus", () => {
 	it("focuses open tiles only", () => {
 		expect(focusPane(TWO_PANES, "chat")).toEqual({...TWO_PANES, focused: "chat"});
 		expect(focusPane(TWO_PANES, "files")).toBe(TWO_PANES);
+	});
+});
+
+describe("hidden tiles while a pane is expanded (upstream cc43287c9 q9, cf53e1812 z)", () => {
+	const columnStack = stack("column", 1, [tile("files", 1), tile("changes", 1)]);
+	const root = stack("row", 1, [tile("chat", 2), columnStack, tile("plan", 1)]);
+
+	it("keeps chat, files, terminal and changes mounted while another tile is solo", () => {
+		expect([...TILES_KEPT_WHILE_EXPANDED].toSorted()).toStrictEqual(["changes", "chat", "files", "terminal"]);
+	});
+
+	it("hides the kept tiles other than the expanded one and drops the rest", () => {
+		expect(hiddenWhileExpanded(root, "changes")).toStrictEqual(new Set(["chat", "files"]));
+		expect(hiddenWhileExpanded(root, null)).toStrictEqual(new Set());
+	});
+
+	it("counts a stack as hidden when every child is hidden or unmounted", () => {
+		const mounted = (id: TileId) => id !== "plan";
+		expect(isNodeHidden(columnStack, new Set(["files", "changes"]), mounted)).toBe(true);
+		expect(isNodeHidden(columnStack, new Set(["files"]), mounted)).toBe(false);
+		expect(isNodeHidden(stack("column", 1, [tile("plan", 1)]), new Set(), mounted)).toBe(true);
 	});
 });
 
