@@ -1203,6 +1203,8 @@ html[data-interface-font="dyslexic"] {
 	--settings-muted: var(--upstream-text-secondary);
 	/* Upstream `--cds-fizzy-lake-color-placeholder`, the same in both modes. */
 	--upstream-placeholder: #878787;
+	/* Upstream `--cds-fizzy-lake-color-solid-muted` (--cds-gray-400), the same in both modes: the running Pulse's ink. */
+	--cds-fizzy-lake-color-solid-muted: #878787;
 	/* Upstream `data-page-bg=surface-1`: the page is surface-1 (#fff / #191919). */
 	--upstream-page: var(--upstream-surface-1);
 	/* Upstream `--cds-fizzy-lake-color-sidebar` and the sidebar's `--cds-fizzy-lake-color-seam` end border. */
@@ -3219,18 +3221,12 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	}
 }
 
-/* The session row's running dot (awaiting and ready are cds Pulses, src/components/status-dot.tsx). */
-.status-dot[data-kind="running"] {
-	position: relative;
-	display: block;
-	width: 6px;
-	height: 6px;
-	border-radius: 50%;
-	background: var(--color-ink-muted);
-	animation: dot-blink 1.2s ease-in-out infinite;
+/* Upstream `.df-tab-dot-running`: the session row's running Pulse blinks (src/components/status-dot.tsx). */
+.df-tab-dot-running {
+	animation: dframe-dot-blink 1.2s ease-in-out infinite;
 }
 
-@keyframes dot-blink {
+@keyframes dframe-dot-blink {
 	0%,
 	100% {
 		opacity: 0.3;
@@ -3275,7 +3271,7 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.status-dot[data-kind="running"],
+	.df-tab-dot-running,
 	.running-spinner,
 	.terminal-caret {
 		animation: none;
@@ -4256,7 +4252,7 @@ html[data-reduce-motion="true"] .animate-ping,
 html[data-reduce-motion="true"] .animate-approval-inline-enter,
 html[data-reduce-motion="true"] .animate-question-receipt-enter,
 html[data-reduce-motion="true"] .animate-palette-card-in,
-html[data-reduce-motion="true"] .status-dot[data-kind="running"],
+html[data-reduce-motion="true"] .df-tab-dot-running,
 html[data-reduce-motion="true"] .terminal-caret,
 html[data-reduce-motion="true"] [data-spinner] * {
 	animation: none !important;

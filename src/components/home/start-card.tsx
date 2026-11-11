@@ -331,7 +331,8 @@ export function NextStepsList({
 			ref={listRef}
 			role="list"
 			aria-label="Next steps"
-			data-start-card-setup
+			data-testid="start-card-setup"
+			data-start-card-setup=""
 			className={`${CARD_CLASS} gap-0.5 p-1 ${START_CARD_SETUP_HIDE_CLASS}`}
 			onClickCapture={(event) => {
 				if (event.detail === 0) return;

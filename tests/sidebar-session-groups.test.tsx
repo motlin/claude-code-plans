@@ -277,6 +277,43 @@ describe("sidebar SessionGroups", () => {
 		});
 	});
 
+	it("shares one quick-reply hint per section, in a contents wrapper, across every Needs input row div and link", async () => {
+		const {container} = await renderGroups([
+			session("b1", "Blocked one", "blocked", 1),
+			session("b2", "Blocked two", "blocked", 2),
+			session("b3", "Blocked three", "blocked", 3),
+			session("w1", "Working one", "working", 4),
+		]);
+
+		const hints = [...container.querySelectorAll("span")].filter((span) =>
+			span.textContent.startsWith("Quick reply and approval controls available"),
+		);
+		const describedBy = (title: string) => {
+			const link = screen.getByRole("link", {name: new RegExp(`^${title}`)});
+			return {
+				row: link.closest("[data-row-key]")?.getAttribute("aria-describedby") ?? null,
+				link: link.getAttribute("aria-describedby"),
+			};
+		};
+		const id = hints[0]?.id ?? "missing";
+		expect({
+			hints: hints.map((hint) => ({
+				className: hint.className,
+				findOmitted: hint.hasAttribute("data-find-omitted"),
+				wrapper: hint.parentElement?.className,
+			})),
+			rows: ["Blocked one", "Blocked two", "Blocked three", "Working one"].map(describedBy),
+		}).toStrictEqual({
+			hints: [{className: "sr-only select-none", findOmitted: true, wrapper: "contents"}],
+			rows: [
+				{row: id, link: id},
+				{row: id, link: id},
+				{row: id, link: id},
+				{row: null, link: null},
+			],
+		});
+	});
+
 	it("styles the row kebab like upstream: radius 6 (r5), text-secondary until hovered or expanded, instant reveal", async () => {
 		await renderGroups(FIXTURE);
 
@@ -638,6 +675,7 @@ describe("sidebar SessionGroups", () => {
 								mark.parentElement?.getAttribute("aria-hidden") ?? null,
 							],
 				env: decoration?.querySelector("[data-env-glyph]")?.getAttribute("data-env-glyph") ?? null,
+				runningPulse: mark?.querySelector('[data-cds="Pulse"].df-tab-dot-running') != null,
 				hidesOnHover: decoration?.className.split(" ").includes("group-hover/session-row:opacity-0") ?? false,
 				flushRight: decoration?.className.split(" ").includes("right-[var(--sb-row-ctl-inset)]") ?? false,
 			};
@@ -654,6 +692,7 @@ describe("sidebar SessionGroups", () => {
 				wrappers: ["true flex items-center", "true flex items-center"],
 				mark: ["img", "Awaiting input", "flex items-center", "true"],
 				env: null,
+				runningPulse: false,
 				hidesOnHover: true,
 				flushRight: true,
 			},
@@ -663,6 +702,7 @@ describe("sidebar SessionGroups", () => {
 				wrappers: ["true flex items-center"],
 				mark: ["img", "Running", "flex items-center", "true"],
 				env: null,
+				runningPulse: true,
 				hidesOnHover: true,
 				flushRight: true,
 			},
@@ -672,6 +712,7 @@ describe("sidebar SessionGroups", () => {
 				wrappers: ["true flex items-center", "true flex items-center"],
 				mark: ["img", "Unread response", "flex items-center", "true"],
 				env: null,
+				runningPulse: false,
 				hidesOnHover: true,
 				flushRight: true,
 			},
@@ -681,6 +722,7 @@ describe("sidebar SessionGroups", () => {
 				wrappers: [],
 				mark: null,
 				env: "bridge",
+				runningPulse: false,
 				hidesOnHover: true,
 				flushRight: true,
 			},

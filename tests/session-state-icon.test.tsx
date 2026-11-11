@@ -10,6 +10,8 @@ afterEach(cleanup);
 const DOT_WRAPPER = "flex min-h-3.5 min-w-3.5 shrink-0 items-center justify-center";
 const PULSE_CLASS =
 	"block size-[calc(0.375rem*var(--cds-rem-scale,1))] rounded-full forced-colors:!bg-[color:CanvasText]";
+const RUNNING_PULSE = (label: string) =>
+	`<span role="status" aria-label="${label}" class="${DOT_WRAPPER}"><span class="status-dot contents [--cds-page-bg:transparent]" data-kind="running"><span data-cds="Pulse" class="${PULSE_CLASS} stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)] df-tab-dot-running" style="background: var(--cds-text-muted); box-shadow: 0 0 0 0.5px var(--cds-page-bg);"></span></span></span>`;
 
 function markup(element: React.ReactElement): string {
 	return render(element).container.innerHTML;
@@ -22,10 +24,8 @@ describe("SessionStateIcon", () => {
 		);
 	});
 
-	it("renders running as a blinking status dot", () => {
-		expect(markup(<SessionStateIcon kind="running" />)).toBe(
-			`<span role="status" aria-label="Running" class="${DOT_WRAPPER}"><span class="status-dot" data-kind="running"></span></span>`,
-		);
+	it("renders running as upstream's blinking df-tab-dot-running Pulse in --cds-text-muted, remapped to the solid muted ink under fizzy colour", () => {
+		expect(markup(<SessionStateIcon kind="running" />)).toBe(RUNNING_PULSE("Running"));
 	});
 
 	it("renders ready as a static --cds-fill-accent Pulse", () => {
@@ -64,9 +64,7 @@ describe("SessionStateIcon", () => {
 	});
 
 	it("lets the caller override the accessible label", () => {
-		expect(markup(<SessionStateIcon kind="running" label="Working" />)).toBe(
-			`<span role="status" aria-label="Working" class="${DOT_WRAPPER}"><span class="status-dot" data-kind="running"></span></span>`,
-		);
+		expect(markup(<SessionStateIcon kind="running" label="Working" />)).toBe(RUNNING_PULSE("Working"));
 	});
 });
 

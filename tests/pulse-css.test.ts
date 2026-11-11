@@ -52,6 +52,29 @@ describe("Pulse / indicator slot CSS", () => {
 		}).toStrictEqual({awaiting: false, awaitingRule: false, readyRule: false});
 	});
 
+	it("blinks the running Pulse with upstream's df-tab-dot-running and stops it under reduced motion", async () => {
+		expect({
+			rule: styles.includes(".df-tab-dot-running {\n\tanimation: dframe-dot-blink 1.2s ease-in-out infinite;\n}"),
+			keyframes: styles.includes(
+				"@keyframes dframe-dot-blink {\n\t0%,\n\t100% {\n\t\topacity: 0.3;\n\t}\n\t50% {\n\t\topacity: 1;\n\t}\n}",
+			),
+			osReducedMotion: styles.includes("@media (prefers-reduced-motion: reduce) {\n\t.df-tab-dot-running,"),
+			legacyRule: styles.includes('.status-dot[data-kind="running"]'),
+			fizzySolidMuted: token(
+				styles.slice(styles.indexOf('\n:root[data-cds-fizzy-lake~="color"] {')),
+				"--cds-fizzy-lake-color-solid-muted",
+			),
+			remap: await compile("stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)]"),
+		}).toStrictEqual({
+			rule: true,
+			keyframes: true,
+			osReducedMotion: true,
+			legacyRule: false,
+			fizzySolidMuted: "#878787",
+			remap: '@media (forced-colors: none) { .stacks\\:\\[--cds-text-muted\\:var\\(--cds-fizzy-lake-color-solid-muted\\)\\]:where([data-cds-fizzy-lake~="color"], [data-cds-fizzy-lake~="color"] *):not(:where([data-cds-theme], [data-cds-theme] *)) { --cds-text-muted: var(--cds-fizzy-lake-color-solid-muted); } }',
+		});
+	});
+
 	it("animates only under motion-safe: (which honours data-reduce-motion)", async () => {
 		expect(await compile("motion-safe:animate-pulse")).toBe(
 			'@media (prefers-reduced-motion: no-preference) { .motion-safe\\:animate-pulse:not(:where([data-reduce-motion="true"], [data-reduce-motion="true"] *)) { animation: var(--animate-pulse); } }',

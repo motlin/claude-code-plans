@@ -188,7 +188,7 @@ describe("StartCard", () => {
 			})),
 		).toStrictEqual([
 			{testid: "start-card-clawd", setup: false},
-			{testid: null, setup: true},
+			{testid: "start-card-setup", setup: true},
 		]);
 	});
 

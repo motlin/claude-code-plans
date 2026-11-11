@@ -551,6 +551,28 @@ function trackPendingElicitations(
 }
 
 /**
+ * Broadcast the session's summary as of this hook. The hook is the session's
+ * newest activity, so its state outranks a registry status the CLI wrote
+ * earlier (a `waiting` while the dialog showed, a `busy` before the question);
+ * the per-event case below touches the store's lastActivity only later.
+ */
+function broadcastHookSessionSummary(
+	sessionId: string,
+	db: IndexDb,
+	store: ActiveSessionStore,
+	broadcast: DispatchHookEventArgs["broadcast"],
+): void {
+	const now = Date.now();
+	const summary = buildSessionSummaryPayloadFromDb(db, sessionId, (id) => {
+		const entry = store.getActiveSessionEntry(id);
+		return entry === null ? null : {...entry, lastActivity: Math.max(entry.lastActivity, now)};
+	});
+	if (summary && !recentlyBroadcast(sessionUpdatedDedupeKey(summary), DEDUPE_TTL_MS)) {
+		broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
+	}
+}
+
+/**
  * Route a single parsed hook event to the active-session store and SSE
  * broadcaster. Each case emits enriched domain-level deltas that the client
  * patches directly into the TanStack Query cache. SESSION_START / SESSION_END
@@ -596,22 +618,20 @@ export async function dispatchHookEvent({
 		if ((nextState === "working" || permissionPromptGone) && entryBeforeDispatch?.pendingPermissionRequest) {
 			store.setPendingPermissionRequest(event.session_id, null);
 		}
+		// Only a session the store tracks records the new state, so only its change is news.
+		const stateChanged =
+			nextState !== null && entryBeforeDispatch !== null && entryBeforeDispatch.state !== nextState;
+		// Entering Needs input: the row, start card and palette flip with the docked
+		// card, so the summary goes out before the question or plan does.
+		if (stateChanged && nextState === "waiting")
+			broadcastHookSessionSummary(event.session_id, db, store, broadcast);
 		const questionCleared = trackPendingQuestion(event, broadcast);
 		trackPendingPlan(event, broadcast);
 		// The summary no longer waits on what was cleared. Send it before
 		// notification:cleared so a client never holds "no notification, still
 		// awaiting" while the working hook's own summary is still in flight.
-		if (clearedNotificationIds.length > 0 || questionCleared) {
-			// This hook is the session's newest activity, so its working state outranks a registry
-			// `waiting` the CLI wrote while the dialog showed; the case below touches the store only later.
-			const now = Date.now();
-			const summary = buildSessionSummaryPayloadFromDb(db, event.session_id, (sessionId) => {
-				const entry = store.getActiveSessionEntry(sessionId);
-				return entry === null ? null : {...entry, lastActivity: Math.max(entry.lastActivity, now)};
-			});
-			if (summary && !recentlyBroadcast(sessionUpdatedDedupeKey(summary), DEDUPE_TTL_MS)) {
-				broadcast(DOMAIN_EVENTS.SESSION_UPDATED, {session: summary});
-			}
+		if (clearedNotificationIds.length > 0 || questionCleared || (stateChanged && nextState === "working")) {
+			broadcastHookSessionSummary(event.session_id, db, store, broadcast);
 		}
 		broadcastNotificationsCleared(clearedNotificationIds);
 	}

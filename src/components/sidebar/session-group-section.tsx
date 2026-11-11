@@ -297,6 +297,10 @@ export function GroupSection({
 	useSectionFocusRescue(group.key, sectionElement);
 	const [announcement, setAnnouncement] = useState("");
 	const heldHintId = useId();
+	// Upstream shares one quick-reply hint per section across its Needs input rows.
+	const awaitingHintId = useId();
+	const hasAwaiting = (subgroups === null ? rows : openRows).some((row) => row.bucket === "blocked");
+	const awaitingDescribedBy = (row: SidebarSessionRow) => (row.bucket === "blocked" ? awaitingHintId : undefined);
 	// Upstream `rr` held: folding back to the first page would hide the open session.
 	const showLessHeld =
 		group.canShowLess &&
@@ -406,6 +410,13 @@ export function GroupSection({
 					trailing={sectionNewSessionButton(group.label, customNewSession, projectNewSession)}
 				/>
 			</div>
+			{hasAwaiting && (
+				<div className="contents">
+					<span id={awaitingHintId} data-find-omitted="" className="sr-only select-none">
+						{QUICK_REPLY_HINT}
+					</span>
+				</div>
+			)}
 			{/* Upstream P3: collapsed rows stay mounted in a hidden wrapper, keeping their state. */}
 			{subgroups === null ? (
 				<div ref={rowsRef} data-group-rows hidden={!expanded} className={expanded ? ROWS_CLASS : "hidden"}>
@@ -417,6 +428,7 @@ export function GroupSection({
 									<div
 										{...dragRowProps?.(row.sessionId)}
 										data-row-key={row.sessionId}
+										aria-describedby={awaitingDescribedBy(row)}
 										className="df-drag-shiftable relative"
 									>
 										<SessionRowLink
@@ -425,6 +437,7 @@ export function GroupSection({
 											pinnedIds={pinnedIds}
 											envGlyph={envGlyph}
 											place={place}
+											awaitingHintId={awaitingHintId}
 										/>
 									</div>
 									{nested !== undefined && (
@@ -436,6 +449,7 @@ export function GroupSection({
 											dragRowProps={dragRowProps}
 											envGlyph={envGlyph}
 											place={place}
+											awaitingHintId={awaitingHintId}
 										/>
 									)}
 								</Fragment>
@@ -502,13 +516,19 @@ export function GroupSection({
 			{openRows.length > 0 && (
 				<div data-group-rows className={ROWS_CLASS}>
 					{openRows.map((row) => (
-						<div key={row.sessionId} data-row-key={row.sessionId} className="relative">
+						<div
+							key={row.sessionId}
+							data-row-key={row.sessionId}
+							aria-describedby={awaitingDescribedBy(row)}
+							className="relative"
+						>
 							<SessionRowLink
 								row={row}
 								selected={row.sessionId === activeItemId}
 								pinnedIds={pinnedIds}
 								envGlyph={envGlyph}
 								place={place}
+								awaitingHintId={awaitingHintId}
 							/>
 						</div>
 					))}
@@ -672,6 +692,7 @@ function SessionFamily({
 	dragRowProps,
 	envGlyph,
 	place,
+	awaitingHintId,
 }: {
 	head: SidebarSessionRow;
 	nested: readonly SidebarSessionRow[];
@@ -680,6 +701,8 @@ function SessionFamily({
 	dragRowProps: ((id: string) => SidebarDragRowProps) | undefined;
 	envGlyph: boolean;
 	place: RowPlace;
+	/** The section's shared quick-reply hint, describing its Needs input rows. */
+	awaitingHintId: string;
 }) {
 	const {collapsedFamilies} = useSidebarState();
 	const collapsed = collapsedFamilies.includes(familyKey(head.sessionId));
@@ -741,6 +764,7 @@ function SessionFamily({
 							key={child.sessionId}
 							data-family-child
 							data-row-key={child.sessionId}
+							aria-describedby={child.bucket === "blocked" ? awaitingHintId : undefined}
 							{...dragRowProps?.(child.sessionId)}
 							className="df-drag-shiftable relative pl-5"
 						>
@@ -750,6 +774,7 @@ function SessionFamily({
 								pinnedIds={undefined}
 								envGlyph={envGlyph}
 								place={place}
+								awaitingHintId={awaitingHintId}
 								lineage={parentTitle === undefined ? "Nested session" : `Forked from ${parentTitle}`}
 							/>
 						</div>
@@ -813,6 +838,7 @@ function SessionRowLink({
 	envGlyph,
 	place,
 	lineage,
+	awaitingHintId,
 }: {
 	row: SidebarSessionRow;
 	selected: boolean;
@@ -823,6 +849,8 @@ function SessionRowLink({
 	place: RowPlace;
 	/** Screen-reader note on a nested row, e.g. "Forked from {title}". */
 	lineage?: string;
+	/** The section's shared quick-reply hint, describing a Needs input row. */
+	awaitingHintId: string;
 }) {
 	const queryClient = useQueryClient();
 	const selection = useSidebarSelection();
@@ -831,7 +859,6 @@ function SessionRowLink({
 	const aiTitle = useSecondaryAiTitle(title, row.session.aiTitle);
 	const {settings} = useSettings();
 	const blocked = row.bucket === "blocked";
-	const hintId = useId();
 	const attention = useRowAttention(row.session);
 	// Upstream draws no PR tail on pinned rows.
 	const prTail =
@@ -887,7 +914,7 @@ function SessionRowLink({
 					params={{id: row.sessionId}}
 					{...ROVING_ITEM_PROPS}
 					data-row-main-button
-					aria-describedby={blocked ? hintId : undefined}
+					aria-describedby={blocked ? awaitingHintId : undefined}
 					// Upstream names a described row by its title and description; the sr-only lineage note stays in it.
 					aria-labelledby={
 						metaLine === undefined
@@ -925,11 +952,6 @@ function SessionRowLink({
 						</span>
 					)}
 				</Link>
-				{blocked && (
-					<span id={hintId} data-find-omitted="" className="sr-only select-none">
-						{QUICK_REPLY_HINT}
-					</span>
-				)}
 				{/* Upstream's aria-hidden status mark sits beside the link; its sr text is inside the title */}
 				<SidebarRowDecoration session={row.session} envGlyph={envGlyph} />
 			</SessionActionsMenu>

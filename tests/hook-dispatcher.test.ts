@@ -2929,4 +2929,207 @@ describe("dispatchHookEvent re-broadcasts the session summary when a working hoo
 			clearSessionRegistry();
 		}
 	});
+
+	describe("entry hops send session:updated from the hook that changes the state", () => {
+		const questionInput = {
+			questions: [
+				{question: "Which?", header: "Pick", multiSelect: false, options: [{label: "A"}, {label: "B"}]},
+			],
+		};
+
+		function updates(timeline: Broadcast[]) {
+			return timeline
+				.map((b, index) => ({b, index}))
+				.filter(({b}) => b.type === DOMAIN_EVENTS.SESSION_UPDATED)
+				.map(({b, index}) => {
+					const session = b.data["session"] as {state: string; bucket: string};
+					return {index, state: session.state, bucket: session.bucket};
+				});
+		}
+
+		it("UserPromptSubmit sends working, then PreToolUse(AskUserQuestion) sends waiting before the question docks", async () => {
+			clearAllNotifications();
+			const sessionId = "entry-hop-604";
+			await indexSession(sessionId);
+			const base = {
+				session_id: sessionId,
+				transcript_path: `/tmp/${sessionId}.jsonl`,
+				cwd: "/Users/craig/projects/app",
+			};
+			const timeline = await dispatchAll([
+				{...base, hook_event_name: "SessionStart", source: "startup"},
+				{...base, hook_event_name: "UserPromptSubmit", prompt: "Ask me something"},
+				{
+					...base,
+					hook_event_name: "PreToolUse",
+					tool_name: "AskUserQuestion",
+					tool_input: questionInput,
+					tool_use_id: "toolu_604",
+				},
+			]);
+
+			const questionDockedIndex = timeline.findIndex(
+				(b) => b.type === DOMAIN_EVENTS.SESSION_PENDING_QUESTION_CHANGED && b.data["pendingQuestion"] !== null,
+			);
+			const sent = updates(timeline);
+			expect({
+				states: sent.map(({state, bucket}) => ({state, bucket})),
+				waitingBeforeQuestion: (sent[1]?.index ?? Infinity) < questionDockedIndex,
+			}).toStrictEqual({
+				states: [
+					{state: "working", bucket: "working"},
+					{state: "waiting", bucket: "blocked"},
+				],
+				waitingBeforeQuestion: true,
+			});
+		});
+
+		it("tool calls while already working send no further session:updated", async () => {
+			clearAllNotifications();
+			const sessionId = "entry-hop-605";
+			await indexSession(sessionId);
+			const base = {
+				session_id: sessionId,
+				transcript_path: `/tmp/${sessionId}.jsonl`,
+				cwd: "/Users/craig/projects/app",
+			};
+			const timeline = await dispatchAll([
+				{...base, hook_event_name: "SessionStart", source: "startup"},
+				{...base, hook_event_name: "UserPromptSubmit", prompt: "List files"},
+				{...base, hook_event_name: "PreToolUse", tool_name: "Bash", tool_input: {command: "ls"}},
+				{...base, hook_event_name: "PreToolUse", tool_name: "Read", tool_input: {file_path: "/tmp/a"}},
+			]);
+
+			expect(updates(timeline).map(({state}) => state)).toStrictEqual(["working"]);
+		});
+
+		it("PreToolUse(ExitPlanMode) sends waiting", async () => {
+			clearAllNotifications();
+			const sessionId = "entry-hop-606";
+			await indexSession(sessionId);
+			const base = {
+				session_id: sessionId,
+				transcript_path: `/tmp/${sessionId}.jsonl`,
+				cwd: "/Users/craig/projects/app",
+			};
+			const timeline = await dispatchAll([
+				{...base, hook_event_name: "SessionStart", source: "startup"},
+				{...base, hook_event_name: "UserPromptSubmit", prompt: "Plan it"},
+				{
+					...base,
+					hook_event_name: "PreToolUse",
+					tool_name: "ExitPlanMode",
+					tool_input: {plan: "Do the thing"},
+					tool_use_id: "toolu_606",
+				},
+			]);
+
+			expect(updates(timeline).map(({state, bucket}) => ({state, bucket}))).toStrictEqual([
+				{state: "working", bucket: "working"},
+				{state: "waiting", bucket: "blocked"},
+			]);
+		});
+
+		it("Elicitation sends waiting", async () => {
+			clearAllNotifications();
+			const sessionId = "entry-hop-607";
+			await indexSession(sessionId);
+			const base = {
+				session_id: sessionId,
+				transcript_path: `/tmp/${sessionId}.jsonl`,
+				cwd: "/Users/craig/projects/app",
+			};
+			const timeline = await dispatchAll([
+				{...base, hook_event_name: "SessionStart", source: "startup"},
+				{...base, hook_event_name: "UserPromptSubmit", prompt: "Use the server"},
+				{
+					...base,
+					hook_event_name: "Elicitation",
+					mcp_server_name: "example-server",
+					message: "Pick a value",
+					requested_schema: {type: "object", properties: {}},
+				},
+			]);
+
+			expect(updates(timeline).map(({state}) => state)).toStrictEqual(["working", "waiting"]);
+		});
+
+		it("PreToolUse(AskUserQuestion) reads waiting over a newer CLI registry busy status", async () => {
+			clearAllNotifications();
+			const sessionId = "entry-hop-608";
+			await indexSession(sessionId);
+			const base = {
+				session_id: sessionId,
+				transcript_path: `/tmp/${sessionId}.jsonl`,
+				cwd: "/Users/craig/projects/app",
+			};
+			const registryDir = join(testDir, "sessions");
+			mkdirSync(registryDir, {recursive: true});
+			const busySince = Date.now() - 60_000;
+			writeFileSync(
+				join(registryDir, "4608.json"),
+				JSON.stringify({
+					pid: 4608,
+					sessionId,
+					cwd: "/Users/craig/projects/app",
+					startedAt: 946_598_400_000,
+					procStart: "Fri Dec 31 00:00:00 1999",
+					version: "2.1.321",
+					kind: "interactive",
+					entrypoint: "cli",
+					pidDomain: "darwin",
+					status: "busy",
+					updatedAt: busySince,
+					statusUpdatedAt: busySince,
+				}),
+			);
+			await refreshSessionRegistry(registryDir, {
+				isAlive: () => true,
+				readStartTimes: async () => Promise.resolve(null),
+			});
+			try {
+				const timeline = await dispatchAll([
+					{...base, hook_event_name: "SessionStart", source: "startup"},
+					{
+						...base,
+						hook_event_name: "PreToolUse",
+						tool_name: "AskUserQuestion",
+						tool_input: questionInput,
+						tool_use_id: "toolu_608",
+					},
+				]);
+
+				expect(updates(timeline).map(({state, bucket}) => ({state, bucket}))).toStrictEqual([
+					{state: "waiting", bucket: "blocked"},
+				]);
+			} finally {
+				clearSessionRegistry();
+			}
+		});
+
+		it("a subagent-scoped PreToolUse(AskUserQuestion) sends no session:updated", async () => {
+			clearAllNotifications();
+			const sessionId = "entry-hop-609";
+			await indexSession(sessionId);
+			const base = {
+				session_id: sessionId,
+				transcript_path: `/tmp/${sessionId}.jsonl`,
+				cwd: "/Users/craig/projects/app",
+			};
+			const timeline = await dispatchAll([
+				{...base, hook_event_name: "SessionStart", source: "startup"},
+				{
+					...base,
+					agent_id: "alice",
+					agent_type: "Explore",
+					hook_event_name: "PreToolUse",
+					tool_name: "AskUserQuestion",
+					tool_input: questionInput,
+					tool_use_id: "toolu_609",
+				},
+			]);
+
+			expect(updates(timeline)).toStrictEqual([]);
+		});
+	});
 });

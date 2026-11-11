@@ -6,7 +6,8 @@ type DataAttributes = {[key: `data-${string}`]: string | undefined};
  * Upstream cds Pulse (`ba`): a 6px status dot painted inline in `color`, ringed 0.5px in
  * `--cds-page-bg` to lift it off what is under it (wrappers set that to transparent). `animate`
  * pulses it under motion-safe:; `hollow` draws an inset 1px ring instead of a fill. Upstream's
- * `stacks:` text remaps are skipped: they only reach children, and the dot has none.
+ * `stacks:` text remaps reach the dot itself when `color` reads one of them; the running dot paints
+ * with `--cds-text-muted`, so it passes that remap in `className`.
  */
 export function Pulse({
 	color = "var(--cds-fill-accent)",

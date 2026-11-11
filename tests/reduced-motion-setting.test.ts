@@ -34,7 +34,7 @@ describe("Settings ▸ Motion ▸ Reduced", () => {
 				'html[data-reduce-motion="true"] .animate-approval-inline-enter,\n' +
 				'html[data-reduce-motion="true"] .animate-question-receipt-enter,\n' +
 				'html[data-reduce-motion="true"] .animate-palette-card-in,\n' +
-				'html[data-reduce-motion="true"] .status-dot[data-kind="running"],\n' +
+				'html[data-reduce-motion="true"] .df-tab-dot-running,\n' +
 				'html[data-reduce-motion="true"] .terminal-caret,\n' +
 				'html[data-reduce-motion="true"] [data-spinner] * {\n' +
 				"\tanimation: none !important;\n}",

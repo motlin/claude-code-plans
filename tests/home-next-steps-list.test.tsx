@@ -75,6 +75,16 @@ afterEach(() => {
 });
 
 describe("NextStepsList", () => {
+	it("marks the list with upstream's start-card-setup test id and an empty data-start-card-setup", () => {
+		render(<NextStepsList rows={rowsOf(1)} onOpen={() => {}} onDismiss={() => {}} />);
+
+		const list = screen.getByRole("list", {name: "Next steps"});
+		expect({
+			byTestId: screen.getByTestId("start-card-setup") === list,
+			setup: list.getAttribute("data-start-card-setup"),
+		}).toStrictEqual({byTestId: true, setup: ""});
+	});
+
 	it("renders Waiting rows with their detail and a touch-revealed dismiss", () => {
 		render(<NextStepsList rows={rowsOf(2)} onOpen={() => {}} onDismiss={() => {}} />);
 
@@ -718,12 +728,17 @@ describe("NextStepsList row keys and test ids", () => {
 		});
 	});
 
-	it("gives each row button and the rest trigger upstream's start-card test id, in seat order", () => {
+	it("gives the list, each row button and the rest trigger upstream's start-card test id, in seat order", () => {
 		const {container} = render(listOf([...blocked(5), worktreeApart]));
 
 		expect(
 			[...container.querySelectorAll<HTMLElement>("[data-testid^=start-card-]")].map((e) => e.dataset["testid"]),
-		).toStrictEqual(["start-card-waiting-session", "start-card-blocked-sessions", "start-card-worktree-apart"]);
+		).toStrictEqual([
+			"start-card-setup",
+			"start-card-waiting-session",
+			"start-card-blocked-sessions",
+			"start-card-worktree-apart",
+		]);
 	});
 
 	it("tags a seated continue-branch row's button with start-card-continue-branch", () => {
@@ -735,6 +750,7 @@ describe("NextStepsList row keys and test ids", () => {
 				tag: e.tagName,
 			})),
 		).toStrictEqual([
+			{testid: "start-card-setup", tag: "UL"},
 			{testid: "start-card-worktree-apart", tag: "BUTTON"},
 			{testid: "start-card-continue-branch", tag: "BUTTON"},
 		]);

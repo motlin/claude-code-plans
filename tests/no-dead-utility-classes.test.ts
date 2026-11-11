@@ -80,6 +80,8 @@ const ALLOWLIST: Record<string, string> = {
 	"mdx-editor-wrapper": HOOK,
 	"settings-row-title": HOOK,
 	spark: HOOK,
+	"status-dot":
+		"local test hook on the sidebar status Pulse's contents wrapper, read with its data-kind; no rule styles it",
 	"tiles-shell": "upstream's tile shell class on the cell that adopts the tile's content host; no rule styles it",
 	"usage-band-enter": HOOK,
 };
