@@ -29,6 +29,19 @@ describe("user text secret masking (upstream c59c32499 XF)", () => {
 		const {container} = render(<UserInlineText text={`a ${FAKE_GH}`} codeSpans={false} />);
 		expect(container.textContent).toBe(`a ${MASKED_GH}`);
 	});
+
+	it("trims an option description's URLs with upstream's ts, as its yr paint does, while a user turn keeps its own trim", () => {
+		const hrefs = (node: React.ReactElement) => {
+			const {container} = render(node);
+			const result = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href"));
+			cleanup();
+			return result;
+		};
+		expect([
+			hrefs(<UserInlineText text="see https://e.com/x... and https://e.com/a[1]" codeSpans={false} />),
+			hrefs(<UserPlainText text="see https://e.com/x..." />),
+		]).toStrictEqual([["https://e.com/x..", "https://e.com/a[1]"], ["https://e.com/x"]]);
+	});
 });
 
 describe("linkifyPlain (upstream c40ad8c1e y with the tool body policy Zx and cap Qx)", () => {
@@ -77,6 +90,22 @@ describe("linkifyPlain (upstream c40ad8c1e y with the tool body policy Zx and ca
 		]).toStrictEqual([
 			[["https://status.claude.com", "status.claude.com"]],
 			[["https://e.com/a", "https://e.com/a"]],
+		]);
+	});
+
+	it("trims each URL with upstream's ts on both sides of the bracket trim: one sentence mark, every RTL mark, never a balanced ]", () => {
+		expect(
+			[
+				"see https://e.com/x...",
+				"see https://e.com/a[1].",
+				"see https://e.com/y،.",
+				"see (https://e.com/z))",
+			].map((text) => anchors(text).links.map((l) => [l.href, l.text])),
+		).toStrictEqual([
+			[["https://e.com/x.", "https://e.com/x."]],
+			[["https://e.com/a[1]", "https://e.com/a[1]"]],
+			[["https://e.com/y", "https://e.com/y"]],
+			[["https://e.com/z", "https://e.com/z"]],
 		]);
 	});
 

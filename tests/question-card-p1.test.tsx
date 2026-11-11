@@ -238,6 +238,55 @@ describe("QuestionCard question text, as upstream's code chip and TextLink heade
 			`Ping ${pill}@alice</span> in ${pill}#C12345678</span> about ${link("https://example.com/i", `<bdi>it</bdi>${host("example.com")}`)}`,
 		]);
 	});
+	it("routes header links through upstream's pr under the transcript link policy: a userinfo link as ltr words, a punycode link through the external-link confirm, and bare URLs trimmed by ts", () => {
+		render(
+			<QuestionCard
+				questions={[
+					{
+						question:
+							"Open https://user:pw@example.com/a or [b](https://xn--e1afmkfd.example/b) or https://example.com/c... or https://example.com/d[1].",
+						options: [{label: "Yes"}],
+					},
+				]}
+				onSubmit={async () => {}}
+			/>,
+		);
+		const title = document.querySelector("[data-approval-card-root]")!.firstElementChild!.firstElementChild!;
+		const visible = title.cloneNode(true) as HTMLElement;
+		for (const hint of visible.querySelectorAll("[hidden]")) hint.remove();
+		const shape = {
+			words: Array.from(visible.querySelectorAll("span[dir=ltr]:not(.opacity-70)")).map(
+				(span) => span.textContent,
+			),
+			links: Array.from(visible.querySelectorAll("a")).map((link) => ({
+				href: link.getAttribute("href"),
+				rel: link.getAttribute("rel"),
+				cds: link.getAttribute("data-cds"),
+				text: link.textContent,
+			})),
+			text: visible.textContent,
+		};
+		fireEvent.click(title.querySelector("a[data-cds=TextLink]")!);
+
+		expect({
+			...shape,
+			dialog: screen.getByRole("alertdialog").textContent.includes("internationalized domain name"),
+		}).toStrictEqual({
+			words: ["https://user:pw@example.com/a"],
+			links: [
+				{
+					href: "https://xn--e1afmkfd.example/b",
+					rel: "noopener noreferrer",
+					cds: "TextLink",
+					text: "b (→ xn--e1afmkfd.example)",
+				},
+				{href: "https://example.com/c..", rel: "noreferrer", cds: null, text: "https://example.com/c.."},
+				{href: "https://example.com/d[1]", rel: "noreferrer", cds: null, text: "https://example.com/d[1]"},
+			],
+			text: "Open https://user:pw@example.com/a or b (→ xn--e1afmkfd.example) or https://example.com/c... or https://example.com/d[1].",
+			dialog: true,
+		});
+	});
 	it("ends a masked link label word with upstream's left-to-right mark and lets token pills pick their direction on a right-to-left page", () => {
 		document.documentElement.dir = "rtl";
 		try {

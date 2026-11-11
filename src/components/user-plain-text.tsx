@@ -1,12 +1,14 @@
 import {Fragment, lazy, type ReactNode, Suspense} from "react";
 
 import {defined} from "../lib/defined";
+import {transcriptLinkTreatment} from "../lib/external-nav";
 import {BIDI_CONTROLS, MARKDOWN_LINK, markdownLinkTarget, SLACK_TOKEN} from "../lib/markdown-link";
 import {pageIsRtl} from "../lib/page-direction";
 import {maskSecrets, maskUrlSecrets} from "../lib/secret-mask";
+import {splitUrlTail} from "../lib/url-trim";
 import {revealSpoofing} from "../lib/visible-text";
 import {CloakedText} from "./cloaked-text";
-import {trimUrl} from "./linkify-plain";
+import {ConfirmExternalLink} from "./confirm-external-link";
 import {UserCodeSpan} from "./user-code-span";
 
 /** Upstream's user paragraph: `text-body` rewritten to `text-prose`, then `[unicode-bidi:plaintext]` appended. */
@@ -21,11 +23,23 @@ const URL_PATTERN = /https?:\/\/[^\s<>`]+/g;
 /** How a linked URL is drawn: a user message's accent link, or upstream's TextLink (`dir="ltr"`, `rel="noreferrer"`). */
 type LinkStyle = "user" | "textLink";
 
+/** A user turn's trim: trailing sentence punctuation, and a closing paren with no opener inside the URL. */
+function trimUserUrl(url: string): string {
+	let end = url.length;
+	for (;;) {
+		const last = url[end - 1];
+		if (last !== undefined && ".,;:!?'\"]".includes(last)) end--;
+		else if (last === ")" && url.slice(0, end).split("(").length < url.slice(0, end).split(")").length) end--;
+		else return url.slice(0, end);
+	}
+}
+
+/** A user turn trims its own way; a TextLink run is upstream's `yr` paint, trimmed by `ts`. */
 function linkify(text: string, keyPrefix: number, style: LinkStyle = "user"): ReactNode[] {
 	const nodes: ReactNode[] = [];
 	let cursor = 0;
 	for (const match of text.matchAll(URL_PATTERN)) {
-		const url = trimUrl(match[0]);
+		const url = style === "user" ? trimUserUrl(match[0]) : splitUrlTail(match[0])[0];
 		if (match.index > cursor) nodes.push(text.slice(cursor, match.index));
 		nodes.push(
 			<a
@@ -146,8 +160,17 @@ type Paint = (part: string, at: number) => ReactNode[];
 /** Upstream's `ja` (cf6507c5a): an http(s) URL the `yr` paint links. */
 const PAINT_URL = /https?:\/\/[^\s<>"]+/g;
 
-/** Upstream's TextLink anchor (`m` rendering an `a`), as `pr` draws a live link. */
+/**
+ * Upstream's `pr` (cbb72cde9) for a header link: through `fr` under the transcript's link policy, a live link as
+ * `hr`'s TextLink anchor, a deceptive one through the external-link confirm (`jq` in an external TextLink), or
+ * else as `span[dir=ltr]` words. Not drawn here: `hr`'s `mt` hover (a Figma frame card, needing a connected Figma
+ * MCP server), the side-pane preview (`ownAddress`/`bare`, `Tt`, `Zn`) and the flag-gated model-authored
+ * `mr` confirm, which need surfaces this app lacks.
+ */
 function TextLink({href, children}: {href: string; children: ReactNode}) {
+	const treatment = transcriptLinkTreatment(href);
+	if (treatment === "words") return <span dir="ltr">{children}</span>;
+	if (treatment === "confirm") return <ConfirmExternalLink href={href}>{children}</ConfirmExternalLink>;
 	return (
 		<a href={href} target="_blank" rel="noreferrer" dir="ltr" className="cds-reset text-link inline cursor-pointer">
 			{children}
@@ -218,7 +241,7 @@ const cloakPaint: Paint = (part, at) => {
 	const nodes: ReactNode[] = [];
 	let cursor = 0;
 	for (const match of part.matchAll(PAINT_URL)) {
-		const url = trimUrl(match[0]);
+		const [url, tail] = splitUrlTail(match[0]);
 		if (match.index > cursor)
 			nodes.push(<CloakedText key={`${at}-t${cursor}`} text={part.slice(cursor, match.index)} />);
 		nodes.push(
@@ -226,7 +249,8 @@ const cloakPaint: Paint = (part, at) => {
 				{revealSpoofing(maskUrlSecrets(url))}
 			</TextLink>,
 		);
-		cursor = match.index + url.length;
+		if (tail !== "") nodes.push(tail);
+		cursor = match.index + match[0].length;
 	}
 	if (cursor < part.length) nodes.push(<CloakedText key={`${at}-t${cursor}`} text={part.slice(cursor)} />);
 	return nodes;

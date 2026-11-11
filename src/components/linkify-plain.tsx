@@ -1,18 +1,8 @@
 import type {ReactNode} from "react";
 
 import {maskSecrets} from "../lib/secret-mask";
+import {splitUrlTail} from "../lib/url-trim";
 import {ConfirmExternalLink} from "./confirm-external-link";
-
-/** Trailing sentence punctuation, and a closing paren with no opener inside the URL, are not part of it. */
-export function trimUrl(url: string): string {
-	let end = url.length;
-	for (;;) {
-		const last = url[end - 1];
-		if (last !== undefined && ".,;:!?'\"]".includes(last)) end--;
-		else if (last === ")" && url.slice(0, end).split("(").length < url.slice(0, end).split(")").length) end--;
-		else return url.slice(0, end);
-	}
-}
 
 /** Upstream c40ad8c1e `_`: http(s) URLs plus the bare status hosts. */
 const PLAIN_URL_PATTERN = /\bhttps?:\/\/[^\s<>"`]+|\bstatus\.(?:claude|anthropic)\.com\b/g;
@@ -57,7 +47,7 @@ export function linkifyPlain(text: string, {maxLinks}: {maxLinks: number}): Reac
 	let links = 0;
 	for (const match of text.matchAll(PLAIN_URL_PATTERN)) {
 		if (links === maxLinks) break;
-		const shown = trimUnbalancedBrackets(trimUrl(match[0]));
+		const [shown] = splitUrlTail(trimUnbalancedBrackets(splitUrlTail(match[0])[0]));
 		if (shown === "") continue;
 		const href = /^https?:/.test(shown) ? shown : `https://${shown}`;
 		links += 1;

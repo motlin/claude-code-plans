@@ -50,7 +50,7 @@ export function trustDomain(url: string): void {
 
 /** Upstream `Dp` (`!Ma(e) && Ud(e)`): a link whose domain the viewer chose not to be asked about again. */
 export function isTrustedDomainLink(url: string): boolean {
-	if (deceptiveHost(url).punycode !== null || embeddedCredentialsHost(url) !== null) return false;
+	if (isDeceptiveLink(url)) return false;
 	const domain = trustableDomain(url);
 	return domain !== null && trustedDomains().includes(domain);
 }
@@ -90,6 +90,38 @@ export function opensWithoutConfirm(url: string): boolean {
 	if (parsed === null) return false;
 	if (parsed.origin === new URL(pageUrl()).origin) return true;
 	return parsed.protocol === "https:" && TRUSTED_EXTERNAL_HOSTS.has(parsed.hostname);
+}
+
+/** Upstream `bD`: a claude.ai or claude.com host. */
+function isClaudeHost(hostname: string): boolean {
+	return ["claude.ai", "claude.com"].some((root) => hostname === root || hostname.endsWith(`.${root}`));
+}
+
+/** Upstream `Ma`: a link whose host is punycode or which carries a username or password. */
+function isDeceptiveLink(url: string): boolean {
+	return deceptiveHost(url).punycode !== null || embeddedCredentialsHost(url) !== null;
+}
+
+/**
+ * Upstream c5e04cdc6 `n` (as `ft` checks a "confirm" link): an http(s) link the external-link confirm may open —
+ * not trusted or same-origin, no username or password, not a Claude host.
+ */
+function confirmable(url: string): boolean {
+	if (!/^https?:\/\//i.test(url) || opensWithoutConfirm(url)) return false;
+	const parsed = parse(url);
+	return parsed !== null && embeddedCredentialsHost(url) === null && !isClaudeHost(parsed.hostname);
+}
+
+/** How upstream's `pr` draws a link: a live link, through the external-link confirm, or as words. */
+export type LinkTreatment = "live" | "confirm" | "words";
+
+/**
+ * Upstream `fr` under the session transcript's link policy (cc3bf7b05 `bc`, no outer policy): links are live,
+ * except deceptive ones, which ask first when the confirm can open them and are words otherwise.
+ */
+export function transcriptLinkTreatment(url: string): LinkTreatment {
+	if (!isDeceptiveLink(url)) return "live";
+	return confirmable(url) ? "confirm" : "words";
 }
 
 // RFC 3492 punycode decoding, for upstream `s8`'s display of an internationalized host.
