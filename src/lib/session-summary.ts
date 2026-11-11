@@ -18,6 +18,7 @@ import {sessionAwaitingPermission} from "./session-permission-wait";
 import {resolveMainState, resolveSessionBucket} from "./session-state";
 import {requestTurnVerdict, turnVerdictNeedsInput} from "./turn-verdict";
 import {displayedSessionTitle, requestSessionTitle} from "./session-title-generator";
+import {sessionDisplayTitle} from "./session-stand-in-title";
 import {ownRepositoryPr, readOriginRepoName} from "./session-own-pr";
 import type {SessionEntry} from "./sessions";
 
@@ -117,6 +118,7 @@ export function toSessionSummaryPayload(
 	return {
 		id: entry.id,
 		title,
+		...(entry.titleIsStandIn === true ? {titleIsStandIn: true} : {}),
 		summary: entry.summary,
 		...(aiTitle === null ? {} : {aiTitle}),
 		...(entry.lastUserMessage === undefined ? {} : {lastUserMessage: entry.lastUserMessage}),
@@ -211,7 +213,7 @@ export function buildSessionSummaryPayloadFromDb(
 	return toSessionSummaryPayload(
 		{
 			id: row.id,
-			title: row.title,
+			...sessionDisplayTitle(row.title, row.id, row.cwd),
 			firstPrompt: row.firstPrompt ?? undefined,
 			lastUserMessage: row.lastUserMessage ?? undefined,
 			summary: row.summary ?? undefined,

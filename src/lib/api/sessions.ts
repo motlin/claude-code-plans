@@ -23,6 +23,8 @@ const SessionPrLinkSchema = z.object({
 const SessionListItemSchema = z.object({
 	id: z.string(),
 	title: z.string(),
+	/** `title` only stands in for a missing one (upstream `titleIsStandIn`): the folder, else "Untitled". */
+	titleIsStandIn: z.literal(true).optional(),
 	/** The CLI's latest ai-title, shown beside a differing /rename title. */
 	aiTitle: z.string().optional(),
 	summary: z.string().optional(),
@@ -99,6 +101,8 @@ export type ActiveSessionListItem = z.infer<typeof ActiveSessionSchema>;
 export const SessionDetailResponse = z
 	.object({
 		title: z.string(),
+		/** `title` only stands in for a missing one (upstream `standInName`): the folder, else "Untitled". */
+		titleIsStandIn: z.literal(true).optional(),
 		/** The CLI's latest ai-title, shown beside a differing /rename title. */
 		aiTitle: z.string().optional(),
 		projectName: z.string(),

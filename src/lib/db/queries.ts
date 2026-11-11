@@ -5,6 +5,7 @@ import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import * as schema from "./schema";
 import {sessionRemoteControlColumn} from "./bridge-session-index";
 import {displayedSessionTitle} from "../session-title-generator";
+import {type SessionDisplayTitle, sessionDisplayTitle} from "../session-stand-in-title";
 import type {SessionEntry, SessionPrLink} from "../sessions";
 import type {SessionStatusFilter} from "../session-groups";
 import {ORPHANED_TASKS_PROJECT_ID, ORPHANED_TASKS_PROJECT_NAME} from "../task-groups";
@@ -80,22 +81,21 @@ export function getSessionPrLink(db: IndexDb, sessionId: string): SessionPrLink 
 	return row === undefined ? null : (sessionPrLink(row) ?? null);
 }
 
-/** Upstream's label for a session nothing names; the index falls back to the bare session id. */
-const UNTITLED_SESSION_TITLE = "Untitled session";
-
 /**
  * The row's displayed title: a pane-named bridged session's generated title, else the indexed one, with the
- * index's last-resort session id shown as upstream's "Untitled session" so a bare UUID never titles a list row.
+ * index's last-resort session id shown as a stand-in (the folder, else "Untitled") so a bare UUID never titles a row.
  */
-function rowTitle(row: Pick<SessionRow, "id" | "title" | "customTitle">, remoteControl: number): string {
-	const title = displayedSessionTitle({...row, bridged: remoteControl === 1});
-	return title === row.id ? UNTITLED_SESSION_TITLE : title;
+function rowTitle(
+	row: Pick<SessionRow, "id" | "title" | "customTitle" | "cwd">,
+	remoteControl: number,
+): SessionDisplayTitle {
+	return sessionDisplayTitle(displayedSessionTitle({...row, bridged: remoteControl === 1}), row.id, row.cwd);
 }
 
 function rowToSessionEntry(row: SessionEntryRow, projectNames: Map<string, string>): SessionEntry {
 	return {
 		id: row.id,
-		title: rowTitle(row, row.remoteControl),
+		...rowTitle(row, row.remoteControl),
 		firstPrompt: row.firstPrompt ?? undefined,
 		lastUserMessage: row.lastUserMessage ?? undefined,
 		summary: row.summary ?? undefined,
@@ -121,14 +121,15 @@ function rowToSessionEntry(row: SessionEntryRow, projectNames: Map<string, strin
 // Batch session lookup helper
 // ---------------------------------------------------------------------------
 
-function batchFetchSessionTitles(db: IndexDb, sessionIds: string[]): Map<string, string | null> {
-	const map = new Map<string, string | null>();
+function batchFetchSessionTitles(db: IndexDb, sessionIds: string[]): Map<string, SessionDisplayTitle> {
+	const map = new Map<string, SessionDisplayTitle>();
 	if (sessionIds.length === 0) return map;
 	const rows = db
 		.select({
 			id: schema.sessions.id,
 			title: schema.sessions.title,
 			customTitle: schema.sessions.customTitle,
+			cwd: schema.sessions.cwd,
 			remoteControl: sessionRemoteControlColumn,
 		})
 		.from(schema.sessions)
@@ -348,9 +349,7 @@ export function listSessionGroupsFromDb(
 export function getSessionTitlesByIds(db: IndexDb, ids: string[]): Record<string, string> {
 	const titles = batchFetchSessionTitles(db, ids);
 	const out: Record<string, string> = {};
-	for (const [id, title] of titles) {
-		if (title != null) out[id] = title;
-	}
+	for (const [id, {title}] of titles) out[id] = title;
 	return out;
 }
 
@@ -454,7 +453,7 @@ export function listSessionsForBranch(db: IndexDb, projectId: string, branch: st
 
 	return rows.map((row) => ({
 		id: row.id,
-		title: rowTitle(row, row.remoteControl),
+		...rowTitle(row, row.remoteControl),
 		firstPrompt: row.firstPrompt ?? undefined,
 		lastUserMessage: row.lastUserMessage ?? undefined,
 		summary: row.summary ?? undefined,
@@ -560,7 +559,7 @@ export function getPlanLinksFromDb(db: IndexDb, planFilename?: string): DbPlanCo
 			projectId: row.projectId,
 			projectName: project?.name ?? row.projectId,
 			projectPath: project?.projectPath ?? null,
-			sessionTitle: session?.title ?? null,
+			sessionTitle: realTitle(session && sessionDisplayTitle(session.title, session.id, null)),
 			sessionMtimeMs: session?.mtimeMs ?? null,
 		};
 	});
@@ -599,6 +598,10 @@ export function getProjectDetailFromDb(db: IndexDb, projectId: string): DbProjec
 	};
 }
 
+function realTitle(title: SessionDisplayTitle | undefined): string | null {
+	return title === undefined || title.titleIsStandIn === true ? null : title.title;
+}
+
 function getPlanLinksForProjectFromDb(db: IndexDb, projectId: string): DbPlanSessionLink[] {
 	const projectNames = getProjectNameMap(db);
 	const projectName = projectNames.get(projectId) ?? projectId;
@@ -615,7 +618,8 @@ function getPlanLinksForProjectFromDb(db: IndexDb, projectId: string): DbPlanSes
 		sessionId: row.sessionId,
 		projectId: row.projectId,
 		projectName,
-		sessionTitle: sessionTitles.get(row.sessionId) ?? null,
+		// A stand-in is not a title: the plan header names such a session "Untitled session" itself.
+		sessionTitle: realTitle(sessionTitles.get(row.sessionId)),
 	}));
 }
 
@@ -1079,7 +1083,7 @@ export function getSessionsByIds(
 
 	return rows.map((row) => ({
 		id: row.session.id,
-		title: rowTitle(row.session, row.remoteControl),
+		...rowTitle(row.session, row.remoteControl),
 		firstPrompt: row.session.firstPrompt ?? undefined,
 		lastUserMessage: row.session.lastUserMessage ?? undefined,
 		summary: row.session.summary ?? undefined,

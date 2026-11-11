@@ -81,6 +81,12 @@ function chevronClass(panels: boolean): string {
 }
 
 /* Upstream's `cc-lined-title-group`: gap pad-md - 6px (2 / 6), min-width 32 + h-control + gap, 8 + h-control + gap while the pills are compact. */
+/** Upstream's h2 around the title, and around the preview while the title loads. */
+const TITLE_HEADING_CLASS = "flex min-w-[32px] items-center group-data-[pills-compact]/lead:min-w-[8px]";
+
+/** Upstream's `span[data-slot=title-preview]`: the title's text classes without the button chrome. */
+const TITLE_PREVIEW_CLASS = "truncate text-body font-medium font-control text-primary select-none";
+
 const TITLE_GROUP_CLASS =
 	"cc-lined-title-group flex items-center gap-0.5 min-w-[58px] group-data-[pills-compact]/lead:min-w-[34px] comfortable:gap-1.5 comfortable:min-w-[66px] comfortable:group-data-[pills-compact]/lead:min-w-[42px]";
 
@@ -352,6 +358,8 @@ export interface SessionTitlebarProps {
 	transcriptView?: SessionHeaderTranscriptView;
 	/** The trail leads with the session rail toggle, which folds first and allows one more hidden button. */
 	railToggleFoldable?: boolean;
+	/** The session's first title has not arrived: show upstream's non-interactive title preview (`isTitleLoading`). */
+	titlePending?: boolean;
 }
 
 /**
@@ -371,8 +379,9 @@ export function SessionTitlebar({
 	summary = null,
 	transcriptView,
 	railToggleFoldable = false,
+	titlePending = false,
 }: SessionTitlebarProps) {
-	const rename = useSessionRename(sessionId, data.title);
+	const rename = useSessionRename(sessionId, data.title, data.titleIsStandIn === true);
 	const panels = useFizzyLake("panels");
 	const cwd = data.cwd ?? data.projectPath;
 	useSessionTitleShortcuts({
@@ -380,7 +389,8 @@ export function SessionTitlebar({
 		archived: data.archived,
 		prUrl: data.pr?.url,
 		cwd,
-		startEditing: rename.startEditing,
+		// No rename while the title is still pending, as upstream's preview has none.
+		startEditing: titlePending ? () => {} : rename.startEditing,
 	});
 	const menuRename = useRenameAfterMenuClose(rename.startEditing);
 	const contextRename = useRenameAfterMenuClose(rename.startEditing);
@@ -434,60 +444,69 @@ export function SessionTitlebar({
 							Parent session
 						</Link>
 					)}
-					<div className={TITLE_GROUP_CLASS}>
-						<ContextMenu
-							onOpenChangeComplete={contextRename.onOpenChangeComplete}
-							disabled={rename.editing}
-						>
-							{/* Upstream's title wrapper is an h2 named by the title, and a span while renaming (`k = D ? "span" : "h2"`). */}
-							<ContextMenuTrigger
-								className="flex min-w-[32px] items-center group-data-[pills-compact]/lead:min-w-[8px]"
-								render={({children, ...props}) =>
-									rename.editing ? (
-										<span {...props}>{children}</span>
-									) : (
-										<h2 {...props} aria-label={rename.title}>
-											{children}
-										</h2>
-									)
-								}
+					{titlePending ? (
+						/* Upstream's lead while the title loads: the h2 with a plain preview, no rename, chevron or aria-label. */
+						<h2 className={TITLE_HEADING_CLASS}>
+							<span data-slot="title-preview" data-pane-title="" className={TITLE_PREVIEW_CLASS}>
+								{rename.title}
+							</span>
+						</h2>
+					) : (
+						<div className={TITLE_GROUP_CLASS}>
+							<ContextMenu
+								onOpenChangeComplete={contextRename.onOpenChangeComplete}
+								disabled={rename.editing}
 							>
-								<SessionTitleButton rename={rename} className={TITLE_CLASS} summary={summary} />
-							</ContextMenuTrigger>
-							<MenuContent finalFocus={contextRename.finalFocus}>
-								<HeaderMenuBody
-									sessionId={sessionId}
-									data={data}
-									title={rename.title}
-									isActive={isActive}
-									requestRename={contextRename.requestRename}
-									local={local}
-									transcriptView={transcriptView}
-								/>
-							</MenuContent>
-						</ContextMenu>
-						<Menu onOpenChangeComplete={menuRename.onOpenChangeComplete}>
-							<Tooltip content={menuTooltipLabel(rename.title)} side="bottom">
-								<MenuTrigger
-									aria-label={`More options for ${rename.title}`}
-									className={chevronClass(panels)}
+								{/* Upstream's title wrapper is an h2 named by the title, and a span while renaming (`k = D ? "span" : "h2"`). */}
+								<ContextMenuTrigger
+									className={TITLE_HEADING_CLASS}
+									render={({children, ...props}) =>
+										rename.editing ? (
+											<span {...props}>{children}</span>
+										) : (
+											<h2 {...props} aria-label={rename.title}>
+												{children}
+											</h2>
+										)
+									}
 								>
-									<ChevronDown aria-hidden className="size-4" />
-								</MenuTrigger>
-							</Tooltip>
-							<MenuContent finalFocus={menuRename.finalFocus} sideOffset={6}>
-								<HeaderMenuBody
-									sessionId={sessionId}
-									data={data}
-									title={rename.title}
-									isActive={isActive}
-									requestRename={menuRename.requestRename}
-									local={local}
-									transcriptView={transcriptView}
-								/>
-							</MenuContent>
-						</Menu>
-					</div>
+									<SessionTitleButton rename={rename} className={TITLE_CLASS} summary={summary} />
+								</ContextMenuTrigger>
+								<MenuContent finalFocus={contextRename.finalFocus}>
+									<HeaderMenuBody
+										sessionId={sessionId}
+										data={data}
+										title={rename.title}
+										isActive={isActive}
+										requestRename={contextRename.requestRename}
+										local={local}
+										transcriptView={transcriptView}
+									/>
+								</MenuContent>
+							</ContextMenu>
+							<Menu onOpenChangeComplete={menuRename.onOpenChangeComplete}>
+								<Tooltip content={menuTooltipLabel(rename.title)} side="bottom">
+									<MenuTrigger
+										aria-label={`More options for ${rename.title}`}
+										className={chevronClass(panels)}
+									>
+										<ChevronDown aria-hidden className="size-4" />
+									</MenuTrigger>
+								</Tooltip>
+								<MenuContent finalFocus={menuRename.finalFocus} sideOffset={6}>
+									<HeaderMenuBody
+										sessionId={sessionId}
+										data={data}
+										title={rename.title}
+										isActive={isActive}
+										requestRename={menuRename.requestRename}
+										local={local}
+										transcriptView={transcriptView}
+									/>
+								</MenuContent>
+							</Menu>
+						</div>
+					)}
 					{data.archived && <ArchivedBadge />}
 					<span
 						data-origin-pills=""

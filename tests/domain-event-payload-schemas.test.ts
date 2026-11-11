@@ -154,6 +154,7 @@ describe("domain event payload schemas accept the payloads the server emits", ()
 			{
 				id: SESSION_ID,
 				title: "Fix the test login bug",
+				titleIsStandIn: true,
 				summary: "Fixed the test auth issue",
 				mtime: new Date(946_598_400_000),
 				created: new Date(946_598_300_000),

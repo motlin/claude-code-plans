@@ -63,7 +63,7 @@ async function flush() {
 	});
 }
 
-async function renderSidebar() {
+async function renderSidebar(sessions: readonly object[] = FIXTURE) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {retry: false, staleTime: Infinity, gcTime: Infinity, refetchOnMount: false},
@@ -71,7 +71,7 @@ async function renderSidebar() {
 		},
 	});
 	queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
-		pages: [RecentSessionsResponse.parse({sessions: FIXTURE, nextCursor: null})],
+		pages: [RecentSessionsResponse.parse({sessions, nextCursor: null})],
 		pageParams: [null],
 	});
 	queryClient.setQueryData(herdrPanesQueryOptions.queryKey, {panes: [], writesEnabled: false});
@@ -105,8 +105,8 @@ function rowLink(): HTMLElement {
 	return link;
 }
 
-async function openKebabMenu(): Promise<void> {
-	fireEvent.click(screen.getByRole("button", {name: `More options for ${OLD_TITLE}`}));
+async function openKebabMenu(title = OLD_TITLE): Promise<void> {
+	fireEvent.click(screen.getByRole("button", {name: `More options for ${title}`}));
 	await flush();
 	await waitFor(() => screen.getByRole("menu"));
 }
@@ -166,6 +166,21 @@ describe("sidebar row rename", () => {
 			value: OLD_TITLE,
 			selection: [0, OLD_TITLE.length],
 			menuOpen: false,
+		});
+	});
+
+	it("starts a stand-in title's rename from an empty field while the row still reads Untitled (upstream MJ)", async () => {
+		await renderSidebar([{...FIXTURE[0], title: "Untitled", titleIsStandIn: true}]);
+		await openKebabMenu("Untitled");
+
+		const input = await chooseRename();
+		fireEvent.keyDown(input, {key: "Enter"});
+		await flush();
+
+		expect({value: input.value, calls: renameCalls(), row: rowTitle(rowLink())}).toStrictEqual({
+			value: "",
+			calls: [],
+			row: "Untitled",
 		});
 	});
 

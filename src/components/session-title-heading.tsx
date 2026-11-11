@@ -19,7 +19,7 @@ export function SessionTitleButton({
 }) {
 	const hasSummary = summary !== null && summary !== "";
 	if (rename.editing) {
-		return <InlineRenameInput value={rename.title} onCommit={rename.commit} onCancel={rename.cancel} />;
+		return <InlineRenameInput value={rename.initialValue} onCommit={rename.commit} onCancel={rename.cancel} />;
 	}
 	return (
 		<Tooltip content="Rename" side="bottom" className="min-w-0">

@@ -1315,7 +1315,7 @@ describe("indexer", () => {
 		]);
 	});
 
-	it("lists a session with no title source as an untitled session instead of by its id", async () => {
+	it("names a session with no title source by its folder, else Untitled, never by its id (upstream fK)", async () => {
 		const project = "-Users-alice-projects-untitled";
 		const projectDir = join(testDir, project);
 		mkdirSync(projectDir, {recursive: true});
@@ -1324,23 +1324,37 @@ describe("indexer", () => {
 			jsonl({type: "permission-mode", permissionMode: "auto", sessionId: "session-empty"}),
 		);
 		writeFileSync(
+			join(projectDir, "session-folder.jsonl"),
+			jsonl({
+				type: "permission-mode",
+				permissionMode: "auto",
+				sessionId: "session-folder",
+				cwd: "/fake/projects/example-repo",
+			}),
+		);
+		writeFileSync(
 			join(projectDir, "session-named.jsonl"),
 			jsonl({type: "user", message: {role: "user", content: "Fix the logout bug"}}),
 		);
 		await fullScan(db.index, db.summaries, testDir);
 
 		const listed = listSessionsForProjectFromDb(db.index, project)
-			.map((session) => ({id: session.id, title: session.title}))
+			.map((session) => ({id: session.id, title: session.title, titleIsStandIn: session.titleIsStandIn}))
 			.toSorted((a, b) => a.id.localeCompare(b.id));
 		expect({
 			project: listed,
-			byId: getSessionTitlesByIds(db.index, ["session-empty", "session-named"]),
+			byId: getSessionTitlesByIds(db.index, ["session-empty", "session-folder", "session-named"]),
 		}).toStrictEqual({
 			project: [
-				{id: "session-empty", title: "Untitled session"},
-				{id: "session-named", title: "Fix the logout bug"},
+				{id: "session-empty", title: "Untitled", titleIsStandIn: true},
+				{id: "session-folder", title: "example-repo", titleIsStandIn: true},
+				{id: "session-named", title: "Fix the logout bug", titleIsStandIn: undefined},
 			],
-			byId: {"session-empty": "Untitled session", "session-named": "Fix the logout bug"},
+			byId: {
+				"session-empty": "Untitled",
+				"session-folder": "example-repo",
+				"session-named": "Fix the logout bug",
+			},
 		});
 	});
 

@@ -34,6 +34,8 @@ export interface SessionPrLink {
 export interface SessionEntry {
 	id: string;
 	title: string;
+	/** `title` only stands in for a missing one (the folder, else "Untitled"); renaming starts empty. */
+	titleIsStandIn?: true | undefined;
 	firstPrompt?: string | undefined;
 	/** The first line of the newest prompt the user typed, from the index. */
 	lastUserMessage?: string | undefined;

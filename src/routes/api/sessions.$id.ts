@@ -22,6 +22,7 @@ export const Route = createFileRoute("/api/sessions/$id")({
 				const {canonicalSessionRouteId, sessionBridgeMetadataKey, sessionRemoteControlColumn} =
 					await import("../../lib/db/bridge-session-index");
 				const {displayedSessionTitle} = await import("../../lib/session-title-generator");
+				const {sessionDisplayTitle} = await import("../../lib/session-stand-in-title");
 				const {indexFile, isCurrentlyIndexing} = await import("../../lib/db/indexer");
 				const {eq, sql} = await import("drizzle-orm");
 				const {getSummary} = await import("../../lib/summaries");
@@ -138,7 +139,11 @@ export const Route = createFileRoute("/api/sessions/$id")({
 				const summary = getSummary(summaries, id);
 
 				const detail: NonNullable<ReturnType<typeof SessionDetailResponse.parse>> = {
-					title: displayedSessionTitle({id, ...sessionRow, bridged: sessionRow.remoteControl === 1}),
+					...sessionDisplayTitle(
+						displayedSessionTitle({id, ...sessionRow, bridged: sessionRow.remoteControl === 1}),
+						id,
+						sessionMeta?.cwd,
+					),
 					projectName: sessionMeta?.projectName ?? sessionRow.projectId,
 					projectId: sessionRow.projectId,
 					homeRoot,

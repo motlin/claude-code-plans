@@ -53,6 +53,8 @@ export interface HookSchemaDriftPayload {
 export interface SessionSummaryPayload {
 	id: string;
 	title: string;
+	/** `title` only stands in for a missing one (the folder, else "Untitled"); renaming starts empty. */
+	titleIsStandIn?: true;
 	summary: string | undefined;
 	/** The CLI's latest ai-title; absent when the session has none or it is the title. */
 	aiTitle?: string;

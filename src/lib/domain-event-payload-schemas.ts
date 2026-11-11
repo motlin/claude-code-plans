@@ -24,6 +24,7 @@ export const SessionSummaryPayloadSchema: z.ZodType<SessionSummaryPayload> = z
 	.strictObject({
 		id: z.string(),
 		title: z.string(),
+		titleIsStandIn: z.literal(true).exactOptional(),
 		summary: z.string().optional(),
 		aiTitle: z.string().exactOptional(),
 		lastUserMessage: z.string().exactOptional(),

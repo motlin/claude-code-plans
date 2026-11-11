@@ -7,6 +7,7 @@ import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SessionTitlebar} from "../src/components/session-titlebar";
+import {sessionTitlePending} from "../src/lib/session-stand-in-title";
 import {ToastProvider} from "../src/components/toast";
 import {
 	SESSION_STICKY_HEADER_CLASS,
@@ -209,6 +210,7 @@ async function renderTitlebar(
 		paneToggles?: ReactNode;
 		railToggleFoldable?: boolean;
 		fizzyLake?: readonly FizzyLakePart[];
+		titlePending?: boolean;
 	} = {},
 ) {
 	const queryClient = new QueryClient({
@@ -247,6 +249,7 @@ async function renderTitlebar(
 			{...(slots.viewOptions === undefined ? {} : {viewOptions: slots.viewOptions})}
 			{...(slots.paneToggles === undefined ? {} : {paneToggles: slots.paneToggles})}
 			{...(slots.railToggleFoldable === undefined ? {} : {railToggleFoldable: slots.railToggleFoldable})}
+			{...(slots.titlePending === undefined ? {} : {titlePending: slots.titlePending})}
 		/>
 	);
 	const rootRoute = createRootRoute({
@@ -483,6 +486,49 @@ describe("SessionTitlebar title and chevron", () => {
 			heading: screen.queryByRole("heading", {level: 2}),
 			input: screen.getByRole("textbox").closest(".cc-lined-title-group") !== null,
 		}).toStrictEqual({heading: null, input: true});
+	});
+
+	it("starts renaming a stand-in title from an empty field, as upstream's ownTitle", async () => {
+		await renderTitlebar({...baseDetail, title: "Untitled", titleIsStandIn: true});
+		fireEvent.click(screen.getByRole("button", {name: "Untitled, rename session"}));
+		await flush();
+
+		expect(screen.getByRole<HTMLInputElement>("textbox").value).toBe("");
+	});
+
+	it("shows upstream's non-interactive title-preview while the first title is pending: no rename, chevron or h2 name", async () => {
+		const titlebar = await renderTitlebar(
+			{...baseDetail, title: "Untitled", titleIsStandIn: true},
+			{titlePending: true},
+		);
+		const preview = titlebar.querySelector("[data-slot=title-preview]");
+		const heading = preview?.closest("h2");
+
+		expect({
+			preview: preview?.outerHTML,
+			headingName: heading?.getAttribute("aria-label") ?? null,
+			headingClass: heading?.className,
+			rename: screen.queryByRole("button", {name: /rename session$/}),
+			chevron: screen.queryByRole("button", {name: /^More options for/}),
+		}).toStrictEqual({
+			preview:
+				'<span data-slot="title-preview" data-pane-title="" class="truncate text-body font-medium font-control text-primary select-none">Untitled</span>',
+			headingName: null,
+			headingClass: "flex min-w-[32px] items-center group-data-[pills-compact]/lead:min-w-[8px]",
+			rename: null,
+			chevron: null,
+		});
+	});
+
+	it("treats only a live session with a stand-in title and no message yet as awaiting its first title", () => {
+		const standIn = {...baseDetail, title: "Untitled", titleIsStandIn: true as const, messageCount: 0};
+
+		expect({
+			liveEmpty: sessionTitlePending(standIn, true),
+			ended: sessionTitlePending(standIn, false),
+			hasMessages: sessionTitlePending({...standIn, messageCount: 1}, true),
+			titled: sessionTitlePending({...baseDetail, messageCount: 0}, true),
+		}).toStrictEqual({liveEmpty: true, ended: false, hasMessages: false, titled: false});
 	});
 
 	it("grows the title and chevron to upstream's comfortable controls under a comfortable scope", async () => {

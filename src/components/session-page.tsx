@@ -35,6 +35,7 @@ import {useSettings} from "./settings-context";
 import {useTranscriptModeShortcut} from "../hooks/use-session-transcript-mode";
 import {sessionHasThinking} from "../lib/transcript-mode";
 import {SessionTitlebar} from "./session-titlebar";
+import {sessionTitlePending} from "../lib/session-stand-in-title";
 import {SessionAiTitleLine} from "./session-ai-title-line";
 import {SESSION_STICKY_HEADER_CLASS} from "./titlebar-classes";
 import {syncUnseenFromSummaries} from "../lib/unread-store";
@@ -1574,6 +1575,7 @@ function SessionView({
 												summary={aiSummary}
 												transcriptView={transcriptView}
 												railToggleFoldable
+												titlePending={sessionTitlePending(data, isActive)}
 												paneToggles={
 													<SessionPaneControls
 														railAvailable

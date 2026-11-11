@@ -75,6 +75,39 @@ describe("GET /api/sessions/$id during the first index build", () => {
 		});
 	});
 
+	it("names a session with no title source by its folder, else Untitled, never by its id", async () => {
+		const projectDir = join(state.home, ".claude", "projects", projectId);
+		const folderId = "1a2b3c4d-0000-4000-8000-000000000001";
+		const emptyId = "1a2b3c4d-0000-4000-8000-000000000002";
+		writeFileSync(
+			join(projectDir, `${folderId}.jsonl`),
+			JSON.stringify({
+				type: "permission-mode",
+				permissionMode: "auto",
+				sessionId: folderId,
+				cwd: "/fake/projects/example-repo",
+			}) + "\n",
+		);
+		writeFileSync(
+			join(projectDir, `${emptyId}.jsonl`),
+			JSON.stringify({type: "permission-mode", permissionMode: "auto", sessionId: emptyId}) + "\n",
+		);
+		const titleOf = async (id: string) => {
+			const body = (await getDetail(id, true)) as {title: string; titleIsStandIn?: boolean} | null;
+			return body === null ? null : {title: body.title, titleIsStandIn: body.titleIsStandIn};
+		};
+
+		expect({
+			named: await titleOf(sessionId),
+			folder: await titleOf(folderId),
+			empty: await titleOf(emptyId),
+		}).toStrictEqual({
+			named: {title: "Fix the flaky sync test", titleIsStandIn: undefined},
+			folder: {title: "example-repo", titleIsStandIn: true},
+			empty: {title: "Untitled", titleIsStandIn: true},
+		});
+	});
+
 	it("still reports an unknown id as not found once indexing is done", async () => {
 		expect(await getDetail("0a0b0c0d-1e1f-4a2b-8c3d-4e5f6a7b8c9d", false)).toStrictEqual(null);
 	});

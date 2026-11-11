@@ -99,7 +99,14 @@ function useRowRename(): RowRename {
 export function SessionRowTitle({render}: {render?: (title: string) => ReactNode}): ReactNode {
 	const {rename} = useRowRename();
 	if (rename.editing) {
-		return <InlineRenameInput value={rename.title} onCommit={rename.commit} onCancel={rename.cancel} blurCancels />;
+		return (
+			<InlineRenameInput
+				value={rename.initialValue}
+				onCommit={rename.commit}
+				onCancel={rename.cancel}
+				blurCancels
+			/>
+		);
 	}
 	return render === undefined ? rename.title : render(rename.title);
 }
@@ -397,7 +404,7 @@ export function SessionActionsMenu({
 	children: ReactNode;
 	className?: string;
 }) {
-	const rename = useSessionRename(session.id, session.title);
+	const rename = useSessionRename(session.id, session.title, session.titleIsStandIn === true);
 	const renameAfterClose = useRenameAfterMenuClose(rename.startEditing);
 	const {requestRename} = renameAfterClose;
 	const [newGroupOpen, setNewGroupOpen] = useState(false);

@@ -60,6 +60,7 @@ import {GroupNewSessionButton} from "./group-new-session-button";
 import {GroupAppearanceMark} from "./group-appearance";
 import {useOpenRowAutoExpand, useSectionFocusRescue} from "./group-section-focus";
 import {ProjectGroupHeader} from "./project-group-header";
+import {UNTITLED_SESSION_TITLE} from "../../lib/session-stand-in-title";
 import {useSidebarSelection} from "./selection-context";
 import type {SidebarSessionRow} from "./sidebar-session-row";
 import {ROVING_ITEM_PROPS} from "./use-roving-focus";
@@ -855,7 +856,7 @@ function SessionRowLink({
 	const queryClient = useQueryClient();
 	const selection = useSidebarSelection();
 	const multiSelected = selection?.selectedIds.includes(row.sessionId) === true;
-	const title = row.title.trim() || "Untitled session";
+	const title = row.title.trim() || UNTITLED_SESSION_TITLE;
 	const aiTitle = useSecondaryAiTitle(title, row.session.aiTitle);
 	const {settings} = useSettings();
 	const blocked = row.bucket === "blocked";
