@@ -258,30 +258,50 @@ export function decoyOnlyPgrep(dir: string, decoyPids: readonly number[]): strin
 }
 
 /**
- * Times a test's phases against budgets that sum to less than the test's own timeout, so a stall fails as "<phase>
- * did not finish within <budget>" with every phase's start offset and duration, never as a bare test timeout that
- * hides which step hung.
+ * Times a test's phases so a stall fails as "<phase> did not finish before the <deadline> phase deadline" with every
+ * phase's start offset and duration, never as a bare test timeout that hides which step hung. The deadline sits just
+ * under the test's own timeout, so only a phase that would have timed the test out anyway fails: a phase that is
+ * merely slower than its estimate, as on a loaded machine, passes and is flagged in the report. A fixture that boots
+ * in ~100ms took over 8s under load only because the whole process stalled, not because the fixture hung.
  */
 export class PhaseTimer {
 	private readonly started = Date.now();
 	private readonly lines: string[] = [];
 
-	async step<T>(name: string, budgetMs: number, action: () => Promise<T> | T): Promise<T> {
+	constructor(private readonly deadlineMs: number) {}
+
+	/** `diagnose` runs only when the phase misses the deadline, and its text joins the failure. */
+	async step<T>(name: string, estimateMs: number, action: () => Promise<T> | T, diagnose?: () => string): Promise<T> {
 		const at = Date.now();
 		let timer: ReturnType<typeof setTimeout> | undefined;
-		const overBudget = new Promise<never>((_resolve, reject) => {
-			timer = setTimeout(() => {
-				reject(new Error(`${name} did not finish within ${String(budgetMs)}ms`));
-			}, budgetMs);
+		const deadline = new Promise<{done: false}>((resolveDeadline) => {
+			// After a stall the deadline timer and the action's I/O are due together, and timers run before I/O; waiting
+			// one setImmediate lets I/O that already arrived settle the action first.
+			timer = setTimeout(
+				() => {
+					setImmediate(() => {
+						resolveDeadline({done: false});
+					});
+				},
+				Math.max(0, this.started + this.deadlineMs - at),
+			);
 		});
 		try {
-			const result = await Promise.race([Promise.resolve().then(action), overBudget]);
-			// A synchronous action blocks the timer, so check its duration too.
-			if (Date.now() - at > budgetMs) {
-				throw new Error(`${name} did not finish within ${String(budgetMs)}ms`);
+			const outcome = await Promise.race([
+				Promise.resolve()
+					.then(action)
+					.then((value) => ({done: true as const, value})),
+				deadline,
+			]);
+			if (!outcome.done) {
+				const details = diagnose === undefined ? "" : `\n${diagnose()}`;
+				throw new Error(
+					`${name} did not finish before the ${String(this.deadlineMs)}ms phase deadline${details}`,
+				);
 			}
-			this.record(name, at, "ok");
-			return result;
+			const elapsed = Date.now() - at;
+			this.record(name, at, "ok", elapsed > estimateMs ? `, over its ${String(estimateMs)}ms estimate` : "");
+			return outcome.value;
 		} catch (error) {
 			this.record(name, at, "FAILED");
 			const reason = error instanceof Error ? error.message : String(error);
@@ -295,8 +315,25 @@ export class PhaseTimer {
 		return this.lines.join("\n");
 	}
 
-	private record(name: string, at: number, outcome: string): void {
-		const now = Date.now();
-		this.lines.push(`+${String(at - this.started)}ms ${name}: ${outcome} in ${String(now - at)}ms`);
+	private record(name: string, at: number, outcome: string, note = ""): void {
+		this.lines.push(`+${String(at - this.started)}ms ${name}: ${outcome} in ${String(Date.now() - at)}ms${note}`);
+	}
+}
+
+/** A process's scheduler state and CPU time, telling a starved process (runnable, little CPU) from a hung one. */
+export function processUsage(label: string, pid: number | undefined): string {
+	if (pid === undefined) {
+		return `${label}: never spawned`;
+	}
+	try {
+		const [state = "?", cpu = "?"] = execFileSync("ps", ["-o", "state=,time=", "-p", String(pid)], {
+			encoding: "utf8",
+			timeout: 2000,
+		})
+			.trim()
+			.split(/\s+/);
+		return `${label} pid ${String(pid)}: state ${state}, cpu ${cpu}`;
+	} catch {
+		return `${label} pid ${String(pid)}: gone`;
 	}
 }

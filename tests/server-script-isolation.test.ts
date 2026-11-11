@@ -1,7 +1,10 @@
 import {type ChildProcess, execFileSync, spawn} from "node:child_process";
+import {once} from "node:events";
 import {readFileSync, rmSync} from "node:fs";
+import {connect, createServer, type Socket} from "node:net";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
+import {setTimeout as delay} from "node:timers/promises";
 import {afterAll, describe, expect, it} from "vite-plus/test";
 import {
 	DEFAULT_SERVER_TITLE,
@@ -180,28 +183,55 @@ describe("scripts/server.sh test isolation", () => {
 		expect(ports[0]).not.toBe(ports[1]);
 	});
 
-	// vitest's own timeout names only the test, so the lifecycle tests' phases carry budgets under it.
-	it("PhaseTimer fails a phase that overruns its budget, listing every phase so far", async () => {
-		const phases = new PhaseTimer();
+	// vitest's own timeout names only the test, so a phase still running at the deadline just under it fails naming
+	// itself. A phase that is merely slower than its estimate, as on a loaded machine, passes and is flagged instead.
+	it("PhaseTimer fails only a phase still running at its deadline, and lets I/O that arrived during a stall win", async () => {
+		const phases = new PhaseTimer(300);
 		await phases.step("quick", 1000, () => "done");
+		await phases.step("slow", 1, async () => delay(20));
 		const failure = await phases
-			.step("stalled", 50, async () => new Promise(() => {}))
+			.step(
+				"stalled",
+				50,
+				async () => new Promise(() => {}),
+				() => "stalled diagnostics",
+			)
 			.catch((error: unknown) => error);
-		const blocking = new PhaseTimer();
-		const blocked = await blocking
-			.step("blocking", 10, () => {
-				const until = Date.now() + 30;
+
+		// The event loop stalls past the deadline after the step's data already reached its socket: when the loop
+		// resumes the deadline timer and the data are both due, and the data must win.
+		const server = createServer();
+		server.listen(0, "127.0.0.1");
+		await once(server, "listening");
+		const address = server.address();
+		const accepted = once(server, "connection");
+		const client = connect(typeof address === "object" && address !== null ? address.port : 0, "127.0.0.1");
+		const [serverSide] = (await accepted) as [Socket];
+		const stalledLoop = new PhaseTimer(20);
+		try {
+			const arrived = await stalledLoop.step("arrived during a stall", 10, async () => {
+				const data = once(client, "data");
+				serverSide.write("ready");
+				const until = Date.now() + 100;
 				while (Date.now() < until) {
-					// A synchronous step blocks the budget's timer.
+					// The whole process is descheduled, as under load.
 				}
-			})
-			.catch((error: unknown) => error);
-		const messages = [failure, blocked].map((error) =>
-			error instanceof Error ? error.message.replaceAll(/\d+ms/g, "Nms") : String(error),
-		);
-		expect(messages).toStrictEqual([
-			"stalled did not finish within Nms\n--- phases ---\n+Nms quick: ok in Nms\n+Nms stalled: FAILED in Nms",
-			"blocking did not finish within Nms\n--- phases ---\n+Nms blocking: FAILED in Nms",
-		]);
+				return String((await data)[0]);
+			});
+			expect({
+				arrived,
+				stalledLoop: stalledLoop.report().replaceAll(/\d+ms/g, "Nms"),
+				failure: failure instanceof Error ? failure.message.replaceAll(/\d+ms/g, "Nms") : String(failure),
+			}).toStrictEqual({
+				arrived: "ready",
+				stalledLoop: "+Nms arrived during a stall: ok in Nms, over its Nms estimate",
+				failure:
+					"stalled did not finish before the Nms phase deadline\nstalled diagnostics\n--- phases ---\n+Nms quick: ok in Nms\n+Nms slow: ok in Nms, over its Nms estimate\n+Nms stalled: FAILED in Nms",
+			});
+		} finally {
+			client.destroy();
+			serverSide.destroy();
+			server.close();
+		}
 	});
 });

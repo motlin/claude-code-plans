@@ -8,6 +8,7 @@ import {
 	PhaseTimer,
 	newServerScriptRun,
 	portOwners as listeningPids,
+	processUsage,
 	projectRoot,
 	reservePort,
 	runServerScript,
@@ -211,11 +212,11 @@ describe("scripts/server.sh", () => {
 		}
 	}, 150_000);
 
-	// Each phase has a budget and the budgets sum to under the test's 30s, so a
-	// stall fails naming its phase, with every phase's timing, instead of as a
-	// bare test timeout.
+	// A phase still running at 28s, just under the test's 30s, fails naming
+	// itself with every phase's timing instead of as a bare test timeout. The
+	// fixture boots in ~100ms; its estimate only flags slow runs in the report.
 	it("stop finds a server renamed by process.title via SERVER_MATCH's title alternative", async () => {
-		const phases = new PhaseTimer();
+		const phases = new PhaseTimer(28_000);
 		// Listen on a different port so only the command-line match, not the
 		// port fallback, can find this process.
 		const otherPort = await phases.step("reserve the fixture's port", 2000, reservePort);
@@ -243,8 +244,11 @@ describe("scripts/server.sh", () => {
 		);
 		try {
 			expect(
-				await phases.step("fixture and decoy ready", 6000, async () =>
-					Promise.all([readyLine(child), readyLine(decoy)]),
+				await phases.step(
+					"fixture and decoy ready",
+					1000,
+					async () => Promise.all([readyLine(child), readyLine(decoy)]),
+					() => `${processUsage("fixture", child.pid)}\n${processUsage("decoy", decoy.pid)}`,
 				),
 			).toStrictEqual([`listening on ${otherPort}`, "ready"]);
 			expect(await phases.step("pgrep the title before stop", 2000, titledPids)).toStrictEqual([
@@ -277,7 +281,7 @@ describe("scripts/server.sh", () => {
 	it.skipIf(process.platform !== "darwin")(
 		"stop fails loudly when the cwd lookup stalls past LOOKUP_TIMEOUT_SECONDS",
 		async () => {
-			const phases = new PhaseTimer();
+			const phases = new PhaseTimer(28_000);
 			const otherPort = await phases.step("reserve the fixture's port", 2000, reservePort);
 			const child = spawn("node", [fixture, instance], {
 				cwd: runDir,
@@ -289,9 +293,14 @@ describe("scripts/server.sh", () => {
 			mkdirSync(fakeBin, {recursive: true});
 			writeFileSync(join(fakeBin, "perl"), "#!/bin/sh\nexec sleep 60\n", {mode: 0o755});
 			try {
-				expect(await phases.step("fixture ready", 8000, async () => readyLine(child))).toBe(
-					`listening on ${otherPort}`,
-				);
+				expect(
+					await phases.step(
+						"fixture ready",
+						1000,
+						async () => readyLine(child),
+						() => processUsage("fixture", child.pid),
+					),
+				).toBe(`listening on ${otherPort}`);
 				const {SERVER_MATCH: _unused, ...defaultMatchEnv} = env;
 				const failure: unknown = await phases.step("server.sh stop", 15_000, async () =>
 					execFileAsync("bash", [script, "stop"], {
