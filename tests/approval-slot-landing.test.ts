@@ -9,7 +9,9 @@ import {
 	landingAllowsPick,
 	landingSeams,
 	recordLanding,
+	resetLandingWindow,
 	swallowEnterAfterFocusLoss,
+	trackWindowFocus,
 } from "../src/lib/approval-slot-landing";
 
 let now = 0;
@@ -81,6 +83,27 @@ describe("the landing registry's window keys", () => {
 		clearLanding(window);
 		const unlanded = landingAllowsPick(arrow, true);
 		expect({early, unlanded}).toStrictEqual({early: false, unlanded: true});
+	});
+
+	it("forgets the window's focus history on reset, as a fresh page starts", () => {
+		trackWindowFocus(window);
+		now = 50_000;
+		window.dispatchEvent(new Event("focus"));
+		window.dispatchEvent(new Event("blur"));
+		now = 1000;
+		const arrowOn = (card: Element) => {
+			const arrow = new KeyboardEvent("keydown", {key: "ArrowDown"});
+			Object.defineProperty(arrow, "target", {value: card});
+			return arrow;
+		};
+		const before = landOnCard();
+		now += 400;
+		const stale = landingAllowsPick(arrowOn(before.card), false);
+		resetLandingWindow(window);
+		const after = landOnCard();
+		now += 400;
+		const fresh = landingAllowsPick(arrowOn(after.card), false);
+		expect({stale, fresh}).toStrictEqual({stale: false, fresh: true});
 	});
 
 	it("swallows ⇧⌘⏎ unless the card's chord acts anywhere, and passes ⌘⏎", () => {

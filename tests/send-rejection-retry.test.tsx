@@ -5,6 +5,7 @@ import {useCallback} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {Composer} from "../src/components/composer";
+import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
 import {SendRejectedCard} from "../src/components/send-rejected-card";
 import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
 import {useSendRejectionActions} from "../src/components/use-send-rejection-actions";
@@ -212,6 +213,10 @@ describe("send-rejected with attachment tiles", () => {
 		const draftId = openDiffCommentDraft("s1", {path: "a.ts", side: "additions", line: 3});
 		saveDiffComment("s1", draftId, "Rename this");
 		const queued = getDiffComments("s1").queued;
+		// The comment's tile renders through the composer's deferred surfaces chunk, which a worker that ran no composer
+		// test before this one has not loaded yet. Testing Library's act queues the retry of a render that suspends on it
+		// until the next act, so the typed text would never commit and Enter would send the comment alone. Load it first.
+		await preloadComposerSurfaces();
 		render(<Harness postPrompt={vi.fn<PostPrompt>().mockRejectedValueOnce(boom())} />);
 		fireEvent.change(textarea(), {target: {value: "hi"}});
 		fireEvent.keyDown(textarea(), {key: "Enter"});

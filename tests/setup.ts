@@ -3,6 +3,7 @@ import {resetAnsweredApprovals} from "../src/lib/answered-approvals";
 import {resetAnsweredSessions} from "../src/lib/answered-sessions";
 import {resetQuestionCardStore} from "../src/lib/question-card-store";
 import {isolateGitEnvironment} from "./git-fixture";
+import {captureStorageGlobals, restoreStorageGlobals} from "./storage-globals";
 
 // Runs before every test file, so no test or code under test inherits a GIT_DIR
 // that points git at the developer's repository, and no git it spawns starts an
@@ -43,6 +44,14 @@ afterAll(() => {
 	vi.useRealTimers();
 });
 
+// A file that swaps localStorage or sessionStorage for a fake or a throwing getter would hand it to the next file in a
+// shared worker, where the beforeAll below clears storage first and crashes on a throwing getter. Remember the
+// worker's own storage before any file runs and put it back after each file.
+captureStorageGlobals();
+afterAll(() => {
+	restoreStorageGlobals();
+});
+
 // findBy* and waitFor give up after Testing Library's default 1s, which a render on a machine at load average 100+
 // overran (session-summary-placement's "2 subagents" link), so a commit's git test failed and an unchanged retest passed.
 // A passing query still returns as soon as it matches; only a real failure waits the extra seconds.
@@ -75,6 +84,13 @@ if (typeof window !== "undefined") {
 	// next file in a shared-dom worker, which one that runs there depends on scheduling. Empty the body after cleanup.
 	afterEach(() => {
 		document.body.replaceChildren();
+	});
+	// The approval slot's focus tracker stamps the window's focus and blur events with performance.now(), per window, so
+	// the real-clock times one file stamped read as "just regained focus" to a later file's fake clock and refuse its
+	// fresh picks. Forget them, and any landing, as a fresh page would.
+	const {resetLandingWindow} = await import("../src/lib/approval-slot-landing");
+	afterEach(() => {
+		resetLandingWindow(window);
 	});
 	afterEach(() => {
 		cleanup();

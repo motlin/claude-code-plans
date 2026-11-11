@@ -3,7 +3,7 @@
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, render, screen} from "@testing-library/react";
 import type {ReactNode} from "react";
-import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, onTestFinished} from "vite-plus/test";
 
 import {HOME_RECENT_LIMIT, type HomeWorktree, useHomeWorktree} from "../src/components/home/launch-folder";
 import {HomeLaunchFolderProvider} from "../src/components/home/launch-folder-provider";
@@ -124,6 +124,11 @@ describe("useHomeWorktree", () => {
 	});
 
 	it("still toggles in memory when localStorage throws", () => {
+		const original = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+		onTestFinished(() => {
+			if (original === undefined) Reflect.deleteProperty(globalThis, "localStorage");
+			else Object.defineProperty(globalThis, "localStorage", original);
+		});
 		Object.defineProperty(globalThis, "localStorage", {
 			configurable: true,
 			get() {

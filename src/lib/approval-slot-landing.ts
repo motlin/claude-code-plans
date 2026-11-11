@@ -87,7 +87,7 @@ interface WindowFocus {
 const windowFocus = new WeakMap<Window, WindowFocus>();
 
 /** Upstream's window focus tracker (`Et`): when the window last gained and lost focus, and the last pointerdown. */
-function trackWindowFocus(win: Window): void {
+export function trackWindowFocus(win: Window): void {
 	if (windowFocus.has(win)) return;
 	const state: WindowFocus = {gainedAt: -Infinity, leftAt: -Infinity, pointerAt: -Infinity};
 	windowFocus.set(win, state);
@@ -128,6 +128,20 @@ export function recordLanding(
 
 export function clearLanding(win: Window): void {
 	landings.delete(win);
+}
+
+/**
+ * Forgets the window's landing and its focus, blur and pointer times, as a fresh page starts. The tests' shared jsdom
+ * workers keep one window across files, where a time an earlier file stamped would read as a window that just regained
+ * focus to a later file's fake clock.
+ */
+export function resetLandingWindow(win: Window): void {
+	landings.delete(win);
+	const state = windowFocus.get(win);
+	if (state === undefined) return;
+	state.gainedAt = -Infinity;
+	state.leftAt = -Infinity;
+	state.pointerAt = -Infinity;
 }
 
 /** Upstream's `l_`: focus landed on this card and is still there. */
