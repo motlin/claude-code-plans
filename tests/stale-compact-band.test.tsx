@@ -86,11 +86,12 @@ describe("StaleCompactBand (upstream bTe)", () => {
 				className: "min-w-0 text-secondary",
 			},
 			// Upstream `cds-reset rounded text-start outline-none focus-visible:outline-hidden focus-visible:shadow-focus`;
-			// local has no cds-reset (preflight resets the button), and `rounded` is the cds radius `rounded-r5`.
+			// `rounded` is the cds radius `rounded-r5`.
 			trigger: {
 				tag: "BUTTON",
 				type: "button",
-				className: "rounded-r5 text-start outline-none focus-visible:outline-hidden focus-visible:shadow-focus",
+				className:
+					"cds-reset rounded-r5 text-start outline-none focus-visible:outline-hidden focus-visible:shadow-focus",
 				text: TOKENS_LINE,
 			},
 			link: {

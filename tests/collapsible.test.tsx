@@ -43,7 +43,7 @@ describe("cds Collapsible", () => {
 			disclosure: DISCLOSURE_PANEL_CLASS,
 		}).toStrictEqual({
 			trigger:
-				"group/clp inline-flex w-fit items-center gap-1.5 border-0 select-none outline-none focus-visible:outline-hidden font-sans text-body font-control-regular text-secondary hover:text-primary transition-shadow duration-[60ms] focus-visible:shadow-focus rounded data-[disabled]:opacity-40 data-[disabled]:pointer-events-none",
+				"cds-reset group/clp inline-flex w-fit items-center gap-1.5 border-0 select-none outline-none focus-visible:outline-hidden font-sans text-body font-control-regular text-secondary hover:text-primary transition-shadow duration-[60ms] focus-visible:shadow-focus rounded data-[disabled]:opacity-40 data-[disabled]:pointer-events-none",
 			caret: "shrink-0 transition-transform group-data-[panel-open]/clp:rotate-90 group-data-[panel-open]/clp:page-rtl:-rotate-90 motion-reduce:transition-none",
 			panel: `${DISCLOSURE_PANEL_CLASS} [--cds-disclosure-panel-height:var(--collapsible-panel-height)]`,
 			disclosure:
@@ -164,7 +164,7 @@ describe("cds Collapsible", () => {
 	it("merges a caller's size and ink over text-body and text-secondary", () => {
 		render(<Fold triggerProps={{className: "text-footnote text-muted-as-secondary"}} />);
 		expect(trigger().className).toBe(
-			"group/clp inline-flex w-fit items-center gap-1.5 border-0 select-none outline-none focus-visible:outline-hidden font-sans font-control-regular hover:text-primary transition-shadow duration-[60ms] focus-visible:shadow-focus rounded data-[disabled]:opacity-40 data-[disabled]:pointer-events-none text-footnote text-muted-as-secondary",
+			"cds-reset group/clp inline-flex w-fit items-center gap-1.5 border-0 select-none outline-none focus-visible:outline-hidden font-sans font-control-regular hover:text-primary transition-shadow duration-[60ms] focus-visible:shadow-focus rounded data-[disabled]:opacity-40 data-[disabled]:pointer-events-none text-footnote text-muted-as-secondary",
 		);
 	});
 

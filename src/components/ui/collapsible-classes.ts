@@ -2,13 +2,13 @@
  * Upstream's cds `Collapsible` classes (shared-frame `CS`, `x1`, `wY`, `Ma`) and the narrow class merge its
  * trigger and panel apply to a caller's className. Local spellings: `font-control-regular` is upstream's
  * `font-normal font-control`, `duration-[60ms]` its `duration-fast`, `opacity-40` its `opacity-disabled`,
- * `duration-200` + the cubic-bezier its `duration-base ease-out`. Upstream's `cds-reset` has no local counterpart.
+ * `duration-200` + the cubic-bezier its `duration-base ease-out`.
  * The caret's `motion-reduce:transition-none` is local: every transform transition here is gated (reduced-motion-setting).
  * The row-end caret's `stacks:` (fizzy-lake color) ink is unconditional because local fizzy-lake color is always on.
  */
 
 export const COLLAPSIBLE_TRIGGER_CLASS =
-	"group/clp inline-flex w-fit items-center gap-1.5 border-0 select-none outline-none focus-visible:outline-hidden font-sans text-body font-control-regular text-secondary hover:text-primary transition-shadow duration-[60ms] focus-visible:shadow-focus rounded data-[disabled]:opacity-40 data-[disabled]:pointer-events-none";
+	"cds-reset group/clp inline-flex w-fit items-center gap-1.5 border-0 select-none outline-none focus-visible:outline-hidden font-sans text-body font-control-regular text-secondary hover:text-primary transition-shadow duration-[60ms] focus-visible:shadow-focus rounded data-[disabled]:opacity-40 data-[disabled]:pointer-events-none";
 
 export const COLLAPSIBLE_CARET_CLASS =
 	"shrink-0 transition-transform group-data-[panel-open]/clp:rotate-90 group-data-[panel-open]/clp:page-rtl:-rotate-90 motion-reduce:transition-none";

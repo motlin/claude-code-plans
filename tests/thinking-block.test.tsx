@@ -203,7 +203,7 @@ describe("thinking step, closed", () => {
 			labelledBy: labelId,
 			owns: labelId,
 			className:
-				"-ms-1 inline-flex h-[1lh] shrink-0 items-center self-start border-0 bg-transparent p-0 outline-none focus-visible:outline-hidden static justify-center after:absolute after:inset-0 after:rounded after:content-[''] after:transition-shadow after:duration-[60ms] focus-visible:after:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent)] order-last",
+				"cds-reset -ms-1 inline-flex h-[1lh] shrink-0 items-center self-start border-0 bg-transparent p-0 outline-none focus-visible:outline-hidden static justify-center after:absolute after:inset-0 after:rounded after:content-[''] after:transition-shadow after:duration-[60ms] focus-visible:after:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent)] order-last",
 			chevronInk:
 				"inline-flex h-[1lh] items-center justify-center text-secondary group-hover/step:text-secondary group-has-[:focus-visible]/step:text-secondary",
 			chevron:
@@ -281,7 +281,7 @@ describe("thinking step, opened in place", () => {
 				"break-words ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none data-[starting-style]:[clip-path:inset(-8px_-100vw_0_-100vw)] data-[ending-style]:[clip-path:inset(-8px_-100vw_0_-100vw)] data-[animating]:[clip-path:inset(-8px_-100vw_0_-100vw)] data-[starting-style]:contain-layout data-[ending-style]:contain-layout data-[animating]:contain-layout [--cds-disclosure-panel-height:var(--collapsible-panel-height)] h-auto overflow-visible transition-none duration-0 data-[ending-style]:h-auto data-[starting-style]:h-auto order-first min-w-0 flex-1",
 			stretched: false,
 			toggleClass:
-				"-ms-1 inline-flex h-[1lh] shrink-0 items-center self-start border-0 bg-transparent p-0 outline-none focus-visible:outline-hidden min-w-[1lh] justify-end rounded transition-shadow duration-[60ms] focus-visible:shadow-focus order-last",
+				"cds-reset -ms-1 inline-flex h-[1lh] shrink-0 items-center self-start border-0 bg-transparent p-0 outline-none focus-visible:outline-hidden min-w-[1lh] justify-end rounded transition-shadow duration-[60ms] focus-visible:shadow-focus order-last",
 			rowItemsStart: true,
 			rowItemsCenter: false,
 			rowSelectNone: false,

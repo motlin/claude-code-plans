@@ -56,7 +56,7 @@ describe("SendRejectedCard", () => {
 		}).toStrictEqual({
 			root: "flex flex-col self-stretch",
 			className:
-				"group/clp inline-flex w-fit items-center gap-1.5 border-0 select-none outline-none focus-visible:outline-hidden font-sans font-control-regular transition-shadow duration-[60ms] focus-visible:shadow-focus rounded data-[disabled]:opacity-40 data-[disabled]:pointer-events-none shrink-0 whitespace-nowrap text-footnote text-secondary hover:text-primary",
+				"cds-reset group/clp inline-flex w-fit items-center gap-1.5 border-0 select-none outline-none focus-visible:outline-hidden font-sans font-control-regular transition-shadow duration-[60ms] focus-visible:shadow-focus rounded data-[disabled]:opacity-40 data-[disabled]:pointer-events-none shrink-0 whitespace-nowrap text-footnote text-secondary hover:text-primary",
 			children: [
 				{tag: "SPAN", className: "text-current-control", icon: null, text: "View details"},
 				{

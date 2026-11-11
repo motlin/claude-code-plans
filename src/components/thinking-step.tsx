@@ -11,9 +11,8 @@ import {TURN_STATUS_ROW_GEOMETRY, TURN_STATUS_ROW_STYLE} from "./turn-status-row
 
 /*
  * Upstream's thinking step on the Code engine path: shared-80 `Tw` props on the shared-9 TurnStatusStep `wr`.
- * Local spellings: `duration-[60ms]` is upstream's `duration-fast` and the panel ease its `ease-out`; upstream's
- * `cds-reset` has no local counterpart. The panel class is upstream's tailwind-merged `kT.Panel` (`Ma` + `wr`'s
- * overrides), so the height animation is gone.
+ * Local spellings: `duration-[60ms]` is upstream's `duration-fast` and the panel ease its `ease-out`. The panel
+ * class is upstream's tailwind-merged `kT.Panel` (`Ma` + `wr`'s overrides), so the height animation is gone.
  */
 
 const ROW_CLASS = `group/step flex min-w-0 gap-xs text-start font-sans text-body font-normal py-[calc((var(--cds-h-control)_-_1lh)_/_2)] ${TURN_STATUS_ROW_GEOMETRY}`;
@@ -24,7 +23,7 @@ const LABEL_HOVER_INK =
 	"group-hover/step:text-secondary group-has-[:focus-visible]/step:text-secondary group-focus-visible/step:text-secondary";
 
 const TOGGLE_BASE =
-	"-ms-1 inline-flex h-[1lh] shrink-0 items-center self-start border-0 bg-transparent p-0 outline-none focus-visible:outline-hidden";
+	"cds-reset -ms-1 inline-flex h-[1lh] shrink-0 items-center self-start border-0 bg-transparent p-0 outline-none focus-visible:outline-hidden";
 
 /** Upstream `Gd` with `stretch`: the toggle's `::after` covers the `relative isolate rounded` row. */
 const TOGGLE_STRETCHED = `${TOGGLE_BASE} static justify-center after:absolute after:inset-0 after:rounded after:content-[''] after:transition-shadow after:duration-[60ms] focus-visible:after:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent)]`;

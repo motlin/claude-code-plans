@@ -13,8 +13,9 @@ export interface StaleCompactBandProps {
 	focusComposer: () => void;
 }
 
-/** Upstream's trigger less `cds-reset` (Tailwind preflight already resets a button), `rounded` as the cds radius. */
-const TRIGGER_CLASS = "rounded-r5 text-start outline-none focus-visible:outline-hidden focus-visible:shadow-focus";
+/** Upstream's trigger, `rounded` as the cds radius. */
+const TRIGGER_CLASS =
+	"cds-reset rounded-r5 text-start outline-none focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /** Upstream `Ql` with `max-w-60` replacing the InfoTip's own 240px cap (the same width). */
 const POPUP_CLASS = INFO_TIP_POPUP_CLASS.replace("max-w-[240px]", "max-w-60");
