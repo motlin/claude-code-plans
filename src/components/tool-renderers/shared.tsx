@@ -480,7 +480,8 @@ const POLICY_REASON_CLASS = "text-primary whitespace-pre-wrap break-words select
  * Upstream's `Ox`: why an auto-mode-blocked call did not run, drawn where its
  * error output would go. Find skips the "Blocked by auto mode" prefix but
  * matches the reason. Upstream's empty retry slot only hosts its gated Retry
- * button, so it is left out.
+ * button, so it is left out. The reason is masked with spoofing characters revealed, as cf67ed396's
+ * `u9(ME(reason))` (2026-11-10).
  */
 export function PolicyDenialReason({call}: {call: PolicyDenial}) {
 	return (
@@ -495,7 +496,7 @@ export function PolicyDenialReason({call}: {call: PolicyDenial}) {
 				<div data-find-omitted="">
 					Blocked by auto mode:{" "}
 					<bdi data-find-included="" className={POLICY_REASON_CLASS}>
-						{call.blockedReason}
+						{revealSpoofing(maskSecrets(call.blockedReason))}
 					</bdi>
 				</div>
 			)}

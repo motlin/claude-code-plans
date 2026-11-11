@@ -82,6 +82,14 @@ describe("PolicyDenialReason", () => {
 		});
 	});
 
+	it("masks the reason and shows its spoofing characters, as upstream's u9(ME(reason)) in cf67ed396", () => {
+		const rlo = String.fromCodePoint(0x202e);
+		const {container} = render(
+			<PolicyDenialReason call={{blockedReason: `Reads ${rlo}cred ghp_${"A".repeat(36)}`}} />,
+		);
+		expect(container.querySelector("bdi")?.textContent).toBe(`Reads [U+202E]cred ghp_AAAA${"•".repeat(32)}`);
+	});
+
 	it("reads upstream's no-verdict sentence as a lone bdi", () => {
 		const {container} = render(<PolicyDenialReason call={{blockedNoVerdict: "unanswered"}} />);
 		expect(shape(container.firstElementChild!)).toStrictEqual({
