@@ -517,6 +517,42 @@ describe("SessionPage dock composition", () => {
 			}).toStrictEqual({dock: order, turnStatus: "Needs your input"});
 		},
 	);
+	it("draws no Needs your input line under a transcript question card when the session is not hook-active", async () => {
+		await renderSessionPage(
+			detail,
+			[],
+			(queryClient) => {
+				seedUsage(queryClient);
+				queryClient.setQueryData(recentSessionsInfiniteQueryOptions().queryKey, {
+					pages: [{sessions: [{id: SESSION_ID, state: "waiting"}], nextCursor: null}],
+					pageParams: [null],
+				} as never);
+			},
+			[
+				{
+					type: "assistant",
+					uuid: "a1",
+					sessionId: SESSION_ID,
+					timestamp: "2026-09-28T10:00:01.000Z",
+					message: {
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_question",
+								name: "AskUserQuestion",
+								input: {questions: [{question: "Ship it?", options: [{label: "Yes"}, {label: "No"}]}]},
+							},
+						],
+					},
+				},
+			],
+		);
+		expect({
+			card: screen.queryByRole("group", {name: "Ship it?"}) !== null,
+			blocked: document.querySelector('[data-testid="code-working-line"] [data-state="blocked"]') !== null,
+		}).toStrictEqual({card: true, blocked: false});
+	});
 	it("draws the permission card inline after the transcript, as upstream's inline approvals, leaving the dock to the PR chip, usage chip and composer", async () => {
 		await renderSessionPage(
 			{...detail, pr},

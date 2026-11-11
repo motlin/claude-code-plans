@@ -769,6 +769,9 @@ function SessionView({
 	// Upstream draws a pending question inline as its card; one in the transcript answers there while the session runs.
 	const inlineQuestion = isActive ? pendingQuestion : null;
 	const inlineQuestionSent = useQuestionCardSent(inlineQuestion?.toolUseId ?? "");
+	// The transcript draws a pending question's card whatever the hook-active set says, so cardShown counts it until it is sent.
+	const transcriptQuestionSent = useQuestionCardSent(pendingQuestion?.toolUseId ?? "");
+	const transcriptQuestionCard = pendingQuestion !== null && !transcriptQuestionSent;
 	// Upstream consumes the question at submit: its gates release while the pane still types the answer.
 	const questionSent = (hookQuestionSent && unansweredHookQuestion !== null) || inlineQuestionSent;
 	const chatStream = useChatStream();
@@ -951,7 +954,7 @@ function SessionView({
 		sessionState: displaySummaryState,
 		cardShown:
 			pendingPermission !== null ||
-			inlineQuestion !== null ||
+			transcriptQuestionCard ||
 			hookQuestionCardShown ||
 			inlinePlanId !== null ||
 			dockedPlan !== null ||
@@ -961,7 +964,7 @@ function SessionView({
 	useLiveApproval(
 		sessionId,
 		pendingPermission !== null ||
-			inlineQuestion !== null ||
+			transcriptQuestionCard ||
 			hookQuestionCardShown ||
 			inlinePlanId !== null ||
 			dockedPlan !== null ||
