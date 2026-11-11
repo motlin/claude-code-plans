@@ -182,7 +182,7 @@ export interface NextStepsListProps {
 // Upstream's row reveal: on hover, keyboard focus inside the row, or while its popup is open. Spelled out in full
 // so Tailwind's scanner sees every class.
 const STEP_BUTTON_CLASS =
-	"flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-[13px]/5 outline-none group-hover/row:bg-fill-ghost-hover group-has-[:focus-visible]/row:bg-fill-ghost-hover group-has-[[aria-expanded=true]]/row:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden";
+	"flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-body leading-5 outline-none group-hover/row:bg-fill-ghost-hover group-has-[:focus-visible]/row:bg-fill-ghost-hover group-has-[[aria-expanded=true]]/row:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden";
 
 const STEP_DETAIL_CLASS =
 	"min-w-0 max-w-max grow basis-24 truncate text-ink-muted group-hover/row:text-secondary group-has-[:focus-visible]/row:text-secondary group-has-[[aria-expanded=true]]/row:text-secondary";
@@ -422,7 +422,7 @@ function WorktreeTakenRow() {
 	return (
 		<div
 			data-testid="start-card-worktree-apart"
-			className="flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-[13px]/5"
+			className="flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-body leading-5"
 		>
 			<span className="min-w-0 flex-1 truncate text-secondary-control">Worktree is on</span>
 			<Check aria-hidden="true" className="size-4 shrink-0 text-primary" />

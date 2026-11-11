@@ -2,12 +2,15 @@ import type {CSSProperties, HTMLAttributes, ReactElement, ReactNode} from "react
 
 type DataAttributes = {[key: `data-${string}`]: string | undefined};
 
+const PULSE_STACKS_CLASS =
+	"stacks:[--cds-text-primary:var(--cds-fizzy-lake-color-solid-primary)] stacks:[--cds-text-secondary:var(--cds-fizzy-lake-color-solid-secondary)] stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)]";
+
 /**
  * Upstream cds Pulse (`ba`): a 6px status dot painted inline in `color`, ringed 0.5px in
  * `--cds-page-bg` to lift it off what is under it (wrappers set that to transparent). `animate`
- * pulses it under motion-safe:; `hollow` draws an inset 1px ring instead of a fill. Upstream's
- * `stacks:` text remaps reach the dot itself when `color` reads one of them; the running dot paints
- * with `--cds-text-muted`, so it passes that remap in `className`.
+ * pulses it under motion-safe:; `hollow` draws an inset 1px ring instead of a fill. Like upstream's
+ * `_A`, every dot carries the `stacks:` text remaps to the fizzy solid inks, so a `color` that reads
+ * one of them (the running dot's `--cds-text-muted`) takes the solid ink under fizzy colour.
  */
 export function Pulse({
 	color = "var(--cds-fill-accent)",
@@ -24,6 +27,7 @@ export function Pulse({
 	Pick<HTMLAttributes<HTMLSpanElement>, "aria-hidden">) {
 	const classes = [
 		"block size-[calc(0.375rem*var(--cds-rem-scale,1))] rounded-full",
+		PULSE_STACKS_CLASS,
 		animate ? "motion-safe:animate-pulse" : null,
 		hollow
 			? "forced-colors:border forced-colors:border-solid forced-colors:border-[color:CanvasText]"

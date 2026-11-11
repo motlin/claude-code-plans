@@ -1203,6 +1203,10 @@ html[data-interface-font="dyslexic"] {
 	--settings-muted: var(--upstream-text-secondary);
 	/* Upstream `--cds-fizzy-lake-color-placeholder`, the same in both modes. */
 	--upstream-placeholder: #878787;
+	/* Upstream `--cds-fizzy-lake-color-solid-{primary,secondary}` (--cds-gray-900/600; 50/200 dark): every Pulse's
+	   `stacks:` text remaps read them. */
+	--cds-fizzy-lake-color-solid-primary: #0b0b0b;
+	--cds-fizzy-lake-color-solid-secondary: #515151;
 	/* Upstream `--cds-fizzy-lake-color-solid-muted` (--cds-gray-400), the same in both modes: the running Pulse's ink. */
 	--cds-fizzy-lake-color-solid-muted: #878787;
 	/* Upstream `data-page-bg=surface-1`: the page is surface-1 (#fff / #191919). */
@@ -1271,6 +1275,9 @@ html[data-interface-font="dyslexic"] {
 }
 
 :root.dark[data-cds-fizzy-lake~="color"] {
+	/* Upstream dark `--cds-fizzy-lake-color-solid-{primary,secondary}` (--cds-gray-50/200). */
+	--cds-fizzy-lake-color-solid-primary: #efefef;
+	--cds-fizzy-lake-color-solid-secondary: #c2c2c2;
 	--upstream-fill-disabled: #ffffff0d;
 	--upstream-text-button-disabled: #fff6;
 	--upstream-icon-only-disabled: #fff6;

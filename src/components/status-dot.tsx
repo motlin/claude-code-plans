@@ -53,12 +53,6 @@ const STATUS_PULSE_COLORS = {
 } as const;
 
 /**
- * Upstream's running Pulse: `stacks:` remaps the muted ink it paints with to the solid #878787
- * under fizzy colour, and `df-tab-dot-running` blinks it.
- */
-const RUNNING_PULSE_CLASS = "stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)] df-tab-dot-running";
-
-/**
  * Upstream's sidebar status Pulse (`QY` → `Io`): a static cds Pulse inside a `contents` wrapper
  * that turns its page-bg ring off. The wrapper keeps the local `.status-dot[data-kind]` hook.
  */
@@ -68,7 +62,7 @@ export function StatusPulse({kind}: {kind: keyof typeof STATUS_PULSE_COLORS}) {
 			<Pulse
 				animate={false}
 				color={STATUS_PULSE_COLORS[kind]}
-				{...(kind === "running" ? {className: RUNNING_PULSE_CLASS} : {})}
+				{...(kind === "running" ? {className: "df-tab-dot-running"} : {})}
 			/>
 		</span>
 	);

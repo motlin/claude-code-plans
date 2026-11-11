@@ -16,7 +16,13 @@ function dot(element: React.ReactElement) {
 	};
 }
 
-const BASE = ["block", "size-[calc(0.375rem*var(--cds-rem-scale,1))]", "rounded-full"];
+/** Upstream's `_A`: every Pulse carries the fizzy-colour text remaps, before its motion and forced-colors classes. */
+const STACKS = [
+	"stacks:[--cds-text-primary:var(--cds-fizzy-lake-color-solid-primary)]",
+	"stacks:[--cds-text-secondary:var(--cds-fizzy-lake-color-solid-secondary)]",
+	"stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)]",
+];
+const BASE = ["block", "size-[calc(0.375rem*var(--cds-rem-scale,1))]", "rounded-full", ...STACKS];
 
 describe("Pulse (upstream ba)", () => {
 	it("defaults to an animated accent dot with a 0.5px page-bg ring", () => {

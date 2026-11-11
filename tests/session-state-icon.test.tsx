@@ -9,9 +9,9 @@ afterEach(cleanup);
 
 const DOT_WRAPPER = "flex min-h-3.5 min-w-3.5 shrink-0 items-center justify-center";
 const PULSE_CLASS =
-	"block size-[calc(0.375rem*var(--cds-rem-scale,1))] rounded-full forced-colors:!bg-[color:CanvasText]";
+	"block size-[calc(0.375rem*var(--cds-rem-scale,1))] rounded-full stacks:[--cds-text-primary:var(--cds-fizzy-lake-color-solid-primary)] stacks:[--cds-text-secondary:var(--cds-fizzy-lake-color-solid-secondary)] stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)] forced-colors:!bg-[color:CanvasText]";
 const RUNNING_PULSE = (label: string) =>
-	`<span role="status" aria-label="${label}" class="${DOT_WRAPPER}"><span class="status-dot contents [--cds-page-bg:transparent]" data-kind="running"><span data-cds="Pulse" class="${PULSE_CLASS} stacks:[--cds-text-muted:var(--cds-fizzy-lake-color-solid-muted)] df-tab-dot-running" style="background: var(--cds-text-muted); box-shadow: 0 0 0 0.5px var(--cds-page-bg);"></span></span></span>`;
+	`<span role="status" aria-label="${label}" class="${DOT_WRAPPER}"><span class="status-dot contents [--cds-page-bg:transparent]" data-kind="running"><span data-cds="Pulse" class="${PULSE_CLASS} df-tab-dot-running" style="background: var(--cds-text-muted); box-shadow: 0 0 0 0.5px var(--cds-page-bg);"></span></span></span>`;
 
 function markup(element: React.ReactElement): string {
 	return render(element).container.innerHTML;
