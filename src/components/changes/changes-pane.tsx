@@ -1,7 +1,17 @@
 import {Virtualizer} from "@pierre/diffs/react";
 import {useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
 import {ArrowRight, ChevronDown, List, Loader2, TriangleAlert} from "lucide-react";
-import {Fragment, type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {
+	Fragment,
+	type ReactNode,
+	type RefObject,
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
 import {replaceReviewFindings, reviewQueryOptions} from "../../lib/api/reviews";
@@ -769,22 +779,46 @@ function patchMap(files: readonly SessionDiffFile[]): ReadonlyMap<string, string
 	return map;
 }
 
-/**
- * Upstream CodeView's `Jt` on mark: once the file has collapsed under its header, a header that was on screen
- * but has scrolled above the top is brought back to it.
- */
-function keepHeaderInView(body: HTMLElement | null, path: string): void {
-	const header = body?.querySelector(`[data-diff-file-header="${CSS.escape(path)}"]`);
-	const scroller = header?.closest(".overflow-y-auto");
-	if (!(header instanceof HTMLElement) || !(scroller instanceof HTMLElement)) return;
-	const {top, bottom} = header.getBoundingClientRect();
-	const box = scroller.getBoundingClientRect();
-	if (bottom <= box.top || top >= box.bottom) return;
-	requestAnimationFrame(() => {
-		if (header.isConnected && header.getBoundingClientRect().top < scroller.getBoundingClientRect().top) {
-			header.scrollIntoView({block: "start"});
+/** Upstream CodeView `xc`: the nearest ancestor that scrolls vertically. */
+function scrollParent(element: HTMLElement): HTMLElement | null {
+	for (let parent = element.parentElement; parent !== null; parent = parent.parentElement) {
+		if (parent.scrollHeight > parent.clientHeight) {
+			const {overflowY} = getComputedStyle(parent);
+			if (overflowY === "auto" || overflowY === "scroll") return parent;
 		}
-	});
+	}
+	return null;
+}
+
+/** Upstream `Cc`: whether a box overlaps the visible part of the element's scroller, clipped to the window. */
+function inScrollerView(element: HTMLElement, box: DOMRect): boolean {
+	const scroller = scrollParent(element)?.getBoundingClientRect();
+	const viewport = element.ownerDocument.defaultView?.innerHeight ?? 0;
+	const top = Math.max(scroller?.top ?? 0, 0);
+	const bottom = Math.min(scroller?.bottom ?? viewport, viewport);
+	return box.bottom > top && box.top < bottom;
+}
+
+/** Upstream `Sc`: scrolls the element's scroller so its top lands back at `top`. */
+function restoreTop(element: HTMLElement, top: number): void {
+	const scroller = scrollParent(element);
+	if (scroller === null) return;
+	const delta = Math.round(element.getBoundingClientRect().top - top);
+	if (delta !== 0) scroller.scrollTop += delta;
+}
+
+function fileHeader(body: HTMLElement | null, path: string): HTMLElement | null {
+	const header = body?.querySelector(`[data-diff-file-header="${CSS.escape(path)}"]`);
+	return header instanceof HTMLElement ? header : null;
+}
+
+/**
+ * Upstream CodeView's file root `Oe`: the cds FileDiff, or the header itself for a file drawn without one (its header
+ * isn't sticky, so it starts the file).
+ */
+function fileRoot(header: HTMLElement): HTMLElement {
+	const root = header.closest('[data-cds="FileDiff"]');
+	return root instanceof HTMLElement ? root : header;
 }
 
 type LargeDiffNote = "collapsed" | "collapsed-no-marks" | "no-marks" | null;
@@ -908,31 +942,59 @@ export function ChangesPaneView({
 		setCollapsedOverrides({});
 	}, [servedScope]);
 
-	// Upstream `Ms`: marking collapses the file and unmarking expands it, keeping a marked header on screen.
+	// Upstream `Is`: a marked file whose patch changed under the same comparison is announced unmarked. Until then
+	// its collapse reads the patches last announced, as upstream's per-file collapse state (`Tp`) holds it collapsed.
+	const markKey =
+		markScope === undefined ? undefined : `${markScope.sessionId}\n${markScope.repo}\n${markScope.diff}`;
+	const announcedPatches = useRef<{key: string; patches: ReadonlyMap<string, string | null>} | undefined>(undefined);
+	const announced = announcedPatches.current?.key === markKey ? announcedPatches.current?.patches : undefined;
+	const isCollapsed = (file: SessionDiffFile) =>
+		collapsedOverrides[file.path] ??
+		(large ||
+			(markScope !== undefined &&
+				fileMarkStatus(
+					markScope,
+					file.path,
+					announced?.has(file.path) === true ? announced.get(file.path) : file.patch,
+				) === "marked"));
+	/** Each file's collapse as last rendered (upstream `Tp`'s state), for listeners that run before the next render. */
+	const renderedCollapse = useRef<ReadonlyMap<string, boolean>>(new Map());
+	renderedCollapse.current = new Map(files.map((file) => [file.path, isCollapsed(file)]));
+
+	/** Upstream CodeView's held anchor (`ht`): the header's top before a collapse toggle, restored after it. */
+	const heldAnchor = useRef<{path: string; top: number} | null>(null);
+	useLayoutEffect(() => {
+		const held = heldAnchor.current;
+		heldAnchor.current = null;
+		const header = held === null ? null : fileHeader(bodyRef.current, held.path);
+		if (held !== null && header !== null) restoreTop(fileRoot(header), held.top);
+	}, [collapsedOverrides]);
+
+	// Upstream `Ms` [`xt`]: marking collapses the file and unmarking expands it. A header on screen holds its place,
+	// once per burst of patch-change announcements so several expanding files don't jump the scroll.
 	useEffect(() => {
 		if (markScope === undefined) return undefined;
-		return subscribeMarkChanges((scope, path, marked) => {
+		return subscribeMarkChanges((scope, path, marked, burst) => {
 			if (!sameMarkScope(scope, markScope)) return;
-			setCollapsedOverrides((previous) => (previous[path] === marked ? previous : {...previous, [path]: marked}));
-			if (marked) keepHeaderInView(bodyRef.current, path);
+			if (renderedCollapse.current.get(path) === marked) return;
+			const header = fileHeader(bodyRef.current, path);
+			const box = header?.getBoundingClientRect();
+			if (header !== null && box !== undefined && inScrollerView(fileRoot(header), box) && burst?.held !== true) {
+				heldAnchor.current = {path, top: box.top};
+				if (burst !== undefined) burst.held = true;
+			}
+			setCollapsedOverrides((previous) => ({...previous, [path]: marked}));
 		});
 	}, [markScope]);
 
-	// Upstream `Is`: a marked file whose patch changed under the same comparison is announced unmarked.
-	const previousPatches = useRef<{key: string; patches: ReadonlyMap<string, string | null>} | undefined>(undefined);
 	useEffect(() => {
-		const key =
-			markScope === undefined ? undefined : `${markScope.sessionId}\n${markScope.repo}\n${markScope.diff}`;
-		const previous = previousPatches.current;
-		previousPatches.current = key === undefined ? undefined : {key, patches};
-		if (markScope !== undefined && previous !== undefined && previous.key === key) {
+		const previous = announcedPatches.current;
+		announcedPatches.current = markKey === undefined ? undefined : {key: markKey, patches};
+		if (markScope !== undefined && previous !== undefined && previous.key === markKey) {
 			notifyPatchChanges(markScope, previous.patches, patches);
 		}
-	}, [markScope, patches]);
+	}, [markKey, markScope, patches]);
 
-	const isCollapsed = (file: SessionDiffFile) =>
-		collapsedOverrides[file.path] ??
-		(large || (markScope !== undefined && fileMarkStatus(markScope, file.path, file.patch) === "marked"));
 	const setAllCollapsed = (collapsed: boolean) => {
 		setCollapsedOverrides(Object.fromEntries(files.map((file) => [file.path, collapsed])));
 	};
@@ -1062,6 +1124,14 @@ export function ChangesPaneView({
 											view={view}
 											collapsed={isCollapsed(file)}
 											onCollapsedChange={(collapsed) => {
+												// Upstream `gt`: the header's chevron holds its place too.
+												const header = fileHeader(bodyRef.current, file.path);
+												if (header !== null) {
+													heldAnchor.current = {
+														path: file.path,
+														top: header.getBoundingClientRect().top,
+													};
+												}
 												setCollapsedOverrides((previous) => ({
 													...previous,
 													[file.path]: collapsed,

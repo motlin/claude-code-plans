@@ -8,6 +8,22 @@ describe("jsdom test setup", () => {
 		expect(typeof navigator.sendBeacon).toBe("function");
 	});
 
+	describe("the document selection", () => {
+		it("ends a test with a range selected", () => {
+			const text = document.createElement("p");
+			text.textContent = "selected text";
+			document.body.append(text);
+			const range = document.createRange();
+			range.selectNodeContents(text);
+			document.getSelection()?.addRange(range);
+		});
+
+		// addRange is ignored while the selection already holds a range, so a range left behind breaks a later test's.
+		it("starts the next test with nothing selected", () => {
+			expect(document.getSelection()?.rangeCount).toBe(0);
+		});
+	});
+
 	describe("Base UI's shared animation frame scheduler", () => {
 		it("ends a test with the scheduler's frame still queued", () => {
 			AnimationFrame.request(() => {});

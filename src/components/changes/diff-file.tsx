@@ -234,11 +234,13 @@ const VIEWED_UNAVAILABLE = "This file can’t be marked as viewed. Later changes
 const VIEWED_STALE = "Changed since you viewed it";
 
 /**
- * Upstream cds Button xs ghost iconOnly, plus `Fs` (was `lo`): a pressed check draws no selected paint, only the
- * filled glyph, and keeps the ghost hover.
+ * Upstream cds Button xs ghost iconOnly, whose paint sits on a `[data-cds-part=paint]` layer, plus `Fs` (was `lo`)
+ * verbatim: a pressed check draws no selected paint, only the filled glyph, and keeps the ghost hover.
  */
 const VIEWED_BUTTON_CLASS =
-	"flex size-6 cursor-pointer items-center justify-center rounded-r5 bg-transparent text-secondary hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-disabled aria-pressed:bg-transparent aria-pressed:hover:bg-fill-ghost-hover";
+	"group/btn relative isolate flex size-6 cursor-pointer items-center justify-center rounded-r5 text-secondary hover:text-primary hide-focus-ring focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-disabled aria-pressed:[&_[data-cds-part=paint]]:bg-transparent aria-pressed:hover:[&_[data-cds-part=paint]]:bg-fill-ghost-hover aria-pressed:hover:[&_[data-cds-part=paint]]:bg-none";
+const PAINT_LAYER_CLASS = "absolute -z-[1] rounded-[inherit] inset-0";
+const VIEWED_PAINT_CLASS = "absolute inset-0 rounded-[inherit] bg-transparent group-hover/btn:bg-fill-ghost-hover";
 
 /** Upstream `Mo`: the header's Viewed check, with the Pulse indicator and a hidden description when stale. */
 function ViewedButton({mark}: {mark: DiffFileMark}) {
@@ -269,6 +271,9 @@ function ViewedButton({mark}: {mark: DiffFileMark}) {
 						}}
 						className={VIEWED_BUTTON_CLASS}
 					>
+						<span aria-hidden="true" className={PAINT_LAYER_CLASS}>
+							<span data-cds-part="paint" className={VIEWED_PAINT_CLASS} />
+						</span>
 						<IndicatorSlot
 							icon={<Icon name={marked ? "CheckCircleFilled" : "CheckCircle"} size="sm" />}
 							indicator={stale ? <Pulse animate={false} /> : undefined}

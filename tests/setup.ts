@@ -85,6 +85,11 @@ if (typeof window !== "undefined") {
 	afterEach(() => {
 		document.body.replaceChildren();
 	});
+	// A range a test leaves selected stays in the shared document, and addRange is ignored while one is held, so a later
+	// test's selection would silently never land. Clear it, as a fresh page would start with nothing selected.
+	afterEach(() => {
+		document.getSelection()?.removeAllRanges();
+	});
 	// The approval slot's focus tracker stamps the window's focus and blur events with performance.now(), per window, so
 	// the real-clock times one file stamped read as "just regained focus" to a later file's fake clock and refuse its
 	// fresh picks. Forget them, and any landing, as a fresh page would.

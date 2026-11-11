@@ -899,4 +899,94 @@ describe("ChangesPaneView viewed marks (upstream mm/gs/Ms/Is/vp)", () => {
 			["Files are collapsed for large diffs. Select a file to expand it."],
 		]);
 	});
+
+	it("can mark a binary file by its full index ids (upstream fs's ids: form)", () => {
+		const logo = {
+			...LOGO_FILE,
+			patchLineCount: 3,
+			patch: `diff --git a/assets/logo.png b/assets/logo.png\nindex ${"1".repeat(40)}..${"2".repeat(40)} 100644\nBinary files a/assets/logo.png and b/assets/logo.png differ\n`,
+		};
+		renderMarks([GREET_FILE, logo]);
+		const shown = viewedButtons();
+		fireEvent.click(viewedButton("assets/logo.png") ?? document.body);
+		expect({shown, status: fileMarkStatus(BRANCH_MARKS, "assets/logo.png", logo.patch)}).toStrictEqual({
+			shown: ["src/greet.ts", "assets/logo.png"],
+			status: "marked",
+		});
+	});
+
+	/**
+	 * Fake layout for upstream CodeView's held anchor: the files' scroller shows 0-400px at scrollTop 200, each
+	 * header sits at `headers[path]`, and each file's root (its cds FileDiff) at `roots[path]`.
+	 */
+	function stubLayout(headers: Record<string, number>, roots: Record<string, number>) {
+		const scroller = document.querySelector("[data-diff-file-header]")?.closest(".overflow-y-auto");
+		if (!(scroller instanceof HTMLElement)) throw new Error("No diff scroller");
+		scroller.style.overflowY = "auto";
+		Object.defineProperty(scroller, "scrollHeight", {configurable: true, value: 2000});
+		Object.defineProperty(scroller, "clientHeight", {configurable: true, value: 400});
+		Object.defineProperty(scroller, "scrollTop", {configurable: true, writable: true, value: 200});
+		const box = (top: number, height: number) => DOMRect.fromRect({x: 0, y: top, width: 300, height});
+		vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+			if (this === scroller) return box(0, 400);
+			const header = this.getAttribute("data-diff-file-header");
+			if (header !== null) return box(headers[header] ?? 0, 32);
+			const root = this.matches('[data-cds="FileDiff"]')
+				? this.querySelector("[data-diff-file-header]")?.getAttribute("data-diff-file-header")
+				: null;
+			return root == null ? box(0, 0) : box(roots[root] ?? 0, 32);
+		});
+		return scroller;
+	}
+
+	it("holds a marked header's place: the collapsed file's top lands where the header was (upstream Jt/Sc)", async () => {
+		renderMarks([GREET_FILE, OTHER_FILE]);
+		await waitFor(() => {
+			expect(expanded("src/other.ts")).toBe("true");
+		});
+		const scrolled: number[] = [];
+		try {
+			const scroller = stubLayout({"src/other.ts": 100}, {"src/other.ts": 40});
+			fireEvent.click(viewedButton("src/other.ts") ?? document.body);
+			scrolled.push(scroller.scrollTop);
+			// Off screen (below the scroller's 400px), unmarking leaves the scroll alone.
+			stubLayout({"src/other.ts": 500}, {"src/other.ts": 440});
+			fireEvent.click(viewedButton("src/other.ts") ?? document.body);
+			scrolled.push(scroller.scrollTop);
+			// The header's chevron holds its place too, on or off screen (upstream gt).
+			stubLayout({"src/other.ts": 100}, {"src/other.ts": 40});
+			fireEvent.click(headerButton("src/other.ts"));
+			scrolled.push(scroller.scrollTop);
+		} finally {
+			vi.restoreAllMocks();
+		}
+		expect({scrolled, other: expanded("src/other.ts")}).toStrictEqual({
+			scrolled: [140, 200, 140],
+			other: "false",
+		});
+	});
+
+	it("holds only the first on-screen header when a patch change expands several marked files at once", async () => {
+		setFileMarked(BRANCH_MARKS, "src/greet.ts", GREET_PATCH, true);
+		setFileMarked(BRANCH_MARKS, "src/other.ts", OTHER_FILE.patch, true);
+		const view = renderMarks([GREET_FILE, OTHER_FILE]);
+		let scrollTop: number | undefined;
+		try {
+			const scroller = stubLayout(
+				{"src/greet.ts": 50, "src/other.ts": 100},
+				{"src/greet.ts": 20, "src/other.ts": 40},
+			);
+			view.rerender([
+				{...GREET_FILE, patch: `${GREET_PATCH}+export const later = 1;\n`},
+				{...OTHER_FILE, patch: `${OTHER_FILE.patch ?? ""}+export const later = 1;\n`},
+			]);
+			await waitFor(() => {
+				expect([expanded("src/greet.ts"), expanded("src/other.ts")]).toStrictEqual(["true", "true"]);
+			});
+			scrollTop = scroller.scrollTop;
+		} finally {
+			vi.restoreAllMocks();
+		}
+		expect(scrollTop).toBe(170);
+	});
 });

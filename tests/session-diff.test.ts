@@ -230,18 +230,28 @@ describe("session diff service over a real repository", () => {
 	it("writes full index ids, so a hunkless patch fingerprints by them (changes-file-viewed-marks T10)", async () => {
 		write("empty.txt", "");
 		git("add", "empty.txt");
+		write("logo.png", "\u0000\u0001\u0002");
+		git("add", "logo.png");
 		write("keep.txt", "one\nTWO\nthree\n");
 
 		const result = await buildScopeDiff(repositoryDirectory, {kind: "uncommitted"});
 		if (result.kind !== "ok") throw new Error(`unexpected ${result.kind}`);
 		const empty = result.files.find((file) => file.path === "empty.txt")?.patch;
 		const keep = result.files.find((file) => file.path === "keep.txt")?.patch;
+		const logo = result.files.find((file) => file.path === "logo.png");
 		const blob = git("hash-object", "empty.txt");
+		const logoBlob = git("hash-object", "logo.png");
 
+		// A binary file has no hunks, so upstream marks it by its full index ids too.
 		expect({
 			emptyFingerprint: patchFingerprint(empty),
 			keepIndex: /^index [0-9a-f]{40}\.\.[0-9a-f]{40} 100644$/m.test(keep ?? ""),
-		}).toStrictEqual({emptyFingerprint: `ids:${"0".repeat(40)}..${blob}\nnew file 100`, keepIndex: true});
+			logo: {binary: logo?.binary, fingerprint: patchFingerprint(logo?.patch)},
+		}).toStrictEqual({
+			emptyFingerprint: `ids:${"0".repeat(40)}..${blob}\nnew file 100`,
+			keepIndex: true,
+			logo: {binary: true, fingerprint: `ids:${"0".repeat(40)}..${logoBlob}\nnew file 100`},
+		});
 	});
 
 	it("ignores whitespace-only changes when hideWhitespace is set", async () => {

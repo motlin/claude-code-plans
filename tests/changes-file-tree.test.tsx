@@ -483,8 +483,6 @@ describe("ChangedFilesSidebar viewed marks (upstream Cc/Dc/Ec/Oc/Tc)", () => {
 		const label = row(/^app\.ts/).querySelector("span.truncate, span.min-w-0");
 		const range = document.createRange();
 		range.selectNodeContents(label ?? row(/^app\.ts/));
-		// addRange is ignored while the selection already holds a range, such as an earlier test's caret.
-		window.getSelection()?.removeAllRanges();
 		window.getSelection()?.addRange(range);
 		fireEvent.click(icon());
 		window.getSelection()?.removeAllRanges();

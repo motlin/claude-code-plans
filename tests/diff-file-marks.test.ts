@@ -6,6 +6,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {
 	type DiffMarkScope,
+	type MarkBurst,
 	canMarkPatch,
 	fileMarkStatus,
 	notifyPatchChanges,
@@ -267,10 +268,11 @@ describe("the diff-file-marks store (upstream Du / Ps / Fs)", () => {
 		]);
 	});
 
-	it("tells listeners a marked file is no longer marked when its patch changes (upstream Is)", () => {
+	it("tells listeners a marked file is no longer marked when its patch changes, sharing one burst (upstream Is)", () => {
 		setFileMarked(SCOPE, "a.ts", HUNK_PATCH, true);
 		setFileMarked(SCOPE, "b.ts", HUNK_PATCH, true);
-		const listener = vi.fn<(scope: DiffMarkScope, path: string, marked: boolean) => void>();
+		setFileMarked(SCOPE, "d.ts", HUNK_PATCH, true);
+		const listener = vi.fn<(scope: DiffMarkScope, path: string, marked: boolean, burst?: MarkBurst) => void>();
 		const unsubscribe = subscribeMarkChanges(listener);
 		notifyPatchChanges(
 			SCOPE,
@@ -278,15 +280,26 @@ describe("the diff-file-marks store (upstream Du / Ps / Fs)", () => {
 				["a.ts", HUNK_PATCH],
 				["b.ts", HUNK_PATCH],
 				["c.ts", HUNK_PATCH],
+				["d.ts", HUNK_PATCH],
 			]),
 			new Map([
 				["a.ts", CHANGED_PATCH],
 				["b.ts", HUNK_PATCH],
 				["c.ts", CHANGED_PATCH],
+				["d.ts", CHANGED_PATCH],
 			]),
 		);
 		unsubscribe();
-		expect(listener.mock.calls).toStrictEqual([[SCOPE, "a.ts", false]]);
+		expect({
+			calls: listener.mock.calls,
+			sameBurst: listener.mock.calls[0]?.[3] === listener.mock.calls[1]?.[3],
+		}).toStrictEqual({
+			calls: [
+				[SCOPE, "a.ts", false, {held: false}],
+				[SCOPE, "d.ts", false, {held: false}],
+			],
+			sameBurst: true,
+		});
 	});
 });
 

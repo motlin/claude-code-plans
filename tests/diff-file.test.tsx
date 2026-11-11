@@ -719,8 +719,10 @@ describe("isSyntheticDiffRow (upstream Iu)", () => {
 describe("DiffFileHeader Viewed check (upstream c44d00c7f Mo/jo/go)", () => {
 	const FILE = "src/greet.ts";
 	const UNAVAILABLE = "This file can’t be marked as viewed. Later changes to it wouldn’t be detected.";
-	const GHOST_CLASS =
-		"flex size-6 cursor-pointer items-center justify-center rounded-r5 bg-transparent text-secondary hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-disabled";
+	// Upstream's cds ghost Button paints on a [data-cds-part=paint] layer, which `Fs` keeps clear when pressed.
+	const VIEWED_CLASS =
+		"group/btn relative isolate flex size-6 cursor-pointer items-center justify-center rounded-r5 text-secondary hover:text-primary hide-focus-ring focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-disabled aria-pressed:[&_[data-cds-part=paint]]:bg-transparent aria-pressed:hover:[&_[data-cds-part=paint]]:bg-fill-ghost-hover aria-pressed:hover:[&_[data-cds-part=paint]]:bg-none";
+	const PAINT_CLASS = "absolute inset-0 rounded-[inherit] bg-transparent group-hover/btn:bg-fill-ghost-hover";
 
 	function renderMarked(
 		status: "marked" | "stale" | "none",
@@ -770,17 +772,25 @@ describe("DiffFileHeader Viewed check (upstream c44d00c7f Mo/jo/go)", () => {
 	it("renders an unpressed outline check whose tooltip says Mark as viewed below it, and marks on click", () => {
 		const {setMarked} = renderMarked("none");
 		const button = viewed();
+		// Upstream `lazy`: the tip isn't mounted until it opens.
+		const beforeHover = screen.queryByRole("tooltip");
 		const tip = hoverTip(button.parentElement ?? button);
+		// Upstream `hoverable={false}`: the tip takes no pointer, so leaving the button closes it.
+		const hoverable = !screen.getByRole("tooltip").classList.contains("pointer-events-none");
 		fireEvent.click(button);
 		expect({
+			beforeHover,
 			pressed: button.getAttribute("aria-pressed"),
 			glyph: glyph(button),
 			tip,
+			hoverable,
 			calls: setMarked.mock.calls,
 		}).toStrictEqual({
+			beforeHover: null,
 			pressed: "false",
 			glyph: "outline",
 			tip: {text: "Mark as viewed", side: "bottom"},
+			hoverable: false,
 			calls: [[true]],
 		});
 	});
@@ -794,12 +804,14 @@ describe("DiffFileHeader Viewed check (upstream c44d00c7f Mo/jo/go)", () => {
 			pressed: button.getAttribute("aria-pressed"),
 			glyph: glyph(button),
 			className: button.className,
+			paint: button.querySelector('[data-cds-part="paint"]')?.className,
 			tip,
 			calls: setMarked.mock.calls,
 		}).toStrictEqual({
 			pressed: "true",
 			glyph: "filled",
-			className: `${GHOST_CLASS} aria-pressed:bg-transparent aria-pressed:hover:bg-fill-ghost-hover`,
+			className: VIEWED_CLASS,
+			paint: PAINT_CLASS,
 			tip: {text: "Mark as not viewed", side: "bottom"},
 			calls: [[false]],
 		});

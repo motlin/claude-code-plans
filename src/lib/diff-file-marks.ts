@@ -239,11 +239,22 @@ export function fileMarkStatus(
 	return statusOf(fileRecords(readMarks(), scope, path), scope.diff, patch);
 }
 
-type MarkChangeListener = (scope: DiffMarkScope, path: string, marked: boolean) => void;
+/**
+ * One patch change's announcements to one listener (upstream `Is`'s per-context object): the first file to hold its
+ * header in place sets `held`, so a burst of expanding files doesn't jump the scroll.
+ */
+export interface MarkBurst {
+	held: boolean;
+}
+
+type MarkChangeListener = (scope: DiffMarkScope, path: string, marked: boolean, burst?: MarkBurst) => void;
 
 const markListeners = new Set<MarkChangeListener>();
 
-/** Upstream `js`: hears marks set or cleared, and marked files whose patch changed (with `marked` false). */
+/**
+ * Upstream `js` [Fu]: hears marks set or cleared, and marked files whose patch changed (with `marked` false and the
+ * change's shared burst).
+ */
 export function subscribeMarkChanges(listener: MarkChangeListener): () => void {
 	markListeners.add(listener);
 	return () => {
@@ -288,12 +299,17 @@ export function notifyPatchChanges(
 	after: ReadonlyMap<string, string | null>,
 ): void {
 	const marks = readMarks();
+	const bursts = new Map<MarkChangeListener, MarkBurst>();
 	for (const [path, patch] of after) {
 		const previous = before.get(path);
 		if (previous === undefined || previous === null || patch === previous) continue;
 		const records = fileRecords(marks, scope, path);
 		if (statusOf(records, scope.diff, previous) === "marked" && statusOf(records, scope.diff, patch) !== "marked") {
-			for (const listener of markListeners) listener(scope, path, false);
+			for (const listener of markListeners) {
+				const burst = bursts.get(listener) ?? {held: false};
+				bursts.set(listener, burst);
+				listener(scope, path, false, burst);
+			}
 		}
 	}
 }
