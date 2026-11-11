@@ -1,5 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
-import {revealSpoofing, visibleSingleLine} from "../src/lib/visible-text";
+import {paramValueText} from "../src/lib/param-value-text";
+import {revealControlChars, revealSpoofing, visibleSingleLine} from "../src/lib/visible-text";
 
 describe("visibleSingleLine", () => {
 	it.each([
@@ -43,5 +44,33 @@ describe("revealSpoofing, as upstream's u9", () => {
 			"x[U+3000][U+3000][U+3000]y",
 			"\u3000\u3000\u3000",
 		]);
+	});
+});
+
+describe("revealControlChars, as upstream's Jr (shared-0)", () => {
+	it("tags C0 and C1 controls and line separators, keeping tab, newline, a CRLF's CR and bidi controls", () => {
+		const rlo = String.fromCodePoint(0x202e);
+		expect(revealControlChars(`a\u0007b\u001b[31mc\u0085d\u2028e\rf\r\ng\th${rlo}i\nj`)).toStrictEqual(
+			`a[U+0007]b[U+001B][31mc[U+0085]d[U+2028]e[U+000D]f\r\ng\th${rlo}i\nj`,
+		);
+	});
+});
+
+describe("paramValueText, as upstream's c62da1b56 R (the param row value)", () => {
+	const token = `ghp_${"A".repeat(36)}`;
+	const masked = `ghp_AAAA${"\u2022".repeat(32)}`;
+
+	it("leaves a secret in text without controls for the renderer to cloak", () => {
+		expect(paramValueText(`use ${token}`)).toStrictEqual(`use ${token}`);
+	});
+
+	it("only tags the controls of text without a secret", () => {
+		expect(paramValueText("a\u001b[31mred\u0007")).toStrictEqual("a[U+001B][31mred[U+0007]");
+	});
+
+	it("masks a secret in text with controls in place, the escape sequences stripped and listed on their own lines", () => {
+		expect(paramValueText(`\u001b[31m${token}\u001b[0m and\u0007`)).toStrictEqual(
+			`${masked} and[U+0007]\n[U+001B][31m\n[U+001B][0m`,
+		);
 	});
 });

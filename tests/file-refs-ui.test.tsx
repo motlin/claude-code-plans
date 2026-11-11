@@ -634,6 +634,42 @@ describe("ToolOutputSection saved-file link (upstream Rv > La)", () => {
 			opened: [[{path}]],
 		});
 	});
+
+	it("keeps a blocked path's chip inside upstream's disabled-reason wrapper (Ia > Jr)", async () => {
+		const path = "/tmp/outside/notes.txt";
+		render(
+			withQueryClient(
+				<FileRefsProvider
+					value={{
+						sessionId: "param-outside",
+						cwd: "/repo",
+						sessionPaths: [],
+						open: vi.fn<(ref: FileRef) => void>(),
+					}}
+				>
+					<KeyValueCard params={[{key: "file_path", value: path}]} />
+				</FileRefsProvider>,
+			),
+		);
+		const wrapper = await vi.waitFor(() => {
+			const found = document.querySelector<HTMLElement>("[data-cds-disabled-reason-wrapper]");
+			if (found === null) throw new Error("no wrapper yet");
+			return found;
+		});
+		expect({
+			parent: wrapper.parentElement?.className,
+			className: wrapper.className,
+			tabIndex: wrapper.tabIndex,
+			code: wrapper.querySelector("code")?.outerHTML,
+			reason: document.getElementById(wrapper.getAttribute("aria-describedby") ?? "")?.textContent,
+		}).toStrictEqual({
+			parent: "min-w-0 break-words",
+			className: "inline rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus",
+			tabIndex: 0,
+			code: `<code class="cds-inline-code">${path}</code>`,
+			reason: OUTSIDE_REASON,
+		});
+	});
 });
 
 describe("KeyValueCard path param link (upstream Zv > Ra)", () => {

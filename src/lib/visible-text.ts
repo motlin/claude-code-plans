@@ -6,6 +6,15 @@ function codePointTag(text: string): string {
 	).join("");
 }
 
+/** Upstream's `TT` (shared-0): a C0 or C1 control other than tab and newline (a CRLF's CR kept), or a line separator. */
+// eslint-disable-next-line no-control-regex -- showing control characters is the point
+const CONTROL_OR_SEPARATOR_RE = /(?!\r\n)(?:[\u0000-\u0008\u000B-\u001F\u007F-\u009F]|[\u2028\u2029])/g;
+
+/** Upstream's `Jr` (shared-0): control characters and line separators shown as `[U+XXXX]`; nothing else. */
+export function revealControlChars(text: string): string {
+	return text.replace(CONTROL_OR_SEPARATOR_RE, codePointTag);
+}
+
 /** A literal `[U+` tag or `\uXXXX` escape, whose `[` or `\` is shown so it can't pass for one of ours. */
 const LOOKALIKE_RE = /\[(?=U\+[0-9A-F]{4,6}(?:\u00D7[0-9]+)?\])|\\(?=u[0-9a-f]{4})/giu;
 /** C0 and C1 controls other than tab and newline. */

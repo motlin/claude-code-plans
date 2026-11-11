@@ -1,16 +1,13 @@
 import type {ThemedToken} from "@shikijs/core";
-import type {ReactNode} from "react";
 import {useCodeThemeBackground} from "../../hooks/use-code-theme-background";
 import {useHighlightedLines} from "../../hooks/use-shiki";
+import {pageIsRtl} from "../../lib/page-direction";
 import {stripMemoryTags} from "../../lib/task-checklist";
 import type {ToolBodyKind} from "../../lib/tool-body-kind";
-import {linkifyPlain} from "../linkify-plain";
+import {linkifyToolText} from "../linkify-plain";
 import {InlineMarkdown} from "./inline-markdown";
 import {PlainText} from "./plain-text";
 import {TOOL_OUTPUT_CLAMP, TOOL_OUTPUT_REGION} from "./tool-output-region";
-
-/** Upstream `Qx`: the most URLs one body links. */
-const MAX_BODY_LINKS = 200;
 
 /**
  * Upstream's code tile (`Hv` > `$c`, the Bash command card's look): no header or line numbers, wrapped lines,
@@ -45,16 +42,6 @@ function JsonTile({code}: {code: string}) {
 	);
 }
 
-/** Upstream `Fv` (`eS`): a plain run's URLs as links that ask before leaving, at most 200 of them. */
-function linkifyBody(text: string): ReactNode {
-	return linkifyPlain(text, {maxLinks: MAX_BODY_LINKS});
-}
-
-/** Upstream `p() === "rtl"`: the page's direction, read off the root element. */
-function pageIsRtl(): boolean {
-	return document.documentElement.dir === "rtl";
-}
-
 /**
  * Upstream `Vv` (was `aS`): a generic tool body by kind, inside the 400px "Tool output" scroller. Markdown renders
  * with its headings announced under level 3; JSON as a code tile (or `text-code`, left-to-right on an RTL page,
@@ -76,7 +63,7 @@ export function ToolOutputBody({body}: {body: ToolBodyKind}) {
 					{...((json || body.columns) && {className: "text-code"})}
 					{...(json && pageIsRtl() && {dir: "ltr"})}
 				>
-					<PlainText renderPlain={linkifyBody}>{body.text}</PlainText>
+					<PlainText renderPlain={linkifyToolText}>{body.text}</PlainText>
 				</div>
 			)}
 		</div>

@@ -546,7 +546,7 @@ describe("AskUserQuestionRenderer", () => {
 		}).toStrictEqual({status: "No response after 60s", rawBoilerplate: false});
 	});
 
-	it("draws unanswered questions as upstream's _y does: only the question lines, memory tags dropped, chips over u9(ME(question))", () => {
+	it("draws unanswered questions outside a session as upstream's gy > _y does: only the question lines, memory tags dropped, chips over u9(ME(question))", () => {
 		const rlo = String.fromCodePoint(0x202e);
 		const {container} = render(
 			<AskUserQuestionRenderer
@@ -567,8 +567,6 @@ describe("AskUserQuestionRenderer", () => {
 							},
 						],
 					},
-					result: "Something else entirely.",
-					isError: true,
 				})}
 			/>,
 		);
@@ -599,6 +597,27 @@ describe("AskUserQuestionRenderer", () => {
 				},
 			],
 		});
+	});
+
+	it("draws an errored call with questions as upstream's generic tool body: its input rows under the error, no status line", () => {
+		const {container} = render(
+			<AskUserQuestionRenderer
+				toolCall={makeCall({
+					input: {
+						questions: [{question: "Ship it?", header: "Ship", options: [{label: "Yes"}, {label: "No"}]}],
+					},
+					result: "Something else entirely.",
+					isError: true,
+				})}
+			/>,
+		);
+
+		expect({
+			error: container.querySelector(".text-danger-ink")?.textContent,
+			keys: [...container.querySelectorAll(".font-mono.opacity-70")].map((key) => key.textContent),
+			pink: container.querySelector(".text-extended-pink"),
+			lines: container.querySelector(".pt-xs"),
+		}).toStrictEqual({error: "Something else entirely.", keys: ["questions:"], pink: null, lines: null});
 	});
 
 	it("still falls back to the raw result for an unrecognized envelope", () => {

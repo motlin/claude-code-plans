@@ -7,7 +7,9 @@ import {requestFileOpen} from "../lib/file-open-requests";
 import type {FileRef} from "../lib/file-refs";
 import type {SessionFiles} from "../lib/session-files";
 import {MarkdownArticle, PlainTextArticle} from "./markdown-article";
+import {BlockedFileRef} from "./blocked-file-ref";
 import {RenderErrorBoundary} from "./render-error-boundary";
+import {useFocusSlot} from "./use-focus-slot";
 import {usePaneHost} from "./panes/pane-host-context";
 import {FileRefsContext, FileRefsProvider} from "./file-refs-context";
 import {
@@ -54,25 +56,47 @@ function ResolvedFileRefTarget({
 	path,
 	open,
 	render,
+	wrapBlocked,
 }: {
 	path: string;
 	open: (ref: FileRef) => void;
 	render: RenderFileRef;
+	wrapBlocked: boolean;
 }): ReactNode {
 	const texts = useMemo(() => [path], [path]);
 	const ref = useFileRefs(texts).get(path);
 	const openDefaultApp = useDefaultAppOpen();
+	const focusSlot = useFocusSlot();
+	if (ref?.block !== undefined && wrapBlocked)
+		return (
+			<BlockedFileRef path={ref.path} block={ref.block} focusSlot={focusSlot}>
+				{render(null)}
+			</BlockedFileRef>
+		);
 	return render(ref === undefined || ref.block !== undefined ? null : fileRefButtonProps(ref, open, openDefaultApp));
 }
 
 /**
  * Renders a tool path, handing `render` button props once the path is
  * confirmed to exist (null until then, for a blocked path, and always null
- * outside a provider).
+ * outside a provider). With `wrapBlocked`, a blocked path's fallback sits in
+ * upstream's disabled-reason wrapper (`Ia` > `Jr`).
  */
-export function FileRefTarget({path, render}: {path: string; render: RenderFileRef}): ReactNode {
+export function FileRefTarget({
+	path,
+	render,
+	wrapBlocked = false,
+}: {
+	path: string;
+	render: RenderFileRef;
+	wrapBlocked?: boolean;
+}): ReactNode {
 	const open = useOpenFileRef();
-	return open === null ? render(null) : <ResolvedFileRefTarget path={path} open={open} render={render} />;
+	return open === null ? (
+		render(null)
+	) : (
+		<ResolvedFileRefTarget path={path} open={open} render={render} wrapBlocked={wrapBlocked} />
+	);
 }
 
 function artifactTitlesById(artifacts: ArtifactSummary[]): ReadonlyMap<string, string> {

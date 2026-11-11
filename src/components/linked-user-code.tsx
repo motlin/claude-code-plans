@@ -1,16 +1,10 @@
 import {useCallback, useRef} from "react";
 
-import {
-	DISABLED_REASON_ATTR,
-	DISABLED_REASON_WRAPPER_ATTR,
-	FILE_REF_BLOCK_REASONS,
-	fileRefReasonId,
-} from "../lib/file-refs";
+import {BlockedFileRef} from "./blocked-file-ref";
 import {useUserCodeFileRef} from "./use-file-ref-link";
-import {BLOCKED_WRAPPER_CLASS, USER_CODE_CLASS, USER_LINK_CLASS} from "./user-code-classes";
+import {USER_CODE_CLASS, USER_LINK_CLASS} from "./user-code-classes";
 import {PlainUserCode} from "./plain-user-code";
 import {useFocusSlot} from "./use-focus-slot";
-import {useReasonTooltip} from "./use-reason-tooltip";
 
 /**
  * Upstream `Ir` for a user-row code span inside a file-refs provider: plain
@@ -28,30 +22,16 @@ export function LinkedUserCode({text}: {text: string}) {
 		},
 		[focusSlot],
 	);
-	const reasonTooltip = useReasonTooltip();
 	const {ref, buttonProps} = useUserCodeFileRef(text);
 	const block = ref?.block;
 
 	if (ref === undefined) return <PlainUserCode text={text} />;
 	if (block !== undefined) {
-		const id = fileRefReasonId(ref.path, block);
 		return (
 			<bdi key="blocked" dir="ltr">
-				<span
-					// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- upstream's disabled-reason wrapper is a tab stop that reaches its reason tooltip
-					tabIndex={0}
-					{...{[DISABLED_REASON_WRAPPER_ATTR]: ""}}
-					aria-describedby={id}
-					className={BLOCKED_WRAPPER_CLASS}
-					{...reasonTooltip.handlers}
-				>
+				<BlockedFileRef path={ref.path} block={block} focusSlot={focusSlot}>
 					<code className={USER_CODE_CLASS}>{text}</code>
-					{block === "missing" && <span ref={focusSlot} hidden />}
-					<span id={id} hidden {...{[DISABLED_REASON_ATTR]: ""}}>
-						{FILE_REF_BLOCK_REASONS[block]}
-					</span>
-				</span>
-				{reasonTooltip.tooltip}
+				</BlockedFileRef>
 			</bdi>
 		);
 	}

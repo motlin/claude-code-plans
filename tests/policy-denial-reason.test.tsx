@@ -178,7 +178,7 @@ describe("blocked tool bodies", () => {
 			danger: container.querySelector(".text-danger-ink"),
 		}).toStrictEqual({
 			first: ROOT_CLASS,
-			text: "Blocked by auto mode: [Auto-Mode Bypass]url: https://x",
+			text: "Blocked by auto mode: [Auto-Mode Bypass]url: https://x(opens in new tab)",
 			danger: null,
 		});
 	});

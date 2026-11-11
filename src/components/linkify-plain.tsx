@@ -78,3 +78,11 @@ export function linkifyPlain(text: string, {maxLinks}: {maxLinks: number}): Reac
 	if (cursor < text.length) nodes.push(text.slice(cursor));
 	return nodes;
 }
+
+/** Upstream's `Pv`: a tool body or param value links at most 200 URLs. */
+const MAX_TOOL_LINKS = 200;
+
+/** Upstream's `Iv` (cb6930dae): a tool body's or plain param value's run, its URLs linked by `Fv`, at most 200. */
+export function linkifyToolText(text: string): ReactNode {
+	return linkifyPlain(text, {maxLinks: MAX_TOOL_LINKS});
+}

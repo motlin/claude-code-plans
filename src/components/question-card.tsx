@@ -620,7 +620,7 @@ export function QuestionCard({
 		>
 			<div className="bg-alpha-1 px-lg flex gap-md py-md items-center">
 				<div className="min-w-0 flex-1 text-body text-primary select-text break-words [unicode-bidi:plaintext]">
-					<UserInlineText text={rawQuestion} codeLook="chip" />
+					<UserInlineText text={rawQuestion} codeLook="chip" revealCloaks />
 				</div>
 				{questions.length > 1 && (
 					<span className="flex shrink-0 items-center -my-xs -me-sm gap-xs text-caption text-muted-as-secondary">

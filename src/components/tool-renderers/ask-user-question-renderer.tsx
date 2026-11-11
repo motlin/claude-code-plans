@@ -3,6 +3,7 @@ import {useEffect, useRef} from "react";
 import type {ClientToolCall, ToolRendererProps} from "./types";
 import {useAskUserQuestionContext} from "../ask-user-question-context";
 import {MarkdownArticle} from "../markdown-article";
+import {FallbackRenderer} from "./fallback-renderer";
 import {ApprovalSlot} from "../approval-slot";
 import {sessionApprovalSlotCard} from "../../lib/approval-slot-card";
 import {QuestionCard} from "../question-card";
@@ -33,7 +34,7 @@ import {
 const CARD_SHELL = "flex flex-col card-outline rounded-r6 overflow-clip divide-y divide-t3 [&>*]:px-p7 [&>*]:py-p6";
 
 /**
- * Upstream's `_y` (cb6930dae, 2026-11-10) for a call with no recorded answer: only the question lines,
+ * Upstream's `gy` > `_y` (cb6930dae, 2026-11-10) for a call with no result outside a session: only the question lines,
  * each with its memory tags dropped (`Zp` over `sh`) and drawn as `_i({text: u9(ME(question))})` in
  * secondary text; no header and no options. Nothing when no question has text.
  */
@@ -133,6 +134,9 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 	if (isPending) receiptEntersRef.current = null;
 	else receiptEntersRef.current ??= isQuestionCardSent(toolCall.id) && !sentHereRef.current;
 
+	// Upstream's `gy` (cb6930dae): outside a session (no `vp` provider), a call with no result is only its question lines.
+	if (isPending && questions !== null && ctx === null) return <UnansweredQuestions questions={questions} />;
+
 	// Upstream draws a pending question as its card, inline where the call is; it answers along the session's route.
 	if (isPending && questions !== null) {
 		const route = ctx?.answerRoute ?? "read-only";
@@ -219,11 +223,6 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 		return <QuestionReceipt enters={receiptEntersRef.current ?? false} rows={rows} />;
 	}
 
-	return (
-		<>
-			<UnansweredQuestions questions={questions} />
-			{status && <StatusLine status={status} />}
-			{showRawFallback && <p className="text-body text-secondary whitespace-pre-wrap">{result}</p>}
-		</>
-	);
+	// Upstream's `Ev` sends any other question call with a result (an error) down the generic tool body.
+	return <FallbackRenderer toolCall={toolCall} />;
 }

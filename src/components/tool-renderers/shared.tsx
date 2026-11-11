@@ -1,6 +1,8 @@
 import {type ReactNode, useCallback, useContext, useMemo, useState} from "react";
 import {ansiPartStyle, parseAnsiCodes} from "../../lib/ansi-codes";
-import {maskSecrets, maskUrlSecrets, secretToggleLabel, stripControlsAndMask} from "../../lib/secret-mask";
+import {maskSecrets, maskUrlSecrets, secretToggleLabel} from "../../lib/secret-mask";
+import {paramValueText} from "../../lib/param-value-text";
+import {pageIsRtl} from "../../lib/page-direction";
 import {revealSpoofing} from "../../lib/visible-text";
 import {type SecretReveal, useSecretReveal} from "./use-secret-reveal";
 import {formatDuration} from "../../lib/format-duration";
@@ -9,6 +11,8 @@ import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {useTimedFlag} from "../../hooks/use-timed-flag";
 import {FileRefTarget} from "../file-refs";
 import {FILE_LINK_CLASS} from "./file-link-class";
+import {linkifyToolText} from "../linkify-plain";
+import {PlainText} from "./plain-text";
 import * as Collapsible from "../ui/collapsible";
 import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
@@ -505,25 +509,31 @@ export function PolicyDenialReason({call}: {call: PolicyDenial}) {
 	);
 }
 
-/** Upstream's `Gv` (cb6930dae): the input keys whose string value is drawn as a path. */
+/** Upstream's `Wv` (cb6930dae): the input keys whose string value is drawn as a path. */
 const PATH_PARAM_KEYS = new Set(["file_path", "notebook_path"]);
 
 /**
- * Upstream's `Zv` (cb6930dae, 2026-11-10): a path param as `u9(ME(path))`, a `cds-inline-code` chip until the
- * transcript's file refs confirm it, then a span inside the inline file link that opens it in the Files pane.
+ * Upstream's `Xv` (cb6930dae, 2026-11-10): a path param as `u9(ME(path))`, a `cds-inline-code` chip until the
+ * transcript's file refs confirm it, then a span inside the inline file link that opens it in the Files pane; a
+ * blocked path keeps the chip inside the disabled-reason wrapper (`Ia` > `Jr`). Both are left-to-right on a
+ * right-to-left page.
  */
 function PathParamValue({path}: {path: string}) {
 	const text = revealSpoofing(maskSecrets(path));
+	const dir = pageIsRtl() ? "ltr" : undefined;
 	return (
 		<span className="min-w-0 break-words">
 			<FileRefTarget
 				path={path}
+				wrapBlocked
 				render={(refProps) =>
 					refProps === null ? (
-						<code className="cds-inline-code">{text}</code>
+						<code className="cds-inline-code" dir={dir}>
+							{text}
+						</code>
 					) : (
 						<span {...refProps} className={FILE_LINK_CLASS}>
-							<span>{text}</span>
+							<span dir={dir}>{text}</span>
 						</span>
 					)
 				}
@@ -533,8 +543,20 @@ function PathParamValue({path}: {path: string}) {
 }
 
 /**
- * The param rows: a muted mono key, a space, then the value as plain body text (upstream's generic row), a path
- * key's value drawn as upstream's `Zv`, and any other plain value masked with display controls stripped (`Iv`).
+ * Upstream's `Zv` (cb6930dae, 2026-11-10): any other plain value through the transcript's plain renderer (`eo`),
+ * each secret cloaked behind its own reveal button and its URLs linked (`Iv`).
+ */
+function PlainParamValue({value}: {value: string}) {
+	return (
+		<span className="min-w-0 break-words">
+			<PlainText renderPlain={linkifyToolText}>{value}</PlainText>
+		</span>
+	);
+}
+
+/**
+ * The param rows: a muted mono key, a space, then the value (upstream's generic row). Every string value first
+ * goes through upstream's `fm` (`paramValueText`); a path key's value is drawn as `Xv`, any other as `Zv`.
  */
 function ParamRows({params}: {params: KeyValueParam[]}) {
 	return (
@@ -545,9 +567,9 @@ function ParamRows({params}: {params: KeyValueParam[]}) {
 					{p.markdown ? (
 						<InlineMarkdown text={p.value} />
 					) : PATH_PARAM_KEYS.has(p.key) ? (
-						<PathParamValue path={p.value} />
+						<PathParamValue path={paramValueText(p.value)} />
 					) : (
-						stripControlsAndMask(p.value)
+						<PlainParamValue value={paramValueText(p.value)} />
 					)}
 				</div>
 			))}

@@ -392,10 +392,12 @@ describe("ArtifactRenderer", () => {
 		const {container} = render(<ArtifactRenderer toolCall={call} />);
 		const expected = render(<FallbackRenderer toolCall={call} />).container;
 
+		// React numbers each render's ids (a param URL's "opens in new tab" note) on, so compare without them.
+		const withoutIds = (html: string) => html.replaceAll(/_r_\w+_/g, "_r_");
 		expect({
 			cards: container.querySelectorAll('[role="button"]').length,
-			html: container.innerHTML,
-		}).toStrictEqual({cards: 0, html: expected.innerHTML});
+			html: withoutIds(container.innerHTML),
+		}).toStrictEqual({cards: 0, html: withoutIds(expected.innerHTML)});
 	});
 
 	it.each(["pin", "unpin"])("keeps the key/value body for %s", (action) => {
@@ -416,10 +418,12 @@ describe("ArtifactRenderer", () => {
 		const {container} = render(<ArtifactRenderer toolCall={call} />);
 		const expected = render(<FallbackRenderer toolCall={call} />).container;
 
+		// React numbers each render's ids (a param URL's "opens in new tab" note) on, so compare without them.
+		const withoutIds = (html: string) => html.replaceAll(/_r_\w+_/g, "_r_");
 		expect({
 			cards: container.querySelectorAll('[role="button"]').length,
-			html: container.innerHTML,
-		}).toStrictEqual({cards: 0, html: expected.innerHTML});
+			html: withoutIds(container.innerHTML),
+		}).toStrictEqual({cards: 0, html: withoutIds(expected.innerHTML)});
 	});
 });
 

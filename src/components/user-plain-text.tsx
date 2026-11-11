@@ -1,8 +1,9 @@
 import {Fragment, lazy, type ReactNode, Suspense} from "react";
 
 import {defined} from "../lib/defined";
-import {maskSecrets} from "../lib/secret-mask";
+import {maskSecrets, maskUrlSecrets} from "../lib/secret-mask";
 import {revealSpoofing} from "../lib/visible-text";
+import {CloakedText} from "./cloaked-text";
 import {trimUrl} from "./linkify-plain";
 import {UserCodeSpan} from "./user-code-span";
 
@@ -59,13 +60,25 @@ interface UserInlineTextProps {
 	codeLook?: CodeLook;
 	/** False leaves URLs as plain text, as upstream's Asked row body. */
 	links?: boolean;
+	/**
+	 * Upstream's question header paint (c2f6611a3 `Zt`, `revealCloaks`): the raw text unmasked, its runs shown
+	 * through `u9` with each secret cloaked behind its own reveal button. Chip look only.
+	 */
+	revealCloaks?: boolean;
 }
 
 /**
  * A user message's inline paint without its block layout, its URLs as upstream's
  * TextLink. Upstream's question card header draws code spans as its chip and `**text**` bold (`codeLook="chip"`).
  */
-export function UserInlineText({text: raw, codeSpans = true, codeLook = "message", links = true}: UserInlineTextProps) {
+export function UserInlineText({
+	text: raw,
+	codeSpans = true,
+	codeLook = "message",
+	links = true,
+	revealCloaks = false,
+}: UserInlineTextProps) {
+	if (revealCloaks && codeLook === "chip") return <>{chipText(raw, cloakPaint)}</>;
 	const text = maskSecrets(raw);
 	const plain = (part: string, at: number): ReactNode[] => (links ? linkify(part, at, "textLink") : [part]);
 	if (!codeSpans) return <>{plain(text, 0)}</>;
@@ -127,6 +140,35 @@ function chipPlainText(text: string): string {
 }
 
 type Paint = (part: string, at: number) => ReactNode[];
+
+/**
+ * Upstream's `yr` paint with `revealCloaks` (cbb72cde9, as the question header's `Zt` calls it): each URL a
+ * TextLink drawn as `u9` of its masked form (`$2`), every other run cloaked.
+ */
+const cloakPaint: Paint = (part, at) => {
+	const nodes: ReactNode[] = [];
+	let cursor = 0;
+	for (const match of part.matchAll(URL_PATTERN)) {
+		const url = trimUrl(match[0]);
+		if (match.index > cursor)
+			nodes.push(<CloakedText key={`${at}-t${cursor}`} text={part.slice(cursor, match.index)} />);
+		nodes.push(
+			<a
+				key={`${at}-u${match.index}`}
+				href={url}
+				target="_blank"
+				rel="noreferrer"
+				dir="ltr"
+				className="cds-reset text-link inline cursor-pointer"
+			>
+				{revealSpoofing(maskUrlSecrets(url))}
+			</a>,
+		);
+		cursor = match.index + url.length;
+	}
+	if (cursor < part.length) nodes.push(<CloakedText key={`${at}-t${cursor}`} text={part.slice(cursor)} />);
+	return nodes;
+};
 
 /** Upstream's `lo`: the text as is. */
 const unpainted: Paint = (part) => [part];

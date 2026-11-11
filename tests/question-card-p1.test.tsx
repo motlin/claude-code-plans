@@ -177,12 +177,13 @@ describe("QuestionCard question text, as upstream's code chip and TextLink heade
 			text: "See docs/a.md or https://example.com/a",
 		});
 	});
-	it("draws **text** as upstream's strong.font-medium with code chips nested, leaving flanked and unmatched ** literal, and paints the plain read text when u9 of its masking differs", () => {
+	it("draws **text** as upstream's strong.font-medium with code chips nested, leaving flanked and unmatched ** literal, and paints the plain read text with upstream's Zt cloaks when u9 of its masking differs", () => {
 		const chip = `<code dir="ltr" class="rounded-[calc(var(--cds-h-control-nested)/4)] bg-alpha-1 px-xs font-mono text-code font-normal">`;
 		const titleHtml = (question: string) => {
 			render(<QuestionCard questions={[{question, options: [{label: "Yes"}]}]} onSubmit={async () => {}} />);
-			const html =
-				document.querySelector("[data-approval-card-root]")!.firstElementChild!.firstElementChild!.innerHTML;
+			const html = document
+				.querySelector("[data-approval-card-root]")!
+				.firstElementChild!.firstElementChild!.innerHTML.replace(/<svg[^]*?<\/svg>/g, "<svg/>");
 			cleanup();
 			return html;
 		};
@@ -200,9 +201,10 @@ describe("QuestionCard question text, as upstream's code chip and TextLink heade
 			"a**b** and **c and ** d ** and **e**f",
 			"Keep `x**y**z` and **a** ``b``",
 			// Upstream's `_i` with a paint: when `u9` of the masked read text differs from the read text, the
-			// read text (markup dropped, unmasked) goes through the paint unstyled.
-			`Use ghp_${"A".repeat(36)} at <a href="https://example.com/a" target="_blank" rel="noreferrer" dir="ltr" class="cds-reset text-link inline cursor-pointer">https://example.com/a</a>?`,
-			"Run x \u202E now",
+			// read text (markup dropped) goes through the paint unstyled, and `Zt` cloaks its secret and shows its
+			// spoofing characters.
+			`Use <span data-redacted-secret="" class="inline-flex max-w-full items-baseline gap-[2px] align-baseline"><span class="break-all"><span data-find-omitted="" class="sr-only select-none">Redacted GitHub token</span><span aria-hidden="true">ghp_AAAA${"•".repeat(32)}</span></span><button type="button" aria-pressed="false" aria-label="Reveal GitHub token" class="inline-flex shrink-0 translate-y-[1px] items-center justify-center rounded-r2 text-secondary focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus hover:text-primary"><svg/></button></span> at <a href="https://example.com/a" target="_blank" rel="noreferrer" dir="ltr" class="cds-reset text-link inline cursor-pointer">https://example.com/a</a>?`,
+			"Run x [U+202E] now",
 		]);
 	});
 });
@@ -742,7 +744,7 @@ describe("QuestionCard secret masking (upstream c2f6611a3)", () => {
 	const MASKED_GH = `ghp_AAAA${"•".repeat(32)}`;
 	const FAKE_AWS = "AKIAEXAMPLEFAKE12345";
 
-	it("masks option labels and descriptions, the question name compactly, and paints the header from the raw question", () => {
+	it("masks option labels and descriptions, the question name compactly, and cloaks the header's secrets as upstream's Zt paint does", () => {
 		render(
 			<QuestionCard
 				questions={[
@@ -762,7 +764,7 @@ describe("QuestionCard secret masking (upstream c2f6611a3)", () => {
 			option: document.querySelector("[data-question-answer]")!.textContent,
 		}).toStrictEqual({
 			name: `Use AKIAEXAM${"•".repeat(7)}?`,
-			heading: `Use AKIAEXAM${"•".repeat(12)}?`,
+			heading: `Use Redacted AWS access keyAKIAEXAM${"•".repeat(12)}?`,
 			option: `Token ${MASKED_GH}desc ${MASKED_GH}`,
 		});
 	});
@@ -788,6 +790,31 @@ describe("QuestionCard secret masking (upstream c2f6611a3)", () => {
 		expect({name: root.getAttribute("aria-label"), heading: root.firstElementChild!.textContent}).toStrictEqual({
 			name: "Keep notes ok?",
 			heading: "Keep notes ok?",
+		});
+	});
+
+	it("paints the header as upstream's Zt (revealCloaks): spoofing characters shown, each secret behind its own reveal button, line breaks kept", () => {
+		const rlo = String.fromCodePoint(0x202e);
+		render(
+			<QuestionCard
+				questions={[{question: `Open ${rlo}fdp.exe\nwith ${FAKE_GH}?`, header: "K", options: [{label: "a"}]}]}
+				onSubmit={async () => {}}
+			/>,
+		);
+		const heading = document.querySelector("[data-approval-card-root]")!.firstElementChild!;
+		const reveal = heading.querySelector<HTMLButtonElement>("[data-redacted-secret] button")!;
+		const before = heading.textContent;
+		fireEvent.click(reveal);
+		expect({
+			before,
+			breaks: heading.querySelectorAll("br").length,
+			label: reveal.getAttribute("aria-label"),
+			after: heading.textContent,
+		}).toStrictEqual({
+			before: `Open [U+202E]fdp.exewith Redacted GitHub token${MASKED_GH}?`,
+			breaks: 1,
+			label: "Hide GitHub token",
+			after: `Open [U+202E]fdp.exewith ${FAKE_GH}?`,
 		});
 	});
 
