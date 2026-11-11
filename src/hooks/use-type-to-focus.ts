@@ -1,16 +1,18 @@
 import {type RefObject, useEffect, useRef} from "react";
 
-import {isEditableTarget, isInModalLayer} from "../lib/shortcuts/match";
+import {isEditableTarget, isInModalLayer, ownsTyping} from "../lib/shortcuts/match";
 
 /**
  * Keys belong elsewhere inside any input or editable field, inside a menu, listbox, dialog or popper, and while
- * a modal or menu is open even if focus fell to the body. Space only types from the body: on a control it presses.
+ * a modal or menu is open even if focus fell to the body, and while focus is inside `[data-owns-typing-and-pastes]`
+ * (upstream's `Vo`, read from the active element). Space only types from the body: on a control it presses.
  */
 function claimsTypedKey(event: KeyboardEvent): boolean {
 	if (event.key.length !== 1 || event.ctrlKey || event.metaKey || event.altKey) return false;
 	if (event.isComposing || event.defaultPrevented) return false;
 	const target = event.target instanceof Element ? event.target : null;
 	if (target instanceof HTMLInputElement || isEditableTarget(target) || isInModalLayer(target)) return false;
+	if (ownsTyping(document.activeElement)) return false;
 	if (event.key === " " && target !== document.body) return false;
 	return document.querySelector('[aria-modal="true"],[role="menu"]') === null;
 }
@@ -24,6 +26,7 @@ function claimsInsert(target: EventTarget | null, defaultPrevented: boolean): bo
 	if (defaultPrevented) return false;
 	const element = target instanceof Element ? target : null;
 	if (element instanceof HTMLInputElement || isEditableTarget(element) || isInModalLayer(element)) return false;
+	if (ownsTyping(document.activeElement)) return false;
 	return document.querySelector('[aria-modal="true"],[role="menu"]') === null;
 }
 

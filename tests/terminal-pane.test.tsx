@@ -380,12 +380,20 @@ describe("Shell tabs", () => {
 			expect(screen.getAllByRole("tab")).toHaveLength(3);
 		});
 		const afterAdd = tabs();
+		const owners = screen
+			.getAllByRole("tabpanel", {hidden: true})
+			.map((panel) => [panel.getAttribute("aria-label"), panel.getAttribute("data-owns-typing-and-pastes")]);
 		fireEvent.click(screen.getByRole("button", {name: "Close Shell 2"}));
 		await waitFor(() => {
 			expect(screen.getAllByRole("tab")).toHaveLength(2);
 		});
 
-		expect({afterAdd, afterClose: tabs()}).toStrictEqual({
+		expect({afterAdd, owners, afterClose: tabs()}).toStrictEqual({
+			owners: [
+				["Claude terminal", ""],
+				["Shell terminal", ""],
+				["Shell 2 terminal", ""],
+			],
 			afterAdd: [
 				{name: "Claude", selected: "false"},
 				{name: "Shell", selected: "false"},

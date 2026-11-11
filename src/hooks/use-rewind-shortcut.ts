@@ -2,9 +2,7 @@ import {useCallback, useEffect, useRef, useState} from "react";
 
 import {getComposerText} from "../lib/context-attach";
 import {canOpenRewindPicker, REWIND_ESC_WINDOW_MS} from "../lib/rewind-picker";
-
-/** Upstream's `Wl`: Escapes inside the terminal belong to it. */
-const TERMINAL_SELECTOR = 'canvas, [role="application"]';
+import {isInKeystrokeSink} from "../lib/shortcuts/match";
 
 export interface RewindPickerOptions {
 	sessionId: string;
@@ -78,8 +76,8 @@ export function useRewindPicker({sessionId, available, busy, now = Date.now}: Re
 
 	useEffect(() => {
 		const onKeyDown = (event: KeyboardEvent) => {
-			const inTerminal = event.target instanceof Element && event.target.closest(TERMINAL_SELECTOR) !== null;
-			if (!isPlainEscape(event) || inTerminal) {
+			// Upstream's `Yi`: Escapes inside a keystroke sink (the terminal) belong to it.
+			if (!isPlainEscape(event) || isInKeystrokeSink(event.target)) {
 				lastEscapeRef.current = null;
 				return;
 			}

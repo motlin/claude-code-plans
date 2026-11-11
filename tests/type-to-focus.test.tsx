@@ -70,6 +70,30 @@ describe("type-to-focus", () => {
 		});
 	});
 
+	it("leaves keys and pastes alone while focus is inside [data-owns-typing-and-pastes]", () => {
+		render(
+			<>
+				<div data-owns-typing-and-pastes="">
+					<button type="button">Pick</button>
+				</div>
+				<Composer variant="session" draftKey="session-alice" onSend={() => {}} />
+			</>,
+		);
+		const button = screen.getByRole("button", {name: "Pick"});
+		button.focus();
+
+		const key = fireEvent.keyDown(button, {key: "r"});
+		const pasted = paste(button, "hi");
+
+		expect({key, pasted, ...state(prompts()[0]!), buttonFocused: document.activeElement === button}).toStrictEqual({
+			key: true,
+			pasted: true,
+			value: "",
+			focused: false,
+			buttonFocused: true,
+		});
+	});
+
 	it("ignores modifier chords, non-printable keys, IME composition and keys another handler claimed", () => {
 		render(<Composer variant="session" draftKey="session-alice" onSend={() => {}} />);
 		blurToBody();

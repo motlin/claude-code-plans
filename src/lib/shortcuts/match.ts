@@ -56,6 +56,25 @@ export function isEditableTarget(target: EventTarget | null): boolean {
 	return target.closest('[contenteditable]:not([contenteditable="false"])') !== null;
 }
 
+/**
+ * Upstream's `Ov` keystroke sinks (canvas, `[role=application]`, `[ant-keystroke-sink]`), plus the local ghostty
+ * terminal (`div[data-terminal][contenteditable][role=textbox]`), whose keys belong to it rather than to app shortcuts.
+ */
+const KEYSTROKE_SINK_SELECTOR = 'canvas, [role="application"], [ant-keystroke-sink], [data-terminal]';
+
+/** Upstream's `UI`: the target is inside an element that takes raw keystrokes. */
+export function isInKeystrokeSink(target: EventTarget | null): boolean {
+	return target instanceof Element && target.closest(KEYSTROKE_SINK_SELECTOR) !== null;
+}
+
+/** Upstream's `GP`: a region whose typed keys and pastes stay with it instead of routing to the composer. */
+const OWNS_TYPING_SELECTOR = "[data-owns-typing-and-pastes]";
+
+/** Upstream's `Vo`. */
+export function ownsTyping(element: Element | null): boolean {
+	return element?.closest(OWNS_TYPING_SELECTOR) != null;
+}
+
 const MODAL_LAYER_SELECTOR = [
 	'[role="menu"]',
 	'[role="listbox"]',

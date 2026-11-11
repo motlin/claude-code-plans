@@ -340,6 +340,7 @@ export function TerminalPane({
 					role="tabpanel"
 					hidden={active !== CLAUDE_TAB_ID}
 					tabIndex={0}
+					data-owns-typing-and-pastes=""
 					aria-label="Claude terminal"
 					data-terminal-focus={active === CLAUDE_TAB_ID ? "" : undefined}
 					className={PANEL_CLASS}
@@ -364,6 +365,7 @@ export function TerminalPane({
 					role="tabpanel"
 					hidden={active !== tab.id}
 					tabIndex={0}
+					data-owns-typing-and-pastes=""
 					aria-label={`${tab.title} terminal`}
 					data-terminal-focus={active === tab.id ? "" : undefined}
 					className={PANEL_CLASS}

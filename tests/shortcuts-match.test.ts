@@ -5,7 +5,13 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {type ShortcutHandler, useShortcut} from "../src/hooks/use-shortcut";
-import {isEditableTarget, isInModalLayer, matchBinding} from "../src/lib/shortcuts/match";
+import {
+	isEditableTarget,
+	isInKeystrokeSink,
+	isInModalLayer,
+	matchBinding,
+	ownsTyping,
+} from "../src/lib/shortcuts/match";
 
 interface KeyInit {
 	key: string;
@@ -100,6 +106,31 @@ describe("guards", () => {
 		expect(isInModalLayer(byId("in-menu"))).toBe(true);
 		expect(isInModalLayer(byId("in-popper"))).toBe(true);
 		expect(isInModalLayer(byId("outside"))).toBe(false);
+	});
+
+	it("detects keystroke sinks: canvas, [role=application], [ant-keystroke-sink] and the local [data-terminal]", () => {
+		document.body.innerHTML = `
+      <canvas><span id="in-canvas"></span></canvas>
+      <div role="application"><button id="in-application"></button></div>
+      <div ant-keystroke-sink><button id="in-sink"></button></div>
+      <div data-terminal contenteditable="true" role="textbox"><textarea id="in-terminal"></textarea></div>
+      <div id="plain"></div>`;
+		const byId = (id: string) => document.getElementById(id);
+		expect(
+			["in-canvas", "in-application", "in-sink", "in-terminal", "plain"].map((id) => isInKeystrokeSink(byId(id))),
+		).toStrictEqual([true, true, true, true, false]);
+		expect(isInKeystrokeSink(null)).toBe(false);
+	});
+
+	it("detects elements that own typing and pastes", () => {
+		document.body.innerHTML = `
+      <div data-owns-typing-and-pastes=""><button id="owned"></button></div>
+      <button id="free"></button>`;
+		expect([
+			ownsTyping(document.getElementById("owned")),
+			ownsTyping(document.getElementById("free")),
+			ownsTyping(null),
+		]).toStrictEqual([true, false, false]);
 	});
 });
 

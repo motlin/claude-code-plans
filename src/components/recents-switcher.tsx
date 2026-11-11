@@ -23,15 +23,13 @@ import {
 	step,
 	switchModifier,
 } from "../lib/recents-switcher-keys";
+import {isInKeystrokeSink} from "../lib/shortcuts/match";
 
 /** Upstream's codeSession `</>` and project glyphs. */
 const KIND_ICONS = {
 	session: <CodeXml />,
 	project: <FolderOpen />,
 } as const satisfies Record<SwitcherKind, ReactNode>;
-
-/** Where ⌃Q yields so the terminal receives it, like upstream's `[data-ccd-terminal]` guard. */
-const TERMINAL_SELECTOR = "[data-terminal], canvas, [role='application']";
 
 interface SwitcherState {
 	entries: SwitcherEntry[];
@@ -40,10 +38,6 @@ interface SwitcherState {
 
 function rowId(index: number): string {
 	return `recents-switcher-row-${index}`;
-}
-
-function inTerminal(target: EventTarget | null): boolean {
-	return target instanceof Element && target.closest(TERMINAL_SELECTOR) !== null;
 }
 
 /**
@@ -93,7 +87,8 @@ export function RecentsSwitcher() {
 			if (isSwitchTrigger(event, platform)) {
 				const direction: SwitchDirection = event.shiftKey ? -1 : 1;
 				if (current === null) {
-					if (inTerminal(event.target)) return;
+					// Upstream's `lt`: ⌃Q yields to the terminal (`[data-ccd-terminal]`, locally `[data-terminal]`) or any sink.
+					if (isInKeystrokeSink(event.target)) return;
 					const entries = switcherRecents(resolveRecentSessions(loadRecents(), resolveAlias));
 					if (entries.length === 0) return;
 					const currentKey = routeToRecent(contextRef.current.pathname, resolveAlias)?.key ?? null;

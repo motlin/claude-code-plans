@@ -183,6 +183,20 @@ describe("useRewindPicker Esc Esc", () => {
 		unregister();
 	});
 
+	it("ignores Escapes inside the local ghostty terminal ([data-terminal] contenteditable textbox)", () => {
+		const {hook, unregister} = setup();
+		const terminal = document.createElement("div");
+		terminal.setAttribute("data-terminal", "");
+		terminal.setAttribute("contenteditable", "true");
+		terminal.setAttribute("role", "textbox");
+		document.body.append(terminal);
+		escape({}, terminal);
+		escape({}, terminal);
+		expect(hook.result.current.open).toBe(false);
+		terminal.remove();
+		unregister();
+	});
+
 	it("refuses to reopen within 600ms of closing", () => {
 		const {hook, unregister} = setup();
 		act(() => {
