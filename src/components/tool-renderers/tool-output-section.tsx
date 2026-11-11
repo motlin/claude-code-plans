@@ -1,5 +1,6 @@
 import type {ReactNode} from "react";
-import {stripControlsAndMask} from "../../lib/secret-mask";
+import {maskSecrets} from "../../lib/secret-mask";
+import {revealSpoofing} from "../../lib/visible-text";
 import {FileRefTarget} from "../file-refs";
 import type {ResolvedToolOutput} from "../../lib/tool-output-resolve";
 import type {ToolOutputNote} from "../../lib/tool-output-shape";
@@ -45,11 +46,12 @@ function lastName(path: string): string {
 }
 
 /**
- * Upstream `Rv`: the saved file named by its last name (masked and stripped of display controls), linked through
+ * Upstream `zv` (cb6930dae, 2026-11-10): the saved file named by its last name, masked with spoofing characters
+ * revealed (`u9(ME(K7(path)))`), linked through
  * the transcript's file refs to open in the Files pane; plain text when it can't link.
  */
 function SavedFileLink({path}: {path: string}) {
-	const name = stripControlsAndMask(lastName(path));
+	const name = revealSpoofing(maskSecrets(lastName(path)));
 	return (
 		<FileRefTarget
 			path={path}

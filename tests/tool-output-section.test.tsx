@@ -91,6 +91,15 @@ describe("ToolOutputSection (upstream tS / Xx / iS)", () => {
 		expect(noteFile(container)).toStrictEqual(["SPAN", null, "w.txt"]);
 	});
 
+	it("masks the saved file's name and shows its spoofing characters, as upstream's zv draws u9(ME(K7(path)))", () => {
+		const rlo = String.fromCodePoint(0x202e);
+		const container = draw({
+			note: {kind: "preview", path: `/x/tool-results/${rlo}ghp_${"A".repeat(36)}`},
+			body: "x",
+		});
+		expect(noteFile(container)).toStrictEqual(["SPAN", null, `[U+202E]ghp_AAAA${"•".repeat(32)}`]);
+	});
+
 	it("draws the told-Claude text plain in the fold: secrets cloaked, URLs not linked (upstream H, no renderPlain)", () => {
 		const told = `${TOLD}\nSee https://e.com/x with ghp_${"A".repeat(36)}`;
 		const container = draw({note: {kind: "saved", path: "/x/tool-results/a.txt"}, toldClaude: told});
