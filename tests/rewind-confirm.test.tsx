@@ -230,6 +230,38 @@ describe("useRewindRequest + RewindConfirm", () => {
 		]);
 	});
 
+	it("renders Rewind as upstream's primary cds Button at the comfortable control height", async () => {
+		const {preview} = setup();
+		preview.resolve(FILES);
+		await settle();
+
+		expect([...screen.getByRole("button", {name: "Rewind"}).classList]).toStrictEqual([
+			"relative",
+			"inline-flex",
+			"shrink-0",
+			"cursor-pointer",
+			"items-center",
+			"justify-center",
+			"gap-1.5",
+			"rounded-[var(--upstream-radius)]",
+			"whitespace-nowrap",
+			"select-none",
+			"hide-focus-ring",
+			"focus-visible:outline-hidden",
+			"focus-visible:shadow-focus",
+			...CDS_BUTTON_DISABLED.split(" "),
+			"h-control",
+			"px-[min(var(--cds-pad-md),var(--cds-button-pad-max,var(--cds-pad-md)))]",
+			"text-body",
+			"bg-primary",
+			"font-control",
+			"text-surface-1",
+			"[--shortcut-cap-ink:currentColor]",
+			"hover:bg-primary/80",
+			CDS_BUTTON_DISABLED_FILL,
+		]);
+	});
+
 	it("offers the Restore select when files changed, with Cancel focused, and hides the count for Conversation only", async () => {
 		const {preview} = setup();
 		preview.resolve(FILES);

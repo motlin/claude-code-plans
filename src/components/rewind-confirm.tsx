@@ -5,7 +5,6 @@ import type {RewindChoice, RewindPreview} from "../hooks/use-rewind-request";
 import {DiffStats} from "./tool-renderers/shared";
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {cdsButtonClass} from "./ui/cds-button";
-import {CDS_BUTTON_DISABLED, CDS_BUTTON_DISABLED_FILL} from "./ui/cds-button-disabled";
 import {DensityScope} from "./ui/density";
 import {useDialogBandBodyClass} from "./ui/dialog-band";
 import {DialogHeader} from "./ui/dialog-header";
@@ -17,8 +16,8 @@ import {DIALOG_BODY_CLASS} from "./ui/dialog-classes";
 /** Upstream's `ece`: the quote card shows the prompt's first 600 characters. */
 const QUOTE_LIMIT = 600;
 
-/* Upstream's primary Rewind is a cds Button, so it takes its disabled look and paint. */
-const REWIND_BUTTON_CLASS = `h-8 rounded-r6 px-3 text-body font-medium transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${CDS_BUTTON_DISABLED} ${CDS_BUTTON_DISABLED_FILL} bg-fill-primary text-on-primary hover:bg-fill-primary-hover`;
+/* Upstream's Rewind is a primary cds Button at the comfortable control height (32px). */
+const REWIND_BUTTON_CLASS = cdsButtonClass("primary");
 /* Upstream's Cancel is a secondary cds Button at the comfortable control height (32px). */
 const CANCEL_BUTTON_CLASS = cdsButtonClass("secondary");
 

@@ -125,15 +125,15 @@ const JOINED_LOOKS: Record<JoinedVariant, {root: string; fill: string; seam: str
 const GHOST_ROOT_CLASS =
 	"shadow-[inset_0_0_0_1px_var(--split-ring,transparent)] transition-[box-shadow] duration-[60ms] ease-[cubic-bezier(.165,.84,.44,1)] [&:not([data-disabled])]:hover:[--split-ring:var(--color-border)] data-[popup-open]:[--split-ring:var(--color-border)] [&:not([data-disabled])]:has-[[aria-pressed=true]]:[--split-ring:var(--color-border)]";
 /* Upstream `cn`: under fizzy colour the ghost group drops its ring and each segment paint fills its segment. */
-const GHOST_FIZZY_ROOT_CLASS = "stacks:shadow-none stacks:[&_[data-part=paint]]:p-0";
+const GHOST_FIZZY_ROOT_CLASS = "stacks:shadow-none stacks:[&_[data-cds-part=paint]]:p-0";
 /*
  * Upstream `eF`: under fizzy colour hovering the enabled group, or holding its menu open, paints both segments with
  * the button ghost hover, and the hovered segment lays fill-button-layer over it. Pressed segments keep their look.
  */
 const GHOST_FIZZY_HOVER_CLASS =
-	"stacks:group-[:not([data-disabled])]/split:group-hover/split:not-aria-pressed:[&_[data-part=paint]]:bg-fill-button-ghost-hover stacks:group-data-[popup-open]/split:not-aria-pressed:[&_[data-part=paint]]:bg-fill-button-ghost-hover stacks:hover:not-aria-pressed:[&_[data-part=paint]]:layers-1-fill-button-layer";
+	"stacks:group-[:not([data-disabled])]/split:group-hover/split:not-aria-pressed:[&_[data-cds-part=paint]]:bg-fill-button-ghost-hover stacks:group-data-[popup-open]/split:not-aria-pressed:[&_[data-cds-part=paint]]:bg-fill-button-ghost-hover stacks:hover:not-aria-pressed:[&_[data-cds-part=paint]]:layers-1-fill-button-layer";
 const GHOST_LABELED_ROOT_CLASS =
-	"[&>[data-cds-segment]:first-child_[data-part=paint]]:pe-0 [&>[data-cds-segment]:last-child_[data-part=paint]]:ps-0";
+	"[&>[data-cds-segment]:first-child_[data-cds-part=paint]]:pe-0 [&>[data-cds-segment]:last-child_[data-cds-part=paint]]:ps-0";
 const GHOST_BUTTON_CLASS = "group/btn isolate inline-flex items-center";
 const GHOST_PAINT_CLASS = `absolute inset-0 -z-[1] rounded-[inherit] p-[var(--split-inset)] bg-clip-content group-hover/btn:bg-fill-ghost-hover group-aria-expanded/btn:bg-fill-ghost-hover group-aria-pressed/btn:bg-accent-100/15 ${CDS_GHOST_PAINT_DISABLED} ${PAINT_TRANSITION}`;
 const GHOST_ICON_PRIMARY_CLASS =
@@ -202,7 +202,7 @@ function rootStyle(size: SplitSize, ghost: boolean): CSSProperties {
 }
 
 function GhostPaint() {
-	return <span aria-hidden="true" data-part="paint" className={GHOST_PAINT_CLASS} />;
+	return <span aria-hidden="true" data-cds-part="paint" className={GHOST_PAINT_CLASS} />;
 }
 
 function joinClasses(...classes: (string | undefined | false)[]): string {
@@ -288,13 +288,13 @@ export function SplitDropdownButton({
 		? joinClasses(rootBase, joined.root, className)
 		: joinClasses(
 				rootBase,
-				GHOST_ROOT_CLASS,
+				!hasStatus && GHOST_ROOT_CLASS,
 				!hasStatus && GHOST_FIZZY_ROOT_CLASS,
-				!iconOnly && GHOST_LABELED_ROOT_CLASS,
+				!hasStatus && !iconOnly && GHOST_LABELED_ROOT_CLASS,
 				className,
 			);
 	const ghostButtonClass = joinClasses(GHOST_BUTTON_CLASS, scale.radius);
-	/* Upstream gives `cn` and `eF` only to the ghost split without a status slot. */
+	/* Upstream gives the ring (`wD`), flush inner paints (`df`), `cn` and `eF` only to the ghost split without a status slot. */
 	const ghostFizzyHover = !hasStatus && GHOST_FIZZY_HOVER_CLASS;
 	const primaryClass = joined
 		? joinClasses(

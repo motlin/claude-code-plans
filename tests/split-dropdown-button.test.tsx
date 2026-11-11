@@ -432,12 +432,12 @@ describe("SplitDropdownButton", () => {
 		];
 		const ROOT = ["relative", "inline-flex", "w-fit", "shrink-0", "items-stretch", "rounded-r5", "group/split"];
 		/* Upstream `cn`: under fizzy colour the ghost group drops its ring and the segment paints fill the segment. */
-		const FIZZY_ROOT = ["stacks:shadow-none", "stacks:[&_[data-part=paint]]:p-0"];
+		const FIZZY_ROOT = ["stacks:shadow-none", "stacks:[&_[data-cds-part=paint]]:p-0"];
 		/* Upstream `eF`: under fizzy colour hovering or opening the group paints both segments instead. */
 		const FIZZY_HOVER = [
-			"stacks:group-[:not([data-disabled])]/split:group-hover/split:not-aria-pressed:[&_[data-part=paint]]:bg-fill-button-ghost-hover",
-			"stacks:group-data-[popup-open]/split:not-aria-pressed:[&_[data-part=paint]]:bg-fill-button-ghost-hover",
-			"stacks:hover:not-aria-pressed:[&_[data-part=paint]]:layers-1-fill-button-layer",
+			"stacks:group-[:not([data-disabled])]/split:group-hover/split:not-aria-pressed:[&_[data-cds-part=paint]]:bg-fill-button-ghost-hover",
+			"stacks:group-data-[popup-open]/split:not-aria-pressed:[&_[data-cds-part=paint]]:bg-fill-button-ghost-hover",
+			"stacks:hover:not-aria-pressed:[&_[data-cds-part=paint]]:layers-1-fill-button-layer",
 		];
 		const PAINT = [
 			"absolute",
@@ -462,7 +462,7 @@ describe("SplitDropdownButton", () => {
 		};
 
 		function paintOf(button: HTMLElement) {
-			const paint = button.querySelector("[data-part=paint]");
+			const paint = button.querySelector("[data-cds-part=paint]");
 			return paint === null ? null : {hidden: paint.getAttribute("aria-hidden"), classes: [...paint.classList]};
 		}
 
@@ -547,8 +547,8 @@ describe("SplitDropdownButton", () => {
 					...ROOT,
 					...RING,
 					...FIZZY_ROOT,
-					"[&>[data-cds-segment]:first-child_[data-part=paint]]:pe-0",
-					"[&>[data-cds-segment]:last-child_[data-part=paint]]:ps-0",
+					"[&>[data-cds-segment]:first-child_[data-cds-part=paint]]:pe-0",
+					"[&>[data-cds-segment]:last-child_[data-cds-part=paint]]:ps-0",
 				],
 				style: STYLE,
 				primary: [
@@ -609,7 +609,7 @@ describe("SplitDropdownButton", () => {
 		it("adds no paint layer to the joined variants", () => {
 			renderSplit({variant: "primary"});
 
-			expect(group().querySelectorAll("[data-part=paint]").length).toBe(0);
+			expect(group().querySelectorAll("[data-cds-part=paint]").length).toBe(0);
 		});
 	});
 
@@ -735,6 +735,8 @@ describe("SplitDropdownButton", () => {
 			renderSplit({variant: "ghost", status: "3"});
 
 			expect({
+				/* Upstream gives the status ghost neither the `wD` hover ring nor `df`'s flush inner paints. */
+				group: [...group().classList],
 				primary: [...primary().classList].filter((name) => /^(peer\/slot|ps-|pe-|rounded-e)/.test(name)),
 				slot: [...slot().classList].filter((name) => /(bg-|rounded)/.test(name)),
 				/* Upstream gives the status ghost neither `cn` nor `eF`. */
@@ -742,6 +744,7 @@ describe("SplitDropdownButton", () => {
 					/fill-button|:p-0|^stacks:shadow-none$/.test(name),
 				),
 			}).toStrictEqual({
+				group: ["relative", "inline-flex", "w-fit", "shrink-0", "items-stretch", "rounded-r5", "group/split"],
 				primary: ["ps-2", "pe-1", "peer/slot", "rounded-e-none"],
 				slot: ["peer-hover/slot:bg-fill-ghost-hover", "rounded-e-r5"],
 				fizzyGroupLook: [],
@@ -861,16 +864,16 @@ describe("SplitDropdownButton disabled look, as upstream's rM / NM / CY / CL", (
 		const stacks =
 			':where([data-cds-fizzy-lake~="color"], [data-cds-fizzy-lake~="color"] *):not(:where([data-cds-theme], [data-cds-theme] *))';
 		const compiled = await compileAll([
-			"stacks:[&_[data-part=paint]]:p-0",
-			"stacks:group-[:not([data-disabled])]/split:group-hover/split:not-aria-pressed:[&_[data-part=paint]]:bg-fill-button-ghost-hover",
-			"stacks:group-data-[popup-open]/split:not-aria-pressed:[&_[data-part=paint]]:bg-fill-button-ghost-hover",
-			"stacks:hover:not-aria-pressed:[&_[data-part=paint]]:layers-1-fill-button-layer",
+			"stacks:[&_[data-cds-part=paint]]:p-0",
+			"stacks:group-[:not([data-disabled])]/split:group-hover/split:not-aria-pressed:[&_[data-cds-part=paint]]:bg-fill-button-ghost-hover",
+			"stacks:group-data-[popup-open]/split:not-aria-pressed:[&_[data-cds-part=paint]]:bg-fill-button-ghost-hover",
+			"stacks:hover:not-aria-pressed:[&_[data-cds-part=paint]]:layers-1-fill-button-layer",
 		]);
 		expect(Object.values(compiled)).toStrictEqual([
-			String.raw`@media (forced-colors: none) { .stacks\:\[\&_\[data-part\=paint\]\]\:p-0${stacks} [data-part=paint] { padding: 0px; } }`,
-			String.raw`@media (forced-colors: none) { @media (hover: hover) { .stacks\:group-\[\:not\(\[data-disabled\]\)\]\/split\:group-hover\/split\:not-aria-pressed\:\[\&_\[data-part\=paint\]\]\:bg-fill-button-ghost-hover${stacks}:is(:where(.group\/split):is(:not([data-disabled])) *):is(:where(.group\/split):hover *):not([aria-pressed="true"]) [data-part=paint] { background-color: var(--upstream-fill-button-ghost-hover); } } }`,
-			String.raw`@media (forced-colors: none) { .stacks\:group-data-\[popup-open\]\/split\:not-aria-pressed\:\[\&_\[data-part\=paint\]\]\:bg-fill-button-ghost-hover${stacks}:is(:where(.group\/split)[data-popup-open] *):not([aria-pressed="true"]) [data-part=paint] { background-color: var(--upstream-fill-button-ghost-hover); } }`,
-			String.raw`@media (forced-colors: none) { @media (hover: hover) { .stacks\:hover\:not-aria-pressed\:\[\&_\[data-part\=paint\]\]\:layers-1-fill-button-layer${stacks}:hover:not([aria-pressed="true"]) [data-part=paint] { background-image: linear-gradient(var(--color-fill-button-layer) 0 0); } } }`,
+			String.raw`@media (forced-colors: none) { .stacks\:\[\&_\[data-cds-part\=paint\]\]\:p-0${stacks} [data-cds-part=paint] { padding: 0px; } }`,
+			String.raw`@media (forced-colors: none) { @media (hover: hover) { .stacks\:group-\[\:not\(\[data-disabled\]\)\]\/split\:group-hover\/split\:not-aria-pressed\:\[\&_\[data-cds-part\=paint\]\]\:bg-fill-button-ghost-hover${stacks}:is(:where(.group\/split):is(:not([data-disabled])) *):is(:where(.group\/split):hover *):not([aria-pressed="true"]) [data-cds-part=paint] { background-color: var(--upstream-fill-button-ghost-hover); } } }`,
+			String.raw`@media (forced-colors: none) { .stacks\:group-data-\[popup-open\]\/split\:not-aria-pressed\:\[\&_\[data-cds-part\=paint\]\]\:bg-fill-button-ghost-hover${stacks}:is(:where(.group\/split)[data-popup-open] *):not([aria-pressed="true"]) [data-cds-part=paint] { background-color: var(--upstream-fill-button-ghost-hover); } }`,
+			String.raw`@media (forced-colors: none) { @media (hover: hover) { .stacks\:hover\:not-aria-pressed\:\[\&_\[data-cds-part\=paint\]\]\:layers-1-fill-button-layer${stacks}:hover:not([aria-pressed="true"]) [data-cds-part=paint] { background-image: linear-gradient(var(--color-fill-button-layer) 0 0); } } }`,
 		]);
 	});
 
