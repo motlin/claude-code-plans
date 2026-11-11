@@ -141,6 +141,9 @@ describe("markdown block layout", () => {
 		const prose = ":global([data-transcript-prose]) .markdown";
 		// Upstream's @scope stops at not-prose blocks, so a fence's own pre keeps its zero margin.
 		const notProse = ":not(:where(:global(.markdown-codeblock), :global([data-mermaid-fence])) *)";
+		// Upstream's `:first-child:not(li > :where(ul, ol, …))`: a tight list item's nested list keeps its li-child space.
+		const liFlow =
+			"ul, ol, dl, blockquote, pre, figure, details, :global(.markdown-codeblock), :global(.markdown-table-wrapper), :global([data-mermaid-fence])";
 		// The formatter breaks these long selectors over several lines.
 		const css = markdownCss.replace(/\s+/g, " ").replaceAll("( ", "(").replaceAll(" )", ")");
 
@@ -155,7 +158,7 @@ describe("markdown block layout", () => {
 			afterTable: ruleDeclarations(css, `${prose} :global(.markdown-table-wrapper) + :is(${flow})`),
 			firstChild: ruleDeclarations(
 				css,
-				`${prose} > :first-child, ${prose} :is(li, blockquote, details, th, td) > :first-child`,
+				`${prose} > :first-child, ${prose} :is(ul, ol, blockquote, details, th, td) > :first-child, ${prose} li > :first-child:not(${liFlow})`,
 			),
 			oldPxRules: [css.includes("margin-top: 3.5px"), css.includes("margin-top: 14px")],
 		}).toStrictEqual({
@@ -167,6 +170,12 @@ describe("markdown block layout", () => {
 				"--_prose-x-break": "2",
 				"--_prose-x-after-table": "2",
 				"--_prose-x-li-child": "0.333",
+				"--_prose-h1-space": "3",
+				"--_prose-h2-space": "2.5",
+				"--_prose-h3-space": "2",
+				"--_prose-h4-space": "1.667",
+				"--_prose-h5-space": "1.667",
+				"--_prose-h6-space": "1.667",
 			},
 			// Registered lengths, so the em resolves once on the article and children inherit the px value.
 			flowProperties: [
@@ -178,6 +187,97 @@ describe("markdown block layout", () => {
 			afterTable: {"margin-block-start": "calc(var(--_prose-flow) * var(--_prose-x-after-table))"},
 			firstChild: {"margin-block-start": "0"},
 			oldPxRules: [false, false],
+		});
+	});
+
+	it("spaces transcript headings by upstream's per-level --_prose-h-space and .667 of the flow below them", () => {
+		const flow =
+			"p, ul, ol, dl, blockquote, pre, figure, details, :global(.markdown-codeblock), :global(.markdown-table-wrapper), :global([data-mermaid-fence])";
+		const headings = "h1, h2, h3, h4, h5, h6";
+		const prose = ":global([data-transcript-prose]) .markdown";
+		const css = markdownCss.replace(/\s+/g, " ").replaceAll("( ", "(").replaceAll(" )", ")");
+
+		expect({
+			levels: [1, 2, 3, 4, 5, 6].map((level) => ruleDeclarations(css, `${prose} h${level}`)),
+			heading: ruleDeclarations(css, `${prose} :is(${headings})`),
+			afterHeading: ruleDeclarations(css, `${prose} :is(${headings}) + :is(${flow}, ${headings})`),
+			afterListOrHr: ruleDeclarations(css, `${prose} :is(ul, ol, dl, hr) + :is(${headings})`),
+			afterTable: ruleDeclarations(css, `${prose} :global(.markdown-table-wrapper) + :is(${headings})`),
+			afterHeadingFollowsHeading:
+				css.indexOf(`${prose} :is(${headings}) + :is(`) > css.indexOf(`${prose} :is(${headings}) {`),
+		}).toStrictEqual({
+			levels: [1, 2, 3, 4, 5, 6].map((level) => ({"--_prose-h-space": `var(--_prose-h${level}-space)`})),
+			heading: {
+				"margin-block-start": "calc(var(--_prose-flow) * var(--_prose-h-space))",
+				"margin-block-end": "0",
+			},
+			afterHeading: {"margin-block-start": "calc(var(--_prose-flow) * var(--_prose-x-after-heading))"},
+			afterListOrHr: {
+				"margin-block-start": "calc(var(--_prose-flow) * max(var(--_prose-x-break), var(--_prose-h-space)))",
+			},
+			afterTable: {
+				"margin-block-start":
+					"calc(var(--_prose-flow) * max(var(--_prose-x-after-table), var(--_prose-h-space)))",
+			},
+			// Heading → heading takes the .667 space, so the after-heading rule must come later.
+			afterHeadingFollowsHeading: true,
+		});
+	});
+
+	it("spaces transcript list items and their children by a third of the flow, with box children breaking at 1.5", () => {
+		const flow =
+			"p, ul, ol, dl, blockquote, pre, figure, details, :global(.markdown-codeblock), :global(.markdown-table-wrapper), :global([data-mermaid-fence])";
+		const prose = ":global([data-transcript-prose]) .markdown";
+		const css = markdownCss.replace(/\s+/g, " ").replaceAll("( ", "(").replaceAll(" )", ")");
+
+		expect({
+			li: ruleDeclarations(css, `${prose} li`),
+			liChild: ruleDeclarations(css, `${prose} li > :is(${flow})`),
+			boxChild: ruleDeclarations(css, `${prose} :is(blockquote, details, th, td) > *`),
+			oldListRules: [
+				css.includes(`${prose} > ul:not(:global(.contains-task-list)) > li {`),
+				css.includes(`${prose} > ul:not(:global(.contains-task-list)) > li + li {`),
+			],
+			// A list item's later blocks take the li-child space even after a nested list, and every first child sits flush.
+			liChildAfterAfterList: css.indexOf(`${prose} li > :is(`) > css.indexOf(`${prose} :is(ul, ol, dl) + :is(`),
+			firstChildLast: css.indexOf(`${prose} > :first-child,`) > css.indexOf(`${prose} li > :is(`),
+		}).toStrictEqual({
+			li: {
+				"margin-block-start": "calc(var(--_prose-flow) * var(--_prose-x-li-child))",
+				"margin-block-end": "0",
+				"padding-inline-start": "0.5em",
+			},
+			liChild: {"margin-block-start": "calc(var(--_prose-flow) * var(--_prose-x-li-child))"},
+			boxChild: {
+				"--_prose-x-break": "1.5",
+				"--_prose-x-after-table": "1.5",
+				"--_prose-h1-space": "var(--_prose-h4-space)",
+				"--_prose-h2-space": "var(--_prose-h4-space)",
+				"--_prose-h3-space": "var(--_prose-h4-space)",
+			},
+			oldListRules: [false, false],
+			liChildAfterAfterList: true,
+			firstChildLast: true,
+		});
+	});
+
+	it("rules transcript hr with a half-pixel border, twice the flow above it and after it, inset .375em", () => {
+		const flow =
+			"p, ul, ol, dl, blockquote, pre, figure, details, :global(.markdown-codeblock), :global(.markdown-table-wrapper), :global([data-mermaid-fence])";
+		const prose = ":global([data-transcript-prose]) .markdown";
+		const css = markdownCss.replace(/\s+/g, " ").replaceAll("( ", "(").replaceAll(" )", ")");
+
+		expect({
+			hr: ruleDeclarations(css, `${prose} hr`),
+			afterHr: ruleDeclarations(css, `${prose} hr + :is(${flow})`),
+		}).toStrictEqual({
+			hr: {
+				border: "0",
+				"border-block-start": "0.5px solid var(--color-border)",
+				"margin-block": "calc(var(--_prose-flow) * var(--_prose-x-break)) 0",
+				"margin-inline": "0.375em",
+			},
+			afterHr: {"margin-block-start": "calc(var(--_prose-flow) * var(--_prose-x-break))"},
 		});
 	});
 
