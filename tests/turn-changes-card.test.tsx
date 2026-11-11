@@ -10,6 +10,7 @@ import {SessionChat} from "../src/components/session-chat";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ToastContext, type ToastOptions} from "../src/components/toast-context";
 import {TurnChangesCard} from "../src/components/turn-changes-card";
+import {CDS_BUTTON_DISABLED} from "../src/components/ui/cds-button-disabled";
 import {TurnUndoSendContext} from "../src/components/turn-undo-send-context";
 import {fileViewerPath} from "../src/lib/api/file";
 import {CHANGES_SCOPE_REQUEST_EVENT} from "../src/lib/changes-scope-request";
@@ -1584,6 +1585,7 @@ describe("TurnChangesCard Undo", () => {
 			});
 			return {
 				look: undoLook(undo),
+				disabledLook: [...undo.classList].filter((name) => name.includes("disabled")),
 				mouseDownPrevented: !mouseDown,
 				tooltip: screen.queryByRole("tooltip")?.textContent,
 			};
@@ -1603,6 +1605,7 @@ describe("TurnChangesCard Undo", () => {
 				"rounded-r5",
 				"focus-visible:shadow-focus",
 			],
+			disabledLook: CDS_BUTTON_DISABLED.split(" "),
 			mouseDownPrevented: true,
 			tooltip: "Ask Claude to undo this turn\u2019s file changes",
 		});
@@ -1620,6 +1623,7 @@ describe("TurnChangesCard Undo", () => {
 				"focus-visible:shadow-focus",
 				"-me-2",
 			],
+			disabledLook: CDS_BUTTON_DISABLED.split(" "),
 			mouseDownPrevented: true,
 			tooltip: "Ask Claude to undo this turn\u2019s file changes",
 		});

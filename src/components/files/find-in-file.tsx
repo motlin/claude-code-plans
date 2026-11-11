@@ -3,8 +3,9 @@ import type {KeyboardEvent, RefObject} from "react";
 import {findCounterText} from "../../lib/find-in-file";
 import {Icon} from "../ui/icon";
 
+/* Upstream's find bar buttons are plain buttons, not cds Buttons: disabled, they drop pointer events and fade to .4. */
 const BAR_BUTTON =
-	"flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r3 text-secondary hover:bg-fill-ghost-hover hover:text-primary disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent";
+	"flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-r3 text-secondary hover:bg-fill-ghost-hover hover:text-primary disabled:pointer-events-none disabled:opacity-40";
 
 export function FindBar({
 	inputRef,

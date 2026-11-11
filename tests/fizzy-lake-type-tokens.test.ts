@@ -31,7 +31,7 @@ describe("fizzy-lake type tokens (upstream data-cds-fizzy-lake~=type)", () => {
 	it("gives the regular-weight cds Button and Combobox copies upstream's `font-normal font-control` weight", () => {
 		const constant = (file: string, name: string) =>
 			readFileSync(file, "utf8")
-				.match(new RegExp(`const ${name} =\\s*"([^"]+)"`))?.[1]
+				.match(new RegExp(`const ${name} =\\s*["\`]([^"\`]+)["\`]`))?.[1]
 				?.split(" ") ?? [];
 		const weights = (classes: readonly string[]) =>
 			classes.filter((name) => /^font-(normal|medium|control|control-regular)$/.test(name));

@@ -459,6 +459,10 @@ describe("find in file", () => {
 			afterPreviousWrap,
 			exactCase,
 			missing: counter(),
+			missingStep: ["Previous match", "Next match"].map((name) => {
+				const step = screen.getByRole<HTMLButtonElement>("button", {name});
+				return {disabled: step.disabled, look: step.className.split(" ").filter((c) => c.includes("disabled"))};
+			}),
 		}).toStrictEqual({
 			defaultPrevented: true,
 			placeholder: "Find in file…",
@@ -468,6 +472,11 @@ describe("find in file", () => {
 			afterPreviousWrap: "3 of 3",
 			exactCase: "1 of 1",
 			missing: "No results",
+			// Upstream's find bar steppers: `disabled:pointer-events-none disabled:opacity-40`.
+			missingStep: [
+				{disabled: true, look: ["disabled:pointer-events-none", "disabled:opacity-40"]},
+				{disabled: true, look: ["disabled:pointer-events-none", "disabled:opacity-40"]},
+			],
 		});
 	});
 

@@ -15,6 +15,7 @@ import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ToastProvider} from "../src/components/toast";
+import {CDS_BUTTON_DISABLED, CDS_BUTTON_DISABLED_FILL} from "../src/components/ui/cds-button-disabled";
 import {decodeFilePath} from "../src/lib/api/file";
 import {EMPTY_EDIT_GUARD, editGuardReducer, editableMarkdownTarget, mtimeEtag} from "../src/lib/file-edit";
 import type {FileTabsState} from "../src/lib/file-tabs";
@@ -390,6 +391,20 @@ describe("FileView editing", () => {
 				},
 			],
 			stillEditing: true,
+		});
+	});
+
+	it("holds a clean Save disabled in upstream's cds Button disabled look and paint", async () => {
+		renderView({path: PLAN_PATH});
+		await startEditing();
+		const save = screen.getByRole("button", {name: "Save"});
+
+		expect({
+			disabled: save.hasAttribute("disabled"),
+			disabledLook: save.className.split(" ").filter((name) => name.includes("disabled")),
+		}).toStrictEqual({
+			disabled: true,
+			disabledLook: [...CDS_BUTTON_DISABLED.split(" "), CDS_BUTTON_DISABLED_FILL],
 		});
 	});
 

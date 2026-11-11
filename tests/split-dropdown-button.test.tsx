@@ -4,7 +4,7 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SplitDropdownButton, type SplitItem} from "../src/components/ui/split-dropdown-button";
-import {compileAll} from "./helpers/tailwind-design-system";
+import {compileAll, loadDesignSystem} from "./helpers/tailwind-design-system";
 
 afterEach(() => {
 	cleanup();
@@ -238,6 +238,7 @@ describe("SplitDropdownButton", () => {
 	describe("joined looks", () => {
 		const TRANSITION = [
 			"transition-[background-color,box-shadow,color]",
+			"stacks:transition-[box-shadow,color]",
 			"duration-[60ms]",
 			"ease-[cubic-bezier(.165,.84,.44,1)]",
 		];
@@ -355,6 +356,8 @@ describe("SplitDropdownButton", () => {
 					"after:inset-0",
 					"after:rounded-[inherit]",
 					"after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)]",
+					"stacks:shadow-none",
+					"stacks:after:shadow-none",
 				],
 				primary: [...BASE, ...PRIMARY_SEGMENT, ...fill, ...TRANSITION],
 				caret: [...BASE, ...CARET_SEGMENT, ...fill, ...TRANSITION],
@@ -440,6 +443,7 @@ describe("SplitDropdownButton", () => {
 			"group-aria-pressed/btn:bg-accent-100/15",
 			"stacks:group-[:disabled:not([aria-busy])]/btn:bg-transparent",
 			"transition-[background-color,box-shadow,color]",
+			"stacks:transition-[box-shadow,color]",
 			"duration-[60ms]",
 			"ease-[cubic-bezier(.165,.84,.44,1)]",
 		];
@@ -812,6 +816,27 @@ describe("SplitDropdownButton", () => {
 });
 
 describe("SplitDropdownButton disabled look, as upstream's rM / NM / CY / CL", () => {
+	it("drops the secondary frame's drop shadow and ring and the paint's background-color transition under fizzy colour (upstream sO, Yg), after the base rules", async () => {
+		const candidates = [
+			"stacks:after:shadow-none",
+			"stacks:shadow-none",
+			"stacks:transition-[box-shadow,color]",
+			"shadow-field-drop",
+			"after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)]",
+			"transition-[background-color,box-shadow,color]",
+		];
+		const order = (await loadDesignSystem()).getClassOrder(candidates);
+		const sorted = order.toSorted(([, a], [, b]) => (a === null || b === null ? 0 : a < b ? -1 : a > b ? 1 : 0));
+		expect(sorted.map(([name]) => name)).toStrictEqual([
+			"shadow-field-drop",
+			"transition-[background-color,box-shadow,color]",
+			"after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)]",
+			"stacks:shadow-none",
+			"stacks:transition-[box-shadow,color]",
+			"stacks:after:shadow-none",
+		]);
+	});
+
 	it("compiles the disabled slot, solid seam and ghost paint selectors, skipping busy segments, with the fizzy parts under stacks:", async () => {
 		const stacks =
 			':where([data-cds-fizzy-lake~="color"], [data-cds-fizzy-lake~="color"] *):not(:where([data-cds-theme], [data-cds-theme] *))';

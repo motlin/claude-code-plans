@@ -22,6 +22,7 @@ import type {ConnectionStatus} from "./herdr-terminal";
 import {createOscFilter} from "../lib/terminal-osc-filter";
 import {loadGhostty} from "./load-ghostty";
 import {TerminalPlaceholder} from "./terminal-placeholder";
+import {CDS_BUTTON_DISABLED, CDS_BUTTON_DISABLED_FILL} from "./ui/cds-button-disabled";
 import {TerminalSelectionStatus} from "./terminal-selection-status";
 import {installTerminalInput, useTerminalSelectionActions} from "./terminal-input";
 
@@ -33,8 +34,8 @@ function shellSocketUrl(ptyKey: string): string {
 	return `${protocol}//${window.location.host}/api/shell/${encodeURIComponent(ptyKey)}`;
 }
 
-const OVERLAY_BUTTON_CLASS =
-	"h-7 cursor-pointer rounded-r6 border border-strong px-2.5 text-body text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-default disabled:opacity-50";
+/* Local-only, so it borrows upstream's cds Button disabled look (as a filled secondary) for consistency. */
+export const OVERLAY_BUTTON_CLASS = `h-7 cursor-pointer rounded-r6 border border-strong px-2.5 text-body text-primary transition-colors hover:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${CDS_BUTTON_DISABLED} ${CDS_BUTTON_DISABLED_FILL}`;
 
 /**
  * One Shell tab: a login `$SHELL` PTY on the server, attached over

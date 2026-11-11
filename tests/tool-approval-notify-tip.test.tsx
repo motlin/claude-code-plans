@@ -4,6 +4,7 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SettingsProvider} from "../src/components/settings-provider";
+import {CDS_BUTTON_DISABLED} from "../src/components/ui/cds-button-disabled";
 import {ToolApprovalNotifyTip} from "../src/components/tool-approval-notify-tip";
 import {resetNotifyTipTriggers} from "../src/lib/notify-tip";
 import {installLocalStorage} from "./fake-storage";
@@ -211,6 +212,42 @@ describe("tool-approval notify tip", () => {
 			offer: {text: OFFER, turnOn: true},
 			after: {text: ON, turnOn: false},
 			requested: 0,
+		});
+	});
+
+	it("marks Turn on busy, not disabled-looking, while it registers, with upstream's cds Button disabled look otherwise", async () => {
+		let grant: (permission: NotificationPermission) => void = () => {};
+		stubNotification(
+			"granted",
+			new Promise((resolve) => {
+				grant = resolve;
+			}),
+		);
+		await renderTip();
+		leaveAndReturn();
+		const button = screen.getByRole("button", {name: "Turn on"});
+		const state = () => ({
+			busy: button.getAttribute("aria-busy"),
+			disabled: button.hasAttribute("disabled"),
+		});
+		const offer = state();
+		act(() => {
+			fireEvent.click(button);
+		});
+		const registering = state();
+		act(() => {
+			grant("granted");
+		});
+		await act(async () => {});
+
+		expect({
+			offer,
+			registering,
+			disabledLook: button.className.split(" ").filter((name) => name.includes("disabled")),
+		}).toStrictEqual({
+			offer: {busy: null, disabled: false},
+			registering: {busy: "true", disabled: true},
+			disabledLook: CDS_BUTTON_DISABLED.split(" "),
 		});
 	});
 

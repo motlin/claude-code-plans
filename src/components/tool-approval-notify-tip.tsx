@@ -11,6 +11,7 @@ import {
 } from "../lib/notify-tip";
 import {useSessionNotifyOptedIn} from "../lib/notify-sessions";
 import {useSettings} from "./settings-context";
+import {CDS_BUTTON_DISABLED} from "./ui/cds-button-disabled";
 
 type TipPhase = "idle" | "popup" | "registering" | "on" | "gone" | "blocked";
 type TipState = "offer" | "asking" | "on" | "blocked";
@@ -28,6 +29,9 @@ const TIP_LOOK = {
 	on: {Icon: CircleCheck, tone: "text-success"},
 	blocked: {Icon: BellOff, tone: "text-danger"},
 } as const;
+
+/** Upstream's ghost xs cds Button: busy while registering (no disabled look), disabled while hidden. */
+const TURN_ON_CLASS = `inline-flex h-6 cursor-pointer items-center gap-1 rounded-r5 px-2 text-footnote text-primary hover:bg-alpha-2 ${CDS_BUTTON_DISABLED}`;
 
 /** Upstream's mapping from the tip's phase to the line it shows; null keeps it mounted but invisible. */
 function tipState(phase: TipPhase, offer: boolean): TipState | null {
@@ -154,8 +158,9 @@ function NotifyTip({
 								<button
 									type="button"
 									disabled={hidden || busy}
+									aria-busy={busy ? true : undefined}
 									onClick={() => void onTurnOn()}
-									className="inline-flex h-6 cursor-pointer items-center gap-1 rounded-r5 px-2 text-footnote text-primary hover:bg-alpha-2 disabled:cursor-not-allowed disabled:opacity-50"
+									className={TURN_ON_CLASS}
 								>
 									{busy && <Loader2 aria-hidden="true" className="size-3 animate-spin" />}
 									Turn on

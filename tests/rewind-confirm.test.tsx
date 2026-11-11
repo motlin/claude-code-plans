@@ -5,6 +5,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {RewindConfirm} from "../src/components/rewind-confirm";
 import {ToastProvider} from "../src/components/toast";
+import {CDS_BUTTON_DISABLED, CDS_BUTTON_DISABLED_FILL} from "../src/components/ui/cds-button-disabled";
 import {type RewindRequestDependencies, useRewindRequest} from "../src/hooks/use-rewind-request";
 import type {RewindFileChanges} from "../src/lib/api/rewind-files";
 
@@ -280,6 +281,9 @@ describe("useRewindRequest + RewindConfirm", () => {
 		const whileRestoring = {
 			busy: busy.getAttribute("aria-busy"),
 			cancelDisabled: screen.getByRole("button", {name: "Cancel"}).hasAttribute("disabled"),
+			disabledLooks: [screen.getByRole("button", {name: "Cancel"}), busy].map((button) =>
+				button.className.split(" ").filter((name) => name.includes("disabled")),
+			),
 			restores: restoreCode.mock.calls.length,
 			runs: run.mock.calls.length,
 		};
@@ -292,7 +296,16 @@ describe("useRewindRequest + RewindConfirm", () => {
 		await settle();
 
 		expect({whileRestoring, stillOpen, runs, closed: dialog(), toasts: toasts()}).toStrictEqual({
-			whileRestoring: {busy: "true", cancelDisabled: true, restores: 1, runs: 0},
+			whileRestoring: {
+				busy: "true",
+				cancelDisabled: true,
+				disabledLooks: [
+					[...CDS_BUTTON_DISABLED.split(" "), CDS_BUTTON_DISABLED_FILL],
+					[...CDS_BUTTON_DISABLED.split(" "), CDS_BUTTON_DISABLED_FILL],
+				],
+				restores: 1,
+				runs: 0,
+			},
 			stillOpen: true,
 			runs: [["u2", "  Add a test  ", true]],
 			closed: null,

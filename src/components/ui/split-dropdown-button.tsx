@@ -74,8 +74,9 @@ const ROOT_CLASS = "relative inline-flex w-fit shrink-0 items-stretch";
 const ROOT_GROUP_CLASS = "group/split";
 /* Each segment takes upstream's cds Button disabled look; the solid fills add its disabled paint. */
 const BUTTON_CLASS = `cds-reset relative outline-none focus-visible:shadow-focus ${CDS_BUTTON_DISABLED}`;
+/* Upstream `Yg`: under fizzy colour the paint stops animating its background, so disabling never fades it. */
 const PAINT_TRANSITION =
-	"transition-[background-color,box-shadow,color] duration-[60ms] ease-[cubic-bezier(.165,.84,.44,1)]";
+	"transition-[background-color,box-shadow,color] stacks:transition-[box-shadow,color] duration-[60ms] ease-[cubic-bezier(.165,.84,.44,1)]";
 const SEAM_BASE_CLASS = "w-px shrink-0 self-stretch";
 /* The seam line fades while either neighbour segment is hovered or holds the open menu. */
 const SEAM_FADE_CLASS =
@@ -84,9 +85,12 @@ const SEAM_FADE_CLASS =
 const SOLID_SEAM_DISABLED_CLASS =
 	"[[data-cds-segment]:has(:disabled:not([aria-busy]))+&:has(+[data-cds-segment]_:disabled:not([aria-busy]))]:opacity-disabled stacks:[[data-cds-segment]:has(:disabled:not([aria-busy]))+&:has(+[data-cds-segment]_:disabled:not([aria-busy]))]:opacity-100 stacks:[[data-cds-segment]:has(:disabled:not([aria-busy]))+&:has(+[data-cds-segment]_:disabled:not([aria-busy]))]:bg-fill-disabled";
 
-/** Upstream's cds secondary frame: an inset 1px `fill-secondary-ring` drawn on `::after` over the fill. */
+/*
+ * Upstream's cds secondary frame: an inset 1px `fill-secondary-ring` drawn on `::after` over the fill. Under fizzy
+ * colour the group drops both the ring and its drop shadow (`sO`).
+ */
 const SECONDARY_RING_CLASS =
-	"after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)]";
+	"after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)] stacks:shadow-none stacks:after:shadow-none";
 
 type JoinedVariant = "primary" | "secondary" | "danger";
 

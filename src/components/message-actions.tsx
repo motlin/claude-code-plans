@@ -20,6 +20,7 @@ import {useMediaQuery} from "../lib/use-phone-sheet";
 import {useRovingToolbar} from "../lib/use-roving-toolbar";
 import {formatMessageTime, formatRelativeTimestamp, formatTimestamp} from "../lib/timestamp-format";
 import {type TranscriptMessageRef, TranscriptActionsContext} from "./transcript-actions-context";
+import {CDS_BUTTON_DISABLED, CDS_ICON_ONLY_DISABLED} from "./ui/cds-button-disabled";
 import {DisabledReason} from "./ui/disabled-reason";
 import {InfoTip} from "./ui/info-tip";
 import {Spinner} from "./ui/spinner";
@@ -86,8 +87,8 @@ const BAR_CLASS = [
 	"motion-safe:pointer-coarse:transition-none",
 ].join(" ");
 
-const BUTTON_CLASS =
-	"flex size-6 cursor-pointer items-center justify-center rounded-r5 text-plain-secondary outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus transition-colors hover:bg-fill-ghost-hover aria-pressed:bg-upstream-accent-pressed aria-pressed:text-upstream-accent disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-plain-secondary comfortable:size-8 comfortable:rounded-r6";
+/* Upstream's toolbar controls are icon-only ghost cds Buttons, so a disabled one takes its icon-only disabled look. */
+const BUTTON_CLASS = `flex size-6 cursor-pointer items-center justify-center rounded-r5 text-plain-secondary outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus transition-colors hover:bg-fill-ghost-hover aria-pressed:bg-upstream-accent-pressed aria-pressed:text-upstream-accent ${CDS_BUTTON_DISABLED} ${CDS_ICON_ONLY_DISABLED} comfortable:size-8 comfortable:rounded-r6`;
 
 const ICON_CLASS = "size-4 comfortable:size-5";
 

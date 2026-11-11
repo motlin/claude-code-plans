@@ -11,6 +11,7 @@ import {ToastContext} from "./toast-context";
 import {TurnUndoConfirm} from "./turn-undo";
 import {TurnUndoSendContext} from "./turn-undo-send-context";
 import {useTurnUndo} from "./use-turn-undo";
+import {CDS_BUTTON_DISABLED} from "./ui/cds-button-disabled";
 import {Tooltip} from "./ui/tooltip";
 
 /** Upstream shows three file rows before its "See all" / "Show less" toggle. */
@@ -89,8 +90,7 @@ const TRAILING_CLASS = "pointer-events-none relative flex shrink-0 items-center 
  * Upstream's cds ghost Button (size base) with `text-muted-as-secondary hover:text-secondary`. Its "type"
  * fizzy-lake token (`nX`) strips `text-footnote`, so Undo, the stats and folder hints inherit the card's body size.
  */
-const UNDO_CLASS =
-	"h-6 shrink-0 cursor-pointer rounded-r5 px-2 font-control-regular text-muted-as-secondary transition-shadow hover:bg-fill-ghost-hover hover:text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-default disabled:opacity-50";
+const UNDO_CLASS = `h-6 shrink-0 cursor-pointer rounded-r5 px-2 font-control-regular text-muted-as-secondary transition-shadow hover:bg-fill-ghost-hover hover:text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${CDS_BUTTON_DISABLED}`;
 
 /**
  * Upstream's Undo: tooltipped "Ask Claude to undo this turn’s file changes", and pressing it keeps focus in the

@@ -7,6 +7,7 @@ import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {AssistantMessageActions, UserMessageActions, WaitingMessageActions} from "../src/components/message-actions";
+import {CDS_BUTTON_DISABLED, CDS_ICON_ONLY_DISABLED} from "../src/components/ui/cds-button-disabled";
 import {type TranscriptActions, TranscriptActionsContext} from "../src/components/transcript-actions-context";
 import {toggleUserChapterAt} from "../src/lib/chapter-store";
 import {writeClipboardText} from "../src/lib/clipboard";
@@ -170,6 +171,9 @@ describe("AssistantMessageActions", () => {
 			button(disabled, "Fork from here").disabled,
 			button(disabled, "Pin as chapter").disabled,
 		];
+		const disabledLook = button(disabled, "Fork from here")
+			.className.split(" ")
+			.filter((name) => name.includes("disabled"));
 		cleanup();
 
 		const {container} = render(
@@ -183,10 +187,12 @@ describe("AssistantMessageActions", () => {
 
 		expect({
 			disabledState,
+			disabledLook,
 			forkFrom: forkFrom.mock.calls,
 			pinChapter: pinChapter.mock.calls,
 		}).toStrictEqual({
 			disabledState: [true, true],
+			disabledLook: [...CDS_BUTTON_DISABLED.split(" "), CDS_ICON_ONLY_DISABLED],
 			forkFrom: [[MESSAGE]],
 			pinChapter: [[MESSAGE]],
 		});

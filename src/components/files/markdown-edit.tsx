@@ -7,6 +7,7 @@ import {type EditableMarkdownTarget, FILE_CONFLICT_MESSAGE} from "../../lib/file
 import {isMacPlatform} from "../../lib/shortcuts/match";
 import {ConfirmDialog} from "../confirm-dialog";
 import {useToast} from "../toast-context";
+import {CDS_BUTTON_DISABLED, CDS_BUTTON_DISABLED_FILL} from "../ui/cds-button-disabled";
 import {Tooltip} from "../ui/tooltip";
 import {LazyMarkdownEditor} from "./lazy-markdown-editor";
 
@@ -25,8 +26,8 @@ type EditState =
 			conflict: boolean;
 	  };
 
-const TEXT_BUTTON =
-	"inline-flex h-6 shrink-0 cursor-pointer items-center rounded-r5 px-2 text-footnote disabled:cursor-default disabled:opacity-50";
+/* Upstream's Cancel and Save are cds Buttons, so a disabled one takes its disabled look. */
+const TEXT_BUTTON = `inline-flex h-6 shrink-0 cursor-pointer items-center rounded-r5 px-2 text-footnote ${CDS_BUTTON_DISABLED}`;
 
 function isSaveShortcut(event: KeyboardEvent): boolean {
 	const mod = isMacPlatform() ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
@@ -166,7 +167,7 @@ export function useMarkdownEdit({
 					type="button"
 					disabled={!dirty || state.saving}
 					onClick={() => void save(false)}
-					className={`${TEXT_BUTTON} bg-fill-primary text-on-primary hover:bg-fill-primary-hover`}
+					className={`${TEXT_BUTTON} ${CDS_BUTTON_DISABLED_FILL} bg-fill-primary text-on-primary hover:bg-fill-primary-hover`}
 				>
 					Save
 				</button>
