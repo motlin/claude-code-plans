@@ -2,6 +2,7 @@ import {Fragment, lazy, type ReactNode, Suspense} from "react";
 
 import {defined} from "../lib/defined";
 import {maskSecrets} from "../lib/secret-mask";
+import {revealSpoofing} from "../lib/visible-text";
 import {trimUrl} from "./linkify-plain";
 import {UserCodeSpan} from "./user-code-span";
 
@@ -69,7 +70,7 @@ export function UserInlineText({text: raw, codeSpans = true, codeLook = "message
 	const plain = (part: string, at: number): ReactNode[] => (links ? linkify(part, at, "textLink") : [part]);
 	if (!codeSpans) return <>{plain(text, 0)}</>;
 	if (codeLook === "message") return <>{renderInline(text, "textLink")}</>;
-	return <>{chipText(text, plain)}</>;
+	return <>{chipText(text, links ? plain : undefined)}</>;
 }
 
 /** Upstream's question-text code span (`h` in c8a73d209): any backtick-free run, newlines included. */
@@ -127,6 +128,9 @@ function chipPlainText(text: string): string {
 
 type Paint = (part: string, at: number) => ReactNode[];
 
+/** Upstream's `lo`: the text as is. */
+const unpainted: Paint = (part) => [part];
+
 /** Upstream's `fo`: code spans as its chip, the rest painted. */
 function chipCode(text: string, paint: Paint, key: string): ReactNode[] {
 	if (text.includes("``")) return paint(text, 0);
@@ -143,21 +147,24 @@ function chipCode(text: string, paint: Paint, key: string): ReactNode[] {
 
 /**
  * Upstream's `_i` (`vo` in c59c32499): `**text**` as `strong.font-medium` with code chips inside, the
- * rest as `fo`. When masking the read text (markup dropped) hides a secret the markup split, the whole
- * text is drawn masked and unstyled.
+ * rest as `fo`. Without a paint, when masking the read text (markup dropped) hides a secret the markup
+ * split, the masked read text is drawn unstyled. With a paint, when `u9` of the masked read text differs
+ * from the read text, the read text itself (unmasked) is painted unstyled.
  */
-function chipText(text: string, paint: Paint): ReactNode[] {
+function chipText(text: string, paint: Paint | undefined): ReactNode[] {
 	const parts = boldParts(text);
 	const read = parts.map((part) => chipPlainText(part.text)).join("");
 	const masked = maskSecrets(read);
-	if (masked !== read) return paint(masked, 0);
+	if (paint === undefined && masked !== read) return [masked];
+	if (paint !== undefined && revealSpoofing(masked) !== read) return paint(read, 0);
+	const painter = paint ?? unpainted;
 	return parts.map((part, index) =>
 		part.bold ? (
 			<strong key={index} className="font-medium">
-				{chipCode(part.text, paint, String(index))}
+				{chipCode(part.text, painter, String(index))}
 			</strong>
 		) : (
-			<Fragment key={index}>{chipCode(part.text, paint, String(index))}</Fragment>
+			<Fragment key={index}>{chipCode(part.text, painter, String(index))}</Fragment>
 		),
 	);
 }

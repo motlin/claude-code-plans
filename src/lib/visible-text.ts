@@ -92,3 +92,46 @@ export function nativeTitle(text: string): string | undefined {
 	if (cleaned === "" || TITLE_RTL_RE.test(cleaned) || LONE_SURROGATE_RE.test(text)) return undefined;
 	return cleaned;
 }
+
+/** Upstream's `QR`: a keycap (kept), else a bidi control, tag, combining overlay or enclosing mark, an invisible RTL-range format character, or a run of invisibles or marks. */
+const REVEAL_RE =
+	/([0-9#*]\u{FE0F}\u{20E3}(?![\p{Mn}\p{Me}]))|[\p{Bidi_Control}\u{E0000}-\u{E01EF}\u{334}-\u{338}\u{20D0}-\u{20FF}\p{Me}]|(?=[\p{Default_Ignorable_Code_Point}\p{Cf}])[\u{590}-\u{8FF}\u{FB1D}-\u{FDFF}\u{FE70}-\u{FEFE}\u{10800}-\u{10FFF}\u{1E800}-\u{1EFFF}]|[\p{Default_Ignorable_Code_Point}\p{Cf}]{3,}|[\p{Mn}\p{Me}]{4,}/gu;
+/** Upstream's `Aa`: an invisible character outside a keycap. */
+const INVISIBLE_RE = /(?!\u{FE0F}\u{20E3})[\p{Default_Ignorable_Code_Point}\p{Cf}]/gu;
+/** Upstream's `nD`: more invisibles than this and every one is shown. */
+const INVISIBLE_LIMIT = 16;
+/** Upstream's `mZ` (with `YE`): an odd space or blank-looking character. */
+const ODD_BLANK = String.raw`(?:[^\P{Zs} ]|[\u{2800}\u{FFFC}\u{1D159}\u{13441}\u{13442}\u{16910}\u{16FE4}])`;
+/** Upstream's `N_`: three or more odd blanks in a row, with spacing, invisibles and marks between. */
+const BLANK_RUN_RE = new RegExp(
+	String.raw`${ODD_BLANK}(?:[\t \p{Default_Ignorable_Code_Point}\p{Cf}\p{Mn}\p{Me}]*${ODD_BLANK}){2,}[\p{Mn}\p{Me}]*`,
+	"gu",
+);
+/** Upstream's `y$I`: a character that draws something. */
+const VISIBLE_RE =
+	/[^\s\u{2800}\u{FFFC}\u{1D159}\u{13441}\u{13442}\u{16910}\p{Default_Ignorable_Code_Point}\p{Cf}\p{Mn}\p{Me}]/u;
+/** Upstream's `zH`: a line's content. */
+const LINE_CONTENT_RE = /[^\n\r\u{85}\u{2028}\u{2029}]+/gu;
+
+/** Upstream's `jd`: every character but space and tab as `[U+XXXX]`. */
+function tagBlanks(text: string): string {
+	return Array.from(text, (char) => (char === " " || char === "\t" ? char : codePointTag(char))).join("");
+}
+
+/** Upstream's `ko`: on a line that draws something, runs of odd blanks are shown. */
+function revealBlankRuns(line: string): string {
+	return VISIBLE_RE.test(line) ? line.replace(BLANK_RUN_RE, tagBlanks) : line;
+}
+
+/**
+ * Upstream's `u9` (shared-0): spoofing characters (bidi controls, tags, overlays, invisible runs) shown
+ * as `[U+XXXX]`, every invisible when there are more than 16, and runs of odd blanks on a visible line.
+ */
+export function revealSpoofing(text: string): string {
+	const revealed = text.replace(REVEAL_RE, (match, keycap: string | undefined) => keycap ?? codePointTag(match));
+	const invisibles = revealed.match(INVISIBLE_RE)?.length ?? 0;
+	return (invisibles > INVISIBLE_LIMIT ? revealed.replace(INVISIBLE_RE, codePointTag) : revealed).replace(
+		LINE_CONTENT_RE,
+		revealBlankRuns,
+	);
+}

@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {visibleSingleLine} from "../src/lib/visible-text";
+import {revealSpoofing, visibleSingleLine} from "../src/lib/visible-text";
 
 describe("visibleSingleLine", () => {
 	it.each([
@@ -17,5 +17,31 @@ describe("visibleSingleLine", () => {
 		{name: "emoji and other scripts", text: "✅ שלום 日本", shown: "✅ שלום 日本"},
 	])("shows $name", ({text, shown}) => {
 		expect(visibleSingleLine(text)).toStrictEqual(shown);
+	});
+});
+
+describe("revealSpoofing, as upstream's u9", () => {
+	it("tags spoofing characters, keeps keycaps and lone invisibles, and tags runs of odd blanks on a drawn line", () => {
+		expect(
+			[
+				"plain text",
+				"a\u202Eb",
+				"1\uFE0F\u20E3 x",
+				"a\u200Bb",
+				"a\u200B\u200B\u200Bb",
+				`a${"\u200Bb".repeat(17)}`,
+				"x\u3000\u3000\u3000y",
+				"\u3000\u3000\u3000",
+			].map(revealSpoofing),
+		).toStrictEqual([
+			"plain text",
+			"a[U+202E]b",
+			"1\uFE0F\u20E3 x",
+			"a\u200Bb",
+			"a[U+200B][U+200B][U+200B]b",
+			`a${"[U+200B]b".repeat(17)}`,
+			"x[U+3000][U+3000][U+3000]y",
+			"\u3000\u3000\u3000",
+		]);
 	});
 });

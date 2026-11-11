@@ -65,10 +65,10 @@
 		"raisedAt": "2026-11-11"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 778154,
+		"ceiling": 786283,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "raised from 770094 (2026-11-11): changes-file-viewed-marks T1-T10 adds the Changes Viewed marks to the session bundle: the persisted diff-file-marks store with upstream's patch fingerprint (src/lib/diff-file-marks.ts) and its synchronous SHA-256 (src/lib/sha256.ts), the header Viewed check and stale label (diff-file.tsx), the tree row mark glyphs and toggle (changes-file-tree.tsx) and the pane's marks scope and collapse coupling. The sticky prompt bubble and tool output follow-up had already taken the measure to 777775 inside the 1% tolerance; this change adds 379 bytes. Went to 778154; the 1% tolerance is unchanged.",
+		"reason": "raised from 778154 (2026-11-11): the question text mask fallback follow-up to 7a78f5a96 ports upstream's `u9` spoofing-character reveal (revealSpoofing in src/lib/visible-text.ts: bidi controls, tags, overlays, invisible runs and odd-blank runs as [U+XXXX]) for `_i`'s painted fallback in the question card header (user-plain-text.tsx). The intervening commits had already used the 1% headroom; this change took the measure over it. Went to 786283; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-11"
 	},
 	"bundle.session.raw": {

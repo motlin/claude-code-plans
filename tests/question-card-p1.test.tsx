@@ -177,7 +177,7 @@ describe("QuestionCard question text, as upstream's code chip and TextLink heade
 			text: "See docs/a.md or https://example.com/a",
 		});
 	});
-	it("draws **text** as upstream's strong.font-medium with code chips nested, leaving flanked and unmatched ** literal", () => {
+	it("draws **text** as upstream's strong.font-medium with code chips nested, leaving flanked and unmatched ** literal, and paints the plain read text when u9 of its masking differs", () => {
 		const chip = `<code dir="ltr" class="rounded-[calc(var(--cds-h-control-nested)/4)] bg-alpha-1 px-xs font-mono text-code font-normal">`;
 		const titleHtml = (question: string) => {
 			render(<QuestionCard questions={[{question, options: [{label: "Yes"}]}]} onSubmit={async () => {}} />);
@@ -191,11 +191,17 @@ describe("QuestionCard question text, as upstream's code chip and TextLink heade
 				"Run **`vitest` now** or **see https://example.com/a**?",
 				"a**b** and **c and ** d ** and **e**f",
 				"Keep `x**y**z` and **a** ``b``",
+				`Use ghp_**${"A".repeat(36)}** at https://example.com/a?`,
+				"Run **`x`** \u202E now",
 			].map(titleHtml),
 		).toStrictEqual([
 			`Run <strong class="font-medium">${chip}vitest</code> now</strong> or <strong class="font-medium">see <a href="https://example.com/a" target="_blank" rel="noreferrer" dir="ltr" class="cds-reset text-link inline cursor-pointer">https://example.com/a</a></strong>?`,
 			"a**b** and **c and ** d ** and **e**f",
 			"Keep `x**y**z` and **a** ``b``",
+			// Upstream's `_i` with a paint: when `u9` of the masked read text differs from the read text, the
+			// read text (markup dropped, unmasked) goes through the paint unstyled.
+			`Use ghp_${"A".repeat(36)} at <a href="https://example.com/a" target="_blank" rel="noreferrer" dir="ltr" class="cds-reset text-link inline cursor-pointer">https://example.com/a</a>?`,
+			"Run x \u202E now",
 		]);
 	});
 });
