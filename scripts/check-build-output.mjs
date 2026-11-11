@@ -13,9 +13,12 @@ const EXPECTED_LINES = [
 	/^\s*$/u,
 	// vp's reminder that `vp build` is its built-in command, not the package script.
 	/^note: You are running `vp build` as a Vite\+ built-in command\./u,
-	// Nitro's build progress and its dependency trace.
+	// Nitro's build progress and its dependency trace. consola prints start/success/info as ◐/✔/ℹ, or as
+	// [start]/[success]/[info] tags with its basic reporter, which it picks under CI; [warn] stays unexpected.
 	/^\[nitro\] [◐✔] /u,
 	/^[ℹ✔] /u,
+	/^\[(?:start|success)\] \[nitro\] /u,
+	/^\[(?:info|success)\] /u,
 	/^- \S+ \([^)]+\)$/u,
 ];
 

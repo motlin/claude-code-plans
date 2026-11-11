@@ -23,6 +23,24 @@ describe("unexpectedBuildLines", () =>
 		expect(unexpectedBuildLines(log)).toStrictEqual([]);
 	});
 
+	test("passes the same progress lines from consola's basic reporter, which it uses under CI", () =>
+	{
+		const log = [
+			"[start] [nitro] Building [Nitro] (preset: `node-server`, compatibility: `2026-11-05`)",
+			"[success] [nitro] Generated public .output/public",
+			"[info] Tracing dependencies:",
+			"- `node-pty` (1.2.0-beta.18)",
+			"- `better-sqlite3` (13.0.3)",
+			"[success] Traced 3 dependencies (38 files) in 99ms.",
+			"[info] Ensure your production environment matches the builder OS and architecture (`linux-x64`) to avoid native module issues.",
+			"[info] Generated .output/nitro.json",
+			"[success] [nitro] You can preview this build using `npx vite preview`",
+			"[warn] [nitro] Some warning",
+			"",
+		].join("\n");
+		expect(unexpectedBuildLines(log)).toStrictEqual(["[warn] [nitro] Some warning"]);
+	});
+
 	test("names every warning line, whatever its wording", () =>
 	{
 		const log = [
