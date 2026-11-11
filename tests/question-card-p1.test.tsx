@@ -374,6 +374,30 @@ describe("QuestionReceipt answer line, as upstream's Cd", () => {
 			],
 		});
 	});
+
+	it("masks and reveals the question and answer as upstream's Bc/Vc: u9(ME(text)) over trimmed lines joined by a space, then a newline", () => {
+		const fakeToken = `ghp_${"A".repeat(36)}`;
+		const masked = `ghp_AAAA${"•".repeat(32)}`;
+		const rlo = String.fromCodePoint(0x202e);
+		const {container} = render(
+			<QuestionReceipt
+				rows={[
+					{
+						question: `  Ship ${rlo}exe.txt?\n\n  now <cc-memory>x</cc-memory> ${fakeToken}  `,
+						answer: `  ${rlo}ok  \n\n  ${fakeToken}  `,
+						notes: null,
+					},
+				]}
+				enters={false}
+			/>,
+		);
+		const row = container.querySelector("[data-answered-question]");
+
+		expect(Array.from(row?.children ?? [], (line) => line.textContent)).toStrictEqual([
+			`Ship [U+202E]exe.txt? now x ${masked}`,
+			`[U+202E]ok\n${masked}`,
+		]);
+	});
 });
 
 describe("QuestionCard option descriptions, as upstream's R", () => {

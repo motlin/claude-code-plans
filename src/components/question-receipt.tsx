@@ -1,4 +1,7 @@
 import {useState} from "react";
+import {maskSecrets} from "../lib/secret-mask";
+import {stripMemoryTags} from "../lib/task-checklist";
+import {revealSpoofing} from "../lib/visible-text";
 
 /** One answered question of a receipt: the question, the answer line, and the user's notes when they add something. */
 export interface QuestionReceiptRow {
@@ -19,21 +22,37 @@ function notesAddInformation(notes: string | null, answerValue: string): notes i
 }
 
 /**
+ * Upstream's `Hc` (cb6930dae): memory tags dropped, secrets masked, the lines trimmed with blank ones
+ * dropped and joined by `separator`, then spoofing characters revealed (`u9(ME(Ee(text)))`).
+ */
+function receiptText(text: string, separator: string): string {
+	return revealSpoofing(
+		maskSecrets(stripMemoryTags(text))
+			.split("\n")
+			.map((line) => line.trim())
+			.filter(Boolean)
+			.join(separator),
+	);
+}
+
+/**
  * One row of upstream's question receipt: the question in primary at the control weight (435 under fizzy type) over the
  * chosen answer (or the Other text, or the unanswered outcome's word) in secondary,
  * its newlines kept and capped at 250px with its own scroll. Unchosen options are omitted.
  */
 function AnsweredQuestion({question, answer, notes}: QuestionReceiptRow) {
-	const trimmed = answer.trim();
+	const shown = receiptText(answer, "\n");
 	return (
 		<div data-answered-question className="flex flex-col gap-0.5 px-lg py-md">
-			<div className="text-body font-control text-primary break-words [unicode-bidi:plaintext]">{question}</div>
-			{trimmed !== "" && (
+			<div className="text-body font-control text-primary break-words [unicode-bidi:plaintext]">
+				{receiptText(question, " ")}
+			</div>
+			{shown !== "" && (
 				<div className="max-h-[250px] overflow-y-auto whitespace-pre-wrap text-body text-secondary [overflow-wrap:anywhere] [unicode-bidi:plaintext]">
-					{trimmed}
+					{shown}
 				</div>
 			)}
-			{notesAddInformation(notes, trimmed) && (
+			{notesAddInformation(notes, answer) && (
 				<div className="text-footnote text-secondary italic whitespace-pre-wrap">
 					<span className="text-primary">Notes: </span>
 					{notes}
