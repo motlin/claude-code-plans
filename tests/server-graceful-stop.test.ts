@@ -1,3 +1,4 @@
+import {spawn} from "node:child_process";
 import {existsSync, mkdirSync, readFileSync, rmSync, symlinkSync} from "node:fs";
 import {get, type ClientRequest} from "node:http";
 import {join} from "node:path";
@@ -69,9 +70,9 @@ async function openEventStream(): Promise<ClientRequest> {
 }
 
 /** srvx's graceful-shutdown outcome lines from the server log, without their terminal escapes. */
-function shutdownLogLines(): string[] {
+function shutdownLogLines(log = readFileSync(join(runDir, "server.log"), "utf8")): string[] {
 	return (
-		readFileSync(join(runDir, "server.log"), "utf8")
+		log
 			.split(/[\r\n]/)
 			// oxlint-disable-next-line no-control-regex -- strips terminal color escapes
 			.map((line) => line.replaceAll(/\u001B\[[0-9;]*[A-Za-z]/g, "").trim())
@@ -154,4 +155,55 @@ describe.skipIf(!existsSync(builtServer))("scripts/server.sh with the built serv
 			stream.destroy();
 		}
 	}, 180_000);
+
+	it("a SIGTERM that arrives while startup is still running still lets the server exit on its own", async () => {
+		// The first request loads the app, whose startup then runs for a while (takeover handshake, database,
+		// watcher, initial scan, then the sweeps and workers). A stop in that window used to run the shutdown hooks
+		// before startup had registered or created what they release, and the watcher and timers it created
+		// afterwards kept the process alive for good. SIGTERM goes out as soon as that first request is answered.
+		const port = await reservePort();
+		const server = spawn(process.execPath, [join(appDir, ".output", "server", "index.mjs")], {
+			cwd: appDir,
+			env: {...env, PORT: port},
+			stdio: ["ignore", "pipe", "pipe"],
+		});
+		let output = "";
+		const exited = new Promise<{code: number | null; signal: NodeJS.Signals | null}>((resolveExit) => {
+			server.once("exit", (code, signal) => {
+				resolveExit({code, signal});
+			});
+		});
+		const listening = new Promise<void>((resolveListening) => {
+			const onOutput = (chunk: Buffer) => {
+				output += chunk.toString("utf8");
+				if (output.includes("Listening on")) resolveListening();
+			};
+			server.stdout.on("data", onOutput);
+			server.stderr.on("data", onOutput);
+		});
+
+		await listening;
+		const firstResponse = await fetch(`http://localhost:${port}/api/events?snapshot`);
+		await firstResponse.arrayBuffer();
+		server.kill("SIGTERM");
+
+		// A server held open by a leaked handle never exits; this bound only names the failure, under the test's own.
+		let stalled: ReturnType<typeof setTimeout> | undefined;
+		const outcome = await Promise.race([
+			exited,
+			new Promise<"still running">((resolveStall) => {
+				stalled = setTimeout(() => {
+					resolveStall("still running");
+				}, 45_000);
+			}),
+		]);
+		clearTimeout(stalled);
+		if (outcome === "still running") server.kill("SIGKILL");
+
+		expect({firstStatus: firstResponse.status, outcome, shutdownLog: shutdownLogLines(output)}).toStrictEqual({
+			firstStatus: 200,
+			outcome: {code: 0, signal: null},
+			shutdownLog: ["Server closed successfully."],
+		});
+	}, 120_000);
 });

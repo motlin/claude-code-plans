@@ -31,14 +31,24 @@ export function onServerShutdown(hook: ShutdownHook): () => void {
 	};
 }
 
-/** Run and forget every registered hook; a failing hook never skips the others. */
-export async function runServerShutdownHooks(): Promise<void> {
-	const pending = [...hooks()];
+/** Unregister every hook, handing them back to run. */
+function takeHooks(): ShutdownHook[] {
+	const taken = [...hooks()];
 	hooks().clear();
+	return taken;
+}
+
+/** Run every given hook; a failing hook never skips the others. */
+async function runHooks(pending: readonly ShutdownHook[]): Promise<void> {
 	const results = await Promise.allSettled(pending.map(async (hook) => hook()));
 	for (const result of results) {
 		if (result.status === "rejected") console.error("Server shutdown hook failed:", result.reason);
 	}
+}
+
+/** Run and forget every registered hook; a failing hook never skips the others. */
+export async function runServerShutdownHooks(): Promise<void> {
+	await runHooks(takeHooks());
 }
 
 // In dev, a vite restart starts the SSR entry in a fresh worker thread and never
@@ -146,10 +156,21 @@ export async function requestTakeover({
  * instance: hooks left in this thread's registry by an earlier evaluation of
  * the SSR entry, and instances in other worker threads. When a later instance
  * requests a takeover, this one runs its own hooks.
+ *
+ * The hook is registered at once, so a shutdown that begins mid-takeover still
+ * runs it. The returned signal aborts when the hook starts: startup that is
+ * still running must check it after every step and stop, releasing anything
+ * it created after the hook ran.
  */
-export async function takeOverServerShutdown(hook: ShutdownHook): Promise<void> {
-	await runServerShutdownHooks();
+export async function takeOverServerShutdown(hook: ShutdownHook): Promise<AbortSignal> {
+	const previous = takeHooks();
+	const stopping = new AbortController();
+	onServerShutdown(async () => {
+		stopping.abort();
+		await hook();
+	});
+	await runHooks(previous);
 	await requestTakeover();
-	onServerShutdown(hook);
-	onServerShutdown(listenForTakeover(runServerShutdownHooks));
+	if (!stopping.signal.aborted) onServerShutdown(listenForTakeover(runServerShutdownHooks));
+	return stopping.signal;
 }

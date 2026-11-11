@@ -74,6 +74,18 @@ describe("server shutdown hooks", () => {
 		});
 	});
 
+	it("takeOverServerShutdown runs the new hook and aborts its signal when shutdown begins mid-takeover", async () => {
+		const calls: string[] = [];
+
+		const takeover = takeOverServerShutdown(() => {
+			calls.push("new instance");
+		});
+		await runServerShutdownHooks();
+		const stopping = await takeover;
+
+		expect({calls, aborted: stopping.aborted}).toStrictEqual({calls: ["new instance"], aborted: true});
+	});
+
 	it("requestTakeover waits for another instance (e.g. a previous dev worker thread) to release its handles", async () => {
 		const events: string[] = [];
 		const stop = listenForTakeover(async () => {

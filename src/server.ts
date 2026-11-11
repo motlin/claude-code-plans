@@ -69,8 +69,10 @@ let stopStallMonitor: (() => void) | null = import.meta.env.DEV
 void (async () => {
 	// Release every long-lived handle startup creates so the process can exit
 	// once the HTTP server closes (server/plugins/shutdown.ts runs this), and
-	// so a restarted dev server's scan never races this instance's.
-	await takeOverServerShutdown(async () => {
+	// so a restarted dev server's scan never races this instance's. A shutdown
+	// can begin at any point below (a stop right after the first request), so
+	// startup checks `stopped()` after every await and starts nothing more.
+	const stopping = await takeOverServerShutdown(async () => {
 		stopSweep();
 		stopAutoArchive();
 		stopTurnVerdictWorker?.();
@@ -87,6 +89,9 @@ void (async () => {
 		await closeWatcher();
 		await shutdownDb();
 	});
+	// A call rather than a property read: the signal aborts during the awaits between checks.
+	const stopped = (): boolean => stopping.aborted;
+	if (stopped()) return;
 
 	try {
 		await trackActivity("startup open database", async () => initDb());
@@ -94,6 +99,7 @@ void (async () => {
 		console.error("Failed to initialize database:", err);
 		return;
 	}
+	if (stopped()) return;
 
 	// Live status from the CLI's ~/.claude/sessions registry, re-broadcast as session:updated rows.
 	// Started before the slow scans: summaries read it directly, so rows show live state at once.
@@ -116,14 +122,17 @@ void (async () => {
 	} catch (err) {
 		console.error("Failed to initialize pending approvals cache:", err);
 	}
+	if (stopped()) return;
 
 	// The mod creates its directory on its first write; make it now so the watcher can root there.
 	await mkdir(CONTEXT_MIRROR_DIR, {recursive: true}).catch(() => {});
+	if (stopped()) return;
 
 	let watcher: RecursiveWatcher;
 	const fileContentRoots = await trackActivity("startup file search roots", async () =>
 		resolveFileSearchRoots(getDb().index),
 	);
+	if (stopped()) return;
 	const ignoredDirNames = resolveIgnoredDirNames();
 	try {
 		watcher = await trackActivity("startup watcher", async () =>
@@ -152,14 +161,22 @@ void (async () => {
 		console.error("Failed to create watcher:", err);
 		return;
 	}
+	// The shutdown hook closed whatever watcher existed then, which may predate this one.
+	if (stopped()) {
+		await closeWatcher();
+		return;
+	}
 
 	await trackActivity("startup watcher ready", async () => watcher.whenReady());
+	if (stopped()) return;
 
 	try {
 		await trackActivity("startup initial scan", async () => runInitialScan(fileContentRoots, ignoredDirNames));
 	} catch (err) {
 		console.error("Initial scan failed:", err);
 	}
+	// Everything below starts synchronously, so a shutdown hook that runs later stops it.
+	if (stopped()) return;
 
 	startSweep();
 	startNotificationsSweep();
