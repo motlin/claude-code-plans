@@ -44,15 +44,23 @@ class FakeStorage implements Storage {
 function ChatContent() {
 	const host = usePaneHost();
 	return (
-		<button
-			type="button"
-			onClick={() => {
-				host.openPane("plan");
-			}}
-		>
-			Open test pane
-		</button>
+		<>
+			<button
+				type="button"
+				onClick={() => {
+					host.openPane("plan");
+				}}
+			>
+				Open test pane
+			</button>
+			{/* The composer editor stands in as the chat tile's focus target (upstream c2319b8e9). */}
+			<textarea aria-label="Prompt" data-tile-focus-target="" />
+		</>
 	);
+}
+
+function prompt(): HTMLElement {
+	return screen.getByRole("textbox", {name: "Prompt"});
 }
 
 function renderHost(sessionId: string, onExpandWithoutPane = vi.fn<() => void>()) {
@@ -409,6 +417,71 @@ describe("TileHost", () => {
 		}).toStrictEqual({body: null, separators: 0});
 	});
 
+	it("hands focus to the chat's focus target when the pane holding it closes (upstream ca67f2c9d retain effect)", () => {
+		const closeFocusedPane = (close: () => void, expandFirst = false) => {
+			const view = renderHost("session-a");
+			openTestPane();
+			if (expandFirst) fireEvent.click(screen.getByRole("button", {name: "Expand"}));
+			screen.getByRole("button", {name: "Close"}).focus();
+			close();
+			const landed = document.activeElement === prompt() ? "Prompt" : document.activeElement?.tagName;
+			view.unmount();
+			return landed;
+		};
+		const closeButton = () => {
+			fireEvent.click(screen.getByRole("button", {name: "Close"}));
+		};
+
+		expect({
+			click: closeFocusedPane(closeButton),
+			shortcut: closeFocusedPane(() => {
+				press({key: "\\", code: "Backslash", metaKey: true});
+			}),
+			expanded: closeFocusedPane(closeButton, true),
+		}).toStrictEqual({click: "Prompt", shortcut: "Prompt", expanded: "Prompt"});
+	});
+
+	it("leaves focus alone when a pane closes while focus is in another tile", () => {
+		renderHost("session-a");
+		openTestPane();
+		const opener = screen.getByRole("button", {name: "Open test pane"});
+		opener.focus();
+
+		fireEvent.click(screen.getByRole("button", {name: "Close"}));
+
+		expect(document.activeElement).toBe(opener);
+	});
+
+	it("makes the closed pane's nearest neighbour the focused tile, so a second ⌘\\ closes it", () => {
+		const unregisterFiles = registerPane("files", {title: "Files", render: () => <p>Files body</p>});
+		render(
+			<TileHost sessionId="session-a" onExpandWithoutPane={vi.fn<() => void>()}>
+				<ChatContent />
+				<FilesOpener />
+			</TileHost>,
+		);
+		openTestPane();
+		fireEvent.click(screen.getByRole("button", {name: "Open files"}));
+		const files = screen.getByText("Files body").closest<HTMLElement>("[data-pane-root]");
+		if (files === null) throw new Error("Files pane missing");
+		within(files).getByRole("button", {name: "Close"}).focus();
+
+		press({key: "\\", code: "Backslash", metaKey: true});
+		const afterFirst = {
+			focus: document.activeElement === prompt(),
+			panes: [...document.querySelectorAll("[data-pane-kind]")].map((pane) =>
+				pane.getAttribute("data-pane-kind"),
+			),
+		};
+		press({key: "\\", code: "Backslash", metaKey: true});
+		unregisterFiles();
+
+		expect({
+			afterFirst,
+			afterSecond: document.querySelectorAll("[data-pane-kind]").length,
+		}).toStrictEqual({afterFirst: {focus: true, panes: ["plan"]}, afterSecond: 0});
+	});
+
 	it("toggles the expand overlay with ⇧⌘\\", () => {
 		const onExpandWithoutPane = vi.fn<() => void>();
 		renderHost("session-a", onExpandWithoutPane);
@@ -562,14 +635,53 @@ describe("TileHost", () => {
 		}
 	});
 
-	it("returns focus to Expand after collapsing", () => {
+	it("returns focus to Expand after collapsing, or to the tile an expand took it from (upstream ca67f2c9d hide effect)", () => {
+		const toggleShortcut = () => {
+			press({key: "|", code: "Backslash", metaKey: true, shiftKey: true});
+		};
+		const focusName = () => {
+			const active = document.activeElement;
+			if (active === null || active === document.body) return "body";
+			if (active.classList.contains("tiles-drag-handle")) return "Move grip";
+			const inPane = active.closest("[data-pane-root]") === null ? "chat" : "pane";
+			return `${inPane}:${active.getAttribute("aria-label") ?? active.textContent}`;
+		};
+		/** Expands the pane with the composer focused, runs `between`, collapses, and names focus after each step. */
+		const expandFromPrompt = (between: () => void = () => {}) => {
+			const view = renderHost("session-a");
+			openTestPane();
+			prompt().focus();
+			toggleShortcut();
+			const expanded = focusName();
+			between();
+			toggleShortcut();
+			const collapsed = focusName();
+			view.unmount();
+			return {expanded, collapsed};
+		};
+
 		renderHost("session-a");
 		openTestPane();
-
 		fireEvent.click(screen.getByRole("button", {name: "Expand"}));
 		fireEvent.click(screen.getByRole("button", {name: "Collapse"}));
+		const mouse = focusName();
+		cleanup();
 
-		expect(document.activeElement).toBe(screen.getByRole("button", {name: "Expand"}));
+		expect({
+			mouse,
+			keyboard: expandFromPrompt(),
+			pointerCancels: expandFromPrompt(() => {
+				fireEvent.pointerDown(document.body);
+			}),
+			typingCancels: expandFromPrompt(() => {
+				press({key: "a"});
+			}),
+		}).toStrictEqual({
+			mouse: "pane:Expand",
+			keyboard: {expanded: "pane:Collapse", collapsed: "chat:Prompt"},
+			pointerCancels: {expanded: "pane:Collapse", collapsed: "pane:Expand"},
+			typingCancels: {expanded: "pane:Collapse", collapsed: "pane:Expand"},
+		});
 	});
 
 	function paneMoveButton(): HTMLElement {

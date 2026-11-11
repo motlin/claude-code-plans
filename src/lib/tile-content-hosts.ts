@@ -3,7 +3,8 @@
  * into a persistent `div[data-tile-host]` (`display:contents`) that the tile's shell adopts, so the layout tree can
  * re-parent, split, collapse or reorder tiles without unmounting the pane. Between a shell's unmount and the next
  * adopt the host waits in an off-screen inert pen (only when `moveBefore` keeps its state across the move), and each
- * host remembers its scrolled elements, focus and caret to restore after a move.
+ * host remembers its scrolled elements, focus and caret to restore after a move. The registry also routes focus and
+ * presses inside a host to the active-tile handler and finds each tile's focus target for the close and hide hand-offs.
  */
 
 import {setScrollTop} from "./scroll-setter";
@@ -15,6 +16,14 @@ const PEN_STYLE =
 const PEN_CELL_STYLE =
 	"position:absolute;top:0;left:0;display:grid;grid-template-rows:minmax(0,1fr);grid-template-columns:minmax(0,1fr)";
 const HOST_STYLE = "display:contents";
+const HOST_SELECTOR = `[${HOST_ATTRIBUTE}]`;
+/** Upstream `s`: marks the element a tile hands focus to (the composer editor, the terminal panel). */
+const TILE_FOCUS_TARGET = "data-tile-focus-target";
+/** Upstream `c`: marks a subtree the focus-target search skips. */
+const TILE_FOCUS_PASS = "data-tile-focus-pass";
+const EDITABLE_SELECTOR = '[contenteditable=""],[contenteditable="true"],[contenteditable="plaintext-only"]';
+/** Upstream `f`: the focusable candidates, in document order. */
+const FOCUSABLE_SELECTOR = `a[href],button,input:not([type="hidden"]),select,textarea,summary,[tabindex],${EDITABLE_SELECTOR}`;
 /** Upstream `l`: the per-host ring of remembered scrollers. */
 const SCROLL_MEMORY_SIZE = 32;
 /** Upstream `atBottom`: within 2px of the bottom. */
@@ -26,6 +35,7 @@ export interface TileBox {
 }
 
 type Focusable = Element & HTMLOrSVGElement;
+type InteractHandler = (id: string) => void;
 type Caret = readonly [anchor: Node, anchorOffset: number, focus: Node, focusOffset: number];
 
 interface ScrollEntry {
@@ -62,8 +72,11 @@ export class TileContentHosts {
 	private penEl: HTMLDivElement | null = null;
 	private liveIds: ReadonlySet<string> | null = null;
 	private readonly canMove: boolean;
+	private onInteract: InteractHandler | undefined = undefined;
+	/** The tile focus last entered, so a tile whose focus fell to the body still holds it (upstream `holdsFocus`). */
+	private lastFocusTile: string | null = null;
 
-	constructor(private readonly doc: Document) {
+	constructor(readonly doc: Document) {
 		this.canMove =
 			typeof (doc.createElement("div") as Partial<Pick<Element, "moveBefore">>).moveBefore === "function";
 	}
@@ -72,12 +85,22 @@ export class TileContentHosts {
 		return this.record(id).host;
 	}
 
+	/** Upstream `setInteractHandler`: the active-tile setter; a first handler hears at once about the focused tile. */
+	setInteractHandler(handler: InteractHandler | undefined): void {
+		const first = handler !== undefined && this.onInteract === undefined;
+		this.onInteract = handler;
+		if (!first) return;
+		const id = this.tileOf(this.doc.activeElement);
+		if (id !== null) handler(id);
+	}
+
 	/** Moves the tile's host into `cell` and restores its snapshot; the cleanup snapshots and parks it again. */
 	adopt(id: string, cell: Element, box?: TileBox): () => void {
 		const record = this.record(id);
 		const {host} = record;
 		this.place(record, cell);
 		restore(record);
+		if (this.tileOf(this.doc.activeElement) === id) this.onInteract?.(id);
 		return () => {
 			if (host.parentNode !== cell) return;
 			snapshot(record);
@@ -124,10 +147,15 @@ export class TileContentHosts {
 		}
 	}
 
-	/** Disposes the hosts of tiles no longer live and drops an empty pen. */
-	retain(liveIds: ReadonlySet<string>): void {
+	/**
+	 * Disposes the hosts of tiles no longer live and drops an empty pen. Returns the disposed tile whose last snapshot
+	 * held focus when focus has since fallen to the body (the close hand-off's source), else null.
+	 */
+	retain(liveIds: ReadonlySet<string>): string | null {
+		let focusedClosed: string | null = null;
 		for (const [id, record] of this.records) {
 			if (liveIds.has(id)) continue;
+			if (record.pending?.focused && focusFellToBody(this.doc)) focusedClosed = id;
 			record.dispose();
 			this.records.delete(id);
 		}
@@ -135,6 +163,44 @@ export class TileContentHosts {
 			this.penEl.remove();
 			this.penEl = null;
 		}
+		return focusedClosed;
+	}
+
+	/** Upstream `focusTile`: focuses the tile's focus target; true when it took focus. */
+	focusTile(id: string): boolean {
+		const host = this.records.get(id)?.host;
+		if (host?.isConnected !== true) return false;
+		const target = focusTargetOrCell(host);
+		if (target === null) return false;
+		target.focus({preventScroll: true});
+		if (host.ownerDocument.activeElement !== target) return false;
+		// Focus inside the host reaches the handler through its focusin listener; the cell sits outside it.
+		if (!host.contains(target)) this.onInteract?.(id);
+		return true;
+	}
+
+	/** The tile whose host holds `node`, skipping hosts of other registries. */
+	tileOf(node: EventTarget | null): string | null {
+		let host = node instanceof Element ? node.closest(HOST_SELECTOR) : null;
+		while (host !== null) {
+			const id = host.getAttribute(HOST_ATTRIBUTE);
+			if (id !== null && this.records.get(id)?.host === host) return id;
+			host = host.parentElement?.closest(HOST_SELECTOR) ?? null;
+		}
+		return null;
+	}
+
+	/** Whether the tile has an eligible `[data-tile-focus-target]` (upstream `hasFocusTarget`). */
+	hasFocusTarget(id: string): boolean {
+		const host = this.records.get(id)?.host;
+		return host?.isConnected === true && markedFocusTarget(host) !== null;
+	}
+
+	/** Focus is inside the tile, or it was the last tile focused and focus fell to the body (upstream `holdsFocus`). */
+	holdsFocus(id: string): boolean {
+		const host = this.records.get(id)?.host;
+		if (host?.isConnected !== true) return false;
+		return holdsFocusWithin(host) || (this.lastFocusTile === id && focusFellToBody(this.doc));
 	}
 
 	/** On unmount: removes parked hosts whose portal content is gone, then the pen once empty. */
@@ -205,6 +271,16 @@ export class TileContentHosts {
 		host.setAttribute(HOST_ATTRIBUTE, id);
 		host.setAttribute("style", HOST_STYLE);
 		const scrollMemory = rememberScrollers(host);
+		const onPointerDown = (event: Event) => {
+			if (this.tileOf(event.target) === id) this.onInteract?.(id);
+		};
+		const onFocusIn = (event: Event) => {
+			if (this.tileOf(event.target) !== id) return;
+			this.lastFocusTile = id;
+			this.onInteract?.(id);
+		};
+		host.addEventListener("focusin", onFocusIn, true);
+		host.addEventListener("pointerdown", onPointerDown, true);
 		const record: HostRecord = {
 			host,
 			scrollMemory,
@@ -214,6 +290,8 @@ export class TileContentHosts {
 			cell: null,
 			dispose: () => {
 				scrollMemory.dispose();
+				host.removeEventListener("focusin", onFocusIn, true);
+				host.removeEventListener("pointerdown", onPointerDown, true);
 				host.remove();
 				dropEmptyCell(record);
 			},
@@ -294,6 +372,44 @@ function holdsFocusWithin(host: Element): boolean {
 
 function isFocusable(element: Element | null): element is Focusable {
 	return element !== null && "focus" in element && typeof element.focus === "function";
+}
+
+/**
+ * Upstream `x`: a focus target must be focusable at a non-negative tabindex (a contenteditable without one counts),
+ * enabled, not a drag handle, outside inert, hidden and focus-pass subtrees, and visible.
+ */
+function isFocusEligible(element: Element): element is Focusable {
+	if (!isFocusable(element)) return false;
+	const tabbable = element.tabIndex >= 0 || (element.matches(EDITABLE_SELECTOR) && !element.hasAttribute("tabindex"));
+	if (!tabbable || ("disabled" in element && element.disabled === true)) return false;
+	if (element.classList.contains("tiles-drag-handle")) return false;
+	if (element.closest(`[inert],[hidden],[aria-hidden='true'],[${TILE_FOCUS_PASS}]`) !== null) return false;
+	return typeof element.checkVisibility !== "function" || element.checkVisibility({visibilityProperty: true});
+}
+
+/** Upstream `S`: the first eligible match of `selector` under `root`. */
+function firstEligible(root: Element, selector = FOCUSABLE_SELECTOR): Focusable | null {
+	for (const element of root.querySelectorAll(selector)) if (isFocusEligible(element)) return element;
+	return null;
+}
+
+/** Upstream `C`: the first marked target outside a pane miniature, else its first eligible focusable. */
+function markedFocusTarget(root: Element): Focusable | null {
+	for (const marked of root.querySelectorAll(`[${TILE_FOCUS_TARGET}]`)) {
+		if (marked.closest("[data-pane-miniature]") !== null) continue;
+		return isFocusEligible(marked) ? marked : firstEligible(marked);
+	}
+	return null;
+}
+
+/** Upstream `T`: the marked target, else the first eligible focusable, else the host's cell at tabindex -1. */
+function focusTargetOrCell(host: Element): Focusable | null {
+	const target = markedFocusTarget(host) ?? firstEligible(host);
+	if (target !== null) return target;
+	const cell = host.parentElement;
+	if (cell === null) return null;
+	if (!cell.hasAttribute("tabindex")) cell.tabIndex = -1;
+	return cell;
 }
 
 function dropEmptyCell(record: HostRecord): void {

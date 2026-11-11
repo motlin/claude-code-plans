@@ -379,7 +379,13 @@ describe("Shell tabs", () => {
 		await waitFor(() => {
 			expect(screen.getAllByRole("tab")).toHaveLength(3);
 		});
+		const focusTargets = () =>
+			[...document.querySelectorAll("[data-tile-focus-target]")].map((panel) => [
+				panel.getAttribute("role"),
+				panel.getAttribute("aria-label"),
+			]);
 		const afterAdd = tabs();
+		const targetsAfterAdd = focusTargets();
 		const owners = screen
 			.getAllByRole("tabpanel", {hidden: true})
 			.map((panel) => [panel.getAttribute("aria-label"), panel.getAttribute("data-owns-typing-and-pastes")]);
@@ -388,7 +394,16 @@ describe("Shell tabs", () => {
 			expect(screen.getAllByRole("tab")).toHaveLength(2);
 		});
 
-		expect({afterAdd, owners, afterClose: tabs()}).toStrictEqual({
+		expect({
+			afterAdd,
+			owners,
+			afterClose: tabs(),
+			targetsAfterAdd,
+			targetsAfterClose: focusTargets(),
+		}).toStrictEqual({
+			// Upstream cc4b9f569 marks the terminal as its tile's focus target; locally the active panel is that surface.
+			targetsAfterAdd: [["tabpanel", "Shell 2 terminal"]],
+			targetsAfterClose: [["tabpanel", "Shell terminal"]],
 			owners: [
 				["Claude terminal", ""],
 				["Shell terminal", ""],

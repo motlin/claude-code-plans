@@ -334,3 +334,116 @@ describe("TileContentHosts focus and caret restore, as upstream's D / O / M", ()
 		expect(document.activeElement).toBe(other);
 	});
 });
+
+describe("TileContentHosts focus targets, as upstream's x / S / C / T", () => {
+	function adopted(hosts: TileContentHosts, id: string, html: string): HTMLDivElement {
+		const host = hosts.host(id);
+		host.innerHTML = html;
+		hosts.adopt(id, cell());
+		return host;
+	}
+
+	it("skips the drag handle, focus-pass, negative-tabindex and disabled controls for the marked target", () => {
+		const hosts = new TileContentHosts(document);
+		const host = adopted(
+			hosts,
+			"chat",
+			`<button class="tiles-drag-handle">Move</button>
+			<span data-tile-focus-pass><button>New tab</button></span>
+			<button tabindex="-1">Roving</button>
+			<button disabled>Disabled</button>
+			<textarea aria-label="Prompt" data-tile-focus-target></textarea>`,
+		);
+		expect({
+			focused: hosts.focusTile("chat"),
+			active: document.activeElement === host.querySelector("textarea"),
+			hasTarget: hosts.hasFocusTarget("chat"),
+		}).toStrictEqual({focused: true, active: true, hasTarget: true});
+	});
+
+	it("focuses the first eligible control inside a marked target that is not focusable itself", () => {
+		const hosts = new TileContentHosts(document);
+		const host = adopted(
+			hosts,
+			"terminal",
+			`<div data-tile-focus-target><button tabindex="-1">Tab</button><button>Panel</button></div>`,
+		);
+		hosts.focusTile("terminal");
+		expect(document.activeElement?.textContent).toBe("Panel");
+		expect(host.isConnected).toBe(true);
+	});
+
+	it("skips a marked target inside a pane miniature and falls back to the first eligible focusable", () => {
+		const hosts = new TileContentHosts(document);
+		adopted(
+			hosts,
+			"files",
+			`<button class="tiles-drag-handle">Move</button><button>Show files</button>
+			<div data-pane-miniature><textarea data-tile-focus-target></textarea></div>`,
+		);
+		expect({hasTarget: hosts.hasFocusTarget("files"), focused: hosts.focusTile("files")}).toStrictEqual({
+			hasTarget: false,
+			focused: true,
+		});
+		expect(document.activeElement?.textContent).toBe("Show files");
+	});
+
+	it("focuses the host's cell at tabindex -1 when nothing inside is focusable, and reports the tile as interacted", () => {
+		const hosts = new TileContentHosts(document);
+		const interacted: string[] = [];
+		hosts.setInteractHandler((id) => interacted.push(id));
+		const host = adopted(hosts, "changes", "<p>No changes</p>");
+		const focused = hosts.focusTile("changes");
+		expect({
+			focused,
+			active: document.activeElement === host.parentElement,
+			tabindex: host.parentElement?.getAttribute("tabindex"),
+			interacted,
+		}).toStrictEqual({focused: true, active: true, tabindex: "-1", interacted: ["changes"]});
+	});
+
+	it("routes focusin and pointerdown inside a host to the interact handler and remembers the last focused tile", () => {
+		const hosts = new TileContentHosts(document);
+		const interacted: string[] = [];
+		const chat = adopted(hosts, "chat", "<textarea></textarea>");
+		const files = adopted(hosts, "files", "<button>Show files</button>");
+		chat.querySelector("textarea")?.focus();
+		hosts.setInteractHandler((id) => interacted.push(id));
+		files.querySelector("button")?.dispatchEvent(new Event("pointerdown", {bubbles: true}));
+		files.querySelector("button")?.focus();
+		files.querySelector("button")?.blur();
+		expect({
+			interacted,
+			tileOf: hosts.tileOf(files.querySelector("button")),
+			holdsFiles: hosts.holdsFocus("files"),
+			holdsChat: hosts.holdsFocus("chat"),
+		}).toStrictEqual({
+			// A handler set while focus sits in a tile reports that tile at once (upstream setInteractHandler).
+			interacted: ["chat", "files", "files"],
+			tileOf: "files",
+			holdsFiles: true,
+			holdsChat: false,
+		});
+	});
+
+	it("retain returns the closed tile only when it held focus and focus fell to the body", () => {
+		const hosts = new TileContentHosts(document);
+		const files = adopted(hosts, "files", "<button>Show files</button>");
+		adopted(hosts, "changes", "<button>Show changes</button>");
+		const other = document.createElement("button");
+		document.body.append(other);
+		files.querySelector("button")?.focus();
+		const releaseFiles = hosts.adopt("files", files.parentElement!);
+		releaseFiles();
+		files.parentElement?.remove();
+		const closedFocused = hosts.retain(new Set(["changes"]));
+		const changes = hosts.host("changes");
+		changes.querySelector("button")?.focus();
+		hosts.adopt("changes", changes.parentElement!)();
+		other.focus();
+		expect({closedFocused, focusElsewhere: hosts.retain(new Set())}).toStrictEqual({
+			closedFocused: "files",
+			focusElsewhere: null,
+		});
+	});
+});

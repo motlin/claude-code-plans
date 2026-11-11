@@ -29,6 +29,7 @@ import {
 	dropPreview,
 	expandPane,
 	fitPhoneLayout,
+	focusNeighbour,
 	focusPane,
 	hiddenWhileExpanded,
 	leftEdgeTiles,
@@ -102,6 +103,20 @@ const HIDDEN_TILE_STYLE = {
 } as const satisfies CSSProperties;
 
 type LayoutUpdate = (state: PaneLayoutState) => PaneLayoutState;
+
+/** Upstream's hide hand-off entry `He`: the hidden tile focus left, and where it landed. */
+interface FocusReturn {
+	from: TileId;
+	landedOn: Element | null;
+}
+
+/** Upstream `kt`: keys that alone are not input. */
+const MODIFIER_KEYS: ReadonlySet<string> = new Set(["Shift", "Control", "Alt", "Meta", "CapsLock"]);
+
+/** Upstream `At`: a key press that counts as the user's input. */
+function isUserInputKey(event: KeyboardEvent): boolean {
+	return !event.ctrlKey && !event.metaKey && !event.altKey && !MODIFIER_KEYS.has(event.key);
+}
 
 interface PendingMove {
 	tileId: TileId;
@@ -724,7 +739,9 @@ function PaneSurface({kind, definition, host}: {kind: PaneKind; definition: Pane
 	useEffect(() => {
 		if (isExpanded || host.collapsedRef.current !== kind) return;
 		host.collapsedRef.current = null;
-		toggleRef.current?.focus();
+		// Only when focus fell to the body: a return to the tile the expand took focus from, or a field, keeps it.
+		const active = document.activeElement;
+		if (active === null || active === document.body) toggleRef.current?.focus();
 	}, [isExpanded, kind, host.collapsedRef]);
 
 	// Upstream renders no drag-line affordance on a hidden tile.
@@ -1147,17 +1164,14 @@ function ChatTileContent({host, chat}: {host: InternalHost; chat: ReactNode}) {
 }
 
 /**
- * Upstream `Tt`: a tile's content, portalled into its persistent host. The display:contents wrapper routes focus and
- * pointer presses inside the tile to the focused-tile state.
+ * Upstream `Tt`: a tile's content, portalled into its persistent host in a display:contents wrapper. Focus and presses
+ * inside the host reach the focused-tile state through the registry's host listeners.
  */
 function TileContent({tileId, host, chat}: {tileId: TileId; host: InternalHost; chat: ReactNode}) {
 	const definition = isPaneKind(tileId) ? host.definitions.get(tileId) : undefined;
 	if (isPaneKind(tileId) && definition === undefined) return null;
-	const focus = () => {
-		host.update((state) => focusPane(state, tileId));
-	};
 	return createPortal(
-		<div style={CONTENTS_STYLE} onFocusCapture={focus} onPointerDownCapture={focus}>
+		<div style={CONTENTS_STYLE}>
 			{isPaneKind(tileId) && definition !== undefined ? (
 				<PaneSurface kind={tileId} definition={definition} host={host} />
 			) : (
@@ -1262,9 +1276,70 @@ export function TileHost({
 		[layout.root, layout.expanded, hidden],
 	);
 	const liveTileIds = useMemo(() => new Set(mountedTiles), [mountedTiles]);
+	// Upstream `setInteractHandler(onTileInteract)`: focus entering a tile, or a press in it, makes it the focused tile.
 	useLayoutEffect(() => {
-		contentHosts.retain(liveTileIds);
-	}, [contentHosts, liveTileIds]);
+		contentHosts.setInteractHandler((id) => {
+			const tileId = parseTileId(id);
+			if (tileId !== null) update((state) => focusPane(state, tileId));
+		});
+	}, [contentHosts, update]);
+	const focusScopeRef = useRef({sessionId, root: layout.root});
+	// Upstream's retain effect: when the tile holding focus closes and focus fell to the body, hand focus to the nearest
+	// neighbour with a focus target (usually the composer) and make the nearest neighbour the focused tile.
+	useLayoutEffect(() => {
+		const previous = focusScopeRef.current;
+		focusScopeRef.current = {sessionId, root: layout.root};
+		const closed = parseTileId(contentHosts.retain(liveTileIds));
+		if (closed === null || previous.sessionId !== sessionId) return;
+		const before = new Set(tileIdsOf(previous.root));
+		const after = new Set(tileIdsOf(layout.root));
+		// Still in the layout while a pane is expanded: hidden or unmounted, not closed (the hide effect owns it).
+		if (!before.has(closed) || (layout.expanded !== null && after.has(closed))) return;
+		// Upstream's `focusHeirOf` (the tabbed side panel's new front tab) waits for side-panel-tabbed-mode.
+		// A tile opened in the same update owns focus.
+		if ([...after].some((id) => !before.has(id))) return;
+		const eligible = (id: TileId) => liveTileIds.has(id) && !hidden.has(id);
+		const nearest = focusNeighbour(previous.root, closed, eligible) ?? mountedTiles.find(eligible) ?? null;
+		const target =
+			focusNeighbour(previous.root, closed, (id) => eligible(id) && contentHosts.hasFocusTarget(id)) ?? nearest;
+		if (target === null || !eligible(target) || !contentHosts.focusTile(target)) return;
+		if (nearest !== null && nearest !== target) update((state) => focusPane(state, nearest));
+	}, [contentHosts, liveTileIds, sessionId, layout.root, layout.expanded, hidden, mountedTiles, update]);
+	const hiddenRef = useRef(hidden);
+	const focusReturnRef = useRef<FocusReturn | null>(null);
+	// Upstream's hide effect: a tile hidden while it held focus hands it to the first visible tile, and showing it again
+	// takes focus back, unless focus moved off where it landed.
+	useLayoutEffect(() => {
+		const previous = hiddenRef.current;
+		hiddenRef.current = hidden;
+		const pending = focusReturnRef.current;
+		if (pending !== null && !hidden.has(pending.from)) {
+			focusReturnRef.current = null;
+			if (document.activeElement === pending.landedOn) contentHosts.focusTile(pending.from);
+			return;
+		}
+		let from: TileId | null = null;
+		for (const id of hidden) if (!previous.has(id) && contentHosts.holdsFocus(id)) from = id;
+		if (from === null) return;
+		const target = mountedTiles.find((id) => !hidden.has(id));
+		if (target !== undefined && contentHosts.focusTile(target))
+			focusReturnRef.current = {from, landedOn: document.activeElement};
+	}, [contentHosts, mountedTiles, hidden]);
+	// Upstream `At`/`kt`: a press, or a key that is input (no Ctrl/Meta/Alt, not a lone modifier), cancels the return.
+	useEffect(() => {
+		const cancel = () => {
+			focusReturnRef.current = null;
+		};
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (isUserInputKey(event)) cancel();
+		};
+		document.addEventListener("pointerdown", cancel, true);
+		document.addEventListener("keydown", onKeyDown, true);
+		return () => {
+			document.removeEventListener("pointerdown", cancel, true);
+			document.removeEventListener("keydown", onKeyDown, true);
+		};
+	}, []);
 	// Passive, so it runs after the unmounting shells parked their hosts and the portals emptied them.
 	useEffect(
 		() => () => {

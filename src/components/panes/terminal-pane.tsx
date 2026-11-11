@@ -343,6 +343,7 @@ export function TerminalPane({
 					data-owns-typing-and-pastes=""
 					aria-label="Claude terminal"
 					data-terminal-focus={active === CLAUDE_TAB_ID ? "" : undefined}
+					data-tile-focus-target={active === CLAUDE_TAB_ID ? "" : undefined}
 					className={PANEL_CLASS}
 				>
 					{claudeEnded ? (
@@ -368,6 +369,7 @@ export function TerminalPane({
 					data-owns-typing-and-pastes=""
 					aria-label={`${tab.title} terminal`}
 					data-terminal-focus={active === tab.id ? "" : undefined}
+					data-tile-focus-target={active === tab.id ? "" : undefined}
 					className={PANEL_CLASS}
 				>
 					<ShellTerminal

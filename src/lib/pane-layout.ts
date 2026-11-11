@@ -540,7 +540,10 @@ export function closePane(state: PaneLayoutState, kind: PaneKind, options: Close
 		{
 			root,
 			expanded: state.expanded === kind ? null : state.expanded,
-			focused: state.focused === kind ? "chat" : state.focused,
+			focused:
+				state.focused === kind
+					? (focusNeighbour(state.root, kind, (id) => id !== kind) ?? "chat")
+					: state.focused,
 		},
 		slots,
 	);
@@ -562,6 +565,36 @@ export function rememberPaneFlex(root: StackNode, resizedIds: readonly TileId[],
 		if (lastFlex[child.tileId] !== flex) changed[child.tileId] = flex;
 	}
 	return Object.keys(changed).length === 0 ? lastFlex : {...lastFlex, ...changed};
+}
+
+/** The first leaf of `node`, depth-first in child order, that is `eligible`. */
+function firstEligibleLeaf(node: LayoutNode, eligible: (id: TileId) => boolean): TileId | null {
+	if (node.kind === "tile") return eligible(node.tileId) ? node.tileId : null;
+	for (const child of node.children) {
+		const found = firstEligibleLeaf(child, eligible);
+		if (found !== null) return found;
+	}
+	return null;
+}
+
+/**
+ * Upstream ca67f2c9d `Oe`: the nearest `eligible` tile to `tileId` in `root`. From the tile's parent up to the root, it
+ * tries the siblings before the tile (nearest first), then the ones after it, entering a stack by its first leaf.
+ */
+export function focusNeighbour(root: StackNode, tileId: TileId, eligible: (id: TileId) => boolean): TileId | null {
+	const path = pathTo(root, tileId);
+	if (path === undefined) return null;
+	for (let depth = path.length; depth > 0; depth--) {
+		const parent = nodeAt(root, path.slice(0, depth - 1));
+		const index = path[depth - 1];
+		if (parent?.kind !== "stack" || index === undefined) return null;
+		const candidates = [...parent.children.slice(0, index).toReversed(), ...parent.children.slice(index + 1)];
+		for (const candidate of candidates) {
+			const found = firstEligibleLeaf(candidate, eligible);
+			if (found !== null) return found;
+		}
+	}
+	return null;
 }
 
 export function focusPane(state: PaneLayoutState, tileId: TileId): PaneLayoutState {

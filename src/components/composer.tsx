@@ -1925,6 +1925,8 @@ export function Composer({
 						ref={textareaRef}
 						aria-label="Prompt"
 						data-focus-region-entry
+						// Upstream c2319b8e9: the chat tile's focus target for the tile focus hand-off.
+						data-tile-focus-target=""
 						value={prompt}
 						onChange={(e) => {
 							setHistoryWalk(null);

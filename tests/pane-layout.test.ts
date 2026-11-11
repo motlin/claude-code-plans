@@ -16,6 +16,7 @@ import {
 	collapsePane,
 	defaultPaneLayout,
 	expandPane,
+	focusNeighbour,
 	focusPane,
 	hiddenWhileExpanded,
 	isNodeHidden,
@@ -255,6 +256,35 @@ describe("openPane follows upstream placement", () => {
 	});
 });
 
+describe("focusNeighbour (upstream ca67f2c9d Oe)", () => {
+	// [files | [changes / terminal]] | chat
+	const NESTED = stack("row", 1, [
+		stack("row", 2, [tile("files", 1), stack("column", 1, [tile("changes", 1), tile("terminal", 1)])]),
+		tile("chat", 1),
+	]);
+
+	it("walks up from the tile, trying earlier siblings nearest first, then later ones, and enters a stack by its first leaf", () => {
+		const all = () => true;
+		expect({
+			files: focusNeighbour(NESTED, "files", all),
+			terminal: focusNeighbour(NESTED, "terminal", all),
+			terminalSkippingChanges: focusNeighbour(NESTED, "terminal", (id) => id !== "changes"),
+			chat: focusNeighbour(NESTED, "chat", all),
+			onlyChat: focusNeighbour(NESTED, "files", (id) => id === "chat"),
+			none: focusNeighbour(NESTED, "files", () => false),
+			missing: focusNeighbour(NESTED, "plan", all),
+		}).toStrictEqual({
+			files: "changes",
+			terminal: "changes",
+			terminalSkippingChanges: "files",
+			chat: "files",
+			onlyChat: "chat",
+			none: null,
+			missing: null,
+		});
+	});
+});
+
 describe("closePane", () => {
 	it.each([
 		[
@@ -268,17 +298,29 @@ describe("closePane", () => {
 			),
 		],
 		[
-			"closing the focused pane focuses chat",
+			"closing the focused pane focuses its nearest layout neighbour (upstream Oe), a stack by its first leaf",
 			THREE_PANES,
 			"files",
 			slotted(
 				layout(
 					[tile("chat", 2), stack("column", 1, [tile("background-tasks", 1), tile("changes", 1)])],
-					"chat",
+					"background-tasks",
 				),
 				"files",
 				{anchorIds: ["background-tasks", "changes"], otherSideIds: [], direction: "row", side: 1, ratio: 1 / 3},
 			),
+		],
+		[
+			"closing the focused pane focuses its previous sibling first",
+			TWO_PANES,
+			"changes",
+			slotted(layout([tile("chat", 2), tile("background-tasks", 1)], "background-tasks"), "changes", {
+				anchorIds: ["background-tasks"],
+				otherSideIds: [],
+				direction: "column",
+				side: 1,
+				ratio: 1,
+			}),
 		],
 		[
 			"closing a stacked pane hands the column's flex to its sibling",
@@ -305,7 +347,7 @@ describe("closePane", () => {
 	it("clears expanded mode when the expanded pane closes", () => {
 		expect(closePane(expandPane(TWO_PANES, "changes"), "changes")).toEqual(
 			slotted(
-				layout([tile("chat", 2), tile("background-tasks", 1)], "chat"),
+				layout([tile("chat", 2), tile("background-tasks", 1)], "background-tasks"),
 				"changes",
 				CHANGES_UNDER_BACKGROUND_TASKS,
 			),
@@ -348,8 +390,11 @@ describe("closePane", () => {
 			closePane(TWO_PANES, "changes", {unprompted: true}),
 			closePane({...TWO_PANES, closedSlots: {files: filesSlot}}, "changes", {unprompted: true}),
 		]).toEqual([
-			layout([tile("chat", 2), tile("background-tasks", 1)], "chat"),
-			{...layout([tile("chat", 2), tile("background-tasks", 1)], "chat"), closedSlots: {files: filesSlot}},
+			layout([tile("chat", 2), tile("background-tasks", 1)], "background-tasks"),
+			{
+				...layout([tile("chat", 2), tile("background-tasks", 1)], "background-tasks"),
+				closedSlots: {files: filesSlot},
+			},
 		]);
 	});
 });
@@ -1225,7 +1270,7 @@ describe("updatePhoneView", () => {
 	it("applies the update directly when the layout already fits", () => {
 		expect(updatePhoneView(TWO_PANES, (state) => closePane(state, "changes"))).toStrictEqual(
 			slotted(
-				layout([tile("chat", 2), tile("background-tasks", 1)], "chat"),
+				layout([tile("chat", 2), tile("background-tasks", 1)], "background-tasks"),
 				"changes",
 				CHANGES_UNDER_BACKGROUND_TASKS,
 			),

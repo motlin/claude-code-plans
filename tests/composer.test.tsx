@@ -39,6 +39,8 @@ describe("Composer", () => {
 		const classes = overlay.className.split(" ");
 
 		expect({
+			// Upstream c2319b8e9 marks the editor as the chat tile's focus target for the tile focus hand-off.
+			focusTarget: textarea.getAttribute("data-tile-focus-target"),
 			nativePlaceholder: textarea.hasAttribute("placeholder"),
 			ariaPlaceholder: textarea.getAttribute("aria-placeholder"),
 			text: overlay.textContent,
@@ -57,6 +59,7 @@ describe("Composer", () => {
 				"text-entry-floored",
 			].filter((name) => classes.includes(name)),
 		}).toStrictEqual({
+			focusTarget: "",
 			nativePlaceholder: false,
 			ariaPlaceholder: "Describe a task or ask a question",
 			text: "Describe a task or ask a question",
