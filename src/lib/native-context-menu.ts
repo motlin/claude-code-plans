@@ -210,3 +210,46 @@ export function wantsNativeContextMenu(event: ReactMouseEvent, canAttachAsContex
 	}
 	return contextMenuOnSelection(event) && !canAttachAsContext;
 }
+
+/*
+ * Popups that opt out of the browser's context menu. Upstream's cds `Menu.Popup` adds nothing on `contextmenu`;
+ * each call site opts in through its `onContextMenu` (shared-1 `ik`/`I0`, and the plain `qw`/`xT`/`Yi`).
+ */
+
+/** Upstream `qw`/`xT`/`Yi`/`ki`: a right-click anywhere inside the popup never shows the browser menu. */
+export function preventNativeContextMenu(event: {preventDefault: () => void}): void {
+	event.preventDefault();
+}
+
+/** Upstream `Zd`: targets whose right-click keeps the browser menu. */
+export const NATIVE_MENU_TARGETS =
+	'input, textarea, select, [contenteditable]:not([contenteditable="false"]), a[href], img, video, audio, [role="menu"]';
+
+/**
+ * Upstream `ik`: whether a `contextmenu` reaching `root` should suppress the browser menu. Not when it is already
+ * prevented, when `root` is off the native path (it only reached the handler through a React portal), when it
+ * started on (or inside) a native-menu target, or when a non-blank selection touches `root`.
+ */
+export function suppressesNativeMenu(event: {defaultPrevented: boolean; nativeEvent: Event}, root: Element): boolean {
+	if (event.defaultPrevented) return false;
+	const path = event.nativeEvent.composedPath();
+	const rootIndex = path.indexOf(root);
+	if (
+		rootIndex === -1 ||
+		path.slice(0, rootIndex + 1).some((target) => target instanceof Element && target.matches(NATIVE_MENU_TARGETS))
+	) {
+		return false;
+	}
+	const selection = root.ownerDocument.getSelection();
+	return !(
+		selection !== null &&
+		selection.rangeCount > 0 &&
+		selection.toString().trim() !== "" &&
+		selection.getRangeAt(0).intersectsNode(root)
+	);
+}
+
+/** Upstream `I0`: suppress the browser menu in a popover unless the press is on a native target or selected text. */
+export function preventNativeMenuOutsideText(event: ReactMouseEvent): void {
+	if (suppressesNativeMenu(event, event.currentTarget)) event.preventDefault();
+}

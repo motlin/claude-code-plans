@@ -1,11 +1,12 @@
 import {Ellipsis, MousePointer2} from "lucide-react";
-import {useEffect, useId, useState, useSyncExternalStore} from "react";
+import {useEffect, useId, useSyncExternalStore} from "react";
 
 import {HerdrRequestError, toggleRemoteControl} from "../../lib/api/herdr";
 import {writeClipboardText} from "../../lib/clipboard";
 import type {RemoteControlState} from "../../lib/session-state";
 import {useToast} from "../toast-context";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
+import {useMenuOpensOnContextMenu} from "../ui/use-menu-opens-on-context-menu";
 import {Skeleton} from "../ui/skeleton";
 import {Spinner} from "../ui/spinner";
 import {Switch} from "../ui/switch";
@@ -66,20 +67,13 @@ export function RemoteControlRow({
 }: RemoteControlRowProps) {
 	const switchId = useId();
 	const toast = useToast();
-	const [menuOpen, setMenuOpen] = useState(false);
+	const {rootProps: menuRootProps, onContextMenu: openMenuOnContextMenu} = useMenuOpensOnContextMenu();
 	const optionsUrl = state === "on" ? url : null;
 	return (
 		<div
 			data-rail-remote-control=""
 			className={ROW_CLASS}
-			{...(optionsUrl === null
-				? {}
-				: {
-						onContextMenu: (event: React.MouseEvent) => {
-							event.preventDefault();
-							setMenuOpen(true);
-						},
-					})}
+			{...(optionsUrl === null ? {} : {onContextMenu: openMenuOnContextMenu})}
 		>
 			<RemoteControlIcon />
 			<label data-rail-row-label="" htmlFor={switchId} className={LABEL_CLASS}>
@@ -96,7 +90,7 @@ export function RemoteControlRow({
 			)}
 			{optionsUrl !== null && (
 				<span className={OPTIONS_WRAPPER_CLASS}>
-					<Menu open={menuOpen} onOpenChange={setMenuOpen}>
+					<Menu {...menuRootProps}>
 						<Tooltip content="Remote Control options" suppressAfterPopup>
 							<MenuTrigger aria-label="Remote Control options" className={OPTIONS_TRIGGER_CLASS}>
 								<Ellipsis aria-hidden className="size-4" />

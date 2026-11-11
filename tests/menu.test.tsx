@@ -20,6 +20,7 @@ import {
 	MenuSubTrigger,
 	MenuTrigger,
 } from "../src/components/ui/menu";
+import {useMenuOpensOnContextMenu} from "../src/components/ui/use-menu-opens-on-context-menu";
 import {preloadMenuSheet} from "../src/components/ui/menu-sheet-loader";
 import {submenuAnchor} from "../src/components/ui/menu-anchor";
 import {DensityOverride} from "../src/components/ui/density";
@@ -823,6 +824,31 @@ describe("Menu", () => {
 		await flush();
 
 		expect(handlers.onCopy).not.toHaveBeenCalled();
+	});
+
+	it("opens a menu button's own dropdown on right-click, anchored to the trigger", async () => {
+		function RepoMenu() {
+			const {rootProps, onContextMenu} = useMenuOpensOnContextMenu();
+			return (
+				<Menu {...rootProps}>
+					<MenuTrigger onContextMenu={onContextMenu}>Repo</MenuTrigger>
+					<MenuContent>
+						<MenuItem>Copy path</MenuItem>
+					</MenuContent>
+				</Menu>
+			);
+		}
+		render(<RepoMenu />);
+		const trigger = screen.getByRole("button", {name: "Repo"});
+
+		const prevented = !fireEvent.contextMenu(trigger);
+		await flush();
+
+		expect({
+			prevented,
+			items: screen.getAllByRole("menuitem").map((item) => item.textContent),
+			expanded: trigger.getAttribute("aria-expanded"),
+		}).toStrictEqual({prevented: true, items: ["Copy path"], expanded: "true"});
 	});
 
 	it("closes on Escape and restores focus to the trigger", async () => {
