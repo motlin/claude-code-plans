@@ -4,6 +4,7 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SplitDropdownButton, type SplitItem} from "../src/components/ui/split-dropdown-button";
+import {compileAll} from "./helpers/tailwind-design-system";
 
 afterEach(() => {
 	cleanup();
@@ -240,7 +241,17 @@ describe("SplitDropdownButton", () => {
 			"duration-[60ms]",
 			"ease-[cubic-bezier(.165,.84,.44,1)]",
 		];
-		const BASE = ["cds-reset", "relative", "outline-none", "focus-visible:shadow-focus", "disabled:opacity-40"];
+		const BASE = [
+			"cds-reset",
+			"relative",
+			"outline-none",
+			"focus-visible:shadow-focus",
+			"[&:disabled:not([aria-busy])]:opacity-disabled",
+			"disabled:pointer-events-none",
+			"stacks:[&:disabled:not([aria-busy])]:opacity-100",
+			"stacks:[&:disabled:not([aria-busy])]:text-button-disabled",
+			"stacks:[&:disabled:not([aria-busy])]:[--shortcut-cap-ink:currentColor]",
+		];
 		const PRIMARY_SEGMENT = [
 			"inline-flex",
 			"items-center",
@@ -268,8 +279,11 @@ describe("SplitDropdownButton", () => {
 			"[[data-cds-segment]:has([aria-expanded=true])+&>[data-seam-line]]:opacity-0",
 			"[&:has(+[data-cds-segment]_[aria-expanded=true])>[data-seam-line]]:opacity-0",
 		];
-		const SOLID_SEAM_DISABLED =
-			"[[data-cds-segment]:has(:disabled)+&:has(+[data-cds-segment]_:disabled)]:opacity-40";
+		const SOLID_SEAM_DISABLED = [
+			"[[data-cds-segment]:has(:disabled:not([aria-busy]))+&:has(+[data-cds-segment]_:disabled:not([aria-busy]))]:opacity-disabled",
+			"stacks:[[data-cds-segment]:has(:disabled:not([aria-busy]))+&:has(+[data-cds-segment]_:disabled:not([aria-busy]))]:opacity-100",
+			"stacks:[[data-cds-segment]:has(:disabled:not([aria-busy]))+&:has(+[data-cds-segment]_:disabled:not([aria-busy]))]:bg-fill-disabled",
+		];
 		const ROOT = ["relative", "inline-flex", "w-fit", "shrink-0", "items-stretch", "rounded-r5", "group/split"];
 
 		function seam() {
@@ -300,6 +314,7 @@ describe("SplitDropdownButton", () => {
 				"font-control",
 				"hover:bg-fill-primary-hover",
 				"aria-expanded:bg-fill-primary-hover",
+				"stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled",
 			];
 			expect(looks()).toStrictEqual({
 				root: ROOT,
@@ -314,7 +329,7 @@ describe("SplitDropdownButton", () => {
 					"self-stretch",
 					"bg-fill-primary",
 					...SEAM_FADE,
-					SOLID_SEAM_DISABLED,
+					...SOLID_SEAM_DISABLED,
 				],
 				line: ["absolute", "inset-x-0", "inset-y-1/4", "bg-on-primary", "opacity-25"],
 			});
@@ -329,6 +344,7 @@ describe("SplitDropdownButton", () => {
 				"font-control-regular",
 				"hover:bg-fill-secondary-hover",
 				"aria-expanded:bg-fill-secondary-hover",
+				"stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled",
 			];
 			expect(looks()).toStrictEqual({
 				root: [
@@ -367,6 +383,7 @@ describe("SplitDropdownButton", () => {
 				"font-control",
 				"hover:bg-fill-danger-hover",
 				"aria-expanded:bg-fill-danger-hover",
+				"stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled",
 			];
 			expect(looks()).toStrictEqual({
 				root: ROOT,
@@ -381,7 +398,7 @@ describe("SplitDropdownButton", () => {
 					"self-stretch",
 					"bg-fill-danger",
 					...SEAM_FADE,
-					SOLID_SEAM_DISABLED,
+					...SOLID_SEAM_DISABLED,
 				],
 				line: ["absolute", "inset-x-0", "inset-y-1/4", "bg-on-danger", "opacity-25"],
 			});
@@ -389,7 +406,17 @@ describe("SplitDropdownButton", () => {
 	});
 
 	describe("ghost look", () => {
-		const BASE = ["cds-reset", "relative", "outline-none", "focus-visible:shadow-focus", "disabled:opacity-40"];
+		const BASE = [
+			"cds-reset",
+			"relative",
+			"outline-none",
+			"focus-visible:shadow-focus",
+			"[&:disabled:not([aria-busy])]:opacity-disabled",
+			"disabled:pointer-events-none",
+			"stacks:[&:disabled:not([aria-busy])]:opacity-100",
+			"stacks:[&:disabled:not([aria-busy])]:text-button-disabled",
+			"stacks:[&:disabled:not([aria-busy])]:[--shortcut-cap-ink:currentColor]",
+		];
 		const GHOST_BUTTON = ["group/btn", "isolate", "inline-flex", "items-center", "rounded-r5"];
 		const RING = [
 			"shadow-[inset_0_0_0_1px_var(--split-ring,transparent)]",
@@ -411,6 +438,7 @@ describe("SplitDropdownButton", () => {
 			"group-hover/btn:bg-fill-ghost-hover",
 			"group-aria-expanded/btn:bg-fill-ghost-hover",
 			"group-aria-pressed/btn:bg-accent-100/15",
+			"stacks:group-[:disabled:not([aria-busy])]/btn:bg-transparent",
 			"transition-[background-color,box-shadow,color]",
 			"duration-[60ms]",
 			"ease-[cubic-bezier(.165,.84,.44,1)]",
@@ -676,9 +704,12 @@ describe("SplitDropdownButton", () => {
 					"transition-colors",
 					"duration-[60ms]",
 					"ease-out",
-					"peer-disabled/slot:opacity-40",
+					"peer-[:disabled:not([aria-busy])]/slot:opacity-disabled",
+					"stacks:peer-[:disabled:not([aria-busy])]/slot:opacity-100",
+					"stacks:peer-[:disabled:not([aria-busy])]/slot:text-button-disabled",
 					"bg-fill-secondary",
 					"peer-hover/slot:bg-fill-secondary-hover",
+					"stacks:peer-[:disabled:not([aria-busy])]/slot:bg-fill-disabled",
 				],
 			});
 		});
@@ -777,5 +808,28 @@ describe("SplitDropdownButton", () => {
 
 			expect([...primary().parentElement!.classList]).toStrictEqual(["relative", "flex", "min-w-0", "shrink"]);
 		});
+	});
+});
+
+describe("SplitDropdownButton disabled look, as upstream's rM / NM / CY / CL", () => {
+	it("compiles the disabled slot, solid seam and ghost paint selectors, skipping busy segments, with the fizzy parts under stacks:", async () => {
+		const stacks =
+			':where([data-cds-fizzy-lake~="color"], [data-cds-fizzy-lake~="color"] *):not(:where([data-cds-theme], [data-cds-theme] *))';
+		const seam =
+			"[[data-cds-segment]:has(:disabled:not([aria-busy]))+&:has(+[data-cds-segment]_:disabled:not([aria-busy]))]";
+		const compiled = await compileAll([
+			"peer-[:disabled:not([aria-busy])]/slot:opacity-disabled",
+			"stacks:peer-[:disabled:not([aria-busy])]/slot:bg-fill-disabled",
+			`${seam}:opacity-disabled`,
+			`stacks:${seam}:bg-fill-disabled`,
+			"stacks:group-[:disabled:not([aria-busy])]/btn:bg-transparent",
+		]);
+		expect(Object.values(compiled)).toStrictEqual([
+			String.raw`.peer-\[\:disabled\:not\(\[aria-busy\]\)\]\/slot\:opacity-disabled:is(:where(.peer\/slot):is(:disabled:not([aria-busy])) ~ *) { opacity: var(--upstream-opacity-disabled, 0.4); }`,
+			String.raw`@media (forced-colors: none) { .stacks\:peer-\[\:disabled\:not\(\[aria-busy\]\)\]\/slot\:bg-fill-disabled${stacks}:is(:where(.peer\/slot):is(:disabled:not([aria-busy])) ~ *) { background-color: var(--upstream-fill-disabled); } }`,
+			String.raw`[data-cds-segment]:has(:disabled:not([aria-busy])) + .\[\[data-cds-segment\]\:has\(\:disabled\:not\(\[aria-busy\]\)\)\+\&\:has\(\+\[data-cds-segment\]_\:disabled\:not\(\[aria-busy\]\)\)\]\:opacity-disabled:has( + [data-cds-segment] :disabled:not([aria-busy])) { opacity: var(--upstream-opacity-disabled, 0.4); }`,
+			String.raw`@media (forced-colors: none) { [data-cds-segment]:has(:disabled:not([aria-busy])) + .stacks\:\[\[data-cds-segment\]\:has\(\:disabled\:not\(\[aria-busy\]\)\)\+\&\:has\(\+\[data-cds-segment\]_\:disabled\:not\(\[aria-busy\]\)\)\]\:bg-fill-disabled${stacks}:has( + [data-cds-segment] :disabled:not([aria-busy])) { background-color: var(--upstream-fill-disabled); } }`,
+			String.raw`@media (forced-colors: none) { .stacks\:group-\[\:disabled\:not\(\[aria-busy\]\)\]\/btn\:bg-transparent${stacks}:is(:where(.group\/btn):is(:disabled:not([aria-busy])) *) { background-color: transparent; } }`,
+		]);
 	});
 });

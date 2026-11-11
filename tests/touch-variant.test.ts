@@ -5,7 +5,7 @@ import {compileAll} from "./helpers/tailwind-design-system";
 const styles = readFileSync("src/styles/globals.css", "utf8");
 
 describe("custom variants", () => {
-	it("declares upstream's touch: variant as the coarse-pointer or no-hover media query, next to dark, the motion, the viewport-height and the density variants, and cds-Icon", () => {
+	it("declares upstream's touch: variant as the coarse-pointer or no-hover media query, next to dark, the motion, the viewport-height and the density variants, cds-Icon and stacks", () => {
 		expect(styles.match(/^@custom-variant .*$/gm)).toStrictEqual([
 			"@custom-variant dark (&:is(.dark *));",
 			"@custom-variant touch {",
@@ -18,6 +18,7 @@ describe("custom variants", () => {
 			'@custom-variant compact (&:where([data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="compact"] [data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *)))));',
 			'@custom-variant comfortable (&:where([data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] [data-density="compact"] *)))));',
 			"@custom-variant cds-Icon (& [data-cds=Icon]);",
+			"@custom-variant stacks {",
 			'@custom-variant page-rtl (&:where(:root[dir="rtl"] :dir(rtl)));',
 		]);
 	});

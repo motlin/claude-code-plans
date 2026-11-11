@@ -2,18 +2,18 @@ import {useState, type ButtonHTMLAttributes, type DragEvent, type KeyboardEvent,
 
 import type {ElicitationFocus} from "../lib/herdr/elicitation-keys";
 import {StatusPulse} from "./status-dot";
+import {CDS_BUTTON_DISABLED, CDS_BUTTON_DISABLED_FILL} from "./ui/cds-button-disabled";
 import {DisabledReason} from "./ui/disabled-reason";
 import {Spinner} from "./ui/spinner";
 
-const ACTION_BUTTON =
-	"relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-[var(--upstream-radius)] whitespace-nowrap select-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-50";
+const ACTION_BUTTON = `relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-[var(--upstream-radius)] whitespace-nowrap select-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${CDS_BUTTON_DISABLED}`;
 
 /** Upstream's `stacks:shadow-none`: the secondary's drop shadow and inset ring only paint outside fizzy colour. */
 const PRE_FIZZY = "[:root:not([data-cds-fizzy-lake~=color])_&]";
 
 const ACTION_VARIANTS = {
-	secondary: `bg-fill-secondary font-control-regular ${PRE_FIZZY}:shadow-field-drop after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] ${PRE_FIZZY}:after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)] text-primary hover:bg-fill-secondary-hover`,
-	primary: "bg-primary font-control text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-primary/80",
+	secondary: `bg-fill-secondary font-control-regular ${PRE_FIZZY}:shadow-field-drop after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] ${PRE_FIZZY}:after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)] text-primary hover:bg-fill-secondary-hover ${CDS_BUTTON_DISABLED_FILL}`,
+	primary: `bg-primary font-control text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-primary/80 ${CDS_BUTTON_DISABLED_FILL}`,
 } as const;
 
 /** Upstream's cds Button inline pad: pad-md, capped by --cds-button-pad-max (9px under fizzy panels). */

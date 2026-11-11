@@ -4,7 +4,7 @@ import {cleanup, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
 import {PermissionCard} from "../src/components/permission-card";
-import {compileAll} from "./helpers/tailwind-design-system";
+import {compileAll, loadDesignSystem} from "./helpers/tailwind-design-system";
 
 afterEach(cleanup);
 
@@ -65,7 +65,7 @@ describe("approval card chrome", () => {
 	it("uses upstream's control-token secondary and primary cds Buttons: h-control, text-body, the button pad, --cds-radius, the control weight, no ring or drop shadow under fizzy colour", () => {
 		const chrome = permissionChrome();
 		const base =
-			"relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-[var(--upstream-radius)] whitespace-nowrap select-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus disabled:cursor-not-allowed disabled:opacity-50 h-control px-[min(var(--cds-pad-md),var(--cds-button-pad-max,var(--cds-pad-md)))] text-body";
+			"relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-[var(--upstream-radius)] whitespace-nowrap select-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus [&:disabled:not([aria-busy])]:opacity-disabled disabled:pointer-events-none stacks:[&:disabled:not([aria-busy])]:opacity-100 stacks:[&:disabled:not([aria-busy])]:text-button-disabled stacks:[&:disabled:not([aria-busy])]:[--shortcut-cap-ink:currentColor] h-control px-[min(var(--cds-pad-md),var(--cds-button-pad-max,var(--cds-pad-md)))] text-body";
 		expect({
 			card: [
 				"rounded-card",
@@ -80,8 +80,8 @@ describe("approval card chrome", () => {
 			shortcut: chrome.root?.querySelector("[data-approval-primary] [data-cds=Shortcut]")?.getAttribute("class"),
 		}).toStrictEqual({
 			card: [],
-			secondary: `${base} bg-fill-secondary font-control-regular [:root:not([data-cds-fizzy-lake~=color])_&]:shadow-field-drop after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] [:root:not([data-cds-fizzy-lake~=color])_&]:after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)] text-primary hover:bg-fill-secondary-hover`,
-			primary: `${base} bg-primary font-control text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-primary/80`,
+			secondary: `${base} bg-fill-secondary font-control-regular [:root:not([data-cds-fizzy-lake~=color])_&]:shadow-field-drop after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] [:root:not([data-cds-fizzy-lake~=color])_&]:after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)] text-primary hover:bg-fill-secondary-hover stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled`,
+			primary: `${base} bg-primary font-control text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-primary/80 stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled`,
 			shortcut:
 				"inline-flex shrink-0 items-center gap-[2px] text-caption [&:where(:root[dir=rtl]_:dir(rtl))]:flex-row-reverse pointer-coarse:hidden ms-1 me-[calc((var(--cds-h-control)-1em-6px)/2-min(var(--cds-pad-md),var(--cds-button-pad-max,var(--cds-pad-md))))]",
 		});
@@ -96,6 +96,49 @@ describe("approval card chrome", () => {
 			":root:not([data-cds-fizzy-lake~=color])",
 			":root:not([data-cds-fizzy-lake~=color])",
 		]);
+	});
+});
+
+describe("approval card disabled actions, as upstream's cds Button", () => {
+	it("emits the fizzy disabled rules after the base opacity and the variants' hover paint, so they win at equal specificity", async () => {
+		const candidates = [
+			"stacks:[&:disabled:not([aria-busy])]:opacity-100",
+			"stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled",
+			"[&:disabled:not([aria-busy])]:opacity-disabled",
+			"hover:bg-fill-secondary-hover",
+			"hover:bg-primary/80",
+		];
+		const order = (await loadDesignSystem()).getClassOrder(candidates);
+		const sorted = order.toSorted(([, a], [, b]) => (a === null || b === null ? 0 : a < b ? -1 : a > b ? 1 : 0));
+		expect(sorted.map(([name]) => name)).toStrictEqual([
+			"hover:bg-fill-secondary-hover",
+			"hover:bg-primary/80",
+			"[&:disabled:not([aria-busy])]:opacity-disabled",
+			"stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled",
+			"stacks:[&:disabled:not([aria-busy])]:opacity-100",
+		]);
+	});
+
+	it("compiles the disabled look: opacity .4 by default; under fizzy colour (outside forced colours and data-cds-theme) opacity 1 with the disabled ink, fill and cap ink; busy buttons excluded", async () => {
+		const disabled = ":disabled:not([aria-busy])";
+		const stacks =
+			':where([data-cds-fizzy-lake~="color"], [data-cds-fizzy-lake~="color"] *):not(:where([data-cds-theme], [data-cds-theme] *))';
+		const compiled = await compileAll([
+			"[&:disabled:not([aria-busy])]:opacity-disabled",
+			"disabled:pointer-events-none",
+			"stacks:[&:disabled:not([aria-busy])]:opacity-100",
+			"stacks:[&:disabled:not([aria-busy])]:text-button-disabled",
+			"stacks:[&:disabled:not([aria-busy])]:[--shortcut-cap-ink:currentColor]",
+			"stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled",
+		]);
+		expect(compiled).toStrictEqual({
+			"[&:disabled:not([aria-busy])]:opacity-disabled": `.\\[\\&\\:disabled\\:not\\(\\[aria-busy\\]\\)\\]\\:opacity-disabled${disabled} { opacity: var(--upstream-opacity-disabled, 0.4); }`,
+			"disabled:pointer-events-none": ".disabled\\:pointer-events-none:disabled { pointer-events: none; }",
+			"stacks:[&:disabled:not([aria-busy])]:opacity-100": `@media (forced-colors: none) { .stacks\\:\\[\\&\\:disabled\\:not\\(\\[aria-busy\\]\\)\\]\\:opacity-100${stacks}${disabled} { opacity: 100%; } }`,
+			"stacks:[&:disabled:not([aria-busy])]:text-button-disabled": `@media (forced-colors: none) { .stacks\\:\\[\\&\\:disabled\\:not\\(\\[aria-busy\\]\\)\\]\\:text-button-disabled${stacks}${disabled} { color: var(--upstream-text-button-disabled, var(--upstream-text-disabled, currentColor)); } }`,
+			"stacks:[&:disabled:not([aria-busy])]:[--shortcut-cap-ink:currentColor]": `@media (forced-colors: none) { .stacks\\:\\[\\&\\:disabled\\:not\\(\\[aria-busy\\]\\)\\]\\:\\[--shortcut-cap-ink\\:currentColor\\]${stacks}${disabled} { --shortcut-cap-ink: currentColor; } }`,
+			"stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled": `@media (forced-colors: none) { .stacks\\:\\[\\&\\:disabled\\:not\\(\\[aria-busy\\]\\)\\]\\:bg-fill-disabled${stacks}${disabled} { background-color: var(--upstream-fill-disabled); } }`,
+		});
 	});
 });
 

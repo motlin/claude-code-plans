@@ -48,6 +48,7 @@ import {
 import {APPROVAL_ACTION_SHORTCUT_CLASS, ApprovalActionButton} from "./approval-card";
 import {QuestionReceipt, type QuestionReceiptRow} from "./question-receipt";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
+import {CDS_BUTTON_DISABLED, CDS_ICON_ONLY_DISABLED} from "./ui/cds-button-disabled";
 import {Shortcut} from "./ui/shortcut";
 import {DisabledReason} from "./ui/disabled-reason";
 import {UserInlineText} from "./user-plain-text";
@@ -55,6 +56,9 @@ import {cutUnterminatedPrivateKey, maskSecrets, maskSecretsCompact} from "../lib
 
 /** Upstream's `@container (width <= 420px)` stack for the card's action row. */
 const STACK_ACTIONS = "@max-[420px]:flex-col @max-[420px]:items-stretch @max-[420px]:[&>*]:w-full";
+
+/** The pager's previous/next arrows: upstream's ghost icon-only cds Buttons, with their disabled look. */
+const PAGER_ARROW_CLASS = `flex size-5 cursor-pointer items-center justify-center rounded-r5 hover:bg-fill-ghost-hover ${CDS_BUTTON_DISABLED} ${CDS_ICON_ONLY_DISABLED}`;
 
 /** Upstream opens a single-select question on its first option. */
 function initialDraft(question: QuestionLike): QuestionCardDraft {
@@ -622,7 +626,7 @@ export function QuestionCard({
 							onClick={() => {
 								goTo(index - 1);
 							}}
-							className="flex size-5 cursor-pointer items-center justify-center rounded-r5 hover:bg-fill-ghost-hover disabled:cursor-default disabled:opacity-50"
+							className={PAGER_ARROW_CLASS}
 						>
 							<ChevronLeft aria-hidden="true" className="size-4" />
 						</button>
@@ -639,7 +643,7 @@ export function QuestionCard({
 							onClick={() => {
 								goTo(index + 1);
 							}}
-							className="flex size-5 cursor-pointer items-center justify-center rounded-r5 hover:bg-fill-ghost-hover disabled:cursor-default disabled:opacity-50"
+							className={PAGER_ARROW_CLASS}
 						>
 							<ChevronRight aria-hidden="true" className="size-4" />
 						</button>

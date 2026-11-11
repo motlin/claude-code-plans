@@ -66,6 +66,17 @@
 @custom-variant comfortable (&:where([data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] *):not(:where([data-density="comfortable"] [data-density="compact"] [data-density="comfortable"] [data-density="compact"] *)))));
 /* Upstream cds `cds-Icon:*` variants: style the Icons inside an element (`cds-Icon:text-secondary`). */
 @custom-variant cds-Icon (& [data-cds=Icon]);
+
+/* Upstream `stacks:`: fizzy colour on (outside a `data-cds-theme` scope), never under forced colours. */
+@custom-variant stacks {
+	@media (forced-colors: none) {
+		/* prettier-ignore */
+		&:where([data-cds-fizzy-lake~="color"], [data-cds-fizzy-lake~="color"] *):not(:where([data-cds-theme], [data-cds-theme] *)) {
+			@slot;
+		}
+	}
+}
+
 /* Upstream page-rtl: the element sits in a right-to-left part of a right-to-left page (the cds Collapsible caret). */
 @custom-variant page-rtl (&:where(:root[dir="rtl"] :dir(rtl)));
 

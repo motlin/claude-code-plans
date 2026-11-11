@@ -32,6 +32,7 @@ import {type FileSides, loadWithRetry, toLoadedFiles} from "./diff-file-lines";
 import {SHOW_MORE_LINES, expandSeparatorFromClick, relabelTrailingSeparator} from "./diff-separators";
 import {Icon} from "../ui/icon";
 import {DisabledReason} from "../ui/disabled-reason";
+import {CDS_BUTTON_DISABLED, CDS_GHOST_PAINT_DISABLED, CDS_ICON_ONLY_DISABLED} from "../ui/cds-button-disabled";
 import {IndicatorSlot, Pulse} from "../ui/pulse";
 import type {DiffFileMark} from "../../lib/diff-file-marks";
 import {ContextMenu, ContextMenuTrigger, Menu, MenuContent, MenuTrigger} from "../ui/menu";
@@ -260,10 +261,9 @@ const VIEWED_STALE = "Changed since you viewed it";
  * Upstream cds Button xs ghost iconOnly, whose paint sits on a `[data-cds-part=paint]` layer, plus `Fs` (was `lo`)
  * verbatim: a pressed check draws no selected paint, only the filled glyph, and keeps the ghost hover.
  */
-const VIEWED_BUTTON_CLASS =
-	"cds-reset group/btn relative isolate flex size-6 cursor-pointer items-center justify-center rounded-r5 text-secondary hover:text-primary hide-focus-ring focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-disabled aria-pressed:[&_[data-cds-part=paint]]:bg-transparent aria-pressed:hover:[&_[data-cds-part=paint]]:bg-fill-ghost-hover aria-pressed:hover:[&_[data-cds-part=paint]]:bg-none";
+const VIEWED_BUTTON_CLASS = `cds-reset group/btn relative isolate flex size-6 cursor-pointer items-center justify-center rounded-r5 text-secondary hover:text-primary hide-focus-ring focus-visible:shadow-focus ${CDS_BUTTON_DISABLED} ${CDS_ICON_ONLY_DISABLED} aria-pressed:[&_[data-cds-part=paint]]:bg-transparent aria-pressed:hover:[&_[data-cds-part=paint]]:bg-fill-ghost-hover aria-pressed:hover:[&_[data-cds-part=paint]]:bg-none`;
 const PAINT_LAYER_CLASS = "absolute -z-[1] rounded-[inherit] inset-0";
-const VIEWED_PAINT_CLASS = "absolute inset-0 rounded-[inherit] bg-transparent group-hover/btn:bg-fill-ghost-hover";
+const VIEWED_PAINT_CLASS = `absolute inset-0 rounded-[inherit] bg-transparent group-hover/btn:bg-fill-ghost-hover ${CDS_GHOST_PAINT_DISABLED}`;
 
 /** Upstream `Mo`: the header's Viewed check, with the Pulse indicator and a hidden description when stale. */
 function ViewedButton({mark}: {mark: DiffFileMark}) {

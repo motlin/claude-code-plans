@@ -1,6 +1,7 @@
 import {ChevronDown, Loader2} from "lucide-react";
 import {type CSSProperties, Fragment, type ReactElement, type ReactNode, useRef, useState} from "react";
 
+import {CDS_BUTTON_DISABLED, CDS_BUTTON_DISABLED_FILL, CDS_GHOST_PAINT_DISABLED} from "./cds-button-disabled";
 import {Menu, MenuContent, type MenuContentProps, MenuItem, MenuSeparator, MenuTrigger} from "./menu";
 import {Shortcut} from "./shortcut";
 import {Tooltip} from "./tooltip";
@@ -71,15 +72,17 @@ function tooltipText(tooltip: boolean | string | undefined, name: string | undef
 
 const ROOT_CLASS = "relative inline-flex w-fit shrink-0 items-stretch";
 const ROOT_GROUP_CLASS = "group/split";
-const BUTTON_CLASS = "cds-reset relative outline-none focus-visible:shadow-focus disabled:opacity-40";
+/* Each segment takes upstream's cds Button disabled look; the solid fills add its disabled paint. */
+const BUTTON_CLASS = `cds-reset relative outline-none focus-visible:shadow-focus ${CDS_BUTTON_DISABLED}`;
 const PAINT_TRANSITION =
 	"transition-[background-color,box-shadow,color] duration-[60ms] ease-[cubic-bezier(.165,.84,.44,1)]";
 const SEAM_BASE_CLASS = "w-px shrink-0 self-stretch";
 /* The seam line fades while either neighbour segment is hovered or holds the open menu. */
 const SEAM_FADE_CLASS =
 	"[[data-cds-segment]:hover+&>[data-seam-line]]:opacity-0 [&:has(+[data-cds-segment]:hover)>[data-seam-line]]:opacity-0 [[data-cds-segment]:has([aria-expanded=true])+&>[data-seam-line]]:opacity-0 [&:has(+[data-cds-segment]_[aria-expanded=true])>[data-seam-line]]:opacity-0";
-/* Solid seams dim with their segments when both neighbours are disabled. */
-const SOLID_SEAM_DISABLED_CLASS = "[[data-cds-segment]:has(:disabled)+&:has(+[data-cds-segment]_:disabled)]:opacity-40";
+/* Upstream's `CY`: solid seams take the disabled look with their segments when both neighbours are disabled. */
+const SOLID_SEAM_DISABLED_CLASS =
+	"[[data-cds-segment]:has(:disabled:not([aria-busy]))+&:has(+[data-cds-segment]_:disabled:not([aria-busy]))]:opacity-disabled stacks:[[data-cds-segment]:has(:disabled:not([aria-busy]))+&:has(+[data-cds-segment]_:disabled:not([aria-busy]))]:opacity-100 stacks:[[data-cds-segment]:has(:disabled:not([aria-busy]))+&:has(+[data-cds-segment]_:disabled:not([aria-busy]))]:bg-fill-disabled";
 
 /** Upstream's cds secondary frame: an inset 1px `fill-secondary-ring` drawn on `::after` over the fill. */
 const SECONDARY_RING_CLASS =
@@ -91,19 +94,19 @@ type JoinedVariant = "primary" | "secondary" | "danger";
 const JOINED_LOOKS: Record<JoinedVariant, {root: string; fill: string; seam: string; line: string}> = {
 	primary: {
 		root: "",
-		fill: "bg-fill-primary text-on-primary font-control hover:bg-fill-primary-hover aria-expanded:bg-fill-primary-hover",
+		fill: `bg-fill-primary text-on-primary font-control hover:bg-fill-primary-hover aria-expanded:bg-fill-primary-hover ${CDS_BUTTON_DISABLED_FILL}`,
 		seam: `relative ${SEAM_BASE_CLASS} bg-fill-primary ${SEAM_FADE_CLASS} ${SOLID_SEAM_DISABLED_CLASS}`,
 		line: "absolute inset-x-0 inset-y-1/4 bg-on-primary opacity-25",
 	},
 	secondary: {
 		root: `shadow-field-drop ${SECONDARY_RING_CLASS}`,
-		fill: "bg-fill-secondary text-primary font-control-regular hover:bg-fill-secondary-hover aria-expanded:bg-fill-secondary-hover",
+		fill: `bg-fill-secondary text-primary font-control-regular hover:bg-fill-secondary-hover aria-expanded:bg-fill-secondary-hover ${CDS_BUTTON_DISABLED_FILL}`,
 		seam: `relative ${SEAM_BASE_CLASS} bg-fill-secondary ${SEAM_FADE_CLASS}`,
 		line: "absolute inset-x-0 inset-y-1/4 bg-border",
 	},
 	danger: {
 		root: "",
-		fill: "bg-fill-danger text-on-danger font-control hover:bg-fill-danger-hover aria-expanded:bg-fill-danger-hover",
+		fill: `bg-fill-danger text-on-danger font-control hover:bg-fill-danger-hover aria-expanded:bg-fill-danger-hover ${CDS_BUTTON_DISABLED_FILL}`,
 		seam: `relative ${SEAM_BASE_CLASS} bg-fill-danger ${SEAM_FADE_CLASS} ${SOLID_SEAM_DISABLED_CLASS}`,
 		line: "absolute inset-x-0 inset-y-1/4 bg-on-danger opacity-25",
 	},
@@ -119,7 +122,7 @@ const GHOST_ROOT_CLASS =
 const GHOST_LABELED_ROOT_CLASS =
 	"[&>[data-cds-segment]:first-child_[data-part=paint]]:pe-0 [&>[data-cds-segment]:last-child_[data-part=paint]]:ps-0";
 const GHOST_BUTTON_CLASS = "group/btn isolate inline-flex items-center";
-const GHOST_PAINT_CLASS = `absolute inset-0 -z-[1] rounded-[inherit] p-[var(--split-inset)] bg-clip-content group-hover/btn:bg-fill-ghost-hover group-aria-expanded/btn:bg-fill-ghost-hover group-aria-pressed/btn:bg-accent-100/15 ${PAINT_TRANSITION}`;
+const GHOST_PAINT_CLASS = `absolute inset-0 -z-[1] rounded-[inherit] p-[var(--split-inset)] bg-clip-content group-hover/btn:bg-fill-ghost-hover group-aria-expanded/btn:bg-fill-ghost-hover group-aria-pressed/btn:bg-accent-100/15 ${CDS_GHOST_PAINT_DISABLED} ${PAINT_TRANSITION}`;
 const GHOST_ICON_PRIMARY_CLASS =
 	"justify-center aria-pressed:text-accent-100 size-[var(--split-h)] group-data-[popup-open]/split:pointer-events-none";
 const GHOST_ICON_CARET_CLASS =
@@ -128,13 +131,17 @@ const GHOST_LABELED_PRIMARY_CLASS = "aria-pressed:text-accent-100 h-[var(--split
 const GHOST_LABELED_PRIMARY_PAD_CLASS = "ps-2 pe-[5px]";
 const GHOST_LABELED_CARET_CLASS =
 	"justify-center h-[var(--split-h)] w-auto ps-0 pe-1 after:absolute after:inset-y-0 after:start-0 after:-end-2 after:content-['']";
-/* Upstream's status slot: a trailing span that paints with the primary and follows its hover and disabled state. */
+/*
+ * Upstream's status slot: a trailing span that paints with the primary and follows its hover and disabled state
+ * (`rM`; the solid fills add `NM`, SLOT_DISABLED_FILL).
+ */
 const STATUS_SLOT_CLASS =
-	"flex shrink-0 items-center self-stretch pe-3 transition-colors duration-[60ms] ease-out peer-disabled/slot:opacity-40";
+	"flex shrink-0 items-center self-stretch pe-3 transition-colors duration-[60ms] ease-out peer-[:disabled:not([aria-busy])]/slot:opacity-disabled stacks:peer-[:disabled:not([aria-busy])]/slot:opacity-100 stacks:peer-[:disabled:not([aria-busy])]/slot:text-button-disabled";
+const SLOT_DISABLED_FILL = "stacks:peer-[:disabled:not([aria-busy])]/slot:bg-fill-disabled";
 const STATUS_SLOT_FILLS: Record<NonNullable<SplitDropdownButtonProps["variant"]>, string> = {
-	primary: "bg-fill-primary peer-hover/slot:bg-fill-primary-hover",
-	secondary: "bg-fill-secondary peer-hover/slot:bg-fill-secondary-hover",
-	danger: "bg-fill-danger peer-hover/slot:bg-fill-danger-hover",
+	primary: `bg-fill-primary peer-hover/slot:bg-fill-primary-hover ${SLOT_DISABLED_FILL}`,
+	secondary: `bg-fill-secondary peer-hover/slot:bg-fill-secondary-hover ${SLOT_DISABLED_FILL}`,
+	danger: `bg-fill-danger peer-hover/slot:bg-fill-danger-hover ${SLOT_DISABLED_FILL}`,
 	ghost: "peer-hover/slot:bg-fill-ghost-hover",
 };
 /* With a status slot the primary keeps its start padding and hands the end padding to the slot. */

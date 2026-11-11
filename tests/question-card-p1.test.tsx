@@ -7,6 +7,7 @@ import {QuestionCard} from "../src/components/question-card";
 import {QuestionReceipt} from "../src/components/question-receipt";
 import type {QuestionLike} from "../src/lib/ask-user-question";
 import {clearLanding, landingSeams, recordLanding} from "../src/lib/approval-slot-landing";
+import {compileAll} from "./helpers/tailwind-design-system";
 
 afterEach(cleanup);
 
@@ -51,6 +52,48 @@ describe("QuestionCard root radius, as upstream's epitaxy-approval-card rounded-
 			card: true,
 			r7: false,
 		});
+	});
+});
+
+describe("QuestionCard Skip while read-only, as upstream's disabled cds Button", () => {
+	it("keeps the disabled Skip at opacity 1 with the fizzy disabled ink and fill, opacity .4 elsewhere, and no pointer events", () => {
+		render(<QuestionCard questions={[SINGLE]} />);
+		const skip = screen.getByRole("button", {name: "Skip"});
+		const classes = skip.className.split(" ");
+		expect({
+			disabled: skip.hasAttribute("disabled"),
+			disabledClasses: classes.filter((name) => name.includes("disabled") || name.includes("not-allowed")),
+		}).toStrictEqual({
+			disabled: true,
+			disabledClasses: [
+				"[&:disabled:not([aria-busy])]:opacity-disabled",
+				"disabled:pointer-events-none",
+				"stacks:[&:disabled:not([aria-busy])]:opacity-100",
+				"stacks:[&:disabled:not([aria-busy])]:text-button-disabled",
+				"stacks:[&:disabled:not([aria-busy])]:[--shortcut-cap-ink:currentColor]",
+				"stacks:[&:disabled:not([aria-busy])]:bg-fill-disabled",
+			],
+		});
+	});
+});
+
+describe("QuestionCard pager arrows, as upstream's ghost icon-only cds Buttons", () => {
+	it("gives both arrows the disabled look with the dimmer icon-only ink under fizzy colour, and no pointer events", () => {
+		render(<QuestionCard questions={[SINGLE, MULTI]} onSubmit={async () => {}} />);
+		const classes = ["Show previous question", "Show next question"].map(
+			(name) => screen.getByRole("button", {name}).className,
+		);
+		const arrow =
+			"flex size-5 cursor-pointer items-center justify-center rounded-r5 hover:bg-fill-ghost-hover [&:disabled:not([aria-busy])]:opacity-disabled disabled:pointer-events-none stacks:[&:disabled:not([aria-busy])]:opacity-100 stacks:[&:disabled:not([aria-busy])]:text-button-disabled stacks:[&:disabled:not([aria-busy])]:[--shortcut-cap-ink:currentColor] stacks:[&:disabled:not([aria-busy])]:not-in-data-[cds=SplitDropdownButton]:[--upstream-text-button-disabled:var(--upstream-icon-only-disabled)]";
+		expect(classes).toStrictEqual([arrow, arrow]);
+	});
+
+	it("compiles the icon-only ink swap only under fizzy colour, outside a SplitDropdownButton, and never while busy", async () => {
+		const candidate =
+			"stacks:[&:disabled:not([aria-busy])]:not-in-data-[cds=SplitDropdownButton]:[--upstream-text-button-disabled:var(--upstream-icon-only-disabled)]";
+		expect((await compileAll([candidate]))[candidate]).toStrictEqual(
+			String.raw`@media (forced-colors: none) { .stacks\:\[\&\:disabled\:not\(\[aria-busy\]\)\]\:not-in-data-\[cds\=SplitDropdownButton\]\:\[--upstream-text-button-disabled\:var\(--upstream-icon-only-disabled\)\]:where([data-cds-fizzy-lake~="color"], [data-cds-fizzy-lake~="color"] *):not(:where([data-cds-theme], [data-cds-theme] *)):disabled:not([aria-busy]):not(:where([data-cds="SplitDropdownButton"]) *) { --upstream-text-button-disabled: var(--upstream-icon-only-disabled); } }`,
+		);
 	});
 });
 
