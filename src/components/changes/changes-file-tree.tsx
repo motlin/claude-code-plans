@@ -5,6 +5,10 @@ import {clampFileColumnWidth, useFileColumnResize} from "../../hooks/use-file-co
 import {formatRelativeTimeFromIso} from "../../lib/relative-time";
 import {changedFileKindLabels} from "../../lib/schema-choices";
 import {FileTypeIcon} from "../file-type-icon";
+import {FILE_TYPE_ICON_SIZE_PX} from "../file-type-icon-size";
+import {Icon} from "../ui/icon";
+import {Pulse} from "../ui/pulse";
+import {useTreeFileMark} from "./diff-marks-context";
 import {useSettings} from "../settings-context";
 import {FILE_COLUMN_HANDLE_Z, FileColumnEdgeHandle} from "../ui/file-column-edge-handle";
 import {FileColumnResizeShield} from "../ui/file-column-resize-shield";
@@ -14,6 +18,7 @@ import {RESIZE_HANDLE_HALF_CLIP_CLASS} from "../ui/resize-pill";
 import {
 	buildChangedFileTree,
 	type ChangedFileInput,
+	type ChangedFileTreeFile,
 	type ChangedFileTreeNode,
 	type ChangedFileTreeOptions,
 } from "./changed-file-tree";
@@ -138,41 +143,142 @@ function TreeRows({
 			);
 		}
 		const fileKey = `${sectionKey}:${node.path}`;
-		return withRowMenu(
-			fileKey,
-			<button
+		return (
+			<FileRow
 				key={fileKey}
-				type="button"
-				data-diff-tree-row
-				role="treeitem"
-				tabIndex={-1}
-				aria-level={node.depth + 1}
-				aria-current={node.path === activePath ? "true" : undefined}
-				title={node.path}
-				draggable
-				onDragStart={(event) => {
-					event.dataTransfer.setData("text/plain", node.path);
-				}}
-				onClick={(event) => {
-					onFileClick(event, node.path);
-				}}
-				className={ROW_CLASS}
-				style={{paddingLeft}}
-			>
-				<FileTypeIcon fileName={node.name} size="xs" className="text-muted-control" />
-				<span className="flex min-w-0 flex-1 items-baseline gap-1">
-					<span className={flat ? "shrink-0 truncate" : "min-w-0 truncate"}>{node.name}</span>
-					{flat && node.dir !== "" && (
-						<span className="min-w-0 truncate text-footnote text-ink-muted">{node.dir}</span>
-					)}
-				</span>
-				<DiffCounts additions={node.additions} deletions={node.deletions} />
-			</button>,
-			node.path,
-			false,
-			rowMenu,
+				node={node}
+				rowKey={fileKey}
+				flat={flat}
+				paddingLeft={paddingLeft}
+				active={node.path === activePath}
+				onFileClick={onFileClick}
+				rowMenu={rowMenu}
+			/>
 		);
 	});
+}
+
+const TREE_ICON_PX = `${String(FILE_TYPE_ICON_SIZE_PX.xs)}px`;
+const TREE_ICON_BOX = {width: TREE_ICON_PX, height: TREE_ICON_PX};
+
+/** Upstream `Ec`: the check a mark slot shows on hover. */
+function HoverCheck() {
+	return (
+		<span className="hidden group-hover/mark:contents">
+			<Icon name="CheckCircle" size="xs" className="text-secondary" />
+		</span>
+	);
+}
+
+/** Upstream `Dc`: the file icon, which a markable row turns into a hover check. */
+function UnmarkedFileIcon({name, markable}: {name: string; markable: boolean}) {
+	// FileTypeIcon adds upstream's `shrink-0` itself.
+	if (!markable) return <FileTypeIcon fileName={name} size="xs" className="text-muted-control" />;
+	return (
+		<span data-diff-tree-mark="" className="group/mark grid shrink-0 place-items-center" style={TREE_ICON_BOX}>
+			<span className="contents group-hover/mark:hidden">
+				<FileTypeIcon fileName={name} size="xs" className="text-muted-control" />
+			</span>
+			<HoverCheck />
+		</span>
+	);
+}
+
+/** Upstream `Oc`: a marked row's filled check, or a stale row's accent dot that turns into the check on hover. */
+function FileMarkGlyph({stale}: {stale: boolean}) {
+	if (!stale) {
+		return (
+			<Icon
+				name="CheckCircleFilled"
+				size="xs"
+				alt="Viewed"
+				data-diff-tree-mark=""
+				className="order-first shrink-0 text-secondary hover:text-primary"
+			/>
+		);
+	}
+	return (
+		<span
+			role="img"
+			aria-label="Changed since you viewed it"
+			data-diff-tree-mark=""
+			className="group/mark order-first grid shrink-0 place-items-center"
+			style={TREE_ICON_BOX}
+		>
+			<Pulse animate={false} className="group-hover/mark:hidden" />
+			<HoverCheck />
+		</span>
+	);
+}
+
+/**
+ * Upstream `Tc`: a click toggles the mark only from inside the mark slot, without ⌘/Ctrl, a touch pointer, or a
+ * text selection in the row's document.
+ */
+function isMarkToggleClick(event: MouseEvent<HTMLButtonElement>): boolean {
+	const native = event.nativeEvent;
+	if (event.metaKey || event.ctrlKey) return false;
+	if ("pointerType" in native && native.pointerType === "touch") return false;
+	const selection = event.currentTarget.ownerDocument.getSelection();
+	if (selection !== null && selection.toString() !== "") return false;
+	return event.target instanceof Element && event.target.closest("[data-diff-tree-mark]") !== null;
+}
+
+function FileRow({
+	node,
+	rowKey,
+	flat,
+	paddingLeft,
+	active,
+	onFileClick,
+	rowMenu,
+}: {
+	node: ChangedFileTreeFile;
+	rowKey: string;
+	flat: boolean;
+	paddingLeft: number;
+	active: boolean;
+	onFileClick: (event: MouseEvent<HTMLButtonElement>, path: string) => void;
+	rowMenu: ChangedFileRowMenu | undefined;
+}) {
+	const mark = useTreeFileMark(node.path);
+	const marked = mark !== undefined && mark.status !== "none";
+	const nameInk = mark?.status === "marked" && !active ? " text-muted-as-secondary" : "";
+	return withRowMenu(
+		rowKey,
+		<button
+			type="button"
+			data-diff-tree-row
+			role="treeitem"
+			tabIndex={-1}
+			aria-level={node.depth + 1}
+			aria-current={active ? "true" : undefined}
+			title={node.path}
+			draggable
+			onDragStart={(event) => {
+				event.dataTransfer.setData("text/plain", node.path);
+			}}
+			onClick={(event) => {
+				if (mark?.canMark === true && isMarkToggleClick(event)) mark.setMarked(mark.status !== "marked");
+				else onFileClick(event, node.path);
+			}}
+			className={ROW_CLASS}
+			style={{paddingLeft}}
+		>
+			{!marked && <UnmarkedFileIcon name={node.name} markable={mark?.canMark === true} />}
+			<span className={`flex min-w-0 flex-1 items-baseline gap-1${nameInk}`}>
+				<span className={flat ? "shrink-0 truncate" : "min-w-0 truncate"}>{node.name}</span>
+				{flat && node.dir !== "" && (
+					<span className="min-w-0 truncate text-footnote text-ink-muted">{node.dir}</span>
+				)}
+			</span>
+			{marked && <FileMarkGlyph stale={mark.status === "stale"} />}
+			<DiffCounts additions={node.additions} deletions={node.deletions} />
+		</button>,
+		node.path,
+		false,
+		rowMenu,
+	);
 }
 
 export interface ChangedFileCommit {

@@ -19,6 +19,9 @@ import {
 import {adoptHunkHeadingCss, decorateHunkHeadings} from "./diff-hunk-heading";
 import {railsPostRender} from "./diff-rails";
 import {Icon} from "../ui/icon";
+import {DisabledReason} from "../ui/disabled-reason";
+import {IndicatorSlot, Pulse} from "../ui/pulse";
+import type {DiffFileMark} from "../../lib/diff-file-marks";
 import {ContextMenu, ContextMenuTrigger, Menu, MenuContent, MenuTrigger} from "../ui/menu";
 import {createMenuHandle, type MenuHandle} from "../ui/menu-handle";
 import {Tooltip} from "../ui/tooltip";
@@ -50,6 +53,8 @@ export interface DiffFileProps {
 	headerMenu?: ReactNode;
 	/** Adds the header's "…" More actions dropdown for `headerMenu` (see `diffFileMenuButtonShown`). */
 	headerMenuButton?: boolean;
+	/** The file's viewed mark: adds the header's Viewed check. */
+	mark?: DiffFileMark | undefined;
 	annotations?: readonly DiffFileAnnotation[];
 	/** Enables the hovered line's gutter "+" that opens a comment card on that line. */
 	onRequestChanges?: (target: DiffLineRange) => void;
@@ -128,6 +133,8 @@ export interface DiffFileHeaderProps {
 	 * toggle is offered on a real (not `isSyntheticDiffRow`) file.
 	 */
 	showMenuButton?: boolean | undefined;
+	/** The file's viewed mark (upstream `Bs`): adds the Viewed check and, when stale, the changed-since label. */
+	mark?: DiffFileMark | undefined;
 }
 
 const OPEN_FILE_BUTTON_CLASS =
@@ -223,6 +230,61 @@ function MoreActionsButton({menu}: {menu: ReactNode}) {
 	);
 }
 
+const VIEWED_UNAVAILABLE = "This file can’t be marked as viewed. Later changes to it wouldn’t be detected.";
+const VIEWED_STALE = "Changed since you viewed it";
+
+/**
+ * Upstream cds Button xs ghost iconOnly, plus `Fs` (was `lo`): a pressed check draws no selected paint, only the
+ * filled glyph, and keeps the ghost hover.
+ */
+const VIEWED_BUTTON_CLASS =
+	"flex size-6 cursor-pointer items-center justify-center rounded-r5 bg-transparent text-secondary hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-disabled aria-pressed:bg-transparent aria-pressed:hover:bg-fill-ghost-hover";
+
+/** Upstream `Mo`: the header's Viewed check, with the Pulse indicator and a hidden description when stale. */
+function ViewedButton({mark}: {mark: DiffFileMark}) {
+	const staleId = useId();
+	const marked = mark.status === "marked";
+	const stale = mark.status === "stale";
+	return (
+		<span className="pointer-events-auto flex">
+			<DisabledReason reason={mark.canMark ? undefined : VIEWED_UNAVAILABLE} side="bottom">
+				<Tooltip
+					content={marked ? "Mark as not viewed" : "Mark as viewed"}
+					detail={stale ? VIEWED_STALE : undefined}
+					side="bottom"
+					openWhen={() => mark.canMark}
+				>
+					<button
+						type="button"
+						aria-label="Viewed"
+						aria-pressed={marked}
+						aria-describedby={stale ? staleId : undefined}
+						disabled={!mark.canMark}
+						data-cds="Button"
+						data-cds-ghost=""
+						data-cds-icon-only=""
+						data-size="xs"
+						onClick={() => {
+							mark.setMarked(!marked);
+						}}
+						className={VIEWED_BUTTON_CLASS}
+					>
+						<IndicatorSlot
+							icon={<Icon name={marked ? "CheckCircleFilled" : "CheckCircle"} size="sm" />}
+							indicator={stale ? <Pulse animate={false} /> : undefined}
+						/>
+					</button>
+				</Tooltip>
+			</DisabledReason>
+			{stale && (
+				<span id={staleId} hidden>
+					{VIEWED_STALE}
+				</span>
+			)}
+		</span>
+	);
+}
+
 function OpenFileButton({onOpenFile}: {onOpenFile: () => void}) {
 	return (
 		<button type="button" aria-label="Open file" onClick={onOpenFile} className={OPEN_FILE_BUTTON_CLASS}>
@@ -254,9 +316,18 @@ function DiffFileHeaderRow({
 	onOpenFile,
 	menu,
 	showMenuButton = false,
+	mark,
 }: DiffFileHeaderProps) {
 	const {name, dir} = splitPath(path);
 	const menuButton = showMenuButton && menu !== undefined;
+	const cluster = menuButton || mark !== undefined;
+	const stale = mark?.status === "stale";
+	const stats = (
+		<>
+			<span className="text-diff-added">+{additions}</span>
+			<span className="text-diff-removed">−{deletions}</span>
+		</>
+	);
 	const Chevron = collapsed ? ChevronRight : ChevronDown;
 	const content = (
 		<>
@@ -271,7 +342,11 @@ function DiffFileHeaderRow({
 				</span>
 				<LazyFileTypeIcon fileName={name} size="xs" className="text-ink-muted" />
 				<span className="flex min-w-0 text-body text-secondary">
-					<span dir="ltr" className="flex min-w-0 items-baseline gap-1 overflow-hidden whitespace-nowrap">
+					<span
+						dir="ltr"
+						title={stale ? `${path} (changed since you viewed it)` : undefined}
+						className="flex min-w-0 items-baseline gap-1 overflow-hidden whitespace-nowrap"
+					>
 						<span className="max-w-full shrink-0 truncate">{name}</span>
 						{dir && <span className="min-w-0 truncate text-footnote text-ink-muted">{dir}</span>}
 					</span>
@@ -284,23 +359,34 @@ function DiffFileHeaderRow({
 						</span>
 					</span>
 				)}
-				<span className="ml-auto flex shrink-0 items-center gap-0.5 text-body tabular-nums">
-					<span className="text-diff-added">+{additions}</span>
-					<span className="text-diff-removed">−{deletions}</span>
-				</span>
+				{stale ? (
+					// Upstream `go` (`ks`): the label wraps away inside the one-line clip when there's no room for it.
+					<span className="flex h-[1lh] min-w-min grow shrink-[1e12] flex-row-reverse flex-wrap items-center justify-end gap-[4px] overflow-clip text-body">
+						<span className="grid max-w-max min-w-0 grow basis-[8ch] grid-cols-[minmax(0,max-content)] text-muted-as-secondary">
+							<span className="truncate">{VIEWED_STALE}</span>
+						</span>
+						<span className="order-first ms-auto flex shrink-0 items-center gap-[4px] tabular-nums">
+							{stats}
+						</span>
+					</span>
+				) : (
+					<span className="ml-auto flex shrink-0 items-center gap-0.5 text-body tabular-nums">{stats}</span>
+				)}
 				{/* Upstream `go`: one w-control spacer per overlaid action, so the stats never slide under them. */}
 				{onOpenFile && (
 					<span
 						aria-hidden="true"
 						data-size="xs"
-						className={menuButton ? "w-6 shrink-0 @max-[15rem]/diff-file:hidden" : "w-6 shrink-0"}
+						className={cluster ? "w-6 shrink-0 @max-[15rem]/diff-file:hidden" : "w-6 shrink-0"}
 					/>
 				)}
+				{mark && <span aria-hidden="true" data-size="xs" className="w-6 shrink-0" />}
 				{menuButton && <span aria-hidden="true" data-size="xs" className="w-6 shrink-0" />}
 			</button>
-			{menuButton ? (
-				// Upstream `tc`: `pointer-events-none absolute inset-0 flex items-center justify-end gap-[4px] px-md`.
+			{cluster ? (
+				// Upstream `jo`: `pointer-events-none absolute inset-0 flex items-center justify-end gap-[4px] px-md`.
 				<span className="pointer-events-none absolute inset-0 flex items-center justify-end gap-[4px] px-3">
+					{mark && <ViewedButton mark={mark} />}
 					{onOpenFile && (
 						<span
 							className={`pointer-events-auto flex @max-[15rem]/diff-file:hidden ${HOVER_REVEAL_CLASS}`}
@@ -308,7 +394,7 @@ function DiffFileHeaderRow({
 							<OpenFileButton onOpenFile={onOpenFile} />
 						</span>
 					)}
-					<MoreActionsButton menu={menu} />
+					{menuButton && <MoreActionsButton menu={menu} />}
 				</span>
 			) : (
 				onOpenFile && (
@@ -362,6 +448,7 @@ export function DiffFile({
 	onOpenFile,
 	headerMenu,
 	headerMenuButton = false,
+	mark,
 	annotations,
 	onRequestChanges,
 }: DiffFileProps) {
@@ -464,6 +551,7 @@ export function DiffFile({
 							onOpenFile={onOpenFile}
 							menu={headerMenu}
 							showMenuButton={headerMenuButton}
+							mark={mark}
 						/>
 					);
 				}}

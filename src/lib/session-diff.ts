@@ -4,7 +4,15 @@ import {nonEmpty} from "./non-empty";
 const MAX_GIT_OUTPUT_BYTES = 100 * 1024 * 1024;
 const COMMIT_LIST_CAP = 50;
 const DEFAULT_BRANCH_CANDIDATES = ["main", "master"] as const;
-const STABLE_DIFF_ARGUMENTS = ["--no-color", "--no-ext-diff", "--src-prefix=a/", "--dst-prefix=b/", "-M"];
+const STABLE_DIFF_ARGUMENTS = [
+	"--no-color",
+	"--no-ext-diff",
+	"--src-prefix=a/",
+	"--dst-prefix=b/",
+	"-M",
+	// Full blob ids let a hunkless patch carry an exact viewed-mark fingerprint (upstream `fs`'s `ids:` form).
+	"--full-index",
+];
 
 export interface RunGitOptions {
 	/** Treat exit code 1 as success (git diff --no-index exits 1 when files differ). */

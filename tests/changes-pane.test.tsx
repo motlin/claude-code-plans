@@ -22,6 +22,7 @@ import type {FileRef} from "../src/lib/file-refs";
 import {onFileOpenRequest} from "../src/lib/file-open-requests";
 import {registerComposer, takeContextChips} from "../src/lib/context-attach";
 import {installLocalStorage} from "./fake-storage";
+import {type DiffMarkScope, fileMarkStatus, setFileMarked} from "../src/lib/diff-file-marks";
 
 const GREET_PATCH = `diff --git a/src/greet.ts b/src/greet.ts
 index 1111111..2222222 100644
@@ -315,7 +316,9 @@ describe("ChangesPaneView", () => {
 		await waitFor(() => {
 			expect(headerButton("src/greet.ts").getAttribute("aria-expanded")).toBe("false");
 		});
-		expect(screen.getByText("Files are collapsed for large diffs. Select a file to expand it.").tagName).toBe("P");
+		expect(
+			screen.getByText("Files are collapsed for large diffs. Select a file to expand it.").parentElement?.tagName,
+		).toBe("P");
 
 		await openSettings();
 		const expandAll = screen.getByRole("menuitem", {name: "Expand all files"});
@@ -608,7 +611,7 @@ index 3333333..0000000
 		stop();
 
 		expect({rows, opened}).toStrictEqual({
-			rows: ["Attach as context", "Copy", "─", "Open file", "Open in", "Show in Finder"],
+			rows: ["Attach as context", "Copy", "─", "Mark as viewed", "─", "Open file", "Open in", "Show in Finder"],
 			opened: [{path: "/repo/src/greet.ts"}, {path: "/repo/src/greet.ts"}],
 		});
 	});
@@ -618,7 +621,7 @@ index 3333333..0000000
 
 		expect({button: openButton("src/old.ts"), rows: await headerMenuRows("src/old.ts")}).toStrictEqual({
 			button: null,
-			rows: ["Attach as context", "Copy"],
+			rows: ["Attach as context", "Copy", "─", "Mark as viewed"],
 		});
 	});
 
@@ -649,7 +652,7 @@ index 3333333..0000000
 		stop();
 
 		expect({rows, shortcut, opened}).toStrictEqual({
-			rows: ["Attach as context", "Copy", "─", "Open file", "Open in", "Show in Finder"],
+			rows: ["Attach as context", "Copy", "─", "Mark as viewed", "─", "Open file", "Open in", "Show in Finder"],
 			shortcut: "Control+Enter",
 			opened: [{path: "/repo/src/greet.ts"}],
 		});
@@ -706,5 +709,194 @@ index 3333333..0000000
 				revealed: [JSON.stringify({path: "/repo/src/greet.ts"})],
 			});
 		});
+	});
+});
+
+describe("ChangesPaneView viewed marks (upstream mm/gs/Ms/Is/vp)", () => {
+	const SESSION = "session-marks";
+	const BRANCH_MARKS: DiffMarkScope = {
+		sessionId: SESSION,
+		repo: "/repo",
+		diff: JSON.stringify(["branch", "main", null]),
+	};
+	const OTHER_FILE: SessionDiffFile = {
+		...GREET_FILE,
+		path: "src/other.ts",
+		patch: GREET_PATCH.replaceAll("greet.ts", "other.ts"),
+	};
+
+	function paneProps(
+		files: SessionDiffFile[],
+		{
+			scope = "branch",
+			source = "git",
+			sessionId = SESSION,
+		}: {scope?: string; source?: "git" | "session-edits"; sessionId?: string | null} = {},
+	): ComponentProps<typeof ChangesPaneView> {
+		return {
+			diff: {...diffOf(files), scope, source},
+			scopes: SCOPES,
+			controls: null,
+			onRefresh: () => {},
+			scope,
+			...(sessionId === null ? {} : {sessionId}),
+		};
+	}
+
+	function renderMarks(...args: Parameters<typeof paneProps>) {
+		const view = render(
+			<SettingsProvider>
+				<ToastProvider>
+					<ChangesPaneView {...paneProps(...args)} />
+				</ToastProvider>
+			</SettingsProvider>,
+		);
+		return {
+			rerender: (...next: Parameters<typeof paneProps>) => {
+				view.rerender(
+					<SettingsProvider>
+						<ToastProvider>
+							<ChangesPaneView {...paneProps(...next)} />
+						</ToastProvider>
+					</SettingsProvider>,
+				);
+			},
+		};
+	}
+
+	function viewedButton(path: string): HTMLButtonElement | null {
+		return document.querySelector(`[data-diff-file-header="${path}"] button[aria-label="Viewed"]`);
+	}
+
+	function viewedButtons(): string[] {
+		return [...document.querySelectorAll<HTMLButtonElement>('button[aria-label="Viewed"]')].map(
+			(button) =>
+				`${button.closest("[data-diff-file-header]")?.getAttribute("data-diff-file-header") ?? "?"}${button.disabled ? " (disabled)" : ""}`,
+		);
+	}
+
+	function expanded(path: string): string | null {
+		return headerButton(path).getAttribute("aria-expanded");
+	}
+
+	it("gives each file header a Viewed check in a local git scope, disabled for a file it can't mark", () => {
+		const shown: Record<string, string[]> = {};
+		for (const scope of ["branch", "uncommitted", "commit:07bc05d1111111111111111111111111111111111"]) {
+			renderMarks([GREET_FILE, LOGO_FILE], {scope});
+			shown[scope] = viewedButtons();
+			cleanup();
+		}
+		expect(shown).toStrictEqual({
+			branch: ["src/greet.ts", "assets/logo.png (disabled)"],
+			uncommitted: ["src/greet.ts", "assets/logo.png (disabled)"],
+			"commit:07bc05d1111111111111111111111111111111111": ["src/greet.ts", "assets/logo.png (disabled)"],
+		});
+	});
+
+	it("shows no Viewed check for session edits, a turn, a diff with nothing markable, or no session", () => {
+		const shown: string[][] = [];
+		for (const args of [
+			[[GREET_FILE], {scope: "session", source: "session-edits"}],
+			[[GREET_FILE], {scope: "turn:turn-uuid", source: "session-edits"}],
+			[[{...GREET_FILE, patch: null}, LOGO_FILE], {}],
+			[[GREET_FILE], {sessionId: null}],
+		] as const) {
+			renderMarks(...(args as unknown as Parameters<typeof paneProps>));
+			shown.push(viewedButtons());
+			cleanup();
+		}
+		expect(shown).toStrictEqual([[], [], [], []]);
+	});
+
+	it("starts a marked file collapsed, collapses on Viewed and expands on a second click", async () => {
+		setFileMarked(BRANCH_MARKS, "src/greet.ts", GREET_PATCH, true);
+		renderMarks([GREET_FILE, OTHER_FILE]);
+		await waitFor(() => {
+			expect(expanded("src/other.ts")).toBe("true");
+		});
+		const initial = {greet: expanded("src/greet.ts"), other: expanded("src/other.ts")};
+		fireEvent.click(viewedButton("src/other.ts") ?? document.body);
+		const afterMark = {
+			other: expanded("src/other.ts"),
+			pressed: viewedButton("src/other.ts")?.getAttribute("aria-pressed"),
+		};
+		fireEvent.click(viewedButton("src/other.ts") ?? document.body);
+		expect({
+			initial,
+			afterMark,
+			afterUnmark: {
+				other: expanded("src/other.ts"),
+				status: fileMarkStatus(BRANCH_MARKS, "src/other.ts", OTHER_FILE.patch),
+			},
+		}).toStrictEqual({
+			initial: {greet: "false", other: "true"},
+			afterMark: {other: "false", pressed: "true"},
+			afterUnmark: {other: "true", status: "none"},
+		});
+	});
+
+	it("expands a marked file whose patch changed, and reads it stale", async () => {
+		const view = renderMarks([GREET_FILE]);
+		fireEvent.click(viewedButton("src/greet.ts") ?? document.body);
+		const collapsed = expanded("src/greet.ts");
+		view.rerender([{...GREET_FILE, patch: `${GREET_PATCH}+export const later = 1;\n`}]);
+		await waitFor(() => {
+			expect(expanded("src/greet.ts")).toBe("true");
+		});
+		const button = viewedButton("src/greet.ts");
+		expect({
+			collapsed,
+			described: document.getElementById(button?.getAttribute("aria-describedby") ?? "")?.textContent,
+		}).toStrictEqual({collapsed: "false", described: "Changed since you viewed it"});
+	});
+
+	it("still expands marked files with Expand all files", async () => {
+		setFileMarked(BRANCH_MARKS, "src/greet.ts", GREET_PATCH, true);
+		renderMarks([GREET_FILE]);
+		await openSettings();
+		fireEvent.click(screen.getByRole("menuitem", {name: "Expand all files"}));
+		expect(expanded("src/greet.ts")).toBe("true");
+	});
+
+	it("offers Mark as viewed in the header menu and shows the More button", async () => {
+		renderMarks([GREET_FILE]);
+		const more = document.querySelector('[data-diff-file-header="src/greet.ts"] button[aria-label="More actions"]');
+		fireEvent.contextMenu(headerButton("src/greet.ts"), {clientX: 10, clientY: 10});
+		fireEvent.click(await screen.findByRole("menuitem", {name: "Mark as viewed"}));
+		expect({
+			more: more !== null,
+			status: fileMarkStatus(BRANCH_MARKS, "src/greet.ts", GREET_PATCH),
+		}).toStrictEqual({more: true, status: "marked"});
+	});
+
+	it("adds the can't-be-marked sentence to the large-diff note only when nothing in a git diff is markable", () => {
+		const note = () => {
+			const paragraph = screen
+				.getByText("Files are collapsed for large diffs. Select a file to expand it.")
+				.closest("p");
+			return [...(paragraph?.childNodes ?? [])].map((node) =>
+				node.nodeType === Node.TEXT_NODE ? `text:${node.textContent ?? ""}` : node.textContent,
+			);
+		};
+		const large = {...GREET_FILE, additions: 10_001};
+		const notes: (string | null)[][] = [];
+		for (const args of [
+			[[{...large, patch: null}], {}],
+			[[large], {}],
+			[[{...large, patch: null}], {scope: "session", source: "session-edits"}],
+		] as const) {
+			renderMarks(...(args as unknown as Parameters<typeof paneProps>));
+			notes.push(note());
+			cleanup();
+		}
+		expect(notes).toStrictEqual([
+			[
+				"Files are collapsed for large diffs. Select a file to expand it.",
+				"text: ",
+				"Files in a diff this large can’t be marked as viewed.",
+			],
+			["Files are collapsed for large diffs. Select a file to expand it."],
+			["Files are collapsed for large diffs. Select a file to expand it."],
+		]);
 	});
 });

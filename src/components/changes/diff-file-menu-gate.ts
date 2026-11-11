@@ -1,9 +1,6 @@
-/** A file's viewed mark, as upstream's Changes file menu reads it (`changes-file-viewed-marks`). */
-export interface DiffFileMark {
-	status: "marked" | "stale" | "unmarked";
-	canMark: boolean;
-	setMarked(marked: boolean): void;
-}
+import type {DiffFileMark} from "../../lib/diff-file-marks";
+
+export type {DiffFileMark};
 
 /** Upstream `Iu` (was `Rs`): the "… N more" and index-flag rows of huge or flagged diffs, which get no More button. */
 export function isSyntheticDiffRow(path: string): boolean {

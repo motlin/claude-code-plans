@@ -222,7 +222,7 @@ describe("DiffFileMenuItems (upstream c44d00c7f ac/oc)", () => {
 	it("labels the mark row by status, toggles it, and disables it when the file can't be marked", async () => {
 		const setMarked = vi.fn<DiffFileMark["setMarked"]>();
 		const labels: Record<string, string | undefined> = {};
-		for (const status of ["marked", "stale", "unmarked"] as const) {
+		for (const status of ["marked", "stale", "none"] as const) {
 			renderMenu({...ALL_PROPS, wholeFile: undefined, mark: {status, canMark: true, setMarked}});
 			await openedRows();
 			const row = screen.getByRole("group").querySelector<HTMLElement>('[role="menuitem"]');
@@ -230,7 +230,7 @@ describe("DiffFileMenuItems (upstream c44d00c7f ac/oc)", () => {
 			if (row !== null) fireEvent.click(row);
 			cleanup();
 		}
-		renderMenu({...ALL_PROPS, mark: {status: "unmarked", canMark: false, setMarked}});
+		renderMenu({...ALL_PROPS, mark: {status: "none", canMark: false, setMarked}});
 		await openedRows();
 		const grouped = [...screen.getByRole("group").querySelectorAll('[role="menuitem"]')].map(
 			(row) => row.firstElementChild?.textContent,
@@ -238,7 +238,7 @@ describe("DiffFileMenuItems (upstream c44d00c7f ac/oc)", () => {
 		const cannotMark = disabledState("Mark as viewed");
 
 		expect({labels, calls: setMarked.mock.calls, grouped, cannotMark}).toStrictEqual({
-			labels: {marked: "Mark as not viewed", stale: "Mark as viewed", unmarked: "Mark as viewed"},
+			labels: {marked: "Mark as not viewed", stale: "Mark as viewed", none: "Mark as viewed"},
 			calls: [[false], [true], [true]],
 			grouped: ["Show whole file", "Mark as viewed"],
 			cannotMark: {

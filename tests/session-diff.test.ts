@@ -10,6 +10,7 @@ import {
 	resolveDiffBase,
 	type RunGit,
 } from "../src/lib/session-diff";
+import {patchFingerprint} from "../src/lib/diff-file-marks";
 import {runGit} from "./git-fixture";
 
 type FileSummary = Omit<DiffFile, "patch">;
@@ -224,6 +225,23 @@ describe("session diff service over a real repository", () => {
 				binary: false,
 			},
 		]);
+	});
+
+	it("writes full index ids, so a hunkless patch fingerprints by them (changes-file-viewed-marks T10)", async () => {
+		write("empty.txt", "");
+		git("add", "empty.txt");
+		write("keep.txt", "one\nTWO\nthree\n");
+
+		const result = await buildScopeDiff(repositoryDirectory, {kind: "uncommitted"});
+		if (result.kind !== "ok") throw new Error(`unexpected ${result.kind}`);
+		const empty = result.files.find((file) => file.path === "empty.txt")?.patch;
+		const keep = result.files.find((file) => file.path === "keep.txt")?.patch;
+		const blob = git("hash-object", "empty.txt");
+
+		expect({
+			emptyFingerprint: patchFingerprint(empty),
+			keepIndex: /^index [0-9a-f]{40}\.\.[0-9a-f]{40} 100644$/m.test(keep ?? ""),
+		}).toStrictEqual({emptyFingerprint: `ids:${"0".repeat(40)}..${blob}\nnew file 100`, keepIndex: true});
 	});
 
 	it("ignores whitespace-only changes when hideWhitespace is set", async () => {

@@ -706,12 +706,191 @@ describe("isSyntheticDiffRow (upstream Iu)", () => {
 	});
 
 	it("gates the More button on a viewed mark, or on the whole-file toggle for a real file", () => {
-		const mark = {status: "unmarked" as const, canMark: true, setMarked: () => {}};
+		const mark = {status: "none" as const, canMark: true, setMarked: () => {}};
 		expect([
 			diffFileMenuButtonShown({path: "src/a.ts", mark: undefined, wholeFileOffered: false}),
 			diffFileMenuButtonShown({path: "src/a.ts", mark: undefined, wholeFileOffered: true}),
 			diffFileMenuButtonShown({path: "… 12 more files", mark: undefined, wholeFileOffered: true}),
 			diffFileMenuButtonShown({path: "… 12 more files", mark, wholeFileOffered: false}),
 		]).toStrictEqual([false, true, false, true]);
+	});
+});
+
+describe("DiffFileHeader Viewed check (upstream c44d00c7f Mo/jo/go)", () => {
+	const FILE = "src/greet.ts";
+	const UNAVAILABLE = "This file can’t be marked as viewed. Later changes to it wouldn’t be detected.";
+	const GHOST_CLASS =
+		"flex size-6 cursor-pointer items-center justify-center rounded-r5 bg-transparent text-secondary hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:shadow-focus disabled:pointer-events-none disabled:opacity-disabled";
+
+	function renderMarked(
+		status: "marked" | "stale" | "none",
+		{canMark = true, onOpenFile}: {canMark?: boolean; onOpenFile?: () => void} = {},
+	) {
+		const setMarked = vi.fn<(marked: boolean) => void>();
+		const view = render(
+			<ToastProvider>
+				<DiffFileHeader
+					path={FILE}
+					additions={2}
+					deletions={1}
+					collapsed={false}
+					onToggle={() => {}}
+					onOpenFile={onOpenFile}
+					mark={{status, canMark, setMarked}}
+					showMenuButton
+					menu={<DiffFileMenuItems path={FILE} />}
+				/>
+			</ToastProvider>,
+		);
+		return {setMarked, view};
+	}
+
+	function viewed(): HTMLElement {
+		return screen.getByRole("button", {name: "Viewed"});
+	}
+
+	function hoverTip(element: HTMLElement): {text: string | null; side: string | null} | null {
+		vi.useFakeTimers();
+		try {
+			act(() => {
+				fireEvent.pointerEnter(element, {pointerType: "mouse"});
+				vi.advanceTimersByTime(1000);
+			});
+			const tip = screen.queryByRole("tooltip");
+			return tip === null ? null : {text: tip.textContent, side: tip.getAttribute("data-side")};
+		} finally {
+			vi.useRealTimers();
+		}
+	}
+
+	function glyph(button: HTMLElement): string | undefined {
+		return button.querySelector("svg path")?.getAttribute("fill") === "currentColor" ? "filled" : "outline";
+	}
+
+	it("renders an unpressed outline check whose tooltip says Mark as viewed below it, and marks on click", () => {
+		const {setMarked} = renderMarked("none");
+		const button = viewed();
+		const tip = hoverTip(button.parentElement ?? button);
+		fireEvent.click(button);
+		expect({
+			pressed: button.getAttribute("aria-pressed"),
+			glyph: glyph(button),
+			tip,
+			calls: setMarked.mock.calls,
+		}).toStrictEqual({
+			pressed: "false",
+			glyph: "outline",
+			tip: {text: "Mark as viewed", side: "bottom"},
+			calls: [[true]],
+		});
+	});
+
+	it("presses a marked check with the filled glyph and no selected paint, and unmarks on click", () => {
+		const {setMarked} = renderMarked("marked");
+		const button = viewed();
+		const tip = hoverTip(button.parentElement ?? button);
+		fireEvent.click(button);
+		expect({
+			pressed: button.getAttribute("aria-pressed"),
+			glyph: glyph(button),
+			className: button.className,
+			tip,
+			calls: setMarked.mock.calls,
+		}).toStrictEqual({
+			pressed: "true",
+			glyph: "filled",
+			className: `${GHOST_CLASS} aria-pressed:bg-transparent aria-pressed:hover:bg-fill-ghost-hover`,
+			tip: {text: "Mark as not viewed", side: "bottom"},
+			calls: [[false]],
+		});
+	});
+
+	it("disables the check behind upstream's disabled reason when the file can't be marked", () => {
+		renderMarked("none", {canMark: false});
+		const button = viewed() as HTMLButtonElement;
+		const wrapper = button.closest("[data-cds-disabled-reason-wrapper]");
+		const tip = hoverTip(wrapper instanceof HTMLElement ? wrapper : button);
+		expect({
+			disabled: button.disabled,
+			reason: wrapper?.querySelector("[data-cds-disabled-reason]")?.textContent,
+			tip,
+		}).toStrictEqual({
+			disabled: true,
+			reason: UNAVAILABLE,
+			tip: {text: UNAVAILABLE, side: "bottom"},
+		});
+	});
+
+	it("puts the Pulse indicator on a stale check, described as Changed since you viewed it", () => {
+		renderMarked("stale");
+		const button = viewed();
+		const described = button.getAttribute("aria-describedby");
+		const description = described === null ? null : document.getElementById(described);
+		const tip = hoverTip(button.parentElement ?? button);
+		expect({
+			description: description?.textContent,
+			hidden: description?.hidden,
+			pulse: button.querySelector("[data-cds-part=indicator] > [data-cds=Pulse]") !== null,
+			notched: button
+				.querySelector("[data-cds-part=indicator]")
+				?.previousElementSibling?.className.includes("[--btn-dot-r:"),
+			tip,
+		}).toStrictEqual({
+			description: "Changed since you viewed it",
+			hidden: true,
+			pulse: true,
+			notched: true,
+			tip: {text: "Mark as viewed Changed since you viewed it", side: "bottom"},
+		});
+	});
+
+	it("orders the cluster Viewed, Open file, More with a spacer for each", () => {
+		const {view} = renderMarked("none", {onOpenFile: () => {}});
+		const cluster = view.container.querySelector("[data-diff-file-header] > span");
+		const spacers = [
+			...view.container.querySelectorAll("[data-diff-file-header] > button > span[aria-hidden][data-size]"),
+		];
+		expect({
+			cluster: cluster?.className,
+			actions: [...(cluster?.querySelectorAll("button") ?? [])].map((button) =>
+				button.getAttribute("aria-label"),
+			),
+			spacers: spacers.map((spacer) => spacer.className),
+		}).toStrictEqual({
+			cluster: "pointer-events-none absolute inset-0 flex items-center justify-end gap-[4px] px-3",
+			actions: ["Viewed", "Open file", "More actions"],
+			spacers: ["w-6 shrink-0 @max-[15rem]/diff-file:hidden", "w-6 shrink-0", "w-6 shrink-0"],
+		});
+	});
+
+	it("moves a stale file's stats into the wrapping row beside the Changed since you viewed it label", () => {
+		const {view} = renderMarked("stale");
+		const row = view.container.querySelector("[data-diff-file-header] > button > span.overflow-clip");
+		const label = row?.firstElementChild;
+		const stats = row?.lastElementChild;
+		expect({
+			row: row?.className,
+			label: [label?.className, label?.firstElementChild?.className, label?.textContent],
+			stats: [stats?.className, stats?.textContent],
+			title: view.container.querySelector("[data-diff-file-header] [title]")?.getAttribute("title"),
+		}).toStrictEqual({
+			row: "flex h-[1lh] min-w-min grow shrink-[1e12] flex-row-reverse flex-wrap items-center justify-end gap-[4px] overflow-clip text-body",
+			label: [
+				"grid max-w-max min-w-0 grow basis-[8ch] grid-cols-[minmax(0,max-content)] text-muted-as-secondary",
+				"truncate",
+				"Changed since you viewed it",
+			],
+			stats: ["order-first ms-auto flex shrink-0 items-center gap-[4px] tabular-nums", "+2−1"],
+			title: "src/greet.ts (changed since you viewed it)",
+		});
+	});
+
+	it("keeps the plain stats span and no title when the file isn't stale", () => {
+		const {view} = renderMarked("marked");
+		expect({
+			row: view.container.querySelector("[data-diff-file-header] span.overflow-clip"),
+			stats: view.container.querySelector("[data-diff-file-header] > button > span.ml-auto")?.textContent,
+			title: view.container.querySelector("[data-diff-file-header] [title]"),
+		}).toStrictEqual({row: null, stats: "+2−1", title: null});
 	});
 });

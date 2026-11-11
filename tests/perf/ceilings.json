@@ -65,11 +65,11 @@
 		"raisedAt": "2026-11-10"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 770094,
+		"ceiling": 778154,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "raised from 760586 (2026-11-10): tool-output-details-for-claude-fold T1-T5 / tool-output-body-kinds T1-T5 rebuild the generic tool body (KeyValueCard): the output classifier (src/lib/tool-output-shape.ts), the body kind classifier with the JSON pretty-printer and markdown sniff (src/lib/tool-body-kind.ts, src/lib/pretty-json.ts), the Input/Output sections with the saved/preview notes and the Details for Claude fold (tool-output-section.tsx), the JSON code tile and linkified plain body (tool-output-body.tsx, linkify-plain.tsx) and the headingsUnder markdown rule. The transcript reader classifies every result as it pairs it, and expanded tool bodies draw with no lazy boundary. Went to 770094; the 1% tolerance is unchanged.",
-		"raisedAt": "2026-11-10"
+		"reason": "raised from 770094 (2026-11-11): changes-file-viewed-marks T1-T10 adds the Changes Viewed marks to the session bundle: the persisted diff-file-marks store with upstream's patch fingerprint (src/lib/diff-file-marks.ts) and its synchronous SHA-256 (src/lib/sha256.ts), the header Viewed check and stale label (diff-file.tsx), the tree row mark glyphs and toggle (changes-file-tree.tsx) and the pane's marks scope and collapse coupling. The sticky prompt bubble and tool output follow-up had already taken the measure to 777775 inside the 1% tolerance; this change adds 379 bytes. Went to 778154; the 1% tolerance is unchanged.",
+		"raisedAt": "2026-11-11"
 	},
 	"bundle.session.raw": {
 		"ceiling": 2304076,

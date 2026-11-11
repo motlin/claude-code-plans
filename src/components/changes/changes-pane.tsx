@@ -1,7 +1,7 @@
 import {Virtualizer} from "@pierre/diffs/react";
 import {useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
 import {ArrowRight, ChevronDown, List, Loader2, TriangleAlert} from "lucide-react";
-import {Fragment, type ReactNode, type RefObject, useCallback, useEffect, useRef, useState} from "react";
+import {Fragment, type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState} from "react";
 
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
 import {replaceReviewFindings, reviewQueryOptions} from "../../lib/api/reviews";
@@ -21,6 +21,14 @@ import {CHANGES_SCOPE_REQUEST_EVENT} from "../../lib/changes-scope-request";
 import {writeClipboardText} from "../../lib/clipboard";
 import {attachContext, requestComposerInsert} from "../../lib/context-attach";
 import {requestFileOpen} from "../../lib/file-open-requests";
+import {
+	type DiffFileMark,
+	type DiffMarkScope,
+	canMarkPatch,
+	fileMarkStatus,
+	notifyPatchChanges,
+	subscribeMarkChanges,
+} from "../../lib/diff-file-marks";
 import {asRecord} from "../../lib/narrow";
 import {loadChangesScope, saveChangesScope} from "../../lib/pane-layout";
 import type {ReviewFinding} from "../../lib/review-diff";
@@ -53,6 +61,8 @@ import {detectLanguage} from "../../lib/diff-utils";
 import {DiffContextMenu} from "./diff-context-menu";
 import {DiffFile, type DiffFileAnnotation, DiffFileHeader, DiffFileMenuHost, type DiffLineRange} from "./diff-file";
 import {DiffFileMenuItems} from "./diff-file-menu";
+import {diffFileMenuButtonShown} from "./diff-file-menu-gate";
+import {DiffMarksContext, type DiffMarksContextValue, useDiffFileMark} from "./diff-marks-context";
 import {GoToFile} from "./go-to-file";
 import {commentAnnotations, diffLineRanges, diffSideSnippet, findingAnnotations} from "./diff-annotations";
 import {isLargeDiff} from "./large-diff";
@@ -72,6 +82,7 @@ type SessionDiffCommit = Extract<SessionDiffScopesResponse, {kind: "git"}>["comm
 const BRANCH_SCOPE = "branch";
 const UNCOMMITTED_SCOPE = "uncommitted";
 const NO_FINDINGS: readonly ReviewFinding[] = [];
+const NO_FILES: readonly SessionDiffFile[] = [];
 const noop = (): void => {};
 const NO_MESSAGE = "(no message)";
 
@@ -455,6 +466,7 @@ function LazyDiffFile({
 	onCollapsedChange,
 	onOpenFile,
 	headerMenu,
+	mark,
 	annotations,
 	onRequestChanges,
 }: {
@@ -465,6 +477,7 @@ function LazyDiffFile({
 	onCollapsedChange: (collapsed: boolean) => void;
 	onOpenFile: (() => void) | undefined;
 	headerMenu: ReactNode;
+	mark: DiffFileMark | undefined;
 	annotations: readonly DiffFileAnnotation[] | undefined;
 	onRequestChanges: ((target: DiffLineRange) => void) | undefined;
 }) {
@@ -475,6 +488,7 @@ function LazyDiffFile({
 		enabled: !collapsed,
 	});
 	const patch = query.data?.file.patch;
+	const menuButton = diffFileMenuButtonShown({path: file.path, mark, wholeFileOffered: false});
 	if (!collapsed && patch) {
 		return (
 			<DiffFile
@@ -484,6 +498,8 @@ function LazyDiffFile({
 				onCollapsedChange={onCollapsedChange}
 				{...(onOpenFile ? {onOpenFile} : {})}
 				headerMenu={headerMenu}
+				headerMenuButton={menuButton}
+				mark={mark}
 				{...(annotations ? {annotations} : {})}
 				{...(onRequestChanges ? {onRequestChanges} : {})}
 			/>
@@ -502,6 +518,8 @@ function LazyDiffFile({
 				}}
 				onOpenFile={onOpenFile}
 				menu={headerMenu}
+				showMenuButton={menuButton}
+				mark={mark}
 			/>
 			{!collapsed && (
 				<p className="px-3 py-2 text-footnote text-ink-muted">
@@ -533,6 +551,8 @@ function ChangesFile({
 	annotations: readonly DiffFileAnnotation[] | undefined;
 	onRequestChanges: ((target: DiffLineRange) => void) | undefined;
 }) {
+	const mark = useDiffFileMark(file.path);
+	const menuButton = diffFileMenuButtonShown({path: file.path, mark, wholeFileOffered: false});
 	if (file.patch !== null && !file.binary) {
 		return (
 			<DiffFile
@@ -542,6 +562,8 @@ function ChangesFile({
 				onCollapsedChange={onCollapsedChange}
 				{...(onOpenFile ? {onOpenFile} : {})}
 				headerMenu={headerMenu}
+				headerMenuButton={menuButton}
+				mark={mark}
 				{...(annotations ? {annotations} : {})}
 				{...(onRequestChanges ? {onRequestChanges} : {})}
 			/>
@@ -557,6 +579,7 @@ function ChangesFile({
 				onCollapsedChange={onCollapsedChange}
 				onOpenFile={onOpenFile}
 				headerMenu={headerMenu}
+				mark={mark}
 				annotations={annotations}
 				onRequestChanges={onRequestChanges}
 			/>
@@ -572,6 +595,8 @@ function ChangesFile({
 			onToggle={() => {}}
 			onOpenFile={onOpenFile}
 			menu={headerMenu}
+			showMenuButton={menuButton}
+			mark={mark}
 		/>
 	);
 }
@@ -597,11 +622,13 @@ function ChangesFileMenu({
 	isDirectory?: boolean;
 }) {
 	const toast = useToast();
+	const mark = useDiffFileMark(isDirectory ? undefined : path);
 	return (
 		<DiffFileMenuItems
 			path={path}
 			absolutePath={absolutePath}
 			isDirectory={isDirectory}
+			mark={mark}
 			{...(openFileShortcut === undefined ? {} : {openFileShortcut})}
 			onAttachFile={() => {
 				const mention = `${mentionPath(absolutePath, cwd)}${isDirectory ? "/" : ""}`;
@@ -701,6 +728,78 @@ function isUnavailable(file: SessionDiffFile): boolean {
 	return file.binary;
 }
 
+/** Upstream `qn`: the mark scope key of a local git comparison; session edits and turns get no marks. */
+function markScopeKey(scope: string): string | undefined {
+	const parsed = parseDiffScope(scope);
+	if (parsed === null) return undefined;
+	if (parsed.kind === "branch" || parsed.kind === "uncommitted") return parsed.kind;
+	return parsed.kind === "commit" ? `commit:${parsed.sha}` : undefined;
+}
+
+/**
+ * Upstream `mm`'s `ct`: `{sessionId, repo, diff: JSON.stringify([markScopeKey, base, head])}` for a git
+ * comparison, memoized by its parts.
+ */
+function useMarkScope(
+	sessionId: string | undefined,
+	diff: SessionDiffResponse | undefined,
+	scopes: SessionDiffScopesResponse | undefined,
+): DiffMarkScope | undefined {
+	const key = diff?.source === "git" ? markScopeKey(diff.scope) : undefined;
+	const repo = diff?.root;
+	const comparison =
+		key !== undefined && scopes?.kind === "git" ? JSON.stringify([key, scopes.base, scopes.head]) : undefined;
+	return useMemo(
+		() =>
+			sessionId !== undefined && repo !== undefined && comparison !== undefined
+				? {sessionId, repo, diff: comparison}
+				: undefined,
+		[sessionId, repo, comparison],
+	);
+}
+
+function sameMarkScope(a: DiffMarkScope, b: DiffMarkScope): boolean {
+	return a.sessionId === b.sessionId && a.repo === b.repo && a.diff === b.diff;
+}
+
+/** Upstream `hs`: each file's patch by path, first file wins. */
+function patchMap(files: readonly SessionDiffFile[]): ReadonlyMap<string, string | null> {
+	const map = new Map<string, string | null>();
+	for (const file of files) if (!map.has(file.path)) map.set(file.path, file.patch);
+	return map;
+}
+
+/**
+ * Upstream CodeView's `Jt` on mark: once the file has collapsed under its header, a header that was on screen
+ * but has scrolled above the top is brought back to it.
+ */
+function keepHeaderInView(body: HTMLElement | null, path: string): void {
+	const header = body?.querySelector(`[data-diff-file-header="${CSS.escape(path)}"]`);
+	const scroller = header?.closest(".overflow-y-auto");
+	if (!(header instanceof HTMLElement) || !(scroller instanceof HTMLElement)) return;
+	const {top, bottom} = header.getBoundingClientRect();
+	const box = scroller.getBoundingClientRect();
+	if (bottom <= box.top || top >= box.bottom) return;
+	requestAnimationFrame(() => {
+		if (header.isConnected && header.getBoundingClientRect().top < scroller.getBoundingClientRect().top) {
+			header.scrollIntoView({block: "start"});
+		}
+	});
+}
+
+type LargeDiffNote = "collapsed" | "collapsed-no-marks" | "no-marks" | null;
+
+/** Upstream `vp` (2026-11-05 `mp`). */
+function LargeDiffNoteText({note}: {note: Exclude<LargeDiffNote, null>}) {
+	return (
+		<>
+			{note !== "no-marks" && <span>Files are collapsed for large diffs. Select a file to expand it.</span>}
+			{note === "collapsed-no-marks" && " "}
+			{note !== "collapsed" && <span>Files in a diff this large can’t be marked as viewed.</span>}
+		</>
+	);
+}
+
 export interface ChangesPaneViewProps {
 	/** Undefined while loading or after an error; `failure` says which. */
 	diff: SessionDiffResponse | undefined;
@@ -754,7 +853,7 @@ export function ChangesPaneView({
 }: ChangesPaneViewProps) {
 	const comments = useDiffComments(sessionId);
 	const iconSet = useActiveFileTypeIconSet();
-	const files = diff?.files ?? [];
+	const files = diff?.files ?? NO_FILES;
 	const hasFiles = files.length > 0;
 	const large = isLargeDiff(files);
 	const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
@@ -785,12 +884,55 @@ export function ChangesPaneView({
 	const scopeLabel = scopeLabelOf(scope, diff, scopes);
 	const selectedCommitSha = commitShaOf(scope);
 	const unavailableCount = files.filter(isUnavailable).length;
+	const baseMarkScope = useMarkScope(sessionId, diff, scopes);
+	const someMarkable = files.some((file) => canMarkPatch(file.patch));
+	const patches = useMemo(() => patchMap(files), [files]);
+	const marks = useMemo<DiffMarksContextValue | undefined>(
+		() => (baseMarkScope !== undefined && someMarkable ? {scope: baseMarkScope, patches} : undefined),
+		[baseMarkScope, someMarkable, patches],
+	);
+	const markScope = marks?.scope;
+	// Upstream `On`: a large diff whose patches can't be marked says so after the collapsed note.
+	const noMarks = large && files.length > 0 && baseMarkScope !== undefined && !someMarkable;
+	const largeNote: LargeDiffNote = large
+		? noMarks
+			? "collapsed-no-marks"
+			: "collapsed"
+		: noMarks
+			? "no-marks"
+			: null;
 
+	// A new comparison starts over; a refetch of the same one keeps each file's collapse (upstream's per-path map).
+	const servedScope = diff?.scope;
 	useEffect(() => {
 		setCollapsedOverrides({});
-	}, [diff]);
+	}, [servedScope]);
 
-	const isCollapsed = (path: string) => collapsedOverrides[path] ?? large;
+	// Upstream `Ms`: marking collapses the file and unmarking expands it, keeping a marked header on screen.
+	useEffect(() => {
+		if (markScope === undefined) return undefined;
+		return subscribeMarkChanges((scope, path, marked) => {
+			if (!sameMarkScope(scope, markScope)) return;
+			setCollapsedOverrides((previous) => (previous[path] === marked ? previous : {...previous, [path]: marked}));
+			if (marked) keepHeaderInView(bodyRef.current, path);
+		});
+	}, [markScope]);
+
+	// Upstream `Is`: a marked file whose patch changed under the same comparison is announced unmarked.
+	const previousPatches = useRef<{key: string; patches: ReadonlyMap<string, string | null>} | undefined>(undefined);
+	useEffect(() => {
+		const key =
+			markScope === undefined ? undefined : `${markScope.sessionId}\n${markScope.repo}\n${markScope.diff}`;
+		const previous = previousPatches.current;
+		previousPatches.current = key === undefined ? undefined : {key, patches};
+		if (markScope !== undefined && previous !== undefined && previous.key === key) {
+			notifyPatchChanges(markScope, previous.patches, patches);
+		}
+	}, [markScope, patches]);
+
+	const isCollapsed = (file: SessionDiffFile) =>
+		collapsedOverrides[file.path] ??
+		(large || (markScope !== undefined && fileMarkStatus(markScope, file.path, file.patch) === "marked"));
 	const setAllCollapsed = (collapsed: boolean) => {
 		setCollapsedOverrides(Object.fromEntries(files.map((file) => [file.path, collapsed])));
 	};
@@ -807,157 +949,160 @@ export function ChangesPaneView({
 		body = failure === undefined ? <LoadingChanges /> : <LoadFailure failure={failure} />;
 	} else if (hasFiles) {
 		body = (
-			<div className="flex min-h-0 flex-1">
-				<ChangedFilesSidebar
-					shown={showFiles}
-					onShownChange={(shown) => {
-						setSetting("diffShowTree", shown);
-					}}
-					files={files}
-					groupByFolder={settings.diffGroupByFolder}
-					groupByKind={settings.diffGroupByKind}
-					activePath={activePath}
-					onSelectFile={selectFile}
-					{...(onOpenFile ? {onOpenFile} : {})}
-					rowMenu={
-						sessionId === undefined
-							? undefined
-							: (path, isDirectory) => {
-									// Upstream `fp`: the header's menu plus Open file ⌘↵; folders get no Open file.
-									const cannotOpen =
-										!isDirectory && files.find((file) => file.path === path)?.status === "deleted";
-									return (
-										<ChangesFileMenu
-											sessionId={sessionId}
-											cwd={cwd}
-											path={path}
-											absolutePath={resolveAbsoluteDiffPath(diff.root, path)}
-											cannotOpen={cannotOpen}
-											isDirectory={isDirectory}
-											openFileShortcut="cmd+enter"
-											onOpenFile={
-												onOpenFile && !isDirectory && !cannotOpen
-													? () => {
-															onOpenFile(path);
-														}
-													: undefined
-											}
-										/>
-									);
-								}
-					}
-					commits={scopes?.kind === "git" ? scopes.commits : []}
-					selectedCommitSha={selectedCommitSha}
-					onSelectCommit={(sha) => {
-						onSelectScope(sha === null ? BRANCH_SCOPE : commitScope(sha));
-					}}
-					onCopyCommitSha={onCopyCommitSha}
-				/>
-				<div
-					ref={bodyRef}
-					onScrollCapture={(event) => {
-						const inView = fileInView(event.target);
-						if (inView !== null) setActivePath(inView);
-					}}
-					className="flex min-h-0 min-w-0 flex-1 flex-col"
-				>
-					{large && (
-						<p className="shrink-0 border-b border-border px-3 py-1.5 text-footnote text-ink-muted">
-							Files are collapsed for large diffs. Select a file to expand it.
-						</p>
-					)}
-					{/* The headers' "…" dropdown root sits outside every file's context menu (see DiffFileMenuHost). The
-					    button itself waits for whole-file (changes-pane-collapsed-context-threshold) or viewed marks
-					    (changes-file-viewed-marks) to pass diffFileMenuButtonShown's gate. */}
-					<DiffFileMenuHost>
-						<Virtualizer
-							className="min-h-0 flex-1 overflow-y-auto text-primary [overflow-anchor:none]"
-							contentClassName="flex flex-col pb-2"
-						>
-							{files.map((file) => {
-								const annotations = [
-									...findingAnnotations(findings, file.path, {
-										onFix: onFixFinding,
-										onDismiss: onDismissFinding,
-									}),
-									...(sessionId === undefined
-										? []
-										: commentAnnotations(
-												sessionId,
-												comments.drafts,
-												comments.queued,
-												file.path,
-												file.patch === null || file.binary
-													? undefined
-													: diffLineRanges(file.patch),
-											)),
-								];
-								const absolutePath = resolveAbsoluteDiffPath(diff.root, file.path);
-								// Upstream `cannotOpen`: a deleted file has nothing on disk to open or reveal.
-								const cannotOpen = file.status === "deleted";
-								const fileOpener =
-									onOpenFile && !cannotOpen
-										? () => {
-												onOpenFile(file.path);
-											}
-										: undefined;
-								const headerMenu =
-									sessionId === undefined ? undefined : (
-										<ChangesFileMenu
-											sessionId={sessionId}
-											cwd={cwd}
-											path={file.path}
-											absolutePath={absolutePath}
-											cannotOpen={cannotOpen}
+			<DiffMarksContext value={marks}>
+				<div className="flex min-h-0 flex-1">
+					<ChangedFilesSidebar
+						shown={showFiles}
+						onShownChange={(shown) => {
+							setSetting("diffShowTree", shown);
+						}}
+						files={files}
+						groupByFolder={settings.diffGroupByFolder}
+						groupByKind={settings.diffGroupByKind}
+						activePath={activePath}
+						onSelectFile={selectFile}
+						{...(onOpenFile ? {onOpenFile} : {})}
+						rowMenu={
+							sessionId === undefined
+								? undefined
+								: (path, isDirectory) => {
+										// Upstream `fp`: the header's menu plus Open file ⌘↵; folders get no Open file.
+										const cannotOpen =
+											!isDirectory &&
+											files.find((file) => file.path === path)?.status === "deleted";
+										return (
+											<ChangesFileMenu
+												sessionId={sessionId}
+												cwd={cwd}
+												path={path}
+												absolutePath={resolveAbsoluteDiffPath(diff.root, path)}
+												cannotOpen={cannotOpen}
+												isDirectory={isDirectory}
+												openFileShortcut="cmd+enter"
+												onOpenFile={
+													onOpenFile && !isDirectory && !cannotOpen
+														? () => {
+																onOpenFile(path);
+															}
+														: undefined
+												}
+											/>
+										);
+									}
+						}
+						commits={scopes?.kind === "git" ? scopes.commits : []}
+						selectedCommitSha={selectedCommitSha}
+						onSelectCommit={(sha) => {
+							onSelectScope(sha === null ? BRANCH_SCOPE : commitScope(sha));
+						}}
+						onCopyCommitSha={onCopyCommitSha}
+					/>
+					<div
+						ref={bodyRef}
+						onScrollCapture={(event) => {
+							const inView = fileInView(event.target);
+							if (inView !== null) setActivePath(inView);
+						}}
+						className="flex min-h-0 min-w-0 flex-1 flex-col"
+					>
+						{largeNote !== null && (
+							<p className="shrink-0 border-b border-border px-3 py-1.5 text-footnote text-ink-muted">
+								<LargeDiffNoteText note={largeNote} />
+							</p>
+						)}
+						{/* The headers' "…" dropdown root sits outside every file's context menu (see DiffFileMenuHost). The
+					    button shows once diffFileMenuButtonShown's gate passes: a viewed mark here, or the whole-file
+					    toggle (changes-pane-collapsed-context-threshold). */}
+						<DiffFileMenuHost>
+							<Virtualizer
+								className="min-h-0 flex-1 overflow-y-auto text-primary [overflow-anchor:none]"
+								contentClassName="flex flex-col pb-2"
+							>
+								{files.map((file) => {
+									const annotations = [
+										...findingAnnotations(findings, file.path, {
+											onFix: onFixFinding,
+											onDismiss: onDismissFinding,
+										}),
+										...(sessionId === undefined
+											? []
+											: commentAnnotations(
+													sessionId,
+													comments.drafts,
+													comments.queued,
+													file.path,
+													file.patch === null || file.binary
+														? undefined
+														: diffLineRanges(file.patch),
+												)),
+									];
+									const absolutePath = resolveAbsoluteDiffPath(diff.root, file.path);
+									// Upstream `cannotOpen`: a deleted file has nothing on disk to open or reveal.
+									const cannotOpen = file.status === "deleted";
+									const fileOpener =
+										onOpenFile && !cannotOpen
+											? () => {
+													onOpenFile(file.path);
+												}
+											: undefined;
+									const headerMenu =
+										sessionId === undefined ? undefined : (
+											<ChangesFileMenu
+												sessionId={sessionId}
+												cwd={cwd}
+												path={file.path}
+												absolutePath={absolutePath}
+												cannotOpen={cannotOpen}
+												onOpenFile={fileOpener}
+											/>
+										);
+									const changesFile = (
+										<ChangesFile
+											file={file}
+											view={view}
+											collapsed={isCollapsed(file)}
+											onCollapsedChange={(collapsed) => {
+												setCollapsedOverrides((previous) => ({
+													...previous,
+													[file.path]: collapsed,
+												}));
+											}}
 											onOpenFile={fileOpener}
+											headerMenu={headerMenu}
+											fetchContext={fetchContext}
+											annotations={annotations.length === 0 ? undefined : annotations}
+											onRequestChanges={
+												sessionId === undefined
+													? undefined
+													: (target) => {
+															openDiffCommentDraft(sessionId, {
+																path: file.path,
+																...target,
+																...commentSnippet(file, target),
+															});
+														}
+											}
 										/>
 									);
-								const changesFile = (
-									<ChangesFile
-										file={file}
-										view={view}
-										collapsed={isCollapsed(file.path)}
-										onCollapsedChange={(collapsed) => {
-											setCollapsedOverrides((previous) => ({
-												...previous,
-												[file.path]: collapsed,
-											}));
-										}}
-										onOpenFile={fileOpener}
-										headerMenu={headerMenu}
-										fetchContext={fetchContext}
-										annotations={annotations.length === 0 ? undefined : annotations}
-										onRequestChanges={
-											sessionId === undefined
-												? undefined
-												: (target) => {
-														openDiffCommentDraft(sessionId, {
-															path: file.path,
-															...target,
-															...commentSnippet(file, target),
-														});
-													}
-										}
-									/>
-								);
-								return sessionId === undefined ? (
-									<Fragment key={file.path}>{changesFile}</Fragment>
-								) : (
-									<DiffContextMenu key={file.path} sessionId={sessionId} path={file.path}>
-										{changesFile}
-									</DiffContextMenu>
-								);
-							})}
-							{unavailableCount > 0 && (
-								<p className="px-3 py-4 text-center text-body text-ink-muted">
-									Diff content unavailable for {unavailableCount}{" "}
-									{unavailableCount === 1 ? "file" : "files"}.
-								</p>
-							)}
-						</Virtualizer>
-					</DiffFileMenuHost>
+									return sessionId === undefined ? (
+										<Fragment key={file.path}>{changesFile}</Fragment>
+									) : (
+										<DiffContextMenu key={file.path} sessionId={sessionId} path={file.path}>
+											{changesFile}
+										</DiffContextMenu>
+									);
+								})}
+								{unavailableCount > 0 && (
+									<p className="px-3 py-4 text-center text-body text-ink-muted">
+										Diff content unavailable for {unavailableCount}{" "}
+										{unavailableCount === 1 ? "file" : "files"}.
+									</p>
+								)}
+							</Virtualizer>
+						</DiffFileMenuHost>
+					</div>
 				</div>
-			</div>
+			</DiffMarksContext>
 		);
 	} else if (scopes?.kind === "no-git" && diff.source === "session-edits") {
 		body = (

@@ -6,6 +6,8 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {ChangedFilesSidebar} from "../src/components/changes/changes-file-tree";
+import {DiffMarksContext} from "../src/components/changes/diff-marks-context";
+import {type DiffMarkScope, fileMarkStatus, setFileMarked} from "../src/lib/diff-file-marks";
 import {settingStorageKey} from "../src/components/settings-context";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {RESIZE_GRIP_PILL, RESIZE_LINE_PILL, resizePillClass} from "../src/components/ui/resize-pill";
@@ -413,5 +415,142 @@ describe("ChangedFilesSidebar hide and edge handle", () => {
 			hidden: list().hidden,
 			shield: document.querySelector("[data-file-tree-resize-shield]"),
 		}).toStrictEqual({during: {display: "none", shield: true}, hidden: true, shield: null});
+	});
+});
+
+describe("ChangedFilesSidebar viewed marks (upstream Cc/Dc/Ec/Oc/Tc)", () => {
+	const SCOPE: DiffMarkScope = {
+		sessionId: "session-tree",
+		repo: "/repo",
+		diff: JSON.stringify(["branch", "main", null]),
+	};
+	const patchOf = (path: string) =>
+		`diff --git a/${path} b/${path}\n--- a/${path}\n+++ b/${path}\n@@ -1 +1 @@\n-old\n+new\n`;
+	const PATCHES = new Map<string, string | null>([
+		["src/app.ts", patchOf("src/app.ts")],
+		["tests/app.test.ts", patchOf("tests/app.test.ts")],
+		[".github/workflows/push.yml", null],
+	]);
+
+	function MarksWrapper({children}: {children: ReactNode}) {
+		return <DiffMarksContext value={{scope: SCOPE, patches: PATCHES}}>{children}</DiffMarksContext>;
+	}
+
+	function row(name: RegExp): HTMLElement {
+		return screen.getByRole("treeitem", {name});
+	}
+
+	function markSlot(element: HTMLElement): Element | null {
+		return element.querySelector("[data-diff-tree-mark]");
+	}
+
+	it("swaps a markable row's icon for a hover check and toggles the mark from it without selecting", () => {
+		const props = renderSidebar({}, MarksWrapper);
+		const slot = markSlot(row(/^app\.ts/));
+		const before = {
+			slot: slot?.className,
+			size: slot instanceof HTMLElement ? [slot.style.width, slot.style.height] : null,
+			children: [...(slot?.children ?? [])].map((child) => [
+				child.className,
+				child.querySelector("svg")?.getAttribute("class"),
+			]),
+		};
+		fireEvent.click(slot?.firstElementChild ?? row(/^app\.ts/));
+		expect({
+			before,
+			status: fileMarkStatus(SCOPE, "src/app.ts", PATCHES.get("src/app.ts")),
+			selected: props.onSelectFile.mock.calls,
+		}).toStrictEqual({
+			before: {
+				slot: "group/mark grid shrink-0 place-items-center",
+				size: ["12px", "12px"],
+				children: [
+					["contents group-hover/mark:hidden", "shrink-0 text-muted-control"],
+					["hidden group-hover/mark:contents", expect.stringMatching(/ text-secondary$/)],
+				],
+			},
+			status: "marked",
+			selected: [],
+		});
+	});
+
+	it("selects instead of toggling on a modified, touch, text-selected or off-icon click", () => {
+		const props = renderSidebar({}, MarksWrapper);
+		const icon = () => markSlot(row(/^app\.ts/))?.firstElementChild ?? row(/^app\.ts/);
+		fireEvent.click(icon(), {metaKey: true});
+		fireEvent.click(icon(), {ctrlKey: true});
+		icon().dispatchEvent(new PointerEvent("click", {bubbles: true, pointerType: "touch"}));
+		const label = row(/^app\.ts/).querySelector("span.truncate, span.min-w-0");
+		const range = document.createRange();
+		range.selectNodeContents(label ?? row(/^app\.ts/));
+		// addRange is ignored while the selection already holds a range, such as an earlier test's caret.
+		window.getSelection()?.removeAllRanges();
+		window.getSelection()?.addRange(range);
+		fireEvent.click(icon());
+		window.getSelection()?.removeAllRanges();
+		fireEvent.click(label ?? row(/^app\.ts/));
+		expect({
+			status: fileMarkStatus(SCOPE, "src/app.ts", PATCHES.get("src/app.ts")),
+			selected: props.onSelectFile.mock.calls.length,
+		}).toStrictEqual({status: "none", selected: 3});
+	});
+
+	it("shows a marked row's filled check, mutes its name unless active, and unmarks from the check", () => {
+		setFileMarked(SCOPE, "src/app.ts", PATCHES.get("src/app.ts"), true);
+		setFileMarked(SCOPE, "tests/app.test.ts", PATCHES.get("tests/app.test.ts"), true);
+		renderSidebar({activePath: "tests/app.test.ts"}, MarksWrapper);
+		const check = markSlot(row(/^app\.ts/));
+		const inactiveName = row(/^app\.ts/).querySelector("span.flex-1")?.className;
+		const activeName = row(/^app\.test\.ts/).querySelector("span.flex-1")?.className;
+		const before = {
+			check: [check?.tagName.toLowerCase(), check?.getAttribute("aria-label"), check?.getAttribute("class")],
+			inactiveName,
+			activeName,
+			fileTypeIcon: row(/^app\.ts/).querySelector("[data-file-type-icon]"),
+		};
+		fireEvent.click(check ?? row(/^app\.ts/));
+		expect({before, status: fileMarkStatus(SCOPE, "src/app.ts", PATCHES.get("src/app.ts"))}).toStrictEqual({
+			before: {
+				check: ["svg", "Viewed", "order-first shrink-0 text-secondary hover:text-primary"],
+				inactiveName: "flex min-w-0 flex-1 items-baseline gap-1 text-muted-as-secondary",
+				activeName: "flex min-w-0 flex-1 items-baseline gap-1",
+				fileTypeIcon: null,
+			},
+			status: "none",
+		});
+	});
+
+	it("shows a stale row's accent dot with a hover check, labelled Changed since you viewed it", () => {
+		setFileMarked(SCOPE, "src/app.ts", PATCHES.get("src/app.ts")?.replace("+new", "+newer"), true);
+		renderSidebar({}, MarksWrapper);
+		const stale = markSlot(row(/^app\.ts/));
+		expect({
+			role: stale?.getAttribute("role"),
+			label: stale?.getAttribute("aria-label"),
+			className: stale?.className,
+			children: [...(stale?.children ?? [])].map((child) => [
+				child.getAttribute("data-cds"),
+				child.getAttribute("class"),
+			]),
+		}).toStrictEqual({
+			role: "img",
+			label: "Changed since you viewed it",
+			className: "group/mark order-first grid shrink-0 place-items-center",
+			children: [
+				["Pulse", expect.stringMatching(/ group-hover\/mark:hidden$/)],
+				[null, "hidden group-hover/mark:contents"],
+			],
+		});
+	});
+
+	it("keeps the plain icon on a row whose patch can't be marked, and on every row without marks", () => {
+		renderSidebar({}, MarksWrapper);
+		const unmarkable = markSlot(row(/^push\.yml/));
+		cleanup();
+		renderSidebar();
+		expect({unmarkable, withoutMarks: document.querySelector("[data-diff-tree-mark]")}).toStrictEqual({
+			unmarkable: null,
+			withoutMarks: null,
+		});
 	});
 });
