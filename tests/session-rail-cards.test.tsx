@@ -171,6 +171,7 @@ function seed(client: QueryClient) {
 	client.setQueryData(sessionDiffQueryOptions(SESSION_ID, "uncommitted").queryKey, {
 		scope: "uncommitted",
 		source: "git",
+		root: "/repo",
 		stats: {files: 3, additions: 120, deletions: 8},
 		files: [],
 	});

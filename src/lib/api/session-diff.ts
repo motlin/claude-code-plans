@@ -58,6 +58,8 @@ export const SessionDiffResponseSchema = z
 		/** The scope actually served; `session` when a git scope fell back because the repo is gone. */
 		scope: z.string(),
 		source: z.enum(["git", "session-edits"]),
+		/** What relative file paths are relative to: the repository toplevel for git, the session cwd for session edits. */
+		root: z.string(),
 		stats: z
 			.object({
 				files: z.number().int().nonnegative(),
@@ -71,7 +73,15 @@ export const SessionDiffResponseSchema = z
 
 export type SessionDiffResponse = z.infer<typeof SessionDiffResponseSchema>;
 
-export const SessionDiffFileResponseSchema = z.object({scope: z.string(), file: SessionDiffFileSchema}).strict();
+export const SessionDiffFileResponseSchema = z
+	.object({scope: z.string(), root: z.string(), file: SessionDiffFileSchema})
+	.strict();
+
+/** A diff path made absolute against the response's `root`; absolute paths (outside-cwd session edits) pass through. */
+export function resolveAbsoluteDiffPath(root: string, path: string): string {
+	if (path.startsWith("/")) return path;
+	return `${root.replace(/\/+$/, "")}/${path}`;
+}
 
 const SessionDiffCommitSchema = z
 	.object({

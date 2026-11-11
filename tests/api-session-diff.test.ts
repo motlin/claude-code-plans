@@ -1,10 +1,11 @@
-import {mkdtempSync, rmSync, writeFileSync} from "node:fs";
+import {mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {
 	formatDiffScope,
 	parseDiffScope,
+	resolveAbsoluteDiffPath,
 	SessionDiffFileResponseSchema,
 	SessionDiffResponseSchema,
 	SessionDiffScopesResponseSchema,
@@ -19,6 +20,7 @@ import {buildScopeDiff, listScopes} from "../src/lib/session-diff";
 import {
 	handleSessionDiffRequest,
 	handleSessionDiffScopesRequest,
+	resolveRepoRoot,
 	type SessionDiffHandlerDependencies,
 } from "../src/lib/session-diff-handler";
 import {runGit} from "./git-fixture";
@@ -114,6 +116,7 @@ function dependencies(overrides: Partial<SessionDiffHandlerDependencies> = {}): 
 		listScopes: async (cwd) => listScopes(cwd),
 		buildScopeDiff: async (cwd, scope, options) => buildScopeDiff(cwd, scope, options),
 		readRecords: async () => Promise.resolve(sessionRecords(repository)),
+		resolveRepoRoot: async (directory) => Promise.resolve(directory),
 		...overrides,
 	};
 }
@@ -210,6 +213,7 @@ describe("handleSessionDiffRequest", () => {
 		expect(body).toStrictEqual({
 			scope: "branch",
 			source: "git",
+			root: repository,
 			stats: {files: 1, additions: 1, deletions: 1},
 			files: [
 				{
@@ -276,6 +280,7 @@ describe("handleSessionDiffRequest", () => {
 		expect(body).toStrictEqual({
 			scope: "session",
 			source: "session-edits",
+			root: repository,
 			stats: {files: 2, additions: 3, deletions: 0},
 			files: [
 				{
@@ -307,11 +312,53 @@ describe("handleSessionDiffRequest", () => {
 			await handleSessionDiffRequest(SESSION_ID, query({scope: "turn:prompt-2"}), dependencies()),
 		);
 
-		expect([body.scope, body.source, body.files.map((file) => file.path)]).toStrictEqual([
+		expect([body.scope, body.source, body.root, body.files.map((file) => file.path)]).toStrictEqual([
 			"turn:prompt-2",
 			"session-edits",
+			repository,
 			["todo.md"],
 		]);
+	});
+
+	it("serves the repository toplevel as the root of a git scope, asking once per request", async () => {
+		const calls: string[] = [];
+		insertSession(join(repository, "nested"));
+
+		const body = await diffBody(
+			await handleSessionDiffRequest(
+				SESSION_ID,
+				query({scope: "branch"}),
+				dependencies({
+					buildScopeDiff: async () => Promise.resolve({kind: "ok", patch: "", files: []}),
+					resolveRepoRoot: async (directory) => {
+						calls.push(directory);
+						return Promise.resolve("/repo");
+					},
+				}),
+			),
+		);
+
+		expect([body.root, calls]).toStrictEqual(["/repo", [join(repository, "nested")]]);
+	});
+
+	it("serves the session cwd as the root of session-edit scopes", async () => {
+		const calls: string[] = [];
+		insertSession(repository);
+
+		const body = await diffBody(
+			await handleSessionDiffRequest(
+				SESSION_ID,
+				query({scope: "session"}),
+				dependencies({
+					resolveRepoRoot: async (directory) => {
+						calls.push(directory);
+						return Promise.resolve("/repo");
+					},
+				}),
+			),
+		);
+
+		expect([body.root, calls]).toStrictEqual([repository, []]);
 	});
 
 	it("returns 404 for an unknown turn", async () => {
@@ -345,12 +392,49 @@ describe("handleSessionDiffRequest", () => {
 		expect([
 			large?.patch,
 			large?.additions,
+			lazy.root,
 			lazy.scope,
 			lazy.file.path,
 			lazy.file.patch?.split("\n").filter((line) => line.startsWith("+line ")).length,
 			lazy.file.patchLineCount,
 			missing.status,
-		]).toStrictEqual([null, LARGE_LINE_COUNT, "branch", "large.txt", LARGE_LINE_COUNT, large?.patchLineCount, 404]);
+		]).toStrictEqual([
+			null,
+			LARGE_LINE_COUNT,
+			repository,
+			"branch",
+			"large.txt",
+			LARGE_LINE_COUNT,
+			large?.patchLineCount,
+			404,
+		]);
+	});
+});
+
+describe("resolveRepoRoot", () => {
+	it("resolves a subdirectory to the realpath of the repository toplevel", async () => {
+		mkdirSync(join(repository, "nested"));
+
+		expect(await resolveRepoRoot(join(repository, "nested"))).toBe(realpathSync(repository));
+	});
+
+	it("returns null outside a repository", async () => {
+		const outside = mkdtempSync(join(tmpdir(), "api-session-diff-outside-"));
+		try {
+			expect(await resolveRepoRoot(outside)).toBeNull();
+		} finally {
+			rmSync(outside, {recursive: true, force: true});
+		}
+	});
+});
+
+describe("resolveAbsoluteDiffPath", () => {
+	it("joins a relative path onto the root and passes an absolute path through", () => {
+		expect([
+			resolveAbsoluteDiffPath("/repo", "src/a.ts"),
+			resolveAbsoluteDiffPath("/repo/", "src/a.ts"),
+			resolveAbsoluteDiffPath("/repo", "/elsewhere/b.ts"),
+		]).toStrictEqual(["/repo/src/a.ts", "/repo/src/a.ts", "/elsewhere/b.ts"]);
 	});
 });
 

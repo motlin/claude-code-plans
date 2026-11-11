@@ -121,7 +121,7 @@ beforeEach(() => {
 	queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
 	queryClient.setQueryData(
 		sessionDiffQueryOptions(SESSION, "branch", {hideWhitespace: DEFAULTS.diffHideWhitespace}).queryKey,
-		{scope: "branch", source: "git", stats: {files: 0, additions: 0, deletions: 0}, files: []},
+		{scope: "branch", source: "git", root: "/repo", stats: {files: 0, additions: 0, deletions: 0}, files: []},
 	);
 	queryClient.setQueryData(sessionDiffScopesQueryOptions(SESSION).queryKey, {kind: "no-git"});
 	vi.stubGlobal("ResizeObserver", FakeObserver);

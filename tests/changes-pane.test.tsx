@@ -4,11 +4,23 @@ import type {ComponentProps} from "react";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {ChangesPaneView} from "../src/components/changes/changes-pane";
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import {ChangesPane, ChangesPaneView} from "../src/components/changes/changes-pane";
 import {GoToFile} from "../src/components/changes/go-to-file";
 import {isLargeDiff, LARGE_DIFF_MAX_FILES, LARGE_DIFF_MAX_LINES} from "../src/components/changes/large-diff";
 import {SettingsProvider} from "../src/components/settings-provider";
-import type {SessionDiffFile, SessionDiffResponse, SessionDiffScopesResponse} from "../src/lib/api/session-diff";
+import {DEFAULTS} from "../src/components/settings-context";
+import {ToastProvider} from "../src/components/toast";
+import {
+	sessionDiffQueryOptions,
+	sessionDiffScopesQueryOptions,
+	type SessionDiffFile,
+	type SessionDiffResponse,
+	type SessionDiffScopesResponse,
+} from "../src/lib/api/session-diff";
+import type {FileRef} from "../src/lib/file-refs";
+import {onFileOpenRequest} from "../src/lib/file-open-requests";
+import {registerComposer, takeContextChips} from "../src/lib/context-attach";
 import {installLocalStorage} from "./fake-storage";
 
 const GREET_PATCH = `diff --git a/src/greet.ts b/src/greet.ts
@@ -58,6 +70,7 @@ function diffOf(files: SessionDiffFile[]): SessionDiffResponse {
 	return {
 		scope: "branch",
 		source: "git",
+		root: "/repo",
 		stats: {
 			files: files.length,
 			additions: files.reduce((sum, file) => sum + file.additions, 0),
@@ -529,6 +542,169 @@ describe("ChangesPaneView file list", () => {
 				prevented: event.defaultPrevented,
 				open: screen.getByRole("combobox", {name: "Search changed files"}).tagName,
 			}).toEqual({prevented: true, open: "INPUT"});
+		});
+	});
+});
+
+describe("ChangesPane file actions", () => {
+	const SESSION = "session-file-actions";
+	const DELETED_FILE: SessionDiffFile = {
+		path: "src/old.ts",
+		status: "deleted",
+		additions: 0,
+		deletions: 1,
+		binary: false,
+		patchLineCount: 7,
+		patch: `diff --git a/src/old.ts b/src/old.ts
+deleted file mode 100644
+index 3333333..0000000
+--- a/src/old.ts
++++ /dev/null
+@@ -1 +0,0 @@
+-export const old = 1;
+`,
+	};
+
+	function renderChangesPane(files: SessionDiffFile[]) {
+		const queryClient = new QueryClient({defaultOptions: {queries: {retry: false}}});
+		queryClient.setQueryData(
+			sessionDiffQueryOptions(SESSION, "branch", {hideWhitespace: DEFAULTS.diffHideWhitespace}).queryKey,
+			diffOf(files),
+		);
+		queryClient.setQueryData(sessionDiffScopesQueryOptions(SESSION).queryKey, SCOPES);
+		return render(
+			<QueryClientProvider client={queryClient}>
+				<SettingsProvider>
+					<ToastProvider>
+						<ChangesPane sessionId={SESSION} cwd="/repo" chrome={{moveHandle: null, controls: null}} />
+					</ToastProvider>
+				</SettingsProvider>
+			</QueryClientProvider>,
+		);
+	}
+
+	function openButton(path: string): HTMLElement | null {
+		return document.querySelector(`[data-diff-file-header="${path}"] button[aria-label="Open file"]`);
+	}
+
+	async function headerMenuRows(path: string): Promise<string[]> {
+		fireEvent.contextMenu(headerButton(path), {clientX: 10, clientY: 10});
+		const menu = await screen.findByRole("menu");
+		return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((row) =>
+			row.getAttribute("role") === "separator" ? "─" : (row.firstElementChild?.textContent ?? row.textContent),
+		);
+	}
+
+	it("opens the file's absolute path in the Files pane from the header button and the menu", async () => {
+		const opened: FileRef[] = [];
+		const stop = onFileOpenRequest(SESSION, (ref) => {
+			opened.push(ref);
+		});
+		renderChangesPane([GREET_FILE]);
+		const button = openButton("src/greet.ts");
+		button?.click();
+		const rows = await headerMenuRows("src/greet.ts");
+		fireEvent.click(screen.getByRole("menuitem", {name: "Open file"}));
+		stop();
+
+		expect({rows, opened}).toStrictEqual({
+			rows: ["Attach as context", "Copy", "─", "Open file", "Open in", "Show in Finder"],
+			opened: [{path: "/repo/src/greet.ts"}, {path: "/repo/src/greet.ts"}],
+		});
+	});
+
+	it("offers no Open file, Open in or Show in Finder for a deleted file", async () => {
+		renderChangesPane([DELETED_FILE]);
+
+		expect({button: openButton("src/old.ts"), rows: await headerMenuRows("src/old.ts")}).toStrictEqual({
+			button: null,
+			rows: ["Attach as context", "Copy"],
+		});
+	});
+
+	function treeRow(path: string): HTMLElement {
+		const row = document.querySelector(`[data-diff-tree-row][title="${path}"]`);
+		if (!(row instanceof HTMLElement)) throw new Error(`no tree row ${path}`);
+		return row;
+	}
+
+	async function treeMenuRows(path: string): Promise<string[]> {
+		fireEvent.contextMenu(treeRow(path), {clientX: 10, clientY: 10});
+		const menu = await screen.findByRole("menu");
+		return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((row) =>
+			row.getAttribute("role") === "separator" ? "─" : (row.firstElementChild?.textContent ?? row.textContent),
+		);
+	}
+
+	it("gives a tree file row upstream's fp menu, with Open file on cmd+enter", async () => {
+		const opened: FileRef[] = [];
+		const stop = onFileOpenRequest(SESSION, (ref) => {
+			opened.push(ref);
+		});
+		renderChangesPane([GREET_FILE]);
+		const rows = await treeMenuRows("src/greet.ts");
+		const openFile = screen.getByRole("menuitem", {name: /^Open file/});
+		const shortcut = openFile.getAttribute("aria-keyshortcuts");
+		fireEvent.click(openFile);
+		stop();
+
+		expect({rows, shortcut, opened}).toStrictEqual({
+			rows: ["Attach as context", "Copy", "─", "Open file", "Open in", "Show in Finder"],
+			shortcut: "Control+Enter",
+			opened: [{path: "/repo/src/greet.ts"}],
+		});
+	});
+
+	it("gives a tree folder row the folder menu: no Open file, VS Code, and a trailing-slash attach", async () => {
+		const stopComposer = registerComposer(SESSION, {insertText: () => {}, focus: () => {}});
+		renderChangesPane([GREET_FILE]);
+		const rows = await treeMenuRows("src");
+		fireEvent.click(screen.getByRole("menuitem", {name: "Open in"}));
+		const openIn = await waitFor(() => {
+			const menus = screen.getAllByRole("menu");
+			if (menus.length < 2) throw new Error("Open in ▸ not open");
+			return [...(menus.at(-1)?.querySelectorAll('[role="menuitem"]') ?? [])].map(
+				(row) => row.firstElementChild?.textContent ?? row.textContent,
+			);
+		});
+		cleanup();
+		renderChangesPane([GREET_FILE]);
+		await treeMenuRows("src");
+		fireEvent.click(screen.getByRole("menuitem", {name: "Attach as context"}));
+		stopComposer();
+
+		expect({rows, openIn, attached: takeContextChips(SESSION).map(({id: _id, ...chip}) => chip)}).toStrictEqual({
+			rows: ["Attach as context", "Copy", "─", "Open in", "Show in Finder"],
+			openIn: ["VS Code"],
+			attached: [{kind: "file", path: "src/"}],
+		});
+	});
+
+	it("opens the absolute path in VS Code and reveals it in Finder", async () => {
+		const open = vi.spyOn(window, "open").mockReturnValue(null);
+		const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(async () =>
+			Promise.resolve(Response.json({ok: true})),
+		);
+		vi.stubGlobal("fetch", fetchMock);
+		renderChangesPane([GREET_FILE]);
+		await headerMenuRows("src/greet.ts");
+		fireEvent.click(screen.getByRole("menuitem", {name: "Open in"}));
+		fireEvent.click(await screen.findByRole("menuitem", {name: "VS Code"}));
+		cleanup();
+		renderChangesPane([GREET_FILE]);
+		await headerMenuRows("src/greet.ts");
+		fireEvent.click(screen.getByRole("menuitem", {name: "Show in Finder"}));
+
+		await waitFor(() => {
+			expect({
+				opened: open.mock.calls,
+				revealed: fetchMock.mock.calls
+					.filter(([url]) => url === "/api/reveal-in-finder")
+					.map(([, init]) => init?.body),
+			}).toStrictEqual({
+				opened: [["vscode://file/repo/src/greet.ts", "_self"]],
+				revealed: [JSON.stringify({path: "/repo/src/greet.ts"})],
+			});
 		});
 	});
 });

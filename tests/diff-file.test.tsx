@@ -1,14 +1,31 @@
 // @vitest-environment jsdom
 
-import {cleanup, render, waitFor} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
-import {DiffFile} from "../src/components/changes/diff-file";
+import {DiffFile, DiffFileHeader} from "../src/components/changes/diff-file";
+import {DiffFileMenuItems} from "../src/components/changes/diff-file-menu";
+import {diffFileMenuButtonShown, isSyntheticDiffRow} from "../src/components/changes/diff-file-menu-gate";
+import {ToastProvider} from "../src/components/toast";
 import {CA, EA, SA, TA, WA} from "../src/components/changes/diffs-config";
 import {DIFF_RAILS_CSS} from "../src/components/changes/diff-rails";
 import {PanelsOff} from "./fizzy-lake-off";
 import {DEFAULTS, SettingsContext} from "../src/components/settings-context";
 import {preloadFileTypeIcons} from "../src/components/file-type-icons-loader";
+
+/** Counts `Menu` root renders: Base UI renders nothing for a closed root, so the DOM can't show the lazy mount. */
+const menuRoots = vi.hoisted(() => ({rendered: 0}));
+
+vi.mock("../src/components/ui/menu", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("../src/components/ui/menu")>();
+	return {
+		...actual,
+		Menu: (props: Parameters<typeof actual.Menu>[0]) => {
+			menuRoots.rendered++;
+			return actual.Menu(props);
+		},
+	};
+});
 
 const PATCH = `diff --git a/src/greet.ts b/src/greet.ts
 index 1111111..2222222 100644
@@ -433,5 +450,268 @@ describe("DiffFile", () => {
 		expect(DIFF_RAILS_CSS).toContain(
 			":host([data-add-button]) [data-diff]:not([data-disable-line-numbers]) [data-gutter-utility-slot]{left:calc(6px + 2px + 0.125rem)}",
 		);
+	});
+});
+
+describe("DiffFileHeader More actions (upstream c44d00c7f rc/ic/tc)", () => {
+	const FILE = "src/greet.ts";
+
+	beforeEach(() => {
+		menuRoots.rendered = 0;
+	});
+
+	function renderHeader({
+		showMenuButton = true,
+		onOpenFile,
+		wholeFile = "unread",
+	}: {showMenuButton?: boolean; onOpenFile?: () => void; wholeFile?: "folded" | "unread" | undefined} = {}) {
+		return render(
+			<ToastProvider>
+				<DiffFileHeader
+					path={FILE}
+					additions={2}
+					deletions={1}
+					collapsed={false}
+					onToggle={() => {}}
+					onOpenFile={onOpenFile}
+					showMenuButton={showMenuButton}
+					menu={
+						<DiffFileMenuItems
+							path={FILE}
+							absolutePath={`/repo/${FILE}`}
+							wholeFile={wholeFile}
+							onShowWholeFile={() => {}}
+						/>
+					}
+				/>
+			</ToastProvider>,
+		);
+	}
+
+	function moreButton(): HTMLElement {
+		return screen.getByRole("button", {name: "More actions"});
+	}
+
+	function rows(menu: HTMLElement): string[] {
+		return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((row) =>
+			row.getAttribute("role") === "separator" ? "─" : (row.firstElementChild?.textContent ?? row.textContent),
+		);
+	}
+
+	function label(element: Element | null): string | null | undefined {
+		return element?.getAttribute("aria-label") ?? element?.firstElementChild?.textContent;
+	}
+
+	it("opens the file menu end-aligned from the More button, with the right-click menu's rows", async () => {
+		renderHeader();
+		const atRest = {
+			expanded: moreButton().getAttribute("aria-expanded"),
+			haspopup: moreButton().getAttribute("aria-haspopup"),
+		};
+		fireEvent.pointerEnter(moreButton(), {pointerType: "mouse"});
+		fireEvent.click(moreButton());
+		const menu = await screen.findByRole("menu");
+
+		expect({
+			atRest,
+			open: moreButton().getAttribute("aria-expanded"),
+			align: menu.getAttribute("data-align"),
+			rows: rows(menu),
+		}).toStrictEqual({
+			atRest: {expanded: "false", haspopup: "menu"},
+			open: "true",
+			align: "end",
+			rows: ["Copy", "─", "Show whole file"],
+		});
+	});
+
+	it("has no More button without showMenuButton, but right-click still opens the menu", async () => {
+		renderHeader({showMenuButton: false});
+		const button = screen.queryByRole("button", {name: "More actions"});
+		fireEvent.contextMenu(screen.getByRole("button", {expanded: true}), {clientX: 10, clientY: 10});
+
+		expect({button, rows: rows(await screen.findByRole("menu"))}).toStrictEqual({
+			button: null,
+			rows: ["Copy", "─", "Show whole file"],
+		});
+	});
+
+	it("shows a More actions tooltip below the button on hover, but not while the menu is open", () => {
+		vi.useFakeTimers();
+		try {
+			renderHeader();
+			act(() => {
+				fireEvent.pointerEnter(moreButton().parentElement ?? moreButton(), {pointerType: "mouse"});
+				vi.advanceTimersByTime(1000);
+			});
+			const tip = screen.getByRole("tooltip");
+			const hovered = {text: tip.textContent, side: tip.getAttribute("data-side")};
+			act(() => {
+				fireEvent.pointerDown(moreButton(), {pointerType: "mouse"});
+				fireEvent.click(moreButton());
+				vi.advanceTimersByTime(1000);
+			});
+
+			expect({hovered, whileOpen: screen.queryByRole("tooltip")}).toStrictEqual({
+				hovered: {text: "More actions", side: "bottom"},
+				whileOpen: null,
+			});
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it.each(["Enter", " "])("opens on %j with the first row focused", async (key) => {
+		renderHeader();
+		act(() => {
+			moreButton().focus();
+		});
+		// jsdom has no native button activation: a browser follows Enter's keydown or Space's keyup with a click.
+		fireEvent.keyDown(moreButton(), {key});
+		fireEvent.keyUp(moreButton(), {key});
+		fireEvent.click(moreButton(), {detail: 0});
+		await screen.findByRole("menu");
+
+		await waitFor(() => {
+			expect(label(document.activeElement)).toBe("Copy");
+		});
+	});
+
+	it("walks the menu by keyboard: disabled row, Copy submenu, Escape back out to the More button", async () => {
+		renderHeader();
+		act(() => {
+			moreButton().focus();
+		});
+		fireEvent.keyDown(moreButton(), {key: "Enter"});
+		fireEvent.click(moreButton(), {detail: 0});
+		const menu = await screen.findByRole("menu");
+		await waitFor(() => {
+			expect(label(document.activeElement)).toBe("Copy");
+		});
+		fireEvent.keyDown(document.activeElement ?? menu, {key: "ArrowDown"});
+		const disabled = document.activeElement;
+		const reasonId = disabled?.getAttribute("aria-describedby");
+		const disabledRow = {
+			label: label(disabled),
+			disabled: disabled?.getAttribute("aria-disabled"),
+			reason: reasonId ? document.getElementById(reasonId)?.textContent : undefined,
+		};
+		fireEvent.keyDown(document.activeElement ?? menu, {key: "ArrowUp"});
+		fireEvent.keyDown(document.activeElement ?? menu, {key: "ArrowRight"});
+		await waitFor(() => {
+			expect(label(document.activeElement)).toBe("Absolute path");
+		});
+		fireEvent.keyDown(document.activeElement ?? menu, {key: "Escape"});
+		await waitFor(() => {
+			expect(label(document.activeElement)).toBe("Copy");
+		});
+		fireEvent.keyDown(document.activeElement ?? menu, {key: "Escape"});
+
+		await waitFor(() => {
+			expect({disabledRow, focused: label(document.activeElement)}).toStrictEqual({
+				disabledRow: {
+					label: "Show whole file",
+					disabled: "true",
+					reason: "This file’s unmodified lines couldn’t be read.",
+				},
+				focused: "More actions",
+			});
+		});
+	});
+
+	it("closes on a chosen row and returns focus to the More button", async () => {
+		renderHeader({wholeFile: "folded"});
+		act(() => {
+			moreButton().focus();
+		});
+		fireEvent.keyDown(moreButton(), {key: "Enter"});
+		fireEvent.click(moreButton(), {detail: 0});
+		fireEvent.click(await screen.findByRole("menuitem", {name: "Show whole file"}));
+
+		await waitFor(() => {
+			expect({menu: screen.queryByRole("menu"), focused: label(document.activeElement)}).toStrictEqual({
+				menu: null,
+				focused: "More actions",
+			});
+		});
+	});
+
+	it("lays the actions out in one overlay cluster with upstream's reserved spacers", () => {
+		const {container} = renderHeader({onOpenFile: () => {}});
+		const cluster = container.querySelector("[data-diff-file-header] > span");
+		const spacers = [
+			...container.querySelectorAll("[data-diff-file-header] > button > span[aria-hidden][data-size]"),
+		];
+		cleanup();
+		const {container: openOnly} = renderHeader({showMenuButton: false, onOpenFile: () => {}});
+		const openOnlySpacers = [
+			...openOnly.querySelectorAll("[data-diff-file-header] > button > span[aria-hidden][data-size]"),
+		];
+
+		expect({
+			cluster: cluster?.className,
+			children: [...(cluster?.children ?? [])].map((child) => [
+				child.className,
+				label(child.querySelector("button")),
+			]),
+			spacers: spacers.map((spacer) => [spacer.getAttribute("data-size"), spacer.className]),
+			openOnlySpacers: openOnlySpacers.map((spacer) => spacer.className),
+		}).toStrictEqual({
+			cluster: "pointer-events-none absolute inset-0 flex items-center justify-end gap-[4px] px-3",
+			children: [
+				[expect.stringMatching(/^pointer-events-auto flex @max-\[15rem\]\/diff-file:hidden( |$)/), "Open file"],
+				["pointer-events-auto flex", "More actions"],
+			],
+			spacers: [
+				["xs", "w-6 shrink-0 @max-[15rem]/diff-file:hidden"],
+				["xs", "w-6 shrink-0"],
+			],
+			openOnlySpacers: ["w-6 shrink-0"],
+		});
+	});
+
+	it("mounts the dropdown's menu root only once the trigger is hovered or focused (upstream BK)", () => {
+		renderHeader();
+		const before = menuRoots.rendered;
+		fireEvent.pointerEnter(moreButton(), {pointerType: "mouse"});
+		const afterHover = menuRoots.rendered;
+		cleanup();
+		menuRoots.rendered = 0;
+		renderHeader();
+		fireEvent.pointerEnter(moreButton(), {pointerType: "touch"});
+		const afterTouch = menuRoots.rendered;
+		act(() => {
+			moreButton().focus();
+		});
+
+		expect({before, hovered: afterHover > 0, afterTouch, focused: menuRoots.rendered > 0}).toStrictEqual({
+			before: 0,
+			hovered: true,
+			afterTouch: 0,
+			focused: true,
+		});
+	});
+});
+
+describe("isSyntheticDiffRow (upstream Iu)", () => {
+	it("flags the … N more and index-flag rows only", () => {
+		expect(
+			[
+				"… 12 more files",
+				"src/a.ts hidden from Git by index flags (skip-worktree)",
+				"src/… b.ts",
+				"src/a.ts",
+			].map(isSyntheticDiffRow),
+		).toStrictEqual([true, true, false, false]);
+	});
+
+	it("gates the More button on a viewed mark, or on the whole-file toggle for a real file", () => {
+		const mark = {status: "unmarked" as const, canMark: true, setMarked: () => {}};
+		expect([
+			diffFileMenuButtonShown({path: "src/a.ts", mark: undefined, wholeFileOffered: false}),
+			diffFileMenuButtonShown({path: "src/a.ts", mark: undefined, wholeFileOffered: true}),
+			diffFileMenuButtonShown({path: "… 12 more files", mark: undefined, wholeFileOffered: true}),
+			diffFileMenuButtonShown({path: "… 12 more files", mark, wholeFileOffered: false}),
+		]).toStrictEqual([false, true, false, true]);
 	});
 });

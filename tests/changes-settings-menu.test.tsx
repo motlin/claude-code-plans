@@ -45,6 +45,7 @@ function diffOf(files: SessionDiffFile[]): SessionDiffResponse {
 	return {
 		scope: "branch",
 		source: "git",
+		root: "/repo",
 		stats: {
 			files: files.length,
 			additions: files.reduce((sum, file) => sum + file.additions, 0),

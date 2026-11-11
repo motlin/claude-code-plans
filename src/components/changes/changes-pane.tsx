@@ -11,6 +11,7 @@ import {
 	type SessionDiffScopesResponse,
 	formatDiffScope,
 	parseDiffScope,
+	resolveAbsoluteDiffPath,
 	sessionDiffFileQueryOptions,
 	sessionDiffQueryOptions,
 	sessionDiffScopesQueryOptions,
@@ -18,11 +19,14 @@ import {
 import {CHANGES_REVIEW_REQUEST_EVENT, formatFixFindingPrompt, loadChangesReview} from "../../lib/changes-review";
 import {CHANGES_SCOPE_REQUEST_EVENT} from "../../lib/changes-scope-request";
 import {writeClipboardText} from "../../lib/clipboard";
-import {requestComposerInsert} from "../../lib/context-attach";
+import {attachContext, requestComposerInsert} from "../../lib/context-attach";
+import {requestFileOpen} from "../../lib/file-open-requests";
 import {asRecord} from "../../lib/narrow";
 import {loadChangesScope, saveChangesScope} from "../../lib/pane-layout";
 import type {ReviewFinding} from "../../lib/review-diff";
 import {CoachMark} from "../coach-mark";
+import {OpenInSubmenu, ShowInFinderItem} from "../files/file-actions-menu";
+import {mentionPath} from "../files/mention-path";
 import {FileTypeIconSetContext, useActiveFileTypeIconSet} from "../file-type-icon-set-context";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "../panes/pane-classes";
 import type {PaneChrome} from "../panes/pane-registry";
@@ -47,7 +51,8 @@ import {ChangedFilesSidebar} from "./changes-file-tree";
 import {type DiffCommentTarget, openDiffCommentDraft, useDiffComments} from "../../lib/diff-comments";
 import {detectLanguage} from "../../lib/diff-utils";
 import {DiffContextMenu} from "./diff-context-menu";
-import {DiffFile, type DiffFileAnnotation, DiffFileHeader, type DiffLineRange} from "./diff-file";
+import {DiffFile, type DiffFileAnnotation, DiffFileHeader, DiffFileMenuHost, type DiffLineRange} from "./diff-file";
+import {DiffFileMenuItems} from "./diff-file-menu";
 import {GoToFile} from "./go-to-file";
 import {commentAnnotations, diffLineRanges, diffSideSnippet, findingAnnotations} from "./diff-annotations";
 import {isLargeDiff} from "./large-diff";
@@ -449,6 +454,7 @@ function LazyDiffFile({
 	collapsed,
 	onCollapsedChange,
 	onOpenFile,
+	headerMenu,
 	annotations,
 	onRequestChanges,
 }: {
@@ -458,6 +464,7 @@ function LazyDiffFile({
 	collapsed: boolean;
 	onCollapsedChange: (collapsed: boolean) => void;
 	onOpenFile: (() => void) | undefined;
+	headerMenu: ReactNode;
 	annotations: readonly DiffFileAnnotation[] | undefined;
 	onRequestChanges: ((target: DiffLineRange) => void) | undefined;
 }) {
@@ -476,6 +483,7 @@ function LazyDiffFile({
 				collapsed={collapsed}
 				onCollapsedChange={onCollapsedChange}
 				{...(onOpenFile ? {onOpenFile} : {})}
+				headerMenu={headerMenu}
 				{...(annotations ? {annotations} : {})}
 				{...(onRequestChanges ? {onRequestChanges} : {})}
 			/>
@@ -493,6 +501,7 @@ function LazyDiffFile({
 					onCollapsedChange(!collapsed);
 				}}
 				onOpenFile={onOpenFile}
+				menu={headerMenu}
 			/>
 			{!collapsed && (
 				<p className="px-3 py-2 text-footnote text-ink-muted">
@@ -509,6 +518,7 @@ function ChangesFile({
 	collapsed,
 	onCollapsedChange,
 	onOpenFile,
+	headerMenu,
 	fetchContext,
 	annotations,
 	onRequestChanges,
@@ -518,6 +528,7 @@ function ChangesFile({
 	collapsed: boolean;
 	onCollapsedChange: (collapsed: boolean) => void;
 	onOpenFile: (() => void) | undefined;
+	headerMenu: ReactNode;
 	fetchContext: DiffFetchContext | undefined;
 	annotations: readonly DiffFileAnnotation[] | undefined;
 	onRequestChanges: ((target: DiffLineRange) => void) | undefined;
@@ -530,6 +541,7 @@ function ChangesFile({
 				collapsed={collapsed}
 				onCollapsedChange={onCollapsedChange}
 				{...(onOpenFile ? {onOpenFile} : {})}
+				headerMenu={headerMenu}
 				{...(annotations ? {annotations} : {})}
 				{...(onRequestChanges ? {onRequestChanges} : {})}
 			/>
@@ -544,6 +556,7 @@ function ChangesFile({
 				collapsed={collapsed}
 				onCollapsedChange={onCollapsedChange}
 				onOpenFile={onOpenFile}
+				headerMenu={headerMenu}
 				annotations={annotations}
 				onRequestChanges={onRequestChanges}
 			/>
@@ -558,6 +571,56 @@ function ChangesFile({
 			collapsed
 			onToggle={() => {}}
 			onOpenFile={onOpenFile}
+			menu={headerMenu}
+		/>
+	);
+}
+
+/** A Changes file's menu (upstream `oc` with the session's attach and the desktop `renderFileMenuItems`). */
+function ChangesFileMenu({
+	sessionId,
+	cwd,
+	path,
+	absolutePath,
+	cannotOpen,
+	onOpenFile,
+	openFileShortcut,
+	isDirectory = false,
+}: {
+	sessionId: string;
+	cwd: string | undefined;
+	path: string;
+	absolutePath: string;
+	cannotOpen: boolean;
+	onOpenFile: (() => void) | undefined;
+	openFileShortcut?: string;
+	isDirectory?: boolean;
+}) {
+	const toast = useToast();
+	return (
+		<DiffFileMenuItems
+			path={path}
+			absolutePath={absolutePath}
+			isDirectory={isDirectory}
+			{...(openFileShortcut === undefined ? {} : {openFileShortcut})}
+			onAttachFile={() => {
+				const mention = `${mentionPath(absolutePath, cwd)}${isDirectory ? "/" : ""}`;
+				if (!attachContext(sessionId, {kind: "file", path: mention})) {
+					toast({kind: "error", message: "Open the chat input to attach context."});
+				}
+			}}
+			onOpenFile={onOpenFile}
+			renderFileMenuItems={
+				cannotOpen
+					? undefined
+					: ({separatorBefore}) => (
+							<>
+								{separatorBefore && <MenuSeparator />}
+								<OpenInSubmenu path={absolutePath} isDirectory={isDirectory} />
+								<ShowInFinderItem path={absolutePath} />
+							</>
+						)
+			}
 		/>
 	);
 }
@@ -661,6 +724,8 @@ export interface ChangesPaneViewProps {
 	onDismissFinding?: (finding: ReviewFinding) => void;
 	/** Enables line comments and the right-click menu, which feed this session's composer. */
 	sessionId?: string;
+	/** The session's working directory: attached files are mentioned relative to it. */
+	cwd?: string | undefined;
 }
 
 /**
@@ -685,6 +750,7 @@ export function ChangesPaneView({
 	onFixFinding = noop,
 	onDismissFinding = noop,
 	sessionId,
+	cwd,
 }: ChangesPaneViewProps) {
 	const comments = useDiffComments(sessionId);
 	const iconSet = useActiveFileTypeIconSet();
@@ -753,6 +819,33 @@ export function ChangesPaneView({
 					activePath={activePath}
 					onSelectFile={selectFile}
 					{...(onOpenFile ? {onOpenFile} : {})}
+					rowMenu={
+						sessionId === undefined
+							? undefined
+							: (path, isDirectory) => {
+									// Upstream `fp`: the header's menu plus Open file ⌘↵; folders get no Open file.
+									const cannotOpen =
+										!isDirectory && files.find((file) => file.path === path)?.status === "deleted";
+									return (
+										<ChangesFileMenu
+											sessionId={sessionId}
+											cwd={cwd}
+											path={path}
+											absolutePath={resolveAbsoluteDiffPath(diff.root, path)}
+											cannotOpen={cannotOpen}
+											isDirectory={isDirectory}
+											openFileShortcut="cmd+enter"
+											onOpenFile={
+												onOpenFile && !isDirectory && !cannotOpen
+													? () => {
+															onOpenFile(path);
+														}
+													: undefined
+											}
+										/>
+									);
+								}
+					}
 					commits={scopes?.kind === "git" ? scopes.commits : []}
 					selectedCommitSha={selectedCommitSha}
 					onSelectCommit={(sha) => {
@@ -773,71 +866,96 @@ export function ChangesPaneView({
 							Files are collapsed for large diffs. Select a file to expand it.
 						</p>
 					)}
-					<Virtualizer
-						className="min-h-0 flex-1 overflow-y-auto text-primary [overflow-anchor:none]"
-						contentClassName="flex flex-col pb-2"
-					>
-						{files.map((file) => {
-							const annotations = [
-								...findingAnnotations(findings, file.path, {
-									onFix: onFixFinding,
-									onDismiss: onDismissFinding,
-								}),
-								...(sessionId === undefined
-									? []
-									: commentAnnotations(
-											sessionId,
-											comments.drafts,
-											comments.queued,
-											file.path,
-											file.patch === null || file.binary ? undefined : diffLineRanges(file.patch),
-										)),
-							];
-							const changesFile = (
-								<ChangesFile
-									file={file}
-									view={view}
-									collapsed={isCollapsed(file.path)}
-									onCollapsedChange={(collapsed) => {
-										setCollapsedOverrides((previous) => ({...previous, [file.path]: collapsed}));
-									}}
-									onOpenFile={
-										onOpenFile
-											? () => {
-													onOpenFile(file.path);
-												}
-											: undefined
-									}
-									fetchContext={fetchContext}
-									annotations={annotations.length === 0 ? undefined : annotations}
-									onRequestChanges={
-										sessionId === undefined
-											? undefined
-											: (target) => {
-													openDiffCommentDraft(sessionId, {
-														path: file.path,
-														...target,
-														...commentSnippet(file, target),
-													});
-												}
-									}
-								/>
-							);
-							return sessionId === undefined ? (
-								<Fragment key={file.path}>{changesFile}</Fragment>
-							) : (
-								<DiffContextMenu key={file.path} sessionId={sessionId} path={file.path}>
-									{changesFile}
-								</DiffContextMenu>
-							);
-						})}
-						{unavailableCount > 0 && (
-							<p className="px-3 py-4 text-center text-body text-ink-muted">
-								Diff content unavailable for {unavailableCount}{" "}
-								{unavailableCount === 1 ? "file" : "files"}.
-							</p>
-						)}
-					</Virtualizer>
+					{/* The headers' "…" dropdown root sits outside every file's context menu (see DiffFileMenuHost). The
+					    button itself waits for whole-file (changes-pane-collapsed-context-threshold) or viewed marks
+					    (changes-file-viewed-marks) to pass diffFileMenuButtonShown's gate. */}
+					<DiffFileMenuHost>
+						<Virtualizer
+							className="min-h-0 flex-1 overflow-y-auto text-primary [overflow-anchor:none]"
+							contentClassName="flex flex-col pb-2"
+						>
+							{files.map((file) => {
+								const annotations = [
+									...findingAnnotations(findings, file.path, {
+										onFix: onFixFinding,
+										onDismiss: onDismissFinding,
+									}),
+									...(sessionId === undefined
+										? []
+										: commentAnnotations(
+												sessionId,
+												comments.drafts,
+												comments.queued,
+												file.path,
+												file.patch === null || file.binary
+													? undefined
+													: diffLineRanges(file.patch),
+											)),
+								];
+								const absolutePath = resolveAbsoluteDiffPath(diff.root, file.path);
+								// Upstream `cannotOpen`: a deleted file has nothing on disk to open or reveal.
+								const cannotOpen = file.status === "deleted";
+								const fileOpener =
+									onOpenFile && !cannotOpen
+										? () => {
+												onOpenFile(file.path);
+											}
+										: undefined;
+								const headerMenu =
+									sessionId === undefined ? undefined : (
+										<ChangesFileMenu
+											sessionId={sessionId}
+											cwd={cwd}
+											path={file.path}
+											absolutePath={absolutePath}
+											cannotOpen={cannotOpen}
+											onOpenFile={fileOpener}
+										/>
+									);
+								const changesFile = (
+									<ChangesFile
+										file={file}
+										view={view}
+										collapsed={isCollapsed(file.path)}
+										onCollapsedChange={(collapsed) => {
+											setCollapsedOverrides((previous) => ({
+												...previous,
+												[file.path]: collapsed,
+											}));
+										}}
+										onOpenFile={fileOpener}
+										headerMenu={headerMenu}
+										fetchContext={fetchContext}
+										annotations={annotations.length === 0 ? undefined : annotations}
+										onRequestChanges={
+											sessionId === undefined
+												? undefined
+												: (target) => {
+														openDiffCommentDraft(sessionId, {
+															path: file.path,
+															...target,
+															...commentSnippet(file, target),
+														});
+													}
+										}
+									/>
+								);
+								return sessionId === undefined ? (
+									<Fragment key={file.path}>{changesFile}</Fragment>
+								) : (
+									<DiffContextMenu key={file.path} sessionId={sessionId} path={file.path}>
+										{changesFile}
+									</DiffContextMenu>
+								);
+							})}
+							{unavailableCount > 0 && (
+								<p className="px-3 py-4 text-center text-body text-ink-muted">
+									Diff content unavailable for {unavailableCount}{" "}
+									{unavailableCount === 1 ? "file" : "files"}.
+								</p>
+							)}
+						</Virtualizer>
+					</DiffFileMenuHost>
 				</div>
 			</div>
 		);
@@ -989,7 +1107,15 @@ function useReviewFindings(sessionId: string, scope: string) {
 }
 
 /** The Changes pane for one session, showing the scope persisted for it (All changes by default). */
-export function ChangesPane({sessionId, chrome}: {sessionId: string; chrome: PaneChrome}) {
+export function ChangesPane({
+	sessionId,
+	cwd,
+	chrome,
+}: {
+	sessionId: string;
+	cwd?: string | undefined;
+	chrome: PaneChrome;
+}) {
 	const [scope, setScope] = usePersistedScope(sessionId);
 	const hideWhitespace = useSettings().settings.diffHideWhitespace;
 	const diffQuery = useQuery(sessionDiffQueryOptions(sessionId, scope, {hideWhitespace}));
@@ -1039,6 +1165,11 @@ export function ChangesPane({sessionId, chrome}: {sessionId: string; chrome: Pan
 			onFixFinding={review.fix}
 			onDismissFinding={review.dismiss}
 			sessionId={sessionId}
+			cwd={cwd}
+			onOpenFile={(path) => {
+				const root = diffQuery.data?.root;
+				if (root !== undefined) requestFileOpen(sessionId, {path: resolveAbsoluteDiffPath(root, path)});
+			}}
 		/>
 	);
 }

@@ -28,12 +28,14 @@ interface CopySubmenuProps {
 	cwd: string | undefined;
 	/** Offer Absolute path; file tabs, like claude.ai/code, don't. */
 	absolutePath?: boolean;
+	/** The Relative path row's value when it isn't relative to `cwd` (a diff path is relative to the repo root). */
+	relativePath?: string | undefined;
 }
 
 /** Upstream `Xu`: Copy ▸ {Absolute path, Relative path (hidden outside the cwd), Filename}. */
-export function CopySubmenu({path, cwd, absolutePath = true}: CopySubmenuProps) {
+export function CopySubmenu({path, cwd, absolutePath = true, relativePath}: CopySubmenuProps) {
 	const copy = useCopyToClipboard();
-	const relPath = relativeToCwd(path, cwd);
+	const relPath = relativePath ?? relativeToCwd(path, cwd);
 	return (
 		<MenuSub>
 			<MenuSubTrigger>Copy</MenuSubTrigger>

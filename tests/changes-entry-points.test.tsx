@@ -249,6 +249,7 @@ index 1111111..2222222 100644
 const DIFF: SessionDiffResponse = {
 	scope: "uncommitted",
 	source: "git",
+	root: "/repo",
 	stats: {files: 1, additions: 2, deletions: 1},
 	files: [
 		{

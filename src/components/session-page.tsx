@@ -530,7 +530,7 @@ function SessionView({
 			}),
 		[transcript.chapters, chapterEdits, firstEntryUuid],
 	);
-	useRegisterChangesPane(sessionId);
+	useRegisterChangesPane(sessionId, sessionDirectory ?? undefined);
 	// A whole-session inventory costs a full pass over the JSONL, so only an open
 	// Files or Links pane asks for it; this read just shares whatever they fetched.
 	const resources = useQuery(sessionResourcesQueryOptions(sessionId, false)).data;

@@ -36,6 +36,7 @@ index 1111111..2222222 100644
 const DIFF: SessionDiffResponse = {
 	scope: "branch",
 	source: "git",
+	root: "/repo",
 	stats: {files: 1, additions: 1, deletions: 1},
 	files: [GREET_FILE],
 };

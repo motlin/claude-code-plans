@@ -7,7 +7,7 @@ const DeferredChangesPane = deferredPane("Changes", async () =>
 );
 
 /** Register metadata immediately so saved layouts and deep links retain the pane while its renderer loads. */
-export function useRegisterChangesPane(sessionId: string): void {
+export function useRegisterChangesPane(sessionId: string, cwd?: string): void {
 	useEffect(
 		() =>
 			registerPane("changes", {
@@ -15,9 +15,9 @@ export function useRegisterChangesPane(sessionId: string): void {
 				resetKey: sessionId,
 				header: "custom",
 				render: (chrome) => (
-					<DeferredChangesPane resetKey={sessionId} chrome={chrome} props={{sessionId, chrome}} />
+					<DeferredChangesPane resetKey={sessionId} chrome={chrome} props={{sessionId, cwd, chrome}} />
 				),
 			}),
-		[sessionId],
+		[sessionId, cwd],
 	);
 }

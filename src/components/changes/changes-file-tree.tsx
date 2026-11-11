@@ -1,5 +1,5 @@
 import {ChevronRight, Copy} from "lucide-react";
-import {type KeyboardEvent, type MouseEvent, useState} from "react";
+import {type KeyboardEvent, type MouseEvent, type ReactElement, type ReactNode, useState} from "react";
 
 import {clampFileColumnWidth, useFileColumnResize} from "../../hooks/use-file-column-resize";
 import {formatRelativeTimeFromIso} from "../../lib/relative-time";
@@ -8,6 +8,7 @@ import {FileTypeIcon} from "../file-type-icon";
 import {useSettings} from "../settings-context";
 import {FILE_COLUMN_HANDLE_Z, FileColumnEdgeHandle} from "../ui/file-column-edge-handle";
 import {FileColumnResizeShield} from "../ui/file-column-resize-shield";
+import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
 import {ResizeHandle} from "../ui/resize-handle";
 import {RESIZE_HANDLE_HALF_CLIP_CLASS} from "../ui/resize-pill";
 import {
@@ -47,6 +48,26 @@ export function DiffCounts({additions, deletions}: {additions: number; deletions
 	);
 }
 
+/** A row's right-click menu: the file menu for a file or folder path (upstream `fp`). */
+export type ChangedFileRowMenu = (path: string, isDirectory: boolean) => ReactNode;
+
+/** Wraps a tree row in its ContextMenu when the caller supplies row menus. */
+function withRowMenu(
+	key: string,
+	row: ReactElement,
+	path: string,
+	isDirectory: boolean,
+	rowMenu: ChangedFileRowMenu | undefined,
+): ReactElement {
+	if (rowMenu === undefined) return row;
+	return (
+		<ContextMenu key={key}>
+			<ContextMenuTrigger render={row} />
+			<MenuContent>{rowMenu(path, isDirectory)}</MenuContent>
+		</ContextMenu>
+	);
+}
+
 interface TreeRowsProps {
 	nodes: readonly ChangedFileTreeNode[];
 	sectionKey: string;
@@ -55,9 +76,19 @@ interface TreeRowsProps {
 	onToggleDir: (key: string) => void;
 	activePath: string | null;
 	onFileClick: (event: MouseEvent<HTMLButtonElement>, path: string) => void;
+	rowMenu: ChangedFileRowMenu | undefined;
 }
 
-function TreeRows({nodes, sectionKey, flat, collapsedDirs, onToggleDir, activePath, onFileClick}: TreeRowsProps) {
+function TreeRows({
+	nodes,
+	sectionKey,
+	flat,
+	collapsedDirs,
+	onToggleDir,
+	activePath,
+	onFileClick,
+	rowMenu,
+}: TreeRowsProps) {
 	return nodes.map((node) => {
 		const paddingLeft = INDENT_PX * (node.depth + 1);
 		if (node.type === "dir") {
@@ -65,26 +96,32 @@ function TreeRows({nodes, sectionKey, flat, collapsedDirs, onToggleDir, activePa
 			const expanded = !collapsedDirs.has(key);
 			return (
 				<div key={key} role="none" className="contents">
-					<button
-						type="button"
-						data-diff-tree-row
-						role="treeitem"
-						tabIndex={-1}
-						aria-level={node.depth + 1}
-						aria-expanded={expanded}
-						title={node.path}
-						onClick={() => {
-							onToggleDir(key);
-						}}
-						className={ROW_CLASS}
-						style={{paddingLeft}}
-					>
-						<ChevronRight
-							aria-hidden="true"
-							className={`size-3 shrink-0 text-ink-muted transition-transform motion-reduce:transition-none ${expanded ? "rotate-90" : ""}`}
-						/>
-						<span className="min-w-0 truncate">{node.name}</span>
-					</button>
+					{withRowMenu(
+						key,
+						<button
+							type="button"
+							data-diff-tree-row
+							role="treeitem"
+							tabIndex={-1}
+							aria-level={node.depth + 1}
+							aria-expanded={expanded}
+							title={node.path}
+							onClick={() => {
+								onToggleDir(key);
+							}}
+							className={ROW_CLASS}
+							style={{paddingLeft}}
+						>
+							<ChevronRight
+								aria-hidden="true"
+								className={`size-3 shrink-0 text-ink-muted transition-transform motion-reduce:transition-none ${expanded ? "rotate-90" : ""}`}
+							/>
+							<span className="min-w-0 truncate">{node.name}</span>
+						</button>,
+						node.path,
+						true,
+						rowMenu,
+					)}
 					{expanded && (
 						<TreeRows
 							nodes={node.children}
@@ -94,14 +131,17 @@ function TreeRows({nodes, sectionKey, flat, collapsedDirs, onToggleDir, activePa
 							onToggleDir={onToggleDir}
 							activePath={activePath}
 							onFileClick={onFileClick}
+							rowMenu={rowMenu}
 						/>
 					)}
 				</div>
 			);
 		}
-		return (
+		const fileKey = `${sectionKey}:${node.path}`;
+		return withRowMenu(
+			fileKey,
 			<button
-				key={`${sectionKey}:${node.path}`}
+				key={fileKey}
 				type="button"
 				data-diff-tree-row
 				role="treeitem"
@@ -127,7 +167,10 @@ function TreeRows({nodes, sectionKey, flat, collapsedDirs, onToggleDir, activePa
 					)}
 				</span>
 				<DiffCounts additions={node.additions} deletions={node.deletions} />
-			</button>
+			</button>,
+			node.path,
+			false,
+			rowMenu,
 		);
 	});
 }
@@ -226,6 +269,8 @@ export interface ChangedFilesSidebarProps extends ChangedFileTreeOptions {
 	onSelectFile: (path: string) => void;
 	/** Cmd/Ctrl+click opens the file instead of jumping to it. */
 	onOpenFile?: (path: string) => void;
+	/** Gives each file and folder row a right-click menu. */
+	rowMenu?: ChangedFileRowMenu | undefined;
 	/** Branch commits, newest first; the commit list is hidden when empty. */
 	commits: readonly ChangedFileCommit[];
 	selectedCommitSha: string | null;
@@ -248,6 +293,7 @@ export function ChangedFilesSidebar({
 	activePath,
 	onSelectFile,
 	onOpenFile,
+	rowMenu,
 	commits,
 	selectedCommitSha,
 	onSelectCommit,
@@ -323,6 +369,7 @@ export function ChangedFilesSidebar({
 										onToggleDir={toggleDir}
 										activePath={activePath}
 										onFileClick={handleFileClick}
+										rowMenu={rowMenu}
 									/>
 								</div>
 							);

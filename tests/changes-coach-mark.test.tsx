@@ -34,6 +34,7 @@ function diffOf(files: SessionDiffFile[]): SessionDiffResponse {
 	return {
 		scope: "branch",
 		source: "git",
+		root: "/repo",
 		stats: {files: files.length, additions: files.length, deletions: files.length},
 		files,
 	};

@@ -45,6 +45,7 @@ function emptyDiff(scope: string): SessionDiffResponse {
 	return {
 		scope,
 		source: scope === "session" ? "session-edits" : "git",
+		root: "/repo",
 		stats: {files: 0, additions: 0, deletions: 0},
 		files: [],
 	};

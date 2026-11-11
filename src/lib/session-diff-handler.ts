@@ -1,4 +1,5 @@
 import {eq} from "drizzle-orm";
+import {execFile} from "node:child_process";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {realpath, stat} from "node:fs/promises";
 import {isAbsolute, relative} from "node:path";
@@ -42,6 +43,8 @@ export interface SessionDiffHandlerDependencies {
 	listScopes(cwd: string): Promise<DiffScopes | NoGit>;
 	buildScopeDiff(cwd: string, scope: DiffScope, options: ScopeDiffOptions): Promise<ScopeDiff | NoGit>;
 	readRecords(filePath: string): Promise<JsonlRecord[]>;
+	/** The realpath of the repository toplevel containing `directory`, or null outside a repository. */
+	resolveRepoRoot(directory: string): Promise<string | null>;
 }
 
 function defaultDependencies(): SessionDiffHandlerDependencies {
@@ -51,7 +54,22 @@ function defaultDependencies(): SessionDiffHandlerDependencies {
 		listScopes: async (cwd) => listScopes(cwd),
 		buildScopeDiff: async (cwd, scope, options) => buildScopeDiff(cwd, scope, options),
 		readRecords,
+		resolveRepoRoot,
 	};
+}
+
+export async function resolveRepoRoot(directory: string): Promise<string | null> {
+	const toplevel = await new Promise<string | null>((resolve) => {
+		execFile("git", ["rev-parse", "--show-toplevel"], {cwd: directory, encoding: "utf8"}, (error, stdout) => {
+			resolve(error ? null : stdout.trim());
+		});
+	});
+	if (toplevel === null || toplevel === "") return null;
+	try {
+		return await realpath(toplevel);
+	} catch {
+		return null;
+	}
 }
 
 async function resolveDirectory(cwd: string): Promise<string | null> {
@@ -131,7 +149,7 @@ function toResponseFile(file: DiffFile, inline: boolean): SessionDiffFile {
 }
 
 type ResolvedDiff =
-	| {kind: "ok"; scope: string; source: SessionDiffResponse["source"]; files: DiffFile[]}
+	| {kind: "ok"; scope: string; source: SessionDiffResponse["source"]; root: string; files: DiffFile[]}
 	| {kind: "error"; response: Response};
 
 async function sessionEditsDiff(
@@ -155,7 +173,8 @@ async function sessionEditsDiff(
 		binary: false,
 		patch: file.patch,
 	}));
-	return {kind: "ok", scope: formatDiffScope(scope), source: "session-edits", files};
+	const root = (await dependencies.resolveDirectory(location.cwd)) ?? location.cwd;
+	return {kind: "ok", scope: formatDiffScope(scope), source: "session-edits", root, files};
 }
 
 async function resolveDiff(
@@ -180,7 +199,8 @@ async function resolveDiff(
 		return {kind: "error", response: errorResponse("Commit not found", 404)};
 	}
 	if (diff.kind === "no-git") return fallback();
-	return {kind: "ok", scope: formatDiffScope(scope), source: "git", files: diff.files};
+	const root = (await dependencies.resolveRepoRoot(directory)) ?? directory;
+	return {kind: "ok", scope: formatDiffScope(scope), source: "git", root, files: diff.files};
 }
 
 /** `GET /api/sessions/$id/diff?scope=…&ws=0|1[&file=<path>]` */
@@ -206,7 +226,13 @@ export async function handleSessionDiffRequest(
 	if (filePath !== null) {
 		const file = diff.files.find((candidate) => candidate.path === filePath);
 		if (file === undefined) return errorResponse("File not in diff", 404);
-		return jsonResponse(SessionDiffFileResponseSchema.parse({scope: diff.scope, file: toResponseFile(file, true)}));
+		return jsonResponse(
+			SessionDiffFileResponseSchema.parse({
+				scope: diff.scope,
+				root: diff.root,
+				file: toResponseFile(file, true),
+			}),
+		);
 	}
 
 	const files = diff.files.map((file) => toResponseFile(file, false));
@@ -214,6 +240,7 @@ export async function handleSessionDiffRequest(
 		SessionDiffResponseSchema.parse({
 			scope: diff.scope,
 			source: diff.source,
+			root: diff.root,
 			stats: {
 				files: files.length,
 				additions: files.reduce((sum, file) => sum + file.additions, 0),

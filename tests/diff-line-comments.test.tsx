@@ -44,6 +44,7 @@ index 1111111..2222222 100644
 const DIFF: SessionDiffResponse = {
 	scope: "uncommitted",
 	source: "git",
+	root: "/repo",
 	stats: {files: 1, additions: 3, deletions: 1},
 	files: [
 		{
@@ -90,6 +91,7 @@ function renderPane(onSend: (prompt: string) => void = () => {}, extra: ReactNod
 					onRefresh={() => {}}
 					scope="uncommitted"
 					sessionId={SESSION}
+					cwd="/repo"
 				/>
 				<Composer variant="session" draftKey={SESSION} onSend={onSend} />
 				{extra}
@@ -415,6 +417,86 @@ describe("Changes pane right-click menu", () => {
 		});
 		fireEvent.contextMenu(row);
 	}
+
+	function rightClickHeader(container: HTMLElement): void {
+		const header = container.querySelector('[data-diff-file-header="src/greet.ts"] button[aria-expanded]');
+		if (!(header instanceof HTMLElement)) throw new Error("no header");
+		// A real right-click's pointerdown focuses the button first.
+		header.focus();
+		fireEvent.contextMenu(header, {clientX: 10, clientY: 10});
+	}
+
+	function menuRows(menu: HTMLElement): string[] {
+		return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((row) =>
+			row.getAttribute("role") === "separator" ? "─" : (row.firstElementChild?.textContent ?? row.textContent),
+		);
+	}
+
+	it("opens the file menu, not the line menu, on a file header right-click", async () => {
+		const {container} = renderPane();
+		rightClickHeader(container);
+		const menus = await waitFor(() => {
+			const open = screen.getAllByRole("menu");
+			if (open.length === 0) throw new Error("no menu");
+			return open;
+		});
+
+		expect(menus.map(menuRows)).toStrictEqual([["Attach as context", "Copy", "─", "Open in", "Show in Finder"]]);
+	});
+
+	it("focuses the file menu's popup on open and the header button after Escape", async () => {
+		const {container} = renderPane();
+		rightClickHeader(container);
+		const menu = await screen.findByRole("menu");
+		await waitFor(() => {
+			if (document.activeElement !== menu) throw new Error("popup not focused");
+		});
+		const popupFocused = document.activeElement === menu;
+		fireEvent.keyDown(menu, {key: "Escape"});
+
+		await waitFor(() => {
+			expect({
+				popupFocused,
+				focused: document.activeElement
+					?.closest("[data-diff-file-header]")
+					?.getAttribute("data-diff-file-header"),
+				expanded: document.activeElement?.hasAttribute("aria-expanded"),
+			}).toStrictEqual({popupFocused: true, focused: "src/greet.ts", expanded: true});
+		});
+	});
+
+	it("attaches the file as a cwd-relative mention from the file menu", async () => {
+		const stop = registerComposer(SESSION, {insertText: () => {}, focus: () => {}});
+		const {container} = renderPane();
+		rightClickHeader(container);
+		fireEvent.click(await screen.findByRole("menuitem", {name: "Attach as context"}));
+		stop();
+
+		expect(takeContextChips(SESSION).map(({id: _id, ...chip}) => chip)).toStrictEqual([
+			{kind: "file", path: "src/greet.ts"},
+		]);
+	});
+
+	it("says to open the chat input when the file can't be attached", async () => {
+		const {container} = render(
+			<SettingsProvider>
+				<ToastProvider>
+					<ChangesPaneView
+						diff={DIFF}
+						scopes={undefined}
+						controls={null}
+						onRefresh={() => {}}
+						sessionId={SESSION}
+						cwd="/repo"
+					/>
+				</ToastProvider>
+			</SettingsProvider>,
+		);
+		rightClickHeader(container);
+		fireEvent.click(await screen.findByRole("menuitem", {name: "Attach as context"}));
+
+		expect(await screen.findByText("Open the chat input to attach context.")).toBeTruthy();
+	});
 
 	it("offers Attach as context, Add comment, a separator and Copy", async () => {
 		const {container} = renderPane();
