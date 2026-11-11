@@ -73,10 +73,13 @@ export const ENVIRONMENT_SLOT_CLASS =
 
 /**
  * The environment bar's row: the place controls, then the chin's mode, model and ring. Its pills stay 24px
- * tall, and their radius opens to upstream's comfortable 8px.
+ * tall, and their radius opens to upstream's comfortable 8px. Upstream (`environment-bar-row` with shared-41 `my`)
+ * scales the control height, pad and body type through variables (`--cds-font-size-body`/`--cds-leading-body` are
+ * local `--upstream-text-body`/`--upstream-leading-body`) for children set in text-body. The row's own
+ * `text-body text-secondary` is local: the chin triggers it shares with the session chin inherit their size and ink.
  */
 export const ENVIRONMENT_BAR_ROW_CLASS =
-	"flex min-h-6 items-center gap-x-1 gap-y-1.5 @max-[28.75rem]:flex-wrap px-2.5 text-[13px]/[20px] text-secondary [--cds-h-control:1.5rem] [--cds-pad-md:0.375rem] comfortable:[&_button]:rounded-r6";
+	"flex min-h-6 w-full min-w-0 items-center gap-x-1 gap-y-1.5 @max-[28.75rem]:flex-wrap px-2.5 text-body text-secondary [--cds-h-control:calc(1.5rem*var(--cds-rem-scale,1))] [--cds-pad-md:calc(0.375rem*var(--cds-rem-scale,1))] [--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))] [--upstream-leading-body:calc(1.25rem*var(--cds-rem-scale,1))] comfortable:[&_button]:rounded-r6";
 
 /** Upstream's bar chip slot surface (`rounded ${w}`); the local surface token stands in for `--cds-surface-1`. */
 const ENVIRONMENT_BAR_SLOT_CLASS = "rounded bg-[var(--epitaxy-transcript-surface,var(--color-surface-1))]";
@@ -105,4 +108,4 @@ export const ENVIRONMENT_BAR_NOTE_CLASS = "flex min-w-0 items-baseline gap-1.5 w
 
 /** Upstream's environment-bar place button: a 24px ghost control with a 16px icon, its label gap 8px at comfortable. */
 export const PLACE_CHIP_CLASS =
-	"flex h-6 max-w-[240px] min-w-0 items-center gap-1 comfortable:gap-2 rounded-r6 px-1.5 text-[13px]/[20px] text-secondary-control transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+	"flex h-6 max-w-[240px] min-w-0 items-center gap-1 comfortable:gap-2 rounded-r6 px-1.5 text-body text-secondary-control transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";

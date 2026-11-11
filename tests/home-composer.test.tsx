@@ -285,6 +285,7 @@ describe("HomeComposer", () => {
 			rowClass: row?.className,
 			placeClass: place?.className,
 			placeButton: place?.querySelector("[role=combobox]")?.getAttribute("aria-label"),
+			placeButtonClass: place?.querySelector("[role=combobox]")?.className,
 			rowItems: [
 				place?.textContent,
 				...[...(row?.lastElementChild?.children ?? [])].map((child) => child.textContent),
@@ -293,9 +294,11 @@ describe("HomeComposer", () => {
 			barClass: "@container flex w-full min-w-0 flex-col pt-0.5 -mb-0.5 md:pt-0 md:mb-0",
 			afterCard: true,
 			rowClass:
-				"flex min-h-6 items-center gap-x-1 gap-y-1.5 @max-[28.75rem]:flex-wrap px-2.5 text-[13px]/[20px] text-secondary [--cds-h-control:1.5rem] [--cds-pad-md:0.375rem] comfortable:[&_button]:rounded-r6",
+				"flex min-h-6 w-full min-w-0 items-center gap-x-1 gap-y-1.5 @max-[28.75rem]:flex-wrap px-2.5 text-body text-secondary [--cds-h-control:calc(1.5rem*var(--cds-rem-scale,1))] [--cds-pad-md:calc(0.375rem*var(--cds-rem-scale,1))] [--upstream-text-body:calc(0.8125rem*var(--cds-rem-scale,1))] [--upstream-leading-body:calc(1.25rem*var(--cds-rem-scale,1))] comfortable:[&_button]:rounded-r6",
 			placeClass: "flex items-center gap-1 @max-[28.75rem]:basis-full",
 			placeButton: "Folder: it's",
+			placeButtonClass:
+				"flex h-6 max-w-[240px] min-w-0 items-center gap-1 comfortable:gap-2 rounded-r6 px-1.5 text-body text-secondary-control transition-colors hover:bg-fill-ghost-hover hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus",
 			rowItems: ["it's", "Opus 4.8 Medium", "Plan", ""],
 		});
 	});

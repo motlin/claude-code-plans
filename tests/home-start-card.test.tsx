@@ -258,6 +258,7 @@ describe("StartCard", () => {
 			chevron: chevron.getAttribute("class"),
 			popup: search.parentElement?.className,
 			search: search.className,
+			listbox: search.nextElementSibling?.className,
 		}).toStrictEqual({
 			divider: "var(--ring-inner, 1px)",
 			row: "group/row relative",
@@ -266,7 +267,8 @@ describe("StartCard", () => {
 			chevron:
 				"lucide lucide-chevron-down size-3 shrink-0 text-ink-muted group-hover/row:text-secondary group-has-[:focus-visible]/row:text-secondary group-has-[[aria-expanded=true]]/row:text-secondary",
 			popup: "flex h-[360px] max-h-[var(--available-height)] w-[320px] max-w-[calc(100vw-32px)] flex-col rounded-r7 bg-[var(--menu-bg)] p-1 text-body font-normal text-primary shadow-[var(--menu-shadow)] outline-none",
-			search: "h-6 w-full shrink-0 rounded-r6 bg-transparent px-2 text-body font-normal text-primary shadow-[inset_0_0_0_1px_var(--color-alpha-1)] outline-none placeholder:text-ink-muted focus:shadow-[inset_0_0_0_1px_var(--accent-100),0_0_0_6px_color-mix(in_srgb,var(--accent-100)_20%,transparent)]",
+			search: "-mx-[var(--cds-menu-gutter,0.25rem)] -mt-[var(--cds-menu-gutter,0.25rem)] mb-1 block w-[calc(100%+2*var(--cds-menu-gutter,0.25rem))] shrink-0 cds-reset bg-transparent border-0 border-b border-b-border outline-none focus-visible:outline-hidden px-[calc(var(--cds-pad-md)+var(--cds-menu-gutter,0.25rem))] py-2 text-body font-normal text-primary placeholder:text-ink-muted",
+			listbox: "flex min-h-0 flex-1 flex-col overflow-y-auto",
 		});
 	});
 

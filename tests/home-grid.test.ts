@@ -97,7 +97,7 @@ describe("home page", () => {
 			}).toStrictEqual({
 				fullBleed: true,
 				heading: "New session",
-				headingClass: "truncate ps-2.5 text-body font-medium text-ink-muted",
+				headingClass: "truncate ps-2.5 text-body font-medium font-control text-muted-as-secondary",
 				titlebarClass: "flex h-8 shrink-0 items-center ps-[var(--tile-title-start,0px)] pe-12",
 				welcome: null,
 				spark: null,

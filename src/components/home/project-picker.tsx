@@ -20,8 +20,12 @@ import {overlayAttrs} from "../../lib/overlay";
 const POPUP_CLASS =
 	"flex h-[360px] max-h-[var(--available-height)] w-[320px] max-w-[calc(100vw-32px)] flex-col rounded-r7 bg-[var(--menu-bg)] p-1 text-body font-normal text-primary shadow-[var(--menu-shadow)] outline-none";
 
+/**
+ * Upstream's cds Select search (shared-frame `aO`): a full-width field bled over the popup's menu gutter with a
+ * bottom rule; `--cds-border` is local `border-border` and `text-muted` is local `text-ink-muted`.
+ */
 const SEARCH_CLASS =
-	"h-6 w-full shrink-0 rounded-r6 bg-transparent px-2 text-body font-normal text-primary shadow-[inset_0_0_0_1px_var(--color-alpha-1)] outline-none placeholder:text-ink-muted focus:shadow-[inset_0_0_0_1px_var(--accent-100),0_0_0_6px_color-mix(in_srgb,var(--accent-100)_20%,transparent)]";
+	"-mx-[var(--cds-menu-gutter,0.25rem)] -mt-[var(--cds-menu-gutter,0.25rem)] mb-1 block w-[calc(100%+2*var(--cds-menu-gutter,0.25rem))] shrink-0 cds-reset bg-transparent border-0 border-b border-b-border outline-none focus-visible:outline-hidden px-[calc(var(--cds-pad-md)+var(--cds-menu-gutter,0.25rem))] py-2 text-body font-normal text-primary placeholder:text-ink-muted";
 
 const OPTION_CLASS =
 	"flex h-6 shrink-0 cursor-default items-center gap-1 rounded-r5 px-2 select-none data-[highlighted]:bg-fill-ghost-hover";
@@ -182,7 +186,7 @@ export function ProjectPicker({projects, selected, onSelect, variant = "chip", t
 							id={listboxId}
 							role="listbox"
 							aria-label="Projects"
-							className="mt-1 flex min-h-0 flex-1 flex-col overflow-y-auto"
+							className="flex min-h-0 flex-1 flex-col overflow-y-auto"
 						>
 							{filtered.length === 0 ? (
 								<p className="px-2 py-1 text-ink-muted">No matching projects</p>

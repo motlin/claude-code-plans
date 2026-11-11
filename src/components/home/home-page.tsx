@@ -3,13 +3,13 @@ import {ScrollFade} from "../ui/scroll-fade";
 import {HOME_COLUMN} from "./home-column";
 
 /**
- * Upstream's /code chat-card titlebar: a 32px row whose muted text-body "New session" h1 starts after
- * the sidebar toggle's clearance on a phone or collapsed desktop.
+ * Upstream's /code chat-card titlebar: a 32px row whose "New session" h1 (the draft title in shared-41 `Eu`,
+ * less the desktop-only `draggable`) starts after the sidebar toggle's clearance on a phone or collapsed desktop.
  */
 export function HomeTitlebar() {
 	return (
 		<header className="flex h-8 shrink-0 items-center ps-[var(--tile-title-start,0px)] pe-12">
-			<h1 className="truncate ps-2.5 text-body font-medium text-ink-muted">New session</h1>
+			<h1 className="truncate ps-2.5 text-body font-medium font-control text-muted-as-secondary">New session</h1>
 		</header>
 	);
 }
