@@ -88,6 +88,17 @@ describe("maskSecrets", () => {
 		expect(maskSecrets(`token ${FAKE_GH} end`)).toBe(`token ghp_AAAA${bullets(32)} end`);
 	});
 
+	test("keeps the text after a token, invisible characters included, as upstream's ME does", () => {
+		const rlo = String.fromCodePoint(0x202e);
+		expect({
+			spaced: maskSecrets(`Use ${FAKE_GH} ${rlo}ok`),
+			glued: maskSecrets(`Use ${FAKE_GH}${rlo}ok`),
+		}).toStrictEqual({
+			spaced: `Use ghp_AAAA${bullets(32)} ${rlo}ok`,
+			glued: `Use ghp_AAAA${bullets(35)}`,
+		});
+	});
+
 	test("returns the same string when there is no trigger", () => {
 		const text = "nothing secret here";
 		expect(maskSecrets(text)).toBe(text);
