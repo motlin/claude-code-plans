@@ -188,6 +188,58 @@ describe("code theme settings", () => {
 		});
 	});
 
+	it("ports upstream's Claude Light colours exactly", async () => {
+		const theme = await loadCodeTheme("claude-light");
+		const rule = (scope: string) => theme.settings?.find((r) => [r.scope].flat().includes(scope))?.settings;
+		expect({
+			type: theme.type,
+			fg: theme.fg,
+			bg: theme.bg,
+			editor: [theme.colors?.["editor.background"], theme.colors?.["editor.foreground"]],
+			rules: theme.settings?.length,
+			scopes: Object.fromEntries(
+				[
+					"comment",
+					"punctuation",
+					"keyword",
+					"keyword.operator",
+					"string",
+					"string.regexp",
+					"constant.numeric",
+					"entity.name.tag",
+					"entity.other.attribute-name",
+					"entity.name.function",
+					"variable.parameter",
+					"entity.name.type",
+					"variable.other.property",
+				].map((scope) => [scope, rule(scope)?.foreground]),
+			),
+			commentStyle: rule("comment")?.fontStyle,
+		}).toStrictEqual({
+			type: "light",
+			fg: "#14181f",
+			bg: "#ffffff",
+			editor: ["#ffffff", "#14181f"],
+			rules: 36,
+			scopes: {
+				comment: "#6e7687",
+				punctuation: "#2b303b",
+				keyword: "#8100c2",
+				"keyword.operator": "#14181f",
+				string: "#008000",
+				"string.regexp": "#078307",
+				"constant.numeric": "#008080",
+				"entity.name.tag": "#b80a18",
+				"entity.other.attribute-name": "#bd0f1e",
+				"entity.name.function": "#0051c2",
+				"variable.parameter": "#b84f05",
+				"entity.name.type": "#b34a00",
+				"variable.other.property": "#14181f",
+			},
+			commentStyle: undefined,
+		});
+	});
+
 	it.each([
 		{
 			id: "vscode-light",
@@ -272,7 +324,7 @@ describe("code theme settings", () => {
 			}),
 		);
 		expect(resolved).toStrictEqual([
-			{id: "claude-light", type: "light", bg: "#faf9f580"},
+			{id: "claude-light", type: "light", bg: "#ffffff"},
 			{id: "claude-dark", type: "dark", bg: "#191919"},
 			{id: "vscode-light", type: "light", bg: "#FFFFFF"},
 			{id: "vscode-dark", type: "dark", bg: "#121314"},

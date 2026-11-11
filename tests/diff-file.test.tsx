@@ -292,7 +292,7 @@ describe("DiffFile", () => {
 				dir: "ltr",
 				className: "text-code text-primary font-normal",
 				gap: "0",
-				bg: "light-dark(#faf9f580, #191919)",
+				bg: "light-dark(#ffffff, #191919)",
 				pierreStyle: null,
 			});
 		});

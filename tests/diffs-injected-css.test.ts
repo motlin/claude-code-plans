@@ -104,7 +104,7 @@ describe("useCodeThemeBackground (upstream c6e73333a S)", () => {
 				`light-dark(${claudeLight.colors?.["editor.background"]}, ${claudeDark.colors?.["editor.background"]})`,
 			);
 		});
-		expect(result.current).toBe("light-dark(#faf9f580, #191919)");
+		expect(result.current).toBe("light-dark(#ffffff, #191919)");
 	});
 });
 

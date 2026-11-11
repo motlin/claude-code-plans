@@ -65,10 +65,10 @@
 		"raisedAt": "2026-11-11"
 	},
 	"bundle.session.gzip": {
-		"ceiling": 786283,
+		"ceiling": 794161,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "raised from 778154 (2026-11-11): the question text mask fallback follow-up to 7a78f5a96 ports upstream's `u9` spoofing-character reveal (revealSpoofing in src/lib/visible-text.ts: bidi controls, tags, overlays, invisible runs and odd-blank runs as [U+XXXX]) for `_i`'s painted fallback in the question card header (user-plain-text.tsx). The intervening commits had already used the 1% headroom; this change took the measure over it. Went to 786283; the 1% tolerance is unchanged.",
+		"reason": "raised from 786283 (2026-11-11): the terminal colours port replaces Claude Light (src/lib/claude-light-theme.ts, statically imported by the session page's @pierre/diffs registration) with upstream's live object, 31 editor/bracket/terminal colours and 36 token rules in place of 2 and 21 (+~1 KB gzip), and moves the terminal mapper onto upstream's `Ae` merge (foreground contrast pick, brightWhite raise, selection and cursor fallbacks). The intervening commits had already used most of the 1% headroom; this change took the measure over it. Went to 794161; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-11"
 	},
 	"bundle.session.raw": {

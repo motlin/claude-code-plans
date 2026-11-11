@@ -3,7 +3,7 @@ import {useEffect, useMemo, useState} from "react";
 import {useSettings} from "../components/settings-context";
 import {useResolvedTheme} from "../components/theme-context";
 import {type CodeFontSize, type CodeThemeId, loadCodeTheme} from "../lib/code-themes";
-import {terminalThemeFromCodeTheme} from "../lib/terminal-theme";
+import {terminalBaseFromCodeTheme, terminalThemeFromCodeTheme} from "../lib/terminal-theme";
 
 export interface TerminalThemeState {
 	/** False until the stored setting and, in code-theme mode, the theme module have loaded. */
@@ -14,13 +14,21 @@ export interface TerminalThemeState {
 	fontSize: CodeFontSize | null;
 }
 
-const mappedThemes = new Map<CodeThemeId, Promise<ITheme>>();
+type Mode = "light" | "dark";
 
-async function mappedTheme(id: CodeThemeId): Promise<ITheme> {
-	let pending = mappedThemes.get(id);
+/** Upstream's `Ee` / `Te`: each mode's Claude theme, the base other themes merge over. */
+const CLAUDE_THEMES = {light: "claude-light", dark: "claude-dark"} as const satisfies Record<Mode, CodeThemeId>;
+
+const mappedThemes = new Map<string, Promise<ITheme>>();
+
+async function mappedTheme(mode: Mode, id: CodeThemeId): Promise<ITheme> {
+	const key = `${mode}:${id}`;
+	let pending = mappedThemes.get(key);
 	if (pending === undefined) {
-		pending = loadCodeTheme(id).then(terminalThemeFromCodeTheme);
-		mappedThemes.set(id, pending);
+		pending = Promise.all([loadCodeTheme(CLAUDE_THEMES[mode]), loadCodeTheme(id)]).then(([base, theme]) =>
+			terminalThemeFromCodeTheme(theme, terminalBaseFromCodeTheme(base)),
+		);
+		mappedThemes.set(key, pending);
 	}
 	return pending;
 }
@@ -40,13 +48,13 @@ export function useTerminalTheme(): TerminalThemeState {
 	useEffect(() => {
 		if (!loaded || !followCodeTheme) return undefined;
 		let cancelled = false;
-		void mappedTheme(id).then((theme) => {
+		void mappedTheme(mode, id).then((theme) => {
 			if (!cancelled) setLoadedTheme({id, theme});
 		});
 		return () => {
 			cancelled = true;
 		};
-	}, [id, loaded, followCodeTheme]);
+	}, [mode, id, loaded, followCodeTheme]);
 
 	const fontSize = settings.codeFontSize;
 	return useMemo(() => {

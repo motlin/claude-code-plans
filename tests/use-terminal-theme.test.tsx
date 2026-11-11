@@ -5,8 +5,8 @@ import {createElement, type ReactNode} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {useTerminalTheme} from "../src/hooks/use-terminal-theme";
-import {loadCodeTheme} from "../src/lib/code-themes";
-import {terminalThemeFromCodeTheme} from "../src/lib/terminal-theme";
+import {type CodeThemeId, loadCodeTheme} from "../src/lib/code-themes";
+import {terminalBaseFromCodeTheme, terminalThemeFromCodeTheme} from "../src/lib/terminal-theme";
 
 function stubStorage(entries: Record<string, string>): void {
 	const storage = new Map(Object.entries(entries));
@@ -15,6 +15,11 @@ function stubStorage(entries: Record<string, string>): void {
 		setItem: (key: string, value: string) => storage.set(key, value),
 		removeItem: (key: string) => storage.delete(key),
 	});
+}
+
+async function mapped(id: CodeThemeId, mode: "light" | "dark") {
+	const base = terminalBaseFromCodeTheme(await loadCodeTheme(mode === "dark" ? "claude-dark" : "claude-light"));
+	return terminalThemeFromCodeTheme(await loadCodeTheme(id), base);
 }
 
 function wrapper({children}: {children: ReactNode}) {
@@ -29,7 +34,7 @@ afterEach(() => {
 describe("useTerminalTheme", () => {
 	it("follows the light code theme by default", async () => {
 		stubStorage({"ccp-code-theme-light": "min-light"});
-		const expected = terminalThemeFromCodeTheme(await loadCodeTheme("min-light"));
+		const expected = await mapped("min-light", "light");
 
 		const {result} = renderHook(() => useTerminalTheme(), {wrapper});
 
@@ -40,8 +45,8 @@ describe("useTerminalTheme", () => {
 
 	it("switches to the dark code theme when the page goes dark", async () => {
 		stubStorage({"ccp-code-theme-light": "min-light", "ccp-code-theme-dark": "nord"});
-		const light = terminalThemeFromCodeTheme(await loadCodeTheme("min-light"));
-		const dark = terminalThemeFromCodeTheme(await loadCodeTheme("nord"));
+		const light = await mapped("min-light", "light");
+		const dark = await mapped("nord", "dark");
 
 		const {result} = renderHook(() => useTerminalTheme(), {wrapper});
 		await waitFor(() => {

@@ -20,7 +20,6 @@ export const claudeDark: ThemeRegistrationRaw = {
 		"editorBracketHighlight.foreground1": "#ffd014",
 		"editorBracketHighlight.foreground2": "#f3c0d3",
 		"editorBracketHighlight.foreground3": "#3bbd8c",
-		"terminal.background": "#191919",
 		"terminal.foreground": "#eaecf0",
 		"terminal.selectionBackground": "#0099ff4d",
 		"terminalCursor.foreground": "#0099ff",

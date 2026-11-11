@@ -36,7 +36,8 @@ function channelLuminance(value: number): number {
 	return scaled <= 0.039_28 ? scaled / 12.92 : ((scaled + 0.055) / 1.055) ** 2.4;
 }
 
-function relativeLuminance([r, g, b]: Rgb): number {
+/** WCAG relative luminance, from 0 to 1. */
+export function relativeLuminance([r, g, b]: Rgb): number {
 	return 0.2126 * channelLuminance(r) + 0.7152 * channelLuminance(g) + 0.0722 * channelLuminance(b);
 }
 

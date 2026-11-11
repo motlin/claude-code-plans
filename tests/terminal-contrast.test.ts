@@ -10,7 +10,7 @@ import {
 	type ContrastCell,
 	type Rgb,
 } from "../src/lib/terminal-contrast";
-import {terminalThemeFromCodeTheme} from "../src/lib/terminal-theme";
+import {terminalBaseFromCodeTheme, terminalThemeFromCodeTheme} from "../src/lib/terminal-theme";
 
 const CREAM: Rgb = [0xfa, 0xf9, 0xf5];
 const CHARCOAL: Rgb = [0x1f, 0x1e, 0x1d];
@@ -67,7 +67,9 @@ describe("ensureContrastRatio", () => {
 describe("code theme palettes under the contrast floor", () => {
 	const ids = [...CodeThemeLightSchema.options, ...CodeThemeDarkSchema.options];
 	it.each(ids)("every %s palette colour reads at >= 4.5 against its background", async (id) => {
-		const theme = terminalThemeFromCodeTheme(await loadCodeTheme(id));
+		const dark = (CodeThemeDarkSchema.options as readonly string[]).includes(id);
+		const base = terminalBaseFromCodeTheme(await loadCodeTheme(dark ? "claude-dark" : "claude-light"));
+		const theme = terminalThemeFromCodeTheme(await loadCodeTheme(id), base);
 		const background = parseHexColor(theme.background ?? "#ffffff");
 		const failing = PALETTE_FIELDS.flatMap((field) => {
 			const color = theme[field];
