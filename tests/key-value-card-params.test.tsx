@@ -55,7 +55,7 @@ describe("KeyValueCard params", () => {
 		});
 	});
 
-	it("draws a file_path or notebook_path value as upstream's Xv does: u9(ME(path)), other values as written", () => {
+	it("draws a file_path or notebook_path value as upstream's Zv does: u9(ME(path)) in a cds-inline-code chip; other values masked with display controls stripped", () => {
 		const rlo = String.fromCodePoint(0x202e);
 		const token = `ghp_${"A".repeat(36)}`;
 		const {container} = render(
@@ -63,15 +63,30 @@ describe("KeyValueCard params", () => {
 				params={[
 					{key: "file_path", value: `/x/${rlo}gpj.exe`},
 					{key: "notebook_path", value: `/x/${token}/a.ipynb`},
-					{key: "note", value: `${rlo}raw`},
+					{key: "note", value: `${rlo}raw ${token}`},
 				]}
 			/>,
 		);
 
-		expect([...paramsContainer(container).children].map((row) => row.lastChild?.textContent)).toStrictEqual([
-			"/x/[U+202E]gpj.exe",
-			`/x/ghp_AAAA${"•".repeat(32)}/a.ipynb`,
-			`${rlo}raw`,
+		expect(
+			[...paramsContainer(container).children].map((row) => {
+				const value = row.lastChild;
+				return value instanceof HTMLElement
+					? {
+							className: value.className,
+							inner: [...value.children].map((child) => `${child.tagName}.${child.className}`),
+							text: value.textContent,
+						}
+					: {text: value?.textContent};
+			}),
+		).toStrictEqual([
+			{className: "min-w-0 break-words", inner: ["CODE.cds-inline-code"], text: "/x/[U+202E]gpj.exe"},
+			{
+				className: "min-w-0 break-words",
+				inner: ["CODE.cds-inline-code"],
+				text: `/x/ghp_AAAA${"•".repeat(32)}/a.ipynb`,
+			},
+			{text: `raw ghp_AAAA${"•".repeat(32)}`},
 		]);
 	});
 });

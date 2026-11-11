@@ -1,5 +1,5 @@
 import {inputString} from "../../lib/tool-utils";
-import {type ReactNode, useEffect, useRef} from "react";
+import {useEffect, useRef} from "react";
 import type {ClientToolCall, ToolRendererProps} from "./types";
 import {useAskUserQuestionContext} from "../ask-user-question-context";
 import {MarkdownArticle} from "../markdown-article";
@@ -10,6 +10,7 @@ import {QuestionReceipt} from "../question-receipt";
 import {UserInlineText} from "../user-plain-text";
 import {maskSecrets} from "../../lib/secret-mask";
 import {revealSpoofing} from "../../lib/visible-text";
+import {removeMemoryTags} from "../../lib/task-checklist";
 import {FORK_ANSWER_LABEL} from "../../lib/question-answer-route";
 import type {QuestionAnswer} from "../../lib/hook-events";
 import {clearSentQuestionCard, isQuestionCardSent, useQuestionCardSent} from "../../lib/question-card-store";
@@ -31,56 +32,22 @@ import {
  */
 const CARD_SHELL = "flex flex-col card-outline rounded-r6 overflow-clip divide-y divide-t3 [&>*]:px-p7 [&>*]:py-p6";
 
-function IndexBadge({children, focused}: {children: ReactNode; focused?: boolean}) {
-	return (
-		<span
-			className={`relative flex size-[30px] shrink-0 items-center justify-center rounded-r4 overflow-hidden text-body ${
-				focused ? "bg-t4 text-primary" : "bg-t2 text-secondary"
-			}`}
-		>
-			{children}
-		</span>
-	);
-}
-
-function ReadOnlyOption({label, description, index}: {label: string; description?: string | undefined; index: number}) {
-	return (
-		<div className="flex w-full items-center gap-g6 text-left opacity-50">
-			<IndexBadge>{index}</IndexBadge>
-			<div className="flex flex-col flex-1 min-w-0">
-				<span className="text-body text-primary truncate">{label}</span>
-				{description && <span className="text-footnote text-secondary truncate">{description}</span>}
-			</div>
-		</div>
-	);
-}
-
 /**
- * Render a question that has no recorded answer (still pending in an inactive
- * session, docked, or dismissed): the question followed by its options. The question is
- * upstream's `_y` line (cb6930dae, 2026-11-10): `_i({text: u9(ME(question))})` in secondary text.
- *
- * Emits its blocks as siblings so the enclosing card divides and pads every row
- * itself, matching upstream's list-in-card idiom.
+ * Upstream's `_y` (cb6930dae, 2026-11-10) for a call with no recorded answer: only the question lines,
+ * each with its memory tags dropped (`Zp` over `sh`) and drawn as `_i({text: u9(ME(question))})` in
+ * secondary text; no header and no options. Nothing when no question has text.
  */
-function UnansweredQuestion({question, header, options}: QuestionLike) {
+function UnansweredQuestions({questions}: {questions: QuestionLike[]}) {
+	const lines = questions.flatMap((q) => (q.question ? [removeMemoryTags(q.question)] : []));
+	if (lines.length === 0) return null;
 	return (
-		<>
-			<div>
-				{header && <p className="text-footnote text-secondary mb-g3">{header}</p>}
-				<div className="text-body text-secondary [overflow-wrap:anywhere]">
-					<UserInlineText text={revealSpoofing(maskSecrets(question))} codeLook="chip" links={false} />
+		<div className="flex flex-col gap-1 pt-xs">
+			{lines.map((line, i) => (
+				<div key={`${i}-${line}`} className="text-body text-secondary [overflow-wrap:anywhere]">
+					<UserInlineText text={revealSpoofing(maskSecrets(line))} codeLook="chip" links={false} />
 				</div>
-			</div>
-			{options.map((opt, optionIndex) => (
-				<ReadOnlyOption
-					key={opt.label}
-					label={opt.label}
-					description={opt.description}
-					index={optionIndex + 1}
-				/>
 			))}
-		</>
+		</div>
 	);
 }
 
@@ -253,17 +220,10 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps) {
 	}
 
 	return (
-		<div className={CARD_SHELL}>
-			{questions.map((q, i) => (
-				<UnansweredQuestion
-					key={i}
-					question={q.question}
-					{...(q.header ? {header: q.header} : {})}
-					options={q.options}
-				/>
-			))}
+		<>
+			<UnansweredQuestions questions={questions} />
 			{status && <StatusLine status={status} />}
 			{showRawFallback && <p className="text-body text-secondary whitespace-pre-wrap">{result}</p>}
-		</div>
+		</>
 	);
 }

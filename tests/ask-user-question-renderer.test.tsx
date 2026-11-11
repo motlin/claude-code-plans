@@ -546,7 +546,7 @@ describe("AskUserQuestionRenderer", () => {
 		}).toStrictEqual({status: "No response after 60s", rawBoilerplate: false});
 	});
 
-	it("draws an unanswered question as upstream's _y does: chips over u9(ME(question)), not markdown", () => {
+	it("draws unanswered questions as upstream's _y does: only the question lines, memory tags dropped, chips over u9(ME(question))", () => {
 		const rlo = String.fromCodePoint(0x202e);
 		const {container} = render(
 			<AskUserQuestionRenderer
@@ -559,6 +559,12 @@ describe("AskUserQuestionRenderer", () => {
 								options: [{label: "Yes"}, {label: "No"}],
 								multiSelect: false,
 							},
+							{
+								question: "Keep<cc-memory>the</cc-memory> notes?",
+								header: "Notes",
+								options: [{label: "Keep"}, {label: "Drop"}],
+								multiSelect: false,
+							},
 						],
 					},
 					result: "Something else entirely.",
@@ -566,18 +572,32 @@ describe("AskUserQuestionRenderer", () => {
 				})}
 			/>,
 		);
-		const line = container.querySelector(".card-outline > div > div");
+		const list = container.firstElementChild;
 
 		expect({
-			className: line?.className,
-			text: line?.textContent,
-			chips: [...(line?.querySelectorAll("code") ?? [])].map((code) => code.textContent),
-			strong: [...(line?.querySelectorAll("strong") ?? [])].map((strong) => strong.textContent),
+			className: list?.className,
+			lines: [...(list?.children ?? [])].map((line) => ({
+				className: line.className,
+				text: line.textContent,
+				chips: [...line.querySelectorAll("code")].map((code) => code.textContent),
+				strong: [...line.querySelectorAll("strong")].map((strong) => strong.textContent),
+			})),
 		}).toStrictEqual({
-			className: "text-body text-secondary [overflow-wrap:anywhere]",
-			text: `Ship [U+202E]exe.txt with ghp_AAAA${"•".repeat(32)}?`,
-			chips: ["exe.txt"],
-			strong: ["Ship"],
+			className: "flex flex-col gap-1 pt-xs",
+			lines: [
+				{
+					className: "text-body text-secondary [overflow-wrap:anywhere]",
+					text: `Ship [U+202E]exe.txt with ghp_AAAA${"•".repeat(32)}?`,
+					chips: ["exe.txt"],
+					strong: ["Ship"],
+				},
+				{
+					className: "text-body text-secondary [overflow-wrap:anywhere]",
+					text: "Keepthe notes?",
+					chips: [],
+					strong: [],
+				},
+			],
 		});
 	});
 

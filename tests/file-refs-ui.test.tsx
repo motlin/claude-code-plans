@@ -12,7 +12,7 @@ import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ToastProvider} from "../src/components/toast";
-import {TruncatedFilePathHeader} from "../src/components/tool-renderers/shared";
+import {KeyValueCard, TruncatedFilePathHeader} from "../src/components/tool-renderers/shared";
 import {ToolOutputSection} from "../src/components/tool-renderers/tool-output-section";
 import type {FileRef} from "../src/lib/file-refs";
 import type {SessionFiles} from "../src/lib/session-files";
@@ -631,6 +631,36 @@ describe("ToolOutputSection saved-file link (upstream Rv > La)", () => {
 			className:
 				"inline box-decoration-clone text-upstream-accent hover:underline underline-offset-[1px] focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-r2 break-words",
 			path,
+			opened: [[{path}]],
+		});
+	});
+});
+
+describe("KeyValueCard path param link (upstream Zv > Ra)", () => {
+	it("links a confirmed file_path with upstream's inline link class around a span, opening it in the Files pane", async () => {
+		const open = vi.fn<(ref: FileRef) => void>();
+		const path = "/repo/src/app.ts";
+		render(
+			withQueryClient(
+				<FileRefsProvider value={{sessionId: "param-path", cwd: "/repo", sessionPaths: [], open}}>
+					<KeyValueCard params={[{key: "file_path", value: path}]} />
+				</FileRefsProvider>,
+			),
+		);
+		const link = await screen.findByRole("button", {name: path});
+		fireEvent.click(link);
+		expect({
+			wrapper: link.parentElement?.className,
+			className: link.className,
+			inner: [...link.children].map((child) => child.tagName),
+			code: link.parentElement?.querySelector("code"),
+			opened: open.mock.calls,
+		}).toStrictEqual({
+			wrapper: "min-w-0 break-words",
+			className:
+				"inline box-decoration-clone text-upstream-accent hover:underline underline-offset-[1px] focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-r2",
+			inner: ["SPAN"],
+			code: null,
 			opened: [[{path}]],
 		});
 	});

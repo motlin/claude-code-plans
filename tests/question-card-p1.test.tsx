@@ -742,7 +742,7 @@ describe("QuestionCard secret masking (upstream c2f6611a3)", () => {
 	const MASKED_GH = `ghp_AAAA${"•".repeat(32)}`;
 	const FAKE_AWS = "AKIAEXAMPLEFAKE12345";
 
-	it("masks option labels and descriptions, and the question name compactly", () => {
+	it("masks option labels and descriptions, the question name compactly, and paints the header from the raw question", () => {
 		render(
 			<QuestionCard
 				questions={[
@@ -762,7 +762,7 @@ describe("QuestionCard secret masking (upstream c2f6611a3)", () => {
 			option: document.querySelector("[data-question-answer]")!.textContent,
 		}).toStrictEqual({
 			name: `Use AKIAEXAM${"•".repeat(7)}?`,
-			heading: `Use AKIAEXAM${"•".repeat(7)}?`,
+			heading: `Use AKIAEXAM${"•".repeat(12)}?`,
 			option: `Token ${MASKED_GH}desc ${MASKED_GH}`,
 		});
 	});
@@ -775,6 +775,20 @@ describe("QuestionCard secret masking (upstream c2f6611a3)", () => {
 			/>,
 		);
 		expect(document.querySelector("[data-approval-card-root]")!.getAttribute("aria-label")).toBe("Paste …");
+	});
+
+	it("drops memory tags from the question before naming and painting it, as upstream's xt does with ra", () => {
+		render(
+			<QuestionCard
+				questions={[{question: "Keep <cc-memory>notes</cc-memory> ok?", header: "K", options: [{label: "a"}]}]}
+				onSubmit={async () => {}}
+			/>,
+		);
+		const root = document.querySelector("[data-approval-card-root]")!;
+		expect({name: root.getAttribute("aria-label"), heading: root.firstElementChild!.textContent}).toStrictEqual({
+			name: "Keep notes ok?",
+			heading: "Keep notes ok?",
+		});
 	});
 
 	it("shows spoofing characters in the question name, as upstream's St wraps it in u9", () => {

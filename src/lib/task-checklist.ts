@@ -8,8 +8,14 @@ export interface ChecklistItem {
 	status: ChecklistStatus;
 }
 
-const CC_MEMORY_TAG = /<cc-memory(?:\s[^>]*)?>|<\/cc-memory>/g;
+/** Upstream's `lI` (shared-3): an opening tag with at most a `filenames` attribute, or a closing tag. */
+const CC_MEMORY_TAG = /<cc-memory(?:\s+filenames="[^"<>]*")?\s*>|<\/cc-memory\s*>/g;
 const WORD_CHAR = /\w/;
+
+/** Upstream's `sh` (shared-3): drop `<cc-memory>` tags outright. */
+export function removeMemoryTags(text: string): string {
+	return text.includes("<") ? text.replace(CC_MEMORY_TAG, "") : text;
+}
 
 /** Drop `<cc-memory>` tags, joining the words around one with a word joiner as upstream does. */
 export function stripMemoryTags(text: string): string {

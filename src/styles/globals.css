@@ -2469,6 +2469,22 @@ input.cds-input::-webkit-search-cancel-button {
 	outline-style: none;
 }
 
+/* Upstream `cds-inline-code` (c6a992d55) outside fizzy-lake `type` (no `--cds-prose-quiet`), so every
+   `--_inline-code-*` falls back: the danger-ink mono chip a tool's path param draws until its file ref
+   resolves (cb6930dae `Zv`). */
+.cds-inline-code {
+	font-family: var(--font-mono);
+	color: var(--upstream-text-danger);
+	background: var(--upstream-alpha-1);
+	border: 0.5px solid var(--upstream-border);
+	border-radius: 0.4em;
+	padding: 0.0625em 0.25em;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+	font-size: 0.9em;
+	line-height: 1;
+}
+
 /* Upstream `prose-link`: a transcript file ref in link blue and the prose
    font, without the inline-code chip. Inline with cloned box decoration so a
    long path wraps across lines and every fragment keeps its radius and focus

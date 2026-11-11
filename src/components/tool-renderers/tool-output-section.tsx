@@ -2,6 +2,7 @@ import type {ReactNode} from "react";
 import {maskSecrets} from "../../lib/secret-mask";
 import {revealSpoofing} from "../../lib/visible-text";
 import {FileRefTarget} from "../file-refs";
+import {FILE_LINK_CLASS} from "./file-link-class";
 import type {ResolvedToolOutput} from "../../lib/tool-output-resolve";
 import type {ToolOutputNote} from "../../lib/tool-output-shape";
 import * as Collapsible from "../ui/collapsible";
@@ -37,8 +38,7 @@ export function LabelledSection({
 }
 
 /** Upstream c40ad8c1e `u` + `break-words` (its accent ink and 3px radius as local tokens): the saved file's inline link (`Rv` > `La`). */
-const SAVED_FILE_LINK_CLASS =
-	"inline box-decoration-clone text-upstream-accent hover:underline underline-offset-[1px] focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-r2 break-words";
+const SAVED_FILE_LINK_CLASS = `${FILE_LINK_CLASS} break-words`;
 
 /** Upstream shared-29 `K7`: a path's last name, by either separator; the path itself when it has none. */
 function lastName(path: string): string {

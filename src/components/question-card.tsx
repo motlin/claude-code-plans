@@ -54,6 +54,7 @@ import {DisabledReason} from "./ui/disabled-reason";
 import {UserInlineText} from "./user-plain-text";
 import {cutUnterminatedPrivateKey, maskSecrets, maskSecretsCompact} from "../lib/secret-mask";
 import {revealSpoofing} from "../lib/visible-text";
+import {stripMemoryTags} from "../lib/task-checklist";
 
 /** Upstream's `@container (width <= 420px)` stack for the card's action row. */
 const STACK_ACTIONS = "@max-[420px]:flex-col @max-[420px]:items-stretch @max-[420px]:[&>*]:w-full";
@@ -367,11 +368,11 @@ function useOptionPreview(value: unknown): OptionPreview | undefined {
 }
 
 /**
- * Upstream's question name (c2f6611a3 `ht`): secrets collapse to 7 bullets (`I6`), and a name holding an
- * unterminated private key is cut before it (`_h`) with a trailing ellipsis.
+ * Upstream's question name (c2f6611a3 `xt`'s `name`, 2026-11-10) from the raw text (memory tags dropped by `ra`): secrets collapse to 7 bullets (`nF`), and a
+ * name holding an unterminated private key is cut before it (`_h`) with a trailing ellipsis.
  */
-function questionName(question: string): string {
-	const compact = maskSecretsCompact(question);
+function questionName(raw: string): string {
+	const compact = maskSecretsCompact(raw);
 	const cut = cutUnterminatedPrivateKey(compact);
 	return cut === compact ? compact : `${cut.trimEnd()} \u2026`;
 }
@@ -594,6 +595,8 @@ export function QuestionCard({
 			<Shortcut keys="cmd+enter" className={APPROVAL_ACTION_SHORTCUT_CLASS} />
 		</ApprovalActionButton>
 	);
+	// Upstream's `xt` raw text: the question with its memory tags dropped (`ra`).
+	const rawQuestion = stripMemoryTags(question.question);
 
 	return (
 		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- only keeps clicks inside the card from reaching transcript row handlers, as upstream
@@ -601,8 +604,8 @@ export function QuestionCard({
 			ref={cardRootRef}
 			role="group"
 			tabIndex={-1}
-			// Upstream's `St` (2026-11-10) names the card `u9` of the masked name; the header paints the text itself.
-			aria-label={revealSpoofing(questionName(question.question))}
+			// Upstream's `xt` (2026-11-10) names the card `u9` of the masked name; the header paints the raw text itself.
+			aria-label={revealSpoofing(questionName(rawQuestion))}
 			data-approval-card-root=""
 			data-focus-region="question"
 			data-approval-presentation="card"
@@ -617,7 +620,7 @@ export function QuestionCard({
 		>
 			<div className="bg-alpha-1 px-lg flex gap-md py-md items-center">
 				<div className="min-w-0 flex-1 text-body text-primary select-text break-words [unicode-bidi:plaintext]">
-					<UserInlineText text={questionName(question.question)} codeLook="chip" />
+					<UserInlineText text={rawQuestion} codeLook="chip" />
 				</div>
 				{questions.length > 1 && (
 					<span className="flex shrink-0 items-center -my-xs -me-sm gap-xs text-caption text-muted-as-secondary">

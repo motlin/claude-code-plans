@@ -1,6 +1,6 @@
 import {type ReactNode, useCallback, useContext, useMemo, useState} from "react";
 import {ansiPartStyle, parseAnsiCodes} from "../../lib/ansi-codes";
-import {maskSecrets, maskUrlSecrets, secretToggleLabel} from "../../lib/secret-mask";
+import {maskSecrets, maskUrlSecrets, secretToggleLabel, stripControlsAndMask} from "../../lib/secret-mask";
 import {revealSpoofing} from "../../lib/visible-text";
 import {type SecretReveal, useSecretReveal} from "./use-secret-reveal";
 import {formatDuration} from "../../lib/format-duration";
@@ -8,6 +8,7 @@ import {CHECK_ICON_PATH, COPY_ICON_PATH} from "../../lib/icon-paths";
 import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {useTimedFlag} from "../../hooks/use-timed-flag";
 import {FileRefTarget} from "../file-refs";
+import {FILE_LINK_CLASS} from "./file-link-class";
 import * as Collapsible from "../ui/collapsible";
 import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
@@ -504,10 +505,37 @@ export function PolicyDenialReason({call}: {call: PolicyDenial}) {
 	);
 }
 
-/** The param rows: a muted mono key, a space, then the value as plain body text (upstream's generic row). */
-/** Upstream's `Wv` (cb6930dae): the input keys whose string value is drawn as a path. */
+/** Upstream's `Gv` (cb6930dae): the input keys whose string value is drawn as a path. */
 const PATH_PARAM_KEYS = new Set(["file_path", "notebook_path"]);
 
+/**
+ * Upstream's `Zv` (cb6930dae, 2026-11-10): a path param as `u9(ME(path))`, a `cds-inline-code` chip until the
+ * transcript's file refs confirm it, then a span inside the inline file link that opens it in the Files pane.
+ */
+function PathParamValue({path}: {path: string}) {
+	const text = revealSpoofing(maskSecrets(path));
+	return (
+		<span className="min-w-0 break-words">
+			<FileRefTarget
+				path={path}
+				render={(refProps) =>
+					refProps === null ? (
+						<code className="cds-inline-code">{text}</code>
+					) : (
+						<span {...refProps} className={FILE_LINK_CLASS}>
+							<span>{text}</span>
+						</span>
+					)
+				}
+			/>
+		</span>
+	);
+}
+
+/**
+ * The param rows: a muted mono key, a space, then the value as plain body text (upstream's generic row), a path
+ * key's value drawn as upstream's `Zv`, and any other plain value masked with display controls stripped (`Iv`).
+ */
 function ParamRows({params}: {params: KeyValueParam[]}) {
 	return (
 		<div className="text-secondary flex flex-col gap-g2">
@@ -517,10 +545,9 @@ function ParamRows({params}: {params: KeyValueParam[]}) {
 					{p.markdown ? (
 						<InlineMarkdown text={p.value} />
 					) : PATH_PARAM_KEYS.has(p.key) ? (
-						// Upstream's `Xv` draws a path row as `u9(ME(path))`.
-						revealSpoofing(maskSecrets(p.value))
+						<PathParamValue path={p.value} />
 					) : (
-						p.value
+						stripControlsAndMask(p.value)
 					)}
 				</div>
 			))}
