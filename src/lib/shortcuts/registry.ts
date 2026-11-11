@@ -322,14 +322,14 @@ export const SHORTCUTS = {
 		enabled: true,
 	},
 	toggle_preview: {
-		description: "Toggle preview",
+		description: "Toggle Browser",
 		group: "panes",
 		bindings: cmdOrCtrl("p", ["alt"], letterCode("p")),
 		ownerSlug: "panes-preview",
 		enabled: false,
 	},
 	select_element_in_preview: {
-		description: "Select element in preview",
+		description: "Select element in Browser",
 		group: "panes",
 		bindings: cmdOrCtrl("s", ["shift"]),
 		ownerSlug: "panes-preview",

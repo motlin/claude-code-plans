@@ -211,6 +211,8 @@ describe("shortcut registry", () => {
 			"prev_change",
 			"queue_for_later",
 			"send_and_stay",
+			"toggle_preview",
+			"select_element_in_preview",
 		] as const;
 		expect(
 			Object.fromEntries(
@@ -273,6 +275,20 @@ describe("shortcut registry", () => {
 				mac: ["cmd+enter"],
 				windows: ["ctrl+enter"],
 				linux: ["ctrl+enter"],
+				displayKeys: undefined,
+			},
+			toggle_preview: {
+				description: "Toggle Browser",
+				mac: ["cmd+alt+p"],
+				windows: ["ctrl+alt+p"],
+				linux: ["ctrl+alt+p"],
+				displayKeys: undefined,
+			},
+			select_element_in_preview: {
+				description: "Select element in Browser",
+				mac: ["cmd+shift+s"],
+				windows: ["ctrl+shift+s"],
+				linux: ["ctrl+shift+s"],
 				displayKeys: undefined,
 			},
 		});
