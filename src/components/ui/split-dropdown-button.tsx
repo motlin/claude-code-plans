@@ -117,12 +117,21 @@ const JOINED_LOOKS: Record<JoinedVariant, {root: string; fill: string; seam: str
 };
 
 /*
- * Upstream's ghost split: a transparent pair whose group ring lights on hover, while open or while pressed.
+ * Upstream's ghost split: a transparent pair whose group ring lights on hover, while open or while pressed
+ * (outside fizzy colour; under it the segments paint instead, GHOST_FIZZY_*).
  * Each segment paints through an inset content-box layer, and the icon-only caret tucks under the primary
  * with a pointer target that reaches past its end.
  */
 const GHOST_ROOT_CLASS =
 	"shadow-[inset_0_0_0_1px_var(--split-ring,transparent)] transition-[box-shadow] duration-[60ms] ease-[cubic-bezier(.165,.84,.44,1)] [&:not([data-disabled])]:hover:[--split-ring:var(--color-border)] data-[popup-open]:[--split-ring:var(--color-border)] [&:not([data-disabled])]:has-[[aria-pressed=true]]:[--split-ring:var(--color-border)]";
+/* Upstream `cn`: under fizzy colour the ghost group drops its ring and each segment paint fills its segment. */
+const GHOST_FIZZY_ROOT_CLASS = "stacks:shadow-none stacks:[&_[data-part=paint]]:p-0";
+/*
+ * Upstream `eF`: under fizzy colour hovering the enabled group, or holding its menu open, paints both segments with
+ * the button ghost hover, and the hovered segment lays fill-button-layer over it. Pressed segments keep their look.
+ */
+const GHOST_FIZZY_HOVER_CLASS =
+	"stacks:group-[:not([data-disabled])]/split:group-hover/split:not-aria-pressed:[&_[data-part=paint]]:bg-fill-button-ghost-hover stacks:group-data-[popup-open]/split:not-aria-pressed:[&_[data-part=paint]]:bg-fill-button-ghost-hover stacks:hover:not-aria-pressed:[&_[data-part=paint]]:layers-1-fill-button-layer";
 const GHOST_LABELED_ROOT_CLASS =
 	"[&>[data-cds-segment]:first-child_[data-part=paint]]:pe-0 [&>[data-cds-segment]:last-child_[data-part=paint]]:ps-0";
 const GHOST_BUTTON_CLASS = "group/btn isolate inline-flex items-center";
@@ -272,13 +281,21 @@ export function SplitDropdownButton({
 	const name = groupLabel ?? (typeof label === "string" ? label : (ariaLabel ?? menuLabel));
 	const joined = variant === "ghost" ? undefined : JOINED_LOOKS[variant];
 	const iconOnly = label === undefined;
+	const hasStatus = status !== undefined;
 	const scale = SIZES[size];
 	const rootBase = joinClasses(ROOT_CLASS, scale.radius, ROOT_GROUP_CLASS);
 	const rootClass = joined
 		? joinClasses(rootBase, joined.root, className)
-		: joinClasses(rootBase, GHOST_ROOT_CLASS, !iconOnly && GHOST_LABELED_ROOT_CLASS, className);
+		: joinClasses(
+				rootBase,
+				GHOST_ROOT_CLASS,
+				!hasStatus && GHOST_FIZZY_ROOT_CLASS,
+				!iconOnly && GHOST_LABELED_ROOT_CLASS,
+				className,
+			);
 	const ghostButtonClass = joinClasses(GHOST_BUTTON_CLASS, scale.radius);
-	const hasStatus = status !== undefined;
+	/* Upstream gives `cn` and `eF` only to the ghost split without a status slot. */
+	const ghostFizzyHover = !hasStatus && GHOST_FIZZY_HOVER_CLASS;
 	const primaryClass = joined
 		? joinClasses(
 				BUTTON_CLASS,
@@ -304,6 +321,7 @@ export function SplitDropdownButton({
 						),
 				hasStatus && "pe-1",
 				hasStatus && `${STATUS_PRIMARY_CLASS} rounded-e-none`,
+				ghostFizzyHover,
 			);
 	const statusClass = joinClasses(
 		STATUS_SLOT_CLASS,
@@ -321,7 +339,12 @@ export function SplitDropdownButton({
 				joined.fill,
 				PAINT_TRANSITION,
 			)
-		: joinClasses(BUTTON_CLASS, ghostButtonClass, iconOnly ? GHOST_ICON_CARET_CLASS : GHOST_LABELED_CARET_CLASS);
+		: joinClasses(
+				BUTTON_CLASS,
+				ghostButtonClass,
+				iconOnly ? GHOST_ICON_CARET_CLASS : GHOST_LABELED_CARET_CLASS,
+				ghostFizzyHover,
+			);
 	/* Upstream mutes the caret icon only on the enabled secondary/ghost looks. */
 	const caretIconClass = joinClasses(
 		scale.icon,

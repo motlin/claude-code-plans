@@ -193,6 +193,43 @@ describe("useRewindRequest + RewindConfirm", () => {
 		});
 	});
 
+	it("renders Cancel as upstream's secondary cds Button at the comfortable control height", async () => {
+		const {preview} = setup();
+		preview.resolve(FILES);
+		await settle();
+
+		expect([...screen.getByRole("button", {name: "Cancel"}).classList]).toStrictEqual([
+			"relative",
+			"inline-flex",
+			"shrink-0",
+			"cursor-pointer",
+			"items-center",
+			"justify-center",
+			"gap-1.5",
+			"rounded-[var(--upstream-radius)]",
+			"whitespace-nowrap",
+			"select-none",
+			"hide-focus-ring",
+			"focus-visible:outline-hidden",
+			"focus-visible:shadow-focus",
+			...CDS_BUTTON_DISABLED.split(" "),
+			"h-control",
+			"px-[min(var(--cds-pad-md),var(--cds-button-pad-max,var(--cds-pad-md)))]",
+			"text-body",
+			"bg-fill-secondary",
+			"font-control-regular",
+			"[:root:not([data-cds-fizzy-lake~=color])_&]:shadow-field-drop",
+			"after:pointer-events-none",
+			"after:absolute",
+			"after:inset-0",
+			"after:rounded-[inherit]",
+			"[:root:not([data-cds-fizzy-lake~=color])_&]:after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)]",
+			"text-primary",
+			"hover:bg-fill-secondary-hover",
+			CDS_BUTTON_DISABLED_FILL,
+		]);
+	});
+
 	it("offers the Restore select when files changed, with Cancel focused, and hides the count for Conversation only", async () => {
 		const {preview} = setup();
 		preview.resolve(FILES);

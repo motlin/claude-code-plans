@@ -431,6 +431,14 @@ describe("SplitDropdownButton", () => {
 			"[&:not([data-disabled])]:has-[[aria-pressed=true]]:[--split-ring:var(--color-border)]",
 		];
 		const ROOT = ["relative", "inline-flex", "w-fit", "shrink-0", "items-stretch", "rounded-r5", "group/split"];
+		/* Upstream `cn`: under fizzy colour the ghost group drops its ring and the segment paints fill the segment. */
+		const FIZZY_ROOT = ["stacks:shadow-none", "stacks:[&_[data-part=paint]]:p-0"];
+		/* Upstream `eF`: under fizzy colour hovering or opening the group paints both segments instead. */
+		const FIZZY_HOVER = [
+			"stacks:group-[:not([data-disabled])]/split:group-hover/split:not-aria-pressed:[&_[data-part=paint]]:bg-fill-button-ghost-hover",
+			"stacks:group-data-[popup-open]/split:not-aria-pressed:[&_[data-part=paint]]:bg-fill-button-ghost-hover",
+			"stacks:hover:not-aria-pressed:[&_[data-part=paint]]:layers-1-fill-button-layer",
+		];
 		const PAINT = [
 			"absolute",
 			"inset-0",
@@ -496,7 +504,7 @@ describe("SplitDropdownButton", () => {
 					screen.getByRole("button", {name: "More send options"}),
 				),
 			).toStrictEqual({
-				root: [...ROOT, ...RING],
+				root: [...ROOT, ...RING, ...FIZZY_ROOT],
 				style: STYLE,
 				primary: [
 					...BASE,
@@ -505,6 +513,7 @@ describe("SplitDropdownButton", () => {
 					"aria-pressed:text-accent-100",
 					"size-[var(--split-h)]",
 					"group-data-[popup-open]/split:pointer-events-none",
+					...FIZZY_HOVER,
 				],
 				primaryPaint: {hidden: "true", classes: PAINT},
 				caret: [
@@ -522,6 +531,7 @@ describe("SplitDropdownButton", () => {
 					"after:pointer-events-auto",
 					"after:start-[calc(var(--split-tuck)-1px)]",
 					"after:-end-[calc(3px+var(--split-tuck))]",
+					...FIZZY_HOVER,
 				],
 				caretPaint: {hidden: "true", classes: PAINT},
 				seam: ["w-px", "shrink-0", "self-stretch"],
@@ -536,6 +546,7 @@ describe("SplitDropdownButton", () => {
 				root: [
 					...ROOT,
 					...RING,
+					...FIZZY_ROOT,
 					"[&>[data-cds-segment]:first-child_[data-part=paint]]:pe-0",
 					"[&>[data-cds-segment]:last-child_[data-part=paint]]:ps-0",
 				],
@@ -550,6 +561,7 @@ describe("SplitDropdownButton", () => {
 					"text-[13px]/[19px]",
 					"ps-2",
 					"pe-[5px]",
+					...FIZZY_HOVER,
 				],
 				primaryPaint: {hidden: "true", classes: PAINT},
 				caret: [
@@ -565,6 +577,7 @@ describe("SplitDropdownButton", () => {
 					"after:start-0",
 					"after:-end-2",
 					"after:content-['']",
+					...FIZZY_HOVER,
 				],
 				caretPaint: {hidden: "true", classes: PAINT},
 				seam: ["w-px", "shrink-0", "self-stretch"],
@@ -724,9 +737,14 @@ describe("SplitDropdownButton", () => {
 			expect({
 				primary: [...primary().classList].filter((name) => /^(peer\/slot|ps-|pe-|rounded-e)/.test(name)),
 				slot: [...slot().classList].filter((name) => /(bg-|rounded)/.test(name)),
+				/* Upstream gives the status ghost neither `cn` nor `eF`. */
+				fizzyGroupLook: [...group().classList, ...primary().classList, ...caret().classList].filter((name) =>
+					/fill-button|:p-0|^stacks:shadow-none$/.test(name),
+				),
 			}).toStrictEqual({
 				primary: ["ps-2", "pe-1", "peer/slot", "rounded-e-none"],
 				slot: ["peer-hover/slot:bg-fill-ghost-hover", "rounded-e-r5"],
+				fizzyGroupLook: [],
 			});
 		});
 	});
@@ -816,7 +834,7 @@ describe("SplitDropdownButton", () => {
 });
 
 describe("SplitDropdownButton disabled look, as upstream's rM / NM / CY / CL", () => {
-	it("drops the secondary frame's drop shadow and ring and the paint's background-color transition under fizzy colour (upstream sO, Yg), after the base rules", async () => {
+	it("drops the secondary frame's drop shadow and ring, the ghost group ring, and the paint's background-color transition under fizzy colour (upstream sO, cn, Yg), after the base rules", async () => {
 		const candidates = [
 			"stacks:after:shadow-none",
 			"stacks:shadow-none",
@@ -824,16 +842,35 @@ describe("SplitDropdownButton disabled look, as upstream's rM / NM / CY / CL", (
 			"shadow-field-drop",
 			"after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)]",
 			"transition-[background-color,box-shadow,color]",
+			"shadow-[inset_0_0_0_1px_var(--split-ring,transparent)]",
 		];
 		const order = (await loadDesignSystem()).getClassOrder(candidates);
 		const sorted = order.toSorted(([, a], [, b]) => (a === null || b === null ? 0 : a < b ? -1 : a > b ? 1 : 0));
 		expect(sorted.map(([name]) => name)).toStrictEqual([
+			"shadow-[inset_0_0_0_1px_var(--split-ring,transparent)]",
 			"shadow-field-drop",
 			"transition-[background-color,box-shadow,color]",
 			"after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)]",
 			"stacks:shadow-none",
 			"stacks:transition-[box-shadow,color]",
 			"stacks:after:shadow-none",
+		]);
+	});
+
+	it("compiles the ghost group's fizzy look (upstream cn, eF): no ring, flush paints, and segment paints on group hover or open", async () => {
+		const stacks =
+			':where([data-cds-fizzy-lake~="color"], [data-cds-fizzy-lake~="color"] *):not(:where([data-cds-theme], [data-cds-theme] *))';
+		const compiled = await compileAll([
+			"stacks:[&_[data-part=paint]]:p-0",
+			"stacks:group-[:not([data-disabled])]/split:group-hover/split:not-aria-pressed:[&_[data-part=paint]]:bg-fill-button-ghost-hover",
+			"stacks:group-data-[popup-open]/split:not-aria-pressed:[&_[data-part=paint]]:bg-fill-button-ghost-hover",
+			"stacks:hover:not-aria-pressed:[&_[data-part=paint]]:layers-1-fill-button-layer",
+		]);
+		expect(Object.values(compiled)).toStrictEqual([
+			String.raw`@media (forced-colors: none) { .stacks\:\[\&_\[data-part\=paint\]\]\:p-0${stacks} [data-part=paint] { padding: 0px; } }`,
+			String.raw`@media (forced-colors: none) { @media (hover: hover) { .stacks\:group-\[\:not\(\[data-disabled\]\)\]\/split\:group-hover\/split\:not-aria-pressed\:\[\&_\[data-part\=paint\]\]\:bg-fill-button-ghost-hover${stacks}:is(:where(.group\/split):is(:not([data-disabled])) *):is(:where(.group\/split):hover *):not([aria-pressed="true"]) [data-part=paint] { background-color: var(--upstream-fill-button-ghost-hover); } } }`,
+			String.raw`@media (forced-colors: none) { .stacks\:group-data-\[popup-open\]\/split\:not-aria-pressed\:\[\&_\[data-part\=paint\]\]\:bg-fill-button-ghost-hover${stacks}:is(:where(.group\/split)[data-popup-open] *):not([aria-pressed="true"]) [data-part=paint] { background-color: var(--upstream-fill-button-ghost-hover); } }`,
+			String.raw`@media (forced-colors: none) { @media (hover: hover) { .stacks\:hover\:not-aria-pressed\:\[\&_\[data-part\=paint\]\]\:layers-1-fill-button-layer${stacks}:hover:not([aria-pressed="true"]) [data-part=paint] { background-image: linear-gradient(var(--color-fill-button-layer) 0 0); } } }`,
 		]);
 	});
 

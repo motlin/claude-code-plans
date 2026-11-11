@@ -4,6 +4,7 @@ import {useRef, useState} from "react";
 import type {RewindChoice, RewindPreview} from "../hooks/use-rewind-request";
 import {DiffStats} from "./tool-renderers/shared";
 import {useFizzyLake} from "../lib/fizzy-lake";
+import {cdsButtonClass} from "./ui/cds-button";
 import {CDS_BUTTON_DISABLED, CDS_BUTTON_DISABLED_FILL} from "./ui/cds-button-disabled";
 import {DensityScope} from "./ui/density";
 import {useDialogBandBodyClass} from "./ui/dialog-band";
@@ -16,8 +17,10 @@ import {DIALOG_BODY_CLASS} from "./ui/dialog-classes";
 /** Upstream's `ece`: the quote card shows the prompt's first 600 characters. */
 const QUOTE_LIMIT = 600;
 
-/* Upstream's secondary Cancel and primary Rewind are cds Buttons, so they take its disabled look and paint. */
-const BUTTON_BASE_CLASS = `h-8 rounded-r6 px-3 text-body font-medium transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${CDS_BUTTON_DISABLED} ${CDS_BUTTON_DISABLED_FILL}`;
+/* Upstream's primary Rewind is a cds Button, so it takes its disabled look and paint. */
+const REWIND_BUTTON_CLASS = `h-8 rounded-r6 px-3 text-body font-medium transition-colors hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus ${CDS_BUTTON_DISABLED} ${CDS_BUTTON_DISABLED_FILL} bg-fill-primary text-on-primary hover:bg-fill-primary-hover`;
+/* Upstream's Cancel is a secondary cds Button at the comfortable control height (32px). */
+const CANCEL_BUTTON_CLASS = cdsButtonClass("secondary");
 
 const CHOICE_LABELS = {
 	both: "Code and conversation",
@@ -140,7 +143,7 @@ export function RewindConfirm({text, preview, conversation, onClose, onConfirm}:
 									data-initial-focus=""
 									disabled={running}
 									onClick={onClose}
-									className={`${BUTTON_BASE_CLASS} border border-strong text-primary hover:bg-fill-ghost-hover`}
+									className={CANCEL_BUTTON_CLASS}
 								>
 									Cancel
 								</button>
@@ -151,7 +154,7 @@ export function RewindConfirm({text, preview, conversation, onClose, onConfirm}:
 									onClick={() => {
 										if (!running) confirm();
 									}}
-									className={`${BUTTON_BASE_CLASS} bg-fill-primary text-on-primary hover:bg-fill-primary-hover`}
+									className={REWIND_BUTTON_CLASS}
 								>
 									{running ? "Rewinding…" : "Rewind"}
 								</button>

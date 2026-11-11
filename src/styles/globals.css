@@ -232,6 +232,8 @@ html[data-interface-font="dyslexic"] {
 	--color-fill-ghost-hover: var(--upstream-fill-ghost-hover);
 	/* Upstream --cds-fill-button-ghost-hover: a cds ghost Button's hover paint (the `stacks:` variant). */
 	--color-fill-button-ghost-hover: var(--upstream-fill-button-ghost-hover);
+	/* Upstream --cds-fill-button-layer: the hovered segment's extra layer over a fizzy ghost split's group hover. */
+	--color-fill-button-layer: var(--upstream-fill-button-layer);
 	--color-fill-ghost-selected: var(--upstream-fill-ghost-selected);
 	/* The ⌘K palette's selected row: ghost hover until fizzy-lake color, then upstream's measured ghost-selected. */
 	--color-palette-selected: var(--palette-selected);
@@ -544,6 +546,8 @@ html[data-interface-font="dyslexic"] {
 	--upstream-fill-ghost-hover: hsl(0 0% 4% / 0.05);
 	/* Pre-rollout a cds ghost Button hovers like every other ghost. */
 	--upstream-fill-button-ghost-hover: var(--upstream-fill-ghost-hover);
+	/* Upstream leaves --cds-fill-button-layer unset before the fizzy colour rollout. */
+	--upstream-fill-button-layer: initial;
 	/* Upstream's pressed rail toggle (session-presets gate): 10% ink. */
 	--upstream-fill-ghost-selected: rgb(11 11 11 / 0.1);
 	--palette-selected: var(--upstream-fill-ghost-hover);
@@ -1134,6 +1138,8 @@ html[data-interface-font="dyslexic"] {
 	--upstream-fill-ghost-hover: #0000000d;
 	/* Upstream `--cds-fill-button-ghost-hover`: the cds ghost Button's `stacks:` hover paint. */
 	--upstream-fill-button-ghost-hover: #0000001a;
+	/* Upstream `--cds-fill-button-layer`: the `layers-*-fill-button-layer` gradient over a button paint. */
+	--upstream-fill-button-layer: #0000000e;
 	/* Upstream `--cds-fizzy-lake-color-plain-secondary`: the message toolbar's button ink. */
 	--upstream-plain-secondary: #0009;
 	/* Upstream `--cds-text-warning` (pre-rollout yellow-600 / yellow-300). */
@@ -1281,6 +1287,7 @@ html[data-interface-font="dyslexic"] {
 	--upstream-text-tint-green: #53c556;
 	--upstream-fill-ghost-hover: #ffffff13;
 	--upstream-fill-button-ghost-hover: #ffffff13;
+	--upstream-fill-button-layer: #ffffff13;
 	--upstream-plain-secondary: #ffffff91;
 	--upstream-warning: #e49c06;
 	--upstream-text-primary: #ffffffed;
@@ -1873,6 +1880,11 @@ input.cds-input::-webkit-search-cancel-button {
    the ghost hover over it as a background-image layer (Tailwind's hover: is already gated on (hover: hover)). */
 @utility layers-1-fill-ghost-hover {
 	background-image: linear-gradient(var(--color-fill-ghost-hover) 0 0);
+}
+
+/* Upstream `layers-1-fill-button-layer`: one fill-button-layer gradient over a cds Button paint's background. */
+@utility layers-1-fill-button-layer {
+	background-image: linear-gradient(var(--color-fill-button-layer) 0 0);
 }
 
 /* Upstream `cursor-interactive`: the pointer cursor on chips and other clickable inline atoms. */

@@ -61,4 +61,18 @@ describe("fizzy-lake type tokens (upstream data-cds-fizzy-lake~=type)", () => {
 			dark: "#ffffff13",
 		});
 	});
+
+	it("--color-fill-button-layer is unset pre-rollout, and upstream's #0000000e / #ffffff13 under fizzy-lake color", () => {
+		expect({
+			theme: token(block("@theme inline"), "--color-fill-button-layer"),
+			base: token(block(":root"), "--upstream-fill-button-layer"),
+			color: token(block(':root[data-cds-fizzy-lake~="color"]'), "--upstream-fill-button-layer"),
+			dark: token(block(':root.dark[data-cds-fizzy-lake~="color"]'), "--upstream-fill-button-layer"),
+		}).toStrictEqual({
+			theme: "var(--upstream-fill-button-layer)",
+			base: "initial",
+			color: "#0000000e",
+			dark: "#ffffff13",
+		});
+	});
 });
