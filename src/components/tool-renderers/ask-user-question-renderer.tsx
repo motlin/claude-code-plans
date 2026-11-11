@@ -57,7 +57,8 @@ function ReadOnlyOption({label, description, index}: {label: string; description
 
 /**
  * Render a question that has no recorded answer (still pending in an inactive
- * session, docked, or dismissed): the question followed by its options.
+ * session, docked, or dismissed): the question followed by its options. The question is
+ * upstream's `_y` line (cb6930dae, 2026-11-10): `_i({text: u9(ME(question))})` in secondary text.
  *
  * Emits its blocks as siblings so the enclosing card divides and pads every row
  * itself, matching upstream's list-in-card idiom.
@@ -67,7 +68,9 @@ function UnansweredQuestion({question, header, options}: QuestionLike) {
 		<>
 			<div>
 				{header && <p className="text-footnote text-secondary mb-g3">{header}</p>}
-				<MarkdownArticle markdown={question} />
+				<div className="text-body text-secondary [overflow-wrap:anywhere]">
+					<UserInlineText text={revealSpoofing(maskSecrets(question))} codeLook="chip" links={false} />
+				</div>
 			</div>
 			{options.map((opt, optionIndex) => (
 				<ReadOnlyOption

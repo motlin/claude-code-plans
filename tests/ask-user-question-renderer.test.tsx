@@ -546,6 +546,41 @@ describe("AskUserQuestionRenderer", () => {
 		}).toStrictEqual({status: "No response after 60s", rawBoilerplate: false});
 	});
 
+	it("draws an unanswered question as upstream's _y does: chips over u9(ME(question)), not markdown", () => {
+		const rlo = String.fromCodePoint(0x202e);
+		const {container} = render(
+			<AskUserQuestionRenderer
+				toolCall={makeCall({
+					input: {
+						questions: [
+							{
+								question: `**Ship** ${rlo}\`exe.txt\` with ghp_${"A".repeat(36)}?`,
+								header: "Ship",
+								options: [{label: "Yes"}, {label: "No"}],
+								multiSelect: false,
+							},
+						],
+					},
+					result: "Something else entirely.",
+					isError: true,
+				})}
+			/>,
+		);
+		const line = container.querySelector(".card-outline > div > div");
+
+		expect({
+			className: line?.className,
+			text: line?.textContent,
+			chips: [...(line?.querySelectorAll("code") ?? [])].map((code) => code.textContent),
+			strong: [...(line?.querySelectorAll("strong") ?? [])].map((strong) => strong.textContent),
+		}).toStrictEqual({
+			className: "text-body text-secondary [overflow-wrap:anywhere]",
+			text: `Ship [U+202E]exe.txt with ghp_AAAA${"•".repeat(32)}?`,
+			chips: ["exe.txt"],
+			strong: ["Ship"],
+		});
+	});
+
 	it("still falls back to the raw result for an unrecognized envelope", () => {
 		const {container} = render(
 			<AskUserQuestionRenderer toolCall={makeCall({result: "Something else entirely."})} />,
