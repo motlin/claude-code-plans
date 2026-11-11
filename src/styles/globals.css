@@ -3936,6 +3936,17 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--code-size: initial;
 	--code-leading: initial;
 }
+
+/* Upstream [data-mode=dark|light] .epitaxy-root diffs-container: the code tile's token font rules
+   (CODE_TILE_CSS) read the current mode's weight/decoration and skip the other mode's. */
+.dark diffs-container {
+	--code-font-skip-light: ;
+	--code-font-skip-dark: initial;
+}
+:root:not(.dark) diffs-container {
+	--code-font-skip-dark: ;
+	--code-font-skip-light: initial;
+}
 /* Upstream .cds-root [data-size=xs|sm|lg]: a sized control's subtree pads on that size's scale. */
 [data-size="xs"] {
 	--cds-pad-xs: var(--cds-pad-xs--xs);
