@@ -248,6 +248,7 @@ describe("StartCard", () => {
 		fireEvent.click(trigger);
 		await screen.findByRole("listbox", {name: "Projects"});
 		const chevron = trigger.querySelector("svg")!;
+		const search = screen.getByRole("textbox", {name: "Search projects"});
 
 		expect({
 			divider: container.querySelector<HTMLElement>("li > [aria-hidden].border-t")?.style.marginInline,
@@ -255,6 +256,8 @@ describe("StartCard", () => {
 			expanded: trigger.getAttribute("aria-expanded"),
 			button: trigger.className,
 			chevron: chevron.getAttribute("class"),
+			popup: search.parentElement?.className,
+			search: search.className,
 		}).toStrictEqual({
 			divider: "var(--ring-inner, 1px)",
 			row: "group/row relative",
@@ -262,6 +265,8 @@ describe("StartCard", () => {
 			button: "flex h-8 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-start text-body leading-5 text-secondary-control outline-none group-hover/row:bg-fill-ghost-hover group-has-[:focus-visible]/row:bg-fill-ghost-hover group-has-[[aria-expanded=true]]/row:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden",
 			chevron:
 				"lucide lucide-chevron-down size-3 shrink-0 text-ink-muted group-hover/row:text-secondary group-has-[:focus-visible]/row:text-secondary group-has-[[aria-expanded=true]]/row:text-secondary",
+			popup: "flex h-[360px] max-h-[var(--available-height)] w-[320px] max-w-[calc(100vw-32px)] flex-col rounded-r7 bg-[var(--menu-bg)] p-1 text-body font-normal text-primary shadow-[var(--menu-shadow)] outline-none",
+			search: "h-6 w-full shrink-0 rounded-r6 bg-transparent px-2 text-body font-normal text-primary shadow-[inset_0_0_0_1px_var(--color-alpha-1)] outline-none placeholder:text-ink-muted focus:shadow-[inset_0_0_0_1px_var(--accent-100),0_0_0_6px_color-mix(in_srgb,var(--accent-100)_20%,transparent)]",
 		});
 	});
 
