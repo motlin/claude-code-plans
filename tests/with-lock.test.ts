@@ -1,4 +1,4 @@
-import {execFileSync, spawn} from "node:child_process";
+import {execFileSync, spawn, spawnSync} from "node:child_process";
 import {existsSync, mkdtempSync, readFileSync, rmSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join, resolve} from "node:path";
@@ -129,9 +129,13 @@ describe("scripts/with-lock.sh", () => {
 
 	it("lets the next caller in at once when the holder was killed without releasing", async () => {
 		await killHolder();
-		const started = Date.now();
-		const output = execFileSync("bash", [script, lockDir, "echo", "ran"], {encoding: "utf8", timeout: 10_000});
+		// The script prints "Waiting for ..." only when its non-blocking flock fails, so an empty stderr
+		// proves the kernel dropped the dead holder's lock and the caller took it on the first try.
+		const {status, stdout, stderr} = spawnSync("bash", [script, lockDir, "echo", "ran"], {
+			encoding: "utf8",
+			timeout: 10_000,
+		});
 
-		expect({output, prompt: Date.now() - started < 5000}).toStrictEqual({output: "ran\n", prompt: true});
+		expect({status, stdout, stderr}).toStrictEqual({status: 0, stdout: "ran\n", stderr: ""});
 	}, 30_000);
 });

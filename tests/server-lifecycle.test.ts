@@ -293,7 +293,6 @@ describe("scripts/server.sh", () => {
 					`listening on ${otherPort}`,
 				);
 				const {SERVER_MATCH: _unused, ...defaultMatchEnv} = env;
-				const started = Date.now();
 				const failure: unknown = await phases.step("server.sh stop", 15_000, async () =>
 					execFileAsync("bash", [script, "stop"], {
 						cwd: projectRoot,
@@ -311,17 +310,17 @@ describe("scripts/server.sh", () => {
 						(error: unknown) => error,
 					),
 				);
+				// bounded() prints "did not finish" only when the lookup is still running at the 1s deadline, then
+				// kills it without waiting; a lookup left to finish (the stub sleeps 60s) would outlast the step.
 				expect({
 					code: Reflect.get(Object(failure), "code"),
 					stdout: Reflect.get(Object(failure), "stdout"),
 					stderr: Reflect.get(Object(failure), "stderr"),
-					fast: Date.now() - started < 10_000,
 					titled: titledPids(),
 				}).toStrictEqual({
 					code: 1,
 					stdout: "",
 					stderr: `Reading the cwd of pid(s) ${String(child.pid)} did not finish within 1s\nCould not tell which server processes are running; stopped nothing\n`,
-					fast: true,
 					titled: [String(child.pid)],
 				});
 			} finally {
@@ -363,18 +362,17 @@ describe("scripts/server.sh", () => {
 	}, 120_000);
 
 	it("start fails fast when the server exits before it listens", () => {
-		const started = Date.now();
 		const result = spawnSync("bash", [script, "start"], {
 			cwd: projectRoot,
 			encoding: "utf8",
 			env: {...env, SERVER_CMD: `node -e 'process.exit(1)' ${instance}`},
 		});
-		const elapsedMs = Date.now() - started;
 
-		expect({status: result.status, stderr: result.stderr, fast: elapsedMs < 15_000}).toStrictEqual({
+		// Only the early-exit branch, which returns at once, prints this; waiting out START_TIMEOUT_SECONDS
+		// ends with "failed to listen ... within" instead.
+		expect({status: result.status, stderr: result.stderr}).toStrictEqual({
 			status: 1,
 			stderr: `Server exited before listening on port ${PORT}; see ${join(runDir, "server.log")}\n`,
-			fast: true,
 		});
 	}, 120_000);
 

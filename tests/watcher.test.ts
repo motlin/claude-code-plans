@@ -10,8 +10,7 @@ import {
 	symlinkSync,
 	utimesSync,
 } from "node:fs";
-import {createServer as createHttpServer} from "node:http";
-import {createServer, type AddressInfo, type Server} from "node:net";
+import {createServer, type Server} from "node:net";
 import {dirname, join} from "node:path";
 import {tmpdir} from "node:os";
 import {
@@ -1388,40 +1387,55 @@ describe("shouldIgnoreWatch", () => {
 		}
 	});
 
-	it("filters a burst of native events without blocking a concurrent HTTP request", async () => {
+	it("filters each native event at a cost that does not grow with the number of file-content roots", () => {
 		// libuv drains a whole FSEvents batch in one callback, so the predicate runs once per changed path with
-		// no chance to yield. Many file-content roots plus heavy churn in other projects starved the server.
+		// no chance to yield: a burst blocks the event loop for (events x per-event cost). Scanning every
+		// file-content root per event made that cost grow with the root count and starved the server. Compare
+		// this thread's CPU time over the same burst with 10 roots and with 1,000; interleaving the two arms puts
+		// them under the same machine load, so the ratio measures the predicate, not the machine. A per-root scan
+		// costs ~100x more with 100x the roots; a set lookup per ancestor costs the same.
 		const base = realpathSync(mkdtempSync(join(tmpdir(), "watch-burst-")));
-		const roots = Array.from({length: 300}, (_, index) => {
+		const manyRoots = Array.from({length: 1000}, (_, index) => {
 			const root = join(base, `repository-${index}`);
 			mkdirSync(join(root, ".git"), {recursive: true});
 			return root;
 		});
-		const server = createHttpServer((_request, response) => response.end("ok"));
-		try {
-			__testing.setFileContentRoots(roots);
-			await new Promise<void>((resolve) => {
-				server.listen(0, "127.0.0.1", resolve);
-			});
-			const {port} = server.address() as AddressInfo;
-			const startedAt = performance.now();
-			const response = fetch(`http://127.0.0.1:${port}/`).then(() => performance.now() - startedAt);
+		const fewRoots = manyRoots.slice(0, 10);
+		const filterBurst = (
+			roots: readonly string[],
+			firstEvent: number,
+		): {cpuMicros: number; ignoredCount: number} => {
+			__testing.setFileContentRoots([...roots]);
 			let ignoredCount = 0;
-			for (let event = 0; event < 20_000; event += 1) {
+			const before = process.threadCpuUsage();
+			for (let event = firstEvent; event < firstEvent + 1000; event += 1) {
 				const root = roots[event % roots.length] ?? base;
 				// Half land in an ignored build directory; the rest survive to the post-stat check.
 				const ignoredDirectory = event % 2 === 0;
 				const path = join(root, ignoredDirectory ? "target/classes" : "src", `file-${event}.ts`);
 				if (ignoredDirectory ? shouldIgnoreWatch(path) : shouldIgnoreWatch(path, fileStats)) ignoredCount += 1;
 			}
-			expect({ignoredCount, answeredWithinASecond: (await response) < 1000}).toStrictEqual({
-				ignoredCount: 10_000,
-				answeredWithinASecond: true,
-			});
+			const {user, system} = process.threadCpuUsage(before);
+			return {cpuMicros: user + system, ignoredCount};
+		};
+		const totals = {few: 0, many: 0, ignoredFew: 0, ignoredMany: 0};
+		try {
+			for (let round = 0; round < 10; round += 1) {
+				const few = filterBurst(fewRoots, round * 1000);
+				const many = filterBurst(manyRoots, round * 1000);
+				totals.few += few.cpuMicros;
+				totals.many += many.cpuMicros;
+				totals.ignoredFew += few.ignoredCount;
+				totals.ignoredMany += many.ignoredCount;
+			}
 		} finally {
-			server.close();
 			rmSync(base, {recursive: true, force: true});
 		}
+		expect({
+			ignoredFew: totals.ignoredFew,
+			ignoredMany: totals.ignoredMany,
+			costIndependentOfRootCount: totals.many < totals.few * 4,
+		}).toStrictEqual({ignoredFew: 5000, ignoredMany: 5000, costIndependentOfRootCount: true});
 	});
 });
 

@@ -1,4 +1,4 @@
-import {afterEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {
 	listenForTakeover,
 	onServerShutdown,
@@ -104,9 +104,22 @@ describe("server shutdown hooks", () => {
 		expect(teardowns).toBe(1);
 	});
 
-	it("requestTakeover resolves after the ack window when no other instance is running", async () => {
-		const started = performance.now();
-		await requestTakeover({ackWindowMs: 20});
-		expect(performance.now() - started).toBeLessThan(1000);
+	it("requestTakeover resolves when the ack window closes, not at the release timeout, when no other instance is running", async () => {
+		vi.useFakeTimers();
+		try {
+			let resolved = false;
+			const takeover = requestTakeover({ackWindowMs: 20, releaseTimeoutMs: 60_000}).then(() => {
+				resolved = true;
+			});
+			await vi.advanceTimersByTimeAsync(19);
+			const beforeWindow = resolved;
+			await vi.advanceTimersByTimeAsync(1);
+			const atWindow = resolved;
+			await vi.advanceTimersByTimeAsync(60_000);
+			await takeover;
+			expect({beforeWindow, atWindow}).toStrictEqual({beforeWindow: false, atWindow: true});
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });
