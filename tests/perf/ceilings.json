@@ -1103,11 +1103,11 @@
 	},
 	"server.sessionOpen.large-long.transcript.resp.bytes":
 	{
-		"ceiling": 523393,
+		"ceiling": 523407,
 		"unit": "bytes",
 		"tolerance": 0,
-		"reason": "Transcript responses now carry hiddenUuids, cuts and chainVersion (active-chain paging task 2): +61 bytes of empty arrays and a 16-hex version",
-		"raisedAt": "2026-10-24"
+		"reason": "raised from 523393 (2026-11-11): transcript responses now carry the whole file's Claude chapters (8b9b5e641, session-chapters-toc T1), +14 bytes for an empty chapters array; that commit raised small and typical but missed the merge-group-only large tier",
+		"raisedAt": "2026-11-11"
 	},
 	"server.sessionOpen.large-long.transcript.sql.count":
 	{
@@ -1189,11 +1189,11 @@
 	},
 	"server.sessionOpen.large-wide.transcript.resp.bytes":
 	{
-		"ceiling": 485104,
+		"ceiling": 485118,
 		"unit": "bytes",
 		"tolerance": 0,
-		"reason": "Transcript responses now carry hiddenUuids, cuts and chainVersion (active-chain paging task 2): +61 bytes of empty arrays and a 16-hex version",
-		"raisedAt": "2026-10-24"
+		"reason": "raised from 485104 (2026-11-11): transcript responses now carry the whole file's Claude chapters (8b9b5e641, session-chapters-toc T1), +14 bytes for an empty chapters array; that commit raised small and typical but missed the merge-group-only large tier",
+		"raisedAt": "2026-11-11"
 	},
 	"server.sessionOpen.large-wide.transcript.sql.count":
 	{
