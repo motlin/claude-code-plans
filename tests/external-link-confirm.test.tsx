@@ -4,6 +4,7 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ConfirmExternalLink} from "../src/components/confirm-external-link";
+import {resolveLink} from "../src/lib/external-nav";
 import {installLocalStorage} from "./fake-storage";
 
 const TRUSTED_KEY = "external-nav-trusted-domains";
@@ -162,5 +163,45 @@ describe("ConfirmExternalLink (upstream jq + hz/Ec, the tool body's confirm link
 			dialog: null,
 			opened: [],
 		});
+	});
+});
+
+describe("resolveLink (upstream cbb72cde9 mr: the href through _0 and cs, then ds under a link policy and c5e04cdc6 n)", () => {
+	it("strips open_in_browser, drops unsafe hrefs and claude-host credential routes, and lets each policy pick live, confirm or words", () => {
+		const urls = [
+			"https://example.com/a?open_in_browser=1&b=2#h",
+			"https://example.com/a?b=2",
+			"http:example.com/a",
+			"https://claude.ai/api/organizations",
+			"https://claude.ai/logout/now",
+			"https://claude.ai/connect/github",
+			"https://xn--e1afmkfd.example/b",
+			"https://user:pw@example.com/a",
+			"https://xn--e1afmkfd.claude.ai/b",
+			"https://xn--e1afmkfd.anthropic.com/logout",
+			"https://xn--e1afmkfd.anthropic.com/login",
+			"https://xn--e1afmkfd.anthropic.com/upgrade?returnTo=%2Flogout",
+		];
+
+		expect(urls.map((url) => [resolveLink(url, "transcript"), resolveLink(url, "option")])).toStrictEqual([
+			[
+				{treatment: "live", href: "https://example.com/a?b=2#h"},
+				{treatment: "live", href: "https://example.com/a?b=2#h"},
+			],
+			[
+				{treatment: "live", href: "https://example.com/a?b=2"},
+				{treatment: "live", href: "https://example.com/a?b=2"},
+			],
+			[{treatment: "words"}, {treatment: "words"}],
+			[{treatment: "words"}, {treatment: "words"}],
+			[{treatment: "words"}, {treatment: "words"}],
+			[{treatment: "words"}, {treatment: "words"}],
+			[{treatment: "confirm", href: "https://xn--e1afmkfd.example/b"}, {treatment: "words"}],
+			[{treatment: "words"}, {treatment: "words"}],
+			[{treatment: "words"}, {treatment: "words"}],
+			[{treatment: "words"}, {treatment: "words"}],
+			[{treatment: "confirm", href: "https://xn--e1afmkfd.anthropic.com/login"}, {treatment: "words"}],
+			[{treatment: "words"}, {treatment: "words"}],
+		]);
 	});
 });

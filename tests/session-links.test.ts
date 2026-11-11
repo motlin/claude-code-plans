@@ -105,8 +105,8 @@ describe("extractSessionLinks", () => {
 		});
 	});
 
-	it("trims sentence punctuation and an unbalanced closing parenthesis", () => {
-		const lines = [userLine("See (https://example.com/example).", 100)];
+	it("trims bare URLs with upstream's ts: one sentence mark, a whole RTL punctuation run, an unbalanced closing parenthesis", () => {
+		const lines = [userLine("See (https://example.com/example). And https://example.com/example،.", 100)];
 
 		expect(extractSessionLinks(lines, undefined, [])).toStrictEqual({
 			groups: [

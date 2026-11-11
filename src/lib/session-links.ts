@@ -1,6 +1,7 @@
 import type {ResourceOccurrence, TextChunk} from "./session-resources";
 import {occurrenceKey, scanSessionContent} from "./session-resources";
 import type {SessionLine} from "./transcript";
+import {splitUrlTail} from "./url-trim";
 
 /**
  * One URL and every message that mentions it, before it is filed under a
@@ -42,7 +43,6 @@ interface NormalizedUrl {
 
 const MARKDOWN_LINK = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
 const BARE_URL = /https?:\/\/[^\s<>"'`\]})\\]+/g;
-const TRAILING_PUNCTUATION = /[.,;:!?]+$/;
 const ISSUE_KEY = /[A-Z][A-Z0-9]+-\d+/;
 const GITHUB_ISSUE_OR_PULL = /^\/([^/]+)\/([^/]+)\/(?:issues|pull)\/(\d+)(?:\/|$)/;
 
@@ -70,19 +70,6 @@ function occurrenceFromChunk(chunk: TextChunk): ResourceOccurrence {
 		role: chunk.role,
 		...(chunk.tool === undefined ? {} : {tool: chunk.tool}),
 	};
-}
-
-function trimUrl(candidate: string): string {
-	let trimmed = candidate.replace(TRAILING_PUNCTUATION, "");
-
-	while (trimmed.endsWith(")")) {
-		const openingCount = Array.from(trimmed).filter((character) => character === "(").length;
-		const closingCount = Array.from(trimmed).filter((character) => character === ")").length;
-		if (closingCount <= openingCount) break;
-		trimmed = trimmed.slice(0, -1);
-	}
-
-	return trimmed;
 }
 
 function normalizeUrl(candidate: string): NormalizedUrl {
@@ -206,7 +193,7 @@ export function collectSessionLinks(lines: SessionLine[]): CollectedLink[] {
 	const links = new Map<string, CollectedLinkBuilder>();
 
 	const addUrl = (candidate: string, markdownLabel: string | undefined, occurrence: ResourceOccurrence) => {
-		const normalized = normalizeUrl(trimUrl(candidate));
+		const normalized = normalizeUrl(candidate);
 		const existing = links.get(normalized.url);
 		if (existing !== undefined) {
 			existing.occurrences.set(occurrenceKey(occurrence), occurrence);
@@ -227,7 +214,8 @@ export function collectSessionLinks(lines: SessionLine[]): CollectedLink[] {
 
 		const textWithoutMarkdownLinks = chunk.text.replace(MARKDOWN_LINK, " ");
 		for (const match of textWithoutMarkdownLinks.matchAll(BARE_URL)) {
-			addUrl(match[0], undefined, occurrenceFromChunk(chunk));
+			// Upstream's `is` (cf6507c5a) trims a bare URL; a markdown link's href is taken as written.
+			addUrl(splitUrlTail(match[0])[0], undefined, occurrenceFromChunk(chunk));
 		}
 	}
 

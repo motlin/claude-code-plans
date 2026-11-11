@@ -1,3 +1,6 @@
+import {isClaudeHost, isHeldHostLink} from "./claude-hosts";
+import {linkHref, sanitizeHref} from "./link-href";
+
 // Upstream claude.ai/code's external-link confirm helpers (shared-w-0 `MM`/`To`/`Kj`/`T6`/`Ud`/`HK`/`fg`/`ok`/`Xl`/`Vl`
 // and shared-12 `hZ`/`lv`), behind the tool body's "confirm" link policy.
 
@@ -92,11 +95,6 @@ export function opensWithoutConfirm(url: string): boolean {
 	return parsed.protocol === "https:" && TRUSTED_EXTERNAL_HOSTS.has(parsed.hostname);
 }
 
-/** Upstream `bD`: a claude.ai or claude.com host. */
-function isClaudeHost(hostname: string): boolean {
-	return ["claude.ai", "claude.com"].some((root) => hostname === root || hostname.endsWith(`.${root}`));
-}
-
 /** Upstream `Ma`: a link whose host is punycode or which carries a username or password. */
 function isDeceptiveLink(url: string): boolean {
 	return deceptiveHost(url).punycode !== null || embeddedCredentialsHost(url) !== null;
@@ -104,24 +102,52 @@ function isDeceptiveLink(url: string): boolean {
 
 /**
  * Upstream c5e04cdc6 `n` (as `ft` checks a "confirm" link): an http(s) link the external-link confirm may open —
- * not trusted or same-origin, no username or password, not a Claude host.
+ * not trusted or same-origin, no username or password, not a Claude host (`bD`), and not a held host's
+ * credential or sign-in route (`sk`).
  */
 function confirmable(url: string): boolean {
 	if (!/^https?:\/\//i.test(url) || opensWithoutConfirm(url)) return false;
 	const parsed = parse(url);
-	return parsed !== null && embeddedCredentialsHost(url) === null && !isClaudeHost(parsed.hostname);
+	if (parsed === null) return false;
+	const pageHostname = typeof window === "undefined" ? null : window.location.hostname;
+	return (
+		parsed.username === "" &&
+		parsed.password === "" &&
+		!isClaudeHost(parsed.hostname) &&
+		!isHeldHostLink(parsed, pageHostname)
+	);
 }
 
-/** How upstream's `pr` draws a link: a live link, through the external-link confirm, or as words. */
-export type LinkTreatment = "live" | "confirm" | "words";
+/** How upstream's `hr` draws a link: a live link, through the external-link confirm, or as words. */
+type LinkTreatment = "live" | "confirm" | "words";
 
 /**
- * Upstream `fr` under the session transcript's link policy (cc3bf7b05 `bc`, no outer policy): links are live,
- * except deceptive ones, which ask first when the confirm can open them and are words otherwise.
+ * Which link policy a surface draws under: the session transcript's (cc3bf7b05 `bc`, no outer policy), where a
+ * deceptive link asks first, or the question card option's (c2f6611a3 `V`), where it is words.
  */
-export function transcriptLinkTreatment(url: string): LinkTreatment {
-	if (!isDeceptiveLink(url)) return "live";
-	return confirmable(url) ? "confirm" : "words";
+export type LinkPolicy = "transcript" | "option";
+
+/** A drawn link: its treatment and, unless it is words, the href it opens. */
+export type ResolvedLink = {treatment: "words"} | {treatment: "live" | "confirm"; href: string};
+
+function policyTreatment(policy: LinkPolicy, href: string): LinkTreatment {
+	if (!isDeceptiveLink(href)) return "live";
+	return policy === "transcript" ? "confirm" : "words";
+}
+
+/**
+ * Upstream `mr` (cbb72cde9): the href normalised (`L(re(t))`), then `ds` — an http(s) href that parses and is
+ * already clean takes the policy's treatment, anything else is words — and a "confirm" link the external-link
+ * confirm may not open (`ft`) is words too.
+ */
+export function resolveLink(url: string, policy: LinkPolicy): ResolvedLink {
+	const href = linkHref(url);
+	if (href === null || !/^https?:\/\//i.test(href) || parse(href) === null || sanitizeHref(href) !== href) {
+		return {treatment: "words"};
+	}
+	const treatment = policyTreatment(policy, href);
+	if (treatment === "words" || (treatment === "confirm" && !confirmable(href))) return {treatment: "words"};
+	return {treatment, href};
 }
 
 // RFC 3492 punycode decoding, for upstream `s8`'s display of an internationalized host.

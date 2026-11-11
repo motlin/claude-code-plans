@@ -1,7 +1,7 @@
 import {Fragment, lazy, type ReactNode, Suspense} from "react";
 
 import {defined} from "../lib/defined";
-import {transcriptLinkTreatment} from "../lib/external-nav";
+import {type LinkPolicy, resolveLink} from "../lib/external-nav";
 import {BIDI_CONTROLS, MARKDOWN_LINK, markdownLinkTarget, SLACK_TOKEN} from "../lib/markdown-link";
 import {pageIsRtl} from "../lib/page-direction";
 import {maskSecrets, maskUrlSecrets} from "../lib/secret-mask";
@@ -17,47 +17,6 @@ export const USER_PARAGRAPH_CLASS =
 
 /** Upstream's single-backtick code span (`W` in c8a6d9da5): no backtick runs, never across a line. */
 const CODE_SPAN = /`([^`\n]+)`/g;
-
-const URL_PATTERN = /https?:\/\/[^\s<>`]+/g;
-
-/** How a linked URL is drawn: a user message's accent link, or upstream's TextLink (`dir="ltr"`, `rel="noreferrer"`). */
-type LinkStyle = "user" | "textLink";
-
-/** A user turn's trim: trailing sentence punctuation, and a closing paren with no opener inside the URL. */
-function trimUserUrl(url: string): string {
-	let end = url.length;
-	for (;;) {
-		const last = url[end - 1];
-		if (last !== undefined && ".,;:!?'\"]".includes(last)) end--;
-		else if (last === ")" && url.slice(0, end).split("(").length < url.slice(0, end).split(")").length) end--;
-		else return url.slice(0, end);
-	}
-}
-
-/** A user turn trims its own way; a TextLink run is upstream's `yr` paint, trimmed by `ts`. */
-function linkify(text: string, keyPrefix: number, style: LinkStyle = "user"): ReactNode[] {
-	const nodes: ReactNode[] = [];
-	let cursor = 0;
-	for (const match of text.matchAll(URL_PATTERN)) {
-		const url = style === "user" ? trimUserUrl(match[0]) : splitUrlTail(match[0])[0];
-		if (match.index > cursor) nodes.push(text.slice(cursor, match.index));
-		nodes.push(
-			<a
-				key={`${keyPrefix}-${match.index}`}
-				href={url}
-				target="_blank"
-				{...(style === "textLink"
-					? {rel: "noreferrer", dir: "ltr", className: "cds-reset text-link inline cursor-pointer"}
-					: {rel: "noopener noreferrer", className: "text-link"})}
-			>
-				{url}
-			</a>,
-		);
-		cursor = match.index + url.length;
-	}
-	if (cursor < text.length) nodes.push(text.slice(cursor));
-	return nodes;
-}
 
 /**
  * Upstream's question-text code chip (`rounded-chip bg-alpha-1 px-xs text-code-regular`), where
@@ -96,10 +55,11 @@ export function UserInlineText({
 }: UserInlineTextProps) {
 	if (revealCloaks && codeLook === "chip") return <>{chipText(raw, cloakPaint)}</>;
 	const text = maskSecrets(raw);
-	const plain = (part: string, at: number): ReactNode[] => (links ? linkify(part, at, "textLink") : [part]);
-	if (!codeSpans) return <>{plain(text, 0)}</>;
-	if (codeLook === "message") return <>{renderInline(text, "textLink")}</>;
-	return <>{chipText(text, links ? plain : undefined)}</>;
+	// Upstream's option description (c2f6611a3 `bt`) paints through `xr` under the option card's link policy.
+	const paint = linkPaint({policy: "option"});
+	if (!codeSpans) return <>{links ? paint(text, 0) : text}</>;
+	if (codeLook === "message") return <>{renderInline(text, paint)}</>;
+	return <>{chipText(text, links ? paint : undefined)}</>;
 }
 
 /** Upstream's question-text code span (`h` in c8a73d209): any backtick-free run, newlines included. */
@@ -160,19 +120,42 @@ type Paint = (part: string, at: number) => ReactNode[];
 /** Upstream's `ja` (cf6507c5a): an http(s) URL the `yr` paint links. */
 const PAINT_URL = /https?:\/\/[^\s<>"]+/g;
 
+/** Upstream's `Ye` (c40ad8c1e `m`): a non-interactive link's accent underline (`text-accent` is `--cds-text-accent`). */
+const INERT_LINK_CLASS =
+	"text-upstream-accent underline underline-offset-[3px] decoration-[color-mix(in_srgb,currentColor,transparent_60%)]";
+
+interface TextLinkProps {
+	href: string;
+	policy: LinkPolicy;
+	nonInteractive: boolean;
+	children: ReactNode;
+}
+
 /**
- * Upstream's `pr` (cbb72cde9) for a header link: through `fr` under the transcript's link policy, a live link as
- * `hr`'s TextLink anchor, a deceptive one through the external-link confirm (`jq` in an external TextLink), or
- * else as `span[dir=ltr]` words. Not drawn here: `hr`'s `mt` hover (a Figma frame card, needing a connected Figma
- * MCP server), the side-pane preview (`ownAddress`/`bare`, `Tt`, `Zn`) and the flag-gated model-authored
- * `mr` confirm, which need surfaces this app lacks.
+ * Upstream's `hr` (cbb72cde9): the link through `mr` under the surface's link policy — words as `span[dir=ltr]`,
+ * a non-interactive link as its inert accent underline, a deceptive one through the external-link confirm (`jq`
+ * in an external TextLink), else `_r`'s TextLink anchor on the normalised href. Not drawn here: `hr`'s `mt` hover
+ * (a Figma frame card, needing a connected Figma MCP server), the side-pane preview (`ownAddress`/`bare`, `Tt`,
+ * `Zn`) and the flag-gated model-authored `gr` confirm, which need surfaces this app lacks.
  */
-function TextLink({href, children}: {href: string; children: ReactNode}) {
-	const treatment = transcriptLinkTreatment(href);
-	if (treatment === "words") return <span dir="ltr">{children}</span>;
-	if (treatment === "confirm") return <ConfirmExternalLink href={href}>{children}</ConfirmExternalLink>;
+function TextLink({href, policy, nonInteractive, children}: TextLinkProps) {
+	const link = resolveLink(href, policy);
+	if (link.treatment === "words") return <span dir="ltr">{children}</span>;
+	if (nonInteractive)
+		return (
+			<span dir="ltr" className={INERT_LINK_CLASS}>
+				{children}
+			</span>
+		);
+	if (link.treatment === "confirm") return <ConfirmExternalLink href={link.href}>{children}</ConfirmExternalLink>;
 	return (
-		<a href={href} target="_blank" rel="noreferrer" dir="ltr" className="cds-reset text-link inline cursor-pointer">
+		<a
+			href={link.href}
+			target="_blank"
+			rel="noreferrer"
+			dir="ltr"
+			className="cds-reset text-link inline cursor-pointer"
+		>
 			{children}
 		</a>
 	);
@@ -182,79 +165,102 @@ function TextLink({href, children}: {href: string; children: ReactNode}) {
 const TOKEN_PILL_CLASS =
 	"inline-flex items-center px-0.75 rounded-full bg-alpha-1 font-medium [overflow-wrap:anywhere]";
 
+interface LinkPaintOptions {
+	policy: LinkPolicy;
+	/** Upstream's `revealCloaks`: runs shown through `u9`, each secret cloaked behind its own reveal button. */
+	reveal?: boolean;
+	/** Upstream's `nonInteractive` (queued or pending prompts): links drawn inert. */
+	nonInteractive?: boolean;
+}
+
 /**
- * Upstream's `yr` (cbb72cde9) as the question header's `Zt` calls it (c2f6611a3): `revealCloaks` and
- * model-authored, with no people mentions, session mentions or conversation links passed. First Slack-style
- * `<@…>` / `<#…>` tokens as `tr` pills, then `[label](url)` markdown links as TextLinks whose label is the
- * non-interactive cloak paint in a `bdi` with the host disclosed (`_r`), then bare URLs as TextLinks drawn as
- * `u9` of their masked form (`$2`); every other run cloaked.
+ * Upstream's `xr` (cbb72cde9) with no people mentions, session mentions or conversation links passed: first
+ * Slack-style `<@…>` / `<#…>` tokens as `tr` pills, then `[label](url)` markdown links as TextLinks whose label
+ * is the non-interactive run paint in a `bdi` with the host disclosed (`yr`), then bare URLs (`Qo`, trimmed by
+ * `is`) as TextLinks drawn as their masked form (`$2`). The question header (c2f6611a3 `Zt`) paints with
+ * `revealCloaks`; a user turn (c8a6d9da5 `Z`) and an option description (c2f6611a3 `bt`) without.
  */
-const cloakPaint: Paint = (part, at) => {
-	const pieces = (from: number, to: number) => cloakPaint(part.slice(from, to), at + from);
-	if (part.includes("<@") || part.includes("<#")) {
+function linkPaint({policy, reveal = false, nonInteractive = false}: LinkPaintOptions): Paint {
+	const run = (text: string, key: string, inert = nonInteractive): ReactNode =>
+		reveal ? <CloakedText key={key} text={text} nonInteractive={inert} /> : <Fragment key={key}>{text}</Fragment>;
+	const paint: Paint = (part, at) => {
+		const pieces = (from: number, to: number) => paint(part.slice(from, to), at + from);
+		if (part.includes("<@") || part.includes("<#")) {
+			const nodes: ReactNode[] = [];
+			let cursor = 0;
+			for (const match of part.matchAll(SLACK_TOKEN)) {
+				if (match.index > cursor) nodes.push(...pieces(cursor, match.index));
+				nodes.push(
+					<span
+						key={`${at}-s${match.index}`}
+						dir={pageIsRtl() ? "auto" : undefined}
+						className={TOKEN_PILL_CLASS}
+					>
+						{match[1]}
+						{run(match[3] ?? match[2] ?? "", "t")}
+					</span>,
+				);
+				cursor = match.index + match[0].length;
+			}
+			if (cursor > 0) {
+				if (cursor < part.length) nodes.push(...pieces(cursor, part.length));
+				return nodes;
+			}
+		}
+		if (part.includes("](")) {
+			const nodes: ReactNode[] = [];
+			let cursor = 0;
+			for (const match of part.matchAll(MARKDOWN_LINK)) {
+				if (match.index > cursor) nodes.push(...pieces(cursor, match.index));
+				const label = (match[1] ?? "").replace(BIDI_CONTROLS, "");
+				const target = markdownLinkTarget(label, match[2] ?? "");
+				nodes.push(
+					target.kind === "plain" ? (
+						run(match[0], `${at}-m${match.index}`)
+					) : (
+						<TextLink
+							key={`${at}-m${match.index}`}
+							href={target.href}
+							policy={policy}
+							nonInteractive={nonInteractive}
+						>
+							<bdi>{run(label, "l", true)}</bdi>
+							{target.discloseHost !== null && (
+								<span dir="ltr" className="opacity-70">{` (\u2192 ${target.discloseHost})`}</span>
+							)}
+						</TextLink>
+					),
+				);
+				cursor = match.index + match[0].length;
+			}
+			if (cursor > 0) {
+				if (cursor < part.length) nodes.push(...pieces(cursor, part.length));
+				return nodes;
+			}
+		}
+		if (!part.includes("://")) return [run(part, `${at}-t`)];
 		const nodes: ReactNode[] = [];
 		let cursor = 0;
-		for (const match of part.matchAll(SLACK_TOKEN)) {
-			if (match.index > cursor) nodes.push(...pieces(cursor, match.index));
+		for (const match of part.matchAll(PAINT_URL)) {
+			const [url, tail] = splitUrlTail(match[0]);
+			if (match.index > cursor) nodes.push(run(part.slice(cursor, match.index), `${at}-t${cursor}`));
+			const shown = maskUrlSecrets(url);
 			nodes.push(
-				<span key={`${at}-s${match.index}`} dir={pageIsRtl() ? "auto" : undefined} className={TOKEN_PILL_CLASS}>
-					{match[1]}
-					<CloakedText text={match[3] ?? match[2] ?? ""} />
-				</span>,
+				<TextLink key={`${at}-u${match.index}`} href={url} policy={policy} nonInteractive={nonInteractive}>
+					{reveal ? revealSpoofing(shown) : shown}
+				</TextLink>,
 			);
+			if (tail !== "") nodes.push(tail);
 			cursor = match.index + match[0].length;
 		}
-		if (cursor > 0) {
-			if (cursor < part.length) nodes.push(...pieces(cursor, part.length));
-			return nodes;
-		}
-	}
-	if (part.includes("](")) {
-		const nodes: ReactNode[] = [];
-		let cursor = 0;
-		for (const match of part.matchAll(MARKDOWN_LINK)) {
-			if (match.index > cursor) nodes.push(...pieces(cursor, match.index));
-			const label = (match[1] ?? "").replace(BIDI_CONTROLS, "");
-			const target = markdownLinkTarget(label, match[2] ?? "");
-			nodes.push(
-				target.kind === "plain" ? (
-					<CloakedText key={`${at}-m${match.index}`} text={match[0]} />
-				) : (
-					<TextLink key={`${at}-m${match.index}`} href={target.href}>
-						<bdi>
-							<CloakedText text={label} nonInteractive />
-						</bdi>
-						{target.discloseHost !== null && (
-							<span dir="ltr" className="opacity-70">{` (\u2192 ${target.discloseHost})`}</span>
-						)}
-					</TextLink>
-				),
-			);
-			cursor = match.index + match[0].length;
-		}
-		if (cursor > 0) {
-			if (cursor < part.length) nodes.push(...pieces(cursor, part.length));
-			return nodes;
-		}
-	}
-	if (!part.includes("://")) return [<CloakedText key={`${at}-t`} text={part} />];
-	const nodes: ReactNode[] = [];
-	let cursor = 0;
-	for (const match of part.matchAll(PAINT_URL)) {
-		const [url, tail] = splitUrlTail(match[0]);
-		if (match.index > cursor)
-			nodes.push(<CloakedText key={`${at}-t${cursor}`} text={part.slice(cursor, match.index)} />);
-		nodes.push(
-			<TextLink key={`${at}-u${match.index}`} href={url}>
-				{revealSpoofing(maskUrlSecrets(url))}
-			</TextLink>,
-		);
-		if (tail !== "") nodes.push(tail);
-		cursor = match.index + match[0].length;
-	}
-	if (cursor < part.length) nodes.push(<CloakedText key={`${at}-t${cursor}`} text={part.slice(cursor)} />);
-	return nodes;
-};
+		if (cursor < part.length) nodes.push(run(part.slice(cursor), `${at}-t${cursor}`));
+		return nodes;
+	};
+	return paint;
+}
+
+/** The question header's paint (c2f6611a3 `Zt`): `xr` with `revealCloaks`, under the transcript's link policy. */
+const cloakPaint = linkPaint({policy: "transcript", reveal: true});
 
 /** Upstream's `lo`: the text as is. */
 const unpainted: Paint = (part) => [part];
@@ -297,15 +303,21 @@ function chipText(text: string, paint: Paint | undefined): ReactNode[] {
 	);
 }
 
-function renderInline(text: string, style: LinkStyle = "user", nonInteractive = false): ReactNode[] {
+/** Upstream's user turn paint (c8a6d9da5 `Z`): `xr` under the transcript's link policy, no `revealCloaks`. */
+function userPaint(nonInteractive: boolean): Paint {
+	return linkPaint({policy: "transcript", nonInteractive});
+}
+
+/** Single-backtick code spans as code, the runs between through `paint`. */
+function renderInline(text: string, paint: Paint, nonInteractive = false): ReactNode[] {
 	const nodes: ReactNode[] = [];
 	let cursor = 0;
 	for (const match of text.matchAll(CODE_SPAN)) {
-		if (match.index > cursor) nodes.push(...linkify(text.slice(cursor, match.index), cursor, style));
+		if (match.index > cursor) nodes.push(...paint(text.slice(cursor, match.index), cursor));
 		nodes.push(<UserCodeSpan key={match.index} text={match[1] ?? ""} nonInteractive={nonInteractive} />);
 		cursor = match.index + match[0].length;
 	}
-	if (cursor < text.length) nodes.push(...linkify(text.slice(cursor), cursor, style));
+	if (cursor < text.length) nodes.push(...paint(text.slice(cursor), cursor));
 	return nodes;
 }
 
@@ -410,7 +422,7 @@ function renderList(entries: readonly ListEntry[], level: number, key: number, n
 			while (end < entries.length && defined(entries[end], "end is in range").level > level) end++;
 			items.push(
 				<li key={index}>
-					{renderInline(entry.text, "user", nonInteractive)}
+					{renderInline(entry.text, userPaint(nonInteractive), nonInteractive)}
 					{renderList(entries.slice(index + 1, end), level + 1, index, nonInteractive)}
 				</li>,
 			);
@@ -538,7 +550,7 @@ function UserTextBlocks({text, prefix, nonInteractive = false}: UserTextProps) {
 			<p className={USER_PARAGRAPH_CLASS}>
 				{prefix}
 				{prefix !== undefined && text !== "" && " "}
-				{renderInline(text, "user", nonInteractive)}
+				{renderInline(text, userPaint(nonInteractive), nonInteractive)}
 			</p>
 		);
 	}
@@ -552,7 +564,7 @@ function UserTextBlocks({text, prefix, nonInteractive = false}: UserTextProps) {
 						<p key={index} className={USER_PARAGRAPH_CLASS}>
 							{index === 0 && prefix}
 							{index === 0 && prefix !== undefined && " "}
-							{renderInline(block.text, "user", nonInteractive)}
+							{renderInline(block.text, userPaint(nonInteractive), nonInteractive)}
 						</p>
 					);
 				}

@@ -30,7 +30,7 @@ describe("user text secret masking (upstream c59c32499 XF)", () => {
 		expect(container.textContent).toBe(`a ${MASKED_GH}`);
 	});
 
-	it("trims an option description's URLs with upstream's ts, as its yr paint does, while a user turn keeps its own trim", () => {
+	it("trims option description and user turn URLs with upstream's ts, as both paint through xr", () => {
 		const hrefs = (node: React.ReactElement) => {
 			const {container} = render(node);
 			const result = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href"));
@@ -39,8 +39,70 @@ describe("user text secret masking (upstream c59c32499 XF)", () => {
 		};
 		expect([
 			hrefs(<UserInlineText text="see https://e.com/x... and https://e.com/a[1]" codeSpans={false} />),
-			hrefs(<UserPlainText text="see https://e.com/x..." />),
-		]).toStrictEqual([["https://e.com/x..", "https://e.com/a[1]"], ["https://e.com/x"]]);
+			hrefs(<UserPlainText text="see https://e.com/x... and https://e.com/y،." />),
+		]).toStrictEqual([
+			["https://e.com/x..", "https://e.com/a[1]"],
+			["https://e.com/x..", "https://e.com/y"],
+		]);
+	});
+
+	it("draws a user turn's links as upstream's xr under the transcript policy: TextLinks, markdown labels with the host disclosed, deceptive links confirmed or as words", () => {
+		const {container} = render(
+			<UserPlainText text="see [docs](https://example.org/d) and https://user:pw@example.com/a and https://xn--e1afmkfd.example/b and https://example.com/c?open_in_browser=1" />,
+		);
+		expect({
+			links: [...container.querySelectorAll("a")].map((a) => [
+				a.getAttribute("href"),
+				a.getAttribute("rel"),
+				a.getAttribute("dir"),
+				a.textContent,
+			]),
+			words: [...container.querySelectorAll("p > span[dir=ltr]")].map((span) => span.textContent),
+		}).toStrictEqual({
+			links: [
+				["https://example.org/d", "noreferrer", "ltr", "docs (→ example.org)"],
+				[
+					"https://xn--e1afmkfd.example/b",
+					"noopener noreferrer",
+					"ltr",
+					"https://xn--e1afmkfd.example/b(opens in new tab)",
+				],
+				["https://example.com/c", "noreferrer", "ltr", "https://example.com/c?open_in_browser=1"],
+			],
+			words: ["https://user:pw@example.com/a"],
+		});
+	});
+
+	it("draws a pending user turn's links as upstream's non-interactive words", () => {
+		const {container} = render(<UserPlainText text="see https://example.com/a" nonInteractive />);
+		expect({
+			links: container.querySelectorAll("a").length,
+			words: [...container.querySelectorAll("span[dir=ltr]")].map((span) => [span.className, span.textContent]),
+		}).toStrictEqual({
+			links: 0,
+			words: [
+				[
+					"text-upstream-accent underline underline-offset-[3px] decoration-[color-mix(in_srgb,currentColor,transparent_60%)]",
+					"https://example.com/a",
+				],
+			],
+		});
+	});
+
+	it("draws an option description's links under the option card policy: deceptive links as words, never the confirm", () => {
+		const {container} = render(
+			<UserInlineText
+				text="see [b](https://xn--e1afmkfd.example/b) or https://xn--e1afmkfd.example/c or https://example.com/d"
+				codeSpans={false}
+			/>,
+		);
+		expect({
+			links: [...container.querySelectorAll("a")].map((a) => a.getAttribute("href")),
+			words: [...container.querySelectorAll("span[dir=ltr]:not(.opacity-70)")].map((span) => span.textContent),
+		}).toStrictEqual({
+			links: ["https://example.com/d"],
+			words: ["b (→ xn--e1afmkfd.example)", "https://xn--e1afmkfd.example/c"],
+		});
 	});
 });
 

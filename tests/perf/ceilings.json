@@ -51,17 +51,17 @@
 		"raisedAt": "2026-11-02"
 	},
 	"bundle.home.gzip": {
-		"ceiling": 476760,
+		"ceiling": 484261,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "raised from 471780 (2026-11-11): approval-card-answered-states-typography T1 moves the approval action buttons onto upstream's cds Button tokens (h-control, the min(pad-md, button-pad-max) pad, --cds-radius, control weights), guards the secondary's pre-fizzy ring and drop shadow behind a not-fizzy-colour selector and gives the in-button Shortcut upstream's ms-1 and end-pad pull; the long token class strings ship in the home entry with the permission and question cards. The previous commits had already used most of the 1% headroom (476223). Went to 476760; the 1% tolerance is unchanged.",
+		"reason": "raised from 476760 (2026-11-11): the link policy follow-up to 87a95de06 ports upstream's href normalisers (`_0` open_in_browser strip and `cs` sanitiser with its invisible-lead and claude-host API/sign-out/account-linking route checks, src/lib/link-href.ts), the `wa`/`D6`/`sk` Claude-host and credential-route rules behind the external-link confirm (src/lib/claude-hosts.ts: the route prefix tables, destination-forwarding walk and host strictness), and moves user turns and option descriptions onto upstream's `xr` paint and `mr` policies in user-plain-text.tsx, which ships with the question card. Went to 484261; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-11"
 	},
 	"bundle.home.raw": {
-		"ceiling": 1436401,
+		"ceiling": 1452798,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "raised from 1421338 (2026-11-11): the question text bold follow-up to 71d0f69dc ports upstream's `_i` question-text paint for the card header and Asked row (`**text**` as strong.font-medium around its code chips, the flank and double-backtick guards and the masked read-text fallback) into user-plain-text.tsx, which ships in the home entry with the question card (+851 bytes). The previous commits had already used the 1% headroom (1435552). Went to 1436401; the 1% tolerance is unchanged.",
+		"reason": "raised from 1436401 (2026-11-11): the link policy follow-up to 87a95de06 ports upstream's href normalisers (`_0` open_in_browser strip and `cs` sanitiser with its invisible-lead and claude-host API/sign-out/account-linking route checks, src/lib/link-href.ts), the `wa`/`D6`/`sk` Claude-host and credential-route rules behind the external-link confirm (src/lib/claude-hosts.ts: the route prefix tables, destination-forwarding walk and host strictness), and moves user turns and option descriptions onto upstream's `xr` paint and `mr` policies in user-plain-text.tsx, which ships with the question card. Went to 1452798; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-11"
 	},
 	"bundle.session.gzip": {
@@ -72,10 +72,10 @@
 		"raisedAt": "2026-11-11"
 	},
 	"bundle.session.raw": {
-		"ceiling": 2330036,
+		"ceiling": 2357913,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "raised from 2304076 (2026-11-11): tile-host-guest-layer T1-T3 add upstream's tile content-host registry to the session page's tile host (src/lib/tile-content-hosts.ts: persistent display:contents hosts, the off-screen moveBefore pen, the 32-entry scroll memory and focus/caret restore; the portals, shells and scroll freezer in tile-host.tsx). Went to 2330036, about 2.9 KB past the old ceiling plus tolerance; most of the rise since 2304076 came from earlier commits inside the tolerance. The 1% tolerance is unchanged.",
+		"reason": "raised from 2330036 (2026-11-11): the link policy follow-up to 87a95de06 ports upstream's href normalisers (`_0` open_in_browser strip and `cs` sanitiser with its invisible-lead and claude-host API/sign-out/account-linking route checks, src/lib/link-href.ts), the `wa`/`D6`/`sk` Claude-host and credential-route rules behind the external-link confirm (src/lib/claude-hosts.ts: the route prefix tables, destination-forwarding walk and host strictness), and moves user turns and option descriptions onto upstream's `xr` paint and `mr` policies in user-plain-text.tsx, which ships with the question card; earlier commits had already used most of the 1% headroom. Went to 2357913; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-11"
 	},
 	"client.coldHome.default.commitsToRows": {

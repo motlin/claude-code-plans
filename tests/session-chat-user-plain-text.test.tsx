@@ -266,7 +266,7 @@ describe("SessionChat user bubbles as plain text", () => {
 		}).toStrictEqual({chips: 1, links: [["/repo/src/a.ts", "src/a.ts"]], code: ["npm test"]});
 	});
 
-	it("autolinks bare URLs as accent links opening in a new tab", () => {
+	it("autolinks bare URLs as upstream's xr TextLinks opening in a new tab", () => {
 		const el = bubble(
 			renderRecords([
 				prompt(
@@ -291,15 +291,15 @@ describe("SessionChat user bubbles as plain text", () => {
 					href: "https://github.com/eclipse-collections/eclipse-collections/pull/1954",
 					text: "https://github.com/eclipse-collections/eclipse-collections/pull/1954",
 					target: "_blank",
-					rel: "noopener noreferrer",
-					className: "text-link",
+					rel: "noreferrer",
+					className: "cds-reset text-link inline cursor-pointer",
 				},
 				{
 					href: "http://x.y/z",
 					text: "http://x.y/z",
 					target: "_blank",
-					rel: "noopener noreferrer",
-					className: "text-link",
+					rel: "noreferrer",
+					className: "cds-reset text-link inline cursor-pointer",
 				},
 			],
 		});
