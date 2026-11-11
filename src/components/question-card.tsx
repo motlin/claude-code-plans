@@ -53,6 +53,7 @@ import {Shortcut} from "./ui/shortcut";
 import {DisabledReason} from "./ui/disabled-reason";
 import {UserInlineText} from "./user-plain-text";
 import {cutUnterminatedPrivateKey, maskSecrets, maskSecretsCompact} from "../lib/secret-mask";
+import {revealSpoofing} from "../lib/visible-text";
 
 /** Upstream's `@container (width <= 420px)` stack for the card's action row. */
 const STACK_ACTIONS = "@max-[420px]:flex-col @max-[420px]:items-stretch @max-[420px]:[&>*]:w-full";
@@ -600,7 +601,8 @@ export function QuestionCard({
 			ref={cardRootRef}
 			role="group"
 			tabIndex={-1}
-			aria-label={questionName(question.question)}
+			// Upstream's `St` (2026-11-10) names the card `u9` of the masked name; the header paints the text itself.
+			aria-label={revealSpoofing(questionName(question.question))}
 			data-approval-card-root=""
 			data-focus-region="question"
 			data-approval-presentation="card"

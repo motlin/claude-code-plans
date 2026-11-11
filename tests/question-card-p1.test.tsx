@@ -181,7 +181,8 @@ describe("QuestionCard question text, as upstream's code chip and TextLink heade
 		const chip = `<code dir="ltr" class="rounded-[calc(var(--cds-h-control-nested)/4)] bg-alpha-1 px-xs font-mono text-code font-normal">`;
 		const titleHtml = (question: string) => {
 			render(<QuestionCard questions={[{question, options: [{label: "Yes"}]}]} onSubmit={async () => {}} />);
-			const html = screen.getByRole("group", {name: question}).firstElementChild!.firstElementChild!.innerHTML;
+			const html =
+				document.querySelector("[data-approval-card-root]")!.firstElementChild!.firstElementChild!.innerHTML;
 			cleanup();
 			return html;
 		};
@@ -774,5 +775,18 @@ describe("QuestionCard secret masking (upstream c2f6611a3)", () => {
 			/>,
 		);
 		expect(document.querySelector("[data-approval-card-root]")!.getAttribute("aria-label")).toBe("Paste …");
+	});
+
+	it("shows spoofing characters in the question name, as upstream's St wraps it in u9", () => {
+		const rlo = String.fromCodePoint(0x202e);
+		render(
+			<QuestionCard
+				questions={[{question: `Open ${rlo}fdp.exe?`, header: "K", options: [{label: "a"}]}]}
+				onSubmit={async () => {}}
+			/>,
+		);
+		expect(document.querySelector("[data-approval-card-root]")!.getAttribute("aria-label")).toBe(
+			"Open [U+202E]fdp.exe?",
+		);
 	});
 });
