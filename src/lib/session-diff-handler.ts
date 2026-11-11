@@ -7,6 +7,7 @@ import {
 	formatDiffScope,
 	parseDiffScope,
 	SessionDiffErrorResponseSchema,
+	SessionDiffFileLinesResponseSchema,
 	SessionDiffFileResponseSchema,
 	SessionDiffResponseSchema,
 	SessionDiffScopesResponseSchema,
@@ -20,7 +21,9 @@ import {parseJsonlRecord, type JsonlRecord} from "./schemas";
 import {
 	buildScopeDiff,
 	listScopes,
+	readDiffFileSides,
 	type DiffFile,
+	type DiffFileSides,
 	type DiffScope,
 	type DiffScopes,
 	type NoGit,
@@ -45,6 +48,12 @@ export interface SessionDiffHandlerDependencies {
 	readRecords(filePath: string): Promise<JsonlRecord[]>;
 	/** The realpath of the repository toplevel containing `directory`, or null outside a repository. */
 	resolveRepoRoot(directory: string): Promise<string | null>;
+	/** Both sides of one diff file, read from the checkout; null when its path would leave the checkout. */
+	readDiffFileSides(
+		root: string,
+		scope: DiffScope,
+		file: Pick<DiffFile, "path" | "oldPath" | "status">,
+	): Promise<DiffFileSides | null>;
 }
 
 function defaultDependencies(): SessionDiffHandlerDependencies {
@@ -55,6 +64,7 @@ function defaultDependencies(): SessionDiffHandlerDependencies {
 		buildScopeDiff: async (cwd, scope, options) => buildScopeDiff(cwd, scope, options),
 		readRecords,
 		resolveRepoRoot,
+		readDiffFileSides: async (root, scope, file) => readDiffFileSides(root, scope, file),
 	};
 }
 
@@ -149,7 +159,15 @@ function toResponseFile(file: DiffFile, inline: boolean): SessionDiffFile {
 }
 
 type ResolvedDiff =
-	| {kind: "ok"; scope: string; source: SessionDiffResponse["source"]; root: string; files: DiffFile[]}
+	| {
+			kind: "ok";
+			scope: string;
+			source: SessionDiffResponse["source"];
+			root: string;
+			files: DiffFile[];
+			/** The git scope served, when the diff came from the checkout. */
+			gitScope?: DiffScope;
+	  }
 	| {kind: "error"; response: Response};
 
 async function sessionEditsDiff(
@@ -200,10 +218,10 @@ async function resolveDiff(
 	}
 	if (diff.kind === "no-git") return fallback();
 	const root = (await dependencies.resolveRepoRoot(directory)) ?? directory;
-	return {kind: "ok", scope: formatDiffScope(scope), source: "git", root, files: diff.files};
+	return {kind: "ok", scope: formatDiffScope(scope), source: "git", root, files: diff.files, gitScope: scope};
 }
 
-/** `GET /api/sessions/$id/diff?scope=…&ws=0|1[&file=<path>]` */
+/** `GET /api/sessions/$id/diff?scope=…&ws=0|1[&file=<path>[&lines=1]]` */
 export async function handleSessionDiffRequest(
 	sessionId: string,
 	parameters: URLSearchParams,
@@ -226,6 +244,18 @@ export async function handleSessionDiffRequest(
 	if (filePath !== null) {
 		const file = diff.files.find((candidate) => candidate.path === filePath);
 		if (file === undefined) return errorResponse("File not in diff", 404);
+		if (parameters.get("lines") === "1") {
+			// Upstream desktop `getDiffFileContent(cwd, mergeBase, path, prevPath)`: session edits have no checkout to read.
+			if (diff.gitScope === undefined) return errorResponse("No checkout", 404);
+			const {path, oldPath, status} = file;
+			const sides = await resolvedDependencies.readDiffFileSides(
+				diff.root,
+				diff.gitScope,
+				oldPath === undefined ? {path, status} : {path, oldPath, status},
+			);
+			if (sides === null) return errorResponse("File not in diff", 404);
+			return jsonResponse(SessionDiffFileLinesResponseSchema.parse({scope: diff.scope, ...sides}));
+		}
 		return jsonResponse(
 			SessionDiffFileResponseSchema.parse({
 				scope: diff.scope,

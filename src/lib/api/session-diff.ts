@@ -77,6 +77,13 @@ export const SessionDiffFileResponseSchema = z
 	.object({scope: z.string(), root: z.string(), file: SessionDiffFileSchema})
 	.strict();
 
+/** Both sides of one diff file (`&lines=1`); a side is null when it couldn't be read. */
+export const SessionDiffFileLinesResponseSchema = z
+	.object({scope: z.string(), oldText: z.string().nullable(), newText: z.string().nullable()})
+	.strict();
+
+type SessionDiffFileLinesResponse = z.infer<typeof SessionDiffFileLinesResponseSchema>;
+
 /** A diff path made absolute against the response's `root`; absolute paths (outside-cwd session edits) pass through. */
 export function resolveAbsoluteDiffPath(root: string, path: string): string {
 	if (path.startsWith("/")) return path;
@@ -122,12 +129,15 @@ const sessionDiffQueryKeys = {
 		["sessions", sessionId, "diff", scope, hideWhitespace] as const,
 	file: (sessionId: string, scope: string, hideWhitespace: boolean, path: string) =>
 		["sessions", sessionId, "diff", scope, hideWhitespace, "file", path] as const,
+	lines: (sessionId: string, scope: string, path: string, contentKey: string) =>
+		["sessions", sessionId, "diff", scope, "lines", path, contentKey] as const,
 	scopes: (sessionId: string) => ["sessions", sessionId, "diff", "scopes"] as const,
 };
 
-function diffUrl(sessionId: string, scope: string, hideWhitespace: boolean, file?: string): string {
+function diffUrl(sessionId: string, scope: string, hideWhitespace: boolean, file?: string, lines = false): string {
 	const parameters = new URLSearchParams({scope, ws: hideWhitespace ? "1" : "0"});
 	if (file !== undefined) parameters.set("file", file);
+	if (lines) parameters.set("lines", "1");
 	return `/api/sessions/${encodeURIComponent(sessionId)}/diff?${parameters.toString()}`;
 }
 
@@ -152,6 +162,43 @@ export const sessionDiffFileQueryOptions = (
 		queryFn: async () => apiFetch(diffUrl(sessionId, scope, hideWhitespace, path), SessionDiffFileResponseSchema),
 	});
 };
+
+/** Upstream `td`'s line cache lifetime: five minutes after the last diff that used it. */
+const FILE_LINES_GC_TIME = 300_000;
+/** Upstream `id`: how soon to recheck a side that should exist but couldn't be read. */
+const MISSING_SIDE_STALE_TIME = 30_000;
+
+export interface SessionDiffFileLinesFlags {
+	/** Upstream `ed`: identifies the patch the lines are read for, so a changed file reads them afresh. */
+	contentKey: string;
+	/** The file's status: an added file has no old side and a deleted one no new side. */
+	status?: SessionDiffFile["status"];
+	/** Upstream `bd` passes `fresh` on every retry so a cached unreadable side is read again. */
+	fresh?: boolean;
+}
+
+/** Upstream `id`: keep readable sides forever, recheck a missing expected side after 30s, never trust a null. */
+function fileLinesStaleTime(data: SessionDiffFileLinesResponse | null | undefined, status: SessionDiffFile["status"]) {
+	if (data === null) return 0;
+	if (data === undefined) return Infinity;
+	const oldMissing = data.oldText === null && status !== "added";
+	const newMissing = data.newText === null && status !== "deleted";
+	return oldMissing || newMissing ? MISSING_SIDE_STALE_TIME : Infinity;
+}
+
+/** Both sides of one file of a git scope, which `DiffFile` hydrates a patch-only diff with (upstream `td`). */
+export const sessionDiffFileLinesQueryOptions = (
+	sessionId: string,
+	scope: string,
+	path: string,
+	{contentKey, status = "modified", fresh = false}: SessionDiffFileLinesFlags,
+) =>
+	queryOptions({
+		queryKey: sessionDiffQueryKeys.lines(sessionId, scope, path, contentKey),
+		queryFn: async () => apiFetch(diffUrl(sessionId, scope, false, path, true), SessionDiffFileLinesResponseSchema),
+		gcTime: FILE_LINES_GC_TIME,
+		staleTime: fresh ? 0 : (query) => fileLinesStaleTime(query.state.data, status),
+	});
 
 export const sessionDiffScopesQueryOptions = (sessionId: string) =>
 	queryOptions({

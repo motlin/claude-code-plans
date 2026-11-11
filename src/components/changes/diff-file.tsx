@@ -1,9 +1,19 @@
 import {getSingularPatch} from "@pierre/diffs";
-import type {FileDiffMetadata, GetHoveredLineResult} from "@pierre/diffs";
+import type {FileDiffLoadedFiles, FileDiffMetadata, GetHoveredLineResult} from "@pierre/diffs";
 import {FileDiff, GutterUtilitySlotStyles} from "@pierre/diffs/react";
 import type {FileDiffOptions} from "@pierre/diffs/react";
 import {ArrowUpRight, ChevronDown, ChevronRight, Plus} from "lucide-react";
-import {type CSSProperties, type ReactNode, createContext, isValidElement, use, useId, useMemo, useState} from "react";
+import {
+	type CSSProperties,
+	type ReactNode,
+	createContext,
+	isValidElement,
+	use,
+	useId,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import {useCodeThemeBackground} from "../../hooks/use-code-theme-background";
 import {useCodeThemes} from "../../hooks/use-code-themes";
 import {LazyFileTypeIcon} from "../lazy-file-type-icon";
@@ -18,6 +28,8 @@ import {
 } from "./diffs-config";
 import {adoptHunkHeadingCss, decorateHunkHeadings} from "./diff-hunk-heading";
 import {railsPostRender} from "./diff-rails";
+import {type FileSides, loadWithRetry, toLoadedFiles} from "./diff-file-lines";
+import {SHOW_MORE_LINES, expandSeparatorFromClick, relabelTrailingSeparator} from "./diff-separators";
 import {Icon} from "../ui/icon";
 import {DisabledReason} from "../ui/disabled-reason";
 import {IndicatorSlot, Pulse} from "../ui/pulse";
@@ -58,6 +70,17 @@ export interface DiffFileProps {
 	annotations?: readonly DiffFileAnnotation[];
 	/** Enables the hovered line's gutter "+" that opens a comment card on that line. */
 	onRequestChanges?: (target: DiffLineRange) => void;
+	/**
+	 * Reads both sides of the file (upstream `td`), `fresh` on a retry. With it the hunk separators expand, loading
+	 * the file once on the first expansion; without it (session edits: no checkout) they stay plain.
+	 */
+	loadFileSides?: ((fresh: boolean) => Promise<FileSides>) | undefined;
+	/** Called once when the loader gives up (unreadable after every retry, or drifted since the patch). */
+	onLoaderGaveUp?: (() => void) | undefined;
+	/** Shows every unchanged line, loading the file first; ignored for a patch without `loadFileSides`. */
+	expandUnchanged?: boolean | undefined;
+	/** Called after each render of the diff, as upstream's CodeView rechecks a pending scroll anchor (`xn`). */
+	onRendered?: (() => void) | undefined;
 }
 
 /** One diff line: its number on the old (`deletions`) or new (`additions`) side. */
@@ -435,6 +458,9 @@ function DiffFileHeaderRow({
 	);
 }
 
+/** Upstream `Tn`'s WeakMap: each fileDiff's load, kept while pierre (or a remount) holds that fileDiff. */
+const loadedFiles = new WeakMap<FileDiffMetadata, Promise<FileDiffLoadedFiles>>();
+
 /**
  * One file of the Changes pane, rendered by `@pierre/diffs` (upstream
  * claude.ai/code's diff library) with the pane's options: classic `+`/`-`
@@ -456,8 +482,38 @@ export function DiffFile({
 	mark,
 	annotations,
 	onRequestChanges,
+	loadFileSides,
+	onLoaderGaveUp,
+	expandUnchanged = false,
+	onRendered,
 }: DiffFileProps) {
 	const fileDiff = useMemo(() => getSingularPatch(patch), [patch]);
+	const loader = useRef({loadFileSides, onLoaderGaveUp, onRendered, fileDiff});
+	loader.current = {loadFileSides, onLoaderGaveUp, onRendered, fileDiff};
+	const canLoad = loadFileSides !== undefined;
+	// Upstream `Cn`/`Tn`: one load per fileDiff, so a remount (new metrics) doesn't read the file again.
+	const loadDiffFiles = useMemo(() => {
+		if (!canLoad) return undefined;
+		return async (target: FileDiffMetadata) => {
+			const cached = loadedFiles.get(target);
+			if (cached !== undefined) return cached;
+			const loading = loadWithRetry(
+				async (fresh) => {
+					const current = loader.current;
+					if (current.fileDiff !== target || current.loadFileSides === undefined) return "park";
+					const sides = await current.loadFileSides(fresh);
+					if (loader.current.fileDiff !== target) return "park";
+					const files = toLoadedFiles(target, {path: target.name, oldPath: target.prevName}, sides);
+					return files === "unavailable" ? "retry" : files === "drifted" ? "park" : files;
+				},
+				() => {
+					if (loader.current.fileDiff === target) loader.current.onLoaderGaveUp?.();
+				},
+			);
+			loadedFiles.set(target, loading);
+			return loading;
+		};
+	}, [canLoad]);
 	const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(defaultCollapsed);
 	const collapsed = controlledCollapsed ?? uncontrolledCollapsed;
 	const toggle = () => {
@@ -494,12 +550,20 @@ export function DiffFile({
 			stickyHeader: true,
 			collapsed,
 			enableGutterUtility: onRequestChanges !== undefined,
-			// Upstream c44d00c7f `xn`: `se.draw(e)` (Q(wordDiff, !readOnly).draw), then `Bn(e, fileDiff)` (c91a5e4a6 g).
+			// c44d00c7f Kt/qt: upstream always inlines gaps of up to 3 lines once the whole file is known.
+			collapsedContextThreshold: 3,
+			// The cds FileDiff gate (`Va`): expandUnchanged only for a diff that is whole or can be loaded.
+			expandUnchanged: expandUnchanged && (!fileDiff.isPartial || loadDiffFiles !== undefined),
+			...(loadDiffFiles === undefined ? {} : {loadDiffFiles}),
+			// Upstream c44d00c7f `xn`: `se.draw(e)` (Q(wordDiff, !readOnly).draw), the partial diff's "Show more
+			// lines" relabel (c91a5e4a6 o), then `Bn(e, fileDiff)` (c91a5e4a6 g).
 			onPostRender: (node, instance, phase) => {
 				drawRails(node, instance, phase);
 				if (phase === "unmount") return;
+				if (fileDiff.isPartial) relabelTrailingSeparator(node, SHOW_MORE_LINES);
 				adoptHunkHeadingCss(node);
 				decorateHunkHeadings(node, fileDiff);
+				loader.current.onRendered?.();
 			},
 			unsafeCSS: diffsInjectedCss({
 				disableFileHeader: false,
@@ -507,7 +571,19 @@ export function DiffFile({
 				panels,
 			}),
 		};
-	}, [fileDiff, codeThemes, resolvedTheme, diffStyle, wordWrap, wordDiff, collapsed, onRequestChanges, panels]);
+	}, [
+		fileDiff,
+		codeThemes,
+		resolvedTheme,
+		diffStyle,
+		wordWrap,
+		wordDiff,
+		collapsed,
+		onRequestChanges,
+		panels,
+		expandUnchanged,
+		loadDiffFiles,
+	]);
 	// Upstream sets the Changes font from JS: the pane sits outside the CSS hook classes for Code font size.
 	const style = useMemo<CSSProperties>(
 		() => ({
@@ -522,8 +598,18 @@ export function DiffFile({
 
 	// Pierre 1.6.2 reads `metrics` only when the instance is created, so a new lineHeight remounts (upstream ca817835b key).
 	// Upstream's cds FileDiff (`Va`) puts the host style on a wrapping div; the vars inherit into the shadow root.
+	// Upstream's diff body (`[data-diff-body-menu-trigger]`) clicks a separator's expand buttons from its label (`Xn`).
 	return (
-		<div data-cds="FileDiff" dir="ltr" className={DIFFS_HOST_CLASS} style={style}>
+		// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- a pointer shortcut for the separator's expand buttons, which pierre draws as its keyboard controls
+		<div
+			data-cds="FileDiff"
+			dir="ltr"
+			className={DIFFS_HOST_CLASS}
+			style={style}
+			onClick={(event) => {
+				expandSeparatorFromClick(event.nativeEvent);
+			}}
+		>
 			<FileDiff<ReactNode>
 				key={metrics.lineHeight}
 				fileDiff={fileDiff}

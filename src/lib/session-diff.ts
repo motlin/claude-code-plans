@@ -1,4 +1,6 @@
 import {execFile} from "node:child_process";
+import {readFile, realpath, stat} from "node:fs/promises";
+import {isAbsolute, join, normalize, relative} from "node:path";
 import {nonEmpty} from "./non-empty";
 
 const MAX_GIT_OUTPUT_BYTES = 100 * 1024 * 1024;
@@ -236,6 +238,90 @@ export async function buildScopeDiff(
 
 	const patch = parts.join("");
 	return {kind: "ok", patch, files: parseDiffFiles(patch)};
+}
+
+/** A side larger than this is left unread: hydrating it would cost more than opening the file. */
+const MAX_FILE_SIDE_BYTES = 2 * 1024 * 1024;
+
+/** Both sides of one diff file, as upstream desktop's `getDiffFileContent` returns them; null = unreadable. */
+export interface DiffFileSides {
+	oldText: string | null;
+	newText: string | null;
+}
+
+/** Reads a checkout-relative file from the working tree, or null when it's missing, outside, or too large. */
+export type ReadWorkingFile = (root: string, path: string) => Promise<string | null>;
+
+function isInside(root: string, target: string): boolean {
+	const relativePath = relative(root, target);
+	return relativePath !== "" && !relativePath.startsWith("..") && !isAbsolute(relativePath);
+}
+
+const readWorkingTreeFile: ReadWorkingFile = async (root, path) => {
+	try {
+		const realRoot = await realpath(root);
+		const target = await realpath(join(realRoot, path));
+		if (!isInside(realRoot, target)) return null;
+		const info = await stat(target);
+		if (!info.isFile() || info.size > MAX_FILE_SIDE_BYTES) return null;
+		return await readFile(target, "utf8");
+	} catch {
+		return null;
+	}
+};
+
+/** A checkout-relative path that stays inside the checkout (no absolute path, no climbing out with `..`). */
+function isCheckoutPath(path: string): boolean {
+	if (path === "" || isAbsolute(path)) return false;
+	const normalized = normalize(path);
+	return normalized !== ".." && !normalized.startsWith("../");
+}
+
+async function showBlob(runGit: RunGit, root: string, revision: string, path: string): Promise<string | null> {
+	try {
+		const text = await runGit(root, ["show", `${revision}:${path}`]);
+		return Buffer.byteLength(text, "utf8") > MAX_FILE_SIDE_BYTES ? null : text;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Both sides of one file of a scope's diff, read from the checkout at `root` (the repository toplevel, which git diff
+ * paths are relative to): `<base>:<oldPath>` through git for the old side, and the working tree (or `<sha>:<path>` for
+ * a commit) for the new side. Null when a path would leave the checkout.
+ */
+export async function readDiffFileSides(
+	root: string,
+	scope: DiffScope,
+	file: {path: string; oldPath?: string | undefined; status: DiffFileStatus},
+	runGit: RunGit = execRunGit,
+	readWorkingFile: ReadWorkingFile = readWorkingTreeFile,
+): Promise<DiffFileSides | null> {
+	const oldPath = file.oldPath ?? file.path;
+	if (!isCheckoutPath(file.path) || !isCheckoutPath(oldPath)) return null;
+
+	let oldRevision: string;
+	switch (scope.kind) {
+		case "branch":
+			oldRevision = (await resolveBaseInRepository(runGit, root)).mergeBase;
+			break;
+		case "uncommitted":
+			oldRevision = "HEAD";
+			break;
+		case "commit":
+			oldRevision = `${scope.sha}^`;
+			break;
+	}
+	const oldText = file.status === "added" ? null : await showBlob(runGit, root, oldRevision, oldPath);
+	let newText: string | null = null;
+	if (file.status !== "deleted") {
+		newText =
+			scope.kind === "commit"
+				? await showBlob(runGit, root, scope.sha, file.path)
+				: await readWorkingFile(root, file.path);
+	}
+	return {oldText, newText};
 }
 
 const C_ESCAPES: Record<string, number> = {

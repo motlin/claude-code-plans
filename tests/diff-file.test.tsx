@@ -453,6 +453,204 @@ describe("DiffFile", () => {
 	});
 });
 
+/** `line 1` … `line N`, each newline-terminated, with the given lines rewritten in capitals. */
+function numberedFile(count: number, changed: readonly number[] = []): string {
+	return Array.from({length: count}, (_, index) =>
+		changed.includes(index + 1) ? `LINE ${index + 1}\n` : `line ${index + 1}\n`,
+	).join("");
+}
+
+/** The live probe's file: 40 lines, hunks at 14-16 and 20-22, a 13-line lead, a 3-line gap and an 18-line tail. */
+const TWO_HUNK_PATCH = `--- a/src/a.ts
++++ b/src/a.ts
+@@ -14,3 +14,3 @@
+ line 14
+-line 15
++LINE 15
+ line 16
+@@ -20,3 +20,3 @@
+ line 20
+-line 21
++LINE 21
+ line 22
+`;
+const TWO_HUNK_SIDES = {oldText: numberedFile(40), newText: numberedFile(40, [15, 21])};
+
+/** U0 one-line hunks at 10, 13, 17 and 22 of a 23-line file: gaps of 2, 3 and 4 lines and a 1-line tail. */
+const GAPS_PATCH = `--- a/src/gaps.ts
++++ b/src/gaps.ts
+@@ -10 +10 @@
+-line 10
++LINE 10
+@@ -13 +13 @@
+-line 13
++LINE 13
+@@ -17 +17 @@
+-line 17
++LINE 17
+@@ -22 +22 @@
+-line 22
++LINE 22
+`;
+const GAPS_SIDES = {oldText: numberedFile(23), newText: numberedFile(23, [10, 13, 17, 22])};
+
+/** Each gutter separator as upstream's live probe read it. */
+function separators(root: ShadowRoot) {
+	return [...root.querySelectorAll("[data-gutter] > [data-separator]")].map((separator) => ({
+		index: separator.getAttribute("data-expand-index"),
+		first: separator.hasAttribute("data-separator-first"),
+		last: separator.hasAttribute("data-separator-last"),
+		buttons: [...separator.querySelectorAll("[data-expand-button]")].map(
+			(button) =>
+				[...button.attributes]
+					.map((attribute) => attribute.name)
+					.find((name) => name.startsWith("data-expand-") && name !== "data-expand-button") ?? "",
+		),
+		text: separator.querySelector("[data-unmodified-lines]")?.textContent,
+	}));
+}
+
+function separatorButton(root: ShadowRoot, index: number, direction: string): HTMLElement {
+	const button = root.querySelector(
+		`[data-gutter] > [data-separator][data-expand-index="${index}"] [data-expand-button][data-${direction}]`,
+	);
+	if (!(button instanceof HTMLElement)) throw new Error(`no ${direction} button on separator ${index}`);
+	return button;
+}
+
+describe("DiffFile lazy full-file context (upstream c44d00c7f qt/Kt, Cn, bd, xn, Xn)", () => {
+	it("draws expandable separators without loading, with the tail relabelled Show more lines", async () => {
+		const load = vi.fn<(fresh: boolean) => Promise<{oldText: string; newText: string}>>(async (_fresh: boolean) =>
+			Promise.resolve(TWO_HUNK_SIDES),
+		);
+		const view = render(<DiffFile patch={TWO_HUNK_PATCH} loadFileSides={load} />);
+
+		await waitFor(() => {
+			expect(separators(shadowRootOf(view.container))).toStrictEqual([
+				{index: "0", first: true, last: false, buttons: ["data-expand-down"], text: "13 unmodified lines"},
+				{index: "1", first: false, last: false, buttons: ["data-expand-both"], text: "3 unmodified lines"},
+				{index: "2", first: false, last: true, buttons: ["data-expand-up"], text: "Show more lines"},
+			]);
+		});
+		expect(load).not.toHaveBeenCalled();
+	});
+
+	it("loads once on an expand click, then shows a gap of 3 inline and counts the 18-line tail", async () => {
+		const load = vi.fn<(fresh: boolean) => Promise<{oldText: string; newText: string}>>(async (_fresh: boolean) =>
+			Promise.resolve(TWO_HUNK_SIDES),
+		);
+		const view = render(<DiffFile patch={TWO_HUNK_PATCH} loadFileSides={load} />);
+		await waitFor(() => {
+			expect(separators(shadowRootOf(view.container))).toHaveLength(3);
+		});
+
+		fireEvent.click(separatorButton(shadowRootOf(view.container), 0, "expand-down"));
+
+		await waitFor(() => {
+			expect(separators(shadowRootOf(view.container))).toStrictEqual([
+				{index: "2", first: false, last: true, buttons: ["data-expand-up"], text: "18 unmodified lines"},
+			]);
+		});
+		expect({
+			calls: load.mock.calls,
+			rows: contentRowTypes(shadowRootOf(view.container)).length,
+		}).toStrictEqual({calls: [[false]], rows: 13 + 4 + 3 + 4});
+	});
+
+	it("keeps today's plain separators and no tail without a loader", async () => {
+		const view = render(<DiffFile patch={TWO_HUNK_PATCH} />);
+		await waitFor(() => {
+			expect(separators(shadowRootOf(view.container))).toStrictEqual([
+				{index: null, first: true, last: false, buttons: [], text: "13 unmodified lines"},
+				{index: null, first: false, last: false, buttons: [], text: "3 unmodified lines"},
+			]);
+		});
+	});
+
+	it("inlines hydrated gaps of up to 3 lines and a 1-line tail (collapsedContextThreshold 3)", async () => {
+		const load = vi.fn<(fresh: boolean) => Promise<{oldText: string; newText: string}>>(async (_fresh: boolean) =>
+			Promise.resolve(GAPS_SIDES),
+		);
+		const view = render(<DiffFile patch={GAPS_PATCH} loadFileSides={load} />);
+		await waitFor(() => {
+			expect(separators(shadowRootOf(view.container))).toHaveLength(5);
+		});
+
+		fireEvent.click(separatorButton(shadowRootOf(view.container), 0, "expand-down"));
+
+		await waitFor(() => {
+			expect(separators(shadowRootOf(view.container))).toStrictEqual([
+				{index: "3", first: false, last: false, buttons: ["data-expand-both"], text: "4 unmodified lines"},
+			]);
+		});
+	});
+
+	it("leaves a file that drifted since its patch partial, giving up once", async () => {
+		const onGiveUp = vi.fn<() => void>();
+		const load = vi.fn<(fresh: boolean) => Promise<{oldText: string; newText: string}>>(async (_fresh: boolean) =>
+			Promise.resolve({oldText: numberedFile(41), newText: numberedFile(40, [15, 21])}),
+		);
+		const view = render(<DiffFile patch={TWO_HUNK_PATCH} loadFileSides={load} onLoaderGaveUp={onGiveUp} />);
+		await waitFor(() => {
+			expect(separators(shadowRootOf(view.container))).toHaveLength(3);
+		});
+
+		fireEvent.click(separatorButton(shadowRootOf(view.container), 1, "expand-both"));
+
+		await waitFor(() => {
+			expect(onGiveUp).toHaveBeenCalledTimes(1);
+		});
+		expect({calls: load.mock.calls, separators: separators(shadowRootOf(view.container)).length}).toStrictEqual({
+			calls: [[false]],
+			separators: 3,
+		});
+	});
+
+	it("expands a gap when its label, not a button, is clicked (upstream c91a5e4a6 i)", async () => {
+		const load = vi.fn<(fresh: boolean) => Promise<{oldText: string; newText: string}>>(async (_fresh: boolean) =>
+			Promise.resolve(TWO_HUNK_SIDES),
+		);
+		const view = render(<DiffFile patch={TWO_HUNK_PATCH} loadFileSides={load} />);
+		await waitFor(() => {
+			expect(separators(shadowRootOf(view.container))).toHaveLength(3);
+		});
+
+		const label = shadowRootOf(view.container).querySelector(
+			'[data-gutter] > [data-separator][data-expand-index="1"] [data-separator-content]',
+		);
+		if (!(label instanceof HTMLElement)) throw new Error("no separator label");
+		fireEvent.click(label);
+
+		await waitFor(() => {
+			expect(separators(shadowRootOf(view.container)).map((separator) => separator.text)).toStrictEqual([
+				"13 unmodified lines",
+				"18 unmodified lines",
+			]);
+		});
+		expect(load).toHaveBeenCalledTimes(1);
+	});
+
+	it("loads without a click and draws no separators when expandUnchanged is on, but only with a loader", async () => {
+		const load = vi.fn<(fresh: boolean) => Promise<{oldText: string; newText: string}>>(async (_fresh: boolean) =>
+			Promise.resolve(TWO_HUNK_SIDES),
+		);
+		const view = render(<DiffFile patch={TWO_HUNK_PATCH} loadFileSides={load} expandUnchanged />);
+		await waitFor(() => {
+			expect(contentRowTypes(shadowRootOf(view.container))).toHaveLength(40 + 2);
+		});
+		expect({calls: load.mock.calls, separators: separators(shadowRootOf(view.container))}).toStrictEqual({
+			calls: [[false]],
+			separators: [],
+		});
+		cleanup();
+
+		const plain = render(<DiffFile patch={TWO_HUNK_PATCH} expandUnchanged />);
+		await waitFor(() => {
+			expect(separators(shadowRootOf(plain.container))).toHaveLength(2);
+		});
+	});
+});
+
 describe("DiffFileHeader More actions (upstream c44d00c7f rc/ic/tc)", () => {
 	const FILE = "src/greet.ts";
 

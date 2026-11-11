@@ -1,3 +1,4 @@
+import {getSingularPatch} from "@pierre/diffs";
 import {Virtualizer} from "@pierre/diffs/react";
 import {useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
 import {ArrowRight, ChevronDown, List, Loader2, TriangleAlert} from "lucide-react";
@@ -22,6 +23,7 @@ import {
 	formatDiffScope,
 	parseDiffScope,
 	resolveAbsoluteDiffPath,
+	sessionDiffFileLinesQueryOptions,
 	sessionDiffFileQueryOptions,
 	sessionDiffQueryOptions,
 	sessionDiffScopesQueryOptions,
@@ -37,6 +39,7 @@ import {
 	canMarkPatch,
 	fileMarkStatus,
 	notifyPatchChanges,
+	patchFingerprint,
 	subscribeMarkChanges,
 } from "../../lib/diff-file-marks";
 import {asRecord} from "../../lib/narrow";
@@ -70,7 +73,9 @@ import {type DiffCommentTarget, openDiffCommentDraft, useDiffComments} from "../
 import {detectLanguage} from "../../lib/diff-utils";
 import {DiffContextMenu} from "./diff-context-menu";
 import {DiffFile, type DiffFileAnnotation, DiffFileHeader, DiffFileMenuHost, type DiffLineRange} from "./diff-file";
-import {DiffFileMenuItems} from "./diff-file-menu";
+import {DiffFileMenuItems, type WholeFileState} from "./diff-file-menu";
+import {type FileSides, commentsNeedWholeFile, lineInHunks, wholeFileState} from "./diff-file-lines";
+import {type LineAnchor, findLineAnchor, restoreLineAnchor, stickyHeaderOffset} from "./diff-line-anchor";
 import {diffFileMenuButtonShown} from "./diff-file-menu-gate";
 import {DiffMarksContext, type DiffMarksContextValue, useDiffFileMark} from "./diff-marks-context";
 import {GoToFile} from "./go-to-file";
@@ -468,6 +473,27 @@ export interface DiffFetchContext {
 	hideWhitespace?: boolean;
 }
 
+/** One file's lazy full-file context (upstream CodeView's `loadDiffFiles` and per-item `expandUnchanged`). */
+interface WholeFileProps {
+	/** Reads both sides of the file for this patch; undefined when the diff has no checkout to read. */
+	loadFileSides: ((patch: string, fresh: boolean) => Promise<FileSides>) | undefined;
+	onLoaderGaveUp: () => void;
+	expandUnchanged: boolean;
+	onRendered: () => void;
+	/** Whether the file menu offers Show whole file, which also shows the header's More button. */
+	offered: boolean;
+}
+
+function wholeFileDiffProps(whole: WholeFileProps, patch: string) {
+	const load = whole.loadFileSides;
+	return {
+		loadFileSides: load === undefined ? undefined : async (fresh: boolean) => load(patch, fresh),
+		onLoaderGaveUp: whole.onLoaderGaveUp,
+		expandUnchanged: whole.expandUnchanged,
+		onRendered: whole.onRendered,
+	};
+}
+
 function LazyDiffFile({
 	file,
 	fetchContext,
@@ -479,6 +505,7 @@ function LazyDiffFile({
 	mark,
 	annotations,
 	onRequestChanges,
+	whole,
 }: {
 	file: SessionDiffFile;
 	fetchContext: DiffFetchContext;
@@ -490,6 +517,7 @@ function LazyDiffFile({
 	mark: DiffFileMark | undefined;
 	annotations: readonly DiffFileAnnotation[] | undefined;
 	onRequestChanges: ((target: DiffLineRange) => void) | undefined;
+	whole: WholeFileProps;
 }) {
 	const query = useQuery({
 		...sessionDiffFileQueryOptions(fetchContext.sessionId, fetchContext.scope, file.path, {
@@ -498,11 +526,12 @@ function LazyDiffFile({
 		enabled: !collapsed,
 	});
 	const patch = query.data?.file.patch;
-	const menuButton = diffFileMenuButtonShown({path: file.path, mark, wholeFileOffered: false});
+	const menuButton = diffFileMenuButtonShown({path: file.path, mark, wholeFileOffered: whole.offered});
 	if (!collapsed && patch) {
 		return (
 			<DiffFile
 				patch={patch}
+				{...wholeFileDiffProps(whole, patch)}
 				{...view}
 				collapsed={collapsed}
 				onCollapsedChange={onCollapsedChange}
@@ -550,6 +579,7 @@ function ChangesFile({
 	fetchContext,
 	annotations,
 	onRequestChanges,
+	whole,
 }: {
 	file: SessionDiffFile;
 	view: DiffViewOptions;
@@ -560,13 +590,15 @@ function ChangesFile({
 	fetchContext: DiffFetchContext | undefined;
 	annotations: readonly DiffFileAnnotation[] | undefined;
 	onRequestChanges: ((target: DiffLineRange) => void) | undefined;
+	whole: WholeFileProps;
 }) {
 	const mark = useDiffFileMark(file.path);
-	const menuButton = diffFileMenuButtonShown({path: file.path, mark, wholeFileOffered: false});
+	const menuButton = diffFileMenuButtonShown({path: file.path, mark, wholeFileOffered: whole.offered});
 	if (file.patch !== null && !file.binary) {
 		return (
 			<DiffFile
 				patch={file.patch}
+				{...wholeFileDiffProps(whole, file.patch)}
 				{...view}
 				collapsed={collapsed}
 				onCollapsedChange={onCollapsedChange}
@@ -592,6 +624,7 @@ function ChangesFile({
 				mark={mark}
 				annotations={annotations}
 				onRequestChanges={onRequestChanges}
+				whole={whole}
 			/>
 		);
 	}
@@ -621,6 +654,8 @@ function ChangesFileMenu({
 	onOpenFile,
 	openFileShortcut,
 	isDirectory = false,
+	wholeFile,
+	onShowWholeFile,
 }: {
 	sessionId: string;
 	cwd: string | undefined;
@@ -630,6 +665,8 @@ function ChangesFileMenu({
 	onOpenFile: (() => void) | undefined;
 	openFileShortcut?: string;
 	isDirectory?: boolean;
+	wholeFile?: WholeFileState | undefined;
+	onShowWholeFile?: ((path: string, show: boolean) => void) | undefined;
 }) {
 	const toast = useToast();
 	const mark = useDiffFileMark(isDirectory ? undefined : path);
@@ -639,6 +676,8 @@ function ChangesFileMenu({
 			absolutePath={absolutePath}
 			isDirectory={isDirectory}
 			mark={mark}
+			wholeFile={wholeFile}
+			onShowWholeFile={onShowWholeFile}
 			{...(openFileShortcut === undefined ? {} : {openFileShortcut})}
 			onAttachFile={() => {
 				const mention = `${mentionPath(absolutePath, cwd)}${isDirectory ? "/" : ""}`;
@@ -773,6 +812,9 @@ function sameMarkScope(a: DiffMarkScope, b: DiffMarkScope): boolean {
 }
 
 /** Upstream `hs`: each file's patch by path, first file wins. */
+const NO_PATHS: ReadonlySet<string> = new Set();
+const NO_PATCHES: ReadonlyMap<string, string | null> = new Map();
+
 function patchMap(files: readonly SessionDiffFile[]): ReadonlyMap<string, string | null> {
 	const map = new Map<string, string | null>();
 	for (const file of files) if (!map.has(file.path)) map.set(file.path, file.patch);
@@ -859,6 +901,11 @@ export interface ChangesPaneViewProps {
 	sessionId?: string;
 	/** The session's working directory: attached files are mentioned relative to it. */
 	cwd?: string | undefined;
+	/**
+	 * Reads both sides of a file of a git diff for `patch` (upstream `fetchFileLines`), `fresh` on a retry. It makes
+	 * the hunk separators expandable and enables Show whole file; session edits never get it.
+	 */
+	loadFileSides?: (file: SessionDiffFile, patch: string, fresh: boolean) => Promise<FileSides>;
 }
 
 /**
@@ -884,6 +931,7 @@ export function ChangesPaneView({
 	onDismissFinding = noop,
 	sessionId,
 	cwd,
+	loadFileSides,
 }: ChangesPaneViewProps) {
 	const comments = useDiffComments(sessionId);
 	const iconSet = useActiveFileTypeIconSet();
@@ -995,6 +1043,71 @@ export function ChangesPaneView({
 		}
 	}, [markKey, markScope, patches]);
 
+	// Upstream `Ke` and `Xe`, reset when the comparison changes (`Ge`): the files shown whole from the menu, and the
+	// files whose loader gave up, at the patch it gave up on (a new patch gets a fresh attempt).
+	const [wholeFileToggles, setWholeFileToggles] = useState<{scope: string | undefined; paths: ReadonlySet<string>}>(
+		() => ({scope: undefined, paths: new Set()}),
+	);
+	const [unreadFiles, setUnreadFiles] = useState<{
+		scope: string | undefined;
+		patches: ReadonlyMap<string, string | null>;
+	}>(() => ({scope: undefined, patches: new Map()}));
+	const wholeFilePaths = wholeFileToggles.scope === servedScope ? wholeFileToggles.paths : NO_PATHS;
+	const unreadPatches = unreadFiles.scope === servedScope ? unreadFiles.patches : NO_PATCHES;
+	const fileLoader = diff?.source === "git" ? loadFileSides : undefined;
+	const canLoadFiles = fileLoader !== undefined;
+
+	/** Upstream `Jt`'s anchor: a line kept in place across the whole-file toggle until the user scrolls. */
+	const pendingAnchor = useRef<LineAnchor | null>(null);
+	const restoreAnchor = useCallback(() => {
+		const anchor = pendingAnchor.current;
+		const header = anchor === null ? null : fileHeader(bodyRef.current, anchor.path);
+		const scroller = header === null ? null : scrollParent(header);
+		if (anchor !== null && scroller !== null) restoreLineAnchor(scroller, anchor);
+	}, []);
+	useLayoutEffect(restoreAnchor, [restoreAnchor, wholeFileToggles]);
+	useEffect(() => {
+		const body = bodyRef.current;
+		if (body === null) return undefined;
+		const cancel = () => {
+			pendingAnchor.current = null;
+		};
+		const events = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
+		for (const type of events) body.addEventListener(type, cancel, {capture: true, passive: true});
+		return () => {
+			for (const type of events) body.removeEventListener(type, cancel, {capture: true});
+		};
+	}, [hasFiles]);
+
+	/** Upstream `Jt`: toggles the file's whole-file view, expanding a collapsed file or keeping the line in view. */
+	function showWholeFile(path: string, show: boolean) {
+		setWholeFileToggles((previous) => {
+			const paths = new Set(previous.scope === servedScope ? previous.paths : NO_PATHS);
+			if (show) paths.add(path);
+			else paths.delete(path);
+			return {scope: servedScope, paths};
+		});
+		const file = files.find((candidate) => candidate.path === path);
+		if (show && file !== undefined && isCollapsed(file)) {
+			setCollapsedOverrides((previous) => ({...previous, [path]: false}));
+			return;
+		}
+		const header = fileHeader(bodyRef.current, path);
+		const scroller = header === null ? null : scrollParent(header);
+		if (scroller === null) return;
+		const rootFontSize = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+		const offset = stickyHeaderOffset(Number.isFinite(rootFontSize) ? rootFontSize : 16);
+		// "Show changes only" skips this file's lines that are about to fold.
+		const fileDiff = !show && file?.patch ? getSingularPatch(file.patch) : undefined;
+		const folding = (candidate: string, side: "additions" | "deletions", line: number) =>
+			!show && candidate === path && (fileDiff === undefined || !lineInHunks(fileDiff, side, line));
+		const filtered = findLineAnchor(scroller, offset, folding);
+		pendingAnchor.current =
+			filtered !== null && filtered.viewportOffset < scroller.getBoundingClientRect().height
+				? filtered
+				: findLineAnchor(scroller, offset);
+	}
+
 	const setAllCollapsed = (collapsed: boolean) => {
 		setCollapsedOverrides(Object.fromEntries(files.map((file) => [file.path, collapsed])));
 	};
@@ -1081,6 +1194,53 @@ export function ChangesPaneView({
 								contentClassName="flex flex-col pb-2"
 							>
 								{files.map((file) => {
+									const load = file.binary ? undefined : fileLoader;
+									const fileCanLoad = load !== undefined;
+									const findingCount = findings.filter(
+										(finding) => !finding.resolved && finding.file === file.path,
+									).length;
+									const commentLines = [...comments.queued, ...comments.drafts]
+										.filter((comment) => comment.path === file.path)
+										.map((comment) => ({
+											side: comment.side,
+											line: comment.endLine ?? comment.line,
+										}));
+									// Upstream `Id`: a comment on an unmodified line needs the whole file to sit on its line.
+									const commentLocked =
+										fileCanLoad &&
+										file.patch !== null &&
+										commentLines.length > 0 &&
+										commentsNeedWholeFile(getSingularPatch(file.patch), commentLines);
+									const locked = findingCount > 0 || commentLocked;
+									const shown = locked || wholeFilePaths.has(file.path);
+									const expandUnchanged = fileCanLoad && shown;
+									const wholeFile = wholeFileState({
+										offered: fileCanLoad,
+										hasHunks: file.additions + file.deletions > 0,
+										status: file.status,
+										loaderGaveUp:
+											unreadPatches.has(file.path) && unreadPatches.get(file.path) === file.patch,
+										shown,
+										locked,
+									});
+									const whole: WholeFileProps = {
+										loadFileSides:
+											load === undefined
+												? undefined
+												: async (patch, fresh) => load(file, patch, fresh),
+										onLoaderGaveUp: () => {
+											setUnreadFiles((previous) => {
+												const patches = new Map(
+													previous.scope === servedScope ? previous.patches : NO_PATCHES,
+												);
+												patches.set(file.path, file.patch);
+												return {scope: servedScope, patches};
+											});
+										},
+										expandUnchanged,
+										onRendered: restoreAnchor,
+										offered: canLoadFiles,
+									};
 									const annotations = [
 										...findingAnnotations(findings, file.path, {
 											onFix: onFixFinding,
@@ -1093,7 +1253,7 @@ export function ChangesPaneView({
 													comments.drafts,
 													comments.queued,
 													file.path,
-													file.patch === null || file.binary
+													file.patch === null || file.binary || expandUnchanged
 														? undefined
 														: diffLineRanges(file.patch),
 												)),
@@ -1116,6 +1276,8 @@ export function ChangesPaneView({
 												absolutePath={absolutePath}
 												cannotOpen={cannotOpen}
 												onOpenFile={fileOpener}
+												wholeFile={wholeFile}
+												onShowWholeFile={showWholeFile}
 											/>
 										);
 									const changesFile = (
@@ -1140,6 +1302,7 @@ export function ChangesPaneView({
 											onOpenFile={fileOpener}
 											headerMenu={headerMenu}
 											fetchContext={fetchContext}
+											whole={whole}
 											annotations={annotations.length === 0 ? undefined : annotations}
 											onRequestChanges={
 												sessionId === undefined
@@ -1336,6 +1499,7 @@ export function ChangesPane({
 	const diffQuery = useQuery(sessionDiffQueryOptions(sessionId, scope, {hideWhitespace}));
 	const scopesQuery = useQuery(sessionDiffScopesQueryOptions(sessionId));
 	const toast = useToast();
+	const queryClient = useQueryClient();
 	const review = useReviewFindings(sessionId, scope);
 	const failure =
 		diffQuery.data === undefined && (diffQuery.isError || diffQuery.failureCount > 0)
@@ -1373,6 +1537,17 @@ export function ChangesPane({
 				void scopesQuery.refetch();
 			}}
 			fetchContext={{sessionId, scope: diffQuery.data?.scope ?? scope, hideWhitespace}}
+			loadFileSides={async (file, patch, fresh) => {
+				// Upstream `td`: one cached read per file and patch (`ed`), refetched on every retry.
+				const servedScope = diffQuery.data?.scope ?? scope;
+				return queryClient.query(
+					sessionDiffFileLinesQueryOptions(sessionId, servedScope, file.path, {
+						contentKey: patchFingerprint(patch) ?? patch,
+						status: file.status,
+						fresh,
+					}),
+				);
+			}}
 			scope={scope}
 			onSelectScope={setScope}
 			onCopyCommitSha={(sha) => void copyCommitSha(sha)}

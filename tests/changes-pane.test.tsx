@@ -23,6 +23,8 @@ import {onFileOpenRequest} from "../src/lib/file-open-requests";
 import {registerComposer, takeContextChips} from "../src/lib/context-attach";
 import {installLocalStorage} from "./fake-storage";
 import {type DiffMarkScope, fileMarkStatus, setFileMarked} from "../src/lib/diff-file-marks";
+import {clearDiffComments, openDiffCommentDraft, saveDiffComment} from "../src/lib/diff-comments";
+import type {ReviewFinding} from "../src/lib/review-diff";
 
 const GREET_PATCH = `diff --git a/src/greet.ts b/src/greet.ts
 index 1111111..2222222 100644
@@ -611,7 +613,17 @@ index 3333333..0000000
 		stop();
 
 		expect({rows, opened}).toStrictEqual({
-			rows: ["Attach as context", "Copy", "─", "Mark as viewed", "─", "Open file", "Open in", "Show in Finder"],
+			rows: [
+				"Attach as context",
+				"Copy",
+				"─",
+				"Show whole file",
+				"Mark as viewed",
+				"─",
+				"Open file",
+				"Open in",
+				"Show in Finder",
+			],
 			opened: [{path: "/repo/src/greet.ts"}, {path: "/repo/src/greet.ts"}],
 		});
 	});
@@ -988,5 +1000,257 @@ describe("ChangesPaneView viewed marks (upstream mm/gs/Ms/Is/vp)", () => {
 			vi.restoreAllMocks();
 		}
 		expect(scrollTop).toBe(170);
+	});
+});
+
+describe("ChangesPaneView whole-file context (upstream c44d00c7f expandUnchanged, Id, Fo wholeFile, Jt)", () => {
+	const SESSION = "session-whole-file";
+	const FILE_LINES = (changed: readonly number[] = []) =>
+		Array.from({length: 40}, (_, index) =>
+			changed.includes(index + 1) ? `LINE ${index + 1}\n` : `line ${index + 1}\n`,
+		).join("");
+	const patchFor = (path: string) => `diff --git a/${path} b/${path}
+index 1111111..2222222 100644
+--- a/${path}
++++ b/${path}
+@@ -14,3 +14,3 @@
+ line 14
+-line 15
++LINE 15
+ line 16
+@@ -20,3 +20,3 @@
+ line 20
+-line 21
++LINE 21
+ line 22
+`;
+	const fileAt = (path: string): SessionDiffFile => ({
+		path,
+		status: "modified",
+		additions: 2,
+		deletions: 2,
+		binary: false,
+		patchLineCount: 16,
+		patch: patchFor(path),
+	});
+	const A = fileAt("src/a.ts");
+	const B = fileAt("src/b.ts");
+	const SIDES = {oldText: FILE_LINES(), newText: FILE_LINES([15, 21])};
+	const FINDING_ON_A: ReviewFinding = {
+		id: "f-whole",
+		file: "src/a.ts",
+		side: "new",
+		line: 15,
+		severity: "medium",
+		title: "Fake finding",
+		body: "Fake finding body.",
+		resolved: false,
+	};
+
+	afterEach(() => {
+		clearDiffComments(SESSION);
+	});
+
+	interface Options {
+		scope?: string;
+		source?: "git" | "session-edits";
+		findings?: ReviewFinding[];
+		load?: (
+			path: string,
+			patch: string,
+			fresh: boolean,
+		) => Promise<{oldText: string | null; newText: string | null}>;
+	}
+
+	function element({scope = "branch", source = "git", findings = [], load}: Options, files: SessionDiffFile[]) {
+		return (
+			<SettingsProvider>
+				<ToastProvider>
+					<ChangesPaneView
+						diff={{...diffOf(files), scope, source}}
+						scopes={SCOPES}
+						controls={null}
+						onRefresh={() => {}}
+						scope={scope}
+						sessionId={SESSION}
+						findings={findings}
+						{...(load === undefined
+							? {}
+							: {
+									loadFileSides: async (file: SessionDiffFile, patch: string, fresh: boolean) =>
+										load(file.path, patch, fresh),
+								})}
+					/>
+				</ToastProvider>
+			</SettingsProvider>
+		);
+	}
+
+	function loader(sides: {oldText: string | null; newText: string | null} = SIDES) {
+		return vi.fn<(path: string, patch: string, fresh: boolean) => Promise<typeof sides>>(
+			async (_path: string, _patch: string, _fresh: boolean) => Promise.resolve(sides),
+		);
+	}
+
+	function separatorCount(path: string): number | undefined {
+		const host = document.querySelector(`[data-diff-file-header="${path}"]`)?.closest("diffs-container");
+		return host?.shadowRoot?.querySelectorAll("[data-gutter] > [data-separator]").length;
+	}
+
+	async function menuItem(path: string): Promise<{label: string; disabled: boolean} | null> {
+		fireEvent.contextMenu(headerButton(path), {clientX: 10, clientY: 10});
+		const menu = await screen.findByRole("menu");
+		const item = [...menu.querySelectorAll('[role="menuitem"]')].find((row) =>
+			/^Show (whole file|changes only)/.test(row.textContent),
+		);
+		const result =
+			item === undefined
+				? null
+				: {
+						label: item.firstElementChild?.textContent ?? item.textContent,
+						disabled: item.getAttribute("aria-disabled") === "true" || item.hasAttribute("data-disabled"),
+					};
+		fireEvent.keyDown(menu, {key: "Escape"});
+		await waitFor(() => {
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		return result;
+	}
+
+	async function chooseMenuItem(path: string, name: string) {
+		fireEvent.contextMenu(headerButton(path), {clientX: 10, clientY: 10});
+		fireEvent.click(await screen.findByRole("menuitem", {name}));
+	}
+
+	it("shows a file with a finding whole, loading it without a click, and leaves the others folded", async () => {
+		const load = loader();
+		render(element({findings: [FINDING_ON_A], load}, [A, B]));
+
+		await waitFor(() => {
+			expect(separatorCount("src/a.ts")).toBe(0);
+		});
+		expect({
+			calls: load.mock.calls.map(([path, , fresh]) => [path, fresh]),
+			b: separatorCount("src/b.ts"),
+		}).toStrictEqual({
+			calls: [["src/a.ts", false]],
+			b: 3,
+		});
+	});
+
+	it("passes no loader, and so keeps the separators, for session edits", async () => {
+		const load = loader();
+		render(element({source: "session-edits", findings: [FINDING_ON_A], load}, [A]));
+
+		await waitFor(() => {
+			expect(separatorCount("src/a.ts")).toBe(2);
+		});
+		expect(load).not.toHaveBeenCalled();
+	});
+
+	it("shows a file whole for a comment on an unmodified line, but not for one inside a hunk", async () => {
+		const draft = openDiffCommentDraft(SESSION, {path: "src/a.ts", side: "additions", line: 30});
+		saveDiffComment(SESSION, draft, "Fake comment on line 30");
+		openDiffCommentDraft(SESSION, {path: "src/b.ts", side: "additions", line: 15});
+		const load = loader();
+		render(element({load}, [A, B]));
+
+		await waitFor(() => {
+			expect(separatorCount("src/a.ts")).toBe(0);
+		});
+		expect({calls: load.mock.calls.map(([path]) => path), b: separatorCount("src/b.ts")}).toStrictEqual({
+			calls: ["src/a.ts"],
+			b: 3,
+		});
+	});
+
+	it("shows a file whole for a draft on an unmodified line", async () => {
+		openDiffCommentDraft(SESSION, {path: "src/a.ts", side: "deletions", line: 3});
+		const load = loader();
+		render(element({load}, [A]));
+
+		await waitFor(() => {
+			expect(separatorCount("src/a.ts")).toBe(0);
+		});
+		expect(load.mock.calls.map(([path]) => path)).toStrictEqual(["src/a.ts"]);
+	});
+
+	it("toggles Show whole file and Show changes only from the file menu, with the More button offered", async () => {
+		const load = loader();
+		render(element({load}, [A]));
+		await waitFor(() => {
+			expect(separatorCount("src/a.ts")).toBe(3);
+		});
+		const more = document.querySelector('[data-diff-file-header="src/a.ts"] button[aria-label="More actions"]');
+		const folded = await menuItem("src/a.ts");
+
+		await chooseMenuItem("src/a.ts", "Show whole file");
+		await waitFor(() => {
+			expect(separatorCount("src/a.ts")).toBe(0);
+		});
+		const shown = await menuItem("src/a.ts");
+
+		await chooseMenuItem("src/a.ts", "Show changes only");
+		await waitFor(() => {
+			expect(separatorCount("src/a.ts")).toBeGreaterThan(0);
+		});
+
+		expect({more: more !== null, folded, shown, calls: load.mock.calls.length}).toStrictEqual({
+			more: true,
+			folded: {label: "Show whole file", disabled: false},
+			shown: {label: "Show changes only", disabled: false},
+			calls: 1,
+		});
+	});
+
+	it("locks a file with a finding on Show changes only, and offers nothing for added files or session edits", async () => {
+		const added: SessionDiffFile = {...fileAt("src/new.ts"), status: "added"};
+		const view = render(element({findings: [FINDING_ON_A], load: loader()}, [A, added]));
+		const locked = await menuItem("src/a.ts");
+		const forAdded = await menuItem("src/new.ts");
+		view.unmount();
+
+		render(element({source: "session-edits", load: loader()}, [B]));
+		const sessionEdits = await menuItem("src/b.ts");
+
+		expect({locked, forAdded, sessionEdits}).toStrictEqual({
+			locked: {label: "Show changes only", disabled: true},
+			forAdded: null,
+			sessionEdits: null,
+		});
+	});
+
+	it("disables Show whole file once the loader gives up on a drifted file", async () => {
+		const load = loader({oldText: `${FILE_LINES()}extra\n`, newText: FILE_LINES([15, 21])});
+		render(element({load}, [A]));
+		await chooseMenuItem("src/a.ts", "Show whole file");
+		await waitFor(() => {
+			expect(load).toHaveBeenCalledTimes(1);
+		});
+
+		await waitFor(async () => {
+			expect(await menuItem("src/a.ts")).toStrictEqual({label: "Show whole file", disabled: true});
+		});
+	});
+
+	it("expands a collapsed file when Show whole file is chosen, and forgets every toggle on a new scope", async () => {
+		const load = loader();
+		const view = render(element({load}, [A]));
+		fireEvent.click(headerButton("src/a.ts"));
+		expect(headerButton("src/a.ts").getAttribute("aria-expanded")).toBe("false");
+
+		await chooseMenuItem("src/a.ts", "Show whole file");
+		await waitFor(() => {
+			expect(separatorCount("src/a.ts")).toBe(0);
+		});
+		const expanded = headerButton("src/a.ts").getAttribute("aria-expanded");
+
+		view.rerender(element({scope: "uncommitted", load}, [A]));
+		const afterScope = await menuItem("src/a.ts");
+
+		expect({expanded, afterScope}).toStrictEqual({
+			expanded: "true",
+			afterScope: {label: "Show whole file", disabled: false},
+		});
 	});
 });

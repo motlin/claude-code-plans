@@ -1,4 +1,4 @@
-import {mkdtempSync, rmSync, writeFileSync} from "node:fs";
+import {mkdtempSync, rmSync, symlinkSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
@@ -7,6 +7,7 @@ import {
 	type DiffFile,
 	listScopes,
 	parseDiffFiles,
+	readDiffFileSides,
 	resolveDiffBase,
 	type RunGit,
 } from "../src/lib/session-diff";
@@ -379,6 +380,206 @@ describe("resolveDiffBase with an injected runGit", () => {
 			["rev-parse", "--verify", "--quiet", "master^{commit}"],
 			["merge-base", "master", "HEAD"],
 		]);
+	});
+});
+
+describe("readDiffFileSides (upstream desktop getDiffFileContent)", () => {
+	/** A fake git that answers the base lookup and `show <rev>:<path>` from `blobs`, recording each `show`. */
+	function fakeGit(blobs: Record<string, string>) {
+		const calls: string[][] = [];
+		const runGit: RunGit = async (_cwd, arguments_) => {
+			const key = arguments_.join(" ");
+			if (key === "symbolic-ref --quiet --short refs/remotes/origin/HEAD")
+				return Promise.resolve("origin/main\n");
+			if (key === "merge-base origin/main HEAD") return Promise.resolve("base123\n");
+			calls.push(arguments_);
+			const blob = arguments_[0] === "show" ? blobs[arguments_[1] ?? ""] : undefined;
+			return blob === undefined ? Promise.reject(new Error(`fatal: ${key}`)) : Promise.resolve(blob);
+		};
+		return {calls, runGit};
+	}
+
+	function fakeWorkingTree(files: Record<string, string>) {
+		const reads: string[] = [];
+		const readWorkingFile = async (root: string, path: string) => {
+			reads.push(`${root}:${path}`);
+			return Promise.resolve(files[path] ?? null);
+		};
+		return {reads, readWorkingFile};
+	}
+
+	async function sides(
+		scope: Parameters<typeof readDiffFileSides>[1],
+		file: Parameters<typeof readDiffFileSides>[2],
+		blobs: Record<string, string>,
+		working: Record<string, string>,
+	) {
+		const git = fakeGit(blobs);
+		const tree = fakeWorkingTree(working);
+		const result = await readDiffFileSides("/repo", scope, file, git.runGit, tree.readWorkingFile);
+		return {result, calls: git.calls, reads: tree.reads};
+	}
+
+	it("reads the merge-base side and the working tree for the branch scope", async () => {
+		expect(
+			await sides(
+				{kind: "branch"},
+				{path: "src/a.ts", status: "modified"},
+				{"base123:src/a.ts": "old\n"},
+				{"src/a.ts": "new\n"},
+			),
+		).toStrictEqual({
+			result: {oldText: "old\n", newText: "new\n"},
+			calls: [["show", "base123:src/a.ts"]],
+			reads: ["/repo:src/a.ts"],
+		});
+	});
+
+	it("reads HEAD and the working tree for uncommitted changes", async () => {
+		expect(
+			await sides(
+				{kind: "uncommitted"},
+				{path: "src/a.ts", status: "modified"},
+				{"HEAD:src/a.ts": "old\n"},
+				{"src/a.ts": "new\n"},
+			),
+		).toStrictEqual({
+			result: {oldText: "old\n", newText: "new\n"},
+			calls: [["show", "HEAD:src/a.ts"]],
+			reads: ["/repo:src/a.ts"],
+		});
+	});
+
+	it("reads the commit's parent and the commit for a commit scope, never the working tree", async () => {
+		expect(
+			await sides(
+				{kind: "commit", sha: "abc123"},
+				{path: "src/a.ts", status: "modified"},
+				{"abc123^:src/a.ts": "old\n", "abc123:src/a.ts": "new\n"},
+				{"src/a.ts": "working\n"},
+			),
+		).toStrictEqual({
+			result: {oldText: "old\n", newText: "new\n"},
+			calls: [
+				["show", "abc123^:src/a.ts"],
+				["show", "abc123:src/a.ts"],
+			],
+			reads: [],
+		});
+	});
+
+	it("reads a renamed file's old side from its old path", async () => {
+		expect(
+			await sides(
+				{kind: "branch"},
+				{path: "src/new.ts", oldPath: "src/old.ts", status: "renamed"},
+				{"base123:src/old.ts": "old\n"},
+				{"src/new.ts": "new\n"},
+			),
+		).toStrictEqual({
+			result: {oldText: "old\n", newText: "new\n"},
+			calls: [["show", "base123:src/old.ts"]],
+			reads: ["/repo:src/new.ts"],
+		});
+	});
+
+	it("skips the old side of an added file and the new side of a deleted one", async () => {
+		expect(
+			await sides({kind: "branch"}, {path: "src/a.ts", status: "added"}, {}, {"src/a.ts": "new\n"}),
+		).toStrictEqual({
+			result: {oldText: null, newText: "new\n"},
+			calls: [],
+			reads: ["/repo:src/a.ts"],
+		});
+		expect(
+			await sides({kind: "branch"}, {path: "src/a.ts", status: "deleted"}, {"base123:src/a.ts": "old\n"}, {}),
+		).toStrictEqual({
+			result: {oldText: "old\n", newText: null},
+			calls: [["show", "base123:src/a.ts"]],
+			reads: [],
+		});
+	});
+
+	it("gives a side git can't show, or one past the 2 MB cap, as null", async () => {
+		expect(
+			await sides(
+				{kind: "commit", sha: "abc123"},
+				{path: "src/a.ts", status: "modified"},
+				{"abc123:src/a.ts": "x".repeat(2 * 1024 * 1024 + 1)},
+				{},
+			),
+		).toStrictEqual({
+			result: {oldText: null, newText: null},
+			calls: [
+				["show", "abc123^:src/a.ts"],
+				["show", "abc123:src/a.ts"],
+			],
+			reads: [],
+		});
+	});
+
+	it("rejects a path or old path outside the checkout before reading anything", async () => {
+		for (const file of [
+			{path: "../x", status: "modified" as const},
+			{path: "/etc/hosts", status: "modified" as const},
+			{path: "src/../../x", status: "modified" as const},
+			{path: "src/a.ts", oldPath: "../old.ts", status: "renamed" as const},
+		]) {
+			expect(await sides({kind: "uncommitted"}, file, {}, {})).toStrictEqual({
+				result: null,
+				calls: [],
+				reads: [],
+			});
+		}
+	});
+});
+
+describe("readDiffFileSides over a real repository", () => {
+	let repositoryDirectory: string;
+
+	beforeEach(() => {
+		repositoryDirectory = mkdtempSync(join(tmpdir(), "session-diff-sides-"));
+		runGit(repositoryDirectory, ["init", "--initial-branch=main"]);
+		runGit(repositoryDirectory, ["config", "user.email", "alice@example.com"]);
+		runGit(repositoryDirectory, ["config", "user.name", "Alice"]);
+		writeFileSync(join(repositoryDirectory, "a.txt"), "one\ntwo\n");
+		runGit(repositoryDirectory, ["add", "."]);
+		runGit(repositoryDirectory, ["commit", "--message", "Initial commit."]);
+	});
+
+	afterEach(() => {
+		rmSync(repositoryDirectory, {recursive: true, force: true});
+	});
+
+	it("reads HEAD through git and the edited working file from disk", async () => {
+		writeFileSync(join(repositoryDirectory, "a.txt"), "one\nTWO\n");
+		expect(
+			await readDiffFileSides(repositoryDirectory, {kind: "uncommitted"}, {path: "a.txt", status: "modified"}),
+		).toStrictEqual({oldText: "one\ntwo\n", newText: "one\nTWO\n"});
+	});
+
+	it("gives a working file that's missing as null", async () => {
+		rmSync(join(repositoryDirectory, "a.txt"));
+		expect(
+			await readDiffFileSides(repositoryDirectory, {kind: "uncommitted"}, {path: "a.txt", status: "modified"}),
+		).toStrictEqual({oldText: "one\ntwo\n", newText: null});
+	});
+
+	it("won't follow a working-tree symlink out of the checkout", async () => {
+		const outside = mkdtempSync(join(tmpdir(), "session-diff-outside-"));
+		try {
+			writeFileSync(join(outside, "secret.txt"), "fake-secret\n");
+			symlinkSync(join(outside, "secret.txt"), join(repositoryDirectory, "link.txt"));
+			expect(
+				await readDiffFileSides(
+					repositoryDirectory,
+					{kind: "uncommitted"},
+					{path: "link.txt", status: "added"},
+				),
+			).toStrictEqual({oldText: null, newText: null});
+		} finally {
+			rmSync(outside, {recursive: true, force: true});
+		}
 	});
 });
 
