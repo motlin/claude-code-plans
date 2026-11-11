@@ -178,6 +178,33 @@ describe("AskUserQuestionRenderer", () => {
 			});
 		});
 
+		it("shows a bidi override in the question and answer as upstream's u9(ME(text)) does", () => {
+			const fakeToken = `ghp_${"A".repeat(36)}`;
+			const masked = `ghp_AAAA${"•".repeat(32)}`;
+			const rlo = String.fromCodePoint(0x202e);
+			const question = `Ship ${rlo}exe.txt?`;
+			expect(
+				outcomeList(
+					makeCall({
+						input: {
+							questions: [
+								{
+									question,
+									header: "Ship",
+									options: [{label: "Yes"}, {label: "No"}],
+									multiSelect: false,
+								},
+							],
+						},
+						result: REJECTION_RESULT,
+						resultMeta: {answers: {[question]: {answer: `${rlo}ok ${fakeToken}`, notes: null}}},
+						isError: true,
+						stopped: true,
+					}),
+				).items.map((item) => item.lines.map((line) => line.text)),
+			).toStrictEqual([["Ship [U+202E]exe.txt?", `[U+202E]ok ${masked}`]]);
+		});
+
 		it("draws **text** in the question as upstream's strong.font-medium around its chips, never inside a code span", () => {
 			const {container} = render(
 				<AskUserQuestionRenderer

@@ -8,6 +8,8 @@ import {sessionApprovalSlotCard} from "../../lib/approval-slot-card";
 import {QuestionCard} from "../question-card";
 import {QuestionReceipt} from "../question-receipt";
 import {UserInlineText} from "../user-plain-text";
+import {maskSecrets} from "../../lib/secret-mask";
+import {revealSpoofing} from "../../lib/visible-text";
 import {FORK_ANSWER_LABEL} from "../../lib/question-answer-route";
 import type {QuestionAnswer} from "../../lib/hook-events";
 import {clearSentQuestionCard, isQuestionCardSent, useQuestionCardSent} from "../../lib/question-card-store";
@@ -84,8 +86,9 @@ function UnansweredQuestion({question, header, options}: QuestionLike) {
  * secondary text over its answer, or, when the call asked several questions,
  * its outcome's word ("Not answered" when the call was stopped). A single
  * unanswered question shows only itself, since the row's note already says why.
- * The question line is masked: upstream draws it as `_i({text: u9(ME(question))})`
- * (cb6930dae, 2026-11-10), where ME is the secret masker and `_i` paints code chips.
+ * The question line is masked then revealed: upstream draws it as `_i({text: u9(ME(question))})`
+ * (cb6930dae, 2026-11-10), where ME is the secret masker, u9 shows spoofing characters as
+ * `[U+XXXX]` and `_i` paints code chips. The answer line is `u9(ME(answer))` as plain text.
  */
 function QuestionOutcomeList({toolCall}: {toolCall: ClientToolCall}) {
 	const entries = questionOutcomes(toolCall);
@@ -94,11 +97,19 @@ function QuestionOutcomeList({toolCall}: {toolCall: ClientToolCall}) {
 			{entries.map((entry, i) => {
 				const kind = entry.unanswered ?? (toolCall.stopped === true ? "dismissed" : undefined);
 				const line =
-					entry.answer ?? (kind !== undefined && entries.length > 1 ? OUTCOME_LABEL[kind] : undefined);
+					entry.answer === undefined
+						? kind !== undefined && entries.length > 1
+							? OUTCOME_LABEL[kind]
+							: undefined
+						: revealSpoofing(maskSecrets(entry.answer));
 				return (
 					<div key={i} className="flex flex-col text-body [overflow-wrap:anywhere]">
 						<div className="text-secondary">
-							<UserInlineText text={entry.question} codeLook="chip" links={false} />
+							<UserInlineText
+								text={revealSpoofing(maskSecrets(entry.question))}
+								codeLook="chip"
+								links={false}
+							/>
 						</div>
 						{line !== undefined && <div className="text-ink-muted">{line}</div>}
 					</div>
