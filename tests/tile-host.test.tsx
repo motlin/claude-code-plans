@@ -2,6 +2,8 @@
 
 import {readFileSync} from "node:fs";
 
+import {useState} from "react";
+
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -414,7 +416,7 @@ describe("TileHost", () => {
 		const callsWithoutPane = onExpandWithoutPane.mock.calls.length;
 
 		openTestPane();
-		const chatTile = document.querySelector<HTMLElement>("[data-tile-host=chat]");
+		const chatTile = document.querySelector<HTMLElement>("[data-tile-slot=chat]");
 		press({key: "|", code: "Backslash", metaKey: true, shiftKey: true});
 		const chatState = () => ({
 			hidden: chatTile?.hidden,
@@ -531,7 +533,7 @@ describe("TileHost", () => {
 		const reader = screen.getByTestId("pane-reader");
 		const draft = screen.getByRole<HTMLInputElement>("textbox", {name: "Draft comment"});
 		const disclosure = reader.querySelector("details")!;
-		const chat = document.querySelector<HTMLElement>("[data-tile-host=chat]")!;
+		const chat = document.querySelector<HTMLElement>("[data-tile-slot=chat]")!;
 		disclosure.open = true;
 		fireEvent.change(draft, {target: {value: "Alice's draft"}});
 		reader.scrollTop = 300;
@@ -540,7 +542,7 @@ describe("TileHost", () => {
 		for (const toggle of ["Expand", "Collapse", "Expand", "Collapse"]) {
 			fireEvent.click(screen.getByRole("button", {name: toggle}));
 			expect(screen.getByTestId("pane-reader")).toBe(reader);
-			expect(document.querySelector("[data-tile-host=chat]")).toBe(chat);
+			expect(document.querySelector("[data-tile-slot=chat]")).toBe(chat);
 			expect({
 				top: reader.scrollTop,
 				left: reader.scrollLeft,
@@ -578,11 +580,11 @@ describe("TileHost", () => {
 	function layoutShape() {
 		return {
 			columns: document.querySelectorAll("[data-tile-stack=column]").length,
-			tiles: [...document.querySelectorAll("[data-tile-host]")].map((tile) =>
-				tile.getAttribute("data-tile-host"),
+			tiles: [...document.querySelectorAll("[data-tile-slot]")].map((tile) =>
+				tile.getAttribute("data-tile-slot"),
 			),
 			preview: [...document.querySelectorAll("[data-tile-move-preview]")].map((preview) => ({
-				tile: preview.closest("[data-tile-host]")?.getAttribute("data-tile-host") ?? null,
+				tile: preview.closest("[data-tile-slot]")?.getAttribute("data-tile-slot") ?? null,
 				side: preview.getAttribute("data-tile-move-preview"),
 			})),
 		};
@@ -610,7 +612,7 @@ describe("TileHost", () => {
 	it("gives the chat tile a Move grip once a side tile exists", () => {
 		renderHost("session-a");
 		const chatMoves = () =>
-			within(document.querySelector<HTMLElement>("[data-tile-host=chat]") ?? document.body).queryAllByRole(
+			within(document.querySelector<HTMLElement>("[data-tile-slot=chat]") ?? document.body).queryAllByRole(
 				"button",
 				{name: "Move"},
 			).length;
@@ -666,7 +668,7 @@ describe("TileHost", () => {
 	it("drags the Move grip over another tile to preview and commit a split", () => {
 		renderHost("session-a");
 		openTestPane();
-		const chatTile = document.querySelector<HTMLElement>("[data-tile-host=chat]");
+		const chatTile = document.querySelector<HTMLElement>("[data-tile-slot=chat]");
 		stubElementFromPoint(chatTile);
 		const grip = paneMoveButton();
 
@@ -684,7 +686,7 @@ describe("TileHost", () => {
 	it("marks the tiles root data-tiles-moving only while a Move drag is under way, hiding the divider hairline as upstream", () => {
 		renderHost("session-a");
 		openTestPane();
-		stubElementFromPoint(document.querySelector<HTMLElement>("[data-tile-host=chat]"));
+		stubElementFromPoint(document.querySelector<HTMLElement>("[data-tile-slot=chat]"));
 		const grip = paneMoveButton();
 		const moving = () => document.querySelector("[data-tile-stack]")?.hasAttribute("data-tiles-moving");
 
@@ -713,7 +715,7 @@ describe("TileHost", () => {
 	it("disables the dividers during a Move drag as upstream's isDisabled: isDraggingTile does", () => {
 		renderHost("session-a");
 		openTestPane();
-		stubElementFromPoint(document.querySelector<HTMLElement>("[data-tile-host=chat]"));
+		stubElementFromPoint(document.querySelector<HTMLElement>("[data-tile-slot=chat]"));
 		const grip = paneMoveButton();
 		const state = () => {
 			const separator = screen.getByRole("separator");
@@ -746,10 +748,10 @@ describe("TileHost", () => {
 	it("marks only the dragged tile data-tile-moving during a Move drag, for upstream's is-moving ring", () => {
 		renderHost("session-a");
 		openTestPane();
-		stubElementFromPoint(document.querySelector<HTMLElement>("[data-tile-host=chat]"));
+		stubElementFromPoint(document.querySelector<HTMLElement>("[data-tile-slot=chat]"));
 		const grip = paneMoveButton();
 		const marked = () =>
-			[...document.querySelectorAll<HTMLElement>("[data-tile-moving]")].map((el) => el.dataset["tileHost"]);
+			[...document.querySelectorAll<HTMLElement>("[data-tile-moving]")].map((el) => el.dataset["tileSlot"]);
 
 		const states = [marked()];
 		fireEvent.pointerDown(grip, {pointerId: 1, clientX: 900, clientY: 10});
@@ -771,15 +773,15 @@ describe("TileHost", () => {
 			forced: css.includes(
 				"@media (forced-colors: active) {\n\t[data-tiles-line] [data-tile-moving] {\n\t\toutline: 1px solid CanvasText;\n\t}\n}",
 			),
-			paneGround: css.includes("[data-tile-host] {\n\t--tile-shell-ground: var(--color-surface-2);\n}"),
-			chatGround: css.includes('[data-tile-host="chat"] {\n\t--tile-shell-ground: var(--color-surface-1);\n}'),
+			paneGround: css.includes("[data-tile-slot] {\n\t--tile-shell-ground: var(--color-surface-2);\n}"),
+			chatGround: css.includes('[data-tile-slot="chat"] {\n\t--tile-shell-ground: var(--color-surface-1);\n}'),
 		}).toStrictEqual({ring: true, forced: true, paneGround: true, chatGround: true});
 	});
 
 	it("ignores a Move grip press that does not leave the grip", () => {
 		renderHost("session-a");
 		openTestPane();
-		const chatTile = document.querySelector<HTMLElement>("[data-tile-host=chat]");
+		const chatTile = document.querySelector<HTMLElement>("[data-tile-slot=chat]");
 		stubElementFromPoint(chatTile);
 		const grip = paneMoveButton();
 
@@ -848,7 +850,7 @@ describe("TileHost on a phone", () => {
 	}
 
 	function paneSlotState() {
-		const slot = screen.getByText("Test pane body").closest("[data-tile-host]");
+		const slot = screen.getByText("Test pane body").closest("[data-tile-slot]");
 		if (slot === null) throw new Error("pane slot missing");
 		return {
 			phone: slot.hasAttribute("data-pane-phone"),
@@ -864,7 +866,7 @@ describe("TileHost on a phone", () => {
 	}
 
 	function chatSlotState() {
-		const slot = document.querySelector("[data-tile-host=chat]");
+		const slot = document.querySelector("[data-tile-slot=chat]");
 		if (slot === null) throw new Error("chat slot missing");
 		return {
 			fixed: slot.classList.contains("fixed"),
@@ -902,7 +904,7 @@ describe("TileHost on a phone", () => {
 		renderHost("session-phone");
 		openTestPane();
 
-		const slot = document.querySelector<HTMLElement>("[data-tile-host=chat]");
+		const slot = document.querySelector<HTMLElement>("[data-tile-slot=chat]");
 		expect({
 			padding: slot?.style.padding,
 			end: slot?.getAttribute("data-chat-gutter-end"),
@@ -1037,7 +1039,7 @@ describe("TileHost on a phone", () => {
 		const column = document.querySelector("[data-tile-stack=column]");
 		expect({
 			rootChildren: Array.from(root?.children ?? []).map((child) =>
-				child.matches("[role=separator]") ? "divider" : (child.getAttribute("data-tile-host") ?? "stack"),
+				child.matches("[role=separator]") ? "divider" : (child.getAttribute("data-tile-slot") ?? "stack"),
 			),
 			column: Array.from(column?.children ?? []).map((child) =>
 				child.matches("[role=separator]")
@@ -1045,7 +1047,7 @@ describe("TileHost on a phone", () => {
 							divider: child.classList.contains("h-px") && !child.classList.contains("h-3"),
 							ruled: child.classList.contains("bg-border-line"),
 						}
-					: child.getAttribute("data-tile-host"),
+					: child.getAttribute("data-tile-slot"),
 			),
 			columnPhone: column?.parentElement?.hasAttribute("data-pane-phone"),
 			columnMin: column?.parentElement?.classList.contains("min-w-[280px]"),
@@ -1094,10 +1096,10 @@ describe("TileHost on a phone", () => {
 		const column = document.querySelector("[data-tile-stack=column]");
 		expect({
 			rootChildren: Array.from(root?.children ?? []).map((child) =>
-				child.matches("[role=separator]") ? "divider" : (child.getAttribute("data-tile-host") ?? "stack"),
+				child.matches("[role=separator]") ? "divider" : (child.getAttribute("data-tile-slot") ?? "stack"),
 			),
 			column: Array.from(column?.children ?? []).map((child) =>
-				child.matches("[role=separator]") ? "divider" : child.getAttribute("data-tile-host"),
+				child.matches("[role=separator]") ? "divider" : child.getAttribute("data-tile-slot"),
 			),
 			stored: JSON.parse(localStorage.getItem("ccb.paneLayout.v1") ?? "null"),
 		}).toStrictEqual({
@@ -1185,10 +1187,10 @@ describe("TileHost corner handle", () => {
 		const flexOf = (selector: string) =>
 			document.querySelector<HTMLElement>(selector)?.closest<HTMLElement>("[style]")?.style.flex ?? null;
 		return {
-			chat: flexOf("[data-tile-host=chat]"),
+			chat: flexOf("[data-tile-slot=chat]"),
 			column: document.querySelector<HTMLElement>("[data-tile-stack=column]")?.parentElement?.style.flex ?? null,
-			files: flexOf("[data-tile-host=files]"),
-			tasks: flexOf("[data-tile-host=background-tasks]"),
+			files: flexOf("[data-tile-slot=files]"),
+			tasks: flexOf("[data-tile-slot=background-tasks]"),
 		};
 	}
 
@@ -1210,7 +1212,7 @@ describe("TileHost corner handle", () => {
 		// Upstream q9 keeps Files mounted, inert and hidden, while another pane is expanded.
 		const tasksAgain = screen.getByRole("region", {name: "Background tasks"});
 		fireEvent.click(within(tasksAgain).getByRole("button", {name: "Expand"}));
-		const filesSlot = document.querySelector<HTMLElement>("[data-tile-host=files]");
+		const filesSlot = document.querySelector<HTMLElement>("[data-tile-slot=files]");
 		expect({
 			// Inert content has no accessible name, so find the same section through its slot.
 			files: filesSlot?.querySelector("[data-pane-root]") === files,
@@ -1318,7 +1320,7 @@ describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9
 	const planTile = {kind: "tile", tileId: "plan", flex: 1};
 
 	function shellState() {
-		const slot = document.querySelector<HTMLElement>("[data-tile-host=chat]");
+		const slot = document.querySelector<HTMLElement>("[data-tile-slot=chat]");
 		if (slot === null) throw new Error("chat slot missing");
 		// The inset and the ground sit on the overflow-anchored shell inside the slot (upstream .tiles-shell).
 		const shell = slot.querySelector<HTMLElement>(":scope > [data-tile-overflow-anchor]") ?? slot;
@@ -1332,7 +1334,7 @@ describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9
 			ground: slot.style.getPropertyValue("--tile-shell-ground"),
 			groundFill: shell.classList.contains("bg-[var(--tile-shell-ground)]"),
 			mirrored: screen.getByTestId("gutter-probe").textContent,
-			pane: document.querySelector<HTMLElement>("[data-tile-host=plan]")?.style.padding,
+			pane: document.querySelector<HTMLElement>("[data-tile-slot=plan]")?.style.padding,
 		};
 	}
 
@@ -1405,20 +1407,20 @@ describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9
 		expect({
 			rule: rule !== -1,
 			commentNamesChatShell: styles.slice(comment, rule).includes("chat shell"),
-			chatSlotRule: styles.includes('[data-tile-host="chat"] { padding'),
+			chatSlotRule: styles.includes('[data-tile-slot="chat"] { padding'),
 		}).toStrictEqual({rule: true, commentNamesChatShell: true, chatSlotRule: false});
 	});
 
 	it("makes the inset chat slot upstream's tile-slot container, so a <=560px slot drops --chat-gutter to 16px", () => {
 		renderInset();
 		openTestPane();
-		const before = document.querySelector("[data-tile-host=chat]")?.classList.contains("@container/tile-slot");
+		const before = document.querySelector("[data-tile-slot=chat]")?.classList.contains("@container/tile-slot");
 		cleanup();
 		localStorage.clear();
 		renderInset();
 		expect({
 			lineMode: before,
-			alone: document.querySelector("[data-tile-host=chat]")?.classList.contains("@container/tile-slot"),
+			alone: document.querySelector("[data-tile-slot=chat]")?.classList.contains("@container/tile-slot"),
 		}).toStrictEqual({lineMode: true, alone: false});
 	});
 
@@ -1428,7 +1430,7 @@ describe("TileHost line-mode chat shell inset (upstream shared-20 it / cc43287c9
 		const shaved = "calc(var(--chat-gutter) - (var(--tiles-gap) - var(--tiles-padding)))";
 		expect(
 			[
-				'[data-tiles-line] [data-tile-host="chat"] { --chat-gutter: 32px; --tiles-gap: 1px; }',
+				'[data-tiles-line] [data-tile-slot="chat"] { --chat-gutter: 32px; --tiles-gap: 1px; }',
 				`@container tile-slot (max-width: 560px) { ${tile}:is([data-chat-gutter-start], [data-chat-gutter-end]) { --chat-gutter: 16px; } }`,
 				`${tile}:is([data-chat-gutter-start], [data-chat-gutter-end]) { --chat-column-start: var(--chat-gutter); --chat-column-end: var(--chat-gutter); --chat-column-extra: calc(var(--chat-column-start) + var(--chat-column-end)); }`,
 				`${tile}[data-chat-gutter-start="shave"] { --chat-column-start: ${shaved}; }`,
@@ -1604,7 +1606,7 @@ describe("TileHost min-floor resolver (upstream ca67f2c9d walkResolvedFlexes / t
 	}
 
 	function wrap(tileId: string) {
-		const element = document.querySelector<HTMLElement>(`[data-tile-host=${tileId}]`);
+		const element = document.querySelector<HTMLElement>(`[data-tile-slot=${tileId}]`);
 		if (element === null) throw new Error(`${tileId} slot missing`);
 		return {flex: element.style.flex, minWidth: element.style.minWidth, minHeight: element.style.minHeight};
 	}
@@ -1664,7 +1666,7 @@ describe("TileHost min-floor resolver (upstream ca67f2c9d walkResolvedFlexes / t
 	});
 
 	function shell() {
-		const element = document.querySelector<HTMLElement>("[data-tile-host=chat] [data-tile-overflow-anchor]");
+		const element = document.querySelector<HTMLElement>("[data-tile-slot=chat] [data-tile-overflow-anchor]");
 		if (element === null) return null;
 		return {
 			anchor: element.getAttribute("data-tile-overflow-anchor"),
@@ -1679,7 +1681,7 @@ describe("TileHost min-floor resolver (upstream ca67f2c9d walkResolvedFlexes / t
 
 	function layers() {
 		const classesOf = (tileId: string) =>
-			document.querySelector(`[data-tile-host=${tileId}]`)?.className.split(" ") ?? [];
+			document.querySelector(`[data-tile-slot=${tileId}]`)?.className.split(" ") ?? [];
 		return {
 			chat: classesOf("chat").filter((name) => name.startsWith("z-") || name.includes("container")),
 			files: classesOf("files").filter((name) => name.startsWith("z-")),
@@ -1713,5 +1715,122 @@ describe("TileHost min-floor resolver (upstream ca67f2c9d walkResolvedFlexes / t
 		renderFloor();
 
 		expect(shell()).toBe(null);
+	});
+});
+
+/** A stateful pane body: its node and counter survive only if the tile's content never remounts. */
+function Probe({label}: {label: string}) {
+	const [count, setCount] = useState(0);
+	return (
+		<button
+			type="button"
+			data-testid={label}
+			onClick={() => {
+				setCount((n) => n + 1);
+			}}
+		>
+			{count}
+		</button>
+	);
+}
+
+describe("TileHost persistent content hosts (upstream c9bc99274 data-tile-host / tiles-shell adopt)", () => {
+	let unregisterProbes: Array<() => void> = [];
+
+	beforeEach(() => {
+		unregisterProbes = [
+			registerPane("files", {title: "Files", render: () => <Probe label="files-probe" />}),
+			registerPane("changes", {title: "Changes", render: () => <p>Changes body</p>}),
+		];
+	});
+
+	afterEach(() => {
+		for (const fn of unregisterProbes) fn();
+	});
+
+	function hostShape(tileId: string) {
+		const host = document.querySelector<HTMLElement>(`[data-tile-host=${tileId}]`);
+		return {
+			style: host?.getAttribute("style") ?? null,
+			shell: host?.parentElement?.classList.contains("tiles-shell") ?? false,
+			slot: host?.closest("[data-tile-slot]")?.getAttribute("data-tile-slot") ?? null,
+		};
+	}
+
+	it("keeps a pane's content and state when its tile leaves a column for the row", () => {
+		localStorage.setItem(
+			"ccb.paneLayout.v1",
+			JSON.stringify({
+				"session-a": {
+					root: {
+						kind: "stack",
+						direction: "row",
+						flex: 1,
+						children: [
+							{kind: "tile", tileId: "chat", flex: 2},
+							{
+								kind: "stack",
+								direction: "column",
+								flex: 1,
+								children: [
+									{kind: "tile", tileId: "files", flex: 1},
+									{kind: "tile", tileId: "changes", flex: 1},
+								],
+							},
+						],
+					},
+					expanded: null,
+					focused: "changes",
+				},
+			}),
+		);
+		renderHost("session-a");
+		const probe = screen.getByTestId("files-probe");
+		fireEvent.click(probe);
+		const before = hostShape("files");
+		fireEvent.click(within(screen.getByRole("region", {name: "Changes"})).getByRole("button", {name: "Close"}));
+		expect({
+			before,
+			after: hostShape("files"),
+			same: screen.getByTestId("files-probe") === probe,
+			count: probe.textContent,
+			columns: document.querySelectorAll("[data-tile-stack=column]").length,
+			changesHost: document.querySelector("[data-tile-host=changes]"),
+		}).toStrictEqual({
+			before: {style: "display:contents", shell: true, slot: "files"},
+			after: {style: "display:contents", shell: true, slot: "files"},
+			same: true,
+			count: "1",
+			columns: 0,
+			changesHost: null,
+		});
+	});
+
+	it("keeps the chat's content and state when a split moves it into a column", () => {
+		render(
+			<TileHost sessionId="session-a" onExpandWithoutPane={vi.fn<() => void>()}>
+				<ChatContent />
+				<Probe label="chat-probe" />
+			</TileHost>,
+		);
+		openTestPane();
+		const probe = screen.getByTestId("chat-probe");
+		fireEvent.click(probe);
+		const move = within(document.querySelector<HTMLElement>("[data-tile-host=plan]")!).getByRole("button", {
+			name: "Move",
+		});
+		fireEvent.keyDown(move, {key: "ArrowDown"});
+		fireEvent.keyDown(move, {key: "Enter"});
+		expect({
+			columns: document.querySelectorAll("[data-tile-stack=column]").length,
+			chat: hostShape("chat"),
+			same: screen.getByTestId("chat-probe") === probe,
+			count: probe.textContent,
+		}).toStrictEqual({
+			columns: 1,
+			chat: {style: "display:contents", shell: true, slot: "chat"},
+			same: true,
+			count: "1",
+		});
 	});
 });

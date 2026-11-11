@@ -351,7 +351,7 @@ function actualScrollport() {
 	return owners[0]!;
 }
 function paneMove() {
-	return within(document.querySelector<HTMLElement>('[data-tile-host="plan"]')!).getByRole("button", {name: "Move"});
+	return within(document.querySelector<HTMLElement>('[data-tile-slot="plan"]')!).getByRole("button", {name: "Move"});
 }
 function state(host: HTMLElement) {
 	return {top: host.scrollTop, anchor: visibleAnchor(host)};
@@ -433,8 +433,9 @@ it.each([false, true])(
 		expect(actualScrollport()).toBe(initial);
 		phase = "move";
 		fireEvent.keyDown(paneMove(), {key: "Enter"});
+		// Upstream's persistent content host: the move re-parents the chat's host, never remounting the transcript.
 		const moved = actualScrollport();
-		expect(moved === initial).toBe(false);
+		expect(moved === initial).toBe(true);
 		settleMeasurements(moved);
 		expect({
 			after: state(moved),
@@ -592,7 +593,7 @@ it("preserves saved zero through a nested move", async () => {
 	const moved = actualScrollport();
 	settleMeasurements(moved);
 	expect({changedHost: moved !== initial, top: moved.scrollTop, anchor: visibleAnchor(moved)}).toStrictEqual({
-		changedHost: true,
+		changedHost: false,
 		top: 0,
 		anchor: before.anchor,
 	});
@@ -649,7 +650,7 @@ it.each([false, true])(
 		// Upstream rt keeps the inert tile's box, and content-visibility keeps its rendering state.
 		expect({
 			hiddenAttr: hiddenHost.closest("[hidden]") !== null,
-			inert: hiddenHost.closest("[data-tile-host][inert]") !== null,
+			inert: hiddenHost.closest("[data-tile-slot][inert]") !== null,
 		}).toStrictEqual({hiddenAttr: false, inert: true});
 		// The inert wrap sits at inset 0 of its stack, so a forced read sees another width; that is no new measurement.
 		const restingWidth = hostWidths.get(hiddenHost);
@@ -682,54 +683,22 @@ it.each([false, true])(
 			writes
 				.filter((w) => w.phase === "dock")
 				.map((w) => ({
-					newHost: w.host === collapsed,
-					oldHost: w.host === initial,
+					movedHost: w.host === collapsed,
+					// The move kept the transcript's scrollport: upstream's persistent content host never remounts it.
+					initialHost: w.host === initial,
 					requested: w.requested,
 					applied: w.applied,
 				})),
 		).toStrictEqual([
 			{
-				newHost: true,
-				oldHost: false,
+				movedHost: true,
+				initialHost: true,
 				requested: targetHeight,
 				applied: targetHeight - collapsed.clientHeight,
 			},
 		]);
 	},
 );
-
-it.each(["source", "layout"] as const)("rejects incompatible same-commit %s measurements", async (change) => {
-	const router = await renderShell(false);
-	const initial = actualScrollport();
-	fireEvent.click(screen.getByRole("button", {name: "Open fabricated pane"}));
-	settleMeasurements(initial);
-	act(() => {
-		initial.scrollTop = 8000;
-		fireEvent.scroll(initial);
-	});
-	settleMeasurements(initial);
-	const remember = vi.spyOn(measurements, "rememberTranscriptMeasurements");
-	if (change === "source") chatSource = {};
-	if (change === "layout") chatLayout = "example-larger-font";
-	fireEvent.keyDown(paneMove(), {key: "ArrowDown"});
-	fireEvent.keyDown(paneMove(), {key: "Enter"});
-	expect(actualScrollport() === initial).toBe(false);
-	// No observer measurements occur before departure, so the new instance saves only the
-	// rows it measured as it committed, never the old snapshot's height map.
-	await act(async () => router.navigate({to: "/plans"}));
-	expect(remember.mock.calls.at(-1)?.[1].heights).toStrictEqual(
-		new Map([
-			["line-0", 200],
-			["line-2", 500],
-			["line-4", 150],
-			["line-48", 200],
-			["line-50", 500],
-			["line-52", 150],
-			["line-54", 400],
-			["line-56", 200],
-		]),
-	);
-});
 
 it("does not hand off geometry after a compact-summary disclosure", async () => {
 	const records = lines.map((line, index) => (index === 0 ? {...line, isCompactSummary: true} : line));

@@ -79,6 +79,7 @@ const ALLOWLIST: Record<string, string> = {
 	"mdx-editor-wrapper": HOOK,
 	"settings-row-title": HOOK,
 	spark: HOOK,
+	"tiles-shell": "upstream's tile shell class on the cell that adopts the tile's content host; no rule styles it",
 	"usage-band-enter": HOOK,
 };
 

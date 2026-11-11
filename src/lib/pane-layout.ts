@@ -35,7 +35,7 @@ export type TileId = z.infer<typeof TileIdSchema>;
 export type Direction = z.infer<typeof DirectionSchema>;
 export type MoveDirection = "left" | "right" | "top" | "bottom";
 
-/** A `data-tile-host` value read back from the DOM, or null when it names no tile. */
+/** A `data-tile-slot` value read back from the DOM, or null when it names no tile. */
 export function parseTileId(value: unknown): TileId | null {
 	const parsed = TileIdSchema.safeParse(value);
 	return parsed.success ? parsed.data : null;

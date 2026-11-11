@@ -4407,7 +4407,7 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 /* Upstream shared-38 `MJ`: in line mode the chat column's side gutters absorb the chat shell's 8px inset, so a shaved
    side is 39px (32 - (1 - 8)), a bleeding end 40px, and the chat alone centres on the whole shell. The rules sit on the
    session tile, which mirrors the slot's gutter attributes, because a container query cannot style its own container. */
-[data-tiles-line] [data-tile-host="chat"] {
+[data-tiles-line] [data-tile-slot="chat"] {
 	--chat-gutter: 32px;
 	--tiles-gap: 1px;
 }
@@ -4518,11 +4518,11 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 }
 
 /* Upstream's tile shell ground: --tile-pane-ground (surface-2) for panes, --tile-page-ground (surface-1) for chat. */
-[data-tile-host] {
+[data-tile-slot] {
 	--tile-shell-ground: var(--color-surface-2);
 }
 
-[data-tile-host="chat"] {
+[data-tile-slot="chat"] {
 	--tile-shell-ground: var(--color-surface-1);
 }
 

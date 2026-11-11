@@ -1,6 +1,8 @@
 import {
+	Component,
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -10,6 +12,7 @@ import {
 	type ReactNode,
 	type RefObject,
 } from "react";
+import {createPortal} from "react-dom";
 import {Maximize2, Minimize2, X} from "lucide-react";
 
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
@@ -54,6 +57,7 @@ import {
 	type StackNode,
 	type TileId,
 } from "../../lib/pane-layout";
+import {TileContentHosts} from "../../lib/tile-content-hosts";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {Tooltip} from "../ui/tooltip";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
@@ -117,6 +121,8 @@ interface InternalHost {
 	/** The perpendicular move waiting for Enter, and the outline it draws. */
 	pendingMove: PendingMove | null;
 	preview: MovePreview | null;
+	/** Upstream's per-root content-host registry: each tile's content lives in a host its shell adopts. */
+	contentHosts: TileContentHosts;
 	setPendingMove: (move: PendingMove | null) => void;
 	setPointerDrop: (drop: PointerDrop | null) => void;
 	/** The tile a Move grip drag is carrying (upstream's `dragVisualTileId`), or null; drives `data-tiles-moving`. */
@@ -188,6 +194,11 @@ function nodeTitle(node: LayoutNode, definitions: ReadonlyMap<PaneKind, PaneDefi
 
 function nodeKey(node: LayoutNode): string {
 	return node.kind === "tile" ? node.tileId : `stack:${tileIdsOf(node).join(",")}`;
+}
+
+/** The layout's shape without its flexes: a change re-parents or reorders tiles (upstream `Ct`'s structureKey). */
+function structureKey(node: LayoutNode): string {
+	return node.kind === "tile" ? node.tileId : `${node.direction}(${node.children.map(structureKey).join(",")})`;
 }
 
 function usePersistedLayout(
@@ -573,9 +584,10 @@ function dropSide(rect: DOMRect, clientX: number, clientY: number): MoveDirectio
 
 /** The tile under the pointer and the half nearest it, or null over the dragged tile or no tile. */
 function dropAt(tileId: TileId, clientX: number, clientY: number): PointerDrop | null {
-	const element = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>("[data-tile-host]");
+	// The content host is display:contents and has no box, so measure the tile's slot around it.
+	const element = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>("[data-tile-slot]");
 	if (element === null || element === undefined) return null;
-	const targetId = parseTileId(element.dataset["tileHost"]);
+	const targetId = parseTileId(element.dataset["tileSlot"]);
 	if (targetId === null || targetId === tileId) return null;
 	return {tileId, targetId, side: dropSide(element.getBoundingClientRect(), clientX, clientY)};
 }
@@ -812,17 +824,7 @@ function cornersOf(path: readonly number[], host: InternalHost): Partial<Record<
 	return corners;
 }
 
-function StackView({
-	stack,
-	path,
-	host,
-	chat,
-}: {
-	stack: StackNode;
-	path: readonly number[];
-	host: InternalHost;
-	chat: ReactNode;
-}) {
+function StackView({stack, path, host}: {stack: StackNode; path: readonly number[]; host: InternalHost}) {
 	const localRef = useRef<HTMLDivElement>(null);
 	const isRoot = path.length === 0;
 	const ref = isRoot ? host.rootRef : localRef;
@@ -854,7 +856,6 @@ function StackView({
 				path={[...path, index]}
 				parentDirection={stack.direction}
 				host={host}
-				chat={chat}
 				isRootChild={isRoot}
 			/>,
 		);
@@ -879,14 +880,12 @@ function NodeView({
 	node,
 	path,
 	host,
-	chat,
 	isRootChild,
 	parentDirection,
 }: {
 	node: LayoutNode;
 	path: readonly number[];
 	host: InternalHost;
-	chat: ReactNode;
 	isRootChild: boolean;
 	parentDirection: Direction;
 }) {
@@ -906,7 +905,7 @@ function NodeView({
 				hidden={host.expanded !== null && !tileIdsOf(node).includes(host.expanded)}
 				{...(phone ? {"data-pane-phone": ""} : {})}
 			>
-				<StackView stack={node} path={path} host={host} chat={chat} />
+				<StackView stack={node} path={path} host={host} />
 				<MovePreviewOutline path={path} host={host} />
 			</div>
 		);
@@ -916,15 +915,15 @@ function NodeView({
 		// Upstream's line-mode tile shell (shared-20 `it`): 8px at the bottom, and 8px on a side the chat touches
 		// without a gutter attribute. Not on a phone until a live 390px read shows upstream insets there.
 		const gutters = layered ? chatGutters(host.layout.root) : null;
-		const attributes = chatGutterAttributes(gutters);
 		// Upstream's `.tiles-shell[data-tile-overflow-anchor]`: pinned to the chat's outer edge at the full slot
 		// width but never under 320px, so a narrower slot slides the shell under the neighbouring pane. The chat
-		// alone keeps the same element as `display: contents`, so opening a pane never remounts the transcript.
+		// alone keeps the shell as `display: contents`.
 		const anchor = leftEdgeTiles(host.layout.root).has("chat") ? "left" : "right";
 		return (
 			<TileSlot
 				tileId="chat"
 				host={host}
+				orderKey={path.join(".")}
 				className={gutters === null ? slotClass : `${slotClass} @container/tile-slot z-0`}
 				style={
 					gutters === null
@@ -932,34 +931,24 @@ function NodeView({
 						: {...style, "--tiles-padding": "8px", "--tile-shell-ground": "var(--color-page)"}
 				}
 				hidden={hidden}
-				{...attributes}
+				shellClassName={
+					gutters === null
+						? "contents"
+						: "absolute inset-y-0 w-full min-w-[320px] bg-[var(--tile-shell-ground)]"
+				}
+				shellStyle={
+					gutters === null
+						? undefined
+						: {
+								[anchor]: 0,
+								padding: chatShellPadding(gutters),
+								"--tile-overflow-min": `${CHAT_OVERFLOW_MIN_PX}px`,
+							}
+				}
+				{...(gutters === null ? {} : {overflowAnchor: anchor})}
+				{...chatGutterAttributes(gutters)}
 			>
-				<div
-					{...(gutters === null ? {} : {"data-tile-overflow-anchor": anchor})}
-					className={
-						gutters === null
-							? "contents"
-							: "absolute inset-y-0 w-full min-w-[320px] bg-[var(--tile-shell-ground)]"
-					}
-					style={
-						gutters === null
-							? undefined
-							: {
-									[anchor]: 0,
-									padding: chatShellPadding(gutters),
-									"--tile-overflow-min": `${CHAT_OVERFLOW_MIN_PX}px`,
-								}
-					}
-				>
-					{!hidden && tileIdsOf(host.layout.root).length > 1 && (
-						// Keep the chat's Move grip above its titlebar while the transcript scrolls.
-						<div className="sticky top-0 z-20 h-0">
-							<MoveHandle tileId="chat" host={host} />
-						</div>
-					)}
-					<ChatGutterContext.Provider value={attributes}>{chat}</ChatGutterContext.Provider>
-					<MovePreviewOutline path={path} host={host} />
-				</div>
+				<MovePreviewOutline path={path} host={host} />
 			</TileSlot>
 		);
 	}
@@ -973,6 +962,8 @@ function NodeView({
 		<TileSlot
 			tileId={node.tileId}
 			host={host}
+			orderKey={path.join(".")}
+			shellClassName="h-full"
 			className={
 				expanded
 					? `min-h-0 min-w-0 ${host.phone ? PHONE_EXPANDED_SLOT_CLASSES : EXPANDED_SLOT_CLASSES}`
@@ -985,7 +976,6 @@ function NodeView({
 			phone={expanded ? host.phone : phone}
 			{...(expanded ? {"data-pane-overlay": true} : {})}
 		>
-			<PaneSurface kind={node.tileId} definition={definition} host={host} />
 			<MovePreviewOutline path={path} host={host} />
 		</TileSlot>
 	);
@@ -1014,45 +1004,156 @@ function resolvedStyle(
 	};
 }
 
+/**
+ * Upstream `wt`: the tile wrap (layout classes, flex and floors, the hide) around its `.tiles-shell`, which adopts the
+ * tile's persistent content host. The wrap and shell may remount when the layout re-parents the tile; the content,
+ * portalled into the host, does not.
+ */
 function TileSlot({
 	tileId,
 	host,
+	orderKey,
 	className,
 	style,
 	hidden,
 	phone = false,
+	shellClassName,
+	shellStyle,
+	overflowAnchor,
 	children,
 	...data
 }: {
 	tileId: TileId;
 	host: InternalHost;
+	/** The slot's place in the tree; when it changes in place, the host is snapshotted and restored around the move. */
+	orderKey: string;
 	className?: string;
 	style?: CSSProperties | undefined;
 	/** Kept mounted while another tile is expanded: `inert` plus upstream's `rt` hide, never `display: none`. */
 	hidden?: boolean;
 	phone?: boolean;
+	shellClassName: string;
+	shellStyle?: CSSProperties | undefined;
+	overflowAnchor?: "left" | "right";
 	children: ReactNode;
 	"data-pane-overlay"?: boolean;
 } & ChatGutterAttributes) {
-	const focus = () => {
-		host.update((state) => focusPane(state, tileId));
-	};
+	const {contentHosts} = host;
+	const cellRef = useRef<HTMLDivElement | null>(null);
+	// Upstream's shell ref: adopt the host on mount; the cleanup snapshots and parks it if it is still here.
+	const adopt = useCallback(
+		(cell: HTMLDivElement | null) => {
+			cellRef.current = cell;
+			if (cell === null) return undefined;
+			const release = contentHosts.adopt(tileId, cell);
+			return () => {
+				cellRef.current = null;
+				release();
+			};
+		},
+		[contentHosts, tileId],
+	);
+	// Upstream's orderKey effect: React moves a reordered shell with insertBefore, which resets scroll and focus.
+	useLayoutEffect(() => {
+		const cell = cellRef.current;
+		if (cell === null) return undefined;
+		contentHosts.slotMoved(tileId, cell);
+		return () => {
+			contentHosts.slotWillMove(tileId, cell);
+		};
+	}, [contentHosts, tileId, orderKey]);
 	return (
 		<div
-			data-tile-host={tileId}
+			data-tile-slot={tileId}
 			className={className}
 			// Upstream wt: the hide merges after the flex and floors, with the solo layout's min-width 0.
 			style={hidden ? {...style, minWidth: 0, ...HIDDEN_TILE_STYLE} : style}
 			inert={hidden}
-			onPointerDownCapture={focus}
-			onFocusCapture={focus}
 			{...(phone ? {"data-pane-phone": ""} : {})}
 			{...(host.movingTile === tileId ? {"data-tile-moving": ""} : {})}
 			{...data}
 		>
-			{children}
+			<div
+				ref={adopt}
+				className={`tiles-shell ${shellClassName}`}
+				style={shellStyle}
+				{...(overflowAnchor === undefined ? {} : {"data-tile-overflow-anchor": overflowAnchor})}
+			>
+				{children}
+			</div>
 		</div>
 	);
+}
+
+const CONTENTS_STYLE = {display: "contents"} as const satisfies CSSProperties;
+
+/** The chat tile's content: its Move grip (once a pane shares the row) above the transcript. */
+function ChatTileContent({host, chat}: {host: InternalHost; chat: ReactNode}) {
+	const tiles = tileIdsOf(host.layout.root).length;
+	const layered = !host.phone && tiles > 1;
+	const root = host.layout.root;
+	const attributes = useMemo(() => chatGutterAttributes(layered ? chatGutters(root) : null), [layered, root]);
+	return (
+		<>
+			{!host.hidden.has("chat") && tiles > 1 && (
+				// Keep the chat's Move grip above its titlebar while the transcript scrolls.
+				<div className="sticky top-0 z-20 h-0">
+					<MoveHandle tileId="chat" host={host} />
+				</div>
+			)}
+			<ChatGutterContext.Provider value={attributes}>{chat}</ChatGutterContext.Provider>
+		</>
+	);
+}
+
+/**
+ * Upstream `Tt`: a tile's content, portalled into its persistent host. The display:contents wrapper routes focus and
+ * pointer presses inside the tile to the focused-tile state.
+ */
+function TileContent({tileId, host, chat}: {tileId: TileId; host: InternalHost; chat: ReactNode}) {
+	const definition = isPaneKind(tileId) ? host.definitions.get(tileId) : undefined;
+	if (isPaneKind(tileId) && definition === undefined) return null;
+	const focus = () => {
+		host.update((state) => focusPane(state, tileId));
+	};
+	return createPortal(
+		<div style={CONTENTS_STYLE} onFocusCapture={focus} onPointerDownCapture={focus}>
+			{isPaneKind(tileId) && definition !== undefined ? (
+				<PaneSurface kind={tileId} definition={definition} host={host} />
+			) : (
+				<ChatTileContent host={host} chat={chat} />
+			)}
+		</div>,
+		host.contentHosts.host(tileId),
+	);
+}
+
+/**
+ * Upstream `Ct`: before a structural change commits, freeze every host's scrolls and box (a detached cell reads 0);
+ * thaw once the new tree is in place.
+ */
+class ScrollFreezer extends Component<{
+	contentHosts: TileContentHosts;
+	structureKey: string;
+	liveTileIds: ReadonlySet<TileId>;
+}> {
+	override getSnapshotBeforeUpdate(previous: Readonly<{structureKey: string}>): null {
+		if (previous.structureKey !== this.props.structureKey)
+			this.props.contentHosts.freezeScrolls(this.props.liveTileIds);
+		return null;
+	}
+
+	override componentDidMount(): void {
+		this.props.contentHosts.thawScrolls();
+	}
+
+	override componentDidUpdate(): void {
+		this.props.contentHosts.thawScrolls();
+	}
+
+	override render(): null {
+		return null;
+	}
 }
 
 /**
@@ -1110,6 +1211,28 @@ export function TileHost({
 	}, [requestedPane, loaded, definitions, update, onRequestedPaneHandled, fitWidth]);
 	const openKinds = useMemo(() => tileIdsOf(layout.root).filter(isPaneKind), [layout.root]);
 
+	const [contentHosts] = useState(() => new TileContentHosts(document));
+	const hidden = useMemo(() => hiddenWhileExpanded(layout.root, layout.expanded), [layout.root, layout.expanded]);
+	// Upstream's solo layout keeps only the expanded tile and the kept (`q9`) tiles mounted.
+	const mountedTiles = useMemo(
+		() =>
+			tileIdsOf(layout.root).filter(
+				(tileId) => layout.expanded === null || tileId === layout.expanded || hidden.has(tileId),
+			),
+		[layout.root, layout.expanded, hidden],
+	);
+	const liveTileIds = useMemo(() => new Set(mountedTiles), [mountedTiles]);
+	useLayoutEffect(() => {
+		contentHosts.retain(liveTileIds);
+	}, [contentHosts, liveTileIds]);
+	// Passive, so it runs after the unmounting shells parked their hosts and the portals emptied them.
+	useEffect(
+		() => () => {
+			contentHosts.releaseParked();
+		},
+		[contentHosts],
+	);
+
 	const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
 	const [pointerDrop, setPointerDrop] = useState<PointerDrop | null>(null);
 	const [movingTile, setMovingTile] = useState<TileId | null>(null);
@@ -1126,12 +1249,13 @@ export function TileHost({
 			update,
 			pendingMove,
 			preview,
+			contentHosts,
 			setPendingMove,
 			setPointerDrop,
 			movingTile,
 			setMovingTile,
 			expanded: layout.expanded,
-			hidden: hiddenWhileExpanded(layout.root, layout.expanded),
+			hidden,
 			phone,
 			rootRef,
 			rootSize,
@@ -1139,7 +1263,20 @@ export function TileHost({
 			collapsedRef,
 			collapse,
 		}),
-		[definitions, layout, update, pendingMove, preview, movingTile, phone, rootSize, resolved, collapse],
+		[
+			definitions,
+			layout,
+			update,
+			pendingMove,
+			preview,
+			contentHosts,
+			movingTile,
+			hidden,
+			phone,
+			rootSize,
+			resolved,
+			collapse,
+		],
 	);
 
 	const api = useMemo<PaneHostApi>(
@@ -1189,7 +1326,15 @@ export function TileHost({
 
 	return (
 		<PaneHostContext.Provider value={api}>
-			<StackView stack={layout.root} path={[]} host={internal} chat={children} />
+			<ScrollFreezer
+				contentHosts={contentHosts}
+				structureKey={structureKey(layout.root)}
+				liveTileIds={liveTileIds}
+			/>
+			<StackView stack={layout.root} path={[]} host={internal} />
+			{mountedTiles.map((tileId) => (
+				<TileContent key={tileId} tileId={tileId} host={internal} chat={children} />
+			))}
 		</PaneHostContext.Provider>
 	);
 }

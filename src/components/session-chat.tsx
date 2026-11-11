@@ -367,12 +367,12 @@ const EMPTY_SLASH_COMMANDS: readonly SlashCommand[] = [];
 const END_FOLLOW_THRESHOLD_PIXELS = 32;
 
 /**
- * Whether the transcript sits in a tile hidden while another pane is expanded: inert and visibility-hidden
- * (upstream rt) or an older `[hidden]` wrapper. Its rectangles are not row measurements. Once
- * tile-host-guest-layer moves `inert` to the wrap above the host, add `[inert] [data-tile-host]`.
+ * Whether the transcript sits in a tile hidden while another pane is expanded: its content host under an inert,
+ * visibility-hidden wrap (upstream rt) or in the inert off-screen pen, or under an older `[hidden]` wrapper. Its
+ * rectangles are not row measurements.
  */
 function inHiddenTile(el: Element): boolean {
-	return el.closest("[hidden], [data-tile-host][inert]") !== null;
+	return el.closest("[hidden], [data-tile-slot][inert], [data-tile-host-pen]") !== null;
 }
 
 function isDocumentScrollContainer(scroller: Element): boolean {
