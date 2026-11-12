@@ -346,7 +346,7 @@ describe("ratchet mode", () =>
 				},
 				J2:
 				{
-					requests: 0,
+					requests: 0.005,
 					layoutShift: 0,
 				},
 				J3:

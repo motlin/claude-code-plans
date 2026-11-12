@@ -1019,7 +1019,7 @@ export type StableLabMetrics = Partial<Record<JourneyId, Partial<Record<MetricKe
  * layout and request counts moved between runs and stay diagnostic. J2 requests and layout shift drifted while each run
  * appended to the session J2 opens and J4 appends to; since the lab resets that session before each run, J2 read 645
  * requests and 0.021 CLS and J4 read 0.0001 CLS in every run of two batches. Request counts also raced the idle chunk
- * warm-ups until each journey waited for the network to go quiet (settleWithNetwork). J6 layout count drifted to medians of 39..43
+ * warm-ups until each journey waited for the network to go quiet (settleWithNetwork). The Linux trial reads J2 about 4 requests above macOS, likely from its system-font path, so J2 requests keep a 0.5% tolerance. J6 layout count drifted to medians of 39..43
  * while the palette's transitions ran; with reduced motion its medians read 25 or 26, so it keeps a 4% tolerance.
  */
 export const RATCHETED_LAB_METRICS: StableLabMetrics =
@@ -1031,7 +1031,7 @@ export const RATCHETED_LAB_METRICS: StableLabMetrics =
 	},
 	J2:
 	{
-		requests: 0,
+		requests: 0.005,
 		layoutShift: 0,
 	},
 	J3:
