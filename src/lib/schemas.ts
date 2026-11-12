@@ -624,6 +624,10 @@ export const UserRecordSchema = z
 			interruptedByShutdown: z.boolean().optional(),
 			interruptedBySendNow: z.boolean().optional(),
 			userFeedback: z.string().optional(),
+			// Stacked slash commands (e.g. "/a /b"): the first record keeps the raw input,
+			// later records mark themselves as expansions of it.
+			stackedOriginalInput: z.string().optional(),
+			stackedExpansion: z.boolean().optional(),
 			turnOrigin: TurnOriginSchema.optional(),
 			// Producer details for a queued notification, e.g. an Artifact watch that ended.
 			queueOrigin: z
@@ -1095,6 +1099,7 @@ const DeferredToolsDeltaAttachmentPayload = z
 			pendingMcpServers: z.array(z.string()).optional(),
 			needsAuthMcpServers: z.array(z.string()).optional(),
 			wireHiddenNames: z.array(z.string()).optional(),
+			causeNeutral: z.boolean().optional(),
 			surfacedNames: z.array(z.string()).optional(),
 			removedByBlock: z.array(z.string()).optional(),
 			surfacedDefinitions: z.array(SurfacedToolDefinitionSchema).optional(),
