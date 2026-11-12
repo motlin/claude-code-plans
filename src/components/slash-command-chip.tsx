@@ -2,6 +2,7 @@ import {PreviewCard} from "@base-ui/react/preview-card";
 import {useContext} from "react";
 
 import {useFizzyLake} from "../lib/fizzy-lake";
+import {SLASH_COMMAND_CARD_CLASS, SlashCommandCardBody} from "./slash-command-card";
 import {SlashCommandsContext} from "./slash-commands-context";
 import {UserPlainText} from "./user-plain-text";
 
@@ -20,34 +21,6 @@ const HIGHLIGHT_CLASS =
 	fizzy: `${HIGHLIGHT_BASE_CLASS} [@media(hover:hover)]:group-hover:bg-upstream-accent-layer group-data-[popup-open]:bg-upstream-accent-pressed [@media(hover:hover)]:group-data-[popup-open]:group-hover:bg-[linear-gradient(var(--upstream-accent-layer),var(--upstream-accent-layer))]`,
 	base: `${HIGHLIGHT_BASE_CLASS} opacity-0 [@media(hover:hover)]:group-hover:opacity-100 group-data-[popup-open]:opacity-100 bg-upstream-accent-pressed`,
 };
-
-export const SLASH_COMMAND_CARD_CLASS =
-	"flex w-[280px] max-w-[calc(100vw-16px)] flex-col gap-1 rounded-r7 bg-[var(--menu-bg)] p-3 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none";
-
-const CARD_DESCRIPTION_CLASS =
-	"max-h-[min(40vh,calc(var(--available-height,100vh)-3rem))] scroll-fade-y overflow-y-auto overscroll-contain break-words text-primary";
-
-/**
- * Upstream's shared hover-card content (`ln`): a muted `/name` line, then the description when
- * there is one. An unknown command (`description` undefined) gets a "No preview available" footnote.
- */
-export function SlashCommandCardBody({name, description}: {name: string; description: string | undefined})
-{
-	if (description === undefined)
-	{
-		return <span className="text-[12px]/[16px] text-ink-muted">No preview available</span>;
-	}
-	return (
-		<>
-			<span data-slash-command-card-name="" className="truncate text-ink-muted">{`/${name}`}</span>
-			{description !== "" && (
-				<span data-slash-command-card-description="" className={CARD_DESCRIPTION_CLASS}>
-					{description}
-				</span>
-			)}
-		</>
-	);
-}
 
 /**
  * Upstream's accent `/name` button: a 50% "/" glyph in a fixed slot, then the name. Hovering or

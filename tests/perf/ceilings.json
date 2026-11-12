@@ -61,18 +61,18 @@
 	},
 	"bundle.home.gzip":
 	{
-		"ceiling": 484261,
+		"ceiling": 469126,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "raised from 476760 (2026-11-11): the link policy follow-up to 87a95de06 ports upstream's href normalisers (`_0` open_in_browser strip and `cs` sanitiser with its invisible-lead and claude-host API/sign-out/account-linking route checks, src/lib/link-href.ts), the `wa`/`D6`/`sk` Claude-host and credential-route rules behind the external-link confirm (src/lib/claude-hosts.ts: the route prefix tables, destination-forwarding walk and host strictness), and moves user turns and option descriptions onto upstream's `xr` paint and `mr` policies in user-plain-text.tsx, which ships with the question card. Went to 484261; the 1% tolerance is unchanged.",
+		"reason": "lowered from 484261 (2026-11-12): the composer's skill chip now takes its hover-card body from slash-command-card.tsx instead of slash-command-chip.tsx, so UserPlainText and its link, secret-cloak and file-ref policies no longer ship with Home. Before that, raised from 476760 (2026-11-11): the link policy follow-up to 87a95de06 ports upstream's href normalisers (`_0` open_in_browser strip and `cs` sanitiser with its invisible-lead and claude-host API/sign-out/account-linking route checks, src/lib/link-href.ts), the `wa`/`D6`/`sk` Claude-host and credential-route rules behind the external-link confirm (src/lib/claude-hosts.ts: the route prefix tables, destination-forwarding walk and host strictness), and moves user turns and option descriptions onto upstream's `xr` paint and `mr` policies in user-plain-text.tsx, which ships with the question card. Went to 484261; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-11"
 	},
 	"bundle.home.raw":
 	{
-		"ceiling": 1452798,
+		"ceiling": 1410664,
 		"unit": "bytes",
 		"tolerance": 0.01,
-		"reason": "raised from 1436401 (2026-11-11): the link policy follow-up to 87a95de06 ports upstream's href normalisers (`_0` open_in_browser strip and `cs` sanitiser with its invisible-lead and claude-host API/sign-out/account-linking route checks, src/lib/link-href.ts), the `wa`/`D6`/`sk` Claude-host and credential-route rules behind the external-link confirm (src/lib/claude-hosts.ts: the route prefix tables, destination-forwarding walk and host strictness), and moves user turns and option descriptions onto upstream's `xr` paint and `mr` policies in user-plain-text.tsx, which ships with the question card. Went to 1452798; the 1% tolerance is unchanged.",
+		"reason": "lowered from 1452798 (2026-11-12): the composer's skill chip now takes its hover-card body from slash-command-card.tsx instead of slash-command-chip.tsx, so UserPlainText and its link, secret-cloak and file-ref policies no longer ship with Home. Before that, raised from 1436401 (2026-11-11): the link policy follow-up to 87a95de06 ports upstream's href normalisers (`_0` open_in_browser strip and `cs` sanitiser with its invisible-lead and claude-host API/sign-out/account-linking route checks, src/lib/link-href.ts), the `wa`/`D6`/`sk` Claude-host and credential-route rules behind the external-link confirm (src/lib/claude-hosts.ts: the route prefix tables, destination-forwarding walk and host strictness), and moves user turns and option descriptions onto upstream's `xr` paint and `mr` policies in user-plain-text.tsx, which ships with the question card. Went to 1452798; the 1% tolerance is unchanged.",
 		"raisedAt": "2026-11-11"
 	},
 	"bundle.session.gzip":

@@ -2,7 +2,7 @@ import {PreviewCard} from "@base-ui/react/preview-card";
 import {type MouseEvent, useLayoutEffect, useRef, useState} from "react";
 
 import {useFizzyLake} from "../lib/fizzy-lake";
-import {SLASH_COMMAND_CARD_CLASS, SlashCommandCardBody} from "./slash-command-chip";
+import {SLASH_COMMAND_CARD_CLASS, SlashCommandCardBody} from "./slash-command-card";
 
 /** Upstream `pn`'s trigger; the only part of the pointer-transparent overlay that takes the mouse. */
 const TRIGGER_CLASS = "inline-flex relative pointer-events-auto";
