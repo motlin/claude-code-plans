@@ -7,11 +7,11 @@
 	},
 	"browser.J1.requests":
 	{
-		"ceiling": 664,
+		"ceiling": 746,
 		"unit": "requests",
 		"tolerance": 0.02,
-		"reason": "lowered from 667 (2026-11-02): HomeDock and ProjectCardCounts moved out of their route files and the pinned page title out of the pinned page, so code splitting no longer pins those components' imports to the route tree. The rest of the climb from 481 (c029659b5) is legitimate: ~170 new src modules in the root shell, sidebar and home composer, 7 new route files, newer Base UI dep chunks, and the idle ⌘K palette and Settings warm-ups growing from 31 to 57 modules. The lab now waits for the network to go quiet too, so the idle warm-ups always count here and the median reads 664 every run",
-		"raisedAt": "2026-11-02"
+		"reason": "raised from 664 (2026-11-12): the composer's skill chip imported its hover-card body from slash-command-chip.tsx, which pinned UserPlainText and its link, secret-cloak and file-ref policies (18 modules, grown by ce8a4d33e, f0c78a3ee and 315fb5db9) to Home; the body now lives in slash-command-card.tsx, taking J1 from 763 to 746. The rest of the climb since b6d2eecc9 is 81 new src modules from 47 commits plus Base UI collapsible and field dep chunks, none of them single-route leaks: the permission-mode consent dialog in the composer launch menus (d1b71ba80), the shared DialogPopup/DialogHeader (9643b00ca), the sidebar sections layout (b30780108), the home environment bar line (67bef67b3), the awaiting-ack store (4d4cbea78), cds Collapsible (42e2569aa) and Icon (386459757), the terminals pane route, and the idle ⌘K palette, Settings, send-rejected card and popover sheet warm-ups. macOS and the Linux trial both read 763 before the split",
+		"raisedAt": "2026-11-12"
 	},
 	"browser.J2.layoutShift":
 	{
@@ -21,11 +21,11 @@
 	},
 	"browser.J2.requests":
 	{
-		"ceiling": 987,
+		"ceiling": 1190,
 		"unit": "requests",
 		"tolerance": 0,
-		"reason": "lowered from 996 (2026-11-02): the home composer no longer loads with the route tree on a session page (HomeDock moved out of routes/index.tsx) and the pinned page no longer loads with its route's head. The rest of the climb from 653 (c029659b5) is legitimate: the session page's split chunk grew from 140 to 181 modules, its idle pane warm-ups (background tasks 40, terminal 20, prompt cards 20, files, links, side chat, error recovery) replaced the old files pane's 44, plus J1's shell growth. The lab now waits for the network to go quiet, so those warm-ups always count here instead of 967 or 996 depending on timing",
-		"raisedAt": "2026-11-02"
+		"reason": "raised from 987 (2026-11-12): 190 new src modules from 98 commits since b6d2eecc9 plus Base UI collapsible and field dep chunks, mostly the session page's transcript and tool renderers: the generic tool body rebuild (e17d7d4f2), path-shaped code spans as file links (ce8a4d33e), the tool output follow-up (c54509d84), plain param values with cloaks and links (f0c78a3ee), the refusal band (add125a67), pane and transcript crash boundaries (9882f2f54, 677e81bd6) and chapter headings (8b9b5e641), plus J1's shell growth. Splitting the skill chip's card body out of slash-command-chip.tsx adds one module here (1189 to 1190) while taking 17 off Home. macOS reads 1190 every run; the Linux trial read 4 more (1193 before the split)",
+		"raisedAt": "2026-11-12"
 	},
 	"browser.J3.layoutShift":
 	{
@@ -41,7 +41,7 @@
 	},
 	"browser.J5.layoutCount":
 	{
-		"ceiling": 33,
+		"ceiling": 32,
 		"unit": "count",
 		"tolerance": 0
 	},
@@ -53,10 +53,10 @@
 	},
 	"browser.J6.layoutCount":
 	{
-		"ceiling": 26,
+		"ceiling": 25,
 		"unit": "count",
 		"tolerance": 0.04,
-		"reason": "lowered from 42 (2026-11-02): the lab now asks for reduced motion, since the palette footer's grid-rows collapse (e4d95573a) and its list height transition (b3e0c4e02) laid out once per frame, doubling J6 and making it vary 39..43. The rest of the climb from 21 is palette parity work adding one or two layouts at a time (22..26 across the commits between). Medians still read 25 or 26 (per-run 24..26) with the same two requests every run, so it keeps a 4% tolerance",
+		"reason": "lowered from 26 (2026-11-12): macOS medians now read 24 or 25 and the Linux trial 24. Before that, lowered from 42 (2026-11-02): the lab now asks for reduced motion, since the palette footer's grid-rows collapse (e4d95573a) and its list height transition (b3e0c4e02) laid out once per frame, doubling J6 and making it vary 39..43. The rest of the climb from 21 is palette parity work adding one or two layouts at a time (22..26 across the commits between). Medians read 25 or 26 then (per-run 24..26) with the same two requests every run, so it keeps a 4% tolerance",
 		"raisedAt": "2026-11-02"
 	},
 	"bundle.home.gzip":
