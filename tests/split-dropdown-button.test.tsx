@@ -1315,8 +1315,8 @@ describe("SplitDropdownButton disabled look, as upstream's rM / NM / CY / CL", (
 		]);
 		expect(Object.values(compiled)).toStrictEqual([
 			String.raw`@media (forced-colors: none) { .stacks\:\[\&_\[data-cds-part\=paint\]\]\:p-0${stacks} [data-cds-part=paint] { padding: 0px; } }`,
-			String.raw`@media (forced-colors: none) { @media (hover: hover) { .stacks\:group-\[\:not\(\[data-disabled\]\)\]\/split\:group-hover\/split\:not-aria-pressed\:\[\&_\[data-cds-part\=paint\]\]\:bg-fill-button-ghost-hover${stacks}:is(:where(.group\/split):is(:not([data-disabled])) *):is(:where(.group\/split):hover *):not([aria-pressed="true"]) [data-cds-part=paint] { background-color: var(--upstream-fill-button-ghost-hover); } } }`,
-			String.raw`@media (forced-colors: none) { .stacks\:group-data-\[popup-open\]\/split\:not-aria-pressed\:\[\&_\[data-cds-part\=paint\]\]\:bg-fill-button-ghost-hover${stacks}:is(:where(.group\/split)[data-popup-open] *):not([aria-pressed="true"]) [data-cds-part=paint] { background-color: var(--upstream-fill-button-ghost-hover); } }`,
+			String.raw`@media (forced-colors: none) { @media (hover: hover) { :is(:where(.group\/split):hover :is(:where(.group\/split):is(:not([data-disabled])) .stacks\:group-\[\:not\(\[data-disabled\]\)\]\/split\:group-hover\/split\:not-aria-pressed\:\[\&_\[data-cds-part\=paint\]\]\:bg-fill-button-ghost-hover${stacks})):not([aria-pressed="true"]) [data-cds-part=paint] { background-color: var(--upstream-fill-button-ghost-hover); } } }`,
+			String.raw`@media (forced-colors: none) { :is(:where(.group\/split)[data-popup-open] .stacks\:group-data-\[popup-open\]\/split\:not-aria-pressed\:\[\&_\[data-cds-part\=paint\]\]\:bg-fill-button-ghost-hover${stacks}):not([aria-pressed="true"]) [data-cds-part=paint] { background-color: var(--upstream-fill-button-ghost-hover); } }`,
 			String.raw`@media (forced-colors: none) { @media (hover: hover) { .stacks\:hover\:not-aria-pressed\:\[\&_\[data-cds-part\=paint\]\]\:layers-1-fill-button-layer${stacks}:hover:not([aria-pressed="true"]) [data-cds-part=paint] { background-image: linear-gradient(var(--color-fill-button-layer) 0 0); } } }`,
 		]);
 	});
@@ -1335,11 +1335,11 @@ describe("SplitDropdownButton disabled look, as upstream's rM / NM / CY / CL", (
 			"stacks:group-[:disabled:not([aria-busy])]/btn:bg-transparent",
 		]);
 		expect(Object.values(compiled)).toStrictEqual([
-			String.raw`.peer-\[\:disabled\:not\(\[aria-busy\]\)\]\/slot\:opacity-disabled:is(:where(.peer\/slot):is(:disabled:not([aria-busy])) ~ *) { opacity: var(--upstream-opacity-disabled, 0.4); }`,
-			String.raw`@media (forced-colors: none) { .stacks\:peer-\[\:disabled\:not\(\[aria-busy\]\)\]\/slot\:bg-fill-disabled${stacks}:is(:where(.peer\/slot):is(:disabled:not([aria-busy])) ~ *) { background-color: var(--upstream-fill-disabled); } }`,
+			String.raw`:is(:where(.peer\/slot):is(:disabled:not([aria-busy])) ~ .peer-\[\:disabled\:not\(\[aria-busy\]\)\]\/slot\:opacity-disabled) { opacity: var(--upstream-opacity-disabled, 0.4); }`,
+			String.raw`@media (forced-colors: none) { :is(:where(.peer\/slot):is(:disabled:not([aria-busy])) ~ .stacks\:peer-\[\:disabled\:not\(\[aria-busy\]\)\]\/slot\:bg-fill-disabled${stacks}) { background-color: var(--upstream-fill-disabled); } }`,
 			String.raw`[data-cds-segment]:has(:disabled:not([aria-busy])) + .\[\[data-cds-segment\]\:has\(\:disabled\:not\(\[aria-busy\]\)\)\+\&\:has\(\+\[data-cds-segment\]_\:disabled\:not\(\[aria-busy\]\)\)\]\:opacity-disabled:has( + [data-cds-segment] :disabled:not([aria-busy])) { opacity: var(--upstream-opacity-disabled, 0.4); }`,
 			String.raw`@media (forced-colors: none) { [data-cds-segment]:has(:disabled:not([aria-busy])) + .stacks\:\[\[data-cds-segment\]\:has\(\:disabled\:not\(\[aria-busy\]\)\)\+\&\:has\(\+\[data-cds-segment\]_\:disabled\:not\(\[aria-busy\]\)\)\]\:bg-fill-disabled${stacks}:has( + [data-cds-segment] :disabled:not([aria-busy])) { background-color: var(--upstream-fill-disabled); } }`,
-			String.raw`@media (forced-colors: none) { .stacks\:group-\[\:disabled\:not\(\[aria-busy\]\)\]\/btn\:bg-transparent${stacks}:is(:where(.group\/btn):is(:disabled:not([aria-busy])) *) { background-color: transparent; } }`,
+			String.raw`@media (forced-colors: none) { :is(:where(.group\/btn):is(:disabled:not([aria-busy])) .stacks\:group-\[\:disabled\:not\(\[aria-busy\]\)\]\/btn\:bg-transparent${stacks}) { background-color: transparent; } }`,
 		]);
 	});
 });
