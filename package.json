@@ -70,7 +70,7 @@
 		"@storybook/addon-docs": "^10.6.4",
 		"@storybook/react-vite": "^10.6.4",
 		"@tailwindcss/node": "^4.3.3",
-		"@tailwindcss/vite": "^4.3.3",
+		"@tailwindcss/vite": "^4.3.5",
 		"@testing-library/react": "^16.3.3",
 		"@types/better-sqlite3": "^9.6.0",
 		"@types/markdown-it": "^14.1.2",
