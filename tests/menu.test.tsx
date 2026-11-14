@@ -1958,7 +1958,7 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () =>
 					hasTreeId: true,
 					classes: 8,
 					/* jsdom serializes the .95 product in canonical order. */
-					maxHeight: "calc(0.95 * (100dvh - env(safe-area-inset-top, 0px)))",
+					maxHeight: "calc((100dvh - env(safe-area-inset-top,0px)) * .95)",
 					availableHeight: "calc((100dvh - env(safe-area-inset-top,0px)) * .9)",
 				},
 				scrim:
@@ -1972,7 +1972,7 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () =>
 				positioner:
 				{
 					position: "fixed",
-					inset: "auto 0 0",
+					inset: "auto 0px 0px",
 					width: "auto",
 					transform: "none",
 					afterFill: true,
@@ -2499,7 +2499,7 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () =>
 				{
 					className: "[clip-path:inset(0_0_-200vh_0)]",
 					position: "fixed",
-					inset: "auto 0 0",
+					inset: "auto 0px 0px",
 					zIndex: "220",
 				},
 				child:
@@ -2973,7 +2973,7 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () =>
 				{
 					levels: [
 						{
-							translate: "0 200px",
+							translate: "0px 200px",
 							height: "400px",
 						},
 					],
@@ -2983,7 +2983,7 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () =>
 				{
 					levels: [
 						{
-							translate: "0 calc(100% + 1.5rem)",
+							translate: "0px calc(100% + 1.5rem)",
 							height: "400px",
 						},
 					],
@@ -3090,7 +3090,7 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () =>
 			{
 				before: "default",
 				after: "tall",
-				height: "calc(0.9 * (100dvh - env(safe-area-inset-top, 0px)))",
+				height: "calc((100dvh - env(safe-area-inset-top,0px)) * .9)",
 			},
 		);
 	});
@@ -3135,11 +3135,11 @@ describe("Menu sheet gate (coarse pointer, width < 640px)", () =>
 			{
 				levels: [
 					{
-						translate: "0 100px",
+						translate: "0px 100px",
 						height: "400px",
 					},
 					{
-						translate: "0 100px",
+						translate: "0px 100px",
 						height: "400px",
 					},
 				],

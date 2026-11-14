@@ -312,7 +312,7 @@ describe("ImageViewer zoom and pan", () =>
 				detail: 1,
 			},
 		);
-		expect(zoomOf(viewer).transform).toBe("translate(0px, 0px) scale(2)");
+		expect(zoomOf(viewer).transform).toBe("translate(0px) scale(2)");
 	});
 
 	it("pans a zoomed image by a drag without unzooming", () =>
@@ -418,7 +418,7 @@ describe("ImageViewer zoom and pan", () =>
 			},
 		).toStrictEqual(
 			{
-				afterTinyMove: "translate(0px, 0px) scale(4)",
+				afterTinyMove: "translate(0px) scale(4)",
 				afterClick: UNZOOMED,
 			},
 		);
@@ -634,9 +634,9 @@ describe("ImageViewer zoom and pan", () =>
 			},
 		).toStrictEqual(
 			{
-				entered: zoomed("translate(0px, 0px) scale(4)"),
+				entered: zoomed("translate(0px) scale(4)"),
 				spaced: UNZOOMED,
-				again: zoomed("translate(0px, 0px) scale(4)"),
+				again: zoomed("translate(0px) scale(4)"),
 			},
 		);
 	});
@@ -689,7 +689,8 @@ describe("ImageViewer zoom and pan", () =>
 			},
 		).toStrictEqual(
 			{
-				pinched: zoomed(`translate(${100 - 100 * Math.E}px, ${50 - 50 * Math.E}px) scale(${Math.E})`),
+				// jsdom serializes the e-scaled lengths to six significant digits.
+				pinched: zoomed("translate(-171.828px, -85.9141px) scale(2.71828)"),
 				released: UNZOOMED,
 			},
 		);
@@ -709,7 +710,7 @@ describe("ImageViewer zoom and pan", () =>
 				clientY: 250,
 			},
 		);
-		expect(zoomOf(viewer).transform).toBe("translate(0px, 0px) scale(1.25)");
+		expect(zoomOf(viewer).transform).toBe("translate(0px) scale(1.25)");
 	});
 
 	it("pans with the plain wheel only while zoomed, 16px per line", () =>
@@ -838,12 +839,12 @@ describe("ImageViewer", () =>
 			{
 				first:
 				{
-					transform: "translateX(calc(12.5vw - 0vw - 0px))",
+					transform: "translateX(calc(0px + 12.5vw))",
 					gap: "32px",
 				},
 				second:
 				{
-					transform: "translateX(calc(12.5vw - 75vw - 32px))",
+					transform: "translateX(calc(-32px - 62.5vw))",
 					gap: "32px",
 				},
 				className:

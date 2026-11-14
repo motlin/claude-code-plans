@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import {AnimationFrame} from "@base-ui/utils/useAnimationFrame";
-import {describe, expect, it} from "vite-plus/test";
+import {describe, expect, it, vi} from "vite-plus/test";
 
 describe("jsdom test setup", () =>
 {
@@ -42,6 +42,37 @@ describe("jsdom test setup", () =>
 			const ran = await new Promise<string>((resolve) =>
 			{
 				AnimationFrame.request(() =>
+				{
+					resolve("ran");
+				});
+				window.setTimeout(() =>
+				{
+					resolve("never ran");
+				}, 200);
+			});
+			expect(ran).toBe("ran");
+		});
+	});
+
+	// jsdom 31 arms one rendering interval for animation frames and focus fixups. Armed under fake timers, it is gone once
+	// they are uninstalled, and the focus fixup it never ran kept jsdom from arming another (patches/jsdom@31.0.0.patch).
+	describe("jsdom's animation frames after fake timers", () =>
+	{
+		it("ends a test with a focus fixup queued under fake timers", () =>
+		{
+			vi.useFakeTimers();
+			const button = document.createElement("button");
+			document.body.append(button);
+			button.focus();
+			document.body.append(document.createElement("div"));
+			vi.useRealTimers();
+		});
+
+		it("still runs an animation frame in the next test", async () =>
+		{
+			const ran = await new Promise<string>((resolve) =>
+			{
+				window.requestAnimationFrame(() =>
 				{
 					resolve("ran");
 				});

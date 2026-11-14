@@ -212,7 +212,7 @@ describe("ApiErrorCard", () =>
 						icon: "Icon",
 						className:
 							"shrink-0 transition-transform group-data-[panel-open]/clp:rotate-90 group-data-[panel-open]/clp:page-rtl:-rotate-90 motion-reduce:transition-none ms-auto",
-						translate: "0 0.5px",
+						translate: "0px 0.5px",
 					},
 					chevrons: 0,
 				},

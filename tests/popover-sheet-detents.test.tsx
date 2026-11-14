@@ -7,8 +7,8 @@ import {PopoverRoot, PopoverTrigger, PopoverContent} from "../src/components/ui/
 import {preloadPopoverSheet} from "../src/components/ui/popover-sheet-loader";
 
 /* jsdom serializes upstream's `min(50dvh, calc((100dvh - safe-top) * .9))` and `calc((100dvh - safe-top) * .9)`. */
-const HALF = "min(50dvh, 0.9 * (100dvh - env(safe-area-inset-top, 0px)))";
-const TALL = "calc(0.9 * (100dvh - env(safe-area-inset-top, 0px)))";
+const HALF = "min(50dvh, calc((100dvh - env(safe-area-inset-top,0px)) * .9))";
+const TALL = "calc((100dvh - env(safe-area-inset-top,0px)) * .9)";
 
 /* The sheet presentation is a lazy chunk; load it once so sheets render synchronously on open. */
 beforeAll(async () =>
@@ -216,7 +216,7 @@ describe("popover sheet detents", () =>
 			},
 		).toStrictEqual(
 			{
-				during: "0 200px",
+				during: "0px 200px",
 				open: false,
 			},
 		);
@@ -279,7 +279,7 @@ describe("popover sheet keyboard inset", () =>
 					bottom: "460px",
 					paddingBottom: "0.5rem",
 					/* jsdom folds upstream's `calc(400px - safe-top - 8px)`. */
-					maxHeight: "calc(392px - env(safe-area-inset-top, 0px))",
+					maxHeight: "calc(400px - env(safe-area-inset-top,0px) - 8px)",
 				},
 				released:
 				{

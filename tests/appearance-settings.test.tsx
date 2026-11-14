@@ -321,7 +321,8 @@ describe("Appearance settings", () =>
 		const options = screen.getAllByRole("option").map((option) => (
 		{
 			label: option.textContent,
-			fontFamily: option.querySelector<HTMLElement>("span")?.style.fontFamily,
+			// jsdom serializes a family name without its quotes, so compare the names alone.
+			fontFamily: option.querySelector<HTMLElement>("span")?.style.fontFamily.replaceAll('"', ""),
 			selected: option.getAttribute("aria-selected"),
 		}));
 		const filter = screen.queryByRole("searchbox");
@@ -358,22 +359,22 @@ describe("Appearance settings", () =>
 				options: [
 					{
 						label: "Default · Sans",
-						fontFamily: INTERFACE_FONT_FAMILIES.sans,
+						fontFamily: INTERFACE_FONT_FAMILIES.sans.replaceAll('"', ""),
 						selected: "true",
 					},
 					{
 						label: "Sans",
-						fontFamily: INTERFACE_FONT_FAMILIES.sans,
+						fontFamily: INTERFACE_FONT_FAMILIES.sans.replaceAll('"', ""),
 						selected: "false",
 					},
 					{
 						label: "System",
-						fontFamily: INTERFACE_FONT_FAMILIES.system,
+						fontFamily: INTERFACE_FONT_FAMILIES.system.replaceAll('"', ""),
 						selected: "false",
 					},
 					{
 						label: "OpenDyslexic",
-						fontFamily: INTERFACE_FONT_FAMILIES.dyslexic,
+						fontFamily: INTERFACE_FONT_FAMILIES.dyslexic.replaceAll('"', ""),
 						selected: "false",
 					},
 				],

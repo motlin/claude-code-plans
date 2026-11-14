@@ -41,9 +41,11 @@ const CLAMP_WALK_DEPTH = 16;
 const CLAMP_WALK_BLOCKS = new Set(["block", "flow-root", "list-item"]);
 const CLAMP_WALK_PASS = new Set(["contents", "inline"]);
 
+/** An engine that does not know `-webkit-line-clamp` computes it as "", and cannot clamp. */
 function lineClamped(style: CSSStyleDeclaration): boolean
 {
-	return style.getPropertyValue("-webkit-line-clamp") !== "none";
+	const clamp = style.getPropertyValue("-webkit-line-clamp");
+	return clamp !== "" && clamp !== "none";
 }
 
 /**

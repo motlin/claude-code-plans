@@ -386,7 +386,7 @@ describe("Composer skill chip", () =>
 		};
 		// Upstream's `clip:rect(0 0 0 0)`, as jsdom serializes it.
 		const style =
-			"position: absolute; top: 0px; left: 0px; width: 1px; height: 1px; overflow: hidden; clip: rect(0px); clip-path: inset(50%); white-space: nowrap;";
+			"position: absolute; top: 0px; left: 0px; width: 1px; height: 1px; overflow: hidden; clip: rect(0px 0px 0px 0px); clip-path: inset(50%); white-space: nowrap;";
 
 		const before = twin();
 		accept(textarea, "/mo");

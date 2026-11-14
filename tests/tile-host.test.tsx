@@ -12,6 +12,7 @@ import {useChatGutterAttributes, usePaneHost} from "../src/components/panes/pane
 import {TileHost} from "../src/components/panes/tile-host";
 import {TileContentHosts} from "../src/lib/tile-content-hosts";
 import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
+import {longhandStyle} from "./helpers/longhand-style";
 
 class FakeStorage implements Storage
 {
@@ -894,7 +895,7 @@ describe("TileHost", () =>
 		{
 			hidden: chatTile?.hidden,
 			inert: chatTile?.hasAttribute("inert"),
-			style: chatTile?.getAttribute("style"),
+			style: longhandStyle(chatTile),
 		});
 		const expanded =
 		{
@@ -945,7 +946,7 @@ describe("TileHost", () =>
 					{
 						hidden: false,
 						inert: true,
-						style: "flex: 1.332777 1 0px; min-width: 0px; min-height: 100px; --tiles-padding: 8px; --tile-shell-ground: var(--color-page); position: absolute; inset: 0px; visibility: hidden; content-visibility: hidden; pointer-events: none;",
+						style: "flex-grow: 1.33278; flex-shrink: 1; flex-basis: 0px; min-width: 0px; min-height: 100px; --tiles-padding: 8px; --tile-shell-ground: var(--color-page); position: absolute; top: 0px; right: 0px; bottom: 0px; left: 0px; visibility: hidden; content-visibility: hidden; pointer-events: none;",
 					},
 					overlay: true,
 					toggle: true,
@@ -956,7 +957,7 @@ describe("TileHost", () =>
 					{
 						hidden: false,
 						inert: false,
-						style: "flex: 1.332777 1 0px; min-width: 100px; min-height: 100px; --tiles-padding: 8px; --tile-shell-ground: var(--color-page);",
+						style: "flex-grow: 1.33278; flex-shrink: 1; flex-basis: 0px; min-width: 100px; min-height: 100px; --tiles-padding: 8px; --tile-shell-ground: var(--color-page);",
 					},
 					overlay: false,
 					toggle: false,
@@ -2696,18 +2697,18 @@ describe("TileHost corner handle", () =>
 				// Rendered (resolved) flexes: [chat 2, column 1] at 1199px is 799/400, [files 1, tasks 1] at 799px is 400/399.
 				before:
 				{
-					chat: "1.332777 1 0px",
+					chat: "1.33278 1 0px",
 					column: "0.667223 1 0px",
-					files: "1.001252 1 0px",
+					files: "1.00125 1 0px",
 					tasks: "0.998748 1 0px",
 				},
 				// Both boundaries move 100px from their rendered spots: chat 699 / column 500, files 299 / tasks 500.
 				after:
 				{
-					chat: "1.165972 1 0px",
+					chat: "1.16597 1 0px",
 					column: "0.834028 1 0px",
 					files: "0.748436 1 0px",
-					tasks: "1.251564 1 0px",
+					tasks: "1.25156 1 0px",
 				},
 				cursor: true,
 			},
@@ -3275,13 +3276,13 @@ describe("TileHost min-floor resolver (upstream ca67f2c9d walkResolvedFlexes / t
 				},
 				column:
 				{
-					flex: "1.286151 1 0px",
+					flex: "1.28615 1 0px",
 					minWidth: "280px",
 					minHeight: "",
 				},
 				changes:
 				{
-					flex: "1.001252 1 0px",
+					flex: "1.00125 1 0px",
 					minWidth: "280px",
 					minHeight: "100px",
 				},
@@ -3315,7 +3316,7 @@ describe("TileHost min-floor resolver (upstream ca67f2c9d walkResolvedFlexes / t
 		).toStrictEqual(
 			{
 				chat: "0.752784 1 0px",
-				plan: "1.247216 1 0px",
+				plan: "1.24722 1 0px",
 			},
 		);
 	});
