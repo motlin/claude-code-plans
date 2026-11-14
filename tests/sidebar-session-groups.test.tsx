@@ -3285,7 +3285,7 @@ describe("SessionGroups sections layout", () =>
 			{
 				tag: "svg",
 				size: true,
-				translate: "0 0.5px",
+				translate: "0px 0.5px",
 				lucide: false,
 			},
 		);

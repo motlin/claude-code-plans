@@ -27,6 +27,7 @@ import {toConnectorSlug} from "../src/lib/customize/mcp-tool-permissions";
 import {DEFAULT_RAIL_SECTIONS_STATE, RAIL_SECTIONS_STORAGE_KEY} from "../src/lib/session-rail-store";
 import {installLocalStorage} from "./fake-storage";
 import {installFrameQueue, stubReducedMotion} from "./helpers/frame-queue";
+import {longhandStyle} from "./helpers/longhand-style";
 
 const SESSION_ID = "8f0c2c7e-1111-4222-8333-944445555666";
 
@@ -2210,11 +2211,11 @@ describe("Context card breakdown", () =>
 			{
 				anchor: anchor.getAttribute("style"),
 				segment: anchor.firstElementChild?.className,
-				paint: anchor.firstElementChild?.getAttribute("style"),
+				paint: longhandStyle(anchor.firstElementChild),
 			})),
 		).toStrictEqual(
 			[
-				["calc(0% + 0px)", "calc(13.104% - 0px)", "categorical-1", "2px", "1px"],
+				["calc(0% + 0px)", "calc(13.104% + 0px)", "categorical-1", "2px", "1px"],
 				["calc(13.104% + 1px)", "calc(1.429% - 1px)", "categorical-2", "1px", "1px"],
 				["calc(14.533% + 1px)", "calc(1.22% - 1px)", "categorical-3", "1px", "1px"],
 				["calc(15.752% + 1px)", "calc(1.22% - 1px)", "categorical-4", "1px", "1px"],

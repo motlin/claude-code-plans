@@ -1234,10 +1234,26 @@ describe("artifacts route", () =>
 
 		const other = describeBlank(coverFor("Asap Ladder Queue"));
 		const doc = describeBlank(coverFor("Quarterly plan"));
+		// The eased ramp's alphas as jsdom serializes them: quantized to 8 bits, in the shortest form that keeps them.
 		const ramp = [
-			0, 0.013, 0.049, 0.104, 0.175, 0.259, 0.352, 0.45, 0.55, 0.648, 0.741, 0.825, 0.896, 0.951, 0.987, 1,
+			"0",
+			"0.004",
+			"0.016",
+			"0.03",
+			"0.05",
+			"0.08",
+			"0.106",
+			"0.133",
+			"0.165",
+			"0.192",
+			"0.224",
+			"0.247",
+			"0.27",
+			"0.286",
+			"0.294",
+			"0.3",
 		]
-			.map((step, index) => `rgb(0 0 0 / ${(step * 0.3).toFixed(3)}) ${(67 + index * 2.2).toFixed(1)}%`)
+			.map((alpha, index) => `rgba(0, 0, 0, ${alpha}) ${Number((67 + index * 2.2).toFixed(1))}%`)
 			.join(", ");
 		const blankClass =
 			"pointer-events-none absolute top-0 overflow-visible fill-current start-1/2 -translate-x-1/2 rtl:translate-x-1/2 text-[color:var(--skeleton-base)]";
@@ -1316,7 +1332,7 @@ describe("artifacts route", () =>
 				},
 				fade:
 				{
-					mask: `linear-gradient(to bottom, transparent, ${ramp}), linear-gradient(to right, transparent, #000 12px, #000 calc(100% - 12px), transparent)`,
+					mask: `linear-gradient(transparent, ${ramp}), linear-gradient(to right, transparent, rgb(0, 0, 0) 12px, rgb(0, 0, 0) calc(100% - 12px), transparent)`,
 					composite: "intersect",
 					children: ["absolute inset-0 bg-surface-2 opacity-40 dark:opacity-35"],
 				},

@@ -272,7 +272,7 @@ describe("PopoverContent under a coarse pointer", () =>
 				{
 					class: "z-[130] after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-[100dvh] after:bg-[var(--menu-bg)]",
 					position: "fixed",
-					inset: "auto 0 0",
+					inset: "auto 0px 0px",
 					transform: "none",
 				},
 				popupClass:
@@ -283,7 +283,7 @@ describe("PopoverContent under a coarse pointer", () =>
 				},
 				popupStyle:
 				{
-					maxHeight: "calc(0.9 * (100dvh - env(safe-area-inset-top, 0px)))",
+					maxHeight: "calc((100dvh - env(safe-area-inset-top,0px)) * .9)",
 					availableHeight: "calc((100dvh - env(safe-area-inset-top,0px)) * .9)",
 				},
 				handle:
@@ -825,12 +825,12 @@ describe("PopoverContent sheet height pinning", () =>
 				before:
 				{
 					height: "",
-					maxHeight: "calc(0.9 * (100dvh - env(safe-area-inset-top, 0px)))",
+					maxHeight: "calc((100dvh - env(safe-area-inset-top,0px)) * .9)",
 				},
 				after:
 				{
 					height: "252px",
-					maxHeight: "calc(0.95 * (100dvh - env(safe-area-inset-top, 0px)))",
+					maxHeight: "calc((100dvh - env(safe-area-inset-top,0px)) * .95)",
 				},
 			},
 		);

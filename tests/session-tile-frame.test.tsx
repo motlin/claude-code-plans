@@ -408,7 +408,7 @@ it("portals a transcript toolbar tooltip out of the contain:strict scroller and 
 			inBody: true,
 			text: "Fork from hereStarts a new session from this point. This one stays as it is.",
 			// Centred on the 24px button the 300px tip would start at -98px; it shifts to 8px.
-			transform: "translate(106px, 0px)",
+			transform: "translate(106px)",
 		},
 	);
 	vi.useRealTimers();

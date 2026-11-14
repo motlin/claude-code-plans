@@ -1128,7 +1128,7 @@ describe("transcript context menu on a coarse pointer under 640px", () =>
 				positioner:
 				{
 					position: "fixed",
-					inset: "auto 0 0",
+					inset: "auto 0px 0px",
 				},
 			},
 		);

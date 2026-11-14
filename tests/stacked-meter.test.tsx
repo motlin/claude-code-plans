@@ -294,7 +294,7 @@ describe("StackedMeter (sm/md)", () =>
 			</StackedMeterGroup>,
 		);
 		expect(meter(container).firstElementChild?.getAttribute("style")).toBe(
-			"inset-inline-start: calc(0% + 0px); width: calc(0.7% - 0px);",
+			"inset-inline-start: calc(0% + 0px); width: calc(0.7% + 0px);",
 		);
 	});
 });

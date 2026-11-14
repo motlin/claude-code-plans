@@ -9,7 +9,7 @@ const POPUP = "fixed inset-0 grid place-items-center p-4 sm:p-10 bg-black/62.5 o
 const GROUP_BASE = "inline-flex w-fit shrink-0 flex-col items-stretch gap-2";
 const IMG = "block max-w-full max-h-[calc(100vh-4rem)] w-auto h-auto";
 const SHADOW =
-	"0 4px 32px color-mix(in srgb, black 30%, transparent), 0 0 0 0.5px color-mix(in srgb, black 25%, transparent)";
+	"color-mix(in srgb, black 30%, transparent 70%) 0px 4px 32px, color-mix(in srgb, black 25%, transparent 75%) 0px 0px 0px 0.5px";
 const MORPH = "chat-image-preview";
 
 const origins: HTMLElement[] = [];

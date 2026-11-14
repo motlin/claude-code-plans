@@ -168,7 +168,7 @@ describe("cds Collapsible", () =>
 			{
 				tag: "svg",
 				className: `${COLLAPSIBLE_CARET_CLASS} ms-auto`,
-				translate: "0 0.5px",
+				translate: "0px 0.5px",
 			},
 		);
 	});

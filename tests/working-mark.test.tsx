@@ -277,7 +277,7 @@ describe("WorkingMark", () =>
 				image: 'url("/working-mark/read.webp")',
 				size: "100% 100%",
 				end: "-1180px",
-				animation: "working-mark-strip 2000ms steps(60, jump-none) infinite",
+				animation: "2000ms steps(60, jump-none) infinite working-mark-strip",
 			},
 		);
 	});

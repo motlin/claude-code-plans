@@ -481,7 +481,7 @@ describe("Composer slash commands", () =>
 				classes: [],
 				wrapper: "min-w-0 break-words",
 				// jsdom normalizes `max(9rem, calc(100vw - 344px - 1rem))` into this sum.
-				maxWidth: "max(9rem, -344px + 1rem + 100vw)",
+				maxWidth: "max(9rem, -344px - 1rem + 100vw)",
 				text: "Switch to plan mode",
 			},
 		);

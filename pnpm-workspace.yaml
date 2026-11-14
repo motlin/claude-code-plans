@@ -34,6 +34,9 @@ allowBuilds:
   node-pty: true
   unrs-resolver: true
 patchedDependencies:
+  # jsdom 31 never re-arms its animation frame interval once fake timers drop it while a focus fixup is pending, so
+  # every later requestAnimationFrame in that window (Base UI's initial focus) never runs. Re-apply on upgrades.
+  jsdom@31.0.0: patches/jsdom@31.0.0.patch
   # Upstream's mermaid guard (src/lib/mermaid-guard.ts) needs mermaid to hand it each parsed diagram and to charge
   # each label it measures; without the patch every diagram is refused (MermaidGuardNotRun). Re-apply on upgrades.
   mermaid@11.17.2: patches/mermaid@11.17.2.patch

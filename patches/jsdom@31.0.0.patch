@@ -1,0 +1,17 @@
+diff --git a/lib/jsdom/browser/Window.js b/lib/jsdom/browser/Window.js
+index 51b23acc2cbcc5d0972c2d0a320ab0b86d0cdf0a..8b3bc06f66e5c21fb0e6f33d0bb2bbdf3b37d70f 100644
+--- a/lib/jsdom/browser/Window.js
++++ b/lib/jsdom/browser/Window.js
+@@ -656,6 +656,12 @@ function installOwnProperties(window, { settings, documentOptions, commonForOrig
+       mapOfAnimationFrameCallbacks.set(handle, callback);
+
+       ++numberOfOngoingAnimationFrameCallbacks;
++      // Re-arm on the first queued callback, as jsdom 30 did: an interval armed under fake timers is gone once they
++      // are uninstalled, and a focus fixup it never ran would otherwise keep it from ever being replaced.
++      if (numberOfOngoingAnimationFrameCallbacks === 1) {
++        clearInterval(renderingUpdateNodejsInterval);
++        renderingUpdateNodejsInterval = null;
++      }
+       scheduleRenderingUpdate();
+
+       return handle;
