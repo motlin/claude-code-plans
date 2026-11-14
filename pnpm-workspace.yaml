@@ -15,7 +15,7 @@ overrides:
   vitest: "catalog:"
   # Older postcss reads arbitrary .map files from an attacker-controlled sourceMappingURL (GHSA-6g55-p6wh-862q).
   postcss: ">=8.5.23"
-  "@tanstack/router-core": 1.171.7
+  "@tanstack/router-core": 1.171.39
   # @tailwindcss/node pins lightningcss 1.32.0, which warns on every ::highlight() rule; 1.33 parses them.
   "@tailwindcss/node>lightningcss": 1.33.0
 peerDependencyRules:

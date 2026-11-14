@@ -1,6 +1,6 @@
 import {isSessionRouteAlias} from "../lib/session-route-alias";
-import {useEffect} from "react";
-import {useRouter} from "@tanstack/react-router";
+import {useEffect, useRef} from "react";
+import {useRouter, useRouterState} from "@tanstack/react-router";
 import {useQueryClient, type QueryClient} from "@tanstack/react-query";
 
 import {useSubscribeSessionRemovals} from "./use-claude-events";
@@ -47,19 +47,29 @@ function locationKey(location: AppRouter["state"]["location"]): string
 	return location.state.__TSR_key ?? location.href;
 }
 
+type RouterMatches = AppRouter["state"]["matches"];
+
 /**
  * A page that 404s is not a place to switch back to: a loader that threw `notFound()` or errored,
  * or a route whose head reports the missing record ("Session Not Found").
  */
-function resolvedToNotFound(router: AppRouter, title: string | null): boolean
+function resolvedToNotFound(matches: RouterMatches, title: string | null): boolean
 {
-	const {matches, statusCode} = router.state;
-	if (statusCode === 404) return true;
-	if (matches.some((match) => match.status === "notFound" || match.status === "error"))
+	// A not-found that reaches the root boundary (unmatched URL, or a loader's notFound() with no closer
+	// notFoundComponent) leaves that match "success" and flags it `_notFound` instead.
+	if (matches.some((match) => match.status === "notFound" || match.status === "error" || match._notFound === true))
 	{
 		return true;
 	}
 	return title?.endsWith(" Not Found") === true;
+}
+
+/** What the recorder files a settled page under; null while a navigation is pending. */
+function settledPageKey(status: AppRouter["state"]["status"], matches: RouterMatches): string | null
+{
+	if (status !== "idle") return null;
+	const title = resolvedPageTitle(matches);
+	return JSON.stringify([title, resolvedToNotFound(matches, title)]);
 }
 
 /**
@@ -73,6 +83,14 @@ export function useRecentsRecorder(): void
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const subscribeSessionRemovals = useSubscribeSessionRemovals();
+	const recordSettled = useRef<(() => void) | null>(null);
+	// onResolved fires before stale loaders revalidate in the background, so a page whose title or
+	// not-found state changes once they land is recorded again.
+	const settledPage = useRouterState(
+		{
+			select: (state) => settledPageKey(state.status, state.matches),
+		},
+	);
 
 	useEffect(() =>
 	{
@@ -106,7 +124,7 @@ export function useRecentsRecorder(): void
 			if (!visit.target) return;
 			const target = resolveRecentSession(visit.target, (alias) => getCachedSessionIdentity(queryClient, alias));
 			const title = resolvedPageTitle(router.state.matches);
-			if (resolvedToNotFound(router, title))
+			if (resolvedToNotFound(router.state.matches, title))
 			{
 				update(queryClient, (entries) => remove(entries, target.key));
 				return;
@@ -165,14 +183,24 @@ export function useRecentsRecorder(): void
 			if (target && key[2] === target.key.slice(target.kind.length + 1)) recordResolved();
 		});
 		update(queryClient, (entries) => entries);
+		recordSettled.current = () =>
+		{
+			if (!navigating) recordResolved();
+		};
 		if (router.state.status === "idle" && router.state.matches.length > 0) recordResolved();
 		return () =>
 		{
+			recordSettled.current = null;
 			unsubscribeBefore();
 			unsubscribeResolved();
 			unsubscribeIdentity();
 		};
 	}, [router, queryClient]);
+
+	useEffect(() =>
+	{
+		if (settledPage !== null) recordSettled.current?.();
+	}, [settledPage]);
 
 	useEffect(
 		() =>

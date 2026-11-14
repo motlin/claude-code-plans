@@ -243,6 +243,14 @@ describe("useRecentsRecorder", () =>
 		expect(loadRecents()).toStrictEqual([ALPHA]);
 	});
 
+	it("does not record a page no route matches", async () =>
+	{
+		const router = await start("/session/session-alpha");
+		await go(router, "/project/unrouted-project");
+
+		expect(loadRecents()).toStrictEqual([ALPHA]);
+	});
+
 	it("prunes a previously recorded entry once it resolves to not-found", async () =>
 	{
 		SESSION_TITLES["session-flaky"] = "Flaky session";
