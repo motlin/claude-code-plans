@@ -31,35 +31,41 @@ export const Route = createFileRoute("/session/$id")(
 		// to megabytes of JSONL, so awaiting here means a blank white page. The
 		// component renders the shell plus a skeleton instead. Reading the detail
 		// cache is synchronous, so a warm visit still titles the tab immediately.
-		loader: ({context: {queryClient}, params}) =>
+		// Synchronous, so blocking costs nothing: navigating onto a preloaded match then commits fresh loaderData
+		// instead of the preload snapshot, and useSessionHeadTitle has no stale title to invalidate.
+		loader:
 		{
-			let sessionId = params.id;
-			if (isSessionRouteAlias(sessionId))
+			staleReloadMode: "blocking",
+			handler: ({context: {queryClient}, params}) =>
 			{
-				const options = sessionIdentityQueryOptions(sessionId);
-				const identity = queryClient.getQueryState(options.queryKey);
-				// A title refresh must not restart a terminal failure's automatic retries.
-				if (identity?.status === "error")
-					return {
-						title: sessionIdentityFailure(identity.error).title,
-					};
-				void queryClient.query(options).catch(noop);
-				if (
-					identity?.status !== "success" ||
-					!identity.data ||
-					identity.isInvalidated ||
-					identity.fetchStatus !== "idle"
-				)
-					return undefined;
-				sessionId = identity.data.sessionId;
-			}
-			void queryClient.query(sessionDetailQueryOptions(sessionId)).catch(noop);
-			void queryClient.query(transcriptQueryOptions(sessionId)).catch(noop);
-			void queryClient.query(sessionSubagentsQueryOptions(sessionId)).catch(noop);
-			void queryClient.query(herdrPanesQueryOptions).catch(noop);
-			// Bound before returning: as a return expression, getQueryData infers its data type from the loader (any).
-			const detail = queryClient.getQueryData(sessionDetailQueryOptions(sessionId).queryKey);
-			return detail;
+				let sessionId = params.id;
+				if (isSessionRouteAlias(sessionId))
+				{
+					const options = sessionIdentityQueryOptions(sessionId);
+					const identity = queryClient.getQueryState(options.queryKey);
+					// A title refresh must not restart a terminal failure's automatic retries.
+					if (identity?.status === "error")
+						return {
+							title: sessionIdentityFailure(identity.error).title,
+						};
+					void queryClient.query(options).catch(noop);
+					if (
+						identity?.status !== "success" ||
+						!identity.data ||
+						identity.isInvalidated ||
+						identity.fetchStatus !== "idle"
+					)
+						return undefined;
+					sessionId = identity.data.sessionId;
+				}
+				void queryClient.query(sessionDetailQueryOptions(sessionId)).catch(noop);
+				void queryClient.query(transcriptQueryOptions(sessionId)).catch(noop);
+				void queryClient.query(sessionSubagentsQueryOptions(sessionId)).catch(noop);
+				void queryClient.query(herdrPanesQueryOptions).catch(noop);
+				// Bound before returning: as a return expression, getQueryData infers its data type from the loader (any).
+				const detail = queryClient.getQueryData(sessionDetailQueryOptions(sessionId).queryKey);
+				return detail;
+			},
 		},
 		errorComponent: SessionErrorComponent,
 		head: ({loaderData}) => (

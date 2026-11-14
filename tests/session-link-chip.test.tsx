@@ -84,7 +84,7 @@ describe("SessionLinkChip", () =>
 			<SessionLinkChip sessionId="u1" title="Fix the login bug" state="running" internalTo="/session/u1" />,
 		);
 		expect(host.innerHTML).toBe(
-			`<a aria-busy="true" href="/session/u1" class="${CHIP_INTERACTIVE}"><span class="self-baseline truncate"><span>Fix the login bug</span><span class="contents"><span class="sr-only select-none"> — Running</span></span></span></a>`,
+			`<a aria-busy="true" class="${CHIP_INTERACTIVE}" href="/session/u1"><span class="self-baseline truncate"><span>Fix the login bug</span><span class="contents"><span class="sr-only select-none"> — Running</span></span></span></a>`,
 		);
 	});
 

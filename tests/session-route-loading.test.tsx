@@ -94,16 +94,22 @@ describe("blank-screen prevention on /session/$id", () =>
 			getQueryData: vi.fn<() => undefined>(() => undefined),
 		};
 
-		const loader = SessionRoute.options.loader as (args: {
-			context: unknown;
-			params:
-			{
-				id: string;
-			};
-		}) => unknown;
+		// Blocking: a click onto a preloaded session commits this loader's fresh result, not the preload's snapshot.
+		const {handler: loader, staleReloadMode} = SessionRoute.options.loader as
+		{
+			handler: (args: {
+				context: unknown;
+				params:
+				{
+					id: string;
+				};
+			}) => unknown;
+			staleReloadMode: unknown;
+		};
 
 		expect(
 			{
+				staleReloadMode,
 				loaderData: loader(
 					{
 						context:
@@ -123,6 +129,7 @@ describe("blank-screen prevention on /session/$id", () =>
 			},
 		).toStrictEqual(
 			{
+				staleReloadMode: "blocking",
 				loaderData: undefined,
 				queried: 4,
 				ensured: 0,

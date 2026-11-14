@@ -21,11 +21,11 @@
 	},
 	"browser.J2.requests":
 	{
-		"ceiling": 1190,
+		"ceiling": 1198,
 		"unit": "requests",
 		"tolerance": 0.005,
-		"reason": "raised from 987 (2026-11-12): 190 new src modules from 98 commits since b6d2eecc9 plus Base UI collapsible and field dep chunks, mostly the session page's transcript and tool renderers: the generic tool body rebuild (e17d7d4f2), path-shaped code spans as file links (ce8a4d33e), the tool output follow-up (c54509d84), plain param values with cloaks and links (f0c78a3ee), the refusal band (add125a67), pane and transcript crash boundaries (9882f2f54, 677e81bd6) and chapter headings (8b9b5e641), plus J1's shell growth. Splitting the skill chip's card body out of slash-command-chip.tsx adds one module here (1189 to 1190) while taking 17 off Home. macOS reads 1190 every run; the Linux trial read 4 more (1193 before the split), likely its system fonts taking a different font path, so it gets a 0.5% tolerance (1184..1195) instead of 0",
-		"raisedAt": "2026-11-12"
+		"reason": "raised from 1190 (2026-11-14): the tanstack group bump (react-router 1.170.46, router-core 1.171.39) splits the dev server's router-core graph differently: load-matches becomes load-client plus load-server with await-signal and sieve-cache, the client imports the SSR serializer plugins (makeSerovalPlugin, rawStreamCodec, RawStreamJSONPlugin, RawStreamRPCPlugin), and seroval 1.8 serves its dev build as six modules where seroval-plugins served three; the session route no longer requests its split errorComponent chunk. Net +8 (1190 to 1198). Before that, raised from 987 (2026-11-12): 190 new src modules from 98 commits since b6d2eecc9 plus Base UI collapsible and field dep chunks, mostly the session page's transcript and tool renderers: the generic tool body rebuild (e17d7d4f2), path-shaped code spans as file links (ce8a4d33e), the tool output follow-up (c54509d84), plain param values with cloaks and links (f0c78a3ee), the refusal band (add125a67), pane and transcript crash boundaries (9882f2f54, 677e81bd6) and chapter headings (8b9b5e641), plus J1's shell growth. Splitting the skill chip's card body out of slash-command-chip.tsx adds one module here (1189 to 1190) while taking 17 off Home. macOS reads 1190 every run; the Linux trial read 4 more (1193 before the split), likely its system fonts taking a different font path, so it gets a 0.5% tolerance (1184..1195) instead of 0",
+		"raisedAt": "2026-11-14"
 	},
 	"browser.J3.layoutShift":
 	{
@@ -93,25 +93,21 @@
 	},
 	"client.coldHome.default.commitsToRows":
 	{
-		"ceiling": 9,
+		"ceiling": 2,
 		"unit": "count",
 		"tolerance": 0
 	},
 	"client.coldHome.default.fetches":
 	{
-		"ceiling": 21,
+		"ceiling": 20,
 		"unit": "count",
-		"tolerance": 0,
-		"reason": "The home composer reads the selected launch folder's project defaultMode (/api/composer-defaults?cwd=, upstream's repo_settings_default_mode) so a new draft resolves user default, then the folder's remembered mode, then the project default (folder-permission-mode-memory T4), +1 fetch (20 to 21); it runs only while a folder is selected. Before that: the folder's git status (/api/home/folder-status), +1 fetch (19 to 20).",
-		"raisedAt": "2026-11-09"
+		"tolerance": 0
 	},
 	"client.coldHome.default.responseBytes":
 	{
-		"ceiling": 7485,
+		"ceiling": 5197,
 		"unit": "bytes",
-		"tolerance": 0,
-		"reason": "/api/home/folder-status carries exists, so the home bar can say a selected folder no longer exists (environment-bar-line-and-last-chip T5): +14 bytes (7471 to 7485). Before that: /api/prompt-history returns {prompts, bashCommands} instead of a bare array, so bash mode's ↑/↓ walk the session's shell commands (composer-bash-mode T4): +30 bytes (7441 to 7471). Before that: the composer defaults carry repoDefaultMode, and the home composer also fetches them for the selected folder (folder-permission-mode-memory T4): +171 bytes (7270 to 7441). Before that: session list items carry lastUserMessage (sidebar-row-metadata-line T2), +663 bytes (6607 to 7270).",
-		"raisedAt": "2026-11-09"
+		"tolerance": 0
 	},
 	"client.composer.home.slashMenu.claudeEventsConsumers":
 	{
@@ -481,7 +477,7 @@
 	},
 	"client.sessionOpen.small.commits":
 	{
-		"ceiling": 12,
+		"ceiling": 10,
 		"unit": "count",
 		"tolerance": 0
 	},
@@ -515,15 +511,13 @@
 	},
 	"client.sessionOpen.small.mutations":
 	{
-		"ceiling": 47,
+		"ceiling": 46,
 		"unit": "count",
-		"tolerance": 0,
-		"reason": "The chat's content now lives in upstream's persistent tile content host (tile-host-guest-layer T1): the tile shell adopts a display:contents div[data-tile-host] that React portals the chat into, one more insertion on open. Before that (2026-11-07, 46), the session titlebar became upstream's Session tools roving toolbar: on mount the roving hook writes tabindex 0 to the title and -1 to each other titlebar item, one attribute mutation per item, and the working line mounts after the feed once jsdom re-windows the virtualizer: one more insertion.",
-		"raisedAt": "2026-11-11"
+		"tolerance": 0
 	},
 	"client.sessionOpen.typical.commits":
 	{
-		"ceiling": 12,
+		"ceiling": 10,
 		"unit": "count",
 		"tolerance": 0
 	},
@@ -557,15 +551,13 @@
 	},
 	"client.sessionOpen.typical.mutations":
 	{
-		"ceiling": 47,
+		"ceiling": 46,
 		"unit": "count",
-		"tolerance": 0,
-		"reason": "The chat's content now lives in upstream's persistent tile content host (tile-host-guest-layer T1): the tile shell adopts a display:contents div[data-tile-host] that React portals the chat into, one more insertion on open. Before that (2026-11-07, 46), the session titlebar became upstream's Session tools roving toolbar: on mount the roving hook writes tabindex 0 to the title and -1 to each other titlebar item, one attribute mutation per item, and the working line mounts after the feed once jsdom re-windows the virtualizer: one more insertion.",
-		"raisedAt": "2026-11-11"
+		"tolerance": 0
 	},
 	"client.sessionSwitch.small.commits":
 	{
-		"ceiling": 10,
+		"ceiling": 6,
 		"unit": "count",
 		"tolerance": 0
 	},
@@ -603,15 +595,13 @@
 	},
 	"client.sessionSwitch.small.mutations":
 	{
-		"ceiling": 49,
+		"ceiling": 47,
 		"unit": "count",
-		"tolerance": 0,
-		"reason": "The working line nests in the last assistant row. jsdom has no scroll layout, so after the end-anchored first mount the virtualizer re-windows to the top and unmounts that row, and the line mounts after the feed instead: one more insertion. A browser scrolled to the end keeps the last row mounted. The sidebar section under the pointer carries data-hover-within (upstream G4), set from React onMouseOver: the lab's hover on the target row before the click adds that one attribute. The titlebar title sits in upstream's h2 named by the title (aria-label), so a switch rewrites that one more attribute.",
-		"raisedAt": "2026-11-02"
+		"tolerance": 0
 	},
 	"client.sessionSwitch.typical.commits":
 	{
-		"ceiling": 10,
+		"ceiling": 6,
 		"unit": "count",
 		"tolerance": 0
 	},
@@ -649,11 +639,9 @@
 	},
 	"client.sessionSwitch.typical.mutations":
 	{
-		"ceiling": 49,
+		"ceiling": 47,
 		"unit": "count",
-		"tolerance": 0,
-		"reason": "The working line nests in the last assistant row. jsdom has no scroll layout, so after the end-anchored first mount the virtualizer re-windows to the top and unmounts that row, and the line mounts after the feed instead: one more insertion. A browser scrolled to the end keeps the last row mounted. The sidebar section under the pointer carries data-hover-within (upstream G4), set from React onMouseOver: the lab's hover on the target row before the click adds that one attribute. The titlebar title sits in upstream's h2 named by the title (aria-label), so a switch rewrites that one more attribute.",
-		"raisedAt": "2026-11-02"
+		"tolerance": 0
 	},
 	"hot.claudeEventsReducer.replay-200.calls":
 	{

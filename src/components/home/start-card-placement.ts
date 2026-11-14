@@ -109,8 +109,9 @@ function observeStartCardPlacement(wrapper: HTMLElement): (() => void) | undefin
 		if (environments !== list)
 		{
 			if (list) observer?.unobserve(list);
-			if (environments) observer?.observe(environments);
+			// Record it first: an observer that reports synchronously on observe re-enters place().
 			list = environments;
+			if (environments) observer?.observe(environments);
 		}
 		const foot = Number.parseFloat(style.paddingBottom);
 		const {top, setupFits} = placeStartCard(

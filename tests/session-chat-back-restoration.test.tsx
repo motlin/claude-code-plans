@@ -518,18 +518,18 @@ it.each([
 			initialAtEnd
 				?
 					{
-						restoredOffset: 11770,
+						restoredOffset: 11740,
 						routerWrites: [
 							{
 								phase: "back-router",
-								requested: 11770,
-								applied: 11770,
+								requested: 11740,
+								applied: 11740,
 							},
 						],
 						measurementWrites: [],
 						before:
 						{
-							scrollTop: 11770,
+							scrollTop: 11740,
 							anchor:
 							{
 								record: "72",
@@ -538,7 +538,7 @@ it.each([
 						},
 						after:
 						{
-							scrollTop: 11770,
+							scrollTop: 11740,
 							anchor:
 							{
 								record: "72",
