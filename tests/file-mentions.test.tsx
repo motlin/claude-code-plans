@@ -736,7 +736,7 @@ describe("Composer @ file mentions", () =>
 			},
 			{
 				typed: null,
-				lucide: "lucide lucide-code-xml shrink-0",
+				lucide: "lucide lucide-code-xml lucide-code-2 shrink-0",
 			},
 			{
 				typed: null,

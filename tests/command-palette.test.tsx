@@ -7200,7 +7200,7 @@ describe("CommandPalette pinned Jump to question row", () =>
 				rows: ["Jump to question"],
 				value: "action:jump_to_question",
 				selected: "true",
-				icon: "lucide lucide-circle-question-mark",
+				icon: "lucide lucide-circle-question-mark lucide-help-circle lucide-circle-help",
 				nextGroup: "Needs attention",
 			},
 		);

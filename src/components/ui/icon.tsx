@@ -4,7 +4,8 @@
  * Copied: the API (`name`, `size` xs…xxl | auto | auto-sm | auto-lg, `customSize`, `bold`, `rotate`, `alt`),
  * the size and stroke table, density-driven `auto`, the DOM hooks (`data-cds="Icon"`, `data-cds-mirror`,
  * `data-cds-rotate` + `--cds-icon-rotate`), the 1em box with a rem font-size, and the DotsVertical alias.
- * Upstream's variable `wght` encodes a stroke width, which `absoluteStrokeWidth` reproduces exactly.
+ * Upstream's variable `wght` encodes a stroke width in px; scaling it by the 24-unit lucide viewBox over the
+ * rendered px reproduces it exactly.
  *
  * Not copied: the Anthropicons-Variable font itself, its two-tone secondary layer, the `opsz` axis and the
  * block-display font readiness telemetry. The font has no redistribution license (its `name` table carries
@@ -51,6 +52,9 @@ const GLYPHS: Record<
 	...FILLED_GLYPHS,
 };
 
+/** Lucide draws every glyph in a 24-unit viewBox, so a px stroke scales by 24 / rendered px. */
+const LUCIDE_VIEWBOX = 24;
+
 export function Icon({name, size, customSize, bold = false, rotate, alt, className, style, ...rest}: IconProps)
 {
 	const density = useDensity();
@@ -64,8 +68,7 @@ export function Icon({name, size, customSize, bold = false, rotate, alt, classNa
 	return (
 		<Glyph
 			size={px}
-			strokeWidth={stroke}
-			absoluteStrokeWidth
+			strokeWidth={(stroke * LUCIDE_VIEWBOX) / px}
 			width="1em"
 			height="1em"
 			data-cds="Icon"

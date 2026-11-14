@@ -88,7 +88,8 @@ describe("ErrorCardShell", () =>
 				iconSlot: "flex h-[1lh] shrink-0 items-center",
 				icon:
 				{
-					className: "lucide lucide-triangle-alert size-4 shrink-0 text-danger-000",
+					className:
+						"lucide lucide-triangle-exclamation-point lucide-alert-triangle lucide-triangle-alert size-4 shrink-0 text-danger-000",
 					hidden: "true",
 				},
 				headline:

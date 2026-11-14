@@ -59,7 +59,8 @@ describe("SessionStateIcon", () =>
 				role: "img",
 				label: "Error",
 				wrapperClass: DOT_WRAPPER,
-				iconClass: "lucide lucide-triangle-alert shrink-0 text-upstream-warning",
+				iconClass:
+					"lucide lucide-triangle-exclamation-point lucide-alert-triangle lucide-triangle-alert shrink-0 text-upstream-warning",
 				iconHidden: "true",
 				size: ["16", "16"],
 				dot: false,
