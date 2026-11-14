@@ -190,7 +190,7 @@ describe("ApiErrorCard", () =>
 				root: "card-outline-layer flex w-fit min-w-[min(480px,100%)] max-w-full flex-col overflow-clip rounded-card select-text",
 				childCount: 3,
 				header: "flex items-start gap-md px-lg py-md bg-alpha-1 text-body contain-inline-size",
-				icon: "lucide lucide-triangle-alert size-4 shrink-0 text-danger-000",
+				icon: "lucide lucide-triangle-exclamation-point lucide-alert-triangle lucide-triangle-alert size-4 shrink-0 text-danger-000",
 				headline: "Service is busy",
 				hintRow: "flex flex-col gap-md px-lg pt-lg pb-md last:pb-lg empty:hidden contain-inline-size",
 				hint: "This is usually temporary.",
@@ -693,7 +693,7 @@ describe("ApiErrorCard", () =>
 				order: Node.DOCUMENT_POSITION_FOLLOWING,
 				root: "flex w-full max-w-[480px] flex-col items-start gap-1 self-start ps-[var(--cds-assistant-message-text-inset,0px)]",
 				row: "flex max-w-full min-w-0 items-center gap-1.25 select-text",
-				icon: "lucide lucide-triangle-alert size-4 shrink-0 text-danger-000",
+				icon: "lucide lucide-triangle-exclamation-point lucide-alert-triangle lucide-triangle-alert size-4 shrink-0 text-danger-000",
 				label:
 				{
 					text: "Service was busy",

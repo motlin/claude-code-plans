@@ -872,7 +872,7 @@ describe("ChangesPaneView file list", () =>
 			).toStrictEqual(
 				{
 					coloured: false,
-					className: "lucide lucide-code-xml shrink-0 text-ink-muted",
+					className: "lucide lucide-code-xml lucide-code-2 shrink-0 text-ink-muted",
 				},
 			);
 		});

@@ -2316,7 +2316,7 @@ describe("Composer effort submenu", () =>
 					className:
 						"inline-flex items-center gap-1 h-5 whitespace-nowrap rounded-full px-1.5 text-[11px] font-medium min-w-0 shrink bg-[var(--warning-tint)] text-warning-000",
 					text: "3.5× or more usage",
-					icon: "lucide lucide-triangle-alert size-3 shrink-0",
+					icon: "lucide lucide-triangle-exclamation-point lucide-alert-triangle lucide-triangle-alert size-3 shrink-0",
 				},
 				info: null,
 				afterRadios: "separator",
@@ -2714,7 +2714,7 @@ describe("Composer effort submenu", () =>
 				className: "flex items-center gap-1 text-footnote text-[var(--menu-muted)]",
 				text: "Max",
 				name: "max-w-[160px] truncate",
-				icon: "lucide lucide-triangle-alert size-3 shrink-0 text-warning-100",
+				icon: "lucide lucide-triangle-exclamation-point lucide-alert-triangle lucide-triangle-alert size-3 shrink-0 text-warning-100",
 				plainValue: null,
 			},
 		);

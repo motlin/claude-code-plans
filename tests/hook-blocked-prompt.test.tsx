@@ -189,7 +189,7 @@ describe("HookBlockedPromptMarker", () =>
 			{
 				root: "flex w-full max-w-[480px] flex-col items-start gap-1 self-start ps-[var(--cds-assistant-message-text-inset,0px)]",
 				label: "Prompt blocked by a hook",
-				icon: "lucide lucide-triangle-alert size-4 shrink-0 text-danger-000",
+				icon: "lucide lucide-triangle-exclamation-point lucide-alert-triangle lucide-triangle-alert size-4 shrink-0 text-danger-000",
 				body: "worker unreachable",
 			},
 		);

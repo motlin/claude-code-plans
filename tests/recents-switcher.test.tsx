@@ -620,9 +620,9 @@ describe("RecentsSwitcher", () =>
 		).toStrictEqual(
 			{
 				rows: [
-					["lucide lucide-code-xml", "Alpha session"],
+					["lucide lucide-code-xml lucide-code-2", "Alpha session"],
 					["lucide lucide-folder-open", "proj"],
-					["lucide lucide-code-xml", "Untitled"],
+					["lucide lucide-code-xml lucide-code-2", "Untitled"],
 				],
 				selected:
 				{

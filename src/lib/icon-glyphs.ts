@@ -91,7 +91,7 @@ export const ICON_GLYPHS =
 type GlyphProps = Omit<LucideProps, "ref">;
 
 /** Strips lucide's sizing props so a hand-drawn svg takes only the shared attributes. */
-function svgAttributes({size: _size, strokeWidth: _stroke, absoluteStrokeWidth: _absolute, ...rest}: GlyphProps)
+function svgAttributes({size: _size, strokeWidth: _stroke, ...rest}: GlyphProps)
 {
 	return rest;
 }
