@@ -173,7 +173,12 @@ export function classifyZodIssues(
 			}
 		}
 	}
-	const unmatchedToolName = extractUnmatchedToolName(body, state.matchedToolArm);
+	// Zod returns a union's issues unwrapped when only one arm survives, so a lone arm that never failed on
+	// `tool_name` is the matched tool arm even though no `invalid_union` reached the walker.
+	const matchedToolArm =
+		state.matchedToolArm ||
+		(relevantIssues.length > 0 && !relevantIssues.some((issue) => issue.path[0] === "tool_name"));
+	const unmatchedToolName = extractUnmatchedToolName(body, matchedToolArm);
 	if (unmatchedToolName) unknownFields.add(`tool_name: ${unmatchedToolName}`);
 	return {
 		missingFields: [...missingFields].toSorted(),
