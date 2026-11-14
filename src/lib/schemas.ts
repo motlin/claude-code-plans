@@ -342,6 +342,8 @@ export const PromptSourceSchema = z.enum(["typed", "system", "sdk", "queued", "s
 export const TurnOriginSchema = z.enum(["human", "peer", "task_notification", "scheduled", "system", "sdk"]);
 /** Which wakeup fired a scheduled/loop prompt; mirrors the UserPromptSubmit hook `source` wakeup values. */
 export const WakeupSourceSchema = z.enum(["loop_wakeup", "schedule_wakeup"]);
+/** `mcpCallNotReadOnly` on an MCP tool_result user record: why the call was not treated as read-only. */
+export const McpCallNotReadOnlySchema = z.enum(["no_hint", "declared"]);
 /** `queueOrigin.kind` on user records: the queue that delivered the prompt. */
 export const QueueOriginKindSchema = z.enum(["task-notification"]);
 /** `queueOrigin.source` on user records: the background producer behind a queued notification. */
@@ -477,6 +479,7 @@ export const PermissionDecisionClassifierCategorySchema = z.enum([
 	"tmux_self_drive",
 	"traffic_redirection",
 	"unauthorized_persistence",
+	"undermining_oversight",
 	"unrequested_artifact_publish",
 	"unrequested_commit_in_a_connected_app",
 	"untrusted_code_integration",
@@ -672,6 +675,7 @@ export const UserRecordSchema = z
 			classifierMetaLines: z.string().optional(),
 			serverClassifierContext: ServerClassifierContextSchema.optional(),
 			permissionDecision: PermissionDecisionSchema.optional(),
+			mcpCallNotReadOnly: McpCallNotReadOnlySchema.optional(),
 			// Whether the Bash call answered by this tool_result ran inside the sandbox.
 			sandboxed: z.boolean().optional(),
 			// Safety-classifier stop notice: the id of the assistant message that was withheld.
@@ -698,6 +702,9 @@ const RateLimitInfoSchema = z
 
 // How the assistant's thinking was surfaced: streamed as `updates`, or `omitted` (empty thinking text).
 export const ThinkingDisplaySchema = z.enum(["updates", "omitted", "summarized"]);
+
+// Who produced an assistant message (only `model` observed so far).
+export const MadeBySchema = z.enum(["model"]);
 
 // The prompt-cache TTL the CLI asked for on the request that produced an assistant message.
 export const PromptCacheTtlSchema = z.enum(["5m", "1h"]);
@@ -814,6 +821,7 @@ export const AssistantRecordSchema = z
 			advisorModel: z.string().optional(),
 			apiBlockIndex: z.number().optional(),
 			perTurnEffort: z.union([z.string(), z.null()]).optional(),
+			madeBy: MadeBySchema.optional(),
 			serverClassifierRequest: z.string().optional(),
 			thinkingDisplay: ThinkingDisplaySchema.optional(),
 			// Safety-classifier stop: the id of the withheld assistant message.
@@ -2665,6 +2673,7 @@ export const CostStateRecordSchema = z
 			// Keyed by model id, e.g. "claude-opus-5-5[1m]".
 			modelUsage: z.record(z.string(), ModelCostUsageSchema).optional(),
 			hasUnknownModelCost: z.boolean().optional(),
+			modelCallCostUSD: z.number().optional(),
 		},
 	)
 	.strict();

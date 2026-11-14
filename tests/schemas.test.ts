@@ -1717,6 +1717,7 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () =>
 			advisorModel: "claude-opus-5-5",
 			apiBlockIndex: 2,
 			perTurnEffort: null,
+			madeBy: "model",
 			serverClassifierRequest: "931e5375-552d-4f2d-9c4c-4a60cd3903d0",
 			truncatedAfterOutput: true,
 			wireIngestContext:
@@ -2333,6 +2334,7 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () =>
 					},
 				},
 				hasUnknownModelCost: false,
+				modelCallCostUSD: 0.25,
 			},
 			{
 				type: "frame-link",
@@ -3950,6 +3952,7 @@ describe("JsonlRecordSchema observed 2026-10-21 transcript fields", () =>
 					grantScope: "once",
 					reasonCode: "unknown",
 				},
+				mcpCallNotReadOnly: "declared",
 			},
 			{
 				type: "user",
@@ -3972,6 +3975,7 @@ describe("JsonlRecordSchema observed 2026-10-21 transcript fields", () =>
 					grantScope: "session",
 					reasonCode: "rule:userSettings",
 				},
+				mcpCallNotReadOnly: "no_hint",
 			},
 		];
 
@@ -4135,6 +4139,15 @@ describe("JsonlRecordSchema observed 2026-10-22 permission decisions", () =>
 					reasonType: "classifier",
 					reasonCode: "classifier:auto-mode",
 					classifierCategory: "bot_check_circumvention",
+				},
+			),
+			toolResultRecord(
+				{
+					decision: "reject",
+					source: "config",
+					reasonType: "classifier",
+					reasonCode: "classifier:auto-mode",
+					classifierCategory: "undermining_oversight",
 				},
 			),
 			toolResultRecord(

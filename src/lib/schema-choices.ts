@@ -68,6 +68,7 @@ import type
 	GitCommitKindSchema,
 	GitPrActionSchema,
 	JsonlRecordSchema,
+	MadeBySchema,
 	ModelRefusalFallbackDirectionSchema,
 	ModelRefusalFallbackScopeSchema,
 	PromptSubmitEndingSchema,
@@ -91,6 +92,7 @@ import type
 	QueueOriginKindSchema,
 	QueueOriginSourceSchema,
 	WakeupSourceSchema,
+	McpCallNotReadOnlySchema,
 	HistorySuppressionCauseSchema,
 	UserRecordSchema,
 	WriteToolUseResultTypeSchema,
@@ -182,6 +184,13 @@ export const wakeupSourceLabels =
 	loop_wakeup: "Loop wakeup",
 	schedule_wakeup: "Schedule wakeup",
 } satisfies Record<z.infer<typeof WakeupSourceSchema>, string>;
+
+/** `mcpCallNotReadOnly` on MCP tool_result user records; validated only, not rendered yet. */
+const mcpCallNotReadOnlyLabels =
+{
+	no_hint: "No read-only hint",
+	declared: "Declared not read-only",
+} satisfies Record<z.infer<typeof McpCallNotReadOnlySchema>, string>;
 
 /** Labels not consumed yet — the transcript reads `queueOrigin` only for an ended Artifact watch. */
 const queueOriginSourceLabels =
@@ -364,6 +373,7 @@ const permissionDecisionClassifierCategories =
 	tmux_self_drive: true,
 	traffic_redirection: true,
 	unauthorized_persistence: true,
+	undermining_oversight: true,
 	unrequested_artifact_publish: true,
 	unrequested_commit_in_a_connected_app: true,
 	untrusted_code_integration: true,
@@ -637,6 +647,12 @@ const streamCutCauseChoices =
 {
 	stream_suspended: true,
 } satisfies Record<z.infer<typeof StreamCutCauseSchema>, true>;
+
+/** Not consumed yet — `madeBy` (who produced the message) on assistant records is only validated. */
+const madeByChoices =
+{
+	model: true,
+} satisfies Record<z.infer<typeof MadeBySchema>, true>;
 
 /** Not consumed yet — `promptCacheRequested` (the prompt-cache TTL asked for) on assistant records is only validated. */
 const promptCacheTtlChoices =
@@ -1920,6 +1936,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"UserRecordSchema.permissionDecision.grantScope": permissionDecisionGrantScopeLabels,
 	"UserRecordSchema.permissionDecision.circuitBreaker": permissionDecisionCircuitBreakerLabels,
 	"UserRecordSchema.permissionDecision.classifierCategory": permissionDecisionClassifierCategories,
+	"UserRecordSchema.mcpCallNotReadOnly": mcpCallNotReadOnlyLabels,
 	JsonlRecordSchema: jsonlRecordVariants,
 	"JsonlRecordSchema.<api-request-blob>.message.content|1[]": apiRequestBlobContentBlockVariants,
 	"JsonlRecordSchema.<api-request-blob>.message.content|1[].<tool_addition>.tool": toolAdditionToolVariants,
@@ -1941,6 +1958,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	"JsonlRecordSchema.<assistant>.thinkingDisplay": thinkingDisplayChoices,
 	"JsonlRecordSchema.<assistant>.streamCutCause": streamCutCauseChoices,
 	"JsonlRecordSchema.<assistant>.promptCacheRequested": promptCacheTtlChoices,
+	"JsonlRecordSchema.<assistant>.madeBy": madeByChoices,
 	"JsonlRecordSchema.<system>.contextUsage.over_limit.kind": contextUsageOverLimitKindChoices,
 	"JsonlRecordSchema.<system>.contextUsage.categories[].kind": contextUsageCategoryKindChoices,
 	"ContextMirrorFileSchema.breakdown.autocompactSource": contextWindowSourceChoices,
