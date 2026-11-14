@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+// @vitest-isolate: asserts useCodeThemeBackground before any code theme has loaded, which a file sharing its module graph can load first.
 
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";

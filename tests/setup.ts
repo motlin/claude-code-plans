@@ -2,6 +2,7 @@ import {afterAll, afterEach, beforeAll, vi} from "vite-plus/test";
 import {resetAnsweredApprovals} from "../src/lib/answered-approvals";
 import {resetAnsweredSessions} from "../src/lib/answered-sessions";
 import {resetQuestionCardStore} from "../src/lib/question-card-store";
+import {captureDomGlobals, restoreDomGlobals} from "./dom-globals";
 import {isolateGitEnvironment} from "./git-fixture";
 import {captureStorageGlobals, restoreStorageGlobals} from "./storage-globals";
 
@@ -48,11 +49,12 @@ declare global
 	}
 }
 
-// Put back real timers and the real clock a file left faked, as a fresh worker would start the next file. Per file,
-// not per test: several files fake the clock once in beforeAll for all their tests.
+// Put back real timers, the real clock and every global a file stubbed, as a fresh worker would start the next file.
+// Per file, not per test: several files fake the clock or stub globals once in beforeAll for all their tests.
 afterAll(() =>
 {
 	vi.useRealTimers();
+	vi.unstubAllGlobals();
 });
 
 // A file that swaps localStorage or sessionStorage for a fake or a throwing getter would hand it to the next file in a
@@ -122,6 +124,14 @@ if (typeof window !== "undefined")
 	afterEach(() =>
 	{
 		cleanup();
+	});
+	// A file that patches a DOM prototype, document, navigator or a DOM global by hand (an offsetParent getter, a deleted
+	// native, an animate or ResizeObserver jsdom lacks) would hand the patch to the next file in a shared-dom worker.
+	// Remember the DOM as this setup leaves it before any file runs, and put it back after each file.
+	captureDomGlobals();
+	afterAll(() =>
+	{
+		restoreDomGlobals();
 	});
 }
 

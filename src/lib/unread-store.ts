@@ -13,7 +13,8 @@ type Persist = (sessionId: string, action: ViewedAction) => Promise<unknown>;
 const listeners = new Set<() => void>();
 const unseenBySession = new Map<string, boolean>();
 
-let persist: Persist = async (sessionId, action) => updateSessionViewedState(sessionId, action);
+const persistToServer: Persist = async (sessionId, action) => updateSessionViewedState(sessionId, action);
+let persist = persistToServer;
 
 function emitChange(): void
 {
@@ -104,6 +105,7 @@ export const __unreadStoreTesting =
 	},
 	reset(): void
 	{
+		persist = persistToServer;
 		unseenBySession.clear();
 		emitChange();
 	},

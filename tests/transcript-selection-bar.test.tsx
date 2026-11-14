@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+// @vitest-isolate: its fake timers and synchronous requestAnimationFrame stub leave state behind that stops a later file's Changes pane from showing a file whole.
 
 import {act, cleanup, fireEvent, render, renderHook} from "@testing-library/react";
 import {useRef} from "react";

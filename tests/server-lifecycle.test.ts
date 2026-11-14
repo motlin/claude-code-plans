@@ -550,30 +550,35 @@ describe("scripts/server.sh", () =>
 		);
 	}, 30_000);
 
-	// On a heavily loaded machine the server can take well over 20s to bind, so
-	// the default wait must outlast that; it polls, so a fast start stays fast.
-	it("start waits by default for a server that takes longer than 20s to listen", () =>
+	// On a heavily loaded machine the server can take well over 20s to bind, so the default wait must outlast that.
+	// "start gives up ... within START_TIMEOUT_SECONDS" proves the setting bounds the wait and "start keeps waiting
+	// when the launcher exits" proves a default start polls; reading the default from the script's own trace proves
+	// it is long enough without spending 20s of a test waiting it out.
+	it("start waits 60s by default, long enough for a server that takes longer than 20s to listen", () =>
 	{
-		const output = execFileSync(
+		const {START_TIMEOUT_SECONDS: _unused, ...defaultTimeoutEnv} = env;
+		const result = spawnSync(
 			"bash",
-			[script, "start"],
+			["-x", script],
 			{
 				cwd: projectRoot,
 				encoding: "utf8",
-				env:
-				{
-					...env,
-					FAKE_SERVER_LISTEN_DELAY_MS: "21000",
-				},
+				env: defaultTimeoutEnv,
 			},
 		);
-		const pids = portOwners();
-		run("stop");
 
-		expect(output).toBe(
-			`No server running (port ${PORT})\nServer pid ${pids[0] ?? ""} listening on port ${PORT} (log: ${join(runDir, "server.log")})\n`,
+		expect(
+			{
+				status: result.status,
+				defaults: result.stderr.split("\n").filter((line) => line.startsWith("+ START_TIMEOUT_SECONDS=")),
+			},
+		).toStrictEqual(
+			{
+				status: 64,
+				defaults: ["+ START_TIMEOUT_SECONDS=60"],
+			},
 		);
-	}, 120_000);
+	});
 
 	it("start fails fast when the server exits before it listens", () =>
 	{

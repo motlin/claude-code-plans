@@ -6,7 +6,7 @@ import {needsIsolation, partitionTestFiles, runsInDom} from "../scripts/vitest-i
 
 describe("needsIsolation", () =>
 {
-	it("isolates files that replace modules, stub globals, rename the process or ask for it", () =>
+	it("isolates files that replace modules, rename the process or ask for it, but shares files that only stub globals", () =>
 	{
 		const sources =
 		{
@@ -29,7 +29,7 @@ describe("needsIsolation", () =>
 				mock: true,
 				doMock: true,
 				resetModules: true,
-				stubGlobal: true,
+				stubGlobal: false,
 				processTitle: true,
 				marked: true,
 			},

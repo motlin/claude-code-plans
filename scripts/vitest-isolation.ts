@@ -1,14 +1,10 @@
 import {readdirSync, readFileSync} from "node:fs";
 import path from "node:path";
 
-// A file needs its own module graph when it replaces modules, stubs globals or renames the process: under
-// isolate: false any of these would leak into the next file the worker runs. A file that asserts a module's
-// first-load state says so with an `@vitest-isolate` comment.
-const ISOLATION_MARKERS = [
-	/\bvi\.(?:mock|doMock|resetModules|stubGlobal)\(/,
-	/\bprocess\.title\b/,
-	/@vitest-isolate\b/,
-];
+// A file needs its own module graph when it replaces modules or renames the process: under isolate: false either
+// would leak into the next file the worker runs. Stubbed globals don't count: tests/setup.ts unstubs them after every
+// file. A file that asserts a module's first-load state says so with an `@vitest-isolate` comment.
+const ISOLATION_MARKERS = [/\bvi\.(?:mock|doMock|resetModules)\(/, /\bprocess\.title\b/, /@vitest-isolate\b/];
 
 const DOM_ENVIRONMENT = /@vitest-environment\s+jsdom/;
 

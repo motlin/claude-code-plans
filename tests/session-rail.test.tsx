@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+// @vitest-isolate: a later file sharing its worker finds its ⌥⌘↑ / ⌥⌘↓ prompt-jump keydown already prevented after this file.
 
 import type {ReactNode} from "react";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";

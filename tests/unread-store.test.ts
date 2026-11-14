@@ -97,6 +97,10 @@ describe("unread-store", () =>
 		store.markSeen("session-test-100");
 		const afterMarkSeen = store.hasUnseenWork("session-test-100");
 		await settle();
+		// reset() puts back the real persist, so a test's stub can't swallow a later test file's server calls.
+		store.__unreadStoreTesting.reset();
+		store.markUnseen("session-test-100");
+		await settle();
 
 		expect(
 			{
