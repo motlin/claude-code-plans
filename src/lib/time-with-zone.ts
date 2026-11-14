@@ -4,8 +4,7 @@
  * tooltip. The pattern and zone tables mirror upstream's bundle.
  */
 
-import type StateCore from "markdown-it/lib/rules_core/state_core.mjs";
-import type Token from "markdown-it/lib/token.mjs";
+import type {StateCore, Token} from "markdown-it";
 import {defined} from "./defined";
 
 /** Fixed zone abbreviations, as minutes east of UTC. */

@@ -27,7 +27,7 @@ const SESSION_LINK_TEXT =
  * (double-tilde) del, with code as `font-mono-ui`. Raw HTML is escaped.
  */
 const titleMarkdown = new MarkdownIt("zero").enable(["emphasis", "backticks", "strikethrough", "escape", "entity"]);
-titleMarkdown.renderer.rules.code_inline = (tokens, idx) =>
+titleMarkdown.renderer.rules["code_inline"] = (tokens, idx) =>
 	`<code class="font-mono-ui">${titleMarkdown.utils.escapeHtml(tokens[idx]?.content ?? "")}</code>`;
 
 function renderChipTitleHtml(title: string): string
