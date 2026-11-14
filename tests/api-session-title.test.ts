@@ -40,7 +40,37 @@ const state = vi.hoisted(() => (
 				ok: true,
 			},
 		),
+	/** Runs once, right after the next opened file handle's first read, to land another writer's bytes in that gap. */
+	afterNextRead: undefined as (() => Promise<void>) | undefined,
 }));
+
+vi.mock("node:fs/promises", async (importOriginal) =>
+{
+	const actual = await importOriginal<typeof import("node:fs/promises")>();
+	return {
+		...actual,
+		open: async (...args: Parameters<typeof actual.open>) =>
+		{
+			const handle = await actual.open(...args);
+			const hook = state.afterNextRead;
+			if (!hook) return handle;
+			state.afterNextRead = undefined;
+			const read = handle.read.bind(handle) as (...readArgs: unknown[]) => Promise<unknown>;
+			(
+				handle as unknown as
+				{
+					read: typeof read;
+				}
+			).read = async (...readArgs) =>
+			{
+				const result = await read(...readArgs);
+				await hook();
+				return result;
+			};
+			return handle;
+		},
+	};
+});
 
 vi.mock("../src/lib/db", () => (
 {
@@ -144,6 +174,7 @@ beforeEach(async () =>
 
 afterEach(() =>
 {
+	state.afterNextRead = undefined;
 	resetBridgePushedTitles();
 	db.close();
 	rmSync(
@@ -204,6 +235,27 @@ async function readLines(): Promise<string[]>
 	const raw = await readFile(sessionPath, "utf-8");
 	expect(raw.endsWith("\n")).toBe(true);
 	return raw.slice(0, -1).split("\n");
+}
+
+async function readRecords(): Promise<
+	{
+		type: string;
+		uuid?: string;
+	}[]
+>
+{
+	// A rename that sees a live writer's line cut short starts its record on a fresh line, leaving one
+	// blank line once the writer finishes; transcript readers skip blank lines, so only those are skipped.
+	return (await readLines())
+		.filter((line) => line !== "")
+		.map(
+			(line) =>
+				JSON.parse(line) as
+				{
+					type: string;
+					uuid?: string;
+				},
+		);
 }
 
 const sidecarPath = () => join(projectsDir, PROJECT, SESSION_ID, "custom-title.json");
@@ -419,15 +471,7 @@ describe("PUT /api/sessions/$id/title", () =>
 		);
 		await Promise.all([writer, ...renames]);
 
-		const lines = await readLines();
-		const parsed = lines.map(
-			(line) =>
-				JSON.parse(line) as
-				{
-					type: string;
-					uuid?: string;
-				},
-		);
+		const parsed = await readRecords();
 		expect(
 			parsed
 				.filter((r) => r.type === "custom-title")
@@ -452,6 +496,46 @@ describe("PUT /api/sessions/$id/title", () =>
 		expect(parsed.filter((r) => r.uuid?.startsWith("live-")).map((r) => r.uuid)).toEqual(
 			writerLines.map((_, i) => `live-${i}`),
 		);
+	});
+
+	it("keeps every record whole when a rename reads the tail while a live write is only partly visible", async () =>
+	{
+		const live = JSON.stringify(
+			{
+				type: "user",
+				uuid: "live-0",
+				message:
+				{
+					content: "y".repeat(2000),
+				},
+			},
+		);
+		// Linux makes a write visible a page at a time: the rename sees the writer's line cut short,
+		// and the rest of it lands before the rename's own O_APPEND write.
+		await appendFile(sessionPath, live.slice(0, 1000));
+		state.afterNextRead = async () => appendFile(sessionPath, live.slice(1000) + "\n");
+
+		await renameSession(
+			{
+				db: db.index,
+				claudeDir: join(home, ".claude"),
+				sessionId: SESSION_ID,
+				title: "Mid-line",
+				broadcast: () =>
+				{
+				},
+			},
+		);
+
+		expect(await readRecords()).toEqual([
+			...initialRecords,
+			JSON.parse(live),
+			{
+				type: "custom-title",
+				customTitle: "Mid-line",
+				sessionId: SESSION_ID,
+			},
+		]);
 	});
 
 	it("rejects a cross-site request without touching the transcript", async () =>
