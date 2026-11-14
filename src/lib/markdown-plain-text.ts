@@ -1,6 +1,4 @@
-import MarkdownIt from "markdown-it";
-
-type Token = ReturnType<MarkdownIt["parse"]>[number];
+import MarkdownIt, {type Token} from "markdown-it";
 
 const parser = new MarkdownIt(
 	{

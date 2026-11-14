@@ -1,8 +1,6 @@
 import type {HighlighterCore} from "@shikijs/core";
-import MarkdownIt from "markdown-it";
-import type StateCore from "markdown-it/lib/rules_core/state_core.mjs";
-import type StateInline from "markdown-it/lib/rules_inline/state_inline.mjs";
-import type Token from "markdown-it/lib/token.mjs";
+import markdownIt from "markdown-it";
+import type {MarkdownIt, StateCore, StateInline, Token} from "markdown-it";
 import taskLists from "markdown-it-task-lists";
 import footnote from "markdown-it-footnote";
 import {requestLanguage, themeOrRequest} from "../hooks/use-shiki";
@@ -69,10 +67,11 @@ interface MarkdownRenderOptions
 
 /**
  * Per-render state; the MarkdownIt instances themselves are cached and shared. A class, so rules can narrow
- * markdown-it's untyped `env` with `instanceof`.
+ * markdown-it's open-ended `env` with `instanceof`; the index signature makes it assignable to markdown-it's `Env`.
  */
 class MarkdownEnv
 {
+	readonly [key: string | symbol]: unknown;
 	readonly mdLinkBase: string | undefined;
 	readonly fileRefs: ReadonlyMap<string, FileRef> | undefined;
 	readonly artifactTitles: ReadonlyMap<string, string> | undefined;
@@ -98,6 +97,13 @@ class MarkdownEnv
 function toEnv(options?: MarkdownRenderOptions): MarkdownEnv
 {
 	return new MarkdownEnv(options);
+}
+
+/** A link token's `href`; markdown-it types attribute values as `string | number`, but links only ever carry strings. */
+function hrefOf(token: Token): string | null
+{
+	const href = token.attrGet("href");
+	return typeof href === "string" ? href : null;
 }
 
 /** The render's `MarkdownEnv`, or undefined for an env some other caller passed. */
@@ -354,7 +360,7 @@ function collapseLinks(
 		for (let index = 0; index < children.length; index++)
 		{
 			const token = defined(children[index], "link token index out of range");
-			const href = token.type === "link_open" ? token.attrGet("href") : null;
+			const href = token.type === "link_open" ? hrefOf(token) : null;
 			const close =
 				href === null ? -1 : children.findIndex((child, at) => at > index && child.type === "link_close");
 			const text = close === -1 ? "" : linkText(children.slice(index + 1, close));
@@ -430,7 +436,7 @@ function pullRequestChips(state: StateCore): void
 
 function pullRequestChipHtml(token: Token, escape: (value: string) => string): string
 {
-	const href = token.attrGet("href") ?? "";
+	const href = hrefOf(token) ?? "";
 	const {owner, repo, number} = defined(parsePullRequestUrl(href), "PR chip token href");
 	return `<a href="${escape(href)}" target="_blank" rel="noreferrer" class="pr-chip"><span class="whitespace-nowrap">${PR_ICON_SVG}${escape(`${owner}/${repo}#${number}`)}</span></a>`;
 }
@@ -444,7 +450,7 @@ function isExternalHref(href: string): boolean
 /** Upstream's inline artifact chip: the artifact glyph and title on an accent-muted fill, in the line of prose. */
 function artifactLinkHtml(token: Token, env: MarkdownEnv | undefined, escape: (value: string) => string)
 {
-	const href = token.attrGet("href") ?? "";
+	const href = hrefOf(token) ?? "";
 	const {id} = defined(normalizeArtifactUrl(href), "artifact link token href");
 	const title = env?.artifactTitles?.get(id) ?? token.content;
 	return `<a href="${escape(href)}" target="_blank" rel="noreferrer" class="artifact-link-chip" ${ARTIFACT_LINK_ATTR}="">${ARTIFACT_ICON_SVG}<span class="artifact-link-chip-title">${escape(title)}</span></a>`;
@@ -708,8 +714,8 @@ function applyPlugins(instance: MarkdownIt): void
 	// Links written inside a memory file keep their `.md` extension, but the
 	// route that serves them is keyed by the extension-less slug, so an
 	// unrewritten link is a hard 404 rather than a redirect.
-	const renderCodeInline = defined(instance.renderer.rules.code_inline, "markdown-it code_inline rule");
-	instance.renderer.rules.code_inline = (tokens, idx, options, env, self) =>
+	const renderCodeInline = defined(instance.renderer.rules["code_inline"], "markdown-it code_inline rule");
+	instance.renderer.rules["code_inline"] = (tokens, idx, options, env, self) =>
 	{
 		const text = defined(tokens[idx], "code_inline token").content;
 		const secrets = findSecrets(text);
@@ -730,7 +736,7 @@ function applyPlugins(instance: MarkdownIt): void
 	instance.renderer.rules["link_open"] = (tokens, idx, options, env, self) =>
 	{
 		const token = defined(tokens[idx], "link_open token");
-		const href = token.attrGet("href");
+		const href = hrefOf(token);
 		const markdownEnv = envOf(env);
 		const fileRefs = markdownEnv?.fileRefs;
 		const key = fileRefs === undefined || href === null ? null : fileRefLinkKey(href);
@@ -797,10 +803,10 @@ function applyPlugins(instance: MarkdownIt): void
 	// Upstream wraps every fence in a relative box carrying an absolutely
 	// positioned top-right control strip with an icon-only copy button; a bare
 	// markdown-it `<pre>` has nowhere to anchor one.
-	const renderFence = defined(instance.renderer.rules.fence, "markdown-it fence rule");
+	const renderFence = defined(instance.renderer.rules["fence"], "markdown-it fence rule");
 	// A fence holding secrets draws masked text with a Reveal toggle before Copy (upstream code card
 	// c5071af19); the raw highlighted block waits in a template the toggle swaps in.
-	instance.renderer.rules.fence = (tokens, idx, options, env, self) =>
+	instance.renderer.rules["fence"] = (tokens, idx, options, env, self) =>
 	{
 		const token = defined(tokens[idx], "fence token");
 		const raw = token.content;
@@ -836,7 +842,7 @@ function getPlainMarkdownIt(options?: MarkdownRenderOptions): MarkdownIt
 	const cachedInstance = plainInstances[variant];
 	if (cachedInstance) return cachedInstance;
 
-	const instance = MarkdownIt(
+	const instance = markdownIt(
 		{
 			html: false,
 			linkify: true,
@@ -869,7 +875,7 @@ function getHighlightedMarkdownIt(highlighter: HighlighterCore, options?: Markdo
 	const cachedInstance = highlightedInstances.get(cacheKey);
 	if (cachedInstance && boundHighlighters.get(cacheKey) === highlighter) return cachedInstance;
 
-	const instance = MarkdownIt(
+	const instance = markdownIt(
 		{
 			html: false,
 			linkify: true,
@@ -921,19 +927,19 @@ let previewInstance: MarkdownIt | null = null;
 function getPreviewMarkdownIt(): MarkdownIt
 {
 	if (previewInstance) return previewInstance;
-	const instance = MarkdownIt(
+	const instance = markdownIt(
 		{
 			html: false,
 			linkify: false,
 			typographer: false,
 		},
 	);
-	const renderFence = defined(instance.renderer.rules.fence, "markdown-it fence rule");
+	const renderFence = defined(instance.renderer.rules["fence"], "markdown-it fence rule");
 	applyPlugins(instance);
 	instance.core.ruler.disable([ARTIFACT_LINK_TOKEN, PR_CHIP_TOKEN]);
 	instance.renderer.rules["link_open"] = () => "";
 	instance.renderer.rules["link_close"] = () => "";
-	instance.renderer.rules.fence = renderFence;
+	instance.renderer.rules["fence"] = renderFence;
 	previewInstance = instance;
 	return instance;
 }
@@ -980,7 +986,7 @@ export function fileRefTexts(markdown: string): string[]
 		for (const child of token.children ?? [])
 		{
 			if (child.type === "code_inline") texts.push(child.content);
-			const href = child.type === "link_open" ? child.attrGet("href") : null;
+			const href = child.type === "link_open" ? hrefOf(child) : null;
 			const key = href === null ? null : fileRefLinkKey(href);
 			if (key !== null) texts.push(key);
 		}

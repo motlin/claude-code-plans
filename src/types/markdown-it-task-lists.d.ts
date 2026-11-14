@@ -1,6 +1,6 @@
 declare module "markdown-it-task-lists"
 {
-	import type {PluginSimple} from "markdown-it";
-	const taskLists: PluginSimple;
+	import type {MarkdownIt} from "markdown-it";
+	const taskLists: (md: MarkdownIt) => void;
 	export default taskLists;
 }
