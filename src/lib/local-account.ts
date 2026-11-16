@@ -14,6 +14,7 @@ const OAUTH_ACCOUNT_KEYS = [
 	"emailAddress",
 	"organizationType",
 	"organizationRateLimitTier",
+	"planDisplayName",
 ] as const;
 
 /** The signed-in Claude account as recorded locally by the CLI. */
@@ -128,7 +129,16 @@ export async function readLocalAccount({
 	};
 	const email = nonEmptyTrimmed(account.emailAddress);
 	if (email !== undefined) result.email = email;
-	const planInfo = plan(account);
+	// Upstream returns the account's plan display name ("Ultra") before any tier string.
+	const planDisplayName = nonEmptyTrimmed(account.planDisplayName);
+	const planInfo =
+		planDisplayName === undefined
+			? plan(account)
+			:
+				{
+					label: planDisplayName,
+					detail: planDisplayName,
+				};
 	if (planInfo !== undefined)
 	{
 		result.planLabel = planInfo.label;

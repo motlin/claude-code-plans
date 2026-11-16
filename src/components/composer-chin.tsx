@@ -1,5 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
-import {Gauge, Plus, SquareSlash} from "lucide-react";
+import {ArrowRight, Plus, SquareSlash} from "lucide-react";
 import {lazy, memo, type Ref, Suspense, useImperativeHandle, useState} from "react";
 
 import
@@ -94,23 +94,27 @@ function UsagePopoverBody({usage, onNavigate}: {usage: ComposerUsage | null; onN
 						data-usage-popover-header
 						className="flex min-h-5 items-center justify-between gap-2 px-3 py-1"
 					>
-						<span className="text-[12px]/[15px] text-ink-muted">
+						<span className="text-[12px]/[15px] text-muted-as-secondary">
 							{planDetail === undefined ? "Plan usage limits" : `Plan usage limits · ${planDetail}`}
 						</span>
+						{/* Upstream's `DT`: a ghost xxs "See all" button, flush end with a pad-sm outset. */}
 						<a
 							href={`#${settingsHash("usage")}`}
-							aria-label="View usage in Settings"
+							aria-label="See all usage in Settings"
 							onClick={onNavigate}
-							className="-me-1 flex size-5 items-center justify-center rounded-r4 text-ink-muted outline-none hover:bg-alpha-1 hover:text-primary focus-visible:bg-alpha-1"
+							className="-me-1 inline-flex h-5 items-center gap-1 rounded-r4 px-1.5 text-[12px]/[15px] text-primary outline-none hover:bg-alpha-1 focus-visible:bg-alpha-1"
 						>
-							<Gauge aria-hidden="true" className="size-3.5" />
+							See all
+							<ArrowRight aria-hidden="true" className="-me-1 size-3 rtl:-scale-x-100" />
 						</a>
 					</div>
 					{limits.length > 0 && (
-						<div role="group" aria-label="Usage limits" className="flex flex-col gap-2 px-3 pb-1">
-							{limits.map((limit) => (
-								<UsagePopoverLimitRow key={limit.label} label={limit.label} window={limit.window} />
-							))}
+						<div role="group" aria-label="Usage limits" className="flex flex-col gap-1.5">
+							<div className="flex flex-col gap-2 px-3 pb-1">
+								{limits.map((limit) => (
+									<UsagePopoverLimitRow key={limit.label} label={limit.label} window={limit.window} />
+								))}
+							</div>
 						</div>
 					)}
 				</div>

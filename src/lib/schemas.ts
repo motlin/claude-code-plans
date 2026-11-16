@@ -3775,6 +3775,7 @@ export const ClaudeJsonOauthAccountSchema = z
 			emailAddress: z.string().optional(),
 			organizationType: z.string().optional(),
 			organizationRateLimitTier: z.string().optional(),
+			planDisplayName: z.string().optional(),
 		},
 	)
 	.strict();

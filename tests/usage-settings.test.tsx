@@ -251,9 +251,28 @@ describe("UsagePanel", () =>
 			},
 		);
 		expect(heading.className).toBe("text-[15px] leading-[20px] font-[580] text-primary");
+		expect(heading.hasAttribute("data-settings-group-title")).toBe(true);
 		const pace = screen.getByTestId("usage-page-pace");
-		const headline = pace.querySelector("p");
-		expect(headline?.className).toBe("text-[22px] leading-[28px] font-[580] text-primary");
+		const headline = screen.getByRole(
+			"heading",
+			{
+				level: 3,
+			},
+		);
+		expect(
+			{
+				text: headline.textContent,
+				className: headline.className,
+				groupTitle: headline.hasAttribute("data-settings-group-title"),
+			},
+		).toStrictEqual(
+			{
+				text: "On track. You should reach tomorrow’s reset with room to spare.",
+				className: "text-[15px] leading-[20px] font-[580] text-primary",
+				groupTitle: true,
+			},
+		);
+		expect(pace.querySelector("p")).toBeNull();
 		const section = pace.querySelector("section");
 		expect(section?.className).toBe("mb-10 last:mb-0");
 		const items = [...(section?.querySelectorAll("[data-settings-item]") ?? [])];
@@ -261,6 +280,9 @@ describe("UsagePanel", () =>
 			"flex flex-col items-start gap-3 py-3",
 			"flex flex-col gap-5 py-3",
 		]);
+		const meterItem = items[1];
+		expect([...(meterItem?.children ?? [])].map((child) => child.className)).toStrictEqual(["flex flex-col gap-5"]);
+		expect(meterItem?.firstElementChild?.querySelectorAll(":scope > [data-usage-row]").length).toBe(2);
 		expect(document.querySelector(".divide-y")).toBeNull();
 
 		const [sessionMeter, weekMeter] = screen.getAllByRole("meter");

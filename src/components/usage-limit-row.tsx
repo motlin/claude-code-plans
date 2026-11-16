@@ -34,7 +34,7 @@ export function UsagePopoverLimitRow({label, window}: {label: string; window: Ra
 				<span id={labelId} className="text-primary">
 					{label}
 				</span>
-				<span className="ms-auto flex items-baseline gap-1.5 tabular-nums text-ink-muted">
+				<span className="ms-auto flex items-baseline gap-1.5 tabular-nums text-muted-as-secondary">
 					<span id={resetId}>{formatResetLabel(window.resetsAt, Date.now())}</span>
 					<span aria-hidden="true">{percent}%</span>
 				</span>

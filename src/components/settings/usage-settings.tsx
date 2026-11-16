@@ -24,7 +24,9 @@ import {SettingsSection} from "./settings-row";
  * the plan, then one settings section holding the pace headline item and the
  * meters item (split by the section's hairline, no dividers between rows),
  * one row per rate-limit window with a 4px meter tinted by severity (upstream's `wV`). The
- * windows come from the newest local statusline snapshot.
+ * windows come from the newest local statusline snapshot. The h2 and the pace
+ * headline h3 are both upstream's `text-heading-semibold` group titles at the
+ * comfortable 15/20 the other local settings headers use (default density is 14/18).
  */
 
 /** Upstream's `Ei`: the usage-limits support article. */
@@ -143,7 +145,9 @@ export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRe
 		<div className="flex flex-col">
 			<div data-testid="usage-page-pace" className="flex flex-col pb-6">
 				<div className="mb-3 flex items-baseline gap-2">
-					<h2 className="text-[15px] leading-[20px] font-[580] text-primary">Your usage</h2>
+					<h2 data-settings-group-title="" className="text-[15px] leading-[20px] font-[580] text-primary">
+						Your usage
+					</h2>
 					{planDetail === undefined ? null : (
 						<span className="whitespace-nowrap text-footnote text-secondary">{planDetail}</span>
 					)}
@@ -151,7 +155,12 @@ export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRe
 				<SettingsSection>
 					{headline === null ? null : (
 						<div data-settings-item="" className="flex flex-col items-start gap-3 py-3">
-							<p className="text-[22px] leading-[28px] font-[580] text-primary">{headline}</p>
+							<h3
+								data-settings-group-title=""
+								className="text-[15px] leading-[20px] font-[580] text-primary"
+							>
+								{headline}
+							</h3>
 						</div>
 					)}
 					{usage.fiveHour === null && usage.sevenDay === null ? (
@@ -162,25 +171,27 @@ export function UsagePanel({usage, planDetail, nowMs, timeZone, refreshing, onRe
 						</div>
 					) : (
 						<div data-settings-item="" className="flex flex-col gap-5 py-3">
-							{usage.fiveHour === null ? null : (
-								<UsageMeterRow
-									label="Current session"
-									caption={
-										sessionPaused
-											? "Paused until your week resets"
-											: formatLimitCaption(usage.fiveHour.resetsAt, nowMs, "short", timeZone)
-									}
-									window={usage.fiveHour}
-									dimmed={sessionPaused}
-								/>
-							)}
-							{usage.sevenDay === null ? null : (
-								<UsageMeterRow
-									label="This week"
-									caption={formatLimitCaption(usage.sevenDay.resetsAt, nowMs, "long", timeZone)}
-									window={usage.sevenDay}
-								/>
-							)}
+							<div className="flex flex-col gap-5">
+								{usage.fiveHour === null ? null : (
+									<UsageMeterRow
+										label="Current session"
+										caption={
+											sessionPaused
+												? "Paused until your week resets"
+												: formatLimitCaption(usage.fiveHour.resetsAt, nowMs, "short", timeZone)
+										}
+										window={usage.fiveHour}
+										dimmed={sessionPaused}
+									/>
+								)}
+								{usage.sevenDay === null ? null : (
+									<UsageMeterRow
+										label="This week"
+										caption={formatLimitCaption(usage.sevenDay.resetsAt, nowMs, "long", timeZone)}
+										window={usage.sevenDay}
+									/>
+								)}
+							</div>
 						</div>
 					)}
 				</SettingsSection>

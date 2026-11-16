@@ -158,6 +158,68 @@ const cases:
 		},
 	},
 	{
+		name: "plan display name wins over the tier",
+		claudeJson:
+		{
+			oauthAccount:
+			{
+				displayName: "Craig",
+				organizationType: "claude_max",
+				organizationRateLimitTier: "default_claude_max_20x",
+				planDisplayName: "Ultra",
+			},
+		},
+		expected:
+		{
+			name: "Craig",
+			firstName: "Craig",
+			initial: "C",
+			planLabel: "Ultra",
+			planDetail: "Ultra",
+		},
+	},
+	{
+		name: "blank plan display name falls back to the tier",
+		claudeJson:
+		{
+			oauthAccount:
+			{
+				displayName: "Craig",
+				organizationType: "claude_max",
+				organizationRateLimitTier: "default_claude_max_20x",
+				planDisplayName: "  ",
+			},
+		},
+		expected:
+		{
+			name: "Craig",
+			firstName: "Craig",
+			initial: "C",
+			planLabel: "Max",
+			planDetail: "Max (20x)",
+		},
+	},
+	{
+		name: "pro with plan display name",
+		claudeJson:
+		{
+			oauthAccount:
+			{
+				displayName: "Craig",
+				organizationType: "claude_pro",
+				planDisplayName: "Pro",
+			},
+		},
+		expected:
+		{
+			name: "Craig",
+			firstName: "Craig",
+			initial: "C",
+			planLabel: "Pro",
+			planDetail: "Pro",
+		},
+	},
+	{
 		name: "unknown organization type",
 		claudeJson:
 		{

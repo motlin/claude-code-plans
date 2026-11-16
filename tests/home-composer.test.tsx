@@ -404,6 +404,29 @@ describe("HomeComposer", () =>
 						: "other",
 		);
 		expect(order).toStrictEqual(["usage", "composer", "project"]);
+
+		// The home chin has no statusline, so its ring and popover read the account's limits.
+		const ring = within(home as HTMLElement).getByRole(
+			"button",
+			{
+				name: /^Usage:/,
+			},
+		);
+		fireEvent.click(ring);
+		const dialog = await screen.findByRole("dialog");
+		expect(
+			{
+				ring: ring.getAttribute("aria-label")?.startsWith("Usage: Weekly · all models: 50%, "),
+				meters: within(dialog)
+					.getAllByRole("meter")
+					.map((meter) => meter.getAttribute("aria-valuenow")),
+			},
+		).toStrictEqual(
+			{
+				ring: true,
+				meters: ["50"],
+			},
+		);
 	});
 
 	it("renders the folder picker in upstream's wrapping environment bar under the composer card", async () =>

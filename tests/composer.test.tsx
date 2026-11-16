@@ -1422,7 +1422,7 @@ describe("Composer", () =>
 			);
 		});
 
-		it("links the usage popover header's gauge to Settings › Usage", async () =>
+		it("links the usage popover header's See all button to Settings › Usage", async () =>
 		{
 			renderWithAccount("Max (20x)");
 
@@ -1438,23 +1438,56 @@ describe("Composer", () =>
 			const link = within(dialog).getByRole(
 				"link",
 				{
-					name: "View usage in Settings",
+					name: "See all usage in Settings",
+				},
+			);
+			const group = within(dialog).getByRole(
+				"group",
+				{
+					name: "Usage limits",
 				},
 			);
 
 			expect(
 				{
 					href: link.getAttribute("href"),
-					link: link.className.match(/\bsize-5\b|\brounded-r4\b|-me-1\b/g),
-					icon: link.querySelector("svg")?.classList.contains("lucide-gauge"),
+					text: link.textContent,
+					link: link.className,
+					children: Array.from(link.childNodes, (node) => node.nodeName),
+					icon: link.querySelector("svg")?.getAttribute("class"),
+					oldLink: within(dialog).queryByRole(
+						"link",
+						{
+							name: "View usage in Settings",
+						},
+					),
+					header: dialog.querySelector("[data-usage-popover-header] > span")?.className,
+					resets: Array.from(
+						group.querySelectorAll("[data-usage-row] > span:last-child"),
+						(span) => span.className,
+					),
+					group: group.className,
+					groupChildren: Array.from(group.children, (child) => child.className),
+					rows: group.firstElementChild?.querySelectorAll(":scope > div > [data-usage-row]").length,
 					className: dialog.className.match(/rounded-\S+|max-h-\S+|overflow-\S+/g),
 					body: dialog.firstElementChild?.className,
 				},
 			).toStrictEqual(
 				{
 					href: "#settings/usage",
-					link: ["-me-1", "size-5", "rounded-r4"],
-					icon: true,
+					text: "See all",
+					link: "-me-1 inline-flex h-5 items-center gap-1 rounded-r4 px-1.5 text-[12px]/[15px] text-primary outline-none hover:bg-alpha-1 focus-visible:bg-alpha-1",
+					children: ["#text", "svg"],
+					icon: "lucide lucide-arrow-right -me-1 size-3 rtl:-scale-x-100",
+					oldLink: null,
+					header: "text-[12px]/[15px] text-muted-as-secondary",
+					resets: [
+						"ms-auto flex items-baseline gap-1.5 tabular-nums text-muted-as-secondary",
+						"ms-auto flex items-baseline gap-1.5 tabular-nums text-muted-as-secondary",
+					],
+					group: "flex flex-col gap-1.5",
+					groupChildren: ["flex flex-col gap-2 px-3 pb-1"],
+					rows: 2,
 					className: ["max-h-[min(var(--available-height),640px)]", "rounded-r7"],
 					body: POPOVER_SCROLL_BODY_CLASS,
 				},
