@@ -326,6 +326,8 @@ const BaseRecordFields =
 	slug: z.string().optional(),
 	version: z.string().optional(),
 	entrypoint: z.string().optional(),
+	/** The client that sent the prompt, e.g. "desktop_app". */
+	clientPlatform: z.string().optional(),
 	forkedFrom: ForkedFromSchema.optional(),
 	teamName: z.string().optional(),
 	leafUuid: z.string().optional(),
@@ -434,6 +436,7 @@ export const PermissionDecisionClassifierCategorySchema = z.enum([
 	"credential_leakage",
 	"credential_materialization",
 	"data_exfiltration",
+	"destructive_or_unwanted_actions",
 	"dns_domain_cert_changes",
 	"excess_sensitive_detail",
 	"exfil_scouting",
@@ -478,6 +481,7 @@ export const PermissionDecisionClassifierCategorySchema = z.enum([
 	"tls_auth_weaken",
 	"tmux_self_drive",
 	"traffic_redirection",
+	"unauthorized_access",
 	"unauthorized_persistence",
 	"undermining_oversight",
 	"unrequested_artifact_publish",
@@ -1399,6 +1403,7 @@ const QueuedCommandAttachmentPayload = z
 			delivery_id: z.string().optional(),
 			reminderId: z.string().optional(),
 			humanTurn: z.boolean().optional(),
+			textNotTyped: z.boolean().optional(),
 			runId: z.string().optional(),
 			toolsUsedDelta: z.array(z.string()).optional(),
 			usage: z
@@ -1770,6 +1775,8 @@ const PromptSnapshotAttachmentPayload = z
 								name: z.string(),
 								description: z.string().optional(),
 								schema: z.record(z.string(), JsonValueSchema).optional(),
+								/** The MCP server id, on MCP tools. */
+								server: z.string().optional(),
 							},
 						)
 						.strict(),
@@ -2092,6 +2099,24 @@ export const CompactMetadataSchema = z
 						anchorUuid: z.string(),
 						uuids: z.array(z.string()),
 						allUuids: z.array(z.string()),
+					},
+				)
+				.strict()
+				.optional(),
+			runningTurnSends: z
+				.object(
+					{
+						uuids: z.array(z.string()),
+						openerUuid: z.string(),
+						summarisedOnly: z.array(z.string()),
+					},
+				)
+				.strict()
+				.optional(),
+			runningTurnPrompt: z
+				.object(
+					{
+						clientPlatform: z.string().optional(),
 					},
 				)
 				.strict()
@@ -3313,6 +3338,8 @@ export const SessionRegistryFileSchema = z
 			peerFeatures: z.array(z.string()).optional(),
 			kind: z.string(),
 			entrypoint: z.string(),
+			/** The desktop app's id for the session hosting this CLI, e.g. "local_<uuid>". */
+			hostSessionId: z.string().optional(),
 			pidDomain: z.string().optional(),
 			/** Set when the session runs as a background job: that job's id. */
 			jobId: z.string().optional(),
