@@ -224,7 +224,7 @@ export function toggleFamilyCollapsed(headSessionId: string): void
 	);
 }
 
-/** Collapse or expand several fork families at once (upstream's Alt-click on a family handle). */
+/** Collapse or expand several fork families at once (upstream `wI`; ⌘K Hide all nested sessions). */
 export function setFamiliesCollapsed(headSessionIds: readonly string[], collapsed: boolean): void
 {
 	const state = readSidebarState();
@@ -236,6 +236,17 @@ export function setFamiliesCollapsed(headSessionIds: readonly string[], collapse
 		{
 			...state,
 			collapsedFamilies,
+		},
+	);
+}
+
+/** Expand every fork family, stale keys included (upstream `wI(false)`; ⌘K Show all nested sessions). */
+export function showAllNestedSessions(): void
+{
+	writeSidebarState(
+		{
+			...readSidebarState(),
+			collapsedFamilies: [],
 		},
 	);
 }

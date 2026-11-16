@@ -6,6 +6,7 @@ import
 	DEFAULT_SIDEBAR_STATE,
 	readSidebarState,
 	setFamiliesCollapsed,
+	showAllNestedSessions,
 	SIDEBAR_STORAGE_KEY,
 	toggleFamilyCollapsed,
 	toggleSidebarCollapsed,
@@ -137,6 +138,31 @@ describe("sidebar-store", () =>
 
 		setFamiliesCollapsed(["a", "c"], false);
 		expect(readSidebarState().collapsedFamilies).toStrictEqual(["code:b"]);
+	});
+
+	// Upstream `wI(false)` expands the whole current list, so keys for heads no longer listed go too.
+	it("shows all nested sessions by clearing every family key, stale ones included", () =>
+	{
+		writeSidebarState(
+			{
+				collapsed: true,
+				width: 300,
+				collapsedGroups: ["state-done"],
+				collapsedFamilies: ["code:gone", "code:h1"],
+			},
+		);
+		setFamiliesCollapsed(["h1", "h2"], true);
+		expect(readSidebarState().collapsedFamilies).toStrictEqual(["code:gone", "code:h1", "code:h2"]);
+
+		showAllNestedSessions();
+		expect(readSidebarState()).toStrictEqual(
+			{
+				collapsed: true,
+				width: 300,
+				collapsedGroups: ["state-done"],
+				collapsedFamilies: [],
+			},
+		);
 	});
 
 	it("falls back to defaults on corrupt JSON", () =>

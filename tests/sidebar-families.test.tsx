@@ -11,7 +11,7 @@ import
 	RouterProvider,
 	useRouterState,
 } from "@tanstack/react-router";
-import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, renderHook, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SessionGroups} from "../src/components/sidebar/session-groups";
@@ -20,6 +20,7 @@ import {ToastProvider} from "../src/components/toast";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import type {SessionBucket} from "../src/lib/session-state";
 import {resetClickGuards} from "../src/lib/sidebar-click-guard";
+import {resetFamilyHeadsStore, useFamilyHeads} from "../src/lib/sidebar-family-heads-store";
 import {readSidebarState, toggleFamilyCollapsed} from "../src/lib/sidebar-store";
 import {installLocalStorage} from "./fake-storage";
 import {rowTitle} from "./sidebar-row-title";
@@ -298,6 +299,36 @@ beforeEach(() =>
 
 describe("sidebar session families", () =>
 {
+	// Upstream `g0`/`sS`: the mounted code list exposes its non-archived family heads to ⌘K.
+	it("publishes its family heads to the palette while mounted", async () =>
+	{
+		resetFamilyHeadsStore();
+		const heads = renderHook(() => useFamilyHeads());
+		const {unmount} = await renderGroups(TWO_FAMILIES);
+		// In display order: h2's family sorts above h1's in Working.
+		expect(heads.result.current).toStrictEqual(["h2", "h1"]);
+		unmount();
+		expect(heads.result.current).toBeNull();
+	});
+
+	it("publishes no archived family head", async () =>
+	{
+		resetFamilyHeadsStore();
+		const heads = renderHook(() => useFamilyHeads());
+		await renderGroups(
+			TWO_FAMILIES.map((row) =>
+				row.id === "h2"
+					?
+						{
+							...row,
+							archived: true,
+						}
+					: row,
+			),
+		);
+		expect(heads.result.current).toStrictEqual(["h1"]);
+	});
+
 	it("nests forks under their top ancestor in the family's most urgent group, indented 20px", async () =>
 	{
 		const {container} = await renderGroups(FAMILY);

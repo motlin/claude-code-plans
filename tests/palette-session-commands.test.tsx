@@ -26,6 +26,8 @@ import
 } from "../src/lib/api/sessions";
 import {pin, readPinState} from "../src/lib/pin-store";
 import {getSideChat, resetSideChatStore} from "../src/lib/side-chat-store";
+import {publishFamilyHeads, resetFamilyHeadsStore} from "../src/lib/sidebar-family-heads-store";
+import {readSidebarState, setFamiliesCollapsed} from "../src/lib/sidebar-store";
 import {installLocalStorage} from "./fake-storage";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
@@ -168,6 +170,30 @@ async function openPalette(initialPath: string, sessionDetail: SessionDetailData
 	};
 }
 
+/** The listed nested-sessions commands, in order. */
+function nestedLabels(dialog: HTMLElement): string[]
+{
+	return optionLabels(dialog).filter((label) => label.includes("nested sessions"));
+}
+
+async function typeQuery(dialog: HTMLElement, input: HTMLElement, value: string)
+{
+	fireEvent.change(
+		input,
+		{
+			target:
+			{
+				value,
+			},
+		},
+	);
+	// The search never settles here, so the settling skeleton marks the typed query as rendered.
+	await waitFor(() =>
+	{
+		expect(dialog.querySelector("[data-palette-skeleton]")).not.toBeNull();
+	});
+}
+
 function optionLabels(dialog: HTMLElement): string[]
 {
 	return [...dialog.querySelectorAll("[cmdk-item]")].map(
@@ -222,6 +248,7 @@ describe("palette contextual session commands", () =>
 	afterEach(() =>
 	{
 		cleanup();
+		resetFamilyHeadsStore();
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 		writeText.mockClear();
@@ -921,5 +948,154 @@ describe("palette contextual session commands", () =>
 		});
 
 		expect(document.activeElement).toBe(rename);
+	});
+
+	describe("Hide/Show (all) nested sessions", () =>
+	{
+		const owner = Symbol("sidebar");
+
+		// Upstream `sS`: Hide all needs an unfolded listed family, Show all a folded one.
+		it.each([
+			{
+				folded: [],
+				listed: ["Hide all nested sessions"],
+			},
+			{
+				folded: ["h1"],
+				listed: ["Hide all nested sessions", "Show all nested sessions"],
+			},
+			{
+				folded: ["h1", "h2"],
+				listed: ["Show all nested sessions"],
+			},
+		])("lists $listed for 'nested' with $folded folded", async ({folded, listed}) =>
+		{
+			publishFamilyHeads(owner, ["h1", "h2"]);
+			setFamiliesCollapsed(folded, true);
+			const {dialog, input} = await openPalette("/plans");
+			await typeQuery(dialog, input, "nested");
+
+			expect(nestedLabels(dialog)).toStrictEqual(listed);
+			const rows = [...dialog.querySelectorAll("[cmdk-item]")].filter((row) =>
+				row.textContent.includes("nested sessions"),
+			);
+			// Upstream binds no shortcut, so the rows carry no keycaps.
+			expect(rows.map((row) => row.getAttribute("aria-keyshortcuts"))).toStrictEqual(listed.map(() => null));
+		});
+
+		it("matches Show all through its 'Unfold sessions' hint", async () =>
+		{
+			publishFamilyHeads(owner, ["h1", "h2"]);
+			setFamiliesCollapsed(["h1"], true);
+			const {dialog, input} = await openPalette("/plans");
+			await typeQuery(dialog, input, "unfold");
+
+			expect(nestedLabels(dialog)).toStrictEqual(["Show all nested sessions"]);
+		});
+
+		it("folds every listed family from Hide all and closes", async () =>
+		{
+			publishFamilyHeads(owner, ["h1", "h2"]);
+			const {dialog, input} = await openPalette("/plans");
+			await typeQuery(dialog, input, "nested");
+			fireEvent.click(
+				within(dialog).getByRole(
+					"option",
+					{
+						name: "Hide all nested sessions",
+					},
+				),
+			);
+
+			expect(readSidebarState().collapsedFamilies).toStrictEqual(["code:h1", "code:h2"]);
+			await waitFor(() =>
+			{
+				expect(
+					screen.queryByRole(
+						"dialog",
+						{
+							name: "Search",
+						},
+					),
+				).toBeNull();
+			});
+		});
+
+		it("offers none while no session list is mounted", async () =>
+		{
+			const {dialog, input} = await openPalette("/plans");
+			await typeQuery(dialog, input, "nested");
+
+			expect(nestedLabels(dialog)).toStrictEqual([]);
+		});
+
+		it("offers none in the empty Search view", async () =>
+		{
+			publishFamilyHeads(owner, ["h1", "h2"]);
+			const {dialog} = await openPalette("/plans");
+			await within(dialog).findByRole(
+				"option",
+				{
+					name: /^New session/,
+				},
+			);
+
+			expect(nestedLabels(dialog)).toStrictEqual([]);
+		});
+
+		it("hides the current family head's nested sessions", async () =>
+		{
+			publishFamilyHeads(owner, ["sess-1"]);
+			const {dialog, input} = await openPalette("/session/sess-1");
+			await typeQuery(dialog, input, "nested");
+
+			expect(nestedLabels(dialog)).toStrictEqual(["Hide nested sessions", "Hide all nested sessions"]);
+			fireEvent.click(
+				within(dialog).getByRole(
+					"option",
+					{
+						name: "Hide nested sessions",
+					},
+				),
+			);
+			expect(readSidebarState().collapsedFamilies).toStrictEqual(["code:sess-1"]);
+		});
+
+		it("shows a folded current family head's nested sessions", async () =>
+		{
+			publishFamilyHeads(owner, ["sess-1"]);
+			setFamiliesCollapsed(["sess-1"], true);
+			const {dialog, input} = await openPalette("/session/sess-1");
+			await typeQuery(dialog, input, "nested");
+
+			expect(nestedLabels(dialog)).toStrictEqual(["Show nested sessions", "Show all nested sessions"]);
+			fireEvent.click(
+				within(dialog).getByRole(
+					"option",
+					{
+						name: "Show nested sessions",
+					},
+				),
+			);
+			expect(readSidebarState().collapsedFamilies).toStrictEqual([]);
+		});
+
+		it("offers no per-session command when the current session heads no listed family", async () =>
+		{
+			publishFamilyHeads(owner, ["other"]);
+			const {dialog, input} = await openPalette("/session/sess-1");
+			await typeQuery(dialog, input, "nested");
+
+			expect(nestedLabels(dialog)).toStrictEqual(["Hide all nested sessions"]);
+		});
+
+		it("matches Hide nested sessions through 'fold'", async () =>
+		{
+			publishFamilyHeads(owner, ["sess-1"]);
+			const {dialog, input} = await openPalette("/session/sess-1");
+			await typeQuery(dialog, input, "fold");
+
+			expect(nestedLabels(dialog)).toStrictEqual(["Hide nested sessions", "Hide all nested sessions"]);
+		});
 	});
 });

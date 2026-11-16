@@ -57,6 +57,8 @@ import
 	CircleHelp,
 	BookText,
 	TextCursorInput,
+	Maximize2,
+	Minimize2,
 } from "lucide-react";
 import {useActiveSessionsIfAvailable} from "../hooks/use-claude-events";
 import {focusRegionByName, isAvailable, type JumpRegionName} from "../lib/focus-regions";
@@ -172,7 +174,17 @@ import {getSessionMenuItems, type SessionMenuCapability} from "../lib/session-me
 import {copySessionLink} from "../lib/session-open-in";
 import {requestSessionRename} from "../lib/session-rename-request";
 import {SHORTCUTS, type ShortcutId} from "../lib/shortcuts/registry";
-import {toggleSidebar} from "../lib/sidebar-store";
+import
+{
+	familyKey,
+	setFamiliesCollapsed,
+	showAllNestedSessions,
+	toggleFamilyCollapsed,
+	toggleSidebar,
+	useSidebarState,
+} from "../lib/sidebar-store";
+import {useFamilyHeads} from "../lib/sidebar-family-heads-store";
+import {familyFoldState, NESTED_SESSION_COMMANDS} from "../lib/palette-nested-sessions";
 import {type ShortcutKeys, useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
 import {clearAll} from "../lib/unread-store";
 import {startPaletteSearchJourney} from "../lib/perf/field-journeys";
@@ -923,6 +935,8 @@ type SessionCommandId =
 	| "copy-link"
 	| "archive"
 	| "unarchive"
+	| "hide-nested"
+	| "show-nested"
 	| "copy-resume"
 	| "copy-fork";
 
@@ -940,6 +954,8 @@ const SESSION_COMMAND_ICONS =
 	"copy-link": <Link />,
 	archive: <Archive />,
 	unarchive: <ArchiveRestore />,
+	"hide-nested": <Minimize2 />,
+	"show-nested": <Maximize2 />,
 	"copy-resume": <Terminal />,
 	"copy-fork": <GitFork />,
 } as const satisfies Record<SessionCommandId, ReactNode>;
@@ -953,6 +969,8 @@ const SESSION_COMMAND_KEYWORDS =
 	"copy-link": ["session", "copy", "link", "url"],
 	archive: ["session", "archive", "hide"],
 	unarchive: ["session", "unarchive", "archive", "restore"],
+	"hide-nested": ["session", ...NESTED_SESSION_COMMANDS.hide_nested_sessions.keywords],
+	"show-nested": ["session", ...NESTED_SESSION_COMMANDS.show_nested_sessions.keywords],
 	"copy-resume": ["session", "copy", "resume", "command"],
 	"copy-fork": ["session", "copy", "fork", "command"],
 } as const satisfies Record<SessionCommandId, readonly string[]>;
@@ -964,8 +982,18 @@ const SESSION_COMMAND_CAPABILITIES: ReadonlySet<SessionMenuCapability> = new Set
 	"archive",
 ]);
 
-/** The session on screen as ⌘K commands: the shared menu model's quoted titles, then the CLI copies. */
-function currentSessionCommands(detail: SessionDetailData, pinned: boolean): SessionCommand[]
+/**
+ * The session on screen as ⌘K commands: the shared menu model's quoted titles, a family head's
+ * Hide/Show nested sessions (upstream's catalog puts it after fork), then the CLI copies.
+ */
+function currentSessionCommands(
+	detail: SessionDetailData,
+	pinned: boolean,
+	nested?:
+	{
+		hidden: boolean;
+	},
+): SessionCommand[]
 {
 	const menu = getSessionMenuItems(
 		{
@@ -1005,8 +1033,25 @@ function currentSessionCommands(detail: SessionDetailData, pinned: boolean): Ses
 				return [];
 		}
 	});
+	const nestedCommands: SessionCommand[] =
+		nested === undefined
+			? []
+			: [
+					nested.hidden
+						?
+							{
+								id: "show-nested",
+								label: NESTED_SESSION_COMMANDS.show_nested_sessions.label,
+							}
+						:
+							{
+								id: "hide-nested",
+								label: NESTED_SESSION_COMMANDS.hide_nested_sessions.label,
+							},
+				];
 	return [
 		...commands,
+		...nestedCommands,
 		{
 			id: "copy-resume",
 			label: "Copy resume command",
@@ -1212,6 +1257,16 @@ function PalettePopup({
 	);
 	const currentDetail = currentSessionId === undefined ? null : (detailQuery.data ?? null);
 	const pins = usePins();
+	const familyHeads = useFamilyHeads();
+	const {collapsedFamilies} = useSidebarState();
+	const familyFold = familyFoldState(familyHeads, collapsedFamilies);
+	const currentNested =
+		currentSessionId !== undefined && familyHeads?.includes(currentSessionId) === true
+			?
+				{
+					hidden: collapsedFamilies.includes(familyKey(currentSessionId)),
+				}
+			: undefined;
 	const setArchived = useSessionArchive(currentSessionId ?? "");
 	const toast = useToast();
 	const activeSessions = useActiveSessionsIfAvailable();
@@ -1765,6 +1820,10 @@ function PalettePopup({
 			case "unarchive":
 				setArchived(id === "archive");
 				return;
+			case "hide-nested":
+			case "show-nested":
+				toggleFamilyCollapsed(currentSessionId);
+				return;
 			case "copy-resume":
 				void copyCommand(shell.resume);
 				return;
@@ -2146,6 +2205,28 @@ function PalettePopup({
 				icon: <CircleCheckBig />,
 				run: clearAll,
 			},
+			// Upstream `g0`: the session catalog group's Hide/Show all come before toggle_side_chat.
+			...(familyFold.anyShown
+				? [
+						{
+							...NESTED_SESSION_COMMANDS.hide_all_nested_sessions,
+							icon: <Minimize2 />,
+							run: () =>
+							{
+								setFamiliesCollapsed(familyHeads ?? [], true);
+							},
+						} satisfies PaletteAction,
+					]
+				: []),
+			...(familyFold.anyHidden
+				? [
+						{
+							...NESTED_SESSION_COMMANDS.show_all_nested_sessions,
+							icon: <Maximize2 />,
+							run: showAllNestedSessions,
+						} satisfies PaletteAction,
+					]
+				: []),
 			...(currentSessionId !== undefined && currentDetail !== null
 				? [
 						{
@@ -2400,8 +2481,8 @@ function PalettePopup({
 	const matchesCommands = searchable && !filtered && tokens.text !== "";
 	const matchedSessionCommands =
 		matchesCommands && currentDetail !== null
-			? currentSessionCommands(currentDetail, pins.isPinned(currentSessionId ?? "")).filter((command) =>
-					commandMatches(command.label, tokens.text, SESSION_COMMAND_KEYWORDS[command.id]),
+			? currentSessionCommands(currentDetail, pins.isPinned(currentSessionId ?? ""), currentNested).filter(
+					(command) => commandMatches(command.label, tokens.text, SESSION_COMMAND_KEYWORDS[command.id]),
 				)
 			: [];
 	const matchedActions = longPrompt

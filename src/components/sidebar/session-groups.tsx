@@ -56,6 +56,7 @@ import
 	sidebarSelectionReducer,
 	visibleSelection,
 } from "../../lib/sidebar-selection";
+import {clearFamilyHeads, publishFamilyHeads} from "../../lib/sidebar-family-heads-store";
 import {useSidebarState} from "../../lib/sidebar-store";
 import {displayedNested, type FamilyFoldState, FoldOpenKeysContext, useFoldOpenKeys} from "../../lib/family-fold";
 import {assertNever} from "../../lib/assert-never";
@@ -275,6 +276,22 @@ export function SessionGroups({
 		[split],
 	);
 	const loadedIds = useMemo(() => loadedRows.map((row) => row.id), [loadedRows]);
+	const familyHeadIds =
+		split === undefined || built === undefined ? [] : visibleFamilyHeads(split, built.manual, built.sessions);
+	const familyHeadsKey = familyHeadIds.join("\n");
+	const familyHeadsOwner = useRef(Symbol("session-groups"));
+	useEffect(() =>
+	{
+		publishFamilyHeads(familyHeadsOwner.current, familyHeadsKey === "" ? [] : familyHeadsKey.split("\n"));
+	}, [familyHeadsKey]);
+	useEffect(() =>
+	{
+		const owner = familyHeadsOwner.current;
+		return () =>
+		{
+			clearFamilyHeads(owner);
+		};
+	}, []);
 	const canFetchMore = hasNextPage && nextPageCanHoldVisibleRows(loadedRows, prefs, Date.now());
 	const collapsedSet = new Set(collapsedGroups);
 	const displayOrder =
@@ -652,6 +669,26 @@ function displayedRowIds(
 		.filter((group) => !collapsed.has(group.key))
 		.flatMap((group) => withFamilies(group.rows, group.nested));
 	return [...pinned, ...sections];
+}
+
+/**
+ * Every fork-family head the list resolves, Pinned first, skipping archived heads like
+ * upstream's `l6`/`iK`, for the ⌘K Hide/Show (all) nested sessions commands.
+ */
+function visibleFamilyHeads(
+	split: SplitPinned<SidebarSessionRow>,
+	manual: readonly ManualSectionGroups<SidebarSessionRow>[],
+	groups: readonly SessionGroup<SidebarSessionRow>[],
+): string[]
+{
+	const nestedMaps = [
+		split.nested,
+		...manual.flatMap((section) => [section.group, ...(section.subgroups ?? [])]).map((group) => group.nested),
+		...groups.map((group) => group.nested),
+	];
+	const rows = new Map([...split.pinned, ...split.rest].map((row) => [row.sessionId, row]));
+	const heads = new Set(nestedMaps.flatMap((nested) => [...nested.keys()]));
+	return [...heads].filter((id) => rows.get(id)?.archived !== true);
 }
 
 /** Move a dragged manual section header to the manual section it was dropped on. */
