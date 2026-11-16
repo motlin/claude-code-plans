@@ -3,7 +3,7 @@ import {assertNever} from "./assert-never";
 /**
  * The sidebar's multi-row selection, like claude.ai/code: ⌘-click (Ctrl-click
  * elsewhere) toggles a row, ⇧-click selects the range from the anchor, and a
- * plain click or Escape clears it. Selected ids stay in display order so bulk
+ * plain click, Escape, or a press outside the list clears it. Selected ids stay in display order so bulk
  * actions and multi-row drags keep the rows' relative order.
  */
 
@@ -65,6 +65,19 @@ export function selectionClickKind(modifiers: {
 	if (modifiers.shiftKey) return "extend";
 	if (modifiers.metaKey || modifiers.ctrlKey) return "toggle";
 	return "plain";
+}
+
+/** Where a press keeps the selection (upstream `TP`): rows, `[data-kind]` lists, portals, poppers, menus and dialogs. */
+const SELECTION_KEEP_SELECTOR =
+	'[data-row-key], [data-kind], [data-cds-portal], [data-radix-popper-content-wrapper], [role="menu"], [role="listbox"], [role="dialog"], [role="alertdialog"]';
+
+/** Upstream `TP`: only a plain primary press (⌥ allowed) outside {@link SELECTION_KEEP_SELECTOR} clears the selection. */
+export function clearsSelectionOnPress(
+	event: Pick<PointerEvent, "shiftKey" | "metaKey" | "ctrlKey" | "button" | "target">,
+): boolean
+{
+	if (event.shiftKey || event.metaKey || event.ctrlKey || event.button !== 0) return false;
+	return !(event.target instanceof Element && event.target.closest(SELECTION_KEEP_SELECTOR) !== null);
 }
 
 function inOrder(ids: ReadonlySet<string>, order: readonly string[]): string[]

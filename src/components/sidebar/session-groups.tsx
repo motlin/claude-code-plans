@@ -52,6 +52,7 @@ import
 import {slotToIndex} from "../../lib/sidebar-drag";
 import
 {
+	clearsSelectionOnPress,
 	EMPTY_SELECTION,
 	selectionClickKind,
 	sidebarSelectionReducer,
@@ -92,7 +93,8 @@ import {SidebarWhitespaceMenu, type WhitespaceScopes} from "./whitespace-context
  * pinned row, or (dropped below Pinned) unpins it. A row dropped on a manual section's header or
  * row slot joins that section there, a row dropped on "Remove from …" or on Recents leaves it, and section
  * headers drag to reorder. ⌘-click and ⇧-click select several rows for the bulk row menu;
- * dragging a selected row moves the whole selection, which can only drop on a manual section.
+ * dragging a selected row moves the whole selection, which can only drop on a manual section. A plain
+ * click, Escape, or a press outside the list clears the selection.
  */
 export function SessionGroups({
 	activeItemId,
@@ -131,6 +133,25 @@ export function SessionGroups({
 		return () =>
 		{
 			window.removeEventListener("keydown", onKeyDown);
+		};
+	}, [hasSelection]);
+	// Upstream `uq`: a capture-phase press outside the list clears the selection before the target acts.
+	useEffect(() =>
+	{
+		if (!hasSelection) return undefined;
+		const onPointerDown = (event: PointerEvent) =>
+		{
+			if (clearsSelectionOnPress(event))
+				dispatchSelection(
+					{
+						type: "clear",
+					},
+				);
+		};
+		document.addEventListener("pointerdown", onPointerDown, true);
+		return () =>
+		{
+			document.removeEventListener("pointerdown", onPointerDown, true);
 		};
 	}, [hasSelection]);
 	const latestSelected = useRef<readonly string[]>([]);

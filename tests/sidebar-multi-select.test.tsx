@@ -10,7 +10,7 @@ import
 	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
-import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SessionGroups} from "../src/components/sidebar/session-groups";
@@ -142,6 +142,9 @@ async function renderGroups({
 								groupBy,
 							}}
 						/>
+						<main data-testid="outside">
+							<button type="button">x</button>
+						</main>
 						<Outlet />
 					</ToastProvider>
 				</QueryClientProvider>
@@ -375,6 +378,149 @@ describe("sidebar multi-select", () =>
 		);
 
 		expect(selectedTitles(container)).toStrictEqual([]);
+	});
+
+	it("a plain, ⌥ or touch primary press outside the list clears the selection", async () =>
+	{
+		const {container} = await renderGroups();
+		const outside = screen.getByTestId("outside");
+		const after: string[][] = [];
+		for (const init of [
+			{
+				button: 0,
+			},
+			{
+				button: 0,
+				altKey: true,
+			},
+			{
+				button: 0,
+				pointerType: "touch",
+			},
+		])
+		{
+			cmdClick("Loose one");
+			cmdClick("Loose two");
+			fireEvent.pointerDown(outside, init);
+			after.push(selectedTitles(container));
+		}
+
+		expect(after).toStrictEqual([[], [], []]);
+	});
+
+	it("a modifier or non-primary press outside, or a press inside the list, a menu or a toast keeps the selection", async () =>
+	{
+		const {container} = await renderGroups();
+		cmdClick("Loose one");
+		cmdClick("Loose two");
+		const outside = screen.getByTestId("outside");
+		for (const init of [
+			{
+				button: 0,
+				shiftKey: true,
+			},
+			{
+				button: 0,
+				metaKey: true,
+			},
+			{
+				button: 0,
+				ctrlKey: true,
+			},
+			{
+				button: 2,
+			},
+			{
+				button: 1,
+			},
+		])
+			fireEvent.pointerDown(outside, init);
+		fireEvent.pointerDown(
+			container.querySelector("[data-group-toggle]")!,
+			{
+				button: 0,
+			},
+		);
+		fireEvent.pointerDown(
+			recentsList(container),
+			{
+				button: 0,
+			},
+		);
+		const kept = selectedTitles(container);
+		const menu = await openRowMenu("Loose one");
+		fireEvent.pointerDown(
+			within(menu).getAllByRole("menuitem")[0]!,
+			{
+				button: 0,
+			},
+		);
+		const keptInMenu = selectedTitles(container);
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "a",
+			},
+		);
+		const toastText = await waitFor(() => screen.getByText("Archived 2 sessions"));
+		cmdClick("Loose three");
+		cmdClick("Beta one");
+		fireEvent.pointerDown(
+			toastText,
+			{
+				button: 0,
+			},
+		);
+
+		expect(
+			{
+				kept,
+				keptInMenu,
+				keptOnToast: selectedTitles(container),
+				toast: screen.queryByText("Archived 2 sessions") !== null,
+			},
+		).toStrictEqual(
+			{
+				kept: ["Loose one", "Loose two"],
+				keptInMenu: ["Loose one", "Loose two"],
+				keptOnToast: ["Beta one", "Loose three"],
+				toast: true,
+			},
+		);
+	});
+
+	it("listens for outside presses in the document capture phase only while rows are selected", async () =>
+	{
+		const add = vi.spyOn(document, "addEventListener");
+		const remove = vi.spyOn(document, "removeEventListener");
+		const {container} = await renderGroups();
+		const pointerCalls = (spy: typeof add) => spy.mock.calls.filter(([type]) => type === "pointerdown");
+		const idle = pointerCalls(add).length;
+		cmdClick("Loose one");
+		const added = pointerCalls(add);
+		fireEvent.pointerDown(
+			screen.getByTestId("outside"),
+			{
+				button: 0,
+			},
+		);
+		const removed = pointerCalls(remove);
+
+		expect(
+			{
+				idle,
+				added: added.map(([type, , options]) => [type, options]),
+				removed: removed.map(([type, listener, options]) => [type, listener === added[0]?.[1], options]),
+				selected: selectedTitles(container),
+			},
+		).toStrictEqual(
+			{
+				idle: 0,
+				added: [["pointerdown", true]],
+				removed: [["pointerdown", true, true]],
+				selected: [],
+			},
+		);
 	});
 });
 

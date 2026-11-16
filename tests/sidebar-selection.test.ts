@@ -1,7 +1,10 @@
+// @vitest-environment jsdom
+
 import {describe, expect, it} from "vite-plus/test";
 
 import
 {
+	clearsSelectionOnPress,
 	EMPTY_SELECTION,
 	selectionClickKind,
 	sidebarSelectionReducer,
@@ -311,5 +314,110 @@ describe("selectionClickKind", () =>
 	])("%s", (_name, modifiers, kind) =>
 	{
 		expect(selectionClickKind(modifiers)).toBe(kind);
+	});
+});
+
+describe("clearsSelectionOnPress", () =>
+{
+	function inside(markup: string): Element
+	{
+		const host = document.createElement("div");
+		host.innerHTML = markup;
+		const target = host.querySelector("[data-target]");
+		if (target === null) throw new Error("no target");
+		return target;
+	}
+
+	function press(
+		target: EventTarget | null,
+		modifiers: Partial<Pick<PointerEvent, "shiftKey" | "metaKey" | "ctrlKey" | "altKey" | "button">> = {},
+	)
+	{
+		return clearsSelectionOnPress(
+			{
+				shiftKey: false,
+				metaKey: false,
+				ctrlKey: false,
+				button: 0,
+				...modifiers,
+				target,
+			},
+		);
+	}
+
+	it("clears on a plain or ⌥ primary press outside, keeps on a modifier or non-primary press or an excluded region", () =>
+	{
+		const main = document.createElement("main");
+		expect(
+			{
+				plain: press(main),
+				alt: press(
+					main,
+					{
+						altKey: true,
+					},
+				),
+				shift: press(
+					main,
+					{
+						shiftKey: true,
+					},
+				),
+				meta: press(
+					main,
+					{
+						metaKey: true,
+					},
+				),
+				ctrl: press(
+					main,
+					{
+						ctrlKey: true,
+					},
+				),
+				right: press(
+					main,
+					{
+						button: 2,
+					},
+				),
+				middle: press(
+					main,
+					{
+						button: 1,
+					},
+				),
+				notElement: press(null),
+				row: press(inside('<div data-row-key="u1"><span data-target></span></div>')),
+				list: press(inside('<div data-kind="code"><span data-target></span></div>')),
+				portal: press(inside('<div data-cds-portal=""><span data-target></span></div>')),
+				popper: press(inside("<div data-radix-popper-content-wrapper><span data-target></span></div>")),
+				menu: press(inside('<div role="menu"><span data-target></span></div>')),
+				listbox: press(inside('<div role="listbox"><span data-target></span></div>')),
+				dialog: press(inside('<div role="dialog"><span data-target></span></div>')),
+				alertdialog: press(inside('<div role="alertdialog"><span data-target></span></div>')),
+				svgInRow: press(inside('<div data-row-key="u1"><svg><path data-target></path></svg></div>')),
+			},
+		).toStrictEqual(
+			{
+				plain: true,
+				alt: true,
+				shift: false,
+				meta: false,
+				ctrl: false,
+				right: false,
+				middle: false,
+				notElement: true,
+				row: false,
+				list: false,
+				portal: false,
+				popper: false,
+				menu: false,
+				listbox: false,
+				dialog: false,
+				alertdialog: false,
+				svgInRow: false,
+			},
+		);
 	});
 });

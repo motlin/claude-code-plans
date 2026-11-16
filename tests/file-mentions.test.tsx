@@ -462,6 +462,8 @@ beforeEach(() =>
 afterEach(() =>
 {
 	cleanup();
+	// Base UI's scroll lock releases on a 0ms timer; flush it so a fake clock can't strand the lock for later files in this worker.
+	vi.runOnlyPendingTimers();
 	localStorage.clear();
 	vi.unstubAllGlobals();
 	vi.useRealTimers();
