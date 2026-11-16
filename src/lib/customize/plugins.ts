@@ -70,6 +70,8 @@ export interface ReadPluginDetailOptions
 {
 	/** Defaults to ~/.claude. */
 	claudeDir?: string;
+	/** Defaults to ~/.claude.json. */
+	claudeJsonPath?: string;
 }
 
 /**
@@ -79,13 +81,16 @@ export interface ReadPluginDetailOptions
  */
 export async function readPluginDetail(
 	plugin: PluginInfo,
-	{claudeDir = join(homedir(), ".claude")}: ReadPluginDetailOptions = {},
+	{
+		claudeDir = join(homedir(), ".claude"),
+		claudeJsonPath = join(homedir(), ".claude.json"),
+	}: ReadPluginDetailOptions = {},
 ): Promise<PluginDetail>
 {
 	const [tree, hooks, connectors, entry] = await Promise.all([
 		scanPluginTree(plugin.installPath),
 		readPluginHooks(plugin.installPath),
-		listPluginMcpServers(plugin, claudeDir),
+		listPluginMcpServers(plugin, claudeDir, claudeJsonPath),
 		readMarketplaceEntry(claudeDir, plugin),
 	]);
 	const categories = [

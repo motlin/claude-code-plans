@@ -12,18 +12,28 @@ export const RAIL_ROW_ACTION_CLASS = `${ROW_CLASS} cursor-pointer hover:bg-fill-
 export const ENVIRONMENT_MENU_BUTTON_CLASS =
 	"flex h-8 w-full min-w-0 items-center justify-start gap-2.5 rounded ps-[38px] pe-2 text-left text-[13px]/[19px] cursor-pointer hover:bg-fill-ghost-hover active:bg-alpha-2 data-popup-open:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
+/** Upstream's trailing state spans (Connectors' "Off" and "Authenticate"): a footnote without tabular digits. */
+const HINT_TONE_CLASS =
+{
+	muted: "shrink-0 text-footnote text-ink-muted",
+	warning: "shrink-0 text-footnote text-warning",
+} as const;
+
 /** A row's slots: a 20px icon in text-secondary, the label, and a muted 12px trailing hint. */
 export function RailRowContent({
 	icon,
 	label,
 	hint,
 	hintStatus,
+	hintTone,
 }: {
 	icon: ReactNode;
 	label: ReactNode;
 	hint?: ReactNode;
 	/** Set when the hint is the event stream's state rather than a detail of the row. */
 	hintStatus?: string;
+	/** Set for a state label rather than a detail: upstream's footnote span in that tone. */
+	hintTone?: keyof typeof HINT_TONE_CLASS;
 })
 {
 	return (
@@ -38,7 +48,11 @@ export function RailRowContent({
 				<span
 					data-rail-row-hint=""
 					data-stream-status={hintStatus}
-					className="shrink-0 text-[12px]/[15px] text-ink-muted tabular-nums"
+					className={
+						hintTone === undefined
+							? "shrink-0 text-[12px]/[15px] text-ink-muted tabular-nums"
+							: HINT_TONE_CLASS[hintTone]
+					}
 				>
 					{hint}
 				</span>

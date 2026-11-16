@@ -108,7 +108,7 @@ function writeFixtures(): void
 							command: "scratch-mcp",
 						},
 					},
-					disabledMcpServers: ["scratch"],
+					disabledMcpServers: ["scratch", "sentry", "plugin:docs:docs"],
 					enabledMcpjsonServers: ["approved"],
 					disabledMcpjsonServers: ["rejected"],
 				},
@@ -239,6 +239,7 @@ describe("listMcpServers", () =>
 				envKeys: ["MAIL_TOKEN"],
 				headerKeys: [],
 				needsAuth: false,
+				offIn: [],
 			},
 			{
 				id: "user:sentry",
@@ -250,6 +251,7 @@ describe("listMcpServers", () =>
 				envKeys: [],
 				headerKeys: [],
 				needsAuth: false,
+				offIn: [projectPath],
 			},
 			{
 				id: `local:${projectPath}:render`,
@@ -262,6 +264,7 @@ describe("listMcpServers", () =>
 				envKeys: [],
 				headerKeys: ["Authorization"],
 				needsAuth: false,
+				offIn: [],
 			},
 			{
 				id: `local:${projectPath}:scratch`,
@@ -274,6 +277,7 @@ describe("listMcpServers", () =>
 				envKeys: [],
 				headerKeys: [],
 				needsAuth: false,
+				offIn: [projectPath],
 			},
 			{
 				id: `project:${projectPath}:approved`,
@@ -286,6 +290,7 @@ describe("listMcpServers", () =>
 				envKeys: [],
 				headerKeys: [],
 				needsAuth: false,
+				offIn: [],
 			},
 			{
 				id: `project:${projectPath}:pending`,
@@ -298,6 +303,7 @@ describe("listMcpServers", () =>
 				envKeys: [],
 				headerKeys: [],
 				needsAuth: false,
+				offIn: [],
 			},
 			{
 				id: `project:${projectPath}:rejected`,
@@ -310,6 +316,7 @@ describe("listMcpServers", () =>
 				envKeys: [],
 				headerKeys: [],
 				needsAuth: false,
+				offIn: [],
 			},
 			{
 				id: "plugin:docs@market:docs",
@@ -321,6 +328,7 @@ describe("listMcpServers", () =>
 				envKeys: [],
 				headerKeys: ["X-Api-Key"],
 				needsAuth: false,
+				offIn: [projectPath],
 			},
 			{
 				id: "plugin:flat@market:browser",
@@ -332,6 +340,7 @@ describe("listMcpServers", () =>
 				envKeys: [],
 				headerKeys: [],
 				needsAuth: false,
+				offIn: [],
 			},
 		]);
 		expect(McpServerListResponse.parse(servers)).toStrictEqual(servers);
@@ -406,6 +415,7 @@ describe("listMcpServers", () =>
 				envKeys: [],
 				headerKeys: [],
 				needsAuth: false,
+				offIn: [],
 			},
 		]);
 	});

@@ -20,7 +20,7 @@ import {Shortcut} from "../src/components/ui/shortcut";
 import {createStreamDropStore, EventStreamStatusContext} from "../src/hooks/use-claude-events";
 import {useShortcutKeys} from "../src/hooks/use-shortcut";
 import type {StreamDrop} from "../src/lib/stream-drop";
-import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
+import {customizeMcpServersQueryOptions, type McpServerSummary} from "../src/lib/api/customize";
 import type {HerdrPaneIndexData} from "../src/lib/api/herdr";
 import {sessionDiffQueryOptions} from "../src/lib/api/session-diff";
 import {sessionDevServersQueryOptions, sessionOpenInQueryOptions} from "../src/lib/api/sessions";
@@ -173,6 +173,7 @@ function seed(client: QueryClient)
 			envKeys: [],
 			headerKeys: [],
 			needsAuth: false,
+			offIn: [],
 		},
 		{
 			id: "user:linear",
@@ -184,6 +185,7 @@ function seed(client: QueryClient)
 			envKeys: [],
 			headerKeys: [],
 			needsAuth: true,
+			offIn: [],
 		},
 		{
 			id: "user:off",
@@ -195,6 +197,7 @@ function seed(client: QueryClient)
 			envKeys: [],
 			headerKeys: [],
 			needsAuth: false,
+			offIn: [],
 		},
 	]);
 	client.setQueryData(
@@ -1412,8 +1415,8 @@ describe("cards from local data", () =>
 		).toStrictEqual(
 			{
 				connectors: [
-					["github", null],
-					["linear", "Reconnect"],
+					["Linear", "Authenticate"],
+					["Github", null],
 				],
 				progress: null,
 				outputs: [["Rail report", null]],
@@ -3678,5 +3681,205 @@ describe("Servers card", () =>
 				className: "flex flex-col outline-none",
 			},
 		);
+	});
+});
+
+describe("Connectors card", () =>
+{
+	function mcp(name: string, overrides: Partial<McpServerSummary> = {}): McpServerSummary
+	{
+		return {
+			id: `user:${name}`,
+			name,
+			scope: "user",
+			transport: "stdio",
+			urlOrCommand: `${name}-mcp`,
+			enabled: true,
+			envKeys: [],
+			headerKeys: [],
+			needsAuth: false,
+			offIn: [],
+			...overrides,
+		};
+	}
+
+	function withConnectors(servers: McpServerSummary[]): (client: QueryClient) => void
+	{
+		return (client) =>
+		{
+			seed(client);
+			client.setQueryData(customizeMcpServersQueryOptions.queryKey, servers);
+		};
+	}
+
+	/** github, linear (needs auth), zeta (needs auth), alpha (off for the cwd), then a fifth healthy server. */
+	const FIVE = [
+		mcp("github"),
+		mcp(
+			"linear",
+			{
+				needsAuth: true,
+			},
+		),
+		mcp(
+			"zeta",
+			{
+				needsAuth: true,
+			},
+		),
+		mcp(
+			"alpha",
+			{
+				offIn: [FULL.cwd ?? ""],
+			},
+		),
+		mcp("gmail-cmotlin-imap"),
+	];
+
+	function openConnectors()
+	{
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Connectors/,
+				},
+			),
+			{
+				altKey: true,
+			},
+		);
+	}
+
+	function card(): HTMLElement
+	{
+		return screen.getByRole(
+			"region",
+			{
+				name: /^Connectors/,
+			},
+		);
+	}
+
+	function showMore(): HTMLElement
+	{
+		return within(card()).getByRole(
+			"button",
+			{
+				name: /^Show (more|less)$/,
+			},
+		);
+	}
+
+	it("lists needs-auth rows first, three of them, then Show more, which expands in place", async () =>
+	{
+		await renderCards(FULL, withConnectors(FIVE));
+		openConnectors();
+		const collapsed =
+		{
+			rows: rows("Connectors"),
+			expanded: showMore().getAttribute("aria-expanded"),
+		};
+		fireEvent.click(showMore());
+
+		expect(
+			{
+				collapsed,
+				expanded: rows("Connectors"),
+				summary: cards().find(([id]) => id === "connectors")?.[1],
+			},
+		).toStrictEqual(
+			{
+				collapsed:
+				{
+					rows: [
+						["Linear", "Authenticate"],
+						["Zeta", "Authenticate"],
+						["Github", null],
+						["Show more", null],
+					],
+					expanded: "false",
+				},
+				expanded: [
+					["Linear", "Authenticate"],
+					["Zeta", "Authenticate"],
+					["Github", null],
+					["Alpha", "Off"],
+					["Gmail cmotlin imap", null],
+					["Show less", null],
+				],
+				summary: "2 to reconnect",
+			},
+		);
+	});
+
+	it("tones Authenticate as a warning and Off as muted footnotes, with no title and no Manage connectors footer", async () =>
+	{
+		await renderCards(FULL, withConnectors(FIVE));
+		openConnectors();
+		fireEvent.click(showMore());
+		const hints = [...card().querySelectorAll("[data-rail-row-hint]")];
+
+		expect(
+			{
+				hints: hints.map((hint) => [hint.textContent, hint.className]),
+				titles: [...within(card()).getByTestId("rail-rows").querySelectorAll("[title]")].length,
+				manage: within(card()).queryByRole(
+					"link",
+					{
+						name: "Manage connectors",
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				hints: [
+					["Authenticate", "shrink-0 text-footnote text-warning"],
+					["Authenticate", "shrink-0 text-footnote text-warning"],
+					["Off", "shrink-0 text-footnote text-ink-muted"],
+				],
+				titles: 0,
+				manage: null,
+			},
+		);
+	});
+
+	it("focuses the fourth row when Show more is pressed from the keyboard", async () =>
+	{
+		await renderCards(FULL, withConnectors(FIVE));
+		openConnectors();
+		fireEvent.click(
+			showMore(),
+			{
+				detail: 0,
+			},
+		);
+
+		expect(document.activeElement?.querySelector("[data-rail-row-label]")?.textContent).toBe("Alpha");
+	});
+
+	it("still mounts with every server off for the cwd, reading 0 connected", async () =>
+	{
+		const off = [FULL.cwd ?? ""];
+		await renderCards(
+			FULL,
+			withConnectors([
+				mcp(
+					"github",
+					{
+						offIn: off,
+					},
+				),
+				mcp(
+					"linear",
+					{
+						offIn: off,
+						needsAuth: true,
+					},
+				),
+			]),
+		);
+
+		expect(cards().find(([id]) => id === "connectors")).toStrictEqual(["connectors", "0 connected"]);
 	});
 });

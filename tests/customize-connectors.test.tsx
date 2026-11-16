@@ -53,6 +53,7 @@ const RENDER: McpServerSummary =
 	envKeys: [],
 	headerKeys: ["Authorization"],
 	needsAuth: false,
+	offIn: [],
 };
 
 const SERVERS: McpServerSummary[] = [
@@ -66,6 +67,7 @@ const SERVERS: McpServerSummary[] = [
 		envKeys: ["IMCP_TOKEN"],
 		headerKeys: [],
 		needsAuth: false,
+		offIn: [],
 	},
 	RENDER,
 	{
@@ -79,6 +81,7 @@ const SERVERS: McpServerSummary[] = [
 		envKeys: [],
 		headerKeys: [],
 		needsAuth: false,
+		offIn: [],
 	},
 	{
 		id: "plugin:playwright@official:playwright",
@@ -90,6 +93,7 @@ const SERVERS: McpServerSummary[] = [
 		envKeys: [],
 		headerKeys: [],
 		needsAuth: false,
+		offIn: [],
 	},
 ];
 

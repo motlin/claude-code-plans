@@ -60,6 +60,8 @@ const McpServerSummarySchema = z.strictObject(
 		headerKeys: z.array(z.string()),
 		/** Named in the CLI's mcp-needs-auth-cache.json: the server must be reconnected. */
 		needsAuth: z.boolean(),
+		/** Sorted project paths whose ~/.claude.json disabledMcpServers names this server's CLI key: it is "Off" there. */
+		offIn: z.array(z.string()),
 	},
 );
 export type McpServerSummary = z.infer<typeof McpServerSummarySchema>;

@@ -31,6 +31,7 @@ function server(overrides: Partial<McpServerSummary> & Pick<McpServerSummary, "i
 		envKeys: [],
 		headerKeys: [],
 		needsAuth: false,
+		offIn: [],
 		...overrides,
 	};
 }

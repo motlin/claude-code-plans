@@ -3927,6 +3927,7 @@ describe("Composer + menu Connectors submenu", () =>
 		envKeys: [],
 		headerKeys: [],
 		needsAuth,
+		offIn: [],
 	});
 	const SERVERS = [
 		server("user:Gmail", "Gmail", true, false),

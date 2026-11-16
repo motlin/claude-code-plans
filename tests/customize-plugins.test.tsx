@@ -234,6 +234,7 @@ async function detailFor(id: string): Promise<PluginDetail>
 		plugin,
 		{
 			claudeDir,
+			claudeJsonPath: join(claudeDir, "missing.claude.json"),
 		},
 	);
 }
@@ -278,6 +279,7 @@ describe("readPluginDetail", () =>
 						envKeys: [],
 						headerKeys: ["Authorization"],
 						needsAuth: false,
+						offIn: [],
 					},
 				],
 				tree: [".claude-plugin", "agents", "commands", "hooks", "skills", ".mcp.json", "README.md"],

@@ -11,7 +11,6 @@ import
 	GitPullRequest,
 	Laptop,
 	ListChecks,
-	Plug,
 	Server,
 	SquareTerminal,
 	Workflow,
@@ -38,12 +37,21 @@ import {formatContextSummary, formatUpdatedAgo, type ComposerUsage} from "../../
 import type {PrStatus} from "../../lib/pr-status";
 import {requestFileOpen} from "../../lib/file-open-requests";
 import {formatCount} from "../../lib/pluralize";
+import
+{
+	type ConnectorRow,
+	type ConnectorState,
+	connectorCounts,
+	connectorRows,
+	connectorsSummary,
+} from "../../lib/session-rail-connectors";
 import type {OutputFile} from "../../lib/session-outputs";
 import {useEventStreamStatus} from "../../hooks/use-claude-events";
 import {sessionEnvironment, terminalHostLabel} from "../../lib/session-environment";
 import {streamDropHint} from "../../lib/stream-drop";
 import {type BackgroundTasksFocus, useBackgroundTasksOpener} from "../background-tasks-opener-context";
 import {useCopyToClipboard} from "../files/use-copy-to-clipboard";
+import {ConnectorLetterTile} from "../connector-letter-tile";
 import {FileTypeIcon} from "../file-type-icon";
 import {usePaneHost} from "../panes/pane-host-context";
 import {CompactActionRow} from "./compact-action-row";
@@ -444,48 +452,78 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 	};
 }
 
-function connectorsCard(servers: readonly McpServerSummary[]): RailCard | null
+/** Upstream's `sN`: three connectors before its Show more row. */
+const CONNECTORS_SHOWN = 3;
+
+/** Upstream's trailing state span per connector state; a healthy row has none. */
+const CONNECTOR_STATE_HINT =
 {
-	if (servers.length === 0) return null;
-	const reconnect = servers.filter((server) => server.needsAuth).length;
+	failed:
+	{
+		hint: "Reconnect",
+		hintTone: "warning",
+	},
+	"needs-auth":
+	{
+		hint: "Authenticate",
+		hintTone: "warning",
+	},
+	unavailable:
+	{
+		hint: "Unavailable",
+		hintTone: "muted",
+	},
+	off:
+	{
+		hint: "Off",
+		hintTone: "muted",
+	},
+} as const satisfies Record<
+	ConnectorState,
+	{
+		hint: string;
+		hintTone: "muted" | "warning";
+	}
+>;
+
+function ConnectorsBody({rows}: {rows: readonly ConnectorRow[]})
+{
+	const showMore = useShowMore();
+	const shown = showMore.expanded ? rows : rows.slice(0, CONNECTORS_SHOWN);
+	return (
+		<div data-testid="rail-rows" tabIndex={-1} className="flex flex-col outline-none">
+			{shown.map((row, index) => (
+				<Link
+					key={row.id}
+					ref={index === CONNECTORS_SHOWN ? showMore.firstNewRow : undefined}
+					to="/customize/connectors/id/$serverId"
+					params={
+					{
+						serverId: toConnectorSlug(row.id),
+					}}
+					className={RAIL_ROW_ACTION_CLASS}
+				>
+					<RailRowContent
+						icon={<ConnectorLetterTile name={row.name} />}
+						label={row.label}
+						{...(row.state === undefined ? {} : CONNECTOR_STATE_HINT[row.state])}
+					/>
+				</Link>
+			))}
+			{rows.length > CONNECTORS_SHOWN && <ShowMoreButton state={showMore} />}
+		</div>
+	);
+}
+
+/** Upstream's Connectors card (`uN`): mounted while any server is listed, even when every one is off. */
+function connectorsCard(rows: readonly ConnectorRow[]): RailCard | null
+{
+	const counts = connectorCounts(rows);
+	if (counts.count === 0) return null;
 	return {
 		id: "connectors",
-		summary: reconnect > 0 ? `${reconnect} to reconnect` : `${servers.length} connected`,
-		body: (
-			<>
-				<Rows>
-					{servers.map((server) => (
-						<Link
-							key={server.id}
-							to="/customize/connectors/id/$serverId"
-							params={
-							{
-								serverId: toConnectorSlug(server.id),
-							}}
-							title={server.urlOrCommand}
-							className={RAIL_ROW_ACTION_CLASS}
-						>
-							<RailRowContent
-								icon={<Icon icon={Plug} />}
-								label={server.name}
-								{...(server.needsAuth
-									?
-										{
-											hint: "Reconnect",
-										}
-									: {})}
-							/>
-						</Link>
-					))}
-				</Rows>
-				<Link
-					to="/customize/connectors"
-					className="flex min-h-8 items-center px-2 text-[12px]/[15px] text-ink-muted hover:text-secondary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
-				>
-					Manage connectors
-				</Link>
-			</>
-		),
+		summary: connectorsSummary(counts),
+		body: <ConnectorsBody rows={rows} />,
 	};
 }
 
@@ -938,7 +976,7 @@ export function SessionRailCards({inputs}: {inputs: SessionRailInputs})
 			body: <EnvironmentBody inputs={inputs} />,
 		} satisfies RailCard,
 		contextCard(inputs, connectors),
-		connectorsCard(connectors),
+		connectorsCard(connectorRows(mcpServers ?? [], inputs.cwd)),
 		outputsCard(inputs),
 		changesCard(inputs, diff ?? null),
 		serversCard(devServers ?? []),

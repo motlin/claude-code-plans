@@ -700,6 +700,7 @@ describe("readMcpServerDetail", () =>
 						envKeys: [],
 						headerKeys: ["Authorization"],
 						needsAuth: false,
+						offIn: [],
 					},
 					serverKey: "render",
 					tools: [
