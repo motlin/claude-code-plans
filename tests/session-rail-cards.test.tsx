@@ -2,7 +2,7 @@
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
-import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, renderHook, screen, within} from "@testing-library/react";
 import {useState} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -16,7 +16,9 @@ import {TileHost} from "../src/components/panes/tile-host";
 import {SessionRailCards, type SessionRailInputs} from "../src/components/session-rail/session-rail-cards";
 import {ToastProvider} from "../src/components/toast";
 import {cdsButtonClass} from "../src/components/ui/cds-button";
+import {Shortcut} from "../src/components/ui/shortcut";
 import {createStreamDropStore, EventStreamStatusContext} from "../src/hooks/use-claude-events";
+import {useShortcutKeys} from "../src/hooks/use-shortcut";
 import type {StreamDrop} from "../src/lib/stream-drop";
 import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
 import type {HerdrPaneIndexData} from "../src/lib/api/herdr";
@@ -370,10 +372,17 @@ function rows(section: string): Array<[string, string | null]>
 			name: new RegExp(`^${section}`),
 		},
 	);
-	return [...within(card).getByTestId("rail-rows").children].map((row) => [
-		row.querySelector("[data-rail-row-label]")?.textContent ?? "",
-		hintText(row.querySelector("[data-rail-row-hint]")),
-	]);
+	return [...within(card).getByTestId("rail-rows").children].map((row) =>
+	{
+		// Upstream's Changes row has no label: its stat button's name and digits stand in.
+		const changesStat = row.querySelector("[data-rail-changes-row] button[aria-label^='Open changes']");
+		if (changesStat !== null)
+			return [changesStat.getAttribute("aria-label") ?? "", hintText(changesStat.querySelector("[dir='ltr']"))];
+		return [
+			row.querySelector("[data-rail-row-label]")?.textContent ?? "",
+			hintText(row.querySelector("[data-rail-row-hint]")),
+		];
+	});
 }
 
 /** A hint's visible text: a diff stat's aria-hidden digits, else the hint itself. */
@@ -1410,7 +1419,7 @@ describe("cards from local data", () =>
 				outputs: [["Rail report", null]],
 				changes: [
 					["#42 Sync fork with upstream", "Open"],
-					["Uncommitted changes", "+120−8"],
+					["Open changes, 120 added, 8 removed", "+120−8"],
 				],
 				servers: [["localhost:7611", null]],
 				backgroundTasks: [
@@ -1423,7 +1432,7 @@ describe("cards from local data", () =>
 		);
 	});
 
-	describe("Uncommitted changes stat", () =>
+	describe("Changes row", () =>
 	{
 		const DIFF_KEY = sessionDiffQueryOptions(SESSION_ID, "uncommitted").queryKey;
 
@@ -1495,12 +1504,12 @@ describe("cards from local data", () =>
 			expect(
 				{
 					label: row.getAttribute("aria-label"),
-					hint: row.querySelector("[data-rail-row-hint]")?.innerHTML,
+					stat: row.innerHTML,
 				},
 			).toStrictEqual(
 				{
 					label: "Open changes, 120 added, 8 removed",
-					hint: '<span dir="ltr" class="tabular-nums inline-flex shrink-0 gap-1 text-body"><span class="sr-only">120 additions, 8 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+120</span><span class="text-git-removed">−8</span></span></span>',
+					stat: '<span dir="ltr" class="tabular-nums inline-flex shrink-0 gap-1 text-body"><span class="sr-only">120 additions, 8 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+120</span><span class="text-git-removed">−8</span></span></span>',
 				},
 			);
 		});
@@ -1514,8 +1523,8 @@ describe("cards from local data", () =>
 			const read = () => (
 			{
 				label: changesRow().getAttribute("aria-label"),
-				visible: hintText(changesRow().querySelector("[data-rail-row-hint]")),
-				sr: changesRow().querySelector("[data-rail-row-hint] .sr-only")?.textContent,
+				visible: hintText(changesRow().querySelector("[dir='ltr']")),
+				sr: changesRow().querySelector(".sr-only")?.textContent,
 			});
 			const seen = [read()];
 			for (const ts of [200, 400])
@@ -1555,13 +1564,218 @@ describe("cards from local data", () =>
 			await setDiff(client, 220, 8);
 			expect(
 				{
-					visible: hintText(changesRow().querySelector("[data-rail-row-hint]")),
+					visible: hintText(changesRow().querySelector("[dir='ltr']")),
 					pending: frames.pending(),
 				},
 			).toStrictEqual(
 				{
 					visible: "+220−8",
 					pending: [],
+				},
+			);
+		});
+
+		function changesRowDiv(): HTMLElement
+		{
+			const row = document.querySelector<HTMLElement>("[data-rail-changes-row]");
+			if (row === null) throw new Error("no Changes row");
+			return row;
+		}
+
+		function moreOptions(): HTMLElement
+		{
+			return screen.getByRole(
+				"button",
+				{
+					name: "More options for alice/sync-upstream",
+				},
+			);
+		}
+
+		function registerChangesPane()
+		{
+			unregisters.push(
+				registerPane(
+					"changes",
+					{
+						title: "Changes",
+						render: () => <p>changes pane body</p>,
+					},
+				),
+			);
+		}
+
+		async function flush()
+		{
+			await act(async () =>
+			{
+				await new Promise((resolve) =>
+				{
+					setTimeout(resolve, 0);
+				});
+			});
+		}
+
+		it("draws upstream's row form: a div with the plus-minus glyph, the stat button, a spacer and the sr-only menu", async () =>
+		{
+			stubReducedMotion(false);
+			await renderChanges();
+			const row = changesRowDiv();
+			const button = changesRow();
+			const {result} = renderHook(() => useShortcutKeys("toggle_changes"));
+			expect(
+				{
+					outer: [
+						row.parentElement?.tagName,
+						row.parentElement?.getAttribute("role"),
+						row.parentElement?.className,
+					],
+					row: [row.tagName, row.getAttribute("role"), row.className, row.getAttribute("title")],
+					slots: [...row.children].map((child) => [child.tagName, child.className]),
+					uncommitted: screen.queryByText("Uncommitted changes"),
+					keyShortcuts: button.getAttribute("aria-keyshortcuts"),
+					buttonClass: button.className,
+					mouseDownAllowed: fireEvent.mouseDown(button),
+				},
+			).toStrictEqual(
+				{
+					outer: ["DIV", "none", "flex min-w-0 flex-col gap-sm"],
+					row: ["DIV", null, "flex min-h-6.5 w-full min-w-0 items-center gap-sm px-xs text-body", null],
+					slots: [
+						["SPAN", "flex size-5 shrink-0 items-center justify-center text-secondary [&_svg]:size-4"],
+						["SPAN", "relative inline-flex"],
+						["SPAN", "flex-1"],
+						["SPAN", "sr-only flex shrink-0 focus-within:not-sr-only has-[[data-popup-open]]:not-sr-only"],
+					],
+					uncommitted: null,
+					keyShortcuts: result.current.ariaKeyShortcuts,
+					buttonClass: `${cdsButtonClass("ghost", "sm")} -mx-1.5 [--upstream-radius:var(--radius-r4)]`,
+					mouseDownAllowed: false,
+				},
+			);
+		});
+
+		it("groups large counts in the stat button's name", async () =>
+		{
+			stubReducedMotion(true);
+			const client = await renderChanges();
+			await setDiff(client, 1234, 5);
+			expect(changesRow().getAttribute("aria-label")).toBe("Open changes, 1,234 added, 5 removed");
+		});
+
+		it("shows the Open changes tooltip with the toggle-changes keys on focus", async () =>
+		{
+			stubReducedMotion(true);
+			await renderChanges();
+			const {result} = renderHook(() => useShortcutKeys("toggle_changes"));
+			act(() =>
+			{
+				changesRow().focus();
+			});
+			const tooltip = await screen.findByRole("tooltip");
+			const keycaps = render(<Shortcut keys={result.current.keys} variant="text" />).container.textContent;
+			expect(tooltip.textContent).toBe(`Open changes${keycaps}`);
+		});
+
+		it("opens the Changes pane from the stat button", async () =>
+		{
+			stubReducedMotion(true);
+			registerChangesPane();
+			await renderChanges();
+			fireEvent.click(changesRow());
+			await flush();
+			expect(screen.queryAllByText("changes pane body").map((body) => body.tagName)).toStrictEqual(["P"]);
+		});
+
+		it("keeps the More options trigger sr-only until focused, named for the branch", async () =>
+		{
+			stubReducedMotion(true);
+			await renderChanges();
+			const trigger = moreOptions();
+			expect(
+				{
+					wrapper: trigger.closest("[data-rail-changes-row] > span:last-child")?.className,
+					expanded: trigger.getAttribute("aria-expanded"),
+				},
+			).toStrictEqual(
+				{
+					wrapper: "sr-only flex shrink-0 focus-within:not-sr-only has-[[data-popup-open]]:not-sr-only",
+					expanded: "false",
+				},
+			);
+		});
+
+		it("opens View changes from a right-click on the row", async () =>
+		{
+			stubReducedMotion(true);
+			registerChangesPane();
+			await renderChanges();
+			fireEvent.contextMenu(changesRowDiv());
+			const items = await screen.findAllByRole("menuitem");
+			const names = items.map((item) => item.textContent);
+			fireEvent.click(
+				screen.getByRole(
+					"menuitem",
+					{
+						name: "View changes",
+					},
+				),
+			);
+			await flush();
+			expect(
+				{
+					names,
+					pane: screen.queryAllByText("changes pane body").map((body) => body.tagName),
+				},
+			).toStrictEqual(
+				{
+					names: ["View changes"],
+					pane: ["P"],
+				},
+			);
+		});
+
+		it("moves focus between the stat button and the menu trigger with the arrow keys", async () =>
+		{
+			stubReducedMotion(true);
+			await renderChanges();
+			const stat = changesRow();
+			const trigger = moreOptions();
+			const seen: Array<string | null> = [];
+			const press = (key: string) =>
+			{
+				fireEvent.keyDown(
+					document.activeElement ?? document.body,
+					{
+						key,
+					},
+				);
+				seen.push(document.activeElement?.getAttribute("aria-label") ?? null);
+			};
+			act(() =>
+			{
+				stat.focus();
+			});
+			press("ArrowRight");
+			press("ArrowLeft");
+			press("End");
+			press("Home");
+			press("ArrowDown");
+			expect(
+				{
+					seen,
+					triggerName: trigger.getAttribute("aria-label"),
+				},
+			).toStrictEqual(
+				{
+					seen: [
+						"More options for alice/sync-upstream",
+						"Open changes, 120 added, 8 removed",
+						"More options for alice/sync-upstream",
+						"Open changes, 120 added, 8 removed",
+						"More options for alice/sync-upstream",
+					],
+					triggerName: "More options for alice/sync-upstream",
 				},
 			);
 		});

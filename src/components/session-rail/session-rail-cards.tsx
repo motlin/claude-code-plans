@@ -6,7 +6,6 @@ import
 	AppWindow,
 	Bot,
 	Cpu,
-	FileDiff,
 	Gauge,
 	GitBranch,
 	GitPullRequest,
@@ -49,9 +48,9 @@ import {FileTypeIcon} from "../file-type-icon";
 import {usePaneHost} from "../panes/pane-host-context";
 import {CompactActionRow} from "./compact-action-row";
 import {ContextBreakdownBody} from "./context-breakdown";
-import {AnimatedDiffStat} from "../diff-stat";
 import {useToast} from "../toast-context";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
+import {RailChangesRow} from "./rail-changes-row";
 import {ENVIRONMENT_MENU_BUTTON_CLASS, RAIL_ROW_ACTION_CLASS, RailRow, RailRowContent} from "./rail-row";
 import {RemoteControlRow, RemoteControlRowPending, RemoteControlToggleRow} from "./remote-control-row";
 import {SessionRail, type RailCard} from "./session-rail";
@@ -662,10 +661,12 @@ function ChangesBody({
 	pr,
 	prStatus,
 	diff,
+	branch,
 }: {
 	pr: NonNullable<SessionDetailData["pr"]> | null;
 	prStatus: PrStatus | null;
 	diff: DiffStats | null;
+	branch: string | null;
 })
 {
 	const host = usePaneHost();
@@ -687,35 +688,19 @@ function ChangesBody({
 				</a>
 			)}
 			{diff !== null && (
-				<button
-					type="button"
-					className={RAIL_ROW_ACTION_CLASS}
-					title={formatCount(diff.files, "file")}
-					aria-label={`Open changes, ${railCount.format(diff.additions)} added, ${railCount.format(diff.deletions)} removed`}
-					onClick={() =>
+				<RailChangesRow
+					added={diff.additions}
+					removed={diff.deletions}
+					branch={branch}
+					onOpen={() =>
 					{
 						host.openPane("changes");
 					}}
-				>
-					<RailRowContent
-						icon={<Icon icon={FileDiff} />}
-						label="Uncommitted changes"
-						hint={
-							<AnimatedDiffStat
-								added={diff.additions}
-								removed={diff.deletions}
-								className="inline-flex shrink-0 gap-1 text-body"
-							/>
-						}
-					/>
-				</button>
+				/>
 			)}
 		</Rows>
 	);
 }
-
-/** Upstream's "Open changes, {added, number} added, {removed, number} removed" (`+7hgPw`) groups its counts. */
-const railCount = new Intl.NumberFormat("en-US");
 
 function changesCard(inputs: SessionRailInputs, diff: DiffStats | null): RailCard | null
 {
@@ -730,7 +715,9 @@ function changesCard(inputs: SessionRailInputs, diff: DiffStats | null): RailCar
 					summary: formatCount(1, "pull request"),
 				}
 			: {}),
-		body: <ChangesBody pr={inputs.pr ?? null} prStatus={inputs.prStatus} diff={liveDiff} />,
+		body: (
+			<ChangesBody pr={inputs.pr ?? null} prStatus={inputs.prStatus} diff={liveDiff} branch={inputs.gitBranch} />
+		),
 	};
 }
 
