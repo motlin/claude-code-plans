@@ -218,3 +218,88 @@ export function collectFindRanges(root: Node, query: string, options: FindOption
 	}
 	return ranges;
 }
+
+/** Upstream `BT` over `tB`-folded text: non-overlapping occurrences of `query` in `text`. */
+export function countOccurrences(text: string, query: string): number
+{
+	const needle = foldFindText(query);
+	if (needle === "") return 0;
+	const haystack = foldFindText(text);
+	let count = 0;
+	for (let at = haystack.indexOf(needle); at >= 0; at = haystack.indexOf(needle, at + needle.length)) count++;
+	return count;
+}
+
+type LayoutState = "hidden" | "skipped" | "laid-out";
+
+/** Per-search memo of computed styles, shared across every range one count checks (upstream's `{visible, subtree}`). */
+export interface VisibilityCache
+{
+	readonly visible: Map<Element, boolean>;
+	readonly subtree: Map<Element, LayoutState>;
+}
+
+export function newVisibilityCache(): VisibilityCache
+{
+	return {
+		visible: new Map(),
+		subtree: new Map(),
+	};
+}
+
+/** Upstream `uG`: the parent element, crossing out of a shadow root to its host. */
+function layoutParent(element: Element): Element | null
+{
+	if (element.parentElement) return element.parentElement;
+	const root = element.getRootNode();
+	return root instanceof ShadowRoot ? root.host : null;
+}
+
+/** Upstream `qJ`: the element a range starts in. */
+function startElement(node: Node): Element | null
+{
+	if (node instanceof Element) return node;
+	const parent = node.parentNode;
+	return node.parentElement ?? (parent instanceof ShadowRoot ? parent.host : null);
+}
+
+/** Upstream `Ba`: whether an element is laid out, hidden by `display:none`, or skipped by `content-visibility:auto`. */
+function layoutState(element: Element, cache: Map<Element, LayoutState> | undefined): LayoutState
+{
+	const cached = cache?.get(element);
+	if (cached) return cached;
+	const style = getComputedStyle(element);
+	let state: LayoutState;
+	if (style.display === "none") state = "hidden";
+	else
+	{
+		const parent = layoutParent(element);
+		const parentState = parent ? layoutState(parent, cache) : "laid-out";
+		state =
+			parentState === "hidden"
+				? "hidden"
+				: parentState === "skipped" || style.getPropertyValue("content-visibility") === "auto"
+					? "skipped"
+					: "laid-out";
+	}
+	cache?.set(element, state);
+	return state;
+}
+
+/**
+ * Upstream `N3`: a match counts when its element is `visibility:visible` and the range has a laid-out
+ * height, or it sits under `content-visibility:auto`, where the browser skipped its layout.
+ */
+export function isRangeVisible(range: Range, cache?: VisibilityCache): boolean
+{
+	const element = startElement(range.startContainer);
+	if (!element) return false;
+	let visible = cache?.visible.get(element);
+	if (visible === undefined)
+	{
+		visible = getComputedStyle(element).visibility === "visible";
+		cache?.visible.set(element, visible);
+	}
+	if (!visible) return false;
+	return range.getBoundingClientRect().height > 0 || layoutState(element, cache?.subtree) === "skipped";
+}

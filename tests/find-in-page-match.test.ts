@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import {describe, expect, it} from "vite-plus/test";
-import {collectFindRanges, foldFindText} from "../src/lib/find-in-page/match";
+import {collectFindRanges, countOccurrences, foldFindText, isRangeVisible} from "../src/lib/find-in-page/match";
 import {renderMarkdownToHtml} from "../src/lib/client-markdown";
 import {EYE_ICON_SVG} from "../src/lib/icon-paths";
 
@@ -36,6 +36,68 @@ describe("foldFindText", () =>
 	it("strips diacritics and lowercases", () =>
 	{
 		expect(foldFindText("Café ŁÓDŹ")).toBe("cafe lodz");
+	});
+});
+
+describe("countOccurrences", () =>
+{
+	it("counts non-overlapping folded matches, and nothing for an empty query", () =>
+	{
+		expect(
+			{
+				cased: countOccurrences("SESSION session", "Session"),
+				folded: countOccurrences("café cafe CAFÉ", "cafe"),
+				overlapping: countOccurrences("aaaa", "aa"),
+				empty: countOccurrences("abc", ""),
+			},
+		).toStrictEqual(
+			{
+				cased: 2,
+				folded: 3,
+				overlapping: 2,
+				empty: 0,
+			},
+		);
+	});
+});
+
+describe("isRangeVisible", () =>
+{
+	function rangeIn(html: string, height: number): Range
+	{
+		const root = mount(html);
+		const text = root.querySelector("[data-target]")?.firstChild;
+		if (!(text instanceof Text)) throw new Error("no target text");
+		const range = document.createRange();
+		range.selectNodeContents(text);
+		range.getBoundingClientRect = () => new DOMRect(0, 0, 10, height);
+		return range;
+	}
+
+	it("needs visibility:visible and a laid-out height, or a content-visibility:auto ancestor", () =>
+	{
+		expect(
+			{
+				laidOut: isRangeVisible(rangeIn("<p data-target>x</p>", 10)),
+				collapsed: isRangeVisible(rangeIn("<p data-target>x</p>", 0)),
+				hidden: isRangeVisible(rangeIn('<p data-target style="visibility:hidden">x</p>', 10)),
+				skipped: isRangeVisible(rangeIn('<div style="content-visibility:auto"><p data-target>x</p></div>', 0)),
+				displayNone: isRangeVisible(
+					rangeIn(
+						'<div style="display:none"><div style="content-visibility:auto"><p data-target>x</p></div></div>',
+						0,
+					),
+				),
+			},
+		).toStrictEqual(
+			{
+				laidOut: true,
+				collapsed: false,
+				hidden: false,
+				skipped: true,
+				displayNone: false,
+			},
+		);
 	});
 });
 

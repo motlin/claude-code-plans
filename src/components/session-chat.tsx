@@ -167,9 +167,12 @@ import {registerScrollSetter} from "../lib/scroll-setter";
 import
 {
 	jumpToMessage,
+	releaseEndFollow,
 	TRANSCRIPT_JUMP_REQUEST_EVENT,
 	TRANSCRIPT_RELEASE_END_FOLLOW_EVENT,
 } from "../lib/jump-to-message";
+import {useFindListProvider} from "../lib/find-in-page/list-provider";
+import {markdownToPlainText} from "../lib/markdown-plain-text";
 import {asRecord, isKeyOf} from "../lib/narrow";
 import {toolMarkActivity} from "../lib/working-mark-activity";
 import
@@ -4169,6 +4172,46 @@ function buildSessionListEntries(
 	});
 }
 
+/** A message's prose as plain text, kept per line object across renders. */
+const proseSearchText = new WeakMap<SessionLine, string>();
+
+/**
+ * Upstream `ECe` for local rows: a prompt or reply entry contributes the plain text of its visible
+ * messages' prose; markers, notices and tool bodies contribute nothing.
+ */
+function entrySearchText(
+	lines: readonly SessionLine[],
+	renderProps: LineRenderProps,
+	verbose: boolean,
+): (entry: SessionListEntry) => string
+{
+	const byIndex = new Map(lines.map((line) => [line.lineIndex, line]));
+	const textOf = (line: SessionLine): string =>
+	{
+		if ((line.type !== "user" && line.type !== "assistant") || !isLineVisible(line, renderProps, verbose))
+			return "";
+		let text = proseSearchText.get(line);
+		if (text === undefined)
+		{
+			text = markdownToPlainText(messageText(line));
+			proseSearchText.set(line, text);
+		}
+		return text;
+	};
+	return (entry) =>
+	{
+		if (entry.kind === "marker") return "";
+		const parts: string[] = [];
+		for (let index = Math.ceil(entry.startRecordIndex); index <= entry.endRecordIndex; index++)
+		{
+			const line = byIndex.get(index);
+			const text = line === undefined ? "" : textOf(line);
+			if (text !== "") parts.push(text);
+		}
+		return parts.join("\n");
+	};
+}
+
 /** Reads the tail alone, so its per-second ticks re-render only this slot. */
 function TranscriptTail(): React.ReactNode
 {
@@ -4177,12 +4220,15 @@ function TranscriptTail(): React.ReactNode
 
 function VirtualizedSessionEntries({
 	entries,
+	searchTextFor,
 	shouldScrollToEnd,
 	measurementKey,
 	measurementSource,
 	scrollKey,
 }: {
 	entries: SessionListEntry[];
+	/** The prose an entry's row shows, for in-app Find over entries the window has not mounted. */
+	searchTextFor: (entry: SessionListEntry) => string;
 	shouldScrollToEnd: boolean;
 	measurementKey: string;
 	measurementSource: object | undefined;
@@ -4620,6 +4666,36 @@ function VirtualizedSessionEntries({
 		};
 	}, [entries, jumpVersion, prefixHeights, range.endIndex, range.startIndex, updateVisibleRange]);
 
+	// Upstream's transcript find provider (`Mre` over `ECe`): counts every entry's prose, mounted or not,
+	// and moves the window onto the entry holding the active match.
+	useFindListProvider(
+		{
+			items: entries,
+			surface: "transcript",
+			getItemKey: (entry) => entry.key,
+			getSearchText: searchTextFor,
+			getScopeEl: () => listRef.current,
+			scrollToIndex: (index) =>
+			{
+				const list = listRef.current;
+				const scroller = scrollerRef.current;
+				if (!list || !scroller) return;
+				releaseEndFollow(scroller);
+				const viewport = scrollerViewport(scroller);
+				const listOffset = list.getBoundingClientRect().top - viewport.top + scroller.scrollTop;
+				scroller.scrollTop = Math.max(
+					0,
+					listOffset + prefixHeightAt(prefixHeights, index) - viewport.height / 2,
+				);
+				updateVisibleRange();
+			},
+			getMountedRows: () =>
+				[...(listRef.current?.querySelectorAll<HTMLElement>("[data-transcript-entry-index]") ?? [])].map(
+					(row) => [Number(row.dataset["transcriptEntryIndex"]), row] as const,
+				),
+		},
+	);
+
 	const promptIndices = useMemo(() => entries.flatMap((entry, index) => (entry.isPrompt ? [index] : [])), [entries]);
 	/**
 	 * Brings an entry's top to the scroller's top edge for ⌥⌘↑ / ⌥⌘↓. From the sticky prompt
@@ -4990,6 +5066,7 @@ function SessionLineList({
 		clientRows,
 		renderClientRowCard,
 	);
+	const searchTextFor = useMemo(() => entrySearchText(lines, renderProps, verbose), [lines, renderProps, verbose]);
 	const heldImagesCall = heldImagesCallId(lines, renderProps, verbose, turnInProgress);
 	const liveThinking = liveThinkingKey(lines, renderProps, verbose, turnInProgress);
 	const [expansionStore] = useState(() => new Map<string, ExpansionToggle>());
@@ -5001,6 +5078,7 @@ function SessionLineList({
 						<VirtualizedSessionEntries
 							key={measurementSource === undefined ? undefined : measurementKey}
 							entries={entries}
+							searchTextFor={searchTextFor}
 							shouldScrollToEnd={shouldScrollToEnd}
 							measurementKey={measurementKey}
 							measurementSource={measurementSource}

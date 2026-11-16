@@ -333,6 +333,9 @@ describe("KeyboardShortcutsDialog", () =>
 					"Jump to previous prompt",
 					"Jump to next prompt",
 					"Transcript view",
+					"Find",
+					"Find next",
+					"Find previous",
 					"Stop Claude’s response",
 					"Rewind the session to an earlier message",
 					"Toggle changes",
@@ -1263,6 +1266,7 @@ describe("KeyboardShortcutsDialog search", () =>
 				rows: [
 					"Focus next page area",
 					"Jump to next prompt",
+					"Find next",
 					"Attach selection as context",
 					"Expand or collapse pane",
 					"Next pane in terminal tab",

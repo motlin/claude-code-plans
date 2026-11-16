@@ -220,6 +220,7 @@ import type {PaneKind} from "../lib/pane-layout";
 import type {QuestionAnswer} from "../lib/hook-events";
 import
 {
+	fetchAllEarlierTranscript,
 	sessionDetailQueryOptions,
 	sessionResourcesQueryOptions,
 	sessionSubagentsQueryOptions,
@@ -229,6 +230,7 @@ import
 	useRequestSummary,
 } from "../lib/api/sessions";
 import type {SessionDetailData, SessionSubagentsData, TranscriptData} from "../lib/api/sessions";
+import {FindLoadRestContext} from "../lib/find-in-page/list-provider";
 import {countMessageRecords} from "../lib/message-count";
 import {linesHaveWorkflowCall} from "../lib/workflow-name";
 import {getSubagentLifecycleKey, extractPendingSubagents, type ActiveSubagent} from "../lib/subagents";
@@ -527,6 +529,12 @@ function SessionView({
 	// dotted folder), so the session's recorded cwd stands in for it.
 	const sessionDirectory = data.projectPath ?? data.cwd;
 	const archivedNoteEnters = useArchivedSinceOpen(sessionId, data.archived);
+	const findQueryClient = useQueryClient();
+	// In-app Find counts the whole session, so a new query pages in the history the transcript has not loaded.
+	const loadRestForFind = useCallback(
+		async () => fetchAllEarlierTranscript(findQueryClient, sessionId),
+		[findQueryClient, sessionId],
+	);
 	const scrollAnchorRef = useRef<HTMLDivElement>(null);
 	const locationHash = useLocation(
 		{
@@ -2278,70 +2286,78 @@ function SessionView({
 												>
 													<TurnUndoSendContext.Provider value={turnUndoSend}>
 														<TranscriptTailContext.Provider value={transcriptTail}>
-															<SessionChat
-																sessionId={sessionId}
-																lines={processed.lines}
-																measurementSource={transcript.records}
-																measurementLayout={JSON.stringify([
-																	settings.showDebug,
-																	settings.interfaceFont,
-																	settings.transcriptTextSize,
-																	settings.codeFont,
-																	settings.transcriptWidth,
-																])}
-																toolResultMap={processed.toolResultMap}
-																rewindCuts={chainProcessed.cutsByReplacement}
-																rewoundUuids={hiddenUuids}
-																allowedImageRoots={data.imageRoots}
-																subagents={subagents}
-																{...(workflowRuns === undefined
-																	? null
-																	:
+															<FindLoadRestContext.Provider value={loadRestForFind}>
+																<SessionChat
+																	sessionId={sessionId}
+																	lines={processed.lines}
+																	measurementSource={transcript.records}
+																	measurementLayout={JSON.stringify([
+																		settings.showDebug,
+																		settings.interfaceFont,
+																		settings.transcriptTextSize,
+																		settings.codeFont,
+																		settings.transcriptWidth,
+																	])}
+																	toolResultMap={processed.toolResultMap}
+																	rewindCuts={chainProcessed.cutsByReplacement}
+																	rewoundUuids={hiddenUuids}
+																	allowedImageRoots={data.imageRoots}
+																	subagents={subagents}
+																	{...(workflowRuns === undefined
+																		? null
+																		:
+																			{
+																				workflowRuns,
+																			})}
+																	showThinking={transcriptFlags.showThinking}
+																	showTools={transcriptFlags.showTools}
+																	showPassedHooks={transcriptFlags.showPassedHooks}
+																	showHookWarnings={transcriptFlags.showHookWarnings}
+																	showHookErrors={transcriptFlags.showHookErrors}
+																	showSystemBanners={
+																		transcriptFlags.showSystemBanners
+																	}
+																	showCompactSummaries={
+																		transcriptFlags.showCompactSummaries
+																	}
+																	showTranscriptOnly={
+																		transcriptFlags.showTranscriptOnly
+																	}
+																	transcriptMode={transcriptMode}
+																	sessionLive={sessionProcessLive(
 																		{
-																			workflowRuns,
-																		})}
-																showThinking={transcriptFlags.showThinking}
-																showTools={transcriptFlags.showTools}
-																showPassedHooks={transcriptFlags.showPassedHooks}
-																showHookWarnings={transcriptFlags.showHookWarnings}
-																showHookErrors={transcriptFlags.showHookErrors}
-																showSystemBanners={transcriptFlags.showSystemBanners}
-																showCompactSummaries={
-																	transcriptFlags.showCompactSummaries
-																}
-																showTranscriptOnly={transcriptFlags.showTranscriptOnly}
-																transcriptMode={transcriptMode}
-																sessionLive={sessionProcessLive(
+																			hookActive: isActive,
+																			summaryState: sessionSummaryState,
+																		},
+																	)}
+																	turnInProgress={
+																		workingMarkerState.status !== "idle"
+																	}
+																	archived={data.archived}
+																	permissionWaitToolUseId={permissionWaitId}
+																	onSendNow={requestSendNowInterrupt}
+																	onFocusComposer={focusSessionComposer}
+																	sideChatAvailable={true}
+																	initialScrollKey={initialScrollKey}
+																	scrollContentRef={scrollAnchorRef}
+																	shouldScrollToEnd={
+																		restoredScrollPosition === undefined &&
+																		locationHash === ""
+																	}
+																	summary={aiSummary}
+																	{...(slashCommands === undefined
+																		? {}
+																		:
+																			{
+																				slashCommands,
+																			})}
+																	{...(errorRecovery !== undefined &&
 																	{
-																		hookActive: isActive,
-																		summaryState: sessionSummaryState,
-																	},
-																)}
-																turnInProgress={workingMarkerState.status !== "idle"}
-																archived={data.archived}
-																permissionWaitToolUseId={permissionWaitId}
-																onSendNow={requestSendNowInterrupt}
-																onFocusComposer={focusSessionComposer}
-																sideChatAvailable={true}
-																initialScrollKey={initialScrollKey}
-																scrollContentRef={scrollAnchorRef}
-																shouldScrollToEnd={
-																	restoredScrollPosition === undefined &&
-																	locationHash === ""
-																}
-																summary={aiSummary}
-																{...(slashCommands === undefined
-																	? {}
-																	:
-																		{
-																			slashCommands,
-																		})}
-																{...(errorRecovery !== undefined &&
-																{
-																	errorRecovery,
-																})}
-																staleCompact={staleCompact}
-															/>
+																		errorRecovery,
+																	})}
+																	staleCompact={staleCompact}
+																/>
+															</FindLoadRestContext.Provider>
 														</TranscriptTailContext.Provider>
 													</TurnUndoSendContext.Provider>
 												</TranscriptActionsProvider>

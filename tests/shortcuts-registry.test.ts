@@ -21,9 +21,9 @@ function chord(binding: Binding): string
 
 describe("shortcut registry", () =>
 {
-	it("lists the 43 upstream web entries plus the page-scoped and Settings ⌘F searches, the desktop-only ⌥⌘F and the six local herdr terminal keys", () =>
+	it("lists the 46 upstream web entries plus the page-scoped and Settings ⌘F searches, the desktop-only ⌥⌘F and the six local herdr terminal keys", () =>
 	{
-		expect(SHORTCUT_IDS).toHaveLength(52);
+		expect(SHORTCUT_IDS).toHaveLength(55);
 	});
 
 	it("binds the local herdr terminal keys as ⌥⌘ chords on mac and Ctrl+Alt elsewhere, in their own Terminals group", () =>
@@ -236,7 +236,7 @@ describe("shortcut registry", () =>
 		}
 	});
 
-	it("lets only Settings search share ⌘F with page search, Rewind share Esc with Stop, and Queue for later share ⌘⏎ with Send and stay", () =>
+	it("lets only Find and Settings search share ⌘F with page search, Rewind share Esc with Stop, and Queue for later share ⌘⏎ with Send and stay", () =>
 	{
 		expect(
 			SHORTCUT_IDS.flatMap((id) =>
@@ -245,10 +245,65 @@ describe("shortcut registry", () =>
 				return other === undefined ? [] : [[id, other]];
 			}),
 		).toStrictEqual([
+			["find", "page_search"],
 			["settings_search", "page_search"],
 			["rewind_session", "stop_response"],
 			["send_and_stay", "queue_for_later"],
 		]);
+	});
+
+	it("registers upstream's Find rows: ⌘F, ⌘G and ⇧⌘G, with F3 / ⇧F3 beside Ctrl+G off mac", () =>
+	{
+		const ids = ["find", "find_next", "find_prev"] as const;
+		expect(
+			Object.fromEntries(
+				ids.map((id) => [
+					id,
+					{
+						description: SHORTCUTS[id].description,
+						group: SHORTCUTS[id].group,
+						mac: bindingsFor(id, true).map(bindingToKeys),
+						windows: bindingsFor(id, false, true).map(bindingToKeys),
+						linux: bindingsFor(id, false, false).map(bindingToKeys),
+						dialogShowsAllBindings: getShortcut(id).dialogShowsAllBindings,
+						afterTranscriptView: SHORTCUT_IDS.indexOf(id) - SHORTCUT_IDS.indexOf("transcript_view"),
+					},
+				]),
+			),
+		).toStrictEqual(
+			{
+				find:
+				{
+					description: "Find",
+					group: "general",
+					mac: ["cmd+f"],
+					windows: ["ctrl+f"],
+					linux: ["ctrl+f"],
+					dialogShowsAllBindings: undefined,
+					afterTranscriptView: 1,
+				},
+				find_next:
+				{
+					description: "Find next",
+					group: "general",
+					mac: ["cmd+g"],
+					windows: ["ctrl+g", "f3"],
+					linux: ["ctrl+g", "f3"],
+					dialogShowsAllBindings: true,
+					afterTranscriptView: 2,
+				},
+				find_prev:
+				{
+					description: "Find previous",
+					group: "general",
+					mac: ["cmd+shift+g"],
+					windows: ["ctrl+shift+g", "shift+f3"],
+					linux: ["ctrl+shift+g", "shift+f3"],
+					dialogShowsAllBindings: true,
+					afterTranscriptView: 3,
+				},
+			},
+		);
 	});
 
 	it("registers the 2026-10 upstream entries with upstream's bindings", () =>
@@ -385,6 +440,9 @@ describe("shortcut registry", () =>
 			"jump_prev_prompt",
 			"jump_next_prompt",
 			"transcript_view",
+			"find",
+			"find_next",
+			"find_prev",
 			"page_search",
 			"settings_search",
 			"stop_response",

@@ -5889,6 +5889,19 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	}
 }
 
+/* Upstream's find-in-page matches (shared-100 `ho`): the same colours in light and dark; the text is the resolved --cds-black. */
+::highlight(find-in-page)
+{
+	background-color: rgb(255 213 0);
+	color: var(--cds-black, #000);
+}
+
+::highlight(find-in-page-active)
+{
+	background-color: rgb(255 150 50);
+	color: var(--cds-black, #000);
+}
+
 /* Find in file matches, painted with the CSS Custom Highlight API. */
 ::highlight(file-find)
 {

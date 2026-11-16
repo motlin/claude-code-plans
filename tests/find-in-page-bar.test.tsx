@@ -1,0 +1,468 @@
+// @vitest-environment jsdom
+
+import {act, cleanup, fireEvent, render} from "@testing-library/react";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+
+import {FindInPage} from "../src/components/find-in-page-bar";
+import {endFind, registerFindProvider} from "../src/lib/find-in-page/store";
+
+const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
+
+const BAR_CLASS =
+	"fixed end-4 top-14 flex items-center gap-1 rounded-lg border-[0.5px] border-strong bg-surface-popover px-2 py-1.5 shadow-lg";
+const INPUT_CLASS =
+	"w-48 min-w-0 border-0 bg-transparent outline-none text-body text-primary placeholder:text-ink-muted hide-focus-ring";
+const STATUS_CLASS = "whitespace-nowrap text-footnote text-muted-as-secondary tabular-nums";
+const BUTTON_CLASS =
+	"inline-flex size-6 items-center justify-center rounded text-muted-as-secondary hover:bg-surface-0 hover:text-primary can-focus disabled:pointer-events-none disabled:opacity-40";
+
+/** A page with three "e"s outside the bar, and a provider so the bar is on offer. */
+function setup():
+{
+	opener: HTMLButtonElement;
+	off: () => void;
+}
+{
+	document.body.innerHTML = '<main><button id="opener">open</button><p>one</p><p>three</p></main>';
+	const off = registerFindProvider(
+		{
+			surface: "test",
+			count: () => 0,
+			show: () => undefined,
+			clear: () => undefined,
+			getScopeEl: () => null,
+		},
+	);
+	render(<FindInPage />);
+	const opener = document.getElementById("opener") as HTMLButtonElement;
+	opener.focus();
+	return {
+		opener,
+		off,
+	};
+}
+
+function pressFind(init: KeyboardEventInit = {}): KeyboardEvent
+{
+	const event = new KeyboardEvent(
+		"keydown",
+		{
+			key: "f",
+			metaKey: true,
+			bubbles: true,
+			cancelable: true,
+			...init,
+		},
+	);
+	act(() =>
+	{
+		window.dispatchEvent(event);
+	});
+	return event;
+}
+
+function bar(): HTMLElement | null
+{
+	return document.querySelector("[data-find-in-page-bar]");
+}
+
+function input(): HTMLInputElement
+{
+	const element = document.querySelector<HTMLInputElement>("[data-find-in-page-bar] input");
+	if (element === null) throw new Error("the find bar is closed");
+	return element;
+}
+
+function status(): string
+{
+	return document.querySelector('[data-find-in-page-bar] [role="status"]')?.textContent ?? "missing";
+}
+
+function buttons(): Record<string, boolean>
+{
+	return Object.fromEntries(
+		[...document.querySelectorAll<HTMLButtonElement>("[data-find-in-page-bar] button")].map((button) => [
+			button.getAttribute("aria-label"),
+			button.disabled,
+		]),
+	);
+}
+
+function type(value: string): void
+{
+	fireEvent.change(
+		input(),
+		{
+			target:
+			{
+				value,
+			},
+		},
+	);
+	act(() =>
+	{
+		vi.advanceTimersByTime(120);
+	});
+}
+
+function key(target: EventTarget, init: KeyboardEventInit): void
+{
+	act(() =>
+	{
+		target.dispatchEvent(
+			new KeyboardEvent(
+				"keydown",
+				{
+					bubbles: true,
+					cancelable: true,
+					...init,
+				},
+			),
+		);
+	});
+}
+
+describe("FindInPage", () =>
+{
+	const offs: (() => void)[] = [];
+
+	beforeEach(() =>
+	{
+		vi.useFakeTimers();
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(MAC_UA);
+		// jsdom lays nothing out and has no Range rects; this file's ranges all count as laid out.
+		Range.prototype.getBoundingClientRect = () => new DOMRect(0, 0, 10, 10);
+	});
+
+	afterEach(() =>
+	{
+		Reflect.deleteProperty(Range.prototype, "getBoundingClientRect");
+		cleanup();
+		for (const off of offs.splice(0)) off();
+		endFind();
+		vi.useRealTimers();
+		vi.restoreAllMocks();
+		document.body.innerHTML = "";
+	});
+
+	it("renders upstream's markup, focused, with an empty status and only Close enabled", () =>
+	{
+		offs.push(setup().off);
+		const event = pressFind();
+		const root = bar();
+		expect(
+			{
+				prevented: event.defaultPrevented,
+				role: root?.getAttribute("role"),
+				tabIndex: root?.getAttribute("tabindex"),
+				scope: root?.getAttribute("data-find-provider-scope"),
+				className: root?.className,
+				zIndex: root?.style.zIndex,
+				portaled: root?.parentElement?.parentElement === document.body,
+				input:
+				{
+					className: input().className,
+					label: input().getAttribute("aria-label"),
+					placeholder: input().placeholder,
+					spellcheck: input().getAttribute("spellcheck"),
+					autocomplete: input().getAttribute("autocomplete"),
+					focused: document.activeElement === input(),
+				},
+				status:
+				{
+					text: status(),
+					className: document.querySelector('[role="status"]')?.className,
+					atomic: document.querySelector('[role="status"]')?.getAttribute("aria-atomic"),
+				},
+				buttonClasses: [...document.querySelectorAll("[data-find-in-page-bar] button")].map((b) => b.className),
+				buttons: buttons(),
+			},
+		).toStrictEqual(
+			{
+				prevented: true,
+				role: "search",
+				tabIndex: "-1",
+				scope: "",
+				className: BAR_CLASS,
+				zIndex: "9000",
+				portaled: true,
+				input:
+				{
+					className: INPUT_CLASS,
+					label: "Find",
+					placeholder: "Find…",
+					spellcheck: "false",
+					autocomplete: "off",
+					focused: true,
+				},
+				status:
+				{
+					text: "",
+					className: STATUS_CLASS,
+					atomic: "true",
+				},
+				buttonClasses: [BUTTON_CLASS, BUTTON_CLASS, BUTTON_CLASS],
+				buttons:
+				{
+					"Go to previous match": true,
+					"Go to next match": true,
+					"Close find bar": false,
+				},
+			},
+		);
+	});
+
+	it("searches 120ms after typing, steps with wrap and reports 0/0 with no matches", () =>
+	{
+		offs.push(setup().off);
+		pressFind();
+		fireEvent.change(
+			input(),
+			{
+				target:
+				{
+					value: "e",
+				},
+			},
+		);
+		const beforeDebounce = status();
+		act(() =>
+		{
+			vi.advanceTimersByTime(120);
+		});
+		const found = status();
+		key(
+			input(),
+			{
+				key: "Enter",
+			},
+		);
+		const next = status();
+		key(
+			input(),
+			{
+				key: "Enter",
+			},
+		);
+		key(
+			input(),
+			{
+				key: "Enter",
+			},
+		);
+		const wrapped = status();
+		key(
+			input(),
+			{
+				key: "Enter",
+				shiftKey: true,
+			},
+		);
+		const back = status();
+		key(
+			document.body,
+			{
+				key: "g",
+				metaKey: true,
+			},
+		);
+		const commandG = status();
+		key(
+			document.body,
+			{
+				key: "F3",
+				shiftKey: true,
+			},
+		);
+		const shiftF3 = status();
+		const foundButtons = buttons();
+		type("zzqxq");
+		expect(
+			{
+				beforeDebounce,
+				found,
+				next,
+				wrapped,
+				back,
+				commandG,
+				shiftF3,
+				foundButtons,
+				missing: status(),
+				missingButtons: buttons(),
+			},
+		).toStrictEqual(
+			{
+				// "one" and "three" twice: "open" sits inside the opener button and counts too.
+				beforeDebounce: "0/0",
+				found: "1/4",
+				next: "2/4",
+				wrapped: "4/4",
+				back: "3/4",
+				commandG: "4/4",
+				shiftF3: "3/4",
+				foundButtons:
+				{
+					"Go to previous match": false,
+					"Go to next match": false,
+					"Close find bar": false,
+				},
+				missing: "0/0",
+				missingButtons:
+				{
+					"Go to previous match": true,
+					"Go to next match": true,
+					"Close find bar": false,
+				},
+			},
+		);
+	});
+
+	it("closes on Escape and returns focus to the opener; reopens empty", () =>
+	{
+		const {opener, off} = setup();
+		offs.push(off);
+		pressFind();
+		type("e");
+		key(
+			input(),
+			{
+				key: "Escape",
+			},
+		);
+		const closed = bar() === null;
+		const refocused = document.activeElement === opener;
+		pressFind();
+		expect(
+			{
+				closed,
+				refocused,
+				reopenedQuery: input().value,
+				reopenedStatus: status(),
+			},
+		).toStrictEqual(
+			{
+				closed: true,
+				refocused: true,
+				reopenedQuery: "",
+				reopenedStatus: "",
+			},
+		);
+	});
+
+	it("refocuses and selects the input on ⌘F while open", () =>
+	{
+		const {opener, off} = setup();
+		offs.push(off);
+		pressFind();
+		type("one");
+		opener.focus();
+		pressFind();
+		expect(
+			{
+				focused: document.activeElement === input(),
+				selection: [input().selectionStart, input().selectionEnd],
+			},
+		).toStrictEqual(
+			{
+				focused: true,
+				selection: [0, 3],
+			},
+		);
+	});
+
+	it("closes without moving focus when a modal dialog opens", async () =>
+	{
+		const {off} = setup();
+		offs.push(off);
+		pressFind();
+		const dialog = document.createElement("div");
+		dialog.setAttribute("role", "dialog");
+		dialog.setAttribute("aria-modal", "true");
+		dialog.tabIndex = -1;
+		// The overlay observer reports in a microtask.
+		await act(async () =>
+		{
+			document.body.append(dialog);
+			dialog.focus();
+			await Promise.resolve();
+		});
+		expect(
+			{
+				closed: bar() === null,
+				focusInDialog: document.activeElement === dialog,
+			},
+		).toStrictEqual(
+			{
+				closed: true,
+				focusInDialog: true,
+			},
+		);
+	});
+
+	it("stays closed without a provider, after an earlier handler took ⌘F, or under a modal dialog", () =>
+	{
+		document.body.innerHTML = "<p>text</p>";
+		render(<FindInPage />);
+		const noProvider = pressFind();
+		const noProviderOpened = bar() !== null;
+		offs.push(
+			registerFindProvider(
+				{
+					surface: "test",
+					count: () => 0,
+					show: () => undefined,
+					clear: () => undefined,
+					getScopeEl: () => null,
+				},
+			),
+		);
+		const takeFind = (event: KeyboardEvent) =>
+		{
+			event.preventDefault();
+		};
+		window.addEventListener(
+			"keydown",
+			takeFind,
+			{
+				capture: true,
+			},
+		);
+		pressFind();
+		const takenOpened = bar() !== null;
+		window.removeEventListener(
+			"keydown",
+			takeFind,
+			{
+				capture: true,
+			},
+		);
+		const dialog = document.createElement("div");
+		dialog.setAttribute("role", "dialog");
+		dialog.setAttribute("aria-modal", "true");
+		document.body.append(dialog);
+		const underDialog = pressFind();
+		const dialogOpened = bar() !== null;
+		dialog.remove();
+		const ctrlOnMac = pressFind(
+			{
+				metaKey: false,
+				ctrlKey: true,
+			},
+		);
+		expect(
+			{
+				noProvider: [noProvider.defaultPrevented, noProviderOpened],
+				takenOpened,
+				underDialog: [underDialog.defaultPrevented, dialogOpened],
+				ctrlOnMac: [ctrlOnMac.defaultPrevented, bar() !== null],
+			},
+		).toStrictEqual(
+			{
+				noProvider: [false, false],
+				takenOpened: false,
+				underDialog: [false, false],
+				ctrlOnMac: [false, false],
+			},
+		);
+	});
+});

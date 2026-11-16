@@ -822,6 +822,20 @@ export async function fetchEarlierTranscript(queryClient: QueryClient, sessionId
 	return request;
 }
 
+/** Page in every earlier transcript page, for a search that has to see the whole session (upstream's find `loadRest`). */
+export async function fetchAllEarlierTranscript(queryClient: QueryClient, sessionId: string): Promise<void>
+{
+	const queryKey = sessionQueryKeys.transcript(sessionId);
+	for (;;)
+	{
+		const before = queryClient.getQueryData<TranscriptData>(queryKey)?.startIndex ?? 0;
+		if (before === 0) return;
+		await fetchEarlierTranscript(queryClient, sessionId);
+		const after = queryClient.getQueryData<TranscriptData>(queryKey)?.startIndex ?? 0;
+		if (after >= before) return;
+	}
+}
+
 const SessionSubagentSchema = z.object(
 	{
 		id: z.string(),

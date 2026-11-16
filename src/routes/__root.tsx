@@ -30,6 +30,7 @@ import {AutoArchiveKeepReporter} from "../components/auto-archive-keep-reporter"
 import {DeferredCommandPalette} from "../components/command-palette-entry";
 import {DeferredSettingsDialog} from "../components/settings/settings-dialog-entry";
 import {DeferredKeyboardShortcutsDialog} from "../components/keyboard-shortcuts-dialog-entry";
+import {FindInPage} from "../components/find-in-page-bar";
 import {RecentsSwitcher} from "../components/recents-switcher";
 import {NewSessionShortcut} from "../components/new-session-shortcut";
 import {ForkNavigator} from "../components/fork-navigator";
@@ -258,6 +259,7 @@ function RootLayout({
 			</AppFrame>
 			<DeferredCommandPalette {...commandPalette} />
 			<DeferredKeyboardShortcutsDialog />
+			<FindInPage />
 			<RecentsSwitcher />
 			<NewSessionShortcut />
 			<ForkNavigator />

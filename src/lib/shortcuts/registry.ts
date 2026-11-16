@@ -354,6 +354,67 @@ export const SHORTCUTS =
 		ownerSlug: "transcript-view",
 		enabled: true,
 	},
+	find:
+	{
+		description: "Find",
+		group: "general",
+		bindings: cmdOrCtrl("f"),
+		ownerSlug: "find-in-page-bar",
+		enabled: true,
+		// A page's own ⌘F search (Artifacts, Routines, Settings) takes the key first; the bar yields to it.
+		sharesBindingWith: "page_search",
+	},
+	find_next:
+	{
+		description: "Find next",
+		group: "general",
+		// Upstream's bar also takes a bare F3 on mac; its ⌘/ row lists only ⌘G there.
+		bindings: [
+			{
+				key: "g",
+				modifiers: ["cmd"],
+				platform: "mac",
+			},
+			{
+				key: "g",
+				modifiers: ["ctrl"],
+				platform: "non-mac",
+			},
+			{
+				key: "f3",
+				modifiers: [],
+				platform: "non-mac",
+			},
+		],
+		ownerSlug: "find-in-page-bar",
+		enabled: true,
+		dialogShowsAllBindings: true,
+	},
+	find_prev:
+	{
+		description: "Find previous",
+		group: "general",
+		bindings: [
+			{
+				key: "g",
+				modifiers: ["cmd", "shift"],
+				platform: "mac",
+			},
+			{
+				key: "g",
+				modifiers: ["ctrl", "shift"],
+				platform: "non-mac",
+			},
+			{
+				key: "f3",
+				modifiers: ["shift"],
+				platform: "non-mac",
+			},
+		],
+		ownerSlug: "find-in-page-bar",
+		enabled: true,
+		dialogShowsAllBindings: true,
+	},
 	page_search:
 	{
 		description: "Search this page",
