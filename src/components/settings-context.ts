@@ -144,6 +144,10 @@ export interface Settings
 	filesWordWrap: boolean;
 	/** Source view tab width: 2, 4 or 8, normalized where it is used. */
 	filesTabSize: number;
+	/** Source view whitespace dots and tab arrows, off by default like upstream. */
+	filesShowWhitespace: boolean;
+	/** Source view scrolls the last line up to the top, off by default like upstream. */
+	filesScrollPastEnd: boolean;
 
 	/** The sidebar's one-time "drag to pin" coach mark was dismissed or a drag pin happened. */
 	seenDragPinHint: boolean;
@@ -214,6 +218,8 @@ export const DEFAULTS: Settings =
 	filesTreeWidth: 240,
 	filesWordWrap: true,
 	filesTabSize: 4,
+	filesShowWhitespace: false,
+	filesScrollPastEnd: false,
 
 	seenDragPinHint: false,
 };
@@ -269,6 +275,8 @@ export const STORAGE_KEYS: Record<keyof Settings, string> =
 	filesTreeWidth: "ccp-files-tree-width",
 	filesWordWrap: "ccp-files-word-wrap",
 	filesTabSize: "ccp-files-tab-size",
+	filesShowWhitespace: "ccp-files-show-whitespace",
+	filesScrollPastEnd: "ccp-files-scroll-past-end",
 	seenDragPinHint: "ccp-seen-drag-pin-hint",
 };
 
@@ -481,6 +489,8 @@ const STORED_VALUE_READERS: {[K in keyof Settings]: StoredValueReader<Settings[K
 	filesTreeWidth: readNumber,
 	filesWordWrap: readBoolean,
 	filesTabSize: readNumber,
+	filesShowWhitespace: readBoolean,
+	filesScrollPastEnd: readBoolean,
 	seenDragPinHint: readBoolean,
 };
 

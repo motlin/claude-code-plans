@@ -21,7 +21,8 @@ describe("restoreDomGlobals", () =>
 		);
 		Reflect.deleteProperty(HTMLElement.prototype, "offsetParent");
 		Reflect.set(HTMLElement.prototype, "animate", undefined);
-		Reflect.set(Range.prototype, "getBoundingClientRect", () => new DOMRect());
+		// tests/setup.ts already supplies Range rects, so add an API jsdom never has.
+		Reflect.set(Range.prototype, "getBoxQuads", () => []);
 		Object.defineProperty(
 			navigator,
 			"clipboard",
@@ -49,7 +50,7 @@ describe("restoreDomGlobals", () =>
 				innerHeight: Object.getOwnPropertyDescriptor(globalThis, "innerHeight"),
 				added: [
 					Object.hasOwn(HTMLElement.prototype, "animate"),
-					Object.hasOwn(Range.prototype, "getBoundingClientRect"),
+					Object.hasOwn(Range.prototype, "getBoxQuads"),
 					Object.hasOwn(navigator, "clipboard"),
 					Object.hasOwn(document, "startViewTransition"),
 					Object.hasOwn(globalThis, "ResizeObserver"),

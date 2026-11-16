@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import {EditorView} from "@codemirror/view";
-import {cleanup, fireEvent, render} from "@testing-library/react";
+import {foldCode} from "@codemirror/language";
+import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {createRef} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SourceEditor, type SourceEditorHandle, type SourceEditorProps} from "../src/components/files/source-editor";
@@ -350,5 +351,339 @@ describe("SourceEditor editing", () =>
 				["change", false],
 			],
 		]);
+	});
+});
+
+function lineFlags(container: HTMLElement, className: string): boolean[]
+{
+	return [...container.querySelectorAll(".cm-line")].map((line) => line.classList.contains(className));
+}
+
+function marks(container: HTMLElement, prefix: string): string[][]
+{
+	return [...container.querySelectorAll<HTMLElement>(".cm-line span")]
+		.filter((span) => [...span.classList].some((name) => name.startsWith(prefix)))
+		.map((span) => [span.textContent, span.className]);
+}
+
+describe("SourceEditor syntax colors", () =>
+{
+	it("maps Shiki tokens to cm-shikiColorN marks and labels the language", () =>
+	{
+		const tokens = [
+			[
+				{
+					content: "const",
+					color: "#a",
+					fontStyle: 0,
+					offset: 0,
+				},
+				{
+					content: " x",
+					color: "#b",
+					fontStyle: 2,
+					offset: 5,
+				},
+			],
+		];
+		const {container} = render(<SourceEditor value="const x" readOnly tokens={tokens} language="typescript" />);
+		expect(
+			{
+				marks: marks(container, "cm-shiki"),
+				language: container.querySelector(".cm-content")!.getAttribute("data-language"),
+			},
+		).toStrictEqual(
+			{
+				marks: [
+					["const", "cm-shikiColor1"],
+					[" x", "cm-shikiColor2 cm-shikiBold"],
+				],
+				language: "typescript",
+			},
+		);
+	});
+});
+
+describe("SourceEditor line targeting", () =>
+{
+	const FIVE = "one\ntwo\nthree\nfour\nfive";
+
+	afterEach(() =>
+	{
+		window.history.replaceState(null, "", "/");
+	});
+
+	it("selects line and paints the line..endLine jump range", () =>
+	{
+		const {container} = render(<SourceEditor value={FIVE} readOnly line={3} endLine={4} />);
+		expect(
+			{
+				jump: lineFlags(container, "cm-epitaxyJumpRange"),
+				head: viewOf(container).state.selection.main.head,
+			},
+		).toStrictEqual(
+			{
+				jump: [false, false, true, true, false],
+				head: 8,
+			},
+		);
+	});
+
+	it("follows #L hashes when hashNavigation is on", () =>
+	{
+		const {container} = render(<SourceEditor value={FIVE} readOnly hashNavigation />);
+		act(() =>
+		{
+			window.history.replaceState(null, "", "#L2");
+			window.dispatchEvent(new HashChangeEvent("hashchange"));
+		});
+		const single = lineFlags(container, "cm-epitaxyJumpRange");
+		act(() =>
+		{
+			window.history.replaceState(null, "", "#L4-L5");
+			window.dispatchEvent(new HashChangeEvent("hashchange"));
+		});
+		expect([single, lineFlags(container, "cm-epitaxyJumpRange")]).toStrictEqual([
+			[false, true, false, false, false],
+			[false, false, false, true, true],
+		]);
+	});
+});
+
+describe("SourceEditor folding", () =>
+{
+	it("folds markdown headings from the gutter chevron and unfolds from the placeholder", () =>
+	{
+		const {container} = render(<SourceEditor value={"# A\nx\n## B\ny"} readOnly language="markdown" />);
+		const markers = [...container.querySelectorAll(".cm-fold-open")].map((marker) => [
+			marker.getAttribute("title"),
+			marker.querySelector("svg path")?.getAttribute("d"),
+		]);
+		fireEvent.click(container.querySelector(".cm-fold-open")!);
+		const placeholder = container.querySelector(".cm-foldPlaceholder");
+		const folded =
+		{
+			lines: container.querySelectorAll(".cm-line").length,
+			placeholder: placeholder && attributesOf(placeholder, ["aria-label", "title"]),
+			text: placeholder?.textContent,
+		};
+		fireEvent.click(placeholder!);
+		const unfolded = container.querySelectorAll(".cm-line").length;
+		const view = viewOf(container);
+		view.dispatch(
+			{
+				selection:
+				{
+					anchor: view.state.doc.line(3).from,
+				},
+			},
+		);
+		foldCode(view);
+		expect(
+			{
+				markers,
+				folded,
+				unfolded,
+				sectionFolded: container.querySelectorAll(".cm-line").length,
+			},
+		).toStrictEqual(
+			{
+				markers: [
+					["Fold line", "M6 4L10 8L6 12"],
+					["Fold line", "M6 4L10 8L6 12"],
+				],
+				folded:
+				{
+					lines: 1,
+					placeholder:
+					{
+						"aria-label": "Folded code",
+						title: "Unfold",
+					},
+					text: "…",
+				},
+				unfolded: 4,
+				sectionFolded: 3,
+			},
+		);
+	});
+
+	it("folds code by indentation", () =>
+	{
+		const {container} = render(<SourceEditor value={"if (a)\n  b\n  c\nd"} readOnly language="typescript" />);
+		expect(container.querySelectorAll(".cm-fold-open").length).toBe(1);
+	});
+});
+
+describe("SourceEditor go to line", () =>
+{
+	it("Ctrl-G calls onGoToLine, and goTo moves the caret to line:column", () =>
+	{
+		const ref = createRef<SourceEditorHandle>();
+		const onGoToLine = vi.fn<() => void>();
+		const carets: number[][] = [];
+		const {container} = render(
+			<SourceEditor
+				ref={ref}
+				value={"one\ntwo\nthree"}
+				readOnly
+				onGoToLine={onGoToLine}
+				onCaretChange={(line, lines) => carets.push([line, lines])}
+			/>,
+		);
+		const notPrevented = fireEvent.keyDown(
+			container.querySelector(".cm-content")!,
+			{
+				key: "g",
+				ctrlKey: true,
+			},
+		);
+		act(() =>
+		{
+			ref.current!.goTo(3, 2);
+		});
+		expect(
+			{
+				calls: onGoToLine.mock.calls.length,
+				notPrevented,
+				head: viewOf(container).state.selection.main.head,
+				carets,
+			},
+		).toStrictEqual(
+			{
+				calls: 1,
+				notPrevented: false,
+				head: 9,
+				carets: [
+					[1, 3],
+					[3, 3],
+				],
+			},
+		);
+	});
+
+	it("selectAll and selectedLines expose the selection to the context menu", () =>
+	{
+		const ref = createRef<SourceEditorHandle>();
+		const {container} = render(<SourceEditor ref={ref} value={"one\ntwo\nthree"} readOnly />);
+		const before = ref.current!.selectedText();
+		act(() =>
+		{
+			ref.current!.selectAll();
+		});
+		const all =
+		{
+			main: viewOf(container).state.selection.main.to,
+			text: ref.current!.selectedText(),
+		};
+		const view = viewOf(container);
+		view.dispatch(
+			{
+				selection:
+				{
+					anchor: 5,
+					head: 9,
+				},
+			},
+		);
+		expect(
+			{
+				before,
+				all,
+				lines: ref.current!.selectedLines(),
+			},
+		).toStrictEqual(
+			{
+				before: "",
+				all:
+				{
+					main: 13,
+					text: "one\ntwo\nthree",
+				},
+				lines:
+				{
+					start: 2,
+					end: 3,
+					text: "two\nthree",
+				},
+			},
+		);
+	});
+});
+
+describe("SourceEditor find highlights", () =>
+{
+	function findMarks(container: HTMLElement): string[][]
+	{
+		return [...container.querySelectorAll<HTMLElement>(".cm-epitaxyFindMatch")].map((mark) => [
+			mark.textContent,
+			mark.classList.contains("cm-epitaxyFindMatch-active") ? "active" : "",
+		]);
+	}
+
+	it("marks every match and moves the active one", () =>
+	{
+		const {container, rerender} = render(
+			<SourceEditor
+				value="ab x ab"
+				readOnly
+				findHighlight={
+				{
+					query: "ab",
+					active: 0,
+					nonce: 1,
+				}}
+			/>,
+		);
+		const first = findMarks(container);
+		rerender(
+			<SourceEditor
+				value="ab x ab"
+				readOnly
+				findHighlight={
+				{
+					query: "ab",
+					active: 1,
+					nonce: 2,
+				}}
+			/>,
+		);
+		const second = findMarks(container);
+		rerender(<SourceEditor value="ab x ab" readOnly findHighlight={null} />);
+		expect([first, second, findMarks(container)]).toStrictEqual([
+			[
+				["ab", "active"],
+				["ab", ""],
+			],
+			[
+				["ab", ""],
+				["ab", "active"],
+			],
+			[],
+		]);
+	});
+});
+
+describe("SourceEditor brackets and whitespace", () =>
+{
+	it("colors bracket pairs by depth", () =>
+	{
+		const {container} = render(<SourceEditor value="f(a[b{c}])" readOnly />);
+		expect(marks(container, "cm-epitaxyBracketPair")).toStrictEqual([
+			["(", "cm-epitaxyBracketPair0"],
+			["[", "cm-epitaxyBracketPair1"],
+			["{", "cm-epitaxyBracketPair2"],
+			["}", "cm-epitaxyBracketPair2"],
+			["]", "cm-epitaxyBracketPair1"],
+			[")", "cm-epitaxyBracketPair0"],
+		]);
+	});
+
+	it("shows whitespace only when showWhitespace is on", () =>
+	{
+		const {container, rerender} = render(<SourceEditor value="a b" readOnly />);
+		const off = container.querySelectorAll(".cm-highlightSpace").length;
+		rerender(<SourceEditor value="a b" readOnly showWhitespace />);
+		expect([off, container.querySelectorAll(".cm-highlightSpace").length]).toStrictEqual([0, 1]);
 	});
 });

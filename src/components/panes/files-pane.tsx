@@ -123,6 +123,24 @@ function FilesSettingsMenu({
 				>
 					Word wrap
 				</MenuCheckboxItem>
+				<MenuCheckboxItem
+					checked={settings.filesShowWhitespace}
+					onCheckedChange={(checked) =>
+					{
+						setSetting("filesShowWhitespace", checked);
+					}}
+				>
+					Show whitespace
+				</MenuCheckboxItem>
+				<MenuCheckboxItem
+					checked={settings.filesScrollPastEnd}
+					onCheckedChange={(checked) =>
+					{
+						setSetting("filesScrollPastEnd", checked);
+					}}
+				>
+					Scroll past end
+				</MenuCheckboxItem>
 				<MenuSub>
 					<MenuSubTrigger value={normalizeFileTabSize(settings.filesTabSize)}>Tab size</MenuSubTrigger>
 					<MenuSubContent>

@@ -224,6 +224,41 @@ export function TabMenuItems({path, preview, cwd, onAttachContext, onRevealInTre
 	);
 }
 
+/** The source editor's actions, when the right-click landed in it. */
+export interface SourceEditorMenuActions
+{
+	/** The selection when the menu opened; Copy is disabled while it is empty. */
+	selectedText: string;
+	onSelectAll: () => void;
+	onGoToLine: () => void;
+}
+
+/** Upstream `Md`'s editor rows: Copy ⌘C · Select all ⌘A · Go to line ⌃G. */
+function SourceEditorItems({selectedText, onSelectAll, onGoToLine}: SourceEditorMenuActions)
+{
+	const copy = useCopyToClipboard();
+	return (
+		<>
+			<MenuItem
+				shortcut="cmd+c"
+				disabled={selectedText === ""}
+				onSelect={() =>
+				{
+					copy(selectedText);
+				}}
+			>
+				Copy
+			</MenuItem>
+			<MenuItem shortcut="cmd+a" onSelect={onSelectAll}>
+				Select all
+			</MenuItem>
+			<MenuItem shortcut="ctrl+g" onSelect={onGoToLine}>
+				Go to line
+			</MenuItem>
+		</>
+	);
+}
+
 interface ViewerMenuItemsProps
 {
 	path: string;
@@ -235,6 +270,8 @@ interface ViewerMenuItemsProps
 	attachment: () => ContextAttachment;
 	onAttachContext: AttachContextHandler | undefined;
 	attachShortcut: string;
+	/** Present when the source editor is the target. */
+	editor?: SourceEditorMenuActions | undefined;
 }
 
 export function ViewerMenuItems({
@@ -245,6 +282,7 @@ export function ViewerMenuItems({
 	attachment,
 	onAttachContext,
 	attachShortcut,
+	editor,
 }: ViewerMenuItemsProps)
 {
 	return (
@@ -256,6 +294,7 @@ export function ViewerMenuItems({
 				onAttachContext={onAttachContext}
 				attachShortcut={attachShortcut}
 			/>
+			{editor !== undefined && <SourceEditorItems {...editor} />}
 			<CopyContentsItem content={content} />
 			<DownloadItem path={path} />
 			<MenuSeparator />

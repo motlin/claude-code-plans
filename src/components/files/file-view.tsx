@@ -6,6 +6,7 @@ import
 	type MouseEvent,
 	type ReactNode,
 	type RefObject,
+	Suspense,
 	useEffect,
 	useMemo,
 	useRef,
@@ -13,12 +14,13 @@ import
 } from "react";
 
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
+import {useHighlightedLines} from "../../hooks/use-shiki";
 
 import {ApiResponseError} from "../../lib/api/client";
 import {fileContentUrl, fileViewQueryOptions} from "../../lib/api/file";
 import type {AttachContextHandler, ContextAttachment} from "../../lib/context-attach";
 import {formatFileSize, imageContentType, isMarkdownPath, normalizeFileTabSize} from "../../lib/file-preview";
-import {firstMatchFromLine, lineMatchOffsets, lineOfMatch, stepMatch} from "../../lib/find-in-file";
+import {firstMatchFromLine, lineMatchOffsets, stepMatch} from "../../lib/find-in-file";
 import {editableMarkdownTarget} from "../../lib/file-edit";
 import {registerFindInFile} from "../../lib/find-in-file-request";
 import {fileRefTexts} from "../../lib/client-markdown";
@@ -33,11 +35,14 @@ import {useSettings} from "../settings-context";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
 import {useCopyToClipboard} from "./use-copy-to-clipboard";
-import {ViewerMenuItems} from "./file-context-menu";
+import {type SourceEditorMenuActions, ViewerMenuItems} from "./file-context-menu";
 import {mentionPath} from "./mention-path";
 import {FindBar} from "./find-in-file";
 import {clearFindHighlights, collectFindBlocks, paintFindHighlights} from "./find-highlights";
 import {useMarkdownEdit} from "./markdown-edit";
+import {GoToLineBar} from "./go-to-line-bar";
+import {LazySourceEditor} from "./lazy-source-editor";
+import type {FindHighlight, SourceEditorHandle} from "./source-editor";
 
 /**
  * Sibling `.md` links render under this prefix; a click handler resolves them
@@ -240,8 +245,24 @@ function selectionAttachment(
 	path: string,
 	cwd: string | undefined,
 	content: string | undefined,
+	editor: SourceEditorHandle | null,
 ): ContextAttachment | null
 {
+	const lines = editor?.hasFocus() === true ? editor.selectedLines() : null;
+	if (lines !== null)
+	{
+		return {
+			kind: "selection",
+			path: mentionPath(path, cwd),
+			range:
+			{
+				start: lines.start,
+				end: lines.end,
+			},
+			text: lines.text,
+			language: fileViewerLanguage(path),
+		};
+	}
 	const selection = window.getSelection();
 	if (container === null || selection === null || selection.rangeCount === 0) return null;
 	const range = selection.getRangeAt(0);
@@ -297,6 +318,7 @@ function isFindShortcut(event: KeyboardEvent): boolean
 function useFindInFile({
 	path,
 	viewerRef,
+	editorRef,
 	content,
 	sourceMode,
 	line,
@@ -304,6 +326,7 @@ function useFindInFile({
 }: {
 	path: string;
 	viewerRef: RefObject<HTMLDivElement | null>;
+	editorRef: RefObject<SourceEditorHandle | null>;
 	content: string | undefined;
 	sourceMode: boolean;
 	line: number | undefined;
@@ -362,28 +385,17 @@ function useFindInFile({
 	const anchored =
 		sourceMatches !== null && anchorLine !== null ? firstMatchFromLine(sourceMatches, anchorLine) : activeState;
 	const active = total === 0 ? 0 : Math.min(anchored, total - 1);
-	const revealLine = sourceMatches !== null && total > 0 ? lineOfMatch(sourceMatches.offsets, active) : undefined;
 
 	useEffect(() =>
 	{
 		const root = viewerRef.current;
-		if (!open || root === null) return undefined;
+		// The source editor draws its own matches from findHighlight.
+		if (!open || root === null || sourceMatches !== null) return undefined;
 		const apply = () =>
 		{
-			const blocks = collectFindBlocks(root, query);
-			const ranges: Range[] = [];
-			let activeRange = null as Range | null;
-			for (const {block, ranges: blockRanges} of blocks)
-			{
-				const lineNumber = sourceMatches === null ? null : Number(block.id.slice(1));
-				const base = lineNumber === null ? ranges.length : (sourceMatches?.offsets[lineNumber - 1] ?? -1);
-				blockRanges.forEach((range, index) =>
-				{
-					if (base + index === active) activeRange = range;
-					ranges.push(range);
-				});
-			}
-			if (sourceMatches === null) setDomTotal(ranges.length);
+			const ranges = collectFindBlocks(root, query).flatMap((block) => block.ranges);
+			const activeRange = ranges[active] ?? null;
+			setDomTotal(ranges.length);
 			paintFindHighlights(ranges, activeRange);
 			if (scrolledRef.current !== scrollRequest && activeRange !== null)
 			{
@@ -439,11 +451,13 @@ function useFindInFile({
 	const close = () =>
 	{
 		setOpen(false);
-		viewerRef.current?.focus(
-			{
-				preventScroll: true,
-			},
-		);
+		if (editorRef.current === null)
+			viewerRef.current?.focus(
+				{
+					preventScroll: true,
+				},
+			);
+		else editorRef.current.focus();
 	};
 
 	const changeQuery = (next: string) =>
@@ -471,7 +485,15 @@ function useFindInFile({
 
 	return {
 		handlePaneKeyDown,
-		revealLine: open ? revealLine : undefined,
+		findHighlight:
+			sourceMatches === null
+				? null
+				: (
+					{
+						query,
+						active,
+						nonce: scrollRequest,
+					} satisfies FindHighlight),
 		bar: open ? (
 			<FindBar
 				inputRef={inputRef}
@@ -517,7 +539,19 @@ export function FileView({
 		},
 	);
 	const viewerRef = useRef<HTMLDivElement>(null);
+	const editorRef = useRef<SourceEditorHandle>(null);
 	const [menuSelection, setMenuSelection] = useState<ContextAttachment | null>(null);
+	const [menuEditorText, setMenuEditorText] = useState<string | null>(null);
+	const [goToLine, setGoToLine] = useState<
+	{
+		focusRequest: number;
+	} | null>(null);
+	const [caret, setCaret] = useState(
+		{
+			line: 1,
+			lines: 1,
+		},
+	);
 	const attachKeys = useShortcutKeys("attach_selection");
 	const content = file.data?.kind === "text" ? file.data.content : undefined;
 	const edit = useMarkdownEdit(
@@ -528,22 +562,54 @@ export function FileView({
 			onDirtyChange,
 		},
 	);
+	const sourceMode = edit.editor === null && content !== undefined && content !== "" && (!markdown || showSource);
+	const language = fileViewerLanguage(path);
+	const tokens = useHighlightedLines(sourceMode ? content : "", language);
 	const find = useFindInFile(
 		{
 			path,
 			viewerRef,
+			editorRef,
 			content,
-			sourceMode: content !== undefined && content !== "" && (!markdown || showSource),
+			sourceMode,
 			line,
 			findQuery,
 		},
 	);
 
+	const openGoToLine = () =>
+	{
+		setGoToLine((bar) => (
+		{
+			focusRequest: (bar?.focusRequest ?? 0) + 1,
+		}));
+	};
+
+	const closeGoToLine = (refocus: boolean) =>
+	{
+		setGoToLine(null);
+		if (refocus) editorRef.current?.focus();
+	};
+
+	const editorMenu = (): SourceEditorMenuActions | undefined =>
+		menuEditorText === null
+			? undefined
+			:
+				{
+					selectedText: menuEditorText,
+					onSelectAll: () =>
+					{
+						editorRef.current?.selectAll();
+						editorRef.current?.focus();
+					},
+					onGoToLine: openGoToLine,
+				};
+
 	useShortcut(
 		"attach_selection",
 		() =>
 		{
-			const attachment = selectionAttachment(viewerRef.current, path, cwd, content);
+			const attachment = selectionAttachment(viewerRef.current, path, cwd, content, editorRef.current);
 			if (attachment === null) return false;
 			onAttachContext?.(attachment);
 			return true;
@@ -627,17 +693,64 @@ export function FileView({
 				</div>
 			);
 		}
+		const tabSize = normalizeFileTabSize(settings.filesTabSize);
+		// Upstream's EpitaxyCodeMirrorFile chain; the static Shiki viewer stands in while the editor chunk loads.
 		return (
-			<div className="px-2 pb-2">
-				<FileViewer
-					file={data}
-					wrap={settings.filesWordWrap}
-					tabSize={normalizeFileTabSize(settings.filesTabSize)}
-					line={line}
-					endLine={endLine}
-					hashNavigation={hashNavigation}
-					revealLine={find.revealLine}
-				/>
+			<div
+				className="epitaxy-diff epitaxy-file-rows min-h-0 flex-1 overflow-hidden"
+				style={
+				{
+					"--diffs-tab-size": tabSize,
+				}}
+			>
+				<div className="relative h-full min-h-0 flex-1">
+					<div
+						dir="ltr"
+						data-file-viewer="true"
+						data-find-query={findQuery}
+						className="h-full overflow-hidden text-code [&_.cm-editor]:h-full"
+					>
+						<Suspense
+							fallback={
+								<FileViewer
+									file={data}
+									wrap={settings.filesWordWrap}
+									tabSize={tabSize}
+									line={line}
+									endLine={endLine}
+									hashNavigation={hashNavigation}
+								/>
+							}
+						>
+							<LazySourceEditor
+								ref={editorRef}
+								className="h-full"
+								value={data.content}
+								readOnly
+								wordWrap={settings.filesWordWrap}
+								tabSize={tabSize}
+								showWhitespace={settings.filesShowWhitespace}
+								scrollPastEnd={settings.filesScrollPastEnd}
+								tokens={tokens}
+								language={language ?? (markdown ? "markdown" : null)}
+								line={line}
+								endLine={endLine}
+								hashNavigation={hashNavigation}
+								findHighlight={find.findHighlight}
+								onGoToLine={openGoToLine}
+								onCaretChange={(caretLine, lines) =>
+								{
+									setCaret(
+										{
+											line: caretLine,
+											lines,
+										},
+									);
+								}}
+							/>
+						</Suspense>
+					</div>
+				</div>
 			</div>
 		);
 	};
@@ -677,18 +790,37 @@ export function FileView({
 					</Tooltip>
 				)}
 			</div>
+			{sourceMode && goToLine !== null && (
+				<GoToLineBar
+					caret={caret}
+					focusRequest={goToLine.focusRequest}
+					onGo={(target, column) =>
+					{
+						editorRef.current?.goTo(target, column);
+						setGoToLine(null);
+					}}
+					onClose={closeGoToLine}
+				/>
+			)}
 			<div className="relative flex min-h-0 flex-1 flex-col">
 				{find.bar}
 				<ContextMenu>
 					<ContextMenuTrigger
 						render={<div ref={viewerRef} />}
 						tabIndex={-1}
-						data-file-viewer="true"
-						data-find-query={findQuery}
-						className="min-h-0 flex-1 overflow-auto outline-none select-text"
+						{...(sourceMode
+							? {}
+							:
+								{
+									"data-file-viewer": "true",
+									"data-find-query": findQuery,
+								})}
+						className={`min-h-0 flex-1 outline-none select-text ${sourceMode ? "flex flex-col" : "overflow-auto"}`}
 						onContextMenu={() =>
 						{
-							setMenuSelection(selectionAttachment(viewerRef.current, path, cwd, content));
+							const editor = editorRef.current;
+							setMenuEditorText(editor === null ? null : editor.selectedText());
+							setMenuSelection(selectionAttachment(viewerRef.current, path, cwd, content, editor));
 						}}
 					>
 						{body()}
@@ -708,6 +840,7 @@ export function FileView({
 							}
 							onAttachContext={onAttachContext}
 							attachShortcut={attachKeys.keys}
+							editor={editorMenu()}
 						/>
 					</MenuContent>
 				</ContextMenu>

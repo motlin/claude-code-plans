@@ -644,6 +644,8 @@ describe("Files pane header", () =>
 					["Show file tree⌃Control⇧ShiftY", "true"],
 					["Preview tabs", "true"],
 					["Word wrap", "true"],
+					["Show whitespace", "false"],
+					["Scroll past end", "false"],
 					["Tab size4", null],
 					["Hide ignored files", "false"],
 					["Show files from", null],
@@ -654,7 +656,7 @@ describe("Files pane header", () =>
 		);
 	});
 
-	it("Files settings toggles Word wrap and picks a Tab size, both persisted", async () =>
+	it("Files settings toggles Word wrap, Show whitespace and Scroll past end and picks a Tab size, all persisted", async () =>
 	{
 		registerFilesPane();
 		renderSession();
@@ -675,14 +677,17 @@ describe("Files pane header", () =>
 				setTimeout(resolve, 0);
 			});
 		});
-		fireEvent.click(
-			screen.getByRole(
-				"menuitemcheckbox",
-				{
-					name: "Word wrap",
-				},
-			),
-		);
+		for (const name of ["Word wrap", "Show whitespace", "Scroll past end"])
+		{
+			fireEvent.click(
+				screen.getByRole(
+					"menuitemcheckbox",
+					{
+						name,
+					},
+				),
+			);
+		}
 		fireEvent.click(
 			screen.getByRole(
 				"menuitem",
@@ -703,6 +708,8 @@ describe("Files pane header", () =>
 		expect(
 			{
 				wrap: localStorage.getItem("ccp-files-word-wrap"),
+				whitespace: localStorage.getItem("ccp-files-show-whitespace"),
+				pastEnd: localStorage.getItem("ccp-files-scroll-past-end"),
 				tabSize: localStorage.getItem("ccp-files-tab-size"),
 				radios: screen
 					.getAllByRole("menuitemradio")
@@ -711,6 +718,8 @@ describe("Files pane header", () =>
 		).toStrictEqual(
 			{
 				wrap: "false",
+				whitespace: "true",
+				pastEnd: "true",
 				tabSize: "8",
 				radios: [
 					["2", "false"],
@@ -752,6 +761,8 @@ describe("Files pane header", () =>
 			"Preview tabs",
 			"─",
 			"Word wrap",
+			"Show whitespace",
+			"Scroll past end",
 			"Tab size",
 			"─",
 			"Hide ignored files",

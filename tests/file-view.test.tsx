@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import {EditorView} from "@codemirror/view";
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
@@ -105,9 +106,30 @@ function renderView(props: Parameters<typeof FileView>[0])
 	);
 }
 
-function highlightedLineIds(): string[]
+/** The source editor's rendered line texts, once the lazy CodeMirror chunk has replaced the fallback. */
+function sourceLines(): string[]
 {
-	return [...document.querySelectorAll('[data-highlighted="true"]')].map((element) => element.id);
+	return [...document.querySelectorAll(".cm-line")].map((line) => line.textContent);
+}
+
+async function sourceLoaded(): Promise<void>
+{
+	await waitFor(() =>
+	{
+		if (document.querySelector(".cm-line") === null) throw new Error("source editor not loaded");
+	});
+}
+
+function jumpRangeLines(): string[]
+{
+	return [...document.querySelectorAll(".cm-line.cm-epitaxyJumpRange")].map((line) => line.textContent);
+}
+
+function editorView(): EditorView
+{
+	const view = EditorView.findFromDOM(document.querySelector<HTMLElement>(".cm-editor")!);
+	if (view === null) throw new Error("no editor");
+	return view;
 }
 
 function textFile(path: string, content: string): void
@@ -187,6 +209,7 @@ describe("markdown files", () =>
 				},
 			),
 		);
+		await sourceLoaded();
 
 		expect(
 			{
@@ -205,7 +228,8 @@ describe("markdown files", () =>
 						name: "Alice notes",
 					},
 				),
-				firstSourceLine: document.querySelector("#L1 code")?.textContent,
+				firstSourceLine: sourceLines()[0],
+				language: document.querySelector(".cm-content")?.getAttribute("data-language"),
 			},
 		).toStrictEqual(
 			{
@@ -213,6 +237,7 @@ describe("markdown files", () =>
 				toggledLabel: "Preview",
 				heading: null,
 				firstSourceLine: "# Alice notes",
+				language: "markdown",
 			},
 		);
 	});
@@ -533,7 +558,7 @@ describe("non-previewable files", () =>
 		);
 		await waitFor(() =>
 		{
-			expect(document.querySelector("#L1 code")?.textContent).toBe("A\u0000B");
+			expect(sourceLines()).toStrictEqual(["A\u0000B"]);
 		});
 
 		expect(
@@ -713,7 +738,40 @@ describe("source view", () =>
 {
 	const SOURCE = "/home/alice/project/agent.ts";
 
-	it("scrolls to and highlights the line..endLine range from props", async () =>
+	it("renders the read-only CodeMirror editor in upstream's full-bleed wrapper chain", async () =>
+	{
+		textFile(SOURCE, "const alice = 1;");
+		renderView(
+			{
+				path: SOURCE,
+			},
+		);
+		await sourceLoaded();
+
+		const viewer = document.querySelector<HTMLElement>("[data-file-viewer]");
+		expect(
+			{
+				readOnly: viewer?.querySelector(".cm-editor .cm-content")?.getAttribute("aria-readonly"),
+				staticRows: document.querySelector("[data-file-source]"),
+				viewerClass: viewer?.className,
+				chain: [viewer?.parentElement?.className, viewer?.parentElement?.parentElement?.className],
+				tabSizeVar: viewer?.parentElement?.parentElement?.style.getPropertyValue("--diffs-tab-size"),
+			},
+		).toStrictEqual(
+			{
+				readOnly: "true",
+				staticRows: null,
+				viewerClass: "h-full overflow-hidden text-code [&_.cm-editor]:h-full",
+				chain: [
+					"relative h-full min-h-0 flex-1",
+					"epitaxy-diff epitaxy-file-rows min-h-0 flex-1 overflow-hidden",
+				],
+				tabSizeVar: "4",
+			},
+		);
+	});
+
+	it("selects line and paints the line..endLine jump range from props", async () =>
 	{
 		textFile(
 			SOURCE,
@@ -731,18 +789,13 @@ describe("source view", () =>
 				endLine: 4,
 			},
 		);
+		await sourceLoaded();
 
 		await waitFor(() =>
 		{
-			expect(highlightedLineIds()).toStrictEqual(["L3", "L4"]);
+			expect(jumpRangeLines()).toStrictEqual(["line 3", "line 4"]);
 		});
-		expect(scrollIntoView.mock.calls).toStrictEqual([
-			[
-				{
-					block: "center",
-				},
-			],
-		]);
+		expect(editorView().state.doc.lineAt(editorView().state.selection.main.head).number).toBe(3);
 	});
 
 	it("wraps by default with a tab size of 4", async () =>
@@ -753,17 +806,13 @@ describe("source view", () =>
 				path: SOURCE,
 			},
 		);
+		await sourceLoaded();
 
-		const code = await waitFor(() =>
-		{
-			const element = document.querySelector<HTMLElement>("#L1 code");
-			if (element === null) throw new Error("not rendered");
-			return element;
-		});
+		const content = document.querySelector<HTMLElement>(".cm-content");
 		expect(
 			{
-				wraps: code.className.includes("whitespace-pre-wrap"),
-				tabSize: code.closest<HTMLElement>("[data-file-source]")?.style.tabSize,
+				wraps: content?.classList.contains("cm-lineWrapping"),
+				tabSize: content?.style.getPropertyValue("tab-size"),
 			},
 		).toStrictEqual(
 			{
@@ -773,7 +822,7 @@ describe("source view", () =>
 		);
 	});
 
-	it("virtualizes files over 2k lines and still reaches a targeted line", async () =>
+	it("reaches a targeted line deep in a long file", async () =>
 	{
 		textFile(
 			SOURCE,
@@ -790,28 +839,66 @@ describe("source view", () =>
 				line: 4500,
 			},
 		);
+		await sourceLoaded();
 
 		await waitFor(() =>
 		{
-			expect(highlightedLineIds()).toStrictEqual(["L4500"]);
+			expect(jumpRangeLines()).toStrictEqual(["line 4500"]);
 		});
+		expect(document.querySelectorAll(".cm-line").length < 1000).toBe(true);
+	});
+
+	it("opens the go to line bar on Ctrl-G and moves the caret on Enter", async () =>
+	{
+		textFile(SOURCE, "one\ntwo\nthree");
+		renderView(
+			{
+				path: SOURCE,
+			},
+		);
+		await sourceLoaded();
+
+		fireEvent.keyDown(
+			document.querySelector(".cm-content")!,
+			{
+				key: "g",
+				ctrlKey: true,
+			},
+		);
+		const input = screen.getByRole<HTMLInputElement>(
+			"textbox",
+			{
+				name: "Go to line",
+			},
+		);
+		const status = document.querySelector("[data-pane-editor] [aria-live=polite]")?.textContent;
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "3:2",
+				},
+			},
+		);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+			},
+		);
+
 		expect(
 			{
-				mountedRowsBelowCap: document.querySelectorAll("[data-file-source] [role=row]").length < 1000,
-				target: document.querySelector("#L4500 code")?.textContent,
-				scrolls: scrollIntoView.mock.calls,
+				status,
+				head: editorView().state.selection.main.head,
+				closed: document.querySelector("[data-pane-editor]"),
 			},
 		).toStrictEqual(
 			{
-				mountedRowsBelowCap: true,
-				target: "line 4500",
-				scrolls: [
-					[
-						{
-							block: "center",
-						},
-					],
-				],
+				status: "Line 1 of 3",
+				head: 9,
+				closed: null,
 			},
 		);
 	});
@@ -864,10 +951,7 @@ describe("find in file", () =>
 				path: SOURCE,
 			},
 		);
-		await waitFor(() =>
-		{
-			expect(document.querySelector("#L3 code")).not.toBeNull();
-		});
+		await sourceLoaded();
 
 		const opened = fireEvent.keyDown(
 			viewer(),
@@ -886,6 +970,10 @@ describe("find in file", () =>
 			},
 		);
 		const lowercase = counter();
+		const marks = [...document.querySelectorAll(".cm-epitaxyFindMatch")].map((mark) => [
+			mark.textContent,
+			mark.classList.contains("cm-epitaxyFindMatch-active"),
+		]);
 		fireEvent.keyDown(
 			findInput(),
 			{
@@ -934,6 +1022,7 @@ describe("find in file", () =>
 				placeholder: findInput().placeholder,
 				focused: document.activeElement === findInput(),
 				lowercase,
+				marks,
 				afterNext,
 				afterPreviousWrap,
 				exactCase,
@@ -958,6 +1047,11 @@ describe("find in file", () =>
 				placeholder: "Find in file…",
 				focused: true,
 				lowercase: "1 of 3",
+				marks: [
+					["alice", true],
+					["alice", false],
+					["Alice", false],
+				],
 				afterNext: "2 of 3",
 				afterPreviousWrap: "3 of 3",
 				exactCase: "1 of 1",
@@ -985,10 +1079,7 @@ describe("find in file", () =>
 				path: SOURCE,
 			},
 		);
-		await waitFor(() =>
-		{
-			expect(document.querySelector("#L1 code")).not.toBeNull();
-		});
+		await sourceLoaded();
 
 		fireEvent.keyDown(
 			viewer(),
@@ -1051,10 +1142,7 @@ describe("find in file", () =>
 				path: SOURCE,
 			},
 		);
-		await waitFor(() =>
-		{
-			expect(document.querySelector("#L1 code")).not.toBeNull();
-		});
+		await sourceLoaded();
 
 		const notPrevented = fireEvent.keyDown(
 			document.body,
@@ -1100,7 +1188,7 @@ describe("find in file", () =>
 		expect(findInput().value).toBe("needle");
 	});
 
-	it("counts every match in a virtualized file, including unmounted lines", async () =>
+	it("counts every match in a long file and scrolls the editor to the active one", async () =>
 	{
 		textFile(
 			SOURCE,
@@ -1116,10 +1204,7 @@ describe("find in file", () =>
 				path: SOURCE,
 			},
 		);
-		await waitFor(() =>
-		{
-			expect(document.querySelector("#L1 code")).not.toBeNull();
-		});
+		await sourceLoaded();
 
 		fireEvent.keyDown(
 			viewer(),
@@ -1147,7 +1232,11 @@ describe("find in file", () =>
 
 		await waitFor(() =>
 		{
-			expect(document.querySelector("#L5000 code")?.textContent).toBe("needle");
+			expect(
+				editorView().state.doc.lineAt(
+					editorView().posAtDOM(document.querySelector(".cm-epitaxyFindMatch-active")!),
+				).number,
+			).toBe(5000);
 		});
 		expect(counter()).toBe("5 of 5");
 	});

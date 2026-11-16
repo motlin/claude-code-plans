@@ -3,7 +3,8 @@ import {type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef
 import {useHighlightedLines} from "../hooks/use-shiki";
 import type {FileViewerData} from "../lib/api/file";
 import {codeRowLeadingPx} from "../lib/code-themes";
-import {fileViewerLanguage, parseFileLineRangeHash} from "./file-viewer-utils";
+import {type HashLineRange, useLineHash} from "../hooks/use-line-hash";
+import {fileViewerLanguage} from "./file-viewer-utils";
 import {useSettings} from "./settings-context";
 
 /** Files longer than this mount only the chunks of lines near the viewport. */
@@ -169,22 +170,15 @@ export function FileViewer({
 		);
 	}, [selection, chunks.mounted]);
 
-	useEffect(() =>
-	{
-		if (!hashNavigation) return undefined;
-		const handleHashChange = () =>
+	const followHash = useCallback(
+		(range: HashLineRange | null) =>
 		{
-			const range = parseFileLineRangeHash(window.location.hash);
 			if (range === null) setSelection(null);
 			else select(range.line, range.endLine);
-		};
-		handleHashChange();
-		window.addEventListener("hashchange", handleHashChange);
-		return () =>
-		{
-			window.removeEventListener("hashchange", handleHashChange);
-		};
-	}, [hashNavigation, select, file.path]);
+		},
+		[select],
+	);
+	useLineHash(hashNavigation, followHash, file.path);
 
 	useEffect(() =>
 	{

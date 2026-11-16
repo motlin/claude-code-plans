@@ -822,11 +822,9 @@ describe("Opening a session file", () =>
 		// Read whole lines: once an earlier test has loaded Shiki, each line arrives split into token spans.
 		await waitFor(() =>
 		{
-			expect(
-				within(pane)
-					.queryAllByRole("cell")
-					.map((line) => line.textContent),
-			).toContain("export const agent = 1;");
+			expect([...pane.querySelectorAll(".cm-line")].map((line) => line.textContent)).toContain(
+				"export const agent = 1;",
+			);
 		});
 
 		expect(
@@ -1317,11 +1315,9 @@ describe("Files pane on a phone", () =>
 		);
 		await waitFor(() =>
 		{
-			expect(
-				within(pane)
-					.queryAllByRole("cell")
-					.map((line) => line.textContent),
-			).toContain("export const agent = 1;");
+			expect([...pane.querySelectorAll(".cm-line")].map((line) => line.textContent)).toContain(
+				"export const agent = 1;",
+			);
 		});
 		const opened = columns(pane);
 		fireEvent.click(

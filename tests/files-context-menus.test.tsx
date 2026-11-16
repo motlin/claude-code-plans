@@ -9,6 +9,8 @@ import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library
 import {type ComponentProps, type ReactNode, useReducer} from "react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
+import {EditorView} from "@codemirror/view";
+
 import {Composer} from "../src/components/composer";
 import {FileTabsStrip} from "../src/components/files/file-tabs-strip";
 import {FileView} from "../src/components/files/file-view";
@@ -233,17 +235,31 @@ const CMD_SHIFT_L =
 	shiftKey: true,
 };
 
+function editorView(): EditorView
+{
+	const view = EditorView.findFromDOM(document.querySelector<HTMLElement>(".cm-editor")!);
+	if (view === null) throw new Error("no editor");
+	return view;
+}
+
+/** Select from inside line `first` into line `last` in the focused source editor. */
 function selectLines(first: number, last: number): void
 {
-	const start = document.querySelector(`#L${first} code`)?.firstChild;
-	const end = document.querySelector(`#L${last} code`)?.firstChild;
-	if (!start || !end) throw new Error("lines not rendered");
-	const range = document.createRange();
-	range.setStart(start, 2);
-	range.setEnd(end, 3);
-	const selection = window.getSelection();
-	selection?.removeAllRanges();
-	selection?.addRange(range);
+	const view = editorView();
+	const {doc} = view.state;
+	act(() =>
+	{
+		view.focus();
+		view.dispatch(
+			{
+				selection:
+				{
+					anchor: doc.line(first).from + 2,
+					head: doc.line(last).from + 3,
+				},
+			},
+		);
+	});
 }
 
 beforeEach(() =>
@@ -534,7 +550,7 @@ describe("tab context menu", () =>
 		render(wrap(<Harness onRevealInTree={onRevealInTree} />));
 		await waitFor(() =>
 		{
-			if (!document.querySelector("#L3")) throw new Error("not loaded");
+			if (document.querySelectorAll(".cm-line").length < 3) throw new Error("not loaded");
 		});
 		await screen.findByText("Couldn’t find this file");
 	}
@@ -718,7 +734,7 @@ describe("viewer context menu", () =>
 		const viewer = await waitFor(() =>
 		{
 			const element = document.querySelector<HTMLElement>("[data-file-viewer]");
-			if (!element?.querySelector("#L1")) throw new Error("not loaded");
+			if (!element?.querySelector(".cm-line")) throw new Error("not loaded");
 			return element;
 		});
 
@@ -775,6 +791,9 @@ describe("viewer context menu", () =>
 				rows: [
 					"Attach as context",
 					"Copy",
+					"Copy",
+					"Select all",
+					"Go to line",
 					"Copy file contents",
 					"Download file",
 					"─",
@@ -828,7 +847,7 @@ describe("viewer context menu", () =>
 		const viewer = await waitFor(() =>
 		{
 			const element = document.querySelector<HTMLElement>("[data-file-viewer]");
-			if (!element?.querySelector("#L1")) throw new Error("not loaded");
+			if (!element?.querySelector(".cm-line")) throw new Error("not loaded");
 			return element;
 		});
 
@@ -867,7 +886,7 @@ describe("viewer context menu", () =>
 		const viewer = await waitFor(() =>
 		{
 			const element = document.querySelector<HTMLElement>("[data-file-viewer]");
-			if (!element?.querySelector("#L1")) throw new Error("not loaded");
+			if (!element?.querySelector(".cm-line")) throw new Error("not loaded");
 			return element;
 		});
 
@@ -889,12 +908,12 @@ describe("viewer context menu", () =>
 		render(wrap(<FileView path={AGENT} cwd={CWD} onAttachContext={onAttachContext} />));
 		await waitFor(() =>
 		{
-			if (!document.querySelector("#L3")) throw new Error("not loaded");
+			if (document.querySelectorAll(".cm-line").length < 3) throw new Error("not loaded");
 		});
 		selectLines(1, 2);
 
 		fireEvent.contextMenu(
-			document.querySelector("#L2 code")!,
+			document.querySelectorAll(".cm-line")[1]!,
 			{
 				clientX: 10,
 				clientY: 10,
@@ -921,6 +940,87 @@ describe("viewer context menu", () =>
 	});
 });
 
+describe("viewer context menu editor items", () =>
+{
+	async function openMenu(): Promise<string[]>
+	{
+		fireEvent.contextMenu(
+			document.querySelectorAll(".cm-line")[0]!,
+			{
+				clientX: 10,
+				clientY: 10,
+			},
+		);
+		return waitFor(() => menuRows());
+	}
+
+	function editorItems(): (string | null | boolean)[][]
+	{
+		return ["Meta+c", "Meta+a", "Control+g"].map((keys) =>
+		{
+			const item = document.querySelector(`[role=menuitem][aria-keyshortcuts="${keys}"]`);
+			return [item?.firstElementChild?.textContent ?? null, keys, item?.hasAttribute("data-disabled") ?? null];
+		});
+	}
+
+	it("offers Copy ⌘C (disabled without a selection), Select all ⌘A and Go to line ⌃G", async () =>
+	{
+		render(wrap(<FileView path={AGENT} cwd={CWD} />));
+		await waitFor(() =>
+		{
+			if (document.querySelectorAll(".cm-line").length < 3) throw new Error("not loaded");
+		});
+
+		await openMenu();
+		const empty = editorItems();
+		clickItem("Select all");
+		const selected = editorView().state.selection.main;
+		await openMenu();
+		const withSelection = editorItems();
+		fireEvent.click(document.querySelector("[role=menuitem][aria-keyshortcuts='Meta+c']")!);
+		await waitFor(() =>
+		{
+			expect(writeClipboardText).toHaveBeenCalled();
+		});
+		await openMenu();
+		clickItem("Go to line");
+		const input = await screen.findByRole(
+			"textbox",
+			{
+				name: "Go to line",
+			},
+		);
+
+		expect(
+			{
+				empty,
+				selected: [selected.from, selected.to],
+				withSelection,
+				copied: vi.mocked(writeClipboardText).mock.calls,
+				status: document.querySelector("[data-pane-editor] [aria-live=polite]")?.textContent,
+				focused: document.activeElement === input,
+			},
+		).toStrictEqual(
+			{
+				empty: [
+					["Copy", "Meta+c", true],
+					["Select all", "Meta+a", false],
+					["Go to line", "Control+g", false],
+				],
+				selected: [0, AGENT_SOURCE.length],
+				withSelection: [
+					["Copy", "Meta+c", false],
+					["Select all", "Meta+a", false],
+					["Go to line", "Control+g", false],
+				],
+				copied: [[AGENT_SOURCE]],
+				status: "Line 4 of 4",
+				focused: true,
+			},
+		);
+	});
+});
+
 describe("⇧⌘L attach selection", () =>
 {
 	async function renderLoaded(onAttachContext: AttachContextHandler)
@@ -935,7 +1035,7 @@ describe("⇧⌘L attach selection", () =>
 		);
 		await waitFor(() =>
 		{
-			if (!document.querySelector("#L3")) throw new Error("not loaded");
+			if (document.querySelectorAll(".cm-line").length < 3) throw new Error("not loaded");
 		});
 	}
 
