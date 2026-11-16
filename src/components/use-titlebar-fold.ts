@@ -4,6 +4,7 @@ import
 {
 	DEFAULT_STEP_PX,
 	type FoldGeometry,
+	type FoldLimits,
 	type FoldState,
 	foldPass,
 	MAX_PASSES,
@@ -91,10 +92,11 @@ const REST: FoldState =
 /**
  * Upstream's measured titlebar fold (`Jt`): a ResizeObserver reads the row,
  * compacts the origin pills once the title truncates with no free space, then
- * hides trail buttons one step at a time while the title would drop under
- * 100px, re-measuring after each change up to 8 passes.
+ * hides trail buttons one step at a time, panes while the title would drop
+ * under 160px and then the rail toggle under 100px, re-measuring after each
+ * change up to 8 passes.
  */
-export function useTitlebarFold(maxHidden: number)
+export function useTitlebarFold({maxHidden, paneSlots}: FoldLimits)
 {
 	const ref = useRef<HTMLDivElement>(null);
 	const [result, setResult] = useState(
@@ -116,7 +118,14 @@ export function useTitlebarFold(maxHidden: number)
 		if (geometry === null) return false;
 		step.current = geometry.stepPx;
 		const previous = fold.current;
-		const next = foldPass(geometry, previous, maxHidden);
+		const next = foldPass(
+			geometry,
+			previous,
+			{
+				maxHidden,
+				paneSlots,
+			},
+		);
 		fold.current = next;
 		if (next.hidden === previous.hidden && next.compact === previous.compact) return false;
 		setResult(
@@ -126,7 +135,7 @@ export function useTitlebarFold(maxHidden: number)
 			},
 		);
 		return true;
-	}, [maxHidden]);
+	}, [maxHidden, paneSlots]);
 
 	useLayoutEffect(() =>
 	{

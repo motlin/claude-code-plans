@@ -16,7 +16,7 @@ import
 import {type ReactNode, useCallback} from "react";
 
 import {useFizzyLake} from "../lib/fizzy-lake";
-import {foldBudget} from "../lib/titlebar-fold";
+import {foldBudget, PANE_SLOTS} from "../lib/titlebar-fold";
 import {TOOLBAR_ROVING_OPTIONS, useRovingToolbar} from "../lib/use-roving-toolbar";
 
 import {useSessionRename} from "../hooks/use-session-rename";
@@ -460,12 +460,15 @@ export function SessionTitlebar({
 		hiddenCount,
 		pillsCompact: compact,
 	} = useTitlebarFold(
-		foldBudget(
-			{
-				railToggleFoldable,
-				hiddenCount: 0,
-			},
-		).maxHidden,
+		{
+			maxHidden: foldBudget(
+				{
+					railToggleFoldable,
+					hiddenCount: 0,
+				},
+			).maxHidden,
+			paneSlots: PANE_SLOTS,
+		},
 	);
 	const modelLabel = formatModelName(data.model);
 	const repositoryName = data.pr?.repository.slice(data.pr.repository.lastIndexOf("/") + 1).trim();

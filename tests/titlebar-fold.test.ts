@@ -95,28 +95,34 @@ describe("splitPanes (upstream G_)", () =>
 	});
 });
 
-describe("foldBudget (upstream zt)", () =>
+describe("foldBudget (upstream en)", () =>
 {
-	it("folds the rail toggle first when it can fold", () =>
+	it("folds the panes first, then the rail toggle once every pane slot is folded", () =>
 	{
 		expect(
 			{
-				railOne: foldBudget(
-					{
-						railToggleFoldable: true,
-						hiddenCount: 1,
-					},
-				),
 				railNone: foldBudget(
 					{
 						railToggleFoldable: true,
 						hiddenCount: 0,
 					},
 				),
-				railThree: foldBudget(
+				railOne: foldBudget(
 					{
 						railToggleFoldable: true,
-						hiddenCount: 3,
+						hiddenCount: 1,
+					},
+				),
+				railSix: foldBudget(
+					{
+						railToggleFoldable: true,
+						hiddenCount: 6,
+					},
+				),
+				railSeven: foldBudget(
+					{
+						railToggleFoldable: true,
+						hiddenCount: 7,
 					},
 				),
 				noRailTwo: foldBudget(
@@ -125,32 +131,51 @@ describe("foldBudget (upstream zt)", () =>
 						hiddenCount: 2,
 					},
 				),
+				noPaneSlots: foldBudget(
+					{
+						railToggleFoldable: true,
+						paneSlots: 0,
+						hiddenCount: 1,
+					},
+				),
 			},
 		).toStrictEqual(
 			{
-				railOne:
-				{
-					maxHidden: 7,
-					railToggleFolded: true,
-					hiddenMainPanes: 0,
-				},
 				railNone:
 				{
 					maxHidden: 7,
 					railToggleFolded: false,
 					hiddenMainPanes: 0,
 				},
-				railThree:
+				railOne:
+				{
+					maxHidden: 7,
+					railToggleFolded: false,
+					hiddenMainPanes: 1,
+				},
+				railSix:
+				{
+					maxHidden: 7,
+					railToggleFolded: false,
+					hiddenMainPanes: 6,
+				},
+				railSeven:
 				{
 					maxHidden: 7,
 					railToggleFolded: true,
-					hiddenMainPanes: 2,
+					hiddenMainPanes: 6,
 				},
 				noRailTwo:
 				{
 					maxHidden: 6,
 					railToggleFolded: false,
 					hiddenMainPanes: 2,
+				},
+				noPaneSlots:
+				{
+					maxHidden: 1,
+					railToggleFolded: true,
+					hiddenMainPanes: 0,
 				},
 			},
 		);
@@ -186,7 +211,7 @@ describe("hide/reveal maths (upstream Wt, Kt, Gt)", () =>
 		);
 	});
 
-	it("lets the title keep up to 100px of its natural width", () =>
+	it("lets the title keep up to 160px of its natural width, or a given claim", () =>
 	{
 		expect(
 			{
@@ -214,12 +239,21 @@ describe("hide/reveal maths (upstream Wt, Kt, Gt)", () =>
 						shortfallPx: 5,
 					},
 				),
+				railClaim: freeAfterTitle(
+					{
+						freePx: 0,
+						titleClientPx: 60,
+						titleNaturalPx: 300,
+						claimPx: 100,
+					},
+				),
 			},
 		).toStrictEqual(
 			{
-				longTitle: -40,
+				longTitle: -100,
 				shortTitle: 10,
-				shortfall: 15,
+				shortfall: -45,
+				railClaim: -40,
 			},
 		);
 	});
@@ -366,8 +400,90 @@ describe("foldPass (upstream Jt's measure step)", () =>
 		pillBudgetAtCollapse: -Infinity,
 		compactedThisBurst: false,
 	};
+	const budget =
+	{
+		maxHidden: 7,
+		paneSlots: 6,
+	};
+	const tight =
+	{
+		freePx: 0,
+		otherPx: 100,
+		shortfallPx: 0,
+		titleNaturalPx: 200,
+		rootPx: 400,
+		stepPx: 30,
+	};
 
-	it("compacts the pills and hides buttons when the title drops under 100px", () =>
+	it("folds a pane under the 160px title claim but the rail only under the 100px claim", () =>
+	{
+		const compactRest: FoldState =
+		{
+			...rest,
+			compact: true,
+			pillBudgetAtCollapse: 0,
+		};
+		expect(
+			{
+				paneTier: foldPass(
+					{
+						...tight,
+						titleClientPx: 150,
+					},
+					compactRest,
+					budget,
+				).hidden,
+				railHolds: foldPass(
+					{
+						...tight,
+						titleClientPx: 150,
+					},
+					{
+						...compactRest,
+						hidden: 6,
+					},
+					budget,
+				).hidden,
+				railFolds: foldPass(
+					{
+						...tight,
+						titleClientPx: 90,
+					},
+					{
+						...compactRest,
+						hidden: 6,
+					},
+					budget,
+				).hidden,
+			},
+		).toStrictEqual(
+			{
+				paneTier: 1,
+				railHolds: 6,
+				railFolds: 7,
+			},
+		);
+	});
+
+	it("reveals the rail before any pane once the title has room", () =>
+	{
+		expect(
+			foldPass(
+				{
+					...tight,
+					freePx: 60,
+					titleClientPx: 200,
+				},
+				{
+					...rest,
+					hidden: 7,
+				},
+				budget,
+			).hidden,
+		).toBe(6);
+	});
+
+	it("compacts the pills and hides panes when the title drops under its 160px claim", () =>
 	{
 		expect(
 			foldPass(
@@ -381,11 +497,11 @@ describe("foldPass (upstream Jt's measure step)", () =>
 					stepPx: 30,
 				},
 				rest,
-				7,
+				budget,
 			),
 		).toStrictEqual(
 			{
-				hidden: 2,
+				hidden: 4,
 				compact: true,
 				pillBudgetAtCollapse: -80,
 				compactedThisBurst: true,
@@ -412,7 +528,7 @@ describe("foldPass (upstream Jt's measure step)", () =>
 					pillBudgetAtCollapse: -80,
 					compactedThisBurst: true,
 				},
-				7,
+				budget,
 			),
 		).toStrictEqual(
 			{
@@ -443,7 +559,7 @@ describe("foldPass (upstream Jt's measure step)", () =>
 					pillBudgetAtCollapse: -80,
 					compactedThisBurst: false,
 				},
-				7,
+				budget,
 			),
 		).toStrictEqual(
 			{

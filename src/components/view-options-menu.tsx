@@ -85,7 +85,7 @@ function ViewOptionsMenu({
 		<Menu>
 			<Tooltip content="View options" side="bottom">
 				<MenuTrigger ref={triggerRef} aria-label="View options" className={TITLEBAR_ICON_BUTTON_CLASS}>
-					<Icon name="DotsVertical" size="auto" />
+					<Icon name="DotsHorizontal" size="auto" />
 				</MenuTrigger>
 			</Tooltip>
 			<MenuContent align="end" sideOffset={6}>
@@ -136,12 +136,11 @@ function ViewOptionsMenu({
 
 /**
  * The titlebar trail's pane controls, upstream's set and DOM: the session rail
- * toggle and a bare 1x16 separator (the trail's 4px gap each side), then the
- * Changes and Files toggles in their own group, then View options ⋮
- * holding the other panes and Expand chat. The titlebar's measured fold hides
- * buttons into the top of the menu one at a time: the rail first, then the
- * inactive panes, then the open one. The trigger shows only when the menu has
- * items.
+ * toggle, then the Changes and Files toggles in their own group, then View
+ * options ⋯ holding the other panes and Expand chat. The titlebar's measured
+ * fold hides buttons into the top of the menu one at a time: the inactive
+ * panes, then the open one, then the rail. The trigger shows only when the
+ * menu has items.
  */
 export function SessionPaneControls({
 	facts,
@@ -183,12 +182,7 @@ export function SessionPaneControls({
 	];
 	return (
 		<>
-			{railAvailable && !railToggleFolded && (
-				<>
-					<SessionRailToggle {...railFocusProps} />
-					<span role="separator" aria-orientation="vertical" className="h-4 w-px shrink-0 bg-border" />
-				</>
-			)}
+			{railAvailable && !railToggleFolded && <SessionRailToggle {...railFocusProps} />}
 			<div
 				ref={togglesRef}
 				{...

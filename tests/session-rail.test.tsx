@@ -141,7 +141,7 @@ describe("session rail toggle", () =>
 		renderSession();
 
 		expect(trail()).toStrictEqual([
-			["Show session rail", "false"],
+			["Session rail", "false"],
 			["Changes", "false"],
 			["Files", "false"],
 		]);
@@ -154,7 +154,7 @@ describe("session rail toggle", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: "Show session rail",
+					name: "Session rail",
 				},
 			),
 		);
@@ -170,7 +170,7 @@ describe("session rail toggle", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: "Hide session rail",
+					name: "Session rail",
 				},
 			),
 		);
@@ -191,14 +191,14 @@ describe("session rail toggle", () =>
 			{
 				shown:
 				{
-					trail: [["Hide session rail", "true"]],
+					trail: [["Session rail", "true"]],
 					stored: true,
 					docked: "true",
 					rail: "P",
 				},
 				hidden:
 				{
-					trail: [["Show session rail", "false"]],
+					trail: [["Session rail", "false"]],
 					stored: false,
 					docked: "false",
 					rail: null,
@@ -214,7 +214,7 @@ describe("session rail toggle", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: "Show session rail",
+					name: "Session rail",
 				},
 			),
 		);
@@ -222,7 +222,7 @@ describe("session rail toggle", () =>
 		const rail = screen.getByRole(
 			"button",
 			{
-				name: "Hide session rail",
+				name: "Session rail",
 			},
 		);
 
@@ -239,7 +239,7 @@ describe("session rail toggle", () =>
 		);
 	});
 
-	it("lays out upstream's trail: rail toggle, a bare 1x16 span separator, the Changes/Files group, then ⋮", () =>
+	it("lays out upstream's trail with no separator: rail toggle, the Changes/Files group, then ⋮", () =>
 	{
 		registerKinds("terminal", "changes", "files");
 		render(
@@ -274,14 +274,14 @@ describe("session rail toggle", () =>
 					group === undefined
 						? []
 						: [...group.children].map((child) => control(child).getAttribute("aria-label")),
-				separatorClasses: screen.getByRole("separator").className,
+				separator: trailElement.querySelector("[role=separator]"),
 			},
 		).toStrictEqual(
 			{
-				children: ["BUTTON:Show session rail", "SPAN:separator", "DIV", "BUTTON:View options"],
+				children: ["BUTTON:Session rail", "DIV", "BUTTON:View options"],
 				groupClasses: "flex items-center gap-1 empty:hidden",
 				group: ["Changes", "Files"],
-				separatorClasses: "h-4 w-px shrink-0 bg-border",
+				separator: null,
 			},
 		);
 	});
@@ -352,15 +352,15 @@ describe("session rail toggle", () =>
 		};
 	}
 
-	it("folds the rail first, then Changes, then Files into View options, as upstream's measured fold", async () =>
+	it("folds Changes, then Files, then the rail into View options, as upstream's measured fold", async () =>
 	{
 		registerKinds("changes", "files");
 		const setHidden = renderFolded(1);
 		const one = await foldedState();
 		setHidden(2);
 		const two = await foldedState();
-		setHidden(3);
-		const three = await foldedState();
+		setHidden(7);
+		const seven = await foldedState();
 		fireEvent.click(
 			screen.getByRole(
 				"button",
@@ -384,24 +384,24 @@ describe("session rail toggle", () =>
 			{
 				one,
 				two,
-				three,
+				seven,
 				stored: readSessionRailShown(),
 			},
 		).toStrictEqual(
 			{
 				one:
 				{
-					buttons: ["Changes", "Files", "View options"],
-					rows: ["Show session rail"],
+					buttons: ["Session rail", "Files", "View options"],
+					rows: ["Changes⌃Control⇧ShiftD"],
 					separators: 0,
 				},
 				two:
 				{
-					buttons: ["Files", "View options"],
-					rows: ["Show session rail", "Changes⌃Control⇧ShiftD"],
+					buttons: ["Session rail", "View options"],
+					rows: ["Changes⌃Control⇧ShiftD", "Files⇧Shift⌘CommandF"],
 					separators: 0,
 				},
-				three:
+				seven:
 				{
 					buttons: ["View options"],
 					rows: ["Show session rail", "Changes⌃Control⇧ShiftD", "Files⇧Shift⌘CommandF"],
@@ -425,15 +425,18 @@ describe("session rail toggle", () =>
 			),
 		);
 		await settle();
-		setHidden(2);
+		setHidden(1);
 
-		expect(trail()).toStrictEqual([["Changes", "true"]]);
+		expect(trail()).toStrictEqual([
+			["Session rail", "false"],
+			["Changes", "true"],
+		]);
 	});
 
 	it("moves keyboard focus to the last inline toggle when the focused one folds past the end", async () =>
 	{
 		registerKinds("changes", "files");
-		const setHidden = renderFolded(1);
+		const setHidden = renderFolded(0);
 		fireEvent.click(
 			screen.getByRole(
 				"button",
@@ -444,9 +447,9 @@ describe("session rail toggle", () =>
 		);
 		await settle();
 		keyboardFocus("Files");
-		setHidden(2);
+		setHidden(1);
 		const afterFilesFolded = document.activeElement?.getAttribute("aria-label");
-		setHidden(3);
+		setHidden(7);
 
 		expect(
 			{
@@ -464,9 +467,9 @@ describe("session rail toggle", () =>
 	it("moves keyboard focus from the focused Changes toggle to Files when Changes folds", () =>
 	{
 		registerKinds("changes", "files");
-		const setHidden = renderFolded(1);
+		const setHidden = renderFolded(0);
 		keyboardFocus("Changes");
-		setHidden(2);
+		setHidden(1);
 
 		expect(document.activeElement?.getAttribute("aria-label")).toBe("Files");
 	});
@@ -474,9 +477,9 @@ describe("session rail toggle", () =>
 	it("moves keyboard focus from the rail toggle to View options when the rail folds", () =>
 	{
 		registerKinds("changes", "files");
-		const setHidden = renderFolded(0);
-		keyboardFocus("Show session rail");
-		setHidden(1);
+		const setHidden = renderFolded(6);
+		keyboardFocus("Session rail");
+		setHidden(7);
 
 		expect(document.activeElement?.getAttribute("aria-label")).toBe("View options");
 	});
@@ -484,7 +487,7 @@ describe("session rail toggle", () =>
 	it("leaves focus alone when an unfocused toggle folds", () =>
 	{
 		registerKinds("changes", "files");
-		const setHidden = renderFolded(1);
+		const setHidden = renderFolded(0);
 		keyboardFocus("Files");
 		screen
 			.getByRole(
@@ -494,7 +497,7 @@ describe("session rail toggle", () =>
 				},
 			)
 			.blur();
-		setHidden(2);
+		setHidden(1);
 
 		expect(document.activeElement).toBe(document.body);
 	});
@@ -513,7 +516,7 @@ describe("session rail toggle", () =>
 			screen.queryByRole(
 				"button",
 				{
-					name: /session rail/,
+					name: "Session rail",
 				},
 			),
 		).toBeNull();
@@ -549,7 +552,7 @@ describe("session rail on a phone", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: "Show session rail",
+					name: "Session rail",
 				},
 			),
 		);
@@ -572,7 +575,7 @@ describe("session rail on a phone", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: "Hide session rail",
+					name: "Session rail",
 				},
 			),
 		);
@@ -592,14 +595,14 @@ describe("session rail on a phone", () =>
 		).toStrictEqual(
 			{
 				before: [
-					["Show session rail", "false"],
+					["Session rail", "false"],
 					["Changes", "false"],
 					["Files", "false"],
 				],
 				shown:
 				{
 					trail: [
-						["Hide session rail", "true"],
+						["Session rail", "true"],
 						["Changes", "false"],
 						["Files", "false"],
 					],
@@ -657,7 +660,7 @@ describe("session rail and side panes", () =>
 				withPane:
 				{
 					trail: [
-						["Show session rail", "false"],
+						["Session rail", "false"],
 						["Changes", "true"],
 					],
 					rail: null,
@@ -685,7 +688,7 @@ describe("session rail and side panes", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: "Show session rail",
+					name: "Session rail",
 				},
 			),
 		);
@@ -707,7 +710,7 @@ describe("session rail and side panes", () =>
 				pane: null,
 				rail: "P",
 				trail: [
-					["Hide session rail", "true"],
+					["Session rail", "true"],
 					["Changes", "false"],
 				],
 			},
@@ -803,7 +806,7 @@ describe("session rail fit by chat-panel width", () =>
 		const toggle = screen.getByRole(
 			"button",
 			{
-				name: /session rail/,
+				name: "Session rail",
 			},
 		);
 		return {
@@ -865,7 +868,7 @@ describe("session rail fit by chat-panel width", () =>
 					column: null,
 					toggle:
 					{
-						label: "Show session rail",
+						label: "Session rail",
 						pressed: "false",
 						expanded: "false",
 						controls: narrow.toggle.controls,
@@ -891,7 +894,7 @@ describe("session rail fit by chat-panel width", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: /session rail/,
+					name: "Session rail",
 				},
 			),
 		);
@@ -928,7 +931,7 @@ describe("session rail fit by chat-panel width", () =>
 					docked: "false",
 					toggle:
 					{
-						label: "Show session rail",
+						label: "Session rail",
 						pressed: "false",
 						expanded: "false",
 						controls: overlay.id,
@@ -936,7 +939,7 @@ describe("session rail fit by chat-panel width", () =>
 				},
 				toggle:
 				{
-					label: "Hide session rail",
+					label: "Session rail",
 					pressed: "true",
 					expanded: "true",
 					controls: overlay.id,
@@ -964,7 +967,7 @@ describe("session rail fit by chat-panel width", () =>
 		const toggle = screen.getByRole(
 			"button",
 			{
-				name: /session rail/,
+				name: "Session rail",
 			},
 		);
 		fireEvent.click(toggle);
@@ -1022,7 +1025,7 @@ describe("session rail fit by chat-panel width", () =>
 				refocused: true,
 				toggle:
 				{
-					label: "Show session rail",
+					label: "Session rail",
 					pressed: "false",
 					expanded: "false",
 					controls: toggle.getAttribute("aria-controls"),
@@ -1041,7 +1044,7 @@ describe("session rail fit by chat-panel width", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: /session rail/,
+					name: "Session rail",
 				},
 			),
 		);
@@ -1062,7 +1065,7 @@ describe("session rail fit by chat-panel width", () =>
 				.getByRole(
 					"button",
 					{
-						name: /session rail/,
+						name: "Session rail",
 					},
 				)
 				.getAttribute("aria-expanded"),
@@ -1137,7 +1140,7 @@ describe("session rail fit by chat-panel width", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: /session rail/,
+					name: "Session rail",
 				},
 			),
 		);
@@ -1158,7 +1161,7 @@ describe("session rail fit by chat-panel width", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: /session rail/,
+					name: "Session rail",
 				},
 			),
 		);
@@ -1190,7 +1193,7 @@ describe("session rail fit by chat-panel width", () =>
 					pane: true,
 					toggle:
 					{
-						label: "Hide session rail",
+						label: "Session rail",
 						pressed: "true",
 						expanded: null,
 						controls: null,
@@ -1248,7 +1251,7 @@ describe("session rail fit by chat-panel width", () =>
 				pane: true,
 				toggle:
 				{
-					label: "Show session rail",
+					label: "Session rail",
 					pressed: "false",
 					expanded: "false",
 					controls: toggle.controls,
@@ -1282,7 +1285,7 @@ describe("session rail fit by chat-panel width", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: /session rail/,
+					name: "Session rail",
 				},
 			),
 		);
@@ -1403,7 +1406,7 @@ describe("session rail fit by chat-panel width", () =>
 						stored: false,
 						toggle:
 						{
-							label: "Hide session rail",
+							label: "Session rail",
 							pressed: "true",
 							expanded: "true",
 							controls: overlay?.id,
@@ -1428,7 +1431,7 @@ describe("session rail fit by chat-panel width", () =>
 			const toggle = screen.getByRole(
 				"button",
 				{
-					name: /session rail/,
+					name: "Session rail",
 				},
 			);
 			fireEvent.pointerDown(toggle);

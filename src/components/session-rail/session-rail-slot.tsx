@@ -15,7 +15,7 @@ import
 
 import {useRailRaiseRequest} from "../../lib/session-rail-store";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
-import {TITLEBAR_RAIL_TOGGLE_CLASS} from "../titlebar-classes";
+import {TITLEBAR_ICON_BUTTON_CLASS} from "../titlebar-classes";
 import {MenuItem} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
 import
@@ -81,7 +81,7 @@ export function SessionRailToggle({
 			<button
 				ref={fit?.toggleRef}
 				type="button"
-				aria-label={label}
+				aria-label="Session rail"
 				aria-pressed={pressed}
 				{...(controlsOverlay === null
 					? {}
@@ -93,7 +93,7 @@ export function SessionRailToggle({
 				onClick={toggle}
 				onFocus={onFocus}
 				onBlur={onBlur}
-				className={TITLEBAR_RAIL_TOGGLE_CLASS}
+				className={TITLEBAR_ICON_BUTTON_CLASS}
 			>
 				<PanelRight aria-hidden="true" />
 			</button>

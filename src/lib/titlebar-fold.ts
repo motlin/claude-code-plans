@@ -1,12 +1,16 @@
 /**
  * Upstream's measured titlebar fold (claude.ai/code chunks cd54a5401 and
  * c73f45bc3), ported as pure maths. The pills compact first, then trail
- * buttons fold into View options one step at a time: the rail toggle, then
- * inactive panes in list order, then the open one.
+ * buttons fold into View options one step at a time: the inactive panes in
+ * list order, then the open one, then the rail toggle.
  */
 
-/** The title keeps up to this much of its natural width before buttons fold (`kt`). */
-const TITLE_KEEP_PX = 100;
+/** The title keeps up to this much of its natural width before a pane folds (`Ht`). */
+const PANE_TITLE_CLAIM_PX = 160;
+/** The title keeps up to this much of its natural width before the rail toggle folds (`Ut`). */
+const RAIL_TITLE_CLAIM_PX = 100;
+/** Pane toggle slots the fold reserves ahead of the rail toggle. */
+export const PANE_SLOTS = 6;
 /** Slack beyond one step before a button reveals again (`At`). */
 const REVEAL_SLACK_PX = 24;
 /** Step used before any toggle has been measured (`jt`). */
@@ -22,15 +26,29 @@ const REEXPAND_REFUSED_PX = 4;
 /** Measure passes allowed per burst before giving up (`Ft`). */
 export const MAX_PASSES = 8;
 
-/** `zt`: the rail toggle (with its separator) folds first, then the main panes. */
-export function foldBudget({railToggleFoldable, hiddenCount}: {railToggleFoldable: boolean; hiddenCount: number})
+/** `en`: the pane slots fold first, then the rail toggle. */
+export function foldBudget({
+	railToggleFoldable,
+	paneSlots = PANE_SLOTS,
+	hiddenCount,
+}: {
+	railToggleFoldable: boolean;
+	paneSlots?: number;
+	hiddenCount: number;
+})
 {
-	const railToggleFolded = railToggleFoldable && hiddenCount > 0;
 	return {
-		maxHidden: railToggleFoldable ? 7 : 6,
-		railToggleFolded,
-		hiddenMainPanes: railToggleFolded ? hiddenCount - 1 : hiddenCount,
+		maxHidden: railToggleFoldable ? paneSlots + 1 : 6,
+		railToggleFolded: railToggleFoldable && hiddenCount > paneSlots,
+		hiddenMainPanes: Math.min(hiddenCount, paneSlots),
 	};
+}
+
+/** The fold's limits: every foldable button, and how many of them are pane toggles. */
+export interface FoldLimits
+{
+	maxHidden: number;
+	paneSlots: number;
 }
 
 /** `G_`: the first n of `[...inactive, ...active]` fold; both lists keep the original order. */
@@ -62,20 +80,22 @@ export function splitPanes<
 	};
 }
 
-/** `Wt`: free space once the title keeps up to 100px of its natural width. */
+/** `sn`: free space once the title keeps up to `claimPx` (160px by default) of its natural width. */
 export function freeAfterTitle({
 	freePx,
 	titleClientPx,
 	titleNaturalPx,
 	shortfallPx = 0,
+	claimPx = PANE_TITLE_CLAIM_PX,
 }: {
 	freePx: number;
 	titleClientPx: number;
 	titleNaturalPx: number;
 	shortfallPx?: number;
+	claimPx?: number;
 }): number
 {
-	return freePx + titleClientPx - Math.min(titleNaturalPx, TITLE_KEEP_PX) - shortfallPx;
+	return freePx + titleClientPx - Math.min(titleNaturalPx, claimPx) - shortfallPx;
 }
 
 /** `Gt`: how far the title spills past its cluster plus how far the last child spills past the row. */
@@ -159,8 +179,13 @@ export interface FoldState
 	compactedThisBurst: boolean;
 }
 
-/** One pass of upstream's measure (`Jt`'s `G`): pill compaction with hysteresis, then the hide/reveal step. */
-export function foldPass(geometry: FoldGeometry, state: FoldState, maxHidden: number): FoldState
+/**
+ * One pass of upstream's measure (`dn`): pill compaction with hysteresis, then
+ * the hide/reveal step in two tiers. Panes fold while the title would drop
+ * under 160px; once every pane slot is folded, the rail toggle folds (and
+ * reveals first) against a 100px claim.
+ */
+export function foldPass(geometry: FoldGeometry, state: FoldState, {maxHidden, paneSlots}: FoldLimits): FoldState
 {
 	const pillBudget = geometry.rootPx - geometry.otherPx - geometry.titleNaturalPx;
 	let compact = pillsCompact(
@@ -189,15 +214,29 @@ export function foldPass(geometry: FoldGeometry, state: FoldState, maxHidden: nu
 	{
 		pillBudgetAtCollapse = -Infinity;
 	}
-	const free = freeAfterTitle(
-		{
-			freePx: geometry.freePx,
-			titleClientPx: geometry.titleClientPx,
-			titleNaturalPx: geometry.titleNaturalPx,
-			shortfallPx: geometry.shortfallPx,
-		},
+	const title =
+	{
+		freePx: geometry.freePx,
+		titleClientPx: geometry.titleClientPx,
+		titleNaturalPx: geometry.titleNaturalPx,
+		shortfallPx: geometry.shortfallPx,
+	};
+	const railStep = nextHidden(
+		freeAfterTitle(
+			{
+				...title,
+				claimPx: RAIL_TITLE_CLAIM_PX,
+			},
+		),
+		geometry.stepPx,
+		Math.max(0, state.hidden - paneSlots),
+		maxHidden - paneSlots,
 	);
-	const hidden = state.hidden + nextHidden(free, geometry.stepPx, state.hidden, maxHidden);
+	const step =
+		state.hidden > paneSlots || (state.hidden === paneSlots && railStep > 0)
+			? railStep
+			: nextHidden(freeAfterTitle(title), geometry.stepPx, state.hidden, Math.min(paneSlots, maxHidden));
+	const hidden = state.hidden + step;
 	return {
 		hidden,
 		compact,

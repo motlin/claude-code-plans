@@ -9,12 +9,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionTitlebar} from "../src/components/session-titlebar";
 import {sessionTitlePending} from "../src/lib/session-stand-in-title";
 import {ToastProvider} from "../src/components/toast";
-import
-{
-	SESSION_STICKY_HEADER_CLASS,
-	TITLEBAR_ICON_BUTTON_CLASS,
-	TITLEBAR_RAIL_TOGGLE_CLASS,
-} from "../src/components/titlebar-classes";
+import {SESSION_STICKY_HEADER_CLASS, TITLEBAR_ICON_BUTTON_CLASS} from "../src/components/titlebar-classes";
 import {useTitlebarHiddenCount} from "../src/components/titlebar-fold-context";
 import {FIZZY_LAKE_PARTS, FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 import {foldBudget, splitPanes} from "../src/lib/titlebar-fold";
@@ -1181,7 +1176,7 @@ describe("SessionTitlebar pill collapse", () =>
 	});
 });
 
-/** Stands in for SessionPaneControls: the rail toggle, Changes and Files fold as the hidden count grows. */
+/** Stands in for SessionPaneControls: Changes and Files, then the rail toggle, fold as the hidden count grows. */
 function FoldProbe({rail = true}: {rail?: boolean})
 {
 	const hiddenCount = useTitlebarHiddenCount();
@@ -1206,7 +1201,7 @@ function FoldProbe({rail = true}: {rail?: boolean})
 	);
 	return (
 		<>
-			{rail && !railToggleFolded && <button type="button" aria-label="Hide session rail" />}
+			{rail && !railToggleFolded && <button type="button" aria-label="Session rail" />}
 			<div data-titlebar-toggles="">
 				{inline.map((pane) => (
 					<button key={pane.label} type="button" aria-label={pane.label} />
@@ -1231,7 +1226,7 @@ describe("SessionTitlebar trail fold", () =>
 		};
 	}
 
-	it("compacts the pills, then folds the rail, Changes and Files one step at a time as the title drops under 100px", async () =>
+	it("compacts the pills, then folds Changes and Files under the title's 160px claim and the rail only under its 100px claim", async () =>
 	{
 		const titlebar = await renderTitlebar(
 			baseDetail,
@@ -1244,10 +1239,10 @@ describe("SessionTitlebar trail fold", () =>
 		const at1200 = foldState(titlebar);
 		resizeTitlebar(500);
 		const at500 = foldState(titlebar);
+		resizeTitlebar(344);
+		const at344 = foldState(titlebar);
 		resizeTitlebar(300);
 		const at300 = foldState(titlebar);
-		resizeTitlebar(260);
-		const at260 = foldState(titlebar);
 		resizeTitlebar(200);
 		const at200 = foldState(titlebar);
 		resizeTitlebar(1200);
@@ -1257,8 +1252,8 @@ describe("SessionTitlebar trail fold", () =>
 			{
 				at1200,
 				at500,
+				at344,
 				at300,
-				at260,
 				at200,
 				wideAgain,
 			},
@@ -1268,25 +1263,25 @@ describe("SessionTitlebar trail fold", () =>
 				{
 					hidden: 0,
 					compact: false,
-					trail: ["Hide session rail", "Changes", "Files", "View options"],
+					trail: ["Session rail", "Changes", "Files", "View options"],
 				},
 				at500:
 				{
 					hidden: 0,
 					compact: true,
-					trail: ["Hide session rail", "Changes", "Files", "View options"],
+					trail: ["Session rail", "Changes", "Files", "View options"],
 				},
-				at300:
+				at344:
 				{
 					hidden: 1,
 					compact: true,
-					trail: ["Changes", "Files", "View options"],
+					trail: ["Session rail", "Files", "View options"],
 				},
-				at260:
+				at300:
 				{
-					hidden: 2,
+					hidden: 6,
 					compact: true,
-					trail: ["Files", "View options"],
+					trail: ["Session rail", "View options"],
 				},
 				at200:
 				{
@@ -1298,7 +1293,7 @@ describe("SessionTitlebar trail fold", () =>
 				{
 					hidden: 0,
 					compact: false,
-					trail: ["Hide session rail", "Changes", "Files", "View options"],
+					trail: ["Session rail", "Changes", "Files", "View options"],
 				},
 			},
 		);
@@ -1638,28 +1633,31 @@ describe("SessionTitlebar cost pill", () =>
 	});
 });
 
-describe("titlebar icon button press and focus (upstream cds-btn-squish + focus shadow)", () =>
+describe("titlebar icon button (upstream ghost icon-only cds Button)", () =>
 {
-	it("squishes on press and draws the focus shadow instead of a 1px ring", () =>
+	it("sizes by the control token, inks primary, presses ghost-selected, squishes and draws the focus shadow", () =>
 	{
-		const classes = (value: string) => value.split(" ");
-		const pick = (value: string) =>
-			classes(value).filter(
-				(c) =>
-					["btn-squish", "transition-colors", "focus-visible:shadow-focus"].includes(c) ||
-					c.includes("ring-1"),
-			);
-		expect(
-			{
-				icon: pick(TITLEBAR_ICON_BUTTON_CLASS),
-				rail: pick(TITLEBAR_RAIL_TOGGLE_CLASS),
-			},
-		).toStrictEqual(
-			{
-				icon: ["btn-squish", "focus-visible:shadow-focus"],
-				rail: ["btn-squish", "focus-visible:shadow-focus"],
-			},
-		);
+		expect(TITLEBAR_ICON_BUTTON_CLASS.split(" ")).toStrictEqual([
+			"flex",
+			"size-[var(--cds-h-control)]",
+			"shrink-0",
+			"cursor-pointer",
+			"items-center",
+			"justify-center",
+			"rounded-[var(--upstream-radius)]",
+			"text-primary",
+			"btn-squish",
+			"stacks:[--btn-squish-paint:color_60ms_cubic-bezier(0.165,0.84,0.44,1)]",
+			"hover:bg-fill-ghost-hover",
+			"aria-pressed:bg-fill-ghost-selected",
+			"aria-pressed:text-primary",
+			"stacks:hover:bg-fill-button-ghost-hover",
+			"stacks:aria-pressed:bg-fill-button-ghost-hover",
+			"hide-focus-ring",
+			"focus-visible:outline-hidden",
+			"focus-visible:shadow-focus",
+			"[&_svg]:size-[18px]",
+		]);
 	});
 });
 
@@ -1905,8 +1903,7 @@ describe("SessionTitlebar Session tools toolbar (upstream cds Toolbar with tu ro
 		});
 		await flush();
 		resizeTitlebar(500);
-		resizeTitlebar(300);
-		resizeTitlebar(260);
+		resizeTitlebar(344);
 		await flush();
 		const handedOff =
 		{
@@ -1924,7 +1921,7 @@ describe("SessionTitlebar Session tools toolbar (upstream cds Toolbar with tu ro
 			{
 				handedOff:
 				{
-					hidden: "2",
+					hidden: "1",
 					stops: ["Files"],
 				},
 				// watchHidden's frame re-elects the first item: focus left the toolbar, so firstUntilFocused holds again.

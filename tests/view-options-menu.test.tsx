@@ -651,7 +651,7 @@ describe("SessionPaneControls", () =>
 		);
 	});
 
-	it("keeps the trail ink on hover and paints a pressed Changes toggle in upstream's deeper blue", async () =>
+	it("keeps the trail ink on hover and paints a pressed Changes toggle ghost-selected with primary ink, like the rail", async () =>
 	{
 		registerKinds("changes");
 		renderControls();
@@ -682,7 +682,7 @@ describe("SessionPaneControls", () =>
 			{
 				pressed: "true",
 				hoverInk: [],
-				pressedPaint: ["aria-pressed:bg-upstream-accent-pressed", "aria-pressed:text-upstream-accent"],
+				pressedPaint: ["aria-pressed:bg-fill-ghost-selected", "aria-pressed:text-primary"],
 			},
 		);
 	});
