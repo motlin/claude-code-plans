@@ -1,16 +1,18 @@
 import {useQuery} from "@tanstack/react-query";
 import {ArrowRight, Plus, SquareSlash} from "lucide-react";
-import {lazy, memo, type Ref, Suspense, useImperativeHandle, useState} from "react";
+import {lazy, memo, type Ref, Suspense, useEffect, useImperativeHandle, useRef, useState} from "react";
 
 import
 {
 	type ComposerState,
 	type ComposerUsage,
+	contextRingPercent,
 	FIVE_HOUR_LABEL,
 	formatUsageAriaLabel,
 	formatUsageTooltipRows,
 	USAGE_RING_CIRCUMFERENCE,
 	usageRingDashoffset,
+	usageRingMode,
 	usageRingPercent,
 	type UsageRingSeverity,
 	usageRingSeverity,
@@ -51,6 +53,8 @@ import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
 import {POPOVER_SCROLL_BODY_CLASS, PopoverRoot, PopoverTitle, PopoverTrigger, PopoverContent} from "./ui/popover";
 import {Tooltip} from "./ui/tooltip";
 import {UsagePopoverLimitRow} from "./usage-limit-row";
+import type {UsageRingContext, UsagePopoverContextSection} from "./usage-popover-context";
+import {loadedUsagePopoverContext, preloadUsagePopoverContext} from "./usage-popover-context-loader";
 import {useRenameAfterMenuClose} from "./use-rename-after-menu-close";
 
 // Keeps the Customize API schemas and router hooks out of the composer's cold load.
@@ -60,12 +64,38 @@ const loadConnectorsMenu = async () =>
 		default: module.ComposerConnectorsMenu,
 	}));
 const ComposerConnectorsMenu = lazy(loadConnectorsMenu);
+const LazyUsagePopoverContextSection = lazy(async () =>
+	preloadUsagePopoverContext().then((module) => (
+	{
+		default: module.UsagePopoverContextSection,
+	})),
+);
+
+/** The context section, synchronously once its chunk is in hand (a context-mode ring preloads it on mount). */
+function ContextSection(props: Parameters<typeof UsagePopoverContextSection>[0])
+{
+	const loaded = loadedUsagePopoverContext();
+	if (loaded !== null) return <loaded.UsagePopoverContextSection {...props} />;
+	return (
+		<Suspense fallback={null}>
+			<LazyUsagePopoverContextSection {...props} />
+		</Suspense>
+	);
+}
 
 /** Upstream's 2026-10-20 usage popover: r10, and up to 640px (or the room left) tall before its own scroll. */
 const POPUP_CLASS =
 	"w-[360px] max-w-[calc(100vw-2rem)] max-h-[min(var(--available-height),640px)] rounded-r7 bg-[var(--menu-bg)] p-0 text-[13px]/[19px] text-primary shadow-[var(--menu-shadow)] outline-none";
 
-function UsagePopoverBody({usage, onNavigate}: {usage: ComposerUsage | null; onNavigate: () => void})
+function UsagePopoverBody({
+	usage,
+	onNavigate,
+	context,
+}: {
+	usage: ComposerUsage | null;
+	onNavigate: () => void;
+	context: UsagePopoverContextProps;
+})
 {
 	const {data: account} = useQuery(localAccountQueryOptions);
 	const limits = [
@@ -89,35 +119,43 @@ function UsagePopoverBody({usage, onNavigate}: {usage: ComposerUsage | null; onN
 		<>
 			<PopoverTitle className="sr-only">Usage</PopoverTitle>
 			<div className="flex flex-col py-1.5">
-				<div className="flex flex-col gap-1.5">
-					<div
-						data-usage-popover-header
-						className="flex min-h-5 items-center justify-between gap-2 px-3 py-1"
-					>
-						<span className="text-[12px]/[15px] text-muted-as-secondary">
-							{planDetail === undefined ? "Plan usage limits" : `Plan usage limits · ${planDetail}`}
-						</span>
-						{/* Upstream's `DT`: a ghost xxs "See all" button, flush end with a pad-sm outset. */}
-						<a
-							href={`#${settingsHash("usage")}`}
-							aria-label="See all usage in Settings"
-							onClick={onNavigate}
-							className="-me-1 inline-flex h-5 items-center gap-1 rounded-r4 px-1.5 text-[12px]/[15px] text-primary outline-none hover:bg-alpha-1 focus-visible:bg-alpha-1"
+				{usage !== null && usageRingMode(usage) === "context" ? (
+					<ContextSection usage={usage} {...context} />
+				) : (
+					<div className="flex flex-col gap-1.5">
+						<div
+							data-usage-popover-header
+							className="flex min-h-5 items-center justify-between gap-2 px-3 py-1"
 						>
-							See all
-							<ArrowRight aria-hidden="true" className="-me-1 size-3 rtl:-scale-x-100" />
-						</a>
-					</div>
-					{limits.length > 0 && (
-						<div role="group" aria-label="Usage limits" className="flex flex-col gap-1.5">
-							<div className="flex flex-col gap-2 px-3 pb-1">
-								{limits.map((limit) => (
-									<UsagePopoverLimitRow key={limit.label} label={limit.label} window={limit.window} />
-								))}
-							</div>
+							<span className="text-[12px]/[15px] text-muted-as-secondary">
+								{planDetail === undefined ? "Plan usage limits" : `Plan usage limits · ${planDetail}`}
+							</span>
+							{/* Upstream's `DT`: a ghost xxs "See all" button, flush end with a pad-sm outset. */}
+							<a
+								href={`#${settingsHash("usage")}`}
+								aria-label="See all usage in Settings"
+								onClick={onNavigate}
+								className="-me-1 inline-flex h-5 items-center gap-1 rounded-r4 px-1.5 text-[12px]/[15px] text-primary outline-none hover:bg-alpha-1 focus-visible:bg-alpha-1"
+							>
+								See all
+								<ArrowRight aria-hidden="true" className="-me-1 size-3 rtl:-scale-x-100" />
+							</a>
 						</div>
-					)}
-				</div>
+						{limits.length > 0 && (
+							<div role="group" aria-label="Usage limits" className="flex flex-col gap-1.5">
+								<div className="flex flex-col gap-2 px-3 pb-1">
+									{limits.map((limit) => (
+										<UsagePopoverLimitRow
+											key={limit.label}
+											label={limit.label}
+											window={limit.window}
+										/>
+									))}
+								</div>
+							</div>
+						)}
+					</div>
+				)}
 			</div>
 		</>
 	);
@@ -131,13 +169,50 @@ const USAGE_RING_STROKES: Record<UsageRingSeverity, string> =
 	critical: "var(--color-usage-danger)",
 };
 
-export function UsageRing({usage}: {usage: ComposerUsage | null})
+type UsagePopoverContextProps = Omit<Parameters<typeof UsagePopoverContextSection>[0], "usage">;
+
+/** Opens the ring's popover with its Context window section expanded (upstream's `openRequest {menu: "context"}`). */
+export interface UsageRingHandle
+{
+	openContext: () => void;
+}
+
+export function UsageRing({
+	usage,
+	context,
+	ref,
+}: {
+	usage: ComposerUsage | null;
+	/** The session's breakdown and compact action for the context-mode popover; the home ring has none. */
+	context?: UsageRingContext | undefined;
+	ref?: Ref<UsageRingHandle> | undefined;
+})
 {
 	const [open, setOpen] = useState(false);
+	const [contextExpanded, setContextExpanded] = useState(false);
 	const now = Date.now();
-	const percent = usageRingPercent(usage);
+	const contextMode = usageRingMode(usage) === "context";
+	const percent = contextMode ? (contextRingPercent(usage) ?? 0) : usageRingPercent(usage);
+	useEffect(() =>
+	{
+		if (contextMode) void preloadUsagePopoverContext();
+	}, [contextMode]);
+	// Upstream's `Le`: closing the popover collapses the section again.
+	const onOpenChange = (next: boolean) =>
+	{
+		setOpen(next);
+		if (!next) setContextExpanded(false);
+	};
+	useImperativeHandle(ref, () => (
+	{
+		openContext: () =>
+		{
+			setOpen(true);
+			setContextExpanded(true);
+		},
+	}));
 	return (
-		<PopoverRoot open={open} onOpenChange={setOpen}>
+		<PopoverRoot open={open} onOpenChange={onOpenChange}>
 			<Tooltip content={formatUsageTooltipRows(usage, now).join("\n")} multiline>
 				<PopoverTrigger aria-label={formatUsageAriaLabel(usage, now)} className={USAGE_RING_CLASS}>
 					<svg width="14" height="14" viewBox="0 0 14 14" className="-rotate-90" aria-hidden="true">
@@ -173,6 +248,20 @@ export function UsageRing({usage}: {usage: ComposerUsage | null})
 						onNavigate={() =>
 						{
 							setOpen(false);
+						}}
+						context={
+						{
+							context,
+							expanded: contextExpanded,
+							onToggle: () =>
+							{
+								setContextExpanded((value) => !value);
+							},
+							onCompact: () =>
+							{
+								onOpenChange(false);
+								context?.compact?.onCompact();
+							},
 						}}
 					/>
 				</div>
@@ -273,6 +362,8 @@ export interface ChinPickHandle
 		on: boolean;
 		canToggle: boolean;
 	};
+	/** Opens the usage ring's popover with its Context window section expanded. */
+	openContext: () => void;
 }
 
 function effortText(effort: string): string
@@ -291,13 +382,17 @@ export const ComposerChin = memo(function ComposerChin({
 	launch,
 	surface,
 	pickRef,
+	usageContext,
 }: {
 	state: ComposerState;
 	launch: ChinLaunchControls;
 	surface: ChinSurface;
 	pickRef?: Ref<ChinPickHandle> | undefined;
+	/** The session's context breakdown and compact action for the usage ring's context-mode popover. */
+	usageContext?: UsageRingContext | undefined;
 })
 {
+	const ringRef = useRef<UsageRingHandle>(null);
 	const {launchOptions, onLaunchOptionsChange, openMenu, onOpenMenuChange} = launch;
 	// Keeps the picked level while the confirm fades out, so its copy doesn't flicker.
 	const [effortConfirm, setEffortConfirm] = useState<
@@ -374,6 +469,10 @@ export const ComposerChin = memo(function ComposerChin({
 			on: fastMode,
 			canToggle: fastModeBlocked === null && currentModel !== undefined && fastModeSupported(currentModel),
 		}),
+		openContext: () =>
+		{
+			ringRef.current?.openContext();
+		},
 	}));
 	const menuProps = (menu: ChinMenu) => (
 	{
@@ -452,7 +551,7 @@ export const ComposerChin = memo(function ComposerChin({
 	);
 	const ring = (
 		<span className={USAGE_RING_WRAPPER_CLASS}>
-			<UsageRing usage={state.usage} />
+			<UsageRing usage={state.usage} context={usageContext} ref={ringRef} />
 		</span>
 	);
 	return (

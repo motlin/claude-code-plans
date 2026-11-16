@@ -19,6 +19,7 @@ import type {McpServerSummary} from "../../lib/api/customize";
 import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
 import {toMdSlug} from "../../lib/md-slug";
 import {StackedMeter, StackedMeterGroup, StackedMeterSwatch} from "../ui/stacked-meter";
+import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
 
 /* Upstream's rail Context breakdown (`I` with layout "rail"): a stacked meter, legend rows, deferred rows and expanders. */
@@ -639,5 +640,159 @@ export function ContextBreakdownBody({
 				</div>
 			</div>
 		</StackedMeterGroup>
+	);
+}
+
+/** Upstream's `Z.popover`: the ring popover's deferred groups (MCP tools, Memory files, Custom agents). */
+const POPOVER_GROUP =
+{
+	root: "flex flex-col gap-0.5 mt-sm",
+	toggle: "flex items-center gap-1 text-footnote text-start",
+	leadSlot: "size-[10px] shrink-0 flex items-center justify-center",
+	// Upstream's `text-disabled`; local has no disabled ink token, so the muted ink stands in.
+	caret: "text-ink-muted transition-transform duration-fast motion-reduce:transition-none",
+	label: "text-secondary flex-1",
+	count: "text-ink-muted shrink-0 tabular-nums w-[44px] text-end",
+	list: "flex flex-col gap-0.5",
+	scroll: "max-h-[168px] overflow-y-auto overscroll-contain",
+	row: "flex items-center gap-1 text-footnote",
+	rowLead: "size-[10px] shrink-0",
+	rowTrail: "w-[44px] shrink-0",
+};
+
+const POPOVER_LINK_CLASS =
+	"flex flex-1 min-w-0 text-start text-muted-as-secondary hover:text-primary hover:underline underline-offset-[3px] outline-none focus-visible:shadow-focus rounded";
+
+/** Upstream's popover expander (`se` without `rail`): caret, label, total tokens and count, then the rows. */
+function PopoverGroup({label, rows}: {label: string; rows: readonly ExpanderRow[]})
+{
+	const [open, setOpen] = useState(false);
+	const total = rows.reduce((sum, row) => sum + row.tokens, 0);
+	return (
+		<div className={POPOVER_GROUP.root}>
+			<button
+				type="button"
+				className={POPOVER_GROUP.toggle}
+				aria-expanded={open}
+				onClick={() =>
+				{
+					setOpen((value) => !value);
+				}}
+				onKeyDown={(event) =>
+				{
+					if (event.key === "Enter" && event.repeat) event.preventDefault();
+				}}
+			>
+				<span className={POPOVER_GROUP.leadSlot}>
+					<Icon name="CaretRight" size="xs" rotate={open ? 90 : 0} className={POPOVER_GROUP.caret} />
+				</span>
+				<span className={POPOVER_GROUP.label}>{label}</span>
+				<span className="text-muted-as-secondary shrink-0 tabular-nums">{formatTokenCount(total)}</span>
+				<span className={POPOVER_GROUP.count}>{rows.length}</span>
+			</button>
+			<Collapse expanded={open}>
+				<div
+					className={`${POPOVER_GROUP.list} ${rows.length > EXPANDER_SCROLL_AFTER ? POPOVER_GROUP.scroll : ""}`}
+				>
+					{rows.map((row) => (
+						<div key={row.id} className={POPOVER_GROUP.row}>
+							<span aria-hidden className={POPOVER_GROUP.rowLead} />
+							{row.href === undefined ? (
+								<RowName name={row.name} />
+							) : (
+								<a href={row.href} className={POPOVER_LINK_CLASS}>
+									{row.name}
+								</a>
+							)}
+							<span className="text-muted-as-secondary shrink-0 tabular-nums">
+								{formatTokenCount(row.tokens)}
+							</span>
+							<span aria-hidden className={POPOVER_GROUP.rowTrail} />
+						</div>
+					))}
+				</div>
+			</Collapse>
+		</div>
+	);
+}
+
+/** Upstream's popover legend swatch (`ne`): the meter series swatch, or a 10px inline block for rows off the meter. */
+function CardSwatch({row}: {row: ContextLegendRow})
+{
+	if (row.meterSeries !== null) return <StackedMeterSwatch series={row.meterSeries} />;
+	return (
+		<span
+			aria-hidden
+			className="shrink-0"
+			style={
+			{
+				width: 10,
+				height: 10,
+				borderRadius: 2,
+				background: row.color ?? undefined,
+				display: "inline-block",
+			}}
+		/>
+	);
+}
+
+/**
+ * The usage ring popover's breakdown (upstream ce96f5751 `V` with `layout: "card"` and `compact`): the stacked meter
+ * with its readout, then, while the section is expanded, the legend rows and the popover-style deferred groups. The
+ * section's own toggle carries the summary, so there is no headline or inner toggle.
+ */
+export function ContextBreakdownCard({
+	breakdown,
+	liveTokens,
+	expanded,
+	homeRoot,
+	mcpServers,
+}: {
+	breakdown: ContextBreakdown;
+	liveTokens: number | null;
+	expanded: boolean;
+	homeRoot: string;
+	mcpServers: readonly McpServerSummary[];
+})
+{
+	const {legend, meterCategories, meterValues, barTotal} = buildContextLegend(breakdown, liveTokens);
+	const lists = expanders(breakdown, homeRoot, mcpServers);
+	return (
+		<div className="flex flex-col gap-xs">
+			<StackedMeterGroup categories={meterCategories} size="sm" formatValue={formatTokenCount}>
+				<StackedMeter
+					className="shrink-0"
+					values={meterValues}
+					total={barTotal}
+					readout
+					label="Context window"
+				/>
+				<Collapse expanded={expanded}>
+					<div className="flex flex-col">
+						{keyed(legend).map(({key, row}, index) => (
+							<div
+								key={key}
+								data-context-card-row=""
+								className={`flex items-center gap-1 text-footnote ${index > 0 ? "mt-pad-xs" : ""}`}
+							>
+								<CardSwatch row={row} />
+								<span className="text-primary flex-1 truncate">{row.name}</span>
+								<span className="text-muted-as-secondary shrink-0 tabular-nums">
+									{formatTokenCount(row.tokens)}
+								</span>
+								<span className="text-primary shrink-0 tabular-nums w-[44px] text-end">
+									{row.kind === "deferred" || breakdown.rawMaxTokens <= 0
+										? "—"
+										: `${((row.tokens / breakdown.rawMaxTokens) * 100).toFixed(1)}%`}
+								</span>
+							</div>
+						))}
+						{lists.map((list) => (
+							<PopoverGroup key={list.key} label={list.label} rows={list.rows} />
+						))}
+					</div>
+				</Collapse>
+			</StackedMeterGroup>
+		</div>
 	);
 }

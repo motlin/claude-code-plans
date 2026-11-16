@@ -1970,10 +1970,41 @@ describe("Context card", () =>
 				pct: "18",
 				bar: "h-[4px] rounded-full overflow-hidden",
 				track: "var(--chart-reference-tint)",
-				fill: "h-full bg-accent-100 transition-[width]",
+				fill: "h-full bg-fill-accent transition-[width]",
 			},
 		);
 	});
+
+	it.each([
+		[74.4, "bg-fill-accent"],
+		[74.5, "bg-usage-warning"],
+		[89, "bg-usage-warning"],
+		[89.5, "bg-usage-danger"],
+		[100, "bg-usage-danger"],
+	])(
+		"tones the window-only bar at %s percent with %s, picked by the rounded percent (upstream `G`)",
+		async (contextPercent, fill) =>
+		{
+			const inputs = contextInputs(null);
+			await renderCards(
+				{
+					...inputs,
+					usage: inputs.usage &&
+					{
+						...inputs.usage,
+						contextPercent,
+					},
+				},
+			);
+			const bar = within(contextBody() as HTMLElement).getByRole(
+				"progressbar",
+				{
+					name: "Context window",
+				},
+			);
+			expect(bar.firstElementChild?.className).toBe(`h-full ${fill} transition-[width]`);
+		},
+	);
 
 	const HINT_CLASS = "mt-1 flex min-h-6 items-center px-2 pb-1 text-[12px]/[15px] text-secondary";
 

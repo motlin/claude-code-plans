@@ -101,6 +101,7 @@ import {nearestCommand} from "../lib/command-suggest";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {ComposerCommandNotice} from "./composer-command-notice";
 import {type ChinLaunchControls, type ChinPickHandle, ComposerAddMenu, ComposerChin} from "./composer-chin";
+import type {UsageRingContext} from "./usage-popover-context";
 import {ErrorCardShell} from "./error-card-shell";
 import type {ChinMenu} from "./composer-launch-menus";
 import
@@ -249,6 +250,8 @@ interface ComposerProps
 	deliveryHint?: string | undefined;
 	/** Mode / model / effort / usage readouts; the chin stays empty without them. */
 	chin?: ComposerState | undefined;
+	/** The session's context breakdown and compact action for the usage ring's context-mode popover. */
+	usageContext?: UsageRingContext | undefined;
 	/**
 	 * Home only: the place controls that lead upstream's environment bar, which
 	 * replaces the chin row and wraps them onto their own row below 460px.
@@ -762,6 +765,7 @@ export function Composer({
 	dropScope = "page",
 	deliveryHint,
 	chin,
+	usageContext,
 	environment,
 	worktreeToggle,
 	slashCommands = NO_COMMANDS,
@@ -2552,7 +2556,15 @@ export function Composer({
 			</div>
 			{environment === undefined ? (
 				<div data-cds="ChatComposerChin" className={COMPOSER_CHIN_CLASS}>
-					{chin && <ComposerChin state={chin} launch={launchControls} surface="chin" pickRef={chinPickRef} />}
+					{chin && (
+						<ComposerChin
+							state={chin}
+							launch={launchControls}
+							surface="chin"
+							pickRef={chinPickRef}
+							usageContext={usageContext}
+						/>
+					)}
 				</div>
 			) : (
 				<div data-testid="epitaxy-environment-bar" className={ENVIRONMENT_BAR_CLASS}>

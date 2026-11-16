@@ -446,17 +446,62 @@ export function usageRingSeverity(percent: number | null): UsageRingSeverity
 	return percent >= 90 ? "critical" : "warning";
 }
 
-/** "Usage: Weekly · all models: 73%, Resets Tue 4:00 AM", or "Usage" with no limits. */
+/** Upstream's ring host `Pr`: plan limits when it has window rows, else the context window (`Kn` → none). */
+export type UsageRingMode = "plan" | "context";
+
+export function usageRingMode(usage: ComposerUsage | null): UsageRingMode
+{
+	if (usage?.fiveHour || usage?.weekly) return "plan";
+	return usage?.contextTokens == null ? "plan" : "context";
+}
+
+/** Upstream `ru`'s percent: the rounded, clamped share of the window, or null with no window or past it. */
+function contextPct(tokens: number, max: number | null): number | null
+{
+	if (max === null || tokens > max) return null;
+	return Math.round(Math.min(1, Math.max(0, tokens / max)) * 100);
+}
+
+/** Upstream `ru(tokens, max, exact, withPct)`: "656.2k / 1M (66%)", or just the tokens with no window or past it. */
+export function formatContextRingSummary(tokens: number, max: number | null): string
+{
+	const pct = contextPct(tokens, max);
+	if (max === null || pct === null) return formatTokenCount(tokens);
+	return `${formatTokenCount(tokens)} / ${formatTokenCount(max)} (${pct}%)`;
+}
+
+/** The context-mode ring's percent, or null without context tokens or a window that holds them. */
+export function contextRingPercent(usage: ComposerUsage | null): number | null
+{
+	if (usage?.contextTokens == null) return null;
+	return contextPct(usage.contextTokens, usage.contextWindowSize);
+}
+
+/** The context-mode ring's summary, or null when there are no context tokens. */
+function contextRingSummary(usage: ComposerUsage | null): string | null
+{
+	if (usageRingMode(usage) !== "context" || usage?.contextTokens == null) return null;
+	return formatContextRingSummary(usage.contextTokens, usage.contextWindowSize);
+}
+
+/**
+ * "Usage: Weekly · all models: 73%, Resets Tue 4:00 AM", "Usage: Context 656.2k / 1M (66%)" in context mode,
+ * or "Usage" with neither.
+ */
 export function formatUsageAriaLabel(usage: ComposerUsage | null, nowMs: number, timeZone?: string): string
 {
+	const context = contextRingSummary(usage);
+	if (context !== null) return `Usage: Context ${context}`;
 	const limit = topLimit(usage);
 	if (!limit) return "Usage";
 	return `Usage: ${limit.label}: ${Math.round(limit.window.usedPercentage)}%, ${formatResetLabel(limit.window.resetsAt, nowMs, timeZone)}`;
 }
 
-/** The ring tooltip's rows: "Weekly · all models: 73%", then "Resets Tue 4:00 AM". */
+/** The ring tooltip's rows: "Weekly · all models: 73%", then "Resets Tue 4:00 AM"; in context mode "Context …". */
 export function formatUsageTooltipRows(usage: ComposerUsage | null, nowMs: number, timeZone?: string): string[]
 {
+	const context = contextRingSummary(usage);
+	if (context !== null) return [`Context ${context}`];
 	const limit = topLimit(usage);
 	if (!limit) return ["Usage"];
 	return [

@@ -3,6 +3,8 @@ import {StatuslineRateLimitsStrictSchema, StatuslineSchema, type Statusline} fro
 import
 {
 	type ComposerStateSources,
+	contextRingPercent,
+	formatContextRingSummary,
 	formatResetLabel,
 	formatUsageAriaLabel,
 	formatUsageTooltipRows,
@@ -13,6 +15,7 @@ import
 	resolveComposerState,
 	USAGE_RING_CIRCUMFERENCE,
 	usageRingDashoffset,
+	usageRingMode,
 	usageRingPercent,
 	usageRingSeverity,
 	withAccountLimits,
@@ -896,7 +899,7 @@ describe("usage ring", () =>
 		);
 	});
 
-	it("labels the five-hour limit when it is the most used, and reads bare Usage with no limits", () =>
+	it("labels the five-hour limit when it is the most used, the context window with no limits, else bare Usage", () =>
 	{
 		const fiveHourOnly = StatuslineSchema.parse(
 			{
@@ -944,7 +947,7 @@ describe("usage ring", () =>
 		).toStrictEqual(
 			{
 				fiveHour: "Usage: Session limit: 7%, Resets in 30 min",
-				contextOnly: "Usage",
+				contextOnly: "Usage: Context 4k / 200k (2%)",
 				empty: "Usage",
 			},
 		);
@@ -1011,8 +1014,91 @@ describe("formatUsageTooltipRows", () =>
 			{
 				weekly: ["Weekly · all models: 73%", "Resets Thu 3:00 PM"],
 				fiveHour: ["Session limit: 7%", "Resets in 30 min"],
-				contextOnly: ["Usage"],
+				contextOnly: ["Context 604.7k / 1M (60%)"],
 				empty: ["Usage"],
+			},
+		);
+	});
+});
+
+describe("usage ring context mode", () =>
+{
+	const contextOnly =
+	{
+		contextTokens: 656_200,
+		contextWindowSize: 1_000_000,
+		contextPercent: 66,
+		fiveHour: null,
+		weekly: null,
+		updatedAt: null,
+	};
+
+	it("is context mode only without plan windows and with context tokens (upstream `Kn` → none)", () =>
+	{
+		expect(
+			{
+				contextOnly: usageRingMode(contextOnly),
+				weekly: usageRingMode(
+					{
+						...contextOnly,
+						weekly:
+						{
+							usedPercentage: 12,
+							resetsAt: NOW_SEC + 86_400,
+						},
+					},
+				),
+				noTokens: usageRingMode(
+					{
+						...contextOnly,
+						contextTokens: null,
+					},
+				),
+				empty: usageRingMode(null),
+			},
+		).toStrictEqual(
+			{
+				contextOnly: "context",
+				weekly: "plan",
+				noTokens: "plan",
+				empty: "plan",
+			},
+		);
+	});
+
+	it("summarises the window as upstream's `ru(..., withPct)`", () =>
+	{
+		expect([
+			formatContextRingSummary(656_200, 1_000_000),
+			formatContextRingSummary(1_200_000, 1_000_000),
+			formatContextRingSummary(5000, null),
+			contextRingPercent(contextOnly),
+			contextRingPercent(
+				{
+					...contextOnly,
+					contextTokens: 1_200_000,
+				},
+			),
+			contextRingPercent(
+				{
+					...contextOnly,
+					contextWindowSize: null,
+				},
+			),
+		]).toStrictEqual(["656.2k / 1M (66%)", "1.2M", "5k", 66, null, null]);
+	});
+
+	it("labels the ring by its context summary", () =>
+	{
+		expect(
+			{
+				aria: formatUsageAriaLabel(contextOnly, NOW_MS),
+				tooltip: formatUsageTooltipRows(contextOnly, NOW_MS),
+			},
+		).toStrictEqual(
+			{
+				aria: "Usage: Context 656.2k / 1M (66%)",
+				tooltip: ["Context 656.2k / 1M (66%)"],
 			},
 		);
 	});

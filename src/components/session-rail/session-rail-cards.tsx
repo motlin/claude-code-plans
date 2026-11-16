@@ -1,6 +1,6 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
-import {useEffect, useId, useRef, useState} from "react";
+import {useEffect, useRef, useState} from "react";
 import
 {
 	AppWindow,
@@ -20,7 +20,7 @@ import
 } from "lucide-react";
 
 import type {SessionArtifact} from "../../lib/api/artifacts";
-import {customizeMcpServersQueryOptions, type McpServerSummary} from "../../lib/api/customize";
+import {customizeMcpServersQueryOptions, type McpServerSummary, sessionConnectors} from "../../lib/api/customize";
 import type {HerdrPaneIndexData} from "../../lib/api/herdr";
 import {sessionDiffQueryOptions} from "../../lib/api/session-diff";
 import
@@ -33,8 +33,8 @@ import
 import type {BackgroundTask, BackgroundTaskGroups} from "../../lib/background-tasks";
 import {writeClipboardText} from "../../lib/clipboard";
 import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
-import {autoCompactHint, COMPACT_DISABLED_REASON, type CompactActionState} from "../../lib/compact-action";
-import {buildContextLegend, type ContextBreakdown} from "../../lib/context-breakdown";
+import {autoCompactHint, type CompactActionState} from "../../lib/compact-action";
+import {buildContextLegend, contextRefreshHint, type ContextBreakdown} from "../../lib/context-breakdown";
 import {formatContextSummary, formatUpdatedAgo, type ComposerUsage} from "../../lib/composer-state";
 import type {PrStatus} from "../../lib/pr-status";
 import {requestFileOpen} from "../../lib/file-open-requests";
@@ -47,15 +47,15 @@ import {type BackgroundTasksFocus, useBackgroundTasksOpener} from "../background
 import {useCopyToClipboard} from "../files/use-copy-to-clipboard";
 import {FileTypeIcon} from "../file-type-icon";
 import {usePaneHost} from "../panes/pane-host-context";
+import {CompactActionRow} from "./compact-action-row";
 import {ContextBreakdownBody} from "./context-breakdown";
 import {AnimatedDiffStat} from "../diff-stat";
 import {useToast} from "../toast-context";
-import {cdsButtonClass} from "../ui/cds-button";
-import {DisabledReason} from "../ui/disabled-reason";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import {ENVIRONMENT_MENU_BUTTON_CLASS, RAIL_ROW_ACTION_CLASS, RailRow, RailRowContent} from "./rail-row";
 import {RemoteControlRow, RemoteControlRowPending, RemoteControlToggleRow} from "./remote-control-row";
 import {SessionRail, type RailCard} from "./session-rail";
+import {usageFillClass} from "./usage-fill";
 
 /** What the session page knows that the rail's cards show. */
 export interface SessionRailInputs
@@ -323,13 +323,6 @@ function EnvironmentBody({inputs}: {inputs: SessionRailInputs})
 	);
 }
 
-/** How the Context card's data refreshes: upstream's turn-driven wording, or a `/context`-run breakdown's local one. */
-function refreshHint(working: boolean, source: ContextBreakdown["source"] | null): string
-{
-	if (source === "context-command") return "Run /context to refresh.";
-	return working ? "Refreshes when this turn ends." : "Send a message to refresh.";
-}
-
 function ContextUpdated({
 	updatedAt,
 	working,
@@ -343,57 +336,7 @@ function ContextUpdated({
 	return (
 		<div data-rail-context-updated="" className="mt-1 px-2 pb-1 text-[12px]/[15px] text-secondary">
 			Last updated <time dateTime={updatedAt}>{formatUpdatedAgo(updatedAt, Date.now())}</time>.{" "}
-			{refreshHint(working, source)}
-		</div>
-	);
-}
-
-const COMPACT_BUTTON_CLASS = `${cdsButtonClass("secondary", "xs")} min-w-0`;
-
-/** Upstream's compact action `H`: the auto-compact hint and an xs "Compact session" button behind its disabled reason. */
-function CompactActionRow({
-	state,
-	hint,
-	onCompact,
-}: {
-	state: Exclude<
-		CompactActionState,
-		{
-			kind: "hidden";
-		}
-	>;
-	hint: string | null;
-	onCompact: () => void;
-})
-{
-	const hintId = useId();
-	return (
-		<div data-rail-compact-action="" className="flex min-h-[20px] items-center gap-sm px-xs py-xs text-footnote">
-			{hint !== null && (
-				<span id={hintId} className="min-w-0 flex-1 truncate text-secondary">
-					{hint}
-				</span>
-			)}
-			<DisabledReason
-				reason={state.kind === "disabled" ? COMPACT_DISABLED_REASON[state.reason] : null}
-				// Without the flex-1 hint, the button still sits at the trailing edge.
-				wrapperClassName={hint === null ? "min-w-0 shrink-0 ms-auto" : "min-w-0 shrink-0"}
-			>
-				<button
-					type="button"
-					data-cds="Button"
-					data-size="xs"
-					disabled={state.kind === "disabled"}
-					aria-describedby={hint === null ? undefined : hintId}
-					onClick={() =>
-					{
-						onCompact();
-					}}
-					className={COMPACT_BUTTON_CLASS}
-				>
-					<span className="truncate">Compact session</span>
-				</button>
-			</DisabledReason>
+			{contextRefreshHint(working, source)}
 		</div>
 	);
 }
@@ -405,6 +348,7 @@ function compactRow(inputs: SessionRailInputs, threshold: number | null): React.
 	if (compact === undefined || compact.state.kind === "hidden") return null;
 	return (
 		<CompactActionRow
+			inset="px-xs"
 			state={compact.state}
 			hint={autoCompactHint(threshold, inputs.usage?.contextTokens ?? null)}
 			onCompact={compact.onCompact}
@@ -477,7 +421,8 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 						aria-valuemax={100}
 					>
 						<div
-							className="h-full bg-accent-100 transition-[width]"
+							// Upstream tones the rounded `ru` percent.
+							className={`h-full ${usageFillClass(rounded)} transition-[width]`}
 							style={
 							{
 								width: `${percent}%`,
@@ -498,14 +443,6 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 			</div>
 		),
 	};
-}
-
-/** The MCP servers the session's project can use: user-wide ones and its own. */
-function sessionConnectors(servers: readonly McpServerSummary[], cwd: string | null): McpServerSummary[]
-{
-	return servers.filter(
-		(server) => server.enabled && (server.projectPath === undefined || server.projectPath === cwd),
-	);
 }
 
 function connectorsCard(servers: readonly McpServerSummary[]): RailCard | null

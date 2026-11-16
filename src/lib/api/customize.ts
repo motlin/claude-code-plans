@@ -433,3 +433,11 @@ export function isSettingsConflict(error: unknown): boolean
 {
 	return error instanceof ApiResponseError && error.status === 409;
 }
+
+/** The MCP servers the session's project can use: user-wide ones and its own. */
+export function sessionConnectors(servers: readonly McpServerSummary[], cwd: string | null): McpServerSummary[]
+{
+	return servers.filter(
+		(server) => server.enabled && (server.projectPath === undefined || server.projectPath === cwd),
+	);
+}

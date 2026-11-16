@@ -23,6 +23,7 @@ import {useId, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNod
 import {animateRailDrop, blurOnPointerDragStart, lockRailDragToVerticalAxis} from "./rail-drag-physics";
 import {RAIL_CARD_CLASS, RAIL_SLOT_CLASS} from "./rail-row";
 import {railSectionAccessibility} from "./rail-section-accessibility";
+import {usageFillClass} from "./usage-fill";
 
 import
 {
@@ -41,7 +42,6 @@ import
 	type RailSectionId,
 	type RailSectionsState,
 } from "../../lib/session-rail-store";
-import {usageRingSeverity, type UsageRingSeverity} from "../../lib/composer-state";
 import {TooltipPortalContext} from "../ui/tooltip-portal-context";
 import
 {
@@ -106,14 +106,6 @@ function RailHeaderMenu({sessionId, sections}: {sessionId: string; sections: Rai
 	);
 }
 
-/** Upstream's rollup meter fill: accent, then warning at the composer ring's 75% and danger at 90%. */
-const ROLLUP_FILLS: Record<UsageRingSeverity, string> =
-{
-	normal: "bg-fill-accent",
-	warning: "bg-usage-warning",
-	critical: "bg-usage-danger",
-};
-
 /** Upstream's header rollup: the rounded percent beside a 24x10 pill meter. */
 function RollupSummary({pct}: {pct: number})
 {
@@ -123,7 +115,7 @@ function RollupSummary({pct}: {pct: number})
 			<span className="tabular-nums">{clamped}%</span>
 			<span aria-hidden className="flex h-2.5 w-6 shrink-0 rounded-full bg-alpha-2 p-0.5">
 				<span
-					className={`h-full min-w-1.5 rounded-full ${ROLLUP_FILLS[usageRingSeverity(clamped)]}`}
+					className={`h-full min-w-1.5 rounded-full ${usageFillClass(clamped)}`}
 					style={
 					{
 						width: `${clamped}%`,

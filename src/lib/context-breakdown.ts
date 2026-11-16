@@ -353,3 +353,10 @@ export function railContextPercent(
 	if (usage === null || liveTokens === null || usage.contextWindowSize === null) return null;
 	return usage.contextPercent ?? (liveTokens / usage.contextWindowSize) * 100;
 }
+
+/** How the Context card's data refreshes: upstream's turn-driven wording, or a `/context`-run breakdown's local one. */
+export function contextRefreshHint(working: boolean, source: ContextBreakdown["source"] | null): string
+{
+	if (source === "context-command") return "Run /context to refresh.";
+	return working ? "Refreshes when this turn ends." : "Send a message to refresh.";
+}

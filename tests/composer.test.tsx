@@ -1137,6 +1137,53 @@ describe("Composer", () =>
 			expect(document.querySelector("[data-ring-arc]")?.getAttribute("stroke")).toBe(stroke);
 		});
 
+		it("rings the context window in upstream's context mode when there are no plan windows", () =>
+		{
+			render(
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() =>
+					{
+					}}
+					chin={
+					{
+						...CHIN,
+						usage:
+						{
+							contextTokens: 800_000,
+							contextWindowSize: 1_000_000,
+							contextPercent: 80,
+							fiveHour: null,
+							weekly: null,
+							updatedAt: new Date(NOW_MS).toISOString(),
+						},
+					}}
+				/>,
+			);
+			const arc = document.querySelector("[data-ring-arc]");
+			expect(
+				{
+					name: screen
+						.getByRole(
+							"button",
+							{
+								name: /^Usage/,
+							},
+						)
+						.getAttribute("aria-label"),
+					stroke: arc?.getAttribute("stroke"),
+					dashoffset: Number(arc?.getAttribute("stroke-dashoffset")).toFixed(4),
+				},
+			).toStrictEqual(
+				{
+					name: "Usage: Context 800k / 1M (80%)",
+					stroke: "var(--color-usage-warning)",
+					dashoffset: (0.2 * 37.699).toFixed(4),
+				},
+			);
+		});
+
 		const renderWithAccount = (planDetail?: string) =>
 		{
 			const queryClient = new QueryClient();

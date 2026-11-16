@@ -9,6 +9,7 @@ import {Minimize2} from "lucide-react";
 import {SessionTileFrame} from "./session-tile-frame";
 import {latestBreakdown, preferNewerBreakdown, railContextPercent} from "../lib/context-breakdown";
 import {sessionContextBreakdownQueryOptions} from "../lib/api/context-breakdown";
+import {customizeMcpServersQueryOptions, sessionConnectors} from "../lib/api/customize";
 import {usageQueryOptions} from "../lib/api/usage";
 import {focusComposer, refillComposer, refillRejectedSend, takeBackSend} from "../lib/context-attach";
 import {rewindStepsBack, rewindTurns} from "../lib/rewind-picker";
@@ -28,6 +29,7 @@ import {TurnUndoSendContext} from "./turn-undo-send-context";
 import {useSessionFork} from "../hooks/use-session-fork";
 import {ArchivedComposerNote} from "./archived-composer-note";
 import {Composer, type ComposerRewindState} from "./composer";
+import type {UsageRingContext} from "./usage-popover-context";
 import {HeldUserRow, SendingUserRow} from "./pending-user-row";
 import {StreamingMessage} from "./streaming-message";
 import {HeldSteerTurns, OptimisticWaitingTurn} from "./waiting-user-turn";
@@ -850,7 +852,9 @@ function SessionView({
 	useRegisterSessionDetailsPane(statusline, data.messageCount);
 	const composerServerState = useComposerServerState(sessionId);
 	const commandBreakdown = useMemo(() => latestBreakdown(transcript.records), [transcript.records]);
-	const {data: modBreakdown = null} = useQuery(sessionContextBreakdownQueryOptions(sessionId));
+	const {data: modBreakdown = null, isFetching: modBreakdownFetching} = useQuery(
+		sessionContextBreakdownQueryOptions(sessionId),
+	);
 	const contextBreakdown = preferNewerBreakdown(commandBreakdown, modBreakdown);
 	// A statusline without `rate_limits` leaves the ring to the account's plan limits.
 	const {data: accountUsage} = useQuery(usageQueryOptions);
@@ -1558,14 +1562,54 @@ function SessionView({
 		void sendCompact(sendCompactPrompt, enqueuePrompt, toast);
 	}, [sendCompactPrompt, enqueuePrompt, toast]);
 	const railContextPct = railContextPercent(composerChin.usage, contextBreakdown);
-	const railCompact = compactActionState(
+	const compactReach = canTypeCompact ? (herdrReconnecting ? "detached" : "live") : "dormant";
+	const compactResponding = workingMarkerState.status !== "idle" || compactSendPending || promptCardPending;
+	const compactInFlight = staleCompactEpisode !== null;
+	// Memoised so the composer chin's usage context keeps its identity between renders.
+	const railCompact = useMemo(
+		() =>
+			compactActionState(
+				{
+					contextPct: railContextPct,
+					hasHandler: true,
+					reach: compactReach,
+					responding: compactResponding,
+					compacting: compactInFlight,
+				},
+			),
+		[railContextPct, compactReach, compactResponding, compactInFlight],
+	);
+	// Read from the rail's cache only: the popover's MCP rows just borrow the connector names, so it never fetches.
+	const {data: mcpServerList} = useQuery(
 		{
-			contextPct: railContextPct,
-			hasHandler: true,
-			reach: canTypeCompact ? (herdrReconnecting ? "detached" : "live") : "dormant",
-			responding: workingMarkerState.status !== "idle" || compactSendPending || promptCardPending,
-			compacting: staleCompactEpisode !== null,
+			...customizeMcpServersQueryOptions,
+			enabled: false,
 		},
+	);
+	const usageContext = useMemo<UsageRingContext>(
+		() => (
+		{
+			breakdown: contextBreakdown,
+			breakdownFetching: modBreakdownFetching,
+			working: workingMarkerState.status !== "idle",
+			homeRoot: data.homeRoot,
+			mcpServers: sessionConnectors(mcpServerList ?? [], sessionDirectory),
+			compact:
+			{
+				state: railCompact,
+				onCompact: compactFromRail,
+			},
+		}),
+		[
+			contextBreakdown,
+			modBreakdownFetching,
+			workingMarkerState.status,
+			data.homeRoot,
+			mcpServerList,
+			sessionDirectory,
+			railCompact,
+			compactFromRail,
+		],
 	);
 	// Upstream's refusal band shows only for fallbacks that arrive live: the records the page opened with
 	// are history (upstream's restored, dismissed fallback).
@@ -2268,6 +2312,7 @@ function SessionView({
 																}
 																deliveryHint={promptBehavior.deliveryHint}
 																chin={composerChin}
+																usageContext={usageContext}
 																{...slashMenu}
 																bypassPermissionsAllowed={bypassPermissionsAllowed}
 																permissionCwd={sessionDirectory}

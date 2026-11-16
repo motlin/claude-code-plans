@@ -10,9 +10,11 @@ import {describe, expect, it} from "vite-plus/test";
  * permission rows' Show more (upstream's cds Button with aria-expanded over a line-clamped value) toggles a clamp,
  * not a hidden panel, so a Collapsible can't draw it; it raised the ceiling from 45. The "Claude Code notice" row
  * (hook-notice-row.tsx) copies upstream's own `d_` button and epitaxy expanding body, not the cds Collapsible, so it
- * raised the ceiling from 46.
+ * raised the ceiling from 46. The usage ring popover's Context window toggle and its deferred groups copy upstream's
+ * own buttons (c2d611398 `ne`, ce96f5751 `se` without `rail`), whose state the popover owns and resets on close, so
+ * they raised it from 47.
  */
-const DISCLOSURE_CEILING = 47;
+const DISCLOSURE_CEILING = 49;
 
 /** The opening tag around `index`: from the nearest `<Name` before it to the next `<` after it. */
 function enclosingTag(source: string, index: number): string
