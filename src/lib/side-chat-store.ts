@@ -160,12 +160,20 @@ function entryPrompt({question, excerpts = []}: SideChatEntry): string
 	);
 }
 
+/**
+ * Upstream's side chat is ephemeral: closing it stops any pending answer and
+ * discards the thread and waiting excerpts, so the next open starts afresh.
+ * Only the mode survives. Dock/undock/popout go through `setSideChatMode`.
+ */
 export function closeSideChat(sessionId: string): void
 {
+	for (const entry of getSideChat(sessionId).entries) void stopEntry(sessionId, entry.id);
 	update(sessionId, (session) => (
 	{
 		...session,
 		open: false,
+		entries: [],
+		excerpts: [],
 	}));
 }
 

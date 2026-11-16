@@ -229,7 +229,7 @@ describe("SideChat variants", () =>
 		);
 	});
 
-	it("closes the docked pane with Close side chat and reopens docked with ⌘;-style toggles", async () =>
+	it("closes the docked pane with Close side chat, discarding its thread, and reopens docked and empty", async () =>
 	{
 		renderInHost();
 		act(() =>
@@ -290,7 +290,7 @@ describe("SideChat variants", () =>
 					mode: "docked",
 					floating: false,
 					docked: true,
-					history: HISTORY,
+					history: [],
 					open: true,
 				},
 			},

@@ -20,10 +20,12 @@ import {parseBtwCommand, sideChatBranchTitle} from "../src/lib/side-chat";
 import
 {
 	askSideChat,
+	closeSideChat,
 	getSideChat,
 	openSideChat,
 	openSideChatWithContext,
 	resetSideChatStore,
+	setSideChatMode,
 } from "../src/lib/side-chat-store";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.
@@ -734,6 +736,76 @@ describe("openSideChatWithContext", () =>
 		);
 
 		expect(getSideChat(SESSION_ID).excerpts).toStrictEqual([]);
+	});
+});
+
+describe("closeSideChat", () =>
+{
+	it("discards the thread and pending excerpts but keeps the mode, like upstream", async () =>
+	{
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => Promise.resolve(ndjsonResponse([textDelta("An answer.")]))),
+		);
+		openSideChat(SESSION_ID);
+		setSideChatMode(SESSION_ID, "docked");
+		await askSideChat(SESSION_ID, "What does load() do?");
+		openSideChatWithContext(SESSION_ID, "x");
+
+		closeSideChat(SESSION_ID);
+
+		expect(getSideChat(SESSION_ID)).toEqual(
+			{
+				open: false,
+				mode: "docked",
+				entries: [],
+				excerpts: [],
+			},
+		);
+	});
+
+	it("aborts an in-flight answer", async () =>
+	{
+		const signals: AbortSignal[] = [];
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async (_url: string, init: RequestInit) =>
+			{
+				const signal = init.signal;
+				if (signal === null || signal === undefined) throw new Error("fetch called without a signal");
+				signals.push(signal);
+				return new Promise<Response>((_resolve, reject) =>
+				{
+					signal.addEventListener("abort", () =>
+					{
+						reject(new DOMException("Aborted", "AbortError"));
+					});
+				});
+			}),
+		);
+		openSideChat(SESSION_ID);
+		const pending = askSideChat(SESSION_ID, "Where is config?");
+
+		closeSideChat(SESSION_ID);
+		await pending;
+
+		expect(
+			{
+				aborted: signals.map((signal) => signal.aborted),
+				session: getSideChat(SESSION_ID),
+			},
+		).toEqual(
+			{
+				aborted: [true],
+				session:
+				{
+					open: false,
+					mode: "floating",
+					entries: [],
+					excerpts: [],
+				},
+			},
+		);
 	});
 });
 
