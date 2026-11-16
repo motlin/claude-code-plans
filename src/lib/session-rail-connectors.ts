@@ -1,8 +1,9 @@
 import type {McpServerSummary} from "./api/customize";
+import type {SessionMcpStatus} from "./api/sessions";
 
 /**
- * Upstream's per-row connector states (`ab` in c8b5c2821). Locally, "failed" waits on
- * rail-connectors-card-fault-state and "unavailable" has no source.
+ * Upstream's per-row connector states (`ab` in c8b5c2821). Locally, "failed" comes
+ * from the session's last full deferred-tools delta and "unavailable" has no source.
  */
 export type ConnectorState = "failed" | "needs-auth" | "unavailable" | "off";
 
@@ -60,10 +61,27 @@ export function connectorLabel(name: string): string
 	return slugLabel(PRODUCT_NAMES[name] ?? name);
 }
 
-function connectorState(server: McpServerSummary, cwd: string | null): ConnectorState | undefined
+/**
+ * The name the session's transcript reports a server under: the CLI names
+ * plugin servers `plugin:<plugin>:<server>` without the marketplace.
+ */
+function configNameForSession(server: Pick<McpServerSummary, "id" | "name" | "scope">): string
+{
+	if (server.scope !== "plugin") return server.name;
+	const plugin = /^plugin:([^@:]+)/.exec(server.id)?.[1];
+	return plugin === undefined ? server.name : `plugin:${plugin}:${server.name}`;
+}
+
+/** One status per server, as upstream: Off wins, then needs-auth, then failed. */
+function connectorState(
+	server: McpServerSummary,
+	cwd: string | null,
+	failedNames: ReadonlySet<string>,
+): ConnectorState | undefined
 {
 	if (cwd !== null && server.offIn.includes(cwd)) return "off";
-	return server.needsAuth ? "needs-auth" : undefined;
+	if (server.needsAuth) return "needs-auth";
+	return failedNames.has(configNameForSession(server)) ? "failed" : undefined;
 }
 
 function needsAttention(row: ConnectorRow): boolean
@@ -74,16 +92,22 @@ function needsAttention(row: ConnectorRow): boolean
 /**
  * The rail Connectors card rows for a session cwd: user-wide servers and the
  * cwd's own, kept when enabled or switched off for this project (upstream lists
- * those with "Off"). Failed and needs-auth rows sort first; both groups keep
- * source order.
+ * those with "Off"). `failed` is the session's failed-server snapshot; a name
+ * with no config row (a claude.ai connector) is dropped. Rows sort by server
+ * name (upstream `T`), then failed and needs-auth rows move first (`ab`).
  */
-export function connectorRows(servers: readonly McpServerSummary[], cwd: string | null): ConnectorRow[]
+export function connectorRows(
+	servers: readonly McpServerSummary[],
+	cwd: string | null,
+	failed: SessionMcpStatus["failed"],
+): ConnectorRow[]
 {
+	const failedNames = new Set(failed.map((entry) => entry.name));
 	const rows: ConnectorRow[] = [];
-	for (const server of servers)
+	for (const server of servers.toSorted((a, b) => a.name.localeCompare(b.name)))
 	{
 		if (server.projectPath !== undefined && server.projectPath !== cwd) continue;
-		const state = connectorState(server, cwd);
+		const state = connectorState(server, cwd, failedNames);
 		if (!server.enabled && state !== "off") continue;
 		rows.push(
 			{

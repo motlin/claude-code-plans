@@ -23,7 +23,13 @@ import type {StreamDrop} from "../src/lib/stream-drop";
 import {customizeMcpServersQueryOptions, type McpServerSummary} from "../src/lib/api/customize";
 import type {HerdrPaneIndexData} from "../src/lib/api/herdr";
 import {sessionDiffQueryOptions} from "../src/lib/api/session-diff";
-import {sessionDevServersQueryOptions, sessionOpenInQueryOptions} from "../src/lib/api/sessions";
+import
+{
+	sessionDevServersQueryOptions,
+	sessionMcpStatusQueryOptions,
+	sessionOpenInQueryOptions,
+	type SessionMcpStatus,
+} from "../src/lib/api/sessions";
 import type {BackgroundTask} from "../src/lib/background-tasks";
 import type {CompactActionState} from "../src/lib/compact-action";
 import type {ContextBreakdown} from "../src/lib/context-breakdown";
@@ -3771,7 +3777,7 @@ describe("Connectors card", () =>
 		);
 	}
 
-	it("lists needs-auth rows first, three of them, then Show more, which expands in place", async () =>
+	it("lists needs-auth rows first, each group by name, three of them, then Show more, which expands in place", async () =>
 	{
 		await renderCards(FULL, withConnectors(FIVE));
 		openConnectors();
@@ -3795,7 +3801,7 @@ describe("Connectors card", () =>
 					rows: [
 						["Linear", "Authenticate"],
 						["Zeta", "Authenticate"],
-						["Github", null],
+						["Alpha", "Off"],
 						["Show more", null],
 					],
 					expanded: "false",
@@ -3803,8 +3809,8 @@ describe("Connectors card", () =>
 				expanded: [
 					["Linear", "Authenticate"],
 					["Zeta", "Authenticate"],
-					["Github", null],
 					["Alpha", "Off"],
+					["Github", null],
 					["Gmail cmotlin imap", null],
 					["Show less", null],
 				],
@@ -3855,7 +3861,7 @@ describe("Connectors card", () =>
 			},
 		);
 
-		expect(document.activeElement?.querySelector("[data-rail-row-label]")?.textContent).toBe("Alpha");
+		expect(document.activeElement?.querySelector("[data-rail-row-label]")?.textContent).toBe("Github");
 	});
 
 	it("still mounts with every server off for the cwd, reading 0 connected", async () =>
@@ -3881,5 +3887,89 @@ describe("Connectors card", () =>
 		);
 
 		expect(cards().find(([id]) => id === "connectors")).toStrictEqual(["connectors", "0 connected"]);
+	});
+
+	describe("failed servers", () =>
+	{
+		const SERVERS = [mcp("imcp"), mcp("github")];
+
+		function withStatus(failed: SessionMcpStatus["failed"] | null): (client: QueryClient) => void
+		{
+			return (client) =>
+			{
+				withConnectors(SERVERS)(client);
+				if (failed !== null)
+				{
+					client.setQueryData(
+						sessionMcpStatusQueryOptions(SESSION_ID, true).queryKey,
+						{
+							failed,
+						},
+					);
+				}
+			};
+		}
+
+		it("labels a failed server Reconnect in warning ink, first, without its error", async () =>
+		{
+			await renderCards(
+				FULL,
+				withStatus([
+					{
+						name: "imcp",
+						errorCode: "CONNECT_TIMEOUT",
+						error: "timed out",
+					},
+				]),
+			);
+			openConnectors();
+
+			expect(
+				{
+					summary: cards().find(([id]) => id === "connectors"),
+					rows: rows("Connectors"),
+					hint: card().querySelector("[data-rail-row-hint]")?.className,
+					titles: card().querySelectorAll("[title]").length,
+					tooltips: card().querySelectorAll("[role='tooltip']").length,
+					errorShown: card().textContent.includes("timed out"),
+				},
+			).toStrictEqual(
+				{
+					summary: ["connectors", "1 to reconnect"],
+					rows: [
+						["Imcp", "Reconnect"],
+						["Github", null],
+					],
+					hint: "shrink-0 text-footnote text-warning",
+					titles: 0,
+					tooltips: 0,
+					errorShown: false,
+				},
+			);
+		});
+
+		it.each([
+			["none failed", []],
+			["the status is still loading", null],
+		] as const)("reads every server as connected when %s", async (_, failed) =>
+		{
+			await renderCards(FULL, withStatus(failed === null ? null : [...failed]));
+			openConnectors();
+
+			expect(
+				{
+					summary: cards().find(([id]) => id === "connectors"),
+					rows: rows("Connectors"),
+				},
+			).toStrictEqual(
+				{
+					summary: ["connectors", "2 connected"],
+					rows: [
+						["Github", null],
+						["Imcp", null],
+					],
+				},
+			);
+		});
 	});
 });

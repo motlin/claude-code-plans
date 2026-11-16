@@ -25,6 +25,7 @@ import
 {
 	openSessionInFinder,
 	sessionDevServersQueryOptions,
+	sessionMcpStatusQueryOptions,
 	sessionOpenInQueryOptions,
 	type SessionDetailData,
 } from "../../lib/api/sessions";
@@ -956,6 +957,7 @@ function backgroundTasksCard(tasks: BackgroundTaskGroups): RailCard | null
 export function SessionRailCards({inputs}: {inputs: SessionRailInputs})
 {
 	const mcpServers = useQuery(customizeMcpServersQueryOptions).data;
+	const failedMcpServers = useQuery(sessionMcpStatusQueryOptions(inputs.sessionId, inputs.cwd !== null)).data?.failed;
 	const devServers = useQuery(sessionDevServersQueryOptions(inputs.sessionId, inputs.cwd !== null)).data?.servers;
 	const diff = useQuery(
 		{
@@ -976,7 +978,7 @@ export function SessionRailCards({inputs}: {inputs: SessionRailInputs})
 			body: <EnvironmentBody inputs={inputs} />,
 		} satisfies RailCard,
 		contextCard(inputs, connectors),
-		connectorsCard(connectorRows(mcpServers ?? [], inputs.cwd)),
+		connectorsCard(connectorRows(mcpServers ?? [], inputs.cwd, failedMcpServers ?? [])),
 		outputsCard(inputs),
 		changesCard(inputs, diff ?? null),
 		serversCard(devServers ?? []),

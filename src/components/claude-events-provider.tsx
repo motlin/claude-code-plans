@@ -23,6 +23,7 @@ import {isLiveSessionState, type ActivityState} from "../lib/session-state";
 import {openSharedEventSource} from "../lib/shared-event-source";
 import {nextStreamDrop} from "../lib/stream-drop";
 import {startLiveAppendJourneys} from "../lib/perf/field-journeys";
+import {isFailedMcpSnapshot} from "../lib/session-mcp-status";
 import {UNTITLED_SESSION_TITLE} from "../lib/session-stand-in-title";
 import
 {
@@ -384,6 +385,15 @@ export function ClaudeEventsProvider({children}: {children: ReactNode})
 						};
 						const firstLine = applySessionLinesAppended(queryClient, sessionId, appended);
 						if (firstLine !== null) startLiveAppendJourneys(e, appended, firstLine);
+						// A full deferred-tools delta is a new failed-MCP-server snapshot for the rail.
+						if (lines.some(isFailedMcpSnapshot))
+						{
+							void queryClient.invalidateQueries(
+								{
+									queryKey: sessionQueryKeys.mcpStatus(sessionId),
+								},
+							);
+						}
 					}
 					// An already-running session emits this event as it works; the
 					// active-sessions query only refetches on lifecycle events, so

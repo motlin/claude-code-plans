@@ -406,6 +406,22 @@ export const SessionDevServersResponse = z
 	)
 	.strict();
 
+/** The MCP servers the session's latest full deferred-tools delta reports as failed to connect. */
+export const SessionMcpStatusResponse = z.strictObject(
+	{
+		failed: z.array(
+			z.strictObject(
+				{
+					name: z.string(),
+					errorCode: z.string().optional(),
+					error: z.string().optional(),
+				},
+			),
+		),
+	},
+);
+export type SessionMcpStatus = z.infer<typeof SessionMcpStatusResponse>;
+
 const DEFAULT_RECENT_PAGE_SIZE = 50;
 /**
  * Sessions kept per project group. Deep enough to show what a project was
@@ -448,6 +464,7 @@ export const sessionQueryKeys =
 	apiRequestMessages: (id: string, requestId: string) =>
 		[...SESSION_QUERY_ROOT, id, "api-request-messages", requestId] as const,
 	devServers: (id: string) => [...SESSION_QUERY_ROOT, id, "dev-servers"] as const,
+	mcpStatus: (id: string) => [...SESSION_QUERY_ROOT, id, "mcp-status"] as const,
 	artifacts: (id: string) => [...SESSION_QUERY_ROOT, id, "artifacts"] as const,
 	subagents: (id: string) => [...SESSION_QUERY_ROOT, id, "subagents"] as const,
 	workflows: (id: string) => [...SESSION_QUERY_ROOT, id, "workflows"] as const,
@@ -748,6 +765,18 @@ export const sessionDevServersQueryOptions = (id: string, enabled: boolean) =>
 				apiFetch(`/api/sessions/${encodeURIComponent(id)}/dev-servers`, SessionDevServersResponse),
 			enabled,
 			staleTime: 0,
+		},
+	);
+
+/** Refetched only when a new full deferred-tools delta lands (`ClaudeEventsProvider`). */
+export const sessionMcpStatusQueryOptions = (id: string, enabled: boolean) =>
+	queryOptions(
+		{
+			queryKey: sessionQueryKeys.mcpStatus(id),
+			queryFn: async () =>
+				apiFetch(`/api/sessions/${encodeURIComponent(id)}/mcp-status`, SessionMcpStatusResponse),
+			enabled,
+			staleTime: Infinity,
 		},
 	);
 

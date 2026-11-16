@@ -676,6 +676,75 @@ describe("ClaudeEventsProvider lines appended to a session", () =>
 		vi.unstubAllGlobals();
 	});
 
+	it("refetches the session's MCP status only when a full deferred-tools delta lands", () =>
+	{
+		const {client, eventSource} = renderProvider();
+		const statusKey = sessionQueryKeys.mcpStatus("s1");
+		function deltaLine(fields: Record<string, unknown>)
+		{
+			return {
+				type: "attachment",
+				uuid: "a-1",
+				attachment:
+				{
+					type: "deferred_tools_delta",
+					...fields,
+				},
+			};
+		}
+		function invalidatedAfter(lines: unknown[]): boolean | undefined
+		{
+			client.setQueryData(
+				statusKey,
+				{
+					failed: [],
+				},
+			);
+			act(() =>
+			{
+				eventSource.emit(
+					DOMAIN_EVENTS.SESSION_LINES_APPENDED,
+					{
+						sessionId: "s1",
+						lines,
+					},
+				);
+			});
+			return client.getQueryState(statusKey)?.isInvalidated;
+		}
+
+		expect(
+			[
+				[
+					deltaLine(
+						{
+							addedNames: ["mcp__imcp__weather"],
+						},
+					),
+				],
+				[
+					{
+						type: "user",
+						uuid: "u-1",
+						message:
+						{
+							role: "user",
+							content: "hi",
+						},
+					},
+				],
+				[
+					deltaLine(
+						{
+							failedMcpServers: [],
+							pendingMcpServers: [],
+						},
+					),
+				],
+			].map(invalidatedAfter),
+		).toStrictEqual([false, false, true]);
+	});
+
 	it("moves an already active session to the top with a fresh activity time instead of refetching", () =>
 	{
 		const {client, eventSource} = renderProvider();

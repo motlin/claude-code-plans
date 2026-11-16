@@ -117,7 +117,7 @@ describe("connectorRows", () =>
 
 	it("keeps the cwd's servers, marks off and needs-auth, and sorts needs-auth first in source order", () =>
 	{
-		expect(connectorRows(servers, CWD)).toStrictEqual([
+		expect(connectorRows(servers, CWD, [])).toStrictEqual([
 			{
 				id: "user:b",
 				name: "b",
@@ -159,7 +159,7 @@ describe("connectorRows", () =>
 
 	it("counts every row, the needs-auth ones and the off ones", () =>
 	{
-		expect(connectorCounts(connectorRows(servers, CWD))).toStrictEqual(
+		expect(connectorCounts(connectorRows(servers, CWD, []))).toStrictEqual(
 			{
 				count: 6,
 				needReconnect: 2,
@@ -192,5 +192,147 @@ describe("connectorsSummary", () =>
 				},
 			].map(connectorsSummary),
 		).toStrictEqual(["2 to reconnect", "4 connected", "0 connected"]);
+	});
+});
+
+describe("connectorRows with the session's failed servers", () =>
+{
+	const servers = [
+		server(
+			{
+				id: "user:zeta",
+				name: "zeta",
+				transport: "http",
+			},
+		),
+		server(
+			{
+				id: "user:imcp",
+				name: "imcp",
+			},
+		),
+		server(
+			{
+				id: "plugin:1password@1password:1password",
+				name: "1password",
+				scope: "plugin",
+				needsAuth: true,
+			},
+		),
+		server(
+			{
+				id: "user:alpha",
+				name: "alpha",
+			},
+		),
+		server(
+			{
+				id: "user:beta",
+				name: "beta",
+				offIn: [CWD],
+			},
+		),
+	];
+	const failed = [
+		{
+			name: "imcp",
+			errorCode: "CONNECT_TIMEOUT",
+		},
+		{
+			name: "plugin:1password:1password",
+			errorCode: "ENOENT",
+		},
+		{
+			name: "beta",
+		},
+		{
+			name: "claude.ai Cloudflare Developer Platform",
+			errorCode: "410",
+		},
+	];
+
+	it("marks failed servers, lets needs-auth and off win, drops unknown names and sorts each group by name", () =>
+	{
+		const rows = connectorRows(servers, CWD, failed);
+		expect(
+			{
+				rows: rows.map(({label, state}) => (
+				{
+					label,
+					state,
+				})),
+				counts: connectorCounts(rows),
+				summary: connectorsSummary(connectorCounts(rows)),
+				healthy: connectorsSummary(
+					connectorCounts(
+						connectorRows(
+							servers.map((entry) => (
+							{
+								...entry,
+								needsAuth: false,
+							})),
+							CWD,
+							[],
+						),
+					),
+				),
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					{
+						label: "1password",
+						state: "needs-auth",
+					},
+					{
+						label: "Imcp",
+						state: "failed",
+					},
+					{
+						label: "Alpha",
+						state: undefined,
+					},
+					{
+						label: "Beta",
+						state: "off",
+					},
+					{
+						label: "Zeta",
+						state: undefined,
+					},
+				],
+				counts:
+				{
+					count: 5,
+					needReconnect: 2,
+					unavailable: 1,
+				},
+				summary: "2 to reconnect",
+				healthy: "4 connected",
+			},
+		);
+	});
+
+	it("matches a failed plugin server by its CLI name", () =>
+	{
+		expect(
+			connectorRows(
+				[
+					server(
+						{
+							id: "plugin:context7@market:context7",
+							name: "context7",
+							scope: "plugin",
+						},
+					),
+				],
+				CWD,
+				[
+					{
+						name: "plugin:context7:context7",
+					},
+				],
+			).map((row) => row.state),
+		).toStrictEqual(["failed"]);
 	});
 });
