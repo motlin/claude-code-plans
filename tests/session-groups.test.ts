@@ -8,7 +8,8 @@ import
 	buildSidebarSections,
 	customGroupLaunchTarget,
 	migrateSessionListPrefs,
-	shouldLoadNextPage,
+	nextPageCanHoldVisibleRows,
+	pinnedGroup,
 	type SessionGroup,
 	type SessionGroupRow,
 	type SessionListPrefs,
@@ -53,6 +54,44 @@ function summarize(groups: SessionGroup<SessionGroupRow>[])
 		rows: group.rows.map((r) => r.sessionId),
 		hiddenCount: group.hiddenCount,
 	}));
+}
+
+function doneRows(count: number, prefix = "done", overrides: Partial<SessionGroupRow> = {}): SessionGroupRow[]
+{
+	return Array.from(
+		{
+			length: count,
+		},
+		(_, index) =>
+			row(
+				`${prefix}-${index}`,
+				{
+					bucket: "done",
+					lastActivityAt: NOW - (index + 1) * 60_000,
+					...overrides,
+				},
+			),
+	);
+}
+
+function ids(prefix: string, count: number, from = 0): string[]
+{
+	return Array.from(
+		{
+			length: count,
+		},
+		(_, index) => `${prefix}-${from + index}`,
+	);
+}
+
+function paging(groupRow: SessionGroup<SessionGroupRow> | undefined)
+{
+	return {
+		shown: groupRow?.rows.length,
+		hiddenCount: groupRow?.hiddenCount,
+		revealCount: groupRow?.revealCount,
+		canShowLess: groupRow?.canShowLess,
+	};
 }
 
 describe("DEFAULT_SESSION_LIST_PREFS", () =>
@@ -240,144 +279,184 @@ describe("buildGroups state mode", () =>
 		]);
 	});
 
-	it("caps Idle at 5 rows and reports the hidden count, leaving other groups uncapped", () =>
+	it("caps every Status bucket at 20 rows and reports the hidden count", () =>
 	{
 		const rows = [
-			...Array.from(
+			...doneRows(23),
+			...doneRows(
+				22,
+				"review",
 				{
-					length: 23,
+					bucket: "review",
 				},
-				(_, index) =>
-					row(
-						`done-${index}`,
-						{
-							bucket: "done",
-							lastActivityAt: NOW - (index + 1) * 60_000,
-						},
-					),
 			),
-			...Array.from(
+			...doneRows(
+				22,
+				"blocked",
 				{
-					length: 22,
+					bucket: "blocked",
 				},
-				(_, index) =>
-					row(
-						`review-${index}`,
-						{
-							bucket: "review",
-							lastActivityAt: NOW - (index + 1) * 60_000,
-						},
-					),
 			),
 		];
 
-		expect(summarize(buildGroups(rows, prefs(), NOW))).toStrictEqual([
+		expect(
+			buildGroups(rows, prefs(), NOW).map((stateGroup) => (
+			{
+				...summarize([stateGroup])[0],
+				hiddenAwaiting: stateGroup.hiddenAwaiting,
+			})),
+		).toStrictEqual([
+			{
+				key: "state-blocked",
+				label: "Needs input",
+				rows: ids("blocked", 20),
+				hiddenCount: 2,
+				hiddenAwaiting: true,
+			},
 			{
 				key: "state-review",
 				label: "Ready for review",
-				rows: Array.from(
-					{
-						length: 22,
-					},
-					(_, index) => `review-${index}`,
-				),
-				hiddenCount: 0,
+				rows: ids("review", 20),
+				hiddenCount: 2,
+				hiddenAwaiting: false,
 			},
 			{
 				key: "state-done",
 				label: "Idle",
-				rows: Array.from(
-					{
-						length: 5,
-					},
-					(_, index) => `done-${index}`,
-				),
-				hiddenCount: 18,
+				rows: ids("done", 20),
+				hiddenCount: 3,
+				hiddenAwaiting: false,
 			},
 		]);
 	});
 
-	it("pages a group 5 rows per Show more click, offering Show less only once nothing is hidden", () =>
+	it("pages a group 20 rows per Show more click, offering Show less only once nothing is hidden", () =>
 	{
-		const rows = Array.from(
-			{
-				length: 45,
-			},
-			(_, index) =>
-				row(
-					`done-${index}`,
+		const rows = doneRows(47);
+		const page = (extra: number) =>
+			paging(
+				buildGroups(
+					rows,
+					prefs(),
+					NOW,
 					{
-						bucket: "done",
-						lastActivityAt: NOW - (index + 1) * 60_000,
+						"state-done": extra,
 					},
-				),
-		);
-		const page = (pages: number) =>
-		{
-			const [group] = buildGroups(
-				rows,
-				prefs(),
-				NOW,
-				pages === 0
-					? {}
-					:
-						{
-							"state-done": pages,
-						},
+				)[0],
 			);
-			return {
-				shown: group?.rows.length,
-				hiddenCount: group?.hiddenCount,
-				canShowLess: group?.canShowLess,
-				hiddenAwaiting: group?.hiddenAwaiting,
-			};
-		};
 
-		expect([0, 1, 7, 8, 9].map(page)).toStrictEqual([
+		expect([0, 20, 40].map(page)).toStrictEqual([
 			{
-				shown: 5,
-				hiddenCount: 40,
+				shown: 20,
+				hiddenCount: 27,
+				revealCount: 20,
 				canShowLess: false,
-				hiddenAwaiting: false,
-			},
-			{
-				shown: 10,
-				hiddenCount: 35,
-				canShowLess: false,
-				hiddenAwaiting: false,
 			},
 			{
 				shown: 40,
-				hiddenCount: 5,
+				hiddenCount: 7,
+				revealCount: 7,
 				canShowLess: false,
-				hiddenAwaiting: false,
 			},
 			{
-				shown: 45,
+				shown: 47,
 				hiddenCount: 0,
+				revealCount: 0,
 				canShowLess: true,
-				hiddenAwaiting: false,
-			},
-			{
-				shown: 45,
-				hiddenCount: 0,
-				canShowLess: true,
-				hiddenAwaiting: false,
 			},
 		]);
+	});
+
+	it("never leaves one row behind Show more, saying the true count on the last page (upstream eb, ie)", () =>
+	{
+		const page = (count: number, extra: number) =>
+			paging(
+				buildGroups(
+					doneRows(count),
+					prefs(),
+					NOW,
+					{
+						"state-done": extra,
+					},
+				)[0],
+			);
+
+		expect(
+			{
+				atRestPlusOne: page(21, 0),
+				lastPageOfOne: page(41, 0),
+				afterLastPageOfOne: page(41, 20),
+				twoPagesLeft: page(42, 0),
+				lastOfTwo: page(42, 20),
+				shrankToPlusOne: page(21, 20),
+				shrankToPlusTwo: page(22, 20),
+			},
+		).toStrictEqual(
+			{
+				atRestPlusOne:
+				{
+					shown: 21,
+					hiddenCount: 0,
+					revealCount: 0,
+					canShowLess: false,
+				},
+				lastPageOfOne:
+				{
+					shown: 20,
+					hiddenCount: 21,
+					revealCount: 21,
+					canShowLess: false,
+				},
+				afterLastPageOfOne:
+				{
+					shown: 41,
+					hiddenCount: 0,
+					revealCount: 0,
+					canShowLess: true,
+				},
+				twoPagesLeft:
+				{
+					shown: 20,
+					hiddenCount: 22,
+					revealCount: 20,
+					canShowLess: false,
+				},
+				lastOfTwo:
+				{
+					shown: 40,
+					hiddenCount: 2,
+					revealCount: 2,
+					canShowLess: false,
+				},
+				shrankToPlusOne:
+				{
+					shown: 21,
+					hiddenCount: 0,
+					revealCount: 0,
+					canShowLess: false,
+				},
+				shrankToPlusTwo:
+				{
+					shown: 22,
+					hiddenCount: 0,
+					revealCount: 0,
+					canShowLess: true,
+				},
+			},
+		);
 	});
 
 	it("flags a capped group whose hidden rows include one awaiting input", () =>
 	{
 		const rows = Array.from(
 			{
-				length: 7,
+				length: 22,
 			},
 			(_, index) =>
 				row(
-					`row-${index}`,
+					`row-${String(index).padStart(2, "0")}`,
 					{
-						bucket: index === 6 ? "blocked" : "done",
+						bucket: index === 21 ? "blocked" : "done",
 						lastActivityAt: NOW - (index + 1) * 60_000,
 					},
 				),
@@ -514,7 +593,7 @@ describe("buildGroups state mode", () =>
 		const rows = [
 			...Array.from(
 				{
-					length: 6,
+					length: 22,
 				},
 				(_, index) =>
 					row(
@@ -552,12 +631,12 @@ describe("buildGroups state mode", () =>
 					"live-stale",
 					...Array.from(
 						{
-							length: 3,
+							length: 18,
 						},
 						(_, index) => `ended-${index}`,
 					),
 				],
-				hiddenCount: 3,
+				hiddenCount: 4,
 			},
 		]);
 	});
@@ -869,11 +948,11 @@ describe("buildGroups date mode", () =>
 		]);
 	});
 
-	it("caps Older at 5 rows", () =>
+	it("caps Older at 20 rows", () =>
 	{
 		const rows = Array.from(
 			{
-				length: 10,
+				length: 25,
 			},
 			(_, index) =>
 				row(
@@ -901,15 +980,55 @@ describe("buildGroups date mode", () =>
 			{
 				key: "date-older",
 				label: "Older",
-				rows: Array.from(
-					{
-						length: 5,
-					},
-					(_, index) => `old-${index}`,
-				),
+				rows: ids("old", 20),
 				hiddenCount: 5,
 			},
 		]);
+	});
+
+	it("caps every Date bucket at 20, Today included", () =>
+	{
+		const today = (revealed: Readonly<Record<string, number>>) =>
+			paging(
+				buildGroups(
+					doneRows(22, "today"),
+					prefs(
+						{
+							groupBy: "date",
+						},
+					),
+					NOW,
+					revealed,
+				).find((dateGroup) => dateGroup.key === "date-today"),
+			);
+
+		expect(
+			{
+				rest: today({}),
+				revealed: today(
+					{
+						"date-today": 20,
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				rest:
+				{
+					shown: 20,
+					hiddenCount: 2,
+					revealCount: 2,
+					canShowLess: false,
+				},
+				revealed:
+				{
+					shown: 22,
+					hiddenCount: 0,
+					revealCount: 0,
+					canShowLess: true,
+				},
+			},
+		);
 	});
 });
 
@@ -1042,6 +1161,48 @@ describe("buildGroups project mode", () =>
 				key: "project-__no_project__",
 				label: "Other",
 				rows: ["none-1"],
+				hiddenCount: 0,
+			},
+		]);
+	});
+});
+
+describe("buildGroups project mode caps", () =>
+{
+	it("caps every Project bucket at 20", () =>
+	{
+		expect(
+			summarize(
+				buildGroups(
+					[
+						...doneRows(22, "alpha"),
+						...doneRows(
+							2,
+							"other",
+							{
+								project: null,
+							},
+						),
+					],
+					prefs(
+						{
+							groupBy: "project",
+						},
+					),
+					NOW,
+				),
+			),
+		).toStrictEqual([
+			{
+				key: "project-alpha",
+				label: "alpha",
+				rows: ids("alpha", 20),
+				hiddenCount: 2,
+			},
+			{
+				key: "project-__no_project__",
+				label: "Other",
+				rows: ids("other", 2),
 				hiddenCount: 0,
 			},
 		]);
@@ -1294,6 +1455,107 @@ describe("buildSidebarSections", () =>
 		);
 	});
 
+	it("caps a manual section and its own Status headings at 20, each revealed under its own key", () =>
+	{
+		const blog = doneRows(22, "blog");
+		const sections = (groupBy: "status" | undefined, revealed: Readonly<Record<string, number>>) =>
+		{
+			const [section] = buildSidebarSections(
+				blog,
+				prefs(),
+				NOW,
+				revealed,
+				{
+					sections: [
+						{
+							id: "cg-blog",
+							name: "Blog",
+							...view,
+							...(groupBy === undefined
+								? {}
+								:
+									{
+										groupBy,
+									}),
+						},
+					],
+					assignments: Object.fromEntries(blog.map((blogRow) => [blogRow.sessionId, "cg-blog"])),
+					order: {},
+				},
+			).manual;
+			return {
+				group: paging(section?.group),
+				subgroups: section?.subgroups?.map((subgroup) => [subgroup.key, paging(subgroup)]) ?? null,
+			};
+		};
+
+		expect(
+			{
+				flat: sections(undefined, {}),
+				flatRevealed: sections(
+					undefined,
+					{
+						"custom-cg-blog": 20,
+					},
+				),
+				status: sections("status", {}).subgroups,
+				statusRevealed: sections(
+					"status",
+					{
+						"section:cg-blog:state-done": 20,
+					},
+				).subgroups,
+			},
+		).toStrictEqual(
+			{
+				flat:
+				{
+					group:
+					{
+						shown: 20,
+						hiddenCount: 2,
+						revealCount: 2,
+						canShowLess: false,
+					},
+					subgroups: null,
+				},
+				flatRevealed:
+				{
+					group:
+					{
+						shown: 22,
+						hiddenCount: 0,
+						revealCount: 0,
+						canShowLess: true,
+					},
+					subgroups: null,
+				},
+				status: [
+					[
+						"section:cg-blog:state-done",
+						{
+							shown: 20,
+							hiddenCount: 2,
+							revealCount: 2,
+							canShowLess: false,
+						},
+					],
+				],
+				statusRevealed: [
+					[
+						"section:cg-blog:state-done",
+						{
+							shown: 22,
+							hiddenCount: 0,
+							revealCount: 0,
+							canShowLess: true,
+						},
+					],
+				],
+			},
+		);
+	});
+
 	it("leaves pinned rows out of their section once split into the Pinned section", () =>
 	{
 		const withIds = rows.map((groupRow) => (
@@ -1320,7 +1582,7 @@ describe("buildSidebarSections", () =>
 
 describe("buildGroups none mode", () =>
 {
-	it("puts every row in Recents capped at 5", () =>
+	it("shows all 6 Recents rows instead of hiding one behind Show more", () =>
 	{
 		const rows = Array.from(
 			{
@@ -1352,13 +1614,32 @@ describe("buildGroups none mode", () =>
 			{
 				key: "recents",
 				label: "Recents",
-				rows: Array.from(
-					{
-						length: 5,
-					},
-					(_, index) => `r-${index}`,
+				rows: ids("r", 6),
+				hiddenCount: 0,
+			},
+		]);
+	});
+
+	it("caps Recents at 20 rows", () =>
+	{
+		expect(
+			summarize(
+				buildGroups(
+					doneRows(25, "r"),
+					prefs(
+						{
+							groupBy: "none",
+						},
+					),
+					NOW,
 				),
-				hiddenCount: 1,
+			),
+		).toStrictEqual([
+			{
+				key: "recents",
+				label: "Recents",
+				rows: ids("r", 20),
+				hiddenCount: 5,
 			},
 		]);
 	});
@@ -1670,7 +1951,7 @@ describe("Show less", () =>
 			),
 	);
 
-	it("is offered only on a cappable group expanded past its cap", () =>
+	it("is offered only on a group expanded past its cap that folding back would hide two rows of", () =>
 	{
 		const states = (revealed: Readonly<Record<string, number>>, rows: SessionGroupRow[]) =>
 			buildGroups(rows, prefs(), NOW, revealed).map((group) => [group.key, group.canShowLess]);
@@ -1680,15 +1961,21 @@ describe("Show less", () =>
 				capped: states({}, done),
 				expanded: states(
 					{
-						"state-done": 4,
+						"state-done": 3,
 					},
 					done,
 				),
 				underCap: states(
 					{
-						"state-done": 1,
+						"state-done": 20,
 					},
 					done.slice(0, 5),
+				),
+				oneOver: states(
+					{
+						"state-done": 20,
+					},
+					done.slice(0, 21),
 				),
 				project: buildGroups(
 					done,
@@ -1699,7 +1986,7 @@ describe("Show less", () =>
 					),
 					NOW,
 					{
-						"project-alpha": 4,
+						"project-alpha": 3,
 					},
 				).map((group) => [group.key, group.canShowLess]),
 			},
@@ -1708,48 +1995,16 @@ describe("Show less", () =>
 				capped: [["state-done", false]],
 				expanded: [["state-done", true]],
 				underCap: [["state-done", false]],
-				project: [["project-alpha", false]],
+				oneOver: [["state-done", false]],
+				project: [["project-alpha", true]],
 			},
 		);
 	});
 });
 
-describe("shouldLoadNextPage", () =>
+describe("nextPageCanHoldVisibleRows", () =>
 {
-	const done = Array.from(
-		{
-			length: 23,
-		},
-		(_, index) =>
-			row(
-				`done-${index}`,
-				{
-					bucket: "done",
-					lastActivityAt: NOW - (index + 1) * 60_000,
-				},
-			),
-	);
-
-	it("waits while a group still hides rows behind Show N more", () =>
-	{
-		const groups = buildGroups(done, prefs(), NOW);
-		expect(shouldLoadNextPage(groups, done, prefs(), NOW)).toBe(false);
-	});
-
-	it("loads once every group shows all its rows", () =>
-	{
-		const groups = buildGroups(
-			done,
-			prefs(),
-			NOW,
-			{
-				"state-done": 4,
-			},
-		);
-		expect(shouldLoadNextPage(groups, done, prefs(), NOW)).toBe(true);
-	});
-
-	it("stops once the oldest loaded session falls outside the Last activity window", () =>
+	it("is true while the oldest loaded session is inside the Last activity window, whatever groups hide", () =>
 	{
 		const rows = [
 			row(
@@ -1765,12 +2020,11 @@ describe("shouldLoadNextPage", () =>
 				},
 			),
 		];
-		const groups = buildGroups(rows, prefs(), NOW);
 		expect(
 			{
-				sevenDays: shouldLoadNextPage(groups, rows, prefs(), NOW),
-				all: shouldLoadNextPage(
-					groups,
+				capped: nextPageCanHoldVisibleRows(doneRows(23), prefs(), NOW),
+				sevenDays: nextPageCanHoldVisibleRows(rows, prefs(), NOW),
+				all: nextPageCanHoldVisibleRows(
 					rows,
 					prefs(
 						{
@@ -1779,11 +2033,76 @@ describe("shouldLoadNextPage", () =>
 					),
 					NOW,
 				),
+				none: nextPageCanHoldVisibleRows([], prefs(), NOW),
 			},
 		).toStrictEqual(
 			{
+				capped: true,
 				sevenDays: false,
 				all: true,
+				none: true,
+			},
+		);
+	});
+});
+
+describe("pinnedGroup", () =>
+{
+	it("caps Pinned at 20 slots and pages it 20 at a time", () =>
+	{
+		expect(
+			{
+				rest: paging(pinnedGroup(doneRows(23, "pin"), {})),
+				revealed: paging(
+					pinnedGroup(
+						doneRows(23, "pin"),
+						{
+							pinned: 20,
+						},
+					),
+				),
+				longer: paging(
+					pinnedGroup(
+						doneRows(45, "pin"),
+						{
+							pinned: 20,
+						},
+					),
+				),
+				six: paging(pinnedGroup(doneRows(6, "pin"), {})),
+				pageSize: pinnedGroup(doneRows(1, "pin"), {}).pageSize,
+			},
+		).toStrictEqual(
+			{
+				rest:
+				{
+					shown: 20,
+					hiddenCount: 3,
+					revealCount: 3,
+					canShowLess: false,
+				},
+				revealed:
+				{
+					shown: 23,
+					hiddenCount: 0,
+					revealCount: 0,
+					canShowLess: true,
+				},
+				longer:
+				{
+					shown: 40,
+					hiddenCount: 5,
+					revealCount: 5,
+					canShowLess: false,
+				},
+				six:
+				{
+					shown: 6,
+					hiddenCount: 0,
+					revealCount: 0,
+					canShowLess: false,
+				},
+				pageSize: 20,
 			},
 		);
 	});

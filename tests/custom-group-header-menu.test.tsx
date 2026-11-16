@@ -106,9 +106,14 @@ async function renderGroup(groupId: string, rows: SidebarSessionRow[] = [])
 		label: name,
 		rows,
 		hiddenCount: 0,
+		revealCount: 0,
 		hiddenAwaiting: false,
 		canShowLess: false,
 		nested: new Map(),
+		pageSize: 20,
+		extraRevealed: 0,
+		sorted: rows,
+		headOf: new Map(),
 	};
 	const queryClient = new QueryClient(
 		{
@@ -142,10 +147,7 @@ async function renderGroup(groupId: string, rows: SidebarSessionRow[] = [])
 							expanded
 							activeItemId={null}
 							filterSlot={null}
-							onShowMore={() =>
-							{
-							}}
-							onShowLess={() =>
+							onReveal={() =>
 							{
 							}}
 						/>

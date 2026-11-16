@@ -75,14 +75,24 @@ export interface SessionGroup<Row extends SessionGroupRow>
 	key: string;
 	label: string;
 	rows: Row[];
-	/** Rows past the cap, revealed 5 at a time by the "Show more" row. */
+	/** Rows past the cap, revealed a page at a time by the "Show more" row; never 1 (upstream `eb`). */
 	hiddenCount: number;
+	/** How many rows the next Show more click reveals (upstream `ie`): a page, or every hidden row on the last one. */
+	revealCount: number;
 	/** A hidden row (or one nested under it) awaits input, so Show more carries an awaiting dot. */
 	hiddenAwaiting: boolean;
-	/** Every row of a capped group shows after Show more pages, so a "Show less" row folds it back. */
+	/** Every row shows after Show more and folding back would hide at least two, so a "Show less" row folds it back. */
 	canShowLess: boolean;
 	/** Family head sessionId → its nested sessions in spawn-tree order, for heads in `rows`. */
 	nested: ReadonlyMap<string, Row[]>;
+	/** The rows shown before any Show more (upstream `truncateAt`); each Show more page is this many more. */
+	pageSize: number;
+	/** Rows revealed past the first page (upstream `extraRevealed`). */
+	extraRevealed: number;
+	/** Every head row, shown or hidden, in display order (upstream `sorted`). */
+	sorted: Row[];
+	/** Nested sessionId → its family head's sessionId, over `sorted` (upstream `heldBy: headKeyOf`). */
+	headOf: ReadonlyMap<string, string>;
 }
 
 /** The manual sections (custom groups, src/lib/session-group-store.ts) above Recents, in section order. */
@@ -166,11 +176,29 @@ export function customGroupLaunchTarget(
 	};
 }
 
-/** Completed, Older, Recents and Pinned show this many rows, and each Show more click reveals this many more (upstream `truncateAt: 5`). */
-export const GROUP_PAGE_SIZE = 5;
+/**
+ * Every sidebar section shows this many rows, and each Show more click reveals this many more
+ * (upstream `yi = t==="code" ? 20 : void 0`, 2026-11-06; it was 5 when grouped on 2026-11-04).
+ */
+const GROUP_PAGE_SIZE = 20;
 
-/** Group key → how many Show more pages the user revealed past the first 5 rows. */
-export type RevealedPages = Readonly<Record<string, number>>;
+/**
+ * Pinned shows this many slots and each Show more reveals this many more (upstream
+ * `Ag(slots, 20, collapsed, {heldBy})`, a literal independent of the grouping truncateAt).
+ */
+const PINNED_PAGE_SIZE = 20;
+
+/** Group key → how many rows the user revealed past the section's first page (upstream `extraRevealed`). */
+export type RevealedRows = Readonly<Record<string, number>>;
+
+/**
+ * Upstream `eb`: a section hides rows only when two or more would hide, so a page never
+ * leaves a single row behind Show more.
+ */
+export function truncates(length: number, truncateAt: number, extraRevealed: number): boolean
+{
+	return length > truncateAt + extraRevealed + 1;
+}
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Date mode gives each of the last few days its own "Sep 26" group; anything earlier is Older. */
@@ -214,10 +242,10 @@ export function sessionRowComparator(sortBy: SessionSortBy, direction: SessionSo
 
 export const PINNED_GROUP_KEY = "pinned";
 
-/** The sidebar Pinned section as a group: 5 rows, plus 5 per revealed Show more page. */
-export function pinnedGroup<Row extends SessionGroupRow>(rows: Row[], revealed: RevealedPages): SessionGroup<Row>
+/** The sidebar Pinned section as a group: 20 slots, plus the rows revealed past them. */
+export function pinnedGroup<Row extends SessionGroupRow>(rows: Row[], revealed: RevealedRows): SessionGroup<Row>
 {
-	return group(PINNED_GROUP_KEY, "Pinned", rows, groupCap(true, PINNED_GROUP_KEY, revealed));
+	return group(PINNED_GROUP_KEY, "Pinned", rows, revealed, NO_NESTED, PINNED_PAGE_SIZE);
 }
 
 function isVisible(row: SessionGroupRow, prefs: SessionListPrefs, now: number): boolean
@@ -230,18 +258,16 @@ function isVisible(row: SessionGroupRow, prefs: SessionListPrefs, now: number): 
 }
 
 /**
- * Whether the next feed page could add rows the list would show: no group still hides
- * rows behind "Show more", and the oldest loaded session (the feed runs newest first)
- * is still inside the Last activity window.
+ * Whether the next feed page could add rows the list would show: the oldest loaded session (the
+ * feed runs newest first) is still inside the Last activity window. Stands in for upstream's
+ * server-side `hasMore` activity cutoff.
  */
-export function shouldLoadNextPage(
-	groups: readonly SessionGroup<SessionGroupRow>[],
+export function nextPageCanHoldVisibleRows(
 	loadedRows: readonly SessionGroupRow[],
 	prefs: SessionListPrefs,
 	now: number,
 ): boolean
 {
-	if (groups.some((sessionGroup) => sessionGroup.hiddenCount > 0)) return false;
 	const windowDays = ACTIVITY_WINDOW_DAYS[prefs.activityDays];
 	if (windowDays === null || loadedRows.length === 0) return true;
 	const oldest = loadedRows.reduce((min, row) => Math.min(min, row.lastActivityAt), Infinity);
@@ -256,24 +282,29 @@ function liveFirst<Row extends SessionGroupRow>(rows: Row[]): Row[]
 
 const NO_NESTED: ReadonlyMap<string, never[]> = new Map();
 
-/** null: the group never caps; a number: how many Show more pages it reveals past the first. */
-type GroupCap = number | null;
-
-function groupCap(cappable: boolean, key: string, revealed: RevealedPages): GroupCap
-{
-	return cappable ? (revealed[key] ?? 0) : null;
-}
-
+/**
+ * Upstream `tQ`'s truncation: the first `pageSize` rows plus the rows revealed past them, unless
+ * that would hide a single row (`eb`), in which case every row shows.
+ */
 function group<Row extends SessionGroupRow>(
 	key: string,
 	label: string,
 	rows: Row[],
-	cap: GroupCap,
+	revealed: RevealedRows,
 	allNested: ReadonlyMap<string, Row[]> = NO_NESTED,
+	pageSize: number = GROUP_PAGE_SIZE,
 ): SessionGroup<Row>
 {
-	const shown = cap === null ? rows : rows.slice(0, GROUP_PAGE_SIZE * (cap + 1));
+	const extraRevealed = revealed[key] ?? 0;
+	const shown = truncates(rows.length, pageSize, extraRevealed) ? rows.slice(0, pageSize + extraRevealed) : rows;
 	const nested = new Map<string, Row[]>();
+	const headOf = new Map<string, string>();
+	for (const row of rows)
+	{
+		const children = allNested.get(row.sessionId);
+		if (children === undefined) continue;
+		for (const child of children) headOf.set(child.sessionId, row.sessionId);
+	}
 	for (const row of shown)
 	{
 		const children = allNested.get(row.sessionId);
@@ -285,13 +316,23 @@ function group<Row extends SessionGroupRow>(
 		label,
 		rows: shown,
 		hiddenCount: hidden.length,
+		revealCount:
+			hidden.length === 0
+				? 0
+				: truncates(rows.length, pageSize, extraRevealed + pageSize)
+					? pageSize
+					: hidden.length,
 		hiddenAwaiting: hidden.some(
 			(row) =>
 				row.bucket === "blocked" ||
 				(allNested.get(row.sessionId) ?? []).some((child) => child.bucket === "blocked"),
 		),
-		canShowLess: cap !== null && hidden.length === 0 && rows.length > GROUP_PAGE_SIZE,
+		canShowLess: extraRevealed > 0 && hidden.length === 0 && truncates(rows.length, pageSize, 0),
 		nested,
+		pageSize,
+		extraRevealed,
+		sorted: rows,
+		headOf,
 	};
 }
 
@@ -344,10 +385,10 @@ function dateGroupFor(
 function buildDateGroups<Row extends SessionGroupRow>(
 	rows: Row[],
 	now: number,
-	revealed: RevealedPages,
+	revealed: RevealedRows,
 	nested: ReadonlyMap<string, Row[]>,
-	/** A manual section's own date headings (upstream `v8`): prefixed keys and no Show more cap. */
-	inSection?: string,
+	/** A manual section's own date headings (upstream `v8`): keys prefixed with the section's. */
+	inSection = "",
 ): SessionGroup<Row>[]
 {
 	const todayStart = startOfLocalDay(now);
@@ -377,11 +418,7 @@ function buildDateGroups<Row extends SessionGroupRow>(
 	}
 	return [...byDay.entries()]
 		.toSorted(([, first], [, second]) => second.dayStart - first.dayStart)
-		.map(([key, entry]) =>
-			inSection === undefined
-				? group(key, entry.label, entry.rows, groupCap(key === "date-older", key, revealed), nested)
-				: group(`${inSection}${key}`, entry.label, entry.rows, null, nested),
-		);
+		.map(([key, entry]) => group(`${inSection}${key}`, entry.label, entry.rows, revealed, nested));
 }
 
 function buildProjectGroups<Row extends SessionGroupRow>(
@@ -389,6 +426,7 @@ function buildProjectGroups<Row extends SessionGroupRow>(
 	visibleRows: Row[],
 	showEmptyGroups: boolean,
 	nested: ReadonlyMap<string, Row[]>,
+	revealed: RevealedRows,
 ): SessionGroup<Row>[]
 {
 	const projects = new Set<string>();
@@ -413,7 +451,7 @@ function buildProjectGroups<Row extends SessionGroupRow>(
 				`project-${project}`,
 				project,
 				visibleRows.filter((row) => row.project === project),
-				null,
+				revealed,
 				nested,
 			),
 		);
@@ -424,7 +462,7 @@ function buildProjectGroups<Row extends SessionGroupRow>(
 				NO_PROJECT_KEY,
 				"Other",
 				visibleRows.filter((row) => row.project === null),
-				null,
+				revealed,
 				nested,
 			),
 		);
@@ -466,16 +504,16 @@ function resolveRows<Row extends SessionGroupRow>(
 
 function stateGroups<Row extends SessionGroupRow>(
 	{visible, familyBucket, nested}: ResolvedRows<Row>,
-	revealed: RevealedPages,
-	inSection?: string,
+	revealed: RevealedRows,
+	inSection = "",
 ): SessionGroup<Row>[]
 {
 	return STATE_ORDER.map((bucket) =>
 		group(
-			`${inSection ?? ""}state-${bucket}`,
+			`${inSection}state-${bucket}`,
 			sidebarStateGroupLabels[bucket],
 			liveFirst(visible.filter((row) => familyBucket.get(row.sessionId) === bucket)),
-			inSection === undefined ? groupCap(bucket === "done", `state-${bucket}`, revealed) : null,
+			revealed,
 			nested,
 		),
 	).filter((stateGroup) => stateGroup.rows.length > 0);
@@ -486,7 +524,7 @@ function groupResolved<Row extends SessionGroupRow>(
 	resolved: ResolvedRows<Row>,
 	prefs: SessionListPrefs,
 	now: number,
-	revealed: RevealedPages,
+	revealed: RevealedRows,
 ): SessionGroup<Row>[]
 {
 	const {visible, nested} = resolved;
@@ -497,11 +535,9 @@ function groupResolved<Row extends SessionGroupRow>(
 		case "date":
 			return buildDateGroups(visible, now, revealed, nested);
 		case "project":
-			return buildProjectGroups(rows, visible, prefs.showEmptyGroups, nested);
+			return buildProjectGroups(rows, visible, prefs.showEmptyGroups, nested, revealed);
 		case "none":
-			return visible.length === 0
-				? []
-				: [group("recents", "Recents", visible, groupCap(true, "recents", revealed), nested)];
+			return visible.length === 0 ? [] : [group("recents", "Recents", visible, revealed, nested)];
 		default:
 			return assertNever(prefs.groupBy);
 	}
@@ -510,8 +546,8 @@ function groupResolved<Row extends SessionGroupRow>(
 /**
  * Pure model behind the sidebar's Recents list and its Group and sort menu,
  * mirroring claude.ai/code's groupings. Empty groups are omitted except in
- * Project mode with Show empty groups on. Cappable groups show 5 rows plus 5
- * per Show more page `revealed` under their key. Callers pass rows with pinned
+ * Project mode with Show empty groups on. Every group shows 20 rows plus the rows
+ * `revealed` under its key, never hiding a single row. Callers pass rows with pinned
  * sessions already split out. Forks nest under their family head, which is
  * placed (in State mode) by the family's most urgent member.
  */
@@ -519,7 +555,7 @@ export function buildGroups<Row extends SessionGroupRow>(
 	rows: readonly Row[],
 	prefs: SessionListPrefs,
 	now: number,
-	revealed: RevealedPages = {},
+	revealed: RevealedRows = {},
 ): SessionGroup<Row>[]
 {
 	return groupResolved(rows, resolveRows(rows, prefs, now), prefs, now, revealed);
@@ -551,7 +587,7 @@ export function buildSidebarSections<Row extends SessionGroupRow>(
 	rows: readonly Row[],
 	prefs: SessionListPrefs,
 	now: number,
-	revealed: RevealedPages,
+	revealed: RevealedRows,
 	manual: ManualSections,
 ): SidebarSectionGroups<Row>
 {
@@ -593,12 +629,12 @@ export function buildSidebarSections<Row extends SessionGroupRow>(
 		};
 		return {
 			id: section.id,
-			group: group(customGroupKey(section.id), section.name, heads, null, resolved.nested),
+			group: group(customGroupKey(section.id), section.name, heads, revealed, resolved.nested),
 			subgroups:
 				section.groupBy === "date"
-					? buildDateGroups(heads, now, {}, resolved.nested, prefix)
+					? buildDateGroups(heads, now, revealed, resolved.nested, prefix)
 					: section.groupBy === "status"
-						? stateGroups(own, {}, prefix)
+						? stateGroups(own, revealed, prefix)
 						: null,
 		};
 	});

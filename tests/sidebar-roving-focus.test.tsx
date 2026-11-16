@@ -212,6 +212,7 @@ async function renderSidebar(
 	path = "/",
 	sessions: readonly ReturnType<typeof session>[] = FIXTURE,
 	projects: readonly unknown[] = [],
+	nextCursor: string | null = null,
 )
 {
 	const queryClient = new QueryClient(
@@ -259,7 +260,7 @@ async function renderSidebar(
 				RecentSessionsResponse.parse(
 					{
 						sessions,
-						nextCursor: null,
+						nextCursor,
 					},
 				),
 			],
@@ -494,6 +495,21 @@ describe("sidebar body roving focus", () =>
 				home: "New",
 			},
 		);
+	});
+
+	it("wraps from New up to the list's Load more sessions row, and from it down to New", async () =>
+	{
+		await renderSidebar("/", FIXTURE, [], "cursor-2");
+
+		screen
+			.getByRole(
+				"link",
+				{
+					name: "New",
+				},
+			)
+			.focus();
+		expect([press("ArrowUp"), press("ArrowDown")]).toStrictEqual(["Load more sessions", "New"]);
 	});
 
 	it("roves with Shift held but not with Meta", async () =>

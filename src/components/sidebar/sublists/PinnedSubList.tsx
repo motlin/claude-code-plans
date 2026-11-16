@@ -3,7 +3,7 @@ import {useCallback, useState} from "react";
 
 import type {SidebarDragRowProps} from "../../../hooks/use-sidebar-drag";
 import {closeDragPinHint, useDragPinHintRequested} from "../../../lib/drag-pin-hint";
-import {PINNED_GROUP_KEY, pinnedGroup, type RevealedPages} from "../../../lib/session-groups";
+import {pinnedGroup, type RevealedRows} from "../../../lib/session-groups";
 import {useSidebarState} from "../../../lib/sidebar-store";
 import {CoachMark} from "../../coach-mark";
 import {useSettings} from "../../settings-context";
@@ -51,7 +51,7 @@ export function PinnedSubList({
 	dragRowProps?: (id: string) => SidebarDragRowProps;
 })
 {
-	const [revealed, setRevealed] = useState<RevealedPages>({});
+	const [revealed, setRevealed] = useState<RevealedRows>({});
 	const [section, setSection] = useState<HTMLElement | null>(null);
 	const sectionRef = useCallback(
 		(element: HTMLElement | null) =>
@@ -65,6 +65,14 @@ export function PinnedSubList({
 	const empty = rows.length === 0;
 	const stub = empty && !dragging && !hint.open;
 	const pinnedIds = rows.map((row) => row.id);
+	const onReveal = useCallback((key: string, extraRevealed: number) =>
+	{
+		setRevealed(
+			{
+				[key]: extraRevealed,
+			},
+		);
+	}, []);
 
 	return (
 		<div
@@ -82,17 +90,7 @@ export function PinnedSubList({
 				expanded={expanded}
 				activeItemId={activeItemId}
 				filterSlot={null}
-				onShowMore={() =>
-				{
-					setRevealed((previous) => (
-					{
-						[PINNED_GROUP_KEY]: (previous[PINNED_GROUP_KEY] ?? 0) + 1,
-					}));
-				}}
-				onShowLess={() =>
-				{
-					setRevealed({});
-				}}
+				onReveal={onReveal}
 				pinnedIds={pinnedIds}
 				{...(dragRowProps === undefined
 					? {}

@@ -67,7 +67,7 @@ function seedPins(pinnedIds: string[], pinnedOrder: string[] = []): void
 	);
 }
 
-async function renderGroups(sessions: unknown[])
+async function renderGroups(sessions: unknown[], activeItemId: string | null = null)
 {
 	const queryClient = new QueryClient(
 		{
@@ -104,7 +104,7 @@ async function renderGroups(sessions: unknown[])
 					<QueryClientProvider client={queryClient}>
 						<ToastProvider>
 							<SessionGroups
-								activeItemId={null}
+								activeItemId={activeItemId}
 								prefs={
 								{
 									...DEFAULT_SESSION_LIST_PREFS,
@@ -149,6 +149,16 @@ async function renderGroups(sessions: unknown[])
 		expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy();
 	});
 	return result;
+}
+
+function pinnedSessions(count: number)
+{
+	return Array.from(
+		{
+			length: count,
+		},
+		(_, index) => session(`p${index}`, `Pinned ${index}`, "done", index + 1),
+	);
 }
 
 function pinnedSection(container: HTMLElement): HTMLElement
@@ -359,18 +369,13 @@ describe("sidebar Pinned section", () =>
 		expect(toggle.getAttribute("aria-expanded")).toBe("false");
 	});
 
-	it("caps Pinned at 5 rows and pages it 5 at a time with Show more", async () =>
+	it("caps Pinned at 20 rows and pages it 20 at a time with Show more", async () =>
 	{
-		const sessions = Array.from(
-			{
-				length: 8,
-			},
-			(_, index) => session(`p${index}`, `Pinned ${index}`, "done", index + 1),
-		);
+		const sessions = pinnedSessions(23);
 		seedPins(sessions.map((pinned) => pinned.id));
 		const {container} = await renderGroups(sessions);
 
-		expect(rowTitles(pinnedSection(container))).toHaveLength(5);
+		expect(rowTitles(pinnedSection(container))).toHaveLength(20);
 		fireEvent.click(
 			screen.getByRole(
 				"button",
@@ -381,7 +386,7 @@ describe("sidebar Pinned section", () =>
 		);
 		await waitFor(() =>
 		{
-			expect(rowTitles(pinnedSection(container))).toHaveLength(8);
+			expect(rowTitles(pinnedSection(container))).toHaveLength(23);
 		});
 		fireEvent.click(
 			screen.getByRole(
@@ -393,7 +398,7 @@ describe("sidebar Pinned section", () =>
 		);
 		await waitFor(() =>
 		{
-			expect(rowTitles(pinnedSection(container))).toHaveLength(5);
+			expect(rowTitles(pinnedSection(container))).toHaveLength(20);
 		});
 		expect(
 			screen.getByRole(
@@ -403,6 +408,69 @@ describe("sidebar Pinned section", () =>
 				},
 			),
 		).toBeTruthy();
+	});
+
+	it("shows up to 21 pins whole, with no Show more", async () =>
+	{
+		const sessions = pinnedSessions(21);
+		seedPins(sessions.map((pinned) => pinned.id));
+		const {container} = await renderGroups(sessions);
+		expect(
+			{
+				shown: rowTitles(pinnedSection(container)).length,
+				showMore: screen.queryByRole(
+					"button",
+					{
+						name: /^Show \d+ more in Pinned$/,
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				shown: 21,
+				showMore: null,
+			},
+		);
+	});
+
+	it("reveals the open session when it is pinned past slot 20", async () =>
+	{
+		const sessions = pinnedSessions(25);
+		seedPins(sessions.map((pinned) => pinned.id));
+		const {container} = await renderGroups(sessions, "p22");
+		await waitFor(() =>
+		{
+			expect(rowTitles(pinnedSection(container))).toHaveLength(23);
+		});
+	});
+
+	it("reveals and focuses a pinned row that Move down pushed past slot 20", async () =>
+	{
+		const sessions = pinnedSessions(23);
+		const ids = sessions.map((pinned) => pinned.id);
+		seedPins(ids, ids);
+		const {container} = await renderGroups(sessions);
+		expect(rowTitles(pinnedSection(container))).toHaveLength(20);
+
+		const menu = await openRowMenu("Pinned 19");
+		const moveDown = [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+			(item) => item.textContent === "Move down",
+		);
+		if (moveDown === undefined) throw new Error("no Move down");
+		fireEvent.click(moveDown);
+
+		await waitFor(() =>
+		{
+			expect(rowTitles(pinnedSection(container)).slice(18)).toStrictEqual([
+				"Pinned 18",
+				"Pinned 20",
+				"Pinned 19",
+			]);
+		});
+		await waitFor(() =>
+		{
+			expect(rowTitle(document.activeElement)).toBe("Pinned 19");
+		});
 	});
 
 	it("offers Move up and Move down on pinned rows, omitted at the ends", async () =>

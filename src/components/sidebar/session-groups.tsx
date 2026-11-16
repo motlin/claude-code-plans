@@ -1,5 +1,5 @@
 import {keepPreviousData, useInfiniteQuery} from "@tanstack/react-query";
-import {useEffect, useMemo, useReducer, useRef, useState, type ReactNode} from "react";
+import {useCallback, useEffect, useMemo, useReducer, useRef, useState, type MouseEvent, type ReactNode} from "react";
 
 import {Ungroup} from "lucide-react";
 
@@ -31,15 +31,15 @@ import
 	customGroupIdOfKey,
 	DEFAULT_SESSION_LIST_PREFS,
 	EMPTY_LIST_GROUP_LABELS,
-	GROUP_PAGE_SIZE,
+	nextPageCanHoldVisibleRows,
 	PINNED_GROUP_KEY,
 	type ManualSectionGroups,
-	type RevealedPages,
+	type RevealedRows,
 	type SessionGroup,
 	sessionRowComparator,
 	type SessionListPrefs,
-	shouldLoadNextPage,
 } from "../../lib/session-groups";
+import {revealThrough} from "../../lib/sidebar-section-reveal";
 import {assign, readSessionGroupState, setGroupOrder, useSessionGroups} from "../../lib/session-group-store";
 import
 {
@@ -61,7 +61,17 @@ import {assertNever} from "../../lib/assert-never";
 import {useSettings} from "../settings-context";
 import {useToast} from "../toast-context";
 import {DescribedLoadingRows, LoadingBars} from "./primitives/LoadingBars";
-import {EmptyGroupSection, type EmptyListReason, GroupSection, ROW_CLASS} from "./session-group-section";
+import
+{
+	EmptyGroupSection,
+	type EmptyListReason,
+	GroupSection,
+	LoadMoreSessionsRow,
+	ROW_CLASS,
+	type SectionFetchMore,
+} from "./session-group-section";
+import {requestRevealRow} from "./reveal-row-store";
+import {useLoadMoreFocus} from "./use-load-more-focus";
 import {type SidebarSessionRow, toGroupRow} from "./sidebar-session-row";
 import {SidebarSelectionContext, type SidebarSelectionApi} from "./selection-context";
 import {SectionViewMenu} from "./section-view-menu";
@@ -71,9 +81,10 @@ import {PinnedSubList} from "./sublists";
  * The sidebar session list in claude.ai/code's sections layout: Pinned, then the user's manual
  * sections (custom groups, each with its own Group and sort) in a `df-sortable-section`, then
  * Recents grouped by the list's Group by. Collapsed groups persist in the sidebar store; "Show
- * more" reveals a group's next 5 rows and "Show less" folds it back to 5. Once no group hides rows,
- * expanding the last one or scrolling to the list end fetches the next feed page while it can
- * still hold sessions inside Last activity. Dragging any row pins it at a Pinned slot, reorders a
+ * more" reveals a group's next 20 rows and "Show less" folds it back. The next feed page loads only
+ * on a click, while it can still hold sessions inside Last activity: Date's last section and None's
+ * Recents keep a count-0 Show more that fetches, and every other grouping ends the list with a
+ * "Load more sessions" row (upstream `Ks`). Nothing auto-loads on scroll. Dragging any row pins it at a Pinned slot, reorders a
  * pinned row, or (dropped below Pinned) unpins it. A row dropped on a manual section's header or
  * row slot joins that section there, a row dropped on "Remove from …" or on Recents leaves it, and section
  * headers drag to reorder. ⌘-click and ⇧-click select several rows for the bulk row menu;
@@ -119,8 +130,28 @@ export function SessionGroups({
 		};
 	}, [hasSelection]);
 	const latestSelected = useRef<readonly string[]>([]);
-	const [revealed, setRevealed] = useState<RevealedPages>({});
-	const [loadingKey, setLoadingKey] = useState<string | null>(null);
+	const [revealed, setRevealed] = useState<RevealedRows>({});
+	// Upstream's context epoch (`fn`): a new grouping or filter folds every section back.
+	const epoch = `${prefs.groupBy}|${prefs.statusFilter}|${prefs.activityDays}`;
+	const [revealedEpoch, setRevealedEpoch] = useState(epoch);
+	if (revealedEpoch !== epoch)
+	{
+		setRevealedEpoch(epoch);
+		setRevealed({});
+	}
+	const onReveal = useCallback((key: string, extraRevealed: number) =>
+	{
+		setRevealed((previous) =>
+			previous[key] === extraRevealed
+				? previous
+				:
+					{
+						...previous,
+						[key]: extraRevealed,
+					},
+		);
+	}, []);
+	const [landedAnnouncement, setLandedAnnouncement] = useState("");
 
 	const {pinnedIds, pinnedOrder} = usePins();
 
@@ -218,32 +249,61 @@ export function SessionGroups({
 	);
 	const groups = built?.sessions;
 	latestManual.current = built?.manual ?? [];
+	const latestBuilt = useRef(built);
+	latestBuilt.current = built;
 
 	const loadedRows = useMemo(() => (split === undefined ? [] : [...split.pinned, ...split.rest]), [split]);
-	const canLoadNextPage = (visibleGroups: readonly SessionGroup<SidebarSessionRow>[]) =>
-		hasNextPage && !isFetchingNextPage && shouldLoadNextPage(visibleGroups, loadedRows, prefs, Date.now());
-	const loadOnScroll = groups !== undefined && canLoadNextPage(groups);
-	const listEndRef = useRef<HTMLDivElement>(null);
-	useEffect(() =>
-	{
-		const end = listEndRef.current;
-		if (!loadOnScroll || end === null || typeof IntersectionObserver === "undefined") return undefined;
-		const observer = new IntersectionObserver(
-			(entries) =>
-			{
-				if (entries.some((entry) => entry.isIntersecting)) void fetchNextPage();
-			},
-			{
-				root: end.closest("[data-testid=nav-scroll]"),
-				rootMargin: "200px",
-			},
-		);
-		observer.observe(end);
-		return () =>
+	const loadedIds = useMemo(() => loadedRows.map((row) => row.id), [loadedRows]);
+	const canFetchMore = hasNextPage && nextPageCanHoldVisibleRows(loadedRows, prefs, Date.now());
+	const collapsedSet = new Set(collapsedGroups);
+	const displayOrder =
+		split === undefined || built === undefined
+			? []
+			: displayedRowIds(split, built.manual, built.sessions, collapsedSet, new Set(collapsedFamilies));
+	const startLoad = useLoadMoreFocus(
 		{
-			observer.disconnect();
-		};
-	}, [loadOnScroll, fetchNextPage]);
+			loadedIds,
+			displayedIds: displayOrder,
+			isFetching: isFetchingNextPage,
+			containerRef: recentsRef,
+		},
+	);
+	const fetchFrom = (event: MouseEvent<HTMLElement>, onLanded?: (landedIds: readonly string[]) => void) =>
+	{
+		if (isFetchingNextPage) return;
+		startLoad(event, onLanded);
+		void fetchNextPage();
+	};
+	// Upstream `no` → `ZS`: rows a list-level load brought in reveal through the last of them in each section.
+	const revealLanded = (landedIds: readonly string[]) =>
+	{
+		if (landedIds.length === 0) return;
+		setLandedAnnouncement(
+			landedIds.length === 1 ? "1 more session loaded" : `${landedIds.length} more sessions loaded`,
+		);
+		const latest = latestBuilt.current;
+		if (latest === undefined) return;
+		const landedKeys = new Set(landedIds);
+		const sections = [
+			...latest.manual.flatMap((section) => [section.group, ...(section.subgroups ?? [])]),
+			...latest.sessions,
+		];
+		for (const section of sections)
+		{
+			const reveal = revealThrough(
+				{
+					keys: section.sorted.map((row) => row.sessionId),
+					truncateAt: section.pageSize,
+					extraRevealed: section.extraRevealed,
+					hiddenCount: section.hiddenCount,
+					collapsed: false,
+					openKeys: new Set(),
+					landedKeys,
+				},
+			);
+			if (reveal > section.extraRevealed) onReveal(section.key, reveal);
+		}
+	};
 
 	if (split === undefined || built === undefined || groups === undefined)
 	{
@@ -269,12 +329,11 @@ export function SessionGroups({
 		);
 	}
 
-	const collapsed = new Set(collapsedGroups);
+	const collapsed = collapsedSet;
 	const manual = built.manual;
 	const familyHeadIds = [...manual.map((section) => section.group), ...groups].flatMap((group) => [
 		...group.nested.keys(),
 	]);
-	const displayOrder = displayedRowIds(split, manual, groups, collapsed, new Set(collapsedFamilies));
 	const selectedIds = visibleSelection(selection, displayOrder);
 	latestSelected.current = selectedIds;
 	const selectionApi: SidebarSelectionApi =
@@ -387,6 +446,30 @@ export function SessionGroups({
 						);
 					},
 				};
+	// Upstream `wv`: Date and None fetch from their last section's count-0 Show more, unless it is collapsed.
+	const lastGroup = groups.at(-1);
+	const fetchesInList = prefs.groupBy === "date" || prefs.groupBy === "none";
+	const lastGroupCollapsed = lastGroup !== undefined && collapsed.has(lastGroup.key);
+	const sectionFetchMore: SectionFetchMore | undefined =
+		canFetchMore && fetchesInList && !lastGroupCollapsed
+			?
+				{
+					loading: isFetchingNextPage,
+					onFetch: (event) =>
+					{
+						fetchFrom(event);
+					},
+				}
+			: undefined;
+	// Upstream `Ks`: the list-level row closes Status and Project lists, a Date list whose last section is
+	// collapsed, and a list showing no rows while the feed still has pages.
+	const loadMoreRowKey = canFetchMore
+		? prefs.groupBy === "date" && lastGroupCollapsed
+			? "label:fetchmore:date"
+			: !fetchesInList || groups.length === 0
+				? "label:fetchmore:recents"
+				: null
+		: null;
 	return (
 		// oxlint-disable-next-line react/jsx-no-constructed-context-values -- built after the loading early return, where hooks cannot run, from selection state that changes whenever the rows re-render anyway
 		<SidebarSelectionContext.Provider value={selectionApi}>
@@ -432,12 +515,7 @@ export function SessionGroups({
 										<SectionViewMenu section={view} statusFilter={prefs.statusFilter} />
 									)
 								}
-								onShowMore={() =>
-								{
-								}}
-								onShowLess={() =>
-								{
-								}}
+								onReveal={onReveal}
 								dragRowProps={rowProps}
 								familyHeadIds={familyHeadIds}
 								sectionKeys={sectionKeys}
@@ -464,10 +542,11 @@ export function SessionGroups({
 					}}
 					data-testid="sidebar-recents"
 					data-tab-section=""
+					data-recents-list=""
 					data-perf-region="sidebar_recents"
 					className="flex min-h-[120px] shrink-0 grow flex-col"
 				>
-					{groups.map((group) => (
+					{groups.map((group, index) => (
 						<GroupSection
 							key={group.key}
 							group={group}
@@ -475,36 +554,29 @@ export function SessionGroups({
 							expanded={!collapsed.has(group.key)}
 							activeItemId={activeItemId}
 							filterSlot={filterSlot}
-							onShowMore={() =>
-							{
-								setRevealed((previous) => (
-								{
-									...previous,
-									[group.key]: (previous[group.key] ?? 0) + 1,
-								}));
-								if (
-									group.hiddenCount <= GROUP_PAGE_SIZE &&
-									canLoadNextPage(groups.filter((other) => other.key !== group.key))
-								)
-								{
-									setLoadingKey(group.key);
-									void fetchNextPage();
-								}
-							}}
-							onShowLess={() =>
-							{
-								setRevealed((previous) => (
-								{
-									...previous,
-									[group.key]: 0,
-								}));
-							}}
-							loadingMore={isFetchingNextPage && loadingKey === group.key}
+							onReveal={onReveal}
+							fetchMore={index === groups.length - 1 ? sectionFetchMore : undefined}
 							dragRowProps={rowProps}
 							familyHeadIds={familyHeadIds}
 							sectionKeys={sectionKeys}
 						/>
 					))}
+					{loadMoreRowKey !== null && (
+						<LoadMoreSessionsRow
+							rowKey={loadMoreRowKey}
+							loading={isFetchingNextPage}
+							announcement={landedAnnouncement}
+							onLoad={(event) =>
+							{
+								setLandedAnnouncement("");
+								// Upstream `vi`: only the grouped modes reveal landed rows; Date and None page from inside the list.
+								fetchFrom(
+									event,
+									prefs.groupBy === "state" || prefs.groupBy === "project" ? revealLanded : undefined,
+								);
+							}}
+						/>
+					)}
 					{groups.length === 0 && (
 						<EmptyGroupSection
 							label={EMPTY_LIST_GROUP_LABELS[prefs.groupBy]}
@@ -512,7 +584,6 @@ export function SessionGroups({
 							reason={emptyListReason}
 						/>
 					)}
-					<div ref={listEndRef} aria-hidden="true" data-sidebar-list-end />
 				</div>
 			</div>
 		</SidebarSelectionContext.Provider>
@@ -675,6 +746,8 @@ function applyGroupDrop(
 	{
 		case "ungroup":
 			assign(srcId, null);
+			// Upstream restores a row put back in Recents into view (`Sy`).
+			requestRevealRow(srcId);
 			return true;
 		case "group":
 		{
@@ -729,6 +802,8 @@ function applyPinDrop(
 			if (slot === null) return;
 			const index = slotToIndex(slot, srcIdx === -1 ? null : srcIdx);
 			writePinState(placePin(readPinState(), displayed, srcId, index));
+			// Upstream `aO`: a row pinned or reordered past Pinned's page comes into view.
+			requestRevealRow(srcId);
 			if (outcome === "pin") onPin();
 			return;
 		}

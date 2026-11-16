@@ -1,3 +1,4 @@
+import {requestRevealRow} from "./sidebar/reveal-row-store";
 import {useQuery} from "@tanstack/react-query";
 import {Ellipsis} from "lucide-react";
 import
@@ -202,6 +203,13 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
 			{
 				if (pinnedRow === undefined || pinIndex === -1) return;
 				writePinState(placePin(readPinState(), pinnedRow.pinnedIds, session.id, pinIndex + delta));
+				// Upstream `Sy(e), a$(e)`: a row moved past Pinned's page is revealed and focused.
+				requestRevealRow(
+					session.id,
+					{
+						focus: true,
+					},
+				);
 				pinnedRow.onMoved();
 			},
 		},

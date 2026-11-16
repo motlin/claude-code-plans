@@ -13,7 +13,7 @@ import
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ToastProvider} from "../src/components/toast";
-import type {ReactNode} from "react";
+import {useState, type ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionGroups} from "../src/components/sidebar/session-groups";
 import {ProjectListResponse, projectsQueryOptions} from "../src/lib/api/projects";
@@ -61,6 +61,73 @@ const FIXTURE = [
 	session("b1", "Blocked one", "blocked", 3),
 	session("d2", "Completed older", "done", 30),
 ];
+
+/** Focuses a button as a mouse press would: jsdom matches :focus-visible on any focus, so mask it. */
+function pointerFocus(button: HTMLElement): void
+{
+	const matches = button.matches.bind(button);
+	vi.spyOn(button, "matches").mockImplementation(
+		(selector: string) => selector !== ":focus-visible" && matches(selector),
+	);
+	act(() =>
+	{
+		button.focus();
+	});
+}
+
+/** `count` Idle sessions d0…, newest first. */
+function doneSessions(count: number)
+{
+	return Array.from(
+		{
+			length: count,
+		},
+		(_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1),
+	);
+}
+
+/** Stubs the next feed page, held until `respond()`; `requests` records each fetched URL. */
+function stubNextPage(sessions: unknown[], nextCursor: string | null)
+{
+	const requests: string[] = [];
+	let release: () => void = () =>
+	{
+	};
+	const held = new Promise<void>((resolve) =>
+	{
+		release = resolve;
+	});
+	vi.stubGlobal("fetch", async (input: RequestInfo | URL) =>
+	{
+		requests.push(String(input));
+		await held;
+		return new Response(
+			JSON.stringify(
+				{
+					sessions,
+					nextCursor,
+				},
+			),
+			{
+				status: 200,
+				headers:
+				{
+					"Content-Type": "application/json",
+				},
+			},
+		);
+	});
+	return {
+		requests,
+		respond: () =>
+		{
+			act(() =>
+			{
+				release();
+			});
+		},
+	};
+}
 
 function seedQueryClient(sessions: unknown[], nextCursor: string | null = null): QueryClient
 {
@@ -134,31 +201,43 @@ async function renderGroups(
 	{
 		queryClient.setQueryData(projectsQueryOptions().queryKey, ProjectListResponse.parse(options.projects));
 	}
+	const activeItem =
+	{
+		set: (_id: string | null) =>
+		{
+		},
+	};
+	function Root()
+	{
+		const [activeItemId, setActiveItemId] = useState<string | null>(options.activeItemId ?? null);
+		activeItem.set = setActiveItemId;
+		return (
+			<FizzyLakeContext.Provider value={options.fizzyLake ?? FIZZY_LAKE_PARTS}>
+				<SettingsProvider>
+					<QueryClientProvider client={queryClient}>
+						<ToastProvider>
+							<SessionGroups
+								activeItemId={activeItemId}
+								filterSlot={options.filterSlot}
+								// Most cases exercise Status grouping, so render it unless a case picks other prefs.
+								prefs={
+									options.prefs ??
+									{
+										...DEFAULT_SESSION_LIST_PREFS,
+										groupBy: "state",
+									}
+								}
+							/>
+							<Outlet />
+						</ToastProvider>
+					</QueryClientProvider>
+				</SettingsProvider>
+			</FizzyLakeContext.Provider>
+		);
+	}
 	const rootRoute = createRootRoute(
 		{
-			component: () => (
-				<FizzyLakeContext.Provider value={options.fizzyLake ?? FIZZY_LAKE_PARTS}>
-					<SettingsProvider>
-						<QueryClientProvider client={queryClient}>
-							<ToastProvider>
-								<SessionGroups
-									activeItemId={options.activeItemId ?? null}
-									filterSlot={options.filterSlot}
-									// Most cases exercise Status grouping, so render it unless a case picks other prefs.
-									prefs={
-										options.prefs ??
-										{
-											...DEFAULT_SESSION_LIST_PREFS,
-											groupBy: "state",
-										}
-									}
-								/>
-								<Outlet />
-							</ToastProvider>
-						</QueryClientProvider>
-					</SettingsProvider>
-				</FizzyLakeContext.Provider>
-			),
+			component: Root,
 		},
 	);
 	const homeRoute = createRoute(
@@ -187,11 +266,20 @@ async function renderGroups(
 	);
 	await router.load();
 	const result = render(<RouterProvider router={router} />);
+	/** Opens another session, as navigating the app would. */
+	const setActiveItemId = (id: string | null) =>
+	{
+		act(() =>
+		{
+			activeItem.set(id);
+		});
+	};
 	if (options.loading === true)
 		return {
 			...result,
 			queryClient,
 			router,
+			setActiveItemId,
 		};
 	await waitFor(() =>
 	{
@@ -201,6 +289,7 @@ async function renderGroups(
 		...result,
 		queryClient,
 		router,
+		setActiveItemId,
 	};
 }
 
@@ -806,15 +895,9 @@ describe("sidebar SessionGroups", () =>
 		);
 	});
 
-	it("pages Idle 5 rows per Show more click, announcing each page, and folds back to 5 with Show less", async () =>
+	it("pages Idle 20 rows per Show more click, announcing each page, and folds back to 20 with Show less", async () =>
 	{
-		const done = Array.from(
-			{
-				length: 45,
-			},
-			(_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1),
-		);
-		const {container} = await renderGroups(done);
+		const {container} = await renderGroups(doneSessions(47));
 		const overflowRows = () =>
 			[...container.querySelectorAll('[data-group-key="state-done"] button[data-row]')].map((button) => (
 			{
@@ -827,7 +910,7 @@ describe("sidebar SessionGroups", () =>
 		const showMore = screen.getByRole(
 			"button",
 			{
-				name: "Show 5 more in Idle",
+				name: "Show 20 more in Idle",
 			},
 		);
 		expect(
@@ -845,11 +928,11 @@ describe("sidebar SessionGroups", () =>
 			},
 		).toStrictEqual(
 			{
-				shown: 5,
+				shown: 20,
 				overflow: [
 					{
 						text: "Show more",
-						label: "Show 5 more in Idle",
+						label: "Show 20 more in Idle",
 					},
 				],
 				roving: true,
@@ -867,12 +950,19 @@ describe("sidebar SessionGroups", () =>
 		expect(
 			{
 				shown: rowTitlesIn(container, "state-done").length,
+				overflow: overflowRows(),
 				status: status()?.textContent,
 			},
 		).toStrictEqual(
 			{
-				shown: 10,
-				status: "Showing 5 more in Idle",
+				shown: 40,
+				overflow: [
+					{
+						text: "Show more",
+						label: "Show 7 more in Idle",
+					},
+				],
+				status: "Showing 20 more in Idle",
 			},
 		);
 
@@ -880,26 +970,23 @@ describe("sidebar SessionGroups", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: "Show 5 more in Idle",
+					name: "Show 7 more in Idle",
 				},
 			),
 			{
 				detail: 2,
 			},
 		);
-		expect(rowTitlesIn(container, "state-done")).toHaveLength(10);
+		expect(rowTitlesIn(container, "state-done")).toHaveLength(40);
 
-		for (let click = 0; click < 7; click++)
-		{
-			fireEvent.click(
-				screen.getByRole(
-					"button",
-					{
-						name: "Show 5 more in Idle",
-					},
-				),
-			);
-		}
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show 7 more in Idle",
+				},
+			),
+		);
 		expect(
 			{
 				shown: rowTitlesIn(container, "state-done"),
@@ -909,7 +996,7 @@ describe("sidebar SessionGroups", () =>
 			{
 				shown: Array.from(
 					{
-						length: 45,
+						length: 47,
 					},
 					(_, index) => `Done ${index}`,
 				),
@@ -939,14 +1026,61 @@ describe("sidebar SessionGroups", () =>
 			},
 		).toStrictEqual(
 			{
-				shown: 5,
+				shown: 20,
 				overflow: [
 					{
 						text: "Show more",
-						label: "Show 5 more in Idle",
+						label: "Show 20 more in Idle",
 					},
 				],
 				status: "Showing less in Idle",
+			},
+		);
+	});
+
+	it("never hides one row: 21 rows show whole, and 41 rows offer Show 21 more, which reveals them all", async () =>
+	{
+		const {container, unmount} = await renderGroups(doneSessions(21));
+		expect(
+			{
+				shown: rowTitlesIn(container, "state-done").length,
+				overflow: container.querySelectorAll('[data-group-key="state-done"] button[data-row]').length,
+			},
+		).toStrictEqual(
+			{
+				shown: 21,
+				overflow: 0,
+			},
+		);
+		unmount();
+
+		const second = await renderGroups(doneSessions(41));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show 21 more in Idle",
+				},
+			),
+		);
+		expect(
+			{
+				shown: rowTitlesIn(second.container, "state-done").length,
+				status: second.container.querySelector(
+					'[data-group-key="state-done"] [data-group-rows] > span[role="status"]',
+				)?.textContent,
+				showLess: screen.getAllByRole(
+					"button",
+					{
+						name: "Show less in Idle",
+					},
+				).length,
+			},
+		).toStrictEqual(
+			{
+				shown: 41,
+				status: "Showing 21 more in Idle",
+				showLess: 1,
 			},
 		);
 	});
@@ -955,9 +1089,9 @@ describe("sidebar SessionGroups", () =>
 	{
 		const rows = Array.from(
 			{
-				length: 7,
+				length: 22,
 			},
-			(_, index) => session(`r${index}`, `Row ${index}`, index === 6 ? "blocked" : "done", index + 1),
+			(_, index) => session(`r${index}`, `Row ${index}`, index === 21 ? "blocked" : "done", index + 1),
 		);
 		const {container} = await renderGroups(
 			rows,
@@ -993,38 +1127,123 @@ describe("sidebar SessionGroups", () =>
 		expect(container.querySelectorAll('[data-group-key="recents"] button[data-row] span.ms-auto')).toHaveLength(1);
 	});
 
-	it("holds Show less, described and ignoring clicks, while folding back would hide the open session", async () =>
+	it("reveals an open session hidden past the cap on first paint, and keeps it revealed after opening another", async () =>
 	{
-		const done = Array.from(
+		const {container, setActiveItemId} = await renderGroups(
+			doneSessions(47),
 			{
-				length: 12,
-			},
-			(_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1),
-		);
-		const {container} = await renderGroups(
-			done,
-			{
-				activeItemId: "d10",
+				activeItemId: "d32",
 			},
 		);
-		fireEvent.click(
-			screen.getByRole(
-				"button",
+		const state = () => (
+		{
+			shown: rowTitlesIn(container, "state-done").length,
+			selected: container.querySelector('[data-group-key="state-done"] [data-row-key="d32"]') !== null,
+			showMore: screen
+				.queryByRole(
+					"button",
+					{
+						name: /^Show \d+ more in Idle$/,
+					},
+				)
+				?.getAttribute("aria-label"),
+		});
+		await waitFor(() =>
+		{
+			expect(state()).toStrictEqual(
 				{
-					name: "Show 5 more in Idle",
+					shown: 33,
+					selected: true,
+					showMore: "Show 14 more in Idle",
 				},
-			),
-		);
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Show 2 more in Idle",
-				},
-			),
-		);
+			);
+		});
 
+		setActiveItemId("d1");
+		expect(state()).toStrictEqual(
+			{
+				shown: 33,
+				selected: true,
+				showMore: "Show 14 more in Idle",
+			},
+		);
+	});
+
+	it("reveals a hidden family head when its nested fork is the open session", async () =>
+	{
+		const rows = [
+			...doneSessions(25),
+			{
+				...session("fork", "Fork of 24", "done", 0.5),
+				forkedFromSessionId: "d24",
+			},
+		];
+		const {container} = await renderGroups(
+			rows,
+			{
+				activeItemId: "fork",
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(rowTitlesIn(container, "state-done")).toContain("Done 24");
+		});
+	});
+
+	it("folds Show less back to the floor that keeps the open session, not to the first page", async () =>
+	{
+		const {container} = await renderGroups(
+			doneSessions(47),
+			{
+				activeItemId: "d32",
+			},
+		);
+		fireEvent.click(
+			await screen.findByRole(
+				"button",
+				{
+					name: "Show 14 more in Idle",
+				},
+			),
+		);
 		const showLess = screen.getByRole(
+			"button",
+			{
+				name: "Show less in Idle",
+			},
+		);
+		expect(showLess.getAttribute("aria-disabled")).toBeNull();
+
+		fireEvent.click(showLess);
+		expect(
+			{
+				shown: rowTitlesIn(container, "state-done").length,
+				showMore: screen
+					.getByRole(
+						"button",
+						{
+							name: /^Show \d+ more in Idle$/,
+						},
+					)
+					.getAttribute("aria-label"),
+			},
+		).toStrictEqual(
+			{
+				shown: 33,
+				showMore: "Show 14 more in Idle",
+			},
+		);
+	});
+
+	it("holds Show less, described with upstream's tooltip and ignoring clicks, while the open session is near the end", async () =>
+	{
+		const {container} = await renderGroups(
+			doneSessions(47),
+			{
+				activeItemId: "d46",
+			},
+		);
+		const showLess = await screen.findByRole(
 			"button",
 			{
 				name: "Show less in Idle",
@@ -1034,40 +1253,51 @@ describe("sidebar SessionGroups", () =>
 		const description = describedBy === null ? null : document.getElementById(describedBy);
 		expect(
 			{
+				shown: rowTitlesIn(container, "state-done").length,
 				disabled: showLess.getAttribute("aria-disabled"),
 				held: showLess.getAttribute("data-held"),
 				description:
 				{
+					hidden: description?.hidden,
 					className: description?.className,
 					text: description?.textContent,
 				},
+				heldClasses: [
+					"aria-disabled:pointer-events-none",
+					"aria-disabled:opacity-70",
+					"aria-disabled:data-[held]:pointer-events-auto",
+					"data-[held]:hover:bg-transparent",
+					"data-[held]:hover:text-ink-muted",
+				].filter((token) => !showLess.classList.contains(token)),
 			},
 		).toStrictEqual(
 			{
+				shown: 47,
 				disabled: "true",
 				held: "",
 				description:
 				{
-					className: "sr-only",
-					text: "You have something open near the end of this list.",
+					hidden: true,
+					className: "",
+					text: "Something open or selected is near the end of this list.",
 				},
+				heldClasses: [],
 			},
 		);
 
 		fireEvent.click(showLess);
-		expect(rowTitlesIn(container, "state-done")).toHaveLength(12);
+		expect(rowTitlesIn(container, "state-done")).toHaveLength(47);
+
+		fireEvent.pointerEnter(showLess.parentElement ?? showLess);
+		expect((await screen.findByRole("tooltip")).textContent).toBe(
+			"Something open or selected is near the end of this list.",
+		);
 	});
 
-	it("leaves Show less live when the open session stays inside the first 5 rows", async () =>
+	it("leaves Show less live when the open session stays inside the first 20 rows", async () =>
 	{
-		const done = Array.from(
-			{
-				length: 12,
-			},
-			(_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1),
-		);
 		await renderGroups(
-			done,
+			doneSessions(47),
 			{
 				activeItemId: "d4",
 			},
@@ -1076,7 +1306,7 @@ describe("sidebar SessionGroups", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: "Show 5 more in Idle",
+					name: "Show 20 more in Idle",
 				},
 			),
 		);
@@ -1084,7 +1314,7 @@ describe("sidebar SessionGroups", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: "Show 2 more in Idle",
+					name: "Show 7 more in Idle",
 				},
 			),
 		);
@@ -1106,6 +1336,61 @@ describe("sidebar SessionGroups", () =>
 				disabled: null,
 				held: null,
 				describedBy: null,
+			},
+		);
+	});
+
+	it("keeps a ⌘-selected row past the first page in view when Show less folds back", async () =>
+	{
+		const {container} = await renderGroups(doneSessions(47));
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show 20 more in Idle",
+				},
+			),
+		);
+		const link = container.querySelector<HTMLElement>('[data-row-key="d25"] a[data-row-main-button]');
+		if (link === null) throw new Error("no d25 row");
+		fireEvent.click(
+			link,
+			{
+				metaKey: true,
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show 7 more in Idle",
+				},
+			),
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show less in Idle",
+				},
+			),
+		);
+		expect(
+			{
+				shown: rowTitlesIn(container, "state-done").length,
+				showMore: screen
+					.getByRole(
+						"button",
+						{
+							name: /^Show \d+ more in Idle$/,
+						},
+					)
+					.getAttribute("aria-label"),
+			},
+		).toStrictEqual(
+			{
+				shown: 26,
+				showMore: "Show 21 more in Idle",
 			},
 		);
 	});
@@ -2024,10 +2309,253 @@ describe("sidebar SessionGroups", () =>
 		vi.unstubAllGlobals();
 	});
 
-	it("has no Load more sessions row, even while the feed has another page", async () =>
+	it("ends a Status list with upstream's list-level Load more sessions row while the feed has another page", async () =>
 	{
-		await renderGroups(
+		const {container} = await renderGroups(
 			FIXTURE,
+			{
+				nextCursor: "cursor-2",
+			},
+		);
+		const button = screen.getByRole(
+			"button",
+			{
+				name: "Load more sessions",
+			},
+		);
+		const wrapper = button.parentElement;
+		const recents = container.querySelector('[data-testid="sidebar-recents"]');
+		expect(
+			{
+				key: wrapper?.getAttribute("data-row-key"),
+				wrapperClass: wrapper?.className,
+				text: button.textContent,
+				children: [...button.childNodes].map((node) => node.nodeType),
+				inSection: button.closest("[data-group-section], [data-group-key]"),
+				lastRowKey: [...(recents?.querySelectorAll("[data-row-key]") ?? [])]
+					.at(-1)
+					?.getAttribute("data-row-key"),
+				recentsList: recents?.hasAttribute("data-recents-list"),
+				roving: button.hasAttribute("data-roving-item"),
+				classes: ["mt-[var(--sb-group-pt-token)]", "ps-[calc(var(--sb-row-px)+var(--sb-iconless-pad))]"].filter(
+					(token) => !button.classList.contains(token),
+				),
+				status: wrapper?.querySelector('span.sr-only[role="status"]')?.textContent,
+				hiddenSpan: wrapper?.querySelector("span[hidden]") !== null,
+			},
+		).toStrictEqual(
+			{
+				key: "label:fetchmore:recents",
+				wrapperClass: "df-drag-shiftable [overflow-anchor:none]",
+				text: "Load more sessions",
+				children: [Node.TEXT_NODE],
+				inSection: null,
+				lastRowKey: "label:fetchmore:recents",
+				recentsList: true,
+				roving: true,
+				classes: [],
+				status: "",
+				hiddenSpan: true,
+			},
+		);
+	});
+
+	it("loads the next page from Load more sessions once, showing Loading… with aria-disabled, then reveals and announces the landed rows", async () =>
+	{
+		const page = stubNextPage(
+			[
+				session("d-new-1", "Next 1", "done", 60),
+				session("d-new-2", "Next 2", "done", 61),
+				session("d-new-3", "Next 3", "done", 62),
+			],
+			"cursor-3",
+		);
+		const {container} = await renderGroups(
+			doneSessions(20),
+			{
+				nextCursor: "cursor-2",
+			},
+		);
+		const button = screen.getByRole(
+			"button",
+			{
+				name: "Load more sessions",
+			},
+		);
+		fireEvent.click(
+			button,
+			{
+				detail: 1,
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(button.textContent).toBe("Loading…");
+		});
+		expect(button.getAttribute("aria-disabled")).toBe("true");
+		fireEvent.click(button);
+		fireEvent.click(
+			button,
+			{
+				detail: 2,
+			},
+		);
+		page.respond();
+		await waitFor(() =>
+		{
+			expect(rowTitlesIn(container, "state-done")).toHaveLength(23);
+		});
+		expect(
+			{
+				requests: page.requests,
+				last: rowTitlesIn(container, "state-done").slice(-3),
+				status: button.parentElement?.querySelector('[role="status"]')?.textContent,
+				text: button.textContent,
+			},
+		).toStrictEqual(
+			{
+				requests: ["/api/sessions/recent?limit=50&cursor=cursor-2&live=1"],
+				last: ["Next 1", "Next 2", "Next 3"],
+				status: "3 more sessions loaded",
+				text: "Load more sessions",
+			},
+		);
+	});
+
+	it("moves focus to the first loaded row after a keyboard Load more sessions", async () =>
+	{
+		const page = stubNextPage([session("d-new", "Next row", "done", 60)], "cursor-3");
+		const {container} = await renderGroups(
+			FIXTURE,
+			{
+				nextCursor: "cursor-2",
+			},
+		);
+		const button = screen.getByRole(
+			"button",
+			{
+				name: "Load more sessions",
+			},
+		);
+		act(() =>
+		{
+			button.focus();
+		});
+		fireEvent.click(
+			button,
+			{
+				detail: 0,
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(page.requests).toHaveLength(1);
+		});
+		page.respond();
+		await waitFor(() =>
+		{
+			expect(document.activeElement).toBe(
+				container.querySelector('[data-row-key="d-new"] a[data-row-main-button]'),
+			);
+		});
+	});
+
+	it("rescues focus to the first loaded row when a mouse Load more empties the feed and the row unmounts", async () =>
+	{
+		const page = stubNextPage([session("d-new", "Next row", "done", 60)], null);
+		const {container} = await renderGroups(
+			FIXTURE,
+			{
+				nextCursor: "cursor-2",
+			},
+		);
+		const button = screen.getByRole(
+			"button",
+			{
+				name: "Load more sessions",
+			},
+		);
+		pointerFocus(button);
+		fireEvent.click(
+			button,
+			{
+				detail: 1,
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(page.requests).toHaveLength(1);
+		});
+		page.respond();
+		await waitFor(() =>
+		{
+			expect(
+				screen.queryByRole(
+					"button",
+					{
+						name: "Load more sessions",
+					},
+				),
+			).toBeNull();
+		});
+		await waitFor(() =>
+		{
+			expect(document.activeElement).toBe(
+				container.querySelector('[data-row-key="d-new"] a[data-row-main-button]'),
+			);
+		});
+	});
+
+	it("cancels the focus rescue when the pointer goes down elsewhere while the page loads", async () =>
+	{
+		const page = stubNextPage([session("d-new", "Next row", "done", 60)], null);
+		const {container} = await renderGroups(
+			FIXTURE,
+			{
+				nextCursor: "cursor-2",
+			},
+		);
+		const button = screen.getByRole(
+			"button",
+			{
+				name: "Load more sessions",
+			},
+		);
+		pointerFocus(button);
+		fireEvent.click(
+			button,
+			{
+				detail: 1,
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(page.requests).toHaveLength(1);
+		});
+		fireEvent.pointerDown(document.body);
+		page.respond();
+		await waitFor(() =>
+		{
+			expect(container.querySelector('[data-row-key="d-new"]')).not.toBeNull();
+		});
+		expect(document.activeElement).toBe(document.body);
+	});
+
+	it("has no Load more sessions row without a next page or once the oldest loaded row is past Last activity", async () =>
+	{
+		const {unmount} = await renderGroups(FIXTURE);
+		expect(
+			screen.queryByRole(
+				"button",
+				{
+					name: "Load more sessions",
+				},
+			),
+		).toBeNull();
+		unmount();
+
+		await renderGroups(
+			[...FIXTURE, session("d-stale", "Stale", "done", 8 * 24 * 60)],
 			{
 				nextCursor: "cursor-2",
 			},
@@ -2042,132 +2570,88 @@ describe("sidebar SessionGroups", () =>
 		).toBeNull();
 	});
 
-	it("fetches the next page when the list end scrolls into view and no group is capped", async () =>
+	it("draws the Load more sessions row before the empty body when every loaded row is filtered out", async () =>
 	{
-		class VisibleIntersectionObserver
-		{
-			constructor(private readonly callback: IntersectionObserverCallback)
+		const {container} = await renderGroups(
+			FIXTURE.map((row) => (
 			{
-			}
-			observe(target: Element)
+				...row,
+				archived: true,
+			})),
 			{
-				this.callback(
-					[
-						{
-							isIntersecting: true,
-							target,
-						} as IntersectionObserverEntry,
-					],
-					this as unknown as IntersectionObserver,
-				);
-			}
-			disconnect()
+				nextCursor: "cursor-2",
+			},
+		);
+		const wrapper = container.querySelector('[data-row-key="label:fetchmore:recents"]');
+		expect(
 			{
-			}
-			unobserve()
+				row: wrapper !== null,
+				followedBy: wrapper?.nextElementSibling?.hasAttribute("data-group-key") ?? false,
+			},
+		).toStrictEqual(
 			{
-			}
-			takeRecords(): IntersectionObserverEntry[]
+				row: true,
+				followedBy: true,
+			},
+		);
+	});
+
+	it("does not fetch when the list end scrolls into view", async () =>
+	{
+		const observed: Element[] = [];
+		vi.stubGlobal(
+			"IntersectionObserver",
+			class
 			{
-				return [];
-			}
-		}
-		vi.stubGlobal("IntersectionObserver", VisibleIntersectionObserver);
-		const requests: string[] = [];
-		vi.stubGlobal("fetch", async (input: RequestInfo | URL) =>
-		{
-			requests.push(String(input));
-			return Promise.resolve(
-				new Response(
-					JSON.stringify(
-						{
-							sessions: [session("d-old", "Completed next page", "done", 60)],
-							nextCursor: null,
-						},
-					),
-					{
-						status: 200,
-						headers:
-						{
-							"Content-Type": "application/json",
-						},
-					},
-				),
-			);
-		});
+				observe(target: Element)
+				{
+					observed.push(target);
+				}
+				disconnect()
+				{
+				}
+				unobserve()
+				{
+				}
+				takeRecords(): IntersectionObserverEntry[]
+				{
+					return [];
+				}
+			},
+		);
+		const page = stubNextPage([], null);
 		const {container} = await renderGroups(
 			FIXTURE,
 			{
 				nextCursor: "cursor-2",
 			},
 		);
-
-		await waitFor(() =>
+		await act(async () =>
 		{
-			expect(rowTitlesIn(container, "state-done")).toStrictEqual([
-				"Completed newest",
-				"Completed older",
-				"Completed next page",
-			]);
+			await Promise.resolve();
 		});
-		expect(requests).toStrictEqual(["/api/sessions/recent?limit=50&cursor=cursor-2&live=1"]);
+		expect(
+			{
+				requests: page.requests,
+				listEnd: container.querySelector("[data-sidebar-list-end]"),
+			},
+		).toStrictEqual(
+			{
+				requests: [],
+				listEnd: null,
+			},
+		);
 	});
 
-	it("fetches the next page, showing Loading…, when Show more reveals the last rows of the last capped group", async () =>
+	it("reveals hidden Idle rows from Show more without fetching under Status grouping", async () =>
 	{
-		const done = Array.from(
-			{
-				length: 23,
-			},
-			(_, index) => session(`d${index}`, `Done ${index}`, "done", index + 1),
-		);
-		const older = session("d-old", "Done older page", "done", 60);
-		const requests: string[] = [];
-		let respond: () => void = () =>
-		{
-		};
-		vi.stubGlobal("fetch", async (input: RequestInfo | URL) =>
-		{
-			requests.push(String(input));
-			await new Promise<void>((resolve) =>
-			{
-				respond = resolve;
-			});
-			return new Response(
-				JSON.stringify(
-					{
-						sessions: [older],
-						nextCursor: null,
-					},
-				),
-				{
-					status: 200,
-					headers:
-					{
-						"Content-Type": "application/json",
-					},
-				},
-			);
-		});
+		const page = stubNextPage([], null);
 		const {container} = await renderGroups(
-			done,
+			doneSessions(23),
 			{
 				nextCursor: "cursor-2",
 			},
 		);
-
-		for (let click = 0; click < 3; click++)
-		{
-			fireEvent.click(
-				screen.getByRole(
-					"button",
-					{
-						name: "Show 5 more in Idle",
-					},
-				),
-			);
-		}
-		expect(requests).toStrictEqual([]);
 		fireEvent.click(
 			screen.getByRole(
 				"button",
@@ -2176,52 +2660,96 @@ describe("sidebar SessionGroups", () =>
 				},
 			),
 		);
-
-		const loading = await screen.findByRole(
-			"button",
-			{
-				name: "Loading…",
-			},
-		);
 		expect(
 			{
-				text: loading.textContent,
-				disabled: loading.getAttribute("aria-disabled"),
-				showLess: screen.queryByRole(
-					"button",
-					{
-						name: "Show less in Idle",
-					},
-				),
+				shown: rowTitlesIn(container, "state-done").length,
+				requests: page.requests,
 			},
 		).toStrictEqual(
 			{
-				text: "Loading…",
-				disabled: "true",
-				showLess: null,
+				shown: 23,
+				requests: [],
 			},
 		);
-		fireEvent.click(loading);
+	});
 
-		act(() =>
+	it("fetches from the last Date section's count-0 Show more, and from a list-level row once it collapses", async () =>
+	{
+		const page = stubNextPage([session("d-old", "Done older page", "done", 60 * 24 * 3)], null);
+		const datePrefs =
 		{
-			respond();
-		});
-		await waitFor(() =>
-		{
-			expect(rowTitlesIn(container, "state-done")).toHaveLength(24);
-		});
-		expect(rowTitlesIn(container, "state-done").at(-1)).toBe("Done older page");
-		expect(requests).toStrictEqual(["/api/sessions/recent?limit=50&cursor=cursor-2&live=1"]);
+			...DEFAULT_SESSION_LIST_PREFS,
+			groupBy: "date",
+		} as const;
+		const {container} = await renderGroups(
+			doneSessions(3),
+			{
+				nextCursor: "cursor-2",
+				prefs: datePrefs,
+			},
+		);
 		expect(
-			screen.getByRole(
+			screen.queryByRole(
 				"button",
 				{
-					name: "Show less in Idle",
+					name: "Load more sessions",
 				},
 			),
-		).toBeTruthy();
+		).toBeNull();
+
+		const showMore = screen.getByRole(
+			"button",
+			{
+				name: "Show more sessions",
+			},
+		);
+		expect(showMore.textContent).toBe("Show more");
+		fireEvent.click(showMore);
+		const loading = await screen.findByRole(
+			"button",
+			{
+				name: "Show more sessions",
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(loading.textContent).toBe("Loading…");
+		});
+		expect(loading.getAttribute("aria-disabled")).toBe("true");
+		page.respond();
+		await waitFor(() =>
+		{
+			expect(container.textContent).toContain("Done older page");
+		});
+		expect(page.requests).toStrictEqual(["/api/sessions/recent?limit=50&cursor=cursor-2&live=1"]);
 	});
+
+	it("draws a label:fetchmore:date Load more row when the last Date section is collapsed", async () =>
+	{
+		const {container} = await renderGroups(
+			doneSessions(3),
+			{
+				nextCursor: "cursor-2",
+				prefs:
+				{
+					...DEFAULT_SESSION_LIST_PREFS,
+					groupBy: "date",
+				},
+			},
+		);
+		fireEvent.click(toggleOf(container, "date-today"));
+		expect(
+			screen
+				.getByRole(
+					"button",
+					{
+						name: "Load more sessions",
+					},
+				)
+				.parentElement?.getAttribute("data-row-key"),
+		).toBe("label:fetchmore:date");
+	});
+
 	it("keeps the row background on upstream's wrapper while the kebab or context menu is open, hiding the mark only for the kebab", async () =>
 	{
 		const {container} = await renderGroups(
@@ -3355,6 +3883,39 @@ describe("SessionGroups sections layout", () =>
 				resetDisabled: "true",
 				resetReason: "Grouping and sorting are already at their defaults.",
 				groupBy: ["Date", "Status", "---", "None"],
+			},
+		);
+	});
+
+	it("caps a manual section at 20 rows with a working Show more and Show less", async () =>
+	{
+		const rows = doneSessions(22);
+		seedSections(Object.fromEntries(rows.map((row) => [row.id, "cg-a"])));
+		const {container} = await renderGroups(rows);
+		expect(rowTitlesIn(container, "custom-cg-a")).toHaveLength(20);
+
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Show 2 more in A",
+				},
+			),
+		);
+		expect(
+			{
+				shown: rowTitlesIn(container, "custom-cg-a").length,
+				showLess: screen.getAllByRole(
+					"button",
+					{
+						name: "Show less in A",
+					},
+				).length,
+			},
+		).toStrictEqual(
+			{
+				shown: 22,
+				showLess: 1,
 			},
 		);
 	});

@@ -13,6 +13,7 @@ import
 	useRef,
 	useState,
 	useSyncExternalStore,
+	type MouseEvent,
 	type ReactNode,
 } from "react";
 
@@ -36,11 +37,13 @@ import
 {
 	customGroupIdOfKey,
 	customGroupLaunchTarget,
-	GROUP_PAGE_SIZE,
 	isProjectGroupKey,
 	type SessionGroup,
 	type SessionListPrefs,
+	truncates,
 } from "../../lib/session-groups";
+import {revealThrough, withHeads} from "../../lib/sidebar-section-reveal";
+import {clearRevealRow, useRevealRow} from "./reveal-row-store";
 import
 {
 	familyKey,
@@ -251,9 +254,15 @@ function useCollapsedBadgeKind(
 	return useSyncExternalStore(subscribeUnseenWork, getSnapshot, getSnapshot);
 }
 
-const NO_SHOW_MORE = () =>
+/** Upstream's held Show less reason (`rr`), shown in its tooltip and describing the button. */
+const HELD_REASON = "Something open or selected is near the end of this list.";
+
+/** Date and None's last section fetch the next feed page from a count-0 Show more (upstream `canFetchMore`). */
+export interface SectionFetchMore
 {
-};
+	loading: boolean;
+	onFetch: (event: MouseEvent<HTMLElement>) => void;
+}
 
 /** A collapsible sidebar group: label row (caret on hover), session rows, "Show more" / "Show less". */
 export function GroupSection({
@@ -265,9 +274,8 @@ export function GroupSection({
 	subgroups = null,
 	collapsedKeys,
 	showMetadata,
-	onShowMore,
-	onShowLess,
-	loadingMore = false,
+	onReveal,
+	fetchMore,
 	dragRowProps,
 	pinnedIds,
 	familyHeadIds = NO_FAMILY_HEAD_IDS,
@@ -290,10 +298,10 @@ export function GroupSection({
 	collapsedKeys?: ReadonlySet<string>;
 	/** The section's own Show ▸ Metadata (a manual section's); defaults to the list's. */
 	showMetadata?: boolean;
-	onShowMore: () => void;
-	onShowLess: () => void;
-	/** The next feed page this group's Show more asked for is loading. */
-	loadingMore?: boolean;
+	/** Sets how many rows past its first page a section (this one or a subgroup, by key) reveals. */
+	onReveal: (key: string, extraRevealed: number) => void;
+	/** Set on Date's last section and None's Recents while the feed has another page. */
+	fetchMore?: SectionFetchMore | undefined;
 	/** Makes each row a sidebar drag source (pin, reorder, unpin). */
 	dragRowProps?: (id: string) => SidebarDragRowProps;
 	/** Set for the Pinned section: its display order, which enables Move up / Move down. */
@@ -332,6 +340,42 @@ export function GroupSection({
 	const rows = useMemo(() => allRows(group), [group]);
 	const rowKeys = useMemo(() => rows.map((row) => row.sessionId), [rows]);
 	const openKeys = useMemo(() => (activeItemId === null ? [] : [activeItemId]), [activeItemId]);
+	const {extraRevealed, pageSize, sorted, headOf} = group;
+	const selectedIds = useSidebarSelection()?.selectedIds;
+	// Upstream `R = rz(L ∪ keptInView, heldBy)`: open and (while expanded) selected rows, plus their family heads.
+	const revealOpenKeys = useMemo(
+		() => withHeads([...openKeys, ...(expanded ? (selectedIds ?? []) : [])], headOf),
+		[openKeys, expanded, selectedIds, headOf],
+	);
+	const sortedKeys = useMemo(() => sorted.map((row) => row.sessionId), [sorted]);
+	const revealRequest = useRevealRow();
+	const revealKey = revealRequest === null ? null : (headOf.get(revealRequest.id) ?? revealRequest.id);
+	// Upstream `AE`, grow-only: reveal through the last open, selected or moved row hidden past the page.
+	const grownTo = revealThrough(
+		{
+			keys: sortedKeys,
+			truncateAt: pageSize,
+			extraRevealed,
+			hiddenCount: group.hiddenCount,
+			collapsed: !expanded,
+			openKeys: revealOpenKeys,
+			revealKey,
+		},
+	);
+	useEffect(() =>
+	{
+		if (grownTo > extraRevealed) onReveal(group.key, grownTo);
+	}, [grownTo, extraRevealed, group.key, onReveal]);
+	useEffect(() =>
+	{
+		if (revealRequest === null || revealKey === null) return;
+		if (!group.rows.some((row) => row.sessionId === revealKey)) return;
+		clearRevealRow(revealRequest.id);
+		if (!revealRequest.focus) return;
+		sectionElement.current
+			?.querySelector<HTMLElement>(`[data-row-key="${CSS.escape(revealRequest.id)}"] [data-row-main-button]`)
+			?.focus();
+	}, [revealRequest, revealKey, group.rows]);
 	// Upstream `sP` (`Me`): open rows stay visible under a collapsed header.
 	const openRows = expanded ? [] : rows.filter((row) => openKeys.includes(row.sessionId));
 	const badgeKind = useCollapsedBadgeKind(group, !expanded, openKeys);
@@ -353,16 +397,23 @@ export function GroupSection({
 	const awaitingHintId = useId();
 	const hasAwaiting = (subgroups === null ? rows : openRows).some((row) => row.bucket === "blocked");
 	const awaitingDescribedBy = (row: SidebarSessionRow) => (row.bucket === "blocked" ? awaitingHintId : undefined);
-	// Upstream `rr` held: folding back to the first page would hide the open session.
-	const showLessHeld =
-		group.canShowLess &&
-		group.rows
-			.slice(GROUP_PAGE_SIZE)
-			.some(
-				(row) =>
-					row.sessionId === activeItemId ||
-					(group.nested.get(row.sessionId) ?? []).some((child) => child.sessionId === activeItemId),
-			);
+	// Upstream `fe`/`pe`/`me`: Show less folds back to the floor that keeps open and selected rows in view,
+	// and is held when that floor would leave fewer than two rows hidden.
+	const showLessFloor = group.canShowLess
+		? revealThrough(
+				{
+					keys: sortedKeys,
+					truncateAt: pageSize,
+					extraRevealed: 0,
+					hiddenCount: sortedKeys.length - pageSize,
+					collapsed: false,
+					openKeys: revealOpenKeys,
+				},
+			)
+		: 0;
+	const showLessLive =
+		group.canShowLess && extraRevealed > showLessFloor && truncates(sortedKeys.length, pageSize, showLessFloor);
+	const showLessHeld = group.canShowLess && !showLessLive;
 	const toggle = (
 		<h3 className="flex min-w-0 flex-1">
 			<button
@@ -524,30 +575,19 @@ export function GroupSection({
 							);
 						},
 					)}
-					{loadingMore ? (
+					{group.hiddenCount > 0 ? (
 						<OverflowRow
-							disabled
+							ariaLabel={`Show ${group.revealCount} more in ${group.label}`}
 							onClick={() =>
 							{
-							}}
-						>
-							Loading…
-						</OverflowRow>
-					) : group.hiddenCount > 0 ? (
-						<OverflowRow
-							ariaLabel={`Show ${Math.min(GROUP_PAGE_SIZE, group.hiddenCount)} more in ${group.label}`}
-							onClick={() =>
-							{
-								setAnnouncement(
-									`Showing ${Math.min(GROUP_PAGE_SIZE, group.hiddenCount)} more in ${group.label}`,
-								);
-								onShowMore();
+								setAnnouncement(`Showing ${group.revealCount} more in ${group.label}`);
+								onReveal(group.key, extraRevealed + pageSize);
 							}}
 							awaiting={group.hiddenAwaiting}
 						>
 							Show more
 						</OverflowRow>
-					) : (
+					) : fetchMore === undefined ? (
 						group.canShowLess && (
 							<OverflowRow
 								ariaLabel={`Show less in ${group.label}`}
@@ -555,14 +595,23 @@ export function GroupSection({
 								onClick={() =>
 								{
 									setAnnouncement(`Showing less in ${group.label}`);
-									onShowLess();
+									onReveal(group.key, showLessFloor);
 								}}
 							>
 								Show less
 							</OverflowRow>
 						)
+					) : (
+						// Upstream `rr` count 0 with `canFetchMore`: "Show more", aria "Show more sessions", fetching the next page.
+						<OverflowRow
+							ariaLabel="Show more sessions"
+							disabled={fetchMore.loading}
+							onClick={fetchMore.onFetch}
+						>
+							{fetchMore.loading ? "Loading…" : "Show more"}
+						</OverflowRow>
 					)}
-					{(loadingMore || group.hiddenCount > 0 || group.canShowLess || announcement !== "") && (
+					{(fetchMore !== undefined || group.hiddenCount > 0 || group.canShowLess || announcement !== "") && (
 						<span className="sr-only" role="status">
 							{announcement}
 						</span>
@@ -584,8 +633,7 @@ export function GroupSection({
 									{
 										showMetadata,
 									})}
-							onShowMore={NO_SHOW_MORE}
-							onShowLess={NO_SHOW_MORE}
+							onReveal={onReveal}
 							{...(dragRowProps === undefined
 								? {}
 								:
@@ -727,7 +775,7 @@ function OverflowRow({
 	children,
 }: {
 	ariaLabel?: string;
-	onClick: () => void;
+	onClick: (event: MouseEvent<HTMLElement>) => void;
 	disabled?: boolean;
 	held?: string | undefined;
 	awaiting?: boolean;
@@ -735,36 +783,96 @@ function OverflowRow({
 })
 {
 	const inert = disabled || held !== undefined;
+	const button = (
+		<button
+			type="button"
+			{...ROVING_ITEM_PROPS}
+			data-row
+			aria-label={ariaLabel}
+			aria-disabled={inert ? true : undefined}
+			aria-describedby={held}
+			data-held={held === undefined ? undefined : ""}
+			onClick={(event) =>
+			{
+				if (inert || event.detail > 1) return;
+				onClick(event);
+			}}
+			className={`${ROW_CLASS} text-ink-muted hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] hover:bg-[var(--sb-hover)] hover:text-secondary aria-disabled:pointer-events-none aria-disabled:opacity-70 aria-disabled:data-[held]:pointer-events-auto data-[held]:hover:bg-transparent data-[held]:hover:text-ink-muted`}
+		>
+			<span className="ps-[var(--sb-iconless-pad)]">{children}</span>
+			{awaiting && (
+				<span className="ms-auto flex size-[var(--sb-row-ctl)] shrink-0 items-center justify-center">
+					<SessionStateIcon kind="awaiting" live={false} />
+				</span>
+			)}
+		</button>
+	);
+	if (held === undefined) return button;
+	// Upstream wraps the held row in a lazy 350ms inline-end multiline tooltip (`JJ`) that stays open on click.
 	return (
 		<>
+			<Tooltip
+				content={HELD_REASON}
+				side="right"
+				multiline
+				closeOnClick={false}
+				delay={350}
+				className="flex w-full"
+			>
+				{button}
+			</Tooltip>
+			<span id={held} hidden>
+				{HELD_REASON}
+			</span>
+		</>
+	);
+}
+
+/** Upstream `Ri`'s iconless row recipe with `u3`'s inset and `Yn`'s group gap, for the list-level Load more row. */
+const LOAD_MORE_CLASS =
+	"hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] flex h-[var(--sb-row-h)] w-full shrink-0 items-center gap-[var(--sb-row-gap)] rounded-[var(--sb-radius)] text-start text-[length:var(--sb-row-font)] text-ink-muted hover:bg-[var(--sb-hover)] hover:text-secondary aria-disabled:pointer-events-none aria-disabled:opacity-70 pe-[var(--sb-row-px)] ps-[calc(var(--sb-row-px)+var(--sb-iconless-pad))] mt-[var(--sb-group-pt-token)]";
+
+/**
+ * Upstream `Ks` (`p$` with `loadSessionsFace`): the list-level "Load more sessions" row after the last
+ * section. Its text sits straight in the button with no leading slot, reads "Loading…" while the next
+ * page loads (aria-disabled, keeping focus), and ignores double clicks.
+ */
+export function LoadMoreSessionsRow({
+	rowKey,
+	loading,
+	announcement,
+	onLoad,
+}: {
+	rowKey: "label:fetchmore:recents" | "label:fetchmore:date";
+	loading: boolean;
+	/** "N more sessions loaded" once a load lands. */
+	announcement: string;
+	onLoad: (event: MouseEvent<HTMLElement>) => void;
+})
+{
+	const hintId = useId();
+	return (
+		<div data-row-key={rowKey} className="df-drag-shiftable [overflow-anchor:none]">
 			<button
 				type="button"
 				{...ROVING_ITEM_PROPS}
 				data-row
-				aria-label={ariaLabel}
-				aria-disabled={inert ? true : undefined}
-				aria-describedby={held}
-				data-held={held === undefined ? undefined : ""}
+				aria-label="Load more sessions"
+				aria-disabled={loading ? true : undefined}
 				onClick={(event) =>
 				{
-					if (inert || event.detail > 1) return;
-					onClick();
+					if (loading || event.detail > 1) return;
+					onLoad(event);
 				}}
-				className={`${ROW_CLASS} text-ink-muted hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] hover:bg-[var(--sb-hover)] hover:text-secondary`}
+				className={LOAD_MORE_CLASS}
 			>
-				<span className="ps-[var(--sb-iconless-pad)]">{children}</span>
-				{awaiting && (
-					<span className="ms-auto flex size-[var(--sb-row-ctl)] shrink-0 items-center justify-center">
-						<SessionStateIcon kind="awaiting" live={false} />
-					</span>
-				)}
+				{loading ? "Loading…" : "Load more sessions"}
 			</button>
-			{held !== undefined && (
-				<span id={held} className="sr-only">
-					You have something open near the end of this list.
-				</span>
-			)}
-		</>
+			<span id={hintId} hidden />
+			<span className="sr-only" role="status">
+				{announcement}
+			</span>
+		</div>
 	);
 }
 
