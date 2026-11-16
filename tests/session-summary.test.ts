@@ -756,13 +756,23 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 				},
 			},
 		);
-		const errorOf = () =>
+		const failedAtMs = Date.parse("1999-12-31T00:00:02.000Z");
+		// Upstream's desktop adapter (`Mv`) drops a turn error 7 days (`RN = 6048e5`) after it happened.
+		const errorOf = (now = failedAtMs + 604_799_999) =>
 		{
-			const payload = buildSessionSummaryPayloadFromDb(db.index, "session-test-100");
+			const payload = buildSessionSummaryPayloadFromDb(
+				db.index,
+				"session-test-100",
+				undefined,
+				{
+					now,
+				},
+			);
 			return {
 				bucket: payload?.bucket,
 				unseenError: payload?.unseenError,
 				erroredAt: payload?.erroredAt,
+				failedAt: payload?.failedAt,
 			};
 		};
 		const index = async (transcript: string) =>
@@ -776,6 +786,14 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 		const unseen = errorOf();
 		markSessionReviewed(db.index, "session-test-100", 1);
 		const seen = errorOf();
+		markSessionUnreviewed(db.index, "session-test-100", 1);
+		const expired = errorOf(failedAtMs + 604_800_000);
+		clearSessionRegistry();
+		const ended = errorOf();
+		markSessionReviewed(db.index, "session-test-100", 1);
+		await registerProcess("busy", 946_598_404_000);
+		const working = errorOf();
+		await registerProcess("idle", 946_598_404_000);
 		await index(prompt + apiError + reply);
 		markSessionUnreviewed(db.index, "session-test-100", 2);
 		const recovered = errorOf();
@@ -798,6 +816,9 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 			{
 				unseen,
 				seen,
+				expired,
+				ended,
+				working,
 				recovered,
 				retried,
 			},
@@ -808,24 +829,49 @@ describe("buildSessionSummaryPayloadFromDb with the CLI session registry", () =>
 					bucket: "blocked",
 					unseenError: true,
 					erroredAt: "1999-12-31T00:00:02.000Z",
+					failedAt: "1999-12-31T00:00:02.000Z",
 				},
 				seen:
 				{
 					bucket: "done",
 					unseenError: undefined,
 					erroredAt: undefined,
+					failedAt: "1999-12-31T00:00:02.000Z",
+				},
+				expired:
+				{
+					bucket: "done",
+					unseenError: undefined,
+					erroredAt: undefined,
+					failedAt: undefined,
+				},
+				ended:
+				{
+					bucket: "done",
+					unseenError: undefined,
+					erroredAt: undefined,
+					failedAt: "1999-12-31T00:00:02.000Z",
+				},
+				working:
+				{
+					bucket: "working",
+					unseenError: undefined,
+					erroredAt: undefined,
+					failedAt: undefined,
 				},
 				recovered:
 				{
 					bucket: "done",
 					unseenError: undefined,
 					erroredAt: undefined,
+					failedAt: undefined,
 				},
 				retried:
 				{
 					bucket: "done",
 					unseenError: undefined,
 					erroredAt: undefined,
+					failedAt: undefined,
 				},
 			},
 		);

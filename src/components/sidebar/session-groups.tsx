@@ -8,6 +8,7 @@ import {useAnsweredSessionIds, withAnsweredHold} from "../../lib/answered-sessio
 import {recentSessionsInfiniteQueryOptions, type SessionListItem} from "../../lib/api/sessions";
 import {withAwaitingAck} from "../../lib/awaiting-ack-overlay";
 import {ackedAt, useAwaitingAckVersion} from "../../lib/awaiting-ack-store";
+import {withFailedError} from "../../lib/failed-error-overlay";
 import {useLiveApprovalIds} from "../../lib/live-approval-sessions";
 import {closeDragPinHint} from "../../lib/drag-pin-hint";
 import {readPinState, unpin, usePins, writePinState} from "../../lib/pin-store";
@@ -168,7 +169,8 @@ export function SessionGroups({
 
 	// A session this tab just answered draws as Working at the click, as upstream's responding row does.
 	const answeredIds = useAnsweredSessionIds();
-	// A row marked completed in this browser draws idle until new activity, as upstream's acked row does.
+	// A row marked completed in this browser draws idle until new activity, as upstream's acked row does; a failed
+	// row draws the error, read or not, until that ack (upstream `Q$`).
 	const ackVersion = useAwaitingAckVersion();
 	const liveApprovalIds = useLiveApprovalIds();
 	const split = useMemo(() =>
@@ -178,7 +180,10 @@ export function SessionGroups({
 			page.sessions.map((session) =>
 				toGroupRow(
 					withAnsweredHold(
-						withAwaitingAck(session, ackedAt(session.id), liveApprovalIds.has(session.id)),
+						withFailedError(
+							withAwaitingAck(session, ackedAt(session.id), liveApprovalIds.has(session.id)),
+							ackedAt(session.id),
+						),
 						answeredIds.has(session.id),
 					),
 				),

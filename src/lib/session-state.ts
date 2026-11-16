@@ -382,7 +382,7 @@ export interface SessionRowIconInput
 	unseen: boolean;
 	/** The server's durable unseen flag behind `bucket`. */
 	serverUnseen: boolean;
-	/** The bucket is blocked on an unseen errored turn (`reason: "error"`). */
+	/** The row is blocked on a failed turn nobody acked (upstream `Q$`; seen or not). */
 	unseenError: boolean;
 	prStatus:
 		|

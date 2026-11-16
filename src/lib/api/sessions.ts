@@ -55,10 +55,12 @@ const SessionListItemSchema = z.object(
 		/** When the session's live CLI process started; in-process teammates from before it are gone. */
 		processStartedAt: z.number().optional(),
 		bucket: SessionBucketSchema,
-		/** Blocked on an unseen errored turn (bucket reason `error`); the row draws a warning triangle. */
+		/** Blocked on an unseen errored turn (bucket reason `error`); the row draws a warning triangle. The client widens this to every unacked `failedAt` row (`withFailedError`). */
 		unseenError: z.literal(true).optional(),
 		/** When the unseen errored turn failed (ISO); present exactly when `unseenError` is. */
 		erroredAt: z.string().optional(),
+		/** The last main-thread turn ended in an API error within 7 days and nothing has run since (upstream `ql`); present whether or not it was seen. */
+		failedAt: z.string().optional(),
 		liveAgentCount: z.number(),
 		unseen: z.boolean(),
 		blockedSince: z.string().nullable(),

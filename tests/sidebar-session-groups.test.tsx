@@ -1908,6 +1908,141 @@ describe("sidebar SessionGroups", () =>
 		);
 	});
 
+	it("keeps a read failed row whose CLI exited in Needs input with the error mark until it is acked, and re-arms on a newer failure", async () =>
+	{
+		const failed = session("f1", "Failed one", "done", 3);
+		const failedRow =
+		{
+			...failed,
+			state: "ended",
+			failedAt: new Date(Date.parse(failed.mtime) - MINUTE).toISOString(),
+		};
+		const done = session("d1", "Completed newest", "done", 5);
+		const {container, queryClient} = await renderGroups([failedRow, done]);
+		const header = () =>
+		{
+			const label = container.querySelector('[data-group-key="state-blocked"] > [data-sidebar-group-label]');
+			if (!(label instanceof HTMLElement)) throw new Error("no Needs input header");
+			return label;
+		};
+		const where = () =>
+		{
+			const link = [...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].find(
+				(node) => rowTitle(node) === "Failed one",
+			);
+			const decoration = link?.closest("[data-session-actions]")?.querySelector("[data-row-decoration]");
+			return {
+				blocked: rowTitlesIn(container, "state-blocked"),
+				idle: rowTitlesIn(container, "state-done"),
+				mark: decoration?.querySelector("[role=img]")?.getAttribute("aria-label") ?? null,
+				attention: link?.querySelector("[data-row-label] .relative")?.getAttribute("data-attention") ?? null,
+			};
+		};
+		const toggleNeedsInput = () =>
+			fireEvent.click(
+				within(header()).getByRole(
+					"button",
+					{
+						name: /^Needs input/,
+					},
+				),
+			);
+		const push = (row: typeof failedRow) =>
+		{
+			act(() =>
+			{
+				queryClient.setQueryData(
+					recentSessionsInfiniteQueryOptions(undefined, "active").queryKey,
+					{
+						pages: [
+							RecentSessionsResponse.parse(
+								{
+									sessions: [row, done],
+									nextCursor: null,
+								},
+							),
+						],
+						pageParams: [null],
+					},
+				);
+			});
+		};
+		const later = (ms: number) => new Date(Date.parse(failed.mtime) + ms).toISOString();
+
+		const before = where();
+		toggleNeedsInput();
+		const badge = [...header().querySelectorAll("[data-group-toggle] > [data-group-badge] [role=img]")].map(
+			(mark) => mark.getAttribute("aria-label"),
+		);
+		toggleNeedsInput();
+		act(() =>
+		{
+			ack("f1", Date.parse(failed.mtime));
+		});
+		const acked = where();
+		push(
+			{
+				...failedRow,
+				mtime: later(MINUTE),
+			},
+		);
+		const bumped = where();
+		push(
+			{
+				...failedRow,
+				mtime: later(2 * MINUTE),
+				failedAt: later(2 * MINUTE),
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(rowTitlesIn(container, "state-blocked")).toStrictEqual(["Failed one"]);
+		});
+		const refailed = where();
+
+		expect(
+			{
+				before,
+				badge,
+				acked,
+				bumped,
+				refailed,
+			},
+		).toStrictEqual(
+			{
+				before:
+				{
+					blocked: ["Failed one"],
+					idle: ["Completed newest"],
+					mark: "Error",
+					attention: null,
+				},
+				badge: ["Error"],
+				acked:
+				{
+					blocked: [],
+					idle: ["Completed newest", "Failed one"],
+					mark: null,
+					attention: null,
+				},
+				bumped:
+				{
+					blocked: [],
+					idle: ["Completed newest", "Failed one"],
+					mark: null,
+					attention: null,
+				},
+				refailed:
+				{
+					blocked: ["Failed one"],
+					idle: ["Completed newest"],
+					mark: "Error",
+					attention: null,
+				},
+			},
+		);
+	});
+
 	it("draws an unseen error as upstream's warning TriangleAlert in the trailing slot instead of the awaiting dot", async () =>
 	{
 		const rows = [

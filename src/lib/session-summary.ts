@@ -24,6 +24,9 @@ import type {SessionEntry} from "./sessions";
 
 type IndexDb = BetterSQLite3Database<typeof schema>;
 
+/** A turn error older than this no longer marks the session failed (upstream desktop `Mv`, `RN = 6048e5`). */
+const FAILED_ERROR_WINDOW_MS = 604_800_000;
+
 /**
  * Convert an in-memory ActiveSessionEntry into the wire-level payload shape
  * broadcast on `session:started`. Both shapes are already structurally
@@ -98,6 +101,8 @@ export function toSessionSummaryPayload(
 	// A standing permission prompt outlives the active-session sweep: the CLI
 	// writes nothing while it waits, so the session goes quiet but is not done.
 	const awaitingPermission = sessionAwaitingPermission(entry.id, registrySession);
+	const erroredAt =
+		entry.erroredAt !== undefined && now - entry.erroredAt < FAILED_ERROR_WINDOW_MS ? entry.erroredAt : undefined;
 	// Upstream judges every finished turn; ours judges only the turns an unread row could show as waiting.
 	if (unseen && entry.turnEndedAt !== undefined && main.state !== "working")
 	{
@@ -109,7 +114,7 @@ export function toSessionSummaryPayload(
 			bridged: entry.remoteControl === true,
 			pendingInput,
 			awaitingPermission,
-			unseenError: unseen && entry.erroredAt !== undefined,
+			unseenError: unseen && erroredAt !== undefined,
 			liveAgentCount,
 			backgroundTasks: activeSession?.backgroundTasks ?? [],
 			lastSubagentActivityAt: activeSession?.lastSubagentActivityAt ?? null,
@@ -203,11 +208,23 @@ export function toSessionSummaryPayload(
 					processStartedAt: registrySession.startedAt,
 				}),
 		bucket,
-		...(reason === "error" && entry.erroredAt !== undefined
+		...(reason === "error" && erroredAt !== undefined
 			?
 				{
 					unseenError: true,
-					erroredAt: new Date(entry.erroredAt).toISOString(),
+					erroredAt: new Date(erroredAt).toISOString(),
+				}
+			: {}),
+		// Upstream `US`: failed while nothing gates or runs, read or not and whether or not the CLI still runs.
+		...(erroredAt !== undefined &&
+		bucket !== "working" &&
+		main.state !== "working" &&
+		main.state !== "waiting" &&
+		!pendingInput &&
+		!awaitingPermission
+			?
+				{
+					failedAt: new Date(erroredAt).toISOString(),
 				}
 			: {}),
 		liveAgentCount,
@@ -281,6 +298,7 @@ export function buildSessionSummaryPayloadFromDb(
 	db: IndexDb,
 	sessionId: string,
 	activeSessionLookup: (sessionId: string) => ActiveSessionEntry | null = getActiveSessionEntry,
+	options: Pick<SessionSummaryOptions, "now"> = {},
 ): SessionSummaryPayload | null
 {
 	const row = db
@@ -335,6 +353,7 @@ export function buildSessionSummaryPayloadFromDb(
 			unseen: isSessionUnseen(db, sessionId),
 			archived: isSessionArchived(db, sessionId),
 			activeSession: activeSessionLookup(sessionId),
+			...options,
 		},
 	);
 }

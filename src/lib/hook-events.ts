@@ -91,10 +91,12 @@ export interface SessionSummaryPayload
 	processStartedAt?: number;
 	/** Display bucket from `resolveSessionBucket`. */
 	bucket: SessionBucket;
-	/** The bucket's reason is `error` (an unseen errored turn); absent otherwise. */
+	/** The bucket's reason is `error` (an unseen errored turn); absent otherwise. The client widens this to every unacked `failedAt` row (`withFailedError`). */
 	unseenError?: true;
 	/** When the unseen errored turn failed (ISO); present exactly when `unseenError` is. */
 	erroredAt?: string;
+	/** The last main-thread turn ended in an API error within 7 days and nothing has run since (ISO, upstream `ql`); present whether or not it was seen. */
+	failedAt?: string;
 	/** Running subagent nodes (`endedAt === null`) rooted at this session. */
 	liveAgentCount: number;
 	/** Durable viewed state: finished work nobody has looked at yet. */

@@ -554,7 +554,7 @@ describe("useHomeNextSteps", () =>
 			});
 		});
 
-		it("lists nothing once the error is seen", async () =>
+		it("lists nothing once the error is seen, though the sidebar still draws the row failed", async () =>
 		{
 			vi.stubGlobal(
 				"fetch",
@@ -575,6 +575,7 @@ describe("useHomeNextSteps", () =>
 						...listItem("seen"),
 						state: "ended",
 						bucket: "done",
+						failedAt: "1999-12-31T00:00:01.000Z",
 					},
 				]),
 				describeRow,
