@@ -30,6 +30,7 @@ export const SessionMenuItemIdSchema = z.enum([
 	"rename",
 	"copy-link",
 	"fork",
+	"toggle-nested-sessions",
 	"move-to-group",
 	"move-to-custom-group",
 	"ungroup",
@@ -107,6 +108,11 @@ export interface SessionMenuSession
 	transcriptView?: TranscriptViewState;
 	/** This tab draws the session's approval card live (upstream `hasPendingApproval`); hides Mark as completed. */
 	liveApproval?: boolean;
+	/** Family head: the fold state of its nested sessions; enables Hide/Show nested sessions. */
+	nestedSessions?:
+	{
+		hidden: boolean;
+	};
 }
 
 export interface TranscriptViewState
@@ -460,10 +466,10 @@ export function getSessionMenuItems(
 		}
 	}
 	if (surface === "row") actions.push(...readState);
-	// Upstream's title menu reads Rename, Fork, then Copy link in a group of its own; rows keep Copy link before Fork.
+	// Upstream puts Copy link in its own share group after Fork on rows and the title menu.
 	const copyLinkBlock: SessionMenuItem[] = [];
 	if (has("rename")) actions.push(item("rename"));
-	if (has("copyLink")) (surface === "header" ? copyLinkBlock : actions).push(item("copy-link"));
+	if (has("copyLink")) (surface === "header" || surface === "row" ? copyLinkBlock : actions).push(item("copy-link"));
 	if (has("fork"))
 	{
 		actions.push(
@@ -475,6 +481,17 @@ export function getSessionMenuItems(
 						disabled: true,
 						disabledReason: session.forkDisabledReason,
 					},
+		);
+	}
+	// Upstream's `kh` gate: only a family head's row menu ends its edit group with the fold toggle.
+	if (surface === "row" && session.nestedSessions !== undefined)
+	{
+		actions.push(
+			{
+				kind: "item",
+				id: "toggle-nested-sessions",
+				label: session.nestedSessions.hidden ? "Show nested sessions" : "Hide nested sessions",
+			},
 		);
 	}
 

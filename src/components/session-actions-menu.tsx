@@ -36,6 +36,7 @@ import {maybeShowDragPinHint} from "../lib/drag-pin-hint";
 import {pin, readPinState, unpin, usePins, writePinState} from "../lib/pin-store";
 import {assign, createGroup, useSessionGroups} from "../lib/session-group-store";
 import {placePin} from "../lib/pinned-sessions";
+import {familyKey, toggleFamilyCollapsed, useSidebarState} from "../lib/sidebar-store";
 import {hasUnseenWork, markSeen, markUnseen, subscribeUnseenWork} from "../lib/unread-store";
 import {InlineRenameInput} from "./inline-rename-input";
 import {NewGroupDialog} from "./new-group-dialog";
@@ -135,8 +136,9 @@ interface PinnedRowContext
 	onMoved: () => void;
 }
 
-function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | undefined)
+function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | undefined, familyHead: boolean)
 {
+	const {collapsedFamilies} = useSidebarState();
 	const unseen = useHasUnseenWork(session.id);
 	const {data: herdr} = useQuery(herdrPanesQueryOptions);
 	const {data: openIn} = useQuery(sessionOpenInQueryOptions(session.id));
@@ -171,6 +173,13 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
 		},
 		liveApproval,
 	};
+	if (familyHead)
+	{
+		menuSession.nestedSessions =
+		{
+			hidden: collapsedFamilies.includes(familyKey(session.id)),
+		};
+	}
 	if (pinnedRow !== undefined && pinIndex !== -1)
 	{
 		menuSession.pinPosition =
@@ -189,6 +198,10 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
 			prUrl: session.pr?.url ?? null,
 			requestRename,
 			requestNewGroup,
+			toggleNested: () =>
+			{
+				toggleFamilyCollapsed(session.id);
+			},
 			setPinned: (pinned) =>
 			{
 				if (!pinned)
@@ -359,9 +372,17 @@ function MenuEntryList({entries, run}: {entries: SessionMenuEntry[]; run: Sessio
 }
 
 /** Mounted only while a menu is open, so closed rows never query or subscribe. */
-function SessionMenuBody({session, pinnedRow}: {session: SessionListItem; pinnedRow: PinnedRowContext | undefined})
+function SessionMenuBody({
+	session,
+	pinnedRow,
+	familyHead,
+}: {
+	session: SessionListItem;
+	pinnedRow: PinnedRowContext | undefined;
+	familyHead: boolean;
+})
 {
-	const {entries, run} = useSessionMenu(session, pinnedRow);
+	const {entries, run} = useSessionMenu(session, pinnedRow, familyHead);
 	return <MenuEntries entries={entries} run={run} />;
 }
 
@@ -452,10 +473,12 @@ function BulkMenuBody({
 function RowMenuBody({
 	session,
 	pinnedRow,
+	familyHead,
 	requestBulkNewGroup,
 }: {
 	session: SessionListItem;
 	pinnedRow: PinnedRowContext | undefined;
+	familyHead: boolean;
 	requestBulkNewGroup: RequestBulkNewGroup;
 })
 {
@@ -465,7 +488,7 @@ function RowMenuBody({
 	{
 		return <BulkMenuBody ids={bulkIds} selection={selection} requestNewGroup={requestBulkNewGroup} />;
 	}
-	return <SessionMenuBody session={session} pinnedRow={pinnedRow} />;
+	return <SessionMenuBody session={session} pinnedRow={pinnedRow} familyHead={familyHead} />;
 }
 
 const KEBAB_CLASS =
@@ -484,6 +507,7 @@ export function SessionActionsMenu({
 	kebabTabIndex,
 	touchMenu = false,
 	described = false,
+	familyHead = false,
 }: {
 	session: SessionListItem;
 	/** The sidebar Pinned section's display order, when this row is rendered inside it. */
@@ -494,6 +518,8 @@ export function SessionActionsMenu({
 	touchMenu?: boolean;
 	/** The row is two-line (Show ▸ Metadata): CSS centres the kebab and decoration on its title line. */
 	described?: boolean;
+	/** A sidebar fork-family head (upstream `treePlace "head"`): the menu offers Hide/Show nested sessions. */
+	familyHead?: boolean;
 	children: ReactNode;
 	className?: string;
 })
@@ -562,7 +588,14 @@ export function SessionActionsMenu({
 		}),
 		[rename, requestRename, requestNewGroup],
 	);
-	const menuBody = <RowMenuBody session={session} pinnedRow={pinnedRow} requestBulkNewGroup={requestBulkNewGroup} />;
+	const menuBody = (
+		<RowMenuBody
+			session={session}
+			pinnedRow={pinnedRow}
+			familyHead={familyHead}
+			requestBulkNewGroup={requestBulkNewGroup}
+		/>
+	);
 	return (
 		<RowRenameContext.Provider value={rowRename}>
 			<div

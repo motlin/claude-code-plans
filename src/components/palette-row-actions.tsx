@@ -213,6 +213,7 @@ export function PaletteRowActionsCard({
 			case "move-up":
 			case "move-down":
 			case "fork":
+			case "toggle-nested-sessions":
 			case "move-to-group":
 			case "move-to-custom-group":
 			case "ungroup":

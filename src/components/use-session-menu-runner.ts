@@ -39,6 +39,7 @@ export function useSessionMenuRunner({
 	setPinned,
 	movePinned,
 	requestNewGroup,
+	toggleNested,
 	transcriptView,
 }: SessionMenuRunnerOptions): SessionMenuRun
 {
@@ -136,6 +137,9 @@ export function useSessionMenuRunner({
 						},
 					);
 				return;
+			case "toggle-nested-sessions":
+				toggleNested?.();
+				return;
 			case "move-to-custom-group":
 				if (value !== undefined) assign(sessionId, value);
 				return;
@@ -177,6 +181,8 @@ export interface SessionMenuRunnerOptions
 	movePinned?: (delta: -1 | 1) => void;
 	/** Opens the New group dialog for Move to group ▸ New group…. */
 	requestNewGroup?: () => void;
+	/** Hide/Show nested sessions: folds or unfolds a family head's nested rows. */
+	toggleNested?: () => void;
 	/** The session's transcript view, for the header's Transcript view submenu. */
 	transcriptView?: TranscriptViewActions;
 }

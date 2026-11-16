@@ -1515,6 +1515,7 @@ export const sessionMenuItemLabels =
 	rename: "Rename",
 	"copy-link": "Copy link",
 	fork: "Fork",
+	"toggle-nested-sessions": "Hide nested sessions",
 	"move-to-group": "Move to section",
 	"move-to-custom-group": "Custom group",
 	ungroup: "Remove from sections",

@@ -11,7 +11,7 @@ import
 	RouterProvider,
 	useRouterState,
 } from "@tanstack/react-router";
-import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SessionGroups} from "../src/components/sidebar/session-groups";
@@ -20,7 +20,7 @@ import {ToastProvider} from "../src/components/toast";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import type {SessionBucket} from "../src/lib/session-state";
 import {resetClickGuards} from "../src/lib/sidebar-click-guard";
-import {readSidebarState} from "../src/lib/sidebar-store";
+import {readSidebarState, toggleFamilyCollapsed} from "../src/lib/sidebar-store";
 import {installLocalStorage} from "./fake-storage";
 import {rowTitle} from "./sidebar-row-title";
 
@@ -258,6 +258,32 @@ function caret(container: HTMLElement, headId: string): HTMLElement
 function attributes(element: Element, names: readonly string[]): Record<string, string | null>
 {
 	return Object.fromEntries(names.map((name) => [name, element.getAttribute(name)]));
+}
+
+async function flush()
+{
+	await act(async () =>
+	{
+		await new Promise((resolve) =>
+		{
+			setTimeout(resolve, 0);
+		});
+	});
+}
+
+async function rightClickRow(container: HTMLElement, id: string): Promise<HTMLElement>
+{
+	fireEvent.contextMenu(headLink(container, id));
+	await flush();
+	return screen.getByRole("menu");
+}
+
+/** The open menu's items and separators, separators as "---". */
+function menuOutline(menu: HTMLElement): string[]
+{
+	return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((node) =>
+		node.getAttribute("role") === "separator" ? "---" : (node.getAttribute("aria-label") ?? node.textContent),
+	);
 }
 
 const CARET_ATTRIBUTES = ["role", "aria-expanded", "aria-label", "data-row-action", "tabindex"] as const;
@@ -636,6 +662,125 @@ describe("sidebar session families", () =>
 				path: "/",
 			},
 		);
+	});
+
+	it("hides and shows a family from the head row's menu, right after Fork", async () =>
+	{
+		const {container} = await renderGroups(FAMILY);
+
+		const contextMenu = await rightClickRow(container, "h1");
+		const outline = menuOutline(contextMenu);
+		const forkAt = outline.findIndex((label) => label.startsWith("Fork"));
+		expect(outline.slice(forkAt, forkAt + 3)).toStrictEqual(["ForkF", "Hide nested sessions", "---"]);
+
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: "Hide nested sessions",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		expect(
+			{
+				collapsed: readSidebarState().collapsedFamilies,
+				titles: rowTitles(family(container, "h1")),
+				stub: foldedStub(container, "h1").textContent,
+			},
+		).toStrictEqual(
+			{
+				collapsed: ["code:h1"],
+				titles: [],
+				stub: "2 nested sessions·1 unread·1 working",
+			},
+		);
+
+		const kebab = screen.getByRole(
+			"button",
+			{
+				name: "More options for Head one",
+			},
+		);
+		fireEvent.click(kebab);
+		await flush();
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: "Show nested sessions",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		expect(
+			{
+				collapsed: readSidebarState().collapsedFamilies,
+				titles: rowTitles(family(container, "h1")),
+			},
+		).toStrictEqual(
+			{
+				collapsed: [],
+				titles: ["Child one", "Grandchild one"],
+			},
+		);
+		// The head row stays put, so focus returns to the kebab rather than moving to the first child.
+		await waitFor(() =>
+		{
+			expect(document.activeElement).toBe(kebab);
+		});
+	});
+
+	it("offers no nested toggle on nested or flat rows", async () =>
+	{
+		const {container} = await renderGroups(FAMILY);
+
+		const labels: Record<string, string[]> = {};
+		for (const id of ["c1", "s1"])
+		{
+			const menu = await rightClickRow(container, id);
+			labels[id] = menuOutline(menu).filter((label) => label.includes("nested sessions"));
+			fireEvent.keyDown(
+				menu,
+				{
+					key: "Escape",
+				},
+			);
+			await waitFor(() =>
+			{
+				expect(screen.queryByRole("menu")).toBeNull();
+			});
+		}
+		expect(labels).toStrictEqual(
+			{
+				c1: [],
+				s1: [],
+			},
+		);
+	});
+
+	it("updates the open menu's label when the family folds elsewhere", async () =>
+	{
+		const {container} = await renderGroups(FAMILY);
+		await rightClickRow(container, "h1");
+
+		act(() =>
+		{
+			toggleFamilyCollapsed("h1");
+		});
+
+		expect(
+			screen
+				.getAllByRole("menuitem")
+				.map((item) => item.textContent)
+				.filter((label) => label.includes("nested sessions")),
+		).toStrictEqual(["Show nested sessions"]);
 	});
 
 	it("folds only its own family on Alt-click of the caret", async () =>

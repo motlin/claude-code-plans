@@ -86,15 +86,16 @@ describe("getSessionMenuItems", () =>
 			},
 			{
 				kind: "item",
-				id: "copy-link",
-				label: "Copy link",
-				accelerator: "c",
-			},
-			{
-				kind: "item",
 				id: "fork",
 				label: "Fork",
 				accelerator: "f",
+			},
+			SEPARATOR,
+			{
+				kind: "item",
+				id: "copy-link",
+				label: "Copy link",
+				accelerator: "c",
 			},
 			SEPARATOR,
 			{
@@ -104,6 +105,93 @@ describe("getSessionMenuItems", () =>
 				accelerator: "a",
 			},
 		]);
+	});
+
+	it.each([
+		[false, "Hide nested sessions"],
+		[true, "Show nested sessions"],
+	])("ends the row's edit group with the nested toggle after Fork on a family head (hidden: %s)", (hidden, label) =>
+	{
+		expect(
+			getSessionMenuItems(
+				session(
+					{
+						nestedSessions:
+						{
+							hidden,
+						},
+					},
+				),
+				ALL,
+				{
+					surface: "row",
+				},
+			),
+		).toEqual([
+			{
+				kind: "item",
+				id: "pin",
+				label: "Pin",
+				accelerator: "p",
+			},
+			{
+				kind: "item",
+				id: "mark-unread",
+				label: "Mark as unread",
+				accelerator: "u",
+			},
+			{
+				kind: "item",
+				id: "rename",
+				label: "Rename",
+				accelerator: "r",
+			},
+			{
+				kind: "item",
+				id: "fork",
+				label: "Fork",
+				accelerator: "f",
+			},
+			{
+				kind: "item",
+				id: "toggle-nested-sessions",
+				label,
+			},
+			SEPARATOR,
+			{
+				kind: "item",
+				id: "copy-link",
+				label: "Copy link",
+				accelerator: "c",
+			},
+			SEPARATOR,
+			{
+				kind: "item",
+				id: "archive",
+				label: "Archive",
+				accelerator: "a",
+			},
+		]);
+	});
+
+	it.each(["header", "palette", "palette-card"] as const)("keeps the nested toggle off the %s surface", (surface) =>
+	{
+		expect(
+			getSessionMenuItems(
+				session(
+					{
+						nestedSessions:
+						{
+							hidden: false,
+						},
+					},
+				),
+				ALL,
+				{
+					surface,
+				},
+			).filter((entry) => entry.kind === "item" && entry.id === "toggle-nested-sessions"),
+		).toEqual([]);
 	});
 
 	it("offers Mark as read and Unpin for an unread pinned row", () =>
@@ -134,6 +222,7 @@ describe("getSessionMenuItems", () =>
 				label: "Mark as read",
 				accelerator: "u",
 			},
+			SEPARATOR,
 			{
 				kind: "item",
 				id: "copy-link",
@@ -229,6 +318,7 @@ describe("getSessionMenuItems", () =>
 				label: "Pin",
 				accelerator: "p",
 			},
+			SEPARATOR,
 			{
 				kind: "item",
 				id: "copy-link",
@@ -259,6 +349,7 @@ describe("getSessionMenuItems", () =>
 				label: "Pin",
 				accelerator: "p",
 			},
+			SEPARATOR,
 			{
 				kind: "item",
 				id: "copy-link",
@@ -308,7 +399,7 @@ describe("getSessionMenuItems", () =>
 				surface: "row",
 			},
 		).map((item) => (item.kind === "item" ? item.id : "|"));
-		expect(ids).toEqual(["pin", "mark-unread", "rename", "copy-link", "fork", "|", "archive"]);
+		expect(ids).toEqual(["pin", "mark-unread", "rename", "fork", "|", "copy-link", "|", "archive"]);
 	});
 
 	it("puts the live terminal in Open in when a herdr pane is live", () =>
@@ -353,6 +444,7 @@ describe("getSessionMenuItems", () =>
 				label: "Mark as unread",
 				accelerator: "u",
 			},
+			SEPARATOR,
 			{
 				kind: "item",
 				id: "copy-link",
@@ -468,7 +560,7 @@ describe("getSessionMenuItems", () =>
 		).toEqual(
 			{
 				header: ["open-in", "|", "rename", "fork", "|", "copy-link"],
-				row: ["open-in", "|", "pin", "mark-unread", "rename", "copy-link", "fork", "|", "unarchive"],
+				row: ["open-in", "|", "pin", "mark-unread", "rename", "fork", "|", "copy-link", "|", "unarchive"],
 			},
 		);
 	});
@@ -607,6 +699,7 @@ describe("getSessionMenuItems", () =>
 				label: "Mark as unread",
 				accelerator: "u",
 			},
+			SEPARATOR,
 			{
 				kind: "item",
 				id: "copy-link",
@@ -642,8 +735,8 @@ describe("getSessionMenuItems", () =>
 			},
 		).toEqual(
 			{
-				first: ["move-down", "|", "unpin", "mark-unread", "copy-link"],
-				last: ["move-up", "|", "unpin", "mark-unread", "copy-link"],
+				first: ["move-down", "|", "unpin", "mark-unread", "|", "copy-link"],
+				last: ["move-up", "|", "unpin", "mark-unread", "|", "copy-link"],
 			},
 		);
 	});
@@ -680,6 +773,7 @@ describe("getSessionMenuItems", () =>
 				label: "Mark as unread",
 				accelerator: "u",
 			},
+			SEPARATOR,
 			{
 				kind: "item",
 				id: "copy-link",
