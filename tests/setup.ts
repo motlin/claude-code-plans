@@ -107,6 +107,10 @@ if (typeof window !== "undefined")
 		Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
 		localStorage.clear();
 		sessionStorage.clear();
+		// Base UI's modal scroll lock writes overflow onto <html> and <body> on a zero-delay timeout, so a modal a
+		// previous file left opening locks the shared page after its unmount. Start each file with unstyled roots.
+		document.documentElement.removeAttribute("style");
+		document.body.removeAttribute("style");
 	});
 	// A frame a test leaves queued outlives its unmount: Base UI's menus focus their highlighted item in a
 	// requestAnimationFrame, which then lands in a later test and spends a focus() call there. Track pending frames

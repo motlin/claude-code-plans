@@ -48,6 +48,9 @@ import {guardDoubleClicks} from "../../lib/sidebar-click-guard";
 import {revealThrough, withHeads} from "../../lib/sidebar-section-reveal";
 import {clearRevealRow, useRevealRow} from "./reveal-row-store";
 import {familyKey, toggleFamilyCollapsed, toggleSidebarGroup, useSidebarState} from "../../lib/sidebar-store";
+import {splitFoldedFamily, useFoldOpenKeysContext} from "../../lib/family-fold";
+import {usePins} from "../../lib/pin-store";
+import {familyStubLabel, familyStubTally, type FamilyStubTally} from "./family-stub-label";
 import {SessionActionsMenu, SessionRowTitle} from "../session-actions-menu";
 import {SessionHoverCard} from "../session-hover-card";
 import {QUICK_REPLY_HINT} from "../session-hover-card-classes";
@@ -984,81 +987,91 @@ function SessionFamily({
 {
 	const {collapsedFamilies} = useSidebarState();
 	const collapsed = collapsedFamilies.includes(familyKey(head.sessionId));
+	const {pinnedIds} = usePins();
+	const openKeys = useFoldOpenKeysContext();
+	const {kept, hidden} = splitFoldedFamily(
+		nested,
+		{
+			collapsed,
+			pinnedIds,
+			openKeys,
+		},
+	);
 	const ref = useRef<HTMLDivElement>(null);
-	const focusFirstChild = useRef(false);
+	// Upstream `nU` queues focus for the first row the stub hid, not the first listed nested row.
+	const focusAfterUnfold = useRef<string | null>(null);
 
 	useEffect(() =>
 	{
-		if (collapsed || !focusFirstChild.current) return;
-		focusFirstChild.current = false;
-		ref.current?.querySelector<HTMLElement>("[data-family-child] a[data-row-main-button]")?.focus();
+		const id = focusAfterUnfold.current;
+		if (collapsed || id === null) return;
+		focusAfterUnfold.current = null;
+		ref.current
+			?.querySelector<HTMLElement>(
+				`[data-family-child][data-row-key="${CSS.escape(id)}"] a[data-row-main-button]`,
+			)
+			?.focus();
 	}, [collapsed]);
 
 	const titles = new Map([head, ...nested].map((row) => [row.sessionId, row.title]));
 
 	return (
 		<div ref={ref} data-family-head={head.sessionId} className="df-family relative flex flex-col gap-px">
-			{collapsed ? (
+			{kept.map((child) =>
+			{
+				const parentTitle =
+					child.forkedFromSessionId === undefined ? undefined : titles.get(child.forkedFromSessionId);
+				return (
+					<div
+						key={child.sessionId}
+						data-family-child
+						data-row-key={child.sessionId}
+						aria-describedby={child.bucket === "blocked" ? awaitingHintId : undefined}
+						{...dragRowProps?.(child.sessionId)}
+						className="df-drag-shiftable relative pl-5"
+					>
+						<SessionRowLink
+							row={child}
+							selected={child.sessionId === activeItemId}
+							pinnedIds={undefined}
+							envGlyph={envGlyph}
+							place={place}
+							awaitingHintId={awaitingHintId}
+							lineage={parentTitle === undefined ? "Nested session" : `Forked from ${parentTitle}`}
+						/>
+					</div>
+				);
+			})}
+			{hidden.length > 0 && (
 				<div className="pl-5">
 					<FamilyStub
-						nested={nested}
+						tally={familyStubTally(hidden)}
+						someListed={kept.length > 0}
 						onExpand={() =>
 						{
-							focusFirstChild.current = true;
+							focusAfterUnfold.current = hidden[0]?.sessionId ?? null;
 							toggleFamilyCollapsed(head.sessionId);
 						}}
 					/>
 				</div>
-			) : (
-				nested.map((child) =>
-				{
-					const parentTitle =
-						child.forkedFromSessionId === undefined ? undefined : titles.get(child.forkedFromSessionId);
-					return (
-						<div
-							key={child.sessionId}
-							data-family-child
-							data-row-key={child.sessionId}
-							aria-describedby={child.bucket === "blocked" ? awaitingHintId : undefined}
-							{...dragRowProps?.(child.sessionId)}
-							className="df-drag-shiftable relative pl-5"
-						>
-							<SessionRowLink
-								row={child}
-								selected={child.sessionId === activeItemId}
-								pinnedIds={undefined}
-								envGlyph={envGlyph}
-								place={place}
-								awaitingHintId={awaitingHintId}
-								lineage={parentTitle === undefined ? "Nested session" : `Forked from ${parentTitle}`}
-							/>
-						</div>
-					);
-				})
 			)}
 		</div>
 	);
 }
 
-function nestedSessions(count: number): string
+/**
+ * A folded family's stub row (upstream `nU`): the hidden count as a fading label, then
+ * "· {n} failed", "· {n} unread" (accent ink) and "· {n} working" segments, and a trailing error
+ * glyph while any hidden row failed.
+ */
+function FamilyStub({tally, someListed, onExpand}: {tally: FamilyStubTally; someListed: boolean; onExpand: () => void})
 {
-	return `${count} nested session${count === 1 ? "" : "s"}`;
-}
-
-/** A collapsed family's "{n} nested sessions · ● {unread} · {working}" row. */
-function FamilyStub({nested, onExpand}: {nested: readonly SidebarSessionRow[]; onExpand: () => void})
-{
-	const unread = nested.filter((row) => row.session.unseen).length;
-	const working = nested.filter((row) => row.bucket === "working").length;
-	const blocked = nested.filter((row) => row.bucket === "blocked").length;
-	const ariaLabel =
-		blocked > 0
-			? `${nestedSessions(blocked)} ${blocked === 1 ? "needs" : "need"} input`
-			: [
-					nestedSessions(nested.length),
-					...(unread > 0 ? [`${unread} unread`] : []),
-					...(working > 0 ? [`${working} working`] : []),
-				].join(", ");
+	const {sessions, segments, ariaLabel} = familyStubLabel(tally, someListed);
+	const separator = (
+		<span aria-hidden="true" className="px-1.5 text-ink-muted">
+			·
+		</span>
+	);
 
 	return (
 		<button
@@ -1070,20 +1083,38 @@ function FamilyStub({nested, onExpand}: {nested: readonly SidebarSessionRow[]; o
 			className={`${ROW_CLASS} df-family-stub text-[length:var(--sb-group-font)] text-secondary hover:bg-[var(--sb-hover)] hover:text-primary`}
 		>
 			<span className="df-leading-slot" />
-			<span className="min-w-0 truncate">
-				{nestedSessions(nested.length)}
-				{unread > 0 && (
-					<>
-						{" · "}
-						<span
-							aria-hidden="true"
-							className="mr-1 inline-block size-1.5 rounded-full bg-fill-accent align-middle"
-						/>
-						{unread}
-					</>
+			<span className="df-fade-truncate flex items-center whitespace-nowrap">
+				<span data-row-label="" className="min-w-0">
+					<FadeLabel text={sessions} />
+				</span>
+				{segments.failed !== undefined && (
+					<span className="flex shrink-0 items-center">
+						{separator}
+						{segments.failed}
+					</span>
 				)}
-				{working > 0 && ` · ${working}`}
+				{segments.unread !== undefined && (
+					<span className="flex shrink-0 items-center">
+						{separator}
+						<span className="flex items-center gap-1.5 text-upstream-accent">{segments.unread}</span>
+					</span>
+				)}
+				{segments.working !== undefined && (
+					<span className="flex shrink-0 items-center">
+						{separator}
+						{segments.working}
+					</span>
+				)}
 			</span>
+			{tally.failed > 0 && (
+				<span
+					aria-hidden="true"
+					data-row-decoration=""
+					className="me-[calc(var(--sb-row-ctl-inset,calc((var(--sb-row-h)-var(--sb-row-ctl))/2))-var(--sb-row-px))] ms-auto flex size-[var(--sb-row-ctl)] shrink-0 items-center justify-center"
+				>
+					<SessionStateIcon kind="error" label="Something went wrong" live={false} />
+				</span>
+			)}
 		</button>
 	);
 }

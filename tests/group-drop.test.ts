@@ -6,6 +6,7 @@ import
 	groupDropOutcome,
 	groupHeaderZoneId,
 	groupListId,
+	groupLists,
 	type GroupDropGeometry,
 	multiGroupDropOutcome,
 	sectionDragId,
@@ -338,5 +339,103 @@ describe("multiGroupDropOutcome", () =>
 				},
 			),
 		).toStrictEqual(expected);
+	});
+});
+
+describe("groupLists", () =>
+{
+	it("lists a folded family's kept nested rows and leaves its hidden ones out", () =>
+	{
+		const row = (sessionId: string, bucket: "blocked" | "done") => (
+		{
+			sessionId,
+			title: sessionId,
+			bucket,
+			project: null,
+			archived: false,
+			createdAt: 0,
+			lastActivityAt: 0,
+			session: {},
+		});
+		const head = row("h1", "done");
+		const group =
+		{
+			key: "custom-A",
+			label: "A",
+			rows: [head],
+			hiddenCount: 0,
+			revealCount: 0,
+			hiddenAwaiting: false,
+			canShowLess: false,
+			nested: new Map([["h1", [row("c1", "blocked"), row("c2", "done")]]]),
+			pageSize: 20,
+			extraRevealed: 0,
+			sorted: [head],
+			headOf: new Map([
+				["c1", "h1"],
+				["c2", "h1"],
+			]),
+		};
+		const fold =
+		{
+			collapsedFamilies: ["code:h1"],
+			pinnedIds: [],
+			openKeys: new Set<string>(),
+		};
+
+		expect([
+			groupLists(
+				[
+					{
+						id: "A",
+						group,
+						subgroups: null,
+					},
+				],
+				fold,
+			),
+			groupLists(
+				[
+					{
+						id: "A",
+						group,
+						subgroups: null,
+					},
+				],
+				{
+					...fold,
+					collapsedFamilies: [],
+				},
+			),
+		]).toStrictEqual([
+			{
+				A: [
+					{
+						id: "h1",
+						nested: false,
+					},
+					{
+						id: "c1",
+						nested: true,
+					},
+				],
+			},
+			{
+				A: [
+					{
+						id: "h1",
+						nested: false,
+					},
+					{
+						id: "c1",
+						nested: true,
+					},
+					{
+						id: "c2",
+						nested: true,
+					},
+				],
+			},
+		]);
 	});
 });

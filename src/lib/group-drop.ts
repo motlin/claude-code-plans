@@ -1,4 +1,6 @@
 import type {SidebarDropTarget} from "../hooks/use-sidebar-drag";
+import {displayedNested, type FamilyFoldState, type FoldableRow} from "./family-fold";
+import {customGroupIdOfKey, type ManualSectionGroups, type SessionGroupRow} from "./session-groups";
 
 /**
  * Pure drop resolution for dragging sessions onto claude.ai/code-style custom groups
@@ -223,4 +225,30 @@ export function sectionDropOutcome({groupId, target, groupIds}: SectionDropGeome
 		groupId,
 		toIndex,
 	};
+}
+
+/** Each manual section's displayed rows in DOM order: heads, then their families' listed nested rows. */
+export function groupLists<Row extends SessionGroupRow & FoldableRow>(
+	manual: readonly ManualSectionGroups<Row>[],
+	familyFold: FamilyFoldState,
+): Record<string, readonly GroupListRow[]>
+{
+	const lists: Record<string, readonly GroupListRow[]> = {};
+	for (const {group} of manual)
+	{
+		const groupId = customGroupIdOfKey(group.key);
+		if (groupId === null) continue;
+		lists[groupId] = group.rows.flatMap((row) => [
+			{
+				id: row.sessionId,
+				nested: false,
+			},
+			...displayedNested(row.sessionId, group.nested.get(row.sessionId) ?? [], familyFold).map((child) => (
+			{
+				id: child.sessionId,
+				nested: true,
+			})),
+		]);
+	}
+	return lists;
 }

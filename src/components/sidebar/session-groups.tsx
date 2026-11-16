@@ -17,7 +17,7 @@ import
 	groupDropOutcome,
 	groupHeaderZoneId,
 	groupListId,
-	type GroupDropGeometry,
+	groupLists,
 	multiGroupDropOutcome,
 	sectionDragId,
 	sectionDropOutcome,
@@ -28,7 +28,6 @@ import
 import
 {
 	buildSidebarSections,
-	customGroupIdOfKey,
 	DEFAULT_SESSION_LIST_PREFS,
 	EMPTY_LIST_GROUP_LABELS,
 	nextPageCanHoldVisibleRows,
@@ -57,7 +56,8 @@ import
 	sidebarSelectionReducer,
 	visibleSelection,
 } from "../../lib/sidebar-selection";
-import {familyKey, useSidebarState} from "../../lib/sidebar-store";
+import {useSidebarState} from "../../lib/sidebar-store";
+import {displayedNested, type FamilyFoldState, FoldOpenKeysContext, useFoldOpenKeys} from "../../lib/family-fold";
 import {assertNever} from "../../lib/assert-never";
 import {useSettings} from "../settings-context";
 import {useToast} from "../toast-context";
@@ -155,6 +155,15 @@ export function SessionGroups({
 	const [landedAnnouncement, setLandedAnnouncement] = useState("");
 
 	const {pinnedIds, pinnedOrder} = usePins();
+	const foldOpenKeys = useFoldOpenKeys(collapsedFamilies, activeItemId);
+	const familyFold: FamilyFoldState =
+	{
+		collapsedFamilies,
+		pinnedIds,
+		openKeys: foldOpenKeys,
+	};
+	const latestFamilyFold = useRef(familyFold);
+	latestFamilyFold.current = familyFold;
 
 	// A session this tab just answered draws as Working at the click, as upstream's responding row does.
 	const answeredIds = useAnsweredSessionIds();
@@ -211,7 +220,15 @@ export function SessionGroups({
 				const selected = latestSelected.current;
 				if (selected.length > 1 && selected.includes(drop.srcId))
 				{
-					if (applyMultiGroupDrop(selected, drop, latestManual.current, latestSplit.current))
+					if (
+						applyMultiGroupDrop(
+							selected,
+							drop,
+							latestManual.current,
+							latestFamilyFold.current,
+							latestSplit.current,
+						)
+					)
 					{
 						dispatchSelection(
 							{
@@ -221,7 +238,7 @@ export function SessionGroups({
 					}
 					return;
 				}
-				if (applyGroupDrop(drop, latestManual.current, latestSplit.current)) return;
+				if (applyGroupDrop(drop, latestManual.current, latestFamilyFold.current, latestSplit.current)) return;
 				applyPinDrop(drop, () => latestSplit.current, toast, markDragPinHintSeen);
 			},
 			getScrollContainer: () => recentsRef.current?.closest("[data-testid=nav-scroll]") ?? null,
@@ -260,7 +277,7 @@ export function SessionGroups({
 	const displayOrder =
 		split === undefined || built === undefined
 			? []
-			: displayedRowIds(split, built.manual, built.sessions, collapsedSet, new Set(collapsedFamilies));
+			: displayedRowIds(split, built.manual, built.sessions, collapsedSet, familyFold);
 	const startLoad = useLoadMoreFocus(
 		{
 			loadedIds,
@@ -471,124 +488,128 @@ export function SessionGroups({
 	return (
 		// oxlint-disable-next-line react/jsx-no-constructed-context-values -- built after the loading early return, where hooks cannot run, from selection state that changes whenever the rows re-render anyway
 		<SidebarSelectionContext.Provider value={selectionApi}>
-			<div
-				data-sidebar-selecting={selectedIds.length > 0 ? "" : undefined}
-				// Upstream `zu`: a fold caret's click arms a 500ms guard that drops the double-click's second click.
-				onClickCapture={swallowGuardedClick}
-				onDoubleClickCapture={swallowGuardedClick}
-				onMouseDownCapture={swallowGuardedClick}
-				className="contents"
-			>
-				<PinnedSubList
-					rows={split.pinned}
-					expanded={!collapsed.has(PINNED_GROUP_KEY)}
-					activeItemId={activeItemId}
-					dragging={rowDrag && !multiDrag}
-					dropRowHot={drag?.target?.type === "zone" && drag.target.zoneId === PIN_DROP_ZONE}
-					// A multi-row drag cannot pin, so Pinned is no drop target while one is under way.
-					{...(multiDrag
-						? {}
-						:
-							{
-								listRef: listRef(PINNED_LIST),
-								dropRowRef: zoneRef(PIN_DROP_ZONE),
-							})}
-					dragRowProps={rowProps}
-				/>
-				<div data-testid="sidebar-sections" className="df-sortable-section contents" data-gap-after="">
-					{manual.map((section) =>
-					{
-						const view = sectionById.get(section.id);
-						const groupId = section.id;
-						return (
+			<FoldOpenKeysContext.Provider value={foldOpenKeys}>
+				<div
+					data-sidebar-selecting={selectedIds.length > 0 ? "" : undefined}
+					// Upstream `zu`: a fold caret's click arms a 500ms guard that drops the double-click's second click.
+					onClickCapture={swallowGuardedClick}
+					onDoubleClickCapture={swallowGuardedClick}
+					onMouseDownCapture={swallowGuardedClick}
+					className="contents"
+				>
+					<PinnedSubList
+						rows={split.pinned}
+						expanded={!collapsed.has(PINNED_GROUP_KEY)}
+						activeItemId={activeItemId}
+						dragging={rowDrag && !multiDrag}
+						dropRowHot={drag?.target?.type === "zone" && drag.target.zoneId === PIN_DROP_ZONE}
+						// A multi-row drag cannot pin, so Pinned is no drop target while one is under way.
+						{...(multiDrag
+							? {}
+							:
+								{
+									listRef: listRef(PINNED_LIST),
+									dropRowRef: zoneRef(PIN_DROP_ZONE),
+								})}
+						dragRowProps={rowProps}
+					/>
+					<div data-testid="sidebar-sections" className="df-sortable-section contents" data-gap-after="">
+						{manual.map((section) =>
+						{
+							const view = sectionById.get(section.id);
+							const groupId = section.id;
+							return (
+								<GroupSection
+									key={section.group.key}
+									group={section.group}
+									groupBy={prefs.groupBy}
+									subgroups={section.subgroups}
+									collapsedKeys={collapsed}
+									{...(view === undefined
+										? {}
+										:
+											{
+												showMetadata: view.show.metadata,
+											})}
+									expanded={!collapsed.has(section.group.key)}
+									activeItemId={activeItemId}
+									filterSlot={
+										view === undefined ? undefined : (
+											<SectionViewMenu section={view} statusFilter={prefs.statusFilter} />
+										)
+									}
+									onReveal={onReveal}
+									dragRowProps={rowProps}
+									sectionKeys={sectionKeys}
+									headerDragProps={rowProps(sectionDragId(groupId))}
+									headerRef={zoneRef(groupHeaderZoneId(groupId))}
+									dropHot={hotGroupId === groupId}
+									// Inner date or status headings reorder the rows, so slots only make sense in a flat section.
+									{...(sectionDrag || section.subgroups !== null
+										? {}
+										:
+											{
+												rowsRef: listRef(groupListId(groupId)),
+											})}
+								/>
+							);
+						})}
+						{ungroupRow}
+					</div>
+					<div
+						ref={(element) =>
+						{
+							recentsRef.current = element;
+							zoneRef(UNGROUPED_SECTION_ZONE)(element);
+						}}
+						data-testid="sidebar-recents"
+						data-tab-section=""
+						data-recents-list=""
+						data-perf-region="sidebar_recents"
+						className="flex min-h-[120px] shrink-0 grow flex-col"
+					>
+						{groups.map((group, index) => (
 							<GroupSection
-								key={section.group.key}
-								group={section.group}
+								key={group.key}
+								group={group}
 								groupBy={prefs.groupBy}
-								subgroups={section.subgroups}
-								collapsedKeys={collapsed}
-								{...(view === undefined
-									? {}
-									:
-										{
-											showMetadata: view.show.metadata,
-										})}
-								expanded={!collapsed.has(section.group.key)}
+								expanded={!collapsed.has(group.key)}
 								activeItemId={activeItemId}
-								filterSlot={
-									view === undefined ? undefined : (
-										<SectionViewMenu section={view} statusFilter={prefs.statusFilter} />
-									)
-								}
+								filterSlot={filterSlot}
 								onReveal={onReveal}
+								fetchMore={index === groups.length - 1 ? sectionFetchMore : undefined}
 								dragRowProps={rowProps}
 								sectionKeys={sectionKeys}
-								headerDragProps={rowProps(sectionDragId(groupId))}
-								headerRef={zoneRef(groupHeaderZoneId(groupId))}
-								dropHot={hotGroupId === groupId}
-								// Inner date or status headings reorder the rows, so slots only make sense in a flat section.
-								{...(sectionDrag || section.subgroups !== null
-									? {}
-									:
-										{
-											rowsRef: listRef(groupListId(groupId)),
-										})}
 							/>
-						);
-					})}
-					{ungroupRow}
+						))}
+						{loadMoreRowKey !== null && (
+							<LoadMoreSessionsRow
+								rowKey={loadMoreRowKey}
+								loading={isFetchingNextPage}
+								announcement={landedAnnouncement}
+								onLoad={(event) =>
+								{
+									setLandedAnnouncement("");
+									// Upstream `vi`: only the grouped modes reveal landed rows; Date and None page from inside the list.
+									fetchFrom(
+										event,
+										prefs.groupBy === "state" || prefs.groupBy === "project"
+											? revealLanded
+											: undefined,
+									);
+								}}
+							/>
+						)}
+						{groups.length === 0 && (
+							<EmptyGroupSection
+								label={EMPTY_LIST_GROUP_LABELS[prefs.groupBy]}
+								filterSlot={filterSlot}
+								reason={emptyListReason}
+							/>
+						)}
+					</div>
 				</div>
-				<div
-					ref={(element) =>
-					{
-						recentsRef.current = element;
-						zoneRef(UNGROUPED_SECTION_ZONE)(element);
-					}}
-					data-testid="sidebar-recents"
-					data-tab-section=""
-					data-recents-list=""
-					data-perf-region="sidebar_recents"
-					className="flex min-h-[120px] shrink-0 grow flex-col"
-				>
-					{groups.map((group, index) => (
-						<GroupSection
-							key={group.key}
-							group={group}
-							groupBy={prefs.groupBy}
-							expanded={!collapsed.has(group.key)}
-							activeItemId={activeItemId}
-							filterSlot={filterSlot}
-							onReveal={onReveal}
-							fetchMore={index === groups.length - 1 ? sectionFetchMore : undefined}
-							dragRowProps={rowProps}
-							sectionKeys={sectionKeys}
-						/>
-					))}
-					{loadMoreRowKey !== null && (
-						<LoadMoreSessionsRow
-							rowKey={loadMoreRowKey}
-							loading={isFetchingNextPage}
-							announcement={landedAnnouncement}
-							onLoad={(event) =>
-							{
-								setLandedAnnouncement("");
-								// Upstream `vi`: only the grouped modes reveal landed rows; Date and None page from inside the list.
-								fetchFrom(
-									event,
-									prefs.groupBy === "state" || prefs.groupBy === "project" ? revealLanded : undefined,
-								);
-							}}
-						/>
-					)}
-					{groups.length === 0 && (
-						<EmptyGroupSection
-							label={EMPTY_LIST_GROUP_LABELS[prefs.groupBy]}
-							filterSlot={filterSlot}
-							reason={emptyListReason}
-						/>
-					)}
-				</div>
-			</div>
+			</FoldOpenKeysContext.Provider>
 		</SidebarSelectionContext.Provider>
 	);
 }
@@ -605,7 +626,7 @@ function displayedRowIds(
 	manual: readonly ManualSectionGroups<SidebarSessionRow>[],
 	groups: readonly SessionGroup<SidebarSessionRow>[],
 	collapsed: ReadonlySet<string>,
-	collapsedFamilies: ReadonlySet<string>,
+	familyFold: FamilyFoldState,
 ): string[]
 {
 	const pinned = collapsed.has(PINNED_GROUP_KEY) ? [] : split.pinned.map((row) => row.id);
@@ -619,9 +640,9 @@ function displayedRowIds(
 		.flatMap((group) =>
 			group.rows.flatMap((row) => [
 				row.sessionId,
-				...(collapsedFamilies.has(familyKey(row.sessionId))
-					? []
-					: (group.nested.get(row.sessionId) ?? []).map((child) => child.sessionId)),
+				...displayedNested(row.sessionId, group.nested.get(row.sessionId) ?? [], familyFold).map(
+					(child) => child.sessionId,
+				),
 			]),
 		);
 	return [...pinned, ...sections];
@@ -643,31 +664,6 @@ function applySectionDrop(groupId: string, {target}: SidebarDrop): void
 	if (outcome !== null && onto !== undefined) moveSidebarSection(outcome.groupId, sections.indexOf(onto));
 }
 
-/** Each manual section's displayed rows in DOM order, families included. */
-function groupLists(
-	manual: readonly ManualSectionGroups<SidebarSessionRow>[],
-): Record<string, GroupDropGeometry["lists"][string]>
-{
-	const lists: Record<string, GroupDropGeometry["lists"][string]> = {};
-	for (const {group} of manual)
-	{
-		const groupId = customGroupIdOfKey(group.key);
-		if (groupId === null) continue;
-		lists[groupId] = group.rows.flatMap((row) => [
-			{
-				id: row.sessionId,
-				nested: false,
-			},
-			...(group.nested.get(row.sessionId) ?? []).map((child) => (
-			{
-				id: child.sessionId,
-				nested: true,
-			})),
-		]);
-	}
-	return lists;
-}
-
 /**
  * Apply a released multi-row drag: every selected row joins the group it was dropped
  * on (in display order, at the slot) or leaves its group on Remove from … or Recents. Pinned rows
@@ -677,10 +673,11 @@ function applyMultiGroupDrop(
 	srcIds: readonly string[],
 	{target}: SidebarDrop,
 	manual: readonly ManualSectionGroups<SidebarSessionRow>[],
+	familyFold: FamilyFoldState,
 	split: SplitPinned<SidebarSessionRow> | undefined,
 ): boolean
 {
-	const lists = groupLists(manual);
+	const lists = groupLists(manual, familyFold);
 	const {assignments} = readSessionGroupState();
 	const outcome = multiGroupDropOutcome(
 		{
@@ -730,10 +727,11 @@ function applyMultiGroupDrop(
 function applyGroupDrop(
 	{srcId, target}: SidebarDrop,
 	manual: readonly ManualSectionGroups<SidebarSessionRow>[],
+	familyFold: FamilyFoldState,
 	split: SplitPinned<SidebarSessionRow> | undefined,
 ): boolean
 {
-	const lists = groupLists(manual);
+	const lists = groupLists(manual, familyFold);
 	const srcGroupId = readSessionGroupState().assignments[srcId] ?? null;
 	const outcome = groupDropOutcome(
 		{
