@@ -44,7 +44,7 @@ import
 	type SessionListPrefs,
 	truncates,
 } from "../../lib/session-groups";
-import {guardDoubleClicks} from "../../lib/sidebar-click-guard";
+import {guardDoubleClicks, guardRowClicks} from "../../lib/sidebar-click-guard";
 import {revealThrough, withHeads} from "../../lib/sidebar-section-reveal";
 import {clearRevealRow, useRevealRow} from "./reveal-row-store";
 import {familyKey, toggleFamilyCollapsed, toggleSidebarGroup, useSidebarState} from "../../lib/sidebar-store";
@@ -1016,7 +1016,11 @@ function SessionFamily({
 	const titles = new Map([head, ...nested].map((row) => [row.sessionId, row.title]));
 
 	return (
-		<div ref={ref} data-family-head={head.sessionId} className="df-family relative flex flex-col gap-px">
+		<div
+			ref={ref}
+			data-family-head={head.sessionId}
+			className="df-family relative flex flex-col gap-px [--sb-row-indent:calc(var(--sb-icon)+var(--sb-row-gap))]"
+		>
 			{kept.map((child) =>
 			{
 				const parentTitle =
@@ -1043,13 +1047,14 @@ function SessionFamily({
 				);
 			})}
 			{hidden.length > 0 && (
-				<div className="pl-5">
+				// Upstream `Fe`: the stub shifts with a drag like any row but is no drag slot itself.
+				<div data-row-key={`family-stub:${head.sessionId}`} className="df-drag-shiftable relative">
 					<FamilyStub
 						tally={familyStubTally(hidden)}
 						someListed={kept.length > 0}
-						onExpand={() =>
+						onExpand={(focusNext) =>
 						{
-							focusAfterUnfold.current = hidden[0]?.sessionId ?? null;
+							focusAfterUnfold.current = focusNext ? (hidden[0]?.sessionId ?? null) : null;
 							toggleFamilyCollapsed(head.sessionId);
 						}}
 					/>
@@ -1064,7 +1069,16 @@ function SessionFamily({
  * "· {n} failed", "· {n} unread" (accent ink) and "· {n} working" segments, and a trailing error
  * glyph while any hidden row failed.
  */
-function FamilyStub({tally, someListed, onExpand}: {tally: FamilyStubTally; someListed: boolean; onExpand: () => void})
+function FamilyStub({
+	tally,
+	someListed,
+	onExpand,
+}: {
+	tally: FamilyStubTally;
+	someListed: boolean;
+	/** Unfold the family; `focusNext` moves focus to the first row the stub hid. */
+	onExpand: (focusNext: boolean) => void;
+})
 {
 	const {sessions, segments, ariaLabel} = familyStubLabel(tally, someListed);
 	const separator = (
@@ -1079,10 +1093,21 @@ function FamilyStub({tally, someListed, onExpand}: {tally: FamilyStubTally; some
 			{...ROVING_ITEM_PROPS}
 			data-row
 			aria-label={ariaLabel}
-			onClick={onExpand}
-			className={`${ROW_CLASS} df-family-stub text-[length:var(--sb-group-font)] text-secondary hover:bg-[var(--sb-hover)] hover:text-primary`}
+			onClick={(event) =>
+			{
+				// The rest of a double- or triple-click must not refold or open a revealed row.
+				if (event.detail > 1) return;
+				// Upstream `X7(e, true)`: follow with focus only from the keyboard or a focused stub.
+				const stub = event.currentTarget;
+				onExpand(event.detail === 0 || stub.matches(":focus-visible") || document.activeElement === stub);
+				if (event.detail > 0) guardRowClicks(500);
+			}}
+			onPointerDown={(event) =>
+			{
+				event.stopPropagation();
+			}}
+			className="df-family-stub hit-row [--cds-hit-gap-y:7px] hit-row-main flex h-[var(--sb-row-h)] w-full min-w-0 items-center rounded-[var(--sb-radius)] pe-[var(--sb-row-px)] ps-[calc(var(--sb-row-px)+var(--sb-row-indent,0px)+var(--sb-iconless-pad,calc((var(--sb-leading-slot)-var(--sb-icon))/2)))] text-start text-[length:var(--sb-group-font)] text-secondary hover:text-primary hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]"
 		>
-			<span className="df-leading-slot" />
 			<span className="df-fade-truncate flex items-center whitespace-nowrap">
 				<span data-row-label="" className="min-w-0">
 					<FadeLabel text={sessions} />

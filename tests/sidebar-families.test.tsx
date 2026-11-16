@@ -19,6 +19,7 @@ import {DEFAULT_SESSION_LIST_PREFS} from "../src/lib/session-groups";
 import {ToastProvider} from "../src/components/toast";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import type {SessionBucket} from "../src/lib/session-state";
+import {resetClickGuards} from "../src/lib/sidebar-click-guard";
 import {readSidebarState} from "../src/lib/sidebar-store";
 import {installLocalStorage} from "./fake-storage";
 import {rowTitle} from "./sidebar-row-title";
@@ -221,6 +222,13 @@ function family(container: HTMLElement, headId: string): HTMLElement
 	return element;
 }
 
+function foldedStub(container: HTMLElement, headId: string): HTMLElement
+{
+	const element = family(container, headId).querySelector("button.df-family-stub");
+	if (!(element instanceof HTMLElement)) throw new Error(`no stub for ${headId}`);
+	return element;
+}
+
 function rowTitles(element: Element): string[]
 {
 	return [...element.querySelectorAll("a[data-row-main-button] [data-row-label]")].map((label) => rowTitle(label));
@@ -259,6 +267,7 @@ afterEach(cleanup);
 beforeEach(() =>
 {
 	installLocalStorage();
+	resetClickGuards();
 });
 
 describe("sidebar session families", () =>
@@ -769,5 +778,211 @@ describe("sidebar session families", () =>
 		{
 			expect(document.activeElement).toBe(hiddenChild);
 		});
+	});
+	it("styles the family stub like upstream's df-family-stub", async () =>
+	{
+		const {container} = await renderGroups(FAMILY);
+		fireEvent.click(caret(container, "h1"));
+
+		const stub = foldedStub(container, "h1");
+		const classes = stub.className.split(/\s+/);
+		expect(
+			{
+				classes,
+				painted: classes.filter((name) => name.startsWith("hover:bg-") || name.startsWith("focus-visible:bg-")),
+			},
+		).toStrictEqual(
+			{
+				classes: [
+					"df-family-stub",
+					"hit-row",
+					"[--cds-hit-gap-y:7px]",
+					"hit-row-main",
+					"flex",
+					"h-[var(--sb-row-h)]",
+					"w-full",
+					"min-w-0",
+					"items-center",
+					"rounded-[var(--sb-radius)]",
+					"pe-[var(--sb-row-px)]",
+					"ps-[calc(var(--sb-row-px)+var(--sb-row-indent,0px)+var(--sb-iconless-pad,calc((var(--sb-leading-slot)-var(--sb-icon))/2)))]",
+					"text-start",
+					"text-[length:var(--sb-group-font)]",
+					"text-secondary",
+					"hover:text-primary",
+					"hide-focus-ring",
+					"focus-visible:outline-hidden",
+					"focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]",
+				],
+				painted: [],
+			},
+		);
+	});
+
+	it("wraps the stub in upstream's drag-shift row with no indent wrapper or leading slot", async () =>
+	{
+		const {container} = await renderGroups(FAMILY);
+		fireEvent.click(caret(container, "h1"));
+
+		const stub = foldedStub(container, "h1");
+		const nested = family(container, "h1");
+		expect(
+			{
+				wrapper: stub.parentElement?.matches('div[data-row-key="family-stub:h1"].df-drag-shiftable.relative'),
+				indent: nested.classList.contains("[--sb-row-indent:calc(var(--sb-icon)+var(--sb-row-gap))]"),
+				leadingSlot: stub.querySelector(".df-leading-slot"),
+				padded: nested.querySelector(".pl-5 > .df-family-stub"),
+			},
+		).toStrictEqual(
+			{
+				wrapper: true,
+				indent: true,
+				leadingSlot: null,
+				padded: null,
+			},
+		);
+	});
+
+	it("ignores a multi-click on the stub", async () =>
+	{
+		const {container} = await renderGroups(FAMILY);
+		fireEvent.click(caret(container, "h1"));
+		vi.useFakeTimers(
+			{
+				toFake: ["performance"],
+			},
+		);
+		try
+		{
+			fireEvent.click(
+				foldedStub(container, "h1"),
+				{
+					detail: 2,
+				},
+			);
+			expect(readSidebarState().collapsedFamilies).toStrictEqual(["code:h1"]);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
+	});
+
+	it("swallows every mouse click on the list for 500ms after a stub click", async () =>
+	{
+		const {container} = await renderGroups(FAMILY);
+		fireEvent.click(caret(container, "h1"));
+		vi.useFakeTimers(
+			{
+				toFake: ["performance"],
+			},
+		);
+		try
+		{
+			fireEvent.click(
+				foldedStub(container, "h1"),
+				{
+					detail: 1,
+				},
+			);
+			const child = () => headLink(container, "c1");
+			const within = [
+				fireEvent.click(
+					child(),
+					{
+						detail: 1,
+					},
+				),
+				fireEvent.click(
+					child(),
+					{
+						detail: 2,
+					},
+				),
+				fireEvent.mouseDown(child()),
+			];
+			vi.advanceTimersByTime(501);
+			const after = fireEvent.mouseDown(child());
+			expect(
+				{
+					collapsed: readSidebarState().collapsedFamilies,
+					within,
+					after,
+				},
+			).toStrictEqual(
+				{
+					collapsed: [],
+					within: [false, false, false],
+					after: true,
+				},
+			);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
+	});
+
+	it("focuses the first child after a mouse click only when the stub held focus", async () =>
+	{
+		const {container} = await renderGroups(FAMILY);
+		fireEvent.click(caret(container, "h1"));
+		vi.useFakeTimers(
+			{
+				toFake: ["performance"],
+			},
+		);
+		try
+		{
+			document.body.focus();
+			fireEvent.click(
+				foldedStub(container, "h1"),
+				{
+					detail: 1,
+				},
+			);
+			await waitFor(() =>
+			{
+				expect(readSidebarState().collapsedFamilies).toStrictEqual([]);
+			});
+			const unfocused = document.activeElement;
+
+			// The stub's click guard covers the list for 500ms, so wait it out before refolding.
+			vi.advanceTimersByTime(501);
+			fireEvent.click(caret(container, "h1"));
+			const stub = foldedStub(container, "h1");
+			stub.focus();
+			fireEvent.click(
+				stub,
+				{
+					detail: 1,
+				},
+			);
+			await waitFor(() =>
+			{
+				expect(document.activeElement).toBe(headLink(container, "c1"));
+			});
+			expect(unfocused).toBe(document.body);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
+	});
+
+	it("keeps a press on the stub from reaching the list's pointerdown handlers", async () =>
+	{
+		const {container} = await renderGroups(FAMILY);
+		fireEvent.click(caret(container, "h1"));
+		const presses: EventTarget[] = [];
+		const listener = (event: Event) =>
+		{
+			if (event.target !== null) presses.push(event.target);
+		};
+		document.addEventListener("pointerdown", listener);
+		fireEvent.pointerDown(foldedStub(container, "h1"));
+		fireEvent.pointerDown(headLink(container, "h1"));
+		document.removeEventListener("pointerdown", listener);
+		expect(presses).toStrictEqual([headLink(container, "h1")]);
 	});
 });
