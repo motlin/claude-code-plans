@@ -649,6 +649,7 @@ const thinkingDisplayChoices =
 const streamCutCauseChoices =
 {
 	stream_suspended: true,
+	stale_connection: true,
 } satisfies Record<z.infer<typeof StreamCutCauseSchema>, true>;
 
 /** Not consumed yet — `madeBy` (who produced the message) on assistant records is only validated. */

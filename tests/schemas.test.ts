@@ -3711,6 +3711,12 @@ describe("JsonlRecordSchema observed 2026-09 transcript fields", () =>
 		};
 
 		expect(JsonlRecordSchema.parse(record)).toStrictEqual(record);
+		const staleConnection =
+		{
+			...record,
+			streamCutCause: "stale_connection",
+		};
+		expect(JsonlRecordSchema.parse(staleConnection)).toStrictEqual(staleConnection);
 	});
 });
 

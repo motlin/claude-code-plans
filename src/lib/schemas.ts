@@ -713,8 +713,8 @@ export const MadeBySchema = z.enum(["model"]);
 // The prompt-cache TTL the CLI asked for on the request that produced an assistant message.
 export const PromptCacheTtlSchema = z.enum(["5m", "1h"]);
 
-// Why the CLI cut an assistant response stream short (`stream_suspended`: the computer slept mid-response).
-export const StreamCutCauseSchema = z.enum(["stream_suspended"]);
+// Why the CLI cut an assistant response stream short (`stream_suspended`: the computer slept mid-response; `stale_connection`: the connection went stale).
+export const StreamCutCauseSchema = z.enum(["stream_suspended", "stale_connection"]);
 
 export const AssistantRecordSchema = z
 	.object(
