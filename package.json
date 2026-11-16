@@ -77,7 +77,7 @@
 		"@types/node": "^26.6.6",
 		"@types/react": "^19.3.0",
 		"@types/react-dom": "^19.3.0",
-		"@vitejs/plugin-react": "^6.2.1",
+		"@vitejs/plugin-react": "^6.3.0",
 		"agentation": "^3.1.2",
 		"crossws": "0.4.17",
 		"eslint-plugin-storybook": "^10.6.6",
