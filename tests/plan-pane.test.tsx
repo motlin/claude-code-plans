@@ -217,7 +217,7 @@ describe("SessionPlanPane", () =>
 				todos: [
 					["doneRebase", "completed"],
 					["in progressResolve conflicts", "in_progress"],
-					["Push", "pending"],
+					["not donePush", "pending"],
 				],
 			},
 		);
@@ -262,7 +262,7 @@ describe("SessionPlanPane", () =>
 		).toStrictEqual(
 			{
 				headings: ["Tasks"],
-				todos: ["Rebase"],
+				todos: ["not doneRebase"],
 				empty: null,
 				hint: null,
 			},

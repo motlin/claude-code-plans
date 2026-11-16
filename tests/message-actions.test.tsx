@@ -106,6 +106,29 @@ describe("AssistantMessageActions", () =>
 		);
 	});
 
+	it("keeps the bar, its reveal button, time and copy status out of in-app Find, as upstream's omitted wrapper does", () =>
+	{
+		const {container} = render(
+			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
+		);
+
+		expect(
+			{
+				bar: bar(container).closest("[data-find-omitted]") !== null,
+				reveal: showActions(container).closest("[data-find-omitted]") !== null,
+				time: container.querySelector("time")?.closest("[data-find-omitted]") !== null,
+				status: container.querySelector('[role="status"]')?.outerHTML,
+			},
+		).toStrictEqual(
+			{
+				bar: true,
+				reveal: true,
+				time: true,
+				status: '<span role="status" class="sr-only select-none" data-find-omitted=""></span>',
+			},
+		);
+	});
+
 	it("shows on hover and focus-within with muted buttons that turn primary on hover", () =>
 	{
 		const {container} = render(

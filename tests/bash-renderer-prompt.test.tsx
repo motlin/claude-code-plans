@@ -2,7 +2,7 @@
 
 import {cleanup, render} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
-import {BashRenderer} from "../src/components/tool-renderers/bash-renderer";
+import {BashRenderer, HighlightedCommand} from "../src/components/tool-renderers/bash-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 
 const NBSP = String.fromCharCode(160);
@@ -93,6 +93,28 @@ describe("BashRenderer command prompt", () =>
 				commandText: "git status",
 			},
 		);
+	});
+
+	it("hides the prompt glyph from screen readers and in-app Find, with upstream's > for powershell", () =>
+	{
+		const prompt = (language?: string) =>
+		{
+			const {container} = render(
+				language === undefined ? (
+					<HighlightedCommand command="ls" />
+				) : (
+					<HighlightedCommand command="ls" language={language} />
+				),
+			);
+			const html = container.querySelector(".flex > span.select-none")?.outerHTML;
+			cleanup();
+			return html;
+		};
+
+		expect([prompt(), prompt("powershell")]).toStrictEqual([
+			'<span aria-hidden="true" data-find-omitted="" class="select-none text-secondary">$&nbsp;</span>',
+			'<span aria-hidden="true" data-find-omitted="" class="select-none text-secondary">&gt;&nbsp;</span>',
+		]);
 	});
 
 	it("copies the command and output without the shell prompt", () =>

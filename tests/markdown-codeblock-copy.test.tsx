@@ -26,6 +26,10 @@ describe("fenced code block copy button markup", () =>
 				railFollowsPre: html.includes(
 					'</code></pre><div class="markdown-code-copy-rail"><div class="markdown-code-copy">',
 				),
+				statusesAfterButton:
+					html.match(
+						/<\/button><span role="status" data-find-omitted="" class="sr-only select-none"><\/span><\/div><\/div>/g,
+					)?.length ?? 0,
 			},
 		).toStrictEqual(
 			{
@@ -34,6 +38,7 @@ describe("fenced code block copy button markup", () =>
 				strips: 2,
 				buttons: 2,
 				railFollowsPre: true,
+				statusesAfterButton: 2,
 			},
 		);
 	});
@@ -225,6 +230,28 @@ describe("fenced code block copy button behaviour", () =>
 		fireEvent.click(container.querySelector("[data-copy-code]")!);
 
 		expect(writeText.mock.calls).toStrictEqual([["const x = 1;\n"]]);
+	});
+
+	it("announces Copied in the block's find-omitted status, clearing it with the check glyph", async () =>
+	{
+		vi.useFakeTimers();
+		try
+		{
+			const {container} = renderWithClipboard(FENCE);
+			const status = () => container.querySelector('.markdown-code-copy [role="status"]')?.textContent;
+			const before = status();
+
+			fireEvent.click(container.querySelector("[data-copy-code]")!);
+			await vi.advanceTimersByTimeAsync(0);
+			const copied = status();
+			await vi.advanceTimersByTimeAsync(1500);
+
+			expect([before, copied, status()]).toStrictEqual(["", "Copied", ""]);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
 	});
 
 	it("copies the code of the block whose button was clicked", () =>

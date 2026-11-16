@@ -1425,7 +1425,7 @@ describe("assistant display-span actions", () =>
 			{
 				content: Array.from(
 					view.container.querySelectorAll(
-						'[data-tool-row] > [role="button"], [data-tool-row] > button, [data-answered-question] > div, p',
+						'[data-tool-row] > [role="button"], [data-tool-row] > button, [data-answered-question] > div, p:not(.sr-only)',
 					),
 					(element) => element.textContent,
 				),

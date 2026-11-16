@@ -21,7 +21,7 @@ function call(name: string, input: Record<string, unknown>): ClientToolCall
 
 describe("TaskChecklistRenderer", () =>
 {
-	it("draws upstream's checklist: a 16px status slot, inline markdown, done struck through, in progress spinning", () =>
+	it("draws upstream's checklist: a find-omitted 16px status slot, inline markdown, done struck through, in progress spinning", () =>
 	{
 		const {container} = render(
 			<TaskChecklistRenderer
@@ -60,6 +60,8 @@ describe("TaskChecklistRenderer", () =>
 						?.split(" ")
 						.filter((name) => name === "running-spinner" || name.startsWith("text-") || name === "lucide")
 						.join(" "),
+					slotOmitted: item.firstElementChild?.hasAttribute("data-find-omitted"),
+					status: item.firstElementChild?.querySelector(".sr-only")?.outerHTML,
 					text: item.textContent,
 					markdown: item.querySelector("strong, code")?.tagName ?? null,
 				})),
@@ -71,19 +73,25 @@ describe("TaskChecklistRenderer", () =>
 					{
 						className: "flex items-start gap-1 line-through decoration-1 text-secondary",
 						icon: "lucide text-primary",
+						slotOmitted: true,
+						status: '<span class="sr-only select-none">done</span>',
 						text: "doneUpdate docs",
 						markdown: "STRONG",
 					},
 					{
 						className: "flex items-start gap-1 text-primary",
 						icon: "running-spinner",
+						slotOmitted: true,
+						status: '<span class="sr-only select-none">in progress</span>',
 						text: "in progressFix login",
 						markdown: "CODE",
 					},
 					{
 						className: "flex items-start gap-1 text-primary",
 						icon: "lucide text-ink-muted",
-						text: "Write tests",
+						slotOmitted: true,
+						status: '<span class="sr-only select-none">not done</span>',
+						text: "not doneWrite tests",
 						markdown: null,
 					},
 				],
@@ -113,7 +121,7 @@ describe("TaskChecklistRenderer", () =>
 			},
 		).toStrictEqual(
 			{
-				created: "Audit",
+				created: "not doneAudit",
 				listed: "",
 			},
 		);

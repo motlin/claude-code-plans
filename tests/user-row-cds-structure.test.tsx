@@ -309,7 +309,7 @@ describe("user row scope and heading", () =>
 			},
 		]);
 		const scope = container.querySelector("[data-user-scope]");
-		const heading = scope?.parentElement?.querySelector(":scope > h2");
+		const heading = scope?.parentElement?.querySelector(":scope > h3");
 		expect(
 			{
 				scope: scope?.getAttribute("class"),

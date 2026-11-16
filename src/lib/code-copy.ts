@@ -24,13 +24,16 @@ export function handleCodeCopyClick(event: MouseEvent<HTMLElement>): void
 	const pre = button.closest(`.${CODEBLOCK_CLASS}`)?.querySelector("pre");
 	if (!pre) return;
 
+	const status = button.parentElement?.querySelector('[role="status"]');
 	void writeClipboardText(pre.textContent).then((copied) =>
 	{
 		if (!copied) return;
 		button.innerHTML = CHECK_ICON_SVG;
+		if (status) status.textContent = "Copied";
 		setTimeout(() =>
 		{
 			button.innerHTML = COPY_ICON_SVG;
+			if (status) status.textContent = "";
 		}, COPIED_FEEDBACK_MS);
 	});
 }

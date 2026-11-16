@@ -47,11 +47,14 @@ function McpCliBashRenderer({
 // The prompt is a select-none gutter beside the command column, so copying the
 // rendered text yields the bare command and wrapped lines stay left-aligned
 // under the command rather than under the `$`.
-function CommandRow({children}: {children: ReactNode})
+/** Upstream `Rd`: the prompt glyph, `>` for powershell and `$` otherwise, hidden from screen readers and in-app Find. */
+function CommandRow({children, language}: {children: ReactNode; language: string})
 {
 	return (
 		<div className="flex">
-			<span className="select-none text-secondary">$&nbsp;</span>
+			<span aria-hidden="true" data-find-omitted="" className="select-none text-secondary">
+				{language === "powershell" ? ">" : "$"}&nbsp;
+			</span>
 			<div className="min-w-0 flex-1 whitespace-pre-wrap">{children}</div>
 		</div>
 	);
@@ -63,11 +66,11 @@ export function HighlightedCommand({command, language = "shellscript"}: {command
 
 	if (!tokens)
 	{
-		return <CommandRow>{command}</CommandRow>;
+		return <CommandRow language={language}>{command}</CommandRow>;
 	}
 
 	return (
-		<CommandRow>
+		<CommandRow language={language}>
 			{tokens.map((lineTokens: ThemedToken[], lineIndex: number) => (
 				<span key={lineIndex}>
 					{lineIndex > 0 && "\n"}

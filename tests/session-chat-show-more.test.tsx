@@ -110,6 +110,7 @@ function toggles(container: HTMLElement):
 {
 	text: string | null;
 	expanded: string | null;
+	findOmitted: boolean;
 }[]
 {
 	return within(container)
@@ -123,6 +124,7 @@ function toggles(container: HTMLElement):
 		{
 			text: button.textContent,
 			expanded: button.getAttribute("aria-expanded"),
+			findOmitted: button.hasAttribute("data-find-omitted"),
 		}));
 }
 
@@ -156,18 +158,21 @@ describe("SessionChat long-bubble Show more toggle", () =>
 					{
 						text: "Show more",
 						expanded: "false",
+						findOmitted: true,
 					},
 				],
 				expanded: [
 					{
 						text: "Show less",
 						expanded: "true",
+						findOmitted: true,
 					},
 				],
 				recollapsed: [
 					{
 						text: "Show more",
 						expanded: "false",
+						findOmitted: true,
 					},
 				],
 				className:

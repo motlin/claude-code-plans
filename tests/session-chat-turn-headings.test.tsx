@@ -85,24 +85,25 @@ function renderRecords(records: unknown[], showCompactSummaries = true): HTMLEle
 }
 
 /**
- * The screen-reader heading opening every `group/msg` turn wrapper, as
- * `[className, text]` pairs. A keyed user row's `[data-user-scope]` wrapper takes its
+ * The screen-reader heading opening every `group/msg` turn wrapper, as its `outerHTML`. A keyed user row's `[data-user-scope]` wrapper takes its
  * heading from the enclosing `[data-transcript-row]`, as upstream's does. A wrapper whose
  * first element child is not a heading contributes `null`, so a missing heading fails loudly.
  */
-function turnHeadings(container: HTMLElement): (readonly [string, string] | null)[]
+function turnHeadings(container: HTMLElement): (string | null)[]
 {
 	return Array.from(container.querySelectorAll("[class*='group/msg']")).map((wrapper) =>
 	{
 		const first = (wrapper.hasAttribute("data-user-scope") ? wrapper.parentElement : wrapper)?.firstElementChild;
 		if (!(first instanceof HTMLHeadingElement)) return null;
-		return [first.className, first.textContent] as const;
+		return first.outerHTML;
 	});
 }
 
-function heading(text: string): readonly [string, string]
+/** Upstream Code's turn heading: an h3 (`turnHeadingLevel: 3`), find-omitted; the assistant one also carries `data-transcript-words`. */
+function heading(text: string): string
 {
-	return ["sr-only select-none", text] as const;
+	const words = text.startsWith("You said") ? "" : 'data-transcript-words="" ';
+	return `<h3 ${words}data-find-omitted="" class="sr-only select-none">${text}</h3>`;
 }
 
 const USER_TEXT =
@@ -256,7 +257,7 @@ describe("SessionChat turn headings", () =>
 					heading: within(container).getByRole(
 						"heading",
 						{
-							level: 2,
+							level: 3,
 						},
 					).textContent,
 					name: reveal.getAttribute("aria-label"),

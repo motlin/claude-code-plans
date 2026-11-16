@@ -12,7 +12,7 @@ function StatusIcon({status}: {status: string})
 		return (
 			<>
 				<Check aria-hidden="true" className="size-4 text-primary" />
-				<span className="sr-only">done</span>
+				<span className="sr-only select-none">done</span>
 			</>
 		);
 	}
@@ -21,11 +21,16 @@ function StatusIcon({status}: {status: string})
 		return (
 			<>
 				<span aria-hidden="true" data-running-spinner="" className="running-spinner inline-flex size-4" />
-				<span className="sr-only">in progress</span>
+				<span className="sr-only select-none">in progress</span>
 			</>
 		);
 	}
-	return <CircleDashed aria-hidden="true" className="size-4 text-ink-muted" />;
+	return (
+		<>
+			<CircleDashed aria-hidden="true" className="size-4 text-ink-muted" />
+			<span className="sr-only select-none">not done</span>
+		</>
+	);
 }
 
 /** One checklist row: a status (`pending`, `in_progress` or `completed`; anything else reads as pending) and its markdown. */
@@ -51,7 +56,7 @@ export function TodoChecklist({items}: {items: readonly TodoChecklistItem[]})
 					data-todo-status={item.status}
 					className={`flex items-start gap-1 ${item.status === "completed" ? "line-through decoration-1 text-secondary" : "text-primary"}`}
 				>
-					<span className="flex h-[1lh] w-4 shrink-0 items-center justify-center">
+					<span data-find-omitted="" className="flex h-[1lh] w-4 shrink-0 items-center justify-center">
 						<StatusIcon status={item.status} />
 					</span>
 					<div className="min-w-0 flex-1">

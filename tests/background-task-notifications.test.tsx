@@ -318,7 +318,7 @@ function noticeChildren(container: HTMLElement):
 
 function userTurnCount(container: HTMLElement): number
 {
-	return [...container.querySelectorAll("h2")].filter((heading) => heading.textContent.startsWith("You said")).length;
+	return [...container.querySelectorAll("h3")].filter((heading) => heading.textContent.startsWith("You said")).length;
 }
 
 describe("parseTaskNotification", () =>

@@ -229,7 +229,10 @@ export const CODEBLOCK_COPY_ATTR = "data-copy-code";
 
 const COPY_BUTTON = `<button type="button" ${CODEBLOCK_COPY_ATTR} aria-label="Copy code" data-tooltip="Copy code">${COPY_ICON_SVG}</button>`;
 
-const COPY_STRIP = `<div class="${CODEBLOCK_COPY_RAIL_CLASS}"><div class="${CODEBLOCK_COPY_CLASS}">${COPY_BUTTON}</div></div>`;
+/** Upstream c5071af19's code-block copy status, which the copy handler fills with "Copied". */
+const COPY_STATUS = `<span role="status" data-find-omitted="" class="sr-only select-none"></span>`;
+
+const COPY_STRIP = `<div class="${CODEBLOCK_COPY_RAIL_CLASS}"><div class="${CODEBLOCK_COPY_CLASS}">${COPY_BUTTON}${COPY_STATUS}</div></div>`;
 
 /** The fence's "Reveal N secrets" toggle (upstream cb557955f `D`), handled by {@link handleSecretRevealClick}. */
 export const SECRET_REVEAL_ATTR = "data-reveal-secrets";

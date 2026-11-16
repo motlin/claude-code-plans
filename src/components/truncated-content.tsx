@@ -30,6 +30,7 @@ export function TruncatedContent({children}: {children: React.ReactNode})
 				<button
 					type="button"
 					aria-expanded={expanded}
+					data-find-omitted=""
 					onClick={() =>
 					{
 						setExpanded((value) => !value);

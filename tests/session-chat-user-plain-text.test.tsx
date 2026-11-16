@@ -616,7 +616,7 @@ describe("SessionChat user row DOM structure (upstream [data-take-back-entry] > 
 					"data-transcript-row": "",
 					class: "mt-6 compact:mt-5 [&>[data-turn-key]]:!my-0 [&>[data-reply-scope]>[data-turn-key]]:!my-0 [&:has(>[data-reserves-actions-gap]:not(:empty))]:pb-md [&:has(>[data-reply-scope]>[data-reserves-actions-gap]:not(:empty))]:pb-md",
 				},
-				rowChildren: ["H2", "DIV"],
+				rowChildren: ["H3", "DIV"],
 				scope: true,
 				messageAttrs:
 				{
@@ -734,7 +734,7 @@ describe("SessionChat carded user turns reserve the actions gap (upstream div[da
 		expect(
 			{
 				...cardedTree(container),
-				heading: container.querySelector("[data-transcript-row] > h2")?.textContent ?? null,
+				heading: container.querySelector("[data-transcript-row] > h3")?.textContent ?? null,
 				command: container.querySelector("[data-user-trailing] > *")?.textContent.includes("echo hi") ?? null,
 				...copyToolbars(container),
 			},
@@ -742,7 +742,7 @@ describe("SessionChat carded user turns reserve the actions gap (upstream div[da
 			{
 				entries: ["user-bash-1"],
 				row: ROW,
-				rowChildren: ["H2", "DIV"],
+				rowChildren: ["H3", "DIV"],
 				strip: STRIP,
 				stripChildren: 1,
 				heading: "You said: echo hi",
@@ -778,7 +778,7 @@ describe("SessionChat carded user turns reserve the actions gap (upstream div[da
 			{
 				entries: ["user-handback-1"],
 				row: ROW,
-				rowChildren: ["H2", "DIV"],
+				rowChildren: ["H3", "DIV"],
 				strip: STRIP,
 				stripChildren: 1,
 				card: true,

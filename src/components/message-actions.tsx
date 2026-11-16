@@ -256,7 +256,7 @@ function CopyAction({
 					<Copy aria-hidden="true" className={ICON_CLASS} />
 				)}
 			</ActionButton>
-			<span role="status" className="sr-only">
+			<span role="status" className="sr-only select-none" data-find-omitted="">
 				{copied ? "Copied" : ""}
 			</span>
 		</>
@@ -448,7 +448,14 @@ function ActionBar({
 
 	return (
 		<>
-			<button type="button" className="sr-only" aria-label={label} onFocus={reveal} onClick={reveal} />
+			<button
+				type="button"
+				className="sr-only"
+				aria-label={label}
+				data-find-omitted=""
+				onFocus={reveal}
+				onClick={reveal}
+			/>
 			<div
 				ref={(element) =>
 				{
@@ -457,6 +464,7 @@ function ActionBar({
 				}}
 				data-message-actions
 				data-cds="MessageActions"
+				data-find-omitted=""
 				data-reveal="fade"
 				role="toolbar"
 				aria-label="Message actions"

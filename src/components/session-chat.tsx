@@ -1277,13 +1277,24 @@ const USER_ROW_GAP_CLASS = "pb-[var(--chat-user-row-gap)] empty:pb-0";
  * heading quoting the turn ("You said: ..." / "Claude responded: ..."), giving
  * screen readers a heading list to navigate the transcript turn by turn. It is
  * hidden from sight and from text selection, so copying a turn never picks it up.
+ * Code's config sets `turnHeadingLevel: 3`; the marker keeps it out of in-app Find and
+ * the roving announcement, and the assistant one carries `data-transcript-words`.
  */
 function TurnHeading({speaker, text}: {speaker: "user" | "assistant"; text: string})
 {
 	return (
-		<h2 data-find-omitted="" className="sr-only select-none">
+		<h3
+			{...(speaker === "assistant"
+				?
+					{
+						"data-transcript-words": "",
+					}
+				: {})}
+			data-find-omitted=""
+			className="sr-only select-none"
+		>
 			{messageHeading(speaker, text)}
-		</h2>
+		</h3>
 	);
 }
 
@@ -4243,6 +4254,7 @@ function VirtualizedSessionEntries({
 	const managesTileGeometry = geometryReady !== undefined;
 	const pendingGeometry = useRef<Map<string, number> | null>(null);
 	const listRef = useRef<HTMLDivElement>(null);
+	const feedHintId = useId();
 	const scrollerRef = useRef<Element | null>(null);
 	const expansionStore = useProvidedContext(ExpansionStoreContext, "ExpansionStoreContext");
 	const [restoration] = useState(() =>
@@ -4852,6 +4864,7 @@ function VirtualizedSessionEntries({
 				ref={listRef}
 				role="feed"
 				aria-label="Chat messages"
+				aria-describedby={feedHintId}
 				data-testid="virtualized-transcript"
 				// Upstream's feedKeyboardNav scroll margins (on its scroller; the feed matches the same articles).
 				className="[&_[role=article]]:[scroll-margin-top:calc(max(var(--epitaxy-top-fade-height,0px),var(--fade-top,0px))+8px)] [&_[role=article]]:[scroll-margin-bottom:calc(max(var(--epitaxy-bottom-fade-height,0px)-var(--epitaxy-foot-reserve,0px),0px)+8px)]"
@@ -4861,7 +4874,9 @@ function VirtualizedSessionEntries({
 						reusableRef.current = false;
 				}}
 			>
-				<div className="sr-only">Use the up and down arrow keys to move between messages</div>
+				<p id={feedHintId} className="sr-only select-none" data-find-omitted="">
+					Use the up and down arrow keys to move between messages.
+				</p>
 				<div
 					aria-hidden="true"
 					data-transcript-spacer="before"

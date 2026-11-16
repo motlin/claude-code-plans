@@ -959,7 +959,7 @@ describe("SessionChat task calls", () =>
 			{
 				before,
 				rows: grouped.querySelectorAll(".divide-y > [data-tool-row]").length,
-				headings: grouped.querySelectorAll("h3").length,
+				headings: grouped.querySelectorAll("h3:not([data-find-omitted])").length,
 			},
 		).toStrictEqual(
 			{

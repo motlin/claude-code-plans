@@ -164,13 +164,27 @@ describe("SessionChat turn articles", () =>
 		]);
 	});
 
-	it("explains the arrow-key navigation once for screen readers", () =>
+	it("explains the arrow-key navigation once for screen readers, describing the feed and skipped by find", () =>
 	{
 		const container = renderRecords([userRecord(1), assistantRecord(1)]);
 		const hints = Array.from(container.querySelectorAll(".sr-only"))
-			.map((element) => element.textContent)
-			.filter((text) => text.includes("arrow keys"));
-		expect(hints).toStrictEqual(["Use the up and down arrow keys to move between messages"]);
+			.filter((element) => element.textContent.includes("arrow keys"))
+			.map((element) => element.outerHTML.replace(/ id="[^"]*"/, ""));
+		const feed = container.querySelector('[role="feed"]');
+		const described = document.getElementById(feed?.getAttribute("aria-describedby") ?? "");
+		expect(
+			{
+				hints,
+				describedIsHint: described?.textContent.includes("arrow keys") === true,
+			},
+		).toStrictEqual(
+			{
+				hints: [
+					'<p class="sr-only select-none" data-find-omitted="">Use the up and down arrow keys to move between messages.</p>',
+				],
+				describedIsHint: true,
+			},
+		);
 	});
 
 	it("moves focus to the previous and next article with ArrowUp and ArrowDown", () =>

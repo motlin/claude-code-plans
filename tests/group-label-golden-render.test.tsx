@@ -390,7 +390,10 @@ describe("local command", () =>
 			/>,
 		).container;
 		expect(
-			Array.from(container.querySelectorAll("[data-testid=transcript-row] h2"), (heading) => heading.textContent),
+			Array.from(
+				container.querySelectorAll("[data-testid=transcript-row] h3[data-find-omitted]"),
+				(heading) => heading.textContent,
+			),
 		).toStrictEqual(["You said: /model", "You said"]);
 	});
 });
@@ -427,7 +430,7 @@ describe("agent completion row placement", () =>
 			(row) =>
 				row.querySelector("[data-task-event-row]")?.textContent ??
 				(row.querySelector(".user-message-bubble") === null
-					? (row.querySelector("h2")?.textContent.slice(0, 40) ?? "")
+					? (row.querySelector("h3[data-find-omitted]")?.textContent.slice(0, 40) ?? "")
 					: "user"),
 		);
 	};
