@@ -37,6 +37,7 @@ import {DisabledReason} from "../ui/disabled-reason";
 import {CDS_BUTTON_DISABLED, CDS_GHOST_PAINT_DISABLED, CDS_ICON_ONLY_DISABLED} from "../ui/cds-button-disabled";
 import {IndicatorSlot, Pulse} from "../ui/pulse";
 import type {DiffFileMark} from "../../lib/diff-file-marks";
+import {type DiffFileFacts, headerNotes} from "./diff-file-notes";
 import {ContextMenu, ContextMenuTrigger, Menu, MenuContent, MenuTrigger} from "../ui/menu";
 import {createMenuHandle, type MenuHandle} from "../ui/menu-handle";
 import {Tooltip} from "../ui/tooltip";
@@ -86,6 +87,8 @@ export interface DiffFileProps
 	expandUnchanged?: boolean | undefined;
 	/** Called after each render of the diff, as upstream's CodeView rechecks a pending scroll anchor (`xn`). */
 	onRendered?: (() => void) | undefined;
+	/** The file list's status and notes for the header (added/deleted ink, mode change). */
+	facts?: DiffFileFacts | undefined;
 }
 
 /** One diff line: its number on the old (`deletions`) or new (`additions`) side. */
@@ -176,7 +179,18 @@ function splitPath(path: string):
 	};
 }
 
-export interface DiffFileHeaderProps
+/** Upstream `Es`. */
+const NOTE_CLASS = "min-w-0 shrink-[9999] truncate text-body text-muted-as-secondary";
+
+/** Upstream `xs`/`Ss`: only the name takes the added/deleted ink. */
+function nameInk(status: DiffFileFacts["status"]): string
+{
+	if (status === "added") return "text-success";
+	if (status === "deleted") return "text-danger";
+	return "text-secondary";
+}
+
+export interface DiffFileHeaderProps extends DiffFileFacts
 {
 	path: string;
 	prevPath?: string | undefined;
@@ -195,6 +209,8 @@ export interface DiffFileHeaderProps
 	showMenuButton?: boolean | undefined;
 	/** The file's viewed mark (upstream `Bs`): adds the Viewed check and, when stale, the changed-since label. */
 	mark?: DiffFileMark | undefined;
+	/** A bodyless file (upstream `of` with no `hasBody`): aria-disabled, never toggles. */
+	disabled?: boolean | undefined;
 }
 
 const OPEN_FILE_BUTTON_CLASS =
@@ -393,32 +409,46 @@ function DiffFileHeaderRow({
 	menu,
 	showMenuButton = false,
 	mark,
+	disabled = false,
+	...facts
 }: DiffFileHeaderProps)
 {
 	const {name, dir} = splitPath(path);
 	const menuButton = showMenuButton && menu !== undefined;
 	const cluster = menuButton || mark !== undefined;
 	const stale = mark?.status === "stale";
-	const stats = (
+	// Upstream `ws` renders nothing at 0/0, so a binary or mode-only file shows only its note.
+	const stats = (additions > 0 || deletions > 0) && (
 		<>
 			<span className="text-diff-added">+{additions}</span>
 			<span className="text-diff-removed">−{deletions}</span>
 		</>
 	);
-	const Chevron = collapsed ? ChevronRight : ChevronDown;
+	const Chevron = collapsed || disabled ? ChevronRight : ChevronDown;
 	const content = (
 		<>
 			<button
 				type="button"
-				aria-expanded={!collapsed}
-				onClick={onToggle}
-				className="flex h-8 w-full shrink-0 cursor-pointer select-none items-center gap-[4px] bg-surface-2 px-3 text-left font-sans hover:bg-fill-ghost-hover"
+				{...(disabled
+					?
+						{
+							"aria-disabled": true,
+						}
+					:
+						{
+							"aria-expanded": !collapsed,
+							onClick: onToggle,
+						})}
+				className="flex h-8 w-full shrink-0 cursor-pointer select-none items-center gap-[4px] bg-surface-2 px-3 text-left font-sans not-aria-disabled:hover:bg-fill-ghost-hover aria-disabled:cursor-default"
 			>
-				<span aria-hidden="true" className="flex size-4 shrink-0 items-center justify-center text-ink-muted">
+				<span
+					aria-hidden="true"
+					className={`flex size-4 shrink-0 items-center justify-center text-ink-muted${disabled ? " opacity-40" : ""}`}
+				>
 					<Chevron className="size-3.5" />
 				</span>
 				<LazyFileTypeIcon fileName={name} size="xs" className="text-ink-muted" />
-				<span className="flex min-w-0 text-body text-secondary">
+				<span className={`flex min-w-0 text-body ${nameInk(facts.status)}`}>
 					<span
 						dir="ltr"
 						title={stale ? `${path} (changed since you viewed it)` : undefined}
@@ -436,18 +466,29 @@ function DiffFileHeaderRow({
 						</span>
 					</span>
 				)}
+				{headerNotes(facts).map((note) => (
+					<span key={note.key} className={note.srOnly ? "sr-only" : NOTE_CLASS}>
+						{note.row}
+					</span>
+				))}
 				{stale ? (
 					// Upstream `go` (`ks`): the label wraps away inside the one-line clip when there's no room for it.
 					<span className="flex h-[1lh] min-w-min grow shrink-[1e12] flex-row-reverse flex-wrap items-center justify-end gap-[4px] overflow-clip text-body">
 						<span className="grid max-w-max min-w-0 grow basis-[8ch] grid-cols-[minmax(0,max-content)] text-muted-as-secondary">
 							<span className="truncate">{VIEWED_STALE}</span>
 						</span>
-						<span className="order-first ms-auto flex shrink-0 items-center gap-[4px] tabular-nums">
-							{stats}
-						</span>
+						{stats && (
+							<span className="order-first ms-auto flex shrink-0 items-center gap-[4px] tabular-nums">
+								{stats}
+							</span>
+						)}
 					</span>
 				) : (
-					<span className="ml-auto flex shrink-0 items-center gap-0.5 text-body tabular-nums">{stats}</span>
+					stats && (
+						<span className="ml-auto flex shrink-0 items-center gap-0.5 text-body tabular-nums">
+							{stats}
+						</span>
+					)
 				)}
 				{/* Upstream `go`: one w-control spacer per overlaid action, so the stats never slide under them. */}
 				{onOpenFile && (
@@ -537,6 +578,7 @@ export function DiffFile({
 	onLoaderGaveUp,
 	expandUnchanged = false,
 	onRendered,
+	facts,
 }: DiffFileProps)
 {
 	const fileDiff = useMemo(() => getSingularPatch(patch), [patch]);
@@ -743,6 +785,7 @@ export function DiffFile({
 							menu={headerMenu}
 							showMenuButton={headerMenuButton}
 							mark={mark}
+							{...facts}
 						/>
 					);
 				}}

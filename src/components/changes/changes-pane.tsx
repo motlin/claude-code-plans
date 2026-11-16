@@ -94,6 +94,7 @@ import {type DiffCommentTarget, openDiffCommentDraft, useDiffComments} from "../
 import {detectLanguage} from "../../lib/diff-utils";
 import {DiffContextMenu} from "./diff-context-menu";
 import {DiffFile, type DiffFileAnnotation, DiffFileHeader, DiffFileMenuHost, type DiffLineRange} from "./diff-file";
+import type {DiffFileFacts} from "./diff-file-notes";
 import {DiffFileMenuItems, type WholeFileState} from "./diff-file-menu";
 import {type FileSides, commentsNeedWholeFile, lineInHunks, wholeFileState} from "./diff-file-lines";
 import {type LineAnchor, findLineAnchor, restoreLineAnchor, stickyHeaderOffset} from "./diff-line-anchor";
@@ -586,6 +587,36 @@ interface WholeFileProps
 	onPatch: (patch: string) => void;
 }
 
+const HUNK_LINE = /^@@/m;
+
+/**
+ * The header notes a file's list entry and patch imply. Upstream `Ji`: a parsed patch with no hunks despite non-zero
+ * counts is too large to show; a whitespace-only file never is (its folded patch is null upstream).
+ */
+function fileFacts(file: SessionDiffFile, patch: string | null): DiffFileFacts
+{
+	const whitespaceOnly = file.whitespaceOnly === true;
+	const tooLarge =
+		!file.binary &&
+		!whitespaceOnly &&
+		patch !== null &&
+		!HUNK_LINE.test(patch) &&
+		file.additions + file.deletions > 0;
+	return {
+		status: file.status,
+		binary: file.binary,
+		tooLarge,
+		whitespaceOnly,
+		modeChange: file.modeChange,
+	};
+}
+
+/** Upstream `of`'s `hasBody`: binary, whitespace-only, mode-only and too-large files have nothing to expand. */
+function isBodyless(file: SessionDiffFile, patch: string | null): boolean
+{
+	return file.binary || file.whitespaceOnly === true || (patch !== null && !HUNK_LINE.test(patch));
+}
+
 function wholeFileDiffProps(whole: WholeFileProps, patch: string)
 {
 	const load = whole.loadFileSides;
@@ -649,11 +680,32 @@ function LazyDiffFile({
 			wholeFileOffered: whole.offered,
 		},
 	);
+	const fetched = patch ?? null;
+	if (fetched !== null && isBodyless(file, fetched))
+	{
+		return (
+			<DiffFileHeader
+				path={file.path}
+				prevPath={file.oldPath}
+				additions={file.additions}
+				deletions={file.deletions}
+				collapsed
+				disabled
+				onToggle={noop}
+				onOpenFile={onOpenFile}
+				menu={headerMenu}
+				showMenuButton={menuButton}
+				mark={mark}
+				{...fileFacts(file, fetched)}
+			/>
+		);
+	}
 	if (!collapsed && patch)
 	{
 		return (
 			<DiffFile
 				patch={patch}
+				facts={fileFacts(file, patch)}
 				{...wholeFileDiffProps(whole, patch)}
 				{...view}
 				collapsed={collapsed}
@@ -698,6 +750,7 @@ function LazyDiffFile({
 				menu={headerMenu}
 				showMenuButton={menuButton}
 				mark={mark}
+				{...fileFacts(file, null)}
 			/>
 			{!collapsed && (
 				<p className="px-3 py-2 text-footnote text-ink-muted">
@@ -740,11 +793,12 @@ function ChangesFile({
 			wholeFileOffered: whole.offered,
 		},
 	);
-	if (file.patch !== null && !file.binary)
+	if (file.patch !== null && !isBodyless(file, file.patch))
 	{
 		return (
 			<DiffFile
 				patch={file.patch}
+				facts={fileFacts(file, file.patch)}
 				{...wholeFileDiffProps(whole, file.patch)}
 				{...view}
 				collapsed={collapsed}
@@ -773,7 +827,7 @@ function ChangesFile({
 			/>
 		);
 	}
-	if (!file.binary && fetchContext !== undefined)
+	if (file.patch === null && !isBodyless(file, null) && fetchContext !== undefined)
 	{
 		return (
 			<LazyDiffFile
@@ -798,13 +852,13 @@ function ChangesFile({
 			additions={file.additions}
 			deletions={file.deletions}
 			collapsed
-			onToggle={() =>
-			{
-			}}
+			disabled
+			onToggle={noop}
 			onOpenFile={onOpenFile}
 			menu={headerMenu}
 			showMenuButton={menuButton}
 			mark={mark}
+			{...fileFacts(file, file.patch)}
 		/>
 	);
 }

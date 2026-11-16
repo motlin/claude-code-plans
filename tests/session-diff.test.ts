@@ -1,4 +1,4 @@
-import {mkdtempSync, rmSync, symlinkSync, writeFileSync} from "node:fs";
+import {chmodSync, mkdtempSync, rmSync, symlinkSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
@@ -367,11 +367,98 @@ describe("session diff service over a real repository", () =>
 				binary: false,
 			},
 		]);
+		// Upstream folds whitespace client-side (`Gi`) and keeps the file listed with its unfolded counts.
 		expect(hidden).toStrictEqual(
 			{
 				kind: "ok",
 				patch: "",
-				files: [],
+				files: [
+					{
+						path: "keep.txt",
+						status: "modified",
+						additions: 1,
+						deletions: 1,
+						binary: false,
+						whitespaceOnly: true,
+						patch: "",
+					},
+				],
+			},
+		);
+	});
+
+	it("keeps whitespace-only files in the unfolded order beside real edits under hideWhitespace", async () =>
+	{
+		write("dirty.txt", "dirty\n");
+		write("keep.txt", "one\ntwo  \nthree\n");
+
+		const hidden = await buildScopeDiff(
+			repositoryDirectory,
+			{
+				kind: "uncommitted",
+			},
+			{
+				hideWhitespace: true,
+			},
+		);
+		if (hidden.kind !== "ok") throw new Error(`unexpected ${hidden.kind}`);
+
+		expect(summarize(hidden.files)).toStrictEqual([
+			{
+				path: "dirty.txt",
+				status: "modified",
+				additions: 1,
+				deletions: 1,
+				binary: false,
+			},
+			{
+				path: "keep.txt",
+				status: "modified",
+				additions: 1,
+				deletions: 1,
+				binary: false,
+				whitespaceOnly: true,
+			},
+		]);
+	});
+
+	it("records a mode change from old mode / new mode (upstream `$i`)", async () =>
+	{
+		write("run.sh", "echo hi\n");
+		git("add", "run.sh");
+		git("commit", "--message", "Add run.sh.");
+		chmodSync(join(repositoryDirectory, "run.sh"), 0o755);
+		git("update-index", "--chmod=+x", "run.sh");
+		git("commit", "--message", "Make run.sh executable.");
+		const sha = git("rev-parse", "HEAD");
+
+		const result = await buildScopeDiff(
+			repositoryDirectory,
+			{
+				kind: "commit",
+				sha,
+			},
+		);
+
+		expect(result).toStrictEqual(
+			{
+				kind: "ok",
+				patch: "diff --git a/run.sh b/run.sh\nold mode 100644\nnew mode 100755\n",
+				files: [
+					{
+						path: "run.sh",
+						status: "modified",
+						additions: 0,
+						deletions: 0,
+						binary: false,
+						modeChange:
+						{
+							previous: "100644",
+							next: "100755",
+						},
+						patch: "diff --git a/run.sh b/run.sh\nold mode 100644\nnew mode 100755\n",
+					},
+				],
 			},
 		);
 	});
@@ -1103,6 +1190,56 @@ describe("parseDiffFiles", () =>
 				deletions: 0,
 				binary: false,
 				patch: emptyDeleted,
+			},
+		]);
+	});
+
+	it("reads a mode change only when old mode and new mode both appear before the first hunk and differ", () =>
+	{
+		const cleared = [
+			"diff --git a/run.sh b/run.sh",
+			"old mode 100755",
+			"new mode 100644",
+			"index 1111111..2222222",
+			"--- a/run.sh",
+			"+++ b/run.sh",
+			"@@ -1 +1 @@",
+			"-old mode 1",
+			"+new mode 2",
+			"",
+		].join("\n");
+		const plain = [
+			"diff --git a/a.txt b/a.txt",
+			"index 1111111..2222222 100644",
+			"--- a/a.txt",
+			"+++ b/a.txt",
+			"@@ -1 +1 @@",
+			"-x",
+			"+y",
+			"",
+		].join("\n");
+
+		expect(parseDiffFiles(cleared + plain)).toStrictEqual([
+			{
+				path: "run.sh",
+				status: "modified",
+				additions: 1,
+				deletions: 1,
+				binary: false,
+				modeChange:
+				{
+					previous: "100755",
+					next: "100644",
+				},
+				patch: cleared,
+			},
+			{
+				path: "a.txt",
+				status: "modified",
+				additions: 1,
+				deletions: 1,
+				binary: false,
+				patch: plain,
 			},
 		]);
 	});

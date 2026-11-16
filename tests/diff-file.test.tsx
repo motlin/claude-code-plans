@@ -1778,3 +1778,224 @@ describe("DiffFileHeader Viewed check (upstream c44d00c7f Mo/jo/go)", () =>
 		);
 	});
 });
+
+describe("DiffFileHeader notes and ink (upstream c44d00c7f Bs/Vs/xs/Ss/Js)", () =>
+{
+	const NOTE_CLASS = "min-w-0 shrink-[9999] truncate text-body text-muted-as-secondary";
+
+	function renderHeader(props: Partial<Parameters<typeof DiffFileHeader>[0]> = {})
+	{
+		const onToggle = vi.fn<() => void>();
+		const view = render(
+			<DiffFileHeader
+				path="src/a.png"
+				additions={0}
+				deletions={0}
+				collapsed={false}
+				onToggle={onToggle}
+				{...props}
+			/>,
+		);
+		const button = view.container.querySelector("[data-diff-file-header] > button");
+		if (!(button instanceof HTMLElement)) throw new Error("no header button");
+		return {
+			onToggle,
+			button,
+		};
+	}
+
+	function nameSpan(button: HTMLElement): Element | null
+	{
+		return button.querySelector('[dir="ltr"]')?.parentElement ?? null;
+	}
+
+	function notes(button: HTMLElement): [string, string][]
+	{
+		return [
+			...button.querySelectorAll("span.sr-only, span.shrink-\\[9999\\].truncate.text-muted-as-secondary"),
+		].map((note) => [note.className, note.textContent]);
+	}
+
+	it("inks an added file's name green and adds the sr-only New file note after it", () =>
+	{
+		const {button} = renderHeader(
+			{
+				status: "added",
+			},
+		);
+
+		expect(
+			{
+				name: nameSpan(button)?.className,
+				next: nameSpan(button)?.nextElementSibling?.outerHTML,
+			},
+		).toStrictEqual(
+			{
+				name: "flex min-w-0 text-body text-success",
+				next: '<span class="sr-only">New file</span>',
+			},
+		);
+	});
+
+	it("inks a deleted file red with an sr-only Deleted file note, and leaves a modified one secondary", () =>
+	{
+		const deleted = renderHeader(
+			{
+				status: "deleted",
+			},
+		);
+		const deletedState =
+		{
+			name: nameSpan(deleted.button)?.className,
+			notes: notes(deleted.button),
+		};
+		cleanup();
+		const modified = renderHeader(
+			{
+				status: "modified",
+			},
+		);
+
+		expect([
+			deletedState,
+			{
+				name: nameSpan(modified.button)?.className,
+				notes: notes(modified.button),
+			},
+		]).toStrictEqual([
+			{
+				name: "flex min-w-0 text-body text-danger",
+				notes: [["sr-only", "Deleted file"]],
+			},
+			{
+				name: "flex min-w-0 text-body text-secondary",
+				notes: [],
+			},
+		]);
+	});
+
+	it("labels binary, too large, whitespace-only and mode changes, ignoring other mode pairs", () =>
+	{
+		const cases: Partial<Parameters<typeof DiffFileHeader>[0]>[] = [
+			{
+				binary: true,
+			},
+			{
+				tooLarge: true,
+			},
+			{
+				whitespaceOnly: true,
+			},
+			{
+				modeChange:
+				{
+					previous: "100644",
+					next: "100755",
+				},
+			},
+			{
+				modeChange:
+				{
+					previous: "100755",
+					next: "100644",
+				},
+			},
+			{
+				modeChange:
+				{
+					previous: "100644",
+					next: "120000",
+				},
+			},
+		];
+
+		const labels = cases.map((props) =>
+		{
+			const {button} = renderHeader(props);
+			const found = notes(button);
+			cleanup();
+			return found;
+		});
+
+		expect(labels).toStrictEqual([
+			[[NOTE_CLASS, "Binary file"]],
+			[[NOTE_CLASS, "Too large to show"]],
+			[[NOTE_CLASS, "Whitespace only"]],
+			[[NOTE_CLASS, "Made executable"]],
+			[[NOTE_CLASS, "No longer executable"]],
+			[],
+		]);
+	});
+
+	it("orders the notes after Renamed from and before the stats", () =>
+	{
+		const {button} = renderHeader(
+			{
+				status: "added",
+				prevPath: "src/old.png",
+				binary: true,
+				additions: 1,
+				modeChange:
+				{
+					previous: "100644",
+					next: "100755",
+				},
+			},
+		);
+
+		expect([...button.children].slice(3).map((child) => child.textContent)).toStrictEqual([
+			"Renamed from src/old.png",
+			"New file",
+			"Binary file",
+			"Made executable",
+			"+1−0",
+		]);
+	});
+
+	it("shows no stats at 0/0, like upstream `ws`", () =>
+	{
+		const {button} = renderHeader(
+			{
+				binary: true,
+			},
+		);
+
+		expect(button.textContent).toBe("a.pngsrcBinary file");
+	});
+
+	it("disables a bodyless header: aria-disabled, no aria-expanded, faded right chevron, no toggle", () =>
+	{
+		const {button, onToggle} = renderHeader(
+			{
+				binary: true,
+				disabled: true,
+			},
+		);
+		fireEvent.click(button);
+		const chevron = button.firstElementChild;
+
+		expect(
+			{
+				disabled: button.getAttribute("aria-disabled"),
+				expanded: button.hasAttribute("aria-expanded"),
+				cursor: button.classList.contains("aria-disabled:cursor-default"),
+				bareHover: button.classList.contains("hover:bg-fill-ghost-hover"),
+				gatedHover: button.classList.contains("not-aria-disabled:hover:bg-fill-ghost-hover"),
+				faded: chevron?.classList.contains("opacity-40"),
+				rightChevron: chevron?.querySelector("svg")?.classList.contains("lucide-chevron-right"),
+				toggles: onToggle.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				disabled: "true",
+				expanded: false,
+				cursor: true,
+				bareHover: false,
+				gatedHover: true,
+				faded: true,
+				rightChevron: true,
+				toggles: 0,
+			},
+		);
+	});
+});

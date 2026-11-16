@@ -594,6 +594,160 @@ describe("ChangesPaneView", () =>
 		);
 	});
 
+	describe("bodyless file headers (upstream c44d00c7f of, Vs, Ji)", () =>
+	{
+		function headerState(path: string)
+		{
+			const root = document.querySelector(`[data-diff-file-header="${path}"]`);
+			const button = root?.querySelector(":scope > button");
+			if (!(button instanceof HTMLElement)) throw new Error(`No header for ${path}`);
+			return {
+				text: button.textContent,
+				name: button.querySelector('[dir="ltr"]')?.parentElement?.className,
+				disabled: button.getAttribute("aria-disabled"),
+				expanded: button.getAttribute("aria-expanded"),
+				body: root?.closest("[data-cds=FileDiff]") !== null,
+			};
+		}
+
+		it("shows a binary file as a disabled header with its notes and no +0 −0", () =>
+		{
+			renderPane([
+				{
+					...LOGO_FILE,
+					patchLineCount: 4,
+					patch: "diff --git a/assets/logo.png b/assets/logo.png\nnew file mode 100644\nindex 0000000..7777777\nBinary files /dev/null and b/assets/logo.png differ\n",
+				},
+			]);
+
+			expect(headerState("assets/logo.png")).toStrictEqual(
+				{
+					text: "logo.pngassetsNew fileBinary file",
+					name: "flex min-w-0 text-body text-success",
+					disabled: "true",
+					expanded: null,
+					body: false,
+				},
+			);
+		});
+
+		it("shows a mode-only file as a disabled Made executable header with no diff body", () =>
+		{
+			renderPane([
+				{
+					path: "run.sh",
+					status: "modified",
+					additions: 0,
+					deletions: 0,
+					binary: false,
+					modeChange:
+					{
+						previous: "100644",
+						next: "100755",
+					},
+					patchLineCount: 3,
+					patch: "diff --git a/run.sh b/run.sh\nold mode 100644\nnew mode 100755\n",
+				},
+			]);
+
+			expect(
+				{
+					header: headerState("run.sh"),
+					containers: document.querySelectorAll("diffs-container").length,
+				},
+			).toStrictEqual(
+				{
+					header:
+					{
+						text: "run.shMade executable",
+						name: "flex min-w-0 text-body text-secondary",
+						disabled: "true",
+						expanded: null,
+						body: false,
+					},
+					containers: 0,
+				},
+			);
+		});
+
+		it("keeps a whitespace-only file's unfolded counts beside a disabled Whitespace only header", () =>
+		{
+			renderPane([
+				{
+					path: "ws.txt",
+					status: "modified",
+					additions: 1,
+					deletions: 1,
+					binary: false,
+					whitespaceOnly: true,
+					patchLineCount: 0,
+					patch: "",
+				},
+			]);
+
+			expect(headerState("ws.txt")).toStrictEqual(
+				{
+					text: "ws.txtWhitespace only+1−1",
+					name: "flex min-w-0 text-body text-secondary",
+					disabled: "true",
+					expanded: null,
+					body: false,
+				},
+			);
+		});
+
+		it("says Too large to show for a patch with no hunks despite non-zero counts", () =>
+		{
+			renderPane([
+				{
+					path: "big.txt",
+					status: "modified",
+					additions: 3,
+					deletions: 2,
+					binary: false,
+					patchLineCount: 2,
+					patch: "diff --git a/big.txt b/big.txt\nindex 1111111..2222222 100644\n",
+				},
+			]);
+
+			expect(headerState("big.txt")).toStrictEqual(
+				{
+					text: "big.txtToo large to show+3−2",
+					name: "flex min-w-0 text-body text-secondary",
+					disabled: "true",
+					expanded: null,
+					body: false,
+				},
+			);
+		});
+
+		it("adds the mode note to a file that also has hunks, keeping it expandable", () =>
+		{
+			renderPane([
+				{
+					...GREET_FILE,
+					modeChange:
+					{
+						previous: "100755",
+						next: "100644",
+					},
+				},
+			]);
+
+			expect(
+				{
+					text: headerButton("src/greet.ts").textContent,
+					disabled: headerButton("src/greet.ts").getAttribute("aria-disabled"),
+				},
+			).toStrictEqual(
+				{
+					text: "greet.tssrcNo longer executable+2−1",
+					disabled: null,
+				},
+			);
+		});
+	});
+
 	it("counts files whose diff content is unavailable", () =>
 	{
 		renderPane([GREET_FILE, LOGO_FILE]);

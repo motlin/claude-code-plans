@@ -114,6 +114,13 @@ export interface ScopeDiffOptions
 
 export type DiffFileStatus = "added" | "deleted" | "modified" | "renamed";
 
+/** The file's mode before and after, from the `old mode` / `new mode` header lines (upstream `$i`). */
+export interface DiffModeChange
+{
+	previous: string;
+	next: string;
+}
+
 export interface DiffFile
 {
 	path: string;
@@ -122,6 +129,9 @@ export interface DiffFile
 	additions: number;
 	deletions: number;
 	binary: boolean;
+	modeChange?: DiffModeChange;
+	/** Hide whitespace folded every hunk away; the counts stay unfolded, like upstream. */
+	whitespaceOnly?: boolean;
 	patch: string;
 }
 
@@ -297,39 +307,128 @@ export async function buildScopeDiff(
 		return {
 			kind: "no-git",
 		};
-	const whitespace = options.hideWhitespace === true ? ["-w"] : [];
+	const hideWhitespace = options.hideWhitespace === true;
+	const whitespace = hideWhitespace ? ["-w"] : [];
 
-	let parts: string[];
+	// The tracked part of the scope: the git subcommand with its leading options, then its revisions.
+	let command: string[];
+	let revisions: string[];
+	let includeUntracked: boolean;
 	switch (scope.kind)
 	{
 		case "branch":
 		{
 			const {mergeBase} = await resolveBaseInRepository(runGit, cwd);
-			const tracked = await runGit(cwd, ["diff", ...STABLE_DIFF_ARGUMENTS, ...whitespace, mergeBase, "--"]);
-			parts = [tracked, ...(await untrackedDiffs(runGit, cwd, whitespace))];
+			command = ["diff"];
+			revisions = [mergeBase];
+			includeUntracked = true;
 			break;
 		}
 		case "uncommitted":
 		{
-			const tracked = await runGit(cwd, ["diff", ...STABLE_DIFF_ARGUMENTS, ...whitespace, "HEAD", "--"]);
-			parts = [tracked, ...(await untrackedDiffs(runGit, cwd, whitespace))];
+			command = ["diff"];
+			revisions = ["HEAD"];
+			includeUntracked = true;
 			break;
 		}
 		case "commit":
 		{
-			parts = [
-				await runGit(cwd, ["show", "--format=", ...STABLE_DIFF_ARGUMENTS, ...whitespace, scope.sha, "--"]),
-			];
+			command = ["show", "--format="];
+			revisions = [scope.sha];
+			includeUntracked = false;
 			break;
 		}
 	}
 
+	const tracked = await runGit(cwd, [...command, ...STABLE_DIFF_ARGUMENTS, ...whitespace, ...revisions, "--"]);
+	const parts = includeUntracked ? [tracked, ...(await untrackedDiffs(runGit, cwd, whitespace))] : [tracked];
 	const patch = parts.join("");
+	const files = parseDiffFiles(patch);
+	if (!hideWhitespace)
+		return {
+			kind: "ok",
+			patch,
+			files,
+		};
+
+	const unfolded = parseNumstat(
+		await runGit(cwd, [...command, ...STABLE_DIFF_ARGUMENTS, "--numstat", "-z", ...revisions, "--"]),
+	);
 	return {
 		kind: "ok",
 		patch,
-		files: parseDiffFiles(patch),
+		files: keepWhitespaceOnlyFiles(files, unfolded),
 	};
+}
+
+interface NumstatEntry
+{
+	path: string;
+	additions: number;
+	deletions: number;
+}
+
+/** Parse `--numstat -z` output: `A\tD\tpath\0`, or `A\tD\t\0old\0new\0` for a rename. */
+function parseNumstat(output: string): NumstatEntry[]
+{
+	const fields = output.split("\0");
+	const entries: NumstatEntry[] = [];
+	let index = 0;
+	while (index < fields.length)
+	{
+		const field = (fields[index] ?? "").replace(/^\n/, "");
+		index += 1;
+		if (field === "") continue;
+		const [additions = "", deletions = "", inlinePath = ""] = field.split("\t");
+		let path = inlinePath;
+		if (path === "")
+		{
+			// A rename: the old and new paths follow as fields of their own.
+			path = fields[index + 1] ?? "";
+			index += 2;
+		}
+		entries.push(
+			{
+				path,
+				additions: Number.parseInt(additions, 10) || 0,
+				deletions: Number.parseInt(deletions, 10) || 0,
+			},
+		);
+	}
+	return entries;
+}
+
+/**
+ * Hide whitespace runs git with `-w`, which drops a file whose every change is whitespace. Upstream folds client-side
+ * (`Gi`) and keeps such a file listed with its unfolded counts and a "Whitespace only" note, so put each one back in
+ * the unfolded order. Files the unfolded list doesn't name (untracked ones) keep their place after it.
+ */
+function keepWhitespaceOnlyFiles(files: DiffFile[], unfolded: NumstatEntry[]): DiffFile[]
+{
+	const byPath = new Map(files.map((file) => [file.path, file]));
+	const merged: DiffFile[] = [];
+	for (const entry of unfolded)
+	{
+		const file = byPath.get(entry.path);
+		if (file === undefined)
+		{
+			merged.push(
+				{
+					path: entry.path,
+					status: "modified",
+					additions: entry.additions,
+					deletions: entry.deletions,
+					binary: false,
+					whitespaceOnly: true,
+					patch: "",
+				},
+			);
+			continue;
+		}
+		merged.push(file);
+		byPath.delete(entry.path);
+	}
+	return [...merged, ...byPath.values()];
 }
 
 /** A side larger than this is left unread: hydrating it would cost more than opening the file. */
@@ -505,6 +604,8 @@ function parseFileChunk(lines: string[]): DiffFile
 	let additions = 0;
 	let deletions = 0;
 	let binary = false;
+	let oldMode: string | undefined;
+	let newMode: string | undefined;
 	let inHunk = false;
 
 	for (const line of lines.slice(1))
@@ -516,6 +617,8 @@ function parseFileChunk(lines: string[]): DiffFile
 			continue;
 		}
 		if (line.startsWith("@@")) inHunk = true;
+		else if (line.startsWith("old mode ")) oldMode = line.slice("old mode ".length).trim();
+		else if (line.startsWith("new mode ")) newMode = line.slice("new mode ".length).trim();
 		else if (line.startsWith("new file mode")) status = "added";
 		else if (line.startsWith("deleted file mode")) status = "deleted";
 		else if (line.startsWith("rename from ")) oldPath = decodePath(line.slice("rename from ".length), "");
@@ -545,7 +648,7 @@ function parseFileChunk(lines: string[]): DiffFile
 		path = pathFromDiffGitLine(firstLine);
 	}
 
-	const common =
+	const common: Omit<DiffFile, "path" | "oldPath"> =
 	{
 		status,
 		additions,
@@ -553,6 +656,12 @@ function parseFileChunk(lines: string[]): DiffFile
 		binary,
 		patch: `${lines.join("\n")}\n`,
 	};
+	if (oldMode !== undefined && newMode !== undefined && oldMode !== newMode)
+		common.modeChange =
+		{
+			previous: oldMode,
+			next: newMode,
+		};
 	return status === "renamed" && oldPath !== undefined
 		?
 			{

@@ -234,13 +234,17 @@ function toResponseFile(file: DiffFile, inline: boolean): SessionDiffFile
 		patchLineCount,
 		patch,
 	};
-	return file.oldPath === undefined
-		? base
-		:
-			{
-				...base,
-				oldPath: file.oldPath,
-			};
+	const response: SessionDiffFile =
+		file.oldPath === undefined
+			? base
+			:
+				{
+					...base,
+					oldPath: file.oldPath,
+				};
+	if (file.modeChange !== undefined) response.modeChange = file.modeChange;
+	if (file.whitespaceOnly === true) response.whitespaceOnly = true;
+	return response;
 }
 
 type ResolvedDiff =

@@ -83,6 +83,18 @@ const SessionDiffFileSchema = z
 			additions: z.number().int().nonnegative(),
 			deletions: z.number().int().nonnegative(),
 			binary: z.boolean(),
+			/** `old mode` → `new mode` from the patch header (upstream `$i`). */
+			modeChange: z
+				.object(
+					{
+						previous: z.string(),
+						next: z.string(),
+					},
+				)
+				.strict()
+				.optional(),
+			/** Hide whitespace folded every hunk away; additions/deletions stay unfolded. */
+			whitespaceOnly: z.boolean().optional(),
 			patchLineCount: z.number().int().nonnegative(),
 			/** Null when the patch is too large to inline; fetch it with `&file=<path>`. */
 			patch: z.string().nullable(),

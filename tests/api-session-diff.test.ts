@@ -1,4 +1,4 @@
-import {mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync} from "node:fs";
+import {chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
@@ -372,8 +372,75 @@ describe("handleSessionDiffRequest", () =>
 			withWhitespace.scope,
 			withWhitespace.files.map((file) => file.path),
 			withoutWhitespace.scope,
-			withoutWhitespace.files.map((file) => file.path),
-		]).toStrictEqual([`commit:${sha}`, ["added.txt", "keep.txt"], `commit:${sha}`, ["added.txt"]]);
+			withoutWhitespace.files.map((file) => (
+			{
+				...file,
+				patch: file.whitespaceOnly === true ? file.patch : "(patch)",
+			})),
+		]).toStrictEqual([
+			`commit:${sha}`,
+			["added.txt", "keep.txt"],
+			`commit:${sha}`,
+			[
+				{
+					path: "added.txt",
+					status: "added",
+					additions: 1,
+					deletions: 0,
+					binary: false,
+					patchLineCount: 7,
+					patch: "(patch)",
+				},
+				{
+					path: "keep.txt",
+					status: "modified",
+					additions: 1,
+					deletions: 1,
+					binary: false,
+					whitespaceOnly: true,
+					patchLineCount: 0,
+					patch: "",
+				},
+			],
+		]);
+	});
+
+	it("carries a mode change through the strict response schema", async () =>
+	{
+		chmodSync(join(repository, "keep.txt"), 0o755);
+		git("update-index", "--chmod=+x", "keep.txt");
+		git("commit", "--message", "Make keep executable.");
+		const sha = git("rev-parse", "HEAD");
+		insertSession(repository);
+
+		const body = await diffBody(
+			await handleSessionDiffRequest(
+				SESSION_ID,
+				query(
+					{
+						scope: `commit:${sha}`,
+					},
+				),
+				dependencies(),
+			),
+		);
+
+		expect(body.files).toStrictEqual([
+			{
+				path: "keep.txt",
+				status: "modified",
+				additions: 0,
+				deletions: 0,
+				binary: false,
+				modeChange:
+				{
+					previous: "100644",
+					next: "100755",
+				},
+				patchLineCount: 3,
+				patch: "diff --git a/keep.txt b/keep.txt\nold mode 100644\nnew mode 100755\n",
+			},
+		]);
 	});
 
 	it("returns 404 for a commit that does not exist", async () =>
