@@ -520,16 +520,20 @@ const NotebookReadInputSchema = z
 /** How sure a reviewer is that a reported finding is real (upstream "Confirmed" / "Plausible"). */
 export const ReportFindingsVerdictSchema = z.enum(["CONFIRMED", "PLAUSIBLE"]);
 
+/** A fix report's per-finding result (upstream `pj`): the follow-up ReportFindings after Apply fixes. */
+export const ReportFindingsOutcomeSchema = z.enum(["fixed", "skipped", "no_change_needed"]);
+
 export const ReportedFindingSchema = z
 	.object(
 		{
 			file: z.string(),
-			line: z.number(),
+			line: z.number().optional(),
 			category: z.string().optional(),
 			short_summary: z.string().optional(),
 			summary: z.string(),
 			failure_scenario: z.string(),
 			verdict: ReportFindingsVerdictSchema.optional(),
+			outcome: ReportFindingsOutcomeSchema.optional(),
 		},
 	)
 	.strict();

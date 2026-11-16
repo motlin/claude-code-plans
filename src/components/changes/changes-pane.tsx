@@ -38,6 +38,7 @@ import
 	loadChangesReview,
 	scrollToFinding,
 	scrollToFirstOpenFinding,
+	transcriptReviewFindings,
 } from "../../lib/changes-review";
 import {CHANGES_SCOPE_REQUEST_EVENT} from "../../lib/changes-scope-request";
 import {codeRowLeadingPx} from "../../lib/code-themes";
@@ -72,6 +73,13 @@ import
 	setCurrentReviewFinding,
 	useReviewFindingsHidden,
 } from "../../lib/review-finding-cursor";
+import
+{
+	clearReviewFindings,
+	dismissReviewFinding,
+	resolveReviewFindingPaths,
+	useReviewFindingsState,
+} from "../../lib/review-findings-store";
 import {CoachMark} from "../coach-mark";
 import {OpenInSubmenu, ShowInFinderItem} from "../files/file-actions-menu";
 import {mentionPath} from "../files/mention-path";
@@ -2096,7 +2104,7 @@ function usePersistedReview(sessionId: string): string | null
 		{
 			const detail = asRecord(event instanceof CustomEvent ? event.detail : undefined);
 			const reviewId = detail?.["reviewId"];
-			if (detail?.["sessionId"] === sessionId && typeof reviewId === "string")
+			if (detail?.["sessionId"] === sessionId && (typeof reviewId === "string" || reviewId === null))
 				setEntry(
 					{
 						sessionId,
@@ -2113,15 +2121,41 @@ function usePersistedReview(sessionId: string): string | null
 	return entry.sessionId === sessionId ? entry.reviewId : null;
 }
 
+const NO_STATUSES = {};
+
+/**
+ * The findings a transcript "Code review" card seeded (upstream's `diff-annotations` store), shown on every scope in
+ * place of the working-copy review; each scope's file list resolves which findings it can anchor.
+ */
+function useTranscriptFindings(sessionId: string, diff: SessionDiffResponse | undefined)
+{
+	const store = useReviewFindingsState();
+	const seeded = store.findingsBySession[sessionId];
+	const statuses = store.findingStatusBySession[sessionId] ?? NO_STATUSES;
+	const files = diff?.files;
+	const paths = useMemo(() => (files ?? NO_FILES).map((file) => file.path), [files]);
+	const servedScope = diff?.scope;
+	useEffect(() =>
+	{
+		if (seeded !== undefined && servedScope !== undefined) resolveReviewFindingPaths(sessionId, servedScope, paths);
+	}, [sessionId, seeded, servedScope, paths]);
+	const findings = useMemo(
+		() => (seeded === undefined ? null : transcriptReviewFindings(seeded, statuses, paths)),
+		[seeded, statuses, paths],
+	);
+	return findings;
+}
+
 /**
  * The working-copy review findings shown on the Uncommitted scope, with
  * "Fix this one" and "Apply fixes" (sent to the chat input), "Dismiss finding" (saved as resolved)
  * and the findings bar's Close (hidden until the review is opened again).
  */
-function useReviewFindings(sessionId: string, scope: string)
+function useReviewFindings(sessionId: string, scope: string, diff: SessionDiffResponse | undefined)
 {
+	const transcript = useTranscriptFindings(sessionId, diff);
 	const reviewId = usePersistedReview(sessionId);
-	const active = reviewId !== null && scope === UNCOMMITTED_SCOPE;
+	const active = transcript === null && reviewId !== null && scope === UNCOMMITTED_SCOPE;
 	const queryClient = useQueryClient();
 	const toast = useToast();
 	// useQueries, not a disabled useQuery, so sessions without a review register no query.
@@ -2133,7 +2167,7 @@ function useReviewFindings(sessionId: string, scope: string)
 	);
 	const review = reviewQueries[0];
 	const hidden = useReviewFindingsHidden(sessionId, reviewId);
-	const findings = hidden ? NO_FINDINGS : (review?.data?.findings ?? NO_FINDINGS);
+	const findings = transcript ?? (hidden ? NO_FINDINGS : (review?.data?.findings ?? NO_FINDINGS));
 	const loadedFindings = review?.data?.findings;
 	useEffect(() =>
 	{
@@ -2153,9 +2187,24 @@ function useReviewFindings(sessionId: string, scope: string)
 		}
 	}
 
+	function moveOffDismissed(list: readonly ReviewFinding[], finding: ReviewFinding, wasCurrent: boolean): void
+	{
+		// Upstream `dismissReviewFinding`: when the current finding goes, its neighbour becomes current and is scrolled to.
+		if (!wasCurrent) return;
+		const following = findingAfterDismiss(list, finding.id);
+		setCurrentReviewFinding(sessionId, following?.id ?? null);
+		if (following !== undefined) scrollToFinding(sessionId, following);
+	}
+
 	async function dismiss(finding: ReviewFinding): Promise<void>
 	{
 		const wasCurrent = currentReviewFinding(sessionId) === finding.id;
+		if (transcript !== null)
+		{
+			dismissReviewFinding(sessionId, finding.id);
+			moveOffDismissed(transcript, finding, wasCurrent);
+			return;
+		}
 		const bundle = review?.data;
 		if (reviewId === null || bundle === undefined) return;
 		const next = bundle.findings.map((candidate) =>
@@ -2171,13 +2220,7 @@ function useReviewFindings(sessionId: string, scope: string)
 		{
 			const updated = await replaceReviewFindings(reviewId, next);
 			queryClient.setQueryData(reviewQueryOptions(reviewId).queryKey, updated);
-			// Upstream `dismissReviewFinding`: when the current finding goes, its neighbour becomes current and is scrolled to.
-			if (wasCurrent)
-			{
-				const following = findingAfterDismiss(bundle.findings, finding.id);
-				setCurrentReviewFinding(sessionId, following?.id ?? null);
-				if (following !== undefined) scrollToFinding(sessionId, following);
-			}
+			moveOffDismissed(bundle.findings, finding, wasCurrent);
 		}
 		catch
 		{
@@ -2203,7 +2246,8 @@ function useReviewFindings(sessionId: string, scope: string)
 		},
 		close: () =>
 		{
-			if (reviewId !== null) hideReviewFindings(sessionId, reviewId);
+			if (transcript !== null) clearReviewFindings(sessionId, true);
+			else if (reviewId !== null) hideReviewFindings(sessionId, reviewId);
 		},
 	};
 }
@@ -2233,7 +2277,7 @@ export function ChangesPane({
 	const scopesQuery = useQuery(sessionDiffScopesQueryOptions(sessionId));
 	const toast = useToast();
 	const queryClient = useQueryClient();
-	const review = useReviewFindings(sessionId, scope);
+	const review = useReviewFindings(sessionId, scope, diffQuery.data);
 	const failure =
 		diffQuery.data === undefined && (diffQuery.isError || diffQuery.failureCount > 0)
 			?

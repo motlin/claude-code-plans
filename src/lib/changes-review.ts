@@ -2,9 +2,11 @@ import {z} from "zod";
 
 import {requestChangesScope} from "./changes-scope-request";
 import {formatAttachContext} from "./context-attach";
-import {scrollToDiffLine} from "./diff-scroll-target";
+import {resolveFuzzyDiffPath, scrollToDiffLine} from "./diff-scroll-target";
+import type {ReviewFindingStatus} from "./report-findings";
 import type {ReviewFinding} from "./review-diff";
 import {setCurrentReviewFinding, showReviewFindings} from "./review-finding-cursor";
+import {type StoreFinding, clearReviewFindings} from "./review-findings-store";
 
 /** The working-copy review whose findings a session's Changes pane shows on its Uncommitted scope. */
 const CHANGES_REVIEW_STORAGE_KEY = "ccb.changesReview.v1";
@@ -15,7 +17,7 @@ export const CHANGES_REVIEW_REQUEST_EVENT = "ccp:changes-review-request";
 interface ChangesReviewRequest
 {
 	sessionId: string;
-	reviewId: string;
+	reviewId: string | null;
 }
 
 const ChangesReviewStoreSchema = z.record(z.string(), z.string());
@@ -74,6 +76,47 @@ function saveChangesReview(sessionId: string, reviewId: string, storage: Storage
 	}
 }
 
+function announceChangesReview(sessionId: string, reviewId: string | null): void
+{
+	if (typeof window === "undefined") return;
+	window.dispatchEvent(
+		new CustomEvent<ChangesReviewRequest>(
+			CHANGES_REVIEW_REQUEST_EVENT,
+			{
+				detail:
+				{
+					sessionId,
+					reviewId,
+				},
+			},
+		),
+	);
+}
+
+/**
+ * Forget the session's working-copy review, as a transcript "Code review" card seeding the pane does: upstream keeps
+ * one findings list per session.
+ */
+export function clearChangesReview(sessionId: string, storage: Storage | null = browserStorage()): void
+{
+	if (storage !== null)
+	{
+		const {[sessionId]: dropped, ...rest} = readStore(storage);
+		if (dropped !== undefined)
+		{
+			try
+			{
+				storage.setItem(CHANGES_REVIEW_STORAGE_KEY, JSON.stringify(rest));
+			}
+			catch
+			{
+				// localStorage can be denied even when window exists; this is best-effort.
+			}
+		}
+	}
+	announceChangesReview(sessionId, null);
+}
+
 export interface ReviewChangesTarget
 {
 	to: "/session/$id";
@@ -94,24 +137,11 @@ export interface ReviewChangesTarget
 export function openReviewInChanges(sessionId: string, reviewId: string): ReviewChangesTarget
 {
 	saveChangesReview(sessionId, reviewId);
+	clearReviewFindings(sessionId, true);
 	showReviewFindings(sessionId);
 	reviewScrollRequests.add(sessionId);
 	requestChangesScope(sessionId, "uncommitted");
-	if (typeof window !== "undefined")
-	{
-		window.dispatchEvent(
-			new CustomEvent<ChangesReviewRequest>(
-				CHANGES_REVIEW_REQUEST_EVENT,
-				{
-					detail:
-					{
-						sessionId,
-						reviewId,
-					},
-				},
-			),
-		);
-	}
+	announceChangesReview(sessionId, reviewId);
 	return {
 		to: "/session/$id",
 		params:
@@ -236,4 +266,40 @@ export function formatApplyFindingsPrompt(findings: readonly ReviewFinding[]): s
 		"",
 		"When you're done, call the ReportFindings tool once with these same findings. Echo each `file`, `line`, and the Summary text back verbatim (the quoted lines, leading `> ` removed) as the `summary`, put the Failure scenario text in `failure_scenario`, and add an `outcome`: `fixed`, `no_change_needed` (the finding was wrong or already handled), or `skipped` (real but not applied). Do not repeat the findings as text.",
 	].join("\n");
+}
+
+const VERDICT_SEVERITY =
+{
+	CONFIRMED: "high",
+	PLAUSIBLE: "medium",
+} as const;
+
+/**
+ * A transcript card's seeded findings as the pane's review findings: dismissed ones dropped, each path matched to the
+ * diff's (exactly or by unique suffix, as upstream's fuzzy scroll target), the summary as the title and the failure
+ * scenario as the body. Fixed and no-change-needed findings count as resolved.
+ */
+export function transcriptReviewFindings(
+	findings: readonly StoreFinding[],
+	statuses: Readonly<Record<string, ReviewFindingStatus>>,
+	paths: readonly string[],
+): ReviewFinding[]
+{
+	return findings
+		.filter((finding) => statuses[finding.id] !== "dismissed")
+		.map((finding) =>
+		{
+			const status = statuses[finding.id] ?? "open";
+			return {
+				id: finding.id,
+				file: resolveFuzzyDiffPath(finding.filePath, paths) ?? finding.filePath,
+				side: "new",
+				line: finding.startLine,
+				endLine: finding.endLine,
+				severity: finding.verdict === undefined ? "low" : VERDICT_SEVERITY[finding.verdict],
+				title: finding.body,
+				body: finding.detail ?? "",
+				resolved: status !== "open" && status !== "fixing",
+			};
+		});
 }

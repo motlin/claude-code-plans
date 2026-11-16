@@ -118,6 +118,7 @@ import type
 {
 	ExitWorktreeActionSchema,
 	RemoteTriggerActionSchema,
+	ReportFindingsOutcomeSchema,
 	ReportFindingsVerdictSchema,
 	SendMessageRecipientKindSchema,
 	StringifiedBooleanSchema,
@@ -1800,6 +1801,14 @@ export const reportFindingsVerdictLabels =
 	PLAUSIBLE: "Plausible",
 } satisfies Record<z.infer<typeof ReportFindingsVerdictSchema>, string>;
 
+/** `ReportFindings` finding `outcome` (src/lib/tool-input-schemas.ts); a fix report's per-finding result. */
+const reportFindingsOutcomeLabels =
+{
+	fixed: "Fixed",
+	skipped: "Skipped",
+	no_change_needed: "No change needed",
+} satisfies Record<z.infer<typeof ReportFindingsOutcomeSchema>, string>;
+
 /** `RemoteTrigger` `action` (src/lib/tool-input-schemas.ts); row verbs match upstream's routine verbs. */
 export const remoteTriggerActionLabels =
 {
@@ -2050,6 +2059,7 @@ export const schemaChoiceRegistry: Record<string, Record<string, string | true>>
 	ClassifierArtifactShareModeSchema: classifierArtifactShareModeLabels,
 	ClassifierArtifactShareRoleSchema: classifierArtifactShareRoleLabels,
 	ReportFindingsVerdictSchema: reportFindingsVerdictLabels,
+	ReportFindingsOutcomeSchema: reportFindingsOutcomeLabels,
 	RemoteTriggerActionSchema: remoteTriggerActionLabels,
 	ExitWorktreeActionSchema: exitWorktreeActionLabels,
 	StringifiedBooleanSchema: stringifiedBooleanLabels,

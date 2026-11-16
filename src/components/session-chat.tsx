@@ -34,7 +34,8 @@ import {ApiErrorCard, ApiErrorMarker, type ApiErrorRecovery} from "./api-error-c
 import {HookBlockedPromptCard, HookBlockedPromptMarker} from "./hook-blocked-prompt";
 import {HookNoticeLine, HookNoticeRow} from "./hook-notice-row";
 import * as Collapsible from "./ui/collapsible";
-import {prefillComposer, useHasComposer} from "../lib/context-attach";
+import {prefillComposer, requestComposerInsert, useHasComposer} from "../lib/context-attach";
+import {hasFindingOutcomes} from "../lib/report-findings";
 import {ErrorCardShell} from "./error-card-shell";
 import {ExternalTextLink} from "./external-text-link";
 import {ShimmerText} from "./shimmer-text";
@@ -101,6 +102,8 @@ import {collectTurnChanges, lastTurnChangesAnchor, type TurnChanges} from "../li
 import {taskDescriptionSegments} from "../lib/task-description-segments";
 import {agentCompletionOf, foldedTaskNotificationOf, taskNotificationOf} from "../lib/task-notification-lines";
 import {ToastContext} from "./toast-context";
+import {TurnUndoSendContext} from "./turn-undo-send-context";
+import {useOptionalPaneHost} from "./panes/pane-host-context";
 import type {TranscriptMode} from "../lib/transcript-mode";
 import {hmrPersist} from "../lib/hmr-persist";
 import {foldsIntoToolRun} from "../lib/hook-notice-copy";
@@ -259,6 +262,31 @@ const WorkflowCard = React.lazy(async () =>
 		default: Card,
 	};
 });
+
+/** Code review cards draw only for settled `/code-review` results, so the card loads when a transcript has one. */
+const ReportFindingsCard = React.lazy(async () =>
+{
+	const {ReportFindingsCard: Card} = await import("./report-findings-card");
+	return {
+		default: Card,
+	};
+});
+
+interface ReviewCards
+{
+	/** Upstream `_j`: settled, non-fix-report ReportFindings call ids in transcript order. */
+	settledIds: readonly string[];
+	/** The session is mid-turn (upstream `gs`), which holds Re-run review. */
+	responding: boolean;
+}
+
+const NO_REVIEW_IDS: readonly string[] = [];
+const ReviewCardsContext = createContext<ReviewCards>(
+	{
+		settledIds: NO_REVIEW_IDS,
+		responding: false,
+	},
+);
 
 /** Each workflow run keyed by its latest launch's tool_use id; earlier launches of a resumed run have settled. */
 const WorkflowRunsContext = createContext<ReadonlyMap<string, SessionWorkflowRun>>(new Map());
@@ -867,6 +895,15 @@ export const SessionChat = React.memo(function SessionChat({
 		() => new Map(workflowRuns.map((run) => [run.toolUseId, run] as const)),
 		[workflowRuns],
 	);
+	const settledReviews = useMemo(() => settledReviewIds(lines, toolResultMap), [lines, toolResultMap]);
+	const reviewCards = useMemo(
+		() => (
+		{
+			settledIds: settledReviews,
+			responding: turnInProgress,
+		}),
+		[settledReviews, turnInProgress],
+	);
 	const compactBoundaries = useMemo(() => compactBoundariesBySummary(lines), [lines]);
 	const fullErrorLine = useMemo(() => lastErrorLine(lines), [lines]);
 	const blockedLine = useMemo(() => lastEntryPromptBlocked(lines), [lines]);
@@ -1097,63 +1134,65 @@ export const SessionChat = React.memo(function SessionChat({
 						<AgentNameContext.Provider value={resolveAgentName}>
 							<BackgroundOutcomeContext.Provider value={backgroundOutcomes}>
 								<WorkflowRunsContext.Provider value={workflowRunsByLaunch}>
-									<CompactBoundaryContext.Provider value={compactBoundaries}>
-										<LastErrorLineContext.Provider value={lastError}>
-											<StaleCompactTailContext.Provider value={staleCompactTail}>
-												<div
-													ref={containerRef}
-													className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
-												>
-													{summary !== null && summary !== "" && (
-														<p
-															data-testid="session-summary-row"
-															title={summary}
-															className="mb-4 truncate text-sm text-t6"
-														>
-															{summary}
-														</p>
-													)}
-													<SessionLineList
-														key={sessionId}
-														lines={listedLines}
-														sessionId={sessionId}
-														toolResultMap={toolResultMap}
-														allowedImageRoots={allowedImageRoots}
-														subagentLookup={subagentLookup}
-														isSubagentSession={isSubagentSession}
-														showThinking={showThinking}
-														showTools={showTools}
-														showPassedHooks={showPassedHooks}
-														showHookWarnings={showHookWarnings}
-														showHookErrors={showHookErrors}
-														showSystemBanners={showSystemBanners}
-														showCompactSummaries={showCompactSummaries}
-														showTranscriptOnly={showTranscriptOnly}
-														shouldScrollToEnd={shouldScrollToEnd}
-														measurementKey={measurementKey}
-														measurementSource={measurementSource}
-														turnInProgress={turnInProgress}
-														archived={archived}
-														rewindCuts={rewindCuts}
-														rewoundUuids={rewoundUuids}
-														clientRows={clientRows}
-														renderClientRowCard={renderClientRowCard}
-													/>
-													{sessionLive && (
-														<WaitingPickupStatus
-															key={`pickup-${sessionId}`}
-															waiting={waitingEntries}
+									<ReviewCardsContext.Provider value={reviewCards}>
+										<CompactBoundaryContext.Provider value={compactBoundaries}>
+											<LastErrorLineContext.Provider value={lastError}>
+												<StaleCompactTailContext.Provider value={staleCompactTail}>
+													<div
+														ref={containerRef}
+														className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
+													>
+														{summary !== null && summary !== "" && (
+															<p
+																data-testid="session-summary-row"
+																title={summary}
+																className="mb-4 truncate text-sm text-t6"
+															>
+																{summary}
+															</p>
+														)}
+														<SessionLineList
+															key={sessionId}
+															lines={listedLines}
+															sessionId={sessionId}
+															toolResultMap={toolResultMap}
+															allowedImageRoots={allowedImageRoots}
+															subagentLookup={subagentLookup}
+															isSubagentSession={isSubagentSession}
+															showThinking={showThinking}
+															showTools={showTools}
+															showPassedHooks={showPassedHooks}
+															showHookWarnings={showHookWarnings}
+															showHookErrors={showHookErrors}
+															showSystemBanners={showSystemBanners}
+															showCompactSummaries={showCompactSummaries}
+															showTranscriptOnly={showTranscriptOnly}
+															shouldScrollToEnd={shouldScrollToEnd}
+															measurementKey={measurementKey}
+															measurementSource={measurementSource}
+															turnInProgress={turnInProgress}
+															archived={archived}
+															rewindCuts={rewindCuts}
+															rewoundUuids={rewoundUuids}
+															clientRows={clientRows}
+															renderClientRowCard={renderClientRowCard}
 														/>
-													)}
-													<TranscriptSelectionBar
-														sessionId={sessionId}
-														containerRef={containerRef}
-														sideChatAvailable={sideChatAvailable}
-													/>
-												</div>
-											</StaleCompactTailContext.Provider>
-										</LastErrorLineContext.Provider>
-									</CompactBoundaryContext.Provider>
+														{sessionLive && (
+															<WaitingPickupStatus
+																key={`pickup-${sessionId}`}
+																waiting={waitingEntries}
+															/>
+														)}
+														<TranscriptSelectionBar
+															sessionId={sessionId}
+															containerRef={containerRef}
+															sideChatAvailable={sideChatAvailable}
+														/>
+													</div>
+												</StaleCompactTailContext.Provider>
+											</LastErrorLineContext.Provider>
+										</CompactBoundaryContext.Provider>
+									</ReviewCardsContext.Provider>
 								</WorkflowRunsContext.Provider>
 							</BackgroundOutcomeContext.Provider>
 						</AgentNameContext.Provider>
@@ -1759,6 +1798,23 @@ function launchedAgentDescriptions(
 		}
 	}
 	return descriptions;
+}
+
+/** Upstream `mj`: completed, non-error ReportFindings calls that are reviews rather than fix reports, in order. */
+function settledReviewIds(lines: readonly SessionLine[], toolResultMap: ReadonlyMap<string, ToolResultInfo>): string[]
+{
+	const ids: string[] = [];
+	for (const line of lines)
+	{
+		if (line.type !== "assistant" || !Array.isArray(line.message?.content)) continue;
+		for (const block of line.message.content)
+		{
+			if (block.type !== "tool_use" || block.name !== "ReportFindings") continue;
+			const result = toolResultMap.get(block.id);
+			if (result !== undefined && !result.isError && !hasFindingOutcomes(block.input)) ids.push(block.id);
+		}
+	}
+	return ids;
 }
 
 function transcriptToolUseIds(lines: readonly SessionLine[]): Set<string>
@@ -7429,6 +7485,12 @@ function LoneToolCall({call, sessionId, leading}: {call: ClientToolCall; session
 	{
 		const feedback = planRejectionFeedback(call);
 		const row = <ToolCallRow call={call} sessionId={sessionId} leading={leading} />;
+		if (call.name === "ReportFindings")
+			return (
+				<div data-tool-anchor={call.id} className="contents">
+					<ReviewCardOrRow call={call} sessionId={sessionId} row={row} />
+				</div>
+			);
 		if (feedback === null) return row;
 		return (
 			<>
@@ -7464,6 +7526,45 @@ function LoneToolCall({call, sessionId, leading}: {call: ClientToolCall; session
 				/>
 			</Suspense>
 		</div>
+	);
+}
+
+/**
+ * Upstream's `Ms(tool)` dispatch: a settled `/code-review` ReportFindings call draws the "Code review" card
+ * (`iC`); an error, a pending call or a fix report keeps its row.
+ */
+function ReviewCardOrRow({call, sessionId, row}: {call: ClientToolCall; sessionId: string; row: React.ReactElement})
+{
+	const {settledIds, responding} = useContext(ReviewCardsContext);
+	const host = useOptionalPaneHost();
+	// The live-terminal send the turn Undo uses: Apply fixes and Re-run review go the same way.
+	const send = useContext(TurnUndoSendContext);
+	const toast = useContext(ToastContext);
+	const openChanges = useMemo(
+		() =>
+			host === null
+				? null
+				: () =>
+					{
+						host.openPane("changes");
+					},
+		[host],
+	);
+	if (!settledIds.includes(call.id)) return row;
+	return (
+		<Suspense fallback={row}>
+			<ReportFindingsCard
+				call={call}
+				sessionId={sessionId}
+				settledIds={settledIds}
+				openChanges={openChanges}
+				send={send}
+				onPrefillComposer={(text) => requestComposerInsert(sessionId, text)}
+				responding={responding}
+				toast={toast}
+				fallback={row}
+			/>
+		</Suspense>
 	);
 }
 
@@ -8374,12 +8475,27 @@ function ToolCallSummary({
 										</ToolCardBoundary>
 									) : (
 										<ToolCardBoundary key={item.id} resetOn={toolCardStage(item)}>
-											<ToolCallRow
-												call={item}
-												sessionId={sessionId}
-												nested
-												shots={shotPlacements.get(item.id)}
-											/>
+											{item.name === "ReportFindings" ? (
+												<ReviewCardOrRow
+													call={item}
+													sessionId={sessionId}
+													row={
+														<ToolCallRow
+															call={item}
+															sessionId={sessionId}
+															nested
+															shots={shotPlacements.get(item.id)}
+														/>
+													}
+												/>
+											) : (
+												<ToolCallRow
+													call={item}
+													sessionId={sessionId}
+													nested
+													shots={shotPlacements.get(item.id)}
+												/>
+											)}
 										</ToolCardBoundary>
 									),
 								)}

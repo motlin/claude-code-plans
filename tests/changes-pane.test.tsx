@@ -31,6 +31,15 @@ import type {ReviewFinding} from "../src/lib/review-diff";
 import {reviewQueryOptions, type ReviewBundle} from "../src/lib/api/reviews";
 import {formatApplyFindingsPrompt, openReviewInChanges} from "../src/lib/changes-review";
 import {clearReviewFindingCursor} from "../src/lib/review-finding-cursor";
+import {parseReportFindings} from "../src/lib/report-findings";
+import
+{
+	clearReviewFindings,
+	reviewFindingsSnapshot,
+	setReviewFindings,
+	toStoreFindings,
+	unanchoredFindingIds,
+} from "../src/lib/review-findings-store";
 
 const reviewApi = vi.hoisted(() => (
 {
@@ -3216,5 +3225,149 @@ describe("ChangesPane review findings bar (upstream c9bd7af9c zw)", () =>
 		expect(inserted).toStrictEqual([
 			formatApplyFindingsPrompt(FINDINGS.filter((candidate) => !candidate.resolved)),
 		]);
+	});
+});
+
+describe("ChangesPane transcript review findings (upstream cc8941b7b setReviewFindings on any scope)", () =>
+{
+	const SESSION = "session-transcript-findings";
+
+	function seed(files: readonly string[])
+	{
+		const parsed = parseReportFindings(
+			{
+				findings: files.map((file, index) => (
+				{
+					file,
+					line: index + 2,
+					summary: `Fake summary ${index}`,
+					failure_scenario: `Fake scenario ${index}`,
+					verdict: "CONFIRMED",
+				})),
+			},
+		);
+		if (parsed === undefined) throw new Error("unparsed");
+		setReviewFindings(
+			SESSION,
+			toStoreFindings("tool-1", parsed, 1),
+			{
+				toolId: "tool-1",
+			},
+		);
+	}
+
+	afterEach(() =>
+	{
+		clearReviewFindings(SESSION, false);
+		clearReviewFindingCursor(SESSION);
+		clearDiffScrollTarget(SESSION);
+		reviewApi.replace.mockReset();
+	});
+
+	function renderPane()
+	{
+		const queryClient = new QueryClient(
+			{
+				defaultOptions:
+				{
+					queries:
+					{
+						retry: false,
+						staleTime: Infinity,
+					},
+				},
+			},
+		);
+		queryClient.setQueryData(
+			sessionDiffQueryOptions(
+				SESSION,
+				"branch",
+				{
+					hideWhitespace: DEFAULTS.diffHideWhitespace,
+				},
+			).queryKey,
+			diffOf([GREET_FILE]),
+		);
+		queryClient.setQueryData(sessionDiffScopesQueryOptions(SESSION).queryKey, SCOPES);
+		return render(
+			<QueryClientProvider client={queryClient}>
+				<SettingsProvider>
+					<ToastProvider>
+						<ChangesPane
+							sessionId={SESSION}
+							cwd="/repo"
+							chrome={
+							{
+								moveHandle: null,
+								controls: null,
+							}}
+						/>
+					</ToastProvider>
+				</SettingsProvider>
+			</QueryClientProvider>,
+		);
+	}
+
+	const cards = (container: HTMLElement) =>
+		[...container.querySelectorAll("[data-review-finding]")].map((card) =>
+			card.getAttribute("data-review-finding"),
+		);
+
+	it("shows seeded findings on All changes, fuzzy-matched to diff paths, and dismisses them in the store", async () =>
+	{
+		seed(["greet.ts", "src/greet.ts"]);
+		const {container} = renderPane();
+		await waitFor(() =>
+		{
+			if (cards(container).length === 0) throw new Error("No findings yet");
+		});
+		const before = cards(container);
+		fireEvent.click(
+			within(container.querySelector<HTMLElement>('[data-review-finding="finding-tool-1-0"]')!).getByRole(
+				"button",
+				{
+					name: "Dismiss finding",
+				},
+			),
+		);
+
+		expect(
+			{
+				before,
+				after: cards(container),
+				saved: reviewApi.replace.mock.calls,
+				status: reviewFindingsSnapshot().findingStatusBySession[SESSION],
+			},
+		).toStrictEqual(
+			{
+				before: ["finding-tool-1-0", "finding-tool-1-1"],
+				after: ["finding-tool-1-1"],
+				saved: [],
+				status:
+				{
+					"finding-tool-1-0": "dismissed",
+				},
+			},
+		);
+	});
+
+	it("resolves the seeded findings against the scope's files, leaving absent files unanchored", async () =>
+	{
+		seed(["greet.ts", "z.ts"]);
+		renderPane();
+		await waitFor(() =>
+		{
+			if (unanchoredFindingIds(SESSION) === null) throw new Error("Not resolved yet");
+		});
+
+		expect(unanchoredFindingIds(SESSION)).toStrictEqual(new Set(["finding-tool-1-1"]));
+	});
+
+	it("drops the transcript findings when a working-copy review opens", () =>
+	{
+		seed(["greet.ts"]);
+		openReviewInChanges(SESSION, "review-x");
+
+		expect(reviewFindingsSnapshot().findingsBySession[SESSION]).toBe(undefined);
 	});
 });

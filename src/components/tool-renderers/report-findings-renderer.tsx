@@ -1,4 +1,5 @@
 import type {z} from "zod";
+import {findingLocation} from "../../lib/report-findings";
 import {reportFindingsVerdictLabels} from "../../lib/schema-choices";
 import {ReportFindingsInputSchema, type ReportedFindingSchema} from "../../lib/tool-input-schemas";
 import {FindingCard, type FindingCardProps} from "../finding-card";
@@ -24,7 +25,7 @@ function cardProps(finding: ReportedFinding): FindingCardProps
 		severity: finding.verdict === undefined ? "low" : verdictSeverity[finding.verdict],
 		title,
 		body,
-		location: `${finding.file}:${finding.line}`,
+		location: findingLocation(finding),
 		category: finding.category,
 		verdict: finding.verdict === undefined ? undefined : reportFindingsVerdictLabels[finding.verdict],
 	};
@@ -46,7 +47,7 @@ export function ReportFindingsRenderer({toolCall}: ToolRendererProps)
 				<div className="text-secondary">{toolCall.result}</div>
 			)}
 			{findings.map((finding, index) => (
-				<FindingCard key={`${finding.file}:${finding.line}:${index}`} {...cardProps(finding)} />
+				<FindingCard key={`${findingLocation(finding)}:${index}`} {...cardProps(finding)} />
 			))}
 		</div>
 	);

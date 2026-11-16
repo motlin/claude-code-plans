@@ -107,6 +107,7 @@ import
 {
 	ExitWorktreeActionSchema,
 	RemoteTriggerActionSchema,
+	ReportFindingsOutcomeSchema,
 	ReportFindingsVerdictSchema,
 	SendMessageRecipientKindSchema,
 	StringifiedBooleanSchema,
@@ -187,6 +188,7 @@ const ROOTS: ReadonlyArray<readonly [string, unknown]> = [
 	["ArtifactLiveSubscriptionSchema", ArtifactLiveSubscriptionSchema],
 	["ArtifactToolResultSchema", ArtifactToolResultSchema],
 	["ReportFindingsVerdictSchema", ReportFindingsVerdictSchema],
+	["ReportFindingsOutcomeSchema", ReportFindingsOutcomeSchema],
 	["RemoteTriggerActionSchema", RemoteTriggerActionSchema],
 	["ExitWorktreeActionSchema", ExitWorktreeActionSchema],
 	["StringifiedBooleanSchema", StringifiedBooleanSchema],
