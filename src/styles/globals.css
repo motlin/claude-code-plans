@@ -5867,6 +5867,23 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	);
 }
 
+/*
+ * Upstream [data-pinned-family] (sidebar-pinned-families-nest): pinned rows keep their leading icon slot, so a
+ * pinned head's family indents past it and its elbow starts from the slot's centre.
+ */
+[data-pinned-family] .df-family
+{
+	--sb-row-indent: calc(
+		var(--sb-rail-shift, 0px) + var(--sb-leading-slot) + var(--sb-row-gap) - var(--sb-iconless-pad)
+	);
+}
+
+[data-pinned-family] .df-family::after
+{
+	width: calc(var(--sb-leading-slot) / 2 + var(--sb-row-gap) - 5.5px);
+	inset-inline-start: calc(var(--sb-row-px) + var(--sb-rail-shift, 0px) + var(--sb-leading-slot) / 2 - 0.5px);
+}
+
 /* Upstream's find-in-page matches (shared-100 `ho`): the same colours in light and dark; the text is the resolved --cds-black. */
 ::highlight(find-in-page)
 {

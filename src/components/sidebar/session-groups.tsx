@@ -270,7 +270,10 @@ export function SessionGroups({
 	const latestBuilt = useRef(built);
 	latestBuilt.current = built;
 
-	const loadedRows = useMemo(() => (split === undefined ? [] : [...split.pinned, ...split.rest]), [split]);
+	const loadedRows = useMemo(
+		() => (split === undefined ? [] : [...split.pinned, ...[...split.nested.values()].flat(), ...split.rest]),
+		[split],
+	);
 	const loadedIds = useMemo(() => loadedRows.map((row) => row.id), [loadedRows]);
 	const canFetchMore = hasNextPage && nextPageCanHoldVisibleRows(loadedRows, prefs, Date.now());
 	const collapsedSet = new Set(collapsedGroups);
@@ -355,7 +358,9 @@ export function SessionGroups({
 	{
 		selectedIds,
 		sessions: new Map(
-			[...split.pinned, ...split.rest].map((row): [string, SessionListItem] => [row.id, row.session]),
+			[...split.pinned, ...[...split.nested.values()].flat(), ...split.rest].map(
+				(row): [string, SessionListItem] => [row.id, row.session],
+			),
 		),
 		onRowClick: (id, modifiers) =>
 		{
@@ -499,6 +504,7 @@ export function SessionGroups({
 				>
 					<PinnedSubList
 						rows={split.pinned}
+						nested={split.nested}
 						expanded={!collapsed.has(PINNED_GROUP_KEY)}
 						activeItemId={activeItemId}
 						dragging={rowDrag && !multiDrag}
@@ -619,7 +625,7 @@ const PIN_DROP_ZONE = "pin-drop";
 
 /**
  * Every session row the sidebar shows, in display order: Pinned, then each expanded
- * section's rows with their expanded families. ⇧-click ranges run over this.
+ * section's rows, each with its family's listed rows. ⇧-click ranges run over this.
  */
 function displayedRowIds(
 	split: SplitPinned<SidebarSessionRow>,
@@ -629,22 +635,22 @@ function displayedRowIds(
 	familyFold: FamilyFoldState,
 ): string[]
 {
-	const pinned = collapsed.has(PINNED_GROUP_KEY) ? [] : split.pinned.map((row) => row.id);
 	const manualGroups = manual.flatMap((section) =>
 	{
 		if (collapsed.has(section.group.key)) return [];
 		return section.subgroups ?? [section.group];
 	});
+	const withFamilies = (rows: readonly SidebarSessionRow[], nested: ReadonlyMap<string, SidebarSessionRow[]>) =>
+		rows.flatMap((row) => [
+			row.sessionId,
+			...displayedNested(row.sessionId, nested.get(row.sessionId) ?? [], familyFold).map(
+				(child) => child.sessionId,
+			),
+		]);
+	const pinned = collapsed.has(PINNED_GROUP_KEY) ? [] : withFamilies(split.pinned, split.nested);
 	const sections = [...manualGroups, ...groups]
 		.filter((group) => !collapsed.has(group.key))
-		.flatMap((group) =>
-			group.rows.flatMap((row) => [
-				row.sessionId,
-				...displayedNested(row.sessionId, group.nested.get(row.sessionId) ?? [], familyFold).map(
-					(child) => child.sessionId,
-				),
-			]),
-		);
+		.flatMap((group) => withFamilies(group.rows, group.nested));
 	return [...pinned, ...sections];
 }
 
@@ -780,6 +786,8 @@ function applyPinDrop(
 {
 	const split = getSplit();
 	if (split === undefined) return;
+	// Upstream `$X`: a row nested under a pinned head drags with no pinned-slot payload.
+	if ([...split.nested.values()].some((members) => members.some((row) => row.id === srcId))) return;
 	const displayed = split.pinned.map((row) => row.id);
 	const srcIdx = displayed.indexOf(srcId);
 	let slot: number | null = null;

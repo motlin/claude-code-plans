@@ -6,7 +6,9 @@ import {autoScrollDelta, computeMidpoints, exceedsDragThreshold, shiftFor, slotF
  * Shared sidebar pointer-drag engine (pinning, reordering, custom groups), ported from
  * the claude.ai/code sidebar: a 4px threshold, a ghost clone that follows the pointer,
  * translateY shifts on `[data-drag-id]` rows, midpoint slots, edge auto-scroll, Escape
- * to cancel, and `[data-session-dragging]` on the root element while dragging.
+ * to cancel, and `[data-session-dragging]` on the root element while dragging. A
+ * `[data-drag-nested]` row drags but is no slot of its list, and a `[data-drag-follow=<id>]`
+ * element shifts with slot row `<id>` (a pinned family under its head, upstream `Q8`).
  */
 
 export type SidebarDropTarget =
@@ -68,7 +70,7 @@ export interface UseSidebarDrag
 }
 
 const IGNORED_POINTERDOWN = "input, textarea, select, [data-row-action]";
-const ROW_SELECTOR = "[data-drag-id]";
+const ROW_SELECTOR = "[data-drag-id]:not([data-drag-nested])";
 
 interface ListMeasure
 {
@@ -260,6 +262,10 @@ export function useSidebarDrag(options: UseSidebarDragOptions): UseSidebarDrag
 					if (shift !== 0)
 					{
 						next.set(row, shift);
+						const followers = list?.querySelectorAll<HTMLElement>(
+							`[data-drag-follow="${CSS.escape(row.dataset["dragId"] ?? "")}"]`,
+						);
+						for (const follower of followers ?? []) next.set(follower, shift);
 					}
 				});
 			}

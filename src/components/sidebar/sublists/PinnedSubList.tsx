@@ -28,6 +28,7 @@ const DROP_ROW_LABELS: Record<PinDropRowState, string> =
  */
 export function PinnedSubList({
 	rows,
+	nested,
 	expanded,
 	activeItemId,
 	dragging = false,
@@ -36,8 +37,10 @@ export function PinnedSubList({
 	dropRowRef,
 	dragRowProps,
 }: {
-	/** Pinned sessions, already in display order. */
+	/** Pinned slots, already in display order. */
 	rows: SidebarSessionRow[];
+	/** A pinned family head → the family nested under it. */
+	nested: ReadonlyMap<string, SidebarSessionRow[]>;
 	expanded: boolean;
 	activeItemId: string | null;
 	/** A row drag is in progress, so the section shows a drop row even when empty. */
@@ -87,7 +90,7 @@ export function PinnedSubList({
 			className={`group/section relative flex shrink-0 flex-col gap-0 ${empty ? "df-pin-section-reveal" : ""}`}
 		>
 			<GroupSection
-				group={pinnedGroup(rows, revealed)}
+				group={pinnedGroup(rows, revealed, nested)}
 				expanded={expanded}
 				activeItemId={activeItemId}
 				filterSlot={null}

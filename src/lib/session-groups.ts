@@ -242,10 +242,17 @@ export function sessionRowComparator(sortBy: SessionSortBy, direction: SessionSo
 
 export const PINNED_GROUP_KEY = "pinned";
 
-/** The sidebar Pinned section as a group: 20 slots, plus the rows revealed past them. */
-export function pinnedGroup<Row extends SessionGroupRow>(rows: Row[], revealed: RevealedRows): SessionGroup<Row>
+/**
+ * The sidebar Pinned section as a group: 20 slots, plus 20 per revealed Show more page. A pinned
+ * family head's `nested` rows ride on its slot, as upstream's `Ag(slots, 20, …, {heldBy})`.
+ */
+export function pinnedGroup<Row extends SessionGroupRow>(
+	rows: Row[],
+	revealed: RevealedRows,
+	nested: ReadonlyMap<string, Row[]> = NO_NESTED,
+): SessionGroup<Row>
 {
-	return group(PINNED_GROUP_KEY, "Pinned", rows, revealed, NO_NESTED, PINNED_PAGE_SIZE);
+	return group(PINNED_GROUP_KEY, "Pinned", rows, revealed, nested, PINNED_PAGE_SIZE);
 }
 
 function isVisible(row: SessionGroupRow, prefs: SessionListPrefs, now: number): boolean

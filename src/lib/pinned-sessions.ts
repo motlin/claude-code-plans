@@ -1,6 +1,7 @@
 import {z} from "zod";
 
 import {orderedPins, type PinState} from "./pin-store";
+import {type FamilyRow, resolveFamilies} from "./session-families";
 
 export {slotFromPointer} from "./sidebar-drag";
 
@@ -18,25 +19,39 @@ export type PinDropOutcome = z.infer<typeof PinDropOutcomeSchema>;
 
 export interface SplitPinned<T>
 {
+	/** Pinned slots: pinned family heads and flat pins, in display order (upstream `slotPinned`). */
 	readonly pinned: T[];
+	/** A pinned family head → its whole family in spawn-tree pre-order (upstream `qT` + `$Y "parent"`). */
+	readonly nested: ReadonlyMap<string, T[]>;
 	readonly rest: T[];
 }
 
 /**
  * Split `sessions` into the Pinned section (user-ordered pins first, the rest by
- * `comparator`) and everything else, which keeps its input order.
+ * `comparator`) and everything else, which keeps its input order. A pinned family head
+ * takes its whole fork family into Pinned, nested under it: a pinned member gives up its
+ * own slot, and no member is left in `rest`. A pinned fork whose head is not pinned stays
+ * a flat slot.
  */
 export function splitPinned<
 	T extends
 	{
 		id: string;
-	},
+	} & FamilyRow,
 >(sessions: readonly T[], pins: PinState, comparator: (a: T, b: T) => number): SplitPinned<T>
 {
 	const pinnedIds = new Set(pins.pinnedIds);
+	const nested = new Map<string, T[]>();
+	for (const {head, children} of resolveFamilies(sessions))
+	{
+		if (!pinnedIds.has(head.id) || children.length === 0) continue;
+		nested.set(head.sessionId, resolveFamilies([head, ...children.toSorted(comparator)])[0]?.children ?? []);
+	}
+	const members = new Set([...nested.values()].flat().map((row) => row.id));
 	return {
-		pinned: orderedPins(sessions, comparator, pins),
-		rest: sessions.filter((session) => !pinnedIds.has(session.id)),
+		pinned: orderedPins(sessions, comparator, pins).filter((row) => !members.has(row.id)),
+		nested,
+		rest: sessions.filter((session) => !pinnedIds.has(session.id) && !members.has(session.id)),
 	};
 }
 

@@ -440,6 +440,30 @@ describe("described row meta line (upstream sidebar-row-metadata-line)", () =>
 		);
 	});
 
+	it("indents a pinned family past its head's icon slot and moves its elbow to match", () =>
+	{
+		expect(
+			{
+				indent: tokens(block("[data-pinned-family] .df-family"), ["--sb-row-indent"]),
+				elbow: tokens(block("[data-pinned-family] .df-family::after"), ["width", "inset-inline-start"]),
+			},
+		).toStrictEqual(
+			{
+				indent:
+				{
+					"--sb-row-indent":
+						"calc( var(--sb-rail-shift, 0px) + var(--sb-leading-slot) + var(--sb-row-gap) - var(--sb-iconless-pad) )",
+				},
+				elbow:
+				{
+					width: "calc(var(--sb-leading-slot) / 2 + var(--sb-row-gap) - 5.5px)",
+					"inset-inline-start":
+						"calc(var(--sb-row-px) + var(--sb-rail-shift, 0px) + var(--sb-leading-slot) / 2 - 0.5px)",
+				},
+			},
+		);
+	});
+
 	// sidebar-code-list-attribute: these are upstream's chat/cowork sidebar rules; the local sidebar is code-list only.
 	it("copies none of upstream's chat-sidebar-only spacing rules", () =>
 	{

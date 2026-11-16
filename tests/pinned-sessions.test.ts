@@ -14,32 +14,38 @@ import {slotFromPointer as sidebarSlotFromPointer} from "../src/lib/sidebar-drag
 interface Row
 {
 	id: string;
+	sessionId: string;
+	forkedFromSessionId?: string;
+	bucket: "done";
+	archived: boolean;
 	mtime: number;
+}
+
+function row(id: string, mtime: number, forkedFromSessionId?: string): Row
+{
+	return {
+		id,
+		sessionId: id,
+		...(forkedFromSessionId === undefined
+			? {}
+			:
+				{
+					forkedFromSessionId,
+				}),
+		bucket: "done",
+		archived: false,
+		mtime,
+	};
 }
 
 const byMtimeDesc = (a: Row, b: Row) => b.mtime - a.mtime;
 
 const sessions: Row[] = [
-	{
-		id: "session-alice",
-		mtime: 1,
-	},
-	{
-		id: "session-bob",
-		mtime: 2,
-	},
-	{
-		id: "session-carol",
-		mtime: 3,
-	},
-	{
-		id: "session-dave",
-		mtime: 4,
-	},
-	{
-		id: "session-erin",
-		mtime: 5,
-	},
+	row("session-alice", 1),
+	row("session-bob", 2),
+	row("session-carol", 3),
+	row("session-dave", 4),
+	row("session-erin", 5),
 ];
 
 describe("splitPinned", () =>
@@ -58,6 +64,7 @@ describe("splitPinned", () =>
 		).toStrictEqual(
 			{
 				pinned: [],
+				nested: new Map(),
 				rest: sessions,
 			},
 		);
@@ -76,30 +83,9 @@ describe("splitPinned", () =>
 			),
 		).toStrictEqual(
 			{
-				pinned: [
-					{
-						id: "session-dave",
-						mtime: 4,
-					},
-					{
-						id: "session-bob",
-						mtime: 2,
-					},
-				],
-				rest: [
-					{
-						id: "session-alice",
-						mtime: 1,
-					},
-					{
-						id: "session-carol",
-						mtime: 3,
-					},
-					{
-						id: "session-erin",
-						mtime: 5,
-					},
-				],
+				pinned: [row("session-dave", 4), row("session-bob", 2)],
+				nested: new Map(),
+				rest: [row("session-alice", 1), row("session-carol", 3), row("session-erin", 5)],
 			},
 		);
 	});
@@ -118,29 +104,13 @@ describe("splitPinned", () =>
 		).toStrictEqual(
 			{
 				pinned: [
-					{
-						id: "session-bob",
-						mtime: 2,
-					},
-					{
-						id: "session-alice",
-						mtime: 1,
-					},
-					{
-						id: "session-erin",
-						mtime: 5,
-					},
-					{
-						id: "session-carol",
-						mtime: 3,
-					},
+					row("session-bob", 2),
+					row("session-alice", 1),
+					row("session-erin", 5),
+					row("session-carol", 3),
 				],
-				rest: [
-					{
-						id: "session-dave",
-						mtime: 4,
-					},
-				],
+				nested: new Map(),
+				rest: [row("session-dave", 4)],
 			},
 		);
 	});
@@ -158,30 +128,98 @@ describe("splitPinned", () =>
 			),
 		).toStrictEqual(
 			{
-				pinned: [
-					{
-						id: "session-carol",
-						mtime: 3,
-					},
-				],
-				rest: [
-					{
-						id: "session-alice",
-						mtime: 1,
-					},
-					{
-						id: "session-bob",
-						mtime: 2,
-					},
-					{
-						id: "session-dave",
-						mtime: 4,
-					},
-					{
-						id: "session-erin",
-						mtime: 5,
-					},
-				],
+				pinned: [row("session-carol", 3)],
+				nested: new Map(),
+				rest: [row("session-alice", 1), row("session-bob", 2), row("session-dave", 4), row("session-erin", 5)],
+			},
+		);
+	});
+});
+
+describe("splitPinned with families", () =>
+{
+	// h1 ← c1 ← g1 and h2 ← c2; newer rows have a larger mtime.
+	const family = [row("h1", 50), row("c1", 40, "h1"), row("g1", 30, "c1"), row("h2", 20), row("c2", 10, "h2")];
+	const ids = (rows: readonly Row[]) => rows.map((entry) => entry.id);
+	const nestedIds = (nested: ReadonlyMap<string, Row[]>) =>
+		[...nested].map(([head, members]): [string, string[]] => [head, ids(members)]);
+	const split = (rows: readonly Row[], pinnedIds: string[]) =>
+	{
+		const result = splitPinned(
+			rows,
+			{
+				pinnedIds,
+				pinnedOrder: [],
+			},
+			byMtimeDesc,
+		);
+		return {
+			pinned: ids(result.pinned),
+			nested: nestedIds(result.nested),
+			rest: ids(result.rest),
+		};
+	};
+
+	it("moves a pinned head's whole family into Pinned, nested under it", () =>
+	{
+		expect(split(family, ["h1"])).toStrictEqual(
+			{
+				pinned: ["h1"],
+				nested: [["h1", ["c1", "g1"]]],
+				rest: ["h2", "c2"],
+			},
+		);
+	});
+
+	it("nests a pinned member under its pinned head instead of giving it a slot", () =>
+	{
+		expect(split(family, ["h1", "c1"])).toStrictEqual(
+			{
+				pinned: ["h1"],
+				nested: [["h1", ["c1", "g1"]]],
+				rest: ["h2", "c2"],
+			},
+		);
+	});
+
+	it("keeps a pinned fork whose head is not pinned as a flat slot", () =>
+	{
+		expect(split(family, ["c2"])).toStrictEqual(
+			{
+				pinned: ["c2"],
+				nested: [],
+				rest: ["h1", "c1", "g1", "h2"],
+			},
+		);
+	});
+
+	it("orders siblings by the comparator, each member after its parent", () =>
+	{
+		expect(split([...family, row("c1b", 45, "h1")], ["h1"])).toStrictEqual(
+			{
+				pinned: ["h1"],
+				nested: [["h1", ["c1b", "c1", "g1"]]],
+				rest: ["h2", "c2"],
+			},
+		);
+	});
+
+	it("nests nothing when nothing is pinned", () =>
+	{
+		expect(
+			splitPinned(
+				family,
+				{
+					pinnedIds: [],
+					pinnedOrder: [],
+				},
+				byMtimeDesc,
+			),
+		).toStrictEqual(
+			{
+				pinned: [],
+				nested: new Map(),
+				rest: family,
 			},
 		);
 	});

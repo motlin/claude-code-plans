@@ -434,6 +434,78 @@ describe("sidebar drag to pin", () =>
 		);
 	});
 
+	it("shifts a pinned family with its head's slot, and its nested rows are no slots", async () =>
+	{
+		seedPins(["d1", "h1"], ["d1", "h1"]);
+		const {container} = await renderGroups([
+			session("d1", "Completed newest", "done", 5),
+			session("h1", "Head one", "done", 10),
+			{
+				...session("c1", "Child one", "done", 8),
+				forkedFromSessionId: "h1",
+			},
+		]);
+		const section = pinnedSection(container);
+		const transform = (selector: string) => section.querySelector<HTMLElement>(selector)?.style.transform;
+
+		pointerDown("Completed newest", 400);
+		pointerMove(380);
+		pointerMove(120);
+		const shifts =
+		{
+			head: transform('[data-row-key="h1"]'),
+			family: transform("[data-pinned-family]"),
+			child: transform('[data-family-child][data-row-key="c1"]'),
+		};
+		pointerUp(120);
+
+		expect(
+			{
+				shifts,
+				pins: readPinState(),
+			},
+		).toStrictEqual(
+			{
+				shifts:
+				{
+					head: "translateY(-33px)",
+					family: "translateY(-33px)",
+					child: "",
+				},
+				pins:
+				{
+					pinnedIds: ["d1", "h1"],
+					pinnedOrder: ["h1", "d1"],
+				},
+			},
+		);
+	});
+
+	it("does not pin or reorder a pinned family's nested row dropped on a Pinned slot", async () =>
+	{
+		seedPins(["d1", "h1"], ["d1", "h1"]);
+		await renderGroups([
+			session("d1", "Completed newest", "done", 5),
+			session("h1", "Head one", "done", 10),
+			{
+				...session("c1", "Child one", "done", 8),
+				forkedFromSessionId: "h1",
+			},
+		]);
+
+		pointerDown("Child one", 400);
+		pointerMove(380);
+		pointerMove(40);
+		pointerUp(40);
+
+		expect(readPinState()).toStrictEqual(
+			{
+				pinnedIds: ["d1", "h1"],
+				pinnedOrder: ["d1", "h1"],
+			},
+		);
+	});
+
 	it("cancels the drag on Escape without changing the pins", async () =>
 	{
 		seedPins(["w1"]);

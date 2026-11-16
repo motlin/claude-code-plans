@@ -370,8 +370,24 @@ export function GroupSection({
 			?.querySelector<HTMLElement>(`[data-row-key="${CSS.escape(revealRequest.id)}"] [data-row-main-button]`)
 			?.focus();
 	}, [revealRequest, revealKey, group.rows]);
-	// Upstream `sP` (`Me`): open rows stay visible under a collapsed header.
-	const openRows = expanded ? [] : rows.filter((row) => openKeys.includes(row.sessionId));
+	// Upstream `sP` (`Me`) + `kM`/`xc`: open rows stay visible under a collapsed header, an open nested row with its head.
+	const openFamilies = expanded
+		? []
+		: group.rows.flatMap((row) =>
+			{
+				const members = (group.nested.get(row.sessionId) ?? []).filter((child) =>
+					openKeys.includes(child.sessionId),
+				);
+				return openKeys.includes(row.sessionId) || members.length > 0
+					? [
+							{
+								row,
+								members,
+							},
+						]
+					: [];
+			});
+	const openRows = openFamilies.flatMap(({row, members}) => [row, ...members]);
 	const badgeKind = useCollapsedBadgeKind(group, !expanded, openKeys);
 	useOpenRowAutoExpand(
 		{
@@ -532,50 +548,49 @@ export function GroupSection({
 			{/* Upstream P3: collapsed rows stay mounted in a hidden wrapper, keeping their state. */}
 			{subgroups === null ? (
 				<div ref={rowsRef} data-group-rows hidden={!expanded} className={expanded ? ROWS_CLASS : "hidden"}>
-					{(expanded ? group.rows : group.rows.filter((row) => !openKeys.includes(row.sessionId))).map(
-						(row) =>
-						{
-							const nested = group.nested.get(row.sessionId);
-							return (
-								<Fragment key={row.sessionId}>
-									<div
-										{...dragRowProps?.(row.sessionId)}
-										data-row-key={row.sessionId}
-										aria-describedby={awaitingDescribedBy(row)}
-										className="df-drag-shiftable relative"
-									>
-										<SessionRowLink
-											row={row}
-											selected={row.sessionId === activeItemId}
-											pinnedIds={pinnedIds}
-											envGlyph={envGlyph}
-											place={place}
-											awaitingHintId={awaitingHintId}
-											{...(nested === undefined
-												? {}
-												:
-													{
-														nameSuffix: (
-															<FamilyCaret headId={row.sessionId} title={row.title} />
-														),
-													})}
-										/>
-									</div>
-									{nested !== undefined && (
-										<SessionFamily
-											head={row}
-											nested={nested}
-											activeItemId={activeItemId}
-											dragRowProps={dragRowProps}
-											envGlyph={envGlyph}
-											place={place}
-											awaitingHintId={awaitingHintId}
-										/>
-									)}
-								</Fragment>
-							);
-						},
-					)}
+					{(expanded ? group.rows : group.rows.filter((row) => !openRows.includes(row))).map((row) =>
+					{
+						const nested = group.nested.get(row.sessionId);
+						return (
+							<Fragment key={row.sessionId}>
+								<div
+									{...dragRowProps?.(row.sessionId)}
+									data-row-key={row.sessionId}
+									aria-describedby={awaitingDescribedBy(row)}
+									className="df-drag-shiftable relative"
+								>
+									<SessionRowLink
+										row={row}
+										selected={row.sessionId === activeItemId}
+										pinnedIds={pinnedIds}
+										envGlyph={envGlyph}
+										place={place}
+										awaitingHintId={awaitingHintId}
+										{...(nested === undefined
+											? {}
+											:
+												{
+													nameSuffix: (
+														<FamilyCaret headId={row.sessionId} title={row.title} />
+													),
+												})}
+									/>
+								</div>
+								{nested !== undefined && (
+									<SessionFamily
+										head={row}
+										nested={nested}
+										activeItemId={activeItemId}
+										dragRowProps={dragRowProps}
+										pinnedIds={pinnedIds}
+										envGlyph={envGlyph}
+										place={place}
+										awaitingHintId={awaitingHintId}
+									/>
+								)}
+							</Fragment>
+						);
+					})}
 					{group.hiddenCount > 0 ? (
 						<OverflowRow
 							ariaLabel={`Show ${group.revealCount} more in ${group.label}`}
@@ -648,22 +663,36 @@ export function GroupSection({
 			)}
 			{openRows.length > 0 && (
 				<div data-group-rows className={ROWS_CLASS}>
-					{openRows.map((row) => (
-						<div
-							key={row.sessionId}
-							data-row-key={row.sessionId}
-							aria-describedby={awaitingDescribedBy(row)}
-							className="relative"
-						>
-							<SessionRowLink
-								row={row}
-								selected={row.sessionId === activeItemId}
-								pinnedIds={pinnedIds}
-								envGlyph={envGlyph}
-								place={place}
-								awaitingHintId={awaitingHintId}
-							/>
-						</div>
+					{openFamilies.map(({row, members}) => (
+						<Fragment key={row.sessionId}>
+							<div
+								data-row-key={row.sessionId}
+								aria-describedby={awaitingDescribedBy(row)}
+								className="relative"
+							>
+								<SessionRowLink
+									row={row}
+									selected={row.sessionId === activeItemId}
+									pinnedIds={pinnedIds}
+									envGlyph={envGlyph}
+									place={place}
+									awaitingHintId={awaitingHintId}
+								/>
+							</div>
+							{members.length > 0 && (
+								<SessionFamily
+									head={row}
+									nested={members}
+									activeItemId={activeItemId}
+									dragRowProps={undefined}
+									pinnedIds={pinnedIds}
+									foldable={false}
+									envGlyph={envGlyph}
+									place={place}
+									awaitingHintId={awaitingHintId}
+								/>
+							)}
+						</Fragment>
 					))}
 				</div>
 			)}
@@ -964,13 +993,18 @@ function FamilyCaret({headId, title}: {headId: string; title: string})
 
 /**
  * A family head's nested sessions (upstream `.df-family`): indented 20px under an elbow guide;
- * the head row's caret folds them behind a stub row.
+ * the head row's caret folds them behind a stub row. Under a pinned head (upstream `WA`) the family
+ * sits in a `[data-pinned-family]` wrapper that shifts with the head's drag slot, indents by the
+ * pinned `--sb-row-indent`, and its rows take the pinned look and are no Pinned drag slots.
+ * `foldable={false}` (a collapsed section keeping an open row) lists every row and no stub.
  */
 function SessionFamily({
 	head,
 	nested,
 	activeItemId,
 	dragRowProps,
+	pinnedIds,
+	foldable = true,
 	envGlyph,
 	place,
 	awaitingHintId,
@@ -979,6 +1013,9 @@ function SessionFamily({
 	nested: readonly SidebarSessionRow[];
 	activeItemId: string | null;
 	dragRowProps: ((id: string) => SidebarDragRowProps) | undefined;
+	/** Set under a pinned head: the Pinned slots, as GroupSection's `pinnedIds`. */
+	pinnedIds?: readonly string[] | undefined;
+	foldable?: boolean;
 	envGlyph: boolean;
 	place: RowPlace;
 	/** The section's shared quick-reply hint, describing its Needs input rows. */
@@ -986,14 +1023,15 @@ function SessionFamily({
 })
 {
 	const {collapsedFamilies} = useSidebarState();
-	const collapsed = collapsedFamilies.includes(familyKey(head.sessionId));
-	const {pinnedIds} = usePins();
+	const collapsed = foldable && collapsedFamilies.includes(familyKey(head.sessionId));
+	const underPinnedHead = pinnedIds !== undefined;
+	const pins = usePins();
 	const openKeys = useFoldOpenKeysContext();
 	const {kept, hidden} = splitFoldedFamily(
 		nested,
 		{
 			collapsed,
-			pinnedIds,
+			pinnedIds: pins.pinnedIds,
 			openKeys,
 		},
 	);
@@ -1015,7 +1053,7 @@ function SessionFamily({
 
 	const titles = new Map([head, ...nested].map((row) => [row.sessionId, row.title]));
 
-	return (
+	const family = (
 		<div
 			ref={ref}
 			data-family-head={head.sessionId}
@@ -1032,12 +1070,13 @@ function SessionFamily({
 						data-row-key={child.sessionId}
 						aria-describedby={child.bucket === "blocked" ? awaitingHintId : undefined}
 						{...dragRowProps?.(child.sessionId)}
-						className="df-drag-shiftable relative pl-5"
+						data-drag-nested={underPinnedHead ? "" : undefined}
+						className={`df-drag-shiftable relative ${underPinnedHead ? "pl-[var(--sb-row-indent)]" : "pl-5"}`}
 					>
 						<SessionRowLink
 							row={child}
 							selected={child.sessionId === activeItemId}
-							pinnedIds={undefined}
+							pinnedIds={pinnedIds}
 							envGlyph={envGlyph}
 							place={place}
 							awaitingHintId={awaitingHintId}
@@ -1060,6 +1099,12 @@ function SessionFamily({
 					/>
 				</div>
 			)}
+		</div>
+	);
+	if (!underPinnedHead) return family;
+	return (
+		<div data-pinned-family="" data-drag-follow={head.sessionId} className="df-drag-shiftable">
+			{family}
 		</div>
 	);
 }

@@ -2108,6 +2108,54 @@ describe("pinnedGroup", () =>
 	});
 });
 
+describe("pinnedGroup with nested families", () =>
+{
+	it("counts slots, not nested rows, toward the 20-slot page", () =>
+	{
+		const slots = doneRows(22, "slot");
+		const head = slots[0]?.sessionId ?? "";
+		const members = doneRows(3, "member");
+		const grouped = pinnedGroup(slots, {}, new Map([[head, members]]));
+		expect(
+			{
+				paging: paging(grouped),
+				nested: grouped.nested.get(head)?.map((member) => member.sessionId),
+				headOf: [...grouped.headOf],
+			},
+		).toStrictEqual(
+			{
+				paging:
+				{
+					shown: 20,
+					hiddenCount: 2,
+					revealCount: 2,
+					canShowLess: false,
+				},
+				nested: ["member-0", "member-1", "member-2"],
+				headOf: [
+					["member-0", "slot-0"],
+					["member-1", "slot-0"],
+					["member-2", "slot-0"],
+				],
+			},
+		);
+	});
+
+	it("shows 21 slots whole even when one holds a family", () =>
+	{
+		const slots = doneRows(21, "slot");
+		const head = slots[20]?.sessionId ?? "";
+		expect(paging(pinnedGroup(slots, {}, new Map([[head, doneRows(3, "member")]])))).toStrictEqual(
+			{
+				shown: 21,
+				hiddenCount: 0,
+				revealCount: 0,
+				canShowLess: false,
+			},
+		);
+	});
+});
+
 describe("customGroupLaunchTarget", () =>
 {
 	const PROJECTS = [
