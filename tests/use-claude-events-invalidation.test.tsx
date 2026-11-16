@@ -4,7 +4,7 @@ import {QueryClient, QueryClientProvider, useQuery} from "@tanstack/react-query"
 import {act, cleanup, render, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {useEffect, type ReactNode} from "react";
-import {useSubscribeSessionRemovals} from "../src/hooks/use-claude-events";
+import {useSubscribeSessionRemovals, useSubscribeSessionStates} from "../src/hooks/use-claude-events";
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {sessionQueryKeys, transcriptQueryOptions, type TranscriptData} from "../src/lib/api/sessions";
 import {herdrConnectionQueryOptions} from "../src/lib/api/herdr-connection";
@@ -58,6 +58,20 @@ function RemovalProbe({onRemoved}: {onRemoved: (sessionId: string) => void}): nu
 {
 	const subscribe = useSubscribeSessionRemovals();
 	useEffect(() => subscribe(onRemoved), [subscribe, onRemoved]);
+	return null;
+}
+
+function SessionStateProbe({onState}: {onState: (label: string) => void}): null
+{
+	const subscribe = useSubscribeSessionStates();
+	useEffect(
+		() =>
+			subscribe((session) =>
+			{
+				onState(session.label);
+			}),
+		[subscribe, onState],
+	);
 	return null;
 }
 
@@ -303,6 +317,24 @@ describe("ClaudeEventsProvider terminal placement invalidation", () =>
 		});
 
 		expect(removed).toStrictEqual(["session-test-100"]);
+	});
+
+	it("labels a session no summary has named Untitled, never by its id", () =>
+	{
+		const labels: string[] = [];
+		const {eventSource} = renderProvider(<SessionStateProbe onState={(label) => labels.push(label)} />);
+
+		act(() =>
+		{
+			eventSource.emit(
+				DOMAIN_EVENTS.SESSION_PROMPT_SUBMITTED,
+				{
+					sessionId: "session-test-100",
+				},
+			);
+		});
+
+		expect(labels).toStrictEqual(["Untitled"]);
 	});
 });
 

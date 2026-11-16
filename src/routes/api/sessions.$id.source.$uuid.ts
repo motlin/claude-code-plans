@@ -77,7 +77,8 @@ export const Route = createFileRoute("/api/sessions/$id/source/$uuid")(
 
 						const {findPairedToolResult} = await import("../../lib/paired-tool-result");
 						const paired = findPairedToolResult(window.focal.raw, window.after);
-						const sessionTitle = detail?.title ?? sessionId;
+						const {UNTITLED_SESSION_TITLE} = await import("../../lib/session-stand-in-title");
+						const sessionTitle = detail?.title ?? UNTITLED_SESSION_TITLE;
 
 						const allLines = [...window.before, window.focal, ...window.after];
 						const knownUuids = allLines.map((l) => l.uuid).filter((u): u is string => u != null);

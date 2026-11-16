@@ -6399,6 +6399,63 @@ describe("task queries", () =>
 		expect(group.sessionTitle).toBe("Example task owner session");
 	});
 
+	it("getIncompleteTasksGroupedByProject labels an untitled session by its folder, else Untitled, never its id", () =>
+	{
+		db.index
+			.update(schema.sessions)
+			.set(
+				{
+					title: sessionId,
+				},
+			)
+			.where(eq(schema.sessions.id, sessionId))
+			.run();
+		db.index
+			.insert(schema.tasks)
+			.values(
+				{
+					taskId: "200",
+					projectDir: "session-12345678",
+					subject: "Prefixed task",
+					description: "desc",
+					status: "pending",
+					blocksJson: "[]",
+					blockedByJson: "[]",
+					metadataJson: "{}",
+					filePath: "/tasks/session-12345678/200.json",
+					mtimeMs: 1000,
+				},
+			)
+			.run();
+		const sessionTitles = (): Record<string, string> =>
+			Object.fromEntries(
+				getIncompleteTasksGroupedByProject(db.index).map((group) => [group.projectDir, group.sessionTitle]),
+			);
+
+		expect(sessionTitles()).toStrictEqual(
+			{
+				[sessionId]: "Untitled",
+				"session-12345678": "Untitled",
+			},
+		);
+
+		db.index
+			.update(schema.sessions)
+			.set(
+				{
+					cwd: "/Users/craig/projects/app",
+				},
+			)
+			.where(eq(schema.sessions.id, sessionId))
+			.run();
+		expect(sessionTitles()).toStrictEqual(
+			{
+				[sessionId]: "app",
+				"session-12345678": "app",
+			},
+		);
+	});
+
 	it("getIncompleteTasksGroupedByProject resolves a project-name task directory via the projects table", () =>
 	{
 		db.index

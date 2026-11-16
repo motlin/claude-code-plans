@@ -1878,6 +1878,7 @@ function resolveUnmatchedTaskDir(db: IndexDb, projectDir: string): ResolvedTaskD
 					sessionTitle: sql<
 						string | null
 					>`coalesce(${schema.sessions.customTitle}, ${schema.sessions.title})`,
+					cwd: schema.sessions.cwd,
 				},
 			)
 			.from(schema.sessions)
@@ -1892,7 +1893,7 @@ function resolveUnmatchedTaskDir(db: IndexDb, projectDir: string): ResolvedTaskD
 				projectId: match.projectId,
 				projectName: match.projectName ?? match.projectId,
 				sessionId: match.sessionId,
-				sessionTitle: match.sessionTitle ?? `Session ${match.sessionId.slice(0, 8)}`,
+				sessionTitle: sessionDisplayTitle(match.sessionTitle ?? "", match.sessionId, match.cwd).title,
 			};
 		}
 	}
@@ -1934,6 +1935,7 @@ export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGrou
 				projectId: schema.sessions.projectId,
 				projectName: schema.projects.name,
 				sessionTitle: sql<string | null>`coalesce(${schema.sessions.customTitle}, ${schema.sessions.title})`,
+				cwd: schema.sessions.cwd,
 			},
 		)
 		.from(schema.tasks)
@@ -1965,7 +1967,7 @@ export function getIncompleteTasksGroupedByProject(db: IndexDb): TaskProjectGrou
 							projectId: row.projectId,
 							projectName: row.projectName ?? row.projectId,
 							sessionId: row.sessionId,
-							sessionTitle: row.sessionTitle ?? `Session ${row.sessionId.slice(0, 8)}`,
+							sessionTitle: sessionDisplayTitle(row.sessionTitle ?? "", row.sessionId, row.cwd).title,
 						}
 					: resolveUnmatchedTaskDir(db, row.projectDir);
 			session =

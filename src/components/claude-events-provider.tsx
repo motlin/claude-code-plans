@@ -23,6 +23,7 @@ import {isLiveSessionState, type ActivityState} from "../lib/session-state";
 import {openSharedEventSource} from "../lib/shared-event-source";
 import {nextStreamDrop} from "../lib/stream-drop";
 import {startLiveAppendJourneys} from "../lib/perf/field-journeys";
+import {UNTITLED_SESSION_TITLE} from "../lib/session-stand-in-title";
 import
 {
 	ClaudeEventsContext,
@@ -267,7 +268,7 @@ export function ClaudeEventsProvider({children}: {children: ReactNode})
 				:
 					{
 						sessionId,
-						label: existing?.label ?? sessionId,
+						label: existing?.label ?? UNTITLED_SESSION_TITLE,
 						state,
 						archived: existing?.archived ?? false,
 					};
