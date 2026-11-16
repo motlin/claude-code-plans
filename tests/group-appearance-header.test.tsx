@@ -5,6 +5,7 @@ import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 
+import type {ProjectReorder} from "../src/components/sidebar/project-group-header";
 import {GroupSection} from "../src/components/sidebar/session-group-section";
 import {type SidebarSessionRow, toGroupRow} from "../src/components/sidebar/sidebar-session-row";
 import {ToastProvider} from "../src/components/toast";
@@ -28,7 +29,12 @@ async function flush()
 	});
 }
 
-async function renderSection(key: string, label: string, rows: SidebarSessionRow[] = [])
+async function renderSection(
+	key: string,
+	label: string,
+	rows: SidebarSessionRow[] = [],
+	projectReorder: ProjectReorder | null = null,
+)
 {
 	const group: SessionGroup<SidebarSessionRow> =
 	{
@@ -79,6 +85,7 @@ async function renderSection(key: string, label: string, rows: SidebarSessionRow
 							onReveal={() =>
 							{
 							}}
+							projectReorder={projectReorder}
 						/>
 					</ToastProvider>
 				</QueryClientProvider>
@@ -468,30 +475,133 @@ describe("appearance picker", () =>
 	});
 });
 
+/** The open header menu's items and separators, disabled items with their reason. */
+async function menuOutline(label: string): Promise<string[]>
+{
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: `More options for ${label}`,
+			},
+		),
+	);
+	await flush();
+	const menu = await waitFor(() => screen.getByRole("menu"));
+	return [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((node) =>
+	{
+		if (node.getAttribute("role") === "separator") return "---";
+		const reason = document.getElementById(node.getAttribute("aria-describedby") ?? "")?.textContent;
+		return node.getAttribute("aria-disabled") === "true"
+			? `${node.textContent} (${reason ?? ""})`
+			: node.textContent;
+	});
+}
+
+/** The edit group: from New group… up to the separator before Select all. */
+function editGroup(outline: readonly string[]): string[]
+{
+	const start = outline.indexOf("New group…");
+	return outline.slice(start, outline.indexOf("---", start));
+}
+
 describe("folder section header menu", () =>
 {
+	it("offers only the callable Move up / Move down / Sort A to Z after Rename, like upstream zC", async () =>
+	{
+		const calls: string[] = [];
+		const call = (name: string) => () =>
+		{
+			calls.push(name);
+		};
+		const rows = [projectRow("s1"), projectRow("s2")];
+		const editGroupOf = async (projectReorder: ProjectReorder) =>
+		{
+			await renderSection("project-foo", "foo", rows, projectReorder);
+			const outline = editGroup(await menuOutline("foo"));
+			cleanup();
+			return outline;
+		};
+		const middle = await editGroupOf(
+			{
+				onMoveUp: call("up"),
+				onMoveDown: call("down"),
+			},
+		);
+		const first = await editGroupOf(
+			{
+				onMoveDown: call("down"),
+			},
+		);
+		const lastStored = await editGroupOf(
+			{
+				onMoveUp: call("up"),
+				onReset: call("reset"),
+			},
+		);
+		const lone = await editGroupOf({});
+		await renderSection(
+			"project-foo",
+			"foo",
+			rows,
+			{
+				onMoveUp: call("up"),
+				onMoveDown: call("down"),
+				onReset: call("reset"),
+			},
+		);
+		for (const name of ["Move up", "Move down", "Sort A to Z"])
+		{
+			await menuOutline("foo");
+			fireEvent.click(
+				screen.getByRole(
+					"menuitem",
+					{
+						name,
+					},
+				),
+			);
+			await flush();
+		}
+
+		expect(
+			{
+				middle,
+				first,
+				lastStored,
+				lone,
+				calls,
+			},
+		).toStrictEqual(
+			{
+				middle: [
+					"New group…",
+					"Rename (This group is made automatically, so it can’t be renamed.)",
+					"Move up",
+					"Move down",
+				],
+				first: [
+					"New group…",
+					"Rename (This group is made automatically, so it can’t be renamed.)",
+					"Move down",
+				],
+				lastStored: [
+					"New group…",
+					"Rename (This group is made automatically, so it can’t be renamed.)",
+					"Move up",
+					"Sort A to Z",
+				],
+				lone: ["New group…", "Rename (This group is made automatically, so it can’t be renamed.)"],
+				calls: ["up", "down", "reset"],
+			},
+		);
+	});
+
 	it("offers upstream's worked-out rv groups, with Rename, Move and Delete disabled for a made-up section", async () =>
 	{
 		await renderSection("project-foo", "foo", [projectRow("s1"), projectRow("s2")]);
 
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "More options for foo",
-				},
-			),
-		);
-		await flush();
-		const menu = await waitFor(() => screen.getByRole("menu"));
-		const outline = [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((node) =>
-		{
-			if (node.getAttribute("role") === "separator") return "---";
-			const reason = document.getElementById(node.getAttribute("aria-describedby") ?? "")?.textContent;
-			return node.getAttribute("aria-disabled") === "true"
-				? `${node.textContent} (${reason ?? ""})`
-				: node.textContent;
-		});
+		const outline = await menuOutline("foo");
 
 		expect(outline).toStrictEqual([
 			"New session (Where these sessions run isn’t known, so there’s nowhere to start a new one.)",

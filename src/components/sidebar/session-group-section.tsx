@@ -66,7 +66,7 @@ import {GroupHeaderContextMenu} from "./group-header-context-menu";
 import {GroupNewSessionButton} from "./group-new-session-button";
 import {GroupAppearanceMark} from "./group-appearance";
 import {useOpenRowAutoExpand, useSectionFocusRescue} from "./group-section-focus";
-import {ProjectGroupHeader} from "./project-group-header";
+import {ProjectGroupHeader, type ProjectReorder} from "./project-group-header";
 import {UNTITLED_SESSION_TITLE} from "../../lib/session-stand-in-title";
 import {useSidebarSelection} from "./selection-context";
 import type {SidebarSessionRow} from "./sidebar-session-row";
@@ -275,6 +275,7 @@ export function GroupSection({
 	sectionRef,
 	dropHot = false,
 	sectionKeys,
+	projectReorder = null,
 }: {
 	group: SessionGroup<SidebarSessionRow>;
 	/** The list's grouping: grouped by status, the open session moving into a collapsed section expands it. */
@@ -308,6 +309,8 @@ export function GroupSection({
 	dropHot?: boolean;
 	/** Every section shown in the list, for the header menu's Collapse all / Expand all; defaults to this one. */
 	sectionKeys?: readonly string[];
+	/** A folder section's place in the folder order (Move up / Move down / Sort A to Z); null for Other. */
+	projectReorder?: ProjectReorder | null;
 })
 {
 	const customGroupId = customGroupIdOfKey(group.key);
@@ -502,6 +505,7 @@ export function GroupSection({
 							sectionKeys={sectionKeys ?? [group.key]}
 							activeItemId={activeItemId}
 							onNewSession={projectNewSession}
+							reorder={projectReorder}
 						>
 							{toggle}
 						</ProjectGroupHeader>

@@ -12,6 +12,8 @@ import {withFailedError} from "../../lib/failed-error-overlay";
 import {useLiveApprovalIds} from "../../lib/live-approval-sessions";
 import {closeDragPinHint} from "../../lib/drag-pin-hint";
 import {readPinState, unpin, usePins, writePinState} from "../../lib/pin-store";
+import {mergeProjectOrder, moveProjectIndex, moveProjectKey} from "../../lib/project-order";
+import {readProjectOrder, resetProjectOrder, setProjectOrder, useProjectOrder} from "../../lib/project-order-store";
 import {dropOutcome, placePin, splitPinned, type SplitPinned} from "../../lib/pinned-sessions";
 import
 {
@@ -30,6 +32,7 @@ import
 	EMPTY_LIST_GROUP_LABELS,
 	nextPageCanHoldVisibleRows,
 	PINNED_GROUP_KEY,
+	projectOrderKey,
 	type ManualSectionGroups,
 	type RevealedRows,
 	type SessionGroup,
@@ -76,7 +79,9 @@ import {useLoadMoreFocus} from "./use-load-more-focus";
 import {type SidebarSessionRow, toGroupRow} from "./sidebar-session-row";
 import {SidebarSelectionContext, type SidebarSelectionApi} from "./selection-context";
 import {SectionViewMenu} from "./section-view-menu";
-import {SortableSection, SortableSections} from "./sortable-sections";
+import type {ProjectReorder} from "./project-group-header";
+import {SORTABLE_FOLDER_SECTION_CLASS} from "./sortable-section-classes";
+import {type SectionActivator, SortableSection, SortableSections} from "./sortable-sections";
 import {PinnedSubList} from "./sublists";
 import {SidebarWhitespaceMenu, type WhitespaceScopes} from "./whitespace-context-menu";
 
@@ -276,6 +281,7 @@ export function SessionGroups({
 	const {assignments, order} = useSessionGroups();
 	const sections = useSidebarSections();
 	const manualSections = useMemo(() => sections.filter((section) => section.kind === "manual"), [sections]);
+	const projectOrder = useProjectOrder();
 	const built = useMemo(
 		() =>
 			split === undefined
@@ -290,8 +296,9 @@ export function SessionGroups({
 							assignments,
 							order,
 						},
+						projectOrder,
 					),
-		[split, prefs, revealed, manualSections, assignments, order],
+		[split, prefs, revealed, manualSections, assignments, order, projectOrder],
 	);
 	const groups = built?.sessions;
 	latestManual.current = built?.manual ?? [];
@@ -503,6 +510,8 @@ export function SessionGroups({
 		) : null;
 
 	const sectionKeys = [...manual.map((section) => section.group.key), ...groups.map((group) => group.key)];
+	const projectOrderKeys = groups.flatMap((group) => projectOrderKey(group.key) ?? []);
+	const reorders = projectReorders(projectOrderKeys, projectOrder.length > 0);
 	const sectionById = new Map<string, SidebarSection>(manualSections.map((section) => [section.id, section]));
 	const emptyListReason: EmptyListReason =
 		(data?.pages.every((page) => page.sessions.length === 0) ?? false) &&
@@ -644,20 +653,49 @@ export function SessionGroups({
 						data-perf-region="sidebar_recents"
 						className="flex min-h-[120px] shrink-0 grow flex-col"
 					>
-						{groups.map((group, index) => (
-							<GroupSection
-								key={group.key}
-								group={group}
-								groupBy={prefs.groupBy}
-								expanded={!collapsed.has(group.key)}
-								activeItemId={activeItemId}
-								filterSlot={filterSlot}
-								onReveal={onReveal}
-								fetchMore={index === groups.length - 1 ? sectionFetchMore : undefined}
-								dragRowProps={rowProps}
-								sectionKeys={sectionKeys}
-							/>
-						))}
+						<SortableSections
+							sectionIds={projectOrderKeys}
+							// Upstream `ge` → `Dx`: the dragged folder takes the place of the one it was dropped over.
+							onMove={(activeKey, overKey) =>
+							{
+								commitProjectOrder(
+									projectOrderKeys,
+									moveProjectKey(projectOrderKeys, activeKey, overKey),
+								);
+							}}
+						>
+							{groups.map((group, index) =>
+							{
+								const section = (activator?: SectionActivator) => (
+									<GroupSection
+										key={group.key}
+										group={group}
+										groupBy={prefs.groupBy}
+										expanded={!collapsed.has(group.key)}
+										activeItemId={activeItemId}
+										filterSlot={filterSlot}
+										onReveal={onReveal}
+										fetchMore={index === groups.length - 1 ? sectionFetchMore : undefined}
+										dragRowProps={rowProps}
+										sectionKeys={sectionKeys}
+										projectReorder={reorders.get(group.key) ?? null}
+										headerActivator={activator}
+									/>
+								);
+								const orderKey = projectOrderKey(group.key);
+								return orderKey === null ? (
+									section()
+								) : (
+									<SortableSection
+										key={group.key}
+										id={orderKey}
+										className={SORTABLE_FOLDER_SECTION_CLASS}
+									>
+										{section}
+									</SortableSection>
+								);
+							})}
+						</SortableSections>
 						{loadMoreRowKey !== null && (
 							<LoadMoreSessionsRow
 								rowKey={loadMoreRowKey}
@@ -753,6 +791,35 @@ function visibleFamilyHeads(
 	const rows = new Map([...split.pinned, ...split.rest].map((row) => [row.sessionId, row]));
 	const heads = new Set(nestedMaps.flatMap((nested) => [...nested.keys()]));
 	return [...heads].filter((id) => rows.get(id)?.archived !== true);
+}
+
+/** Upstream `he`: write the reordered visible folders back into the stored folder order. */
+function commitProjectOrder(orderKeys: readonly string[], next: readonly string[] | null): void
+{
+	if (next !== null) setProjectOrder(mergeProjectOrder(readProjectOrder(), orderKeys, next));
+}
+
+/**
+ * Upstream `gd` → `sx`: each sortable folder section's Move up (`_e(i, i-1)`) below the first,
+ * Move down above the last, and Sort A to Z (`ye`) while a folder order is stored. Other and
+ * non-folder sections get none.
+ */
+function projectReorders(orderKeys: readonly string[], hasStoredOrder: boolean): Map<string, ProjectReorder>
+{
+	const move = (from: number, to: number) => () =>
+	{
+		commitProjectOrder(orderKeys, moveProjectIndex(orderKeys, from, to));
+	};
+	return new Map(
+		orderKeys.map((orderKey, index) => [
+			`project-${orderKey}`,
+			{
+				onMoveUp: index > 0 ? move(index, index - 1) : undefined,
+				onMoveDown: index < orderKeys.length - 1 ? move(index, index + 1) : undefined,
+				onReset: hasStoredOrder ? resetProjectOrder : undefined,
+			},
+		]),
+	);
 }
 
 /** Upstream's drag commit: the dragged manual section takes the store order of the one it was dropped over. */

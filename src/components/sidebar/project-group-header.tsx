@@ -20,9 +20,20 @@ const WORKED_OUT =
 {
 	rename: "This group is made automatically, so it can’t be renamed.",
 	delete: "This group is made automatically, so it can’t be deleted.",
-	/** `fixedAtEnd`: folder sections have no reorder context locally. */
+	/** `fixedAtEnd`: the Other section has no place in the folder order. */
 	move: "This group stays at the end of the list.",
 } as const;
+
+/**
+ * Upstream `sx`'s reorder context for a sortable folder section: Move up below the first folder,
+ * Move down above the last, and Sort A to Z once a folder order is stored.
+ */
+export interface ProjectReorder
+{
+	readonly onMoveUp?: (() => void) | undefined;
+	readonly onMoveDown?: (() => void) | undefined;
+	readonly onReset?: (() => void) | undefined;
+}
 
 interface HeaderRow extends SessionGroupRow
 {
@@ -34,13 +45,15 @@ interface HeaderRow extends SessionGroupRow
  * right-click or the hover kebab: New session (disabled with the place-unknown reason when the
  * section has no folder) | New group…, Rename, Move up, Move down | Select all | Collapse all,
  * Expand all | Icon and color ▸ | Archive all (N) | Delete. The section is made automatically, so
- * Rename, Move and Delete are disabled with upstream's reasons.
+ * Rename and Delete are disabled with upstream's reasons. A sortable folder lists only the moves it
+ * can make (upstream `zC`); Other, with no reorder context, shows both disabled as fixed at the end.
  */
 export function ProjectGroupHeader({
 	group,
 	sectionKeys,
 	activeItemId,
 	onNewSession,
+	reorder,
 	children,
 }: {
 	group: SessionGroup<HeaderRow>;
@@ -50,6 +63,8 @@ export function ProjectGroupHeader({
 	activeItemId: string | null;
 	/** Starts a session in this project's folder, or null when it has none. */
 	onNewSession: (() => void) | null;
+	/** The folder's place in the folder order, or null for Other. */
+	reorder: ProjectReorder | null;
 	/** The label's toggle button. */
 	children: ReactNode;
 })
@@ -80,12 +95,22 @@ export function ProjectGroupHeader({
 			<MenuItem disabled disabledReason={WORKED_OUT.rename}>
 				Rename
 			</MenuItem>
-			<MenuItem disabled disabledReason={WORKED_OUT.move}>
-				Move up
-			</MenuItem>
-			<MenuItem disabled disabledReason={WORKED_OUT.move}>
-				Move down
-			</MenuItem>
+			{reorder === null ? (
+				<>
+					<MenuItem disabled disabledReason={WORKED_OUT.move}>
+						Move up
+					</MenuItem>
+					<MenuItem disabled disabledReason={WORKED_OUT.move}>
+						Move down
+					</MenuItem>
+				</>
+			) : (
+				<>
+					{reorder.onMoveUp !== undefined && <MenuItem onSelect={reorder.onMoveUp}>Move up</MenuItem>}
+					{reorder.onMoveDown !== undefined && <MenuItem onSelect={reorder.onMoveDown}>Move down</MenuItem>}
+					{reorder.onReset !== undefined && <MenuItem onSelect={reorder.onReset}>Sort A to Z</MenuItem>}
+				</>
+			)}
 			<GroupBulkMenuItems
 				actions={actions}
 				onArchiveAll={later(() =>

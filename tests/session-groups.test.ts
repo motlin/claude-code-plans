@@ -1165,6 +1165,66 @@ describe("buildGroups project mode", () =>
 			},
 		]);
 	});
+
+	it("sorts names numerically, then by the stored order with unstored projects newest first (upstream vM)", () =>
+	{
+		const numbered = [
+			row(
+				"app10-1",
+				{
+					project: "app10",
+					lastActivityAt: NOW - 3 * HOUR,
+				},
+			),
+			row(
+				"app2-1",
+				{
+					project: "app2",
+				},
+			),
+			row(
+				"Beta-1",
+				{
+					project: "Beta",
+					lastActivityAt: NOW - 2 * HOUR,
+				},
+			),
+			row(
+				"none-1",
+				{
+					project: null,
+				},
+			),
+		];
+		const labels = (projectOrder: readonly string[]) =>
+			buildGroups(
+				numbered,
+				prefs(
+					{
+						groupBy: "project",
+					},
+				),
+				NOW,
+				{},
+				projectOrder,
+			).map((group) => group.label);
+
+		expect(
+			{
+				byName: labels([]),
+				stored: labels(["Beta", "app10"]),
+				storedThenNewest: labels(["app10"]),
+				stale: labels(["gone"]),
+			},
+		).toStrictEqual(
+			{
+				byName: ["app2", "app10", "Beta", "Other"],
+				stored: ["Beta", "app10", "app2", "Other"],
+				storedThenNewest: ["app10", "app2", "Beta", "Other"],
+				stale: ["app2", "app10", "Beta", "Other"],
+			},
+		);
+	});
 });
 
 describe("buildGroups project mode caps", () =>

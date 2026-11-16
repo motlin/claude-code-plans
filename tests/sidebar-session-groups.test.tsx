@@ -29,6 +29,7 @@ import {__awaitingAckTesting, ack} from "../src/lib/awaiting-ack-store";
 import {registerLiveApproval} from "../src/lib/live-approval-sessions";
 import {installLocalStorage} from "./fake-storage";
 import {PIN_STORAGE_KEY} from "../src/lib/pin-store";
+import {readProjectOrder} from "../src/lib/project-order-store";
 import {readFileSync} from "node:fs";
 import {rowTitle} from "./sidebar-row-title";
 
@@ -4144,5 +4145,166 @@ describe("SessionGroups sections layout", () =>
 				},
 			);
 		});
+	});
+});
+
+describe("SessionGroups folder order", () =>
+{
+	const byProject =
+	{
+		...DEFAULT_SESSION_LIST_PREFS,
+		groupBy: "project",
+	} as const;
+
+	function inProject(id: string, projectName: string, minutesAgo: number)
+	{
+		return {
+			...session(id, `${projectName} ${id}`, "done", minutesAgo),
+			project: `-projects-${projectName}`,
+			projectName,
+		};
+	}
+
+	const THREE = [
+		inProject("z1", "zeta", 1),
+		inProject("z2", "zeta", 2),
+		inProject("b1", "beta", 3),
+		inProject("b2", "beta", 4),
+		inProject("a1", "alpha", 5),
+		inProject("a2", "alpha", 6),
+	];
+
+	/** Opens a folder header's menu and returns its edit group: New group… up to the next separator. */
+	async function editGroup(label: string): Promise<string[]>
+	{
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: `More options for ${label}`,
+				},
+			),
+		);
+		const menu = await waitFor(() => screen.getByRole("menu"));
+		const outline = [...menu.querySelectorAll('[role="menuitem"], [role="separator"]')].map((node) =>
+			node.getAttribute("role") === "separator"
+				? "---"
+				: `${node.textContent}${node.getAttribute("aria-disabled") === "true" ? " (disabled)" : ""}`,
+		);
+		const start = outline.indexOf("New group…");
+		return outline.slice(start, outline.indexOf("---", start));
+	}
+
+	async function choose(name: string): Promise<void>
+	{
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name,
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+	}
+
+	it("moves folders from their header menus into a stored order, and Sort A to Z forgets it", async () =>
+	{
+		const {container} = await renderGroups(
+			THREE,
+			{
+				prefs: byProject,
+			},
+		);
+		const initial = groupNames(container);
+		const betaMenu = await editGroup("beta");
+		await choose("Move up");
+		const afterMove =
+		{
+			labels: groupNames(container),
+			stored: readProjectOrder(),
+		};
+		const alphaMenu = await editGroup("alpha");
+		await choose("Move down");
+		const afterSecondMove = readProjectOrder();
+		const zetaMenu = await editGroup("zeta");
+		await choose("Sort A to Z");
+
+		expect(
+			{
+				initial,
+				betaMenu,
+				afterMove,
+				alphaMenu,
+				afterSecondMove,
+				zetaMenu,
+				afterReset:
+				{
+					labels: groupNames(container),
+					raw: localStorage.getItem("ccp-projects-order"),
+				},
+			},
+		).toStrictEqual(
+			{
+				initial: ["alpha", "beta", "zeta"],
+				betaMenu: ["New group…", "Rename (disabled)", "Move up", "Move down"],
+				afterMove:
+				{
+					labels: ["beta", "alpha", "zeta"],
+					stored: ["beta", "alpha", "zeta"],
+				},
+				alphaMenu: ["New group…", "Rename (disabled)", "Move up", "Move down", "Sort A to Z"],
+				afterSecondMove: ["beta", "zeta", "alpha"],
+				zetaMenu: ["New group…", "Rename (disabled)", "Move up", "Move down", "Sort A to Z"],
+				afterReset:
+				{
+					labels: ["alpha", "beta", "zeta"],
+					raw: null,
+				},
+			},
+		);
+	});
+
+	it("offers the first folder only Move down, the last only Move up, and a lone folder neither", async () =>
+	{
+		await renderGroups(
+			THREE,
+			{
+				prefs: byProject,
+			},
+		);
+		const first = await editGroup("alpha");
+		cleanup();
+		await renderGroups(
+			THREE,
+			{
+				prefs: byProject,
+			},
+		);
+		const last = await editGroup("zeta");
+		cleanup();
+		await renderGroups(
+			[inProject("a1", "alpha", 5)],
+			{
+				prefs: byProject,
+			},
+		);
+
+		expect(
+			{
+				first,
+				last,
+				lone: await editGroup("alpha"),
+			},
+		).toStrictEqual(
+			{
+				first: ["New group…", "Rename (disabled)", "Move down"],
+				last: ["New group…", "Rename (disabled)", "Move up"],
+				lone: ["New group…", "Rename (disabled)"],
+			},
+		);
 	});
 });

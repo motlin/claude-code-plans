@@ -19,7 +19,8 @@ import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src
 import {PIN_STORAGE_KEY, readPinState} from "../src/lib/pin-store";
 import {SESSION_GROUP_STORAGE_KEY, readSessionGroupState} from "../src/lib/session-group-store";
 import {readSidebarSections} from "../src/lib/sidebar-sections";
-import {DEFAULT_SESSION_LIST_PREFS} from "../src/lib/session-groups";
+import {readProjectOrder} from "../src/lib/project-order-store";
+import {DEFAULT_SESSION_LIST_PREFS, type SessionListPrefs} from "../src/lib/session-groups";
 import {installLocalStorage} from "./fake-storage";
 import {rowTitle} from "./sidebar-row-title";
 
@@ -84,7 +85,14 @@ function seedGroups(): void
 	);
 }
 
-async function renderGroups()
+async function renderGroups({
+	sessions = FIXTURE,
+	groupBy = "none",
+}:
+{
+	sessions?: readonly unknown[];
+	groupBy?: SessionListPrefs["groupBy"];
+} = {})
 {
 	const queryClient = new QueryClient(
 		{
@@ -106,7 +114,7 @@ async function renderGroups()
 			pages: [
 				RecentSessionsResponse.parse(
 					{
-						sessions: FIXTURE,
+						sessions,
 						nextCursor: null,
 					},
 				),
@@ -124,7 +132,7 @@ async function renderGroups()
 							prefs={
 							{
 								...DEFAULT_SESSION_LIST_PREFS,
-								groupBy: "none",
+								groupBy,
 							}}
 						/>
 						<Outlet />
@@ -744,6 +752,163 @@ describe("section drag (upstream `ProjectReorderBindings`)", () =>
 				dndLoaded: false,
 				midDrag: [],
 				stored: ["pinned", "cg-a", "sessions"],
+			},
+		);
+	});
+});
+
+describe("folder section drag (upstream gJ over the folder buckets)", () =>
+{
+	function inProject(id: string, projectName: string, minutesAgo: number)
+	{
+		return {
+			...session(id, `${projectName} one`, minutesAgo),
+			project: `-projects-${projectName}`,
+			projectName,
+		};
+	}
+
+	const FOLDERS = [inProject("c1", "c", 1), inProject("b1", "b", 2), inProject("a1", "a", 3)];
+
+	function folderPointer(type: "pointerMove" | "pointerUp", clientY: number): void
+	{
+		act(() =>
+		{
+			fireEvent[type](
+				document,
+				{
+					pointerId: 1,
+					isPrimary: true,
+					button: 0,
+					clientX: 50,
+					clientY,
+				},
+			);
+		});
+	}
+
+	/** Presses a folder header, moves past 8px, then by `dy`, reporting the lifted wrappers before letting go. */
+	function dragFolder(label: string, fromY: number, dy: number): string[]
+	{
+		fireEvent.pointerDown(
+			groupToggle(label),
+			{
+				pointerId: 1,
+				isPrimary: true,
+				button: 0,
+				clientX: 50,
+				clientY: fromY,
+			},
+		);
+		folderPointer("pointerMove", fromY + Math.sign(dy) * 20);
+		folderPointer("pointerMove", fromY + dy);
+		const lifted = [...document.querySelectorAll(".df-section-lifted [data-group-name]")].map(
+			(name) => name.textContent,
+		);
+		folderPointer("pointerUp", fromY + dy);
+		return lifted;
+	}
+
+	async function renderFolders(): Promise<HTMLElement>
+	{
+		localStorage.removeItem(SESSION_GROUP_STORAGE_KEY);
+		const {container} = await renderGroups(
+			{
+				sessions: FOLDERS,
+				groupBy: "project",
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(document.querySelector('[id^="DndDescribedBy"]')).not.toBeNull();
+		});
+		return container;
+	}
+
+	// Units: 0 a, 1 a one, 2 b, 3 b one, 4 c, 5 c one.
+
+	it("wraps each folder section in a margin-less df-sortable-section", async () =>
+	{
+		const container = await renderFolders();
+
+		expect(
+			[...container.querySelectorAll<HTMLElement>('[data-testid="sidebar-recents"] .df-sortable-section')].map(
+				(wrapper) => (
+				{
+					classes: [...wrapper.classList],
+					gapAfter: wrapper.getAttribute("data-gap-after"),
+					labels: [...wrapper.querySelectorAll("[data-sidebar-group-label] [data-group-name]")].map(
+						(name) => name.textContent,
+					),
+				}),
+			),
+		).toStrictEqual(
+			["a", "b", "c"].map((label) => (
+			{
+				classes: ["df-sortable-section"],
+				gapAfter: "",
+				labels: [label],
+			})),
+		);
+	});
+
+	it("drags a folder header into the slot whose midpoint it crossed and stores the folder order", async () =>
+	{
+		const container = await renderFolders();
+
+		const midDrag = dragFolder("c", unitY(4), -60);
+
+		await waitFor(() =>
+		{
+			expect(sections(container).map(([label]) => label)).toStrictEqual(["a", "c", "b"]);
+		});
+		expect(
+			{
+				midDrag,
+				stored: readProjectOrder(),
+			},
+		).toStrictEqual(
+			{
+				midDrag: ["c"],
+				stored: ["a", "c", "b"],
+			},
+		);
+	});
+
+	it("clamps a folder drag to the folder span and never lifts under 8px", async () =>
+	{
+		const container = await renderFolders();
+
+		const farDown = dragFolder("a", unitY(0), 600);
+		await waitFor(() =>
+		{
+			expect(sections(container).map(([label]) => label)).toStrictEqual(["b", "c", "a"]);
+		});
+		fireEvent.pointerDown(
+			groupToggle("c"),
+			{
+				pointerId: 1,
+				isPrimary: true,
+				button: 0,
+				clientX: 50,
+				clientY: unitY(2),
+			},
+		);
+		folderPointer("pointerMove", unitY(2) - 5);
+		const underThreshold = document.querySelectorAll(".df-section-lifted").length;
+		folderPointer("pointerUp", unitY(2) - 5);
+
+		expect(
+			{
+				farDown,
+				underThreshold,
+				stored: readProjectOrder(),
+			},
+		).toStrictEqual(
+			{
+				farDown: ["a"],
+				underThreshold: 0,
+				stored: ["b", "c", "a"],
 			},
 		);
 	});

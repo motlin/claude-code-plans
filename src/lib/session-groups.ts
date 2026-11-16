@@ -4,6 +4,7 @@ import {sidebarStateGroupLabels} from "./schema-choices";
 import {resolveFamilies} from "./session-families";
 import type {SessionBucket} from "./session-state";
 import {assertNever} from "./assert-never";
+import {compareProjectNames, projectSortMode} from "./project-order";
 import type {SidebarSection} from "./sidebar-sections";
 
 export const SessionGroupBySchema = z.enum(["date", "project", "state", "none"]);
@@ -124,6 +125,12 @@ export function customGroupIdOfKey(key: string): string | null
 export function isProjectGroupKey(key: string): boolean
 {
 	return key.startsWith("project-");
+}
+
+/** Upstream `Fs`/`gk`: a folder section's key in the folder order, or null for Other and non-folder sections. */
+export function projectOrderKey(groupKey: string): string | null
+{
+	return isProjectGroupKey(groupKey) && groupKey !== NO_PROJECT_KEY ? groupKey.slice("project-".length) : null;
 }
 
 export interface CustomGroupLaunchTarget
@@ -434,34 +441,38 @@ function buildProjectGroups<Row extends SessionGroupRow>(
 	showEmptyGroups: boolean,
 	nested: ReadonlyMap<string, Row[]>,
 	revealed: RevealedRows,
+	projectOrder: readonly string[],
 ): SessionGroup<Row>[]
 {
-	const projects = new Set<string>();
+	const latest = new Map<string, number>();
 	let hasNoProject = false;
 	for (const row of showEmptyGroups ? allRows : visibleRows)
 	{
 		if (row.project === null) hasNoProject = true;
-		else projects.add(row.project);
+		else latest.set(row.project, Math.max(latest.get(row.project) ?? -Infinity, row.lastActivityAt));
 	}
-	const groups = [...projects]
-		.toSorted((first, second) =>
-			first.localeCompare(
-				second,
-				undefined,
+	const projects = new Set(latest.keys());
+	const rank = new Map(projectOrder.map((project, index) => [project, index]));
+	// Upstream `vM`: stored projects first in their stored order, the rest newest first; otherwise A to Z.
+	const compare =
+		projectSortMode(projectOrder, projects) === "name"
+			? compareProjectNames
+			: (first: string, second: string) =>
 				{
-					sensitivity: "base",
-				},
-			),
-		)
-		.map((project) =>
-			group(
-				`project-${project}`,
-				project,
-				visibleRows.filter((row) => row.project === project),
-				revealed,
-				nested,
-			),
-		);
+					const firstRank = rank.get(first) ?? Infinity;
+					const secondRank = rank.get(second) ?? Infinity;
+					if (firstRank !== secondRank) return firstRank - secondRank;
+					return (latest.get(second) ?? 0) - (latest.get(first) ?? 0) || compareProjectNames(first, second);
+				};
+	const groups = [...projects].toSorted(compare).map((project) =>
+		group(
+			`project-${project}`,
+			project,
+			visibleRows.filter((row) => row.project === project),
+			revealed,
+			nested,
+		),
+	);
 	if (hasNoProject)
 	{
 		groups.push(
@@ -532,6 +543,7 @@ function groupResolved<Row extends SessionGroupRow>(
 	prefs: SessionListPrefs,
 	now: number,
 	revealed: RevealedRows,
+	projectOrder: readonly string[],
 ): SessionGroup<Row>[]
 {
 	const {visible, nested} = resolved;
@@ -542,7 +554,7 @@ function groupResolved<Row extends SessionGroupRow>(
 		case "date":
 			return buildDateGroups(visible, now, revealed, nested);
 		case "project":
-			return buildProjectGroups(rows, visible, prefs.showEmptyGroups, nested, revealed);
+			return buildProjectGroups(rows, visible, prefs.showEmptyGroups, nested, revealed, projectOrder);
 		case "none":
 			return visible.length === 0 ? [] : [group("recents", "Recents", visible, revealed, nested)];
 		default:
@@ -556,16 +568,18 @@ function groupResolved<Row extends SessionGroupRow>(
  * Project mode with Show empty groups on. Every group shows 20 rows plus the rows
  * `revealed` under its key, never hiding a single row. Callers pass rows with pinned
  * sessions already split out. Forks nest under their family head, which is
- * placed (in State mode) by the family's most urgent member.
+ * placed (in State mode) by the family's most urgent member. Project mode follows the stored
+ * folder order (`projectOrder`), else A to Z.
  */
 export function buildGroups<Row extends SessionGroupRow>(
 	rows: readonly Row[],
 	prefs: SessionListPrefs,
 	now: number,
 	revealed: RevealedRows = {},
+	projectOrder: readonly string[] = [],
 ): SessionGroup<Row>[]
 {
-	return groupResolved(rows, resolveRows(rows, prefs, now), prefs, now, revealed);
+	return groupResolved(rows, resolveRows(rows, prefs, now), prefs, now, revealed, projectOrder);
 }
 
 /** One manual section: all its rows as one group, and its own date or status headings when it groups. */
@@ -596,6 +610,7 @@ export function buildSidebarSections<Row extends SessionGroupRow>(
 	now: number,
 	revealed: RevealedRows,
 	manual: ManualSections,
+	projectOrder: readonly string[] = [],
 ): SidebarSectionGroups<Row>
 {
 	const resolved = resolveRows(rows, prefs, now);
@@ -614,6 +629,7 @@ export function buildSidebarSections<Row extends SessionGroupRow>(
 		prefs,
 		now,
 		revealed,
+		projectOrder,
 	);
 	const manualGroups = manual.sections.map((section): ManualSectionGroups<Row> =>
 	{

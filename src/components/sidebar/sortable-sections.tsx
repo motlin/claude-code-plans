@@ -62,14 +62,17 @@ const NO_SUBSCRIPTION = () => () =>
 };
 
 /**
- * Upstream `sx`: one manual section's `df-sortable-section` wrapper, the sortable node, lifted
- * (`df-section-lifted`, z-index 1) while dragged. `children` gets the header's activator.
+ * Upstream `sx`: one manual or folder section's `df-sortable-section` wrapper, the sortable node,
+ * lifted (`df-section-lifted`, z-index 1) while dragged. `children` gets the header's activator.
  */
 export function SortableSection({
 	id,
+	className = SORTABLE_SECTION_CLASS,
 	children,
 }: {
 	id: string;
+	/** The wrapper's classes; a folder section inside the session list drops the gap utility. */
+	className?: string;
 	children: (activator: SectionActivator | undefined) => ReactNode;
 })
 {
@@ -116,7 +119,7 @@ export function SortableSection({
 				transition: drag?.transition,
 				zIndex: isDragging ? 1 : undefined,
 			}}
-			className={isDragging ? `${SORTABLE_SECTION_CLASS} ${LIFTED_CLASS}` : SORTABLE_SECTION_CLASS}
+			className={isDragging ? `${className} ${LIFTED_CLASS}` : className}
 			data-gap-after=""
 		>
 			{children(activator)}
