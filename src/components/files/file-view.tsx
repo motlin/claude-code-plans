@@ -40,6 +40,7 @@ import {mentionPath} from "./mention-path";
 import {FindBar} from "./find-in-file";
 import {clearFindHighlights, collectFindBlocks, paintFindHighlights} from "./find-highlights";
 import {useMarkdownEdit} from "./markdown-edit";
+import {SaveErrorBanner} from "./save-error-banner";
 import {GoToLineBar} from "./go-to-line-bar";
 import {LazySourceEditor} from "./lazy-source-editor";
 import type {FindHighlight, SourceEditorHandle} from "./source-editor";
@@ -583,6 +584,7 @@ export function FileView({
 		{
 			path,
 			target: markdown && content !== undefined && !editable ? editableMarkdownTarget(path) : null,
+			fileVersion: file.dataUpdatedAt,
 			onEditStart,
 			onDirtyChange,
 		},
@@ -871,6 +873,16 @@ export function FileView({
 			)}
 			<div className="relative flex min-h-0 flex-1 flex-col">
 				{find.bar}
+				{edit.banner}
+				{editable && sourceMode && sourceSave.dirty && sourceSave.error !== null && (
+					<SaveErrorBanner
+						error={sourceSave.error}
+						busy={sourceSave.saving}
+						inPaneHeaderLine={false}
+						onDiscard={sourceSave.discard}
+						onRetry={sourceSave.retry}
+					/>
+				)}
 				<ContextMenu>
 					<ContextMenuTrigger
 						render={<div ref={viewerRef} />}
@@ -912,7 +924,6 @@ export function FileView({
 					</MenuContent>
 				</ContextMenu>
 			</div>
-			{edit.dialog}
 		</div>
 	);
 }

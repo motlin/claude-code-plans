@@ -410,17 +410,103 @@ describe("save API disk-conflict check", () =>
 				request: put("# Mine\n", '"1"'),
 			},
 		);
+		const etag = mtimeEtag(statSync(planFile).mtime);
 		expect(
 			{
 				status: response.status,
-				body: await response.text(),
+				body: await response.json(),
+				etag: response.headers.get("ETag"),
 				disk: readFileSync(planFile, "utf8"),
 			},
 		).toStrictEqual(
 			{
 				status: 409,
-				body: "This file changed on disk since you started editing.",
+				body:
+				{
+					reason: "conflict",
+					etag,
+				},
+				etag,
 				disk: "# Alpha\n",
+			},
+		);
+	});
+
+	it("refuses a save to a plan deleted on disk as missing, and recreates it without If-Match", async () =>
+	{
+		const etag = mtimeEtag(statSync(planFile).mtime);
+		rmSync(planFile);
+		const missing = await putHandler(PlanDetailRoute)(
+			{
+				params:
+				{
+					filename: "alpha",
+				},
+				request: put("# Mine\n", etag),
+			},
+		);
+		const missingResult =
+		{
+			status: missing.status,
+			body: await missing.json(),
+			etag: missing.headers.get("ETag"),
+		};
+		const forced = await putHandler(PlanDetailRoute)(
+			{
+				params:
+				{
+					filename: "alpha",
+				},
+				request: put("# Mine\n"),
+			},
+		);
+		expect(
+			{
+				missing: missingResult,
+				forced: forced.status,
+				disk: readFileSync(planFile, "utf8"),
+			},
+		).toStrictEqual(
+			{
+				missing:
+				{
+					status: 409,
+					body:
+					{
+						reason: "missing",
+					},
+					etag: null,
+				},
+				forced: 200,
+				disk: "# Mine\n",
+			},
+		);
+	});
+
+	it("refuses a memory save outside the memory directory as denied", async () =>
+	{
+		const response = await putHandler(MemoryDetailRoute)(
+			{
+				params:
+				{
+					id: "alice-project",
+					filename: "../x",
+				},
+				request: put("# Escaped\n"),
+			},
+		);
+		expect(
+			{
+				status: response.status,
+				body: await response.json(),
+			},
+		).toStrictEqual(
+			{
+				status: 403,
+				body:
+				{
+					reason: "denied",
+				},
 			},
 		);
 	});
@@ -511,7 +597,8 @@ interface Put
 
 let fileContents: Map<string, string>;
 let puts: Put[];
-let putStatuses: number[];
+/** Replies to the next PUTs in order (any PUT, plan or source); a missing reply saves. */
+let putReplies: (() => Response | Promise<Response>)[];
 /** Files the GET reports as writable by the source editor, and those whose decode was lossy. */
 let writablePaths: Set<string>;
 let lossyPaths: Set<string>;
@@ -537,6 +624,8 @@ function stubFetch(): void
 							body: String(init.body),
 						},
 					);
+					const sourceReply = putReplies.shift();
+					if (sourceReply) return sourceReply();
 					fileContents.set(path, String(init.body));
 					return Promise.resolve(
 						new Response(
@@ -602,18 +691,8 @@ function stubFetch(): void
 						body: String(init.body),
 					},
 				);
-				const status = putStatuses.shift() ?? 200;
-				if (status === 409)
-				{
-					return Promise.resolve(
-						new Response(
-							"This file changed on disk since you started editing.",
-							{
-								status,
-							},
-						),
-					);
-				}
+				const planReply = putReplies.shift();
+				if (planReply) return planReply();
 				return Promise.resolve(
 					Response.json(
 						{
@@ -642,6 +721,79 @@ function stubFetch(): void
 	);
 }
 
+function refusal(status: number, body: object): () => Response
+{
+	return () =>
+		Response.json(
+			body,
+			{
+				status,
+			},
+		);
+}
+
+const CONFLICT_ETAG = '"2"';
+const CONFLICT = refusal(
+	409,
+	{
+		reason: "conflict",
+		etag: CONFLICT_ETAG,
+	},
+);
+const MISSING = refusal(
+	409,
+	{
+		reason: "missing",
+	},
+);
+const DENIED = refusal(
+	403,
+	{
+		reason: "denied",
+	},
+);
+const WRITE_FAILED = refusal(
+	500,
+	{
+		error: "boom",
+	},
+);
+
+function banner():
+{
+	kind: string | undefined;
+	text: string | null;
+	buttons: (string | null)[];
+} | null
+{
+	const alert = document.querySelector<HTMLElement>("[data-save-error]");
+	if (alert === null) return null;
+	return {
+		kind: alert.dataset["saveError"],
+		text: alert.querySelector("span")?.textContent ?? null,
+		buttons: [...alert.querySelectorAll("button")].map((button) => button.textContent),
+	};
+}
+
+function toastTexts(): (string | null)[]
+{
+	return [...document.querySelectorAll("[data-toast]")].map((toast) => toast.textContent);
+}
+
+function clickBannerButton(name: string): void
+{
+	const alert = document.querySelector<HTMLElement>("[data-save-error]");
+	if (alert === null) throw new Error("no save banner");
+	fireEvent.click(
+		within(alert).getByRole(
+			"button",
+			{
+				name,
+			},
+		),
+	);
+}
+
 async function flush(): Promise<void>
 {
 	await act(async () =>
@@ -660,7 +812,7 @@ beforeEach(() =>
 		[README_PATH, "# Readme\n"],
 	]);
 	puts = [];
-	putStatuses = [];
+	putReplies = [];
 	writablePaths = new Set();
 	lossyPaths = new Set();
 	stubFetch();
@@ -890,55 +1042,70 @@ describe("FileView editing", () =>
 		]);
 	});
 
-	it("a 409 opens the conflict dialog; Override resaves without If-Match", async () =>
+	async function editAndSave(text: string): Promise<HTMLTextAreaElement>
 	{
-		putStatuses = [409, 200];
-		renderView(
-			{
-				path: PLAN_PATH,
-			},
-		);
 		const editor = await startEditing();
 		fireEvent.change(
 			editor,
 			{
 				target:
 				{
-					value: "mine",
+					value: text,
 				},
 			},
 		);
 		pressSave(editor);
-		const dialog = await screen.findByRole("alertdialog");
-		const text = dialog.textContent;
-		fireEvent.click(
-			within(dialog).getByRole(
-				"button",
-				{
-					name: "Override",
-				},
-			),
+		await waitFor(() =>
+		{
+			expect(banner()).not.toBeNull();
+		});
+		return editor;
+	}
+
+	it("a 409 conflict shows upstream's save banner; Override re-guards with disk's current ETag", async () =>
+	{
+		putReplies = [CONFLICT];
+		renderView(
+			{
+				path: PLAN_PATH,
+			},
 		);
+		await editAndSave("mine");
+		const shown = banner();
+		const dialog = screen.queryByRole("alertdialog");
+		clickBannerButton("Override");
 		await waitFor(() =>
 		{
 			expect(puts).toHaveLength(2);
 		});
+		await flush();
 		expect(
 			{
-				text,
+				shown,
+				dialog,
 				ifMatch: puts.map((put) => put.ifMatch),
+				after: banner(),
+				toasts: toastTexts(),
 			},
 		).toStrictEqual(
 			{
-				text: "This file changed on disk since you started editing.DiscardOverride",
-				ifMatch: [mtimeEtag(new Date(PLAN_MTIME)), null],
+				shown:
+				{
+					kind: "conflict",
+					text: "This file changed on disk since you started editing.",
+					buttons: ["Discard", "Override"],
+				},
+				dialog: null,
+				ifMatch: [mtimeEtag(new Date(PLAN_MTIME)), CONFLICT_ETAG],
+				after: null,
+				toasts: [],
 			},
 		);
 	});
 
-	it("Discard in the conflict dialog drops the edits and shows the file again", async () =>
+	it("Discard in the banner resets the editor to the saved text and stays editing", async () =>
 	{
-		putStatuses = [409];
+		putReplies = [CONFLICT];
 		const onDirtyChange = vi.fn<(dirty: boolean) => void>();
 		renderView(
 			{
@@ -946,6 +1113,187 @@ describe("FileView editing", () =>
 				onDirtyChange,
 			},
 		);
+		await editAndSave("mine");
+		clickBannerButton("Discard");
+		await flush();
+		expect(
+			{
+				banner: banner(),
+				editor: screen.getByRole<HTMLTextAreaElement>(
+					"textbox",
+					{
+						name: "Markdown editor",
+					},
+				).value,
+				toolbar:
+					screen.queryByRole(
+						"button",
+						{
+							name: "Save",
+						},
+					) !== null,
+				dirty: onDirtyChange.mock.calls.at(-1),
+				puts: puts.length,
+			},
+		).toStrictEqual(
+			{
+				banner: null,
+				editor: "# Alpha plan\n\nFirst draft.\n",
+				toolbar: true,
+				dirty: [false],
+				puts: 1,
+			},
+		);
+	});
+
+	it("a deleted file offers Save anyway, which writes without If-Match", async () =>
+	{
+		putReplies = [MISSING];
+		renderView(
+			{
+				path: PLAN_PATH,
+			},
+		);
+		await editAndSave("mine");
+		const shown = banner();
+		clickBannerButton("Save anyway");
+		await waitFor(() =>
+		{
+			expect(puts).toHaveLength(2);
+		});
+		expect(
+			{
+				shown,
+				ifMatch: puts.map((put) => put.ifMatch),
+			},
+		).toStrictEqual(
+			{
+				shown:
+				{
+					kind: "missing",
+					text: "This file was deleted on disk since you started editing.",
+					buttons: ["Discard", "Save anyway"],
+				},
+				ifMatch: [mtimeEtag(new Date(PLAN_MTIME)), null],
+			},
+		);
+	});
+
+	it("a failed write offers Try again with the same If-Match, and no toast", async () =>
+	{
+		putReplies = [WRITE_FAILED];
+		renderView(
+			{
+				path: PLAN_PATH,
+			},
+		);
+		await editAndSave("mine");
+		const shown = banner();
+		const toasts = toastTexts();
+		clickBannerButton("Try again");
+		await waitFor(() =>
+		{
+			expect(puts).toHaveLength(2);
+		});
+		expect(
+			{
+				shown,
+				toasts,
+				ifMatch: puts.map((put) => put.ifMatch),
+			},
+		).toStrictEqual(
+			{
+				shown:
+				{
+					kind: "writeFailed",
+					text: "Couldn’t save this file.",
+					buttons: ["Discard", "Try again"],
+				},
+				toasts: [],
+				ifMatch: [mtimeEtag(new Date(PLAN_MTIME)), mtimeEtag(new Date(PLAN_MTIME))],
+			},
+		);
+	});
+
+	it("a denied save offers only Discard", async () =>
+	{
+		putReplies = [DENIED];
+		renderView(
+			{
+				path: PLAN_PATH,
+			},
+		);
+		await editAndSave("mine");
+		expect(banner()).toStrictEqual(
+			{
+				kind: "denied",
+				text: "This file can’t be saved. Its path is outside the working directory, or this is a remote session.",
+				buttons: ["Discard"],
+			},
+		);
+	});
+
+	it("⌘S and Save do nothing while the banner shows; typing back to the saved text hides it", async () =>
+	{
+		putReplies = [CONFLICT];
+		renderView(
+			{
+				path: PLAN_PATH,
+			},
+		);
+		const editor = await editAndSave("mine");
+		pressSave(editor);
+		await flush();
+		const saveDisabled = screen
+			.getByRole(
+				"button",
+				{
+					name: "Save",
+				},
+			)
+			.hasAttribute("disabled");
+		fireEvent.change(
+			editor,
+			{
+				target:
+				{
+					value: "# Alpha plan\n\nFirst draft.\n",
+				},
+			},
+		);
+		await flush();
+		expect(
+			{
+				puts: puts.length,
+				saveDisabled,
+				banner: banner(),
+			},
+		).toStrictEqual(
+			{
+				puts: 1,
+				saveDisabled: true,
+				banner: null,
+			},
+		);
+	});
+
+	it("a save that fails after leaving the editor toasts upstream's detached copy instead", async () =>
+	{
+		let settle: (response: Response) => void = () =>
+		{
+		};
+		putReplies = [
+			async () =>
+				new Promise<Response>((resolve) =>
+				{
+					settle = resolve;
+				}),
+		];
+		renderView(
+			{
+				path: PLAN_PATH,
+			},
+		);
 		const editor = await startEditing();
 		fireEvent.change(
 			editor,
@@ -957,34 +1305,32 @@ describe("FileView editing", () =>
 			},
 		);
 		pressSave(editor);
-		const dialog = await screen.findByRole("alertdialog");
+		await waitFor(() =>
+		{
+			expect(puts).toHaveLength(1);
+		});
 		fireEvent.click(
-			within(dialog).getByRole(
+			screen.getByRole(
 				"button",
 				{
 					name: "Discard",
 				},
 			),
 		);
+		act(() =>
+		{
+			settle(MISSING());
+		});
 		await flush();
 		expect(
 			{
-				editor: screen.queryByRole(
-					"textbox",
-					{
-						name: "Markdown editor",
-					},
-				),
-				preview: (await screen.findByText("First draft.")).tagName,
-				dirty: onDirtyChange.mock.calls.at(-1),
-				puts: puts.length,
+				banner: banner(),
+				toasts: toastTexts(),
 			},
 		).toStrictEqual(
 			{
-				editor: null,
-				preview: "P",
-				dirty: [false],
-				puts: 1,
+				banner: null,
+				toasts: ["Your changes to alpha-plan.md weren’t saved because the file was deleted on disk."],
 			},
 		);
 	});
@@ -1351,6 +1697,122 @@ describe("FileView source editing", () =>
 		);
 	});
 
+	it("a failed autosave shows the banner, arms the guard, stops saving, and Override re-guards with disk's ETag", async () =>
+	{
+		putReplies = [CONFLICT];
+		const onDirtyChange = vi.fn<(dirty: boolean) => void>();
+		renderView(
+			{
+				path: SOURCE_PATH,
+				onDirtyChange,
+			},
+		);
+		const view = await sourceView();
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+			},
+		);
+		typeInSource(view, "// one\n");
+		await idle(1000);
+		const shown = banner();
+		const armed = onDirtyChange.mock.calls.map(([dirty]) => dirty);
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+			},
+		);
+		typeInSource(view, "// two\n");
+		await idle(1000);
+		pressSave(view.contentDOM);
+		await flush();
+		const putsWhileShown = puts.length;
+		clickBannerButton("Override");
+		await waitFor(() =>
+		{
+			expect(puts).toHaveLength(2);
+		});
+		await flush();
+		expect(
+			{
+				shown,
+				armed,
+				putsWhileShown,
+				puts: puts.map((put) => [put.ifMatch, put.body]),
+				after: banner(),
+				dirty: onDirtyChange.mock.calls.at(-1),
+				toasts: toastTexts(),
+			},
+		).toStrictEqual(
+			{
+				shown:
+				{
+					kind: "conflict",
+					text: "This file changed on disk since you started editing.",
+					buttons: ["Discard", "Override"],
+				},
+				armed: [true],
+				putsWhileShown: 1,
+				puts: [
+					[SOURCE_ETAG, "export const a = 1;\n// one\n"],
+					[CONFLICT_ETAG, "export const a = 1;\n// one\n// two\n"],
+				],
+				after: null,
+				dirty: [false],
+				toasts: [],
+			},
+		);
+	});
+
+	it("a lossy file's failed Save swaps the notice for the banner; Discard restores the disk text", async () =>
+	{
+		putReplies = [MISSING];
+		lossyPaths.add(SOURCE_PATH);
+		renderView(
+			{
+				path: SOURCE_PATH,
+			},
+		);
+		const view = await sourceView();
+		typeInSource(view, "x");
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Save",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(banner()).not.toBeNull();
+		});
+		const shown = banner();
+		const notices = screen.queryAllByRole("status").filter((element) => element.classList.contains("bg-alpha-2"));
+		clickBannerButton("Discard");
+		await flush();
+		expect(
+			{
+				shown,
+				notices: notices.length,
+				after: banner(),
+				text: view.state.doc.toString(),
+			},
+		).toStrictEqual(
+			{
+				shown:
+				{
+					kind: "missing",
+					text: "This file was deleted on disk since you started editing.",
+					buttons: ["Discard", "Save anyway"],
+				},
+				notices: 0,
+				after: null,
+				text: "export const a = 1;\n",
+			},
+		);
+	});
+
 	it.each([
 		{
 			pref: null,
@@ -1627,6 +2089,27 @@ describe("Files pane editing", () =>
 						ifMatch: SOURCE_ETAG,
 						body: "# Readme\nMore.\n",
 					},
+				],
+			},
+		);
+	});
+
+	it("an unmount save that fails toasts upstream's detached copy", async () =>
+	{
+		putReplies = [DENIED];
+		const pane = await openPane();
+		await editReadmeSource(pane);
+		await flush();
+		expect(
+			{
+				puts: puts.length,
+				toasts: toastTexts(),
+			},
+		).toStrictEqual(
+			{
+				puts: 1,
+				toasts: [
+					"Your changes to README.md weren’t saved because this session can’t write to that file. Edit it in your editor or terminal instead.",
 				],
 			},
 		);

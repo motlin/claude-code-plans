@@ -159,18 +159,6 @@ export async function handleFileRequest(
 	}
 }
 
-function denied(): Response
-{
-	return Response.json(
-		{
-			reason: "denied",
-		},
-		{
-			status: 403,
-		},
-	);
-}
-
 /**
  * Save from the Files source editor (upstream's desktop `writeSessionFile`): the raw body
  * replaces the file atomically. 403 `{reason:"denied"}` outside the roots or under `.git`,
@@ -192,18 +180,12 @@ export async function handleFileWrite(
 	const {resolveConfiguredFileRoots} = await import("../../lib/config");
 	const {realpathOfExistingPrefix, writableWorkspacePath, writeFileAtomically} =
 		await import("../../lib/session-file-write");
-	const {rejectStaleWrite, savedFileHeaders} = await import("../../lib/file-edit-server");
+	const {deniedResponse, rejectStaleWrite, savedFileHeaders} = await import("../../lib/file-edit-server");
 	const roots = await resolveConfiguredFileRoots(configPath, defaultRoots);
-	if (!(await writableWorkspacePath(requestedPath, roots))) return denied();
+	if (!(await writableWorkspacePath(requestedPath, roots))) return deniedResponse();
 	// Write through a symlink inside the roots rather than replacing the link.
 	const target = await realpathOfExistingPrefix(requestedPath);
-	const stale = await rejectStaleWrite(
-		request,
-		target,
-		{
-			distinguishMissing: true,
-		},
-	);
+	const stale = await rejectStaleWrite(request, target);
 	if (stale !== null) return stale;
 	try
 	{

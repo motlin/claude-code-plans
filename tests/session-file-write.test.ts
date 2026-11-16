@@ -196,8 +196,9 @@ describe("PUT /api/file/$", () =>
 					body:
 					{
 						reason: "conflict",
+						etag: mtimeEtag(statSync(target).mtime),
 					},
-					etag: null,
+					etag: mtimeEtag(statSync(target).mtime),
 				},
 				missing:
 				{

@@ -7,8 +7,6 @@ import {assertNever} from "./assert-never";
  * before a tab action discards unsaved edits.
  */
 
-export const FILE_CONFLICT_MESSAGE = "This file changed on disk since you started editing.";
-
 /** The save API for a file the viewer may edit in place. */
 export interface EditableMarkdownTarget
 {

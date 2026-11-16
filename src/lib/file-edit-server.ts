@@ -1,6 +1,6 @@
 import {stat} from "node:fs/promises";
 
-import {FILE_CONFLICT_MESSAGE, mtimeEtag} from "./file-edit";
+import {mtimeEtag} from "./file-edit";
 
 async function currentEtag(filePath: string): Promise<string | null>
 {
@@ -16,45 +16,57 @@ async function currentEtag(filePath: string): Promise<string | null>
 
 /**
  * A 409 when the request's `If-Match` names a version of the file other than
- * the one on disk (including a file deleted since). No `If-Match` means the
- * caller chose to override, so nothing is checked. With `distinguishMissing`
- * the body is JSON `{reason: "conflict" | "missing"}`, for the Files source
- * editor's save banner; otherwise it is the plain conflict message.
+ * the one on disk. No `If-Match` means the caller chose to override, so nothing
+ * is checked. The JSON body gives upstream's save-banner reason: `missing` when
+ * the file is gone, else `conflict` with the disk's current ETag (also the
+ * `ETag` header), which the banner's Override sends back as `If-Match`.
  */
-export async function rejectStaleWrite(
-	request: Request,
-	filePath: string,
-	{
-		distinguishMissing = false,
-	}:
-	{
-		distinguishMissing?: boolean;
-	} = {},
-): Promise<Response | null>
+export async function rejectStaleWrite(request: Request, filePath: string): Promise<Response | null>
 {
 	const ifMatch = request.headers.get("If-Match");
 	if (ifMatch === null) return null;
 	const etag = await currentEtag(filePath);
 	if (ifMatch === etag) return null;
-	if (distinguishMissing)
+	if (etag === null)
 	{
 		return Response.json(
 			{
-				reason: etag === null ? "missing" : "conflict",
+				reason: "missing",
 			},
 			{
 				status: 409,
+				headers:
+				{
+					"Cache-Control": "no-store",
+				},
 			},
 		);
 	}
-	return new Response(
-		FILE_CONFLICT_MESSAGE,
+	return Response.json(
+		{
+			reason: "conflict",
+			etag,
+		},
 		{
 			status: 409,
 			headers:
 			{
-				"Content-Type": "text/plain; charset=utf-8",
+				"Cache-Control": "no-store",
+				ETag: etag,
 			},
+		},
+	);
+}
+
+/** A 403 for a save the server will not make (upstream's `Denied` write status). */
+export function deniedResponse(): Response
+{
+	return Response.json(
+		{
+			reason: "denied",
+		},
+		{
+			status: 403,
 		},
 	);
 }

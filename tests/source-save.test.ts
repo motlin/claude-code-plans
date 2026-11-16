@@ -131,6 +131,7 @@ describe("reduceSave", () =>
 						error:
 						{
 							kind: "writeFailed",
+							etag: null,
 						},
 					},
 				),
@@ -201,6 +202,7 @@ describe("reduceSave", () =>
 					error:
 					{
 						kind: "conflict",
+						etag: null,
 					},
 				},
 			),
@@ -212,6 +214,7 @@ describe("reduceSave", () =>
 						error:
 						{
 							kind: "conflict",
+							etag: null,
 						},
 					},
 				),
@@ -255,6 +258,7 @@ describe("reduceSave", () =>
 						error:
 						{
 							kind: "conflict",
+							etag: null,
 						},
 					},
 				),
@@ -297,6 +301,7 @@ describe("dirty", () =>
 		const error: SaveError =
 		{
 			kind: "writeFailed",
+			etag: null,
 		};
 		expect([
 			reportedDirty(state(), true),

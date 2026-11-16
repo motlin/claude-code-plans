@@ -7,16 +7,6 @@ import {MemoryDetailResponse} from "./memories";
 import {PlanDetailResponse} from "./plans";
 import {type EditableMarkdownTarget, mtimeEtag} from "../file-edit";
 
-/** The save API refused a write because the file changed on disk (409). */
-export class FileConflictError extends Error
-{
-	constructor()
-	{
-		super("The file changed on disk");
-		this.name = "FileConflictError";
-	}
-}
-
 export interface EditableMarkdown
 {
 	markdown: string;
@@ -53,40 +43,7 @@ export async function loadEditableMarkdown(target: EditableMarkdownTarget): Prom
 	};
 }
 
-/**
- * Writes the markdown; `etag` null overrides whatever is on disk. Resolves to
- * the saved version's ETag, and rejects with {@link FileConflictError} on 409.
- */
-export async function saveEditableMarkdown(
-	target: EditableMarkdownTarget,
-	markdown: string,
-	etag: string | null,
-): Promise<string | null>
-{
-	const response = await fetch(
-		resolveUrl(target.url),
-		{
-			method: "PUT",
-			credentials: "same-origin",
-			headers:
-			{
-				"Content-Type": "text/plain",
-				...(etag === null
-					? {}
-					:
-						{
-							"If-Match": etag,
-						}),
-			},
-			body: markdown,
-		},
-	);
-	if (response.status === 409) throw new FileConflictError();
-	if (!response.ok) throw new ApiResponseError(target.url, response);
-	return response.headers.get("ETag");
-}
-
-/** A Files source editor save the server refused, with upstream's banner reason. */
+/** A save the server refused or could not reach, as upstream's banner reason. */
 export class FileSaveError extends Error
 {
 	constructor(readonly error: SaveError)
@@ -99,27 +56,35 @@ export class FileSaveError extends Error
 const SaveRefusal = z.object(
 	{
 		reason: z.enum(["conflict", "missing", "denied", "writeFailed"]),
+		etag: z.string().optional(),
 	},
 );
 
 /**
- * Writes the Files source editor's text through `PUT /api/file/$` (upstream's desktop
- * `writeSessionFile`); `etag` null overrides whatever is on disk. Resolves to the saved
- * version's ETag, and rejects with {@link FileSaveError}.
+ * PUTs `body` with `etag` as `If-Match` (null overrides whatever is on disk) and resolves to
+ * the saved version's ETag. Rejects with {@link FileSaveError}: 409 `missing`, 409 `conflict`
+ * with disk's current ETag, 403 `denied`, and anything else (a network failure included) as
+ * `writeFailed` carrying the ETag it sent, as upstream's `hS` does.
  */
-export async function saveFileText(path: string, text: string, etag: string | null): Promise<string | null>
+async function putFile(url: string, contentType: string, body: string, etag: string | null): Promise<string | null>
 {
+	const writeFailed = new FileSaveError(
+		{
+			kind: "writeFailed",
+			etag,
+		},
+	);
 	let response: Response;
 	try
 	{
 		response = await fetch(
-			resolveUrl(`/api/file/${encodeFilePath(path)}`),
+			resolveUrl(url),
 			{
 				method: "PUT",
 				credentials: "same-origin",
 				headers:
 				{
-					"Content-Type": "text/plain; charset=utf-8",
+					"Content-Type": contentType,
 					...(etag === null
 						? {}
 						:
@@ -127,23 +92,50 @@ export async function saveFileText(path: string, text: string, etag: string | nu
 								"If-Match": etag,
 							}),
 				},
-				body: text,
+				body,
 			},
 		);
 	}
 	catch
 	{
-		throw new FileSaveError(
-			{
-				kind: "writeFailed",
-			},
-		);
+		throw writeFailed;
 	}
 	if (response.ok) return response.headers.get("ETag");
 	const refusal = SaveRefusal.safeParse(await response.json().catch(() => null));
-	throw new FileSaveError(
-		{
-			kind: refusal.success ? refusal.data.reason : "writeFailed",
-		},
-	);
+	if (response.status === 403)
+		throw new FileSaveError(
+			{
+				kind: "denied",
+			},
+		);
+	if (response.status === 409 && refusal.success && refusal.data.reason === "missing")
+		throw new FileSaveError(
+			{
+				kind: "missing",
+			},
+		);
+	if (response.status === 409)
+		throw new FileSaveError(
+			{
+				kind: "conflict",
+				etag: (refusal.success ? refusal.data.etag : undefined) ?? response.headers.get("ETag"),
+			},
+		);
+	throw writeFailed;
+}
+
+/** Writes a plan or memory through its save API; see {@link putFile}. */
+export async function saveEditableMarkdown(
+	target: EditableMarkdownTarget,
+	markdown: string,
+	etag: string | null,
+): Promise<string | null>
+{
+	return putFile(target.url, "text/plain", markdown, etag);
+}
+
+/** Writes the Files source editor's text through `PUT /api/file/$` (upstream's desktop `writeSessionFile`). */
+export async function saveFileText(path: string, text: string, etag: string | null): Promise<string | null>
+{
+	return putFile(`/api/file/${encodeFilePath(path)}`, "text/plain; charset=utf-8", text, etag);
 }

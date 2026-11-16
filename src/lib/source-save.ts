@@ -11,14 +11,21 @@ export const AUTO_SAVE_DELAY_MS = 1000;
 
 export type SaveReason = "idle" | "blur" | "hidden" | "unload" | "unmount" | "explicit";
 
+/**
+ * Upstream's save error (`$i`): `writeFailed` keeps the ETag it sent so Try again re-guards the
+ * same version; `conflict` keeps disk's current ETag so Override guards against a further change;
+ * `missing` retries unconditionally ("Save anyway"); `denied` cannot be retried.
+ */
 export type SaveError =
 	|
 	  {
 			kind: "writeFailed";
+			etag: string | null;
 	  }
 	|
 	  {
 			kind: "conflict";
+			etag: string | null;
 	  }
 	|
 	  {
@@ -209,12 +216,12 @@ const BANNER_COPY: Record<
 	},
 };
 
-export function bannerCopy(error: SaveError): string
+export function bannerCopy(error: Pick<SaveError, "kind">): string
 {
 	return BANNER_COPY[error.kind].copy;
 }
 
-export function retryLabel(error: SaveError): string | null
+export function retryLabel(error: Pick<SaveError, "kind">): string | null
 {
 	return BANNER_COPY[error.kind].retry;
 }
@@ -380,4 +387,31 @@ export function createSourceSaver({
 			auto.dispose(flush);
 		},
 	};
+}
+
+/**
+ * Upstream's `addError` copy for a save that fails after its editor went away (the tab or dialog
+ * closed with a save in flight), where no banner can show.
+ */
+export function detachedSaveMessage(error: SaveError, name: string): string
+{
+	switch (error.kind)
+	{
+		case "conflict":
+			return `Your changes to ${name} weren’t saved because the file changed on disk. Reopen the file to see the latest version.`;
+		case "missing":
+			return `Your changes to ${name} weren’t saved because the file was deleted on disk.`;
+		case "denied":
+			return `Your changes to ${name} weren’t saved because this session can’t write to that file. Edit it in your editor or terminal instead.`;
+		case "writeFailed":
+			return `Your changes to ${name} couldn’t be saved. Reopen the file and try again.`;
+		default:
+			return assertNever(error);
+	}
+}
+
+/** The `If-Match` a banner retry sends: Try again and Override re-guard, Save anyway writes unconditionally. */
+export function retryEtag(error: SaveError): string | null
+{
+	return error.kind === "writeFailed" || error.kind === "conflict" ? error.etag : null;
 }
