@@ -1,5 +1,6 @@
 import type {ContextUsageTwin} from "./schemas";
 import {ContextUsageTwinSchema} from "./runtime-schemas";
+import {autoCompactThreshold} from "./compact-action";
 
 export type ContextCategoryKind = ContextUsageTwin["categories"][number]["kind"];
 
@@ -36,6 +37,20 @@ export interface ContextBreakdown
 	fetchedAt: string;
 	/** `context-command`: the twin a `/context` run persists. `mod`: a CLI mod's per-turn mirror. */
 	source: "context-command" | "mod";
+	/** Upstream `Xa`: the token count auto-compact fires at, null when it is off or unknown. */
+	autoCompactThreshold: number | null;
+}
+
+/** The "Autocompact buffer" row's tokens: the headroom auto-compact keeps below the window. */
+export function autocompactBufferTokens(
+	categories: readonly
+	{
+		tokens: number;
+		kind: ContextCategoryKind;
+	}[],
+): number | null
+{
+	return categories.find((category) => category.kind === "buffer")?.tokens ?? null;
 }
 
 export function breakdownFromTwin(twin: ContextUsageTwin, fetchedAt: string): ContextBreakdown
@@ -70,6 +85,15 @@ export function breakdownFromTwin(twin: ContextUsageTwin, fetchedAt: string): Co
 		})),
 		fetchedAt,
 		source: "context-command",
+		// The `/context` twin carries no explicit threshold or switch, only the buffer row.
+		autoCompactThreshold: autoCompactThreshold(
+			{
+				rawMaxTokens: twin.raw_max_tokens,
+				autoCompactThreshold: null,
+				isAutoCompactEnabled: true,
+				autocompactBufferTokens: autocompactBufferTokens(twin.categories),
+			},
+		),
 	};
 }
 
@@ -308,4 +332,24 @@ export function buildContextLegend(b: ContextBreakdown, liveTokens: number | nul
 		usedTokens,
 		usedPct,
 	};
+}
+
+/**
+ * The Context card's used percent, unrounded: the breakdown's legend total when there is a breakdown (the card's
+ * headline), else the statusline's window usage, else null.
+ */
+export function railContextPercent(
+	usage:
+	{
+		contextTokens: number | null;
+		contextWindowSize: number | null;
+		contextPercent: number | null;
+	} | null,
+	breakdown: ContextBreakdown | null,
+): number | null
+{
+	const liveTokens = usage?.contextTokens ?? null;
+	if (breakdown !== null) return buildContextLegend(breakdown, liveTokens).usedPct;
+	if (usage === null || liveTokens === null || usage.contextWindowSize === null) return null;
+	return usage.contextPercent ?? (liveTokens / usage.contextWindowSize) * 100;
 }

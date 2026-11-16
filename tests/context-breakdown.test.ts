@@ -3,6 +3,7 @@ import
 	breakdownFromTwin,
 	buildContextLegend,
 	latestBreakdown,
+	railContextPercent,
 	type ContextBreakdown,
 } from "../src/lib/context-breakdown";
 import type {ContextUsageTwin} from "../src/lib/schemas";
@@ -118,6 +119,7 @@ const expected: ContextBreakdown =
 	],
 	fetchedAt: "2026-10-20T13:50:04.000Z",
 	source: "context-command",
+	autoCompactThreshold: 967_000,
 };
 
 function contextRecord(timestamp: string, usage: ContextUsageTwin = twin)
@@ -151,6 +153,49 @@ describe("breakdownFromTwin", () =>
 	it("maps the snake_case twin to the camelCase breakdown", () =>
 	{
 		expect(breakdownFromTwin(twin, "2026-10-20T13:50:04.000Z")).toStrictEqual(expected);
+	});
+
+	it("has no auto-compact threshold without an Autocompact buffer row", () =>
+	{
+		const unbuffered =
+		{
+			...twin,
+			categories: twin.categories.filter((category) => category.kind !== "buffer"),
+		};
+		expect(breakdownFromTwin(unbuffered, "2026-10-20T13:50:04.000Z").autoCompactThreshold).toBe(null);
+	});
+});
+
+describe("railContextPercent", () =>
+{
+	const usage =
+	{
+		contextTokens: 656_200,
+		contextWindowSize: 1_000_000,
+		contextPercent: null,
+	};
+
+	it("prefers the breakdown's headline, then the statusline's percent, then tokens over the window", () =>
+	{
+		expect([
+			railContextPercent(usage, expected),
+			railContextPercent(
+				{
+					...usage,
+					contextPercent: 66,
+				},
+				null,
+			),
+			railContextPercent(usage, null),
+			railContextPercent(null, null),
+			railContextPercent(
+				{
+					...usage,
+					contextWindowSize: null,
+				},
+				null,
+			),
+		]).toStrictEqual([65.62, 66, 65.62, null, null]);
 	});
 });
 

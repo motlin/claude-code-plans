@@ -1,7 +1,8 @@
 import {readFile} from "node:fs/promises";
 import {homedir} from "node:os";
 import {basename, dirname, join} from "node:path";
-import type {ContextBreakdown} from "./context-breakdown";
+import {autoCompactThreshold} from "./compact-action";
+import {autocompactBufferTokens, type ContextBreakdown} from "./context-breakdown";
 import {DOMAIN_EVENTS} from "./event-names";
 import {SESSION_ID_PATTERN} from "./api/statusline";
 import type {ContextMirrorFile} from "./schemas";
@@ -9,6 +10,25 @@ import {ContextMirrorFileSchema} from "./runtime-schemas";
 
 /** Where the `ccb-context-mirror` CLI mod (`mods/ccb-context-mirror`) writes one breakdown file per session. */
 export const CONTEXT_MIRROR_DIR = join(homedir(), ".claude", "plugins", "data", "ccb-context-mirror", "context");
+
+/**
+ * Upstream `$a`'s threshold: an auto-sized window with no buffer compacts at the window itself, otherwise `Xa`
+ * over the mirror's threshold, switch and Autocompact buffer row.
+ */
+function mirrorAutoCompactThreshold(breakdown: ContextMirrorFile["breakdown"]): number | null
+{
+	const buffer = autocompactBufferTokens(breakdown.categories);
+	if (breakdown.isAutoCompactEnabled && breakdown.autocompactSource === "auto" && buffer === null)
+		return breakdown.rawMaxTokens > 0 ? breakdown.rawMaxTokens : null;
+	return autoCompactThreshold(
+		{
+			rawMaxTokens: breakdown.rawMaxTokens,
+			autoCompactThreshold: breakdown.autoCompactThreshold ?? null,
+			isAutoCompactEnabled: breakdown.isAutoCompactEnabled,
+			autocompactBufferTokens: buffer,
+		},
+	);
+}
 
 export function breakdownFromMirror(file: ContextMirrorFile): ContextBreakdown
 {
@@ -43,6 +63,7 @@ export function breakdownFromMirror(file: ContextMirrorFile): ContextBreakdown
 		})),
 		fetchedAt: file.fetchedAt,
 		source: "mod",
+		autoCompactThreshold: mirrorAutoCompactThreshold(breakdown),
 	};
 }
 

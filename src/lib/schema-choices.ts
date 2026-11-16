@@ -688,7 +688,7 @@ const promptSubmitEndingKindChoices =
 	no_verdict: true,
 } satisfies Record<z.infer<typeof PromptSubmitEndingSchema>["ending"]["kind"], true>;
 
-/** Not consumed yet — how the ccb-context-mirror breakdown's window was settled (`autocompactSource`). */
+/** How the ccb-context-mirror breakdown's window was settled (`autocompactSource`): `auto` without a buffer row puts the auto-compact threshold at the window (`mirrorAutoCompactThreshold`). */
 const contextWindowSourceChoices =
 {
 	env: true,

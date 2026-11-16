@@ -18,6 +18,7 @@ const ContextBreakdownSchema: z.ZodType<ContextBreakdown> = z.object(
 		totalTokens: z.number(),
 		rawMaxTokens: z.number(),
 		percentage: z.number(),
+		autoCompactThreshold: z.number().nullable(),
 		mcpTools: z.array(
 			z.object(
 				{

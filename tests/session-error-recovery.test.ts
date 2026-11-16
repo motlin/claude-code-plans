@@ -3,11 +3,14 @@ import
 {
 	errorRecoveryAvailability,
 	errorRecoveryHandlers,
+	sendCompact,
 	switchModelForRetry,
 	lastEntryIsError,
 	type ErrorRecoveryGate,
 } from "../src/lib/session-error-recovery";
 import {processTranscript} from "../src/lib/transcript";
+import type {ToastOptions} from "../src/components/toast-context";
+import type {DeliveryResult} from "../src/hooks/use-composer-queue";
 
 const OPEN: ErrorRecoveryGate =
 {
@@ -244,6 +247,48 @@ describe("errorRecoveryHandlers rewind", () =>
 				noOpener: undefined,
 			},
 		);
+	});
+});
+
+describe("sendCompact", () =>
+{
+	it("types /compact, queueing it when the agent is not ready", async () =>
+	{
+		const sent = vi.fn<(text: string) => Promise<DeliveryResult>>(async () => Promise.resolve("sent"));
+		const notReady = vi.fn<(text: string) => Promise<DeliveryResult>>(async () => Promise.resolve("not-ready"));
+		const enqueue = vi.fn<(text: string) => void>();
+		const toast = vi.fn<(options: ToastOptions) => void>();
+		await sendCompact(sent, enqueue, toast);
+		await sendCompact(notReady, enqueue, toast);
+		expect(
+			{
+				sent: sent.mock.calls,
+				notReady: notReady.mock.calls,
+				enqueued: enqueue.mock.calls,
+				toasts: toast.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				sent: [["/compact"]],
+				notReady: [["/compact"]],
+				enqueued: [["/compact"]],
+				toasts: [],
+			},
+		);
+	});
+
+	it("toasts upstream's failure when the send throws", async () =>
+	{
+		const toast = vi.fn<(options: ToastOptions) => void>();
+		await sendCompact(async () => Promise.reject(new Error("boom")), vi.fn<(text: string) => void>(), toast);
+		expect(toast.mock.calls).toStrictEqual([
+			[
+				{
+					kind: "error",
+					message: "Couldn’t start compacting.",
+				},
+			],
+		]);
 	});
 });
 

@@ -186,6 +186,7 @@ const expectedBreakdown: ContextBreakdown =
 	],
 	fetchedAt: "2026-10-30T03:50:12.000Z",
 	source: "mod",
+	autoCompactThreshold: 967_000,
 };
 
 describe("ContextMirrorFileSchema", () =>
@@ -228,6 +229,40 @@ describe("breakdownFromMirror", () =>
 	it("maps the mod's file to the rail's breakdown, sourced from the mod", () =>
 	{
 		expect(breakdownFromMirror(ContextMirrorFileSchema.parse(mirrorFile))).toStrictEqual(expectedBreakdown);
+	});
+
+	it("drops the auto-compact threshold when auto-compact is off", () =>
+	{
+		const off = structuredClone(mirrorFile);
+		off.breakdown.isAutoCompactEnabled = false;
+		expect(breakdownFromMirror(ContextMirrorFileSchema.parse(off)).autoCompactThreshold).toBe(null);
+	});
+
+	it("falls back to the Autocompact buffer row without an explicit threshold", () =>
+	{
+		const {autoCompactThreshold: _dropped, ...rest} = mirrorFile.breakdown;
+		const bufferOnly =
+		{
+			...mirrorFile,
+			breakdown: rest,
+		};
+		expect(breakdownFromMirror(ContextMirrorFileSchema.parse(bufferOnly)).autoCompactThreshold).toBe(967_000);
+	});
+
+	it("compacts at the window itself for an auto-sized window without a buffer row", () =>
+	{
+		const {autoCompactThreshold: _dropped, ...rest} = mirrorFile.breakdown;
+		const auto =
+		{
+			...mirrorFile,
+			breakdown:
+			{
+				...rest,
+				autocompactSource: "auto",
+				categories: rest.categories.filter((category) => category.kind !== "buffer"),
+			},
+		};
+		expect(breakdownFromMirror(ContextMirrorFileSchema.parse(auto)).autoCompactThreshold).toBe(1_000_000);
 	});
 });
 

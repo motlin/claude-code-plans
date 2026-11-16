@@ -15,6 +15,7 @@ import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SessionRailCards, type SessionRailInputs} from "../src/components/session-rail/session-rail-cards";
 import {ToastProvider} from "../src/components/toast";
+import {cdsButtonClass} from "../src/components/ui/cds-button";
 import {createStreamDropStore, EventStreamStatusContext} from "../src/hooks/use-claude-events";
 import type {StreamDrop} from "../src/lib/stream-drop";
 import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
@@ -22,6 +23,7 @@ import type {HerdrPaneIndexData} from "../src/lib/api/herdr";
 import {sessionDiffQueryOptions} from "../src/lib/api/session-diff";
 import {sessionDevServersQueryOptions, sessionOpenInQueryOptions} from "../src/lib/api/sessions";
 import type {BackgroundTask} from "../src/lib/background-tasks";
+import type {CompactActionState} from "../src/lib/compact-action";
 import type {ContextBreakdown} from "../src/lib/context-breakdown";
 import {toConnectorSlug} from "../src/lib/customize/mcp-tool-permissions";
 import {DEFAULT_RAIL_SECTIONS_STATE, RAIL_SECTIONS_STORAGE_KEY} from "../src/lib/session-rail-store";
@@ -2113,6 +2115,7 @@ describe("Context card breakdown", () =>
 		],
 		fetchedAt: "2026-10-20T13:50:04.000Z",
 		source: "context-command",
+		autoCompactThreshold: 967_000,
 	};
 
 	const INPUTS: SessionRailInputs =
@@ -2780,6 +2783,236 @@ describe("Context card breakdown", () =>
 					className,
 				},
 			]);
+		});
+	});
+
+	describe("compact action", () =>
+	{
+		const COMPACT_INPUTS: SessionRailInputs =
+		{
+			...INPUTS,
+			usage:
+			{
+				contextTokens: 656_200,
+				contextWindowSize: 1_000_000,
+				contextPercent: 66,
+				fiveHour: null,
+				weekly: null,
+				updatedAt: null,
+			},
+		};
+
+		function withCompact(state: CompactActionState, onCompact: () => void = vi.fn<() => void>()): SessionRailInputs
+		{
+			return {
+				...COMPACT_INPUTS,
+				compact:
+				{
+					state,
+					onCompact,
+				},
+			};
+		}
+
+		function row(): HTMLElement | null
+		{
+			return body().querySelector<HTMLElement>("[data-rail-compact-action]");
+		}
+
+		function compactButton(): HTMLButtonElement
+		{
+			return within(body()).getByRole<HTMLButtonElement>(
+				"button",
+				{
+					name: "Compact session",
+				},
+			);
+		}
+
+		function wrapper(): HTMLElement
+		{
+			const found = compactButton().closest<HTMLElement>("[data-cds-disabled-reason-wrapper]");
+			if (!found) throw new Error("no disabled-reason wrapper");
+			return found;
+		}
+
+		it("shows the hint and an enabled Compact session described by it, after the breakdown and before the footer", async () =>
+		{
+			await renderCards(
+				withCompact(
+					{
+						kind: "enabled",
+					},
+				),
+			);
+			const found = row();
+			const hint = found?.querySelector("span[id]");
+			expect(
+				{
+					className: found?.className,
+					after: found?.previousElementSibling?.matches("[data-rail-context-updated]"),
+					before: found?.nextElementSibling?.matches("[data-rail-context-updated]"),
+					hint: hint?.textContent,
+					hintClass: hint?.className,
+					describedBy: compactButton().getAttribute("aria-describedby") === hint?.id,
+					disabled: compactButton().disabled,
+					buttonClass: compactButton().className,
+					tabIndex: wrapper().getAttribute("tabindex"),
+				},
+			).toStrictEqual(
+				{
+					className: "flex min-h-[20px] items-center gap-sm px-xs py-xs text-footnote",
+					after: false,
+					before: true,
+					hint: "310k until auto-compact",
+					hintClass: "min-w-0 flex-1 truncate text-secondary",
+					describedBy: true,
+					disabled: false,
+					buttonClass: `${cdsButtonClass("secondary", "xs")} min-w-0`,
+					tabIndex: "-1",
+				},
+			);
+		});
+
+		it("calls onCompact once per click", async () =>
+		{
+			const onCompact = vi.fn<() => void>();
+			await renderCards(
+				withCompact(
+					{
+						kind: "enabled",
+					},
+					onCompact,
+				),
+			);
+			fireEvent.click(compactButton());
+			expect(onCompact.mock.calls).toStrictEqual([[]]);
+		});
+
+		it("disables the button behind a focusable wrapper that gives the reason", async () =>
+		{
+			await renderCards(
+				withCompact(
+					{
+						kind: "disabled",
+						reason: "replying",
+					},
+				),
+			);
+			const description = wrapper().getAttribute("aria-describedby");
+			expect(
+				{
+					disabled: compactButton().disabled,
+					tabIndex: wrapper().getAttribute("tabindex"),
+					reason: description === null ? null : document.getElementById(description)?.textContent,
+				},
+			).toStrictEqual(
+				{
+					disabled: true,
+					tabIndex: "0",
+					reason: "Available when Claude finishes this turn",
+				},
+			);
+		});
+
+		it("draws no row when hidden or when no compact handler is given", async () =>
+		{
+			await renderCards(
+				withCompact(
+					{
+						kind: "hidden",
+					},
+				),
+			);
+			const hidden = row();
+			cleanup();
+			await renderCards(COMPACT_INPUTS);
+			expect([hidden, row()]).toStrictEqual([null, null]);
+		});
+
+		it("keeps the button at the trailing edge with no hint when the threshold is unknown", async () =>
+		{
+			await renderCards(
+				{
+					...withCompact(
+						{
+							kind: "enabled",
+						},
+					),
+					breakdown:
+					{
+						...BREAKDOWN,
+						autoCompactThreshold: null,
+					},
+				},
+			);
+			expect(
+				{
+					hint: row()?.querySelector("span[id]:not([data-cds-disabled-reason])") ?? null,
+					describedBy: compactButton().getAttribute("aria-describedby"),
+					wrapperClass: wrapper().className.split(" ").slice(-3),
+				},
+			).toStrictEqual(
+				{
+					hint: null,
+					describedBy: null,
+					wrapperClass: ["min-w-0", "shrink-0", "ms-auto"],
+				},
+			);
+		});
+
+		it("hands focus to the wrapper when the button turns disabled and back when it re-enables", async () =>
+		{
+			const rerender = await renderCards(
+				withCompact(
+					{
+						kind: "enabled",
+					},
+				),
+			);
+			compactButton().focus();
+			rerender(
+				withCompact(
+					{
+						kind: "disabled",
+						reason: "replying",
+					},
+				),
+			);
+			const disabledFocus = document.activeElement === wrapper();
+			rerender(
+				withCompact(
+					{
+						kind: "enabled",
+					},
+				),
+			);
+			expect([disabledFocus, document.activeElement === compactButton()]).toStrictEqual([true, true]);
+		});
+
+		it("shows the row in the window-only state too", async () =>
+		{
+			await renderCards(
+				{
+					...withCompact(
+						{
+							kind: "enabled",
+						},
+					),
+					breakdown: null,
+				},
+			);
+			expect(
+				{
+					hint: row()?.querySelector("span[id]")?.textContent ?? null,
+					button: compactButton().textContent,
+				},
+			).toStrictEqual(
+				{
+					hint: null,
+					button: "Compact session",
+				},
+			);
 		});
 	});
 });

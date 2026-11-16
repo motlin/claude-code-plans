@@ -56,6 +56,42 @@ export interface ModelRetry
 	switchTo: (model: string) => Promise<boolean>;
 }
 
+/** Types a prompt into the live pane, queueing it like the composer's send when the agent isn't ready. */
+async function typePrompt(
+	prompt: string,
+	send: (prompt: string) => Promise<DeliveryResult>,
+	enqueue: (prompt: string) => void,
+): Promise<void>
+{
+	const result = await send(prompt);
+	if (result === "not-ready") enqueue(prompt);
+}
+
+/** Upstream `Po`'s failure toast. */
+const COMPACT_FAILED_MESSAGE = "Couldn’t start compacting.";
+
+/** Upstream `Po` (sendCompact): types `/compact`, toasting when the send throws. */
+export async function sendCompact(
+	send: (prompt: string) => Promise<DeliveryResult>,
+	enqueue: (prompt: string) => void,
+	toast: (options: ToastOptions) => void,
+): Promise<void>
+{
+	try
+	{
+		await typePrompt("/compact", send, enqueue);
+	}
+	catch
+	{
+		toast(
+			{
+				kind: "error",
+				message: COMPACT_FAILED_MESSAGE,
+			},
+		);
+	}
+}
+
 /**
  * The card's handlers through herdr: Try again types upstream's `retryNudge`
  * prompt "Try again" (any composer draft stays put, upstream `nudgeBesideDraft`),
@@ -73,11 +109,7 @@ export function errorRecoveryHandlers(
 ): ApiErrorRecovery | undefined
 {
 	if (!availability.retryable && !availability.idle) return undefined;
-	const type = async (prompt: string) =>
-	{
-		const result = await send(prompt);
-		if (result === "not-ready") enqueue(prompt);
-	};
+	const type = async (prompt: string) => typePrompt(prompt, send, enqueue);
 	return {
 		...(availability.retryable &&
 		{

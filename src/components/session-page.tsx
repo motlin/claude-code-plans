@@ -7,7 +7,7 @@ import {useQuery, useQueryClient} from "@tanstack/react-query";
 import {lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps} from "react";
 import {Minimize2} from "lucide-react";
 import {SessionTileFrame} from "./session-tile-frame";
-import {latestBreakdown, preferNewerBreakdown} from "../lib/context-breakdown";
+import {latestBreakdown, preferNewerBreakdown, railContextPercent} from "../lib/context-breakdown";
 import {sessionContextBreakdownQueryOptions} from "../lib/api/context-breakdown";
 import {usageQueryOptions} from "../lib/api/usage";
 import {focusComposer, refillComposer, refillRejectedSend, takeBackSend} from "../lib/context-attach";
@@ -249,8 +249,10 @@ import
 	errorRecoveryAvailability,
 	errorRecoveryHandlers,
 	lastEntryIsError,
+	sendCompact,
 	switchModelForRetry,
 } from "../lib/session-error-recovery";
+import {compactActionState} from "../lib/compact-action";
 import {TerminalWritesTipProvider} from "./terminal-writes-tip";
 import {TurnMarkOutlet, TurnMarkOutletProvider} from "./turn-mark-outlet";
 import {markedRowBelowTailSlot} from "../lib/turn-mark-outlet";
@@ -1309,17 +1311,19 @@ function SessionView({
 			queued: queuedPrompts.length,
 		},
 	);
+	// A pending question, permission or plan card would swallow a typed prompt.
+	const promptCardPending =
+		pendingPermission !== null ||
+		inlineQuestion !== null ||
+		hookQuestionCardShown ||
+		inlinePlanId !== null ||
+		dockedPlan !== null;
 	const errorRecoveryAvailable = errorRecoveryAvailability(
 		{
 			hasLivePane: promptBehavior.hasLivePane,
 			writesEnabled: herdr.writesEnabled,
 			paneStatus: workingMarkerState.status,
-			pendingCard:
-				pendingPermission !== null ||
-				inlineQuestion !== null ||
-				hookQuestionCardShown ||
-				inlinePlanId !== null ||
-				dockedPlan !== null,
+			pendingCard: promptCardPending,
 			isPending: liveHerdrPrompt.state.isPending,
 			isLastEntry: lastEntryIsError(processed.lines),
 		},
@@ -1542,6 +1546,26 @@ function SessionView({
 						focusComposer: focusSessionComposer,
 					},
 		[staleCompactShown, staleCompactEpisode, compactStaleSession, focusSessionComposer],
+	);
+	// The rail Context card's Compact session (upstream `oo`): herdr's gate stands in for upstream's `reach`.
+	const compactSendPending = liveHerdrPrompt.state.isPending;
+	const compactSendPendingRef = useRef(compactSendPending);
+	compactSendPendingRef.current = compactSendPending;
+	const compactFromRail = useCallback(() =>
+	{
+		// Upstream `Dx`: a send already in flight makes the click a no-op.
+		if (compactSendPendingRef.current) return;
+		void sendCompact(sendCompactPrompt, enqueuePrompt, toast);
+	}, [sendCompactPrompt, enqueuePrompt, toast]);
+	const railContextPct = railContextPercent(composerChin.usage, contextBreakdown);
+	const railCompact = compactActionState(
+		{
+			contextPct: railContextPct,
+			hasHandler: true,
+			reach: canTypeCompact ? (herdrReconnecting ? "detached" : "live") : "dormant",
+			responding: workingMarkerState.status !== "idle" || compactSendPending || promptCardPending,
+			compacting: staleCompactEpisode !== null,
+		},
 	);
 	// Upstream's refusal band shows only for fallbacks that arrive live: the records the page opened with
 	// are history (upstream's restored, dismissed fallback).
@@ -1969,6 +1993,11 @@ function SessionView({
 								canToggleRemoteControl: promptBehavior.hasLivePane && herdr.writesEnabled,
 								usage: composerChin.usage,
 								breakdown: contextBreakdown,
+								compact:
+								{
+									state: railCompact,
+									onCompact: compactFromRail,
+								},
 								artifacts: sessionArtifacts,
 								outputFiles,
 								backgroundTasks,

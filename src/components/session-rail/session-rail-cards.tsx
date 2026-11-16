@@ -1,6 +1,6 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
-import {useEffect, useRef, useState} from "react";
+import {useEffect, useId, useRef, useState} from "react";
 import
 {
 	AppWindow,
@@ -33,6 +33,7 @@ import
 import type {BackgroundTask, BackgroundTaskGroups} from "../../lib/background-tasks";
 import {writeClipboardText} from "../../lib/clipboard";
 import {toConnectorSlug} from "../../lib/customize/mcp-tool-permissions";
+import {autoCompactHint, COMPACT_DISABLED_REASON, type CompactActionState} from "../../lib/compact-action";
 import {buildContextLegend, type ContextBreakdown} from "../../lib/context-breakdown";
 import {formatContextSummary, formatUpdatedAgo, type ComposerUsage} from "../../lib/composer-state";
 import type {PrStatus} from "../../lib/pr-status";
@@ -49,6 +50,8 @@ import {usePaneHost} from "../panes/pane-host-context";
 import {ContextBreakdownBody} from "./context-breakdown";
 import {AnimatedDiffStat} from "../diff-stat";
 import {useToast} from "../toast-context";
+import {cdsButtonClass} from "../ui/cds-button";
+import {DisabledReason} from "../ui/disabled-reason";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
 import {ENVIRONMENT_MENU_BUTTON_CLASS, RAIL_ROW_ACTION_CLASS, RailRow, RailRowContent} from "./rail-row";
 import {RemoteControlRow, RemoteControlRowPending, RemoteControlToggleRow} from "./remote-control-row";
@@ -73,6 +76,14 @@ export interface SessionRailInputs
 	usage: ComposerUsage | null;
 	/** The newest `/context` run's per-category breakdown, null when none or stale. */
 	breakdown: ContextBreakdown | null;
+	/** The Context card's Compact session row: its availability and the `/compact` send. */
+	compact?:
+		|
+		  {
+				state: CompactActionState;
+				onCompact: () => void;
+		  }
+		| undefined;
 	artifacts: readonly SessionArtifact[];
 	/** Files the transcript shows the session wrote or sent for the user. */
 	outputFiles: readonly OutputFile[];
@@ -337,6 +348,70 @@ function ContextUpdated({
 	);
 }
 
+const COMPACT_BUTTON_CLASS = `${cdsButtonClass("secondary", "xs")} min-w-0`;
+
+/** Upstream's compact action `H`: the auto-compact hint and an xs "Compact session" button behind its disabled reason. */
+function CompactActionRow({
+	state,
+	hint,
+	onCompact,
+}: {
+	state: Exclude<
+		CompactActionState,
+		{
+			kind: "hidden";
+		}
+	>;
+	hint: string | null;
+	onCompact: () => void;
+})
+{
+	const hintId = useId();
+	return (
+		<div data-rail-compact-action="" className="flex min-h-[20px] items-center gap-sm px-xs py-xs text-footnote">
+			{hint !== null && (
+				<span id={hintId} className="min-w-0 flex-1 truncate text-secondary">
+					{hint}
+				</span>
+			)}
+			<DisabledReason
+				reason={state.kind === "disabled" ? COMPACT_DISABLED_REASON[state.reason] : null}
+				// Without the flex-1 hint, the button still sits at the trailing edge.
+				wrapperClassName={hint === null ? "min-w-0 shrink-0 ms-auto" : "min-w-0 shrink-0"}
+			>
+				<button
+					type="button"
+					data-cds="Button"
+					data-size="xs"
+					disabled={state.kind === "disabled"}
+					aria-describedby={hint === null ? undefined : hintId}
+					onClick={() =>
+					{
+						onCompact();
+					}}
+					className={COMPACT_BUTTON_CLASS}
+				>
+					<span className="truncate">Compact session</span>
+				</button>
+			</DisabledReason>
+		</div>
+	);
+}
+
+/** The compact row for the card, or null when its state hides it. */
+function compactRow(inputs: SessionRailInputs, threshold: number | null): React.ReactNode
+{
+	const {compact} = inputs;
+	if (compact === undefined || compact.state.kind === "hidden") return null;
+	return (
+		<CompactActionRow
+			state={compact.state}
+			hint={autoCompactHint(threshold, inputs.usage?.contextTokens ?? null)}
+			onCompact={compact.onCompact}
+		/>
+	);
+}
+
 /** Upstream's rail Context card: "N% used" over the token summary, a 4px meter, and when the usage was last updated. */
 function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSummary[]): RailCard
 {
@@ -355,6 +430,7 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 						homeRoot={inputs.homeRoot}
 						mcpServers={connectors}
 					/>
+					{compactRow(inputs, breakdown.autoCompactThreshold)}
 					<ContextUpdated updatedAt={breakdown.fetchedAt} working={working} source={breakdown.source} />
 				</div>
 			),
@@ -409,6 +485,7 @@ function contextCard(inputs: SessionRailInputs, connectors: readonly McpServerSu
 						/>
 					</div>
 				</div>
+				{compactRow(inputs, null)}
 				{/* Upstream's window-only state: no Last updated footer, which needs a breakdown. */}
 				{!working && (
 					<div
