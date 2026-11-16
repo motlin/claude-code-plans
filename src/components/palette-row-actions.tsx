@@ -17,7 +17,8 @@ import
 	sessionMenuReadState,
 } from "../lib/session-menu-items";
 import type {SessionBucket} from "../lib/session-state";
-import {ack} from "../lib/awaiting-ack-store";
+import {ack, ackedAt, useAwaitingAckVersion} from "../lib/awaiting-ack-store";
+import {completedAckAt, isFailedUnacked} from "../lib/failed-row";
 import {markSeen, markUnseen} from "../lib/unread-store";
 import {type Box, CARD_OVERLAP_PX, isAltEnter, virtualAnchor} from "./palette-row-actions-geometry";
 import {SessionRenameDialog} from "./session-rename-dialog";
@@ -35,6 +36,10 @@ export interface PaletteCardSession
 	mtime: string;
 	archived: boolean | undefined;
 	bucket: SessionBucket | undefined;
+	/** The row is blocked on its unseen failed turn; server hits leave it out. */
+	unseenError?: true | undefined;
+	/** When the row's last turn failed and nothing has run since; server hits leave it out. */
+	failedAt?: string | undefined;
 }
 
 type CardItemId = "open" | "open-new-tab" | SessionMenuItemId;
@@ -94,6 +99,7 @@ export function PaletteRowActionsCard({
 	const toast = useToast();
 	const setArchived = useSessionArchive(session.id);
 	const anchor = useMemo(() => virtualAnchor(anchorRect), [anchorRect]);
+	useAwaitingAckVersion();
 
 	const capabilities = new Set<SessionMenuCapability>(["pin", "rename", "readState", "ackAwaiting", "copyLink"]);
 	if (session.archived !== undefined) capabilities.add("archive");
@@ -101,7 +107,21 @@ export function PaletteRowActionsCard({
 		{
 			title: session.title,
 			pinned: pins.isPinned(session.id),
-			readState: sessionMenuReadState(session.bucket, unseen),
+			readState: sessionMenuReadState(
+				session.bucket,
+				unseen,
+				{
+					unseenError: session.unseenError === true,
+				},
+			),
+			failed: isFailedUnacked(
+				{
+					failedAt: session.failedAt,
+					mtime: session.mtime,
+					archived: session.archived ?? false,
+				},
+				ackedAt(session.id),
+			),
 			archived: session.archived ?? false,
 			prUrl: null,
 			hasLiveTerminal: false,
@@ -194,7 +214,7 @@ export function PaletteRowActionsCard({
 				return;
 			case "mark-completed":
 				markSeen(session.id);
-				ack(session.id, Date.parse(session.mtime));
+				ack(session.id, completedAckAt(session.mtime, session.failedAt));
 				return;
 			case "mark-unread":
 				markUnseen(session.id);

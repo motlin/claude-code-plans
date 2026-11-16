@@ -43,6 +43,8 @@ import {NewGroupDialog} from "./new-group-dialog";
 import {bulkSelectionFor, type SidebarSelectionApi, useSidebarSelection} from "./sidebar/selection-context";
 import {useHasUnseenWork} from "./use-has-unseen-work";
 import {useLiveApprovalIds} from "../lib/live-approval-sessions";
+import {ackedAt, useAwaitingAckVersion} from "../lib/awaiting-ack-store";
+import {isFailedUnacked} from "../lib/failed-row";
 import
 {
 	ContextMenu,
@@ -149,12 +151,20 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
 	const {requestRename, requestNewGroup} = useRowRename();
 	const pinIndex = pinnedRow?.pinnedIds.indexOf(session.id) ?? -1;
 	const liveApproval = useLiveApprovalIds().has(session.id);
+	useAwaitingAckVersion();
 
 	const menuSession: SessionMenuSession =
 	{
 		title: session.title,
 		pinned: pins.isPinned(session.id),
-		readState: sessionMenuReadState(session.bucket, unseen),
+		readState: sessionMenuReadState(
+			session.bucket,
+			unseen,
+			{
+				unseenError: session.unseenError === true,
+			},
+		),
+		failed: isFailedUnacked(session, ackedAt(session.id)),
 		archived: session.archived,
 		prUrl: session.pr?.url ?? null,
 		hasLiveTerminal: sessionHasLiveTerminal(herdr?.panes, session.id),
@@ -193,6 +203,7 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
 		{
 			sessionId: session.id,
 			mtime: session.mtime,
+			failedAt: session.failedAt,
 			cwd,
 			bridgeSessionId,
 			prUrl: session.pr?.url ?? null,

@@ -5,6 +5,7 @@ import
 	getBulkSessionMenuItems,
 	getSessionMenuItems,
 	SessionMenuItemIdSchema,
+	sessionMenuReadState,
 	type SessionMenuCapability,
 	type SessionMenuSession,
 } from "../src/lib/session-menu-items";
@@ -326,6 +327,132 @@ describe("getSessionMenuItems", () =>
 				accelerator: "c",
 			},
 		]);
+	});
+
+	it("offers a failed row its read toggle with u, then Mark as completed with no shortcut, as upstream's St", () =>
+	{
+		const readItems = (
+			overrides: Partial<SessionMenuSession>,
+			capabilities = ALL,
+			surface: "row" | "palette-card" = "row",
+		) =>
+			getSessionMenuItems(
+				session(overrides),
+				capabilities,
+				{
+					surface,
+				},
+			).filter((entry) => entry.kind === "item" && entry.id.startsWith("mark-"));
+		expect(
+			{
+				read: readItems(
+					{
+						readState: "read",
+						failed: true,
+					},
+				),
+				unread: readItems(
+					{
+						readState: "unread",
+						failed: true,
+					},
+				),
+				archived: readItems(
+					{
+						readState: "read",
+						failed: true,
+						archived: true,
+					},
+				),
+				liveApproval: readItems(
+					{
+						readState: "read",
+						failed: true,
+						liveApproval: true,
+					},
+				),
+				notWired: readItems(
+					{
+						readState: "read",
+						failed: true,
+					},
+					LOCAL,
+				),
+				card: readItems(
+					{
+						readState: "read",
+						failed: true,
+					},
+					ALL,
+					"palette-card",
+				),
+			},
+		).toStrictEqual(
+			{
+				read: [
+					{
+						kind: "item",
+						id: "mark-unread",
+						label: "Mark as unread",
+						accelerator: "u",
+					},
+					{
+						kind: "item",
+						id: "mark-completed",
+						label: "Mark as completed",
+					},
+				],
+				unread: [
+					{
+						kind: "item",
+						id: "mark-read",
+						label: "Mark as read",
+						accelerator: "u",
+					},
+					{
+						kind: "item",
+						id: "mark-completed",
+						label: "Mark as completed",
+					},
+				],
+				archived: [
+					{
+						kind: "item",
+						id: "mark-unread",
+						label: "Mark as unread",
+						accelerator: "u",
+					},
+				],
+				liveApproval: [
+					{
+						kind: "item",
+						id: "mark-unread",
+						label: "Mark as unread",
+						accelerator: "u",
+					},
+				],
+				notWired: [
+					{
+						kind: "item",
+						id: "mark-unread",
+						label: "Mark as unread",
+						accelerator: "u",
+					},
+				],
+				card: [
+					{
+						kind: "item",
+						id: "mark-unread",
+						label: "Mark as unread",
+					},
+					{
+						kind: "item",
+						id: "mark-completed",
+						label: "Mark as completed",
+					},
+				],
+			},
+		);
 	});
 
 	it("has no read-state item on a working row", () =>
@@ -939,6 +1066,44 @@ describe("getSessionMenuItems", () =>
 				label: "Archive “A very long session title that keeps go…”",
 			},
 		]);
+	});
+});
+
+describe("sessionMenuReadState", () =>
+{
+	it("reads an errored blocked row as read or unread, not awaiting, as upstream's failed rows", () =>
+	{
+		expect([
+			sessionMenuReadState(
+				"blocked",
+				true,
+				{
+					unseenError: true,
+				},
+			),
+			sessionMenuReadState(
+				"blocked",
+				false,
+				{
+					unseenError: true,
+				},
+			),
+			sessionMenuReadState("blocked", true),
+			sessionMenuReadState(
+				"blocked",
+				false,
+				{
+					unseenError: false,
+				},
+			),
+			sessionMenuReadState(
+				"working",
+				true,
+				{
+					unseenError: true,
+				},
+			),
+		]).toStrictEqual(["unread", "read", "awaiting", "awaiting", "working"]);
 	});
 });
 

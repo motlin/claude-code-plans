@@ -18,6 +18,7 @@ import {SessionActionsMenu} from "../src/components/session-actions-menu";
 import {ToastProvider} from "../src/components/toast";
 import {herdrPanesQueryOptions, type HerdrPaneIndexData} from "../src/lib/api/herdr";
 import {sessionOpenInQueryOptions, sessionQueryKeys, type SessionListItem} from "../src/lib/api/sessions";
+import {__awaitingAckTesting, ackedAt} from "../src/lib/awaiting-ack-store";
 import {getPendingFork, setPendingFork} from "../src/lib/session-fork";
 import type {SessionBucket} from "../src/lib/session-state";
 import {__unreadStoreTesting, hasUnseenWork, syncUnseenFromSummaries} from "../src/lib/unread-store";
@@ -489,6 +490,106 @@ describe("SessionActionsMenu", () =>
 		await flush();
 
 		expect(hasUnseenWork(SESSION_ID)).toBe(true);
+	});
+
+	it("offers a read failed row Mark as completed with no shortcut after the toggle, and acks over the failure", async () =>
+	{
+		__awaitingAckTesting.reset();
+		await renderRow(
+			listItem(
+				"done",
+				{
+					mtime: "2026-11-06T10:05:00.000Z",
+					failedAt: "2026-11-06T10:00:00.000Z",
+				},
+			),
+		);
+		const menu = await rightClickRow();
+		const before = outline(menu);
+
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: "Mark as completed",
+				},
+			),
+		);
+		await flush();
+		const acked = ackedAt(SESSION_ID);
+		const after = outline(await rightClickRow());
+		__awaitingAckTesting.reset();
+
+		expect(
+			{
+				before,
+				acked,
+				after,
+			},
+		).toStrictEqual(
+			{
+				before: [
+					"PinP [p]",
+					"Mark as unreadU [u]",
+					"Mark as completed []",
+					"RenameR [r]",
+					"ForkF [f]",
+					"---",
+					"Copy linkC [c]",
+					"---",
+					"Move to section []",
+					"---",
+					"ArchiveA [a]",
+				],
+				acked: Date.parse("2026-11-06T10:05:00.000Z"),
+				after: [
+					"PinP [p]",
+					"Mark as unreadU [u]",
+					"RenameR [r]",
+					"ForkF [f]",
+					"---",
+					"Copy linkC [c]",
+					"---",
+					"Move to section []",
+					"---",
+					"ArchiveA [a]",
+				],
+			},
+		);
+	});
+
+	it("gives u to the toggle on a failed row, not to Mark as completed", async () =>
+	{
+		__awaitingAckTesting.reset();
+		await renderRow(
+			listItem(
+				"done",
+				{
+					failedAt: "2026-09-28T09:59:00.000Z",
+				},
+			),
+		);
+		const menu = await rightClickRow();
+
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "u",
+			},
+		);
+		await flush();
+
+		expect(
+			{
+				unseen: hasUnseenWork(SESSION_ID),
+				acked: ackedAt(SESSION_ID),
+			},
+		).toStrictEqual(
+			{
+				unseen: true,
+				acked: undefined,
+			},
+		);
 	});
 
 	it("closes on Escape", async () =>

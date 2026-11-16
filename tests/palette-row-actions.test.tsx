@@ -23,7 +23,7 @@ import {recentSessionsQueryOptions, sessionQueryKeys, type SessionListItem} from
 import {pin, readPinState} from "../src/lib/pin-store";
 import {useSessionRenameRequest} from "../src/lib/session-rename-request";
 import {__awaitingAckTesting, ackedAt} from "../src/lib/awaiting-ack-store";
-import {clearAll, hasUnseenWork} from "../src/lib/unread-store";
+import {clearAll, hasUnseenWork, markUnseen} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
 import {PanelsOff} from "./fizzy-lake-off";
 
@@ -668,6 +668,111 @@ describe("palette row actions card", () =>
 				ackedAt: Date.parse(mtime),
 			},
 		);
+	});
+
+	it("offers a seen failed row Mark as completed after the toggle, and drops it once acked", async () =>
+	{
+		const mtime = new Date().toISOString();
+		const failedAt = new Date(Date.parse(mtime) - 60_000).toISOString();
+		const {input} = await openPalette([
+			{
+				...recentSession("sess-1", "Refactor auth module"),
+				mtime,
+				failedAt,
+			},
+			recentSession("sess-2", "Write release notes"),
+		]);
+		const openActions = async () =>
+		{
+			fireEvent.keyDown(
+				input,
+				{
+					key: "Enter",
+					code: "Enter",
+					altKey: true,
+				},
+			);
+			return screen.findByRole(
+				"menu",
+				{
+					name: "Actions",
+				},
+			);
+		};
+		const card = await openActions();
+		const before = menuItems(card).map(([label]) => label);
+		fireEvent.click(
+			within(card).getByRole(
+				"menuitem",
+				{
+					name: /^Mark as completed/,
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(
+				screen.queryByRole(
+					"menu",
+					{
+						name: "Actions",
+					},
+				),
+			).toBeNull();
+		});
+		const after = menuItems(await openActions()).map(([label]) => label);
+
+		expect(
+			{
+				before: before.slice(-2),
+				ackedAt: ackedAt("sess-1"),
+				after: after.slice(-2),
+			},
+		).toStrictEqual(
+			{
+				before: ["Mark as unread7", "Mark as completed8"],
+				ackedAt: Date.parse(mtime),
+				after: ["Archive6", "Mark as unread7"],
+			},
+		);
+	});
+
+	it("offers an unseen failed row Mark as read, then Mark as completed, not the waiting ack alone", async () =>
+	{
+		const mtime = new Date().toISOString();
+		markUnseen("sess-1");
+		const {input} = await openPalette([
+			{
+				...recentSession("sess-1", "Refactor auth module"),
+				mtime,
+				bucket: "blocked",
+				unseen: true,
+				unseenError: true,
+				erroredAt: mtime,
+				failedAt: mtime,
+			},
+			recentSession("sess-2", "Write release notes"),
+		]);
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+				code: "Enter",
+				altKey: true,
+			},
+		);
+		const card = await screen.findByRole(
+			"menu",
+			{
+				name: "Actions",
+			},
+		);
+
+		expect(
+			menuItems(card)
+				.map(([label]) => label)
+				.slice(-2),
+		).toStrictEqual(["Mark as read7", "Mark as completed8"]);
 	});
 
 	it("archives the session from the card", async () =>

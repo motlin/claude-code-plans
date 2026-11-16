@@ -24,6 +24,7 @@ import
 } from "../lib/transcript-mode";
 import {assign} from "../lib/session-group-store";
 import {ack} from "../lib/awaiting-ack-store";
+import {completedAckAt} from "../lib/failed-row";
 import {markSeen, markUnseen} from "../lib/unread-store";
 import {useToast} from "./toast-context";
 import type {TranscriptViewActions} from "./session-actions-menu";
@@ -32,6 +33,7 @@ import type {TranscriptViewActions} from "./session-actions-menu";
 export function useSessionMenuRunner({
 	sessionId,
 	mtime,
+	failedAt,
 	cwd,
 	bridgeSessionId,
 	prUrl,
@@ -113,7 +115,7 @@ export function useSessionMenuRunner({
 				return;
 			case "mark-completed":
 				markSeen(sessionId);
-				if (mtime !== undefined) ack(sessionId, Date.parse(mtime));
+				if (mtime !== undefined) ack(sessionId, completedAckAt(mtime, failedAt));
 				return;
 			case "mark-unread":
 				markUnseen(sessionId);
@@ -170,6 +172,8 @@ export interface SessionMenuRunnerOptions
 	sessionId: string;
 	/** The row's transcript mtime, which "Mark as completed" acks at (upstream acks at `updated_at`). */
 	mtime?: string;
+	/** When the row's last turn failed; Mark as completed acks at the later of it and `mtime`. */
+	failedAt?: string | undefined;
 	cwd: string | null;
 	bridgeSessionId: string | null;
 	prUrl: string | null;

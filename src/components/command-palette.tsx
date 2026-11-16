@@ -1655,6 +1655,8 @@ function PalettePopup({
 					mtime: session.mtime,
 					archived: session.archived,
 					bucket: session.bucket,
+					unseenError: session.unseenError,
+					failedAt: session.failedAt,
 				},
 			);
 		}

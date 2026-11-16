@@ -66,11 +66,23 @@ export type SessionMenuSurface = "row" | "header" | "palette" | "palette-card";
 /** Waiting rows get "Mark as completed"; working rows get no read-state item. */
 export type SessionMenuReadState = "working" | "awaiting" | "unread" | "read";
 
-/** Blocked rows are awaiting input; finished rows are read or unread by the unseen flag. */
-export function sessionMenuReadState(bucket: SessionBucket | undefined, unseen: boolean): SessionMenuReadState
+/**
+ * Blocked rows are awaiting input; finished rows are read or unread by the unseen flag. A row blocked on a
+ * failed turn is not in progress (upstream `Ct` excludes `St`), so it keeps the read toggle.
+ */
+export function sessionMenuReadState(
+	bucket: SessionBucket | undefined,
+	unseen: boolean,
+	{
+		unseenError = false,
+	}:
+	{
+		unseenError?: boolean;
+	} = {},
+): SessionMenuReadState
 {
 	if (bucket === "working") return "working";
-	if (bucket === "blocked") return "awaiting";
+	if (bucket === "blocked" && !unseenError) return "awaiting";
 	return unseen ? "unread" : "read";
 }
 
@@ -106,6 +118,8 @@ export interface SessionMenuSession
 	};
 	/** The session's transcript view; enables the header's Transcript view submenu. */
 	transcriptView?: TranscriptViewState;
+	/** The last turn failed and Mark as completed hasn't acked it (upstream `St`); offers it after the read toggle. */
+	failed?: boolean;
 	/** This tab draws the session's approval card live (upstream `hasPendingApproval`); hides Mark as completed. */
 	liveApproval?: boolean;
 	/** Family head: the fold state of its nested sessions; enables Hide/Show nested sessions. */
@@ -463,6 +477,17 @@ export function getSessionMenuItems(
 		else if (session.readState !== "working" && has("readState"))
 		{
 			readState.push(item(session.readState === "unread" ? "mark-read" : "mark-unread"));
+			// Upstream gives `u` to the enabled toggle, so a failed row's Mark as completed has no shortcut.
+			if (session.failed === true && !session.archived && session.liveApproval !== true && has("ackAwaiting"))
+			{
+				readState.push(
+					{
+						kind: "item",
+						id: "mark-completed",
+						label: sessionMenuItemLabels["mark-completed"],
+					},
+				);
+			}
 		}
 	}
 	if (surface === "row") actions.push(...readState);
