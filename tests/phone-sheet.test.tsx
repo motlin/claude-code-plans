@@ -1097,7 +1097,8 @@ describe("phone sheet CSS", () =>
 			},
 		).toStrictEqual(
 			{
-				stackGaps: 1,
+				// ROWS_CLASS and the fork family's nested rows.
+				stackGaps: 2,
 				bandMargins: 2,
 				labelPadding: 2,
 				oldMinHeight: false,

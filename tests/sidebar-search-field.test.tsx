@@ -464,22 +464,25 @@ describe("sidebar density scope", () =>
 		);
 		return {
 			nav: nav.getAttribute("data-density"),
+			// Upstream's code-frame aside also carries data-code-list="" (shared-22 R8); local is always the code list.
+			codeList: nav.getAttribute("data-code-list"),
 			menu: menu.closest("[data-density]")?.getAttribute("data-density"),
 		};
 	}
 
 	/* Upstream pins aside.dframe-sidebar[data-density=comfortable] (web default), so a compact ancestor never pulls it along. */
-	it("pins the docked sidebar comfortable under a compact ancestor, and its menus portal comfortable", async () =>
+	it("pins the docked sidebar comfortable and code-list under a compact ancestor, and its menus portal comfortable", async () =>
 	{
 		expect(await densities({})).toStrictEqual(
 			{
 				nav: "comfortable",
+				codeList: "",
 				menu: "comfortable",
 			},
 		);
 	});
 
-	it("pins the collapsed peek sidebar comfortable under a compact ancestor", async () =>
+	it("pins the collapsed peek sidebar comfortable and code-list under a compact ancestor", async () =>
 	{
 		expect(
 			await densities(
@@ -490,12 +493,13 @@ describe("sidebar density scope", () =>
 		).toStrictEqual(
 			{
 				nav: "comfortable",
+				codeList: "",
 				menu: "comfortable",
 			},
 		);
 	});
 
-	it("pins the phone sheet sidebar comfortable under a compact ancestor", async () =>
+	it("pins the phone sheet sidebar comfortable and code-list under a compact ancestor", async () =>
 	{
 		expect(
 			await densities(
@@ -506,6 +510,7 @@ describe("sidebar density scope", () =>
 		).toStrictEqual(
 			{
 				nav: "comfortable",
+				codeList: "",
 				menu: "comfortable",
 			},
 		);

@@ -394,13 +394,70 @@ describe("described row meta line (upstream sidebar-row-metadata-line)", () =>
 		);
 	});
 
+	it("draws the fork family guide as upstream's L elbow", () =>
+	{
+		expect(
+			{
+				elbow: tokens(block(".df-family::after"), [
+					"content",
+					"pointer-events",
+					"position",
+					"top",
+					"bottom",
+					"border-inline-start",
+					"border-bottom",
+					"border-end-start-radius",
+					"width",
+					"inset-inline-start",
+					"left",
+					"background",
+					"transition",
+				]),
+				oldBar: block(".df-family::before"),
+				oldDescribedBar: block(".df-family:has(> [data-family-child]:last-child .df-described-row)::before"),
+			},
+		).toStrictEqual(
+			{
+				elbow:
+				{
+					content: '""',
+					"pointer-events": "none",
+					position: "absolute",
+					top: "4px",
+					bottom: "calc(var(--sb-row-h) / 2 + var(--sb-family-row-gap, 0px))",
+					"border-inline-start": "1px solid var(--upstream-border-strong)",
+					"border-bottom": "1px solid var(--upstream-border-strong)",
+					"border-end-start-radius": "6px",
+					width: "10px",
+					"inset-inline-start": "calc(var(--sb-row-px) + var(--sb-iconless-pad) + 4px)",
+					left: null,
+					background: null,
+					transition: null,
+				},
+				oldBar: "",
+				oldDescribedBar: "",
+			},
+		);
+	});
+
+	// sidebar-code-list-attribute: these are upstream's chat/cowork sidebar rules; the local sidebar is code-list only.
+	it("copies none of upstream's chat-sidebar-only spacing rules", () =>
+	{
+		const selectors = [
+			...styles.matchAll(
+				/^[^\n{}]*(?::not\(\[data-code-list\]\)|\[data-nav-end-spacer\]|\.df-recents-anchor > )[^\n{}]*$/gm,
+			),
+		].map((match) => match[0].trim());
+		expect(selectors).toStrictEqual([]);
+	});
+
 	it("ends the fork guide mid-description when the family's last child is described", () =>
 	{
 		expect(
-			tokens(block(".df-family:has(> [data-family-child]:last-child .df-described-row)::before"), ["bottom"]),
+			tokens(block(".df-family:has(> [data-family-child]:last-child .df-described-row)::after"), ["bottom"]),
 		).toStrictEqual(
 			{
-				bottom: "calc( (var(--sb-row-h) - var(--sb-row-ctl)) / 2 + var(--sb-described-tuck) - var(--sb-described-trim) + 2px + 1.5 * (var(--sb-described-line, var(--sb-row-ctl)) - var(--sb-described-tuck)) )",
+				bottom: "calc( (var(--sb-row-h) - var(--sb-row-ctl)) / 2 + var(--sb-described-tuck) - var(--sb-described-trim) + 2px + 1.5 * (var(--sb-described-line, var(--sb-row-ctl)) - var(--sb-described-tuck)) + var(--sb-family-row-gap, 0px) )",
 			},
 		);
 	});

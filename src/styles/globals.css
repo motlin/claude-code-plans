@@ -5839,27 +5839,31 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 }
 
 /*
- * Upstream .df-family: a head session's nested sessions (forks), indented 20px under a
- * 1.25px tree line aligned with the head's status dot. The head row's caret folds them.
+ * Upstream .df-family::after (sidebar-family-elbow-guide): an L elbow from 4px under the head row down to the last
+ * child's centre, then 10px toward the nested text, stopping 6px short of it. The head row's caret folds the family.
+ * --sb-family-row-gap stays undeclared (0): upstream sets it to the 2px stack gap because its code-list rows carry a
+ * margin-bottom inside the family; local nested rows stack by flex gap, so the last child's centre is row-h/2 up.
  */
-.df-family::before
+.df-family::after
 {
 	content: "";
+	pointer-events: none;
 	position: absolute;
 	top: 4px;
-	bottom: 8px;
-	left: calc(var(--sb-row-px) + var(--sb-leading-slot) / 2 - 0.625px);
-	width: 1.25px;
-	border-radius: 1px;
-	background: var(--upstream-border);
+	bottom: calc(var(--sb-row-h) / 2 + var(--sb-family-row-gap, 0px));
+	border-inline-start: 1px solid var(--upstream-border-strong);
+	border-bottom: 1px solid var(--upstream-border-strong);
+	border-end-start-radius: 6px;
+	width: 10px;
+	inset-inline-start: calc(var(--sb-row-px) + var(--sb-iconless-pad) + 4px);
 }
 
-/* Upstream: a described last child ends the guide halfway down its description line. */
-.df-family:has(> [data-family-child]:last-child .df-described-row)::before
+/* Upstream: a described last child ends the elbow halfway down its description line. */
+.df-family:has(> [data-family-child]:last-child .df-described-row)::after
 {
 	bottom: calc(
 		(var(--sb-row-h) - var(--sb-row-ctl)) / 2 + var(--sb-described-tuck) - var(--sb-described-trim) + 2px + 1.5 *
-			(var(--sb-described-line, var(--sb-row-ctl)) - var(--sb-described-tuck))
+			(var(--sb-described-line, var(--sb-row-ctl)) - var(--sb-described-tuck)) + var(--sb-family-row-gap, 0px)
 	);
 }
 

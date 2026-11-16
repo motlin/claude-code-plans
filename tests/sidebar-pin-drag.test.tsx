@@ -271,6 +271,12 @@ function dropRow(container: HTMLElement)
 	};
 }
 
+/** The drop row sits 2px under a preceding pinned row, as upstream's row margin-bottom spaces it. */
+function dropRowStacked(container: HTMLElement): boolean | undefined
+{
+	return container.querySelector("[data-pin-drop-row]")?.classList.contains("mt-[var(--sb-row-stack-gap)]");
+}
+
 afterEach(() =>
 {
 	cleanup();
@@ -299,10 +305,12 @@ describe("sidebar drag to pin", () =>
 			{
 				stub: pinnedSection(container).hasAttribute("data-stub"),
 				dropRow: dropRow(container),
+				stacked: dropRowStacked(container),
 			},
 		).toStrictEqual(
 			{
 				stub: false,
+				stacked: false,
 				dropRow:
 				{
 					text: "Drop here",
@@ -335,6 +343,16 @@ describe("sidebar drag to pin", () =>
 			},
 		);
 		expect(dropRow(container)).toBeNull();
+	});
+
+	// Upstream zeroes the Pinned section's gap-px under data-code-list; the last row's 2px margin spaces the drop row.
+	it("spaces the drop row 2px below the last pinned row", async () =>
+	{
+		seedPins(["w1"], ["w1"]);
+		const {container} = await renderGroups(FIXTURE);
+		pointerDown("Review one", 400);
+		pointerMove(380);
+		expect(dropRowStacked(container)).toBe(true);
 	});
 
 	it("pins a recents row at the slot it is dropped on", async () =>

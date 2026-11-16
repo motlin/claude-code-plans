@@ -81,6 +81,10 @@ export function Sidebar({
 	const activeCount = activeSessions?.length ?? 0;
 	const roving = useSidebarBodyRoving();
 	/* Upstream pins aside.dframe-sidebar[data-density] to its own comfortable default, so a compact ancestor never pulls it along. */
+	/*
+	 * Every sidebar root also carries data-code-list="": upstream sets it only in frame mode "code" under the
+	 * claudeai_cc_epitaxy_session_presets_main gate (shared-22 R8); the local app is always the code list.
+	 */
 	const density = useScopeDensity("comfortable");
 
 	function badgeFor(section: Section): NavBadge | null
@@ -197,6 +201,7 @@ export function Sidebar({
 					aria-label="Sidebar"
 					data-density={density}
 					data-flat-look=""
+					data-code-list=""
 					data-hub-rail=""
 					data-focus-region="navigation"
 					className="dframe-sidebar group/sidebar flex h-full min-h-0 flex-col"
@@ -258,6 +263,7 @@ export function Sidebar({
 				aria-label="Sidebar"
 				data-density={density}
 				data-flat-look=""
+				data-code-list=""
 				data-hub-rail=""
 				data-focus-region="navigation"
 				style={
@@ -774,6 +780,7 @@ function CollapsedSidebar({
 				aria-label="Sidebar"
 				data-density={density}
 				data-flat-look=""
+				data-code-list=""
 				data-hub-rail=""
 				data-focus-region="navigation"
 				aria-hidden={hovering ? undefined : true}

@@ -83,7 +83,8 @@ export function PinnedSubList({
 			data-perf-region="sidebar_pinned"
 			data-stub={stub ? "" : undefined}
 			inert={stub}
-			className={`group/section flex shrink-0 flex-col gap-px ${empty ? "df-pin-section-reveal" : ""}`}
+			// Upstream's `group/section relative flex flex-col gap-px`, whose gap the code list zeroes (each row's margin spaces it).
+			className={`group/section relative flex shrink-0 flex-col gap-0 ${empty ? "df-pin-section-reveal" : ""}`}
 		>
 			<GroupSection
 				group={pinnedGroup(rows, revealed)}
@@ -100,9 +101,9 @@ export function PinnedSubList({
 						})}
 			/>
 			{dragging ? (
-				<PinDropRow ref={dropRowRef} state={dropRowHot ? "hot" : "dragging"} />
+				<PinDropRow ref={dropRowRef} state={dropRowHot ? "hot" : "dragging"} stacked={!empty} />
 			) : (
-				hint.open && <PinDropRow ref={dropRowRef} state="idle" />
+				hint.open && <PinDropRow ref={dropRowRef} state="idle" stacked={!empty} />
 			)}
 			<CoachMark
 				open={hint.open && section !== null}
@@ -131,14 +132,23 @@ function useDragPinHint()
 	};
 }
 
-function PinDropRow({ref, state}: {ref: ((element: HTMLElement | null) => void) | undefined; state: PinDropRowState})
+/** `stacked`: pinned rows precede it, so it sits upstream's 2px row stack below the last one. */
+function PinDropRow({
+	ref,
+	state,
+	stacked,
+}: {
+	ref: ((element: HTMLElement | null) => void) | undefined;
+	state: PinDropRowState;
+	stacked: boolean;
+})
 {
 	return (
 		<div
 			ref={ref}
 			data-pin-drop-row
 			data-hot={state === "hot" ? "" : undefined}
-			className={`${ROW_CLASS} ${state === "hot" ? "bg-[var(--sb-hover)] text-secondary" : "text-muted-as-secondary"}`}
+			className={`${ROW_CLASS} ${stacked ? "mt-[var(--sb-row-stack-gap)]" : ""} ${state === "hot" ? "bg-[var(--sb-hover)] text-secondary" : "text-muted-as-secondary"}`}
 		>
 			<span className="df-leading-slot">
 				<Pin

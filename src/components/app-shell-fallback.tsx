@@ -325,6 +325,8 @@ export function AppShellFallback({
 		>
 			<div
 				aria-label="Sidebar"
+				// Upstream's code-frame sidebar marker, as on the live navs (Sidebar.tsx).
+				data-code-list=""
 				style={
 				{
 					"--sidebar-width": `${DEFAULT_SIDEBAR_STATE.width}px`,

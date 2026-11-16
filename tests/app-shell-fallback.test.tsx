@@ -261,6 +261,7 @@ describe("AppShellFallback", () =>
 				footerIcons: sidebar.querySelectorAll('[data-testid="sidebar-footer"] svg').length,
 				composer: host.querySelector('[data-cds="ChatComposer"]') !== null,
 				column: host.querySelector(".chat-column") !== null,
+				codeList: sidebar.getAttribute("data-code-list"),
 			},
 		).toStrictEqual(
 			{
@@ -273,6 +274,7 @@ describe("AppShellFallback", () =>
 				footerIcons: 0,
 				composer: true,
 				column: true,
+				codeList: "",
 			},
 		);
 	});

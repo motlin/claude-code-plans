@@ -273,6 +273,10 @@ describe("sidebar Pinned section", () =>
 				reveal: section.classList.contains("df-pin-section-reveal"),
 				label: section.querySelector("[data-group-name]")?.textContent,
 				rows: rowTitles(section),
+				// Upstream's `group/section relative flex flex-col gap-px`, whose gap the code list zeroes.
+				relative: section.classList.contains("relative"),
+				gapPx: section.classList.contains("gap-px"),
+				gap0: section.classList.contains("gap-0"),
 			},
 		).toEqual(
 			{
@@ -281,6 +285,9 @@ describe("sidebar Pinned section", () =>
 				reveal: false,
 				label: "Pinned",
 				rows: ["Completed older", "Working one", "Review one"],
+				relative: true,
+				gapPx: false,
+				gap0: true,
 			},
 		);
 	});

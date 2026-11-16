@@ -286,6 +286,18 @@ describe("sidebar session families", () =>
 		expect(rowTitles(nested)).toStrictEqual(["Child one", "Grandchild one"]);
 		const childWrappers = [...nested.querySelectorAll(":scope > [data-family-child]")];
 		expect(childWrappers.map((wrapper) => wrapper.classList.contains("pl-5"))).toStrictEqual([true, true]);
+		// Upstream stacks nested rows 2px apart (code-list row margin), a 34px pitch like their head.
+		expect(
+			{
+				px: nested.classList.contains("gap-px"),
+				stack: nested.classList.contains("gap-[var(--sb-row-stack-gap)]"),
+			},
+		).toStrictEqual(
+			{
+				px: false,
+				stack: true,
+			},
+		);
 		const headWrapper = nested.previousElementSibling;
 		expect(headWrapper?.hasAttribute("data-family-child")).toBe(false);
 		expect(headWrapper?.classList.contains("pl-5")).toBe(false);
@@ -832,6 +844,9 @@ describe("sidebar session families", () =>
 				indent: nested.classList.contains("[--sb-row-indent:calc(var(--sb-icon)+var(--sb-row-gap))]"),
 				leadingSlot: stub.querySelector(".df-leading-slot"),
 				padded: nested.querySelector(".pl-5 > .df-family-stub"),
+				// The elbow's ::after ends at the last child's centre, so the stub row must stay last.
+				stubLast: nested.lastElementChild === stub.parentElement,
+				childAfterStub: nested.querySelector("[data-row-key^='family-stub:'] ~ [data-family-child]"),
 			},
 		).toStrictEqual(
 			{
@@ -839,6 +854,8 @@ describe("sidebar session families", () =>
 				indent: true,
 				leadingSlot: null,
 				padded: null,
+				stubLast: true,
+				childAfterStub: null,
 			},
 		);
 	});
