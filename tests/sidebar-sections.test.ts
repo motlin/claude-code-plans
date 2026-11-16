@@ -17,7 +17,6 @@ import
 	normalizeSections,
 	setSectionView,
 	setSidebarSectionView,
-	sortManualSectionsByName,
 	useSidebarSections,
 } from "../src/lib/sidebar-sections";
 import {installLocalStorage} from "./fake-storage";
@@ -465,31 +464,5 @@ describe("sidebar sections store", () =>
 				},
 			},
 		);
-	});
-
-	it("sorts the manual sections A to Z, keeping Pinned first", () =>
-	{
-		localStorage.setItem(
-			SESSION_GROUP_STORAGE_KEY,
-			JSON.stringify(
-				{
-					groups: [
-						{
-							id: "cg-z",
-							name: "zeta",
-						},
-						{
-							id: "cg-a",
-							name: "Alpha",
-						},
-					],
-					assignments: {},
-					order: {},
-				},
-			),
-		);
-		sortManualSectionsByName();
-		const {result} = renderHook(() => useSidebarSections());
-		expect(result.current.map((section) => section.id)).toStrictEqual(["pinned", "cg-a", "cg-z", "sessions"]);
 	});
 });

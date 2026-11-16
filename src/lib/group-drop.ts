@@ -17,7 +17,6 @@ export const UNGROUPED_SECTION_ZONE = "custom-ungrouped";
 
 const LIST_PREFIX = "custom-group:";
 const HEADER_PREFIX = "custom-group-header:";
-const SECTION_PREFIX = "custom-section:";
 
 /** Drag list id for a custom group's rows. */
 export function groupListId(groupId: string): string
@@ -29,18 +28,6 @@ export function groupListId(groupId: string): string
 export function groupHeaderZoneId(groupId: string): string
 {
 	return `${HEADER_PREFIX}${groupId}`;
-}
-
-/** Drag source id for a custom group's header, distinct from session ids. */
-export function sectionDragId(groupId: string): string
-{
-	return `${SECTION_PREFIX}${groupId}`;
-}
-
-/** The group behind a section drag id, or null for a session row. */
-export function sectionOfDragId(id: string): string | null
-{
-	return id.startsWith(SECTION_PREFIX) ? id.slice(SECTION_PREFIX.length) : null;
 }
 
 function stripPrefix(id: string, prefix: string): string | null
@@ -187,44 +174,6 @@ export function multiGroupDropOutcome({srcIds, srcGroupIds, target, lists}: Mult
 				groupId,
 				before: firstHead(groupId, target.slot),
 			};
-}
-
-export interface SectionDropGeometry
-{
-	/** The dragged section's group. */
-	readonly groupId: string;
-	readonly target: SidebarDropTarget | null;
-	/** Every group id in section order. */
-	readonly groupIds: readonly string[];
-}
-
-/**
- * Where a dragged custom group header lands: at the index of the header it is
- * dropped on, or last when dropped on Recents. Null when nothing moves.
- */
-export function sectionDropOutcome({groupId, target, groupIds}: SectionDropGeometry):
-{
-	readonly groupId: string;
-	readonly toIndex: number;
-} | null
-{
-	if (target?.type !== "zone") return null;
-	const from = groupIds.indexOf(groupId);
-	let toIndex = -1;
-	if (target.zoneId === UNGROUPED_SECTION_ZONE)
-	{
-		toIndex = groupIds.length - 1;
-	}
-	else
-	{
-		const onto = stripPrefix(target.zoneId, HEADER_PREFIX);
-		toIndex = onto === null ? -1 : groupIds.indexOf(onto);
-	}
-	if (from === -1 || toIndex === -1 || toIndex === from) return null;
-	return {
-		groupId,
-		toIndex,
-	};
 }
 
 /** Each manual section's displayed rows in DOM order: heads, then their families' listed nested rows. */

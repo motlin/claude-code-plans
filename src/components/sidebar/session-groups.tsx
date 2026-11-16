@@ -20,9 +20,6 @@ import
 	groupListId,
 	groupLists,
 	multiGroupDropOutcome,
-	sectionDragId,
-	sectionDropOutcome,
-	sectionOfDragId,
 	UNGROUP_ZONE,
 	UNGROUPED_SECTION_ZONE,
 } from "../../lib/group-drop";
@@ -79,20 +76,21 @@ import {useLoadMoreFocus} from "./use-load-more-focus";
 import {type SidebarSessionRow, toGroupRow} from "./sidebar-session-row";
 import {SidebarSelectionContext, type SidebarSelectionApi} from "./selection-context";
 import {SectionViewMenu} from "./section-view-menu";
+import {SortableSection, SortableSections} from "./sortable-sections";
 import {PinnedSubList} from "./sublists";
 import {SidebarWhitespaceMenu, type WhitespaceScopes} from "./whitespace-context-menu";
 
 /**
  * The sidebar session list in claude.ai/code's sections layout: Pinned, then the user's manual
- * sections (custom groups, each with its own Group and sort) in a `df-sortable-section`, then
+ * sections (custom groups, each with its own Group and sort), each in a `df-sortable-section`, then
  * Recents grouped by the list's Group by. Collapsed groups persist in the sidebar store; "Show
  * more" reveals a group's next 20 rows and "Show less" folds it back. The next feed page loads only
  * on a click, while it can still hold sessions inside Last activity: Date's last section and None's
  * Recents keep a count-0 Show more that fetches, and every other grouping ends the list with a
  * "Load more sessions" row (upstream `Ks`). Nothing auto-loads on scroll. Dragging any row pins it at a Pinned slot, reorders a
  * pinned row, or (dropped below Pinned) unpins it. A row dropped on a manual section's header or
- * row slot joins that section there, a row dropped on "Remove from …" or on Recents leaves it, and section
- * headers drag to reorder. ⌘-click and ⇧-click select several rows for the bulk row menu;
+ * row slot joins that section there, and a row dropped on "Remove from …" or on Recents leaves it. Manual
+ * section headers drag their whole section to reorder (`SortableSections`). ⌘-click and ⇧-click select several rows for the bulk row menu;
  * dragging a selected row moves the whole selection, which can only drop on a manual section. A plain
  * click, Escape, or a press outside the list clears the selection.
  */
@@ -247,12 +245,6 @@ export function SessionGroups({
 		{
 			onDrop: (drop) =>
 			{
-				const sectionGroupId = sectionOfDragId(drop.srcId);
-				if (sectionGroupId !== null)
-				{
-					applySectionDrop(sectionGroupId, drop);
-					return;
-				}
 				const selected = latestSelected.current;
 				if (selected.length > 1 && selected.includes(drop.srcId))
 				{
@@ -481,8 +473,7 @@ export function SessionGroups({
 		pinnedShown: collapsed.has(PINNED_GROUP_KEY) ? [] : pinnedRows,
 		pinnedAll: pinnedRows,
 	};
-	const sectionDrag = drag !== null && sectionOfDragId(drag.srcId) !== null;
-	const rowDrag = drag !== null && !sectionDrag;
+	const rowDrag = drag !== null;
 	const multiDrag = rowDrag && selectedIds.length > 1 && selectedIds.includes(drag.srcId);
 	const draggedIds = rowDrag ? (multiDrag ? selectedIds : [drag.srcId]) : [];
 	const manualIds = new Set(manual.map((section) => section.id));
@@ -590,47 +581,55 @@ export function SessionGroups({
 								})}
 						dragRowProps={rowProps}
 					/>
-					<div data-testid="sidebar-sections" className="df-sortable-section contents" data-gap-after="">
-						{manual.map((section) =>
-						{
-							const view = sectionById.get(section.id);
-							const groupId = section.id;
-							return (
-								<GroupSection
-									key={section.group.key}
-									group={section.group}
-									groupBy={prefs.groupBy}
-									subgroups={section.subgroups}
-									collapsedKeys={collapsed}
-									{...(view === undefined
-										? {}
-										:
-											{
-												showMetadata: view.show.metadata,
-											})}
-									expanded={!collapsed.has(section.group.key)}
-									activeItemId={activeItemId}
-									filterSlot={
-										view === undefined ? undefined : (
-											<SectionViewMenu section={view} statusFilter={prefs.statusFilter} />
-										)
-									}
-									onReveal={onReveal}
-									dragRowProps={rowProps}
-									sectionKeys={sectionKeys}
-									headerDragProps={rowProps(sectionDragId(groupId))}
-									headerRef={zoneRef(groupHeaderZoneId(groupId))}
-									dropHot={hotGroupId === groupId}
-									// Inner date or status headings reorder the rows, so slots only make sense in a flat section.
-									{...(sectionDrag || section.subgroups !== null
-										? {}
-										:
-											{
-												rowsRef: listRef(groupListId(groupId)),
-											})}
-								/>
-							);
-						})}
+					<div data-testid="sidebar-sections" className="contents">
+						<SortableSections sectionIds={manual.map((section) => section.id)} onMove={applySectionMove}>
+							{manual.map((section) =>
+							{
+								const view = sectionById.get(section.id);
+								const groupId = section.id;
+								return (
+									<SortableSection key={section.group.key} id={groupId}>
+										{(activator) => (
+											<GroupSection
+												group={section.group}
+												groupBy={prefs.groupBy}
+												subgroups={section.subgroups}
+												collapsedKeys={collapsed}
+												{...(view === undefined
+													? {}
+													:
+														{
+															showMetadata: view.show.metadata,
+														})}
+												expanded={!collapsed.has(section.group.key)}
+												activeItemId={activeItemId}
+												filterSlot={
+													view === undefined ? undefined : (
+														<SectionViewMenu
+															section={view}
+															statusFilter={prefs.statusFilter}
+														/>
+													)
+												}
+												onReveal={onReveal}
+												dragRowProps={rowProps}
+												sectionKeys={sectionKeys}
+												headerActivator={activator}
+												headerRef={zoneRef(groupHeaderZoneId(groupId))}
+												dropHot={hotGroupId === groupId}
+												// Inner date or status headings reorder the rows, so slots only make sense in a flat section.
+												{...(section.subgroups === null
+													?
+														{
+															rowsRef: listRef(groupListId(groupId)),
+														}
+													: {})}
+											/>
+										)}
+									</SortableSection>
+								);
+							})}
+						</SortableSections>
 						{ungroupRow}
 					</div>
 					<div
@@ -756,20 +755,11 @@ function visibleFamilyHeads(
 	return [...heads].filter((id) => rows.get(id)?.archived !== true);
 }
 
-/** Move a dragged manual section header to the manual section it was dropped on. */
-function applySectionDrop(groupId: string, {target}: SidebarDrop): void
+/** Upstream's drag commit: the dragged manual section takes the store order of the one it was dropped over. */
+function applySectionMove(activeId: string, overId: string): void
 {
-	const sections = readSidebarSections();
-	const manual = sections.filter((section) => section.kind === "manual");
-	const outcome = sectionDropOutcome(
-		{
-			groupId,
-			target,
-			groupIds: manual.map((section) => section.id),
-		},
-	);
-	const onto = outcome === null ? undefined : manual[outcome.toIndex];
-	if (outcome !== null && onto !== undefined) moveSidebarSection(outcome.groupId, sections.indexOf(onto));
+	const over = readSidebarSections().find((section) => section.id === overId);
+	if (over !== undefined) moveSidebarSection(activeId, over.order);
 }
 
 /**

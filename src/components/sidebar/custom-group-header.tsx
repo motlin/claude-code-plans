@@ -1,7 +1,6 @@
 import {Ellipsis} from "lucide-react";
 import {type KeyboardEvent, type ReactNode, useRef, useState} from "react";
 
-import {useArchiveSessions} from "../../hooks/use-session-archive";
 import
 {
 	createGroup,
@@ -10,13 +9,18 @@ import
 	setGroupAppearance,
 	useSessionGroups,
 } from "../../lib/session-group-store";
-import {moveSidebarSection, sortManualSectionsByName, useSidebarSections} from "../../lib/sidebar-sections";
+import {ignoresSectionActivation} from "../../lib/section-sort-physics";
+import type {SessionGroup} from "../../lib/session-groups";
+import {moveSidebarSection, useSidebarSections} from "../../lib/sidebar-sections";
 import {readSidebarState, toggleSidebarGroup} from "../../lib/sidebar-store";
 import type {GroupAppearance, GroupAppearancePatch} from "../../lib/group-appearance";
 import {ConfirmDialog} from "../confirm-dialog";
 import {InlineRenameInput} from "../inline-rename-input";
 import {NewGroupDialog} from "../new-group-dialog";
 import {GroupAppearanceSubmenu} from "./group-appearance";
+import {type GroupBulkActions, useGroupBulkActions} from "./group-bulk-items";
+import {ArchiveAllConfirm, GroupBulkMenuItems} from "./group-header-context-menu";
+import type {SidebarSessionRow} from "./sidebar-session-row";
 import {ContextMenu, ContextMenuTrigger, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "../ui/menu";
 
 export const KEBAB_CLASS =
@@ -37,25 +41,27 @@ function deleteGroupBody(name: string, count: number): string
 }
 
 /**
- * The header label of a manual section with claude.ai/code's header menu, opened by right-clicking
- * the label or by its hover kebab: New session (upstream `rv`), Rename section (inline), Icon and
- * color ▸, New section, Move up / Move down / Sort A to Z among the manual sections, Archive all (N)
- * and Delete section behind a confirm. Alt+Shift+Up/Down on the label moves the section too.
+ * The header label of a manual section with claude.ai/code's hand-made `rv` header menu, opened by
+ * right-clicking the label or by its hover kebab: New session | New section, Rename section
+ * (inline), Icon and color ▸ (a local extra), Move up / Move down among the manual sections |
+ * Select all | Collapse all, Expand all | Archive all (N) | Delete section behind a confirm.
+ * Alt+Shift+Up/Down on the label moves the section too.
  */
 export function CustomGroupHeader({
 	groupId,
-	groupKey,
-	label,
-	archivableIds,
+	group,
+	sectionKeys,
+	activeItemId,
 	onNewSession,
 	children,
 }: {
 	groupId: string;
-	/** The section key, whose collapsed state goes with the group on delete. */
-	groupKey: string;
-	label: string;
-	/** Unarchived sessions shown in the section, for Archive all. */
-	archivableIds: readonly string[];
+	/** The section; its key's collapsed state goes with the group on delete. */
+	group: SessionGroup<SidebarSessionRow>;
+	/** Every section shown in the list, for Collapse all and Expand all. */
+	sectionKeys: readonly string[];
+	/** The open session, which Archive all leaves alone. */
+	activeItemId: string | null;
 	/** Starts a session that joins this group, as the header's + does. */
 	onNewSession: () => void;
 	/** The label's toggle button, replaced by the rename input while renaming. */
@@ -67,7 +73,9 @@ export function CustomGroupHeader({
 	const manual = sections.filter((section) => section.kind === "manual");
 	const [renaming, setRenaming] = useState(false);
 	const [dialog, setDialog] = useState<Dialog | null>(null);
-	const archiveSessions = useArchiveSessions();
+	const actions = useGroupBulkActions(group, sectionKeys, activeItemId, false);
+	const label = group.label;
+	const groupKey = group.key;
 	const labelRef = useRef<HTMLDivElement>(null);
 	// Dialogs and the rename input take focus, so they open only once the menu has closed.
 	const afterClose = useRef<(() => void) | null>(null);
@@ -113,7 +121,7 @@ export function CustomGroupHeader({
 	{
 		if (!event.altKey || !event.shiftKey || event.metaKey || event.ctrlKey) return;
 		if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
-		if (event.target instanceof HTMLInputElement) return;
+		if (ignoresSectionActivation(event.target, event.currentTarget)) return;
 		event.preventDefault();
 		event.stopPropagation();
 		if (move(event.key === "ArrowUp" ? -1 : 1)) requestAnimationFrame(focusToggle);
@@ -129,7 +137,7 @@ export function CustomGroupHeader({
 		<CustomGroupMenuItems
 			index={index}
 			count={manual.length}
-			archiveCount={archivableIds.length}
+			actions={actions}
 			appearance={appearance}
 			onAppearance={(patch) =>
 			{
@@ -145,7 +153,6 @@ export function CustomGroupHeader({
 				setDialog("new-group");
 			})}
 			onMove={move}
-			onSort={sortManualSectionsByName}
 			onArchiveAll={later(() =>
 			{
 				setDialog("archive-all");
@@ -212,18 +219,14 @@ export function CustomGroupHeader({
 					if (readSidebarState().collapsedGroups.includes(groupKey)) toggleSidebarGroup(groupKey);
 				}}
 			/>
-			<ConfirmDialog
+			<ArchiveAllConfirm
 				open={dialog === "archive-all"}
 				onOpenChange={(open) =>
 				{
 					setDialog(open ? "archive-all" : null);
 				}}
-				title={`Archive all sessions in “${label}”?`}
-				confirmLabel="Archive"
-				onConfirm={() =>
-				{
-					archiveSessions(archivableIds);
-				}}
+				label={label}
+				onConfirm={actions.archiveAll}
 			/>
 		</>
 	);
@@ -232,72 +235,60 @@ export function CustomGroupHeader({
 function CustomGroupMenuItems({
 	index,
 	count,
-	archiveCount,
+	actions,
 	appearance,
 	onAppearance,
 	onNewSession,
 	onRename,
 	onNewGroup,
 	onMove,
-	onSort,
 	onArchiveAll,
 	onDelete,
 }: {
 	/** The section's position among the manual sections, -1 when unknown. */
 	index: number;
 	count: number;
-	archiveCount: number;
+	actions: GroupBulkActions;
 	appearance: GroupAppearance | undefined;
 	onAppearance: (patch: GroupAppearancePatch) => void;
 	onNewSession: () => void;
 	onRename: () => void;
 	onNewGroup: () => void;
 	onMove: (delta: -1 | 1) => void;
-	onSort: () => void;
 	onArchiveAll: () => void;
 	onDelete: () => void;
 })
 {
-	const canReorder = index !== -1 && count > 1;
+	// Upstream `sx`/`zC`: Move up past the first section and Move down past the last are left out.
+	const known = index !== -1;
 	return (
 		<>
 			<MenuItem onSelect={onNewSession}>New session</MenuItem>
 			<MenuSeparator />
+			<MenuItem onSelect={onNewGroup}>New section</MenuItem>
 			<MenuItem onSelect={onRename}>Rename section</MenuItem>
 			<GroupAppearanceSubmenu appearance={appearance} onChange={onAppearance} />
-			<MenuItem onSelect={onNewGroup}>New section</MenuItem>
-			{canReorder && (
-				<>
-					<MenuSeparator />
-					{index > 0 && (
-						<MenuItem
-							onSelect={() =>
-							{
-								onMove(-1);
-							}}
-						>
-							Move up
-						</MenuItem>
-					)}
-					{index < count - 1 && (
-						<MenuItem
-							onSelect={() =>
-							{
-								onMove(1);
-							}}
-						>
-							Move down
-						</MenuItem>
-					)}
-					<MenuItem onSelect={onSort}>Sort A to Z</MenuItem>
-				</>
+			{known && index > 0 && (
+				<MenuItem
+					onSelect={() =>
+					{
+						onMove(-1);
+					}}
+				>
+					Move up
+				</MenuItem>
 			)}
-			{archiveCount > 0 && (
-				<>
-					<MenuSeparator />
-					<MenuItem onSelect={onArchiveAll}>Archive all ({archiveCount})</MenuItem>
-				</>
+			{known && index < count - 1 && (
+				<MenuItem
+					onSelect={() =>
+					{
+						onMove(1);
+					}}
+				>
+					Move down
+				</MenuItem>
 			)}
+			<GroupBulkMenuItems actions={actions} onArchiveAll={onArchiveAll} />
 			<MenuSeparator />
 			<MenuItem variant="danger" onSelect={onDelete}>
 				Delete section

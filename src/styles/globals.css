@@ -840,6 +840,8 @@ html[data-interface-font="dyslexic"]
 	/* Session rows: upstream selects them lighter than nav rows in dark. */
 	--sb-session-selected: var(--sb-selected);
 	--sb-bg: color-mix(in srgb, var(--upstream-surface-0) 50%, var(--upstream-surface-1));
+	/* Upstream .dframe-root --df-shadow-lifted: the dragged section's pill (.df-section-lifted). */
+	--df-shadow-lifted: 0 0 0 0.5px #00000017, 0 1px 3px #0000000d, 0 8px 20px #0000000f;
 	/* The sidebar's end border: the border ink until fizzy-lake color swaps in upstream's seam. */
 	--sidebar-seam: var(--upstream-border);
 	/* Upstream's pre-rollout placeholder ink (--cds-text-muted). */
@@ -917,6 +919,7 @@ html[data-interface-font="dyslexic"]
 	--sb-new-circle: #2c2c2a;
 	--sb-session-selected: hsl(0 0% 100% / 0.075);
 	--sb-bg: #111;
+	--df-shadow-lifted: 0 0 0 1px #ffffff1a, 0 1px 3px #0000004d, 0 8px 20px #0000004d;
 	/* Sidebar Search field: upstream dark --cds-fill-field, --cds-ring-color, --cds-fill-secondary-hover/-ring */
 	--sb-field-bg: hsl(0 0% 100% / 0.05);
 	--sb-field-ring: hsl(0 0% 100% / 0.1);
@@ -3377,6 +3380,25 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 		opacity: 1;
 		transform: translateY(0);
 	}
+}
+
+/* Upstream `iG`: a manual section lifted by its header drag (src/components/sidebar/sortable-sections.tsx).
+   The pill sits behind the section, inset around its name by the --lifted-* values written at drag start. */
+.df-section-lifted
+{
+	position: relative;
+}
+
+.df-section-lifted::before
+{
+	content: "";
+	z-index: -1;
+	position: absolute;
+	inset: var(--lifted-top, 0) var(--lifted-x, 0) var(--lifted-bottom, 0);
+	border-radius: 9999px;
+	background: var(--sb-bg);
+	box-shadow: var(--df-shadow-lifted);
+	pointer-events: none;
 }
 
 /* Sidebar pointer drag (src/hooks/use-sidebar-drag.ts). Rows only animate while a drag is in

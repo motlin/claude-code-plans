@@ -9,9 +9,6 @@ import
 	groupLists,
 	type GroupDropGeometry,
 	multiGroupDropOutcome,
-	sectionDragId,
-	sectionDropOutcome,
-	sectionOfDragId,
 	UNGROUP_ZONE,
 	UNGROUPED_SECTION_ZONE,
 } from "../src/lib/group-drop";
@@ -195,62 +192,6 @@ describe("groupDropOutcome", () =>
 				},
 			),
 		).toStrictEqual(expected);
-	});
-});
-
-describe("sectionDropOutcome", () =>
-{
-	const groupIds = ["A", "B", "C"];
-
-	it.each<[string, string, SidebarDropTarget | null, ReturnType<typeof sectionDropOutcome>]>([
-		[
-			"down onto a later header",
-			"A",
-			zone(groupHeaderZoneId("C")),
-			{
-				groupId: "A",
-				toIndex: 2,
-			},
-		],
-		[
-			"up onto an earlier header",
-			"C",
-			zone(groupHeaderZoneId("A")),
-			{
-				groupId: "C",
-				toIndex: 0,
-			},
-		],
-		["onto its own header", "B", zone(groupHeaderZoneId("B")), null],
-		[
-			"onto the Ungrouped section",
-			"A",
-			zone(UNGROUPED_SECTION_ZONE),
-			{
-				groupId: "A",
-				toIndex: 2,
-			},
-		],
-		["the last section onto Ungrouped", "C", zone(UNGROUPED_SECTION_ZONE), null],
-		["onto an unknown header", "A", zone(groupHeaderZoneId("gone")), null],
-		["onto a row slot", "A", slot("B", 0), null],
-		["nowhere", "A", null, null],
-	])("%s", (_name, groupId, target, expected) =>
-	{
-		expect(
-			sectionDropOutcome(
-				{
-					groupId,
-					target,
-					groupIds,
-				},
-			),
-		).toStrictEqual(expected);
-	});
-
-	it("round-trips a section drag id", () =>
-	{
-		expect([sectionOfDragId(sectionDragId("cg-1")), sectionOfDragId("session-1")]).toStrictEqual(["cg-1", null]);
 	});
 });
 

@@ -505,24 +505,6 @@ describe("sidebar drag to custom groups", () =>
 		);
 	});
 
-	it("reorders sections when a group header is dragged onto another", async () =>
-	{
-		const {container} = await renderGroups();
-
-		drag(groupToggle("Beta"), unitY(3), unitY(0));
-
-		await waitFor(() =>
-		{
-			expect(sections(container).map(([label]) => label)).toStrictEqual(["Beta", "Alpha", "Recents"]);
-		});
-		expect(readSidebarSections().map((section) => section.id)).toStrictEqual([
-			"pinned",
-			"cg-b",
-			"cg-a",
-			"sessions",
-		]);
-	});
-
 	it("unpins a pinned row dropped into a group and places it there", async () =>
 	{
 		localStorage.setItem(
@@ -593,6 +575,175 @@ describe("sidebar drag to custom groups", () =>
 			{
 				pinnedIds: [],
 				pinnedOrder: [],
+			},
+		);
+	});
+});
+
+describe("section drag (upstream `ProjectReorderBindings`)", () =>
+{
+	function sectionPointer(type: "pointerMove" | "pointerUp", clientX: number, clientY: number): void
+	{
+		act(() =>
+		{
+			fireEvent[type](
+				document,
+				{
+					pointerId: 1,
+					isPrimary: true,
+					button: 0,
+					clientX,
+					clientY,
+				},
+			);
+		});
+	}
+
+	function pressHeader(label: string, clientY: number): void
+	{
+		fireEvent.pointerDown(
+			groupToggle(label),
+			{
+				pointerId: 1,
+				isPrimary: true,
+				button: 0,
+				clientX: 50,
+				clientY,
+			},
+		);
+	}
+
+	/** dnd-kit's screen-reader instructions node: the lazy section bindings have mounted. */
+	function dndMounted(): boolean
+	{
+		return document.querySelector('[id^="DndDescribedBy"]') !== null;
+	}
+
+	async function renderSortable(): Promise<HTMLElement>
+	{
+		const {container} = await renderGroups();
+		await waitFor(() =>
+		{
+			expect(dndMounted()).toBe(true);
+		});
+		return container;
+	}
+
+	/** Each lifted section wrapper's labels with its inline transform. */
+	function lifted(container: HTMLElement): [string, string][]
+	{
+		return [...container.querySelectorAll<HTMLElement>(".df-sortable-section.df-section-lifted")].map((wrapper) => [
+			wrapper.querySelector("[data-group-name]")?.textContent ?? "",
+			wrapper.style.transform,
+		]);
+	}
+
+	it("lifts the whole section after 8px, y-only, and drops it into the slot whose midpoint it crossed", async () =>
+	{
+		const container = await renderSortable();
+
+		// Beta's header is unit 3; its section spans 399-464 under Alpha's 300-398.
+		pressHeader("Beta", unitY(3));
+		sectionPointer("pointerMove", 50, unitY(3) - 5);
+		const underThreshold = lifted(container);
+		// dnd-kit activates on the move that passes 8px and follows the pointer from the next one.
+		sectionPointer("pointerMove", 50, unitY(3) - 20);
+		sectionPointer("pointerMove", 80, unitY(3) - 60);
+		const midDrag =
+		{
+			lifted: lifted(container),
+			ghost: container.ownerDocument.querySelector("[data-drag-ghost]"),
+			dropHot: container.querySelector("[data-drop-hot]"),
+			grabbing: document.documentElement.hasAttribute("data-session-dragging"),
+		};
+		sectionPointer("pointerUp", 80, unitY(3) - 60);
+
+		await waitFor(() =>
+		{
+			expect(sections(container).map(([label]) => label)).toStrictEqual(["Beta", "Alpha", "Recents"]);
+		});
+		expect(
+			{
+				underThreshold,
+				midDrag,
+				grabbingAfter: document.documentElement.hasAttribute("data-session-dragging"),
+				stored: readSidebarSections().map((section) => section.id),
+			},
+		).toStrictEqual(
+			{
+				underThreshold: [],
+				midDrag:
+				{
+					lifted: [["Beta", "translate3d(0px, -60px, 0px)"]],
+					ghost: null,
+					dropHot: null,
+					grabbing: true,
+				},
+				grabbingAfter: false,
+				stored: ["pinned", "cg-b", "cg-a", "sessions"],
+			},
+		);
+	});
+
+	it("clamps a drag past the last manual section, so it never reaches Recents", async () =>
+	{
+		const container = await renderSortable();
+
+		pressHeader("Beta", unitY(3));
+		sectionPointer("pointerMove", 50, unitY(3) + 20);
+		sectionPointer("pointerMove", 50, unitY(7));
+		const midDrag = lifted(container);
+		sectionPointer("pointerUp", 50, unitY(7));
+
+		expect(
+			{
+				midDrag,
+				shown: sections(container).map(([label]) => label),
+				stored: readSidebarSections().map((section) => section.id),
+			},
+		).toStrictEqual(
+			{
+				midDrag: [["Beta", "translate3d(0px, 0px, 0px)"]],
+				shown: ["Alpha", "Beta", "Recents"],
+				stored: ["pinned", "cg-a", "cg-b", "sessions"],
+			},
+		);
+	});
+
+	it("never lifts a lone manual section", async () =>
+	{
+		localStorage.setItem(
+			SESSION_GROUP_STORAGE_KEY,
+			JSON.stringify(
+				{
+					groups: [ALPHA],
+					assignments:
+					{
+						a1: "cg-a",
+					},
+					order: {},
+				},
+			),
+		);
+		const {container} = await renderGroups();
+
+		pressHeader("Alpha", unitY(0));
+		sectionPointer("pointerMove", 50, unitY(0) + 20);
+		sectionPointer("pointerMove", 50, unitY(0) + 60);
+		const midDrag = lifted(container);
+		sectionPointer("pointerUp", 50, unitY(0) + 60);
+
+		expect(
+			{
+				dndLoaded: dndMounted(),
+				midDrag,
+				stored: readSidebarSections().map((section) => section.id),
+			},
+		).toStrictEqual(
+			{
+				dndLoaded: false,
+				midDrag: [],
+				stored: ["pinned", "cg-a", "sessions"],
 			},
 		);
 	});
@@ -669,9 +820,23 @@ describe("keyboard section reorder", () =>
 		});
 	});
 
-	it("leaves the order alone past either end or without both modifiers", async () =>
+	it("leaves the order alone past either end, without both modifiers or from a header control", async () =>
 	{
 		const {container} = await renderGroups();
+		// Upstream `XQ`: keys on the header's ⋯ (a `[data-row-action]`) never move the section.
+		fireEvent.keyDown(
+			screen.getByRole(
+				"button",
+				{
+					name: "More options for Alpha",
+				},
+			),
+			{
+				key: "ArrowDown",
+				altKey: true,
+				shiftKey: true,
+			},
+		);
 
 		keyMove(
 			"Alpha",

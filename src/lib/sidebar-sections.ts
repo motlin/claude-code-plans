@@ -399,35 +399,6 @@ export function setSidebarSectionView(id: string, patch: SectionViewPatch): void
 	write(setSectionView(readSidebarSections(), id, patch));
 }
 
-/** Upstream `zC` Sort A to Z: the manual sections by name, in the places manual sections hold. */
-export function sortManualSectionsByName(): void
-{
-	const sections = readSidebarSections();
-	const sorted = sections
-		.filter((section) => section.kind === "manual")
-		.toSorted((first, second) =>
-			first.name.localeCompare(
-				second.name,
-				undefined,
-				{
-					sensitivity: "base",
-				},
-			),
-		);
-	let next = 0;
-	write(
-		normalizeSections(
-			sections.map((section) =>
-			{
-				if (section.kind !== "manual") return section;
-				const replacement = sorted[next] ?? section;
-				next += 1;
-				return replacement;
-			}),
-		),
-	);
-}
-
 function onStorage(event: StorageEvent): void
 {
 	if (event.key === null || event.key === SIDEBAR_SECTIONS_STORAGE_KEY)

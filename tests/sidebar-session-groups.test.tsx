@@ -3870,6 +3870,51 @@ describe("SessionGroups sections layout", () =>
 		);
 	});
 
+	it("wraps each manual section in its own df-sortable-section, like upstream's `sx`", async () =>
+	{
+		localStorage.setItem(
+			"ccp-session-groups",
+			JSON.stringify(
+				{
+					groups: [
+						{
+							id: "cg-a",
+							name: "A",
+						},
+						{
+							id: "cg-b",
+							name: "B",
+						},
+					],
+					assignments:
+					{
+						b1: "cg-a",
+					},
+					order: {},
+				},
+			),
+		);
+		const {container} = await renderGroups(FIXTURE);
+
+		expect(
+			[...container.querySelectorAll(".df-sortable-section")].map((wrapper) => (
+			{
+				classes: [...wrapper.classList],
+				gapAfter: wrapper.getAttribute("data-gap-after"),
+				labels: [...wrapper.querySelectorAll("[data-sidebar-group-label] [data-group-name]")].map(
+					(node) => node.textContent,
+				),
+			})),
+		).toStrictEqual(
+			["A", "B"].map((label) => (
+			{
+				classes: ["df-sortable-section", "not-empty:[&+[data-gap-after]]:mt-2"],
+				gapAfter: "",
+				labels: [label],
+			})),
+		);
+	});
+
 	it("wraps each header toggle in an h3, with a 5px gap, no hover ink of its own and the mark after the name", async () =>
 	{
 		seedSections(

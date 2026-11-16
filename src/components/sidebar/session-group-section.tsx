@@ -61,6 +61,7 @@ import {PrTailGlyph, SessionStateIcon} from "../status-dot";
 import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
 import {CustomGroupHeader} from "./custom-group-header";
+import type {SectionActivator} from "./sortable-sections";
 import {GroupHeaderContextMenu} from "./group-header-context-menu";
 import {GroupNewSessionButton} from "./group-new-session-button";
 import {GroupAppearanceMark} from "./group-appearance";
@@ -72,13 +73,6 @@ import type {SidebarSessionRow} from "./sidebar-session-row";
 import {ROVING_ITEM_PROPS} from "./use-roving-focus";
 
 /** The section's unarchived sessions, family members included, for Archive all. */
-function archivableIds(group: SessionGroup<SidebarSessionRow>): string[]
-{
-	return allRows(group)
-		.filter((row) => !row.archived)
-		.map((row) => row.sessionId);
-}
-
 /** The section's rows with each family's nested sessions after its head. */
 function allRows(group: SessionGroup<SidebarSessionRow>): SidebarSessionRow[]
 {
@@ -275,7 +269,7 @@ export function GroupSection({
 	fetchMore,
 	dragRowProps,
 	pinnedIds,
-	headerDragProps,
+	headerActivator,
 	headerRef,
 	rowsRef,
 	sectionRef,
@@ -302,8 +296,8 @@ export function GroupSection({
 	dragRowProps?: (id: string) => SidebarDragRowProps;
 	/** Set for the Pinned section: its display order, which enables Move up / Move down. */
 	pinnedIds?: readonly string[];
-	/** Makes the label row a drag source (a custom group header reorders sections). */
-	headerDragProps?: SidebarDragRowProps;
+	/** Makes the label row its sortable section's drag activator (a manual section header reorders sections). */
+	headerActivator?: SectionActivator | undefined;
 	/** Registers the label row as a drop zone. */
 	headerRef?: (element: HTMLElement | null) => void;
 	/** Registers the rows as a drag list whose slots are drop positions. */
@@ -490,8 +484,12 @@ export function GroupSection({
 			className="group/section relative isolate flex flex-col pb-[var(--sb-group-pb)]"
 		>
 			<div
-				{...headerDragProps}
-				ref={headerRef}
+				ref={(element) =>
+				{
+					headerRef?.(element);
+					headerActivator?.setActivatorNodeRef(element);
+				}}
+				onPointerDown={headerActivator?.onPointerDown}
 				data-sidebar-group-label
 				data-drop-hot={dropHot ? "" : undefined}
 				data-rowless={expanded || openRows.length > 0 ? undefined : ""}
@@ -520,9 +518,9 @@ export function GroupSection({
 				) : (
 					<CustomGroupHeader
 						groupId={customGroupId}
-						groupKey={group.key}
-						label={group.label}
-						archivableIds={archivableIds(group)}
+						group={group}
+						sectionKeys={sectionKeys ?? [group.key]}
+						activeItemId={activeItemId}
 						onNewSession={
 							customNewSession?.onNewSession ??
 							(() =>

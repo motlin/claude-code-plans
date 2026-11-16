@@ -239,13 +239,18 @@ describe("custom group header menu items", () =>
 		expect(menuOutline(await openHeaderMenu("GTD"))).toEqual([
 			"New session",
 			"---",
+			"New section",
 			"Rename section",
 			"Icon and color",
-			"New section",
-			"---",
 			"Move up",
 			"Move down",
-			"Sort A to Z",
+			"---",
+			"Select all",
+			"---",
+			"Collapse all",
+			"Expand all",
+			"---",
+			"Archive all (0)",
 			"---",
 			"Delete section",
 		]);
@@ -259,12 +264,17 @@ describe("custom group header menu items", () =>
 		expect(menuOutline(await openHeaderMenu("Blog"))).toEqual([
 			"New session",
 			"---",
+			"New section",
 			"Rename section",
 			"Icon and color",
-			"New section",
-			"---",
 			"Move down",
-			"Sort A to Z",
+			"---",
+			"Select all",
+			"---",
+			"Collapse all",
+			"Expand all",
+			"---",
+			"Archive all (0)",
 			"---",
 			"Delete section",
 		]);
@@ -278,18 +288,23 @@ describe("custom group header menu items", () =>
 		expect(menuOutline(await openHeaderMenu("Alpha"))).toEqual([
 			"New session",
 			"---",
+			"New section",
 			"Rename section",
 			"Icon and color",
-			"New section",
-			"---",
 			"Move up",
-			"Sort A to Z",
+			"---",
+			"Select all",
+			"---",
+			"Collapse all",
+			"Expand all",
+			"---",
+			"Archive all (0)",
 			"---",
 			"Delete section",
 		]);
 	});
 
-	it("drops the section-order block for a lone group", async () =>
+	it("drops Move up and Move down for a lone group", async () =>
 	{
 		localStorage.setItem(
 			GROUPS_KEY,
@@ -311,9 +326,16 @@ describe("custom group header menu items", () =>
 		expect(menuOutline(await openHeaderMenu("Blog"))).toEqual([
 			"New session",
 			"---",
+			"New section",
 			"Rename section",
 			"Icon and color",
-			"New section",
+			"---",
+			"Select all",
+			"---",
+			"Collapse all",
+			"Expand all",
+			"---",
+			"Archive all (0)",
 			"---",
 			"Delete section",
 		]);
@@ -341,13 +363,18 @@ describe("custom group header menu items", () =>
 		expect(menuOutline(await waitFor(() => screen.getByRole("menu")))).toEqual([
 			"New session",
 			"---",
+			"New section",
 			"Rename section",
 			"Icon and color",
-			"New section",
-			"---",
 			"Move up",
 			"Move down",
-			"Sort A to Z",
+			"---",
+			"Select all",
+			"---",
+			"Collapse all",
+			"Expand all",
+			"---",
+			"Archive all (0)",
 			"---",
 			"Delete section",
 		]);
@@ -378,13 +405,16 @@ describe("custom group header menu items", () =>
 		expect(menuOutline(await openHeaderMenu("GTD"))).toEqual([
 			"New session",
 			"---",
+			"New section",
 			"Rename section",
 			"Icon and color",
-			"New section",
-			"---",
 			"Move up",
 			"Move down",
-			"Sort A to Z",
+			"---",
+			"Select all",
+			"---",
+			"Collapse all",
+			"Expand all",
 			"---",
 			"Archive all (2)",
 			"---",
@@ -411,15 +441,6 @@ describe("custom group section order", () =>
 		await choose("GTD", "Move down");
 
 		expect(groupNames()).toEqual(["Blog", "Alpha", "GTD"]);
-	});
-
-	it("sorts every group A to Z", async () =>
-	{
-		storeGroups();
-		await renderGroup("cg-gtd");
-		await choose("GTD", "Sort A to Z");
-
-		expect(groupNames()).toEqual(["Alpha", "Blog", "GTD"]);
 	});
 });
 

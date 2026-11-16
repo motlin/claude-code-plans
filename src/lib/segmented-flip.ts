@@ -66,7 +66,7 @@ export function measureThumbRect(radio: HTMLElement, group: HTMLElement): ThumbR
 	};
 }
 
-function cssDurationMs(style: CSSStyleDeclaration, name: string): number
+export function cssDurationMs(style: CSSStyleDeclaration, name: string): number
 {
 	const value = style.getPropertyValue(name).trim();
 	const unit = value.endsWith("ms") ? 1 : value.endsWith("s") ? 1000 : 0;
