@@ -21,6 +21,8 @@ export interface FindingCardProps
 	location?: string | undefined;
 	category?: string | undefined;
 	verdict?: string | undefined;
+	/** Upstream's current finding: the accent border and ring. */
+	current?: boolean | undefined;
 }
 
 /** A review finding: severity-tinted card with title, body and optional suggested fix. */
@@ -33,6 +35,7 @@ export function FindingCard({
 	location,
 	category,
 	verdict,
+	current = false,
 }: FindingCardProps)
 {
 	const Icon = severity === "high" ? CircleAlert : severity === "medium" ? AlertTriangle : Info;
@@ -41,7 +44,7 @@ export function FindingCard({
 		<div
 			id={anchorId}
 			data-finding-card=""
-			className={`m-1 rounded-md border px-3 py-2 text-xs ${severityStyles[severity]}`}
+			className={`m-1 rounded-md border px-3 py-2 text-xs ${severityStyles[severity]}${current ? " border-upstream-accent! ring-1 ring-upstream-accent" : ""}`}
 		>
 			<div className="flex items-center gap-1.5 font-semibold">
 				<Icon className="h-3.5 w-3.5 shrink-0" />

@@ -2,6 +2,7 @@ import {getSingularPatch} from "@pierre/diffs";
 
 import type {DiffCommentDraft, DiffSide, QueuedDiffComment} from "../../lib/diff-comments";
 import type {ReviewFinding} from "../../lib/review-diff";
+import {stepWrap} from "../../lib/review-finding-cursor";
 import type {DiffFileAnnotation} from "./diff-file";
 import {LineCommentCard, SavedCommentCard} from "./line-comment-card";
 import {type FindingActions, ReviewFindingAnnotation} from "./review-finding-annotation";
@@ -157,19 +158,32 @@ export function commentAnnotations(
 	];
 }
 
-/** The unresolved findings for `path` as inline diff annotations. */
+/**
+ * The unresolved findings for `path` as inline diff annotations. With a session, each card shows whether it is the
+ * current finding and, when there are others, steps to the next one (wrapping).
+ */
 export function findingAnnotations(
 	findings: readonly ReviewFinding[],
 	path: string,
 	actions: FindingActions,
+	sessionId?: string,
 ): DiffFileAnnotation[]
 {
-	return findings
-		.filter((finding) => !finding.resolved && finding.file === path)
+	const open = findings.filter((finding) => !finding.resolved);
+	return open
+		.filter((finding) => finding.file === path)
 		.map((finding) => (
 		{
 			side: finding.side === "old" ? "deletions" : "additions",
 			lineNumber: finding.endLine ?? finding.line,
-			content: <ReviewFindingAnnotation key={finding.id} finding={finding} actions={actions} />,
+			content: (
+				<ReviewFindingAnnotation
+					key={finding.id}
+					finding={finding}
+					actions={actions}
+					sessionId={sessionId}
+					next={sessionId === undefined ? null : stepWrap(open, finding.id)}
+				/>
+			),
 		}));
 }

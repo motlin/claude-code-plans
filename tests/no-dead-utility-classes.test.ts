@@ -76,6 +76,7 @@ const ALLOWLIST: Record<string, string> =
 	"epitaxy-chat-panel": "upstream's chat panel class, which the session outline's gutter variants select on",
 	"epitaxy-code-card": HOOK,
 	"epitaxy-diff": HOOK,
+	"epitaxy-panel-subheader": HOOK,
 	"epitaxy-rail-lined": HOOK,
 	"epitaxy-reply-flash-accent": HOOK,
 	"epitaxy-pane-close-control": HOOK,

@@ -1,7 +1,9 @@
 import
 {
 	Archive,
+	ArrowDown,
 	ArrowRight,
+	ArrowUp,
 	Calendar,
 	ChartColumn,
 	Check,
@@ -55,7 +57,9 @@ export const ICON_GLYPHS =
 	Archive,
 	Artifacts: Shapes,
 	ArrowReturn: CornerDownLeft,
+	ArrowDown,
 	ArrowRight,
+	ArrowUp,
 	Attachment: Paperclip,
 	CaretDown: ChevronDown,
 	CaretRight: ChevronRight,

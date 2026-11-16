@@ -17,6 +17,12 @@ import {loadChangesReview, openReviewInChanges} from "../src/lib/changes-review"
 import {CHANGES_SCOPE_REQUEST_EVENT} from "../src/lib/changes-scope-request";
 import {loadChangesScope, saveChangesScope} from "../src/lib/pane-layout";
 import type {ReviewFinding} from "../src/lib/review-diff";
+import
+{
+	clearReviewFindingCursor,
+	currentReviewFinding,
+	setCurrentReviewFinding,
+} from "../src/lib/review-finding-cursor";
 import {installLocalStorage} from "./fake-storage";
 
 const reviewOffers = vi.hoisted(() => (
@@ -506,6 +512,101 @@ describe("Changes pane review findings", () =>
 				titles: ["Greeting is hard-coded"],
 				fixed: [[FINDING]],
 				dismissed: [[FINDING]],
+			},
+		);
+	});
+
+	it("rings the current finding and steps each card to the next one, wrapping (upstream c44d00c7f as)", () =>
+	{
+		vi.stubGlobal("ResizeObserver", SilentObserver);
+		const session = "finding-ring-session";
+		const second: ReviewFinding =
+		{
+			...FINDING,
+			id: "f-2",
+			line: 3,
+			title: "Second finding",
+		};
+		function renderFindings(findings: readonly ReviewFinding[])
+		{
+			return render(
+				<SettingsProvider>
+					<ToastProvider>
+						<ChangesPaneView
+							diff={DIFF}
+							scopes={undefined}
+							controls={null}
+							onRefresh={() =>
+							{
+							}}
+							scope="uncommitted"
+							sessionId={session}
+							findings={findings}
+						/>
+					</ToastProvider>
+				</SettingsProvider>,
+			);
+		}
+		setCurrentReviewFinding(session, "f-1");
+		const {container, unmount} = renderFindings([FINDING, second]);
+		const cards = () =>
+			[...container.querySelectorAll("[data-review-finding]")].map((card) => (
+			{
+				id: card.getAttribute("data-review-finding"),
+				current: card.getAttribute("aria-current"),
+				ring: card.querySelector("[data-finding-card]")?.className.includes("ring-upstream-accent"),
+				next:
+					card.querySelector('button[aria-label^="Next finding after"]')?.getAttribute("aria-label") ?? null,
+			}));
+		const before = cards();
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Next finding after the one on line 2",
+				},
+			),
+		);
+		const stepped = currentReviewFinding(session);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Next finding after the one on line 3",
+				},
+			),
+		);
+		const wrapped = currentReviewFinding(session);
+		unmount();
+		const single = renderFindings([FINDING]).container.querySelector('button[aria-label^="Next finding after"]');
+		clearReviewFindingCursor(session);
+
+		expect(
+			{
+				before,
+				stepped,
+				wrapped,
+				single,
+			},
+		).toStrictEqual(
+			{
+				before: [
+					{
+						id: "f-1",
+						current: "true",
+						ring: true,
+						next: "Next finding after the one on line 2",
+					},
+					{
+						id: "f-2",
+						current: null,
+						ring: false,
+						next: "Next finding after the one on line 3",
+					},
+				],
+				stepped: "f-2",
+				wrapped: "f-1",
+				single: null,
 			},
 		);
 	});

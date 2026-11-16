@@ -33,6 +33,7 @@ import
 {
 	CHANGES_REVIEW_REQUEST_EVENT,
 	findingAfterDismiss,
+	formatApplyFindingsPrompt,
 	formatFixFindingPrompt,
 	loadChangesReview,
 	scrollToFinding,
@@ -64,6 +65,13 @@ import
 import {asRecord} from "../../lib/narrow";
 import {loadChangesScope, saveChangesScope} from "../../lib/pane-layout";
 import type {ReviewFinding} from "../../lib/review-diff";
+import
+{
+	currentReviewFinding,
+	hideReviewFindings,
+	setCurrentReviewFinding,
+	useReviewFindingsHidden,
+} from "../../lib/review-finding-cursor";
 import {CoachMark} from "../coach-mark";
 import {OpenInSubmenu, ShowInFinderItem} from "../files/file-actions-menu";
 import {mentionPath} from "../files/mention-path";
@@ -90,6 +98,7 @@ import {useToast} from "../toast-context";
 import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
 import {ChangedFilesSidebar} from "./changes-file-tree";
+import {ChangesFindingsBar} from "./changes-findings-bar";
 import {type DiffCommentTarget, openDiffCommentDraft, useDiffComments} from "../../lib/diff-comments";
 import {detectLanguage} from "../../lib/diff-utils";
 import {DiffContextMenu} from "./diff-context-menu";
@@ -1184,6 +1193,10 @@ export interface ChangesPaneViewProps
 	findings?: readonly ReviewFinding[];
 	onFixFinding?: (finding: ReviewFinding) => void;
 	onDismissFinding?: (finding: ReviewFinding) => void;
+	/** The findings bar's Apply fixes; without it the bar has no primary action. */
+	onApplyFixes?: (() => void) | undefined;
+	/** The findings bar's Close: hide the findings without resolving them. */
+	onCloseFindings?: () => void;
 	/** Enables line comments and the right-click menu, which feed this session's composer. */
 	sessionId?: string;
 	/** The session's working directory: attached files are mentioned relative to it. */
@@ -1216,12 +1229,15 @@ export function ChangesPaneView({
 	findings = NO_FINDINGS,
 	onFixFinding = noop,
 	onDismissFinding = noop,
+	onApplyFixes,
+	onCloseFindings = noop,
 	sessionId,
 	cwd,
 	loadFileSides,
 }: ChangesPaneViewProps)
 {
 	const comments = useDiffComments(sessionId);
+	const openFindings = useMemo(() => findings.filter((finding) => !finding.resolved), [findings]);
 	const iconSet = useActiveFileTypeIconSet();
 	const files = diff?.files ?? NO_FILES;
 	const hasFiles = files.length > 0;
@@ -1716,12 +1732,14 @@ export function ChangesPaneView({
 					/>
 					<div
 						ref={bodyRef}
+						data-diff-pane-body=""
+						tabIndex={-1}
 						onScrollCapture={(event) =>
 						{
 							const inView = fileInView(event.target);
 							if (inView !== null) setActivePath(inView);
 						}}
-						className="flex min-h-0 min-w-0 flex-1 flex-col"
+						className="flex min-h-0 min-w-0 flex-1 flex-col outline-none"
 					>
 						{largeNote !== null && (
 							<p className="shrink-0 border-b border-border px-3 py-1.5 text-footnote text-ink-muted">
@@ -1808,6 +1826,7 @@ export function ChangesPaneView({
 												onFix: onFixFinding,
 												onDismiss: onDismissFinding,
 											},
+											sessionId,
 										),
 										...(sessionId === undefined
 											? []
@@ -1999,6 +2018,14 @@ export function ChangesPaneView({
 				}
 				moveHandle={moveHandle}
 			/>
+			{sessionId !== undefined && (
+				<ChangesFindingsBar
+					sessionId={sessionId}
+					findings={openFindings}
+					onApplyFixes={onApplyFixes}
+					onClose={onCloseFindings}
+				/>
+			)}
 			<div data-pane-body className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit]">
 				{body}
 			</div>
@@ -2088,7 +2115,8 @@ function usePersistedReview(sessionId: string): string | null
 
 /**
  * The working-copy review findings shown on the Uncommitted scope, with
- * "Fix this one" (sent to the chat input) and "Dismiss finding" (saved as resolved).
+ * "Fix this one" and "Apply fixes" (sent to the chat input), "Dismiss finding" (saved as resolved)
+ * and the findings bar's Close (hidden until the review is opened again).
  */
 function useReviewFindings(sessionId: string, scope: string)
 {
@@ -2104,16 +2132,17 @@ function useReviewFindings(sessionId: string, scope: string)
 		},
 	);
 	const review = reviewQueries[0];
-	const findings = review?.data?.findings ?? NO_FINDINGS;
+	const hidden = useReviewFindingsHidden(sessionId, reviewId);
+	const findings = hidden ? NO_FINDINGS : (review?.data?.findings ?? NO_FINDINGS);
 	const loadedFindings = review?.data?.findings;
 	useEffect(() =>
 	{
 		if (loadedFindings !== undefined) scrollToFirstOpenFinding(sessionId, loadedFindings);
 	}, [sessionId, loadedFindings]);
 
-	function fix(finding: ReviewFinding): void
+	function insert(prompt: string): void
 	{
-		if (!requestComposerInsert(sessionId, formatFixFindingPrompt(finding)))
+		if (!requestComposerInsert(sessionId, prompt))
 		{
 			toast(
 				{
@@ -2126,6 +2155,7 @@ function useReviewFindings(sessionId: string, scope: string)
 
 	async function dismiss(finding: ReviewFinding): Promise<void>
 	{
+		const wasCurrent = currentReviewFinding(sessionId) === finding.id;
 		const bundle = review?.data;
 		if (reviewId === null || bundle === undefined) return;
 		const next = bundle.findings.map((candidate) =>
@@ -2141,9 +2171,13 @@ function useReviewFindings(sessionId: string, scope: string)
 		{
 			const updated = await replaceReviewFindings(reviewId, next);
 			queryClient.setQueryData(reviewQueryOptions(reviewId).queryKey, updated);
-			// Upstream `dismissReviewFinding`: the next finding becomes current and is scrolled to.
-			const following = findingAfterDismiss(bundle.findings, finding.id);
-			if (following !== undefined) scrollToFinding(sessionId, following);
+			// Upstream `dismissReviewFinding`: when the current finding goes, its neighbour becomes current and is scrolled to.
+			if (wasCurrent)
+			{
+				const following = findingAfterDismiss(bundle.findings, finding.id);
+				setCurrentReviewFinding(sessionId, following?.id ?? null);
+				if (following !== undefined) scrollToFinding(sessionId, following);
+			}
 		}
 		catch
 		{
@@ -2158,8 +2192,19 @@ function useReviewFindings(sessionId: string, scope: string)
 
 	return {
 		findings,
-		fix,
+		fix: (finding: ReviewFinding) =>
+		{
+			insert(formatFixFindingPrompt(finding));
+		},
 		dismiss: (finding: ReviewFinding) => void dismiss(finding),
+		applyFixes: () =>
+		{
+			insert(formatApplyFindingsPrompt(findings.filter((finding) => !finding.resolved)));
+		},
+		close: () =>
+		{
+			if (reviewId !== null) hideReviewFindings(sessionId, reviewId);
+		},
 	};
 }
 
@@ -2273,6 +2318,8 @@ export function ChangesPane({
 			findings={review.findings}
 			onFixFinding={review.fix}
 			onDismissFinding={review.dismiss}
+			onApplyFixes={review.applyFixes}
+			onCloseFindings={review.close}
 			sessionId={sessionId}
 			cwd={cwd}
 			onOpenFile={(path) =>

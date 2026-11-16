@@ -28,6 +28,20 @@ import {type DiffMarkScope, fileMarkStatus, setFileMarked} from "../src/lib/diff
 import {clearDiffComments, openDiffCommentDraft, saveDiffComment} from "../src/lib/diff-comments";
 import {clearDiffScrollTarget, diffScrollTarget, scrollToDiffLine} from "../src/lib/diff-scroll-target";
 import type {ReviewFinding} from "../src/lib/review-diff";
+import {reviewQueryOptions, type ReviewBundle} from "../src/lib/api/reviews";
+import {formatApplyFindingsPrompt, openReviewInChanges} from "../src/lib/changes-review";
+import {clearReviewFindingCursor} from "../src/lib/review-finding-cursor";
+
+const reviewApi = vi.hoisted(() => (
+{
+	replace: vi.fn<(reviewId: string, findings: readonly unknown[]) => Promise<unknown>>(),
+}));
+
+vi.mock("../src/lib/api/reviews", async (importOriginal) => (
+{
+	...(await importOriginal<typeof import("../src/lib/api/reviews")>()),
+	replaceReviewFindings: reviewApi.replace,
+}));
 
 const GREET_PATCH = `diff --git a/src/greet.ts b/src/greet.ts
 index 1111111..2222222 100644
@@ -2957,5 +2971,250 @@ index 1111111..2222222 100644
 				},
 			},
 		);
+	});
+});
+
+describe("ChangesPane review findings bar (upstream c9bd7af9c zw)", () =>
+{
+	const SESSION = "session-findings-bar";
+	const REVIEW = "review-findings-bar";
+	const finding = (id: string, extra: Partial<ReviewFinding> = {}): ReviewFinding => (
+	{
+		id,
+		file: "src/greet.ts",
+		side: "new",
+		line: 2,
+		severity: "medium",
+		title: `Fake finding ${id}`,
+		body: "Fake body.",
+		resolved: false,
+		...extra,
+	});
+	const FINDINGS = [
+		finding("a"),
+		finding(
+			"x",
+			{
+				resolved: true,
+			},
+		),
+		finding(
+			"b",
+			{
+				line: 3,
+			},
+		),
+	];
+	const BUNDLE: ReviewBundle =
+	{
+		reviewId: REVIEW,
+		sessionId: SESSION,
+		cwd: "/repo",
+		diff: GREET_PATCH,
+		summary: null,
+		findings: FINDINGS,
+		generatedAt: "2026-11-16T00:00:00.000Z",
+	};
+
+	afterEach(() =>
+	{
+		clearReviewFindingCursor(SESSION);
+		clearDiffScrollTarget(SESSION);
+		reviewApi.replace.mockReset();
+	});
+
+	function renderReviewPane()
+	{
+		openReviewInChanges(SESSION, REVIEW);
+		const queryClient = new QueryClient(
+			{
+				defaultOptions:
+				{
+					queries:
+					{
+						retry: false,
+						staleTime: Infinity,
+					},
+				},
+			},
+		);
+		queryClient.setQueryData(
+			sessionDiffQueryOptions(
+				SESSION,
+				"uncommitted",
+				{
+					hideWhitespace: DEFAULTS.diffHideWhitespace,
+				},
+			).queryKey,
+			{
+				...diffOf([GREET_FILE]),
+				scope: "uncommitted",
+			},
+		);
+		queryClient.setQueryData(sessionDiffScopesQueryOptions(SESSION).queryKey, SCOPES);
+		queryClient.setQueryData(reviewQueryOptions(REVIEW).queryKey, BUNDLE);
+		return render(
+			<QueryClientProvider client={queryClient}>
+				<SettingsProvider>
+					<ToastProvider>
+						<ChangesPane
+							sessionId={SESSION}
+							cwd="/repo"
+							chrome={
+							{
+								moveHandle: null,
+								controls: null,
+							}}
+						/>
+					</ToastProvider>
+				</SettingsProvider>
+			</QueryClientProvider>,
+		);
+	}
+
+	function shown(container: HTMLElement)
+	{
+		return {
+			status: container.querySelector('.epitaxy-panel-subheader [role="status"]')?.textContent ?? null,
+			cards: [...container.querySelectorAll("[data-review-finding]")].map((card) =>
+				card.getAttribute("data-review-finding"),
+			),
+		};
+	}
+
+	it("counts the unresolved findings and moves to the neighbour when the current one is dismissed", async () =>
+	{
+		reviewApi.replace.mockImplementation(async (_reviewId, findings) =>
+			Promise.resolve(
+				{
+					...BUNDLE,
+					findings,
+				},
+			),
+		);
+		const {container} = renderReviewPane();
+		const before = await waitFor(() =>
+		{
+			const state = shown(container);
+			if (state.status === null) throw new Error("No findings bar yet");
+			return state;
+		});
+		const first = container.querySelector('[data-review-finding="a"]');
+		fireEvent.click(
+			within(first as HTMLElement).getByRole(
+				"button",
+				{
+					name: "Dismiss finding",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			if (reviewApi.replace.mock.calls.length === 0) throw new Error("Not dismissed yet");
+		});
+		await act(async () =>
+		{
+			await Promise.resolve();
+		});
+
+		expect(
+			{
+				before,
+				body: container.querySelector("[data-diff-pane-body]") !== null,
+				after: shown(container),
+				current: container.querySelector('[aria-current="true"]')?.getAttribute("data-review-finding"),
+				target: diffScrollTarget(SESSION)?.anchor,
+			},
+		).toStrictEqual(
+			{
+				before:
+				{
+					status: "Finding 1 of 2",
+					cards: ["a", "b"],
+				},
+				body: true,
+				after:
+				{
+					status: "Finding 1 of 1",
+					cards: ["b"],
+				},
+				current: "b",
+				target:
+				{
+					side: "additions",
+					line: 3,
+				},
+			},
+		);
+	});
+
+	it("hides the findings on Close without resolving them until the review is opened again", async () =>
+	{
+		const {container} = renderReviewPane();
+		const close = await screen.findByRole(
+			"button",
+			{
+				name: "Close findings bar",
+			},
+		);
+		fireEvent.click(close);
+		const closed = shown(container);
+		act(() =>
+		{
+			openReviewInChanges(SESSION, REVIEW);
+		});
+
+		expect(
+			{
+				closed,
+				saved: reviewApi.replace.mock.calls,
+				reopened: shown(container),
+			},
+		).toStrictEqual(
+			{
+				closed:
+				{
+					status: null,
+					cards: [],
+				},
+				saved: [],
+				reopened:
+				{
+					status: "Finding 1 of 2",
+					cards: ["a", "b"],
+				},
+			},
+		);
+	});
+
+	it("inserts the unresolved findings' Apply fixes prompt into the chat input", async () =>
+	{
+		const inserted: string[] = [];
+		const stopComposer = registerComposer(
+			SESSION,
+			{
+				insertText: (text) =>
+				{
+					inserted.push(text);
+				},
+				focus: () =>
+				{
+				},
+			},
+		);
+		renderReviewPane();
+		fireEvent.click(
+			await screen.findByRole(
+				"button",
+				{
+					name: "Apply fixes",
+				},
+			),
+		);
+		stopComposer();
+
+		expect(inserted).toStrictEqual([
+			formatApplyFindingsPrompt(FINDINGS.filter((candidate) => !candidate.resolved)),
+		]);
 	});
 });
