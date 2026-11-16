@@ -14,12 +14,13 @@ import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SessionGroups} from "../src/components/sidebar/session-groups";
+import {isPeekMenuOpen} from "../src/components/sidebar/peek-menu-open";
 import {ToastProvider} from "../src/components/toast";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import {PIN_STORAGE_KEY, readPinState} from "../src/lib/pin-store";
-import {readSidebarState} from "../src/lib/sidebar-store";
+import {readSidebarState, setSidebarGroupsCollapsed} from "../src/lib/sidebar-store";
 import {SESSION_GROUP_STORAGE_KEY, readSessionGroupState} from "../src/lib/session-group-store";
-import {DEFAULT_SESSION_LIST_PREFS} from "../src/lib/session-groups";
+import {DEFAULT_SESSION_LIST_PREFS, PINNED_GROUP_KEY} from "../src/lib/session-groups";
 import {__unreadStoreTesting, hasUnseenWork} from "../src/lib/unread-store";
 import {installLocalStorage} from "./fake-storage";
 import {rowTitle} from "./sidebar-row-title";
@@ -180,6 +181,7 @@ async function renderGroups({
 	return {
 		...result,
 		router,
+		queryClient,
 	};
 }
 
@@ -973,6 +975,444 @@ describe("sidebar multi-row drag", () =>
 					pinnedOrder: [],
 				},
 				assignments: SEEDED_ASSIGNMENTS,
+			},
+		);
+	});
+});
+
+async function openWhitespaceMenu(target: Element): Promise<HTMLElement>
+{
+	fireEvent.contextMenu(
+		target,
+		{
+			clientX: 40,
+			clientY: 300,
+		},
+	);
+	await flush();
+	return await waitFor(() => screen.getByRole("menu"));
+}
+
+function recentsList(container: HTMLElement): HTMLElement
+{
+	const recents = container.querySelector<HTMLElement>("[data-testid=sidebar-recents]");
+	if (recents === null) throw new Error("no Recents list");
+	return recents;
+}
+
+function pinnedList(container: HTMLElement): HTMLElement
+{
+	const pinned = container.querySelector<HTMLElement>("[data-pinned-list]");
+	if (pinned === null) throw new Error("no Pinned list");
+	return pinned;
+}
+
+function groupToggle(label: string): HTMLElement
+{
+	const toggle = screen.getByText(label).closest<HTMLElement>("[data-group-toggle]");
+	if (toggle === null) throw new Error(`no ${label} toggle`);
+	return toggle;
+}
+
+function pinRows(ids: string[]): void
+{
+	localStorage.setItem(
+		PIN_STORAGE_KEY,
+		JSON.stringify(
+			{
+				pinnedIds: ids,
+				pinnedOrder: ids,
+			},
+		),
+	);
+}
+
+async function closeMenu(): Promise<void>
+{
+	fireEvent.keyDown(
+		screen.getByRole("menu"),
+		{
+			key: "Escape",
+		},
+	);
+	await flush();
+	await waitFor(() =>
+	{
+		expect(screen.queryByRole("menu")).toBeNull();
+	});
+}
+
+describe("sidebar whitespace context menu", () =>
+{
+	it("opens upstream's menu on the list's empty space, without New environment", async () =>
+	{
+		const {container} = await renderGroups();
+
+		const menu = await openWhitespaceMenu(recentsList(container));
+
+		expect(
+			{
+				items: headerMenuItems(menu),
+				groups: menu.querySelectorAll('[role="group"]').length,
+			},
+		).toStrictEqual(
+			{
+				items: [
+					{
+						label: "New session",
+						disabledReason: null,
+					},
+					{
+						label: "---",
+						disabledReason: null,
+					},
+					{
+						label: "New section",
+						disabledReason: null,
+					},
+					{
+						label: "---",
+						disabledReason: null,
+					},
+					{
+						label: "Select all",
+						disabledReason: null,
+					},
+					{
+						label: "---",
+						disabledReason: null,
+					},
+					{
+						label: "Collapse all",
+						disabledReason: null,
+					},
+					{
+						label: "Expand all",
+						disabledReason: "Everything is already expanded.",
+					},
+				],
+				groups: 4,
+			},
+		);
+	});
+
+	it("leaves a row's right-click to the row menu and a header's to the header menu", async () =>
+	{
+		await renderGroups(
+			{
+				groupBy: "state",
+			},
+		);
+
+		const rowMenu = menuOutline(await openRowMenu("Loose one"));
+		await closeMenu();
+		const headerMenu = menuOutline(await openIdleHeaderMenu());
+
+		expect(
+			{
+				rowHasNewSection: rowMenu.includes("New section"),
+				headerMenu,
+			},
+		).toStrictEqual(
+			{
+				rowHasNewSection: false,
+				headerMenu: [
+					"New session",
+					"---",
+					"Select all",
+					"---",
+					"Collapse all",
+					"Expand all",
+					"---",
+					"Archive all (3)",
+				],
+			},
+		);
+	});
+
+	it("New section opens upstream's New section dialog", async () =>
+	{
+		const {container} = await renderGroups();
+
+		fireEvent.click(menuItemByLabel(await openWhitespaceMenu(recentsList(container)), "New section"));
+		await flush();
+		const dialog = await waitFor(() => screen.getByRole("dialog"));
+
+		expect(
+			{
+				title: dialog.querySelector("h2")?.textContent,
+				placeholder: dialog.querySelector("input")?.getAttribute("placeholder"),
+				createDisabled: screen
+					.getByRole(
+						"button",
+						{
+							name: "Create section",
+						},
+					)
+					.hasAttribute("disabled"),
+			},
+		).toStrictEqual(
+			{
+				title: "New section",
+				placeholder: "Section name",
+				createDisabled: true,
+			},
+		);
+	});
+
+	it("marks the list root as upstream's code session list and keeps a peek open while the menu is", async () =>
+	{
+		const {container} = await renderGroups();
+		const root = recentsList(container).parentElement!;
+		const peek = document.createElement("div");
+		peek.append(container);
+		document.body.append(peek);
+		const closedPeek = isPeekMenuOpen(peek);
+
+		await openWhitespaceMenu(recentsList(container));
+
+		expect(
+			{
+				kind: root.getAttribute("data-kind"),
+				listClass: root.classList.contains("df-session-list"),
+				closedPeek,
+				overflowMenuOpen: root.hasAttribute("data-overflow-menu-open"),
+				openPeek: isPeekMenuOpen(peek),
+			},
+		).toStrictEqual(
+			{
+				kind: "code",
+				listClass: true,
+				closedPeek: false,
+				overflowMenuOpen: true,
+				openPeek: true,
+			},
+		);
+	});
+
+	it("disables Select all with fewer than two selectable sessions", async () =>
+	{
+		const {container} = await renderGroups(
+			{
+				sessions: [session("u1", "Loose one", 1)],
+			},
+		);
+
+		expect(
+			headerMenuItems(await openWhitespaceMenu(recentsList(container))).find(
+				(item) => item.label === "Select all",
+			),
+		).toStrictEqual(
+			{
+				label: "Select all",
+				disabledReason: "You need at least 2 sessions that can be selected.",
+			},
+		);
+	});
+
+	it("asks to expand a section when a collapsed one hides the sessions to select", async () =>
+	{
+		const {container} = await renderGroups(
+			{
+				sessions: [session("a1", "Alpha one", 1), session("u1", "Loose one", 2), session("u2", "Loose two", 3)],
+			},
+		);
+		fireEvent.click(groupToggle("Recents"));
+		await flush();
+
+		expect(
+			headerMenuItems(await openWhitespaceMenu(recentsList(container))).find(
+				(item) => item.label === "Select all",
+			),
+		).toStrictEqual(
+			{
+				label: "Select all",
+				disabledReason: "Expand a section to select its sessions.",
+			},
+		);
+	});
+
+	it("Select all replaces the selection with every shown session", async () =>
+	{
+		const {container} = await renderGroups();
+		cmdClick("Loose two");
+
+		fireEvent.click(menuItemByLabel(await openWhitespaceMenu(recentsList(container)), "Select all"));
+		await flush();
+
+		expect(selectedTitles(container)).toStrictEqual([
+			"Alpha one",
+			"Beta one",
+			"Loose one",
+			"Loose two",
+			"Loose three",
+		]);
+	});
+
+	it("Select all from Pinned's padding selects only the pinned sessions", async () =>
+	{
+		pinRows(["u1", "u2"]);
+		const {container} = await renderGroups();
+		cmdClick("Loose three");
+
+		fireEvent.click(menuItemByLabel(await openWhitespaceMenu(pinnedList(container)), "Select all"));
+		await flush();
+
+		expect(selectedTitles(container)).toStrictEqual(["Loose one", "Loose two"]);
+	});
+
+	it("Select all from a folded Pinned unfolds it, then selects the pinned sessions", async () =>
+	{
+		pinRows(["u1", "u2"]);
+		const {container} = await renderGroups();
+		fireEvent.click(groupToggle("Pinned"));
+		await flush();
+
+		fireEvent.click(menuItemByLabel(await openWhitespaceMenu(pinnedList(container)), "Select all"));
+		await flush();
+
+		expect(
+			{
+				pinnedExpanded: groupToggle("Pinned").getAttribute("aria-expanded"),
+				selected: selectedTitles(container),
+			},
+		).toStrictEqual(
+			{
+				pinnedExpanded: "true",
+				selected: ["Loose one", "Loose two"],
+			},
+		);
+	});
+
+	it("Collapse all folds every section, Pinned included, then disables itself", async () =>
+	{
+		pinRows(["u1"]);
+		const {container} = await renderGroups();
+
+		fireEvent.click(menuItemByLabel(await openWhitespaceMenu(recentsList(container)), "Collapse all"));
+		await flush();
+		const toggles = [...container.querySelectorAll("[data-group-toggle]")].map((toggle) =>
+			toggle.getAttribute("aria-expanded"),
+		);
+		const reopened = headerMenuItems(await openWhitespaceMenu(recentsList(container))).slice(6);
+
+		expect(
+			{
+				toggles,
+				reopened,
+			},
+		).toStrictEqual(
+			{
+				toggles: ["false", "false", "false", "false"],
+				reopened: [
+					{
+						label: "Collapse all",
+						disabledReason: "Everything shown is already collapsed.",
+					},
+					{
+						label: "Expand all",
+						disabledReason: null,
+					},
+				],
+			},
+		);
+	});
+
+	it("Expand all ignores the folded toggle of the inert Pinned stub", async () =>
+	{
+		const {container} = await renderGroups();
+		act(() =>
+		{
+			setSidebarGroupsCollapsed([PINNED_GROUP_KEY], true);
+		});
+		await flush();
+
+		expect(
+			{
+				stubToggle: container
+					.querySelector("[data-pinned-list] [data-group-toggle]")
+					?.getAttribute("aria-expanded"),
+				items: headerMenuItems(await openWhitespaceMenu(recentsList(container))).slice(6),
+			},
+		).toStrictEqual(
+			{
+				stubToggle: "false",
+				items: [
+					{
+						label: "Collapse all",
+						disabledReason: null,
+					},
+					{
+						label: "Expand all",
+						disabledReason: "Everything is already expanded.",
+					},
+				],
+			},
+		);
+	});
+
+	it("Collapse all hands focus from a hidden row to its section's toggle", async () =>
+	{
+		const {container} = await renderGroups();
+		act(() =>
+		{
+			rowLink("Loose two").focus();
+		});
+
+		fireEvent.click(menuItemByLabel(await openWhitespaceMenu(recentsList(container)), "Collapse all"));
+		await flush();
+
+		await waitFor(() =>
+		{
+			expect(document.activeElement).toBe(groupToggle("Recents"));
+		});
+	});
+
+	it("keeps Select all's disabled state from when the menu opened", async () =>
+	{
+		const {container, queryClient} = await renderGroups(
+			{
+				sessions: [session("u1", "Loose one", 1)],
+			},
+		);
+		await openWhitespaceMenu(recentsList(container));
+		act(() =>
+		{
+			queryClient.setQueryData(
+				recentSessionsInfiniteQueryOptions().queryKey,
+				{
+					pages: [
+						RecentSessionsResponse.parse(
+							{
+								sessions: [
+									session("u1", "Loose one", 1),
+									session("u2", "Loose two", 2),
+									session("u3", "Loose three", 3),
+								],
+								nextCursor: null,
+							},
+						),
+					],
+					pageParams: [null],
+				},
+			);
+		});
+		await flush();
+		const whileOpen = menuItemByLabel(screen.getByRole("menu"), "Select all").getAttribute("aria-disabled");
+		await closeMenu();
+		const reopened = menuItemByLabel(await openWhitespaceMenu(recentsList(container)), "Select all").getAttribute(
+			"aria-disabled",
+		);
+
+		expect(
+			{
+				whileOpen,
+				reopened,
+			},
+		).toStrictEqual(
+			{
+				whileOpen: "true",
+				reopened: null,
 			},
 		);
 	});

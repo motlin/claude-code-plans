@@ -49,6 +49,7 @@ import {DensityProvider} from "../ui/density";
 import {Icon} from "../ui/icon";
 import {type Density, useScopeDensity} from "../ui/density-context";
 import {useSettings} from "../settings-context";
+import {isPeekMenuOpen} from "./peek-menu-open";
 
 export function Sidebar({
 	collapsed,
@@ -513,12 +514,6 @@ const PEEK_ID = "sidebar-peek-popover";
  */
 /** Upstream's peek close grace (ms) after the pointer leaves the trigger, bridge or body. */
 const PEEK_CLOSE_GRACE_MS = 180;
-
-/** Upstream's `overflowMenuOpen`: a menu opened from a trigger inside the peek is open. */
-function isPeekMenuOpen(peek: HTMLElement | null): boolean
-{
-	return peek?.querySelector('[aria-haspopup][aria-expanded="true"]') != null;
-}
 
 /** Upstream's `c2`: a window exit with the last pointer y above this (px) is a leave through the top. */
 const PEEK_TOP_EXIT_PX = 46;

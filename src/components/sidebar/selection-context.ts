@@ -24,6 +24,8 @@ export interface SidebarSelectionApi
 	) => boolean;
 	/** Adds rows to the selection, as a group header's Select all does. */
 	readonly selectAll: (ids: readonly string[]) => void;
+	/** Replaces the selection with these rows, as the list's whitespace Select all does. */
+	readonly selectOnly: (ids: readonly string[]) => void;
 	readonly clear: () => void;
 }
 

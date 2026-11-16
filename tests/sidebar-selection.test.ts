@@ -189,6 +189,34 @@ describe("sidebarSelectionReducer", () =>
 		).toBe(state);
 	});
 
+	it("set replaces the selection with the rows in display order, anchoring on the last", () =>
+	{
+		expect(
+			sidebarSelectionReducer(
+				select(["a"], "a"),
+				{
+					type: "set",
+					ids: ["c", "b"],
+					order: ["a", "b", "c"],
+				},
+			),
+		).toStrictEqual(select(["b", "c"], "c"));
+	});
+
+	it("set with no rows empties the selection", () =>
+	{
+		expect(
+			sidebarSelectionReducer(
+				select(["a"], "a"),
+				{
+					type: "set",
+					ids: [],
+					order: ORDER,
+				},
+			),
+		).toStrictEqual(EMPTY_SELECTION);
+	});
+
 	it("clear empties the selection", () =>
 	{
 		expect(

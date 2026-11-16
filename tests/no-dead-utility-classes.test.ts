@@ -68,6 +68,7 @@ const ALLOWLIST: Record<string, string> =
 	"cds-user-message-body": HOOK,
 	"df-family-stub": HOOK,
 	"df-nav-scroll-box": HOOK,
+	"df-session-list": HOOK,
 	"df-sortable-section": HOOK,
 	"epitaxy-answer-option": HOOK,
 	"epitaxy-approval-actions": HOOK,

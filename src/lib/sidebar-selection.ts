@@ -36,6 +36,13 @@ export type SidebarSelectionAction =
 			readonly ids: readonly string[];
 			readonly order: readonly string[];
 	  }
+	/** Select all on the list's empty space: replaces the selection with these rows. */
+	|
+	  {
+			readonly type: "set";
+			readonly ids: readonly string[];
+			readonly order: readonly string[];
+	  }
 	|
 	  {
 			readonly type: "clear";
@@ -99,6 +106,16 @@ export function sidebarSelectionReducer(state: SidebarSelection, action: Sidebar
 			if (last === undefined) return state;
 			return {
 				ids: inOrder(new Set([...state.ids, ...action.ids]), action.order),
+				anchor: last,
+			};
+		}
+		case "set":
+		{
+			const ids = inOrder(new Set(action.ids), action.order);
+			const last = ids.at(-1);
+			if (last === undefined) return EMPTY_SELECTION;
+			return {
+				ids,
 				anchor: last,
 			};
 		}

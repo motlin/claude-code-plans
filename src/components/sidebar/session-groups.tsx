@@ -79,6 +79,7 @@ import {type SidebarSessionRow, toGroupRow} from "./sidebar-session-row";
 import {SidebarSelectionContext, type SidebarSelectionApi} from "./selection-context";
 import {SectionViewMenu} from "./section-view-menu";
 import {PinnedSubList} from "./sublists";
+import {SidebarWhitespaceMenu, type WhitespaceScopes} from "./whitespace-context-menu";
 
 /**
  * The sidebar session list in claude.ai/code's sections layout: Pinned, then the user's manual
@@ -133,6 +134,14 @@ export function SessionGroups({
 		};
 	}, [hasSelection]);
 	const latestSelected = useRef<readonly string[]>([]);
+	const whitespaceScopes = useRef<WhitespaceScopes>(
+		{
+			shown: [],
+			all: [],
+			pinnedShown: [],
+			pinnedAll: [],
+		},
+	);
 	const [revealed, setRevealed] = useState<RevealedRows>({});
 	// Upstream's context epoch (`fn`): a new grouping or filter folds every section back.
 	const epoch = `${prefs.groupBy}|${prefs.statusFilter}|${prefs.activityDays}`;
@@ -424,6 +433,16 @@ export function SessionGroups({
 				},
 			);
 		},
+		selectOnly: (ids) =>
+		{
+			dispatchSelection(
+				{
+					type: "set",
+					ids,
+					order: displayOrder,
+				},
+			);
+		},
 		clear: () =>
 		{
 			dispatchSelection(
@@ -432,6 +451,14 @@ export function SessionGroups({
 				},
 			);
 		},
+	};
+	const pinnedRows = pinnedRowIds(split, familyFold);
+	whitespaceScopes.current =
+	{
+		shown: displayOrder,
+		all: displayedRowIds(split, manual, groups, new Set(), familyFold),
+		pinnedShown: collapsed.has(PINNED_GROUP_KEY) ? [] : pinnedRows,
+		pinnedAll: pinnedRows,
 	};
 	const sectionDrag = drag !== null && sectionOfDragId(drag.srcId) !== null;
 	const rowDrag = drag !== null && !sectionDrag;
@@ -516,13 +543,14 @@ export function SessionGroups({
 		// oxlint-disable-next-line react/jsx-no-constructed-context-values -- built after the loading early return, where hooks cannot run, from selection state that changes whenever the rows re-render anyway
 		<SidebarSelectionContext.Provider value={selectionApi}>
 			<FoldOpenKeysContext.Provider value={foldOpenKeys}>
-				<div
+				<SidebarWhitespaceMenu
+					scopesRef={whitespaceScopes}
+					onSelectOnly={selectionApi.selectOnly}
 					data-sidebar-selecting={selectedIds.length > 0 ? "" : undefined}
 					// Upstream `zu`: a fold caret's click arms a 500ms guard that drops the double-click's second click.
 					onClickCapture={swallowGuardedClick}
 					onDoubleClickCapture={swallowGuardedClick}
 					onMouseDownCapture={swallowGuardedClick}
-					className="contents"
 				>
 					<PinnedSubList
 						rows={split.pinned}
@@ -636,7 +664,7 @@ export function SessionGroups({
 							/>
 						)}
 					</div>
-				</div>
+				</SidebarWhitespaceMenu>
 			</FoldOpenKeysContext.Provider>
 		</SidebarSelectionContext.Provider>
 	);
@@ -669,11 +697,22 @@ function displayedRowIds(
 				(child) => child.sessionId,
 			),
 		]);
-	const pinned = collapsed.has(PINNED_GROUP_KEY) ? [] : withFamilies(split.pinned, split.nested);
+	const pinned = collapsed.has(PINNED_GROUP_KEY) ? [] : pinnedRowIds(split, familyFold);
 	const sections = [...manualGroups, ...groups]
 		.filter((group) => !collapsed.has(group.key))
 		.flatMap((group) => withFamilies(group.rows, group.nested));
 	return [...pinned, ...sections];
+}
+
+/** Pinned's session rows as it shows them unfolded, each with its family's listed rows. */
+function pinnedRowIds(split: SplitPinned<SidebarSessionRow>, familyFold: FamilyFoldState): string[]
+{
+	return split.pinned.flatMap((row) => [
+		row.sessionId,
+		...displayedNested(row.sessionId, split.nested.get(row.sessionId) ?? [], familyFold).map(
+			(child) => child.sessionId,
+		),
+	]);
 }
 
 /**
