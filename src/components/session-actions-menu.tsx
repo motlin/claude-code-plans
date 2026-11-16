@@ -162,8 +162,10 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
 			unseen,
 			{
 				unseenError: session.unseenError === true,
+				archived: session.archived,
 			},
 		),
+		unread: unseen,
 		failed: isFailedUnacked(session, ackedAt(session.id)),
 		archived: session.archived,
 		prUrl: session.pr?.url ?? null,

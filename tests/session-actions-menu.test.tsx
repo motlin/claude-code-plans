@@ -417,6 +417,7 @@ describe("SessionActionsMenu", () =>
 			"Open in []",
 			"---",
 			"PinP [p]",
+			"Mark as unreadU [u]",
 			"RenameR [r]",
 			"ForkF [f]",
 			"---",
@@ -444,6 +445,7 @@ describe("SessionActionsMenu", () =>
 			"Open in []",
 			"---",
 			"PinP [p]",
+			"Mark as unreadU [u]",
 			"RenameR [r]",
 			"ForkF [f]",
 			"---",
@@ -634,6 +636,102 @@ describe("SessionActionsMenu", () =>
 				title: null,
 				parentRole: "none",
 				description: "Session file is still being written",
+			},
+		);
+	});
+
+	it("keeps a disabled read toggle on in-progress rows, giving u to whichever item is enabled, as upstream", async () =>
+	{
+		__awaitingAckTesting.reset();
+		const readToggle = (menu: HTMLElement) =>
+		{
+			const toggle = [...menu.querySelectorAll('[role="menuitem"]')].find((node) =>
+				/^Mark as (un)?read/.test(node.textContent),
+			);
+			return {
+				text: toggle?.textContent,
+				disabled: toggle?.getAttribute("aria-disabled"),
+				shortcut: toggle?.getAttribute("aria-keyshortcuts"),
+				parentRole: toggle?.parentElement?.getAttribute("role"),
+				description: document.getElementById(toggle?.getAttribute("aria-describedby") ?? "")?.textContent,
+			};
+		};
+		const pressU = async (menu: HTMLElement) =>
+		{
+			fireEvent.keyDown(
+				menu,
+				{
+					key: "u",
+				},
+			);
+			await flush();
+		};
+
+		await renderRow(listItem("working"));
+		let menu = await rightClickRow();
+		const working = readToggle(menu);
+		await pressU(menu);
+		const workingAfterU =
+		{
+			open: screen.queryByRole("menu") !== null,
+			unseen: hasUnseenWork(SESSION_ID),
+		};
+		cleanup();
+
+		await renderRow(listItem("blocked"));
+		menu = await rightClickRow();
+		const blocked = readToggle(menu);
+		const blockedOutline = outline(menu).slice(0, 3);
+		await pressU(menu);
+		const blockedAcked = ackedAt(SESSION_ID) !== undefined;
+		cleanup();
+		__awaitingAckTesting.reset();
+
+		syncUnseenFromSummaries([
+			{
+				id: SESSION_ID,
+				unseen: true,
+			},
+		]);
+		await renderRow(listItem("working"));
+		const workingUnread = readToggle(await rightClickRow()).text;
+
+		const reason = "This session is still working or needs your input.";
+		expect(
+			{
+				working,
+				workingAfterU,
+				blocked,
+				blockedOutline,
+				blockedAcked,
+				workingUnread,
+			},
+		).toStrictEqual(
+			{
+				working:
+				{
+					text: "Mark as unreadU",
+					disabled: "true",
+					shortcut: "u",
+					parentRole: "none",
+					description: reason,
+				},
+				workingAfterU:
+				{
+					open: true,
+					unseen: false,
+				},
+				blocked:
+				{
+					text: "Mark as unread",
+					disabled: "true",
+					shortcut: null,
+					parentRole: "none",
+					description: reason,
+				},
+				blockedOutline: ["PinP [p]", "Mark as unread []", "Mark as completedU [u]"],
+				blockedAcked: true,
+				workingUnread: "Mark as readU",
 			},
 		);
 	});

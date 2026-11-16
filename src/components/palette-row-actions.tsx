@@ -112,8 +112,10 @@ export function PaletteRowActionsCard({
 				unseen,
 				{
 					unseenError: session.unseenError === true,
+					archived: session.archived ?? false,
 				},
 			),
+			unread: unseen,
 			failed: isFailedUnacked(
 				{
 					failedAt: session.failedAt,

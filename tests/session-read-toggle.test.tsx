@@ -252,12 +252,12 @@ describe("read state in the row menu", () =>
 			{
 				read: ["Mark as unreadU [u]"],
 				unread: ["Mark as readU [u]"],
-				waiting: ["Mark as completedU [u]"],
+				waiting: ["Mark as read []", "Mark as completedU [u]"],
 			},
 		);
 	});
 
-	it("offers no read-state item for a working row", async () =>
+	it("keeps a working row's read toggle disabled with its u shortcut", async () =>
 	{
 		await renderRow(
 			listItem(
@@ -268,7 +268,7 @@ describe("read state in the row menu", () =>
 			),
 		);
 
-		expect(await readStateItems()).toStrictEqual([]);
+		expect(await readStateItems()).toStrictEqual(["Mark as unreadU [u]"]);
 	});
 
 	it("round-trips unread and read through the viewed-state API", async () =>

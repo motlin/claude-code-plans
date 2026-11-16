@@ -63,26 +63,38 @@ export type SessionMenuCapability =
 /** "palette-card" is the ⌘K → row-actions card, which numbers its items 1…N itself. */
 export type SessionMenuSurface = "row" | "header" | "palette" | "palette-card";
 
-/** Waiting rows get "Mark as completed"; working rows get no read-state item. */
+/**
+ * Working and waiting rows are in progress: their read toggle stays but is disabled, and waiting rows
+ * also get "Mark as completed".
+ */
 export type SessionMenuReadState = "working" | "awaiting" | "unread" | "read";
+
+/** Upstream's disabledReason on the read toggle of an in-progress row. */
+const READ_TOGGLE_IN_PROGRESS_REASON = "This session is still working or needs your input.";
 
 /**
  * Blocked rows are awaiting input; finished rows are read or unread by the unseen flag. A row blocked on a
- * failed turn is not in progress (upstream `Ct` excludes `St`), so it keeps the read toggle.
+ * failed turn is not in progress (upstream `Ct` excludes `St`), so it keeps the read toggle, and neither is
+ * an archived row (upstream's `!archived` gate).
  */
 export function sessionMenuReadState(
 	bucket: SessionBucket | undefined,
 	unseen: boolean,
 	{
 		unseenError = false,
+		archived = false,
 	}:
 	{
 		unseenError?: boolean;
+		archived?: boolean;
 	} = {},
 ): SessionMenuReadState
 {
-	if (bucket === "working") return "working";
-	if (bucket === "blocked" && !unseenError) return "awaiting";
+	if (!archived)
+	{
+		if (bucket === "working") return "working";
+		if (bucket === "blocked" && !unseenError) return "awaiting";
+	}
 	return unseen ? "unread" : "read";
 }
 
@@ -91,6 +103,8 @@ export interface SessionMenuSession
 	title: string;
 	pinned: boolean;
 	readState: SessionMenuReadState;
+	/** Unseen work; labels an in-progress row's disabled read toggle, since `readState` drops it there. */
+	unread?: boolean;
 	archived: boolean;
 	prUrl: string | null;
 	/** A pane of the session's that the live terminal tab can stream. */
@@ -470,24 +484,45 @@ export function getSessionMenuItems(
 	const readState: SessionMenuItem[] = [];
 	if (surface === "row" || surface === "palette-card")
 	{
-		if (session.readState === "awaiting")
+		// Upstream `Ct` / `wt`: an in-progress row keeps its toggle disabled, and `u` goes to whichever item is enabled.
+		const inProgress = session.readState === "working" || session.readState === "awaiting";
+		const offerCompleted =
+			has("ackAwaiting") &&
+			!session.archived &&
+			session.liveApproval !== true &&
+			(session.readState === "awaiting" || (session.failed === true && session.readState !== "working"));
+		// Upstream's ⌘K card omits the toggle while in progress (`dt = ut && !lt`).
+		const toggle = has("readState") && !(inProgress && surface === "palette-card");
+		if (toggle)
 		{
-			if (has("ackAwaiting") && session.liveApproval !== true) readState.push(item("mark-completed"));
-		}
-		else if (session.readState !== "working" && has("readState"))
-		{
-			readState.push(item(session.readState === "unread" ? "mark-read" : "mark-unread"));
-			// Upstream gives `u` to the enabled toggle, so a failed row's Mark as completed has no shortcut.
-			if (session.failed === true && !session.archived && session.liveApproval !== true && has("ackAwaiting"))
+			const unread = inProgress ? session.unread === true : session.readState === "unread";
+			const id = unread ? "mark-read" : "mark-unread";
+			const entry: SessionMenuItem =
 			{
-				readState.push(
-					{
-						kind: "item",
-						id: "mark-completed",
-						label: sessionMenuItemLabels["mark-completed"],
-					},
-				);
+				kind: "item",
+				id,
+				label: sessionMenuItemLabels[id],
+			};
+			if (!(inProgress && offerCompleted)) entry.accelerator = ACCELERATORS[id];
+			if (inProgress)
+			{
+				entry.disabled = true;
+				entry.disabledReason = READ_TOGGLE_IN_PROGRESS_REASON;
 			}
+			readState.push(entry);
+		}
+		if (offerCompleted)
+		{
+			readState.push(
+				toggle && !inProgress
+					?
+						{
+							kind: "item",
+							id: "mark-completed",
+							label: sessionMenuItemLabels["mark-completed"],
+						}
+					: item("mark-completed"),
+			);
 		}
 	}
 	if (surface === "row") actions.push(...readState);

@@ -45,6 +45,7 @@ function session(overrides: Partial<SessionMenuSession> = {}): SessionMenuSessio
 		forkDisabledReason: null,
 		cwd: null,
 		bridgeSessionId: null,
+		unread: false,
 		...overrides,
 	};
 }
@@ -233,7 +234,9 @@ describe("getSessionMenuItems", () =>
 		]);
 	});
 
-	it("offers Mark as completed on a waiting row", () =>
+	const REASON = "This session is still working or needs your input.";
+
+	it("puts a disabled read toggle with no shortcut before Mark as completed on a waiting row, as upstream", () =>
 	{
 		expect(
 			getSessionMenuItems(
@@ -246,13 +249,20 @@ describe("getSessionMenuItems", () =>
 				{
 					surface: "row",
 				},
-			).slice(0, 2),
-		).toEqual([
+			).slice(0, 3),
+		).toStrictEqual([
 			{
 				kind: "item",
 				id: "pin",
 				label: "Pin",
 				accelerator: "p",
+			},
+			{
+				kind: "item",
+				id: "mark-unread",
+				label: "Mark as unread",
+				disabled: true,
+				disabledReason: REASON,
 			},
 			{
 				kind: "item",
@@ -263,13 +273,14 @@ describe("getSessionMenuItems", () =>
 		]);
 	});
 
-	it("hides Mark as completed while this tab holds the waiting row's approval live", () =>
+	it("gives the disabled toggle u and hides Mark as completed while this tab holds the waiting row's approval live", () =>
 	{
 		const readState = (liveApproval: boolean) =>
 			getSessionMenuItems(
 				session(
 					{
 						readState: "awaiting",
+						unread: true,
 						liveApproval,
 					},
 				),
@@ -285,8 +296,24 @@ describe("getSessionMenuItems", () =>
 			},
 		).toStrictEqual(
 			{
-				live: [],
+				live: [
+					{
+						kind: "item",
+						id: "mark-read",
+						label: "Mark as read",
+						accelerator: "u",
+						disabled: true,
+						disabledReason: REASON,
+					},
+				],
 				notLive: [
+					{
+						kind: "item",
+						id: "mark-read",
+						label: "Mark as read",
+						disabled: true,
+						disabledReason: REASON,
+					},
 					{
 						kind: "item",
 						id: "mark-completed",
@@ -298,7 +325,7 @@ describe("getSessionMenuItems", () =>
 		);
 	});
 
-	it("drops the waiting acknowledgement when it is not wired", () =>
+	it("keeps the disabled toggle with u on a waiting row when the acknowledgement is not wired", () =>
 	{
 		expect(
 			getSessionMenuItems(
@@ -312,12 +339,20 @@ describe("getSessionMenuItems", () =>
 					surface: "row",
 				},
 			),
-		).toEqual([
+		).toStrictEqual([
 			{
 				kind: "item",
 				id: "pin",
 				label: "Pin",
 				accelerator: "p",
+			},
+			{
+				kind: "item",
+				id: "mark-unread",
+				label: "Mark as unread",
+				accelerator: "u",
+				disabled: true,
+				disabledReason: REASON,
 			},
 			SEPARATOR,
 			{
@@ -455,35 +490,109 @@ describe("getSessionMenuItems", () =>
 		);
 	});
 
-	it("has no read-state item on a working row", () =>
+	it("disables the read toggle on a working row, keeping u and following unseen, as upstream", () =>
 	{
-		expect(
+		const readItems = (unread: boolean) =>
 			getSessionMenuItems(
 				session(
 					{
 						readState: "working",
+						unread,
 					},
 				),
 				LOCAL,
 				{
 					surface: "row",
 				},
-			),
-		).toEqual([
+			);
+		expect(
 			{
-				kind: "item",
-				id: "pin",
-				label: "Pin",
-				accelerator: "p",
+				read: readItems(false),
+				unread: readItems(true),
 			},
-			SEPARATOR,
+		).toStrictEqual(
 			{
-				kind: "item",
-				id: "copy-link",
-				label: "Copy link",
-				accelerator: "c",
+				read: [
+					{
+						kind: "item",
+						id: "pin",
+						label: "Pin",
+						accelerator: "p",
+					},
+					{
+						kind: "item",
+						id: "mark-unread",
+						label: "Mark as unread",
+						accelerator: "u",
+						disabled: true,
+						disabledReason: REASON,
+					},
+					SEPARATOR,
+					{
+						kind: "item",
+						id: "copy-link",
+						label: "Copy link",
+						accelerator: "c",
+					},
+				],
+				unread: [
+					{
+						kind: "item",
+						id: "pin",
+						label: "Pin",
+						accelerator: "p",
+					},
+					{
+						kind: "item",
+						id: "mark-read",
+						label: "Mark as read",
+						accelerator: "u",
+						disabled: true,
+						disabledReason: REASON,
+					},
+					SEPARATOR,
+					{
+						kind: "item",
+						id: "copy-link",
+						label: "Copy link",
+						accelerator: "c",
+					},
+				],
 			},
-		]);
+		);
+	});
+
+	it("leaves the read toggle off the palette card while the row is in progress, as upstream's dt", () =>
+	{
+		const card = (readState: "working" | "awaiting") =>
+			getSessionMenuItems(
+				session(
+					{
+						readState,
+					},
+				),
+				ALL,
+				{
+					surface: "palette-card",
+				},
+			).filter((entry) => entry.kind === "item" && entry.id.startsWith("mark-"));
+		expect(
+			{
+				working: card("working"),
+				awaiting: card("awaiting"),
+			},
+		).toStrictEqual(
+			{
+				working: [],
+				awaiting: [
+					{
+						kind: "item",
+						id: "mark-completed",
+						label: "Mark as completed",
+					},
+				],
+			},
+		);
 	});
 
 	it("shows Open PR when the session has a PR and no Open in submenu", () =>
@@ -1104,6 +1213,23 @@ describe("sessionMenuReadState", () =>
 				},
 			),
 		]).toStrictEqual(["unread", "read", "awaiting", "awaiting", "working"]);
+	});
+
+	it("never reads an archived row as in progress, as upstream's !archived gate", () =>
+	{
+		expect(
+			(["working", "blocked"] as const).flatMap((bucket) =>
+				[false, true].map((unseen) =>
+					sessionMenuReadState(
+						bucket,
+						unseen,
+						{
+							archived: true,
+						},
+					),
+				),
+			),
+		).toStrictEqual(["read", "unread", "read", "unread"]);
 	});
 });
 

@@ -1843,7 +1843,10 @@ describe("sidebar SessionGroups", () =>
 					attention: "waiting",
 					kind: "awaiting",
 				},
-				beforeItems: [["Mark as completedU", "u"]],
+				beforeItems: [
+					["Mark as unread", null],
+					["Mark as completedU", "u"],
+				],
 				acked:
 				{
 					blocked: [],
