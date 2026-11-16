@@ -3,6 +3,7 @@ import {describe, expect, it} from "vite-plus/test";
 import
 {
 	closeGuard,
+	cycleTerminalTab,
 	EMPTY_TERMINAL_TABS,
 	reduceTerminalTabs,
 	restoreTerminalTabs,
@@ -459,5 +460,21 @@ describe("terminal tab persistence", () =>
 				),
 			),
 		]).toStrictEqual([EMPTY_TERMINAL_TABS, EMPTY_TERMINAL_TABS, EMPTY_TERMINAL_TABS, EMPTY_TERMINAL_TABS]);
+	});
+});
+
+describe("cycleTerminalTab", () =>
+{
+	it("steps through the visible order with wraparound like upstream's En, and does nothing with one tab", () =>
+	{
+		const ids = ["claude", "shell-1", "shell-2"];
+		expect([
+			cycleTerminalTab(ids, "shell-2", 1),
+			cycleTerminalTab(ids, "claude", -1),
+			cycleTerminalTab(ids, "shell-1", 1),
+			cycleTerminalTab(ids, null, 1),
+			cycleTerminalTab(["shell-1"], "shell-1", 1),
+			cycleTerminalTab([], null, -1),
+		]).toStrictEqual(["claude", "shell-2", "shell-2", "shell-1", null, null]);
 	});
 });

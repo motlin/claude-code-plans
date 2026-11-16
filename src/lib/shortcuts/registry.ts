@@ -22,6 +22,11 @@ export interface Binding
 	modifiers: readonly ShortcutModifier[];
 	/** Omitted means the binding applies on every platform. */
 	platform?: ShortcutPlatform;
+	/**
+	 * Upstream's `matchBy:"bracket"`: the direction comes from the `]`/`}`/`[`/`{` key text first, so a layout with the
+	 * brackets on other keys still matches, and from `code` only as a fallback.
+	 */
+	matchBy?: "bracket";
 }
 
 export interface ShortcutDefinition
@@ -560,6 +565,47 @@ export const SHORTCUTS =
 		ownerSlug: "terminal-command-scroll",
 		enabled: true,
 		when: "terminalCommandsMarked",
+	},
+	new_terminal:
+	{
+		description: "New terminal",
+		group: "panes",
+		bindings: ctrlEverywhere("`", ["shift"], "Backquote"),
+		ownerSlug: "terminal-tab-shortcuts",
+		enabled: true,
+	},
+	// Off mac, upstream binds Next/Previous terminal (⌃PgDn/⌃PgUp) only in the desktop app, so the web has no row.
+	next_terminal:
+	{
+		description: "Next terminal",
+		group: "panes",
+		bindings: [
+			{
+				key: "]",
+				code: "BracketRight",
+				modifiers: ["ctrl", "shift"],
+				platform: "mac",
+				matchBy: "bracket",
+			},
+		],
+		ownerSlug: "terminal-tab-shortcuts",
+		enabled: true,
+	},
+	prev_terminal:
+	{
+		description: "Previous terminal",
+		group: "panes",
+		bindings: [
+			{
+				key: "[",
+				code: "BracketLeft",
+				modifiers: ["ctrl", "shift"],
+				platform: "mac",
+				matchBy: "bracket",
+			},
+		],
+		ownerSlug: "terminal-tab-shortcuts",
+		enabled: true,
 	},
 	close_pane:
 	{

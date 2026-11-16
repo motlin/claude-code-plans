@@ -1,7 +1,7 @@
 import {useShortcut} from "../../hooks/use-shortcut";
 import {assertNever} from "../../lib/assert-never";
 import {usePaneHost} from "./pane-host-context";
-import {requestTerminalFocus} from "./pending-terminal-focus";
+import {requestNewTerminal, requestTerminalFocus} from "./pending-terminal-focus";
 import {terminalShortcutAction} from "./terminal-shortcut-action";
 
 const TERMINAL_FOCUS_SELECTOR = '[data-pane-kind="terminal"] [data-terminal-focus]';
@@ -16,10 +16,28 @@ function isFocusInTerminal(): boolean
 	return document.activeElement?.closest('[data-pane-kind="terminal"]') != null;
 }
 
-/** ⌃` opens, focuses or closes the Terminal pane, kept apart from the pane's renderer so the cold load skips it. */
-export function TerminalPaneShortcut({available}: {available: boolean})
+/**
+ * ⌃` opens, focuses or closes the Terminal pane, kept apart from the pane's renderer so the cold load skips it.
+ * ⌃⇧` from anywhere outside the pane is upstream's opener: a new Shell tab, focused, opening the pane if needed.
+ * Inside the pane the pane's own handler takes it.
+ */
+export function TerminalPaneShortcut({available, shells}: {available: boolean; shells: boolean})
 {
 	const host = usePaneHost();
+	useShortcut(
+		"new_terminal",
+		() =>
+		{
+			if (isFocusInTerminal()) return false;
+			if (!host.isOpen("terminal")) requestTerminalFocus();
+			requestNewTerminal();
+			host.openPane("terminal");
+			return true;
+		},
+		{
+			disabled: !shells,
+		},
+	);
 	useShortcut("toggle_terminal", () =>
 	{
 		const action = terminalShortcutAction(

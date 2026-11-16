@@ -197,6 +197,83 @@ describe("matchBinding", () =>
 	});
 });
 
+describe("matchBinding with matchBy bracket", () =>
+{
+	it("takes the direction from the bracket key text first and from the code only as a fallback, like upstream's op", () =>
+	{
+		const next =
+		{
+			key: "]",
+			code: "BracketRight",
+			modifiers: ["ctrl", "shift"] as const,
+			matchBy: "bracket" as const,
+		};
+		const prev =
+		{
+			key: "[",
+			code: "BracketLeft",
+			modifiers: ["ctrl", "shift"] as const,
+			matchBy: "bracket" as const,
+		};
+		const chord = (key: string, code: string) =>
+			keyEvent(
+				{
+					key,
+					code,
+					ctrlKey: true,
+					shiftKey: true,
+				},
+			);
+		const cases: Array<[string, string]> = [
+			["}", "BracketRight"],
+			["]", "Backslash"],
+			["ü", "BracketLeft"],
+			["{", "BracketRight"],
+			["+", "BracketRight"],
+		];
+		expect(
+			cases.map(([key, code]) => (
+			{
+				key,
+				code,
+				next: matchBinding(chord(key, code), next),
+				prev: matchBinding(chord(key, code), prev),
+			})),
+		).toStrictEqual([
+			{
+				key: "}",
+				code: "BracketRight",
+				next: true,
+				prev: false,
+			},
+			{
+				key: "]",
+				code: "Backslash",
+				next: true,
+				prev: false,
+			},
+			{
+				key: "ü",
+				code: "BracketLeft",
+				next: false,
+				prev: true,
+			},
+			{
+				key: "{",
+				code: "BracketRight",
+				next: false,
+				prev: true,
+			},
+			{
+				key: "+",
+				code: "BracketRight",
+				next: false,
+				prev: false,
+			},
+		]);
+	});
+});
+
 describe("guards", () =>
 {
 	it("treats text inputs, textareas, selects and contenteditable as editable", () =>

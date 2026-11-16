@@ -58,6 +58,7 @@ export function ShellTerminal({
 	onClosed,
 	onRestart,
 	onStatusChange,
+	multipleTabs = false,
 }: {
 	/** The session whose composer ⇧⌘L attaches the selection to. */
 	sessionId: string;
@@ -67,9 +68,13 @@ export function ShellTerminal({
 	/** Start a new shell for this tab; rejects with the reason it could not. */
 	onRestart: () => Promise<void>;
 	onStatusChange?: (status: ConnectionStatus) => void;
+	/** Its pane shows other tabs, so ⌃⇧] / ⌃⇧[ leave the shell to cycle them. */
+	multipleTabs?: boolean;
 })
 {
 	const container = useRef<HTMLDivElement>(null);
+	const multipleTabsRef = useRef(multipleTabs);
+	multipleTabsRef.current = multipleTabs;
 	const sendRef = useRef<((frame: ShellClientFrame) => boolean) | null>(null);
 	const reconnectRef = useRef<(() => void) | null>(null);
 	const dispatchRef = useRef<(event: TerminalLifecycleEvent) => void>(() => {});
@@ -131,7 +136,7 @@ export function ShellTerminal({
 			{
 				terminal.write(text);
 			};
-			installTerminalInput(terminal, selectionActions);
+			installTerminalInput(terminal, selectionActions, () => multipleTabsRef.current);
 
 			let socket: WebSocket | null = null;
 			let retry: ReturnType<typeof setTimeout> | null = null;

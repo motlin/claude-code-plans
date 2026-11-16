@@ -21,9 +21,9 @@ function chord(binding: Binding): string
 
 describe("shortcut registry", () =>
 {
-	it("lists the 48 upstream web entries plus the page-scoped and Settings ⌘F searches, the desktop-only ⌥⌘F and the six local herdr terminal keys", () =>
+	it("lists the 51 upstream web entries plus the page-scoped and Settings ⌘F searches, the desktop-only ⌥⌘F and the six local herdr terminal keys", () =>
 	{
-		expect(SHORTCUT_IDS).toHaveLength(57);
+		expect(SHORTCUT_IDS).toHaveLength(60);
 	});
 
 	it("binds the local herdr terminal keys as ⌥⌘ chords on mac and Ctrl+Alt elsewhere, in their own Terminals group", () =>
@@ -185,17 +185,22 @@ describe("shortcut registry", () =>
 		);
 	});
 
-	it.each(SHORTCUT_IDS)("%s has mac and Windows bindings", (id) =>
+	// Upstream binds Next/Previous terminal off mac only in the desktop app (⌃PgDn/⌃PgUp).
+	const MAC_ONLY: ReadonlySet<ShortcutId> = new Set(["next_terminal", "prev_terminal"]);
+
+	it.each(SHORTCUT_IDS.filter((id) => !MAC_ONLY.has(id)))("%s has mac and Windows bindings", (id) =>
 	{
 		expect(bindingsFor(id, true).length).toBeGreaterThan(0);
 		expect(bindingsFor(id, false, true).length).toBeGreaterThan(0);
 	});
 
-	it("binds every entry on Linux except the environment pickers, which upstream skips on Linux web", () =>
+	it("binds every entry on Linux except the environment pickers, which upstream skips on Linux web, and the mac-only terminal tab cycling", () =>
 	{
 		expect(SHORTCUT_IDS.filter((id) => bindingsFor(id, false, false).length === 0)).toStrictEqual([
 			"select_environment",
 			"new_environment",
+			"next_terminal",
+			"prev_terminal",
 		]);
 	});
 
@@ -455,6 +460,9 @@ describe("shortcut registry", () =>
 			"toggle_terminal",
 			"next_terminal_command",
 			"prev_terminal_command",
+			"new_terminal",
+			"next_terminal",
+			"prev_terminal",
 			"close_pane",
 			"expand_collapse_pane",
 			"toggle_side_chat",
@@ -511,6 +519,66 @@ describe("shortcut registry", () =>
 						windows: ["ctrl+arrowup"],
 					},
 				],
+			},
+		);
+	});
+
+	it("registers upstream's terminal tab keys after the command-scroll rows: New everywhere, Next and Previous on mac only", () =>
+	{
+		const at = SHORTCUT_IDS.indexOf("prev_terminal_command");
+		expect(
+			{
+				order: SHORTCUT_IDS.slice(at + 1, at + 5),
+				descriptions: (["new_terminal", "next_terminal", "prev_terminal"] as const).map(
+					(id) => SHORTCUTS[id].description,
+				),
+				newMac: bindingsFor("new_terminal", true),
+				newNonMac: bindingsFor("new_terminal", false),
+				nextMac: bindingsFor("next_terminal", true),
+				prevMac: bindingsFor("prev_terminal", true),
+				nextNonMac: bindingsFor("next_terminal", false),
+				prevNonMac: bindingsFor("prev_terminal", false, true),
+			},
+		).toStrictEqual(
+			{
+				order: ["new_terminal", "next_terminal", "prev_terminal", "close_pane"],
+				descriptions: ["New terminal", "Next terminal", "Previous terminal"],
+				newMac: [
+					{
+						key: "`",
+						code: "Backquote",
+						modifiers: ["ctrl", "shift"],
+						platform: "mac",
+					},
+				],
+				newNonMac: [
+					{
+						key: "`",
+						code: "Backquote",
+						modifiers: ["ctrl", "shift"],
+						platform: "non-mac",
+					},
+				],
+				nextMac: [
+					{
+						key: "]",
+						code: "BracketRight",
+						modifiers: ["ctrl", "shift"],
+						platform: "mac",
+						matchBy: "bracket",
+					},
+				],
+				prevMac: [
+					{
+						key: "[",
+						code: "BracketLeft",
+						modifiers: ["ctrl", "shift"],
+						platform: "mac",
+						matchBy: "bracket",
+					},
+				],
+				nextNonMac: [],
+				prevNonMac: [],
 			},
 		);
 	});

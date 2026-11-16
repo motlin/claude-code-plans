@@ -105,7 +105,7 @@ function Harness({
 	);
 	return (
 		<>
-			<TerminalPaneShortcut available={available || shells} />
+			<TerminalPaneShortcut available={available || shells} shells={shells} />
 			<SessionPaneControls facts={{}} />
 			<TestTerminalToggle />
 			<textarea aria-label="Composer" />
@@ -550,6 +550,14 @@ describe("Shell tabs", () =>
 				expect(screen.getAllByRole("tab")).toHaveLength(index + 2);
 			});
 		}
+		// Let the new tab take focus in its frame, as upstream's addTab does, before the test moves focus elsewhere.
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
+				requestAnimationFrame(resolve);
+			});
+		});
 		return view;
 	}
 
@@ -774,6 +782,362 @@ describe("Shell tabs", () =>
 						selected: "true",
 					},
 				],
+			},
+		);
+	});
+
+	const CTRL_SHIFT_BACKQUOTE =
+	{
+		key: "~",
+		code: "Backquote",
+		ctrlKey: true,
+		shiftKey: true,
+	};
+
+	function focusedPanel(): string | null | undefined
+	{
+		return document.activeElement?.getAttribute("aria-label");
+	}
+
+	function openPane()
+	{
+		act(() =>
+		{
+			screen
+				.getByRole(
+					"button",
+					{
+						name: "Terminal",
+					},
+				)
+				.click();
+		});
+	}
+
+	it("cycles tabs with ⌃⇧] and ⌃⇧[ from inside the pane, wrapping and focusing the new terminal, and ignores key repeat", async () =>
+	{
+		await openWithShells(["pty-alice-1", "pty-alice-2"]);
+		const panel = () => document.querySelector<HTMLElement>("[data-terminal-focus]");
+		act(() =>
+		{
+			panel()?.focus();
+		});
+		const step = async (init: KeyboardEventInit) =>
+		{
+			const target = panel();
+			if (target === null) throw new Error("no active panel");
+			const event = pressOn(target, init);
+			await flush();
+			await waitFor(() =>
+			{
+				expect(focusedPanel()).toBe(panel()?.getAttribute("aria-label"));
+			});
+			return {
+				prevented: event.defaultPrevented,
+				selected: tabs().find((tab) => tab.selected === "true")?.name,
+				focused: focusedPanel(),
+			};
+		};
+		const next =
+		{
+			key: "}",
+			code: "BracketRight",
+			ctrlKey: true,
+			shiftKey: true,
+		};
+		const prev =
+		{
+			key: "{",
+			code: "BracketLeft",
+			ctrlKey: true,
+			shiftKey: true,
+		};
+
+		expect([
+			await step(next),
+			await step(next),
+			await step(prev),
+			await step(
+				{
+					...prev,
+					repeat: true,
+				},
+			),
+		]).toStrictEqual([
+			{
+				prevented: true,
+				selected: "Claude",
+				focused: "Claude terminal",
+			},
+			{
+				prevented: true,
+				selected: "Shell",
+				focused: "Shell terminal",
+			},
+			{
+				prevented: true,
+				selected: "Claude",
+				focused: "Claude terminal",
+			},
+			{
+				prevented: true,
+				selected: "Claude",
+				focused: "Claude terminal",
+			},
+		]);
+	});
+
+	it("adds and focuses a Shell tab with ⌃⇧` from inside the pane and from the composer", async () =>
+	{
+		const fetcher = stubShellApi([
+			{
+				status: 200,
+				body:
+				{
+					ptyKey: "pty-alice-1",
+				},
+			},
+			{
+				status: 200,
+				body:
+				{
+					ptyKey: "pty-alice-2",
+				},
+			},
+		]);
+		renderSession(
+			true,
+			{
+				shells: true,
+			},
+		);
+		openPane();
+		const claude = document.querySelector<HTMLElement>("[data-terminal-focus]");
+		if (claude === null) throw new Error("no Claude panel");
+		act(() =>
+		{
+			claude.focus();
+		});
+		const fromPane = pressOn(claude, CTRL_SHIFT_BACKQUOTE).defaultPrevented;
+		await waitFor(() =>
+		{
+			expect(focusedPanel()).toBe("Shell terminal");
+		});
+		const afterPane = tabs();
+		const fromComposer = pressOn(
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Composer",
+				},
+			),
+			CTRL_SHIFT_BACKQUOTE,
+		).defaultPrevented;
+		await waitFor(() =>
+		{
+			expect(focusedPanel()).toBe("Shell 2 terminal");
+		});
+
+		expect(
+			{
+				fromPane,
+				fromComposer,
+				afterPane,
+				afterComposer: tabs(),
+				requests: fetcher.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				fromPane: true,
+				fromComposer: true,
+				afterPane: [
+					{
+						name: "Claude",
+						selected: "false",
+					},
+					{
+						name: "Shell",
+						selected: "true",
+					},
+				],
+				afterComposer: [
+					{
+						name: "Claude",
+						selected: "false",
+					},
+					{
+						name: "Shell",
+						selected: "false",
+					},
+					{
+						name: "Shell 2",
+						selected: "true",
+					},
+				],
+				requests: 2,
+			},
+		);
+	});
+
+	it("opens the closed pane on ⌃⇧` focused on a new Shell tab, reusing the shell it starts on its own", async () =>
+	{
+		const fetcher = stubShellApi([
+			{
+				status: 200,
+				body:
+				{
+					ptyKey: "pty-alice-1",
+				},
+			},
+		]);
+		renderSession(
+			false,
+			{
+				shells: true,
+			},
+		);
+		const event = pressOn(document.body, CTRL_SHIFT_BACKQUOTE);
+		await waitFor(() =>
+		{
+			expect(focusedPanel()).toBe("Shell terminal");
+		});
+		await flush();
+
+		expect(
+			{
+				prevented: event.defaultPrevented,
+				tabs: tabs(),
+				requests: fetcher.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				prevented: true,
+				tabs: [
+					{
+						name: "Shell",
+						selected: "true",
+					},
+				],
+				requests: 1,
+			},
+		);
+	});
+
+	it("opens the closed pane on ⌃⇧` with a new Shell beside Claude", async () =>
+	{
+		stubShellApi([
+			{
+				status: 200,
+				body:
+				{
+					ptyKey: "pty-alice-1",
+				},
+			},
+		]);
+		renderSession(
+			true,
+			{
+				shells: true,
+			},
+		);
+		pressOn(document.body, CTRL_SHIFT_BACKQUOTE);
+		await waitFor(() =>
+		{
+			expect(focusedPanel()).toBe("Shell terminal");
+		});
+
+		expect(tabs()).toStrictEqual([
+			{
+				name: "Claude",
+				selected: "false",
+			},
+			{
+				name: "Shell",
+				selected: "true",
+			},
+		]);
+	});
+
+	it("leaves ⌃⇧` alone when Shell tabs are turned off", async () =>
+	{
+		const fetcher = stubShellApi([]);
+		renderSession(
+			true,
+			{
+				shells: false,
+			},
+		);
+		const closed = pressOn(document.body, CTRL_SHIFT_BACKQUOTE).defaultPrevented;
+		openPane();
+		const panel = document.querySelector<HTMLElement>("[data-terminal-focus]");
+		if (panel === null) throw new Error("no Claude panel");
+		act(() =>
+		{
+			panel.focus();
+		});
+		const inside = pressOn(panel, CTRL_SHIFT_BACKQUOTE).defaultPrevented;
+		await flush();
+
+		expect(
+			{
+				closed,
+				inside,
+				tabs: tabs(),
+				requests: fetcher.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				closed: false,
+				inside: false,
+				tabs: [
+					{
+						name: "Claude",
+						selected: "true",
+					},
+				],
+				requests: 0,
+			},
+		);
+	});
+
+	it("shows New terminal ⌃⇧` in a tooltip below the + button instead of a native title", async () =>
+	{
+		stubShellApi([]);
+		renderSession(
+			true,
+			{
+				shells: true,
+			},
+		);
+		openPane();
+		const button = screen.getByRole(
+			"button",
+			{
+				name: "New terminal",
+			},
+		);
+		fireEvent.pointerEnter(button);
+		const tip = await screen.findByRole(
+			"tooltip",
+			{},
+			{
+				timeout: 1000,
+			},
+		);
+
+		expect(
+			{
+				title: button.getAttribute("title"),
+				keys: button.getAttribute("aria-keyshortcuts"),
+				tip: tip.textContent,
+				side: tip.getAttribute("data-side"),
+			},
+		).toStrictEqual(
+			{
+				title: null,
+				keys: "Control+Shift+Backquote",
+				tip: "New terminal⌃Control⇧Shift`",
+				side: "bottom",
 			},
 		);
 	});

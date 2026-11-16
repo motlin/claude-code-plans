@@ -69,12 +69,24 @@ export function useTerminalSelectionActions(sessionId: string | null):
  * hide app chords from the document shortcut listener, so those are
  * dispatched to the app here. Links go through the "Open link?" confirm.
  */
-export function installTerminalInput(terminal: Terminal, actions: SelectionActions): void
+export function installTerminalInput(
+	terminal: Terminal,
+	actions: SelectionActions,
+	hasMultipleTabs: () => boolean = () => false,
+): void
 {
 	terminal.attachCustomKeyEventHandler((event) =>
 	{
 		if (handleTerminalSelectionKey(event, terminal, actions)) return true;
-		if (terminalHandlesKey(event)) return false;
+		if (
+			terminalHandlesKey(
+				event,
+				{
+					multipleTabs: hasMultipleTabs(),
+				},
+			)
+		)
+			return false;
 		dispatchShortcutEvent(event);
 		return true;
 	});

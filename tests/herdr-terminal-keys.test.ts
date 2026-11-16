@@ -118,7 +118,14 @@ describe("terminal key passthrough", () =>
 		],
 	] satisfies Array<[string, KeyInit, boolean]>)("%s → terminal handles: %s", (_, init, handled) =>
 	{
-		expect(terminalHandlesKey(keyEvent(init), true)).toBe(handled);
+		expect(
+			terminalHandlesKey(
+				keyEvent(init),
+				{
+					isMac: true,
+				},
+			),
+		).toBe(handled);
 	});
 
 	it("leaves the herdr terminal keys to the app on each platform, and their other-platform chords to the TUI", () =>
@@ -185,7 +192,9 @@ describe("terminal key passthrough", () =>
 								[modifier]: true,
 							},
 						),
-						isMac,
+						{
+							isMac,
+						},
 					),
 				]),
 			);
@@ -200,6 +209,104 @@ describe("terminal key passthrough", () =>
 				mac: Object.fromEntries(chords.map(([name]) => [name, false])),
 				nonMac: Object.fromEntries(chords.map(([name]) => [name, false])),
 				macCtrl: Object.fromEntries(chords.map(([name]) => [name, true])),
+			},
+		);
+	});
+
+	it("lets upstream's terminal tab keys out: New always, Next and Previous only on mac with more than one tab", () =>
+	{
+		const chords: Array<[string, KeyInit]> = [
+			[
+				"⌃⇧`",
+				{
+					key: "~",
+					code: "Backquote",
+					ctrlKey: true,
+					shiftKey: true,
+				},
+			],
+			[
+				"⌃⇧]",
+				{
+					key: "}",
+					code: "BracketRight",
+					ctrlKey: true,
+					shiftKey: true,
+				},
+			],
+			[
+				"⌃⇧[",
+				{
+					key: "{",
+					code: "BracketLeft",
+					ctrlKey: true,
+					shiftKey: true,
+				},
+			],
+			[
+				"⌃⇧Q",
+				{
+					key: "Q",
+					code: "KeyQ",
+					ctrlKey: true,
+					shiftKey: true,
+				},
+			],
+			[
+				"⌥⌃`",
+				{
+					key: "`",
+					code: "Backquote",
+					ctrlKey: true,
+					altKey: true,
+				},
+			],
+		];
+		const handled = (isMac: boolean, multipleTabs: boolean) =>
+			Object.fromEntries(
+				chords.map(([name, init]) => [
+					name,
+					terminalHandlesKey(
+						keyEvent(init),
+						{
+							isMac,
+							multipleTabs,
+						},
+					),
+				]),
+			);
+		expect(
+			{
+				macOneTab: handled(true, false),
+				macTabs: handled(true, true),
+				linuxTabs: handled(false, true),
+			},
+		).toStrictEqual(
+			{
+				macOneTab:
+				{
+					"⌃⇧`": false,
+					"⌃⇧]": true,
+					"⌃⇧[": true,
+					"⌃⇧Q": true,
+					"⌥⌃`": true,
+				},
+				macTabs:
+				{
+					"⌃⇧`": false,
+					"⌃⇧]": false,
+					"⌃⇧[": false,
+					"⌃⇧Q": true,
+					"⌥⌃`": true,
+				},
+				linuxTabs:
+				{
+					"⌃⇧`": false,
+					"⌃⇧]": true,
+					"⌃⇧[": true,
+					"⌃⇧Q": true,
+					"⌥⌃`": true,
+				},
 			},
 		);
 	});

@@ -26,12 +26,44 @@ export function isWindowsPlatform(): boolean
 	return typeof navigator !== "undefined" && /windows/i.test(navigator.userAgent);
 }
 
+const BRACKET_KEY_DIRECTION: Readonly<Record<string, 1 | -1>> =
+{
+	"]": 1,
+	"}": 1,
+	"[": -1,
+	"{": -1,
+};
+const BRACKET_CODE_DIRECTION: Readonly<Record<string, 1 | -1>> =
+{
+	BracketRight: 1,
+	BracketLeft: -1,
+};
+/** Keys upstream's `op` never reads as a bracket, even on the bracket keys' codes. */
+const NOT_BRACKET_KEYS = new Set(["+", "-", "=", "_"]);
+
+/** Upstream's `op`: the bracket direction of a key event, 0 when it is not one. */
+function bracketDirection(event: Pick<KeyboardEvent, "key" | "code">): number
+{
+	const byKey = BRACKET_KEY_DIRECTION[event.key];
+	if (byKey !== undefined) return byKey;
+	if (NOT_BRACKET_KEYS.has(event.key)) return 0;
+	return BRACKET_CODE_DIRECTION[event.code] ?? 0;
+}
+
+function keyMatches(event: ShortcutKeyEvent, binding: Binding): boolean
+{
+	if (binding.matchBy === "bracket")
+	{
+		const direction = bracketDirection(event);
+		return direction !== 0 && direction === BRACKET_CODE_DIRECTION[binding.code ?? ""];
+	}
+	return binding.code === undefined ? event.key.toLowerCase() === binding.key : event.code === binding.code;
+}
+
 /** Code-first key match with strict modifier equality and an AltGraph guard. */
 export function matchBinding(event: ShortcutKeyEvent, binding: Binding): boolean
 {
-	const keyMatches =
-		binding.code === undefined ? event.key.toLowerCase() === binding.key : event.code === binding.code;
-	if (!keyMatches) return false;
+	if (!keyMatches(event, binding)) return false;
 	for (const modifier of MODIFIERS)
 	{
 		if (event[MODIFIER_FLAGS[modifier]] !== binding.modifiers.includes(modifier)) return false;

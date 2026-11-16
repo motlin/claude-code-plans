@@ -51,14 +51,30 @@ const TERMINAL_SHORTCUTS: readonly ShortcutId[] = [
 	"prev_terminal_pane",
 ];
 
-/** xterm-style custom key handler: `false` leaves the key to the app. */
+/** The Terminal pane's tab keys (upstream `newTerminal`, `nextTerminal`, `prevTerminal`). */
+const TERMINAL_TAB_SHORTCUTS: readonly ShortcutId[] = ["new_terminal", "next_terminal", "prev_terminal"];
+
+export interface TerminalKeyOptions
+{
+	isMac?: boolean;
+	isWindows?: boolean;
+	/** The terminal's pane shows more than one tab, so ⌃⇧] / ⌃⇧[ cycle tabs instead of reaching the shell. */
+	multipleTabs?: boolean;
+}
+
+/**
+ * xterm-style custom key handler: `false` leaves the key to the app. Like upstream's xterm pass-through, New
+ * terminal always escapes, and Next/Previous terminal only while there is another tab to go to.
+ */
 export function terminalHandlesKey(
 	event: TerminalKeyEvent,
-	isMac: boolean = isMacPlatform(),
-	isWindows: boolean = isWindowsPlatform(),
+	{isMac = isMacPlatform(), isWindows = isWindowsPlatform(), multipleTabs = false}: TerminalKeyOptions = {},
 ): boolean
 {
-	if (TERMINAL_SHORTCUTS.some((id) => bindingsFor(id, isMac, isWindows).some((b) => matchBinding(event, b))))
+	const appShortcuts: readonly ShortcutId[] = multipleTabs
+		? [...TERMINAL_SHORTCUTS, ...TERMINAL_TAB_SHORTCUTS]
+		: [...TERMINAL_SHORTCUTS, "new_terminal"];
+	if (appShortcuts.some((id) => bindingsFor(id, isMac, isWindows).some((b) => matchBinding(event, b))))
 	{
 		return false;
 	}

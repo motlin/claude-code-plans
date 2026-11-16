@@ -50,6 +50,9 @@ export function TerminalTabStrip({
 	const [renaming, setRenaming] = useState<string | null>(null);
 	const refocus = useRef<string | null>(null);
 	const afterMenuClose = useRef<(() => void) | null>(null);
+	// Like useRenameAfterMenuClose: the closing menu must not hand focus back (to the terminal, say) once the rename
+	// input has taken it. Base UI may ask after the close completed, so this lasts until a menu next opens.
+	const keepFocus = useRef(false);
 	const tabCount = tabs.length + (showClaude ? 1 : 0);
 
 	useLayoutEffect(() =>
@@ -79,7 +82,11 @@ export function TerminalTabStrip({
 
 	const onMenuOpenChangeComplete = (open: boolean) =>
 	{
-		if (open) return;
+		if (open)
+		{
+			keepFocus.current = false;
+			return;
+		}
 		const action = afterMenuClose.current;
 		afterMenuClose.current = null;
 		action?.();
@@ -134,7 +141,7 @@ export function TerminalTabStrip({
 			onOpenChangeComplete={onMenuOpenChangeComplete}
 		>
 			<ContextMenuTrigger className="flex shrink-0 items-center">{trigger}</ContextMenuTrigger>
-			<MenuContent>{items}</MenuContent>
+			<MenuContent finalFocus={() => !keepFocus.current}>{items}</MenuContent>
 		</ContextMenu>
 	);
 
@@ -205,6 +212,7 @@ export function TerminalTabStrip({
 							<MenuItem
 								onSelect={() =>
 								{
+									keepFocus.current = true;
 									afterMenuClose.current = () =>
 									{
 										setRenaming(tab.id);

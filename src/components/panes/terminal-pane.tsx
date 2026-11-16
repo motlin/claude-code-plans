@@ -2,15 +2,17 @@ import {Ellipsis, Plus} from "lucide-react";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {z} from "zod";
 
+import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
 import {dispatchTerminalTabs, useShellTabs} from "../../lib/shell-tabs";
-import {CLAUDE_TAB_ID, type CloseGuard, closeGuard} from "../../lib/terminal-tabs";
+import {CLAUDE_TAB_ID, type CloseGuard, closeGuard, cycleTerminalTab} from "../../lib/terminal-tabs";
 import {ConfirmDialog} from "../confirm-dialog";
 import {type ConnectionStatus, HerdrTerminal} from "../herdr-terminal";
 import {ShellTerminal} from "../shell-terminal";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../ui/menu";
+import {Tooltip} from "../ui/tooltip";
 import type {PaneChrome} from "./pane-registry";
 import {PaneHeaderRow} from "./pane-header-row";
-import {consumePendingTerminalFocus} from "./pending-terminal-focus";
+import {consumePendingNewTerminal, consumePendingTerminalFocus, subscribeNewTerminal} from "./pending-terminal-focus";
 import {GHOST_ICON_BUTTON, type TerminalTabActions, TerminalTabStrip} from "./terminal-tab-strip";
 import {useOptionalPaneHost} from "./pane-host-context";
 
@@ -138,6 +140,11 @@ interface PendingClose
 	apply: () => void;
 }
 
+function isFocusInTerminalPane(): boolean
+{
+	return document.activeElement?.closest('[data-pane-kind="terminal"]') != null;
+}
+
 const PANEL_CLASS =
 	"flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-[inherit] outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),inset_0_0_6px_1px_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)]";
 
@@ -254,6 +261,8 @@ export function TerminalPane({
 					ptyKey: await startShell(sessionId),
 				},
 			);
+			// Upstream's addTab makes the new tab active and focuses its terminal.
+			requestAnimationFrame(() => focusRef.current?.focus());
 		}
 		catch (cause)
 		{
@@ -268,6 +277,23 @@ export function TerminalPane({
 	useEffect(() =>
 	{
 		if (consumePendingTerminalFocus()) focusRef.current?.focus();
+	}, []);
+
+	// ⌃⇧` from outside the pane. Upstream's opener reuses a lone tab whose shell hasn't started, so when the pane is
+	// about to start (or is starting) its first shell on its own, that shell is the new one.
+	const newTerminalRef = useRef(newTerminal);
+	newTerminalRef.current = newTerminal;
+	const startsOwnShellRef = useRef(false);
+	startsOwnShellRef.current = !showClaude && shellTabs.tabs.length === 0;
+	useEffect(() =>
+	{
+		const answer = () =>
+		{
+			if (!consumePendingNewTerminal() || startsOwnShellRef.current) return;
+			void newTerminalRef.current();
+		};
+		answer();
+		return subscribeNewTerminal(answer);
 	}, []);
 
 	useEffect(() =>
@@ -348,6 +374,44 @@ export function TerminalPane({
 		);
 		requestAnimationFrame(() => focusRef.current?.focus());
 	};
+
+	// Upstream's pane-scoped New / Next / Previous terminal: only while focus is in the pane; the session-wide ⌃⇧`
+	// handler takes New terminal everywhere else.
+	useShortcut(
+		"new_terminal",
+		() =>
+		{
+			if (!isFocusInTerminalPane()) return false;
+			if (!starting) void newTerminal();
+			return true;
+		},
+		{
+			disabled: !shells,
+		},
+	);
+	const cycle = (dir: 1 | -1) =>
+	{
+		if (!isFocusInTerminalPane()) return false;
+		const target = cycleTerminalTab(tabIds, active, dir);
+		if (target !== null) activate(target);
+		return true;
+	};
+	const multipleTabs = tabIds.length > 1;
+	useShortcut(
+		"next_terminal",
+		() => cycle(1),
+		{
+			disabled: !multipleTabs,
+		},
+	);
+	useShortcut(
+		"prev_terminal",
+		() => cycle(-1),
+		{
+			disabled: !multipleTabs,
+		},
+	);
+	const newTerminalKeys = useShortcutKeys("new_terminal");
 
 	const guardedClose = async (kind: "close" | "close-others", id: string) =>
 	{
@@ -432,16 +496,22 @@ export function TerminalPane({
 							onActivate={activate}
 						/>
 						{shells && (
-							<button
-								type="button"
-								aria-label="New terminal"
-								title="New terminal"
-								disabled={starting}
-								onClick={() => void newTerminal()}
-								className={GHOST_ICON_BUTTON}
+							<Tooltip
+								content={starting ? null : "New terminal"}
+								shortcut={newTerminalKeys.keys}
+								side="bottom"
 							>
-								<Plus aria-hidden="true" className="size-4" />
-							</button>
+								<button
+									type="button"
+									aria-label="New terminal"
+									aria-keyshortcuts={newTerminalKeys.ariaKeyShortcuts}
+									disabled={starting}
+									onClick={() => void newTerminal()}
+									className={GHOST_ICON_BUTTON}
+								>
+									<Plus aria-hidden="true" className="size-4" />
+								</button>
+							</Tooltip>
 						)}
 						{activeStatus !== null && <StatusChip status={activeStatus} />}
 					</div>
@@ -496,6 +566,7 @@ export function TerminalPane({
 							variant="pane"
 							interactive={interactive}
 							onStatusChange={setClaudeStatus}
+							multipleTabs={multipleTabs}
 						/>
 					)}
 				</div>
@@ -521,6 +592,7 @@ export function TerminalPane({
 						onClosed={closedHandlers.get(tab.id) ?? noop}
 						onRestart={restartHandlers.get(tab.id) ?? resolved}
 						onStatusChange={statusHandlers.get(tab.id) ?? noop}
+						multipleTabs={multipleTabs}
 					/>
 				</div>
 			))}

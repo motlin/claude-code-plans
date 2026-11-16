@@ -56,14 +56,19 @@ export function HerdrTerminal({
 	variant = "page",
 	interactive = false,
 	onStatusChange,
+	multipleTabs = false,
 }: HerdrTerminalTarget &
 {
 	variant?: "page" | "pane";
 	interactive?: boolean;
 	onStatusChange?: (status: ConnectionStatus) => void;
+	/** Its pane shows other tabs, so ⌃⇧] / ⌃⇧[ leave the TUI to cycle them. */
+	multipleTabs?: boolean;
 })
 {
 	const container = useRef<HTMLDivElement>(null);
+	const multipleTabsRef = useRef(multipleTabs);
+	multipleTabsRef.current = multipleTabs;
 	const [status, setStatus] = useState<ConnectionStatus>("connecting");
 	const [error, setError] = useState("");
 	const [appearance, setAppearance] = useState<GhosttyAppearance | null>(null);
@@ -100,7 +105,7 @@ export function HerdrTerminal({
 			terminal.loadAddon(fitAddon);
 			terminal.open(element);
 			const removeContrast = installTerminalContrast(terminal);
-			installTerminalInput(terminal, selectionActions);
+			installTerminalInput(terminal, selectionActions, () => multipleTabsRef.current);
 
 			let socket: WebSocket | null = null;
 			let retry: ReturnType<typeof setTimeout> | null = null;

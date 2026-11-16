@@ -316,3 +316,16 @@ export function restoreTerminalTabs(raw: string | null): TerminalTabsState
 		opened: parsed.data.opened,
 	};
 }
+
+/**
+ * Upstream's `En`: the tab `dir` steps from `active` in the visible order, wrapping around; null when there is no
+ * other tab to go to. A null `active` counts as the first tab.
+ */
+export function cycleTerminalTab(ids: readonly string[], active: string | null, dir: 1 | -1): string | null
+{
+	const n = ids.length;
+	if (n < 2) return null;
+	const index = Math.max(active === null ? 0 : ids.indexOf(active), 0);
+	const next = ids[(index + dir + n) % n] ?? null;
+	return next === active ? null : next;
+}

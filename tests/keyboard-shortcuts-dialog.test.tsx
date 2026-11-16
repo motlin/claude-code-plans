@@ -345,6 +345,9 @@ describe("KeyboardShortcutsDialog", () =>
 					"Toggle Files",
 					"Attach selection as context",
 					"Toggle terminal",
+					"New terminal",
+					"Next terminal",
+					"Previous terminal",
 					"Close pane",
 					"Expand or collapse pane",
 					"Toggle side chat",
@@ -969,6 +972,9 @@ describe("KeyboardShortcutsDialog search", () =>
 			{
 				rows: [
 					"Toggle terminal",
+					"New terminal",
+					"Next terminal",
+					"Previous terminal",
 					"Split terminal right",
 					"Split terminal down",
 					"Close terminal pane",
@@ -977,7 +983,7 @@ describe("KeyboardShortcutsDialog search", () =>
 					"Previous pane in terminal tab",
 				],
 				hidden: ["General", "Composer"],
-				status: '<p class="sr-only">7 shortcuts found</p>',
+				status: '<p class="sr-only">10 shortcuts found</p>',
 				tabIndex: "0",
 			},
 		);
@@ -996,8 +1002,14 @@ describe("KeyboardShortcutsDialog search", () =>
 			},
 		).toStrictEqual(
 			{
-				rows: ["Toggle changes", "Toggle file list in changes or files"],
-				status: "2 shortcuts found",
+				rows: [
+					"Toggle changes",
+					"Toggle file list in changes or files",
+					"New terminal",
+					"Next terminal",
+					"Previous terminal",
+				],
+				status: "5 shortcuts found",
 			},
 		);
 	});
@@ -1269,6 +1281,7 @@ describe("KeyboardShortcutsDialog search", () =>
 					"Jump to next prompt",
 					"Find next",
 					"Attach selection as context",
+					"Next terminal",
 					"Expand or collapse pane",
 					"Next pane in terminal tab",
 				],
@@ -1569,7 +1582,7 @@ describe("terminal command-scroll rows", () =>
 	});
 
 	/** The Panes rows from Toggle terminal on, each as its label and keycaps. */
-	async function terminalRows(userAgent: string, query = ""): Promise<string[]>
+	async function terminalRows(userAgent: string, query = "", count = 3): Promise<string[]>
 	{
 		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(userAgent);
 		pressShortcutsKey(
@@ -1616,7 +1629,7 @@ describe("terminal command-scroll rows", () =>
 		cleanup();
 		if (query !== "") return rows;
 		const at = rows.findIndex((row) => row.startsWith("Toggle terminal"));
-		return rows.slice(at, at + 3);
+		return rows.slice(at, at + count);
 	}
 
 	it("hides upstream's Scroll to command rows until a terminal marks a command, then lists them after Toggle terminal", async () =>
@@ -1637,8 +1650,8 @@ describe("terminal command-scroll rows", () =>
 			{
 				before: [
 					expect.stringMatching(/^Toggle terminal/),
-					expect.stringMatching(/^Close pane/),
-					expect.stringMatching(/^Expand or collapse pane/),
+					expect.stringMatching(/^New terminal/),
+					expect.stringMatching(/^Next terminal/),
 				],
 				mac: [
 					expect.stringMatching(/^Toggle terminal/),
@@ -1651,6 +1664,36 @@ describe("terminal command-scroll rows", () =>
 					expect.stringMatching(/^Scroll to previous command in terminal.*Ctrl.*↑/),
 				],
 				search: 2,
+			},
+		);
+	});
+
+	// The Scroll to command rows stay listed once an earlier test marks a command, so they are set aside here.
+	const withoutScrollRows = (rows: readonly string[]) => rows.filter((row) => !row.startsWith("Scroll to"));
+
+	it("lists New, Next and Previous terminal after Toggle terminal on mac, and only New terminal off mac", async () =>
+	{
+		expect(
+			{
+				mac: withoutScrollRows(await terminalRows(MAC_UA, "", 7)).slice(0, 5),
+				windows: withoutScrollRows(
+					await terminalRows("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36", "", 5),
+				).slice(0, 3),
+			},
+		).toStrictEqual(
+			{
+				mac: [
+					expect.stringMatching(/^Toggle terminal\s*⌃Control`$/),
+					expect.stringMatching(/^New terminal\s*⌃Control⇧Shift`$/),
+					expect.stringMatching(/^Next terminal\s*⌃Control⇧Shift]$/),
+					expect.stringMatching(/^Previous terminal\s*⌃Control⇧Shift\[$/),
+					expect.stringMatching(/^Close pane/),
+				],
+				windows: [
+					expect.stringMatching(/^Toggle terminal/),
+					expect.stringMatching(/^New terminal.*Ctrl.*Shift.*`/),
+					expect.stringMatching(/^Close pane/),
+				],
 			},
 		);
 	});

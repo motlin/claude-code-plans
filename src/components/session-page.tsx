@@ -1922,7 +1922,10 @@ function SessionView({
 							liveCount={endIndex}
 							hasTodos={planModel.todos.length > 0}
 						/>
-						<TerminalPaneShortcut available={promptBehavior.hasLivePane || shellsEnabled} />
+						<TerminalPaneShortcut
+							available={promptBehavior.hasLivePane || shellsEnabled}
+							shells={shellsEnabled}
+						/>
 						<FilesPaneShortcut />
 						<ChangesPaneShortcut />
 						{rewindPicker.used && (
