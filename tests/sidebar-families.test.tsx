@@ -11,7 +11,7 @@ import
 	RouterProvider,
 } from "@tanstack/react-router";
 import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SessionGroups} from "../src/components/sidebar/session-groups";
 import {DEFAULT_SESSION_LIST_PREFS} from "../src/lib/session-groups";
@@ -178,7 +178,10 @@ async function renderGroups(sessions: unknown[])
 	{
 		expect(result.container.querySelector("[data-group-toggle]")).toBeTruthy();
 	});
-	return result;
+	return {
+		...result,
+		router,
+	};
 }
 
 function family(container: HTMLElement, headId: string): HTMLElement
@@ -193,12 +196,33 @@ function rowTitles(element: Element): string[]
 	return [...element.querySelectorAll("a[data-row-main-button] [data-row-label]")].map((label) => rowTitle(label));
 }
 
-function handle(container: HTMLElement, headId: string): HTMLElement
+function headLink(container: HTMLElement, headId: string): HTMLElement
 {
-	const element = family(container, headId).querySelector("button.df-family-handle");
-	if (!(element instanceof HTMLElement)) throw new Error(`no handle for ${headId}`);
+	const element = container.querySelector(`[data-row-key="${headId}"] a[data-row-main-button]`);
+	if (!(element instanceof HTMLElement)) throw new Error(`no head row for ${headId}`);
 	return element;
 }
+
+function rowWrapper(container: HTMLElement, id: string): HTMLElement
+{
+	const element = container.querySelector(`[data-row-key="${id}"]`);
+	if (!(element instanceof HTMLElement)) throw new Error(`no row ${id}`);
+	return element;
+}
+
+function caret(container: HTMLElement, headId: string): HTMLElement
+{
+	const element = headLink(container, headId).querySelector('[role="button"][data-container-icon]');
+	if (!(element instanceof HTMLElement)) throw new Error(`no caret for ${headId}`);
+	return element;
+}
+
+function attributes(element: Element, names: readonly string[]): Record<string, string | null>
+{
+	return Object.fromEntries(names.map((name) => [name, element.getAttribute(name)]));
+}
+
+const CARET_ATTRIBUTES = ["role", "aria-expanded", "aria-label", "data-row-action", "tabindex"] as const;
 
 afterEach(cleanup);
 
@@ -233,10 +257,10 @@ describe("sidebar session families", () =>
 		]);
 	});
 
-	it("collapses a family to a stub row from its handle and persists collapsedFamilies", async () =>
+	it("collapses a family to a stub row from its head row's caret and persists collapsedFamilies", async () =>
 	{
 		const first = await renderGroups(FAMILY);
-		const toggle = handle(first.container, "h1");
+		const toggle = caret(first.container, "h1");
 		expect(toggle.getAttribute("aria-expanded")).toBe("true");
 		expect(toggle.getAttribute("aria-label")).toBe("Hide nested sessions");
 		expect(toggle.tabIndex).toBe(-1);
@@ -255,7 +279,7 @@ describe("sidebar session families", () =>
 		const second = await renderGroups(FAMILY);
 		expect(rowTitles(family(second.container, "h1"))).toStrictEqual([]);
 
-		fireEvent.click(handle(second.container, "h1"));
+		fireEvent.click(caret(second.container, "h1"));
 
 		expect(readSidebarState().collapsedFamilies).toStrictEqual([]);
 		expect(rowTitles(family(second.container, "h1"))).toStrictEqual(["Child one", "Grandchild one"]);
@@ -276,43 +300,200 @@ describe("sidebar session families", () =>
 			),
 		]);
 
-		fireEvent.click(handle(container, "h1"));
+		fireEvent.click(caret(container, "h1"));
 
 		const stub = family(container, "h1").querySelector("button.df-family-stub");
 		expect(stub?.textContent).toBe("1 nested session");
 		expect(stub?.getAttribute("aria-label")).toBe("1 nested session needs input");
 	});
 
-	it("toggles every family on Alt-click", async () =>
+	it("folds a family from a caret after the head row's title", async () =>
+	{
+		const {container, router} = await renderGroups(FAMILY);
+		const toggle = caret(container, "h1");
+		const svg = toggle.querySelector("svg");
+		if (!(svg instanceof SVGElement)) throw new Error("no caret glyph");
+		const [id, titleId] = (toggle.getAttribute("aria-labelledby") ?? "").split(" ");
+		const hiddenTitle = document.getElementById(titleId ?? "");
+		expect(
+			{
+				attributes: attributes(toggle, CARET_ATTRIBUTES),
+				labelledBy: [id === toggle.id, titleId === `${toggle.id}-title`],
+				hiddenTitle: [hiddenTitle?.hidden, hiddenTitle?.textContent],
+				wrapper: toggle.parentElement?.className,
+				suffix: toggle.closest("[data-row-label] > span.ps-1")?.className,
+				rowName: headLink(container, "h1").getAttribute("aria-labelledby")?.split(" ")[0],
+				glyph:
+				{
+					open: svg.getAttribute("data-open"),
+					translate: svg.style.translate,
+					pointerEvents: svg.style.pointerEvents,
+					contain: svg.style.contain,
+					width: svg.getAttribute("width"),
+					rotated: svg.classList.contains("-rotate-90"),
+				},
+				carets: container.querySelectorAll("[data-container-icon]").length,
+				handles: container.querySelectorAll(".df-family-handle").length,
+			},
+		).toStrictEqual(
+			{
+				attributes:
+				{
+					role: "button",
+					"aria-expanded": "true",
+					"aria-label": "Hide nested sessions",
+					"data-row-action": "",
+					tabindex: "-1",
+				},
+				labelledBy: [true, true],
+				hiddenTitle: [true, "Head one"],
+				wrapper: "flex ms-0.25",
+				suffix: "flex shrink-0 items-center ps-1",
+				rowName: headLink(container, "h1").querySelector("[data-row-label] > span.min-w-0")?.id,
+				glyph:
+				{
+					open: "",
+					translate: "0px 0.5px",
+					pointerEvents: "none",
+					contain: "layout paint",
+					width: "1em",
+					rotated: false,
+				},
+				carets: 1,
+				handles: 0,
+			},
+		);
+
+		fireEvent.click(
+			toggle,
+			{
+				detail: 1,
+			},
+		);
+
+		expect(
+			{
+				collapsed: readSidebarState().collapsedFamilies,
+				attributes: attributes(toggle, ["aria-expanded", "aria-label"]),
+				open: svg.getAttribute("data-open"),
+				rotated: ["-rotate-90", "rtl:rotate-90"].map((name) => svg.classList.contains(name)),
+				path: router.state.location.pathname,
+			},
+		).toStrictEqual(
+			{
+				collapsed: ["code:h1"],
+				attributes:
+				{
+					"aria-expanded": "false",
+					"aria-label": "Show nested sessions",
+				},
+				open: null,
+				rotated: [true, true],
+				path: "/",
+			},
+		);
+	});
+
+	it("folds only its own family on Alt-click of the caret", async () =>
 	{
 		const {container} = await renderGroups(TWO_FAMILIES);
 
 		fireEvent.click(
-			handle(container, "h2"),
+			caret(container, "h2"),
 			{
 				altKey: true,
 			},
 		);
 
-		expect([...readSidebarState().collapsedFamilies].toSorted()).toStrictEqual(["code:h1", "code:h2"]);
-		expect(rowTitles(family(container, "h1"))).toStrictEqual([]);
-		expect(rowTitles(family(container, "h2"))).toStrictEqual([]);
+		expect(readSidebarState().collapsedFamilies).toStrictEqual(["code:h2"]);
+	});
 
-		fireEvent.click(
-			handle(container, "h1"),
+	it("toggles from Enter and Space on the caret without following the row link", async () =>
+	{
+		const {container} = await renderGroups(FAMILY);
+		const toggle = caret(container, "h1");
+
+		const enterNotPrevented = fireEvent.keyDown(
+			toggle,
 			{
-				altKey: true,
+				key: "Enter",
+			},
+		);
+		const afterEnter = readSidebarState().collapsedFamilies;
+		const spaceNotPrevented = fireEvent.keyDown(
+			toggle,
+			{
+				key: " ",
 			},
 		);
 
-		expect(readSidebarState().collapsedFamilies).toStrictEqual([]);
-		expect(rowTitles(family(container, "h2"))).toStrictEqual(["Child two"]);
+		expect([enterNotPrevented, afterEnter, spaceNotPrevented, readSidebarState().collapsedFamilies]).toStrictEqual([
+			false,
+			["code:h1"],
+			false,
+			[],
+		]);
+	});
+
+	it("swallows a double-click's second click across the list for 500ms after a caret click", async () =>
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["performance"],
+			},
+		);
+		try
+		{
+			const {container} = await renderGroups(TWO_FAMILIES);
+			fireEvent.click(
+				caret(container, "h1"),
+				{
+					detail: 1,
+				},
+			);
+			const second = (detail: number) =>
+				fireEvent.click(
+					rowWrapper(container, "s1"),
+					{
+						detail,
+					},
+				);
+			const within = [second(2), second(1)];
+			vi.advanceTimersByTime(501);
+			const after = second(2);
+			// A keyboard toggle (detail 0) arms no guard.
+			fireEvent.keyDown(
+				caret(container, "h2"),
+				{
+					key: "Enter",
+				},
+			);
+			const afterKeyboard = second(2);
+
+			expect(
+				{
+					within,
+					after,
+					afterKeyboard,
+				},
+			).toStrictEqual(
+				{
+					within: [false, true],
+					after: true,
+					afterKeyboard: true,
+				},
+			);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
 	});
 
 	it("expands from the stub and focuses the first child", async () =>
 	{
 		const {container} = await renderGroups(FAMILY);
-		fireEvent.click(handle(container, "h1"));
+		fireEvent.click(caret(container, "h1"));
 
 		const stub = family(container, "h1").querySelector("button.df-family-stub");
 		if (!(stub instanceof HTMLElement)) throw new Error("no stub");

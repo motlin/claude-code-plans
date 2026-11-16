@@ -5840,8 +5840,7 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 
 /*
  * Upstream .df-family: a head session's nested sessions (forks), indented 20px under a
- * 1.25px tree line aligned with the head's status dot. The line turns accent while the
- * invisible handle over it is hovered.
+ * 1.25px tree line aligned with the head's status dot. The head row's caret folds them.
  */
 .df-family::before
 {
@@ -5852,8 +5851,7 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	left: calc(var(--sb-row-px) + var(--sb-leading-slot) / 2 - 0.625px);
 	width: 1.25px;
 	border-radius: 1px;
-	background: var(--df-tree-ink, var(--upstream-border));
-	transition: background-color 150ms ease-out;
+	background: var(--upstream-border);
 }
 
 /* Upstream: a described last child ends the guide halfway down its description line. */
@@ -5863,30 +5861,6 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 		(var(--sb-row-h) - var(--sb-row-ctl)) / 2 + var(--sb-described-tuck) - var(--sb-described-trim) + 2px + 1.5 *
 			(var(--sb-described-line, var(--sb-row-ctl)) - var(--sb-described-tuck))
 	);
-}
-
-.df-family[data-branch-hot]::before
-{
-	--df-tree-ink: var(--accent-100);
-	transition-delay: 0.1s;
-}
-
-.df-family > .df-family-handle-slot
-{
-	position: absolute;
-	top: 0;
-	bottom: 4px;
-	left: 0;
-	z-index: 2;
-	width: 20px;
-}
-
-@media (hover: none)
-{
-	.df-family > .df-family-handle-slot
-	{
-		display: none;
-	}
 }
 
 /* Upstream's find-in-page matches (shared-100 `ho`): the same colours in light and dark; the text is the resolved --cds-black. */

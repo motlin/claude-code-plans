@@ -34,7 +34,7 @@ import {installLocalStorage} from "./fake-storage";
 
 const MINUTE = 60 * 1000;
 
-function session(id: string, title: string, minutesAgo: number)
+function session(id: string, title: string, minutesAgo: number, forkedFromSessionId?: string)
 {
 	const mtime = new Date(Date.now() - minutesAgo * MINUTE).toISOString();
 	return {
@@ -51,6 +51,12 @@ function session(id: string, title: string, minutesAgo: number)
 		liveAgentCount: 0,
 		unseen: false,
 		blockedSince: null,
+		...(forkedFromSessionId === undefined
+			? {}
+			:
+				{
+					forkedFromSessionId,
+				}),
 	};
 }
 
@@ -142,7 +148,14 @@ async function renderGroups(activeItemId: string | null = null)
 
 function rowLink(title: string): HTMLElement
 {
-	const link = screen.getByText(title).closest("a[data-row-main-button]");
+	const link = screen
+		.getByText(
+			title,
+			{
+				ignore: "script, style, [hidden]",
+			},
+		)
+		.closest("a[data-row-main-button]");
 	if (!(link instanceof HTMLElement)) throw new Error(`no row ${title}`);
 	return link;
 }
@@ -657,6 +670,30 @@ describe("sidebar body roving focus", () =>
 			"Second row",
 			"Second row",
 		]);
+	});
+
+	it("moves from a family head row to its fold caret, then its kebab, with ArrowRight", async () =>
+	{
+		await renderSidebar("/", [
+			session("s1", "First row", 1),
+			session("s2", "Second row", 2, "s1"),
+			session("s3", "Third row", 3),
+		]);
+
+		rowLink("First row").focus();
+		const path = [press("ArrowRight"), press("ArrowRight"), press("ArrowLeft")];
+		const caretTabIndex = document.querySelector("[data-container-icon]")?.getAttribute("tabindex");
+		expect(
+			{
+				path,
+				caretTabIndex,
+			},
+		).toStrictEqual(
+			{
+				path: ["Hide nested sessions", "More options for First row", "Hide nested sessions"],
+				caretTabIndex: "-1",
+			},
+		);
 	});
 
 	it("leaves ArrowRight alone on a nav row without actions", async () =>

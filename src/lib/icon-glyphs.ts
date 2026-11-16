@@ -162,9 +162,36 @@ function CaretRightFilled(props: GlyphProps)
 	);
 }
 
-/** Upstream `_m`'s `*Filled` glyphs, drawn locally. */
-export const FILLED_GLYPHS =
+/**
+ * Upstream's `CaretDownSmall` (Anthropicons U+F003): a short down chevron drawn well inside the box,
+ * smaller than `CaretDown`. Stroked at the Icon's scaled width like a lucide glyph.
+ */
+function CaretDownSmall({strokeWidth, ...props}: GlyphProps)
 {
+	return createElement(
+		"svg",
+		{
+			viewBox: "0 0 24 24",
+			fill: "none",
+			stroke: "currentColor",
+			strokeWidth,
+			strokeLinecap: "round",
+			strokeLinejoin: "round",
+			...svgAttributes(props),
+		},
+		createElement(
+			"path",
+			{
+				d: "M7.8 9.9 12 14.1l4.2-4.2",
+			},
+		),
+	);
+}
+
+/** Glyphs lucide has no match for (upstream `_m`'s `*Filled` set and `CaretDownSmall`), drawn locally. */
+export const DRAWN_GLYPHS =
+{
+	CaretDownSmall,
 	CaretRightFilled,
 	CheckCircleFilled,
 	StopFilled,

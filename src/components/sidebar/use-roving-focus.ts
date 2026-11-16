@@ -97,10 +97,7 @@ function rowControls(element: Element): HTMLElement[]
 			(button) => button.offsetParent !== null && button.closest(SECTION_SELECTOR) === section,
 		);
 	}
-	// Upstream moves trailing name-suffix controls to the end of the row's order.
-	const controls = [...row.querySelectorAll<HTMLElement>("[data-roving-item], [data-row-action]")];
-	const isSuffix = (control: HTMLElement) => control.closest(".df-name-suffix-end") !== null;
-	return [...controls.filter((control) => !isSuffix(control)), ...controls.filter(isSuffix)];
+	return [...row.querySelectorAll<HTMLElement>("[data-roving-item], [data-row-action]")];
 }
 
 /**

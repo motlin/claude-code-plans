@@ -375,6 +375,25 @@ describe("described row meta line (upstream sidebar-row-metadata-line)", () =>
 		);
 	});
 
+	it("draws no family guide handle, accent hover or touch-only handle rule (the head row's caret folds)", () =>
+	{
+		expect(
+			{
+				slot: block(".df-family > .df-family-handle-slot"),
+				hot: block(".df-family[data-branch-hot]::before"),
+				hoverNone: [...styles.matchAll(/@media \(hover: none\)\s*\{[^@]*?df-family/g)].length,
+				treeInkHook: styles.includes("--df-tree-ink"),
+			},
+		).toStrictEqual(
+			{
+				slot: "",
+				hot: "",
+				hoverNone: 0,
+				treeInkHook: false,
+			},
+		);
+	});
+
 	it("ends the fork guide mid-description when the family's last child is described", () =>
 	{
 		expect(

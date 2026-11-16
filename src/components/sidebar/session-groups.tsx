@@ -39,6 +39,7 @@ import
 	sessionRowComparator,
 	type SessionListPrefs,
 } from "../../lib/session-groups";
+import {swallowGuardedClick} from "../../lib/sidebar-click-guard";
 import {revealThrough} from "../../lib/sidebar-section-reveal";
 import {assign, readSessionGroupState, setGroupOrder, useSessionGroups} from "../../lib/session-group-store";
 import
@@ -331,9 +332,6 @@ export function SessionGroups({
 
 	const collapsed = collapsedSet;
 	const manual = built.manual;
-	const familyHeadIds = [...manual.map((section) => section.group), ...groups].flatMap((group) => [
-		...group.nested.keys(),
-	]);
 	const selectedIds = visibleSelection(selection, displayOrder);
 	latestSelected.current = selectedIds;
 	const selectionApi: SidebarSelectionApi =
@@ -473,7 +471,14 @@ export function SessionGroups({
 	return (
 		// oxlint-disable-next-line react/jsx-no-constructed-context-values -- built after the loading early return, where hooks cannot run, from selection state that changes whenever the rows re-render anyway
 		<SidebarSelectionContext.Provider value={selectionApi}>
-			<div data-sidebar-selecting={selectedIds.length > 0 ? "" : undefined} className="contents">
+			<div
+				data-sidebar-selecting={selectedIds.length > 0 ? "" : undefined}
+				// Upstream `zu`: a fold caret's click arms a 500ms guard that drops the double-click's second click.
+				onClickCapture={swallowGuardedClick}
+				onDoubleClickCapture={swallowGuardedClick}
+				onMouseDownCapture={swallowGuardedClick}
+				className="contents"
+			>
 				<PinnedSubList
 					rows={split.pinned}
 					expanded={!collapsed.has(PINNED_GROUP_KEY)}
@@ -517,7 +522,6 @@ export function SessionGroups({
 								}
 								onReveal={onReveal}
 								dragRowProps={rowProps}
-								familyHeadIds={familyHeadIds}
 								sectionKeys={sectionKeys}
 								headerDragProps={rowProps(sectionDragId(groupId))}
 								headerRef={zoneRef(groupHeaderZoneId(groupId))}
@@ -557,7 +561,6 @@ export function SessionGroups({
 							onReveal={onReveal}
 							fetchMore={index === groups.length - 1 ? sectionFetchMore : undefined}
 							dragRowProps={rowProps}
-							familyHeadIds={familyHeadIds}
 							sectionKeys={sectionKeys}
 						/>
 					))}

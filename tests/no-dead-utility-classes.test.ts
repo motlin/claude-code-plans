@@ -66,7 +66,6 @@ const ALLOWLIST: Record<string, string> =
 	"cds-card-body": HOOK,
 	"cds-card-fill": HOOK,
 	"cds-user-message-body": HOOK,
-	"df-family-handle": HOOK,
 	"df-family-stub": HOOK,
 	"df-nav-scroll-box": HOOK,
 	"df-sortable-section": HOOK,

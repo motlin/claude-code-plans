@@ -14,7 +14,7 @@
  */
 import type {ReactElement, SVGAttributes} from "react";
 
-import {FILLED_GLYPHS, ICON_GLYPHS, ICON_MIRRORED} from "../../lib/icon-glyphs";
+import {DRAWN_GLYPHS, ICON_GLYPHS, ICON_MIRRORED} from "../../lib/icon-glyphs";
 import
 {
 	ICON_SIZE_TABLE,
@@ -27,7 +27,7 @@ import
 } from "../../lib/icon-sizes";
 import {useDensity} from "./density-context";
 
-type GlyphName = keyof typeof ICON_GLYPHS | keyof typeof FILLED_GLYPHS;
+type GlyphName = keyof typeof ICON_GLYPHS | keyof typeof DRAWN_GLYPHS;
 export type IconName = GlyphName | "DotsVertical";
 
 export interface IconProps extends Omit<SVGAttributes<SVGSVGElement>, "name" | "rotate" | "children">
@@ -45,11 +45,11 @@ export interface IconProps extends Omit<SVGAttributes<SVGSVGElement>, "name" | "
 
 const GLYPHS: Record<
 	GlyphName,
-	(typeof ICON_GLYPHS)[keyof typeof ICON_GLYPHS] | (typeof FILLED_GLYPHS)[keyof typeof FILLED_GLYPHS]
+	(typeof ICON_GLYPHS)[keyof typeof ICON_GLYPHS] | (typeof DRAWN_GLYPHS)[keyof typeof DRAWN_GLYPHS]
 > =
 {
 	...ICON_GLYPHS,
-	...FILLED_GLYPHS,
+	...DRAWN_GLYPHS,
 };
 
 /** Lucide draws every glyph in a 24-unit viewBox, so a px stroke scales by 24 / rendered px. */

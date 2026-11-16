@@ -13,8 +13,10 @@ import
 	useRef,
 	useState,
 	useSyncExternalStore,
+	type KeyboardEvent,
 	type MouseEvent,
 	type ReactNode,
+	type SyntheticEvent,
 } from "react";
 
 import {projectsQueryOptions} from "../../lib/api/projects";
@@ -42,16 +44,10 @@ import
 	type SessionListPrefs,
 	truncates,
 } from "../../lib/session-groups";
+import {guardDoubleClicks} from "../../lib/sidebar-click-guard";
 import {revealThrough, withHeads} from "../../lib/sidebar-section-reveal";
 import {clearRevealRow, useRevealRow} from "./reveal-row-store";
-import
-{
-	familyKey,
-	setFamiliesCollapsed,
-	toggleFamilyCollapsed,
-	toggleSidebarGroup,
-	useSidebarState,
-} from "../../lib/sidebar-store";
+import {familyKey, toggleFamilyCollapsed, toggleSidebarGroup, useSidebarState} from "../../lib/sidebar-store";
 import {SessionActionsMenu, SessionRowTitle} from "../session-actions-menu";
 import {SessionHoverCard} from "../session-hover-card";
 import {QUICK_REPLY_HINT} from "../session-hover-card-classes";
@@ -71,8 +67,6 @@ import {UNTITLED_SESSION_TITLE} from "../../lib/session-stand-in-title";
 import {useSidebarSelection} from "./selection-context";
 import type {SidebarSessionRow} from "./sidebar-session-row";
 import {ROVING_ITEM_PROPS} from "./use-roving-focus";
-
-const NO_FAMILY_HEAD_IDS: readonly string[] = [];
 
 /** The section's unarchived sessions, family members included, for Archive all. */
 function archivableIds(group: SessionGroup<SidebarSessionRow>): string[]
@@ -278,7 +272,6 @@ export function GroupSection({
 	fetchMore,
 	dragRowProps,
 	pinnedIds,
-	familyHeadIds = NO_FAMILY_HEAD_IDS,
 	headerDragProps,
 	headerRef,
 	rowsRef,
@@ -306,8 +299,6 @@ export function GroupSection({
 	dragRowProps?: (id: string) => SidebarDragRowProps;
 	/** Set for the Pinned section: its display order, which enables Move up / Move down. */
 	pinnedIds?: readonly string[];
-	/** Every family head in the list, for the Alt-click that hides or shows all nested sessions. */
-	familyHeadIds?: readonly string[];
 	/** Makes the label row a drag source (a custom group header reorders sections). */
 	headerDragProps?: SidebarDragRowProps;
 	/** Registers the label row as a drop zone. */
@@ -557,6 +548,14 @@ export function GroupSection({
 											envGlyph={envGlyph}
 											place={place}
 											awaitingHintId={awaitingHintId}
+											{...(nested === undefined
+												? {}
+												:
+													{
+														nameSuffix: (
+															<FamilyCaret headId={row.sessionId} title={row.title} />
+														),
+													})}
 										/>
 									</div>
 									{nested !== undefined && (
@@ -564,7 +563,6 @@ export function GroupSection({
 											head={row}
 											nested={nested}
 											activeItemId={activeItemId}
-											familyHeadIds={familyHeadIds}
 											dragRowProps={dragRowProps}
 											envGlyph={envGlyph}
 											place={place}
@@ -640,7 +638,6 @@ export function GroupSection({
 									{
 										dragRowProps,
 									})}
-							familyHeadIds={familyHeadIds}
 							sectionKeys={sectionKeys ?? [group.key]}
 						/>
 					))}
@@ -890,15 +887,86 @@ function useSectionAppearance(
 }
 
 /**
- * A family head's nested sessions (upstream `.df-family`): indented 20px under a tree
- * line, with an invisible handle over the line that hides them behind a stub row.
- * Alt-click on the handle hides or shows every family.
+ * Upstream's fold caret (shared-21 `o$`): sits after a family head row's title and hides or shows the
+ * family's nested sessions. Named "Hide nested sessions {title}" through a hidden title span; it is an
+ * arrows-only row control (`data-row-action`, tabIndex -1) inside the row link, so it stops the link's
+ * click, press, drag and middle-click, and a mouse click arms the list's 500ms double-click guard.
+ */
+function FamilyCaret({headId, title}: {headId: string; title: string})
+{
+	const {collapsedFamilies} = useSidebarState();
+	const collapsed = collapsedFamilies.includes(familyKey(headId));
+	const id = useId();
+	const label = collapsed ? "Show nested sessions" : "Hide nested sessions";
+	const toggle = (event: MouseEvent | KeyboardEvent) =>
+	{
+		event.preventDefault();
+		event.stopPropagation();
+		toggleFamilyCollapsed(headId);
+		if (event.type === "click" && event.detail > 0) guardDoubleClicks(500);
+	};
+	const stop = (event: SyntheticEvent) =>
+	{
+		event.stopPropagation();
+	};
+	return (
+		<Tooltip content={label}>
+			<span className="flex ms-0.25">
+				<span id={`${id}-title`} hidden>
+					{title.trim() || UNTITLED_SESSION_TITLE}
+				</span>
+				<span
+					role="button"
+					data-container-icon=""
+					data-row-action=""
+					tabIndex={-1}
+					id={id}
+					aria-expanded={!collapsed}
+					aria-label={label}
+					aria-labelledby={`${id} ${id}-title`}
+					onClick={toggle}
+					onPointerDown={stop}
+					onDoubleClick={stop}
+					onAuxClick={(event) =>
+					{
+						if (event.button !== 1) return;
+						event.preventDefault();
+						event.stopPropagation();
+					}}
+					onKeyDown={(event) =>
+					{
+						if (event.key === "Enter" || event.key === " ") toggle(event);
+					}}
+					className="hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-[inset_0_0_0_1px_var(--color-accent-100),0_0_6px_0_color-mix(in_srgb,var(--color-accent-100)_20%,transparent)] -m-0.5 flex shrink-0 cursor-pointer items-center justify-center rounded p-0.5 hover:bg-[var(--upstream-fill-ghost-hover)] hover:text-primary text-[color:var(--muted-as-secondary,var(--color-ink-muted))]"
+				>
+					<Icon
+						name="CaretDownSmall"
+						customSize={14}
+						data-open={collapsed ? undefined : ""}
+						style={
+						{
+							contain: "layout paint",
+							pointerEvents: "none",
+							translate: "0 0.5px",
+						}}
+						className={`transition-transform duration-[60ms] motion-reduce:transition-none${
+							collapsed ? " -rotate-90 rtl:rotate-90" : ""
+						}`}
+					/>
+				</span>
+			</span>
+		</Tooltip>
+	);
+}
+
+/**
+ * A family head's nested sessions (upstream `.df-family`): indented 20px under an elbow guide;
+ * the head row's caret folds them behind a stub row.
  */
 function SessionFamily({
 	head,
 	nested,
 	activeItemId,
-	familyHeadIds,
 	dragRowProps,
 	envGlyph,
 	place,
@@ -907,7 +975,6 @@ function SessionFamily({
 	head: SidebarSessionRow;
 	nested: readonly SidebarSessionRow[];
 	activeItemId: string | null;
-	familyHeadIds: readonly string[];
 	dragRowProps: ((id: string) => SidebarDragRowProps) | undefined;
 	envGlyph: boolean;
 	place: RowPlace;
@@ -917,7 +984,6 @@ function SessionFamily({
 {
 	const {collapsedFamilies} = useSidebarState();
 	const collapsed = collapsedFamilies.includes(familyKey(head.sessionId));
-	const [hot, setHot] = useState(false);
 	const ref = useRef<HTMLDivElement>(null);
 	const focusFirstChild = useRef(false);
 
@@ -929,37 +995,9 @@ function SessionFamily({
 	}, [collapsed]);
 
 	const titles = new Map([head, ...nested].map((row) => [row.sessionId, row.title]));
-	const label = collapsed ? "Show nested sessions" : "Hide nested sessions";
 
 	return (
-		<div
-			ref={ref}
-			data-family-head={head.sessionId}
-			data-branch-hot={hot ? "" : undefined}
-			className="df-family relative flex flex-col gap-px"
-		>
-			<Tooltip content={label} side="right" className="df-family-handle-slot">
-				<button
-					type="button"
-					tabIndex={-1}
-					aria-expanded={!collapsed}
-					aria-label={label}
-					onPointerEnter={() =>
-					{
-						setHot(true);
-					}}
-					onPointerLeave={() =>
-					{
-						setHot(false);
-					}}
-					onClick={(event) =>
-					{
-						if (event.altKey) setFamiliesCollapsed(familyHeadIds, !collapsed);
-						else toggleFamilyCollapsed(head.sessionId);
-					}}
-					className="df-family-handle h-full w-full cursor-pointer rounded-r5"
-				/>
-			</Tooltip>
+		<div ref={ref} data-family-head={head.sessionId} className="df-family relative flex flex-col gap-px">
 			{collapsed ? (
 				<div className="pl-5">
 					<FamilyStub
@@ -1058,6 +1096,7 @@ function SessionRowLink({
 	place,
 	lineage,
 	awaitingHintId,
+	nameSuffix,
 }: {
 	row: SidebarSessionRow;
 	selected: boolean;
@@ -1070,6 +1109,8 @@ function SessionRowLink({
 	lineage?: string;
 	/** The section's shared quick-reply hint, describing a Needs input row. */
 	awaitingHintId: string;
+	/** Upstream's `nameSuffix`: a control right after the title (a family head's fold caret). */
+	nameSuffix?: ReactNode;
 })
 {
 	const queryClient = useQueryClient();
@@ -1090,20 +1131,33 @@ function SessionRowLink({
 	const descriptionId = `${labelId}-description`;
 	const lineageId = `${labelId}-lineage`;
 	const rowClass = metaLine === undefined ? ROW_CLASS : DESCRIBED_ROW_CLASS;
+	const rowTitleLabel = (
+		<SessionRowTitle
+			render={(title) => (
+				<FadeLabel text={title} attention={attention}>
+					{/* Upstream's o_: archived rows get a sr-only " Archived" right after the title, no pill */}
+					{row.archived && <span className="sr-only"> Archived</span>}
+					<SidebarRowSrText session={row.session} />
+				</FadeLabel>
+			)}
+		/>
+	);
 	const titleLine = (
 		<>
 			{/* Upstream starts the title 10px into the row; the trailing span below keeps it clear of the 24px slot */}
-			<span id={labelId} data-row-label className="min-w-0 flex-1 ps-2">
-				<SessionRowTitle
-					render={(title) => (
-						<FadeLabel text={title} attention={attention}>
-							{/* Upstream's o_: archived rows get a sr-only " Archived" right after the title, no pill */}
-							{row.archived && <span className="sr-only"> Archived</span>}
-							<SidebarRowSrText session={row.session} />
-						</FadeLabel>
-					)}
-				/>
-			</span>
+			{nameSuffix === undefined ? (
+				<span id={labelId} data-row-label className="min-w-0 flex-1 ps-2">
+					{rowTitleLabel}
+				</span>
+			) : (
+				// Upstream `Xx` with a nameSuffix: the title truncates in its own span, the suffix follows it.
+				<span data-row-label className="flex min-w-0 flex-1 items-center ps-2">
+					<span id={labelId} className="min-w-0">
+						{rowTitleLabel}
+					</span>
+					<span className="flex shrink-0 items-center ps-1">{nameSuffix}</span>
+				</span>
+			)}
 			{/* Upstream's title tail: reserves the trailing slot and holds the PR glyph left of it */}
 			<span className="shrink-0 flex items-center gap-1.5 text-xs text-muted-as-secondary me-[calc(var(--sb-row-ctl-inset)+var(--sb-row-ctl)-var(--sb-row-px))]">
 				{prTail !== undefined && <PrTailGlyph state={prTail} />}
@@ -1144,9 +1198,12 @@ function SessionRowLink({
 					data-row-main-button
 					aria-describedby={blocked ? awaitingHintId : undefined}
 					// Upstream names a described row by its title and description; the sr-only lineage note stays in it.
+					// A row with a name suffix is named by its title alone, so the caret's label stays out of it.
 					aria-labelledby={
 						metaLine === undefined
-							? undefined
+							? nameSuffix === undefined
+								? undefined
+								: labelId
 							: [labelId, descriptionId, ...(lineage === undefined ? [] : [lineageId])].join(" ")
 					}
 					data-selected={selected ? "focused" : undefined}

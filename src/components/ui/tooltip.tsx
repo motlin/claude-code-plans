@@ -101,7 +101,7 @@ function popupOpen(anchor: HTMLElement): boolean
 
 /**
  * Minimal claude.ai/code tooltip: always dark, side top (titlebar controls use
- * bottom, sidebar family handles right), offset 4, 300ms hover delay (keyboard focus opens at once, marked `data-instant="focus"`), with an optional text-variant shortcut
+ * bottom), offset 4, 300ms hover delay (keyboard focus opens at once, marked `data-instant="focus"`), with an optional text-variant shortcut
  * after the label. Once open it is measured and, when it would leave the viewport, flipped to the opposite side
  * and shifted to stay 8px inside the edges.
  */
