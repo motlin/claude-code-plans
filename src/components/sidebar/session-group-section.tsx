@@ -1,4 +1,5 @@
 import {sectionHoverWithinProps} from "../../lib/section-hover-within";
+import {LABEL_SHIFT_FADE_PX, recomputeLabelShift, registerTruncatingLabel} from "../../lib/find-in-page/label-shift";
 import {Link, useNavigate} from "@tanstack/react-router";
 import {useQuery, useQueryClient} from "@tanstack/react-query";
 import
@@ -1095,29 +1096,46 @@ function FadeLabel({
 })
 {
 	const ref = useRef<HTMLSpanElement>(null);
+	const textRef = useRef<HTMLSpanElement>(null);
 	const [overflowing, setOverflowing] = useState(false);
 
 	useLayoutEffect(() =>
 	{
 		const element = ref.current;
-		if (element === null) return undefined;
+		const textElement = textRef.current;
+		if (element === null || textElement === null) return undefined;
+		const isOverflowing = () => element.scrollWidth > element.clientWidth;
+		// Every local label keeps its trailing slot outside the box: upstream's `cleared` case, a 24px band.
+		const unregister = registerTruncatingLabel(
+			{
+				box: element,
+				text: textElement,
+				endBandPx: () => (isOverflowing() ? LABEL_SHIFT_FADE_PX : 0),
+			},
+		);
 		const measure = () =>
 		{
-			setOverflowing(element.scrollWidth > element.clientWidth);
+			setOverflowing(isOverflowing());
+			recomputeLabelShift(textElement);
 		};
 		measure();
-		if (typeof ResizeObserver === "undefined") return undefined;
+		if (typeof ResizeObserver === "undefined") return unregister;
 		const observer = new ResizeObserver(measure);
 		observer.observe(element);
 		return () =>
 		{
 			observer.disconnect();
+			unregister();
 		};
 	}, [text]);
 
 	return (
 		<span ref={ref} dir="auto" className="dframe-fade-label" data-overflowing={overflowing ? "" : undefined}>
-			<span className="relative inline-block align-top whitespace-nowrap" data-attention={attention}>
+			<span
+				ref={textRef}
+				className="relative inline-block align-top whitespace-nowrap"
+				data-attention={attention}
+			>
 				{text}
 				{children}
 			</span>

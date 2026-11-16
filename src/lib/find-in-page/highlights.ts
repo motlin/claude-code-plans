@@ -4,6 +4,8 @@
  * `find-in-page-active` at priority 1. The colours live in globals.css (`::highlight(find-in-page…)`).
  */
 
+import {shiftLabelForActiveMatch} from "./label-shift";
+
 const FIND_HIGHLIGHT = "find-in-page";
 const FIND_ACTIVE_HIGHLIGHT = "find-in-page-active";
 
@@ -47,6 +49,8 @@ export function addFindRanges(ranges: readonly Range[], active: Range | null): v
 		const current = namedHighlight(FIND_ACTIVE_HIGHLIGHT);
 		current?.clear();
 		current?.add(active);
+		// Upstream `SQ` → `r6`: a clipped label holding the active match slides it into view.
+		shiftLabelForActiveMatch(active);
 	}
 }
 
@@ -61,6 +65,7 @@ export function paintFindHighlights(ranges: readonly Range[], active: Range | nu
 /** Upstream `$i`: drop both highlights. */
 export function clearFindHighlights(): void
 {
+	shiftLabelForActiveMatch(null);
 	const api = highlightApi();
 	api?.registry.delete(FIND_HIGHLIGHT);
 	api?.registry.delete(FIND_ACTIVE_HIGHLIGHT);

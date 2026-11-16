@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import {collectFindRanges} from "../src/lib/find-in-page/match";
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import
 {
@@ -1267,8 +1268,18 @@ describe("SessionPage dock composition", () =>
 		const grid = outlet?.parentElement;
 		const chrome = grid?.parentElement;
 		const home = document.querySelector('[data-testid="transcript-row"] [data-turn-mark-home]');
+		const carriedLabel = outlet?.querySelector("[data-standalone-tool-row] [id$='-label']")?.textContent ?? "";
 		expect(
 			{
+				// Upstream's tail slot, tail chrome and carried box are data-find-omitted, so in-app Find
+				// counts neither the moved row nor the card's description of the same call.
+				carriedFind: [
+					carriedLabel !== "",
+					collectFindRanges(document.body, carriedLabel).length,
+					[card, chrome, outlet?.querySelector("[data-turn-mark-box]")].map((element) =>
+						element?.hasAttribute("data-find-omitted"),
+					),
+				],
 				cardFirst:
 					card !== null &&
 					outlet !== null &&
@@ -1284,6 +1295,7 @@ describe("SessionPage dock composition", () =>
 			},
 		).toStrictEqual(
 			{
+				carriedFind: [true, 0, [true, true, true]],
 				cardFirst: true,
 				cardClass: "chat-column empty:hidden",
 				carried: true,

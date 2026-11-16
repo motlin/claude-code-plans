@@ -12,6 +12,7 @@ import {setKeyboardShortcutsOpen} from "../src/components/keyboard-shortcuts-ope
 import {DialogPopup} from "../src/components/ui/dialog-popup";
 import {shortcutSections} from "../src/components/keyboard-shortcut-sections";
 import {SHORTCUT_IDS, SHORTCUTS} from "../src/lib/shortcuts/registry";
+import {markTerminalCommand} from "../src/lib/terminal-marked-store";
 import {PanelsOff} from "./fizzy-lake-off";
 import {mockTallWindow} from "./tall-window";
 
@@ -1552,5 +1553,105 @@ describe("ShortcutRow", () =>
 
 		const cell = keysCell(container);
 		expect([...(cell?.children ?? [])].map((child) => child.textContent)).toStrictEqual(["⌥OptionF5"]);
+	});
+});
+
+describe("terminal command-scroll rows", () =>
+{
+	afterEach(() =>
+	{
+		act(() =>
+		{
+			setKeyboardShortcutsOpen(false);
+		});
+		cleanup();
+		vi.restoreAllMocks();
+	});
+
+	/** The Panes rows from Toggle terminal on, each as its label and keycaps. */
+	async function terminalRows(userAgent: string, query = ""): Promise<string[]>
+	{
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(userAgent);
+		pressShortcutsKey(
+			renderWithComposer(),
+			userAgent === MAC_UA
+				?
+					{
+						metaKey: true,
+					}
+				:
+					{
+						ctrlKey: true,
+					},
+		);
+		const dialog = await screen.findByRole(
+			"dialog",
+			{
+				name: "Keyboard shortcuts",
+			},
+		);
+		const region = within(dialog).getByRole(
+			"region",
+			{
+				name: "Shortcuts",
+			},
+		);
+		if (query !== "")
+			typeQuery(
+				within(dialog).getByRole(
+					"searchbox",
+					{
+						name: "Search shortcuts",
+					},
+				),
+				query,
+			);
+		const rows = [...region.querySelectorAll(":scope > div:not([hidden]) > ul > li:not([hidden])")].map(
+			(row) => row.textContent,
+		);
+		act(() =>
+		{
+			setKeyboardShortcutsOpen(false);
+		});
+		cleanup();
+		if (query !== "") return rows;
+		const at = rows.findIndex((row) => row.startsWith("Toggle terminal"));
+		return rows.slice(at, at + 3);
+	}
+
+	it("hides upstream's Scroll to command rows until a terminal marks a command, then lists them after Toggle terminal", async () =>
+	{
+		const before = await terminalRows(MAC_UA);
+		act(() =>
+		{
+			markTerminalCommand();
+		});
+		expect(
+			{
+				before,
+				mac: await terminalRows(MAC_UA),
+				windows: await terminalRows("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"),
+				search: (await terminalRows(MAC_UA, "command")).filter((row) => row.startsWith("Scroll to")).length,
+			},
+		).toStrictEqual(
+			{
+				before: [
+					expect.stringMatching(/^Toggle terminal/),
+					expect.stringMatching(/^Close pane/),
+					expect.stringMatching(/^Expand or collapse pane/),
+				],
+				mac: [
+					expect.stringMatching(/^Toggle terminal/),
+					expect.stringMatching(/^Scroll to next command in terminal.*⌘Command.*↓/),
+					expect.stringMatching(/^Scroll to previous command in terminal.*⌘Command.*↑/),
+				],
+				windows: [
+					expect.stringMatching(/^Toggle terminal/),
+					expect.stringMatching(/^Scroll to next command in terminal.*Ctrl.*↓/),
+					expect.stringMatching(/^Scroll to previous command in terminal.*Ctrl.*↑/),
+				],
+				search: 2,
+			},
+		);
 	});
 });

@@ -4,6 +4,7 @@ import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {FindInPage} from "../src/components/find-in-page-bar";
+import {registerTruncatingLabel} from "../src/lib/find-in-page/label-shift";
 import {endFind, registerFindProvider} from "../src/lib/find-in-page/store";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
@@ -462,6 +463,88 @@ describe("FindInPage", () =>
 				takenOpened: false,
 				underDialog: [false, false],
 				ctrlOnMac: [false, false],
+			},
+		);
+	});
+
+	it("shifts a clipped label so its active match shows, resets it when the match moves on or find closes, and scrolls the label box", () =>
+	{
+		offs.push(setup().off);
+		document.body.insertAdjacentHTML(
+			"afterbegin",
+			'<nav><span id="box"><span id="text">A long title ending in needle</span></span></nav><p>needle in prose</p>',
+		);
+		const box = document.getElementById("box")!;
+		const text = document.getElementById("text")!;
+		box.getBoundingClientRect = () => new DOMRect(0, 0, 200, 20);
+		// The label's match sits under its end fade; every other range is laid out at the origin.
+		Range.prototype.getBoundingClientRect = function (this: Range)
+		{
+			return text.contains(this.startContainer) ? new DOMRect(190, 0, 20, 20) : new DOMRect(0, 0, 10, 10);
+		};
+		offs.push(
+			registerTruncatingLabel(
+				{
+					box,
+					text,
+					endBandPx: () => 24,
+				},
+			),
+		);
+		const scrolled: Element[] = [];
+		Object.defineProperty(
+			HTMLElement.prototype,
+			"scrollIntoView",
+			{
+				configurable: true,
+				value(this: HTMLElement)
+				{
+					scrolled.push(this);
+				},
+			},
+		);
+		offs.push(() =>
+		{
+			Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
+		});
+		pressFind();
+		type("needle");
+		const onLabel = text.style.transform;
+		key(
+			input(),
+			{
+				key: "Enter",
+			},
+		);
+		const onProse = text.style.transform;
+		key(
+			input(),
+			{
+				key: "Enter",
+			},
+		);
+		const backOnLabel = text.style.transform;
+		key(
+			input(),
+			{
+				key: "Escape",
+			},
+		);
+		expect(
+			{
+				onLabel,
+				onProse,
+				backOnLabel,
+				closed: text.style.transform,
+				firstScroll: scrolled[0]?.id,
+			},
+		).toStrictEqual(
+			{
+				onLabel: "translateX(-162px)",
+				onProse: "",
+				backOnLabel: "translateX(-162px)",
+				closed: "",
+				firstScroll: "box",
 			},
 		);
 	});

@@ -2251,7 +2251,7 @@ function ArtifactWatchEndedRow({
 			className="group/msg flex flex-col w-full pb-4 comfortable:pb-5 has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
 		>
 			<TurnStatusFrame leading={false}>
-				<div data-turn-status="" className={TURN_STATUS_CLASS}>
+				<div data-turn-status="" data-find-omitted="" className={TURN_STATUS_CLASS}>
 					<span data-artifact-watch-ended="" className="text-body text-secondary min-w-0 truncate">
 						Stopped watching {displayName}
 					</span>
@@ -2296,7 +2296,7 @@ function ContextRefreshRow({
 			className="group/msg flex flex-col w-full pb-4 comfortable:pb-5 has-[>[data-assistant-span-footer]]:pb-[var(--chat-turn-gap)] [&>[data-assistant-span-footer]]:mt-[5px]"
 		>
 			<TurnStatusFrame leading={false}>
-				<div data-turn-status="" className={TURN_STATUS_CLASS}>
+				<div data-turn-status="" data-find-omitted="" className={TURN_STATUS_CLASS}>
 					<span data-context-refresh="" className="text-body text-secondary min-w-0 truncate">
 						{contextRefreshText(refresh)}
 					</span>
@@ -2311,7 +2311,7 @@ function TaskEventRunStatus({events}: {events: readonly TaskEvent[]})
 {
 	return (
 		<TurnStatusFrame leading={false}>
-			<div data-turn-status="" className={TURN_STATUS_CLASS}>
+			<div data-turn-status="" data-find-omitted="" className={TURN_STATUS_CLASS}>
 				<TaskEventRun events={events} />
 			</div>
 		</TurnStatusFrame>
@@ -5921,7 +5921,7 @@ function CompactedSessionStatus({
 	{
 		return (
 			<TurnStatusFrame leading={false}>
-				<div data-turn-status="" className={TURN_STATUS_CLASS}>
+				<div data-turn-status="" data-find-omitted="" className={TURN_STATUS_CLASS}>
 					<div
 						data-turn-status-marker=""
 						data-cds-row=""
@@ -5938,7 +5938,7 @@ function CompactedSessionStatus({
 	}
 	return (
 		<TurnStatusFrame leading={false}>
-			<div data-turn-status="" className={TURN_STATUS_CLASS}>
+			<div data-turn-status="" data-find-omitted="" className={TURN_STATUS_CLASS}>
 				<button
 					type="button"
 					aria-expanded={expanded}
@@ -8099,6 +8099,7 @@ function ToolCallRow({
 			<div
 				data-tool-row=""
 				data-completed-agent-row={isCompletedPaneAgent && !nested ? "" : undefined}
+				data-find-omitted={nested ? undefined : ""}
 				className="flex flex-col w-full"
 			>
 				<div
@@ -8162,7 +8163,12 @@ function ToolCallRow({
 	if (!expandable)
 	{
 		return withHoistedImages(
-			<div data-tool-row="" data-tool-anchor={toolAnchor} className="flex flex-col w-full">
+			<div
+				data-tool-row=""
+				data-tool-anchor={toolAnchor}
+				data-find-omitted={nested ? undefined : ""}
+				className="flex flex-col w-full"
+			>
 				<div
 					data-state={busyAgent ? "busy" : undefined}
 					data-cds-row=""
@@ -8189,6 +8195,7 @@ function ToolCallRow({
 			data-tool-anchor={toolAnchor}
 			data-turn-status={isTurnStatus ? "" : undefined}
 			data-standalone-tool-row={isTurnStatus ? "" : undefined}
+			data-find-omitted={nested ? undefined : ""}
 			className={isTurnStatus ? TURN_STATUS_CLASS : "flex flex-col w-full"}
 		>
 			<div
@@ -8511,7 +8518,7 @@ function ToolCallSummary({
 		);
 
 	const status = (
-		<div ref={rootRef} data-tool-row="" data-turn-status="" className={TURN_STATUS_CLASS}>
+		<div ref={rootRef} data-tool-row="" data-turn-status="" data-find-omitted="" className={TURN_STATUS_CLASS}>
 			{(calls.length > 0 || notices.length > 0) && (
 				<>
 					{hasGroupMedia ? (

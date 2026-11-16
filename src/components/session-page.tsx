@@ -2372,6 +2372,8 @@ function SessionView({
 									{shownPermission && permissionKey !== null && (
 										<div
 											data-inline-permission=""
+											// Upstream portals the card into its `transcript-tail-slot`, which in-app Find skips.
+											data-find-omitted=""
 											// Upstream's tail chrome pads the 15px under a card that holds the tail.
 											className={`${CHAT_COLUMN_CLASS}${cardHoldsTail ? "" : " pb-4"} empty:hidden`}
 										>
@@ -2493,6 +2495,7 @@ function SessionView({
 										// Upstream's tail chrome (`si`): the outlet and a quiet working line share one grid cell.
 										<div
 											data-transcript-tail-chrome=""
+											data-find-omitted=""
 											className={`${CHAT_COLUMN_CLASS} flex w-full flex-col gap-[var(--chat-turn-gap)] pt-[var(--chat-turn-gap)] empty:hidden`}
 										>
 											<div className="grid grid-cols-[minmax(0,1fr)] gap-y-[var(--chat-turn-gap,15px)] [&>*]:min-w-0 [&>:empty]:invisible [&>:empty]:[grid-area:1/1] [&>[data-quiet]]:[grid-area:1/1] [&>[data-turn-mark-outlet]]:[grid-area:1/1]">

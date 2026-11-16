@@ -6,6 +6,7 @@
  */
 
 import {clearFindHighlights, addFindRanges} from "./highlights";
+import {truncatingLabelBox} from "./label-shift";
 import {collectFindRanges, isRangeVisible, newVisibilityCache} from "./match";
 
 /** Upstream `za`: an element the DOM surface never searches (the find bar itself carries it). */
@@ -375,11 +376,14 @@ function search(query: string, forward: boolean, mode: FindMode): FindResult
 	};
 }
 
-/** Upstream `F0`: bring the active DOM match's element into view, as little as possible. */
+/**
+ * Upstream `F0`: bring the active DOM match's element into view, as little as possible. Inside a clipped
+ * label that is the label's box, not its (possibly shifted) text.
+ */
 function revealRange(range: Range): void
 {
 	const node = range.startContainer;
-	const element = node instanceof Element ? node : node.parentElement;
+	const element = truncatingLabelBox(node) ?? (node instanceof Element ? node : node.parentElement);
 	element?.scrollIntoView(
 		{
 			block: "nearest",

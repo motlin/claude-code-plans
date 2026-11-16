@@ -21,9 +21,9 @@ function chord(binding: Binding): string
 
 describe("shortcut registry", () =>
 {
-	it("lists the 46 upstream web entries plus the page-scoped and Settings ⌘F searches, the desktop-only ⌥⌘F and the six local herdr terminal keys", () =>
+	it("lists the 48 upstream web entries plus the page-scoped and Settings ⌘F searches, the desktop-only ⌥⌘F and the six local herdr terminal keys", () =>
 	{
-		expect(SHORTCUT_IDS).toHaveLength(55);
+		expect(SHORTCUT_IDS).toHaveLength(57);
 	});
 
 	it("binds the local herdr terminal keys as ⌥⌘ chords on mac and Ctrl+Alt elsewhere, in their own Terminals group", () =>
@@ -453,6 +453,8 @@ describe("shortcut registry", () =>
 			"toggle_files",
 			"attach_selection",
 			"toggle_terminal",
+			"next_terminal_command",
+			"prev_terminal_command",
 			"close_pane",
 			"expand_collapse_pane",
 			"toggle_side_chat",
@@ -472,6 +474,45 @@ describe("shortcut registry", () =>
 			"next_terminal_pane",
 			"prev_terminal_pane",
 		]);
+	});
+
+	it("registers upstream's terminal command-scroll rows right after Toggle terminal, display-only until a command is marked", () =>
+	{
+		const ids = ["next_terminal_command", "prev_terminal_command"] as const;
+		const at = SHORTCUT_IDS.indexOf("toggle_terminal");
+		expect(
+			{
+				order: SHORTCUT_IDS.slice(at, at + 3),
+				rows: ids.map((id) => (
+				{
+					description: SHORTCUTS[id].description,
+					group: SHORTCUTS[id].group,
+					when: SHORTCUTS[id].when,
+					mac: bindingsFor(id, true).map(bindingToKeys),
+					windows: bindingsFor(id, false, true).map(bindingToKeys),
+				})),
+			},
+		).toStrictEqual(
+			{
+				order: ["toggle_terminal", "next_terminal_command", "prev_terminal_command"],
+				rows: [
+					{
+						description: "Scroll to next command in terminal",
+						group: "panes",
+						when: "terminalCommandsMarked",
+						mac: ["cmd+arrowdown"],
+						windows: ["ctrl+arrowdown"],
+					},
+					{
+						description: "Scroll to previous command in terminal",
+						group: "panes",
+						when: "terminalCommandsMarked",
+						mac: ["cmd+arrowup"],
+						windows: ["ctrl+arrowup"],
+					},
+				],
+			},
+		);
 	});
 
 	it("binds F6 (plus ⌘F6 / Ctrl+F6) forward and ⇧F6 (plus ⇧⌘F6 / Ctrl+⇧F6) backward", () =>

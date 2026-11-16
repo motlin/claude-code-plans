@@ -20,6 +20,7 @@ import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src
 import {DEFAULT_SESSION_LIST_PREFS, type SessionListPrefs} from "../src/lib/session-groups";
 import type {SessionBucket} from "../src/lib/session-state";
 import {FizzyLakeContext, FIZZY_LAKE_PARTS, type FizzyLakePart} from "../src/lib/fizzy-lake";
+import {findTruncatingLabel, shiftLabelForActiveMatch} from "../src/lib/find-in-page/label-shift";
 import {installLocalStorage} from "./fake-storage";
 import {readFileSync} from "node:fs";
 
@@ -1057,6 +1058,50 @@ describe("sidebar Group and sort menu", () =>
 					overflowing: true,
 					dir: "auto",
 					text: longName,
+				},
+			);
+		}
+		finally
+		{
+			scrollWidth.mockRestore();
+			clientWidth.mockRestore();
+		}
+	});
+
+	it("registers each fade label with find, so an active match near a long title's end slides the text into view", async () =>
+	{
+		const scrollWidth = vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(2000);
+		const clientWidth = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(200);
+		try
+		{
+			const {container, unmount} = await renderSidebarGroups([
+				session("l1", "A long title ending in needle", "done", "alpha"),
+			]);
+			const box = container.querySelector<HTMLElement>('a[href="/session/l1"] .dframe-fade-label');
+			const text = box?.querySelector<HTMLElement>(":scope > span.inline-block");
+			const title = text?.firstChild;
+			if (!box || !text || !title) throw new Error("no fade label");
+			box.getBoundingClientRect = () => new DOMRect(0, 0, 200, 20);
+			const range = document.createRange();
+			range.setStart(title, 0);
+			range.setEnd(title, 6);
+			range.getBoundingClientRect = () => new DOMRect(190, 0, 20, 20);
+			const registered = findTruncatingLabel(title)?.box === box;
+			shiftLabelForActiveMatch(range);
+			const transform = text.style.transform;
+			shiftLabelForActiveMatch(null);
+			unmount();
+			expect(
+				{
+					registered,
+					transform,
+					afterUnmount: findTruncatingLabel(title),
+				},
+			).toStrictEqual(
+				{
+					registered: true,
+					transform: "translateX(-162px)",
+					afterUnmount: undefined,
 				},
 			);
 		}

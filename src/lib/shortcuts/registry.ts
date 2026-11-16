@@ -52,6 +52,11 @@ export interface ShortcutDefinition
 	dialogShowsAllBindings?: true;
 	/** Registered and bound, but upstream's ⌘/ dialog has no row for it. */
 	hiddenFromDialog?: true;
+	/**
+	 * The ⌘/ dialog lists the row only while this condition holds. Such entries are display-only: the
+	 * surface that owns the keys handles them itself, so nothing binds them through `useShortcut`.
+	 */
+	when?: "terminalCommandsMarked";
 }
 
 function macAndNonMac(
@@ -537,6 +542,24 @@ export const SHORTCUTS =
 		bindings: ctrlEverywhere("`", [], "Backquote"),
 		ownerSlug: "panes-terminal",
 		enabled: true,
+	},
+	next_terminal_command:
+	{
+		description: "Scroll to next command in terminal",
+		group: "panes",
+		bindings: cmdOrCtrl("arrowdown", [], "ArrowDown"),
+		ownerSlug: "terminal-command-scroll",
+		enabled: true,
+		when: "terminalCommandsMarked",
+	},
+	prev_terminal_command:
+	{
+		description: "Scroll to previous command in terminal",
+		group: "panes",
+		bindings: cmdOrCtrl("arrowup", [], "ArrowUp"),
+		ownerSlug: "terminal-command-scroll",
+		enabled: true,
+		when: "terminalCommandsMarked",
 	},
 	close_pane:
 	{

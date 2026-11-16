@@ -1,4 +1,5 @@
 import {Dialog} from "@base-ui/react/dialog";
+import {useTerminalCommandsMarked} from "../lib/terminal-marked-store";
 import {Keyboard} from "lucide-react";
 import {Fragment, useCallback, useEffect, useId, useRef, useState, useSyncExternalStore, type RefObject} from "react";
 
@@ -267,11 +268,13 @@ export function KeyboardShortcutsDialog()
 		if (!open) setFind(TEXT_FIND);
 	}, []);
 
+	const terminalCommandsMarked = useTerminalCommandsMarked();
 	const sections = shortcutSections(
 		SHORTCUT_IDS,
 		(id) =>
 			SHORTCUTS[id].enabled &&
 			!("hiddenFromDialog" in SHORTCUTS[id]) &&
+			(!("when" in SHORTCUTS[id]) || terminalCommandsMarked) &&
 			rowKeys(SHORTCUTS[id], isMac, isWindows).length > 0,
 	);
 	const matcher = shortcutMatcher(find, isMac);
