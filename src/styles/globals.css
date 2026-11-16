@@ -31,6 +31,14 @@
 		@slot;
 	}
 }
+/* Upstream's `not-touch:` variant: a hover-capable fine pointer. */
+@custom-variant not-touch
+{
+	@media (hover: hover) and (pointer: fine)
+	{
+		@slot;
+	}
+}
 /* Upstream's fizzy-lake `panels` control sizes (28px comfortable controls, the toolbar icon box, the
    6px menu gutter) sit in this fine-pointer query, so a coarse device keeps the classic 32px controls.
    The query is FIZZY_LAKE_PANELS_FINE_POINTER_QUERY in src/lib/fizzy-lake.ts. */
@@ -259,6 +267,8 @@ html[data-interface-font="dyslexic"]
 	--color-backdrop: var(--upstream-backdrop);
 	--color-fill-control: var(--upstream-fill-control);
 	--color-fill-ghost-hover: var(--upstream-fill-ghost-hover);
+	/* Upstream --cds-fill-card: the Background tasks pane's row pieces. */
+	--color-fill-card: var(--upstream-fill-card);
 	/* Upstream --cds-fill-button-ghost-hover: a cds ghost Button's hover paint (the `stacks:` variant). */
 	--color-fill-button-ghost-hover: var(--upstream-fill-button-ghost-hover);
 	/* Upstream --cds-fill-button-layer: the hovered segment's extra layer over a fizzy ghost split's group hover. */
@@ -536,6 +546,8 @@ html[data-interface-font="dyslexic"]
 	/* Upstream `--cds-fill-disabled: var(--cds-alpha-1)` and `--cds-opacity-disabled: .4`: the disabled cds Button
 	   paint and pre-fizzy dimming. `.dark` restates alpha-1, so the dark paint follows without a restatement. */
 	--upstream-fill-disabled: var(--upstream-alpha-1);
+	/* Upstream `--cds-fill-card` falls back to --cds-alpha-1 outside fizzy color. */
+	--upstream-fill-card: var(--upstream-alpha-1);
 	--upstream-opacity-disabled: 0.4;
 	/* Upstream --cds-skeleton-base/-sheen: alpha-1 in light, neutral-900 at 7.5% in dark. */
 	--skeleton-base: var(--upstream-alpha-1);
@@ -1159,6 +1171,7 @@ html[data-interface-font="dyslexic"]
 	/* Upstream fizzy `--cds-fill-disabled`, `--cds-text-button-disabled` and
 	   `--cds-fizzy-lake-color-icon-only-disabled`: a disabled cds Button keeps opacity 1 with this paint and ink. */
 	--upstream-fill-disabled: #00000006;
+	--upstream-fill-card: #00000006;
 	--upstream-text-button-disabled: #0007;
 	--upstream-icon-only-disabled: #0006;
 	/* Upstream `--control-ink: var(--cds-fizzy-lake-color-control-ink, var(--cds-text-primary))`
@@ -1312,6 +1325,7 @@ html[data-interface-font="dyslexic"]
 	--cds-fizzy-lake-color-solid-primary: #efefef;
 	--cds-fizzy-lake-color-solid-secondary: #c2c2c2;
 	--upstream-fill-disabled: #ffffff0d;
+	--upstream-fill-card: #ffffff08;
 	--upstream-text-button-disabled: #fff6;
 	--upstream-icon-only-disabled: #fff6;
 	--upstream-bg-tint-blue: #257de01f;

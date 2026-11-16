@@ -1,4 +1,6 @@
-import {useEffect, useMemo, useRef, useState} from "react";
+import {useMemo, useRef} from "react";
+
+import {useNow} from "../hooks/use-now";
 import
 {
 	markerEventsFromRecords,
@@ -92,25 +94,6 @@ function sameState(a: WorkingMarkerState, b: WorkingMarkerState): boolean
 		aEntries.length === Object.keys(b).length &&
 		aEntries.every(([key, value]) => Object.is(value, (b as Record<string, unknown>)[key]))
 	);
-}
-
-function useNow(ticking: boolean): number
-{
-	const [now, setNow] = useState(() => Date.now());
-	useEffect(() =>
-	{
-		if (!ticking) return undefined;
-		setNow(Date.now());
-		const timer = setInterval(() =>
-		{
-			setNow(Date.now());
-		}, 1000);
-		return () =>
-		{
-			clearInterval(timer);
-		};
-	}, [ticking]);
-	return now;
 }
 
 export interface WorkingMarkerSignals

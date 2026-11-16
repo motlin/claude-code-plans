@@ -36,6 +36,8 @@ function task(overrides: Partial<BackgroundTask> & Pick<BackgroundTask, "id">): 
 		summary: null,
 		outputFile: null,
 		startedAt: null,
+		completedAt: null,
+		durationMs: null,
 		...overrides,
 	};
 }

@@ -60,33 +60,36 @@ function CommandRow({children, language}: {children: ReactNode; language: string
 	);
 }
 
-export function HighlightedCommand({command, language = "shellscript"}: {command: string; language?: string})
+/** A command's shell-highlighted text, without the prompt (plain text until the highlighter loads). */
+export function CommandTokens({command, language = "shellscript"}: {command: string; language?: string})
 {
 	const tokens = useHighlightedLines(command, language);
 
-	if (!tokens)
-	{
-		return <CommandRow language={language}>{command}</CommandRow>;
-	}
+	if (!tokens) return command;
 
-	return (
-		<CommandRow language={language}>
-			{tokens.map((lineTokens: ThemedToken[], lineIndex: number) => (
-				<span key={lineIndex}>
-					{lineIndex > 0 && "\n"}
-					{lineTokens.map((token: ThemedToken, tokenIndex: number) => (
-						<span
-							key={tokenIndex}
-							style={
-							{
-								color: token.color,
-							}}
-						>
-							{token.content}
-						</span>
-					))}
+	return tokens.map((lineTokens: ThemedToken[], lineIndex: number) => (
+		<span key={lineIndex}>
+			{lineIndex > 0 && "\n"}
+			{lineTokens.map((token: ThemedToken, tokenIndex: number) => (
+				<span
+					key={tokenIndex}
+					style={
+					{
+						color: token.color,
+					}}
+				>
+					{token.content}
 				</span>
 			))}
+		</span>
+	));
+}
+
+export function HighlightedCommand({command, language = "shellscript"}: {command: string; language?: string})
+{
+	return (
+		<CommandRow language={language}>
+			<CommandTokens command={command} language={language} />
 		</CommandRow>
 	);
 }

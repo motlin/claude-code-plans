@@ -6,11 +6,12 @@ const styles = readFileSync("src/styles/globals.css", "utf8");
 
 describe("custom variants", () =>
 {
-	it("declares upstream's touch: variant as the coarse-pointer or no-hover media query, next to dark, the motion, the viewport-height and the density variants, cds-Icon and stacks", () =>
+	it("declares upstream's touch: variant as the coarse-pointer or no-hover media query and not-touch: as its fine-pointer hover opposite, next to dark, the motion, the viewport-height and the density variants, cds-Icon and stacks", () =>
 	{
 		expect(styles.match(/^@custom-variant .*$/gm)).toStrictEqual([
 			"@custom-variant dark (&:is(.dark *));",
 			"@custom-variant touch",
+			"@custom-variant not-touch",
 			"@custom-variant panels-fine",
 			"@custom-variant motion-safe",
 			"@custom-variant motion-reduce",

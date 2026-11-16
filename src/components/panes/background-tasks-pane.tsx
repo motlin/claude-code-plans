@@ -1,8 +1,9 @@
 import {useQuery} from "@tanstack/react-query";
 import {Link} from "@tanstack/react-router";
 import {ChevronRight, Trash2} from "lucide-react";
-import {type RefObject, useEffect, useId, useRef, useState} from "react";
+import {type RefObject, useEffect, useId, useLayoutEffect, useRef, useState} from "react";
 
+import {useNow} from "../../hooks/use-now";
 import type {SessionWorkflowRun} from "../../lib/api/session-workflow-runs";
 import {taskOutputQueryOptions} from "../../lib/api/task-output";
 import
@@ -15,31 +16,73 @@ import
 	useFinishedExpanded,
 	useOpenTaskRows,
 } from "../../lib/background-task-focus";
-import {type BackgroundTask, type BackgroundTaskGroups, backgroundTaskMeta} from "../../lib/background-tasks";
-import {HighlightedCommand} from "../tool-renderers/bash-renderer";
+import {type BackgroundTask, type BackgroundTaskGroups, backgroundTaskStatus} from "../../lib/background-tasks";
+import {requestSubagentFocus} from "../../lib/subagent-focus-requests";
+import {CommandTokens} from "../tool-renderers/bash-renderer";
 import {AnsiText} from "../tool-renderers/shared";
+import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
 import {nonEmpty} from "../../lib/non-empty";
 import {taskDescriptionSegments} from "../../lib/task-description-segments";
 import {TaskDescriptionLinks} from "../task-event-run-row";
+import {useOptionalPaneHost} from "./pane-host-context";
 import {WorkflowTaskCard} from "./workflow-task-card";
 
 const NO_WORKFLOW_RUNS: readonly SessionWorkflowRun[] = [];
 
-const EMPTY_COPY = "No background tasks in this session.";
-
-const SECTION_HEADING = "text-caption font-medium text-secondary";
 // Upstream's 20x20 ghost icon button for "Clear finished tasks".
 const ICON_BUTTON =
 	"flex size-5 cursor-pointer items-center justify-center rounded-r4 text-ink-muted transition-colors hover:bg-fill-ghost-hover hover:text-primary";
-const REGION_CAP = "max-h-[200px] overflow-auto";
-const OUTPUT_REGION = `${REGION_CAP} whitespace-pre-wrap break-all rounded-r6 bg-fill-control px-2 py-[5px] font-mono text-[12px]/[17px] text-secondary`;
-const NOTE = "text-caption text-ink-muted";
-const MISSING_COPY = "Output no longer available";
+/** Upstream `gap-xs` (6px, 8px comfortable): between a section's heading, rows and pieces. */
+const GAP_XS = "gap-g5 comfortable:gap-g6";
+/** Upstream `KL`'s heading. */
+const SECTION_HEADING = "flex min-h-5 items-center text-footnote text-muted-as-secondary";
+/** Upstream `IC`: a task's rounded fill-card piece. */
+const PIECE = "relative flex min-w-0 flex-col rounded-t-[10px] rounded-b-[10px] bg-fill-card";
+/** Upstream `RC.first`: the 44px row around the 36px opener. */
+const ROW = "group/row relative flex h-11 min-w-0 items-center px-1.5";
+/** Upstream `zC` + `text-body`: the opener's box, at the row's `--task-step` indent. */
+const OPENER =
+	"flex h-9 w-full min-w-0 items-center gap-g5 rounded ps-[calc(var(--task-step,0)*1.25rem+0.375rem)] pe-1.5 text-start text-body comfortable:gap-g6";
+/** Upstream `VC`: the opener's hover, focus and press paint, only when it is a button. */
+const OPENER_ACTION =
+	"cursor-pointer hover:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden active:bg-alpha-2 not-touch:group-has-[[data-task-stop]:hover]/row:bg-fill-ghost-hover";
+/** Upstream `GC` + `ew`: the title line, medium weight in the Running section. */
+const LABEL = "flex min-w-0 flex-1 items-center gap-1 text-start";
+/** Upstream `WC` + `nw`: the disclosure caret's box. */
+const CARET = "flex h-[1lh] w-4 shrink-0 items-center justify-center text-ink-muted";
+/** Upstream `gw`: the trailing status column. */
+const STATUS = "shrink-0 text-end text-footnote text-muted-as-secondary tabular-nums";
+/** Upstream `QC`: content under the row, indented one step past the row's own. */
+const UNDER_ROW = "ps-[calc(var(--task-step,0)*1.25rem+0.75rem)]";
+const DETAIL = `flex flex-col pe-p6 pb-p6 ${UNDER_ROW} select-text comfortable:pe-p8 comfortable:pb-p8 [&>div]:leading-5`;
+/** Upstream `iL`: the detail's plain, height-capped pres. */
+const TASK_PRE =
+	"max-h-[200px] overflow-y-auto rounded-sm font-mono text-code leading-5 text-muted-as-secondary focus-visible:shadow-focus focus-visible:outline-hidden whitespace-pre-wrap break-all";
+const NOTE = "text-footnote text-muted-as-secondary";
+const SUMMARY = "text-footnote text-secondary whitespace-pre-wrap break-words";
+const VIEW_TRANSCRIPT =
+	"relative inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r4 text-primary hide-focus-ring hover:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden";
+const SHOW_MORE =
+	"flex min-h-6.5 w-full min-w-0 cursor-pointer items-center rounded px-p5 text-start text-muted-as-secondary hover:text-primary focus-visible:shadow-focus focus-visible:outline-hidden";
+/** Upstream `mv`: rows shown per page of a section's flat list. */
+const LIST_PAGE = 100;
+/** Upstream `aL`: how far above the bottom the user must scroll before output stops following its tail. */
+const TAIL_SLACK = 16;
+/** Tasks whose output the user scrolled up from, so a re-render doesn't yank them back to the tail. */
+const scrolledUpTasks = new Map<string, boolean>();
 
 function taskTitle(task: BackgroundTask): string
 {
 	return nonEmpty(task.description) ?? nonEmpty(task.command) ?? task.id;
+}
+
+/** Upstream `gL`: shell and monitor tasks open onto their output, others only when they carry a distinct summary. */
+function isExpandable(task: BackgroundTask): boolean
+{
+	if (task.kind === "bash" || task.kind === "monitor") return true;
+	const summary = nonEmpty(task.summary);
+	return summary !== undefined && summary !== task.description;
 }
 
 /** The card title, with an artifact word linked to its URL as the transcript's task-event rows do. */
@@ -52,20 +95,60 @@ function TaskTitle({task, title}: {task: BackgroundTask; title: string})
 	return segments === undefined ? title : <TaskDescriptionLinks segments={segments} />;
 }
 
-function OutputRegion({title, output}: {title: string; output: string})
+function Caret({open}: {open: boolean})
 {
 	return (
-		<pre role="region" aria-label={`Output for ${title}`} className={OUTPUT_REGION}>
-			<AnsiText content={output} />
+		<span data-task-caret="" className={CARET}>
+			<ChevronRight
+				aria-hidden="true"
+				className={`size-3 transition-transform motion-reduce:transition-none ${open ? "rotate-90" : ""}`}
+			/>
+		</span>
+	);
+}
+
+/**
+ * Upstream `aL`: an output pre that follows its tail as it grows, unless the user scrolled up more than 16px
+ * or is selecting inside it. A finished task's trailing newline is trimmed.
+ */
+function OutputRegion({task, title, output}: {task: BackgroundTask; title: string; output: string})
+{
+	const ref = useRef<HTMLPreElement>(null);
+	const shown = task.status === "running" ? output : output.replace(/\n$/, "");
+	useLayoutEffect(() =>
+	{
+		const pre = ref.current;
+		if (pre === null || scrolledUpTasks.get(task.id) === true) return;
+		const selection = document.getSelection();
+		if (selection !== null && !selection.isCollapsed && pre.contains(selection.anchorNode)) return;
+		pre.scrollTop = pre.scrollHeight;
+	}, [shown, task.id]);
+	return (
+		<pre
+			ref={ref}
+			// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- upstream's scrollable output region takes focus so it scrolls by keyboard
+			tabIndex={0}
+			role="region"
+			aria-label={`Output for ${title}`}
+			onScroll={(event) =>
+			{
+				const pre = event.currentTarget;
+				scrolledUpTasks.set(task.id, pre.scrollHeight - pre.scrollTop - pre.clientHeight > TAIL_SLACK);
+			}}
+			className={TASK_PRE}
+		>
+			<AnsiText content={shown} />
 		</pre>
 	);
 }
 
-/** Output the transcript itself carries: TaskOutput reads, Monitor events, or an agent's result. */
+/** Output the transcript itself carries: TaskOutput reads, Monitor events, or an agent's result; else its summary or a note. */
 function InlineOutput({task, title}: {task: BackgroundTask; title: string})
 {
-	if (task.output === null) return <p className={NOTE}>{task.summary ?? "No output recorded."}</p>;
-	return <OutputRegion title={title} output={task.output} />;
+	if (task.output !== null) return <OutputRegion task={task} title={title} output={task.output} />;
+	const summary = nonEmpty(task.summary);
+	if (summary !== undefined && summary !== task.description) return <p className={SUMMARY}>{summary}</p>;
+	return <p className={NOTE}>{task.status === "running" ? "No output yet" : "No output captured."}</p>;
 }
 
 /**
@@ -85,99 +168,200 @@ function OutputFile({
 })
 {
 	const {data, isError} = useQuery(taskOutputQueryOptions(sessionId, file, task.status === "running"));
-	if (data === undefined) return isError ? <InlineOutput task={task} title={title} /> : null;
-	if (data.status === "missing")
+	if (isError || data?.status === "missing")
 	{
 		return task.output === null ? (
-			<p className={NOTE}>{MISSING_COPY}</p>
+			<p className={NOTE}>Output unavailable</p>
 		) : (
 			<InlineOutput task={task} title={title} />
 		);
 	}
+	if (data === undefined) return <p className={NOTE}>Loading output…</p>;
 	return (
 		<>
 			{data.truncated && <p className={NOTE}>Showing the last 64 KB of output.</p>}
-			<OutputRegion title={title} output={data.output} />
+			<OutputRegion task={task} title={title} output={data.output} />
 		</>
 	);
 }
 
+/** Upstream `oL`: the open row's command and output, one step in. */
+function TaskDetail({
+	id,
+	task,
+	title,
+	sessionId,
+}: {
+	id: string;
+	task: BackgroundTask;
+	title: string;
+	sessionId: string | undefined;
+})
+{
+	return (
+		<div
+			id={id}
+			className={DETAIL}
+			style={
+			{
+				"--task-step": 1,
+			}}
+		>
+			{task.command !== null && (
+				<pre
+					dir="ltr"
+					// oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- upstream's scrollable command region takes focus so it scrolls by keyboard
+					tabIndex={0}
+					role="region"
+					aria-label={`Command for ${title}`}
+					className={TASK_PRE}
+				>
+					<span aria-hidden="true" className="select-none">
+						$&nbsp;
+					</span>
+					<CommandTokens command={task.command} />
+				</pre>
+			)}
+			{sessionId !== undefined && task.outputFile !== null && task.kind !== "agent" ? (
+				<OutputFile sessionId={sessionId} file={task.outputFile} task={task} title={title} />
+			) : (
+				<InlineOutput task={task} title={title} />
+			)}
+		</div>
+	);
+}
+
+/** Upstream `ie`: a plain agent row's trailing caret button, opening the agent's transcript in the Subagents pane. */
+function ViewTranscriptButton({task, title, sessionId}: {task: BackgroundTask; title: string; sessionId: string})
+{
+	const host = useOptionalPaneHost();
+	if (host === null) return null;
+	return (
+		<button
+			type="button"
+			data-task-opener=""
+			aria-label={`View transcript for ${title}`}
+			onClick={() =>
+			{
+				requestSubagentFocus(sessionId, task.id);
+				host.openPane("subagents");
+			}}
+			className={VIEW_TRANSCRIPT}
+		>
+			<Icon name="CaretRight" size="xs" />
+		</button>
+	);
+}
+
+/** Upstream `gw`: Failed, Stopped, or a duration hidden in a narrow pane; a running task's clock ticks each second. */
+function useTaskStatus(task: BackgroundTask)
+{
+	const now = useNow(task.status === "running");
+	return backgroundTaskStatus(task, now);
+}
+
 /**
- * Upstream's task card: a 5% ink fill with no border, the title in muted 13px
- * with the chevron right after it, and the kind/status meta beneath. Expanding
- * reveals labelled, height-capped "Command for" and "Output for" regions.
+ * Upstream's top-level task row `_L`: a rounded fill-card piece around a 44px row whose 36px opener holds the
+ * caret, the title and the trailing status; an open row shows its detail inside the piece.
  */
-function BackgroundTaskCard({
+function BackgroundTaskRow({
 	task,
 	sessionId,
+	inRunning,
 	expanded,
 	onToggle,
 }: {
 	task: BackgroundTask;
 	sessionId: string | undefined;
+	inRunning: boolean;
 	expanded: boolean;
 	onToggle: () => void;
 })
 {
 	const detailsId = useId();
+	const statusId = useId();
 	const title = taskTitle(task);
+	const expandable = isExpandable(task);
+	const status = useTaskStatus(task);
 	// Upstream renders a failed or stopped task's summary inline on touch, where there is no tooltip.
 	const inlineSummary = task.status === "failed" || task.status === "stopped" ? nonEmpty(task.summary) : undefined;
-	return (
-		<li data-task-id={task.id} className="flex flex-col gap-g5 rounded-r6 bg-fill-ghost-hover p-2">
-			<button
-				type="button"
-				data-background-task=""
-				aria-label={`Background task: ${title}`}
-				aria-expanded={expanded}
-				aria-controls={detailsId}
-				onClick={(event) =>
-				{
-					// A title's artifact link opens its artifact without toggling the card.
-					if (event.target instanceof Element && event.target.closest("a[data-artifact-link]") !== null)
-						return;
-					onToggle();
-				}}
-				className="flex w-full min-w-0 cursor-pointer flex-col text-left"
-			>
-				<span className="flex min-w-0 items-center gap-0.5 text-footnote text-ink-muted">
-					<span className="truncate">
-						<TaskTitle task={task} title={title} />
-					</span>
-					<ChevronRight
-						aria-hidden="true"
-						className={`size-3.5 shrink-0 transition-transform motion-reduce:transition-none ${expanded ? "rotate-90" : ""}`}
-					/>
+	const label = (
+		<span
+			className={`${LABEL} ${inRunning || task.status === "running" ? "text-body-medium" : "text-body"} text-primary`}
+		>
+			{expandable && <Caret open={expanded} />}
+			<span data-task-title="" className="flex min-w-0">
+				<span className="min-w-0 truncate">
+					<TaskTitle task={task} title={title} />
 				</span>
-				<span className="block text-caption/[15px] text-ink-muted">{backgroundTaskMeta(task)}</span>
-				{inlineSummary !== undefined && (
-					<span
-						data-background-task-summary=""
-						className="hidden [@media(pointer:coarse)]:block text-body text-secondary truncate min-w-0"
-					>
-						{inlineSummary}
-					</span>
-				)}
-			</button>
-			{expanded && (
-				<div id={detailsId} className="flex flex-col gap-g5">
-					{task.command !== null && (
-						<div
-							role="region"
-							aria-label={`Command for ${title}`}
-							className={`${REGION_CAP} rounded-r6 bg-surface-1 px-2 py-[5px] font-mono text-[12px]/[17px]`}
+			</span>
+			{!expandable && task.kind === "agent" && sessionId !== undefined && (
+				<ViewTranscriptButton task={task} title={title} sessionId={sessionId} />
+			)}
+		</span>
+	);
+	const statusColumn = status !== null && (
+		<span id={statusId} className={STATUS}>
+			<span className={status.tone === "danger" ? "text-danger" : status.hideNarrow ? "@max-[296px]:hidden" : ""}>
+				{status.text}
+			</span>
+		</span>
+	);
+	const describedBy = status === null ? undefined : statusId;
+	return (
+		<div className="flex min-w-0 flex-col gap-0.5">
+			<div data-task-piece="" className={PIECE}>
+				<div
+					className={ROW}
+					style={
+					{
+						"--task-step": 0,
+					}}
+				>
+					{expandable ? (
+						<button
+							type="button"
+							data-background-task=""
+							data-task-opener=""
+							aria-label={`Background task: ${title}`}
+							aria-expanded={expanded}
+							aria-controls={detailsId}
+							aria-describedby={describedBy}
+							onClick={(event) =>
+							{
+								// A title's artifact link opens its artifact without toggling the row.
+								if (
+									event.target instanceof Element &&
+									event.target.closest("a[data-artifact-link]") !== null
+								)
+									return;
+								onToggle();
+							}}
+							className={`${OPENER} ${OPENER_ACTION}`}
 						>
-							<HighlightedCommand command={task.command} />
+							{label}
+							{statusColumn}
+						</button>
+					) : (
+						<div data-background-task="" aria-describedby={describedBy} className={OPENER}>
+							{label}
+							{statusColumn}
 						</div>
 					)}
-					{sessionId !== undefined && task.outputFile !== null && task.kind !== "agent" ? (
-						<OutputFile sessionId={sessionId} file={task.outputFile} task={task} title={title} />
-					) : (
-						<InlineOutput task={task} title={title} />
-					)}
 				</div>
-			)}
-		</li>
+				{inlineSummary !== undefined && (
+					<div
+						data-background-task-summary=""
+						className={`hidden truncate pe-p6 pb-p5 ${UNDER_ROW} text-body text-secondary [@media(pointer:coarse)]:block`}
+					>
+						{inlineSummary}
+					</div>
+				)}
+				{expandable && expanded && (
+					<TaskDetail id={detailsId} task={task} title={title} sessionId={sessionId} />
+				)}
+			</div>
+		</div>
 	);
 }
 
@@ -190,47 +374,113 @@ function runOf(task: BackgroundTask, runs: readonly SessionWorkflowRun[]): Sessi
 	);
 }
 
+/**
+ * Upstream `mv`: the first page of rows plus any later row that must stay (running, focus-requested, keyboard-focused
+ * or open), in order.
+ */
+function visibleTasks(
+	tasks: readonly BackgroundTask[],
+	limit: number,
+	keep: (task: BackgroundTask) => boolean,
+): readonly BackgroundTask[]
+{
+	return tasks.filter((task, index) => index < limit || keep(task));
+}
+
+/** Upstream's section body: each task in a `display: contents` wrapper, then the Show more / Show less toggle. */
 function TaskCards({
 	tasks,
 	sessionId,
+	inRunning,
 	openRows,
 	setRowOpen,
 	workflowRuns,
+	keepIds,
 }: {
 	tasks: readonly BackgroundTask[];
 	sessionId: string | undefined;
+	inRunning: boolean;
 	openRows: ReadonlyMap<string, boolean>;
 	setRowOpen: (taskId: string, open: boolean) => void;
 	workflowRuns: readonly SessionWorkflowRun[];
+	/** Rows kept past the limit besides running and open ones: the focus target and the keyboard-focused row. */
+	keepIds: ReadonlySet<string>;
 })
 {
+	const listRef = useRef<HTMLDivElement>(null);
+	const [limit, setLimit] = useState(LIST_PAGE);
+	const [revealFrom, setRevealFrom] = useState<string | null>(null);
+	const shown = visibleTasks(
+		tasks,
+		limit,
+		(task) => task.status === "running" || openRows.get(task.id) === true || keepIds.has(task.id),
+	);
+
+	useEffect(() =>
+	{
+		if (revealFrom === null) return;
+		listRef.current
+			?.querySelector<HTMLElement>(`[data-task-id="${CSS.escape(revealFrom)}"] [data-task-opener]`)
+			?.focus();
+		setRevealFrom(null);
+	}, [revealFrom]);
+
+	const allShown = shown.length === tasks.length;
 	return (
-		<ul className="flex flex-col gap-1.5">
-			{tasks.map((task) =>
+		<div ref={listRef} data-task-list="" className={`@container flex flex-col ${GAP_XS}`}>
+			{shown.map((task) =>
 			{
 				if (task.kind === "workflow")
 				{
 					return (
-						<li key={task.id} data-task-id={task.id}>
+						<div key={task.id} data-task-id={task.id} className="contents">
 							<WorkflowTaskCard task={task} run={runOf(task, workflowRuns)} />
-						</li>
+						</div>
 					);
 				}
 				const expanded = openRows.get(task.id) === true;
 				return (
-					<BackgroundTaskCard
-						key={task.id}
-						task={task}
-						sessionId={sessionId}
-						expanded={expanded}
-						onToggle={() =>
-						{
-							setRowOpen(task.id, !expanded);
-						}}
-					/>
+					<div key={task.id} data-task-id={task.id} className="contents">
+						<BackgroundTaskRow
+							task={task}
+							sessionId={sessionId}
+							inRunning={inRunning}
+							expanded={expanded}
+							onToggle={() =>
+							{
+								setRowOpen(task.id, !expanded);
+							}}
+						/>
+					</div>
 				);
 			})}
-		</ul>
+			{tasks.length > LIST_PAGE && (
+				<button
+					// A fresh button per label, like upstream's Show more / Show less pair.
+					key={allShown ? "less" : "more"}
+					type="button"
+					aria-expanded={allShown}
+					onKeyDown={(event) =>
+					{
+						if (event.key === "Enter" && event.repeat) event.preventDefault();
+					}}
+					onClick={() =>
+					{
+						if (allShown)
+						{
+							setLimit(LIST_PAGE);
+							return;
+						}
+						const firstHidden = tasks.find((task, index) => index >= limit && !shown.includes(task));
+						setLimit(limit + LIST_PAGE);
+						if (firstHidden !== undefined) setRevealFrom(firstHidden.id);
+					}}
+					className={SHOW_MORE}
+				>
+					<span className="min-w-0 truncate">{allShown ? "Show less" : "Show more"}</span>
+				</button>
+			)}
+		</div>
 	);
 }
 
@@ -313,23 +563,80 @@ function useTaskFocusRequests(
 		if (scrollTarget === null) return undefined;
 		const frame = requestAnimationFrame(() =>
 		{
-			rootRef.current?.querySelector(`[data-task-id="${CSS.escape(scrollTarget.taskId)}"]`)?.scrollIntoView(
-				{
-					block: "start",
-				},
-			);
+			// The wrapper is `display: contents`, so upstream scrolls its row.
+			rootRef.current
+				?.querySelector(`[data-task-id="${CSS.escape(scrollTarget.taskId)}"]`)
+				?.firstElementChild?.scrollIntoView(
+					{
+						block: "start",
+					},
+				);
 		});
 		return () =>
 		{
 			cancelAnimationFrame(frame);
 		};
 	}, [scrollTarget, rootRef]);
+	return scrollTarget?.taskId;
+}
+
+/** Upstream `KL`'s heading: "Running" and the muted count. */
+function RunningHeading({count}: {count: number})
+{
+	return (
+		<div className="flex">
+			<h3 className={SECTION_HEADING}>
+				<span className="flex items-center gap-1">
+					<span>Running</span>
+					<span className="text-ink-muted">{count}</span>
+				</span>
+			</h3>
+		</div>
+	);
+}
+
+/** Upstream `Yd`: the pane placeholder, centred in the pane. */
+function EmptyPlaceholder()
+{
+	return (
+		<div className="grid h-full min-h-0 grid-cols-1 grid-rows-1">
+			<div className="col-start-1 row-start-1 flex flex-col overflow-y-auto px-p8 text-center before:min-h-2 before:flex-[1_1_12px] before:content-[''] after:min-h-2 after:flex-[1_1_12px] after:content-['']">
+				<div className="flex flex-col items-center gap-p6">
+					<Icon name="AgentsSimple" size="lg" className="!size-7 text-muted-as-secondary" />
+					<p className="max-w-[36ch] text-pretty break-words text-body text-primary">
+						Background tasks appear here
+					</p>
+				</div>
+			</div>
+		</div>
+	);
+}
+
+/** The task row holding keyboard focus, which the list limit keeps shown. */
+function useFocusedTaskId(rootRef: RefObject<HTMLDivElement | null>): string | undefined
+{
+	const [focused, setFocused] = useState<string | undefined>(undefined);
+	useEffect(() =>
+	{
+		const root = rootRef.current;
+		if (root === null) return undefined;
+		const onFocus = (event: FocusEvent) =>
+		{
+			const row = event.target instanceof Element ? event.target.closest("[data-task-id]") : null;
+			setFocused(row?.getAttribute("data-task-id") ?? undefined);
+		};
+		root.addEventListener("focusin", onFocus);
+		return () =>
+		{
+			root.removeEventListener("focusin", onFocus);
+		};
+	});
+	return focused;
 }
 
 /**
- * Upstream's Background tasks pane: "N running" then a collapsible
- * "Finished N ›" section (collapsed until clicked) whose trash button hides the rows it lists for this
- * view only (the transcript still has them).
+ * Upstream's Background tasks pane: a "Running" section, then a collapsible "Finished" one (open by default when
+ * nothing runs) whose trash button hides the rows it lists for this view only (the transcript still has them).
  */
 export function BackgroundTasksList({
 	groups,
@@ -354,33 +661,38 @@ export function BackgroundTasksList({
 	const finished = groups.finished.filter((task) => !clearedIds.has(task.id));
 	const subagentCount = subagents?.count ?? 0;
 	const {finishedExpanded, setFinished, openRows, setRowOpen} = usePaneViewState(sessionId);
-	// Upstream: the section's own state, else open while it holds an open row.
-	const finishedOpen = finishedExpanded ?? finished.some((task) => openRows.get(task.id) === true);
+	// Upstream: the section's own state, else open when nothing runs or while it holds an open row.
+	const finishedOpen =
+		finishedExpanded ?? (groups.running.length === 0 || finished.some((task) => openRows.get(task.id) === true));
 	const rootRef = useRef<HTMLDivElement>(null);
-	useTaskFocusRequests(sessionId, finished, rootRef);
+	const focusTarget = useTaskFocusRequests(sessionId, finished, rootRef);
+	const focusedId = useFocusedTaskId(rootRef);
+	const keepIds = new Set([focusTarget, focusedId].filter((id) => id !== undefined));
 
-	if (groups.running.length === 0 && finished.length === 0 && subagentCount === 0)
-	{
-		return <p className="px-3 py-6 text-center text-body text-ink-muted">{EMPTY_COPY}</p>;
-	}
+	if (groups.running.length === 0 && finished.length === 0 && subagentCount === 0) return <EmptyPlaceholder />;
 	return (
-		<div ref={rootRef} className="flex flex-col gap-4 px-3 py-2">
+		<div
+			ref={rootRef}
+			className="flex min-w-[220px] flex-col gap-8 px-p6 py-p6 comfortable:px-p8 comfortable:py-p8"
+		>
 			{groups.running.length > 0 && (
-				<section className="flex flex-col gap-1.5">
-					<h3 className={SECTION_HEADING}>{groups.running.length} running</h3>
+				<section className={`flex flex-col ${GAP_XS}`}>
+					<RunningHeading count={groups.running.length} />
 					<TaskCards
 						tasks={groups.running}
 						sessionId={sessionId}
+						inRunning
 						openRows={openRows}
 						setRowOpen={setRowOpen}
 						workflowRuns={workflowRuns}
+						keepIds={keepIds}
 					/>
 				</section>
 			)}
 			{finished.length > 0 && (
-				<section className="flex flex-col gap-1.5">
+				<section className={`flex flex-col ${GAP_XS}`}>
 					<div className="flex items-center justify-between gap-2">
-						<h3 className="text-caption/[15px] text-ink-muted">
+						<h3 className={SECTION_HEADING}>
 							<button
 								type="button"
 								aria-expanded={finishedOpen}
@@ -388,13 +700,11 @@ export function BackgroundTasksList({
 								{
 									setFinished(!finishedOpen);
 								}}
-								className="flex cursor-pointer items-center gap-0.5 hover:text-primary"
+								className="-mx-1.5 flex min-h-5 cursor-pointer items-center gap-1 rounded px-1.5 hide-focus-ring hover:text-secondary-control focus-visible:shadow-focus focus-visible:outline-hidden"
 							>
-								Finished {finished.length}
-								<ChevronRight
-									aria-hidden="true"
-									className={`size-3.5 transition-transform motion-reduce:transition-none ${finishedOpen ? "rotate-90" : ""}`}
-								/>
+								<Caret open={finishedOpen} />
+								<span>Finished</span>
+								<span className="text-ink-muted">{finished.length}</span>
 							</button>
 						</h3>
 						<Tooltip content="Clear finished tasks">
@@ -412,13 +722,25 @@ export function BackgroundTasksList({
 						</Tooltip>
 					</div>
 					{finishedOpen && (
-						<TaskCards
-							tasks={finished}
-							sessionId={sessionId}
-							openRows={openRows}
-							setRowOpen={setRowOpen}
-							workflowRuns={workflowRuns}
-						/>
+						// oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- upstream's capture latch: a press on a control inside keeps the section open
+						<div
+							className="contents"
+							onClickCapture={(event) =>
+							{
+								if (event.target instanceof Element && event.target.closest("button, a") !== null)
+									setFinished(true);
+							}}
+						>
+							<TaskCards
+								tasks={finished}
+								sessionId={sessionId}
+								inRunning={false}
+								openRows={openRows}
+								setRowOpen={setRowOpen}
+								workflowRuns={workflowRuns}
+								keepIds={keepIds}
+							/>
+						</div>
 					)}
 				</section>
 			)}

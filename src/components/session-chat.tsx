@@ -138,7 +138,8 @@ import type {BackgroundCompletionLike, SummarySegment} from "../lib/session-util
 import {pastTense} from "../lib/past-tense";
 import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
 import {stripControlsAndMask} from "../lib/secret-mask";
-import {ELAPSED_MIN_SECONDS, formatElapsed} from "../lib/working-marker";
+import {formatElapsed} from "../lib/elapsed-format";
+import {ELAPSED_MIN_SECONDS} from "../lib/working-marker";
 import {NoticeParts, TaskDescriptionLinks, type TaskEvent, TaskEventRun} from "./task-event-run-row";
 import {usageLimitCard, type UsageLimitCard} from "../lib/usage-limit-notice";
 import {useElapsedSeconds} from "../hooks/use-elapsed-seconds";

@@ -2,7 +2,7 @@ import {describe, expect, it} from "vite-plus/test";
 
 import
 {
-	backgroundTaskMeta,
+	backgroundTaskStatus,
 	backgroundTasksFacts,
 	extractBackgroundTasks,
 	groupBackgroundTasks,
@@ -192,6 +192,8 @@ function task(overrides: Partial<BackgroundTask> & Pick<BackgroundTask, "id">): 
 		summary: null,
 		outputFile: null,
 		startedAt: null,
+		completedAt: null,
+		durationMs: null,
 		...overrides,
 	};
 }
@@ -207,6 +209,7 @@ const BUILD_TASK = task(
 		summary: 'Background command "Build the fabricated app" completed (exit code 0)',
 		outputFile: "/tmp/fab/bfab1build.output",
 		startedAt: "2026-09-28T10:00:00.000Z",
+		completedAt: "2026-09-28T10:00:32.000Z",
 	},
 );
 
@@ -314,6 +317,7 @@ describe("extractBackgroundTasks", () =>
 						status: "failed",
 						output: "Partial review of the fabricated diff.",
 						summary: 'Agent "Review the fabricated diff" failed: stalled',
+						completedAt: "2026-09-28T10:05:00.000Z",
 					},
 				],
 			},
@@ -495,6 +499,7 @@ describe("extractBackgroundTasks", () =>
 						status: "completed",
 						output: "The fabricated diff looks good.",
 						summary: 'Agent "Review the fabricated diff" finished',
+						completedAt: "2026-09-28T10:05:00.000Z",
 					},
 				],
 			},
@@ -566,6 +571,7 @@ describe("extractBackgroundTasks", () =>
 			name: string,
 			at: string,
 			status: BackgroundTask["status"],
+			completedAt: string | null = null,
 		) => (
 		{
 			id,
@@ -578,6 +584,8 @@ describe("extractBackgroundTasks", () =>
 			summary: status === "completed" ? `Workflow "${name}" completed` : null,
 			outputFile: null,
 			startedAt: at,
+			completedAt,
+			durationMs: null,
 		});
 		expect(
 			extractBackgroundTasks(
@@ -590,8 +598,121 @@ describe("extractBackgroundTasks", () =>
 			{
 				running: [workflow("wfab1live", "toolu_wf_live", "fab-live", "2026-09-28T10:01:00.000Z", "running")],
 				finished: [
-					workflow("wfab1stop", "toolu_wf_stop", "fab-stop", "2026-09-28T10:02:00.000Z", "stopped"),
-					workflow("wfab1done", "toolu_wf_done", "fab-done", "2026-09-28T10:00:00.000Z", "completed"),
+					workflow(
+						"wfab1stop",
+						"toolu_wf_stop",
+						"fab-stop",
+						"2026-09-28T10:02:00.000Z",
+						"stopped",
+						"2026-09-28T10:04:01.000Z",
+					),
+					workflow(
+						"wfab1done",
+						"toolu_wf_done",
+						"fab-done",
+						"2026-09-28T10:00:00.000Z",
+						"completed",
+						"2026-09-28T10:03:00.000Z",
+					),
+				],
+			},
+		);
+	});
+
+	it("times a settled task: the settling record's timestamp and the notification's duration_ms", () =>
+	{
+		const records: TranscriptRecord[] = [
+			toolUse(
+				"toolu_bash_test",
+				"Bash",
+				{
+					command: "pnpm test",
+					description: "Test the fabricated app",
+					run_in_background: true,
+				},
+				"2026-09-28T10:00:00.000Z",
+			),
+			toolResult(
+				"toolu_bash_test",
+				"Command running in background with ID: bfab1test.",
+				{
+					backgroundTaskId: "bfab1test",
+				},
+				"2026-09-28T10:00:01.000Z",
+			),
+			notification(
+				[
+					"<task-id>bfab1test</task-id>",
+					"<tool-use-id>toolu_bash_test</tool-use-id>",
+					"<status>completed</status>",
+					'<summary>Background command "Test the fabricated app" completed (exit code 0)</summary>',
+					"<usage><duration_ms>8123</duration_ms></usage>",
+				].join("\n"),
+				"2026-09-28T10:00:08.000Z",
+			),
+			toolUse(
+				"toolu_bash_tail",
+				"Bash",
+				{
+					command: "tail -f log",
+					description: "Tail the fabricated log",
+					run_in_background: true,
+				},
+				"2026-09-28T10:01:00.000Z",
+			),
+			toolResult(
+				"toolu_bash_tail",
+				"Command running in background with ID: bfab1tail.",
+				{
+					backgroundTaskId: "bfab1tail",
+				},
+				"2026-09-28T10:01:01.000Z",
+			),
+			toolUse(
+				"toolu_kill_tail",
+				"KillShell",
+				{
+					shell_id: "bfab1tail",
+				},
+				"2026-09-28T10:02:00.000Z",
+			),
+			toolResult("toolu_kill_tail", "Successfully killed shell: bfab1tail", null, "2026-09-28T10:02:01.000Z"),
+		];
+		expect(
+			extractBackgroundTasks(
+				records,
+				{
+					sessionActive: true,
+				},
+			),
+		).toStrictEqual(
+			{
+				running: [],
+				finished: [
+					task(
+						{
+							id: "bfab1tail",
+							toolUseId: "toolu_bash_tail",
+							description: "Tail the fabricated log",
+							command: "tail -f log",
+							status: "stopped",
+							startedAt: "2026-09-28T10:01:00.000Z",
+							completedAt: "2026-09-28T10:02:01.000Z",
+						},
+					),
+					task(
+						{
+							id: "bfab1test",
+							toolUseId: "toolu_bash_test",
+							description: "Test the fabricated app",
+							command: "pnpm test",
+							status: "completed",
+							summary: 'Background command "Test the fabricated app" completed (exit code 0)',
+							startedAt: "2026-09-28T10:00:00.000Z",
+							completedAt: "2026-09-28T10:00:08.000Z",
+							durationMs: 8123,
+						},
+					),
 				],
 			},
 		);
@@ -660,31 +781,160 @@ describe("groupBackgroundTasks", () =>
 			},
 		);
 	});
+
+	it("lists running tasks by start, oldest first and unknown starts last, and finished ones by completion, newest first", () =>
+	{
+		const late = task(
+			{
+				id: "late",
+				startedAt: "2026-09-28T10:05:00.000Z",
+			},
+		);
+		const early = task(
+			{
+				id: "early",
+				startedAt: "2026-09-28T10:01:00.000Z",
+			},
+		);
+		const unknown = task(
+			{
+				id: "unknown",
+			},
+		);
+		const tenOh5 = task(
+			{
+				id: "ten-oh-five",
+				status: "completed",
+				completedAt: "2026-09-28T10:05:00.000Z",
+			},
+		);
+		const ten = task(
+			{
+				id: "ten",
+				status: "completed",
+				completedAt: "2026-09-28T10:00:00.000Z",
+			},
+		);
+		const untimed = task(
+			{
+				id: "untimed",
+				status: "stopped",
+			},
+		);
+		expect(groupBackgroundTasks([unknown, late, early, untimed, tenOh5, ten])).toStrictEqual(
+			{
+				running: [early, late, unknown],
+				finished: [tenOh5, ten, untimed],
+			},
+		);
+	});
 });
 
-describe("backgroundTaskMeta", () =>
+describe("backgroundTaskStatus", () =>
 {
-	it("names the kind and status", () =>
+	const NOW = Date.parse("2026-09-28T10:01:05.000Z");
+
+	it("is upstream's status column: Failed, Stopped, a live elapsed clock, or the finished duration", () =>
 	{
 		expect([
-			backgroundTaskMeta(BUILD_TASK),
-			backgroundTaskMeta(WATCH_TASK),
-			backgroundTaskMeta(
-				{
-					...REVIEW_TASK,
-					status: "failed",
-				},
-			),
-			backgroundTaskMeta(
+			backgroundTaskStatus(
 				task(
 					{
-						id: "x",
-						kind: "task",
+						id: "running",
+						startedAt: "2026-09-28T10:00:00.000Z",
+					},
+				),
+				NOW,
+			),
+			backgroundTaskStatus(
+				task(
+					{
+						id: "running-untimed",
+					},
+				),
+				NOW,
+			),
+			backgroundTaskStatus(
+				task(
+					{
+						id: "failed",
+						status: "failed",
+						durationMs: 8000,
+					},
+				),
+				NOW,
+			),
+			backgroundTaskStatus(
+				task(
+					{
+						id: "stopped",
 						status: "stopped",
 					},
 				),
+				NOW,
 			),
-		]).toStrictEqual(["Bash · Completed", "Monitor · Running", "Agent · Failed", "Task · Stopped"]);
+			backgroundTaskStatus(
+				task(
+					{
+						id: "done",
+						status: "completed",
+						durationMs: 8000,
+					},
+				),
+				NOW,
+			),
+			backgroundTaskStatus(
+				task(
+					{
+						id: "done-bash",
+						status: "completed",
+						startedAt: "2026-09-28T10:00:00.000Z",
+						completedAt: "2026-09-28T10:00:42.000Z",
+					},
+				),
+				NOW,
+			),
+			backgroundTaskStatus(
+				task(
+					{
+						id: "done-agent",
+						kind: "agent",
+						status: "completed",
+						startedAt: "2026-09-28T10:00:00.000Z",
+						completedAt: "2026-09-28T10:00:42.000Z",
+					},
+				),
+				NOW,
+			),
+		]).toStrictEqual([
+			{
+				tone: "plain",
+				text: "1m 05s",
+				hideNarrow: true,
+			},
+			null,
+			{
+				tone: "danger",
+				text: "Failed",
+				hideNarrow: false,
+			},
+			{
+				tone: "plain",
+				text: "Stopped",
+				hideNarrow: false,
+			},
+			{
+				tone: "plain",
+				text: "8s",
+				hideNarrow: true,
+			},
+			{
+				tone: "plain",
+				text: "42s",
+				hideNarrow: true,
+			},
+			null,
+		]);
 	});
 });
 

@@ -4,6 +4,7 @@ import
 	ArrowDown,
 	ArrowRight,
 	ArrowUp,
+	Bot,
 	Calendar,
 	ChartColumn,
 	Check,
@@ -53,6 +54,7 @@ import type {AnthropiconName} from "./anthropicon-names";
 export const ICON_GLYPHS =
 {
 	Add: Plus,
+	AgentsSimple: Bot,
 	Animation: Clapperboard,
 	Archive,
 	Artifacts: Shapes,

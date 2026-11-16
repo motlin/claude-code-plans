@@ -17,7 +17,7 @@ import
 	type WorkflowPhase,
 	type WorkflowRunStatus,
 } from "../../lib/workflow-progress";
-import {formatPaddedElapsed} from "../../lib/working-marker";
+import {formatPaddedElapsed} from "../../lib/elapsed-format";
 import {ShimmerText} from "../shimmer-text";
 import {AgentCount} from "../tool-renderers/workflow-card";
 import {useNow} from "../../hooks/use-now";

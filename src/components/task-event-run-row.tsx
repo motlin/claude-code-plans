@@ -8,7 +8,7 @@ import
 } from "../lib/background-notice-summary";
 import type {BackgroundTaskStatus} from "../lib/background-tasks";
 import {type TaskDescriptionSegment, taskDescriptionSegments} from "../lib/task-description-segments";
-import {formatElapsed} from "../lib/working-marker";
+import {formatElapsed} from "../lib/elapsed-format";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 
 /** One background task event a task-event row draws. */

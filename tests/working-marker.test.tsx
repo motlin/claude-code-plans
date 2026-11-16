@@ -8,10 +8,9 @@ import {FizzyLakeContext} from "../src/lib/fizzy-lake";
 import {createStreamDropStore, EventStreamStatusContext} from "../src/hooks/use-claude-events";
 import {type WorkingMarkerSignals} from "../src/components/use-working-marker-state";
 import {useWorkingMarkerState} from "../src/components/use-working-marker-state";
+import {formatElapsed, formatPaddedElapsed} from "../src/lib/elapsed-format";
 import
 {
-	formatElapsed,
-	formatPaddedElapsed,
 	PHASE_SETTLE_MS,
 	phaseLabel,
 	markerEventsFromRecords,

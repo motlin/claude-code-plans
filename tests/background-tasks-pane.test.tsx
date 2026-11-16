@@ -6,14 +6,39 @@ import type {ReactNode} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {BackgroundTasksList} from "../src/components/panes/background-tasks-pane";
+import {PaneHostContext, type PaneHostApi} from "../src/components/panes/pane-host-context";
 import type {BackgroundTask, BackgroundTaskGroups} from "../src/lib/background-tasks";
 import {requestBackgroundTaskFocus, setTaskRowsOpen} from "../src/lib/background-task-focus";
+import {defaultPaneLayout} from "../src/lib/pane-layout";
+import {takePendingSubagentFocus} from "../src/lib/subagent-focus-requests";
 
 afterEach(() =>
 {
 	cleanup();
 	vi.unstubAllGlobals();
+	vi.useRealTimers();
 });
+
+function hostOpening(openPane: PaneHostApi["openPane"]): PaneHostApi
+{
+	return {
+		layout: defaultPaneLayout(),
+		openKinds: [],
+		isOpen: () => false,
+		openPane,
+		closePane: () =>
+		{
+		},
+		togglePane: () =>
+		{
+		},
+	};
+}
+
+function withPaneHost(host: PaneHostApi, node: ReactNode)
+{
+	return <PaneHostContext.Provider value={host}>{node}</PaneHostContext.Provider>;
+}
 
 function task(overrides: Partial<BackgroundTask> & Pick<BackgroundTask, "id">): BackgroundTask
 {
@@ -27,6 +52,8 @@ function task(overrides: Partial<BackgroundTask> & Pick<BackgroundTask, "id">): 
 		summary: null,
 		outputFile: null,
 		startedAt: null,
+		completedAt: null,
+		durationMs: null,
 		...overrides,
 	};
 }
@@ -67,9 +94,20 @@ function sections()
 	return screen.getAllByRole("heading").map((heading) => heading.textContent);
 }
 
+/** Each row's title text, in DOM order. */
 function cards()
 {
-	return [...document.querySelectorAll("button[data-background-task]")].map((button) => button.textContent);
+	return [...document.querySelectorAll("[data-background-task] [data-task-title]")].map((title) => title.textContent);
+}
+
+function finishedToggle()
+{
+	return screen.getByRole(
+		"button",
+		{
+			name: /^Finished/,
+		},
+	);
 }
 
 const POLL_GROUPS: BackgroundTaskGroups =
@@ -97,14 +135,19 @@ function regionSummary(name: string)
 		},
 	);
 	return {
+		tag: region.tagName,
 		text: region.textContent,
-		capped: region.classList.contains("max-h-[200px]"),
+		className: region.className,
+		prompt: region.querySelector('[aria-hidden="true"]')?.textContent ?? null,
 	};
 }
 
+const TASK_PRE =
+	"max-h-[200px] overflow-y-auto rounded-sm font-mono text-code leading-5 text-muted-as-secondary focus-visible:shadow-focus focus-visible:outline-hidden whitespace-pre-wrap break-all";
+
 describe("BackgroundTasksList", () =>
 {
-	it("groups running and finished cards with kind and status meta, finished starting collapsed", () =>
+	it("groups running and finished rows under upstream's headings, Finished collapsed while something runs", () =>
 	{
 		render(<BackgroundTasksList groups={GROUPS} />);
 
@@ -112,20 +155,15 @@ describe("BackgroundTasksList", () =>
 			{
 				sections: sections(),
 				cards: cards(),
-				toggle: screen
-					.getByRole(
-						"button",
-						{
-							name: "Finished 1",
-						},
-					)
-					.getAttribute("aria-expanded"),
+				toggle: finishedToggle().getAttribute("aria-expanded"),
+				meta: screen.queryByText("Bash · Running"),
 			},
 		).toStrictEqual(
 			{
-				sections: ["2 running", "Finished 1"],
-				cards: ["Serve the fabricated appBash · Running", "Review the fabricated diffAgent · Running"],
+				sections: ["Running2", "Finished1"],
+				cards: ["Serve the fabricated app", "Review the fabricated diff"],
 				toggle: "false",
+				meta: null,
 			},
 		);
 	});
@@ -134,35 +172,242 @@ describe("BackgroundTasksList", () =>
 	{
 		render(<BackgroundTasksList groups={GROUPS} />);
 
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Finished 1",
-				},
-			),
-		);
+		fireEvent.click(finishedToggle());
 
 		expect(
 			{
-				toggle: screen
-					.getByRole(
-						"button",
-						{
-							name: "Finished 1",
-						},
-					)
-					.getAttribute("aria-expanded"),
+				toggle: finishedToggle().getAttribute("aria-expanded"),
 				cards: cards(),
 			},
 		).toStrictEqual(
 			{
 				toggle: "true",
-				cards: [
-					"Serve the fabricated appBash · Running",
-					"Review the fabricated diffAgent · Running",
-					"Build the fabricated appBash · Completed",
+				cards: ["Serve the fabricated app", "Review the fabricated diff", "Build the fabricated app"],
+			},
+		);
+	});
+
+	it("opens Finished by default when nothing runs, with the caret first in its toggle", () =>
+	{
+		render(<BackgroundTasksList groups={POLL_GROUPS} />);
+		const toggle = finishedToggle();
+
+		expect(
+			{
+				expanded: toggle.getAttribute("aria-expanded"),
+				caretFirst: toggle.firstElementChild?.hasAttribute("data-task-caret"),
+				parts: [...toggle.children].slice(1).map((part) => [part.textContent, part.className]),
+				className: toggle.className,
+				heading: toggle.closest("h3")?.className,
+			},
+		).toStrictEqual(
+			{
+				expanded: "true",
+				caretFirst: true,
+				parts: [
+					["Finished", ""],
+					["1", "text-ink-muted"],
 				],
+				className:
+					"-mx-1.5 flex min-h-5 cursor-pointer items-center gap-1 rounded px-1.5 hide-focus-ring hover:text-secondary-control focus-visible:shadow-focus focus-visible:outline-hidden",
+				heading: "flex min-h-5 items-center text-footnote text-muted-as-secondary",
+			},
+		);
+	});
+
+	it("latches Finished open after a click inside it, so collapsing that row keeps the section open", () =>
+	{
+		render(<BackgroundTasksList groups={GROUPS} />);
+		fireEvent.click(finishedToggle());
+		const row = screen.getByRole(
+			"button",
+			{
+				name: "Background task: Build the fabricated app",
+			},
+		);
+
+		fireEvent.click(row);
+		fireEvent.click(row);
+
+		expect(
+			{
+				finished: finishedToggle().getAttribute("aria-expanded"),
+				row: row.getAttribute("aria-expanded"),
+			},
+		).toStrictEqual(
+			{
+				finished: "true",
+				row: "false",
+			},
+		);
+	});
+
+	it("lays out upstream's pane content: 220px minimum, 32px between sections, density-aware pads", () =>
+	{
+		const {container} = render(<BackgroundTasksList groups={GROUPS} />);
+
+		expect(
+			{
+				root: container.firstElementChild?.className,
+				sections: [...container.querySelectorAll("section")].map((section) => section.className),
+				lists: [...container.querySelectorAll("[data-task-list]")].map((list) => list.className),
+			},
+		).toStrictEqual(
+			{
+				root: "flex min-w-[220px] flex-col gap-8 px-p6 py-p6 comfortable:px-p8 comfortable:py-p8",
+				sections: ["flex flex-col gap-g5 comfortable:gap-g6", "flex flex-col gap-g5 comfortable:gap-g6"],
+				lists: ["@container flex flex-col gap-g5 comfortable:gap-g6"],
+			},
+		);
+	});
+
+	it("draws each task as upstream's rounded fill-card piece around a 44px row and a 36px opener", () =>
+	{
+		render(<BackgroundTasksList groups={GROUPS} />);
+		const wrapper = document.querySelector('[data-task-id="bfab1serve"]');
+		const piece = wrapper?.querySelector("[data-task-piece]");
+		const row = piece?.firstElementChild;
+		const opener = row?.querySelector("[data-task-opener]");
+		const label = opener?.firstElementChild;
+
+		expect(
+			{
+				wrapper: wrapper?.className,
+				pieces: document.querySelectorAll("[data-task-piece]").length,
+				piece: piece?.className,
+				row: row?.className,
+				step: row instanceof HTMLElement ? row.style.getPropertyValue("--task-step") : null,
+				opener: opener?.className,
+				label: label?.className,
+				caretFirst: label?.firstElementChild?.hasAttribute("data-task-caret"),
+				titleClass: label?.querySelector("[data-task-title]")?.className,
+			},
+		).toStrictEqual(
+			{
+				wrapper: "contents",
+				pieces: 2,
+				piece: "relative flex min-w-0 flex-col rounded-t-[10px] rounded-b-[10px] bg-fill-card",
+				row: "group/row relative flex h-11 min-w-0 items-center px-1.5",
+				step: "0",
+				opener: "flex h-9 w-full min-w-0 items-center gap-g5 rounded ps-[calc(var(--task-step,0)*1.25rem+0.375rem)] pe-1.5 text-start text-body comfortable:gap-g6 cursor-pointer hover:bg-fill-ghost-hover focus-visible:shadow-focus focus-visible:outline-hidden active:bg-alpha-2 not-touch:group-has-[[data-task-stop]:hover]/row:bg-fill-ghost-hover",
+				label: "flex min-w-0 flex-1 items-center gap-1 text-start text-body-medium text-primary",
+				caretFirst: true,
+				titleClass: "flex min-w-0",
+			},
+		);
+	});
+
+	it("titles finished rows in text-body and running ones in text-body-medium", () =>
+	{
+		render(<BackgroundTasksList groups={POLL_GROUPS} />);
+
+		expect(document.querySelector("[data-task-opener]")?.firstElementChild?.className).toBe(
+			"flex min-w-0 flex-1 items-center gap-1 text-start text-body text-primary",
+		);
+	});
+
+	it("ends each row with its status: a narrow-hidden duration, Stopped, or a danger Failed, described by the opener", () =>
+	{
+		vi.useFakeTimers(
+			{
+				now: Date.parse("2026-09-28T10:01:05.000Z"),
+			},
+		);
+		const groups: BackgroundTaskGroups =
+		{
+			running: [
+				task(
+					{
+						id: "bfab1serve",
+						description: "Serve",
+						startedAt: "2026-09-28T10:00:00.000Z",
+					},
+				),
+				task(
+					{
+						id: "bfab1untimed",
+						description: "Untimed",
+					},
+				),
+			],
+			finished: [
+				task(
+					{
+						id: "bfab1lint",
+						description: "Lint",
+						status: "failed",
+					},
+				),
+				task(
+					{
+						id: "bfab1tail",
+						description: "Tail",
+						status: "stopped",
+					},
+				),
+				task(
+					{
+						id: "bfab1test",
+						description: "Test",
+						status: "completed",
+						durationMs: 8000,
+					},
+				),
+			],
+		};
+		render(<BackgroundTasksList groups={groups} />);
+		fireEvent.click(finishedToggle());
+		const statusOf = (id: string) =>
+		{
+			const opener = document.querySelector(`[data-task-id="${id}"] [data-task-opener]`);
+			const describedBy = opener?.getAttribute("aria-describedby");
+			const status = describedBy == null ? null : document.getElementById(describedBy);
+			return status === null
+				? null
+				:
+					{
+						text: status.textContent,
+						className: status.className,
+						inner: status.firstElementChild?.className,
+					};
+		};
+		const STATUS = "shrink-0 text-end text-footnote text-muted-as-secondary tabular-nums";
+
+		expect(
+			{
+				serve: statusOf("bfab1serve"),
+				untimed: statusOf("bfab1untimed"),
+				lint: statusOf("bfab1lint"),
+				tail: statusOf("bfab1tail"),
+				test: statusOf("bfab1test"),
+			},
+		).toStrictEqual(
+			{
+				serve:
+				{
+					text: "1m 05s",
+					className: STATUS,
+					inner: "@max-[296px]:hidden",
+				},
+				untimed: null,
+				lint:
+				{
+					text: "Failed",
+					className: STATUS,
+					inner: "text-danger",
+				},
+				tail:
+				{
+					text: "Stopped",
+					className: STATUS,
+					inner: "",
+				},
+				test:
+				{
+					text: "8s",
+					className: STATUS,
+					inner: "@max-[296px]:hidden",
+				},
 			},
 		);
 	});
@@ -170,14 +415,6 @@ describe("BackgroundTasksList", () =>
 	it("names each card button after its task", () =>
 	{
 		render(<BackgroundTasksList groups={POLL_GROUPS} />);
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Finished 1",
-				},
-			),
-		);
 
 		expect(
 			screen
@@ -191,17 +428,9 @@ describe("BackgroundTasksList", () =>
 		).toBe("false");
 	});
 
-	it("expands a card into capped Command and Output regions", () =>
+	it("expands a row into upstream's plain capped Command and Output pres, indented one step", () =>
 	{
 		render(<BackgroundTasksList groups={POLL_GROUPS} />);
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Finished 1",
-				},
-			),
-		);
 		const card = screen.getByRole(
 			"button",
 			{
@@ -210,26 +439,210 @@ describe("BackgroundTasksList", () =>
 		);
 
 		fireEvent.click(card);
+		const detail = document.getElementById(card.getAttribute("aria-controls") ?? "");
 
 		expect(
 			{
 				expanded: card.getAttribute("aria-expanded"),
+				detail: detail?.className,
+				step: detail?.style.getPropertyValue("--task-step"),
+				inPiece: detail?.parentElement?.hasAttribute("data-task-piece"),
 				command: regionSummary("Command for Poll PR"),
 				output: regionSummary("Output for Poll PR"),
 			},
 		).toStrictEqual(
 			{
 				expanded: "true",
+				detail: "flex flex-col pe-p6 pb-p6 ps-[calc(var(--task-step,0)*1.25rem+0.75rem)] select-text comfortable:pe-p8 comfortable:pb-p8 [&>div]:leading-5",
+				step: "1",
+				inPiece: true,
 				command:
 				{
-					text: "$\u00a0gh pr checks 42 --watch",
-					capped: true,
+					tag: "PRE",
+					text: "$ gh pr checks 42 --watch",
+					className: TASK_PRE,
+					prompt: "$ ",
 				},
 				output:
 				{
+					tag: "PRE",
 					text: "all checks passed",
-					capped: true,
+					className: TASK_PRE,
+					prompt: null,
 				},
+			},
+		);
+	});
+
+	it("notes a task with no output: No output yet while it runs, No output captured. once finished", () =>
+	{
+		const groups: BackgroundTaskGroups =
+		{
+			running: [
+				task(
+					{
+						id: "bfab1serve",
+						description: "Serve",
+					},
+				),
+			],
+			finished: [
+				task(
+					{
+						id: "bfab1build",
+						description: "Build",
+						status: "completed",
+					},
+				),
+			],
+		};
+		render(<BackgroundTasksList groups={groups} />);
+		fireEvent.click(finishedToggle());
+		for (const name of ["Background task: Serve", "Background task: Build"])
+		{
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name,
+					},
+				),
+			);
+		}
+
+		expect(["No output yet", "No output captured."].map((text) => screen.getByText(text).className)).toStrictEqual([
+			"text-footnote text-muted-as-secondary",
+			"text-footnote text-muted-as-secondary",
+		]);
+	});
+
+	it("follows the output's tail as it grows, until the user scrolls up more than 16px", () =>
+	{
+		const running = (output: string): BackgroundTaskGroups => (
+		{
+			running: [
+				task(
+					{
+						id: "bfab1tailfollow",
+						description: "Follow",
+						output,
+					},
+				),
+			],
+			finished: [],
+		});
+		const {rerender} = render(<BackgroundTasksList groups={running("one")} />);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Background task: Follow",
+				},
+			),
+		);
+		const pre = screen.getByRole(
+			"region",
+			{
+				name: "Output for Follow",
+			},
+		);
+		Object.defineProperty(
+			pre,
+			"scrollHeight",
+			{
+				configurable: true,
+				value: 500,
+			},
+		);
+		Object.defineProperty(
+			pre,
+			"clientHeight",
+			{
+				configurable: true,
+				value: 200,
+			},
+		);
+
+		rerender(<BackgroundTasksList groups={running("one\ntwo")} />);
+		const followed = pre.scrollTop;
+		pre.scrollTop = 200;
+		fireEvent.scroll(pre);
+		rerender(<BackgroundTasksList groups={running("one\ntwo\nthree")} />);
+
+		expect(
+			{
+				followed,
+				afterScrollUp: pre.scrollTop,
+			},
+		).toStrictEqual(
+			{
+				followed: 500,
+				afterScrollUp: 200,
+			},
+		);
+	});
+
+	it("gives a plain agent task no toggle but a View transcript button that opens its subagent", () =>
+	{
+		const openPane = vi.fn<PaneHostApi["openPane"]>();
+		const sessionId = "5e5510a0-0000-4000-8000-0000000fab2a";
+		const groups: BackgroundTaskGroups =
+		{
+			running: [
+				task(
+					{
+						id: "afab1review",
+						kind: "agent",
+						description: "Review the fabricated diff",
+					},
+				),
+				task(
+					{
+						id: "afab1summary",
+						kind: "agent",
+						description: "Summarise",
+						summary: "Found 2 issues",
+					},
+				),
+				task(
+					{
+						id: "bfab1serve",
+						description: "Serve",
+					},
+				),
+			],
+			finished: [],
+		};
+		render(withPaneHost(hostOpening(openPane), <BackgroundTasksList groups={groups} sessionId={sessionId} />));
+		const opener = (id: string) => document.querySelector(`[data-task-id="${id}"] [data-background-task]`);
+		const view = screen.getByRole(
+			"button",
+			{
+				name: "View transcript for Review the fabricated diff",
+			},
+		);
+
+		fireEvent.click(view);
+
+		expect(
+			{
+				review: [opener("afab1review")?.tagName, opener("afab1review")?.getAttribute("aria-expanded")],
+				reviewCaret: opener("afab1review")?.querySelector("[data-task-caret]") ?? null,
+				summary: opener("afab1summary")?.getAttribute("aria-expanded"),
+				serve: opener("bfab1serve")?.getAttribute("aria-expanded"),
+				viewOpener: view.hasAttribute("data-task-opener"),
+				focus: takePendingSubagentFocus(sessionId),
+				opened: openPane.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				review: ["DIV", null],
+				reviewCaret: null,
+				summary: "false",
+				serve: "false",
+				viewOpener: true,
+				focus: "afab1review",
+				opened: [["subagents"]],
 			},
 		);
 	});
@@ -237,14 +650,7 @@ describe("BackgroundTasksList", () =>
 	it("Clear finished tasks is an icon button that hides only the finished cards", () =>
 	{
 		render(<BackgroundTasksList groups={GROUPS} />);
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Finished 1",
-				},
-			),
-		);
+		fireEvent.click(finishedToggle());
 		const clear = screen.getByRole(
 			"button",
 			{
@@ -270,14 +676,14 @@ describe("BackgroundTasksList", () =>
 		).toStrictEqual(
 			{
 				icon: "",
-				sections: ["2 running"],
-				cards: ["Serve the fabricated appBash · Running", "Review the fabricated diffAgent · Running"],
+				sections: ["Running2"],
+				cards: ["Serve the fabricated app", "Review the fabricated diff"],
 				clear: null,
 			},
 		);
 	});
 
-	it("shows empty copy when there is no background work", () =>
+	it("shows upstream's placeholder when there is no background work", () =>
 	{
 		render(
 			<BackgroundTasksList
@@ -289,16 +695,124 @@ describe("BackgroundTasksList", () =>
 			/>,
 		);
 
-		const empty = screen.getByText("No background tasks in this session.");
+		const title = screen.getByText("Background tasks appear here");
 		expect(
 			{
-				tag: empty.tagName,
-				muted: empty.classList.contains("text-ink-muted"),
+				tag: title.tagName,
+				className: title.className,
+				icon: title.previousElementSibling?.getAttribute("class")?.includes("text-muted-as-secondary"),
+				old: screen.queryByText("No background tasks in this session."),
 			},
 		).toStrictEqual(
 			{
 				tag: "P",
-				muted: true,
+				className: "max-w-[36ch] text-pretty break-words text-body text-primary",
+				icon: true,
+				old: null,
+			},
+		);
+	});
+});
+
+describe("BackgroundTasksList list limit", () =>
+{
+	const finished = Array.from(
+		{
+			length: 105,
+		},
+		(_, index) =>
+			task(
+				{
+					id: `bfab1done${String(index).padStart(3, "0")}`,
+					description: `Done ${index}`,
+					status: "completed",
+				},
+			),
+	);
+	const groups: BackgroundTaskGroups =
+	{
+		running: [],
+		finished,
+	};
+	let session = 0;
+	function nextSession(): string
+	{
+		session += 1;
+		return `5e5510a0-0000-4000-8000-0000000f1a${String(session).padStart(2, "0")}`;
+	}
+	const rowCount = () => document.querySelectorAll("[data-task-id]").length;
+	const showMore = () =>
+		screen.queryByRole(
+			"button",
+			{
+				name: "Show more",
+			},
+		);
+
+	it("lists the first 100 rows, then Show more reveals the rest and focuses the first new row", () =>
+	{
+		render(<BackgroundTasksList groups={groups} />);
+		const before = rowCount();
+		const toggle = showMore();
+
+		if (toggle !== null) fireEvent.click(toggle);
+
+		expect(
+			{
+				before,
+				expanded: toggle?.getAttribute("aria-expanded"),
+				after: rowCount(),
+				less: screen
+					.getByRole(
+						"button",
+						{
+							name: "Show less",
+						},
+					)
+					.getAttribute("aria-expanded"),
+				focused: document.activeElement?.closest("[data-task-id]")?.getAttribute("data-task-id"),
+			},
+		).toStrictEqual(
+			{
+				before: 100,
+				expanded: "false",
+				after: 105,
+				less: "true",
+				focused: "bfab1done100",
+			},
+		);
+	});
+
+	it("keeps an open row and a focus-requested row past the limit, in order, before Show more", () =>
+	{
+		vi.stubGlobal("requestAnimationFrame", () => 0);
+		vi.stubGlobal("cancelAnimationFrame", () => undefined);
+		const sessionId = nextSession();
+		setTaskRowsOpen(sessionId, ["bfab1done102"], true);
+		requestBackgroundTaskFocus(
+			sessionId,
+			{
+				taskId: "bfab1done104",
+				finished: true,
+			},
+		);
+
+		render(<BackgroundTasksList groups={groups} sessionId={sessionId} />);
+		const ids = [...document.querySelectorAll("[data-task-id]")].map((row) => row.getAttribute("data-task-id"));
+
+		expect(
+			{
+				count: ids.length,
+				tail: ids.slice(-3),
+				lastBeforeToggle:
+					showMore()?.previousElementSibling?.getAttribute("data-task-id") ??
+					showMore()?.previousElementSibling,
+			},
+		).toStrictEqual(
+			{
+				count: 102,
+				tail: ["bfab1done099", "bfab1done102", "bfab1done104"],
+				lastBeforeToggle: "bfab1done104",
 			},
 		);
 	});
@@ -361,6 +875,7 @@ describe("BackgroundTasksList artifact links", () =>
 					id: "afab1publish",
 					kind: "agent",
 					description: "Publish artifact https://claude.ai/code/artifact/fab1 now",
+					summary: "Published",
 				},
 			),
 			task(
@@ -376,7 +891,7 @@ describe("BackgroundTasksList artifact links", () =>
 
 	function titleOf(id: string)
 	{
-		const title = document.querySelector(`li[data-task-id="${id}"] button[data-background-task] .truncate`);
+		const title = document.querySelector(`[data-task-id="${id}"] [data-background-task] [data-task-title]`);
 		return {
 			text: title?.textContent,
 			links: [...(title?.querySelectorAll("a") ?? [])].map((link) => (
@@ -442,7 +957,7 @@ describe("BackgroundTasksList artifact links", () =>
 			),
 		);
 		const afterLink = card.getAttribute("aria-expanded");
-		fireEvent.click(card.querySelector(".truncate") ?? card);
+		fireEvent.click(card.querySelector("[data-task-title]") ?? card);
 
 		expect(
 			{
@@ -460,6 +975,9 @@ describe("BackgroundTasksList artifact links", () =>
 
 describe("BackgroundTasksList touch summary", () =>
 {
+	const SUMMARY_CLASS =
+		"hidden truncate pe-p6 pb-p5 ps-[calc(var(--task-step,0)*1.25rem+0.75rem)] text-body text-secondary [@media(pointer:coarse)]:block";
+
 	it("shows a failed or stopped task's summary inline on coarse pointers only, and not for completed tasks", () =>
 	{
 		const groups: BackgroundTaskGroups =
@@ -493,14 +1011,6 @@ describe("BackgroundTasksList touch summary", () =>
 			],
 		};
 		render(<BackgroundTasksList groups={groups} />);
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Finished 3",
-				},
-			),
-		);
 
 		expect(
 			[...document.querySelectorAll("[data-background-task-summary]")].map((span) => (
@@ -511,11 +1021,11 @@ describe("BackgroundTasksList touch summary", () =>
 		).toStrictEqual([
 			{
 				text: "Background command failed with exit code 1",
-				className: "hidden [@media(pointer:coarse)]:block text-body text-secondary truncate min-w-0",
+				className: SUMMARY_CLASS,
 			},
 			{
 				text: "Stopped by user",
-				className: "hidden [@media(pointer:coarse)]:block text-body text-secondary truncate min-w-0",
+				className: SUMMARY_CLASS,
 			},
 		]);
 	});
@@ -594,7 +1104,7 @@ describe("BackgroundTasksList output file", () =>
 		expect((await screen.findByText("Showing the last 64 KB of output.")).tagName).toBe("P");
 	});
 
-	it("says the output is no longer available when the file was cleaned up", async () =>
+	it("says the output is unavailable when the file was cleaned up", async () =>
 	{
 		stubFetch(
 			{
@@ -612,7 +1122,7 @@ describe("BackgroundTasksList output file", () =>
 			),
 		);
 
-		expect((await screen.findByText("Output no longer available")).tagName).toBe("P");
+		expect((await screen.findByText("Output unavailable")).tagName).toBe("P");
 	});
 
 	it("shows an agent task's result and never fetches its output file", () =>
@@ -632,6 +1142,7 @@ describe("BackgroundTasksList output file", () =>
 						id: "afab1review",
 						kind: "agent",
 						description: "Review the fabricated diff",
+						summary: 'Agent "Review the fabricated diff" finished',
 						output: "The fabricated diff looks good.",
 						outputFile: OUTPUT_FILE,
 					},
@@ -717,14 +1228,7 @@ describe("BackgroundTasksList focus requests", () =>
 
 		expect(
 			{
-				finished: screen
-					.getByRole(
-						"button",
-						{
-							name: "Finished 1",
-						},
-					)
-					.getAttribute("aria-expanded"),
+				finished: finishedToggle().getAttribute("aria-expanded"),
 				card: screen
 					.getByRole(
 						"button",
@@ -734,7 +1238,9 @@ describe("BackgroundTasksList focus requests", () =>
 					)
 					.getAttribute("aria-expanded"),
 				scrollCalls: scroll.mock.calls,
-				scrolled: scroll.mock.contexts.map((element) => (element as Element).getAttribute("data-task-id")),
+				scrolled: scroll.mock.contexts.map((element) =>
+					(element as Element).closest("[data-task-id]")?.getAttribute("data-task-id"),
+				),
 				active: document.activeElement === document.body,
 			},
 		).toStrictEqual(
@@ -796,22 +1302,8 @@ describe("BackgroundTasksList focus requests", () =>
 			},
 		);
 		render(<BackgroundTasksList groups={GROUPS} sessionId={sessionId} />);
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Finished 1",
-				},
-			),
-		);
-		const collapsed = screen
-			.getByRole(
-				"button",
-				{
-					name: "Finished 1",
-				},
-			)
-			.getAttribute("aria-expanded");
+		fireEvent.click(finishedToggle());
+		const collapsed = finishedToggle().getAttribute("aria-expanded");
 
 		act(() =>
 		{
@@ -827,14 +1319,7 @@ describe("BackgroundTasksList focus requests", () =>
 		expect(
 			{
 				collapsed,
-				reopened: screen
-					.getByRole(
-						"button",
-						{
-							name: "Finished 1",
-						},
-					)
-					.getAttribute("aria-expanded"),
+				reopened: finishedToggle().getAttribute("aria-expanded"),
 			},
 		).toStrictEqual(
 			{
@@ -849,14 +1334,7 @@ describe("BackgroundTasksList focus requests", () =>
 		stubFrames();
 		const sessionId = nextSession();
 		const first = render(<BackgroundTasksList groups={GROUPS} sessionId={sessionId} />);
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Finished 1",
-				},
-			),
-		);
+		fireEvent.click(finishedToggle());
 		fireEvent.click(
 			screen.getByRole(
 				"button",
@@ -871,14 +1349,7 @@ describe("BackgroundTasksList focus requests", () =>
 
 		expect(
 			{
-				finished: screen
-					.getByRole(
-						"button",
-						{
-							name: "Finished 1",
-						},
-					)
-					.getAttribute("aria-expanded"),
+				finished: finishedToggle().getAttribute("aria-expanded"),
 				expanded: expandedCards(),
 			},
 		).toStrictEqual(

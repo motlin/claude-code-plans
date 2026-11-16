@@ -12,9 +12,10 @@ import {describe, expect, it} from "vite-plus/test";
  * (hook-notice-row.tsx) copies upstream's own `d_` button and epitaxy expanding body, not the cds Collapsible, so it
  * raised the ceiling from 46. The usage ring popover's Context window toggle and its deferred groups copy upstream's
  * own buttons (c2d611398 `ne`, ce96f5751 `se` without `rail`), whose state the popover owns and resets on close, so
- * they raised it from 47.
+ * they raised it from 47. The Background tasks pane's Show more / Show less (upstream `mv`) pages more rows into the
+ * same list rather than revealing a panel, so a Collapsible can't draw it either; it raised the ceiling from 49.
  */
-const DISCLOSURE_CEILING = 49;
+const DISCLOSURE_CEILING = 50;
 
 /** The opening tag around `index`: from the nearest `<Name` before it to the next `<` after it. */
 function enclosingTag(source: string, index: number): string

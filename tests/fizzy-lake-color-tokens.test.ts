@@ -1040,6 +1040,40 @@ describe("fizzy-lake color rings (upstream --cds-border = --cds-ring-color)", ()
 		);
 	});
 
+	it("bg-fill-card is upstream's --cds-fill-card: alpha-1 at rest, #00000006 / #ffffff08 under fizzy color", async () =>
+	{
+		const names = ["--upstream-fill-card"] as const;
+		expect(
+			{
+				base: tokens(block(":root"), names),
+				light: tokens(block(FIZZY_LIGHT), names),
+				dark: tokens(block(FIZZY_DARK), names),
+				utilities: await compileAll(["bg-fill-card", "not-touch:bg-fill-card"]),
+			},
+		).toStrictEqual(
+			{
+				base:
+				{
+					"--upstream-fill-card": "var(--upstream-alpha-1)",
+				},
+				light:
+				{
+					"--upstream-fill-card": "#00000006",
+				},
+				dark:
+				{
+					"--upstream-fill-card": "#ffffff08",
+				},
+				utilities:
+				{
+					"bg-fill-card": ".bg-fill-card { background-color: var(--upstream-fill-card); }",
+					"not-touch:bg-fill-card":
+						"@media (hover: hover) and (pointer: fine) { .not-touch\\:bg-fill-card { background-color: var(--upstream-fill-card); } }",
+				},
+			},
+		);
+	});
+
 	it("the disabled cds Button utilities compile to upstream's text-button-disabled, bg-fill-disabled and opacity-disabled", async () =>
 	{
 		expect(await compileAll(["text-button-disabled", "bg-fill-disabled", "opacity-disabled"])).toStrictEqual(

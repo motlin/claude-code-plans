@@ -1,6 +1,6 @@
 import {useNow} from "../../hooks/use-now";
 import {ChevronRight} from "lucide-react";
-import {formatPaddedElapsed} from "../../lib/working-marker";
+import {formatPaddedElapsed} from "../../lib/elapsed-format";
 import
 {
 	agentCells,

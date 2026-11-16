@@ -135,6 +135,8 @@ const FULL: SessionRailInputs =
 				summary: null,
 				outputFile: null,
 				startedAt: null,
+				completedAt: null,
+				durationMs: null,
 			},
 		],
 		finished: [
@@ -149,6 +151,8 @@ const FULL: SessionRailInputs =
 				summary: null,
 				outputFile: null,
 				startedAt: null,
+				completedAt: null,
+				durationMs: null,
 			},
 		],
 	},
@@ -1847,6 +1851,8 @@ describe("Background tasks card", () =>
 			summary: null,
 			outputFile: null,
 			startedAt,
+			completedAt: null,
+			durationMs: null,
 		};
 	}
 

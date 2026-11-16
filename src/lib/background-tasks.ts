@@ -4,6 +4,7 @@ import {asRecord} from "./narrow";
 import {isRunningBackgroundTask} from "./session-state";
 import type {ActiveSubagent} from "./subagents";
 import {workflowCallName} from "./workflow-name";
+import {formatPaddedElapsed} from "./elapsed-format";
 
 export type BackgroundTaskKind = "bash" | "agent" | "monitor" | "workflow" | "task";
 export type BackgroundTaskStatus = "running" | "completed" | "failed" | "stopped";
@@ -29,6 +30,10 @@ export interface BackgroundTask
 	outputFile: string | null;
 	/** When the launching tool_use was written, for the rail's elapsed time; null when unknown. */
 	startedAt: string | null;
+	/** When the record that settled the task (its notification, or the stop call's result) was written. */
+	completedAt: string | null;
+	/** How long the task ran, from its notification's `<duration_ms>`. */
+	durationMs: number | null;
 }
 
 export interface BackgroundTaskGroups
@@ -74,35 +79,87 @@ function spawnedSince(startedAt: string | null, processStartedAt: number | null 
 	return Date.parse(startedAt) >= processStartedAt;
 }
 
-const KIND_LABELS: Record<BackgroundTaskKind, string> =
+/** A row's trailing status column: upstream's `text-danger` "Failed", "Stopped", or a duration hidden when narrow. */
+export interface BackgroundTaskStatusText
 {
-	bash: "Bash",
-	agent: "Agent",
-	monitor: "Monitor",
-	workflow: "Workflow",
-	task: "Task",
-};
-
-const STATUS_LABELS: Record<BackgroundTaskStatus, string> =
-{
-	running: "Running",
-	completed: "Completed",
-	failed: "Failed",
-	stopped: "Stopped",
-};
-
-/** The card's meta line, e.g. "Bash · Completed". */
-export function backgroundTaskMeta(task: BackgroundTask): string
-{
-	return `${KIND_LABELS[task.kind]} · ${STATUS_LABELS[task.status]}`;
+	tone: "danger" | "plain";
+	text: string;
+	/** A duration, which upstream hides below a 296px container. */
+	hideNarrow: boolean;
 }
 
-/** Running tasks in the given order; finished ones newest first. */
+function duration(ms: number): BackgroundTaskStatusText
+{
+	return {
+		tone: "plain",
+		text: formatPaddedElapsed(Math.max(0, Math.round(ms / 1000))),
+		hideNarrow: true,
+	};
+}
+
+/**
+ * Upstream's status column (`gw`/`re`): Failed, Stopped, a running task's live elapsed clock, else the
+ * notification's duration, else a finished command or monitor's start-to-completion span; null otherwise.
+ */
+export function backgroundTaskStatus(task: BackgroundTask, now: number): BackgroundTaskStatusText | null
+{
+	if (task.status === "failed")
+	{
+		return {
+			tone: "danger",
+			text: "Failed",
+			hideNarrow: false,
+		};
+	}
+	if (task.status === "stopped")
+	{
+		return {
+			tone: "plain",
+			text: "Stopped",
+			hideNarrow: false,
+		};
+	}
+	const started = epoch(task.startedAt);
+	if (task.status === "running") return started === null ? null : duration(now - started);
+	if (task.durationMs !== null) return duration(task.durationMs);
+	const completed = epoch(task.completedAt);
+	if ((task.kind === "bash" || task.kind === "monitor") && started !== null && completed !== null)
+		return duration(completed - started);
+	return null;
+}
+
+/** A timestamp's epoch ms, or null when it is missing or unreadable. */
+function epoch(timestamp: string | null): number | null
+{
+	if (timestamp === null) return null;
+	const ms = Date.parse(timestamp);
+	return Number.isNaN(ms) ? null : ms;
+}
+
+/** Orders by `key` (ascending, or descending with `sign` -1), unknown keys last, ties kept in input order. */
+function byTime(sign: 1 | -1, key: (task: BackgroundTask) => string | null)
+{
+	return (a: BackgroundTask, b: BackgroundTask): number =>
+	{
+		const left = epoch(key(a));
+		const right = epoch(key(b));
+		if (left === null || right === null) return (left === null ? 1 : 0) - (right === null ? 1 : 0);
+		return sign * (left - right);
+	};
+}
+
+/**
+ * Upstream's pane order (`rw`): running tasks by start, oldest first; finished ones by completion,
+ * newest first, ties newest settled first. Unknown times sort last.
+ */
 export function groupBackgroundTasks(tasks: readonly BackgroundTask[]): BackgroundTaskGroups
 {
 	return {
-		running: tasks.filter((task) => task.status === "running"),
-		finished: tasks.filter((task) => task.status !== "running").toReversed(),
+		running: tasks.filter((task) => task.status === "running").toSorted(byTime(1, (task) => task.startedAt)),
+		finished: tasks
+			.filter((task) => task.status !== "running")
+			.toReversed()
+			.toSorted(byTime(-1, (task) => task.completedAt)),
 	};
 }
 
@@ -380,15 +437,22 @@ export function extractBackgroundTasks(
 	const find = (taskId: string | null, toolUseId: string | null): Tracked | undefined =>
 		(toolUseId === null ? undefined : byToolUseId.get(toolUseId)) ??
 		(taskId === null ? undefined : byTaskId.get(taskId));
-	const settle = (tracked: Tracked, status: BackgroundTaskStatus): void =>
+	const settle = (
+		tracked: Tracked,
+		status: BackgroundTaskStatus,
+		completedAt: string | null = null,
+		durationMs: number | null = null,
+	): void =>
 	{
 		tracked.task.status = status;
+		tracked.task.completedAt = completedAt;
+		tracked.task.durationMs = durationMs;
 		tracked.settledAt = ++clock;
 	};
 
 	// The CLI writes one notification as a user record, a queued_command attachment or a queue enqueue, often more than one of these.
 	const seenNotifications = new Set<string>();
-	const applyNotification = (content: string): void =>
+	const applyNotification = (content: string, timestamp: string | null): void =>
 	{
 		if (!content.startsWith("<task-notification>") || seenNotifications.has(content)) return;
 		seenNotifications.add(content);
@@ -410,9 +474,9 @@ export function extractBackgroundTasks(
 				}
 				const result = tag(content, "result");
 				if (result !== null) tracked.task.output = result;
-				if (status !== null) settle(tracked, status);
+				if (status !== null) settle(tracked, status, timestamp, durationOf(tag(content, "duration_ms")));
 				// A monitor ends with an expiry event that carries no status.
-				else if (event?.startsWith(MONITOR_EXPIRED) === true) settle(tracked, "completed");
+				else if (event?.startsWith(MONITOR_EXPIRED) === true) settle(tracked, "completed", timestamp);
 			}
 		}
 	};
@@ -425,13 +489,13 @@ export function extractBackgroundTasks(
 
 		if (record["type"] === "user" && typeof content === "string")
 		{
-			applyNotification(content);
+			applyNotification(content, timestamp);
 			continue;
 		}
 		const queued = queuedNotification(record);
 		if (queued !== null)
 		{
-			applyNotification(queued);
+			applyNotification(queued, timestamp);
 			continue;
 		}
 
@@ -464,6 +528,8 @@ export function extractBackgroundTasks(
 							summary: null,
 							outputFile: null,
 							startedAt: timestamp,
+							completedAt: null,
+							durationMs: null,
 						},
 					);
 				};
@@ -530,6 +596,8 @@ export function extractBackgroundTasks(
 						summary: null,
 						outputFile: null,
 						startedAt: agent.startedAt,
+						completedAt: null,
+						durationMs: null,
 					},
 				);
 				if (agentId !== null) byTaskId.set(agentId, tracked);
@@ -556,6 +624,8 @@ export function extractBackgroundTasks(
 							summary: null,
 							outputFile: null,
 							startedAt: agent.startedAt,
+							completedAt: null,
+							durationMs: null,
 						},
 					);
 					if (taskId !== null) byTaskId.set(taskId, tracked);
@@ -596,7 +666,7 @@ export function extractBackgroundTasks(
 			if (stopTaskId !== undefined && !isError)
 			{
 				const tracked = byTaskId.get(stopTaskId);
-				if (tracked?.task.status === "running") settle(tracked, "stopped");
+				if (tracked?.task.status === "running") settle(tracked, "stopped", timestamp);
 			}
 		}
 	}
@@ -625,6 +695,8 @@ export function extractBackgroundTasks(
 				output: null,
 				summary: null,
 				outputFile: null,
+				completedAt: null,
+				durationMs: null,
 				startedAt: null,
 			},
 		);
@@ -657,6 +729,8 @@ export function extractBackgroundTasks(
 				output: null,
 				summary: null,
 				outputFile: null,
+				completedAt: null,
+				durationMs: null,
 				startedAt: teammate.startedAt,
 			},
 		);
@@ -680,6 +754,8 @@ export function extractBackgroundTasks(
 				output: null,
 				summary: null,
 				outputFile: null,
+				completedAt: null,
+				durationMs: null,
 				startedAt: null,
 			},
 		);
@@ -700,6 +776,8 @@ export function extractBackgroundTasks(
 				output: null,
 				summary: null,
 				outputFile: null,
+				completedAt: null,
+				durationMs: null,
 				startedAt: null,
 			},
 		);
