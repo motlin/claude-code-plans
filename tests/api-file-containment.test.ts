@@ -14,6 +14,7 @@ import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {decodeFilePath, encodeFilePath, fileViewerPath, FileViewerResponse} from "../src/lib/api/file";
 import {FILE_CONTENT_SIZE_CAP_BYTES} from "../src/lib/db/indexer";
+import {mtimeEtag} from "../src/lib/file-edit";
 import {handleFileRequest} from "../src/routes/api/file.$";
 
 let fixtureDirectory: string;
@@ -109,6 +110,9 @@ describe("file viewer API", () =>
 				{
 					content: "export const answer = 100;\n",
 					path: realpathSync(filePath),
+					etag: mtimeEtag(statSync(filePath).mtime),
+					writable: true,
+					lossy: false,
 				},
 				cacheControl: "private, max-age=0, must-revalidate",
 				etag: `"${fileStat.mtimeMs}-${fileStat.size}"`,
@@ -139,6 +143,9 @@ describe("file viewer API", () =>
 				{
 					content: "export const indexer = 'available';\n",
 					path: realpathSync(filePath),
+					etag: mtimeEtag(statSync(filePath).mtime),
+					writable: true,
+					lossy: false,
 				},
 				status: 200,
 			},
@@ -177,6 +184,9 @@ describe("file viewer API", () =>
 					{
 						content: "const greeting = 'hello';\n",
 						path: realpathSync(filePath),
+						etag: mtimeEtag(statSync(filePath).mtime),
+						writable: true,
+						lossy: false,
 					},
 					status: 200,
 				},
@@ -339,6 +349,9 @@ describe("file viewer API", () =>
 				{
 					content: "A\u0000B",
 					path: realpathSync(binaryPath),
+					etag: mtimeEtag(statSync(binaryPath).mtime),
+					writable: true,
+					lossy: false,
 				},
 				status: 200,
 			},

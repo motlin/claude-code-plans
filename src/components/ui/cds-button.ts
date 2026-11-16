@@ -9,6 +9,7 @@ const PRE_FIZZY = "[:root:not([data-cds-fizzy-lake~=color])_&]";
 const CDS_BUTTON_VARIANTS =
 {
 	secondary: `bg-fill-secondary font-control-regular ${PRE_FIZZY}:shadow-field-drop after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] ${PRE_FIZZY}:after:shadow-[inset_0_0_0_1px_var(--color-fill-secondary-ring)] text-primary hover:bg-fill-secondary-hover ${CDS_BUTTON_DISABLED_FILL}`,
+	ghost: "font-control-regular text-primary hover:bg-fill-ghost-hover",
 	primary: `bg-primary font-control text-surface-1 [--shortcut-cap-ink:currentColor] hover:bg-primary/80 ${CDS_BUTTON_DISABLED_FILL}`,
 } as const;
 
@@ -25,7 +26,7 @@ const CDS_BUTTON_SIZES =
 export type CdsButtonVariant = keyof typeof CDS_BUTTON_VARIANTS;
 export type CdsButtonSize = keyof typeof CDS_BUTTON_SIZES;
 
-/** Classes for upstream's filled secondary or black primary cds Button, at the control height (or sm 20px). */
+/** Classes for upstream's ghost, filled secondary or black primary cds Button, at the control height (or sm 20px). */
 export function cdsButtonClass(variant: CdsButtonVariant, size: CdsButtonSize = "default"): string
 {
 	return `${CDS_BUTTON_BASE} ${CDS_BUTTON_SIZES[size]} ${CDS_BUTTON_VARIANTS[variant]}`;

@@ -7,6 +7,12 @@ export const FileViewerResponse = z
 		{
 			content: z.string(),
 			path: z.string(),
+			/** The mtime ETag a save sends as `If-Match`. */
+			etag: z.string().optional(),
+			/** The Files source editor may save this file (inside the roots, outside `.git`). */
+			writable: z.boolean().optional(),
+			/** Decoding replaced invalid UTF-8, so a save would lose the original bytes. */
+			lossy: z.boolean().optional(),
 		},
 	)
 	.strict();
@@ -146,12 +152,10 @@ export async function openFileInDefaultApp(path: string): Promise<unknown>
 
 /** A file the viewer can show as text, or why it can't. */
 type FileViewContent =
-	|
+	| (
 	  {
 			kind: "text";
-			content: string;
-			path: string;
-	  }
+	  } & FileViewerData)
 	|
 	  {
 			kind: "binary";

@@ -1,10 +1,11 @@
 import type {Stats} from "node:fs";
 import {readFile, realpath, stat} from "node:fs/promises";
-import {basename, dirname, isAbsolute, join, relative, resolve, sep} from "node:path";
+import {isAbsolute, join, relative, resolve, sep} from "node:path";
 import type {FileRefStatus} from "./api/file-refs";
 import {resolveConfiguredFileRoots} from "./config";
 import {FILE_CONTENT_SIZE_CAP_BYTES} from "./db/indexer";
 import {fileTypeLabel} from "./file-preview";
+import {isLossyDecode, realpathOfExistingPrefix} from "./session-file-write";
 
 const BINARY_SAMPLE_SIZE_BYTES = 512;
 
@@ -32,6 +33,10 @@ export class FileServingError extends Error
 export interface ServedFile
 {
 	content: string;
+	/** Decoding replaced invalid UTF-8 with U+FFFD, so writing the content back would lose bytes. */
+	lossy: boolean;
+	/** The stat mtime, which the save APIs' `mtimeEtag` is derived from. */
+	modifiedAt: Date;
 	modifiedAtMilliseconds: number;
 	path: string;
 	sizeBytes: number;
@@ -97,20 +102,6 @@ export async function resolveAllowedEntry(
 ): Promise<string>
 {
 	return resolveAllowedPath(requestedPath, configPath, defaultRoots);
-}
-
-/** Resolve every symlink in the longest existing prefix of `path`, keeping the missing rest as written. */
-async function realpathOfExistingPrefix(path: string): Promise<string>
-{
-	try
-	{
-		return await realpath(path);
-	}
-	catch
-	{
-		const parent = dirname(path);
-		return parent === path ? path : join(await realpathOfExistingPrefix(parent), basename(path));
-	}
 }
 
 /**
@@ -276,8 +267,11 @@ async function readResolvedTextFile(resolvedPath: string, options: ReadTextOptio
 		);
 	}
 
+	const content = contents.toString("utf8");
 	return {
-		content: contents.toString("utf8"),
+		content,
+		lossy: isLossyDecode(contents, content),
+		modifiedAt: fileStat.mtime,
 		modifiedAtMilliseconds: fileStat.mtimeMs,
 		path: resolvedPath,
 		sizeBytes: fileStat.size,

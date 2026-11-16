@@ -4,6 +4,7 @@ import {mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync} f
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 
+import {EditorView} from "@codemirror/view";
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
@@ -58,6 +59,7 @@ vi.mock("../src/hooks/use-shiki", async (importOriginal) => (
 const PLAN_PATH = "/home/alice/.claude/plans/alpha-plan.md";
 const MEMORY_PATH = "/home/alice/.claude/projects/-home-alice-proj/memory/notes.md";
 const README_PATH = "/home/alice/proj/README.md";
+const SOURCE_PATH = "/home/alice/proj/src/app.ts";
 const PLAN_MTIME = "2026-09-01T10:00:00.123Z";
 const SAVED_MTIME = "2026-09-01T10:05:00.456Z";
 
@@ -510,6 +512,11 @@ interface Put
 let fileContents: Map<string, string>;
 let puts: Put[];
 let putStatuses: number[];
+/** Files the GET reports as writable by the source editor, and those whose decode was lossy. */
+let writablePaths: Set<string>;
+let lossyPaths: Set<string>;
+const SOURCE_ETAG = '"1000"';
+const SOURCE_SAVED_ETAG = '"2000"';
 
 function stubFetch(): void
 {
@@ -521,6 +528,29 @@ function stubFetch(): void
 			if (url.pathname.startsWith("/api/file/"))
 			{
 				const path = decodeFilePath(url.pathname.slice("/api/file/".length)) ?? "";
+				if (init?.method === "PUT")
+				{
+					puts.push(
+						{
+							url: path,
+							ifMatch: new Headers(init.headers).get("If-Match"),
+							body: String(init.body),
+						},
+					);
+					fileContents.set(path, String(init.body));
+					return Promise.resolve(
+						new Response(
+							null,
+							{
+								status: 204,
+								headers:
+								{
+									ETag: SOURCE_SAVED_ETAG,
+								},
+							},
+						),
+					);
+				}
 				const content = fileContents.get(path);
 				if (content === undefined)
 					return Promise.resolve(
@@ -538,6 +568,14 @@ function stubFetch(): void
 						{
 							content,
 							path,
+							...(writablePaths.has(path)
+								?
+									{
+										etag: SOURCE_ETAG,
+										writable: true,
+										lossy: lossyPaths.has(path),
+									}
+								: {}),
 						},
 					),
 				);
@@ -623,6 +661,8 @@ beforeEach(() =>
 	]);
 	puts = [];
 	putStatuses = [];
+	writablePaths = new Set();
+	lossyPaths = new Set();
 	stubFetch();
 });
 
@@ -1051,6 +1091,311 @@ class FakeObserver
 	}
 }
 
+/** The mounted source editor, once the lazy CodeMirror chunk has replaced the static fallback. */
+async function sourceView(): Promise<EditorView>
+{
+	let view: EditorView | null = null;
+	await waitFor(() =>
+	{
+		const editor = document.querySelector<HTMLElement>(".cm-editor");
+		view = editor === null ? null : EditorView.findFromDOM(editor);
+		if (view === null) throw new Error("source editor not loaded");
+	});
+	return view as unknown as EditorView;
+}
+
+function typeInSource(view: EditorView, text: string): void
+{
+	act(() =>
+	{
+		view.dispatch(
+			{
+				changes:
+				{
+					from: view.state.doc.length,
+					insert: text,
+				},
+				userEvent: "input.type",
+			},
+		);
+	});
+}
+
+/** Advance the autosave idle timer, then let the save's fetch settle. */
+async function idle(ms: number): Promise<void>
+{
+	act(() =>
+	{
+		vi.advanceTimersByTime(ms);
+	});
+	vi.useRealTimers();
+	await flush();
+	await flush();
+}
+
+function headerButtons(): string[]
+{
+	return [...document.querySelectorAll(".h-8 button")].map(
+		(button) => button.getAttribute("aria-label") ?? button.textContent,
+	);
+}
+
+describe("FileView source editing", () =>
+{
+	beforeEach(() =>
+	{
+		fileContents.set(SOURCE_PATH, "export const a = 1;\n");
+		writablePaths.add(SOURCE_PATH);
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(
+			"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+		);
+	});
+
+	afterEach(() =>
+	{
+		vi.useRealTimers();
+		localStorage.clear();
+		vi.restoreAllMocks();
+	});
+
+	it("edits a writable file in place and autosaves 1000 ms after the last change, never arming the guard", async () =>
+	{
+		const onDirtyChange = vi.fn<(dirty: boolean) => void>();
+		const onEditStart = vi.fn<() => void>();
+		renderView(
+			{
+				path: SOURCE_PATH,
+				onDirtyChange,
+				onEditStart,
+			},
+		);
+		const view = await sourceView();
+		const content = view.contentDOM;
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+			},
+		);
+		typeInSource(view, "// one\n");
+		act(() =>
+		{
+			vi.advanceTimersByTime(400);
+		});
+		typeInSource(view, "// two\n");
+		const whileTyping = headerButtons();
+		act(() =>
+		{
+			vi.advanceTimersByTime(999);
+		});
+		const putsBeforeIdle = puts.length;
+		await idle(1);
+
+		expect(
+			{
+				readOnly: content.getAttribute("aria-readonly"),
+				whileTyping,
+				putsBeforeIdle,
+				puts,
+				editStarts: onEditStart.mock.calls.length,
+				dirty: onDirtyChange.mock.calls.map(([dirty]) => dirty),
+			},
+		).toStrictEqual(
+			{
+				readOnly: null,
+				whileTyping: [`Copy path ${SOURCE_PATH}`],
+				putsBeforeIdle: 0,
+				puts: [
+					{
+						url: SOURCE_PATH,
+						ifMatch: SOURCE_ETAG,
+						body: "export const a = 1;\n// one\n// two\n",
+					},
+				],
+				editStarts: 1,
+				dirty: [],
+			},
+		);
+	});
+
+	it("keeps an unwritable file read-only", async () =>
+	{
+		writablePaths.clear();
+		renderView(
+			{
+				path: SOURCE_PATH,
+			},
+		);
+		const view = await sourceView();
+		expect(view.contentDOM.getAttribute("aria-readonly")).toBe("true");
+	});
+
+	it("drops the Edit button for a writable plan, which edits in source view", async () =>
+	{
+		writablePaths.add(PLAN_PATH);
+		renderView(
+			{
+				path: PLAN_PATH,
+			},
+		);
+		await screen.findByText("First draft.");
+		expect(headerButtons()).toStrictEqual([`Copy path ${PLAN_PATH}`, "View source"]);
+	});
+
+	it("manual mode shows ghost Cancel and secondary Save only while dirty; Save keeps editor focus", async () =>
+	{
+		localStorage.setItem("epitaxy-thimble", "false");
+		const onDirtyChange = vi.fn<(dirty: boolean) => void>();
+		renderView(
+			{
+				path: SOURCE_PATH,
+				onDirtyChange,
+			},
+		);
+		const view = await sourceView();
+		const clean = headerButtons();
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+			},
+		);
+		typeInSource(view, "// draft\n");
+		await idle(1000);
+		const dirtyButtons = headerButtons();
+		const putsAfterIdle = puts.length;
+		const save = screen.getByRole(
+			"button",
+			{
+				name: "Save",
+			},
+		);
+		const cancel = screen.getByRole(
+			"button",
+			{
+				name: "Cancel",
+			},
+		);
+		const mouseDownAllowed = fireEvent.mouseDown(save);
+		fireEvent.click(save);
+		await flush();
+		await flush();
+
+		expect(
+			{
+				clean,
+				dirtyButtons,
+				classes:
+				{
+					cancel: cancel.className.includes("hover:bg-fill-ghost-hover"),
+					save: save.className.includes("bg-fill-secondary"),
+				},
+				putsAfterIdle,
+				mouseDownAllowed,
+				puts,
+				after: headerButtons(),
+				dirty: onDirtyChange.mock.calls.map(([dirty]) => dirty),
+			},
+		).toStrictEqual(
+			{
+				clean: [`Copy path ${SOURCE_PATH}`],
+				dirtyButtons: [`Copy path ${SOURCE_PATH}`, "Cancel", "Save"],
+				classes:
+				{
+					cancel: true,
+					save: true,
+				},
+				putsAfterIdle: 0,
+				mouseDownAllowed: false,
+				puts: [
+					{
+						url: SOURCE_PATH,
+						ifMatch: SOURCE_ETAG,
+						body: "export const a = 1;\n// draft\n",
+					},
+				],
+				after: [`Copy path ${SOURCE_PATH}`],
+				dirty: [true, false],
+			},
+		);
+	});
+
+	it("manual mode Cancel restores the disk text and hides both buttons", async () =>
+	{
+		localStorage.setItem("epitaxy-thimble", "false");
+		renderView(
+			{
+				path: SOURCE_PATH,
+			},
+		);
+		const view = await sourceView();
+		typeInSource(view, "// draft\n");
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Cancel",
+				},
+			),
+		);
+		expect(
+			{
+				text: view.state.doc.toString(),
+				buttons: headerButtons(),
+				puts,
+			},
+		).toStrictEqual(
+			{
+				text: "export const a = 1;\n",
+				buttons: [`Copy path ${SOURCE_PATH}`],
+				puts: [],
+			},
+		);
+	});
+
+	it.each([
+		{
+			pref: null,
+			copy: "This file isn’t valid UTF-8, so it’s saved only when you press Save. A save writes each \uFFFD to the file, and the original characters are lost.",
+		},
+		{
+			pref: "false",
+			copy: "This file isn’t valid UTF-8. A save writes each \uFFFD to the file, and the original characters are lost.",
+		},
+	])("a lossy file shows upstream's notice (pref $pref) and saves only on Save", async ({pref, copy}) =>
+	{
+		if (pref !== null) localStorage.setItem("epitaxy-thimble", pref);
+		lossyPaths.add(SOURCE_PATH);
+		renderView(
+			{
+				path: SOURCE_PATH,
+			},
+		);
+		const view = await sourceView();
+		const notice = screen.getAllByRole("status").find((element) => element.classList.contains("bg-alpha-2"));
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+			},
+		);
+		typeInSource(view, "x");
+		await idle(1000);
+		expect(
+			{
+				copy: notice?.textContent,
+				className: notice?.className,
+				puts,
+				buttons: headerButtons(),
+			},
+		).toStrictEqual(
+			{
+				copy,
+				className: "shrink-0 bg-alpha-2 px-md py-1.25 text-body text-primary",
+				puts: [],
+				buttons: [`Copy path ${SOURCE_PATH}`, "Cancel", "Save"],
+			},
+		);
+	});
+});
+
 describe("Files pane editing", () =>
 {
 	let unregister: () => void = () =>
@@ -1226,6 +1571,81 @@ describe("Files pane editing", () =>
 						selected: true,
 					},
 				],
+			},
+		);
+	});
+
+	async function editReadmeSource(pane: HTMLElement): Promise<void>
+	{
+		writablePaths.add(README_PATH);
+		fireEvent.click(
+			within(pane).getByRole(
+				"button",
+				{
+					name: README_PATH,
+				},
+			),
+		);
+		await flush();
+		fireEvent.click(
+			await within(pane).findByRole(
+				"button",
+				{
+					name: "View source",
+				},
+			),
+		);
+		typeInSource(await sourceView(), "More.\n");
+		await flush();
+		fireEvent.click(
+			within(pane).getByRole(
+				"button",
+				{
+					name: PLAN_PATH,
+				},
+			),
+		);
+		await flush();
+		await flush();
+	}
+
+	it("with autosave on, leaving an edited tab saves it on unmount instead of asking", async () =>
+	{
+		const pane = await openPane();
+		await editReadmeSource(pane);
+		expect(
+			{
+				dialog: screen.queryByRole("alertdialog") !== null,
+				puts,
+			},
+		).toStrictEqual(
+			{
+				dialog: false,
+				puts: [
+					{
+						url: README_PATH,
+						ifMatch: SOURCE_ETAG,
+						body: "# Readme\nMore.\n",
+					},
+				],
+			},
+		);
+	});
+
+	it("with autosave off, leaving an edited tab asks first", async () =>
+	{
+		localStorage.setItem("epitaxy-thimble", "false");
+		const pane = await openPane();
+		await editReadmeSource(pane);
+		expect(
+			{
+				dialog: screen.queryByRole("alertdialog")?.textContent,
+				puts,
+			},
+		).toStrictEqual(
+			{
+				dialog: "Discard unsaved changes?Your edits to README.md have not been saved. Leaving this tab discards them.Keep editingDiscard",
+				puts: [],
 			},
 		);
 	});

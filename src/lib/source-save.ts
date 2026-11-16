@@ -170,7 +170,13 @@ export function editorDirty(state: SaveState): boolean
 /** Upstream `om`: with autosave on, the unsaved-changes guard arms only after a failed save. */
 export function reportedDirty(state: SaveState, autoSave: boolean): boolean
 {
-	return editorDirty(state) && (!autoSave || state.error !== null);
+	return reportsDirty(editorDirty(state), autoSave, state.error);
+}
+
+/** {@link reportedDirty} from the editor's own dirty flag, for views that keep no {@link SaveState}. */
+export function reportsDirty(dirty: boolean, autoSave: boolean, error: SaveError | null): boolean
+{
+	return dirty && (!autoSave || error !== null);
 }
 
 const BANNER_COPY: Record<
@@ -271,22 +277,25 @@ export interface SourceSaver
 	dispose(flush: boolean): void;
 }
 
+export interface SaveQueue
+{
+	/** Write `text` now, or after the write in flight settles; skipped when it equals the disk text. */
+	save(text: string, reason: SaveReason): void;
+}
+
 /**
- * Autosave plus upstream `gS`'s write queue: a flush while a write is in flight keeps only the
- * latest text and writes it once that write settles, and a text equal to the disk contents is
- * never written. A rejected write drops the queue (upstream stops saving while an error shows).
+ * Upstream `gS`'s write queue: a save while a write is in flight keeps only the latest text and
+ * writes it once that write settles, and a text equal to the disk contents is never written. A
+ * rejected write drops the queue (upstream stops saving while an error shows).
  */
-export function createSourceSaver({
-	delayMs = AUTO_SAVE_DELAY_MS,
+export function createSaveQueue({
 	write,
 	diskText,
 }: {
-	delayMs?: number;
 	write: (text: string, reason: SaveReason) => Promise<void>;
 	diskText: () => string;
-}): SourceSaver
+}): SaveQueue
 {
-	let latest: string | null = null;
 	let inFlight = false;
 	let queued:
 	{
@@ -314,19 +323,44 @@ export function createSourceSaver({
 		);
 	};
 
+	return {
+		save(text, reason)
+		{
+			if (inFlight)
+				queued =
+				{
+					text,
+					reason,
+				};
+			else start(text, reason);
+		},
+	};
+}
+
+/** Autosave ({@link createAutoSave}) feeding a {@link createSaveQueue}. */
+export function createSourceSaver({
+	delayMs = AUTO_SAVE_DELAY_MS,
+	write,
+	diskText,
+}: {
+	delayMs?: number;
+	write: (text: string, reason: SaveReason) => Promise<void>;
+	diskText: () => string;
+}): SourceSaver
+{
+	let latest: string | null = null;
+	const queue = createSaveQueue(
+		{
+			write,
+			diskText,
+		},
+	);
 	const auto = createAutoSave(
 		{
 			delayMs,
 			save: (reason) =>
 			{
-				if (latest === null) return;
-				if (inFlight)
-					queued =
-					{
-						text: latest,
-						reason,
-					};
-				else start(latest, reason);
+				if (latest !== null) queue.save(latest, reason);
 			},
 		},
 	);

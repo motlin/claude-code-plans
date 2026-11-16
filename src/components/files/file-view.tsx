@@ -43,6 +43,8 @@ import {useMarkdownEdit} from "./markdown-edit";
 import {GoToLineBar} from "./go-to-line-bar";
 import {LazySourceEditor} from "./lazy-source-editor";
 import type {FindHighlight, SourceEditorHandle} from "./source-editor";
+import {useSourceFileSave} from "./use-source-file-save";
+import {cdsButtonClass} from "../ui/cds-button";
 
 /**
  * Sibling `.md` links render under this prefix; a click handler resolves them
@@ -553,11 +555,34 @@ export function FileView({
 		},
 	);
 	const attachKeys = useShortcutKeys("attach_selection");
-	const content = file.data?.kind === "text" ? file.data.content : undefined;
+	const textData = file.data?.kind === "text" ? file.data : undefined;
+	const content = textData?.content;
+	// Upstream's desktop local session: a writable text file edits in place, with no Edit button.
+	const editable = textData?.writable === true;
+	const lossy = editable && textData.lossy === true;
+	const sourceSave = useSourceFileSave(
+		{
+			path,
+			queryKey: fileViewQueryOptions(path, forceText).queryKey,
+			file:
+				textData === undefined
+					? undefined
+					:
+						{
+							content: textData.content,
+							etag: textData.etag ?? null,
+						},
+			editable,
+			lossy,
+			editorRef,
+			onEditStart,
+			onDirtyChange,
+		},
+	);
 	const edit = useMarkdownEdit(
 		{
 			path,
-			target: markdown && content !== undefined ? editableMarkdownTarget(path) : null,
+			target: markdown && content !== undefined && !editable ? editableMarkdownTarget(path) : null,
 			onEditStart,
 			onDirtyChange,
 		},
@@ -726,7 +751,11 @@ export function FileView({
 								ref={editorRef}
 								className="h-full"
 								value={data.content}
-								readOnly
+								readOnly={!editable}
+								autoSave={editable && sourceSave.autoSave}
+								onChange={sourceSave.onChange}
+								onSave={sourceSave.onSave}
+								onDiscard={sourceSave.discard}
 								wordWrap={settings.filesWordWrap}
 								tabSize={tabSize}
 								showWhitespace={settings.filesShowWhitespace}
@@ -756,6 +785,9 @@ export function FileView({
 	};
 
 	const canToggleSource = markdown && file.data?.kind === "text" && !edit.editing;
+	// Upstream's manual mode (autosave off, or a lossy file): Cancel and Save replace the header buttons while dirty.
+	const manualDirty = editable && !sourceSave.autoSave && sourceSave.dirty;
+	const showLossyNotice = lossy && sourceMode && !(sourceSave.dirty && sourceSave.error !== null);
 	return (
 		// oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- catches the editor and find shortcuts bubbling up from the focused pane content
 		<div
@@ -768,9 +800,37 @@ export function FileView({
 		>
 			<div className="flex h-8 shrink-0 items-center gap-1 px-3">
 				<Breadcrumb path={displayPath(path, cwd)} />
-				{edit.editButton}
-				{edit.toolbar}
-				{canToggleSource && (
+				{manualDirty && (
+					<>
+						<button
+							type="button"
+							disabled={sourceSave.saving}
+							onMouseDown={(event) =>
+							{
+								event.preventDefault();
+							}}
+							onClick={sourceSave.discard}
+							className={cdsButtonClass("ghost")}
+						>
+							Cancel
+						</button>
+						<button
+							type="button"
+							disabled={sourceSave.saving || sourceSave.error !== null}
+							onMouseDown={(event) =>
+							{
+								event.preventDefault();
+							}}
+							onClick={sourceSave.save}
+							className={cdsButtonClass("secondary")}
+						>
+							Save
+						</button>
+					</>
+				)}
+				{!manualDirty && edit.editButton}
+				{!manualDirty && edit.toolbar}
+				{!manualDirty && canToggleSource && (
 					<Tooltip content={showSource ? "Preview" : "View source"}>
 						<button
 							type="button"
@@ -790,6 +850,13 @@ export function FileView({
 					</Tooltip>
 				)}
 			</div>
+			{showLossyNotice && (
+				<div role="status" className="shrink-0 bg-alpha-2 px-md py-1.25 text-body text-primary">
+					{sourceSave.autoSavePref
+						? "This file isn’t valid UTF-8, so it’s saved only when you press Save. A save writes each \uFFFD to the file, and the original characters are lost."
+						: "This file isn’t valid UTF-8. A save writes each \uFFFD to the file, and the original characters are lost."}
+				</div>
+			)}
 			{sourceMode && goToLine !== null && (
 				<GoToLineBar
 					caret={caret}

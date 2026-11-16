@@ -103,6 +103,9 @@ export async function handleFileRequest(
 			return await streamFile(file.path, file.sizeBytes, contentType, download, headers);
 		}
 
+		const {resolveConfiguredFileRoots} = await import("../../lib/config");
+		const {writableWorkspacePath} = await import("../../lib/session-file-write");
+		const {mtimeEtag} = await import("../../lib/file-edit");
 		const file = await readAllowedFile(
 			requestedPath,
 			configPath,
@@ -133,6 +136,12 @@ export async function handleFileRequest(
 				{
 					content: file.content,
 					path: file.path,
+					etag: mtimeEtag(file.modifiedAt),
+					writable: await writableWorkspacePath(
+						file.path,
+						await resolveConfiguredFileRoots(configPath, defaultRoots),
+					),
+					lossy: file.lossy,
 				},
 			),
 			{
@@ -148,6 +157,83 @@ export async function handleFileRequest(
 		}
 		throw error;
 	}
+}
+
+function denied(): Response
+{
+	return Response.json(
+		{
+			reason: "denied",
+		},
+		{
+			status: 403,
+		},
+	);
+}
+
+/**
+ * Save from the Files source editor (upstream's desktop `writeSessionFile`): the raw body
+ * replaces the file atomically. 403 `{reason:"denied"}` outside the roots or under `.git`,
+ * 409 `{reason:"conflict"|"missing"}` for a stale `If-Match`, else 204 with the new ETag.
+ */
+export async function handleFileWrite(
+	request: Request,
+	pathToken: string,
+	configPath?: string,
+	defaultRoots: readonly string[] = [],
+): Promise<Response>
+{
+	const {rejectCrossSite} = await import("../../lib/same-origin-guard");
+	const crossSite = rejectCrossSite(request);
+	if (crossSite !== null) return crossSite;
+	const requestedPath = decodeFilePath(pathToken);
+	if (requestedPath === null) return errorResponse("A valid encoded file path is required", 400);
+
+	const {resolveConfiguredFileRoots} = await import("../../lib/config");
+	const {realpathOfExistingPrefix, writableWorkspacePath, writeFileAtomically} =
+		await import("../../lib/session-file-write");
+	const {rejectStaleWrite, savedFileHeaders} = await import("../../lib/file-edit-server");
+	const roots = await resolveConfiguredFileRoots(configPath, defaultRoots);
+	if (!(await writableWorkspacePath(requestedPath, roots))) return denied();
+	// Write through a symlink inside the roots rather than replacing the link.
+	const target = await realpathOfExistingPrefix(requestedPath);
+	const stale = await rejectStaleWrite(
+		request,
+		target,
+		{
+			distinguishMissing: true,
+		},
+	);
+	if (stale !== null) return stale;
+	try
+	{
+		await writeFileAtomically(target, await request.text());
+	}
+	catch
+	{
+		return Response.json(
+			{
+				reason: "writeFailed",
+			},
+			{
+				status: 500,
+			},
+		);
+	}
+	return new Response(
+		null,
+		{
+			status: 204,
+			headers: await savedFileHeaders(target),
+		},
+	);
+}
+
+async function fileRoots(): Promise<string[]>
+{
+	const {resolveFileSearchRoots} = await import("../../lib/config");
+	const {getDb} = await import("../../lib/db");
+	return resolveFileSearchRoots(getDb().index);
 }
 
 export const Route = createFileRoute("/api/file/$")(
@@ -167,10 +253,20 @@ export const Route = createFileRoute("/api/file/$")(
 						request: Request;
 					}) =>
 					{
-						const {resolveFileSearchRoots} = await import("../../lib/config");
-						const {getDb} = await import("../../lib/db");
-						const roots = await resolveFileSearchRoots(getDb().index);
-						return handleFileRequest(request, params._splat ?? "", undefined, roots);
+						return handleFileRequest(request, params._splat ?? "", undefined, await fileRoots());
+					},
+					PUT: async ({
+						params,
+						request,
+					}: {
+						params:
+						{
+							_splat?: string;
+						};
+						request: Request;
+					}) =>
+					{
+						return handleFileWrite(request, params._splat ?? "", undefined, await fileRoots());
 					},
 				},
 			),
