@@ -1092,11 +1092,12 @@ const messageLineTypeLabels =
 	assistant: "Assistant",
 } satisfies Record<MessageProcessedLine["type"], string>;
 
-/** Handled in src/lib/turn-metadata.ts (max_tokens) and src/components/session-chat.tsx (refusal). */
+/** Handled in src/lib/turn-metadata.ts (max_tokens) and src/components/session-chat.tsx (refusal, and prompt_injection_risk via StopWarningCard). */
 const messageLineStopReasonLabels =
 {
 	max_tokens: "Truncated at max tokens",
 	refusal: "Message flagged",
+	prompt_injection_risk: "Stopped: possible prompt injection",
 } satisfies Record<NonNullable<MessageProcessedLine["stopReason"]>, string>;
 
 /** Exhaustive handler: switch in src/components/attachment-banner.tsx. */

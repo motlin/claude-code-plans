@@ -434,6 +434,28 @@ function cardRecovery(
 
 const MARKER_ICON_CLASS = "size-4 shrink-0 text-danger-000";
 
+/** Upstream's `xmXPKq` copy for a `prompt_injection_risk` stop. */
+const PROMPT_INJECTION_STOP_HEADLINE =
+	"Claude stopped because the page content may contain a prompt injection. Review the page before continuing.";
+
+/**
+ * Upstream's `stop_warning` item (cbb2d9547 `tX`): the shared error card with only a headline.
+ * It has no hint, Dismiss, announce, details or actions, and it is never collapsed into a marker.
+ */
+export function StopWarningCard({stopReason}: {stopReason: "prompt_injection_risk"})
+{
+	return (
+		<ErrorCardShell
+			data={
+			{
+				"data-stop-warning": stopReason,
+			}}
+			headline={PROMPT_INJECTION_STOP_HEADLINE}
+			icon="warning"
+		/>
+	);
+}
+
 /** The marker's danger warning icon, shared with the hook-blocked prompt marker. */
 export function MarkerWarningIcon()
 {

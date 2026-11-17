@@ -31,7 +31,7 @@ import {PLAN_NOT_APPROVED} from "../lib/exit-plan-mode";
 import {parseToolRejection} from "../lib/tool-rejection";
 import {parseAttachSnippets, type AttachSnippet} from "../lib/attach-markers";
 import {type DiffAnnotation, parseDiffAnnotations} from "../lib/diff-annotation-markers";
-import {ApiErrorCard, ApiErrorMarker, type ApiErrorRecovery} from "./api-error-card";
+import {ApiErrorCard, ApiErrorMarker, type ApiErrorRecovery, StopWarningCard} from "./api-error-card";
 import {HookBlockedPromptCard, HookBlockedPromptMarker} from "./hook-blocked-prompt";
 import {HookNoticeLine, HookNoticeRow} from "./hook-notice-row";
 import * as Collapsible from "./ui/collapsible";
@@ -2668,7 +2668,10 @@ function toolOnlyBuckets(
 	showThinking: boolean,
 ): ToolBucket[] | null
 {
-	if (line.type !== "assistant" || line.stopReason === "refusal") return null;
+	if (line.type !== "assistant" || line.stopReason === "refusal" || line.stopReason === "prompt_injection_risk")
+	{
+		return null;
+	}
 	const content = line.message?.content;
 	if (!Array.isArray(content) || content.length === 0) return null;
 	// Upstream lifts a chapter out of its run (`g=null`), and a failed one draws as a lone row.
@@ -5227,6 +5230,8 @@ function isVerboseOnlyAttachment({type, hookEvent, prompt}: AttachmentHead): boo
 function hasAssistantVisibleContent(line: SessionLine, showThinking: boolean, showTools: boolean): boolean
 {
 	if (line.type !== "assistant") return true;
+	// Upstream pushes the stop warning whatever the record's content, so it draws even alone.
+	if (line.stopReason === "prompt_injection_risk") return true;
 	const content = line.message?.content;
 	if (!Array.isArray(content) || content.length === 0) return false;
 	if (line.stopReason === "refusal") return true;
@@ -6836,8 +6841,11 @@ function AssistantEntry({
 		[line, toolResultMap, liveFailures, subagentLookup],
 	);
 
-	const content = line.message?.content;
-	if (!Array.isArray(content) || content.length === 0)
+	// Upstream appends a standalone stop_warning item after the record's content (or alone); API-error records skip it.
+	const stopWarning = line.stopReason === "prompt_injection_risk" && line.isApiErrorMessage !== true;
+	const rawContent = line.message?.content;
+	const content = Array.isArray(rawContent) ? rawContent : [];
+	if (content.length === 0 && !stopWarning)
 	{
 		return null;
 	}
@@ -6846,6 +6854,7 @@ function AssistantEntry({
 	const refused = line.stopReason === "refusal";
 	const hasVisibleNonToolContent =
 		refused ||
+		stopWarning ||
 		content.some(
 			(b) =>
 				isAssistantProseBlock(b) ||
@@ -6914,6 +6923,7 @@ function AssistantEntry({
 				),
 			)}
 			{refused && line.isApiErrorMessage !== true && <ApiErrorCardForLine line={line} text="" />}
+			{stopWarning && <StopWarningCard stopReason="prompt_injection_risk" />}
 			{requestDisclosure}
 		</div>
 	);

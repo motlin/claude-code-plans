@@ -2694,6 +2694,38 @@ describe("message metadata fields", () =>
 		expect(line !== undefined && "stopReason" in line ? line.stopReason : null).toBe("refusal");
 	});
 
+	it("carries stop_reason prompt_injection_risk but drops the legacy prompt_injection alias", () =>
+	{
+		const stopped = (stopReason: string) =>
+			assistantRecord(
+				[
+					{
+						type: "text",
+						text: "Reading the page",
+					},
+				],
+				{
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "text",
+								text: "Reading the page",
+							},
+						],
+						stop_reason: stopReason,
+					},
+				},
+			);
+		const lines = processTranscript([stopped("prompt_injection_risk"), stopped("prompt_injection")]).lines;
+
+		expect(lines.map((line) => ("stopReason" in line ? line.stopReason : undefined))).toStrictEqual([
+			"prompt_injection_risk",
+			undefined,
+		]);
+	});
+
 	it("carries usage and attribution fields on assistant lines", () =>
 	{
 		const records = [

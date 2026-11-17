@@ -119,6 +119,38 @@ describe("ErrorCardShell", () =>
 		);
 	});
 
+	it("draws a headline-only card: no Dismiss slot and an empty, hidden hint row", () =>
+	{
+		const {container} = render(<ErrorCardShell headline={HEADLINE} icon="warning" />);
+		const root = container.firstElementChild;
+		const [header, hintRow] = [...(root?.children ?? [])];
+
+		expect(
+			{
+				childCount: root?.childElementCount,
+				header: [...(header?.children ?? [])].map((child) => child.className),
+				headline: header?.textContent,
+				hintRow: hintRow?.className,
+				hintRowChildren: hintRow?.childElementCount,
+			},
+		).toStrictEqual(
+			{
+				childCount: 2,
+				header: ["flex h-[1lh] shrink-0 items-center", "min-w-0 grow text-primary break-words"],
+				headline: HEADLINE,
+				hintRow: "flex flex-col gap-md px-lg pt-lg pb-md last:pb-lg empty:hidden contain-inline-size",
+				hintRowChildren: 0,
+			},
+		);
+	});
+
+	it("announces only the headline when there is no hint", () =>
+	{
+		const {getByRole} = render(<ErrorCardShell headline={HEADLINE} icon="warning" announce="alert" />);
+
+		expect(getByRole("alert").textContent).toBe(`${HEADLINE} `);
+	});
+
 	it("calls onDismiss on click and keeps focus where it was on mouse down", () =>
 	{
 		const onDismiss = vi.fn<() => void>();

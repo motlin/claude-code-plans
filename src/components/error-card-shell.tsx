@@ -8,9 +8,10 @@ type ErrorCardIcon = "warning" | "gauge";
 interface ErrorCardShellProps
 {
 	headline: string;
-	hint: string;
+	/** Leaving it out (or "") draws a headline-only card: the hint row stays but is empty, so `empty:hidden` hides it. */
+	hint?: string;
 	icon: ErrorCardIcon;
-	/** Upstream's `announce:"alert"`: a screen-reader-only alert reading "{headline} {hint}". */
+	/** Upstream's `announce:"alert"`: a screen-reader-only alert reading "{headline} {hint}" ("{headline} " without a hint). */
 	announce?: "alert";
 	/** Shows the header's Dismiss X; leaving it out draws no button. */
 	onDismiss?: () => void;
@@ -92,7 +93,7 @@ export function ErrorCardShell({
 		>
 			{announce === "alert" && (
 				<span className="sr-only" role="alert">
-					{`${headline} ${hint}`}
+					{`${headline} ${hint ?? ""}`}
 				</span>
 			)}
 			<div className={`flex items-start ${HEADER_SPACING} bg-alpha-1 text-body contain-inline-size`}>
@@ -118,22 +119,24 @@ export function ErrorCardShell({
 				)}
 			</div>
 			<div className={`flex flex-col ${HINT_SPACING} empty:hidden contain-inline-size`}>
-				<span className="text-body text-secondary whitespace-pre-line break-words">
-					{hint}
-					{learnMoreUrl !== undefined && (
-						<>
-							{" "}
-							<a
-								href={learnMoreUrl}
-								target="_blank"
-								rel="noreferrer"
-								className="underline hover:text-primary"
-							>
-								Learn more
-							</a>
-						</>
-					)}
-				</span>
+				{hint !== undefined && hint !== "" && (
+					<span className="text-body text-secondary whitespace-pre-line break-words">
+						{hint}
+						{learnMoreUrl !== undefined && (
+							<>
+								{" "}
+								<a
+									href={learnMoreUrl}
+									target="_blank"
+									rel="noreferrer"
+									className="underline hover:text-primary"
+								>
+									Learn more
+								</a>
+							</>
+						)}
+					</span>
+				)}
 				{options !== undefined && (
 					<div className="flex flex-wrap items-center gap-1 empty:hidden">{options}</div>
 				)}

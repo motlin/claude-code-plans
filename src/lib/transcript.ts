@@ -133,8 +133,12 @@ const MessageLineSchema = z.object(
 		/** The rate-limit window of a synthetic usage-limit message. */
 		usageLimit: UsageLimitSchema.optional(),
 		errorDetails: z.union([z.string(), z.record(z.string(), JsonValueSchema)]).optional(),
-		/** `max_tokens` (truncated) or `refusal` (Claude's safeguards stopped the response). */
-		stopReason: z.enum(["max_tokens", "refusal"]).optional(),
+		/**
+		 * `max_tokens` (truncated), `refusal` (Claude's safeguards stopped the response) or
+		 * `prompt_injection_risk` (stopped because fetched page content may hold a prompt injection;
+		 * upstream's Code adapter ignores the legacy `prompt_injection` alias, so it is dropped).
+		 */
+		stopReason: z.enum(["max_tokens", "refusal", "prompt_injection_risk"]).optional(),
 		usage: z.record(z.string(), JsonValueSchema).optional(),
 		attributionSkill: z.string().optional(),
 		attributionPlugin: z.string().optional(),
@@ -2036,7 +2040,10 @@ function* processRecordBatchSteps(
 				};
 			}
 			const stopReason = record.message.stop_reason;
-			if (stopReason === "max_tokens" || stopReason === "refusal") processedLine.stopReason = stopReason;
+			if (stopReason === "max_tokens" || stopReason === "refusal" || stopReason === "prompt_injection_risk")
+			{
+				processedLine.stopReason = stopReason;
+			}
 			if (record.message.usage !== undefined) processedLine.usage = record.message.usage;
 			if (typeof record.perTurnEffort === "string")
 			{
