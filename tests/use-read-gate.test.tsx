@@ -171,6 +171,7 @@ function Gate({
 	return (
 		<div
 			data-approval-card-root=""
+			className="epitaxy-approval-card"
 			ref={(card) =>
 			{
 				// The card's ref attaches after its child's, so both are in place here.

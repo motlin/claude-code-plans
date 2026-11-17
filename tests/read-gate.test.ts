@@ -106,6 +106,7 @@ function cardInTranscript({
 	);
 	const root = box(div(), body[0], body[1]);
 	root.setAttribute("data-approval-card-root", "");
+	root.className = "epitaxy-approval-card";
 	const cardBody = box(
 		div(),
 		body[0],

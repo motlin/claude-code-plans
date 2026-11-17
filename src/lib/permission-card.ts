@@ -61,6 +61,14 @@ export interface PendingPermission
 	rowsTrail?: true;
 	/** Upstream's loose rows read gate (`rowsReadGate {loose: true}`). */
 	rowsGate?: true;
+	/** The rows gate is strict (upstream's `rowsReadGate` without `loose`): enforced even when the rows fit. */
+	rowsGateStrict?: true;
+	/** Upstream's `detailReadGate`: Allow waits until the whole detail (and its note) has been seen. */
+	detailReadGate?: DetailReadGate;
+	/** Upstream's `disableAlwaysAllow` + `suppressScopeTooltip` (`_v`): the persistent option is never offered. */
+	perUseOnly?: true;
+	/** Upstream's `clickOnly`: the card binds no keys, so it is answered by a click alone. */
+	clickOnly?: true;
 	/** Upstream's `fileChange`: a Write/Edit/MultiEdit card previews its change, or says it is too large to. */
 	fileChange?: FileChangeKind;
 	/** The previewed file tool's name, for its diff. */
@@ -362,7 +370,58 @@ interface PermissionCopy
 	rows?: PermissionRow[];
 	rowsTrail?: true;
 	rowsGate?: true;
+	rowsGateStrict?: true;
+	detailReadGate?: DetailReadGate;
+	perUseOnly?: true;
+	clickOnly?: true;
 	fileChange?: FileChangeKind;
+}
+
+/** Upstream's `detailReadGate`: the gated detail's scroller label and the hint while it is unread. */
+export interface DetailReadGate
+{
+	label: string;
+	hint: string;
+}
+
+/** Upstream's sandbox-bypass command gate (`lp.commandLabel`/`lp.commandHint`). */
+const COMMAND_READ_GATE: DetailReadGate =
+{
+	label: "Command",
+	hint: "Scroll through the whole command to allow it.",
+};
+
+/** Upstream's rows gate hint (`Q_.rowsHint`). */
+export const ROWS_READ_HINT = "Scroll to the end to allow this.";
+
+/** Upstream's `gw`: an origin-tagged action longer than this many characters makes the title a read gate. */
+const TITLE_ORIGIN_LONG = 80;
+
+/**
+ * Upstream's `_w`: whether the permission title band is read-gated. Never for a clamped title over a detail;
+ * otherwise when it has a meta (or heading), or an origin-tagged action longer than 80 characters.
+ */
+export function titleReadWatched({
+	title,
+	clampTitle,
+	hasDetail,
+	origin,
+}: {
+	title: PermissionTitle;
+	clampTitle: boolean;
+	hasDetail: boolean;
+	origin?: string | undefined;
+}): boolean
+{
+	if (clampTitle && hasDetail) return false;
+	if (!("action" in title)) return true;
+	return title.meta !== null || (origin !== undefined && title.action.length > TITLE_ORIGIN_LONG);
+}
+
+/** Upstream's `vw`: the title gate's text identity, so a changed title starts unread. */
+export function titleReadText(title: PermissionTitle): string
+{
+	return "action" in title ? ["", title.action, title.meta ?? ""].join("\n") : title.heading;
 }
 
 /** Upstream's `fileChange`: "preview" draws the change's diff, "too_large" says why it can't. */
@@ -448,10 +507,25 @@ function timeLimitNote(timeout: number | null): string | null
  * Upstream's Bash copy: "run this command" with the command as a highlighted detail,
  * the description in the body unless it repeats the command, and the sandbox, background and time-limit notes.
  */
-function commandCopy(input: Record<string, unknown>, detailLang: PermissionDetailLang): PermissionCopy
+function commandCopy(name: string, input: Record<string, unknown>, detailLang: PermissionDetailLang): PermissionCopy
 {
 	const command = stringInput(input, "command");
 	const description = stringInput(input, "description");
+	const bypass = input["dangerouslyDisableSandbox"] === true;
+	if (command === null || !commandInputValid(input))
+	{
+		return {
+			...genericCopy(name, input),
+			clickOnly: true,
+			...(input["dangerouslyDisableSandbox"]
+				?
+					{
+						perUseOnly: true,
+						rowsGateStrict: true,
+					}
+				: {}),
+		};
+	}
 	return {
 		action: "run this command",
 		detail: command,
@@ -464,11 +538,37 @@ function commandCopy(input: Record<string, unknown>, detailLang: PermissionDetai
 					description,
 				}),
 		...notes([
-			input["dangerouslyDisableSandbox"] === true ? "Runs outside Claude’s sandbox." : null,
+			bypass ? "Runs outside Claude’s sandbox." : null,
 			input["run_in_background"] === true ? "Keeps running in the background." : null,
 			timeLimitNote(numberInput(input, "timeout")),
 		]),
+		...(bypass
+			?
+				{
+					detailReadGate: COMMAND_READ_GATE,
+					perUseOnly: true,
+				}
+			: {}),
 	};
+}
+
+/** Upstream's `hv`: the Bash/PowerShell input keys a command card draws, each with its value check. */
+const COMMAND_INPUT_KEYS: ReadonlyMap<string, (value: unknown) => boolean> = new Map([
+	["command", (value: unknown) => typeof value === "string" && value.trim() !== ""],
+	["description", (value: unknown) => typeof value === "string"],
+	["timeout", (value: unknown) => typeof value === "number"],
+	["run_in_background", (value: unknown) => typeof value === "boolean"],
+	["dangerouslyDisableSandbox", (value: unknown) => typeof value === "boolean"],
+	["dangerouslyDisableSandboxReason", (value: unknown) => typeof value === "string"],
+]);
+
+/**
+ * Upstream's `Ox`: every key of a command's input is one the card draws, with a value of its type; any other input
+ * falls back to the generic rows card.
+ */
+function commandInputValid(input: Record<string, unknown>): boolean
+{
+	return Object.entries(input).every(([key, value]) => COMMAND_INPUT_KEYS.get(key)?.(value) === true);
 }
 
 /** Upstream's Workflow copy: its args other than the script (and the name it is titled by) as gated trail rows. */
@@ -767,6 +867,15 @@ function webFetchCopy(input: Record<string, unknown>): PermissionCopy
 	};
 }
 
+/** Upstream's `ne`: "use {tool}" with the input as gated trail rows. */
+function genericCopy(name: string, input: Record<string, unknown>): PermissionCopy
+{
+	return {
+		action: `use ${name}`,
+		...gatedTrail(inputRows(input)),
+	};
+}
+
 /** Upstream's per-tool action, meta and detail (claude.ai/code's permission copy builder). */
 function permissionCopy({name, input}: PendingToolUse): PermissionCopy
 {
@@ -775,9 +884,9 @@ function permissionCopy({name, input}: PendingToolUse): PermissionCopy
 	{
 		case "Bash":
 		case "BashTool":
-			return commandCopy(input, "bash");
+			return commandCopy(name, input, "bash");
 		case "PowerShell":
-			return commandCopy(input, "powershell");
+			return commandCopy(name, input, "powershell");
 		case "Read":
 			return {
 				...fileCopy("read", text("file_path")),
@@ -891,11 +1000,7 @@ function permissionCopy({name, input}: PendingToolUse): PermissionCopy
 		default:
 		{
 			const verb = TOOL_VERBS[name];
-			if (verb === undefined)
-				return {
-					action: `use ${name}`,
-					...gatedTrail(inputRows(input)),
-				};
+			if (verb === undefined) return genericCopy(name, input);
 			const rows = inputRows(name === "SendMessage" ? sendMessageInput(input) : input);
 			return {
 				action: verb,

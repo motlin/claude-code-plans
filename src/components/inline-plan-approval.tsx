@@ -1,4 +1,5 @@
-import {useEffect, useState} from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
+import {useReadGate} from "../hooks/use-read-gate";
 import {ApprovalCardShell} from "./approval-card";
 import {OpenPlanLink} from "./open-plan-link";
 import {useOptionalPaneHost} from "./panes/pane-host-context";
@@ -21,7 +22,8 @@ import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
  * hooks have reported it: its own card in the transcript's sticky trailing slot,
  * upstream's tinted title band (`d3`) naming the plan by its first line with
  * "Open plan" trailing, then the approve / revise actions typed into the CLI's
- * plan dialog. The plan text itself stays in the Plan pane and the tool row. A
+ * plan dialog. With a pane host the plan text stays in the Plan pane and the tool row; without one the card draws
+ * it in its body, and every accept waits until it has been scrolled to its end (upstream's plan read gate). A
  * call with no plan asks to leave plan mode instead, with nothing to open.
  */
 export function InlinePlanApproval({
@@ -50,6 +52,25 @@ export function InlinePlanApproval({
 	{
 		markApprovalEnterSeen(enterKey);
 	}, [enterKey]);
+	// Upstream's `je`: the plan is drawn, and so gated, only where it has no Plan pane to open in.
+	const drawsPlan = host === null && proposed !== undefined;
+	const bodyRef = useRef<HTMLDivElement>(null);
+	const [readHeld, setReadHeld] = useState(false);
+	const [overflows, setOverflows] = useState(false);
+	const onHeld = useCallback((held: boolean) =>
+	{
+		setReadHeld(held);
+		const body = bodyRef.current;
+		setOverflows(body !== null && body.scrollHeight - body.clientHeight > 2);
+	}, []);
+	useReadGate(
+		{
+			ref: bodyRef,
+			watched: drawsPlan,
+			text: proposed,
+			onHeld,
+		},
+	);
 	const subtitle =
 		proposed === undefined ? (
 			PLAN_NOTHING_TO_REVIEW
@@ -88,7 +109,15 @@ export function InlinePlanApproval({
 						)}
 					</div>
 				}
-				body={null}
+				bodyRef={bodyRef}
+				bodyLabel={drawsPlan && overflows ? "Request details" : undefined}
+				body={
+					drawsPlan ? (
+						<div data-testid="approval-plan-text" className={PLAN_TEXT_CLASS}>
+							{proposed}
+						</div>
+					) : null
+				}
 				actions={
 					<div className="w-full">
 						<PlanApprovalCard
@@ -96,6 +125,7 @@ export function InlinePlanApproval({
 							plan={plan}
 							placement="card"
 							autoOpenPlan={proposed !== undefined}
+							readHeld={drawsPlan && readHeld}
 						/>
 					</div>
 				}
@@ -103,3 +133,6 @@ export function InlinePlanApproval({
 		</div>
 	);
 }
+
+/** Upstream's plan text in the card body (`approval-plan-text`). */
+const PLAN_TEXT_CLASS = "whitespace-pre-wrap break-words text-body text-secondary select-text [unicode-bidi:plaintext]";

@@ -22,11 +22,10 @@ const APPROVAL_READ_LINE_ATTR = "data-approval-read-line";
 export const APPROVAL_READ_ROWS_ATTR = "data-approval-read-rows";
 /** Upstream `tj`: the transcript region, whose inline style changes re-run a gate. */
 const TRANSCRIPT_REGION_ATTR = "data-epitaxy-transcript-region";
-/**
- * Upstream `d` is `.epitaxy-approval-card`, the card root; local's card root carries `data-approval-card-root`
- * (upstream uses that attribute as the clip probe's own scope, and both name the same element).
- */
-const APPROVAL_CARD = "[data-approval-card-root]";
+/** Upstream `d`: the card root, which holds the read-lines. */
+const APPROVAL_CARD = ".epitaxy-approval-card";
+/** The clip probe's own scope (upstream's `[data-approval-card-root]`, the same element as the card). */
+const APPROVAL_CARD_ROOT = "[data-approval-card-root]";
 
 export type ReadEdge = "first" | "last";
 export type ReadGateState = "unlaid" | "unread" | "waiting" | "read";
@@ -162,7 +161,7 @@ export function lineSeen(
 		element,
 		{
 			box,
-			ownScope: element.closest(APPROVAL_CARD),
+			ownScope: element.closest(APPROVAL_CARD_ROOT),
 			topCover,
 		},
 	);
@@ -170,7 +169,7 @@ export function lineSeen(
 }
 
 /** Upstream `f`: the card's read-lines. */
-function readLines(element: Element): Element[]
+export function cardReadLines(element: Element): Element[]
 {
 	return Array.from(element.closest(APPROVAL_CARD)?.querySelectorAll(`[${APPROVAL_READ_LINE_ATTR}]`) ?? []);
 }
@@ -178,7 +177,7 @@ function readLines(element: Element): Element[]
 /** Upstream `p`: the read-lines' joined text, so a gate notices when they change. */
 function readLinesText(element: Element): string
 {
-	return readLines(element)
+	return cardReadLines(element)
 		.map((line) => line.textContent)
 		.join("\n");
 }
@@ -376,7 +375,7 @@ export function watchReadGate(
 ): ReadGateWatch
 {
 	const doc = element.ownerDocument;
-	const targets = () => [element, ...extra, ...readLines(element)];
+	const targets = () => [element, ...extra, ...cardReadLines(element)];
 	let live = true;
 	let attached = false;
 	const Intersection = maybe(win.IntersectionObserver);
@@ -460,7 +459,7 @@ export function watchReadGate(
 		const next = readLinesText(element);
 		if (next === linesText) return;
 		linesText = next;
-		for (const line of readLines(element))
+		for (const line of cardReadLines(element))
 		{
 			resize?.observe(line);
 			if (attached) intersection?.observe(line);
@@ -594,7 +593,7 @@ export function endLineHeight(element: Element, win: Window, lineHeight: number)
 				width,
 				height: win.innerHeight,
 			},
-			ownScope: element.closest(APPROVAL_CARD),
+			ownScope: element.closest(APPROVAL_CARD_ROOT),
 		},
 	);
 	return clip === null ? height : Math.max(lineHeight, Math.min(height, clip.bottom - clip.top));
@@ -606,8 +605,14 @@ export function fits(scroller: Element | null): boolean
 	return scroller === null || scroller.scrollHeight <= scroller.clientHeight + SLACK;
 }
 
-/** The card root (upstream `.epitaxy-approval-card`), for the hook's on-screen check. */
+/** The card (upstream `.epitaxy-approval-card`), for the hook's on-screen check. */
 export function approvalCardOf(element: Element): Element | null
 {
 	return element.closest(APPROVAL_CARD);
+}
+
+/** The clip probe's own scope (upstream `[data-approval-card-root]`). */
+export function approvalScopeOf(element: Element): Element | null
+{
+	return element.closest(APPROVAL_CARD_ROOT);
 }

@@ -2575,6 +2575,10 @@ function SessionView({
 													rows={shownPermission.rows ?? null}
 													rowsTrail={shownPermission.rowsTrail === true}
 													rowsGate={shownPermission.rowsGate === true}
+													rowsGateStrict={shownPermission.rowsGateStrict === true}
+													detailReadGate={shownPermission.detailReadGate ?? null}
+													perUseOnly={shownPermission.perUseOnly === true}
+													clickOnly={shownPermission.clickOnly === true}
 													fileChange={shownPermission.fileChange ?? null}
 													toolName={shownPermission.toolName ?? null}
 													toolInput={shownPermission.toolInput ?? null}

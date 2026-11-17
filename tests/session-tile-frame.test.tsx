@@ -327,12 +327,14 @@ it("hands the scrollport's positioned wrapper to transcript overlays as their ho
 		{
 			isWrapper: host === wrapper,
 			marked: wrapper?.hasAttribute("data-transcript-overlay-host"),
+			region: wrapper?.getAttribute("data-epitaxy-transcript-region"),
 			className: wrapper?.className,
 		},
 	).toStrictEqual(
 		{
 			isWrapper: true,
 			marked: true,
+			region: "",
 			className: "relative flex min-h-0 flex-1 flex-col",
 		},
 	);

@@ -188,18 +188,26 @@ function useApprovalArming(
 	return armedAt;
 }
 
+/** Upstream's plan read hint (`QZEbNJ`). */
+const PLAN_READ_HINT = "Scroll to the end to allow this.";
+/** Upstream's read hint above the actions, centred in a stacked (≤420px) card. */
+const PLAN_READ_HINT_CLASS =
+	"epitaxy-approval-read-hint text-footnote text-muted-as-secondary text-end text-balance @max-[420px]:text-center";
+
 function PlanApprovalActions({
 	sessionId,
 	toolUseId,
 	dialog,
 	decide,
 	placement,
+	readHeld,
 }: {
 	sessionId: string;
 	toolUseId: string;
 	dialog: PlanDialog;
 	decide: (decision: PlanDecision) => Promise<void>;
 	placement: PlanApprovalPlacement;
+	readHeld: boolean;
 })
 {
 	// A card whose answer was refused, or whose Revise draft was left, while it was unmounted comes back as it was.
@@ -313,9 +321,10 @@ function PlanApprovalActions({
 			const root = rootRef.current;
 			const card = root?.closest<HTMLElement>("[data-approval-card-root]") ?? root;
 			if (placement === "card" && card !== null && elementOffscreen(card)) return;
-			// Upstream withholds an accept chord that lands within 400ms of the card arriving or re-arming.
+			// Upstream withholds an accept chord that lands within 400ms of the card arriving or re-arming, and
+			// ignores one while the plan is unread (`Ie`), with no nudge.
 			const armed = armedAt.current ?? performance.now();
-			if (action.kind === "accept" && performance.now() - armed < APPROVAL_ARM_GRACE_MS) return;
+			if (action.kind === "accept" && (readHeld || performance.now() - armed < APPROVAL_ARM_GRACE_MS)) return;
 			event.preventDefault();
 			event.stopPropagation();
 			if (action.kind === "revise") openRevise();
@@ -326,7 +335,7 @@ function PlanApprovalActions({
 		{
 			window.removeEventListener("keydown", onKeyDown, true);
 		};
-	}, [showRevise, answered, dialog, send, placement, armedAt, openRevise]);
+	}, [showRevise, answered, dialog, send, placement, armedAt, openRevise, readHeld]);
 
 	const reviseWithFeedback = () =>
 	{
@@ -377,6 +386,12 @@ function PlanApprovalActions({
 					}}
 				/>
 			)}
+			{/* Upstream's read hint: only while the plan is unread and Revise is closed; it unmounts once read. */}
+			{readHeld && !showRevise && (
+				<p data-testid="approval-read-hint" className={PLAN_READ_HINT_CLASS}>
+					{PLAN_READ_HINT}
+				</p>
+			)}
 			{/* Upstream's `epitaxy-approval-actions`: the reject pair at the start, the accepts at the end; in a
 			    ≤420px container both groups stack and every button goes full width. */}
 			<div data-plan-actions className={PLAN_ACTIONS_CLASS}>
@@ -421,11 +436,12 @@ function PlanApprovalActions({
 							className="flex flex-wrap justify-end gap-2"
 							onKeyDownCapture={swallowAcceptRepeat}
 						>
-							{/* Upstream's arming group around the accepts (`data-approval-allow`). */}
-							<span className="contents" data-approval-allow="">
+							{/* Upstream's arming group around the accepts, remounted when the read gate flips. */}
+							<span key={String(readHeld)} className="contents" data-approval-allow="">
 								{primary !== null && primary !== "default" && dialog.manual && (
 									<ApprovalActionButton
 										variant="secondary"
+										disabled={readHeld}
 										onClick={() =>
 											void send(
 												{
@@ -445,6 +461,7 @@ function PlanApprovalActions({
 								{primary !== null && (
 									<ApprovalActionButton
 										variant="primary"
+										disabled={readHeld}
 										onClick={() =>
 											void send(
 												{
@@ -517,12 +534,15 @@ export function PlanApprovalCard({
 	plan,
 	placement = "dock",
 	autoOpenPlan = true,
+	readHeld = false,
 }: {
 	toolUseId: string;
 	plan: PlanApprovalContextValue;
 	placement?: PlanApprovalPlacement;
 	/** False for a planless ExitPlanMode, which has no plan to open. */
 	autoOpenPlan?: boolean;
+	/** Upstream's plan read gate (`ke`): the plan text in the card is unread, so every accept is held. */
+	readHeld?: boolean;
 })
 {
 	const {sessionId, answerRoute, loadDialog, decide} = plan;
@@ -579,6 +599,7 @@ export function PlanApprovalCard({
 			dialog={state.dialog}
 			decide={decide}
 			placement={placement}
+			readHeld={readHeld}
 		/>
 	);
 }

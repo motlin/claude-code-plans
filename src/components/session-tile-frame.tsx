@@ -189,6 +189,8 @@ export function SessionTileFrame({
 					<div
 						ref={setOverlayHost}
 						data-transcript-overlay-host
+						// Upstream's transcript region (`tj`): read gates re-measure when its inline style changes.
+						data-epitaxy-transcript-region=""
 						className="relative flex min-h-0 flex-1 flex-col"
 					>
 						<div

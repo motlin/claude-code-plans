@@ -3,6 +3,7 @@ import {useEffect, useRef, type RefObject} from "react";
 import
 {
 	approvalCardOf,
+	approvalScopeOf,
 	createReadLatch,
 	endLineHeight,
 	inset,
@@ -136,7 +137,7 @@ export function useReadGate({
 				element,
 				{
 					box: rect,
-					ownScope: approvalCardOf(element),
+					ownScope: approvalScopeOf(element),
 					topCover: cover,
 				},
 			);

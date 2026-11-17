@@ -1,184 +1,101 @@
-import {useEffect, useState, type RefObject} from "react";
+import {useEffect, type RefObject} from "react";
+
+import
+{
+	createReadLatch,
+	endLineHeight,
+	fits,
+	inset,
+	lineSeen,
+	nearestScroller,
+	type ReadGateState,
+	readLinesSeen,
+	cardReadLines,
+	watchReadGate,
+	windowOf,
+} from "../lib/read-gate";
 
 /**
- * Upstream's read gate states (claude.ai/code cc32965c2 `ml`): the watched text has no layout yet, has not been
- * seen to its end, or has been read.
- */
-export type ReadGateState = "unlaid" | "unread" | "read";
-
-export interface ReadGateReport
-{
-	/** Undefined until the first measure. */
-	state: ReadGateState | undefined;
-	/** The card's scroller shows all of its content (upstream `pl`); undefined until the first measure. */
-	fits: boolean | undefined;
-}
-
-/** Upstream's slack: a line box may sit 2px outside the visible box and still count as seen. */
-const SLACK = 2;
-/** The card body that scrolls the watched element. */
-const SCROLLER = "[data-approval-card-body]";
-
-/** The document's font set; jsdom has none. */
-function fontsOf(doc: Document): FontFaceSet | undefined
-{
-	const fonts: FontFaceSet | undefined = doc.fonts;
-	return fonts;
-}
-
-function padding(element: HTMLElement, side: "paddingTop" | "paddingBottom"): number
-{
-	const value = Number.parseFloat(getComputedStyle(element)[side]);
-	return Number.isFinite(value) ? value : 0;
-}
-
-/**
- * Upstream `ol`: whether the element's first or last line box (`height` tall) is inside the window and the
- * scroller's visible box, within the slack. A zero-height element counts as seen.
- */
-function lineVisible(element: Element, scroller: HTMLElement | null, height: number, edge: "first" | "last"): boolean
-{
-	const rect = element.getBoundingClientRect();
-	if (rect.height === 0) return true;
-	const top = edge === "first" ? rect.top : rect.bottom - height;
-	const bottom = edge === "first" ? rect.top + height : rect.bottom;
-	const win = element.ownerDocument.defaultView ?? window;
-	if (top < -SLACK || bottom > win.innerHeight + SLACK) return false;
-	if (scroller === null) return true;
-	const box = scroller.getBoundingClientRect();
-	return top >= box.top - SLACK && bottom <= box.bottom + SLACK;
-}
-
-/**
- * Upstream's rows read gate (`ml`): watches the element (a gated rows panel) inside the card's scrolling body and
- * reports `read` once its head, its first row and its end have each been on screen; each sighting latches until
- * `gateKey` changes. `fits` says whether the body shows everything without scrolling, which a loose gate
- * needs before it is enforced. Re-measures on any scroll, window resize, element resize and font load.
+ * Upstream's rows read gate (claude.ai/code c623a1c74 `E`): reports `read` once the watched panel's head line, its
+ * first row (unless the head is that line) and its end line box have each been seen, plus every read-line in the
+ * card. Each sighting goes through the two-frame latch, so a pending one reports `waiting`. Lines clipped by any
+ * scrolling ancestor (the card body, the transcript, scroll-padding, the sticky prompt's `topCover`) are not seen.
+ * After each measured pass `onFits` says whether the nearest scroller shows everything. `watched` false or a
+ * changed `gateKey` starts afresh.
  */
 export function useRowsReadGate({
 	ref,
 	watched,
 	gateKey,
+	headIsFirstLine = false,
+	topCover,
+	onReadState,
+	onFits,
 }: {
 	ref: RefObject<HTMLElement | null>;
 	watched: boolean;
 	/** The gated text's identity: a new key starts unread. */
 	gateKey: string;
-}): ReadGateReport
+	/** Upstream's change-target lead: the head line is the first line, so no first row is required. */
+	headIsFirstLine?: boolean;
+	/** The sticky prompt's overlap of the transcript top; locally there is none yet. */
+	topCover?: () => number;
+	onReadState: (state: ReadGateState) => void;
+	onFits?: (fits: boolean) => void;
+}): void
 {
-	const [report, setReport] = useState<
-		ReadGateReport &
-		{
-			key: string | null;
-		}
-	>(
-		{
-			key: null,
-			state: undefined,
-			fits: undefined,
-		},
-	);
 	useEffect(() =>
 	{
 		const element = ref.current;
-		if (!watched || element === null) return undefined;
-		const seen = new Set<string>();
-		const see = (key: string, visible: () => boolean) =>
+		const win = windowOf(element);
+		if (!watched) return undefined;
+		if (element === null || win === null)
 		{
-			if (!seen.has(key) && visible()) seen.add(key);
-			return seen.has(key);
-		};
-		const publish = (state: ReadGateState, fits: boolean) =>
+			onReadState("read");
+			return undefined;
+		}
+		let rerun: (() => void) | null = null;
+		const latch = createReadLatch(element, win, () => rerun?.());
+		const check = (report: (state: ReadGateState) => void) =>
 		{
-			setReport((previous) =>
-				previous.key === gateKey && previous.state === state && previous.fits === fits
-					? previous
-					:
-						{
-							key: gateKey,
-							state,
-							fits,
-						},
-			);
-		};
-		const check = () =>
-		{
-			const scroller = element.closest<HTMLElement>(SCROLLER);
-			const fits = scroller === null || scroller.scrollHeight <= scroller.clientHeight + SLACK;
+			rerun ??= () =>
+			{
+				check(report);
+			};
 			if (element.clientHeight === 0)
 			{
-				publish("unlaid", fits);
+				report("unlaid");
 				return;
 			}
-			const lineHeight = Number.parseFloat(getComputedStyle(element).lineHeight);
+			const lineHeight = Number.parseFloat(win.getComputedStyle(element).lineHeight);
 			if (!Number.isFinite(lineHeight))
 			{
-				publish("unread", fits);
+				report("unread");
 				return;
 			}
-			const firstRow = element.querySelector("li");
-			const head = see("head", () =>
-				lineVisible(element, scroller, lineHeight + padding(element, "paddingTop"), "first"),
+			const fitsNow = fits(nearestScroller(element, win));
+			latch.pass();
+			const firstRow = headIsFirstLine ? null : element.querySelector("li");
+			const cover = Math.max(0, topCover?.() ?? 0);
+			const head = latch.seen("head", () =>
+				lineSeen(element, win, lineHeight, "first", inset(element, win, "first"), cover),
 			);
 			const row =
-				firstRow === null || see("firstRow", () => lineVisible(firstRow, scroller, lineHeight, "first"));
-			const end = see("end", () =>
-				lineVisible(element, scroller, lineHeight + padding(element, "paddingBottom"), "last"),
+				firstRow === null ||
+				latch.seen("firstRow", () => lineSeen(firstRow, win, lineHeight, "first", 0, cover));
+			const end = latch.seen("end", () =>
+				lineSeen(element, win, endLineHeight(element, win, lineHeight), "last", 0, cover),
 			);
-			publish(head && row && end ? "read" : "unread", fits);
+			const lines = readLinesSeen(cardReadLines(element), win, latch.seen, true, cover);
+			report(head && row && end && lines ? (latch.waiting() ? "waiting" : "read") : "unread");
+			onFits?.(fitsNow);
 		};
-		check();
-		const doc = element.ownerDocument;
-		const win = doc.defaultView ?? window;
-		doc.addEventListener(
-			"scroll",
-			check,
-			{
-				capture: true,
-				passive: true,
-			},
-		);
-		win.addEventListener("resize", check);
-		let observer: ResizeObserver | null = null;
-		if (typeof ResizeObserver !== "undefined")
-		{
-			observer = new ResizeObserver(check);
-			observer.observe(element);
-			const scroller = element.closest<HTMLElement>(SCROLLER);
-			if (scroller !== null) observer.observe(scroller);
-		}
-		let live = true;
-		const fonts = fontsOf(doc);
-		if (fonts !== undefined)
-		{
-			void fonts.ready.then(() =>
-			{
-				if (live) check();
-			});
-		}
+		const watch = watchReadGate(element, win, [], check, onReadState);
 		return () =>
 		{
-			live = false;
-			doc.removeEventListener(
-				"scroll",
-				check,
-				{
-					capture: true,
-				},
-			);
-			win.removeEventListener("resize", check);
-			observer?.disconnect();
+			rerun = null;
+			latch.forget();
+			watch.stop();
 		};
-	}, [ref, watched, gateKey]);
-	return report.key === gateKey
-		?
-			{
-				state: report.state,
-				fits: report.fits,
-			}
-		:
-			{
-				state: undefined,
-				fits: undefined,
-			};
+	}, [ref, watched, gateKey, headIsFirstLine, topCover, onReadState, onFits]);
 }

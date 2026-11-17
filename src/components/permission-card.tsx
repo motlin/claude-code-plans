@@ -12,6 +12,7 @@ import
 
 import {useIsMac} from "../hooks/use-is-mac";
 import {assertNever} from "../lib/assert-never";
+import {useReadGate} from "../hooks/use-read-gate";
 import {useRowsReadGate} from "../hooks/use-rows-read-gate";
 import
 {
@@ -27,12 +28,27 @@ import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, isIdleComposer, onScr
 import {storeLeadingAllow, useLeadingAllow} from "../lib/approval-leading-allow";
 import
 {
+	type DetailReadGate,
 	type FileChangeKind,
 	permissionDecisionForKey,
 	type PermissionDecision,
 	type PermissionDetailLang,
 	type PermissionTitle,
+	ROWS_READ_HINT,
+	titleReadText,
+	titleReadWatched,
 } from "../lib/permission-card";
+import
+{
+	APPROVAL_READ_ROWS_ATTR,
+	cardReadLines,
+	createReadLatch,
+	lineSeen,
+	type ReadGateState,
+	readLinesSeen,
+	watchReadGate,
+	windowOf,
+} from "../lib/read-gate";
 import type {PermissionDialogShape} from "../lib/herdr/permission-screen";
 import {allowMenuItems, AUTO_SWITCH_DESCRIPTION, AUTO_SWITCH_LABEL} from "../lib/permission-auto-switch";
 import type {PermissionRow} from "../lib/permission-rows";
@@ -72,6 +88,23 @@ export interface PermissionAutoSwitch
 /** What the card is sending: a dialog decision, or upstream's allow-and-switch-to-Auto. */
 type SentAnswer = PermissionDecision | "allowAuto";
 
+/** Upstream's title gate store (`dr`): read or not, whether it has hinted, and whether the unread part is above. */
+interface TitleGate
+{
+	state: "unread" | "read";
+	hinted: boolean;
+	upward: boolean;
+}
+
+/** Upstream's detail/rows gate store (`J`), keyed by what it gates; `fits` latches to false once it overflowed. */
+interface GateRead
+{
+	key: string;
+	state: ReadGateState;
+	hinted: boolean;
+	fits?: boolean;
+}
+
 /**
  * The tool-permission card, drawn inline as claude.ai/code's approvals:
  * "Allow Claude to <action> <meta>?" in a tinted title band, the detail block, and [Deny] then the allow
@@ -107,6 +140,10 @@ export function PermissionCard({
 	rows = null,
 	rowsTrail = false,
 	rowsGate = false,
+	rowsGateStrict = false,
+	detailReadGate = null,
+	perUseOnly = false,
+	clickOnly = false,
 	fileChange = null,
 	toolName = null,
 	toolInput = null,
@@ -121,6 +158,7 @@ export function PermissionCard({
 	sessionId,
 	answerKey,
 	hideOnDecision = true,
+	presentation = "card",
 }: {
 	title: PermissionTitle;
 	detail: string | null;
@@ -142,6 +180,14 @@ export function PermissionCard({
 	rowsTrail?: boolean;
 	/** Upstream's loose rows read gate: Allow waits until a trail panel that scrolls has been read to its end. */
 	rowsGate?: boolean;
+	/** The rows gate is strict: enforced even when the rows fit. */
+	rowsGateStrict?: boolean;
+	/** Upstream's `detailReadGate`: the detail is capped to six lines and Allow waits until all of it was seen. */
+	detailReadGate?: DetailReadGate | null;
+	/** Upstream's `disableAlwaysAllow`: the persistent option is never offered. */
+	perUseOnly?: boolean;
+	/** Upstream's `clickOnly`: the card binds no keys. */
+	clickOnly?: boolean;
 	/** Upstream's `fileChange`: a Write/Edit/MultiEdit card draws its change, or says it is too large to. */
 	fileChange?: FileChangeKind | null;
 	/** The previewed file tool's name, for its diff. */
@@ -175,6 +221,8 @@ export function PermissionCard({
 	 * is cleared by its `ElicitationResult`, since the CLI can refuse an early Enter.
 	 */
 	hideOnDecision?: boolean;
+	/** Upstream's approval presentation: the inline "card" or the composer "dock"; a change re-measures every gate. */
+	presentation?: "card" | "dock";
 })
 {
 	const isMac = useIsMac();
@@ -193,7 +241,7 @@ export function PermissionCard({
 	const enabled = canAnswer && !decided && !answered;
 	// Upstream's `hn`/`vn`: a defaultToNo (or askFlagsUnknown) card leads with Deny and binds no keys.
 	const denyFirst = dialog === "unknown" || dialog?.denyFirst === true;
-	const persistentAllow = denyFirst || dialog?.persistent === false ? null : hookPersistentAllow;
+	const persistentAllow = denyFirst || perUseOnly || dialog?.persistent === false ? null : hookPersistentAllow;
 
 	const decideWith = useCallback(
 		async (answer: SentAnswer, send: () => Promise<void>) =>
@@ -252,38 +300,155 @@ export function PermissionCard({
 		void decide("always");
 	};
 
-	// Upstream's loose rows gate (`ml` + `lr`): enforced only while the body scrolls, or before it has a layout.
+	// Upstream's title gate (`yw` + `hr`): an inline card's title band must be seen from its head to its end.
+	const titleRef = useRef<HTMLDivElement>(null);
+	const titleWatched = titleReadWatched(
+		{
+			title,
+			clampTitle,
+			hasDetail: detail !== null,
+		},
+	);
+	const [titleGate, setTitleGate] = useState<TitleGate | null>(null);
+	const onTitleHeld = useCallback((held: boolean, quiet = false, upward = false) =>
+	{
+		setTitleGate((previous) =>
+		{
+			if (previous === null && !held) return previous;
+			const next: TitleGate =
+			{
+				state: held ? "unread" : "read",
+				hinted: previous?.hinted === true || (held && !quiet),
+				upward: held ? upward : previous?.upward === true,
+			};
+			return previous?.state === next.state && previous.hinted === next.hinted && previous.upward === next.upward
+				? previous
+				: next;
+		});
+	}, []);
+	useReadGate(
+		{
+			ref: titleRef,
+			watched: titleWatched,
+			text: titleReadText(title),
+			hostClips: presentation === "card",
+			presentation,
+			onHeld: onTitleHeld,
+		},
+	);
+
+	// Upstream's detail and rows gates (`kC`/`jC`) share one store (`J`), keyed by what they gate and reset when the
+	// presentation changes (`Ur`).
 	const rowsPanelRef = useRef<HTMLDivElement>(null);
 	const hasRows = rows !== null && rows.length > 0;
-	const rowsKey = hasRows ? JSON.stringify(rows) : "";
-	const rowsGated = rowsGate && rowsTrail && hasRows;
-	const rowsRead = useRowsReadGate(
+	const detailGated = detailReadGate !== null && detail !== null;
+	const rowsGated = rowsGate && rowsTrail && hasRows && !detailGated;
+	const gateKey = detailGated
+		? `${presentation}\n${detail}\n\n${detailNote ?? ""}\n`
+		: rowsGated
+			? `${presentation}\nrows\n${JSON.stringify(rows)}`
+			: null;
+	const [gate, setGate] = useState<GateRead | null>(null);
+	const onGateRead = useCallback(
+		(state: ReadGateState) =>
+		{
+			if (gateKey === null) return;
+			setGate((previous) =>
+			{
+				const known = previous?.key === gateKey ? previous : undefined;
+				if (known?.state === state || (known !== undefined && state === "unlaid")) return previous;
+				return {
+					key: gateKey,
+					state,
+					hinted: known?.hinted === true || state === "unread",
+					...(known?.fits === undefined
+						? {}
+						:
+							{
+								fits: known.fits,
+							}),
+				};
+			});
+		},
+		[gateKey],
+	);
+	// Upstream's `wr`: once the body overflowed, a loose gate stays enforced until read, even if it later fits.
+	const onGateFits = useCallback(
+		(reported: boolean) =>
+		{
+			setGate((previous) =>
+			{
+				if (gateKey === null || previous?.key !== gateKey || previous.state === "read") return previous;
+				const fits = previous.fits !== false && reported;
+				return fits === previous.fits
+					? previous
+					:
+						{
+							...previous,
+							fits,
+						};
+			});
+		},
+		[gateKey],
+	);
+	useRowsReadGate(
 		{
 			ref: rowsPanelRef,
 			watched: rowsGated,
-			gateKey: rowsKey,
+			gateKey: gateKey ?? "",
+			onReadState: onGateRead,
+			onFits: onGateFits,
 		},
 	);
-	const readHeld = rowsGated && (rowsRead.fits === false || rowsRead.state === "unlaid") && rowsRead.state !== "read";
-	// The hint mounts once the gate has held, then stays (invisible once read) so the card doesn't jump.
-	const [hinted, setHinted] = useState(false);
-	useEffect(() =>
-	{
-		if (readHeld) setHinted(true);
-	}, [readHeld]);
+	const gateRead = gate?.key === gateKey ? gate : undefined;
+	const titleHinted = titleGate?.hinted === true;
+	const titleUnread = titleHinted && titleGate.state !== "read";
+	const otherUnread = gateKey !== null && gateRead?.state !== "read";
+	// Upstream's `Er`: the title, a detail gate and a strict rows gate always enforce; a loose one only once the body
+	// overflowed or before it has a layout.
+	const enforced =
+		titleHinted ||
+		(gateKey !== null &&
+			(!rowsGated || rowsGateStrict || gateRead?.fits === false || gateRead?.state === "unlaid"));
+	const readHeld = (titleUnread || otherUnread) && enforced;
+	// Upstream's `Or`: an allow is refused while any gate is unread, enforced or not.
+	const readBlocked = readHeld || titleGate?.state === "unread" || otherUnread;
+	// Upstream's `Ir`: the detail or rows hint while that gate is unread, the title's once only it is.
+	const otherHint = detailGated ? detailReadGate.hint : rowsGated ? ROWS_READ_HINT : undefined;
+	const titleHint = titleGate?.upward === true ? TITLE_UP_HINT : TITLE_READ_HINT;
+	const shownHint = titleHinted && (titleUnread ? !otherUnread : otherHint === undefined) ? titleHint : otherHint;
 	const [heldAttempts, setHeldAttempts] = useState(0);
 	const onHeldAttempt = useCallback(() =>
 	{
 		setHeldAttempts((count) => count + 1);
 	}, []);
+	// Upstream's `Kr`: the hint mounts once an enforced gate hinted, on an inline card not laid out yet, or after an
+	// attempt; the hinted marks latch, so it stays (invisible once read) and the card doesn't jump.
+	const hintMounted =
+		titleHinted ||
+		(enforced &&
+			gateRead !== undefined &&
+			(gateRead.hinted || (presentation === "card" && gateRead.state === "unlaid"))) ||
+		heldAttempts > 0;
+	const gated = titleWatched || gateKey !== null;
+	/** Upstream's `Xr`: an allow while a read gate is unread is refused and counted as an attempt. */
+	const allowed = (run: () => void) => () =>
+	{
+		if (readBlocked)
+		{
+			onHeldAttempt();
+			return;
+		}
+		run();
+	};
 
 	const cardRootRef = useRef<HTMLDivElement>(null);
 	usePermissionHotkeys(
 		cardRootRef,
 		{
-			enabled: enabled && !denyFirst,
+			enabled: enabled && !denyFirst && !clickOnly,
 			persistent: persistentAllow !== null,
-			held: readHeld,
+			held: readBlocked,
 			onHeldAttempt,
 			decide,
 		},
@@ -320,6 +485,19 @@ export function PermissionCard({
 				/>
 			</div>
 		</div>
+	) : detailGated ? (
+		// Upstream's `VC`, keyed by what it gates so a changed command starts unread.
+		<div data-permission-detail className="flow-root">
+			<CommandReadGate
+				key={gateKey}
+				label={detailReadGate.label}
+				note={detailNote}
+				read={gateRead?.state === "read"}
+				onReadState={onGateRead}
+			>
+				{detail}
+			</CommandReadGate>
+		</div>
 	) : (
 		<>
 			{detail !== null &&
@@ -340,10 +518,10 @@ export function PermissionCard({
 			{detailNote !== null && <p className={DETAIL_NOTE_CLASS}>{detailNote}</p>}
 		</>
 	);
-	/** The allow buttons' disabled reason while the rows gate holds them. */
-	const allowReason = readHeld ? ROWS_READ_HINT : null;
-	// Upstream hides the row while the read gate is unmet (`!lr`), and draws none on a deny-first card.
-	const autoOffered = autoLatched === true && !readHeld && !denyFirst;
+	/** The allow buttons' disabled reason while a read gate holds them. */
+	const allowReason = readHeld ? (shownHint ?? null) : null;
+	// Upstream hides the row while the read gate is unmet (`!lr`), and draws none on a deny-first or click-only card.
+	const autoOffered = autoLatched === true && !readHeld && !denyFirst && !clickOnly;
 	// Upstream's `Zr`: the persistent option's scope, dropped once the saves block lists what it adds (`Bn`).
 	const scopeTooltip = persistentAllowSaves === null ? PERSISTENT_ALLOW_SCOPE : undefined;
 	const menuItems = allowMenuItems(
@@ -360,26 +538,26 @@ export function PermissionCard({
 				return {
 					label: "Allow once",
 					shortcut: "cmd+enter",
-					onSelect: allowOnceFromMenu,
+					onSelect: allowed(allowOnceFromMenu),
 				};
 			case "persistent":
 				return scopeTooltip === undefined
 					?
 						{
 							label: PERSISTENT_ALLOW_LABEL,
-							onSelect: persistentFromMenu,
+							onSelect: allowed(persistentFromMenu),
 						}
 					:
 						{
 							label: PERSISTENT_ALLOW_LABEL,
 							description: scopeTooltip,
-							onSelect: persistentFromMenu,
+							onSelect: allowed(persistentFromMenu),
 						};
 			case "auto":
 				return {
 					label: AUTO_SWITCH_LABEL,
 					description: AUTO_SWITCH_DESCRIPTION,
-					onSelect: allowAndSwitch,
+					onSelect: allowed(allowAndSwitch),
 				};
 			default:
 				return assertNever(item);
@@ -387,15 +565,16 @@ export function PermissionCard({
 	});
 	const leadsAlways = persistentAllow !== null && lead === "always";
 	const withAllowReason = (control: ReactElement) =>
-		rowsGated ? <DisabledReason reason={allowReason}>{control}</DisabledReason> : control;
+		gated ? <DisabledReason reason={allowReason}>{control}</DisabledReason> : control;
 
 	return (
 		<ApprovalCardShell
 			rootRef={cardRootRef}
 			label={"action" in title ? `Permission request: ${title.action}` : "Permission request"}
 			footer={footer}
-			presentation="card"
+			presentation={presentation}
 			enter={enter}
+			titleRef={titleRef}
 			title={
 				<div className="text-primary min-h-[24px] shrink-0 flex items-center gap-1">
 					<span className="flex flex-1 min-w-0 flex-col gap-[2px]">
@@ -425,12 +604,20 @@ export function PermissionCard({
 					{rowsTrail &&
 						hasRows &&
 						(rowsGated ? (
-							// Upstream's `ml` wrapper, keyed by the rows so new rows start unread.
-							<div ref={rowsPanelRef} key={rowsKey} data-testid="approval-read-rows">
+							// Upstream's `E` wrapper, keyed by the rows so new rows start unread.
+							<div
+								ref={rowsPanelRef}
+								key={gateKey}
+								data-testid="approval-read-rows"
+								{...
+								{
+									[APPROVAL_READ_ROWS_ATTR]: "",
+								}}
+							>
 								{/* A gated panel never clamps; its groups fold only once a scrolled panel is read. */}
 								<RowsPanel
 									rows={rows}
-									foldable={rowsRead.fits === false && rowsRead.state === "read"}
+									foldable={gateRead?.fits === false && gateRead.state === "read"}
 									clamp={false}
 								/>
 							</div>
@@ -442,21 +629,21 @@ export function PermissionCard({
 				</div>
 			}
 			note={
-				rowsGated ? (
+				gated ? (
 					<>
 						{/* Upstream's re-announcing live region: a trailing NBSP on even attempts. */}
 						<p aria-live="polite" className="sr-only">
-							{readHeld && heldAttempts > 0
-								? `${ROWS_READ_HINT}${heldAttempts % 2 === 0 ? " " : ""}`
+							{readBlocked && heldAttempts > 0 && shownHint !== undefined
+								? `${shownHint}${heldAttempts % 2 === 0 ? " " : ""}`
 								: ""}
 						</p>
-						{(hinted || heldAttempts > 0) && (
+						{hintMounted && shownHint !== undefined && (
 							<p
 								aria-hidden
 								data-testid="approval-read-hint"
 								className={`${READ_HINT_CLASS}${readHeld ? "" : " invisible"}`}
 							>
-								{ROWS_READ_HINT}
+								{shownHint}
 							</p>
 						)}
 					</>
@@ -491,7 +678,7 @@ export function PermissionCard({
 								busy={sent === "allow"}
 								busyLabel={APPROVAL_SENDING_LABEL}
 								disabled={!enabled && sent !== "allow"}
-								onClick={() => void decide("allow")}
+								onClick={allowed(() => void decide("allow"))}
 							>
 								<span data-approval-digit="2">Allow once</span>
 							</ApprovalActionButton>
@@ -504,7 +691,7 @@ export function PermissionCard({
 									busy={sent === "allow"}
 									busyLabel={APPROVAL_SENDING_LABEL}
 									disabled={(!enabled && sent !== "allow") || readHeld}
-									onClick={() => void decide("allow")}
+									onClick={allowed(() => void decide("allow"))}
 								>
 									<span data-approval-digit="2">Allow once</span>
 									<Shortcut keys="cmd+enter" className={APPROVAL_ACTION_SHORTCUT_CLASS} />
@@ -532,7 +719,7 @@ export function PermissionCard({
 														{PERSISTENT_ALLOW_LABEL}
 													</span>
 												),
-												onPrimaryClick: () => void decide("always"),
+												onPrimaryClick: allowed(() => void decide("always")),
 											}
 										:
 											{
@@ -544,7 +731,7 @@ export function PermissionCard({
 												),
 												shortcut: "cmd+enter",
 												"aria-keyshortcuts": toAriaKeyShortcuts("cmd+enter", isMac),
-												onPrimaryClick: () => void decide("allow"),
+												onPrimaryClick: allowed(() => void decide("allow")),
 											})}
 									menuLabel="More allow options"
 									busy={sent === "allow" || sent === "always" || sent === "allowAuto"}
@@ -642,11 +829,156 @@ const DETAIL_NOTE_CLASS = "text-footnote text-muted-as-secondary select-text bre
 const DESCRIPTION_CLASS =
 	"text-body text-secondary select-text break-words max-h-[calc(3*var(--text-body--line-height))] overflow-y-auto [unicode-bidi:plaintext]";
 
-/** Upstream's rows gate hint (`ph.rowsHint`). */
-const ROWS_READ_HINT = "Scroll to the end to allow this.";
+/** Upstream's title gate hint (`1oftTg`). */
+export const TITLE_READ_HINT = "Scroll the title to its end to allow this.";
+/** Upstream's title gate hint once the title is scrolled above the card's view (`H9kdxn`). */
+export const TITLE_UP_HINT = "Scroll up to see what you’re allowing.";
 /** Upstream's read hint above the actions, centred in a stacked (≤420px) card. */
 const READ_HINT_CLASS =
 	"epitaxy-approval-read-hint text-footnote text-muted-as-secondary text-end text-balance @max-[420px]:text-center";
+
+/** Upstream's `OC.standard`: a gated detail shows six lines before it scrolls. */
+const DETAIL_READ_LINES = 6;
+/** Upstream's gated detail box (`cx`), its focus ring drawn when the scroller inside has focus. */
+const GATED_DETAIL_CLASS =
+	"bg-alpha-1 rounded-lg py-md px-lg text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext] has-[:focus-visible]:shadow-focus";
+/** Upstream's slack: a line box may sit 2px outside the visible box and still count as seen. */
+const SLACK = 2;
+
+/**
+ * Upstream's detail read gate (`VC`, was `Sx`): the detail capped to six lines, a focusable labelled scroller once it
+ * overflows, and `read` reported only once its head and end lines, its note's first and last lines and every
+ * read-line in the card have each been seen (through the two-frame latch).
+ */
+function CommandReadGate({
+	label,
+	note,
+	read,
+	warned = false,
+	onReadState,
+	children,
+}: {
+	label: string;
+	note: string | null;
+	read: boolean;
+	/** Upstream's `detailWarning`: at least one read-line (the warning) must exist. */
+	warned?: boolean;
+	onReadState: (state: ReadGateState) => void;
+	children: ReactNode;
+})
+{
+	const detailRef = useRef<HTMLDivElement>(null);
+	const noteRef = useRef<HTMLParagraphElement>(null);
+	const [overflows, setOverflows] = useState(false);
+	useEffect(() =>
+	{
+		const element = detailRef.current;
+		const win = windowOf(element);
+		if (element === null || win === null)
+		{
+			onReadState("read");
+			return undefined;
+		}
+		let rerun: (() => void) | null = null;
+		const latch = createReadLatch(element, win, () => rerun?.());
+		const check = (report: (state: ReadGateState) => void) =>
+		{
+			rerun ??= () =>
+			{
+				check(report);
+			};
+			const lineHeight = Number.parseFloat(win.getComputedStyle(element).lineHeight);
+			if (!Number.isFinite(lineHeight))
+			{
+				report(element.clientHeight === 0 ? "unlaid" : "unread");
+				return;
+			}
+			const cap = lineHeight * DETAIL_READ_LINES;
+			const laid = element.clientHeight !== 0;
+			const shown = Math.min(element.clientHeight, cap);
+			const overflow = element.scrollHeight - shown > SLACK;
+			if (laid) latch.pass();
+			const head = latch.seen(
+				"head",
+				() => laid && element.scrollTop <= SLACK && lineSeen(element, win, lineHeight, "first"),
+				() => laid && lineSeen(element, win, lineHeight, "first"),
+			);
+			const end = latch.seen(
+				"end",
+				() =>
+					laid &&
+					element.scrollTop + shown >= element.scrollHeight - SLACK &&
+					lineSeen(element, win, lineHeight, "last"),
+				() => laid && lineSeen(element, win, lineHeight, "last"),
+			);
+			const noteLine = noteRef.current;
+			const noteSeen = (edge: "first" | "last") =>
+				noteLine === null ||
+				latch.seen(
+					`note${edge}`,
+					() =>
+						laid &&
+						lineSeen(
+							noteLine,
+							win,
+							Number.parseFloat(win.getComputedStyle(noteLine).lineHeight) || 0,
+							edge,
+						),
+				);
+			const lines = cardReadLines(element);
+			const rest = [
+				noteSeen("first"),
+				noteSeen("last"),
+				readLinesSeen(lines, win, latch.seen, laid),
+				!warned || lines.length > 0,
+			];
+			element.style.maxHeight = `${cap}px`;
+			if (!laid)
+			{
+				report("unlaid");
+				return;
+			}
+			setOverflows(overflow);
+			report(head && end && rest.every(Boolean) ? (latch.waiting() ? "waiting" : "read") : "unread");
+		};
+		const watch = watchReadGate(element, win, [noteRef.current], check, onReadState);
+		return () =>
+		{
+			rerun = null;
+			latch.forget();
+			watch.stop();
+		};
+	}, [onReadState, warned]);
+	const gate = (
+		<div data-approval-value className={GATED_DETAIL_CLASS}>
+			<div
+				ref={detailRef}
+				data-testid="approval-read-detail"
+				{...(overflows
+					?
+						{
+							tabIndex: 0,
+							role: "group",
+							"aria-label": label,
+							className: `overflow-y-auto scroll-fade-y scroll-fade-size-[8px] focus-visible:outline-hidden${read ? " overscroll-contain" : ""}`,
+						}
+					: {})}
+			>
+				{children}
+			</div>
+		</div>
+	);
+	return note === null ? (
+		gate
+	) : (
+		<div className="flex flex-col gap-[12px]">
+			{gate}
+			<p ref={noteRef} data-testid="approval-detail-note" className={DETAIL_NOTE_CLASS}>
+				{note}
+			</p>
+		</div>
+	);
+}
 
 /** Upstream's trail rows panel: the tinted "What Claude sent" block closing the card body. */
 function RowsPanel({rows, foldable, clamp}: {rows: readonly PermissionRow[]; foldable: boolean; clamp: boolean})

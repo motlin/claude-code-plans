@@ -7,7 +7,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {BackgroundTasksOpenerProvider} from "../src/components/background-tasks-opener-context";
 import {ApprovalCardShell, WaitingForInputNotice} from "../src/components/approval-card";
-import {PermissionCard} from "../src/components/permission-card";
+import {PermissionCard, TITLE_READ_HINT, TITLE_UP_HINT} from "../src/components/permission-card";
 import {APPROVAL_LEADING_ALLOW_KEY} from "../src/lib/approval-leading-allow";
 import {clearLanding, recordLanding} from "../src/lib/approval-slot-landing";
 import {isAnsweredHeld, releaseAnswered} from "../src/lib/answered-sessions";
@@ -19,6 +19,7 @@ import
 	permissionDecisionForKey,
 	permissionWaitToolUseId,
 	type PermissionNotification,
+	titleReadWatched,
 } from "../src/lib/permission-card";
 import type {PermissionDialogShape} from "../src/lib/herdr/permission-screen";
 import type {PersistentAllowKind, PersistentAllowSave} from "../src/lib/permission-suggestions";
@@ -167,6 +168,12 @@ describe("findPendingPermission", () =>
 				clampTitle: true,
 				description: "Fetch x",
 				detailNote: "Runs outside Claude’s sandbox. Keeps running in the background.",
+				detailReadGate:
+				{
+					label: "Command",
+					hint: "Scroll through the whole command to allow it.",
+				},
+				perUseOnly: true,
 			},
 		},
 		{
@@ -187,6 +194,78 @@ describe("findPendingPermission", () =>
 				detailLang: "bash",
 				clampTitle: true,
 				detailNote: "Runs outside Claude’s sandbox.",
+				detailReadGate:
+				{
+					label: "Command",
+					hint: "Scroll through the whole command to allow it.",
+				},
+				perUseOnly: true,
+			},
+		},
+		{
+			input:
+			{
+				command: "curl x",
+				dangerouslyDisableSandbox: true,
+				sandbox: "off",
+			},
+			expected:
+			{
+				title:
+				{
+					action: "use Bash",
+					meta: null,
+				},
+				detail: null,
+				rows: [
+					{
+						label: "Command",
+						value: "curl x",
+					},
+					{
+						code: true,
+						label: "Dangerously disable sandbox",
+						value: "true",
+					},
+					{
+						label: "Sandbox",
+						value: "off",
+					},
+				],
+				rowsTrail: true,
+				rowsGate: true,
+				clickOnly: true,
+				perUseOnly: true,
+				rowsGateStrict: true,
+			},
+		},
+		{
+			input:
+			{
+				command: "ls",
+				timeout: "soon",
+			},
+			expected:
+			{
+				title:
+				{
+					action: "use Bash",
+					meta: null,
+				},
+				detail: null,
+				rows: [
+					{
+						label: "Command",
+						value: "ls",
+					},
+					{
+						label: "Timeout",
+						value: "soon",
+					},
+				],
+				rowsTrail: true,
+				rowsGate: true,
+				clickOnly: true,
 			},
 		},
 		{
@@ -871,6 +950,99 @@ describe("findPendingPermission", () =>
 });
 
 const PRIMARY = "text-primary [unicode-bidi:plaintext]";
+
+describe("titleReadWatched, as upstream's _w", () =>
+{
+	it("gates a title with a meta or a heading, or an origin-tagged action over 80 characters, unless a clamped title sits over a detail", () =>
+	{
+		const action = (meta: string | null) => (
+		{
+			action: "run",
+			meta,
+		});
+		expect([
+			titleReadWatched(
+				{
+					title: action("x"),
+					clampTitle: false,
+					hasDetail: false,
+				},
+			),
+			titleReadWatched(
+				{
+					title: action(null),
+					clampTitle: false,
+					hasDetail: false,
+				},
+			),
+			titleReadWatched(
+				{
+					title: action("x"),
+					clampTitle: true,
+					hasDetail: true,
+				},
+			),
+			titleReadWatched(
+				{
+					title: action("x"),
+					clampTitle: true,
+					hasDetail: false,
+				},
+			),
+			titleReadWatched(
+				{
+					title:
+					{
+						heading: "Claude needs your permission",
+					},
+					clampTitle: false,
+					hasDetail: false,
+				},
+			),
+			titleReadWatched(
+				{
+					title:
+					{
+						action: "a".repeat(81),
+						meta: null,
+					},
+					clampTitle: false,
+					hasDetail: false,
+					origin: "srv",
+				},
+			),
+			titleReadWatched(
+				{
+					title:
+					{
+						action: "a".repeat(80),
+						meta: null,
+					},
+					clampTitle: false,
+					hasDetail: false,
+					origin: "srv",
+				},
+			),
+		]).toStrictEqual([true, false, false, true, true, true, false]);
+	});
+
+	it("words the title hints as upstream's 1oftTg and H9kdxn, with a typographic apostrophe", () =>
+	{
+		expect(
+			{
+				read: TITLE_READ_HINT,
+				up: TITLE_UP_HINT,
+				apostrophe: TITLE_UP_HINT.codePointAt(TITLE_UP_HINT.indexOf("re") - 1),
+			},
+		).toStrictEqual(
+			{
+				read: "Scroll the title to its end to allow this.",
+				up: "Scroll up to see what you\u2019re allowing.",
+				apostrophe: 0x2019,
+			},
+		);
+	});
+});
 
 describe("permission title copy", () =>
 {
@@ -2704,7 +2876,7 @@ describe("PermissionCard", () =>
 		).toStrictEqual(
 			{
 				region: null,
-				card: "@container relative isolate flex max-h-[60vh] flex-col rounded-card p-lg text-body text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 card-ring w-full max-w-[480px] gap-[24px]",
+				card: "epitaxy-approval-card @container relative isolate flex max-h-[60vh] flex-col rounded-card p-lg text-body text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 card-ring w-full max-w-[480px] gap-[24px]",
 				body: "-mx-pad-lg -mt-1 -mb-2 flex min-h-0 flex-col overflow-y-auto px-lg pt-1 pb-2 gap-[24px]",
 			},
 		);
@@ -5023,43 +5195,182 @@ describe("PermissionCard after a landing", () =>
 	});
 });
 
-describe("PermissionCard rows read gate", () =>
+describe("PermissionCard read gates", () =>
 {
-	const HINT = "Scroll to the end to allow this.";
+	const ROWS_HINT = "Scroll to the end to allow this.";
+	const COMMAND_HINT = "Scroll through the whole command to allow it.";
+	const HINT_CLASS =
+		"epitaxy-approval-read-hint text-footnote text-muted-as-secondary text-end text-balance @max-[420px]:text-center";
 
-	function mockScroller({scrollHeight, clientHeight}: {scrollHeight: number; clientHeight: number})
+	interface Box
 	{
-		vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(scrollHeight);
-		vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(clientHeight);
+		top: number;
+		height: number;
+		scrollTop?: number;
+		scrollHeight?: number;
+		clientHeight?: number;
 	}
 
-	function renderGated(onDecision = vi.fn<ComponentProps<typeof PermissionCard>["onDecision"]>(async () => {}))
+	const boxes = new Map<Element, Box>();
+	const frames = new Map<number, FrameRequestCallback>();
+	let nextFrame = 0;
+
+	/** Lays the element out at `box` (later calls update it); unplaced elements have an empty rect, which counts as seen. */
+	function place(element: Element, box: Box)
 	{
-		const utils = render(
-			<PermissionCard
-				title={
-				{
-					action: "run an agent",
-					meta: null,
-				}}
-				detail={null}
-				description="Find x"
-				rows={[
-					{
-						label: "Prompt",
-						value: "Look",
-						clampLines: 6,
-					},
-				]}
-				rowsTrail
-				rowsGate
-				canAnswer
-				onDecision={onDecision}
-			/>,
+		const known = boxes.get(element);
+		if (known !== undefined)
+		{
+			Object.assign(known, box);
+			return;
+		}
+		boxes.set(
+			element,
+			{
+				...box,
+			},
 		);
+		for (const key of ["scrollTop", "scrollHeight", "clientHeight"] as const)
+		{
+			Object.defineProperty(
+				element,
+				key,
+				{
+					configurable: true,
+					get: () =>
+					{
+						const current = boxes.get(element)!;
+						return current[key] ?? (key === "scrollTop" ? 0 : current.height);
+					},
+				},
+			);
+		}
+	}
+
+	beforeEach(() =>
+	{
+		vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function rect(this: Element)
+		{
+			const box = boxes.get(this);
+			return DOMRect.fromRect(
+				{
+					x: 0,
+					y: box?.top ?? 0,
+					width: 400,
+					height: box?.height ?? 0,
+				},
+			);
+		});
+		vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(400);
+		vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) =>
+		{
+			nextFrame += 1;
+			frames.set(nextFrame, callback);
+			return nextFrame;
+		});
+		vi.spyOn(window, "cancelAnimationFrame").mockImplementation((id) =>
+		{
+			frames.delete(id);
+		});
+	});
+
+	afterEach(() =>
+	{
+		boxes.clear();
+		frames.clear();
+		vi.restoreAllMocks();
+		vi.useRealTimers();
+	});
+
+	async function flushFrames(count = 2)
+	{
+		for (let index = 0; index < count; index++)
+		{
+			const due = [...frames.values()];
+			frames.clear();
+			await act(async () =>
+			{
+				for (const callback of due) callback(0);
+				await Promise.resolve();
+			});
+		}
+	}
+
+	function scroll()
+	{
+		act(() =>
+		{
+			fireEvent.scroll(document);
+		});
+	}
+
+	function resize()
+	{
+		act(() =>
+		{
+			fireEvent(window, new Event("resize"));
+		});
+	}
+
+	type CardProps = Partial<ComponentProps<typeof PermissionCard>>;
+
+	const ROWS_CARD: CardProps =
+	{
+		title:
+		{
+			action: "run an agent",
+			meta: null,
+		},
+		detail: null,
+		description: "Find x",
+		rows: [
+			{
+				label: "Prompt",
+				value: "Look",
+				clampLines: 6,
+			},
+		],
+		rowsTrail: true,
+		rowsGate: true,
+	};
+
+	/** Renders the card inside a transcript scroller (19px lines), as the session page draws it. */
+	function renderCard(props: CardProps = ROWS_CARD)
+	{
+		const onDecision = vi.fn<ComponentProps<typeof PermissionCard>["onDecision"]>(async () => {});
+		const card = (overrides: CardProps = {}) => (
+			<div
+				data-testid="transcript"
+				style={
+				{
+					overflowY: "auto",
+					lineHeight: "19px",
+				}}
+			>
+				<PermissionCard
+					title={
+					{
+						action: "run this command",
+						meta: null,
+					}}
+					detail={null}
+					canAnswer
+					onDecision={onDecision}
+					{...props}
+					{...overrides}
+				/>
+			</div>
+		);
+		const utils = render(card());
+		const transcript = screen.getByTestId("transcript");
 		return {
 			...utils,
 			onDecision,
+			transcript,
+			rerenderWith: (overrides: CardProps) =>
+			{
+				utils.rerender(card(overrides));
+			},
 		};
 	}
 
@@ -5071,93 +5382,782 @@ describe("PermissionCard rows read gate", () =>
 			},
 		);
 	const hint = (container: HTMLElement) => container.querySelector("[data-testid=approval-read-hint]");
-
-	afterEach(() =>
+	const rowsPanel = (container: HTMLElement) =>
+		container.querySelector<HTMLElement>("[data-testid=approval-read-rows]")!;
+	const state = (container: HTMLElement) => (
 	{
-		vi.restoreAllMocks();
-		vi.useRealTimers();
+		disabled: allowButton().hasAttribute("disabled"),
+		hint: hint(container)?.textContent ?? null,
+		hintHidden: hint(container)?.classList.contains("invisible") ?? null,
 	});
 
-	it("holds Allow with the hint above the actions until the rows panel is scrolled to its end", () =>
+	/** A rows card whose transcript scrolls (900 of content in 300), with the panel's end below the window. */
+	function renderOverflowingRows(props: CardProps = ROWS_CARD)
 	{
-		mockScroller(
+		const view = renderCard(props);
+		place(
+			view.transcript,
 			{
+				top: 0,
+				height: 300,
 				scrollHeight: 900,
-				clientHeight: 300,
 			},
 		);
-		const {container} = renderGated();
-		const panelGate = container.querySelector<HTMLElement>("[data-testid=approval-read-rows]")!;
-		const held =
-		{
-			disabled: allowButton().hasAttribute("disabled"),
-			hint: hint(container)?.className,
-			hintText: hint(container)?.textContent,
-			hintHidden: hint(container)?.getAttribute("aria-hidden"),
-			beforeActions:
-				hint(container)?.nextElementSibling === container.querySelector("[data-approval-card-actions]"),
-			clamped: panelGate.querySelector("[data-approval-value]")?.classList.contains("line-clamp-6"),
-			panel: panelGate.firstElementChild?.hasAttribute("data-permission-rows-panel"),
-		};
-		panelGate.style.lineHeight = "19px";
-		vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue(
-			DOMRect.fromRect(
-				{
-					x: 0,
-					y: 0,
-					width: 400,
-					height: 300,
-				},
-			),
+		place(
+			rowsPanel(view.container),
+			{
+				top: 0,
+				height: 900,
+			},
 		);
-		act(() =>
+		scroll();
+		return view;
+	}
+
+	describe("rows gate", () =>
+	{
+		it("marks upstream's wrapper, and holds Allow with the hint above the actions until the panel's end has been seen for two frames", async () =>
 		{
-			fireEvent.scroll(container.querySelector("[data-approval-card-body]")!);
+			const {container} = renderOverflowingRows();
+			const panelGate = rowsPanel(container);
+			await flushFrames();
+			const held =
+			{
+				...state(container),
+				attribute: panelGate.getAttribute("data-approval-read-rows"),
+				className: hint(container)?.className,
+				hintAriaHidden: hint(container)?.getAttribute("aria-hidden"),
+				beforeActions:
+					hint(container)?.nextElementSibling === container.querySelector("[data-approval-card-actions]"),
+				clamped: panelGate.querySelector("[data-approval-value]")?.classList.contains("line-clamp-6"),
+				panel: panelGate.firstElementChild?.hasAttribute("data-permission-rows-panel"),
+			};
+			place(
+				panelGate,
+				{
+					top: -600,
+					height: 900,
+				},
+			);
+			scroll();
+			const waiting = state(container);
+			await flushFrames();
+			expect(
+				{
+					held,
+					waiting,
+					read: state(container),
+				},
+			).toStrictEqual(
+				{
+					held:
+					{
+						disabled: true,
+						hint: ROWS_HINT,
+						hintHidden: false,
+						attribute: "",
+						className: HINT_CLASS,
+						hintAriaHidden: "true",
+						beforeActions: true,
+						clamped: false,
+						panel: true,
+					},
+					waiting:
+					{
+						disabled: true,
+						hint: ROWS_HINT,
+						hintHidden: false,
+					},
+					read:
+					{
+						disabled: false,
+						hint: ROWS_HINT,
+						hintHidden: true,
+					},
+				},
+			);
 		});
-		expect(
-			{
-				held,
-				read:
+
+		it("drops a sighting when the panel reflows between the latch's two frames", async () =>
+		{
+			const {container} = renderOverflowingRows();
+			await flushFrames();
+			const panelGate = rowsPanel(container);
+			place(
+				panelGate,
 				{
-					disabled: allowButton().hasAttribute("disabled"),
-					hint: hint(container)?.className,
+					top: -600,
+					height: 900,
 				},
-			},
-		).toStrictEqual(
-			{
-				held:
+			);
+			scroll();
+			await flushFrames(1);
+			place(
+				panelGate,
+				{
+					top: -600,
+					height: 900,
+					scrollHeight: 905,
+				},
+			);
+			await flushFrames(1);
+			expect(state(container)).toStrictEqual(
 				{
 					disabled: true,
-					hint: "epitaxy-approval-read-hint text-footnote text-muted-as-secondary text-end text-balance @max-[420px]:text-center",
-					hintText: HINT,
-					hintHidden: "true",
-					beforeActions: true,
-					clamped: false,
-					panel: true,
+					hint: ROWS_HINT,
+					hintHidden: false,
 				},
-				read:
+			);
+		});
+
+		it("does not count an end the transcript scroller clips", async () =>
+		{
+			const {container, transcript} = renderOverflowingRows();
+			await flushFrames();
+			place(
+				transcript,
+				{
+					top: 0,
+					height: 260,
+					scrollHeight: 900,
+				},
+			);
+			place(
+				rowsPanel(container),
+				{
+					top: -600,
+					height: 900,
+				},
+			);
+			scroll();
+			await flushFrames();
+			expect(state(container)).toStrictEqual(
+				{
+					disabled: true,
+					hint: ROWS_HINT,
+					hintHidden: false,
+				},
+			);
+		});
+
+		it("looks for the head line below the panel's top padding", async () =>
+		{
+			const {container, transcript} = renderOverflowingRows();
+			const panelGate = rowsPanel(container);
+			panelGate.querySelector<HTMLElement>("[data-permission-rows-panel]")!.style.paddingTop = "8px";
+			place(
+				panelGate.querySelector("li")!,
+				{
+					top: 10,
+					height: 19,
+				},
+			);
+			place(
+				panelGate,
+				{
+					top: -600,
+					height: 900,
+				},
+			);
+			scroll();
+			await flushFrames();
+			// Only the panel's top 20px show: its padding and part of the head line.
+			place(
+				panelGate,
+				{
+					top: 0,
+					height: 900,
+				},
+			);
+			place(
+				transcript,
+				{
+					top: -100,
+					height: 120,
+					scrollHeight: 900,
+				},
+			);
+			scroll();
+			await flushFrames();
+			const headClipped = state(container).disabled;
+			place(
+				transcript,
+				{
+					top: -100,
+					height: 130,
+					scrollHeight: 900,
+				},
+			);
+			scroll();
+			await flushFrames();
+			expect(
+				{
+					headClipped,
+					headShown: state(container).disabled,
+				},
+			).toStrictEqual(
+				{
+					headClipped: true,
+					headShown: false,
+				},
+			);
+		});
+
+		it("keeps a loose gate enforced once the body overflowed, even after it grows to fit", async () =>
+		{
+			const {container, transcript} = renderOverflowingRows();
+			await flushFrames();
+			place(
+				transcript,
+				{
+					top: 0,
+					height: 900,
+					scrollHeight: 900,
+				},
+			);
+			resize();
+			expect(state(container)).toStrictEqual(
+				{
+					disabled: true,
+					hint: ROWS_HINT,
+					hintHidden: false,
+				},
+			);
+		});
+
+		it("starts unread again when the card moves between the card and the dock", async () =>
+		{
+			const {container, rerenderWith} = renderOverflowingRows();
+			await flushFrames();
+			place(
+				rowsPanel(container),
+				{
+					top: -600,
+					height: 900,
+				},
+			);
+			scroll();
+			await flushFrames();
+			const read = state(container).disabled;
+			rerenderWith(
+				{
+					presentation: "dock",
+				},
+			);
+			place(
+				rowsPanel(container),
+				{
+					top: 0,
+					height: 900,
+				},
+			);
+			scroll();
+			await flushFrames();
+			expect(
+				{
+					read,
+					moved: state(container).disabled,
+				},
+			).toStrictEqual(
+				{
+					read: false,
+					moved: true,
+				},
+			);
+		});
+
+		it("swallows ⌘⏎ while held and repeats the hint in a polite live region, but Deny still works", () =>
+		{
+			vi.useFakeTimers(
+				{
+					toFake: ["performance"],
+				},
+			);
+			const {container, onDecision} = renderOverflowingRows();
+			vi.advanceTimersByTime(400);
+			const chord = () =>
+			{
+				fireEvent.keyDown(
+					document.body,
+					{
+						key: "Enter",
+						metaKey: true,
+					},
+				);
+			};
+			chord();
+			const live = () => container.querySelector("p[aria-live=polite]");
+			const first =
+			{
+				calls: [...onDecision.mock.calls],
+				text: live()?.textContent,
+				className: live()?.className,
+			};
+			chord();
+			const second = live()?.textContent;
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Deny",
+					},
+				),
+			);
+			expect(
+				{
+					first,
+					second,
+					calls: onDecision.mock.calls,
+				},
+			).toStrictEqual(
+				{
+					first:
+					{
+						calls: [],
+						text: ROWS_HINT,
+						className: "sr-only",
+					},
+					second: `${ROWS_HINT} `,
+					calls: [["deny"]],
+				},
+			);
+		});
+
+		it("leaves a loose gate whose rows fit unenforced: Allow is live and no hint mounts", () =>
+		{
+			const view = renderCard();
+			place(
+				view.transcript,
+				{
+					top: 0,
+					height: 300,
+				},
+			);
+			place(
+				rowsPanel(view.container),
+				{
+					top: 0,
+					height: 200,
+				},
+			);
+			scroll();
+			expect(state(view.container)).toStrictEqual(
 				{
 					disabled: false,
-					hint: "epitaxy-approval-read-hint text-footnote text-muted-as-secondary text-end text-balance @max-[420px]:text-center invisible",
+					hint: null,
+					hintHidden: null,
 				},
-			},
-		);
+			);
+		});
 	});
 
-	it("swallows ⌘⏎ while held and repeats the hint in a polite live region, but Deny still works", () =>
+	describe("title gate", () =>
+	{
+		const TITLE_CARD: CardProps =
+		{
+			title:
+			{
+				action: "read",
+				meta: "/repo/src/very/long/path/to/a/file.ts",
+			},
+			detail: null,
+		};
+
+		function renderTitle(box: Box)
+		{
+			const view = renderCard(TITLE_CARD);
+			place(
+				view.transcript,
+				{
+					top: 0,
+					height: 700,
+				},
+			);
+			place(
+				view.container.querySelector("[data-approval-card-root]")!,
+				{
+					top: box.top - 10,
+					height: 400,
+				},
+			);
+			const region = view.container.querySelector("[data-testid=approval-title-region]")!;
+			place(region, box);
+			scroll();
+			return {
+				...view,
+				region,
+			};
+		}
+
+		it("holds Allow once the title band has scrolled above the card's view, hinting upward one settle later", async () =>
+		{
+			const {container, onDecision} = renderTitle(
+				{
+					top: -50,
+					height: 32,
+				},
+			);
+			const quiet = state(container);
+			fireEvent.click(allowButton());
+			await flushFrames();
+			expect(
+				{
+					quiet,
+					calls: onDecision.mock.calls,
+					settled: state(container),
+				},
+			).toStrictEqual(
+				{
+					quiet:
+					{
+						disabled: false,
+						hint: null,
+						hintHidden: null,
+					},
+					calls: [],
+					settled:
+					{
+						disabled: true,
+						hint: "Scroll up to see what you’re allowing.",
+						hintHidden: false,
+					},
+				},
+			);
+		});
+
+		it("lets a title that fits on screen through after the latch's two frames, with no hint", async () =>
+		{
+			const {container} = renderTitle(
+				{
+					top: 100,
+					height: 32,
+				},
+			);
+			await flushFrames();
+			expect(state(container)).toStrictEqual(
+				{
+					disabled: false,
+					hint: null,
+					hintHidden: null,
+				},
+			);
+		});
+
+		it("holds an overflowing title band until it is scrolled to its end, then leaves the hint invisible", async () =>
+		{
+			vi.useFakeTimers(
+				{
+					toFake: ["performance"],
+				},
+			);
+			const {container, region, onDecision} = renderTitle(
+				{
+					top: 100,
+					height: 32,
+					scrollHeight: 200,
+				},
+			);
+			await flushFrames();
+			const held = state(container);
+			vi.advanceTimersByTime(400);
+			fireEvent.keyDown(
+				document.body,
+				{
+					key: "Enter",
+					metaKey: true,
+				},
+			);
+			const live = container.querySelector("p[aria-live=polite]")?.textContent;
+			place(
+				region,
+				{
+					top: 100,
+					height: 32,
+					scrollHeight: 200,
+					scrollTop: 168,
+				},
+			);
+			scroll();
+			await flushFrames();
+			expect(
+				{
+					held,
+					live,
+					calls: onDecision.mock.calls,
+					read: state(container),
+				},
+			).toStrictEqual(
+				{
+					held:
+					{
+						disabled: true,
+						hint: "Scroll the title to its end to allow this.",
+						hintHidden: false,
+					},
+					live: "Scroll the title to its end to allow this.",
+					calls: [],
+					read:
+					{
+						disabled: false,
+						hint: "Scroll the title to its end to allow this.",
+						hintHidden: true,
+					},
+				},
+			);
+		});
+
+		it("shows the rows hint while the rows are unread, the title's once only it is", async () =>
+		{
+			const view = renderCard(
+				{
+					...ROWS_CARD,
+					title:
+					{
+						action: "use Foo",
+						meta: "bar",
+					},
+				},
+			);
+			const {container, transcript} = view;
+			place(
+				transcript,
+				{
+					top: 0,
+					height: 300,
+					scrollHeight: 900,
+				},
+			);
+			place(
+				container.querySelector("[data-approval-card-root]")!,
+				{
+					top: 90,
+					height: 400,
+				},
+			);
+			const region = container.querySelector("[data-testid=approval-title-region]")!;
+			place(
+				region,
+				{
+					top: 100,
+					height: 32,
+					scrollHeight: 200,
+				},
+			);
+			place(
+				rowsPanel(container),
+				{
+					top: 200,
+					height: 900,
+				},
+			);
+			scroll();
+			await flushFrames();
+			const both = state(container);
+			place(
+				rowsPanel(container),
+				{
+					top: -600,
+					height: 900,
+				},
+			);
+			scroll();
+			await flushFrames();
+			const titleOnly = state(container);
+			place(
+				region,
+				{
+					top: 100,
+					height: 32,
+					scrollHeight: 200,
+					scrollTop: 168,
+				},
+			);
+			scroll();
+			await flushFrames();
+			expect(
+				{
+					both,
+					titleOnly,
+					read: state(container),
+				},
+			).toStrictEqual(
+				{
+					both:
+					{
+						disabled: true,
+						hint: ROWS_HINT,
+						hintHidden: false,
+					},
+					titleOnly:
+					{
+						disabled: true,
+						hint: "Scroll the title to its end to allow this.",
+						hintHidden: false,
+					},
+					read:
+					{
+						disabled: false,
+						hint: ROWS_HINT,
+						hintHidden: true,
+					},
+				},
+			);
+		});
+	});
+
+	describe("sandbox-bypass command gate", () =>
+	{
+		const COMMAND_CARD: CardProps =
+		{
+			detail: "curl -X POST https://example.com/hook \\\n  -d @payload.json",
+			detailLang: "bash",
+			clampTitle: true,
+			detailNote: "Runs outside Claude’s sandbox.",
+			detailReadGate:
+			{
+				label: "Command",
+				hint: COMMAND_HINT,
+			},
+			perUseOnly: true,
+			persistentAllow: "always",
+		};
+
+		it("caps the command to six lines in a labelled scroller and holds Allow until the command and its note were seen", async () =>
+		{
+			const {container} = renderCard(COMMAND_CARD);
+			place(
+				container.querySelector("[data-testid=transcript]")!,
+				{
+					top: 0,
+					height: 700,
+				},
+			);
+			const scroller = container.querySelector<HTMLElement>("[data-testid=approval-read-detail]")!;
+			place(
+				scroller,
+				{
+					top: 100,
+					height: 114,
+					scrollHeight: 300,
+				},
+			);
+			place(
+				container.querySelector("[data-testid=approval-detail-note]")!,
+				{
+					top: 226,
+					height: 16,
+				},
+			);
+			scroll();
+			await flushFrames();
+			const held =
+			{
+				...state(container),
+				box: scroller.parentElement?.className,
+				maxHeight: scroller.style.maxHeight,
+				tabIndex: scroller.getAttribute("tabindex"),
+				role: scroller.getAttribute("role"),
+				label: scroller.getAttribute("aria-label"),
+				className: scroller.className,
+				text: scroller.textContent,
+				buttons: screen.getAllByRole("button").map((button) => button.textContent),
+			};
+			place(
+				scroller,
+				{
+					top: 100,
+					height: 114,
+					scrollHeight: 300,
+					scrollTop: 186,
+				},
+			);
+			scroll();
+			await flushFrames();
+			expect(
+				{
+					held,
+					read:
+					{
+						...state(container),
+						className: scroller.className,
+					},
+				},
+			).toStrictEqual(
+				{
+					held:
+					{
+						disabled: true,
+						hint: COMMAND_HINT,
+						hintHidden: false,
+						box: "bg-alpha-1 rounded-lg py-md px-lg text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext] has-[:focus-visible]:shadow-focus",
+						maxHeight: "114px",
+						tabIndex: "0",
+						role: "group",
+						label: "Command",
+						className: "overflow-y-auto scroll-fade-y scroll-fade-size-[8px] focus-visible:outline-hidden",
+						text: "curl -X POST https://example.com/hook \\\n  -d @payload.json",
+						buttons: ["Deny", "Allow onceCtrl⏎Enter"],
+					},
+					read:
+					{
+						disabled: false,
+						hint: COMMAND_HINT,
+						hintHidden: true,
+						className:
+							"overflow-y-auto scroll-fade-y scroll-fade-size-[8px] focus-visible:outline-hidden overscroll-contain",
+					},
+				},
+			);
+		});
+
+		it("never offers the persistent option, and ⇧⌘⏎ does nothing", () =>
+		{
+			vi.useFakeTimers(
+				{
+					toFake: ["performance"],
+				},
+			);
+			const {onDecision} = renderCard(
+				{
+					...COMMAND_CARD,
+					detailReadGate: null,
+				},
+			);
+			vi.advanceTimersByTime(400);
+			fireEvent.keyDown(
+				document.body,
+				{
+					key: "Enter",
+					metaKey: true,
+					shiftKey: true,
+				},
+			);
+			expect(
+				{
+					buttons: screen.getAllByRole("button").map((button) => button.textContent),
+					calls: onDecision.mock.calls,
+				},
+			).toStrictEqual(
+				{
+					buttons: ["Deny", "Allow onceCtrl⏎Enter"],
+					calls: [],
+				},
+			);
+		});
+	});
+
+	it("binds no keys on a click-only card", () =>
 	{
 		vi.useFakeTimers(
 			{
 				toFake: ["performance"],
 			},
 		);
-		mockScroller(
+		const {onDecision} = renderCard(
 			{
-				scrollHeight: 900,
-				clientHeight: 300,
+				clickOnly: true,
 			},
 		);
-		const {container, onDecision} = renderGated();
 		vi.advanceTimersByTime(400);
 		fireEvent.keyDown(
 			document.body,
@@ -5166,69 +6166,13 @@ describe("PermissionCard rows read gate", () =>
 				metaKey: true,
 			},
 		);
-		const live = () => container.querySelector("p[aria-live=polite]");
-		const first =
-		{
-			calls: [...onDecision.mock.calls],
-			text: live()?.textContent,
-			className: live()?.className,
-		};
 		fireEvent.keyDown(
 			document.body,
 			{
-				key: "Enter",
-				metaKey: true,
+				key: "Escape",
 			},
 		);
-		const second = live()?.textContent;
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Deny",
-				},
-			),
-		);
-		expect(
-			{
-				first,
-				second,
-				calls: onDecision.mock.calls,
-			},
-		).toStrictEqual(
-			{
-				first:
-				{
-					calls: [],
-					text: HINT,
-					className: "sr-only",
-				},
-				second: `${HINT} `,
-				calls: [["deny"]],
-			},
-		);
-	});
-
-	it("leaves a loose gate whose rows fit unenforced: Allow is live and no hint mounts", () =>
-	{
-		mockScroller(
-			{
-				scrollHeight: 300,
-				clientHeight: 300,
-			},
-		);
-		const {container} = renderGated();
-		expect(
-			{
-				disabled: allowButton().hasAttribute("disabled"),
-				hint: hint(container),
-			},
-		).toStrictEqual(
-			{
-				disabled: false,
-				hint: null,
-			},
-		);
+		expect(onDecision.mock.calls).toStrictEqual([]);
 	});
 });
 

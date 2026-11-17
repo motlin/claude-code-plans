@@ -1014,6 +1014,116 @@ describe("PlanApprovalCard keys", () =>
 	});
 });
 
+describe("PlanApprovalCard read gate, as upstream's unread plan (ke)", () =>
+{
+	beforeEach(() =>
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["performance"],
+			},
+		);
+	});
+	afterEach(() =>
+	{
+		vi.useRealTimers();
+	});
+
+	async function renderHeld(readHeld: boolean)
+	{
+		const {value, decide} = context();
+		const view = render(<PlanApprovalCard toolUseId="toolu_plan_1" plan={value} readHeld={readHeld} />);
+		await act(async () => Promise.resolve());
+		vi.advanceTimersByTime(400);
+		return {
+			...view,
+			decide,
+		};
+	}
+
+	const chord = async (key: string, metaKey = true) =>
+		act(async () =>
+		{
+			fireEvent.keyDown(
+				document.body,
+				{
+					key,
+					metaKey,
+				},
+			);
+			return Promise.resolve();
+		});
+
+	it("disables both accepts with upstream's hint above the actions, ignores ⌘⏎, and still opens Revise on Esc", async () =>
+	{
+		const {container, decide} = await renderHeld(true);
+		const hint = () => container.querySelector("[data-testid=approval-read-hint]");
+		const held =
+		{
+			accepts: ["AcceptCtrlShift⏎Enter", "Accept and use auto modeCtrl⏎Enter"].map((name) =>
+				button(name).hasAttribute("disabled"),
+			),
+			others: ["Reject", "Revise…Esc"].map((name) => button(name).hasAttribute("disabled")),
+			hint: hint()?.textContent,
+			className: hint()?.className,
+			ariaHidden: hint()?.getAttribute("aria-hidden"),
+			beforeActions: hint()?.nextElementSibling === container.querySelector("[data-plan-actions]"),
+		};
+		await chord("Enter");
+		const calls = [...decide.mock.calls];
+		await chord("Escape", false);
+		expect(
+			{
+				held,
+				calls,
+				revising: screen.queryByRole("textbox") !== null,
+				hintWhileRevising: hint(),
+			},
+		).toStrictEqual(
+			{
+				held:
+				{
+					accepts: [true, true],
+					others: [false, false],
+					hint: "Scroll to the end to allow this.",
+					className:
+						"epitaxy-approval-read-hint text-footnote text-muted-as-secondary text-end text-balance @max-[420px]:text-center",
+					ariaHidden: null,
+					beforeActions: true,
+				},
+				calls: [],
+				revising: true,
+				hintWhileRevising: null,
+			},
+		);
+	});
+
+	it("draws no hint and accepts on ⌘⏎ once read", async () =>
+	{
+		const {container, decide} = await renderHeld(false);
+		const hint = container.querySelector("[data-testid=approval-read-hint]");
+		await chord("Enter");
+		expect(
+			{
+				hint,
+				calls: decide.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				hint: null,
+				calls: [
+					[
+						{
+							kind: "accept",
+							mode: "auto",
+						},
+					],
+				],
+			},
+		);
+	});
+});
+
 describe("PlanApprovalCard in the inline card placement", () =>
 {
 	beforeEach(() =>

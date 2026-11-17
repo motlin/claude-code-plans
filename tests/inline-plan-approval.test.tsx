@@ -417,7 +417,12 @@ describe("InlinePlanApproval", () =>
 			answerRoute: "read-only",
 			loadDialog: async () => Promise.reject(new Error("no pane")),
 		};
-		render(<InlinePlanApproval toolUseId="" planText={HOOK_PLAN.plan} plan={readOnly} />);
+		const host = paneHost(vi.fn<PaneHostApi["openPane"]>());
+		render(
+			<PaneHostContext.Provider value={host}>
+				<InlinePlanApproval toolUseId="" planText={HOOK_PLAN.plan} plan={readOnly} />
+			</PaneHostContext.Provider>,
+		);
 		expect(
 			{
 				buttons: screen.queryAllByRole("button").map((button) => button.textContent),
@@ -425,10 +430,173 @@ describe("InlinePlanApproval", () =>
 			},
 		).toStrictEqual(
 			{
-				buttons: [],
+				buttons: ["Open plan"],
 				planText: false,
 			},
 		);
+	});
+
+	describe("without a pane host, as upstream's plan read gate", () =>
+	{
+		const frames = new Map<number, FrameRequestCallback>();
+		let nextFrame = 0;
+
+		afterEach(() =>
+		{
+			frames.clear();
+			vi.restoreAllMocks();
+		});
+
+		/** Lays the card body out as `scrollHeight` of plan in 300px, scrolled to `scrollTop`. */
+		function layBody(body: HTMLElement, scrollHeight: number, scrollTop = 0)
+		{
+			body.style.lineHeight = "19px";
+			for (const [key, value] of [
+				["clientHeight", 300],
+				["scrollHeight", scrollHeight],
+				["scrollTop", scrollTop],
+				["clientWidth", 400],
+			] as const)
+			{
+				Object.defineProperty(
+					body,
+					key,
+					{
+						configurable: true,
+						value,
+					},
+				);
+			}
+			vi.spyOn(body, "getBoundingClientRect").mockReturnValue(
+				DOMRect.fromRect(
+					{
+						x: 0,
+						y: 100,
+						width: 400,
+						height: 300,
+					},
+				),
+			);
+			act(() =>
+			{
+				fireEvent.scroll(body);
+			});
+		}
+
+		async function flushFrames()
+		{
+			for (let index = 0; index < 2; index++)
+			{
+				const due = [...frames.values()];
+				frames.clear();
+				await act(async () =>
+				{
+					for (const callback of due) callback(0);
+					await Promise.resolve();
+				});
+			}
+		}
+
+		it("draws the plan in the body and holds both accepts until the body is scrolled to its end", async () =>
+		{
+			vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) =>
+			{
+				nextFrame += 1;
+				frames.set(nextFrame, callback);
+				return nextFrame;
+			});
+			vi.spyOn(window, "cancelAnimationFrame").mockImplementation((id) =>
+			{
+				frames.delete(id);
+			});
+			const view = render(<InlinePlanApproval toolUseId="toolu_plan_1" planText={HOOK_PLAN.plan} plan={PLAN} />);
+			await act(async () => Promise.resolve());
+			const body = view.container.querySelector<HTMLElement>("[data-approval-card-body]")!;
+			layBody(body, 900);
+			const accepts = () =>
+				screen
+					.getAllByRole("button")
+					.filter((button) => button.textContent.startsWith("Accept"))
+					.map((button) => button.hasAttribute("disabled"));
+			const plan = body.firstElementChild;
+			const held =
+			{
+				plan:
+				{
+					testId: plan?.getAttribute("data-testid"),
+					className: plan?.className,
+					text: plan?.textContent,
+				},
+				body:
+				{
+					tabIndex: body.getAttribute("tabindex"),
+					role: body.getAttribute("role"),
+					label: body.getAttribute("aria-label"),
+				},
+				accepts: accepts(),
+				hint: view.container.querySelector("[data-testid=approval-read-hint]")?.textContent,
+			};
+			layBody(body, 900, 600);
+			await flushFrames();
+			expect(
+				{
+					held,
+					read:
+					{
+						accepts: accepts(),
+						hint: view.container.querySelector("[data-testid=approval-read-hint]"),
+					},
+				},
+			).toStrictEqual(
+				{
+					held:
+					{
+						plan:
+						{
+							testId: "approval-plan-text",
+							className:
+								"whitespace-pre-wrap break-words text-body text-secondary select-text [unicode-bidi:plaintext]",
+							text: HOOK_PLAN.plan,
+						},
+						body:
+						{
+							tabIndex: "0",
+							role: "group",
+							label: "Request details",
+						},
+						accepts: [true, true],
+						hint: "Scroll to the end to allow this.",
+					},
+					read:
+					{
+						accepts: [false, false],
+						hint: null,
+					},
+				},
+			);
+		});
+
+		it("lets a plan that fits through at once", async () =>
+		{
+			const view = render(<InlinePlanApproval toolUseId="toolu_plan_1" planText={HOOK_PLAN.plan} plan={PLAN} />);
+			await act(async () => Promise.resolve());
+			const body = view.container.querySelector<HTMLElement>("[data-approval-card-body]")!;
+			layBody(body, 300);
+			expect(
+				{
+					accepts: screen
+						.getAllByRole("button")
+						.filter((button) => button.textContent.startsWith("Accept"))
+						.map((button) => button.hasAttribute("disabled")),
+					role: body.getAttribute("role"),
+				},
+			).toStrictEqual(
+				{
+					accepts: [false, false],
+					role: null,
+				},
+			);
+		});
 	});
 
 	it("answers a hook-only plan (no tool_use id yet) through the plan approval context", async () =>

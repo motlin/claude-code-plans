@@ -170,6 +170,9 @@ export function ApprovalCardShell({
 	actions,
 	note,
 	footer,
+	titleRef,
+	bodyRef,
+	bodyLabel,
 	presentation = "dock",
 	enter = false,
 	compact = false,
@@ -192,6 +195,12 @@ export function ApprovalCardShell({
 	note?: ReactNode;
 	/** A line under the actions, such as the tool-approval notify tip. */
 	footer?: ReactNode;
+	/** The title band's scrolling region, for the title read gate. */
+	titleRef?: Ref<HTMLDivElement>;
+	/** The scrolling body, for the plan read gate. */
+	bodyRef?: Ref<HTMLDivElement>;
+	/** Upstream's overflowing body (`m(d,r)`): a focusable group with this label ("Request details"). */
+	bodyLabel?: string | undefined;
 	/** Upstream's inline "card" in the transcript, or the composer "dock". */
 	presentation?: "card" | "dock";
 	/** Upstream's 160ms enter fade for a live arrival; false marks the card `data-skip-approval-enter`. */
@@ -280,10 +289,11 @@ export function ApprovalCardShell({
 				{
 					event.stopPropagation();
 				}}
-				className={`@container relative isolate flex ${frame} flex-col rounded-card ${inset.pad} text-body text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 ${look}${enter ? " animate-approval-inline-enter motion-reduce:animate-none" : ""}`}
+				className={`epitaxy-approval-card @container relative isolate flex ${frame} flex-col rounded-card ${inset.pad} text-body text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 ${look}${enter ? " animate-approval-inline-enter motion-reduce:animate-none" : ""}`}
 			>
 				{band && (
 					<div
+						ref={titleRef}
 						data-testid="approval-title-region"
 						className="shrink-0 overflow-y-auto max-h-[max(2rem,min(30vh,calc(60vh-10rem)))] -mx-pad-lg px-lg"
 					>
@@ -291,7 +301,16 @@ export function ApprovalCardShell({
 					</div>
 				)}
 				<div
+					ref={bodyRef}
 					data-approval-card-body
+					{...(bodyLabel === undefined
+						? {}
+						:
+							{
+								tabIndex: 0,
+								role: "group",
+								"aria-label": bodyLabel,
+							})}
 					className={`${inset.bleed} ${band ? "-mt-[18px]" : "-mt-1"} -mb-2 flex min-h-0 flex-col overflow-y-auto ${inset.px} pt-1 pb-2 ${bodyGap}`}
 				>
 					{body}
