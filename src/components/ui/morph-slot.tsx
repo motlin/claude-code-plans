@@ -323,7 +323,7 @@ export interface MorphSlotProps
 	swapKey: string;
 	id?: string;
 	/** Spread onto the container first, like upstream's phrases-seat attribute. */
-	attrs?: Readonly<Record<string, string | undefined>>;
+	attrs?: Readonly<Record<string, string | undefined>> | undefined;
 	className?: string;
 	style?: CSSProperties;
 	children?: ReactNode;

@@ -14,7 +14,8 @@ import
 	PHASE_SETTLE_MS,
 	phaseLabel,
 	markerEventsFromRecords,
-	stripTrailingEllipsis,
+	stripBusyEllipsis,
+	turnStatusSwapKey,
 	tailMarkerQuiet,
 	toolActivityLabel,
 	formatTokenEstimate,
@@ -1075,8 +1076,69 @@ function visibleLineText(root: ParentNode): string | null
 	return copy.textContent;
 }
 
+const FACE_CLASS = "col-start-1 row-start-1 flex min-w-0 max-w-full items-center group-data-[gliding]/morph:max-w-none";
+const LINE_SLOT_CLASS =
+	"group/morph inline-grid items-center justify-items-start data-[gliding]:overflow-x-clip min-w-0 max-w-full";
+
+/** jsdom has no WAAPI: a never-finishing animate so a MorphSlot keeps its leaving face. */
+function installFakeAnimate(): () => void
+{
+	HTMLElement.prototype.animate = function animate(): Animation
+	{
+		return {
+			finished: new Promise<Animation>(() => {}),
+			cancel: () =>
+			{
+			},
+			playState: "running",
+			startTime: null,
+			effect:
+			{
+				getComputedTiming: () => (
+				{
+					progress: 0,
+				}),
+			},
+		} as unknown as Animation;
+	};
+	return () =>
+	{
+		Reflect.deleteProperty(HTMLElement.prototype, "animate");
+	};
+}
+
 describe("WorkingMarker", () =>
 {
+	it("seats the stats line's empty label in a busy| morph face, as upstream's mark-only row", () =>
+	{
+		stubReducedMotion(false);
+		const {container} = render(
+			<WorkingMarker
+				state={
+				{
+					status: "working",
+					label: "Working…",
+					thinking: false,
+					replied: true,
+					turnStartedAt: at(0),
+					elapsedSeconds: 12,
+				}}
+			/>,
+		);
+		const face = container.querySelector("[data-morph-key]");
+		expect(
+			{
+				slotClass: face?.parentElement?.className,
+				face: face?.outerHTML,
+			},
+		).toStrictEqual(
+			{
+				slotClass: LINE_SLOT_CLASS,
+				face: `<span data-morph-key="busy|" class="${FACE_CLASS}"><span class="inline-flex min-w-0 items-center text-secondary"></span></span>`,
+			},
+		);
+	});
+
 	it("renders the bare line as a tail-chrome grid child, with no column wrapper", () =>
 	{
 		stubReducedMotion(false);
@@ -1312,7 +1374,9 @@ describe("WorkingMarker", () =>
 				announcer: getByRole("status").textContent,
 				animated: container.querySelector('[data-cds="WorkingMark"]')?.getAttribute("data-animated"),
 				shimmer: shimmer?.firstChild?.textContent,
-				morph: shimmer?.parentElement?.className,
+				face: shimmer?.parentElement?.getAttribute("data-morph-key"),
+				faceClass: shimmer?.parentElement?.className,
+				slotClass: shimmer?.parentElement?.parentElement?.className,
 			},
 		).toStrictEqual(
 			{
@@ -1320,7 +1384,9 @@ describe("WorkingMarker", () =>
 				announcer: "Stopping",
 				animated: "true",
 				shimmer: "Stopping",
-				morph: "truncate whitespace-nowrap motion-safe:animate-[cds-morph-in_0.18s_cubic-bezier(.2,0,0,1)]",
+				face: "busy|Stopping",
+				faceClass: FACE_CLASS,
+				slotClass: LINE_SLOT_CLASS,
 			},
 		);
 	});
@@ -1799,13 +1865,56 @@ describe("phaseLabel", () =>
 		).toStrictEqual([null, "Sending…", "Waiting for Claude…", "Waiting for Claude…", null, null]);
 	});
 
-	it("strips one trailing ellipsis or three dots, as upstream's K, so the phase word shimmers bare", () =>
+	it("strips trailing ellipses and runs of 3+ dots after trailing space, as upstream's e2, so the phase word shimmers bare", () =>
 	{
 		expect(
-			["Waiting for Claude…", "Done...", "Sending… ", "Working", "…mid…word"].map((label) =>
-				stripTrailingEllipsis(label),
-			),
-		).toStrictEqual(["Waiting for Claude", "Done", "Sending…", "Working", "…mid…word"]);
+			[
+				"Waiting for Claude…",
+				"Done....",
+				"Sending… ",
+				"Working",
+				"…mid…word",
+				"Hm..",
+				"…",
+				"Reading…...\u200B",
+				"Plain ",
+			].map((label) => stripBusyEllipsis(label)),
+		).toStrictEqual([
+			"Waiting for Claude",
+			"Done",
+			"Sending",
+			"Working",
+			"…mid…word",
+			"Hm..",
+			"…",
+			"Reading",
+			"Plain ",
+		]);
+	});
+
+	it("keys a TurnStatus label by its state and normalized text, as upstream's pP", () =>
+	{
+		expect([
+			turnStatusSwapKey("busy", "Reading…"),
+			turnStatusSwapKey("busy", "Done...."),
+			turnStatusSwapKey("busy", "Hm.."),
+			turnStatusSwapKey("busy", "…"),
+			turnStatusSwapKey("done", "Read…"),
+			turnStatusSwapKey("busy", "a\nb"),
+			turnStatusSwapKey("busy", "a\t\r\n\u2028b\u200Bc\u200Dd\u0007"),
+			turnStatusSwapKey("busy", null),
+			turnStatusSwapKey("stopped", "Asked “Color”"),
+		]).toStrictEqual([
+			"busy|Reading",
+			"busy|Done",
+			"busy|Hm..",
+			"busy|…",
+			"done|Read…",
+			"busy|a b",
+			"busy|a bc\u200Dd",
+			"busy|",
+			"stopped|Asked “Color”",
+		]);
 	});
 
 	it("settles label swaps for upstream's 150ms", () =>
@@ -1874,22 +1983,73 @@ describe("WorkingMarker pre-stream phases", () =>
 			/>,
 		);
 		const row = container.querySelector('[data-cds="TurnStatus"] > div');
-		const slot = container.querySelector("[data-morph-key]");
+		const face = container.querySelector("[data-morph-key]");
+		const slot = face?.parentElement;
 		expect(
 			{
 				title: row?.getAttribute("title"),
-				morph: slot?.parentElement?.outerHTML,
+				slotClass: slot?.className,
+				labelledBy: slot?.id !== undefined && slot.id.endsWith("-label"),
+				face: face?.outerHTML,
 			},
 		).toStrictEqual(
 			{
 				title: "Sending…",
-				morph:
-					'<span class="group/morph inline-grid items-center justify-items-start min-w-0 max-w-full">' +
-					'<span data-morph-key="busy|Sending" class="col-start-1 row-start-1 flex min-w-0 max-w-full items-center">' +
+				slotClass: LINE_SLOT_CLASS,
+				labelledBy: true,
+				face:
+					`<span data-morph-key="busy|Sending" class="${FACE_CLASS}">` +
 					'<span data-cds="ShimmerText" data-shimmering="true" data-variant="secondary" data-shimmer-mode="fallback" class="min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em]">' +
-					"Sending</span></span></span>",
+					"Sending</span></span>",
 			},
 		);
+	});
+
+	it("cross-fades Sending into Waiting for Claude through the morph slot once the phase settles", () =>
+	{
+		vi.useFakeTimers();
+		stubReducedMotion(false);
+		const restore = installFakeAnimate();
+		try
+		{
+			const view = render(
+				<WorkingMarker
+					state={
+					{
+						status: "idle",
+					}}
+					sending
+				/>,
+			);
+			view.rerender(<WorkingMarker state={UNREPLIED} />);
+			act(() =>
+			{
+				vi.advanceTimersByTime(PHASE_SETTLE_MS);
+			});
+			expect(
+				[...view.container.querySelectorAll("[data-morph-key]")].map((face) => (
+				{
+					key: face.getAttribute("data-morph-key"),
+					hidden: face.getAttribute("aria-hidden"),
+					text: face.textContent,
+				})),
+			).toStrictEqual([
+				{
+					key: "busy|Sending",
+					hidden: "true",
+					text: "Sending",
+				},
+				{
+					key: "busy|Waiting for Claude",
+					hidden: null,
+					text: "Waiting for Claude",
+				},
+			]);
+		}
+		finally
+		{
+			restore();
+		}
 	});
 
 	it("says Waiting for Claude… in place of the stats until the turn's first reply", () =>

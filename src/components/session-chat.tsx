@@ -149,7 +149,8 @@ import {pastTense} from "../lib/past-tense";
 import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
 import {stripControlsAndMask} from "../lib/secret-mask";
 import {formatElapsed} from "../lib/elapsed-format";
-import {ELAPSED_MIN_SECONDS} from "../lib/working-marker";
+import {ELAPSED_MIN_SECONDS, type TurnStatusState, turnStatusSwapKey} from "../lib/working-marker";
+import {MorphSlot} from "./ui/morph-slot";
 import {NoticeParts, TaskDescriptionLinks, type TaskEvent, TaskEventRun} from "./task-event-run-row";
 import {usageLimitCard} from "../lib/usage-limit-notice";
 import {liveEntry, toggleAutoResume} from "../lib/limit-auto-resume";
@@ -7919,6 +7920,19 @@ function ToolCallRow({
 	// A label that is a whole phrase owns the row and truncates; a bare verb
 	// keeps its width so the param beside it truncates instead.
 	const isPhraseLabel = phrase !== null;
+	// Upstream's row state, which keys the label's MorphSlot with its text.
+	const rowState: TurnStatusState = busy
+		? permissionWaitId === call.id
+			? "blocked"
+			: "busy"
+		: status === null
+			? "done"
+			: status === "Failed"
+				? "failed"
+				: status === "Denied" || status === "Blocked"
+					? "denied"
+					: "stopped";
+	const labelSwapKey = turnStatusSwapKey(rowState, label);
 
 	const rawParam =
 		RENDERER_HANDLES_PARAM.has(call.name) || PARAMLESS_TOOLS.has(call.name) || isPhraseLabel || benignError
@@ -7997,30 +8011,37 @@ function ToolCallRow({
 			{markedRow && <WorkingMark activity={toolMarkActivity(call.name, call.input)} className="me-1.5" />}
 			{joinedLabel ? (
 				// Upstream's grouped row: label and parameter in one <bdi>, joined by a plain space.
-				<bdi ref={rowCut} id={`${statusId}-label`} className="truncate min-w-0 text-body">
-					<InkedLabel className="" ink={labelClass}>
-						{label}
-					</InkedLabel>{" "}
-					<InkedLabel className="" ink={paramInk}>
-						{paramContent}
-					</InkedLabel>
-				</bdi>
+				<MorphSlot id={`${statusId}-label`} swapKey={labelSwapKey} className="min-w-0 max-w-full">
+					<bdi ref={rowCut} className="truncate min-w-0 text-body">
+						<InkedLabel className="" ink={labelClass}>
+							{label}
+						</InkedLabel>{" "}
+						<InkedLabel className="" ink={paramInk}>
+							{paramContent}
+						</InkedLabel>
+					</bdi>
+				</MorphSlot>
 			) : (
 				<>
 					{label && (
-						<InkedLabel
+						<MorphSlot
 							id={`${statusId}-label`}
-							{...(isPhraseLabel
-								?
-									{
-										ref: rowCut,
-									}
-								: {})}
-							className={`${isPhraseLabel ? "truncate min-w-0" : "shrink-0"} text-body`}
-							ink={labelClass}
+							swapKey={labelSwapKey}
+							className={`min-w-0 max-w-full${displayParam ? " shrink-0" : ""}`}
 						>
-							{label}
-						</InkedLabel>
+							<InkedLabel
+								{...(isPhraseLabel
+									?
+										{
+											ref: rowCut,
+										}
+									: {})}
+								className={`${isPhraseLabel ? "truncate min-w-0" : "shrink-0"} text-body`}
+								ink={labelClass}
+							>
+								{label}
+							</InkedLabel>
+						</MorphSlot>
 					)}
 					{displayParam &&
 						(isFileParam ? (
@@ -8384,13 +8405,17 @@ function SummarySpans({segments}: {segments: SummarySegment[]})
  * actions" -- when the counted line (shared-80 `Tl`) clips the phrases in
  * their own span and draws the trailing part after them, unclipped.
  */
+/** Upstream's settled phrases seat (`Xz`), spread onto a group header's label slot. */
+const PHRASES_SEAT: Readonly<Record<string, string>> =
+{
+	"data-cds-phrases-seat": "",
+};
+
 function CountedLine({
-	id,
 	segments,
 	trailing,
 	beforeMeta = false,
 }: {
-	id: string;
 	segments: SummarySegment[];
 	trailing: string | null;
 	/** A meta slot follows, so the label keeps its width and the meta truncates first. */
@@ -8403,18 +8428,16 @@ function CountedLine({
 		return (
 			<span
 				ref={rowCut}
-				id={id}
 				className={
 					beforeMeta ? "block min-w-0 truncate text-body shrink-0" : "block min-w-0 truncate text-body"
 				}
-				data-cds-phrases-seat=""
 			>
 				<SummarySpans segments={segments} />
 			</span>
 		);
 	}
 	return (
-		<span id={id} className="flex min-w-0 text-body">
+		<span className="flex min-w-0 text-body">
 			<span ref={rowCut} className="min-w-0 truncate" data-testid="counted-line-names">
 				<SummarySpans segments={segments} />
 			</span>
@@ -8557,22 +8580,32 @@ function ToolCallSummary({
 								activity={toolMarkActivity(pendingCall.name, pendingCall.input)}
 								className="me-1.5"
 							/>
-							<ShimmerText
-								ref={busyRowCut}
-								id={`${statusId}-label`}
-								variant="secondary"
-								className="text-body truncate min-w-0"
-							>
+						</>
+					) : null}
+					{/* One slot for both, so the busy label cross-fades into the counted line (a node label, keyed done|). */}
+					<MorphSlot
+						id={`${statusId}-label`}
+						swapKey={busy ? turnStatusSwapKey("busy", runningText) : turnStatusSwapKey("done", null)}
+						// Upstream's phrases seat sits on the slot of a settled lone-phrases line.
+						attrs={!busy && summary.trailing === null ? PHRASES_SEAT : undefined}
+						className="min-w-0 max-w-full"
+					>
+						{busy ? (
+							<ShimmerText ref={busyRowCut} variant="secondary" className="text-body truncate min-w-0">
 								{runningText}
 							</ShimmerText>
+						) : (
+							<CountedLine segments={summary.segments} trailing={summary.trailing} />
+						)}
+					</MorphSlot>
+					{busy ? (
+						<>
 							<RunningElapsed startedAt={pendingCall.startedAt} />
 							<span id={`${statusId}-busy`} className="sr-only">
 								running
 							</span>
 						</>
-					) : (
-						<CountedLine id={`${statusId}-label`} segments={summary.segments} trailing={summary.trailing} />
-					)}
+					) : null}
 				</span>
 			)}
 			{hasDiffStats(summary) && <DiffStatPill added={summary.added} removed={summary.removed} />}
@@ -8599,7 +8632,14 @@ function ToolCallSummary({
 				style={rowStyle}
 			>
 				<span id={`${statusId}-text`} className={`flex min-w-0 gap-xs items-center ${ink}`}>
-					<CountedLine id={`${statusId}-label`} segments={fileMeta.segments} trailing={null} beforeMeta />
+					<MorphSlot
+						id={`${statusId}-label`}
+						swapKey={turnStatusSwapKey("done", null)}
+						attrs={PHRASES_SEAT}
+						className="min-w-0 max-w-full shrink-0"
+					>
+						<CountedLine segments={fileMeta.segments} trailing={null} beforeMeta />
+					</MorphSlot>
 					<span
 						id={`${statusId}-meta`}
 						className="min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-secondary group-hover/tool:text-primary group-has-[:focus-visible]/tool:text-primary"

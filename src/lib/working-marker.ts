@@ -377,10 +377,60 @@ export const PHASE_SETTLE_MS = 150;
 /** Upstream's `l8` "connecting" word, standing in for a waiting phase while the event stream is down. */
 export const CONNECTING_PHASE_LABEL = "Connecting…";
 
-/** Upstream's `K`: a phase word drops its trailing ellipsis for the visible label and sr status. */
-export function stripTrailingEllipsis(label: string): string
+/**
+ * Upstream's `e2` (shared-frame): a busy label drops trailing whitespace and format characters, then
+ * every trailing "…" or run of 3+ dots. With nothing stripped, or nothing left, the label stays as written.
+ */
+export function stripBusyEllipsis(label: string): string
 {
-	return label.replace(/(…|\.\.\.)$/u, "").trimEnd();
+	let end = label.length;
+	while (end > 0 && /[\s\p{Cf}]/u.test(label.charAt(end - 1))) end--;
+	let cut = end;
+	while (cut > 0)
+	{
+		const last = label.charAt(cut - 1);
+		if (last === "…")
+		{
+			cut--;
+			continue;
+		}
+		if (last !== ".") break;
+		let dots = cut;
+		while (dots > 0 && label[dots - 1] === ".") dots--;
+		if (cut - dots < 3) break;
+		cut = dots;
+	}
+	const stripped = cut === end ? label : label.slice(0, cut);
+	return stripped.trim() === "" ? label : stripped;
+}
+
+/**
+ * Upstream's `mz` (shared-frame): line and tab breaks become one space, and control, format, separator,
+ * default-ignorable, blank-looking and noncharacter code points are dropped (ZWNJ, ZWJ, VS15, VS16 kept;
+ * a lone high surrogate kept).
+ */
+function normalizeLabelText(text: string): string
+{
+	return text
+		.replace(/[\t\n\v\f\r\u0085\u2028\u2029]+/g, " ")
+		.replace(
+			/[\uD800-\uDBFF]*(?:(?!\u200C|\u200D|\uFE0E|\uFE0F)[\p{Cc}\p{Cf}\p{Zl}\p{Zp}\p{Default_Ignorable_Code_Point}\u2800\uFFFC\u{1D159}\u{13441}\u{13442}\u{16910}\u{16FE4}\uFDD0-\uFDEF\uFFFE\uFFFF\u{1FFFE}\u{1FFFF}\u{2FFFE}\u{2FFFF}\u{3FFFE}\u{3FFFF}\u{4FFFE}\u{4FFFF}\u{5FFFE}\u{5FFFF}\u{6FFFE}\u{6FFFF}\u{7FFFE}\u{7FFFF}\u{8FFFE}\u{8FFFF}\u{9FFFE}\u{9FFFF}\u{AFFFE}\u{AFFFF}\u{BFFFE}\u{BFFFF}\u{CFFFE}\u{CFFFF}\u{DFFFE}\u{DFFFF}\u{EFFFE}\u{EFFFF}\u{FFFFE}\u{FFFFF}\u{10FFFE}\u{10FFFF}])[\uDC00-\uDFFF]*|([\uD800-\uDBFF]+)/gu,
+			"$1",
+		);
+}
+
+/** Upstream's TurnStatus states, the first half of a MorphSlot swap key. */
+export type TurnStatusState = "pending" | "busy" | "blocked" | "done" | "failed" | "stopped" | "denied";
+
+/**
+ * Upstream's `pP` (shared-frame): a TurnStatus label's MorphSlot key. A text label keys by state and its
+ * normalized text (a busy label without its ellipsis); any other label keys by state alone.
+ */
+export function turnStatusSwapKey(state: TurnStatusState, label: unknown): string
+{
+	return typeof label === "string"
+		? `${state}|${normalizeLabelText(state === "busy" ? stripBusyEllipsis(label) : label)}`
+		: `${state}|`;
 }
 
 /**

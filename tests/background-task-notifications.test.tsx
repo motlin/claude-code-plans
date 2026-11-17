@@ -987,7 +987,12 @@ function launchRowChildren(container: HTMLElement):
 {
 	const header = container.querySelector(".card-outline [data-tool-row] .group\\/tool");
 	if (header === null) throw new Error("No launch row in the expanded group");
-	return Array.from(header.children, (child) => (
+	// A label's MorphSlot stands in for its current face's content, the label itself.
+	const throughMorphSlot = (child: Element) =>
+		child.classList.contains("group/morph")
+			? (child.querySelector(":scope > [data-morph-key]:not([aria-hidden]) > *") ?? child)
+			: child;
+	return Array.from(header.children, throughMorphSlot).map((child) => (
 	{
 		text: child.textContent,
 		className: child.className,

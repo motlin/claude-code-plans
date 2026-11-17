@@ -741,8 +741,8 @@ describe("ToolCallSummary stats and ink", () =>
 		const count = root.querySelector("[data-testid=counted-line-count]");
 		expect(
 			{
-				labelIsLine: names?.parentElement === label,
-				line: label?.className,
+				labelIsLine: names?.parentElement?.parentElement?.parentElement === label,
+				line: names?.parentElement?.className,
 				seat: label?.hasAttribute("data-cds-phrases-seat"),
 				names: names?.textContent,
 				namesClass: names?.className,
@@ -1164,6 +1164,7 @@ describe("group header file meta slot", () =>
 			{
 				label: root.querySelector("[id$=-label]")?.textContent,
 				labelClass: root.querySelector("[id$=-label]")?.className,
+				lineClass: root.querySelector("[id$=-label] > [data-morph-key] > span")?.className,
 				metaClass: meta?.className,
 				metaTitle: meta?.getAttribute("title"),
 				metaText: meta?.textContent,
@@ -1180,7 +1181,9 @@ describe("group header file meta slot", () =>
 		).toStrictEqual(
 			{
 				label: "Ran 2 commands, read",
-				labelClass: "block min-w-0 truncate text-body shrink-0",
+				labelClass:
+					"group/morph inline-grid items-center justify-items-start data-[gliding]:overflow-x-clip min-w-0 max-w-full shrink-0",
+				lineClass: "block min-w-0 truncate text-body shrink-0",
 				metaClass: META_CLASS,
 				metaTitle: "/r/input-debug.png",
 				metaText: "input-debug.png",

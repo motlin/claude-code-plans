@@ -1,4 +1,4 @@
-import {Fragment, useEffect, useState} from "react";
+import {Fragment, useEffect, useId, useState} from "react";
 import {useEventStreamConnecting} from "../hooks/use-claude-events";
 import {useRestInk} from "../lib/fizzy-lake";
 import {useReducedMotion} from "../lib/reduced-motion";
@@ -11,7 +11,8 @@ import
 	CONNECTING_PHASE_LABEL,
 	PHASE_SETTLE_MS,
 	phaseLabel,
-	stripTrailingEllipsis,
+	stripBusyEllipsis,
+	turnStatusSwapKey,
 	toolLabelStats,
 	workingLineAnnouncement,
 	workingLineLabelSource,
@@ -20,13 +21,11 @@ import
 	type WorkingLineToolLabel,
 	type WorkingMarkerState,
 } from "../lib/working-marker";
+import {MorphSlot} from "./ui/morph-slot";
 import {RunningTasksControl} from "./running-tasks-control";
 import {ShimmerText} from "./shimmer-text";
 import {workingLineActivity} from "../lib/working-mark-activity";
 import {WorkingMark} from "./working-mark";
-
-/** Upstream swaps the Stopping label in with a short rise-and-fade. */
-const STOPPING_MORPH_CLASS = "motion-safe:animate-[cds-morph-in_0.18s_cubic-bezier(.2,0,0,1)]";
 
 const NEEDS_INPUT_LABEL = "Needs your input";
 
@@ -118,11 +117,11 @@ function useLinePhase(state: WorkingMarkerState, sending: boolean, waitingOnUser
 	return streamConnecting ? CONNECTING_PHASE_LABEL : phase;
 }
 
-/**
- * Upstream's busy phase label: the bare word as ShimmerText in a `group/morph` slot keyed
- * `busy|<word>`, so a later morph can swap it.
- */
-function PhaseWord({
+/** Upstream's `y_`: a busy text label's single-line ShimmerText. */
+const BUSY_LABEL_CLASS = "min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em]";
+
+/** Upstream's busy text label: the bare word as ShimmerText, cut at the row's end. */
+function BusyWord({
 	word,
 }: Readonly<
 {
@@ -131,20 +130,9 @@ function PhaseWord({
 {
 	const rowCut = useTypeRowCut(word);
 	return (
-		<span className="group/morph inline-grid items-center justify-items-start min-w-0 max-w-full">
-			<span
-				data-morph-key={`busy|${word}`}
-				className="col-start-1 row-start-1 flex min-w-0 max-w-full items-center"
-			>
-				<ShimmerText
-					ref={rowCut}
-					variant="secondary"
-					className="min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em]"
-				>
-					{word}
-				</ShimmerText>
-			</span>
-		</span>
+		<ShimmerText ref={rowCut} variant="secondary" className={BUSY_LABEL_CLASS}>
+			{word}
+		</ShimmerText>
 	);
 }
 
@@ -225,10 +213,11 @@ export function WorkingMarker({
 			},
 		);
 	const parts = workingLineParts(state, tokens, showClock);
-	const phaseWord = phase === null ? null : stripTrailingEllipsis(phase);
+	const phaseWord = phase === null ? null : stripBusyEllipsis(phase);
 	const toolWords = tool === null ? null : maskWorkingLabel(tool.words);
-	const toolWord = toolWords === null ? null : stripTrailingEllipsis(toolWords);
-	const morphWord = phaseWord ?? toolWord;
+	const toolWord = toolWords === null ? null : stripBusyEllipsis(toolWords);
+	// Upstream's busy text labels: a phase word, a row's handed-off words, or Stopping.
+	const morphWord = phaseWord ?? toolWord ?? (state.status === "stopping" ? parts.label : null);
 	const label = morphWord ?? parts.label;
 	const stats =
 		phase === null
@@ -240,6 +229,7 @@ export function WorkingMarker({
 	const announcement = phaseWord ?? (tool?.unspoken === true ? (toolWord ?? "") : workingLineAnnouncement(state));
 	const tasks = runningTasks > 0;
 	const labelRowCut = useTypeRowCut(morphWord === null ? label : "");
+	const labelId = `${useId()}-label`;
 	const line = (
 		<div
 			data-testid="code-working-line"
@@ -278,24 +268,27 @@ export function WorkingMarker({
 								animated={!reduceMotion}
 							/>
 						</span>
-						<span className="inline-flex min-w-0 items-center text-secondary">
-							{morphWord !== null && <PhaseWord word={morphWord} />}
-							{morphWord === null && label !== "" && (
-								<span
-									ref={labelRowCut}
-									title={workingMarkerText(state, tokens)}
-									className={`truncate whitespace-nowrap${
-										state.status === "stopping" ? ` ${STOPPING_MORPH_CLASS}` : ""
-									}`}
-								>
-									{state.status === "stopping" ? (
-										<ShimmerText variant="secondary">{label}</ShimmerText>
-									) : (
-										label
+						<MorphSlot
+							id={labelId}
+							swapKey={turnStatusSwapKey("busy", morphWord ?? undefined)}
+							className="min-w-0 max-w-full"
+						>
+							{morphWord === null ? (
+								<span className="inline-flex min-w-0 items-center text-secondary">
+									{label !== "" && (
+										<span
+											ref={labelRowCut}
+											title={workingMarkerText(state, tokens)}
+											className="truncate whitespace-nowrap"
+										>
+											{label}
+										</span>
 									)}
 								</span>
+							) : (
+								<BusyWord word={morphWord} />
 							)}
-						</span>
+						</MorphSlot>
 						{stats.map((stat, index) => (
 							<Fragment key={stat}>
 								{(index > 0 || label !== "") && <StatDot />}

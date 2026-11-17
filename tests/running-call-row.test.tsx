@@ -340,7 +340,12 @@ describe("an in-flight call's row", () =>
 			},
 		).toStrictEqual(
 			{
-				children: ["WorkingMark", "ShimmerText", "shrink-0 text-body text-secondary tabular-nums", "sr-only"],
+				children: [
+					"WorkingMark",
+					"group/morph inline-grid items-center justify-items-start data-[gliding]:overflow-x-clip min-w-0 max-w-full",
+					"shrink-0 text-body text-secondary tabular-nums",
+					"sr-only",
+				],
 				mark: "code",
 				label: "Rechecking SSH auth",
 				elapsed: true,
@@ -795,5 +800,272 @@ describe("a status row's accessible name", () =>
 				ids: ["label", "meta", "busy"],
 			},
 		]);
+	});
+});
+
+describe("a status row's morph slot", () =>
+{
+	const FACE_CLASS =
+		"col-start-1 row-start-1 flex min-w-0 max-w-full items-center group-data-[gliding]/morph:max-w-none";
+	const SLOT_CLASS =
+		"group/morph inline-grid items-center justify-items-start data-[gliding]:overflow-x-clip min-w-0 max-w-full";
+	const prompt =
+	{
+		type: "user",
+		uuid: "user-1",
+		message:
+		{
+			role: "user",
+			content: "Look",
+		},
+	};
+	const toolUse = (uuid: string, id: string, name: string, input: Record<string, unknown>) => (
+	{
+		type: "assistant",
+		uuid,
+		timestamp: new Date(Date.now() - 5000).toISOString(),
+		message:
+		{
+			role: "assistant",
+			content: [
+				{
+					type: "tool_use",
+					id,
+					name,
+					input,
+				},
+			],
+		},
+	});
+	const toolResult = (uuid: string, id: string, content: string, isError = false) => (
+	{
+		type: "user",
+		uuid,
+		message:
+		{
+			role: "user",
+			content: [
+				{
+					type: "tool_result",
+					tool_use_id: id,
+					content,
+					...(isError
+						?
+							{
+								is_error: true,
+							}
+						: {}),
+				},
+			],
+		},
+	});
+	const readA = toolUse(
+		"assistant-1",
+		"toolu_read",
+		"Read",
+		{
+			file_path: "/repo/a.ts",
+		},
+	);
+	const readResult = toolResult("result-1", "toolu_read", "ok");
+
+	function chat(records: unknown[])
+	{
+		const {lines, toolResultMap} = processTranscript(records);
+		return (
+			<SessionChat
+				sessionId="test-session"
+				lines={lines}
+				toolResultMap={toolResultMap}
+				showCompactSummaries={true}
+				showTranscriptOnly={true}
+				shouldScrollToEnd={false}
+				transcriptMode="normal"
+			/>
+		);
+	}
+
+	const faces = (slot: Element | null | undefined) =>
+		[...(slot?.children ?? [])].map((face) => (
+		{
+			key: face.getAttribute("data-morph-key"),
+			hidden: face.getAttribute("aria-hidden"),
+			text: face.textContent,
+		}));
+
+	function installFakeAnimate(): void
+	{
+		HTMLElement.prototype.animate = function animate(): Animation
+		{
+			return {
+				finished: new Promise<Animation>(() => {}),
+				cancel: () =>
+				{
+				},
+				playState: "running",
+				startTime: null,
+				effect:
+				{
+					getComputedTiming: () => (
+					{
+						progress: 0,
+					}),
+				},
+			} as unknown as Animation;
+		};
+	}
+
+	afterEach(() =>
+	{
+		Reflect.deleteProperty(HTMLElement.prototype, "animate");
+	});
+
+	it("seats a settled Read row's label in a done|Read face on the -label slot, beside its meta", () =>
+	{
+		const {container} = render(chat([prompt, readA, readResult]));
+		const toggle = container.querySelector("[aria-labelledby]");
+		const labelId = toggle?.getAttribute("aria-labelledby")?.split(" ")[0] ?? "";
+		const slot = document.getElementById(labelId);
+		expect(
+			{
+				slotClass: slot?.className,
+				faceClass: slot?.firstElementChild?.className,
+				faces: faces(slot),
+			},
+		).toStrictEqual(
+			{
+				slotClass: `${SLOT_CLASS} shrink-0`,
+				faceClass: FACE_CLASS,
+				faces: [
+					{
+						key: "done|Read",
+						hidden: null,
+						text: "Read",
+					},
+				],
+			},
+		);
+	});
+
+	it("cross-fades a row from busy|Reading to done|Read when its call completes", () =>
+	{
+		installFakeAnimate();
+		const view = render(chat([prompt, readA]));
+		view.rerender(chat([prompt, readA, readResult]));
+		const toggle = view.container.querySelector("[aria-labelledby]");
+		const labelId = toggle?.getAttribute("aria-labelledby")?.split(" ")[0] ?? "";
+		expect(faces(document.getElementById(labelId))).toStrictEqual([
+			{
+				key: "busy|Reading",
+				hidden: "true",
+				text: "Reading",
+			},
+			{
+				key: "done|Read",
+				hidden: null,
+				text: "Read",
+			},
+		]);
+	});
+
+	it("keys a failed row failed|<label> and keeps its outcome outside the slot", () =>
+	{
+		const {container} = render(
+			chat([
+				prompt,
+				toolUse(
+					"assistant-1",
+					"toolu_fetch",
+					"WebFetch",
+					{
+						url: "https://example.com",
+						prompt: "x",
+					},
+				),
+				toolResult("result-1", "toolu_fetch", "boom", true),
+			]),
+		);
+		const ids = container.querySelector("[aria-labelledby]")?.getAttribute("aria-labelledby")?.split(" ") ?? [];
+		const slot = document.getElementById(ids[0] ?? "");
+		const outcome = document.getElementById(ids.at(-1) ?? "");
+		expect(
+			{
+				faces: faces(slot),
+				outcome: outcome?.textContent,
+				outcomeInSlot: slot?.contains(outcome ?? null),
+			},
+		).toStrictEqual(
+			{
+				faces: [
+					{
+						key: "failed|Fetching",
+						hidden: null,
+						text: "Fetching",
+					},
+				],
+				outcome: "Failed",
+				outcomeInSlot: false,
+			},
+		);
+	});
+
+	it("swaps a group header from its busy running label to the done| counted line", () =>
+	{
+		installFakeAnimate();
+		const bash = toolUse(
+			"assistant-2",
+			"toolu_bash",
+			"Bash",
+			{
+				command: "ls",
+				description: "List files",
+			},
+		);
+		const view = render(chat([prompt, readA, readResult, bash]));
+		const header = () => view.container.querySelector("button[aria-controls].group\\/tool");
+		const busySlot = header()?.querySelector(".group\\/morph");
+		const busy =
+		{
+			id: busySlot?.id.endsWith("-label"),
+			faces: faces(busySlot),
+		};
+		view.rerender(chat([prompt, readA, readResult, bash, toolResult("result-2", "toolu_bash", "a.ts")]));
+		const doneSlot = header()?.querySelector(".group\\/morph");
+		expect(
+			{
+				busy,
+				same: doneSlot === busySlot,
+				done: faces(doneSlot).map(({key, hidden}) => (
+				{
+					key,
+					hidden,
+				})),
+			},
+		).toStrictEqual(
+			{
+				busy:
+				{
+					id: true,
+					faces: [
+						{
+							key: "busy|Listing files",
+							hidden: null,
+							text: "Listing files",
+						},
+					],
+				},
+				same: true,
+				done: [
+					{
+						key: "busy|Listing files",
+						hidden: "true",
+					},
+					{
+						key: "done|",
+						hidden: null,
+					},
+				],
+			},
+		);
 	});
 });

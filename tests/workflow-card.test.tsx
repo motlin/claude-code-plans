@@ -721,7 +721,7 @@ describe("settled Workflow row", () =>
 		expect(
 			{
 				root: row.firstElementChild?.className,
-				label: row.querySelector('[id$="-label"]')?.className,
+				label: row.querySelector('[id$="-label"] > [data-morph-key] > *')?.className,
 			},
 		).toStrictEqual(
 			{
@@ -745,7 +745,9 @@ describe("settled Workflow row", () =>
 		);
 		await screen.findByText("Ran workflow");
 
-		expect(launchRow(container).querySelector('[id$="-label"]')?.className).toBe("shrink-0 text-body text-danger");
+		expect(launchRow(container).querySelector('[id$="-label"] > [data-morph-key] > *')?.className).toBe(
+			"shrink-0 text-body text-danger",
+		);
 	});
 
 	it("marks the row Stopped when a TaskStop ended its task", async () =>

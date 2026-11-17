@@ -1002,7 +1002,7 @@ describe("SessionChat grouped tool rows", () =>
 		];
 		const labels = [...new Set(rows)].map((row) =>
 		{
-			const bdi = row.querySelector(":scope > bdi");
+			const bdi = row.querySelector(":scope > bdi, :scope > .group\\/morph > [data-morph-key] > bdi");
 			return bdi === null
 				? null
 				:
@@ -1647,6 +1647,13 @@ function failedToolCallRecords(
 }
 
 /** Text and class of every direct child of the one tool row header. */
+/** A row's label MorphSlot stands in for its current face's content, the label itself. */
+function throughMorphSlot(child: Element): Element
+{
+	if (!child.classList.contains("group/morph")) return child;
+	return child.querySelector(":scope > [data-morph-key]:not([aria-hidden]) > *") ?? child;
+}
+
 function rowHeaderChildren(records: unknown[]):
 {
 	text: string | null;
@@ -1654,7 +1661,7 @@ function rowHeaderChildren(records: unknown[]):
 }[]
 {
 	const header = renderTranscriptElement(records).querySelector(".group\\/tool")!;
-	return Array.from(header.children, (child) => (
+	return Array.from(header.children, throughMorphSlot).map((child) => (
 	{
 		text: child.textContent,
 		className: child.className,
@@ -2030,7 +2037,7 @@ describe("SessionChat failed tool row label", () =>
 
 		expect(
 			{
-				children: Array.from(header.children, (child) => (
+				children: Array.from(header.children, throughMorphSlot).map((child) => (
 				{
 					text: child.textContent,
 					className: child.className,
@@ -2102,7 +2109,7 @@ describe("SessionChat failed tool row label", () =>
 				children:
 					header === null
 						? null
-						: Array.from(header.children, (child) => (
+						: Array.from(header.children, throughMorphSlot).map((child) => (
 							{
 								text: child.textContent,
 								className: child.className,
@@ -2500,7 +2507,7 @@ describe("SessionChat Skill row label", () =>
 
 		expect(
 			{
-				text: Array.from(header.children, (child) => child.textContent),
+				text: Array.from(header.children, throughMorphSlot).map((child) => child.textContent),
 				spans: rowHeaderSpanClasses(html),
 				code: html.includes("<code"),
 				oldLabel: html.includes("Failed to run skill"),
@@ -3055,7 +3062,9 @@ describe("SessionChat Agent row opening the Subagent pane", () =>
 				role: row.getAttribute("role"),
 				tabIndex: row.getAttribute("tabindex"),
 				ariaExpanded: row.getAttribute("aria-expanded"),
-				spans: [...row.children].map((child) => [child.getAttribute("class"), child.textContent]),
+				spans: [...row.children]
+					.map(throughMorphSlot)
+					.map((child) => [child.getAttribute("class"), child.textContent]),
 				glyph: row.querySelector("svg")?.getAttribute("class"),
 				body: container.textContent.includes("Commit the fixup"),
 			},
@@ -3106,7 +3115,7 @@ describe("SessionChat Agent row opening the Subagent pane", () =>
 		expect(
 			{
 				className: badge?.getAttribute("class"),
-				bdi: badge?.querySelector(":scope > bdi")?.outerHTML,
+				bdi: badge?.querySelector(":scope > bdi, :scope > .group\\/morph > [data-morph-key] > bdi")?.outerHTML,
 			},
 		).toStrictEqual(
 			{
@@ -3166,7 +3175,7 @@ describe("SessionChat Agent row opening the Subagent pane", () =>
 			() => {},
 		);
 		expandGroupSummary(container);
-		const bdi = agentRow(container).querySelector(":scope > bdi");
+		const bdi = agentRow(container).querySelector(":scope > bdi, :scope > .group\\/morph > [data-morph-key] > bdi");
 
 		expect(
 			{
@@ -3735,7 +3744,8 @@ function rowHeaderSpanClasses(html: string): string[]
 	const endTag = html.startsWith("<button", tagStart) ? "</button>" : "</div>";
 	const end = html.indexOf(endTag, start);
 	expect(end, "no end tag for tool row header").toBeGreaterThan(-1);
-	const region = html.slice(start, end);
+	// A label's MorphSlot and face wrap the label span; list the label's own classes.
+	const region = html.slice(start, end).replace(/<span[^>]*(?:group\/morph|data-morph-key)[^>]*>/g, "");
 	return [...region.matchAll(/<span(?: id="[^"]*")?(?: class="([^"]*)")?[ >]/g)].map((match) => match[1] ?? "");
 }
 
@@ -4545,7 +4555,7 @@ describe("SessionChat auto-mode blocked specimens (live upstream, 2026-11-05)", 
 			if (body.querySelector("bdi, [data-find-omitted]") === null) throw new Error("reason not mounted");
 		});
 		return {
-			children: Array.from(header.children, (child) => (
+			children: Array.from(header.children, throughMorphSlot).map((child) => (
 			{
 				text: child.textContent,
 				className: child.className,
