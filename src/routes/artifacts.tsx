@@ -3,7 +3,7 @@ import {createFileRoute, Link, useNavigate} from "@tanstack/react-router";
 import {useSuspenseQuery} from "@tanstack/react-query";
 import {Tabs} from "@base-ui/react/tabs";
 import {LayoutGrid, Link as LinkIcon, List, Lock, Pin, SlidersVertical} from "lucide-react";
-import {type CSSProperties, type ReactNode, useEffect, useId, useMemo, useState} from "react";
+import {type CSSProperties, type ReactNode, useEffect, useId, useMemo, useRef, useState} from "react";
 import {artifactsQueryOptions, type ArtifactSummary} from "../lib/api/artifacts";
 import
 {
@@ -36,7 +36,9 @@ import
 	NO_ARTIFACT_FILTERS,
 	readArtifactsLayout,
 	sortArtifacts,
+	useStoredArtifactsSort,
 	writeArtifactsLayout,
+	writeArtifactsSort,
 	type ArtifactFilters,
 	type ArtifactKind,
 	type ArtifactOpenedRange,
@@ -150,7 +152,8 @@ export const Route = createFileRoute("/artifacts")(
 							sharing,
 						}
 					: {}),
-				...(pinned === 1 || pinned === "1" || pinned === true
+				// Upstream reads the legacy `?tab=pinned` as the Pinned filter; the next write drops the `tab`.
+				...(pinned === 1 || pinned === "1" || pinned === true || search["tab"] === "pinned"
 					?
 						{
 							pinned: 1 as const,
@@ -186,7 +189,8 @@ function isOneOf<T extends string>(value: unknown, options: readonly T[]): value
 function parseList<T extends string>(value: unknown, options: readonly T[]): T[]
 {
 	if (typeof value !== "string") return [];
-	const picked = new Set(value.split(","));
+	// Upstream's codec trims and lowercases each item before matching.
+	const picked = new Set(value.split(",").map((item) => item.trim().toLowerCase()));
 	return options.filter((option) => picked.has(option));
 }
 
@@ -223,15 +227,24 @@ function isArtifactView(value: unknown): value is ArtifactView
 	return VIEW_TABS.some((tab) => tab.view === value);
 }
 
+/*
+ * Route.useSearch merges the validated search over the root route's raw one, so a dropped `?opened=Today` or
+ * `?sort=foo` still reaches the page: read each param through its codec again.
+ */
 function filtersFromSearch(search: ArtifactsSearch): ArtifactFilters
 {
 	return {
 		types: parseList(search.type, ARTIFACT_TYPE_KEYS),
 		owners: parseList(search.owner, ARTIFACT_OWNERS),
-		opened: search.opened ?? "any",
-		sharing: search.sharing ?? "any",
+		opened: isOneOf(search.opened, ARTIFACT_OPENED_RANGES) ? search.opened : "any",
+		sharing: isOneOf(search.sharing, ARTIFACT_SHARINGS) ? search.sharing : "any",
 		pinned: search.pinned === 1,
 	};
+}
+
+function sortFromSearch(search: ArtifactsSearch): ArtifactSort | undefined
+{
+	return search.sort === "edited" ? "edited" : undefined;
 }
 
 function searchFromState({
@@ -425,7 +438,11 @@ function ArtifactsPage()
 	const {search = "", tab: tabParam} = params;
 	const view = viewFromTabParam(tabParam);
 	const filters = filtersFromSearch(params);
-	const sort: ArtifactSort = params.sort ?? "opened";
+	// Upstream's `He`: the URL's sort wins, then the pick remembered in this browser.
+	const storedSort = useStoredArtifactsSort();
+	const urlSort = sortFromSearch(params);
+	const sort: ArtifactSort = urlSort ?? storedSort ?? "opened";
+	const listTopRef = useRef<HTMLDivElement>(null);
 	const navigate = useNavigate();
 	const [layout, setLayout] = useState<ArtifactsLayout>("grid");
 	const [searchOpen, setSearchOpen] = useState(false);
@@ -497,11 +514,14 @@ function ArtifactsPage()
 						search,
 						view,
 						filters,
-						sort,
+						// A filter write keeps the URL's own sort, never copying the remembered one into it.
+						sort: urlSort ?? "opened",
 						...next,
 					},
 				),
 				replace: true,
+				// Upstream's router.replace(…, {scroll: false}).
+				resetScroll: false,
 			},
 		);
 	}
@@ -583,12 +603,14 @@ function ArtifactsPage()
 							}}
 							onSort={(next) =>
 							{
+								writeArtifactsSort(next);
 								setSortLanded(true);
 								updateSearch(
 									{
 										sort: next,
 									},
 								);
+								if (next !== sort) scrollListTopIntoView(listTopRef.current);
 							}}
 						/>
 						<Tooltip content={layoutLabel}>
@@ -618,6 +640,7 @@ function ArtifactsPage()
 				style={LIST_HEADER_SCROLL_OFFSET_STYLE}
 			>
 				<MakeSomethingNew />
+				<div ref={listTopRef} className={LIST_SCROLL_MARGIN_CLASS} />
 				{inView.length === 0 && (artifacts.length === 0 || !searching) ? (
 					<ArtifactsEmptyState view={view} />
 				) : visible.length === 0 ? (
@@ -654,6 +677,15 @@ function ArtifactsPage()
 			</div>
 		</div>
 	);
+}
+
+/**
+ * Upstream c230724a2 `si`/`oi`: after a sort change, jump the list top back under the pinned header when it has
+ * scrolled above the viewport. Scroll only; focus stays on the menu radio.
+ */
+function scrollListTopIntoView(anchor: HTMLElement | null): void
+{
+	if (anchor && anchor.getBoundingClientRect().top < 0) anchor.scrollIntoView();
 }
 
 /**

@@ -1,3 +1,5 @@
+import {useSyncExternalStore} from "react";
+
 /** Upstream's `LSS-artifacts-gallery-layout`, minus the cloud store prefix. */
 export const ARTIFACTS_LAYOUT_STORAGE_KEY = "artifacts-gallery-layout";
 
@@ -248,6 +250,91 @@ export function artifactOpenedTimestamp(artifact: OpenedArtifact): number
 export function artifactSortTimestamp(artifact: OpenedArtifact, sort: ArtifactSort): number
 {
 	return sort === "opened" ? artifactOpenedTimestamp(artifact) : artifactTimestamp(artifact);
+}
+
+/** Upstream's `LSS-artifacts-gallery-sort`, minus the cloud store prefix. */
+export const ARTIFACTS_SORT_STORAGE_KEY = "artifacts-gallery-sort";
+
+function isArtifactSort(value: unknown): value is ArtifactSort
+{
+	return value === "opened" || value === "edited";
+}
+
+function parseStoredSort(raw: string | null): ArtifactSort | undefined
+{
+	if (raw === null) return undefined;
+	if (isArtifactSort(raw)) return raw;
+	try
+	{
+		// Upstream's store envelope: {"value":"edited","tabId":"","timestamp":…}.
+		const parsed: unknown = JSON.parse(raw);
+		if (typeof parsed === "object" && parsed !== null && "value" in parsed && isArtifactSort(parsed.value))
+			return parsed.value;
+	}
+	catch
+	{
+		// Not JSON: neither a bare sort nor the envelope.
+	}
+	return undefined;
+}
+
+/** The Sort by pick remembered in this browser; absent, unknown or unreadable storage yields undefined. */
+export function readArtifactsSort(): ArtifactSort | undefined
+{
+	try
+	{
+		return parseStoredSort(localStorage.getItem(ARTIFACTS_SORT_STORAGE_KEY));
+	}
+	catch
+	{
+		return undefined;
+	}
+}
+
+const sortListeners = new Set<() => void>();
+
+/** Remembers the pick, Last opened included: upstream's `setSort` stores the default rather than removing the key. */
+export function writeArtifactsSort(sort: ArtifactSort): void
+{
+	try
+	{
+		localStorage.setItem(ARTIFACTS_SORT_STORAGE_KEY, sort);
+	}
+	catch
+	{
+		// Storage can be unavailable (private mode); the URL still carries the pick for this visit.
+	}
+	for (const listener of sortListeners) listener();
+}
+
+function onSortStorage(event: StorageEvent): void
+{
+	if (event.key === null || event.key === ARTIFACTS_SORT_STORAGE_KEY)
+	{
+		for (const listener of sortListeners) listener();
+	}
+}
+
+function subscribeSort(listener: () => void): () => void
+{
+	if (sortListeners.size === 0) window.addEventListener("storage", onSortStorage);
+	sortListeners.add(listener);
+	return () =>
+	{
+		sortListeners.delete(listener);
+		if (sortListeners.size === 0) window.removeEventListener("storage", onSortStorage);
+	};
+}
+
+function getServerSort(): ArtifactSort | undefined
+{
+	return undefined;
+}
+
+/** The remembered Sort by pick, following picks made in other tabs via the `storage` event. */
+export function useStoredArtifactsSort(): ArtifactSort | undefined
+{
+	return useSyncExternalStore(subscribeSort, readArtifactsSort, getServerSort);
 }
 
 /** Newest first by the picked sort's time. */

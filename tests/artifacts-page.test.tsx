@@ -12,13 +12,16 @@ import
 	RouterProvider,
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeEach, describe, expect, it, onTestFinished, vi} from "vite-plus/test";
 
 import {artifactsQueryOptions, ArtifactListResponse, type ArtifactSummary} from "../src/lib/api/artifacts";
 import
 {
 	ARTIFACTS_LAYOUT_STORAGE_KEY,
+	ARTIFACTS_SORT_STORAGE_KEY,
 	activeFilterCount,
+	readArtifactsSort,
+	writeArtifactsSort,
 	applyArtifactFilters,
 	artifactDateGroupLabel,
 	artifactMatchesSearch,
@@ -208,6 +211,71 @@ describe("sortArtifacts", () =>
 			{
 				opened: ["opened-late", "edited-late", "seen-only", "opened-early"],
 				edited: ["edited-late", "opened-early", "seen-only", "opened-late"],
+			},
+		);
+	});
+});
+
+describe("stored artifacts sort", () =>
+{
+	function readWith(raw: string | null)
+	{
+		if (raw === null) storage.removeItem(ARTIFACTS_SORT_STORAGE_KEY);
+		else storage.setItem(ARTIFACTS_SORT_STORAGE_KEY, raw);
+		return readArtifactsSort();
+	}
+
+	it("reads upstream's bare value or its {value,tabId,timestamp} envelope, ignores garbage, and stores Last opened instead of removing it", () =>
+	{
+		const reads =
+		{
+			absent: readWith(null),
+			bare: readWith("edited"),
+			envelope: readWith(
+				JSON.stringify(
+					{
+						value: "edited",
+						tabId: "",
+						timestamp: 1,
+					},
+				),
+			),
+			openedEnvelope: readWith('{"value":"opened"}'),
+			unknown: readWith("foo"),
+			badEnvelope: readWith('{"value":"foo"}'),
+			garbage: readWith("{not json"),
+		};
+		writeArtifactsSort("edited");
+		const afterEdited = storage.getItem(ARTIFACTS_SORT_STORAGE_KEY);
+		writeArtifactsSort("opened");
+		const afterOpened = storage.getItem(ARTIFACTS_SORT_STORAGE_KEY);
+		vi.spyOn(storage, "getItem").mockImplementation(() =>
+		{
+			throw new Error("denied");
+		});
+
+		expect(
+			{
+				reads,
+				afterEdited,
+				afterOpened,
+				throwing: readArtifactsSort(),
+			},
+		).toStrictEqual(
+			{
+				reads:
+				{
+					absent: undefined,
+					bare: "edited",
+					envelope: "edited",
+					openedEnvelope: "opened",
+					unknown: undefined,
+					badEnvelope: undefined,
+					garbage: undefined,
+				},
+				afterEdited: "edited",
+				afterOpened: "opened",
+				throwing: undefined,
 			},
 		);
 	});
@@ -487,6 +555,29 @@ function seedArtifacts(db: AppDb): void
 }
 
 /** A gallery of 14 HTML pages and 2 Docs, alternating between yours and shared with you. */
+/** seedArtifacts with Quarterly plan opened just now, so Last opened and Last edited order the cards differently. */
+function seedDocsOpenedRecently(db: AppDb): void
+{
+	seedArtifacts(db);
+	db.index
+		.update(schema.artifacts)
+		.set(
+			{
+				lastOpenedAt: Date.now() - 1000,
+			},
+		)
+		.where(eq(schema.artifacts.url, DOCS_URL))
+		.run();
+}
+
+/** The grid's card titles in order. */
+function cards(): Array<string | null>
+{
+	return [...document.querySelectorAll("[data-gallery-card] a[data-primary]")].map((link) =>
+		link.getAttribute("aria-label"),
+	);
+}
+
 function seedMixedGallery(db: AppDb): void
 {
 	db.index
@@ -2888,23 +2979,7 @@ describe("artifacts route", () =>
 	it("sorts by Last opened by default and by Last edited from ?sort=edited or the Sort by radios, announcing the sort", async () =>
 	{
 		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
-		const seed = (db: AppDb) =>
-		{
-			seedArtifacts(db);
-			db.index
-				.update(schema.artifacts)
-				.set(
-					{
-						lastOpenedAt: Date.now() - 1000,
-					},
-				)
-				.where(eq(schema.artifacts.url, DOCS_URL))
-				.run();
-		};
-		const cards = () =>
-			[...document.querySelectorAll("[data-gallery-card] a[data-primary]")].map((link) =>
-				link.getAttribute("aria-label"),
-			);
+		const seed = seedDocsOpenedRecently;
 		await renderArtifactsPage("/artifacts?sort=edited", seed);
 		const edited = cards();
 		cleanup();
@@ -2954,6 +3029,413 @@ describe("artifacts route", () =>
 				opened: ["Quarterly plan", "Asap Ladder Queue", "household-cash.html"],
 				picked: ["Asap Ladder Queue", "household-cash.html", "Quarterly plan"],
 				statuses: ["Sorted by Last edited"],
+			},
+		);
+	});
+
+	it("remembers the Sort by pick per browser: the stored sort applies to a bare URL, the URL's own sort wins, filter picks keep the URL's sort", async () =>
+	{
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		storage.setItem(ARTIFACTS_SORT_STORAGE_KEY, "edited");
+		const router = await renderArtifactsPage("/artifacts", seedDocsOpenedRecently);
+		const remembered =
+		{
+			cards: cards(),
+			search:
+			{
+				...router.state.location.search,
+			},
+		};
+
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Filter and sort",
+				},
+			),
+		);
+		const menu = await screen.findByRole("menu");
+		fireEvent.click(
+			within(menu).getByRole(
+				"menuitemcheckbox",
+				{
+					name: "Pinned",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(
+				{
+					...router.state.location.search,
+				},
+			).toStrictEqual(
+				{
+					pinned: 1,
+				},
+			);
+		});
+		const afterFilter = menuRows(menu)[0];
+
+		const submenu = await openSubmenu(menu, "Sort by");
+		fireEvent.click(
+			within(submenu).getByRole(
+				"menuitemradio",
+				{
+					name: "Last opened",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(menuRows(menu)[0]).toBe("menuitem:Sort by=Last opened");
+		});
+		const pickedOpened =
+		{
+			stored: storage.getItem(ARTIFACTS_SORT_STORAGE_KEY),
+			search:
+			{
+				...router.state.location.search,
+			},
+		};
+		fireEvent.click(
+			within(submenu).getByRole(
+				"menuitemradio",
+				{
+					name: "Last edited",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(
+				{
+					...router.state.location.search,
+				},
+			).toStrictEqual(
+				{
+					pinned: 1,
+					sort: "edited",
+				},
+			);
+		});
+
+		expect(
+			{
+				remembered,
+				afterFilter,
+				pickedOpened,
+				pickedEdited: storage.getItem(ARTIFACTS_SORT_STORAGE_KEY),
+			},
+		).toStrictEqual(
+			{
+				remembered:
+				{
+					cards: ["Asap Ladder Queue", "household-cash.html", "Quarterly plan"],
+					search: {},
+				},
+				afterFilter: "menuitem:Sort by=Last edited",
+				pickedOpened:
+				{
+					stored: "opened",
+					search:
+					{
+						pinned: 1,
+					},
+				},
+				pickedEdited: "edited",
+			},
+		);
+	});
+
+	it("follows a Sort by pick made in another tab while the URL has no sort", async () =>
+	{
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		await renderArtifactsPage("/artifacts", seedDocsOpenedRecently);
+		const before = cards();
+
+		act(() =>
+		{
+			storage.setItem(ARTIFACTS_SORT_STORAGE_KEY, "edited");
+			window.dispatchEvent(
+				new StorageEvent(
+					"storage",
+					{
+						key: ARTIFACTS_SORT_STORAGE_KEY,
+						newValue: "edited",
+					},
+				),
+			);
+		});
+
+		expect(
+			{
+				before,
+				after: cards(),
+			},
+		).toStrictEqual(
+			{
+				before: ["Quarterly plan", "Asap Ladder Queue", "household-cash.html"],
+				after: ["Asap Ladder Queue", "household-cash.html", "Quarterly plan"],
+			},
+		);
+	});
+
+	it("puts upstream's list-top anchor between Make something new and the listing, in grid and list layout", async () =>
+	{
+		const layouts: Array<
+		{
+			anchor: string | undefined;
+			next: string | undefined;
+		}> = [];
+		for (const layout of ["grid", "list"])
+		{
+			storage.setItem(ARTIFACTS_LAYOUT_STORAGE_KEY, layout);
+			await renderArtifactsPage("/artifacts", true);
+			const anchor = document.querySelector("[data-make-something-new]")?.nextElementSibling;
+			layouts.push(
+				{
+					anchor: anchor?.outerHTML,
+					next: anchor?.nextElementSibling?.tagName,
+				},
+			);
+			cleanup();
+		}
+
+		expect(layouts).toStrictEqual([
+			{
+				anchor: '<div class="[scroll-margin-top:var(--list-header-scroll-offset)]"></div>',
+				next: "UL",
+			},
+			{
+				anchor: '<div class="[scroll-margin-top:var(--list-header-scroll-offset)]"></div>',
+				next: "DIV",
+			},
+		]);
+	});
+
+	it("scrolls the list top into view on a sort change only when it is above the viewport, leaving focus on the radio", async () =>
+	{
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		const scrollIntoView = vi.fn<(arg?: boolean | ScrollIntoViewOptions) => void>();
+		const original = HTMLElement.prototype.scrollIntoView;
+		HTMLElement.prototype.scrollIntoView = scrollIntoView;
+		onTestFinished(() =>
+		{
+			HTMLElement.prototype.scrollIntoView = original;
+		});
+		const router = await renderArtifactsPage("/artifacts", true);
+		const anchor = document.querySelector("[data-make-something-new]")?.nextElementSibling;
+		if (!(anchor instanceof HTMLElement)) throw new Error("no list-top anchor");
+		let top = -400;
+		// Base UI also scrolls highlighted menu rows into view; count only the anchor's calls.
+		const anchorCalls = () =>
+			scrollIntoView.mock.calls.filter((_, index) => scrollIntoView.mock.contexts[index] === anchor);
+		vi.spyOn(anchor, "getBoundingClientRect").mockImplementation(() =>
+			DOMRect.fromRect(
+				{
+					x: 0,
+					y: top,
+					width: 960,
+					height: 0,
+				},
+			),
+		);
+
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Filter and sort",
+				},
+			),
+		);
+		const submenu = await openSubmenu(await screen.findByRole("menu"), "Sort by");
+		const radio = (name: string) =>
+			within(submenu).getByRole(
+				"menuitemradio",
+				{
+					name,
+				},
+			);
+		fireEvent.click(radio("Last opened"));
+		const repick = anchorCalls().length;
+		fireEvent.click(radio("Last edited"));
+		await waitFor(() =>
+		{
+			expect(
+				{
+					...router.state.location.search,
+				},
+			).toStrictEqual(
+				{
+					sort: "edited",
+				},
+			);
+		});
+		const scrolled =
+		{
+			calls: anchorCalls(),
+			focus: document.activeElement?.textContent,
+		};
+		top = 0;
+		fireEvent.click(radio("Last opened"));
+		top = 40;
+		fireEvent.click(radio("Last edited"));
+
+		expect(
+			{
+				repick,
+				scrolled,
+				visibleCalls: anchorCalls().length,
+			},
+		).toStrictEqual(
+			{
+				repick: 0,
+				scrolled:
+				{
+					calls: [[]],
+					focus: "Last edited",
+				},
+				visibleCalls: 1,
+			},
+		);
+	});
+
+	it("writes Filter and sort picks without resetting scroll, as upstream's router.replace(…, {scroll:false})", async () =>
+	{
+		const router = await renderArtifactsPage("/artifacts", seedMixedGallery);
+		const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);
+
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Filter and sort",
+				},
+			),
+		);
+		fireEvent.click(
+			within(await screen.findByRole("menu")).getByRole(
+				"menuitemcheckbox",
+				{
+					name: "Pinned",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(
+				{
+					...router.state.location.search,
+				},
+			).toStrictEqual(
+				{
+					pinned: 1,
+				},
+			);
+		});
+
+		expect(scrollTo.mock.calls).toStrictEqual([]);
+	});
+
+	it("reads ?type= and ?owner= items trimmed and lowercased but Date opened exactly, as upstream's codec", async () =>
+	{
+		const router = await renderArtifactsPage(
+			"/artifacts?type=Docs,%20SLIDES&owner=%20ME%20&opened=Today",
+			seedMixedGallery,
+		);
+
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "3 filters on",
+				},
+			),
+		);
+		const menu = await screen.findByRole("menu");
+
+		expect(
+			{
+				search:
+				{
+					...router.state.location.search,
+				},
+				rows: menuRows(menu).slice(2, 5),
+			},
+		).toStrictEqual(
+			{
+				search:
+				{
+					type: "docs,slides",
+					owner: "me",
+					opened: "Today",
+				},
+				rows: ["menuitem:Owner=You", "menuitem:Type=2 picked", "menuitem:Date opened=Any time"],
+			},
+		);
+	});
+
+	it("reads legacy ?tab=pinned as the Pinned filter and rewrites it to pinned=1 on the next pick", async () =>
+	{
+		const router = await renderArtifactsPage("/artifacts?tab=pinned", seedMixedGallery);
+		const tab = screen.getByRole(
+			"tab",
+			{
+				selected: true,
+			},
+		).textContent;
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "1 filter on",
+				},
+			),
+		);
+		const menu = await screen.findByRole("menu");
+		const pinned = within(menu)
+			.getByRole(
+				"menuitemcheckbox",
+				{
+					name: "Pinned",
+				},
+			)
+			.getAttribute("aria-checked");
+		const submenu = await openSubmenu(menu, "Sharing");
+		fireEvent.click(
+			within(submenu).getByRole(
+				"menuitemradio",
+				{
+					name: "Shared",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(
+				{
+					...router.state.location.search,
+				},
+			).toStrictEqual(
+				{
+					sharing: "shared",
+					pinned: 1,
+				},
+			);
+		});
+
+		expect(
+			{
+				tab,
+				pinned,
+			},
+		).toStrictEqual(
+			{
+				tab: "All",
+				pinned: "true",
 			},
 		);
 	});
