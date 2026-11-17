@@ -55,7 +55,7 @@ export interface ComposerStateSources
 	/** settings.json `model`: what a session with no model yet launches with. */
 	settingsModel: string | null;
 	settingsEffortLevel: string | null;
-	/** `sessionFastMode` over the transcript and settings.json. */
+	/** `sessionFastMode` over the transcript, settings.json and the live statusline. */
 	fastMode: boolean;
 	/** Why the CLI can't use fast mode in this session (`ComposerServerState.fastModeBlocked`). */
 	fastModeBlocked: FastModeBlocked | null;
@@ -535,6 +535,7 @@ export function formatUpdatedAgo(iso: string, nowMs: number): string
 
 const FastModeBlockedResponse: z.ZodType<FastModeBlocked> = z.strictObject(
 	{
+		code: z.enum(["not_first_party", "disabled_by_env", "preference"]),
 		line: z.string(),
 		reason: z.string().optional(),
 	},

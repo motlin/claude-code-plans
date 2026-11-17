@@ -47,7 +47,7 @@ async function readFastModeBlocked(
 ): Promise<FastModeBlocked | null>
 {
 	const policyFastMode = await readPolicyFastMode(dependencies);
-	const blocked = fastModeBlockedReason(
+	return fastModeBlockedReason(
 		{
 			env:
 			{
@@ -65,17 +65,6 @@ async function readFastModeBlocked(
 					}),
 		},
 	);
-	if (blocked === null) return null;
-	return blocked.reason === undefined
-		?
-			{
-				line: blocked.line,
-			}
-		:
-			{
-				line: blocked.line,
-				reason: blocked.reason,
-			};
 }
 
 async function readSettingsData(readSettings: () => Promise<unknown>)

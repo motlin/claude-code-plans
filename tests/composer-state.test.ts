@@ -117,6 +117,7 @@ describe("resolveComposerState precedence", () =>
 	{
 		const blocked =
 		{
+			code: "disabled_by_env" as const,
 			line: "Off for this session",
 			reason: "An environment variable turns fast mode off in this session.",
 		};
@@ -1554,17 +1555,20 @@ describe("getComposerState", () =>
 			{
 				settingsEnv:
 				{
+					code: "disabled_by_env",
 					line: "Off for this session",
 					reason: "An environment variable turns fast mode off in this session.",
 				},
 				serverEnv:
 				{
+					code: "not_first_party",
 					line: "Not available with this provider",
 					reason: "Fast mode is only available when Claude Code uses the Claude API directly.",
 				},
 				settingsOverride: null,
 				policy:
 				{
+					code: "preference",
 					line: "Not available",
 				},
 				missingPolicy: null,

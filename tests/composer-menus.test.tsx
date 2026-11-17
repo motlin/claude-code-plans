@@ -1432,6 +1432,7 @@ describe("Composer model menu Fast mode section", () =>
 
 	const ENV_BLOCKED =
 	{
+		code: "disabled_by_env" as const,
 		line: "Off for this session",
 		reason: "An environment variable turns fast mode off in this session.",
 	};
@@ -1542,6 +1543,7 @@ describe("Composer model menu Fast mode section", () =>
 					...CHIN,
 					fastModeBlocked:
 					{
+						code: "preference",
 						line: "Not available",
 					},
 				},
@@ -2167,6 +2169,7 @@ describe("Composer model trigger Fast word and live status", () =>
 					fastMode: true,
 					fastModeBlocked:
 					{
+						code: "preference",
 						line: "Not available",
 					},
 				},
@@ -2881,6 +2884,7 @@ describe("Composer ⌥⌘F fast mode shortcut", () =>
 					...CHIN,
 					fastModeBlocked:
 					{
+						code: "preference",
 						line: "Not available",
 					},
 				},

@@ -2876,6 +2876,7 @@ describe("Composer host commands", () =>
 				...CHIN,
 				fastModeBlocked:
 				{
+					code: "not_first_party" as const,
 					line: "Not available with this provider",
 				},
 			},

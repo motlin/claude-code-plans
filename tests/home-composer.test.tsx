@@ -3254,10 +3254,12 @@ describe("getComposerDefaults", () =>
 			).map((defaults) => defaults.fastModeBlocked),
 		).toStrictEqual([
 			{
+				code: "not_first_party",
 				line: "Not available with this provider",
 				reason: "Fast mode is only available when Claude Code uses the Claude API directly.",
 			},
 			{
+				code: "preference",
 				line: "Not available",
 			},
 		]);

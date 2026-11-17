@@ -92,7 +92,7 @@ import {pendingQuestionCard} from "./pending-question-card";
 import {useApprovalPresentation} from "../hooks/use-approval-presentation";
 import {ComposerNoticeProvider, ComposerNoticeRegion} from "./composer-notice-region";
 import {sessionProcessLive} from "../lib/session-state";
-import {sessionFastMode} from "../lib/session-fast-mode";
+import {sessionComposerFastMode} from "../lib/session-fast-mode";
 import {type QueuedPrompt, steeredPrompts} from "../lib/composer-queue";
 import {recallLastHeldSteer} from "../lib/steer-recall";
 import {tailMarkerQuiet, turnTokenEstimate, workingLineWaitsOnUser} from "../lib/working-marker";
@@ -934,13 +934,7 @@ function SessionView({
 						lastAssistantModel: lastAssistantModelFromRecords(transcript.records),
 						lastAssistantUsage: lastAssistantUsageFromRecords(transcript.records),
 						lastAssistantEffort: lastAssistantEffortFromRecords(transcript.records),
-						fastMode: sessionFastMode(
-							transcript.records,
-							{
-								fastMode: composerServerState?.settingsFastMode,
-							},
-						),
-						fastModeBlocked: composerServerState?.fastModeBlocked ?? null,
+						...sessionComposerFastMode(transcript.records, composerServerState),
 						settingsModel: composerServerState?.settingsModel ?? null,
 						settingsEffortLevel: composerServerState?.settingsEffortLevel ?? null,
 						statusline: composerServerState?.statusline ?? null,

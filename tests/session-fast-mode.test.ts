@@ -1,6 +1,12 @@
 import {describe, expect, it} from "vite-plus/test";
 
-import {fastModeBlockedReason, sessionFastMode} from "../src/lib/session-fast-mode";
+import
+{
+	type FastModeBlocked,
+	fastModeBlockedReason,
+	sessionComposerFastMode,
+	sessionFastMode,
+} from "../src/lib/session-fast-mode";
 
 function assistant(speed: string, extra: Record<string, unknown> = {})
 {
@@ -138,6 +144,132 @@ describe("sessionFastMode", () =>
 		};
 		expect(sessionFastMode([assistant("fast"), noSpeed], {})).toBe(true);
 	});
+
+	it("prefers the statusline's fast_mode over a standard-speed turn when newer (cooldown counts as on)", () =>
+	{
+		expect(
+			sessionFastMode(
+				[assistant("standard")],
+				{},
+				{
+					fastMode: true,
+					updatedAt: "2026-10-24T10:00:01Z",
+				},
+			),
+		).toBe(true);
+	});
+
+	it("reflects /fast off from a newer statusline before the next turn", () =>
+	{
+		expect(
+			sessionFastMode(
+				[assistant("fast")],
+				{},
+				{
+					fastMode: false,
+					updatedAt: "2026-10-24T10:00:05Z",
+				},
+			),
+		).toBe(false);
+	});
+
+	it("favors the statusline at the same instant as the last turn", () =>
+	{
+		expect(
+			sessionFastMode(
+				[assistant("standard")],
+				{},
+				{
+					fastMode: true,
+					updatedAt: "2026-10-24T10:00:00.000Z",
+				},
+			),
+		).toBe(true);
+	});
+
+	it("ignores a statusline snapshot older than the newest main-thread assistant entry", () =>
+	{
+		expect([
+			sessionFastMode(
+				[assistant("standard")],
+				{},
+				{
+					fastMode: true,
+					updatedAt: "2026-10-24T09:59:59Z",
+				},
+			),
+			sessionFastMode(
+				[assistant("fast")],
+				{},
+				{
+					fastMode: false,
+					updatedAt: "2026-10-24T09:59:59Z",
+				},
+			),
+		]).toStrictEqual([false, true]);
+	});
+
+	it("falls back to usage.speed when the statusline has no fast_mode or no update time", () =>
+	{
+		expect([
+			sessionFastMode(
+				[assistant("fast")],
+				{},
+				{
+					fastMode: undefined,
+					updatedAt: "2026-10-24T10:00:05Z",
+				},
+			),
+			sessionFastMode(
+				[assistant("fast")],
+				{},
+				{
+					fastMode: false,
+					updatedAt: null,
+				},
+			),
+		]).toStrictEqual([true, true]);
+	});
+
+	it("trusts a live on with no turns yet, even for a per-session opt-in", () =>
+	{
+		expect(
+			sessionFastMode(
+				[user],
+				{
+					fastMode: true,
+					fastModePerSessionOptIn: true,
+				},
+				{
+					fastMode: true,
+					updatedAt: "2026-10-24T10:00:00Z",
+				},
+			),
+		).toBe(true);
+	});
+
+	it("does not count a sidechain entry newer than the snapshot as a newer turn", () =>
+	{
+		expect(
+			sessionFastMode(
+				[
+					assistant("standard"),
+					assistant(
+						"standard",
+						{
+							isSidechain: true,
+							timestamp: "2026-10-24T10:00:09Z",
+						},
+					),
+				],
+				{},
+				{
+					fastMode: true,
+					updatedAt: "2026-10-24T10:00:01Z",
+				},
+			),
+		).toBe(true);
+	});
 });
 
 const THIRD_PARTY =
@@ -145,14 +277,14 @@ const THIRD_PARTY =
 	code: "not_first_party",
 	line: "Not available with this provider",
 	reason: "Fast mode is only available when Claude Code uses the Claude API directly.",
-};
+} as const;
 
 const OFF_BY_ENV =
 {
 	code: "disabled_by_env",
 	line: "Off for this session",
 	reason: "An environment variable turns fast mode off in this session.",
-};
+} as const;
 
 describe("fastModeBlockedReason", () =>
 {
@@ -234,6 +366,64 @@ describe("fastModeBlockedReason", () =>
 		);
 	});
 
+	it("lets a live on or cooldown override only the managed-policy block", () =>
+	{
+		const policy =
+		{
+			fastMode: false,
+		};
+		expect([
+			fastModeBlockedReason(
+				{
+					policy,
+					liveOn: true,
+				},
+			),
+			fastModeBlockedReason(
+				{
+					policy,
+					liveOn: false,
+				},
+			),
+			fastModeBlockedReason(
+				{
+					policy,
+				},
+			),
+			fastModeBlockedReason(
+				{
+					env:
+					{
+						CLAUDE_CODE_DISABLE_FAST_MODE: "1",
+					},
+					liveOn: true,
+				},
+			),
+			fastModeBlockedReason(
+				{
+					env:
+					{
+						CLAUDE_CODE_USE_BEDROCK: "1",
+					},
+					policy,
+					liveOn: true,
+				},
+			),
+		]).toStrictEqual([
+			null,
+			{
+				code: "preference",
+				line: "Not available",
+			},
+			{
+				code: "preference",
+				line: "Not available",
+			},
+			OFF_BY_ENV,
+			THIRD_PARTY,
+		]);
+	});
+
 	it("leaves an unblocked session alone, using the CLI's truthy env rule", () =>
 	{
 		expect([
@@ -271,5 +461,71 @@ describe("fastModeBlockedReason", () =>
 				},
 			),
 		]).toStrictEqual([null, null, null, null, null]);
+	});
+});
+
+describe("sessionComposerFastMode", () =>
+{
+	const POLICY_BLOCKED =
+	{
+		code: "preference",
+		line: "Not available",
+	} as const;
+
+	function server(
+		fastMode: boolean | undefined,
+		updatedAt: string | null,
+		fastModeBlocked: FastModeBlocked | null = null,
+	)
+	{
+		return {
+			settingsFastMode: false,
+			fastModeBlocked,
+			statusline:
+				fastMode === undefined
+					? {}
+					:
+						{
+							fast_mode: fastMode,
+						},
+			statuslineUpdatedAt: updatedAt,
+		};
+	}
+
+	it("turns a cooldown (standard turn, live fast_mode true) on and lifts only a policy block", () =>
+	{
+		expect([
+			sessionComposerFastMode([assistant("standard")], server(true, "2026-10-24T10:00:01Z")),
+			sessionComposerFastMode([assistant("standard")], server(true, "2026-10-24T10:00:01Z", POLICY_BLOCKED)),
+			sessionComposerFastMode([assistant("standard")], server(true, "2026-10-24T10:00:01Z", OFF_BY_ENV)),
+			sessionComposerFastMode([assistant("standard")], server(true, "2026-10-24T09:00:00Z", POLICY_BLOCKED)),
+		]).toStrictEqual([
+			{
+				fastMode: true,
+				fastModeBlocked: null,
+			},
+			{
+				fastMode: true,
+				fastModeBlocked: null,
+			},
+			{
+				fastMode: true,
+				fastModeBlocked: OFF_BY_ENV,
+			},
+			{
+				fastMode: false,
+				fastModeBlocked: POLICY_BLOCKED,
+			},
+		]);
+	});
+
+	it("uses the transcript and settings before the composer state arrives", () =>
+	{
+		expect(sessionComposerFastMode([assistant("fast")], undefined)).toStrictEqual(
+			{
+				fastMode: true,
+				fastModeBlocked: null,
+			},
+		);
 	});
 });
