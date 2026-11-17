@@ -18,8 +18,9 @@ import
 } from "@dnd-kit/sortable";
 import {CSS} from "@dnd-kit/utilities";
 import {ChevronRight} from "lucide-react";
-import {useId, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode} from "react";
+import {useContext, useId, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode} from "react";
 
+import {RailAsideClassContext} from "./rail-aside-class";
 import {animateRailDrop, blurOnPointerDragStart, lockRailDragToVerticalAxis} from "./rail-drag-physics";
 import {RAIL_CARD_CLASS, RAIL_SLOT_CLASS} from "./rail-row";
 import {railSectionAccessibility} from "./rail-section-accessibility";
@@ -292,6 +293,7 @@ function RailSection({
 export function SessionRail({sessionId, cards}: {sessionId: string; cards: readonly RailCard[]})
 {
 	const sections = useRailSectionsState();
+	const sizeClass = useContext(RailAsideClassContext);
 	const byId = new Map(cards.map((card) => [card.id, card]));
 	const shownIds = orderRailSections(
 		cards.filter((card) => !sections.hidden.includes(card.id)).map((card) => card.id),
@@ -351,7 +353,7 @@ export function SessionRail({sessionId, cards}: {sessionId: string; cards: reado
 			aria-label="Session details"
 			tabIndex={-1}
 			data-focus-region="session-details"
-			className="flex h-full min-h-0 w-[var(--session-rail-w,17.5rem)] flex-col font-sans outline-none"
+			className={`relative flex min-h-0 flex-col font-sans outline-none ${sizeClass}`}
 		>
 			<div
 				ref={listRef}

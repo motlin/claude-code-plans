@@ -52,6 +52,10 @@ class FakeObserver
 
 const unregisters: Array<() => void> = [];
 
+/** Upstream's `uo` card, with local's explicit border color and the 8px inset kept until rail-flat-section-dividers lands. */
+const OVERLAY_CARD_CLASS =
+	"flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-1 p-2 shadow-panel-md transition-opacity duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none starting:opacity-0";
+
 function registerKinds(...kinds: PaneKind[]): void
 {
 	for (const kind of kinds)
@@ -568,7 +572,7 @@ describe("session rail on a phone", () =>
 			trail: trail(),
 			docked: screen.getByTestId("docked").textContent,
 			body: within(overlay).getByText("rail body").tagName,
-			overlay: overlay.hasAttribute("data-session-rail-overlay"),
+			className: overlay.className,
 			card: overlay.firstElementChild?.className,
 		};
 		fireEvent.click(
@@ -608,8 +612,9 @@ describe("session rail on a phone", () =>
 					],
 					docked: "false",
 					body: "P",
-					overlay: true,
-					card: "flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-1 p-2 shadow-panel-md transition-opacity duration-200 ease-out motion-reduce:transition-none starting:opacity-0 [--session-rail-w:100%]",
+					className:
+						"absolute inset-y-0 end-[var(--titlebar-end-inset,0.5rem)] flex w-[var(--session-rail-w,17.5rem)] flex-col pt-3 pb-2 outline-none",
+					card: OVERLAY_CARD_CLASS,
 				},
 				closed: null,
 			},
@@ -776,7 +781,7 @@ describe("session rail fit by chat-panel width", () =>
 		);
 	}
 
-	function renderFitSession()
+	function renderFitSession(rail: () => ReactNode = () => <p>rail body</p>)
 	{
 		return render(
 			<SettingsProvider>
@@ -784,12 +789,43 @@ describe("session rail fit by chat-panel width", () =>
 					<FitTile>
 						<SessionPaneControls facts={{}} railAvailable />
 						<DockedProbe />
-						<p>transcript</p>
-						<SessionRailSlot sessionId="rail-session" render={() => <p>rail body</p>} />
+						<div data-session-scrollport="">
+							<p>transcript</p>
+							<div data-session-footer="">
+								<textarea aria-label="Prompt" />
+							</div>
+						</div>
+						<SessionRailSlot sessionId="rail-session" render={rail} />
 					</FitTile>
 				</TileHost>
 			</SettingsProvider>,
 		);
+	}
+
+	function raisedOverlay(): HTMLElement
+	{
+		return screen.getByRole(
+			"group",
+			{
+				name: "Session details",
+			},
+		);
+	}
+
+	async function raiseByKeyboard()
+	{
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Session rail",
+				},
+			),
+			{
+				detail: 0,
+			},
+		);
+		await settle();
 	}
 
 	function resizeTile(width: number)
@@ -882,7 +918,12 @@ describe("session rail fit by chat-panel width", () =>
 	it("doesn't dock below the fit and raises an unpersisted overlay from the toggle, as upstream", async () =>
 	{
 		setSessionRailShown(true);
-		renderFitSession();
+		vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement)
+		{
+			return this.hasAttribute("data-session-footer") ? 120 : 0;
+		});
+		const focus = vi.spyOn(HTMLElement.prototype, "focus");
+		renderFitSession(() => <SessionRail sessionId="rail-session" cards={CARDS} />);
 		await settle();
 		const before =
 		{
@@ -890,21 +931,8 @@ describe("session rail fit by chat-panel width", () =>
 			docked: screen.getByTestId("docked").textContent,
 			toggle: toggleState(),
 		};
-		fireEvent.click(
-			screen.getByRole(
-				"button",
-				{
-					name: "Session rail",
-				},
-			),
-		);
-		await settle();
-		const overlay = screen.getByRole(
-			"group",
-			{
-				name: "Session details",
-			},
-		);
+		await raiseByKeyboard();
+		const overlay = raisedOverlay();
 		const card = overlay.firstElementChild as HTMLElement;
 
 		expect(
@@ -915,11 +943,19 @@ describe("session rail fit by chat-panel width", () =>
 				{
 					id: overlay.id,
 					tabIndex: overlay.tabIndex,
+					attributes: overlay.getAttributeNames().toSorted(),
 					className: overlay.className,
+					bottom: overlay.style.bottom,
 					focused: document.activeElement === overlay,
+					focusCalls: focus.mock.calls.filter((_, index) => focus.mock.contexts[index] === overlay),
 					card: card.className,
 					flat: card.hasAttribute("data-session-rail-flat"),
-					body: within(overlay).getByText("rail body").tagName,
+					aside: within(overlay).getByRole(
+						"complementary",
+						{
+							name: "Session details",
+						},
+					).className,
 				},
 				stored: readSessionRailShown(),
 			},
@@ -948,12 +984,21 @@ describe("session rail fit by chat-panel width", () =>
 				{
 					id: overlay.id,
 					tabIndex: -1,
+					attributes: ["aria-label", "class", "id", "role", "style", "tabindex"],
 					className:
-						"absolute inset-y-0 end-3 z-10 flex w-[var(--session-rail-w,17.5rem)] flex-col pt-3 pb-2 outline-none",
+						"absolute inset-y-0 end-[var(--titlebar-end-inset,0.5rem)] flex w-[var(--session-rail-w,17.5rem)] flex-col pt-3 pb-2 outline-none",
+					bottom: "120px",
 					focused: true,
-					card: "flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-1 p-2 shadow-panel-md transition-opacity duration-200 ease-out motion-reduce:transition-none starting:opacity-0 [--session-rail-w:100%]",
+					focusCalls: [
+						[
+							{
+								preventScroll: true,
+							},
+						],
+					],
+					card: OVERLAY_CARD_CLASS,
 					flat: true,
-					body: "P",
+					aside: "relative flex min-h-0 flex-col font-sans outline-none h-full w-full rounded-[inherit]",
 				},
 				stored: true,
 			},
@@ -1031,6 +1076,293 @@ describe("session rail fit by chat-panel width", () =>
 					controls: toggle.getAttribute("aria-controls"),
 				},
 				stored: false,
+			},
+		);
+	});
+
+	it("keeps focus on the toggle when a mouse click raises the overlay, as upstream", async () =>
+	{
+		renderFitSession();
+		await settle();
+		const toggle = screen.getByRole(
+			"button",
+			{
+				name: "Session rail",
+			},
+		);
+		toggle.focus();
+		fireEvent.click(
+			toggle,
+			{
+				detail: 1,
+			},
+		);
+		await settle();
+
+		expect(
+			{
+				overlay: raisedOverlay().id,
+				focusedToggle: document.activeElement === toggle,
+			},
+		).toStrictEqual(
+			{
+				overlay: toggle.getAttribute("aria-controls"),
+				focusedToggle: true,
+			},
+		);
+	});
+
+	it("lowers on Escape from the composer, leaving focus there and stopping the key", async () =>
+	{
+		renderFitSession();
+		await settle();
+		await raiseByKeyboard();
+		const prompt = screen.getByRole(
+			"textbox",
+			{
+				name: "Prompt",
+			},
+		);
+		prompt.focus();
+		const bubbled = vi.fn<(event: KeyboardEvent) => void>();
+		document.addEventListener("keydown", bubbled);
+		const notCancelled = fireEvent.keyDown(
+			prompt,
+			{
+				key: "Escape",
+			},
+		);
+		document.removeEventListener("keydown", bubbled);
+		await settle();
+
+		expect(
+			{
+				overlay: screen.queryByRole(
+					"group",
+					{
+						name: "Session details",
+					},
+				),
+				focusKept: document.activeElement === prompt,
+				notCancelled,
+				bubbled: bubbled.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				overlay: null,
+				focusKept: true,
+				notCancelled: false,
+				bubbled: 0,
+			},
+		);
+	});
+
+	it("keeps the overlay for an Escape already handled or focused in another layer, and for a press in another layer", async () =>
+	{
+		renderFitSession();
+		await settle();
+		await raiseByKeyboard();
+		const layer = document.createElement("div");
+		const item = document.createElement("button");
+		layer.append(item);
+		document.body.append(layer);
+		const handled = (event: KeyboardEvent) =>
+		{
+			event.preventDefault();
+		};
+		window.addEventListener("keydown", handled, true);
+		fireEvent.keyDown(
+			raisedOverlay(),
+			{
+				key: "Escape",
+			},
+		);
+		window.removeEventListener("keydown", handled, true);
+		await settle();
+		const afterHandled = raisedOverlay().id;
+		item.focus();
+		fireEvent.keyDown(
+			item,
+			{
+				key: "Escape",
+			},
+		);
+		await settle();
+		const afterLayerEscape = raisedOverlay().id;
+		fireEvent.pointerDown(item);
+		await settle();
+		const afterLayerPress = raisedOverlay().id;
+		layer.remove();
+
+		expect([afterHandled, afterLayerEscape, afterLayerPress]).toStrictEqual([
+			raisedOverlay().id,
+			raisedOverlay().id,
+			raisedOverlay().id,
+		]);
+	});
+
+	it("keeps the overlay for a mouse press on a scrollbar, but not for a touch there", async () =>
+	{
+		renderFitSession();
+		await settle();
+		await raiseByKeyboard();
+		const transcript = screen.getByText("transcript");
+		vi.spyOn(transcript, "clientWidth", "get").mockReturnValue(100);
+		vi.spyOn(transcript, "clientHeight", "get").mockReturnValue(40);
+		const onScrollbar = (pointerType: string) =>
+		{
+			const event = new MouseEvent(
+				"pointerdown",
+				{
+					bubbles: true,
+					cancelable: true,
+				},
+			);
+			Object.defineProperties(
+				event,
+				{
+					pointerType:
+					{
+						value: pointerType,
+					},
+					offsetX:
+					{
+						value: 104,
+					},
+					offsetY:
+					{
+						value: 10,
+					},
+				},
+			);
+			fireEvent(transcript, event);
+		};
+		onScrollbar("mouse");
+		await settle();
+		const afterMouse =
+			screen.queryByRole(
+				"group",
+				{
+					name: "Session details",
+				},
+			) !== null;
+		onScrollbar("touch");
+		await settle();
+
+		expect(
+			{
+				afterMouse,
+				afterTouch: screen.queryByRole(
+					"group",
+					{
+						name: "Session details",
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				afterMouse: true,
+				afterTouch: null,
+			},
+		);
+	});
+
+	it("forwards vertical wheel input over the card to the transcript, as upstream", async () =>
+	{
+		renderFitSession(() => (
+			<div>
+				<p>rail body</p>
+				<div
+					data-testid="rail-scroller"
+					style={
+					{
+						overflowY: "auto",
+					}}
+				>
+					<p>scrolling card</p>
+				</div>
+			</div>
+		));
+		await settle();
+		await raiseByKeyboard();
+		const scrollport = document.querySelector<HTMLElement>("[data-session-scrollport]");
+		if (scrollport === null) throw new Error("no scrollport");
+		const scrollBy = vi.fn<(options: ScrollToOptions) => void>();
+		Object.defineProperty(
+			scrollport,
+			"scrollBy",
+			{
+				value: scrollBy,
+			},
+		);
+		const wheels: Array<[number, number, number]> = [];
+		scrollport.addEventListener("wheel", (event) =>
+		{
+			wheels.push([event.deltaX, event.deltaY, event.deltaMode]);
+		});
+		const railScroller = screen.getByTestId("rail-scroller");
+		vi.spyOn(railScroller, "scrollHeight", "get").mockReturnValue(400);
+		vi.spyOn(railScroller, "clientHeight", "get").mockReturnValue(100);
+		const body = screen.getByText("rail body");
+		fireEvent.wheel(
+			body,
+			{
+				deltaY: 120,
+			},
+		);
+		fireEvent.wheel(
+			screen.getByText("scrolling card"),
+			{
+				deltaY: 120,
+			},
+		);
+		fireEvent.wheel(
+			body,
+			{
+				deltaY: 120,
+				ctrlKey: true,
+			},
+		);
+		fireEvent.wheel(
+			body,
+			{
+				deltaY: 10,
+				deltaX: 40,
+			},
+		);
+		fireEvent.wheel(
+			body,
+			{
+				deltaY: 3,
+				deltaMode: 1,
+			},
+		);
+
+		expect(
+			{
+				scrolled: scrollBy.mock.calls,
+				wheels,
+			},
+		).toStrictEqual(
+			{
+				scrolled: [
+					[
+						{
+							top: 120,
+							left: 0,
+						},
+					],
+					[
+						{
+							top: 48,
+							left: 0,
+						},
+					],
+				],
+				wheels: [
+					[0, 120, 0],
+					[0, 3, 1],
+				],
 			},
 		);
 	});
@@ -1354,7 +1686,12 @@ describe("session rail fit by chat-panel width", () =>
 
 			expect(
 				{
-					overlay: document.querySelector("[data-session-rail-overlay]"),
+					overlay: screen.queryByRole(
+						"group",
+						{
+							name: "Session details",
+						},
+					),
 					column: document.querySelector("[data-epitaxy-rail-column]") !== null,
 				},
 			).toStrictEqual(
@@ -1372,7 +1709,12 @@ describe("session rail fit by chat-panel width", () =>
 			await settle();
 			const prompt = focusedPrompt();
 			await requestContext();
-			const overlay = document.querySelector<HTMLElement>("[data-session-rail-overlay]");
+			const overlay = screen.queryByRole(
+				"group",
+				{
+					name: "Session details",
+				},
+			);
 			const raised =
 			{
 				role: overlay?.getAttribute("role"),
@@ -1390,7 +1732,12 @@ describe("session rail fit by chat-panel width", () =>
 					raised,
 					lowered:
 					{
-						overlay: document.querySelector("[data-session-rail-overlay]"),
+						overlay: screen.queryByRole(
+							"group",
+							{
+								name: "Session details",
+							},
+						),
 						stored: readSessionRailShown(),
 						pressed: toggleState().pressed,
 					},
@@ -1440,7 +1787,12 @@ describe("session rail fit by chat-panel width", () =>
 
 			expect(
 				{
-					overlay: document.querySelector("[data-session-rail-overlay]"),
+					overlay: screen.queryByRole(
+						"group",
+						{
+							name: "Session details",
+						},
+					),
 					column: document.querySelector("[data-epitaxy-rail-column]"),
 					stored: readSessionRailShown(),
 				},
@@ -1462,7 +1814,13 @@ describe("session rail fit by chat-panel width", () =>
 
 			expect(
 				{
-					overlay: document.querySelector("[data-session-rail-overlay]") !== null,
+					overlay:
+						screen.queryByRole(
+							"group",
+							{
+								name: "Session details",
+							},
+						) !== null,
 					focusKept: document.activeElement === prompt,
 					toggle: toggleState().expanded,
 				},
@@ -1486,7 +1844,14 @@ describe("session rail fit by chat-panel width", () =>
 			});
 			await settle();
 
-			expect(document.querySelector("[data-session-rail-overlay]")).toBe(null);
+			expect(
+				screen.queryByRole(
+					"group",
+					{
+						name: "Session details",
+					},
+				),
+			).toBe(null);
 		});
 	});
 });

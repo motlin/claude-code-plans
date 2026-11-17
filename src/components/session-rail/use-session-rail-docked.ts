@@ -14,9 +14,9 @@ export interface SessionRailFit
 	measureRef: (node: HTMLElement | null) => void;
 	/** Upstream's raised overlay: local, never the persisted rail flag. */
 	raised: boolean;
-	/** Raises or lowers the overlay; a raise focuses it unless `focusOnOpen` is false (a command's raise keeps the composer focused). */
+	/** Raises or lowers the overlay; a raise focuses it only when `focusOnOpen` is true (a keyboard or menu open, not a mouse click or a command). */
 	setRaised: (raised: boolean, focusOnOpen?: boolean) => void;
-	/** Whether the overlay takes focus when it opens: the toggle's raise does, a command's doesn't. */
+	/** Whether the overlay takes focus when it opens: a keyboard or menu raise does; a mouse click or a command doesn't. */
 	focusOnOpen: boolean;
 	/** Upstream's `yq`: a command raised the overlay over a rail that fits but is hidden (or swapped out, or off on a phone). */
 	commandRaised: boolean;

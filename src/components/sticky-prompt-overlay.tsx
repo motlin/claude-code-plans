@@ -1,4 +1,5 @@
 import {useEffect, useRef, useState, type WheelEvent as ReactWheelEvent} from "react";
+import {forwardWheel} from "../lib/forward-wheel";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 
 /** A prompt the bubble can show: its transcript entry and its tail-clipped, masked text. */
@@ -73,12 +74,6 @@ function currentPromptKey(scroller: HTMLElement, candidates: readonly StickyProm
 		straddling = box.bottom - paddingBottom > line;
 	}
 	return current !== null && !straddling ? current.key : null;
-}
-
-/** Upstream ca80fca8d `Pi`: the pixels one wheel step scrolls for each deltaMode. */
-function wheelUnit(deltaMode: number): number
-{
-	return deltaMode === 1 ? 16 : deltaMode === 2 ? 800 : 1;
 }
 
 /**
@@ -173,25 +168,18 @@ export function StickyPromptOverlay({
 
 	if (shown === undefined) return null;
 
-	const forwardWheel = (event: ReactWheelEvent<HTMLDivElement>) =>
+	const onWheel = (event: ReactWheelEvent<HTMLDivElement>) =>
 	{
 		const scroller = getScroller();
 		if (!scroller || event.ctrlKey) return;
-		scroller.dispatchEvent(new WheelEvent(event.type, event.nativeEvent));
-		const unit = wheelUnit(event.deltaMode);
-		scroller.scrollBy(
-			{
-				top: event.deltaY * unit,
-				left: event.deltaX * unit,
-			},
-		);
+		forwardWheel(scroller, event);
 	};
 
 	return (
 		<div
 			ref={overlayRef}
 			className="absolute top-0 inset-x-0 z-[12] pointer-events-none draggable-none"
-			onWheel={forwardWheel}
+			onWheel={onWheel}
 		>
 			<div className={`epitaxy-transcript-typography ${CHAT_COLUMN_CLASS} flex justify-start`}>
 				<button

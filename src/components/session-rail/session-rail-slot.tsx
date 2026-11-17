@@ -7,17 +7,19 @@ import
 	useLayoutEffect,
 	useRef,
 	useState,
-	type CSSProperties,
 	type FocusEvent,
 	type ReactNode,
 	type RefObject,
+	type WheelEvent,
 } from "react";
 
+import {forwardWheel} from "../../lib/forward-wheel";
 import {useRailRaiseRequest} from "../../lib/session-rail-store";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {TITLEBAR_ICON_BUTTON_CLASS} from "../titlebar-classes";
 import {MenuItem} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
+import {RailAsideClassContext} from "./rail-aside-class";
 import
 {
 	SessionRailFitContext,
@@ -46,11 +48,12 @@ function useSessionRailToggle()
 		commandRaised,
 		pressed,
 		label: pressed ? "Hide session rail" : "Show session rail",
-		toggle: () =>
+		/** `focus`: upstream `Hn` moves focus into a raised overlay only for a keyboard open (click detail 0). */
+		toggle: (focus = true) =>
 		{
 			if (raise !== null)
 			{
-				raise.setRaised(!raise.raised);
+				raise.setRaised(!raise.raised, focus);
 			}
 			else if (commandRaised)
 			{
@@ -90,7 +93,10 @@ export function SessionRailToggle({
 							"aria-expanded": raise?.raised ?? true,
 							"aria-controls": controlsOverlay.overlayId,
 						})}
-				onClick={toggle}
+				onClick={(event) =>
+				{
+					toggle(event.detail === 0);
+				}}
 				onFocus={onFocus}
 				onBlur={onBlur}
 				className={TITLEBAR_ICON_BUTTON_CLASS}
@@ -106,7 +112,13 @@ export function SessionRailMenuItem()
 {
 	const {label, toggle} = useSessionRailToggle();
 	return (
-		<MenuItem icon={<PanelRight aria-hidden="true" />} onSelect={toggle}>
+		<MenuItem
+			icon={<PanelRight aria-hidden="true" />}
+			onSelect={() =>
+			{
+				toggle();
+			}}
+		>
 			{label}
 		</MenuItem>
 	);
@@ -148,7 +160,6 @@ export function SessionRailSlot({sessionId, render}: {sessionId?: string; render
 		return (
 			<RaisedRailOverlay
 				id={fit.overlayId}
-				phone={phone}
 				focusOnOpen={false}
 				lower={fit.setCommandRaised}
 				toggleRef={fit.toggleRef}
@@ -197,7 +208,7 @@ function useCommandRaise(
 	}, [request, sessionId, fit, raise, visible]);
 }
 
-/** The composer dock's height, which the phone overlay ends 8px above. */
+/** The composer dock's height, which the overlay ends 8px above. */
 function useSessionFooterHeight(ref: RefObject<HTMLElement | null>): number
 {
 	const [height, setHeight] = useState(0);
@@ -219,22 +230,56 @@ function useSessionFooterHeight(ref: RefObject<HTMLElement | null>): number
 	return height;
 }
 
-/** Upstream's raised rail: one card floating over the chat tile's end, 12px in (8px on a phone). */
-function RailOverlay({
-	ref,
-	id,
-	phone = id === undefined,
-	style,
-	render,
-}: {
-	ref: RefObject<HTMLDivElement | null>;
-	id?: string;
-	phone?: boolean;
-	style?: CSSProperties;
-	render: () => ReactNode;
-})
+/**
+ * Upstream `Jq`/`Yq`: whether a wheel over the overlay belongs to a scroller inside it
+ * (or came from outside it), and so isn't forwarded to the transcript.
+ */
+function scrollsInsideOverlay(target: EventTarget, overlay: HTMLElement): boolean
 {
-	const end = phone ? "end-2" : "end-3";
+	if (!(target instanceof Element) || !overlay.contains(target)) return true;
+	for (
+		let element: Element | null = target;
+		element !== null && element !== overlay;
+		element = element.parentElement
+	)
+	{
+		if (element.scrollHeight <= element.clientHeight) continue;
+		const {overflowY} = getComputedStyle(element);
+		if (overflowY === "auto" || overflowY === "scroll") return true;
+	}
+	return false;
+}
+
+/** Upstream `Xq`: vertical wheel input over the card keeps scrolling the transcript under it. */
+function forwardOverlayWheel(event: WheelEvent<HTMLDivElement>): void
+{
+	const overlay = event.currentTarget;
+	if (
+		event.ctrlKey ||
+		event.deltaY === 0 ||
+		Math.abs(event.deltaY) <= Math.abs(event.deltaX) ||
+		scrollsInsideOverlay(event.target, overlay)
+	)
+		return;
+	const scroller = overlay.parentElement?.querySelector("[data-session-scrollport]");
+	if (scroller === null || scroller === undefined) return;
+	forwardWheel(
+		scroller,
+		{
+			deltaX: 0,
+			deltaY: event.deltaY,
+			deltaMode: event.deltaMode,
+		},
+	);
+}
+
+/**
+ * Upstream's raised rail (`Re` + `uo`): one card floating over the chat tile's end, 8px in
+ * through `--titlebar-end-inset`'s fallback, ending 8px above the composer dock.
+ */
+function RailOverlay({ref, id, render}: {ref: RefObject<HTMLDivElement | null>; id?: string; render: () => ReactNode})
+{
+	const footerHeight = useSessionFooterHeight(ref);
 	return (
 		<div
 			ref={ref}
@@ -242,31 +287,62 @@ function RailOverlay({
 			role="group"
 			aria-label="Session details"
 			tabIndex={-1}
-			data-session-rail-overlay=""
-			style={style}
-			className={`absolute inset-y-0 ${end} z-10 flex w-[var(--session-rail-w,17.5rem)] flex-col pt-3 pb-2 outline-none`}
+			onWheel={forwardOverlayWheel}
+			style={
+			{
+				bottom: footerHeight,
+			}}
+			className="absolute inset-y-0 end-[var(--titlebar-end-inset,0.5rem)] flex w-[var(--session-rail-w,17.5rem)] flex-col pt-3 pb-2 outline-none"
 		>
 			<div
 				data-session-rail-flat=""
-				className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-1 p-2 shadow-panel-md transition-opacity duration-200 ease-out motion-reduce:transition-none starting:opacity-0 [--session-rail-w:100%]"
+				// Local has no default border color, so `border-border` stays; `p-2` goes with rail-flat-section-dividers.
+				className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-1 p-2 shadow-panel-md transition-opacity duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none starting:opacity-0"
 			>
-				<Suspense fallback={null}>{render()}</Suspense>
+				<RailAsideClassContext.Provider value="h-full w-full rounded-[inherit]">
+					<Suspense fallback={null}>{render()}</Suspense>
+				</RailAsideClassContext.Provider>
 			</div>
 		</div>
 	);
 }
 
-/** The raised overlay: focused on open when the toggle raised it; an outside pointerdown or Escape lowers it. */
+/**
+ * Upstream `uJ`: whether `element` sits in a different top-level layer than the overlay
+ * (a portaled menu, popover or tooltip), whose own handlers own the key or press.
+ */
+function inOtherLayer(element: Element, overlay: Element): boolean
+{
+	const body = overlay.ownerDocument.body;
+	if (element === body || !body.contains(element) || !body.contains(overlay)) return false;
+	let layer: Node = overlay;
+	while (layer.parentNode !== null && layer.parentNode !== body) layer = layer.parentNode;
+	return !layer.contains(element);
+}
+
+/** Upstream `dJ`: a mouse or pen press on the target's own scrollbar. */
+function onScrollbar(event: PointerEvent, target: Element): boolean
+{
+	if (event.pointerType === "touch") return false;
+	return (
+		(target.clientWidth > 0 && event.offsetX >= target.clientWidth) ||
+		(target.clientHeight > 0 && event.offsetY >= target.clientHeight)
+	);
+}
+
+/**
+ * Upstream `pJ` + `fJ`: the raised overlay, focused on open only when a keyboard raised it.
+ * Escape lowers it from anywhere but another layer; a pointerdown outside it, its toggle,
+ * another layer and a scrollbar lowers it too. Only an Escape from inside refocuses the toggle.
+ */
 function RaisedRailOverlay({
 	id,
-	phone = false,
 	focusOnOpen,
 	lower,
 	toggleRef,
 	render,
 }: {
 	id: string;
-	phone?: boolean;
 	focusOnOpen: boolean;
 	lower: (raised: false) => void;
 	toggleRef: RefObject<HTMLButtonElement | null>;
@@ -274,23 +350,44 @@ function RaisedRailOverlay({
 })
 {
 	const ref = useRef<HTMLDivElement>(null);
-	const footerHeight = useSessionFooterHeight(ref);
 	const focusOnOpenRef = useRef(focusOnOpen);
 	useEffect(() =>
 	{
 		const overlay = ref.current;
-		if (focusOnOpenRef.current) overlay?.focus();
+		if (overlay === null) return undefined;
+		if (focusOnOpenRef.current)
+			overlay.focus(
+				{
+					preventScroll: true,
+				},
+			);
 		const onPointerDown = (event: PointerEvent) =>
 		{
 			const target = event.target;
-			if (!(target instanceof Node) || overlay?.contains(target) || toggleRef.current?.contains(target)) return;
+			if (
+				!(target instanceof Element) ||
+				overlay.contains(target) ||
+				toggleRef.current?.contains(target) === true ||
+				inOtherLayer(target, overlay) ||
+				onScrollbar(event, target)
+			)
+				return;
 			lower(false);
 		};
 		const onKeyDown = (event: KeyboardEvent) =>
 		{
-			if (event.key !== "Escape" || event.defaultPrevented || !overlay?.contains(document.activeElement)) return;
+			if (event.key !== "Escape" || event.defaultPrevented) return;
+			const active = document.activeElement;
+			if (active !== null && inOtherLayer(active, overlay)) return;
+			event.preventDefault();
+			event.stopPropagation();
 			lower(false);
-			toggleRef.current?.focus();
+			if (overlay.contains(active))
+				toggleRef.current?.focus(
+					{
+						preventScroll: true,
+					},
+				);
 		};
 		document.addEventListener("pointerdown", onPointerDown, true);
 		document.addEventListener("keydown", onKeyDown, true);
@@ -300,35 +397,12 @@ function RaisedRailOverlay({
 			document.removeEventListener("keydown", onKeyDown, true);
 		};
 	}, [lower, toggleRef]);
-	return phone ? (
-		<RailOverlay
-			ref={ref}
-			id={id}
-			phone
-			style={
-			{
-				bottom: footerHeight,
-			}}
-			render={render}
-		/>
-	) : (
-		<RailOverlay ref={ref} id={id} render={render} />
-	);
+	return <RailOverlay ref={ref} id={id} render={render} />;
 }
 
-/** Upstream's phone rail: the same card, ending 8px above the composer. */
+/** Upstream's phone rail: the same `pJ` card, since a phone's chat tile never fits the rail. */
 function PhoneRailOverlay({render}: {render: () => ReactNode})
 {
 	const ref = useRef<HTMLDivElement>(null);
-	const footerHeight = useSessionFooterHeight(ref);
-	return (
-		<RailOverlay
-			ref={ref}
-			style={
-			{
-				bottom: footerHeight,
-			}}
-			render={render}
-		/>
-	);
+	return <RailOverlay ref={ref} render={render} />;
 }
