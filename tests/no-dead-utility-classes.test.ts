@@ -72,6 +72,8 @@ const ALLOWLIST: Record<string, string> =
 	"df-nav-scroll-box": HOOK,
 	"df-session-list": HOOK,
 	"df-sortable-section": HOOK,
+	"epitaxy-markdown-inherit-color":
+		"upstream's `.epitaxy-markdown-inherit-color .epitaxy-markdown{color:inherit}`; local inline markdown sets no color",
 	"epitaxy-answer-option": HOOK,
 	"epitaxy-approval-actions": HOOK,
 	"epitaxy-approval-card":

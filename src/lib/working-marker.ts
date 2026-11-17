@@ -845,6 +845,17 @@ export function turnTokenEstimate(records: readonly unknown[]): number
 	return turnTokenUsage(records).tokens;
 }
 
+/** Whether a raw main-thread record is a real prompt (a turn's start) or a turn end (turn_duration or an interrupt). */
+export function turnBoundaryKind(raw: unknown): "prompt" | "stop" | null
+{
+	const parsed = MarkerRecordSchema.safeParse(raw);
+	if (!parsed.success || parsed.data.isSidechain === true) return null;
+	const record = parsed.data;
+	const event =
+		record.type === "user" ? userEvent(record, 0) : record.type === "system" ? systemEvent(record, 0) : null;
+	return event?.kind === "prompt" || event?.kind === "stop" ? event.kind : null;
+}
+
 /** The main thread's turn signals from raw JSONL records, oldest first. */
 export function markerEventsFromRecords(records: readonly unknown[]): WorkingMarkerEvent[]
 {

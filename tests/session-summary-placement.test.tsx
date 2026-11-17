@@ -1519,6 +1519,157 @@ describe("SessionPage dock composition", () =>
 			},
 		);
 	});
+	function planTurnRecords(pendingBash: boolean): Record<string, unknown>[]
+	{
+		return [
+			{
+				type: "user",
+				uuid: "u1",
+				sessionId: SESSION_ID,
+				timestamp: "2026-09-28T10:00:00.000Z",
+				message:
+				{
+					role: "user",
+					content: "Fabricated prompt: fix the loader.",
+				},
+			},
+			{
+				type: "assistant",
+				uuid: "a1",
+				sessionId: SESSION_ID,
+				timestamp: "2026-09-28T10:00:01.000Z",
+				message:
+				{
+					role: "assistant",
+					content: [
+						{
+							type: "tool_use",
+							id: "toolu_plan",
+							name: "TodoWrite",
+							input:
+							{
+								todos: [
+									{
+										content: "Read the loader",
+										status: "completed",
+										activeForm: "Reading the loader",
+									},
+									{
+										content: "Fix the loader",
+										status: "in_progress",
+										activeForm: "Fixing the loader",
+									},
+								],
+							},
+						},
+					],
+				},
+			},
+			{
+				type: "user",
+				uuid: "r1",
+				sessionId: SESSION_ID,
+				timestamp: "2026-09-28T10:00:02.000Z",
+				message:
+				{
+					role: "user",
+					content: [
+						{
+							type: "tool_result",
+							tool_use_id: "toolu_plan",
+							content: "Todos have been modified successfully.",
+						},
+					],
+				},
+			},
+			{
+				type: "assistant",
+				uuid: "a2",
+				sessionId: SESSION_ID,
+				timestamp: "2026-09-28T10:00:03.000Z",
+				message:
+				{
+					role: "assistant",
+					content: pendingBash
+						? [
+								{
+									type: "tool_use",
+									id: "toolu_running",
+									name: "Bash",
+									input:
+									{
+										command: "ls",
+										description: "List files",
+									},
+								},
+							]
+						: [
+								{
+									type: "text",
+									text: "Fabricated reply: on it.",
+								},
+							],
+				},
+			},
+		];
+	}
+	const PLAN_GRID_CLASS =
+		"grid grid-cols-[minmax(0,1fr)] gap-y-[var(--chat-turn-gap,15px)] [&>*]:min-w-0 [&>:empty]:invisible [&>:empty]:[grid-area:1/1] [&>[data-quiet]]:[grid-area:1/1] [&>[data-turn-mark-outlet]]:[grid-area:1/1] [&>[data-turn-working=true]:not(.invisible)]:[grid-area:1/1] [&:has(>[data-turn-working=true]:not(.invisible))>[data-turn-mark-outlet]]:invisible";
+	it("draws the live todo plan box in the transcript tail and moves the one working line into the grid below it", async () =>
+	{
+		await renderSessionPage(detail, [], seedWorking, planTurnRecords(false));
+		await flush();
+		const slot = screen.getByTestId("transcript-tail-slot");
+		const lines = document.querySelectorAll('[data-testid="code-working-line"]');
+		const grid = lines[0]?.parentElement;
+		expect(
+			{
+				slot: [slot.className, slot.hasAttribute("data-find-omitted")],
+				items: [...slot.querySelectorAll("li")].map((item) => item.getAttribute("data-todo-status")),
+				spinning: slot.querySelectorAll("[data-running-spinner]").length,
+				lines: lines.length,
+				lineInTranscript: lines[0]?.closest('[data-testid="transcript-row"]') !== null,
+				gridClass: grid?.className,
+				gridAfterSlot:
+					grid !== null &&
+					grid !== undefined &&
+					(slot.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+				outlets: document.querySelectorAll("[data-turn-mark-outlet]").length,
+			},
+		).toStrictEqual(
+			{
+				slot: ["chat-column w-full empty:hidden", true],
+				items: ["completed", "in_progress"],
+				spinning: 1,
+				lines: 1,
+				lineInTranscript: false,
+				gridClass: PLAN_GRID_CLASS,
+				gridAfterSlot: true,
+				outlets: 1,
+			},
+		);
+	});
+	it("carries the in-flight row into the outlet below the plan box, as upstream's plan claimer", async () =>
+	{
+		await renderSessionPage(detail, [], seedWorking, planTurnRecords(true));
+		await flush();
+		const outlet = document.querySelector("[data-turn-mark-outlet]");
+		expect(
+			{
+				carried: outlet?.querySelector("[data-turn-mark-box] [data-tool-row] [data-cds=WorkingMark]") !== null,
+				lineBesideOutlet:
+					document.querySelector('[data-testid="code-working-line"]')?.parentElement ===
+					outlet?.parentElement,
+				quiet: document.querySelector('[data-testid="code-working-line"]')?.getAttribute("data-quiet"),
+			},
+		).toStrictEqual(
+			{
+				carried: true,
+				lineBesideOutlet: true,
+				quiet: "true",
+			},
+		);
+	});
 	function seedWorking(queryClient: QueryClient)
 	{
 		seedUsage(queryClient);

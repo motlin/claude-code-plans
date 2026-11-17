@@ -313,8 +313,11 @@ import
 import {compactActionState} from "../lib/compact-action";
 import {TerminalWritesTipProvider} from "./terminal-writes-tip";
 import {TurnMarkOutlet, TurnMarkOutletProvider} from "./turn-mark-outlet";
+import {TurnPlanBoxCard} from "./turn-plan-box";
 import {useTurnMarkStore} from "./turn-mark-context";
 import {markedRowBelowTailSlot} from "../lib/turn-mark-outlet";
+import {usePlanExitHold} from "../lib/plan-exit-hold";
+import {planHoldsLoader, turnPlanBox, turnPlanState} from "../lib/turn-plan-box";
 import {useSessionMentionProvider} from "../hooks/use-session-mention-provider";
 import {sessionMentionsQueryOptions} from "../lib/api/session-mentions";
 import {userTextHasSessionMention} from "../lib/mention-sessions";
@@ -2507,25 +2510,39 @@ function SessionView({
 			toolLabelEndedAt,
 		],
 	);
-	// Upstream `pf`: while the docked permission card holds the tail of a running turn, the marked row is carried below it.
-	const cardHoldsTail = pendingPermission !== null && workingMarkerState.status !== "idle";
+	// Upstream's live todo plan box (`ri` → `FS`, task path): the session's checklist in the transcript tail while
+	// the turn works on it, or while calls it launched still run after it ends.
+	const turnResponding = workingMarkerState.status !== "idle";
+	const planState = useMemo(
+		() => turnPlanState(transcript.records, planModel.todos, new Set(runningBackgroundLaunches.keys())),
+		[transcript.records, planModel.todos, runningBackgroundLaunches],
+	);
+	const planBox = turnPlanBox(planState, turnResponding);
+	const planHolds = planHoldsLoader(planBox);
+	const shownPlan = usePlanExitHold(planBox?.todos ?? null, planBox?.working === true);
+	// Upstream `pf`: while the docked permission card or the plan box holds the tail of a running turn, the marked
+	// row is carried below it.
+	const cardHoldsTail = pendingPermission !== null && turnResponding;
 	const markedRow = markedRowBelowTailSlot(
 		{
 			cardHoldsTail,
-			planHoldsLoader: false,
+			planHoldsLoader: planHolds,
 			heldRedialReported: false,
 		},
 	);
+	// Upstream `busyLineBelowTailSlot`: the line moves into the tail chrome's grid below the card or plan box.
+	const lineBelowTailSlot = planHolds || (workingLineFollowsTranscript && cardHoldsTail);
+	const lineAfterTranscript = workingLineFollowsTranscript || planHolds;
 	// Upstream `aDe`'s `yieldFor`: the line below the tail slot takes the mark when no row is carried there.
-	const lineTakesMark = workingLineFollowsTranscript && cardHoldsTail && markedRow === false;
+	const lineTakesMark = lineBelowTailSlot && turnResponding && markedRow === false;
 	const lineYieldId = useId();
 	useEffect(
 		() => (lineTakesMark ? turnMarkStore.yieldFor(lineYieldId) : undefined),
 		[turnMarkStore, lineYieldId, lineTakesMark],
 	);
 	const transcriptTail = useMemo(
-		() => (workingLineFollowsTranscript ? null : workingLine(true)),
-		[workingLineFollowsTranscript, workingLine],
+		() => (lineAfterTranscript ? null : workingLine(true)),
+		[lineAfterTranscript, workingLine],
 	);
 
 	return (
@@ -3367,15 +3384,36 @@ function SessionView({
 											/>
 										)}
 
-										{workingLineFollowsTranscript &&
-											(cardHoldsTail ? (
+										{shownPlan.todos !== null && (
+											// Upstream's tail slot (`transcript-tail-slot`), which the turn box portals into.
+											<div
+												data-testid="transcript-tail-slot"
+												data-find-omitted=""
+												className={`${CHAT_COLUMN_CLASS} w-full empty:hidden`}
+											>
+												<TurnPlanBoxCard
+													sessionId={sessionId}
+													todos={shownPlan.todos}
+													closing={shownPlan.closing}
+													stale={planBox?.stale ?? false}
+													working={planBox?.working ?? false}
+													parked={compactInFlight}
+													agentsRunning={planState.agentsRunning}
+													isResponding={turnResponding}
+												/>
+											</div>
+										)}
+										{lineAfterTranscript &&
+											(lineBelowTailSlot ? (
 												// Upstream's tail chrome (`si`): the outlet and a quiet working line share one grid cell.
 												<div
 													data-transcript-tail-chrome=""
 													data-find-omitted=""
 													className={`${CHAT_COLUMN_CLASS} flex w-full flex-col gap-[var(--chat-turn-gap)] pt-[var(--chat-turn-gap)] empty:hidden`}
 												>
-													<div className="grid grid-cols-[minmax(0,1fr)] gap-y-[var(--chat-turn-gap,15px)] [&>*]:min-w-0 [&>:empty]:invisible [&>:empty]:[grid-area:1/1] [&>[data-quiet]]:[grid-area:1/1] [&>[data-turn-mark-outlet]]:[grid-area:1/1]">
+													<div
+														className={`grid grid-cols-[minmax(0,1fr)] gap-y-[var(--chat-turn-gap,15px)] [&>*]:min-w-0 [&>:empty]:invisible [&>:empty]:[grid-area:1/1] [&>[data-quiet]]:[grid-area:1/1] [&>[data-turn-mark-outlet]]:[grid-area:1/1]${planHolds ? " [&>[data-turn-working=true]:not(.invisible)]:[grid-area:1/1] [&:has(>[data-turn-working=true]:not(.invisible))>[data-turn-mark-outlet]]:invisible" : ""}`}
+													>
 														{markedRow !== false && (
 															<TurnMarkOutlet
 																className="empty:hidden"
