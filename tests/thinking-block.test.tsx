@@ -421,9 +421,12 @@ describe("thinking step, opened in place", () =>
 				label: toolbar?.getAttribute("aria-label"),
 				size: toolbar?.getAttribute("data-size"),
 				tabIndex: toolbar?.getAttribute("tabindex"),
-				buttons: Array.from(toolbar?.querySelectorAll("button") ?? []).map((button) =>
-					button.getAttribute("aria-label"),
-				),
+				toolbarClass: toolbar?.className,
+				buttons: Array.from(toolbar?.querySelectorAll("button") ?? []).map((button) => (
+				{
+					label: button.getAttribute("aria-label"),
+					tabIndex: button.getAttribute("tabindex"),
+				})),
 			},
 		).toStrictEqual(
 			{
@@ -436,7 +439,14 @@ describe("thinking step, opened in place", () =>
 				label: "Thinking actions",
 				size: "xs",
 				tabIndex: "-1",
-				buttons: ["Copy as quote"],
+				toolbarClass:
+					"flex items-center select-none [&_button:hover:not([aria-pressed=true]):not(:disabled)]:text-primary pointer-coarse:h-6 [@media(hover:none)]:h-6 pointer-coarse:[&_button]:size-8 [@media(hover:none)]:[&_button]:size-8",
+				buttons: [
+					{
+						label: "Copy as quote",
+						tabIndex: "0",
+					},
+				],
 			},
 		);
 	});
@@ -574,7 +584,22 @@ describe("thinking step, copy as quote", () =>
 		expect(writeText.mock.calls).toStrictEqual([["> **Thinking** (~1 tok)\n>\n> a\n>\n> b"]]);
 	});
 
-	it("shows a Copied success toast after copying the thinking quote", () =>
+	it("splits the quote's lines on CR, CRLF, U+2028 and U+2029 as well as LF", () =>
+	{
+		const writeText = stubClipboard();
+		renderThinking(
+			{
+				thinking: "a\r\nb\u2028\u2029c",
+			},
+		);
+		openStep();
+
+		fireEvent.click(screen.getByLabelText("Copy as quote"));
+
+		expect(writeText.mock.calls).toStrictEqual([["> **Thinking** (~2 tok)\n>\n> a\n> b\n>\n> c"]]);
+	});
+
+	it("shows a Copied success toast after copying the thinking quote", async () =>
 	{
 		stubClipboard();
 		const toast = vi.fn<(options: ToastOptions) => void>();
@@ -585,7 +610,11 @@ describe("thinking step, copy as quote", () =>
 		);
 		openStep();
 
-		fireEvent.click(screen.getByLabelText("Copy as quote"));
+		await act(async () =>
+		{
+			fireEvent.click(screen.getByLabelText("Copy as quote"));
+			await Promise.resolve();
+		});
 
 		expect(toast.mock.calls).toStrictEqual([
 			[
@@ -597,7 +626,7 @@ describe("thinking step, copy as quote", () =>
 		]);
 	});
 
-	it("relabels the thinking quote button Copied with a check icon for 2000ms after a click", () =>
+	it("relabels the thinking quote button Copied with a check icon for 2000ms after a click", async () =>
 	{
 		vi.useFakeTimers();
 		try
@@ -613,7 +642,11 @@ describe("thinking step, copy as quote", () =>
 			});
 			const idle = state();
 
-			fireEvent.click(button);
+			await act(async () =>
+			{
+				fireEvent.click(button);
+				await Promise.resolve();
+			});
 			const copied = state();
 			act(() =>
 			{
@@ -869,9 +902,90 @@ describe("thinking step, collapse focus return", () =>
 	});
 });
 
+describe("thinking step, expansion across views", () =>
+{
+	function expanded(): string | null
+	{
+		return toggle().getAttribute("aria-expanded");
+	}
+
+	it("forces every step open in Verbose, where the toggle does nothing and stores nothing", () =>
+	{
+		const {rerender} = render(
+			chatFor(
+				{
+					transcriptMode: "thinking",
+				},
+			),
+		);
+		const thinkingDefault = expanded();
+		rerender(
+			chatFor(
+				{
+					transcriptMode: "verbose",
+				},
+			),
+		);
+		const verbose = expanded();
+		fireEvent.click(toggle());
+		const verboseAfterClick = expanded();
+		rerender(
+			chatFor(
+				{
+					transcriptMode: "thinking",
+				},
+			),
+		);
+
+		expect(
+			{
+				thinkingDefault,
+				verbose,
+				verboseAfterClick,
+				thinkingAgain: expanded(),
+			},
+		).toStrictEqual(
+			{
+				thinkingDefault: "false",
+				verbose: "true",
+				verboseAfterClick: "true",
+				thinkingAgain: "false",
+			},
+		);
+	});
+
+	it("keeps a step the user opened in the Thinking view open after a Verbose round trip", () =>
+	{
+		const {rerender} = render(
+			chatFor(
+				{
+					transcriptMode: "thinking",
+				},
+			),
+		);
+		openStep();
+		rerender(
+			chatFor(
+				{
+					transcriptMode: "verbose",
+				},
+			),
+		);
+		rerender(
+			chatFor(
+				{
+					transcriptMode: "thinking",
+				},
+			),
+		);
+
+		expect(expanded()).toBe("true");
+	});
+});
+
 describe("omitted and empty thinking", () =>
 {
-	it("shows a Thinking hidden placeholder under the duration label when the thinking display is omitted", () =>
+	it("draws omitted thinking as a label-only Thinking hidden step with the duration as the row's title", () =>
 	{
 		const container = renderThinking(
 			{
@@ -880,28 +994,43 @@ describe("omitted and empty thinking", () =>
 				thinkingDurationMs: 871,
 			},
 		);
-
-		const placeholder = screen.getByText("Thinking hidden");
-		const rail = placeholder.parentElement;
+		const label = row().querySelector('span[dir="auto"]');
 
 		expect(
 			{
-				placeholderClass: placeholder.className,
-				railClass: rail?.className,
-				railText: Array.from(rail?.children ?? []).map((child) => child.textContent),
+				cds: step().getAttribute("data-cds"),
+				state: step().getAttribute("data-state"),
+				rowTokens: hasTokens(row(), "group/step items-center select-none relative isolate rounded"),
+				title: row().getAttribute("title"),
+				label: label?.textContent,
+				labelClass: label?.className,
+				toggles: container.querySelectorAll("[data-cds-row-toggle]").length,
+				panels: container.querySelectorAll("[data-cds-row-panel]").length,
+				rail: container.querySelectorAll(".border-l-2").length,
+				italic: container.querySelectorAll(".italic").length,
+				durations: screen.queryAllByText(/^Thought for/).length,
 				copyButtons: container.querySelectorAll('button[aria-label="Copy as quote"]').length,
 			},
 		).toStrictEqual(
 			{
-				placeholderClass: "text-body text-t6 italic",
-				railClass: "border-l-2 border-t2 pl-3",
-				railText: ["Thought for 0.9s", "Thinking hidden"],
+				cds: "TurnStatusStep",
+				state: "done",
+				rowTokens: true,
+				title: "Thought for 0.9s",
+				label: "Thinking hidden",
+				labelClass:
+					"min-w-0 overflow-x-clip text-ellipsis whitespace-nowrap py-[0.125em] -my-[0.125em] text-secondary",
+				toggles: 0,
+				panels: 0,
+				rail: 0,
+				italic: 0,
+				durations: 0,
 				copyButtons: 0,
 			},
 		);
 	});
 
-	it("shows the Thinking hidden placeholder without a duration label when the turn has no thinking duration", () =>
+	it("draws the Thinking hidden step without a row title when the turn has no thinking duration", () =>
 	{
 		renderThinking(
 			{
@@ -912,13 +1041,13 @@ describe("omitted and empty thinking", () =>
 
 		expect(
 			{
-				placeholders: screen.queryAllByText("Thinking hidden").length,
-				durations: screen.queryAllByText(/^Thought for/).length,
+				label: row().textContent,
+				title: row().hasAttribute("title"),
 			},
 		).toStrictEqual(
 			{
-				placeholders: 1,
-				durations: 0,
+				label: "Thinking hidden",
+				title: false,
 			},
 		);
 	});
@@ -956,6 +1085,62 @@ describe("omitted and empty thinking", () =>
 			{
 				placeholders: 0,
 				steps: 0,
+			},
+		);
+	});
+});
+
+describe("thinking actions reveal", () =>
+{
+	// Whitespace-insensitive: the formatter wraps long selectors inside :not( … ).
+	const css = readFileSync("src/styles/globals.css", "utf8")
+		.replaceAll(/\s+/g, " ")
+		.replaceAll("( ", "(")
+		.replaceAll(" )", ")");
+
+	it("hides a step body's actions until the body itself is hovered, then fades them in after 100ms", () =>
+	{
+		expect(
+			{
+				rest: css.includes(
+					'[data-cds-actions-scope] [data-cds="MessageActions"][data-reveal] { opacity: 0; transition: opacity 60ms cubic-bezier(0.32, 0.72, 0, 1) 0s; }',
+				),
+				hover: css.includes(
+					'@media (hover: hover) { [data-cds-actions-scope]:hover [data-cds="MessageActions"][data-reveal]:not(:where([data-cds-actions-scope]:not(:hover) [data-cds="MessageActions"][data-reveal])) { opacity: 1; transition-duration: 120ms; transition-delay: 100ms; } }',
+				),
+			},
+		).toStrictEqual(
+			{
+				rest: true,
+				hover: true,
+			},
+		);
+	});
+
+	it("shows them at once on focus inside the body or the toolbar, on the row toggle's focus ring, or with a popup open", () =>
+	{
+		expect(
+			css.includes(
+				'[data-cds-actions-scope]:focus-within [data-cds="MessageActions"][data-reveal]:not(:where([data-cds-actions-scope]:not(:focus-within) [data-cds="MessageActions"][data-reveal])), [data-cds-row]:has([data-cds-row-toggle]:focus-visible) ~ [data-cds-row-panel] [data-cds-actions-scope] [data-cds="MessageActions"][data-reveal], [data-cds-row] > [data-cds-row-toggle]:focus-visible ~ [data-cds-row-panel] [data-cds-actions-scope] [data-cds="MessageActions"][data-reveal], [data-cds-actions-scope] [data-cds="MessageActions"][data-reveal]:has([data-popup-open]) { opacity: 1; transition-duration: 120ms; transition-delay: 0s; }',
+			),
+		).toBe(true);
+	});
+
+	it("always shows them on touch and drops the fade under reduced motion", () =>
+	{
+		expect(
+			{
+				touch: css.includes(
+					'@media (pointer: coarse), (hover: none) { [data-cds-actions-scope] [data-cds="MessageActions"][data-reveal] { opacity: 1; transition-property: none; } }',
+				),
+				reducedMotion: css.includes(
+					'@media (prefers-reduced-motion: reduce) { [data-cds-actions-scope] [data-cds="MessageActions"][data-reveal] { transition-property: none; } }',
+				),
+			},
+		).toStrictEqual(
+			{
+				touch: true,
+				reducedMotion: true,
 			},
 		);
 	});

@@ -172,13 +172,16 @@ export interface ContextChip extends ContextAttachment
 	id: string;
 }
 
+/** Upstream's quote line splitter (`xh`): CR, LF, CRLF, U+2028 and U+2029 each end a line. */
+const QUOTE_LINE_BREAK = /\r\n?|[\n\u2028\u2029]/;
+
 /**
  * Upstream's unlabeled snippet wire format (codec `w(e)`): an attach marker,
- * then every line of the text quoted, splitting on CR, LF, CRLF, U+2028 and U+2029.
+ * then every line of the text quoted.
  */
 function formatExcerpt(text: string): string
 {
-	const quoted = text.split(/\r\n?|[\n\u2028\u2029]/).map((line) => `> ${line}`);
+	const quoted = text.split(QUOTE_LINE_BREAK).map((line) => `> ${line}`);
 	return `<!-- attach -->\n${quoted.join("\n")}`;
 }
 
@@ -209,9 +212,19 @@ const REPLY_MARKER = "<!-- reply -->";
 function quoteLines(text: string): string
 {
 	return text
-		.split(/\r\n?|[\n\u2028\u2029]/)
+		.split(QUOTE_LINE_BREAK)
 		.map((line) => `> ${line}`)
 		.join("\n");
+}
+
+/** Upstream's thinking Copy as quote (`HA`): a token-estimate header, then each line quoted, empty lines a bare `>`. */
+export function formatThinkingQuote(text: string): string
+{
+	const quoted = text
+		.split(QUOTE_LINE_BREAK)
+		.map((line) => (line === "" ? ">" : `> ${line}`))
+		.join("\n");
+	return `> **Thinking** (~${Math.round(text.length / 4)} tok)\n>\n${quoted}`;
 }
 
 /** Upstream `Fe`: a comment line that is a reply marker can't open a block of its own. */

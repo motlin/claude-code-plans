@@ -5,6 +5,7 @@ import {useStepCollapseFocusReturn} from "../hooks/use-step-collapse-focus-retur
 import {useRestInk} from "../lib/fizzy-lake";
 import {thinkingStepLabel, thinkingSummary} from "../lib/thinking-summary";
 import {ProseMarkdown} from "./file-refs";
+import {StepActions} from "./message-actions";
 import {ShimmerText} from "./shimmer-text";
 import {ChevronIcon} from "./tool-renderers/shared";
 import {TURN_STATUS_ROW_GEOMETRY, TURN_STATUS_ROW_STYLE} from "./turn-status-row-geometry";
@@ -88,17 +89,7 @@ export function ThinkingStep({text, open, onOpenChange, live = false, title, act
 					<ProseMarkdown markdown={text} />
 				</div>
 				<div className="flex h-[1lh] shrink-0 items-center">
-					<div
-						data-cds="MessageActions"
-						data-reveal="fade"
-						role="toolbar"
-						aria-label="Thinking actions"
-						data-size="xs"
-						tabIndex={-1}
-						className="flex items-center select-none"
-					>
-						{actions}
-					</div>
+					<StepActions label="Thinking actions">{actions}</StepActions>
 				</div>
 			</div>
 		</BaseCollapsible.Panel>
@@ -111,7 +102,7 @@ export function ThinkingStep({text, open, onOpenChange, live = false, title, act
 			onOpenChange={onOpenChange}
 			data-cds="TurnStatusStep"
 			data-state={live ? "busy" : "done"}
-			className="group/body flex w-full min-w-0 flex-col"
+			className="flex w-full min-w-0 flex-col"
 		>
 			<div
 				data-cds-row=""
@@ -180,5 +171,39 @@ export function ThinkingStep({text, open, onOpenChange, live = false, title, act
 			</div>
 			{!inPlace && panel}
 		</BaseCollapsible.Root>
+	);
+}
+
+/**
+ * Local-only: a turn whose thinking the CLI withheld (`thinkingDisplay: "omitted"`). Upstream draws nothing for
+ * empty thinking; locally it is a label-only step reading "Thinking hidden", with no toggle and no body, the
+ * duration as the row's tooltip like a settled thinking step.
+ */
+export function OmittedThinkingStep({title}: {title?: string | undefined})
+{
+	const id = useId();
+	const restInk = useRestInk();
+	return (
+		<div data-cds="TurnStatusStep" data-state="done" className="flex w-full min-w-0 flex-col">
+			<div
+				data-cds-row=""
+				{...(title === undefined
+					? {}
+					:
+						{
+							title,
+						})}
+				className={`${ROW_CLASS} items-center relative isolate rounded select-none`}
+				style={TURN_STATUS_ROW_STYLE}
+			>
+				<span id={`${id}-text`} className="flex min-w-0 gap-xs items-center">
+					<span id={`${id}-label`} className="min-w-0 max-w-full">
+						<span dir="auto" className={`${LABEL_CLIP} ${restInk}`}>
+							Thinking hidden
+						</span>
+					</span>
+				</span>
+			</div>
+		</div>
 	);
 }

@@ -45,11 +45,11 @@ import {apiErrorCategory} from "../lib/api-error-category";
 import {collapsesToSignedInAgain, loginSucceededAt} from "../lib/relogin";
 import {HookNoticeLine, HookNoticeRow} from "./hook-notice-row";
 import * as Collapsible from "./ui/collapsible";
-import {prefillComposer, requestComposerInsert, useHasComposer} from "../lib/context-attach";
+import {formatThinkingQuote, prefillComposer, requestComposerInsert, useHasComposer} from "../lib/context-attach";
 import {hasFindingOutcomes} from "../lib/report-findings";
 import {ExternalTextLink} from "./external-text-link";
 import {ShimmerText} from "./shimmer-text";
-import {ThinkingStep} from "./thinking-step";
+import {OmittedThinkingStep, ThinkingStep} from "./thinking-step";
 import {FileRefTarget, ProseMarkdown} from "./file-refs";
 import {MarkdownArticle} from "./markdown-article";
 import {TruncatedContent} from "./truncated-content";
@@ -83,7 +83,7 @@ import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {useClaudeEvents} from "../hooks/use-claude-events";
 import {BlockedCallContext} from "./tool-renderers/blocked-call-context";
 import {ToolAwaitingResultContext} from "./tool-renderers/tool-awaiting-result-context";
-import {ChevronIcon, CopyButton, DiffStatPill, TerminalOutput} from "./tool-renderers/shared";
+import {ChevronIcon, DiffStatPill, TerminalOutput} from "./tool-renderers/shared";
 import {SystemBanner, type CompactMetadata} from "./system-banner";
 import {compactBoundaryLabel, localCommandOutput} from "./system-banner-text";
 import {ArtifactLinkBanner, ArtifactWatchBanner} from "./artifact-banner";
@@ -94,7 +94,7 @@ import {TranscriptRowBoundary} from "./transcript-row-boundary";
 import {TranscriptMessageMenu} from "./transcript-context-menu";
 import {TranscriptSelectionBar} from "./transcript-selection-bar";
 import {TranscriptActionsContext, type TranscriptMessageRef} from "./transcript-actions-context";
-import {AssistantMessageActions, UserMessageActions} from "./message-actions";
+import {AssistantMessageActions, QuoteCopyAction, UserMessageActions} from "./message-actions";
 import {TURN_STATUS_ROW_GEOMETRY, TURN_STATUS_ROW_STYLE} from "./turn-status-row-geometry";
 import {MessageQuoteTiles} from "./message-excerpt-tiles";
 import {defined} from "../lib/defined";
@@ -435,6 +435,34 @@ function useModeExpansion(key: string): [boolean, () => void]
 		setToggle(next);
 	}, [mode, expanded, store, key]);
 	return [expanded, flip];
+}
+
+/**
+ * A thinking step's disclosure, as upstream Code's transcript open store keys it: closed by default, and Verbose
+ * forces every step open while ignoring the toggle. The user's choice is stored once for every view, so it
+ * survives a Verbose round trip that never wrote it.
+ */
+function useThinkingExpansion(key: string): [boolean, (open: boolean) => void]
+{
+	const verbose = useContext(TranscriptModeContext) === "verbose";
+	const store = useContext(ExpansionStoreContext);
+	const [stored, setStored] = useState<boolean>(() => store?.get(key)?.expanded ?? false);
+	const set = useCallback(
+		(open: boolean) =>
+		{
+			if (verbose) return;
+			store?.set(
+				key,
+				{
+					mode: "thinking",
+					expanded: open,
+				},
+			);
+			setStored(open);
+		},
+		[verbose, store, key],
+	);
+	return [verbose || stored, set];
 }
 
 const autoScrolledLocations = hmrPersist("autoScrolledLocations", () => new Set<string>());
@@ -6731,7 +6759,7 @@ function BashCard({
 
 /**
  * A thinking block as upstream's thinking step, keyed per block in the session's expansion store like the tool
- * rows: open by default only in Verbose. Local extras: the duration becomes the row's tooltip and the DebugLink
+ * rows: closed by default and forced open in Verbose. Local extras: the duration becomes the row's tooltip and the DebugLink
  * joins the Thinking actions toolbar.
  */
 function ThinkingBlock({
@@ -6750,7 +6778,7 @@ function ThinkingBlock({
 	durationMs: number | undefined;
 })
 {
-	const [expanded, toggleExpanded] = useModeExpansion(expansionKey);
+	const [expanded, setExpanded] = useThinkingExpansion(expansionKey);
 	// Upstream's $X confirms the copy with a "Copied" toast and relabels the
 	// button "Copied" for its copy hook's 2000ms default. Read the context
 	// directly so a SessionChat rendered without a ToastProvider still copies.
@@ -6764,30 +6792,16 @@ function ThinkingBlock({
 			},
 		);
 	}, [toast]);
-	const handleOpenChange = useCallback(
-		(open: boolean) =>
-		{
-			if (open !== expanded) toggleExpanded();
-		},
-		[expanded, toggleExpanded],
-	);
 	return (
 		<ThinkingStep
 			text={thinking}
 			open={expanded}
-			onOpenChange={handleOpenChange}
+			onOpenChange={setExpanded}
 			live={live}
-			title={durationMs === undefined ? undefined : `Thought for ${formatThinkingDuration(durationMs)}`}
+			title={thinkingDurationTitle(durationMs)}
 			actions={
 				<>
-					<CopyButton
-						text={toMarkdownQuote(thinking)}
-						label="Copy as quote"
-						copiedLabel="Copied"
-						size="xs"
-						resetMs={2000}
-						onCopied={handleCopied}
-					/>
+					<QuoteCopyAction quote={formatThinkingQuote(thinking)} onCopied={handleCopied} />
 					<DebugLink sessionId={sessionId} uuid={sourceUuid} />
 				</>
 			}
@@ -6795,39 +6809,14 @@ function ThinkingBlock({
 	);
 }
 
-/**
- * A turn whose thinking the CLI withheld (`thinkingDisplay: "omitted"`): the
- * legacy rail with its duration label, a placeholder where the text would be and
- * nothing to copy.
- */
-function OmittedThinkingBlock({durationMs}: {durationMs: number | undefined})
+/** A thinking step row's tooltip: how long the model thought, when the turn recorded it. */
+function thinkingDurationTitle(ms: number | undefined): string | undefined
 {
-	return (
-		<div className="border-l-2 border-t2 pl-3">
-			{durationMs !== undefined && (
-				<div className="text-xs text-t6 mb-1">Thought for {formatThinkingDuration(durationMs)}</div>
-			)}
-			<div className="text-body text-t6 italic">Thinking hidden</div>
-		</div>
-	);
-}
-
-function formatThinkingDuration(ms: number): string
-{
-	if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+	if (ms === undefined) return undefined;
+	if (ms < 60_000) return `Thought for ${(ms / 1000).toFixed(1)}s`;
 	const mins = Math.floor(ms / 60_000);
 	const secs = Math.round((ms % 60_000) / 1000);
-	return `${mins}m ${secs}s`;
-}
-
-/** Upstream's QX: a token-estimate header, then each line quoted, empty lines as a bare `>`. */
-function toMarkdownQuote(text: string): string
-{
-	const quoted = text
-		.split("\n")
-		.map((line) => (line === "" ? ">" : `> ${line}`))
-		.join("\n");
-	return `> **Thinking** (~${Math.round(text.length / 4)} tok)\n>\n${quoted}`;
+	return `Thought for ${mins}m ${secs}s`;
 }
 
 /**
@@ -7154,7 +7143,9 @@ function ContentBlock({
 		if (!showThinking) return null;
 		if (!block.thinking.trim())
 		{
-			return line.thinkingOmitted === true ? <OmittedThinkingBlock durationMs={line.thinkingDurationMs} /> : null;
+			return line.thinkingOmitted === true ? (
+				<OmittedThinkingStep title={thinkingDurationTitle(line.thinkingDurationMs)} />
+			) : null;
 		}
 		const expansionKey = `${line.uuid}:thinking:${blockIndex}`;
 		return (

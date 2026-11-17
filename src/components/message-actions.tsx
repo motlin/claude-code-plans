@@ -489,6 +489,65 @@ function ActionBar({
 	);
 }
 
+/**
+ * A step body's toolbar (upstream's MessageActions in a TurnStatus.Step `actions` slot, e.g. "Thinking actions"):
+ * a roving toolbar whose reveal globals.css keys to the body's `[data-cds-actions-scope]`, not to the message row.
+ * On touch it is always shown, 24px tall with 32px buttons, as upstream's `touch:` sizes.
+ */
+const STEP_BAR_CLASS =
+	"flex items-center select-none [&_button:hover:not([aria-pressed=true]):not(:disabled)]:text-primary pointer-coarse:h-6 [@media(hover:none)]:h-6 pointer-coarse:[&_button]:size-8 [@media(hover:none)]:[&_button]:size-8";
+
+export function StepActions({label, children}: {label: string; children: ReactNode})
+{
+	const {ref, onFocus, onKeyDown} = useRovingToolbar();
+	return (
+		<div
+			ref={ref}
+			data-cds="MessageActions"
+			data-reveal="fade"
+			role="toolbar"
+			aria-label={label}
+			data-size="xs"
+			tabIndex={-1}
+			className={STEP_BAR_CLASS}
+			onFocus={onFocus}
+			onKeyDown={onKeyDown}
+		>
+			<RovingBarContext.Provider value>{children}</RovingBarContext.Provider>
+		</div>
+	);
+}
+
+/**
+ * Upstream's thinking Copy as quote (`nj`): copies the quote, then shows a Check labelled "Copied" for 2000ms and
+ * reports the copy so the caller can toast it.
+ */
+export function QuoteCopyAction({quote, onCopied}: {quote: string; onCopied: () => void})
+{
+	const [copied, showCopied] = useTimedFlag(COPIED_MS);
+	return (
+		<ActionButton
+			label={copied ? "Copied" : "Copy as quote"}
+			first
+			onClick={() =>
+			{
+				void writeClipboardText(quote).then((ok) =>
+				{
+					if (!ok) return;
+					showCopied();
+					onCopied();
+				});
+			}}
+		>
+			{copied ? (
+				<Check aria-hidden="true" className={ICON_CLASS} />
+			) : (
+				<Copy aria-hidden="true" className={ICON_CLASS} />
+			)}
+		</ActionButton>
+	);
+}
+
 export function AssistantMessageActions({message, text, timestamp, details, hovered, getHtml}: MessageActionsProps)
 {
 	return (
