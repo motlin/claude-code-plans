@@ -46,6 +46,7 @@ async function renderSection(
 		hiddenAwaiting: false,
 		canShowLess: false,
 		nested: new Map(),
+		allNested: new Map(),
 		pageSize: 20,
 		extraRevealed: 0,
 		sorted: rows,

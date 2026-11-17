@@ -86,6 +86,8 @@ export interface SessionGroup<Row extends SessionGroupRow>
 	canShowLess: boolean;
 	/** Family head sessionId → its nested sessions in spawn-tree order, for heads in `rows`. */
 	nested: ReadonlyMap<string, Row[]>;
+	/** `nested` for every head in `sorted`, shown or hidden, for rows a section holds past its cap. */
+	allNested: ReadonlyMap<string, Row[]>;
 	/** The rows shown before any Show more (upstream `truncateAt`); each Show more page is this many more. */
 	pageSize: number;
 	/** Rows revealed past the first page (upstream `extraRevealed`). */
@@ -343,6 +345,7 @@ function group<Row extends SessionGroupRow>(
 		),
 		canShowLess: extraRevealed > 0 && hidden.length === 0 && truncates(rows.length, pageSize, 0),
 		nested,
+		allNested,
 		pageSize,
 		extraRevealed,
 		sorted: rows,

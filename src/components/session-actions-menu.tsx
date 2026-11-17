@@ -8,6 +8,7 @@ import
 	type ReactNode,
 	useCallback,
 	useContext,
+	useEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -38,6 +39,7 @@ import {assign, createGroup, useSessionGroups} from "../lib/session-group-store"
 import {placePin} from "../lib/pinned-sessions";
 import {familyKey, toggleFamilyCollapsed, useSidebarState} from "../lib/sidebar-store";
 import {hasUnseenWork, markSeen, markUnseen, subscribeUnseenWork} from "../lib/unread-store";
+import {setSidebarMenuOpen} from "../lib/sidebar-menu-open";
 import {InlineRenameInput} from "./inline-rename-input";
 import {NewGroupDialog} from "./new-group-dialog";
 import {bulkSelectionFor, type SidebarSelectionApi, useSidebarSelection} from "./sidebar/selection-context";
@@ -532,6 +534,28 @@ function RowMenuBody({
 	return <SessionMenuBody session={session} pinnedRow={pinnedRow} familyHead={familyHead} />;
 }
 
+/**
+ * Upstream `AG`: a row's menu, context menu or dialog holds the sidebar's `overflowMenuOpen` while open, and
+ * releases it when it closes or the row unmounts with it open.
+ */
+function useSidebarMenuOpenWhile(open: boolean): void
+{
+	const reported = useRef(false);
+	useEffect(() =>
+	{
+		if (open === reported.current) return;
+		reported.current = open;
+		setSidebarMenuOpen(open);
+	}, [open]);
+	useEffect(
+		() => () =>
+		{
+			if (reported.current) setSidebarMenuOpen(false);
+		},
+		[],
+	);
+}
+
 const KEBAB_CLASS =
 	"df-touch-reveal absolute top-1/2 right-[var(--sb-row-ctl-inset)] flex size-[var(--sb-row-ctl,24px)] -translate-y-1/2 items-center justify-center rounded-r5 text-secondary hover:text-primary aria-expanded:text-primary opacity-0 focus-visible:opacity-100 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus group-hover/session-row:opacity-100 group-has-[:focus-visible]/session-row:opacity-100 data-[popup-open]:opacity-100 data-[popup-open]:bg-fill-ghost-hover";
 
@@ -591,6 +615,7 @@ export function SessionActionsMenu({
 	// Upstream's `data-menu-open` / `data-context-menu-open` keep the row's hover background while a menu is open.
 	const [menuOpen, setMenuOpen] = useState(false);
 	const [contextMenuOpen, setContextMenuOpen] = useState(false);
+	useSidebarMenuOpenWhile(menuOpen || contextMenuOpen || newGroupOpen);
 	// After Move up / Move down the row itself takes focus, like upstream's movePinned.
 	const focusRowAfterClose = useRef(false);
 	const onOpenChangeComplete = (open: boolean) =>

@@ -309,6 +309,7 @@ describe("groupLists", () =>
 			hiddenAwaiting: false,
 			canShowLess: false,
 			nested: new Map([["h1", [row("c1", "blocked"), row("c2", "done")]]]),
+			allNested: new Map([["h1", [row("c1", "blocked"), row("c2", "done")]]]),
 			pageSize: 20,
 			extraRevealed: 0,
 			sorted: [head],

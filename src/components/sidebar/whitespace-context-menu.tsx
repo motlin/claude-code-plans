@@ -1,5 +1,6 @@
 import {useNavigate} from "@tanstack/react-router";
 import {type MouseEvent, type ReactNode, type RefObject, useRef, useState} from "react";
+import {setSidebarMenuOpen} from "../../lib/sidebar-menu-open";
 import {flushSync} from "react-dom";
 
 import {requestHomeComposerFocus} from "../../lib/home-composer-focus";
@@ -141,6 +142,8 @@ export function SidebarWhitespaceMenu({
 					const target = details.event.target;
 					if (next && !(target instanceof Node && listRef.current?.contains(target) === true)) return;
 					setOpen(next);
+					// Upstream `EH`: the list holds its truncated sections' rows while this menu is open.
+					setSidebarMenuOpen(next);
 				}}
 			>
 				<ContextMenuTrigger

@@ -1128,6 +1128,84 @@ describe("sidebar SessionGroups", () =>
 		expect(container.querySelectorAll('[data-group-key="recents"] button[data-row] span.ms-auto')).toHaveLength(1);
 	});
 
+	it("holds a row whose menu is open when a re-sort pushes it past the cap, and Show more then reveals the unseen rows", async () =>
+	{
+		const sessions = doneSessions(23);
+		const {container, queryClient} = await renderGroups(sessions);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "More options for Done 19",
+				},
+			),
+		);
+		await waitFor(() => screen.getByRole("menu"));
+		const resorted = sessions.map((row, index) => (index === 19 ? session("d19", "Done 19", "done", 100) : row));
+		for (const status of ["active", "all"] as const)
+		{
+			act(() =>
+			{
+				queryClient.setQueryData(
+					recentSessionsInfiniteQueryOptions(undefined, status).queryKey,
+					{
+						pages: [
+							RecentSessionsResponse.parse(
+								{
+									sessions: resorted,
+									nextCursor: null,
+								},
+							),
+						],
+						pageParams: [null],
+					},
+				);
+			});
+		}
+		const shownTail = () => rowTitlesIn(container, "state-done").slice(18);
+		await waitFor(() =>
+		{
+			expect(shownTail()).toContain("Done 20");
+		});
+		const held =
+		{
+			tail: shownTail(),
+			menuOpen: screen.queryByRole("menu") !== null,
+			showMore: screen
+				.getByRole(
+					"button",
+					{
+						name: /^Show \d+ more in Idle$/,
+					},
+				)
+				.getAttribute("aria-label"),
+		};
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /^Show \d+ more in Idle$/,
+				},
+			),
+		);
+		expect(
+			{
+				held,
+				revealedTail: shownTail(),
+			},
+		).toStrictEqual(
+			{
+				held:
+				{
+					tail: ["Done 18", "Done 20", "Done 19"],
+					menuOpen: true,
+					showMore: "Show 2 more in Idle",
+				},
+				revealedTail: ["Done 18", "Done 20", "Done 21", "Done 22", "Done 19"],
+			},
+		);
+	});
+
 	it("reveals an open session hidden past the cap on first paint, and keeps it revealed after opening another", async () =>
 	{
 		const {container, setActiveItemId} = await renderGroups(

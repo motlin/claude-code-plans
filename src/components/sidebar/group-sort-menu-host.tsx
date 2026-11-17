@@ -1,5 +1,6 @@
 import {createContext, type ReactNode, use, useCallback, useEffect, useId, useMemo, useRef, useState} from "react";
 
+import {setSidebarMenuOpen} from "../../lib/sidebar-menu-open";
 import {Menu} from "../ui/menu";
 import {createMenuHandle, type MenuHandle} from "../ui/menu-handle";
 import {GroupSortTrigger} from "./section-view-menu";
@@ -169,6 +170,8 @@ export function GroupSortMenuHost({
 						}
 					: previous;
 			});
+			// Upstream `f(open, true)`: the only caller that flags the open menu as Group and sort.
+			setSidebarMenuOpen(nextOpen, true);
 		},
 		[],
 	);

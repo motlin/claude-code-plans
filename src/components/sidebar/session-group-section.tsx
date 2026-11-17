@@ -70,6 +70,7 @@ import {ProjectGroupHeader, type ProjectReorder} from "./project-group-header";
 import {UNTITLED_SESSION_TITLE} from "../../lib/session-stand-in-title";
 import {useSidebarSelection} from "./selection-context";
 import type {SidebarSessionRow} from "./sidebar-session-row";
+import {useSectionHold} from "./use-section-hold";
 import {ROVING_ITEM_PROPS} from "./use-roving-focus";
 
 /** The section's unarchived sessions, family members included, for Archive all. */
@@ -257,7 +258,7 @@ export interface SectionFetchMore
 
 /** A collapsible sidebar group: label row (caret on hover), session rows, "Show more" / "Show less". */
 export function GroupSection({
-	group,
+	group: listedGroup,
 	groupBy = "state",
 	expanded,
 	activeItemId,
@@ -313,6 +314,18 @@ export function GroupSection({
 	projectReorder?: ProjectReorder | null;
 })
 {
+	const {settings} = useSettings();
+	const prefs = settings.sessionListPrefs;
+	// Upstream `fn#f`: a new grouping, filter or Show less drops the hold's baseline.
+	const [showLessCount, setShowLessCount] = useState(0);
+	const hold = useSectionHold(
+		listedGroup,
+		{
+			epoch: `${prefs.groupBy}|${prefs.statusFilter}|${prefs.activityDays}#${showLessCount}`,
+			order: `${prefs.sortBy}:${prefs.sortDirection}`,
+		},
+	);
+	const group = hold.group;
 	const customGroupId = customGroupIdOfKey(group.key);
 	const isProject = isProjectGroupKey(group.key);
 	const projectNewSession = useProjectNewSession(group, isProject);
@@ -320,7 +333,6 @@ export function GroupSection({
 	const appearance = useSectionAppearance(group.key, customGroupId, isProject);
 	// Upstream omits the env glyph on pinned rows and when the section is itself a place.
 	const envGlyph = pinnedIds === undefined && !isProject;
-	const {settings} = useSettings();
 	const place: RowPlace =
 	{
 		heading: group.label,
@@ -346,7 +358,7 @@ export function GroupSection({
 		{
 			keys: sortedKeys,
 			truncateAt: pageSize,
-			extraRevealed,
+			extraRevealed: Math.max(extraRevealed, hold.extraRevealed),
 			hiddenCount: group.hiddenCount,
 			collapsed: !expanded,
 			openKeys: revealOpenKeys,
@@ -600,7 +612,7 @@ export function GroupSection({
 							onClick={() =>
 							{
 								setAnnouncement(`Showing ${group.revealCount} more in ${group.label}`);
-								onReveal(group.key, extraRevealed + pageSize);
+								onReveal(group.key, extraRevealed + hold.showMoreStep);
 							}}
 							awaiting={group.hiddenAwaiting}
 						>
@@ -614,6 +626,7 @@ export function GroupSection({
 								onClick={() =>
 								{
 									setAnnouncement(`Showing less in ${group.label}`);
+									setShowLessCount((count) => count + 1);
 									onReveal(group.key, showLessFloor);
 								}}
 							>
