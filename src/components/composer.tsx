@@ -94,6 +94,7 @@ import
 	parseCommandShape,
 	parseHostCommand,
 	parseOutputStyleCommand,
+	parseSignInCommand,
 	PLAN_COMMAND_NOTICE_KEY,
 	PLAN_COMMAND_UNAVAILABLE_KEY,
 	planCommandArg,
@@ -102,6 +103,7 @@ import
 	routeSkillsCommand,
 	routeStatusCommand,
 	routeUsageCommand,
+	SIGN_IN_COMMAND_KEY,
 	trailingArgsBody,
 } from "../lib/composer-host-commands";
 import
@@ -473,6 +475,11 @@ interface ComposerProps
 	 * either way. Without it they reach the CLI.
 	 */
 	usageCommand?: ComposerUsageCommand | undefined;
+	/**
+	 * Whether a sent `/login` (`/logout`) reaches a live CLI's TUI. False on a session whose sends would fork
+	 * headlessly, where upstream's bridged sign-in toast replaces the send; undefined passes it through.
+	 */
+	signInRunsInTerminal?: boolean | undefined;
 	/**
 	 * Runs a bash-mode command in the session's live pane; resolves false when it was refused. Present only with a
 	 * live pane: `!` in the empty composer then enters upstream's bash mode. Without it, a `! command` send is refused.
@@ -1208,6 +1215,7 @@ export function Composer({
 	onOpenContext,
 	statusCommand,
 	usageCommand,
+	signInRunsInTerminal,
 	onShellCommand,
 }: ComposerProps)
 {
@@ -2315,7 +2323,8 @@ export function Composer({
 			runWorkflowsCommand(text) ||
 			runAutocompactCommand(text) ||
 			runStatusCommand(text) ||
-			runUsageCommand(text)
+			runUsageCommand(text) ||
+			runSignInCommand(text)
 		)
 			return true;
 		const command = parseHostCommand(
@@ -2566,6 +2575,32 @@ export function Composer({
 		if (openConnectors === undefined || !isMcpCommand(text)) return false;
 		clearDraft();
 		openConnectors();
+		return true;
+	}
+	/** Upstream's `sign-in` action for a bridged session: a headless fork can't log in, so toast instead of sending. */
+	function runSignInCommand(text: string): boolean
+	{
+		if (variant !== "session" || signInRunsInTerminal !== false) return false;
+		const command = parseSignInCommand(text);
+		if (command === null) return false;
+		if (command.kind === "band")
+		{
+			setCommandError(
+				{
+					draftKey,
+					body: command.text,
+				},
+			);
+			return true;
+		}
+		clearDraft();
+		toast?.(
+			{
+				kind: "error",
+				message: command.toast,
+				uniqueKey: SIGN_IN_COMMAND_KEY,
+			},
+		);
 		return true;
 	}
 	/** Upstream's bare-only `/advisor`: opens the host dialog; with arguments it reaches the CLI as typed. */

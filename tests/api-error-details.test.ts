@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {parseApiErrorDetails} from "../src/lib/api-error-details";
+import {parseApiErrorDetails, trailingRequestIds} from "../src/lib/api-error-details";
 
 describe("parseApiErrorDetails", () =>
 {
@@ -106,5 +106,30 @@ describe("parseApiErrorDetails", () =>
 				body: text,
 			},
 		);
+	});
+});
+
+describe("trailingRequestIds", () =>
+{
+	it("ports upstream's pQ: only a valid trailing request id (and message id) survives", () =>
+	{
+		const inputs = [
+			"Not logged in · Please run /login",
+			"Not logged in\n\nRequest ID: req_011CgUdRxY1A4Froov7cAAAA\nMessage ID: msg_01AAAAAAAAAAAAAAAA",
+			"Not logged in\n\nRequest ID: req_011CgUdRxY1A4Froov7cAAAA\nMessage ID: nope",
+			"Not logged in\nRequest ID: abc",
+		];
+
+		expect(inputs.map((input) => trailingRequestIds(input))).toStrictEqual([
+			{},
+			{
+				requestId: "req_011CgUdRxY1A4Froov7cAAAA",
+				messageId: "msg_01AAAAAAAAAAAAAAAA",
+			},
+			{
+				requestId: "req_011CgUdRxY1A4Froov7cAAAA",
+			},
+			{},
+		]);
 	});
 });

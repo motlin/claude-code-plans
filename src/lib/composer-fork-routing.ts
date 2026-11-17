@@ -26,6 +26,19 @@ export function routeComposerSubmit({pane, writesEnabled, submit}: RouteInput): 
 	return submit === "send" ? "herdr-prompt" : "herdr-launch";
 }
 
+/** Whether a sent `/login` reaches a live CLI's TUI, which runs the real login picker, rather than a headless fork. */
+export function signInRunsInTerminal(input: Omit<RouteInput, "submit">): boolean
+{
+	return (
+		routeComposerSubmit(
+			{
+				...input,
+				submit: "send",
+			},
+		) === "herdr-prompt"
+	);
+}
+
 /** `claude --resume <id> --fork-session` plus the chin's launch flags, as an argv array. */
 export function promptForkArgs(sessionId: string, launchOptions: LaunchOptions): string[]
 {

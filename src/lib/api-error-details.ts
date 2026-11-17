@@ -86,3 +86,36 @@ export function parseApiErrorDetails(text: string): ParsedApiErrorDetails
 				status,
 			};
 }
+
+/** Upstream's `Ra`: a request id the details panel trusts. */
+const REQUEST_ID = /^req_(?:staging_)?[A-Za-z0-9]{16,}$/;
+/** Upstream's `EP`: a message id the details panel trusts. */
+const MESSAGE_ID = /^msg_(?:staging_)?[A-Za-z0-9]{16,}$/;
+
+export interface TrailingRequestIds
+{
+	requestId?: string;
+	messageId?: string;
+}
+
+/**
+ * Upstream's `pQ` (`viewDetails: false`): the valid Request ID (and Message ID) the CLI appended to an
+ * error's text, or neither when the text has no such trailer.
+ */
+export function trailingRequestIds(text: string): TrailingRequestIds
+{
+	const trailer = ID_TRAILER.exec(text.trim());
+	const requestId = trailer?.[1];
+	if (requestId === undefined || !REQUEST_ID.test(requestId)) return {};
+	const messageId = trailer?.[2];
+	return messageId !== undefined && MESSAGE_ID.test(messageId)
+		?
+			{
+				requestId,
+				messageId,
+			}
+		:
+			{
+				requestId,
+			};
+}

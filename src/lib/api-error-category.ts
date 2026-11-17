@@ -190,6 +190,9 @@ function statusCategory(status: number): ApiErrorCategory
 	return "unknown";
 }
 
+/** Upstream's `signedInAgain` (`QiWrYy`): an auth error's marker once the user has signed in again. */
+export const SIGNED_IN_AGAIN_LABEL = "Signed in again";
+
 /** Upstream's `MQ`, in its order: refusal, usage-limit text, decisive codes, the text table, the code map, then the status. */
 export function classifyApiError({text, code, status, stopReason}: ApiErrorInput): ApiErrorCategory
 {
@@ -483,4 +486,37 @@ export function errorCopy(
 		rewindHelps: REWIND_HELPS.has(category),
 		detailsVerdict: copy.detailsVerdict,
 	};
+}
+
+/** The category the transcript card classifies an error into, from its text, code, status (number or digits) and stop reason. */
+export function apiErrorCategory({
+	text,
+	status,
+	code,
+	stopReason,
+}: {
+	text: string;
+	status: number | string | undefined;
+	code: string | undefined;
+	stopReason: string | undefined;
+}): ApiErrorCategory
+{
+	const numeric = typeof status === "string" && /^\d+$/.test(status) ? Number(status) : status;
+	return classifyApiError(
+		{
+			text,
+			...(code !== undefined &&
+			{
+				code,
+			}),
+			...(stopReason !== undefined &&
+			{
+				stopReason,
+			}),
+			...(typeof numeric === "number" &&
+			{
+				status: numeric,
+			}),
+		},
+	);
 }

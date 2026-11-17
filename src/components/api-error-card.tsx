@@ -1,8 +1,15 @@
 import {Check, Copy, Gauge, TriangleAlert} from "lucide-react";
 import {type ReactNode, useId, useState} from "react";
 
-import {type ApiErrorCategory, classifyApiError, errorCopy, refusalPassthrough} from "../lib/api-error-category";
-import {parseApiErrorDetails} from "../lib/api-error-details";
+import
+{
+	type ApiErrorCategory,
+	apiErrorCategory,
+	errorCopy,
+	refusalPassthrough,
+	SIGNED_IN_AGAIN_LABEL,
+} from "../lib/api-error-category";
+import {parseApiErrorDetails, trailingRequestIds} from "../lib/api-error-details";
 import {categoryRecoveryHelps, fallbackModel, type RecoveryAction, recoveryActions} from "../lib/api-error-recovery";
 import {modelLabel, primaryModelMenuValue, PRIMARY_MODELS} from "../lib/launch-options";
 import {writeClipboardText} from "../lib/clipboard";
@@ -220,21 +227,12 @@ function resolveApiError({
 }): ResolvedApiError
 {
 	const numeric = numericStatus(status);
-	const category = classifyApiError(
+	const category = apiErrorCategory(
 		{
 			text,
-			...(code !== undefined &&
-			{
-				code,
-			}),
-			...(stopReason !== undefined &&
-			{
-				stopReason,
-			}),
-			...(numeric !== undefined &&
-			{
-				status: numeric,
-			}),
+			status,
+			code,
+			stopReason,
 		},
 	);
 	const copy = errorCopy(
@@ -597,6 +595,24 @@ export function ApiErrorMarker(props: ApiErrorCardProps)
 				<span className="min-w-0 text-body text-secondary break-words">{error.markerLabel}</span>
 			</div>
 			{error.details !== undefined && <ErrorDetails details={error.details} inCard={false} />}
+		</div>
+	);
+}
+
+/**
+ * Upstream's "Signed in again" marker (`kk` over the marker shell): an auth error older than a successful
+ * `/login` keeps only the label, with no icon, and View details shows just the trailing request-id block
+ * (`viewDetails: false`), so an error without one has no View details at all.
+ */
+export function SignedInAgainMarker({text}: {text: string})
+{
+	const ids = trailingRequestIds(text);
+	return (
+		<div data-api-error-marker="" data-signed-in-again="" className={MARKER_ROOT_CLASS}>
+			<div className="flex max-w-full min-w-0 items-center gap-1.25 select-text">
+				<span className="min-w-0 text-body text-secondary break-words">{SIGNED_IN_AGAIN_LABEL}</span>
+			</div>
+			{ids.requestId !== undefined && <ErrorDetails details={ids} inCard={false} />}
 		</div>
 	);
 }

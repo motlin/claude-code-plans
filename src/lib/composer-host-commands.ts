@@ -268,6 +268,52 @@ function parseEffort(arg: string, name: string, ctx: HostCommandContext): HostCo
 	};
 }
 
+/** Upstream's `/login` catalog row and its `/logout` alias (terminal action `sign-in`). */
+const SIGN_IN_COMMAND_NAMES = ["login", "logout"] as const;
+/** Upstream's uniqueKey for the sign-in toast, so a repeat replaces the open one. */
+export const SIGN_IN_COMMAND_KEY = "epitaxy-sign-in-command";
+/** Upstream's `$h` fallback (`nWCSAd`) when the host name is missing or not a plain name. */
+const UNKNOWN_HOST = "the computer running this session";
+const HOST_NAME = /^[\w.-]{1,64}$/;
+
+/** Upstream's bridged sign-in error (`88wELc`). */
+export function signInCommandToast(name: string, host?: string): string
+{
+	const where = host !== undefined && HOST_NAME.test(host) ? host : UNKNOWN_HOST;
+	return `To change this session’s sign-in, run /${name} in Claude Code on ${where}.`;
+}
+
+export type SignInCommand =
+	|
+	  {
+			kind: "sign-in";
+			toast: string;
+	  }
+	|
+	  {
+			kind: "band";
+			text: string;
+	  };
+
+/**
+ * Upstream's `sign-in` terminal action for a Remote Control session: a bare `/login` or `/logout` gets the
+ * bridged error toast, text after it or extra lines get their bands, and anything else is null.
+ */
+export function parseSignInCommand(text: string): SignInCommand | null
+{
+	const shape = parseCommandShape(SIGN_IN_COMMAND_NAMES, text);
+	if (shape === null) return null;
+	if (shape.kind === "run")
+		return {
+			kind: "sign-in",
+			toast: signInCommandToast(shape.name),
+		};
+	return {
+		kind: "band",
+		text: shape.kind === "extra_lines" ? extraLinesBody(shape.name) : trailingArgsBody(shape.name),
+	};
+}
+
 /** Upstream's uniqueKey for the `/fast` no-op notice, so a repeat re-shows one toast instead of "(×2)". */
 export const FAST_COMMAND_NOTICE_KEY = "epitaxy-fast-command-notice";
 

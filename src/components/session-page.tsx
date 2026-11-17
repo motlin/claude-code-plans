@@ -164,6 +164,7 @@ import
 	type ComposerSubmit,
 	dispatchComposerSubmit,
 	forkSubmitLabel,
+	signInRunsInTerminal,
 	launchPromptFork,
 } from "../lib/composer-fork-routing";
 import {composerPendingGate, composerSendPlan, gateHoldsQueue} from "../lib/composer-pending-gate";
@@ -2866,6 +2867,12 @@ function SessionView({
 																		}
 																		statusCommand={statusCommand}
 																		usageCommand={usageCommand}
+																		signInRunsInTerminal={signInRunsInTerminal(
+																			{
+																				pane: paneState,
+																				writesEnabled: herdr.writesEnabled,
+																			},
+																		)}
 																		forkLabel={forkSubmitLabel(
 																			{
 																				pane: paneState,

@@ -7,6 +7,7 @@ import
 	type HostCommandContext,
 	parseCommandShape,
 	parseHostCommand,
+	parseSignInCommand,
 	planCommandArg,
 	routeFastCommand,
 	routePlanCommand,
@@ -14,6 +15,8 @@ import
 	routeStatusCommand,
 	routeUsageCommand,
 	skillsCommandAction,
+	SIGN_IN_COMMAND_KEY,
+	signInCommandToast,
 	SLASH_NAME,
 	trailingArgsBody,
 } from "../src/lib/composer-host-commands";
@@ -971,5 +974,58 @@ describe("routePlanCommand", () =>
 			},
 			run(false, false, null, "x"),
 		]);
+	});
+});
+
+describe("parseSignInCommand", () =>
+{
+	it("ports upstream's sign-in dispatch: the bridged toast for a bare /login or /logout, bands for the other shapes", () =>
+	{
+		const inputs = ["/login", "/LOGOUT", "/login x", "/login\nfoo", "/loginx", "/model"];
+
+		expect(Object.fromEntries(inputs.map((input) => [input, parseSignInCommand(input)]))).toStrictEqual(
+			{
+				"/login":
+				{
+					kind: "sign-in",
+					toast: "To change this session’s sign-in, run /login in Claude Code on the computer running this session.",
+				},
+				"/LOGOUT":
+				{
+					kind: "sign-in",
+					toast: "To change this session’s sign-in, run /logout in Claude Code on the computer running this session.",
+				},
+				"/login x":
+				{
+					kind: "band",
+					text: "/login doesn’t take arguments here. Remove the text after the command, then send it again.",
+				},
+				"/login\nfoo":
+				{
+					kind: "band",
+					text: "/login only works on a single line. Remove the extra lines, then send it again.",
+				},
+				"/loginx": null,
+				"/model": null,
+			},
+		);
+	});
+
+	it("names a valid host and falls back to upstream's phrase for an invalid one", () =>
+	{
+		expect(
+			{
+				valid: signInCommandToast("login", "Craigs-MBP.local"),
+				invalid: signInCommandToast("login", "bad host!"),
+				key: SIGN_IN_COMMAND_KEY,
+			},
+		).toStrictEqual(
+			{
+				valid: "To change this session’s sign-in, run /login in Claude Code on Craigs-MBP.local.",
+				invalid:
+					"To change this session’s sign-in, run /login in Claude Code on the computer running this session.",
+				key: "epitaxy-sign-in-command",
+			},
+		);
 	});
 });

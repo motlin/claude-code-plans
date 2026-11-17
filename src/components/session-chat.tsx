@@ -36,10 +36,13 @@ import
 	ApiErrorCard,
 	ApiErrorMarker,
 	type ApiErrorRecovery,
+	SignedInAgainMarker,
 	StopWarningCard,
 	UsageLimitErrorCard,
 } from "./api-error-card";
 import {HookBlockedPromptCard, HookBlockedPromptMarker} from "./hook-blocked-prompt";
+import {apiErrorCategory} from "../lib/api-error-category";
+import {collapsesToSignedInAgain, loginSucceededAt} from "../lib/relogin";
 import {HookNoticeLine, HookNoticeRow} from "./hook-notice-row";
 import * as Collapsible from "./ui/collapsible";
 import {prefillComposer, requestComposerInsert, useHasComposer} from "../lib/context-attach";
@@ -923,14 +926,16 @@ export const SessionChat = React.memo(function SessionChat({
 	const compactBoundaries = useMemo(() => compactBoundariesBySummary(lines), [lines]);
 	const fullErrorLine = useMemo(() => lastErrorLine(lines), [lines]);
 	const blockedLine = useMemo(() => lastEntryPromptBlocked(lines), [lines]);
+	const reloginAt = useMemo(() => loginSucceededAt(lines), [lines]);
 	const lastError = useMemo(
 		() => (
 		{
 			line: fullErrorLine,
 			recovery: errorRecovery,
 			blockedLine,
+			reloginAt,
 		}),
-		[fullErrorLine, errorRecovery, blockedLine],
+		[fullErrorLine, errorRecovery, blockedLine, reloginAt],
 	);
 	const staleCompactEntry = useMemo(() => lastAssistantReplyEntry(lines), [lines]);
 	const staleCompactTail = useMemo(
@@ -5826,11 +5831,14 @@ const LastErrorLineContext = createContext<
 	recovery: ApiErrorRecovery | undefined;
 	/** The hook-blocked prompt that is the transcript's last entry, drawn as the full card. */
 	blockedLine: SessionLine | null;
+	/** When the session's latest successful `/login` finished; older auth errors collapse to "Signed in again". */
+	reloginAt: number | null;
 }>(
 	{
 		line: null,
 		recovery: undefined,
 		blockedLine: null,
+		reloginAt: null,
 	},
 );
 
@@ -7039,6 +7047,27 @@ function PromptBlockedForLine({
 	);
 }
 
+/** Upstream's `Ok` gate for a line: an auth error older than the session's latest successful `/login`. */
+function signedInAgain(line: MessageSessionLine, text: string, reloginAt: number | null): boolean
+{
+	if (reloginAt === null) return false;
+	const category = apiErrorCategory(
+		{
+			text,
+			status: line.apiErrorStatus,
+			code: line.apiErrorCode,
+			stopReason: line.stopReason,
+		},
+	);
+	return collapsesToSignedInAgain(
+		{
+			category,
+			timestamp: line.timestamp,
+		},
+		reloginAt,
+	);
+}
+
 /** The API error card for an assistant turn flagged as an API error message, or its marker when a later error or prompt supersedes it. */
 function ApiErrorCardForLine({line, text}: {line: MessageSessionLine; text: string})
 {
@@ -7048,6 +7077,7 @@ function ApiErrorCardForLine({line, text}: {line: MessageSessionLine; text: stri
 	const details = line.errorDetails;
 	const detailsText =
 		details === undefined ? undefined : typeof details === "string" ? details : JSON.stringify(details, null, 2);
+	if (signedInAgain(line, text, lastError.reloginAt)) return <SignedInAgainMarker text={detailsText ?? text} />;
 	return (
 		<Form
 			text={text}

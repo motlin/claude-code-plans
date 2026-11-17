@@ -1994,3 +1994,152 @@ describe("usage-limit card recovery and auto-resume", () =>
 		);
 	});
 });
+
+describe("SignedInAgainMarker", () =>
+{
+	const AUTH_TEXT = "Not logged in · Please run /login";
+	const REQUEST_ID = "req_011CgUdRxY1A4Froov7cAAAA";
+
+	/** The dotfiles cd177268 auth error (CLI 2.1.243), trimmed to the fields the transcript reads. */
+	function authRecord(text: string): Record<string, unknown>
+	{
+		return {
+			type: "assistant",
+			uuid: "f72367e7-ad70-4f8b-b8d2-d4a3219ffa11",
+			timestamp: "2026-08-25T02:57:20.089Z",
+			message:
+			{
+				id: "460923be-a4f9-4c23-bd6c-fc698f667c81",
+				model: "<synthetic>",
+				role: "assistant",
+				stop_reason: "stop_sequence",
+				type: "message",
+				content: [
+					{
+						type: "text",
+						text,
+					},
+				],
+			},
+			error: "authentication_failed",
+			isApiErrorMessage: true,
+		};
+	}
+
+	/** The `/login` output record in the liftwizard 59103d22 shape (CLI 2.1.290). */
+	const LOGIN_RECORD =
+	{
+		type: "system",
+		subtype: "local_command",
+		uuid: "545266e2-804a-47f5-8511-2e3ed807853d",
+		timestamp: "2026-08-25T02:58:43.012Z",
+		content: "<local-command-stdout>Login successful</local-command-stdout>",
+		level: "info",
+		commandRun:
+		{
+			command: "login",
+			args: "",
+		},
+	};
+
+	function markerView(container: HTMLElement)
+	{
+		const markers = [...container.querySelectorAll("[data-signed-in-again]")];
+		return {
+			markers: markers.map((marker) => (
+			{
+				root: marker.className,
+				row: marker.firstElementChild?.className,
+				label: marker.firstElementChild?.textContent,
+				icons: marker.firstElementChild?.querySelectorAll("svg").length,
+			})),
+			authHeadline: container.textContent.includes("Authentication failed"),
+			viewDetails: container.textContent.includes("View details"),
+		};
+	}
+
+	const MARKER =
+	{
+		root: "flex w-full max-w-[480px] flex-col items-start gap-1 self-start ps-[var(--cds-assistant-message-text-inset,0px)]",
+		row: "flex max-w-full min-w-0 items-center gap-1.25 select-text",
+		label: "Signed in again",
+		icons: 0,
+	};
+
+	it("collapses an auth error older than a successful /login to the icon-less marker with no View details", () =>
+	{
+		expect(markerView(renderRecords([authRecord(AUTH_TEXT), LOGIN_RECORD]))).toStrictEqual(
+			{
+				markers: [MARKER],
+				authHeadline: false,
+				viewDetails: false,
+			},
+		);
+	});
+
+	it("keeps only the request-id block in View details", async () =>
+	{
+		const container = renderRecords([authRecord(`${AUTH_TEXT}\n\nRequest ID: ${REQUEST_ID}`), LOGIN_RECORD]);
+
+		fireEvent.click(screen.getByText("View details"));
+
+		await waitFor(() =>
+		{
+			const panel = container.querySelector("[data-api-error-details]");
+			expect(
+				{
+					markers: markerView(container).markers,
+					panel: panel?.textContent,
+				},
+			).toStrictEqual(
+				{
+					markers: [MARKER],
+					panel: `Request ID: ${REQUEST_ID}`,
+				},
+			);
+		});
+	});
+
+	it("keeps the full auth card without a later /login", () =>
+	{
+		const container = renderRecords([authRecord(AUTH_TEXT)]);
+
+		expect(
+			{
+				...markerView(container),
+				card: container.querySelectorAll("[data-api-error-card]").length,
+			},
+		).toStrictEqual(
+			{
+				markers: [],
+				authHeadline: true,
+				viewDetails: false,
+				card: 1,
+			},
+		);
+	});
+
+	it("keeps a later non-auth error as its card", () =>
+	{
+		const container = renderRecords([
+			authRecord(AUTH_TEXT),
+			LOGIN_RECORD,
+			{
+				...OVERLOADED_RECORD,
+				timestamp: "2026-08-25T03:00:00.000Z",
+			},
+		]);
+
+		expect(
+			{
+				markers: markerView(container).markers,
+				card: container.querySelector("[data-api-error-card]")?.textContent.includes("Service is busy"),
+			},
+		).toStrictEqual(
+			{
+				markers: [MARKER],
+				card: true,
+			},
+		);
+	});
+});

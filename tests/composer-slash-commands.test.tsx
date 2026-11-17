@@ -3478,6 +3478,104 @@ describe("Composer host commands", () =>
 		);
 	});
 
+	describe("/login without a terminal that can run it", () =>
+	{
+		const SIGN_IN_TOAST =
+			"To change this session’s sign-in, run /login in Claude Code on the computer running this session.";
+
+		function signInSetup(signInRunsInTerminal: boolean)
+		{
+			const onSend = vi.fn<(prompt: string) => void>();
+			render(
+				<ToastProvider>
+					<Composer
+						variant="session"
+						draftKey="session-alice"
+						onSend={onSend}
+						signInRunsInTerminal={signInRunsInTerminal}
+					/>
+				</ToastProvider>,
+			);
+			return {
+				textarea: screen.getByRole<HTMLTextAreaElement>(
+					"textbox",
+					{
+						name: "Prompt",
+					},
+				),
+				onSend,
+			};
+		}
+
+		it("shows upstream's bridged error toast once, not (×2), and clears the composer", async () =>
+		{
+			const {textarea, onSend} = signInSetup(false);
+
+			send(textarea, "/login");
+			await waitFor(() =>
+			{
+				expect(toastText()).toBe(SIGN_IN_TOAST);
+			});
+			send(textarea, "/login");
+
+			await waitFor(() =>
+			{
+				expect(
+					{
+						sends: onSend.mock.calls,
+						text: textarea.value,
+						toasts: [...document.querySelectorAll("[data-toast]")].map((toast) => (
+						{
+							kind: toast.getAttribute("data-kind"),
+							text: toast.querySelector("[data-toast-message]")?.textContent,
+						})),
+					},
+				).toStrictEqual(
+					{
+						sends: [],
+						text: "",
+						toasts: [
+							{
+								kind: "error",
+								text: SIGN_IN_TOAST,
+							},
+						],
+					},
+				);
+			});
+		});
+
+		it("keeps /login now with the trailing-arguments band", () =>
+		{
+			const {textarea, onSend} = signInSetup(false);
+
+			send(textarea, "/login now");
+
+			expect(
+				{
+					sends: onSend.mock.calls,
+					text: textarea.value,
+					alert: document.querySelector("[data-composer-command-error] [role=alert]")?.textContent,
+				},
+			).toStrictEqual(
+				{
+					sends: [],
+					text: "/login now",
+					alert: "Couldn’t complete that /login doesn’t take arguments here. Remove the text after the command, then send it again.",
+				},
+			);
+		});
+
+		it("sends /login to a writable live pane, whose TUI runs the real login", () =>
+		{
+			const {textarea, onSend} = signInSetup(true);
+
+			send(textarea, "/login");
+
+			expect(onSend.mock.calls.map((call) => call[0])).toStrictEqual(["/login"]);
+		});
+	});
+
 	it("re-shows one keyed toast, not (×2), for /fast on twice while already on", async () =>
 	{
 		const {textarea} = hostSetup(

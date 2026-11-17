@@ -10,10 +10,41 @@ import
 	launchPromptFork,
 	promptForkArgs,
 	routeComposerSubmit,
+	signInRunsInTerminal,
 } from "../src/lib/composer-fork-routing";
 
 describe("composer fork routing", () =>
 {
+	it("runs /login in the terminal only when Enter reaches a writable live pane", () =>
+	{
+		expect([
+			signInRunsInTerminal(
+				{
+					pane: "idle",
+					writesEnabled: true,
+				},
+			),
+			signInRunsInTerminal(
+				{
+					pane: "working",
+					writesEnabled: true,
+				},
+			),
+			signInRunsInTerminal(
+				{
+					pane: "none",
+					writesEnabled: true,
+				},
+			),
+			signInRunsInTerminal(
+				{
+					pane: "idle",
+					writesEnabled: false,
+				},
+			),
+		]).toStrictEqual([true, true, false, false]);
+	});
+
 	it("routes live/idle/no-pane × Enter/⌥⌘⏎ to herdr prompt, fork stream or herdr launch", () =>
 	{
 		const panes: ComposerPaneState[] = ["working", "idle", "none"];
