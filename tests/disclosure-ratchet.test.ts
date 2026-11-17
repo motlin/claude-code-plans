@@ -15,9 +15,11 @@ import {describe, expect, it} from "vite-plus/test";
  * they raised it from 47. The Background tasks pane's Show more / Show less (upstream `mv`) pages more rows into the
  * same list rather than revealing a panel, so a Collapsible can't draw it either; it raised the ceiling from 49. The
  * `/usage` card's attribution Show N more / Show less (upstream `SV`, a ghost cds Button) does the same; it raised the
- * ceiling from 50.
+ * ceiling from 50. The docked question card's "View question options" caret (c9ed5627b) is upstream's own ghost
+ * button in its header (shared-41 `d3`), with cds Collapsibles only around the options and actions it hides, so it
+ * raised the ceiling from 51.
  */
-const DISCLOSURE_CEILING = 51;
+const DISCLOSURE_CEILING = 52;
 
 /** The opening tag around `index`: from the nearest `<Name` before it to the next `<` after it. */
 function enclosingTag(source: string, index: number): string

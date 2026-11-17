@@ -2313,6 +2313,29 @@ input.cds-input::-webkit-search-cancel-button
 	}
 }
 
+/* Upstream's docked question card actions (c2707596b): a narrow paged or solo actions row drops its keycaps, and an
+   inert pager end arrow paints no hover fill. */
+@container (width <= 393px)
+{
+	.epitaxy-question-paged [data-cds="Shortcut"]
+	{
+		display: none;
+	}
+}
+
+@container (width <= 263px)
+{
+	.epitaxy-question-solo [data-cds="Shortcut"]
+	{
+		display: none;
+	}
+}
+
+.epitaxy-card-pager-end
+{
+	background: none;
+}
+
 /* Upstream cds `scroll-fade-x`: the horizontal twin of scroll-fade-y on the same
    --scroll-fade-size, fading a row's left and right edges as content scrolls past
    them. RTL rows start scrolled to the right edge, so the two depths swap. */

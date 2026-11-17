@@ -4134,6 +4134,7 @@ describe("the approval cluster host, moved between the inline slot and the compo
 					<ApprovalClusterHost>
 						<QuestionCard
 							questions={[QUESTIONS[0]!]}
+							draftKey="cluster-question"
 							presentation={presentation}
 							onSubmit={async () =>
 							{
@@ -4173,7 +4174,7 @@ describe("the approval cluster host, moved between the inline slot and the compo
 		);
 	});
 
-	it("moves the same nodes across a presentation switch: the Other draft and focus survive", () =>
+	it("carries the Other draft across a presentation switch into the docked card", () =>
 	{
 		const {rerender} = render(<Cluster presentation="card" />);
 		fireEvent.click(
@@ -4184,14 +4185,13 @@ describe("the approval cluster host, moved between the inline slot and the compo
 				},
 			),
 		);
-		const box = screen.getByRole<HTMLTextAreaElement>(
-			"textbox",
-			{
-				name: "Other option",
-			},
-		);
 		fireEvent.change(
-			box,
+			screen.getByRole(
+				"textbox",
+				{
+					name: "Other option",
+				},
+			),
 			{
 				target:
 				{
@@ -4199,22 +4199,18 @@ describe("the approval cluster host, moved between the inline slot and the compo
 				},
 			},
 		);
-		box.focus();
 		const before = where();
 		rerender(<Cluster presentation="dock" />);
-		const after = screen.getByRole<HTMLTextAreaElement>(
-			"textbox",
-			{
-				name: "Other option",
-			},
-		);
 		expect(
 			{
 				before,
 				after: where(),
-				same: after === box,
-				value: after.value,
-				focused: document.activeElement === box,
+				value: screen.getByRole<HTMLTextAreaElement>(
+					"textbox",
+					{
+						name: "Other option",
+					},
+				).value,
 			},
 		).toStrictEqual(
 			{
@@ -4228,9 +4224,7 @@ describe("the approval cluster host, moved between the inline slot and the compo
 					inline: 0,
 					docked: 1,
 				},
-				same: true,
 				value: "half done",
-				focused: true,
 			},
 		);
 	});
@@ -4245,12 +4239,12 @@ describe("the approval cluster host, moved between the inline slot and the compo
 				backdrop: root?.querySelector(":scope > [data-surface=sidebar]")?.getAttribute("class") ?? null,
 				narrowed: root?.classList.contains("max-w-[480px]"),
 				capped: ["epitaxy-approval-card", "max-h-[60vh]"].filter((name) => root?.classList.contains(name)),
-				options: root?.querySelector("[data-approval-allow] > div")?.getAttribute("class"),
+				options: root?.querySelector("[data-question-answer]")?.parentElement?.getAttribute("class"),
 			},
 		).toStrictEqual(
 			{
 				capped: ["epitaxy-approval-card", "max-h-[60vh]"],
-				options: "flex flex-col epitaxy-approval-body min-h-0 overflow-y-auto overscroll-contain",
+				options: "flex flex-col gap-0.75",
 				presentation: null,
 				backdrop:
 					"absolute inset-0 -z-[1] rounded-[inherit] pointer-events-none bg-surface-2 shadow-[var(--approval-card-shadow)]",

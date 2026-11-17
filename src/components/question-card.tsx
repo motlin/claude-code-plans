@@ -1,36 +1,18 @@
-import {Check, ChevronLeft, ChevronRight} from "lucide-react";
 import
 {
 	Fragment,
 	type KeyboardEvent as ReactKeyboardEvent,
-	type MouseEvent,
 	type RefObject,
 	useEffect,
 	useId,
 	useRef,
-	useState,
 	useSyncExternalStore,
 } from "react";
 import {flushSync} from "react-dom";
 
-import {acknowledgeApproval} from "../lib/answered-approvals";
-import {holdAnswered, releaseAnswered} from "../lib/answered-sessions";
 import {APPROVAL_ARM_GRACE_MS, approvalHotkeyFocusAllowed, onScreen} from "../lib/dock-keys";
 import {installLandingKeys, landingAllowsPick} from "../lib/approval-slot-landing";
-import type {QuestionAnswer} from "../lib/hook-events";
-import {OUTCOME_LABEL, type QuestionLike} from "../lib/ask-user-question";
-import
-{
-	clearQuestionCardState,
-	clearSentQuestionCard,
-	markQuestionCardSeen,
-	markQuestionCardSent,
-	readQuestionCardState,
-	readSentQuestionCard,
-	subscribeSentQuestionCard,
-	wasQuestionCardSeen,
-	writeQuestionCardState,
-} from "../lib/question-card-store";
+import type {QuestionLike} from "../lib/ask-user-question";
 import {renderPreviewMarkdownToHtml} from "../lib/client-markdown";
 import
 {
@@ -40,25 +22,34 @@ import
 	previewSanitizerLoaded,
 	subscribePreviewSanitizer,
 } from "../lib/question-option-preview";
+import {chooseOther, pickOption, type QuestionCardDraft, typeOther} from "../lib/question-card-draft";
+import {APPROVAL_ACTION_SHORTCUT_CLASS, ApprovalActionButton} from "./approval-card";
+import {DockedQuestionCard} from "./docked-question-card";
 import
 {
-	chooseOther,
-	EMPTY_OTHER,
-	labelledAnswers,
-	pickOption,
-	type QuestionCardDraft,
-	typeOther,
-} from "../lib/question-card-draft";
-import {APPROVAL_ACTION_SHORTCUT_CLASS, ApprovalActionButton, ApprovalDockBackdrop} from "./approval-card";
-import {ApprovalStackGhosts} from "./approval-stack";
-import type {ApprovalPresentation} from "../lib/approval-presentation";
-import {QuestionReceipt, type QuestionReceiptRow} from "./question-receipt";
+	ANSWER_ATTR,
+	ANSWER_ROW_ATTR,
+	clickPicksRow,
+	HAS_URL,
+	isAnswered,
+	keepFocus,
+	OPTION_FOCUS,
+	OPTION_TEXT_CLASS,
+	type QuestionCardProps,
+	questionName,
+	roveAnswers,
+	selectionInside,
+	useQuestionAnswering,
+} from "./question-card-common";
+import {QuestionAnswerMark} from "./question-answer-mark";
+import {QuestionReceipt} from "./question-receipt";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import {CDS_BUTTON_DISABLED, CDS_ICON_ONLY_DISABLED} from "./ui/cds-button-disabled";
+import {Icon} from "./ui/icon";
 import {Shortcut} from "./ui/shortcut";
 import {DisabledReason} from "./ui/disabled-reason";
 import {UserInlineText} from "./user-plain-text";
-import {cutUnterminatedPrivateKey, maskSecrets, maskSecretsCompact} from "../lib/secret-mask";
+import {maskSecrets} from "../lib/secret-mask";
 import {revealSpoofing} from "../lib/visible-text";
 import {stripMemoryTags} from "../lib/task-checklist";
 
@@ -67,6 +58,8 @@ const STACK_ACTIONS = "@max-[420px]:flex-col @max-[420px]:items-stretch @max-[42
 
 /** The pager's previous/next arrows: upstream's ghost icon-only `sm` cds Buttons (`h-control aspect-square`), with their disabled look. */
 const PAGER_ARROW_CLASS = `flex h-control aspect-square cursor-pointer items-center justify-center rounded-[var(--upstream-radius)] hover:bg-fill-ghost-hover ${CDS_BUTTON_DISABLED} ${CDS_ICON_ONLY_DISABLED}`;
+
+const OPTION_CLASS = "epitaxy-answer-option group flex w-full items-start gap-md px-lg py-lg text-start";
 
 /** Upstream opens a single-select question on its first option. */
 function initialDraft(question: QuestionLike): QuestionCardDraft
@@ -79,133 +72,6 @@ function initialDraft(question: QuestionLike): QuestionCardDraft
 	};
 }
 
-function isAnswered(draft: QuestionCardDraft): boolean
-{
-	return draft.selected.length > 0 || draft.otherChosen;
-}
-
-function answerOf(draft: QuestionCardDraft): QuestionAnswer
-{
-	const selected = draft.selected.toSorted((a, b) => a - b);
-	if (!draft.otherChosen)
-		return {
-			selected,
-		};
-	const other = draft.other.trim();
-	return {
-		selected,
-		other: other === "" ? EMPTY_OTHER : other,
-	};
-}
-
-/** The receipt rows of a submitted card: each picked answer as upstream builds it, or Skipped. */
-function sentReceiptRows(
-	questions: readonly QuestionLike[],
-	drafts: readonly QuestionCardDraft[],
-	skipped: readonly boolean[],
-): QuestionReceiptRow[]
-{
-	const answers = drafts.map((entry, at) => (skipped[at] === true ? null : answerOf(entry)));
-	return labelledAnswers(questions, answers).map(({question, answer}, at) => (
-	{
-		question,
-		answer: answers[at] === null ? OUTCOME_LABEL.skipped : answer,
-		notes: null,
-	}));
-}
-
-/**
- * Upstream cds Checkbox / Radio indicator, sized by --cds-checkbox (20px comfortable, 16px compact) with a
- * --cds-checkbox-radius corner: unchecked, its edge reads --cds-checkbox-edge (hover -hover).
- */
-function Mark({checked, multi}: {checked: boolean; multi: boolean})
-{
-	const shape = multi ? "rounded-[var(--cds-checkbox-radius)]" : "rounded-full";
-	return (
-		<span
-			aria-hidden="true"
-			{...(checked
-				?
-					{
-						"data-checked": "",
-					}
-				:
-					{
-						"data-unchecked": "",
-					})}
-			className={`mt-[calc((1lh-var(--cds-checkbox,1rem))/2)] flex size-[var(--cds-checkbox)] shrink-0 items-center justify-center ${shape} ${
-				checked
-					? "bg-fill-accent text-white"
-					: "shadow-[inset_0_0_0_1px_var(--color-checkbox-edge)] group-hover:shadow-[inset_0_0_0_1px_var(--color-checkbox-edge-hover)]"
-			}`}
-		>
-			{checked &&
-				(multi ? (
-					<Check className="size-[calc(var(--cds-checkbox)-0.25rem)]" strokeWidth={3} />
-				) : (
-					<span className="size-[calc(var(--cds-checkbox)-0.625rem)] rounded-full bg-white" />
-				))}
-		</span>
-	);
-}
-
-/** Upstream's `data-question-answer`: every option button and the Other button, the arrow keys' stops. */
-const ANSWER_ATTR = "data-question-answer";
-
-/** Upstream's `data-question-answer-row`: an option whose description links, drawn as a row around its button. */
-const ANSWER_ROW_ATTR = "data-question-answer-row";
-
-const OPTION_FOCUS = "focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus";
-
-const OPTION_CLASS = "epitaxy-answer-option group flex w-full items-start gap-md px-lg py-lg text-start";
-
-const OPTION_TEXT_CLASS =
-	"[unicode-bidi:plaintext] [text-align:-webkit-match-parent] supports-[text-align:match-parent]:[text-align:match-parent]";
-
-/** Upstream's `lt`: a description with a URL is linkified, and its option becomes a row. */
-const HAS_URL = /https?:\/\//;
-
-/**
- * Upstream's `st()` on the card root (gated `__gb__725942835`, on upstream):
- * ArrowDown / ArrowUp move focus one stop through the enabled answers, clamped
- * at both ends; from the root they go to the first / last answer (a repeat is
- * swallowed without moving). A link inside an answer row moves from its row.
- * Modified keys and IME composition pass through; the selection never changes.
- * On a card focus landed on, the root branch waits for a fresh pick.
- */
-function roveAnswers(event: ReactKeyboardEvent<HTMLDivElement>)
-{
-	const step = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
-	if (step === 0 || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return;
-	// oxlint-disable-next-line typescript/no-deprecated -- Safari reports IME keydowns only as keyCode 229, as upstream checks
-	if (event.nativeEvent.isComposing || event.keyCode === 229) return;
-	const stops = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(`[${ANSWER_ATTR}]:not(:disabled)`));
-	const onRoot = event.target === event.currentTarget;
-	const target = event.target instanceof Element ? event.target : null;
-	const from = target?.matches("a")
-		? target.closest(`[${ANSWER_ROW_ATTR}]`)?.querySelector(`[${ANSWER_ATTR}]`)
-		: target;
-	const at = stops.findIndex((stop) => stop === from);
-	if (stops.length === 0 || (!onRoot && at === -1)) return;
-	event.preventDefault();
-	if (!onRoot)
-	{
-		stops[at + step]?.focus(
-			{
-				focusVisible: true,
-			},
-		);
-		return;
-	}
-	// Upstream's root branch moves only on a pick the landing allows (`d_`): none under 400ms after focus landed here.
-	if (!event.repeat && landingAllowsPick(event.nativeEvent, false))
-		stops.at(step === 1 ? 0 : -1)?.focus(
-			{
-				focusVisible: true,
-			},
-		);
-}
-
 /**
  * Upstream's card `onKeyDown` guard: on a card focus landed on, an arrow runs only as a fresh pick, which it marks
  * picked (upstream marks it with the card's digit shortcuts on, as its inline card has them).
@@ -214,36 +80,6 @@ function onCardKeyDown(event: ReactKeyboardEvent<HTMLDivElement>)
 {
 	if ((event.key === "ArrowDown" || event.key === "ArrowUp") && !landingAllowsPick(event.nativeEvent, true)) return;
 	roveAnswers(event);
-}
-
-/** Upstream's `dt()`: the click landed in the row and not on a link or another button inside it. */
-function clickPicksRow(event: MouseEvent<HTMLElement>): boolean
-{
-	const target = event.target instanceof Element ? event.target : null;
-	const control = target?.closest("a, button");
-	return (
-		target !== null &&
-		event.currentTarget.contains(target) &&
-		(control === null || control === undefined || control.hasAttribute(ANSWER_ATTR))
-	);
-}
-
-/** Upstream's onMouseDown preventDefault: clicking a card button never moves focus. */
-function keepFocus(event: MouseEvent)
-{
-	event.preventDefault();
-}
-
-/** Upstream's gt(): a click that ends a drag-select within its own row is a selection, not a pick. */
-function selectionInside(event: MouseEvent<HTMLElement>): boolean
-{
-	const selection = event.currentTarget.ownerDocument.getSelection();
-	return (
-		selection !== null &&
-		!selection.isCollapsed &&
-		selection.rangeCount > 0 &&
-		selection.getRangeAt(0).intersectsNode(event.currentTarget)
-	);
 }
 
 /**
@@ -284,35 +120,6 @@ function useApprovalHotkey(cardRootRef: RefObject<HTMLDivElement | null>, hotkey
 }
 
 /**
- * Upstream's seen-map filler: records `draftKey` once the card intersects the
- * viewport, or at once where IntersectionObserver is unavailable.
- */
-function useMarkSeen(cardRootRef: RefObject<HTMLDivElement | null>, draftKey: string | undefined)
-{
-	useEffect(() =>
-	{
-		const card = cardRootRef.current;
-		if (draftKey === undefined || card === null) return undefined;
-		if (typeof IntersectionObserver === "undefined")
-		{
-			markQuestionCardSeen(draftKey);
-			return undefined;
-		}
-		const observer = new IntersectionObserver((entries) =>
-		{
-			if (!entries.some((entry) => entry.isIntersecting)) return;
-			markQuestionCardSeen(draftKey);
-			observer.disconnect();
-		});
-		observer.observe(card);
-		return () =>
-		{
-			observer.disconnect();
-		};
-	}, [cardRootRef, draftKey]);
-}
-
-/**
  * One option of upstream's card (`R`): its mark, then the label over a pre-wrap
  * description. A description with a URL is linkified, and the option becomes a
  * `data-question-answer-row` around an inset button labelled by its text, so a
@@ -349,7 +156,7 @@ function AnswerOption({
 	);
 	const content = (
 		<>
-			<Mark checked={checked} multi={multi} />
+			<QuestionAnswerMark checked={checked} multi={multi} />
 			{text}
 		</>
 	);
@@ -438,17 +245,6 @@ function useOptionPreview(value: unknown): OptionPreview | undefined
 	return html && !ready ? undefined : parseOptionPreview(typeof value === "string" ? maskSecrets(value) : value);
 }
 
-/**
- * Upstream's question name (c2f6611a3 `xt`'s `name`, 2026-11-10) from the raw text (memory tags dropped by `ra`): secrets collapse to 7 bullets (`nF`), and a
- * name holding an unterminated private key is cut before it (`_h`) with a trailing ellipsis.
- */
-function questionName(raw: string): string
-{
-	const compact = maskSecretsCompact(raw);
-	const cut = cutUnterminatedPrivateKey(compact);
-	return cut === compact ? compact : `${cut.trimEnd()} \u2026`;
-}
-
 /** Upstream's `GF`: a text preview as its markdown, an HTML one as sanitized; both a focusable scroll region. */
 function OptionPreviewBlock({preview}: {preview: OptionPreview})
 {
@@ -486,6 +282,12 @@ function OptionPreviewBlock({preview}: {preview: OptionPreview})
 	);
 }
 
+/** The pending question card: upstream's inline card (c2f6611a3 `W`), or its docked card (c9ed5627b) above the composer. */
+export function QuestionCard(props: QuestionCardProps)
+{
+	return props.presentation === "dock" ? <DockedQuestionCard {...props} /> : <InlineQuestionCard {...props} />;
+}
+
 /**
  * Upstream's pending AskUserQuestion card, drawn inline at most 480px wide: the
  * question in a grey header with an "N of M" pager, radio (or checkbox) rows of
@@ -499,94 +301,45 @@ function OptionPreviewBlock({preview}: {preview: OptionPreview})
  * `answered` it draws the recorded answers' receipt in the sent receipt's place,
  * so the result keeps that node and its single fade.
  */
-export function QuestionCard({
+function InlineQuestionCard({
 	questions,
 	onSubmit,
 	submitLabel = "Submit",
 	draftKey,
 	answered,
 	sessionId,
-	presentation = "card",
-	queueDepth = 0,
-}: {
-	questions: readonly QuestionLike[];
-	onSubmit?: ((answers: Array<QuestionAnswer | null>) => Promise<void>) | undefined;
-	/** The last page's primary label: "Submit", or the fork route's explicit one. */
-	submitLabel?: string;
-	/** Where the in-progress answer is kept across remounts; the tool use id. */
-	draftKey?: string | undefined;
-	/** The call's recorded answers, once its result lands after this card sent them. */
-	answered?: readonly QuestionReceiptRow[] | undefined;
-	/** The question's session: an answer holds it as answered, so every view draws it working at the click. */
-	sessionId?: string | undefined;
-	/** Upstream's inline "card" (480px, outlined), or docked above the composer on the sidebar backdrop. */
-	presentation?: ApprovalPresentation;
-	/** Upstream's `queueDepth`: the other requests pending behind this one, drawn as ghosts while docked. */
-	queueDepth?: number;
-})
+}: QuestionCardProps)
 {
-	const [wasSent] = useState(() =>
-		draftKey === undefined ? null : readSentQuestionCard(draftKey, questions.length),
-	);
-	const [restored] = useState(() =>
-		draftKey === undefined ? null : (wasSent ?? readQuestionCardState(draftKey, questions.length)),
-	);
-	// Upstream fades only a card never seen in this page and never restored.
-	const [skipEnter] = useState(() => restored !== null || (draftKey !== undefined && wasQuestionCardSeen(draftKey)));
-	const [page, setPage] = useState(restored?.page ?? 0);
-	const [drafts, setDrafts] = useState<QuestionCardDraft[]>(() => restored?.drafts ?? questions.map(initialDraft));
-	const [skipped, setSkipped] = useState<boolean[]>(() => restored?.skipped ?? questions.map(() => false));
-	const [sending, setSending] = useState(wasSent !== null);
-	// The sent receipt fades in only when this instance submitted; a remount mid-send redraws it still.
-	const [receiptEnters, setReceiptEnters] = useState(false);
-	const [error, setError] = useState<string | null>(null);
 	const otherRef = useRef<HTMLTextAreaElement>(null);
 	const cardRootRef = useRef<HTMLDivElement>(null);
 	const hotkeyRef = useRef<(() => void) | null>(null);
 	const refocusRef = useRef(false);
 	useApprovalHotkey(cardRootRef, hotkeyRef);
-	useMarkSeen(cardRootRef, draftKey);
-	// Upstream saves the draft on every change and stops once the card has submitted.
-	const savedRef = useRef<
+	const
 	{
-		mounted: boolean;
-		submitted: boolean;
-	}>(
+		skipEnter,
+		page,
+		setPage,
+		drafts,
+		setDrafts,
+		skipped,
+		setSkipped,
+		sending,
+		receiptEnters,
+		error,
+		submit,
+		sentRows,
+	} = useQuestionAnswering(
 		{
-			mounted: false,
-			submitted: wasSent !== null,
+			questions,
+			onSubmit,
+			draftKey,
+			sessionId,
+			cardRootRef,
+			initialDraft,
+			initialHighlighted: null,
 		},
 	);
-	useEffect(() =>
-	{
-		if (!savedRef.current.mounted)
-		{
-			savedRef.current.mounted = true;
-			return;
-		}
-		if (draftKey === undefined || savedRef.current.submitted) return;
-		writeQuestionCardState(
-			draftKey,
-			{
-				page,
-				drafts,
-				skipped,
-			},
-		);
-	}, [draftKey, page, drafts, skipped]);
-	// A card remounted mid-send hears when the sending instance's send fails,
-	// and turns back into the restored, editable draft with the error.
-	useEffect(() =>
-	{
-		if (draftKey === undefined || wasSent === null) return undefined;
-		return subscribeSentQuestionCard(draftKey, (failure) =>
-		{
-			if (failure === null) return;
-			savedRef.current.submitted = false;
-			setError(failure);
-			setSending(false);
-		});
-	}, [draftKey, wasSent]);
 	const index = Math.min(page, questions.length - 1);
 	// Upstream refocuses the card root after a page change that started with focus inside it.
 	useEffect(() =>
@@ -609,7 +362,7 @@ export function QuestionCard({
 	if (answered !== undefined) return <QuestionReceipt rows={answered} enters={false} />;
 	// The answered card leaves at once for the receipt of what it sent, which
 	// stays through remounts until the result lands; a failed send brings the card back.
-	if (sending) return <QuestionReceipt rows={sentReceiptRows(questions, drafts, skipped)} enters={receiptEnters} />;
+	if (sending) return <QuestionReceipt rows={sentRows()} enters={receiptEnters} />;
 	const editable = onSubmit !== undefined;
 	const multi = question.multiSelect === true;
 	const isLast = index === questions.length - 1;
@@ -636,56 +389,6 @@ export function QuestionCard({
 	{
 		setDrafts((current) => current.map((entry, at) => (at === index ? next : entry)));
 		setSkipped((current) => current.map((entry, at) => (at === index ? false : entry)));
-	};
-
-	const submit = async (finalDrafts: QuestionCardDraft[], finalSkipped: boolean[]) =>
-	{
-		if (onSubmit === undefined) return;
-		setError(null);
-		setSending(true);
-		setReceiptEnters(true);
-		savedRef.current.submitted = true;
-		if (draftKey !== undefined)
-		{
-			clearQuestionCardState(draftKey);
-			markQuestionCardSent(
-				draftKey,
-				{
-					page,
-					drafts: finalDrafts,
-					skipped: finalSkipped,
-				},
-				sessionId,
-			);
-			if (sessionId !== undefined) holdAnswered(sessionId, draftKey);
-		}
-		try
-		{
-			await onSubmit(finalDrafts.map((entry, at) => (finalSkipped[at] === true ? null : answerOf(entry))));
-			// Upstream's C1: a delivered live answer stays answered through a reload for 5 minutes.
-			if (draftKey !== undefined && sessionId !== undefined)
-				acknowledgeApproval(sessionId, draftKey, "AskUserQuestion");
-		}
-		catch (err)
-		{
-			const message = err instanceof Error ? err.message : "Failed to send the answer";
-			savedRef.current.submitted = false;
-			if (draftKey !== undefined)
-			{
-				writeQuestionCardState(
-					draftKey,
-					{
-						page,
-						drafts: finalDrafts,
-						skipped: finalSkipped,
-					},
-				);
-				clearSentQuestionCard(draftKey, message);
-			}
-			if (sessionId !== undefined) releaseAnswered(sessionId);
-			setError(message);
-			setSending(false);
-		}
 	};
 
 	const advance = () =>
@@ -760,13 +463,7 @@ export function QuestionCard({
 			aria-label={revealSpoofing(questionName(rawQuestion))}
 			data-approval-card-root=""
 			data-focus-region="question"
-			// Upstream sets the attribute only off the dock (c2d1aeb56 `w`).
-			{...(presentation === "card"
-				?
-					{
-						"data-approval-presentation": "card",
-					}
-				: {})}
+			data-approval-presentation="card"
 			onClick={(event) =>
 			{
 				event.stopPropagation();
@@ -778,15 +475,11 @@ export function QuestionCard({
 						"data-skip-approval-enter": "",
 					}
 				: {})}
-			className={`${presentation === "card" ? "card-ring " : "epitaxy-approval-card max-h-[60vh] "}@container relative isolate flex ${presentation === "card" ? "max-w-[480px] " : ""}flex-col ${presentation === "card" ? "overflow-clip " : ""}rounded-card origin-top outline-none${
+			className={`card-ring @container relative isolate flex max-w-[480px] flex-col overflow-clip rounded-card origin-top outline-none${
 				skipEnter ? "" : " animate-approval-inline-enter motion-reduce:animate-none"
 			}`}
 		>
-			<ApprovalStackGhosts queueDepth={presentation === "dock" ? queueDepth : 0} />
-			{presentation === "dock" && <ApprovalDockBackdrop />}
-			<div
-				className={`bg-alpha-1 px-lg flex gap-md py-md items-center${presentation === "dock" ? " rounded-t-[inherit]" : ""}`}
-			>
+			<div className="bg-alpha-1 px-lg flex gap-md py-md items-center">
 				<div className="min-w-0 flex-1 text-body text-primary select-text break-words [unicode-bidi:plaintext]">
 					<UserInlineText text={rawQuestion} codeLook="chip" revealCloaks />
 				</div>
@@ -806,7 +499,7 @@ export function QuestionCard({
 							}}
 							className={PAGER_ARROW_CLASS}
 						>
-							<ChevronLeft aria-hidden="true" className="size-icon" />
+							<Icon name="CaretLeft" className="size-icon" />
 						</button>
 						<span className="tabular-nums">
 							{index + 1} of {questions.length}
@@ -825,16 +518,13 @@ export function QuestionCard({
 							}}
 							className={PAGER_ARROW_CLASS}
 						>
-							<ChevronRight aria-hidden="true" className="size-icon" />
+							<Icon name="CaretRight" className="size-icon" />
 						</button>
 					</span>
 				)}
 			</div>
 			<span className="contents" data-approval-allow="">
-				{/* Docked, the card is capped like upstream's approval root and its options scroll in place. */}
-				<div
-					className={`flex flex-col${presentation === "dock" ? " epitaxy-approval-body min-h-0 overflow-y-auto overscroll-contain" : ""}`}
-				>
+				<div className="flex flex-col">
 					{question.options.map((option, optionIndex) => (
 						<Fragment key={`${optionIndex}-${option.label}`}>
 							<AnswerOption
@@ -877,7 +567,7 @@ export function QuestionCard({
 							className="absolute inset-0 cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus disabled:cursor-default"
 						/>
 						<span aria-hidden="true" className="contents">
-							<Mark checked={draft.otherChosen} multi={multi} />
+							<QuestionAnswerMark checked={draft.otherChosen} multi={multi} />
 							<span className="text-body text-primary">Other</span>
 						</span>
 						{draft.otherChosen && (

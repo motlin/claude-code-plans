@@ -23,6 +23,8 @@ const QuestionCardStateSchema = z.strictObject(
 			),
 		),
 		skipped: z.array(z.boolean()),
+		/** The docked card's highlighted row (upstream's `highlightedIndex`, -1 for Other), absent from older drafts. */
+		highlighted: z.number().int().min(-1).nullable().optional(),
 	},
 );
 

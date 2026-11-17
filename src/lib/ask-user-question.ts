@@ -319,7 +319,8 @@ const SKIPPED_ANSWERS: ReadonlySet<string> = new Set([
 	"[No preference]",
 	"The user did not answer this question. Make a reasonable assumption and carry on, but tell the user what assumption you made.",
 ]);
-const DISMISSED_ANSWER = "[User dismissed — do not proceed, wait for next instruction]";
+/** Upstream's `OT`: the answer to every question of a card the user dismissed. */
+export const DISMISSED_ANSWER = "[User dismissed — do not proceed, wait for next instruction]";
 
 /** Classify a recorded answer as one of upstream's non-answers; a real answer returns undefined. */
 export function questionOutcome(answer: string): QuestionOutcome | undefined

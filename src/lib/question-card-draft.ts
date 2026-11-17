@@ -44,6 +44,40 @@ export function chooseOther(question: QuestionShape, draft: QuestionCardDraft): 
 	};
 }
 
+/** Upstream's `rD`: a question whose options carry a preview, which the docked card selects instead of answering. */
+export function hasPreviews(question: QuestionLike): boolean
+{
+	return question.multiSelect !== true && question.options.some((option) => option.preview !== undefined);
+}
+
+/**
+ * Upstream's docked `handleOptionClick` (Rh7), with -1 for Other: a multi-select toggles; Other or a previewed
+ * question selects; a plain single-select records its answer at once (`answerNow`). The click highlights its row.
+ */
+export function pickDockedOption(
+	question: QuestionLike,
+	draft: QuestionCardDraft,
+	option: number,
+):
+{
+	draft: QuestionCardDraft;
+	highlighted: number;
+	answerNow: boolean;
+}
+{
+	if (option === -1)
+		return {
+			draft: chooseOther(question, draft),
+			highlighted: -1,
+			answerNow: false,
+		};
+	return {
+		draft: pickOption(question, draft, option),
+		highlighted: option,
+		answerNow: question.multiSelect !== true && !hasPreviews(question),
+	};
+}
+
 /** Typing Other chooses it, as the CLI checks its "Type something" row on the first keystroke. */
 export function typeOther(question: QuestionShape, draft: QuestionCardDraft, other: string): QuestionCardDraft
 {
