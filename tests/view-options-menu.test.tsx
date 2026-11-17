@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
+import {FileDiff, ListChecks} from "lucide-react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {registerPane} from "../src/components/panes/pane-registry";
 import {TileHost} from "../src/components/panes/tile-host";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {SessionPaneControls} from "../src/components/view-options-menu";
-import {type ViewOptionsFacts, viewOptionsItems} from "../src/components/view-options-items";
+import {type ViewOptionsFacts, viewOptionsHasRows, viewOptionsItems} from "../src/components/view-options-items";
 import type {PaneKind} from "../src/lib/pane-layout";
 import {installLocalStorage} from "./fake-storage";
 
@@ -202,6 +203,58 @@ describe("viewOptionsItems", () =>
 	});
 });
 
+describe("viewOptionsHasRows", () =>
+{
+	const plan = [
+		{
+			kind: "plan" as const,
+			label: "Plan",
+			icon: ListChecks,
+		},
+	];
+
+	it("ignores a Plan that is only available, counts an open Plan pane and folded toggles, as upstream's hasRows does", () =>
+	{
+		expect(
+			{
+				availablePlan: viewOptionsHasRows(
+					{
+						folded: [],
+						items: plan,
+						isOpen: () => false,
+					},
+				),
+				openPlan: viewOptionsHasRows(
+					{
+						folded: [],
+						items: plan,
+						isOpen: (kind) => kind === "plan",
+					},
+				),
+				foldedToggle: viewOptionsHasRows(
+					{
+						folded: [
+							{
+								kind: "changes",
+								label: "Changes",
+								icon: FileDiff,
+							},
+						],
+						items: [],
+						isOpen: () => false,
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				availablePlan: false,
+				openPlan: true,
+				foldedToggle: true,
+			},
+		);
+	});
+});
+
 function renderControls(facts: ViewOptionsFacts = {}, onExpandChat?: () => void)
 {
 	return render(
@@ -257,6 +310,147 @@ function toggleButtons(): string[]
 
 describe("SessionPaneControls", () =>
 {
+	it.each([
+		{
+			hasPlan: true,
+		},
+		{
+			hasUnloadedHistory: true,
+		},
+	])("renders no View options trigger when Plan is only available (%o), as upstream's hasRows does", (facts) =>
+	{
+		registerKinds("plan");
+		renderControls(facts);
+
+		expect(
+			screen.queryByRole(
+				"button",
+				{
+					name: "View options",
+				},
+			),
+		).toBeNull();
+	});
+
+	it("lists an available Plan once another row shows the trigger", async () =>
+	{
+		registerKinds("plan", "links");
+		renderControls(
+			{
+				hasPlan: true,
+			},
+		);
+		await openViewOptions();
+
+		expect(menuRows()).toStrictEqual([
+			["menuitemcheckbox", "Links", "false"],
+			["menuitemcheckbox", "Plan", "false"],
+		]);
+	});
+
+	it("keeps the trigger for an available Plan while Expand chat is offered", () =>
+	{
+		registerKinds("plan");
+		renderControls(
+			{
+				hasPlan: true,
+			},
+			() => {},
+		);
+
+		expect(
+			screen.getByRole(
+				"button",
+				{
+					name: "View options",
+				},
+			).tagName,
+		).toBe("BUTTON");
+	});
+
+	it("hands focus to the last pane toggle when the focused trigger disappears, as upstream does", async () =>
+	{
+		registerKinds("changes");
+		registerKinds("links");
+		renderControls();
+		act(() =>
+		{
+			screen
+				.getByRole(
+					"button",
+					{
+						name: "View options",
+					},
+				)
+				.focus();
+		});
+
+		act(() =>
+		{
+			unregisters.pop()?.();
+		});
+		await act(async () =>
+		{
+			await Promise.resolve();
+		});
+
+		expect(document.activeElement?.getAttribute("aria-label")).toBe("Changes");
+	});
+
+	it("closes the menu and hands focus to the last pane toggle when the open trigger disappears", async () =>
+	{
+		registerKinds("changes");
+		registerKinds("links");
+		renderControls();
+		await openViewOptions();
+
+		act(() =>
+		{
+			unregisters.pop()?.();
+		});
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
+				setTimeout(resolve, 0);
+			});
+		});
+
+		expect(
+			{
+				focused: document.activeElement?.getAttribute("aria-label"),
+				menu: screen.queryByRole("menu"),
+			},
+		).toStrictEqual(
+			{
+				focused: "Changes",
+				menu: null,
+			},
+		);
+	});
+
+	it("leaves focus elsewhere alone when the trigger disappears", async () =>
+	{
+		registerKinds("changes");
+		registerKinds("links");
+		renderControls();
+		const input = document.createElement("input");
+		document.body.append(input);
+		input.focus();
+
+		act(() =>
+		{
+			unregisters.pop()?.();
+		});
+		await act(async () =>
+		{
+			await Promise.resolve();
+		});
+
+		expect(document.activeElement).toBe(input);
+		input.remove();
+	});
+
 	it("renders no View options trigger when nothing belongs in the menu", () =>
 	{
 		renderControls();
@@ -381,13 +575,14 @@ describe("SessionPaneControls", () =>
 		);
 	});
 
-	it("keeps a checked Plan item while the Plan pane is open without a plan, as upstream does", async () =>
+	it("keeps the trigger and a checked Plan item while the Plan pane is open without a plan, as upstream does", async () =>
 	{
 		registerKinds("plan");
 		const {rerender} = renderControls(
 			{
 				hasPlan: true,
 			},
+			() => {},
 		);
 		await openViewOptions();
 		fireEvent.click(

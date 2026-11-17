@@ -1,5 +1,5 @@
 import {FileDiff, Files} from "lucide-react";
-import type {RefObject} from "react";
+import {useState, type RefObject} from "react";
 
 import {useIsMac} from "../hooks/use-is-mac";
 import {useShortcutKeys} from "../hooks/use-shortcut";
@@ -11,12 +11,12 @@ import {usePaneHost} from "./panes/pane-host-context";
 import {SessionRailMenuItem, SessionRailToggle} from "./session-rail/session-rail-slot";
 import {TITLEBAR_ICON_BUTTON_CLASS} from "./titlebar-classes";
 import {useTitlebarHiddenCount} from "./titlebar-fold-context";
-import {useFoldFocus} from "./use-fold-focus";
+import {useEmptiedFocus, useFoldFocus} from "./use-fold-focus";
 import {TITLEBAR_TOGGLES_ATTRIBUTE} from "./use-titlebar-fold";
 import {Icon} from "./ui/icon";
 import {Menu, MenuCheckboxItem, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./ui/menu";
 import {Tooltip} from "./ui/tooltip";
-import {viewOptionsItems} from "./view-options-items";
+import {viewOptionsHasRows, viewOptionsItems} from "./view-options-items";
 import type {ViewOptionsFacts, ViewOptionsItem, PaneMenuEntry} from "./view-options-items";
 
 type MainPaneEntry = PaneMenuEntry &
@@ -66,11 +66,17 @@ function MainPaneToggle({entry}: {entry: MainPaneEntry})
 }
 
 function ViewOptionsMenu({
+	open,
+	onOpenChange,
+	triggerFocusProps,
 	triggerRef,
 	railFolded,
 	entries,
 	onExpandChat,
 }: {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	triggerFocusProps: ReturnType<typeof useEmptiedFocus>;
 	triggerRef: RefObject<HTMLButtonElement | null>;
 	/** The Show/Hide session rail toggle, folded in from the trail. */
 	railFolded: boolean;
@@ -82,9 +88,14 @@ function ViewOptionsMenu({
 	const isMac = useIsMac();
 	const expandKeys = useShortcutKeys("expand_collapse_pane");
 	return (
-		<Menu>
+		<Menu open={open} onOpenChange={onOpenChange}>
 			<Tooltip content="View options" side="bottom">
-				<MenuTrigger ref={triggerRef} aria-label="View options" className={TITLEBAR_ICON_BUTTON_CLASS}>
+				<MenuTrigger
+					ref={triggerRef}
+					{...triggerFocusProps}
+					aria-label="View options"
+					className={TITLEBAR_ICON_BUTTON_CLASS}
+				>
 					<Icon name="DotsHorizontal" size="auto" />
 				</MenuTrigger>
 			</Tooltip>
@@ -139,8 +150,10 @@ function ViewOptionsMenu({
  * toggle, then the Changes and Files toggles in their own group, then View
  * options ⋯ holding the other panes and Expand chat. The titlebar's measured
  * fold hides buttons into the top of the menu one at a time: the inactive
- * panes, then the open one, then the rail. The trigger shows only when the
- * menu has items.
+ * panes, then the open one, then the rail. The trigger shows when a pane row
+ * other than an available-only Plan, a folded toggle, the folded rail, or
+ * Expand chat is present; when it disappears, focus that fell to the body
+ * moves to the last inline toggle.
  */
 export function SessionPaneControls({
 	facts,
@@ -170,16 +183,34 @@ export function SessionPaneControls({
 	}));
 	const {folded, inline} = splitPanes(shown, hiddenMainPanes);
 	const {togglesRef, triggerRef, railFocusProps, togglesFocusProps} = useFoldFocus();
-	const menuEntries = [
-		...folded,
-		...viewOptionsItems(
+	const viewItems = viewOptionsItems(
+		{
+			registered,
+			isOpen: host.isOpen,
+			facts,
+		},
+	);
+	const menuEntries = [...folded, ...viewItems];
+	const triggerShown =
+		railToggleFolded ||
+		viewOptionsHasRows(
 			{
-				registered,
+				folded,
+				items: viewItems,
 				isOpen: host.isOpen,
-				facts,
 			},
-		),
-	];
+		) ||
+		onExpandChat !== undefined;
+	const [menuOpen, setMenuOpen] = useState(false);
+	const open = triggerShown && menuOpen;
+	const triggerFocusProps = useEmptiedFocus(
+		{
+			shown: triggerShown,
+			open,
+			triggerRef,
+			togglesRef,
+		},
+	);
 	return (
 		<>
 			{railAvailable && !railToggleFolded && <SessionRailToggle {...railFocusProps} />}
@@ -196,8 +227,11 @@ export function SessionPaneControls({
 					<MainPaneToggle key={entry.kind} entry={entry} />
 				))}
 			</div>
-			{(railToggleFolded || menuEntries.length > 0 || onExpandChat !== undefined) && (
+			{triggerShown && (
 				<ViewOptionsMenu
+					open={open}
+					onOpenChange={setMenuOpen}
+					triggerFocusProps={triggerFocusProps}
 					triggerRef={triggerRef}
 					railFolded={railToggleFolded}
 					entries={menuEntries}

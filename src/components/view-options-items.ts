@@ -22,6 +22,25 @@ export function viewOptionsItems({
 		.map(({applies: _applies, ...item}) => item);
 }
 
+/**
+ * Upstream's `vy` hasRows for the View options trigger: folded toggles and
+ * every listed item count, except a Plan that is only available; the Plan row
+ * counts only while its pane is open. The menu still lists an available Plan
+ * whenever something else shows the trigger.
+ */
+export function viewOptionsHasRows({
+	folded,
+	items,
+	isOpen,
+}: {
+	folded: readonly PaneMenuEntry[];
+	items: readonly ViewOptionsItem[];
+	isOpen: (kind: PaneKind) => boolean;
+}): boolean
+{
+	return folded.length > 0 || items.some((item) => item.kind !== "plan" || isOpen("plan"));
+}
+
 /** What the session offers, deciding which View options items apply. */
 export interface ViewOptionsFacts
 {
