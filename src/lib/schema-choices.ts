@@ -1523,6 +1523,7 @@ export const sessionMenuItemLabels =
 	ungroup: "Remove from sections",
 	"new-group": "New section",
 	"transcript-view": "Transcript view",
+	"terminal-view": "Terminal view",
 	"transcript-mode": "Transcript mode",
 	"make-default-transcript-mode": "Make default",
 	"output-style": "Output style",

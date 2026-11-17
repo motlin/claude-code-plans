@@ -951,6 +951,11 @@ describe("getSessionMenuItems", () =>
 			},
 			{
 				kind: "item",
+				id: "terminal-view",
+				label: "Terminal view",
+			},
+			{
+				kind: "item",
 				id: "output-style",
 				label: "Output style",
 				submenu: [

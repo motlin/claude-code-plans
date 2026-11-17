@@ -37,6 +37,7 @@ export const SessionMenuItemIdSchema = z.enum([
 	"ungroup",
 	"new-group",
 	"transcript-view",
+	"terminal-view",
 	"transcript-mode",
 	"make-default-transcript-mode",
 	"output-style",
@@ -618,6 +619,14 @@ export function getSessionMenuItems(
 	if (surface === "header" && session.transcriptView !== undefined)
 	{
 		settingsBlock.push(transcriptViewMenuItem(session.transcriptView));
+		// Local entry to upstream's `?view=terminal`, which upstream links only from its internal session graph page.
+		settingsBlock.push(
+			{
+				kind: "item",
+				id: "terminal-view",
+				label: sessionMenuItemLabels["terminal-view"],
+			},
+		);
 	}
 	const outputStyle =
 		surface === "header" && session.outputStyles !== undefined

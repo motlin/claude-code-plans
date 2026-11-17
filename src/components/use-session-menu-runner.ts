@@ -86,6 +86,21 @@ export function useSessionMenuRunner({
 					},
 				);
 				return;
+			case "terminal-view":
+				void navigate(
+					{
+						to: "/session/$id",
+						params:
+						{
+							id: sessionId,
+						},
+						search:
+						{
+							view: "terminal",
+						},
+					},
+				);
+				return;
 			case "open-terminal":
 				if (cwd !== null) void copySessionResumeCommand(sessionId, cwd, toast);
 				return;

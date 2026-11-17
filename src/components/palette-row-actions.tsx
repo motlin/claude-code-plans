@@ -241,6 +241,7 @@ export function PaletteRowActionsCard({
 			case "ungroup":
 			case "new-group":
 			case "transcript-view":
+			case "terminal-view":
 			case "transcript-mode":
 			case "make-default-transcript-mode":
 			case "output-style":

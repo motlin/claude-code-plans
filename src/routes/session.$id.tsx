@@ -11,12 +11,21 @@ import
 import {sessionScrollKey} from "../lib/session-route-location";
 import {createFileRoute, useLocation, useRouter} from "@tanstack/react-router";
 import {noop, useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
-import {useCallback, useEffect, useRef} from "react";
+import {lazy, Suspense, useCallback, useEffect, useRef} from "react";
 import {SessionPage} from "../components/session-page";
 import {SessionErrorComponent} from "../components/session-error";
+import {TerminalHold} from "../components/terminal-view/terminal-hold";
 import {herdrPanesQueryOptions} from "../lib/api/herdr";
 import {validateSessionSearch} from "../lib/session-search";
 import {sessionDetailQueryOptions, sessionSubagentsQueryOptions, transcriptQueryOptions} from "../lib/api/sessions";
+
+// Upstream lazy-loads its terminal view (`epitaxy_terminal_view`, tier T3) behind the hold screen.
+const TerminalSession = lazy(async () =>
+	import("../components/terminal-view/terminal-session").then((module) => (
+	{
+		default: module.TerminalSession,
+	})),
+);
 
 export const Route = createFileRoute("/session/$id")(
 	{
@@ -150,7 +159,7 @@ function ResolvedSessionRoute({
 })
 {
 	const router = useRouter();
-	const {pane} = Route.useSearch();
+	const {pane, view} = Route.useSearch();
 	const navigate = Route.useNavigate();
 	const detail = useSessionHeadTitle(sessionId);
 	useCanonicalSessionRoute(sessionId, routeId, detail);
@@ -161,7 +170,13 @@ function ResolvedSessionRoute({
 	{
 		void navigate(
 			{
-				search: {},
+				search: (previous) =>
+					previous.view === undefined
+						? {}
+						:
+							{
+								view: previous.view,
+							},
 				state: (state) => (
 				{
 					...state,
@@ -191,6 +206,14 @@ function ResolvedSessionRoute({
 			},
 		);
 	}, [navigate, router, sessionId, routeId, params.id]);
+
+	// Upstream `CPe`: the terminal view replaces the whole session column.
+	if (view === "terminal")
+		return (
+			<Suspense fallback={<TerminalHold />}>
+				<TerminalSession sessionId={sessionId} />
+			</Suspense>
+		);
 
 	return (
 		<SessionPage

@@ -1864,7 +1864,7 @@ describe("Claude tab lifecycle", () =>
 
 describe("?pane= deep link", () =>
 {
-	it("keeps only a known pane kind", () =>
+	it("keeps only a known pane kind and the terminal view", () =>
 	{
 		expect([
 			validateSessionSearch(
@@ -1883,6 +1883,22 @@ describe("?pane= deep link", () =>
 				},
 			),
 			validateSessionSearch({}),
+			validateSessionSearch(
+				{
+					view: "terminal",
+				},
+			),
+			validateSessionSearch(
+				{
+					view: "x",
+				},
+			),
+			validateSessionSearch(
+				{
+					pane: "terminal",
+					view: "terminal",
+				},
+			),
 		]).toStrictEqual([
 			{
 				pane: "terminal",
@@ -1890,6 +1906,14 @@ describe("?pane= deep link", () =>
 			{},
 			{},
 			{},
+			{
+				view: "terminal",
+			},
+			{},
+			{
+				pane: "terminal",
+				view: "terminal",
+			},
 		]);
 	});
 

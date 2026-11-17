@@ -391,7 +391,7 @@ describe("session header menu", () =>
 			["Open in"],
 			["Rename", "Fork"],
 			["Copy link"],
-			["Transcript view", "Output style"],
+			["Transcript view", "Terminal view", "Output style"],
 			["Archive"],
 			[
 				"Project",
@@ -416,6 +416,29 @@ describe("session header menu", () =>
 			"separator",
 			"group",
 		]);
+	});
+
+	it("opens upstream's terminal transcript view from Terminal view", async () =>
+	{
+		const router = await renderTitlebar(
+			localActions(),
+			{
+				transcriptView:
+				{
+					mode: "normal",
+					defaultMode: "normal",
+					hasThinking: false,
+					setMode: () =>
+					{
+					},
+					makeDefault: () =>
+					{
+					},
+				},
+			},
+		);
+		await select("Terminal view");
+		expect(router.state.location.href).toBe(`/session/${SESSION_ID}?view=terminal`);
 	});
 
 	it("drops Generate AI summary when there is nothing to generate", async () =>

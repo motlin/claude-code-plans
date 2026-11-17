@@ -137,7 +137,7 @@ describe("getSessionMenuItems with a transcript view", () =>
 			},
 		).map((entry) => (entry.kind === "item" ? entry.id : "|"));
 
-	it("places Transcript view ▸ between the actions and Archive, in the header only", () =>
+	it("places Transcript view ▸ and Terminal view between the actions and Archive, in the header only", () =>
 	{
 		expect(
 			{
@@ -146,7 +146,7 @@ describe("getSessionMenuItems with a transcript view", () =>
 			},
 		).toStrictEqual(
 			{
-				header: ["rename", "|", "transcript-view", "|", "archive"],
+				header: ["rename", "|", "transcript-view", "terminal-view", "|", "archive"],
 				row: ["rename", "|", "archive"],
 			},
 		);

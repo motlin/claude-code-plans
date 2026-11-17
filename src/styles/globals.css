@@ -6528,3 +6528,158 @@ html[data-reduce-motion="true"] [data-cds-composer-attachments] [data-cds-attach
 {
 	transition-property: none;
 }
+
+/* Upstream's terminal transcript view (`?view=terminal`, inline style c6a428257 in cf6989767): always
+   dark with fixed hexes in both themes. --cds-font-mono / --cds-font-size-code map to --font-mono /
+   --upstream-text-code. The hold screen is caec01fbc in cc43287c9. */
+.epitaxy-terminal-hold
+{
+	background: #101010;
+}
+.epitaxy-terminal-hold-exit
+{
+	color: #8a8782;
+	cursor: pointer;
+	font: inherit;
+	background: 0 0;
+	border: none;
+	padding: 0;
+	text-decoration: underline;
+	position: absolute;
+	bottom: 24px;
+	left: 50%;
+	transform: translate(-50%);
+}
+.epitaxy-terminal-view
+{
+	color: #e8e6e3;
+	font-family: var(--font-mono);
+	font-size: var(--upstream-text-code, 0.75rem);
+	background: #101010;
+	line-height: 1.55;
+}
+.epitaxy-terminal-view:focus-visible
+{
+	outline-offset: -1px;
+	outline: 1px solid #ffffff40;
+}
+.epitaxy-terminal-view .epitaxy-terminal-view-column
+{
+	flex-direction: column;
+	gap: 6px;
+	max-width: 960px;
+	margin-inline: auto;
+	padding: 24px 20px 40px;
+	display: flex;
+}
+.epitaxy-terminal-view .terminal-line
+{
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	unicode-bidi: plaintext;
+}
+.epitaxy-terminal-view .terminal-prompt
+{
+	color: #b8b5ae;
+}
+.epitaxy-terminal-view .terminal-prompt::before
+{
+	content: "> ";
+	color: #6e6b64;
+}
+.epitaxy-terminal-view .terminal-thinking
+{
+	color: #8a8782;
+	font-style: italic;
+}
+.epitaxy-terminal-view .terminal-dim
+{
+	color: #8a8782;
+}
+.epitaxy-terminal-view .terminal-tool-name
+{
+	color: #fff;
+	font-weight: 600;
+}
+.epitaxy-terminal-view .terminal-dot-completed
+{
+	color: #4caf7d;
+}
+.epitaxy-terminal-view .terminal-dot-running
+{
+	color: #d9a15c;
+}
+.epitaxy-terminal-view .terminal-dot-error
+{
+	color: #e5645f;
+}
+.epitaxy-terminal-view .terminal-dot-neutral
+{
+	color: #8a8782;
+}
+.epitaxy-terminal-view .terminal-error
+{
+	color: #e5645f;
+}
+.epitaxy-terminal-view .terminal-result
+{
+	color: #8a8782;
+	padding-left: 2ch;
+}
+.epitaxy-terminal-view .terminal-result.terminal-error
+{
+	color: #e5645f;
+}
+.epitaxy-terminal-view .terminal-result-expanded
+{
+	display: flex;
+}
+.epitaxy-terminal-view .terminal-result-glyph
+{
+	white-space: pre;
+	flex: none;
+}
+.epitaxy-terminal-view .terminal-result-full
+{
+	color: #a8a59e;
+	white-space: pre;
+	unicode-bidi: plaintext;
+	flex: 1;
+	min-width: 0;
+	overflow-x: auto;
+}
+.epitaxy-terminal-view .terminal-expand
+{
+	color: #8a8782;
+	cursor: pointer;
+	font: inherit;
+	background: 0 0;
+	border: none;
+	padding: 0;
+}
+.epitaxy-terminal-view .terminal-expand:hover
+{
+	color: #b8b5ae;
+	text-decoration: underline;
+}
+.epitaxy-terminal-view .terminal-todo-done
+{
+	color: #6e6b64;
+	text-decoration: line-through;
+}
+.epitaxy-terminal-view .terminal-todo-active
+{
+	color: #e8e6e3;
+}
+.epitaxy-terminal-view .terminal-chapter
+{
+	color: #6e6b64;
+}
+.epitaxy-terminal-view .terminal-spinner
+{
+	color: #d9a15c;
+}
+.epitaxy-terminal-view .terminal-done
+{
+	color: #4caf7d;
+}
