@@ -1197,6 +1197,75 @@ describe("artifacts route", () =>
 		);
 	});
 
+	it("leans upstream's Docs back sheet behind the front over a faint crayon doodle; file covers get neither", async () =>
+	{
+		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
+		await renderArtifactsPage("/artifacts", true);
+		const coverFor = (name: string) =>
+		{
+			const cover = screen
+				.getByRole(
+					"link",
+					{
+						name,
+					},
+				)
+				.closest("li")
+				?.querySelector<HTMLElement>("[data-artifact-cover]");
+			if (cover === null || cover === undefined) throw new Error(`no cover for ${name}`);
+			return cover;
+		};
+		const describeCover = (cover: HTMLElement) =>
+		{
+			const back = cover.querySelector(":scope > [data-cover-back]");
+			const doodle = cover.querySelector(":scope > span");
+			return {
+				layers: [...cover.children].map((child) =>
+					child.hasAttribute("data-cover-back")
+						? "back"
+						: child.hasAttribute("data-cover-front")
+							? "front"
+							: child.tagName === "SPAN"
+								? "doodle"
+								: child.getAttribute("aria-hidden") === "true"
+									? "fade"
+									: "wash",
+				),
+				back: back && [back.getAttribute("dir"), back.getAttribute("class"), back.childElementCount],
+				doodle: doodle && [doodle.getAttribute("class"), doodle.querySelectorAll("g > path").length],
+			};
+		};
+
+		expect(
+			{
+				docs: describeCover(coverFor("Quarterly plan")),
+				html: describeCover(coverFor("Asap Ladder Queue")),
+			},
+		).toStrictEqual(
+			{
+				docs:
+				{
+					layers: ["wash", "doodle", "back", "front", "fade"],
+					back: [
+						"ltr",
+						"absolute overflow-hidden border border-[color:var(--color-border-line)] bg-white text-primary dark:bg-surface-1 dark:bg-clip-padding after:pointer-events-none after:absolute after:inset-0 after:content-[''] rounded-xl inset-x-0 mx-auto shadow-cds-sm after:bg-gray-900/5 translate-x-1 rotate-4 top-[30px] h-[200px] w-[182px] group-has-[img]/cover:w-[min(232px,100%-24px)] z-2 bg-clip-padding",
+						0,
+					],
+					doodle: [
+						"pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit] opacity-[0.06]",
+						4,
+					],
+				},
+				html:
+				{
+					layers: ["wash", "front", "fade"],
+					back: null,
+					doodle: null,
+				},
+			},
+		);
+	});
+
 	it("draws upstream's blank skeletons overflowing the sheet, with a fading sheen copy and pill text lines, under an eased bottom fade", async () =>
 	{
 		storage.removeItem(ARTIFACTS_LAYOUT_STORAGE_KEY);
@@ -3516,6 +3585,41 @@ describe("artifact cover thumbnails", () =>
 				],
 				img: "block w-full object-cover object-top [mask-image:linear-gradient(to_bottom,black_84px,transparent_118px)]",
 				fade: "pointer-events-none absolute inset-0 isolate z-3 mx-auto overflow-hidden group-has-[[data-cover-front]>img]/cover:opacity-50 max-w-[240px] group-has-[img]/cover:max-w-[290px] bg-cds-blue-100 text-cds-blue-600 dark:bg-cds-blue-700 dark:text-cds-blue-200",
+			},
+		);
+	});
+
+	it("keeps a Docs thumbnail's back sheet over the doodle and washes, widening with the front as upstream", async () =>
+	{
+		await renderArtifactsPage("/artifacts", true, thumbFor);
+		const cover = coverFor("Quarterly plan");
+		const back = cover.querySelector(":scope > [data-cover-back]");
+
+		expect(
+			{
+				layers: [...cover.children].map((child) =>
+					child.hasAttribute("data-cover-back")
+						? "back"
+						: child.hasAttribute("data-cover-front")
+							? "front"
+							: child.hasAttribute("data-cover-wash")
+								? "cover wash"
+								: child.tagName === "svg"
+									? "wash filter"
+									: child.tagName === "SPAN"
+										? "doodle"
+										: child.getAttribute("aria-hidden") === "true"
+											? "fade"
+											: "surface wash",
+				),
+				widens: back?.classList.contains("group-has-[img]/cover:w-[min(232px,100%-24px)]"),
+				hasImg: cover.matches(":has(img)"),
+			},
+		).toStrictEqual(
+			{
+				layers: ["surface wash", "doodle", "wash filter", "cover wash", "back", "front", "fade"],
+				widens: true,
+				hasImg: true,
 			},
 		);
 	});

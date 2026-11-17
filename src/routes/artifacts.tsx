@@ -15,6 +15,7 @@ import
 } from "../lib/artifact-mark";
 import {ArtifactMark} from "../components/artifact-mark";
 import {CoverThumb} from "../components/cover-thumb";
+import {CrayonDoodle} from "../components/crayon-doodle";
 import
 {
 	activeFilterCount,
@@ -1097,8 +1098,9 @@ function CoverWash({src, filterId}: {src: string | undefined; filterId: string})
 }
 
 /**
- * Upstream's card cover (`Oe`): a tinted wash with a floating front sheet and a masked bottom fade. The sheet shows
- * the artifact's screenshot when it has one, falling back to the blank drawing when it fails to load.
+ * Upstream's card cover (`Ae`): a tinted wash with a floating front sheet and a masked bottom fade. The sheet shows
+ * the artifact's screenshot when it has one, falling back to the blank drawing when it fails to load. A Docs cover
+ * also draws a faint crayon doodle and a back sheet leaning 4° behind the front (always to the right, even in RTL).
  */
 function ArtifactCover({artifact, priority}: {artifact: ArtifactSummary; priority: boolean})
 {
@@ -1114,8 +1116,16 @@ function ArtifactCover({artifact, priority}: {artifact: ArtifactSummary; priorit
 			className={`group/cover relative h-full overflow-hidden ${COVER_HUE[kind]} isolate`}
 		>
 			<div className={COVER_SURFACE_WASH} />
+			{kind === "document" && <CrayonDoodle kind="document" faint />}
 			{thumbnailSrc !== null && <CoverWashFilter id={filterId} />}
 			{wash}
+			{kind === "document" && (
+				<div
+					data-cover-back=""
+					dir="ltr"
+					className={`${COVER_SHEET} rounded-xl inset-x-0 mx-auto shadow-cds-sm after:bg-gray-900/5 translate-x-1 rotate-4 ${COVER_FRONT_SIZE.document} z-2 bg-clip-padding`}
+				/>
+			)}
 			<div
 				data-cover-front=""
 				onLoadCapture={

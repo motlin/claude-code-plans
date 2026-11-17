@@ -491,6 +491,32 @@ describe("fizzy-lake color tokens (upstream data-cds-fizzy-lake~=color)", () =>
 		);
 	});
 
+	it("shadow-cds-sm is upstream's cds --cds-shadow-sm: the Docs cover's back sheet, beside the Tailwind shadow-sm (read live 2026-11-06)", () =>
+	{
+		expect(
+			{
+				utility: tokens(block("@theme inline"), ["--shadow-cds-sm"]),
+				light: tokens(block(":root"), ["--cds-shadow-sm"]),
+				dark: tokens(block(".dark"), ["--cds-shadow-sm"]),
+			},
+		).toStrictEqual(
+			{
+				utility:
+				{
+					"--shadow-cds-sm": "var(--cds-shadow-sm)",
+				},
+				light:
+				{
+					"--cds-shadow-sm": "0 1px 2px 0 rgb(11 11 11 / 0.06), 0 2px 8px 0 rgb(11 11 11 / 0.08)",
+				},
+				dark:
+				{
+					"--cds-shadow-sm": "0 1px 2px 0 rgb(11 11 11 / 0.06), 0 2px 8px 0 rgb(0 0 0 / 0.24)",
+				},
+			},
+		);
+	});
+
 	it("--control-ink is upstream's fizzy --cds-fizzy-lake-color-control-ink (text-primary), unset with color off", () =>
 	{
 		const names = ["--control-ink"] as const;
