@@ -65,6 +65,8 @@ const ALLOWLIST: Record<string, string> =
 	"cc-lined-title-group": HOOK,
 	"cds-card-body": HOOK,
 	"cds-card-fill": HOOK,
+	"cds-root":
+		"upstream's cds portal-root marker (`rx`); local cds tokens live on :root, so the wrapper needs no styles",
 	"cds-user-message-body": HOOK,
 	"df-family-stub": HOOK,
 	"df-nav-scroll-box": HOOK,

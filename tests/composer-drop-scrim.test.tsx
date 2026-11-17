@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
 import {act, cleanup, fireEvent, render} from "@testing-library/react";
+import {globSync, readFileSync} from "node:fs";
 import {useRef} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {useFileDropTarget} from "../src/components/composer-drop-scrim";
-import {ComposerDropScrim} from "../src/components/composer-drop-scrim-overlay";
+import {ComposerDropScrim, DROP_SCRIM_Z_INDEX} from "../src/components/composer-drop-scrim-overlay";
 
 const onFileDrop = vi.fn<(files: readonly File[]) => void>();
 
@@ -69,11 +70,25 @@ describe("page-wide drop scrim", () =>
 			{
 				notPrevented,
 				state: state(),
-				portalParent: root?.parentElement === document.body,
+				wrapper:
+				{
+					className: root?.parentElement?.className,
+					portal: root?.parentElement?.getAttribute("data-cds-portal"),
+					parentIsBody: root?.parentElement?.parentElement === document.body,
+				},
 				root: root?.className,
+				zIndex: root?.style.zIndex,
 				ariaHidden: root?.getAttribute("aria-hidden"),
-				layers: Array.from(root?.children ?? []).map((child) => child.className),
-				glow: frame?.firstElementChild?.className,
+				layers: Array.from(root?.children ?? []).map((child) => (
+				{
+					className: child.className,
+					ariaHidden: child.getAttribute("aria-hidden"),
+				})),
+				glow:
+				{
+					className: frame?.firstElementChild?.className,
+					ariaHidden: frame?.firstElementChild?.getAttribute("aria-hidden"),
+				},
 				icons: Array.from(frame?.querySelectorAll("svg") ?? []).map((svg) => (
 				{
 					lucide: svg
@@ -84,7 +99,11 @@ describe("page-wide drop scrim", () =>
 					size: svg.getAttribute("width"),
 					delay: (svg as SVGElement).style.getPropertyValue("--rise-delay"),
 				})),
-				iconRow: frame?.querySelector("[style]")?.getAttribute("style"),
+				iconRow:
+				{
+					style: frame?.querySelector("[style]")?.getAttribute("style"),
+					ariaHidden: frame?.querySelector("[style]")?.getAttribute("aria-hidden"),
+				},
 				label:
 				{
 					text: frame?.lastElementChild?.textContent,
@@ -95,15 +114,38 @@ describe("page-wide drop scrim", () =>
 			{
 				notPrevented: false,
 				state: "off-target",
-				portalParent: true,
-				root: "fixed inset-0 z-[100] pointer-events-none",
+				wrapper:
+				{
+					className: "cds-root pointer-events-auto contents",
+					portal: "",
+					parentIsBody: true,
+				},
+				root: "cds-reset fixed inset-0 pointer-events-none",
+				zIndex: "9000",
 				ariaHidden: "true",
 				layers: [
-					"absolute inset-0 backdrop-blur-[12px] motion-safe:animate-[cds-fade-in_0.15s_cubic-bezier(0.215,0.61,0.355,1)]",
-					"absolute inset-0 bg-page opacity-60 motion-safe:animate-[cds-fade-in_0.15s_cubic-bezier(0.215,0.61,0.355,1)]",
-					"absolute inset-3.5 flex flex-col items-center justify-center gap-2 rounded-card shadow-[inset_0_0_0_2px_var(--color-fill-accent)] motion-safe:animate-[cds-drop-ring-in_0.15s_cubic-bezier(0.215,0.61,0.355,1)]",
+					{
+						className:
+							"absolute inset-0 backdrop-blur-[12px] motion-safe:animate-[cds-fade-in_0.15s_cubic-bezier(0.215,0.61,0.355,1)]",
+						ariaHidden: "true",
+					},
+					{
+						className:
+							"absolute inset-0 bg-page opacity-60 motion-safe:animate-[cds-fade-in_0.15s_cubic-bezier(0.215,0.61,0.355,1)]",
+						ariaHidden: "true",
+					},
+					{
+						className:
+							"absolute inset-3.5 flex flex-col items-center justify-center gap-2 rounded-card shadow-[inset_0_0_0_2px_var(--color-fill-accent)] motion-safe:animate-[cds-drop-ring-in_0.15s_cubic-bezier(0.215,0.61,0.355,1)]",
+						ariaHidden: null,
+					},
 				],
-				glow: "absolute inset-0 rounded-[inherit] shadow-[inset_0_0_24px_0_color-mix(in_srgb,var(--color-fill-accent)_20%,transparent)] motion-safe:animate-[cds-fade-in_0.2s_cubic-bezier(0.215,0.61,0.355,1)_0.08s_backwards]",
+				glow:
+				{
+					className:
+						"absolute inset-0 rounded-[inherit] shadow-[inset_0_0_24px_0_color-mix(in_srgb,var(--color-fill-accent)_20%,transparent)] motion-safe:animate-[cds-fade-in_0.2s_cubic-bezier(0.215,0.61,0.355,1)_0.08s_backwards]",
+					ariaHidden: "true",
+				},
 				icons: [
 					{
 						lucide: "lucide-image",
@@ -124,12 +166,46 @@ describe("page-wide drop scrim", () =>
 						delay: "120ms",
 					},
 				],
-				iconRow: "color: var(--color-fill-accent);",
+				iconRow:
+				{
+					style: "color: var(--color-fill-accent);",
+					ariaHidden: "true",
+				},
 				label:
 				{
 					text: "Drop files here",
 					className: "text-body font-medium text-accent-100",
 				},
+			},
+		);
+	});
+
+	it("stacks above every other local overlay", () =>
+	{
+		// The scrim itself; upstream's find bar (`ht`), which shares the 9000 tier; and the focus-landing ring's
+		// pseudo-element, which stacks inside its own context rather than over the page.
+		const peers = new Set([
+			"src/components/composer-drop-scrim-overlay.tsx",
+			"src/components/find-in-page-bar.tsx",
+		]);
+		const values = globSync("src/**/*.{ts,tsx,css}")
+			.filter((path) => !peers.has(path))
+			.flatMap((path) =>
+				[...readFileSync(path, "utf8").matchAll(/(?:z-\[|zIndex:\s*|z-index:\s*|Z_INDEX = )(\d+)/g)].map(
+					([, value]) => Number(value),
+				),
+			)
+			.filter((value) => value !== 2147483647);
+
+		expect(
+			{
+				scrim: DROP_SCRIM_Z_INDEX,
+				above: Math.max(...values) < DROP_SCRIM_Z_INDEX,
+			},
+		).toStrictEqual(
+			{
+				scrim: 9000,
+				above: true,
 			},
 		);
 	});
