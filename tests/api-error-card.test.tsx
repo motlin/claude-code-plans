@@ -994,7 +994,7 @@ describe("ApiErrorCard recovery actions", () =>
 
 	it("puts the model trigger before a primary Try again at the trailing edge of the details row for the 529 specimen", () =>
 	{
-		const onRetry = vi.fn<() => void>();
+		const onRetry = vi.fn<() => boolean>(() => true);
 		const {container} = render(
 			<ApiErrorCard
 				{...OVERLOADED_PROPS}
@@ -1044,7 +1044,7 @@ describe("ApiErrorCard recovery actions", () =>
 
 	it("calls onRetry once on Try again, then hides every action and swaps the hint to the without-retry copy", () =>
 	{
-		const onRetry = vi.fn<() => void>();
+		const onRetry = vi.fn<() => boolean>(() => true);
 		const {container, getByRole} = render(
 			<ApiErrorCard
 				{...OVERLOADED_PROPS}
@@ -1083,6 +1083,45 @@ describe("ApiErrorCard recovery actions", () =>
 		);
 	});
 
+	it("keeps Try again and the hint when onRetry refuses, like upstream's latch on onRetry() !== false", () =>
+	{
+		const onRetry = vi.fn<() => boolean>(() => false);
+		const {container, getByRole} = render(
+			<ApiErrorCard
+				{...OVERLOADED_PROPS}
+				recovery={
+				{
+					onRetry,
+					currentModel: "claude-opus-5-5",
+				}}
+			/>,
+		);
+		const button = () =>
+			getByRole(
+				"button",
+				{
+					name: "Try again",
+				},
+			);
+		fireEvent.click(button());
+		fireEvent.click(button());
+		const card = container.querySelector("[data-api-error-card]");
+
+		expect(
+			{
+				calls: onRetry.mock.calls,
+				retry: button().isConnected,
+				hint: card?.children[1]?.querySelector("span:not(.sr-only)")?.textContent,
+			},
+		).toStrictEqual(
+			{
+				calls: [[], []],
+				retry: true,
+				hint: "Try again in a moment, or switch to a different model.",
+			},
+		);
+	});
+
 	it("draws no action group and keeps the details row unchanged without handlers", () =>
 	{
 		const {container} = render(<ApiErrorCard {...OVERLOADED_PROPS} />);
@@ -1113,7 +1152,7 @@ describe("ApiErrorCard recovery actions", () =>
 				text="Prompt is too long"
 				recovery={
 				{
-					onRetry: vi.fn<() => void>(),
+					onRetry: vi.fn<() => boolean>(() => true),
 					onCompact,
 				}}
 			/>,
@@ -1176,7 +1215,7 @@ describe("ApiErrorCard recovery actions", () =>
 					{...OVERLOADED_PROPS}
 					recovery={
 					{
-						onRetry: vi.fn<() => void>(),
+						onRetry: vi.fn<() => boolean>(() => true),
 						onRetryWithModel: vi.fn<(model: string) => Promise<boolean>>(),
 						currentModel: "claude-opus-5-5",
 					}}
@@ -1238,7 +1277,7 @@ describe("ApiErrorCard recovery actions", () =>
 				{...OVERLOADED_PROPS}
 				recovery={
 				{
-					onRetry: vi.fn<() => void>(),
+					onRetry: vi.fn<() => boolean>(() => true),
 					onRetryWithModel: vi.fn<(model: string) => Promise<boolean>>(),
 					currentModel: "claude-opus-5-5",
 				}}
@@ -1691,7 +1730,7 @@ describe("SessionChat error recovery", () =>
 				},
 			],
 			{
-				onRetry: vi.fn<() => void>(),
+				onRetry: vi.fn<() => boolean>(() => true),
 			},
 		);
 

@@ -16,7 +16,8 @@ const MODEL_TRIGGER_CLASS =
 
 export interface RecoveryHandlers
 {
-	onRetry?: () => void;
+	/** False when the retry was refused, which leaves the card unlatched. */
+	onRetry?: () => boolean;
 	onCompact?: () => void;
 	onRewind?: () => void;
 	/** Switches the session to a model (a primary alias) and retries; false when the switch failed. */
@@ -89,6 +90,11 @@ export function ErrorRecoveryActions({
 		handler?.();
 		onActed();
 	};
+	// Upstream `Ce`: a refused retry (false) leaves the card unlatched, so Try again stays.
+	const retry = () =>
+	{
+		if (handlers.onRetry?.() !== false) onActed();
+	};
 	// Upstream latches only when the model switch went through (`onSelect()!==false`).
 	const retryWithModel = (model: string) =>
 	{
@@ -132,7 +138,7 @@ export function ErrorRecoveryActions({
 				);
 			case "retry":
 				return (
-					<ApprovalActionButton key={action.key} variant={variant} onClick={act(handlers.onRetry)}>
+					<ApprovalActionButton key={action.key} variant={variant} onClick={retry}>
 						{action.label}
 					</ApprovalActionButton>
 				);

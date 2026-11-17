@@ -3,6 +3,7 @@ import
 {
 	errorRecoveryAvailability,
 	errorRecoveryHandlers,
+	errorRetryRefusalMessage,
 	sendCompact,
 	switchModelForRetry,
 	lastEntryIsError,
@@ -11,6 +12,7 @@ import
 import {processTranscript} from "../src/lib/transcript";
 import type {ToastOptions} from "../src/components/toast-context";
 import type {DeliveryResult} from "../src/hooks/use-composer-queue";
+import type {ParkDecision} from "../src/lib/parked-prompts";
 
 const OPEN: ErrorRecoveryGate =
 {
@@ -194,6 +196,139 @@ describe("errorRecoveryHandlers", () =>
 		{
 			expect(enqueue.mock.calls).toStrictEqual([["Try again"]]);
 		});
+	});
+});
+
+describe("errorRetryRefusalMessage", () =>
+{
+	it("words each refusal verdict as upstream, with a spaced em dash", () =>
+	{
+		expect(
+			{
+				suspended: errorRetryRefusalMessage("suspended"),
+				holds: errorRetryRefusalMessage("holds"),
+				flush: errorRetryRefusalMessage("flush"),
+				verdict: errorRetryRefusalMessage("verdict"),
+			},
+		).toStrictEqual(
+			{
+				suspended: "Your messages are held while this session is archived — unarchive it to send them.",
+				holds: "Your messages are still held — use Send anyway first.",
+				flush: "Your messages are still held — use Send anyway first.",
+				verdict: "Your usage limit is still exceeded — try again once it resets.",
+			},
+		);
+	});
+});
+
+describe("errorRecoveryHandlers refusal", () =>
+{
+	function setup(verdict: ParkDecision)
+	{
+		const send = vi.fn<(text: string) => Promise<DeliveryResult>>(async () => Promise.resolve("sent"));
+		const toast = vi.fn<(options: ToastOptions) => void>();
+		const switchTo = vi.fn<(model: string) => Promise<boolean>>(async () => Promise.resolve(true));
+		const recovery = errorRecoveryHandlers(
+			{
+				retryable: true,
+				idle: true,
+			},
+			send,
+			vi.fn<(text: string) => void>(),
+			{
+				current: "claude-opus-5-5",
+				switchTo,
+			},
+			undefined,
+			undefined,
+			{
+				verdict: () => verdict,
+				toast,
+			},
+		);
+		return {
+			recovery,
+			send,
+			toast,
+			switchTo,
+		};
+	}
+
+	it("refuses Try again with upstream's 8 s error toast while the usage limit is still exceeded, sending nothing", async () =>
+	{
+		const {recovery, send, toast} = setup("verdict");
+		const retried = recovery?.onRetry?.();
+		await Promise.resolve();
+		expect(
+			{
+				retried,
+				sent: send.mock.calls,
+				toasts: toast.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				retried: false,
+				sent: [],
+				toasts: [
+					[
+						{
+							kind: "error",
+							message: "Your usage limit is still exceeded — try again once it resets.",
+							durationMs: 8000,
+						},
+					],
+				],
+			},
+		);
+	});
+
+	it("types Try again and reports the retry when nothing refuses", async () =>
+	{
+		const {recovery, send, toast} = setup(false);
+		const retried = recovery?.onRetry?.();
+		await Promise.resolve();
+		expect(
+			{
+				retried,
+				sent: send.mock.calls,
+				toasts: toast.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				retried: true,
+				sent: [["Try again"]],
+				toasts: [],
+			},
+		);
+	});
+
+	it("switches the model, then toasts the held refusal instead of typing, still latching like upstream's Hw", async () =>
+	{
+		const {recovery, send, toast, switchTo} = setup("holds");
+		const latched = await recovery?.onRetryWithModel?.("claude-sonnet-4-5");
+		expect(
+			{
+				latched,
+				switched: switchTo.mock.calls,
+				sent: send.mock.calls,
+				toasts: toast.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				latched: true,
+				switched: [["claude-sonnet-4-5"]],
+				sent: [],
+				toasts: [
+					[
+						{
+							kind: "error",
+							message: "Your messages are still held — use Send anyway first.",
+							durationMs: 8000,
+						},
+					],
+				],
+			},
+		);
 	});
 });
 

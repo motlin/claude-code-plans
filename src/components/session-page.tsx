@@ -1539,7 +1539,7 @@ function SessionView({
 			deliver: liveHerdrPrompt.send,
 		},
 	);
-	const {park: parkPrompt} = parkedLane;
+	const {park: parkPrompt, decision: parkedDecision} = parkedLane;
 	const composerQueueView = useMemo(
 		() => (
 		{
@@ -2003,6 +2003,10 @@ function SessionView({
 				// A click is an explicit open, like the composer's /rewind, so a draft doesn't block it.
 				rewindAvailableFromComposer,
 				compactDeps,
+				{
+					verdict: parkedDecision,
+					toast,
+				},
 			),
 		[
 			errorRetryable,
@@ -2014,6 +2018,7 @@ function SessionView({
 			toast,
 			rewindAvailableFromComposer,
 			compactDeps,
+			parkedDecision,
 		],
 	);
 	const sendLivePrompt = useCallback(

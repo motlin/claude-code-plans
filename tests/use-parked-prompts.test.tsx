@@ -166,12 +166,14 @@ describe("useParkedPrompts", () =>
 				usage: CLEAR,
 			},
 		);
+		const clearDecision = result.current.decision();
 		const clearSend = result.current.park("not held");
 		rerender(
 			{
 				usage: spent(),
 			},
 		);
+		const spentDecision = result.current.decision();
 		act(() =>
 		{
 			result.current.park("Alice's follow-up");
@@ -181,6 +183,18 @@ describe("useParkedPrompts", () =>
 				usage: CLEAR,
 			},
 		);
+		const heldDecision = result.current.decision();
+		rerender(
+			{
+				archived: true,
+			},
+		);
+		const archivedDecision = result.current.decision();
+		rerender(
+			{
+				archived: false,
+			},
+		);
 		let second = false;
 		act(() =>
 		{
@@ -188,12 +202,14 @@ describe("useParkedPrompts", () =>
 		});
 		expect(
 			{
+				decisions: [clearDecision, spentDecision, heldDecision, archivedDecision],
 				clearSend,
 				second,
 				items: texts(result.current.items),
 			},
 		).toStrictEqual(
 			{
+				decisions: [false, "verdict", "holds", "suspended"],
 				clearSend: false,
 				second: true,
 				items: ["Alice's follow-up", "Bob's follow-up"],

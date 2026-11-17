@@ -36,7 +36,8 @@ export interface ApiErrorCardProps
 /** What the session can do from the card; a missing handler hides its action. */
 export interface ApiErrorRecovery
 {
-	onRetry?: () => void;
+	/** False when the retry was refused, which leaves the card unlatched. */
+	onRetry?: () => boolean;
 	onCompact?: () => void;
 	onRewind?: () => void;
 	/** Switches the session to a model (a primary alias) and retries; false when the switch failed. */

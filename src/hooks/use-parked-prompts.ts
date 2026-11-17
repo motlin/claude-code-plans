@@ -14,6 +14,7 @@ import
 	autoSendPlan,
 	beginRun,
 	parkDecision,
+	type ParkDecision,
 	parkJitterMs,
 	parkPromisedAt,
 	type ParkInitiator,
@@ -119,6 +120,8 @@ export interface ParkedPrompts
 	windowResetsAt: number | undefined;
 	/** A flush is running (upstream `flushBusy`). */
 	flushing: boolean;
+	/** Upstream `U_`: why a send would park right now (read at call time), or false. */
+	decision: () => ParkDecision;
 	/** Parks the prompt when upstream would (`p2`); false means send it normally. */
 	park: (text: string) => boolean;
 	/** Upstream's Send anyway: flush now as the user, past the budget and the floor. */
@@ -391,22 +394,27 @@ export function useParkedPrompts({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [archived, blocked, bump, busy, due, flushing, items, liveWindow, startFlush, tick, verdict]);
 
+	const decision = useCallback(() =>
+	{
+		const nowMs = Date.now();
+		return parkDecision(
+			{
+				limit: latest.current.usage === undefined ? null : limitReached(latest.current.usage, nowMs),
+				heldCount: latest.current.items.length,
+				flushing: flushRef.current !== null,
+				archived: latest.current.archived,
+				nowMs,
+			},
+		);
+	}, []);
+
 	const park = useCallback(
 		(text: string) =>
 		{
+			if (decision() === false) return false;
 			const nowMs = Date.now();
 			const limit = latest.current.usage === undefined ? null : limitReached(latest.current.usage, nowMs);
 			const held = latest.current.items;
-			const decision = parkDecision(
-				{
-					limit,
-					heldCount: held.length,
-					flushing: flushRef.current !== null,
-					archived: latest.current.archived,
-					nowMs,
-				},
-			);
-			if (decision === false) return false;
 			if (limit !== null) sawExceeded.add(sessionId);
 			const window = liveWindow(nowMs);
 			// Upstream: a new entry inherits the previous entry's window, else the ledger's (`QA`).
@@ -434,7 +442,7 @@ export function useParkedPrompts({
 			);
 			return true;
 		},
-		[liveWindow, sessionId],
+		[decision, liveWindow, sessionId],
 	);
 
 	const sendAnyway = useCallback(() =>
@@ -447,6 +455,7 @@ export function useParkedPrompts({
 		willAutoSend: plan !== null,
 		windowResetsAt,
 		flushing,
+		decision,
 		park,
 		sendAnyway,
 	};

@@ -3,6 +3,7 @@ import type {ToastOptions} from "../components/toast-context";
 import type {DeliveryResult} from "../hooks/use-composer-queue";
 import {FAILURE_MESSAGE} from "../hooks/use-live-launch-options";
 import type {LiveOptionChange} from "./launch-options";
+import type {ParkDecision} from "./parked-prompts";
 import type {SessionLine} from "./transcript";
 import type {WorkingMarkerState} from "./working-marker";
 
@@ -132,13 +133,54 @@ export async function sendCompact(deps: CompactDeps): Promise<void>
 	await attempt();
 }
 
+/** Upstream `kD`: the retry refusal toast's timeout. */
+const ERROR_RETRY_REFUSAL_TOAST_MS = 8000;
+
+/** Upstream `PC`'s refusal copy (intl 5RUpBj, i2RZ3h, M8j1VE); a running flush reads as held. */
+const ERROR_RETRY_REFUSAL_MESSAGES: Record<Exclude<ParkDecision, false>, string> =
+{
+	suspended: "Your messages are held while this session is archived — unarchive it to send them.",
+	verdict: "Your usage limit is still exceeded — try again once it resets.",
+	holds: "Your messages are still held — use Send anyway first.",
+	flush: "Your messages are still held — use Send anyway first.",
+};
+
+export function errorRetryRefusalMessage(verdict: Exclude<ParkDecision, false>): string
+{
+	return ERROR_RETRY_REFUSAL_MESSAGES[verdict];
+}
+
+/** Upstream's park gate on Try again (`U_`), read at click time, and the toast that reports a refusal. */
+export interface RetryRefusal
+{
+	verdict: () => ParkDecision;
+	toast: (options: ToastOptions) => void;
+}
+
+/** Toasts upstream's refusal when the park gate holds the retry; true when it refused. */
+function refuseRetry(refusal: RetryRefusal | undefined): boolean
+{
+	const verdict = refusal?.verdict() ?? false;
+	if (verdict === false) return false;
+	refusal?.toast(
+		{
+			kind: "error",
+			message: errorRetryRefusalMessage(verdict),
+			durationMs: ERROR_RETRY_REFUSAL_TOAST_MS,
+		},
+	);
+	return true;
+}
+
 /**
  * The card's handlers through herdr: Try again types upstream's `retryNudge`
  * prompt "Try again" (any composer draft stays put, upstream `nudgeBesideDraft`),
  * Compact session types `/compact`. A not-ready agent queues the prompt like the
  * composer's send. Switch model and retry applies `/model` first and types
  * Try again only once the switch went through. Rewind opens the session's
- * rewind picker (upstream `onOpenRewindPicker`) under the same gate.
+ * rewind picker (upstream `onOpenRewindPicker`) under the same gate. While the
+ * park gate holds (limit still exceeded, or held messages), Try again toasts
+ * upstream's refusal and sends nothing, returning false so the card stays unlatched.
  */
 export function errorRecoveryHandlers(
 	availability: ErrorRecoveryAvailability,
@@ -148,6 +190,7 @@ export function errorRecoveryHandlers(
 	openRewindPicker?: () => void,
 	/** Routes Compact session through `sendCompact`'s retry toast; without it, `/compact` is typed like Try again. */
 	compact?: CompactDeps,
+	refusal?: RetryRefusal,
 ): ApiErrorRecovery | undefined
 {
 	if (!availability.retryable && !availability.idle) return undefined;
@@ -157,7 +200,9 @@ export function errorRecoveryHandlers(
 		{
 			onRetry: () =>
 			{
+				if (refuseRetry(refusal)) return false;
 				void type("Try again");
+				return true;
 			},
 		}),
 		...(availability.idle &&
@@ -173,7 +218,8 @@ export function errorRecoveryHandlers(
 				onRetryWithModel: async (next: string) =>
 				{
 					if (!(await model.switchTo(next))) return false;
-					await type("Try again");
+					// Upstream `Hw`: the switch went through, so the card latches even when the retry is refused.
+					if (!refuseRetry(refusal)) await type("Try again");
 					return true;
 				},
 			}),
