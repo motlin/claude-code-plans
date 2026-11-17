@@ -115,6 +115,7 @@ import
 	useDiffComments,
 } from "../../lib/diff-comments";
 import {detectLanguage} from "../../lib/diff-utils";
+import {diffCopyText, diffHostOf, isEditableDeep, selectionRangeIn, shownDiffRows} from "../../lib/diff-copy";
 import {DiffContextMenu} from "./diff-context-menu";
 import {DiffFile, type DiffFileAnnotation, DiffFileHeader, DiffFileMenuHost, type DiffLineRange} from "./diff-file";
 import type {DiffFileFacts} from "./diff-file-notes";
@@ -1118,6 +1119,33 @@ function patchMap(files: readonly SessionDiffFile[]): ReadonlyMap<string, string
 	return map;
 }
 
+/**
+ * Upstream `qd`'s copy listener with cd9a11070 `T`: rewrite the clipboard to the selected diff rows as text/plain,
+ * unless an editable has focus or the selection leaves the file's shadow root. A whole-content range copies every
+ * hunk row of the file's patch (upstream `lp` `shownRowsOf`; local diffs are patch-only, so every hunk row is shown).
+ */
+function copyShownRows(body: HTMLElement, event: ClipboardEvent, files: readonly SessionDiffFile[]): void
+{
+	const clipboard = event.clipboardData;
+	if (event.defaultPrevented || clipboard === null || isEditableDeep(body.ownerDocument.activeElement)) return;
+	const target = event.target;
+	const host = target instanceof Element ? diffHostOf(body, target) : null;
+	const root = host?.shadowRoot;
+	const selection = body.ownerDocument.defaultView?.getSelection();
+	if (host === null || !root || !selection) return;
+	const range = selectionRangeIn(root, selection);
+	if (range === null || !root.contains(range.startContainer) || !root.contains(range.endContainer)) return;
+	const text = diffCopyText(root, range, () =>
+	{
+		const path = host.querySelector("[data-diff-file-header]")?.getAttribute("data-diff-file-header");
+		const file = files.find((candidate) => candidate.path === path);
+		return file === undefined || file.binary || !file.patch ? null : shownDiffRows(getSingularPatch(file.patch));
+	});
+	if (text === null) return;
+	event.preventDefault();
+	clipboard.setData("text/plain", text);
+}
+
 /** Upstream CodeView `xc`: the nearest ancestor that scrolls vertically. */
 function scrollParent(element: HTMLElement): HTMLElement | null
 {
@@ -1310,6 +1338,24 @@ export function ChangesPaneView({
 		: noMarks
 			? "no-marks"
 			: null;
+
+	// Upstream `qd` copy effect (ungated): a copy inside one file's diff puts only its shown rows on the clipboard.
+	const copyFiles = useRef(files);
+	copyFiles.current = files;
+	useEffect(() =>
+	{
+		const body = bodyRef.current;
+		if (body === null) return undefined;
+		const onCopy = (event: ClipboardEvent) =>
+		{
+			copyShownRows(body, event, copyFiles.current);
+		};
+		body.addEventListener("copy", onCopy);
+		return () =>
+		{
+			body.removeEventListener("copy", onCopy);
+		};
+	}, []);
 
 	// A new comparison starts over; a refetch of the same one keeps each file's collapse (upstream's per-path map).
 	const servedScope = diff?.scope;

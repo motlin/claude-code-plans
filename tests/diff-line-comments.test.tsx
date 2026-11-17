@@ -2,7 +2,7 @@
 
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import type {ReactNode} from "react";
-import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {type Mock, afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ChangesPaneView} from "../src/components/changes/changes-pane";
 import {diffSideSnippet} from "../src/components/changes/diff-annotations";
@@ -2127,6 +2127,161 @@ describe("Changes pane selection Add comment chip", () =>
 				label: ["SPAN", "inline-flex min-w-0 items-center gap-1", "Add comment"],
 			},
 		);
+	});
+});
+
+describe("Changes pane copy", () =>
+{
+	async function diffHost(container: HTMLElement): Promise<
+	{
+		host: Element;
+		root: ShadowRoot;
+	}>
+	{
+		return waitFor(() =>
+		{
+			const host = container.querySelector("diffs-container");
+			const root = host?.shadowRoot;
+			if (!host || !root?.querySelector('[data-line-type="change-addition"][data-line="3"]'))
+				throw new Error("diff not rendered yet");
+			return {
+				host,
+				root,
+			};
+		});
+	}
+
+	/** Stands in for Chrome's ShadowRoot.getSelection with a real range. */
+	function selectRange(root: ShadowRoot, range: Range): void
+	{
+		Object.defineProperty(
+			root,
+			"getSelection",
+			{
+				configurable: true,
+				value: () => (
+				{
+					rangeCount: 1,
+					getRangeAt: () => range,
+				}),
+			},
+		);
+	}
+
+	/** Addition row 3 through context row 4, start to end. */
+	function rowsRange(root: ShadowRoot): Range
+	{
+		const first = root.querySelector('[data-line-type="change-addition"][data-line="3"]');
+		const last = root.querySelector('[data-line-type="context"][data-line="4"]');
+		if (first === null || last === null) throw new Error("no rows");
+		const range = document.createRange();
+		range.setStart(first, 0);
+		range.setEnd(last, last.childNodes.length);
+		return range;
+	}
+
+	function copy(
+		host: Element,
+		prevented = false,
+	):
+	{
+		event: Event;
+		setData: Mock<DataTransfer["setData"]>;
+	}
+	{
+		const setData = vi.fn<DataTransfer["setData"]>();
+		const event = new Event(
+			"copy",
+			{
+				bubbles: true,
+				cancelable: true,
+			},
+		);
+		Object.defineProperty(
+			event,
+			"clipboardData",
+			{
+				value:
+				{
+					setData,
+				},
+			},
+		);
+		if (prevented) event.preventDefault();
+		act(() =>
+		{
+			host.dispatchEvent(event);
+		});
+		return {
+			event,
+			setData,
+		};
+	}
+
+	it("puts only the selected rows' text on the clipboard, as text/plain", async () =>
+	{
+		const {container} = renderPane();
+		const {host, root} = await diffHost(container);
+		// A drag-select in the diff takes focus off the composer, which the render focuses.
+		(document.activeElement as HTMLElement | null)?.blur();
+		selectRange(root, rowsRange(root));
+		const {event, setData} = copy(host);
+		expect(
+			{
+				calls: setData.mock.calls,
+				prevented: event.defaultPrevented,
+			},
+		).toStrictEqual(
+			{
+				calls: [["text/plain", '  return greeting + " " + name;\n}']],
+				prevented: true,
+			},
+		);
+	});
+
+	it("keeps the native copy while an editable has focus or for an already prevented event", async () =>
+	{
+		const {container} = renderPane();
+		const {host, root} = await diffHost(container);
+		// A drag-select in the diff takes focus off the composer, which the render focuses.
+		(document.activeElement as HTMLElement | null)?.blur();
+		selectRange(root, rowsRange(root));
+		const prevented = copy(host, true);
+
+		act(() =>
+		{
+			openDiffCommentDraft(
+				SESSION,
+				{
+					path: "src/greet.ts",
+					side: "additions",
+					line: 3,
+				},
+			);
+		});
+		const card = commentCard(container, "annotation-additions-3");
+		if (card === null) throw new Error("no comment card");
+		within(card).getByRole("textbox").focus();
+		// The card re-renders the rows, so select the new ones.
+		selectRange(root, rowsRange(root));
+		const editing = copy(host);
+
+		expect(
+			[prevented, editing].map(({event, setData}) => (
+			{
+				calls: setData.mock.calls,
+				prevented: event.defaultPrevented,
+			})),
+		).toStrictEqual([
+			{
+				calls: [],
+				prevented: true,
+			},
+			{
+				calls: [],
+				prevented: false,
+			},
+		]);
 	});
 });
 
