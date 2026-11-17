@@ -3353,7 +3353,7 @@ describe("Composer chin tooltips and contrast", () =>
 			return {
 				ink: list.filter((name) => /^text-(primary|secondary|secondary-control)$/.test(name)),
 				radius: list.filter((name) => name.startsWith("rounded")),
-				lineHeight: list.filter((name) => name.startsWith("leading")),
+				type: list.filter((name) => name.startsWith("leading") || name.startsWith("text-[")),
 			};
 		};
 
@@ -3377,20 +3377,20 @@ describe("Composer chin tooltips and contrast", () =>
 				{
 					ink: ["text-secondary-control"],
 					radius: ["rounded-r5"],
-					lineHeight: ["leading-[20px]"],
+					type: ["text-[13px]/[20px]"],
 				},
 				plusIcon: ["size-[18px]"],
 				mode:
 				{
 					ink: ["text-secondary-control"],
 					radius: ["rounded-r4"],
-					lineHeight: ["leading-[20px]"],
+					type: ["text-[13px]/[20px]"],
 				},
 				model:
 				{
 					ink: ["text-secondary-control"],
 					radius: ["rounded-r4"],
-					lineHeight: ["leading-[20px]"],
+					type: ["text-[13px]/[20px]"],
 				},
 			},
 		);

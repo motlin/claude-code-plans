@@ -19,7 +19,8 @@ import
 	ADD_BUTTON_CLASS,
 	CHIN_TRIGGER_CLASS,
 	COMPOSER_CARD_CLASS,
-	COMPOSER_CHIN_CLASS,
+	COMPOSER_CHIN_FRAME_CLASS,
+	COMPOSER_CHIN_ROW_CLASS,
 	CHIN_EFFORT_LABEL_CLASS,
 	CHIN_MODEL_LABEL_CLASS,
 	CHIN_MODEL_NAME_CLASS,
@@ -649,7 +650,7 @@ describe("AppShellFallback", () =>
 		const card = host.querySelector("[data-fallback-composer]")!;
 		const chin = host.querySelector('[data-cds="ChatComposerChin"]')!;
 		const [model, mode] = Array.from(chin.querySelectorAll("[data-fallback-chin-readout]"));
-		const ring = chin.querySelector("[data-fallback-chin-end] > span > span:last-child");
+		const ring = chin.querySelector("[data-chin-row] [data-fallback-chin-end] > span:last-child");
 
 		expect(
 			{
@@ -658,6 +659,7 @@ describe("AppShellFallback", () =>
 				add: card.querySelector("[data-fallback-add]")?.className,
 				addIcon: card.querySelector("[data-fallback-add] svg")?.getAttribute("class"),
 				chin: chin.className,
+				row: chin.querySelector("[data-chin-row]")?.className,
 				mode: mode?.className,
 				model: model?.className,
 				modelLabel: model?.firstElementChild?.className,
@@ -678,7 +680,8 @@ describe("AppShellFallback", () =>
 				line: "block py-1 pl-1 text-[14px]/[20px] text-placeholder",
 				add: ADD_BUTTON_CLASS,
 				addIcon: "lucide lucide-plus size-[18px]",
-				chin: COMPOSER_CHIN_CLASS,
+				chin: COMPOSER_CHIN_FRAME_CLASS,
+				row: `${COMPOSER_CHIN_ROW_CLASS} justify-between`,
 				mode: CHIN_TRIGGER_CLASS,
 				model: CHIN_TRIGGER_CLASS,
 				modelLabel: CHIN_MODEL_LABEL_CLASS,

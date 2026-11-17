@@ -100,6 +100,7 @@ export function ModeMenu({
 			<Menu open={open} onOpenChange={onOpenChange}>
 				<Tooltip content={bar ? "Permissions" : "Mode"} shortcut={modeKeys} side="top" suppressAfterPopup>
 					<MenuTrigger
+						data-cds="Button"
 						data-chin-mode=""
 						className={CHIN_TRIGGER_CLASS}
 						{...(bar

@@ -3587,6 +3587,35 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 }
 
 /*
+ * Upstream's chin touch-size row (c6a992d55, unlayered so it beats the row's own custom-property utilities). A coarse
+ * pointer always resolves comfortable, where upstream's control is 2rem and panels' 28px sizes are fine-only, so the
+ * grow is (32px - the row's 24px) / 2 = 4px. Each chin control takes that back as a negative block margin, so the
+ * row stays 24px, and the row's pads lose it too. --cmp-chin-end is the comfortable glyph end, 8 + (32 - 24) / 2.
+ * The controls' 8px radius stands in for upstream's re-inherited --cds-radius (.5rem).
+ */
+@media (pointer: coarse), (hover: none)
+{
+	[data-cds="ChatComposerChin"] [data-touch-size]
+	{
+		--cmp-chin-end: 12px;
+		--cmp-chin-touch-grow: calc((2rem - var(--cmp-chin-row-h, 2rem)) / 2);
+		min-height: var(--cmp-chin-row-h, 2rem);
+	}
+	[data-cds="ChatComposerChin"]
+		[data-touch-size]
+		:is([data-cds="ButtonGroup"], [data-cds="SplitDropdownButton"]):not([data-size]),
+	[data-cds="ChatComposerChin"]
+		[data-touch-size]
+		:is([data-cds="Button"], [data-cds="ModelSelector"], [data-cds="ModelSelectorEffort"]):not([data-size]):not(
+			:is([data-cds="ButtonGroup"], [data-cds="SplitDropdownButton"]) *
+		)
+	{
+		margin-block: calc(var(--cmp-chin-touch-grow, 0px) * -1);
+		border-radius: 8px;
+	}
+}
+
+/*
  * Upstream claude.ai/code text-entry floor (c6a992d55, unlayered): on a coarse pointer every text field
  * is at least 16px, which prevents iOS focus zoom. Unlayered so it beats any `@layer utilities` size.
  */

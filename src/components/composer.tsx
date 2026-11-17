@@ -103,6 +103,7 @@ import {nearestCommand} from "../lib/command-suggest";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 import {ComposerCommandNotice} from "./composer-command-notice";
 import {type ChinLaunchControls, type ChinPickHandle, ComposerAddMenu, ComposerChin} from "./composer-chin";
+import {ComposerChinFrame} from "./composer-chin-frame";
 import type {UsageRingContext} from "./usage-popover-context";
 import {ErrorCardShell} from "./error-card-shell";
 import type {ChinMenu} from "./composer-launch-menus";
@@ -110,7 +111,6 @@ import type {TryAutoCoachOffer} from "../lib/try-auto-coach";
 import
 {
 	COMPOSER_CARD_CLASS,
-	COMPOSER_CHIN_CLASS,
 	COMPOSER_EDITOR_ROW_CLASS,
 	ENVIRONMENT_BAR_CHIPS_CLASS,
 	ENVIRONMENT_BAR_CLASS,
@@ -2704,17 +2704,17 @@ export function Composer({
 				</div>
 			</div>
 			{environment === undefined ? (
-				<div data-cds="ChatComposerChin" className={COMPOSER_CHIN_CLASS}>
-					{chin && (
-						<ComposerChin
-							state={chin}
-							launch={launchControls}
-							surface="chin"
-							pickRef={chinPickRef}
-							usageContext={usageContext}
-						/>
-					)}
-				</div>
+				chin ? (
+					<ComposerChin
+						state={chin}
+						launch={launchControls}
+						surface="chin"
+						pickRef={chinPickRef}
+						usageContext={usageContext}
+					/>
+				) : (
+					<ComposerChinFrame />
+				)
 			) : (
 				<div data-testid="epitaxy-environment-bar" className={ENVIRONMENT_BAR_CLASS}>
 					<div data-testid="environment-bar-row" className={ENVIRONMENT_BAR_ROW_CLASS}>

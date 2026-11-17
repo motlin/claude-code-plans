@@ -50,6 +50,7 @@ import {localAccountQueryOptions} from "../lib/api/local-account";
 import {settingsHash} from "../lib/settings-hash";
 import {ConfirmDialog} from "./confirm-dialog";
 import {Icon} from "./ui/icon";
+import {ComposerChinFrame} from "./composer-chin-frame";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "./ui/menu";
 import {POPOVER_SCROLL_BODY_CLASS, PopoverRoot, PopoverTitle, PopoverTrigger, PopoverContent} from "./ui/popover";
 import {Tooltip} from "./ui/tooltip";
@@ -222,7 +223,11 @@ export function UsageRing({
 	return (
 		<PopoverRoot open={open} onOpenChange={onOpenChange}>
 			<Tooltip content={formatUsageTooltipRows(usage, now).join("\n")} multiline>
-				<PopoverTrigger aria-label={formatUsageAriaLabel(usage, now)} className={USAGE_RING_CLASS}>
+				<PopoverTrigger
+					data-cds="Button"
+					aria-label={formatUsageAriaLabel(usage, now)}
+					className={USAGE_RING_CLASS}
+				>
 					<svg width="14" height="14" viewBox="0 0 14 14" className="-rotate-90" aria-hidden="true">
 						<circle
 							data-ring-track=""
@@ -568,10 +573,10 @@ export const ComposerChin = memo(function ComposerChin({
 	return (
 		<>
 			{surface === "chin" ? (
-				<>
-					{/* Upstream's leading slot, empty for a CLI session. */}
-					<div className="flex items-center self-start" />
-					<div className="ms-auto flex min-w-0 items-center gap-1 ps-2">
+				<ComposerChinFrame
+					/* Upstream's leading slot, an empty marker while the mode menu shows. */
+					leading={<span aria-hidden="true" />}
+					trailing={
 						<div className={CHIN_PICKERS_CLASS}>
 							{modelMenu}
 							<span className="inline-flex min-w-0">{modeMenu}</span>
@@ -581,8 +586,8 @@ export const ComposerChin = memo(function ComposerChin({
 								{fastMode ? "Fast mode on" : "Fast mode off"}
 							</span>
 						</div>
-					</div>
-				</>
+					}
+				/>
 			) : (
 				/* The new-session bar's pickers group; it has no live region. */
 				<div className={ENVIRONMENT_PICKERS_CLASS}>

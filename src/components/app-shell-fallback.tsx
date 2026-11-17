@@ -10,6 +10,7 @@ import {NAV_ROW_CLASS as LIVE_NAV_ROW_CLASS} from "./sidebar/new-session-row";
 import {useShortcutKeys} from "../hooks/use-shortcut";
 import {ROW_CLASS as SESSION_ROW_CLASS} from "./sidebar/session-group-section";
 import {SessionSkeleton} from "./session-skeleton";
+import {ComposerChinFrame} from "./composer-chin-frame";
 import {Skeleton} from "./ui/skeleton";
 import {HOME_COLUMN} from "./home/home-column";
 import {HomeTitlebar} from "./home/home-page";
@@ -26,7 +27,6 @@ import
 	CHIN_PICKERS_CLASS,
 	CHIN_TRIGGER_CLASS,
 	COMPOSER_CARD_CLASS,
-	COMPOSER_CHIN_CLASS,
 	COMPOSER_EDITOR_ROW_CLASS,
 	ENVIRONMENT_BAR_CLASS,
 	ENVIRONMENT_BAR_ROW_CLASS,
@@ -105,9 +105,11 @@ function FallbackComposer({
 					</div>
 				</div>
 			) : (
-				<div data-cds="ChatComposerChin" data-fallback-chin={painted} className={COMPOSER_CHIN_CLASS}>
-					<FallbackChinControls chin={chin} surface="chin" />
-				</div>
+				<ComposerChinFrame
+					data-fallback-chin={painted}
+					leading={<span aria-hidden="true" />}
+					trailing={<FallbackChinControls chin={chin} surface="chin" />}
+				/>
 			)}
 		</div>
 	);
@@ -143,21 +145,10 @@ function FallbackChinControls({chin, surface}: {chin: ShellChinLabels | null; su
 			</span>
 		</>
 	);
-	if (bar)
-	{
-		return (
-			<span data-fallback-chin-end="" className={ENVIRONMENT_PICKERS_CLASS}>
-				{controls}
-			</span>
-		);
-	}
 	return (
-		<>
-			<span className="flex items-center self-start" />
-			<span data-fallback-chin-end="" className="ms-auto flex min-w-0 items-center gap-1 ps-2">
-				<span className={CHIN_PICKERS_CLASS}>{controls}</span>
-			</span>
-		</>
+		<span data-fallback-chin-end="" className={bar ? ENVIRONMENT_PICKERS_CLASS : CHIN_PICKERS_CLASS}>
+			{controls}
+		</span>
 	);
 }
 

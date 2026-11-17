@@ -5,6 +5,7 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
+import {COMPOSER_CHIN_FRAME_CLASS, COMPOSER_CHIN_ROW_CLASS} from "../src/components/composer-tokens";
 import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
 import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
 import {POPOVER_SCROLL_BODY_CLASS} from "../src/components/ui/popover";
@@ -750,7 +751,8 @@ describe("Composer", () =>
 			const labels = Array.from(chin?.querySelectorAll("[aria-label], [data-chin-mode]") ?? []).map(
 				(element) => element.getAttribute("aria-label") ?? element.textContent,
 			);
-			const [leading, trailing] = Array.from(chin?.children ?? []);
+			const row = chin?.querySelector(":scope > div > div > [data-chin-row]");
+			const [leading, trailing] = Array.from(row?.children ?? []);
 			const grid = trailing?.firstElementChild;
 			const ring = screen.getByRole(
 				"button",
@@ -762,12 +764,17 @@ describe("Composer", () =>
 			expect(
 				{
 					labels,
+					chin: chin?.className,
+					row: [row?.getAttribute("data-size"), row?.getAttribute("data-touch-size"), row?.className],
 					leading:
 					{
 						className: leading?.className,
-						children: leading?.childElementCount,
+						children: Array.from(leading?.children ?? [], (child) => child.outerHTML),
 					},
 					trailing: trailing?.className,
+					controls: Array.from(row?.querySelectorAll("button") ?? [], (button) =>
+						button.getAttribute("data-cds"),
+					),
 					grid: grid?.className,
 					gridChildren: Array.from(grid?.children ?? [], (child) =>
 						child.matches('[data-cds="ModelSelector"]') ? "model" : child.className,
@@ -782,12 +789,15 @@ describe("Composer", () =>
 						"Accept edits",
 						"Usage: Weekly · all models: 65%, Resets in 14 hr 31 min",
 					],
+					chin: COMPOSER_CHIN_FRAME_CLASS,
+					row: ["xs", "", `${COMPOSER_CHIN_ROW_CLASS} justify-between`],
 					leading:
 					{
 						className: "flex items-center self-start",
-						children: 0,
+						children: ['<span aria-hidden="true"></span>'],
 					},
 					trailing: "ms-auto flex min-w-0 items-center gap-1 ps-2",
+					controls: ["ModelSelector", "Button", "Button"],
 					grid: "grid min-w-0 grid-flow-col auto-cols-[minmax(0,max-content)] items-center gap-1 compact:me-1",
 					gridChildren: ["model", "inline-flex min-w-0", "flex shrink-0 ms-px", "sr-only"],
 					mode: true,
@@ -958,7 +968,7 @@ describe("Composer", () =>
 					name: "Prompt",
 				},
 			);
-			const chin = document.querySelector('[data-cds="ChatComposerChin"]');
+			const chin = document.querySelector('[data-cds="ChatComposerChin"] [data-chin-row]');
 			const model = screen.getByRole(
 				"button",
 				{
@@ -1602,7 +1612,18 @@ describe("Composer", () =>
 					}}
 				/>,
 			);
-			expect(document.querySelector('[data-cds="ChatComposerChin"]')?.childElementCount).toBe(0);
+			const row = document.querySelector('[data-cds="ChatComposerChin"] [data-chin-row]');
+			expect(
+				{
+					row: row?.className,
+					children: row?.childElementCount,
+				},
+			).toStrictEqual(
+				{
+					row: `${COMPOSER_CHIN_ROW_CLASS} @max-[24rem]:px-0 justify-center`,
+					children: 0,
+				},
+			);
 		});
 	});
 

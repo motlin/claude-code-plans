@@ -13,16 +13,47 @@ export const COMPOSER_CARD_CLASS =
  */
 export const COMPOSER_EDITOR_ROW_CLASS = "relative pr-[30px] pl-[30px] comfortable:pr-[32px] comfortable:pl-[32px]";
 
-/** The chin row under the card. */
-export const COMPOSER_CHIN_CLASS =
-	"@container mt-1.5 flex min-h-6 items-center justify-between ps-[7px] pe-2.5 text-[13px]/[20px] text-secondary";
+/**
+ * Upstream's ChatComposerChin (`rp`) under the card: the `@container` the chin's width queries measure. Its 8px pads,
+ * cancelled by equal negative margins, keep focus rings clear of `overflow-clip`; the session chin's own
+ * `-mt-1.5 -mb-2.5 md:-my-2` then nets it to the row's margin plus its 24px.
+ */
+export const COMPOSER_CHIN_FRAME_CLASS =
+	"relative z-0 overflow-clip px-2 -mx-2 pt-2 pb-2 -mt-1.5 -mb-2.5 md:-my-2 @container";
+
+/** The frame's collapse grid (rp `k`): it animates its one row between `1fr` (open) and `0fr` (closed). */
+export const COMPOSER_CHIN_GRID_CLASS =
+	"grid grid-cols-[minmax(0,1fr)] transition-[grid-template-rows] duration-[280ms] ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none";
+
+/** The frame's slide (rp `N`): it fades and lifts the row as the grid collapses. */
+export const COMPOSER_CHIN_SLIDE_CLASS =
+	"min-h-0 transition-[opacity,translate] duration-[280ms] ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none";
+
+/**
+ * The chin row (rp `H`, `data-size="xs" data-touch-size`): 6px under the card (8px at comfortable), its inline pads
+ * drawn in by the touch grow (globals.css), and caption-sized text in a chin of 25rem or less. The slots' buttons pin
+ * 13px/20px, as upstream's trailing wrapper does, so the caption only reaches bare row text.
+ */
+export const COMPOSER_CHIN_ROW_CLASS =
+	"flex min-h-6 items-center gap-0 mt-1.5 comfortable:mt-2 ps-[calc(var(--cmp-chin-start)_-_var(--cmp-chin-touch-grow,0px))] pe-[calc(var(--cmp-chin-end)_-_var(--cmp-chin-touch-grow,0px))] [--cmp-chin-start:7px] [--cmp-chin-end:10px] [--cmp-chin-row-h:1.5rem] text-[13px]/[20px] text-secondary @max-[25rem]:text-caption";
+
+/** The chin's leading slot wrapper. */
+export const COMPOSER_CHIN_LEADING_CLASS = "flex items-center self-start";
+
+/** The chin's trailing slot wrapper. */
+export const COMPOSER_CHIN_TRAILING_CLASS = "ms-auto flex min-w-0 items-center gap-1 ps-2";
+
+/** A leading-less chin's narrow-container pads (upstream `gj` on the row, `d0` on the trailing wrapper). */
+export const CHIN_LEADING_LESS_ROW_CLASS = "@max-[24rem]:px-0";
+export const CHIN_LEADING_LESS_TRAILING_CLASS =
+	"@max-[24rem]:ps-0 @max-[24rem]:[&_:is([data-cds=Button],[data-cds=ModelSelector])]:px-1";
 
 /**
  * Upstream re-inks the chin buttons' `--cds-text-secondary` to `--cds-fizzy-lake-color-control-ink` under fizzy color
  * (`text-secondary-control`: secondary with color off) at the control weight.
  */
-const CHIN_BUTTON_CLASS =
-	"flex h-6 min-w-0 items-center justify-center rounded-r4 leading-[20px] text-secondary-control font-control-regular transition-colors hover:bg-fill-ghost-hover hover:text-primary aria-expanded:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
+export const CHIN_BUTTON_CLASS =
+	"flex h-6 min-w-0 items-center justify-center rounded-r4 text-[13px]/[20px] text-secondary-control font-control-regular transition-colors hover:bg-fill-ghost-hover hover:text-primary aria-expanded:bg-fill-ghost-hover hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus";
 
 /** Upstream's footer pills: 24px tall at both densities, the radius 5px → 6px at comfortable. */
 export const CHIN_TRIGGER_CLASS = `${CHIN_BUTTON_CLASS} truncate px-1.5 comfortable:rounded-r5`;
