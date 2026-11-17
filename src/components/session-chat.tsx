@@ -831,7 +831,8 @@ function AssistantDisplaySpanFooter({span}: {span: AssistantDisplaySpan})
 						verbose: false,
 					},
 				)}
-				hovered={interaction.hoveredKey === span.key || interaction.focusedKey === span.key}
+				hovered={interaction.hoveredKey === span.key}
+				focused={interaction.focusedKey === span.key}
 				getHtml={() => spanProseHtml(footerRef.current, displayed)}
 			/>
 		</div>

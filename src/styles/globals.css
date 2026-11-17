@@ -6344,7 +6344,8 @@ html[data-reduce-motion="true"] [data-cds-composer-attachments] [data-cds-attach
  * TurnStatus.Step body's actions scope such as "Thinking actions". Opacity only: out in --cds-dur-fast (60ms) with no
  * delay; in over --cds-dur-snap (120ms) after 100ms on hover of the nearest scope (hovering the message row elsewhere
  * keeps it hidden), at once on focus within the scope or toolbar, on the step row toggle's focus ring, or while a popup
- * inside it is open. Touch always shows it.
+ * inside it is open. A toolbar that mounts already revealed (a panel opening under the pointer or focus) fades in from
+ * hidden. Touch always shows it.
  */
 [data-cds-actions-scope] [data-cds="MessageActions"][data-reveal]
 {
@@ -6360,6 +6361,17 @@ html[data-reduce-motion="true"] [data-cds-composer-attachments] [data-cds-attach
 	opacity: 1;
 	transition-duration: 120ms;
 	transition-delay: 0s;
+}
+@starting-style
+{
+	[data-cds-actions-scope]:focus-within
+		[data-cds="MessageActions"][data-reveal]:not(
+			:where([data-cds-actions-scope]:not(:focus-within) [data-cds="MessageActions"][data-reveal])
+		),
+	[data-cds-actions-scope] [data-cds="MessageActions"][data-reveal]:has([data-popup-open])
+	{
+		opacity: 0;
+	}
 }
 /*
  * Keyboard focus on a step's row toggle reveals the toolbar in that row's own panel body, never one in a step nested
@@ -6436,6 +6448,16 @@ html[data-reduce-motion="true"] [data-cds-composer-attachments] [data-cds-attach
 		opacity: 1;
 		transition-duration: 120ms;
 		transition-delay: 100ms;
+	}
+	@starting-style
+	{
+		[data-cds-actions-scope]:hover
+			[data-cds="MessageActions"][data-reveal]:not(
+				:where([data-cds-actions-scope]:not(:hover) [data-cds="MessageActions"][data-reveal])
+			)
+		{
+			opacity: 0;
+		}
 	}
 }
 @media (pointer: coarse), (hover: none)

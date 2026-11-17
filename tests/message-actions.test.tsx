@@ -6,7 +6,13 @@ import {actAndSettle} from "./act-and-settle";
 import type {ReactNode} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {AssistantMessageActions, UserMessageActions, WaitingMessageActions} from "../src/components/message-actions";
+import
+{
+	AssistantMessageActions,
+	StepActions,
+	UserMessageActions,
+	WaitingMessageActions,
+} from "../src/components/message-actions";
 import {CDS_BUTTON_DISABLED, CDS_ICON_ONLY_DISABLED} from "../src/components/ui/cds-button-disabled";
 import {type TranscriptActions, TranscriptActionsContext} from "../src/components/transcript-actions-context";
 import {toggleUserChapterAt} from "../src/lib/chapter-store";
@@ -1399,7 +1405,7 @@ describe("message action toolbar sizing and reveal", () =>
 		);
 	});
 
-	it("fades the bar in after 100ms on hover, at once on focus, and out in 60ms, with no scale", () =>
+	it("fades the bar in after 100ms on hover, at once on focus anywhere in the row, and out in 60ms, with no scale", () =>
 	{
 		const {container} = render(
 			<AssistantMessageActions message={MESSAGE} text="Hello" timestamp={TIMESTAMP} details={[]} />,
@@ -1422,6 +1428,14 @@ describe("message action toolbar sizing and reveal", () =>
 					"motion-safe:focus-within:delay-0",
 					"motion-safe:data-revealed:duration-[120ms]",
 					"motion-safe:data-revealed:delay-0",
+					"group-focus-within/msg:opacity-100",
+					"group-focus-within/msg:pointer-events-auto",
+					"motion-safe:group-focus-within/msg:duration-[120ms]",
+					"motion-safe:group-focus-within/msg:delay-0",
+					"data-focused:opacity-100",
+					"data-focused:pointer-events-auto",
+					"motion-safe:data-focused:duration-[120ms]",
+					"motion-safe:data-focused:delay-0",
 				].filter((c) => !classes.includes(c)),
 			},
 		).toStrictEqual(
@@ -1429,6 +1443,91 @@ describe("message action toolbar sizing and reveal", () =>
 				scales: [],
 				restDelay: false,
 				missing: [],
+			},
+		);
+	});
+
+	it("marks a span footer pointed at with data-hovered and one focused elsewhere with data-focused, so focus skips the hover delay", () =>
+	{
+		const flags = ([hovered, focused]: readonly [boolean, boolean]) =>
+		{
+			const {container, unmount} = render(
+				<AssistantMessageActions
+					message={MESSAGE}
+					text="Hello"
+					timestamp={TIMESTAMP}
+					details={[]}
+					hovered={hovered}
+					focused={focused}
+				/>,
+			);
+			const toolbar = bar(container);
+			const result = [toolbar.hasAttribute("data-hovered"), toolbar.hasAttribute("data-focused")];
+			unmount();
+			return result;
+		};
+
+		expect(
+			{
+				hover: flags([true, false]),
+				focus: flags([false, true]),
+				both: flags([true, true]),
+				neither: flags([false, false]),
+			},
+		).toStrictEqual(
+			{
+				hover: [true, false],
+				focus: [false, true],
+				both: [true, true],
+				neither: [false, false],
+			},
+		);
+	});
+
+	it("keeps a step body's toolbar off the message row's reveals: no row hover, span or reveal-button tokens", () =>
+	{
+		const {container} = render(
+			<div className="group/msg">
+				<div data-cds-actions-scope="">
+					<StepActions label="Thinking actions">
+						<button type="button">Copy as quote</button>
+					</StepActions>
+				</div>
+			</div>,
+		);
+		const toolbar = container.querySelector<HTMLElement>('[role="toolbar"]')!;
+		// @ts-expect-error a scoped bar takes no span hover, which would reveal it on row hover
+		const hoveredBar = <StepActions label="Thinking actions" hovered />;
+
+		expect(
+			{
+				typed: hoveredBar.type === StepActions,
+				attributes: Object.fromEntries(
+					["data-cds", "data-reveal", "role", "aria-label", "tabindex"].map((name) => [
+						name,
+						toolbar.getAttribute(name),
+					]),
+				),
+				rowTokens: toolbar.className
+					.split(" ")
+					.filter((c) =>
+						/group-hover\/msg|group-focus-within\/msg|data-hovered|data-focused|data-revealed/.test(c),
+					),
+				revealButtons: container.querySelectorAll("button.sr-only").length,
+			},
+		).toStrictEqual(
+			{
+				typed: true,
+				attributes:
+				{
+					"data-cds": "MessageActions",
+					"data-reveal": "fade",
+					role: "toolbar",
+					"aria-label": "Thinking actions",
+					tabindex: "-1",
+				},
+				rowTokens: [],
+				revealButtons: 0,
 			},
 		);
 	});
@@ -1920,7 +2019,7 @@ describe("message actions states (upstream 2026-11-01)", () =>
 		);
 	});
 
-	it("fades the waiting row's reveal-on-hover group with the bar's timing: out 60ms at once, hover in after 100ms, focus in at once", () =>
+	it("fades the waiting row's reveal-on-hover group with the bar's timing: out 60ms at once, hover in after 100ms, focus anywhere in the row in at once", () =>
 	{
 		const {container} = render(<WaitingMessageActions text="Hi" />);
 		const group = container.querySelector("[data-cds-reveal-on-hover]");
@@ -1938,6 +2037,9 @@ describe("message actions states (upstream 2026-11-01)", () =>
 					"motion-safe:group-hover/msg:delay-100",
 					"motion-safe:focus-within:duration-[120ms]",
 					"motion-safe:focus-within:delay-0",
+					"group-focus-within/msg:opacity-100",
+					"motion-safe:group-focus-within/msg:duration-[120ms]",
+					"motion-safe:group-focus-within/msg:delay-0",
 					"motion-safe:pointer-coarse:transition-none",
 				].filter((c) => !classes.includes(c)),
 			},

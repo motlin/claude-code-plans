@@ -1146,6 +1146,14 @@ describe("omitted and empty thinking", () =>
 const ROW_TOGGLE_REVEAL =
 	'[data-cds-row]:has([data-cds-row-toggle]:focus-visible) ~ [data-cds-row-panel] [data-cds-actions-scope] [data-cds="MessageActions"][data-reveal]:not(:where([data-cds-row]:has([data-cds-row-toggle]:focus-visible) ~ [data-cds-row-panel] [data-cds-row-panel] [data-cds="MessageActions"][data-reveal])), [data-cds-row] > [data-cds-row-toggle]:focus-visible ~ [data-cds-row-panel] [data-cds-actions-scope] [data-cds="MessageActions"][data-reveal]:not(:where([data-cds-row] > [data-cds-row-toggle]:focus-visible ~ [data-cds-row-panel] [data-cds-row-panel] [data-cds="MessageActions"][data-reveal]))';
 
+/** Upstream c6a992d55's scope hover-in selector: an enclosing scope's hover never reveals a non-hovered inner scope's bar. */
+const SCOPE_HOVER_REVEAL =
+	'[data-cds-actions-scope]:hover [data-cds="MessageActions"][data-reveal]:not(:where([data-cds-actions-scope]:not(:hover) [data-cds="MessageActions"][data-reveal]))';
+
+/** Upstream c6a992d55's scope focus-in and open-popup selectors. */
+const SCOPE_FOCUS_REVEAL =
+	'[data-cds-actions-scope]:focus-within [data-cds="MessageActions"][data-reveal]:not(:where([data-cds-actions-scope]:not(:focus-within) [data-cds="MessageActions"][data-reveal])), [data-cds-actions-scope] [data-cds="MessageActions"][data-reveal]:has([data-popup-open])';
+
 describe("thinking actions reveal", () =>
 {
 	// Whitespace-insensitive: the formatter wraps long selectors inside :not( … ).
@@ -1154,7 +1162,7 @@ describe("thinking actions reveal", () =>
 		.replaceAll("( ", "(")
 		.replaceAll(" )", ")");
 
-	it("hides a step body's actions until the body itself is hovered, then fades them in after 100ms", () =>
+	it("hides a step body's actions until the body itself is hovered, then fades them in from hidden after 100ms", () =>
 	{
 		expect(
 			{
@@ -1162,7 +1170,7 @@ describe("thinking actions reveal", () =>
 					'[data-cds-actions-scope] [data-cds="MessageActions"][data-reveal] { opacity: 0; transition: opacity 60ms cubic-bezier(0.32, 0.72, 0, 1) 0s; }',
 				),
 				hover: css.includes(
-					'@media (hover: hover) { [data-cds-actions-scope]:hover [data-cds="MessageActions"][data-reveal]:not(:where([data-cds-actions-scope]:not(:hover) [data-cds="MessageActions"][data-reveal])) { opacity: 1; transition-duration: 120ms; transition-delay: 100ms; } }',
+					`@media (hover: hover) { ${SCOPE_HOVER_REVEAL} { opacity: 1; transition-duration: 120ms; transition-delay: 100ms; } @starting-style { ${SCOPE_HOVER_REVEAL} { opacity: 0; } } }`,
 				),
 			},
 		).toStrictEqual(
@@ -1173,13 +1181,21 @@ describe("thinking actions reveal", () =>
 		);
 	});
 
-	it("shows them at once on focus inside the body or the toolbar, or with a popup open", () =>
+	it("shows them at once on focus inside the body or the toolbar, or with a popup open, fading in from hidden", () =>
 	{
 		expect(
-			css.includes(
-				'[data-cds-actions-scope]:focus-within [data-cds="MessageActions"][data-reveal]:not(:where([data-cds-actions-scope]:not(:focus-within) [data-cds="MessageActions"][data-reveal])), [data-cds-actions-scope] [data-cds="MessageActions"][data-reveal]:has([data-popup-open]) { opacity: 1; transition-duration: 120ms; transition-delay: 0s; }',
-			),
-		).toBe(true);
+			{
+				reveal: css.includes(
+					`${SCOPE_FOCUS_REVEAL} { opacity: 1; transition-duration: 120ms; transition-delay: 0s; }`,
+				),
+				startingStyle: css.includes(`@starting-style { ${SCOPE_FOCUS_REVEAL} { opacity: 0; } }`),
+			},
+		).toStrictEqual(
+			{
+				reveal: true,
+				startingStyle: true,
+			},
+		);
 	});
 
 	it("shows them at once on the row toggle's focus ring, fading in from hidden, but not in a nested step's panel", () =>

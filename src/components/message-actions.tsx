@@ -55,8 +55,10 @@ export interface MessageActionsProps
 	timestamp?: string | undefined;
 	/** Extra tooltip lines after the absolute time: token usage, effort, origin and the like. */
 	details: readonly string[];
-	/** Another mounted contribution in this assistant display span owns pointer/focus. */
+	/** The pointer is over another mounted contribution in this assistant display span. */
 	hovered?: boolean | undefined;
+	/** Focus is in another mounted contribution in this assistant display span, which reveals the bar at once. */
+	focused?: boolean | undefined;
 	/** The CLI took this prompt into a turn, so the user row shows upstream's "Read by Claude" receipt. */
 	readByClaude?: boolean;
 	/** The user row just replaced a waiting row Claude read, so its time fades in (upstream `settling`). */
@@ -74,6 +76,9 @@ const BAR_CLASS = [
 	"focus-within:opacity-100 focus-within:pointer-events-auto",
 	"data-revealed:opacity-100 data-revealed:pointer-events-auto",
 	"data-hovered:opacity-100 data-hovered:pointer-events-auto",
+	// Upstream's `.group/message-row:focus-within` reveal: focus anywhere in the row (or the span) shows the bar.
+	"group-focus-within/msg:opacity-100 group-focus-within/msg:pointer-events-auto",
+	"data-focused:opacity-100 data-focused:pointer-events-auto",
 	// An open popover inside the bar (the read receipt's) keeps it shown, as upstream's :has([data-popup-open]) rule does.
 	"has-[[data-popup-open]]:opacity-100 has-[[data-popup-open]]:pointer-events-auto",
 	// Upstream reveals by opacity only (no scale): out in 60ms with no delay, hover in over 120ms after
@@ -82,6 +87,8 @@ const BAR_CLASS = [
 	"motion-safe:group-hover/msg:duration-[120ms] motion-safe:group-hover/msg:delay-100",
 	"motion-safe:[@media(hover:hover)]:data-hovered:duration-[120ms] motion-safe:[@media(hover:hover)]:data-hovered:delay-100",
 	"motion-safe:focus-within:duration-[120ms] motion-safe:focus-within:delay-0",
+	"motion-safe:group-focus-within/msg:duration-[120ms] motion-safe:group-focus-within/msg:delay-0",
+	"motion-safe:data-focused:duration-[120ms] motion-safe:data-focused:delay-0",
 	"motion-safe:data-revealed:duration-[120ms] motion-safe:data-revealed:delay-0",
 	"motion-safe:has-[[data-popup-open]]:duration-[120ms] motion-safe:has-[[data-popup-open]]:delay-0",
 	// Touch devices never hover, so the bar is always shown there, as upstream's data-reveal rule does.
@@ -407,12 +414,14 @@ function ActionBar({
 	children,
 	label,
 	hovered,
+	focused,
 	testId,
 }: {
 	className: string;
 	children: ReactNode;
 	label: string;
 	hovered?: boolean | undefined;
+	focused?: boolean | undefined;
 	/** Upstream's `message-actions` (assistant) or `user-message-actions` (user). */
 	testId: string;
 })
@@ -472,6 +481,7 @@ function ActionBar({
 				data-testid={testId}
 				data-size="xs"
 				data-hovered={hovered ? "" : undefined}
+				data-focused={focused ? "" : undefined}
 				{...(revealed
 					?
 						{
@@ -548,7 +558,15 @@ export function QuoteCopyAction({quote, onCopied}: {quote: string; onCopied: () 
 	);
 }
 
-export function AssistantMessageActions({message, text, timestamp, details, hovered, getHtml}: MessageActionsProps)
+export function AssistantMessageActions({
+	message,
+	text,
+	timestamp,
+	details,
+	hovered,
+	focused,
+	getHtml,
+}: MessageActionsProps)
 {
 	return (
 		<ActionBar
@@ -556,6 +574,7 @@ export function AssistantMessageActions({message, text, timestamp, details, hove
 			className={`${BAR_CLASS} mt-xs -ms-[2px]`}
 			label={`Show message actions for ${messageHeading("assistant", text)}`}
 			hovered={hovered}
+			focused={focused}
 			testId="message-actions"
 		>
 			<CopyAction text={text} getHtml={getHtml} first />
@@ -706,15 +725,16 @@ export function UserMessageActions({
 
 /*
  * Upstream drives an always-visible bar's `[data-cds-reveal-on-hover]` children from the bar's reveal
- * timing: out in 60ms with no delay, hover in over 120ms after 100ms, focus in over 120ms at once.
+ * timing: out in 60ms with no delay, hover in over 120ms after 100ms, focus anywhere in the row in over 120ms at once.
  */
 const REVEAL_ON_HOVER_CLASS = [
 	"flex items-center",
-	"opacity-0 group-hover/msg:opacity-100 focus-within:opacity-100",
+	"opacity-0 group-hover/msg:opacity-100 focus-within:opacity-100 group-focus-within/msg:opacity-100",
 	"pointer-coarse:opacity-100 [@media(hover:none)]:opacity-100",
 	"motion-safe:transition-opacity motion-safe:duration-[60ms] motion-safe:delay-0 motion-safe:ease-[cubic-bezier(.32,.72,0,1)]",
 	"motion-safe:group-hover/msg:duration-[120ms] motion-safe:group-hover/msg:delay-100",
 	"motion-safe:focus-within:duration-[120ms] motion-safe:focus-within:delay-0",
+	"motion-safe:group-focus-within/msg:duration-[120ms] motion-safe:group-focus-within/msg:delay-0",
 	"motion-safe:pointer-coarse:transition-none",
 ].join(" ");
 

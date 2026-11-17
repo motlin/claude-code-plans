@@ -878,6 +878,32 @@ describe("assistant display-span actions", () =>
 		},
 	);
 
+	it("marks a shared footer focused, not hovered, while focus is in another member", () =>
+	{
+		const view = render(chat([text("example-first", "Example first."), text("example-last", "Example last.")]));
+		const article = view.container.querySelector('[role="article"]')!;
+		const toolbar = () => footers(view.container)[0]!.querySelector("[data-message-actions]");
+		fireEvent.focus(article);
+		const focused = [toolbar()?.hasAttribute("data-hovered"), toolbar()?.hasAttribute("data-focused")];
+		fireEvent.blur(
+			article,
+			{
+				relatedTarget: document.body,
+			},
+		);
+		expect(
+			{
+				focused,
+				after: [toolbar()?.hasAttribute("data-hovered"), toolbar()?.hasAttribute("data-focused")],
+			},
+		).toStrictEqual(
+			{
+				focused: [false, true],
+				after: [false, false],
+			},
+		);
+	});
+
 	it("highlights a shared footer from another member without rerunning the text collector", () =>
 	{
 		const view = render(chat([text("example-first", "Example first."), text("example-last", "Example last.")]));
