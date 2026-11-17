@@ -726,6 +726,31 @@ const CAROL: QueuedPrompt =
 const MASK_120 = "[mask-image:linear-gradient(to_right,black_calc(100%_-_120px),transparent_calc(100%_-_48px))]";
 const MASK_76 = "[mask-image:linear-gradient(to_right,black_calc(100%_-_76px),transparent_calc(100%_-_28px))]";
 
+/**
+ * dnd-kit 6.3's KeyboardSensor never detaches when its DndContext unmounts mid-drag: its document keydown
+ * listener (added on a zero-delay timeout after pick-up) outlives the band and, in a shared-dom worker, eats
+ * every later test's arrow keys (prompt-jump's ⌥⌘↑). Unmount the band, let the listener attach, then cancel
+ * the orphaned drag with Escape so the sensor removes it.
+ */
+async function unmountMidDrag(unmount: () => void): Promise<void>
+{
+	unmount();
+	await act(
+		async () =>
+			new Promise((resolve) =>
+			{
+				setTimeout(resolve, 0);
+			}),
+	);
+	fireEvent.keyDown(
+		document,
+		{
+			code: "Escape",
+			key: "Escape",
+		},
+	);
+}
+
 function renderList(
 	items: readonly QueuedPrompt[],
 	onReorder?: (id: string, overId: string) => void,
@@ -983,7 +1008,7 @@ describe("QueuedMessageBar reorder", () =>
 		);
 	});
 
-	it("restores the body when the band unmounts mid-drag", () =>
+	it("restores the body when the band unmounts mid-drag", async () =>
 	{
 		const {unmount} = renderList([ALICE, BOB], vi.fn<(id: string, overId: string) => void>());
 		const [first] = handles();
@@ -996,7 +1021,7 @@ describe("QueuedMessageBar reorder", () =>
 			},
 		);
 		const during = document.body.style.cursor;
-		unmount();
+		await unmountMidDrag(unmount);
 		expect([during, document.body.style.cursor, document.body.style.userSelect]).toStrictEqual([
 			"grabbing",
 			"",
@@ -1004,9 +1029,9 @@ describe("QueuedMessageBar reorder", () =>
 		]);
 	});
 
-	it("drops the sliding transition under reduced motion", () =>
+	it("drops the sliding transition under reduced motion", async () =>
 	{
-		const transitions = (sessionId: string) =>
+		const transitions = async (sessionId: string) =>
 		{
 			const {rows, unmount} = renderList([ALICE, BOB], vi.fn<(id: string, overId: string) => void>(), sessionId);
 			const [first] = handles();
@@ -1019,15 +1044,15 @@ describe("QueuedMessageBar reorder", () =>
 				},
 			);
 			const result = rows.map((row) => row.style.transition);
-			unmount();
+			await unmountMidDrag(unmount);
 			return result;
 		};
-		const animated = transitions("session-animated");
+		const animated = await transitions("session-animated");
 		document.documentElement.setAttribute("data-reduce-motion", "true");
 		expect(
 			{
 				animated: animated.some((transition) => transition !== ""),
-				reduced: transitions("session-reduced"),
+				reduced: await transitions("session-reduced"),
 			},
 		).toStrictEqual(
 			{
