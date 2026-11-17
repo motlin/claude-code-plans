@@ -11,7 +11,7 @@ import {promptHistoryQueryOptions} from "../../lib/api/prompt-history";
 import {homeFolderStatusQueryOptions} from "../../lib/api/home-folder-status";
 import {HerdrRequestError, isNoTerminalHost, launchHerdrSession} from "../../lib/api/herdr";
 import {getComposerText, refillRejectedSend, restoreRejectedAttachments} from "../../lib/context-attach";
-import {restoreStoredDraft} from "../../hooks/use-composer-draft";
+import {restoreStoredDraft} from "../../lib/composer-draft-store";
 import {startFailedOffscreenToast, type StartFailure} from "../../lib/send-rejection";
 import {buildClaudeCopyCommand} from "../../lib/claude-launch-command";
 import {writeClipboardText} from "../../lib/clipboard";

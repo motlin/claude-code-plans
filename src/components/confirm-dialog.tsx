@@ -49,8 +49,8 @@ const PANELS_DESCRIPTION_CLASS =
 
 /**
  * claude.ai/code's small confirm dialog: a title, one line of body copy, and
- * [Cancel] (initial focus) beside the confirm button, which is red for
- * destructive actions.
+ * [Cancel] beside the confirm button, which is red for destructive actions.
+ * Initial focus is on Cancel unless `initialFocus` is "confirm".
  */
 export const ConfirmDialog = memo(function ConfirmDialog({
 	open,
@@ -64,6 +64,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 	variant = "primary",
 	size = "sm",
 	confirmDisabled = false,
+	initialFocus = "cancel",
 	onConfirm,
 	onCancel,
 }: {
@@ -81,12 +82,15 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 	size?: keyof typeof SIZE_CLASS;
 	/** Upstream ConfirmationDialog `disabled`: the confirm button can't be pressed yet. */
 	confirmDisabled?: boolean;
+	/** Upstream ConfirmationDialog `initialFocus`: which button takes focus on open. */
+	initialFocus?: "cancel" | "confirm";
 	onConfirm: () => void;
 	/** Runs only when the cancel button itself is clicked, not on Escape or a backdrop click. */
 	onCancel?: () => void;
 })
 {
 	const cancelRef = useRef<HTMLButtonElement>(null);
+	const confirmRef = useRef<HTMLButtonElement>(null);
 	const panels = useFizzyLake("panels");
 	const popupClass = `${POPUP_BASE_CLASS} ${SIZE_CLASS[size]}`;
 	const rest = (
@@ -103,6 +107,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 					{cancelLabel}
 				</AlertDialog.Close>
 				<button
+					ref={confirmRef}
 					type="button"
 					disabled={confirmDisabled}
 					onClick={() =>
@@ -123,7 +128,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 				<DensityScope density="comfortable">
 					<AlertDialog.Backdrop className="fixed inset-0 z-50 bg-backdrop backdrop-blur-[2px] transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
 					<AlertDialogPopup
-						initialFocus={cancelRef}
+						initialFocus={initialFocus === "confirm" ? confirmRef : cancelRef}
 						data-cds="ConfirmationDialog"
 						data-cds-fizzy={panels ? "" : undefined}
 						className={panels ? popupClass : `${popupClass} p-6`}

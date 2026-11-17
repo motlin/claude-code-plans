@@ -2,7 +2,7 @@ import {useMemo, useSyncExternalStore} from "react";
 import {z} from "zod";
 
 import type {ToastOptions} from "../components/toast-context";
-import {storeRejectedDraft} from "../hooks/use-composer-draft";
+import {storeRejectedDraft} from "./composer-draft-store";
 import {MAX_ATTACHMENT_BYTES, uploadAttachment} from "./api/attachments";
 import {type QueuedDiffComment, restoreQueuedDiffComments} from "./diff-comments";
 import {mergeRefill} from "./send-rejection";
@@ -125,7 +125,8 @@ export function appendAttachment(prompt: string, snippet: string): string
  * paste), transcript messages attached from their
  * context menu, which send as a fenced excerpt like terminal output, and
  * transcript text selections, which send as upstream's "Excerpt" snippet,
- * and ⌘K Compose pastes of 500+ chars, which send inline as is.
+ * ⌘K Compose pastes of 500+ chars, which send inline as is, and upstream's
+ * "Saved draft" (a stored draft too long to restore inline), also sent as is.
  */
 export const ContextAttachmentKindSchema = z.enum([
 	"file",
@@ -135,6 +136,7 @@ export const ContextAttachmentKindSchema = z.enum([
 	"message",
 	"excerpt",
 	"pasted-text",
+	"saved-draft",
 ]);
 export type ContextAttachmentKind = z.infer<typeof ContextAttachmentKindSchema>;
 
@@ -248,6 +250,8 @@ function formatReplyLead(replies: readonly ContextAttachment[]): string
 export function formatContextAttachment({kind, path, range, text, language}: ContextAttachment): string
 {
 	if (kind === "pasted-text") return text ?? "";
+	// Upstream `Te`: a text snippet goes raw, with numbered reply markers escaped.
+	if (kind === "saved-draft") return escapeNumberedReplyMarkers(text ?? "");
 	if (kind === "excerpt") return formatExcerpt(text ?? "");
 	if (kind === "image" && path !== undefined) return path;
 	if (kind === "terminal" || path === undefined) return formatFencedExcerpt(text ?? "");
@@ -268,6 +272,7 @@ export function contextChipLabel({kind, path, range, text, name: displayName}: C
 		const lines = (text ?? "").split("\n").length;
 		return `Pasted text · ${lines} ${lines === 1 ? "line" : "lines"}`;
 	}
+	if (kind === "saved-draft") return "Saved draft";
 	if (displayName !== undefined) return displayName;
 	if (kind === "message") return "Message";
 	if (kind === "excerpt") return "Excerpt";
@@ -521,6 +526,61 @@ function dropIfGone(sessionId: string, id: string, previewUrl: string): void
 		{
 			// Offline or interrupted: the file may well still be there.
 		},
+	);
+}
+
+/** Upstream `QY`: a stored draft longer than this restores as a "Saved draft" attachment instead of inline. */
+export const SAVED_DRAFT_DEMOTE_CHARS = 1_000_000;
+
+/**
+ * Upstream `mP` on restore: stages an oversized stored draft as a restored "Saved draft" chip, after the
+ * tiles saved before the reload, unless a saved draft with the same text is already staged.
+ */
+export function stageSavedDraft(sessionId: string, text: string): void
+{
+	hydrateStagedChips(sessionId);
+	const current = getContextChips(sessionId);
+	if (current.some((chip) => chip.kind === "saved-draft" && chip.text === text)) return;
+	setChips(sessionId, [
+		...current,
+		restoredChip(
+			{
+				kind: "saved-draft",
+				text,
+			},
+		),
+	]);
+}
+
+/** Upstream's pill count (`formatNumber(len, {notation:"compact", compactDisplay:"long", maximumFractionDigits:1})`). */
+const COUNT_FORMAT = new Intl.NumberFormat(
+	"en",
+	{
+		notation: "compact",
+		compactDisplay: "long",
+		maximumFractionDigits: 1,
+	},
+);
+
+export function savedDraftAriaLabel(length: number): string
+{
+	return `Saved draft · ${COUNT_FORMAT.format(length)} ${length === 1 ? "character" : "characters"}`;
+}
+
+/** Upstream `updateSnippetText`: replaces a chip's text in place; the chip stays what it was. */
+export function updateContextChipText(sessionId: string, id: string, text: string): void
+{
+	setChips(
+		sessionId,
+		getContextChips(sessionId).map((chip) =>
+			chip.id === id
+				?
+					{
+						...chip,
+						text,
+					}
+				: chip,
+		),
 	);
 }
 

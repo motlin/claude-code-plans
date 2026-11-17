@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {markFailedSend, readFailedSend} from "../hooks/use-composer-draft";
+import {markFailedSend, readFailedSend} from "../lib/composer-draft-store";
 import type {DeliveryResult} from "../hooks/use-composer-queue";
 import {HerdrRequestError, isAgentNotReady, sendHerdrPrompt} from "../lib/api/herdr";
 import {type RejectedRefill, takeBackSend} from "../lib/context-attach";

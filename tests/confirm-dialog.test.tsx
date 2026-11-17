@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, render, screen} from "@testing-library/react";
+import {cleanup, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
 import {ConfirmDialog} from "../src/components/confirm-dialog";
@@ -52,6 +52,35 @@ async function anatomy()
 
 describe("ConfirmDialog", () =>
 {
+	it("puts initial focus on Cancel by default, and on the confirm button when asked", async () =>
+	{
+		const {unmount} = render(dialog());
+		await waitFor(() =>
+		{
+			expect(document.activeElement?.textContent).toBe("Cancel");
+		});
+		unmount();
+		render(
+			<ConfirmDialog
+				open
+				onOpenChange={() =>
+				{
+				}}
+				title="Remove saved draft?"
+				confirmLabel="Remove"
+				variant="danger"
+				initialFocus="confirm"
+				onConfirm={() =>
+				{
+				}}
+			/>,
+		);
+		await waitFor(() =>
+		{
+			expect(document.activeElement?.textContent).toBe("Remove");
+		});
+	});
+
 	it("renders upstream's panels ConfirmationDialog: a 16px body and the alert band title row (shared-frame jl/nf/jS/_z)", async () =>
 	{
 		render(dialog());

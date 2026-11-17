@@ -3,7 +3,7 @@
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
-import {composerDraftStorageKey} from "../src/hooks/use-composer-draft";
+import {composerDraftStorageKey} from "../src/lib/composer-draft-store";
 import
 {
 	attachContext,

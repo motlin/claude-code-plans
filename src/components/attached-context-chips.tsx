@@ -19,6 +19,7 @@ import
 	Image as ImageIcon,
 	MessageSquareText,
 	SquareTerminal,
+	StickyNote,
 	TextQuote,
 	X,
 } from "lucide-react";
@@ -34,6 +35,7 @@ import
 	removeContextChip,
 } from "../lib/context-attach";
 import {AgentTile, type AgentTileProps} from "./agent-tile";
+import {SavedDraftPill} from "./saved-draft-pill";
 import
 {
 	diffCommentWhere,
@@ -90,15 +92,18 @@ const CONTEXT_CHIP_ICON =
 	message: MessageSquareText,
 	excerpt: TextQuote,
 	"pasted-text": ClipboardPaste,
+	"saved-draft": StickyNote,
 } satisfies Record<ContextChip["kind"], unknown>;
 
 /**
  * Upstream's `Rn`: the element that takes focus in a tile or pill, its
- * CardLink, else the pill's remove button, else the tile root itself.
+ * CardLink, else a pill's body, else its remove button, else the tile root itself.
  */
 function focusTarget(item: Element): HTMLElement | null
 {
-	const target = item.querySelector<HTMLElement>('[data-cds="CardLink"], button[aria-label^="Remove "]');
+	const target = item.querySelector<HTMLElement>(
+		'[data-cds="CardLink"], .epitaxy-pill-body, button[aria-label^="Remove "]',
+	);
 	if (target !== null) return target;
 	return item instanceof HTMLElement && item.hasAttribute("tabindex") ? item : null;
 }
@@ -1007,6 +1012,8 @@ export function AttachedContextChips({
 {
 	const [mountedIds] = useState<ReadonlySet<string>>(() => new Set(context.map((chip) => chip.id)));
 	const restored = restoredIds ?? mountedIds;
+	// Upstream's `isUploading`: a saved draft is view-only while any upload is in flight.
+	const uploading = context.some((chip) => chip.status === "pending");
 	const rowRef = useRef<HTMLUListElement>(null);
 	useEffect(() =>
 	{
@@ -1146,6 +1153,30 @@ export function AttachedContextChips({
 									chip={chip}
 									restored={restored.has(chip.id)}
 									onOpen={openTextPreview}
+								/>
+							);
+						}
+						if (chip.kind === "saved-draft")
+						{
+							return (
+								<SavedDraftPill
+									key={chip.id}
+									sessionId={sessionId}
+									chip={chip}
+									restored={restored.has(chip.id)}
+									readOnly={uploading}
+									onRemove={(item) =>
+									{
+										const target = item === null ? null : siblingFocusTarget(item);
+										removeChip(sessionId, chip);
+										if (target === null) focusComposer(sessionId);
+										else
+											target.focus(
+												{
+													preventScroll: true,
+												},
+											);
+									}}
 								/>
 							);
 						}

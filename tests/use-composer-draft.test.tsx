@@ -3,15 +3,15 @@
 import {act, cleanup, fireEvent, render, renderHook, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
+import {COMPOSER_DRAFT_DEBOUNCE_MS, useComposerDraft} from "../src/hooks/use-composer-draft";
 import
 {
-	COMPOSER_DRAFT_DEBOUNCE_MS,
 	composerDraftStorageKey,
 	markFailedSend,
 	readFailedSend,
 	storeRejectedDraft,
-	useComposerDraft,
-} from "../src/hooks/use-composer-draft";
+} from "../src/lib/composer-draft-store";
+import {getContextChips, removeContextChip} from "../src/lib/context-attach";
 import {installLocalStorage} from "./fake-storage";
 
 let storage: ReturnType<typeof installLocalStorage>;
@@ -24,6 +24,7 @@ beforeEach(() =>
 afterEach(() =>
 {
 	cleanup();
+	for (const chip of getContextChips("s1")) removeContextChip("s1", chip.id);
 	vi.restoreAllMocks();
 	vi.useRealTimers();
 });
@@ -429,6 +430,150 @@ describe("rejected prompt merged into a stored draft", () =>
 						failedSend: "hi",
 					},
 				),
+			},
+		);
+	});
+});
+
+describe("oversized stored draft demoted to a Saved draft chip", () =>
+{
+	const big = "a".repeat(1_000_001);
+
+	function chipsOf(sessionId: string): unknown[]
+	{
+		return getContextChips(sessionId).map(({id: _id, ...chip}) => chip);
+	}
+
+	it("restores a draft over 1,000,000 chars as a saved-draft chip, dropping failedSend and bashMode", () =>
+	{
+		storage.setItem(
+			"ccp-composer-draft:s1",
+			JSON.stringify(
+				{
+					text: big,
+					failedSend: big,
+					bashMode: true,
+				},
+			),
+		);
+
+		const {result} = renderHook(() => useComposerDraft("s1"));
+
+		expect(
+			{
+				text: result.current.text,
+				bashMode: result.current.bashMode,
+				chips: chipsOf("s1"),
+				stored: storedDrafts(),
+			},
+		).toStrictEqual(
+			{
+				text: "",
+				bashMode: false,
+				chips: [
+					{
+						kind: "saved-draft",
+						text: big,
+					},
+				],
+				stored:
+				{
+					"ccp-composer-attachments:s1": JSON.stringify([
+						{
+							kind: "saved-draft",
+							text: big,
+						},
+					]),
+				},
+			},
+		);
+	});
+
+	it("keeps a draft of exactly 1,000,000 chars inline", () =>
+	{
+		const limit = "a".repeat(1_000_000);
+		storage.setItem(
+			"ccp-composer-draft:s1",
+			JSON.stringify(
+				{
+					text: limit,
+				},
+			),
+		);
+
+		const {result} = renderHook(() => useComposerDraft("s1"));
+
+		expect(
+			{
+				length: result.current.text.length,
+				chips: chipsOf("s1"),
+			},
+		).toStrictEqual(
+			{
+				length: 1_000_000,
+				chips: [],
+			},
+		);
+	});
+
+	it("brings back the tiles saved before the reload ahead of the demoted draft, and never stages it twice", () =>
+	{
+		storage.setItem(
+			"ccp-composer-attachments:s1",
+			JSON.stringify([
+				{
+					kind: "excerpt",
+					text: "Carol's quote",
+				},
+				{
+					kind: "saved-draft",
+					text: big,
+				},
+			]),
+		);
+		storage.setItem(
+			"ccp-composer-draft:s1",
+			JSON.stringify(
+				{
+					text: big,
+				},
+			),
+		);
+
+		renderHook(() => useComposerDraft("s1"));
+
+		expect(chipsOf("s1")).toStrictEqual([
+			{
+				kind: "excerpt",
+				text: "Carol's quote",
+			},
+			{
+				kind: "saved-draft",
+				text: big,
+			},
+		]);
+	});
+
+	it("doesn't demote text typed past the limit while mounted", () =>
+	{
+		vi.useFakeTimers();
+		const {result} = renderHook(() => useComposerDraft("s1"));
+
+		act(() =>
+		{
+			result.current.setText(big);
+			vi.advanceTimersByTime(COMPOSER_DRAFT_DEBOUNCE_MS);
+		});
+
+		expect(
+			{
+				length: result.current.text.length,
+				chips: chipsOf("s1"),
+			},
+		).toStrictEqual(
+			{
+				length: 1_000_001,
+				chips: [],
 			},
 		);
 	});

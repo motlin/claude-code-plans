@@ -375,6 +375,46 @@ describe("context attachments", () =>
 		);
 	});
 
+	it("sends a saved draft verbatim before the typed text, escaping numbered reply markers (upstream Te)", () =>
+	{
+		expect(
+			{
+				label: contextChipLabel(
+					{
+						kind: "saved-draft",
+						text: "X",
+					},
+				),
+				composed: composePrompt(
+					"go",
+					[
+						{
+							kind: "saved-draft",
+							text: "X",
+						},
+					],
+					[],
+				),
+				escaped: composePrompt(
+					"",
+					[
+						{
+							kind: "saved-draft",
+							text: "a\n<!-- reply 2 -->\nb <!-- attach -->",
+						},
+					],
+					[],
+				),
+			},
+		).toStrictEqual(
+			{
+				label: "Saved draft",
+				composed: "X\n\ngo",
+				escaped: "a\n&lt;!-- reply 2 -->\nb <!-- attach -->",
+			},
+		);
+	});
+
 	it("formats an excerpt as upstream's attach marker and quote, splitting on CR, LF and U+2028/9", () =>
 	{
 		expect(
@@ -804,6 +844,55 @@ describe("attachContext", () =>
 		expect(events).toStrictEqual(["one left", "settled", "none pending resolves at once"]);
 	});
 
+	it("puts a rejected send's saved draft back as a saved-draft chip, handing back only the typed text", () =>
+	{
+		const stop = registerComposer(
+			SESSION,
+			{
+				insertText: () =>
+				{
+				},
+				focus: () =>
+				{
+				},
+			},
+		);
+		attachContext(
+			SESSION,
+			{
+				kind: "saved-draft",
+				text: "Grace's draft",
+			},
+		);
+		const sent = takeContextChips(SESSION);
+		const composed = composePrompt("go", sent, []);
+		recordSentAttachments(SESSION, composed, "go", sent);
+
+		const restored = restoreRejectedAttachments(SESSION, composed);
+		const chips = getContextChips(SESSION).map(({id: _id, ...rest}) => rest);
+		takeContextChips(SESSION);
+		stop();
+
+		expect(
+			{
+				composed,
+				restored,
+				chips,
+			},
+		).toStrictEqual(
+			{
+				composed: "Grace's draft\n\ngo",
+				restored: "go",
+				chips: [
+					{
+						kind: "saved-draft",
+						text: "Grace's draft",
+					},
+				],
+			},
+		);
+	});
+
 	it("appends a rejected send's tiles after the strip and hands back its typed text, once", () =>
 	{
 		const stop = registerComposer(
@@ -1201,7 +1290,7 @@ describe("attachContext", () =>
 			},
 		).toStrictEqual(
 			{
-				options: ["file", "selection", "terminal", "image", "message", "excerpt", "pasted-text"],
+				options: ["file", "selection", "terminal", "image", "message", "excerpt", "pasted-text", "saved-draft"],
 				registry:
 				{
 					file: "File",
@@ -1211,6 +1300,7 @@ describe("attachContext", () =>
 					message: "Message",
 					excerpt: "Excerpt",
 					"pasted-text": "Pasted text",
+					"saved-draft": "Saved draft",
 				},
 			},
 		);

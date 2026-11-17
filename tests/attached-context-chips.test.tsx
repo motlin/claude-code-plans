@@ -2416,3 +2416,312 @@ describe("AttachedContextChips staged reply tiles", () =>
 		});
 	});
 });
+
+describe("Saved draft pill", () =>
+{
+	const DRAFT: ContextChip =
+	{
+		id: "chip-draft",
+		kind: "saved-draft",
+		text: "x".repeat(39),
+	};
+
+	function pill(container: HTMLElement)
+	{
+		const root = container.querySelector<HTMLElement>("li[data-cds-attachment]");
+		if (root === null) throw new Error("no saved draft pill");
+		const body = root.querySelector<HTMLButtonElement>("button.epitaxy-pill-body");
+		const remove = root.querySelector<HTMLButtonElement>("button.epitaxy-pill-remove");
+		if (body === null || remove === null) throw new Error("no saved draft pill parts");
+		return {
+			root,
+			body,
+			remove,
+		};
+	}
+
+	it("renders upstream's flat Note pill with its hover-revealed remove button", () =>
+	{
+		const {container} = render(
+			<AttachedContextChips
+				sessionId={SESSION}
+				context={[DRAFT]}
+				comments={[]}
+				restoredIds={new Set(["chip-draft"])}
+			/>,
+		);
+		const {root, body, remove} = pill(container);
+		expect(
+			{
+				root: classes(root),
+				restored: root.getAttribute("data-cds-attachment-restored"),
+				body: classes(body),
+				haspopup: body.getAttribute("aria-haspopup"),
+				aria: body.getAttribute("aria-label"),
+				icon: classes(body.firstElementChild),
+				label: [classes(body.lastElementChild), body.lastElementChild?.textContent],
+				remove: classes(remove),
+				removeTabIndex: remove.tabIndex,
+				removeAria: remove.getAttribute("aria-label"),
+			},
+		).toStrictEqual(
+			{
+				root: ["focus-within:z-10", "group/pill", "hover:z-10", "relative", "shrink-0"],
+				restored: "",
+				body: [
+					"bg-alpha-2",
+					"border-0",
+					"comfortable:px-3",
+					"epitaxy-pill-body",
+					"epitaxy-pill-body--flat",
+					"focus-visible:outline-hidden",
+					"focus-visible:shadow-focus",
+					"gap-1.25",
+					"h-10",
+					"hide-focus-ring",
+					"inline-flex",
+					"items-center",
+					"overflow-hidden",
+					"px-2",
+					"rounded-sm",
+					"text-body",
+					"text-muted-control",
+					"text-secondary-control",
+				],
+				haspopup: "dialog",
+				aria: "Saved draft · 39 characters",
+				icon: ["flex", "items-center", "justify-center", "shrink-0"],
+				label: [["max-w-[260px]", "truncate"], "Saved draft"],
+				remove: [
+					"-end-1.5",
+					"-top-1.5",
+					"absolute",
+					"bg-surface-2",
+					"epitaxy-pill-remove",
+					"grid",
+					"group-focus-within/pill:opacity-100",
+					"group-focus-within/pill:pointer-events-auto",
+					"group-hover/pill:opacity-100",
+					"group-hover/pill:pointer-events-auto",
+					"hover:text-primary",
+					"motion-reduce:transition-none",
+					"opacity-0",
+					"place-items-center",
+					"pointer-events-none",
+					"ring-1",
+					"ring-alpha-2",
+					"rounded-full",
+					"size-4",
+					"text-secondary",
+					"transition-opacity",
+					"z-10",
+				],
+				removeTabIndex: -1,
+				removeAria: "Remove Saved draft",
+			},
+		);
+	});
+
+	it("counts the characters in upstream's compact long notation", () =>
+	{
+		const {container} = renderChips([
+			{
+				...DRAFT,
+				text: "x".repeat(1_000_072),
+			},
+			{
+				...DRAFT,
+				id: "chip-one",
+				text: "x",
+			},
+		]);
+		expect(
+			[...container.querySelectorAll("button.epitaxy-pill-body")].map((body) => body.getAttribute("aria-label")),
+		).toStrictEqual(["Saved draft · 1 million characters", "Saved draft · 1 character"]);
+	});
+
+	it("shows Saved draft over Click to edit. in its tooltip on keyboard focus", () =>
+	{
+		const {container} = renderChips([DRAFT]);
+		fireEvent.focus(pill(container).body);
+		const tip = screen.getByRole("tooltip");
+		expect(
+			{
+				text: tip.textContent,
+				detail: tip.lastElementChild?.textContent,
+			},
+		).toStrictEqual(
+			{
+				text: "Saved draftClick to edit.",
+				detail: "Click to edit.",
+			},
+		);
+	});
+
+	it("lists Edit and Remove on right-click", async () =>
+	{
+		const {container} = renderChips([DRAFT]);
+		fireEvent.contextMenu(
+			pill(container).root,
+			{
+				clientX: 10,
+				clientY: 10,
+			},
+		);
+		const rows = await vi.waitFor(() =>
+		{
+			const menu = screen.getByRole("menu");
+			return [...menu.querySelectorAll('[role="menuitem"]')].map((row) => row.textContent);
+		});
+		expect(rows).toStrictEqual(["Edit", "Remove"]);
+	});
+
+	describe("removing the only copy", () =>
+	{
+		let stop: () => void = () =>
+		{
+		};
+		const focusComposer = vi.fn<() => void>();
+
+		function LiveChips()
+		{
+			return <AttachedContextChips sessionId={SESSION} context={useContextChips(SESSION)} comments={[]} />;
+		}
+
+		beforeEach(() =>
+		{
+			focusComposer.mockClear();
+			stop = registerComposer(
+				SESSION,
+				{
+					insertText: () =>
+					{
+					},
+					focus: focusComposer,
+				},
+			);
+			attachContext(
+				SESSION,
+				{
+					kind: "saved-draft",
+					text: "Erin's long draft",
+				},
+			);
+			focusComposer.mockClear();
+		});
+
+		afterEach(() =>
+		{
+			cleanup();
+			takeContextChips(SESSION);
+			stop();
+		});
+
+		async function confirm()
+		{
+			const dialog = await screen.findByRole("alertdialog");
+			await vi.waitFor(() =>
+			{
+				expect(document.activeElement?.textContent).toBe("Remove");
+			});
+			return {
+				title: dialog.querySelector("h2")?.textContent,
+				body: dialog.querySelector("p")?.textContent,
+				buttons: [...dialog.querySelectorAll("button")].map((button) => button.textContent),
+			};
+		}
+
+		const CONFIRM =
+		{
+			title: "Remove saved draft?",
+			body: "This is the only copy of this text.",
+			buttons: ["Cancel", "Remove"],
+		};
+
+		it("asks before × removes it, keeps it on Cancel and removes it on Remove, focusing the prompt", async () =>
+		{
+			const {container} = render(<LiveChips />);
+			fireEvent.click(pill(container).remove);
+			const asked = await confirm();
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Cancel",
+					},
+				),
+			);
+			const afterCancel = getContextChips(SESSION).length;
+			fireEvent.click(pill(container).remove);
+			await confirm();
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Remove",
+					},
+				),
+			);
+			expect(
+				{
+					asked,
+					afterCancel,
+					after: getContextChips(SESSION).length,
+					focusedPrompt: focusComposer.mock.calls.length > 0,
+				},
+			).toStrictEqual(
+				{
+					asked: CONFIRM,
+					afterCancel: 1,
+					after: 0,
+					focusedPrompt: true,
+				},
+			);
+		});
+
+		it("asks before Delete or Backspace on the pill, and before menu Remove", async () =>
+		{
+			const {container} = render(<LiveChips />);
+			const asks: unknown[] = [];
+			for (const key of ["Delete", "Backspace"])
+			{
+				fireEvent.keyDown(
+					pill(container).body,
+					{
+						key,
+					},
+				);
+				asks.push(await confirm());
+				fireEvent.click(
+					screen.getByRole(
+						"button",
+						{
+							name: "Cancel",
+						},
+					),
+				);
+				await vi.waitFor(() =>
+				{
+					expect(screen.queryByRole("alertdialog")).toBeNull();
+				});
+			}
+			fireEvent.contextMenu(
+				pill(container).root,
+				{
+					clientX: 10,
+					clientY: 10,
+				},
+			);
+			fireEvent.click(
+				await screen.findByRole(
+					"menuitem",
+					{
+						name: "Remove",
+					},
+				),
+			);
+			asks.push(await confirm());
+			expect(asks).toStrictEqual([CONFIRM, CONFIRM, CONFIRM]);
+		});
+	});
+});
