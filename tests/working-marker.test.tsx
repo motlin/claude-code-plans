@@ -4,6 +4,8 @@ import {act, cleanup, render, renderHook} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {WorkingMarker} from "../src/components/working-marker";
+import {LABEL_HOLD_DEFAULT_MS} from "../src/hooks/use-held-label";
+import {TURN_STATUS_SETTLE_MS} from "../src/lib/turn-status-hold";
 import {FizzyLakeContext} from "../src/lib/fizzy-lake";
 import {createStreamDropStore, EventStreamStatusContext} from "../src/hooks/use-claude-events";
 import {type WorkingMarkerSignals} from "../src/components/use-working-marker-state";
@@ -2005,7 +2007,7 @@ describe("WorkingMarker pre-stream phases", () =>
 		);
 	});
 
-	it("cross-fades Sending into Waiting for Claude through the morph slot once the phase settles", () =>
+	it("cross-fades Sending into Waiting for Claude through the morph slot once the phase and the row settle", () =>
 	{
 		vi.useFakeTimers();
 		stubReducedMotion(false);
@@ -2025,6 +2027,10 @@ describe("WorkingMarker pre-stream phases", () =>
 			act(() =>
 			{
 				vi.advanceTimersByTime(PHASE_SETTLE_MS);
+			});
+			act(() =>
+			{
+				vi.advanceTimersByTime(TURN_STATUS_SETTLE_MS);
 			});
 			expect(
 				[...view.container.querySelectorAll("[data-morph-key]")].map((face) => (
@@ -2067,9 +2073,13 @@ describe("WorkingMarker pre-stream phases", () =>
 		);
 	});
 
-	it("holds the earlier phase word for 150ms before swapping to the next, so fast transitions don't flash", () =>
+	it("holds the earlier phase word through the 150ms phase settle and then the row's 250ms settle (upstream g8, then Ky)", () =>
 	{
-		vi.useFakeTimers();
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout", "performance"],
+			},
+		);
 		stubReducedMotion(false);
 		const view = render(
 			<WorkingMarker
@@ -2082,9 +2092,14 @@ describe("WorkingMarker pre-stream phases", () =>
 		);
 		view.rerender(<WorkingMarker state={UNREPLIED} />);
 		const held = visibleLineText(view.container);
+		// The phase swap renders before the row's settle timer is planned.
 		act(() =>
 		{
-			vi.advanceTimersByTime(149);
+			vi.advanceTimersByTime(PHASE_SETTLE_MS);
+		});
+		act(() =>
+		{
+			vi.advanceTimersByTime(TURN_STATUS_SETTLE_MS - 1);
 		});
 		const before = visibleLineText(view.container);
 		act(() =>
@@ -2104,6 +2119,94 @@ describe("WorkingMarker pre-stream phases", () =>
 				after: "Waiting for Claude",
 			},
 		);
+	});
+
+	describe("the leaf row hold (upstream gR via QCe: 650ms after a label shows, 250ms settle)", () =>
+	{
+		const REPLIED =
+		{
+			...UNREPLIED,
+			replied: true,
+		} as const;
+
+		/** Mounts Sending, then shows Waiting for Claude at 400ms; returns the view with the clock at its shownAt. */
+		function waitingShown()
+		{
+			vi.useFakeTimers(
+				{
+					toFake: ["setTimeout", "clearTimeout", "performance"],
+				},
+			);
+			stubReducedMotion(false);
+			const view = render(
+				<WorkingMarker
+					state={
+					{
+						status: "idle",
+					}}
+					sending
+				/>,
+			);
+			view.rerender(<WorkingMarker state={UNREPLIED} />);
+			act(() =>
+			{
+				vi.advanceTimersByTime(PHASE_SETTLE_MS);
+			});
+			act(() =>
+			{
+				vi.advanceTimersByTime(TURN_STATUS_SETTLE_MS);
+			});
+			return view;
+		}
+
+		function at649And650(view: ReturnType<typeof render>): [string | null, string | null]
+		{
+			act(() =>
+			{
+				vi.advanceTimersByTime(LABEL_HOLD_DEFAULT_MS - 1);
+			});
+			const before = visibleLineText(view.container);
+			act(() =>
+			{
+				vi.advanceTimersByTime(1);
+			});
+			return [before, visibleLineText(view.container)];
+		}
+
+		it("holds Waiting for Claude 650ms before the stats line", () =>
+		{
+			const view = waitingShown();
+			view.rerender(<WorkingMarker state={REPLIED} />);
+			expect(at649And650(view)).toStrictEqual(["Waiting for Claude", "5s"]);
+		});
+
+		it("holds a fresh label 650ms before Stopping", () =>
+		{
+			const view = waitingShown();
+			view.rerender(
+				<WorkingMarker
+					state={
+					{
+						status: "stopping",
+					}}
+				/>,
+			);
+			expect(at649And650(view)).toStrictEqual(["Waiting for Claude", "Stopping"]);
+		});
+
+		it("drops the busy row in the same render once the turn goes idle", () =>
+		{
+			const view = waitingShown();
+			view.rerender(
+				<WorkingMarker
+					state={
+					{
+						status: "idle",
+					}}
+				/>,
+			);
+			expect(visibleLineText(view.container)).toBeNull();
+		});
 	});
 
 	it.each(["reconnecting", "connecting"] as const)(
@@ -2176,8 +2279,13 @@ describe("WorkingMarker pre-stream phases", () =>
 		expect(visibleLineText(container)).toBe("5s");
 	});
 
-	it("drops the phase word as soon as the first reply lands", () =>
+	it("drops the phase word once the first reply lands and the row's 250ms settle passes (a mounted label is unarmed)", () =>
 	{
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout", "performance"],
+			},
+		);
 		stubReducedMotion(false);
 		const view = render(<WorkingMarker state={UNREPLIED} />);
 		view.rerender(
@@ -2189,7 +2297,16 @@ describe("WorkingMarker pre-stream phases", () =>
 				}}
 			/>,
 		);
-		expect(visibleLineText(view.container)).toBe("5s");
+		act(() =>
+		{
+			vi.advanceTimersByTime(TURN_STATUS_SETTLE_MS - 1);
+		});
+		const settling = visibleLineText(view.container);
+		act(() =>
+		{
+			vi.advanceTimersByTime(1);
+		});
+		expect([settling, visibleLineText(view.container)]).toStrictEqual(["Waiting for Claude", "5s"]);
 	});
 });
 

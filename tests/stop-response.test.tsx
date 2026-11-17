@@ -2,6 +2,8 @@
 
 import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {LABEL_HOLD_DEFAULT_MS} from "../src/hooks/use-held-label";
+import {TURN_STATUS_SETTLE_MS} from "../src/lib/turn-status-hold";
 import {Composer} from "../src/components/composer";
 import {WorkingMarker} from "../src/components/working-marker";
 import {useWorkingMarkerState} from "../src/components/use-working-marker-state";
@@ -685,11 +687,11 @@ describe("working marker Stopping", () =>
 		return <WorkingMarker state={state} />;
 	}
 
-	it("shows Stopping once an interrupt was sent during the current turn", () =>
+	it("shows Stopping once an interrupt was sent during the current turn, through the row's label hold", () =>
 	{
 		vi.useFakeTimers(
 			{
-				toFake: ["Date"],
+				toFake: ["Date", "setTimeout", "clearTimeout", "performance"],
 			},
 		);
 		vi.setSystemTime(PROMPT_AT + 3000);
@@ -700,10 +702,20 @@ describe("working marker Stopping", () =>
 		{
 			view.rerender(<MarkerHarness interruptedAt={PROMPT_AT + 3000} />);
 		});
+		// The mounted label is unarmed: Stopping waits only the row's settle.
+		act(() =>
+		{
+			vi.advanceTimersByTime(TURN_STATUS_SETTLE_MS);
+		});
 		const after = view.getByRole("status").textContent;
 		act(() =>
 		{
 			view.rerender(<MarkerHarness interruptedAt={PROMPT_AT - 60_000} />);
+		});
+		// Stopping, once shown, holds the leaf row's 650ms.
+		act(() =>
+		{
+			vi.advanceTimersByTime(LABEL_HOLD_DEFAULT_MS);
 		});
 		const stale = view.getByRole("status").textContent;
 		vi.unstubAllGlobals();

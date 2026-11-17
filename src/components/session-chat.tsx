@@ -151,6 +151,8 @@ import {stripControlsAndMask} from "../lib/secret-mask";
 import {formatElapsed} from "../lib/elapsed-format";
 import {ELAPSED_MIN_SECONDS, type TurnStatusState, turnStatusSwapKey} from "../lib/working-marker";
 import {MorphSlot} from "./ui/morph-slot";
+import {useHeldLabel} from "../hooks/use-held-label";
+import {busyLineKey, stepHoldMinMs, turnStatusHoldOptions} from "../lib/turn-status-hold";
 import {NoticeParts, TaskDescriptionLinks, type TaskEvent, TaskEventRun} from "./task-event-run-row";
 import {usageLimitCard} from "../lib/usage-limit-notice";
 import {liveEntry, toggleAutoResume} from "../lib/limit-auto-resume";
@@ -7873,7 +7875,7 @@ function ToolCallRow({
 	// A settled workflow reads in secondary ink, or danger once it failed, as upstream's `S1` draws it.
 	const workflowInk = isWorkflow && !call.isError ? (status === "Failed" ? "text-danger" : "text-secondary") : null;
 	// A null ink marks an in-flight label, which upstream draws as ShimmerText.
-	const labelClass = call.isError ? ink : busy ? null : isSkill ? "text-secondary" : (workflowInk ?? ink);
+	const liveLabelClass = call.isError ? ink : busy ? null : isSkill ? "text-secondary" : (workflowInk ?? ink);
 	const isCompletedPaneAgent = paneAgentId !== undefined && !call.isError && !busy;
 	const agentModel = isAgent && !call.isError && !busy ? formatModelName(call.subagentInfo?.model) : null;
 	// Expandable rows reach the disclosure below; Agent navigation and nested rows are not statuses.
@@ -7886,7 +7888,7 @@ function ToolCallRow({
 			? "text-primary"
 			: isFailedSkill || (workflowInk !== null && !busy)
 				? "text-secondary"
-				: labelClass;
+				: liveLabelClass;
 	// A subagent row's chevron sits in the flat `t6` token upstream gives it,
 	// rather than the hover-reactive ink every other tool row uses.
 	// Upstream's 6px row gap less the chevron's -4px start margin leaves its 12px
@@ -7910,7 +7912,7 @@ function ToolCallRow({
 				? (toolRowLabel.doneLabel ?? null)
 				: (running.label ?? null));
 	// Upstream's `Iv`: a row's label and param are masked and stripped of display controls.
-	const label = stripControlsAndMask(
+	const liveLabel = stripControlsAndMask(
 		phrase ??
 			(benignError ? toolRowLabel.failedVerb : undefined) ??
 			(failed ? runningToolLabel(labelCall).verb : undefined) ??
@@ -7932,7 +7934,7 @@ function ToolCallRow({
 				: status === "Denied" || status === "Blocked"
 					? "denied"
 					: "stopped";
-	const labelSwapKey = turnStatusSwapKey(rowState, label);
+	const labelSwapKey = turnStatusSwapKey(rowState, liveLabel);
 
 	const rawParam =
 		RENDERER_HANDLES_PARAM.has(call.name) || PARAMLESS_TOOLS.has(call.name) || isPhraseLabel || benignError
@@ -7940,11 +7942,12 @@ function ToolCallRow({
 			: isFileParam
 				? (call.param.split("/").pop() ?? call.param)
 				: (toolRowLabel.meta ?? call.param);
-	const displayParam = stripControlsAndMask(rawParam);
+	const liveDisplayParam = stripControlsAndMask(rawParam);
 	// A meta link whose text held a secret is not linked.
-	const paramHref = rawParam === toolRowLabel.meta && displayParam === rawParam ? toolRowLabel.metaHref : undefined;
-	const paramIsCode = rawParam === toolRowLabel.meta && toolRowLabel.metaIsCode === true && !isFailedSkill;
-	const rangeLabel = displayParam ? rowRangeLabel(members) : null;
+	const liveParamHref =
+		rawParam === toolRowLabel.meta && liveDisplayParam === rawParam ? toolRowLabel.metaHref : undefined;
+	const liveParamIsCode = rawParam === toolRowLabel.meta && toolRowLabel.metaIsCode === true && !isFailedSkill;
+	const rangeLabel = liveDisplayParam ? rowRangeLabel(members) : null;
 	// What allowed or blocked the call is a diagnostic upstream never shows, so only Verbose names it.
 	const permissionLabel = verbose && call.permission !== undefined ? permissionDecisionLabel(call.permission) : null;
 	// Likewise whether a Bash call ran inside the sandbox.
@@ -7966,7 +7969,31 @@ function ToolCallRow({
 					);
 				}
 			: null;
-	const paramInk = isFileParam ? "text-primary" : paramHref ? "text-secondary" : paramClass;
+	const liveParamInk = isFileParam ? "text-primary" : liveParamHref ? "text-secondary" : paramClass;
+	// Upstream holds a TurnStatus row's label (`Ky`): a step (`wr`) keeps busy 650ms before busy or done,
+	// a standalone row (`gR`, a leaf) waits 650ms plus the 250ms settle between busy labels.
+	const held = useHeldLabel(
+		{
+			state: rowState,
+			label: liveLabel,
+			displayParam: liveDisplayParam,
+			labelClass: liveLabelClass,
+			paramInk: liveParamInk,
+			paramHref: liveParamHref,
+			paramIsCode: liveParamIsCode,
+		},
+		labelSwapKey,
+		nested
+			?
+				{
+					minMs: stepHoldMinMs(rowState),
+				}
+			: turnStatusHoldOptions(rowState, true, undefined),
+	);
+	const {label, displayParam, labelClass, paramInk, paramHref, paramIsCode} = held;
+	const heldSwapKey = turnStatusSwapKey(held.state, label);
+	// The sr "running" follows the held state, as upstream's busy flags read the held value.
+	const heldBusy = held.state === "busy" || held.state === "blocked";
 	const paramContent = (
 		<>
 			{paramHref ? (
@@ -7996,7 +8023,7 @@ function ToolCallRow({
 		...(!joinedLabel && displayParam !== "" ? [`${statusId}-meta`] : []),
 		...(rangeLabel ? [`${statusId}-range`] : []),
 		...(status === null ? [] : [`${statusId}-outcome`]),
-		...(busy ? [`${statusId}-busy`] : []),
+		...(heldBusy ? [`${statusId}-busy`] : []),
 	].join(" ");
 	const announcement = [label, displayParam, rangeLabel ?? "", status ?? ""].filter((part) => part !== "").join(" ");
 	// Upstream `_C`: one row-cut ref fades both the label and the meta while either overflows.
@@ -8011,7 +8038,7 @@ function ToolCallRow({
 			{markedRow && <WorkingMark activity={toolMarkActivity(call.name, call.input)} className="me-1.5" />}
 			{joinedLabel ? (
 				// Upstream's grouped row: label and parameter in one <bdi>, joined by a plain space.
-				<MorphSlot id={`${statusId}-label`} swapKey={labelSwapKey} className="min-w-0 max-w-full">
+				<MorphSlot id={`${statusId}-label`} swapKey={heldSwapKey} className="min-w-0 max-w-full">
 					<bdi ref={rowCut} className="truncate min-w-0 text-body">
 						<InkedLabel className="" ink={labelClass}>
 							{label}
@@ -8026,7 +8053,7 @@ function ToolCallRow({
 					{label && (
 						<MorphSlot
 							id={`${statusId}-label`}
-							swapKey={labelSwapKey}
+							swapKey={heldSwapKey}
 							className={`min-w-0 max-w-full${displayParam ? " shrink-0" : ""}`}
 						>
 							<InkedLabel
@@ -8075,7 +8102,7 @@ function ToolCallRow({
 					</span>
 				))}
 			{runningRow && <RunningElapsed startedAt={call.startedAt} />}
-			{busy && (
+			{heldBusy && (
 				<span id={`${statusId}-busy`} className="sr-only">
 					running
 				</span>
@@ -8448,6 +8475,19 @@ function CountedLine({
 	);
 }
 
+/** What a group header's label shows: the latest running call's words, or the counted line. */
+type GroupHeaderLabel =
+	|
+	  {
+			state: "busy";
+			runningText: string;
+			pendingCall: ClientToolCall;
+	  }
+	|
+	  {
+			state: "done";
+	  };
+
 function ToolCallSummary({
 	calls,
 	sessionId,
@@ -8516,9 +8556,28 @@ function ToolCallSummary({
 	// Collapsed rows rest in upstream's KH() ink (secondary under fizzy-lake color, else muted and lifting to secondary on hover); an open
 	// row stays secondary, as upstream does.
 	const ink = expanded ? "text-secondary" : `${restInk} group-hover/tool:text-secondary`;
-	const busy = pendingCall !== undefined && runningText !== null;
-	const announcement = busy ? runningText : countedLabelText(summary);
-	const busyRowCut = useTypeRowCut(busy ? runningText : "");
+	const live: GroupHeaderLabel =
+		pendingCall !== undefined && runningText !== null
+			?
+				{
+					state: "busy",
+					runningText,
+					pendingCall,
+				}
+			:
+				{
+					state: "done",
+				};
+	// Upstream gR holds the busy label (`Ky`): a new running call waits 2s behind the shown one, or only the
+	// 250ms settle on the same busy line; done swaps at once.
+	const held = useHeldLabel(
+		live,
+		live.state === "busy" ? turnStatusSwapKey("busy", live.runningText) : turnStatusSwapKey("done", null),
+		turnStatusHoldOptions(live.state, false, busyLineKey(calls.filter(isPendingToolCall).map((call) => call.id))),
+	);
+	const busy = held.state === "busy";
+	const announcement = held.state === "busy" ? held.runningText : countedLabelText(summary);
+	const busyRowCut = useTypeRowCut(held.state === "busy" ? held.runningText : "");
 
 	// Each step's place in the group's screenshot strip, which collapsed groups show at the row's end.
 	const shotPlacements = useMemo(() =>
@@ -8573,11 +8632,11 @@ function ToolCallSummary({
 		>
 			{fileMeta === undefined && (
 				<span className={`inline-flex items-center gap-g3 min-w-0 ${ink}`}>
-					{busy ? (
+					{held.state === "busy" ? (
 						// Upstream leads a busy group header like a busy row: the call's mark, its label, elapsed, sr "running".
 						<>
 							<WorkingMark
-								activity={toolMarkActivity(pendingCall.name, pendingCall.input)}
+								activity={toolMarkActivity(held.pendingCall.name, held.pendingCall.input)}
 								className="me-1.5"
 							/>
 						</>
@@ -8585,22 +8644,26 @@ function ToolCallSummary({
 					{/* One slot for both, so the busy label cross-fades into the counted line (a node label, keyed done|). */}
 					<MorphSlot
 						id={`${statusId}-label`}
-						swapKey={busy ? turnStatusSwapKey("busy", runningText) : turnStatusSwapKey("done", null)}
+						swapKey={
+							held.state === "busy"
+								? turnStatusSwapKey("busy", held.runningText)
+								: turnStatusSwapKey("done", null)
+						}
 						// Upstream's phrases seat sits on the slot of a settled lone-phrases line.
 						attrs={!busy && summary.trailing === null ? PHRASES_SEAT : undefined}
 						className="min-w-0 max-w-full"
 					>
-						{busy ? (
+						{held.state === "busy" ? (
 							<ShimmerText ref={busyRowCut} variant="secondary" className="text-body truncate min-w-0">
-								{runningText}
+								{held.runningText}
 							</ShimmerText>
 						) : (
 							<CountedLine segments={summary.segments} trailing={summary.trailing} />
 						)}
 					</MorphSlot>
-					{busy ? (
+					{held.state === "busy" ? (
 						<>
-							<RunningElapsed startedAt={pendingCall.startedAt} />
+							<RunningElapsed startedAt={held.pendingCall.startedAt} />
 							<span id={`${statusId}-busy`} className="sr-only">
 								running
 							</span>

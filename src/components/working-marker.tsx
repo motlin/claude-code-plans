@@ -22,6 +22,8 @@ import
 	type WorkingMarkerState,
 } from "../lib/working-marker";
 import {MorphSlot} from "./ui/morph-slot";
+import {useHeldLabel} from "../hooks/use-held-label";
+import {turnStatusHoldOptions} from "../lib/turn-status-hold";
 import {RunningTasksControl} from "./running-tasks-control";
 import {ShimmerText} from "./shimmer-text";
 import {workingLineActivity} from "../lib/working-mark-activity";
@@ -65,6 +67,17 @@ function BlockedStatus({
 			</div>
 		</div>
 	);
+}
+
+/** What the working line's busy row shows, held as one value like upstream's TurnStatus row. */
+interface HeldLine
+{
+	state: "busy" | "done";
+	morphWord: string | null;
+	label: string;
+	stats: readonly string[];
+	rowTitle: string | undefined;
+	announcement: string;
 }
 
 /** Upstream's `g8`: a phase word appears or clears at once, but swapping for another waits out the settle. */
@@ -225,10 +238,24 @@ export function WorkingMarker({
 				? toolLabelStats(state, tool.since, tokens)
 				: parts.stats
 			: [];
-	const rowTitle = phase ?? toolWords ?? undefined;
-	const announcement = phaseWord ?? (tool?.unspoken === true ? (toolWord ?? "") : workingLineAnnouncement(state));
+	const live: HeldLine =
+	{
+		state: busy ? "busy" : "done",
+		morphWord,
+		label,
+		stats,
+		rowTitle: phase ?? toolWords ?? undefined,
+		announcement: phaseWord ?? (tool?.unspoken === true ? (toolWord ?? "") : workingLineAnnouncement(state)),
+	};
+	// Upstream's working line is a leaf TurnStatus row (`QCe` → gR), so every busy → busy label change waits
+	// the 250ms settle and then 650ms after the shown label; going idle swaps at once.
+	const held = useHeldLabel(
+		live,
+		busy ? turnStatusSwapKey("busy", morphWord ?? undefined) : turnStatusSwapKey("done", null),
+		turnStatusHoldOptions(live.state, true, undefined),
+	);
 	const tasks = runningTasks > 0;
-	const labelRowCut = useTypeRowCut(morphWord === null ? label : "");
+	const labelRowCut = useTypeRowCut(held.morphWord === null ? held.label : "");
 	const labelId = `${useId()}-label`;
 	const line = (
 		<div
@@ -244,14 +271,14 @@ export function WorkingMarker({
 			className={`${lineQuiet && turnWorking ? "invisible " : ""}flex min-h-6 flex-col comfortable:min-h-8`}
 		>
 			{waitingOnUser && <BlockedStatus reduceMotion={reduceMotion} />}
-			{busy && (
+			{held.state === "busy" && (
 				<div data-cds="TurnStatus" data-state="busy" className="group/status flex w-full min-w-0 flex-col">
 					<div
-						{...(rowTitle === undefined
+						{...(held.rowTitle === undefined
 							? {}
 							:
 								{
-									title: rowTitle,
+									title: held.rowTitle,
 								})}
 						data-cds-row=""
 						className="flex min-w-0 items-center gap-1.5 px-1 py-0.5 text-body comfortable:px-1.5 comfortable:py-1.5"
@@ -270,34 +297,34 @@ export function WorkingMarker({
 						</span>
 						<MorphSlot
 							id={labelId}
-							swapKey={turnStatusSwapKey("busy", morphWord ?? undefined)}
+							swapKey={turnStatusSwapKey("busy", held.morphWord ?? undefined)}
 							className="min-w-0 max-w-full"
 						>
-							{morphWord === null ? (
+							{held.morphWord === null ? (
 								<span className="inline-flex min-w-0 items-center text-secondary">
-									{label !== "" && (
+									{held.label !== "" && (
 										<span
 											ref={labelRowCut}
 											title={workingMarkerText(state, tokens)}
 											className="truncate whitespace-nowrap"
 										>
-											{label}
+											{held.label}
 										</span>
 									)}
 								</span>
 							) : (
-								<BusyWord word={morphWord} />
+								<BusyWord word={held.morphWord} />
 							)}
 						</MorphSlot>
-						{stats.map((stat, index) => (
+						{held.stats.map((stat, index) => (
 							<Fragment key={stat}>
-								{(index > 0 || label !== "") && <StatDot />}
+								{(index > 0 || held.label !== "") && <StatDot />}
 								<span className={`inline-flex h-[1lh] shrink-0 items-center ${restInk} tabular-nums`}>
 									{stat}
 								</span>
 							</Fragment>
 						))}
-						{tasks && (label !== "" || stats.length > 0) && <StatDot />}
+						{tasks && (held.label !== "" || held.stats.length > 0) && <StatDot />}
 						<RunningTasksControl count={runningTasks} />
 						<span className="sr-only">running</span>
 					</div>
@@ -305,7 +332,7 @@ export function WorkingMarker({
 			)}
 			{turnWorking || waitingOnUser ? (
 				<span role="status" aria-live="polite" className="sr-only">
-					{waitingOnUser ? NEEDS_INPUT_LABEL : announcement}
+					{waitingOnUser ? NEEDS_INPUT_LABEL : held.announcement}
 				</span>
 			) : (
 				// Upstream's done line holds one control-height placeholder and drops its status.

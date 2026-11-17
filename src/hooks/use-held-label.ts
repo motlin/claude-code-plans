@@ -9,7 +9,7 @@ export type HeldLabelOptions<T> =
 	  {
 			minMs?: number | ((shown: T) => number | undefined);
 			settleMs?: number;
-			line?: string;
+			line?: string | undefined;
 			restretch?: boolean;
 	  };
 
