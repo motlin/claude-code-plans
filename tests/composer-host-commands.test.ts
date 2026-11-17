@@ -8,8 +8,10 @@ import
 	parseCommandShape,
 	parseHostCommand,
 	routeFastCommand,
+	routeSkillsCommand,
 	routeStatusCommand,
 	routeUsageCommand,
+	skillsCommandAction,
 	SLASH_NAME,
 	trailingArgsBody,
 } from "../src/lib/composer-host-commands";
@@ -558,6 +560,80 @@ describe("autocompactCommand", () =>
 	it("exports upstream's slash-name pattern", () =>
 	{
 		expect(SLASH_NAME.exec("/plugin:skill-x rest")?.[1]).toBe("plugin:skill-x");
+	});
+});
+
+describe("skillsCommandAction", () =>
+{
+	it("ports upstream's Hpe: bare opens, text after is trailing_args, only LF makes extra_lines", () =>
+	{
+		const inputs = [
+			"/skills",
+			"  /SKILLS  ",
+			"/skills foo",
+			"/skills\nfoo",
+			"/skills\rfoo",
+			"/skillsx",
+			"/skill",
+			"skills",
+		];
+
+		expect(Object.fromEntries(inputs.map((input) => [input, skillsCommandAction(input)]))).toStrictEqual(
+			{
+				"/skills": "open",
+				"  /SKILLS  ": "open",
+				"/skills foo": "trailing_args",
+				"/skills\nfoo": "extra_lines",
+				"/skills\rfoo": "trailing_args",
+				"/skillsx": null,
+				"/skill": null,
+				skills: null,
+			},
+		);
+	});
+});
+
+describe("routeSkillsCommand", () =>
+{
+	it("ports upstream's Upe: a CLI that lists /skills keeps every shape but the bare one unless the host row was picked", () =>
+	{
+		expect([
+			routeSkillsCommand(
+				{
+					text: "/skills foo",
+					cliListsOwn: true,
+					hostRowPicked: false,
+				},
+			),
+			routeSkillsCommand(
+				{
+					text: "/skills foo",
+					cliListsOwn: false,
+					hostRowPicked: false,
+				},
+			),
+			routeSkillsCommand(
+				{
+					text: "/skills\nx",
+					cliListsOwn: true,
+					hostRowPicked: true,
+				},
+			),
+			routeSkillsCommand(
+				{
+					text: "/skills",
+					cliListsOwn: true,
+					hostRowPicked: false,
+				},
+			),
+			routeSkillsCommand(
+				{
+					text: "/skillsx",
+					cliListsOwn: false,
+					hostRowPicked: true,
+				},
+			),
+		]).toStrictEqual([null, "trailing_args", "extra_lines", "open", null]);
 	});
 });
 

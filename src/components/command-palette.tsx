@@ -218,11 +218,11 @@ import {Shortcut, WIDE_KEYCAP_CLASS} from "./ui/shortcut";
 import {Spinner} from "./ui/spinner";
 import {ArchivedBadge} from "./archived-badge";
 import {Tooltip} from "./ui/tooltip";
+import {useOpenCustomize} from "./customize/open-customize";
 import {useOpenSettings} from "./settings/open-settings";
 import {loadSettingsDialog} from "./settings/settings-dialog-loader";
 import {preloadCustomizeDialogPanel} from "./settings/customize-dialog-panel-loader";
 import {type SettingsPaletteCommand, settingsPaletteCommands} from "../lib/palette-settings-commands";
-import {customizeHash} from "../lib/settings-hash";
 import {setKeyboardShortcutsOpen} from "./keyboard-shortcuts-open";
 
 /*
@@ -1258,6 +1258,7 @@ function PalettePopup({
 {
 	const navigate = useNavigate();
 	const openSettings = useOpenSettings();
+	const openCustomize = useOpenCustomize();
 	const look = useFizzyLake("color") ? "fizzy" : "base";
 	const inputRef = useRef<HTMLTextAreaElement>(null);
 	const popupRef = useRef<HTMLDivElement>(null);
@@ -2189,21 +2190,7 @@ function PalettePopup({
 	function openSettingsMember({member}: SettingsPaletteCommand)
 	{
 		if (member.kind === "settings") openSettings(member.tab);
-		else
-			void navigate(
-				{
-					to: ".",
-					search: true,
-					params: true,
-					hash: customizeHash(
-						{
-							section: member.section,
-						},
-					),
-					resetScroll: false,
-					hashScrollIntoView: false,
-				},
-			);
+		else openCustomize(member.section);
 	}
 
 	function regionJumpAction(id: PaletteJumpActionId, icon: ReactNode, region: JumpRegionName): PaletteAction

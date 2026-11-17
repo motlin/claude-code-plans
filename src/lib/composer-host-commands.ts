@@ -110,6 +110,41 @@ export function autocompactCommand(text: string): "open" | null
 	return trimmed.slice(match[0].length).trim() === "" ? "open" : null;
 }
 
+/** What a sent `/skills` asks for: open the Skills list, or one of the two shape bands. */
+export type SkillsCommandAction = "open" | "trailing_args" | "extra_lines";
+
+const SKILLS_COMMAND = /^\/skills(?=\s|$)([\s\S]*)$/i;
+
+/** Upstream's `Hpe`: the shape of a sent `/skills`, or null when it is not `/skills`. Only LF counts as a line break. */
+export function skillsCommandAction(text: string): SkillsCommandAction | null
+{
+	const match = SKILLS_COMMAND.exec(text.trim());
+	if (match === null) return null;
+	const rest = match[1] ?? "";
+	if (rest.includes("\n")) return "extra_lines";
+	return rest.trim() === "" ? "open" : "trailing_args";
+}
+
+/**
+ * Upstream's `Hpe` + `Upe` with pageAvailable always true (the local Skills page always exists): what the host
+ * does with a sent `/skills`, or null to send it to the CLI as typed. When the CLI lists its own `/skills` and the
+ * host row wasn't picked, only a bare `/skills` is the host's.
+ */
+export function routeSkillsCommand({
+	text,
+	cliListsOwn,
+	hostRowPicked,
+}: {
+	text: string;
+	cliListsOwn: boolean;
+	hostRowPicked: boolean;
+}): SkillsCommandAction | null
+{
+	const action = skillsCommandAction(text);
+	if (action === null) return null;
+	return hostRowPicked || !cliListsOwn || action === "open" ? action : null;
+}
+
 /** Upstream's rejectTrailingArguments body (`cgTRRpTLBX`). */
 export function trailingArgsBody(name: string): string
 {

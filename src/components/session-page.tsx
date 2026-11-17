@@ -1,4 +1,5 @@
 import {SESSION_FOOTER_CLASS} from "./dock-tokens";
+import {useOpenCustomize} from "./customize/open-customize";
 import {SessionSkeleton} from "./session-skeleton";
 import {SessionNotFound} from "./session-unavailable";
 import {sessionScrollKey} from "../lib/session-route-location";
@@ -1860,6 +1861,12 @@ function SessionView({
 	);
 	// The cold-resume notice's inputs: the idle start, busy/held state and the Compact / New session actions.
 	const navigate = useNavigate();
+	const openCustomize = useOpenCustomize();
+	// Upstream's `/skills`: Customize › Skills › Yours in the Settings dialog.
+	const openSkills = useCallback(() =>
+	{
+		openCustomize("skills");
+	}, [openCustomize]);
 	// Upstream's non-dialog `/mcp`: Customize › Connectors.
 	const openConnectors = useCallback(() =>
 	{
@@ -2913,6 +2920,7 @@ function SessionView({
 																		outputStyle={composerOutputStyle}
 																		memory={composerMemory}
 																		openConnectors={openConnectors}
+																		openSkills={openSkills}
 																		onOpenContext={openContextCard}
 																		onShellCommand={runShellCommand}
 																	/>

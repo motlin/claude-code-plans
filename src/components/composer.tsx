@@ -95,6 +95,7 @@ import
 	parseHostCommand,
 	parseOutputStyleCommand,
 	routeFastCommand,
+	routeSkillsCommand,
 	routeStatusCommand,
 	routeUsageCommand,
 	trailingArgsBody,
@@ -439,6 +440,8 @@ interface ComposerProps
 		| undefined;
 	/** Upstream's non-dialog `/mcp`: an exact `/mcp` clears the composer and opens Customize › Connectors. */
 	openConnectors?: (() => void) | undefined;
+	/** Upstream's `/skills`: a bare `/skills` clears the composer and opens Customize › Skills › Yours. */
+	openSkills?: (() => void) | undefined;
 	/**
 	 * Opens the session rail's Context card for a bare `/autocompact` (upstream's `context-popover`
 	 * action), after the composer clears it. Upstream's consumers take the request in order: the rail
@@ -1176,6 +1179,7 @@ export function Composer({
 	outputStyle,
 	memory,
 	openConnectors,
+	openSkills,
 	onOpenContext,
 	statusCommand,
 	usageCommand,
@@ -2267,6 +2271,7 @@ export function Composer({
 	{
 		if (cliCommandForced) return runUsageCommand(text);
 		if (
+			runSkillsCommand(text) ||
 			runFastCommand(text) ||
 			runRewindCommand(text) ||
 			runAdvisorCommand(text) ||
@@ -2580,6 +2585,41 @@ export function Composer({
 				{
 					draftKey,
 					body: shape.kind === "extra_lines" ? extraLinesBody(shape.name) : trailingArgsBody(shape.name),
+				},
+			);
+		}
+		return true;
+	}
+	/**
+	 * Upstream's `/skills` (`Hpe` + `Upe`): a bare `/skills` opens `#customize/skills/yours` in the Settings dialog,
+	 * as upstream's in-place `S7` open does when Customize lives there. Once the CLI's command list has loaded it
+	 * lists its own `/skills`, so `/skills <text>` and a multi-line `/skills` reach the CLI as typed; before that,
+	 * they get upstream's shape bands. Deliberate deltas: no "Skills aren’t available for this account." toast
+	 * (`FHzBkk`, `epitaxy-skills-command-unavailable`), because the local Skills page always exists; no cloud
+	 * plugin-dialog branch; `hostRowPicked` stays false until host/CLI twin rows exist (slash-cli-builtin-twins).
+	 */
+	function runSkillsCommand(text: string): boolean
+	{
+		if (openSkills === undefined) return false;
+		const route = routeSkillsCommand(
+			{
+				text,
+				cliListsOwn: slashCommands.length > 0 && isKnownSlashCommand("skills", slashCommands),
+				hostRowPicked: false,
+			},
+		);
+		if (route === null) return false;
+		if (route === "open")
+		{
+			clearDraft();
+			openSkills();
+		}
+		else
+		{
+			setCommandError(
+				{
+					draftKey,
+					body: route === "extra_lines" ? extraLinesBody("skills") : trailingArgsBody("skills"),
 				},
 			);
 		}

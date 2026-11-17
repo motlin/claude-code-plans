@@ -1,4 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
+import {useOpenCustomize} from "../customize/open-customize";
 import {useNavigate} from "@tanstack/react-router";
 import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {HOME_DOCK_CLASS} from "../dock-tokens";
@@ -106,6 +107,12 @@ export function HomeComposer({
 		}),
 		[openSettings],
 	);
+	const openCustomize = useOpenCustomize();
+	// Upstream's `/skills`: Customize › Skills › Yours in the Settings dialog.
+	const openSkills = useCallback(() =>
+	{
+		openCustomize("skills");
+	}, [openCustomize]);
 	const openConnectors = useCallback(() =>
 	{
 		void navigate(
@@ -527,6 +534,7 @@ export function HomeComposer({
 				usageCommand={usageCommand}
 				outputStyle={outputStyleCommand}
 				openConnectors={openConnectors}
+				openSkills={openSkills}
 			/>
 			<AutoDefaultOfferDialogs
 				offer={autoDefaultOfferSettled ? autoDefaultOffer : undefined}
