@@ -4317,12 +4317,13 @@ describe("CommandPalette shell", () =>
 	{
 		const dialog = await openPalette();
 
+		// Bare "star" fuzzily reaches 7 earlier actions first, which fill upstream's organic cap.
 		fireEvent.change(
 			within(dialog).getByRole("combobox"),
 			{
 				target:
 				{
-					value: "star",
+					value: "star fav",
 				},
 			},
 		);
@@ -6449,6 +6450,57 @@ describe("CommandPalette filter values", () =>
 		main.remove();
 	});
 
+	it("interleaves actions and title rows by upstream's rank buckets", async () =>
+	{
+		const dialog = await openPalette([
+			recentSession("s-1", "Fix shortcuts"),
+			recentSession("s-2", "Shortcuts cleanup"),
+			recentSession("s-3", "Keyboard layout"),
+		]);
+
+		typeQuery(dialog, "shortcuts");
+		const shortcuts = resultLabels(dialog);
+		typeQuery(dialog, "keyboard");
+
+		// Rank 0 is a label prefix, rank 1 every token in the label; actions lead each rank.
+		expect(
+			{
+				shortcuts,
+				keyboard: resultLabels(dialog),
+			},
+		).toStrictEqual(
+			{
+				shortcuts: ["Shortcuts cleanup", "Keyboard shortcuts", "Fix shortcuts"],
+				keyboard: ["Keyboard shortcuts", "Keyboard layout"],
+			},
+		);
+	});
+
+	it("gives the headingless results group upstream's mt-2 class", async () =>
+	{
+		const dialog = await openPalette();
+
+		typeQuery(dialog, "jump to");
+
+		const group = within(dialog).getByRole(
+			"group",
+			{
+				name: "Search results",
+			},
+		);
+		expect(
+			{
+				className: group.className.split(" "),
+				first: group.parentElement?.firstElementChild === group,
+			},
+		).toStrictEqual(
+			{
+				className: ["[&:not(:first-child)]:mt-2"],
+				first: true,
+			},
+		);
+	});
+
 	it("restricts the list to Actions with actions:", async () =>
 	{
 		const dialog = await openPalette([recentSession("sess-1", "Settings refactor")]);
@@ -6457,7 +6509,7 @@ describe("CommandPalette filter values", () =>
 		const narrowed = resultLabels(dialog);
 		typeQuery(dialog, "actions:true");
 
-		// cmdk's fuzzy score also reaches "sett" through Jump to input's "composer prompt" hints.
+		// cmdk's fuzzy score also reaches "sett" through Jump to input's "composer prompt" hints, at rank 2.
 		expect(
 			{
 				narrowed,
@@ -6465,7 +6517,7 @@ describe("CommandPalette filter values", () =>
 			},
 		).toStrictEqual(
 			{
-				narrowed: ["Jump to input", ...SETTINGS_COMMAND_LABELS],
+				narrowed: [...SETTINGS_COMMAND_LABELS, "Jump to input"],
 				all: [
 					"Search sessions",
 					"Keyboard shortcuts",

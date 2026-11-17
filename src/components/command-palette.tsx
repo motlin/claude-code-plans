@@ -167,6 +167,16 @@ import {PaletteEmptyState} from "./palette-empty-state";
 import {PaletteFilterSpoken} from "./palette-filter-spoken";
 import {PaletteSkeleton} from "./palette-skeleton";
 import {paletteFilterLabels, paletteTypeLabels} from "../lib/schema-choices";
+import
+{
+	capOrganic,
+	interleaveByRank,
+	PALETTE_FILTERED_MAX_ITEMS,
+	PALETTE_MAX_ORGANIC_ITEMS,
+	paletteRank,
+	paletteTokens,
+	type PaletteRank,
+} from "../lib/palette-rank";
 import {relativeBucket, titleMatches, type Snippet, type TextMatch} from "../lib/search-text";
 import {createSessionCommands} from "../lib/session-commands";
 import {openSideChat} from "../lib/side-chat-store";
@@ -1084,6 +1094,33 @@ interface PaletteAction
 	/** Upstream's `onIntent`/`onDwell`: warms what the action opens, on hover or keyboard selection. */
 	warm?: () => void;
 }
+
+/** One typed-search entry before the fetched rows: a title row or a command, tagged with upstream's `we` rank. */
+type TypedPaletteItem =
+	|
+	  {
+			kind: "row";
+			row: SearchRow;
+			rank: PaletteRank;
+	  }
+	|
+	  {
+			kind: "session-command";
+			command: SessionCommand;
+			rank: PaletteRank;
+	  }
+	|
+	  {
+			kind: "action";
+			action: PaletteAction;
+			rank: PaletteRank;
+	  }
+	|
+	  {
+			kind: "nav";
+			command: (typeof NAV_COMMANDS)[number];
+			rank: PaletteRank;
+	  };
 
 /** Upstream's `Ss()` commands: one per Settings nav member, built once. */
 const SETTINGS_COMMANDS = settingsPaletteCommands();
@@ -2497,15 +2534,60 @@ function PalettePopup({
 	const matchedCommands = matchesCommands
 		? NAV_COMMANDS.filter((command) => commandMatches(command.label, tokens.text, command.keywords))
 		: [];
+	// Upstream's `B`: actions and title rows interleave by rank bucket (0 prefix, 1 all tokens, 2 other).
+	// Upstream's untitled `{id:"actions"}` group only appears when actionsInResults or server search is off,
+	// which never happens in the local palette, so there is no split actions group here.
+	const queryTokens = paletteTokens(tokens.text);
+	const rankOf = (label: string, prNumber?: number) => paletteRank(label, tokens.text, queryTokens, prNumber);
+	const typedOrder = interleaveByRank<TypedPaletteItem, TypedPaletteItem>(
+		[
+			...matchedSessionCommands.map((command) => (
+			{
+				kind: "session-command" as const,
+				command,
+				rank: rankOf(command.label),
+			})),
+			...matchedActions.map((action) => (
+			{
+				kind: "action" as const,
+				action,
+				rank: rankOf(action.label),
+			})),
+			...matchedCommands.map((command) => (
+			{
+				kind: "nav" as const,
+				command,
+				rank: rankOf(command.label),
+			})),
+		],
+		instant.map((row) => (
+		{
+			kind: "row" as const,
+			row,
+			rank: rankOf(row.title, row.prNumber),
+		})),
+	);
+	// Upstream's `Zn = K==="search" ? 25 : 7` organic cap and `Ne = xe.slice(0, max(0, m − Ae − Te))`: fetched rows
+	// fill only what typed actions and title rows leave. A filter predicate uses `$d=25` for local and fetched alike.
+	// When the queryOnly "Show archived" row lands, it passes as uncounted here yet still counts in resultCount.
+	const capFiltered = filtered || chips.length > 0 || actionsOnly || bangQuery;
+	const capped =
+		tokens.text === ""
+			?
+				{
+					kept: typedOrder,
+					fetched: serverRows,
+				}
+			: capFiltered
+				?
+					{
+						kept: typedOrder.slice(0, PALETTE_FILTERED_MAX_ITEMS),
+						fetched: serverRows.slice(0, PALETTE_FILTERED_MAX_ITEMS),
+					}
+				: capOrganic(typedOrder, serverRows, PALETTE_MAX_ORGANIC_ITEMS, () => false);
+	const {kept: typedItems, fetched: fetchedRows} = capped;
 	const resultCount =
-		(listing?.length ?? 0) +
-		instant.length +
-		matchedSessionCommands.length +
-		matchedActions.length +
-		matchedCommands.length +
-		serverRows.length +
-		inlineHints.length +
-		inlineSuggestions.length;
+		(listing?.length ?? 0) + typedItems.length + fetchedRows.length + inlineHints.length + inlineSuggestions.length;
 	const emptyKind = paletteEmptyKind(
 		{
 			query: tokens.text,
@@ -2922,7 +3004,8 @@ function PalettePopup({
 									role="group"
 									aria-label="Search results"
 									aria-busy={searching}
-									className="flex flex-col"
+									// Upstream's headingless results group: 12px below any sibling (gap-1 + mt-2).
+									className="[&:not(:first-child)]:mt-2"
 								>
 									{inlineHintsFirst && inlineHintItems}
 									{listing?.map((row) => (
@@ -2943,95 +3026,117 @@ function PalettePopup({
 											}}
 										/>
 									))}
-									{instant.map((row) => (
-										<SearchResultItem
-											key={rowKey(row)}
-											row={row}
-											now={now}
-											onSelect={() =>
+									{typedItems.map((item) =>
+									{
+										switch (item.kind)
+										{
+											case "row":
 											{
-												select(() =>
-												{
-													openRow(row);
-												});
-											}}
-											onRowActions={() =>
-											{
-												openRowActions(row.id);
-											}}
-										/>
-									))}
-									{matchedSessionCommands.map((command) => (
-										<CommandItem
-											key={command.id}
-											value={`session-command:${command.id}`}
-											icon={SESSION_COMMAND_ICONS[command.id]}
-											onSelect={() =>
-											{
-												select(() =>
-												{
-													runSessionCommand(command.id);
-												});
-											}}
-										>
-											{command.label}
-										</CommandItem>
-									))}
-									{matchedActions.map((action) =>
-										action.shortcut === undefined ? (
-											<CommandItem
-												key={action.label}
-												value={action.value ?? `action:${action.label}`}
-												icon={action.icon}
-												{...(action.warm === undefined
-													? {}
-													:
+												const {row} = item;
+												return (
+													<SearchResultItem
+														key={rowKey(row)}
+														row={row}
+														now={now}
+														onSelect={() =>
 														{
-															onPointerEnter: action.warm,
-														})}
-												onSelect={() =>
-												{
-													select(action.run);
-												}}
-											>
-												{action.label}
-											</CommandItem>
-										) : (
-											<ShortcutCommandItem
-												key={action.label}
-												value={`action:${action.label}`}
-												id={action.shortcut}
-												icon={action.icon}
-												onSelect={() =>
-												{
-													select(action.run);
-												}}
-											>
-												{action.label}
-											</ShortcutCommandItem>
-										),
-									)}
-									{matchedCommands.map((command) => (
-										<CommandItem
-											key={command.to}
-											value={`nav:${command.to}`}
-											icon={command.icon}
-											onSelect={() =>
-											{
-												select(() =>
-												{
-													void navigate(
+															select(() =>
+															{
+																openRow(row);
+															});
+														}}
+														onRowActions={() =>
 														{
-															to: command.to,
-														},
-													);
-												});
-											}}
-										>
-											{command.label}
-										</CommandItem>
-									))}
-									{serverRows.map((row) => (
+															openRowActions(row.id);
+														}}
+													/>
+												);
+											}
+											case "session-command":
+											{
+												const {command} = item;
+												return (
+													<CommandItem
+														key={command.id}
+														value={`session-command:${command.id}`}
+														icon={SESSION_COMMAND_ICONS[command.id]}
+														onSelect={() =>
+														{
+															select(() =>
+															{
+																runSessionCommand(command.id);
+															});
+														}}
+													>
+														{command.label}
+													</CommandItem>
+												);
+											}
+											case "action":
+											{
+												const {action} = item;
+												return action.shortcut === undefined ? (
+													<CommandItem
+														key={action.label}
+														value={action.value ?? `action:${action.label}`}
+														icon={action.icon}
+														{...(action.warm === undefined
+															? {}
+															:
+																{
+																	onPointerEnter: action.warm,
+																})}
+														onSelect={() =>
+														{
+															select(action.run);
+														}}
+													>
+														{action.label}
+													</CommandItem>
+												) : (
+													<ShortcutCommandItem
+														key={action.label}
+														value={`action:${action.label}`}
+														id={action.shortcut}
+														icon={action.icon}
+														onSelect={() =>
+														{
+															select(action.run);
+														}}
+													>
+														{action.label}
+													</ShortcutCommandItem>
+												);
+											}
+											case "nav":
+											{
+												const {command} = item;
+												return (
+													<CommandItem
+														key={command.to}
+														value={`nav:${command.to}`}
+														icon={command.icon}
+														onSelect={() =>
+														{
+															select(() =>
+															{
+																void navigate(
+																	{
+																		to: command.to,
+																	},
+																);
+															});
+														}}
+													>
+														{command.label}
+													</CommandItem>
+												);
+											}
+											default:
+												return assertNever(item);
+										}
+									})}
+									{fetchedRows.map((row) => (
 										<SearchResultItem
 											key={rowKey(row)}
 											row={row}

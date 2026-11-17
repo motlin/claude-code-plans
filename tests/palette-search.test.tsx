@@ -924,6 +924,86 @@ describe("⌘K palette live search", () =>
 		expect(dialog.querySelector("[aria-live=polite]")?.getAttribute("aria-atomic")).toBe("true");
 	});
 
+	it("caps a typed unfiltered query at upstream's 7 counted items, server rows filling the remainder", async () =>
+	{
+		const {dialog} = await openPalette([
+			recentSession("s-1", "Jump fix 1"),
+			recentSession("s-2", "Jump fix 2"),
+			recentSession("s-3", "Jump fix 3"),
+		]);
+
+		type(dialog, "jump");
+		(await awaitRequest()).resolve(
+			Array.from(
+				{
+					length: 10,
+				},
+				(_, index) => serverSession(`hit-${String(index)}`, `Jump hit ${String(index)}`),
+			),
+		);
+
+		await waitFor(() =>
+		{
+			expect(
+				{
+					options: optionLabels(dialog),
+					live: dialog.querySelector("[aria-live=polite]")?.textContent,
+				},
+			).toStrictEqual(
+				{
+					// Upstream's `B`: rank-0 actions, then rank-0 title rows, then fetched rows up to the cap.
+					options: [
+						"Jump to navigation",
+						"Jump to main content",
+						"Jump to input",
+						"Jump fix 1",
+						"Jump fix 2",
+						"Jump fix 3",
+						"Jump hit 0",
+						"See all results for “jump”",
+					],
+					live: "7 results available",
+				},
+			);
+		});
+	});
+
+	it("keeps the wider 25 cap on a filtered tab", async () =>
+	{
+		const {dialog} = await openPalette([]);
+
+		fireEvent.click(
+			within(dialog).getByRole(
+				"tab",
+				{
+					name: "Code",
+				},
+			),
+		);
+		type(dialog, "jump");
+		(await awaitRequest()).resolve(
+			Array.from(
+				{
+					length: 10,
+				},
+				(_, index) => serverSession(`hit-${String(index)}`, `Jump hit ${String(index)}`),
+			),
+		);
+
+		await waitFor(() =>
+		{
+			expect(optionLabels(dialog)).toStrictEqual([
+				...Array.from(
+					{
+						length: 10,
+					},
+					(_, index) => `Jump hit ${String(index)}`,
+				),
+				"See all results for “jump”",
+			]);
+		});
+	});
+
 	it("keeps the live region mounted but empty while the search is in flight", async () =>
 	{
 		const {dialog} = await openPalette();

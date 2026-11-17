@@ -487,7 +487,7 @@ describe("palette contextual session commands", () =>
 		);
 	});
 
-	it("offers Pin, Rename and the session commands for 'session'", async () =>
+	it("offers Pin, Rename and Copy link for 'session' within the organic cap", async () =>
 	{
 		const {dialog, input} = await openPalette("/session/sess-1");
 
@@ -507,13 +507,15 @@ describe("palette contextual session commands", () =>
 				name: `Pin ${QUOTED}`,
 			},
 		);
-		expect(optionLabels(dialog).slice(0, 6)).toStrictEqual([
+		// The session commands match by keyword only (rank 2), so the rank-0/1 labels lead and upstream's cap of 7 ends the list.
+		expect(optionLabels(dialog)).toStrictEqual([
+			"Sessions",
+			"Search sessions",
+			"Mark all sessions seen",
+			"Settings → Sessions",
 			`Pin ${QUOTED}`,
 			`Rename ${QUOTED}`,
 			`Copy link to ${QUOTED}`,
-			`Archive ${QUOTED}`,
-			"Copy resume command",
-			"Copy fork command",
 		]);
 	});
 
