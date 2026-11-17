@@ -49,7 +49,8 @@ import
 	type QuestionCardDraft,
 	typeOther,
 } from "../lib/question-card-draft";
-import {APPROVAL_ACTION_SHORTCUT_CLASS, ApprovalActionButton} from "./approval-card";
+import {APPROVAL_ACTION_SHORTCUT_CLASS, ApprovalActionButton, ApprovalDockBackdrop} from "./approval-card";
+import type {ApprovalPresentation} from "../lib/approval-presentation";
 import {QuestionReceipt, type QuestionReceiptRow} from "./question-receipt";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
 import {CDS_BUTTON_DISABLED, CDS_ICON_ONLY_DISABLED} from "./ui/cds-button-disabled";
@@ -504,6 +505,7 @@ export function QuestionCard({
 	draftKey,
 	answered,
 	sessionId,
+	presentation = "card",
 }: {
 	questions: readonly QuestionLike[];
 	onSubmit?: ((answers: Array<QuestionAnswer | null>) => Promise<void>) | undefined;
@@ -515,6 +517,8 @@ export function QuestionCard({
 	answered?: readonly QuestionReceiptRow[] | undefined;
 	/** The question's session: an answer holds it as answered, so every view draws it working at the click. */
 	sessionId?: string | undefined;
+	/** Upstream's inline "card" (480px, outlined), or docked above the composer on the sidebar backdrop. */
+	presentation?: ApprovalPresentation;
 })
 {
 	const [wasSent] = useState(() =>
@@ -752,7 +756,13 @@ export function QuestionCard({
 			aria-label={revealSpoofing(questionName(rawQuestion))}
 			data-approval-card-root=""
 			data-focus-region="question"
-			data-approval-presentation="card"
+			// Upstream sets the attribute only off the dock (c2d1aeb56 `w`).
+			{...(presentation === "card"
+				?
+					{
+						"data-approval-presentation": "card",
+					}
+				: {})}
 			onClick={(event) =>
 			{
 				event.stopPropagation();
@@ -764,11 +774,14 @@ export function QuestionCard({
 						"data-skip-approval-enter": "",
 					}
 				: {})}
-			className={`card-ring @container relative isolate flex max-w-[480px] flex-col overflow-clip rounded-card outline-none${
+			className={`${presentation === "card" ? "card-ring " : "epitaxy-approval-card max-h-[60vh] "}@container relative isolate flex ${presentation === "card" ? "max-w-[480px] " : ""}flex-col ${presentation === "card" ? "overflow-clip " : ""}rounded-card outline-none${
 				skipEnter ? "" : " animate-approval-inline-enter motion-reduce:animate-none"
 			}`}
 		>
-			<div className="bg-alpha-1 px-lg flex gap-md py-md items-center">
+			{presentation === "dock" && <ApprovalDockBackdrop />}
+			<div
+				className={`bg-alpha-1 px-lg flex gap-md py-md items-center${presentation === "dock" ? " rounded-t-[inherit]" : ""}`}
+			>
 				<div className="min-w-0 flex-1 text-body text-primary select-text break-words [unicode-bidi:plaintext]">
 					<UserInlineText text={rawQuestion} codeLook="chip" revealCloaks />
 				</div>
@@ -813,7 +826,10 @@ export function QuestionCard({
 				)}
 			</div>
 			<span className="contents" data-approval-allow="">
-				<div className="flex flex-col">
+				{/* Docked, the card is capped like upstream's approval root and its options scroll in place. */}
+				<div
+					className={`flex flex-col${presentation === "dock" ? " epitaxy-approval-body min-h-0 overflow-y-auto overscroll-contain" : ""}`}
+				>
 					{question.options.map((option, optionIndex) => (
 						<Fragment key={`${optionIndex}-${option.label}`}>
 							<AnswerOption

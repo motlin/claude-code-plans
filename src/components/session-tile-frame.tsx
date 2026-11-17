@@ -183,7 +183,8 @@ export function SessionTileFrame({
 				<ChatFileDropZone
 					onDrop={dropIntoComposer}
 					disabled={chatDrop === null}
-					className="h-full min-w-0 flex flex-col"
+					// Upstream's rail column (`LK`): at most 420px tall, transcript and dock scroll as one column.
+					className="h-full min-w-0 flex flex-col vh-max-420:overflow-x-hidden vh-max-420:overflow-y-auto"
 				>
 					<div className="shrink-0">{header}</div>
 					<div

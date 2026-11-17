@@ -1005,6 +1005,104 @@ describe("SessionPage dock composition", () =>
 			},
 		);
 	});
+	it("docks the permission card above the usage chip and composer on a viewport at most 420px tall, with the plain scroll pill", async () =>
+	{
+		vi.stubGlobal("matchMedia", (query: string) => (
+		{
+			matches: query === "(max-height: 420px)",
+			media: query,
+			addEventListener: () =>
+			{
+			},
+			removeEventListener: () =>
+			{
+			},
+		}));
+		await renderSessionPage(
+			{
+				...detail,
+				pr,
+			},
+			[],
+			(queryClient) =>
+			{
+				seedUsage(queryClient);
+				queryClient.setQueryData(
+					recentSessionsInfiniteQueryOptions().queryKey,
+					{
+						pages: [
+							{
+								sessions: [
+									{
+										id: SESSION_ID,
+										state: "waiting",
+										awaitingPermission: true,
+									},
+								],
+								nextCursor: null,
+							},
+						],
+						pageParams: [null],
+					} as never,
+				);
+			},
+			[
+				{
+					type: "assistant",
+					uuid: "a1",
+					sessionId: SESSION_ID,
+					timestamp: "2026-09-28T10:00:01.000Z",
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_waiting",
+								name: "Bash",
+								input:
+								{
+									command: "gh pr create --draft",
+									description: "Open the draft PR",
+								},
+							},
+						],
+					},
+				},
+			],
+		);
+		const card = screen.getByRole(
+			"group",
+			{
+				name: "Permission request: run this command",
+			},
+		);
+		expect(
+			{
+				dock: dockContents(),
+				inline: card.closest("[data-inline-permission]")?.closest("[data-approval-dock]") !== null,
+				inlineSlotEmpty: [...document.querySelectorAll("[data-inline-approval-slot]")].every(
+					(slot) => slot.querySelector("[data-approval-card-root]") === null,
+				),
+				presentation: card.getAttribute("data-approval-presentation"),
+				needsInput: screen.queryByRole(
+					"button",
+					{
+						name: "Needs your input. Scroll to the request",
+						hidden: true,
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				dock: ["pr", "permission", "usage", "composer"],
+				inline: true,
+				inlineSlotEmpty: true,
+				presentation: null,
+				needsInput: null,
+			},
+		);
+	});
 	it("previews a pending Edit's change inside the inline permission card", async () =>
 	{
 		vi.stubGlobal(

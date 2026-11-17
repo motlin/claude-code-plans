@@ -484,6 +484,15 @@ describe("chat panel file drop zone", () =>
 		);
 	});
 
+	it("makes the tile's column one scroller on a viewport at most 420px tall, as upstream's rail column (LK)", () =>
+	{
+		const {container} = render(<DropVisit footer={<p>Example composer</p>} />);
+		const column = container.querySelector("[data-session-scrollport]")?.parentElement?.parentElement;
+		expect(column?.getAttribute("class")).toBe(
+			"relative h-full min-w-0 flex flex-col vh-max-420:overflow-x-hidden vh-max-420:overflow-y-auto",
+		);
+	});
+
 	it("is disabled with no composer registered: no badge, but the drop is still swallowed", () =>
 	{
 		const {container} = render(<DropVisit footer={<p>Archived</p>} />);

@@ -2894,7 +2894,7 @@ describe("PermissionCard", () =>
 		);
 	});
 
-	it("paints the docked card and the waiting-input notice as upstream's dock backdrop: bg-surface-panel shadow-panel-sm", () =>
+	it("paints the docked card as upstream's dock root: a sidebar backdrop child, 12px gaps, no presentation attribute", () =>
 	{
 		const look = ["bg-surface-2", "shadow-[var(--approval-card-shadow)]", "bg-surface-popover"];
 		const {container} = render(
@@ -2908,22 +2908,23 @@ describe("PermissionCard", () =>
 			</>,
 		);
 		const has = (element: Element | null) => look.filter((name) => element?.classList.contains(name));
-		const pads = ["p-3", "p-lg", "-mx-3", "px-3", "-mx-pad-lg", "px-lg", "text-body"];
-		const pad = (element: Element | null | undefined) => pads.filter((name) => element?.classList.contains(name));
-		const dock = container.querySelector("[data-approval-card-root]");
+		const dock = container.querySelector<HTMLElement>("[data-approval-card-root]");
 		expect(
 			{
+				presentation: dock?.getAttribute("data-approval-presentation") ?? null,
 				// Upstream's root carries a literal p-[12px]; only the inline "card" presentation's rule lifts it to pad-lg.
-				dockPad: pad(dock),
-				dockBodyPad: pad(dock?.querySelector("[data-approval-card-body]")),
-				dock: has(dock),
+				card: dock?.getAttribute("class"),
+				backdrop: dock?.firstElementChild?.outerHTML,
+				body: dock?.querySelector("[data-approval-card-body]")?.getAttribute("class"),
 				notice: has(container.querySelector("[data-waiting-input-notice]")),
 			},
 		).toStrictEqual(
 			{
-				dockPad: ["p-3", "text-body"],
-				dockBodyPad: ["-mx-3", "px-3"],
-				dock: ["bg-surface-2", "shadow-[var(--approval-card-shadow)]"],
+				presentation: null,
+				card: "epitaxy-approval-card @container relative isolate flex max-h-[60vh] flex-col rounded-card p-3 text-body text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 gap-[12px]",
+				backdrop:
+					'<div aria-hidden="true" data-surface="sidebar" class="absolute inset-0 -z-[1] rounded-[inherit] pointer-events-none bg-surface-2 shadow-[var(--approval-card-shadow)]"></div>',
+				body: "epitaxy-approval-body -mx-3 -mt-1 -mb-2 flex min-h-0 flex-col overflow-y-auto px-3 pt-1 pb-2 gap-[12px] overscroll-contain",
 				notice: ["bg-surface-2", "shadow-[var(--approval-card-shadow)]"],
 			},
 		);
@@ -2949,7 +2950,7 @@ describe("PermissionCard", () =>
 			{
 				region: null,
 				card: "epitaxy-approval-card @container relative isolate flex max-h-[60vh] flex-col rounded-card p-lg text-body text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 card-ring w-full max-w-[480px] gap-[24px]",
-				body: "-mx-pad-lg -mt-1 -mb-2 flex min-h-0 flex-col overflow-y-auto px-lg pt-1 pb-2 gap-[24px]",
+				body: "epitaxy-approval-body -mx-pad-lg -mt-1 -mb-2 flex min-h-0 flex-col overflow-y-auto px-lg pt-1 pb-2 gap-[24px]",
 			},
 		);
 	});

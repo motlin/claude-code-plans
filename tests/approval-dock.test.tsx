@@ -2,11 +2,13 @@
 
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {queueFrames} from "./frame-queue";
-import type {ReactNode} from "react";
+import {useMemo, useState, type ReactNode} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {AskUserQuestionProvider} from "../src/components/ask-user-question-context";
 import {ApprovalSlot} from "../src/components/approval-slot";
+import {ApprovalClusterHost} from "../src/components/approval-cluster-host";
+import {ApprovalDockContext} from "../src/components/approval-dock-context";
 import {sessionApprovalSlotCard} from "../src/lib/approval-slot-card";
 import {PermissionCard} from "../src/components/permission-card";
 import {clearApprovalAnswered, useApprovalAnswered} from "../src/lib/answered-approvals";
@@ -4112,3 +4114,148 @@ function endEnterSwallows()
 		),
 	);
 }
+
+describe("the approval cluster host, moved between the inline slot and the composer dock", () =>
+{
+	function Cluster({presentation}: {presentation: "card" | "dock"})
+	{
+		const [dockSlot, setDockSlot] = useState<HTMLDivElement | null>(null);
+		const dock = useMemo(
+			() => (
+			{
+				presentation,
+				dockSlot,
+			}),
+			[presentation, dockSlot],
+		);
+		return (
+			<ApprovalDockContext.Provider value={dock}>
+				<div data-testid="transcript">
+					<ApprovalClusterHost>
+						<QuestionCard
+							questions={[QUESTIONS[0]!]}
+							presentation={presentation}
+							onSubmit={async () =>
+							{
+							}}
+						/>
+					</ApprovalClusterHost>
+				</div>
+				<div data-testid="composer-dock">
+					<div ref={setDockSlot} data-approval-dock="" className="contents" />
+				</div>
+			</ApprovalDockContext.Provider>
+		);
+	}
+
+	function where()
+	{
+		return {
+			inline: document.querySelectorAll("[data-inline-approval-slot] [data-approval-card-root]").length,
+			docked: document.querySelectorAll("[data-approval-dock] [data-approval-card-root]").length,
+		};
+	}
+
+	it("draws the cluster in the dock slot while docked, leaving the inline slot empty", () =>
+	{
+		render(<Cluster presentation="dock" />);
+		expect(
+			{
+				...where(),
+				inlineSlotEmpty: document.querySelector("[data-inline-approval-slot]")?.childElementCount,
+			},
+		).toStrictEqual(
+			{
+				inline: 0,
+				docked: 1,
+				inlineSlotEmpty: 0,
+			},
+		);
+	});
+
+	it("moves the same nodes across a presentation switch: the Other draft and focus survive", () =>
+	{
+		const {rerender} = render(<Cluster presentation="card" />);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Other",
+				},
+			),
+		);
+		const box = screen.getByRole<HTMLTextAreaElement>(
+			"textbox",
+			{
+				name: "Other option",
+			},
+		);
+		fireEvent.change(
+			box,
+			{
+				target:
+				{
+					value: "half done",
+				},
+			},
+		);
+		box.focus();
+		const before = where();
+		rerender(<Cluster presentation="dock" />);
+		const after = screen.getByRole<HTMLTextAreaElement>(
+			"textbox",
+			{
+				name: "Other option",
+			},
+		);
+		expect(
+			{
+				before,
+				after: where(),
+				same: after === box,
+				value: after.value,
+				focused: document.activeElement === box,
+			},
+		).toStrictEqual(
+			{
+				before:
+				{
+					inline: 1,
+					docked: 0,
+				},
+				after:
+				{
+					inline: 0,
+					docked: 1,
+				},
+				same: true,
+				value: "half done",
+				focused: true,
+			},
+		);
+	});
+
+	it("draws the docked question card without upstream's inline presentation attribute, on the sidebar backdrop", () =>
+	{
+		render(<Cluster presentation="dock" />);
+		const root = document.querySelector<HTMLElement>("[data-approval-card-root]");
+		expect(
+			{
+				presentation: root?.getAttribute("data-approval-presentation") ?? null,
+				backdrop: root?.querySelector(":scope > [data-surface=sidebar]")?.getAttribute("class") ?? null,
+				narrowed: root?.classList.contains("max-w-[480px]"),
+				capped: ["epitaxy-approval-card", "max-h-[60vh]"].filter((name) => root?.classList.contains(name)),
+				options: root?.querySelector("[data-approval-allow] > div")?.getAttribute("class"),
+			},
+		).toStrictEqual(
+			{
+				capped: ["epitaxy-approval-card", "max-h-[60vh]"],
+				options: "flex flex-col epitaxy-approval-body min-h-0 overflow-y-auto overscroll-contain",
+				presentation: null,
+				backdrop:
+					"absolute inset-0 -z-[1] rounded-[inherit] pointer-events-none bg-surface-2 shadow-[var(--approval-card-shadow)]",
+				narrowed: false,
+			},
+		);
+	});
+});

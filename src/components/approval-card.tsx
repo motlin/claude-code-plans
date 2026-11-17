@@ -155,11 +155,26 @@ function swallowFileDrag(event: DragEvent<HTMLDivElement>)
 }
 
 /**
+ * Upstream's docked card backdrop (c2d1aeb56 `y()`): `bg-surface-panel shadow-panel-sm` behind the card's content,
+ * here as the local surface-2 and the approval card shadow.
+ */
+export function ApprovalDockBackdrop()
+{
+	return (
+		<div
+			aria-hidden="true"
+			data-surface="sidebar"
+			className="absolute inset-0 -z-[1] rounded-[inherit] pointer-events-none bg-surface-2 shadow-[var(--approval-card-shadow)]"
+		/>
+	);
+}
+
+/**
  * Upstream's approval card shell for a pending permission: a scrolling body
  * and an action row, 12px radius (cds-radius + 4px) and 12px padding. Each card is its own
  * inline-size container, and at upstream's 420px its actions stack full width.
  * Inline in the transcript ("card") it is outlined and transparent; docked above
- * the composer it takes the popover fill and shadow.
+ * the composer it sits on upstream's sidebar backdrop.
  */
 export function ApprovalCardShell({
 	rootRef,
@@ -219,13 +234,12 @@ export function ApprovalCardShell({
 	onKeyDown?: (event: KeyboardEvent<HTMLDivElement>) => void;
 })
 {
-	// Inline, upstream's card is at most 480px wide with 24px gaps; the dock keeps its 12px rhythm.
-	// Docked, it paints upstream's backdrop `bg-surface-panel shadow-panel-sm` (c2d1aeb56 `y()`); surface-panel = surface-2.
+	// Inline, upstream's card is at most 480px wide with 24px gaps; the dock keeps its 12px rhythm on a backdrop child.
 	const look =
-		presentation === "card"
-			? `card-ring w-full max-w-[480px] ${compact ? "gap-3" : "gap-[24px]"}`
-			: "bg-surface-2 shadow-[var(--approval-card-shadow)] gap-3";
-	const bodyGap = presentation === "card" ? (compact ? "gap-3 empty:hidden" : "gap-[24px]") : "gap-2.5";
+		presentation === "card" ? `card-ring w-full max-w-[480px] ${compact ? "gap-3" : "gap-[24px]"}` : "gap-[12px]";
+	// Upstream's body scrolls its overflow in place only when docked (`overscroll-contain`).
+	const bodyGap =
+		presentation === "card" ? (compact ? "gap-3 empty:hidden" : "gap-[24px]") : "gap-[12px] overscroll-contain";
 	const band = presentation === "card" && title !== undefined;
 	// The banded card is upstream's in-flow tool card: no top padding, clipped to its radius, and a taller floor.
 	const frame = band
@@ -250,7 +264,8 @@ export function ApprovalCardShell({
 					px: "px-3",
 				};
 	return (
-		<div className="@container/approval-dock [--approval-dock-floor:144px] @max-[500px]/approval-dock:[--approval-dock-floor:208px]">
+		// Docked, the card root is the dock column's flex item, which its shrink and floor rules select.
+		<div className={presentation === "card" ? "@container/approval-dock" : "contents"}>
 			{/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/no-noninteractive-element-interactions -- upstream's focusable card root: arrows roam its action buttons, Enter focuses the primary, and clicks stop short of the transcript */}
 			<div
 				ref={rootRef}
@@ -258,7 +273,13 @@ export function ApprovalCardShell({
 				data-fixed-code-size=""
 				data-focus-region="question"
 				data-approval-card-digits={digits}
-				data-approval-presentation={presentation}
+				// Upstream sets the attribute only off the dock (c2d1aeb56 `w`).
+				{...(presentation === "card"
+					?
+						{
+							"data-approval-presentation": presentation,
+						}
+					: {})}
 				// Upstream's cds host shell `Re` (shared-40) marks every un-themed approval card root, and its approval host
 				// (c2d1aeb56 `J`) never themes: the permission, plan and elicitation cards all carry it. Its only reader is a
 				// desktop-glass background rule, so on the web it is DOM parity.
@@ -291,6 +312,7 @@ export function ApprovalCardShell({
 				}}
 				className={`epitaxy-approval-card @container relative isolate flex ${frame} flex-col rounded-card ${inset.pad} text-body text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 ${look}${enter ? " animate-approval-inline-enter motion-reduce:animate-none" : ""}`}
 			>
+				{presentation === "dock" && <ApprovalDockBackdrop />}
 				{band && (
 					<div
 						ref={titleRef}
@@ -298,6 +320,12 @@ export function ApprovalCardShell({
 						className="shrink-0 overflow-y-auto max-h-[max(2rem,min(30vh,calc(60vh-10rem)))] -mx-pad-lg px-lg"
 					>
 						<div className="-mx-pad-lg flex flex-col gap-xs px-lg bg-alpha-1 py-md">{title}</div>
+					</div>
+				)}
+				{/* Docked, the title band is upstream's card-only frame: the title heads the card unbanded. */}
+				{presentation === "dock" && title !== undefined && (
+					<div ref={titleRef} className="flex shrink-0 flex-col gap-xs">
+						{title}
 					</div>
 				)}
 				<div
@@ -311,7 +339,7 @@ export function ApprovalCardShell({
 								role: "group",
 								"aria-label": bodyLabel,
 							})}
-					className={`${inset.bleed} ${band ? "-mt-[18px]" : "-mt-1"} -mb-2 flex min-h-0 flex-col overflow-y-auto ${inset.px} pt-1 pb-2 ${bodyGap}`}
+					className={`epitaxy-approval-body ${inset.bleed} ${band ? "-mt-[18px]" : "-mt-1"} -mb-2 flex min-h-0 flex-col overflow-y-auto ${inset.px} pt-1 pb-2 ${bodyGap}`}
 				>
 					{body}
 				</div>

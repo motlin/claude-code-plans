@@ -74,6 +74,8 @@ const ALLOWLIST: Record<string, string> =
 	"epitaxy-approval-actions": HOOK,
 	"epitaxy-approval-card":
 		"upstream's approval card class, which the read gates find the card (and its read-lines) by",
+	"epitaxy-approval-body":
+		"upstream's approval body class, which the session dock column's short-viewport overscroll rule selects on",
 	"epitaxy-approval-read-hint": HOOK,
 	"epitaxy-chat-panel": "upstream's chat panel class, which the session outline's gutter variants select on",
 	"epitaxy-code-card": HOOK,

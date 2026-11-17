@@ -14,6 +14,7 @@ import
 	planSubtitleLine,
 	planText,
 } from "../lib/exit-plan-mode";
+import type {ApprovalPresentation} from "../lib/approval-presentation";
 import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 
 /**
@@ -30,11 +31,14 @@ export function InlinePlanApproval({
 	toolUseId,
 	planText: text,
 	plan,
+	presentation = "card",
 }: {
 	toolUseId: string;
 	/** The ExitPlanMode input's plan, if any. */
 	planText: string | undefined;
 	plan: PlanApprovalContextValue;
+	/** Inline after the transcript, sticky ("card"), or docked above the composer with the dock's keycaps. */
+	presentation?: ApprovalPresentation;
 })
 {
 	const host = useOptionalPaneHost();
@@ -78,12 +82,9 @@ export function InlinePlanApproval({
 			<span className="line-clamp-2 break-words [unicode-bidi:plaintext]">{planSubtitleLine(proposed)}</span>
 		);
 	return (
-		<div
-			data-inline-plan=""
-			className={`${CHAT_COLUMN_CLASS} sticky top-[calc(max(var(--epitaxy-top-fade-height,0px),var(--fade-top,0px),var(--epitaxy-suggested-task-end,0px),var(--epitaxy-sticky-prompt-end,0px))+5px)] z-[1] bg-[var(--epitaxy-transcript-surface,var(--color-surface-1))] pb-4`}
-		>
+		<div data-inline-plan="" className={presentation === "card" ? INLINE_PLAN_CLASS : undefined}>
 			<ApprovalCardShell
-				presentation="card"
+				presentation={presentation}
 				compact
 				roam={false}
 				enter={enter}
@@ -123,7 +124,7 @@ export function InlinePlanApproval({
 						<PlanApprovalCard
 							toolUseId={toolUseId}
 							plan={plan}
-							placement="card"
+							placement={presentation}
 							autoOpenPlan={proposed !== undefined}
 							readHeld={drawsPlan && readHeld}
 						/>
@@ -133,6 +134,9 @@ export function InlinePlanApproval({
 		</div>
 	);
 }
+
+/** The inline card's sticky place in the transcript's trailing slot, on the transcript's measure. */
+const INLINE_PLAN_CLASS = `${CHAT_COLUMN_CLASS} sticky top-[calc(max(var(--epitaxy-top-fade-height,0px),var(--fade-top,0px),var(--epitaxy-suggested-task-end,0px),var(--epitaxy-sticky-prompt-end,0px))+5px)] z-[1] bg-[var(--epitaxy-transcript-surface,var(--color-surface-1))] pb-4`;
 
 /** Upstream's plan text in the card body (`approval-plan-text`). */
 const PLAN_TEXT_CLASS = "whitespace-pre-wrap break-words text-body text-secondary select-text [unicode-bidi:plaintext]";

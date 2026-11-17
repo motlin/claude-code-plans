@@ -2,18 +2,16 @@ import {inputString} from "../../lib/tool-utils";
 import {useEffect, useRef} from "react";
 import type {ClientToolCall, ToolRendererProps} from "./types";
 import {useAskUserQuestionContext} from "../ask-user-question-context";
+import {useQuestionDocked} from "../approval-dock-context";
+import {pendingQuestionCard} from "../pending-question-card";
 import {MarkdownArticle} from "../markdown-article";
 import {FallbackRenderer} from "./fallback-renderer";
-import {ApprovalSlot} from "../approval-slot";
-import {sessionApprovalSlotCard} from "../../lib/approval-slot-card";
 import {QuestionCard} from "../question-card";
 import {QuestionReceipt} from "../question-receipt";
 import {UserInlineText} from "../user-plain-text";
 import {maskSecrets} from "../../lib/secret-mask";
 import {revealSpoofing} from "../../lib/visible-text";
 import {removeMemoryTags} from "../../lib/task-checklist";
-import {FORK_ANSWER_LABEL} from "../../lib/question-answer-route";
-import type {QuestionAnswer} from "../../lib/hook-events";
 import {clearSentQuestionCard, isQuestionCardSent, useQuestionCardSent} from "../../lib/question-card-store";
 import
 {
@@ -126,6 +124,7 @@ function recordedNotes(
 export function AskUserQuestionRenderer({toolCall}: ToolRendererProps)
 {
 	const ctx = useAskUserQuestionContext();
+	const docked = useQuestionDocked(toolCall.id);
 	const questions = normalizeQuestions(toolCall.input);
 	const {result} = toolCall;
 	const isPending = result === undefined;
@@ -149,50 +148,17 @@ export function AskUserQuestionRenderer({toolCall}: ToolRendererProps)
 	if (isPending && questions !== null && ctx === null) return <UnansweredQuestions questions={questions} />;
 
 	// Upstream draws a pending question as its card, inline where the call is; it answers along the session's route.
+	// Docked above the composer, the session draws it there instead (the row may scroll out of the virtual window).
 	if (isPending && questions !== null)
 	{
-		const route = ctx?.answerRoute ?? "read-only";
-		const submit =
-			ctx !== null && route !== "read-only"
-				? async (answers: Array<QuestionAnswer | null>) =>
-						ctx.submitAnswer(
-							{
-								toolUseId: toolCall.id,
-								questions,
-								picks: answers,
-							},
-						)
-				: undefined;
-		const card = (
-			<QuestionCard
-				draftKey={toolCall.id}
-				questions={questions}
-				onSubmit={submit}
-				// A fork answers in a new session, so only a live answer holds this one as working.
-				sessionId={route === "live-pane" ? ctx?.sessionId : undefined}
-				{...(route === "fork"
-					?
-						{
-							submitLabel: FORK_ANSWER_LABEL,
-						}
-					: {})}
-			/>
-		);
-		if (ctx?.sessionId === undefined) return card;
-		// Upstream's slot for a question drawn in its transcript row: a keyboard answer hands focus to the composer.
-		return (
-			<ApprovalSlot
-				sessionId={ctx.sessionId}
-				{...sessionApprovalSlotCard(
-					{
-						permission: null,
-						planId: null,
-						questionId: sentNow ? null : toolCall.id,
-					},
-				)}
-			>
-				{card}
-			</ApprovalSlot>
+		if (docked) return null;
+		return pendingQuestionCard(
+			{
+				toolUseId: toolCall.id,
+				questions,
+				ctx,
+				sent: sentNow,
+			},
 		);
 	}
 

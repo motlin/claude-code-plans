@@ -250,6 +250,46 @@ describe("dockedHookPlan", () =>
 
 describe("InlinePlanApproval", () =>
 {
+	it("passes its presentation to the actions: docked, Revise… shows esc and Accept ⇧⌘⏎, and the wrapper drops its sticky inline place", async () =>
+	{
+		const names = async (presentation: "card" | "dock") =>
+		{
+			const view = render(
+				<InlinePlanApproval
+					toolUseId="toolu_plan_1"
+					planText={"# Plan: X\n\nbody"}
+					plan={PLAN}
+					presentation={presentation}
+				/>,
+			);
+			await act(async () => Promise.resolve());
+			const shown =
+			{
+				buttons: screen.getAllByRole("button").map((button) => button.textContent),
+				wrapper: view.container.querySelector("[data-inline-plan]")?.getAttribute("class") ?? null,
+			};
+			view.unmount();
+			return shown;
+		};
+		const card = await names("card");
+		const dock = await names("dock");
+		expect(
+			{
+				card: card.buttons.filter((name) => name.startsWith("Revise") || name.startsWith("Accept")),
+				cardSticky: card.wrapper?.includes("sticky"),
+				dock: dock.buttons.filter((name) => name.startsWith("Revise") || name.startsWith("Accept")),
+				dockWrapper: dock.wrapper,
+			},
+		).toStrictEqual(
+			{
+				card: ["Revise…", "Accept", "Accept and use auto modeCtrl⏎Enter"],
+				cardSticky: true,
+				dock: ["Revise…Esc", "AcceptCtrlShift⏎Enter", "Accept and use auto modeCtrl⏎Enter"],
+				dockWrapper: null,
+			},
+		);
+	});
+
 	it("draws upstream's sticky card after the transcript: the tinted title band with the first plan line, Open plan, then the inline actions; mounting auto-opens the Plan pane", async () =>
 	{
 		const openPane = vi.fn<PaneHostApi["openPane"]>();
