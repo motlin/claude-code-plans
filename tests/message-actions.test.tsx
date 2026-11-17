@@ -974,7 +974,7 @@ describe("UserMessageActions", () =>
 			},
 		).toStrictEqual(
 			{
-				rewind: ["Rewind to here", "Removes this message and everything after it."],
+				rewind: ["Rewind to here", "Takes this message and everything after it out of the conversation."],
 				fork: ["Fork from here", "Starts a new session from this point. This one stays as it is."],
 			},
 		);
@@ -1001,7 +1001,7 @@ describe("UserMessageActions", () =>
 		).toStrictEqual(
 			{
 				copy: null,
-				rewind: "Removes this message and everything after it.",
+				rewind: "Takes this message and everything after it out of the conversation.",
 				fork: "Starts a new session from this point. This one stays as it is.",
 			},
 		);

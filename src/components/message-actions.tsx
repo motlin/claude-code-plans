@@ -323,7 +323,7 @@ function RewindAction({message}: {message: TranscriptMessageRef | undefined})
 	return (
 		<ActionButton
 			label="Rewind to here"
-			description="Removes this message and everything after it."
+			description="Takes this message and everything after it out of the conversation."
 			disabledReason={rewindDisabledReason ?? null}
 			onClick={bound(rewindTo, message)}
 		>

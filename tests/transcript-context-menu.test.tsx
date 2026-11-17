@@ -163,8 +163,14 @@ function renderChat(wrapper?: (children: ReactNode) => ReactNode, records: unkno
 			transcriptMode="normal"
 		/>
 	);
-	// The transcript sits in the compact main column.
-	return render(<CompactScope>{wrapper ? wrapper(chat) : chat}</CompactScope>).container;
+	// The transcript sits in the compact main column, under an idle session's actions unless the wrapper overrides them.
+	return render(
+		<CompactScope>
+			<TranscriptActionsContext.Provider value={IDLE_ACTIONS}>
+				{wrapper ? wrapper(chat) : chat}
+			</TranscriptActionsContext.Provider>
+		</CompactScope>,
+	).container;
 }
 
 function openMenuOn(element: Element): HTMLElement
@@ -239,12 +245,15 @@ function workingPaneActions(calls: string[]): TranscriptActions
 	};
 }
 
+const IDLE_ACTIONS = recordingActions([]);
+const NO_ACTIONS: TranscriptActions = {};
 const UNFORKABLE_ACTIONS: TranscriptActions =
 {
 	forkDisabledReason: "Session directory is unknown",
 };
 const ARCHIVED_ACTIONS: TranscriptActions =
 {
+	...recordingActions([]),
 	rewindHidden: true,
 };
 
@@ -472,7 +481,8 @@ describe("transcript context menus", () =>
 		expect(
 			{
 				rows: menuRows(menu),
-				wide: menu.classList.contains("w-[249px]"),
+				wide: menu.classList.contains("w-[320px]"),
+				wraps: menu.querySelector("[data-menu-item-description]")?.classList.contains("break-words"),
 				twoLine,
 			},
 		).toStrictEqual(
@@ -483,10 +493,11 @@ describe("transcript context menus", () =>
 					"---",
 					"Attach message as context",
 					"---",
-					"Rewind to here / Removes this message and what follows",
+					"Rewind to here / Takes this and what follows out of the conversation",
 					"Fork from here / Starts a new session, keeps this one",
 				],
 				wide: true,
+				wraps: true,
 				twoLine: ["Rewind to here", "Fork from here"],
 			},
 		);
@@ -568,18 +579,37 @@ describe("transcript context menus", () =>
 		);
 	});
 
-	it("disables Pin, Fork and Rewind when no transcript actions are provided", () =>
+	it("omits Pin, Fork and Rewind, and their separators, when no transcript actions are provided", () =>
 	{
-		const container = renderChat();
-		const menu = openMenuOn(find(container, ".user-message-bubble p"));
-		const disabled = [...menu.querySelectorAll('[role="menuitem"][data-disabled]')].map(
-			(row) => row.querySelector("[data-menu-item-title]")?.textContent,
+		const bare = (chat: ReactNode) => (
+			<TranscriptActionsContext.Provider value={NO_ACTIONS}>{chat}</TranscriptActionsContext.Provider>
 		);
+		const user = openMenuOn(find(renderChat(bare), ".user-message-bubble p"));
+		const userRows = menuRows(user);
+		const userWidth = [...user.classList].filter((name) => name.startsWith("w-["));
+		cleanup();
+		const assistantRows = menuRows(openMenuOn(find(renderChat(bare), "strong", "details")));
+		cleanup();
+		const toolRows = menuRows(openMenuOn(find(renderChat(bare), "[data-tool-row]")));
 
-		expect(disabled).toStrictEqual(["Rewind to here", "Fork from here"]);
+		expect(
+			{
+				userRows,
+				userWidth,
+				assistantRows,
+				toolRows,
+			},
+		).toStrictEqual(
+			{
+				userRows: ["Copy message", "Copy message as Markdown", "---", "Attach message as context"],
+				userWidth: ["w-[225px]"],
+				assistantRows: ["Copy message", "Copy message as Markdown", "---", "Attach message as context"],
+				toolRows: [],
+			},
+		);
 	});
 
-	it("disables Rewind with upstream's reason while the pane works, leaving Fork enabled", () =>
+	it("hides Rewind while the pane works, leaving Fork enabled at the Fork row's width", () =>
 	{
 		const calls: string[] = [];
 		const actions = workingPaneActions(calls);
@@ -587,37 +617,81 @@ describe("transcript context menus", () =>
 			<TranscriptActionsContext.Provider value={actions}>{chat}</TranscriptActionsContext.Provider>
 		));
 		const menu = openMenuOn(find(container, ".user-message-bubble p"));
-		const rows = [...menu.querySelectorAll('[role="menuitem"]')].map((row) => (
-		{
-			title: row.querySelector("[data-menu-item-title]")?.textContent,
-			disabled: row.hasAttribute("data-disabled"),
-			reason:
-				row.getAttribute("aria-describedby") === null
-					? null
-					: menu.ownerDocument.getElementById(row.getAttribute("aria-describedby") ?? "")?.textContent,
-		}));
-		clickItem(menu, "Rewind to here");
+		const rows = menuRows(menu);
+		const width = [...menu.classList].filter((name) => name.startsWith("w-["));
+		clickItem(menu, "Fork from here");
 
 		expect(
 			{
-				rows: rows.slice(-2),
+				rows,
+				width,
 				calls,
 			},
 		).toStrictEqual(
 			{
 				rows: [
-					{
-						title: "Rewind to here",
-						disabled: true,
-						reason: "Rewind is unavailable while Claude is working",
-					},
-					{
-						title: "Fork from here",
-						disabled: false,
-						reason: null,
-					},
+					"Copy message",
+					"Copy message as Markdown",
+					"---",
+					"Attach message as context",
+					"---",
+					"Fork from here / Starts a new session, keeps this one",
 				],
-				calls: [],
+				width: ["w-[249px]"],
+				calls: ["fork user-1"],
+			},
+		);
+	});
+
+	it("hides Rewind on a prompt absorbed mid-turn, and with only a fork action", () =>
+	{
+		const userRowsWith = (actions: TranscriptActions) =>
+		{
+			const rows = menuRows(
+				openMenuOn(
+					find(
+						renderChat((chat) => (
+							<TranscriptActionsContext.Provider value={actions}>
+								{chat}
+							</TranscriptActionsContext.Provider>
+						)),
+						".user-message-bubble p",
+					),
+				),
+			);
+			cleanup();
+			return rows;
+		};
+		const absorbed = userRowsWith(
+			{
+				...recordingActions([]),
+				rewindDisabledReason: "Rewind isn't available for a message sent mid-turn",
+			},
+		);
+		const forkOnly = userRowsWith(
+			{
+				forkFrom: () => undefined,
+				rewindDisabledReason: "x",
+			},
+		);
+		const expected = [
+			"Copy message",
+			"Copy message as Markdown",
+			"---",
+			"Attach message as context",
+			"---",
+			"Fork from here / Starts a new session, keeps this one",
+		];
+
+		expect(
+			{
+				absorbed,
+				forkOnly,
+			},
+		).toStrictEqual(
+			{
+				absorbed: expected,
+				forkOnly: expected,
 			},
 		);
 	});
@@ -777,7 +851,7 @@ describe("transcript context menu with a text selection", () =>
 		).toStrictEqual(
 			{
 				assistant: ["w-[242.4px]"],
-				user: ["w-[249px]"],
+				user: ["w-[320px]"],
 				oneCharacter: ["w-[225px]"],
 			},
 		);

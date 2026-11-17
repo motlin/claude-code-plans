@@ -12,7 +12,12 @@ import {createPressRecorder, touchOnTextOrSelection, wantsNativeContextMenu} fro
 import {useFileRefsCwd} from "./file-refs-context";
 import {FileActionsMenuItems} from "./files/file-actions-menu";
 import {ContextMenu, ContextMenuTrigger, MenuContent, MenuItem, MenuSeparator} from "./ui/menu";
-import {TranscriptActionsContext, type TranscriptMessageRef} from "./transcript-actions-context";
+import
+{
+	type TranscriptActions,
+	TranscriptActionsContext,
+	type TranscriptMessageRef,
+} from "./transcript-actions-context";
 import {useOpenInDefaultApp} from "./use-open-in-default-app";
 
 /*
@@ -184,7 +189,7 @@ const MENU_WIDTH =
 
 /**
  * Upstream's menu sizes to its rows; with "Attach selection as context ⇧⌘L"
- * the assistant menu measured 242.4px, while the user menu's Rewind row
+ * the assistant menu measured 242.4px, while the user menu's Fork row
  * already holds it wider.
  */
 const SELECTION_MENU_WIDTH =
@@ -192,6 +197,31 @@ const SELECTION_MENU_WIDTH =
 	assistant: "w-[242.4px]",
 	user: MENU_WIDTH.user,
 } as const;
+
+/** The Rewind row's wrapped description fills upstream's `max-w-[320px]` popup cap. */
+const REWIND_MENU_WIDTH = "w-[320px]";
+
+/** Upstream `wx`: Rewind shows only with a rewind callback and no block reason; it is hidden, never disabled. */
+function showsRewind(actions: TranscriptActions): boolean
+{
+	return (
+		actions.rewindHidden !== true && actions.rewindTo !== undefined && actions.rewindDisabledReason === undefined
+	);
+}
+
+/** Upstream `wx`: an absent fork callback omits the row; a blocked fork stays as a disabled row. */
+function showsFork(actions: TranscriptActions): boolean
+{
+	return actions.forkFrom !== undefined || actions.forkDisabledReason !== undefined;
+}
+
+function userMenuWidth(actions: TranscriptActions, selection: boolean): string
+{
+	if (showsRewind(actions)) return REWIND_MENU_WIDTH;
+	if (showsFork(actions)) return (selection ? SELECTION_MENU_WIDTH : MENU_WIDTH).user;
+	// Without the Rewind/Fork group the widest rows are the assistant menu's.
+	return (selection ? SELECTION_MENU_WIDTH : MENU_WIDTH).assistant;
+}
 
 /** The trimmed selection to attach as an Excerpt, or "" when it is too short. */
 function excerptOf(selectionText: string | null): string
@@ -201,7 +231,7 @@ function excerptOf(selectionText: string | null): string
 }
 
 const FORK_DESCRIPTION = "Starts a new session, keeps this one";
-const REWIND_DESCRIPTION = "Removes this message and what follows";
+const REWIND_DESCRIPTION = "Takes this and what follows out of the conversation";
 
 type Speaker = keyof typeof MENU_WIDTH;
 
@@ -235,6 +265,7 @@ export function TranscriptMessageMenu({
 	const [keyboardArticle, setKeyboardArticle] = useState<HTMLElement | null>(null);
 	const closingMenu = useRef<Element | null>(null);
 	const queryClient = useContext(QueryClientContext);
+	const actions = useContext(TranscriptActionsContext);
 	const [open, setOpen] = useState(false);
 	const [gone, setGone] = useState(false);
 	const goneCheck = useRef<Promise<boolean> | null>(null);
@@ -337,7 +368,10 @@ export function TranscriptMessageMenu({
 					? {}
 					:
 						{
-							className: (excerptOf(selectionText) === "" ? MENU_WIDTH : SELECTION_MENU_WIDTH)[speaker],
+							className:
+								speaker === "user"
+									? userMenuWidth(actions, excerptOf(selectionText) !== "")
+									: (excerptOf(selectionText) === "" ? MENU_WIDTH : SELECTION_MENU_WIDTH)[speaker],
 						})}
 				finalFocus={
 					keyboardArticle === null
@@ -454,12 +488,13 @@ function TranscriptMenuItems({
 			/>
 		);
 	}
-	const pin = (
+	const pin = actions.pinChapter !== undefined && (
 		<MenuItem key="pin" {...actionProps(actions.pinChapter, message)}>
 			{pinned ? "Unpin chapter" : "Pin as chapter"}
 		</MenuItem>
 	);
-	const fork = (
+	const showFork = showsFork(actions);
+	const fork = showFork && (
 		<MenuItem
 			key="fork"
 			description={FORK_DESCRIPTION}
@@ -491,9 +526,9 @@ function TranscriptMenuItems({
 		return (
 			<>
 				{copyCodeBlock}
-				{copyCodeBlock !== false && <MenuSeparator />}
+				{copyCodeBlock !== false && (pin !== false || showFork) && <MenuSeparator />}
 				{pin}
-				<MenuSeparator />
+				{pin !== false && showFork && <MenuSeparator />}
 				{fork}
 			</>
 		);
@@ -603,28 +638,22 @@ function TranscriptMenuItems({
 			{speaker === "assistant" ? (
 				<>
 					{pin}
-					<MenuSeparator />
+					{showFork && <MenuSeparator />}
 					{fork}
 				</>
 			) : (
-				<>
-					<MenuSeparator />
-					{actions.rewindHidden !== true && (
-						<MenuItem
-							description={REWIND_DESCRIPTION}
-							{...(actions.rewindDisabledReason === undefined
-								? actionProps(actions.rewindTo, message)
-								:
-									{
-										disabled: true,
-										disabledReason: actions.rewindDisabledReason,
-									})}
-						>
-							Rewind to here
-						</MenuItem>
-					)}
-					{fork}
-				</>
+				// Upstream `wx` returns null, separator and all, when neither row shows.
+				(showsRewind(actions) || showFork) && (
+					<>
+						<MenuSeparator />
+						{showsRewind(actions) && (
+							<MenuItem description={REWIND_DESCRIPTION} {...actionProps(actions.rewindTo, message)}>
+								Rewind to here
+							</MenuItem>
+						)}
+						{fork}
+					</>
+				)
 			)}
 		</>
 	);

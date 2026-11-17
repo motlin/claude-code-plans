@@ -6,7 +6,7 @@ export interface TranscriptMessageRef
 	uuid: string;
 }
 
-/** Per-message transcript actions; an item whose action is absent renders disabled. */
+/** Per-message transcript actions; an absent action disables its toolbar button and omits its context-menu row. */
 export interface TranscriptActions
 {
 	pinChapter?: (message: TranscriptMessageRef) => void;
