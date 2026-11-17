@@ -221,7 +221,8 @@ import
 import {useSendRejectionActions} from "./use-send-rejection-actions";
 import {dockedHookPlan, inlinePlanToolUseId} from "../lib/docked-plan";
 import {planText} from "../lib/exit-plan-mode";
-import {sessionApprovalQueue} from "../lib/approval-queue";
+import {EMPTY_QUEUED_IDS, queuedRequestIds, sessionApprovalQueue} from "../lib/approval-queue";
+import {approvalPlacement, placementDrawsQueue} from "../lib/approval-placement";
 import type {PermissionAskEntry} from "../lib/permission-ask";
 import {permissionQueue} from "../lib/permission-queue";
 import
@@ -1338,6 +1339,24 @@ function SessionView({
 		[approvalDecision, approvalDockSlot, transcriptQuestionId],
 	);
 	const approvalPresentation = approvalDecision === "dock" && approvalDockSlot !== null ? "dock" : "card";
+	// Upstream's `RC($_(placement) ? id : undefined)`: while the cluster lists the queued requests, their lone
+	// transcript rows give way to it.
+	const queuedCallIds = useMemo(
+		() =>
+			placementDrawsQueue(
+				approvalPlacement(
+					{
+						inlineApprovals: true,
+						isReadOnly: data.archived,
+						aboveTurnBox: approvalPresentation === "dock",
+						clusterLive: approvalHeadId !== null,
+					},
+				),
+			)
+				? queuedRequestIds(approvalQueue)
+				: EMPTY_QUEUED_IDS,
+		[data.archived, approvalPresentation, approvalHeadId, approvalQueue],
+	);
 	// A form or url elicitation stays with the terminal dialog, but the waiting notice names its server.
 	const elicitationNotice = useMemo(
 		() => findElicitationWaitingNotice(pendingElicitations ?? []),
@@ -2613,6 +2632,7 @@ function SessionView({
 																				permissionWaitToolUseId={
 																					permissionWaitId
 																				}
+																				queuedCallIds={queuedCallIds}
 																				onSendNow={requestSendNowInterrupt}
 																				onFocusComposer={focusSessionComposer}
 																				sideChatAvailable={true}

@@ -1,5 +1,13 @@
 import {describe, expect, it} from "vite-plus/test";
-import {approvalQueue, sessionApprovalQueue, type QueuedApproval} from "../src/lib/approval-queue";
+import
+{
+	approvalQueue,
+	EMPTY_QUEUED_IDS,
+	isQueuedBehindHead,
+	queuedRequestIds,
+	sessionApprovalQueue,
+	type QueuedApproval,
+} from "../src/lib/approval-queue";
 
 const TOOL: QueuedApproval =
 {
@@ -104,6 +112,49 @@ describe("approvalQueue", () =>
 				// A stable sort keeps the plan before the question it ties with.
 				queued: [TOOL, plan, question],
 				queueDepth: 3,
+			},
+		);
+	});
+});
+
+describe("queuedRequestIds and isQueuedBehindHead (upstream RC/BC)", () =>
+{
+	const item = (id: string, createdAt: number, toolUseId?: string): QueuedApproval => (
+	{
+		id,
+		kind: "tool",
+		name: "Bash",
+		createdAt,
+		...(toolUseId === undefined
+			? {}
+			:
+				{
+					toolUseId,
+				}),
+	});
+
+	it("names every queued request's id and tool_use id, and shares one empty set below two pending", () =>
+	{
+		const three = queuedRequestIds(approvalQueue([item("a", 1, "tuA"), item("b", 2, "tu2"), item("c", 3)]));
+		expect(
+			{
+				none: queuedRequestIds(approvalQueue([])) === EMPTY_QUEUED_IDS,
+				one: queuedRequestIds(approvalQueue([item("a", 1, "tuA")])) === EMPTY_QUEUED_IDS,
+				three,
+				headHidden: isQueuedBehindHead(three, "tuA", true),
+				queuedRunning: isQueuedBehindHead(three, "tu2", true),
+				queuedSettled: isQueuedBehindHead(three, "tu2", false),
+				alone: isQueuedBehindHead(queuedRequestIds(approvalQueue([item("b", 2, "tu2")])), "tu2", true),
+			},
+		).toStrictEqual(
+			{
+				none: true,
+				one: true,
+				three: new Set(["b", "tu2", "c"]),
+				headHidden: false,
+				queuedRunning: true,
+				queuedSettled: false,
+				alone: false,
 			},
 		);
 	});
@@ -268,6 +319,83 @@ describe("sessionApprovalQueue", () =>
 					queueDepth: 0,
 				},
 				noAsks: "permission:toolu_1",
+			},
+		);
+	});
+	it("names a queued tool ask's call by the unanswered main-thread tool_use it describes", () =>
+	{
+		const toolUse = (id: string, command: string) => (
+		{
+			type: "assistant",
+			message:
+			{
+				content: [
+					{
+						type: "tool_use",
+						id,
+						name: "Bash",
+						input:
+						{
+							command,
+						},
+					},
+				],
+			},
+		});
+		const queue = sessionApprovalQueue(
+			{
+				asks: [
+					ask(
+						"Bash",
+						{
+							command: "ls",
+						},
+						1,
+					),
+					ask(
+						"Bash",
+						{
+							command: "pwd",
+						},
+						2,
+					),
+				],
+				records: [toolUse("tuA", "ls"), toolUse("tuB", "pwd")],
+				permissionKey: "toolu_1",
+				elicitations: [],
+				planId: null,
+				hookQuestionId: null,
+				transcriptQuestionId: null,
+			},
+		);
+		expect(queue).toStrictEqual(
+			{
+				head:
+				{
+					id: "permission:toolu_1",
+					kind: "tool",
+					name: "Bash",
+					input:
+					{
+						command: "ls",
+					},
+					toolUseId: "tuA",
+					createdAt: 1,
+				},
+				queued: [
+					{
+						id: "ask:2:1",
+						kind: "tool",
+						name: "Bash",
+						input:
+						{
+							command: "pwd",
+						},
+						toolUseId: "tuB",
+						createdAt: 2,
+					},
+				],
+				queueDepth: 1,
 			},
 		);
 	});

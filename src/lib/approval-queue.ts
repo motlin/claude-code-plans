@@ -1,3 +1,4 @@
+import {findMainToolUses, jsonEqual} from "./approval-dock";
 import {asRecord} from "./narrow";
 import type {PermissionAskEntry} from "./permission-ask";
 import {permissionQueue} from "./permission-queue";
@@ -12,6 +13,8 @@ export interface QueuedApproval
 	name: string;
 	/** A tool request's input, which names its "Also waiting" row like the transcript's running label. */
 	input?: Record<string, unknown>;
+	/** The transcript's tool_use id for the call a tool request asks about, when its record is on disk. */
+	toolUseId?: string;
 	createdAt: number;
 	outOfTurn?: boolean;
 }
@@ -37,6 +40,27 @@ export function approvalQueue(items: readonly QueuedApproval[]): ApprovalQueue
 		queued: pending.filter((item) => item !== head),
 		queueDepth: Math.max(0, pending.length - 1),
 	};
+}
+
+/** The shared empty set while fewer than two requests are pending (upstream `jS`). */
+export const EMPTY_QUEUED_IDS: ReadonlySet<string> = Object.freeze(new Set<string>());
+
+/** Upstream's `RC`: every queued request's id and tool_use id, so the transcript can drop their lone rows. */
+export function queuedRequestIds(queue: ApprovalQueue): ReadonlySet<string>
+{
+	if (queue.queued.length === 0) return EMPTY_QUEUED_IDS;
+	return new Set(
+		queue.queued.flatMap((item) => (item.toolUseId === undefined ? [item.id] : [item.id, item.toolUseId])),
+	);
+}
+
+/**
+ * Upstream's `BC`: a call still waiting (running or awaiting approval) whose request is queued behind the head; its
+ * lone transcript row gives way to the "Also waiting" list.
+ */
+export function isQueuedBehindHead(queuedIds: ReadonlySet<string>, toolUseId: string, pending: boolean): boolean
+{
+	return pending && queuedIds.has(toolUseId);
 }
 
 /** Tools whose ask draws its own card (the question or plan card) instead of the permission card. */
@@ -85,6 +109,28 @@ export function sessionApprovalQueue({
 	const live = headAsk === null ? [] : [headAsk, ...queuedAsks];
 	const askedAt = (toolName: string) => live.find((ask) => ask.toolName === toolName)?.receivedAt ?? 0;
 	const toolAsks = live.filter((ask) => !OWN_CARD_TOOLS.has(ask.toolName));
+	// Each main-thread ask names the first unanswered call it describes that no earlier ask claimed.
+	const openCalls = findMainToolUses(records)
+		.filter((use) => !use.answered)
+		.map((use) => use.call);
+	const claimed = new Set<string>();
+	const toolUseIdOf = (
+		ask: PermissionAskEntry,
+	):
+	{
+		toolUseId?: string;
+	} =>
+	{
+		if (ask.agentId !== null) return {};
+		const call = openCalls.find(
+			(open) => !claimed.has(open.id) && open.name === ask.toolName && jsonEqual(open.input, ask.toolInput),
+		);
+		if (call === undefined) return {};
+		claimed.add(call.id);
+		return {
+			toolUseId: call.id,
+		};
+	};
 	const drawable: QueuedApproval[] = [];
 	const waiting: QueuedApproval[] = [];
 	// The permission card is the head tool ask's dialog; without a drawn card that ask is being answered or not yet shown.
@@ -106,6 +152,7 @@ export function sessionApprovalQueue({
 						kind: "tool",
 						name: cardAsk.toolName,
 						input: toolInput(cardAsk.toolInput),
+						...toolUseIdOf(cardAsk),
 						createdAt: cardAsk.receivedAt,
 					},
 		);
@@ -118,6 +165,7 @@ export function sessionApprovalQueue({
 				kind: "tool",
 				name: ask.toolName,
 				input: toolInput(ask.toolInput),
+				...toolUseIdOf(ask),
 				createdAt: ask.receivedAt,
 			},
 		);

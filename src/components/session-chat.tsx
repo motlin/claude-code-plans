@@ -1,4 +1,5 @@
 import {SessionTileGeometryReadyContext} from "./session-tile-geometry-context";
+import {EMPTY_QUEUED_IDS, isQueuedBehindHead} from "../lib/approval-queue";
 import React,
 {
 	Suspense,
@@ -229,6 +230,8 @@ export interface SessionChatProps
 	slashCommands?: readonly SlashCommand[];
 	/** The tool call the session's permission prompt waits on, whose row keeps its description as written. */
 	permissionWaitToolUseId?: string | null;
+	/** The tool_use ids queued behind the head approval while the card cluster lists them (upstream `queuedLoneCallIds`). */
+	queuedCallIds?: ReadonlySet<string>;
 	/** Whether the CLI is still running, so the prompts waiting in its queue can still be read. */
 	sessionLive?: boolean;
 	/** The transcript's trailing turn hasn't ended yet, so it draws no end-of-turn card. */
@@ -851,6 +854,7 @@ export const SessionChat = React.memo(function SessionChat({
 	summary = null,
 	slashCommands = EMPTY_SLASH_COMMANDS,
 	permissionWaitToolUseId = null,
+	queuedCallIds = EMPTY_QUEUED_IDS,
 	sessionLive = false,
 	turnInProgress = false,
 	archived = false,
@@ -1135,71 +1139,73 @@ export const SessionChat = React.memo(function SessionChat({
 			<SendNowContext.Provider value={sendNowHandlers}>
 				<SlashCommandsContext.Provider value={slashCommands}>
 					<PermissionWaitContext.Provider value={permissionWaitToolUseId}>
-						<AgentNameContext.Provider value={resolveAgentName}>
-							<BackgroundOutcomeContext.Provider value={backgroundOutcomes}>
-								<WorkflowRunsContext.Provider value={workflowRunsByLaunch}>
-									<ReviewCardsContext.Provider value={reviewCards}>
-										<CompactBoundaryContext.Provider value={compactBoundaries}>
-											<LastErrorLineContext.Provider value={lastError}>
-												<StaleCompactTailContext.Provider value={staleCompactTail}>
-													<div
-														ref={containerRef}
-														className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
-													>
-														{summary !== null && summary !== "" && (
-															<p
-																data-testid="session-summary-row"
-																title={summary}
-																className="mb-4 truncate text-sm text-t6"
-															>
-																{summary}
-															</p>
-														)}
-														<SessionLineList
-															key={sessionId}
-															lines={listedLines}
-															sessionId={sessionId}
-															toolResultMap={toolResultMap}
-															allowedImageRoots={allowedImageRoots}
-															subagentLookup={subagentLookup}
-															isSubagentSession={isSubagentSession}
-															showThinking={showThinking}
-															showTools={showTools}
-															showPassedHooks={showPassedHooks}
-															showHookWarnings={showHookWarnings}
-															showHookErrors={showHookErrors}
-															showSystemBanners={showSystemBanners}
-															showCompactSummaries={showCompactSummaries}
-															showTranscriptOnly={showTranscriptOnly}
-															shouldScrollToEnd={shouldScrollToEnd}
-															measurementKey={measurementKey}
-															measurementSource={measurementSource}
-															turnInProgress={turnInProgress}
-															archived={archived}
-															rewindCuts={rewindCuts}
-															rewoundUuids={rewoundUuids}
-															clientRows={clientRows}
-															renderClientRowCard={renderClientRowCard}
-														/>
-														{sessionLive && (
-															<WaitingPickupStatus
-																key={`pickup-${sessionId}`}
-																waiting={waitingEntries}
+						<QueuedCallIdsContext.Provider value={queuedCallIds}>
+							<AgentNameContext.Provider value={resolveAgentName}>
+								<BackgroundOutcomeContext.Provider value={backgroundOutcomes}>
+									<WorkflowRunsContext.Provider value={workflowRunsByLaunch}>
+										<ReviewCardsContext.Provider value={reviewCards}>
+											<CompactBoundaryContext.Provider value={compactBoundaries}>
+												<LastErrorLineContext.Provider value={lastError}>
+													<StaleCompactTailContext.Provider value={staleCompactTail}>
+														<div
+															ref={containerRef}
+															className={`${CHAT_COLUMN_CLASS} pt-4 pb-4 text-body transcript-text`}
+														>
+															{summary !== null && summary !== "" && (
+																<p
+																	data-testid="session-summary-row"
+																	title={summary}
+																	className="mb-4 truncate text-sm text-t6"
+																>
+																	{summary}
+																</p>
+															)}
+															<SessionLineList
+																key={sessionId}
+																lines={listedLines}
+																sessionId={sessionId}
+																toolResultMap={toolResultMap}
+																allowedImageRoots={allowedImageRoots}
+																subagentLookup={subagentLookup}
+																isSubagentSession={isSubagentSession}
+																showThinking={showThinking}
+																showTools={showTools}
+																showPassedHooks={showPassedHooks}
+																showHookWarnings={showHookWarnings}
+																showHookErrors={showHookErrors}
+																showSystemBanners={showSystemBanners}
+																showCompactSummaries={showCompactSummaries}
+																showTranscriptOnly={showTranscriptOnly}
+																shouldScrollToEnd={shouldScrollToEnd}
+																measurementKey={measurementKey}
+																measurementSource={measurementSource}
+																turnInProgress={turnInProgress}
+																archived={archived}
+																rewindCuts={rewindCuts}
+																rewoundUuids={rewoundUuids}
+																clientRows={clientRows}
+																renderClientRowCard={renderClientRowCard}
 															/>
-														)}
-														<TranscriptSelectionBar
-															sessionId={sessionId}
-															containerRef={containerRef}
-															sideChatAvailable={sideChatAvailable}
-														/>
-													</div>
-												</StaleCompactTailContext.Provider>
-											</LastErrorLineContext.Provider>
-										</CompactBoundaryContext.Provider>
-									</ReviewCardsContext.Provider>
-								</WorkflowRunsContext.Provider>
-							</BackgroundOutcomeContext.Provider>
-						</AgentNameContext.Provider>
+															{sessionLive && (
+																<WaitingPickupStatus
+																	key={`pickup-${sessionId}`}
+																	waiting={waitingEntries}
+																/>
+															)}
+															<TranscriptSelectionBar
+																sessionId={sessionId}
+																containerRef={containerRef}
+																sideChatAvailable={sideChatAvailable}
+															/>
+														</div>
+													</StaleCompactTailContext.Provider>
+												</LastErrorLineContext.Provider>
+											</CompactBoundaryContext.Provider>
+										</ReviewCardsContext.Provider>
+									</WorkflowRunsContext.Provider>
+								</BackgroundOutcomeContext.Provider>
+							</AgentNameContext.Provider>
+						</QueuedCallIdsContext.Provider>
 					</PermissionWaitContext.Provider>
 				</SlashCommandsContext.Provider>
 			</SendNowContext.Provider>
@@ -1955,6 +1961,8 @@ const BackgroundOutcomeContext = createContext<BackgroundOutcomes>(
 
 /** The tool_use id the session's permission prompt waits on, if any. */
 const PermissionWaitContext = createContext<string | null>(null);
+/** The calls queued behind the head approval, drawn in the cluster's "Also waiting" list instead of their own rows. */
+const QueuedCallIdsContext = createContext<ReadonlySet<string>>(EMPTY_QUEUED_IDS);
 /**
  * The live turn's trailing tool call, which may still join a group, so a lone row keeps its
  * screenshots in the row rather than hoisting them into a card that would move (upstream `holdImages`).
@@ -7197,6 +7205,23 @@ function ToolCallSection({
 	const prominentCalls = calls.filter(isProminentCall);
 	const backgroundCalls = calls.filter((c) => !isProminentCall(c));
 	const [loneBackgroundCall] = backgroundCalls;
+	const queuedCallIds = useContext(QueuedCallIdsContext);
+	// Upstream holds no notices beside a queued lone row (`u2` false): they draw on their own and the row gives way.
+	const queuedLoneCall =
+		backgroundCalls.length === 1 &&
+		loneBackgroundCall !== undefined &&
+		isQueuedBehindHead(queuedCallIds, loneBackgroundCall.id, isPendingToolCall(loneBackgroundCall));
+	if (queuedLoneCall && notices.length > 0)
+		return (
+			<>
+				<BackgroundNoticeRows notices={notices} />
+				{prominentCalls.map((call, i) => (
+					<ToolCardBoundary key={`prominent-${i}`} resetOn={toolCardStage(call)}>
+						<ProminentCall call={call} sessionId={sessionId} />
+					</ToolCardBoundary>
+				))}
+			</>
+		);
 	const sameTargetRun = backgroundCalls.length > 1 && notices.length === 0 && sameTarget(backgroundCalls);
 
 	return (
@@ -7568,11 +7593,14 @@ function LoneToolCall({call, sessionId, leading}: {call: ClientToolCall; session
 {
 	const run = useContext(WorkflowRunsContext).get(call.id);
 	const permissionWaitId = useContext(PermissionWaitContext);
+	const queuedCallIds = useContext(QueuedCallIdsContext);
 	const backgroundTasks = useBackgroundTasksOpener();
 	// Upstream `Rw` latches at mount whether the call was live: a live call stays a
 	// "Starting workflow" card after its launch result lands until its run record
 	// arrives, so only a call already settled at mount falls straight to the row.
 	const [wasLive] = useState(() => isPendingToolCall(call) || permissionWaitId === call.id);
+	// Upstream's `BC`: a call queued behind the head approval shows in the cluster's "Also waiting" list instead.
+	if (isQueuedBehindHead(queuedCallIds, call.id, isPendingToolCall(call))) return null;
 	const isWorkflow = call.name === "Workflow" && call.isError !== true && permissionWaitId !== call.id;
 	const preLaunch = isWorkflow && run === undefined && (wasLive || isPendingToolCall(call));
 	if (!preLaunch && !(isWorkflow && run?.status === "running"))
