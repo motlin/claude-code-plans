@@ -3,12 +3,14 @@
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {QueuedMessageBar} from "../src/components/queued-message-bar";
+import {queuedDragEnd, queuedRowMask} from "../src/lib/queued-reorder";
 import {clearComposerQueues, type QueuedPrompt, queuedPreview} from "../src/lib/composer-queue";
 
 afterEach(() =>
 {
 	cleanup();
 	clearComposerQueues();
+	document.documentElement.removeAttribute("data-reduce-motion");
 });
 
 const ALICE: QueuedPrompt =
@@ -498,7 +500,7 @@ describe("QueuedMessageBar", () =>
 				hidden: true,
 			},
 		);
-		const dotsShown = dots.className.split(" ").includes("opacity-100");
+		const dotsShown = !dots.className.split(" ").includes("opacity-0");
 		fireEvent.click(
 			within(menu).getByRole(
 				"menuitem",
@@ -712,5 +714,371 @@ describe("QueuedMessageBar", () =>
 				listClassName: false,
 			},
 		);
+	});
+});
+
+const CAROL: QueuedPrompt =
+{
+	id: "q3",
+	text: "Carol's third follow-up",
+};
+
+const MASK_120 = "[mask-image:linear-gradient(to_right,black_calc(100%_-_120px),transparent_calc(100%_-_48px))]";
+const MASK_76 = "[mask-image:linear-gradient(to_right,black_calc(100%_-_76px),transparent_calc(100%_-_28px))]";
+
+function renderList(
+	items: readonly QueuedPrompt[],
+	onReorder?: (id: string, overId: string) => void,
+	sessionId = "session-reorder",
+)
+{
+	const view = render(
+		<QueuedMessageBar
+			sessionId={sessionId}
+			items={items}
+			onEdit={() =>
+			{
+			}}
+			onRemove={() =>
+			{
+			}}
+			{...(onReorder === undefined
+				? {}
+				:
+					{
+						onReorder,
+					})}
+		/>,
+	);
+	fireEvent.click(
+		screen.getByRole(
+			"button",
+			{
+				name: /messages queued/,
+			},
+		),
+	);
+	const rows = within(
+		screen.getByRole(
+			"list",
+			{
+				name: "Queued messages",
+			},
+		),
+	).getAllByRole("listitem");
+	return {
+		...view,
+		rows,
+	};
+}
+
+function maskTokens(row: HTMLElement): string[]
+{
+	return (row.querySelector(".line-clamp-2")?.className ?? "")
+		.split(" ")
+		.filter((token) => token.includes("mask-image"));
+}
+
+function handles(): HTMLElement[]
+{
+	return screen.queryAllByRole(
+		"button",
+		{
+			name: "Reorder queued message",
+		},
+	);
+}
+
+describe("QueuedMessageBar reorder", () =>
+{
+	it("gives each expanded row upstream's sortable ≡ handle before its ⋯, with the wider 120/48 hover mask", () =>
+	{
+		const {rows} = renderList([ALICE, BOB], vi.fn<(id: string, overId: string) => void>());
+		const [first] = handles();
+		if (first === undefined) throw new Error("Expected a reorder handle");
+		const describedBy = document.getElementById(first.getAttribute("aria-describedby") ?? "");
+		const actions = within(first.parentElement ?? first)
+			.getAllByRole("button")
+			.map((button) => button.getAttribute("aria-label"));
+		expect(
+			{
+				count: handles().length,
+				type: first.getAttribute("type"),
+				roleDescription: first.getAttribute("aria-roledescription"),
+				instructions: describedBy?.textContent.trim().split("\n")[0],
+				className: first.className,
+				glyph: first.querySelector("svg")?.getAttribute("data-cds"),
+				bars: first.querySelector("path")?.getAttribute("d"),
+				actions,
+				takeBack: rows.map((row) => row.getAttribute("data-take-back-entry")),
+				masks: maskTokens(rows[0] ?? first),
+			},
+		).toStrictEqual(
+			{
+				count: 2,
+				type: "button",
+				roleDescription: "sortable",
+				instructions: "To pick up a draggable item, press the space bar.",
+				className:
+					"shrink-0 grid h-5 w-5 place-items-center cursor-grab active:cursor-grabbing text-muted-as-secondary hover:text-primary opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100",
+				glyph: "Icon",
+				bars: "M3 4.8h18M3 12h18M3 19.2h18",
+				actions: ["Reorder queued message", "Queued message actions"],
+				takeBack: ["q1", "q2"],
+				masks: [`group-hover/row:${MASK_120}`, `pointer-coarse:${MASK_120}`],
+			},
+		);
+	});
+
+	it("has no handle and keeps the 76/28 mask without onReorder", () =>
+	{
+		const {rows} = renderList([ALICE, BOB]);
+		expect(
+			{
+				handles: handles().length,
+				masks: maskTokens(rows[0] ?? document.body),
+			},
+		).toStrictEqual(
+			{
+				handles: 0,
+				masks: [`group-hover/row:${MASK_76}`, `pointer-coarse:${MASK_76}`],
+			},
+		);
+	});
+
+	it("holds the 76/28 mask static while a non-sortable row's ⋯ menu is open", async () =>
+	{
+		const {rows} = renderList([ALICE, BOB]);
+		const first = rows[0];
+		if (first === undefined) throw new Error("Expected a row");
+		fireEvent.click(
+			within(first).getByRole(
+				"button",
+				{
+					name: "Queued message actions",
+				},
+			),
+		);
+		await screen.findByRole("menu");
+		expect(maskTokens(first)).toStrictEqual([MASK_76]);
+	});
+
+	it("reorders only on a drop over a different row", () =>
+	{
+		const onReorder = vi.fn<(id: string, overId: string) => void>();
+		queuedDragEnd(
+			{
+				active:
+				{
+					id: "q1",
+				},
+				over:
+				{
+					id: "q2",
+				},
+			},
+			onReorder,
+		);
+		queuedDragEnd(
+			{
+				active:
+				{
+					id: "q1",
+				},
+				over: null,
+			},
+			onReorder,
+		);
+		queuedDragEnd(
+			{
+				active:
+				{
+					id: "q1",
+				},
+				over:
+				{
+					id: "q1",
+				},
+			},
+			onReorder,
+		);
+		expect(onReorder.mock.calls).toStrictEqual([["q1", "q2"]]);
+	});
+
+	it("picks up with Space: the dragged row dims, other rows' actions hide, the body grabs; Escape restores", async () =>
+	{
+		const onReorder = vi.fn<(id: string, overId: string) => void>();
+		const {rows} = renderList([ALICE, BOB, CAROL], onReorder);
+		const [first] = handles();
+		if (first === undefined) throw new Error("Expected a reorder handle");
+		const [alice, bob] = rows;
+		if (alice === undefined || bob === undefined) throw new Error("Expected rows");
+		fireEvent.keyDown(
+			first,
+			{
+				code: "Space",
+				key: " ",
+			},
+		);
+		const bobDots = within(bob).getByRole(
+			"button",
+			{
+				name: "Queued message actions",
+			},
+		);
+		const dragging =
+		{
+			aliceDragged: ["bg-alpha-2", "opacity-80"].every((token) => alice.className.split(" ").includes(token)),
+			aliceHandle: first.className,
+			aliceMasks: maskTokens(alice),
+			bobDots: ["opacity-0", "pointer-events-none"].map((token) => bobDots.className.split(" ").includes(token)),
+			bobMasks: maskTokens(bob),
+			bodyCursor: document.body.style.cursor,
+			bodySelect: document.body.style.userSelect,
+		};
+		// dnd-kit's KeyboardSensor listens for the drop/cancel keys from the next task.
+		await act(
+			async () =>
+				new Promise((resolve) =>
+				{
+					setTimeout(resolve, 0);
+				}),
+		);
+		fireEvent.keyDown(
+			first,
+			{
+				code: "Escape",
+				key: "Escape",
+			},
+		);
+		expect(
+			{
+				dragging,
+				after:
+				{
+					bodyCursor: document.body.style.cursor,
+					bodySelect: document.body.style.userSelect,
+					reordered: onReorder.mock.calls,
+				},
+			},
+		).toStrictEqual(
+			{
+				dragging:
+				{
+					aliceDragged: true,
+					aliceHandle: "shrink-0 grid h-5 w-5 place-items-center cursor-grabbing text-primary ",
+					aliceMasks: [MASK_120],
+					bobDots: [true, true],
+					bobMasks: [],
+					bodyCursor: "grabbing",
+					bodySelect: "none",
+				},
+				after:
+				{
+					bodyCursor: "",
+					bodySelect: "",
+					reordered: [],
+				},
+			},
+		);
+	});
+
+	it("restores the body when the band unmounts mid-drag", () =>
+	{
+		const {unmount} = renderList([ALICE, BOB], vi.fn<(id: string, overId: string) => void>());
+		const [first] = handles();
+		if (first === undefined) throw new Error("Expected a reorder handle");
+		fireEvent.keyDown(
+			first,
+			{
+				code: "Space",
+				key: " ",
+			},
+		);
+		const during = document.body.style.cursor;
+		unmount();
+		expect([during, document.body.style.cursor, document.body.style.userSelect]).toStrictEqual([
+			"grabbing",
+			"",
+			"",
+		]);
+	});
+
+	it("drops the sliding transition under reduced motion", () =>
+	{
+		const transitions = (sessionId: string) =>
+		{
+			const {rows, unmount} = renderList([ALICE, BOB], vi.fn<(id: string, overId: string) => void>(), sessionId);
+			const [first] = handles();
+			if (first === undefined) throw new Error("Expected a reorder handle");
+			fireEvent.keyDown(
+				first,
+				{
+					code: "Space",
+					key: " ",
+				},
+			);
+			const result = rows.map((row) => row.style.transition);
+			unmount();
+			return result;
+		};
+		const animated = transitions("session-animated");
+		document.documentElement.setAttribute("data-reduce-motion", "true");
+		expect(
+			{
+				animated: animated.some((transition) => transition !== ""),
+				reduced: transitions("session-reduced"),
+			},
+		).toStrictEqual(
+			{
+				animated: true,
+				reduced: ["", ""],
+			},
+		);
+	});
+});
+
+describe("queuedRowMask", () =>
+{
+	it("matches upstream's mask table", () =>
+	{
+		const hover = (mask: string) => `group-hover/row:${mask} pointer-coarse:${mask}`;
+		expect([
+			queuedRowMask(
+				{
+					sortable: true,
+					held: true,
+					otherDragging: false,
+				},
+			),
+			queuedRowMask(
+				{
+					sortable: false,
+					held: true,
+					otherDragging: false,
+				},
+			),
+			queuedRowMask(
+				{
+					sortable: true,
+					held: false,
+					otherDragging: true,
+				},
+			),
+			queuedRowMask(
+				{
+					sortable: true,
+					held: false,
+					otherDragging: false,
+				},
+			),
+			queuedRowMask(
+				{
+					sortable: false,
+					held: false,
+					otherDragging: false,
+				},
+			),
+		]).toStrictEqual([MASK_120, MASK_76, "", hover(MASK_120), hover(MASK_76)]);
 	});
 });

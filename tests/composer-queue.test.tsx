@@ -177,6 +177,50 @@ describe("composerQueueReducer", () =>
 		);
 	});
 
+	it("moves a prompt into another's slot with upstream's reorderQueuedMessage semantics", () =>
+	{
+		const DAVE: QueuedPrompt =
+		{
+			id: "q4",
+			text: "Dave's fourth follow-up",
+		};
+		const STEER: QueuedPrompt =
+		{
+			id: "s1",
+			text: "Erin's steer",
+			midTurn: true,
+		};
+		const queue = [ALICE, BOB, CAROL, DAVE];
+		const move = (items: readonly QueuedPrompt[], id: string, overId: string) =>
+			composerQueueReducer(
+				items,
+				{
+					type: "move",
+					id,
+					overId,
+				},
+			);
+		expect(
+			{
+				down: move(queue, "q1", "q3"),
+				up: move(queue, "q4", "q2"),
+				self: move(queue, "q2", "q2") === queue,
+				unknown: move(queue, "nope", "q2") === queue,
+				unknownOver: move(queue, "q2", "nope") === queue,
+				steerKeepsItsPlace: move([STEER, ALICE, BOB], "q2", "q1"),
+			},
+		).toStrictEqual(
+			{
+				down: [BOB, CAROL, ALICE, DAVE],
+				up: [ALICE, DAVE, BOB, CAROL],
+				self: true,
+				unknown: true,
+				unknownOver: true,
+				steerKeepsItsPlace: [STEER, BOB, ALICE],
+			},
+		);
+	});
+
 	it("offers the head for flushing only once the session is idle", () =>
 	{
 		expect(
@@ -536,6 +580,39 @@ function renderQueue({
 
 describe("useComposerQueue", () =>
 {
+	it("reorders a queued prompt over another without sending", () =>
+	{
+		const deliver = vi.fn<Deliver>(async () => Promise.resolve("sent"));
+		const {result} = renderQueue(
+			{
+				busy: true,
+				deliver,
+			},
+		);
+		act(() =>
+		{
+			result.current.enqueue("Alice's first follow-up");
+			result.current.enqueue("Bob's second follow-up");
+		});
+		const [alice, bob] = result.current.items;
+		if (alice === undefined || bob === undefined) throw new Error("Expected two queued prompts");
+		act(() =>
+		{
+			result.current.reorder(bob.id, alice.id);
+		});
+		expect(
+			{
+				texts: result.current.items.map((item) => item.text),
+				delivered: deliver.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				texts: ["Bob's second follow-up", "Alice's first follow-up"],
+				delivered: [],
+			},
+		);
+	});
+
 	it("holds prompts while busy and flushes one at a time on each idle", async () =>
 	{
 		const deliver = vi.fn<Deliver>(async () => Promise.resolve("sent"));
@@ -1270,6 +1347,38 @@ describe("Composer queued message bar", () =>
 				sent: [[]],
 			},
 		);
+	});
+
+	it("offers a reorder handle on each expanded row that moves through the queue's reorder", () =>
+	{
+		const reorder = vi.fn<(id: string, overId: string) => void>();
+		renderComposer(
+			{
+				queue:
+				{
+					...queueView([ALICE, BOB]),
+					reorder,
+				},
+			},
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /2 messages queued/,
+				},
+			),
+		);
+		expect(
+			screen
+				.getAllByRole(
+					"button",
+					{
+						name: "Reorder queued message",
+					},
+				)
+				.map((handle) => handle.closest("[data-take-back-entry]")?.getAttribute("data-take-back-entry")),
+		).toStrictEqual(["q1", "q2"]);
 	});
 
 	it("shows the queued band above the composer with an sr-only status", () =>

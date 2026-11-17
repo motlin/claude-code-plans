@@ -228,6 +228,8 @@ export interface ComposerQueueView
 	sendNow: (id: string) => Promise<void>;
 	remove: (id: string) => void;
 	clear: () => void;
+	/** Drag reorder of later prompts; absent, the expanded band has no handles. */
+	reorder?: ((id: string, overId: string) => void) | undefined;
 	/** The parked lane's state; its prompts are the queue's parked items. */
 	parked?: ComposerParkedView | undefined;
 }
@@ -2651,6 +2653,7 @@ export function Composer({
 							onSendNow={queue.sendNow}
 							onRemove={queue.remove}
 							onClearAll={queue.clear}
+							onReorder={queue.reorder}
 						/>
 						{queue.parked !== undefined && parkedItems.length > 0 && (
 							<ParkedMessageBar

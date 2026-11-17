@@ -1,8 +1,38 @@
-import {type KeyboardEvent, type MouseEvent, useCallback, useId, useRef, useState} from "react";
+import
+{
+	type KeyboardEvent,
+	type MouseEvent,
+	type ReactNode,
+	useCallback,
+	useEffect,
+	useId,
+	useRef,
+	useState,
+} from "react";
 import {Check, ChevronDown, ChevronUp, CornerDownLeft, Pencil, X} from "lucide-react";
+import
+{
+	closestCenter,
+	DndContext,
+	KeyboardSensor,
+	PointerSensor,
+	useDndContext,
+	useSensor,
+	useSensors,
+} from "@dnd-kit/core";
+import
+{
+	SortableContext,
+	sortableKeyboardCoordinates,
+	useSortable,
+	verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {CSS} from "@dnd-kit/utilities";
 
 import {type QueuedPrompt, queueBandExpanded, queuedPreview, setQueueBandExpanded} from "../lib/composer-queue";
 import {useAnnouncement} from "../lib/landed-store";
+import {clampQueueDragToList, queuedDragEnd, queuedRowMask} from "../lib/queued-reorder";
+import {useReducedMotion} from "../lib/reduced-motion";
 import {Icon} from "./ui/icon";
 import {Spinner} from "./ui/spinner";
 import {ContextMenu, ContextMenuTrigger, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger} from "./ui/menu";
@@ -69,6 +99,8 @@ export interface QueuedMessageBarProps
 	onRemove: (id: string) => void;
 	/** Absent: no Clear all footer, as upstream gates it on `onClearAll`. */
 	onClearAll?: (() => void) | undefined;
+	/** Drag reorder of the expanded rows (upstream's `onReorder`); absent, rows have no handle. */
+	onReorder?: ((id: string, overId: string) => void) | undefined;
 	/** Upstream's `joinTop`: the band hangs under another band (the parked notice), squaring and bordering its top. */
 	joinTop?: boolean;
 }
@@ -89,6 +121,7 @@ export function QueuedMessageBar({
 	onSendNow,
 	onRemove,
 	onClearAll,
+	onReorder,
 	joinTop = false,
 }: QueuedMessageBarProps)
 {
@@ -251,23 +284,20 @@ export function QueuedMessageBar({
 						<ChevronUp aria-hidden="true" className="size-4" />
 					</button>
 				</div>
-				<div
-					role="list"
-					aria-label="Queued messages"
-					className="flex flex-col max-h-[min(40vh,22rem)] overflow-y-auto overscroll-contain p-1"
-				>
+				<QueuedList items={shown} onReorder={onReorder}>
 					{shown.map((item, index) => (
 						<QueuedRow
 							key={item.id}
 							item={item}
 							separated={index > 0}
+							sortable={onReorder !== undefined && item.midTurn !== true}
 							accepted={acceptedIds.has(item.id) && !exiting}
 							onEdit={onEdit}
 							onSendNow={onSendNow}
 							onRemove={onRemove}
 						/>
 					))}
-				</div>
+				</QueuedList>
 				{onClearAll !== undefined && (
 					<div className="flex justify-end px-3 py-2">
 						<span
@@ -305,6 +335,98 @@ export function QueuedMessageBar({
 			{band}
 		</div>
 	);
+}
+
+/**
+ * The expanded band's `role=list`. With `onReorder` it is upstream's sortable list: dnd-kit with a 5px
+ * pointer activation, the sortable keyboard sensor, closestCenter, the clamp-to-list modifier, no
+ * auto-scroll and dnd-kit's default screen-reader text. While a row is held the body shows `grabbing`
+ * and can't select; dropping, cancelling, collapsing and unmounting all restore it.
+ */
+function QueuedList({
+	items,
+	onReorder,
+	children,
+}: {
+	items: readonly QueuedPrompt[];
+	onReorder: ((id: string, overId: string) => void) | undefined;
+	children: ReactNode;
+})
+{
+	const sensors = useSensors(
+		useSensor(
+			PointerSensor,
+			{
+				activationConstraint:
+				{
+					distance: 5,
+				},
+			},
+		),
+		useSensor(
+			KeyboardSensor,
+			{
+				coordinateGetter: sortableKeyboardCoordinates,
+			},
+		),
+	);
+	const listRef = useRef<HTMLDivElement>(null);
+	const heldBodyRef = useRef<HTMLElement | null>(null);
+	const releaseBody = useCallback(() =>
+	{
+		const body = heldBodyRef.current;
+		if (body === null) return;
+		heldBodyRef.current = null;
+		body.style.cursor = "";
+		body.style.userSelect = "";
+	}, []);
+	useEffect(() => releaseBody, [releaseBody]);
+
+	const list = (
+		<div
+			ref={listRef}
+			role="list"
+			aria-label="Queued messages"
+			className="flex flex-col max-h-[min(40vh,22rem)] overflow-y-auto overscroll-contain p-1"
+		>
+			{children}
+		</div>
+	);
+	if (onReorder === undefined) return list;
+	return (
+		<DndContext
+			sensors={sensors}
+			collisionDetection={closestCenter}
+			modifiers={[clampQueueDragToList]}
+			autoScroll={false}
+			onDragStart={() =>
+			{
+				const body = listRef.current?.ownerDocument.body;
+				if (body === undefined) return;
+				heldBodyRef.current = body;
+				body.style.cursor = "grabbing";
+				body.style.userSelect = "none";
+			}}
+			onDragCancel={releaseBody}
+			onDragEnd={(event) =>
+			{
+				releaseBody();
+				queuedDragEnd(event, onReorder);
+			}}
+		>
+			<SortableContext items={items.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+				{list}
+			</SortableContext>
+		</DndContext>
+	);
+}
+
+/** Upstream's row action visibility (handle and ⋯): shown while held, hidden while another row drags. */
+function rowActionsClass(held: boolean, dragActive: boolean): string
+{
+	if (held) return "";
+	if (dragActive) return "opacity-0";
+	return "opacity-0 focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100";
 }
 
 function QueuedRowItems({
@@ -356,6 +478,7 @@ function QueuedRowItems({
 function QueuedRow({
 	item,
 	separated,
+	sortable,
 	accepted,
 	onEdit,
 	onSendNow,
@@ -363,6 +486,7 @@ function QueuedRow({
 }: {
 	item: QueuedPrompt;
 	separated: boolean;
+	sortable: boolean;
 	accepted: boolean;
 	onEdit: (item: QueuedPrompt) => void;
 	onSendNow: ((id: string) => Promise<void>) | undefined;
@@ -371,6 +495,34 @@ function QueuedRow({
 {
 	// Upstream's `se`: the row's DotsVertical stays shown while its right-click menu is open.
 	const [contextOpen, setContextOpen] = useState(false);
+	const [menuOpen, setMenuOpen] = useState(false);
+	const reducedMotion = useReducedMotion();
+	const dragActive = useDndContext().active !== null;
+	const {attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging} = useSortable(
+		{
+			id: item.id,
+			disabled:
+			{
+				draggable: !sortable,
+				droppable: !sortable,
+			},
+			...(reducedMotion
+				?
+					{
+						transition: null,
+					}
+				: {}),
+		},
+	);
+	const held = isDragging || contextOpen || menuOpen;
+	const actionsClass = rowActionsClass(held, dragActive);
+	const mask = queuedRowMask(
+		{
+			sortable,
+			held,
+			otherDragging: dragActive && !isDragging,
+		},
+	);
 	const actions =
 	{
 		item,
@@ -384,21 +536,41 @@ function QueuedRow({
 			{/* Upstream renders each row as a `ContextMenu.Trigger` carrying the listitem attributes. */}
 			<ContextMenu onOpenChange={setContextOpen}>
 				<ContextMenuTrigger
+					ref={setNodeRef}
 					render={<div />}
 					role="listitem"
-					data-take-back-entry=""
+					data-take-back-entry={item.id}
 					data-perf-pending-prompt=""
-					className="group/row relative flex items-start gap-1.25 min-w-0 p-1.25 rounded"
+					style={
+					{
+						transform: CSS.Translate.toString(transform),
+						transition,
+					}}
+					className={`group/row relative flex items-start gap-1.25 min-w-0 p-1.25 rounded${isDragging ? " bg-alpha-2 opacity-80" : ""}`}
 				>
-					<span className="min-w-0 flex-1 text-body line-clamp-2 select-text text-primary break-words whitespace-pre-wrap group-hover/row:[mask-image:linear-gradient(to_right,black_calc(100%_-_76px),transparent_calc(100%_-_28px))] pointer-coarse:[mask-image:linear-gradient(to_right,black_calc(100%_-_76px),transparent_calc(100%_-_28px))]">
+					<span
+						className={`min-w-0 flex-1 text-body line-clamp-2 select-text text-primary break-words whitespace-pre-wrap ${mask}`}
+					>
 						{item.text}
 					</span>
 					<div className="absolute end-1.25 top-1/2 flex -translate-y-1/2 items-center gap-0.5">
 						{accepted && <QueuedRowSent size="sm" />}
-						<Menu>
+						{sortable && (
+							<button
+								ref={setActivatorNodeRef}
+								type="button"
+								aria-label="Reorder queued message"
+								{...attributes}
+								{...listeners}
+								className={`shrink-0 grid h-5 w-5 place-items-center ${dragActive ? "cursor-grabbing text-primary" : "cursor-grab active:cursor-grabbing text-muted-as-secondary hover:text-primary"} ${actionsClass}`}
+							>
+								<Icon name="Reorder" size="sm" />
+							</button>
+						)}
+						<Menu onOpenChange={setMenuOpen}>
 							<MenuTrigger
 								aria-label="Queued message actions"
-								className={`flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100 data-[popup-open]:opacity-100 ${contextOpen ? "opacity-100" : "opacity-0"}`}
+								className={`flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover hover:text-primary ${actionsClass}${dragActive ? " pointer-events-none" : ""}`}
 							>
 								<Icon name="DotsVertical" size="sm" className="size-3.5" />
 							</MenuTrigger>

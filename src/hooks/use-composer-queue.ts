@@ -59,6 +59,8 @@ export interface ComposerQueue
 	remove: (id: string) => void;
 	/** Upstream's "Clear all": drop every queued prompt at once. */
 	clear: () => void;
+	/** Drag reorder: move a queued prompt into another's slot (upstream's `reorderQueuedMessage`). */
+	reorder: (id: string, overId: string) => void;
 	/** Move a queued prompt to the head and interrupt the response so it sends next; settles with the interrupt. */
 	sendNow: (id: string) => Promise<void>;
 }
@@ -267,12 +269,27 @@ export function useComposerQueue({
 		},
 		[accept, busy, interrupt, items, onSendNowFailed, sessionId],
 	);
+	const reorder = useCallback(
+		(id: string, overId: string) =>
+		{
+			dispatchComposerQueue(
+				sessionId,
+				{
+					type: "move",
+					id,
+					overId,
+				},
+			);
+		},
+		[sessionId],
+	);
 	return {
 		items,
 		acceptedIds,
 		enqueue,
 		remove,
 		clear,
+		reorder,
 		sendNow,
 	};
 }

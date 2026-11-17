@@ -199,11 +199,37 @@ function CaretDownSmall({strokeWidth, ...props}: GlyphProps)
 }
 
 /** Glyphs lucide has no match for (upstream `_m`'s `*Filled` set and `CaretDownSmall`), drawn locally. */
+/**
+ * Upstream's `Reorder` (Anthropicons U+E0CF): three horizontal bars, measured live in a 16px box at x 2→14 and
+ * y ≈ 3.2 / 8 / 12.8, scaled to the 24-unit box and stroked at the Icon's width.
+ */
+function Reorder({strokeWidth, ...props}: GlyphProps)
+{
+	return createElement(
+		"svg",
+		{
+			viewBox: "0 0 24 24",
+			fill: "none",
+			stroke: "currentColor",
+			strokeWidth,
+			strokeLinecap: "round",
+			...svgAttributes(props),
+		},
+		createElement(
+			"path",
+			{
+				d: "M3 4.8h18M3 12h18M3 19.2h18",
+			},
+		),
+	);
+}
+
 export const DRAWN_GLYPHS =
 {
 	CaretDownSmall,
 	CaretRightFilled,
 	CheckCircleFilled,
+	Reorder,
 	StopFilled,
 } satisfies Partial<Record<AnthropiconName, ComponentType<GlyphProps>>>;
 

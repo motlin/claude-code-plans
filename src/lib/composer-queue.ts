@@ -53,6 +53,13 @@ export type ComposerQueueAction =
 			type: "reorder";
 			id: string;
 			toIndex: number;
+	  }
+	|
+	  {
+			/** Upstream's `reorderQueuedMessage`: take `overId`'s slot, landing after it moving down and before it moving up. */
+			type: "move";
+			id: string;
+			overId: string;
 	  };
 
 export function composerQueueReducer(
@@ -84,6 +91,16 @@ export function composerQueueReducer(
 			if (item === undefined) return queue;
 			const rest = queue.filter((candidate) => candidate.id !== action.id);
 			const index = Math.max(0, Math.min(action.toIndex, rest.length));
+			return [...rest.slice(0, index), item, ...rest.slice(index)];
+		}
+		case "move":
+		{
+			const from = queue.findIndex((candidate) => candidate.id === action.id);
+			const to = queue.findIndex((candidate) => candidate.id === action.overId);
+			const item = queue[from];
+			if (item === undefined || to === -1 || from === to) return queue;
+			const rest = queue.filter((candidate) => candidate.id !== action.id);
+			const index = rest.findIndex((candidate) => candidate.id === action.overId) + (from < to ? 1 : 0);
 			return [...rest.slice(0, index), item, ...rest.slice(index)];
 		}
 		default:
