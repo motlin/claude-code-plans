@@ -209,6 +209,7 @@ import {HighlightRuns} from "./highlight-runs";
 import
 {
 	type PaletteCardSession,
+	type PaletteCardTarget,
 	PaletteRenameDialog,
 	PaletteRowActionsButton,
 	PaletteRowActionsCard,
@@ -1479,7 +1480,9 @@ function PalettePopup({
 	const cardRef = useRef<HTMLDivElement>(null);
 	const [rowActions, setRowActions] = useState<
 	{
-		session: PaletteCardSession;
+		/** The row's cmdk value ({@link rowKey}). */
+		key: string;
+		target: PaletteCardTarget;
 		anchorRect: ReturnType<typeof rowActionsAnchorRect>;
 	} | null>(null);
 	// The row card's Rename dialog, kept mounted through its close animation.
@@ -1963,14 +1966,67 @@ function PalettePopup({
 		return byId;
 	}, [searchedSessions, serverRows]);
 
-	function openRowActions(id: string)
+	const artifactsById = useMemo(() => new Map(artifacts.map((artifact) => [artifact.id, artifact])), [artifacts]);
+	const projectsById = useMemo(() => new Map(projects.map((project) => [project.id, project])), [projects]);
+
+	/** The ⌥⏎ card target for a row's cmdk value: upstream's `Nm` session, artifact and project kinds. */
+	function cardTarget(key: string): PaletteCardTarget | undefined
 	{
-		const session = cardSessions.get(id);
+		const separator = key.indexOf(":");
+		const kind = key.slice(0, separator);
+		const id = key.slice(separator + 1);
+		if (kind === "session")
+		{
+			const session = cardSessions.get(id);
+			return session === undefined
+				? undefined
+				:
+					{
+						kind,
+						session,
+					};
+		}
+		if (kind === "artifact")
+		{
+			const artifact = artifactsById.get(id);
+			return artifact === undefined
+				? undefined
+				:
+					{
+						kind,
+						artifact,
+					};
+		}
+		if (kind === "project")
+		{
+			const project = projectsById.get(id);
+			return project === undefined
+				? undefined
+				:
+					{
+						kind,
+						project:
+						{
+							id: project.id,
+							name: project.name,
+						},
+					};
+		}
+		return undefined;
+	}
+
+	function openRowActions(key: string)
+	{
+		const target = cardTarget(key);
 		const popup = popupRef.current;
-		if (session === undefined || popup === null) return;
-		setActedIds((acted) => (acted.has(id) ? acted : new Set(acted).add(id)));
+		if (target === undefined || popup === null) return;
+		if (target.kind === "session")
+		{
+			const {id} = target.session;
+			setActedIds((acted) => (acted.has(id) ? acted : new Set(acted).add(id)));
+		}
 		const row = [...popup.querySelectorAll<HTMLElement>("[cmdk-item]")].find(
-			(item) => item.dataset["value"] === `session:${id}`,
+			(item) => item.dataset["value"] === key,
 		);
 		const list = popup.querySelector("[cmdk-list]") ?? popup;
 		const dialog = cardRef.current ?? popup;
@@ -1985,7 +2041,8 @@ function PalettePopup({
 		);
 		setRowActions(
 			{
-				session,
+				key,
+				target,
 				anchorRect,
 			},
 		);
@@ -1997,20 +2054,31 @@ function PalettePopup({
 	// Upstream's `Na`/`Ea`: once ⌥⏎ or ← has opened or closed the card, that key's auto-repeats are swallowed.
 	const swallowRepeatRef = useRef<RowActionsRepeatKey | null>(null);
 
+	// A card item's click focuses that item after its handler runs, so the refocus is repeated once the card is gone.
+	const refocusAfterCardRef = useRef(false);
+
 	function closeRowActions({refocus, swallowRepeat}: RowActionsCloseOptions)
 	{
 		setRowActions(null);
 		swallowRepeatRef.current = swallowRepeat ?? null;
+		refocusAfterCardRef.current = refocus;
 		if (refocus) inputRef.current?.focus();
 	}
 
-	// Upstream's `Sa===null → _a(null)`: the card closes once its row is no longer in the list.
-	// Runs after every commit because rows come from several queries and filters.
-	const rowActionsId = rowActions?.session.id;
 	useEffect(() =>
 	{
-		if (rowActionsId === undefined) return;
-		const row = popupRef.current?.querySelector(`[cmdk-item][data-value="session:${CSS.escape(rowActionsId)}"]`);
+		if (rowActions !== null || !refocusAfterCardRef.current) return;
+		refocusAfterCardRef.current = false;
+		inputRef.current?.focus();
+	}, [rowActions]);
+
+	// Upstream's `Sa===null → _a(null)`: the card closes once its row is no longer in the list.
+	// Runs after every commit because rows come from several queries and filters.
+	const rowActionsKey = rowActions?.key;
+	useEffect(() =>
+	{
+		if (rowActionsKey === undefined) return;
+		const row = popupRef.current?.querySelector(`[cmdk-item][data-value="${CSS.escape(rowActionsKey)}"]`);
 		if (row === null || row === undefined)
 			closeRowActions(
 				{
@@ -2034,7 +2102,7 @@ function PalettePopup({
 		);
 	}
 
-	function openRow(row: SearchRow)
+	function openRow(row: Pick<SearchRow, "kind" | "id" | "href">)
 	{
 		if (row.kind === "session") openSession(row.id);
 		else if (row.kind === "project")
@@ -2797,28 +2865,23 @@ function PalettePopup({
 		return event.nativeEvent.isComposing || event.keyCode === 229;
 	}
 
-	// ⌥⏎ opens the row-actions card for the selected session row.
+	// ⌥⏎ opens the row-actions card for the selected session, artifact or project row.
 	function openSelectedRowActions(event: KeyboardEvent<HTMLDivElement>)
 	{
 		const input = inputRef.current;
 		if (input === null || event.target !== input) return;
-		// Never fall through to cmdk's Enter, which would run a non-session row.
+		// Never fall through to cmdk's Enter, which would run a row without actions.
 		event.preventDefault();
 		swallowRepeatRef.current = "Enter";
 		const selected = cardRef.current?.querySelector<HTMLElement>('[cmdk-item][data-selected="true"]')?.dataset[
 			"value"
 		];
-		if (selected?.startsWith("session:") !== true) return;
-		const id = selected.slice("session:".length);
-		if (!cardSessions.has(id)) return;
-		openRowActions(id);
+		if (selected === undefined) return;
+		openRowActions(selected);
 	}
 
-	// Actions mode lists no session rows; checking it too avoids a stale selection flashing the hint.
-	const selectedRowHasActions =
-		!actionsOnly &&
-		selectedValue.startsWith("session:") &&
-		cardSessions.has(selectedValue.slice("session:".length));
+	// Actions mode lists no rows with actions; checking it too avoids a stale selection flashing the hint.
+	const selectedRowHasActions = !actionsOnly && cardTarget(selectedValue) !== undefined;
 	const footerCollapsed = !compose && query.trim() !== "";
 	const coarsePointer = useCoarsePointer();
 	const [listRef, contentHeight] = useListContentHeight();
@@ -3394,7 +3457,7 @@ function PalettePopup({
 												}}
 												onRowActions={() =>
 												{
-													openRowActions(row.id);
+													openRowActions(rowKey(row));
 												}}
 											/>
 										))}
@@ -3419,7 +3482,7 @@ function PalettePopup({
 															}}
 															onRowActions={() =>
 															{
-																openRowActions(row.id);
+																openRowActions(rowKey(row));
 															}}
 														/>
 													);
@@ -3526,7 +3589,7 @@ function PalettePopup({
 												}}
 												onRowActions={() =>
 												{
-													openRowActions(row.id);
+													openRowActions(rowKey(row));
 												}}
 											/>
 										))}
@@ -3683,14 +3746,23 @@ function PalettePopup({
 				</div>
 				{rowActions !== null && (
 					<PaletteRowActionsCard
-						key={rowActions.session.id}
-						session={rowActions.session}
+						key={rowActions.key}
+						target={rowActions.target}
 						anchorRect={rowActions.anchorRect}
-						onOpen={(id) =>
+						onOpen={() =>
 						{
+							const {target} = rowActions;
 							select(() =>
 							{
-								openSession(id);
+								if (target.kind === "session") openSession(target.session.id);
+								else
+									openRow(
+										{
+											kind: target.kind,
+											id: target.kind === "artifact" ? target.artifact.id : target.project.id,
+											href: undefined,
+										},
+									);
 							});
 						}}
 						onRename={(session) =>
@@ -4145,7 +4217,8 @@ function EmptyViewItem({
 }: {
 	row: EmptyViewRow;
 	onOpenSession: (id: string) => void;
-	onOpenRowActions: (id: string) => void;
+	/** Opens the card for a row's cmdk value. */
+	onOpenRowActions: (key: string) => void;
 	onNavigate: (href: string) => void;
 	onNewSession: () => void;
 })
@@ -4186,7 +4259,7 @@ function EmptyViewItem({
 			value={`session:${row.id}`}
 			onOpen={() =>
 			{
-				onOpenRowActions(row.id);
+				onOpenRowActions(`session:${row.id}`);
 			}}
 		>
 			<CommandItem
@@ -4325,6 +4398,9 @@ function PaletteSecondary({text, archived}: {text: string | undefined; archived:
 
 const ROW_ACTIONS_LABEL_CLASS = "me-7 pointer-coarse:me-0";
 
+/** Upstream's `Nm`: the search-row kinds with a ⌥⏎ card (routines have no per-routine page to open). */
+const ROW_ACTION_KINDS: ReadonlySet<SearchKind> = new Set<SearchKind>(["session", "artifact", "project"]);
+
 /** Upstream's search row: kind icon, bold title runs, quoted snippet, bucket meta, ⏎ when selected. */
 function SearchResultItem({
 	row,
@@ -4338,14 +4414,14 @@ function SearchResultItem({
 	onRowActions: () => void;
 })
 {
-	const session = row.kind === "session";
+	const actions = ROW_ACTION_KINDS.has(row.kind);
 	const archived = row.archived === true;
 	const item = (
 		<Command.Item
 			value={rowKey(row)}
 			onSelect={onSelect}
 			data-item-type={row.kind === "session" ? "code_session" : row.kind}
-			{...(session
+			{...(actions
 				?
 					{
 						"aria-keyshortcuts": "Alt+Enter",
@@ -4359,7 +4435,7 @@ function SearchResultItem({
 				: {})}
 			className={archived ? ARCHIVED_ROW_CLASS : ROW_CLASS}
 		>
-			<span className={`flex min-w-0 flex-1 items-center gap-2 ${session ? ROW_ACTIONS_LABEL_CLASS : ""}`}>
+			<span className={`flex min-w-0 flex-1 items-center gap-2 ${actions ? ROW_ACTIONS_LABEL_CLASS : ""}`}>
 				<span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-[18px]">
 					{rowIcon(row)}
 				</span>
@@ -4390,7 +4466,7 @@ function SearchResultItem({
 			<ReturnGlyph />
 		</Command.Item>
 	);
-	return session ? (
+	return actions ? (
 		<SessionRowActions value={rowKey(row)} onOpen={onRowActions}>
 			{item}
 		</SessionRowActions>

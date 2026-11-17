@@ -49,8 +49,8 @@ import
 	type ArtifactTypeKey,
 	type ArtifactView,
 } from "../lib/artifact-gallery";
-import {pinArtifact, unpinArtifact, useArtifactPins} from "../lib/artifact-pins";
-import {writeClipboardText} from "../lib/clipboard";
+import {toggleArtifactPin, useArtifactPins} from "../lib/artifact-pins";
+import {copyLink} from "../lib/copy-link";
 import {formatCount} from "../lib/pluralize";
 import {useToast} from "../components/toast-context";
 import {TOOLBAR_ICON_BUTTON, ToolbarSearch} from "../components/toolbar-search";
@@ -1347,29 +1347,7 @@ const ROW_ACTION_CLASS =
 function useCopyArtifactLink()
 {
 	const toast = useToast();
-	return async (artifact: ArtifactSummary) =>
-	{
-		const copied = await writeClipboardText(artifact.url);
-		toast(
-			copied
-				?
-					{
-						kind: "success",
-						message: "Link copied to clipboard.",
-					}
-				:
-					{
-						kind: "error",
-						message: "Couldn’t copy the link. Try again.",
-					},
-		);
-	};
-}
-
-function togglePin(artifact: ArtifactSummary, pinned: boolean): void
-{
-	if (pinned) unpinArtifact(artifact.url);
-	else pinArtifact(artifact.url);
+	return async (artifact: ArtifactSummary) => copyLink(artifact.url, toast);
 }
 
 /** Upstream's row menu within local limits (Rename, Duplicate and Delete are cloud mutations), with its P / C keycaps. */
@@ -1384,7 +1362,7 @@ function ArtifactMenuItems({artifact, pinned}: {artifact: ArtifactSummary; pinne
 				data-artifact-row="pin"
 				onSelect={() =>
 				{
-					togglePin(artifact, pinned);
+					toggleArtifactPin(artifact.url, pinned);
 				}}
 			>
 				{pinned ? "Unpin" : "Pin"}
@@ -1421,7 +1399,7 @@ function ArtifactPinButton({
 				className={className}
 				onClick={() =>
 				{
-					togglePin(artifact, pinned);
+					toggleArtifactPin(artifact.url, pinned);
 				}}
 			>
 				<Pin

@@ -3,6 +3,10 @@ import {Ellipsis} from "lucide-react";
 import {type KeyboardEvent, type RefObject, useEffect, useLayoutEffect, useMemo, useRef} from "react";
 
 import {useSessionArchive} from "../hooks/use-session-archive";
+import type {ArtifactSummary} from "../lib/api/artifacts";
+import {artifactTimestamp} from "../lib/artifact-gallery";
+import {toggleArtifactPin, useArtifactPins} from "../lib/artifact-pins";
+import {copyLink} from "../lib/copy-link";
 import {RENAME_FAILED_MESSAGE} from "../hooks/use-session-rename";
 import {useRenameSessionMutation} from "../lib/api/sessions";
 import {assertNever} from "../lib/assert-never";
@@ -42,12 +46,57 @@ export interface PaletteCardSession
 	failedAt?: string | undefined;
 }
 
-type CardItemId = "open" | "open-new-tab" | SessionMenuItemId;
-
-interface CardItem
+/** A local project row: `~/.claude/projects/<id>`. */
+export interface PaletteCardProject
 {
-	id: CardItemId;
+	id: string;
+	name: string;
+}
+
+/** The row a ⌥⏎ card acts on: a session, a local claude.ai artifact record, or a local project. */
+export type PaletteCardTarget =
+	|
+	  {
+			kind: "session";
+			session: PaletteCardSession;
+	  }
+	|
+	  {
+			kind: "artifact";
+			artifact: ArtifactSummary;
+	  }
+	|
+	  {
+			kind: "project";
+			project: PaletteCardProject;
+	  };
+
+type OpenItemId = "open" | "open-new-tab";
+
+interface CardItem<Id extends string>
+{
+	id: Id;
 	label: string;
+}
+
+/** Upstream's `at`: Open runs the row like Enter; Open in new tab follows on web. */
+const OPEN_ITEMS: readonly CardItem<OpenItemId>[] = [
+	{
+		id: "open",
+		label: "Open",
+	},
+	{
+		id: "open-new-tab",
+		label: "Open in new tab",
+	},
+];
+
+/** Upstream's card header `it`: the title, then "kind · when" (either alone without the dot; neither omits the line). */
+interface CardPreview
+{
+	title: string;
+	kind: string | undefined;
+	when: string | null;
 }
 
 const SHIFT_COLLISION_AVOIDANCE =
@@ -70,27 +119,57 @@ export interface RowActionsCloseOptions
 	swallowRepeat?: RowActionsRepeatKey;
 }
 
+interface CardProps
+{
+	/** The anchor box from {@link rowActionsAnchorRect}, measured once as the card opens. */
+	anchorRect: Box;
+	/** Runs the row as Enter would. */
+	onOpen: () => void;
+	onClose: (options: RowActionsCloseOptions) => void;
+}
+
 /**
  * The claude.ai/code ⌘K row-actions card: a 280px compact cds Menu overlapping the receded palette's
- * inline-end edge by 44px, with the session title, "Code session · <bucket>" and items numbered 1…N. Its modal
+ * inline-end edge by 44px, with the row's title, "kind · when" and items numbered 1…N. Its modal
  * backdrop eats the first click outside. ←, Esc, Tab, ⌥⏎ again or a held Enter close only the card; digits
- * ignore repeats and the first 300ms after the item list changes. Rename opens a dialog over the palette, as
- * upstream's `CodeSessionRenameDialog` does. Delete is never offered (transcripts are never deleted).
+ * ignore repeats and the first 300ms after the item list changes. Session rows get upstream's session card
+ * (Rename opens a dialog over the palette, as upstream's `CodeSessionRenameDialog` does; Delete is never
+ * offered), artifact rows upstream's `mt` and project rows upstream's `ct`.
  */
 export function PaletteRowActionsCard({
+	target,
+	onRename,
+	...props
+}: CardProps &
+{
+	target: PaletteCardTarget;
+	/** Opens upstream's Rename session dialog over the palette, which stays open. */
+	onRename: (session: PaletteCardSession) => void;
+})
+{
+	switch (target.kind)
+	{
+		case "session":
+			return <SessionCard session={target.session} onRename={onRename} {...props} />;
+		case "artifact":
+			return <ArtifactCard artifact={target.artifact} {...props} />;
+		case "project":
+			return <ProjectCard project={target.project} {...props} />;
+		default:
+			return assertNever(target);
+	}
+}
+
+function SessionCard({
 	session,
-	anchorRect,
 	onOpen,
 	onRename,
 	onClose,
-}: {
+	anchorRect,
+}: CardProps &
+{
 	session: PaletteCardSession;
-	/** The anchor box from {@link rowActionsAnchorRect}, measured once as the card opens. */
-	anchorRect: Box;
-	onOpen: (id: string) => void;
-	/** Opens upstream's Rename session dialog over the palette, which stays open. */
 	onRename: (session: PaletteCardSession) => void;
-	onClose: (options: RowActionsCloseOptions) => void;
 })
 {
 	const queryClient = useQueryClient();
@@ -98,7 +177,6 @@ export function PaletteRowActionsCard({
 	const pins = usePins();
 	const toast = useToast();
 	const setArchived = useSessionArchive(session.id);
-	const anchor = useMemo(() => virtualAnchor(anchorRect), [anchorRect]);
 	useAwaitingAckVersion();
 
 	const capabilities = new Set<SessionMenuCapability>(["pin", "rename", "readState", "ackAwaiting", "copyLink"]);
@@ -135,57 +213,14 @@ export function PaletteRowActionsCard({
 		{
 			surface: "palette-card",
 		},
-	).flatMap((entry): CardItem[] => (entry.kind === "item" ? [entry] : []));
-	const items: CardItem[] = [
-		{
-			id: "open",
-			label: "Open",
-		},
-		{
-			id: "open-new-tab",
-			label: "Open in new tab",
-		},
-		...sessionItems,
-	];
+	).flatMap((entry): CardItem<SessionMenuItemId>[] => (entry.kind === "item" ? [entry] : []));
+	const items: CardItem<OpenItemId | SessionMenuItemId>[] = [...OPEN_ITEMS, ...sessionItems];
 
-	// When the live item list last changed after opening; digits are ignored for ROW_ACTIONS_DIGIT_GUARD_MS after it.
-	const itemsKey = items.map((item) => item.id).join(" ");
-	const itemsKeyRef = useRef(itemsKey);
-	const itemsChangedAtRef = useRef(Number.NEGATIVE_INFINITY);
-	useLayoutEffect(() =>
-	{
-		if (itemsKeyRef.current === itemsKey) return;
-		itemsKeyRef.current = itemsKey;
-		itemsChangedAtRef.current = performance.now();
-	}, [itemsKey]);
-
-	// Upstream focuses the first item after two frames, once Base UI has settled the popup's own focus.
-	useEffect(() =>
-	{
-		let second = 0;
-		const first = requestAnimationFrame(() =>
-		{
-			second = requestAnimationFrame(() =>
-			{
-				document.querySelector<HTMLElement>('[data-palette-row-actions] [role="menuitem"]')?.focus(
-					{
-						preventScroll: true,
-					},
-				);
-			});
-		});
-		return () =>
-		{
-			cancelAnimationFrame(first);
-			cancelAnimationFrame(second);
-		};
-	}, []);
-
-	const run = (id: CardItemId): void =>
+	const run = (id: OpenItemId | SessionMenuItemId): void =>
 	{
 		if (id === "open")
 		{
-			onOpen(session.id);
+			onOpen();
 			return;
 		}
 		if (id === "rename")
@@ -253,6 +288,227 @@ export function PaletteRowActionsCard({
 		}
 	};
 
+	return (
+		<RowActionsCardShell
+			anchorRect={anchorRect}
+			preview={
+			{
+				title: session.title,
+				kind: "Code session",
+				when: relativeBucket(Date.parse(session.mtime), Date.now()),
+			}}
+			items={items}
+			onRun={run}
+			onClose={onClose}
+		/>
+	);
+}
+
+type ArtifactItemId = OpenItemId | "copy-link" | "pin" | "unpin";
+
+/**
+ * Upstream's artifact card `mt`: Open, Open in new tab, Copy link and Pin/Unpin. Local artifacts open at
+ * `/artifact/<id>`, copy their claude.ai link (as the Artifacts page does) and pin per browser. Upstream's Open
+ * conversation is claude.ai-chat-only, and its screenshot header and thumb morph need a hover thumb card.
+ */
+function ArtifactCard({
+	artifact,
+	onOpen,
+	onClose,
+	anchorRect,
+}: CardProps &
+{
+	artifact: ArtifactSummary;
+})
+{
+	const toast = useToast();
+	const pinned = useArtifactPins().isPinned(artifact.url);
+	const items: CardItem<ArtifactItemId>[] = [
+		...OPEN_ITEMS,
+		{
+			id: "copy-link",
+			label: "Copy link",
+		},
+		pinned
+			?
+				{
+					id: "unpin",
+					label: "Unpin",
+				}
+			:
+				{
+					id: "pin",
+					label: "Pin",
+				},
+	];
+
+	const run = (id: ArtifactItemId): void =>
+	{
+		if (id === "open")
+		{
+			onOpen();
+			return;
+		}
+		onClose(
+			{
+				refocus: true,
+			},
+		);
+		switch (id)
+		{
+			case "open-new-tab":
+				window.open(localUrl("artifact", artifact.id), "_blank", "noopener,noreferrer");
+				return;
+			case "copy-link":
+				void copyLink(artifact.url, toast);
+				return;
+			case "pin":
+			case "unpin":
+				toggleArtifactPin(artifact.url, id === "unpin");
+				return;
+			default:
+				assertNever(id);
+		}
+	};
+
+	return (
+		<RowActionsCardShell
+			anchorRect={anchorRect}
+			preview={
+			{
+				title: artifact.title === "" ? "Untitled artifact" : artifact.title,
+				kind: artifact.kind === "docs" ? "Docs" : "Artifact",
+				when: relativeBucket(artifactTimestamp(artifact), Date.now()),
+			}}
+			items={items}
+			onRun={run}
+			onClose={onClose}
+		/>
+	);
+}
+
+type ProjectItemId = OpenItemId | "copy-link";
+
+/**
+ * Upstream's Claude Code project card `ct`: Open, Open in new tab and Copy link, under a "Project" meta with no
+ * time. Upstream's Settings (cloud project permissions) and Pin (behind the project-pin flag) have no local
+ * analogue: local projects are `~/.claude/projects` folders.
+ */
+function ProjectCard({
+	project,
+	onOpen,
+	onClose,
+	anchorRect,
+}: CardProps &
+{
+	project: PaletteCardProject;
+})
+{
+	const toast = useToast();
+	const items: CardItem<ProjectItemId>[] = [
+		...OPEN_ITEMS,
+		{
+			id: "copy-link",
+			label: "Copy link",
+		},
+	];
+
+	const run = (id: ProjectItemId): void =>
+	{
+		if (id === "open")
+		{
+			onOpen();
+			return;
+		}
+		onClose(
+			{
+				refocus: true,
+			},
+		);
+		switch (id)
+		{
+			case "open-new-tab":
+				window.open(localUrl("project", project.id), "_blank", "noopener,noreferrer");
+				return;
+			case "copy-link":
+				void copyLink(localUrl("project", project.id), toast);
+				return;
+			default:
+				assertNever(id);
+		}
+	};
+
+	return (
+		<RowActionsCardShell
+			anchorRect={anchorRect}
+			preview={
+			{
+				title: project.name === "" ? "Untitled project" : project.name,
+				kind: "Project",
+				when: null,
+			}}
+			items={items}
+			onRun={run}
+			onClose={onClose}
+		/>
+	);
+}
+
+function localUrl(route: "artifact" | "project", id: string): string
+{
+	return `${window.location.origin}/${route}/${encodeURIComponent(id)}`;
+}
+
+/** Upstream's card shell `nt` with header `it`: the menu, its keys, and the numbered items. */
+function RowActionsCardShell<Id extends string>({
+	anchorRect,
+	preview,
+	items,
+	onRun,
+	onClose,
+}: {
+	anchorRect: Box;
+	preview: CardPreview;
+	items: readonly CardItem<Id>[];
+	onRun: (id: Id) => void;
+	onClose: (options: RowActionsCloseOptions) => void;
+})
+{
+	const anchor = useMemo(() => virtualAnchor(anchorRect), [anchorRect]);
+
+	// When the live item list last changed after opening; digits are ignored for ROW_ACTIONS_DIGIT_GUARD_MS after it.
+	const itemsKey = items.map((item) => item.id).join(" ");
+	const itemsKeyRef = useRef(itemsKey);
+	const itemsChangedAtRef = useRef(Number.NEGATIVE_INFINITY);
+	useLayoutEffect(() =>
+	{
+		if (itemsKeyRef.current === itemsKey) return;
+		itemsKeyRef.current = itemsKey;
+		itemsChangedAtRef.current = performance.now();
+	}, [itemsKey]);
+
+	// Upstream focuses the first item after two frames, once Base UI has settled the popup's own focus.
+	useEffect(() =>
+	{
+		let second = 0;
+		const first = requestAnimationFrame(() =>
+		{
+			second = requestAnimationFrame(() =>
+			{
+				document.querySelector<HTMLElement>('[data-palette-row-actions] [role="menuitem"]')?.focus(
+					{
+						preventScroll: true,
+					},
+				);
+			});
+		});
+		return () =>
+		{
+			cancelAnimationFrame(first);
+			cancelAnimationFrame(second);
+		};
+	}, []);
+
 	function closeFromKey(event: KeyboardEvent<HTMLDivElement>, options: RowActionsCloseOptions)
 	{
 		event.preventDefault();
@@ -302,7 +558,7 @@ export function PaletteRowActionsCard({
 		}
 	}
 
-	const bucket = relativeBucket(Date.parse(session.mtime), Date.now());
+	const meta = [preview.kind, preview.when].filter((part) => part !== undefined && part !== null).join(" · ");
 
 	return (
 		<Menu
@@ -343,11 +599,16 @@ export function PaletteRowActionsCard({
 							data-palette-card-title=""
 							className="line-clamp-2 break-words text-[13px]/[19px] text-primary"
 						>
-							{session.title}
+							{preview.title}
 						</div>
-						<div data-palette-card-meta="" className="truncate text-[11px]/[17px] text-[var(--menu-muted)]">
-							{bucket === null ? "Code session" : `Code session · ${bucket}`}
-						</div>
+						{meta !== "" && (
+							<div
+								data-palette-card-meta=""
+								className="truncate text-[11px]/[17px] text-[var(--menu-muted)]"
+							>
+								{meta}
+							</div>
+						)}
 					</div>
 				}
 			>
@@ -361,7 +622,7 @@ export function PaletteRowActionsCard({
 						data-card-item={item.id}
 						onSelect={() =>
 						{
-							run(item.id);
+							onRun(item.id);
 						}}
 					>
 						{item.label}

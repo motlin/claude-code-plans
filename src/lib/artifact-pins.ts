@@ -79,6 +79,13 @@ export function unpinArtifact(url: string): void
 	write(readArtifactPins().filter((pinned) => pinned !== url));
 }
 
+/** The Pin / Unpin item: flips the artifact's per-browser pin. */
+export function toggleArtifactPin(url: string, pinned: boolean): void
+{
+	if (pinned) unpinArtifact(url);
+	else pinArtifact(url);
+}
+
 function onStorage(event: StorageEvent): void
 {
 	if (event.key === null || event.key === ARTIFACT_PIN_STORAGE_KEY)

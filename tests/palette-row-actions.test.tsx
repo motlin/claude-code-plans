@@ -19,6 +19,10 @@ import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-pa
 import {rowActionsAnchorRect} from "../src/components/palette-row-actions-geometry";
 import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
+import {artifactsQueryOptions, type ArtifactSummary} from "../src/lib/api/artifacts";
+import {projectsQueryOptions} from "../src/lib/api/projects";
+import {routinesQueryOptions} from "../src/lib/api/routines";
+import {ARTIFACT_PIN_STORAGE_KEY} from "../src/lib/artifact-pins";
 import {recentSessionsQueryOptions, sessionQueryKeys, type SessionListItem} from "../src/lib/api/sessions";
 import {pin, readPinState} from "../src/lib/pin-store";
 import {useSessionRenameRequest} from "../src/lib/session-rename-request";
@@ -90,6 +94,9 @@ async function openPalette(
 		recentSession("sess-1", "Refactor auth module"),
 		recentSession("sess-2", "Write release notes"),
 	],
+	seed: (queryClient: QueryClient) => void = () =>
+	{
+	},
 )
 {
 	const queryClient = new QueryClient(
@@ -110,6 +117,7 @@ async function openPalette(
 			nextCursor: null,
 		},
 	);
+	seed(queryClient);
 	const rootRoute = createRootRoute(
 		{
 			component: () => (
@@ -129,9 +137,23 @@ async function openPalette(
 			component: SessionPage,
 		},
 	);
+	const artifactRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "artifact/$id",
+			component: () => null,
+		},
+	);
+	const projectRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "project/$id",
+			component: () => null,
+		},
+	);
 	const router = createRouter(
 		{
-			routeTree: rootRoute.addChildren([sessionRoute]),
+			routeTree: rootRoute.addChildren([sessionRoute, artifactRoute, projectRoute]),
 			history: createMemoryHistory(
 				{
 					initialEntries: ["/"],
@@ -1767,6 +1789,588 @@ describe("palette row actions card", () =>
 			expect(screen.queryByRole("menu")).toBeNull();
 		});
 		expect(document.activeElement).toBe(input);
+	});
+
+	function artifact(id: string, title: string, overrides: Partial<ArtifactSummary> = {}): ArtifactSummary
+	{
+		return {
+			url: `https://claude.ai/artifact/${id}`,
+			id,
+			kind: "html",
+			icon: null,
+			title,
+			description: null,
+			sourcePath: null,
+			sourceExists: false,
+			sourceModifiedAt: null,
+			thumbnailUrl: null,
+			audience: null,
+			firstSeenAt: Date.now(),
+			lastPublishedAt: Date.now(),
+			lastOpenedAt: null,
+			publishCount: 1,
+			sessionId: "sess-1",
+			projectId: "-users-dev-project-a",
+			...overrides,
+		};
+	}
+
+	function project(id: string, name: string)
+	{
+		return {
+			id,
+			name,
+			projectPath: null,
+			sessionCount: 1,
+			memoryCount: 0,
+			planCount: 0,
+			taskCount: 0,
+			activeCount: 0,
+			lastActivity: new Date().toISOString(),
+		};
+	}
+
+	async function openTab(tab: "Artifacts" | "Projects" | "Scheduled", seed: (queryClient: QueryClient) => void)
+	{
+		const opened = await openPalette(undefined, seed);
+		fireEvent.click(
+			within(opened.dialog).getByRole(
+				"tab",
+				{
+					name: tab,
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(
+				opened.dialog
+					.querySelector("[cmdk-item][data-selected=true]")
+					?.getAttribute("data-value")
+					?.startsWith("session:"),
+			).toBe(false);
+		});
+		return opened;
+	}
+
+	async function openTabCard(tab: "Artifacts" | "Projects", seed: (queryClient: QueryClient) => void)
+	{
+		const opened = await openTab(tab, seed);
+		fireEvent.keyDown(
+			opened.input,
+			{
+				key: "Enter",
+				code: "Enter",
+				altKey: true,
+			},
+		);
+		const card = await screen.findByRole(
+			"menu",
+			{
+				name: "Actions",
+			},
+		);
+		return {
+			...opened,
+			card,
+		};
+	}
+
+	function seedArtifacts(...artifacts: ArtifactSummary[])
+	{
+		return (queryClient: QueryClient) =>
+		{
+			queryClient.setQueryData(artifactsQueryOptions.queryKey, artifacts);
+		};
+	}
+
+	function seedProjects(...projects: ReturnType<typeof project>[])
+	{
+		return (queryClient: QueryClient) =>
+		{
+			queryClient.setQueryData(projectsQueryOptions().queryKey, projects);
+		};
+	}
+
+	function cardSummary(card: HTMLElement)
+	{
+		return {
+			heading: card.querySelector("[data-palette-card-title]")?.textContent,
+			meta: card.querySelector("[data-palette-card-meta]")?.textContent ?? null,
+			items: menuItems(card),
+			ids: [...card.querySelectorAll("[data-card-item]")].map((item) => item.getAttribute("data-card-item")),
+		};
+	}
+
+	function selectedRowAffordances(dialog: HTMLElement)
+	{
+		const row = dialog.querySelector<HTMLElement>("[cmdk-item][data-selected=true]");
+		return {
+			value: row?.getAttribute("data-value"),
+			keyShortcuts: row?.getAttribute("aria-keyshortcuts") ?? null,
+			labelClass: row?.firstElementChild?.className,
+			button: row?.parentElement?.querySelector("[data-palette-row-actions-button]") !== null,
+			footer: [...dialog.querySelectorAll("[data-palette-footer-hint]")].map(
+				(hint) => hint.querySelector("span")?.textContent,
+			),
+		};
+	}
+
+	it("gives a selected artifact row the session row's ⌥⏎ affordances", async () =>
+	{
+		const {dialog} = await openTab("Artifacts", seedArtifacts(artifact("art-1", "Quarterly report")));
+
+		expect(selectedRowAffordances(dialog)).toStrictEqual(
+			{
+				value: "artifact:art-1",
+				keyShortcuts: "Alt+Enter",
+				labelClass: "flex min-w-0 flex-1 items-center gap-2 me-7 pointer-coarse:me-0",
+				button: true,
+				footer: ["Close", "Change type", "Filters", "Actions"],
+			},
+		);
+	});
+
+	it("gives a selected project row the session row's ⌥⏎ affordances", async () =>
+	{
+		const {dialog} = await openTab("Projects", seedProjects(project("-Users-x-proj", "proj")));
+
+		expect(selectedRowAffordances(dialog)).toStrictEqual(
+			{
+				value: "project:-Users-x-proj",
+				keyShortcuts: "Alt+Enter",
+				labelClass: "flex min-w-0 flex-1 items-center gap-2 me-7 pointer-coarse:me-0",
+				button: true,
+				footer: ["Close", "Change type", "Filters", "Actions"],
+			},
+		);
+	});
+
+	it("gives a routine row no actions, and ⌥⏎ on it opens nothing", async () =>
+	{
+		const {dialog, input} = await openTab("Scheduled", (queryClient) =>
+		{
+			queryClient.setQueryData(routinesQueryOptions.queryKey, [
+				{
+					toolUseId: "r-1",
+					recordUuid: null,
+					kind: "cron",
+					routineId: null,
+					name: "Nightly digest",
+					schedule: "0 9 * * *",
+					humanSchedule: "Every day at 9:00 AM",
+					delaySeconds: null,
+					runOnceAt: null,
+					recurring: true,
+					durable: true,
+					prompt: "Check the build",
+					createdAt: 0,
+					deletedAt: null,
+					sessionId: "sess-1",
+					projectId: "-users-dev-project-a",
+					sessionTitle: null,
+					status: "active",
+					nextRunAt: null,
+				},
+			]);
+		});
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+				code: "Enter",
+				altKey: true,
+			},
+		);
+
+		expect(
+			{
+				...selectedRowAffordances(dialog),
+				card: screen.queryByRole("menu"),
+			},
+		).toStrictEqual(
+			{
+				value: "routine:r-1",
+				keyShortcuts: null,
+				labelClass: "flex min-w-0 flex-1 items-center gap-2 ",
+				button: false,
+				footer: ["Close", "Change type", "Filters"],
+				card: null,
+			},
+		);
+	});
+
+	it("⌥⏎ on an artifact row opens upstream's artifact card", async () =>
+	{
+		const {card} = await openTabCard("Artifacts", seedArtifacts(artifact("art-1", "Quarterly report")));
+
+		expect(cardSummary(card)).toStrictEqual(
+			{
+				heading: "Quarterly report",
+				meta: "Artifact · Just now",
+				items: [
+					["Open1", "1"],
+					["Open in new tab2", "2"],
+					["Copy link3", "3"],
+					["Pin4", "4"],
+				],
+				ids: ["open", "open-new-tab", "copy-link", "pin"],
+			},
+		);
+	});
+
+	it('labels a docs artifact "Docs" and an untitled one "Untitled artifact"', async () =>
+	{
+		const {card} = await openTabCard(
+			"Artifacts",
+			seedArtifacts(
+				artifact(
+					"art-1",
+					"",
+					{
+						kind: "docs",
+						lastPublishedAt: Date.now() - 30 * 60_000,
+					},
+				),
+			),
+		);
+
+		expect(
+			{
+				heading: cardSummary(card).heading,
+				meta: cardSummary(card).meta,
+			},
+		).toStrictEqual(
+			{
+				heading: "Untitled artifact",
+				meta: "Docs · Past hour",
+			},
+		);
+	});
+
+	it("pins the artifact in this browser with 4, then offers Unpin", async () =>
+	{
+		const seed = seedArtifacts(artifact("art-1", "Quarterly report"));
+		const {card, input} = await openTabCard("Artifacts", seed);
+
+		fireEvent.keyDown(
+			card,
+			{
+				key: "4",
+				code: "Digit4",
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(document.activeElement).toBe(input);
+		});
+		const afterPin =
+		{
+			stored: localStorage.getItem(ARTIFACT_PIN_STORAGE_KEY),
+			focused: document.activeElement === input,
+		};
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+				code: "Enter",
+				altKey: true,
+			},
+		);
+		const reopened = await screen.findByRole(
+			"menu",
+			{
+				name: "Actions",
+			},
+		);
+
+		expect(
+			{
+				afterPin,
+				items: cardSummary(reopened).ids,
+			},
+		).toStrictEqual(
+			{
+				afterPin:
+				{
+					stored: '["https://claude.ai/artifact/art-1"]',
+					focused: true,
+				},
+				items: ["open", "open-new-tab", "copy-link", "unpin"],
+			},
+		);
+	});
+
+	it("copies the artifact's claude.ai link with 3, toasts, and closes the card", async () =>
+	{
+		const {card, input} = await openTabCard("Artifacts", seedArtifacts(artifact("art-1", "Quarterly report")));
+
+		fireEvent.keyDown(
+			card,
+			{
+				key: "3",
+				code: "Digit3",
+			},
+		);
+
+		await screen.findByText("Link copied to clipboard.");
+		await waitFor(() =>
+		{
+			expect(document.activeElement).toBe(input);
+		});
+		expect(
+			{
+				copied: writeText.mock.calls,
+				card: screen.queryByRole("menu"),
+				focused: document.activeElement === input,
+			},
+		).toStrictEqual(
+			{
+				copied: [["https://claude.ai/artifact/art-1"]],
+				card: null,
+				focused: true,
+			},
+		);
+	});
+
+	it("opens the artifact with 1 and closes the palette", async () =>
+	{
+		const {card} = await openTabCard("Artifacts", seedArtifacts(artifact("art-1", "Quarterly report")));
+
+		fireEvent.keyDown(
+			card,
+			{
+				key: "1",
+				code: "Digit1",
+			},
+		);
+
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
+		expect(
+			screen.getByRole(
+				"status",
+				{
+					name: "Location",
+				},
+			).textContent,
+		).toBe("/artifact/art-1");
+	});
+
+	it("opens the artifact in a new tab with 2", async () =>
+	{
+		const open = vi.spyOn(window, "open").mockReturnValue(null);
+		const {card} = await openTabCard("Artifacts", seedArtifacts(artifact("art-1", "Quarterly report")));
+
+		fireEvent.keyDown(
+			card,
+			{
+				key: "2",
+				code: "Digit2",
+			},
+		);
+
+		expect(
+			{
+				calls: open.mock.calls,
+				card: screen.queryByRole("menu"),
+			},
+		).toStrictEqual(
+			{
+				calls: [["http://localhost:3000/artifact/art-1", "_blank", "noopener,noreferrer"]],
+				card: null,
+			},
+		);
+	});
+
+	it("← closes an artifact card with focus back on the Search input", async () =>
+	{
+		const {card, input} = await openTabCard("Artifacts", seedArtifacts(artifact("art-1", "Quarterly report")));
+
+		fireEvent.keyDown(
+			card,
+			{
+				key: "ArrowLeft",
+				code: "ArrowLeft",
+			},
+		);
+
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		expect(document.activeElement).toBe(input);
+	});
+
+	it("a held Enter closes an artifact card without running an item", async () =>
+	{
+		const {card} = await openTabCard("Artifacts", seedArtifacts(artifact("art-1", "Quarterly report")));
+
+		fireEvent.keyDown(
+			card,
+			{
+				key: "Enter",
+				code: "Enter",
+				repeat: true,
+			},
+		);
+
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		expect(
+			{
+				dialog: screen.queryByRole("dialog") !== null,
+				location: document.querySelector('output[aria-label="Location"]')?.textContent,
+			},
+		).toStrictEqual(
+			{
+				dialog: true,
+				location: "/",
+			},
+		);
+	});
+
+	it("closes the artifact card when its row leaves the list", async () =>
+	{
+		const {dialog, input} = await openTabCard(
+			"Artifacts",
+			seedArtifacts(artifact("art-1", "Quarterly report"), artifact("art-2", "Release deck")),
+		);
+
+		fireEvent.change(
+			input,
+			{
+				target:
+				{
+					value: "deck",
+				},
+			},
+		);
+
+		await waitFor(() =>
+		{
+			expect(dialog.querySelector('[cmdk-item][data-value="artifact:art-1"]')).toBeNull();
+		});
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		expect(document.activeElement).toBe(input);
+	});
+
+	it('⌥⏎ on a project row opens upstream\'s project card, its meta just "Project"', async () =>
+	{
+		const {card} = await openTabCard("Projects", seedProjects(project("-Users-x-proj", "proj")));
+
+		expect(cardSummary(card)).toStrictEqual(
+			{
+				heading: "proj",
+				meta: "Project",
+				items: [
+					["Open1", "1"],
+					["Open in new tab2", "2"],
+					["Copy link3", "3"],
+				],
+				ids: ["open", "open-new-tab", "copy-link"],
+			},
+		);
+	});
+
+	it('titles a nameless project "Untitled project"', async () =>
+	{
+		const {card} = await openTabCard("Projects", seedProjects(project("-Users-x-proj", "")));
+
+		expect(cardSummary(card).heading).toBe("Untitled project");
+	});
+
+	it("copies the project's local link with 3 and toasts", async () =>
+	{
+		const {card} = await openTabCard("Projects", seedProjects(project("-Users-x proj", "proj")));
+
+		fireEvent.keyDown(
+			card,
+			{
+				key: "3",
+				code: "Digit3",
+			},
+		);
+
+		await screen.findByText("Link copied to clipboard.");
+		expect(
+			{
+				copied: writeText.mock.calls,
+				card: screen.queryByRole("menu"),
+			},
+		).toStrictEqual(
+			{
+				copied: [["http://localhost:3000/project/-Users-x%20proj"]],
+				card: null,
+			},
+		);
+	});
+
+	it("opens the project with 1, or in a new tab with 2", async () =>
+	{
+		const open = vi.spyOn(window, "open").mockReturnValue(null);
+		const {card, input} = await openTabCard("Projects", seedProjects(project("-Users-x-proj", "proj")));
+
+		fireEvent.keyDown(
+			card,
+			{
+				key: "2",
+				code: "Digit2",
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+		fireEvent.keyDown(
+			input,
+			{
+				key: "Enter",
+				code: "Enter",
+				altKey: true,
+			},
+		);
+		const reopened = await screen.findByRole(
+			"menu",
+			{
+				name: "Actions",
+			},
+		);
+		fireEvent.keyDown(
+			reopened,
+			{
+				key: "1",
+				code: "Digit1",
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
+
+		expect(
+			{
+				newTab: open.mock.calls,
+				location: screen.getByRole(
+					"status",
+					{
+						name: "Location",
+					},
+				).textContent,
+			},
+		).toStrictEqual(
+			{
+				newTab: [["http://localhost:3000/project/-Users-x-proj", "_blank", "noopener,noreferrer"]],
+				location: "/project/-Users-x-proj",
+			},
+		);
 	});
 });
 
