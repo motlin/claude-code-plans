@@ -1484,6 +1484,8 @@ function ArchiveInactiveSessionsRow()
 /**
  * Upstream's desktop Sessions section (`#local-sessions`), whose rows write Claude Code's own
  * settings.json. Local sessions are Claude Code CLIs on this computer, so the rows apply here too.
+ * Upstream moves Switch models under its Capabilities tab only when that tab exists, which it never
+ * does locally, so the row stays here as upstream's own fallback.
  */
 function LocalSessionsSection()
 {
@@ -1519,6 +1521,14 @@ function LocalSessionsSection()
 				valueFor={(on) => (on ? undefined : false)}
 			/>
 			<ArchiveInactiveSessionsRow />
+			<ClaudeCodeSwitchRow
+				slug="switch-models-local"
+				title="Switch models in Claude Code on this computer"
+				description="When a message is flagged, switch without asking. When off, Claude asks first, or stops if it can’t ask."
+				settingKey="switchModelsOnFlag"
+				isOn={(value) => value !== false}
+				valueFor={(on) => (on ? undefined : false)}
+			/>
 			<OutputStyleRow />
 			<ClaudeCodeSwitchRow
 				slug="local-sandbox"

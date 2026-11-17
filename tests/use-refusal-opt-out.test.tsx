@@ -246,7 +246,7 @@ describe("useRefusalOptOut", () =>
 		);
 	});
 
-	it("opens Settings at the switch-models row", () =>
+	it("opens Settings at the claude-code tab only, like upstream gO (the def has no anchor)", () =>
 	{
 		const {result} = renderHook(
 			() => useRefusalOptOut("s1"),
@@ -255,6 +255,6 @@ describe("useRefusalOptOut", () =>
 			},
 		);
 		result.current.openSettings();
-		expect(openSettings.mock.calls).toStrictEqual([["claude-code", "switch-models-local"]]);
+		expect(openSettings.mock.calls).toStrictEqual([["claude-code"]]);
 	});
 });

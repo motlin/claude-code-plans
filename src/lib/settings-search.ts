@@ -112,6 +112,12 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 	},
 	{
 		tab: "claude-code",
+		rowSlug: "switch-models-local",
+		title: "Switch models in Claude Code on this computer",
+		searchPhrases: ["Switch models when a message is flagged"],
+	},
+	{
+		tab: "claude-code",
 		rowSlug: "output-style",
 		title: "Output style",
 		searchPhrases: ["concise", "terse", "brief", "response style"],

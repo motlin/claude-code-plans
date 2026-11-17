@@ -254,6 +254,12 @@ describe("Claude Code settings ▸ Sessions", () =>
 							"Automatically archive local sessions after a period of no activity. Sessions that are running or have background work are never archived, and a worktree with uncommitted changes is kept on disk.",
 					},
 					{
+						slug: "switch-models-local",
+						title: "Switch models in Claude Code on this computer",
+						description:
+							"When a message is flagged, switch without asking. When off, Claude asks first, or stops if it can’t ask.",
+					},
+					{
 						slug: "output-style",
 						title: "Output style",
 						description:
@@ -321,12 +327,18 @@ describe("Claude Code settings ▸ Sessions", () =>
 		await renderTab();
 
 		expect(
-			["allow-bypass-permissions-mode", "dynamic-workflows", "local-sandbox"].map((slug) => (
-			{
-				disabled: switchIn(slug).disabled,
-				description: row(slug).querySelector("[data-settings-desc]")?.textContent,
-			})),
+			["allow-bypass-permissions-mode", "dynamic-workflows", "switch-models-local", "local-sandbox"].map(
+				(slug) => (
+				{
+					disabled: switchIn(slug).disabled,
+					description: row(slug).querySelector("[data-settings-desc]")?.textContent,
+				}),
+			),
 		).toStrictEqual([
+			{
+				disabled: "true",
+				description: "Loading…",
+			},
 			{
 				disabled: "true",
 				description: "Loading…",
@@ -342,7 +354,7 @@ describe("Claude Code settings ▸ Sessions", () =>
 		]);
 	});
 
-	it("reflects the file: bypass and sandbox on only when true, workflows on unless false", async () =>
+	it("reflects the file: bypass and sandbox on only when true, workflows and switch models on unless false", async () =>
 	{
 		vi.stubGlobal(
 			"fetch",
@@ -353,6 +365,7 @@ describe("Claude Code settings ▸ Sessions", () =>
 					{
 						skipDangerousModePermissionPrompt: true,
 						enableWorkflows: false,
+						switchModelsOnFlag: false,
 						"sandbox.enabled": true,
 					},
 				},
@@ -363,14 +376,34 @@ describe("Claude Code settings ▸ Sessions", () =>
 		await waitFor(() =>
 		{
 			expect(
-				["allow-bypass-permissions-mode", "dynamic-workflows", "local-sandbox"].map(
+				["allow-bypass-permissions-mode", "dynamic-workflows", "switch-models-local", "local-sandbox"].map(
 					(slug) => switchIn(slug).checked,
 				),
-			).toStrictEqual(["true", "false", "true"]);
+			).toStrictEqual(["true", "false", "false", "true"]);
 		});
 	});
 
-	it("defaults to bypass off, workflows on and sandbox off", async () =>
+	it("shows switch models on when settings.json has switchModelsOnFlag true", async () =>
+	{
+		vi.stubGlobal(
+			"fetch",
+			fakeEndpoint(
+				{
+					mtimeMs: 1,
+					values:
+					{
+						switchModelsOnFlag: true,
+					},
+				},
+			).fetchMock,
+		);
+		await renderTab();
+		await settled();
+
+		expect(switchIn("switch-models-local").checked).toBe("true");
+	});
+
+	it("defaults to bypass off, workflows on, switch models on and sandbox off", async () =>
 	{
 		vi.stubGlobal(
 			"fetch",
@@ -386,14 +419,20 @@ describe("Claude Code settings ▸ Sessions", () =>
 		await waitFor(() =>
 		{
 			expect(
-				["allow-bypass-permissions-mode", "dynamic-workflows", "local-sandbox"].map((slug) => (
-				{
-					checked: switchIn(slug).checked,
-					disabled: switchIn(slug).disabled,
-				})),
+				["allow-bypass-permissions-mode", "dynamic-workflows", "switch-models-local", "local-sandbox"].map(
+					(slug) => (
+					{
+						checked: switchIn(slug).checked,
+						disabled: switchIn(slug).disabled,
+					}),
+				),
 			).toStrictEqual([
 				{
 					checked: "false",
+					disabled: null,
+				},
+				{
+					checked: "true",
 					disabled: null,
 				},
 				{
@@ -528,6 +567,87 @@ describe("Claude Code settings ▸ Sessions", () =>
 				expectedMtimeMs: 2,
 			},
 		]);
+	});
+
+	it("writes switchModelsOnFlag false when turned off and deletes it when turned back on", async () =>
+	{
+		const endpoint = fakeEndpoint(
+			{
+				mtimeMs: 1,
+				values: {},
+			},
+		);
+		vi.stubGlobal("fetch", endpoint.fetchMock);
+		await renderTab();
+		await waitFor(() =>
+		{
+			expect(switchIn("switch-models-local").disabled).toBeNull();
+		});
+
+		fireEvent.click(switchIn("switch-models-local").element);
+		expect(switchIn("switch-models-local").checked).toBe("false");
+		await endpoint.reply(0, "ok");
+		await waitFor(() =>
+		{
+			expect(switchIn("switch-models-local").checked).toBe("false");
+		});
+		fireEvent.click(switchIn("switch-models-local").element);
+		await waitFor(() =>
+		{
+			expect(endpoint.posts).toHaveLength(2);
+		});
+		await endpoint.reply(1, "ok");
+		await waitFor(() =>
+		{
+			expect(switchIn("switch-models-local").checked).toBe("true");
+		});
+
+		expect(endpoint.posts).toStrictEqual([
+			{
+				key: "switchModelsOnFlag",
+				value: false,
+				expectedMtimeMs: 1,
+			},
+			{
+				key: "switchModelsOnFlag",
+				expectedMtimeMs: 2,
+			},
+		]);
+	});
+
+	it("reverts a refused switch models write and shows Couldn’t save this setting. under its row", async () =>
+	{
+		const endpoint = fakeEndpoint(
+			{
+				mtimeMs: 1,
+				values: {},
+			},
+		);
+		vi.stubGlobal("fetch", endpoint.fetchMock);
+		await renderTab();
+		await waitFor(() =>
+		{
+			expect(switchIn("switch-models-local").disabled).toBeNull();
+		});
+
+		fireEvent.click(switchIn("switch-models-local").element);
+		await endpoint.reply(0, "conflict");
+
+		await waitFor(() =>
+		{
+			expect(screen.getByRole("alert").textContent).toBe("Couldn’t save this setting.");
+		});
+		expect(
+			{
+				checked: switchIn("switch-models-local").checked,
+				inRow: row("switch-models-local").contains(screen.getByRole("alert")),
+			},
+		).toStrictEqual(
+			{
+				checked: "true",
+				inRow: true,
+			},
+		);
 	});
 
 	it("writes sandbox.enabled true and false", async () =>

@@ -14,7 +14,8 @@ export type RefusalOptOutView = "hidden" | "offer" | "off";
  * ~/.claude/settings.json: `hidden` until the settings load (or when they can't), `off` when the file
  * already holds false or this session just wrote it, else `offer`. `optOut` writes false (upstream's
  * `patch({switchModelsOnFlag:false})`) and stays pending until the write lands; a refused write
- * toasts the error and returns to the offer. `openSettings` opens the matching Settings row.
+ * toasts the error and returns to the offer. `openSettings` opens the Claude Code tab only,
+ * like upstream `gO` (the row def has no anchor, so no row flash).
  */
 export function useRefusalOptOut(sessionId: string):
 {
@@ -56,7 +57,7 @@ export function useRefusalOptOut(sessionId: string):
 	};
 	const openSettings = useCallback(() =>
 	{
-		open("claude-code", "switch-models-local");
+		open("claude-code");
 	}, [open]);
 
 	return {

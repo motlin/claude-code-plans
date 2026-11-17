@@ -237,6 +237,27 @@ describe("rankSettingsSections grouping", () =>
 				},
 			],
 		],
+		// Upstream's search phrase finds the switch-models row.
+		...["flagged", "switch models when"].map(
+			(
+				query,
+			): [
+				string,
+				Array<
+				{
+					tab: string;
+					rows: Array<[string, string]>;
+				}>,
+			] => [
+				query,
+				[
+					{
+						tab: "claude-code",
+						rows: [["switch-models-local", "Switch models in Claude Code on this computer"]],
+					},
+				],
+			],
+		),
 	])("groups results for %j", (query, expected) =>
 	{
 		const actual = rankSettingsSections(query).map((section) => (
@@ -350,7 +371,7 @@ describe("rankSettingsSections", () =>
 				{
 					tab: "claude-code",
 					score: 0,
-					rows: [],
+					rows: [["switch-models-local", 2]],
 				},
 				// The Code looks moved to Appearance (upstream GeneralCodeLooks).
 				{
@@ -380,7 +401,10 @@ describe("rankSettingsSections", () =>
 				{
 					tab: "claude-code",
 					score: 7,
-					rows: [["allow-bypass-permissions-mode", 2]],
+					rows: [
+						["allow-bypass-permissions-mode", 2],
+						["switch-models-local", 2],
+					],
 				},
 				{
 					tab: "general",
@@ -558,6 +582,12 @@ describe("buildSettingsResultRows", () =>
 					via: "Claude Code",
 				},
 				{
+					kind: "child",
+					tab: "claude-code",
+					rowSlug: "switch-models-local",
+					title: "Switch models in Claude Code on this computer",
+				},
+				{
 					kind: "hit",
 					tab: "claude-config",
 					via: "Claude Code settings files",
@@ -643,6 +673,12 @@ describe("buildSettingsResultRows", () =>
 				},
 				{
 					kind: "hit",
+					tab: "claude-code",
+					via: "Switch models in Claude Code on this computer",
+					rowSlug: "switch-models-local",
+				},
+				{
+					kind: "hit",
 					tab: "application",
 					via: "Shell tabs",
 					rowSlug: "shell-tabs",
@@ -652,12 +688,6 @@ describe("buildSettingsResultRows", () =>
 					tab: "general",
 					via: "Transcript text size",
 					rowSlug: "transcript-text-size",
-				},
-				{
-					kind: "hit",
-					tab: "claude-code",
-					via: "Connect new sessions to Remote Control",
-					rowSlug: "connect-new-sessions-to-remote-control",
 				},
 				{
 					kind: "hit",
