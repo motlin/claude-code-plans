@@ -16,8 +16,17 @@ import
 } from "@tanstack/react-router";
 
 import {HomeLanding} from "../src/components/home/home-landing";
-import {HOME_RECENT_LIMIT, useHomeWorktree} from "../src/components/home/launch-folder";
+import
+{
+	HOME_RECENT_LIMIT,
+	useHomeLaunchFolder,
+	useHomeLaunchOptions,
+	useHomeWorktree,
+} from "../src/components/home/launch-folder";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";
+import {autoModeSetupQueryOptions} from "../src/lib/api/auto-mode-setup";
+import {composerDefaultsQueryOptions, composerFolderDefaultsQueryOptions} from "../src/lib/api/composer-defaults";
+import {FOLDER_PERMISSION_MODE_STORAGE_KEY} from "../src/lib/folder-permission-mode";
 import {homeDismissalsQueryOptions} from "../src/lib/api/home-dismissals";
 import {type FolderPr, homeFolderPrQueryOptions} from "../src/lib/api/home-folder-pr";
 import {homeFolderStatusQueryOptions} from "../src/lib/api/home-folder-status";
@@ -372,6 +381,140 @@ describe("HomeLanding", () =>
 			{
 				tag: "DIV",
 				text: "Worktree is on",
+			},
+		);
+	});
+
+	it("turns the draft's mode to Auto from a pressed Turn on auto mode row and remembers it for the folder", async () =>
+	{
+		localStorage.clear();
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () =>
+				Promise.resolve(
+					new Response(
+						"{}",
+						{
+							status: 404,
+						},
+					),
+				),
+			),
+		);
+		const queryClient = new QueryClient(
+			{
+				defaultOptions:
+				{
+					queries:
+					{
+						retry: false,
+						staleTime: Infinity,
+					},
+				},
+			},
+		);
+		queryClient.setQueryData(
+			recentSessionsInfiniteQueryOptions().queryKey,
+			{
+				pages: [
+					{
+						sessions: [],
+						nextCursor: null,
+					},
+				],
+				pageParams: [null],
+			},
+		);
+		queryClient.setQueryData(
+			approvalsQueryOptions().queryKey,
+			{
+				approvals: [],
+			},
+		);
+		queryClient.setQueryData(
+			homeDismissalsQueryOptions.queryKey,
+			{
+				dismissals: {},
+			},
+		);
+		queryClient.setQueryData(projectsQueryOptions().queryKey, [
+			{
+				id: "-projects-alpha",
+				name: "alpha",
+				projectPath: "/projects/alpha",
+				sessionCount: 1,
+				memoryCount: 0,
+				planCount: 0,
+				taskCount: 0,
+				activeCount: 0,
+				lastActivity: new Date().toISOString(),
+			},
+		]);
+		queryClient.setQueryData(
+			recentSessionsQueryOptions(HOME_RECENT_LIMIT).queryKey,
+			{
+				sessions: [],
+				nextCursor: null,
+			},
+		);
+		queryClient.setQueryData(
+			homeFolderStatusQueryOptions("/projects/alpha").queryKey,
+			{
+				exists: true,
+				isGitRepo: false,
+				headBranch: null,
+				defaultBranch: null,
+				uncommittedFiles: 0,
+			},
+		);
+		const defaults =
+		{
+			model: null,
+			effortLevel: null,
+			defaultMode: "default",
+			repoDefaultMode: null,
+			bypassPermissionsAllowed: false,
+			fastMode: false,
+			fastModeBlocked: null,
+		};
+		queryClient.setQueryData(composerDefaultsQueryOptions.queryKey, defaults);
+		queryClient.setQueryData(composerFolderDefaultsQueryOptions("/projects/alpha").queryKey, defaults);
+		queryClient.setQueryData(
+			autoModeSetupQueryOptions("/projects/alpha").queryKey,
+			{
+				offered: true,
+				setupComplete: false,
+				denials: 0,
+				dismissed: false,
+				snoozedUntil: 0,
+				autoModeIsDefault: true,
+				sessionHistoryCount: 0,
+			},
+		);
+		function DraftMode()
+		{
+			const {selected} = useHomeLaunchFolder();
+			const {options} = useHomeLaunchOptions(selected?.projectPath);
+			return <output aria-label="Draft mode">{options.permissionMode ?? "unset"}</output>;
+		}
+		await renderLanding(queryClient, <DraftMode />);
+
+		fireEvent.click(await screen.findByTestId("start-card-auto-mode"));
+
+		expect(
+			{
+				mode: screen.getByLabelText("Draft mode").textContent,
+				row: screen.queryByTestId("start-card-auto-mode"),
+				stored: JSON.parse(localStorage.getItem(FOLDER_PERMISSION_MODE_STORAGE_KEY) ?? "null"),
+			},
+		).toStrictEqual(
+			{
+				mode: "auto",
+				row: null,
+				stored:
+				{
+					"/projects/alpha": "auto",
+				},
 			},
 		);
 	});

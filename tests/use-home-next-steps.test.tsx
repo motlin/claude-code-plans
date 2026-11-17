@@ -15,10 +15,18 @@ import
 	RouterProvider,
 } from "@tanstack/react-router";
 
-import {useHomeLaunchFolder, type HomeLaunchFolder} from "../src/components/home/launch-folder";
+import
+{
+	useHomeLaunchFolder,
+	useHomeLaunchOptions,
+	type HomeLaunchFolder,
+	type HomeLaunchOptions,
+} from "../src/components/home/launch-folder";
 import {HomeLaunchFolderProvider} from "../src/components/home/launch-folder-provider";
 import {useHomeNextSteps} from "../src/components/home/use-home-next-steps";
 import {approvalsQueryOptions} from "../src/lib/api/approvals";
+import {autoModeSetupQueryOptions} from "../src/lib/api/auto-mode-setup";
+import {composerDefaultsQueryOptions, composerFolderDefaultsQueryOptions} from "../src/lib/api/composer-defaults";
 import {homeDismissalsQueryOptions} from "../src/lib/api/home-dismissals";
 import {homeFolderStatusQueryOptions} from "../src/lib/api/home-folder-status";
 import {projectsQueryOptions} from "../src/lib/api/projects";
@@ -803,6 +811,178 @@ describe("useHomeNextSteps", () =>
 			expect(
 				fetchFolderPr.mock.calls.map(([url]) => url).filter((url) => url.startsWith("/api/home/folder-pr")),
 			).toStrictEqual([FOLDER_PR_URL]);
+		});
+	});
+
+	describe("Turn on auto mode", () =>
+	{
+		function autoClient({
+			defaultMode,
+			autoModeIsDefault,
+		}: {
+			defaultMode: string;
+			autoModeIsDefault: boolean;
+		}): QueryClient
+		{
+			const queryClient = seededClient();
+			queryClient.setQueryData(
+				recentSessionsInfiniteQueryOptions().queryKey,
+				{
+					pages: [
+						{
+							sessions: [],
+							nextCursor: null,
+						},
+					],
+					pageParams: [null],
+				},
+			);
+			queryClient.setQueryData(
+				approvalsQueryOptions().queryKey,
+				{
+					approvals: [],
+				},
+			);
+			queryClient.setQueryData(projectsQueryOptions().queryKey, [
+				{
+					id: "-projects-alpha",
+					name: "alpha",
+					projectPath: "/projects/alpha",
+					sessionCount: 1,
+					memoryCount: 0,
+					planCount: 0,
+					taskCount: 0,
+					activeCount: 0,
+					lastActivity: new Date().toISOString(),
+				},
+			]);
+			queryClient.setQueryData(
+				homeFolderStatusQueryOptions("/projects/alpha").queryKey,
+				{
+					exists: true,
+					isGitRepo: true,
+					headBranch: "main",
+					defaultBranch: "main",
+					uncommittedFiles: 0,
+				},
+			);
+			const defaults =
+			{
+				model: null,
+				effortLevel: null,
+				defaultMode,
+				repoDefaultMode: null,
+				bypassPermissionsAllowed: false,
+				fastMode: false,
+				fastModeBlocked: null,
+			};
+			queryClient.setQueryData(composerDefaultsQueryOptions.queryKey, defaults);
+			queryClient.setQueryData(composerFolderDefaultsQueryOptions("/projects/alpha").queryKey, defaults);
+			queryClient.setQueryData(
+				autoModeSetupQueryOptions("/projects/alpha").queryKey,
+				{
+					offered: true,
+					setupComplete: false,
+					denials: 0,
+					dismissed: false,
+					snoozedUntil: 0,
+					autoModeIsDefault,
+					sessionHistoryCount: 0,
+				},
+			);
+			return queryClient;
+		}
+
+		async function renderAutoMode(queryClient: QueryClient)
+		{
+			vi.stubGlobal(
+				"fetch",
+				vi.fn(async () =>
+					Promise.resolve(
+						new Response(
+							"{}",
+							{
+								status: 404,
+							},
+						),
+					),
+				),
+			);
+			const controls:
+			{
+				options?: HomeLaunchOptions;
+			} = {};
+			function Controls()
+			{
+				const {selected} = useHomeLaunchFolder();
+				controls.options = useHomeLaunchOptions(selected?.projectPath);
+				return null;
+			}
+			const frames = await renderHook(
+				queryClient,
+				(candidate) => `${candidate.id} ${candidate.title}`,
+				(probe) => (
+					<HomeLaunchFolderProvider>
+						<Controls />
+						{probe}
+					</HomeLaunchFolderProvider>
+				),
+			);
+			await waitFor(() =>
+			{
+				expect(frames.at(-1)).toBeDefined();
+			});
+			return {
+				frames,
+				setPermissionMode: (mode: Parameters<HomeLaunchOptions["setPermissionMode"]>[0]) =>
+				{
+					act(() =>
+					{
+						controls.options?.setPermissionMode(mode);
+					});
+				},
+			};
+		}
+
+		it("follows the draft's mode: hidden at Auto, shown after a Manual pick, gone again after Auto", async () =>
+		{
+			const {frames, setPermissionMode} = await renderAutoMode(
+				autoClient(
+					{
+						defaultMode: "auto",
+						autoModeIsDefault: true,
+					},
+				),
+			);
+			const atAuto = frames.at(-1);
+			setPermissionMode("default");
+			await waitFor(() =>
+			{
+				expect(frames.at(-1)).toStrictEqual(["auto-mode Turn on auto mode"]);
+			});
+			setPermissionMode("auto");
+			await waitFor(() =>
+			{
+				expect(frames.at(-1)).toStrictEqual([]);
+			});
+
+			expect(atAuto).toStrictEqual([]);
+		});
+
+		it("never offers it when an Auto pick would owe the consent dialog", async () =>
+		{
+			const {frames, setPermissionMode} = await renderAutoMode(
+				autoClient(
+					{
+						defaultMode: "default",
+						autoModeIsDefault: false,
+					},
+				),
+			);
+			const atRest = frames.at(-1);
+			setPermissionMode("default");
+
+			expect([atRest, frames.at(-1)]).toStrictEqual([[], []]);
 		});
 	});
 

@@ -941,6 +941,127 @@ describe("NextStepsList", () =>
 		);
 	});
 
+	it("renders upstream's Turn on auto mode row: Lightning icon first, no tooltip, press sets Auto and focuses the composer", () =>
+	{
+		vi.useFakeTimers();
+		try
+		{
+			const pressed: NextStepCandidate[] = [];
+			const autoMode: NextStepCandidate =
+			{
+				id: "auto-mode",
+				kind: "auto-mode",
+				subject: "",
+				stamp: 0,
+				title: "Turn on auto mode",
+				detail: null,
+				dismissLabel: "Dismiss auto mode",
+				icon: "lightning",
+				noTooltip: true,
+			};
+			const {container} = render(
+				<>
+					<FakeComposer />
+					<NextStepsList
+						rows={selectNextSteps(
+							{
+								candidates: [autoMode],
+								dismissed: {},
+							},
+						)}
+						onOpen={() =>
+						{
+						}}
+						onDismiss={() =>
+						{
+						}}
+						onTurnOnAutoMode={(candidate) =>
+						{
+							pressed.push(candidate);
+						}}
+					/>
+				</>,
+			);
+			const button = container.querySelector<HTMLButtonElement>(
+				"li[data-row-key='auto-mode'] > div.group\\/row > button[data-testid='start-card-auto-mode']",
+			)!;
+			fireEvent.pointerEnter(button.parentElement!);
+			act(() =>
+			{
+				vi.advanceTimersByTime(300);
+			});
+			const tooltip = screen.queryByRole("tooltip");
+			const icon = button.firstElementChild;
+			const shape =
+			{
+				iconTag: icon?.tagName,
+				iconClass: icon?.getAttribute("class"),
+				iconHidden: icon?.getAttribute("aria-hidden"),
+				iconMarked: icon?.hasAttribute("data-next-step-icon"),
+				title: [...button.querySelectorAll("span")].find(
+					(span) => span.textContent === "Turn on auto mode" && span.children.length === 0,
+				)?.className,
+				text: button.textContent,
+				describedBy: container.querySelectorAll("[aria-describedby]").length,
+				hiddenSpans: container.querySelectorAll("span[id][hidden]").length,
+				tooltip,
+				dismiss: container.querySelector("[data-next-step-dismiss]")?.getAttribute("aria-label"),
+			};
+			fireEvent.pointerLeave(button.parentElement!);
+
+			fireEvent.click(button);
+			const afterClick =
+			{
+				pressed: [...pressed],
+				focused: document.activeElement?.getAttribute("aria-label"),
+			};
+			// A keyboard Enter on a focused button arrives as a click with no pointer detail.
+			button.focus();
+			fireEvent.click(
+				button,
+				{
+					detail: 0,
+				},
+			);
+
+			expect(
+				{
+					shape,
+					afterClick,
+					afterKey: pressed.length,
+					focusedAfterKey: document.activeElement?.getAttribute("aria-label"),
+				},
+			).toStrictEqual(
+				{
+					shape:
+					{
+						iconTag: "svg",
+						iconClass: "lucide lucide-zap size-4 shrink-0 text-secondary-control",
+						iconHidden: "true",
+						iconMarked: true,
+						title: "min-w-0 max-w-full truncate text-secondary-control",
+						text: "Turn on auto mode",
+						describedBy: 0,
+						hiddenSpans: 0,
+						tooltip: null,
+						dismiss: "Dismiss auto mode",
+					},
+					afterClick:
+					{
+						pressed: [autoMode],
+						focused: "Prompt",
+					},
+					afterKey: 2,
+					focusedAfterKey: "Prompt",
+				},
+			);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
+	});
+
 	it("renders nothing without rows", () =>
 	{
 		const {container} = render(

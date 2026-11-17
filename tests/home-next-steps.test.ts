@@ -4,6 +4,8 @@ import type {FolderPr} from "../src/lib/api/home-folder-pr";
 
 import
 {
+	autoModeNextStepCandidates,
+	type AutoModeNextStepSource,
 	waitingDismissLabel,
 	waitingRestTitle,
 	folderNextStepCandidates,
@@ -946,5 +948,121 @@ describe("sessionRunningIn", () =>
 			sessionRunningIn([live], undefined),
 			sessionRunningIn([], "-p"),
 		]).toStrictEqual([true, true, true, false, false, false, false, false]);
+	});
+});
+
+describe("auto-mode next step", () =>
+{
+	const ROW: NextStepCandidate =
+	{
+		id: "auto-mode",
+		kind: "auto-mode",
+		subject: "",
+		stamp: 0,
+		title: "Turn on auto mode",
+		detail: null,
+		dismissLabel: "Dismiss auto mode",
+		icon: "lightning",
+		noTooltip: true,
+	};
+	const QUALIFIES: AutoModeNextStepSource =
+	{
+		folder: "/p",
+		settled: true,
+		mode: "default",
+		autoIsDefault: true,
+		autoModeSetupComplete: false,
+		launching: false,
+	};
+
+	it("offers the row for every non-Auto mode once the draft qualifies", () =>
+	{
+		expect(
+			["default", "acceptEdits", "plan", "bypassPermissions", "dontAsk"].map((mode) =>
+				autoModeNextStepCandidates(
+					{
+						...QUALIFIES,
+						mode,
+					},
+				),
+			),
+		).toStrictEqual([[ROW], [ROW], [ROW], [ROW], [ROW]]);
+	});
+
+	it("drops the row for each of upstream's gate terms", () =>
+	{
+		expect(
+			[
+				{
+					mode: "auto",
+				},
+				{
+					settled: false,
+				},
+				{
+					autoIsDefault: false,
+				},
+				{
+					autoModeSetupComplete: true,
+				},
+				{
+					launching: true,
+				},
+				{
+					folder: undefined,
+				},
+			].map((change) =>
+				autoModeNextStepCandidates(
+					{
+						...QUALIFIES,
+						...change,
+					},
+				),
+			),
+		).toStrictEqual([[], [], [], [], [], []]);
+	});
+
+	it("is low value, keyed by its bare id, and stays dismissed", () =>
+	{
+		const waiting = candidate("waiting-session", "s1");
+		expect([
+			selectNextSteps(
+				{
+					candidates: [ROW],
+					dismissed: {},
+				},
+			),
+			selectNextSteps(
+				{
+					candidates: [waiting, ROW],
+					dismissed: {},
+				},
+			),
+			selectNextSteps(
+				{
+					candidates: [ROW],
+					dismissed:
+					{
+						"next-step:auto-mode:": Date.now(),
+					},
+				},
+			),
+			nextStepKey(ROW),
+		]).toStrictEqual([
+			[
+				{
+					type: "row",
+					candidate: ROW,
+				},
+			],
+			[
+				{
+					type: "row",
+					candidate: waiting,
+				},
+			],
+			[],
+			"next-step:auto-mode:",
+		]);
 	});
 });

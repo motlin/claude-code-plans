@@ -1,11 +1,11 @@
 import {type ReactNode, useEffect, useMemo, useState} from "react";
 
 import {onHomeLaunchFolderRequest, takePendingHomeLaunchFolder} from "../../lib/home-composer-focus";
-import {LaunchFolderContext, useWorktreeState} from "./launch-folder";
+import {LaunchFolderContext, useLaunchDraftState, useWorktreeState} from "./launch-folder";
 
 /**
- * Shares the home launch folder, and whether the composer is launching a session in it, between the
- * start card and the docked composer. The folder starts from one requested before home mounted and
+ * Shares the home launch folder, whether the composer is launching a session in it, and the draft's chin picks
+ * between the start card and the docked composer. The folder starts from one requested before home mounted and
  * follows later requests.
  */
 export function HomeLaunchFolderProvider({
@@ -18,6 +18,7 @@ export function HomeLaunchFolderProvider({
 	const chosen = useState<string | null>(null);
 	const launching = useState(false);
 	const worktree = useWorktreeState();
+	const launchOptions = useLaunchDraftState();
 	const [, setChosenId] = chosen;
 	useEffect(() =>
 	{
@@ -31,8 +32,9 @@ export function HomeLaunchFolderProvider({
 			chosen,
 			launching,
 			worktree,
+			launchOptions,
 		}),
-		[chosen, launching, worktree],
+		[chosen, launching, worktree, launchOptions],
 	);
 	return <LaunchFolderContext.Provider value={shared}>{children}</LaunchFolderContext.Provider>;
 }

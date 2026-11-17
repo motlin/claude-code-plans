@@ -294,6 +294,12 @@ interface ComposerProps
 	permissionCwd?: string | undefined;
 	/** A Mode menu pick, remembered for `permissionCwd`'s folder (upstream's per-folder mode memory). */
 	onPermissionModePick?: ((mode: LaunchPermissionMode) => void) | undefined;
+	/**
+	 * Chin picks held by the caller (the home draft shares them with the start card); with both set they replace the
+	 * composer's own, and the caller applies the folder-switch drop.
+	 */
+	launchOptions?: LaunchOptions | undefined;
+	onLaunchOptionsChange?: ((options: LaunchOptions) => void) | undefined;
 	/** The home draft's try-auto coach mark offer (`ChinLaunchControls.tryAutoCoach`). */
 	tryAutoCoach?: TryAutoCoachOffer | undefined;
 	/** An idle live pane: chin picks steer it instead of becoming launch flags. */
@@ -809,6 +815,8 @@ export function Composer({
 	bypassPermissionsAllowed = false,
 	permissionCwd,
 	onPermissionModePick,
+	launchOptions: heldLaunchOptions,
+	onLaunchOptionsChange: onHeldLaunchOptionsChange,
 	tryAutoCoach,
 	live,
 	mentionSessionId,
@@ -881,7 +889,13 @@ export function Composer({
 			options: {},
 		},
 	);
-	const launchOptions = launch.draftKey === draftKey ? launch.options : NO_LAUNCH_OPTIONS;
+	const setHeldLaunchOptions = heldLaunchOptions === undefined ? undefined : onHeldLaunchOptionsChange;
+	const launchOptions =
+		setHeldLaunchOptions === undefined
+			? launch.draftKey === draftKey
+				? launch.options
+				: NO_LAUNCH_OPTIONS
+			: (heldLaunchOptions ?? NO_LAUNCH_OPTIONS);
 	// Upstream's folder-transfer effect (cf6ae6197 `Jt`): a Manual, Accept edits or Plan pick stays with the draft in
 	// the new folder, while an Auto or Bypass pick is dropped so that folder's own memory or default takes over.
 	const launchFolder = folderModeKey(permissionCwd);
@@ -891,6 +905,7 @@ export function Composer({
 		setPickFolder(launchFolder);
 		const pick = launchOptions.permissionMode;
 		if (
+			setHeldLaunchOptions === undefined &&
 			pick !== undefined &&
 			!carryPickToFolder(
 				{
@@ -2085,7 +2100,8 @@ export function Composer({
 			launchOptions: chinLaunchOptions,
 			onLaunchOptionsChange:
 				live === undefined
-					? (options) =>
+					? (setHeldLaunchOptions ??
+						((options) =>
 						{
 							setLaunch(
 								{
@@ -2093,7 +2109,7 @@ export function Composer({
 									options,
 								},
 							);
-						}
+						}))
 					: (options) => void live.apply(options),
 			confirmEffortChange: live !== undefined,
 			openMenu,
@@ -2106,6 +2122,7 @@ export function Composer({
 		[
 			chinLaunchOptions,
 			live,
+			setHeldLaunchOptions,
 			draftKey,
 			openMenu,
 			bypassPermissionsAllowed,

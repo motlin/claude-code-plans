@@ -11,6 +11,7 @@ import
 	RouterProvider,
 } from "@tanstack/react-router";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import type {ReactElement} from "react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import {HOME_RECENT_LIMIT} from "../src/components/home/home-composer";
@@ -27,6 +28,8 @@ import type {ComposerDefaults} from "../src/lib/composer-state";
 import {FOLDER_PERMISSION_MODE_STORAGE_KEY} from "../src/lib/folder-permission-mode";
 import {requestHomeComposerPrefill} from "../src/lib/home-composer-focus";
 import {HomeDock} from "../src/components/home/home-dock";
+import {type HomeLaunchOptions, useHomeLaunchFolder, useHomeLaunchOptions} from "../src/components/home/launch-folder";
+import {HomeLaunchFolderProvider} from "../src/components/home/launch-folder-provider";
 import {Route as HomeRoute, validateHomeSearch} from "../src/routes/index";
 import {SSE_EVENTS} from "../src/lib/hook-events";
 import {HOME_WORKTREE_STORAGE_KEY} from "../src/lib/home-worktree-pref";
@@ -154,6 +157,7 @@ async function renderApp(
 	},
 	fastMode = false,
 	defaultsOverride: Partial<ComposerDefaults> = {},
+	wrapHome: (dock: ReactElement) => ReactElement = (dock) => dock,
 )
 {
 	const queryClient = new QueryClient(
@@ -213,7 +217,7 @@ async function renderApp(
 						validateSearch: HomeRoute.options.validateSearch,
 					}
 				: {}),
-			component: HomeDock,
+			component: () => wrapHome(<HomeDock />),
 		},
 	);
 	const elsewhereRoute = createRoute(
@@ -2391,6 +2395,75 @@ describe("HomeComposer", () =>
 					{
 						cwd: HERE,
 						prompt: "hello",
+					},
+				},
+			);
+		});
+
+		it("shares the draft's launch options with the start card: a chin pick shows there, and its Auto pick reaches the chin and the launch", async () =>
+		{
+			let shared: HomeLaunchOptions | undefined;
+			function StartCardProbe()
+			{
+				const {selected} = useHomeLaunchFolder();
+				shared = useHomeLaunchOptions(selected?.projectPath);
+				return null;
+			}
+			await renderApp(
+				"/",
+				"claude-opus-4-8[1m]",
+				() => {},
+				false,
+				{
+					defaultMode: null,
+				},
+				(dock) => (
+					<HomeLaunchFolderProvider>
+						<StartCardProbe />
+						{dock}
+					</HomeLaunchFolderProvider>
+				),
+			);
+			await pickMode(/^Manual/);
+			const afterManual = shared?.options;
+			act(() =>
+			{
+				shared?.setPermissionMode("auto");
+			});
+			await waitFor(() =>
+			{
+				expect(modeReadout()).toBe("Auto");
+			});
+			await typePrompt("go");
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Send",
+					},
+				),
+			);
+			await waitFor(() =>
+			{
+				expect(launchCalls.length).toBe(1);
+			});
+
+			expect(
+				{
+					afterManual,
+					launch: launchBody(launchCalls[0]),
+				},
+			).toStrictEqual(
+				{
+					afterManual:
+					{
+						permissionMode: "default",
+					},
+					launch:
+					{
+						cwd: HERE,
+						prompt: "go",
+						args: ["--permission-mode", "auto"],
 					},
 				},
 			);

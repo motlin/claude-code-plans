@@ -44,8 +44,15 @@ export interface NextStepCandidate
 	tooltipText?: string;
 	/** The dismiss button's label, `Dismiss “{title}”` by default. */
 	dismissLabel?: string;
-	/** What a press does: open the subject's session (the default), turn on Worktree, or prefill the composer. */
-	kind?: "open" | "worktree" | "prefill";
+	/**
+	 * What a press does: open the subject's session (the default), turn on Worktree, prefill the composer, or set the
+	 * draft's mode to Auto.
+	 */
+	kind?: "open" | "worktree" | "prefill" | "auto-mode";
+	/** Upstream's leading row icon (`Lightning` for auto-mode). */
+	icon?: "lightning";
+	/** Upstream's card copy has no tooltip: the row gets none and no `aria-describedby`. */
+	noTooltip?: true;
 	/** A pressed Worktree row, shown as the static "Worktree is on" row. */
 	taken?: true;
 	/** The composer text a `prefill` press fills in. */
@@ -356,5 +363,51 @@ export function folderNextStepCandidates(source: FolderNextStepSource): NextStep
 				]),
 		...worktreeCandidate(source),
 		...continueCandidate(source),
+	];
+}
+
+/** What upstream's auto-mode row gate reads. */
+export interface AutoModeNextStepSource
+{
+	/** The launch folder; undefined when no local pick can run (upstream's `localPickUnrunnable`). */
+	folder: string | undefined;
+	/** The draft's mode sources have loaded (upstream's `permission.settled`). */
+	settled: boolean;
+	/** The draft's current mode: the chin's pick, else the folder's remembered mode or the settings default. */
+	mode: string;
+	/** Upstream's `ccd_auto_default_mode` flag, the consent guard's `autoIsDefault`: an Auto pick owes no consent. */
+	autoIsDefault: boolean;
+	/** The CLI's `/auto-mode-setup` is done (upstream's `setupComplete`). */
+	autoModeSetupComplete: boolean;
+	launching: boolean;
+}
+
+/**
+ * Upstream's "Turn on auto mode" row (`qCe`, gate `D`). The local auto option is always offered, and every local
+ * draft is a local environment, so those terms always hold. A zero stamp keeps a dismissal permanent.
+ */
+export function autoModeNextStepCandidates({
+	folder,
+	settled,
+	mode,
+	autoIsDefault,
+	autoModeSetupComplete,
+	launching,
+}: AutoModeNextStepSource): NextStepCandidate[]
+{
+	if (folder === undefined || !settled || !autoIsDefault || autoModeSetupComplete || mode === "auto" || launching)
+		return [];
+	return [
+		{
+			id: "auto-mode",
+			kind: "auto-mode",
+			subject: "",
+			stamp: 0,
+			title: "Turn on auto mode",
+			detail: null,
+			dismissLabel: "Dismiss auto mode",
+			icon: "lightning",
+			noTooltip: true,
+		},
 	];
 }

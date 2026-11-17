@@ -3,6 +3,7 @@ import {useNavigate} from "@tanstack/react-router";
 import {useRef} from "react";
 
 import {approvalsQueryOptions} from "../../lib/api/approvals";
+import {autoModeSetupQueryOptions} from "../../lib/api/auto-mode-setup";
 import {blockedDetail} from "../../lib/blocked-detail";
 import {homeDismissalsQueryOptions, postHomeDismissal, type HomeDismissals} from "../../lib/api/home-dismissals";
 import {homeFolderPrQueryOptions} from "../../lib/api/home-folder-pr";
@@ -13,6 +14,7 @@ import {ackedAt, useAwaitingAckVersion} from "../../lib/awaiting-ack-store";
 import {useLiveApprovalIds} from "../../lib/live-approval-sessions";
 import
 {
+	autoModeNextStepCandidates,
 	folderNextStepCandidates,
 	folderPrBranch,
 	folderPrNextStepCandidates,
@@ -23,7 +25,8 @@ import
 } from "../../lib/home-next-steps";
 import {useAnsweredSessionIds, withAnsweredHolds} from "../../lib/answered-sessions";
 import {toGroupRow} from "../sidebar/sidebar-session-row";
-import {useHomeDraftUsed, useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
+import {useHomeDraftUsed, useHomeLaunchFolder, useHomeLaunchOptions, useHomeWorktree} from "./launch-folder";
+import {useHomeDraftMode} from "./use-home-draft-mode";
 import type {NextStepsListProps} from "./start-card";
 
 /**
@@ -96,7 +99,7 @@ function newestFailedSession(
 
 /**
  * The start card's Next steps list, fed by the sidebar's recent sessions, the pending approvals, the
- * launch folder and its branch's PR (read under `HomeLaunchFolderProvider`) and the home dismissals. Like
+ * launch folder, its branch's PR and the draft's mode (read under `HomeLaunchFolderProvider`) and the home dismissals. Like
  * upstream, it is undefined until every source has settled (so a permission prompt never first renders
  * as "Asked a question"), then latched: a later reset or refetch that drops a source's data keeps the
  * last list instead of unmounting it.
@@ -115,6 +118,10 @@ export function useHomeNextSteps(): NextStepsListProps | undefined
 	// Upstream's `yce` runs only for a git folder on a non-default branch with Worktree off.
 	const {data: folderPr} = useQuery(homeFolderPrQueryOptions(folder, folderPrBranch(git, worktree.enabled)));
 	const {used} = useHomeDraftUsed();
+	// The auto-mode row reads the mode the chin shows: its pick, else the folder memory or settings default.
+	const {draftMode, settled: modeSettled} = useHomeDraftMode(folder);
+	const {options: launchOptions} = useHomeLaunchOptions(folder);
+	const {data: autoModeSetup} = useQuery(autoModeSetupQueryOptions(folder));
 	const latched = useRef<NextStepsListProps | undefined>(undefined);
 	const answeredIds = useAnsweredSessionIds();
 	// Re-render when this browser marks a session completed; the overlay reads the store.
@@ -177,6 +184,17 @@ export function useHomeNextSteps(): NextStepsListProps | undefined
 							pr: folderPr,
 							worktreeOn: worktree.enabled,
 							used,
+							launching,
+						},
+					),
+					...autoModeNextStepCandidates(
+						{
+							folder,
+							// Upstream gates only this row on `permission.settled`, not the whole list.
+							settled: modeSettled && autoModeSetup !== undefined,
+							mode: launchOptions.permissionMode ?? draftMode.mode,
+							autoIsDefault: autoModeSetup?.autoModeIsDefault === true,
+							autoModeSetupComplete: autoModeSetup?.setupComplete === true,
 							launching,
 						},
 					),

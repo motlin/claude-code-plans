@@ -1,6 +1,7 @@
-import {Check, ChevronDown, Folder, X} from "lucide-react";
+import {Check, ChevronDown, Folder, X, Zap} from "lucide-react";
 import {useId, useLayoutEffect, useRef, useState, type RefObject} from "react";
 
+import {useFolderModeMemory} from "../../hooks/use-folder-mode-memory";
 import {useShortcut} from "../../hooks/use-shortcut";
 import {requestHomeComposerFocus, requestHomeComposerPrefill} from "../../lib/home-composer-focus";
 import
@@ -15,7 +16,7 @@ import {TOUCH_REVEAL} from "../../lib/touch-reveal";
 import {POPOVER_SCROLL_BODY_CLASS, PopoverRoot, PopoverTrigger, PopoverContent} from "../ui/popover";
 import {Tooltip} from "../ui/tooltip";
 import type {StartProject} from "../../lib/palette-start-session";
-import {useHomeDraftUsed, useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
+import {useHomeDraftUsed, useHomeLaunchFolder, useHomeLaunchOptions, useHomeWorktree} from "./launch-folder";
 import {ProjectPicker} from "./project-picker";
 import {ClawdMascot} from "./clawd-mascot";
 import {START_CARD_ENVIRONMENTS, START_CARD_SETUP_HIDE_CLASS} from "./start-card-placement";
@@ -196,6 +197,8 @@ export interface NextStepsListProps
 	onTurnOnWorktree?: ((candidate: NextStepCandidate) => void) | undefined;
 	/** Marks a pressed prefill row used for this draft, after its text went to the composer. */
 	onPrefill?: ((candidate: NextStepCandidate) => void) | undefined;
+	/** Sets the home draft's mode to Auto for a pressed "Turn on auto mode" row. */
+	onTurnOnAutoMode?: ((candidate: NextStepCandidate) => void) | undefined;
 }
 
 // Upstream's row reveal: on hover, keyboard focus inside the row, or while its popup is open. Spelled out in full
@@ -299,6 +302,7 @@ export function NextStepsList({
 	onEmptyFocus = requestHomeComposerFocus,
 	onTurnOnWorktree,
 	onPrefill,
+	onTurnOnAutoMode,
 }: Readonly<NextStepsListProps>)
 {
 	const [openRest, setOpenRest] = useState<string | null>(null);
@@ -444,6 +448,7 @@ export function NextStepsList({
 									onOpen={onOpen}
 									onTurnOnWorktree={onTurnOnWorktree}
 									onPrefill={onPrefill}
+									onTurnOnAutoMode={onTurnOnAutoMode}
 								/>
 							) : (
 								<RestRow
@@ -502,13 +507,15 @@ function WorktreeTakenRow()
 
 /**
  * A next-step row: upstream's title-over-detail tooltip (or a row's text-only one) lined up with the row's start
- * edge, and a hidden span holding the title (or that text) that describes the button.
+ * edge, and a hidden span holding the title (or that text) that describes the button. A row whose upstream card copy
+ * has no tooltip (`noTooltip`) gets neither, like upstream's `Q8`.
  */
 function StepRowButton({
 	candidate,
 	onOpen,
 	onTurnOnWorktree,
 	onPrefill,
+	onTurnOnAutoMode,
 	listed = false,
 }: Readonly<
 {
@@ -516,10 +523,52 @@ function StepRowButton({
 	onOpen: (subject: string) => void;
 	onTurnOnWorktree?: ((candidate: NextStepCandidate) => void) | undefined;
 	onPrefill?: ((candidate: NextStepCandidate) => void) | undefined;
+	onTurnOnAutoMode?: ((candidate: NextStepCandidate) => void) | undefined;
 	listed?: boolean;
 }>)
 {
 	const titleId = useId();
+	const described = candidate.noTooltip !== true;
+	const button = (
+		<button
+			type="button"
+			data-testid={`start-card-${candidate.id}`}
+			data-next-step-open
+			aria-describedby={described ? titleId : undefined}
+			onClick={() =>
+			{
+				if (candidate.kind === "worktree")
+				{
+					onTurnOnWorktree?.(candidate);
+					requestHomeComposerFocus();
+				}
+				else if (candidate.kind === "auto-mode")
+				{
+					// Upstream's `permission.select("auto")`, then `refocus`.
+					onTurnOnAutoMode?.(candidate);
+					requestHomeComposerFocus();
+				}
+				else if (candidate.kind === "prefill" && candidate.prefill !== undefined)
+				{
+					requestHomeComposerPrefill(candidate.prefill);
+					onPrefill?.(candidate);
+				}
+				else
+				{
+					onOpen(candidate.subject);
+				}
+			}}
+			className={STEP_BUTTON_CLASS}
+		>
+			{/* Upstream's cds `Lightning` icon (sm, 16px); lucide's Zap stands in until the glyph icons land. */}
+			{candidate.icon === "lightning" && (
+				<Zap aria-hidden="true" data-next-step-icon="" className="size-4 shrink-0 text-secondary-control" />
+			)}
+			<StepLine candidate={candidate} listed={listed} />
+			{!listed && <StepSpacer />}
+		</button>
+	);
+	if (!described) return button;
 	return (
 		<>
 			<Tooltip
@@ -534,33 +583,7 @@ function StepRowButton({
 				stacked
 				className="w-full"
 			>
-				<button
-					type="button"
-					data-testid={`start-card-${candidate.id}`}
-					data-next-step-open
-					aria-describedby={titleId}
-					onClick={() =>
-					{
-						if (candidate.kind === "worktree")
-						{
-							onTurnOnWorktree?.(candidate);
-							requestHomeComposerFocus();
-						}
-						else if (candidate.kind === "prefill" && candidate.prefill !== undefined)
-						{
-							requestHomeComposerPrefill(candidate.prefill);
-							onPrefill?.(candidate);
-						}
-						else
-						{
-							onOpen(candidate.subject);
-						}
-					}}
-					className={STEP_BUTTON_CLASS}
-				>
-					<StepLine candidate={candidate} listed={listed} />
-					{!listed && <StepSpacer />}
-				</button>
+				{button}
 			</Tooltip>
 			<span id={titleId} hidden>
 				{candidate.tooltipText ?? candidate.title}
@@ -645,6 +668,8 @@ export function HomeStartCard({
 	const {projects, selected, select} = useHomeLaunchFolder();
 	const {takeFromRow} = useHomeWorktree();
 	const {markUsed} = useHomeDraftUsed();
+	const {setPermissionMode} = useHomeLaunchOptions(selected?.projectPath);
+	const {remember} = useFolderModeMemory(selected?.projectPath);
 	return (
 		<StartCard
 			projects={projects}
@@ -663,6 +688,12 @@ export function HomeStartCard({
 							onPrefill: (candidate) =>
 							{
 								markUsed(nextStepKey(candidate));
+							},
+							// Upstream's `permission.select("auto")`, the same pick as the chin's Mode menu.
+							onTurnOnAutoMode: () =>
+							{
+								remember("auto");
+								setPermissionMode("auto");
 							},
 						}
 			}

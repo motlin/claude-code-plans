@@ -7,7 +7,6 @@ import {useActiveSessionsIfAvailable} from "../../hooks/use-claude-events";
 import {useIdlePrefetch} from "../../hooks/use-idle-prefetch";
 import {useSlashCommands} from "../../hooks/use-slash-commands";
 import {promptHistoryQueryOptions} from "../../lib/api/prompt-history";
-import {composerDefaultsQueryOptions, composerFolderDefaultsQueryOptions} from "../../lib/api/composer-defaults";
 import {homeFolderStatusQueryOptions} from "../../lib/api/home-folder-status";
 import {HerdrRequestError, isNoTerminalHost, launchHerdrSession} from "../../lib/api/herdr";
 import {getComposerText, refillRejectedSend, restoreRejectedAttachments} from "../../lib/context-attach";
@@ -17,9 +16,8 @@ import {buildClaudeCopyCommand} from "../../lib/claude-launch-command";
 import {writeClipboardText} from "../../lib/clipboard";
 import {usageQueryOptions} from "../../lib/api/usage";
 import {resolveComposerState, withComposerAccountLimits} from "../../lib/composer-state";
-import {buildLaunchFlags, type LaunchOptions, modeMenuItems} from "../../lib/launch-options";
-import {useFolderModeMemory} from "../../hooks/use-folder-mode-memory";
-import {draftPermissionMode, folderChoice, folderModeKey} from "../../lib/folder-permission-mode";
+import {buildLaunchFlags, type LaunchOptions} from "../../lib/launch-options";
+import {folderChoice, folderModeKey} from "../../lib/folder-permission-mode";
 import {autoDefaultOfferQueryOptions} from "../../lib/api/auto-default-offer";
 import {autoModeSetupQueryOptions} from "../../lib/api/auto-mode-setup";
 import type {TryAutoCoachOffer} from "../../lib/try-auto-coach";
@@ -42,7 +40,8 @@ import {useOpenSettings} from "../settings/open-settings";
 import {AutoDefaultOfferDialogs} from "./auto-default-dialogs";
 import {type EnvironmentBarLine, EnvironmentBarLineHost} from "./environment-bar-line";
 import {GroupLaunchNote} from "./group-launch-note";
-import {useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
+import {useHomeLaunchFolder, useHomeLaunchOptions, useHomeWorktree} from "./launch-folder";
+import {useHomeDraftMode} from "./use-home-draft-mode";
 import {ProjectPicker} from "./project-picker";
 import {WorktreeToggleChip} from "./worktree-toggle-chip";
 
@@ -95,7 +94,6 @@ export function HomeComposer({
 		[openSettings],
 	);
 	const activeSessions = useActiveSessionsIfAvailable();
-	const {data: defaults} = useQuery(composerDefaultsQueryOptions);
 	useIdlePrefetch(HOME_DOCK_CHUNKS);
 	const [pendingLaunch, setPendingLaunch] = useState<
 		| (PendingLaunch &
@@ -168,28 +166,10 @@ export function HomeComposer({
 		[project, folderGone],
 	);
 	const pendingGroup = usePendingLaunchGroup();
-	const folderModes = useFolderModeMemory(project?.projectPath);
-	const {data: folderDefaults} = useQuery(composerFolderDefaultsQueryOptions(project?.projectPath));
-	const bypassPermissionsAllowed = defaults?.bypassPermissionsAllowed ?? false;
-	const draftMode = useMemo(
-		() =>
-			draftPermissionMode(
-				{
-					cwd: project?.projectPath,
-					modes: folderModes.modes,
-					userSettingsDefault: defaults?.defaultMode ?? null,
-					repoSettingsDefault: folderDefaults?.repoDefaultMode ?? null,
-					available: modeMenuItems(bypassPermissionsAllowed).map((item) => item.id),
-				},
-			),
-		[
-			project?.projectPath,
-			folderModes.modes,
-			defaults?.defaultMode,
-			folderDefaults?.repoDefaultMode,
-			bypassPermissionsAllowed,
-		],
+	const {draftMode, folderModes, defaults, folderDefaults, bypassPermissionsAllowed} = useHomeDraftMode(
+		project?.projectPath,
 	);
+	const launchDraft = useHomeLaunchOptions(project?.projectPath);
 	const {data: autoDefaultOffer} = useQuery(autoDefaultOfferQueryOptions);
 	// The Auto dialogs decide once, so they wait for the folder and its project settings.
 	const autoDefaultOfferSettled = defaults !== undefined && project !== undefined && folderDefaults !== undefined;
@@ -494,6 +474,8 @@ export function HomeComposer({
 				bypassPermissionsAllowed={bypassPermissionsAllowed}
 				permissionCwd={project?.projectPath}
 				onPermissionModePick={folderModes.remember}
+				launchOptions={launchDraft.options}
+				onLaunchOptionsChange={launchDraft.set}
 				tryAutoCoach={tryAutoCoach}
 				usageCommand={usageCommand}
 			/>

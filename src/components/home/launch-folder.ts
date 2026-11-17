@@ -1,9 +1,21 @@
 import {useQuery} from "@tanstack/react-query";
-import {createContext, type Dispatch, type SetStateAction, useContext, useEffect, useMemo, useState} from "react";
+import
+{
+	createContext,
+	type Dispatch,
+	type SetStateAction,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 
 import {projectsQueryOptions} from "../../lib/api/projects";
 import {recentSessionsQueryOptions} from "../../lib/api/sessions";
+import {carryPickToFolder, folderModeKey} from "../../lib/folder-permission-mode";
 import {readHomeWorktreePref, writeHomeWorktreePref} from "../../lib/home-worktree-pref";
+import type {LaunchOptions, LaunchPermissionMode} from "../../lib/launch-options";
 import {startSessionProjects, type StartProject} from "../../lib/palette-start-session";
 
 /** Same recents page the ⌘K palette reads, so both share one cached query. */
@@ -29,11 +41,32 @@ export interface WorktreeState
 	endDraft: () => void;
 }
 
+/** The home draft's chin picks and the folder (`folderModeKey`) they were made in. */
+interface HomeLaunchDraft
+{
+	folder: string | null;
+	options: LaunchOptions;
+}
+type LaunchDraftState = [HomeLaunchDraft, Dispatch<SetStateAction<HomeLaunchDraft>>];
+
+const EMPTY_LAUNCH_DRAFT: HomeLaunchDraft =
+{
+	folder: null,
+	options: {},
+};
+
 export interface SharedLaunchFolder
 {
 	chosen: ChosenFolder;
 	launching: Launching;
 	worktree: WorktreeState;
+	launchOptions: LaunchDraftState;
+}
+
+/** A fresh home draft's launch options state, held by `HomeLaunchFolderProvider`. */
+export function useLaunchDraftState(): LaunchDraftState
+{
+	return useState(EMPTY_LAUNCH_DRAFT);
 }
 
 /** Upstream `n0`'s state: the preference starts off and loads after mount, so SSR and hydration agree. */
@@ -189,5 +222,94 @@ export function useHomeDraftUsed(): HomeDraftUsed
 	return {
 		used,
 		markUsed,
+	};
+}
+
+/**
+ * Upstream's folder-transfer effect (cf6ae6197 `Jt`) for `folder`: a Manual, Accept edits or Plan pick stays with the
+ * draft, while an Auto or Bypass pick is dropped so the new folder's own memory or default takes over.
+ */
+function optionsInFolder(draft: HomeLaunchDraft, folder: string | null): LaunchOptions
+{
+	const pick = draft.options.permissionMode;
+	if (
+		draft.folder === folder ||
+		pick === undefined ||
+		carryPickToFolder(
+			{
+				pick,
+			},
+		)
+	)
+		return draft.options;
+	const {permissionMode: _dropped, ...kept} = draft.options;
+	return kept;
+}
+
+export interface HomeLaunchOptions
+{
+	/** The draft's chin picks (mode, model, effort, fast) as they apply in `cwd`. */
+	options: LaunchOptions;
+	set: (options: LaunchOptions) => void;
+	/** Upstream's `permission.select(mode)` without the consent guard; callers offer only modes that owe none. */
+	setPermissionMode: (mode: LaunchPermissionMode) => void;
+}
+
+/**
+ * The home draft's launch options, shared between the docked composer's chin and the start card under
+ * `HomeLaunchFolderProvider` (local state outside one). Switching `cwd` drops a pick that doesn't carry to a new
+ * folder, at once and for good.
+ */
+export function useHomeLaunchOptions(cwd: string | undefined): HomeLaunchOptions
+{
+	const shared = useContext(LaunchFolderContext);
+	const local = useLaunchDraftState();
+	const [draft, setDraft] = shared?.launchOptions ?? local;
+	const folder = folderModeKey(cwd);
+	const options = optionsInFolder(draft, folder);
+	// The read above already applies the drop; this commits it, so switching back doesn't restore the pick.
+	useEffect(() =>
+	{
+		setDraft((previous) =>
+			previous.folder === folder
+				? previous
+				:
+					{
+						folder,
+						options: optionsInFolder(previous, folder),
+					},
+		);
+	}, [folder, setDraft]);
+	const set = useCallback(
+		(next: LaunchOptions) =>
+		{
+			setDraft(
+				{
+					folder,
+					options: next,
+				},
+			);
+		},
+		[folder, setDraft],
+	);
+	const setPermissionMode = useCallback(
+		(mode: LaunchPermissionMode) =>
+		{
+			setDraft((previous) => (
+			{
+				folder,
+				options:
+				{
+					...optionsInFolder(previous, folder),
+					permissionMode: mode,
+				},
+			}));
+		},
+		[folder, setDraft],
+	);
+	return {
+		options,
+		set,
+		setPermissionMode,
 	};
 }
