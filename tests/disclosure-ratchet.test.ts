@@ -13,9 +13,11 @@ import {describe, expect, it} from "vite-plus/test";
  * raised the ceiling from 46. The usage ring popover's Context window toggle and its deferred groups copy upstream's
  * own buttons (c2d611398 `ne`, ce96f5751 `se` without `rail`), whose state the popover owns and resets on close, so
  * they raised it from 47. The Background tasks pane's Show more / Show less (upstream `mv`) pages more rows into the
- * same list rather than revealing a panel, so a Collapsible can't draw it either; it raised the ceiling from 49.
+ * same list rather than revealing a panel, so a Collapsible can't draw it either; it raised the ceiling from 49. The
+ * `/usage` card's attribution Show N more / Show less (upstream `SV`, a ghost cds Button) does the same; it raised the
+ * ceiling from 50.
  */
-const DISCLOSURE_CEILING = 50;
+const DISCLOSURE_CEILING = 51;
 
 /** The opening tag around `index`: from the nearest `<Name` before it to the next `<` after it. */
 function enclosingTag(source: string, index: number): string

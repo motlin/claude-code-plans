@@ -23,6 +23,8 @@ import
 import type {SessionRailInputs} from "./session-rail/session-rail-cards";
 import {SessionChat} from "./session-chat";
 import {LiveSessionStatusCard, LiveStatusSourcesProvider} from "./session-status-card";
+import {TranscriptRevisionContext} from "./transcript-revision-context";
+import {useOpenSettings} from "./settings/open-settings";
 import {appendClientRow, type ClientRow, lastRecordUuid} from "../lib/client-rows-store";
 import {TranscriptTailContext} from "./transcript-tail-context";
 import {SessionChaptersToc} from "./session-chapters-toc";
@@ -381,6 +383,13 @@ const RewindPicker = lazy(async () =>
 	import("./rewind-picker").then((module) => (
 	{
 		default: module.RewindPicker,
+	})),
+);
+// The `/usage` card loads when a session first shows one.
+const LiveSessionUsageCard = lazy(async () =>
+	import("./session-usage-card").then((module) => (
+	{
+		default: module.LiveSessionUsageCard,
 	})),
 );
 // The "Rewind to this message?" confirm loads when a rewind first needs it.
@@ -928,8 +937,39 @@ function SessionView({
 		}),
 		[statusline, composerChin],
 	);
+	// Upstream's `/usage` and `/cost`: the same client-only rows with a Usage card; Settings › Usage mid-turn.
+	const openSettings = useOpenSettings();
+	const usageCommand = useMemo(
+		() => (
+		{
+			turnActive,
+			show: (text: string) =>
+			{
+				appendClientRow(
+					sessionId,
+					{
+						kind: "usage",
+						text,
+						afterUuid: lastRecordUuid(transcript.records),
+					},
+				);
+			},
+			openSettings: () =>
+			{
+				openSettings("usage");
+			},
+		}),
+		[turnActive, sessionId, transcript.records, openSettings],
+	);
 	const renderClientRowCard = useCallback(
-		(row: ClientRow) => (row.kind === "status" ? <LiveSessionStatusCard sessionId={sessionId} /> : null),
+		(row: ClientRow) =>
+			row.kind === "status" ? (
+				<LiveSessionStatusCard sessionId={sessionId} />
+			) : (
+				<Suspense fallback={null}>
+					<LiveSessionUsageCard sessionId={sessionId} />
+				</Suspense>
+			),
 		[sessionId],
 	);
 	// Upstream lets the user comment on the plan in plan mode or while a plan waits for approval.
@@ -2329,6 +2369,7 @@ function SessionView({
 																	submitComposer("fork", prompt, launchOptions)
 																}
 																statusCommand={statusCommand}
+																usageCommand={usageCommand}
 																forkLabel={forkSubmitLabel(
 																	{
 																		pane: paneState,
@@ -2410,81 +2451,89 @@ function SessionView({
 														<TranscriptTailContext.Provider value={transcriptTail}>
 															<FindLoadRestContext.Provider value={loadRestForFind}>
 																<LiveStatusSourcesProvider value={liveStatusSources}>
-																	<SessionChat
-																		sessionId={sessionId}
-																		lines={processed.lines}
-																		measurementSource={transcript.records}
-																		measurementLayout={JSON.stringify([
-																			settings.showDebug,
-																			settings.interfaceFont,
-																			settings.transcriptTextSize,
-																			settings.codeFont,
-																			settings.transcriptWidth,
-																		])}
-																		toolResultMap={processed.toolResultMap}
-																		rewindCuts={chainProcessed.cutsByReplacement}
-																		rewoundUuids={hiddenUuids}
-																		allowedImageRoots={data.imageRoots}
-																		subagents={subagents}
-																		{...(workflowRuns === undefined
-																			? null
-																			:
+																	<TranscriptRevisionContext.Provider
+																		value={transcript.records.length}
+																	>
+																		<SessionChat
+																			sessionId={sessionId}
+																			lines={processed.lines}
+																			measurementSource={transcript.records}
+																			measurementLayout={JSON.stringify([
+																				settings.showDebug,
+																				settings.interfaceFont,
+																				settings.transcriptTextSize,
+																				settings.codeFont,
+																				settings.transcriptWidth,
+																			])}
+																			toolResultMap={processed.toolResultMap}
+																			rewindCuts={
+																				chainProcessed.cutsByReplacement
+																			}
+																			rewoundUuids={hiddenUuids}
+																			allowedImageRoots={data.imageRoots}
+																			subagents={subagents}
+																			{...(workflowRuns === undefined
+																				? null
+																				:
+																					{
+																						workflowRuns,
+																					})}
+																			showThinking={transcriptFlags.showThinking}
+																			showTools={transcriptFlags.showTools}
+																			showPassedHooks={
+																				transcriptFlags.showPassedHooks
+																			}
+																			showHookWarnings={
+																				transcriptFlags.showHookWarnings
+																			}
+																			showHookErrors={
+																				transcriptFlags.showHookErrors
+																			}
+																			showSystemBanners={
+																				transcriptFlags.showSystemBanners
+																			}
+																			showCompactSummaries={
+																				transcriptFlags.showCompactSummaries
+																			}
+																			showTranscriptOnly={
+																				transcriptFlags.showTranscriptOnly
+																			}
+																			transcriptMode={transcriptMode}
+																			sessionLive={sessionProcessLive(
 																				{
-																					workflowRuns,
-																				})}
-																		showThinking={transcriptFlags.showThinking}
-																		showTools={transcriptFlags.showTools}
-																		showPassedHooks={
-																			transcriptFlags.showPassedHooks
-																		}
-																		showHookWarnings={
-																			transcriptFlags.showHookWarnings
-																		}
-																		showHookErrors={transcriptFlags.showHookErrors}
-																		showSystemBanners={
-																			transcriptFlags.showSystemBanners
-																		}
-																		showCompactSummaries={
-																			transcriptFlags.showCompactSummaries
-																		}
-																		showTranscriptOnly={
-																			transcriptFlags.showTranscriptOnly
-																		}
-																		transcriptMode={transcriptMode}
-																		sessionLive={sessionProcessLive(
+																					hookActive: isActive,
+																					summaryState: sessionSummaryState,
+																				},
+																			)}
+																			turnInProgress={
+																				workingMarkerState.status !== "idle"
+																			}
+																			archived={data.archived}
+																			permissionWaitToolUseId={permissionWaitId}
+																			onSendNow={requestSendNowInterrupt}
+																			onFocusComposer={focusSessionComposer}
+																			sideChatAvailable={true}
+																			initialScrollKey={initialScrollKey}
+																			scrollContentRef={scrollAnchorRef}
+																			shouldScrollToEnd={
+																				restoredScrollPosition === undefined &&
+																				locationHash === ""
+																			}
+																			summary={aiSummary}
+																			{...(slashCommands === undefined
+																				? {}
+																				:
+																					{
+																						slashCommands,
+																					})}
+																			{...(errorRecovery !== undefined &&
 																			{
-																				hookActive: isActive,
-																				summaryState: sessionSummaryState,
-																			},
-																		)}
-																		turnInProgress={
-																			workingMarkerState.status !== "idle"
-																		}
-																		archived={data.archived}
-																		permissionWaitToolUseId={permissionWaitId}
-																		onSendNow={requestSendNowInterrupt}
-																		onFocusComposer={focusSessionComposer}
-																		sideChatAvailable={true}
-																		initialScrollKey={initialScrollKey}
-																		scrollContentRef={scrollAnchorRef}
-																		shouldScrollToEnd={
-																			restoredScrollPosition === undefined &&
-																			locationHash === ""
-																		}
-																		summary={aiSummary}
-																		{...(slashCommands === undefined
-																			? {}
-																			:
-																				{
-																					slashCommands,
-																				})}
-																		{...(errorRecovery !== undefined &&
-																		{
-																			errorRecovery,
-																		})}
-																		staleCompact={staleCompact}
-																		renderClientRowCard={renderClientRowCard}
-																	/>
+																				errorRecovery,
+																			})}
+																			staleCompact={staleCompact}
+																			renderClientRowCard={renderClientRowCard}
+																		/>
+																	</TranscriptRevisionContext.Provider>
 																</LiveStatusSourcesProvider>
 															</FindLoadRestContext.Provider>
 														</TranscriptTailContext.Provider>

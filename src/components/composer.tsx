@@ -74,6 +74,7 @@ import
 	parseHostCommand,
 	routeFastCommand,
 	routeStatusCommand,
+	routeUsageCommand,
 	trailingArgsBody,
 } from "../lib/composer-host-commands";
 import
@@ -239,6 +240,16 @@ interface ComposerStatusCommand
 	show: (text: string) => void;
 }
 
+interface ComposerUsageCommand
+{
+	/** A turn is running, so Settings › Usage opens instead (upstream's `jj(bucket)`). */
+	turnActive: boolean;
+	/** Appends the user row and Usage card for the command as sent; null on the home composer. */
+	show: ((text: string) => void) | null;
+	/** Opens Settings › Usage. */
+	openSettings: () => void;
+}
+
 interface ComposerProps
 {
 	variant: ComposerVariant;
@@ -324,6 +335,11 @@ interface ComposerProps
 	 * that the session hasn't started; a session composer without it lets `/status` reach the CLI.
 	 */
 	statusCommand?: ComposerStatusCommand | undefined;
+	/**
+	 * `/usage` and `/cost` as host commands: the Usage card on an idle session, else Settings › Usage, the draft cleared
+	 * either way. Without it they reach the CLI.
+	 */
+	usageCommand?: ComposerUsageCommand | undefined;
 	/**
 	 * Runs a bash-mode command in the session's live pane; resolves false when it was refused. Present only with a
 	 * live pane: `!` in the empty composer then enters upstream's bash mode. Without it, a `! command` send is refused.
@@ -805,6 +821,7 @@ export function Composer({
 	rewind,
 	onOpenContext,
 	statusCommand,
+	usageCommand,
 	onShellCommand,
 }: ComposerProps)
 {
@@ -1625,7 +1642,8 @@ export function Composer({
 			runRewindCommand(text) ||
 			runWorkflowsCommand(text) ||
 			runAutocompactCommand(text) ||
-			runStatusCommand(text)
+			runStatusCommand(text) ||
+			runUsageCommand(text)
 		)
 			return true;
 		const command = parseHostCommand(
@@ -1717,6 +1735,44 @@ export function Composer({
 						uniqueKey: variant === "session" ? "epitaxy-status-turn" : "epitaxy-status-session",
 					},
 				);
+				break;
+			case "band":
+				setCommandError(
+					{
+						draftKey,
+						body: route.text,
+					},
+				);
+				break;
+			default:
+				assertNever(route);
+		}
+		return true;
+	}
+	/**
+	 * Upstream's `/usage` and `/cost` (`noArgs`): the draft clears before `py` runs, so it clears for the Settings
+	 * fallback too; a band keeps the text. Intercepted even when the CLI twin row was picked (upstream's local-ish `z`).
+	 */
+	function runUsageCommand(text: string): boolean
+	{
+		if (usageCommand === undefined) return false;
+		const route = routeUsageCommand(
+			text,
+			{
+				hasSession: usageCommand.show !== null,
+				turnActive: usageCommand.turnActive,
+			},
+		);
+		if (route === null) return false;
+		switch (route.kind)
+		{
+			case "card":
+				clearDraft();
+				usageCommand.show?.(route.text);
+				break;
+			case "settings":
+				clearDraft();
+				usageCommand.openSettings();
 				break;
 			case "band":
 				setCommandError(

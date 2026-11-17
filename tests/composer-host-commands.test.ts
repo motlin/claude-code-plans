@@ -9,6 +9,7 @@ import
 	parseHostCommand,
 	routeFastCommand,
 	routeStatusCommand,
+	routeUsageCommand,
 	SLASH_NAME,
 	trailingArgsBody,
 } from "../src/lib/composer-host-commands";
@@ -626,6 +627,73 @@ describe("routeStatusCommand", () =>
 				kind: "band",
 				text: extraLinesBody("status"),
 			},
+			null,
+		]);
+	});
+});
+
+describe("routeUsageCommand", () =>
+{
+	it("shows the card for the command as typed when idle, opens Settings otherwise, and bands extra text", () =>
+	{
+		const idle =
+		{
+			hasSession: true,
+			turnActive: false,
+		};
+		const inputs: [
+			string,
+			{
+				hasSession: boolean;
+				turnActive: boolean;
+			},
+		][] = [
+			["/usage", idle],
+			["/COST ", idle],
+			[
+				"/usage",
+				{
+					hasSession: true,
+					turnActive: true,
+				},
+			],
+			[
+				"/cost",
+				{
+					hasSession: false,
+					turnActive: false,
+				},
+			],
+			["/usage x", idle],
+			["/cost\nx", idle],
+			["/stats", idle],
+			["/usages", idle],
+		];
+
+		expect(inputs.map(([text, state]) => routeUsageCommand(text, state))).toStrictEqual([
+			{
+				kind: "card",
+				text: "/usage",
+			},
+			{
+				kind: "card",
+				text: "/COST",
+			},
+			{
+				kind: "settings",
+			},
+			{
+				kind: "settings",
+			},
+			{
+				kind: "band",
+				text: trailingArgsBody("usage"),
+			},
+			{
+				kind: "band",
+				text: extraLinesBody("cost"),
+			},
+			null,
 			null,
 		]);
 	});

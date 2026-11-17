@@ -35,6 +35,7 @@ import {loadSendRejectedCard} from "../send-rejected-card-loader";
 import {useSendRejectionActions} from "../use-send-rejection-actions";
 import {useToast} from "../toast-context";
 import {UsagePaceBanner} from "../usage-pace-banner";
+import {useOpenSettings} from "../settings/open-settings";
 import {type EnvironmentBarLine, EnvironmentBarLineHost} from "./environment-bar-line";
 import {GroupLaunchNote} from "./group-launch-note";
 import {useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
@@ -75,6 +76,20 @@ export function HomeComposer({
 {
 	const navigate = useNavigate();
 	const toast = useToast();
+	// Upstream's `/usage` on the home draft opens Settings › Usage instead of starting a session.
+	const openSettings = useOpenSettings();
+	const usageCommand = useMemo(
+		() => (
+		{
+			turnActive: false,
+			show: null,
+			openSettings: () =>
+			{
+				openSettings("usage");
+			},
+		}),
+		[openSettings],
+	);
 	const activeSessions = useActiveSessionsIfAvailable();
 	const {data: defaults} = useQuery(composerDefaultsQueryOptions);
 	useIdlePrefetch(HOME_DOCK_CHUNKS);
@@ -460,6 +475,7 @@ export function HomeComposer({
 				bypassPermissionsAllowed={bypassPermissionsAllowed}
 				permissionCwd={project?.projectPath}
 				onPermissionModePick={folderModes.remember}
+				usageCommand={usageCommand}
 			/>
 			{barLine !== null && pendingGroup !== null && (
 				<GroupLaunchNote name={pendingGroup.name} placement="block" onDismiss={dropPendingGroup} />

@@ -24,7 +24,7 @@ const COPIED_MS = 1200;
  * Upstream's ghost icon-only cds Button: step 2 (24px, `size:"base"`) or step 1 (20px, `size:"sm"`) in the
  * transcript's compact scope, both 28px when comfortable (`ma()`). Mouse down keeps focus where it was (`Zd`).
  */
-function GhostCopyButton({
+export function GhostCopyButton({
 	size,
 	copied,
 	label,

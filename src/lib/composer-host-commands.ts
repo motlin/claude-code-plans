@@ -325,3 +325,59 @@ export function routeStatusCommand(
 		kind: "card",
 	};
 }
+
+/** What a sent `/usage` or `/cost` does: draw the Usage card, open Settings › Usage, or band the extra text. */
+export type UsageCommandRoute =
+	|
+	  {
+			kind: "card";
+			text: string;
+	  }
+	|
+	  {
+			kind: "settings";
+	  }
+	|
+	  {
+			kind: "band";
+			text: string;
+	  };
+
+/**
+ * Upstream's `/usage` dispatch (`W3(["usage","cost"])` then `py`): the shape bands first; then a session with no
+ * running turn gets the card for the command as typed, and the home draft or a running turn opens Settings › Usage.
+ * Null when `text` isn't `/usage` or `/cost` (`/stats` goes to the CLI).
+ */
+export function routeUsageCommand(
+	text: string,
+	{
+		hasSession,
+		turnActive,
+	}:
+	{
+		hasSession: boolean;
+		turnActive: boolean;
+	},
+): UsageCommandRoute | null
+{
+	const shape = parseCommandShape(["usage", "cost"], text);
+	if (shape === null) return null;
+	if (shape.kind === "extra_lines")
+		return {
+			kind: "band",
+			text: extraLinesBody(shape.name),
+		};
+	if (shape.kind === "trailing_args")
+		return {
+			kind: "band",
+			text: trailingArgsBody(shape.name),
+		};
+	if (!hasSession || turnActive)
+		return {
+			kind: "settings",
+		};
+	return {
+		kind: "card",
+		text: text.trim(),
+	};
+}

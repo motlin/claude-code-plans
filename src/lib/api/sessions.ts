@@ -7,6 +7,7 @@ import {SessionViewedStateSchema} from "./viewed-state";
 import {RemoteControlStateSchema, SessionBucketSchema} from "../session-state";
 import {PrStatusSchema} from "../pr-status";
 import {SessionCostStateSchema} from "../session-cost";
+import {SessionUsageStatsSchema} from "../session-usage-stats";
 import {ApiRequestLogSchema} from "../api-request-log";
 import {ApiRequestMessagesSchema} from "../api-request-messages";
 import {ClaudeChapterEntrySchema} from "../session-chapters";
@@ -482,6 +483,7 @@ export const sessionQueryKeys =
 	devServers: (id: string) => [...SESSION_QUERY_ROOT, id, "dev-servers"] as const,
 	mcpStatus: (id: string) => [...SESSION_QUERY_ROOT, id, "mcp-status"] as const,
 	statusInfo: (id: string) => [...SESSION_QUERY_ROOT, id, "status-info"] as const,
+	usageStats: (id: string) => [...SESSION_QUERY_ROOT, id, "usage-stats"] as const,
 	artifacts: (id: string) => [...SESSION_QUERY_ROOT, id, "artifacts"] as const,
 	subagents: (id: string) => [...SESSION_QUERY_ROOT, id, "subagents"] as const,
 	workflows: (id: string) => [...SESSION_QUERY_ROOT, id, "workflows"] as const,
@@ -805,6 +807,17 @@ export const sessionStatusInfoQueryOptions = (id: string) =>
 			queryFn: async () =>
 				apiFetch(`/api/sessions/${encodeURIComponent(id)}/status-info`, SessionStatusInfoResponse),
 			staleTime: 30_000,
+		},
+	);
+
+/** The `/usage` card's session stats, fetched only while a card is mounted; refetched as the transcript grows. */
+export const sessionUsageStatsQueryOptions = (id: string) =>
+	queryOptions(
+		{
+			queryKey: sessionQueryKeys.usageStats(id),
+			queryFn: async () =>
+				apiFetch(`/api/sessions/${encodeURIComponent(id)}/usage-stats`, SessionUsageStatsSchema),
+			staleTime: 60_000,
 		},
 	);
 

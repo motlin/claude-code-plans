@@ -18,6 +18,55 @@ function meterFillTransform(percent: number): string
 }
 
 /**
+ * Upstream's cds Meter (`mf.Root`): 8px tall, or 4px at `size="sm"`, on an alpha-2 track with an inset alpha-1 ring.
+ * The fill takes the variant and never draws thinner than 4px; at 0 it isn't drawn.
+ */
+export function UsageMeter({
+	percent,
+	variant,
+	size = "default",
+	labelledBy,
+	describedBy,
+	valueText,
+	className = "w-full",
+}: {
+	percent: number;
+	variant: UsageVariant;
+	size?: "default" | "sm";
+	labelledBy: string;
+	describedBy?: string | undefined;
+	valueText: string;
+	className?: string;
+})
+{
+	return (
+		<div
+			role="meter"
+			data-variant={variant}
+			data-size={size === "sm" ? "sm" : undefined}
+			aria-valuemin={0}
+			aria-valuemax={100}
+			aria-valuenow={percent}
+			aria-valuetext={valueText}
+			aria-labelledby={labelledBy}
+			aria-describedby={describedBy}
+			className={`relative ${size === "sm" ? "h-1" : "h-2"} ${className} overflow-hidden rounded-full bg-alpha-2 shadow-[inset_0_0_0_1px_var(--color-alpha-1)] forced-color-adjust-none`}
+		>
+			{percent > 0 && (
+				<div
+					data-usage-bar-fill
+					className={`h-full w-full rounded-full ${FILL_CLASS[variant]} transition-transform duration-200 ease-[cubic-bezier(.165,.84,.44,1)] motion-reduce:transition-none rtl:[--_meter-dir:1]`}
+					style={
+					{
+						transform: meterFillTransform(percent),
+					}}
+				/>
+			)}
+		</div>
+	);
+}
+
+/**
  * Upstream's 2026-10-20 popover row: label left, reset and percent right, over a 4px meter on an
  * alpha-2 track (inset alpha-1 ring) that names the row and describes it with the reset. The fill
  * takes upstream's `wV` severity: warning at 75%, danger at 90%.
@@ -39,28 +88,14 @@ export function UsagePopoverLimitRow({label, window}: {label: string; window: Ra
 					<span aria-hidden="true">{percent}%</span>
 				</span>
 			</div>
-			<div
-				role="meter"
-				data-variant={variant}
-				aria-valuemin={0}
-				aria-valuemax={100}
-				aria-valuenow={percent}
-				aria-valuetext={`${percent}% used`}
-				aria-labelledby={labelId}
-				aria-describedby={resetId}
-				className="relative h-1 w-full overflow-hidden rounded-full bg-alpha-2 shadow-[inset_0_0_0_1px_var(--color-alpha-1)] forced-color-adjust-none"
-			>
-				{percent > 0 && (
-					<div
-						data-usage-bar-fill
-						className={`h-full w-full rounded-full ${FILL_CLASS[variant]} transition-transform duration-200 ease-[cubic-bezier(.165,.84,.44,1)] motion-reduce:transition-none rtl:[--_meter-dir:1]`}
-						style={
-						{
-							transform: meterFillTransform(percent),
-						}}
-					/>
-				)}
-			</div>
+			<UsageMeter
+				percent={percent}
+				variant={variant}
+				size="sm"
+				labelledBy={labelId}
+				describedBy={resetId}
+				valueText={`${percent}% used`}
+			/>
 		</div>
 	);
 }
