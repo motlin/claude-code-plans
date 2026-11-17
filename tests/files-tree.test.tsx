@@ -14,6 +14,7 @@ import
 	goUpTarget,
 	parseTreeQuery,
 } from "../src/components/files/files-tree-layout";
+import {TileRowEndContext} from "../src/components/panes/tile-row-end-context";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {RESIZE_GRIP_PILL, RESIZE_LINE_PILL, resizePillClass} from "../src/components/ui/resize-pill";
 import type {SessionFilesResponse} from "../src/lib/api/session-files";
@@ -999,6 +1000,63 @@ describe("FilesTreeColumn resize", () =>
 				min: "160",
 			},
 		);
+	});
+
+	it("sits on the right in a row-end tile when Automatic, and on the left when Left, like upstream c9bd7af9c", () =>
+	{
+		responses.set(
+			key("", ""),
+			{
+				kind: "listing",
+				dir: "",
+				entries: [],
+				partial: false,
+			},
+		);
+		function side(rowEnd: boolean, position: string | null)
+		{
+			if (position !== null) storage.setItem("ccp-file-column-position", position);
+			renderTree(undefined, ({children}) => <TileRowEndContext value={rowEnd}>{children}</TileRowEndContext>);
+			const column = document.querySelector<HTMLElement>("[data-files-tree]");
+			const handle = separator();
+			fireEvent.keyDown(
+				handle,
+				{
+					key: "ArrowLeft",
+				},
+			);
+			const result =
+			{
+				border: [...(column?.classList ?? [])].filter((name) => /^border-[se]$/.test(name)),
+				handleEdge: [...handle.classList].find((name) => /^(start|end)-\[/.test(name))?.slice(0, 5),
+				afterArrowLeft: separator().getAttribute("aria-valuenow"),
+			};
+			cleanup();
+			storage.clear();
+			return result;
+		}
+		expect([side(true, null), side(false, null), side(true, "left"), side(false, "right")]).toStrictEqual([
+			{
+				border: ["border-s"],
+				handleEdge: "start",
+				afterArrowLeft: "248",
+			},
+			{
+				border: ["border-e"],
+				handleEdge: "end-[",
+				afterArrowLeft: "232",
+			},
+			{
+				border: ["border-e"],
+				handleEdge: "end-[",
+				afterArrowLeft: "232",
+			},
+			{
+				border: ["border-s"],
+				handleEdge: "start",
+				afterArrowLeft: "248",
+			},
+		]);
 	});
 
 	it("is upstream's cds ResizeHandle on the column's border, half-clipped at rest, with the panels line pill", () =>

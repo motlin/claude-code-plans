@@ -235,6 +235,16 @@ export function leftEdgeTiles(root: StackNode): Set<TileId>
 }
 
 /**
+ * Upstream cf53e1812 `ie` (`QD`): the tiles on the layout's right edge that are not also on its left
+ * edge. "Automatic" puts a pane's file column on the right in these tiles.
+ */
+export function rowEndOnlyTileIds(root: StackNode): Set<TileId>
+{
+	const start = edgeTiles(root, "start");
+	return new Set([...edgeTiles(root, "end")].filter((tileId) => !start.has(tileId)));
+}
+
+/**
  * The chat's gutter attributes, from upstream cc43287c9:
  * `mt = Q(tree).has("chat") ? undefined : "shave"` and
  * `ht = ne(tree) === "chat" ? "bleed" : Z(tree).has("chat") ? undefined : "shave"`.

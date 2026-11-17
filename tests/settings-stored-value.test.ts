@@ -54,13 +54,17 @@ describe("readStoredValue", () =>
 		store("sessionsGrouping", "bogus");
 		store("defaultSubagentView", "bogus");
 		store("diffStyle", "bogus");
+		store("fileColumnPosition", "middle");
 		expect([
 			readStoredValue("verbosity"),
 			readStoredValue("sessionSort"),
 			readStoredValue("sessionsGrouping"),
 			readStoredValue("defaultSubagentView"),
 			readStoredValue("diffStyle"),
-		]).toEqual(["thinking", "stable", undefined, undefined, undefined]);
+			readStoredValue("fileColumnPosition"),
+		]).toEqual(["thinking", "stable", undefined, undefined, undefined, undefined]);
+		store("fileColumnPosition", "right");
+		expect(readStoredValue("fileColumnPosition")).toBe("right");
 	});
 
 	it("parses JSON link category rules and drops malformed JSON", () =>

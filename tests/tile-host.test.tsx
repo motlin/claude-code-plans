@@ -2,7 +2,7 @@
 
 import {readFileSync} from "node:fs";
 
-import {useState} from "react";
+import {useEffect, useState} from "react";
 
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
@@ -10,6 +10,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {registerPane} from "../src/components/panes/pane-registry";
 import {useChatGutterAttributes, usePaneHost} from "../src/components/panes/pane-host-context";
 import {TileHost} from "../src/components/panes/tile-host";
+import {useTileRowEnd} from "../src/components/panes/tile-row-end-context";
 import {TileContentHosts} from "../src/lib/tile-content-hosts";
 import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 import {longhandStyle} from "./helpers/longhand-style";
@@ -3973,6 +3974,102 @@ describe("TileHost persistent content hosts (upstream c9bc99274 data-tile-host /
 				},
 				same: true,
 				count: "1",
+			},
+		);
+	});
+});
+
+describe("TileHost row-end context (upstream cc43287c9 ZFe `wT` provider over cf53e1812 `QD`)", () =>
+{
+	let mounts = 0;
+
+	function RowEndProbe()
+	{
+		const rowEnd = useTileRowEnd();
+		useEffect(() =>
+		{
+			mounts += 1;
+		}, []);
+		return <p data-testid="row-end">{String(rowEnd)}</p>;
+	}
+
+	let unregisterFiles: () => void = () => undefined;
+
+	beforeEach(() =>
+	{
+		mounts = 0;
+		unregisterFiles = registerPane(
+			"files",
+			{
+				title: "Files",
+				render: () => <RowEndProbe />,
+			},
+		);
+	});
+
+	afterEach(() =>
+	{
+		unregisterFiles();
+	});
+
+	it("tells a pane right of the chat it is a row-end tile, and flips live without a remount when it moves left", () =>
+	{
+		localStorage.setItem(
+			"ccb.paneLayout.v1",
+			JSON.stringify(
+				{
+					"session-a":
+					{
+						root:
+						{
+							kind: "stack",
+							direction: "row",
+							flex: 1,
+							children: [
+								{
+									kind: "tile",
+									tileId: "chat",
+									flex: 2,
+								},
+								{
+									kind: "tile",
+									tileId: "files",
+									flex: 1,
+								},
+							],
+						},
+						expanded: null,
+						focused: "files",
+					},
+				},
+			),
+		);
+		renderHost("session-a");
+		const before = screen.getByTestId("row-end").textContent;
+		fireEvent.keyDown(
+			within(document.querySelector<HTMLElement>("[data-tile-host=files]")!).getByRole(
+				"button",
+				{
+					name: "Move",
+				},
+			),
+			{
+				key: "ArrowLeft",
+			},
+		);
+		expect(
+			{
+				before,
+				after: screen.getByTestId("row-end").textContent,
+				first: document.querySelector("[data-tile-slot]")?.getAttribute("data-tile-slot"),
+				mounts,
+			},
+		).toStrictEqual(
+			{
+				before: "true",
+				after: "false",
+				first: "files",
+				mounts: 1,
 			},
 		);
 	});

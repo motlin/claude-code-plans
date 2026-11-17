@@ -18,6 +18,7 @@ import {type SessionFilesResponse, sessionFilesQueryOptions} from "../../lib/api
 import type {AttachContextHandler} from "../../lib/context-attach";
 import {parseContentSearchQuery} from "../../lib/files-content-search";
 import {FileTypeIcon} from "../file-type-icon";
+import {useFileColumnOnRight} from "./file-column-side";
 import {useSettings} from "../settings-context";
 import {clampFilesTreeWidth, goUpTarget, parseTreeQuery} from "./files-tree-layout";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
@@ -86,6 +87,7 @@ export function FilesTreeColumn({
 })
 {
 	const {settings, setSetting} = useSettings();
+	const onRight = useFileColumnOnRight();
 	const {columnRef, columnStyle, resizing, handleProps, edgeHandleProps} = useFileColumnResize(
 		{
 			width: clampFilesTreeWidth(settings.filesTreeWidth),
@@ -95,6 +97,7 @@ export function FilesTreeColumn({
 			},
 			shown,
 			onShownChange,
+			side: onRight ? "inline-start" : "inline-end",
 		},
 	);
 	if (fill)
@@ -111,7 +114,7 @@ export function FilesTreeColumn({
 				data-files-tree
 				ref={columnRef}
 				hidden={!shown}
-				className="relative flex min-h-0 shrink-0 flex-col border-r border-border"
+				className={`relative flex min-h-0 shrink-0 flex-col ${onRight ? "border-s" : "border-e"} border-border`}
 				style={columnStyle}
 			>
 				{children}

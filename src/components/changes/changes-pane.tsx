@@ -83,6 +83,8 @@ import
 } from "../../lib/review-findings-store";
 import {CoachMark} from "../coach-mark";
 import {OpenInSubmenu, ShowInFinderItem} from "../files/file-actions-menu";
+import {FileColumnPositionSubmenu} from "../files/file-column-position-menu";
+import {useFileColumnOnRight} from "../files/file-column-side";
 import {mentionPath} from "../files/mention-path";
 import {FileTypeIconSetContext, useActiveFileTypeIconSet} from "../file-type-icon-set-context";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "../panes/pane-classes";
@@ -458,6 +460,7 @@ function SettingsMenu({
 						<PrefCheckboxItem prefKey="diffShowTree" shortcut={showFilesKeys.keys}>
 							Show files
 						</PrefCheckboxItem>
+						<FileColumnPositionSubmenu label="File list position" />
 						<PrefCheckboxItem prefKey="diffGroupByFolder">Group files by folder</PrefCheckboxItem>
 						<PrefCheckboxItem prefKey="diffGroupByKind">
 							Separate test, build, and generated files
@@ -1301,6 +1304,7 @@ export function ChangesPaneView({
 	const [collapsedOverrides, setCollapsedOverrides] = useState<Record<string, boolean>>({});
 	const {settings, loaded, setSetting} = useSettings();
 	const showFiles = settings.diffShowTree;
+	const listOnRight = useFileColumnOnRight();
 	useShortcut("toggle_changes_file_list", () =>
 	{
 		setSetting("diffShowTree", !showFiles);
@@ -1750,7 +1754,7 @@ export function ChangesPaneView({
 	{
 		body = (
 			<DiffMarksContext value={marks}>
-				<div className="flex min-h-0 flex-1">
+				<div className={`flex min-h-0 flex-1${listOnRight ? " flex-row-reverse" : ""}`}>
 					<ChangedFilesSidebar
 						shown={showFiles}
 						onShownChange={(shown) =>

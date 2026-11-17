@@ -36,6 +36,10 @@ export type DiffStyle = z.infer<typeof DiffStyleSchema>;
 const VerbositySchema = z.enum(["normal", "thinking", "verbose"]);
 export type Verbosity = z.infer<typeof VerbositySchema>;
 
+/** Upstream's `epitaxy-nifty-pudding`: which side the Files tree and Changes file list sit on, shared by both panes. */
+export const FileColumnPositionSchema = z.enum(["auto", "left", "right"]);
+export type FileColumnPosition = z.infer<typeof FileColumnPositionSchema>;
+
 const SessionSortSchema = z.enum(["urgency", "stable"]);
 const SessionsGroupingSchema = z.enum(["project", "time"]);
 
@@ -133,6 +137,8 @@ export interface Settings
 	diffHideWhitespace: boolean;
 	/** The Changes pane's file list width in pixels, clamped to 160–640 where it is used. */
 	diffTreeWidth: number;
+	/** The Files tree and Changes file list side; "auto" puts them on the right in a row-end tile. */
+	fileColumnPosition: FileColumnPosition;
 
 	// The Files pane's ⋯ menu.
 	filesHideIgnored: boolean;
@@ -212,6 +218,7 @@ export const DEFAULTS: Settings =
 	diffWordDiff: true,
 	diffHideWhitespace: false,
 	diffTreeWidth: 240,
+	fileColumnPosition: "auto",
 
 	filesHideIgnored: false,
 	filesPreviewTabs: true,
@@ -270,6 +277,7 @@ export const STORAGE_KEYS: Record<keyof Settings, string> =
 	diffWordDiff: "ccp-diff-word-diff",
 	diffHideWhitespace: "ccp-diff-hide-whitespace",
 	diffTreeWidth: "ccp-diff-tree-width",
+	fileColumnPosition: "ccp-file-column-position",
 	filesHideIgnored: "ccp-files-hide-ignored",
 	filesPreviewTabs: "ccp-files-preview-tabs",
 	filesTreeWidth: "ccp-files-tree-width",
@@ -484,6 +492,7 @@ const STORED_VALUE_READERS: {[K in keyof Settings]: StoredValueReader<Settings[K
 	diffWordDiff: readBoolean,
 	diffHideWhitespace: readBoolean,
 	diffTreeWidth: readNumber,
+	fileColumnPosition: readSchema(FileColumnPositionSchema),
 	filesHideIgnored: readBoolean,
 	filesPreviewTabs: readBoolean,
 	filesTreeWidth: readNumber,

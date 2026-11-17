@@ -20,6 +20,8 @@ import {FileTypeIconSetContext, useActiveFileTypeIconSet} from "../file-type-ico
 import type {ContentMatchOpenOptions} from "../files/content-search-results";
 import {FileView} from "../files/file-view";
 import {FileTabsStrip} from "../files/file-tabs-strip";
+import {FileColumnPositionSubmenu} from "../files/file-column-position-menu";
+import {useFileColumnOnRight} from "../files/file-column-side";
 import {FilesTree, FilesTreeColumn} from "../files/files-tree";
 import {JumpTargetProvider, type JumpTargetWindow} from "../jump-target-context";
 import {useSettings} from "../settings-context";
@@ -103,6 +105,7 @@ function FilesSettingsMenu({
 				<MenuCheckboxItem checked={treeShown} onCheckedChange={onTreeShownChange} shortcut={treeKeys.keys}>
 					Show file tree
 				</MenuCheckboxItem>
+				<FileColumnPositionSubmenu label="File tree position" />
 				<MenuSeparator />
 				<MenuCheckboxItem
 					checked={settings.filesPreviewTabs}
@@ -554,6 +557,7 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 	// A phone pane has room for one column, as upstream: the tree OR the open
 	// file. Opening (or switching to) a file there trades the tree for it.
 	const phone = usePhoneSheet();
+	const treeOnRight = useFileColumnOnRight();
 	const [shownPath, setShownPath] = useState(openPath);
 	if (shownPath !== openPath)
 	{
@@ -747,7 +751,10 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 				}
 				moveHandle={chrome.moveHandle}
 			/>
-			<div data-pane-body className="flex min-h-0 flex-1 overflow-hidden rounded-b-[inherit]">
+			<div
+				data-pane-body
+				className={`flex min-h-0 flex-1 overflow-hidden rounded-b-[inherit]${treeOnRight ? " flex-row-reverse" : ""}`}
+			>
 				<FilesTreeColumn fill={phone} shown={treeShown} onShownChange={setTreeShown}>
 					{sessionId === undefined ? (
 						sessionFilesList

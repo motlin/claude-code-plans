@@ -4,6 +4,8 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ChangesPaneView} from "../src/components/changes/changes-pane";
+import {FilesPaneView} from "../src/components/panes/files-pane";
+import {TileHost} from "../src/components/panes/tile-host";
 import {SettingsProvider} from "../src/components/settings-provider";
 import type {SessionDiffFile, SessionDiffResponse, SessionDiffScopesResponse} from "../src/lib/api/session-diff";
 import {installLocalStorage} from "./fake-storage";
@@ -183,6 +185,7 @@ describe("Changes settings menu", () =>
 
 		expect(menuRows()).toStrictEqual([
 			["menuitemcheckbox", "Show filesCtrl+Shift+Y", "false"],
+			["menuitem", "File list positionAutomatic", null],
 			["menuitemcheckbox", "Group files by folder", "true"],
 			["menuitemcheckbox", "Separate test, build, and generated files", "false"],
 			["menuitem", "Collapse all files", null],
@@ -203,6 +206,7 @@ describe("Changes settings menu", () =>
 
 		expect(menuRows().map(([, label]) => label)).toStrictEqual([
 			"Show filesCtrl+Shift+Y",
+			"File list positionAutomatic",
 			"Group files by folder",
 			"Separate test, build, and generated files",
 			"Collapse all files",
@@ -277,6 +281,7 @@ describe("Changes settings menu", () =>
 				showFilesPressed: "true",
 				rows: [
 					["menuitemcheckbox", "Show filesCtrl+Shift+Y", "true"],
+					["menuitem", "File list positionAutomatic", null],
 					["menuitemcheckbox", "Group files by folder", "false"],
 					["menuitemcheckbox", "Separate test, build, and generated files", "true"],
 					["menuitem", "Collapse all files", null],
@@ -324,6 +329,131 @@ describe("Changes settings menu", () =>
 				)
 				.getAttribute("aria-checked"),
 		).toBe("false");
+	});
+
+	it("File list position writes the setting the Files pane's File tree position reads", async () =>
+	{
+		render(
+			<SettingsProvider>
+				<ChangesPaneView
+					diff={diffOf([GREET_FILE])}
+					scopes={SCOPES}
+					controls={null}
+					onRefresh={() =>
+					{
+					}}
+				/>
+				<TileHost sessionId="changes-position" onExpandWithoutPane={() => undefined}>
+					<FilesPaneView
+						chrome={
+						{
+							moveHandle: null,
+							controls: null,
+						}}
+						sessionFiles={
+						{
+							files: [],
+							totalCount: 0,
+							counts:
+							{
+								userMessage: 0,
+								agentMessage: 0,
+								read: 0,
+								editWrite: 0,
+								bash: 0,
+								grepGlob: 0,
+								thinking: 0,
+								other: 0,
+							},
+						}}
+						unscannedRecordCount={0}
+					/>
+				</TileHost>
+			</SettingsProvider>,
+		);
+		await openSettings();
+		fireEvent.click(
+			screen.getByRole(
+				"menuitem",
+				{
+					name: /^File list position/,
+				},
+			),
+		);
+		fireEvent.click(
+			await screen.findByRole(
+				"menuitemradio",
+				{
+					name: "Left",
+				},
+			),
+		);
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
+				setTimeout(resolve, 0);
+			});
+		});
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Files settings",
+				},
+			),
+		);
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
+				setTimeout(resolve, 0);
+			});
+		});
+
+		expect(
+			{
+				stored: localStorage.getItem("ccp-file-column-position"),
+				filesHint: screen.getByRole(
+					"menuitem",
+					{
+						name: /^File tree position/,
+					},
+				).textContent,
+			},
+		).toStrictEqual(
+			{
+				stored: "left",
+				filesHint: "File tree positionLeft",
+			},
+		);
+	});
+
+	it("Right puts the file list on the right of the diff", async () =>
+	{
+		localStorage.setItem("ccp-diff-show-tree", "true");
+		localStorage.setItem("ccp-file-column-position", "right");
+		renderPane();
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
+				setTimeout(resolve, 0);
+			});
+		});
+		const column = document.querySelector<HTMLElement>("[data-changed-files-list]");
+
+		expect(
+			{
+				reversed: column?.parentElement?.classList.contains("flex-row-reverse"),
+				border: [...(column?.classList ?? [])].filter((name) => /^border-[se]$/.test(name)),
+			},
+		).toStrictEqual(
+			{
+				reversed: true,
+				border: ["border-s"],
+			},
+		);
 	});
 
 	it("offers only Refresh when there are no changes", async () =>

@@ -512,6 +512,11 @@ describe("Changes diff preference settings", () =>
 		expect(DEFAULTS.filesHideIgnored).toBe(false);
 	});
 
+	it("places the Files tree and Changes list automatically by default, like upstream's epitaxy-nifty-pudding", () =>
+	{
+		expect(DEFAULTS.fileColumnPosition).toBe("auto");
+	});
+
 	it("accepts only the unified and split diff styles", () =>
 	{
 		expect(

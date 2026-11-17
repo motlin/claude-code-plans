@@ -642,6 +642,7 @@ describe("Files pane header", () =>
 			{
 				before: [
 					["Show file tree⌃Control⇧ShiftY", "true"],
+					["File tree positionAutomatic", null],
 					["Preview tabs", "true"],
 					["Word wrap", "true"],
 					["Show whitespace", "false"],
@@ -757,6 +758,7 @@ describe("Files pane header", () =>
 
 		expect(rows).toStrictEqual([
 			"Show file tree",
+			"File tree position",
 			"─",
 			"Preview tabs",
 			"─",
@@ -768,6 +770,91 @@ describe("Files pane header", () =>
 			"Hide ignored files",
 			"Show files from",
 		]);
+	});
+
+	it("File tree position defaults to Automatic, putting the tree right of the chat's pane, and Left moves it", async () =>
+	{
+		registerFilesPane();
+		renderSession();
+		press(CMD_SHIFT_F);
+		function side()
+		{
+			const column = filesPane().querySelector<HTMLElement>("[data-files-tree]");
+			return {
+				reversed: column?.parentElement?.classList.contains("flex-row-reverse"),
+				border: [...(column?.classList ?? [])].filter((name) => /^border-[se]$/.test(name)),
+			};
+		}
+		const before = side();
+		fireEvent.click(
+			within(filesPane()).getByRole(
+				"button",
+				{
+					name: "Files settings",
+				},
+			),
+		);
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
+				setTimeout(resolve, 0);
+			});
+		});
+		const trigger = screen.getByRole(
+			"menuitem",
+			{
+				name: /^File tree position/,
+			},
+		);
+		const hint = trigger.textContent;
+		fireEvent.click(trigger);
+		const radios = (await screen.findAllByRole("menuitemradio")).map((item) => [
+			item.textContent,
+			item.getAttribute("aria-checked"),
+		]);
+		fireEvent.click(
+			screen.getByRole(
+				"menuitemradio",
+				{
+					name: "Left",
+				},
+			),
+		);
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("menu")).toBeNull();
+		});
+
+		expect(
+			{
+				before,
+				hint,
+				radios,
+				stored: localStorage.getItem("ccp-file-column-position"),
+				after: side(),
+			},
+		).toStrictEqual(
+			{
+				before:
+				{
+					reversed: true,
+					border: ["border-s"],
+				},
+				hint: "File tree positionAutomatic",
+				radios: [
+					["Automatic", "true"],
+					["Left", "false"],
+					["Right", "false"],
+				],
+				stored: "left",
+				after:
+				{
+					reversed: false,
+					border: ["border-e"],
+				},
+			},
+		);
 	});
 
 	it("Go to file or search shows its ⌘P keycap", async () =>

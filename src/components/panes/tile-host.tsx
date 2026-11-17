@@ -53,6 +53,7 @@ import
 	saveLastPaneFlex,
 	savePaneLayout,
 	tileFloor,
+	rowEndOnlyTileIds,
 	tileShellEdges,
 	togglePane,
 	updatePhoneView,
@@ -80,6 +81,7 @@ import
 	type PaneHostApi,
 } from "./pane-host-context";
 import {type PaneDefinition, usePaneDefinitions} from "./pane-registry";
+import {TileRowEndContext} from "./tile-row-end-context";
 
 /** Upstream `--tiles-gap`, mirrored by the reducer's gap maths. */
 const TILE_GAP_PX = 12;
@@ -166,6 +168,8 @@ interface InternalHost
 	mountedCount: number;
 	/** Each shell's line-mode edge attributes; empty outside line mode and while a tile is expanded. */
 	shellEdges: ReadonlyMap<TileId, TileShellEdges>;
+	/** Upstream's `rowEndIds`: the tiles whose panes get the row-end context (Automatic file column on the right). */
+	rowEnd: ReadonlySet<TileId>;
 	phone: boolean;
 	/** The root row, measured when a pane opens so Changes can be sized to its minimum. */
 	rootRef: RefObject<HTMLDivElement | null>;
@@ -1542,7 +1546,9 @@ function TileContent({tileId, host, chat}: {tileId: TileId; host: InternalHost; 
 	return createPortal(
 		<div style={CONTENTS_STYLE}>
 			{isPaneKind(tileId) && definition !== undefined ? (
-				<PaneSurface kind={tileId} definition={definition} host={host} />
+				<TileRowEndContext value={host.expanded !== tileId && host.rowEnd.has(tileId)}>
+					<PaneSurface kind={tileId} definition={definition} host={host} />
+				</TileRowEndContext>
 			) : (
 				<ChatTileContent host={host} chat={chat} />
 			)}
@@ -1668,6 +1674,7 @@ export function TileHost({
 				: new Map<TileId, TileShellEdges>(),
 		[layout.root, layout.expanded],
 	);
+	const rowEnd = useMemo(() => rowEndOnlyTileIds(layout.root), [layout.root]);
 	// Upstream `setInteractHandler(onTileInteract)`: focus entering a tile, or a press in it, makes it the focused tile.
 	useLayoutEffect(() =>
 	{
@@ -1790,6 +1797,7 @@ export function TileHost({
 			hidden,
 			mountedCount: mountedTiles.length,
 			shellEdges,
+			rowEnd,
 			phone,
 			rootRef,
 			rootSize,
@@ -1808,6 +1816,7 @@ export function TileHost({
 			hidden,
 			mountedTiles,
 			shellEdges,
+			rowEnd,
 			phone,
 			rootSize,
 			resolved,

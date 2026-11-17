@@ -4,6 +4,7 @@ import {type KeyboardEvent, type MouseEvent, type ReactElement, type ReactNode, 
 import {clampFileColumnWidth, useFileColumnResize} from "../../hooks/use-file-column-resize";
 import {formatRelativeTimeFromIso} from "../../lib/relative-time";
 import {changedFileKindLabels} from "../../lib/schema-choices";
+import {useFileColumnOnRight} from "../files/file-column-side";
 import {FileTypeIcon} from "../file-type-icon";
 import {FILE_TYPE_ICON_SIZE_PX} from "../file-type-icon-size";
 import {Icon} from "../ui/icon";
@@ -444,6 +445,7 @@ export function ChangedFilesSidebar({
 {
 	const {settings, setSetting} = useSettings();
 	const [collapsedDirs, setCollapsedDirs] = useState<ReadonlySet<string>>(new Set());
+	const onRight = useFileColumnOnRight();
 	const {columnRef, columnStyle, resizing, handleProps, edgeHandleProps} = useFileColumnResize(
 		{
 			width: clampFileColumnWidth(settings.diffTreeWidth),
@@ -453,6 +455,7 @@ export function ChangedFilesSidebar({
 			},
 			shown,
 			onShownChange,
+			side: onRight ? "inline-start" : "inline-end",
 		},
 	);
 	const sections = buildChangedFileTree(
@@ -490,7 +493,7 @@ export function ChangedFilesSidebar({
 				data-changed-files-list
 				ref={columnRef}
 				hidden={!shown}
-				className="relative flex min-h-0 shrink-0 flex-col border-r border-border"
+				className={`relative flex min-h-0 shrink-0 flex-col ${onRight ? "border-s" : "border-e"} border-border`}
 				style={columnStyle}
 			>
 				<div className="min-h-0 flex-1 overflow-y-auto">

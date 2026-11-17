@@ -506,6 +506,36 @@ describe("ChangedFilesSidebar", () =>
 		);
 	});
 
+	it("with Right, borders the list's start edge and grows it on ArrowLeft", () =>
+	{
+		storage.setItem("ccp-file-column-position", "right");
+		renderSidebar();
+		const handle = screen.getByRole(
+			"separator",
+			{
+				name: "Resize file list",
+			},
+		);
+		fireEvent.keyDown(
+			handle,
+			{
+				key: "ArrowLeft",
+			},
+		);
+
+		expect(
+			{
+				border: [...(handle.parentElement?.classList ?? [])].filter((name) => /^border-[se]$/.test(name)),
+				width: handle.getAttribute("aria-valuenow"),
+			},
+		).toStrictEqual(
+			{
+				border: ["border-s"],
+				width: "248",
+			},
+		);
+	});
+
 	it("resizes the file list with the keyboard between 160 and 640 pixels", () =>
 	{
 		renderSidebar();

@@ -27,6 +27,7 @@ import
 	loadSubagentPaneAgent,
 	minTileSize,
 	leftEdgeTiles,
+	rowEndOnlyTileIds,
 	resolveFlexes,
 	resolveTileLayout,
 	tileFloor,
@@ -1479,6 +1480,29 @@ describe("leftEdgeTiles", () =>
 	] satisfies Array<[string, StackNode, TileId[]]>)("holds %s", (_name, root, expected) =>
 	{
 		expect(leftEdgeTiles(root)).toStrictEqual(new Set(expected));
+	});
+});
+
+describe("rowEndOnlyTileIds", () =>
+{
+	it.each([
+		["a sole chat", stack("row", 1, [tile("chat", 1)]), []],
+		["a pane right of the chat", stack("row", 1, [tile("chat", 1), tile("files", 1)]), ["files"]],
+		["the chat right of a pane", stack("row", 1, [tile("files", 1), tile("chat", 1)]), ["chat"]],
+		[
+			"every tile of a right column",
+			stack("row", 1, [tile("chat", 1), stack("column", 1, [tile("files", 1), tile("changes", 1)])]),
+			["files", "changes"],
+		],
+		["only the last of three", stack("row", 1, [tile("chat", 1), tile("files", 1), tile("plan", 1)]), ["plan"]],
+		[
+			"the last tile of a nested row",
+			stack("row", 1, [tile("chat", 1), stack("row", 1, [tile("files", 1), tile("changes", 1)])]),
+			["changes"],
+		],
+	] satisfies Array<[string, StackNode, TileId[]]>)("holds %s", (_name, root, expected) =>
+	{
+		expect(rowEndOnlyTileIds(root)).toStrictEqual(new Set(expected));
 	});
 });
 
