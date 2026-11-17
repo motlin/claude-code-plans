@@ -2,7 +2,7 @@ import type {KeyboardEvent} from "react";
 import {AppWindow, ChevronRight} from "lucide-react";
 import type {ArtifactSummary} from "../../lib/api/artifacts";
 import {ARTIFACT_MARK_KINDS, ARTIFACT_TYPE_KINDS, MARK_INK, resolveArtifactMark} from "../../lib/artifact-mark";
-import type {ParsedArtifact} from "../../lib/artifact-output";
+import {artifactCardStatus, type ArtifactCardStatus, type ParsedArtifact} from "../../lib/artifact-output";
 import type {ArtifactListEntry} from "../../lib/artifact-schemas";
 import {artifactPreviewPath, isPreviewableSourcePath} from "../../lib/artifact-source-paths";
 import {ArtifactGlyph} from "../artifact-mark";
@@ -17,13 +17,18 @@ function basename(path: string): string
 	return path.split("/").pop() ?? path;
 }
 
-/** Upstream's card label: the artifact's title, else its file's name, else its id. */
+/**
+ * Upstream's card label: the artifact's title, else its file's name without
+ * the extension. Upstream `MF` drops a bare id, so an unnamed card reads
+ * "Untitled artifact".
+ */
 function artifactLabel(artifact: ParsedArtifact, input: ClientToolCall["input"]): string
 {
 	if (artifact.title !== undefined) return artifact.title;
 	const filePath = artifact.path ?? input["file_path"];
-	if (typeof filePath === "string" && filePath !== "") return basename(filePath);
-	return artifact.id || "Untitled artifact";
+	if (typeof filePath !== "string" || filePath === "") return "Untitled artifact";
+	const name = basename(filePath);
+	return name.replace(/\.\w+$/, "") || name;
 }
 
 /** Whether the sandboxed source preview can show the local file a publish came from. */
@@ -33,9 +38,16 @@ function previewableSource(artifact: ParsedArtifact, input: ClientToolCall["inpu
 	return typeof filePath === "string" && isPreviewableSourcePath(filePath);
 }
 
+const STATUS_TEXT: Record<ArtifactCardStatus, string> =
+{
+	opened: "Opened",
+	published: "Published",
+};
+
 /**
- * Upstream's "Open artifact" pill. The artifact only lives on claude.ai, so
- * it is a link out in a new tab; Space opens it too, as upstream's button does.
+ * Upstream's "Open artifact" card (`R`): a div role=button that click, Enter
+ * and Space activate. Local has no in-app artifact pane, so every activation
+ * opens the claude.ai URL in a new tab, upstream's own no-opener fallback.
  * A publish from a local HTML or Markdown file also gets a "Preview source"
  * link to the sandboxed local preview.
  */
@@ -44,12 +56,15 @@ export function ArtifactCard({
 	label,
 	previewHref,
 	typeKind,
+	status,
 }: {
 	url: string;
 	label: string;
 	previewHref: string | undefined;
 	/** The artifact's type kind, when it was made from a known type. */
 	typeKind?: ArtifactKind | undefined;
+	/** Upstream `z`'s status text; the session Artifacts pane passes none. */
+	status?: ArtifactCardStatus | undefined;
 })
 {
 	const mark = resolveArtifactMark(
@@ -57,26 +72,30 @@ export function ArtifactCard({
 			typeKind,
 		},
 	);
-	const onKeyDown = (event: KeyboardEvent<HTMLAnchorElement>) =>
+	const open = () =>
 	{
-		if (event.key !== " ") return;
-		event.preventDefault();
 		window.open(url, "_blank", "noopener,noreferrer");
+	};
+	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) =>
+	{
+		if (event.key !== "Enter" && event.key !== " ") return;
+		event.preventDefault();
+		open();
 	};
 	return (
 		<div className="flex flex-col w-full my-[6px]">
-			<a
+			{/* Upstream gets the pointer from cds [role=button] base styles; a local div needs cursor-pointer. */}
+			<div
 				role="button"
-				href={url}
-				target="_blank"
-				rel="noopener noreferrer"
+				tabIndex={0}
 				aria-label={`Open artifact ${label}`}
+				onClick={open}
 				onKeyDown={onKeyDown}
-				className="relative isolate flex self-start min-w-[318px] max-w-[318px] items-start gap-g3 rounded-r6 pl-2.5 pr-p3 py-p6 text-left group/btn cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus"
+				className="relative isolate flex self-start min-w-[min(100%,318px)] max-w-[min(100%,318px)] items-start gap-xs rounded-lg ps-2.5 pe-xs py-sm text-start group/btn focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus group/tool cursor-pointer"
 			>
 				<span
 					aria-hidden="true"
-					className="card-outline task-card-surface absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover"
+					className="task-card-surface shadow-[inset_0_0_0_1px_var(--upstream-border)] absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover"
 				/>
 				{mark === undefined ? (
 					<AppWindow size={16} aria-hidden="true" className="shrink-0 self-center text-muted-as-secondary" />
@@ -89,8 +108,13 @@ export function ArtifactCard({
 					</span>
 				)}
 				<span className="min-w-0 flex-1 text-body text-primary truncate">{label}</span>
-				<ChevronRight size={16} aria-hidden="true" className="shrink-0 self-center text-ink-muted" />
-			</a>
+				{status === undefined ? null : (
+					<span className="shrink-0 text-footnote text-muted-as-secondary">{STATUS_TEXT[status]}</span>
+				)}
+				<span className="shrink-0 self-center text-muted-as-secondary">
+					<ChevronRight size={16} aria-hidden="true" data-cds-mirror="" />
+				</span>
+			</div>
 			{previewHref !== undefined && (
 				<a
 					href={previewHref}
@@ -156,6 +180,7 @@ export function ArtifactRenderer({toolCall}: ToolRendererProps)
 				url={toolCall.artifact.url}
 				label={artifactLabel(toolCall.artifact, toolCall.input)}
 				typeKind={publishTypeKind(toolCall.input)}
+				status={artifactCardStatus(toolCall.input, toolCall.artifact)}
 				previewHref={
 					previewableSource(toolCall.artifact, toolCall.input)
 						? artifactPreviewPath(toolCall.artifact.id)

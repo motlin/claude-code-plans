@@ -8011,8 +8011,7 @@ function ToolCallRow({
 	const isWorkflow = call.name === "Workflow";
 	// Upstream's `GN` always discloses a blocked call, to show why it did not run.
 	const hasBody = call.blocked === true || (!rendersEmptyBody(call) && !(isWorkflow && !verbose));
-	// An artifact card is the row's whole body and stays visible, as upstream
-	// draws it under the "Published artifact" label.
+	// An artifact card stays visible; a lone one replaces the row (below).
 	const expandable = hasBody && !NON_EXPANDING_TOOLS.has(call.name) && !isArtifactCard(call);
 	const Renderer = getCallRenderer(call);
 	const pending = isPendingToolCall(call) || heldLive !== undefined;
@@ -8570,6 +8569,24 @@ function ToolCallRow({
 				{hoistedImages}
 			</>
 		);
+
+	// Upstream `qT`/`NE`: an artifact card replaces the tool row, with no label row
+	// above it and no row status to announce.
+	if (members.length === 1 && isArtifactCard(call))
+	{
+		return withHoistedImages(
+			<div
+				data-tool-row=""
+				data-tool-anchor={toolAnchor}
+				data-find-omitted={nested ? undefined : ""}
+				className="contents"
+			>
+				<Suspense fallback={null}>
+					<Renderer toolCall={call} nested={nested} />
+				</Suspense>
+			</div>,
+		);
+	}
 
 	if (!expandable)
 	{

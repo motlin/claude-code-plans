@@ -2,8 +2,9 @@
 
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
-import {cleanup, fireEvent, render, screen} from "@testing-library/react";
+import {cleanup, createEvent, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {SessionArtifactsList} from "../src/components/panes/artifacts-pane";
 import {SessionChat} from "../src/components/session-chat";
 import {getToolRenderer} from "../src/components/tool-renderers";
 import {ArtifactRenderer} from "../src/components/tool-renderers/artifact-renderer";
@@ -99,7 +100,10 @@ const QUARTO_TEXT = `Published /Users/craig/projects/quarto/dist/quarto.html at 
 const PIN_URL = "https://claude.ai/code/artifact/17b8a2c1-4c41-46bf-b064-a272240be709";
 
 const CARD_CLASS =
-	"relative isolate flex self-start min-w-[318px] max-w-[318px] items-start gap-g3 rounded-r6 pl-2.5 pr-p3 py-p6 text-left group/btn cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus";
+	"relative isolate flex self-start min-w-[min(100%,318px)] max-w-[min(100%,318px)] items-start gap-xs rounded-lg ps-2.5 pe-xs py-sm text-start group/btn focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus group/tool cursor-pointer";
+const SURFACE_CLASS =
+	"task-card-surface shadow-[inset_0_0_0_1px_var(--upstream-border)] absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover";
+const STATUS_CLASS = "shrink-0 text-footnote text-muted-as-secondary";
 
 function transcriptRecords(
 	input: Record<string, unknown>,
@@ -176,10 +180,18 @@ function cardSummary(container: HTMLElement)
 		href: card?.getAttribute("href"),
 		target: card?.getAttribute("target"),
 		rel: card?.getAttribute("rel"),
+		tabIndex: card?.getAttribute("tabindex"),
 		className: card?.getAttribute("class"),
 		label: card?.querySelector("span.truncate")?.textContent,
 		surface: card?.querySelector('span[aria-hidden="true"]')?.className,
 	};
+}
+
+/** The card's direct children as [tag, class, text]; the icon and caret are summarized by tag. */
+function cardChildren(container: HTMLElement)
+{
+	const card = container.querySelector('[role="button"]');
+	return [...(card?.children ?? [])].map((child) => [child.tagName, child.getAttribute("class"), child.textContent]);
 }
 
 describe("Artifact tool labels", () =>
@@ -340,20 +352,115 @@ describe("ArtifactRenderer", () =>
 		expect(cardSummary(container)).toStrictEqual(
 			{
 				wrapper: "flex flex-col w-full my-[6px]",
-				tag: "A",
+				tag: "DIV",
 				ariaLabel: "Open artifact Quarto Oracle",
-				href: QUARTO_URL,
-				target: "_blank",
-				rel: "noopener noreferrer",
+				href: null,
+				target: null,
+				rel: null,
+				tabIndex: "0",
 				className: CARD_CLASS,
 				label: "Quarto Oracle",
-				surface:
-					"card-outline task-card-surface absolute inset-0 -z-[1] rounded-[inherit] group-hover/btn:bg-fill-ghost-hover",
+				surface: SURFACE_CLASS,
 			},
 		);
 	});
 
-	it("falls back to the file basename when the result has no title", () =>
+	// Upstream `z`: "Published" for a publish/edit, "Opened" for an open, nothing for a publish that opened.
+	it("ends the card with upstream's status text before a mirrored caret", () =>
+	{
+		const status = (input: Record<string, unknown>, text: string) =>
+		{
+			const {container} = render(<ArtifactRenderer toolCall={transcriptCall(input, text, undefined)} />);
+			const children = cardChildren(container);
+			cleanup();
+			return children.slice(2);
+		};
+		const caret = ["SPAN", "shrink-0 self-center text-muted-as-secondary", ""];
+
+		expect(
+			{
+				published: status(PUBLISH.input, QUARTO_TEXT),
+				edited: status(
+					{
+						action: "edit",
+						url: QUARTO_URL,
+					},
+					QUARTO_TEXT,
+				),
+				opened: status(
+					{
+						action: "open",
+						url: PIN_URL,
+					},
+					`Opened the Artifact at ${PIN_URL}`,
+				),
+				publishThatOpened: status(
+					{
+						file_path: "/tmp/x/report.html",
+					},
+					`Opened the Artifact at ${PIN_URL}`,
+				),
+			},
+		).toStrictEqual(
+			{
+				published: [
+					["SPAN", "min-w-0 flex-1 text-body text-primary truncate", "quarto"],
+					["SPAN", STATUS_CLASS, "Published"],
+					caret,
+				],
+				edited: [
+					["SPAN", "min-w-0 flex-1 text-body text-primary truncate", "quarto"],
+					["SPAN", STATUS_CLASS, "Published"],
+					caret,
+				],
+				opened: [
+					["SPAN", "min-w-0 flex-1 text-body text-primary truncate", "Untitled artifact"],
+					["SPAN", STATUS_CLASS, "Opened"],
+					caret,
+				],
+				publishThatOpened: [["SPAN", "min-w-0 flex-1 text-body text-primary truncate", "report"], caret],
+			},
+		);
+	});
+
+	it("mirrors the caret in RTL", () =>
+	{
+		const {container} = render(
+			<ArtifactRenderer toolCall={transcriptCall(PUBLISH.input, QUARTO_TEXT, PUBLISH.toolUseResult)} />,
+		);
+
+		expect(
+			container
+				.querySelector('[role="button"]')
+				?.lastElementChild?.querySelector("svg")
+				?.getAttribute("data-cds-mirror"),
+		).toBe("");
+	});
+
+	it("draws no status text in the session Artifacts pane", () =>
+	{
+		const {container} = render(
+			<SessionArtifactsList
+				artifacts={[
+					{
+						url: QUARTO_URL,
+						id: "29d89ae8-e33b-4f55-bbbd-874d5d316169",
+						title: "Quarto Oracle",
+						kind: "html",
+						previewable: false,
+						lastEventAt: 0,
+					},
+				]}
+			/>,
+		);
+
+		expect(cardChildren(container).slice(2)).toStrictEqual([
+			["SPAN", "min-w-0 flex-1 text-body text-primary truncate", "Quarto Oracle"],
+			["SPAN", "shrink-0 self-center text-muted-as-secondary", ""],
+		]);
+	});
+
+	it("falls back to the file basename without its extension when the result has no title", () =>
 	{
 		const call = transcriptCall(
 			{
@@ -371,8 +478,8 @@ describe("ArtifactRenderer", () =>
 			},
 		).toStrictEqual(
 			{
-				ariaLabel: "Open artifact quarto.html",
-				href: QUARTO_URL,
+				ariaLabel: "Open artifact quarto",
+				href: null,
 			},
 		);
 	});
@@ -395,8 +502,8 @@ describe("ArtifactRenderer", () =>
 		).toStrictEqual(
 			{
 				ariaLabel: "Open artifact Blueprint Bot renderer routing",
-				href: "https://claude.ai/artifact/88kDDG41ePqvfVZNsq4HCF",
-				target: "_blank",
+				href: null,
+				target: null,
 			},
 		);
 	});
@@ -450,27 +557,32 @@ describe("ArtifactRenderer", () =>
 		);
 	});
 
-	it("renders an open with the artifact id when nothing else names it", () =>
+	// Upstream `MF` drops a bare artifact id, so an unnamed card reads "Untitled artifact".
+	it("names an open or a pathless publish Untitled artifact rather than by its id", () =>
 	{
-		const call = transcriptCall(
-			{
-				action: "open",
-				url: PIN_URL,
-			},
-			`Opened the Artifact at ${PIN_URL}`,
-			undefined,
-		);
-		const {container} = render(<ArtifactRenderer toolCall={call} />);
+		const label = (input: Record<string, unknown>, text: string) =>
+		{
+			const {container} = render(<ArtifactRenderer toolCall={transcriptCall(input, text, undefined)} />);
+			const ariaLabel = cardSummary(container).ariaLabel;
+			cleanup();
+			return ariaLabel;
+		};
 
 		expect(
 			{
-				ariaLabel: cardSummary(container).ariaLabel,
-				href: cardSummary(container).href,
+				open: label(
+					{
+						action: "open",
+						url: PIN_URL,
+					},
+					`Opened the Artifact at ${PIN_URL}`,
+				),
+				pathless: label({}, `Published at ${PIN_URL}`),
 			},
 		).toStrictEqual(
 			{
-				ariaLabel: "Open artifact 17b8a2c1-4c41-46bf-b064-a272240be709",
-				href: PIN_URL,
+				open: "Open artifact Untitled artifact",
+				pathless: "Open artifact Untitled artifact",
 			},
 		);
 	});
@@ -521,25 +633,58 @@ describe("ArtifactRenderer", () =>
 		).toBeNull();
 	});
 
-	it("opens the artifact in a new tab on Space", () =>
+	// Upstream `R`/`N` with no pane opener: click, Enter and Space open the artifact in a new tab.
+	it("opens the artifact in a new tab on click, Enter and Space, and on no other key", () =>
 	{
 		const open = vi.spyOn(window, "open").mockReturnValue(null);
 		const call = transcriptCall(PUBLISH.input, QUARTO_TEXT, PUBLISH.toolUseResult);
 		render(<ArtifactRenderer toolCall={call} />);
-
-		fireEvent.keyDown(
-			screen.getByRole(
-				"button",
-				{
-					name: "Open artifact Quarto Oracle",
-				},
-			),
+		const card = screen.getByRole(
+			"button",
 			{
-				key: " ",
+				name: "Open artifact Quarto Oracle",
 			},
 		);
+		const press = (key: string) =>
+		{
+			const event = createEvent.keyDown(
+				card,
+				{
+					key,
+				},
+			);
+			fireEvent(card, event);
+			return event.defaultPrevented;
+		};
 
-		expect(open.mock.calls).toStrictEqual([[QUARTO_URL, "_blank", "noopener,noreferrer"]]);
+		fireEvent.click(card);
+		const prevented =
+		{
+			enter: press("Enter"),
+			space: press(" "),
+			a: press("a"),
+		};
+
+		expect(
+			{
+				calls: open.mock.calls,
+				prevented,
+			},
+		).toStrictEqual(
+			{
+				calls: [
+					[QUARTO_URL, "_blank", "noopener,noreferrer"],
+					[QUARTO_URL, "_blank", "noopener,noreferrer"],
+					[QUARTO_URL, "_blank", "noopener,noreferrer"],
+				],
+				prevented:
+				{
+					enter: true,
+					space: true,
+					a: false,
+				},
+			},
+		);
 		open.mockRestore();
 	});
 
@@ -663,41 +808,54 @@ describe("ArtifactRenderer", () =>
 
 describe("Artifact row in the session transcript", () =>
 {
-	it("shows the publish row with its card always visible and no disclosure", async () =>
-	{
-		const {lines, toolResultMap} = processTranscript(
-			transcriptRecords(PUBLISH.input, QUARTO_TEXT, PUBLISH.toolUseResult),
-		);
-		const {container} = render(
-			<SessionChat
-				sessionId="test-session"
-				lines={lines}
-				toolResultMap={toolResultMap}
-				showCompactSummaries
-				showTranscriptOnly
-			/>,
-		);
-		const card = await screen.findByRole(
-			"button",
+	// Upstream `qT`: the card replaces the tool row, with no label row above it.
+	it.each([
+		["publish", PUBLISH.input, QUARTO_TEXT, PUBLISH.toolUseResult, "Open artifact Quarto Oracle"],
+		[
+			"open",
 			{
-				name: "Open artifact Quarto Oracle",
+				action: "open",
+				url: PIN_URL,
 			},
-		);
+			`Opened the Artifact at ${PIN_URL}`,
+			undefined,
+			"Open artifact Untitled artifact",
+		],
+	])(
+		"draws a %s as the card alone, with no row label or disclosure",
+		async (_action, input, text, toolUseResult, name) =>
+		{
+			const {lines, toolResultMap} = processTranscript(transcriptRecords(input, text, toolUseResult));
+			const {container} = render(
+				<SessionChat
+					sessionId="test-session"
+					lines={lines}
+					toolResultMap={toolResultMap}
+					showCompactSummaries
+					showTranscriptOnly
+				/>,
+			);
+			const card = await screen.findByRole(
+				"button",
+				{
+					name,
+				},
+			);
+			const row = card.parentElement?.parentElement;
 
-		expect(
-			{
-				href: card.getAttribute("href"),
-				expandables: container.querySelectorAll("[aria-expanded]").length,
-				verb: screen.getByText("Published artifact").tagName,
-				meta: screen.getByText("quarto.html").tagName,
-			},
-		).toStrictEqual(
-			{
-				href: QUARTO_URL,
-				expandables: 0,
-				verb: "SPAN",
-				meta: "SPAN",
-			},
-		);
-	});
+			expect(
+				{
+					expandables: container.querySelectorAll("[aria-expanded]").length,
+					labels: screen.queryAllByText(/Published artifact|Used artifact tool/).length,
+					row: [row?.className, row?.hasAttribute("data-tool-row")],
+				},
+			).toStrictEqual(
+				{
+					expandables: 0,
+					labels: 0,
+					row: ["contents", true],
+				},
+			);
+		},
+	);
 });

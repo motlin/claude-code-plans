@@ -1,7 +1,7 @@
 import {readFileSync} from "node:fs";
 import {resolve} from "node:path";
 import {describe, expect, it} from "vite-plus/test";
-import {isArtifactCardCall, parseArtifactOutput} from "../src/lib/artifact-output";
+import {artifactCardStatus, isArtifactCardCall, parseArtifactOutput} from "../src/lib/artifact-output";
 
 interface ArtifactSample
 {
@@ -363,6 +363,14 @@ describe("isArtifactCardCall", () =>
 		],
 		[
 			{
+				action: "edit",
+				url: UUID_URL,
+			},
+			false,
+			true,
+		],
+		[
+			{
 				file_path: "/tmp/x.html",
 			},
 			true,
@@ -412,5 +420,51 @@ describe("isArtifactCardCall", () =>
 	])("%j (is_error %s) → %s", (input, isError, expected) =>
 	{
 		expect(isArtifactCardCall(input, isError)).toBe(expected);
+	});
+});
+
+describe("artifactCardStatus", () =>
+{
+	it("reads upstream's z: Opened for an open, nothing for a publish that opened, else Published", () =>
+	{
+		const artifact =
+		{
+			url: UUID_URL,
+			kind: "uuid" as const,
+			id: UUID,
+		};
+		const opened =
+		{
+			...artifact,
+			opened: true as const,
+		};
+		expect([
+			artifactCardStatus({}, artifact),
+			artifactCardStatus(
+				{
+					action: "publish",
+				},
+				artifact,
+			),
+			artifactCardStatus(
+				{
+					action: "edit",
+				},
+				artifact,
+			),
+			artifactCardStatus(
+				{
+					action: "open",
+				},
+				opened,
+			),
+			artifactCardStatus(
+				{
+					action: "open",
+				},
+				artifact,
+			),
+			artifactCardStatus({}, opened),
+		]).toStrictEqual(["published", "published", "published", "opened", "opened", undefined]);
 	});
 });

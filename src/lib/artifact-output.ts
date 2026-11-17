@@ -175,12 +175,31 @@ export function parseArtifactOutput(resultText: string, toolUseResult?: unknown)
 
 /**
  * Whether an `Artifact` call gets an artifact card: a successful publish
- * (no action, or "publish") or open.
+ * (no action, "publish" or "edit") or open.
  */
 export function isArtifactCardCall(input: unknown, isError: boolean): boolean
 {
 	const record = asRecord(input);
 	if (isError || record === undefined) return false;
 	const action = record["action"];
-	return action === undefined || action === "publish" || action === "open";
+	return isPublishAction(action) || action === "open";
+}
+
+/** Upstream `mq`: a publish, an edit, or no action at all. */
+function isPublishAction(action: unknown): boolean
+{
+	return action === undefined || action === "publish" || action === "edit";
+}
+
+/** The status text an "Open artifact" card ends with. */
+export type ArtifactCardStatus = "opened" | "published";
+
+/**
+ * Upstream `z`: an open reads "Opened", a publish whose output says it opened
+ * the artifact reads nothing, and every other publish reads "Published".
+ */
+export function artifactCardStatus(input: unknown, artifact: ParsedArtifact): ArtifactCardStatus | undefined
+{
+	if (!isPublishAction(asRecord(input)?.["action"])) return "opened";
+	return artifact.opened === true ? undefined : "published";
 }

@@ -284,15 +284,15 @@ describe("SessionArtifactsList", () =>
 		).toStrictEqual([
 			{
 				label: "Open artifact Quarterly plan",
-				href: DOCS_URL,
-				target: "_blank",
-				rel: "noopener noreferrer",
+				href: null,
+				target: null,
+				rel: null,
 			},
 			{
 				label: "Open artifact Asap Ladder Queue",
-				href: LADDER_URL,
-				target: "_blank",
-				rel: "noopener noreferrer",
+				href: null,
+				target: null,
+				rel: null,
 			},
 		]);
 		expect(
