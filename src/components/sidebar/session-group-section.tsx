@@ -57,6 +57,8 @@ import {SessionActionsMenu, SessionRowTitle} from "../session-actions-menu";
 import {SessionHoverCard} from "../session-hover-card";
 import {QUICK_REPLY_HINT} from "../session-hover-card-classes";
 import {SidebarRowDecoration, SidebarRowSrText} from "../session-unread-control";
+import {ShimmerText} from "../shimmer-text";
+import {useTimelineShimmerDelay} from "../../lib/shimmer";
 import {type RowAttention, useRowAttention} from "../use-row-icon-kind";
 import {useSettings} from "../settings-context";
 import {PrTailGlyph, SessionStateIcon} from "../status-dot";
@@ -1252,7 +1254,7 @@ function SessionRowLink({
 	const aiTitle = useSecondaryAiTitle(title, row.session.aiTitle);
 	const {settings} = useSettings();
 	const blocked = row.bucket === "blocked";
-	const attention = useRowAttention(row.session);
+	const attention = useRowAttention(row.session, selected);
 	// Upstream draws no PR tail on pinned rows.
 	const prTail =
 		pinnedIds === undefined && settings.sessionListPrefs.showPrStatus && row.session.prStatus !== undefined
@@ -1271,10 +1273,10 @@ function SessionRowLink({
 	const rowTitleLabel = (
 		<SessionRowTitle
 			render={(title) => (
-				<FadeLabel text={title} attention={attention}>
+				<FadeLabel text={title} attention={attention} still={selected || multiSelected}>
 					{/* Upstream's o_: archived rows get a sr-only " Archived" right after the title, no pill */}
 					{row.archived && <span className="sr-only"> Archived</span>}
-					<SidebarRowSrText session={row.session} />
+					<SidebarRowSrText session={row.session} paneSelected={selected} />
 				</FadeLabel>
 			)}
 		/>
@@ -1392,23 +1394,41 @@ function SessionRowLink({
 					)}
 				</Link>
 				{/* Upstream's aria-hidden status mark sits beside the link; its sr text is inside the title */}
-				<SidebarRowDecoration session={row.session} envGlyph={envGlyph} />
+				<SidebarRowDecoration session={row.session} envGlyph={envGlyph} paneSelected={selected} />
 			</SessionActionsMenu>
 		</SessionHoverCard>
 	);
 }
 
 /**
+ * Upstream `ZP`: a working row's title in the strong ShimmerText, phase-locked to the other running
+ * shimmers. The selected row's title (`still`) keeps the span but does not sweep.
+ */
+function WorkingTitle({text, still}: {text: string; still: boolean})
+{
+	const ref = useRef<HTMLSpanElement>(null);
+	const delay = useTimelineShimmerDelay(ref);
+	return (
+		<ShimmerText ref={ref} variant="strong" className="inline-block align-top" active={!still} delay={delay}>
+			{text}
+		</ShimmerText>
+	);
+}
+
+/**
  * Marks itself `data-overflowing` when the title is clipped, so CSS fades its end. A session row
- * passes upstream's `data-attention` look for its title's `span.relative`.
+ * passes upstream's `data-attention` look for its title's `span.relative`, and `still` when it is
+ * the selected row, whose working title holds still.
  */
 function FadeLabel({
 	text,
 	attention,
+	still = false,
 	children,
 }: {
 	text: string;
 	attention?: RowAttention | undefined;
+	still?: boolean;
 	children?: ReactNode;
 })
 {
@@ -1448,13 +1468,11 @@ function FadeLabel({
 
 	return (
 		<span ref={ref} dir="auto" className="dframe-fade-label" data-overflowing={overflowing ? "" : undefined}>
-			<span
-				ref={textRef}
-				className="relative inline-block align-top whitespace-nowrap"
-				data-attention={attention}
-			>
-				{text}
-				{children}
+			<span ref={textRef} className="inline-block whitespace-nowrap align-top">
+				<span className="relative" data-attention={attention}>
+					{attention === "working" ? <WorkingTitle text={text} still={still} /> : text}
+					{children}
+				</span>
 			</span>
 		</span>
 	);

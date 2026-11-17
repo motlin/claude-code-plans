@@ -1101,7 +1101,8 @@ describe("sidebar Group and sort menu", () =>
 			]);
 			const box = container.querySelector<HTMLElement>('a[href="/session/l1"] .dframe-fade-label');
 			const text = box?.querySelector<HTMLElement>(":scope > span.inline-block");
-			const title = text?.firstChild;
+			// The title text sits in upstream's inner span.relative[data-attention].
+			const title = text?.querySelector(":scope > span.relative")?.firstChild;
 			if (!box || !text || !title) throw new Error("no fade label");
 			box.getBoundingClientRect = () => new DOMRect(0, 0, 200, 20);
 			const range = document.createRange();

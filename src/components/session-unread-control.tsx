@@ -11,7 +11,7 @@ import {SessionStateIcon} from "./status-dot";
 import {GIT_PR_STATE_LABELS} from "./git-pr-state-labels";
 import {Tooltip} from "./ui/tooltip";
 import {useHasUnseenWork} from "./use-has-unseen-work";
-import {rowAttention, useRowIconKind} from "./use-row-icon-kind";
+import {useRowAttention, useRowIconKind} from "./use-row-icon-kind";
 
 /**
  * Upstream session row status dot. Awaiting and running glyphs carry a top tooltip, a read finished
@@ -123,9 +123,19 @@ function BridgeEnvGlyph({offline}: {offline: boolean})
  * takes the same 24px slot; an open context menu leaves it visible, as upstream. The mark is an aria-hidden `role=img`; screen readers get
  * `SidebarRowSrText` inside the title instead.
  */
-export function SidebarRowDecoration({session, envGlyph}: {session: SessionListItem; envGlyph: boolean})
+export function SidebarRowDecoration({
+	session,
+	envGlyph,
+	paneSelected,
+}: {
+	session: SessionListItem;
+	envGlyph: boolean;
+	/** The row is the open pane's, which is never unread. */
+	paneSelected: boolean;
+})
 {
-	const {kind} = useRowIconKind(session);
+	const {kind} = useRowIconKind(session, paneSelected);
+	const attention = useRowAttention(session, paneSelected);
 	const mark = (
 		<SessionStateIcon
 			kind={kind}
@@ -150,7 +160,7 @@ export function SidebarRowDecoration({session, envGlyph}: {session: SessionListI
 				)
 			) : (
 				<span aria-hidden="true" className="flex items-center">
-					{rowAttention(kind) === undefined ? (
+					{attention !== "waiting" && attention !== "unread" ? (
 						mark
 					) : (
 						// Upstream `Oc`: a waiting or unread attention look wraps the mark once more.
@@ -169,9 +179,9 @@ export function SidebarRowDecoration({session, envGlyph}: {session: SessionListI
  * accessible name: a status region (" Awaiting input", " Error", " Running", " Unread response") and the
  * environment (" herdr · Connected", " claude-code-plans · Offline").
  */
-export function SidebarRowSrText({session}: {session: SessionListItem})
+export function SidebarRowSrText({session, paneSelected}: {session: SessionListItem; paneSelected: boolean})
 {
-	const {unseen, kind, showPrStatus} = useRowIconKind(session);
+	const {unseen, kind, showPrStatus} = useRowIconKind(session, paneSelected);
 	const srClass = "sr-only [[role=tooltip]_&]:hidden";
 	return (
 		<>

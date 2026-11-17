@@ -295,6 +295,59 @@ async function renderGroups(
 	};
 }
 
+/** A session row's title markup: upstream's two title spans and, on a working row, its strong ShimmerText. */
+function describeRowTitle(link: HTMLElement)
+{
+	const outer = link.querySelector("[data-row-label] .dframe-fade-label")?.firstElementChild;
+	const inner = outer?.firstElementChild;
+	const shimmer = inner?.querySelector(":scope > [data-cds=ShimmerText]");
+	return {
+		outer: outer?.getAttribute("class") ?? null,
+		outerChildren: outer?.children.length ?? 0,
+		inner: inner?.getAttribute("class") ?? null,
+		attention: inner?.getAttribute("data-attention") ?? null,
+		shimmer:
+			shimmer === null || shimmer === undefined
+				? null
+				:
+					{
+						variant: shimmer.getAttribute("data-variant"),
+						shimmering: shimmer.getAttribute("data-shimmering"),
+						className: shimmer.getAttribute("class"),
+						text: shimmer.textContent,
+					},
+	};
+}
+
+/** The row link whose title is `title` (an archived row's ends in its sr-only " Archived"). */
+function rowLink(container: HTMLElement, title: string): HTMLElement
+{
+	const link = [...container.querySelectorAll<HTMLElement>("a[data-row-main-button]")].find((node) =>
+		[title, `${title} Archived`].includes(rowTitle(node)),
+	);
+	if (link === undefined) throw new Error(`no row ${title}`);
+	return link;
+}
+
+/** jsdom has no matchMedia; this one matches only `matching`. */
+function stubMediaQueries(matching: readonly string[]): void
+{
+	vi.stubGlobal(
+		"matchMedia",
+		vi.fn((query: string) => (
+		{
+			matches: matching.includes(query),
+			media: query,
+			addEventListener: () =>
+			{
+			},
+			removeEventListener: () =>
+			{
+			},
+		})),
+	);
+}
+
 function groupNames(container: HTMLElement): string[]
 {
 	return [...container.querySelectorAll('[data-testid="sidebar-recents"] [data-group-name]')].map(
@@ -1581,7 +1634,7 @@ describe("sidebar SessionGroups", () =>
 			}
 			return {
 				leading: link.querySelector(".df-leading-slot") !== null,
-				attention: link.querySelector("[data-row-label] .relative")?.getAttribute("data-attention") ?? null,
+				title: describeRowTitle(link),
 				wrappers,
 				mark:
 					mark === null || mark === undefined
@@ -1610,7 +1663,14 @@ describe("sidebar SessionGroups", () =>
 				blocked:
 				{
 					leading: false,
-					attention: "waiting",
+					title:
+					{
+						outer: "inline-block whitespace-nowrap align-top",
+						outerChildren: 1,
+						inner: "relative",
+						attention: "waiting",
+						shimmer: null,
+					},
 					wrappers: ["true flex items-center", "true flex items-center"],
 					mark: ["img", "Awaiting input", "flex items-center", "true"],
 					env: null,
@@ -1621,7 +1681,20 @@ describe("sidebar SessionGroups", () =>
 				working:
 				{
 					leading: false,
-					attention: null,
+					title:
+					{
+						outer: "inline-block whitespace-nowrap align-top",
+						outerChildren: 1,
+						inner: "relative",
+						attention: "working",
+						shimmer:
+						{
+							variant: "strong",
+							shimmering: "true",
+							className: "inline-block align-top",
+							text: "Working one",
+						},
+					},
 					wrappers: ["true flex items-center"],
 					mark: ["img", "Running", "flex items-center", "true"],
 					env: null,
@@ -1632,7 +1705,14 @@ describe("sidebar SessionGroups", () =>
 				review:
 				{
 					leading: false,
-					attention: "unread",
+					title:
+					{
+						outer: "inline-block whitespace-nowrap align-top",
+						outerChildren: 1,
+						inner: "relative",
+						attention: "unread",
+						shimmer: null,
+					},
 					wrappers: ["true flex items-center", "true flex items-center"],
 					mark: ["img", "Unread response", "flex items-center", "true"],
 					env: null,
@@ -1643,13 +1723,203 @@ describe("sidebar SessionGroups", () =>
 				done:
 				{
 					leading: false,
-					attention: null,
+					title:
+					{
+						outer: "inline-block whitespace-nowrap align-top",
+						outerChildren: 1,
+						inner: "relative",
+						attention: null,
+						shimmer: null,
+					},
 					wrappers: [],
 					mark: null,
 					env: "bridge",
 					runningPulse: false,
 					hidesOnHover: true,
 					flushRight: true,
+				},
+			},
+		);
+	});
+
+	it("gates the title's attention look as upstream: the open pane's working title stops sweeping and its own row is never unread, archived rows carry none, and reduced motion or forced colors drop only working", async () =>
+	{
+		const look = async (
+			sessions: unknown[],
+			titles: readonly string[],
+			options: Parameters<typeof renderGroups>[1] = {},
+		) =>
+		{
+			__unreadStoreTesting.reset();
+			syncUnseenFromSummaries(
+				sessions.map((row) => (
+				{
+					id: (
+						row as
+						{
+							id: string;
+						}
+					).id,
+					unseen: (
+						row as
+						{
+							unseen: boolean;
+						}
+					).unseen,
+				})),
+			);
+			const {container} = await renderGroups(sessions, options);
+			const result = Object.fromEntries(
+				titles.map((title) =>
+				{
+					const link = rowLink(container, title);
+					const {attention, shimmer} = describeRowTitle(link);
+					const mark =
+						link
+							.closest("[data-session-actions]")
+							?.querySelector("[data-row-decoration] [role=img]")
+							?.getAttribute("aria-label") ?? null;
+					return [
+						title,
+						{
+							attention,
+							shimmering: shimmer?.shimmering ?? null,
+							clone: link.querySelector("[data-cds-shimmer-clone]") !== null,
+							mark,
+						},
+					];
+				}),
+			);
+			cleanup();
+			vi.unstubAllGlobals();
+			return result;
+		};
+		const titles = ["Blocked one", "Working one", "Review one"];
+		const allRows =
+		{
+			...DEFAULT_SESSION_LIST_PREFS,
+			groupBy: "state" as const,
+			statusFilter: "all" as const,
+		};
+
+		const workingOpen = await look(
+			FIXTURE,
+			titles,
+			{
+				activeItemId: "w1",
+				initialPath: "/session/w1",
+			},
+		);
+		const reviewOpen = await look(
+			FIXTURE,
+			titles,
+			{
+				activeItemId: "r1",
+				initialPath: "/session/r1",
+			},
+		);
+		const archived = await look(
+			FIXTURE.map((row) => (
+			{
+				...row,
+				archived: true,
+			})),
+			titles,
+			{
+				prefs: allRows,
+			},
+		);
+		stubMediaQueries(["(prefers-reduced-motion: reduce)"]);
+		const reduced = await look(FIXTURE, titles);
+		stubMediaQueries(["(forced-colors: active)"]);
+		const forced = await look(FIXTURE, titles);
+
+		const blocked =
+		{
+			attention: "waiting",
+			shimmering: null,
+			clone: false,
+			mark: "Awaiting input",
+		};
+		const unread =
+		{
+			attention: "unread",
+			shimmering: null,
+			clone: false,
+			mark: "Unread response",
+		};
+		const stillWorking =
+		{
+			attention: null,
+			shimmering: null,
+			clone: false,
+			mark: "Running",
+		};
+		expect(
+			{
+				workingOpen,
+				reviewOpen,
+				archived,
+				reduced,
+				forced,
+			},
+		).toStrictEqual(
+			{
+				workingOpen:
+				{
+					"Blocked one": blocked,
+					"Working one":
+					{
+						attention: "working",
+						shimmering: "false",
+						clone: false,
+						mark: "Running",
+					},
+					"Review one": unread,
+				},
+				reviewOpen:
+				{
+					"Blocked one": blocked,
+					"Working one":
+					{
+						attention: "working",
+						shimmering: "true",
+						clone: false,
+						mark: "Running",
+					},
+					"Review one":
+					{
+						attention: null,
+						shimmering: null,
+						clone: false,
+						mark: null,
+					},
+				},
+				archived:
+				{
+					"Blocked one":
+					{
+						...blocked,
+						attention: null,
+					},
+					"Working one": stillWorking,
+					"Review one":
+					{
+						...unread,
+						attention: null,
+					},
+				},
+				reduced:
+				{
+					"Blocked one": blocked,
+					"Working one": stillWorking,
+					"Review one": unread,
+				},
+				forced:
+				{
+					"Blocked one": blocked,
+					"Working one": stillWorking,
+					"Review one": unread,
 				},
 			},
 		);
