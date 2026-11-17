@@ -7,10 +7,10 @@ export const Route = createFileRoute("/api/output-styles")(
 		{
 			handlers: withMethodNotAllowed(
 				{
-					GET: async () =>
+					GET: async ({request}: {request: Request}) =>
 					{
 						const {handleOutputStylesGet} = await import("../../lib/output-styles");
-						return handleOutputStylesGet();
+						return handleOutputStylesGet(request);
 					},
 				},
 			),

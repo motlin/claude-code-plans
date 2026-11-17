@@ -1,4 +1,5 @@
 import type {EffortLevel} from "./launch-options";
+import type {OutputStyleItem} from "./output-style-options";
 
 /** The chin menus a host command can open. */
 export type HostCommandMenu = "model" | "effort" | "mode";
@@ -380,4 +381,96 @@ export function routeUsageCommand(
 		kind: "card",
 		text: text.trim(),
 	};
+}
+
+/**
+ * Upstream's `/output-style` submit outcomes: `home` is the no-session warning with its "Open settings" action,
+ * `refuse` toasts and keeps the text, `open` clears it and opens the picker, `already` clears it with a success
+ * toast, and `send` hands the canonical command to the CLI, which switches and saves the style.
+ */
+export type OutputStyleCommand =
+	|
+	  {
+			kind: "home" | "refuse" | "already";
+			message: string;
+	  }
+	|
+	  {
+			kind: "open";
+	  }
+	|
+	  {
+			kind: "send";
+			text: string;
+	  };
+
+const OUTPUT_STYLE_COMMAND = /^\/output-style(?:[\s:,.]+(.*))?$/is;
+
+/**
+ * Upstream's `/output-style` intercept, in its order: before the session starts, while its styles load, with no
+ * styles, bare, then an argument matched by exact name, case-insensitive name, then case-insensitive label.
+ */
+export function parseOutputStyleCommand(
+	text: string,
+	items: readonly OutputStyleItem[] | undefined,
+	ctx:
+	{
+		hasSession: boolean;
+		booting: boolean;
+	},
+): OutputStyleCommand | null
+{
+	const match = OUTPUT_STYLE_COMMAND.exec(text.trim());
+	if (match === null) return null;
+	if (!ctx.hasSession)
+		return {
+			kind: "home",
+			message: "Set the output style in settings. This session uses it when it starts.",
+		};
+	if (ctx.booting)
+		return {
+			kind: "refuse",
+			message: "Output styles haven’t loaded yet. Try again in a moment.",
+		};
+	if (items === undefined)
+		return {
+			kind: "refuse",
+			message: "Output styles aren’t available for this session.",
+		};
+	const value = (match[1] ?? "").trim();
+	if (value === "")
+		return {
+			kind: "open",
+		};
+	const folded = value.toLowerCase();
+	const item =
+		items.find((candidate) => candidate.name === value) ??
+		items.find((candidate) => candidate.name.toLowerCase() === folded) ??
+		items.find((candidate) => candidate.label.toLowerCase() === folded);
+	if (item === undefined)
+		return {
+			kind: "refuse",
+			message: `“${value}” isn’t an available output style.`,
+		};
+	if (item.checked)
+		return {
+			kind: "already",
+			message: `Output style already set to ${item.label}.`,
+		};
+	return {
+		kind: "send",
+		text: `/output-style ${item.name}`,
+	};
+}
+
+/** Upstream's `/memory` test (`jf`): the name, then whitespace or the end, so arguments are taken too. */
+export function isMemoryCommand(text: string): boolean
+{
+	return /^\/memory(?:\s|$)/i.test(text.trim());
+}
+
+/** Upstream's `/mcp` test: only the exact command; anything after it reaches the CLI. */
+export function isMcpCommand(text: string): boolean
+{
+	return text.trim() === "/mcp";
 }

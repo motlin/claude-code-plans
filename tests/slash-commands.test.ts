@@ -7,7 +7,10 @@ import
 {
 	autocompactCommand,
 	fastCommandArg,
+	isMcpCommand,
+	isMemoryCommand,
 	parseCommandShape,
+	parseOutputStyleCommand,
 	parseHostCommand,
 	routeStatusCommand,
 	routeUsageCommand,
@@ -84,6 +87,19 @@ describe("SESSION_SLASH_COMMANDS", () =>
 						argumentHint: "[fable|opus|sonnet|off]",
 						hostHandled: true,
 					},
+					{
+						name: "output-style",
+						description: "Set the output style for this session",
+						source: "builtin",
+						argumentHint: "[style]",
+						hostHandled: true,
+					},
+					{
+						name: "memory",
+						description: "Edit CLAUDE.md files",
+						source: "builtin",
+						hostHandled: true,
+					},
 				],
 				inBuiltins: false,
 				knowsAutocompact: true,
@@ -148,6 +164,12 @@ describe("BUILTIN_SLASH_COMMANDS", () =>
 				description: "Show plan usage and rate limits",
 				source: "builtin",
 				aliases: ["stats", "cost"],
+				hostHandled: true,
+			},
+			{
+				name: "mcp",
+				description: "Manage MCP connectors",
+				source: "builtin",
 				hostHandled: true,
 			},
 			{
@@ -247,6 +269,16 @@ describe("hostHandled built-ins", () =>
 				},
 			) !== null ||
 			isBareAdvisorCommand(text) ||
+			parseOutputStyleCommand(
+				text,
+				undefined,
+				{
+					hasSession: true,
+					booting: false,
+				},
+			) !== null ||
+			isMemoryCommand(text) ||
+			isMcpCommand(text) ||
 			parseCommandShape(["rewind", "workflows", "workflow"], text) !== null;
 		const builtins = [...BUILTIN_SLASH_COMMANDS, ...SESSION_SLASH_COMMANDS];
 		const labels = (commands: readonly SlashCommand[]) =>
@@ -283,6 +315,12 @@ describe("mergeSlashCommands", () =>
 					source: "builtin",
 					hostHandled: true,
 				},
+				{
+					name: "output-style",
+					description: "Set the output style for this session",
+					source: "builtin",
+					hostHandled: true,
+				},
 			],
 			[
 				{
@@ -294,6 +332,12 @@ describe("mergeSlashCommands", () =>
 					name: "model",
 					description: "Shadowed model",
 					source: "personal-skill",
+				},
+				{
+					name: "output-style",
+					description: "List output styles or switch to one",
+					source: "builtin",
+					shadowsHost: true,
 				},
 			],
 			[
@@ -316,6 +360,12 @@ describe("mergeSlashCommands", () =>
 			{
 				name: "model",
 				description: "Built-in model",
+				source: "builtin",
+				hostHandled: true,
+			},
+			{
+				name: "output-style",
+				description: "Set the output style for this session",
 				source: "builtin",
 				hostHandled: true,
 			},

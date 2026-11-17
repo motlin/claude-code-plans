@@ -9,3 +9,13 @@ export const outputStylesQueryOptions = queryOptions(
 		staleTime: 0,
 	},
 );
+
+/** The styles a session in `cwd` can pick: the user's, the project's `.claude/output-styles/` and plugin styles. */
+export const sessionOutputStylesQueryOptions = (cwd: string) =>
+	queryOptions(
+		{
+			queryKey: ["output-styles", cwd] as const,
+			queryFn: async () => apiFetch(`/api/output-styles?cwd=${encodeURIComponent(cwd)}`, OutputStylesSchema),
+			staleTime: 0,
+		},
+	);

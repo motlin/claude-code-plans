@@ -42,6 +42,7 @@ import {useIsMac, useIsWindows} from "../hooks/use-is-mac";
 import {useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
 import {useTypeToFocus} from "../hooks/use-type-to-focus";
 import {isBareAdvisorCommand} from "../lib/advisor";
+import type {OutputStyleItem} from "../lib/output-style-options";
 import {assertNever} from "../lib/assert-never";
 import type {ComposerState} from "../lib/composer-state";
 import {type QueuedPrompt, parkedPrompts, queuedForLater, queuedStatusText} from "../lib/composer-queue";
@@ -88,8 +89,11 @@ import
 	extraLinesBody,
 	FAST_COMMAND_NOTICE_KEY,
 	fastCommandArg,
+	isMcpCommand,
+	isMemoryCommand,
 	parseCommandShape,
 	parseHostCommand,
+	parseOutputStyleCommand,
 	routeFastCommand,
 	routeStatusCommand,
 	routeUsageCommand,
@@ -418,6 +422,24 @@ interface ComposerProps
 		  }
 		| undefined;
 	/**
+	 * Upstream's `/output-style` intercept. In a session: the styles (undefined when none are available), whether they
+	 * are still loading, and the picker opener; a known style argument reaches the CLI as `/output-style <name>`.
+	 * Before a session (home): a warning toast whose "Open settings" calls `openSettings`. Absent, it reaches the CLI.
+	 */
+	outputStyle?: ComposerOutputStyle | undefined;
+	/**
+	 * A session's Memory dialog: `/memory` (arguments allowed, upstream's `jf`) clears the composer and calls `open`.
+	 * On the home composer `/memory` is refused with a warning toast and kept; absent in a session, it reaches the CLI.
+	 */
+	memory?:
+		|
+		  {
+				open: () => void;
+		  }
+		| undefined;
+	/** Upstream's non-dialog `/mcp`: an exact `/mcp` clears the composer and opens Customize › Connectors. */
+	openConnectors?: (() => void) | undefined;
+	/**
 	 * Opens the session rail's Context card for a bare `/autocompact` (upstream's `context-popover`
 	 * action), after the composer clears it. Upstream's consumers take the request in order: the rail
 	 * card first, and only where no rail card takes it, the ring popover in context mode. Absent on the
@@ -477,6 +499,24 @@ function BashHighlight({lines}: {lines: ThemedToken[][]})
 /** Upstream's `bNdvwB`: a bare `/autocompact` on the home draft, before any session exists. */
 const AUTOCOMPACT_BEFORE_SESSION =
 	"Context settings work once this session starts. Send your first message to start it.";
+
+/** Upstream's `ULkDZO`: `/memory` on the home draft, before any session exists. */
+const MEMORY_BEFORE_SESSION = "The Memory dialog works once this session starts. Send your first message to start it.";
+
+/** {@link ComposerProps.outputStyle}: a live session's styles and picker, or the home composer's settings link. */
+type ComposerOutputStyle =
+	|
+	  {
+			hasSession: true;
+			items: readonly OutputStyleItem[] | undefined;
+			booting: boolean;
+			open: () => void;
+	  }
+	|
+	  {
+			hasSession: false;
+			openSettings: () => void;
+	  };
 
 /** Upstream's `/rewind` toasts for a session that can't rewind, and for one whose computer is offline. */
 const REWIND_UNSUPPORTED = "Rewind isn’t available for this session.";
@@ -1133,6 +1173,9 @@ export function Composer({
 	active = true,
 	rewind,
 	advisor,
+	outputStyle,
+	memory,
+	openConnectors,
 	onOpenContext,
 	statusCommand,
 	usageCommand,
@@ -2108,7 +2151,7 @@ export function Composer({
 		}
 		// Upstream's `Ne`: only the leading chip counts, and the local chip only exists at the start.
 		const cliCommandForced = chip?.routing === "cli";
-		if (trimmed.startsWith("/") && runHostCommand(trimmed, cliCommandForced)) return;
+		if (trimmed.startsWith("/") && runHostCommand(trimmed, cliCommandForced, send)) return;
 		// Other slash commands run as typed; attached context and comments wait for the next real prompt.
 		if (trimmed.startsWith("/"))
 		{
@@ -2220,13 +2263,16 @@ export function Composer({
 	 * Upstream's host interception (`Me`): true when the composer handled it. A CLI-routed twin pick skips every
 	 * intercept except `/usage`, which upstream keeps for local-ish sessions.
 	 */
-	function runHostCommand(text: string, cliCommandForced: boolean): boolean
+	function runHostCommand(text: string, cliCommandForced: boolean, send: (prompt: string) => void): boolean
 	{
 		if (cliCommandForced) return runUsageCommand(text);
 		if (
 			runFastCommand(text) ||
 			runRewindCommand(text) ||
 			runAdvisorCommand(text) ||
+			runOutputStyleCommand(text, send) ||
+			runMemoryCommand(text) ||
+			runMcpCommand(text) ||
 			runWorkflowsCommand(text) ||
 			runAutocompactCommand(text) ||
 			runStatusCommand(text) ||
@@ -2391,6 +2437,96 @@ export function Composer({
 				message: AUTOCOMPACT_BEFORE_SESSION,
 			},
 		);
+		return true;
+	}
+	/** Upstream's `/output-style` (see {@link ComposerProps.outputStyle}). */
+	function runOutputStyleCommand(text: string, send: (prompt: string) => void): boolean
+	{
+		if (outputStyle === undefined) return false;
+		const route = parseOutputStyleCommand(
+			text,
+			outputStyle.hasSession ? outputStyle.items : undefined,
+			{
+				hasSession: outputStyle.hasSession,
+				booting: outputStyle.hasSession && outputStyle.booting,
+			},
+		);
+		if (route === null) return false;
+		switch (route.kind)
+		{
+			case "home":
+				toast?.(
+					{
+						kind: "warning",
+						message: route.message,
+						...(outputStyle.hasSession
+							? {}
+							:
+								{
+									action:
+									{
+										label: "Open settings",
+										onAction: outputStyle.openSettings,
+									},
+								}),
+					},
+				);
+				break;
+			case "refuse":
+				toast?.(
+					{
+						kind: "error",
+						message: route.message,
+					},
+				);
+				break;
+			case "already":
+				clearDraft();
+				toast?.(
+					{
+						kind: "success",
+						message: route.message,
+					},
+				);
+				break;
+			case "open":
+				clearDraft();
+				if (outputStyle.hasSession) outputStyle.open();
+				break;
+			case "send":
+				send(route.text);
+				clearDraft();
+				break;
+			default:
+				assertNever(route);
+		}
+		return true;
+	}
+	/** Upstream's `/memory`: the session's Memory dialog, or a warning before the session starts. */
+	function runMemoryCommand(text: string): boolean
+	{
+		if (!isMemoryCommand(text)) return false;
+		if (memory !== undefined)
+		{
+			clearDraft();
+			memory.open();
+			return true;
+		}
+		if (variant !== "home") return false;
+		toast?.(
+			{
+				kind: "warning",
+				message: MEMORY_BEFORE_SESSION,
+			},
+		);
+		return true;
+	}
+	/** Upstream's exact `/mcp` with no session MCP dialog: Customize › Connectors. */
+	function runMcpCommand(text: string): boolean
+	{
+		if (openConnectors === undefined || !isMcpCommand(text)) return false;
+		clearDraft();
+		openConnectors();
 		return true;
 	}
 	/** Upstream's bare-only `/advisor`: opens the host dialog; with arguments it reaches the CLI as typed. */

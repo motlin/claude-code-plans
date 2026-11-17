@@ -142,6 +142,19 @@ export const SESSION_SLASH_COMMANDS: readonly SlashCommand[] = [
 		argumentHint: ADVISOR_ARGUMENT_HINT,
 		hostHandled: true,
 	},
+	{
+		name: "output-style",
+		description: "Set the output style for this session",
+		source: "builtin",
+		argumentHint: "[style]",
+		hostHandled: true,
+	},
+	{
+		name: "memory",
+		description: "Edit CLAUDE.md files",
+		source: "builtin",
+		hostHandled: true,
+	},
 ];
 
 /**
@@ -200,6 +213,13 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommand[] = [
 		description: "Show plan usage and rate limits",
 		source: "builtin",
 		aliases: ["stats", "cost"],
+		hostHandled: true,
+	},
+	/* Upstream gates `mcp` on the session only for its dialog; its Connectors branch works from home too. */
+	{
+		name: "mcp",
+		description: "Manage MCP connectors",
+		source: "builtin",
 		hostHandled: true,
 	},
 	{
@@ -533,10 +553,20 @@ export const CLI_TWIN_COPY: Readonly<
 	{
 		description: "Show Claude Code status including version, model, account, API connectivity, and tool statuses",
 	},
+	// memory and mcp read from CLI 2.1.326.
+	memory:
+	{
+		description: "Edit CLAUDE.md files and memory settings",
+	},
+	mcp:
+	{
+		description: "Manage MCP servers",
+		argumentHint: "[reconnect (<server>|all)|enable|disable [<server>|all]]",
+	},
 };
 
 /** Upstream's `hidesCliRow` host rows: neither the CLI's own row nor a custom twin of these is listed. */
-export const HIDES_CLI_ROW: ReadonlySet<string> = new Set(["model", "rename"]);
+export const HIDES_CLI_ROW: ReadonlySet<string> = new Set(["model", "rename", "output-style"]);
 
 /** What decides the CLI's own twin rows: the current model's effort levels, and whether the CLI lists `/fast`. */
 export interface CliTwinContext

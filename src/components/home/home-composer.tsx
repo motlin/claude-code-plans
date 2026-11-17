@@ -94,6 +94,26 @@ export function HomeComposer({
 		}),
 		[openSettings],
 	);
+	// Upstream's home-draft `/output-style` warning links its settings row; a bare `/mcp` opens Connectors.
+	const outputStyleCommand = useMemo(
+		() => (
+		{
+			hasSession: false as const,
+			openSettings: () =>
+			{
+				openSettings("claude-code", "output-style");
+			},
+		}),
+		[openSettings],
+	);
+	const openConnectors = useCallback(() =>
+	{
+		void navigate(
+			{
+				to: "/customize/connectors",
+			},
+		);
+	}, [navigate]);
 	const activeSessions = useActiveSessionsIfAvailable();
 	useIdlePrefetch(HOME_DOCK_CHUNKS);
 	const [pendingLaunch, setPendingLaunch] = useState<
@@ -505,6 +525,8 @@ export function HomeComposer({
 				onLaunchOptionsChange={launchDraft.set}
 				tryAutoCoach={tryAutoCoach}
 				usageCommand={usageCommand}
+				outputStyle={outputStyleCommand}
+				openConnectors={openConnectors}
 			/>
 			<AutoDefaultOfferDialogs
 				offer={autoDefaultOfferSettled ? autoDefaultOffer : undefined}

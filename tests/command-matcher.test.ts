@@ -59,7 +59,7 @@ describe("CommandMatcher (upstream qn on fuse.js 7.0.0)", () =>
 		expect(Object.fromEntries(queries.map((query) => [query, names(BUILTIN_SLASH_COMMANDS, query)]))).toStrictEqual(
 			{
 				re: ["recap", "rename", "review"],
-				co: ["config", "compact", "context", "usage", "workflows", "clear", "init"],
+				co: ["config", "compact", "context", "usage", "workflows", "mcp", "clear", "init"],
 				cl: ["clear", "init", "config", "review"],
 				mdel: ["model"],
 				plna: ["plan"],

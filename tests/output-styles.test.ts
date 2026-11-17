@@ -3,7 +3,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 
-import {outputStyleOptions} from "../src/lib/output-style-options";
+import {outputStyleItems, outputStyleOptions} from "../src/lib/output-style-options";
 import {enabledPlugins, listOutputStyles} from "../src/lib/output-styles";
 
 let root: string;
@@ -66,6 +66,34 @@ describe("listOutputStyles", () =>
 			{
 				builtIns: ["Explanatory", "Learning"],
 				customs: ["plain", "Terse", "plugin-a:Pirate", "plugin-a:shanty"],
+			},
+		);
+	});
+
+	it("lists a project's .claude/output-styles after the user's and before plugin styles", async () =>
+	{
+		const claudeDir = join(root, "claude");
+		await put(join(claudeDir, "output-styles", "terse.md"), "---\nname: Terse\n---\nBe brief.\n");
+		const projectDir = join(root, "project");
+		await put(join(projectDir, ".claude", "output-styles", "proj.md"), "---\nname: Proj\n---\nProject.\n");
+		const pluginDir = join(root, "plugin-a");
+		await put(join(pluginDir, "output-styles", "pirate.md"), "---\nname: Pirate\n---\nArr.\n");
+
+		expect(
+			await listOutputStyles(
+				claudeDir,
+				[
+					{
+						name: "plugin-a",
+						dir: pluginDir,
+					},
+				],
+				projectDir,
+			),
+		).toStrictEqual(
+			{
+				builtIns: ["Explanatory", "Learning"],
+				customs: ["Terse", "Proj", "plugin-a:Pirate"],
 			},
 		);
 	});
@@ -275,5 +303,84 @@ describe("outputStyleOptions", () =>
 				],
 			},
 		);
+	});
+});
+
+describe("outputStyleItems", () =>
+{
+	it("lists default, built-ins and customs, checking the current style", () =>
+	{
+		expect(
+			outputStyleItems(
+				{
+					builtIns: ["Explanatory", "Learning"],
+					customs: ["Terse"],
+				},
+				"Learning",
+			),
+		).toStrictEqual([
+			{
+				name: "default",
+				label: "Default",
+				checked: false,
+			},
+			{
+				name: "Explanatory",
+				label: "Explanatory",
+				checked: false,
+			},
+			{
+				name: "Learning",
+				label: "Learning",
+				checked: true,
+			},
+			{
+				name: "Terse",
+				label: "Terse",
+				checked: false,
+			},
+		]);
+	});
+
+	it("checks default when the current style is unknown, and folds case-insensitive duplicates", () =>
+	{
+		expect(
+			outputStyleItems(
+				{
+					builtIns: ["Explanatory"],
+					customs: ["default", "explanatory"],
+				},
+				undefined,
+			),
+		).toStrictEqual([
+			{
+				name: "default",
+				label: "Default",
+				checked: true,
+			},
+			{
+				name: "Explanatory",
+				label: "Explanatory",
+				checked: false,
+			},
+		]);
+	});
+
+	it("matches the current style case-insensitively", () =>
+	{
+		expect(
+			outputStyleItems(
+				{
+					builtIns: ["Learning"],
+					customs: [],
+				},
+				"learning",
+			)?.map((item) => item.checked),
+		).toStrictEqual([false, true]);
+	});
+
+	it("has no items before the styles load", () =>
+	{
+		expect(outputStyleItems(undefined, "Learning")).toBeUndefined();
 	});
 });

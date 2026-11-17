@@ -139,3 +139,19 @@ export async function saveFileText(path: string, text: string, etag: string | nu
 {
 	return putFile(`/api/file/${encodeFilePath(path)}`, "text/plain; charset=utf-8", text, etag);
 }
+
+/** Writes one of a session's memory files through `PUT /api/sessions/$id/memory-file`; see {@link putFile}. */
+export async function saveMemoryFileText(
+	sessionId: string,
+	path: string,
+	text: string,
+	etag: string | null,
+): Promise<string | null>
+{
+	return putFile(
+		`/api/sessions/${encodeURIComponent(sessionId)}/memory-file?path=${encodeURIComponent(path)}`,
+		"text/plain; charset=utf-8",
+		text,
+		etag,
+	);
+}

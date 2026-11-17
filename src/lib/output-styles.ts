@@ -1,5 +1,5 @@
 import {readdir, readFile} from "node:fs/promises";
-import {basename, join} from "node:path";
+import {basename, isAbsolute, join} from "node:path";
 
 import type {OutputStyles} from "./output-style-options";
 import {parseFrontmatter, readPluginName, readPluginRegistry} from "./plugins";
@@ -43,14 +43,19 @@ export interface EnabledPlugin
 }
 
 /**
- * Built-in styles, the customs in `<claudeDir>/output-styles/` by plain name, and each plugin's
- * `output-styles/` as `<plugin>:<style>`, the name the CLI registers plugin styles under and looks
- * settings.json `outputStyle` up by.
+ * Built-in styles, the customs in `<claudeDir>/output-styles/` and (for a session) `<projectDir>/.claude/output-styles/`
+ * by plain name, and each plugin's `output-styles/` as `<plugin>:<style>`, the name the CLI registers plugin styles
+ * under and looks settings.json `outputStyle` up by.
  */
-export async function listOutputStyles(claudeDir: string, plugins: readonly EnabledPlugin[]): Promise<OutputStyles>
+export async function listOutputStyles(
+	claudeDir: string,
+	plugins: readonly EnabledPlugin[],
+	projectDir?: string,
+): Promise<OutputStyles>
 {
 	const groups = await Promise.all([
 		readStyleNames(join(claudeDir, "output-styles")),
+		projectDir === undefined ? [] : readStyleNames(join(projectDir, ".claude", "output-styles")),
 		...plugins.map(async ({name, dir}) =>
 			(await readStyleNames(join(dir, "output-styles"))).map((style) => `${name}:${style}`),
 		),
@@ -89,9 +94,15 @@ export async function enabledPlugins(claudeDir: string): Promise<EnabledPlugin[]
 	);
 }
 
-export async function handleOutputStylesGet(claudeDir: string = defaultClaudeDir()): Promise<Response>
+/** `?cwd=<abs>` adds that project's styles, as the CLI does for a session there. */
+export async function handleOutputStylesGet(
+	request: Request,
+	claudeDir: string = defaultClaudeDir(),
+): Promise<Response>
 {
-	const styles = await listOutputStyles(claudeDir, await enabledPlugins(claudeDir));
+	const cwd = new URL(request.url).searchParams.get("cwd");
+	const projectDir = cwd !== null && isAbsolute(cwd) ? cwd : undefined;
+	const styles = await listOutputStyles(claudeDir, await enabledPlugins(claudeDir), projectDir);
 	return Response.json(
 		styles,
 		{

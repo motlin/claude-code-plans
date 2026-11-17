@@ -56,6 +56,7 @@ export function useSourceFileSave({
 	editorRef,
 	onEditStart,
 	onDirtyChange,
+	write = saveFileText,
 }: {
 	path: string;
 	queryKey: QueryKey;
@@ -65,6 +66,8 @@ export function useSourceFileSave({
 	editorRef: RefObject<SourceEditorHandle | null>;
 	onEditStart: (() => void) | undefined;
 	onDirtyChange: ((dirty: boolean) => void) | undefined;
+	/** Where a save goes; the Files viewer's `PUT /api/file/$` unless the caller has its own route. */
+	write?: (path: string, text: string, etag: string | null) => Promise<string | null>;
 })
 {
 	const queryClient = useQueryClient();
@@ -101,6 +104,7 @@ export function useSourceFileSave({
 			queryKey,
 			onEditStart,
 			onDirtyChange,
+			write,
 		},
 	);
 	useEffect(() =>
@@ -111,6 +115,7 @@ export function useSourceFileSave({
 			queryKey,
 			onEditStart,
 			onDirtyChange,
+			write,
 		};
 	});
 
@@ -121,14 +126,14 @@ export function useSourceFileSave({
 					diskText: () => disk.current?.content ?? "",
 					write: async (text) =>
 					{
-						const {path: target, queryKey: key} = latest.current;
+						const {path: target, queryKey: key, write: writeText} = latest.current;
 						const ifMatch =
 							retryIfMatch.current === null ? (disk.current?.etag ?? null) : retryIfMatch.current.etag;
 						retryIfMatch.current = null;
 						setSaving(true);
 						try
 						{
-							const etag = await saveFileText(target, text, ifMatch);
+							const etag = await writeText(target, text, ifMatch);
 							disk.current =
 							{
 								content: text,

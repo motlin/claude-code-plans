@@ -95,6 +95,10 @@ import {ComposerNoticeProvider, ComposerNoticeRegion} from "./composer-notice-re
 import {sessionProcessLive} from "../lib/session-state";
 import {sessionComposerFastMode} from "../lib/session-fast-mode";
 import {sessionAdvisorModel} from "../lib/advisor";
+import {sessionOutputStylesQueryOptions} from "../lib/api/output-styles";
+import {outputStyleItems} from "../lib/output-style-options";
+import {sessionOutputStyle} from "../lib/session-output-style";
+import {useMemoryDialogLoad} from "../hooks/use-memory-dialog-load";
 import {type QueuedPrompt, steeredPrompts} from "../lib/composer-queue";
 import {recallLastHeldSteer} from "../lib/steer-recall";
 import {tailMarkerQuiet, turnTokenEstimate, workingLineWaitsOnUser} from "../lib/working-marker";
@@ -252,6 +256,7 @@ import
 {
 	fetchAllEarlierTranscript,
 	sessionDetailQueryOptions,
+	sessionQueryKeys,
 	sessionResourcesQueryOptions,
 	sessionSubagentsQueryOptions,
 	sessionWorkflowRunsQueryOptions,
@@ -424,6 +429,20 @@ const RewindConfirm = lazy(async () =>
 	import("./rewind-confirm").then((module) => (
 	{
 		default: module.RewindConfirm,
+	})),
+);
+
+// The /output-style and /memory dialogs load on their first open.
+const OutputStyleDialog = lazy(async () =>
+	import("./output-style-dialog").then((module) => (
+	{
+		default: module.OutputStyleDialog,
+	})),
+);
+const MemoryDialog = lazy(async () =>
+	import("./memory-dialog").then((module) => (
+	{
+		default: module.MemoryDialog,
 	})),
 );
 
@@ -926,9 +945,12 @@ function SessionView({
 	useRegisterSessionDetailsPane(statusline, data.messageCount);
 	const composerServerState = useComposerServerState(sessionId);
 	const commandBreakdown = useMemo(() => latestBreakdown(transcript.records), [transcript.records]);
-	const {data: modBreakdown = null, isFetching: modBreakdownFetching} = useQuery(
-		sessionContextBreakdownQueryOptions(sessionId),
-	);
+	const
+	{
+		data: modBreakdown = null,
+		isFetching: modBreakdownFetching,
+		isError: modBreakdownFailed,
+	} = useQuery(sessionContextBreakdownQueryOptions(sessionId));
 	const contextBreakdown = preferNewerBreakdown(commandBreakdown, modBreakdown);
 	// A statusline without `rate_limits` leaves the ring to the account's plan limits.
 	const {data: accountUsage} = useQuery(usageQueryOptions);
@@ -1754,6 +1776,69 @@ function SessionView({
 	{
 		setAdvisorDialogFor(null);
 	}, []);
+	// Upstream's `/output-style` picker, per session, on the same live-pane gate: Apply types the command into the
+	// CLI, which switches and saves the style. The styles include the session folder's `.claude/output-styles/`.
+	const outputStyleCwd = data.cwd ?? data.projectPath ?? "";
+	const outputStylesQuery = useQuery(
+		{
+			...sessionOutputStylesQueryOptions(outputStyleCwd),
+			enabled: advisorAvailable,
+		},
+	);
+	const outputStyles = useMemo(
+		() => outputStyleItems(outputStylesQuery.data, sessionOutputStyle(statusline)),
+		[outputStylesQuery.data, statusline],
+	);
+	const [outputStyleDialogFor, setOutputStyleDialogFor] = useState<string | null>(null);
+	const composerOutputStyle = useMemo(
+		() =>
+			advisorAvailable
+				?
+					{
+						hasSession: true as const,
+						items: outputStyles,
+						booting: outputStylesQuery.isPending,
+						open: () =>
+						{
+							setOutputStyleDialogFor(sessionId);
+						},
+					}
+				: undefined,
+		[advisorAvailable, outputStyles, outputStylesQuery.isPending, sessionId],
+	);
+	const closeOutputStyleDialog = useCallback(() =>
+	{
+		setOutputStyleDialogFor(null);
+	}, []);
+	// Upstream's Memory dialog, per session: opening it refetches the context breakdown that lists the files.
+	const [memoryDialogFor, setMemoryDialogFor] = useState<string | null>(null);
+	const composerMemory = useMemo(
+		() => (
+		{
+			open: () =>
+			{
+				setMemoryDialogFor(sessionId);
+				void findQueryClient.invalidateQueries(
+					{
+						queryKey: sessionQueryKeys.contextBreakdown(sessionId),
+					},
+				);
+			},
+		}),
+		[findQueryClient, sessionId],
+	);
+	const closeMemoryDialog = useCallback(() =>
+	{
+		setMemoryDialogFor(null);
+	}, []);
+	const memoryLoad = useMemoryDialogLoad(
+		{
+			open: memoryDialogFor === sessionId,
+			hasBreakdown: contextBreakdown !== null,
+			failed: modBreakdownFailed && commandBreakdown === null,
+			turnActive: workingMarkerState.status !== "idle",
+		},
+	);
 	const openContextCard = useCallback(() =>
 	{
 		requestRailContextCard(sessionId);
@@ -1774,6 +1859,15 @@ function SessionView({
 	);
 	// The cold-resume notice's inputs: the idle start, busy/held state and the Compact / New session actions.
 	const navigate = useNavigate();
+	// Upstream's non-dialog `/mcp`: Customize › Connectors.
+	const openConnectors = useCallback(() =>
+	{
+		void navigate(
+			{
+				to: "/customize/connectors",
+			},
+		);
+	}, [navigate]);
 	const coldResumeLastRecordMs = useMemo(() => newestRecordMs(transcript.records), [transcript.records]);
 	const coldResumeRunning =
 		paneBusy || dialogOpen || sessionSummaryState === "working" || sessionSummaryState === "waiting";
@@ -2396,6 +2490,34 @@ function SessionView({
 										/>
 									</Suspense>
 								)}
+								{advisorAvailable &&
+									outputStyleDialogFor === sessionId &&
+									outputStyles !== undefined && (
+										<Suspense fallback={null}>
+											<OutputStyleDialog
+												key={sessionId}
+												items={outputStyles}
+												onClose={closeOutputStyleDialog}
+												onApply={(name) =>
+												{
+													submitComposer("send", `/output-style ${name}`, {});
+												}}
+											/>
+										</Suspense>
+									)}
+								{memoryDialogFor === sessionId && (
+									<Suspense fallback={null}>
+										<MemoryDialog
+											key={sessionId}
+											sessionId={sessionId}
+											cwd={data.cwd ?? data.projectPath ?? undefined}
+											home={data.homeRoot}
+											memoryFiles={contextBreakdown?.memoryFiles}
+											load={memoryLoad}
+											onClose={closeMemoryDialog}
+										/>
+									</Suspense>
+								)}
 								{rewindRequest.rewindConfirm !== null && (
 									<Suspense fallback={null}>
 										<RewindConfirm
@@ -2786,6 +2908,9 @@ function SessionView({
 																		bashHistory={promptHistory?.bashCommands}
 																		rewind={composerRewind}
 																		advisor={composerAdvisor}
+																		outputStyle={composerOutputStyle}
+																		memory={composerMemory}
+																		openConnectors={openConnectors}
 																		onOpenContext={openContextCard}
 																		onShellCommand={runShellCommand}
 																	/>
