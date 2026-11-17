@@ -648,9 +648,15 @@ describe("SessionChat turn spacing", () =>
 });
 
 /** Class list of every tool card shell, in document order. */
+/** Upstream shared-9 `Cd`'s card. */
+const TURN_STATUS_CARD_CLASS =
+	"[--cds-assistant-message-text-inset:0px] [--cds-assistant-message-text-stop:0px] flex min-w-0 flex-col divide-y overflow-y-clip rounded-card shadow-card-ring";
+/** The group card: `Cd`'s card with upstream `hm`'s cell padding on each step. */
+const GROUP_CARD = `${TURN_STATUS_CARD_CLASS} [&>*]:min-w-0 [&>*]:px-[var(--cds-turn-status-card-pad-x,var(--cds-pad-md))] [&>*]:py-sm [&>*]:[--cds-assistant-message-text-inset:0px] [&>*]:[--cds-assistant-message-text-stop:0px]`;
+
 function toolCardClassNames(container: HTMLElement): string[]
 {
-	return [...container.querySelectorAll("div.card-outline")].map((element) => element.className);
+	return [...container.querySelectorAll("[data-turn-status-panel] > div")].map((element) => element.className);
 }
 
 function disclosureControls(container: HTMLElement): HTMLElement[]
@@ -807,9 +813,9 @@ describe("SessionChat tool card chrome", () =>
 					edit: [],
 					read: [],
 				},
-				bashCard: ["card-outline rounded-r6 overflow-clip flex flex-col relative"],
-				editCard: ["card-outline code-card rounded-r6 overflow-clip flex flex-col relative"],
-				readCard: ["card-outline code-card rounded-r6 overflow-clip flex flex-col relative"],
+				bashCard: [TURN_STATUS_CARD_CLASS],
+				editCard: [`${TURN_STATUS_CARD_CLASS} code-card`],
+				readCard: [`${TURN_STATUS_CARD_CLASS} code-card`],
 				fillsAnyCardWithT1: false,
 			},
 		);
@@ -914,22 +920,18 @@ describe("SessionChat nested tool rows", () =>
 					groupedRead: [],
 					singleBash: [],
 				},
-				groupedBashCards: [
-					"flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5",
-				],
+				groupedBashCards: [GROUP_CARD],
 				groupedBashBodies: [
 					"epitaxy-code-size group/body relative flex w-full pt-2.5 empty:hidden",
 					"epitaxy-code-size group/body relative flex w-full pt-2.5 empty:hidden",
 				],
-				groupedReadCards: [
-					"flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5",
-				],
+				groupedReadCards: [GROUP_CARD],
 				groupedReadBodies: [
 					"epitaxy-code-size group/body relative flex w-full flex-col pt-2.5 empty:hidden",
 					"epitaxy-code-size group/body relative flex w-full flex-col pt-2.5 empty:hidden",
 				],
-				singleBashCards: ["card-outline rounded-r6 overflow-clip flex flex-col relative"],
-				singleBashBodies: ["epitaxy-code-size group/body py-p6"],
+				singleBashCards: [TURN_STATUS_CARD_CLASS],
+				singleBashBodies: ["epitaxy-code-size group/body pt-sm pb-xs"],
 			},
 		);
 	});
@@ -1024,7 +1026,9 @@ describe("SessionChat grouped tool rows", () =>
 /** Class of the expanded grouped-tool-call container. */
 function groupContainerClassNames(container: HTMLElement): string[]
 {
-	return [...container.querySelectorAll("div.card-outline.divide-y")].map((element) => element.className);
+	return [...container.querySelectorAll("[data-turn-status-panel] > div.divide-y")].map(
+		(element) => element.className,
+	);
 }
 
 describe("SessionChat grouped tool card", () =>
@@ -1064,9 +1068,7 @@ describe("SessionChat grouped tool card", () =>
 		).toStrictEqual(
 			{
 				collapsed: [],
-				expanded: [
-					"flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5",
-				],
+				expanded: [GROUP_CARD],
 				fillsWithT1: false,
 			},
 		);
@@ -4193,6 +4195,102 @@ describe("SessionChat standalone status row layout", () =>
 				{
 					marker: true,
 					className: `${rowClass(ROW_FOCUS)} ${MARKED_ROW_MOTION}`,
+				},
+			},
+		);
+	});
+
+	it("indents a marked row's open body past its mark, as upstream's Cd does, and slides it back once the row settles", async () =>
+	{
+		const panelOf = (container: HTMLElement) =>
+		{
+			const panel = container.querySelector("[data-turn-status-panel]");
+			return panel === null
+				? null
+				:
+					{
+						className: panel.className,
+						style: panel.getAttribute("style"),
+					};
+		};
+		const pendingRecords = toolResultRecords(bash, "").slice(0, 1);
+		const runningRow = renderTranscriptElement(pendingRecords);
+		await expandSingleToolRow(runningRow);
+		const completedRow = renderTranscriptElement(toolResultRecords(bash, "ok"));
+		await expandSingleToolRow(completedRow);
+		const runningGroup = renderTranscriptElement(groupedBashRecords("pending"));
+		expandGroupSummary(runningGroup);
+		const completedGroup = renderTranscriptElement(groupedBashRecords("ok"));
+		expandGroupSummary(completedGroup);
+
+		// The mark's leave never finishes, so the body stays mid-slide.
+		HTMLElement.prototype.animate = function animate(): Animation
+		{
+			return {
+				finished: new Promise<Animation>(() => {}),
+				cancel: () =>
+				{
+				},
+			} as unknown as Animation;
+		};
+		const pending = processTranscript(pendingRecords);
+		const settled = processTranscript(toolResultRecords(bash, "ok"));
+		const chat = (transcript: typeof pending) => (
+			<SessionChat
+				sessionId="test-session"
+				lines={transcript.lines}
+				toolResultMap={transcript.toolResultMap}
+				showCompactSummaries
+				showTranscriptOnly
+				shouldScrollToEnd={false}
+			/>
+		);
+		const settling = render(chat(pending));
+		await expandSingleToolRow(settling.container);
+		settling.rerender(chat(settled));
+		const leaving = panelOf(settling.container);
+		// Unmount first: the slot starts its animation from a microtask.
+		settling.unmount();
+		await Promise.resolve();
+		Reflect.deleteProperty(HTMLElement.prototype, "animate");
+
+		const marked = "padding-inline-start: calc(var(--cds-assistant-message-text-inset,0px) + 20px + 12px);";
+		expect(
+			{
+				runningRow: panelOf(runningRow),
+				completedRow: panelOf(completedRow),
+				runningGroup: panelOf(runningGroup),
+				completedGroup: panelOf(completedGroup),
+				leaving,
+			},
+		).toStrictEqual(
+			{
+				runningRow:
+				{
+					className: "epitaxy-code-size group/body pt-sm pb-xs",
+					style: marked,
+				},
+				completedRow:
+				{
+					className: "epitaxy-code-size group/body pt-sm pb-xs",
+					style: null,
+				},
+				runningGroup:
+				{
+					className: "pt-sm pb-xs",
+					style: marked,
+				},
+				completedGroup:
+				{
+					className: "pt-sm pb-xs",
+					style: null,
+				},
+				leaving:
+				{
+					className:
+						"epitaxy-code-size group/body pt-sm pb-xs ps-0 transition-[padding-inline-start] duration-[400ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+					// React empties the attribute once the marked indent goes.
+					style: "",
 				},
 			},
 		);

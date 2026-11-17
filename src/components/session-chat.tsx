@@ -97,6 +97,7 @@ import {TranscriptActionsContext, type TranscriptMessageRef} from "./transcript-
 import {AssistantMessageActions, QuoteCopyAction, UserMessageActions} from "./message-actions";
 import
 {
+	TURN_STATUS_CELLS_CLASS,
 	TURN_STATUS_ROW_FOCUS,
 	TURN_STATUS_ROW_FOCUS_RING,
 	TURN_STATUS_ROW_GEOMETRY,
@@ -104,7 +105,9 @@ import
 	TURN_STATUS_ROW_PAD_Y,
 	TURN_STATUS_ROW_STYLE,
 } from "./turn-status-row-geometry";
+import {TurnStatusBodyPanel} from "./turn-status-body-panel";
 import {TurnStatusMarkSlot} from "./turn-status-mark-slot";
+import {useTurnStatusPanelLeaving} from "./use-turn-status-panel-leaving";
 import {MessageQuoteTiles} from "./message-excerpt-tiles";
 import {defined} from "../lib/defined";
 import {narrationProse} from "../lib/thinking-narration";
@@ -7418,9 +7421,9 @@ const PARAMLESS_TOOLS = new Set(["ToolSearch"]);
 
 /**
  * Tools whose renderer provides its own card shell (header + body).
- * These get a `group/body py-p6` wrapper with a `card-outline rounded-r6` inner
- * div -- a transparent panel drawn with a hairline ring, matching upstream's
- * `epitaxy-card-outline`.
+ * These open into upstream's `Cd` body panel (`TurnStatusBodyPanel`): a
+ * transparent card drawn with a hairline ring, indented past the row's mark
+ * while the row is marked.
  *
  * All other tools (KeyValueCard-style) get `group/body relative flex w-full flex-col pt-p3`
  * with no inner wrapper, matching upstream claude.ai/code.
@@ -8038,6 +8041,9 @@ function ToolCallRow({
 		setWasMarked(markedRow);
 		setMarkLeaving(!markedRow);
 	}
+	// Upstream `Cd`: the open body slides back with the mark only once the row has settled; a row that stays in flight
+	// while handing its mark to the working line snaps.
+	const panelLeaving = markLeaving && !pending;
 	// Upstream's `runningWords`: the row's own label, as it reads it.
 	useSayWords(
 		pending && !nested && !markedRow
@@ -8295,10 +8301,14 @@ function ToolCallRow({
 		// Upstream `xu`: in flight and not held by the permission prompt.
 		const awaitingResult = isPendingToolCall(member) && permissionWaitId !== member.id;
 		return isCardStyle ? (
-			<div className="epitaxy-code-size group/body py-p6">
-				<div
-					className={`card-outline ${isCodeCard ? "code-card " : ""}rounded-r6 overflow-clip flex flex-col relative`}
-				>
+			<TurnStatusBodyPanel
+				marked={markedRow}
+				leaving={panelLeaving}
+				className="epitaxy-code-size group/body"
+				cardClassName={isCodeCard ? "code-card" : undefined}
+			>
+				{/* The renderer pads its own header and body, so its one cell adds no padding of its own. */}
+				<div className="relative flex min-w-0 flex-col">
 					<Suspense fallback={null}>
 						<BlockedCallContext value={blockedCall}>
 							<ToolAwaitingResultContext value={awaitingResult}>
@@ -8308,7 +8318,7 @@ function ToolCallRow({
 					</Suspense>
 					<DebugLink sessionId={sessionId} uuid={member.sourceUuid} className="absolute top-1 right-1" />
 				</div>
-			</div>
+			</TurnStatusBodyPanel>
 		) : (
 			<div className={bodyClass}>
 				<Suspense fallback={null}>
@@ -8703,6 +8713,8 @@ function ToolCallSummary({
 	// Upstream's group TurnStatus holds the mark while busy; once the working line takes it, the group says the
 	// in-flight step's words, unspoken, so the line announces them.
 	const marked = useMarkClaim(busy);
+	// Upstream `Cd`: the open step card slides back over the mark's 400ms leave once the group settles.
+	const panelLeaving = useTurnStatusPanelLeaving(busy && marked, busy);
 	useSayWords(
 		held.state === "busy" && !marked ? announcement : undefined,
 		true,
@@ -8893,7 +8905,11 @@ function ToolCallSummary({
 							{/* Upstream separates the grouped rows with hairline dividers and
                   per-child padding inside one outlined card, not with gaps
                   between rows floating on a tinted panel. */}
-							<div className="flex flex-col card-outline rounded-r7 overflow-clip mt-p6 divide-y [&>*]:px-2 [&>*]:py-1.5">
+							<TurnStatusBodyPanel
+								marked={busy && marked}
+								leaving={panelLeaving}
+								cardClassName={TURN_STATUS_CELLS_CLASS}
+							>
 								{/* Upstream lists failed completions first, as the group label leads with them. */}
 								<BackgroundNoticeRun notices={failedNotices} />
 								{hooks.map((notice) => (
@@ -8949,7 +8965,7 @@ function ToolCallSummary({
 									<ClaudeCodeNoticeSteps key={`notice-${notice.lineIndex}`} notice={notice} />
 								))}
 								<BackgroundNoticeRun notices={settledNotices} />
-							</div>
+							</TurnStatusBodyPanel>
 						</div>
 					)}
 					<span className="sr-only" role="status" aria-live="polite">

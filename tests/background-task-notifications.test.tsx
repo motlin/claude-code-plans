@@ -295,7 +295,7 @@ const NOTICE_DESCRIPTION = "truncate min-w-0 text-primary";
 /** The text of each row in the expanded group card, in order. */
 function groupRowTexts(container: HTMLElement): (string | null)[]
 {
-	const card = container.querySelector(".card-outline");
+	const card = container.querySelector("[data-turn-status-panel] > div");
 	if (card === null) throw new Error("No expanded group card");
 	return Array.from(card.children, (row) => row.textContent);
 }
@@ -985,7 +985,7 @@ function launchRowChildren(container: HTMLElement):
 	className: string;
 }[]
 {
-	const header = container.querySelector(".card-outline [data-tool-row] .group\\/tool");
+	const header = container.querySelector("[data-turn-status-panel] > div [data-tool-row] .group\\/tool");
 	if (header === null) throw new Error("No launch row in the expanded group");
 	// A label's MorphSlot stands in for its current face's content, the label itself.
 	const throughMorphSlot = (child: Element) =>

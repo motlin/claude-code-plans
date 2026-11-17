@@ -276,7 +276,7 @@ describe("an agent message folded into a tool group", () =>
 		const specimen = recorded.find((candidate) => candidate.session === "54e53f89" && candidate.line === 1079)!;
 		const container = renderRecords(specimen.records);
 		fireEvent.click(container.querySelector("[data-turn-status] > button")!);
-		const steps = container.querySelectorAll("[data-turn-status] .card-outline > *");
+		const steps = container.querySelectorAll("[data-turn-status] [data-turn-status-panel] > div > *");
 		expect(
 			Array.from(steps, (step) =>
 				step.matches("[data-agent-message-from]")

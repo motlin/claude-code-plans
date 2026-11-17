@@ -35,3 +35,30 @@ export const TURN_STATUS_ROW_FOCUS_RING =
 
 /** The ring fading over upstream's --cds-dur-fast (60ms). A marked row's margin ease owns `transition` instead. */
 export const TURN_STATUS_ROW_FOCUS = `${TURN_STATUS_ROW_FOCUS_RING} transition-shadow duration-fast`;
+
+/** Upstream shared-9 `Cd`'s outer div: the open body sits 6px below its row and pads 4px under its card (8/6 comfortable). */
+export const TURN_STATUS_PANEL_CLASS = "pt-sm pb-xs";
+
+/**
+ * Upstream `Cd` while its row leaves the marked state: the indent slides back to 0 over the mark slot's 400ms collapse,
+ * on the same easing, and snaps under reduced motion.
+ */
+export const TURN_STATUS_PANEL_LEAVING_CLASS =
+	"ps-0 transition-[padding-inline-start] duration-[400ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none";
+
+/** Upstream `zR`: a marked row's body starts under its label, past the 20px mark and its 12px gap. */
+export const TURN_STATUS_MARKED_PANEL_STYLE: React.CSSProperties =
+{
+	paddingInlineStart: "calc(var(--cds-assistant-message-text-inset,0px) + 20px + 12px)",
+};
+
+/** Upstream `Cd`'s card: one hairline-ringed card whose cells are divided, resetting the text inset for its rows. */
+export const TURN_STATUS_CARD_CLASS =
+	"[--cds-assistant-message-text-inset:0px] [--cds-assistant-message-text-stop:0px] flex min-w-0 flex-col divide-y overflow-y-clip rounded-card shadow-card-ring";
+
+/**
+ * Upstream `hm`, the cell `uZ` wraps each step in, applied to the card's children: a step list can render nothing
+ * (an empty notice run) and a wrapper would leave an empty padded cell behind.
+ */
+export const TURN_STATUS_CELLS_CLASS =
+	"[&>*]:min-w-0 [&>*]:px-[var(--cds-turn-status-card-pad-x,var(--cds-pad-md))] [&>*]:py-sm [&>*]:[--cds-assistant-message-text-inset:0px] [&>*]:[--cds-assistant-message-text-stop:0px]";
