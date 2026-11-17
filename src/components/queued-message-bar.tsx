@@ -64,10 +64,13 @@ export interface QueuedMessageBarProps
 	/** Entries whose Send now was accepted: each shows ✓ Sent instead of Send now until it leaves. */
 	acceptedIds?: ReadonlySet<string>;
 	onEdit: (item: QueuedPrompt) => void;
-	/** Settles when the interrupt request does; Send now stays busy until then. */
-	onSendNow: (id: string) => Promise<void>;
+	/** Settles when the interrupt request does; Send now stays busy until then. Absent: no Send now (upstream `onSteer`). */
+	onSendNow?: ((id: string) => Promise<void>) | undefined;
 	onRemove: (id: string) => void;
-	onClearAll: () => void;
+	/** Absent: no Clear all footer, as upstream gates it on `onClearAll`. */
+	onClearAll?: (() => void) | undefined;
+	/** Upstream's `joinTop`: the band hangs under another band (the parked notice), squaring and bordering its top. */
+	joinTop?: boolean;
 }
 
 const NO_ITEMS: readonly QueuedPrompt[] = [];
@@ -86,6 +89,7 @@ export function QueuedMessageBar({
 	onSendNow,
 	onRemove,
 	onClearAll,
+	joinTop = false,
 }: QueuedMessageBarProps)
 {
 	const [lastItems, setLastItems] = useState(items);
@@ -121,7 +125,7 @@ export function QueuedMessageBar({
 	const [sending, setSending] = useState(false);
 	const sendFirstNow = (id: string) =>
 	{
-		if (sending) return;
+		if (sending || onSendNow === undefined) return;
 		setSending(true);
 		void onSendNow(id).finally(() =>
 		{
@@ -133,6 +137,7 @@ export function QueuedMessageBar({
 
 	const count = `${shown.length} ${shown.length === 1 ? "message" : "messages"} queued`;
 	const first = shown[0];
+	const join = joinTop ? " rounded-t-none border-t" : "";
 
 	let band;
 	if (shown.length === 1 && first !== undefined)
@@ -141,11 +146,11 @@ export function QueuedMessageBar({
 			<div
 				data-take-back-entry=""
 				data-perf-pending-prompt=""
-				className="flex items-center gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 px-3 select-none"
+				className={`flex items-center gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 px-3 select-none${join}`}
 			>
 				<span className="shrink-0 text-body font-medium text-primary">{count}</span>
 				<span className="min-w-0 flex-1 truncate text-body text-secondary">{queuedPreview(first.text)}</span>
-				{acceptedIds.has(first.id) && !exiting ? (
+				{onSendNow === undefined ? null : acceptedIds.has(first.id) && !exiting ? (
 					<QueuedRowSent size="base" />
 				) : (
 					<button
@@ -169,9 +174,11 @@ export function QueuedMessageBar({
 						)}
 					</button>
 				)}
-				<span id={sendNowDescriptionId} hidden>
-					{SEND_NOW_DESCRIPTION}
-				</span>
+				{onSendNow !== undefined && (
+					<span id={sendNowDescriptionId} hidden>
+						{SEND_NOW_DESCRIPTION}
+					</span>
+				)}
 				<button
 					type="button"
 					aria-label="Edit in composer"
@@ -206,7 +213,7 @@ export function QueuedMessageBar({
 				ref={receiveFocus}
 				type="button"
 				aria-expanded={false}
-				className="flex items-center gap-1.25 w-full min-w-0 min-h-10 comfortable:min-h-12 px-3 rounded-card bg-alpha-1 select-none text-start cursor-pointer hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus hover:bg-alpha-2"
+				className={`flex items-center gap-1.25 w-full min-w-0 min-h-10 comfortable:min-h-12 px-3 rounded-card bg-alpha-1 select-none text-start cursor-pointer hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus hover:bg-alpha-2${join}`}
 				onClick={(event) =>
 				{
 					toggle(event, true);
@@ -225,7 +232,9 @@ export function QueuedMessageBar({
 	else
 	{
 		band = (
-			<div className="flex flex-col w-full rounded-card bg-alpha-1 select-none overflow-clip divide-y divide-border">
+			<div
+				className={`flex flex-col w-full rounded-card bg-alpha-1 select-none overflow-clip divide-y divide-border${join}`}
+			>
 				<div className="flex items-center gap-1.25 w-full min-h-10 comfortable:min-h-12 px-3">
 					<span className="min-w-0 flex-1 text-body font-medium text-primary">{count}</span>
 					<button
@@ -259,25 +268,27 @@ export function QueuedMessageBar({
 						/>
 					))}
 				</div>
-				<div className="flex justify-end px-3 py-2">
-					<span
-						role="button"
-						tabIndex={0}
-						className="cursor-pointer text-footnote text-danger-000 hover:underline hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
-						onClick={() =>
-						{
-							onClearAll();
-						}}
-						onKeyDown={(event: KeyboardEvent) =>
-						{
-							if (event.key !== "Enter" && event.key !== " ") return;
-							event.preventDefault();
-							onClearAll();
-						}}
-					>
-						Clear all
-					</span>
-				</div>
+				{onClearAll !== undefined && (
+					<div className="flex justify-end px-3 py-2">
+						<span
+							role="button"
+							tabIndex={0}
+							className="cursor-pointer text-footnote text-danger-000 hover:underline hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
+							onClick={() =>
+							{
+								onClearAll();
+							}}
+							onKeyDown={(event: KeyboardEvent) =>
+							{
+								if (event.key !== "Enter" && event.key !== " ") return;
+								event.preventDefault();
+								onClearAll();
+							}}
+						>
+							Clear all
+						</span>
+					</div>
+				)}
 			</div>
 		);
 	}
@@ -304,7 +315,7 @@ function QueuedRowItems({
 }: {
 	item: QueuedPrompt;
 	onEdit: (item: QueuedPrompt) => void;
-	onSendNow: (id: string) => Promise<void>;
+	onSendNow: ((id: string) => Promise<void>) | undefined;
 	onRemove: (id: string) => void;
 })
 {
@@ -318,14 +329,16 @@ function QueuedRowItems({
 			>
 				Edit in composer
 			</MenuItem>
-			<MenuItem
-				onSelect={() =>
-				{
-					void onSendNow(item.id);
-				}}
-			>
-				Send now
-			</MenuItem>
+			{onSendNow !== undefined && (
+				<MenuItem
+					onSelect={() =>
+					{
+						void onSendNow(item.id);
+					}}
+				>
+					Send now
+				</MenuItem>
+			)}
 			<MenuSeparator />
 			<MenuItem
 				variant="danger"
@@ -352,7 +365,7 @@ function QueuedRow({
 	separated: boolean;
 	accepted: boolean;
 	onEdit: (item: QueuedPrompt) => void;
-	onSendNow: (id: string) => Promise<void>;
+	onSendNow: ((id: string) => Promise<void>) | undefined;
 	onRemove: (id: string) => void;
 })
 {

@@ -26,7 +26,7 @@ import {useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
 import {useTypeToFocus} from "../hooks/use-type-to-focus";
 import {assertNever} from "../lib/assert-never";
 import type {ComposerState} from "../lib/composer-state";
-import {type QueuedPrompt, queuedForLater, queuedStatusText} from "../lib/composer-queue";
+import {type QueuedPrompt, parkedPrompts, queuedForLater, queuedStatusText} from "../lib/composer-queue";
 import {consentWorkspaceKey} from "../lib/permission-mode-consent";
 import {carryPickToFolder, folderModeKey} from "../lib/folder-permission-mode";
 import {type HistoryNavigator, historyKeyApplies, historyNavigator} from "../lib/prompt-history";
@@ -228,6 +228,19 @@ export interface ComposerQueueView
 	sendNow: (id: string) => Promise<void>;
 	remove: (id: string) => void;
 	clear: () => void;
+	/** The parked lane's state; its prompts are the queue's parked items. */
+	parked?: ComposerParkedView | undefined;
+}
+
+/** Upstream's parked-bar props (`cj`): what the held prompts will do and Send anyway. */
+export interface ComposerParkedView
+{
+	willAutoSend: boolean;
+	/** Epoch seconds. */
+	resetsAt: number | undefined;
+	archived: boolean;
+	flushing: boolean;
+	sendAnyway: () => void;
 }
 
 /**
@@ -1587,6 +1600,7 @@ export function Composer({
 		AttachedContextChips,
 		ComposerDropScrim,
 		FileMentionMenu,
+		ParkedMessageBar,
 		QueuedMessageBar,
 		QueuedPromoteStatus,
 		SlashCommandMenu,
@@ -2364,6 +2378,7 @@ export function Composer({
 	// Steers draw as waiting rows in the transcript; the band lists only prompts queued for later.
 	const queuedItems = queue?.items;
 	const laterItems = useMemo(() => queuedForLater(queuedItems ?? []), [queuedItems]);
+	const parkedItems = useMemo(() => parkedPrompts(queuedItems ?? []), [queuedItems]);
 	const launchControls = useMemo<ChinLaunchControls>(
 		() => (
 		{
@@ -2637,6 +2652,20 @@ export function Composer({
 							onRemove={queue.remove}
 							onClearAll={queue.clear}
 						/>
+						{queue.parked !== undefined && parkedItems.length > 0 && (
+							<ParkedMessageBar
+								key={`${draftKey}:parked`}
+								sessionId={draftKey}
+								items={parkedItems}
+								willAutoSend={queue.parked.willAutoSend}
+								resetsAt={queue.parked.resetsAt}
+								archived={queue.parked.archived}
+								flushing={queue.parked.flushing}
+								onSendAnyway={queue.parked.sendAnyway}
+								onEdit={editQueuedPrompt}
+								onRemove={queue.remove}
+							/>
+						)}
 					</div>
 				</>
 			)}

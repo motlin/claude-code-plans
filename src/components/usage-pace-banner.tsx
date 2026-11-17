@@ -66,29 +66,35 @@ function UsageBandShell({
 	);
 }
 
+const BAND_SHELL_CLASS =
+	"flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-body usage-band-enter";
+
 /**
- * Upstream's composer band shell (`ar` → `Kd`) drawn inline: an icon slot, a wrapping body whose words share one
- * baseline, an optional actions group that wraps under the words on a narrow dock, and an optional Dismiss slot.
+ * Upstream's composer band shell (`ar` → `Kd`) drawn inline: an icon slot (none for a notice band with no icon), a
+ * wrapping body whose words share one baseline, an optional actions group that wraps under the words on a narrow
+ * dock, and an optional Dismiss slot.
  */
 export function BandShell({
 	icon,
 	children,
 	actions,
 	onDismiss,
+	className,
 }: {
-	icon: ReactNode;
+	icon: ReactNode | null;
 	children: ReactNode;
 	actions?: ReactNode;
 	onDismiss?: () => void;
+	className?: string;
 })
 {
 	return (
 		<div
 			role="status"
 			aria-live="polite"
-			className="flex gap-[5px] w-full min-h-[40px] p-[8px] rounded-r7 bg-alpha-1 items-start py-[calc((40px-1lh)/2)] text-body usage-band-enter"
+			className={className === undefined ? BAND_SHELL_CLASS : `${BAND_SHELL_CLASS} ${className}`}
 		>
-			<span className="flex h-[1lh] shrink-0 items-center">{icon}</span>
+			{icon !== null && <span className="flex h-[1lh] shrink-0 items-center">{icon}</span>}
 			<div className="flex min-w-0 flex-1 flex-wrap gap-x-[8px] gap-y-[8px] items-start">
 				<div className="min-w-0 max-w-full flex-auto">
 					<div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.75">{children}</div>

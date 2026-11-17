@@ -599,4 +599,118 @@ describe("QueuedMessageBar", () =>
 			},
 		);
 	});
+
+	it("joins its top edge to a band above with joinTop in all three shapes", () =>
+	{
+		const shapeClasses = (items: readonly QueuedPrompt[], expand: boolean) =>
+		{
+			const view = render(
+				<QueuedMessageBar
+					sessionId={`join-${items.length}-${String(expand)}`}
+					items={items}
+					joinTop
+					onEdit={() =>
+					{
+					}}
+					onRemove={() =>
+					{
+					}}
+				/>,
+			);
+			if (expand)
+			{
+				fireEvent.click(
+					within(view.container).getByRole(
+						"button",
+						{
+							name: /2 messages queued/,
+						},
+					),
+				);
+			}
+			const band = view.container.firstElementChild?.firstElementChild;
+			const classes = band?.className.split(" ") ?? [];
+			view.unmount();
+			return classes.includes("rounded-t-none") && classes.includes("border-t");
+		};
+		expect(
+			{
+				single: shapeClasses([ALICE], false),
+				collapsed: shapeClasses([ALICE, BOB], false),
+				expanded: shapeClasses([ALICE, BOB], true),
+			},
+		).toStrictEqual(
+			{
+				single: true,
+				collapsed: true,
+				expanded: true,
+			},
+		);
+	});
+
+	it("leaves out Send now and Clear all without their handlers", async () =>
+	{
+		const single = render(
+			<QueuedMessageBar
+				sessionId="no-actions-1"
+				items={[ALICE]}
+				onEdit={() =>
+				{
+				}}
+				onRemove={() =>
+				{
+				}}
+			/>,
+		);
+		const singleButtons = buttonNames(single.container);
+		single.unmount();
+		const list = render(
+			<QueuedMessageBar
+				sessionId="no-actions-2"
+				items={[ALICE, BOB]}
+				onEdit={() =>
+				{
+				}}
+				onRemove={() =>
+				{
+				}}
+			/>,
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: /2 messages queued/,
+				},
+			),
+		);
+		const clearAll = screen.queryByText("Clear all");
+		const first = screen.getAllByRole(
+			"button",
+			{
+				name: "Queued message actions",
+			},
+		)[0];
+		if (first === undefined) throw new Error("Expected a row menu");
+		fireEvent.click(first);
+		const menu = await screen.findByRole("menu");
+		expect(
+			{
+				singleButtons,
+				clearAll,
+				rowItems: within(menu)
+					.getAllByRole("menuitem")
+					.map((item) => item.textContent),
+				listClassName:
+					list.container.firstElementChild?.firstElementChild?.className.includes("rounded-t-none"),
+			},
+		).toStrictEqual(
+			{
+				singleButtons: ["Edit in composer", "Remove from queue"],
+				clearAll: null,
+				rowItems: ["Edit in composer", "Remove from queue"],
+				listClassName: false,
+			},
+		);
+	});
 });

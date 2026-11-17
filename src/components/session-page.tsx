@@ -150,6 +150,7 @@ import {canStopResponse, useStopResponse} from "../hooks/use-stop-response";
 import {useNestedStop} from "../hooks/use-nested-stop";
 import {latestAgentsKilledId, nestedStopCount} from "../lib/nested-stop";
 import {SEND_NOW_FAILED_MESSAGE, useComposerQueue} from "../hooks/use-composer-queue";
+import {useParkedPrompts} from "../hooks/use-parked-prompts";
 import
 {
 	type ComposerPaneState,
@@ -1502,6 +1503,41 @@ function SessionView({
 		},
 	);
 	const {enqueue: enqueuePrompt, items: queuedPrompts, remove: removeQueuedPrompt} = composerQueue;
+	// Upstream's parked lane: an idle send while the usage limit is spent is held and auto-sends after the reset.
+	const parkedLane = useParkedPrompts(
+		{
+			sessionId,
+			usage: accountUsage,
+			busy: paneBusy,
+			blocked: dialogOpen,
+			archived: data.archived,
+			interruptedAt: lastInterrupt?.sessionId === sessionId ? lastInterrupt.at : null,
+			deliver: liveHerdrPrompt.send,
+		},
+	);
+	const {park: parkPrompt} = parkedLane;
+	const composerQueueView = useMemo(
+		() => (
+		{
+			...composerQueue,
+			parked:
+			{
+				willAutoSend: parkedLane.willAutoSend,
+				resetsAt: parkedLane.windowResetsAt,
+				archived: data.archived,
+				flushing: parkedLane.flushing,
+				sendAnyway: parkedLane.sendAnyway,
+			},
+		}),
+		[
+			composerQueue,
+			data.archived,
+			parkedLane.flushing,
+			parkedLane.sendAnyway,
+			parkedLane.willAutoSend,
+			parkedLane.windowResetsAt,
+		],
+	);
 	const cancelHeldSteer = useCallback(
 		(item: QueuedPrompt) =>
 		{
@@ -1930,6 +1966,9 @@ function SessionView({
 	const sendLivePrompt = useCallback(
 		async (prompt: string) =>
 		{
+			// Upstream parks only a plain send with no turn running (not a steer or an answer).
+			if ((composerSend.kind === "send" || composerSend.kind === "queue") && !queueBusy && parkPrompt(prompt))
+				return;
 			switch (composerSend.kind)
 			{
 				case "dismiss-question-then-queue":
@@ -1976,7 +2015,7 @@ function SessionView({
 					assertNever(composerSend);
 			}
 		},
-		[composerSend, enqueuePrompt, liveHerdrPrompt, sessionId, toast],
+		[composerSend, enqueuePrompt, liveHerdrPrompt, parkPrompt, queueBusy, sessionId, toast],
 	);
 	const sendSetupCommand = useCallback(
 		(prompt: string) =>
@@ -2558,7 +2597,7 @@ function SessionView({
 																	}
 																	queue={
 																		promptBehavior.usesHerdr
-																			? composerQueue
+																			? composerQueueView
 																			: undefined
 																	}
 																	onQueueForLater={

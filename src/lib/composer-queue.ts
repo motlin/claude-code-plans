@@ -13,6 +13,15 @@ export interface QueuedPrompt
 	text: string;
 	/** Sent over a skipped question: delivered as soon as no dialog is open, even mid-turn. */
 	midTurn?: true;
+	/** Held while the usage limit is spent (upstream's parked lane): auto-sends after the reset, never flushed here. */
+	parked?: ParkedStamp;
+}
+
+export interface ParkedStamp
+{
+	parkedAtMs: number;
+	/** The window (epoch seconds) it was parked for; an hour off the current one holds it for the user. */
+	parkedForResetsAt?: number;
 }
 
 const EMPTY: readonly QueuedPrompt[] = [];
@@ -92,7 +101,7 @@ export function nextQueuedPrompt(
 	dialogOpen = false,
 ): QueuedPrompt | null
 {
-	const head = queue[0] ?? null;
+	const head = queue.find((item) => item.parked === undefined) ?? null;
 	if (head === null) return null;
 	return (head.midTurn === true ? dialogOpen : busy) ? null : head;
 }
@@ -103,10 +112,21 @@ export function steeredPrompts(queue: readonly QueuedPrompt[]): readonly QueuedP
 	return queue.every((item) => item.midTurn !== true) ? EMPTY : queue.filter((item) => item.midTurn === true);
 }
 
+function isLater(item: QueuedPrompt): boolean
+{
+	return item.midTurn !== true && item.parked === undefined;
+}
+
 /** Prompts queued for after the turn, the only ones upstream's QueuedMessageBar band lists. */
 export function queuedForLater(queue: readonly QueuedPrompt[]): readonly QueuedPrompt[]
 {
-	return queue.every((item) => item.midTurn !== true) ? queue : queue.filter((item) => item.midTurn !== true);
+	return queue.every(isLater) ? queue : queue.filter(isLater);
+}
+
+/** Prompts held while the usage limit is spent, head first: upstream's parked lane. */
+export function parkedPrompts(queue: readonly QueuedPrompt[]): readonly QueuedPrompt[]
+{
+	return queue.some((item) => item.parked !== undefined) ? queue.filter((item) => item.parked !== undefined) : EMPTY;
 }
 
 export function queuedStatusText(count: number): string
@@ -144,7 +164,7 @@ export function newQueuedPrompt(
 	return item;
 }
 
-function getComposerQueue(sessionId: string): readonly QueuedPrompt[]
+export function getComposerQueue(sessionId: string): readonly QueuedPrompt[]
 {
 	return queues.get(sessionId) ?? EMPTY;
 }

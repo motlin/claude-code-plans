@@ -16,6 +16,7 @@ import
 	clearComposerQueues,
 	composerQueueReducer,
 	nextQueuedPrompt,
+	parkedPrompts,
 	type QueuedPrompt,
 	queuedForLater,
 	queuedStatusText,
@@ -238,6 +239,39 @@ describe("composerQueueReducer", () =>
 				steered: [steer],
 				later: [ALICE, BOB],
 				laterUnchanged: [ALICE, BOB],
+			},
+		);
+	});
+
+	it("keeps parked prompts out of the flush and the later band, in their own lane", () =>
+	{
+		const parked: QueuedPrompt =
+		{
+			id: "q5",
+			text: "Erin's held follow-up",
+			parked:
+			{
+				parkedAtMs: 1,
+				parkedForResetsAt: 2,
+			},
+		};
+		expect(
+			{
+				nextSkipsParked: nextQueuedPrompt([parked, ALICE], false),
+				onlyParked: nextQueuedPrompt([parked], false),
+				later: queuedForLater([parked, ALICE]),
+				steered: steeredPrompts([parked, ALICE]),
+				parked: parkedPrompts([ALICE, parked, BOB]),
+				noneParked: parkedPrompts([ALICE]),
+			},
+		).toStrictEqual(
+			{
+				nextSkipsParked: ALICE,
+				onlyParked: null,
+				later: [ALICE],
+				steered: [],
+				parked: [parked],
+				noneParked: [],
 			},
 		);
 	});
@@ -1184,6 +1218,60 @@ async function openRowMenu(index: number)
 
 describe("Composer queued message bar", () =>
 {
+	it("mounts the parked bar after the queued band in the same slot, keeping parked prompts out of it", () =>
+	{
+		const parked: QueuedPrompt =
+		{
+			id: "q9",
+			text: "Erin's held follow-up",
+			parked:
+			{
+				parkedAtMs: 1,
+			},
+		};
+		const sendAnyway = vi.fn<() => void>();
+		renderComposer(
+			{
+				queue:
+				{
+					...queueView([ALICE, parked]),
+					parked:
+					{
+						willAutoSend: false,
+						resetsAt: undefined,
+						archived: false,
+						flushing: false,
+						sendAnyway,
+					},
+				},
+			},
+		);
+		const sendAnywayButton = screen.getByRole(
+			"button",
+			{
+				name: "Send anyway",
+			},
+		);
+		fireEvent.click(sendAnywayButton);
+		const slot = sendAnywayButton.closest(".mb-1\\.5");
+		expect(
+			{
+				bands: Array.from(slot?.children ?? []).map((child) => child.textContent),
+				status: screen.getByTestId("coach-queued-status").textContent,
+				sent: sendAnyway.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				bands: [
+					"1 message queuedAlice's first follow-upStops Claude’s current response.",
+					"You hit your usage limit. Send anyway sends held messages now.Send anyway1 message queuedErin's held follow-up",
+				],
+				status: "1 message queued. Will send after the current response.",
+				sent: [[]],
+			},
+		);
+	});
+
 	it("shows the queued band above the composer with an sr-only status", () =>
 	{
 		renderComposer(
