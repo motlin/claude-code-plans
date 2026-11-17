@@ -15,6 +15,7 @@ import
 	FILE_REF_ATTR,
 	MERMAID_FENCE_ATTR,
 	MERMAID_SOURCE_ATTR,
+	SESSION_CHIP_ATTR,
 	fileRefFromElement,
 	renderMarkdownWithHighlighting,
 	subscribeZonedTimes,
@@ -27,6 +28,9 @@ import {handleCodeCopyClick} from "../lib/code-copy";
 import styles from "./markdown-article.module.css";
 import {useReasonTooltip} from "./use-reason-tooltip";
 import {MermaidFenceGate} from "./mermaid-fence-gate";
+import type {SessionListItem} from "../lib/api/sessions";
+import {parseSessionLinkHref, sessionChipModel, type SessionLinkTarget} from "../lib/session-link-href";
+import {SessionChipIsland} from "./session-chip-island";
 
 interface FileRefProps
 {
@@ -41,6 +45,12 @@ interface FileRefProps
 	onFileRefDefaultApp?: ((ref: FileRef) => boolean) | undefined;
 	/** Artifacts-index titles keyed by artifact id, for claude.ai artifact link chips. */
 	artifactTitles?: ReadonlyMap<string, string> | undefined;
+	/** Indexed sessions keyed by the id a link names, for session link chips' titles, states and cards. */
+	sessionLinks?: ReadonlyMap<string, SessionLinkTarget> | undefined;
+	/** The linked sessions' rows by local id, which the chips' right-click menus act on. */
+	sessionRows?: ReadonlyMap<string, SessionListItem> | undefined;
+	/** The session the prose belongs to; its own chips are marked current. */
+	currentSessionId?: string | undefined;
 	/** Curl prose quotes, as upstream does for assistant text. */
 	smartQuotes?: boolean | undefined;
 	/** Underline zoned clock times with the reader's local time, as upstream does for assistant text. */
@@ -218,6 +228,54 @@ function useMermaidIslands(
 	);
 }
 
+/**
+ * The session link chips in the rendered HTML, each taken over by a React island (its hover card and menu): its
+ * host is emptied and the island renders the chip into it through a portal.
+ */
+function useSessionChipIslands(
+	article:
+	{
+		readonly current: HTMLElement | null;
+	},
+	rendered: string,
+	{
+		sessionLinks,
+		sessionRows,
+		currentSessionId,
+	}: Pick<FileRefProps, "sessionLinks" | "sessionRows" | "currentSessionId">,
+)
+{
+	const [hosts, setHosts] = useState<HTMLElement[]>([]);
+	useLayoutEffect(() =>
+	{
+		const found =
+			article.current === null
+				? []
+				: [...article.current.querySelectorAll<HTMLElement>(`[${SESSION_CHIP_ATTR}]`)];
+		for (const host of found) host.replaceChildren();
+		setHosts((previous) => (previous.length === 0 && found.length === 0 ? previous : found));
+	}, [article, rendered]);
+	return hosts.flatMap((host, index) =>
+	{
+		const href = host.dataset["sessionHref"] ?? "";
+		const model = sessionChipModel(href, host.dataset["sessionLabel"] ?? "", sessionLinks, currentSessionId);
+		const parsed = parseSessionLinkHref(href);
+		if (model === null || parsed === null) return [];
+		const target = sessionLinks?.get(parsed.id);
+		return [
+			createPortal(
+				<SessionChipIsland
+					model={model}
+					target={target}
+					session={target === undefined ? undefined : sessionRows?.get(target.localId)}
+				/>,
+				host,
+				String(index),
+			),
+		];
+	});
+}
+
 /** Upstream `EM`: prose whose markdown render crashed, drawn as its raw text inside the same prose wrapper. */
 export function PlainTextArticle({text}: {text: string})
 {
@@ -272,6 +330,18 @@ export function MarkdownArticle(props: MarkdownArticleProps)
 						{
 							artifactTitles: props.artifactTitles,
 						}),
+				...(props.sessionLinks === undefined
+					? {}
+					:
+						{
+							sessionLinks: props.sessionLinks,
+						}),
+				...(props.currentSessionId === undefined
+					? {}
+					:
+						{
+							currentSessionId: props.currentSessionId,
+						}),
 			},
 		);
 	}, [
@@ -281,6 +351,8 @@ export function MarkdownArticle(props: MarkdownArticleProps)
 		props.mdLinkBase,
 		props.fileRefs,
 		props.artifactTitles,
+		props.sessionLinks,
+		props.currentSessionId,
 		props.smartQuotes,
 		props.zonedTimes,
 		props.diagrams,
@@ -292,6 +364,7 @@ export function MarkdownArticle(props: MarkdownArticleProps)
 	const reasonTooltip = useReasonTooltip();
 	const focusSlot = useProseFocusSlot(rendered);
 	const islands = useMermaidIslands(focusSlot.article, rendered, props.diagrams ?? false);
+	const chips = useSessionChipIslands(focusSlot.article, rendered, props);
 	const {onFileRef, onFileRefDefaultApp} = props;
 	const openRef = ({ref, element}: {ref: FileRef; element: HTMLElement}) =>
 	{
@@ -350,6 +423,7 @@ export function MarkdownArticle(props: MarkdownArticleProps)
 				}}
 			/>
 			{islands}
+			{chips}
 			{reasonTooltip.tooltip}
 		</>
 	);

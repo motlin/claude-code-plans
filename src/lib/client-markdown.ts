@@ -32,6 +32,9 @@ import {mdFileHref, resolveRelativeMdHref} from "./md-links";
 import {afterBreak, afterOpaque, newQuoteState, smartenQuotes} from "./smart-quotes";
 import {SHIKI_TOKENIZE_OPTIONS} from "./shiki-tokenize-options";
 import {defined} from "./defined";
+import {CHIP_INTERACTIVE, CHIP_LABEL} from "../components/session-link-chip-classes";
+import {isSessionLinkText, renderChipTitleHtml, SESSION_CHIP_STATE_LABELS} from "./session-chip-label";
+import {parseSessionLinkHref, sessionChipModel, type SessionLinkTarget} from "./session-link-href";
 
 interface MarkdownRenderOptions
 {
@@ -52,6 +55,13 @@ interface MarkdownRenderOptions
 	 * link whose id is here is labelled with the indexed title.
 	 */
 	artifactTitles?: ReadonlyMap<string, string>;
+	/**
+	 * Indexed sessions keyed by the id a link names (a claude.ai `session_…` id or a local UUID); a link to one
+	 * renders as an in-app session chip titled with the session. See {@link SESSION_CHIP_ATTR}.
+	 */
+	sessionLinks?: ReadonlyMap<string, SessionLinkTarget>;
+	/** The session the prose belongs to, whose own chips are marked `aria-current`. */
+	currentSessionId?: string;
 	/** Settings ▸ Code appearance themes for fenced code; defaults when omitted. */
 	codeThemes?: CodeThemePair;
 	/** Curl prose quotes as upstream does for assistant text, leaving code and URLs straight. */
@@ -76,6 +86,8 @@ class MarkdownEnv
 	readonly mdLinkBase: string | undefined;
 	readonly fileRefs: ReadonlyMap<string, FileRef> | undefined;
 	readonly artifactTitles: ReadonlyMap<string, string> | undefined;
+	readonly sessionLinks: ReadonlyMap<string, SessionLinkTarget> | undefined;
+	readonly currentSessionId: string | undefined;
 	readonly smartQuotes: boolean;
 	readonly zonedTimes: boolean;
 	readonly headingsUnder: number | undefined;
@@ -88,6 +100,8 @@ class MarkdownEnv
 		this.mdLinkBase = options?.mdLinkBase;
 		this.fileRefs = options?.fileRefs;
 		this.artifactTitles = options?.artifactTitles;
+		this.sessionLinks = options?.sessionLinks;
+		this.currentSessionId = options?.currentSessionId;
 		this.smartQuotes = options?.smartQuotes === true;
 		this.zonedTimes = options?.zonedTimes === true;
 		this.headingsUnder = options?.headingsUnder;
@@ -438,6 +452,47 @@ function pullRequestChipHtml(token: Token, escape: (value: string) => string): s
 	return `<a href="${escape(href)}" target="_blank" rel="noreferrer" class="pr-chip"><span class="whitespace-nowrap">${PR_ICON_SVG}${escape(`${owner}/${repo}#${number}`)}</span></a>`;
 }
 
+/**
+ * Marks the host of a session link chip, which `MarkdownArticle` takes over with the React chip (its hover card
+ * and menu); `data-session-href` and `data-session-label` carry the link it was rendered from.
+ */
+export const SESSION_CHIP_ATTR = "data-session-chip";
+
+const SESSION_CHIP_TOKEN = "session_chip";
+
+/** Upstream's markdown link renderer (`oh`): every link to a session, written or linkified, becomes a chip. */
+function sessionChips(state: StateCore): void
+{
+	collapseLinks(state, SESSION_CHIP_TOKEN, (href) => parseSessionLinkHref(href) !== null);
+}
+
+/** The chip `SessionLinkChip` renders for the link, inside the host the article mounts it into. */
+function sessionChipHtml(token: Token, env: MarkdownEnv | undefined, escape: (value: string) => string): string
+{
+	const href = token.attrGet("href") ?? "";
+	const model = defined(
+		sessionChipModel(href, token.content, env?.sessionLinks, env?.currentSessionId),
+		"session chip token href",
+	);
+	const attrs =
+		model.internalTo === undefined
+			? [`href="${escape(model.href ?? href)}"`, `target="_blank"`, `rel="noreferrer"`]
+			: [`href="${escape(model.internalTo)}"`];
+	attrs.push(`class="${CHIP_INTERACTIVE}"`);
+	if (model.isOpen) attrs.push(`aria-current="true"`);
+	if (model.state === "running") attrs.push(`aria-busy="true"`);
+	const title = model.title?.trim() ?? "";
+	let label: string;
+	if (title !== "") label = renderChipTitleHtml(title);
+	else if (isSessionLinkText(model.label)) label = "session";
+	else label = escape(model.label);
+	const status = model.state === undefined ? null : SESSION_CHIP_STATE_LABELS[model.state];
+	const statusHtml =
+		status === null ? "" : `<span class="contents"><span class="sr-only select-none"> — ${status}</span></span>`;
+	const host = `<span class="contents" ${SESSION_CHIP_ATTR}="" data-session-href="${escape(href)}" data-session-label="${escape(model.label)}">`;
+	return `${host}<a ${attrs.join(" ")}><span class="${CHIP_LABEL}"><span>${label}</span>${statusHtml}</span></a></span>`;
+}
+
 /** Whether `href` leaves the app, so it opens in a new tab like upstream's links. */
 function isExternalHref(href: string): boolean
 {
@@ -695,6 +750,9 @@ function applyPlugins(instance: MarkdownIt): void
 	instance.renderer.rules[ARTIFACT_LINK_TOKEN] = (tokens, idx, _options, env) =>
 		artifactLinkHtml(defined(tokens[idx], "artifact link token"), envOf(env), instance.utils.escapeHtml);
 	instance.core.ruler.push(PR_CHIP_TOKEN, pullRequestChips);
+	instance.core.ruler.push(SESSION_CHIP_TOKEN, sessionChips);
+	instance.renderer.rules[SESSION_CHIP_TOKEN] = (tokens, idx, _options, env) =>
+		sessionChipHtml(defined(tokens[idx], "session chip token"), envOf(env), instance.utils.escapeHtml);
 	instance.core.ruler.push("numeric_table_columns", numericTableColumns);
 	instance.core.ruler.push("smart_quotes", smartQuotes);
 	instance.core.ruler.push(ZONED_TIME_TOKEN, zonedTimes);
@@ -989,6 +1047,21 @@ export function fileRefTexts(markdown: string): string[]
 		}
 	}
 	return texts;
+}
+
+/** The session ids the markdown's links name, first-seen order, for looking up their chips' sessions. */
+export function sessionLinkIds(markdown: string): string[]
+{
+	const ids = new Set<string>();
+	for (const token of getPlainMarkdownIt().parse(markdown, {}))
+	{
+		for (const child of token.children ?? [])
+		{
+			const parsed = child.type === SESSION_CHIP_TOKEN ? parseSessionLinkHref(child.attrGet("href") ?? "") : null;
+			if (parsed !== null) ids.add(parsed.id);
+		}
+	}
+	return [...ids];
 }
 
 /**

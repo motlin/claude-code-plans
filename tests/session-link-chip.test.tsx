@@ -2,10 +2,16 @@
 
 import {readFileSync} from "node:fs";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
-import {act, cleanup, fireEvent, render} from "@testing-library/react";
+import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import type {ReactNode} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
+import {MarkdownArticle} from "../src/components/markdown-article";
+import {SessionChipIsland} from "../src/components/session-chip-island";
 import {SessionLinkChip} from "../src/components/session-link-chip";
+import {ToastProvider} from "../src/components/toast";
+import type {SessionListItem} from "../src/lib/api/sessions";
+import type {SessionLinkTarget} from "../src/lib/session-link-href";
 import
 {
 	CHIP_BASE,
@@ -251,5 +257,242 @@ describe("session link chip CSS", () =>
 				"--font-mono-ui: var(--font-mono);",
 			].filter((rule) => !styles.includes(rule)),
 		).toStrictEqual([]);
+	});
+});
+
+const TARGET: SessionLinkTarget =
+{
+	localId: "u1",
+	title: "Fix bug",
+	state: "running",
+	status: "Working",
+	pr:
+	{
+		number: 12,
+		state: "open",
+	},
+};
+
+function hoverChip(chip: Element)
+{
+	act(() =>
+	{
+		fireEvent.pointerEnter(
+			chip,
+			{
+				pointerType: "mouse",
+			},
+		);
+		fireEvent.mouseEnter(chip);
+		fireEvent.mouseMove(chip);
+	});
+}
+
+async function advance(ms: number)
+{
+	await act(async () =>
+	{
+		await vi.advanceTimersByTimeAsync(ms);
+	});
+}
+
+function chipCard(): HTMLElement | null
+{
+	return document.querySelector("[data-session-chip-card]");
+}
+
+describe("SessionLinkChip hover card (T3)", () =>
+{
+	afterEach(() =>
+	{
+		vi.useRealTimers();
+	});
+
+	it("opens upstream's 0-320px card after 500ms with the title, status word and PR segment", async () =>
+	{
+		vi.useFakeTimers();
+		const {container} = render(
+			<SessionLinkChip sessionId="u1" title="Fix bug" state="running" card={TARGET} onClick={() => undefined} />,
+		);
+		hoverChip(defined(container.querySelector("button")));
+		await advance(499);
+		const early = chipCard();
+		await advance(1);
+		const card = chipCard();
+		expect(
+			{
+				early,
+				width: card?.className.split(" ").filter((name) => name.startsWith("[--preview-card")),
+				title: card?.querySelector("[data-chip-card-title]")?.textContent,
+				meta: card?.querySelector("[data-thread-hover-meta]")?.textContent,
+				pr: card?.querySelector("[data-thread-pr]")?.getAttribute("data-thread-pr"),
+				busy: card?.querySelector("[data-thread-hover-meta] [aria-busy]") !== null,
+			},
+		).toStrictEqual(
+			{
+				early: null,
+				width: ["[--preview-card-min-w:0px]", "[--preview-card-max-w:320px]"],
+				title: "Fix bug",
+				meta: "Working · Pull requests: 1 open",
+				pr: "open",
+				busy: true,
+			},
+		);
+	});
+
+	it("opens no card while hoverCardDisabled", async () =>
+	{
+		vi.useFakeTimers();
+		const {container} = render(
+			<SessionLinkChip
+				sessionId="u1"
+				title="Fix bug"
+				card={TARGET}
+				hoverCardDisabled
+				onClick={() => undefined}
+			/>,
+		);
+		hoverChip(defined(container.querySelector("button")));
+		await advance(600);
+		expect(chipCard()).toBe(null);
+	});
+});
+
+function defined<T>(value: T | null | undefined): T
+{
+	if (value === null || value === undefined) throw new Error("Expected a value");
+	return value;
+}
+
+const ROW: SessionListItem =
+{
+	id: "u1",
+	title: "Fix bug",
+	mtime: "2026-09-28T10:00:00.000Z",
+	created: "2026-09-28T09:00:00.000Z",
+	project: "-projects-alpha",
+	projectName: "alpha",
+	messageCount: 4,
+	archived: false,
+	state: "ended",
+	bucket: "done",
+	liveAgentCount: 0,
+	unseen: false,
+	blockedSince: null,
+};
+
+describe("SessionChipIsland context menu (T4)", () =>
+{
+	it("opens the reduced session menu on right-click, marks the chip menu-open and suppresses its card", async () =>
+	{
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<() => Promise<Response>>(async () => Promise.resolve(new Response("{}"))),
+		);
+		const queryClient = new QueryClient(
+			{
+				defaultOptions:
+				{
+					queries:
+					{
+						retry: false,
+					},
+				},
+			},
+		);
+		const host = await renderInRouter(
+			<QueryClientProvider client={queryClient}>
+				<ToastProvider>
+					<SessionChipIsland
+						model={
+						{
+							sessionId: "u1",
+							internalTo: "/session/u1",
+							title: "Fix bug",
+							state: "idle",
+							isOpen: false,
+							label: "x",
+						}}
+						target={
+						{
+							...TARGET,
+							state: "idle",
+						}}
+						session={ROW}
+					/>
+				</ToastProvider>
+			</QueryClientProvider>,
+		);
+		const chip = defined(host.querySelector("a"));
+		act(() =>
+		{
+			fireEvent.contextMenu(chip);
+		});
+		const items = await vi.waitFor(() =>
+		{
+			const found = screen.queryAllByRole("menuitem");
+			if (found.length === 0) throw new Error("menu not open");
+			return found.map((item) => item.textContent);
+		});
+		const menuOpen = chip.getAttribute("data-menu-open");
+		hoverChip(chip);
+		await new Promise((resolve) =>
+		{
+			setTimeout(resolve, 600);
+		});
+		const cardWhileOpen = chipCard();
+		act(() =>
+		{
+			fireEvent.keyDown(
+				defined(document.activeElement),
+				{
+					key: "Escape",
+				},
+			);
+		});
+		await vi.waitFor(() =>
+		{
+			if (chip.hasAttribute("data-menu-open")) throw new Error("menu still open");
+		});
+		expect(
+			{
+				items,
+				menuOpen,
+				cardWhileOpen,
+			},
+		).toStrictEqual(
+			{
+				// Each label ends with its upstream accelerator letter.
+				items: ["PinP", "Mark as unreadU", "RenameR", "ForkF", "Copy linkC", "ArchiveA"],
+				menuOpen: "",
+				cardWhileOpen: null,
+			},
+		);
+		vi.unstubAllGlobals();
+	});
+});
+
+describe("MarkdownArticle session chip islands (T2)", () =>
+{
+	it("mounts the React chip into each rendered chip host, matching the server HTML", async () =>
+	{
+		const href = "https://claude.ai/code/session_01AbCdEf";
+		const host = await renderInRouter(
+			<MarkdownArticle
+				markdown={`See [x](${href}).`}
+				sessionLinks={new Map([["session_01AbCdEf", TARGET]])}
+				currentSessionId="u1"
+			/>,
+		);
+		const chipHost = await vi.waitFor(() =>
+		{
+			const found = host.querySelector("[data-session-chip]");
+			if (found?.querySelector("a") === null || found === null) throw new Error("island not mounted");
+			return found;
+		});
+		// The hover card trigger adds Base UI's generated id, as upstream's cds hover card does.
+		expect(chipHost.innerHTML.replace(/ id="base-ui-[^"]+"/, "")).toBe(
+			`<a aria-current="true" aria-busy="true" class="${CHIP_INTERACTIVE}" href="/session/u1"><span class="self-baseline truncate"><span>Fix bug</span><span class="contents"><span class="sr-only select-none"> — Running</span></span></span></a>`,
+		);
 	});
 });

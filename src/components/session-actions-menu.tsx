@@ -138,7 +138,18 @@ interface PinnedRowContext
 	onMoved: () => void;
 }
 
-function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | undefined, familyHead: boolean)
+/** Upstream's transcript chip menu (`_f`): the row menu less Move to group and Open in ▸ Finder. */
+const CHIP_MENU_CAPABILITIES: ReadonlySet<SessionMenuCapability> = new Set(
+	[...SESSION_MENU_CAPABILITIES].filter((capability) => capability !== "customGroups" && capability !== "openFinder"),
+);
+
+function useSessionMenu(
+	session: SessionListItem,
+	pinnedRow: PinnedRowContext | undefined,
+	familyHead: boolean,
+	{requestRename, requestNewGroup}: Pick<RowRename, "requestRename" | "requestNewGroup">,
+	capabilities: ReadonlySet<SessionMenuCapability> = SESSION_MENU_CAPABILITIES,
+)
 {
 	const {collapsedFamilies} = useSidebarState();
 	const unseen = useHasUnseenWork(session.id);
@@ -148,7 +159,6 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
 	const bridgeSessionId = openIn?.bridgeSessionId ?? null;
 	const pins = usePins();
 	const customGroups = useSessionGroups();
-	const {requestRename, requestNewGroup} = useRowRename();
 	const pinIndex = pinnedRow?.pinnedIds.indexOf(session.id) ?? -1;
 	const liveApproval = useLiveApprovalIds().has(session.id);
 	useAwaitingAckVersion();
@@ -244,7 +254,7 @@ function useSessionMenu(session: SessionListItem, pinnedRow: PinnedRowContext | 
 	return {
 		entries: getSessionMenuItems(
 			menuSession,
-			SESSION_MENU_CAPABILITIES,
+			capabilities,
 			{
 				surface: "row",
 			},
@@ -397,7 +407,23 @@ function SessionMenuBody({
 	familyHead: boolean;
 })
 {
-	const {entries, run} = useSessionMenu(session, pinnedRow, familyHead);
+	const {entries, run} = useSessionMenu(session, pinnedRow, familyHead, useRowRename());
+	return <MenuEntries entries={entries} run={run} />;
+}
+
+/** A transcript session chip's right-click menu items; Rename calls `requestRename` (upstream's rename dialog). */
+export function SessionChipMenuBody({session, requestRename}: {session: SessionListItem; requestRename: () => void})
+{
+	const {entries, run} = useSessionMenu(
+		session,
+		undefined,
+		false,
+		{
+			requestRename,
+			requestNewGroup: () => undefined,
+		},
+		CHIP_MENU_CAPABILITIES,
+	);
 	return <MenuEntries entries={entries} run={run} />;
 }
 

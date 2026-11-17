@@ -48,6 +48,7 @@ describe("data-cds-overlay popup sites", () =>
 				"home/project-picker.tsx:Popover": true,
 				"refusal-fallback-card.tsx:PreviewCard": false,
 				"session-hover-card.tsx:PreviewCard": false,
+				"session-link-chip.tsx:PreviewCard": false,
 				"settings/settings-search.tsx:Popover": true,
 				"slash-command-chip.tsx:PreviewCard": false,
 				"stale-compact-band.tsx:Popover": false,

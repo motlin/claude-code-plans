@@ -1,39 +1,30 @@
+import {PreviewCard} from "@base-ui/react/preview-card";
 import {Link} from "@tanstack/react-router";
-import MarkdownIt from "markdown-it";
-import {Children, isValidElement, type KeyboardEvent, type MouseEvent, type ReactNode} from "react";
+import
+{
+	Children,
+	isValidElement,
+	type KeyboardEvent,
+	type MouseEvent,
+	type ReactElement,
+	type ReactNode,
+	useState,
+} from "react";
 
-import type {SessionStateKind} from "../lib/session-state";
+import {isSessionLinkText, renderChipTitleHtml, SESSION_CHIP_STATE_LABELS} from "../lib/session-chip-label";
+import type {SessionLinkChipState, SessionLinkTarget} from "../lib/session-link-href";
 import {CHIP_INTERACTIVE, CHIP_LABEL, CHIP_MUTED, CHIP_STATIC} from "./session-link-chip-classes";
-
-export type SessionLinkChipState = SessionStateKind | "archived";
-
-/** Upstream `bt`'s screen-reader status words; idle has none. */
-const STATE_LABELS =
+import
 {
-	running: "Running",
-	awaiting: "Awaiting permission",
-	ready: "Ready",
-	error: "Error",
-	archived: "Archived",
-	idle: null,
-} as const satisfies Record<SessionLinkChipState, string | null>;
+	CHIP_CARD_WIDTH,
+	CLOSE_DELAY_MS,
+	COLLISION_PADDING,
+	POPUP_CLASS,
+	SESSION_HOVER_CARD,
+} from "./session-hover-card-classes";
+import {Spinner} from "./ui/spinner";
 
-/** Upstream `He`'s session-link grammar (c4aef5f87 `D`): a claude.ai session URL or a `#session_…` fragment. */
-const SESSION_LINK_TEXT =
-	/^(?:https?:\/\/claude\.ai\/code\/(?:session\/)?(?:session|ses|cse)_\w{6,}(?:[?#]\S*)?|#(?:session|ses|cse)_\w{6,})$/;
-
-/*
- * Upstream `Bt`: a tiny inline markdown for chip titles that allows only strong, em, code and
- * (double-tilde) del, with code as `font-mono-ui`. Raw HTML is escaped.
- */
-const titleMarkdown = new MarkdownIt("zero").enable(["emphasis", "backticks", "strikethrough", "escape", "entity"]);
-titleMarkdown.renderer.rules.code_inline = (tokens, idx) =>
-	`<code class="font-mono-ui">${titleMarkdown.utils.escapeHtml(tokens[idx]?.content ?? "")}</code>`;
-
-function renderChipTitleHtml(title: string): string
-{
-	return titleMarkdown.renderInline(title);
-}
+export type {SessionLinkChipState} from "../lib/session-link-href";
 
 function nodeText(node: ReactNode): string
 {
@@ -92,7 +83,83 @@ export interface SessionLinkChipProps
 	/** Just the words: no link, status or current marker. */
 	wordsOnly?: boolean;
 	labelSource?: "title" | "children";
+	/** The linked session as the index knows it, which the chip's hover card shows; absent shows no card. */
+	card?: SessionLinkTarget;
+	/** Upstream `hoverCardDisabled`: no card, e.g. while the chip's menu is open. */
+	hoverCardDisabled?: boolean;
 	children?: ReactNode;
+}
+
+/** Upstream cce2a382f `U`: the hover card's meta separator. */
+const META_SEPARATOR = " · ";
+
+/**
+ * Upstream's chip hover card body (cce2a382f `W`): the title, then a footnote meta line with the session's
+ * status word (a spinner while it works) and its pull request by state ("1 open").
+ */
+function ChipCardBody({target}: {target: SessionLinkTarget})
+{
+	const working = target.state === "running";
+	return (
+		<div className="flex max-w-full flex-col gap-0.5">
+			{target.title !== "" && (
+				<span data-chip-card-title="" className="line-clamp-2 break-words text-body-medium text-primary">
+					{target.title}
+				</span>
+			)}
+			<span
+				data-thread-hover-meta=""
+				className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-footnote text-muted-as-secondary"
+			>
+				{target.status !== undefined && (
+					<span className="inline-flex min-w-0 items-center gap-xs whitespace-nowrap">
+						{working && (
+							<span aria-busy="true" className="flex size-3 shrink-0 items-center justify-center">
+								<Spinner size="sm" />
+							</span>
+						)}
+						<span className="truncate">{target.status}</span>
+					</span>
+				)}
+				{target.pr !== undefined && (
+					<span
+						data-thread-pr={target.pr.state}
+						className="inline-flex min-w-0 items-center gap-xs whitespace-nowrap"
+					>
+						{target.status !== undefined && META_SEPARATOR}
+						<span className="sr-only">Pull requests: </span>
+						<span className="truncate">1 {target.pr.state}</span>
+					</span>
+				)}
+			</span>
+		</div>
+	);
+}
+
+/** Upstream's cds hover card around the chip (`Wl`): 500ms in, 200ms out, 0-320px wide. */
+function ChipHoverCard({
+	root,
+	target,
+	disabled,
+}: {
+	root: ReactElement<Record<string, unknown>>;
+	target: SessionLinkTarget;
+	disabled: boolean;
+})
+{
+	const [open, setOpen] = useState(false);
+	return (
+		<PreviewCard.Root open={open && !disabled} onOpenChange={setOpen}>
+			<PreviewCard.Trigger render={root} delay={SESSION_HOVER_CARD.other.delay} closeDelay={CLOSE_DELAY_MS} />
+			<PreviewCard.Portal>
+				<PreviewCard.Positioner collisionPadding={COLLISION_PADDING} data-cds-portal="" className="z-[100]">
+					<PreviewCard.Popup data-session-chip-card="" className={`${POPUP_CLASS} ${CHIP_CARD_WIDTH}`}>
+						<ChipCardBody target={target} />
+					</PreviewCard.Popup>
+				</PreviewCard.Positioner>
+			</PreviewCard.Portal>
+		</PreviewCard.Root>
+	);
 }
 
 /**
@@ -100,6 +167,21 @@ export interface SessionLinkChipProps
  * chip in Code shows no leading mark (no Code chunk provides the kind icon), so it never takes upstream's `ln` (`gap-0.75 ps-1`).
  */
 export function SessionLinkChip({
+	sessionId: _sessionId,
+	card,
+	hoverCardDisabled = false,
+	...props
+}: SessionLinkChipProps)
+{
+	const root = chipRoot(props);
+	return card === undefined || props.wordsOnly === true ? (
+		root
+	) : (
+		<ChipHoverCard root={root} target={card} disabled={hoverCardDisabled} />
+	);
+}
+
+function chipRoot({
 	title,
 	state,
 	isOpen = false,
@@ -112,7 +194,7 @@ export function SessionLinkChip({
 	wordsOnly = false,
 	labelSource = "title",
 	children,
-}: SessionLinkChipProps)
+}: Omit<SessionLinkChipProps, "sessionId" | "card" | "hoverCardDisabled">): ReactElement<Record<string, unknown>>
 {
 	const status = wordsOnly ? undefined : state;
 	const trimmedTitle = title?.trim() ?? "";
@@ -128,7 +210,7 @@ export function SessionLinkChip({
 			/>
 		);
 	}
-	else if (labelSource === "title" && SESSION_LINK_TEXT.test(nodeText(children).trim()))
+	else if (labelSource === "title" && isSessionLinkText(nodeText(children)))
 	{
 		label = <span>session</span>;
 	}
@@ -136,7 +218,7 @@ export function SessionLinkChip({
 	{
 		label = <span>{children}</span>;
 	}
-	const statusLabel = status === undefined ? null : STATE_LABELS[status];
+	const statusLabel = status === undefined ? null : SESSION_CHIP_STATE_LABELS[status];
 	const body = (
 		<span className={CHIP_LABEL}>
 			{label}

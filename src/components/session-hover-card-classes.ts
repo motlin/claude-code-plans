@@ -33,3 +33,6 @@ export type HoverCardKind = keyof typeof SESSION_HOVER_CARD;
 /** Upstream's sr-only hint that a Needs input row's card answers in place. */
 export const QUICK_REPLY_HINT =
 	"Quick reply and approval controls available — press Tab until focus enters the card, Escape to return.";
+
+/** Upstream's transcript session chip card (`Wl` popupClassName, cce2a382f `H`): as narrow as its content, at most 320px. */
+export const CHIP_CARD_WIDTH = "[--preview-card-min-w:0px] [--preview-card-max-w:320px]";

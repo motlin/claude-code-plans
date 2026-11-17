@@ -10,6 +10,7 @@ import {MarkdownArticle, PlainTextArticle} from "./markdown-article";
 import {BlockedFileRef} from "./blocked-file-ref";
 import {RenderErrorBoundary} from "./render-error-boundary";
 import {useFocusSlot} from "./use-focus-slot";
+import {useSessionChipLinks} from "./use-session-chip-links";
 import {usePaneHost} from "./panes/pane-host-context";
 import {FileRefsContext, FileRefsProvider} from "./file-refs-context";
 import
@@ -150,6 +151,7 @@ function LinkedProseMarkdown({
 	const checkedOpen = useCheckedOpen(sessionId, open);
 	const openDefaultApp = useDefaultAppOpen();
 	const artifactTitles = useArtifactTitles(markdown);
+	const {sessionLinks, sessionRows} = useSessionChipLinks(markdown);
 	return (
 		<MarkdownArticle
 			markdown={markdown}
@@ -157,6 +159,9 @@ function LinkedProseMarkdown({
 			onFileRef={checkedOpen}
 			onFileRefDefaultApp={openDefaultApp}
 			artifactTitles={artifactTitles}
+			sessionLinks={sessionLinks}
+			sessionRows={sessionRows}
+			currentSessionId={sessionId}
 			smartQuotes={smartQuotes}
 			zonedTimes={smartQuotes}
 			diagrams={diagrams}

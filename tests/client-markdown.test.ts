@@ -9,7 +9,9 @@ import
 	renderMarkdownWithHighlighting,
 	renderArtifactLinkCard,
 	fileRefTexts,
+	sessionLinkIds,
 } from "../src/lib/client-markdown";
+import {CHIP_INTERACTIVE} from "../src/components/session-link-chip-classes";
 import type {FileRef} from "../src/lib/file-refs";
 import {ARTIFACT_ICON_SVG} from "../src/lib/icon-paths";
 
@@ -576,6 +578,79 @@ describe("external links", () =>
 		expect(renderMarkdownToHtml("[home](/sessions) and [top](#top)")).toBe(
 			'<p><a href="/sessions">home</a> and <a href="#top">top</a></p>\n',
 		);
+	});
+});
+
+describe("session link chips (upstream oh → kn)", () =>
+{
+	const href = "https://claude.ai/code/session_01AbCdEf";
+	const sessionLinks = new Map([
+		[
+			"session_01AbCdEf",
+			{
+				localId: "u1",
+				title: "Fix bug",
+				state: "running" as const,
+			},
+		],
+	]);
+
+	it("render a link to a bridged session as an in-app chip titled with the session", () =>
+	{
+		expect(
+			renderMarkdownToHtml(
+				`[x](${href})`,
+				{
+					sessionLinks,
+				},
+			),
+		).toBe(
+			`<p><span class="contents" data-session-chip="" data-session-href="${href}" data-session-label="x"><a href="/session/u1" class="${CHIP_INTERACTIVE}" aria-busy="true"><span class="self-baseline truncate"><span>Fix bug</span><span class="contents"><span class="sr-only select-none"> — Running</span></span></span></a></span></p>\n`,
+		);
+	});
+
+	it("mark the chip of the open session aria-current", () =>
+	{
+		expect(
+			renderMarkdownToHtml(
+				`[x](${href})`,
+				{
+					sessionLinks,
+					currentSessionId: "u1",
+				},
+			),
+		).toContain(`<a href="/session/u1" class="${CHIP_INTERACTIVE}" aria-current="true" aria-busy="true">`);
+	});
+
+	it("render an unresolved session as an external chip labelled by its text, a bare URL reading session", () =>
+	{
+		expect(
+			renderMarkdownToHtml(
+				`[x](${href}) and ${href}`,
+				{
+					sessionLinks: new Map(),
+				},
+			),
+		).toBe(
+			`<p><span class="contents" data-session-chip="" data-session-href="${href}" data-session-label="x"><a href="${href}" target="_blank" rel="noreferrer" class="${CHIP_INTERACTIVE}"><span class="self-baseline truncate"><span>x</span></span></a></span> and <span class="contents" data-session-chip="" data-session-href="${href}" data-session-label="${href}"><a href="${href}" target="_blank" rel="noreferrer" class="${CHIP_INTERACTIVE}"><span class="self-baseline truncate"><span>session</span></span></a></span></p>\n`,
+		);
+	});
+
+	it("render a local session URL as an in-app chip and leave other links alone", () =>
+	{
+		const uuid = "1b2c3d4e-5f60-4a7b-8c9d-0e1f2a3b4c5d";
+		expect(renderMarkdownToHtml(`[that](http://localhost:7526/session/${uuid}) [gh](https://github.com/o/r)`)).toBe(
+			`<p><span class="contents" data-session-chip="" data-session-href="http://localhost:7526/session/${uuid}" data-session-label="that"><a href="/session/${uuid}" class="${CHIP_INTERACTIVE}"><span class="self-baseline truncate"><span>that</span></span></a></span> <a href="https://github.com/o/r" target="_blank" rel="noreferrer">gh</a></p>\n`,
+		);
+	});
+
+	it("list the session ids prose links to, for resolving their titles", () =>
+	{
+		expect(
+			sessionLinkIds(
+				`[a](${href}) [b](/session/1b2c3d4e-5f60-4a7b-8c9d-0e1f2a3b4c5d) ${href} \`${href}\` [c](https://example.test)`,
+			),
+		).toStrictEqual(["session_01AbCdEf", "1b2c3d4e-5f60-4a7b-8c9d-0e1f2a3b4c5d"]);
 	});
 });
 
