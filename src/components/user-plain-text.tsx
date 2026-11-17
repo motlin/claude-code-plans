@@ -2,6 +2,7 @@ import {Fragment, lazy, type ReactNode, Suspense} from "react";
 
 import {defined} from "../lib/defined";
 import {type LinkPolicy, resolveLink} from "../lib/external-nav";
+import {findUserFileMentions} from "../lib/file-refs";
 import {BIDI_CONTROLS, MARKDOWN_LINK, markdownLinkTarget, SLACK_TOKEN} from "../lib/markdown-link";
 import {pageIsRtl} from "../lib/page-direction";
 import {maskSecrets, maskUrlSecrets} from "../lib/secret-mask";
@@ -11,6 +12,7 @@ import {CloakedText} from "./cloaked-text";
 import {SESSION_MENTION_PATTERN, SessionMentionPill} from "./session-mention-pill";
 import {ConfirmExternalLink} from "./confirm-external-link";
 import {UserCodeSpan} from "./user-code-span";
+import {UserFileMentionChip} from "./user-file-mention-chip";
 
 /** Upstream's user paragraph: `text-body` rewritten to `text-prose`, then `[unicode-bidi:plaintext]` appended. */
 export const USER_PARAGRAPH_CLASS =
@@ -397,9 +399,44 @@ function userPaint(nonInteractive: boolean): Paint
 	};
 }
 
-/** Single-backtick code spans as code, the runs between through `paint`. */
-function renderInline(text: string, paint: Paint, nonInteractive = false): ReactNode[]
+/**
+ * Upstream `X`'s file mentions (c8a6d9da5 `fe` > `R`): the text's `@path` mentions as chips, the runs between
+ * through `paint`. Mentions are found in the whole text, so one inside a code span never draws.
+ */
+function mentionPaint(text: string, paint: Paint, nonInteractive: boolean): Paint
 {
+	const mentions = findUserFileMentions(text);
+	if (mentions.length === 0) return paint;
+	return (part, at) =>
+	{
+		const nodes: ReactNode[] = [];
+		let cursor = 0;
+		for (const mention of mentions)
+		{
+			const start = mention.index - at;
+			if (start < cursor || start + mention.text.length > part.length) continue;
+			if (start > cursor) nodes.push(...paint(part.slice(cursor, start), at + cursor));
+			nodes.push(
+				<UserFileMentionChip
+					key={`${at}-f${start}`}
+					text={mention.text}
+					target={mention.target}
+					folder={mention.folder}
+					nonInteractive={nonInteractive}
+				/>,
+			);
+			cursor = start + mention.text.length;
+		}
+		if (cursor === 0) return paint(part, at);
+		if (cursor < part.length) nodes.push(...paint(part.slice(cursor), at + cursor));
+		return nodes;
+	};
+}
+
+/** Single-backtick code spans as code, the runs between through `paint` (and with `fileMentions`, `@path` chips). */
+function renderInline(text: string, basePaint: Paint, nonInteractive = false, fileMentions = false): ReactNode[]
+{
+	const paint = fileMentions ? mentionPaint(text, basePaint, nonInteractive) : basePaint;
 	const nodes: ReactNode[] = [];
 	let cursor = 0;
 	for (const match of text.matchAll(CODE_SPAN))
@@ -548,7 +585,13 @@ function splitBlocks(text: string): Block[]
 }
 
 /** Runs of same-kind sibling entries at `level`, each with the deeper entries under it. */
-function renderList(entries: readonly ListEntry[], level: number, key: number, nonInteractive: boolean): ReactNode[]
+function renderList(
+	entries: readonly ListEntry[],
+	level: number,
+	key: number,
+	nonInteractive: boolean,
+	fileMentions: boolean,
+): ReactNode[]
 {
 	const lists: ReactNode[] = [];
 	let index = 0;
@@ -564,8 +607,8 @@ function renderList(entries: readonly ListEntry[], level: number, key: number, n
 			while (end < entries.length && defined(entries[end], "end is in range").level > level) end++;
 			items.push(
 				<li key={index}>
-					{renderInline(entry.text, userPaint(nonInteractive), nonInteractive)}
-					{renderList(entries.slice(index + 1, end), level + 1, index, nonInteractive)}
+					{renderInline(entry.text, userPaint(nonInteractive), nonInteractive, fileMentions)}
+					{renderList(entries.slice(index + 1, end), level + 1, index, nonInteractive, fileMentions)}
 				</li>,
 			);
 			index = end;
@@ -656,27 +699,36 @@ interface UserTextProps
 	prefix?: ReactNode;
 	/** Upstream's `nonInteractive` (queued or pending prompts): code spans never become file links. */
 	nonInteractive?: boolean;
+	/** Upstream's `fileMentions` (a real, non-derived prompt): `@path` mentions draw as file chips. */
+	fileMentions?: boolean;
 }
 
 /**
  * A user prompt as upstream shows it: ``` fences as code snippets, lists in the
  * text between them drawn as lists, the rest kept as typed.
  */
-export function UserPlainText({text, prefix, nonInteractive = false}: UserTextProps)
+export function UserPlainText({text, prefix, nonInteractive = false, fileMentions = false}: UserTextProps)
 {
 	// Upstream (c59c32499) masks secrets in a user turn with plain `XF`: no reveal control.
 	return (
 		<UserMessageText>
-			<UserPlainBlocks text={maskSecrets(text)} prefix={prefix} nonInteractive={nonInteractive} />
+			<UserPlainBlocks
+				text={maskSecrets(text)}
+				prefix={prefix}
+				nonInteractive={nonInteractive}
+				fileMentions={fileMentions}
+			/>
 		</UserMessageText>
 	);
 }
 
-function UserPlainBlocks({text, prefix, nonInteractive = false}: UserTextProps)
+function UserPlainBlocks({text, prefix, nonInteractive = false, fileMentions = false}: UserTextProps)
 {
 	const segments = text.includes("```") ? splitFences(text) : [];
 	if (!segments.some((segment) => segment.kind === "code"))
-		return <UserTextBlocks text={text} prefix={prefix} nonInteractive={nonInteractive} />;
+		return (
+			<UserTextBlocks text={text} prefix={prefix} nonInteractive={nonInteractive} fileMentions={fileMentions} />
+		);
 	const prefixed = segments[0]?.kind === "text";
 	return (
 		<>
@@ -691,6 +743,7 @@ function UserPlainBlocks({text, prefix, nonInteractive = false}: UserTextProps)
 								text={segment.text}
 								prefix={index === 0 ? prefix : undefined}
 								nonInteractive={nonInteractive}
+								fileMentions={fileMentions}
 							/>
 						</div>
 					);
@@ -721,7 +774,7 @@ function UserPlainBlocks({text, prefix, nonInteractive = false}: UserTextProps)
  * optional leading slash-command chip) are styled and bare http(s) URLs outside
  * code spans become accent links.
  */
-function UserTextBlocks({text, prefix, nonInteractive = false}: UserTextProps)
+function UserTextBlocks({text, prefix, nonInteractive = false, fileMentions = false}: UserTextProps)
 {
 	const blocks = splitBlocks(text);
 	if (!blocks.some((block) => block.kind === "list"))
@@ -730,7 +783,7 @@ function UserTextBlocks({text, prefix, nonInteractive = false}: UserTextProps)
 			<p className={USER_PARAGRAPH_CLASS}>
 				{prefix}
 				{prefix !== undefined && text !== "" && " "}
-				{renderInline(text, userPaint(nonInteractive), nonInteractive)}
+				{renderInline(text, userPaint(nonInteractive), nonInteractive, fileMentions)}
 			</p>
 		);
 	}
@@ -746,11 +799,11 @@ function UserTextBlocks({text, prefix, nonInteractive = false}: UserTextProps)
 						<p key={index} className={USER_PARAGRAPH_CLASS}>
 							{index === 0 && prefix}
 							{index === 0 && prefix !== undefined && " "}
-							{renderInline(block.text, userPaint(nonInteractive), nonInteractive)}
+							{renderInline(block.text, userPaint(nonInteractive), nonInteractive, fileMentions)}
 						</p>
 					);
 				}
-				return renderList(block.entries, 0, index, nonInteractive);
+				return renderList(block.entries, 0, index, nonInteractive, fileMentions);
 			})}
 		</>
 	);

@@ -478,6 +478,9 @@ const EXTENSION_TO_LANGUAGE: Record<string, string> =
 	env: "dotenv",
 };
 
+/** The lowercase file extensions with a known code language, plus Markdown's. */
+export const KNOWN_CODE_EXTENSIONS: ReadonlySet<string> = new Set([...Object.keys(EXTENSION_TO_LANGUAGE), "md", "mdx"]);
+
 /**
  * Detect a Shiki language identifier from a file path.
  * Returns null when the extension is unrecognized.

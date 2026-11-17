@@ -3,7 +3,7 @@ import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 
-import {fileRefStatCandidates, parseFileRefText, resolveFileRefs} from "../src/lib/file-refs";
+import {fileRefStatCandidates, findUserFileMentions, parseFileRefText, resolveFileRefs} from "../src/lib/file-refs";
 import {handleFileRefsRequest} from "../src/lib/file-refs-handler";
 
 /** Inline code from the upstream message where only `.mise/config.toml` became a file ref. */
@@ -123,6 +123,113 @@ describe("parseFileRefText", () =>
 	])("%s is not a file ref", (text) =>
 	{
 		expect(parseFileRefText(text)).toBeNull();
+	});
+});
+
+describe("findUserFileMentions (upstream fe in c8a6d9da5)", () =>
+{
+	it("finds whitespace-led @paths, trimming trailing punctuation and unbalanced closers", () =>
+	{
+		expect([
+			findUserFileMentions("see @src/a.ts, ok"),
+			findUserFileMentions("(see @src/a.ts)"),
+			findUserFileMentions("@src\\b.ts."),
+		]).toStrictEqual([
+			[
+				{
+					index: 4,
+					text: "@src/a.ts",
+					target: "src/a.ts",
+					folder: false,
+				},
+			],
+			[
+				{
+					index: 5,
+					text: "@src/a.ts",
+					target: "src/a.ts",
+					folder: false,
+				},
+			],
+			[
+				{
+					index: 0,
+					text: "@src\\b.ts",
+					target: "src/b.ts",
+					folder: false,
+				},
+			],
+		]);
+	});
+
+	it("takes a folder by its trailing slash and a bare name only with a known code extension", () =>
+	{
+		expect([
+			findUserFileMentions("@docs/"),
+			findUserFileMentions("@README.md and @main.py"),
+			findUserFileMentions("@./ and @../"),
+		]).toStrictEqual([
+			[
+				{
+					index: 0,
+					text: "@docs/",
+					target: "docs",
+					folder: true,
+				},
+			],
+			[
+				{
+					index: 0,
+					text: "@README.md",
+					target: "README.md",
+					folder: false,
+				},
+				{
+					index: 15,
+					text: "@main.py",
+					target: "main.py",
+					folder: false,
+				},
+			],
+			[],
+		]);
+	});
+
+	it.each([
+		"@notes.zzz",
+		"@foo",
+		"@src/Makefile",
+		"a@src/a.ts",
+		"[x](@src/a.ts)",
+		"see [link @src/a.ts](https://e.com)",
+		`@src/${"a".repeat(1100)}.ts`,
+		"no mentions",
+	])("%s has no mention", (text) =>
+	{
+		expect(findUserFileMentions(text)).toStrictEqual([]);
+	});
+
+	it("stops after 256 mentions", () =>
+	{
+		const mentions = findUserFileMentions(
+			Array.from(
+				{
+					length: 300,
+				},
+				(_, i) => `@src/f${i}.ts`,
+			).join(" "),
+		);
+		expect(
+			{
+				count: mentions.length,
+				last: mentions.at(-1)?.target,
+			},
+		).toStrictEqual(
+			{
+				count: 256,
+				last: "src/f255.ts",
+			},
+		);
 	});
 });
 

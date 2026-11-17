@@ -69,5 +69,5 @@ function SlashCommandChip({name}: {name: string})
  */
 export function SlashCommandText({name, rest}: {name: string; rest: string})
 {
-	return <UserPlainText text={rest} prefix={<SlashCommandChip name={name} />} />;
+	return <UserPlainText text={rest} prefix={<SlashCommandChip name={name} />} fileMentions />;
 }

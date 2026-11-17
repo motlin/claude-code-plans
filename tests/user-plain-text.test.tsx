@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
 import {cleanup, render} from "@testing-library/react";
-import {afterEach, describe, expect, it} from "vite-plus/test";
+import {afterEach, beforeAll, describe, expect, it} from "vite-plus/test";
 
+import {preloadFileTypeIcons} from "../src/components/file-type-icons-loader";
 import {linkifyPlain} from "../src/components/linkify-plain";
 import {UserInlineText, UserPlainText} from "../src/components/user-plain-text";
 
@@ -254,5 +255,84 @@ describe("linkifyPlain (upstream c40ad8c1e y with the tool body policy Zx and ca
 				words: [`https://e.com/?t=${FAKE_GH}`],
 			},
 		);
+	});
+});
+
+/** Upstream `R`'s icon class: the glyph centred over the hidden `@`. */
+const MENTION_ICON_CLASS = "absolute inset-y-0 start-1/2 my-auto -translate-x-1/2";
+/** Upstream `I` (c8a6d9da5) with local token names: the fallback chip, outside a file-refs provider. */
+const MENTION_FALLBACK_CLASS =
+	"epitaxy-link-chip items-center rounded-sm bg-upstream-accent-muted px-1.5 align-baseline text-primary no-underline inline-block max-w-full leading-tight [baseline-source:first] wrap-anywhere ps-1";
+
+beforeAll(async () =>
+{
+	await preloadFileTypeIcons();
+});
+
+describe("user-text @path mention chips (upstream R in c8a6d9da5)", () =>
+{
+	function chips(container: HTMLElement)
+	{
+		return Array.from(container.querySelectorAll(".epitaxy-link-chip"), (chip) =>
+		{
+			const bdi = chip.querySelector(":scope > bdi[dir=ltr]");
+			const slot = bdi?.querySelector(":scope > span.relative.ms-0\\.25.me-1");
+			const icon = slot?.firstElementChild;
+			return {
+				className: chip.getAttribute("class"),
+				role: chip.getAttribute("role"),
+				text: bdi?.textContent,
+				hidden: slot?.querySelector(":scope > span.opacity-0")?.textContent,
+				icon: icon?.getAttribute("class")?.includes(MENTION_ICON_CLASS) ?? false,
+				iconSize:
+					icon === undefined || icon === null
+						? null
+						: (icon as HTMLElement).style.width || icon.getAttribute("width"),
+				folder: icon?.getAttribute("class")?.includes("lucide-folder") ?? false,
+			};
+		});
+	}
+
+	it("draws file and folder mentions of a fileMentions prompt as chips with the glyph over a hidden @", () =>
+	{
+		const {container} = render(
+			<UserPlainText text="fix @src/a.ts now, then @docs/ but not `@src/b.ts` or a@src/c.ts" fileMentions />,
+		);
+		expect(
+			{
+				chips: chips(container),
+				text: container.textContent,
+			},
+		).toStrictEqual(
+			{
+				chips: [
+					{
+						className: MENTION_FALLBACK_CLASS,
+						role: null,
+						text: "@src/a.ts",
+						hidden: "@",
+						icon: true,
+						iconSize: "16px",
+						folder: false,
+					},
+					{
+						className: MENTION_FALLBACK_CLASS,
+						role: null,
+						text: "@docs/",
+						hidden: "@",
+						icon: true,
+						iconSize: "16px",
+						folder: true,
+					},
+				],
+				text: "fix @src/a.ts now, then @docs/ but not @src/b.ts or a@src/c.ts",
+			},
+		);
+	});
+
+	it("leaves @paths as text in a prompt without fileMentions (derived or synthetic rows)", () =>
+	{
+		const {container} = render(<UserPlainText text="fix @src/a.ts now" />);
+		expect(container.querySelectorAll(".epitaxy-link-chip").length).toBe(0);
 	});
 });

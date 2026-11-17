@@ -19,11 +19,14 @@ export function BlockedFileRef({
 	path,
 	block,
 	focusSlot,
+	className = BLOCKED_WRAPPER_CLASS,
 	children,
 }: {
 	path: string;
 	block: FileRefBlock;
 	focusSlot?: RefCallback<HTMLElement> | undefined;
+	/** The wrapper's class, merged with the caller's `blockedClassName` (upstream `Fr`). */
+	className?: string;
 	children: ReactNode;
 })
 {
@@ -39,7 +42,7 @@ export function BlockedFileRef({
 					[DISABLED_REASON_WRAPPER_ATTR]: "",
 				}}
 				aria-describedby={id}
-				className={BLOCKED_WRAPPER_CLASS}
+				className={className}
 				{...reasonTooltip.handlers}
 			>
 				{children}

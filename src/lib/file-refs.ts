@@ -5,7 +5,9 @@
  * candidates; a ref links only once the server has confirmed the file exists.
  */
 
+import {KNOWN_CODE_EXTENSIONS} from "./diff-utils";
 import {findSecrets} from "./secret-mask";
+import {splitUrlTail} from "./url-trim";
 
 /** Why a ref renders as blocked code instead of a link, as upstream's `ir()` reasons. */
 export type FileRefBlock = "outside_roots" | "missing";
@@ -259,4 +261,98 @@ export function resolveFileRefs(
 		if (optimistic !== null) refs.set(text, refFor(parsed, optimistic));
 	}
 	return refs;
+}
+
+/** An `@path` mention in a user's own text (upstream `fe` in c8a6d9da5). */
+export interface UserFileMention
+{
+	/** Where the `@` sits in the text. */
+	index: number;
+	/** The mention as written, `@` included, trailing punctuation dropped. */
+	text: string;
+	/** The path it names, `/`-separated, without a leading `./` or a folder's trailing `/`. */
+	target: string;
+	folder: boolean;
+}
+
+/** Upstream `ae`: an `@` at the start or after whitespace, then a run without whitespace or backticks. */
+const USER_MENTION = /(?<=^|\s)@([^\s`]+)/g;
+/** Upstream `oe`: the punctuation a mention never ends in. */
+const MENTION_TRAILING_PUNCTUATION = /[.,;:!?'"\u3001\u3002\uFF0C\uFF1B\uFF1A\uFF01\uFF1F\u2026]+$/;
+/** Upstream `se`: a file mention's last segment must carry an extension. */
+const MENTION_EXTENSION = /\.[a-z][^/]*$/i;
+/** Upstream `E` ranges: a mention inside a markdown link is left alone. */
+const MENTION_MARKDOWN_LINK = /\[[^\]\n]*\]\([^)\n]*\)/g;
+const MAX_USER_MENTIONS = 256;
+/** A stand-in file name that lets the file grammar check a folder's path. */
+const FOLDER_PROBE = "a.a";
+
+function mentionTarget(path: string):
+{
+	target: string;
+	folder: boolean;
+} | null
+{
+	if (path.endsWith("/"))
+	{
+		if (!/[^./]/.test(path)) return null;
+		const parsed = parseFileRefText(`${path}${FOLDER_PROBE}`);
+		if (parsed?.line !== undefined) return null;
+		return parsed === null
+			? null
+			:
+				{
+					target: parsed.target.slice(0, -FOLDER_PROBE.length - 1),
+					folder: true,
+				};
+	}
+	const bare = !path.includes("/");
+	const parsed = parseFileRefText(bare ? `./${path}` : path);
+	if (parsed === null || !MENTION_EXTENSION.test(parsed.target)) return null;
+	if (
+		bare &&
+		!path.startsWith(".") &&
+		!KNOWN_CODE_EXTENSIONS.has(path.slice(path.lastIndexOf(".") + 1).toLowerCase())
+	)
+		return null;
+	return {
+		target: parsed.target,
+		folder: false,
+	};
+}
+
+/**
+ * The `@path` file and folder mentions in a run of user text, as upstream's `fe`
+ * finds them: whitespace-led, outside markdown links, trimmed of unbalanced `)`
+ * and trailing punctuation, a bare name only with a known code extension, at most 256.
+ * Callers pass only text outside code spans.
+ */
+export function findUserFileMentions(text: string): UserFileMention[]
+{
+	if (!text.includes("@")) return [];
+	const links = text.includes("](")
+		? [...text.matchAll(MENTION_MARKDOWN_LINK)].map(
+				(match) => [match.index, match.index + match[0].length] as const,
+			)
+		: [];
+	const mentions: UserFileMention[] = [];
+	let found = 0;
+	for (const match of text.matchAll(USER_MENTION))
+	{
+		const capture = match[1] ?? "";
+		if (capture.length > MAX_PATH_LENGTH) continue;
+		if (links.some(([start, end]) => match.index >= start && match.index < end)) continue;
+		const written = splitUrlTail(capture)[0].replace(MENTION_TRAILING_PUNCTUATION, "");
+		const resolved = mentionTarget(written.replaceAll("\\", "/"));
+		if (resolved === null) continue;
+		if (++found > MAX_USER_MENTIONS) break;
+		mentions.push(
+			{
+				index: match.index,
+				text: `@${written}`,
+				...resolved,
+			},
+		);
+	}
+	return mentions;
 }

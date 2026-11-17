@@ -3,7 +3,7 @@
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import type {ReactNode} from "react";
-import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {ProseMarkdown, SessionFileRefs} from "../src/components/file-refs";
 import {FileRefsProvider} from "../src/components/file-refs-context";
@@ -16,6 +16,7 @@ import {KeyValueCard, TruncatedFilePathHeader} from "../src/components/tool-rend
 import {ToolOutputSection} from "../src/components/tool-renderers/tool-output-section";
 import type {FileRef} from "../src/lib/file-refs";
 import type {SessionFiles} from "../src/lib/session-files";
+import {preloadFileTypeIcons} from "../src/components/file-type-icons-loader";
 import {UserPlainText} from "../src/components/user-plain-text";
 import {markFileRefMissing} from "../src/lib/missing-file-refs";
 import {installLocalStorage} from "./fake-storage";
@@ -756,7 +757,13 @@ describe("ProseMarkdown file refs", () =>
 const USER_LINK_CLASS =
 	"aria-busy:cursor-progress aria-busy:opacity-60 inline text-code leading-none text-danger bg-alpha-1 border-0.5 border-border rounded-[0.4em] px-[0.25em] py-[0.0625em] [overflow-wrap:anywhere] hover:bg-alpha-2 underline underline-offset-[3px] decoration-[color-mix(in_srgb,currentColor,transparent_60%)] hover:decoration-current focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus";
 
-function userRow(text: string, open: (ref: FileRef) => void, sessionId = "user-refs", nonInteractive = false)
+function userRow(
+	text: string,
+	open: (ref: FileRef) => void,
+	sessionId = "user-refs",
+	nonInteractive = false,
+	fileMentions = false,
+)
 {
 	return render(
 		withQueryClient(
@@ -769,7 +776,7 @@ function userRow(text: string, open: (ref: FileRef) => void, sessionId = "user-r
 					open,
 				}}
 			>
-				<UserPlainText text={text} nonInteractive={nonInteractive} />
+				<UserPlainText text={text} nonInteractive={nonInteractive} fileMentions={fileMentions} />
 			</FileRefsProvider>,
 		),
 	).container;
@@ -988,6 +995,178 @@ describe("UserPlainText code-span file links (upstream U > Ir)", () =>
 			{
 				pending: [USER_CODE("src/app.ts")],
 				bare: [USER_CODE("src/app.ts")],
+				stats: [],
+			},
+		);
+	});
+});
+
+const MENTION_LINK_CHIP_CLASS =
+	"inline-block aria-busy:cursor-progress aria-busy:opacity-60 epitaxy-link-chip items-center rounded-sm bg-upstream-accent-muted px-1.5 align-baseline text-upstream-accent no-underline hover:bg-upstream-accent-pressed data-[menu-open]:bg-upstream-accent-pressed focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus max-w-full leading-tight [baseline-source:first] wrap-anywhere ps-1";
+const MENTION_FALLBACK_CHIP_CLASS =
+	"epitaxy-link-chip items-center rounded-sm bg-upstream-accent-muted px-1.5 align-baseline text-primary no-underline inline-block max-w-full leading-tight [baseline-source:first] wrap-anywhere ps-1";
+
+beforeAll(async () =>
+{
+	await preloadFileTypeIcons();
+});
+
+describe("UserPlainText @path mention chips (upstream R > Fr)", () =>
+{
+	async function mentionLink(container: HTMLElement): Promise<HTMLElement>
+	{
+		return waitFor(() =>
+		{
+			const found = container.querySelector<HTMLElement>("span[role=button].epitaxy-link-chip");
+			expect(found).not.toBeNull();
+			return found!;
+		});
+	}
+
+	function chipAttributes(element: Element)
+	{
+		return Object.fromEntries(Array.from(element.attributes, (attribute) => [attribute.name, attribute.value]));
+	}
+
+	it("links a mention as the accent chip button, opening it on click and Enter", async () =>
+	{
+		const open = vi.fn<(ref: FileRef) => void>();
+		const link = await mentionLink(userRow("fix @src/app.ts now", open, "mention-refs", false, true));
+
+		expect(
+			{
+				attributes: chipAttributes(link),
+				text: link.textContent,
+			},
+		).toStrictEqual(
+			{
+				attributes:
+				{
+					role: "button",
+					tabindex: "0",
+					"data-file-ref": "",
+					"data-file-path": "/repo/src/app.ts",
+					class: MENTION_LINK_CHIP_CLASS,
+				},
+				text: "@src/app.ts",
+			},
+		);
+
+		fireEvent.click(link);
+		fireEvent.keyDown(
+			link,
+			{
+				key: "Enter",
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(open.mock.calls).toStrictEqual([
+				[
+					{
+						path: "/repo/src/app.ts",
+					},
+				],
+				[
+					{
+						path: "/repo/src/app.ts",
+					},
+				],
+			]);
+		});
+	});
+
+	it("turns busy past 150ms, then re-renders a missing file as the fallback chip in the blocked wrapper", async () =>
+	{
+		const open = vi.fn<(ref: FileRef) => void>();
+		const container = userRow("create @src/new.ts", open, "mention-missing", false, true);
+		const link = await mentionLink(container);
+
+		vi.useFakeTimers();
+		statDelayMs = 200;
+		link.focus();
+		fireEvent.click(link);
+		await act(async () => vi.advanceTimersByTimeAsync(160));
+		expect(link.getAttribute("aria-busy")).toBe("true");
+		await act(async () => vi.advanceTimersByTimeAsync(100));
+
+		const wrapper = container.querySelector<HTMLElement>("[data-cds-disabled-reason-wrapper]");
+		expect(
+			{
+				wrapperClass: wrapper?.getAttribute("class"),
+				chipClass: wrapper?.firstElementChild?.getAttribute("class"),
+				chipText: wrapper?.firstElementChild?.textContent,
+				reason: wrapper?.querySelector("[data-cds-disabled-reason]")?.textContent,
+				focused: document.activeElement === wrapper,
+				opened: open.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				wrapperClass:
+					"rounded-sm focus-visible:outline-hidden focus-visible:shadow-focus inline-block max-w-full leading-tight [baseline-source:first]",
+				chipClass: MENTION_FALLBACK_CHIP_CLASS,
+				chipText: "@src/new.ts",
+				reason: MISSING_REASON,
+				focused: true,
+				opened: [],
+			},
+		);
+	});
+
+	it("⌘-click opens the mentioned file with its default app", async () =>
+	{
+		const open = vi.fn<(ref: FileRef) => void>();
+		const link = await mentionLink(userRow("see @src/app.ts", open, "mention-refs", false, true));
+		fireEvent.click(
+			link,
+			{
+				metaKey: true,
+			},
+		);
+		const openFileBodies = () =>
+			vi
+				.mocked(fetch)
+				.mock.calls.filter(([url]) => String(url) === "/api/open-file")
+				.map(([, init]) => JSON.parse(String(init?.body)) as unknown);
+		await waitFor(() =>
+		{
+			expect(openFileBodies()).toHaveLength(1);
+		});
+		expect(
+			{
+				opened: openFileBodies(),
+				paneOpens: open.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				opened: [
+					{
+						path: "/repo/src/app.ts",
+					},
+				],
+				paneOpens: [],
+			},
+		);
+	});
+
+	it("draws a pending prompt's mention as the fallback chip, never stat-checked", async () =>
+	{
+		const open = vi.fn<(ref: FileRef) => void>();
+		const container = userRow("see @src/app.ts", open, "mention-refs", true, true);
+		await act(async () => Promise.resolve());
+
+		expect(
+			{
+				chips: Array.from(container.querySelectorAll(".epitaxy-link-chip"), chipAttributes),
+				stats: statRequests,
+			},
+		).toStrictEqual(
+			{
+				chips: [
+					{
+						class: MENTION_FALLBACK_CHIP_CLASS,
+					},
+				],
 				stats: [],
 			},
 		);

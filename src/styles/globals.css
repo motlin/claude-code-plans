@@ -1015,7 +1015,8 @@ html[data-interface-font="dyslexic"]
 	--upstream-fill-brand-hover: #d97757;
 	--upstream-warning: rgb(219 147 0);
 	--upstream-accent-pressed: #032042;
-	--upstream-accent-muted: rgb(37 125 224 / 0.2);
+	/* Upstream `.cds-root` `--cds-bg-accent-muted` is `--cds-fill-accent` at 10% in both modes (read live 2026-11-05: 0.10 on the @path chip). */
+	--upstream-accent-muted: rgb(37 125 224 / 0.1);
 	--upstream-tint-blue: rgb(0 36 81 / 0.75);
 	/* Upstream dark --cds-text-tint-blue (blue-300) and --cds-button-on-content(-hover/-ring). */
 	--upstream-text-tint-blue: #6da7ec;

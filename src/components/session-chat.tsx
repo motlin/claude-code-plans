@@ -6516,7 +6516,7 @@ function CompactSummaryBody({
 	allowedImageRoots: readonly string[];
 })
 {
-	const {textNodes, mediaNodes, images} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
+	const {textNodes, mediaNodes, images} = renderUserContentBlocks(line, sessionId, allowedImageRoots, true);
 
 	return (
 		<div id={id} className="flex justify-end pt-p6">
@@ -6542,7 +6542,7 @@ function LabeledAutomatedEntry({
 	allowedImageRoots: readonly string[];
 })
 {
-	const {textNodes, mediaNodes, images} = renderUserContentBlocks(line, sessionId, allowedImageRoots);
+	const {textNodes, mediaNodes, images} = renderUserContentBlocks(line, sessionId, allowedImageRoots, true);
 
 	if (textNodes.length === 0 && mediaNodes.length === 0 && images.length === 0) return null;
 
@@ -6661,11 +6661,14 @@ function cleanPromptParts(text: string):
 	};
 }
 
-/** A prompt's text; the first block of a prompt opens with a slash-command chip when it starts with `/name`. */
-function UserPromptText({text, leading}: {text: string; leading: boolean})
+/**
+ * A prompt's text; the first block of a prompt opens with a slash-command chip when it starts with `/name`.
+ * A `derived` prompt (compact summaries, automated entries) draws no `@path` chips, as upstream's `fileMentions`.
+ */
+function UserPromptText({text, leading, derived}: {text: string; leading: boolean; derived: boolean})
 {
 	const command = leading ? splitLeadingSlashCommand(text) : null;
-	if (command === null) return <UserPlainText text={text} />;
+	if (command === null) return <UserPlainText text={text} fileMentions={!derived} />;
 	return <SlashCommandText name={command.name} rest={command.rest} />;
 }
 
@@ -6673,6 +6676,7 @@ function renderUserContentBlocks(
 	line: MessageSessionLine,
 	sessionId: string,
 	allowedImageRoots: readonly string[],
+	derived = false,
 ): UserContentBlocks
 {
 	const content = line.message?.content;
@@ -6702,7 +6706,7 @@ function renderUserContentBlocks(
 			textNodes: [
 				<React.Fragment key={0}>
 					<TruncatedContent>
-						<UserPromptText text={cleaned} leading={true} />
+						<UserPromptText text={cleaned} leading={true} derived={derived} />
 					</TruncatedContent>
 					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
 				</React.Fragment>,
@@ -6731,7 +6735,7 @@ function renderUserContentBlocks(
 			textNodes.push(
 				<React.Fragment key={`text-${i}`}>
 					<TruncatedContent>
-						<UserPromptText text={cleaned} leading={textNodes.length === 0} />
+						<UserPromptText text={cleaned} leading={textNodes.length === 0} derived={derived} />
 					</TruncatedContent>
 					<DebugLink sessionId={sessionId} uuid={line.uuid} className="absolute top-1 right-1" />
 				</React.Fragment>,
