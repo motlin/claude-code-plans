@@ -30,6 +30,7 @@ import
 	contextChipLabel,
 	focusComposer,
 	formatContextAttachment,
+	isReplyChip,
 	removeContextChip,
 } from "../lib/context-attach";
 import {AgentTile, type AgentTileProps} from "./agent-tile";
@@ -47,6 +48,7 @@ import {FileActionsMenuItems} from "./files/file-actions-menu";
 import {absoluteMentionPath} from "./files/mention-path";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "./ui/menu";
 import {Skeleton} from "./ui/skeleton";
+import {replyPreviewText, replyTileName} from "../lib/reply-tile-name";
 import {ExcerptQuote, HintBadge} from "./excerpt-quote";
 import {isMotionReduced} from "../lib/reduced-motion";
 import
@@ -826,6 +828,73 @@ function ExcerptChip({
 	);
 }
 
+/**
+ * A staged reply as upstream's tray Reply tile (`Ba`): its comment over a "Reply" badge hinted with the
+ * "Your reply to …" name, and a CardLink that opens the read-only quote-and-comment preview.
+ */
+function ReplyChip({
+	sessionId,
+	chip,
+	restored,
+	onOpen,
+}: {
+	sessionId: string;
+	chip: ContextChip;
+	restored: boolean;
+	onOpen: (chip: ContextChip, link: HTMLElement) => void;
+})
+{
+	const comment = chip.comment ?? "";
+	const name = replyTileName(chip.text ?? "", comment);
+	const quoteId = useId();
+	const badgeId = useId();
+	const hintId = useId();
+	return (
+		<Tile
+			sessionId={sessionId}
+			chip={chip}
+			restored={restored}
+			kind="MessageAttachmentsQuote"
+			status=""
+			name={name}
+		>
+			<span
+				data-cds="CardLink"
+				role="button"
+				tabIndex={0}
+				aria-describedby={`${quoteId} ${badgeId} ${hintId}`}
+				onClick={(event) =>
+				{
+					event.preventDefault();
+					onOpen(chip, event.currentTarget);
+				}}
+				onKeyDown={(event) =>
+				{
+					if (event.key === "Enter" || event.key === " ")
+					{
+						event.preventDefault();
+						onOpen(chip, event.currentTarget);
+					}
+
+					removeOnDeleteKey(event, sessionId, () =>
+					{
+						removeChip(sessionId, chip);
+					});
+				}}
+				className="outline-none after:absolute after:inset-0 after:rounded-card-xs after:content-[''] cursor-pointer"
+			>
+				<span className="sr-only">{name}</span>
+			</span>
+			<ExcerptQuote
+				text={comment}
+				label="Reply"
+				quoteId={quoteId}
+				badge={<HintBadge badge="Reply" hint={name} id={badgeId} hintId={hintId} />}
+			/>
+		</Tile>
+	);
+}
+
 interface TextPreview
 {
 	title: string;
@@ -841,6 +910,12 @@ interface TextPreview
 function textPreviewOf(chip: ContextChip): TextPreview | null
 {
 	if (chip.text === undefined) return null;
+	if (isReplyChip(chip))
+		return {
+			title: "Reply",
+			text: replyPreviewText(chip.text, chip.comment ?? ""),
+			variant: "excerpt",
+		};
 	if (chip.kind === "message" || chip.kind === "excerpt")
 		return {
 			title: "Excerpt",
@@ -1059,6 +1134,18 @@ export function AttachedContextChips({
 									chip={chip}
 									restored={restored.has(chip.id)}
 									onOpen={openFilePreview}
+								/>
+							);
+						}
+						if (isReplyChip(chip))
+						{
+							return (
+								<ReplyChip
+									key={chip.id}
+									sessionId={sessionId}
+									chip={chip}
+									restored={restored.has(chip.id)}
+									onOpen={openTextPreview}
 								/>
 							);
 						}

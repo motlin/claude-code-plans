@@ -2218,3 +2218,201 @@ describe("AttachedContextChips queued comment tiles", () =>
 		expect(texts(container, "blockquote")).toStrictEqual(["demo.ts:3"]);
 	});
 });
+
+describe("AttachedContextChips staged reply tiles", () =>
+{
+	const REPLY: ContextChip =
+	{
+		id: "chip-r",
+		kind: "excerpt",
+		text: "q1",
+		comment: "c1",
+	};
+	const PLAIN: ContextChip =
+	{
+		id: "chip-p",
+		kind: "excerpt",
+		text: "plain",
+	};
+
+	function texts(container: HTMLElement, selector: string): (string | null)[]
+	{
+		return Array.from(container.querySelectorAll(selector), (element) => element.textContent);
+	}
+
+	it("renders a reply chip as upstream's Reply Quote tile beside a plain Excerpt, in staging order", () =>
+	{
+		const {container} = renderChips([REPLY, PLAIN]);
+		const tiles = Array.from(container.querySelectorAll("[data-cds=MessageAttachmentsQuote]"));
+		expect(
+			{
+				names: texts(container, "[data-cds=CardLink] > .sr-only"),
+				quotes: texts(container, "blockquote"),
+				badges: tiles.map((tile) =>
+				{
+					const badge = tile.querySelector("[data-cds=Badge]");
+					const hint = document.getElementById(badge?.getAttribute("aria-describedby") ?? "");
+					return {
+						role: badge?.getAttribute("role") ?? null,
+						label: badge?.getAttribute("aria-label") ?? null,
+						text: badge?.textContent,
+						hint: hint?.textContent ?? null,
+						hidden: hint?.hidden ?? null,
+					};
+				}),
+				describedBy: tiles.map((tile) =>
+					(tile.querySelector("[data-cds=CardLink]")?.getAttribute("aria-describedby") ?? "")
+						.split(" ")
+						.filter(Boolean)
+						.map((id) => document.getElementById(id)?.tagName ?? null),
+				),
+				removes: tiles.map((tile) =>
+					tile.querySelector("button[data-cds-attachment-remove]")?.getAttribute("aria-label"),
+				),
+			},
+		).toStrictEqual(
+			{
+				names: ["Your reply to “q1”: c1", "plain"],
+				quotes: ["c1", "plain"],
+				badges: [
+					{
+						role: "img",
+						label: "Reply",
+						text: "Reply",
+						hint: "Your reply to “q1”: c1",
+						hidden: true,
+					},
+					{
+						role: null,
+						label: null,
+						text: "Excerpt",
+						hint: null,
+						hidden: null,
+					},
+				],
+				describedBy: [["BLOCKQUOTE", "SPAN", "SPAN"], []],
+				removes: ["Remove Your reply to “q1”: c1", "Remove plain"],
+			},
+		);
+	});
+
+	it("caps a long comment's quote at 240 graphemes", () =>
+	{
+		const {container} = renderChips([
+			{
+				...REPLY,
+				comment: "x".repeat(330),
+			},
+		]);
+		expect(Array.from(container.querySelector("blockquote")?.textContent ?? "").length).toBe(240);
+	});
+
+	it("opens a read-only Reply preview of the quoted lines and the comment", async () =>
+	{
+		const {container} = renderChips([REPLY]);
+		const link = container.querySelector<HTMLElement>("[data-cds=CardLink]");
+		if (link === null) throw new Error("no reply CardLink");
+		fireEvent.click(link);
+		const dialog = await screen.findByRole("dialog");
+		expect(
+			{
+				title: dialog.querySelector("h2")?.textContent,
+				text: dialog.querySelector("blockquote")?.textContent,
+				textboxes: dialog.querySelectorAll("textarea, input, [contenteditable=true]").length,
+			},
+		).toStrictEqual(
+			{
+				title: "Reply",
+				text: "> q1\n\nc1",
+				textboxes: 0,
+			},
+		);
+	});
+
+	it("shows the name in the Reply badge's tooltip on keyboard focus", () =>
+	{
+		const {container} = renderChips([REPLY]);
+		const badge = container.querySelector<HTMLElement>("[data-cds=Badge][role=img]");
+		if (badge === null) throw new Error("no Reply badge");
+		fireEvent.focus(badge);
+		expect(screen.getByRole("tooltip").textContent).toBe("Your reply to “q1”: c1");
+	});
+
+	describe("with a live strip", () =>
+	{
+		let stop: () => void = () =>
+		{
+		};
+
+		function LiveChips()
+		{
+			return <AttachedContextChips sessionId={SESSION} context={useContextChips(SESSION)} comments={[]} />;
+		}
+
+		beforeEach(() =>
+		{
+			stop = registerComposer(
+				SESSION,
+				{
+					insertText: () =>
+					{
+					},
+					focus: () =>
+					{
+					},
+				},
+			);
+			attachContext(
+				SESSION,
+				{
+					kind: "excerpt",
+					text: "q1",
+					comment: "c1",
+				},
+			);
+			attachContext(
+				SESSION,
+				{
+					kind: "excerpt",
+					text: "plain",
+				},
+			);
+		});
+
+		afterEach(() =>
+		{
+			cleanup();
+			takeContextChips(SESSION);
+			stop();
+		});
+
+		it("removes a focused reply tile on Delete and focuses the next tile's CardLink", () =>
+		{
+			const {container} = render(<LiveChips />);
+			const links = () => Array.from(container.querySelectorAll<HTMLElement>("[data-cds=CardLink]"));
+			links()[0]?.focus();
+			act(() =>
+			{
+				fireEvent.keyDown(
+					links()[0] ?? document.body,
+					{
+						key: "Delete",
+					},
+				);
+			});
+			expect(
+				{
+					chips: getContextChips(SESSION).map(({text}) => text),
+					focused: document.activeElement === links()[0],
+					names: texts(container, "[data-cds=CardLink] > .sr-only"),
+				},
+			).toStrictEqual(
+				{
+					chips: ["plain"],
+					focused: true,
+					names: ["plain"],
+				},
+			);
+		});
+	});
+});

@@ -158,6 +158,8 @@ export interface ContextAttachment
 	file?: File | undefined;
 	/** Still uploading: shown as a pending tile and left out of a send. */
 	status?: "pending" | undefined;
+	/** A reply snippet's comment on its excerpt `text` (upstream snippet `comment`). */
+	comment?: string | undefined;
 }
 
 export type AttachContextHandler = (attachment: ContextAttachment) => void;
@@ -183,6 +185,66 @@ function formatExcerpt(text: string): string
  * An image is its saved path, which the CLI attaches. A transcript excerpt is
  * upstream's `<!-- attach -->` quote block. Pasted text is inlined.
  */
+/** Upstream `R`: an excerpt chip carrying a non-blank comment is a reply snippet. */
+export function isReplyChip(chip: ContextAttachment): boolean
+{
+	return (
+		chip.kind === "excerpt" &&
+		typeof chip.text === "string" &&
+		typeof chip.comment === "string" &&
+		chip.comment.trim() !== ""
+	);
+}
+
+/** Upstream's reply cap: one prompt carries at most 99 reply blocks. */
+export const MAX_STAGED_REPLIES = 99;
+
+export const REPLY_CAP_MESSAGE = `Your prompt can hold up to ${MAX_STAGED_REPLIES} replies. Send it, then add more.`;
+
+const REPLY_MARKER = "<!-- reply -->";
+
+/** Upstream `T`: every line of the text quoted. */
+function quoteLines(text: string): string
+{
+	return text
+		.split(/\r\n?|[\n\u2028\u2029]/)
+		.map((line) => `> ${line}`)
+		.join("\n");
+}
+
+/** Upstream `Fe`: a comment line that is a reply marker can't open a block of its own. */
+function escapeReplyMarkerLines(text: string): string
+{
+	return text.replace(/^<!-- reply(?: [0-9]+)? -->$/gm, (marker) => `&lt;${marker.slice(1)}`);
+}
+
+/** Upstream `z`: a numbered reply marker anywhere in the body can't pose as a reply lead. */
+function escapeNumberedReplyMarkers(text: string): string
+{
+	return text.replace(/<!-- reply [0-9]+ -->/g, (marker) => `&lt;${marker.slice(1)}`);
+}
+
+/** One reply's quote and comment: the comment trimmed, marker lines escaped, blank-line runs collapsed. */
+function replyBody(quote: string, comment: string): string
+{
+	return `${quoteLines(quote)}\n\n${escapeReplyMarkerLines(comment.trim()).replace(/\n{3,}/g, "\n\n")}`;
+}
+
+/** A single reply block, as upstream's Send reply sends it. */
+export function formatReply(quote: string, comment: string): string
+{
+	return `${REPLY_MARKER}\n${replyBody(quote, comment)}`;
+}
+
+/** Upstream `Ie`: the first 99 replies as one lead, the first block numbered with the count. */
+function formatReplyLead(replies: readonly ContextAttachment[]): string
+{
+	const bodies = replies.slice(0, MAX_STAGED_REPLIES).map(({text, comment}) => replyBody(text ?? "", comment ?? ""));
+	return bodies
+		.map((body, index) => `${index === 0 ? `<!-- reply ${bodies.length} -->` : REPLY_MARKER}\n${body}`)
+		.join("\n\n");
+}
+
 export function formatContextAttachment({kind, path, range, text, language}: ContextAttachment): string
 {
 	if (kind === "pasted-text") return text ?? "";
@@ -216,16 +278,32 @@ export function contextChipLabel({kind, path, range, text, name: displayName}: C
 	return range.start === range.end ? `${name}:${range.start}` : `${name}:${range.start}-${range.end}`;
 }
 
-/** Queued diff comments first (upstream `dl`), then attached context in attach order, then the prompt. */
+/**
+ * Queued diff comments first (upstream `dl`), then attached context in attach order, then the prompt. Reply
+ * chips (upstream `Re`/`De`) lead the body after any file mentions: the first 99 as numbered reply blocks
+ * and `\n\n\n`, any more as plain quote text after the other attachments.
+ */
 export function composePrompt(
 	prompt: string,
 	context: readonly ContextAttachment[],
 	comments: readonly ReviewComment[],
 ): string
 {
-	const blocks = context.map(formatContextAttachment);
-	if (prompt !== "") blocks.push(prompt);
-	return formatDiffAnnotations(comments, blocks.join("\n\n"));
+	const replies = context.filter(isReplyChip);
+	if (replies.length === 0)
+	{
+		const blocks = context.map(formatContextAttachment);
+		if (prompt !== "") blocks.push(escapeNumberedReplyMarkers(prompt));
+		return formatDiffAnnotations(comments, blocks.join("\n\n"));
+	}
+	const mentions = context.filter((chip) => chip.kind === "file").map(formatContextAttachment);
+	const blocks = context.filter((chip) => chip.kind !== "file" && !isReplyChip(chip)).map(formatContextAttachment);
+	for (const {text, comment} of replies.slice(MAX_STAGED_REPLIES))
+		blocks.push(escapeNumberedReplyMarkers(`${quoteLines(text ?? "")}\n\n${(comment ?? "").trim()}`));
+	if (prompt !== "") blocks.push(escapeNumberedReplyMarkers(prompt));
+	const body = blocks.join("\n\n");
+	const lead = formatReplyLead(replies);
+	return formatDiffAnnotations(comments, [...mentions, body === "" ? lead : `${lead}\n\n\n${body}`].join("\n\n"));
 }
 
 /** Upstream's `prefillEmptyShellLine` result: the command went in, a draft was in the way, or no bash line is possible. */
@@ -293,6 +371,7 @@ const StagedChipSchema = z.object(
 		text: z.string().optional(),
 		language: z.string().nullable().optional(),
 		name: z.string().optional(),
+		comment: z.string().optional(),
 	},
 );
 type StagedChip = z.infer<typeof StagedChipSchema>;
@@ -310,7 +389,7 @@ function browserLocalStorage(): Storage | null
 	}
 }
 
-function stagedChip({kind, path, range, text, language, name}: ContextChip): StagedChip
+function stagedChip({kind, path, range, text, language, name, comment}: ContextChip): StagedChip
 {
 	return {
 		kind,
@@ -333,6 +412,10 @@ function stagedChip({kind, path, range, text, language, name}: ContextChip): Sta
 		...(name !== undefined &&
 		{
 			name,
+		}),
+		...(comment !== undefined &&
+		{
+			comment,
 		}),
 	};
 }
@@ -361,8 +444,13 @@ function readStagedChips(sessionId: string): readonly StagedChip[]
 	{
 		const raw = browserLocalStorage()?.getItem(`${STAGED_CHIPS_PREFIX}${sessionId}`);
 		if (raw === null || raw === undefined) return [];
-		const parsed = z.array(StagedChipSchema).safeParse(JSON.parse(raw));
-		return parsed.success ? parsed.data : [];
+		const parsed = z.array(z.unknown()).safeParse(JSON.parse(raw));
+		if (!parsed.success) return [];
+		return parsed.data.flatMap((each) =>
+		{
+			const chip = StagedChipSchema.safeParse(each);
+			return chip.success ? [chip.data] : [];
+		});
 	}
 	catch
 	{
@@ -598,6 +686,46 @@ function addChip(sessionId: string, attachment: ContextAttachment): string | und
 	setChips(sessionId, [...getContextChips(sessionId), chip]);
 	for (const handle of handles) handle.focus();
 	return chip.id;
+}
+
+/**
+ * Upstream `attachReply` (`gg` + `Li`): a blank comment stages a plain Excerpt; otherwise the quote and its
+ * untrimmed comment become a reply chip, refused with an 8 s warning toast once 99 replies are staged.
+ */
+export function attachReply(
+	sessionId: string,
+	quote: string,
+	comment: string,
+	notify: (options: ToastOptions) => void,
+): boolean
+{
+	if (comment.trim() === "")
+		return attachContext(
+			sessionId,
+			{
+				kind: "excerpt",
+				text: quote,
+			},
+		);
+	if (getContextChips(sessionId).filter(isReplyChip).length >= MAX_STAGED_REPLIES)
+	{
+		notify(
+			{
+				kind: "warning",
+				message: REPLY_CAP_MESSAGE,
+				durationMs: ATTACH_WARNING_MS,
+			},
+		);
+		return false;
+	}
+	return attachContext(
+		sessionId,
+		{
+			kind: "excerpt",
+			text: quote,
+			comment,
+		},
+	);
 }
 
 /** Adds a pending tile for an upload in flight; its id, or undefined when no composer is mounted. */

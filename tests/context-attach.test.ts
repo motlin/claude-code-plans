@@ -4,7 +4,12 @@ import
 {
 	attachContext,
 	attachPendingUpload,
+	attachReply,
 	composePrompt,
+	formatReply,
+	isReplyChip,
+	MAX_STAGED_REPLIES,
+	REPLY_CAP_MESSAGE,
 	ContextAttachmentKindSchema,
 	contextChipLabel,
 	formatAttachContext,
@@ -23,6 +28,7 @@ import
 	joinPrefill,
 	prefillComposer,
 	requestComposerShellLine,
+	type ContextAttachment,
 	type ShellLineResult,
 } from "../src/lib/context-attach";
 import
@@ -1376,5 +1382,206 @@ describe("requestComposerShellLine (upstream prefillEmptyShellLine)", () =>
 		);
 		expect(requestComposerShellLine("shell-throw", "ls")).toBe("unavailable");
 		unregister();
+	});
+});
+
+describe("attachReply (upstream attachReply + the 99-reply cap)", () =>
+{
+	const SESSION = "erin-session";
+	afterEach(() =>
+	{
+		for (const chip of getContextChips(SESSION)) removeContextChip(SESSION, chip.id);
+	});
+
+	function mountComposer(): () => void
+	{
+		return registerComposer(
+			SESSION,
+			{
+				insertText: () =>
+				{
+				},
+				focus: () =>
+				{
+				},
+			},
+		);
+	}
+
+	it("stages a blank comment as a plain Excerpt and a real one as a reply chip, untrimmed", () =>
+	{
+		const stop = mountComposer();
+		const notify = vi.fn<(options: ToastOptions) => void>();
+		const results = [attachReply(SESSION, "q", "  ", notify), attachReply(SESSION, "q", " fix it ", notify)];
+		const chips = getContextChips(SESSION).map(({id: _id, ...rest}) => rest);
+		stop();
+
+		expect(
+			{
+				results,
+				chips,
+				replies: chips.map(isReplyChip),
+				toasts: notify.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				results: [true, true],
+				chips: [
+					{
+						kind: "excerpt",
+						text: "q",
+					},
+					{
+						kind: "excerpt",
+						text: "q",
+						comment: " fix it ",
+					},
+				],
+				replies: [false, true],
+				toasts: [],
+			},
+		);
+	});
+
+	it("refuses the 100th reply with upstream's 8 s cap toast, yet still takes a blank-comment Excerpt", () =>
+	{
+		const stop = mountComposer();
+		const notify = vi.fn<(options: ToastOptions) => void>();
+		for (let index = 0; index < MAX_STAGED_REPLIES; index++) attachReply(SESSION, `q${index}`, `c${index}`, notify);
+		const refused = attachReply(SESSION, "q99", "c99", notify);
+		const excerpt = attachReply(SESSION, "plain", "", notify);
+		const chips = getContextChips(SESSION);
+		stop();
+
+		expect(
+			{
+				max: MAX_STAGED_REPLIES,
+				refused,
+				excerpt,
+				replies: chips.filter(isReplyChip).length,
+				last: chips.at(-1)?.text,
+				toasts: notify.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				max: 99,
+				refused: false,
+				excerpt: true,
+				replies: 99,
+				last: "plain",
+				toasts: [
+					[
+						{
+							kind: "warning",
+							message: "Your prompt can hold up to 99 replies. Send it, then add more.",
+							durationMs: 8000,
+						},
+					],
+				],
+			},
+		);
+		expect(REPLY_CAP_MESSAGE).toBe("Your prompt can hold up to 99 replies. Send it, then add more.");
+	});
+
+	it("only counts excerpt chips with a non-blank string comment as replies (upstream R)", () =>
+	{
+		expect(
+			[
+				{
+					kind: "excerpt",
+					text: "q",
+					comment: "c",
+				},
+				{
+					kind: "excerpt",
+					text: "q",
+					comment: " \n ",
+				},
+				{
+					kind: "excerpt",
+					text: "q",
+				},
+				{
+					kind: "terminal",
+					text: "q",
+					comment: "c",
+				},
+				{
+					kind: "excerpt",
+					comment: "c",
+				},
+			].map((chip) => isReplyChip(chip as Parameters<typeof isReplyChip>[0])),
+		).toStrictEqual([true, false, false, false, false]);
+	});
+});
+
+describe("reply chips on send (upstream Ie/Re/De)", () =>
+{
+	function reply(text: string, comment: string): ContextAttachment
+	{
+		return {
+			kind: "excerpt",
+			text,
+			comment,
+		};
+	}
+
+	const excerpt: ContextAttachment =
+	{
+		kind: "excerpt",
+		text: "e",
+	};
+
+	it("formats one reply as a quoted block over its trimmed comment", () =>
+	{
+		expect(formatReply("a\nb", " hi ")).toBe("<!-- reply -->\n> a\n> b\n\nhi");
+	});
+
+	it("leads with the numbered reply blocks, then the attach blocks and the typed text", () =>
+	{
+		expect(composePrompt("p", [reply("q1", "c1"), excerpt, reply("q2", "c2")], [])).toBe(
+			"<!-- reply 2 -->\n> q1\n\nc1\n\n<!-- reply -->\n> q2\n\nc2\n\n\n<!-- attach -->\n> e\n\np",
+		);
+	});
+
+	it("keeps file mentions in front of the replies", () =>
+	{
+		const file: ContextAttachment =
+		{
+			kind: "file",
+			path: "alice.ts",
+		};
+		expect(composePrompt("p", [reply("q", "c"), file], [])).toBe(
+			`${formatContextAttachment(file)}\n\n<!-- reply 1 -->\n> q\n\nc\n\n\np`,
+		);
+	});
+
+	it("escapes reply markers in comments and collapses runs of blank lines", () =>
+	{
+		expect(composePrompt("", [reply("q", "<!-- reply -->\na\n\n\n\nb")], [])).toBe(
+			"<!-- reply 1 -->\n> q\n\n&lt;!-- reply -->\na\n\nb",
+		);
+	});
+
+	it("sends replies past 99 as plain quote text after the attach blocks, numbered markers escaped", () =>
+	{
+		const replies = Array.from(
+			{
+				length: 100,
+			},
+			(_, index) => reply(`q${index + 1}`, `c${index + 1}`),
+		);
+		replies[99] = reply("q100", " c100 <!-- reply 3 --> ");
+		const composed = composePrompt("p <!-- reply 7 -->", [...replies, excerpt], []);
+		const lead = replies
+			.slice(0, 99)
+			.map(
+				({text, comment}, index) =>
+					`${index === 0 ? "<!-- reply 99 -->" : "<!-- reply -->"}\n> ${text}\n\n${comment}`,
+			)
+			.join("\n\n");
+		expect(composed).toBe(
+			`${lead}\n\n\n<!-- attach -->\n> e\n\n> q100\n\nc100 &lt;!-- reply 3 -->\n\np &lt;!-- reply 7 -->`,
+		);
 	});
 });

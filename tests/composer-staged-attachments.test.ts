@@ -6,6 +6,7 @@ import
 {
 	attachContext,
 	attachPendingUpload,
+	attachReply,
 	getContextChips,
 	hydrateStagedChips,
 	registerComposer,
@@ -173,6 +174,90 @@ describe("staged attachments saved with the draft", () =>
 						path: "/cache/bob.png",
 						name: "bob.png",
 						previewUrl: "/api/image?path=%2Fcache%2Fbob.png",
+					},
+				],
+			},
+		);
+	});
+
+	it("saves a reply chip's comment and brings it back after a reload", () =>
+	{
+		const stop = registerComposer(
+			SESSION,
+			{
+				insertText: () =>
+				{
+				},
+				focus: () =>
+				{
+				},
+			},
+		);
+		attachReply(SESSION, "quoted", "fix it", () => {});
+		stop();
+		const saved = stored();
+		for (const chip of getContextChips(SESSION)) removeContextChip(SESSION, chip.id);
+		localStorage.setItem(KEY, JSON.stringify(saved));
+		const hydrated = hydrateStagedChips(SESSION);
+
+		expect(
+			{
+				saved,
+				hydrated,
+				chips: getContextChips(SESSION).map(({id: _id, ...rest}) => rest),
+			},
+		).toStrictEqual(
+			{
+				saved: [
+					{
+						kind: "excerpt",
+						text: "quoted",
+						comment: "fix it",
+					},
+				],
+				hydrated: true,
+				chips: [
+					{
+						kind: "excerpt",
+						text: "quoted",
+						comment: "fix it",
+					},
+				],
+			},
+		);
+	});
+
+	it("drops only the saved tile whose fields fail the schema", () =>
+	{
+		localStorage.setItem(
+			KEY,
+			JSON.stringify([
+				{
+					kind: "excerpt",
+					text: "bad",
+					comment: 5,
+				},
+				{
+					kind: "terminal",
+					text: "good",
+				},
+			]),
+		);
+
+		const hydrated = hydrateStagedChips(SESSION);
+
+		expect(
+			{
+				hydrated,
+				chips: getContextChips(SESSION).map(({id: _id, ...rest}) => rest),
+			},
+		).toStrictEqual(
+			{
+				hydrated: true,
+				chips: [
+					{
+						kind: "terminal",
+						text: "good",
 					},
 				],
 			},
