@@ -6355,20 +6355,76 @@ html[data-reduce-motion="true"] [data-cds-composer-attachments] [data-cds-attach
 	[data-cds="MessageActions"][data-reveal]:not(
 		:where([data-cds-actions-scope]:not(:focus-within) [data-cds="MessageActions"][data-reveal])
 	),
-[data-cds-row]:has([data-cds-row-toggle]:focus-visible)
-	~ [data-cds-row-panel]
-	[data-cds-actions-scope]
-	[data-cds="MessageActions"][data-reveal],
-[data-cds-row]
-	> [data-cds-row-toggle]:focus-visible
-	~ [data-cds-row-panel]
-	[data-cds-actions-scope]
-	[data-cds="MessageActions"][data-reveal],
 [data-cds-actions-scope] [data-cds="MessageActions"][data-reveal]:has([data-popup-open])
 {
 	opacity: 1;
 	transition-duration: 120ms;
 	transition-delay: 0s;
+}
+/*
+ * Keyboard focus on a step's row toggle reveals the toolbar in that row's own panel body, never one in a step nested
+ * a panel deeper (a status row's focus ring leaves its steps' toolbars hidden). The second form, a toggle that is the
+ * row's direct child with the panel as its sibling, never matches upstream's DOM; it is kept for parity. A panel that
+ * opens under an already focused toggle fades its toolbar in from hidden.
+ */
+[data-cds-row]:has([data-cds-row-toggle]:focus-visible)
+	~ [data-cds-row-panel]
+	[data-cds-actions-scope]
+	[data-cds="MessageActions"][data-reveal]:not(
+		:where(
+			[data-cds-row]:has([data-cds-row-toggle]:focus-visible)
+				~ [data-cds-row-panel]
+				[data-cds-row-panel]
+				[data-cds="MessageActions"][data-reveal]
+		)
+	),
+[data-cds-row]
+	> [data-cds-row-toggle]:focus-visible
+	~ [data-cds-row-panel]
+	[data-cds-actions-scope]
+	[data-cds="MessageActions"][data-reveal]:not(
+		:where(
+			[data-cds-row]
+				> [data-cds-row-toggle]:focus-visible
+				~ [data-cds-row-panel]
+				[data-cds-row-panel]
+				[data-cds="MessageActions"][data-reveal]
+		)
+	)
+{
+	opacity: 1;
+	transition-duration: 120ms;
+	transition-delay: 0s;
+}
+@starting-style
+{
+	[data-cds-row]:has([data-cds-row-toggle]:focus-visible)
+		~ [data-cds-row-panel]
+		[data-cds-actions-scope]
+		[data-cds="MessageActions"][data-reveal]:not(
+			:where(
+				[data-cds-row]:has([data-cds-row-toggle]:focus-visible)
+					~ [data-cds-row-panel]
+					[data-cds-row-panel]
+					[data-cds="MessageActions"][data-reveal]
+			)
+		),
+	[data-cds-row]
+		> [data-cds-row-toggle]:focus-visible
+		~ [data-cds-row-panel]
+		[data-cds-actions-scope]
+		[data-cds="MessageActions"][data-reveal]:not(
+			:where(
+				[data-cds-row]
+					> [data-cds-row-toggle]:focus-visible
+					~ [data-cds-row-panel]
+					[data-cds-row-panel]
+					[data-cds="MessageActions"][data-reveal]
+			)
+		)
+	{
+		opacity: 0;
+	}
 }
 @media (hover: hover)
 {

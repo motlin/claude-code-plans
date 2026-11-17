@@ -4,6 +4,7 @@ import {readFileSync} from "node:fs";
 import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
+import {ThinkingStep} from "../src/components/thinking-step";
 import {ToastContext, type ToastOptions} from "../src/components/toast-context";
 import type {TranscriptMode} from "../src/lib/transcript-mode";
 import {processTranscript} from "../src/lib/transcript";
@@ -1141,6 +1142,10 @@ describe("omitted and empty thinking", () =>
 	});
 });
 
+/** Upstream c6a992d55's row-toggle focus-in selectors, nested-panel exclusion included. */
+const ROW_TOGGLE_REVEAL =
+	'[data-cds-row]:has([data-cds-row-toggle]:focus-visible) ~ [data-cds-row-panel] [data-cds-actions-scope] [data-cds="MessageActions"][data-reveal]:not(:where([data-cds-row]:has([data-cds-row-toggle]:focus-visible) ~ [data-cds-row-panel] [data-cds-row-panel] [data-cds="MessageActions"][data-reveal])), [data-cds-row] > [data-cds-row-toggle]:focus-visible ~ [data-cds-row-panel] [data-cds-actions-scope] [data-cds="MessageActions"][data-reveal]:not(:where([data-cds-row] > [data-cds-row-toggle]:focus-visible ~ [data-cds-row-panel] [data-cds-row-panel] [data-cds="MessageActions"][data-reveal]))';
+
 describe("thinking actions reveal", () =>
 {
 	// Whitespace-insensitive: the formatter wraps long selectors inside :not( … ).
@@ -1168,13 +1173,30 @@ describe("thinking actions reveal", () =>
 		);
 	});
 
-	it("shows them at once on focus inside the body or the toolbar, on the row toggle's focus ring, or with a popup open", () =>
+	it("shows them at once on focus inside the body or the toolbar, or with a popup open", () =>
 	{
 		expect(
 			css.includes(
-				'[data-cds-actions-scope]:focus-within [data-cds="MessageActions"][data-reveal]:not(:where([data-cds-actions-scope]:not(:focus-within) [data-cds="MessageActions"][data-reveal])), [data-cds-row]:has([data-cds-row-toggle]:focus-visible) ~ [data-cds-row-panel] [data-cds-actions-scope] [data-cds="MessageActions"][data-reveal], [data-cds-row] > [data-cds-row-toggle]:focus-visible ~ [data-cds-row-panel] [data-cds-actions-scope] [data-cds="MessageActions"][data-reveal], [data-cds-actions-scope] [data-cds="MessageActions"][data-reveal]:has([data-popup-open]) { opacity: 1; transition-duration: 120ms; transition-delay: 0s; }',
+				'[data-cds-actions-scope]:focus-within [data-cds="MessageActions"][data-reveal]:not(:where([data-cds-actions-scope]:not(:focus-within) [data-cds="MessageActions"][data-reveal])), [data-cds-actions-scope] [data-cds="MessageActions"][data-reveal]:has([data-popup-open]) { opacity: 1; transition-duration: 120ms; transition-delay: 0s; }',
 			),
 		).toBe(true);
+	});
+
+	it("shows them at once on the row toggle's focus ring, fading in from hidden, but not in a nested step's panel", () =>
+	{
+		expect(
+			{
+				reveal: css.includes(
+					`${ROW_TOGGLE_REVEAL} { opacity: 1; transition-duration: 120ms; transition-delay: 0s; }`,
+				),
+				startingStyle: css.includes(`@starting-style { ${ROW_TOGGLE_REVEAL} { opacity: 0; } }`),
+			},
+		).toStrictEqual(
+			{
+				reveal: true,
+				startingStyle: true,
+			},
+		);
 	});
 
 	it("always shows them on touch and drops the fade under reduced motion", () =>
@@ -1192,6 +1214,123 @@ describe("thinking actions reveal", () =>
 			{
 				touch: true,
 				reducedMotion: true,
+			},
+		);
+	});
+});
+
+describe("thinking actions, row toggle focus ring", () =>
+{
+	function renderStep(
+		options:
+		{
+			nested?: boolean;
+			actions?: boolean;
+		} = {},
+	)
+	{
+		const actions = options.actions ?? true;
+		const thinking = (
+			<ThinkingStep
+				text={"Plan\n\nWeigh the options."}
+				open
+				onOpenChange={() =>
+				{
+				}}
+				{...(actions
+					?
+						{
+							actions: <button type="button">Copy as quote</button>,
+						}
+					: {})}
+			/>
+		);
+		const result = render(
+			options.nested ? (
+				<div>
+					<div data-cds-row="">
+						<button type="button" data-cds-row-toggle="">
+							Worked for 3m
+						</button>
+					</div>
+					<div data-cds-row-panel="">{thinking}</div>
+				</div>
+			) : (
+				thinking
+			),
+		);
+		const toolbar = result.container.querySelector('[data-cds="MessageActions"][data-reveal]');
+		const toggles = result.container.querySelectorAll<HTMLButtonElement>("button[data-cds-row-toggle]");
+		return {
+			container: result.container,
+			revealed: () => toolbar?.matches(ROW_TOGGLE_REVEAL) ?? false,
+			outer: toggles[0]!,
+			inner: toggles[toggles.length - 1]!,
+		};
+	}
+
+	// jsdom has no input modality (its :focus-visible is :focus), so the mouse-click case rests on the CSS text test
+	// pinning :focus-visible in every row-toggle selector.
+	it("reveals the toolbar while the row toggle has the focus ring", () =>
+	{
+		const {revealed, inner} = renderStep();
+		const atRest = revealed();
+		inner.focus();
+
+		expect(
+			{
+				atRest,
+				focused: revealed(),
+			},
+		).toStrictEqual(
+			{
+				atRest: false,
+				focused: true,
+			},
+		);
+	});
+
+	it("keeps a nested step's toolbar hidden when the outer row's toggle has the focus ring", () =>
+	{
+		const {revealed, outer, inner} = renderStep(
+			{
+				nested: true,
+			},
+		);
+		outer.focus();
+		const outerFocused = revealed();
+		inner.focus();
+
+		expect(
+			{
+				outerFocused,
+				innerFocused: revealed(),
+			},
+		).toStrictEqual(
+			{
+				outerFocused: false,
+				innerFocused: true,
+			},
+		);
+	});
+
+	it("draws no actions scope or toolbar for a body without actions", () =>
+	{
+		const {container} = renderStep(
+			{
+				actions: false,
+			},
+		);
+
+		expect(
+			{
+				scopes: container.querySelectorAll("[data-cds-actions-scope]").length,
+				toolbars: container.querySelectorAll('[data-cds="MessageActions"]').length,
+			},
+		).toStrictEqual(
+			{
+				scopes: 0,
+				toolbars: 0,
 			},
 		);
 	});

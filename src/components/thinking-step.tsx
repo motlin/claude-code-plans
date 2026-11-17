@@ -48,8 +48,8 @@ export interface ThinkingStepProps
 	live?: boolean;
 	/** The row's tooltip (local: how long the model thought). */
 	title?: string | undefined;
-	/** The "Thinking actions" toolbar's buttons. */
-	actions: ReactNode;
+	/** The "Thinking actions" toolbar's buttons; without them the body has no actions scope (upstream `HS`). */
+	actions?: ReactNode;
 }
 
 /**
@@ -94,13 +94,23 @@ export function ThinkingStep({text, open, onOpenChange, live = false, title, act
 			data-cds-row-panel=""
 			className={`${PANEL_CLASS} ${inPlace ? "order-first min-w-0 flex-1" : "ps-[var(--cds-assistant-message-text-inset,0px)]"}`}
 		>
-			<div data-cds-actions-scope="" className={`${SCOPE_BASE}${inPlace ? "" : " pt-xs"} ${SCOPE_RESET}`}>
+			<div
+				{...(actions === undefined
+					? {}
+					:
+						{
+							"data-cds-actions-scope": "",
+						})}
+				className={`${SCOPE_BASE}${inPlace ? "" : " pt-xs"} ${SCOPE_RESET}`}
+			>
 				<div className="min-w-0 flex-1" data-prose-size="inherit">
 					<ProseMarkdown markdown={text} />
 				</div>
-				<div className="flex h-[1lh] shrink-0 items-center">
-					<StepActions label="Thinking actions">{actions}</StepActions>
-				</div>
+				{actions !== undefined && (
+					<div className="flex h-[1lh] shrink-0 items-center">
+						<StepActions label="Thinking actions">{actions}</StepActions>
+					</div>
+				)}
 			</div>
 		</BaseCollapsible.Panel>
 	);
