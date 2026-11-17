@@ -35,6 +35,7 @@ import
 	type PermissionDecision,
 	type PermissionDetailLang,
 	type PermissionTitle,
+	permissionCardLabel,
 	ROWS_READ_HINT,
 	titleReadText,
 	titleReadWatched,
@@ -588,7 +589,7 @@ export function PermissionCard({
 	return (
 		<ApprovalCardShell
 			rootRef={cardRootRef}
-			label={"action" in title ? `Permission request: ${title.action}` : "Permission request"}
+			label={permissionCardLabel(title)}
 			footer={footer}
 			presentation={presentation}
 			enter={enter}

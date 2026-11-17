@@ -1022,10 +1022,10 @@ describe("titleReadWatched, as upstream's _w", () =>
 					{
 						action: "a".repeat(81),
 						meta: null,
+						origin: "srv",
 					},
 					clampTitle: false,
 					hasDetail: false,
-					origin: "srv",
 				},
 			),
 			titleReadWatched(
@@ -1034,10 +1034,10 @@ describe("titleReadWatched, as upstream's _w", () =>
 					{
 						action: "a".repeat(80),
 						meta: null,
+						origin: "srv",
 					},
 					clampTitle: false,
 					hasDetail: false,
-					origin: "srv",
 				},
 			),
 		]).toStrictEqual([true, false, false, true, true, true, false]);
@@ -1112,10 +1112,10 @@ describe("permission title copy", () =>
 				title: "Bug",
 				labels: ["a"],
 			},
-			title: "Allow Claude to use mcp__github__create_issue?",
-			parts: [[PRIMARY, "use mcp__github__create_issue"]],
+			title: "Allow Claude to use create issue (github)?",
+			parts: [[PRIMARY, "use create issue (github)"]],
 			valueClass: null,
-			label: "Permission request: use mcp__github__create_issue",
+			label: "Permission request: use create issue (github)",
 			detail: null,
 		},
 	])("titles $tool $input as upstream does", ({tool, input, title, parts, valueClass, label, detail}) =>
@@ -1161,6 +1161,58 @@ describe("permission title copy", () =>
 				detail,
 			},
 		);
+	});
+
+	it.each([
+		{
+			title:
+			{
+				action: `use ${"x".repeat(200)} (github)`,
+				meta: null,
+				origin: "github",
+			},
+			label: `Permission request: use ${"x".repeat(146)}, truncated, from github`,
+		},
+		{
+			title:
+			{
+				action: `use ${"x".repeat(200)} (github)`,
+				meta: null,
+			},
+			label: `Permission request: use ${"x".repeat(146)}, truncated`,
+		},
+		{
+			title:
+			{
+				action: "use create issue (github)",
+				meta: null,
+				origin: "github",
+			},
+			label: "Permission request: use create issue (github)",
+		},
+		{
+			title:
+			{
+				action: `use  ${"😀".repeat(160)}`,
+				meta: null,
+			},
+			label: `Permission request: use ${"😀".repeat(146)}, truncated`,
+		},
+	])("caps the card label at 150 code points like upstream's iy ($label)", ({title, label}) =>
+	{
+		const {container} = render(
+			<PermissionCard
+				title={title}
+				detail={null}
+				detailLang={null}
+				clampTitle={false}
+				canAnswer
+				onDecision={async () =>
+				{
+				}}
+			/>,
+		);
+		expect(container.querySelector("[data-approval-card-root]")?.getAttribute("aria-label")).toBe(label);
 	});
 
 	it.each([
@@ -2211,8 +2263,9 @@ describe("permission title copy", () =>
 			{
 				title:
 				{
-					action: "use mcp__srv__do",
+					action: "use do (srv)",
 					meta: null,
+					origin: "srv",
 				},
 				detail: null,
 				rows: [

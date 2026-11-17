@@ -1,5 +1,6 @@
 import {findPendingToolUses, matchPendingToolUse, type PendingToolUse, type PermissionAsk} from "./approval-dock";
 import type {PendingElicitation} from "./domain-event-payload-schemas";
+import {mcpPermissionLabel} from "./mcp-permission-label";
 import {asRecord} from "./narrow";
 import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-prompt";
 import {clampRows, inputRows, rowsFitBudget, type PermissionRow} from "./permission-rows";
@@ -29,6 +30,8 @@ export type PermissionTitle =
 	  {
 			action: string;
 			meta: string | null;
+			/** Upstream's `origin`: the MCP server words an MCP tool's action names. */
+			origin?: string;
 	  }
 	|
 	  {
@@ -323,7 +326,7 @@ function withPersistentAllow(permission: PendingPermission, notification: Permis
 
 function permissionFor(notificationId: string, toolUse: PendingToolUse): PendingPermission
 {
-	const {action, meta = null, detail = null, ...extras} = withRowsBudget(permissionCopy(toolUse));
+	const {action, meta = null, origin, detail = null, ...extras} = withRowsBudget(permissionCopy(toolUse));
 	return {
 		notificationId,
 		toolUseId: toolUse.id,
@@ -331,6 +334,12 @@ function permissionFor(notificationId: string, toolUse: PendingToolUse): Pending
 		{
 			action,
 			meta,
+			...(origin === undefined
+				? {}
+				:
+					{
+						origin,
+					}),
 		},
 		detail,
 		...extras,
@@ -360,6 +369,7 @@ interface PermissionCopy
 {
 	action: string;
 	meta?: string | null;
+	origin?: string;
 	detail?: string | null;
 	detailLang?: PermissionDetailLang;
 	clampTitle?: true;
@@ -405,17 +415,37 @@ export function titleReadWatched({
 	title,
 	clampTitle,
 	hasDetail,
-	origin,
 }: {
 	title: PermissionTitle;
 	clampTitle: boolean;
 	hasDetail: boolean;
-	origin?: string | undefined;
 }): boolean
 {
 	if (clampTitle && hasDetail) return false;
 	if (!("action" in title)) return true;
-	return title.meta !== null || (origin !== undefined && title.action.length > TITLE_ORIGIN_LONG);
+	return title.meta !== null || (title.origin !== undefined && title.action.length > TITLE_ORIGIN_LONG);
+}
+
+/** Upstream's `Kv`: spoken text past this many code points is cut and marked truncated. */
+const SPOKEN_CAP = 150;
+
+/** Upstream's `qv`: whitespace collapsed, capped at 150 code points with ", truncated". */
+function spokenCap(text: string): string
+{
+	const collapsed = text.replace(/\s+/g, " ").trim();
+	const points = Array.from(collapsed);
+	return points.length <= SPOKEN_CAP ? collapsed : `${points.slice(0, SPOKEN_CAP).join("")}, truncated`;
+}
+
+/** Upstream's `Uyfuf4` + `iy`: the card's label, its action capped and naming its origin once the cap cut it. */
+export function permissionCardLabel(title: PermissionTitle): string
+{
+	if (!("action" in title)) return "Permission request";
+	const action = title.action.replace(/\s+/g, " ").trim();
+	const capped = spokenCap(action);
+	const spoken =
+		title.origin === undefined || capped === action ? capped : `${capped}, from ${spokenCap(title.origin)}`;
+	return `Permission request: ${spoken}`;
 }
 
 /** Upstream's `vw`: the title gate's text identity, so a changed title starts unread. */
@@ -867,11 +897,18 @@ function webFetchCopy(input: Record<string, unknown>): PermissionCopy
 	};
 }
 
-/** Upstream's `ne`: "use {tool}" with the input as gated trail rows. */
+/** Upstream's `ne`: "use {tool}" with the input as gated trail rows; an MCP tool says its tool and server in words. */
 function genericCopy(name: string, input: Record<string, unknown>): PermissionCopy
 {
+	const mcp = mcpPermissionLabel(name);
 	return {
-		action: `use ${name}`,
+		action: `use ${mcp?.label ?? name}`,
+		...(mcp?.origin === undefined
+			? {}
+			:
+				{
+					origin: mcp.origin,
+				}),
 		...gatedTrail(inputRows(input)),
 	};
 }
