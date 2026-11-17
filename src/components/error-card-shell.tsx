@@ -9,7 +9,7 @@ interface ErrorCardShellProps
 {
 	headline: string;
 	/** Leaving it out (or "") draws a headline-only card: the hint row stays but is empty, so `empty:hidden` hides it. */
-	hint?: string;
+	hint?: ReactNode;
 	icon: ErrorCardIcon;
 	/** Upstream's `announce:"alert"`: a screen-reader-only alert reading "{headline} {hint}" ("{headline} " without a hint). */
 	announce?: "alert";
@@ -93,7 +93,7 @@ export function ErrorCardShell({
 		>
 			{announce === "alert" && (
 				<span className="sr-only" role="alert">
-					{`${headline} ${hint ?? ""}`}
+					{`${headline} ${typeof hint === "string" ? hint : ""}`}
 				</span>
 			)}
 			<div className={`flex items-start ${HEADER_SPACING} bg-alpha-1 text-body contain-inline-size`}>

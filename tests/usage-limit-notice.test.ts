@@ -97,6 +97,30 @@ describe("usageLimitCard", () =>
 		]);
 	});
 
+	it("uses upstream's Try again hints when the card offers a retry", () =>
+	{
+		const after = (RESETS_AT + 60) * 1000;
+		expect([
+			usageLimitCard(
+				limit(
+					{
+						overageDisabledReason: "",
+					},
+				),
+				WEEKLY_TEXT,
+				DAYS_BEFORE,
+				"America/New_York",
+				true,
+			)?.hint,
+			usageLimitCard(undefined, WEEKLY_TEXT, after, "UTC", true)?.hint,
+			usageLimitCard(undefined, "API Error: You've reached your usage limit", after, "UTC", true)?.hint,
+		]).toStrictEqual([
+			"Your weekly limit resets Oct 20 at 4:00 AM. Try again then.",
+			"Try again after your weekly limit resets.",
+			"You’ve reached your usage limit. Try again after your limit resets.",
+		]);
+	});
+
 	it("maps the overage causes to upstream's headlines and fixed hints", () =>
 	{
 		const card = (overageDisabledReason: string) =>

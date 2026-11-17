@@ -122,6 +122,7 @@
 	/* Upstream .cds-root cds Checkbox / Radio box and checkbox corner (the compact base). */
 	--cds-checkbox: 1rem;
 	--cds-checkbox-radius: 0.25rem;
+	--cds-checkbox-glyph: 1rem;
 	--animate-notify-tip-in: notify-tip-in 150ms ease-out;
 	--animate-approval-inline-enter: approval-inline-enter 160ms ease-out;
 	--animate-question-receipt-enter: approval-inline-enter 200ms ease-out;
@@ -4456,6 +4457,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--upstream-leading-caption: 17px;
 	--cds-checkbox: 1.25rem;
 	--cds-checkbox-radius: 0.3125rem;
+	--cds-checkbox--xs: 1rem;
+	--cds-checkbox-glyph--xs: 1rem;
 	--cds-gap-xs: 0.5rem;
 	--cds-gap-sm: 0.75rem;
 	--cds-gap-md: 1rem;
@@ -4505,6 +4508,8 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--upstream-leading-caption: 17px;
 	--cds-checkbox: 1rem;
 	--cds-checkbox-radius: 0.25rem;
+	--cds-checkbox--xs: 0.875rem;
+	--cds-checkbox-glyph--xs: 0.875rem;
 	--cds-gap-xs: 0.375rem;
 	--cds-gap-sm: 0.5rem;
 	--cds-gap-md: 0.75rem;
@@ -4587,9 +4592,13 @@ html[data-reduce-motion="true"] [data-cds="ShimmerText"][data-shimmer-mode="fall
 	--code-font-skip-dark: ;
 	--code-font-skip-light: initial;
 }
-/* Upstream .cds-root [data-size=xs|sm|lg]: a sized control's subtree pads on that size's scale. */
+/* Upstream .cds-root [data-size=xs|sm|lg]: a sized control's subtree pads on that size's scale; xs also
+   shrinks the cds Checkbox box and glyph (14px compact, 16px comfortable) at a 4px corner. */
 [data-size="xs"]
 {
+	--cds-checkbox: var(--cds-checkbox--xs, 1rem);
+	--cds-checkbox-glyph: var(--cds-checkbox-glyph--xs, 1rem);
+	--cds-checkbox-radius: 0.25rem;
 	--cds-pad-xs: var(--cds-pad-xs--xs);
 	--cds-pad-sm: var(--cds-pad-sm--xs);
 	--cds-pad-md: var(--cds-pad-md--xs);

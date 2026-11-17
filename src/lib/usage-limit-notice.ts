@@ -191,12 +191,14 @@ const LIMIT_NOUNS: Record<"generic" | LimitWindow, string> =
 	weekly: "weekly",
 };
 
-/** Upstream's windowed `hintWithoutRetry`: the viewer offers no Try again, only the composer. */
-function windowHint(kind: "generic" | LimitWindow, reset: ResetAt | null): string
+/** Upstream's windowed hints: `hint` when the card offers Try again, else `hintWithoutRetry` (send from the composer). */
+function windowHint(kind: "generic" | LimitWindow, reset: ResetAt | null, canRetry: boolean): string
 {
-	if (reset !== null) return `Your ${LIMIT_NOUNS[kind]} limit resets ${when(reset)}. Send a message then.`;
-	if (kind === "generic") return "You’ve reached your usage limit. Send a message after your limit resets.";
-	return `Send a message after your ${LIMIT_NOUNS[kind]} limit resets.`;
+	if (reset !== null)
+		return `Your ${LIMIT_NOUNS[kind]} limit resets ${when(reset)}. ${canRetry ? "Try again" : "Send a message"} then.`;
+	const act = canRetry ? "Try again" : "Send a message";
+	if (kind === "generic") return `You’ve reached your usage limit. ${act} after your limit resets.`;
+	return `${act} after your ${LIMIT_NOUNS[kind]} limit resets.`;
 }
 
 function modelHint(model: string, reset: ResetAt | null): string
@@ -215,6 +217,8 @@ export function usageLimitCard(
 	text: string,
 	nowMs: number,
 	timeZone?: string,
+	/** The card offers Try again, which picks upstream's retry hint for a window. */
+	canRetry = false,
 ): UsageLimitCard | null
 {
 	const live = limit !== undefined && limit.resetsAt * 1000 > nowMs ? limit : undefined;
@@ -237,7 +241,7 @@ export function usageLimitCard(
 	{
 		return {
 			headline: HEADLINES[kind],
-			hint: windowHint(kind, reset),
+			hint: windowHint(kind, reset, canRetry),
 		};
 	}
 	const headline = kind === "extra_usage_off" && window !== undefined ? HEADLINES[window] : HEADLINES[kind];

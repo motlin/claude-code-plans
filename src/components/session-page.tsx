@@ -11,7 +11,7 @@ import {latestBreakdown, preferNewerBreakdown, railContextPercent} from "../lib/
 import {sessionContextBreakdownQueryOptions} from "../lib/api/context-breakdown";
 import {customizeMcpServersQueryOptions, sessionConnectors} from "../lib/api/customize";
 import {usageQueryOptions} from "../lib/api/usage";
-import {focusComposer, refillComposer, refillRejectedSend, takeBackSend} from "../lib/context-attach";
+import {focusComposer, getComposerText, refillComposer, refillRejectedSend, takeBackSend} from "../lib/context-attach";
 import {rewindStepsBack, rewindTurns} from "../lib/rewind-picker";
 import {SessionRailSlot} from "./session-rail/session-rail-slot";
 import
@@ -31,6 +31,7 @@ import {SessionChaptersToc} from "./session-chapters-toc";
 import {TranscriptActionsProvider} from "./transcript-actions-provider";
 import {TurnUndoSendContext} from "./turn-undo-send-context";
 import {useSessionFork} from "../hooks/use-session-fork";
+import {useLimitAutoResume} from "../hooks/use-limit-auto-resume";
 import {ArchivedComposerNote} from "./archived-composer-note";
 import {Composer, type ComposerRewindState} from "./composer";
 import type {UsageRingContext} from "./usage-popover-context";
@@ -2021,6 +2022,16 @@ function SessionView({
 			parkedDecision,
 		],
 	);
+	const autoResumeAnnouncement = useLimitAutoResume(
+		{
+			sessionId,
+			lines: processed.lines,
+			retryable: errorRetryable,
+			send: sendErrorRecoveryPrompt,
+			composerText: () => getComposerText(sessionId),
+			parked: parkedDecision,
+		},
+	);
 	const sendLivePrompt = useCallback(
 		async (prompt: string) =>
 		{
@@ -2295,6 +2306,9 @@ function SessionView({
 							data-perf-session-route={routeId === sessionId ? undefined : routeId}
 							style={transcriptWidthStyle(settings.transcriptWidth)}
 						>
+							<span role="status" className="sr-only">
+								{autoResumeAnnouncement}
+							</span>
 							<TileHost
 								sessionId={sessionId}
 								onExpandWithoutPane={toggleChromeHidden}

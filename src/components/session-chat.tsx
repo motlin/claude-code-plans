@@ -31,13 +31,19 @@ import {PLAN_NOT_APPROVED} from "../lib/exit-plan-mode";
 import {parseToolRejection} from "../lib/tool-rejection";
 import {parseAttachSnippets, type AttachSnippet} from "../lib/attach-markers";
 import {type DiffAnnotation, parseDiffAnnotations} from "../lib/diff-annotation-markers";
-import {ApiErrorCard, ApiErrorMarker, type ApiErrorRecovery, StopWarningCard} from "./api-error-card";
+import
+{
+	ApiErrorCard,
+	ApiErrorMarker,
+	type ApiErrorRecovery,
+	StopWarningCard,
+	UsageLimitErrorCard,
+} from "./api-error-card";
 import {HookBlockedPromptCard, HookBlockedPromptMarker} from "./hook-blocked-prompt";
 import {HookNoticeLine, HookNoticeRow} from "./hook-notice-row";
 import * as Collapsible from "./ui/collapsible";
 import {prefillComposer, requestComposerInsert, useHasComposer} from "../lib/context-attach";
 import {hasFindingOutcomes} from "../lib/report-findings";
-import {ErrorCardShell} from "./error-card-shell";
 import {ExternalTextLink} from "./external-text-link";
 import {ShimmerText} from "./shimmer-text";
 import {ThinkingStep} from "./thinking-step";
@@ -142,7 +148,9 @@ import {stripControlsAndMask} from "../lib/secret-mask";
 import {formatElapsed} from "../lib/elapsed-format";
 import {ELAPSED_MIN_SECONDS} from "../lib/working-marker";
 import {NoticeParts, TaskDescriptionLinks, type TaskEvent, TaskEventRun} from "./task-event-run-row";
-import {usageLimitCard, type UsageLimitCard} from "../lib/usage-limit-notice";
+import {usageLimitCard} from "../lib/usage-limit-notice";
+import {liveEntry, toggleAutoResume} from "../lib/limit-auto-resume";
+import {useAutoResumeEntry} from "../hooks/use-limit-auto-resume";
 import {useElapsedSeconds} from "../hooks/use-elapsed-seconds";
 import {inlinePathImages} from "./inline-path-images";
 import {type AttachedImage, UserAttachments} from "./user-attachments";
@@ -6906,7 +6914,7 @@ function AssistantEntry({
 				(limitCard === null ? (
 					<ApiErrorCardForLine line={line} text={errorText} />
 				) : (
-					<UsageLimitCardView card={limitCard} />
+					<UsageLimitCardForLine line={line} text={errorText} sessionId={sessionId} />
 				))}
 			{(line.isApiErrorMessage === true ? content.filter((block) => block.type !== "text") : content).map(
 				(block, i) => (
@@ -6966,22 +6974,37 @@ function AttributionRow({line, verbose}: {line: MessageSessionLine; verbose: boo
 }
 
 /**
- * Upstream's usage-limit error card: the shared error card shell with a danger
- * gauge, the limit's headline and its hint. Upstream's Try
- * again and Open usage settings are left out: a resend is not safe from here
- * and the settings fix is billing.
+ * Upstream's usage-limit error card for a line: the live session's recovery when it is the last error, and
+ * the session's auto-resume entry when the line is that entry's 5-hour window.
  */
-function UsageLimitCardView({card}: {card: UsageLimitCard})
+function UsageLimitCardForLine({line, text, sessionId}: {line: MessageSessionLine; text: string; sessionId: string})
 {
+	const lastError = useContext(LastErrorLineContext);
+	const entry = liveEntry(useAutoResumeEntry(sessionId), Date.now());
+	const limit = line.usageLimit;
+	const recovery = lastError.line === line ? lastError.recovery : undefined;
+	const offered =
+		recovery !== undefined &&
+		limit?.rateLimitType === "five_hour" &&
+		entry !== undefined &&
+		entry.resetsAt === limit.resetsAt;
 	return (
-		<ErrorCardShell
-			data={
-			{
-				"data-usage-limit-card": "",
-			}}
-			headline={card.headline}
-			hint={card.hint}
-			icon="gauge"
+		<UsageLimitErrorCard
+			limit={limit}
+			text={text}
+			recovery={recovery}
+			autoResume={
+				offered
+					?
+						{
+							entry,
+							onToggle: (checked) =>
+							{
+								toggleAutoResume(sessionId, checked, Date.now());
+							},
+						}
+					: undefined
+			}
 		/>
 	);
 }

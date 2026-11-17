@@ -1,14 +1,17 @@
 import {Check, Copy, Gauge, TriangleAlert} from "lucide-react";
-import {type ReactNode, useState} from "react";
+import {type ReactNode, useId, useState} from "react";
 
 import {type ApiErrorCategory, classifyApiError, errorCopy, refusalPassthrough} from "../lib/api-error-category";
 import {parseApiErrorDetails} from "../lib/api-error-details";
 import {categoryRecoveryHelps, fallbackModel, type RecoveryAction, recoveryActions} from "../lib/api-error-recovery";
 import {modelLabel, primaryModelMenuValue, PRIMARY_MODELS} from "../lib/launch-options";
 import {writeClipboardText} from "../lib/clipboard";
+import {type AutoResumeEntry, fireAtSeconds, formatResumeTime} from "../lib/limit-auto-resume";
+import {type UsageLimit, usageLimitCard} from "../lib/usage-limit-notice";
 import {ErrorCardShell} from "./error-card-shell";
 import type {RecoveryHandlers} from "./error-recovery-actions";
 import {DeferredErrorRecoveryActions} from "./error-recovery-actions-entry";
+import {CdsCheckbox} from "./ui/checkbox";
 import * as Collapsible from "./ui/collapsible";
 import {useTimedFlag} from "../hooks/use-timed-flag";
 
@@ -361,9 +364,120 @@ export function ApiErrorCard(props: ApiErrorCardProps)
 	);
 }
 
+/** The session's auto-resume entry for a usage-limit card, and its checkbox's toggle. */
+export interface AutoResumeControl
+{
+	entry: AutoResumeEntry;
+	onToggle: (checked: boolean) => void;
+}
+
+/**
+ * Upstream's usage-limit error card (c3fef5c6f `x_` for a usage-limit `rate_limit`): the shared shell with a
+ * danger gauge, the limit's headline and hint, and the recovery row's Try again on the live last entry. For a
+ * 5-hour limit with an auto-resume entry, the options row holds the xs "Auto-continue when limits reset"
+ * checkbox until Try again is pressed; while it is armed, the hint is "Auto-resuming at {reset + 90 s}" and
+ * describes the checkbox. Upstream's Open usage settings is left out: the settings fix is billing.
+ */
+export function UsageLimitErrorCard({
+	limit,
+	text,
+	recovery,
+	autoResume,
+}: {
+	limit: UsageLimit | undefined;
+	text: string;
+	recovery?: ApiErrorRecovery | undefined;
+	autoResume?: AutoResumeControl | undefined;
+})
+{
+	const [retried, setRetried] = useState(false);
+	const hintId = useId();
+	const canRetry = recovery?.onRetry !== undefined && !retried;
+	const card = usageLimitCard(limit, text, Date.now(), undefined, canRetry);
+	if (card === null) return null;
+	const offer = canRetry ? autoResume : undefined;
+	const armedEntry = offer?.entry.armed === true ? offer.entry : undefined;
+	const armed = armedEntry !== undefined;
+	const {actions, handlers} =
+		recovery === undefined
+			?
+				{
+					actions: [],
+					handlers: undefined,
+				}
+			: cardRecovery(
+					{
+						category: "rate_limit",
+						rewindHelps: errorCopy(
+							"rate_limit",
+							{
+								canRewind: false,
+								canRetry,
+								hasComposer: true,
+							},
+						).rewindHelps,
+					},
+					recovery,
+					retried,
+				);
+	return (
+		<ErrorCardShell
+			data={
+			{
+				"data-usage-limit-card": "",
+			}}
+			headline={card.headline}
+			hint={
+				armedEntry === undefined ? (
+					card.hint
+				) : (
+					<span id={hintId}>{`Auto-resuming at ${formatResumeTime(fireAtSeconds(armedEntry) * 1000)}`}</span>
+				)
+			}
+			icon="gauge"
+			{...(offer !== undefined &&
+			{
+				options: (
+					<CdsCheckbox
+						size="xs"
+						checked={armed}
+						onCheckedChange={offer.onToggle}
+						label="Auto-continue when limits reset"
+						{...(armed &&
+						{
+							"aria-describedby": hintId,
+						})}
+					/>
+				),
+			})}
+			{...(recovery !== undefined &&
+			{
+				status: retried ? card.hint : "",
+			})}
+		>
+			{handlers !== undefined && actions.length > 0 && (
+				<ErrorDetails
+					details={undefined}
+					inCard={true}
+					actions={
+						<DeferredErrorRecoveryActions
+							actions={actions}
+							handlers={handlers}
+							onActed={() =>
+							{
+								setRetried(true);
+							}}
+						/>
+					}
+				/>
+			)}
+		</ErrorCardShell>
+	);
+}
+
 /** The card's inputs to upstream's recovery-row decision, and the handlers its buttons call. */
 function cardRecovery(
-	error: ResolvedApiError,
+	error: Pick<ResolvedApiError, "category" | "status" | "rewindHelps">,
 	recovery: ApiErrorRecovery,
 	retried: boolean,
 ):

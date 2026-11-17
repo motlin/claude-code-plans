@@ -99,7 +99,7 @@ describe("density type tokens", () =>
 					"--upstream-text-heading": "15px",
 					"--upstream-leading-heading": "20px",
 				},
-				comfortableDeclarations: 45,
+				comfortableDeclarations: 47,
 				compact:
 				{
 					"--upstream-text-body": "13px",
@@ -115,7 +115,7 @@ describe("density type tokens", () =>
 					"--upstream-text-heading": "14px",
 					"--upstream-leading-heading": "18px",
 				},
-				compactDeclarations: 45,
+				compactDeclarations: 47,
 				caption: "var(--upstream-text-caption)",
 				captionLeading: "var(--upstream-leading-caption)",
 			},
@@ -159,6 +159,9 @@ describe("checkbox tokens", () =>
 		{
 			size: token(source, "--cds-checkbox"),
 			radius: token(source, "--cds-checkbox-radius"),
+			glyph: token(source, "--cds-checkbox-glyph"),
+			xs: token(source, "--cds-checkbox--xs"),
+			xsGlyph: token(source, "--cds-checkbox-glyph--xs"),
 		});
 
 		expect(
@@ -166,6 +169,7 @@ describe("checkbox tokens", () =>
 				base: pair(block("@theme")),
 				compact: pair(block('[data-density="compact"]')),
 				comfortable: pair(block('[data-density="comfortable"]')),
+				xsScope: pair(block('[data-size="xs"]')),
 			},
 		).toStrictEqual(
 			{
@@ -173,16 +177,33 @@ describe("checkbox tokens", () =>
 				{
 					size: "1rem",
 					radius: "0.25rem",
+					glyph: "1rem",
+					xs: null,
+					xsGlyph: null,
 				},
 				compact:
 				{
 					size: "1rem",
 					radius: "0.25rem",
+					glyph: null,
+					xs: "0.875rem",
+					xsGlyph: "0.875rem",
 				},
 				comfortable:
 				{
 					size: "1.25rem",
 					radius: "0.3125rem",
+					glyph: null,
+					xs: "1rem",
+					xsGlyph: "1rem",
+				},
+				xsScope:
+				{
+					size: "var(--cds-checkbox--xs, 1rem)",
+					radius: "0.25rem",
+					glyph: "var(--cds-checkbox-glyph--xs, 1rem)",
+					xs: null,
+					xsGlyph: null,
 				},
 			},
 		);

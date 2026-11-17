@@ -7,6 +7,13 @@ import {preloadErrorRecoveryActions} from "../src/components/error-recovery-acti
 import {SessionChat} from "../src/components/session-chat";
 import {errorRecoveryHandlers, type ModelRetry} from "../src/lib/session-error-recovery";
 import {processTranscript} from "../src/lib/transcript";
+import
+{
+	AUTO_RESUME_OPT_IN_KEY,
+	type AutoResumeEntry,
+	resetAutoResumeStore,
+	setAutoResumeEntry,
+} from "../src/lib/limit-auto-resume";
 
 vi.mock("../src/components/settings-context", () => (
 {
@@ -1735,5 +1742,255 @@ describe("SessionChat error recovery", () =>
 		);
 
 		expect(container.querySelectorAll("[data-api-error-actions]").length).toBe(0);
+	});
+});
+
+const SESSION_ID = "limit-session";
+const NOW = Date.parse("2026-11-17T03:00:00Z");
+/** 4:00 AM UTC (tests run in UTC). */
+const RESETS_AT = Date.parse("2026-11-17T04:00:00Z") / 1000;
+
+const LIMIT_PROMPT_RECORD =
+{
+	type: "user",
+	uuid: "8d0f0f8e-0000-4000-8000-000000000001",
+	timestamp: "2026-11-17T02:59:00.000Z",
+	message:
+	{
+		role: "user",
+		content: "hello",
+	},
+};
+
+function limitRecord(rateLimitType: string)
+{
+	return {
+		type: "assistant",
+		uuid: "8d0f0f8e-0000-4000-8000-000000000002",
+		timestamp: "2026-11-17T02:59:30.000Z",
+		message:
+		{
+			role: "assistant",
+			model: "<synthetic>",
+			content: [
+				{
+					type: "text",
+					text: "You've hit your session limit · resets 4am (UTC)",
+				},
+			],
+		},
+		isApiErrorMessage: true,
+		apiErrorStatus: 429,
+		apiError: "usage_limit_reached",
+		apiErrorParams:
+		{
+			rate_limit_info:
+			{
+				status: "rejected",
+				resetsAt: RESETS_AT,
+				rateLimitType,
+				overageStatus: "rejected",
+				overageDisabledReason: "",
+				isUsingOverage: false,
+			},
+		},
+	};
+}
+
+const ARMED: AutoResumeEntry =
+{
+	resetsAt: RESETS_AT,
+	attempt: 0,
+	optedIn: true,
+	armed: true,
+};
+
+function renderLimit(rateLimitType: string, recovery?: ApiErrorRecovery): HTMLElement
+{
+	const {lines, toolResultMap} = processTranscript([LIMIT_PROMPT_RECORD, limitRecord(rateLimitType)]);
+	return render(
+		<SessionChat
+			sessionId={SESSION_ID}
+			lines={lines}
+			toolResultMap={toolResultMap}
+			showCompactSummaries={true}
+			showTranscriptOnly={true}
+			shouldScrollToEnd={false}
+			transcriptMode="normal"
+			{...(recovery !== undefined &&
+			{
+				errorRecovery: recovery,
+			})}
+		/>,
+	).container;
+}
+
+function limitCardView(container: HTMLElement)
+{
+	const card = container.querySelector("[data-usage-limit-card]");
+	const checkbox = card?.querySelector('[data-cds="Checkbox"]');
+	const describedBy = checkbox?.getAttribute("aria-describedby") ?? null;
+	return {
+		hint: card?.querySelector("span.text-secondary")?.textContent,
+		tryAgain: [...(card?.querySelectorAll("button") ?? [])].some((button) => button.textContent === "Try again"),
+		checkbox:
+			checkbox === undefined || checkbox === null
+				? null
+				:
+					{
+						size: checkbox.getAttribute("data-size"),
+						checked: checkbox.getAttribute("aria-checked"),
+						label: checkbox.textContent,
+						describes: describedBy === null ? null : document.getElementById(describedBy)?.textContent,
+					},
+	};
+}
+
+describe("usage-limit card recovery and auto-resume", () =>
+{
+	beforeAll(async () =>
+	{
+		await preloadErrorRecoveryActions();
+	});
+	beforeEach(() =>
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["Date"],
+			},
+		);
+		vi.setSystemTime(NOW);
+		resetAutoResumeStore();
+	});
+	afterEach(() =>
+	{
+		resetAutoResumeStore();
+	});
+
+	it("has no Try again and no checkbox without the session's recovery", () =>
+	{
+		setAutoResumeEntry(SESSION_ID, ARMED);
+		expect(limitCardView(renderLimit("five_hour"))).toStrictEqual(
+			{
+				hint: "Your session limit resets at 4:00 AM. Send a message then.",
+				tryAgain: false,
+				checkbox: null,
+			},
+		);
+	});
+
+	it("offers Try again and an armed xs checkbox whose hint is the reset plus 90 s", () =>
+	{
+		setAutoResumeEntry(SESSION_ID, ARMED);
+		const onRetry = vi.fn<() => boolean>(() => true);
+		expect(
+			limitCardView(
+				renderLimit(
+					"five_hour",
+					{
+						onRetry,
+					},
+				),
+			),
+		).toStrictEqual(
+			{
+				hint: "Auto-resuming at 4:01 AM",
+				tryAgain: true,
+				checkbox:
+				{
+					size: "xs",
+					checked: "true",
+					label: "Auto-continue when limits reset",
+					describes: "Auto-resuming at 4:01 AM",
+				},
+			},
+		);
+	});
+
+	it("unchecking restores the limit hint, drops describedby and saves the pref", () =>
+	{
+		setAutoResumeEntry(SESSION_ID, ARMED);
+		const container = renderLimit(
+			"five_hour",
+			{
+				onRetry: () => true,
+			},
+		);
+		act(() =>
+		{
+			fireEvent.click(container.querySelector('[data-cds="Checkbox"]')!);
+		});
+		expect(
+			{
+				...limitCardView(container),
+				pref: localStorage.getItem(AUTO_RESUME_OPT_IN_KEY),
+			},
+		).toStrictEqual(
+			{
+				hint: "Your session limit resets at 4:00 AM. Try again then.",
+				tryAgain: true,
+				checkbox:
+				{
+					size: "xs",
+					checked: "false",
+					label: "Auto-continue when limits reset",
+					describes: null,
+				},
+				pref: "false",
+			},
+		);
+	});
+
+	it("drops the checkbox once Try again is pressed", () =>
+	{
+		setAutoResumeEntry(SESSION_ID, ARMED);
+		const onRetry = vi.fn<() => boolean>(() => true);
+		const container = renderLimit(
+			"five_hour",
+			{
+				onRetry,
+			},
+		);
+		const retry = [...container.querySelectorAll("[data-usage-limit-card] button")].find(
+			(button) => button.textContent === "Try again",
+		);
+		act(() =>
+		{
+			fireEvent.click(retry!);
+		});
+		expect(
+			{
+				...limitCardView(container),
+				retries: onRetry.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				hint: "Your session limit resets at 4:00 AM. Send a message then.",
+				tryAgain: false,
+				checkbox: null,
+				retries: 1,
+			},
+		);
+	});
+
+	it("draws no checkbox for a weekly limit", () =>
+	{
+		setAutoResumeEntry(SESSION_ID, ARMED);
+		expect(
+			limitCardView(
+				renderLimit(
+					"seven_day",
+					{
+						onRetry: () => true,
+					},
+				),
+			),
+		).toStrictEqual(
+			{
+				hint: "Your weekly limit resets at 4:00 AM. Try again then.",
+				tryAgain: true,
+				checkbox: null,
+			},
+		);
 	});
 });

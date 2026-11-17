@@ -4,7 +4,7 @@ import type {DeliveryResult} from "../hooks/use-composer-queue";
 import {FAILURE_MESSAGE} from "../hooks/use-live-launch-options";
 import type {LiveOptionChange} from "./launch-options";
 import type {ParkDecision} from "./parked-prompts";
-import type {SessionLine} from "./transcript";
+import type {MessageSessionLine, SessionLine} from "./transcript";
 import type {WorkingMarkerState} from "./working-marker";
 
 /** What decides whether the last API error card can act on the live session. */
@@ -275,9 +275,17 @@ function isTranscriptEntry(line: SessionLine): boolean
 	return line.type === "assistant" || (line.type === "user" && line.isMeta !== true);
 }
 
+/** The transcript's last user or assistant entry (past system and meta records) when it is an API error. */
+export function lastEntryError(lines: readonly SessionLine[]): MessageSessionLine | undefined
+{
+	const last = lines.findLast(isTranscriptEntry);
+	return last?.type === "assistant" && (last.isApiErrorMessage === true || last.stopReason === "refusal")
+		? last
+		: undefined;
+}
+
 /** Whether the transcript's last user or assistant entry (past system and meta records) is an API error. */
 export function lastEntryIsError(lines: readonly SessionLine[]): boolean
 {
-	const last = lines.findLast(isTranscriptEntry);
-	return last?.type === "assistant" && (last.isApiErrorMessage === true || last.stopReason === "refusal");
+	return lastEntryError(lines) !== undefined;
 }
