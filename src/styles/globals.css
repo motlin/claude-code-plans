@@ -5366,6 +5366,13 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	}
 }
 
+/* Upstream c353d5dab: the move cursor everywhere in the tiles viewport while a tile is dragged. */
+.tiles-dragging,
+.tiles-dragging *
+{
+	cursor: move !important;
+}
+
 /*
  * Upstream .dframe-root[data-variant="web"] .dframe-sidebar-body [data-row]: every row in the
  * sidebar body ends one 2px stack gap above the next (a 34px nav pitch). Session rows already

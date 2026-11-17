@@ -465,12 +465,13 @@ function actualScrollport()
 	]);
 	return owners[0]!;
 }
+/** The plan pane's Move grip, named "Move down" and so on while a split preview waits for Enter. */
 function paneMove()
 {
 	return within(document.querySelector<HTMLElement>('[data-tile-slot="plan"]')!).getByRole(
 		"button",
 		{
-			name: "Move",
+			name: /^Move( (left|right|up|down))?$/,
 		},
 	);
 }

@@ -119,6 +119,7 @@ export function Tooltip({
 	variant,
 	closeOnClick = true,
 	openOnClick = false,
+	forceOpen = false,
 	markOpen = false,
 	trackCursor,
 	suppressAfterPopup = false,
@@ -166,6 +167,8 @@ export function Tooltip({
 	 * sets `open`, with `closeOnClick: false`). Pointer leave still closes it, as upstream's `hoverable: false`.
 	 */
 	openOnClick?: boolean;
+	/** Hold the tip open regardless of hover and focus, e.g. upstream's Move grip during a keyboard split preview. */
+	forceOpen?: boolean;
 	/** Mark the anchored child `data-popup-open` while the tip is open, as Base UI's tooltip trigger does. */
 	markOpen?: boolean;
 	/**
@@ -214,7 +217,8 @@ export function Tooltip({
 	});
 	const portal = portalProp ?? inheritedPortal;
 	const id = useId();
-	const [open, setOpen] = useState(false);
+	const [hovered, setHovered] = useState(false);
+	const open = hovered || forceOpen;
 	/** Upstream's `data-instant="focus"`: the tip opened at once because keyboard focus arrived. */
 	const [openedByFocus, setOpenedByFocus] = useState(false);
 	const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -355,7 +359,7 @@ export function Tooltip({
 			}
 			if (byFocus) setOpenedByFocus(true);
 			group?.claim(groupHide);
-			setOpen(true);
+			setHovered(true);
 		};
 		if (openDelay === 0) reveal();
 		else timer.current = setTimeout(reveal, openDelay);
@@ -370,7 +374,7 @@ export function Tooltip({
 	{
 		clearTimeout(timer.current);
 		group?.release(groupHide);
-		setOpen(false);
+		setHovered(false);
 		setOpenedByFocus(false);
 	}
 

@@ -30,7 +30,6 @@ import
 	CHAT_OVERFLOW_MIN_PX,
 	collapsePane,
 	defaultPaneLayout,
-	dropPreview,
 	expandPane,
 	fitPhoneLayout,
 	focusNeighbour,
@@ -41,9 +40,6 @@ import
 	loadLastPaneFlex,
 	loadPaneLayout,
 	minTileSize,
-	movePane,
-	movePaneTo,
-	movePreview,
 	openPane,
 	parseTileId,
 	rememberPaneFlex,
@@ -59,8 +55,6 @@ import
 	updatePhoneView,
 	type Direction,
 	type LayoutNode,
-	type MoveDirection,
-	type MovePreview,
 	type PaneKind,
 	type PaneLayoutState,
 	type ResolvedNode,
@@ -69,6 +63,19 @@ import
 	type TileShellEdges,
 } from "../../lib/pane-layout";
 import {siblingMovedAhead, TileContentHosts} from "../../lib/tile-content-hosts";
+import
+{
+	applyTileDrop,
+	dropIndicatorOutset,
+	KEYBOARD_MOVE_KEYS,
+	keyboardTileMove,
+	stackDropFeedback,
+	stackRectKey,
+	wrapDropEdge,
+	type DropEdge,
+	type KeyboardPreviewSide,
+	type TileDropTarget,
+} from "../../lib/tile-drop";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {Tooltip} from "../ui/tooltip";
 import {PANE_HEADER_ICON_BUTTON_CLASS} from "./pane-classes";
@@ -82,13 +89,12 @@ import
 } from "./pane-host-context";
 import {type PaneDefinition, usePaneDefinitions} from "./pane-registry";
 import {TileRowEndContext} from "./tile-row-end-context";
+import {TILE_DRAG_LIFT_PX, useTileDrag} from "./use-tile-drag";
 
 /** Upstream `--tiles-gap`, mirrored by the reducer's gap maths. */
 const TILE_GAP_PX = 12;
 const RESIZE_STEP_PX = 16;
 const RESIZE_STEP_LARGE_PX = 64;
-/** A Move grip press becomes a drag once the pointer travels this far. */
-const DRAG_THRESHOLD_PX = 4;
 /**
  * Below 640px upstream keeps the split: a side pane holds its 280px minimum
  * beside the chat, which squeezes down to 100px (measured at 386x741, 2026-10-30).
@@ -132,18 +138,20 @@ function isUserInputKey(event: KeyboardEvent): boolean
 	return !event.ctrlKey && !event.metaKey && !event.altKey && !MODIFIER_KEYS.has(event.key);
 }
 
-interface PendingMove
+/** Upstream `keyboardPreview`: a perpendicular Move key waiting for Enter, and the split it would make. */
+interface KeyboardPreview
 {
 	tileId: TileId;
-	direction: MoveDirection;
+	side: KeyboardPreviewSide;
+	target: TileDropTarget;
 }
 
-/** Where a pointer drag on Move would drop `tileId`: the `side` half of `targetId`. */
-interface PointerDrop
+/** Upstream `lastKeyboardMove`: re-keyed per move so a repeat announces again. */
+interface KeyboardMoveNotice
 {
-	tileId: TileId;
-	targetId: TileId;
-	side: MoveDirection;
+	position: number;
+	total: number;
+	seq: number;
 }
 
 interface InternalHost
@@ -151,16 +159,22 @@ interface InternalHost
 	definitions: ReadonlyMap<PaneKind, PaneDefinition>;
 	layout: PaneLayoutState;
 	update: (fn: LayoutUpdate) => void;
-	/** The perpendicular move waiting for Enter, and the outline it draws. */
-	pendingMove: PendingMove | null;
-	preview: MovePreview | null;
+	/** The perpendicular Move key waiting for Enter. */
+	keyboardPreview: KeyboardPreview | null;
+	setKeyboardPreview: (preview: KeyboardPreview | null) => void;
+	announceMove: (position: number, total: number) => void;
+	lastKeyboardMove: KeyboardMoveNotice | null;
+	/** Upstream `dropFeedback.target`: the pointer drag's target, else the keyboard preview's. */
+	dropTarget: TileDropTarget | null;
 	/** Upstream's per-root content-host registry: each tile's content lives in a host its shell adopts. */
 	contentHosts: TileContentHosts;
-	setPendingMove: (move: PendingMove | null) => void;
-	setPointerDrop: (drop: PointerDrop | null) => void;
-	/** The tile a Move grip drag is carrying (upstream's `dragVisualTileId`), or null; drives `data-tiles-moving`. */
+	/** Upstream `interaction.mode === "dragging-tile"`: the tile a Move grip drag is carrying, or null. */
+	dragging: TileId | null;
+	/** Upstream `dragVisualTileId`: the lifted tile, held until it settles; drives `data-tiles-moving`. */
 	movingTile: TileId | null;
-	setMovingTile: (tileId: TileId | null) => void;
+	startDrag: (tileId: TileId, event: ReactPointerEvent<HTMLElement>) => void;
+	/** Each non-root stack's element by `stackRectKey`, which the drag measures. */
+	stackElements: Map<string, HTMLElement>;
 	expanded: PaneKind | null;
 	/** Upstream `hiddenTileIds`: kept tiles other than the expanded one, mounted but inert and hidden. */
 	hidden: ReadonlySet<TileId>;
@@ -416,6 +430,7 @@ function Divider({
 	sizePx,
 	stackRef,
 	corners,
+	isDropTarget,
 	host,
 }: {
 	stack: StackNode;
@@ -425,6 +440,8 @@ function Divider({
 	stackRef: RefObject<HTMLDivElement | null>;
 	/** Root dividers beside this column divider, keyed by the side they meet it on. */
 	corners: Partial<Record<"left" | "right", number>>;
+	/** Upstream `Ot` `isDropTarget`: a drop between these children turns the grip into a full-length accent bar. */
+	isDropTarget: boolean;
 	host: InternalHost;
 })
 {
@@ -470,7 +487,7 @@ function Divider({
 			: {};
 	const isRow = stack.direction === "row";
 	// Upstream's `isDisabled: isDraggingTile`: no divider takes focus or a pointer while a tile is carried.
-	const disabled = host.movingTile !== null;
+	const disabled = host.dragging !== null;
 	const resizedIds = [...tileIdsOf(before), ...tileIdsOf(after)];
 
 	function resizeBy(deltaPx: number, remember = false)
@@ -596,21 +613,37 @@ function Divider({
 					: "h-px cursor-row-resize bg-border-line before:absolute before:inset-x-0 before:-top-1.5 before:bottom-0 before:content-['']"
 			}`}
 		>
-			{/* Upstream's tiles-handle-line: a 2px accent line centred on the hairline, lit on hover after 100ms and at once while dragging. */}
-			<span
-				aria-hidden
-				data-tile-divider-line
-				className={`pointer-events-none absolute ${
-					isRow ? "inset-y-0 left-[-0.5px] w-[2px]" : "inset-x-0 top-[-0.5px] h-[2px]"
-				} bg-fill-accent opacity-0 transition-opacity duration-200 delay-100 group-hover/divider:opacity-100 group-data-dragging/divider:opacity-100 group-data-dragging/divider:duration-[120ms] group-data-dragging/divider:delay-0 group-focus-visible/divider:opacity-0`}
-			/>
+			{/* Upstream's tiles-handle-line: a 2px accent line centred on the hairline, lit on hover after 100ms and at once
+			    while dragging. A drop target renders none. */}
+			{!isDropTarget && (
+				<span
+					aria-hidden
+					data-tile-divider-line
+					className={`pointer-events-none absolute ${
+						isRow ? "inset-y-0 left-[-0.5px] w-[2px]" : "inset-x-0 top-[-0.5px] h-[2px]"
+					} bg-fill-accent opacity-0 transition-opacity duration-200 delay-100 group-hover/divider:opacity-100 group-data-dragging/divider:opacity-100 group-data-dragging/divider:duration-[120ms] group-data-dragging/divider:delay-0 group-focus-visible/divider:opacity-0`}
+				/>
+			)}
 			{/* Upstream's tiles-handle-affordance: absolutely centred 3x56 so the 1px divider cannot shrink it; in line mode
-			    only keyboard focus shows it, in --tile-resize-color-focus. */}
+			    only keyboard focus shows it, in --tile-resize-color-focus. As a drop target it runs the full length in
+			    --tile-indicator-color at opacity 1. */}
 			<span
 				aria-hidden
 				data-tile-divider-grip
-				className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-fill-accent opacity-0 transition-opacity duration-[120ms] group-focus-visible/divider:opacity-100 ${
-					isRow ? "h-14 w-[3px]" : "h-[3px] w-14"
+				{...(isDropTarget
+					?
+						{
+							"data-tile-divider-drop-target": "",
+						}
+					: {})}
+				className={`pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-fill-accent ${
+					isDropTarget ? "opacity-100" : "opacity-0"
+				} transition-opacity duration-[120ms] ${
+					isDropTarget
+						? isRow
+							? "h-full w-[3px]"
+							: "h-[3px] w-full"
+						: `group-focus-visible/divider:opacity-100 ${isRow ? "h-14 w-[3px]" : "h-[3px] w-14"}`
 				}`}
 			/>
 			{Object.entries(corners).map(([side, rootIndex]) => (
@@ -746,148 +779,105 @@ function TileCorner({
 	);
 }
 
-function dropSide(rect: DOMRect, clientX: number, clientY: number): MoveDirection
-{
-	const x = rect.width > 0 ? (clientX - rect.left) / rect.width : 0.5;
-	const y = rect.height > 0 ? (clientY - rect.top) / rect.height : 0.5;
-	const edges: Array<[MoveDirection, number]> = [
-		["left", x],
-		["right", 1 - x],
-		["top", y],
-		["bottom", 1 - y],
-	];
-	return edges.reduce((nearest, edge) => (edge[1] < nearest[1] ? edge : nearest))[0];
-}
-
-/** The tile under the pointer and the half nearest it, or null over the dragged tile or no tile. */
-function dropAt(tileId: TileId, clientX: number, clientY: number): PointerDrop | null
-{
-	// The content host is display:contents and has no box, so measure the tile's slot around it.
-	const element = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>("[data-tile-slot]");
-	if (element === null || element === undefined) return null;
-	const targetId = parseTileId(element.dataset["tileSlot"]);
-	if (targetId === null || targetId === tileId) return null;
-	return {
-		tileId,
-		targetId,
-		side: dropSide(element.getBoundingClientRect(), clientX, clientY),
-	};
-}
-
-const MOVE_KEYS: Readonly<Record<string, MoveDirection>> =
-{
-	ArrowLeft: "left",
-	ArrowRight: "right",
-	ArrowUp: "top",
-	ArrowDown: "bottom",
-};
-
 const MOVE_HINT =
 	"Arrow keys move the tile. Perpendicular arrows preview a split; press Enter to commit or Escape to cancel.";
 
+/** Upstream `bt`: the Move grip's label while a keyboard split preview waits. */
+const PREVIEW_LABELS: Readonly<Record<KeyboardPreviewSide, string>> =
+{
+	left: "Move left",
+	right: "Move right",
+	up: "Move up",
+	down: "Move down",
+};
+
 /**
- * Upstream's Move grip. Arrows along the tile's stack move it straight away;
- * perpendicular arrows outline the split first, Enter commits and Escape cancels.
+ * Upstream's Move grip `Tt`. A press starts a tile drag at once. Arrows, Home and End along the tile's stack move it
+ * straight away; perpendicular arrows preview a split of the parent stack, Enter or Space commits and Escape cancels.
  */
 function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost})
 {
 	const hintId = `pane-move-hint-${tileId}`;
-	const pending = host.pendingMove?.tileId === tileId ? host.pendingMove : null;
-	const dragRef = useRef<
-	{
-		x: number;
-		y: number;
-		dragging: boolean;
-	} | null>(null);
-
-	function onPointerDown(event: ReactPointerEvent<HTMLButtonElement>)
-	{
-		if (event.button !== 0) return;
-		event.currentTarget.setPointerCapture(event.pointerId);
-		dragRef.current =
-		{
-			x: event.clientX,
-			y: event.clientY,
-			dragging: false,
-		};
-	}
-
-	function onPointerMove(event: ReactPointerEvent<HTMLButtonElement>)
-	{
-		const drag = dragRef.current;
-		if (drag === null) return;
-		if (!drag.dragging && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) < DRAG_THRESHOLD_PX) return;
-		if (!drag.dragging) host.setMovingTile(tileId);
-		drag.dragging = true;
-		host.setPendingMove(null);
-		host.setPointerDrop(dropAt(tileId, event.clientX, event.clientY));
-	}
-
-	function onPointerUp(event: ReactPointerEvent<HTMLButtonElement>)
-	{
-		const drag = dragRef.current;
-		dragRef.current = null;
-		event.currentTarget.releasePointerCapture(event.pointerId);
-		host.setPointerDrop(null);
-		host.setMovingTile(null);
-		const drop = drag?.dragging === true ? dropAt(tileId, event.clientX, event.clientY) : null;
-		if (drop !== null) host.update((state) => movePaneTo(state, tileId, drop.targetId, drop.side));
-	}
-
-	function onPointerCancel(event: ReactPointerEvent<HTMLButtonElement>)
-	{
-		dragRef.current = null;
-		event.currentTarget.releasePointerCapture(event.pointerId);
-		host.setPointerDrop(null);
-		host.setMovingTile(null);
-	}
+	const preview = host.keyboardPreview?.tileId === tileId ? host.keyboardPreview : null;
+	const active = host.dragging === tileId;
 
 	function onKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>)
 	{
-		if (pending !== null && (event.key === "Enter" || event.key === "Escape"))
+		if (host.dragging !== null) return;
+		if (event.key === "Enter" || event.key === " " || event.key === "Escape")
 		{
+			if (preview === null) return;
 			event.preventDefault();
 			event.stopPropagation();
-			host.setPendingMove(null);
-			if (event.key === "Enter") host.update((state) => movePane(state, tileId, pending.direction));
+			host.setKeyboardPreview(null);
+			if (event.key !== "Escape") host.update((state) => applyTileDrop(state, tileId, preview.target));
 			return;
 		}
-		const direction = MOVE_KEYS[event.key];
-		if (direction === undefined) return;
+		if (event.metaKey || event.ctrlKey || event.altKey || !KEYBOARD_MOVE_KEYS.has(event.key)) return;
 		event.preventDefault();
-		if (movePreview(host.layout, tileId, direction) !== null)
+		const move = keyboardTileMove(host.layout.root, tileId, event.key);
+		if (move?.kind === "preview")
 		{
-			host.setPendingMove(
+			host.setKeyboardPreview(
 				{
 					tileId,
-					direction,
+					side: move.side,
+					target: move.target,
 				},
 			);
 			return;
 		}
-		host.setPendingMove(null);
-		host.update((state) => movePane(state, tileId, direction));
+		host.setKeyboardPreview(null);
+		if (move === null) return;
+		host.update((state) => applyTileDrop(state, tileId, move.target));
+		host.announceMove(move.position, move.total);
 	}
 
+	const label = preview === null ? "Move" : PREVIEW_LABELS[preview.side];
 	return (
 		<div className="absolute top-0 left-1/2 z-10 flex -translate-x-1/2">
-			<Tooltip content="Move" side="bottom">
+			<Tooltip
+				content={label}
+				side="bottom"
+				{...(preview === null
+					? {}
+					:
+						{
+							shortcut: "enter",
+							forceOpen: true,
+						})}
+			>
 				<button
 					type="button"
-					aria-label="Move"
+					aria-label={label}
 					aria-describedby={hintId}
+					{...(preview === null
+						? {}
+						:
+							{
+								"data-pane-editor": "",
+							})}
+					{...(active
+						?
+							{
+								"data-active": "",
+							}
+						: {})}
 					onKeyDown={onKeyDown}
-					onPointerDown={onPointerDown}
-					onPointerMove={onPointerMove}
-					onPointerUp={onPointerUp}
-					onPointerCancel={onPointerCancel}
+					onPointerDown={(event) =>
+					{
+						host.setKeyboardPreview(null);
+						host.startDrag(tileId, event);
+					}}
 					onBlur={() =>
 					{
-						if (pending !== null) host.setPendingMove(null);
+						if (preview !== null) host.setKeyboardPreview(null);
 					}}
 					className="group/move flex h-4 w-11 cursor-move touch-none items-center justify-center outline-none"
 				>
-					<span className="h-[3px] w-8 rounded-full bg-fill-grip opacity-0 transition-opacity group-hover/move:opacity-100 group-focus-visible/move:bg-accent-100 group-focus-visible/move:opacity-100" />
+					{/* Upstream's tiles-drag-handle-affordance: --tile-drag-color, focus in accent, and --tile-drag-color-active
+					    (fill-primary) on the grip of the tile being dragged. */}
+					<span className="h-[3px] w-8 rounded-full bg-fill-grip opacity-0 transition-opacity group-hover/move:opacity-100 group-focus-visible/move:bg-accent-100 group-focus-visible/move:opacity-100 group-data-[active]/move:bg-fill-primary group-data-[active]/move:opacity-100" />
 					<span id={hintId} className="sr-only">
 						{MOVE_HINT}
 					</span>
@@ -897,29 +887,53 @@ function MoveHandle({tileId, host}: {tileId: TileId; host: InternalHost})
 	);
 }
 
-const PREVIEW_SIDE_CLASSES: Readonly<Record<MoveDirection, string>> =
+/**
+ * Upstream's viewport status: during a keyboard split preview it tells how to commit; after a keyboard move it reads
+ * the tile's new position, re-keyed so a repeat announces again.
+ */
+function MoveStatus({host}: {host: InternalHost})
 {
-	left: "inset-y-0 left-0 w-1/2",
-	right: "inset-y-0 right-0 w-1/2",
-	top: "inset-x-0 top-0 h-1/2",
-	bottom: "inset-x-0 bottom-0 h-1/2",
-};
-
-function samePath(a: readonly number[], b: readonly number[]): boolean
-{
-	return a.length === b.length && a.every((value, index) => value === b[index]);
+	const preview = host.keyboardPreview;
+	const notice = host.lastKeyboardMove;
+	return (
+		<span role="status" className="sr-only">
+			{preview === null
+				? notice !== null && (
+						<span key={notice.seq}>{`Tile moved to position ${notice.position} of ${notice.total}`}</span>
+					)
+				: `Press Enter to move ${preview.side}, or Escape to cancel.`}
+		</span>
+	);
 }
 
-/** Outlines the half of the node at `path` that a pending split move will take. */
-function MovePreviewOutline({path, host}: {path: readonly number[]; host: InternalHost})
+/**
+ * Upstream `kt`: a 3px accent bar on one edge of a stack or tile, `outset` outside it, above every tile and divider.
+ */
+function TileDropIndicator({edge, outset}: {edge: DropEdge; outset: number})
 {
-	const preview = host.preview;
-	if (preview === null || !samePath(preview.path, path)) return null;
+	const vertical = edge === "left" || edge === "right";
 	return (
 		<div
 			aria-hidden
-			data-tile-move-preview={preview.side}
-			className={`pointer-events-none absolute z-20 rounded-r7 border-2 border-accent-100 bg-accent-100/10 ${PREVIEW_SIDE_CLASSES[preview.side]}`}
+			data-tile-drop-indicator={edge}
+			className="pointer-events-none absolute z-30 rounded-full bg-fill-accent"
+			style={
+			{
+				[edge]: -outset,
+				...(vertical
+					?
+						{
+							top: 0,
+							bottom: 0,
+							width: 3,
+						}
+					:
+						{
+							left: 0,
+							right: 0,
+							height: 3,
+						}),
+			}}
 		/>
 	);
 }
@@ -1110,6 +1124,20 @@ function StackView({
 	const size = isRoot ? host.rootSize : localSize;
 	const sizePx = stack.direction === "row" ? size.width : size.height;
 
+	const key = stackRectKey(path);
+	const {stackElements} = host;
+	useLayoutEffect(() =>
+	{
+		const element = localRef.current;
+		if (isRoot || element === null) return undefined;
+		stackElements.set(key, element);
+		return () =>
+		{
+			if (stackElements.get(key) === element) stackElements.delete(key);
+		};
+	}, [isRoot, key, stackElements]);
+	const feedback = stackDropFeedback(stack, path, host.dropTarget);
+
 	const childKeys = childSlotKeys(stack, orderKey, aheadKey);
 	const items: ReactNode[] = [];
 	// Keep the expanded pane and chat on their keyed paths so their reader state survives.
@@ -1126,6 +1154,7 @@ function StackView({
 					sizePx={sizePx}
 					stackRef={ref}
 					corners={cornersOf(path, host)}
+					isDropTarget={feedback.dividerIndex === index - 1}
 					host={host}
 				/>,
 			);
@@ -1168,7 +1197,9 @@ function StackView({
 						"data-tiles-moving": "",
 					}
 				: {})}
-			className={`flex h-full min-h-0 min-w-0 items-stretch ${stack.direction === "row" ? "flex-row" : "flex-col"}`}
+			className={`relative flex h-full min-h-0 min-w-0 items-stretch ${stack.direction === "row" ? "flex-row" : "flex-col"}${
+				isRoot && host.dragging !== null ? " tiles-dragging" : ""
+			}`}
 			style={
 				isRoot
 					? undefined
@@ -1179,6 +1210,12 @@ function StackView({
 			}
 		>
 			{items}
+			{feedback.edge !== null && (
+				<TileDropIndicator
+					edge={feedback.edge}
+					outset={dropIndicatorOutset(host.layout.root, path, feedback.edge)}
+				/>
+			)}
 		</div>
 	);
 }
@@ -1241,7 +1278,6 @@ function NodeView({
 					: {})}
 			>
 				<StackView stack={node} path={path} orderKey={orderKey} aheadKey={aheadKey} host={host} />
-				<MovePreviewOutline path={path} host={host} />
 			</div>
 		);
 	}
@@ -1258,6 +1294,7 @@ function NodeView({
 		return (
 			<TileSlot
 				tileId="chat"
+				path={path}
 				host={host}
 				orderKey={orderKey}
 				aheadKey={aheadKey}
@@ -1295,9 +1332,7 @@ function NodeView({
 							overflowAnchor: anchor,
 						})}
 				{...chatGutterAttributes(gutters)}
-			>
-				<MovePreviewOutline path={path} host={host} />
-			</TileSlot>
+			/>
 		);
 	}
 	const expanded = host.expanded === node.tileId;
@@ -1309,6 +1344,7 @@ function NodeView({
 	return (
 		<TileSlot
 			tileId={node.tileId}
+			path={path}
 			host={host}
 			orderKey={orderKey}
 			aheadKey={aheadKey}
@@ -1329,9 +1365,7 @@ function NodeView({
 						"data-pane-overlay": true,
 					}
 				: {})}
-		>
-			<MovePreviewOutline path={path} host={host} />
-		</TileSlot>
+		/>
 	);
 }
 
@@ -1381,7 +1415,7 @@ function TileSlot({
 	shellClassName,
 	shellStyle,
 	overflowAnchor,
-	children,
+	path,
 	...data
 }:
 {
@@ -1399,12 +1433,15 @@ function TileSlot({
 	shellClassName: string;
 	shellStyle?: CSSProperties | undefined;
 	overflowAnchor?: "left" | "right";
-	children: ReactNode;
+	/** The tile's path in the layout, which places a wrap drop indicator's outset. */
+	path: readonly number[];
 	"data-pane-overlay"?: boolean;
 } & ChatGutterAttributes)
 {
 	const {contentHosts} = host;
 	const edges = host.shellEdges.get(tileId);
+	const lifted = host.movingTile === tileId;
+	const wrapEdge = wrapDropEdge(tileId, host.dropTarget);
 	const cellRef = useRef<HTMLDivElement | null>(null);
 	// Upstream's shell ref: adopt the host on mount; the cleanup snapshots and parks it if it is still here.
 	const adopt = useCallback(
@@ -1446,7 +1483,13 @@ function TileSlot({
 							minWidth: 0,
 							...HIDDEN_TILE_STYLE,
 						}
-					: style
+					: lifted
+						?
+							{
+								...style,
+								...LIFTED_TILE_STYLE,
+							}
+						: style
 			}
 			inert={hidden}
 			{...(phone
@@ -1503,12 +1546,23 @@ function TileSlot({
 							"data-strip-over-end": "",
 						}
 					: {})}
-			>
-				{children}
-			</div>
+			/>
+			{wrapEdge !== null && (
+				<TileDropIndicator edge={wrapEdge} outset={dropIndicatorOutset(host.layout.root, path, wrapEdge)} />
+			)}
 		</div>
 	);
 }
+
+/**
+ * Upstream's dragged tile wrap: it follows the pointer (`--tile-drag-x/y`, written by the drag) lifted by dragLift.
+ * Local tiles share no 3D context, so z-index orders it above the other tiles and dividers.
+ */
+const LIFTED_TILE_STYLE =
+{
+	transform: `translate3d(var(--tile-drag-x, 0px), var(--tile-drag-y, 0px), ${TILE_DRAG_LIFT_PX}px)`,
+	zIndex: 30,
+} as const satisfies CSSProperties;
 
 const CONTENTS_STYLE =
 {
@@ -1770,15 +1824,20 @@ export function TileHost({
 		[contentHosts],
 	);
 
-	const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
-	const [pointerDrop, setPointerDrop] = useState<PointerDrop | null>(null);
-	const [movingTile, setMovingTile] = useState<TileId | null>(null);
-	const preview = useMemo(() =>
+	const [keyboardPreview, setKeyboardPreview] = useState<KeyboardPreview | null>(null);
+	const [lastKeyboardMove, setLastKeyboardMove] = useState<KeyboardMoveNotice | null>(null);
+	const announceMove = useCallback((position: number, total: number) =>
 	{
-		if (pointerDrop !== null)
-			return dropPreview(layout, pointerDrop.tileId, pointerDrop.targetId, pointerDrop.side);
-		return pendingMove === null ? null : movePreview(layout, pendingMove.tileId, pendingMove.direction);
-	}, [layout, pendingMove, pointerDrop]);
+		setLastKeyboardMove((previous) => (
+		{
+			position,
+			total,
+			seq: (previous?.seq ?? 0) + 1,
+		}));
+	}, []);
+	const [stackElements] = useState(() => new Map<string, HTMLElement>());
+	const drag = useTileDrag(rootRef, stackElements, layout, update);
+	const dropTarget = drag.target ?? keyboardPreview?.target ?? null;
 
 	const internal = useMemo<InternalHost>(
 		() => (
@@ -1786,13 +1845,16 @@ export function TileHost({
 			definitions,
 			layout,
 			update,
-			pendingMove,
-			preview,
+			keyboardPreview,
+			setKeyboardPreview,
+			announceMove,
+			lastKeyboardMove,
+			dropTarget,
 			contentHosts,
-			setPendingMove,
-			setPointerDrop,
-			movingTile,
-			setMovingTile,
+			dragging: drag.dragging,
+			movingTile: drag.lifted,
+			startDrag: drag.start,
+			stackElements,
 			expanded: layout.expanded,
 			hidden,
 			mountedCount: mountedTiles.length,
@@ -1809,10 +1871,15 @@ export function TileHost({
 			definitions,
 			layout,
 			update,
-			pendingMove,
-			preview,
+			keyboardPreview,
+			announceMove,
+			lastKeyboardMove,
+			dropTarget,
 			contentHosts,
-			movingTile,
+			drag.dragging,
+			drag.lifted,
+			drag.start,
+			stackElements,
 			hidden,
 			mountedTiles,
 			shellEdges,
@@ -1881,6 +1948,7 @@ export function TileHost({
 				liveTileIds={liveTileIds}
 			/>
 			<StackView stack={layout.root} path={[]} orderKey="" aheadKey="" host={internal} />
+			<MoveStatus host={internal} />
 			{mountedTiles.map((tileId) => (
 				<TileContent key={tileId} tileId={tileId} host={internal} chat={children} />
 			))}

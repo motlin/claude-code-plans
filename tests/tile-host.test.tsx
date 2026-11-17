@@ -213,20 +213,8 @@ let unregister: () => void = () =>
 {
 };
 
-/** jsdom implements neither pointer capture nor, having no layout, `elementFromPoint`. */
+/** jsdom implements no pointer capture. */
 const UNIMPLEMENTED_POINTER_APIS = ["setPointerCapture", "releasePointerCapture"] as const;
-
-function stubElementFromPoint(element: Element | null)
-{
-	Object.defineProperty(
-		document,
-		"elementFromPoint",
-		{
-			configurable: true,
-			value: () => element,
-		},
-	);
-}
 
 beforeEach(() =>
 {
@@ -268,7 +256,6 @@ beforeEach(() =>
 
 afterEach(() =>
 {
-	Reflect.deleteProperty(document, "elementFromPoint");
 	for (const name of UNIMPLEMENTED_POINTER_APIS) Reflect.deleteProperty(Element.prototype, name);
 	unregister();
 	cleanup();
@@ -1307,12 +1294,74 @@ describe("TileHost", () =>
 			tiles: [...document.querySelectorAll("[data-tile-slot]")].map((tile) =>
 				tile.getAttribute("data-tile-slot"),
 			),
-			preview: [...document.querySelectorAll("[data-tile-move-preview]")].map((preview) => (
-			{
-				tile: preview.closest("[data-tile-slot]")?.getAttribute("data-tile-slot") ?? null,
-				side: preview.getAttribute("data-tile-move-preview"),
-			})),
+			indicators: dropIndicators(),
 		};
+	}
+
+	/** Each drop indicator's edge and the tile it sits on ("stack" for a stack edge). */
+	function dropIndicators(): string[]
+	{
+		return [...document.querySelectorAll("[data-tile-drop-indicator]")].map(
+			(indicator) =>
+				`${indicator.getAttribute("data-tile-drop-indicator")}@${
+					indicator.closest("[data-tile-slot]")?.getAttribute("data-tile-slot") ?? "stack"
+				}`,
+		);
+	}
+
+	function moveStatus(): string | null
+	{
+		return screen.getByRole("status").textContent;
+	}
+
+	function slotOf(tileId: string): HTMLElement
+	{
+		const slot = document.querySelector<HTMLElement>(`[data-tile-slot="${tileId}"]`);
+		if (slot === null) throw new Error(`${tileId} slot missing`);
+		return slot;
+	}
+
+	/**
+	 * Lays the tiles out as upstream's 984x806 probes measured them, by slot id, `root` and `column`; a lifted slot's
+	 * rect follows its drag translation as a browser's would.
+	 */
+	function stubTileRects(rects: Readonly<Record<string, readonly [number, number, number, number]>>)
+	{
+		vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockImplementation(function (this: HTMLElement)
+		{
+			const key =
+				this.dataset["tileSlot"] ??
+				(this.hasAttribute("data-tiles-viewport") ? "root" : (this.dataset["tileStack"] ?? ""));
+			const [x, y, width, height] = rects[key] ?? [0, 0, 1200, 800];
+			const shift = (name: string) => Number.parseFloat(this.style.getPropertyValue(name) || "0");
+			return DOMRect.fromRect(
+				{
+					x: x + shift("--tile-drag-x"),
+					y: y + shift("--tile-drag-y"),
+					width,
+					height,
+				},
+			);
+		});
+	}
+
+	const CHAT_PLAN_RECTS =
+	{
+		root: [0, 0, 984, 806],
+		chat: [0, 0, 656, 806],
+		plan: [656, 0, 328, 806],
+	} as const;
+
+	function pointer(type: "pointerDown" | "pointerMove" | "pointerUp", target: Element | Window, x: number, y: number)
+	{
+		fireEvent[type](
+			target,
+			{
+				pointerId: 1,
+				clientX: x,
+				clientY: y,
+			},
+		);
 	}
 
 	it("shows upstream's Move tooltip on the move grip", () =>
@@ -1376,7 +1425,7 @@ describe("TileHost", () =>
 		);
 	});
 
-	it("moves along the row immediately", () =>
+	it("moves along the row immediately and announces upstream's new position", () =>
 	{
 		renderHost("session-a");
 		openTestPane();
@@ -1388,16 +1437,25 @@ describe("TileHost", () =>
 			},
 		);
 
-		expect(layoutShape()).toStrictEqual(
+		expect(
 			{
-				columns: 0,
-				tiles: ["plan", "chat"],
-				preview: [],
+				shape: layoutShape(),
+				status: moveStatus(),
+			},
+		).toStrictEqual(
+			{
+				shape:
+				{
+					columns: 0,
+					tiles: ["plan", "chat"],
+					indicators: [],
+				},
+				status: "Tile moved to position 1 of 2",
 			},
 		);
 	});
 
-	it("previews a perpendicular split and commits it with Enter", () =>
+	it("previews a perpendicular split on the parent stack's edge with upstream's label, tooltip and status, and commits it with Enter", () =>
 	{
 		renderHost("session-a");
 		openTestPane();
@@ -1408,9 +1466,21 @@ describe("TileHost", () =>
 				key: "ArrowDown",
 			},
 		);
-		const previewing = layoutShape();
+		const grip = screen.getByRole(
+			"button",
+			{
+				name: "Move down",
+			},
+		);
+		const previewing =
+		{
+			shape: layoutShape(),
+			status: moveStatus(),
+			tooltip: screen.queryByRole("tooltip")?.textContent ?? null,
+			editor: grip.hasAttribute("data-pane-editor"),
+		};
 		fireEvent.keyDown(
-			paneMoveButton(),
+			grip,
 			{
 				key: "Enter",
 			},
@@ -1425,26 +1495,27 @@ describe("TileHost", () =>
 			{
 				previewing:
 				{
-					columns: 0,
-					tiles: ["chat", "plan"],
-					preview: [
-						{
-							tile: "chat",
-							side: "bottom",
-						},
-					],
+					shape:
+					{
+						columns: 0,
+						tiles: ["chat", "plan"],
+						indicators: ["bottom@stack"],
+					},
+					status: "Press Enter to move down, or Escape to cancel.",
+					tooltip: "Move down⏎Enter",
+					editor: true,
 				},
 				committed:
 				{
 					columns: 1,
 					tiles: ["chat", "plan"],
-					preview: [],
+					indicators: [],
 				},
 			},
 		);
 	});
 
-	it("cancels a split preview with Escape", () =>
+	it("cancels a split preview with Escape, restoring the Move label", () =>
 	{
 		renderHost("session-a");
 		openTestPane();
@@ -1456,54 +1527,46 @@ describe("TileHost", () =>
 			},
 		);
 		fireEvent.keyDown(
-			paneMoveButton(),
+			screen.getByRole(
+				"button",
+				{
+					name: "Move down",
+				},
+			),
 			{
 				key: "Escape",
 			},
 		);
 
-		expect(layoutShape()).toStrictEqual(
+		expect(
 			{
-				columns: 0,
-				tiles: ["chat", "plan"],
-				preview: [],
+				shape: layoutShape(),
+				label: paneMoveButton().getAttribute("aria-label"),
+			},
+		).toStrictEqual(
+			{
+				shape:
+				{
+					columns: 0,
+					tiles: ["chat", "plan"],
+					indicators: [],
+				},
+				label: "Move",
 			},
 		);
 	});
 
-	it("drags the Move grip over another tile to preview and commit a split", () =>
+	it("drags the Move grip over the chat's bottom third to show the root's bottom bar and commit the split", () =>
 	{
 		renderHost("session-a");
 		openTestPane();
-		const chatTile = document.querySelector<HTMLElement>("[data-tile-slot=chat]");
-		stubElementFromPoint(chatTile);
+		stubTileRects(CHAT_PLAN_RECTS);
 		const grip = paneMoveButton();
 
-		fireEvent.pointerDown(
-			grip,
-			{
-				pointerId: 1,
-				clientX: 900,
-				clientY: 10,
-			},
-		);
-		fireEvent.pointerMove(
-			grip,
-			{
-				pointerId: 1,
-				clientX: 600,
-				clientY: 700,
-			},
-		);
+		pointer("pointerDown", grip, 800, 5);
+		pointer("pointerMove", grip, 600, 700);
 		const previewing = layoutShape();
-		fireEvent.pointerUp(
-			grip,
-			{
-				pointerId: 1,
-				clientX: 600,
-				clientY: 700,
-			},
-		);
+		pointer("pointerUp", grip, 600, 700);
 
 		expect(
 			{
@@ -1516,82 +1579,318 @@ describe("TileHost", () =>
 				{
 					columns: 0,
 					tiles: ["chat", "plan"],
-					preview: [
-						{
-							tile: "chat",
-							side: "bottom",
-						},
-					],
+					indicators: ["bottom@stack"],
 				},
 				committed:
 				{
 					columns: 1,
 					tiles: ["chat", "plan"],
-					preview: [],
+					indicators: [],
 				},
 			},
 		);
 	});
 
-	it("marks the tiles root data-tiles-moving only while a Move drag is under way, hiding the divider hairline as upstream", () =>
+	it("lifts the dragged tile from pointerdown, follows the pointer, waits 16px for feedback and settles back after a cancel", () =>
 	{
 		renderHost("session-a");
 		openTestPane();
-		stubElementFromPoint(document.querySelector<HTMLElement>("[data-tile-slot=chat]"));
+		stubTileRects(CHAT_PLAN_RECTS);
 		const grip = paneMoveButton();
+		const state = () =>
+		{
+			const plan = slotOf("plan");
+			const root = document.querySelector("[data-tile-stack]");
+			return {
+				rootMoving: root?.hasAttribute("data-tiles-moving") ?? false,
+				dragging: root?.classList.contains("tiles-dragging") ?? false,
+				lifted: plan.hasAttribute("data-tile-moving"),
+				active: grip.hasAttribute("data-active"),
+				x: plan.style.getPropertyValue("--tile-drag-x"),
+				y: plan.style.getPropertyValue("--tile-drag-y"),
+				indicators: dropIndicators(),
+			};
+		};
+
+		const states = [state()];
+		pointer("pointerDown", grip, 800, 5);
+		states.push(state());
+		pointer("pointerMove", grip, 810, 5);
+		states.push(state());
+		pointer("pointerMove", grip, 600, 700);
+		const lift =
+		{
+			transform: slotOf("plan").style.transform,
+			zIndex: slotOf("plan").style.zIndex,
+		};
+		states.push(state());
+		fireEvent.pointerCancel(
+			grip,
+			{
+				pointerId: 1,
+			},
+		);
+		states.push(state());
+		fireEvent.transitionEnd(slotOf("plan"));
+		states.push(state());
+
+		const idle =
+		{
+			rootMoving: false,
+			dragging: false,
+			lifted: false,
+			active: false,
+			x: "",
+			y: "",
+			indicators: [],
+		};
+		const down =
+		{
+			...idle,
+			rootMoving: true,
+			dragging: true,
+			lifted: true,
+			active: true,
+		};
+		expect(
+			{
+				states,
+				lift,
+			},
+		).toStrictEqual(
+			{
+				states: [
+					idle,
+					down,
+					{
+						...down,
+						x: "10px",
+						y: "0px",
+					},
+					{
+						...down,
+						x: "-200px",
+						y: "695px",
+						indicators: ["bottom@stack"],
+					},
+					{
+						...idle,
+						rootMoving: true,
+						lifted: true,
+						x: "0px",
+						y: "0px",
+					},
+					idle,
+				],
+				lift:
+				{
+					transform: "translate3d(var(--tile-drag-x, 0px), var(--tile-drag-y, 0px), 24px)",
+					zIndex: "30",
+				},
+			},
+		);
+	});
+
+	it("reorders the source stack live past a sibling's midpoint, and Escape or pointercancel restores the start layout", () =>
+	{
+		renderHost("session-a");
+		openTestPane();
+		stubTileRects(CHAT_PLAN_RECTS);
+
+		pointer("pointerDown", paneMoveButton(), 800, 5);
+		pointer("pointerMove", paneMoveButton(), 100, 400);
+		const live = layoutShape().tiles;
+		fireEvent.keyDown(
+			window,
+			{
+				key: "Escape",
+			},
+		);
+		const escaped = layoutShape().tiles;
+		fireEvent.transitionEnd(slotOf("plan"));
+		pointer("pointerDown", paneMoveButton(), 800, 5);
+		pointer("pointerMove", paneMoveButton(), 100, 400);
+		fireEvent.pointerCancel(
+			paneMoveButton(),
+			{
+				pointerId: 1,
+			},
+		);
+
+		expect(
+			{
+				live,
+				escaped,
+				cancelled: layoutShape().tiles,
+			},
+		).toStrictEqual(
+			{
+				live: ["plan", "chat"],
+				escaped: ["chat", "plan"],
+				cancelled: ["chat", "plan"],
+			},
+		);
+	});
+
+	it("lights the root divider full length for an insert between tiles, and draws a wrap bar on the chat's top edge", () =>
+	{
+		const unregisterFiles = registerPane(
+			"files",
+			{
+				title: "Files",
+				render: () => <p>Files body</p>,
+			},
+		);
+		localStorage.setItem(
+			"ccb.paneLayout.v1",
+			JSON.stringify(
+				{
+					"session-drop":
+					{
+						root:
+						{
+							kind: "stack",
+							direction: "row",
+							flex: 1,
+							children: [
+								{
+									kind: "tile",
+									tileId: "chat",
+									flex: 2,
+								},
+								{
+									kind: "stack",
+									direction: "column",
+									flex: 1,
+									children: [
+										{
+											kind: "tile",
+											tileId: "plan",
+											flex: 1,
+										},
+										{
+											kind: "tile",
+											tileId: "files",
+											flex: 1,
+										},
+									],
+								},
+							],
+						},
+						expanded: null,
+						focused: "files",
+					},
+				},
+			),
+		);
+		renderHost("session-drop");
+		stubTileRects(
+			{
+				root: [0, 0, 984, 806],
+				column: [656, 0, 328, 806],
+				chat: [0, 0, 656, 806],
+				plan: [656, 0, 328, 403],
+				files: [656, 403, 328, 403],
+			},
+		);
+		const grip = within(slotOf("files")).getByRole(
+			"button",
+			{
+				name: "Move",
+			},
+		);
+		const rootDivider = () =>
+		{
+			const divider = document.querySelector("[data-tile-stack=row] > [role=separator]");
+			const affordance = divider?.querySelector("[data-tile-divider-grip]");
+			return {
+				target: affordance?.hasAttribute("data-tile-divider-drop-target") ?? false,
+				line: divider?.querySelector("[data-tile-divider-line]") !== null,
+				bar: ["h-full", "w-[3px]", "opacity-100", "bg-fill-accent"].every(
+					(name) => affordance?.classList.contains(name) ?? false,
+				),
+			};
+		};
+
+		pointer("pointerDown", grip, 820, 405);
+		pointer("pointerMove", grip, 512, 400);
+		const insert =
+		{
+			divider: rootDivider(),
+			indicators: dropIndicators(),
+		};
+		pointer("pointerMove", grip, 212, 10);
+		const wrap =
+		{
+			divider: rootDivider(),
+			indicators: dropIndicators(),
+			top: document.querySelector<HTMLElement>("[data-tile-drop-indicator]")?.style.top,
+		};
+		fireEvent.pointerCancel(
+			grip,
+			{
+				pointerId: 1,
+			},
+		);
+		unregisterFiles();
+
+		expect(
+			{
+				insert,
+				wrap,
+			},
+		).toStrictEqual(
+			{
+				insert:
+				{
+					divider:
+					{
+						target: true,
+						line: false,
+						bar: true,
+					},
+					indicators: [],
+				},
+				wrap:
+				{
+					divider:
+					{
+						target: false,
+						line: true,
+						bar: false,
+					},
+					indicators: ["top@chat"],
+					top: "0px",
+				},
+			},
+		);
+	});
+
+	it("marks the tiles root data-tiles-moving from pointerdown until the dragged tile has landed, hiding the divider hairline as upstream", () =>
+	{
+		renderHost("session-a");
+		openTestPane();
+		stubTileRects(CHAT_PLAN_RECTS);
 		const moving = () => document.querySelector("[data-tile-stack]")?.hasAttribute("data-tiles-moving");
 
 		const states = [moving()];
-		fireEvent.pointerDown(
-			grip,
-			{
-				pointerId: 1,
-				clientX: 900,
-				clientY: 10,
-			},
-		);
+		pointer("pointerDown", paneMoveButton(), 800, 5);
 		states.push(moving());
-		fireEvent.pointerMove(
-			grip,
-			{
-				pointerId: 1,
-				clientX: 600,
-				clientY: 700,
-			},
-		);
+		pointer("pointerMove", paneMoveButton(), 600, 700);
 		states.push(moving());
-		fireEvent.pointerUp(
-			grip,
-			{
-				pointerId: 1,
-				clientX: 600,
-				clientY: 700,
-			},
-		);
+		pointer("pointerUp", paneMoveButton(), 600, 700);
 		states.push(moving());
-		fireEvent.pointerDown(
-			paneMoveButton(),
-			{
-				pointerId: 2,
-				clientX: 900,
-				clientY: 10,
-			},
-		);
-		fireEvent.pointerMove(
-			paneMoveButton(),
-			{
-				pointerId: 2,
-				clientX: 600,
-				clientY: 300,
-			},
-		);
+		pointer("pointerDown", paneMoveButton(), 800, 5);
+		pointer("pointerMove", paneMoveButton(), 600, 300);
 		states.push(moving());
 		fireEvent.pointerCancel(
 			paneMoveButton(),
 			{
-				pointerId: 2,
+				pointerId: 1,
 			},
 		);
+		states.push(moving());
+		fireEvent.transitionEnd(slotOf("plan"));
 		states.push(moving());
 
 		expect(
@@ -1604,7 +1903,7 @@ describe("TileHost", () =>
 			},
 		).toStrictEqual(
 			{
-				states: [false, false, true, false, true, false],
+				states: [false, true, true, false, true, true, false],
 				gapPainted: true,
 			},
 		);
@@ -1614,7 +1913,6 @@ describe("TileHost", () =>
 	{
 		renderHost("session-a");
 		openTestPane();
-		stubElementFromPoint(document.querySelector<HTMLElement>("[data-tile-slot=chat]"));
 		const grip = paneMoveButton();
 		const state = () =>
 		{
@@ -1699,45 +1997,25 @@ describe("TileHost", () =>
 		);
 	});
 
-	it("marks only the dragged tile data-tile-moving during a Move drag, for upstream's is-moving ring", () =>
+	it("marks only the dragged tile data-tile-moving from pointerdown until it settles, for upstream's is-moving ring", () =>
 	{
 		renderHost("session-a");
 		openTestPane();
-		stubElementFromPoint(document.querySelector<HTMLElement>("[data-tile-slot=chat]"));
-		const grip = paneMoveButton();
+		stubTileRects(CHAT_PLAN_RECTS);
 		const marked = () =>
 			[...document.querySelectorAll<HTMLElement>("[data-tile-moving]")].map((el) => el.dataset["tileSlot"]);
 
 		const states = [marked()];
-		fireEvent.pointerDown(
-			grip,
-			{
-				pointerId: 1,
-				clientX: 900,
-				clientY: 10,
-			},
-		);
+		pointer("pointerDown", paneMoveButton(), 800, 5);
 		states.push(marked());
-		fireEvent.pointerMove(
-			grip,
-			{
-				pointerId: 1,
-				clientX: 600,
-				clientY: 300,
-			},
-		);
+		pointer("pointerMove", paneMoveButton(), 600, 300);
 		states.push(marked());
-		fireEvent.pointerUp(
-			grip,
-			{
-				pointerId: 1,
-				clientX: 900,
-				clientY: 10,
-			},
-		);
+		pointer("pointerUp", paneMoveButton(), 800, 5);
+		states.push(marked());
+		fireEvent.transitionEnd(slotOf("plan"));
 		states.push(marked());
 
-		expect(states).toStrictEqual([[], [], ["plan"], []]);
+		expect(states).toStrictEqual([[], ["plan"], ["plan"], ["plan"], []]);
 	});
 
 	it("rings the moving tile with upstream's border-strong, shell-ground and shadow-md, and CanvasText in forced colours", () =>
@@ -1755,6 +2033,7 @@ describe("TileHost", () =>
 				chatGround: css.includes(
 					'[data-tile-slot="chat"]\n{\n\t--tile-shell-ground: var(--color-surface-1);\n}',
 				),
+				moveCursor: css.includes(".tiles-dragging,\n.tiles-dragging *\n{\n\tcursor: move !important;\n}"),
 			},
 		).toStrictEqual(
 			{
@@ -1762,48 +2041,26 @@ describe("TileHost", () =>
 				forced: true,
 				paneGround: true,
 				chatGround: true,
+				moveCursor: true,
 			},
 		);
 	});
 
-	it("ignores a Move grip press that does not leave the grip", () =>
+	it("drops nothing for a Move grip press that stays within 16px", () =>
 	{
 		renderHost("session-a");
 		openTestPane();
-		const chatTile = document.querySelector<HTMLElement>("[data-tile-slot=chat]");
-		stubElementFromPoint(chatTile);
-		const grip = paneMoveButton();
+		stubTileRects(CHAT_PLAN_RECTS);
 
-		fireEvent.pointerDown(
-			grip,
-			{
-				pointerId: 1,
-				clientX: 900,
-				clientY: 10,
-			},
-		);
-		fireEvent.pointerMove(
-			grip,
-			{
-				pointerId: 1,
-				clientX: 901,
-				clientY: 11,
-			},
-		);
-		fireEvent.pointerUp(
-			grip,
-			{
-				pointerId: 1,
-				clientX: 901,
-				clientY: 11,
-			},
-		);
+		pointer("pointerDown", paneMoveButton(), 800, 5);
+		pointer("pointerMove", paneMoveButton(), 790, 15);
+		pointer("pointerUp", paneMoveButton(), 790, 15);
 
 		expect(layoutShape()).toStrictEqual(
 			{
 				columns: 0,
 				tiles: ["chat", "plan"],
-				preview: [],
+				indicators: [],
 			},
 		);
 	});
