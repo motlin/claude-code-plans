@@ -452,6 +452,21 @@ export function isKnownSlashCommand(name: string, slashCommands: readonly SlashC
 	);
 }
 
+/**
+ * The local interactive CLI's own rows for names the web app intercepts, listed after the host rows as upstream
+ * lists the session CLI's commands. The copy is CLI 2.1.319's interactive (`local-jsx`) autocompact; cloud
+ * sessions report the non-interactive "Configure the auto-compact window size" instead.
+ */
+export const SESSION_CLI_TWIN_COMMANDS: readonly SlashCommand[] = [
+	{
+		name: "autocompact",
+		description: "Set how full the context gets before auto-summarizing",
+		source: "builtin",
+		argumentHint: "[auto|<tokens>]",
+		shadowsHost: true,
+	},
+];
+
 /* Upstream's `hidesCliRow` host rows that the composer intercepts: a custom twin of these is dropped, not listed. */
 const HIDES_CLI_ROW: ReadonlySet<string> = new Set(["model"]);
 
@@ -459,11 +474,13 @@ const HIDES_CLI_ROW: ReadonlySet<string> = new Set(["model"]);
  * Flattens groups given in precedence order; the first entry for a name wins. A custom (non-built-in) entry
  * colliding by name or alias with a `hostHandled` built-in is kept after it as a `shadowsHost` twin (dropped for
  * `HIDES_CLI_ROW` names), as upstream twins CLI rows against its host rows. One sharing the name of a built-in the
- * CLI runs replaces that row in place, since the CLI runs the custom command instead of its own.
+ * CLI runs replaces that row in place, since the CLI runs the custom command instead of its own. A built-in
+ * pre-marked `shadowsHost` (the CLI's own row, {@link SESSION_CLI_TWIN_COMMANDS}) twins the same way, and is listed
+ * plain when no host row collides.
  */
 export function mergeSlashCommands(groups: readonly (readonly SlashCommand[])[]): SlashCommand[]
 {
-	const builtins = groups.flat().filter((command) => command.source === "builtin");
+	const builtins = groups.flat().filter((command) => command.source === "builtin" && command.shadowsHost !== true);
 	const hostNames = new Set(
 		builtins.flatMap((command) => (command.hostHandled === true ? [command.name, ...(command.aliases ?? [])] : [])),
 	);
@@ -478,7 +495,7 @@ export function mergeSlashCommands(groups: readonly (readonly SlashCommand[])[])
 	{
 		for (const command of group)
 		{
-			if (command.source !== "builtin")
+			if (command.source !== "builtin" || command.shadowsHost === true)
 			{
 				const names = [command.name, ...(command.aliases ?? [])];
 				if (names.some((name) => hostNames.has(name)))
@@ -491,6 +508,15 @@ export function mergeSlashCommands(groups: readonly (readonly SlashCommand[])[])
 							shadowsHost: true,
 						},
 					);
+					continue;
+				}
+				if (command.source === "builtin")
+				{
+					// A CLI twin with no host row to twin against is a plain CLI row.
+					const {shadowsHost: _twin, ...plain} = command;
+					if (seen.has(plain.name)) continue;
+					seen.add(plain.name);
+					merged.push(plain);
 					continue;
 				}
 				if (passThroughNames.has(command.name))

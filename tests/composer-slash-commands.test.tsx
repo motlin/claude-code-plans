@@ -12,6 +12,7 @@ import type {ComposerState} from "../src/lib/composer-state";
 import
 {
 	BUILTIN_SLASH_COMMANDS,
+	SESSION_CLI_TWIN_COMMANDS,
 	SESSION_SLASH_COMMANDS,
 	mergeSlashCommands,
 	type SlashCommand,
@@ -301,12 +302,105 @@ describe("Composer slash commands", () =>
 				],
 				subtitles: [
 					null,
-					'<span class="ms-auto shrink-0 ps-2 text-caption text-ink-muted">Custom command</span>',
+					'<span class="ms-auto shrink-0 ps-2 text-caption text-muted-as-secondary">Custom command</span>',
 					null,
 				],
 				tooltip: "My own effort flow",
 				prompt: "/effort ",
 				sent: [],
+			},
+		);
+	});
+
+	it("lists the CLI's autocompact twin after the host row with the CLI's description, and one subtitle on a plugin twin", () =>
+	{
+		const pluginReview: SlashCommand =
+		{
+			name: "build:review",
+			description: "Plugin review",
+			source: "plugin-skill",
+			pluginName: "build",
+			shadowsHost: true,
+		};
+		const hostReview: SlashCommand =
+		{
+			name: "review",
+			description: "Built-in review",
+			source: "builtin",
+			hostHandled: true,
+		};
+		const {textarea} = setup(
+			undefined,
+			mergeSlashCommands([SESSION_SLASH_COMMANDS, [hostReview, pluginReview], SESSION_CLI_TWIN_COMMANDS]),
+		);
+
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/autoc",
+				},
+			},
+		);
+		const menuRows = rows();
+		const subtitles = screen
+			.getAllByRole("menuitem")
+			.map((row) => row.querySelector(".ms-auto")?.outerHTML ?? null);
+		const bold = screen.getAllByRole("menuitem").map((row) => row.querySelector(".font-semibold")?.textContent);
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "ArrowDown",
+			},
+		);
+		const tooltip = screen.getByRole("tooltip").textContent;
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/rev",
+				},
+			},
+		);
+		const pluginTwinSpans = screen
+			.getAllByRole("menuitem")
+			.map((row) => [
+				row.firstElementChild?.textContent,
+				[...row.querySelectorAll(".ms-auto")].map((span) => span.textContent),
+			]);
+
+		expect(
+			{
+				menuRows,
+				subtitles,
+				bold,
+				tooltip,
+				pluginTwinSpans,
+			},
+		).toStrictEqual(
+			{
+				menuRows: [
+					{
+						name: "autocompact",
+						highlighted: true,
+					},
+					{
+						name: "autocompactCustom command",
+						highlighted: false,
+					},
+				],
+				subtitles: [
+					null,
+					'<span class="ms-auto shrink-0 ps-2 text-caption text-muted-as-secondary">Custom command</span>',
+				],
+				bold: ["autoc", "autoc"],
+				tooltip: "Set how full the context gets before auto-summarizing",
+				pluginTwinSpans: [
+					["review", ["Custom command"]],
+					["review", []],
+				],
 			},
 		);
 	});
@@ -404,7 +498,7 @@ describe("Composer slash commands", () =>
 		).toStrictEqual(
 			{
 				settingsSuffix:
-					'<span class="min-w-0 truncate text-ink-muted">(<span class="font-semibold text-primary">settings</span>)</span>',
+					'<span class="min-w-0 truncate text-muted-as-secondary">(<span class="font-semibold text-primary">settings</span>)</span>',
 				sRows: ["standup", "usage(stats)", "config(settings)", "model", "plan"],
 				coRows: ["config", "usage(cost)"],
 			},
@@ -637,7 +731,7 @@ describe("Composer slash commands", () =>
 				subtitle:
 				{
 					text: "build",
-					className: "ms-auto shrink-0 ps-2 text-caption text-ink-muted",
+					className: "ms-auto shrink-0 ps-2 text-caption text-muted-as-secondary",
 				},
 				tooltip: "Start a dev serverbuild plugin",
 				detail:

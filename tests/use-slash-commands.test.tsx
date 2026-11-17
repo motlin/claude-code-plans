@@ -5,7 +5,13 @@ import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-libr
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import {useSlashCommands} from "../src/hooks/use-slash-commands";
-import {BUILTIN_SLASH_COMMANDS, SESSION_SLASH_COMMANDS, type SlashCommand} from "../src/lib/slash-commands";
+import
+{
+	BUILTIN_SLASH_COMMANDS,
+	SESSION_CLI_TWIN_COMMANDS,
+	SESSION_SLASH_COMMANDS,
+	type SlashCommand,
+} from "../src/lib/slash-commands";
 
 afterEach(() =>
 {
@@ -408,11 +414,22 @@ describe("useSlashCommands", () =>
 			},
 		);
 		const session = menuState();
+		fireEvent.change(
+			textarea(),
+			{
+				target:
+				{
+					value: "/autoc",
+				},
+			},
+		);
+		const autoc = [...screen.getAllByRole("menuitem")].map((row) => row.textContent);
 
 		expect(
 			{
 				home,
 				session,
+				autoc,
 			},
 		).toStrictEqual(
 			{
@@ -424,13 +441,14 @@ describe("useSlashCommands", () =>
 				session:
 				{
 					header: null,
-					labels: ["rewind", "autocompact", "status", "standup"],
+					labels: ["rewind", "autocompact", "status", "standup", "autocompact"],
 				},
+				autoc: ["autocompact", "autocompactCustom command"],
 			},
 		);
 	});
 
-	it("lists the session-only built-ins ahead of the built-ins when the session directory is unknown", () =>
+	it("lists the session-only built-ins ahead of the built-ins, and the CLI twins after, when the session directory is unknown", () =>
 	{
 		function DisabledHarness()
 		{
@@ -468,7 +486,9 @@ describe("useSlashCommands", () =>
 		);
 
 		expect(menuState()?.labels).toStrictEqual(
-			[...SESSION_SLASH_COMMANDS, ...BUILTIN_SLASH_COMMANDS].map((command) => command.name),
+			[...SESSION_SLASH_COMMANDS, ...BUILTIN_SLASH_COMMANDS, ...SESSION_CLI_TWIN_COMMANDS].map(
+				(command) => command.name,
+			),
 		);
 	});
 });

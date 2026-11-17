@@ -17,6 +17,7 @@ import
 {
 	BUILTIN_SLASH_COMMANDS,
 	CLI_COMMAND_NAMES,
+	SESSION_CLI_TWIN_COMMANDS,
 	SESSION_SLASH_COMMANDS,
 	filterSlashCommands,
 	highlightMatches,
@@ -471,6 +472,62 @@ describe("mergeSlashCommands with built-in collisions", () =>
 					},
 				],
 				home: [custom],
+			},
+		);
+	});
+
+	it("lists the CLI's own autocompact as a twin after the host row, plain without it, and yields to a custom twin", () =>
+	{
+		const host: SlashCommand =
+		{
+			name: "autocompact",
+			description: "Show context usage or set when auto-compact runs",
+			source: "builtin",
+			argumentHint: "[auto|<tokens>]",
+			hostHandled: true,
+		};
+		const custom: SlashCommand =
+		{
+			name: "autocompact",
+			description: "Mine",
+			source: "personal-command",
+		};
+
+		expect(
+			{
+				twin: mergeSlashCommands([[host], [], SESSION_CLI_TWIN_COMMANDS]),
+				noHost: mergeSlashCommands([[], SESSION_CLI_TWIN_COMMANDS]),
+				custom: mergeSlashCommands([[host], [custom], SESSION_CLI_TWIN_COMMANDS]),
+			},
+		).toStrictEqual(
+			{
+				twin: [
+					host,
+					{
+						name: "autocompact",
+						description: "Set how full the context gets before auto-summarizing",
+						source: "builtin",
+						argumentHint: "[auto|<tokens>]",
+						shadowsHost: true,
+					},
+				],
+				noHost: [
+					{
+						name: "autocompact",
+						description: "Set how full the context gets before auto-summarizing",
+						source: "builtin",
+						argumentHint: "[auto|<tokens>]",
+					},
+				],
+				custom: [
+					host,
+					{
+						name: "autocompact",
+						description: "Mine",
+						source: "personal-command",
+						shadowsHost: true,
+					},
+				],
 			},
 		);
 	});

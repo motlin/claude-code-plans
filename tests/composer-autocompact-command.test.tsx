@@ -6,6 +6,7 @@ import {afterEach, beforeAll, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
 import {ToastContext, type ToastOptions} from "../src/components/toast-context";
+import {mergeSlashCommands, SESSION_CLI_TWIN_COMMANDS, SESSION_SLASH_COMMANDS} from "../src/lib/slash-commands";
 
 beforeAll(async () =>
 {
@@ -18,11 +19,12 @@ afterEach(() =>
 	localStorage.clear();
 });
 
-function setup(variant: "session" | "home")
+function setup(variant: "session" | "home", {twin = false} = {})
 {
 	const handlers =
 	{
 		onSend: vi.fn<(prompt: string) => void>(),
+		routing: vi.fn<(routing: unknown) => void>(),
 		onOpenContext: vi.fn<() => void>(),
 		toast: vi.fn<(options: ToastOptions) => void>(),
 	};
@@ -31,11 +33,18 @@ function setup(variant: "session" | "home")
 			<Composer
 				variant={variant}
 				draftKey={variant === "home" ? "home" : "session-alice"}
-				onSend={(prompt) =>
+				onSend={(prompt, _launchOptions, routing) =>
 				{
 					handlers.onSend(prompt);
+					if (routing !== undefined) handlers.routing(routing);
 				}}
 				onOpenContext={variant === "session" ? handlers.onOpenContext : undefined}
+				{...(twin
+					?
+						{
+							slashCommands: mergeSlashCommands([SESSION_SLASH_COMMANDS, [], SESSION_CLI_TWIN_COMMANDS]),
+						}
+					: {})}
 			/>
 		</ToastContext.Provider>,
 	);
@@ -78,6 +87,124 @@ function calls(handlers: ReturnType<typeof setup>["handlers"])
 		toast: handlers.toast.mock.calls,
 	};
 }
+
+function key(textarea: HTMLTextAreaElement, name: string)
+{
+	fireEvent.keyDown(
+		textarea,
+		{
+			key: name,
+		},
+	);
+}
+
+function type(textarea: HTMLTextAreaElement, value: string)
+{
+	fireEvent.change(
+		textarea,
+		{
+			target:
+			{
+				value,
+			},
+		},
+	);
+}
+
+function twinRow(): HTMLElement
+{
+	const row = screen.getAllByRole("menuitem").find((item) => item.textContent === "autocompactCustom command");
+	if (row === undefined) throw new Error("no autocompact twin row");
+	return row;
+}
+
+/* Picks a row after `/autoc`, accepts, then sends; returns what reached the CLI and the host. */
+function pickAndSend(pick: (textarea: HTMLTextAreaElement) => void)
+{
+	const {handlers, textarea} = setup(
+		"session",
+		{
+			twin: true,
+		},
+	);
+	type(textarea, "/autoc");
+	pick(textarea);
+	const accepted = textarea.value;
+	key(textarea, "Enter");
+	cleanup();
+	localStorage.clear();
+	return {
+		accepted,
+		onSend: handlers.onSend.mock.calls,
+		routing: handlers.routing.mock.calls,
+		onOpenContext: handlers.onOpenContext.mock.calls.length,
+	};
+}
+
+describe("the CLI autocompact twin row", () =>
+{
+	it("routes an explicit twin pick to the CLI and anything else to the Context card", () =>
+	{
+		const cli =
+		{
+			accepted: "/autocompact ",
+			onSend: [["/autocompact"]],
+			routing: [
+				[
+					{
+						cliCommandForced: true,
+					},
+				],
+			],
+			onOpenContext: 0,
+		};
+		const host =
+		{
+			accepted: "/autocompact ",
+			onSend: [],
+			routing: [],
+			onOpenContext: 1,
+		};
+
+		expect(
+			{
+				arrowEnter: pickAndSend((textarea) =>
+				{
+					key(textarea, "ArrowDown");
+					key(textarea, "Enter");
+				}),
+				click: pickAndSend(() =>
+				{
+					fireEvent.mouseDown(twinRow());
+				}),
+				hostEnter: pickAndSend((textarea) =>
+				{
+					key(textarea, "Enter");
+				}),
+				hoverEnter: pickAndSend((textarea) =>
+				{
+					fireEvent.mouseMove(twinRow());
+					key(textarea, "Enter");
+				}),
+				retyped: pickAndSend((textarea) =>
+				{
+					key(textarea, "ArrowDown");
+					type(textarea, "/autocx");
+					type(textarea, "/autoc");
+					key(textarea, "Enter");
+				}),
+			},
+		).toStrictEqual(
+			{
+				arrowEnter: cli,
+				click: cli,
+				hostEnter: host,
+				hoverEnter: host,
+				retyped: host,
+			},
+		);
+	});
+});
 
 describe("/autocompact in a session composer", () =>
 {

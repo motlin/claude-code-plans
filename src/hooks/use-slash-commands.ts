@@ -5,6 +5,7 @@ import
 {
 	BUILTIN_SLASH_COMMANDS,
 	mergeSlashCommands,
+	SESSION_CLI_TWIN_COMMANDS,
 	SESSION_SLASH_COMMANDS,
 	type SlashCommand,
 } from "../lib/slash-commands";
@@ -69,7 +70,7 @@ export function useSlashCommands(cwd: string | undefined, enabled = true, sessio
 	};
 }
 
-/** Prepends {@link SESSION_SLASH_COMMANDS} for a session, memoized per list so the menu sees a stable array. */
+/** Prepends {@link SESSION_SLASH_COMMANDS} and appends {@link SESSION_CLI_TWIN_COMMANDS} for a session, memoized per list so the menu sees a stable array. */
 function useSessionCommands(session: boolean): (list: readonly SlashCommand[]) => readonly SlashCommand[]
 {
 	return useMemo(() =>
@@ -80,7 +81,7 @@ function useSessionCommands(session: boolean): (list: readonly SlashCommand[]) =
 		{
 			const cached = cache.get(list);
 			if (cached !== undefined) return cached;
-			const merged = mergeSlashCommands([SESSION_SLASH_COMMANDS, list]);
+			const merged = mergeSlashCommands([SESSION_SLASH_COMMANDS, list, SESSION_CLI_TWIN_COMMANDS]);
 			cache.set(list, merged);
 			return merged;
 		};

@@ -329,6 +329,9 @@ export function SlashCommandMenu({
 					}
 					const {command} = item;
 					const alias = matchingAlias(command, query);
+					// Upstream's `subtitle ?? (query ? pluginLabel : undefined)`: one trailing span at most.
+					const subtitle =
+						command.shadowsHost === true ? "Custom command" : query === "" ? undefined : command.pluginName;
 					return (
 						<div
 							key={slashCommandRowKey(command)}
@@ -353,7 +356,7 @@ export function SlashCommandMenu({
 								<Highlighted text={slashCommandLabel(command)} query={query} />
 							</span>
 							{alias !== undefined && (
-								<span className="min-w-0 truncate text-ink-muted">
+								<span className="min-w-0 truncate text-muted-as-secondary">
 									<Highlighted
 										text={`(${alias})`}
 										query={query}
@@ -361,14 +364,9 @@ export function SlashCommandMenu({
 									/>
 								</span>
 							)}
-							{command.shadowsHost === true && (
-								<span className="ms-auto shrink-0 ps-2 text-caption text-ink-muted">
-									Custom command
-								</span>
-							)}
-							{query !== "" && command.pluginName !== undefined && (
-								<span className="ms-auto shrink-0 ps-2 text-caption text-ink-muted">
-									{command.pluginName}
+							{subtitle !== undefined && (
+								<span className="ms-auto shrink-0 ps-2 text-caption text-muted-as-secondary">
+									{subtitle}
 								</span>
 							)}
 						</div>
