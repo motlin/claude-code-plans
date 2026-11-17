@@ -162,7 +162,7 @@ import
 } from "../lib/composer-fork-routing";
 import {composerPendingGate, composerSendPlan, gateHoldsQueue} from "../lib/composer-pending-gate";
 import {assertNever} from "../lib/assert-never";
-import {canApplyLive, type LaunchOptions, modeMenuItems} from "../lib/launch-options";
+import {canApplyLive, effortLevelsFor, type LaunchOptions, modeMenuItems} from "../lib/launch-options";
 import {setPendingFork} from "../lib/session-fork";
 import {requestRailContextCard} from "../lib/session-rail-store";
 import
@@ -1024,7 +1024,17 @@ function SessionView({
 				composerChin.mode?.id === "plan" || dockedPlan !== null || pendingCall?.name === "ExitPlanMode",
 		},
 	);
-	const slashMenu = useSlashCommands(sessionDirectory ?? undefined, Boolean(sessionDirectory), true);
+	// The CLI hides its own /fast for a third-party provider or CLAUDE_CODE_DISABLE_FAST_MODE; a policy block still lists it.
+	const fastBlockCode = composerChin.fastModeBlocked?.code;
+	const slashMenu = useSlashCommands(
+		sessionDirectory ?? undefined,
+		Boolean(sessionDirectory),
+		true,
+		{
+			effortLevels: effortLevelsFor(composerChin.modelId),
+			fastListed: fastBlockCode !== "not_first_party" && fastBlockCode !== "disabled_by_env",
+		},
+	);
 	const {slashCommands} = slashMenu;
 	const {data: promptHistory} = useQuery(
 		{

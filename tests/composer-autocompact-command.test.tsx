@@ -6,7 +6,7 @@ import {afterEach, beforeAll, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
 import {ToastContext, type ToastOptions} from "../src/components/toast-context";
-import {mergeSlashCommands, SESSION_CLI_TWIN_COMMANDS, SESSION_SLASH_COMMANDS} from "../src/lib/slash-commands";
+import {cliTwinCommands, mergeSlashCommands, SESSION_SLASH_COMMANDS} from "../src/lib/slash-commands";
 
 beforeAll(async () =>
 {
@@ -42,7 +42,17 @@ function setup(variant: "session" | "home", {twin = false} = {})
 				{...(twin
 					?
 						{
-							slashCommands: mergeSlashCommands([SESSION_SLASH_COMMANDS, [], SESSION_CLI_TWIN_COMMANDS]),
+							slashCommands: mergeSlashCommands([
+								SESSION_SLASH_COMMANDS,
+								[],
+								cliTwinCommands(
+									SESSION_SLASH_COMMANDS,
+									{
+										effortLevels: [],
+										fastListed: true,
+									},
+								),
+							]),
 						}
 					: {})}
 			/>

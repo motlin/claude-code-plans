@@ -12,7 +12,7 @@ import type {ComposerState} from "../src/lib/composer-state";
 import
 {
 	BUILTIN_SLASH_COMMANDS,
-	SESSION_CLI_TWIN_COMMANDS,
+	cliTwinCommands,
 	SESSION_SLASH_COMMANDS,
 	mergeSlashCommands,
 	type SlashCommand,
@@ -331,7 +331,17 @@ describe("Composer slash commands", () =>
 		};
 		const {textarea} = setup(
 			undefined,
-			mergeSlashCommands([SESSION_SLASH_COMMANDS, [hostReview, pluginReview], SESSION_CLI_TWIN_COMMANDS]),
+			mergeSlashCommands([
+				SESSION_SLASH_COMMANDS,
+				[hostReview, pluginReview],
+				cliTwinCommands(
+					SESSION_SLASH_COMMANDS,
+					{
+						effortLevels: [],
+						fastListed: true,
+					},
+				),
+			]),
 		);
 
 		fireEvent.change(
@@ -3175,6 +3185,173 @@ describe("Composer host commands", () =>
 		]);
 	}
 
+	function withCliTwins(base: readonly SlashCommand[]): SlashCommand[]
+	{
+		return mergeSlashCommands([
+			base,
+			cliTwinCommands(
+				base,
+				{
+					effortLevels: ["low", "medium", "high", "xhigh", "max"],
+					fastListed: true,
+				},
+			),
+		]);
+	}
+
+	it("lists the CLI's own /fast beside the host row: an explicit pick sends it, a hovered one keeps the host toggle", () =>
+	{
+		const picked = hostSetup(
+			{
+				chin: CHIN,
+				slashCommands: withCliTwins(BUILTIN_SLASH_COMMANDS),
+			},
+		);
+		fireEvent.change(
+			picked.textarea,
+			{
+				target:
+				{
+					value: "/fas",
+				},
+			},
+		);
+		const menuRows = rows();
+		fireEvent.keyDown(
+			picked.textarea,
+			{
+				key: "ArrowDown",
+			},
+		);
+		const tooltip = screen.getByRole("tooltip").textContent;
+		sendTwin(picked.textarea, "fast");
+		const pick =
+		{
+			sends: picked.onSend.mock.calls.map((call) => call[0]),
+			label: modelTrigger()?.getAttribute("aria-label"),
+		};
+		cleanup();
+
+		const hovered = hostSetup(
+			{
+				chin: CHIN,
+				slashCommands: withCliTwins(BUILTIN_SLASH_COMMANDS),
+			},
+		);
+		fireEvent.change(
+			hovered.textarea,
+			{
+				target:
+				{
+					value: "/fast",
+				},
+			},
+		);
+		const twin = screen.getAllByRole("menuitem").find((row) => row.textContent === "fastCustom command");
+		if (twin === undefined) throw new Error("no fast twin");
+		fireEvent.mouseMove(twin);
+		fireEvent.keyDown(
+			hovered.textarea,
+			{
+				key: "Enter",
+			},
+		);
+		fireEvent.keyDown(
+			hovered.textarea,
+			{
+				key: "Enter",
+			},
+		);
+
+		expect(
+			{
+				menuRows,
+				tooltip,
+				pick,
+				hover:
+				{
+					sends: hovered.onSend.mock.calls,
+					label: modelTrigger()?.getAttribute("aria-label"),
+				},
+			},
+		).toStrictEqual(
+			{
+				menuRows: [
+					{
+						name: "fast",
+						highlighted: true,
+					},
+					{
+						name: "fastCustom command",
+						highlighted: false,
+					},
+				],
+				tooltip: "Toggle fast mode (Opus 5.5)",
+				pick:
+				{
+					sends: ["/fast"],
+					label: "Model: Opus 5.5 High",
+				},
+				hover:
+				{
+					sends: [],
+					label: "Model: Opus 5.5 Fast High",
+				},
+			},
+		);
+	});
+
+	it("sends the CLI's own /effort twin with the model's level hint, skipping the chin", () =>
+	{
+		const {textarea, onSend} = hostSetup(
+			{
+				chin: CHIN,
+				slashCommands: withCliTwins(BUILTIN_SLASH_COMMANDS),
+			},
+		);
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/effort",
+				},
+			},
+		);
+		const twin = screen.getAllByRole("menuitem").find((row) => row.textContent === "effortCustom command");
+		if (twin === undefined) throw new Error("no effort twin");
+		fireEvent.mouseDown(twin);
+		const accepted =
+		{
+			text: textarea.value,
+			hint: screen.getByTestId("slash-argument-hint").textContent,
+		};
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
+
+		expect(
+			{
+				accepted,
+				sends: onSend.mock.calls.map((call) => call[0]),
+				label: modelTrigger()?.getAttribute("aria-label"),
+			},
+		).toStrictEqual(
+			{
+				accepted:
+				{
+					text: "/effort ",
+					hint: "[low|medium|high|xhigh|max|auto]",
+				},
+				sends: ["/effort"],
+				label: "Model: Opus 5.5 High",
+			},
+		);
+	});
+
 	it("toggles fast mode for a bare /fast without sending", () =>
 	{
 		const {textarea, onSend} = hostSetup();
@@ -3499,6 +3676,38 @@ describe("Composer host commands", () =>
 					sends: 1,
 					rewinds: 1,
 				},
+			},
+		);
+	});
+
+	it("sends the CLI's own /rewind twin to the CLI without opening the picker", () =>
+	{
+		const base = [...SESSION_SLASH_COMMANDS, ...BUILTIN_SLASH_COMMANDS];
+		const {textarea, onSend, onRewind} = rewindSetup(
+			"ready",
+			mergeSlashCommands([
+				base,
+				cliTwinCommands(
+					base,
+					{
+						effortLevels: [],
+						fastListed: true,
+					},
+				),
+			]),
+		);
+
+		sendTwin(textarea, "rewind");
+
+		expect(
+			{
+				sends: onSend.mock.calls.map((call) => call[0]),
+				rewinds: onRewind.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				sends: ["/rewind"],
+				rewinds: 0,
 			},
 		);
 	});

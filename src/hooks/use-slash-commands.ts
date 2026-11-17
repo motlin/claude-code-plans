@@ -1,11 +1,13 @@
 import {useQuery} from "@tanstack/react-query";
 import {useMemo} from "react";
 import {slashCommandsQueryOptions} from "../lib/api/commands";
+import {CLI_DEFAULT_MODEL, effortLevelsFor} from "../lib/launch-options";
 import
 {
 	BUILTIN_SLASH_COMMANDS,
+	type CliTwinContext,
+	cliTwinCommands,
 	mergeSlashCommands,
-	SESSION_CLI_TWIN_COMMANDS,
 	SESSION_SLASH_COMMANDS,
 	type SlashCommand,
 } from "../lib/slash-commands";
@@ -30,9 +32,15 @@ export interface ComposerSlashCommands
  * built-ins under upstream's error header (`pt`) and refetches when the next "/" opens
  * the menu, as upstream's `retry:false` query does when the menu remounts. A disabled
  * query (no session directory) shows the built-ins under upstream's not-running header.
- * A `session` composer also lists the session-only built-ins (`/rewind`) first.
+ * A `session` composer also lists the session-only built-ins (`/rewind`) first, and the local CLI's own rows for
+ * the built-ins it intercepts (`twinCtx`, defaulting to the CLI's default model with `/fast` listed).
  */
-export function useSlashCommands(cwd: string | undefined, enabled = true, session = false): ComposerSlashCommands
+export function useSlashCommands(
+	cwd: string | undefined,
+	enabled = true,
+	session = false,
+	twinCtx?: CliTwinContext,
+): ComposerSlashCommands
 {
 	const query = useQuery(
 		{
@@ -41,7 +49,7 @@ export function useSlashCommands(cwd: string | undefined, enabled = true, sessio
 			retry: false,
 		},
 	);
-	const withSession = useSessionCommands(session);
+	const withSession = useSessionCommands(session, twinCtx ?? DEFAULT_TWIN_CONTEXT);
 	if (!enabled)
 	{
 		return {
@@ -70,20 +78,47 @@ export function useSlashCommands(cwd: string | undefined, enabled = true, sessio
 	};
 }
 
-/** Prepends {@link SESSION_SLASH_COMMANDS} and appends {@link SESSION_CLI_TWIN_COMMANDS} for a session, memoized per list so the menu sees a stable array. */
-function useSessionCommands(session: boolean): (list: readonly SlashCommand[]) => readonly SlashCommand[]
+const DEFAULT_TWIN_CONTEXT: CliTwinContext =
 {
+	effortLevels: effortLevelsFor(CLI_DEFAULT_MODEL),
+	fastListed: true,
+};
+
+function isPluginEntry(command: SlashCommand): boolean
+{
+	return command.source === "plugin-skill" || command.source === "plugin-command";
+}
+
+/**
+ * Prepends {@link SESSION_SLASH_COMMANDS} for a session and inserts the CLI's own twin rows ({@link cliTwinCommands})
+ * before the first plugin entry, upstream's CLI-block position. Memoized per list so the menu sees a stable array.
+ */
+function useSessionCommands(
+	session: boolean,
+	twinCtx: CliTwinContext,
+): (list: readonly SlashCommand[]) => readonly SlashCommand[]
+{
+	const levelsKey = twinCtx.effortLevels.join("|");
+	const {fastListed} = twinCtx;
 	return useMemo(() =>
 	{
 		if (!session) return (list) => list;
+		const ctx: CliTwinContext =
+		{
+			effortLevels: levelsKey === "" ? [] : levelsKey.split("|"),
+			fastListed,
+		};
 		const cache = new WeakMap<readonly SlashCommand[], readonly SlashCommand[]>();
 		return (list) =>
 		{
 			const cached = cache.get(list);
 			if (cached !== undefined) return cached;
-			const merged = mergeSlashCommands([SESSION_SLASH_COMMANDS, list, SESSION_CLI_TWIN_COMMANDS]);
+			const twins = cliTwinCommands([...SESSION_SLASH_COMMANDS, ...list], ctx);
+			const pluginAt = list.findIndex(isPluginEntry);
+			const split = pluginAt === -1 ? list.length : pluginAt;
+			const merged = mergeSlashCommands([SESSION_SLASH_COMMANDS, list.slice(0, split), twins, list.slice(split)]);
 			cache.set(list, merged);
 			return merged;
 		};
-	}, [session]);
+	}, [session, levelsKey, fastListed]);
 }

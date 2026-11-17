@@ -12,7 +12,13 @@ import {SessionBackgroundTasksOpener} from "../src/components/subagent-opener";
 import {ToastProvider} from "../src/components/toast";
 import type {BackgroundTask, BackgroundTaskGroups} from "../src/lib/background-tasks";
 import type {PaneKind} from "../src/lib/pane-layout";
-import {BUILTIN_SLASH_COMMANDS, mergeSlashCommands, type SlashCommand} from "../src/lib/slash-commands";
+import
+{
+	BUILTIN_SLASH_COMMANDS,
+	cliTwinCommands,
+	mergeSlashCommands,
+	type SlashCommand,
+} from "../src/lib/slash-commands";
 
 beforeAll(async () =>
 {
@@ -306,26 +312,56 @@ describe("/workflows Custom command twin", () =>
 		};
 	}
 
-	it("sends a clicked twin's /workflows to the CLI instead of opening the pane", () =>
+	it("sends a clicked twin's /workflows to the CLI instead of opening the pane, the CLI's own row included", () =>
 	{
 		const {textarea, onSend, opened} = setup("s-twin-click", COMMANDS);
-
 		type(textarea, "/workflows");
 		fireEvent.mouseDown(twinRow());
 		key(textarea, "Enter");
+		const custom =
+		{
+			...outcome(onSend, opened),
+			routing: onSend.mock.calls[0]?.[2],
+		};
+		cleanup();
+
+		const cli = setup(
+			"s-cli-twin-click",
+			mergeSlashCommands([
+				BUILTIN_SLASH_COMMANDS,
+				cliTwinCommands(
+					BUILTIN_SLASH_COMMANDS,
+					{
+						effortLevels: [],
+						fastListed: true,
+					},
+				),
+			]),
+		);
+		type(cli.textarea, "/workflows");
+		fireEvent.mouseDown(twinRow());
+		key(cli.textarea, "Enter");
 
 		expect(
 			{
-				...outcome(onSend, opened),
-				routing: onSend.mock.calls[0]?.[2],
+				custom,
+				cli: outcome(cli.onSend, cli.opened),
 			},
 		).toStrictEqual(
 			{
-				sends: ["/workflows"],
-				opened: [],
-				routing:
+				custom:
 				{
-					cliCommandForced: true,
+					sends: ["/workflows"],
+					opened: [],
+					routing:
+					{
+						cliCommandForced: true,
+					},
+				},
+				cli:
+				{
+					sends: ["/workflows"],
+					opened: [],
 				},
 			},
 		);

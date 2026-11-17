@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
-import {cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
+import {cleanup, fireEvent, render, renderHook, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import {useSlashCommands} from "../src/hooks/use-slash-commands";
 import
 {
 	BUILTIN_SLASH_COMMANDS,
-	SESSION_CLI_TWIN_COMMANDS,
+	filterSlashCommands,
 	SESSION_SLASH_COMMANDS,
 	type SlashCommand,
 } from "../src/lib/slash-commands";
@@ -441,54 +441,148 @@ describe("useSlashCommands", () =>
 				session:
 				{
 					header: null,
-					labels: ["rewind", "autocompact", "status", "standup", "autocompact"],
+					labels: ["rewind", "autocompact", "status", "standup", "autocompact", "rewind", "status"],
 				},
 				autoc: ["autocompact", "autocompactCustom command"],
 			},
 		);
 	});
 
-	it("lists the session-only built-ins ahead of the built-ins, and the CLI twins after, when the session directory is unknown", () =>
+	it("lists the session-only built-ins ahead of the built-ins, and the CLI's own twins after, when the session directory is unknown", () =>
 	{
-		function DisabledHarness()
-		{
-			const slash = useSlashCommands(undefined, false, true);
-			return (
-				<Composer
-					variant="session"
-					draftKey="session-alice"
-					onSend={() =>
-					{
-					}}
-					{...slash}
-				/>
-			);
-		}
-		render(
-			<QueryClientProvider client={new QueryClient()}>
-				<DisabledHarness />
-			</QueryClientProvider>,
-		);
-
-		fireEvent.change(
-			screen.getByRole<HTMLTextAreaElement>(
-				"textbox",
-				{
-					name: "Prompt",
-				},
-			),
+		const {result} = renderHook(
+			() => useSlashCommands(undefined, false, true),
 			{
-				target:
-				{
-					value: "/",
-				},
+				wrapper: ({children}) => (
+					<QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+				),
 			},
 		);
 
-		expect(menuState()?.labels).toStrictEqual(
-			[...SESSION_SLASH_COMMANDS, ...BUILTIN_SLASH_COMMANDS, ...SESSION_CLI_TWIN_COMMANDS].map(
-				(command) => command.name,
+		expect(result.current.slashCommands?.map((command) => command.name)).toStrictEqual([
+			...[...SESSION_SLASH_COMMANDS, ...BUILTIN_SLASH_COMMANDS].map((command) => command.name),
+			"autocompact",
+			"effort",
+			"fast",
+			"permissions",
+			"rewind",
+			"workflows",
+			"btw",
+			"usage",
+			"status",
+		]);
+	});
+
+	it("inserts the CLI's own built-in twins before the plugin entries, gated on fast, and leaves the home list alone", async () =>
+	{
+		const personal: SlashCommand =
+		{
+			name: "standup",
+			description: "Write my standup",
+			source: "personal-skill",
+		};
+		const plugin: SlashCommand =
+		{
+			name: "tools:lint",
+			description: "Lint",
+			source: "plugin-skill",
+			pluginName: "tools",
+		};
+		vi.stubGlobal(
+			"fetch",
+			vi.fn<typeof fetch>(async () =>
+				Promise.resolve(Response.json([...BUILTIN_SLASH_COMMANDS, personal, plugin])),
 			),
+		);
+		const queryClient = new QueryClient();
+		const ctx =
+		{
+			effortLevels: ["low", "medium", "high", "xhigh", "max"],
+			fastListed: true,
+		};
+		const {result, rerender} = renderHook(
+			({fastListed, session}: {fastListed: boolean; session: boolean}) =>
+				useSlashCommands(
+					undefined,
+					true,
+					session,
+					{
+						...ctx,
+						fastListed,
+					},
+				).slashCommands,
+			{
+				initialProps:
+				{
+					fastListed: true,
+					session: true,
+				},
+				wrapper: ({children}) => <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>,
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(result.current).not.toBeUndefined();
+		});
+		const list = result.current ?? [];
+		const label = (c: SlashCommand) => (c.shadowsHost === true ? `${c.name}:cli` : c.name);
+		const listed = list.map(label);
+		const fas = filterSlashCommands(list, "fas").map(label);
+		const allowed = filterSlashCommands(list, "allowed").map(label);
+		const effortTwin = list.find((c) => c.name === "effort" && c.shadowsHost === true);
+		rerender(
+			{
+				fastListed: false,
+				session: true,
+			},
+		);
+		const noFast = (result.current ?? []).filter((c) => c.shadowsHost === true).map((c) => c.name);
+		rerender(
+			{
+				fastListed: true,
+				session: false,
+			},
+		);
+		const home = (result.current ?? []).filter((c) => c.shadowsHost === true);
+
+		expect(
+			{
+				listed,
+				fas,
+				allowed,
+				effortTwin,
+				noFast,
+				home,
+			},
+		).toStrictEqual(
+			{
+				listed: [
+					...[...SESSION_SLASH_COMMANDS, ...BUILTIN_SLASH_COMMANDS].map((c) => c.name),
+					"standup",
+					"autocompact:cli",
+					"effort:cli",
+					"fast:cli",
+					"permissions:cli",
+					"rewind:cli",
+					"workflows:cli",
+					"btw:cli",
+					"usage:cli",
+					"status:cli",
+					"tools:lint",
+				],
+				fas: ["fast", "fast:cli"],
+				allowed: ["permissions"],
+				effortTwin:
+				{
+					name: "effort",
+					description: "Set effort level for model usage",
+					source: "builtin",
+					argumentHint: "[low|medium|high|xhigh|max|auto]",
+					shadowsHost: true,
+				},
+				noFast: ["autocompact", "effort", "permissions", "rewind", "workflows", "btw", "usage", "status"],
+				home: [],
+			},
 		);
 	});
 });

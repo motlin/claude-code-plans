@@ -453,29 +453,126 @@ export function isKnownSlashCommand(name: string, slashCommands: readonly SlashC
 }
 
 /**
- * The local interactive CLI's own rows for names the web app intercepts, listed after the host rows as upstream
- * lists the session CLI's commands. The copy is CLI 2.1.319's interactive (`local-jsx`) autocompact; cloud
- * sessions report the non-interactive "Configure the auto-compact window size" instead.
+ * The local interactive CLI's (2.1.319) own rows for names the web app may intercept. Cloud sessions list the
+ * non-interactive copy instead. Twins carry no aliases, as upstream's do. The strings were read from the binary with
+ * `rg -ao '.{0,250}name:"<n>".{0,700}' <binary> | grep 'type:"local'`; effort's hint is computed per model.
  */
-export const SESSION_CLI_TWIN_COMMANDS: readonly SlashCommand[] = [
+export const CLI_TWIN_COPY: Readonly<
+	Record<
+		string,
+		{
+			description: string;
+			argumentHint?: string;
+		}
+	>
+> =
+{
+	autocompact:
 	{
-		name: "autocompact",
 		description: "Set how full the context gets before auto-summarizing",
-		source: "builtin",
 		argumentHint: "[auto|<tokens>]",
-		shadowsHost: true,
 	},
-];
+	effort:
+	{
+		description: "Set effort level for model usage",
+	},
+	fast:
+	{
+		description: "Toggle fast mode (Opus 5.5)",
+		argumentHint: "[on|off]",
+	},
+	permissions:
+	{
+		description: "Manage allow and deny tool permission rules",
+	},
+	rewind:
+	{
+		description: "Restore the code and/or conversation to a previous point",
+	},
+	workflows:
+	{
+		description: "Browse running and completed workflows",
+	},
+	btw:
+	{
+		description: "Ask a quick side question without interrupting the main conversation",
+		argumentHint: "[question]",
+	},
+	usage:
+	{
+		description: "Show session cost, plan usage, and activity stats",
+	},
+	config:
+	{
+		description: "Open settings",
+		argumentHint: "[key=value]",
+	},
+	advisor:
+	{
+		description: "Let Claude consult a stronger model at key moments",
+		argumentHint: "[fable|opus|sonnet|off]",
+	},
+	plan:
+	{
+		description: "Enable plan mode or view the current session plan",
+		argumentHint: "[open|<description>]",
+	},
+	skills:
+	{
+		description: "List available skills",
+	},
+	status:
+	{
+		description: "Show Claude Code status including version, model, account, API connectivity, and tool statuses",
+	},
+};
 
-/* Upstream's `hidesCliRow` host rows that the composer intercepts: a custom twin of these is dropped, not listed. */
-const HIDES_CLI_ROW: ReadonlySet<string> = new Set(["model"]);
+/** Upstream's `hidesCliRow` host rows: neither the CLI's own row nor a custom twin of these is listed. */
+export const HIDES_CLI_ROW: ReadonlySet<string> = new Set(["model", "rename"]);
+
+/** What decides the CLI's own twin rows: the current model's effort levels, and whether the CLI lists `/fast`. */
+export interface CliTwinContext
+{
+	effortLevels: readonly string[];
+	/** False when the CLI hides `/fast` (a third-party provider, or `CLAUDE_CODE_DISABLE_FAST_MODE`). */
+	fastListed: boolean;
+}
+
+/**
+ * The local interactive CLI's own row, marked `shadowsHost`, for each `hostHandled` host row with
+ * {@link CLI_TWIN_COPY}, in that table's order, as upstream twins the session CLI's commands against its host rows.
+ */
+export function cliTwinCommands(hostRows: readonly SlashCommand[], ctx: CliTwinContext): SlashCommand[]
+{
+	const handled = new Set(hostRows.filter((row) => row.hostHandled === true).map((row) => row.name));
+	return Object.entries(CLI_TWIN_COPY).flatMap(([name, copy]) =>
+	{
+		if (!handled.has(name) || HIDES_CLI_ROW.has(name)) return [];
+		if (name === "fast" && !ctx.fastListed) return [];
+		const argumentHint = name === "effort" ? `[${[...ctx.effortLevels, "auto"].join("|")}]` : copy.argumentHint;
+		return [
+			{
+				name,
+				description: copy.description,
+				source: "builtin",
+				...(argumentHint === undefined
+					? {}
+					:
+						{
+							argumentHint,
+						}),
+				shadowsHost: true,
+			},
+		];
+	});
+}
 
 /**
  * Flattens groups given in precedence order; the first entry for a name wins. A custom (non-built-in) entry
  * colliding by name or alias with a `hostHandled` built-in is kept after it as a `shadowsHost` twin (dropped for
  * `HIDES_CLI_ROW` names), as upstream twins CLI rows against its host rows. One sharing the name of a built-in the
  * CLI runs replaces that row in place, since the CLI runs the custom command instead of its own. A built-in
- * pre-marked `shadowsHost` (the CLI's own row, {@link SESSION_CLI_TWIN_COMMANDS}) twins the same way, and is listed
+ * pre-marked `shadowsHost` (the CLI's own row, {@link cliTwinCommands}) twins the same way, and is listed
  * plain when no host row collides.
  */
 export function mergeSlashCommands(groups: readonly (readonly SlashCommand[])[]): SlashCommand[]

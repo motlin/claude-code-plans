@@ -17,7 +17,7 @@ import
 {
 	BUILTIN_SLASH_COMMANDS,
 	CLI_COMMAND_NAMES,
-	SESSION_CLI_TWIN_COMMANDS,
+	cliTwinCommands,
 	SESSION_SLASH_COMMANDS,
 	filterSlashCommands,
 	highlightMatches,
@@ -493,11 +493,19 @@ describe("mergeSlashCommands with built-in collisions", () =>
 			source: "personal-command",
 		};
 
+		const twins = cliTwinCommands(
+			[host],
+			{
+				effortLevels: [],
+				fastListed: true,
+			},
+		);
+
 		expect(
 			{
-				twin: mergeSlashCommands([[host], [], SESSION_CLI_TWIN_COMMANDS]),
-				noHost: mergeSlashCommands([[], SESSION_CLI_TWIN_COMMANDS]),
-				custom: mergeSlashCommands([[host], [custom], SESSION_CLI_TWIN_COMMANDS]),
+				twin: mergeSlashCommands([[host], [], twins]),
+				noHost: mergeSlashCommands([[], twins]),
+				custom: mergeSlashCommands([[host], [custom], twins]),
 			},
 		).toStrictEqual(
 			{
@@ -1384,6 +1392,159 @@ describe("splitLeadingSlashCommand", () =>
 				bareSlash: null,
 			},
 		);
+	});
+});
+
+describe("cliTwinCommands", () =>
+{
+	const effort: SlashCommand =
+	{
+		name: "effort",
+		description: "Set the effort level for this session",
+		source: "builtin",
+		argumentHint: "[level]",
+		hostHandled: true,
+	};
+	const fast: SlashCommand =
+	{
+		name: "fast",
+		description: "Turn fast mode on or off",
+		source: "builtin",
+		argumentHint: "[on|off]",
+		hostHandled: true,
+	};
+	const model: SlashCommand =
+	{
+		name: "model",
+		description: "Set the model for this session",
+		source: "builtin",
+		hostHandled: true,
+	};
+	const review: SlashCommand =
+	{
+		name: "review",
+		description: "Review the current diff",
+		source: "builtin",
+	};
+	const levels = ["low", "medium", "high", "xhigh", "max"];
+	const effortTwin: SlashCommand =
+	{
+		name: "effort",
+		description: "Set effort level for model usage",
+		source: "builtin",
+		argumentHint: "[low|medium|high|xhigh|max|auto]",
+		shadowsHost: true,
+	};
+
+	it("lists the interactive CLI's own row for each host-handled built-in with CLI copy, gated on fast and model", () =>
+	{
+		const hostRows = [effort, fast, model, review];
+		const usage: SlashCommand =
+		{
+			name: "usage",
+			description: "Show plan usage and rate limits",
+			source: "builtin",
+			aliases: ["stats", "cost"],
+		};
+
+		expect(
+			{
+				listed: cliTwinCommands(
+					hostRows,
+					{
+						effortLevels: levels,
+						fastListed: true,
+					},
+				),
+				fastUnlisted: cliTwinCommands(
+					hostRows,
+					{
+						effortLevels: levels,
+						fastListed: false,
+					},
+				),
+				noLevels: cliTwinCommands(
+					[effort],
+					{
+						effortLevels: [],
+						fastListed: true,
+					},
+				).map((c) => c.argumentHint),
+				usagePassThrough: cliTwinCommands(
+					[usage],
+					{
+						effortLevels: [],
+						fastListed: true,
+					},
+				),
+				usageHost: cliTwinCommands(
+					[
+						{
+							...usage,
+							hostHandled: true,
+						},
+					],
+					{
+						effortLevels: [],
+						fastListed: true,
+					},
+				),
+			},
+		).toStrictEqual(
+			{
+				listed: [
+					effortTwin,
+					{
+						name: "fast",
+						description: "Toggle fast mode (Opus 5.5)",
+						source: "builtin",
+						argumentHint: "[on|off]",
+						shadowsHost: true,
+					},
+				],
+				fastUnlisted: [effortTwin],
+				noLevels: ["[auto]"],
+				usagePassThrough: [],
+				usageHost: [
+					{
+						name: "usage",
+						description: "Show session cost, plan usage, and activity stats",
+						source: "builtin",
+						shadowsHost: true,
+					},
+				],
+			},
+		);
+	});
+
+	it("yields the single twin slot to a custom command of the same name, as the CLI lists it instead of its own", () =>
+	{
+		const builtins = [effort];
+		const mine: SlashCommand =
+		{
+			name: "effort",
+			description: "Mine (user)",
+			source: "personal-command",
+		};
+		const merged = mergeSlashCommands([
+			builtins,
+			[mine],
+			cliTwinCommands(
+				builtins,
+				{
+					effortLevels: levels,
+					fastListed: true,
+				},
+			),
+		]);
+
+		expect(merged).toStrictEqual([
+			effort,
+			{
+				...mine,
+				shadowsHost: true,
+			},
+		]);
 	});
 });
 
