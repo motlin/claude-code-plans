@@ -218,6 +218,9 @@ import
 import {isMotionReduced} from "../lib/reduced-motion";
 import {isAltEnter, rowActionsAnchorRect} from "./palette-row-actions-geometry";
 import {AttachedContextChips} from "./attached-context-chips";
+import {useFileDropTarget} from "./composer-drop-scrim";
+import {DROP_SCRIM_Z_INDEX, DropOverlay} from "./drop-overlay";
+import {collectDroppedFiles, entriesFromDataTransfer} from "../lib/drop-collect";
 import {useToast} from "./toast-context";
 import {Icon} from "./ui/icon";
 import {Pulse} from "./ui/pulse";
@@ -1347,6 +1350,98 @@ class PaletteExitSnapshot extends Component<
 	}
 }
 
+/** Upstream `ah`'s zone cap: `Yg()` (`max_per_message_upload_count`, server ceiling 20) + 1. */
+const PALETTE_DROP_MAX_FILES = 21;
+
+function hasFileDrag(event: DragEvent): boolean
+{
+	return Array.from(event.dataTransfer?.types ?? []).includes("Files");
+}
+
+/**
+ * Upstream `ah`'s page-level `useDropZone`: while the palette is open (Search or Compose), a full-page zone takes every
+ * file drop away from the page underneath, flattens dropped folders (`ue`, at most `maxFiles`) and hands the accepted
+ * files on; rejections and notices are dropped silently, as upstream. Idle, the zone is `pointer-events-none`; during a
+ * file drag it catches pointer events and draws upstream's `Oc` overlay. A pointer press or move on a stuck overlay
+ * (a drag that left the window without a dragleave) dismisses it until the next file dragenter.
+ */
+function PaletteFileDropZone({onDropFiles}: {onDropFiles: (files: readonly File[]) => void})
+{
+	const zoneRef = useRef<HTMLDivElement>(null);
+	// The walk is async: deliver to the latest render's handler, and not at all once the palette has closed.
+	const deliver = useRef<typeof onDropFiles | null>(onDropFiles);
+	useLayoutEffect(() =>
+	{
+		deliver.current = onDropFiles;
+	});
+	useEffect(
+		() => () =>
+		{
+			deliver.current = null;
+		},
+		[],
+	);
+	const state = useFileDropTarget(
+		{
+			targetRef: zoneRef,
+			priority: "overlay",
+			onTransferDrop: (transfer) =>
+			{
+				// Read the items now: the DataTransfer empties once the drop handler returns.
+				const entries = entriesFromDataTransfer(transfer);
+				void collectDroppedFiles(
+					entries,
+					{
+						multiple: true,
+						maxFiles: PALETTE_DROP_MAX_FILES,
+					},
+				).then(({accepted}) =>
+				{
+					if (accepted.length > 0) deliver.current?.(accepted);
+				});
+			},
+		},
+	);
+	const [dismissed, setDismissed] = useState(false);
+	if (dismissed && state === "idle") setDismissed(false);
+	useEffect(() =>
+	{
+		const onDragEnter = (event: DragEvent) =>
+		{
+			if (hasFileDrag(event)) setDismissed(false);
+		};
+		window.addEventListener("dragenter", onDragEnter, true);
+		return () =>
+		{
+			window.removeEventListener("dragenter", onDragEnter, true);
+		};
+	}, []);
+	const shown = dismissed ? "idle" : state;
+	const dismiss = () =>
+	{
+		setDismissed(true);
+	};
+	return (
+		<div className="cds-root pointer-events-auto contents" data-cds-portal="">
+			<div
+				ref={zoneRef}
+				aria-hidden="true"
+				data-testid="palette-file-drop-zone"
+				data-drag-over={shown === "on-target" ? "" : undefined}
+				className={shown === "idle" ? "fixed inset-0 pointer-events-none" : "fixed inset-0"}
+				style={
+				{
+					zIndex: DROP_SCRIM_Z_INDEX,
+				}}
+				onPointerDown={dismiss}
+				onPointerMove={dismiss}
+			>
+				{shown !== "idle" && <DropOverlay />}
+			</div>
+		</div>
+	);
+}
+
 /**
  * Mounted only while open, after the portal attaches (so after the loading shell unmounts). Taking over from the
  * shell (upstream `_U()`), it skips the fade-in so the swap doesn't flash.
@@ -2300,6 +2395,24 @@ function PalettePopup({
 		}
 	}, [compose, query]);
 
+	/**
+	 * Upstream `ah`'s `onDropFiles`: dropped files attach as Compose chips, and a drop in Search flips to Compose for this
+	 * open only (upstream's raw `Le(!0)`, not the remembering setter). Mid-launch the chips are already taken, so a drop
+	 * is swallowed (the zone still keeps the browser from opening the file) without attaching.
+	 */
+	function attachDroppedFiles(files: readonly File[])
+	{
+		if (startStep !== "idle") return;
+		attachUploadedFiles(COMPOSE_DRAFT_KEY, files, toast);
+		if (mode === "search")
+			switchView(
+				"compose",
+				{
+					remember: false,
+				},
+			);
+	}
+
 	// Upstream's Compose paste: files attach, and text of 500+ chars becomes a pasted-text chip instead of inline text.
 	function handleComposePaste(event: ClipboardEvent<HTMLTextAreaElement>)
 	{
@@ -2894,725 +3007,737 @@ function PalettePopup({
 	}, [emptyViewPending, query]);
 
 	return (
-		<DialogPopup
-			unstyled
-			ref={popupRef}
-			data-command-palette=""
-			data-perf-overlay="command_palette"
-			initialFocus={inputRef}
-			restoreFocus={restoreFocus}
-			className={PALETTE_POPUP_CLASS}
-			style={PALETTE_POPUP_STYLE}
-			onKeyDownCapture={trackEnterAhead}
-			onPointerDownCapture={() =>
-			{
-				if (emptyViewPending) enterAheadRef.current = "off";
-			}}
-		>
-			<Dialog.Title className="sr-only">Search</Dialog.Title>
-			<div
-				ref={cardRef}
-				data-palette-recede-card=""
-				// Upstream's recede: origin-top, duration-base with --cds-ease-out, none under reduced motion.
-				className={`relative origin-top overflow-hidden border-[0.5px] border-strong bg-surface-3 shadow-2xl transition-[scale] duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none motion-reduce:scale-100 ${
-					rowActions === null ? "" : "scale-[.97]"
-				} ${footerCollapsed ? FOOTER_COLLAPSED_CARD_CLASS : ""} ${PALETTE_RADIUS}`}
-				// Upstream drops onHoverIndex while the card is open, so hovering rows can't move the selection
-				// (cmdk reads disablePointerSelection only once, at mount).
-				onPointerMoveCapture={
-					rowActions === null
-						? undefined
-						: (event) =>
-							{
-								event.stopPropagation();
-							}
-				}
-				// Upstream's modal menu backdrop eats the first click outside the card. A press that slips past it
-				// still only closes the card: its click must not reach a row, even after the press closed the card.
-				onPointerDownCapture={(event) =>
+		<>
+			<DialogPopup
+				unstyled
+				ref={popupRef}
+				data-command-palette=""
+				data-perf-overlay="command_palette"
+				initialFocus={inputRef}
+				restoreFocus={restoreFocus}
+				className={PALETTE_POPUP_CLASS}
+				style={PALETTE_POPUP_STYLE}
+				onKeyDownCapture={trackEnterAhead}
+				onPointerDownCapture={() =>
 				{
-					swallowClickRef.current = rowActions !== null;
-					if (rowActions !== null) event.stopPropagation();
-				}}
-				onClickCapture={(event) =>
-				{
-					if (rowActions === null && !swallowClickRef.current) return;
-					swallowClickRef.current = false;
-					event.preventDefault();
-					event.stopPropagation();
-					closeRowActions(
-						{
-							refocus: true,
-						},
-					);
+					if (emptyViewPending) enterAheadRef.current = "off";
 				}}
 			>
+				<Dialog.Title className="sr-only">Search</Dialog.Title>
 				<div
-					aria-hidden="true"
-					data-palette-recede-veil=""
-					// Upstream fades the veil in over duration-base and out over duration-snap.
-					className={`pointer-events-none absolute inset-0 z-10 bg-surface-0 transition-opacity ease-[cubic-bezier(0.165,0.84,0.44,1)] after:absolute after:inset-0 after:rounded-[inherit] after:bg-backdrop ${
-						rowActions === null ? "opacity-0 duration-[120ms]" : "opacity-20 duration-200"
-					}`}
-				/>
-				<Command
-					label={label}
-					loop
-					shouldFilter={false}
-					value={selectedValue}
-					onValueChange={setSelectedValue}
-					onKeyDown={handleKeyDown}
-					className="flex flex-col"
+					ref={cardRef}
+					data-palette-recede-card=""
+					// Upstream's recede: origin-top, duration-base with --cds-ease-out, none under reduced motion.
+					className={`relative origin-top overflow-hidden border-[0.5px] border-strong bg-surface-3 shadow-2xl transition-[scale] duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none motion-reduce:scale-100 ${
+						rowActions === null ? "" : "scale-[.97]"
+					} ${footerCollapsed ? FOOTER_COLLAPSED_CARD_CLASS : ""} ${PALETTE_RADIUS}`}
+					// Upstream drops onHoverIndex while the card is open, so hovering rows can't move the selection
+					// (cmdk reads disablePointerSelection only once, at mount).
+					onPointerMoveCapture={
+						rowActions === null
+							? undefined
+							: (event) =>
+								{
+									event.stopPropagation();
+								}
+					}
+					// Upstream's modal menu backdrop eats the first click outside the card. A press that slips past it
+					// still only closes the card: its click must not reach a row, even after the press closed the card.
+					onPointerDownCapture={(event) =>
+					{
+						swallowClickRef.current = rowActions !== null;
+						if (rowActions !== null) event.stopPropagation();
+					}}
+					onClickCapture={(event) =>
+					{
+						if (rowActions === null && !swallowClickRef.current) return;
+						swallowClickRef.current = false;
+						event.preventDefault();
+						event.stopPropagation();
+						closeRowActions(
+							{
+								refocus: true,
+							},
+						);
+					}}
 				>
-					{/* Upstream's header wrapper: Compose at rest has no list below, so the input row takes the bottom gap. */}
-					<div className={composeAtRest ? "flex-shrink-0 pb-1 pointer-coarse:pb-0" : "flex-shrink-0"}>
-						<div
-							className={`relative flex items-center gap-2 pr-2.5 pl-6 ${
-								compose ? "flex-wrap pt-[1.1rem] pb-3" : "pt-[1.1rem] pb-[0.9rem]"
-							}`}
-						>
-							{compose && (
-								<div
-									aria-hidden="true"
-									className="pointer-events-none absolute inset-1.5 rounded-composer bg-fill-field shadow-panel-sm-cds"
-								/>
-							)}
-							{!compose && chips.length > 0 && (
-								<FilterChips chips={chips} onClear={clearFilter} onClearAll={clearFoldedFilters} />
-							)}
-							{compose && composeChips.length > 0 && (
-								<div className="relative basis-full min-w-0 -ms-1.5 pe-0.5">
-									<AttachedContextChips
-										sessionId={COMPOSE_DRAFT_KEY}
-										context={composeChips}
-										comments={[]}
-										restoredIds={restoredComposeChipIds}
+					<div
+						aria-hidden="true"
+						data-palette-recede-veil=""
+						// Upstream fades the veil in over duration-base and out over duration-snap.
+						className={`pointer-events-none absolute inset-0 z-10 bg-surface-0 transition-opacity ease-[cubic-bezier(0.165,0.84,0.44,1)] after:absolute after:inset-0 after:rounded-[inherit] after:bg-backdrop ${
+							rowActions === null ? "opacity-0 duration-[120ms]" : "opacity-20 duration-200"
+						}`}
+					/>
+					<Command
+						label={label}
+						loop
+						shouldFilter={false}
+						value={selectedValue}
+						onValueChange={setSelectedValue}
+						onKeyDown={handleKeyDown}
+						className="flex flex-col"
+					>
+						{/* Upstream's header wrapper: Compose at rest has no list below, so the input row takes the bottom gap. */}
+						<div className={composeAtRest ? "flex-shrink-0 pb-1 pointer-coarse:pb-0" : "flex-shrink-0"}>
+							<div
+								className={`relative flex items-center gap-2 pr-2.5 pl-6 ${
+									compose ? "flex-wrap pt-[1.1rem] pb-3" : "pt-[1.1rem] pb-[0.9rem]"
+								}`}
+							>
+								{compose && (
+									<div
+										aria-hidden="true"
+										className="pointer-events-none absolute inset-1.5 rounded-composer bg-fill-field shadow-panel-sm-cds"
 									/>
-								</div>
-							)}
-							<Command.Input asChild value={query} onValueChange={changeQuery}>
-								<textarea
-									ref={inputRef}
-									onKeyDown={handleComposeKeyDown}
-									onPaste={compose ? handleComposePaste : undefined}
-									aria-activedescendant={undefined}
-									aria-describedby={compose ? undefined : PALETTE_KEYS_HINT_ID}
-									placeholder={!compose && actionsOnly ? "Search actions" : label}
-									disabled={launching}
-									rows={compose ? 2 : 1}
-									wrap={compose ? undefined : "off"}
-									className={`relative max-h-24 min-w-[5rem] flex-1 resize-none border-none bg-transparent py-1.5 text-sm leading-5 text-primary outline-none placeholder:text-ink-muted ${
-										compose ? "overflow-y-auto" : "overflow-x-auto overflow-y-hidden"
-									}${launching ? " cursor-not-allowed opacity-50" : ""}`}
-								/>
-							</Command.Input>
-							{!compose && (
-								<span id={PALETTE_KEYS_HINT_ID} hidden>
-									Left and Right arrows change the type of result. Option+Enter opens actions for the
-									highlighted result.
-								</span>
-							)}
-							{!compose && (
-								<span
-									data-palette-spinner-slot=""
-									className="flex size-4 shrink-0 items-center justify-center"
-								>
-									{searching && tokens.text.trim().length >= 2 && (
-										<Spinner size="md" delay={150} label="Searching deeper..." />
-									)}
-								</span>
-							)}
-							{!compose && (
-								<Tooltip content="Close" side="bottom" className="shrink-0">
-									<Dialog.Close
-										aria-label="Close"
-										className={`${ICON_BUTTON_BASE_CLASS} size-8 rounded-r6 text-primary hover:bg-fill-ghost-hover`}
+								)}
+								{!compose && chips.length > 0 && (
+									<FilterChips chips={chips} onClear={clearFilter} onClearAll={clearFoldedFilters} />
+								)}
+								{compose && composeChips.length > 0 && (
+									<div className="relative basis-full min-w-0 -ms-1.5 pe-0.5">
+										<AttachedContextChips
+											sessionId={COMPOSE_DRAFT_KEY}
+											context={composeChips}
+											comments={[]}
+											restoredIds={restoredComposeChipIds}
+										/>
+									</div>
+								)}
+								<Command.Input asChild value={query} onValueChange={changeQuery}>
+									<textarea
+										ref={inputRef}
+										onKeyDown={handleComposeKeyDown}
+										onPaste={compose ? handleComposePaste : undefined}
+										aria-activedescendant={undefined}
+										aria-describedby={compose ? undefined : PALETTE_KEYS_HINT_ID}
+										placeholder={!compose && actionsOnly ? "Search actions" : label}
+										disabled={launching}
+										rows={compose ? 2 : 1}
+										wrap={compose ? undefined : "off"}
+										className={`relative max-h-24 min-w-[5rem] flex-1 resize-none border-none bg-transparent py-1.5 text-sm leading-5 text-primary outline-none placeholder:text-ink-muted ${
+											compose ? "overflow-y-auto" : "overflow-x-auto overflow-y-hidden"
+										}${launching ? " cursor-not-allowed opacity-50" : ""}`}
+									/>
+								</Command.Input>
+								{!compose && (
+									<span id={PALETTE_KEYS_HINT_ID} hidden>
+										Left and Right arrows change the type of result. Option+Enter opens actions for
+										the highlighted result.
+									</span>
+								)}
+								{!compose && (
+									<span
+										data-palette-spinner-slot=""
+										className="flex size-4 shrink-0 items-center justify-center"
 									>
-										<Icon name="X" />
-									</Dialog.Close>
-								</Tooltip>
-							)}
-							{/* Upstream renders the file input and button row as direct children of the input row, so Send sits
+										{searching && tokens.text.trim().length >= 2 && (
+											<Spinner size="md" delay={150} label="Searching deeper..." />
+										)}
+									</span>
+								)}
+								{!compose && (
+									<Tooltip content="Close" side="bottom" className="shrink-0">
+										<Dialog.Close
+											aria-label="Close"
+											className={`${ICON_BUTTON_BASE_CLASS} size-8 rounded-r6 text-primary hover:bg-fill-ghost-hover`}
+										>
+											<Icon name="X" />
+										</Dialog.Close>
+									</Tooltip>
+								)}
+								{/* Upstream renders the file input and button row as direct children of the input row, so Send sits
 							    12px from the card edge. Radius 8 = calc(var(--cds-radius) + var(--cds-button-radius-add)):
 							    7px + 1px under [data-cds-fizzy-lake~="panels"]. */}
-							{compose && (
-								<>
-									<input
-										ref={fileInputRef}
-										type="file"
-										multiple
-										accept="image/*,text/*"
-										aria-label="Add files or photos"
-										tabIndex={-1}
-										className="hidden"
-										onChange={(event) =>
-										{
-											attachUploadedFiles(
-												COMPOSE_DRAFT_KEY,
-												Array.from(event.target.files ?? []),
-												toast,
-											);
-											event.target.value = "";
-										}}
-									/>
-									<div className="relative flex basis-full items-center justify-between">
-										<Tooltip content="Add files or photos" side="top">
-											<button
-												type="button"
-												aria-label="Add files or photos"
-												disabled={startStep !== "idle"}
-												onMouseDown={(event) =>
-												{
-													event.preventDefault();
-												}}
-												onClick={openFilePicker}
-												className={`${ICON_BUTTON_CLASS} -ms-3 rounded-r6 text-primary hover:bg-fill-ghost-hover`}
-											>
-												<Icon name="Attachment" />
-											</button>
-										</Tooltip>
-										<Tooltip content="Send" side="top">
-											<button
-												type="button"
-												aria-label="Send"
-												aria-busy={launching ? true : undefined}
-												disabled={startStep !== "idle"}
-												onMouseDown={(event) =>
-												{
-													event.preventDefault();
-												}}
-												onClick={onSend}
-												className={`${ICON_BUTTON_CLASS} me-0.5 rounded-r6 bg-fill-brand text-white hover:bg-fill-brand-hover`}
-											>
-												{launching ? (
-													<LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
-												) : (
-													<Icon name="ArrowReturn" />
-												)}
-											</button>
-										</Tooltip>
-									</div>
-								</>
-							)}
+								{compose && (
+									<>
+										<input
+											ref={fileInputRef}
+											type="file"
+											multiple
+											accept="image/*,text/*"
+											aria-label="Add files or photos"
+											tabIndex={-1}
+											className="hidden"
+											onChange={(event) =>
+											{
+												attachUploadedFiles(
+													COMPOSE_DRAFT_KEY,
+													Array.from(event.target.files ?? []),
+													toast,
+												);
+												event.target.value = "";
+											}}
+										/>
+										<div className="relative flex basis-full items-center justify-between">
+											<Tooltip content="Add files or photos" side="top">
+												<button
+													type="button"
+													aria-label="Add files or photos"
+													disabled={startStep !== "idle"}
+													onMouseDown={(event) =>
+													{
+														event.preventDefault();
+													}}
+													onClick={openFilePicker}
+													className={`${ICON_BUTTON_CLASS} -ms-3 rounded-r6 text-primary hover:bg-fill-ghost-hover`}
+												>
+													<Icon name="Attachment" />
+												</button>
+											</Tooltip>
+											<Tooltip content="Send" side="top">
+												<button
+													type="button"
+													aria-label="Send"
+													aria-busy={launching ? true : undefined}
+													disabled={startStep !== "idle"}
+													onMouseDown={(event) =>
+													{
+														event.preventDefault();
+													}}
+													onClick={onSend}
+													className={`${ICON_BUTTON_CLASS} me-0.5 rounded-r6 bg-fill-brand text-white hover:bg-fill-brand-hover`}
+												>
+													{launching ? (
+														<LoaderCircle
+															aria-hidden="true"
+															className="size-4 animate-spin"
+														/>
+													) : (
+														<Icon name="ArrowReturn" />
+													)}
+												</button>
+											</Tooltip>
+										</div>
+									</>
+								)}
+							</div>
 						</div>
-					</div>
-					{!compose && <TypeTabs value={actionsOnly ? null : tab} onChange={chooseTab} />}
-					{!compose && <div className="h-[0.5px] w-full bg-border" />}
+						{!compose && <TypeTabs value={actionsOnly ? null : tab} onChange={chooseTab} />}
+						{!compose && <div className="h-[0.5px] w-full bg-border" />}
 
-					{/* Upstream animates the scroller between its measured content height and the cap.
+						{/* Upstream animates the scroller between its measured content height and the cap.
 					    While capped, cmdk's sizer is a full-height column so the skeleton or empty block fills it. */}
-					<Command.List
-						ref={listRef}
-						className={[
-							compose
-								? `max-h-[440px] overflow-y-auto p-2.5${composeAtRest ? " hidden" : ""}`
-								: LIST_SCROLLER_CLASS,
-							"[&_[cmdk-group]+[cmdk-group]]:mt-1 [&>[cmdk-list-sizer]]:flex [&>[cmdk-list-sizer]]:flex-col",
-							...(listCapped ? ["[&>[cmdk-list-sizer]]:min-h-full"] : []),
-						].join(" ")}
-						{...(compose
-							? {}
-							:
-								{
-									style:
+						<Command.List
+							ref={listRef}
+							className={[
+								compose
+									? `max-h-[440px] overflow-y-auto p-2.5${composeAtRest ? " hidden" : ""}`
+									: LIST_SCROLLER_CLASS,
+								"[&_[cmdk-group]+[cmdk-group]]:mt-1 [&>[cmdk-list-sizer]]:flex [&>[cmdk-list-sizer]]:flex-col",
+								...(listCapped ? ["[&>[cmdk-list-sizer]]:min-h-full"] : []),
+							].join(" ")}
+							{...(compose
+								? {}
+								:
 									{
-										...LIST_MAX_HEIGHT_STYLE,
-										...(listHeight === null
-											? {}
-											:
-												{
-													height: `${listHeight}px`,
-												}),
-									},
-								})}
-					>
-						{LIST_SCROLL_SHADOW}
-						{launching && !compose && (
-							<Command.Group heading="Quick actions" className={GROUP_CLASS}>
-								<CommandItem
-									value={NEW_SESSION_VALUE}
-									icon={<LoaderCircle className="animate-spin" />}
-									onSelect={() =>
-									{
-									}}
-								>
-									Starting session…
-								</CommandItem>
-							</Command.Group>
-						)}
-						{startStep === "picker" && (
-							<Command.Group heading="Choose a project" className={GROUP_CLASS}>
-								{startProjects.map((project) => (
+										style:
+										{
+											...LIST_MAX_HEIGHT_STYLE,
+											...(listHeight === null
+												? {}
+												:
+													{
+														height: `${listHeight}px`,
+													}),
+										},
+									})}
+						>
+							{LIST_SCROLL_SHADOW}
+							{launching && !compose && (
+								<Command.Group heading="Quick actions" className={GROUP_CLASS}>
 									<CommandItem
-										key={project.id}
-										value={startProjectValue(project)}
-										icon={<FolderOpen />}
-										onSelect={() => void launchSession(project)}
-									>
-										{project.name}
-									</CommandItem>
-								))}
-							</Command.Group>
-						)}
-						{idle && offersNewSession && (
-							<Command.Group heading="Quick actions" className={GROUP_CLASS}>
-								<NewSessionItem
-									prompt={query}
-									projectName={startProjectName}
-									onSelect={openStartPicker}
-								/>
-							</Command.Group>
-						)}
-						{idle && !compose && hints !== null && (
-							<div>{hints.map((filter) => filterHintItem(filter))}</div>
-						)}
-
-						{idle && !compose && valueSuggestions !== null && (
-							<Command.Group
-								heading={paletteFilterLabels[valueSuggestions.filter]}
-								className={GROUP_CLASS}
-							>
-								{valueSuggestions.values.map((value) => (
-									<CommandItem
-										key={value.query}
-										value={`filter-value:${value.query}`}
+										value={NEW_SESSION_VALUE}
+										icon={<LoaderCircle className="animate-spin" />}
 										onSelect={() =>
 										{
-											chooseFilterValue(value.query);
 										}}
 									>
-										{value.label}
+										Starting session…
 									</CommandItem>
-								))}
-							</Command.Group>
-						)}
-
-						{showEmptyState && !emptyViewPending && (
-							<>
-								{emptyView.groups
-									.filter((group) => !whitespacePrompt || group.id === "actions")
-									.map((group) =>
-										group.id === "jump" ? (
-											// Upstream's pinned jump group is a bare, untitled div above Needs attention.
-											<div key={group.id}>
-												<CommandItem
-													value="action:jump_to_question"
-													icon={<CircleHelp />}
-													onSelect={jumpToQuestion}
-												>
-													{PALETTE_JUMP_ACTIONS.jump_to_question.label}
-												</CommandItem>
-											</div>
-										) : (
-											<Command.Group key={group.id} heading={group.title} className={GROUP_CLASS}>
-												{group.items.map((row) => (
-													<EmptyViewItem
-														key={row.id}
-														row={row}
-														onOpenSession={(id) =>
-														{
-															select(() =>
-															{
-																openSession(id);
-															});
-														}}
-														onOpenRowActions={openRowActions}
-														onNavigate={(href) =>
-														{
-															select(
-																() =>
-																	void navigate(
-																		{
-																			href,
-																		},
-																	),
-															);
-														}}
-														onNewSession={() =>
-														{
-															select(
-																() =>
-																	void navigate(
-																		{
-																			to: "/",
-																		},
-																	).then(requestHomeComposerFocus),
-															);
-														}}
-													/>
-												))}
-											</Command.Group>
-										),
-									)}
-							</>
-						)}
-
-						{showResults && (
-							// cmdk's Group forces role=presentation, so upstream's headingless group is a plain div.
-							<>
-								<div
-									role="group"
-									aria-label="Search results"
-									aria-busy={searching}
-									// Upstream's headingless results group: 12px below any sibling (gap-1 + mt-2). Upstream's
-									// :first-child is the listbox's own first child; locally the scroll shadow leads the sizer.
-									className="[&:not([data-palette-scroll-shadow]+*)]:mt-2"
-								>
-									{inlineHintsFirst && inlineHintItems}
-									{listing?.map((row) => (
-										<SearchResultItem
-											key={rowKey(row)}
-											row={row}
-											now={now}
-											onSelect={() =>
-											{
-												select(() =>
-												{
-													openRow(row);
-												});
-											}}
-											onRowActions={() =>
-											{
-												openRowActions(row.id);
-											}}
-										/>
-									))}
-									{typedItems.map((item) =>
-									{
-										switch (item.kind)
-										{
-											case "row":
-											{
-												const {row} = item;
-												return (
-													<SearchResultItem
-														key={rowKey(row)}
-														row={row}
-														now={now}
-														onSelect={() =>
-														{
-															select(() =>
-															{
-																openRow(row);
-															});
-														}}
-														onRowActions={() =>
-														{
-															openRowActions(row.id);
-														}}
-													/>
-												);
-											}
-											case "session-command":
-											{
-												const {command} = item;
-												return (
-													<CommandItem
-														key={command.id}
-														value={`session-command:${command.id}`}
-														icon={SESSION_COMMAND_ICONS[command.id]}
-														lowerQuery={lowerQuery}
-														onSelect={() =>
-														{
-															select(() =>
-															{
-																runSessionCommand(command.id);
-															});
-														}}
-													>
-														{command.label}
-													</CommandItem>
-												);
-											}
-											case "action":
-											{
-												const {action} = item;
-												return action.shortcut === undefined ? (
-													<CommandItem
-														key={action.label}
-														value={action.value ?? `action:${action.label}`}
-														icon={action.icon}
-														lowerQuery={lowerQuery}
-														{...(action.warm === undefined
-															? {}
-															:
-																{
-																	onPointerEnter: action.warm,
-																})}
-														onSelect={() =>
-														{
-															select(action.run);
-														}}
-													>
-														{action.label}
-													</CommandItem>
-												) : (
-													<ShortcutCommandItem
-														key={action.label}
-														value={`action:${action.label}`}
-														id={action.shortcut}
-														icon={action.icon}
-														lowerQuery={lowerQuery}
-														onSelect={() =>
-														{
-															select(action.run);
-														}}
-													>
-														{action.label}
-													</ShortcutCommandItem>
-												);
-											}
-											case "nav":
-											{
-												const {command} = item;
-												return (
-													<CommandItem
-														key={command.to}
-														value={`nav:${command.to}`}
-														icon={command.icon}
-														lowerQuery={lowerQuery}
-														onSelect={() =>
-														{
-															select(() =>
-															{
-																void navigate(
-																	{
-																		to: command.to,
-																	},
-																);
-															});
-														}}
-													>
-														{command.label}
-													</CommandItem>
-												);
-											}
-											default:
-												return assertNever(item);
-										}
-									})}
-									{fetchedRows.map((row) => (
-										<SearchResultItem
-											key={rowKey(row)}
-											row={row}
-											now={now}
-											onSelect={() =>
-											{
-												select(() =>
-												{
-													openRow(row);
-												});
-											}}
-											onRowActions={() =>
-											{
-												openRowActions(row.id);
-											}}
-										/>
-									))}
-									{inlineSuggestions.map((suggestion) => (
+								</Command.Group>
+							)}
+							{startStep === "picker" && (
+								<Command.Group heading="Choose a project" className={GROUP_CLASS}>
+									{startProjects.map((project) => (
 										<CommandItem
-											key={`${suggestion.filter}:${suggestion.value}`}
-											value={`filter-value:${suggestion.filter}:${suggestion.value}`}
-											icon={PALETTE_FILTER_ICONS[suggestion.filter]}
-											badge={
-												<span className={FILTER_BADGE_CLASS[look]}>
-													<span className={BADGE_LABEL_PAD[look]}>{suggestion.label}</span>
-												</span>
-											}
-											onSelect={() =>
-											{
-												chooseInlineSuggestion(suggestion);
-											}}
+											key={project.id}
+											value={startProjectValue(project)}
+											icon={<FolderOpen />}
+											onSelect={() => void launchSession(project)}
 										>
-											Filter by{" "}
+											{project.name}
 										</CommandItem>
 									))}
-									{!inlineHintsFirst && inlineHintItems}
-									{/* Local-only row; upstream's empty view has no option rows, so it waits for results. */}
-									{emptyKind === null &&
-										!searching &&
-										tokens.text !== "" &&
-										!actionsOnly &&
-										!bangQuery &&
-										!isClientPaletteType(type) && (
-											<CommandItem
-												value="see-all-results"
-												icon={<Search />}
+								</Command.Group>
+							)}
+							{idle && offersNewSession && (
+								<Command.Group heading="Quick actions" className={GROUP_CLASS}>
+									<NewSessionItem
+										prompt={query}
+										projectName={startProjectName}
+										onSelect={openStartPicker}
+									/>
+								</Command.Group>
+							)}
+							{idle && !compose && hints !== null && (
+								<div>{hints.map((filter) => filterHintItem(filter))}</div>
+							)}
+
+							{idle && !compose && valueSuggestions !== null && (
+								<Command.Group
+									heading={paletteFilterLabels[valueSuggestions.filter]}
+									className={GROUP_CLASS}
+								>
+									{valueSuggestions.values.map((value) => (
+										<CommandItem
+											key={value.query}
+											value={`filter-value:${value.query}`}
+											onSelect={() =>
+											{
+												chooseFilterValue(value.query);
+											}}
+										>
+											{value.label}
+										</CommandItem>
+									))}
+								</Command.Group>
+							)}
+
+							{showEmptyState && !emptyViewPending && (
+								<>
+									{emptyView.groups
+										.filter((group) => !whitespacePrompt || group.id === "actions")
+										.map((group) =>
+											group.id === "jump" ? (
+												// Upstream's pinned jump group is a bare, untitled div above Needs attention.
+												<div key={group.id}>
+													<CommandItem
+														value="action:jump_to_question"
+														icon={<CircleHelp />}
+														onSelect={jumpToQuestion}
+													>
+														{PALETTE_JUMP_ACTIONS.jump_to_question.label}
+													</CommandItem>
+												</div>
+											) : (
+												<Command.Group
+													key={group.id}
+													heading={group.title}
+													className={GROUP_CLASS}
+												>
+													{group.items.map((row) => (
+														<EmptyViewItem
+															key={row.id}
+															row={row}
+															onOpenSession={(id) =>
+															{
+																select(() =>
+																{
+																	openSession(id);
+																});
+															}}
+															onOpenRowActions={openRowActions}
+															onNavigate={(href) =>
+															{
+																select(
+																	() =>
+																		void navigate(
+																			{
+																				href,
+																			},
+																		),
+																);
+															}}
+															onNewSession={() =>
+															{
+																select(
+																	() =>
+																		void navigate(
+																			{
+																				to: "/",
+																			},
+																		).then(requestHomeComposerFocus),
+																);
+															}}
+														/>
+													))}
+												</Command.Group>
+											),
+										)}
+								</>
+							)}
+
+							{showResults && (
+								// cmdk's Group forces role=presentation, so upstream's headingless group is a plain div.
+								<>
+									<div
+										role="group"
+										aria-label="Search results"
+										aria-busy={searching}
+										// Upstream's headingless results group: 12px below any sibling (gap-1 + mt-2). Upstream's
+										// :first-child is the listbox's own first child; locally the scroll shadow leads the sizer.
+										className="[&:not([data-palette-scroll-shadow]+*)]:mt-2"
+									>
+										{inlineHintsFirst && inlineHintItems}
+										{listing?.map((row) => (
+											<SearchResultItem
+												key={rowKey(row)}
+												row={row}
+												now={now}
 												onSelect={() =>
 												{
 													select(() =>
 													{
-														seeAllResults(type);
+														openRow(row);
 													});
 												}}
+												onRowActions={() =>
+												{
+													openRowActions(row.id);
+												}}
+											/>
+										))}
+										{typedItems.map((item) =>
+										{
+											switch (item.kind)
+											{
+												case "row":
+												{
+													const {row} = item;
+													return (
+														<SearchResultItem
+															key={rowKey(row)}
+															row={row}
+															now={now}
+															onSelect={() =>
+															{
+																select(() =>
+																{
+																	openRow(row);
+																});
+															}}
+															onRowActions={() =>
+															{
+																openRowActions(row.id);
+															}}
+														/>
+													);
+												}
+												case "session-command":
+												{
+													const {command} = item;
+													return (
+														<CommandItem
+															key={command.id}
+															value={`session-command:${command.id}`}
+															icon={SESSION_COMMAND_ICONS[command.id]}
+															lowerQuery={lowerQuery}
+															onSelect={() =>
+															{
+																select(() =>
+																{
+																	runSessionCommand(command.id);
+																});
+															}}
+														>
+															{command.label}
+														</CommandItem>
+													);
+												}
+												case "action":
+												{
+													const {action} = item;
+													return action.shortcut === undefined ? (
+														<CommandItem
+															key={action.label}
+															value={action.value ?? `action:${action.label}`}
+															icon={action.icon}
+															lowerQuery={lowerQuery}
+															{...(action.warm === undefined
+																? {}
+																:
+																	{
+																		onPointerEnter: action.warm,
+																	})}
+															onSelect={() =>
+															{
+																select(action.run);
+															}}
+														>
+															{action.label}
+														</CommandItem>
+													) : (
+														<ShortcutCommandItem
+															key={action.label}
+															value={`action:${action.label}`}
+															id={action.shortcut}
+															icon={action.icon}
+															lowerQuery={lowerQuery}
+															onSelect={() =>
+															{
+																select(action.run);
+															}}
+														>
+															{action.label}
+														</ShortcutCommandItem>
+													);
+												}
+												case "nav":
+												{
+													const {command} = item;
+													return (
+														<CommandItem
+															key={command.to}
+															value={`nav:${command.to}`}
+															icon={command.icon}
+															lowerQuery={lowerQuery}
+															onSelect={() =>
+															{
+																select(() =>
+																{
+																	void navigate(
+																		{
+																			to: command.to,
+																		},
+																	);
+																});
+															}}
+														>
+															{command.label}
+														</CommandItem>
+													);
+												}
+												default:
+													return assertNever(item);
+											}
+										})}
+										{fetchedRows.map((row) => (
+											<SearchResultItem
+												key={rowKey(row)}
+												row={row}
+												now={now}
+												onSelect={() =>
+												{
+													select(() =>
+													{
+														openRow(row);
+													});
+												}}
+												onRowActions={() =>
+												{
+													openRowActions(row.id);
+												}}
+											/>
+										))}
+										{inlineSuggestions.map((suggestion) => (
+											<CommandItem
+												key={`${suggestion.filter}:${suggestion.value}`}
+												value={`filter-value:${suggestion.filter}:${suggestion.value}`}
+												icon={PALETTE_FILTER_ICONS[suggestion.filter]}
+												badge={
+													<span className={FILTER_BADGE_CLASS[look]}>
+														<span className={BADGE_LABEL_PAD[look]}>
+															{suggestion.label}
+														</span>
+													</span>
+												}
+												onSelect={() =>
+												{
+													chooseInlineSuggestion(suggestion);
+												}}
 											>
-												See all results for “{tokens.text}”
+												Filter by{" "}
 											</CommandItem>
-										)}
-								</div>
-								{/* Upstream's block follows the results listbox, so its flex-1 centres it in the capped list. */}
-								{emptyKind !== null && (
-									<PaletteEmptyState
-										kind={emptyKind}
-										message={emptyMessage}
-										onSearchAll={searchAll}
-										onCompose={() =>
-										{
-											switchView("compose");
-										}}
-									/>
-								)}
-							</>
+										))}
+										{!inlineHintsFirst && inlineHintItems}
+										{/* Local-only row; upstream's empty view has no option rows, so it waits for results. */}
+										{emptyKind === null &&
+											!searching &&
+											tokens.text !== "" &&
+											!actionsOnly &&
+											!bangQuery &&
+											!isClientPaletteType(type) && (
+												<CommandItem
+													value="see-all-results"
+													icon={<Search />}
+													onSelect={() =>
+													{
+														select(() =>
+														{
+															seeAllResults(type);
+														});
+													}}
+												>
+													See all results for “{tokens.text}”
+												</CommandItem>
+											)}
+									</div>
+									{/* Upstream's block follows the results listbox, so its flex-1 centres it in the capped list. */}
+									{emptyKind !== null && (
+										<PaletteEmptyState
+											kind={emptyKind}
+											message={emptyMessage}
+											onSearchAll={searchAll}
+											onCompose={() =>
+											{
+												switchView("compose");
+											}}
+										/>
+									)}
+								</>
+							)}
+							{showResults && searching && (
+								<PaletteSkeleton
+									{...(actionRowsOnly
+										? (
+											{
+												lead: "spacer",
+											} as const)
+										: {})}
+								/>
+							)}
+							{emptyViewPending && <PaletteEmptyViewSkeleton handoff={skeletonHandoff} />}
+						</Command.List>
+						{/* Upstream's live region stays empty beside the long-prompt New session row: search never ran. */}
+						{(showResults || (idle && longPrompt)) && (
+							<div aria-live="polite" aria-atomic="true" className="sr-only">
+								{showResults && !searching ? liveMessage : ""}
+							</div>
 						)}
-						{showResults && searching && (
-							<PaletteSkeleton
-								{...(actionRowsOnly
-									? (
-										{
-											lead: "spacer",
-										} as const)
-									: {})}
-							/>
-						)}
-						{emptyViewPending && <PaletteEmptyViewSkeleton handoff={skeletonHandoff} />}
-					</Command.List>
-					{/* Upstream's live region stays empty beside the long-prompt New session row: search never ran. */}
-					{(showResults || (idle && longPrompt)) && (
-						<div aria-live="polite" aria-atomic="true" className="sr-only">
-							{showResults && !searching ? liveMessage : ""}
-						</div>
-					)}
-					{!compose && (
-						<PaletteFilterSpoken
-							filterKey={JSON.stringify([
-								tab,
-								filters.date,
-								filters.repo,
-								filters.project,
-								filters.archived,
-								filters.actions,
-							])}
-							words={`Showing ${new Intl.ListFormat(
-								"en",
-								{
-									type: "unit",
-								},
-							).format([paletteTypeLabels[tab], ...chips.map((chip) => chip.label)])}`}
-						/>
-					)}
-
-					{compose && (
-						<div aria-live="polite" aria-atomic="true" className="sr-only">
-							{launching ? "Starting session…" : ""}
-						</div>
-					)}
-
-					<FooterCollapse open={!footerCollapsed}>
-						{compose ? (
-							<PaletteFooter
-								compose
-								hints={[
-									["Send", ["enter"]],
-									["Add files or photos", [addFilesKeys]],
-								]}
-								trailing={
-									<ViewHint
-										label="Search"
-										disabled={startStep !== "idle"}
-										onSwitch={() =>
-										{
-											switchView("search");
-										}}
-									/>
-								}
-							/>
-						) : (
-							<PaletteFooter
-								hints={[
-									["Close", ["esc"]],
-									// Upstream shows Change type only for an exactly-empty query, not a whitespace one.
-									...(query === ""
-										? [
-												[
-													"Change type",
-													["left", "right"],
-													"hidden sm:flex items-center gap-2",
-												] as const,
-											]
-										: []),
-									["Filters", ["/"], "hidden md:flex items-center gap-2"],
-									// Upstream shows the hint only while the selected row supports the ⌥⏎ card.
-									...(selectedRowHasActions ? [["Actions", ["alt+enter"]] as const] : []),
-								]}
-								trailing={
-									<ViewHint
-										label="Compose"
-										onSwitch={() =>
-										{
-											switchView("compose");
-										}}
-									/>
-								}
-							/>
-						)}
-					</FooterCollapse>
-				</Command>
-			</div>
-			{rowActions !== null && (
-				<PaletteRowActionsCard
-					key={rowActions.session.id}
-					session={rowActions.session}
-					anchorRect={rowActions.anchorRect}
-					onOpen={(id) =>
-					{
-						select(() =>
-						{
-							openSession(id);
-						});
-					}}
-					onRename={(session) =>
-					{
-						closeRowActions(
-							{
-								refocus: false,
-							},
-						);
-						setRenaming(
-							{
-								session,
-								open: true,
-							},
-						);
-					}}
-					onClose={closeRowActions}
-				/>
-			)}
-			{renaming !== null && (
-				<PaletteRenameDialog
-					key={renaming.session.id}
-					session={renaming.session}
-					open={renaming.open}
-					finalFocus={inputRef}
-					paletteOwned
-					onClose={() =>
-					{
-						setRenaming((current) =>
-							current === null
-								? null
-								:
+						{!compose && (
+							<PaletteFilterSpoken
+								filterKey={JSON.stringify([
+									tab,
+									filters.date,
+									filters.repo,
+									filters.project,
+									filters.archived,
+									filters.actions,
+								])}
+								words={`Showing ${new Intl.ListFormat(
+									"en",
 									{
-										...current,
-										open: false,
+										type: "unit",
 									},
-						);
-					}}
-					onClosed={() =>
-					{
-						setRenaming(null);
-					}}
-				/>
-			)}
-		</DialogPopup>
+								).format([paletteTypeLabels[tab], ...chips.map((chip) => chip.label)])}`}
+							/>
+						)}
+
+						{compose && (
+							<div aria-live="polite" aria-atomic="true" className="sr-only">
+								{launching ? "Starting session…" : ""}
+							</div>
+						)}
+
+						<FooterCollapse open={!footerCollapsed}>
+							{compose ? (
+								<PaletteFooter
+									compose
+									hints={[
+										["Send", ["enter"]],
+										["Add files or photos", [addFilesKeys]],
+									]}
+									trailing={
+										<ViewHint
+											label="Search"
+											disabled={startStep !== "idle"}
+											onSwitch={() =>
+											{
+												switchView("search");
+											}}
+										/>
+									}
+								/>
+							) : (
+								<PaletteFooter
+									hints={[
+										["Close", ["esc"]],
+										// Upstream shows Change type only for an exactly-empty query, not a whitespace one.
+										...(query === ""
+											? [
+													[
+														"Change type",
+														["left", "right"],
+														"hidden sm:flex items-center gap-2",
+													] as const,
+												]
+											: []),
+										["Filters", ["/"], "hidden md:flex items-center gap-2"],
+										// Upstream shows the hint only while the selected row supports the ⌥⏎ card.
+										...(selectedRowHasActions ? [["Actions", ["alt+enter"]] as const] : []),
+									]}
+									trailing={
+										<ViewHint
+											label="Compose"
+											onSwitch={() =>
+											{
+												switchView("compose");
+											}}
+										/>
+									}
+								/>
+							)}
+						</FooterCollapse>
+					</Command>
+				</div>
+				{rowActions !== null && (
+					<PaletteRowActionsCard
+						key={rowActions.session.id}
+						session={rowActions.session}
+						anchorRect={rowActions.anchorRect}
+						onOpen={(id) =>
+						{
+							select(() =>
+							{
+								openSession(id);
+							});
+						}}
+						onRename={(session) =>
+						{
+							closeRowActions(
+								{
+									refocus: false,
+								},
+							);
+							setRenaming(
+								{
+									session,
+									open: true,
+								},
+							);
+						}}
+						onClose={closeRowActions}
+					/>
+				)}
+				{renaming !== null && (
+					<PaletteRenameDialog
+						key={renaming.session.id}
+						session={renaming.session}
+						open={renaming.open}
+						finalFocus={inputRef}
+						paletteOwned
+						onClose={() =>
+						{
+							setRenaming((current) =>
+								current === null
+									? null
+									:
+										{
+											...current,
+											open: false,
+										},
+							);
+						}}
+						onClosed={() =>
+						{
+							setRenaming(null);
+						}}
+					/>
+				)}
+			</DialogPopup>
+			<PaletteFileDropZone onDropFiles={attachDroppedFiles} />
+		</>
 	);
 }
 

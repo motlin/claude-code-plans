@@ -1,19 +1,5 @@
-import {Files, Folder, Image} from "lucide-react";
-import type {CSSProperties} from "react";
 import {createPortal} from "react-dom";
-
-const RISE_CLASS =
-	"motion-safe:animate-[cds-drop-icon-rise_0.22s_cubic-bezier(0.215,0.61,0.355,1)_var(--rise-delay,0ms)_backwards]";
-
-function riseDelay(ms: number): CSSProperties
-{
-	return {
-		"--rise-delay": `${ms}ms`,
-	};
-}
-
-/** Upstream shared-frame `hZ=9e3`: the scrim escapes the cds overlay bands (all below 100) to paint above every overlay. */
-export const DROP_SCRIM_Z_INDEX = 9000;
+import {DROP_SCRIM_Z_INDEX, DropIcons} from "./drop-overlay";
 
 /** Upstream's `ChatComposerDropScrim` (shared-5 `gs`): a blurred full-viewport frame while files are dragged. */
 export function ComposerDropScrim()
@@ -50,15 +36,7 @@ export function ComposerDropScrim()
 						}}
 						aria-hidden="true"
 					>
-						<span className="-rotate-[14deg]">
-							<Image size={24} className={RISE_CLASS} style={riseDelay(60)} />
-						</span>
-						<span className="-translate-y-3">
-							<Files size={24} className={RISE_CLASS} />
-						</span>
-						<span className="rotate-[14deg]">
-							<Folder size={24} className={RISE_CLASS} style={riseDelay(120)} />
-						</span>
+						<DropIcons />
 					</div>
 					<span className="text-body font-medium text-accent-100">Drop files here</span>
 				</div>

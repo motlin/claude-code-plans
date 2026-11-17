@@ -1,12 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
-import
-{
-	collectDroppedFiles,
-	type DropEntry,
-	type DroppedEntry,
-	entriesFromDataTransfer,
-	splitDroppedItems,
-} from "../src/lib/drop-collect";
+import {collectDroppedFiles, type DropEntry, type DroppedEntry, entriesFromDataTransfer} from "../src/lib/drop-collect";
+import {splitDroppedItems} from "../src/lib/drop-items";
 
 const text = (name: string) =>
 	new File(

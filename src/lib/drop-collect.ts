@@ -1,7 +1,9 @@
 /**
- * Port of upstream's cds drop collector (claude.ai `cb4e4d5b7` `ie`/`oe`/`ce`/`le`) and the composer's items splitter
- * (`shared-l-p-m-w-2` `zt`). Decoded in .llm/upstream-sync/features/drop-folder-flatten.md.
+ * Port of upstream's cds drop collector (claude.ai `cb4e4d5b7` `ie`/`oe`/`ce`/`le`); the composer's items splitter
+ * (`zt`) is in drop-items.ts. Decoded in .llm/upstream-sync/features/drop-folder-flatten.md.
  */
+
+import type {DropItem} from "./drop-items";
 
 export type FolderHandling = "flatten" | "keep" | "reject";
 
@@ -23,13 +25,6 @@ export interface DropEntry
 {
 	readonly file: File | null;
 	readonly entry: DroppedEntry | null;
-}
-
-export interface DropItem<Entry = DroppedEntry>
-{
-	readonly kind: string;
-	getAsFile: () => File | null;
-	webkitGetAsEntry?: (() => Entry | null) | undefined;
 }
 
 export interface DropRejection
@@ -107,7 +102,7 @@ function withRelativePath(file: File, path: string): File
 
 /** Upstream's `ie`: one entry per file item, or every `files` member when there are no items. */
 export function entriesFromDataTransfer(dt: {
-	readonly items?: ArrayLike<DropItem> | null | undefined;
+	readonly items?: ArrayLike<DropItem<DroppedEntry>> | null | undefined;
 	readonly files?: ArrayLike<File> | null | undefined;
 }): DropEntry[]
 {
@@ -131,44 +126,6 @@ export function entriesFromDataTransfer(dt: {
 		);
 	}
 	return entries;
-}
-
-/** Upstream's `zt`: file items whose entry is a directory are folders; files without items pass through. */
-export function splitDroppedItems(
-	items:
-		| ArrayLike<
-				DropItem<
-				{
-					readonly isDirectory: boolean;
-				}>
-		  >
-		| null
-		| undefined,
-	files: ArrayLike<File> | null | undefined,
-):
-{
-	folders: File[];
-	files: File[];
-}
-{
-	const folders: File[] = [];
-	const loose: File[] = [];
-	if (items == null)
-		return {
-			folders,
-			files: Array.from(files ?? []),
-		};
-	for (const item of Array.from(items))
-	{
-		if (item.kind !== "file") continue;
-		const file = item.getAsFile();
-		if (file === null) continue;
-		(item.webkitGetAsEntry?.()?.isDirectory === true ? folders : loose).push(file);
-	}
-	return {
-		folders,
-		files: loose,
-	};
 }
 
 class FolderReadError extends Error

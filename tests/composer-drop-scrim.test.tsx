@@ -4,8 +4,9 @@ import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {globSync, readFileSync} from "node:fs";
 import {useRef} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
-import {useFileDropTarget} from "../src/components/composer-drop-scrim";
-import {ComposerDropScrim, DROP_SCRIM_Z_INDEX} from "../src/components/composer-drop-scrim-overlay";
+import {type FileDropPriority, useFileDropTarget} from "../src/components/composer-drop-scrim";
+import {ComposerDropScrim} from "../src/components/composer-drop-scrim-overlay";
+import {DROP_SCRIM_Z_INDEX} from "../src/components/drop-overlay";
 
 const onFileDrop = vi.fn<(files: readonly File[]) => void>();
 
@@ -182,12 +183,9 @@ describe("page-wide drop scrim", () =>
 
 	it("stacks above every other local overlay", () =>
 	{
-		// The scrim itself; upstream's find bar (`ht`), which shares the 9000 tier; and the focus-landing ring's
+		// The scrim and the palette drop zone's shared constant; upstream's find bar (`ht`), which shares the 9000 tier; and the focus-landing ring's
 		// pseudo-element, which stacks inside its own context rather than over the page.
-		const peers = new Set([
-			"src/components/composer-drop-scrim-overlay.tsx",
-			"src/components/find-in-page-bar.tsx",
-		]);
+		const peers = new Set(["src/components/drop-overlay.tsx", "src/components/find-in-page-bar.tsx"]);
 		const values = globSync("src/**/*.{ts,tsx,css}")
 			.filter((path) => !peers.has(path))
 			.flatMap((path) =>
@@ -318,13 +316,22 @@ describe("several mounted drop targets", () =>
 	const first = vi.fn<(files: readonly File[]) => void>();
 	const second = vi.fn<(files: readonly File[]) => void>();
 
-	function Target({id, onDrop}: {id: string; onDrop: (files: readonly File[]) => void})
+	function Target({
+		id,
+		onDrop,
+		priority = "page",
+	}: {
+		id: string;
+		onDrop: (files: readonly File[]) => void;
+		priority?: FileDropPriority;
+	})
 	{
 		const ref = useRef<HTMLDivElement>(null);
 		const dropState = useFileDropTarget(
 			{
 				onFileDrop: onDrop,
 				targetRef: ref,
+				priority,
 			},
 		);
 		return (
@@ -434,6 +441,39 @@ describe("several mounted drop targets", () =>
 					first: 1,
 					second: 2,
 				},
+			},
+		);
+	});
+
+	it("keeps an open overlay target (the palette) above page targets that mount or take focus after it", () =>
+	{
+		render(<Target key="a" id="a" onDrop={first} priority="overlay" />);
+		render(<Target key="b" id="b" onDrop={second} />);
+		const mountedAfter = dragAndDrop();
+		fireEvent.focusIn(document.querySelector('textarea[aria-label="b"]')!);
+		const focusedAfter = dragAndDrop();
+
+		expect(
+			{
+				mountedAfter,
+				focusedAfter,
+				first: first.mock.calls.length,
+				second: second.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				mountedAfter:
+				{
+					states: ["off-target", "idle"],
+					scrims: 1,
+				},
+				focusedAfter:
+				{
+					states: ["off-target", "idle"],
+					scrims: 1,
+				},
+				first: 2,
+				second: 0,
 			},
 		);
 	});

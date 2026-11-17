@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState, type DragEvent, type ReactNode} from "react";
-import {splitDroppedItems} from "../lib/drop-collect";
+import {splitDroppedItems} from "../lib/drop-items";
 import type {ChatFileDropHandler} from "./chat-file-drop-context";
 
 /**

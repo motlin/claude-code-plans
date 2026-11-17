@@ -66,7 +66,7 @@ import
 	useRestoredChipIds,
 } from "../lib/context-attach";
 import {takeQueuedDiffComments, useDiffComments} from "../lib/diff-comments";
-import {splitDroppedItems} from "../lib/drop-collect";
+import {splitDroppedItems} from "../lib/drop-items";
 import
 {
 	fileMentionMenuPosition,

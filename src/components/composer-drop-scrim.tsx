@@ -1,5 +1,5 @@
 import {type RefObject, useEffect, useEffectEvent, useState} from "react";
-import {splitDroppedItems} from "../lib/drop-collect";
+import {splitDroppedItems} from "../lib/drop-items";
 
 export type FileDropState = "idle" | "off-target" | "on-target";
 
@@ -14,18 +14,28 @@ function inside(target: RefObject<HTMLElement | null> | undefined, node: EventTa
 	return element != null && node instanceof Node && element.contains(node);
 }
 
-/**
- * Page-wide drop targets in mount order; the last one owns drops. Pages mount one composer today, but a drop must still attach
- * to exactly one if two ever mount at once. Focusing inside a
- * target's `targetRef` moves it to the end.
- */
-const owners: symbol[] = [];
+/** A page target (the session composer) or an open overlay (the ⌘K palette), which always outranks page targets. */
+export type FileDropPriority = "page" | "overlay";
 
-function claim(token: symbol)
+interface Owner
 {
-	const index = owners.indexOf(token);
+	readonly priority: FileDropPriority;
+}
+
+/**
+ * Drop targets in claim order; the last one owns drops. Overlay targets stay above every page target, so a composer that
+ * mounts or takes focus under the open palette can't steal its drops (upstream's cds registry routes to the innermost
+ * zone, and the palette's full-page zone covers the composer). Focusing inside a target's `targetRef` re-claims it.
+ */
+const owners: Owner[] = [];
+
+function claim(owner: Owner)
+{
+	const index = owners.indexOf(owner);
 	if (index !== -1) owners.splice(index, 1);
-	owners.push(token);
+	const firstOverlay = owners.findIndex((other) => other.priority === "overlay");
+	if (owner.priority === "page" && firstOverlay !== -1) owners.splice(firstOverlay, 0, owner);
+	else owners.push(owner);
 }
 
 /**
@@ -33,38 +43,52 @@ function claim(token: symbol)
  * dragged over the page (`on-target` when over `targetRef`), and a drop anywhere on the page attaches. When several
  * targets are mounted, only the owner (see `owners`) reacts. Like the Code session composer's drop (`cc970fefe` `WJ`),
  * dropped folders are left out (upstream `zt`), and a drop of only folders still prevents the browser opening it but
- * calls nothing.
+ * calls nothing. `onTransferDrop` replaces that splitting with the raw `DataTransfer`, read synchronously in the drop
+ * handler, for a target that walks dropped folders itself (the palette zone).
  */
 export function useFileDropTarget({
 	onFileDrop,
+	onTransferDrop,
 	disabled = false,
 	targetRef,
+	priority = "page",
 }: {
-	onFileDrop: (files: readonly File[]) => void;
+	onFileDrop?: (files: readonly File[]) => void;
+	onTransferDrop?: (transfer: DataTransfer) => void;
 	disabled?: boolean;
 	targetRef?: RefObject<HTMLElement | null>;
+	priority?: FileDropPriority;
 }): FileDropState
 {
 	const [state, setState] = useState<FileDropState>("idle");
-	const drop = useEffectEvent((files: readonly File[]) =>
+	const drop = useEffectEvent((transfer: DataTransfer | null) =>
 	{
-		onFileDrop(files);
+		if (onTransferDrop !== undefined)
+		{
+			if (transfer !== null) onTransferDrop(transfer);
+			return;
+		}
+		const {files} = splitDroppedItems(transfer?.items, transfer?.files);
+		if (files.length > 0) onFileDrop?.(files);
 	});
 
 	useEffect(() =>
 	{
 		if (disabled) return undefined;
 		const body = targetRef?.current?.ownerDocument.body ?? document.body;
-		const token = Symbol("file-drop-target");
-		claim(token);
-		const owns = () => owners.at(-1) === token;
+		const owner: Owner =
+		{
+			priority,
+		};
+		claim(owner);
+		const owns = () => owners.at(-1) === owner;
 		const reset = () =>
 		{
 			setState("idle");
 		};
 		const onFocusIn = (e: FocusEvent) =>
 		{
-			if (inside(targetRef, e.target)) claim(token);
+			if (inside(targetRef, e.target)) claim(owner);
 		};
 		const onDragOver = (e: DragEvent) =>
 		{
@@ -88,8 +112,7 @@ export function useFileDropTarget({
 			reset();
 			if (!owns()) return;
 			e.preventDefault();
-			const {files} = splitDroppedItems(e.dataTransfer?.items, e.dataTransfer?.files);
-			if (files.length > 0) drop(files);
+			drop(e.dataTransfer);
 		};
 		body.addEventListener("dragover", onDragOver, true);
 		body.addEventListener("dragleave", onDragLeave, true);
@@ -99,7 +122,7 @@ export function useFileDropTarget({
 		body.addEventListener("focusin", onFocusIn, true);
 		return () =>
 		{
-			owners.splice(owners.indexOf(token), 1);
+			owners.splice(owners.indexOf(owner), 1);
 			body.removeEventListener("focusin", onFocusIn, true);
 			body.removeEventListener("dragover", onDragOver, true);
 			body.removeEventListener("dragleave", onDragLeave, true);
@@ -108,7 +131,7 @@ export function useFileDropTarget({
 			body.removeEventListener("drop", onDrop);
 			reset();
 		};
-	}, [disabled, targetRef]);
+	}, [disabled, targetRef, priority]);
 
 	return disabled ? "idle" : state;
 }

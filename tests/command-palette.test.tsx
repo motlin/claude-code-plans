@@ -14,6 +14,8 @@ import {readFileSync} from "node:fs";
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
+import {useFileDropTarget} from "../src/components/composer-drop-scrim";
+import {ComposerDropScrim} from "../src/components/composer-drop-scrim-overlay";
 import {loadSettingsDialog} from "../src/components/settings/settings-dialog-loader";
 import {preloadCustomizeDialogPanel} from "../src/components/settings/customize-dialog-panel-loader";
 import {getKeyboardShortcutsOpen, setKeyboardShortcutsOpen} from "../src/components/keyboard-shortcuts-open";
@@ -28,6 +30,7 @@ import {projectsQueryOptions} from "../src/lib/api/projects";
 import {routinesQueryOptions, type Routine} from "../src/lib/api/routines";
 import {recentSessionsQueryOptions, sessionQueryKeys} from "../src/lib/api/sessions";
 import {saveRecents, type RecentEntry} from "../src/lib/recents-history";
+import {getContextChips, removeContextChip} from "../src/lib/context-attach";
 import {holdAnswered, releaseAnswered} from "../src/lib/answered-sessions";
 import {FIZZY_LAKE_PARTS, FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 import {installPaletteFocusOrigin} from "../src/lib/palette-focus-origin";
@@ -5222,6 +5225,483 @@ describe("CommandPalette shell", () =>
 				{
 					pathname: "/session/s-current",
 					hash: "customize/connectors/yours",
+				},
+			);
+		});
+	});
+
+	describe("palette file drop zone (upstream ah useDropZone + Oc)", () =>
+	{
+		// Uploads never settle here, so their pending chips would outlive the palette into the next test.
+		afterEach(() =>
+		{
+			for (const chip of getContextChips("command-palette-compose"))
+				removeContextChip("command-palette-compose", chip.id);
+		});
+
+		const png = () =>
+			new File(
+				[new Uint8Array([1])],
+				"dropped.png",
+				{
+					type: "image/png",
+				},
+			);
+		const filesDrag = (files: readonly File[] = [png()]) => (
+		{
+			dataTransfer:
+			{
+				types: ["Files"],
+				files,
+			},
+		});
+		const zone = () => document.querySelector<HTMLElement>('[data-testid="palette-file-drop-zone"]');
+		const zoneShape = () =>
+		{
+			const element = zone();
+			return element === null
+				? null
+				:
+					{
+						className: element.className,
+						zIndex: element.style.zIndex,
+						ariaHidden: element.getAttribute("aria-hidden"),
+						dragOver: element.getAttribute("data-drag-over"),
+						children: element.childElementCount,
+						wrapper: element.parentElement?.className,
+					};
+		};
+		const IDLE =
+		{
+			className: "fixed inset-0 pointer-events-none",
+			zIndex: "9000",
+			ariaHidden: "true",
+			dragOver: null,
+			children: 0,
+			wrapper: "cds-root pointer-events-auto contents",
+		};
+		const chipNames = () => getContextChips("command-palette-compose").map((chip) => chip.name);
+		const switchToCompose = async (dialog: HTMLElement) =>
+		{
+			fireEvent.keyDown(
+				within(dialog).getByRole("combobox"),
+				{
+					key: "Tab",
+					code: "Tab",
+				},
+			);
+			return within(dialog).findByRole(
+				"combobox",
+				{
+					name: "Write a message…",
+				},
+			);
+		};
+
+		it("mounts an idle full-page zone in Search and Compose, shows upstream's overlay during a file drag, and unmounts on close", async () =>
+		{
+			const dialog = await openPalette();
+			const search = zoneShape();
+			await switchToCompose(dialog);
+			const compose = zoneShape();
+
+			const notPrevented = fireEvent.dragOver(document.body, filesDrag());
+			const overlay = zone()?.firstElementChild;
+			const frame = overlay?.children[2];
+			const offTarget =
+			{
+				zone: zoneShape(),
+				notPrevented,
+				overlay:
+				{
+					className: overlay?.className,
+					ariaHidden: overlay?.getAttribute("aria-hidden"),
+					text: overlay?.textContent,
+					layers: Array.from(overlay?.children ?? []).map((child) => child.className),
+					frame: Array.from(frame?.children ?? []).map((child) => (
+					{
+						className: child.getAttribute("class"),
+						style: child.getAttribute("style"),
+					})),
+					icons: Array.from(frame?.querySelectorAll("svg") ?? []).map((svg) => (
+					{
+						wrapper: svg.parentElement?.className,
+						size: svg.getAttribute("width"),
+					})),
+				},
+			};
+			const onZone = zone();
+			fireEvent.dragOver(onZone ?? document.body, filesDrag());
+			const onTarget = zoneShape();
+			fireEvent.dragEnd(document.body);
+			const ended = zoneShape();
+			fireEvent.dragOver(
+				document.body,
+				{
+					dataTransfer:
+					{
+						types: ["text/plain"],
+						files: [],
+					},
+				},
+			);
+			const textDrag = zoneShape();
+			fireEvent.keyDown(
+				document.activeElement ?? document.body,
+				{
+					key: "Escape",
+					code: "Escape",
+				},
+			);
+			await waitFor(() =>
+			{
+				expect(screen.queryByRole("dialog")).toBeNull();
+			});
+
+			expect(
+				{
+					search,
+					compose,
+					offTarget,
+					onTarget,
+					ended,
+					textDrag,
+					closed: zone(),
+				},
+			).toStrictEqual(
+				{
+					search: IDLE,
+					compose: IDLE,
+					offTarget:
+					{
+						zone:
+						{
+							...IDLE,
+							className: "fixed inset-0",
+							children: 1,
+						},
+						notPrevented: false,
+						overlay:
+						{
+							className: "pointer-events-none absolute inset-0 rounded-[inherit]",
+							ariaHidden: "true",
+							text: "Drop files here",
+							layers: [
+								"absolute inset-0 rounded-[inherit] backdrop-blur-[12px] motion-safe:animate-[cds-fade-in_0.15s_cubic-bezier(0.215,0.61,0.355,1)]",
+								"absolute inset-0 rounded-[inherit] bg-page opacity-60 motion-safe:animate-[cds-fade-in_0.15s_cubic-bezier(0.215,0.61,0.355,1)]",
+								"absolute flex flex-col items-center justify-center gap-2 inset-3.5 rounded-card shadow-[inset_0_0_0_2px_var(--color-fill-accent)] motion-safe:animate-[cds-drop-ring-in_0.15s_cubic-bezier(0.215,0.61,0.355,1)]",
+							],
+							frame: [
+								{
+									className:
+										"absolute inset-0 rounded-[inherit] shadow-[inset_0_0_24px_0_color-mix(in_srgb,var(--color-fill-accent)_20%,transparent)] motion-safe:animate-[cds-fade-in_0.2s_cubic-bezier(0.215,0.61,0.355,1)_0.08s_backwards]",
+									style: null,
+								},
+								{
+									className: "flex items-end gap-3",
+									style: "color: var(--color-fill-accent);",
+								},
+								{
+									className: "text-body font-medium text-accent-100",
+									style: null,
+								},
+							],
+							icons: [
+								{
+									wrapper: "-rotate-[14deg]",
+									size: "24",
+								},
+								{
+									wrapper: "-translate-y-3",
+									size: "24",
+								},
+								{
+									wrapper: "rotate-[14deg]",
+									size: "24",
+								},
+							],
+						},
+					},
+					onTarget:
+					{
+						...IDLE,
+						className: "fixed inset-0",
+						dragOver: "",
+						children: 1,
+					},
+					ended: IDLE,
+					textDrag: IDLE,
+					closed: null,
+				},
+			);
+		});
+
+		it("takes drops from a page target mounted underneath, attaching to Compose and never letting the browser open the file", async () =>
+		{
+			const pageDrop = vi.fn<(files: readonly File[]) => void>();
+			function PageTarget()
+			{
+				const state = useFileDropTarget(
+					{
+						onFileDrop: pageDrop,
+					},
+				);
+				return state === "idle" ? null : <ComposerDropScrim />;
+			}
+			render(<PageTarget />);
+			const dialog = await openPalette();
+			await switchToCompose(dialog);
+
+			fireEvent.dragOver(document.body, filesDrag());
+			const scrim = document.querySelector('[data-cds="ChatComposerDropScrim"]');
+			const notPrevented = fireEvent.drop(zone() ?? document.body, filesDrag());
+			await waitFor(() =>
+			{
+				expect(chipNames()).toStrictEqual(["dropped.png"]);
+			});
+
+			expect(
+				{
+					scrim,
+					notPrevented,
+					pageDrops: pageDrop.mock.calls.length,
+					zone: zoneShape(),
+				},
+			).toStrictEqual(
+				{
+					scrim: null,
+					notPrevented: false,
+					pageDrops: 0,
+					zone: IDLE,
+				},
+			);
+		});
+
+		it("flips a drop in Search to Compose for this open only, leaving cmdk-mode unwritten", async () =>
+		{
+			const dialog = await openPalette();
+
+			fireEvent.drop(document.body, filesDrag());
+
+			const composer = await within(dialog).findByRole(
+				"combobox",
+				{
+					name: "Write a message…",
+				},
+			);
+			await waitFor(() =>
+			{
+				expect(chipNames()).toStrictEqual(["dropped.png"]);
+			});
+			expect(
+				{
+					composer: composer.tagName,
+					mode: localStorage.getItem("cmdk-mode"),
+				},
+			).toStrictEqual(
+				{
+					composer: "TEXTAREA",
+					mode: null,
+				},
+			);
+		});
+
+		it("still swallows a drop while picking a project, without attaching or switching view", async () =>
+		{
+			const dialog = await openPalette();
+			const composer = await switchToCompose(dialog);
+			fireEvent.change(
+				composer,
+				{
+					target:
+					{
+						value: "fix the parser",
+					},
+				},
+			);
+			fireEvent.click(
+				within(dialog).getByRole(
+					"button",
+					{
+						name: "Send",
+					},
+				),
+			);
+			await waitFor(() =>
+			{
+				expect(groupLabels(dialog).map(([heading]) => heading)).toStrictEqual(["Choose a project"]);
+			});
+
+			const notPrevented = fireEvent.drop(document.body, filesDrag());
+			await act(async () =>
+			{
+				await Promise.resolve();
+			});
+
+			expect(
+				{
+					notPrevented,
+					chips: chipNames(),
+					headings: groupLabels(dialog).map(([heading]) => heading),
+				},
+			).toStrictEqual(
+				{
+					notPrevented: false,
+					chips: [],
+					headings: ["Choose a project"],
+				},
+			);
+		});
+
+		it("lets a pointer dismiss a stuck overlay until the next file dragenter", async () =>
+		{
+			await openPalette();
+			fireEvent.dragOver(document.body, filesDrag());
+			const stuck = zoneShape();
+
+			fireEvent.pointerMove(zone() ?? document.body);
+			const dismissed = zoneShape();
+			fireEvent.dragOver(document.body, filesDrag());
+			const stillDismissed = zoneShape();
+			fireEvent.dragEnter(window, filesDrag());
+			fireEvent.dragOver(document.body, filesDrag());
+			const again = zoneShape();
+
+			expect(
+				{
+					stuck: stuck?.className,
+					dismissed,
+					stillDismissed,
+					again: again?.className,
+				},
+			).toStrictEqual(
+				{
+					stuck: "fixed inset-0",
+					dismissed: IDLE,
+					stillDismissed: IDLE,
+					again: "fixed inset-0",
+				},
+			);
+		});
+
+		it("flattens a dropped folder into its files, skipping junk, with no toast", async () =>
+		{
+			const fileEntry = (name: string, parent: string) => (
+			{
+				isFile: true,
+				isDirectory: false,
+				name,
+				fullPath: `${parent}/${name}`,
+				file: (success: (file: File) => void) =>
+				{
+					success(
+						new File(
+							["x"],
+							name,
+							{
+								type: name.endsWith(".png") ? "image/png" : "text/plain",
+							},
+						),
+					);
+				},
+			});
+			const dirEntry = (name: string, parent: string, children: readonly object[]) => (
+			{
+				isFile: false,
+				isDirectory: true,
+				name,
+				fullPath: `${parent}/${name}`,
+				createReader: () =>
+				{
+					let done = false;
+					return {
+						readEntries: (success: (entries: readonly object[]) => void) =>
+						{
+							const batch = done ? [] : children;
+							done = true;
+							success(batch);
+						},
+					};
+				},
+			});
+			const folder = (name: string, children: readonly object[]) =>
+			{
+				const entry = dirEntry(name, "", children);
+				return {
+					kind: "file",
+					getAsFile: () => new File([], name),
+					webkitGetAsEntry: () => entry,
+				};
+			};
+			const dialog = await openPalette();
+			const proj = folder("proj", [
+				fileEntry("a.ts", "/proj"),
+				dirEntry("sub", "/proj", [fileEntry("b.png", "/proj/sub")]),
+				fileEntry(".DS_Store", "/proj"),
+			]);
+			const many = folder(
+				"many",
+				Array.from(
+					{
+						length: 25,
+					},
+					(_, i) => fileEntry(`f${i}.txt`, "/many"),
+				),
+			);
+			const drop = (items: readonly object[]) =>
+				fireEvent.drop(
+					document.body,
+					{
+						dataTransfer:
+						{
+							types: ["Files"],
+							items,
+							files: [],
+						},
+					},
+				);
+
+			drop([folder("empty", [])]);
+			drop([proj]);
+			await waitFor(() =>
+			{
+				expect(chipNames()).toStrictEqual(["a.ts", "b.png"]);
+			});
+			const afterProj = chipNames();
+			for (const chip of getContextChips("command-palette-compose"))
+				removeContextChip("command-palette-compose", chip.id);
+			drop([many]);
+			await waitFor(() =>
+			{
+				expect(chipNames()).toHaveLength(21);
+			});
+
+			expect(
+				{
+					afterProj,
+					many: chipNames(),
+					composeShown:
+						within(dialog).queryByRole(
+							"combobox",
+							{
+								name: "Write a message…",
+							},
+						) !== null,
+					mode: localStorage.getItem("cmdk-mode"),
+					dialogs: document.querySelectorAll('[role="dialog"], [role="alertdialog"]').length,
+				},
+			).toStrictEqual(
+				{
+					afterProj: ["a.ts", "b.png"],
+					many: Array.from(
+						{
+							length: 21,
+						},
+						(_, i) => `f${i}.txt`,
+					),
+					composeShown: true,
+					mode: null,
+					dialogs: 1,
 				},
 			);
 		});
