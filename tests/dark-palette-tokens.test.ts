@@ -268,4 +268,25 @@ describe("dark palette", () =>
 			},
 		);
 	});
+
+	it("defines upstream's --cds-black once, in light, for the palette list's scroll shadow", () =>
+	{
+		expect(
+			{
+				light: tokens(":root", ["--cds-black"]),
+				dark: tokens(".dark", ["--cds-black"]),
+			},
+		).toStrictEqual(
+			{
+				light:
+				{
+					"--cds-black": "#000",
+				},
+				dark:
+				{
+					"--cds-black": null,
+				},
+			},
+		);
+	});
 });

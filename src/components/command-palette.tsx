@@ -2968,6 +2968,7 @@ function PalettePopup({
 									},
 								})}
 					>
+						{LIST_SCROLL_SHADOW}
 						{launching && !compose && (
 							<Command.Group heading="Quick actions" className={GROUP_CLASS}>
 								<CommandItem
@@ -3095,8 +3096,9 @@ function PalettePopup({
 									role="group"
 									aria-label="Search results"
 									aria-busy={searching}
-									// Upstream's headingless results group: 12px below any sibling (gap-1 + mt-2).
-									className="[&:not(:first-child)]:mt-2"
+									// Upstream's headingless results group: 12px below any sibling (gap-1 + mt-2). Upstream's
+									// :first-child is the listbox's own first child; locally the scroll shadow leads the sizer.
+									className="[&:not([data-palette-scroll-shadow]+*)]:mt-2"
 								>
 									{inlineHintsFirst && inlineHintItems}
 									{listing?.map((row) => (
@@ -3505,6 +3507,28 @@ const LIST_CAP_PX = 440;
 const COLLAPSED_FOOTER_PX = 41;
 /** The scroller's p-2.5, top and bottom, around the measured cmdk sizer. */
 const LIST_PADDING_Y_PX = 20;
+/**
+ * Upstream's sticky top scroll shadow (c2771e1f6 Oc) and the mask that covers it at rest (kc), the scroller's first two
+ * children. The band pins at the scrollport's top edge; the mask scrolls away over the first 10px, uncovering the
+ * downward part of the clipped inner div's shadow. Net flow height is 0, so the measured sizer height is unchanged.
+ * Local: they lead cmdk's sizer, inside its role=listbox, so they are aria-hidden and marked data-palette-scroll-shadow.
+ */
+const LIST_SCROLL_SHADOW = (
+	<>
+		<div
+			aria-hidden="true"
+			data-palette-scroll-shadow=""
+			className="pointer-events-none sticky -top-2.5 z-1 -mx-2.5 -mt-2.5 -mb-2.5 h-2.5 shrink-0 overflow-hidden"
+		>
+			<div className="absolute inset-x-0 bottom-full h-2.5 shadow-[0_2px_8px_color-mix(in_srgb,var(--cds-black)_6%,transparent)]" />
+		</div>
+		<div
+			aria-hidden="true"
+			data-palette-scroll-shadow=""
+			className="pointer-events-none relative z-2 -mx-2.5 h-2.5 shrink-0 bg-surface-3"
+		/>
+	</>
+);
 const LIST_SCROLLER_CLASS =
 	"flex flex-col min-h-0 overflow-y-auto p-2.5 transition-[height,max-height] duration-150 ease-out motion-reduce:transition-none";
 

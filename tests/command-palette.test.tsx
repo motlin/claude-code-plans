@@ -1707,6 +1707,61 @@ describe("CommandPalette shell", () =>
 		);
 	});
 
+	it("leads the Search and Compose list with upstream's sticky top scroll shadow and its covering mask", async () =>
+	{
+		const dialog = await openPalette();
+		function lead()
+		{
+			const [shadow, mask] = [...(dialog.querySelector("[cmdk-list-sizer]")?.children ?? [])];
+			return {
+				shadowClass: shadow?.className,
+				innerClass: shadow?.firstElementChild?.className,
+				innerCount: shadow?.children.length,
+				maskClass: mask?.className,
+				maskChildren: mask?.children.length,
+				ariaHidden: [shadow?.getAttribute("aria-hidden"), mask?.getAttribute("aria-hidden")],
+			};
+		}
+		const expected =
+		{
+			shadowClass:
+				"pointer-events-none sticky -top-2.5 z-1 -mx-2.5 -mt-2.5 -mb-2.5 h-2.5 shrink-0 overflow-hidden",
+			innerClass:
+				"absolute inset-x-0 bottom-full h-2.5 shadow-[0_2px_8px_color-mix(in_srgb,var(--cds-black)_6%,transparent)]",
+			innerCount: 1,
+			maskClass: "pointer-events-none relative z-2 -mx-2.5 h-2.5 shrink-0 bg-surface-3",
+			maskChildren: 0,
+			ariaHidden: ["true", "true"],
+		};
+		const search = lead();
+
+		fireEvent.keyDown(
+			within(dialog).getByRole("combobox"),
+			{
+				key: "Tab",
+				code: "Tab",
+			},
+		);
+		await within(dialog).findByRole(
+			"combobox",
+			{
+				name: "Write a message…",
+			},
+		);
+
+		expect(
+			{
+				search,
+				compose: lead(),
+			},
+		).toStrictEqual(
+			{
+				search: expected,
+				compose: expected,
+			},
+		);
+	});
+
 	it("switches to Compose on Tab and keeps the text", async () =>
 	{
 		const dialog = await openPalette();
@@ -6857,11 +6912,12 @@ describe("CommandPalette filter values", () =>
 		expect(
 			{
 				className: group.className.split(" "),
-				first: group.parentElement?.firstElementChild === group,
+				// First after the scroll shadow and its mask, so upstream's listbox-first rule leaves it at mt-0.
+				first: group.previousElementSibling?.hasAttribute("data-palette-scroll-shadow"),
 			},
 		).toStrictEqual(
 			{
-				className: ["[&:not(:first-child)]:mt-2"],
+				className: ["[&:not([data-palette-scroll-shadow]+*)]:mt-2"],
 				first: true,
 			},
 		);
@@ -7584,7 +7640,7 @@ describe("CommandPalette pinned Jump to question row", () =>
 
 	function firstListChild(dialog: HTMLElement): Element | null
 	{
-		return dialog.querySelector("[cmdk-list-sizer]")?.firstElementChild ?? null;
+		return dialog.querySelector("[cmdk-list-sizer] > :not([data-palette-scroll-shadow])");
 	}
 
 	it("pins a selected, headingless Jump to question row above Needs attention when a waiting card is on the page", async () =>

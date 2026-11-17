@@ -1559,6 +1559,12 @@ describe("⌘K palette filters", () =>
 				// Upstream's block is a sibling after the results listbox, so flex-1 grows it through the capped list.
 				blockParent: empty.parentElement?.parentElement?.hasAttribute("cmdk-list-sizer"),
 				afterResults: empty.parentElement?.previousElementSibling === resultsGroup(dialog),
+				// Upstream's sticky scroll shadow and its mask still lead the scroller ahead of results and the empty block.
+				sizerLead: [...(empty.parentElement?.parentElement?.children ?? [])]
+					.slice(0, 2)
+					.map((child) =>
+						child.className.split(" ").find((name) => ["sticky", "bg-surface-3"].includes(name)),
+					),
 				clear: within(dialog).queryByRole(
 					"button",
 					{
@@ -1575,6 +1581,7 @@ describe("⌘K palette filters", () =>
 				block: ["flex-1", "items-center", "justify-center", "text-center"],
 				blockParent: true,
 				afterResults: true,
+				sizerLead: ["sticky", "bg-surface-3"],
 				clear: null,
 				live: "No results for “zzqxvq”",
 				options: [],
