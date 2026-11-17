@@ -1,6 +1,6 @@
 import {describe, expect, it} from "vite-plus/test";
 import {paramValueText} from "../src/lib/param-value-text";
-import {revealControlChars, revealSpoofing, visibleSingleLine} from "../src/lib/visible-text";
+import {revealControlChars, revealSpoofing, visibleMultiline, visibleSingleLine} from "../src/lib/visible-text";
 
 describe("visibleSingleLine", () =>
 {
@@ -129,6 +129,16 @@ describe("paramValueText, as upstream's c62da1b56 R (the param row value)", () =
 	{
 		expect(paramValueText(`\u001b[31m${token}\u001b[0m and\u0007`)).toStrictEqual(
 			`${masked} and[U+0007]\n[U+001B][31m\n[U+001B][0m`,
+		);
+	});
+});
+
+describe("visibleMultiline, as upstream's SO without singleLine", () =>
+{
+	it("keeps newlines and tabs, and tags controls, carriage returns, bidi and format characters", () =>
+	{
+		expect(visibleMultiline("x = 1\n\ty\u202Ez\r\na\u0000b\u200Bc")).toBe(
+			"x = 1\n\ty[U+202E]z[U+000D]\na[U+0000]b[U+200B]c",
 		);
 	});
 });

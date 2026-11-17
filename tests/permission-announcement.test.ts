@@ -198,6 +198,82 @@ describe("permissionAnnouncement, as upstream's Jy/qy/Yy", () =>
 		);
 	});
 
+	it("reads a NotebookEdit card's open fold after its path, collapsed into the lead, then its note", () =>
+	{
+		expect(
+			permissionAnnouncement(
+				{
+					title:
+					{
+						action: "edit",
+						meta: "n.ipynb",
+					},
+					detail: "/repo/n.ipynb",
+					detailNote: "Replaces cell c1.",
+					folds: [
+						{
+							label: "New cell content",
+							text: "x = 1\ny = 2\n",
+							open: true,
+							lined: true,
+						},
+					],
+				},
+			),
+		).toBe("Permission requested: edit. /repo/n.ipynb New cell content: x = 1 y = 2, n.ipynb. Replaces cell c1.");
+	});
+
+	it("reads folds without a detail as rows after the meta, a closed fold by its label alone", () =>
+	{
+		expect(
+			permissionAnnouncement(
+				{
+					title:
+					{
+						action: "run the workflow",
+						meta: "sync",
+					},
+					detail: null,
+					folds: [
+						{
+							label: "Script",
+							text: "run()",
+							lined: true,
+						},
+						{
+							label: "Notes",
+							text: "a\nb",
+							open: true,
+						},
+					],
+				},
+			),
+		).toBe("Permission requested: run the workflow, sync. 1 of 2, Script. 2 of 2, Notes: a b");
+	});
+
+	it("reads folds without a detail or meta as rows in the lead", () =>
+	{
+		expect(
+			permissionAnnouncement(
+				{
+					title:
+					{
+						action: "run a workflow",
+						meta: null,
+					},
+					detail: null,
+					folds: [
+						{
+							label: "Script",
+							text: "run()",
+							lined: true,
+						},
+					],
+				},
+			),
+		).toBe("Permission requested: run a workflow. 1 of 1, Script");
+	});
+
 	it("skips blank parts", () =>
 	{
 		expect(

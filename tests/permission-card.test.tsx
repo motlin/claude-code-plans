@@ -1922,7 +1922,7 @@ describe("permission title copy", () =>
 			{
 				notebook_path: "/repo/n.ipynb",
 				cell_id: "c1",
-				new_source: "x",
+				new_source: "x = 1\ny = 2\n",
 			},
 			expected:
 			{
@@ -1932,7 +1932,16 @@ describe("permission title copy", () =>
 					meta: "n.ipynb",
 				},
 				detail: "/repo/n.ipynb",
+				clampTitle: true,
 				detailNote: "Replaces cell c1.",
+				folds: [
+					{
+						label: "New cell content",
+						text: "x = 1\ny = 2\n",
+						open: true,
+						lined: true,
+					},
+				],
 			},
 		},
 		{
@@ -1953,7 +1962,16 @@ describe("permission title copy", () =>
 					meta: "n.ipynb",
 				},
 				detail: "/repo/n.ipynb",
+				clampTitle: true,
 				detailNote: "Adds a new cell after cell c1. Cell type: code.",
+				folds: [
+					{
+						label: "New cell content",
+						text: "x",
+						open: true,
+						lined: true,
+					},
+				],
 			},
 		},
 		{
@@ -1972,7 +1990,16 @@ describe("permission title copy", () =>
 					meta: "n.ipynb",
 				},
 				detail: "/repo/n.ipynb",
+				clampTitle: true,
 				detailNote: "Adds a new cell at the top.",
+				folds: [
+					{
+						label: "New cell content",
+						text: "x",
+						open: true,
+						lined: true,
+					},
+				],
 			},
 		},
 		{
@@ -1980,8 +2007,8 @@ describe("permission title copy", () =>
 			input:
 			{
 				notebook_path: "/repo/n.ipynb",
-				cell_id: "c2",
-				edit_mode: "delete",
+				cell_id: "",
+				edit_mode: "insert",
 				new_source: "",
 			},
 			expected:
@@ -1992,7 +2019,208 @@ describe("permission title copy", () =>
 					meta: "n.ipynb",
 				},
 				detail: "/repo/n.ipynb",
+				clampTitle: true,
+				detailNote: "Adds a new cell at the top.",
+				folds: [
+					{
+						label: "New cell content",
+						text: "",
+						open: true,
+						lined: true,
+					},
+				],
+			},
+		},
+		{
+			tool: "NotebookEdit",
+			input:
+			{
+				notebook_path: "/repo/n.ipynb",
+				cell_id: "c2",
+				edit_mode: "delete",
+				cell_type: "code",
+				new_source: "",
+			},
+			expected:
+			{
+				title:
+				{
+					action: "edit",
+					meta: "n.ipynb",
+				},
+				detail: "/repo/n.ipynb",
+				clampTitle: true,
 				detailNote: "Deletes cell c2.",
+			},
+		},
+		{
+			tool: "NotebookEdit",
+			input:
+			{
+				notebook_path: "/repo/n.ipynb",
+				cell_id: "my cell",
+				new_source: "x",
+			},
+			expected:
+			{
+				title:
+				{
+					action: "edit",
+					meta: "n.ipynb",
+				},
+				detail: "/repo/n.ipynb",
+				clampTitle: true,
+				rows: [
+					{
+						label: "Notebook path",
+						value: "/repo/n.ipynb",
+					},
+					{
+						label: "Cell ID",
+						value: "my cell",
+					},
+					{
+						label: "New source",
+						value: "x",
+					},
+				],
+				rowsGate: true,
+			},
+		},
+		{
+			tool: "NotebookEdit",
+			input:
+			{
+				notebook_path: "/repo/n.ipynb",
+				cell_id: "c1",
+				new_source: "x",
+				extra: "1",
+			},
+			expected:
+			{
+				title:
+				{
+					action: "edit",
+					meta: "n.ipynb",
+				},
+				detail: "/repo/n.ipynb",
+				clampTitle: true,
+				rows: [
+					{
+						label: "Notebook path",
+						value: "/repo/n.ipynb",
+					},
+					{
+						label: "Cell ID",
+						value: "c1",
+					},
+					{
+						label: "New source",
+						value: "x",
+					},
+					{
+						label: "Extra",
+						value: "1",
+					},
+				],
+				rowsGate: true,
+			},
+		},
+		{
+			tool: "NotebookEdit",
+			input:
+			{
+				notebook_path: "/repo/n.ipynb",
+				cell_type: "raw",
+				edit_mode: "insert",
+				new_source: "x",
+			},
+			expected:
+			{
+				title:
+				{
+					action: "edit",
+					meta: "n.ipynb",
+				},
+				detail: "/repo/n.ipynb",
+				clampTitle: true,
+				rows: [
+					{
+						label: "Notebook path",
+						value: "/repo/n.ipynb",
+					},
+					{
+						label: "Cell type",
+						value: "raw",
+					},
+					{
+						label: "Edit mode",
+						value: "insert",
+					},
+					{
+						label: "New source",
+						value: "x",
+					},
+				],
+				rowsGate: true,
+			},
+		},
+		{
+			tool: "NotebookEdit",
+			input:
+			{
+				notebook_path: "/repo/n.ipynb",
+				new_source: "x",
+			},
+			expected:
+			{
+				title:
+				{
+					action: "edit",
+					meta: "n.ipynb",
+				},
+				detail: "/repo/n.ipynb",
+				clampTitle: true,
+				rows: [
+					{
+						label: "Notebook path",
+						value: "/repo/n.ipynb",
+					},
+					{
+						label: "New source",
+						value: "x",
+					},
+				],
+				rowsGate: true,
+			},
+		},
+		{
+			tool: "NotebookEdit",
+			input:
+			{
+				notebook_path: "/repo/n.ipynb",
+				cell_id: "c1",
+				cell_type: "markdown",
+				new_source: "x\u202Ey\r\n",
+			},
+			expected:
+			{
+				title:
+				{
+					action: "edit",
+					meta: "n.ipynb",
+				},
+				detail: "/repo/n.ipynb",
+				clampTitle: true,
+				detailNote: "Replaces cell c1. Cell type: markdown.",
+				folds: [
+					{
+						label: "New cell content",
+						text: "x[U+202E]y[U+000D]\n",
+						open: true,
+						lined: true,
+					},
+				],
 			},
 		},
 		{
@@ -3769,7 +3997,9 @@ describe("PermissionCard", () =>
 				/>,
 			);
 			const saves = container.querySelector("[data-testid=approval-always-allow-saves]");
-			expect(saves?.nextElementSibling?.hasAttribute("data-permission-detail")).toBe(true);
+			expect(saves?.nextElementSibling?.querySelector(":scope > [data-permission-detail]")?.textContent).toBe(
+				"/repo/a.ts",
+			);
 		});
 	});
 
@@ -6493,7 +6723,7 @@ describe("PermissionCard file change preview", () =>
 				}}
 			/>,
 		);
-		const body = container.querySelector("[data-permission-detail]")!.parentElement!;
+		const body = container.querySelector("[data-permission-detail]")!.parentElement!.parentElement!;
 		expect(
 			[...body.children].map((child) => (
 			{
@@ -6509,7 +6739,7 @@ describe("PermissionCard file change preview", () =>
 			},
 			{
 				tag: "DIV",
-				className: expect.stringContaining("bg-alpha-1") as unknown as string,
+				className: "flow-root",
 				text: "/repo/b.ts",
 			},
 		]);
@@ -6631,6 +6861,242 @@ describe("PermissionCard file change preview", () =>
 				],
 			},
 		);
+	});
+
+	describe("detail slot, as upstream's a(t): path, note and folds in one flow-root", () =>
+	{
+		const NOTEBOOK =
+		{
+			notebook_path: "/repo/n.ipynb",
+			cell_id: "c1",
+			new_source: "x = 1\ny = 2\n",
+		};
+
+		function renderPending(tool: string, input: Record<string, unknown>)
+		{
+			const pending = findPendingPermission(
+				{
+					sessionId: "session-test-100",
+					isActive: true,
+					notifications: [permissionNotification()],
+					records: [assistantToolUse("t9", tool, input)],
+				},
+			)!;
+			return render(
+				<PermissionCard
+					title={pending.title}
+					detail={pending.detail}
+					clampTitle={pending.clampTitle === true}
+					detailNote={pending.detailNote ?? null}
+					folds={pending.folds ?? null}
+					canAnswer
+					onDecision={async () =>
+					{
+					}}
+				/>,
+			);
+		}
+
+		const shape = (element: Element): unknown => (
+		{
+			tag: element.tagName,
+			className: element.getAttribute("class"),
+			testId: element.getAttribute("data-testid"),
+		});
+
+		it("draws a NotebookEdit card's path and note in a 12px column, then its open lined fold, flush in one flow-root", () =>
+		{
+			const {container} = renderPending("NotebookEdit", NOTEBOOK);
+			const slot = container.querySelector("[data-permission-detail]")!.parentElement!.parentElement!;
+			const column = slot.parentElement!;
+			const folds = slot.querySelector("[data-testid=approval-folds]")!;
+			const trigger = folds.querySelector("button")!;
+			const pre = folds.querySelector("pre")!;
+			expect(
+				{
+					column: [...column.children].map(shape),
+					slot: [...slot.children].map(shape),
+					inner: [...slot.firstElementChild!.children].map((child) => (
+					{
+						...(shape(child) as object),
+						detail: child.hasAttribute("data-permission-detail"),
+						text: child.textContent,
+					})),
+					fold: [...folds.children].map((child) => child.getAttribute("data-cds")),
+					trigger:
+					{
+						text: trigger.textContent,
+						expanded: trigger.getAttribute("aria-expanded"),
+						label: trigger.querySelector("span")?.getAttribute("class"),
+					},
+					card: pre.parentElement?.getAttribute("class"),
+					lines: [...pre.querySelectorAll("[data-line]")].map((line) => line.getAttribute("data-line")),
+					source: pre.textContent,
+				},
+			).toStrictEqual(
+				{
+					column: [
+						{
+							tag: "DIV",
+							className: "flow-root",
+							testId: null,
+						},
+					],
+					slot: [
+						{
+							tag: "DIV",
+							className: "flex flex-col gap-[12px]",
+							testId: null,
+						},
+						{
+							tag: "DIV",
+							className: "flex flex-col gap-1",
+							testId: "approval-folds",
+						},
+					],
+					inner: [
+						{
+							tag: "DIV",
+							className:
+								"epitaxy-code-size bg-alpha-1 rounded-r4 py-md px-lg text-code text-secondary whitespace-pre-wrap break-words select-text [unicode-bidi:plaintext]",
+							testId: null,
+							detail: true,
+							text: "/repo/n.ipynb",
+						},
+						{
+							tag: "P",
+							className:
+								"text-footnote text-muted-as-secondary select-text break-words [unicode-bidi:plaintext]",
+							testId: "approval-detail-note",
+							detail: false,
+							text: "Replaces cell c1.",
+						},
+					],
+					fold: ["Collapsible"],
+					trigger:
+					{
+						text: "New cell content",
+						expanded: "true",
+						label: "text-footnote text-muted-control",
+					},
+					card: "mt-1 overflow-hidden rounded-lg bg-alpha-1",
+					lines: ["1", "2"],
+					source: "x = 1\ny = 2\n",
+				},
+			);
+		});
+
+		it("folds the cell content away when its trigger is clicked", async () =>
+		{
+			const {container} = renderPending("NotebookEdit", NOTEBOOK);
+			const trigger = screen.getByRole(
+				"button",
+				{
+					name: "New cell content",
+				},
+			);
+			await actAndSettle(() =>
+			{
+				fireEvent.click(trigger);
+			});
+			await actAndSettle(() =>
+			{
+				frameQueue.flush(2);
+			});
+			expect(
+				{
+					expanded: trigger.getAttribute("aria-expanded"),
+					lines: container.querySelectorAll("[data-line]").length,
+				},
+			).toStrictEqual(
+				{
+					expanded: "false",
+					lines: 0,
+				},
+			);
+		});
+
+		it("draws an empty inserted cell as one empty line", () =>
+		{
+			const {container} = renderPending(
+				"NotebookEdit",
+				{
+					notebook_path: "/repo/n.ipynb",
+					edit_mode: "insert",
+					new_source: "",
+				},
+			);
+			expect(
+				[...container.querySelectorAll("[data-line]")].map((line) => (
+				{
+					line: line.getAttribute("data-line"),
+					text: line.textContent,
+				})),
+			).toStrictEqual([
+				{
+					line: "1",
+					text: "",
+				},
+			]);
+		});
+
+		it("draws a deleted cell's note with no fold", () =>
+		{
+			const {container} = renderPending(
+				"NotebookEdit",
+				{
+					notebook_path: "/repo/n.ipynb",
+					cell_id: "c2",
+					edit_mode: "delete",
+					new_source: "",
+				},
+			);
+			const slot = container.querySelector("[data-permission-detail]")!.parentElement!.parentElement!;
+			expect([...slot.children].map(shape)).toStrictEqual([
+				{
+					tag: "DIV",
+					className: "flex flex-col gap-[12px]",
+					testId: null,
+				},
+			]);
+		});
+
+		it("keeps a Read card's path and range note in the same column, with no folds", () =>
+		{
+			const {container} = renderPending(
+				"Read",
+				{
+					file_path: "/repo/a.ts",
+					offset: 3,
+					limit: 2,
+				},
+			);
+			const slot = container.querySelector("[data-permission-detail]")!.parentElement!.parentElement!;
+			expect(
+				{
+					slot: shape(slot),
+					children: [...slot.children].map(shape),
+					inner: [...slot.firstElementChild!.children].map((child) => child.textContent),
+				},
+			).toStrictEqual(
+				{
+					slot:
+					{
+						tag: "DIV",
+						className: "flow-root",
+						testId: null,
+					},
+					children: [
+						{
+							tag: "DIV",
+							className: "flex flex-col gap-[12px]",
+							testId: null,
+						},
+					],
+					inner: ["/repo/a.ts", "Lines 3 to 4"],
+				},
+			);
+		});
 	});
 });
 

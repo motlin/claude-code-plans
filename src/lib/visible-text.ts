@@ -42,11 +42,11 @@ function hiddenChars(text: string): string
 }
 
 /**
- * Text drawn on one line with every invisible, bidi, control and line-breaking character shown as
- * `[U+XXXX]`, as upstream's `SO(text, {singleLine: true})` (shared-18) does for the "Always allow" rules.
+ * Text with every invisible, bidi and control character shown as `[U+XXXX]`, keeping tabs and newlines, as
+ * upstream's `SO(text)` (shared-18) does for a permission card's folded text (`bn`).
  * A `\uXXXX` escape keeps its backslash only when it names a character that would show as itself.
  */
-export function visibleSingleLine(text: string): string
+export function visibleMultiline(text: string): string
 {
 	const unspoofed = text.replace(LOOKALIKE_RE, (match, offset: number) =>
 	{
@@ -54,7 +54,16 @@ export function visibleSingleLine(text: string): string
 		const named = String.fromCodePoint(Number.parseInt(text.slice(offset + 2, offset + 6), 16));
 		return hiddenChars(named) === named && !/[\t\n]/u.test(named) ? match : codePointTag(match);
 	});
-	return hiddenChars(unspoofed).replace(LINE_RE, codePointTag);
+	return hiddenChars(unspoofed);
+}
+
+/**
+ * Text drawn on one line, as `visibleMultiline` with tabs and newlines tagged too: upstream's
+ * `SO(text, {singleLine: true})` (shared-18) for the "Always allow" rules.
+ */
+export function visibleSingleLine(text: string): string
+{
+	return visibleMultiline(text).replace(LINE_RE, codePointTag);
 }
 
 /** Strong right-to-left letters: Hebrew, Arabic, Syriac, Thaana, NKo, Samaritan, Mandaic and their presentation forms. */

@@ -2724,6 +2724,7 @@ function SessionView({
 															perUseOnly={shownPermission.perUseOnly === true}
 															clickOnly={shownPermission.clickOnly === true}
 															fileChange={shownPermission.fileChange ?? null}
+															folds={shownPermission.folds ?? null}
 															toolName={shownPermission.toolName ?? null}
 															toolInput={shownPermission.toolInput ?? null}
 															canAnswer={permissionCanAnswer}

@@ -5,6 +5,7 @@ import {asRecord} from "./narrow";
 import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-prompt";
 import {clampRows, inputRows, rowsFitBudget, type PermissionRow} from "./permission-rows";
 import type {PermissionDialogDecision, PersistentAllowKind, PersistentAllowSave} from "./permission-suggestions";
+import {visibleMultiline} from "./visible-text";
 import {markerEventsFromRecords} from "./working-marker";
 
 export type PermissionDecision = PermissionDialogDecision;
@@ -76,6 +77,8 @@ export interface PendingPermission
 	clickOnly?: true;
 	/** Upstream's `fileChange`: a Write/Edit/MultiEdit card previews its change, or says it is too large to. */
 	fileChange?: FileChangeKind;
+	/** Upstream's `foldedDetail`: text in disclosures closing the detail slot, such as NotebookEdit's new cell. */
+	folds?: PermissionFold[];
 	/** The previewed file tool's name, for its diff. */
 	toolName?: string;
 	/** The previewed file tool's input, for its diff. */
@@ -410,6 +413,17 @@ interface PermissionCopy
 	perUseOnly?: true;
 	clickOnly?: true;
 	fileChange?: FileChangeKind;
+	folds?: PermissionFold[];
+}
+
+/** One of upstream's `foldedDetail` disclosures: open from the start or not, its text lined or plain. */
+export interface PermissionFold
+{
+	label: string;
+	/** The text with its invisible characters already shown (upstream's `bn`). */
+	text: string;
+	open?: true;
+	lined?: true;
 }
 
 /** Upstream's `detailReadGate`: the gated detail's scroller label and the hint while it is unread. */
@@ -712,19 +726,68 @@ function readRows(input: Record<string, unknown>): Pick<PermissionCopy, "rows" |
 		: {};
 }
 
-/** Upstream's NotebookEdit notes: what happens to which cell, then its type. */
-function notebookNote(input: Record<string, unknown>): string | null
+/** Upstream's `Vh`: the NotebookEdit inputs its copy knows. */
+const NOTEBOOK_KEYS: ReadonlySet<string> = new Set([
+	"notebook_path",
+	"cell_id",
+	"new_source",
+	"cell_type",
+	"edit_mode",
+]);
+/** Upstream's `Hh`: a cell id it names in a note. */
+const NOTEBOOK_CELL_RE = /^(?:cell-\d{1,6}|[a-z]\d{1,6}|[0-9a-f]{8,16}|[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/i;
+
+/**
+ * Upstream's `Uh` (was `Dh`): what happens to which cell, then its type, with the new cell's content in an open
+ * lined fold; a deleted cell gets the note alone. Null for input it doesn't know, which falls back to rows.
+ */
+function notebookCopy(input: Record<string, unknown>): Pick<PermissionCopy, "detailNote" | "folds"> | null
 {
-	const cell = stringInput(input, "cell_id");
-	const cellType = stringInput(input, "cell_type");
-	const mode = stringInput(input, "edit_mode") ?? "replace";
-	let change: string | null = null;
+	const {cell_id: cellId, new_source: source, cell_type: cellType} = input;
+	const mode = input["edit_mode"] ?? "replace";
+	if (
+		!Object.keys(input).every((key) => NOTEBOOK_KEYS.has(key)) ||
+		(cellId !== undefined && typeof cellId !== "string") ||
+		(cellType !== undefined && cellType !== "code" && cellType !== "markdown") ||
+		typeof source !== "string"
+	)
+	{
+		return null;
+	}
+	const cell = cellId === "" ? undefined : cellId;
+	if (cell !== undefined && !NOTEBOOK_CELL_RE.test(cell)) return null;
+	const typed = (note: string) => (cellType === undefined ? note : `${note} Cell type: ${cellType}.`);
+	const folds: PermissionFold[] = [
+		{
+			label: "New cell content",
+			text: visibleMultiline(source),
+			open: true,
+			lined: true,
+		},
+	];
+	if (mode === "delete" && cell !== undefined)
+	{
+		return {
+			detailNote: `Deletes cell ${cell}.`,
+		};
+	}
 	if (mode === "insert")
-		change = cell === null ? "Adds a new cell at the top." : `Adds a new cell after cell ${cell}.`;
-	else if (cell !== null) change = mode === "delete" ? `Deletes cell ${cell}.` : `Replaces cell ${cell}.`;
-	return (
-		[change, cellType === null ? null : `Cell type: ${cellType}.`].filter((part) => part !== null).join(" ") || null
-	);
+	{
+		return {
+			detailNote: typed(
+				cell === undefined ? "Adds a new cell at the top." : `Adds a new cell after cell ${cell}.`,
+			),
+			folds,
+		};
+	}
+	if (mode === "replace" && cell !== undefined)
+	{
+		return {
+			detailNote: typed(`Replaces cell ${cell}.`),
+			folds,
+		};
+	}
+	return null;
 }
 
 /** Upstream's `Mm` map: tools with a dedicated verb and nothing else to name in the title. */
@@ -987,9 +1050,15 @@ function permissionCopy({name, input}: PendingToolUse): PermissionCopy
 				...notes([replacesEveryMatch(input) ? "Replaces every match in the file." : null]),
 			};
 		case "NotebookEdit":
+			// Upstream's fallback for input its copy doesn't know: every input as rows, behind the loose gate.
 			return {
 				...fileCopy("edit", text("notebook_path")),
-				...notes([notebookNote(input)]),
+				clampTitle: true,
+				...(notebookCopy(input) ??
+				{
+					rows: inputRows(input),
+					rowsGate: true,
+				}),
 			};
 		case "Glob":
 			return clampedBare(

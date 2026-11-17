@@ -34,6 +34,7 @@ import
 	permissionDecisionForKey,
 	type PermissionDecision,
 	type PermissionDetailLang,
+	type PermissionFold,
 	type PermissionTitle,
 	permissionCardLabel,
 	ROWS_READ_HINT,
@@ -71,9 +72,11 @@ import
 	ApprovalActionButton,
 	ApprovalCardShell,
 } from "./approval-card";
+import {LinedScript} from "./lined-script";
 import {PermissionFileChangePreview} from "./permission-file-change-body";
 import {PermissionRowsList, PERMISSION_ROWS_LABEL} from "./permission-rows";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
+import * as Collapsible from "./ui/collapsible";
 import {HighlightedCommand} from "./tool-renderers/bash-renderer";
 import {DisabledReason} from "./ui/disabled-reason";
 import {Shortcut} from "./ui/shortcut";
@@ -147,6 +150,7 @@ export function PermissionCard({
 	perUseOnly = false,
 	clickOnly = false,
 	fileChange = null,
+	folds = null,
 	toolName = null,
 	toolInput = null,
 	canAnswer,
@@ -193,6 +197,8 @@ export function PermissionCard({
 	clickOnly?: boolean;
 	/** Upstream's `fileChange`: a Write/Edit/MultiEdit card draws its change, or says it is too large to. */
 	fileChange?: FileChangeKind | null;
+	/** Upstream's `foldedDetail`: disclosures closing the detail slot, such as NotebookEdit's "New cell content". */
+	folds?: readonly PermissionFold[] | null;
 	/** The previewed file tool's name, for its diff. */
 	toolName?: string | null;
 	/** The previewed file tool's input, for its diff. */
@@ -495,6 +501,15 @@ export function PermissionCard({
 				</p>
 			</div>
 		);
+	const foldsBlock =
+		folds !== null && folds.length > 0 ? (
+			<div data-testid="approval-folds" className="flex flex-col gap-1">
+				{folds.map((fold, index) => (
+					// oxlint-disable-next-line react/no-array-index-key -- the folds are fixed for one request
+					<PermissionFoldView key={index} fold={fold} />
+				))}
+			</div>
+		) : null;
 	const previews = fileChange === "preview" && toolName !== null && toolInput !== null;
 	const detailBlock = previews ? (
 		<div className="flow-root">
@@ -520,23 +535,28 @@ export function PermissionCard({
 				{detail}
 			</CommandReadGate>
 		</div>
+	) : detailLang === null ? (
+		// Upstream's `a(t)` slot: the path grouped with its note, then the folds, flush in one flow-root.
+		(detail !== null || foldsBlock !== null) && (
+			<div className="flow-root">
+				{drawFileDetail(detailNote)}
+				{foldsBlock}
+			</div>
+		)
 	) : (
 		<>
-			{detail !== null &&
-				(detailLang === null ? (
-					pathDetail(detail)
-				) : (
-					<div data-permission-detail className="flow-root">
-						<div data-approval-value>
-							<div className={CODE_CARD_CLASS}>
-								<HighlightedCommand
-									command={detail}
-									language={detailLang === "bash" ? "shellscript" : detailLang}
-								/>
-							</div>
+			{detail !== null && (
+				<div data-permission-detail className="flow-root">
+					<div data-approval-value>
+						<div className={CODE_CARD_CLASS}>
+							<HighlightedCommand
+								command={detail}
+								language={detailLang === "bash" ? "shellscript" : detailLang}
+							/>
 						</div>
 					</div>
-				))}
+				</div>
+			)}
 			{detailNote !== null && <p className={DETAIL_NOTE_CLASS}>{detailNote}</p>}
 		</>
 	);
@@ -1117,6 +1137,35 @@ function AlwaysAllowSaves({saves}: {saves: readonly PersistentAllowSave[]})
 				))}
 			</ul>
 		</div>
+	);
+}
+
+/** Upstream's fold label (`Ox` trigger child). */
+const FOLD_LABEL_CLASS = "text-footnote text-muted-control";
+/** Upstream's unlined fold text (`Ox`). */
+const FOLD_TEXT_CLASS =
+	"mt-1 bg-alpha-1 rounded-lg py-md px-lg text-code text-secondary whitespace-pre-wrap break-all select-text [unicode-bidi:bidi-override]";
+
+/** Upstream's fold renderer (cc32965c2 `Ox`, was `Zb`): a cds Collapsible holding lined or plain text. */
+function PermissionFoldView({fold}: {fold: PermissionFold})
+{
+	return (
+		<Collapsible.Root defaultOpen={fold.open === true}>
+			<Collapsible.Trigger>
+				<span className={FOLD_LABEL_CLASS}>{fold.label}</span>
+			</Collapsible.Trigger>
+			<Collapsible.Panel>
+				{fold.lined === true ? (
+					<div className="mt-1 overflow-hidden rounded-lg bg-alpha-1">
+						<LinedScript script={fold.text} />
+					</div>
+				) : (
+					<pre dir="ltr" className={FOLD_TEXT_CLASS}>
+						{fold.text}
+					</pre>
+				)}
+			</Collapsible.Panel>
+		</Collapsible.Root>
 	);
 }
 
