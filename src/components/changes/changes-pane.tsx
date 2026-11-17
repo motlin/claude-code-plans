@@ -120,6 +120,8 @@ import
 import {detectLanguage} from "../../lib/diff-utils";
 import {diffCopyText, diffHostOf, isEditableDeep, selectionRangeIn, shownDiffRows} from "../../lib/diff-copy";
 import {DiffContextMenu} from "./diff-context-menu";
+import {useDiffOccurrenceHighlight} from "./diff-occurrence-highlight";
+import {useCodeThemeSelectionMatch} from "../../hooks/use-code-theme-background";
 import {DiffFile, type DiffFileAnnotation, DiffFileHeader, DiffFileMenuHost, type DiffLineRange} from "./diff-file";
 import type {DiffFileFacts} from "./diff-file-notes";
 import {DiffFileMenuItems, type WholeFileState} from "./diff-file-menu";
@@ -1323,6 +1325,9 @@ export function ChangesPaneView({
 	};
 	const [activePath, setActivePath] = useState<string | null>(null);
 	const bodyRef = useRef<HTMLDivElement>(null);
+	// Upstream `um`'s `jl(Ut, dn)`: `dn` re-arms the occurrence highlight when the session or diff scope changes.
+	useDiffOccurrenceHighlight(bodyRef, JSON.stringify([sessionId ?? null, scope]));
+	const selectionMatch = useCodeThemeSelectionMatch();
 	const scopeLabel = scopeLabelOf(scope, diff, scopes);
 	const selectedCommitSha = commitShaOf(scope);
 	const unavailableCount = files.filter(isUnavailable).length;
@@ -1805,6 +1810,14 @@ export function ChangesPaneView({
 					<div
 						ref={bodyRef}
 						data-diff-pane-body=""
+						style={
+							selectionMatch === undefined
+								? undefined
+								:
+									{
+										"--code-theme-selection-match-bg": selectionMatch,
+									}
+						}
 						tabIndex={-1}
 						onScrollCapture={(event) =>
 						{

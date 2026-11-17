@@ -161,6 +161,82 @@ afterEach(() =>
 	vi.useRealTimers();
 });
 
+describe("ChangesPaneView occurrence highlight", () =>
+{
+	// Upstream c6e73333a `A`: `--code-theme-selection-match-bg` from the loaded code theme pair (c5d464fa3 `B`).
+	it("sets the code themes' selection-match colour on the pane body", async () =>
+	{
+		renderPane([GREET_FILE]);
+		await waitFor(() =>
+		{
+			expect(
+				document
+					.querySelector<HTMLElement>("[data-diff-pane-body]")
+					?.style.getPropertyValue("--code-theme-selection-match-bg"),
+			).toBe("light-dark(#0073e61a, #0099ff24)");
+		});
+	});
+
+	// Upstream c44d00c7f `um` calls `jl(Ut, dn)` on the pane body: a selection in one row paints the others.
+	it("paints other occurrences of a diff selection across the pane", async () =>
+	{
+		const registry = new Map<string, Set<AbstractRange>>();
+		vi.stubGlobal(
+			"Highlight",
+			class extends Set<AbstractRange>
+			{
+				priority = 0;
+			},
+		);
+		Object.defineProperty(
+			CSS,
+			"highlights",
+			{
+				configurable: true,
+				value: registry,
+			},
+		);
+		renderPane([GREET_FILE]);
+		const row = await waitFor(() =>
+		{
+			const found = [
+				...(document.querySelector("diffs-container")?.shadowRoot?.querySelectorAll("[data-line]") ?? []),
+			].find((line) => line.textContent.includes("const greeting"));
+			if (!found) throw new Error("no greeting row");
+			return found;
+		});
+		const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
+		const nodes: Text[] = [];
+		for (let node = walker.nextNode(); node !== null; node = walker.nextNode())
+		{
+			if (node instanceof Text) nodes.push(node);
+		}
+		const text = nodes.find((node) => node.data.includes("greeting"));
+		if (!text) throw new Error("no greeting text");
+		const own = document.createRange();
+		own.setStart(text, text.data.indexOf("greeting"));
+		own.setEnd(text, text.data.indexOf("greeting") + 8);
+		vi.spyOn(window, "getSelection").mockReturnValue(
+			{
+				getComposedRanges: () => [own],
+				toString: () => own.toString(),
+			} as unknown as Selection,
+		);
+		document.dispatchEvent(new Event("selectionchange"));
+		await waitFor(() =>
+		{
+			expect(
+				[...(registry.get("epitaxy-diff-occurrence") ?? [])].map((range) =>
+				{
+					const node = range.startContainer;
+					return (node instanceof Element ? node : node.parentElement)?.closest("[data-line]")?.textContent;
+				}),
+			).toStrictEqual(['  return greeting + " " + name;']);
+		});
+		vi.restoreAllMocks();
+	});
+});
+
 function headerButton(path: string): HTMLElement
 {
 	const header = document.querySelector(`[data-diff-file-header="${path}"] button[aria-expanded]`);

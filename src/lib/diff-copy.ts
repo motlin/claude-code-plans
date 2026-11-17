@@ -105,7 +105,7 @@ export function selectionRangeIn(root: ShadowRoot, selection: Selection): Abstra
 }
 
 /** Upstream cd9a11070 `p`: whether `range` overlaps `row`'s contents. */
-function intersects(range: Range, row: Range): boolean
+export function intersects(range: Range, row: Range): boolean
 {
 	return (
 		range.compareBoundaryPoints(Range.END_TO_START, row) < 0 &&

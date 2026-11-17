@@ -30,6 +30,7 @@ import
 	diffsInjectedCss,
 } from "./diffs-config";
 import {adoptHunkHeadingCss, decorateHunkHeadings} from "./diff-hunk-heading";
+import {requestOccurrenceRepaint} from "./diff-occurrence-highlight";
 import {railsPostRender} from "./diff-rails";
 import {type FileSides, loadWithRetry, toLoadedFiles} from "./diff-file-lines";
 import {SHOW_MORE_LINES, expandSeparatorFromClick, relabelTrailingSeparator} from "./diff-separators";
@@ -748,7 +749,7 @@ export function DiffFile({
 						loadDiffFiles,
 					}),
 			// Upstream c44d00c7f `xn`: `se.draw(e)` (Q(wordDiff, !readOnly).draw), the partial diff's "Show more
-			// lines" relabel (c91a5e4a6 o), then `Bn(e, fileDiff)` (c91a5e4a6 g).
+			// lines" relabel (c91a5e4a6 o), then `Bn(e, fileDiff)` (c91a5e4a6 g), ending with the occurrence repaint `Ol(e)`.
 			onPostRender: (node, instance, phase) =>
 			{
 				drawRails(node, instance, phase);
@@ -756,6 +757,7 @@ export function DiffFile({
 				if (fileDiff.isPartial) relabelTrailingSeparator(node, SHOW_MORE_LINES);
 				adoptHunkHeadingCss(node);
 				decorateHunkHeadings(node, fileDiff);
+				requestOccurrenceRepaint(node);
 				loader.current.onRendered?.();
 			},
 			unsafeCSS: diffsInjectedCss(

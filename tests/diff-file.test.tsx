@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {act, cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
+import {act, cleanup, fireEvent, render, renderHook, screen, waitFor} from "@testing-library/react";
 import {afterEach, beforeAll, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {FileTypeIconSetContext} from "../src/components/file-type-icon-set-context";
 import {DiffFile, DiffFileHeader} from "../src/components/changes/diff-file";
@@ -9,6 +9,7 @@ import {diffFileMenuButtonShown, isSyntheticDiffRow} from "../src/components/cha
 import {ToastProvider} from "../src/components/toast";
 import {CA, EA, SA, TA, WA} from "../src/components/changes/diffs-config";
 import {DIFF_RAILS_CSS} from "../src/components/changes/diff-rails";
+import {OCCURRENCE_HIGHLIGHT, useDiffOccurrenceHighlight} from "../src/components/changes/diff-occurrence-highlight";
 import {PanelsOff} from "./fizzy-lake-off";
 import {DEFAULTS, SettingsContext} from "../src/components/settings-context";
 import {preloadFileTypeIcons} from "../src/components/file-type-icons-loader";
@@ -586,6 +587,84 @@ describe("DiffFile", () =>
 				},
 			);
 		});
+	});
+
+	// Upstream c44d00c7f fn/xn end with Ol(e): a diff that renders inside the active occurrence scope repaints.
+	it("repaints the active selection's occurrences into its rows after it renders, adopting the occurrence sheet", async () =>
+	{
+		const registry = new Map<string, Set<AbstractRange>>();
+		vi.stubGlobal(
+			"Highlight",
+			class extends Set<AbstractRange>
+			{
+				priority = 0;
+			},
+		);
+		Object.defineProperty(
+			CSS,
+			"highlights",
+			{
+				configurable: true,
+				value: registry,
+			},
+		);
+		const scope = document.createElement("div");
+		document.body.append(scope);
+		const source = document.createElement("diffs-container");
+		scope.append(source);
+		// pierre's registered <diffs-container> attaches its own open shadow root.
+		const sourceRoot = source.shadowRoot;
+		if (!sourceRoot) throw new Error("source shadow root");
+		sourceRoot.innerHTML = '<div data-line="1">greeting</div>';
+		const text = sourceRoot.querySelector("[data-line]")?.firstChild;
+		if (!text) throw new Error("source row");
+		const own = document.createRange();
+		own.setStart(text, 0);
+		own.setEnd(text, 8);
+		vi.spyOn(window, "getSelection").mockReturnValue(
+			{
+				getComposedRanges: () => [own],
+				toString: () => "greeting",
+			} as unknown as Selection,
+		);
+		const scopeRef =
+		{
+			current: scope,
+		};
+		renderHook(() =>
+		{
+			useDiffOccurrenceHighlight(scopeRef, "k");
+		});
+		document.dispatchEvent(new Event("selectionchange"));
+		await waitFor(() =>
+		{
+			expect(registry.get(OCCURRENCE_HIGHLIGHT)?.size).toBe(0);
+		});
+
+		const mount = document.createElement("div");
+		scope.append(mount);
+		const view = render(
+			<DiffFile patch={PATCH} />,
+			{
+				container: mount,
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(
+				[...(registry.get(OCCURRENCE_HIGHLIGHT) ?? [])].map((range) => (range as Range).toString()),
+			).toStrictEqual(["greeting", "greeting"]);
+		});
+		const root = shadowRootOf(view.container);
+		expect(
+			root.adoptedStyleSheets.some((sheet) =>
+				[...sheet.cssRules].some((rule) => rule.cssText.includes(OCCURRENCE_HIGHLIGHT)),
+			),
+		).toBe(true);
+		view.unmount();
+		scope.remove();
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
 	});
 
 	// Upstream c44d00c7f xn: Bn(e, fileDiff) (c91a5e4a6 g) after the other post-render passes.

@@ -1,4 +1,4 @@
-import {findMatches} from "../../lib/find-in-file";
+import {type FindRange, findMatches} from "../../lib/find-in-file";
 
 /**
  * Text is searched per block so a match never spans two source rows or two
@@ -45,32 +45,7 @@ export function collectFindBlocks(root: Element, query: string): FindBlock[]
 	}
 	return groups.flatMap(({block, nodes}) =>
 	{
-		const starts: number[] = [];
-		let joined = "";
-		for (const node of nodes)
-		{
-			starts.push(joined.length);
-			joined += node.data;
-		}
-		const locate = (offset: number, isEnd: boolean): [Text, number] =>
-		{
-			const threshold = offset - (isEnd ? 1 : 0);
-			let located: [Text, number] = [nodes[0], offset];
-			for (const [index, node] of nodes.entries())
-			{
-				const start = starts[index] ?? 0;
-				if (index > 0 && start > threshold) break;
-				located = [node, offset - start];
-			}
-			return located;
-		};
-		const ranges = findMatches(joined, query).map(({start, end}) =>
-		{
-			const range = root.ownerDocument.createRange();
-			range.setStart(...locate(start, false));
-			range.setEnd(...locate(end, true));
-			return range;
-		});
+		const ranges = textRanges(nodes, (joined) => findMatches(joined, query));
 		return ranges.length === 0
 			? []
 			: [
@@ -79,6 +54,41 @@ export function collectFindBlocks(root: Element, query: string): FindBlock[]
 						ranges,
 					},
 				];
+	});
+}
+
+/**
+ * DOM ranges for matches in `nodes`' text joined as one string, so a match may span
+ * adjacent token spans. `match` returns UTF-16 offsets into the joined text.
+ */
+export function textRanges(nodes: readonly [Text, ...Text[]], match: (joined: string) => readonly FindRange[]): Range[]
+{
+	const starts: number[] = [];
+	let joined = "";
+	for (const node of nodes)
+	{
+		starts.push(joined.length);
+		joined += node.data;
+	}
+	const locate = (offset: number, isEnd: boolean): [Text, number] =>
+	{
+		const threshold = offset - (isEnd ? 1 : 0);
+		let located: [Text, number] = [nodes[0], offset];
+		for (const [index, node] of nodes.entries())
+		{
+			const start = starts[index] ?? 0;
+			if (index > 0 && start > threshold) break;
+			located = [node, offset - start];
+		}
+		return located;
+	};
+	const doc = nodes[0].ownerDocument;
+	return match(joined).map(({start, end}) =>
+	{
+		const range = doc.createRange();
+		range.setStart(...locate(start, false));
+		range.setEnd(...locate(end, true));
+		return range;
 	});
 }
 
