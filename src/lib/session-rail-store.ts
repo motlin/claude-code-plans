@@ -439,3 +439,120 @@ export function reorderRailSections(active: RailSectionId, over: RailSectionId):
 		},
 	);
 }
+
+/** Upstream's `epitaxy.sidePaneStore.v1` `bandHeightsBySession`, under our own key: remembered rail band heights per session. */
+export const RAIL_BAND_HEIGHTS_STORAGE_KEY = "ccb-session-rail-band-heights";
+
+/** Upstream's `Pha` cap on a remembered first-card height. */
+const FIRST_CARD_MAX_PX = 360;
+/** Below this the skeleton's first card is too short for its two rows, so they drop (upstream `Pha`). */
+const FIRST_CARD_ROWS_MIN_PX = 86;
+/** Upstream's `nF`: a first card's height is recorded once it has held still this long. */
+export const FIRST_CARD_RECORD_DEBOUNCE_MS = 1000;
+
+const FIRST_CARD_KEY_PREFIX = "session-rail-first-card:";
+
+const BandHeightsSchema = z.record(
+	z.string(),
+	z.record(
+		z.string(),
+		z.strictObject(
+			{
+				px: z.number(),
+			},
+		),
+	),
+);
+
+type BandHeights = z.infer<typeof BandHeightsSchema>;
+
+const BandHeightsStoredSchema = z.strictObject(
+	{
+		state: z.strictObject(
+			{
+				bandHeightsBySession: BandHeightsSchema,
+			},
+		),
+		version: z.literal(0),
+	},
+);
+
+const bandHeightsStore = createStore<BandHeights>(
+	RAIL_BAND_HEIGHTS_STORAGE_KEY,
+	(value) =>
+	{
+		const result = BandHeightsStoredSchema.safeParse(value);
+		return result.success ? result.data.state.bandHeightsBySession : null;
+	},
+	{},
+	(bandHeightsBySession) => (
+	{
+		state:
+		{
+			bandHeightsBySession,
+		},
+		version: 0,
+	}),
+);
+
+export const readRailBandHeights = bandHeightsStore.read;
+
+/** Upstream's `EL`: the first card's height is remembered per rail config, so a changed config starts from the default. */
+export function railFirstCardKey(state: RailSectionsState, sessionId: string): string
+{
+	return (
+		FIRST_CARD_KEY_PREFIX +
+		JSON.stringify([state.order, state.hidden, state.startsOpen, state.foldsBySession[sessionId] ?? null])
+	);
+}
+
+/** Upstream's `tF`: the rounded height replaces the session's other first-card entries; heights at or below 0 are dropped. */
+export function recordRailFirstCardHeight(sessionId: string, key: string, height: number): void
+{
+	const px = Math.round(height);
+	if (!(px > 0)) return;
+	const all = readRailBandHeights();
+	const {[sessionId]: bands = {}, ...rest} = all;
+	const kept = Object.entries(bands).filter(([each]) => !each.startsWith(FIRST_CARD_KEY_PREFIX));
+	const entries = Object.entries(
+		{
+			...rest,
+			[sessionId]: Object.fromEntries([
+				...kept,
+				[
+					key,
+					{
+						px,
+					},
+				],
+			]),
+		},
+	);
+	bandHeightsStore.write(Object.fromEntries(entries.slice(Math.max(0, entries.length - MAX_FOLDED_SESSIONS))));
+}
+
+/** Upstream's `Pha`: the skeleton's first-card vars for a remembered px, or nothing to fall back to the default 170px. */
+export function railFirstCardStyle(px: unknown): Record<string, string> | undefined
+{
+	if (typeof px !== "number" || !Number.isFinite(px) || px <= 0) return undefined;
+	const height = `${Math.min(Math.round(px), FIRST_CARD_MAX_PX)}px`;
+	return px < FIRST_CARD_ROWS_MIN_PX
+		?
+			{
+				"--session-rail-first-card-h": height,
+				"--session-rail-first-card-rows": "none",
+			}
+		:
+			{
+				"--session-rail-first-card-h": height,
+			};
+}
+
+/** The docked rail column's first-card vars for this session's current rail config. */
+export function useRailFirstCardStyle(sessionId: string | undefined): Record<string, string> | undefined
+{
+	const sections = sectionsStore.useValue();
+	const heights = bandHeightsStore.useValue();
+	if (sessionId === undefined) return undefined;
+	return railFirstCardStyle(heights[sessionId]?.[railFirstCardKey(sections, sessionId)]?.px);
+}

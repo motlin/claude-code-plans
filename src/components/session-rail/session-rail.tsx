@@ -18,7 +18,18 @@ import
 } from "@dnd-kit/sortable";
 import {CSS} from "@dnd-kit/utilities";
 import {ChevronRight} from "lucide-react";
-import {useContext, useId, useLayoutEffect, useRef, useState, type MouseEvent, type ReactNode} from "react";
+import
+{
+	useCallback,
+	useContext,
+	useEffect,
+	useId,
+	useLayoutEffect,
+	useRef,
+	useState,
+	type MouseEvent,
+	type ReactNode,
+} from "react";
 
 import {RailAsideClassContext} from "./rail-aside-class";
 import {animateRailDrop, blurOnPointerDragStart, lockRailDragToVerticalAxis} from "./rail-drag-physics";
@@ -28,11 +39,15 @@ import {usageFillClass} from "./usage-fill";
 
 import
 {
+	FIRST_CARD_RECORD_DEBOUNCE_MS,
 	HIDEABLE_RAIL_SECTIONS,
 	isRailSectionOpen,
 	isRailSectionsPristine,
 	orderRailSections,
+	railFirstCardKey,
 	RailSectionIdSchema,
+	readRailSectionsState,
+	recordRailFirstCardHeight,
 	reorderRailSections,
 	resetRailSections,
 	toggleRailSectionHidden,
@@ -152,20 +167,58 @@ function GripDots()
 	);
 }
 
+/**
+ * Upstream's `aF` with `recordHeight`: while the card slot resizes, its height is recorded once it
+ * has held still for 1000ms, keyed by the rail config at that moment. Upstream also waits for the
+ * session details to answer; local mounts the rail only once the session has loaded.
+ */
+function useRecordFirstCardHeight(sessionId: string, enabled: boolean): (node: HTMLElement | null) => void
+{
+	const [node, setNode] = useState<HTMLElement | null>(null);
+	useEffect(() =>
+	{
+		if (!enabled || node === null || typeof ResizeObserver === "undefined") return undefined;
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const observer = new ResizeObserver(() =>
+		{
+			clearTimeout(timer);
+			timer = setTimeout(() =>
+			{
+				recordRailFirstCardHeight(
+					sessionId,
+					railFirstCardKey(readRailSectionsState(), sessionId),
+					node.getBoundingClientRect().height,
+				);
+			}, FIRST_CARD_RECORD_DEBOUNCE_MS);
+		});
+		observer.observe(node);
+		return () =>
+		{
+			clearTimeout(timer);
+			observer.disconnect();
+		};
+	}, [sessionId, enabled, node]);
+	return setNode;
+}
+
 function RailSection({
 	sessionId,
 	card,
 	open,
 	sections,
+	recordHeight,
 	onToggle,
 }: {
 	sessionId: string;
 	card: RailCard;
 	open: boolean;
 	sections: RailSectionsState;
+	/** Upstream's first visible card remembers its height for the next load's skeleton. */
+	recordHeight: boolean;
 	onToggle: (event: MouseEvent<HTMLButtonElement>) => void;
 })
 {
+	const recordRef = useRecordFirstCardHeight(sessionId, recordHeight);
 	const headingId = useId();
 	const {attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging} = useSortable(
 		{
@@ -177,6 +230,14 @@ function RailSection({
 		},
 	);
 	const title = RAIL_SECTION_TITLES[card.id];
+	const slotRef = useCallback(
+		(node: HTMLDivElement | null) =>
+		{
+			setNodeRef(node);
+			recordRef(node);
+		},
+		[setNodeRef, recordRef],
+	);
 	// Upstream's grip is keyboard-only: pointer drags start from the grab zone inside the header button.
 	const keyboardListeners = Object.fromEntries(
 		Object.entries(listeners ?? {}).filter(([name]) => name !== "onPointerDown"),
@@ -184,7 +245,7 @@ function RailSection({
 	return (
 		// Upstream's `Nj` slot: the sortable node, lifted above its siblings while dragging.
 		<div
-			ref={setNodeRef}
+			ref={slotRef}
 			data-rail-card={card.id}
 			style={
 			{
@@ -381,6 +442,7 @@ export function SessionRail({sessionId, cards}: {sessionId: string; cards: reado
 										card={card}
 										open={open}
 										sections={sections}
+										recordHeight={card.id === shown[0]?.id}
 										onToggle={(event) =>
 										{
 											if (event.altKey)

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // @vitest-isolate: a later file sharing its worker finds its ⌥⌘↑ / ⌥⌘↓ prompt-jump keydown already prevented after this file.
 
-import type {ReactNode} from "react";
+import {lazy, type ReactNode} from "react";
 import {act, cleanup, fireEvent, render, screen, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
@@ -26,7 +26,10 @@ import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 import
 {
 	RAIL_SECTIONS_STORAGE_KEY,
+	railFirstCardKey,
+	readRailBandHeights,
 	readRailSectionsState,
+	recordRailFirstCardHeight,
 	readSessionRailShown,
 	requestRailContextCard,
 	setSessionRailShown,
@@ -876,6 +879,91 @@ describe("session rail fit by chat-panel width", () =>
 			"alone",
 			"beside-pane",
 		]);
+	});
+
+	it("shows upstream's delayed rail skeleton while the cards chunk loads, docked and raised", async () =>
+	{
+		const Pending = lazy(
+			async () =>
+				new Promise<
+				{
+					default: () => ReactNode;
+				}>(() => {}),
+		);
+		const pending = () => <Pending />;
+		const skeleton = (root: Element | null) =>
+		{
+			const status = root === null ? null : within(root as HTMLElement).queryByRole("status");
+			return {
+				status: status?.textContent ?? null,
+				holds: [...(root?.querySelectorAll("[data-skeleton-group]") ?? [])].map((group) =>
+					group.getAttribute("data-hold"),
+				),
+			};
+		};
+		const expected =
+		{
+			status: "Loading session details",
+			holds: ["delayed", "delayed"],
+		};
+		setSessionRailShown(true);
+		tileWidth = 1200;
+		const {unmount} = renderFitSession(pending);
+		await settle();
+		const docked = skeleton(document.querySelector("[data-epitaxy-rail-column]"));
+		unmount();
+		setSessionRailShown(false);
+		tileWidth = 600;
+		renderFitSession(pending);
+		await settle();
+		await raiseByKeyboard();
+
+		expect(
+			{
+				docked,
+				raised: skeleton(raisedOverlay()),
+			},
+		).toStrictEqual(
+			{
+				docked: expected,
+				raised: expected,
+			},
+		);
+	});
+
+	it("sizes the docked skeleton's first card from the session's remembered height, never the raised overlay's", async () =>
+	{
+		recordRailFirstCardHeight("rail-session", railFirstCardKey(readRailSectionsState(), "rail-session"), 80);
+		const Pending = lazy(
+			async () =>
+				new Promise<
+				{
+					default: () => ReactNode;
+				}>(() => {}),
+		);
+		setSessionRailShown(true);
+		tileWidth = 1200;
+		const {unmount} = renderFitSession(() => <Pending />);
+		await settle();
+		const docked = document.querySelector<HTMLElement>("[data-epitaxy-rail-column]")?.style.cssText;
+		unmount();
+		setSessionRailShown(false);
+		tileWidth = 600;
+		renderFitSession(() => <Pending />);
+		await settle();
+		await raiseByKeyboard();
+
+		expect(
+			{
+				docked,
+				raised: raisedOverlay().getAttribute("style"),
+			},
+		).toStrictEqual(
+			{
+				docked: "--session-rail-first-card-h: 80px; --session-rail-first-card-rows: none;",
+				raised: "bottom: 0px;",
+			},
+		);
 	});
 
 	it("doesn't dock alone at upstream's live 640px viewport (tile 632) but docks at a 640px tile", async () =>
@@ -1897,6 +1985,100 @@ function cardStates(): Array<[string, string | null, boolean]>
 
 describe("session rail cards", () =>
 {
+	it("records the first shown card's settled height after upstream's 1000ms debounce, under this config's key", () =>
+	{
+		vi.useFakeTimers();
+		const observed: Array<
+		{
+			fire: () => void;
+			targets: Element[];
+		}> = [];
+		vi.stubGlobal(
+			"ResizeObserver",
+			class
+			{
+				readonly entry:
+				{
+					fire: () => void;
+					targets: Element[];
+				};
+				constructor(callback: ResizeObserverCallback)
+				{
+					this.entry =
+					{
+						fire: () =>
+						{
+							callback([], this);
+						},
+						targets: [],
+					};
+					observed.push(this.entry);
+				}
+				observe(target: Element)
+				{
+					this.entry.targets.push(target);
+				}
+				unobserve()
+				{
+				}
+				disconnect()
+				{
+				}
+			},
+		);
+		let height = 129.6;
+		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(() =>
+			DOMRect.fromRect(
+				{
+					width: 280,
+					height,
+				},
+			),
+		);
+		try
+		{
+			render(<SessionRail sessionId="s1" cards={CARDS} />);
+			const stored = () => readRailBandHeights()["s1"] ?? null;
+			const fire = () =>
+			{
+				for (const each of observed) each.fire();
+			};
+			fire();
+			vi.advanceTimersByTime(600);
+			height = 140.2;
+			fire();
+			vi.advanceTimersByTime(999);
+			const early = stored();
+			vi.advanceTimersByTime(1);
+
+			expect(
+				{
+					targets: observed.flatMap((each) =>
+						each.targets.map((target) => target.getAttribute("data-rail-card")),
+					),
+					early,
+					settled: stored(),
+				},
+			).toStrictEqual(
+				{
+					targets: ["environment"],
+					early: null,
+					settled:
+					{
+						"session-rail-first-card:[[],[],{},null]":
+						{
+							px: 140,
+						},
+					},
+				},
+			);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
+	});
+
 	it("renders upstream's titled cards, every one open by default except Context", () =>
 	{
 		render(<SessionRail sessionId="s1" cards={CARDS} />);

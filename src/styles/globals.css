@@ -5037,6 +5037,19 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	animation: placeholder-reveal 0.15s ease-out var(--placeholder-reveal-delay, 0.5s) backwards;
 }
 
+@media (prefers-reduced-motion: reduce)
+{
+	[data-cds="SkeletonGroup"][data-hold="delayed"]
+	{
+		animation-duration: 0.01ms;
+	}
+}
+
+html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
+{
+	animation-duration: 0.01ms;
+}
+
 /* Upstream cds-shimmer: the Skeleton sheen sweeps across once per cycle. */
 @keyframes shimmer
 {

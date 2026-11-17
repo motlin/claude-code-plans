@@ -237,4 +237,35 @@ describe("app chrome design tokens", () =>
 			},
 		);
 	});
+	it("holds a delayed SkeletonGroup back 0.5s and fades it in, at once under reduced motion", () =>
+	{
+		const styles = readFileSync("src/styles/globals.css", "utf8")
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replaceAll(/\s+/g, " ");
+		const delayedRules = [...styles.matchAll(/([^{}]*\[data-hold="delayed"\][^{}]*)\{([^}]*)\}/g)].map(
+			([, selector, body]) => [selector?.trim(), body?.trim()],
+		);
+
+		expect(
+			{
+				keyframes: styles.match(/@keyframes placeholder-reveal \{ 0% \{[^}]*\} \}/)?.[0],
+				delayedRules,
+			},
+		).toStrictEqual(
+			{
+				keyframes: "@keyframes placeholder-reveal { 0% { opacity: 0; } }",
+				delayedRules: [
+					[
+						'[data-cds="SkeletonGroup"][data-hold="delayed"]',
+						"animation: placeholder-reveal 0.15s ease-out var(--placeholder-reveal-delay, 0.5s) backwards;",
+					],
+					['[data-cds="SkeletonGroup"][data-hold="delayed"]', "animation-duration: 0.01ms;"],
+					[
+						'html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]',
+						"animation-duration: 0.01ms;",
+					],
+				],
+			},
+		);
+	});
 });

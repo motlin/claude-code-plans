@@ -14,12 +14,13 @@ import
 } from "react";
 
 import {forwardWheel} from "../../lib/forward-wheel";
-import {useRailRaiseRequest} from "../../lib/session-rail-store";
+import {useRailFirstCardStyle, useRailRaiseRequest} from "../../lib/session-rail-store";
 import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {TITLEBAR_ICON_BUTTON_CLASS} from "../titlebar-classes";
 import {MenuItem} from "../ui/menu";
 import {Tooltip} from "../ui/tooltip";
 import {RailAsideClassContext} from "./rail-aside-class";
+import {SessionRailSkeleton} from "./session-rail-skeleton";
 import
 {
 	SessionRailFitContext,
@@ -144,6 +145,8 @@ export function SessionRailSlot({sessionId, render}: {sessionId?: string; render
 		if ((visible || raise !== null) && fit?.commandRaised === true) fit.setCommandRaised(false);
 	}, [raise, fit, visible]);
 	useCommandRaise(sessionId, fit, raise, visible);
+	// Upstream's docked host (`qK`) sizes the skeleton from memory; its overlay (`cq`) keeps the default.
+	const firstCardStyle = useRailFirstCardStyle(sessionId);
 	if (raise !== null)
 		return raise.raised ? (
 			<RaisedRailOverlay
@@ -171,9 +174,10 @@ export function SessionRailSlot({sessionId, render}: {sessionId?: string; render
 	return (
 		<div
 			data-epitaxy-rail-column=""
+			style={firstCardStyle}
 			className="absolute inset-y-0 end-[var(--session-rail-end)] flex w-[var(--session-rail-w,17.5rem)] flex-col pt-3 pb-0.75"
 		>
-			<Suspense fallback={null}>{render()}</Suspense>
+			<Suspense fallback={<SessionRailSkeleton hold="delayed" />}>{render()}</Suspense>
 		</div>
 	);
 }
@@ -300,7 +304,7 @@ function RailOverlay({ref, id, render}: {ref: RefObject<HTMLDivElement | null>; 
 				className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-card border border-border bg-surface-1 p-2 shadow-panel-md transition-opacity duration-200 ease-[cubic-bezier(0.165,0.84,0.44,1)] motion-reduce:transition-none starting:opacity-0"
 			>
 				<RailAsideClassContext.Provider value="h-full w-full rounded-[inherit]">
-					<Suspense fallback={null}>{render()}</Suspense>
+					<Suspense fallback={<SessionRailSkeleton hold="delayed" />}>{render()}</Suspense>
 				</RailAsideClassContext.Provider>
 			</div>
 		</div>

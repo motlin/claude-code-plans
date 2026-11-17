@@ -5,6 +5,11 @@ import {beforeEach, describe, expect, it} from "vite-plus/test";
 import
 {
 	DEFAULT_RAIL_SECTIONS_STATE,
+	RAIL_BAND_HEIGHTS_STORAGE_KEY,
+	railFirstCardKey,
+	railFirstCardStyle,
+	readRailBandHeights,
+	recordRailFirstCardHeight,
 	isRailSectionOpen,
 	isRailSectionsPristine,
 	orderRailSections,
@@ -495,5 +500,183 @@ describe("requestRailContextCard", () =>
 				},
 			},
 		);
+	});
+});
+
+describe("rail first card height", () =>
+{
+	it("keys the height by upstream's rail config: order, hidden, startsOpen and this session's folds", () =>
+	{
+		const folded: RailSectionsState =
+		{
+			...DEFAULT_RAIL_SECTIONS_STATE,
+			hidden: ["goal"],
+			startsOpen:
+			{
+				context: true,
+			},
+			foldsBySession:
+			{
+				s1:
+				{
+					collapsed: ["environment"],
+					expanded: [],
+				},
+			},
+		};
+
+		expect(
+			{
+				pristine: railFirstCardKey(DEFAULT_RAIL_SECTIONS_STATE, "s1"),
+				folded: railFirstCardKey(folded, "s1"),
+				otherSession: railFirstCardKey(folded, "s2"),
+			},
+		).toStrictEqual(
+			{
+				pristine: "session-rail-first-card:[[],[],{},null]",
+				folded: 'session-rail-first-card:[[],["goal"],{"context":true},{"collapsed":["environment"],"expanded":[]}]',
+				otherSession: 'session-rail-first-card:[[],["goal"],{"context":true},null]',
+			},
+		);
+	});
+
+	it("stores the rounded height, prunes the session's other first-card keys, and ignores heights at or below 0", () =>
+	{
+		storage.setItem(
+			RAIL_BAND_HEIGHTS_STORAGE_KEY,
+			JSON.stringify(
+				{
+					state:
+					{
+						bandHeightsBySession:
+						{
+							s1:
+							{
+								"session-rail-first-card:old":
+								{
+									px: 90,
+								},
+								"session-rail-pr-entries:x":
+								{
+									px: 40,
+								},
+							},
+							s2:
+							{
+								"session-rail-first-card:old":
+								{
+									px: 70,
+								},
+							},
+						},
+					},
+					version: 0,
+				},
+			),
+		);
+		recordRailFirstCardHeight("s1", "session-rail-first-card:new", 111.6);
+		recordRailFirstCardHeight("s1", "session-rail-first-card:new", 0);
+		recordRailFirstCardHeight("s1", "session-rail-first-card:new", -5);
+
+		expect(
+			{
+				state: readRailBandHeights(),
+				stored: JSON.parse(storage.getItem(RAIL_BAND_HEIGHTS_STORAGE_KEY) ?? "null"),
+			},
+		).toStrictEqual(
+			{
+				state:
+				{
+					s2:
+					{
+						"session-rail-first-card:old":
+						{
+							px: 70,
+						},
+					},
+					s1:
+					{
+						"session-rail-pr-entries:x":
+						{
+							px: 40,
+						},
+						"session-rail-first-card:new":
+						{
+							px: 112,
+						},
+					},
+				},
+				stored:
+				{
+					state:
+					{
+						bandHeightsBySession:
+						{
+							s2:
+							{
+								"session-rail-first-card:old":
+								{
+									px: 70,
+								},
+							},
+							s1:
+							{
+								"session-rail-pr-entries:x":
+								{
+									px: 40,
+								},
+								"session-rail-first-card:new":
+								{
+									px: 112,
+								},
+							},
+						},
+					},
+					version: 0,
+				},
+			},
+		);
+	});
+
+	it("keeps heights for only the newest 100 sessions", () =>
+	{
+		for (let index = 0; index < 101; index++)
+			recordRailFirstCardHeight(`s${index}`, "session-rail-first-card:k", 100);
+		const sessions = Object.keys(readRailBandHeights());
+
+		expect([sessions.length, sessions[0], sessions.at(-1)]).toStrictEqual([100, "s1", "s100"]);
+	});
+
+	it("sizes the skeleton's first card from upstream's remembered px: capped at 360, rows dropped under 86", () =>
+	{
+		expect(
+			[500, 112, 86, 85.6, 80, 0, -3, Number.NaN, Number.POSITIVE_INFINITY, "112", undefined].map((px) =>
+				railFirstCardStyle(px),
+			),
+		).toStrictEqual([
+			{
+				"--session-rail-first-card-h": "360px",
+			},
+			{
+				"--session-rail-first-card-h": "112px",
+			},
+			{
+				"--session-rail-first-card-h": "86px",
+			},
+			{
+				"--session-rail-first-card-h": "86px",
+				"--session-rail-first-card-rows": "none",
+			},
+			{
+				"--session-rail-first-card-h": "80px",
+				"--session-rail-first-card-rows": "none",
+			},
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+		]);
 	});
 });
