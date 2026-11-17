@@ -876,62 +876,88 @@ describe("BackgroundTasksList artifact links", () =>
 		finished: [],
 	};
 
-	function titleOf(id: string)
+	const TEXT_LINK =
+		"text-upstream-accent hover:underline underline-offset-[1px] focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-r2";
+
+	function cardOf(id: string)
 	{
-		const title = document.querySelector(`[data-task-id="${id}"] [data-background-task] [data-task-title]`);
+		const card = document.querySelector(`[data-task-id="${id}"]`);
+		const row = card?.querySelector("[data-task-artifact-row]");
+		const link = row?.querySelector("a");
 		return {
-			text: title?.textContent,
-			links: [...(title?.querySelectorAll("a") ?? [])].map((link) => (
-			{
-				text: link.textContent,
-				href: link.getAttribute("href"),
-				target: link.getAttribute("target"),
-				rel: link.getAttribute("rel"),
-				artifact: link.getAttribute("data-artifact-link"),
-			})),
+			title: card?.querySelector("[data-background-task] [data-task-title]")?.textContent,
+			titleLinks: card?.querySelectorAll("[data-background-task] a").length,
+			label: card?.querySelector("[data-background-task]")?.getAttribute("aria-label"),
+			artifactRow:
+				row === undefined || row === null
+					? null
+					:
+						{
+							className: row.className,
+							step: row.getAttribute("style"),
+							links: row.querySelectorAll("a").length,
+							link:
+							{
+								text: link?.textContent,
+								href: link?.getAttribute("href"),
+								target: link?.getAttribute("target"),
+								rel: link?.getAttribute("rel"),
+								className: link?.className,
+							},
+						},
 		};
 	}
 
-	it("links the word artifact before an artifact URL in a non-bash card title, leaving bash titles plain", () =>
+	it("keeps a card title plain text and adds upstream's View artifact row for its first link, leaving bash cards plain", () =>
 	{
 		render(<BackgroundTasksList groups={ARTIFACT_GROUPS} />);
 
 		expect(
 			{
-				agent: titleOf("afab1publish"),
-				bash: titleOf("bfab1publish"),
+				agent: cardOf("afab1publish"),
+				bash: cardOf("bfab1publish"),
 			},
 		).toStrictEqual(
 			{
 				agent:
 				{
-					text: "Publish artifact now",
-					links: [
+					title: "Publish artifact now",
+					titleLinks: 0,
+					label: "Background task: Publish artifact now",
+					artifactRow:
+					{
+						className:
+							"ps-[calc(var(--task-step,0)*1.25rem+0.75rem)] pe-md flex min-h-5 items-center pb-sm text-footnote",
+						step: "--task-step: 1;",
+						links: 1,
+						link:
 						{
-							text: "artifact",
+							text: "View artifact",
 							href: "https://claude.ai/code/artifact/fab1",
 							target: "_blank",
 							rel: "noreferrer",
-							artifact: "",
+							className: `shrink-0 ${TEXT_LINK}`,
 						},
-					],
+					},
 				},
 				bash:
 				{
-					text: "Publish artifact https://claude.ai/code/artifact/fab2",
-					links: [],
+					title: "Publish artifact https://claude.ai/code/artifact/fab2",
+					titleLinks: 0,
+					label: "Background task: Publish artifact https://claude.ai/code/artifact/fab2",
+					artifactRow: null,
 				},
 			},
 		);
 	});
 
-	it("opening a card title's artifact link does not toggle the card, while its plain text still does", () =>
+	it("opening View artifact does not toggle the card", () =>
 	{
 		render(<BackgroundTasksList groups={ARTIFACT_GROUPS} />);
 		const card = screen.getByRole(
 			"button",
 			{
-				name: "Background task: Publish artifact https://claude.ai/code/artifact/fab1 now",
+				name: "Background task: Publish artifact now",
 			},
 		);
 
@@ -939,22 +965,60 @@ describe("BackgroundTasksList artifact links", () =>
 			screen.getByRole(
 				"link",
 				{
-					name: "artifact",
+					name: "View artifact",
 				},
 			),
 		);
-		const afterLink = card.getAttribute("aria-expanded");
-		fireEvent.click(card.querySelector("[data-task-title]") ?? card);
 
+		expect(card.getAttribute("aria-expanded")).toBe("false");
+	});
+
+	it("links the artifact word in an expanded agent card's summary, in upstream's footnote summary div", () =>
+	{
+		render(
+			<BackgroundTasksList
+				groups={
+				{
+					running: [],
+					finished: [
+						task(
+							{
+								id: "afab3done",
+								kind: "agent",
+								status: "completed",
+								description: "Build the page",
+								summary: "Done, see artifact https://claude.ai/code/artifact/fab3",
+							},
+						),
+					],
+				}}
+			/>,
+		);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Background task: Build the page",
+				},
+			),
+		);
+
+		const summary = document.querySelector(
+			'[data-task-id="afab3done"] div.text-footnote.text-secondary.whitespace-pre-wrap.break-words',
+		);
 		expect(
 			{
-				afterLink,
-				afterTitle: card.getAttribute("aria-expanded"),
+				tag: summary?.tagName,
+				text: summary?.textContent,
+				links: Array.from(summary?.querySelectorAll("a[data-artifact-link]") ?? [], (link) =>
+					link.getAttribute("href"),
+				),
 			},
 		).toStrictEqual(
 			{
-				afterLink: "false",
-				afterTitle: "true",
+				tag: "DIV",
+				text: "Done, see artifact",
+				links: ["https://claude.ai/code/artifact/fab3"],
 			},
 		);
 	});

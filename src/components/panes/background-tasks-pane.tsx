@@ -22,8 +22,8 @@ import {CommandTokens} from "../tool-renderers/bash-renderer";
 import {AnsiText} from "../tool-renderers/shared";
 import {Icon} from "../ui/icon";
 import {nonEmpty} from "../../lib/non-empty";
-import {taskDescriptionSegments} from "../../lib/task-description-segments";
-import {TaskDescriptionLinks} from "../task-event-run-row";
+import {type ArtifactWordLink, plainSegmentsText, taskDescriptionSegments} from "../../lib/task-description-segments";
+import {TaskDescriptionLinks, TEXT_LINK} from "../task-event-run-row";
 import {useOptionalPaneHost} from "./pane-host-context";
 import {WorkflowTaskCard} from "./workflow-task-card";
 
@@ -68,9 +68,35 @@ const TAIL_SLACK = 16;
 /** Tasks whose output the user scrolled up from, so a re-render doesn't yank them back to the tail. */
 const scrolledUpTasks = new Map<string, boolean>();
 
-function taskTitle(task: BackgroundTask): string
+function taskTypeOf(task: BackgroundTask): string
 {
-	return nonEmpty(task.description) ?? nonEmpty(task.command) ?? task.id;
+	return task.kind === "bash" ? "local_bash" : task.kind;
+}
+
+/**
+ * Upstream's row title `F`: the description's plain text (link words kept, URLs dropped) when it
+ * names an artifact, else the description, command or id; plus the first artifact link, which
+ * upstream draws as a separate "View artifact" row.
+ */
+function taskTitle(task: BackgroundTask):
+{
+	title: string;
+	artifact: ArtifactWordLink | undefined;
+}
+{
+	const description = nonEmpty(task.description);
+	const segments = description === undefined ? undefined : taskDescriptionSegments(description, taskTypeOf(task));
+	if (segments === undefined)
+	{
+		return {
+			title: description ?? nonEmpty(task.command) ?? task.id,
+			artifact: undefined,
+		};
+	}
+	return {
+		title: plainSegmentsText(segments),
+		artifact: segments.find((segment) => typeof segment !== "string"),
+	};
 }
 
 /** Upstream `gL`: shell and monitor tasks open onto their output, others only when they carry a distinct summary. */
@@ -79,16 +105,6 @@ function isExpandable(task: BackgroundTask): boolean
 	if (task.kind === "bash" || task.kind === "monitor") return true;
 	const summary = nonEmpty(task.summary);
 	return summary !== undefined && summary !== task.description;
-}
-
-/** The card title, with an artifact word linked to its URL as the transcript's task-event rows do. */
-function TaskTitle({task, title}: {task: BackgroundTask; title: string})
-{
-	const segments =
-		title === task.description
-			? taskDescriptionSegments(title, task.kind === "bash" ? "local_bash" : task.kind)
-			: undefined;
-	return segments === undefined ? title : <TaskDescriptionLinks segments={segments} />;
 }
 
 function Caret({open}: {open: boolean})
@@ -143,7 +159,15 @@ function InlineOutput({task, title}: {task: BackgroundTask; title: string})
 {
 	if (task.output !== null) return <OutputRegion task={task} title={title} output={task.output} />;
 	const summary = nonEmpty(task.summary);
-	if (summary !== undefined && summary !== task.description) return <p className={SUMMARY}>{summary}</p>;
+	if (summary !== undefined && summary !== task.description)
+	{
+		const segments = taskDescriptionSegments(summary, taskTypeOf(task));
+		return (
+			<div className={SUMMARY}>
+				{segments === undefined ? summary : <TaskDescriptionLinks segments={segments} />}
+			</div>
+		);
+	}
 	return <p className={NOTE}>{task.status === "running" ? "No output yet" : "No output captured."}</p>;
 }
 
@@ -276,7 +300,7 @@ function BackgroundTaskRow({
 {
 	const detailsId = useId();
 	const statusId = useId();
-	const title = taskTitle(task);
+	const {title, artifact} = taskTitle(task);
 	const expandable = isExpandable(task);
 	const status = useTaskStatus(task);
 	// Upstream renders a failed or stopped task's summary inline on touch, where there is no tooltip.
@@ -287,9 +311,7 @@ function BackgroundTaskRow({
 		>
 			{expandable && <Caret open={expanded} />}
 			<span data-task-title="" className="flex min-w-0">
-				<span className="min-w-0 truncate">
-					<TaskTitle task={task} title={title} />
-				</span>
+				<span className="min-w-0 truncate">{title}</span>
 			</span>
 			{!expandable && task.kind === "agent" && sessionId !== undefined && (
 				<ViewTranscriptButton task={task} title={title} sessionId={sessionId} />
@@ -323,16 +345,7 @@ function BackgroundTaskRow({
 							aria-expanded={expanded}
 							aria-controls={detailsId}
 							aria-describedby={describedBy}
-							onClick={(event) =>
-							{
-								// A title's artifact link opens its artifact without toggling the row.
-								if (
-									event.target instanceof Element &&
-									event.target.closest("a[data-artifact-link]") !== null
-								)
-									return;
-								onToggle();
-							}}
+							onClick={onToggle}
 							className={`${OPENER} ${OPENER_ACTION}`}
 						>
 							{label}
@@ -345,6 +358,20 @@ function BackgroundTaskRow({
 						</div>
 					)}
 				</div>
+				{artifact !== undefined && (
+					<div
+						data-task-artifact-row=""
+						className={`${UNDER_ROW} pe-md flex min-h-5 items-center pb-sm text-footnote`}
+						style={
+						{
+							"--task-step": expandable ? 1 : 0,
+						}}
+					>
+						<a href={artifact.href} target="_blank" rel="noreferrer" className={`shrink-0 ${TEXT_LINK}`}>
+							View artifact
+						</a>
+					</div>
+				)}
 				{inlineSummary !== undefined && (
 					<div
 						data-background-task-summary=""

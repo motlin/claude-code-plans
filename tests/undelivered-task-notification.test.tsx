@@ -579,6 +579,7 @@ describe("undelivered background-task notifications", () =>
 					text: link.textContent,
 					href: link.getAttribute("href"),
 					artifact: link.getAttribute("data-artifact-link"),
+					className: link.className,
 				})),
 				text: row?.textContent,
 				titles: row?.querySelectorAll("[title]").length,
@@ -592,6 +593,8 @@ describe("undelivered background-task notifications", () =>
 						text: "artifact",
 						href: "https://claude.ai/code/artifact/abc",
 						artifact: "",
+						className:
+							"text-upstream-accent hover:underline underline-offset-[1px] focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-r2",
 					},
 				],
 				text: "Background agent completed· Publish artifact",

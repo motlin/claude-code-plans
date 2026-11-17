@@ -122,7 +122,7 @@ import {useMarkClaim, useSayWords} from "./turn-mark-context";
 import {StaleCompactBand, type StaleCompactBandProps} from "./stale-compact-band";
 import {lastAssistantReplyEntry} from "../lib/stale-compact";
 import {collectTurnChanges, lastTurnChangesAnchor, type TurnChanges} from "../lib/turn-changes";
-import {taskDescriptionSegments} from "../lib/task-description-segments";
+import {plainSegmentsText, stepDescriptionSegments, taskDescriptionSegments} from "../lib/task-description-segments";
 import {agentCompletionOf, foldedTaskNotificationOf, taskNotificationOf} from "../lib/task-notification-lines";
 import {ToastContext} from "./toast-context";
 import {TurnUndoSendContext} from "./turn-undo-send-context";
@@ -2241,8 +2241,15 @@ function BackgroundNoticeRow({notice}: {notice: BackgroundNotice})
 					},
 				)
 			: undefined;
-	const detail = reason === undefined ? description : `${description}: ${reason}`;
-	const navigates = opener !== null && segments === undefined;
+	const detail =
+		segments === undefined
+			? reason === undefined
+				? description
+				: `${description}: ${reason}`
+			: plainSegmentsText(segments);
+	// Upstream's `Pme` refuses links on a step whose text holds invisible characters; it then draws the plain text.
+	const links = stepDescriptionSegments(description, taskType);
+	const navigates = opener !== null && links === undefined;
 	const underline = navigates ? ` ${AGENT_META_UNDERLINE}` : "";
 	const children = (
 		<>
@@ -2260,12 +2267,12 @@ function BackgroundNoticeRow({notice}: {notice: BackgroundNotice})
 							className={`truncate min-w-0 text-primary${underline}`}
 							title={segments === undefined ? detail : undefined}
 						>
-							{segments === undefined ? (
+							{links === undefined ? (
 								<bdi>{detail}</bdi>
 							) : (
-								// Upstream's `upe`: the artifact link segments in a bdi titled with the full description.
-								<bdi title={description}>
-									<TaskDescriptionLinks segments={segments} />
+								// Upstream's `Ime` subject slot: the artifact link segments in an untitled bdi.
+								<bdi>
+									<TaskDescriptionLinks segments={links} />
 								</bdi>
 							)}
 						</span>

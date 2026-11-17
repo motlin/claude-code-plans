@@ -30,6 +30,10 @@ export interface TaskEvent
 
 const INK = "text-secondary group-hover/tool:text-primary";
 
+/** Upstream's `TextLink`: accent ink, an underline only on hover, and a 3px-rounded (r2) focus ring. */
+export const TEXT_LINK =
+	"text-upstream-accent hover:underline underline-offset-[1px] focus-visible:outline-hidden hide-focus-ring focus-visible:shadow-focus rounded-r2";
+
 /**
  * Upstream's `CS` segments: description text with each "artifact" word drawn as a link to the
  * artifact its URL named.
@@ -48,7 +52,7 @@ export function TaskDescriptionLinks({segments}: {segments: readonly TaskDescrip
 				target="_blank"
 				rel="noreferrer"
 				data-artifact-link=""
-				className="underline underline-offset-2"
+				className={TEXT_LINK}
 			>
 				{segment.word}
 			</a>

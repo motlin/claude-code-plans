@@ -1,5 +1,10 @@
 import {describe, expect, it} from "vite-plus/test";
-import {taskDescriptionSegments} from "../src/lib/task-description-segments";
+import
+{
+	plainSegmentsText,
+	stepDescriptionSegments,
+	taskDescriptionSegments,
+} from "../src/lib/task-description-segments";
 
 describe("taskDescriptionSegments", () =>
 {
@@ -66,6 +71,81 @@ describe("taskDescriptionSegments", () =>
 				plain: undefined,
 				bare: false,
 				noUrl: undefined,
+			},
+		);
+	});
+
+	it("scans and trims URLs like upstream's Cu/Du: one trailing punctuation mark, then unmatched closing parens", () =>
+	{
+		const link =
+		{
+			word: "artifact",
+			href: "https://claude.ai/code/artifact/abc",
+		};
+		expect(
+			{
+				dot: taskDescriptionSegments("Publish artifact https://claude.ai/code/artifact/abc.", "local_agent"),
+				paren: taskDescriptionSegments("(see artifact https://claude.ai/code/artifact/abc)", "local_agent"),
+				apostrophe: taskDescriptionSegments("artifact https://claude.ai/code/artifact/abc'", "local_agent"),
+				quoted: taskDescriptionSegments('artifact "https://claude.ai/code/artifact/abc"', "local_agent"),
+			},
+		).toStrictEqual(
+			{
+				dot: ["Publish ", link, "."],
+				paren: ["(see ", link, ")"],
+				apostrophe: undefined,
+				quoted: undefined,
+			},
+		);
+	});
+
+	it("joins text and link words without URLs, as upstream's NA does", () =>
+	{
+		expect(
+			plainSegmentsText([
+				"Publish ",
+				{
+					word: "artifact",
+					href: "https://claude.ai/code/artifact/abc",
+				},
+				" now",
+			]),
+		).toBe("Publish artifact now");
+	});
+});
+
+describe("stepDescriptionSegments", () =>
+{
+	it("links like taskDescriptionSegments but refuses text or hrefs with invisible or control characters, as upstream's Pme does", () =>
+	{
+		expect(
+			{
+				clean: stepDescriptionSegments("Publish artifact https://claude.ai/code/artifact/abc", "local_agent"),
+				bidi: stepDescriptionSegments(
+					"Publish\u202e artifact https://claude.ai/code/artifact/abc",
+					"local_agent",
+				),
+				zeroWidth: stepDescriptionSegments(
+					"Publish artifact\u200b https://claude.ai/code/artifact/abc",
+					"local_agent",
+				),
+				trailing: stepDescriptionSegments(
+					"Publish artifact https://claude.ai/code/artifact/abc then\u2800",
+					"local_agent",
+				),
+			},
+		).toStrictEqual(
+			{
+				clean: [
+					"Publish ",
+					{
+						word: "artifact",
+						href: "https://claude.ai/code/artifact/abc",
+					},
+				],
+				bidi: undefined,
+				zeroWidth: undefined,
+				trailing: undefined,
 			},
 		);
 	});
