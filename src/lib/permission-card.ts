@@ -62,6 +62,8 @@ export interface PendingPermission
 	rows?: PermissionRow[];
 	/** Upstream's `rowsTrail`: the rows close the body in the "What Claude sent" panel. */
 	rowsTrail?: true;
+	/** Upstream's `rowsUnvoiced`: the arrival announcement says the rows are on the card instead of reading them. */
+	rowsUnvoiced?: true;
 	/** Upstream's loose rows read gate (`rowsReadGate {loose: true}`). */
 	rowsGate?: true;
 	/** The rows gate is strict (upstream's `rowsReadGate` without `loose`): enforced even when the rows fit. */
@@ -401,6 +403,7 @@ interface PermissionCopy
 	detailFirst?: true;
 	rows?: PermissionRow[];
 	rowsTrail?: true;
+	rowsUnvoiced?: true;
 	rowsGate?: true;
 	rowsGateStrict?: true;
 	detailReadGate?: DetailReadGate;
@@ -693,7 +696,7 @@ function readNote(input: Record<string, unknown>): string | null
 const PAGE_LIST = /^ *\d[\d ,-]{0,39}$/;
 
 /** Upstream's Read rows: a `pages` value that isn't a plain page list, as a bare row. */
-function readRows(input: Record<string, unknown>): Pick<PermissionCopy, "rows">
+function readRows(input: Record<string, unknown>): Pick<PermissionCopy, "rows" | "rowsUnvoiced">
 {
 	const pages = input["pages"];
 	return typeof pages === "string" && pages !== "" && !PAGE_LIST.test(pages)
@@ -704,6 +707,7 @@ function readRows(input: Record<string, unknown>): Pick<PermissionCopy, "rows">
 						pages,
 					},
 				),
+				rowsUnvoiced: true,
 			}
 		: {};
 }
@@ -782,7 +786,7 @@ function withoutDescription(input: Record<string, unknown>): Record<string, unkn
 function withRows(
 	input: Record<string, unknown>,
 	mainKey?: string,
-): Pick<PermissionCopy, "detail" | "detailFirst" | "rows">
+): Pick<PermissionCopy, "detail" | "detailFirst" | "rows" | "rowsUnvoiced">
 {
 	const main = mainKey === undefined ? undefined : input[mainKey];
 	const detail = typeof main === "string" ? main : undefined;
@@ -801,13 +805,14 @@ function withRows(
 			?
 				{
 					rows,
+					rowsUnvoiced: true as const,
 				}
 			: {}),
 	};
 }
 
-/** Rows in the trail panel behind upstream's loose read gate (`b`), when there are any. */
-function gatedTrail(rows: PermissionRow[]): Pick<PermissionCopy, "rows" | "rowsTrail" | "rowsGate">
+/** Rows in the trail panel behind upstream's loose read gate (`b`), when there are any; read out by the announcement. */
+function voicedGatedTrail(rows: PermissionRow[]): Pick<PermissionCopy, "rows" | "rowsTrail" | "rowsGate">
 {
 	return rows.length > 0
 		?
@@ -819,14 +824,27 @@ function gatedTrail(rows: PermissionRow[]): Pick<PermissionCopy, "rows" | "rowsT
 		: {};
 }
 
-/** Rows in the trail panel, clamped to 6 lines and ungated (upstream's `te(P())`). */
-function clampedTrail(rows: PermissionRow[]): Pick<PermissionCopy, "rows" | "rowsTrail">
+/** Unvoiced rows in the trail panel behind upstream's loose read gate (`b`), when there are any. */
+function gatedTrail(rows: PermissionRow[]): Pick<PermissionCopy, "rows" | "rowsTrail" | "rowsGate" | "rowsUnvoiced">
+{
+	return rows.length > 0
+		?
+			{
+				...voicedGatedTrail(rows),
+				rowsUnvoiced: true,
+			}
+		: {};
+}
+
+/** Unvoiced rows in the trail panel, clamped to 6 lines and ungated (upstream's `te(P())`). */
+function clampedTrail(rows: PermissionRow[]): Pick<PermissionCopy, "rows" | "rowsTrail" | "rowsUnvoiced">
 {
 	return rows.length > 0
 		?
 			{
 				rows: clampRows(rows),
 				rowsTrail: true,
+				rowsUnvoiced: true,
 			}
 		: {};
 }
@@ -907,7 +925,8 @@ function webFetchCopy(input: Record<string, unknown>): PermissionCopy
 					detail: url,
 					detailFirst: true,
 				}),
-		...gatedTrail(
+		// Upstream's WebFetch rows are the one set the announcement reads out.
+		...voicedGatedTrail(
 			prompt === null
 				? []
 				: inputRows(

@@ -85,6 +85,7 @@ import {Tooltip} from "./ui/tooltip";
 import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
 import {ApprovalAlsoWaiting} from "./approval-also-waiting";
+import {ApprovalArrivalRegion} from "./approval-arrival-region";
 import {ApprovalClusterHost} from "./approval-cluster-host";
 import {ApprovalDockContext, type ApprovalDock} from "./approval-dock-context";
 import {pendingQuestionCard} from "./pending-question-card";
@@ -235,6 +236,7 @@ import
 	permissionWaitToolUseId,
 	type PermissionDecision,
 } from "../lib/permission-card";
+import {permissionAnnouncement} from "../lib/permission-announcement";
 import type {HerdrPaneIndexData} from "../lib/api/herdr";
 import type {PaneKind} from "../lib/pane-layout";
 import type {QuestionAnswer} from "../lib/hook-events";
@@ -1264,6 +1266,12 @@ function SessionView({
 		},
 	);
 	const shownPermission = permissionDropped ? null : candidatePermission;
+	// Upstream's arrival announcement for the shown card, read once per card by the status region beside the slot.
+	const permissionArrivalText = useMemo(
+		() => (shownPermission === null ? null : permissionAnnouncement(shownPermission)),
+		[shownPermission],
+	);
+	const inlinePermissionRef = useRef<HTMLDivElement>(null);
 	const permissionCanAnswer = promptBehavior.hasLivePane && herdr.writesEnabled;
 	// The terminal's dialog stands in for upstream's ask flags; an elicitation's has no permission rows.
 	const permissionDialog = usePermissionDialogShape(
@@ -2669,12 +2677,18 @@ function SessionView({
 										</SessionFileRefs>
 									</AskUserQuestionProvider>
 
+									<ApprovalArrivalRegion
+										toolId={permissionArrivalText === null ? null : permissionKey}
+										text={permissionArrivalText}
+										cardRef={inlinePermissionRef}
+									/>
 									{/* Upstream's approval slot: a keyboard-answered card hands focus to the next card or the composer */}
 									<ApprovalClusterHost>
 										<ApprovalSlot sessionId={sessionId} {...approvalSlotCard}>
 											{/* Upstream draws every pending approval inline; a permission prompt is not on disk, so it follows the transcript */}
 											{shownPermission && permissionKey !== null && (
 												<div
+													ref={inlinePermissionRef}
 													data-inline-permission=""
 													// Upstream portals the card into its `transcript-tail-slot`, which in-app Find skips.
 													data-find-omitted=""
