@@ -25,6 +25,7 @@ const HIGHLIGHT_SELECTED_CLASS = `${HIGHLIGHT_BASE_CLASS} bg-upstream-accent-pre
 export function ComposerMentionChip({
 	relPath,
 	isDirectory,
+	sessionId,
 	selected,
 	onPress,
 	onDelete,
@@ -32,8 +33,11 @@ export function ComposerMentionChip({
 	cwd,
 	children,
 }: {
+	/** A file's path, or a session mention's title. */
 	relPath: string;
 	isDirectory: boolean;
+	/** Set on a session mention, whose menu holds only Delete. */
+	sessionId?: string;
 	selected: boolean;
 	onPress: () => void;
 	onDelete: () => void;
@@ -42,14 +46,15 @@ export function ComposerMentionChip({
 	children: ReactNode;
 })
 {
-	const path = absoluteMentionPath(relPath, cwd);
+	const path = sessionId === undefined ? absoluteMentionPath(relPath, cwd) : null;
 	return (
 		// Upstream `GZ`: the file-actions block (`Sl`, attach off) over a danger Delete; Delete alone without a path context.
 		<ContextMenu>
 			<ContextMenuTrigger
 				render={<span />}
 				data-testid="composer-mention-chip"
-				data-path={relPath}
+				data-path={sessionId === undefined ? relPath : undefined}
+				data-session-id={sessionId}
 				data-directory={isDirectory ? "" : undefined}
 				dir="auto"
 				className={CHIP_CLASS}

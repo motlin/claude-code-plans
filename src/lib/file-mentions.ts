@@ -48,23 +48,12 @@ export function fileMentionTrigger(text: string, caret: number): FileMentionTrig
 /**
  * Whether an Escape-dismissed mention still suppresses `token` (`@` plus query):
  * upstream keeps the menu closed while the token extends the dismissed one, but a
- * dismissed bare `@` only suppresses an exact `@`.
+ * dismissed bare `@`, or a dismissed popup that had no rows (`exact`), only suppresses its exact token.
  */
-export function isMentionSuppressed(suppressed: string | null, token: string): boolean
+export function isMentionSuppressed(suppressed: string | null, token: string, exact = false): boolean
 {
 	if (suppressed === null) return false;
-	return suppressed === "@" ? token === "@" : token.startsWith(suppressed);
-}
-
-/** Upstream's popup width: 560px when any row has a dirname caption, else 420px. */
-export function fileMentionMenuWidth(
-	entries: readonly
-	{
-		relPath: string;
-	}[],
-): number
-{
-	return entries.some((entry) => entry.relPath.includes("/")) ? 560 : 420;
+	return suppressed === "@" || exact ? token === suppressed : token.startsWith(suppressed);
 }
 
 const MENTION_COLLISION_PADDING = 16;

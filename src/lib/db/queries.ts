@@ -1,4 +1,5 @@
 import {eq, desc, asc, sql, and, inArray, isNotNull, like, getTableColumns, type SQL} from "drizzle-orm";
+import type {MentionRosterRow} from "../mention-sessions";
 import {randomUUID} from "node:crypto";
 import {basename, dirname, relative, sep} from "node:path";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
@@ -1453,6 +1454,39 @@ export function setSessionArchived(
 		}
 	}
 	return archived;
+}
+
+/** Every main session with what the `@` Sessions provider needs (as displayed; untitled ones blank), archived ones flagged. */
+export function listMentionRosterRows(db: IndexDb): MentionRosterRow[]
+{
+	const archived = getArchivedSessionIds(db);
+	return db
+		.select(
+			{
+				id: schema.sessions.id,
+				title: schema.sessions.title,
+				customTitle: schema.sessions.customTitle,
+				cwd: schema.sessions.cwd,
+				gitBranch: schema.sessions.gitBranch,
+				mtimeMs: schema.sessions.mtimeMs,
+				remoteControl: sessionRemoteControlColumn,
+			},
+		)
+		.from(schema.sessions)
+		.where(eq(schema.sessions.isSidechain, 0))
+		.all()
+		.map((row) =>
+		{
+			const display = rowTitle(row, row.remoteControl);
+			return {
+				sessionId: row.id,
+				title: display.titleIsStandIn === true ? "" : display.title,
+				cwd: row.cwd,
+				gitBranch: row.gitBranch,
+				lastActivityAt: row.mtimeMs,
+				archived: archived.has(row.id),
+			};
+		});
 }
 
 export function getArchivedSessionIds(db: IndexDb): Set<string>

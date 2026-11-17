@@ -10,6 +10,7 @@ import
 	getArchivedSessionIds,
 	getSessionsByIds,
 	isSessionArchived,
+	listMentionRosterRows,
 	listRecentSessionsFromDb,
 	listSessionGroupsFromDb,
 	listSessionsForProjectFromDb,
@@ -992,6 +993,43 @@ describe("durability", () =>
 			{
 				sessionId: BOB,
 				archivedAt: 5_000,
+			},
+		]);
+	});
+});
+
+describe("listMentionRosterRows", () =>
+{
+	it("lists every main session's displayed title, folder, branch and activity, flagging archived ones", () =>
+	{
+		setSessionArchived(db.index, BOB, true);
+
+		expect(
+			listMentionRosterRows(db.index).toSorted((a, b) => a.sessionId.localeCompare(b.sessionId)),
+		).toStrictEqual([
+			{
+				sessionId: ALICE,
+				title: `Title ${ALICE}`,
+				cwd: null,
+				gitBranch: null,
+				lastActivityAt: 3_000,
+				archived: false,
+			},
+			{
+				sessionId: BOB,
+				title: `Title ${BOB}`,
+				cwd: null,
+				gitBranch: null,
+				lastActivityAt: 2_000,
+				archived: true,
+			},
+			{
+				sessionId: CAROL,
+				title: `Title ${CAROL}`,
+				cwd: null,
+				gitBranch: null,
+				lastActivityAt: 1_000,
+				archived: false,
 			},
 		]);
 	});

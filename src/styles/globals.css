@@ -4948,6 +4948,20 @@ html[data-reduce-motion="true"] [data-skeleton-group][data-motion="wave"] [data-
 	animation-iteration-count: 1;
 }
 
+/* Upstream cds-placeholder-reveal: a held SkeletonGroup fades in after 0.5s; `data-hold="none"` shows at once. */
+@keyframes placeholder-reveal
+{
+	0%
+	{
+		opacity: 0;
+	}
+}
+
+[data-cds="SkeletonGroup"][data-hold="delayed"]
+{
+	animation: placeholder-reveal 0.15s ease-out var(--placeholder-reveal-delay, 0.5s) backwards;
+}
+
 /* Upstream cds-shimmer: the Skeleton sheen sweeps across once per cycle. */
 @keyframes shimmer
 {

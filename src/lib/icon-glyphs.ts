@@ -29,6 +29,7 @@ import
 	type LucideIcon,
 	type LucideProps,
 	MapPin,
+	MessageSquare,
 	Palette,
 	Paperclip,
 	Play,
@@ -58,6 +59,7 @@ import type {AnthropiconName} from "./anthropicon-names";
 export const ICON_GLYPHS =
 {
 	Add: Plus,
+	Agent: Bot,
 	AgentsSimple: Bot,
 	Animation: Clapperboard,
 	Archive,
@@ -68,6 +70,7 @@ export const ICON_GLYPHS =
 	ArrowUp,
 	Attachment: Paperclip,
 	CaretDown: ChevronDown,
+	ChatSimple: MessageSquare,
 	CaretLeft: ChevronLeft,
 	CaretRight: ChevronRight,
 	Calendar,

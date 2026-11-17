@@ -11,6 +11,7 @@ import
 
 const aTs: AcceptedMention =
 {
+	kind: "file",
 	start: 4,
 	end: 9,
 	relPath: "a.ts",
@@ -28,6 +29,7 @@ describe("remapMentions", () =>
 	{
 		expect(remapMentions("see @a.ts", "hi see @a.ts", [aTs])).toStrictEqual([
 			{
+				kind: "file",
 				start: 7,
 				end: 12,
 				relPath: "a.ts",
@@ -40,6 +42,7 @@ describe("remapMentions", () =>
 	{
 		expect(remapMentions("see @a.ts", "e @a.ts", [aTs])).toStrictEqual([
 			{
+				kind: "file",
 				start: 2,
 				end: 7,
 				relPath: "a.ts",
@@ -62,6 +65,7 @@ describe("remapMentions", () =>
 	{
 		expect(remapMentions("see @a.ts", "see x@a.ts", [aTs])).toStrictEqual([
 			{
+				kind: "file",
 				start: 5,
 				end: 10,
 				relPath: "a.ts",
@@ -89,6 +93,7 @@ describe("remapMentions", () =>
 	{
 		const bTs: AcceptedMention =
 		{
+			kind: "file",
 			start: 10,
 			end: 15,
 			relPath: "b.ts",
@@ -97,6 +102,7 @@ describe("remapMentions", () =>
 		expect(remapMentions("see @a.ts @b.ts", "see @a.ts and @b.ts", [aTs, bTs])).toStrictEqual([
 			aTs,
 			{
+				kind: "file",
 				start: 14,
 				end: 19,
 				relPath: "b.ts",
@@ -110,6 +116,7 @@ describe("mention lookups", () =>
 {
 	const src: AcceptedMention =
 	{
+		kind: "file",
 		start: 0,
 		end: 3,
 		relPath: "s/",

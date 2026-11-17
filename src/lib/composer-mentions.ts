@@ -1,15 +1,26 @@
 /**
- * An accepted `@` file mention in the composer textarea: the `[start, end)` range
- * of its `@relPath` token (trailing space excluded). Upstream renders these as
- * atom chips; the textarea port tracks the ranges in memory instead.
+ * An accepted `@` mention in the composer textarea: the `[start, end)` range of its token (trailing
+ * space excluded), `@relPath` for a file and `@[Title]` for a session. Upstream renders these as atom
+ * chips; the textarea port tracks the ranges in memory instead.
  */
 export type AcceptedMention =
 {
 	start: number;
 	end: number;
-	relPath: string;
-	isDirectory: boolean;
-};
+} & (
+	|
+	  {
+			kind: "file";
+			relPath: string;
+			isDirectory: boolean;
+	  }
+	|
+	  {
+			kind: "session";
+			sessionId: string;
+			title: string;
+	  }
+);
 
 /**
  * Carry mention ranges across one textarea edit. The edit is taken as the single

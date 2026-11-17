@@ -4,6 +4,8 @@ const EFFORT_LEVELS: ReadonlySet<string> = new Set(LAUNCH_EFFORT_LEVELS);
 const PERMISSION_MODES = new Set(["acceptEdits", "auto", "bypassPermissions", "default", "manual", "dontAsk", "plan"]);
 
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9-]*$/;
+/** A `~/.claude/agents` agent name: no path separators, no leading dot. */
+const AGENT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/;
 
 /** `--worktree` takes an optional name; only the bare form is accepted. */
 const VALUELESS_FLAGS = new Set(["--fork-session", "--worktree"]);
@@ -15,6 +17,7 @@ const VALUE_FLAGS: Record<string, (value: string) => boolean> =
 	"--model": (value) => /^[A-Za-z0-9][A-Za-z0-9._[\]-]*$/.test(value),
 	"--effort": (value) => EFFORT_LEVELS.has(value),
 	"--permission-mode": (value) => PERMISSION_MODES.has(value),
+	"--agent": (value) => AGENT_PATTERN.test(value),
 	// Only fast mode and Ultracode; arbitrary settings JSON could set hooks or an apiKeyHelper.
 	"--settings": (value) => LAUNCH_SETTINGS_VALUES.has(value),
 };

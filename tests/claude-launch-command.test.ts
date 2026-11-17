@@ -94,6 +94,18 @@ describe("validateClaudeLaunchArgs", () =>
 			expected: "invalid value for --effort",
 		},
 		{
+			args: ["--agent", "code-reviewer"],
+			expected: null,
+		},
+		{
+			args: ["--agent", "../x"],
+			expected: "invalid value for --agent",
+		},
+		{
+			args: ["--agent", "a", "--agent", "b"],
+			expected: "duplicate claude argument",
+		},
+		{
 			args: ["--settings", '{"ultracode":true}'],
 			expected: null,
 		},

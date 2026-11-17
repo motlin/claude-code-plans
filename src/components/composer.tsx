@@ -22,6 +22,18 @@ import type {ThemedToken} from "@shikijs/core";
 import {useBandEnter} from "../hooks/use-band-enter";
 import {useComposerDraft} from "../hooks/use-composer-draft";
 import {type FileMentionSource, useFileMentionSuggestions} from "../hooks/use-file-mention-suggestions";
+import {useMentionProviders} from "../hooks/use-mention-providers";
+import type {MentionOutputFile} from "../lib/session-outputs";
+import type {AgentTileProps} from "./agent-tile";
+import
+{
+	fileMentionOption,
+	type MentionOption,
+	type MentionPendingBlock,
+	type MentionProvider,
+	mentionMenuWidth,
+	mergeProviderOptions,
+} from "../lib/mention-options";
 import type {LiveLaunchControls} from "../hooks/use-live-launch-options";
 import {useIsMac, useIsWindows} from "../hooks/use-is-mac";
 import {useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
@@ -50,11 +62,9 @@ import
 } from "../lib/context-attach";
 import {takeQueuedDiffComments, useDiffComments} from "../lib/diff-comments";
 import {splitDroppedItems} from "../lib/drop-collect";
-import type {SessionFilesEntry} from "../lib/api/session-files";
 import
 {
 	fileMentionMenuPosition,
-	fileMentionMenuWidth,
 	fileMentionTrigger,
 	insertFileMention,
 	isMentionSuppressed,
@@ -125,7 +135,7 @@ import
 } from "./composer-tokens";
 import {preloadFileTypeIcons} from "./file-type-icons-loader";
 import {ToastContext} from "./toast-context";
-import {fileMentionOptionId} from "./file-mention-option-id";
+import {fileMentionOptionId, mentionPopupId} from "./file-mention-option-id";
 import {preloadComposerSurfaces, useComposerSurfaces} from "./composer-surfaces-entry";
 import {slashCommandOptionId} from "./slash-command-option-id";
 import {Icon} from "./ui/icon";
@@ -354,6 +364,12 @@ interface ComposerProps
 	mentionFolder?: string | undefined;
 	/** That session's working directory: mention and path chips' file-actions menus resolve against it. */
 	mentionCwd?: string | undefined;
+	/** The "@" sources ahead of Files, in upstream's order (Agents, then Sessions). */
+	mentionProviders?: readonly MentionProvider[] | undefined;
+	/** The home draft's picked `@` agent, shown as a strip tile with a remove button. */
+	agentTile?: AgentTileProps | undefined;
+	/** Files the session produced, ranked into "@" file searches (upstream's outputs). */
+	mentionOutputs?: readonly MentionOutputFile[] | undefined;
 	/** Prompts queued while the live session works, shown as chips above the card. */
 	queue?: ComposerQueueView | undefined;
 	/** ⌘⏎ "Queue for later": hold this prompt until the current turn ends instead of steering it. */
@@ -1039,6 +1055,7 @@ const SendSlot = memo(function SendSlot({
 const NO_COMMANDS: readonly SlashCommand[] = [];
 const NO_HISTORY: readonly string[] = [];
 const NO_MENTIONS: readonly AcceptedMention[] = [];
+const NO_MENTION_PROVIDERS: readonly MentionProvider[] = [];
 const NO_LAUNCH_OPTIONS: LaunchOptions = {};
 /** The model ids and aliases `/model <arg>` accepts: the chin's Model menu rows. */
 const HOST_COMMAND_MODELS = [...PRIMARY_MODELS, ...MORE_MODELS].map((model) => model.id);
@@ -1077,6 +1094,9 @@ export function Composer({
 	mentionSessionId,
 	mentionFolder,
 	mentionCwd,
+	mentionProviders = NO_MENTION_PROVIDERS,
+	mentionOutputs,
+	agentTile,
 	queue,
 	onQueueForLater,
 	onFork,
@@ -1670,8 +1690,9 @@ export function Composer({
 					sessionId: mentionSessionId,
 				};
 	// A caret right after an accepted chip isn't a query: upstream's atom never reopens the menu.
+	const mentionsOn = mentionSource !== undefined || mentionProviders.length > 0;
 	const trigger =
-		mentionSource === undefined || bashMode || slashOpen || mentionEndingAt(mentions, caret) !== undefined
+		!mentionsOn || bashMode || slashOpen || mentionEndingAt(mentions, caret) !== undefined
 			? null
 			: fileMentionTrigger(prompt, caret);
 	// Esc suppresses the trigger at `start` while its token extends the dismissed one, as upstream does.
@@ -1679,15 +1700,17 @@ export function Composer({
 	{
 		start: number;
 		token: string;
+		/** A popup with no rows (pending or hint only) suppresses only its exact token. */
+		exact: boolean;
 	} | null>(null);
 	const mentionSuppressed =
 		trigger !== null &&
 		trigger.start === dismissedMention?.start &&
-		isMentionSuppressed(dismissedMention.token, `@${trigger.query}`);
+		isMentionSuppressed(dismissedMention.token, `@${trigger.query}`, dismissedMention.exact);
 	if (dismissedMention !== null && !mentionSuppressed) setDismissedMention(null);
 	const mention = mentionSuppressed ? null : trigger;
-	const suggestions = useFileMentionSuggestions(mentionSource, mention?.query ?? null);
-	const mentionsOn = mentionSource !== undefined;
+	const suggestions = useFileMentionSuggestions(mentionSource, mention?.query ?? null, mentionOutputs);
+	const providerAnswers = useMentionProviders(mentionProviders, mention?.query ?? null);
 	useEffect(() =>
 	{
 		if (mentionsOn) void preloadFileTypeIcons();
@@ -1696,7 +1719,7 @@ export function Composer({
 	{
 		AttachedContextChips,
 		ComposerDropScrim,
-		FileMentionMenu,
+		MentionMenu,
 		ParkedMessageBar,
 		QueuedMessageBar,
 		QueuedPromoteStatus,
@@ -1706,26 +1729,73 @@ export function Composer({
 	{
 		preloadComposerSurfaces().catch(() => {});
 	}, []);
-	const mentionEntries = suggestions?.entries ?? [];
-	const mentionOpen = mention !== null && mentionEntries.length > 0;
+	const fileEntries = suggestions?.entries;
+	const mentionOptions = useMemo(
+		() =>
+			mergeProviderOptions([
+				...providerAnswers.map((options) => options ?? []),
+				(fileEntries ?? []).map(fileMentionOption),
+			]),
+		[providerAnswers, fileEntries],
+	);
+	const mentionQuery = mention?.query ?? "";
+	// Upstream's pending blocks: a provider still looking up asks for skeleton rows where its options will land.
+	const mentionPending = useMemo(() =>
+	{
+		const blocks: MentionPendingBlock[] = [];
+		let before = 0;
+		for (const [index, provider] of mentionProviders.entries())
+		{
+			const answer = providerAnswers[index];
+			if (answer !== undefined)
+			{
+				before += answer.length;
+				continue;
+			}
+			const pending = provider.pending?.(mentionQuery);
+			if (pending !== undefined && pending.rows > 0)
+				blocks.push(
+					{
+						...pending,
+						providerId: provider.id,
+						before,
+					},
+				);
+		}
+		return blocks;
+	}, [mentionProviders, providerAnswers, mentionQuery]);
+	const mentionLoading = mention !== null && providerAnswers.some((answer) => answer === undefined);
+	const mentionAlone = mentionOptions.length === 0;
+	const visiblePending = mentionPending.filter((block) => mentionAlone || block.onlyWhenEmpty !== true);
+	// Upstream's empty hint: the first provider with one, once nothing came back and nothing is loading.
+	const freshHint =
+		mention === null || !mentionAlone || mentionLoading
+			? undefined
+			: mentionProviders.map((provider) => provider.emptyHint?.(mentionQuery)).find((hint) => hint !== undefined);
+	const [lastHint, setLastHint] = useState<string | undefined>(undefined);
+	// While the next query loads with nothing pending, a hint-only popup keeps its hint rather than flashing closed.
+	const mentionHint =
+		mention !== null && mentionAlone && mentionLoading && visiblePending.length === 0 ? lastHint : freshHint;
+	if (mentionHint !== lastHint) setLastHint(mentionHint);
+	const mentionOpen = mention !== null && (!mentionAlone || visiblePending.length > 0 || mentionHint !== undefined);
 	const [mentionHighlight, setMentionHighlight] = useState<
 	{
-		entries: readonly SessionFilesEntry[];
+		options: readonly MentionOption[];
 		index: number;
 	}>(
 		{
-			entries: [],
+			options: [],
 			index: 0,
 		},
 	);
 	const mentionHighlighted =
-		mentionHighlight.entries === mentionEntries ? Math.min(mentionHighlight.index, mentionEntries.length - 1) : 0;
+		mentionHighlight.options === mentionOptions ? Math.min(mentionHighlight.index, mentionOptions.length - 1) : 0;
 	// Upstream anchors the popup to the `@` glyph, clamped to the textarea's box: measured once per trigger start (and width),
 	// again on resize and whenever the textarea scrolls.
 	// The position goes straight onto the popup's DOM node (`left`/`bottom` stay out of its React style), so measuring costs no extra render per keystroke.
 	const mentionInputRef = useRef<HTMLDivElement>(null);
 	const mentionStart = mentionOpen ? mention.start : null;
-	const mentionWidth = fileMentionMenuWidth(mentionEntries);
+	const mentionWidth = mentionMenuWidth(mentionOptions);
 	useLayoutEffect(() =>
 	{
 		if (mentionStart === null) return undefined;
@@ -1733,7 +1803,7 @@ export function Composer({
 		{
 			const textarea = textareaRef.current;
 			const container = mentionInputRef.current;
-			const menu = document.getElementById(mentionMenuId);
+			const menu = document.getElementById(mentionPopupId(mentionMenuId));
 			if (textarea === null || container === null || menu === null) return;
 			const caretRect = textareaCaretRect(textarea, mentionStart);
 			const box = textarea.getBoundingClientRect();
@@ -1774,23 +1844,66 @@ export function Composer({
 		textareaRef.current?.setSelectionRange(next, next);
 	}, [prompt]);
 
-	function acceptFileMention(entry: SessionFilesEntry)
+	/**
+	 * Accept dispatches on the provider, as upstream's `onSelect`s do: a file inserts `@path `, a session `@[Title] `,
+	 * both tracked as chips; an agent leaves no chip, so its `@query` token is removed.
+	 */
+	function acceptMention(option: MentionOption)
 	{
 		if (mention === null) return;
-		const next = insertFileMention(prompt, mention, caret, entry.relPath);
+		mentionProviders.find((provider) => provider.id === option.providerId)?.onSelect?.(option);
+		let next:
+		{
+			text: string;
+			caret: number;
+		};
+		let accepted: AcceptedMention | undefined;
+		if (option.providerId === "ccp-agents")
+		{
+			next =
+			{
+				text: prompt.slice(0, mention.start) + prompt.slice(caret),
+				caret: mention.start,
+			};
+		}
+		else if (option.providerId === "ccp-sessions")
+		{
+			const inserted = `@${option.renderedText} `;
+			next =
+			{
+				text: prompt.slice(0, mention.start) + inserted + prompt.slice(caret),
+				caret: mention.start + inserted.length,
+			};
+			accepted =
+			{
+				start: mention.start,
+				end: next.caret - 1,
+				kind: "session",
+				sessionId: option.id,
+				title: option.label,
+			};
+		}
+		else
+		{
+			const relPath = option.relPath ?? option.id;
+			next = insertFileMention(prompt, mention, caret, relPath);
+			// The token runs up to the trailing space.
+			accepted =
+			{
+				start: mention.start,
+				end: next.caret - 1,
+				kind: "file",
+				relPath,
+				isDirectory: option.kind === "directory",
+			};
+		}
 		setMentionState(
 			{
 				draftKey,
 				text: next.text,
 				mentions: [
 					...remapMentions(prompt, next.text, mentions),
-					// The token runs up to the trailing space.
-					{
-						start: mention.start,
-						end: next.caret - 1,
-						relPath: entry.relPath,
-						isDirectory: entry.isDirectory,
-					},
+					...(accepted === undefined ? [] : [accepted]),
 				],
 			},
 		);
@@ -1803,20 +1916,22 @@ export function Composer({
 	function handleMentionKey(e: React.KeyboardEvent): boolean
 	{
 		if (!mentionOpen) return false;
+		// Upstream's arrows, Enter and Tab need rows; a pending- or hint-only popup lets them through to the editor.
+		const hasRows = !mentionAlone;
 		const move = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
-		if (move !== 0)
+		if (move !== 0 && hasRows)
 		{
 			setMentionHighlight(
 				{
-					entries: mentionEntries,
-					index: Math.min(Math.max(mentionHighlighted + move, 0), mentionEntries.length - 1),
+					options: mentionOptions,
+					index: Math.min(Math.max(mentionHighlighted + move, 0), mentionOptions.length - 1),
 				},
 			);
 		}
-		else if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey)
+		else if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey && hasRows)
 		{
-			const entry = mentionEntries[mentionHighlighted];
-			if (entry !== undefined) acceptFileMention(entry);
+			const option = mentionOptions[mentionHighlighted];
+			if (option !== undefined) acceptMention(option);
 		}
 		else if (e.key === "Escape")
 		{
@@ -1824,6 +1939,7 @@ export function Composer({
 				{
 					start: mention.start,
 					token: `@${mention.query}`,
+					exact: mentionAlone,
 				},
 			);
 			e.stopPropagation();
@@ -1949,6 +2065,7 @@ export function Composer({
 			const comments = takeQueuedDiffComments(draftKey);
 			const composed = composePrompt(trimmed, sentChips, comments);
 			recordSentAttachments(draftKey, composed, trimmed, sentChips, comments);
+			for (const provider of mentionProviders) provider.onSent?.(trimmed, mentions);
 			send(composed);
 			clearDraft();
 		};
@@ -2821,13 +2938,14 @@ export function Composer({
 				}}
 			>
 				{dropState !== "idle" && !disabled && <ComposerDropScrim />}
-				{(contextChips.length > 0 || queuedComments.length > 0) && (
+				{(contextChips.length > 0 || queuedComments.length > 0 || agentTile !== undefined) && (
 					<AttachedContextChips
 						sessionId={draftKey}
 						context={contextChips}
 						comments={queuedComments}
 						cwd={mentionCwd}
 						restoredIds={restoredChipIds}
+						agent={agentTile}
 					/>
 				)}
 				<div
@@ -2861,20 +2979,22 @@ export function Composer({
 						/>
 					)}
 					{mentionOpen && (
-						<FileMentionMenu
+						<MentionMenu
 							id={mentionMenuId}
-							entries={mentionEntries}
+							options={mentionOptions}
 							highlighted={mentionHighlighted}
 							onHighlight={(index) =>
 							{
 								setMentionHighlight(
 									{
-										entries: mentionEntries,
+										options: mentionOptions,
 										index,
 									},
 								);
 							}}
-							onAccept={acceptFileMention}
+							onAccept={acceptMention}
+							pending={visiblePending}
+							emptyHint={mentionHint}
 						/>
 					)}
 					{painted && (
@@ -3047,7 +3167,7 @@ export function Composer({
 								? highlighted === -1
 									? undefined
 									: slashCommandOptionId(slashMenuId, highlighted)
-								: mentionOpen
+								: mentionOpen && !mentionAlone
 									? fileMentionOptionId(mentionMenuId, mentionHighlighted)
 									: undefined
 						}

@@ -186,6 +186,14 @@ function sessionEndpoints(id: string): Array<
 				id,
 			},
 		},
+		{
+			path: `/api/sessions/${id}/session-mentions`,
+			module: "../../src/routes/api/sessions.$id.session-mentions",
+			params:
+			{
+				id,
+			},
+		},
 		// The session composer: slash commands for the transcript's cwd, this session's prompt history, and usage.
 		{
 			path: `/api/commands?cwd=${encodeURIComponent(FIXTURE_CWD)}`,

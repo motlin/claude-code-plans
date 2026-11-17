@@ -6,7 +6,7 @@ const composerSurfaces = deferredModule(async () =>
 		({
 			AttachedContextChips,
 			ComposerDropScrim,
-			FileMentionMenu,
+			MentionMenu,
 			ParkedMessageBar,
 			QueuedMessageBar,
 			QueuedPromoteStatus,
@@ -15,7 +15,7 @@ const composerSurfaces = deferredModule(async () =>
 		{
 			AttachedContextChips,
 			ComposerDropScrim,
-			FileMentionMenu,
+			MentionMenu,
 			ParkedMessageBar,
 			QueuedMessageBar,
 			QueuedPromoteStatus,
@@ -30,7 +30,7 @@ const deferredSurfaces =
 {
 	AttachedContextChips: deferredComponent(composerSurfaces, "AttachedContextChips"),
 	ComposerDropScrim: deferredComponent(composerSurfaces, "ComposerDropScrim"),
-	FileMentionMenu: deferredComponent(composerSurfaces, "FileMentionMenu"),
+	MentionMenu: deferredComponent(composerSurfaces, "MentionMenu"),
 	ParkedMessageBar: deferredComponent(composerSurfaces, "ParkedMessageBar"),
 	QueuedMessageBar: deferredComponent(composerSurfaces, "QueuedMessageBar"),
 	QueuedPromoteStatus: deferredComponent(composerSurfaces, "QueuedPromoteStatus"),

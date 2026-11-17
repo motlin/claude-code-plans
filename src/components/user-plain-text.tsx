@@ -8,6 +8,7 @@ import {maskSecrets, maskUrlSecrets} from "../lib/secret-mask";
 import {splitUrlTail} from "../lib/url-trim";
 import {revealSpoofing} from "../lib/visible-text";
 import {CloakedText} from "./cloaked-text";
+import {SESSION_MENTION_PATTERN, SessionMentionPill} from "./session-mention-pill";
 import {ConfirmExternalLink} from "./confirm-external-link";
 import {UserCodeSpan} from "./user-code-span";
 
@@ -368,15 +369,32 @@ function chipText(text: string, paint: Paint | undefined): ReactNode[]
 	);
 }
 
-/** Upstream's user turn paint (c8a6d9da5 `Z`): `xr` under the transcript's link policy, no `revealCloaks`. */
+/**
+ * Upstream's user turn paint (c8a6d9da5 `Z`): `xr` under the transcript's link policy, no `revealCloaks`, with each
+ * `@[Title]` handed to the session mention chip.
+ */
 function userPaint(nonInteractive: boolean): Paint
 {
-	return linkPaint(
+	const paint = linkPaint(
 		{
 			policy: "transcript",
 			nonInteractive,
 		},
 	);
+	return (part, at) =>
+	{
+		if (!part.includes("@[")) return paint(part, at);
+		const nodes: ReactNode[] = [];
+		let cursor = 0;
+		for (const match of part.matchAll(SESSION_MENTION_PATTERN))
+		{
+			if (match.index > cursor) nodes.push(...paint(part.slice(cursor, match.index), at + cursor));
+			nodes.push(<SessionMentionPill key={`${at}-sm${match.index}`} title={match[1] ?? ""} raw={match[0]} />);
+			cursor = match.index + match[0].length;
+		}
+		if (cursor < part.length) nodes.push(...paint(part.slice(cursor), at + cursor));
+		return nodes;
+	};
 }
 
 /** Single-backtick code spans as code, the runs between through `paint`. */

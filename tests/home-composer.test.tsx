@@ -21,6 +21,7 @@ import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {autoDefaultOfferQueryOptions} from "../src/lib/api/auto-default-offer";
 import {composerDefaultsQueryOptions, composerFolderDefaultsQueryOptions} from "../src/lib/api/composer-defaults";
 import {usageQueryOptions} from "../src/lib/api/usage";
+import {userAgentsQueryOptions} from "../src/lib/api/user-agents";
 import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
 import {getComposerDefaults} from "../src/lib/composer-state-server";
@@ -991,6 +992,145 @@ describe("HomeComposer", () =>
 				cwd: "/users/dev/it's",
 				prompt: "hello",
 				args: ["--worktree"],
+			},
+		);
+	});
+
+	it("picks an @ agent as a strip tile, removing its token, and launches with --agent", async () =>
+	{
+		await renderApp("/", "claude-opus-4-8[1m]", (queryClient) =>
+		{
+			queryClient.setQueryData(
+				userAgentsQueryOptions.queryKey,
+				{
+					agents: [
+						{
+							name: "code-reviewer",
+							description: "Reviews",
+						},
+					],
+				},
+			);
+		});
+		const textarea = (await typePrompt("@rev")) as HTMLTextAreaElement;
+		await screen.findByRole(
+			"option",
+			{
+				name: /code-reviewer/,
+			},
+		);
+
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
+		const afterPick =
+		{
+			text: textarea.value,
+			tile: document.querySelector("[data-value='agent']")?.textContent,
+		};
+		await typePrompt("hello");
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Send",
+				},
+			),
+		);
+
+		await waitFor(() =>
+		{
+			expect(launchCalls.length).toBe(1);
+		});
+		expect(
+			{
+				afterPick,
+				body: launchBody(launchCalls[0]),
+			},
+		).toStrictEqual(
+			{
+				afterPick:
+				{
+					text: "",
+					tile: "code-reviewer",
+				},
+				body:
+				{
+					cwd: "/users/dev/it's",
+					prompt: "hello",
+					args: ["--agent", "code-reviewer"],
+				},
+			},
+		);
+	});
+
+	it("drops --agent once the agent tile is removed", async () =>
+	{
+		await renderApp("/", "claude-opus-4-8[1m]", (queryClient) =>
+		{
+			queryClient.setQueryData(
+				userAgentsQueryOptions.queryKey,
+				{
+					agents: [
+						{
+							name: "code-reviewer",
+						},
+					],
+				},
+			);
+		});
+		const textarea = (await typePrompt("@rev")) as HTMLTextAreaElement;
+		await screen.findByRole(
+			"option",
+			{
+				name: /code-reviewer/,
+			},
+		);
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
+
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Remove code-reviewer",
+				},
+			),
+		);
+		await typePrompt("hello");
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Send",
+				},
+			),
+		);
+
+		await waitFor(() =>
+		{
+			expect(launchCalls.length).toBe(1);
+		});
+		expect(
+			{
+				tile: document.querySelector("[data-value='agent']"),
+				body: launchBody(launchCalls[0]),
+			},
+		).toStrictEqual(
+			{
+				tile: null,
+				body:
+				{
+					cwd: "/users/dev/it's",
+					prompt: "hello",
+				},
 			},
 		);
 	});

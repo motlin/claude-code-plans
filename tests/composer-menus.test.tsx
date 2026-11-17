@@ -6,7 +6,8 @@ import type {useNavigate} from "@tanstack/react-router";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import {CompactScope} from "./fizzy-lake-off";
-import {FileMentionMenu} from "../src/components/file-mention-menu";
+import {MentionMenu} from "../src/components/mention-menu";
+import {fileMentionOption} from "../src/lib/mention-options";
 import {customizeMcpServersQueryOptions, type McpServerSummary} from "../src/lib/api/customize";
 import {toConnectorSlug} from "../src/lib/customize/mcp-tool-permissions";
 import type {ComposerState} from "../src/lib/composer-state";
@@ -4571,14 +4572,16 @@ describe("Composer text-entry menus at a coarse pointer below 640px", () =>
 	it("keeps the @-mention list anchored above the composer", () =>
 	{
 		render(
-			<FileMentionMenu
+			<MentionMenu
 				id="mentions"
-				entries={[
-					{
-						name: "src",
-						relPath: "src",
-						isDirectory: true,
-					},
+				options={[
+					fileMentionOption(
+						{
+							name: "src",
+							relPath: "src",
+							isDirectory: true,
+						},
+					),
 				]}
 				highlighted={0}
 				onHighlight={() => undefined}

@@ -6,6 +6,7 @@ import {HOME_DOCK_CLASS} from "../dock-tokens";
 import {useActiveSessionsIfAvailable} from "../../hooks/use-claude-events";
 import {useIdlePrefetch} from "../../hooks/use-idle-prefetch";
 import {useSlashCommands} from "../../hooks/use-slash-commands";
+import {useAgentMentionProvider} from "../../hooks/use-agent-mention-provider";
 import {promptHistoryQueryOptions} from "../../lib/api/prompt-history";
 import {homeFolderStatusQueryOptions} from "../../lib/api/home-folder-status";
 import {HerdrRequestError, isNoTerminalHost, launchHerdrSession} from "../../lib/api/herdr";
@@ -186,6 +187,24 @@ export function HomeComposer({
 		[autoModeSetup],
 	);
 	const slashMenu = useSlashCommands(project?.projectPath ?? undefined);
+	// Upstream's draft agent: an `@` Agents pick shows as a strip tile and launches `claude --agent <name>`.
+	const [selectedAgent, setSelectedAgent] = useState<string | undefined>(undefined);
+	const agentProvider = useAgentMentionProvider(setSelectedAgent);
+	const mentionProviders = useMemo(() => [agentProvider], [agentProvider]);
+	const agentTile = useMemo(
+		() =>
+			selectedAgent === undefined
+				? undefined
+				:
+					{
+						name: selectedAgent,
+						onRemove: () =>
+						{
+							setSelectedAgent(undefined);
+						},
+					},
+		[selectedAgent],
+	);
 	const {data: promptHistory} = useQuery(promptHistoryQueryOptions(undefined));
 
 	// The home bar has no statusline, so its ring reads the account's plan limits.
@@ -322,15 +341,18 @@ export function HomeComposer({
 						permissionMode: draftMode.launchFlag,
 					}
 				: launchOptions;
-		const args = buildLaunchFlags(
-			worktree.useWorktree
-				?
-					{
-						...withMode,
-						worktree: true,
-					}
-				: withMode,
-		);
+		const args = [
+			...buildLaunchFlags(
+				worktree.useWorktree
+					?
+						{
+							...withMode,
+							worktree: true,
+						}
+					: withMode,
+			),
+			...(selectedAgent === undefined ? [] : ["--agent", selectedAgent]),
+		];
 		const request =
 		{
 			cwd: project.projectPath,
@@ -350,8 +372,9 @@ export function HomeComposer({
 		try
 		{
 			const {sessionId} = await launchHerdrSession(request);
-			// The launch ends this draft, so its Worktree override goes back to the preference.
+			// The launch ends this draft, so its Worktree override goes back to the preference and its agent goes.
 			worktree.endDraft();
+			setSelectedAgent(undefined);
 			if (stay)
 			{
 				if (sessionId === null) setPendingLaunchGroup(null);
@@ -475,6 +498,8 @@ export function HomeComposer({
 				permissionCwd={project?.projectPath}
 				mentionFolder={project?.projectPath}
 				mentionCwd={project?.projectPath}
+				mentionProviders={mentionProviders}
+				agentTile={agentTile}
 				onPermissionModePick={folderModes.remember}
 				launchOptions={launchDraft.options}
 				onLaunchOptionsChange={launchDraft.set}

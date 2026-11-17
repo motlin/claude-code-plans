@@ -38,8 +38,18 @@ export function paintMentions(
 		nodes.push(
 			<ComposerMentionChip
 				key={mention.start}
-				relPath={mention.relPath}
-				isDirectory={mention.isDirectory}
+				{...(mention.kind === "file"
+					?
+						{
+							relPath: mention.relPath,
+							isDirectory: mention.isDirectory,
+						}
+					:
+						{
+							relPath: mention.title,
+							isDirectory: false,
+							sessionId: mention.sessionId,
+						})}
 				selected={mention === selected}
 				onPress={() =>
 				{
@@ -50,7 +60,7 @@ export function paintMentions(
 					actions.onDelete(mention);
 				}}
 				editorRef={actions.editorRef}
-				cwd={actions.cwd}
+				cwd={mention.kind === "file" ? actions.cwd : undefined}
 			>
 				{text.slice(mention.start - offset, mention.end - offset)}
 			</ComposerMentionChip>,

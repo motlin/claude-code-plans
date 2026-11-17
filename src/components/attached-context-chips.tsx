@@ -32,6 +32,7 @@ import
 	formatContextAttachment,
 	removeContextChip,
 } from "../lib/context-attach";
+import {AgentTile, type AgentTileProps} from "./agent-tile";
 import {type QueuedDiffComment, removeQueuedDiffComment} from "../lib/diff-comments";
 import {TEXT_PREVIEW_LIMIT} from "../lib/text-preview";
 import {isTextPreviewable} from "../lib/text-preview-extensions";
@@ -797,9 +798,12 @@ export function AttachedContextChips({
 	comments,
 	cwd,
 	restoredIds,
+	agent,
 }: {
 	sessionId: string;
 	context: readonly ContextChip[];
+	/** The home draft's picked `@` agent, the strip's first tile. */
+	agent?: AgentTileProps | undefined;
 	comments: readonly QueuedDiffComment[];
 	/** The session's working directory: a path chip's right-click opens the file-actions menu. */
 	cwd?: string | undefined;
@@ -915,6 +919,7 @@ export function AttachedContextChips({
 					ref={rowRef}
 					className="flex items-end gap-[6px] *:shrink-0 overflow-x-auto overscroll-x-contain scroll-fade-x p-2 pt-2.5 pe-2.5 -m-2 -mt-2.5 -me-2.5"
 				>
+					{agent !== undefined && <AgentTile {...agent} />}
 					{context.map((chip) =>
 					{
 						if (chip.kind === "image" && chip.previewUrl !== undefined)

@@ -205,6 +205,22 @@ function sessionEndpoints(id: string): Array<
 				id,
 			},
 		},
+		{
+			path: `/api/sessions/${id}/session-mentions`,
+			module: "../../src/routes/api/sessions.$id.session-mentions",
+			params:
+			{
+				id,
+			},
+		},
+		{
+			path: `/api/sessions/${id}/mention-sessions`,
+			module: "../../src/routes/api/sessions.$id.mention-sessions",
+			params:
+			{
+				id,
+			},
+		},
 	];
 }
 

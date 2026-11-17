@@ -16,6 +16,14 @@ import
 } from "../src/lib/file-mentions";
 import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
 import {PanelsOff} from "./fizzy-lake-off";
+import {MentionMenu} from "../src/components/mention-menu";
+import
+{
+	fileMentionOption,
+	type MentionOption,
+	type MentionPendingBlock,
+	type MentionProvider,
+} from "../src/lib/mention-options";
 
 // The deferred chunks these tests render, loaded up front as the page warms them before first use.
 beforeAll(async () =>
@@ -125,6 +133,8 @@ describe("isMentionSuppressed", () =>
 				bare: isMentionSuppressed("@", "@"),
 				bareExtended: isMentionSuppressed("@", "@a"),
 				none: isMentionSuppressed(null, "@a"),
+				hintOnlyExtended: isMentionSuppressed("@ab", "@abc", true),
+				hintOnlySame: isMentionSuppressed("@ab", "@ab", true),
 			},
 		).toStrictEqual(
 			{
@@ -134,6 +144,8 @@ describe("isMentionSuppressed", () =>
 				bare: true,
 				bareExtended: false,
 				none: false,
+				hintOnlyExtended: false,
+				hintOnlySame: true,
 			},
 		);
 	});
@@ -519,6 +531,19 @@ async function type(textarea: HTMLTextAreaElement, value: string)
 	});
 }
 
+/** The positioned popup around the "Mention suggestions" listbox. */
+function mentionPopup(): HTMLElement
+{
+	const listbox = screen.getByRole(
+		"listbox",
+		{
+			name: "Mention suggestions",
+		},
+	);
+	if (listbox.parentElement === null) throw new Error("listbox has no popup");
+	return listbox.parentElement;
+}
+
 function rows()
 {
 	return screen.getAllByRole("option").map((row) => (
@@ -809,12 +834,7 @@ describe("Composer @ file mentions", () =>
 
 		await type(textarea, "hello @sk");
 
-		const popup = screen.getByRole(
-			"listbox",
-			{
-				name: "Mention suggestions",
-			},
-		);
+		const popup = mentionPopup();
 		// @ at viewport left 130 + 57 = 187, bottom 400 + 6 + 18 = 424; popup bottom = 424 + 4 - 24 = 404.
 		expect(
 			{
@@ -864,12 +884,7 @@ describe("Composer @ file mentions", () =>
 		});
 
 		await type(textarea, "line\nline\nline\n@sk");
-		const popup = screen.getByRole(
-			"listbox",
-			{
-				name: "Mention suggestions",
-			},
-		);
+		const popup = mentionPopup();
 		const before = popup.style.bottom;
 		markerTop = -40;
 		fireEvent.scroll(textarea);
@@ -908,12 +923,7 @@ describe("Composer @ file mentions", () =>
 		const {textarea} = setup();
 
 		await type(textarea, "@");
-		const top = screen.getByRole(
-			"listbox",
-			{
-				name: "Mention suggestions",
-			},
-		);
+		const top = mentionPopup();
 		const narrow =
 		{
 			width: top.style.width,
@@ -921,12 +931,7 @@ describe("Composer @ file mentions", () =>
 		};
 
 		await type(textarea, "@a");
-		const wide = screen.getByRole(
-			"listbox",
-			{
-				name: "Mention suggestions",
-			},
-		);
+		const wide = mentionPopup();
 		expect(
 			{
 				narrow,
@@ -961,15 +966,8 @@ describe("Composer @ file mentions", () =>
 
 		await type(textarea, "open @ind");
 
-		const popup = screen
-			.getByRole(
-				"listbox",
-				{
-					name: "Mention suggestions",
-				},
-			)
-			.className.split(" ");
-		const popupWants = ["rounded-r7", "max-h-[min(24rem,calc(100svh-2rem))]", "p-1"];
+		const popup = mentionPopup().className.split(" ");
+		const popupWants = ["rounded-r7", "max-h-[min(24rem,calc(100svh-2rem))]"];
 		const popupBans = ["rounded-card", "max-h-96"];
 		const rowWants = [
 			"h-6",
@@ -994,6 +992,7 @@ describe("Composer @ file mentions", () =>
 				{
 					cds: listbox.dataset["cds"],
 					tabIndex: listbox.getAttribute("tabindex"),
+					gutter: listbox.className,
 				},
 				popup:
 				{
@@ -1018,6 +1017,7 @@ describe("Composer @ file mentions", () =>
 				{
 					cds: "MentionDropdown",
 					tabIndex: "-1",
+					gutter: "p-1",
 				},
 				popup:
 				{
@@ -2356,6 +2356,676 @@ describe("Composer accepted @ mention chips: keyboard-only and touch parity", ()
 					selection: [17, 17],
 					highlights: [HOVER_HIGHLIGHT, HOVER_HIGHLIGHT],
 				},
+			},
+		);
+	});
+});
+
+const SESSION_OPTION: MentionOption =
+{
+	id: "session-bob",
+	providerId: "ccp-sessions",
+	label: "Fix bug",
+	description: "repo · main",
+	tooltip: "Fix bug",
+	renderedText: "[Fix bug]",
+	category: "Sessions",
+	kind: "session",
+};
+
+const README_OPTION = fileMentionOption(
+	{
+		name: "README.md",
+		relPath: "README.md",
+		isDirectory: false,
+	},
+);
+
+function renderMenu(props: Partial<React.ComponentProps<typeof MentionMenu>>)
+{
+	return render(
+		<MentionMenu
+			id="mentions"
+			options={[]}
+			highlighted={0}
+			onHighlight={() => undefined}
+			onAccept={() => undefined}
+			{...props}
+		/>,
+	);
+}
+
+describe("MentionMenu providers", () =>
+{
+	it("lists every provider's rows in order with no category headers, a chat glyph on session rows, and the wide width", () =>
+	{
+		renderMenu(
+			{
+				options: [SESSION_OPTION, README_OPTION],
+			},
+		);
+
+		const listbox = screen.getByRole(
+			"listbox",
+			{
+				name: "Mention suggestions",
+			},
+		);
+		const [session] = screen.getAllByRole("option");
+		const glyph = session?.firstElementChild;
+		expect(
+			{
+				rows: screen.getAllByRole("option").map((row) => (
+				{
+					provider: row.dataset["provider"],
+					text: row.textContent,
+				})),
+				children: listbox.children.length,
+				glyph:
+				{
+					tag: glyph?.tagName.toLowerCase(),
+					cds: glyph?.getAttribute("data-cds"),
+					chat: glyph?.classList.contains("lucide-message-square"),
+					fontSize: (glyph as SVGElement | null | undefined)?.style.fontSize,
+				},
+				width: mentionPopup().style.width,
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					{
+						provider: "ccp-sessions",
+						text: "Fix bugrepo · main",
+					},
+					{
+						provider: "ccp-files",
+						text: "README.md",
+					},
+				],
+				children: 2,
+				glyph:
+				{
+					tag: "svg",
+					cds: "Icon",
+					chat: true,
+					fontSize: "calc(1rem * var(--cds-rem-scale, 1))",
+				},
+				width: "560px",
+			},
+		);
+	});
+
+	it("stays 420px wide for a session row with neither a cwd nor a branch", () =>
+	{
+		const {description: _description, ...bare} = SESSION_OPTION;
+		renderMenu(
+			{
+				options: [bare],
+			},
+		);
+
+		expect(mentionPopup().style.width).toBe("420px");
+	});
+
+	it("draws nothing with no rows, nothing pending and no hint", () =>
+	{
+		const {container} = renderMenu({});
+
+		expect(container.innerHTML).toBe("");
+	});
+});
+
+describe("MentionMenu pending skeleton block", () =>
+{
+	const sessionsPending: MentionPendingBlock =
+	{
+		providerId: "ccp-sessions",
+		before: 0,
+		rows: 3,
+		category: "Sessions",
+	};
+
+	function skeletonRows(block: Element)
+	{
+		return [...block.querySelectorAll("[data-skeleton-row]")].map((row) => (
+		{
+			className: row.className,
+			ariaHidden: row.getAttribute("aria-hidden"),
+			bars: [...row.querySelectorAll<HTMLElement>("[data-cds='Skeleton']")].map((bar) => (
+			{
+				width: bar.style.width,
+				height: bar.style.height,
+				role: bar.getAttribute("role"),
+			})),
+		}));
+	}
+
+	it("shows a lone pending block at once: header, decorative group, three skeleton rows, a busy role-less listbox and a Loading status", () =>
+	{
+		const {container} = renderMenu(
+			{
+				pending: [sessionsPending],
+			},
+		);
+
+		const block = container.querySelector("[data-pending-rows]");
+		const group = block?.querySelector("[data-cds='SkeletonGroup']");
+		const listbox = container.querySelector("[data-cds='MentionDropdown']");
+		const status = container.querySelector("[role='status']");
+		const header = block?.firstElementChild;
+		expect(
+			{
+				block:
+				{
+					rows: block?.getAttribute("data-pending-rows"),
+					ariaHidden: block?.getAttribute("aria-hidden"),
+				},
+				header:
+				{
+					tag: header?.tagName,
+					span: header?.querySelector("span[dir='auto']")?.className.split(" ").includes("truncate"),
+					text: header?.textContent,
+				},
+				group:
+				{
+					hold: group?.getAttribute("data-hold"),
+					reason: group?.getAttribute("data-hold-reason"),
+					ariaHidden: group?.getAttribute("aria-hidden"),
+					role: group?.getAttribute("role"),
+				},
+				rows: block ? skeletonRows(block) : [],
+				listbox:
+				{
+					role: listbox?.getAttribute("role"),
+					label: listbox?.getAttribute("aria-label"),
+					busy: listbox?.getAttribute("aria-busy"),
+				},
+				status:
+				{
+					label: status?.getAttribute("aria-label"),
+					srOnly: status?.className,
+					text: status?.textContent,
+				},
+				width: listbox?.parentElement?.style.width,
+			},
+		).toStrictEqual(
+			{
+				block:
+				{
+					rows: "3",
+					ariaHidden: "true",
+				},
+				header:
+				{
+					tag: "DIV",
+					span: true,
+					text: "Sessions",
+				},
+				group:
+				{
+					hold: "none",
+					reason: "overlay",
+					ariaHidden: "true",
+					role: null,
+				},
+				rows: [160, 128, 144].map((width, row) => (
+				{
+					className: "flex h-6 items-center gap-1.5 px-2",
+					ariaHidden: row === 0 ? null : "true",
+					bars: [
+						{
+							width: "20px",
+							height: "20px",
+							role: null,
+						},
+						{
+							width: `${width}px`,
+							height: "16px",
+							role: null,
+						},
+					],
+				})),
+				listbox:
+				{
+					role: null,
+					label: null,
+					busy: "true",
+				},
+				status:
+				{
+					label: "Mention suggestions",
+					srOnly: "sr-only",
+					text: "Loading",
+				},
+				width: "420px",
+			},
+		);
+	});
+
+	it("splices a block below existing rows with a delayed reveal and no status", () =>
+	{
+		const {container} = renderMenu(
+			{
+				options: [README_OPTION, SESSION_OPTION],
+				pending: [
+					{
+						providerId: "ccp-agents",
+						before: 2,
+						rows: 2,
+					},
+				],
+			},
+		);
+
+		const listbox = screen.getByRole(
+			"listbox",
+			{
+				name: "Mention suggestions",
+			},
+		);
+		expect(
+			{
+				order: [...listbox.children].map((child) =>
+					child.hasAttribute("data-pending-rows") ? "pending" : child.textContent,
+				),
+				hold: container.querySelector("[data-cds='SkeletonGroup']")?.getAttribute("data-hold"),
+				busy: listbox.getAttribute("aria-busy"),
+				status: container.querySelector("[role='status']"),
+			},
+		).toStrictEqual(
+			{
+				order: ["README.md", "Fix bugrepo · main", "pending"],
+				hold: "delayed",
+				busy: "true",
+				status: null,
+			},
+		);
+	});
+
+	it("hides an onlyWhenEmpty block once any row exists", () =>
+	{
+		const {container} = renderMenu(
+			{
+				options: [README_OPTION],
+				pending: [
+					{
+						...sessionsPending,
+						onlyWhenEmpty: true,
+					},
+				],
+			},
+		);
+
+		expect(
+			{
+				block: container.querySelector("[data-pending-rows]"),
+				busy: screen.getByRole("listbox").getAttribute("aria-busy"),
+			},
+		).toStrictEqual(
+			{
+				block: null,
+				busy: null,
+			},
+		);
+	});
+
+	it("remounts the skeleton group each time the popup empties", () =>
+	{
+		const {container, rerender} = renderMenu(
+			{
+				pending: [sessionsPending],
+			},
+		);
+		const first = container.querySelector("[data-cds='SkeletonGroup']");
+		const props =
+		{
+			id: "mentions",
+			highlighted: 0,
+			onHighlight: () => undefined,
+			onAccept: () => undefined,
+			pending: [sessionsPending],
+		};
+		rerender(<MentionMenu {...props} options={[README_OPTION]} />);
+		rerender(<MentionMenu {...props} options={[]} />);
+
+		expect(container.querySelector("[data-cds='SkeletonGroup']") === first).toBe(false);
+	});
+});
+
+describe("MentionMenu empty hint", () =>
+{
+	it("shows the hint in a gutter block, moves the gutter off a role-less listbox and mirrors it into the status", () =>
+	{
+		const {container} = renderMenu(
+			{
+				emptyHint: "No sessions match",
+			},
+		);
+
+		const listbox = container.querySelector("[data-cds='MentionDropdown']");
+		const gutter = listbox?.firstElementChild;
+		const row = gutter?.firstElementChild;
+		const classes = row?.className.split(" ") ?? [];
+		expect(
+			{
+				listbox:
+				{
+					role: listbox?.getAttribute("role"),
+					label: listbox?.getAttribute("aria-label"),
+					className: listbox?.className,
+				},
+				gutter:
+				{
+					ariaHidden: gutter?.getAttribute("aria-hidden"),
+					className: gutter?.className,
+				},
+				row:
+				{
+					has: ["flex", "items-center", "gap-1.5", "select-none", "min-h-6", "font-medium"].filter((c) =>
+						classes.includes(c),
+					),
+					text: row?.textContent,
+				},
+				status: container.querySelector("[role='status']")?.textContent,
+				width: listbox?.parentElement?.style.width,
+			},
+		).toStrictEqual(
+			{
+				listbox:
+				{
+					role: null,
+					label: null,
+					className: "",
+				},
+				gutter:
+				{
+					ariaHidden: "true",
+					className: "p-1",
+				},
+				row:
+				{
+					has: ["flex", "items-center", "gap-1.5", "select-none", "min-h-6", "font-medium"],
+					text: "No sessions match",
+				},
+				status: "No sessions match",
+				width: "420px",
+			},
+		);
+	});
+});
+
+describe("Composer mention providers", () =>
+{
+	function renderWith(providers: readonly MentionProvider[], onSend = vi.fn<(prompt: string) => void>())
+	{
+		render(
+			<PanelsOff>
+				<Composer variant="session" draftKey="session-alice" onSend={onSend} mentionProviders={providers} />
+			</PanelsOff>,
+		);
+		return screen.getByRole<HTMLTextAreaElement>(
+			"textbox",
+			{
+				name: "Prompt",
+			},
+		);
+	}
+
+	const hinting: MentionProvider =
+	{
+		id: "ccp-sessions",
+		fetchOptions: async () => Promise.resolve([]),
+		emptyHint: () => "No sessions match",
+	};
+
+	it("lets arrows and Tab through a hint-only popup, closes it on Escape and reopens once the token grows", async () =>
+	{
+		const textarea = renderWith([hinting]);
+		await type(textarea, "@ab");
+
+		const status = () => document.querySelector("[role='status'][aria-label='Mention suggestions']")?.textContent;
+		const shown = status();
+		const arrowPassed = fireEvent.keyDown(
+			textarea,
+			{
+				key: "ArrowDown",
+			},
+		);
+		const tabPassed = fireEvent.keyDown(
+			textarea,
+			{
+				key: "Tab",
+			},
+		);
+		const escapePassed = fireEvent.keyDown(
+			textarea,
+			{
+				key: "Escape",
+			},
+		);
+		const afterEscape = status();
+		await type(textarea, "@abc");
+
+		expect(
+			{
+				shown,
+				arrowPassed,
+				tabPassed,
+				escapePassed,
+				afterEscape,
+				reopened: status(),
+			},
+		).toStrictEqual(
+			{
+				shown: "No sessions match",
+				arrowPassed: true,
+				tabPassed: true,
+				escapePassed: false,
+				afterEscape: undefined,
+				reopened: "No sessions match",
+			},
+		);
+	});
+
+	it("keeps a hint-only popup's hint mounted while the next query loads", async () =>
+	{
+		let release: (() => void) | undefined;
+		const slow: MentionProvider =
+		{
+			id: "ccp-sessions",
+			fetchOptions: async (query) =>
+				query === "ab"
+					? new Promise<readonly MentionOption[]>((resolve) =>
+						{
+							release = () =>
+							{
+								resolve([]);
+							};
+						})
+					: Promise.resolve([]),
+			emptyHint: () => "No sessions match",
+		};
+		const textarea = renderWith([slow]);
+		await type(textarea, "@a");
+		const before = document.querySelector("[data-cds='MentionDropdown'] > [aria-hidden='true'] > div");
+
+		await type(textarea, "@ab");
+		const during = document.querySelector("[data-cds='MentionDropdown'] > [aria-hidden='true'] > div");
+		const status = document.querySelector("[role='status']")?.textContent;
+		await act(async () =>
+		{
+			release?.();
+			await Promise.resolve();
+		});
+
+		expect(
+			{
+				same: before !== null && before === during,
+				status,
+			},
+		).toStrictEqual(
+			{
+				same: true,
+				status: "No sessions match",
+			},
+		);
+	});
+
+	it("accepts a session row as an @[Title] chip and hands it to the provider on send", async () =>
+	{
+		const onSent = vi.fn<NonNullable<MentionProvider["onSent"]>>();
+		const sessions: MentionProvider =
+		{
+			id: "ccp-sessions",
+			fetchOptions: () => [SESSION_OPTION],
+			onSent,
+		};
+		const onSend = vi.fn<(prompt: string) => void>();
+		const textarea = renderWith([sessions], onSend);
+		await type(textarea, "see @fix");
+
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
+		const text = textarea.value;
+		const chip = screen.getByTestId("composer-mention-chip");
+		const chipShown =
+		{
+			session: chip.dataset["sessionId"],
+			path: chip.dataset["path"],
+			text: chip.textContent,
+		};
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
+
+		expect(
+			{
+				text,
+				chipShown,
+				sent: onSend.mock.calls.map(([prompt]) => prompt),
+				onSent: onSent.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				text: "see @[Fix bug] ",
+				chipShown:
+				{
+					session: "session-bob",
+					path: undefined,
+					text: "@[Fix bug]",
+				},
+				sent: ["see @[Fix bug]"],
+				onSent: [
+					[
+						"see @[Fix bug]",
+						[
+							{
+								start: 4,
+								end: 14,
+								kind: "session",
+								sessionId: "session-bob",
+								title: "Fix bug",
+							},
+						],
+					],
+				],
+			},
+		);
+	});
+
+	it("removes an agent row's @query token and leaves no chip", async () =>
+	{
+		const onSelect = vi.fn<NonNullable<MentionProvider["onSelect"]>>();
+		const agent: MentionOption =
+		{
+			id: "code-reviewer",
+			providerId: "ccp-agents",
+			label: "code-reviewer",
+			renderedText: "code-reviewer",
+			category: "Agents",
+			kind: "agent",
+		};
+		const textarea = renderWith([
+			{
+				id: "ccp-agents",
+				fetchOptions: () => [agent],
+				onSelect,
+			},
+		]);
+		await type(textarea, "@rev");
+
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
+
+		expect(
+			{
+				text: textarea.value,
+				chips: screen.queryAllByTestId("composer-mention-chip").length,
+				selected: onSelect.mock.calls.map(([option]) => option.id),
+			},
+		).toStrictEqual(
+			{
+				text: "",
+				chips: 0,
+				selected: ["code-reviewer"],
+			},
+		);
+	});
+});
+
+describe("Composer @ outputs", () =>
+{
+	it("ranks a session output into a search as a /tmp-captioned row whose accept inserts its absolute path", async () =>
+	{
+		responses.set(searchUrl("rep"), search("rep", ["src/rep.ts"]));
+		responses.set(TOP_URL, listing([]));
+		render(
+			<PanelsOff>
+				<Composer
+					variant="session"
+					draftKey="session-alice"
+					onSend={() => undefined}
+					mentionSessionId="session-alice"
+					mentionOutputs={[
+						{
+							path: "/tmp/report.pdf",
+							shownPath: "/tmp/report.pdf",
+						},
+					]}
+				/>
+			</PanelsOff>,
+		);
+		const textarea = screen.getByRole<HTMLTextAreaElement>(
+			"textbox",
+			{
+				name: "Prompt",
+			},
+		);
+
+		await type(textarea, "@rep");
+		const shown = screen.getAllByRole("option").map((row) => row.textContent);
+		fireEvent.click(screen.getAllByRole("option")[1]!);
+
+		expect(
+			{
+				shown,
+				text: textarea.value,
+			},
+		).toStrictEqual(
+			{
+				shown: ["rep.tssrc", "report.pdf/tmp"],
+				text: "@/tmp/report.pdf ",
 			},
 		);
 	});
