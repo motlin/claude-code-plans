@@ -40,6 +40,7 @@ import
 	hydrateStagedChips,
 	recordSentAttachments,
 	registerComposer,
+	type ShellLineResult,
 	takeContextChips,
 	waitForPendingUploads,
 	useContextChips,
@@ -412,6 +413,8 @@ const PLACEHOLDER_FIT_PROBE_CLASS =
 /** Upstream gUdQrb: text added while chat text reads as a `! command`. */
 const COMMAND_IN_BOX_REFUSAL =
 	"A command is in the message box, so nothing was added. Send or clear it first, then try again.";
+/** Upstream's stray-Enter window after a shell-line hand-off (c1958b152 `fp = 500`). */
+const STRAY_ENTER_MS = 500;
 /** Upstream uXFFUp (`Tu.bashRefusal`): text added while bash mode is on. */
 /** Upstream's command-draft test for a prefill (c8f38bf1f `l`), after stripping leading whitespace and format chars. */
 const COMMAND_DRAFT_PATTERN = /^[/!]/;
@@ -1129,6 +1132,11 @@ export function Composer({
 	);
 	const bashAvailableRef = useRef(false);
 	bashAvailableRef.current = onShellCommand !== undefined;
+	const hasAttachmentsRef = useRef(false);
+	hasAttachmentsRef.current = contextChips.length > 0 || queuedComments.length > 0;
+	// Upstream's stray-Enter guard (`Uc`): until this time, a held Enter or ⌘⏎ after a shell-line hand-off is swallowed.
+	const ignoreEnterUntilRef = useRef(0);
+	const canPrefillShell = onShellCommand !== undefined;
 	/** Upstream `Tc`: a routed `!` into the empty composer enters bash mode instead of typing. */
 	const enterBashFromRoutedText = useCallback(
 		(text: string): boolean =>
@@ -1203,9 +1211,41 @@ export function Composer({
 						textareaRef.current?.focus();
 						return true;
 					},
+					...(canPrefillShell
+						?
+							{
+								prefillShell: (command: string, ignoreStrayEnter: boolean): ShellLineResult =>
+								{
+									const textarea = textareaRef.current;
+									if (textarea === null || textarea.disabled) return "unavailable";
+									const inserted = (): ShellLineResult =>
+									{
+										textarea.focus();
+										if (ignoreStrayEnter) ignoreEnterUntilRef.current = Date.now() + STRAY_ENTER_MS;
+										return "inserted";
+									};
+									const hasAttachments = hasAttachmentsRef.current;
+									if (
+										bashModeRef.current &&
+										!hasAttachments &&
+										promptRef.current.trim() === command.trim()
+									)
+										return inserted();
+									if (promptRef.current.trim() !== "" || bashModeRef.current || hasAttachments)
+										return "has_draft";
+									promptRef.current = command;
+									bashModeRef.current = true;
+									pendingCaretRef.current = command.length;
+									setCaret(command.length);
+									setPrompt(command);
+									setBashMode(true);
+									return inserted();
+								},
+							}
+						: {}),
 				},
 			),
-		[draftKey, setPrompt, refuseCommandInBox, toast],
+		[draftKey, setPrompt, setBashMode, refuseCommandInBox, toast, canPrefillShell],
 	);
 
 	useEffect(
@@ -2368,8 +2408,12 @@ export function Composer({
 		{
 			e.preventDefault();
 			const commandChord = e.metaKey || e.ctrlKey;
-			// Upstream swallows ⌘⏎ key repeat so a held chord never sends twice.
-			if (commandChord && e.repeat)
+			// Upstream swallows ⌘⏎ key repeat so a held chord never sends twice, and for 500 ms after a shell-line
+			// hand-off also a ⌘⏎ or a held Enter's repeat.
+			if (
+				(commandChord && e.repeat) ||
+				(Date.now() < ignoreEnterUntilRef.current && !e.altKey && (commandChord || e.repeat))
+			)
 			{
 				e.stopPropagation();
 				return;

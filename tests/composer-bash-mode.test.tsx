@@ -4,7 +4,16 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {Composer} from "../src/components/composer";
 import {composerDraftStorageKey} from "../src/hooks/use-composer-draft";
-import {prefillComposer, requestComposerInsert, requestComposerTakeBack} from "../src/lib/context-attach";
+import
+{
+	attachContext,
+	prefillComposer,
+	requestComposerInsert,
+	requestComposerShellLine,
+	requestComposerTakeBack,
+	takeContextChips,
+} from "../src/lib/context-attach";
+import {clearDiffComments, openDiffCommentDraft, saveDiffComment} from "../src/lib/diff-comments";
 import {ToastContext, type ToastOptions} from "../src/components/toast-context";
 import {HerdrRequestError} from "../src/lib/api/herdr";
 import
@@ -96,6 +105,7 @@ interface RenderOptions
 	subscribePrefill?: ((listener: (text: string) => void) => () => void) | undefined;
 	promptHistory?: readonly string[];
 	bashHistory?: readonly string[];
+	disabled?: boolean;
 }
 
 function renderComposer({
@@ -106,6 +116,7 @@ function renderComposer({
 	subscribePrefill,
 	promptHistory,
 	bashHistory,
+	disabled = false,
 }: RenderOptions = {})
 {
 	stubPointer(coarse);
@@ -131,6 +142,7 @@ function renderComposer({
 				subscribePrefill={subscribePrefill}
 				promptHistory={promptHistory}
 				bashHistory={bashHistory}
+				disabled={disabled}
 			/>
 		</ToastContext.Provider>,
 	);
@@ -1976,5 +1988,356 @@ describe("Composer Edit prompt prefill (upstream Gh)", () =>
 				],
 			},
 		);
+	});
+});
+
+describe("Composer shell-line prefill (upstream prefillEmptyShellLine)", () =>
+{
+	const SESSION = "session-alice";
+
+	function shellState(textarea: HTMLTextAreaElement)
+	{
+		return {
+			bashMode: composerRoot().getAttribute("data-bash-mode") === "true",
+			value: textarea.value,
+			focused: document.activeElement === textarea,
+			listboxes: screen.queryAllByRole("listbox").length,
+		};
+	}
+
+	function type(textarea: HTMLTextAreaElement, value: string)
+	{
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value,
+				},
+			},
+		);
+	}
+
+	function prefill(command: string): string
+	{
+		let result = "";
+		act(() =>
+		{
+			result = requestComposerShellLine(SESSION, command);
+		});
+		return result;
+	}
+
+	it("puts the command into the empty box in bash mode and focuses, then just refocuses on the same command", () =>
+	{
+		const {handlers, textarea} = renderComposer(
+			{
+				onShellCommand: ALLOW,
+			},
+		);
+		const first = prefill("ls -la");
+		const afterFirst = shellState(textarea);
+		textarea.blur();
+		const second = prefill("  ls -la ");
+		expect(
+			{
+				first,
+				afterFirst,
+				second,
+				afterSecond: shellState(textarea),
+				toasts: handlers.toast.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				first: "inserted",
+				afterFirst:
+				{
+					bashMode: true,
+					value: "ls -la",
+					focused: true,
+					listboxes: 0,
+				},
+				second: "inserted",
+				afterSecond:
+				{
+					bashMode: true,
+					value: "ls -la",
+					focused: true,
+					listboxes: 0,
+				},
+				toasts: [],
+			},
+		);
+	});
+
+	it("treats a whitespace-only draft as empty", () =>
+	{
+		const {textarea} = renderComposer(
+			{
+				onShellCommand: ALLOW,
+			},
+		);
+		type(textarea, "   ");
+		expect(
+			{
+				result: prefill("ls -la"),
+				state: shellState(textarea),
+			},
+		).toStrictEqual(
+			{
+				result: "inserted",
+				state:
+				{
+					bashMode: true,
+					value: "ls -la",
+					focused: true,
+					listboxes: 0,
+				},
+			},
+		);
+	});
+
+	it("leaves a chat draft alone with has_draft and no toast", () =>
+	{
+		const {handlers, textarea} = renderComposer(
+			{
+				onShellCommand: ALLOW,
+			},
+		);
+		type(textarea, "hello");
+		expect(
+			{
+				result: prefill("ls -la"),
+				bashMode: composerRoot().getAttribute("data-bash-mode") === "true",
+				value: textarea.value,
+				toasts: handlers.toast.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				result: "has_draft",
+				bashMode: false,
+				value: "hello",
+				toasts: [],
+			},
+		);
+	});
+
+	it("leaves a different bash command alone with has_draft and no toast", () =>
+	{
+		const {handlers, textarea} = renderComposer(
+			{
+				onShellCommand: ALLOW,
+			},
+		);
+		pressBang(textarea);
+		type(textarea, "pwd");
+		expect(
+			{
+				result: prefill("ls"),
+				bashMode: composerRoot().getAttribute("data-bash-mode") === "true",
+				value: textarea.value,
+				toasts: handlers.toast.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				result: "has_draft",
+				bashMode: true,
+				value: "pwd",
+				toasts: [],
+			},
+		);
+	});
+
+	it("counts a staged context chip or a queued diff comment as a draft", () =>
+	{
+		const {textarea} = renderComposer(
+			{
+				onShellCommand: ALLOW,
+			},
+		);
+		act(() =>
+		{
+			attachContext(
+				SESSION,
+				{
+					kind: "excerpt",
+					text: "Hermit crabs",
+				},
+			);
+		});
+		const withChip = prefill("ls");
+		act(() =>
+		{
+			takeContextChips(SESSION);
+			const id = openDiffCommentDraft(
+				SESSION,
+				{
+					path: "src/a.ts",
+					side: "additions",
+					line: 1,
+				},
+			);
+			saveDiffComment(SESSION, id, "Rename this");
+		});
+		const withComment = prefill("ls");
+		act(() =>
+		{
+			clearDiffComments(SESSION);
+		});
+		expect(
+			{
+				withChip,
+				withComment,
+				value: textarea.value,
+				bashMode: composerRoot().getAttribute("data-bash-mode") === "true",
+			},
+		).toStrictEqual(
+			{
+				withChip: "has_draft",
+				withComment: "has_draft",
+				value: "",
+				bashMode: false,
+			},
+		);
+	});
+
+	it("is unavailable without a live pane or while the composer is disabled", () =>
+	{
+		renderComposer();
+		const noPane = prefill("ls");
+		cleanup();
+		renderComposer(
+			{
+				onShellCommand: ALLOW,
+				disabled: true,
+			},
+		);
+		expect(
+			{
+				noPane,
+				disabled: prefill("ls"),
+			},
+		).toStrictEqual(
+			{
+				noPane: "unavailable",
+				disabled: "unavailable",
+			},
+		);
+	});
+});
+
+describe("Composer stray-Enter guard after a shell-line hand-off (upstream fp = 500 ms)", () =>
+{
+	const SESSION = "session-alice";
+
+	afterEach(() =>
+	{
+		vi.useRealTimers();
+	});
+
+	async function enterAfter(
+		ms: number,
+		key:
+		{
+			metaKey?: boolean;
+			repeat?: boolean;
+		},
+		ignoreStrayEnter = true,
+	): Promise<string[][]>
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["Date"],
+				now: 1_000_000,
+			},
+		);
+		const onShellCommand = vi.fn<(command: string) => Promise<boolean>>().mockResolvedValue(true);
+		const {textarea} = renderComposer(
+			{
+				onShellCommand,
+			},
+		);
+		act(() =>
+		{
+			requestComposerShellLine(
+				SESSION,
+				"ls",
+				{
+					ignoreStrayEnter,
+				},
+			);
+		});
+		vi.setSystemTime(1_000_000 + ms);
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+				...key,
+			},
+		);
+		await flush();
+		return onShellCommand.mock.calls;
+	}
+
+	it("swallows ⌘⏎ within 500 ms and keeps the command", async () =>
+	{
+		expect(
+			await enterAfter(
+				100,
+				{
+					metaKey: true,
+				},
+			),
+		).toStrictEqual([]);
+		expect(
+			screen.getByRole<HTMLTextAreaElement>(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			).value,
+		).toBe("ls");
+	});
+
+	it("runs ⌘⏎ after 500 ms", async () =>
+	{
+		expect(
+			await enterAfter(
+				600,
+				{
+					metaKey: true,
+				},
+			),
+		).toStrictEqual([["ls"]]);
+	});
+
+	it("runs a plain Enter within 500 ms, since the guard needs a repeat or ⌘/Ctrl", async () =>
+	{
+		expect(await enterAfter(100, {})).toStrictEqual([["ls"]]);
+	});
+
+	it("swallows a held Enter's repeat within 500 ms", async () =>
+	{
+		expect(
+			await enterAfter(
+				100,
+				{
+					repeat: true,
+				},
+			),
+		).toStrictEqual([]);
+	});
+
+	it("runs ⌘⏎ within 500 ms when the hand-off didn't ask for the guard", async () =>
+	{
+		expect(
+			await enterAfter(
+				100,
+				{
+					metaKey: true,
+				},
+				false,
+			),
+		).toStrictEqual([["ls"]]);
 	});
 });

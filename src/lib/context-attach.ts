@@ -228,6 +228,9 @@ export function composePrompt(
 	return formatDiffAnnotations(comments, blocks.join("\n\n"));
 }
 
+/** Upstream's `prefillEmptyShellLine` result: the command went in, a draft was in the way, or no bash line is possible. */
+export type ShellLineResult = "inserted" | "has_draft" | "unavailable";
+
 /** A mounted composer: text requests land in its prompt, attachments as chips. */
 export interface ComposerHandle
 {
@@ -248,6 +251,12 @@ export interface ComposerHandle
 	 * nothing, when refused (bash mode, or a command in the draft).
 	 */
 	prefill?: (text: string) => boolean;
+	/**
+	 * Upstream's `prefillEmptyShellLine` (cc43287c9 `ZOe`): puts a command into the empty box as a bash line and
+	 * focuses, never touching a draft; `ignoreStrayEnter` swallows a stray ⌘⏎ or held Enter for 500 ms after.
+	 * Absent where bash mode isn't available.
+	 */
+	prefillShell?: (command: string, ignoreStrayEnter: boolean) => ShellLineResult;
 }
 
 const composers = new Map<string, Set<ComposerHandle>>();
@@ -804,6 +813,32 @@ export function focusComposer(sessionId: string): boolean
 	const handles = mounted(sessionId);
 	for (const handle of handles) handle.focus();
 	return handles.length > 0;
+}
+
+/** Hands a command to the session's composer as an empty-box bash line; the first composer that takes it wins. */
+export function requestComposerShellLine(
+	sessionId: string,
+	command: string,
+	opts?:
+	{
+		ignoreStrayEnter?: boolean;
+	},
+): ShellLineResult
+{
+	for (const handle of mounted(sessionId))
+	{
+		let result: ShellLineResult = "unavailable";
+		try
+		{
+			result = handle.prefillShell?.(command, opts?.ignoreStrayEnter ?? false) ?? "unavailable";
+		}
+		catch
+		{
+			// Upstream's resolver maps a throwing prefill to `no_shell`.
+		}
+		if (result !== "unavailable") return result;
+	}
+	return "unavailable";
 }
 
 const composerListeners = new Set<() => void>();

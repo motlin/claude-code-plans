@@ -22,6 +22,8 @@ import
 	takeBackSend,
 	joinPrefill,
 	prefillComposer,
+	requestComposerShellLine,
+	type ShellLineResult,
 } from "../src/lib/context-attach";
 import
 {
@@ -1275,6 +1277,104 @@ describe("prefillComposer", () =>
 			},
 		);
 		expect(prefillComposer("prefill-ok", "orig")).toBe(true);
+		unregister();
+	});
+});
+
+describe("requestComposerShellLine (upstream prefillEmptyShellLine)", () =>
+{
+	function shellHandle(prefillShell?: (command: string, ignoreStrayEnter: boolean) => ShellLineResult)
+	{
+		return {
+			insertText: () =>
+			{
+			},
+			focus: () =>
+			{
+			},
+			...(prefillShell === undefined
+				? {}
+				:
+					{
+						prefillShell,
+					}),
+		};
+	}
+
+	it("is unavailable with no composer mounted", () =>
+	{
+		expect(requestComposerShellLine("shell-none", "ls")).toBe("unavailable");
+	});
+
+	it("passes the composer's result and the stray-Enter flag through", () =>
+	{
+		const prefillShell = vi.fn<(command: string, ignoreStrayEnter: boolean) => ShellLineResult>(() => "has_draft");
+		const unregister = registerComposer("shell-draft", shellHandle(prefillShell));
+		expect(
+			{
+				plain: requestComposerShellLine("shell-draft", "ls"),
+				guarded: requestComposerShellLine(
+					"shell-draft",
+					"ls",
+					{
+						ignoreStrayEnter: true,
+					},
+				),
+				calls: prefillShell.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				plain: "has_draft",
+				guarded: "has_draft",
+				calls: [
+					["ls", false],
+					["ls", true],
+				],
+			},
+		);
+		unregister();
+	});
+
+	it("is unavailable when the mounted composer can't take a shell line, like the home composer", () =>
+	{
+		const unregister = registerComposer("shell-home", shellHandle());
+		expect(requestComposerShellLine("shell-home", "ls")).toBe("unavailable");
+		unregister();
+	});
+
+	it("stops at the first composer that inserted it", () =>
+	{
+		const first = vi.fn<(command: string, ignoreStrayEnter: boolean) => ShellLineResult>(() => "inserted");
+		const second = vi.fn<(command: string, ignoreStrayEnter: boolean) => ShellLineResult>(() => "inserted");
+		const stopFirst = registerComposer("shell-two", shellHandle(first));
+		const stopSecond = registerComposer("shell-two", shellHandle(second));
+		expect(
+			{
+				result: requestComposerShellLine("shell-two", "ls"),
+				first: first.mock.calls,
+				second: second.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				result: "inserted",
+				first: [["ls", false]],
+				second: [],
+			},
+		);
+		stopFirst();
+		stopSecond();
+	});
+
+	it("maps a throwing composer to unavailable, as upstream's resolver maps a throw to no_shell", () =>
+	{
+		const unregister = registerComposer(
+			"shell-throw",
+			shellHandle(() =>
+			{
+				throw new Error("boom");
+			}),
+		);
+		expect(requestComposerShellLine("shell-throw", "ls")).toBe("unavailable");
 		unregister();
 	});
 });
