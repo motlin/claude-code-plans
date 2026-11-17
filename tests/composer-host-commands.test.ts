@@ -8,6 +8,7 @@ import
 	parseCommandShape,
 	parseHostCommand,
 	routeFastCommand,
+	routeStatusCommand,
 	SLASH_NAME,
 	trailingArgsBody,
 } from "../src/lib/composer-host-commands";
@@ -556,5 +557,76 @@ describe("autocompactCommand", () =>
 	it("exports upstream's slash-name pattern", () =>
 	{
 		expect(SLASH_NAME.exec("/plugin:skill-x rest")?.[1]).toBe("plugin:skill-x");
+	});
+});
+
+describe("routeStatusCommand", () =>
+{
+	it("shows the card when idle, toasts without a session or mid-turn, and bands extra text", () =>
+	{
+		const idle =
+		{
+			hasSession: true,
+			turnActive: false,
+		};
+		const inputs: [
+			string,
+			{
+				hasSession: boolean;
+				turnActive: boolean;
+			},
+		][] = [
+			["/status", idle],
+			["/STATUS ", idle],
+			[
+				"/status",
+				{
+					hasSession: true,
+					turnActive: true,
+				},
+			],
+			[
+				"/status",
+				{
+					hasSession: false,
+					turnActive: false,
+				},
+			],
+			[
+				"/status foo",
+				{
+					hasSession: false,
+					turnActive: false,
+				},
+			],
+			["/status\nx", idle],
+			["/statusline", idle],
+		];
+
+		expect(inputs.map(([text, state]) => routeStatusCommand(text, state))).toStrictEqual([
+			{
+				kind: "card",
+			},
+			{
+				kind: "card",
+			},
+			{
+				kind: "toast",
+				message: "Session info is available when Claude finishes this turn.",
+			},
+			{
+				kind: "toast",
+				message: "Session info is available once the session starts.",
+			},
+			{
+				kind: "band",
+				text: trailingArgsBody("status"),
+			},
+			{
+				kind: "band",
+				text: extraLinesBody("status"),
+			},
+			null,
+		]);
 	});
 });

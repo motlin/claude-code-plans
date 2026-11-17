@@ -337,7 +337,7 @@ describe("useSlashCommands", () =>
 		);
 	});
 
-	it("adds the session-only built-ins (/rewind, /autocompact) to a session's list but not the home composer's", async () =>
+	it("adds the session-only built-ins (/rewind, /autocompact, /status) to a session's list but not the home composer's", async () =>
 	{
 		vi.stubGlobal(
 			"fetch",
@@ -424,7 +424,7 @@ describe("useSlashCommands", () =>
 				session:
 				{
 					header: null,
-					labels: ["rewind", "autocompact", "standup"],
+					labels: ["rewind", "autocompact", "status", "standup"],
 				},
 			},
 		);

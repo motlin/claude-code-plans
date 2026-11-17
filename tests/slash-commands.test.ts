@@ -38,7 +38,9 @@ describe("SESSION_SLASH_COMMANDS", () =>
 		expect(
 			{
 				session: SESSION_SLASH_COMMANDS,
-				inBuiltins: BUILTIN_SLASH_COMMANDS.some((c) => c.name === "rewind" || c.name === "autocompact"),
+				inBuiltins: BUILTIN_SLASH_COMMANDS.some((c) =>
+					SESSION_SLASH_COMMANDS.some((session) => session.name === c.name),
+				),
 				knowsAutocompact: isKnownSlashCommand("autocompact", SESSION_SLASH_COMMANDS),
 			},
 		).toStrictEqual(
@@ -54,6 +56,11 @@ describe("SESSION_SLASH_COMMANDS", () =>
 						description: "Show context usage or set when auto-compact runs",
 						source: "builtin",
 						argumentHint: "[auto|<tokens>]",
+					},
+					{
+						name: "status",
+						description: "Show this session’s version, model, environment, and account",
+						source: "builtin",
 					},
 				],
 				inBuiltins: false,
@@ -143,11 +150,6 @@ describe("BUILTIN_SLASH_COMMANDS", () =>
 				description: "Rename this session",
 				source: "builtin",
 				argumentHint: "[name]",
-			},
-			{
-				name: "status",
-				description: "Show this session’s version, model, environment, and account",
-				source: "builtin",
 			},
 			{
 				name: "compact",

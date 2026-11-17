@@ -105,7 +105,7 @@
 	},
 	"client.coldHome.default.responseBytes":
 	{
-		"ceiling": 5197,
+		"ceiling": 5081,
 		"unit": "bytes",
 		"tolerance": 0
 	},

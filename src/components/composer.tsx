@@ -73,6 +73,7 @@ import
 	parseCommandShape,
 	parseHostCommand,
 	routeFastCommand,
+	routeStatusCommand,
 	trailingArgsBody,
 } from "../lib/composer-host-commands";
 import
@@ -230,6 +231,14 @@ interface ComposerRewind
 	open: () => void;
 }
 
+interface ComposerStatusCommand
+{
+	/** A turn is running, so the card waits (upstream's `jj(bucket)`). */
+	turnActive: boolean;
+	/** Appends the user row and Session info card for the command as sent. */
+	show: (text: string) => void;
+}
+
 interface ComposerProps
 {
 	variant: ComposerVariant;
@@ -309,6 +318,12 @@ interface ComposerProps
 	 * home composer, where a bare `/autocompact` is refused with a toast and kept.
 	 */
 	onOpenContext?: (() => void) | undefined;
+	/**
+	 * A session's `/status` host command: `show` appends the Session info card for the command as sent;
+	 * while `turnActive` it toasts and keeps the text instead. The home composer has none and toasts
+	 * that the session hasn't started; a session composer without it lets `/status` reach the CLI.
+	 */
+	statusCommand?: ComposerStatusCommand | undefined;
 	/**
 	 * Runs a bash-mode command in the session's live pane; resolves false when it was refused. Present only with a
 	 * live pane: `!` in the empty composer then enters upstream's bash mode. Without it, a `! command` send is refused.
@@ -789,6 +804,7 @@ export function Composer({
 	active = true,
 	rewind,
 	onOpenContext,
+	statusCommand,
 	onShellCommand,
 }: ComposerProps)
 {
@@ -1604,7 +1620,13 @@ export function Composer({
 	/** Upstream's host interception of `/model`, `/effort` and `/permissions`: true when the composer handled it. */
 	function runHostCommand(text: string): boolean
 	{
-		if (runFastCommand(text) || runRewindCommand(text) || runWorkflowsCommand(text) || runAutocompactCommand(text))
+		if (
+			runFastCommand(text) ||
+			runRewindCommand(text) ||
+			runWorkflowsCommand(text) ||
+			runAutocompactCommand(text) ||
+			runStatusCommand(text)
+		)
 			return true;
 		const command = parseHostCommand(
 			text,
@@ -1666,6 +1688,46 @@ export function Composer({
 					},
 				);
 				break;
+		}
+		return true;
+	}
+	/** Upstream's `/status` (`noArgs`): the Session info card, or a keyed toast or band that keeps the text. */
+	function runStatusCommand(text: string): boolean
+	{
+		if (variant === "session" && statusCommand === undefined) return false;
+		const route = routeStatusCommand(
+			text,
+			{
+				hasSession: variant === "session",
+				turnActive: statusCommand?.turnActive ?? false,
+			},
+		);
+		if (route === null) return false;
+		switch (route.kind)
+		{
+			case "card":
+				statusCommand?.show(text.trim());
+				clearDraft();
+				break;
+			case "toast":
+				toast?.(
+					{
+						kind: "error",
+						message: route.message,
+						uniqueKey: variant === "session" ? "epitaxy-status-turn" : "epitaxy-status-session",
+					},
+				);
+				break;
+			case "band":
+				setCommandError(
+					{
+						draftKey,
+						body: route.text,
+					},
+				);
+				break;
+			default:
+				assertNever(route);
 		}
 		return true;
 	}

@@ -264,3 +264,64 @@ export function fastCommandArg(text: string): string | null
 	if (match?.[1]?.toLowerCase() !== "fast") return null;
 	return match[2]?.trim() ?? "";
 }
+
+/** What a sent `/status` does: draw the Session info card, toast why it can't yet, or band the extra text. */
+export type StatusCommandRoute =
+	|
+	  {
+			kind: "card";
+	  }
+	|
+	  {
+			kind: "toast";
+			message: string;
+	  }
+	|
+	  {
+			kind: "band";
+			text: string;
+	  };
+
+/**
+ * Upstream's `/status` dispatch (`IOe` then `showStatusReport`): the shape bands first, then no session
+ * (the home draft) or a running turn toasts and keeps the text; otherwise the card. Null when `text`
+ * isn't `/status`.
+ */
+export function routeStatusCommand(
+	text: string,
+	{
+		hasSession,
+		turnActive,
+	}:
+	{
+		hasSession: boolean;
+		turnActive: boolean;
+	},
+): StatusCommandRoute | null
+{
+	const shape = parseCommandShape(["status"], text);
+	if (shape === null) return null;
+	if (shape.kind === "extra_lines")
+		return {
+			kind: "band",
+			text: extraLinesBody(shape.name),
+		};
+	if (shape.kind === "trailing_args")
+		return {
+			kind: "band",
+			text: trailingArgsBody(shape.name),
+		};
+	if (!hasSession)
+		return {
+			kind: "toast",
+			message: "Session info is available once the session starts.",
+		};
+	if (turnActive)
+		return {
+			kind: "toast",
+			message: "Session info is available when Claude finishes this turn.",
+		};
+	return {
+		kind: "card",
+	};
+}

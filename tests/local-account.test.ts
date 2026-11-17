@@ -105,6 +105,7 @@ const cases:
 				emailAddress: "craig@example.com",
 				organizationType: "claude_max",
 				organizationRateLimitTier: "default_claude_max_20x",
+				organizationName: "Craig's Organization",
 			},
 		},
 		expected:
@@ -115,6 +116,7 @@ const cases:
 			email: "craig@example.com",
 			planLabel: "Max",
 			planDetail: "Max (20x)",
+			organizationName: "Craig's Organization",
 		},
 	},
 	{

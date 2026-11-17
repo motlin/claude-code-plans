@@ -100,7 +100,7 @@ export function slashCommandLabel(command: SlashCommand): string
 
 /**
  * Built-ins upstream offers only in a session's composer (there's nothing to rewind on the home
- * page). `GET /api/commands` leaves them out; `useSlashCommands` adds them for sessions.
+ * page, and `/status` is gated on `hasSession`). `GET /api/commands` leaves them out; `useSlashCommands` adds them for sessions.
  */
 export const SESSION_SLASH_COMMANDS: readonly SlashCommand[] = [
 	{
@@ -113,6 +113,11 @@ export const SESSION_SLASH_COMMANDS: readonly SlashCommand[] = [
 		description: "Show context usage or set when auto-compact runs",
 		source: "builtin",
 		argumentHint: "[auto|<tokens>]",
+	},
+	{
+		name: "status",
+		description: "Show this session’s version, model, environment, and account",
+		source: "builtin",
 	},
 ];
 
@@ -197,11 +202,6 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommand[] = [
 		description: "Rename this session",
 		source: "builtin",
 		argumentHint: "[name]",
-	},
-	{
-		name: "status",
-		description: "Show this session’s version, model, environment, and account",
-		source: "builtin",
 	},
 	{
 		name: "compact",

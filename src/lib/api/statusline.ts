@@ -85,6 +85,16 @@ export const StatuslineSchema = z
 				.loose()
 				.optional(),
 			rate_limits: StatuslineRateLimitsSchema.optional(),
+			/** The running CLI's version, the `/status` card's Claude Code row. */
+			version: z.string().optional(),
+			output_style: z
+				.object(
+					{
+						name: z.string().optional(),
+					},
+				)
+				.loose()
+				.optional(),
 			/** The CLI's live fast-mode toggle; true while fast mode is on or cooling down. */
 			fast_mode: z.boolean().optional(),
 			cost: z

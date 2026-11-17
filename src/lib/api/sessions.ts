@@ -422,6 +422,22 @@ export const SessionMcpStatusResponse = z.strictObject(
 );
 export type SessionMcpStatus = z.infer<typeof SessionMcpStatusResponse>;
 
+/** The `/status` card's inputs only the server can read: the transcript and the settings files. */
+export const SessionStatusInfoResponse = z.strictObject(
+	{
+		/** The newest record's CLI `version`; the live statusline's version wins on the client. */
+		cliVersion: z.string().nullable(),
+		/** The first record's timestamp, in ms. */
+		createdAt: z.number().nullable(),
+		forked: z.boolean(),
+		/** The first record's cwd: the folder the session started in. */
+		cwd: z.string().nullable(),
+		homePath: z.string(),
+		additionalDirectories: z.array(z.string()),
+	},
+);
+export type SessionStatusInfo = z.infer<typeof SessionStatusInfoResponse>;
+
 const DEFAULT_RECENT_PAGE_SIZE = 50;
 /**
  * Sessions kept per project group. Deep enough to show what a project was
@@ -465,6 +481,7 @@ export const sessionQueryKeys =
 		[...SESSION_QUERY_ROOT, id, "api-request-messages", requestId] as const,
 	devServers: (id: string) => [...SESSION_QUERY_ROOT, id, "dev-servers"] as const,
 	mcpStatus: (id: string) => [...SESSION_QUERY_ROOT, id, "mcp-status"] as const,
+	statusInfo: (id: string) => [...SESSION_QUERY_ROOT, id, "status-info"] as const,
 	artifacts: (id: string) => [...SESSION_QUERY_ROOT, id, "artifacts"] as const,
 	subagents: (id: string) => [...SESSION_QUERY_ROOT, id, "subagents"] as const,
 	workflows: (id: string) => [...SESSION_QUERY_ROOT, id, "workflows"] as const,
@@ -777,6 +794,17 @@ export const sessionMcpStatusQueryOptions = (id: string, enabled: boolean) =>
 				apiFetch(`/api/sessions/${encodeURIComponent(id)}/mcp-status`, SessionMcpStatusResponse),
 			enabled,
 			staleTime: Infinity,
+		},
+	);
+
+/** The `/status` card's server inputs, fetched only while a card is mounted. */
+export const sessionStatusInfoQueryOptions = (id: string) =>
+	queryOptions(
+		{
+			queryKey: sessionQueryKeys.statusInfo(id),
+			queryFn: async () =>
+				apiFetch(`/api/sessions/${encodeURIComponent(id)}/status-info`, SessionStatusInfoResponse),
+			staleTime: 30_000,
 		},
 	);
 

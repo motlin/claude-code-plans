@@ -11,7 +11,7 @@ import type {FastModeBlocked} from "./session-fast-mode";
  * from local state the way claude.ai/code shows them for a session.
  */
 
-const MODE_LABELS: Record<string, string> =
+export const MODE_LABELS: Record<string, string> =
 {
 	auto: "Auto",
 	default: "Manual",
@@ -21,7 +21,7 @@ const MODE_LABELS: Record<string, string> =
 	dontAsk: "Don't ask",
 };
 
-const EFFORT_LABELS: Record<string, string> =
+export const EFFORT_LABELS: Record<string, string> =
 {
 	low: "Low",
 	medium: "Medium",

@@ -15,6 +15,7 @@ const OAUTH_ACCOUNT_KEYS = [
 	"organizationType",
 	"organizationRateLimitTier",
 	"planDisplayName",
+	"organizationName",
 ] as const;
 
 /** The signed-in Claude account as recorded locally by the CLI. */
@@ -28,6 +29,8 @@ export interface LocalAccount
 	planLabel?: string;
 	/** Plan name with its rate tier, e.g. "Max (20x)". */
 	planDetail?: string;
+	/** The signed-in organization's name, the `/status` card's Organization row. */
+	organizationName?: string;
 }
 
 export interface ReadLocalAccountOptions
@@ -144,6 +147,8 @@ export async function readLocalAccount({
 		result.planLabel = planInfo.label;
 		result.planDetail = planInfo.detail;
 	}
+	const organizationName = nonEmptyTrimmed(account.organizationName);
+	if (organizationName !== undefined) result.organizationName = organizationName;
 	return result;
 }
 

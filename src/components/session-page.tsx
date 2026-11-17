@@ -22,6 +22,8 @@ import
 } from "./session-rail/use-session-rail-docked";
 import type {SessionRailInputs} from "./session-rail/session-rail-cards";
 import {SessionChat} from "./session-chat";
+import {LiveSessionStatusCard, LiveStatusSourcesProvider} from "./session-status-card";
+import {appendClientRow, type ClientRow, lastRecordUuid} from "../lib/client-rows-store";
 import {TranscriptTailContext} from "./transcript-tail-context";
 import {SessionChaptersToc} from "./session-chapters-toc";
 import {TranscriptActionsProvider} from "./transcript-actions-provider";
@@ -893,6 +895,42 @@ function SessionView({
 				accountUsage,
 			),
 		[hookContext?.permissionMode, transcript.records, composerServerState, accountUsage],
+	);
+	// Upstream's `/status`: a client-only user row and Session info card after the newest line, live on every render.
+	const turnActive = workingMarkerState.status !== "idle";
+	const statusCommand = useMemo(
+		() => (
+		{
+			turnActive,
+			show: (text: string) =>
+			{
+				appendClientRow(
+					sessionId,
+					{
+						kind: "status",
+						text,
+						afterUuid: lastRecordUuid(transcript.records),
+					},
+				);
+			},
+		}),
+		[turnActive, sessionId, transcript.records],
+	);
+	const liveStatusSources = useMemo(
+		() => (
+		{
+			cliVersion: statusline?.version ?? null,
+			modelId: composerChin.modelId,
+			effort: composerChin.effort.id,
+			fastMode: composerChin.fastMode,
+			permissionMode: composerChin.mode?.id ?? null,
+			outputStyle: statusline?.output_style?.name ?? null,
+		}),
+		[statusline, composerChin],
+	);
+	const renderClientRowCard = useCallback(
+		(row: ClientRow) => (row.kind === "status" ? <LiveSessionStatusCard sessionId={sessionId} /> : null),
+		[sessionId],
 	);
 	// Upstream lets the user comment on the plan in plan mode or while a plan waits for approval.
 	useRegisterPlanPane(
@@ -2290,6 +2328,7 @@ function SessionView({
 																onFork={(prompt, launchOptions) =>
 																	submitComposer("fork", prompt, launchOptions)
 																}
+																statusCommand={statusCommand}
 																forkLabel={forkSubmitLabel(
 																	{
 																		pane: paneState,
@@ -2370,76 +2409,83 @@ function SessionView({
 													<TurnUndoSendContext.Provider value={turnUndoSend}>
 														<TranscriptTailContext.Provider value={transcriptTail}>
 															<FindLoadRestContext.Provider value={loadRestForFind}>
-																<SessionChat
-																	sessionId={sessionId}
-																	lines={processed.lines}
-																	measurementSource={transcript.records}
-																	measurementLayout={JSON.stringify([
-																		settings.showDebug,
-																		settings.interfaceFont,
-																		settings.transcriptTextSize,
-																		settings.codeFont,
-																		settings.transcriptWidth,
-																	])}
-																	toolResultMap={processed.toolResultMap}
-																	rewindCuts={chainProcessed.cutsByReplacement}
-																	rewoundUuids={hiddenUuids}
-																	allowedImageRoots={data.imageRoots}
-																	subagents={subagents}
-																	{...(workflowRuns === undefined
-																		? null
-																		:
+																<LiveStatusSourcesProvider value={liveStatusSources}>
+																	<SessionChat
+																		sessionId={sessionId}
+																		lines={processed.lines}
+																		measurementSource={transcript.records}
+																		measurementLayout={JSON.stringify([
+																			settings.showDebug,
+																			settings.interfaceFont,
+																			settings.transcriptTextSize,
+																			settings.codeFont,
+																			settings.transcriptWidth,
+																		])}
+																		toolResultMap={processed.toolResultMap}
+																		rewindCuts={chainProcessed.cutsByReplacement}
+																		rewoundUuids={hiddenUuids}
+																		allowedImageRoots={data.imageRoots}
+																		subagents={subagents}
+																		{...(workflowRuns === undefined
+																			? null
+																			:
+																				{
+																					workflowRuns,
+																				})}
+																		showThinking={transcriptFlags.showThinking}
+																		showTools={transcriptFlags.showTools}
+																		showPassedHooks={
+																			transcriptFlags.showPassedHooks
+																		}
+																		showHookWarnings={
+																			transcriptFlags.showHookWarnings
+																		}
+																		showHookErrors={transcriptFlags.showHookErrors}
+																		showSystemBanners={
+																			transcriptFlags.showSystemBanners
+																		}
+																		showCompactSummaries={
+																			transcriptFlags.showCompactSummaries
+																		}
+																		showTranscriptOnly={
+																			transcriptFlags.showTranscriptOnly
+																		}
+																		transcriptMode={transcriptMode}
+																		sessionLive={sessionProcessLive(
 																			{
-																				workflowRuns,
-																			})}
-																	showThinking={transcriptFlags.showThinking}
-																	showTools={transcriptFlags.showTools}
-																	showPassedHooks={transcriptFlags.showPassedHooks}
-																	showHookWarnings={transcriptFlags.showHookWarnings}
-																	showHookErrors={transcriptFlags.showHookErrors}
-																	showSystemBanners={
-																		transcriptFlags.showSystemBanners
-																	}
-																	showCompactSummaries={
-																		transcriptFlags.showCompactSummaries
-																	}
-																	showTranscriptOnly={
-																		transcriptFlags.showTranscriptOnly
-																	}
-																	transcriptMode={transcriptMode}
-																	sessionLive={sessionProcessLive(
+																				hookActive: isActive,
+																				summaryState: sessionSummaryState,
+																			},
+																		)}
+																		turnInProgress={
+																			workingMarkerState.status !== "idle"
+																		}
+																		archived={data.archived}
+																		permissionWaitToolUseId={permissionWaitId}
+																		onSendNow={requestSendNowInterrupt}
+																		onFocusComposer={focusSessionComposer}
+																		sideChatAvailable={true}
+																		initialScrollKey={initialScrollKey}
+																		scrollContentRef={scrollAnchorRef}
+																		shouldScrollToEnd={
+																			restoredScrollPosition === undefined &&
+																			locationHash === ""
+																		}
+																		summary={aiSummary}
+																		{...(slashCommands === undefined
+																			? {}
+																			:
+																				{
+																					slashCommands,
+																				})}
+																		{...(errorRecovery !== undefined &&
 																		{
-																			hookActive: isActive,
-																			summaryState: sessionSummaryState,
-																		},
-																	)}
-																	turnInProgress={
-																		workingMarkerState.status !== "idle"
-																	}
-																	archived={data.archived}
-																	permissionWaitToolUseId={permissionWaitId}
-																	onSendNow={requestSendNowInterrupt}
-																	onFocusComposer={focusSessionComposer}
-																	sideChatAvailable={true}
-																	initialScrollKey={initialScrollKey}
-																	scrollContentRef={scrollAnchorRef}
-																	shouldScrollToEnd={
-																		restoredScrollPosition === undefined &&
-																		locationHash === ""
-																	}
-																	summary={aiSummary}
-																	{...(slashCommands === undefined
-																		? {}
-																		:
-																			{
-																				slashCommands,
-																			})}
-																	{...(errorRecovery !== undefined &&
-																	{
-																		errorRecovery,
-																	})}
-																	staleCompact={staleCompact}
-																/>
+																			errorRecovery,
+																		})}
+																		staleCompact={staleCompact}
+																		renderClientRowCard={renderClientRowCard}
+																	/>
+																</LiveStatusSourcesProvider>
 															</FindLoadRestContext.Provider>
 														</TranscriptTailContext.Provider>
 													</TurnUndoSendContext.Provider>

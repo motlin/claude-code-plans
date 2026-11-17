@@ -64,6 +64,18 @@ export function appendClientRow(
 	return row;
 }
 
+/** The uuid of the newest transcript record that has one: where a row appended now anchors. */
+export function lastRecordUuid(records: readonly unknown[]): string | null
+{
+	for (let index = records.length - 1; index >= 0; index--)
+	{
+		const record = records[index];
+		if (typeof record !== "object" || record === null || !("uuid" in record)) continue;
+		if (typeof record.uuid === "string" && record.uuid !== "") return record.uuid;
+	}
+	return null;
+}
+
 /** Drops every session's rows, as a reload does. */
 export function clearClientRows(): void
 {

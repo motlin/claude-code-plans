@@ -11,6 +11,7 @@ const LocalAccountResponse = z
 			email: z.string().optional(),
 			planLabel: z.string().optional(),
 			planDetail: z.string().optional(),
+			organizationName: z.string().optional(),
 		},
 	)
 	.strict();
