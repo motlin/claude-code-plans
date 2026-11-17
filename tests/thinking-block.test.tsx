@@ -486,6 +486,57 @@ describe("thinking step, opened in place", () =>
 		);
 	});
 
+	it("closes when its open text's first line is clicked, handing focus from the body to the row toggle", async () =>
+	{
+		renderThinking();
+		openStep();
+		vi.spyOn(row(), "getBoundingClientRect").mockReturnValue(
+			DOMRect.fromRect(
+				{
+					x: 0,
+					y: 100,
+					width: 300,
+					height: 60,
+				},
+			),
+		);
+		screen.getByLabelText("Copy as quote").focus();
+		const firstLine = scope().querySelector("p");
+		if (firstLine === null) throw new Error("no body paragraph");
+		fireEvent.pointerDown(
+			firstLine,
+			{
+				clientX: 20,
+				clientY: 100,
+				pointerType: "mouse",
+			},
+		);
+		fireEvent.click(
+			firstLine,
+			{
+				clientX: 20,
+				clientY: 100,
+				detail: 1,
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(panel()).toBeNull();
+		});
+
+		expect(
+			{
+				focusedToggle: document.activeElement === toggle(),
+				...closedState(),
+			},
+		).toStrictEqual(
+			{
+				focusedToggle: true,
+				...CLOSED_STATE,
+			},
+		);
+	});
+
 	it("renders the body as markdown in secondary, non-italic body type", () =>
 	{
 		renderThinking(

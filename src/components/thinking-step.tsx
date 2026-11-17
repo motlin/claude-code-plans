@@ -1,6 +1,7 @@
 import {Collapsible as BaseCollapsible} from "@base-ui/react/collapsible";
 import {type ReactNode, useId} from "react";
 
+import {useOpenTextRow} from "../hooks/use-open-text-row";
 import {useStepCollapseFocusReturn} from "../hooks/use-step-collapse-focus-return";
 import {useRestInk} from "../lib/fizzy-lake";
 import {thinkingStepLabel, thinkingSummary} from "../lib/thinking-summary";
@@ -68,6 +69,15 @@ export function ThinkingStep({text, open, onOpenChange, live = false, title, act
 	const busyId = `${id}-busy`;
 	const labelledBy = live ? `${labelId} ${busyId}` : labelId;
 	const stretched = !openInPlace;
+	const {rowProps} = useOpenTextRow(
+		{
+			active: openInPlace,
+			close: () =>
+			{
+				onOpenChange(false);
+			},
+		},
+	);
 
 	const labelText = live ? (
 		<ShimmerText variant="secondary" dir="auto" className={LABEL_CLIP}>
@@ -106,11 +116,9 @@ export function ThinkingStep({text, open, onOpenChange, live = false, title, act
 		>
 			<div
 				data-cds-row=""
+				{...rowProps}
 				{...(openInPlace
-					?
-						{
-							"data-cds-open-text": "",
-						}
+					? {}
 					:
 						{
 							"data-cds-row-title": label,

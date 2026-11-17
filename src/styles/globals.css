@@ -2034,6 +2034,23 @@ input.cds-input::-webkit-search-cancel-button
 	cursor: pointer;
 }
 
+/*
+ * Upstream open text (c6a992d55 `@layer cds-card`): while a step's text is open in its row, the hovered first line
+ * (`useOpenTextRow` sets the attributes) is clickable and reads in primary ink; the rest stays secondary. Upstream's
+ * cursor is `var(--cds-cursor-interactive)`, which is pointer on the web and default only in the desktop app.
+ */
+@media (hover: hover)
+{
+	[data-cds-open-text][data-cds-line-hot]
+	{
+		cursor: pointer;
+	}
+	[data-cds-open-text][data-cds-line-hot] [data-cds-first-line]::first-line
+	{
+		color: var(--color-primary);
+	}
+}
+
 /* Upstream `page-fade-t`: the sticky page header's scroll fade, page bg to transparent downward. */
 @utility page-fade-t
 {
