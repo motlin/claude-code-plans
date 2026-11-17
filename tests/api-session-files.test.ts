@@ -2,11 +2,16 @@ import {mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
-import {SessionFilesResponseSchema, sessionFilesQueryOptions} from "../src/lib/api/session-files";
+import {folderMentionsUrl, SessionFilesResponseSchema, sessionFilesQueryOptions} from "../src/lib/api/session-files";
 import {openTestDb, type AppDb} from "../src/lib/db/connection";
 import * as schema from "../src/lib/db/schema";
 import {fuzzyFilePaths, gitCheckIgnored, listDir, walkWorkspace, WorkspacePathError} from "../src/lib/workspace-files";
-import {handleSessionFilesRequest, type SessionFilesHandlerDependencies} from "../src/lib/workspace-files-handler";
+import
+{
+	handleFolderFilesRequest,
+	handleSessionFilesRequest,
+	type SessionFilesHandlerDependencies,
+} from "../src/lib/workspace-files-handler";
 import {runGit} from "./git-fixture";
 
 const SESSION_ID = "session-files-100";
@@ -812,6 +817,161 @@ describe("GET /api/sessions/$id/files", () =>
 	});
 });
 
+describe("GET /api/home/files", () =>
+{
+	async function folderRequest(
+		cwd: string,
+		parameters: Record<string, string>,
+		allowedRoots?: string[],
+	): Promise<
+	{
+		status: number;
+		body: unknown;
+	}>
+	{
+		const response = await handleFolderFilesRequest(
+			cwd,
+			new URLSearchParams(parameters),
+			dependencies(allowedRoots),
+		);
+		return {
+			status: response.status,
+			body: await response.json(),
+		};
+	}
+
+	it("lists the folder's top-level entries", async () =>
+	{
+		expect(
+			await folderRequest(
+				root,
+				{
+					markIgnored: "1",
+				},
+			),
+		).toStrictEqual(
+			{
+				status: 200,
+				body:
+				{
+					kind: "listing",
+					dir: "",
+					entries: rootEntries(),
+					partial: false,
+				},
+			},
+		);
+	});
+
+	it("fuzzy-searches the folder with tracked matches first", async () =>
+	{
+		runGit(root, ["init", "--quiet"]);
+		runGit(root, ["config", "core.excludesFile", "/dev/null"]);
+		write(".gitignore", "docs/\n");
+		write("docs/readme-notes.md");
+
+		expect(
+			await folderRequest(
+				root,
+				{
+					q: "readme",
+					markIgnored: "1",
+				},
+			),
+		).toStrictEqual(
+			{
+				status: 200,
+				body:
+				{
+					kind: "search",
+					dir: "",
+					query: "readme",
+					results: [
+						{
+							name: "README.md",
+							relPath: "README.md",
+							isDirectory: false,
+						},
+						{
+							name: "readme-notes.md",
+							relPath: "docs/readme-notes.md",
+							isDirectory: false,
+							ignored: true,
+						},
+					],
+					partial: false,
+					capped: false,
+				},
+			},
+		);
+	});
+
+	it("refuses a folder outside the allowed roots", async () =>
+	{
+		expect(await folderRequest(root, {}, [outside])).toStrictEqual(
+			{
+				status: 403,
+				body:
+				{
+					error: "Working directory is not allowed",
+				},
+			},
+		);
+	});
+
+	it("reports a missing or non-directory folder", async () =>
+	{
+		expect(
+			{
+				missing: await folderRequest(join(base, "gone"), {}),
+				file: await folderRequest(join(root, "README.md"), {}),
+			},
+		).toStrictEqual(
+			{
+				missing:
+				{
+					status: 200,
+					body:
+					{
+						kind: "no-cwd",
+					},
+				},
+				file:
+				{
+					status: 200,
+					body:
+					{
+						kind: "no-cwd",
+					},
+				},
+			},
+		);
+	});
+
+	it("rejects a relative or empty folder", async () =>
+	{
+		const rejected =
+		{
+			status: 400,
+			body:
+			{
+				error: "An absolute working directory is required",
+			},
+		};
+		expect(
+			{
+				relative: await folderRequest("workspace", {}),
+				empty: await folderRequest("", {}),
+			},
+		).toStrictEqual(
+			{
+				relative: rejected,
+				empty: rejected,
+			},
+		);
+	});
+});
+
 describe("session files client", () =>
 {
 	it("parses every response kind strictly", () =>
@@ -849,5 +1009,20 @@ describe("session files client", () =>
 				},
 			).queryKey,
 		).toStrictEqual(["session-files", "abc", "src", "", true]);
+	});
+
+	it("builds the folder-keyed mention URL", () =>
+	{
+		expect(
+			{
+				empty: folderMentionsUrl("/a b", ""),
+				query: folderMentionsUrl("/repo", "src/i"),
+			},
+		).toStrictEqual(
+			{
+				empty: "/api/home/files?cwd=%2Fa+b&markIgnored=1",
+				query: "/api/home/files?cwd=%2Frepo&q=src%2Fi&markIgnored=1",
+			},
+		);
 	});
 });

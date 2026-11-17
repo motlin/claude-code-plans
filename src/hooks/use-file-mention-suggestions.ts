@@ -1,7 +1,13 @@
 import {useEffect, useState} from "react";
 
 import {apiFetch} from "../lib/api/client";
-import {fileMentionsUrl, type SessionFilesEntry, SessionFilesResponseSchema} from "../lib/api/session-files";
+import
+{
+	fileMentionsUrl,
+	folderMentionsUrl,
+	type SessionFilesEntry,
+	SessionFilesResponseSchema,
+} from "../lib/api/session-files";
 import {FILE_MENTION_CAP, FILE_MENTION_DEBOUNCE_MS, HIDDEN_MENTION_NAMES} from "../lib/file-mentions";
 
 export interface FileMentionSuggestions
@@ -11,27 +17,49 @@ export interface FileMentionSuggestions
 	entries: SessionFilesEntry[];
 }
 
+/** Where "@" looks for files: a session's working directory, or (on the home draft) the chosen project folder. */
+export type FileMentionSource =
+	|
+	  {
+			sessionId: string;
+	  }
+	|
+	  {
+			folder: string;
+	  };
+
 /**
- * Debounced "@" suggestions for the session's working directory: the
+ * Debounced "@" suggestions for the source's directory: the
  * top-level listing for an empty query, else a fuzzy search, minus VCS/OS
  * junk entries, capped at 15.
  * The last answered query stays visible while the next one is in flight.
  */
 export function useFileMentionSuggestions(
-	sessionId: string | undefined,
+	source: FileMentionSource | undefined,
 	query: string | null,
 ): FileMentionSuggestions | null
 {
 	const [suggestions, setSuggestions] = useState<FileMentionSuggestions | null>(null);
+	// Keyed on the built URL's prefix, not the source object, so a re-render doesn't restart the debounce.
+	const sessionId = source !== undefined && "sessionId" in source ? source.sessionId : undefined;
+	const folder = source !== undefined && "folder" in source ? source.folder : undefined;
+	const active = sessionId !== undefined || folder !== undefined;
 
 	useEffect(() =>
 	{
-		if (sessionId === undefined || query === null) return undefined;
+		if (query === null) return undefined;
+		const url =
+			sessionId === undefined
+				? folder === undefined
+					? undefined
+					: folderMentionsUrl(folder, query)
+				: fileMentionsUrl(sessionId, query);
+		if (url === undefined) return undefined;
 		const controller = new AbortController();
 		const timer = setTimeout(() =>
 		{
 			apiFetch(
-				fileMentionsUrl(sessionId, query),
+				url,
 				SessionFilesResponseSchema,
 				{
 					signal: controller.signal,
@@ -71,7 +99,7 @@ export function useFileMentionSuggestions(
 			clearTimeout(timer);
 			controller.abort();
 		};
-	}, [sessionId, query]);
+	}, [sessionId, folder, query]);
 
-	return sessionId === undefined || query === null ? null : suggestions;
+	return !active || query === null ? null : suggestions;
 }

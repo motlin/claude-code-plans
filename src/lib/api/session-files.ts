@@ -102,6 +102,16 @@ export function fileMentionsUrl(sessionId: string, query: string): string
 	return `/api/sessions/${encodeURIComponent(sessionId)}/files?${parameters.toString()}`;
 }
 
+/** The home draft's "@" feed: the same as `fileMentionsUrl`, rooted at a folder instead of a session. */
+export function folderMentionsUrl(cwd: string, query: string): string
+{
+	const parameters = new URLSearchParams();
+	parameters.set("cwd", cwd);
+	if (query !== "") parameters.set("q", query);
+	parameters.set("markIgnored", "1");
+	return `/api/home/files?${parameters.toString()}`;
+}
+
 /** The session's workspace listing (or fuzzy search), with paths in the query string. */
 export const sessionFilesQueryOptions = (sessionId: string, query: SessionFilesQuery) =>
 	queryOptions(

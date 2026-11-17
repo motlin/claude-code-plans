@@ -1,6 +1,7 @@
 import {eq} from "drizzle-orm";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {realpath, stat} from "node:fs/promises";
+import {isAbsolute} from "node:path";
 import
 {
 	SessionFilesErrorResponseSchema,
@@ -34,6 +35,9 @@ export interface SessionFilesHandlerDependencies
 	allowedRoots(): Promise<string[]>;
 	checkIgnored: IgnoreCheck;
 }
+
+/** A folder-keyed request needs no session index. */
+export type FolderFilesHandlerDependencies = Omit<SessionFilesHandlerDependencies, "index">;
 
 function defaultDependencies(): SessionFilesHandlerDependencies
 {
@@ -131,19 +135,6 @@ export async function handleSessionFilesRequest(
 ): Promise<Response>
 {
 	if (!sessionId) return errorResponse("A session id is required", 400);
-	const hideIgnoredFlag = parameters.get("hideIgnored") ?? "0";
-	if (hideIgnoredFlag !== "0" && hideIgnoredFlag !== "1")
-	{
-		return errorResponse("Invalid hideIgnored flag", 400);
-	}
-	const markIgnoredFlag = parameters.get("markIgnored") ?? "0";
-	if (markIgnoredFlag !== "0" && markIgnoredFlag !== "1")
-	{
-		return errorResponse("Invalid markIgnored flag", 400);
-	}
-	const dir = parameters.get("dir") ?? "";
-	const query = (parameters.get("q") ?? "").trim();
-
 	const resolvedDependencies = dependencies ?? defaultDependencies();
 	const session = resolvedDependencies.index
 		.select(
@@ -161,8 +152,44 @@ export async function handleSessionFilesRequest(
 				kind: "no-cwd",
 			},
 		);
+	return listFolderFiles(session.cwd, parameters, resolvedDependencies);
+}
 
-	const root = await resolveDirectory(session.cwd);
+/**
+ * `GET /api/home/files?cwd=<abs>&q=<query>&markIgnored=1`: the same listing or
+ * search as the session route, rooted at a folder instead of a session's
+ * working directory (the home draft's chosen project, before any session exists).
+ */
+export async function handleFolderFilesRequest(
+	cwd: string,
+	parameters: URLSearchParams,
+	dependencies?: FolderFilesHandlerDependencies,
+): Promise<Response>
+{
+	if (!isAbsolute(cwd)) return errorResponse("An absolute working directory is required", 400);
+	return listFolderFiles(cwd, parameters, dependencies ?? defaultDependencies());
+}
+
+async function listFolderFiles(
+	cwd: string,
+	parameters: URLSearchParams,
+	resolvedDependencies: FolderFilesHandlerDependencies,
+): Promise<Response>
+{
+	const hideIgnoredFlag = parameters.get("hideIgnored") ?? "0";
+	if (hideIgnoredFlag !== "0" && hideIgnoredFlag !== "1")
+	{
+		return errorResponse("Invalid hideIgnored flag", 400);
+	}
+	const markIgnoredFlag = parameters.get("markIgnored") ?? "0";
+	if (markIgnoredFlag !== "0" && markIgnoredFlag !== "1")
+	{
+		return errorResponse("Invalid markIgnored flag", 400);
+	}
+	const dir = parameters.get("dir") ?? "";
+	const query = (parameters.get("q") ?? "").trim();
+
+	const root = await resolveDirectory(cwd);
 	if (root === null)
 		return filesResponse(
 			{

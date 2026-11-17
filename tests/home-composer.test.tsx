@@ -128,6 +128,27 @@ let launchCalls: LaunchCall[] = [];
 let launchResponse: () => Promise<Response> = async () => new Promise<Response>(() => {});
 let folderStatusCalls: string[] = [];
 let folderStatusResponse: (() => Response) | null = null;
+let filesCalls: string[] = [];
+let projectsData = PROJECTS;
+
+const FILES_LISTING =
+{
+	kind: "listing",
+	dir: "",
+	entries: [
+		{
+			name: "src",
+			relPath: "src",
+			isDirectory: true,
+		},
+		{
+			name: "README.md",
+			relPath: "README.md",
+			isDirectory: false,
+		},
+	],
+	partial: false,
+};
 
 async function fetchMock(url: string, init?: RequestInit): Promise<Response>
 {
@@ -135,6 +156,11 @@ async function fetchMock(url: string, init?: RequestInit): Promise<Response>
 	{
 		folderStatusCalls.push(url);
 		if (folderStatusResponse !== null) return folderStatusResponse();
+	}
+	if (url.startsWith("/api/home/files?"))
+	{
+		filesCalls.push(url);
+		return Response.json(FILES_LISTING);
 	}
 	if (url === "/api/herdr/launch")
 	{
@@ -179,7 +205,7 @@ async function renderApp(
 			nextCursor: null,
 		},
 	);
-	queryClient.setQueryData(projectsQueryOptions().queryKey, PROJECTS);
+	queryClient.setQueryData(projectsQueryOptions().queryKey, projectsData);
 	queryClient.setQueryData(
 		composerDefaultsQueryOptions.queryKey,
 		{
@@ -307,6 +333,8 @@ describe("HomeComposer", () =>
 		launchCalls = [];
 		folderStatusCalls = [];
 		folderStatusResponse = null;
+		filesCalls = [];
+		projectsData = PROJECTS;
 		launchResponse = async () => new Promise<Response>(() => {});
 		TestEventSource.current = null;
 		setPendingLaunchGroup(null);
@@ -651,6 +679,137 @@ describe("HomeComposer", () =>
 				},
 			},
 		);
+	});
+
+	describe("draft @ file mentions", () =>
+	{
+		const IT_S_FILES = "/api/home/files?cwd=%2Fusers%2Fdev%2Fit%27s&markIgnored=1";
+
+		async function findMentionRows(): Promise<(string | null)[]>
+		{
+			const listbox = await screen.findByRole("listbox");
+			return within(listbox)
+				.getAllByRole("option")
+				.map((row) => row.textContent);
+		}
+
+		it("lists the chosen folder's files for a bare @", async () =>
+		{
+			await renderApp();
+			await typePrompt("@");
+
+			expect(
+				{
+					rows: await findMentionRows(),
+					calls: filesCalls,
+				},
+			).toStrictEqual(
+				{
+					rows: ["src", "README.md"],
+					calls: [IT_S_FILES],
+				},
+			);
+		});
+
+		it("inserts the accepted folder and launches with the @path in the prompt and the folder as cwd", async () =>
+		{
+			await renderApp();
+			const textarea = await typePrompt("@");
+			await findMentionRows();
+			fireEvent.keyDown(
+				textarea,
+				{
+					key: "Enter",
+				},
+			);
+			const accepted = (textarea as HTMLTextAreaElement).value;
+			await typePrompt("@src fix");
+			fireEvent.click(
+				screen.getByRole(
+					"button",
+					{
+						name: "Send",
+					},
+				),
+			);
+
+			await waitFor(() =>
+			{
+				expect(launchCalls.length).toBe(1);
+			});
+			expect(
+				{
+					accepted,
+					body: launchBody(launchCalls[0]),
+				},
+			).toStrictEqual(
+				{
+					accepted: "@src ",
+					body:
+					{
+						cwd: "/users/dev/it's",
+						prompt: "@src fix",
+					},
+				},
+			);
+		});
+
+		it("re-queries the newly chosen folder while @ is open", async () =>
+		{
+			await renderApp();
+			await typePrompt("@");
+			await findMentionRows();
+			fireEvent.click(
+				screen.getByRole(
+					"combobox",
+					{
+						name: /^Folder: /,
+					},
+				),
+			);
+			fireEvent.click(
+				await screen.findByRole(
+					"option",
+					{
+						name: "newest",
+					},
+				),
+			);
+
+			await waitFor(() =>
+			{
+				expect(filesCalls).toStrictEqual([
+					IT_S_FILES,
+					"/api/home/files?cwd=%2Fusers%2Fdev%2Fnewest&markIgnored=1",
+				]);
+			});
+		});
+
+		it("makes no files request and opens no menu without a project", async () =>
+		{
+			projectsData = [];
+			await renderApp();
+			await typePrompt("@");
+			await act(async () =>
+			{
+				await new Promise((resolve) =>
+				{
+					setTimeout(resolve, 300);
+				});
+			});
+
+			expect(
+				{
+					open: screen.queryByRole("listbox"),
+					calls: filesCalls,
+				},
+			).toStrictEqual(
+				{
+					open: null,
+					calls: [],
+				},
+			);
+		});
 	});
 
 	it("names the CLI's default model when settings.json sets none", async () =>

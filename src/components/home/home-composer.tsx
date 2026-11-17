@@ -473,6 +473,8 @@ export function HomeComposer({
 				subscribePrefill={onHomeComposerPrefillRequest}
 				bypassPermissionsAllowed={bypassPermissionsAllowed}
 				permissionCwd={project?.projectPath}
+				mentionFolder={project?.projectPath}
+				mentionCwd={project?.projectPath}
 				onPermissionModePick={folderModes.remember}
 				launchOptions={launchDraft.options}
 				onLaunchOptionsChange={launchDraft.set}

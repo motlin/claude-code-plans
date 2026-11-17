@@ -19,7 +19,7 @@ import type {ThemedToken} from "@shikijs/core";
 
 import {useBandEnter} from "../hooks/use-band-enter";
 import {useComposerDraft} from "../hooks/use-composer-draft";
-import {useFileMentionSuggestions} from "../hooks/use-file-mention-suggestions";
+import {type FileMentionSource, useFileMentionSuggestions} from "../hooks/use-file-mention-suggestions";
 import type {LiveLaunchControls} from "../hooks/use-live-launch-options";
 import {useIsMac, useIsWindows} from "../hooks/use-is-mac";
 import {useShortcut, useShortcutKeys} from "../hooks/use-shortcut";
@@ -315,6 +315,8 @@ interface ComposerProps
 	live?: LiveLaunchControls | undefined;
 	/** The session whose working directory feeds the "@" file mention popup. */
 	mentionSessionId?: string | undefined;
+	/** Without a session, the folder whose files feed the "@" popup (the home draft's chosen project). */
+	mentionFolder?: string | undefined;
 	/** That session's working directory: mention and path chips' file-actions menus resolve against it. */
 	mentionCwd?: string | undefined;
 	/** Prompts queued while the live session works, shown as chips above the card. */
@@ -879,6 +881,7 @@ export function Composer({
 	tryAutoCoach,
 	live,
 	mentionSessionId,
+	mentionFolder,
 	mentionCwd,
 	queue,
 	onQueueForLater,
@@ -1451,9 +1454,21 @@ export function Composer({
 	const paintedOverlayRef = useRef<HTMLDivElement>(null);
 	const argumentHintSrId = `skill-arg-hint-sr-${useId()}`;
 
+	const mentionSource: FileMentionSource | undefined =
+		mentionSessionId === undefined
+			? mentionFolder === undefined
+				? undefined
+				:
+					{
+						folder: mentionFolder,
+					}
+			:
+				{
+					sessionId: mentionSessionId,
+				};
 	// A caret right after an accepted chip isn't a query: upstream's atom never reopens the menu.
 	const trigger =
-		mentionSessionId === undefined || bashMode || slashOpen || mentionEndingAt(mentions, caret) !== undefined
+		mentionSource === undefined || bashMode || slashOpen || mentionEndingAt(mentions, caret) !== undefined
 			? null
 			: fileMentionTrigger(prompt, caret);
 	// Esc suppresses the trigger at `start` while its token extends the dismissed one, as upstream does.
@@ -1468,11 +1483,12 @@ export function Composer({
 		isMentionSuppressed(dismissedMention.token, `@${trigger.query}`);
 	if (dismissedMention !== null && !mentionSuppressed) setDismissedMention(null);
 	const mention = mentionSuppressed ? null : trigger;
-	const suggestions = useFileMentionSuggestions(mentionSessionId, mention?.query ?? null);
+	const suggestions = useFileMentionSuggestions(mentionSource, mention?.query ?? null);
+	const mentionsOn = mentionSource !== undefined;
 	useEffect(() =>
 	{
-		if (mentionSessionId !== undefined) void preloadFileTypeIcons();
-	}, [mentionSessionId]);
+		if (mentionsOn) void preloadFileTypeIcons();
+	}, [mentionsOn]);
 	const
 	{
 		AttachedContextChips,
