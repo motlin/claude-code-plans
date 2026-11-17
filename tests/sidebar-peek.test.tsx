@@ -193,49 +193,146 @@ beforeEach(() =>
 
 describe("collapsed sidebar peek", () =>
 {
-	it("floats a transparent 24px trigger with a 16px icon at 12,12", async () =>
+	it("floats a transparent 28px r7 sm trigger with a 16px icon at 12,8", async () =>
 	{
 		const trigger = await renderCollapsedSidebar();
 		const root = screen.getByTestId("sidebar-collapsed");
+		const bridge = screen.getByTestId("sidebar-peek-bridge");
 
 		expect(
 			{
-				root: ["left-3", "top-3"].filter((token) => root.classList.contains(token)),
-				trigger: ["size-6", "[&_svg]:size-4", "text-primary"].filter((token) =>
-					trigger.classList.contains(token),
-				),
+				root: ["left-[10px]", "top-1.5", "touch:top-2"].filter((token) => root.classList.contains(token)),
+				bridge: ["-left-[10px]"].filter((token) => bridge.classList.contains(token)),
+				trigger: [
+					"df-compact-trigger",
+					"m-0.5",
+					"size-7",
+					"rounded-[var(--radius-control-sm)]",
+					"[&_svg]:size-4",
+					"text-primary",
+				].filter((token) => trigger.classList.contains(token)),
+				dataSize: trigger.getAttribute("data-size"),
+				testId: trigger.getAttribute("data-testid"),
 				restingBackground: [...trigger.classList].filter((token) => token.startsWith("bg-")),
 			},
 		).toEqual(
 			{
-				root: ["left-3", "top-3"],
-				trigger: ["size-6", "[&_svg]:size-4", "text-primary"],
+				root: ["left-[10px]", "top-1.5", "touch:top-2"],
+				bridge: ["-left-[10px]"],
+				trigger: [
+					"df-compact-trigger",
+					"m-0.5",
+					"size-7",
+					"rounded-[var(--radius-control-sm)]",
+					"[&_svg]:size-4",
+					"text-primary",
+				],
+				dataSize: "sm",
+				testId: "sidebar-compact-trigger",
 				restingBackground: [],
 			},
 		);
 	});
 
-	it("puts the expanded Hide sidebar toggle at the same 12,12 spot in secondary ink", async () =>
+	it("gives the expanded Hide sidebar toggle upstream's sm geometry in the 32px titlebar slot", async () =>
 	{
 		const toggle = await renderExpandedSidebar();
 		const titlebar = screen.getByTestId("sidebar-titlebar");
 		const slot = screen.getByTestId("sidebar-toggle-slot");
+		const nav = screen.getByRole(
+			"navigation",
+			{
+				name: "Sidebar",
+			},
+		);
 
 		expect(
 			{
 				inTitlebar: titlebar.contains(toggle),
-				titlebarPaddingX: titlebar.classList.contains("px-2"),
-				slot: ["w-8", "self-start", "pt-3"].filter((token) => slot.classList.contains(token)),
-				toggle: ["size-6", "text-secondary"].filter((token) => toggle.classList.contains(token)),
-				primaryInk: toggle.classList.contains("text-primary"),
+				titlebar: [
+					"h-11",
+					"items-center",
+					"px-2",
+					"before:w-[var(--sb-rail-shift)]",
+					"before:content-['']",
+				].filter((token) => titlebar.classList.contains(token)),
+				slot: ["flex", "w-8", "shrink-0", "justify-center"].filter((token) => slot.classList.contains(token)),
+				slotOffsets: [...slot.classList].filter((token) => /^(self-|pt-)/.test(token)),
+				dataSize: toggle.getAttribute("data-size"),
+				toggle: [
+					"df-chrome-btn",
+					"size-7",
+					"rounded-[calc(var(--radius-control-sm)+1px)]",
+					"touch:rounded-[var(--radius-control-sm)]",
+					"[&_svg]:size-5",
+					"text-secondary",
+				].filter((token) => toggle.classList.contains(token)),
+				oldSize: ["size-6", "rounded-r5", "[&_svg]:size-4"].filter((token) => toggle.classList.contains(token)),
+				focusRing: ["hide-focus-ring", "focus-visible:outline-hidden", "focus-visible:shadow-focus"].filter(
+					(token) => toggle.classList.contains(token),
+				),
+				railShift: nav.classList.contains("[--sb-rail-shift:2px]"),
+				wordmarkOffset: ["ml-0.5"].filter((token) =>
+					screen
+						.getByRole(
+							"link",
+							{
+								name: "Claude Code Browser",
+							},
+						)
+						.parentElement?.classList.contains(token),
+				),
 			},
 		).toEqual(
 			{
 				inTitlebar: true,
-				titlebarPaddingX: true,
-				slot: ["w-8", "self-start", "pt-3"],
-				toggle: ["size-6", "text-secondary"],
-				primaryInk: false,
+				titlebar: ["h-11", "items-center", "px-2", "before:w-[var(--sb-rail-shift)]", "before:content-['']"],
+				slot: ["flex", "w-8", "shrink-0", "justify-center"],
+				slotOffsets: [],
+				dataSize: "sm",
+				toggle: [
+					"df-chrome-btn",
+					"size-7",
+					"rounded-[calc(var(--radius-control-sm)+1px)]",
+					"touch:rounded-[var(--radius-control-sm)]",
+					"[&_svg]:size-5",
+					"text-secondary",
+				],
+				oldSize: [],
+				focusRing: ["hide-focus-ring", "focus-visible:outline-hidden", "focus-visible:shadow-focus"],
+				railShift: true,
+				wordmarkOffset: ["ml-0.5"],
+			},
+		);
+	});
+
+	it("reveals the expanded Hide toggle at upstream's hover-reveal rules", async () =>
+	{
+		const toggle = await renderExpandedSidebar();
+		const reveal = toggle.parentElement?.parentElement;
+		const classes = [...(reveal?.classList ?? [])];
+
+		expect(
+			{
+				reveal: [
+					"opacity-70",
+					"group-hover/sidebar:opacity-100",
+					"has-[:focus-visible]:opacity-100",
+					"touch:opacity-100",
+					"motion-reduce:transition-none",
+				].filter((token) => classes.includes(token)),
+				coarseOnly: classes.filter((token) => token === "pointer-coarse:opacity-100"),
+			},
+		).toEqual(
+			{
+				reveal: [
+					"opacity-70",
+					"group-hover/sidebar:opacity-100",
+					"has-[:focus-visible]:opacity-100",
+					"touch:opacity-100",
+					"motion-reduce:transition-none",
+				],
+				coarseOnly: [],
 			},
 		);
 	});
@@ -385,8 +482,18 @@ describe("collapsed sidebar peek", () =>
 
 		expect(
 			{
-				fullHeight: ["fixed", "inset-y-0", "left-0", "h-dvh", "w-[288px]", "rounded-none", "pt-[45px]"].filter(
-					(token) => classes.includes(token),
+				fullHeight: [
+					"fixed",
+					"inset-y-0",
+					"left-0",
+					"h-dvh",
+					"w-[288px]",
+					"rounded-none",
+					"pt-[45px]",
+					"touch:pt-[52px]",
+				].filter((token) => classes.includes(token)),
+				header: ["h-11", "touch:h-12"].filter((token) =>
+					within(peek).getByTestId("sidebar-peek-header").classList.contains(token),
 				),
 				card: classes.filter((token) => token === "max-h-[70vh]" || token === "rounded-card"),
 				wordmark: within(peek)
@@ -431,7 +538,17 @@ describe("collapsed sidebar peek", () =>
 			},
 		).toEqual(
 			{
-				fullHeight: ["fixed", "inset-y-0", "left-0", "h-dvh", "w-[288px]", "rounded-none", "pt-[45px]"],
+				fullHeight: [
+					"fixed",
+					"inset-y-0",
+					"left-0",
+					"h-dvh",
+					"w-[288px]",
+					"rounded-none",
+					"pt-[45px]",
+					"touch:pt-[52px]",
+				],
+				header: ["h-11", "touch:h-12"],
 				card: [],
 				wordmark: "/",
 				footerSearch: null,
@@ -513,40 +630,75 @@ describe("collapsed sidebar peek", () =>
 	it.each([
 		{
 			narrowViewport: true,
-			size: "size-8",
-			radius: "rounded-r6",
-			position: ["left-2", "top-2"],
+			touch: false,
+			// The touch: overrides are CSS-gated, so a fine pointer keeps the sm geometry.
+			expected:
+			{
+				dataSize: "sm",
+				trigger: ["m-0.5", "size-7", "rounded-[var(--radius-control-sm)]"],
+				touchOverride: ["touch:m-0", "touch:size-8", "touch:rounded-r6"],
+				position: ["left-[10px]", "top-1.5", "touch:top-2"],
+			},
+		},
+		{
+			narrowViewport: true,
+			touch: true,
+			expected:
+			{
+				dataSize: null,
+				trigger: ["m-0.5", "size-7", "rounded-[var(--radius-control-sm)]"],
+				touchOverride: ["touch:m-0", "touch:size-8", "touch:rounded-r6"],
+				position: ["left-[10px]", "top-1.5", "touch:top-2"],
+			},
 		},
 		{
 			narrowViewport: false,
-			size: "size-6",
-			radius: "rounded-r5",
-			position: ["left-3", "top-3"],
+			touch: true,
+			expected:
+			{
+				dataSize: "sm",
+				trigger: ["m-0.5", "size-7", "rounded-[var(--radius-control-sm)]"],
+				touchOverride: [],
+				position: ["left-[10px]", "top-1.5", "touch:top-2"],
+			},
 		},
 	])(
-		"sizes the collapsed trigger like upstream when narrowViewport=$narrowViewport",
-		async ({narrowViewport, size, radius, position}) =>
+		"sizes the collapsed trigger like upstream when narrowViewport=$narrowViewport and touch=$touch",
+		async ({narrowViewport, touch, expected}) =>
 		{
-			const trigger = await renderCollapsedSidebar(
-				{
-					narrowViewport,
-				},
-			);
-			const root = screen.getByTestId("sidebar-collapsed");
+			vi.stubGlobal("matchMedia", (query: string) => (
+			{
+				matches: touch && query === "(pointer: coarse), (hover: none)",
+				media: query,
+				addEventListener: () => undefined,
+				removeEventListener: () => undefined,
+			}));
+			try
+			{
+				const trigger = await renderCollapsedSidebar(
+					{
+						narrowViewport,
+					},
+				);
+				const root = screen.getByTestId("sidebar-collapsed");
 
-			expect(
-				{
-					size: trigger.classList.contains(size),
-					radius: trigger.classList.contains(radius),
-					position: position.map((cls) => root.classList.contains(cls)),
-				},
-			).toEqual(
-				{
-					size: true,
-					radius: true,
-					position: [true, true],
-				},
-			);
+				expect(
+					{
+						dataSize: trigger.getAttribute("data-size"),
+						trigger: ["m-0.5", "size-7", "rounded-[var(--radius-control-sm)]"].filter((token) =>
+							trigger.classList.contains(token),
+						),
+						touchOverride: [...trigger.classList].filter((token) => token.startsWith("touch:")),
+						position: ["left-[10px]", "top-1.5", "touch:top-2"].filter((token) =>
+							root.classList.contains(token),
+						),
+					},
+				).toEqual(expected);
+			}
+			finally
+			{
+				vi.unstubAllGlobals();
+			}
 		},
 	);
 

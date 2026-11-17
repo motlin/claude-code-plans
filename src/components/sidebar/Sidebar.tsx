@@ -28,6 +28,8 @@ import {approvalsQueryOptions} from "../../lib/api/approvals";
 import {notificationsQueryOptions, useMarkNotificationsRead} from "../../lib/api/notifications";
 import {activeSessionsQueryOptions} from "../../lib/api/sessions";
 import {useFizzyLake} from "../../lib/fizzy-lake";
+import {TOUCH_QUERY} from "../../lib/touch-reveal";
+import {useMediaQuery} from "../../lib/use-phone-sheet";
 import {ResizeHandle} from "../ui/resize-handle";
 import {RESIZE_GRIP_PILL, RESIZE_HANDLE_HALF_CLIP_CLASS, RESIZE_LINE_PILL, resizePillClass} from "../ui/resize-pill";
 import
@@ -281,12 +283,16 @@ export function Sidebar({
 				{
 					"--sidebar-width": `${width}px`,
 				}}
-				className="dframe-sidebar group/sidebar relative hidden h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[length:max(var(--cds-toolbar-line,0px),0.5px)] border-[color:var(--sidebar-seam)] bg-[var(--sb-bg)] min-[701px]:flex"
+				className="dframe-sidebar group/sidebar relative hidden [--sb-rail-shift:2px] h-full w-[var(--sidebar-width)] shrink-0 flex-col border-r-[length:max(var(--cds-toolbar-line,0px),0.5px)] border-[color:var(--sidebar-seam)] bg-[var(--sb-bg)] min-[701px]:flex"
 			>
-				<div data-testid="sidebar-titlebar" className="flex h-11 shrink-0 items-center px-2">
-					{/* Pinned to the collapsed trigger's 12,12 spot so the toggle never moves between states. */}
-					<div data-testid="sidebar-toggle-slot" className="flex w-8 shrink-0 justify-center self-start pt-3">
-						<div className="flex opacity-70 transition-opacity duration-[120ms] ease-[cubic-bezier(.32,.72,0,1)] group-hover/sidebar:opacity-100 has-[:focus-visible]:opacity-100 pointer-coarse:opacity-100">
+				<div
+					data-testid="sidebar-titlebar"
+					className="flex h-11 shrink-0 items-center px-2 before:block before:w-[var(--sb-rail-shift)] before:flex-none before:content-['']"
+				>
+					{/* Upstream `$3`/`oF`: docked → cds ghost Button `sm` (comfortable 28px, r7 + 1px panels radius-add) centred
+					    in the `w-[32px]` slot, which the 2px rail-shift `::before` pushes to x=10 → button at 12,8. */}
+					<div data-testid="sidebar-toggle-slot" className="flex w-8 shrink-0 justify-center">
+						<div className="flex opacity-70 transition-opacity duration-[120ms] ease-[cubic-bezier(.32,.72,0,1)] group-hover/sidebar:opacity-100 has-[:focus-visible]:opacity-100 touch:opacity-100 motion-reduce:transition-none">
 							<SidebarToggleButton
 								{...(onToggle
 									?
@@ -295,11 +301,12 @@ export function Sidebar({
 											collapsed: false,
 										}
 									: {})}
-								className="flex size-6 items-center justify-center rounded-r5 text-secondary transition-colors hover:bg-fill-ghost-hover [&_svg]:size-4"
+								size="sm"
+								className="df-chrome-btn flex size-7 items-center justify-center rounded-[calc(var(--radius-control-sm)+1px)] touch:rounded-[var(--radius-control-sm)] text-secondary transition-colors hover:bg-fill-ghost-hover [&_svg]:size-5 hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus"
 							/>
 						</div>
 					</div>
-					<div className="ml-1.5 flex min-w-0 flex-col items-start">
+					<div className="ml-0.5 flex min-w-0 flex-col items-start">
 						<SidebarWordmark />
 					</div>
 				</div>
@@ -515,8 +522,8 @@ export function SidebarEdgeHandle()
 const PEEK_ID = "sidebar-peek-popover";
 
 /**
- * Collapsed desktop sidebar, like claude.ai/code: a transparent 24x24 floating trigger at 12,12
- * (the expanded Hide sidebar toggle's spot) whose hover (or the invisible bridge beneath it)
+ * Collapsed desktop sidebar, like claude.ai/code: a transparent 28×28 r7 trigger at 12,8 (upstream
+ * `.df-compact-trigger[data-size=sm]` in a 32px box at 10,6; 12,10 on touch) whose hover (or the invisible bridge beneath it)
  * slides in upstream's `#frame-peek-popover`: a 288px full-height panel at the left edge whose
  * top padding (45px under panels, 48px otherwise) leaves room for the still-visible trigger beside the wordmark.
  * In the forced-collapse regime (640px to the narrow threshold) a click toggles the peek open instead of expanding
@@ -554,6 +561,8 @@ function CollapsedSidebar({
 {
 	// The peek's top padding follows upstream's `--frame-row-h`, which is still panels-gated in upstream CSS.
 	const panels = useFizzyLake("panels");
+	// Upstream's `wf()` (`!isTouch`): the narrow trigger keeps `sm` only with a fine pointer.
+	const touch = useMediaQuery(TOUCH_QUERY);
 	const [hovering, setHovering] = useState(false);
 	// Upstream's `peeked`: set on the first open so the peek's transition never runs on the collapse frame.
 	const [peeked, setPeeked] = useState(false);
@@ -753,13 +762,14 @@ function CollapsedSidebar({
 				}
 				scheduleClose();
 			}}
-			// Narrow (≤700px) takes upstream's comfortable `h-control w-control` 32px trigger at 8,8, the phone trigger's geometry.
-			className={`group/peek absolute z-50 flex ${narrowViewport ? "left-2 top-2" : "left-3 top-3"}`}
+			// Upstream's collapsed `.dframe-sidebar` box: `--df-collapsed-left` 10px; top (45−1−32)/2 = 6 with a fine
+			// pointer, (48−32)/2 = 8 on touch where `--frame-row-h` is unset.
+			className="group/peek absolute z-50 flex left-[10px] top-1.5 touch:top-2"
 		>
 			<div
 				data-testid="sidebar-peek-bridge"
 				aria-hidden="true"
-				className={`pointer-events-none absolute top-0 h-10 w-[288px] group-data-[hovering]/peek:pointer-events-auto ${narrowViewport ? "-left-2" : "-left-3"}`}
+				className="pointer-events-none absolute top-0 h-10 w-[288px] group-data-[hovering]/peek:pointer-events-auto -left-[10px]"
 			/>
 			<SidebarToggleButton
 				collapsed
@@ -777,7 +787,11 @@ function CollapsedSidebar({
 							},
 						}
 					: {})}
-				className={`relative z-10 flex items-center justify-center text-primary transition-colors hover:bg-fill-ghost-hover [&_svg]:size-4 ${narrowViewport ? "size-8 rounded-r6" : "size-6 rounded-r5"}`}
+				// Upstream `ih`: `sm` unless narrow and touch, which falls back to the size-less 32×32 r8 base rule at 10,8.
+				// The `touch:` classes cover the paint before hydration, when the media query still reads false.
+				size={narrowViewport && touch ? undefined : "sm"}
+				testId="sidebar-compact-trigger"
+				className={`df-compact-trigger draggable-none relative z-10 flex items-center justify-center text-primary transition-colors hover:bg-fill-ghost-hover [&_svg]:size-4 m-0.5 size-7 rounded-[var(--radius-control-sm)]${narrowViewport ? " touch:m-0 touch:size-8 touch:rounded-r6" : ""}`}
 			/>
 			<nav
 				id={PEEK_ID}
@@ -790,10 +804,13 @@ function CollapsedSidebar({
 				data-focus-region="navigation"
 				aria-hidden={hovering ? undefined : true}
 				inert={!hovering}
-				className={`pointer-events-none fixed inset-y-0 left-0 flex h-dvh w-[288px] -translate-x-1 flex-col overflow-hidden rounded-none border-r-[0.5px] border-border bg-surface-popover ${panels ? "pt-[45px]" : "pt-12"} pb-1.5 opacity-0 shadow-[0_0_0_.5px_rgba(0,0,0,.06),0_4px_12px_rgba(0,0,0,.06),0_16px_40px_rgba(0,0,0,.08)] sidebar-peek-motion group-data-[hovering]/peek:pointer-events-auto group-data-[hovering]/peek:translate-x-0 group-data-[hovering]/peek:opacity-100`}
+				className={`pointer-events-none fixed inset-y-0 left-0 flex h-dvh w-[288px] -translate-x-1 flex-col overflow-hidden rounded-none border-r-[0.5px] border-border bg-surface-popover ${panels ? "pt-[45px] touch:pt-[52px]" : "pt-12"} pb-1.5 opacity-0 shadow-[0_0_0_.5px_rgba(0,0,0,.06),0_4px_12px_rgba(0,0,0,.06),0_16px_40px_rgba(0,0,0,.08)] sidebar-peek-motion group-data-[hovering]/peek:pointer-events-auto group-data-[hovering]/peek:translate-x-0 group-data-[hovering]/peek:opacity-100`}
 			>
 				{/* The header row: the trigger stays put over the empty 32px slot, the wordmark sits beside it. */}
-				<div data-testid="sidebar-peek-header" className="absolute inset-x-0 top-0 flex h-11 items-center px-2">
+				<div
+					data-testid="sidebar-peek-header"
+					className="absolute inset-x-0 top-0 flex h-11 touch:h-12 items-center px-2"
+				>
 					<div className="w-8 shrink-0" />
 					<SidebarWordmark className="ml-1.5" />
 				</div>

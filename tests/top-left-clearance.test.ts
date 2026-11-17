@@ -11,7 +11,7 @@ import {ruleStart} from "./css-rule";
 
 describe("top-left clearance", () =>
 {
-	it("clears the floating 24px toggle at 12,12 when the desktop sidebar is collapsed", () =>
+	it("clears the floating 28px sm toggle at 12,8 when the desktop sidebar is collapsed", () =>
 	{
 		expect(topLeftClearance("collapsed")).toEqual(
 			{
@@ -24,8 +24,8 @@ describe("top-left clearance", () =>
 				"--top-left-clearance-start": "41px",
 				"--top-left-clearance-top": "9px",
 				// Upstream shared-styles `--cds-page-header-start-clearance: calc(var(--df-trigger-right) + 8px)`, set only while
-				// collapsed: the toggle's right edge (12 + 24 = 36) plus 8.
-				"--cds-page-header-start-clearance": "44px",
+				// collapsed: `--df-trigger-right` (10 + 32 − 2 = 40, the sm toggle's right edge) plus 8.
+				"--cds-page-header-start-clearance": "48px",
 			},
 		);
 	});

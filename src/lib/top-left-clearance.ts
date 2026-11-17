@@ -20,7 +20,7 @@ export const PHONE_SIDEBAR_TOGGLE =
 
 /**
  * Space the main pane's top-left corner leaves for the sidebar toggle. Collapsed desktop: the
- * floating 24x24 toggle at 12,12, so the titlebar row starts at x=41 and its 32px row at y=9 to
+ * floating 28x28 sm toggle at 12,8, so the titlebar row starts at x=41 and its 32px row at y=9 to
  * line its centre up with the toggle's. Phone: the toggle takes the lead slot, so the row starts
  * 1px after it at x=41 (the titlebar's 7px lead spacer then puts the title text at 48), and the
  * row sits 9px down as upstream's phone header.
@@ -50,8 +50,11 @@ export function topLeftClearance(layout: SidebarLayout):
 	}
 }
 
-/** The collapsed desktop toggle's right edge: 24px wide at x=12. */
-const COLLAPSED_TOGGLE_RIGHT = 36;
+/**
+ * Upstream's `--df-trigger-right` at ≥701px on web: `--df-collapsed-left` 10 + `--df-pill-size` 32 − 2 = 40,
+ * the collapsed sm toggle's right edge (28px wide at x=12).
+ */
+const COLLAPSED_TOGGLE_RIGHT = 40;
 
 /**
  * The clearance as CSS vars for <main>; sticky titlebars read them with a 0px fallback. Collapsed, it also sets upstream

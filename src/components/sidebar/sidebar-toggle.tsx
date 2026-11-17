@@ -36,6 +36,8 @@ export function SidebarToggleButton({
 	onClick = toggleSidebarCollapsed,
 	collapsed: collapsedOverride,
 	controls,
+	size,
+	testId,
 }: {
 	className?: string;
 	onClick?: () => void;
@@ -46,6 +48,9 @@ export function SidebarToggleButton({
 		id: string;
 		expanded: boolean;
 	};
+	/** Upstream's cds Button `data-size`; omitted when the button takes the size-less base geometry. */
+	size?: "sm" | undefined;
+	testId?: string;
 })
 {
 	const state = useSidebarState();
@@ -99,6 +104,8 @@ export function SidebarToggleButton({
 				aria-keyshortcuts={ariaKeyShortcuts}
 				aria-controls={controls?.id}
 				aria-expanded={controls?.expanded}
+				data-size={size}
+				data-testid={testId}
 				// Collapsed, the Show sidebar trigger stands in for the navigation F6 stop, as upstream.
 				{...(collapsed
 					?

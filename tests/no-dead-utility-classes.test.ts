@@ -68,6 +68,8 @@ const ALLOWLIST: Record<string, string> =
 	"cds-root":
 		"upstream's cds portal-root marker (`rx`); local cds tokens live on :root, so the wrapper needs no styles",
 	"cds-user-message-body": HOOK,
+	"df-chrome-btn": HOOK,
+	"df-compact-trigger": HOOK,
 	"df-family-stub": HOOK,
 	"df-nav-scroll-box": HOOK,
 	"df-session-list": HOOK,
