@@ -152,6 +152,8 @@ export interface ComposerDraft
 	setBashMode: (bashMode: boolean) => void;
 	/** Empties the composer, leaves bash mode, and drops the stored draft immediately (e.g. after a send). */
 	clear: () => void;
+	/** The draft key `text` belongs to: it lags a key switch until the restore lands; null before the first. */
+	textKey: string | null;
 }
 
 /**
@@ -278,5 +280,6 @@ export function useComposerDraft(draftKey: string): ComposerDraft
 		bashMode,
 		setBashMode,
 		clear,
+		textKey: bash?.key ?? null,
 	};
 }

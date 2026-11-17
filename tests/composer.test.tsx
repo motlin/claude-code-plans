@@ -11,7 +11,14 @@ import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
 import {POPOVER_SCROLL_BODY_CLASS} from "../src/components/ui/popover";
 import {localAccountQueryOptions} from "../src/lib/api/local-account";
 import type {ComposerState} from "../src/lib/composer-state";
-import {refillComposer, requestComposerTakeBack} from "../src/lib/context-attach";
+import
+{
+	attachPendingUpload,
+	refillComposer,
+	requestComposerTakeBack,
+	resolvePendingUpload,
+	submitComposer,
+} from "../src/lib/context-attach";
 import {ruleStart} from "./css-rule";
 
 afterEach(() =>
@@ -1774,6 +1781,305 @@ describe("Composer", () =>
 				refillComposer("s1", "hi");
 			});
 			expect(textarea.value).toBe("hi\n\nnew");
+		});
+	});
+
+	describe("refocus when the draft empties", () =>
+	{
+		function mountWithOutside(outside: string, draftKey = "s1")
+		{
+			const host = document.createElement("div");
+			host.innerHTML = outside;
+			document.body.append(host);
+			const view = render(
+				<Composer
+					variant="session"
+					draftKey={draftKey}
+					onSend={() =>
+					{
+					}}
+				/>,
+			);
+			const textarea = screen.getByRole<HTMLTextAreaElement>(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			);
+			const focusOutside = () =>
+			{
+				const target = host.querySelector<HTMLElement>("#outside");
+				if (target === null) throw new Error("no #outside");
+				target.focus();
+			};
+			return {
+				...view,
+				host,
+				textarea,
+				focusOutside,
+			};
+		}
+
+		function type(textarea: HTMLTextAreaElement, value: string): void
+		{
+			fireEvent.change(
+				textarea,
+				{
+					target:
+					{
+						value,
+					},
+				},
+			);
+		}
+
+		afterEach(() =>
+		{
+			document.body.innerHTML = "";
+		});
+
+		it("takes focus back from a link when a send clears the draft", () =>
+		{
+			const {textarea, focusOutside} = mountWithOutside('<a id="outside" href="#x">x</a>');
+			type(textarea, "hi");
+			focusOutside();
+			act(() =>
+			{
+				submitComposer("s1");
+			});
+			expect(
+				{
+					value: textarea.value,
+					focused: document.activeElement === textarea,
+				},
+			).toStrictEqual(
+				{
+					value: "",
+					focused: true,
+				},
+			);
+		});
+
+		it("leaves focus in an open menu", () =>
+		{
+			const {textarea, focusOutside} = mountWithOutside('<div role="menu"><button id="outside">x</button></div>');
+			type(textarea, "hi");
+			focusOutside();
+			act(() =>
+			{
+				submitComposer("s1");
+			});
+			expect(
+				{
+					focused: document.activeElement === textarea,
+				},
+			).toStrictEqual(
+				{
+					focused: false,
+				},
+			);
+		});
+
+		it("leaves focus in another input", () =>
+		{
+			const {textarea, focusOutside} = mountWithOutside('<input id="outside">');
+			type(textarea, "hi");
+			focusOutside();
+			act(() =>
+			{
+				submitComposer("s1");
+			});
+			expect(
+				{
+					focused: document.activeElement === textarea,
+				},
+			).toStrictEqual(
+				{
+					focused: false,
+				},
+			);
+		});
+
+		it("does not move focus when the draft changes but stays non-empty", () =>
+		{
+			const {textarea, focusOutside} = mountWithOutside('<a id="outside" href="#x">x</a>');
+			focusOutside();
+			type(textarea, "hi");
+			expect(
+				{
+					focused: document.activeElement === textarea,
+				},
+			).toStrictEqual(
+				{
+					focused: false,
+				},
+			);
+		});
+
+		it("takes focus back when a send held for an upload lands after focus moved", async () =>
+		{
+			const {textarea, focusOutside} = mountWithOutside('<a id="outside" href="#x">x</a>');
+			type(textarea, "hi");
+			let id: string | undefined;
+			act(() =>
+			{
+				id = attachPendingUpload(
+					"s1",
+					{
+						kind: "image",
+						name: "shot.png",
+						previewUrl: "blob:shot",
+					},
+				);
+			});
+			if (id === undefined) throw new Error("no pending chip");
+			const pendingId = id;
+			act(() =>
+			{
+				submitComposer("s1");
+			});
+			focusOutside();
+			await act(async () =>
+			{
+				resolvePendingUpload(
+					"s1",
+					pendingId,
+					{
+						kind: "image",
+						path: "/tmp/shot.png",
+						name: "shot.png",
+					},
+				);
+				await Promise.resolve();
+			});
+			await waitFor(() =>
+			{
+				expect(textarea.value).toBe("");
+			});
+			expect(
+				{
+					focused: document.activeElement === textarea,
+				},
+			).toStrictEqual(
+				{
+					focused: true,
+				},
+			);
+		});
+
+		function rerenderKey(view: ReturnType<typeof mountWithOutside>, draftKey: string): void
+		{
+			view.rerender(
+				<Composer
+					variant="session"
+					draftKey={draftKey}
+					onSend={() =>
+					{
+					}}
+				/>,
+			);
+		}
+
+		it("a draft-key switch leaves focus in another input", () =>
+		{
+			const view = mountWithOutside('<input id="outside">');
+			type(view.textarea, "x");
+			view.focusOutside();
+			rerenderKey(view, "s2");
+			expect(
+				{
+					focusedId: document.activeElement?.id,
+				},
+			).toStrictEqual(
+				{
+					focusedId: "outside",
+				},
+			);
+		});
+
+		it("a draft-key switch leaves focus in a listbox", () =>
+		{
+			const view = mountWithOutside('<div role="listbox"><div id="outside" tabindex="-1">x</div></div>');
+			view.focusOutside();
+			rerenderKey(view, "s2");
+			expect(
+				{
+					focusedId: document.activeElement?.id,
+				},
+			).toStrictEqual(
+				{
+					focusedId: "outside",
+				},
+			);
+		});
+
+		it("a draft-key switch on a touch screen leaves focus alone", () =>
+		{
+			vi.stubGlobal("matchMedia", (query: string) => (
+			{
+				matches: query === "(pointer: coarse)",
+				media: query,
+				onchange: null,
+				addEventListener: () =>
+				{
+				},
+				removeEventListener: () =>
+				{
+				},
+				addListener: () =>
+				{
+				},
+				removeListener: () =>
+				{
+				},
+				dispatchEvent: () => false,
+			}));
+			Object.defineProperty(
+				navigator,
+				"maxTouchPoints",
+				{
+					configurable: true,
+					value: 1,
+				},
+			);
+			try
+			{
+				// Leaving a non-empty draft for an empty one is a swap, not an emptying change, so nothing refocuses.
+				const view = mountWithOutside('<a id="outside" href="#x">x</a>');
+				type(view.textarea, "x");
+				view.focusOutside();
+				rerenderKey(view, "s2");
+				expect(
+					{
+						focusedId: document.activeElement?.id,
+					},
+				).toStrictEqual(
+					{
+						focusedId: "outside",
+					},
+				);
+			}
+			finally
+			{
+				Reflect.deleteProperty(navigator, "maxTouchPoints");
+				vi.unstubAllGlobals();
+			}
+		});
+
+		it("a draft-key switch takes focus from a link", () =>
+		{
+			const view = mountWithOutside('<a id="outside" href="#x">x</a>');
+			view.focusOutside();
+			rerenderKey(view, "s2");
+			expect(
+				{
+					focused: document.activeElement === view.textarea,
+				},
+			).toStrictEqual(
+				{
+					focused: true,
+				},
+			);
 		});
 	});
 });

@@ -138,6 +138,7 @@ import
 	shellCommandUnavailableMessage,
 } from "../lib/composer-shell-command";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
+import {focusHeldByField, focusHeldByOverlay, isCoarsePointer, refocusEmptiedEditor} from "../lib/editor-refocus-guard";
 import {showsWorkingPlaceholder, workingPlaceholders} from "../lib/working-placeholder";
 import {useBashHighlight} from "../hooks/use-bash-highlight";
 import {useIsOverflowing} from "../hooks/use-is-overflowing";
@@ -902,6 +903,7 @@ export function Composer({
 		bashMode: draftBashMode,
 		setBashMode,
 		clear: clearDraft,
+		textKey: draftTextKey,
 	} = useComposerDraft(draftKey);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	// Optional: composers rendered outside the app shell (tests, previews) have no toaster.
@@ -1072,15 +1074,60 @@ export function Composer({
 	}, [isStreaming]);
 
 	// Upstream remounts its editor per session, so opening one from the sidebar or palette lands focus in the
-	// prompt; here a session switch keeps this instance, so a new draft key takes the focus a mount would.
+	// prompt; here a session switch keeps this instance, so a new draft key takes the focus a mount would,
+	// under upstream's draft-store swap guards (no overlay or other field holds focus, not a touch screen).
 	const focusedDraftKeyRef = useRef(draftKey);
 	useEffect(() =>
 	{
 		if (focusedDraftKeyRef.current === draftKey) return;
 		focusedDraftKeyRef.current = draftKey;
-		if (disabled || document.activeElement?.closest('[role="dialog"], [role="alertdialog"]')) return;
-		textareaRef.current?.focus();
+		const textarea = textareaRef.current;
+		if (
+			disabled ||
+			textarea === null ||
+			document.activeElement === textarea ||
+			focusHeldByOverlay(textarea) ||
+			focusHeldByField(textarea) ||
+			isCoarsePointer()
+		)
+		{
+			return;
+		}
+		textarea.focus();
 	}, [draftKey, disabled]);
+
+	// Upstream's editor onUpdate (`aY`): a change that leaves the same draft empty while the editor is unfocused
+	// (a send, a held send landing, a bash run, a host command) brings focus back, unless an overlay or another
+	// field holds it. A draft switch, through its restore, is the swap rule above's; typing to empty happens
+	// with focus here.
+	const emptiedRef = useRef(
+		{
+			textKey: draftTextKey,
+			prompt,
+		},
+	);
+	useLayoutEffect(() =>
+	{
+		const previous = emptiedRef.current;
+		emptiedRef.current =
+		{
+			textKey: draftTextKey,
+			prompt,
+		};
+		const textarea = textareaRef.current;
+		if (
+			previous.textKey !== draftTextKey ||
+			previous.prompt === "" ||
+			prompt !== "" ||
+			textarea === null ||
+			document.activeElement === textarea ||
+			disabled
+		)
+		{
+			return;
+		}
+		refocusEmptiedEditor(textarea);
+	}, [prompt, draftTextKey, disabled]);
 
 	// Chrome blurs a focused textarea the moment it turns disabled and never gives focus back, so a brief
 	// `disabled` flicker (a pending herdr send, a pane-state update) left dictation with no target. Note focus
