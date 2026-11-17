@@ -11,9 +11,12 @@ import {Composer} from "../src/components/composer";
 import {SettingsProvider} from "../src/components/settings-provider";
 import {ToastProvider} from "../src/components/toast";
 import {Menu, MenuContent, MenuItem, MenuTrigger} from "../src/components/ui/menu";
+import {type PaneHostApi, PaneHostContext} from "../src/components/panes/pane-host-context";
 import type {SessionDiffResponse} from "../src/lib/api/session-diff";
 import {registerComposer, takeContextChips} from "../src/lib/context-attach";
 import {clearDiffComments, getDiffComments, openDiffCommentDraft, saveDiffComment} from "../src/lib/diff-comments";
+import {clearDiffScrollTarget, diffScrollTarget} from "../src/lib/diff-scroll-target";
+import type {PaneKind} from "../src/lib/pane-layout";
 import {installLocalStorage} from "./fake-storage";
 import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
 
@@ -103,26 +106,29 @@ function renderPane(
 	{
 	},
 	extra: ReactNode = null,
+	host: PaneHostApi | null = null,
 )
 {
 	return render(
-		<SettingsProvider>
-			<ToastProvider>
-				<ChangesPaneView
-					diff={DIFF}
-					scopes={undefined}
-					controls={null}
-					onRefresh={() =>
-					{
-					}}
-					scope="uncommitted"
-					sessionId={SESSION}
-					cwd="/repo"
-				/>
-				<Composer variant="session" draftKey={SESSION} onSend={onSend} />
-				{extra}
-			</ToastProvider>
-		</SettingsProvider>,
+		<PaneHostContext.Provider value={host}>
+			<SettingsProvider>
+				<ToastProvider>
+					<ChangesPaneView
+						diff={DIFF}
+						scopes={undefined}
+						controls={null}
+						onRefresh={() =>
+						{
+						}}
+						scope="uncommitted"
+						sessionId={SESSION}
+						cwd="/repo"
+					/>
+					<Composer variant="session" draftKey={SESSION} onSend={onSend} />
+					{extra}
+				</ToastProvider>
+			</SettingsProvider>
+		</PaneHostContext.Provider>,
 	);
 }
 
@@ -524,9 +530,7 @@ describe("Changes pane line comments", () =>
 		);
 		const queued =
 		{
-			chips: within(chips)
-				.getAllByRole("listitem")
-				.map((chip) => chip.textContent),
+			chips: Array.from(chips.querySelectorAll("[data-cds=CardLink] > .sr-only"), (name) => name.textContent),
 			saved: container.querySelector('[slot="annotation-additions-3"] [data-saved-comment]')?.textContent,
 			sendEnabled: !screen.getByRole<HTMLButtonElement>(
 				"button",
@@ -574,7 +578,7 @@ describe("Changes pane line comments", () =>
 			{
 				queued:
 				{
-					chips: ["greet.ts:2-3Extract a helper"],
+					chips: ["Comment on greet.ts:2-3"],
 					saved: "Lines 2–3Extract a helper",
 					sendEnabled: true,
 				},
@@ -626,7 +630,7 @@ describe("Changes pane line comments", () =>
 			screen.getByRole(
 				"button",
 				{
-					name: "Remove comment on greet.ts:5",
+					name: "Remove Comment on greet.ts:5",
 				},
 			),
 		);
@@ -701,11 +705,7 @@ describe("Changes pane saved comments", () =>
 				name: "Attached context",
 			},
 		);
-		return chips === null
-			? []
-			: within(chips)
-					.getAllByRole("listitem")
-					.map((chip) => chip.textContent);
+		return chips === null ? [] : Array.from(chips.querySelectorAll("blockquote"), (quote) => quote.textContent);
 	}
 
 	it("renders a saved comment as a clickable card with revealed Edit and Delete", () =>
@@ -814,7 +814,7 @@ describe("Changes pane saved comments", () =>
 					border: "var(--color-fill-accent)",
 					deleteButton: null,
 				},
-				chips: ["greet.ts:5Rename it"],
+				chips: ["Rename it"],
 				queued: ["Rename it"],
 				body: "Rename it",
 			},
@@ -957,6 +957,124 @@ describe("Changes pane saved comments", () =>
 		);
 
 		expect(onSend.mock.calls).toStrictEqual([["In `src/greet.ts` at line 5:\nRename it\n\n\nGo", {}]]);
+	});
+
+	describe("revealing a queued comment from its tray tile (upstream onClickAnnotation)", () =>
+	{
+		const openPane = vi.fn<(kind: PaneKind) => void>();
+		const host: PaneHostApi =
+		{
+			layout: {} as PaneHostApi["layout"],
+			openKinds: [],
+			isOpen: () => false,
+			openPane,
+			closePane: () =>
+			{
+			},
+			togglePane: () =>
+			{
+			},
+		};
+
+		afterEach(() =>
+		{
+			openPane.mockReset();
+			clearDiffScrollTarget(SESSION);
+		});
+
+		function tileLink(): HTMLElement
+		{
+			const link = screen
+				.getByRole(
+					"list",
+					{
+						name: "Attached context",
+					},
+				)
+				.querySelector<HTMLElement>("[data-cds=CardLink]");
+			if (link === null) throw new Error("no comment tile CardLink");
+			return link;
+		}
+
+		function revealed(saved: HTMLElement)
+		{
+			const target = diffScrollTarget(SESSION);
+			return {
+				opened: openPane.mock.calls,
+				target:
+					target === undefined
+						? undefined
+						:
+							{
+								...target,
+								nonce: typeof target.nonce,
+							},
+				border: saved.querySelector<HTMLElement>(".group\\/card")?.style.borderColor,
+				editing: within(saved).queryByRole("textbox"),
+			};
+		}
+
+		const REVEALED =
+		{
+			opened: [["changes"]],
+			target:
+			{
+				filePath: "src/greet.ts",
+				nonce: "number",
+				anchor:
+				{
+					side: "additions",
+					line: 5,
+				},
+			},
+			border: "var(--color-fill-accent)",
+			editing: null,
+		};
+
+		it("opens the Changes pane, scrolls to the comment and highlights its card without editing it", () =>
+		{
+			const {container} = renderPane(undefined, null, host);
+			const saved = saveComment(container, "Rename");
+			fireEvent.click(tileLink());
+			expect(revealed(saved)).toStrictEqual(REVEALED);
+		});
+
+		it("does the same on Enter on the focused tile", () =>
+		{
+			const {container} = renderPane(undefined, null, host);
+			const saved = saveComment(container, "Rename");
+			tileLink().focus();
+			fireEvent.keyDown(
+				tileLink(),
+				{
+					key: "Enter",
+				},
+			);
+			expect(revealed(saved)).toStrictEqual(REVEALED);
+		});
+
+		it("drops the highlight on the next pointer press in that file's diff", () =>
+		{
+			const {container} = renderPane(undefined, null, host);
+			const saved = saveComment(container, "Rename");
+			const border = () => saved.querySelector<HTMLElement>(".group\\/card")?.style.borderColor;
+			fireEvent.click(tileLink());
+			const before = border();
+			const file = container.querySelector('[data-diff-file-path="src/greet.ts"]');
+			if (file === null) throw new Error("no file root");
+			fireEvent.pointerDown(file);
+			expect(
+				{
+					before,
+					after: border(),
+				},
+			).toStrictEqual(
+				{
+					before: "var(--color-fill-accent)",
+					after: "",
+				},
+			);
+		});
 	});
 });
 

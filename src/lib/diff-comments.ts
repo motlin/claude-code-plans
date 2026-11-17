@@ -1,5 +1,7 @@
 import {useSyncExternalStore} from "react";
 
+import {scrollToDiffLine} from "./diff-scroll-target";
+
 /**
  * Comments on Changes pane diff lines, per session. An open comment card is a draft; Save comment queues it, and
  * the session's composer sends the queued comments with its next prompt. Saved comments persist per browser in
@@ -48,6 +50,23 @@ export interface DiffCommentEditing
 	bodies: Readonly<Record<string, string>>;
 	editBodies: Readonly<Record<string, string>>;
 	activeId: string | null;
+	/** Upstream's `setActive({highlightOnly: true})`: a saved card drawn active while it stays in read mode. */
+	highlightId: string | null;
+}
+
+function basename(path: string): string
+{
+	return path.slice(path.lastIndexOf("/") + 1) || path;
+}
+
+/**
+ * Upstream `ma`/`Ei`: a comment's file name and line or range, as "demo.ts:3" or "demo.ts:5-7", marked
+ * " (before changes)" when it is on the old side.
+ */
+export function diffCommentWhere(path: string, line: number, endLine: number | undefined, oldSide: boolean): string
+{
+	const where = `${basename(path)}:${endLine !== undefined && endLine !== line ? `${line}-${endLine}` : line}`;
+	return oldSide ? `${where} (before changes)` : where;
 }
 
 const EMPTY: DiffComments =
@@ -60,6 +79,7 @@ const NO_EDITING: DiffCommentEditing =
 	bodies: {},
 	editBodies: {},
 	activeId: null,
+	highlightId: null,
 };
 
 /** Upstream's persist key; the stored shape is `{version: 0, state: {commentsBySession}}`. */
@@ -209,7 +229,12 @@ function updateEditing(sessionId: string, change: (state: DiffCommentEditing) =>
 {
 	const next = change(getDiffCommentEditing(sessionId));
 	editing = new Map(editing);
-	if (Object.keys(next.bodies).length === 0 && Object.keys(next.editBodies).length === 0 && next.activeId === null)
+	if (
+		Object.keys(next.bodies).length === 0 &&
+		Object.keys(next.editBodies).length === 0 &&
+		next.activeId === null &&
+		next.highlightId === null
+	)
 		editing.delete(sessionId);
 	else editing.set(sessionId, next);
 	for (const listener of listeners) listener();
@@ -218,12 +243,12 @@ function updateEditing(sessionId: string, change: (state: DiffCommentEditing) =>
 /** Drops a draft's text and clears the active card when it was this one. */
 function forgetDraft(sessionId: string, id: string): void
 {
-	updateEditing(sessionId, ({bodies, editBodies, activeId}) =>
+	updateEditing(sessionId, ({bodies, activeId, ...state}) =>
 	{
 		const {[id]: _dropped, ...rest} = bodies;
 		return {
+			...state,
 			bodies: rest,
-			editBodies,
 			activeId: activeId === id ? null : activeId,
 		};
 	});
@@ -232,13 +257,14 @@ function forgetDraft(sessionId: string, id: string): void
 /** Drops a saved comment's edit text and clears the active card when it was this one. */
 function forgetEdit(sessionId: string, id: string): void
 {
-	updateEditing(sessionId, ({bodies, editBodies, activeId}) =>
+	updateEditing(sessionId, ({editBodies, activeId, highlightId, ...state}) =>
 	{
 		const {[id]: _dropped, ...rest} = editBodies;
 		return {
-			bodies,
+			...state,
 			editBodies: rest,
 			activeId: activeId === id ? null : activeId,
+			highlightId: highlightId === id ? null : highlightId,
 		};
 	});
 }
@@ -372,6 +398,44 @@ export function activateDiffComment(sessionId: string, id: string): void
 	{
 		...state,
 		activeId: id,
+		highlightId: null,
+	}));
+}
+
+/**
+ * Upstream `onClickAnnotation`'s store half: scrolls the Changes pane to a queued comment's last line
+ * (`scrollToAnnotation`) and highlights its card without opening it for editing (`setActive({highlightOnly})`).
+ */
+export function revealDiffComment(sessionId: string, comment: QueuedDiffComment): void
+{
+	scrollToDiffLine(
+		sessionId,
+		comment.path,
+		{
+			anchor:
+			{
+				side: comment.side,
+				line: comment.endLine ?? comment.line,
+			},
+		},
+	);
+	updateEditing(sessionId, (state) => (
+	{
+		...state,
+		highlightId: comment.id,
+	}));
+}
+
+/** Upstream `clearHighlight`: the next interaction in the highlighted comment's file drops its highlight. */
+export function clearDiffCommentHighlight(sessionId: string, path: string): void
+{
+	const {highlightId} = getDiffCommentEditing(sessionId);
+	if (highlightId === null) return;
+	if (getDiffComments(sessionId).queued.find((comment) => comment.id === highlightId)?.path !== path) return;
+	updateEditing(sessionId, (state) => (
+	{
+		...state,
+		highlightId: null,
 	}));
 }
 

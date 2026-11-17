@@ -130,13 +130,13 @@ export function SavedCommentCard({
 	outdated?: boolean;
 })
 {
-	const {editBodies, activeId} = useDiffCommentEditing(sessionId);
+	const {editBodies, activeId, highlightId} = useDiffCommentEditing(sessionId);
 	const isEditing = activeId === comment.id;
 	return (
 		<div data-saved-comment={comment.id}>
 			<CommentEditor
 				isEditing={isEditing}
-				isActive={isEditing}
+				isActive={isEditing || highlightId === comment.id}
 				autoFocus={isEditing}
 				label={
 					outdated ? (

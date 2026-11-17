@@ -84,6 +84,7 @@ describe("diff comment persistence", () =>
 				bodies: {},
 				editBodies: {},
 				activeId: null,
+				highlightId: null,
 			},
 		);
 	});

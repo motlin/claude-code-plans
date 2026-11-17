@@ -107,7 +107,13 @@ import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
 import {ChangedFilesSidebar} from "./changes-file-tree";
 import {ChangesFindingsBar} from "./changes-findings-bar";
-import {type DiffCommentTarget, openDiffCommentDraft, useDiffComments} from "../../lib/diff-comments";
+import
+{
+	clearDiffCommentHighlight,
+	type DiffCommentTarget,
+	openDiffCommentDraft,
+	useDiffComments,
+} from "../../lib/diff-comments";
 import {detectLanguage} from "../../lib/diff-utils";
 import {DiffContextMenu} from "./diff-context-menu";
 import {DiffFile, type DiffFileAnnotation, DiffFileHeader, DiffFileMenuHost, type DiffLineRange} from "./diff-file";
@@ -1918,7 +1924,19 @@ export function ChangesPaneView({
 									);
 									// Upstream's `[data-diff-file-path]` file root: the scroll-to-line loop runs inside it.
 									return (
-										<div key={file.path} data-diff-file-path={file.path}>
+										<div
+											key={file.path}
+											data-diff-file-path={file.path}
+											// Upstream `clearHighlight`: a press in this file drops a revealed comment's highlight.
+											onPointerDownCapture={
+												sessionId === undefined
+													? undefined
+													: () =>
+														{
+															clearDiffCommentHighlight(sessionId, file.path);
+														}
+											}
+										>
 											{sessionId === undefined ? (
 												changesFile
 											) : (

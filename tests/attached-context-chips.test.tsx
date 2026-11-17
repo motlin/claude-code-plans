@@ -15,6 +15,15 @@ import
 	takeContextChips,
 	useContextChips,
 } from "../src/lib/context-attach";
+import
+{
+	clearDiffComments,
+	getDiffComments,
+	openDiffCommentDraft,
+	type QueuedDiffComment,
+	saveDiffComment,
+	useDiffComments,
+} from "../src/lib/diff-comments";
 
 const SESSION = "session-alice";
 
@@ -2050,5 +2059,162 @@ describe("AttachedContextChips motion", () =>
 			);
 		});
 		vi.restoreAllMocks();
+	});
+});
+
+describe("AttachedContextChips queued comment tiles", () =>
+{
+	function queue(target: Parameters<typeof openDiffCommentDraft>[1], text: string): void
+	{
+		saveDiffComment(SESSION, openDiffCommentDraft(SESSION, target), text);
+	}
+
+	function LiveComments({restoredIds}: {restoredIds?: ReadonlySet<string>})
+	{
+		return (
+			<AttachedContextChips
+				sessionId={SESSION}
+				context={[]}
+				comments={useDiffComments(SESSION).queued}
+				restoredIds={restoredIds}
+			/>
+		);
+	}
+
+	beforeEach(() =>
+	{
+		queue(
+			{
+				path: "src/demo.ts",
+				side: "additions",
+				line: 3,
+			},
+			"Rename this constant",
+		);
+		queue(
+			{
+				path: "src/demo.ts",
+				side: "deletions",
+				line: 5,
+				endLine: 7,
+			},
+			"Restore it",
+		);
+	});
+
+	afterEach(() =>
+	{
+		cleanup();
+		clearDiffComments(SESSION);
+	});
+
+	function texts(container: HTMLElement, selector: string): (string | null)[]
+	{
+		return Array.from(container.querySelectorAll(selector), (element) => element.textContent);
+	}
+
+	it("renders each queued comment as upstream's Comment Quote tile, never restored", () =>
+	{
+		const [first] = getDiffComments(SESSION).queued;
+		const {container} = render(<LiveComments restoredIds={new Set([first?.id ?? ""])} />);
+		const tiles = Array.from(container.querySelectorAll("[data-cds=MessageAttachmentsQuote]"));
+		expect(
+			{
+				names: texts(container, "[data-cds=CardLink] > .sr-only"),
+				quotes: texts(container, "blockquote"),
+				badges: tiles.map((tile) =>
+				{
+					const badge = tile.querySelector("[data-cds=Badge]");
+					const hint = document.getElementById(badge?.getAttribute("aria-describedby") ?? "");
+					return {
+						role: badge?.getAttribute("role"),
+						label: badge?.getAttribute("aria-label"),
+						tabIndex: badge?.getAttribute("tabindex"),
+						hint: hint?.textContent,
+						hidden: hint?.hidden,
+					};
+				}),
+				describedBy: tiles.map((tile) =>
+					(tile.querySelector("[data-cds=CardLink]")?.getAttribute("aria-describedby") ?? "")
+						.split(" ")
+						.map((id) => document.getElementById(id)?.tagName ?? null),
+				),
+				removes: screen
+					.getAllByRole("button")
+					.map((button) => button.getAttribute("aria-label"))
+					.filter((label) => label?.startsWith("Remove ")),
+				restored: tiles.map((tile) => tile.hasAttribute("data-cds-attachment-restored")),
+			},
+		).toStrictEqual(
+			{
+				names: ["Comment on demo.ts:3", "Comment on demo.ts:5-7 (before changes)"],
+				quotes: ["Rename this constant", "Restore it"],
+				badges: [
+					{
+						role: "img",
+						label: "Comment",
+						tabIndex: "0",
+						hint: "demo.ts:3",
+						hidden: true,
+					},
+					{
+						role: "img",
+						label: "Comment",
+						tabIndex: "0",
+						hint: "demo.ts:5-7 (before changes)",
+						hidden: true,
+					},
+				],
+				describedBy: [
+					["BLOCKQUOTE", "SPAN", "SPAN"],
+					["BLOCKQUOTE", "SPAN", "SPAN"],
+				],
+				removes: ["Remove Comment on demo.ts:3", "Remove Comment on demo.ts:5-7 (before changes)"],
+				restored: [false, false],
+			},
+		);
+	});
+
+	it("removes a focused comment tile on Delete and focuses the next tile's CardLink", () =>
+	{
+		const {container} = render(<LiveComments />);
+		const links = () => Array.from(container.querySelectorAll<HTMLElement>("[data-cds=CardLink]"));
+		links()[0]?.focus();
+		act(() =>
+		{
+			fireEvent.keyDown(
+				links()[0] ?? document.body,
+				{
+					key: "Delete",
+				},
+			);
+		});
+		expect(
+			{
+				queued: getDiffComments(SESSION).queued.map(({text}) => text),
+				focused: document.activeElement === links()[0],
+				names: texts(container, "[data-cds=CardLink] > .sr-only"),
+			},
+		).toStrictEqual(
+			{
+				queued: ["Restore it"],
+				focused: true,
+				names: ["Comment on demo.ts:5-7 (before changes)"],
+			},
+		);
+	});
+
+	it("quotes the where label for a comment whose text is only whitespace", () =>
+	{
+		const blank: QueuedDiffComment =
+		{
+			id: "blank",
+			path: "src/demo.ts",
+			side: "additions",
+			line: 3,
+			text: "   ",
+		};
+		const {container} = render(<AttachedContextChips sessionId={SESSION} context={[]} comments={[blank]} />);
+		expect(texts(container, "blockquote")).toStrictEqual(["demo.ts:3"]);
 	});
 });

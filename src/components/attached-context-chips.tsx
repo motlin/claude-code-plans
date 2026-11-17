@@ -7,6 +7,7 @@ import
 	type ReactNode,
 	Suspense,
 	useEffect,
+	useId,
 	useLayoutEffect,
 	useRef,
 	useState,
@@ -16,7 +17,6 @@ import
 	ClipboardPaste,
 	FileText,
 	Image as ImageIcon,
-	MessageSquare,
 	MessageSquareText,
 	SquareTerminal,
 	TextQuote,
@@ -33,14 +33,21 @@ import
 	removeContextChip,
 } from "../lib/context-attach";
 import {AgentTile, type AgentTileProps} from "./agent-tile";
-import {type QueuedDiffComment, removeQueuedDiffComment} from "../lib/diff-comments";
+import
+{
+	diffCommentWhere,
+	type QueuedDiffComment,
+	removeQueuedDiffComment,
+	revealDiffComment,
+} from "../lib/diff-comments";
+import {useOptionalPaneHost} from "./panes/pane-host-context";
 import {TEXT_PREVIEW_LIMIT} from "../lib/text-preview";
 import {isTextPreviewable} from "../lib/text-preview-extensions";
 import {FileActionsMenuItems} from "./files/file-actions-menu";
 import {absoluteMentionPath} from "./files/mention-path";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "./ui/menu";
 import {Skeleton} from "./ui/skeleton";
-import {ExcerptQuote} from "./excerpt-quote";
+import {ExcerptQuote, HintBadge} from "./excerpt-quote";
 import {isMotionReduced} from "../lib/reduced-motion";
 import
 {
@@ -65,12 +72,6 @@ const TextPreviewDialog = lazy(async () =>
 		default: module.TextPreviewDialog,
 	})),
 );
-
-function chipLabel({path, line, endLine}: QueuedDiffComment): string
-{
-	const name = path.slice(path.lastIndexOf("/") + 1) || path;
-	return `${name}:${endLine === undefined || endLine === line ? line : `${line}-${endLine}`}`;
-}
 
 const CHIP_CLASS =
 	"flex h-6 max-w-[16rem] min-w-0 items-center gap-1 rounded-r6 border border-border bg-surface-3 ps-1.5 pe-0.5 text-footnote text-secondary";
@@ -354,9 +355,9 @@ function removeChip(sessionId: string, chip: ContextChip): void
  * Upstream's pending tile state: `data-state="pending"`, `aria-busy`, a
  * Skeleton over the body, and an sr-only status beside it.
  */
-function pendingProps(chip: ContextChip)
+function pendingProps(pending: boolean)
 {
-	return chip.status === "pending"
+	return pending
 		?
 			{
 				"data-state": "pending",
@@ -374,29 +375,37 @@ function PendingSkeleton()
 	);
 }
 
-/** Upstream's tile shell: Card, fill, body, the corner remove button and the pending status. */
-function Tile({
+type TileKind = "MessageAttachmentsImage" | "MessageAttachmentsFile" | "MessageAttachmentsQuote";
+
+/** Upstream's tile shell (`cr`): Card, fill, body, the corner remove button and the pending status. */
+function TileShell({
 	sessionId,
-	chip,
+	id,
+	label,
+	name,
+	onRemove,
 	restored,
 	kind,
 	status,
-	name = contextChipLabel(chip),
+	pending,
 	children,
 }: {
 	sessionId: string;
-	chip: ContextChip;
+	/** The item's id, which names its view transition. */
+	id: string;
+	/** The tile's `data-chip-label`. */
+	label: string;
+	/** What the remove button names: "Remove {name}". */
+	name: string;
+	onRemove: () => void;
 	/** Upstream's `data-cds-attachment-restored`: the tile was staged before this composer mounted. */
 	restored: boolean;
-	kind: "MessageAttachmentsImage" | "MessageAttachmentsFile" | "MessageAttachmentsQuote";
+	kind: TileKind;
 	status: string;
-	/** What the remove button names, when it isn't the chip's label: an excerpt's own text. */
-	name?: string;
+	pending: boolean;
 	children: ReactNode;
 })
 {
-	const label = contextChipLabel(chip);
-	const pending = chip.status === "pending";
 	const ref = useRef<HTMLLIElement>(null);
 	// Upstream's `nr`: a tile added after the row mounted scrolls into its view.
 	useLayoutEffect(() =>
@@ -420,8 +429,8 @@ function Tile({
 					}
 				: {})}
 			tabIndex={-1}
-			style={viewTransitionStyle(chip.id)}
-			{...pendingProps(chip)}
+			style={viewTransitionStyle(id)}
+			{...pendingProps(pending)}
 			className={TILE_CLASS}
 		>
 			<div data-cds="Card" data-size="xs" className={CARD_CLASS}>
@@ -435,10 +444,7 @@ function Tile({
 				type="button"
 				data-cds-attachment-remove=""
 				aria-label={`Remove ${name}`}
-				{...removeButtonProps(sessionId, () =>
-				{
-					removeChip(sessionId, chip);
-				})}
+				{...removeButtonProps(sessionId, onRemove)}
 				className={TILE_REMOVE_CLASS}
 			>
 				<X aria-hidden="true" className="size-3" />
@@ -449,6 +455,116 @@ function Tile({
 				</span>
 			) : null}
 		</li>
+	);
+}
+
+/** A staged context chip's tile shell. */
+function Tile({
+	sessionId,
+	chip,
+	restored,
+	kind,
+	status,
+	name = contextChipLabel(chip),
+	children,
+}: {
+	sessionId: string;
+	chip: ContextChip;
+	restored: boolean;
+	kind: TileKind;
+	status: string;
+	/** What the remove button names, when it isn't the chip's label: an excerpt's own text. */
+	name?: string;
+	children: ReactNode;
+})
+{
+	return (
+		<TileShell
+			sessionId={sessionId}
+			id={chip.id}
+			label={contextChipLabel(chip)}
+			name={name}
+			onRemove={() =>
+			{
+				removeChip(sessionId, chip);
+			}}
+			restored={restored}
+			kind={kind}
+			status={status}
+			pending={chip.status === "pending"}
+		>
+			{children}
+		</TileShell>
+	);
+}
+
+/**
+ * A queued Changes pane comment as upstream's tray Comment tile (`Ha`): its text over a "Comment" badge
+ * hinted with where it is, a CardLink that reveals it in the Changes pane, never restored, so it always enters and scrolls in.
+ */
+function CommentChip({sessionId, comment}: {sessionId: string; comment: QueuedDiffComment})
+{
+	const host = useOptionalPaneHost();
+	// Upstream `d_` (onClickAnnotation): open the Changes pane, scroll to the comment and highlight it.
+	const open = () =>
+	{
+		host?.openPane("changes");
+		revealDiffComment(sessionId, comment);
+	};
+	const where = diffCommentWhere(comment.path, comment.line, comment.endLine, comment.side === "deletions");
+	const name = `Comment on ${where}`;
+	const quoteId = useId();
+	const badgeId = useId();
+	const hintId = useId();
+	const remove = () =>
+	{
+		withAttachmentsTransition(() =>
+		{
+			removeQueuedDiffComment(sessionId, comment.id);
+		});
+	};
+	return (
+		<TileShell
+			sessionId={sessionId}
+			id={comment.id}
+			label={where}
+			name={name}
+			onRemove={remove}
+			restored={false}
+			kind="MessageAttachmentsQuote"
+			status=""
+			pending={false}
+		>
+			<span
+				data-cds="CardLink"
+				role="button"
+				tabIndex={0}
+				aria-describedby={`${quoteId} ${badgeId} ${hintId}`}
+				onClick={(event) =>
+				{
+					event.preventDefault();
+					open();
+				}}
+				onKeyDown={(event) =>
+				{
+					if (event.key === "Enter" || event.key === " ")
+					{
+						event.preventDefault();
+						open();
+					}
+					removeOnDeleteKey(event, sessionId, remove);
+				}}
+				className="outline-none after:absolute after:inset-0 after:rounded-card-xs after:content-[''] cursor-pointer"
+			>
+				<span className="sr-only">{name}</span>
+			</span>
+			<ExcerptQuote
+				text={comment.text.trim() || (comment.snippet ?? "").trim() || where}
+				label="Comment"
+				quoteId={quoteId}
+				badge={<HintBadge badge="Comment" hint={where} id={badgeId} hintId={hintId} />}
+			/>
+		</TileShell>
 	);
 }
 
@@ -1034,33 +1150,9 @@ export function AttachedContextChips({
 							</ContextMenu>
 						);
 					})}
-					{comments.map((comment) =>
-					{
-						const label = chipLabel(comment);
-						return (
-							<li
-								key={comment.id}
-								data-chip-label={label}
-								title={comment.text}
-								className={`self-end ${CHIP_CLASS}`}
-							>
-								<MessageSquare aria-hidden="true" className="size-3 shrink-0" />
-								<span className="shrink-0 text-primary">{label}</span>
-								<span className="min-w-0 truncate">{comment.text}</span>
-								<button
-									type="button"
-									aria-label={`Remove comment on ${label}`}
-									{...removeButtonProps(sessionId, () =>
-									{
-										removeQueuedDiffComment(sessionId, comment.id);
-									})}
-									className={CHIP_REMOVE_CLASS}
-								>
-									<X aria-hidden="true" className="size-3" />
-								</button>
-							</li>
-						);
-					})}
+					{comments.map((comment) => (
+						<CommentChip key={comment.id} sessionId={sessionId} comment={comment} />
+					))}
 				</ul>
 			</div>
 			{preview !== null && previewChip?.previewUrl !== undefined ? (
