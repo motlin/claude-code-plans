@@ -176,6 +176,9 @@ describe("editGuardReducer", () =>
 				path: PLAN_PATH,
 				pin: true,
 			},
+			{
+				type: "deactivate",
+			},
 		] as const;
 		expect(
 			actions.map((action) =>
@@ -221,6 +224,10 @@ describe("editGuardReducer", () =>
 			{
 				held: false,
 				forwarded: true,
+			},
+			{
+				held: true,
+				forwarded: false,
 			},
 		]);
 	});

@@ -20,7 +20,7 @@ import {parseContentSearchQuery} from "../../lib/files-content-search";
 import {FileTypeIcon} from "../file-type-icon";
 import {useFileColumnOnRight} from "./file-column-side";
 import {useSettings} from "../settings-context";
-import {clampFilesTreeWidth, goUpTarget, parseTreeQuery} from "./files-tree-layout";
+import {clampFilesTreeWidth, FILES_TREE_NARROW_HIDDEN_CLASS, goUpTarget, parseTreeQuery} from "./files-tree-layout";
 import {ContextMenu, ContextMenuTrigger, MenuContent} from "../ui/menu";
 import {FILE_COLUMN_HANDLE_Z, FileColumnEdgeHandle} from "../ui/file-column-edge-handle";
 import {FileColumnResizeShield} from "../ui/file-column-resize-shield";
@@ -67,23 +67,32 @@ function symlinkLabel(entry: WorkspaceEntry): string | undefined
 	return `Link to ${symlink.target}`;
 }
 
+const FILES_TREE_COLUMN_CLASS = "relative flex min-h-0 shrink-0 flex-col";
+/** Upstream's tree when it fills a pane too narrow for it to sit beside a file. */
+const FILES_TREE_FILL_CLASS = "flex min-h-0 min-w-0 flex-1 flex-col";
+
 /**
  * The Files pane's tree column shell: 240px wide, resizable 160–640 with a "Resize file tree" cds
- * ResizeHandle, and the width persisted across reloads. Like upstream (c9bd7af9c over cf3dc7910), a
+ * ResizeHandle, and the width persisted across reloads. Like upstream (c9bd7af9c `Wk` over cf3dc7910), a
  * click or Enter/Space on the handle, or a drag below 80px, hides the tree; a 3px edge handle then
- * shows it again. The column stays mounted while hidden, keeping its filter and scroll. `fill` makes
- * it the pane's only column (a phone, where upstream shows the tree OR the file), with no handles.
+ * shows it again. The element stays mounted while hidden (class `hidden`), keeping its filter and scroll.
+ * `fill` makes it the pane's only column (a pane under 400px with no file shown). `besideFile` adds the
+ * container query that CSS-hides it beside a file under 400px; `canFit` false drops both handles.
  */
 export function FilesTreeColumn({
 	children,
 	shown = true,
 	onShownChange,
 	fill = false,
+	besideFile = false,
+	canFit = true,
 }: {
 	children: ReactNode;
 	shown?: boolean;
 	onShownChange?: (shown: boolean) => void;
 	fill?: boolean;
+	besideFile?: boolean;
+	canFit?: boolean;
 })
 {
 	const {settings, setSetting} = useSettings();
@@ -100,25 +109,19 @@ export function FilesTreeColumn({
 			side: onRight ? "inline-start" : "inline-end",
 		},
 	);
-	if (fill)
+	const column = !fill && (shown || besideFile);
+	let className = "hidden";
+	if (fill) className = FILES_TREE_FILL_CLASS;
+	else if (column)
 	{
-		return shown ? (
-			<div data-files-tree className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-				{children}
-			</div>
-		) : null;
+		const border = `${onRight ? "border-s" : "border-e"} border-border`;
+		className = `${FILES_TREE_COLUMN_CLASS} ${border}${besideFile ? ` ${FILES_TREE_NARROW_HIDDEN_CLASS}` : ""}`;
 	}
 	return (
 		<>
-			<div
-				data-files-tree
-				ref={columnRef}
-				hidden={!shown}
-				className={`relative flex min-h-0 shrink-0 flex-col ${onRight ? "border-s" : "border-e"} border-border`}
-				style={columnStyle}
-			>
+			<div data-files-tree ref={columnRef} className={className} style={column ? columnStyle : undefined}>
 				{children}
-				{shown && (
+				{column && shown && canFit && (
 					<ResizeHandle
 						{...handleProps}
 						aria-label="Resize file tree"
@@ -131,7 +134,9 @@ export function FilesTreeColumn({
 					/>
 				)}
 			</div>
-			{edgeHandleProps && <FileColumnEdgeHandle handleProps={edgeHandleProps} label="Resize file tree" />}
+			{edgeHandleProps && canFit && (
+				<FileColumnEdgeHandle handleProps={edgeHandleProps} label="Resize file tree" />
+			)}
 			<FileColumnResizeShield active={resizing} />
 		</>
 	);

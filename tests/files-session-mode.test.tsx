@@ -20,9 +20,9 @@ import {decodeFilePath} from "../src/lib/api/file";
 import type {SessionFilesResponse} from "../src/lib/api/session-files";
 import {writeClipboardText} from "../src/lib/clipboard";
 import {TOUCH_REVEAL} from "../src/lib/touch-reveal";
-import {PHONE_SHEET_QUERY} from "../src/lib/use-phone-sheet";
 import type {SessionFiles} from "../src/lib/session-files";
 import {installLocalStorage} from "./fake-storage";
+import {installWidthObservers, type WidthObservers} from "./helpers/width-observer";
 
 vi.mock("../src/lib/clipboard", () => (
 {
@@ -1253,58 +1253,48 @@ describe("File tabs", () =>
 	});
 });
 
-describe("Files pane on a phone", () =>
+describe("Files pane narrower than 400px", () =>
 {
-	function stubPhone(): void
+	const AGENT = "/home/alice/example/agent.ts";
+	const FILL = ["flex", "flex-1", "flex-col", "min-h-0", "min-w-0"];
+
+	function resize(observers: WidthObservers, width: number): void
 	{
-		vi.stubGlobal(
-			"matchMedia",
-			vi.fn((query: string) => (
-			{
-				matches: query === PHONE_SHEET_QUERY,
-				media: query,
-				onchange: null,
-				addEventListener: () => undefined,
-				removeEventListener: () => undefined,
-				addListener: () => undefined,
-				removeListener: () => undefined,
-				dispatchEvent: () => false,
-			})),
-		);
+		act(() =>
+		{
+			observers.resize(width);
+		});
 	}
 
-	function columns(pane: HTMLElement)
+	function state(pane: HTMLElement)
 	{
 		const tree = pane.querySelector<HTMLElement>("[data-files-tree]");
-		const preview = pane.querySelector<HTMLElement>("[data-files-preview]");
+		const toggle = within(pane).getByRole(
+			"button",
+			{
+				name: /file tree$/,
+			},
+		);
 		return {
-			tree:
-				tree === null
-					? null
-					:
-						{
-							fills: tree.classList.contains("flex-1"),
-							width: tree.style.width,
-						},
-			treeResizeHandle:
-				within(pane).queryByRole(
-					"separator",
-					{
-						name: "Resize file tree",
-					},
-				) !== null,
-			previewHidden: preview?.hidden ?? null,
+			tree: tree === null ? null : [...tree.classList].toSorted(),
+			separators: within(pane).queryAllByRole(
+				"separator",
+				{
+					name: "Resize file tree",
+				},
+			).length,
+			toggle: [toggle.getAttribute("aria-label"), toggle.getAttribute("aria-pressed")],
+			viewer: pane.querySelector(".cm-content") !== null,
+			preview: pane.querySelector("[data-files-preview]") !== null,
+			empty:
+				within(pane).queryByText("No file selected") !== null ||
+				within(pane).queryByText("Open files appear here") !== null,
 		};
 	}
 
-	it("shows the tree OR the open file in one column, and opening a file hides the tree", async () =>
+	async function openAgent(pane: HTMLElement): Promise<void>
 	{
-		stubPhone();
-		fileContents.set("/home/alice/example/agent.ts", "export const agent = 1;\n");
-		const pane = await openPane();
 		await switchMode(pane, "Session");
-		const before = columns(pane);
-
 		fireEvent.click(
 			within(pane).getByRole(
 				"button",
@@ -1315,72 +1305,175 @@ describe("Files pane on a phone", () =>
 		);
 		await waitFor(() =>
 		{
-			expect([...pane.querySelectorAll(".cm-line")].map((line) => line.textContent)).toContain(
-				"export const agent = 1;",
-			);
+			expect(pane.querySelector(".cm-content")).not.toBeNull();
 		});
-		const opened = columns(pane);
+	}
+
+	function clickToggle(pane: HTMLElement): void
+	{
 		fireEvent.click(
 			within(pane).getByRole(
 				"button",
 				{
-					name: "Show file tree",
+					name: /file tree$/,
 				},
 			),
 		);
+	}
+
+	it("shows the tree OR the file: the toggle swaps the file for a full-width tree and back", async () =>
+	{
+		const observers = installWidthObservers();
+		fileContents.set(AGENT, "export const agent = 1;\n");
+		const pane = await openPane();
+		await openAgent(pane);
+		resize(observers, 360);
+		const narrow = state(pane);
+		clickToggle(pane);
+		const treeOverTabs = state(pane);
+		clickToggle(pane);
+		await waitFor(() =>
+		{
+			expect(pane.querySelector(".cm-content")).not.toBeNull();
+		});
 
 		expect(
 			{
-				before,
-				opened,
-				reshown: columns(pane),
+				narrow,
+				treeOverTabs,
+				back: state(pane),
 			},
 		).toStrictEqual(
 			{
-				before:
+				narrow:
 				{
-					tree:
-					{
-						fills: true,
-						width: "",
-					},
-					treeResizeHandle: false,
-					previewHidden: true,
+					tree: narrow.tree,
+					separators: 0,
+					toggle: ["Show file tree", "false"],
+					viewer: true,
+					preview: true,
+					empty: false,
+				},
+				treeOverTabs:
+				{
+					tree: FILL,
+					separators: 0,
+					toggle: ["Hide file tree", "true"],
+					viewer: false,
+					preview: false,
+					empty: false,
+				},
+				back:
+				{
+					tree: narrow.tree,
+					separators: 0,
+					toggle: ["Show file tree", "false"],
+					viewer: true,
+					preview: true,
+					empty: false,
+				},
+			},
+		);
+		expect(narrow.tree).toContain("@max-[400px]/files-body:hidden");
+	});
+
+	it("widening past 400px brings back the file it left, with the tree beside it", async () =>
+	{
+		const observers = installWidthObservers();
+		fileContents.set(AGENT, "export const agent = 1;\n");
+		const pane = await openPane();
+		await openAgent(pane);
+		resize(observers, 360);
+		clickToggle(pane);
+		resize(observers, 500);
+		await waitFor(() =>
+		{
+			expect(pane.querySelector(".cm-content")).not.toBeNull();
+		});
+		const wide = state(pane);
+
+		expect(
+			{
+				...wide,
+				tree: wide.tree?.includes("shrink-0"),
+			},
+		).toStrictEqual(
+			{
+				tree: true,
+				separators: 1,
+				toggle: ["Hide file tree", "true"],
+				viewer: true,
+				preview: true,
+				empty: false,
+			},
+		);
+	});
+
+	it("with no file open the tree fills the pane, and picking a file shows it with the tree still mounted", async () =>
+	{
+		const observers = installWidthObservers();
+		fileContents.set(AGENT, "export const agent = 1;\n");
+		const pane = await openPane();
+		resize(observers, 360);
+		const empty = state(pane);
+		await openAgent(pane);
+		const opened = state(pane);
+
+		expect(
+			{
+				empty,
+				opened:
+				{
+					...opened,
+					tree: opened.tree?.includes("@max-[400px]/files-body:hidden"),
+				},
+			},
+		).toStrictEqual(
+			{
+				empty:
+				{
+					tree: FILL,
+					separators: 0,
+					toggle: ["Hide file tree", "true"],
+					viewer: false,
+					preview: false,
+					empty: false,
 				},
 				opened:
 				{
-					tree: null,
-					treeResizeHandle: false,
-					previewHidden: false,
-				},
-				reshown:
-				{
-					tree:
-					{
-						fills: true,
-						width: "",
-					},
-					treeResizeHandle: false,
-					previewHidden: true,
+					tree: true,
+					separators: 0,
+					toggle: ["Show file tree", "false"],
+					viewer: true,
+					preview: true,
+					empty: false,
 				},
 			},
 		);
 	});
 
-	it("keeps the tree and the preview side by side at 640px and up", async () =>
+	it("keeps the tree and the file side by side at 400px and up", async () =>
 	{
+		const observers = installWidthObservers();
+		fileContents.set(AGENT, "export const agent = 1;\n");
 		const pane = await openPane();
-		const state = columns(pane);
+		await openAgent(pane);
+		resize(observers, 400);
+		const wide = state(pane);
 
-		expect(state).toStrictEqual(
+		expect(
 			{
-				tree:
-				{
-					fills: false,
-					width: state.tree?.width,
-				},
-				treeResizeHandle: true,
-				previewHidden: false,
+				...wide,
+				tree: wide.tree?.includes("shrink-0"),
+			},
+		).toStrictEqual(
+			{
+				tree: true,
+				separators: 1,
+				toggle: ["Hide file tree", "true"],
+				viewer: true,
+				preview: true,
+				empty: false,
 			},
 		);
 	});

@@ -2,6 +2,7 @@ import {useQuery} from "@tanstack/react-query";
 import {Folder, PanelLeft, Search} from "lucide-react";
 import {type ReactNode, type RefObject, useCallback, useEffect, useRef, useState} from "react";
 
+import {useFilesTreeCanFit} from "../../hooks/use-files-tree-can-fit";
 import {useShortcut, useShortcutKeys} from "../../hooks/use-shortcut";
 import {sessionFilesQueryOptions} from "../../lib/api/session-files";
 import {sessionResourcesQueryOptions} from "../../lib/api/sessions";
@@ -13,7 +14,6 @@ import type {FileRef} from "../../lib/file-refs";
 import {loadFileTabs, saveFileTabs} from "../../lib/pane-layout";
 import {isAnotherOverlayOpen} from "../../lib/overlay";
 import type {SessionFiles} from "../../lib/session-files";
-import {usePhoneSheet} from "../../lib/use-phone-sheet";
 import {FILE_TAB_SIZES, normalizeFileTabSize} from "../../lib/file-preview";
 import {ConfirmDialog} from "../confirm-dialog";
 import {FileTypeIconSetContext, useActiveFileTypeIconSet} from "../file-type-icon-set-context";
@@ -23,6 +23,7 @@ import {FileTabsStrip} from "../files/file-tabs-strip";
 import {FileColumnPositionSubmenu} from "../files/file-column-position-menu";
 import {useFileColumnOnRight} from "../files/file-column-side";
 import {FilesTree, FilesTreeColumn} from "../files/files-tree";
+import {FILES_BODY_CLASS} from "../files/files-tree-layout";
 import {JumpTargetProvider, type JumpTargetWindow} from "../jump-target-context";
 import {useSettings} from "../settings-context";
 import
@@ -196,9 +197,16 @@ function FilesSettingsMenu({
 	);
 }
 
-function FilesEmpty({hasTree, tabCount}: {hasTree: boolean; tabCount: number})
+function FilesEmpty({hasTree, tabCount, inSession}: {hasTree: boolean; tabCount: number; inSession: boolean})
 {
-	const copy = filesEmptyState(hasTree, tabCount);
+	const copy = filesEmptyState(
+		hasTree,
+		tabCount,
+		{
+			inSession,
+			treeAvailable: true,
+		},
+	);
 	return (
 		<div className="flex h-full flex-col items-center justify-center gap-3 px-4 py-4 text-center">
 			<Folder aria-hidden="true" className="size-7 text-t6" />
@@ -533,6 +541,12 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 	const host = usePaneHost();
 	const iconSet = useActiveFileTypeIconSet();
 	const [treeShown, setTreeShown] = useState(true);
+	// Upstream's filesTreeHiddenWhileEmpty: the toggle's hide while no tab is open, reset by any open.
+	const [hiddenWhileEmpty, setHiddenWhileEmpty] = useState(false);
+	// Upstream's treeReturnPath: the file a narrow pane swapped for the full-width tree.
+	const [treeReturnPath, setTreeReturnPath] = useState<string | null>(null);
+	const bodyRef = useRef<HTMLDivElement>(null);
+	const canFit = useFilesTreeCanFit(bodyRef);
 	const [focusRequest, setFocusRequest] = useState(0);
 	const [mode, setMode] = useState<FilesListMode>("workspace");
 	const [query, setQuery] = useState("");
@@ -554,16 +568,76 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 		  })
 		| null
 	>(null);
-	// A phone pane has room for one column, as upstream: the tree OR the open
-	// file. Opening (or switching to) a file there trades the tree for it.
-	const phone = usePhoneSheet();
 	const treeOnRight = useFileColumnOnRight();
 	const [shownPath, setShownPath] = useState(openPath);
 	if (shownPath !== openPath)
 	{
 		setShownPath(openPath);
-		if (phone && openPath !== null) setTreeShown(false);
+		if (openPath !== null) setHiddenWhileEmpty(false);
 	}
+	// Upstream's Wk: under 400px the pane shows the tree OR the file, never both.
+	const fileShown = openPath !== null;
+	const hiddenEmpty = hiddenWhileEmpty && fileTabs.tabs.length === 0;
+	const treeFits = canFit && (!fileShown || treeShown);
+	const treeIsShown = fileShown ? treeFits : !hiddenEmpty;
+	const treeBesideFile = fileShown && treeShown;
+	const treePressed = fileShown ? canFit && treeShown : !hiddenEmpty;
+
+	/** Upstream's showFilesTreeOverTabs: the file gives way to the full-width tree and is remembered. */
+	function showTreeOverTabs(): void
+	{
+		setTreeReturnPath(openPath);
+		dispatchFileTabs(
+			{
+				type: "deactivate",
+			},
+		);
+	}
+
+	/** Upstream's c51596d2b `Q`: the tree toggle, shortcut, menu item and handles all land here. */
+	function toggleTree(): void
+	{
+		if (!fileShown)
+		{
+			const target = fileTabs.tabs.find((tab) => tab.path === treeReturnPath) ?? fileTabs.tabs.at(-1);
+			if (target === undefined)
+			{
+				setHiddenWhileEmpty((hidden) => !hidden);
+				return;
+			}
+			dispatchFileTabs(
+				{
+					type: "reveal",
+					path: target.path,
+				},
+			);
+			if (canFit) setTreeShown(false);
+			return;
+		}
+		if (canFit) setTreeShown((shown) => !shown);
+		else showTreeOverTabs();
+	}
+
+	function setTreePressed(pressed: boolean): void
+	{
+		if (pressed !== treePressed) toggleTree();
+	}
+
+	// Upstream's `Vh`: widening a pane that swapped its file for the tree brings the file back.
+	const fitRef = useRef(canFit);
+	useEffect(() =>
+	{
+		const grew = canFit && !fitRef.current;
+		fitRef.current = canFit;
+		if (!grew || openPath !== null || !fileTabs.tabs.some((tab) => tab.path === treeReturnPath)) return;
+		if (treeReturnPath !== null)
+			dispatchFileTabs(
+				{
+					type: "reveal",
+					path: treeReturnPath,
+				},
+			);
+	}, [canFit, openPath, treeReturnPath, fileTabs.tabs, dispatchFileTabs]);
 	const openFile = (
 		path: string,
 		options:
@@ -624,7 +698,7 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 		() =>
 		{
 			if (host.layout.focused !== "files") return false;
-			setTreeShown((shown) => !shown);
+			toggleTree();
 			return true;
 		},
 		{
@@ -679,14 +753,22 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 		const relPath = relativeToCwd(cwd, path);
 		if (relPath === null) return;
 		const lastSlash = relPath.lastIndexOf("/");
-		setTreeShown(true);
+		showTree();
 		setMode("workspace");
 		setQuery(lastSlash === -1 ? "" : `${relPath.slice(0, lastSlash)}/`);
 	}
 
+	/** Upstream's revealInFilesTree / focusFilesTreeFilter: a narrow pane swaps its file for the tree. */
+	function showTree(): void
+	{
+		setHiddenWhileEmpty(false);
+		if (fileShown && !canFit) showTreeOverTabs();
+		else setTreeShown(true);
+	}
+
 	function goToFileOrSearch(): void
 	{
-		setTreeShown(true);
+		showTree();
 		setFocusRequest((request) => request + 1);
 	}
 
@@ -700,13 +782,7 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 				}}
 				title={
 					<div className="relative flex min-w-0 flex-1 items-center gap-1">
-						<TreeToggle
-							shown={treeShown}
-							onToggle={() =>
-							{
-								setTreeShown((shown) => !shown);
-							}}
-						/>
+						<TreeToggle shown={treePressed} onToggle={toggleTree} />
 						{fileTabs.tabs.length === 0 ? (
 							<span data-pane-title className="truncate text-pane text-secondary select-none">
 								Files
@@ -736,8 +812,8 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 							</button>
 						</Tooltip>
 						<FilesSettingsMenu
-							treeShown={treeShown}
-							onTreeShownChange={setTreeShown}
+							treeShown={treePressed}
+							onTreeShownChange={setTreePressed}
 							sources={
 							{
 								counts: sessionFiles.counts,
@@ -753,9 +829,16 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 			/>
 			<div
 				data-pane-body
-				className={`flex min-h-0 flex-1 overflow-hidden rounded-b-[inherit]${treeOnRight ? " flex-row-reverse" : ""}`}
+				ref={bodyRef}
+				className={`${FILES_BODY_CLASS} overflow-hidden rounded-b-[inherit]${treeOnRight ? " flex-row-reverse" : ""}`}
 			>
-				<FilesTreeColumn fill={phone} shown={treeShown} onShownChange={setTreeShown}>
+				<FilesTreeColumn
+					fill={treeIsShown && !treeFits}
+					besideFile={treeBesideFile}
+					canFit={canFit}
+					shown={treeIsShown}
+					onShownChange={setTreePressed}
+				>
 					{sessionId === undefined ? (
 						sessionFilesList
 					) : (
@@ -801,43 +884,49 @@ export function FilesPaneView({chrome, sessionId, cwd, sessionFiles, unscannedRe
 						/>
 					)}
 				</FilesTreeColumn>
-				<div data-files-preview hidden={phone && treeShown} className="flex min-h-0 min-w-0 flex-1 flex-col">
-					{openPath === null ? (
-						<FilesEmpty hasTree={treeShown} tabCount={fileTabs.tabs.length} />
-					) : (
-						<FileView
-							key={openPath}
-							path={openPath}
-							cwd={cwd}
-							line={target?.line}
-							endLine={target?.endLine}
-							findQuery={target?.findQuery}
-							onOpenFile={(path) =>
-							{
-								openFile(
-									path,
-									{
-										pin: false,
-									},
-								);
-							}}
-							onAttachContext={attachToChat}
-							onEditStart={() =>
-							{
-								dispatchTabs(
-									{
-										type: "pin",
-										path: openPath,
-									},
-								);
-							}}
-							onDirtyChange={(dirty) =>
-							{
-								editGuard.reportDirty(openPath, dirty);
-							}}
-						/>
-					)}
-				</div>
+				{(fileShown || !treeIsShown || treeFits) && (
+					<div data-files-preview className="flex min-h-0 min-w-0 flex-1 flex-col">
+						{openPath === null ? (
+							<FilesEmpty
+								hasTree={treeIsShown}
+								tabCount={fileTabs.tabs.length}
+								inSession={sessionId !== undefined}
+							/>
+						) : (
+							<FileView
+								key={openPath}
+								path={openPath}
+								cwd={cwd}
+								line={target?.line}
+								endLine={target?.endLine}
+								findQuery={target?.findQuery}
+								onOpenFile={(path) =>
+								{
+									openFile(
+										path,
+										{
+											pin: false,
+										},
+									);
+								}}
+								onAttachContext={attachToChat}
+								onEditStart={() =>
+								{
+									dispatchTabs(
+										{
+											type: "pin",
+											path: openPath,
+										},
+									);
+								}}
+								onDirtyChange={(dirty) =>
+								{
+									editGuard.reportDirty(openPath, dirty);
+								}}
+							/>
+						)}
+					</div>
+				)}
 			</div>
 			{editGuard.dialog}
 		</FileTypeIconSetContext>

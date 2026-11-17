@@ -221,6 +221,17 @@ describe("fileTabsReducer", () =>
 			],
 			["[a*]"],
 		],
+		[
+			"deactivate shows no file and keeps every tab, as upstream's showFilesTreeOverTabs",
+			[
+				open("a", true),
+				open("b"),
+				{
+					type: "deactivate",
+				},
+			],
+			["a", "b*"],
+		],
 	])("%s", (_name, actions, expected) =>
 	{
 		expect(strip(run(actions))).toStrictEqual(expected);
@@ -280,6 +291,18 @@ describe("file tab persistence", () =>
 				s2: EMPTY_FILE_TABS,
 			},
 		);
+	});
+
+	it("round-trips tabs with no active file", () =>
+	{
+		const storage = installLocalStorage();
+		const deactivated =
+		{
+			...tabs,
+			active: null,
+		};
+		saveFileTabs("s1", deactivated, storage);
+		expect(loadFileTabs("s1", storage)).toStrictEqual(deactivated);
 	});
 
 	it("keeps the tabs while the Files pane stays open", () =>

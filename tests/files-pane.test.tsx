@@ -233,44 +233,69 @@ describe("filesEmptyState", () =>
 {
 	it.each([
 		[
-			"no tabs, tree available",
-			true,
-			0,
-			{
-				title: "Open files appear here",
-				detail: "Pick a file in the tree, or click a file path in the conversation.",
-			},
-		],
-		[
-			"no tabs, no tree",
+			"tabs open, none selected, in a session",
 			false,
-			0,
-			{
-				title: "Open files appear here",
-				detail: "Click a file path in the conversation to open it.",
-			},
-		],
-		[
-			"tabs open, none selected (tree shown)",
-			true,
 			2,
-			{
-				title: "No file selected",
-				detail: "Pick an open file above, or click a file path in the conversation.",
-			},
+			true,
+			true,
+			"No file selected",
+			"Pick an open file above, or click a file path in the conversation.",
 		],
 		[
-			"tabs open, none selected (tree hidden)",
-			false,
+			"tabs open, none selected, no session",
+			true,
 			1,
-			{
-				title: "No file selected",
-				detail: "Pick an open file above, or click a file path in the conversation.",
-			},
+			false,
+			true,
+			"No file selected",
+			"Pick one of the open files.",
 		],
-	])("%s", (_name, hasTree, tabCount, expected) =>
+		[
+			"no tabs, tree shown, in a session",
+			true,
+			0,
+			true,
+			true,
+			"Open files appear here",
+			"Pick a file in the tree, or click a file path in the conversation.",
+		],
+		["no tabs, tree shown, no session", true, 0, false, true, "Open files appear here", "Pick a file in the tree."],
+		[
+			"no tabs, tree hidden, in a session",
+			false,
+			0,
+			true,
+			true,
+			"Open files appear here",
+			"Click a file path in the conversation to open it.",
+		],
+		[
+			"no tabs, tree hidden, no session",
+			false,
+			0,
+			false,
+			true,
+			"Open files appear here",
+			"Show the file tree to pick a file.",
+		],
+		["no tabs, no tree, no session", false, 0, false, false, "Open files appear here", ""],
+	])("%s", (_name, hasTree, tabCount, inSession, treeAvailable, title, detail) =>
 	{
-		expect(filesEmptyState(hasTree, tabCount)).toStrictEqual(expected);
+		expect(
+			filesEmptyState(
+				hasTree,
+				tabCount,
+				{
+					inSession,
+					treeAvailable,
+				},
+			),
+		).toStrictEqual(
+			{
+				title,
+				detail,
+			},
+		);
 	});
 });
 
@@ -398,7 +423,7 @@ describe("Files pane header", () =>
 		);
 	});
 
-	it("the tree toggle hides the tree and switches the empty state copy", () =>
+	it("the tree toggle hides the tree without unmounting it and switches the empty state copy", () =>
 	{
 		registerFilesPane();
 		renderSession();
@@ -415,10 +440,18 @@ describe("Files pane header", () =>
 		{
 			pressed: toggle.getAttribute("aria-pressed"),
 			keyshortcuts: toggle.getAttribute("aria-keyshortcuts"),
-			tree: pane.querySelector("[data-files-tree]:not([hidden])") !== null,
-			detail:
-				within(pane).queryByText("Pick a file in the tree, or click a file path in the conversation.") !== null,
+			tree: pane.querySelector("[data-files-tree]:not(.hidden)") !== null,
+			detail: within(pane).queryByText("Pick a file in the tree.") !== null,
 		};
+		fireEvent.change(
+			within(pane).getByLabelText("Filter files"),
+			{
+				target:
+				{
+					value: "agent",
+				},
+			},
+		);
 		fireEvent.click(toggle);
 		const after =
 		{
@@ -430,14 +463,23 @@ describe("Files pane header", () =>
 					},
 				)
 				.getAttribute("aria-pressed"),
-			tree: pane.querySelector("[data-files-tree]:not([hidden])") !== null,
-			detail: within(pane).queryByText("Click a file path in the conversation to open it.") !== null,
+			treeClasses: [...(pane.querySelector("[data-files-tree]")?.classList ?? [])],
+			detail: within(pane).queryByText("Show the file tree to pick a file.") !== null,
 		};
+		fireEvent.click(
+			within(pane).getByRole(
+				"button",
+				{
+					name: "Show file tree",
+				},
+			),
+		);
 
 		expect(
 			{
 				before,
 				after,
+				filter: within(pane).getByLabelText<HTMLInputElement>("Filter files").value,
 			},
 		).toStrictEqual(
 			{
@@ -451,11 +493,24 @@ describe("Files pane header", () =>
 				after:
 				{
 					pressed: "false",
-					tree: false,
+					treeClasses: ["hidden"],
 					detail: true,
 				},
+				filter: "agent",
 			},
 		);
+	});
+
+	it("wraps the tree and viewer in upstream's files-body container", () =>
+	{
+		registerFilesPane();
+		renderSession();
+		press(CMD_SHIFT_F);
+
+		const body = filesPane().querySelector("[data-files-tree]")?.parentElement;
+		expect(
+			["@container/files-body", "flex", "min-h-0", "flex-1"].filter((name) => body?.classList.contains(name)),
+		).toStrictEqual(["@container/files-body", "flex", "min-h-0", "flex-1"]);
 	});
 
 	it("a click on the tree's resize handle hides it, and the edge handle shows it again, in step with the toggle", () =>
@@ -501,7 +556,7 @@ describe("Files pane header", () =>
 					},
 				)
 				.getAttribute("aria-pressed"),
-			tree: pane.querySelector("[data-files-tree]:not([hidden])") !== null,
+			tree: pane.querySelector("[data-files-tree]:not(.hidden)") !== null,
 			edgeFocused: document.activeElement === edge,
 			valuenow: edge.getAttribute("aria-valuenow"),
 		};
@@ -528,7 +583,7 @@ describe("Files pane header", () =>
 					},
 				)
 				.getAttribute("aria-pressed"),
-			tree: pane.querySelector("[data-files-tree]:not([hidden])") !== null,
+			tree: pane.querySelector("[data-files-tree]:not(.hidden)") !== null,
 			handleFocused:
 				document.activeElement ===
 				within(pane).getByRole(
@@ -1013,7 +1068,7 @@ describe("Files pane header", () =>
 		{
 			expect(
 				{
-					tree: pane.querySelector("[data-files-tree]:not([hidden])") !== null,
+					tree: pane.querySelector("[data-files-tree]:not(.hidden)") !== null,
 					focused: document.activeElement?.getAttribute("aria-label"),
 				},
 			).toStrictEqual(

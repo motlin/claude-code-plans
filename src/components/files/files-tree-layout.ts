@@ -4,6 +4,12 @@ const FILES_TREE_DEFAULT_WIDTH = 240;
 const FILES_TREE_MIN_WIDTH = 160;
 const FILES_TREE_MAX_WIDTH = 640;
 export const FILES_TREE_WIDTH_STORAGE_KEY = settingStorageKey("filesTreeWidth");
+/** Upstream's `Lk`: the Files body width (default tree + 160px of file) below which the tree and a file can't share it. */
+export const FILES_TREE_FIT_MIN_WIDTH = FILES_TREE_DEFAULT_WIDTH + 160;
+/** Upstream's `Rk`: the Files pane body, a size container for the tree's narrow-hide query. */
+export const FILES_BODY_CLASS = "@container/files-body flex min-h-0 flex-1";
+/** Upstream's `Bk`: the tree beside a file hides by CSS under 400px, before the ResizeObserver reports it. */
+export const FILES_TREE_NARROW_HIDDEN_CLASS = "@max-[400px]/files-body:hidden";
 
 export function clampFilesTreeWidth(width: number): number
 {

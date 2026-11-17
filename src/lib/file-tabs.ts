@@ -48,6 +48,11 @@ export type FileTabsAction =
 	  {
 			type: "reveal";
 			path: string;
+	  }
+	|
+	  {
+			/** Upstream's showFilesTreeOverTabs: no file is shown, and every tab stays open. */
+			type: "deactivate";
 	  };
 
 export interface FileTabsOptions
@@ -97,7 +102,7 @@ export const FileTabsStateSchema = z
 				},
 			);
 		}
-		if (state.active === null ? paths.length > 0 : !paths.includes(state.active))
+		if (state.active !== null && !paths.includes(state.active))
 		{
 			ctx.addIssue(
 				{
@@ -222,6 +227,14 @@ export function fileTabsReducer(state: FileTabsState, action: FileTabsAction, op
 					{
 						...state,
 						active: action.path,
+					};
+		case "deactivate":
+			return state.active === null
+				? state
+				:
+					{
+						...state,
+						active: null,
 					};
 		default:
 			return assertNever(action);

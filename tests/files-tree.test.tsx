@@ -1393,7 +1393,7 @@ describe("FilesTreeColumn hide and edge handle", () =>
 
 		expect(
 			{
-				hidden: treeColumn().hidden,
+				hidden: treeColumn().classList.contains("hidden"),
 				count: separators().length,
 				valuenow: edge.getAttribute("aria-valuenow"),
 				valuemin: edge.getAttribute("aria-valuemin"),
@@ -1469,7 +1469,7 @@ describe("FilesTreeColumn hide and edge handle", () =>
 
 		expect(
 			{
-				hidden: treeColumn().hidden,
+				hidden: treeColumn().classList.contains("hidden"),
 				count: separators().length,
 				inColumn: treeColumn().contains(handle),
 				focused: document.activeElement === handle,
@@ -1513,7 +1513,7 @@ describe("FilesTreeColumn hide and edge handle", () =>
 		expect(
 			{
 				display,
-				hiddenAfter: treeColumn().hidden,
+				hiddenAfter: treeColumn().classList.contains("hidden"),
 			},
 		).toStrictEqual(
 			{
@@ -1560,7 +1560,7 @@ describe("FilesTreeColumn hide and edge handle", () =>
 
 		expect(
 			{
-				hidden: treeColumn().hidden,
+				hidden: treeColumn().classList.contains("hidden"),
 				filter: filterInput().value,
 			},
 		).toStrictEqual(

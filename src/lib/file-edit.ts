@@ -91,6 +91,8 @@ function leavesTab(tabs: FileTabsState, action: FileTabsAction, path: string): b
 			return tabs.active === path && action.path !== path;
 		case "close":
 			return action.path === path;
+		case "deactivate":
+			return tabs.active === path;
 		case "pin":
 		case "move":
 			return false;
