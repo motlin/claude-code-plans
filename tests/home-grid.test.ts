@@ -4,11 +4,18 @@ import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
 import {createMemoryHistory, createRootRoute, createRouter, RouterProvider} from "@tanstack/react-router";
 import {render, screen, within} from "@testing-library/react";
 import {createElement} from "react";
-import {describe, expect, it, vi} from "vite-plus/test";
+import {beforeAll, describe, expect, it, vi} from "vite-plus/test";
 import {Sidebar} from "../src/components/sidebar/Sidebar";
 import {navItems} from "../src/components/sidebar/navigation";
 import {ToastProvider} from "../src/components/toast";
 import {Route as HomeRoute} from "../src/routes/index";
+import {preloadSessionPageChunks} from "./session-page-chunks";
+
+// The home composer starts its chunk loads on mount; finish them up front so none lands after teardown.
+beforeAll(async () =>
+{
+	await preloadSessionPageChunks();
+});
 
 const DEFAULT_APPLICATION_SETTINGS =
 {

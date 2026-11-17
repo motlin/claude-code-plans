@@ -578,6 +578,11 @@ describe("MemoryDialog editor", () =>
 			),
 		);
 		const confirm = await screen.findByRole("alertdialog");
+		// The alert dialog moves focus to Keep editing after it mounts, which can trail findByRole under load.
+		await waitFor(() =>
+		{
+			expect(document.activeElement?.textContent).toBe("Keep editing");
+		});
 		const guarded =
 		{
 			title: confirm.querySelector("h2")?.textContent,
