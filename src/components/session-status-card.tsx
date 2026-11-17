@@ -1,4 +1,5 @@
 import {useQuery} from "@tanstack/react-query";
+import {useNavigate} from "@tanstack/react-router";
 import {createContext, useContext, useState} from "react";
 
 import {useTimedFlag} from "../hooks/use-timed-flag";
@@ -61,15 +62,27 @@ export function GhostCopyButton({
 	);
 }
 
-/** Upstream's value class: the session id in mono, other full-valued rows truncated, the rest wrapping. */
+/** Upstream's value class: the session id in mono, other full-valued rows but MCP servers truncated, the rest wrapping. */
 function valueClass(row: StatusRow): string
 {
 	if (row.id === "sessionId") return "min-w-0 max-w-full truncate font-mono-ui";
-	return row.fullValue === undefined ? "min-w-0 [overflow-wrap:anywhere]" : "min-w-0 max-w-full truncate";
+	return row.fullValue === undefined || row.id === "mcp"
+		? "min-w-0 [overflow-wrap:anywhere]"
+		: "min-w-0 max-w-full truncate";
 }
 
-/** Upstream's `SU` row: label left, value (and hint) right, a copy button on copyable rows. */
-function StatusCardRow({row, copied, onCopy}: {row: StatusRow; copied: boolean; onCopy: (row: StatusRow) => void})
+/** Upstream's `SU` row: label left, value (and hint) right, a copy button on copyable rows, Manage after MCP servers. */
+function StatusCardRow({
+	row,
+	copied,
+	onCopy,
+	onManageMcp,
+}: {
+	row: StatusRow;
+	copied: boolean;
+	onCopy: (row: StatusRow) => void;
+	onManageMcp: (() => void) | undefined;
+})
 {
 	return (
 		<div className="flex items-baseline justify-between gap-3">
@@ -94,6 +107,18 @@ function StatusCardRow({row, copied, onCopy}: {row: StatusRow; copied: boolean; 
 						}}
 					/>
 				)}
+				{row.id === "mcp" && onManageMcp !== undefined && (
+					<span className="shrink-0 text-muted-as-secondary">
+						<button
+							type="button"
+							data-cds="TextLink"
+							className="cds-reset text-link-inherit"
+							onClick={onManageMcp}
+						>
+							Manage
+						</button>
+					</span>
+				)}
 			</span>
 		</div>
 	);
@@ -103,7 +128,13 @@ function StatusCardRow({row, copied, onCopy}: {row: StatusRow; copied: boolean; 
  * Upstream's `/status` "Session info" card (c44e562e8 `EU`): a header with Copy session info, then
  * each group's rows. With no groups yet it shows "Loading session info…" and no Copy button.
  */
-export function SessionStatusCard({groups}: {groups: readonly StatusGroup[]})
+export function SessionStatusCard({
+	groups,
+	onManageMcp,
+}: {
+	groups: readonly StatusGroup[];
+	onManageMcp?: (() => void) | undefined;
+})
 {
 	const [reportCopied, showReportCopied] = useTimedFlag(COPIED_MS);
 	const [rowCopied, showRowCopied] = useTimedFlag(COPIED_MS);
@@ -148,6 +179,7 @@ export function SessionStatusCard({groups}: {groups: readonly StatusGroup[]})
 										row={row}
 										copied={rowCopied && copiedRowId === row.id}
 										onCopy={copyRow}
+										onManageMcp={onManageMcp}
 									/>
 								))}
 							</div>
@@ -194,6 +226,7 @@ export function LiveSessionStatusCard({sessionId}: {sessionId: string})
 	const live = useContext(LiveStatusSourcesContext) ?? NO_LIVE_SOURCES;
 	const info = useQuery(sessionStatusInfoQueryOptions(sessionId));
 	const account = useQuery(localAccountQueryOptions).data;
+	const navigate = useNavigate();
 	const groups =
 		info.data === undefined && !info.isError
 			? []
@@ -208,10 +241,22 @@ export function LiveSessionStatusCard({sessionId}: {sessionId: string})
 						cwd: info.data?.cwd ?? null,
 						homePath: info.data?.homePath ?? null,
 						additionalDirectories: info.data?.additionalDirectories ?? [],
+						mcpStatuses: info.data?.mcpStatuses ?? null,
 						email: account?.email ?? null,
 						planDetail: account?.planDetail ?? null,
 						organizationName: account?.organizationName ?? null,
 					},
 				);
-	return <SessionStatusCard groups={groups} />;
+	return (
+		<SessionStatusCard
+			groups={groups}
+			onManageMcp={() =>
+				void navigate(
+					{
+						to: "/customize/connectors",
+					},
+				)
+			}
+		/>
+	);
 }

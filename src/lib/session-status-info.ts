@@ -1,7 +1,9 @@
 import {readFile} from "node:fs/promises";
 import {join} from "node:path";
+import {z} from "zod";
 import type {SessionStatusInfo} from "./api/sessions";
 import {ClaudeSettingsSchema} from "./runtime-schemas";
+import {type McpServerStatus, type McpStatusDelta, sessionMcpStatuses} from "./session-mcp-statuses";
 import {forEachTranscriptLine} from "./transcript-stream";
 
 type RecordLike = Readonly<Record<string, unknown>>;
@@ -36,6 +38,39 @@ interface TranscriptFacts
 	createdAt: number | null;
 	forked: boolean;
 	cwd: string | null;
+	mcpStatuses: Array<[string, McpServerStatus]> | null;
+}
+
+/** The fields of a deferred-tools delta the MCP status fold reads. Lenient: other keys are stripped. */
+const McpStatusDeltaRecord = z.object(
+	{
+		type: z.literal("attachment"),
+		attachment: z.object(
+			{
+				type: z.literal("deferred_tools_delta"),
+				addedNames: z.array(z.string()).optional(),
+				readdedNames: z.array(z.string()).optional(),
+				removedNames: z.array(z.string()).optional(),
+				failedMcpServers: z
+					.array(
+						z.object(
+							{
+								name: z.string(),
+							},
+						),
+					)
+					.optional(),
+				pendingMcpServers: z.array(z.string()).optional(),
+				needsAuthMcpServers: z.array(z.string()).optional(),
+			},
+		),
+	},
+);
+
+function mcpStatusDelta(line: string): McpStatusDelta | null
+{
+	const parsed = McpStatusDeltaRecord.safeParse(parseRecord(line));
+	return parsed.success ? parsed.data.attachment : null;
 }
 
 /**
@@ -47,6 +82,7 @@ async function readTranscriptFacts(transcriptPath: string): Promise<TranscriptFa
 	let first: RecordLike | null = null;
 	let forked = false;
 	const versionLines: string[] = [];
+	const deltas: McpStatusDelta[] = [];
 	try
 	{
 		await forEachTranscriptLine(transcriptPath, (line) =>
@@ -60,6 +96,11 @@ async function readTranscriptFacts(transcriptPath: string): Promise<TranscriptFa
 			{
 				const forkedFrom = parseRecord(line)?.["forkedFrom"];
 				forked = forkedFrom !== undefined && forkedFrom !== null;
+			}
+			if (line.includes('"deferred_tools_delta"'))
+			{
+				const delta = mcpStatusDelta(line);
+				if (delta !== null) deltas.push(delta);
 			}
 			if (line.includes('"version"')) versionLines.push(line);
 			// Only the newest few candidates are ever parsed.
@@ -82,6 +123,7 @@ async function readTranscriptFacts(transcriptPath: string): Promise<TranscriptFa
 		createdAt: Number.isNaN(createdAt) ? null : createdAt,
 		forked,
 		cwd: stringField(first, "cwd"),
+		mcpStatuses: deltas.length > 0 ? sessionMcpStatuses(deltas) : null,
 	};
 }
 
@@ -104,8 +146,8 @@ async function readAdditionalDirectories(path: string): Promise<string[]>
 }
 
 /**
- * The `/status` card's server-side inputs: the transcript's CLI version, start, fork and folder, and
- * the additional folders the user, project and local settings grant, de-duplicated in that order.
+ * The `/status` card's server-side inputs: the transcript's CLI version, start, fork, folder and MCP
+ * server statuses, and the additional folders the user, project and local settings grant, de-duplicated in that order.
  */
 export async function readSessionStatusInfo(
 	transcriptPath: string,

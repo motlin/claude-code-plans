@@ -450,6 +450,10 @@ export const SessionStatusInfoResponse = z.strictObject(
 		cwd: z.string().nullable(),
 		homePath: z.string(),
 		additionalDirectories: z.array(z.string()),
+		/** The MCP servers as `[name, status]` from the transcript's deferred-tools deltas; null with no delta. */
+		mcpStatuses: z
+			.array(z.tuple([z.string(), z.enum(["connected", "needs-auth", "pending", "failed"])]))
+			.nullable(),
 	},
 );
 export type SessionStatusInfo = z.infer<typeof SessionStatusInfoResponse>;

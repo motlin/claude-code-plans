@@ -27,6 +27,7 @@ const NO_SOURCES: StatusSources =
 	cwd: null,
 	homePath: null,
 	additionalDirectories: [],
+	mcpStatuses: null,
 	email: null,
 	planDetail: null,
 	organizationName: null,
@@ -47,6 +48,15 @@ const FULL_SOURCES: StatusSources =
 	cwd: "/Users/craig/projects/app",
 	homePath: "/Users/craig",
 	additionalDirectories: ["/Users/craig/a", "/tmp/b"],
+	mcpStatuses: [
+		["a", "connected"],
+		["b", "connected"],
+		["c", "connected"],
+		["d", "connected"],
+		["e", "connected"],
+		["f", "connected"],
+		["imcp", "failed"],
+	],
 	email: "craig@x.com",
 	planDetail: "Max (20x)",
 	organizationName: "Craig's Org",
@@ -112,6 +122,12 @@ describe("sessionStatusGroups", () =>
 						label: "Additional folders",
 						value: "~/a, /tmp/b",
 						fullValue: "/Users/craig/a, /tmp/b",
+					},
+					{
+						id: "mcp",
+						label: "MCP servers",
+						value: "6 connected (a, b, c, d, e, +1 more) · 1 failed (imcp)",
+						fullValue: "6 connected (a, b, c, d, e, f) · 1 failed (imcp)",
 					},
 				],
 			},
@@ -265,10 +281,30 @@ describe("sessionStatusGroups", () =>
 						additionalDirectories: [],
 					},
 				),
+				noServers: sessionStatusGroups(
+					{
+						...NO_SOURCES,
+						mcpStatuses: [],
+					},
+				),
 			},
 		).toEqual(
 			{
 				none: [],
+				noServers: [
+					{
+						id: "environment",
+						label: "Environment",
+						rows: [
+							{
+								id: "mcp",
+								label: "MCP servers",
+								value: "None",
+								fullValue: "None",
+							},
+						],
+					},
+				],
 				orgOnly: [
 					{
 						id: "account",

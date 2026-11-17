@@ -728,6 +728,59 @@ describe("AttachmentBanner", () =>
 			expect(html).toContain("Deferred tools: -3 tools, 2 blocked");
 		});
 
+		it("counts failed and sign-in MCP servers after pending, pluralized", () =>
+		{
+			const label = (payload: AttachmentPayload) => /Deferred tools: [^<]*/.exec(renderBanner(payload))?.[0];
+			expect(
+				{
+					all: label(
+						{
+							type: "deferred_tools_delta",
+							addedNames: ["WebFetch"],
+							removedNames: ["mcp__docs__batch"],
+							removedByBlock: ["mcp__docs__batch"],
+							pendingMcpServers: ["context7"],
+							failedMcpServers: [
+								{
+									name: "imcp",
+									errorCode: "CONNECT_TIMEOUT",
+									error: "timed out",
+								},
+								{
+									name: "plugin:1password:1password",
+								},
+							],
+							needsAuthMcpServers: ["claude.ai Gmail"],
+						},
+					),
+					oneFailedTwoAuth: label(
+						{
+							type: "deferred_tools_delta",
+							failedMcpServers: [
+								{
+									name: "imcp",
+								},
+							],
+							needsAuthMcpServers: ["claude.ai Gmail", "claude.ai Drive"],
+						},
+					),
+					emptyFailed: label(
+						{
+							type: "deferred_tools_delta",
+							addedNames: ["WebFetch"],
+							failedMcpServers: [],
+						},
+					),
+				},
+			).toStrictEqual(
+				{
+					all: "Deferred tools: +1 tools, -1 tools, 1 blocked, 1 MCP server pending, 2 MCP servers failed, 1 MCP server needs sign-in",
+					oneFailedTwoAuth: "Deferred tools: 1 MCP server failed, 2 MCP servers need sign-in",
+					emptyFailed: "Deferred tools: +1 tools",
+				},
+			);
+		});
+
 		it("omits the pending segment when there are no pending MCP servers", () =>
 		{
 			const html = renderBanner(
@@ -1099,6 +1152,42 @@ describe("AttachmentBanner", () =>
 					},
 				),
 			).toStrictEqual([["Removed by block (2)", "mcp__docs__batch\nmcp__docs__guide"]]);
+		});
+
+		it("lists failed MCP servers with their error code and error, and servers that need sign-in", () =>
+		{
+			expect(
+				detailSections(
+					{
+						type: "deferred_tools_delta",
+						failedMcpServers: [
+							{
+								name: "imcp",
+								errorCode: "CONNECT_TIMEOUT",
+								error: "timed out",
+							},
+							{
+								name: "plugin:1password:1password",
+							},
+							{
+								name: "cf",
+								errorCode: "410",
+							},
+							{
+								name: "long",
+								error: "e".repeat(201),
+							},
+						],
+						needsAuthMcpServers: ["claude.ai Gmail"],
+					},
+				),
+			).toStrictEqual([
+				[
+					"Failed MCP servers (4)",
+					`imcp · CONNECT_TIMEOUT: timed out\nplugin:1password:1password\ncf · 410\nlong: ${"e".repeat(199)}…`,
+				],
+				["Needs sign-in (1)", "claude.ai Gmail"],
+			]);
 		});
 
 		it("shows the run a queued command belongs to", () =>

@@ -1,12 +1,12 @@
 import {EFFORT_LABELS, MODE_LABELS} from "./composer-state";
 import {modelLabel} from "./launch-options";
+import {mcpStatusSummary} from "./mcp-status-summary";
 import {formatRelativeTimestamp} from "./timestamp-format";
 
 /**
  * Upstream's `/status` "Session info" card model (c44e562e8 `uU`, local branch): three groups of
  * label/value rows, each value sanitized, and the plain-text report its Copy button writes (`QH`).
- * Rows with no local meaning (Desktop app, Host, cloud trust, sandbox) are not built; the MCP servers
- * row waits on transcript-failed-mcp-servers-notice's status list and summary.
+ * Rows with no local meaning (Desktop app, Host, cloud trust, sandbox) are not built.
  */
 
 export type StatusRowId =
@@ -18,6 +18,7 @@ export type StatusRowId =
 	| "sessionId"
 	| "folder"
 	| "extraFolders"
+	| "mcp"
 	| "account"
 	| "organization";
 
@@ -57,6 +58,8 @@ export interface StatusSources
 	cwd: string | null;
 	homePath: string | null;
 	additionalDirectories: readonly string[];
+	/** The session's MCP servers as `[name, status]`; null when unknown, which drops the row. */
+	mcpStatuses: ReadonlyArray<readonly [string, string]> | null;
 	email: string | null;
 	planDetail: string | null;
 	organizationName: string | null;
@@ -168,7 +171,7 @@ function sessionRows(sources: StatusSources): StatusRow[]
 	return rows.filter((row) => row !== null);
 }
 
-function environmentRows({cwd, homePath, additionalDirectories}: StatusSources): StatusRow[]
+function environmentRows({cwd, homePath, additionalDirectories, mcpStatuses}: StatusSources): StatusRow[]
 {
 	const rows: StatusRow[] = [];
 	if (cwd)
@@ -187,6 +190,15 @@ function environmentRows({cwd, homePath, additionalDirectories}: StatusSources):
 				label: "Additional folders",
 				value: additionalDirectories.map((path) => tildePath(path, homePath)).join(", "),
 				fullValue: additionalDirectories.join(", "),
+			},
+		);
+	if (mcpStatuses !== null)
+		rows.push(
+			{
+				id: "mcp",
+				label: "MCP servers",
+				value: mcpStatusSummary(mcpStatuses),
+				fullValue: mcpStatusSummary(mcpStatuses, Infinity),
 			},
 		);
 	return rows;

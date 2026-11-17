@@ -147,6 +147,28 @@ function linesSection(label: string, lines: (string | false | undefined)[]): Det
 		: [];
 }
 
+/** Longest failed-server error a detail line shows before cutting to 199 characters and `…`. */
+const MAX_MCP_ERROR_LENGTH = 200;
+
+/** A failed MCP server as `name · errorCode: error`, each part only when present. */
+function failedServerLine({
+	name,
+	errorCode,
+	error,
+}: {
+	name: string;
+	errorCode?: string | undefined;
+	error?: string | undefined;
+}): string
+{
+	const code = errorCode === undefined ? "" : ` · ${errorCode}`;
+	const message =
+		error === undefined
+			? ""
+			: `: ${error.length > MAX_MCP_ERROR_LENGTH ? `${error.slice(0, MAX_MCP_ERROR_LENGTH - 1)}…` : error}`;
+	return `${name}${code}${message}`;
+}
+
 function textSection(label: string, text: string | undefined): DetailSection[]
 {
 	return text
@@ -300,6 +322,8 @@ function attachmentDetailSections(
 	{
 		const surfaced = attachment.surfacedDefinitions ?? [];
 		const removedByBlock = attachment.removedByBlock ?? [];
+		const failed = attachment.failedMcpServers ?? [];
+		const needsAuth = attachment.needsAuthMcpServers ?? [];
 		return [
 			...linesSection(
 				`Surfaced tools (${surfaced.length})`,
@@ -312,6 +336,8 @@ function attachmentDetailSections(
 				}),
 			),
 			...linesSection(`Removed by block (${removedByBlock.length})`, removedByBlock),
+			...linesSection(`Failed MCP servers (${failed.length})`, failed.map(failedServerLine)),
+			...linesSection(`Needs sign-in (${needsAuth.length})`, needsAuth),
 		];
 	}
 	if (attachment.type === "queued_command")
@@ -654,6 +680,16 @@ function AttachmentContent({
 			{
 				const n = attachment.pendingMcpServers.length;
 				parts.push(`${n} MCP server${n === 1 ? "" : "s"} pending`);
+			}
+			if (attachment.failedMcpServers?.length)
+			{
+				const n = attachment.failedMcpServers.length;
+				parts.push(`${n} MCP server${n === 1 ? "" : "s"} failed`);
+			}
+			if (attachment.needsAuthMcpServers?.length)
+			{
+				const n = attachment.needsAuthMcpServers.length;
+				parts.push(n === 1 ? "1 MCP server needs sign-in" : `${n} MCP servers need sign-in`);
 			}
 			return (
 				<Banner

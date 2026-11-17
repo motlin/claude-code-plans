@@ -92,6 +92,24 @@ describe("readSessionStatusInfo", () =>
 				"{not json",
 				JSON.stringify(
 					{
+						type: "attachment",
+						uuid: "d-1",
+						attachment:
+						{
+							type: "deferred_tools_delta",
+							addedNames: ["mcp__sentry__search", "WebFetch"],
+							failedMcpServers: [
+								{
+									name: "imcp",
+									errorCode: "CONNECT_TIMEOUT",
+								},
+							],
+							pendingMcpServers: [],
+						},
+					},
+				),
+				JSON.stringify(
+					{
 						type: "assistant",
 						uuid: "a-1",
 						cwd: join(project, "sub"),
@@ -142,6 +160,10 @@ describe("readSessionStatusInfo", () =>
 				cwd: project,
 				homePath: home,
 				additionalDirectories: ["/shared/a", "/shared/b", "/project/c", "/local/d"],
+				mcpStatuses: [
+					["sentry", "connected"],
+					["imcp", "failed"],
+				],
 			},
 		);
 	});
@@ -165,6 +187,7 @@ describe("readSessionStatusInfo", () =>
 				cwd: null,
 				homePath: home,
 				additionalDirectories: [],
+				mcpStatuses: null,
 			},
 		);
 	});

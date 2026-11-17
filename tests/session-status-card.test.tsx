@@ -169,6 +169,67 @@ describe("SessionStatusCard", () =>
 		);
 	});
 
+	it("wraps the MCP servers summary instead of truncating it and follows it with Manage", () =>
+	{
+		const onManageMcp = vi.fn<() => void>();
+		const summary = "1 connected (a) · 1 failed (imcp)";
+		render(
+			<SessionStatusCard
+				groups={[
+					{
+						id: "environment",
+						label: "Environment",
+						rows: [
+							{
+								id: "mcp",
+								label: "MCP servers",
+								value: summary,
+								fullValue: summary,
+							},
+						],
+					},
+				]}
+				onManageMcp={onManageMcp}
+			/>,
+		);
+		const row = card().querySelector(".flex.items-baseline");
+		const cell = row?.children.item(1);
+		const manage = cell?.children.item(1);
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name: "Manage",
+				},
+			),
+		);
+
+		expect(
+			{
+				value: [...(cell?.querySelectorAll("[title]") ?? [])].map((el) => [
+					el.className,
+					el.getAttribute("title"),
+					el.textContent,
+				]),
+				manage: [manage?.tagName, manage?.className],
+				link: [
+					manage?.firstElementChild?.tagName,
+					manage?.firstElementChild?.getAttribute("data-cds"),
+					manage?.firstElementChild?.className,
+					manage?.firstElementChild?.textContent,
+				],
+				calls: onManageMcp.mock.calls.length,
+			},
+		).toStrictEqual(
+			{
+				value: [["min-w-0 [overflow-wrap:anywhere]", summary, summary]],
+				manage: ["SPAN", "shrink-0 text-muted-as-secondary"],
+				link: ["BUTTON", "TextLink", "cds-reset text-link-inherit", "Manage"],
+				calls: 1,
+			},
+		);
+	});
+
 	it("shows Loading session info… and no Copy button before any group arrives", () =>
 	{
 		render(<SessionStatusCard groups={[]} />);
