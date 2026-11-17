@@ -301,6 +301,134 @@ export function fastCommandArg(text: string): string | null
 	return match[2]?.trim() ?? "";
 }
 
+/** Upstream's uniqueKey for the two "Already in plan mode" notices, so the second replaces the first. */
+export const PLAN_COMMAND_NOTICE_KEY = "epitaxy-plan-command-notice";
+
+/** Upstream's uniqueKey for the "Plan mode isn’t available" error toast. */
+export const PLAN_COMMAND_UNAVAILABLE_KEY = "epitaxy-plan-command-unavailable";
+
+/** Upstream's `Xle`: `/plan` with an optional argument that may span lines. */
+const PLAN_COMMAND = /^\/plan(?:\s+([\s\S]*))?$/i;
+
+/** The trimmed argument after `/plan`, `""` when bare, or null when `text` isn't `/plan` (`/plans` isn't). */
+export function planCommandArg(text: string): string | null
+{
+	const match = PLAN_COMMAND.exec(text.trim());
+	if (match === null) return null;
+	return match[1]?.trim() ?? "";
+}
+
+export type PlanCommandNotice = "already_in_plan" | "already_in_plan_no_plan";
+
+export type PlanCommandRoute =
+	|
+	  {
+			kind: "unavailable";
+	  }
+	|
+	  {
+			kind: "command_like";
+	  }
+	|
+	  {
+			kind: "run";
+			switchToPlan: boolean;
+			openPane: boolean;
+			notice: PlanCommandNotice | null;
+			send: string | null;
+	  };
+
+/** Upstream's `_d`: a leading `/name` followed by whitespace, `:`, `,`, `.` or the end. */
+const COMMAND_LIKE = /^\/[\w:-]+(?=[\s:,.]|$)/;
+const INVISIBLE = /[\p{Cf}\u034f\u115f\u1160\u3164\uffa0]/gu;
+const LEADING_INVISIBLE = /^[\s\p{Cf}]+/u;
+
+/** Upstream's `Qle`: an argument other than `open`/`share` (any case) is a description. */
+function isPlanDescription(arg: string): boolean
+{
+	const word = arg.toLowerCase();
+	return word !== "" && word !== "open" && word !== "share";
+}
+
+function isCommandLike(arg: string, cliListsCommand: (name: string) => boolean): boolean
+{
+	return [arg, arg.replace(INVISIBLE, "")].some((variant) =>
+	{
+		const text = variant.replace(LEADING_INVISIBLE, "");
+		if (COMMAND_LIKE.test(text) || text.startsWith("!")) return true;
+		const name = /^\/(\S+)/.exec(text)?.[1];
+		return name !== undefined && cliListsCommand(name);
+	});
+}
+
+/**
+ * Upstream's `Zle`: what a sent `/plan [open|share|<description>]` does. A description switches to plan
+ * mode first unless already there, then goes out as an ordinary prompt; a bare `/plan` switches, opens the
+ * Plan pane when there is (or may be) a plan to show, or says it's already in plan mode.
+ */
+export function routePlanCommand({
+	arg,
+	currentMode,
+	planSelectable,
+	hasPlan,
+	olderMessagesNotLoaded,
+	canOpenPane,
+	paneAlreadyOpen,
+	cliListsCommand,
+}: {
+	arg: string;
+	currentMode: string;
+	planSelectable: boolean;
+	hasPlan: boolean;
+	olderMessagesNotLoaded: boolean;
+	canOpenPane: boolean;
+	paneAlreadyOpen: boolean;
+	cliListsCommand: (name: string) => boolean;
+}): PlanCommandRoute
+{
+	const mayHavePlan = hasPlan || olderMessagesNotLoaded;
+	const inPlan = currentMode === "plan";
+	const description = isPlanDescription(arg);
+	const openPane = mayHavePlan && canOpenPane && !paneAlreadyOpen;
+	if (!inPlan && !planSelectable)
+	{
+		if (description || !openPane)
+			return {
+				kind: "unavailable",
+			};
+		return {
+			kind: "run",
+			switchToPlan: false,
+			openPane: true,
+			notice: null,
+			send: null,
+		};
+	}
+	if (description)
+	{
+		if (isCommandLike(arg, cliListsCommand))
+			return {
+				kind: "command_like",
+			};
+		return {
+			kind: "run",
+			switchToPlan: !inPlan,
+			openPane: false,
+			notice: null,
+			send: arg,
+		};
+	}
+	let notice: PlanCommandNotice | null = null;
+	if (inPlan && !openPane) notice = mayHavePlan ? "already_in_plan" : "already_in_plan_no_plan";
+	return {
+		kind: "run",
+		switchToPlan: !inPlan,
+		openPane,
+		notice,
+		send: null,
+	};
+}
+
 /** What a sent `/status` does: draw the Session info card, toast why it can't yet, or band the extra text. */
 export type StatusCommandRoute =
 	|

@@ -862,6 +862,16 @@ function SessionView({
 		() => withPendingPlan(sessionPlanModel(processed.lines), hookDockedPlan),
 		[processed.lines, hookDockedPlan],
 	);
+	const sessionHasPlan = hasSessionPlan(data.planFilename, planModel);
+	const hasUnloadedHistory = transcript.startIndex > 0;
+	const composerPlan = useMemo(
+		() => (
+		{
+			hasPlan: sessionHasPlan,
+			olderMessagesNotLoaded: hasUnloadedHistory,
+		}),
+		[sessionHasPlan, hasUnloadedHistory],
+	);
 	const turnTokens = useMemo(() => turnTokenEstimate(transcript.records), [transcript.records]);
 	const workingMarkerState = useWorkingMarkerState(
 		{
@@ -2616,11 +2626,8 @@ function SessionView({
 																facts={
 																{
 																	artifactCount: sessionArtifacts.length,
-																	hasPlan: hasSessionPlan(
-																		data.planFilename,
-																		planModel,
-																	),
-																	hasUnloadedHistory: transcript.startIndex > 0,
+																	hasPlan: sessionHasPlan,
+																	hasUnloadedHistory,
 																	backgroundTasks: backgroundTasksFacts(
 																		backgroundTasks,
 																		subagents.length,
@@ -2921,6 +2928,7 @@ function SessionView({
 																		memory={composerMemory}
 																		openConnectors={openConnectors}
 																		openSkills={openSkills}
+																		plan={composerPlan}
 																		onOpenContext={openContextCard}
 																		onShellCommand={runShellCommand}
 																	/>

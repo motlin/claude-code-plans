@@ -94,7 +94,11 @@ import
 	parseCommandShape,
 	parseHostCommand,
 	parseOutputStyleCommand,
+	PLAN_COMMAND_NOTICE_KEY,
+	PLAN_COMMAND_UNAVAILABLE_KEY,
+	planCommandArg,
 	routeFastCommand,
+	routePlanCommand,
 	routeSkillsCommand,
 	routeStatusCommand,
 	routeUsageCommand,
@@ -161,7 +165,8 @@ import
 	isShellCommandText,
 	shellCommandUnavailableMessage,
 } from "../lib/composer-shell-command";
-import {useCoarsePointer} from "../lib/use-phone-sheet";
+import {useCoarsePointer, usePhoneSheet} from "../lib/use-phone-sheet";
+import {type PaneHostApi, useOptionalPaneHost} from "./panes/pane-host-context";
 import {focusHeldByField, focusHeldByOverlay, isCoarsePointer, refocusEmptiedEditor} from "../lib/editor-refocus-guard";
 import {handoffTarget, pickUpHandoff, useFaceFocusHandoff} from "../lib/face-focus-handoff";
 import {showsWorkingPlaceholder, workingPlaceholders} from "../lib/working-placeholder";
@@ -442,6 +447,14 @@ interface ComposerProps
 	openConnectors?: (() => void) | undefined;
 	/** Upstream's `/skills`: a bare `/skills` clears the composer and opens Customize › Skills › Yours. */
 	openSkills?: (() => void) | undefined;
+	/** The session's Plan pane facts for `/plan`: whether it has a plan, or older history that may hold one. */
+	plan?:
+		|
+		  {
+				hasPlan: boolean;
+				olderMessagesNotLoaded: boolean;
+		  }
+		| undefined;
 	/**
 	 * Opens the session rail's Context card for a bare `/autocompact` (upstream's `context-popover`
 	 * action), after the composer clears it. Upstream's consumers take the request in order: the rail
@@ -485,6 +498,17 @@ function bashTokenStyle(token: ThemedToken): CSSProperties
 }
 
 /** The bash-mode command, painted line by line over the transparent editor. */
+/** Keeps the pane host in the composer's ref without re-rendering the composer when the layout changes. */
+const PaneHostBridge = memo(function PaneHostBridge({hostRef}: {hostRef: React.RefObject<PaneHostApi | null>}): null
+{
+	const host = useOptionalPaneHost();
+	useLayoutEffect(() =>
+	{
+		hostRef.current = host;
+	}, [host, hostRef]);
+	return null;
+});
+
 function BashHighlight({lines}: {lines: ThemedToken[][]})
 {
 	return lines.map((tokens, line) => (
@@ -1180,6 +1204,7 @@ export function Composer({
 	memory,
 	openConnectors,
 	openSkills,
+	plan,
 	onOpenContext,
 	statusCommand,
 	usageCommand,
@@ -1200,6 +1225,10 @@ export function Composer({
 	const toast = useContext(ToastContext);
 	// The session's Background tasks pane, which `/workflows` opens; null on the home composer.
 	const backgroundTasks = useBackgroundTasksOpener();
+	// The Plan pane `/plan` opens; null on the home composer, and never opened on a phone. Read through a ref
+	// filled by PaneHostBridge, so a pane layout change doesn't re-render the composer.
+	const paneHostRef = useRef<PaneHostApi | null>(null);
+	const phone = usePhoneSheet();
 	const hintId = useId();
 	const isMac = useIsMac();
 	const isWindows = useIsWindows();
@@ -2115,10 +2144,10 @@ export function Composer({
 	}
 
 	function handleSubmit(
-		send: (prompt: string, routing?: SlashRouting) => void = (text, routing) =>
+		send: (prompt: string, routing?: SlashRouting, options?: LaunchOptions) => void = (text, routing, options) =>
 		{
-			if (routing === undefined) onSend(text, launchOptions);
-			else onSend(text, launchOptions, routing);
+			if (routing === undefined) onSend(text, options ?? launchOptions);
+			else onSend(text, options ?? launchOptions, routing);
 		},
 		trigger?: Event,
 	): void
@@ -2155,9 +2184,13 @@ export function Composer({
 		}
 		// Upstream's `Ne`: only the leading chip counts, and the local chip only exists at the start.
 		const cliCommandForced = chip?.routing === "cli";
-		if (trimmed.startsWith("/") && runHostCommand(trimmed, cliCommandForced, send)) return;
+		const planSend = trimmed.startsWith("/") && !cliCommandForced ? runPlanCommand(trimmed, send) : null;
+		if (planSend?.kind === "handled") return;
+		// A `/plan <description>` goes on as an ordinary prompt, in plan mode.
+		const body = planSend?.text ?? trimmed;
+		if (planSend === null && trimmed.startsWith("/") && runHostCommand(trimmed, cliCommandForced, send)) return;
 		// Other slash commands run as typed; attached context and comments wait for the next real prompt.
-		if (trimmed.startsWith("/"))
+		if (planSend === null && trimmed.startsWith("/"))
 		{
 			noteUnknownCommand(trimmed);
 			if (cliCommandForced)
@@ -2175,10 +2208,11 @@ export function Composer({
 		{
 			const sentChips = takeContextChips(draftKey);
 			const comments = takeQueuedDiffComments(draftKey);
-			const composed = composePrompt(trimmed, sentChips, comments);
-			recordSentAttachments(draftKey, composed, trimmed, sentChips, comments);
-			for (const provider of mentionProviders) provider.onSent?.(trimmed, mentions);
-			send(composed);
+			const composed = composePrompt(body, sentChips, comments);
+			recordSentAttachments(draftKey, composed, body, sentChips, comments);
+			for (const provider of mentionProviders) provider.onSent?.(body, mentions);
+			if (planSend?.options === undefined) send(composed);
+			else send(composed, undefined, planSend.options);
 			clearDraft();
 		};
 		if (!contextChips.some((chip) => chip.status === "pending"))
@@ -2589,6 +2623,109 @@ export function Composer({
 			);
 		}
 		return true;
+	}
+	/**
+	 * Upstream's `/plan` (`Xle` + `Zle`, handled before every other host command): opens the Plan pane, says
+	 * it's already in plan mode, refuses a command-like description, or switches to plan mode. Returns
+	 * `handled` when nothing more should happen, a description to send on as an ordinary prompt (with the
+	 * launch options to send it with), or null when `text` isn't `/plan`.
+	 *
+	 * In a session the CLI's own `/plan` does the switch: `/plan` or `/plan <description>` reaches the pane as
+	 * typed, and the CLI enables plan mode and queries the description in one step. On the home draft the
+	 * switch is the draft's mode pick (upstream's `C1`), and a description launches in plan mode.
+	 *
+	 * Deliberate deltas: no 15s mode-switch race or "taking too long" toast (`OVlCQO`) and no "still starting"
+	 * toast (`OOUarM`), because the CLI switches synchronously and a herdr launch has no spawning composer;
+	 * `/plan open` never reaches the CLI, so it never opens the plan in `$EDITOR` the way the CLI would.
+	 */
+	function runPlanCommand(
+		text: string,
+		send: (prompt: string) => void,
+	):
+		|
+		  {
+				kind: "handled";
+		  }
+		|
+		  {
+				kind: "send";
+				text: string;
+				options: LaunchOptions | undefined;
+		  }
+		| null
+	{
+		const arg = planCommandArg(text);
+		if (arg === null) return null;
+		const home = variant === "home";
+		const paneHost = paneHostRef.current;
+		const route = routePlanCommand(
+			{
+				arg,
+				currentMode: chinLaunchOptions.permissionMode ?? chin?.mode?.id ?? "default",
+				planSelectable: chin !== undefined,
+				hasPlan: plan?.hasPlan === true,
+				olderMessagesNotLoaded: plan?.olderMessagesNotLoaded === true,
+				canOpenPane: !home && paneHost !== null && !phone,
+				paneAlreadyOpen: paneHost?.isOpen("plan") === true,
+				cliListsCommand: (name) => isKnownSlashCommand(name, slashCommands),
+			},
+		);
+		if (route.kind !== "run")
+		{
+			toast?.(
+				route.kind === "unavailable"
+					?
+						{
+							kind: "error",
+							message: "Plan mode isn’t available for this session.",
+							uniqueKey: PLAN_COMMAND_UNAVAILABLE_KEY,
+						}
+					:
+						{
+							kind: "error",
+							message:
+								"/plan takes a description, not a command. Leave out the description’s leading “/” or “!” and try again.",
+						},
+			);
+			return {
+				kind: "handled",
+			};
+		}
+		const planOptions: LaunchOptions =
+		{
+			...chinLaunchOptions,
+			permissionMode: "plan",
+		};
+		if (route.switchToPlan)
+		{
+			onPermissionModePick?.("plan");
+			if (home && route.send === null) launchControls.onLaunchOptionsChange(planOptions);
+			else if (!home) send(route.send === null ? "/plan" : `/plan ${route.send}`);
+		}
+		if (route.openPane) paneHost?.openPane("plan");
+		if (route.notice !== null)
+			toast?.(
+				{
+					kind: "success",
+					message:
+						route.notice === "already_in_plan"
+							? "Already in plan mode."
+							: "Already in plan mode. No plan written yet.",
+					uniqueKey: PLAN_COMMAND_NOTICE_KEY,
+				},
+			);
+		if (route.send === null || (route.switchToPlan && !home))
+		{
+			clearDraft();
+			return {
+				kind: "handled",
+			};
+		}
+		return {
+			kind: "send",
+			text: route.send,
+			options: home && route.switchToPlan ? planOptions : undefined,
+		};
 	}
 	/**
 	 * Upstream's `/skills` (`Hpe` + `Upe`): a bare `/skills` opens `#customize/skills/yours` in the Settings dialog,
@@ -3242,9 +3379,9 @@ export function Composer({
 			}
 			else if (commandChord && e.altKey && onFork !== undefined)
 			{
-				handleSubmit((text) =>
+				handleSubmit((text, _routing, options) =>
 				{
-					onFork(text, chinLaunchOptions);
+					onFork(text, options ?? chinLaunchOptions);
 				}, trigger);
 			}
 			else if (commandChord && !e.altKey && onQueueForLater !== undefined)
@@ -3253,9 +3390,9 @@ export function Composer({
 			}
 			else if (commandChord && !e.altKey && onSendAndStay !== undefined)
 			{
-				handleSubmit((text) =>
+				handleSubmit((text, _routing, options) =>
 				{
-					onSendAndStay(text, chinLaunchOptions);
+					onSendAndStay(text, options ?? chinLaunchOptions);
 				}, trigger);
 			}
 			else
@@ -3272,6 +3409,7 @@ export function Composer({
 			data-bash-mode={bashMode ? "true" : undefined}
 			className="flex w-full min-w-0 flex-col font-sans"
 		>
+			<PaneHostBridge hostRef={paneHostRef} />
 			{queue !== undefined && (
 				<>
 					<p aria-live="polite" aria-atomic="true" data-testid="coach-queued-status" className="sr-only">

@@ -7,7 +7,9 @@ import
 	type HostCommandContext,
 	parseCommandShape,
 	parseHostCommand,
+	planCommandArg,
 	routeFastCommand,
+	routePlanCommand,
 	routeSkillsCommand,
 	routeStatusCommand,
 	routeUsageCommand,
@@ -771,6 +773,203 @@ describe("routeUsageCommand", () =>
 			},
 			null,
 			null,
+		]);
+	});
+});
+
+describe("planCommandArg", () =>
+{
+	it("ports upstream's Xle: the trimmed capture, empty when bare, multi-line allowed, null for anything else", () =>
+	{
+		expect(
+			["/plan", "/PLAN  open ", "/plan\n a\nb", "/plans", "plan", " /plan x"].map(planCommandArg),
+		).toStrictEqual(["", "open", "a\nb", null, null, "x"]);
+	});
+});
+
+describe("routePlanCommand", () =>
+{
+	const base =
+	{
+		arg: "",
+		currentMode: "default",
+		planSelectable: true,
+		hasPlan: true,
+		olderMessagesNotLoaded: false,
+		canOpenPane: true,
+		paneAlreadyOpen: false,
+		cliListsCommand: (name: string) => name === "a.b",
+	};
+	const run = (
+		switchToPlan: boolean,
+		openPane: boolean,
+		notice: "already_in_plan" | "already_in_plan_no_plan" | null,
+		send: string | null,
+	) => (
+	{
+		kind: "run",
+		switchToPlan,
+		openPane,
+		notice,
+		send,
+	});
+
+	it("ports upstream's Zle for a bare /plan", () =>
+	{
+		expect([
+			routePlanCommand(base),
+			routePlanCommand(
+				{
+					...base,
+					currentMode: "plan",
+					hasPlan: false,
+				},
+			),
+			routePlanCommand(
+				{
+					...base,
+					currentMode: "plan",
+					paneAlreadyOpen: true,
+				},
+			),
+			routePlanCommand(
+				{
+					...base,
+					currentMode: "plan",
+					canOpenPane: false,
+				},
+			),
+			routePlanCommand(
+				{
+					...base,
+					currentMode: "plan",
+					hasPlan: false,
+					olderMessagesNotLoaded: true,
+				},
+			),
+			routePlanCommand(
+				{
+					...base,
+					currentMode: "plan",
+				},
+			),
+		]).toStrictEqual([
+			run(true, true, null, null),
+			run(false, false, "already_in_plan_no_plan", null),
+			run(false, false, "already_in_plan", null),
+			run(false, false, "already_in_plan", null),
+			run(false, true, null, null),
+			run(false, true, null, null),
+		]);
+	});
+
+	it("treats open and share (any case) as bare", () =>
+	{
+		expect(
+			["open", "OPEN", "share"].map((arg) =>
+				routePlanCommand(
+					{
+						...base,
+						arg,
+					},
+				),
+			),
+		).toStrictEqual([run(true, true, null, null), run(true, true, null, null), run(true, true, null, null)]);
+	});
+
+	it("sends a description, switching first unless already in plan mode", () =>
+	{
+		expect([
+			routePlanCommand(
+				{
+					...base,
+					arg: "fix the bug",
+				},
+			),
+			routePlanCommand(
+				{
+					...base,
+					arg: "fix",
+					currentMode: "plan",
+				},
+			),
+			routePlanCommand(
+				{
+					...base,
+					arg: "a /foo",
+				},
+			),
+		]).toStrictEqual([
+			run(true, false, null, "fix the bug"),
+			run(false, false, null, "fix"),
+			run(true, false, null, "a /foo"),
+		]);
+	});
+
+	it("refuses a command-like description, including behind invisible characters", () =>
+	{
+		expect(
+			["/foo", "!ls", "\u200b/foo", "/a.b"].map((arg) =>
+				routePlanCommand(
+					{
+						...base,
+						arg,
+					},
+				),
+			),
+		).toStrictEqual([
+			{
+				kind: "command_like",
+			},
+			{
+				kind: "command_like",
+			},
+			{
+				kind: "command_like",
+			},
+			{
+				kind: "command_like",
+			},
+		]);
+	});
+
+	it("is unavailable when plan isn't selectable, unless a bare /plan can open the pane", () =>
+	{
+		const locked =
+		{
+			...base,
+			planSelectable: false,
+		};
+		expect([
+			routePlanCommand(
+				{
+					...locked,
+					arg: "x",
+				},
+			),
+			routePlanCommand(locked),
+			routePlanCommand(
+				{
+					...locked,
+					paneAlreadyOpen: true,
+				},
+			),
+			routePlanCommand(
+				{
+					...locked,
+					currentMode: "plan",
+					arg: "x",
+				},
+			),
+		]).toStrictEqual([
+			{
+				kind: "unavailable",
+			},
+			run(false, true, null, null),
+			{
+				kind: "unavailable",
+			},
+			run(false, false, null, "x"),
 		]);
 	});
 });
