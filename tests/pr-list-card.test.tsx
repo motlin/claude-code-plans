@@ -19,6 +19,8 @@ const ENTRY: PrEntry =
 	url: URL,
 	title: "Fix the thing",
 	ciState: "failed",
+	additions: 10,
+	deletions: 2,
 };
 
 beforeEach(() =>
@@ -183,9 +185,67 @@ describe("PrListCard", () =>
 						className: "shrink-0 tabular-nums ps-1",
 						text: "#12",
 					},
+					{
+						tag: "span",
+						className: "ms-auto shrink-0 whitespace-nowrap ps-2 tabular-nums",
+						text: null,
+					},
+					{
+						tag: "span",
+						className: null,
+						text: null,
+					},
+					{
+						tag: "span",
+						className: "text-git-added opacity-70",
+						text: "+10",
+					},
+					{
+						tag: "span",
+						className: "ms-1 text-git-removed opacity-70",
+						text: "−2",
+					},
 				],
 			},
 		);
+	});
+
+	it("ends the footnote line with upstream's subtle +A −D stat only when both counts are known", async () =>
+	{
+		const card = await openCard([
+			{
+				state: "open",
+				number: 1,
+				title: "Zero",
+				additions: 0,
+				deletions: 0,
+			},
+			{
+				state: "open",
+				number: 2,
+				title: "Half",
+				additions: 5,
+			},
+			{
+				state: "open",
+				repo: "an-owner-with-a-very-long-name/and-an-even-longer-repository-name",
+				number: 3,
+				title: "Long",
+				additions: 12345,
+				deletions: 678,
+			},
+		]);
+		expect(
+			[...card.querySelectorAll("bdi + span")].map((meta) =>
+			{
+				const last = meta.lastElementChild;
+				return [last?.getAttribute("class"), last?.textContent, last?.firstElementChild?.getAttribute("dir")];
+			}),
+		).toStrictEqual([
+			["ms-auto shrink-0 whitespace-nowrap ps-2 tabular-nums", "+0−0", "ltr"],
+			["shrink-0 tabular-nums ps-1", "#2", undefined],
+			["ms-auto shrink-0 whitespace-nowrap ps-2 tabular-nums", "+12345−678", "ltr"],
+		]);
 	});
 
 	it("shows #N as a tabular title and no trailing number when the PR has no title", async () =>

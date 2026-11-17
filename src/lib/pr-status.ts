@@ -35,6 +35,10 @@ export const PrStatusSchema = z
 			failingChecks: z.array(z.string()).optional(),
 			/** Unresolved review threads, from the details fetch. */
 			unresolvedReviewThreads: z.number().int().nonnegative().optional(),
+			/** Lines added, from the cache, `gh` or (for open PRs, freshest) the details fetch. */
+			additions: z.number().int().nonnegative().optional(),
+			/** Lines deleted, from the same sources as `additions`. */
+			deletions: z.number().int().nonnegative().optional(),
 		},
 	)
 	.strict();
@@ -55,11 +59,13 @@ export function samePrStatus(a: PrStatus | null | undefined, b: PrStatus | null 
 		a.checks?.pending === b.checks?.pending &&
 		a.headBranch === b.headBranch &&
 		a.unresolvedReviewThreads === b.unresolvedReviewThreads &&
+		a.additions === b.additions &&
+		a.deletions === b.deletions &&
 		a.failingChecks?.join("\u0000") === b.failingChecks?.join("\u0000")
 	);
 }
 
-/** One row of `gh pr list|view --json number,state,isDraft`. */
+/** One row of `gh pr list|view --json number,state,isDraft,additions,deletions`. */
 export const GhPrStateSchema = z.enum(["OPEN", "CLOSED", "MERGED"]);
 const GhPrItemSchema = z
 	.object(
@@ -67,12 +73,14 @@ const GhPrItemSchema = z
 			number: z.number().int().positive(),
 			state: GhPrStateSchema,
 			isDraft: z.boolean(),
+			additions: z.number().int().nonnegative(),
+			deletions: z.number().int().nonnegative(),
 		},
 	)
 	.strict();
 type GhPrItem = z.infer<typeof GhPrItemSchema>;
 
-const GH_PR_FIELDS = "number,state,isDraft";
+const GH_PR_FIELDS = "number,state,isDraft,additions,deletions";
 
 function fromGhItem(item: GhPrItem): PrStatus
 {
@@ -81,17 +89,19 @@ function fromGhItem(item: GhPrItem): PrStatus
 	return {
 		number: item.number,
 		state,
+		additions: item.additions,
+		deletions: item.deletions,
 	};
 }
 
-/** Parse `gh pr view --json number,state,isDraft`; throws on anything off-schema. */
+/** Parse `gh pr view --json number,state,isDraft,additions,deletions`; throws on anything off-schema. */
 export function parseGhPrView(stdout: string): PrStatus
 {
 	return fromGhItem(GhPrItemSchema.parse(JSON.parse(stdout)));
 }
 
 /**
- * Parse `gh pr list --head <branch> --json number,state,isDraft` (newest first). An open PR wins
+ * Parse `gh pr list --head <branch> --json number,state,isDraft,additions,deletions` (newest first). An open PR wins
  * over newer closed ones; otherwise the newest PR. Throws on anything off-schema.
  */
 export function parseGhPrList(stdout: string): PrStatus | null
@@ -112,8 +122,8 @@ const GhPrStatusCacheEntrySchema = z
 			state: GhPrStatusCacheStateSchema,
 			checks: PrChecksSchema,
 			review: GhPrReviewDecisionSchema.nullable(),
-			additions: z.number().int(),
-			deletions: z.number().int(),
+			additions: z.number().int().nonnegative(),
+			deletions: z.number().int().nonnegative(),
 		},
 	)
 	.strict();
@@ -148,7 +158,7 @@ export function parseGhPrStatusCache(text: string): Map<string, PrStatus>
 		const parsed = GhPrStatusCacheEntrySchema.safeParse(value);
 		if (parsed.success)
 		{
-			const {number, title, state, checks, review} = parsed.data;
+			const {number, title, state, checks, review, additions, deletions} = parsed.data;
 			statuses.set(
 				url,
 				{
@@ -158,11 +168,22 @@ export function parseGhPrStatusCache(text: string): Map<string, PrStatus>
 					title,
 					checks,
 					review,
+					additions,
+					deletions,
 				},
 			);
 		}
 	}
 	return statuses;
+}
+
+/** A status's diff stat counts, only those it knows (exactOptionalPropertyTypes). */
+function diffCounts(pr: PrStatus): Pick<PrStatus, "additions" | "deletions">
+{
+	const counts: Pick<PrStatus, "additions" | "deletions"> = {};
+	if (pr.additions !== undefined) counts.additions = pr.additions;
+	if (pr.deletions !== undefined) counts.deletions = pr.deletions;
+	return counts;
 }
 
 /**
@@ -195,6 +216,7 @@ export function resolvePrStatus({
 					number: prLink.number,
 					state: gh.state,
 					url: prLink.url,
+					...diffCounts(gh),
 				};
 	}
 	return gh ?? null;

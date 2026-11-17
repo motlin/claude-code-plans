@@ -30,32 +30,40 @@ const PR_LINK =
 
 describe("parseGhPrList", () =>
 {
-	it("maps `gh pr list --json number,state,isDraft` rows to a PR status", () =>
+	it("maps `gh pr list --json number,state,isDraft,additions,deletions` rows to a PR status", () =>
 	{
 		expect(
 			[
-				'[{"number":6,"state":"OPEN","isDraft":true}]',
-				'[{"number":7,"state":"OPEN","isDraft":false}]',
-				'[{"number":8,"state":"MERGED","isDraft":false}]',
-				'[{"number":9,"state":"CLOSED","isDraft":false}]',
+				'[{"number":6,"state":"OPEN","isDraft":true,"additions":12345,"deletions":678}]',
+				'[{"number":7,"state":"OPEN","isDraft":false,"additions":10,"deletions":2}]',
+				'[{"number":8,"state":"MERGED","isDraft":false,"additions":0,"deletions":0}]',
+				'[{"number":9,"state":"CLOSED","isDraft":false,"additions":1,"deletions":1}]',
 				"[]",
 			].map(parseGhPrList),
 		).toStrictEqual([
 			{
 				number: 6,
 				state: "draft",
+				additions: 12345,
+				deletions: 678,
 			},
 			{
 				number: 7,
 				state: "open",
+				additions: 10,
+				deletions: 2,
 			},
 			{
 				number: 8,
 				state: "merged",
+				additions: 0,
+				deletions: 0,
 			},
 			{
 				number: 9,
 				state: "closed",
+				additions: 1,
+				deletions: 1,
 			},
 			null,
 		]);
@@ -65,12 +73,14 @@ describe("parseGhPrList", () =>
 	{
 		expect(
 			parseGhPrList(
-				'[{"number":12,"state":"CLOSED","isDraft":false},{"number":11,"state":"OPEN","isDraft":false}]',
+				'[{"number":12,"state":"CLOSED","isDraft":false,"additions":1,"deletions":0},{"number":11,"state":"OPEN","isDraft":false,"additions":4,"deletions":5}]',
 			),
 		).toStrictEqual(
 			{
 				number: 11,
 				state: "open",
+				additions: 4,
+				deletions: 5,
 			},
 		);
 	});
@@ -80,21 +90,26 @@ describe("parseGhPrList", () =>
 		expect(() => parseGhPrList('[{"number":6,"state":"OPEN"}]')).toThrow(
 			"Invalid input: expected boolean, received undefined",
 		);
-		expect(() => parseGhPrList('[{"number":6,"state":"OPEN","isDraft":false,"x":1}]')).toThrow(
-			/Unrecognized key: \\"x\\"/,
+		expect(() => parseGhPrList('[{"number":6,"state":"OPEN","isDraft":false}]')).toThrow(
+			"Invalid input: expected number, received undefined",
 		);
+		expect(() =>
+			parseGhPrList('[{"number":6,"state":"OPEN","isDraft":false,"additions":1,"deletions":1,"x":1}]'),
+		).toThrow(/Unrecognized key: \\"x\\"/);
 		expect(() => parseGhPrList("not json")).toThrow("is not valid JSON");
 	});
 });
 
 describe("parseGhPrView", () =>
 {
-	it("maps `gh pr view --json number,state,isDraft` to a PR status", () =>
+	it("maps `gh pr view --json number,state,isDraft,additions,deletions` to a PR status", () =>
 	{
-		expect(parseGhPrView('{"number":42,"state":"OPEN","isDraft":true}')).toStrictEqual(
+		expect(parseGhPrView('{"number":42,"state":"OPEN","isDraft":true,"additions":5,"deletions":1}')).toStrictEqual(
 			{
 				number: 42,
 				state: "draft",
+				additions: 5,
+				deletions: 1,
 			},
 		);
 	});
@@ -158,6 +173,8 @@ describe("parseGhPrStatusCache", () =>
 						pending: 0,
 					},
 					review: null,
+					additions: 3,
+					deletions: 1,
 				},
 			],
 			[
@@ -174,6 +191,8 @@ describe("parseGhPrStatusCache", () =>
 						pending: 0,
 					},
 					review: "APPROVED",
+					additions: 0,
+					deletions: 0,
 				},
 			],
 		]);
@@ -187,7 +206,7 @@ describe("parseGhPrStatusCache", () =>
 
 describe("parseGhPrDetails", () =>
 {
-	it("reads the head branch, failing check names and unresolved review threads from the graphql reply", () =>
+	it("reads the head branch, diff stat, failing check names and unresolved review threads from the graphql reply", () =>
 	{
 		const reply =
 		{
@@ -198,6 +217,8 @@ describe("parseGhPrDetails", () =>
 					pullRequest:
 					{
 						headRefName: "feature",
+						additions: 12,
+						deletions: 3,
 						reviewThreads:
 						{
 							nodes: [
@@ -267,6 +288,8 @@ describe("parseGhPrDetails", () =>
 		expect(parseGhPrDetails(JSON.stringify(reply))).toStrictEqual(
 			{
 				headBranch: "feature",
+				additions: 12,
+				deletions: 3,
 				failingChecks: ["test", "e2e", "ci/legacy"],
 				unresolvedReviewThreads: 2,
 			},
@@ -284,6 +307,8 @@ describe("parseGhPrDetails", () =>
 					pullRequest:
 					{
 						headRefName: "feature",
+						additions: 0,
+						deletions: 0,
 						reviewThreads:
 						{
 							nodes: [],
@@ -306,6 +331,8 @@ describe("parseGhPrDetails", () =>
 		expect(parseGhPrDetails(JSON.stringify(reply))).toStrictEqual(
 			{
 				headBranch: "feature",
+				additions: 0,
+				deletions: 0,
 				failingChecks: [],
 				unresolvedReviewThreads: 0,
 			},
@@ -415,6 +442,8 @@ describe("resolvePrStatus", () =>
 					{
 						number: 42,
 						state: "open",
+						additions: 5,
+						deletions: 1,
 					},
 				},
 			),
@@ -423,6 +452,8 @@ describe("resolvePrStatus", () =>
 				number: 42,
 				state: "open",
 				url: PR_LINK.url,
+				additions: 5,
+				deletions: 1,
 			},
 		);
 	});
@@ -532,7 +563,7 @@ describe("ghPrLookup", () =>
 		]).toStrictEqual([
 			{
 				key: `url:${PR_LINK.url}`,
-				args: ["pr", "view", PR_LINK.url, "--json", "number,state,isDraft"],
+				args: ["pr", "view", PR_LINK.url, "--json", "number,state,isDraft,additions,deletions"],
 				cwd: undefined,
 				kind: "view",
 			},
@@ -548,7 +579,7 @@ describe("ghPrLookup", () =>
 					"--limit",
 					"10",
 					"--json",
-					"number,state,isDraft",
+					"number,state,isDraft,additions,deletions",
 				],
 				cwd: "/repo",
 				kind: "list",
@@ -595,7 +626,9 @@ describe("createPrStatusService", () =>
 
 	it("answers from memory without blocking, then refreshes via gh in the background", async () =>
 	{
-		const runGh = vi.fn<GhRunner>(async () => Promise.resolve('[{"number":6,"state":"OPEN","isDraft":true}]'));
+		const runGh = vi.fn<GhRunner>(async () =>
+			Promise.resolve('[{"number":6,"state":"OPEN","isDraft":true,"additions":2,"deletions":1}]'),
+		);
 		const {service, onChange} = setup(runGh);
 
 		expect(service.lookup(target)).toBeNull();
@@ -613,6 +646,8 @@ describe("createPrStatusService", () =>
 				{
 					number: 6,
 					state: "draft",
+					additions: 2,
+					deletions: 1,
 				},
 				calls: [
 					[
@@ -626,7 +661,7 @@ describe("createPrStatusService", () =>
 							"--limit",
 							"10",
 							"--json",
-							"number,state,isDraft",
+							"number,state,isDraft,additions,deletions",
 						],
 						"/repo",
 					],
@@ -669,6 +704,8 @@ describe("createPrStatusService", () =>
 								pullRequest:
 								{
 									headRefName: "widgets",
+									additions: 12,
+									deletions: 3,
 									reviewThreads:
 									{
 										nodes: [
@@ -761,6 +798,8 @@ describe("createPrStatusService", () =>
 						pending: 0,
 					},
 					review: null,
+					additions: 12,
+					deletions: 3,
 					headBranch: "widgets",
 					failingChecks: ["test"],
 					unresolvedReviewThreads: 2,
@@ -770,9 +809,9 @@ describe("createPrStatusService", () =>
 		);
 	});
 
-	it("reports a change when only a cached PR's checks or review change", async () =>
+	it("reports a change when only a cached PR's checks, review or diff stat change", async () =>
 	{
-		const entry = (failed: number) =>
+		const entry = (failed: number, deletions = 0) =>
 			JSON.stringify(
 				{
 					[PR_LINK.url]:
@@ -788,7 +827,7 @@ describe("createPrStatusService", () =>
 						},
 						review: null,
 						additions: 0,
-						deletions: 0,
+						deletions,
 					},
 				},
 			);
@@ -816,11 +855,20 @@ describe("createPrStatusService", () =>
 		now += 2 * MINUTE;
 		service.lookup(linked);
 		await service.idle();
+		const checks = service.lookup(linked)?.checks;
+		const checksChanged = [...onChange.mock.calls];
+		onChange.mockClear();
+		cacheText = entry(1, 4);
+		now += 2 * MINUTE;
+		service.lookup(linked);
+		await service.idle();
 
 		expect(
 			{
-				checks: service.lookup(linked)?.checks,
-				changed: onChange.mock.calls,
+				checks,
+				checksChanged,
+				deletions: service.lookup(linked)?.deletions,
+				deletionsChanged: onChange.mock.calls,
 			},
 		).toStrictEqual(
 			{
@@ -830,7 +878,9 @@ describe("createPrStatusService", () =>
 					failed: 1,
 					pending: 0,
 				},
-				changed: [["-repo"]],
+				checksChanged: [["-repo"]],
+				deletions: 4,
+				deletionsChanged: [["-repo"]],
 			},
 		);
 	});

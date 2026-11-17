@@ -59,6 +59,8 @@ function sameDetails(a: PrDetails | null, b: PrDetails)
 	return (
 		a !== null &&
 		a.headBranch === b.headBranch &&
+		a.additions === b.additions &&
+		a.deletions === b.deletions &&
 		a.unresolvedReviewThreads === b.unresolvedReviewThreads &&
 		a.failingChecks.join("\u0000") === b.failingChecks.join("\u0000")
 	);

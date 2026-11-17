@@ -14,7 +14,7 @@ export type PrEntryState =
 
 export type PrCiState = "passed" | "pending" | "failed";
 
-/** One row of upstream's "Pull requests" card (shared-18 `$i`); the diff stat has no local source. */
+/** One row of upstream's "Pull requests" card (shared-18 `$i`). */
 export interface PrEntry
 {
 	state: PrEntryState;
@@ -23,6 +23,8 @@ export interface PrEntry
 	url?: string;
 	title?: string;
 	ciState?: PrCiState;
+	additions?: number;
+	deletions?: number;
 }
 
 /** Upstream's `HV`: the card lists conflicts first and closed PRs last. */
@@ -93,6 +95,8 @@ export function prEntries(pr: PrStatus | undefined, link: SessionPrLink | undefi
 	if (pr.title !== undefined) entry.title = pr.title;
 	const ci = ciState(pr.checks);
 	if (ci !== undefined) entry.ciState = ci;
+	if (pr.additions !== undefined) entry.additions = pr.additions;
+	if (pr.deletions !== undefined) entry.deletions = pr.deletions;
 	// A single entry is already in PR_ENTRY_ORDER; upstream sorts its multi-PR list by it.
 	return [entry];
 }

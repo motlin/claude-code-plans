@@ -1,3 +1,6 @@
+/** Upstream shared-frame `T9`: coarse pointers or devices without hover count as touch. */
+export const TOUCH_QUERY = "(pointer: coarse), (hover: none)";
+
 /**
  * Reveals a hover-only control on touch: coarse pointers and devices without hover never fire the
  * `group-hover` that shows it. Append to any control hidden behind `opacity-0` until hover, as

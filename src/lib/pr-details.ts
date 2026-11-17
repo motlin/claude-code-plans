@@ -9,6 +9,9 @@ import {z} from "zod";
 export interface PrDetails
 {
 	headBranch: string;
+	/** The live diff stat, which overrides a stale statusline cache entry. */
+	additions: number;
+	deletions: number;
 	failingChecks: string[];
 	unresolvedReviewThreads: number;
 }
@@ -86,6 +89,8 @@ const GhPrDetailsReplySchema = z
 										.object(
 											{
 												headRefName: z.string(),
+												additions: z.number().int().nonnegative(),
+												deletions: z.number().int().nonnegative(),
 												reviewThreads: z
 													.object(
 														{
@@ -150,7 +155,7 @@ const GhPrDetailsReplySchema = z
 	)
 	.strict();
 
-const GH_PR_DETAILS_QUERY = `query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){headRefName reviewThreads(first:100){nodes{isResolved}} commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){nodes{__typename ... on CheckRun{name conclusion} ... on StatusContext{context state}}}}}}}}}}`;
+const GH_PR_DETAILS_QUERY = `query($owner:String!,$repo:String!,$number:Int!){repository(owner:$owner,name:$repo){pullRequest(number:$number){headRefName additions deletions reviewThreads(first:100){nodes{isResolved}} commits(last:1){nodes{commit{statusCheckRollup{contexts(first:100){nodes{__typename ... on CheckRun{name conclusion} ... on StatusContext{context state}}}}}}}}}}`;
 
 /** The failing check names of a status rollup, in rollup order. */
 function failingCheckNames(contexts: readonly z.infer<typeof GhCheckContextSchema>[]): string[]
@@ -172,6 +177,8 @@ export function parseGhPrDetails(stdout: string): PrDetails
 	const contexts = pr.commits.nodes.flatMap((node) => node.commit.statusCheckRollup?.contexts.nodes ?? []);
 	return {
 		headBranch: pr.headRefName,
+		additions: pr.additions,
+		deletions: pr.deletions,
 		failingChecks: failingCheckNames(contexts),
 		unresolvedReviewThreads: pr.reviewThreads.nodes.filter((thread) => !thread.isResolved).length,
 	};

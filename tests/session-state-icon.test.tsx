@@ -151,7 +151,7 @@ describe("PrTailGlyph", () =>
 		]);
 	});
 
-	it("shows upstream's Pull request · {state} tooltip on hover when it has no entries", () =>
+	it("shows upstream's Pull request · {state} tooltip after 500ms when it has no entries, closing at once on leave", () =>
 	{
 		vi.useFakeTimers();
 		try
@@ -162,13 +162,106 @@ describe("PrTailGlyph", () =>
 			fireEvent.pointerEnter(tail);
 			act(() =>
 			{
-				vi.advanceTimersByTime(300);
+				vi.advanceTimersByTime(499);
 			});
-			expect(screen.getByRole("tooltip").textContent).toBe("Pull request · Draft");
+			const at499 = screen.queryByRole("tooltip");
+			act(() =>
+			{
+				vi.advanceTimersByTime(1);
+			});
+			const at500 = screen.getByRole("tooltip").textContent;
+			if (tail.parentElement === null) throw new Error("no anchor");
+			fireEvent.pointerLeave(tail.parentElement);
+			expect(
+				{
+					at499,
+					at500,
+					afterLeave: screen.queryByRole("tooltip"),
+				},
+			).toStrictEqual(
+				{
+					at499: null,
+					at500: "Pull request · Draft",
+					afterLeave: null,
+				},
+			);
 		}
 		finally
 		{
 			vi.useRealTimers();
+		}
+	});
+
+	it("labels every PR state with upstream's hj words", () =>
+	{
+		vi.useFakeTimers();
+		try
+		{
+			const texts = (["opened", "draft", "merged", "closed", "conflicting", "queued"] as const).map((state) =>
+			{
+				const {container} = render(<PrTailGlyph state={state} entries={[]} />);
+				const tail = container.querySelector("[data-pr-glyph]");
+				if (tail === null) throw new Error("no tail");
+				fireEvent.pointerEnter(tail);
+				act(() =>
+				{
+					vi.advanceTimersByTime(500);
+				});
+				const text = screen.getByRole("tooltip").textContent;
+				cleanup();
+				return text;
+			});
+			expect(texts).toStrictEqual([
+				"Pull request · Open",
+				"Pull request · Draft",
+				"Pull request · Merged",
+				"Pull request · Closed",
+				"Pull request · Merge conflicts",
+				"Pull request · Queued",
+			]);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
+	});
+
+	it("renders the bare glyph with no tooltip on touch devices, as upstream's VA does", () =>
+	{
+		vi.useFakeTimers();
+		vi.stubGlobal("matchMedia", (query: string) => (
+		{
+			matches: query === "(pointer: coarse), (hover: none)",
+			media: query,
+			addEventListener: () => undefined,
+			removeEventListener: () => undefined,
+		}));
+		try
+		{
+			const {container} = render(<PrTailGlyph state="opened" entries={[]} />);
+			const tail = container.querySelector("[data-pr-glyph]");
+			if (tail === null) throw new Error("no tail");
+			fireEvent.pointerEnter(tail);
+			act(() =>
+			{
+				vi.advanceTimersByTime(1000);
+			});
+			expect(
+				{
+					bare: container.firstElementChild === tail,
+					tooltip: screen.queryByRole("tooltip"),
+				},
+			).toStrictEqual(
+				{
+					bare: true,
+					tooltip: null,
+				},
+			);
+		}
+		finally
+		{
+			vi.useRealTimers();
+			vi.unstubAllGlobals();
 		}
 	});
 

@@ -3,6 +3,7 @@ import {PreviewCard} from "@base-ui/react/preview-card";
 import {useEffect, useRef, useState, type ReactElement, type SyntheticEvent} from "react";
 
 import {prEntryStateLine, type PrEntry, type PrEntryState} from "../../lib/pr-entries";
+import {PrDiffStat} from "../diff-stat";
 import {usePrCardContext} from "../pr-card-context";
 import {COLLISION_PADDING, POPUP_CLASS} from "../session-hover-card-classes";
 import {Icon, type IconName} from "../ui/icon";
@@ -105,6 +106,11 @@ function PrEntryRow({entry, rtl}: {entry: PrEntry; rtl: boolean})
 					</span>
 				)}
 				{hasTitle && <span className="shrink-0 tabular-nums ps-1">#{entry.number}</span>}
+				{entry.additions !== undefined && entry.deletions !== undefined && (
+					<span className="ms-auto shrink-0 whitespace-nowrap ps-2 tabular-nums">
+						<PrDiffStat additions={entry.additions} deletions={entry.deletions} />
+					</span>
+				)}
 			</span>
 		</span>
 	);

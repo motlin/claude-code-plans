@@ -14,10 +14,13 @@ import {sessionStateKindLabels} from "../lib/schema-choices";
 import type {PrEntry} from "../lib/pr-entries";
 import type {GitPrState} from "../lib/pr-status";
 import type {SessionStateKind} from "../lib/session-state";
+import {TOUCH_QUERY} from "../lib/touch-reveal";
+import {useMediaQuery} from "../lib/use-phone-sheet";
 import {GIT_PR_STATE_LABELS} from "./git-pr-state-labels";
 import {PrListCard} from "./sidebar/pr-list-card";
 import {Pulse} from "./ui/pulse";
 import {Tooltip} from "./ui/tooltip";
+import {ROW_MARK_TOOLTIP_DELAY_MS} from "./ui/tooltip-classes";
 
 const DOT_WRAPPER = "flex min-h-3.5 min-w-3.5 shrink-0 items-center justify-center";
 
@@ -44,10 +47,11 @@ const PR_GLYPH_STYLE =
 /**
  * Upstream's PR glyph (`tT place:"title"`): a git-coloured icon, counted when the row has two or more
  * PRs. With entries it opens the "Pull requests" card past the trailing slot; without, it keeps the
- * "Pull request · {state}" tooltip.
+ * "Pull request · {state}" tooltip after 500ms, or (upstream `VA` on touch devices) no tooltip at all.
  */
 export function PrTailGlyph({state, entries}: {state: GitPrState; entries: readonly PrEntry[]})
 {
+	const touch = useMediaQuery(TOUCH_QUERY);
 	const Icon = PR_GLYPH_ICONS[state];
 	const glyph = (
 		<span aria-hidden="true" data-pr-glyph={state} className={PR_GLYPH_CLASS} style={PR_GLYPH_STYLE}>
@@ -62,7 +66,14 @@ export function PrTailGlyph({state, entries}: {state: GitPrState; entries: reado
 		</span>
 	);
 	if (entries.length === 0)
-		return <Tooltip content={`Pull request · ${GIT_PR_STATE_LABELS[state]}`}>{glyph}</Tooltip>;
+	{
+		if (touch) return glyph;
+		return (
+			<Tooltip content={`Pull request · ${GIT_PR_STATE_LABELS[state]}`} delay={ROW_MARK_TOOLTIP_DELAY_MS}>
+				{glyph}
+			</Tooltip>
+		);
+	}
 	return (
 		<PrListCard entries={entries} pastTheSlot>
 			{glyph}

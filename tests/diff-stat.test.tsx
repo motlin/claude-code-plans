@@ -4,7 +4,7 @@ import {act, cleanup, render} from "@testing-library/react";
 import {renderToStaticMarkup} from "react-dom/server";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
-import {AnimatedDiffStat, DiffStat} from "../src/components/diff-stat";
+import {AnimatedDiffStat, DiffStat, PrDiffStat} from "../src/components/diff-stat";
 import {type FrameQueue, installFrameQueue, stubReducedMotion} from "./helpers/frame-queue";
 import {compileAll} from "./helpers/tailwind-design-system";
 
@@ -32,6 +32,20 @@ describe("DiffStat", () =>
 		]).toStrictEqual([
 			'<span dir="ltr" class="tabular-nums"><span class="sr-only">1 addition, 1 deletion</span><span aria-hidden="true" class="contents"><span class="text-git-added">+1</span><span class="text-git-removed">−1</span></span></span>',
 			'<span dir="ltr" class="tabular-nums"><span class="sr-only">0 additions, 0 deletions</span><span aria-hidden="true" class="contents"><span class="text-git-added">+0</span><span class="text-git-removed">−0</span></span></span>',
+		]);
+	});
+});
+
+describe("PrDiffStat", () =>
+{
+	it("renders upstream's b7 subtle tone: raw digits, U+2212, zeros, no sr line or tabular-nums", () =>
+	{
+		expect([
+			renderToStaticMarkup(<PrDiffStat additions={12345} deletions={0} />),
+			renderToStaticMarkup(<PrDiffStat additions={10} deletions={2} />),
+		]).toStrictEqual([
+			'<span dir="ltr"><span class="text-git-added opacity-70">+12345</span><span class="ms-1 text-git-removed opacity-70">−0</span></span>',
+			'<span dir="ltr"><span class="text-git-added opacity-70">+10</span><span class="ms-1 text-git-removed opacity-70">−2</span></span>',
 		]);
 	});
 });

@@ -1,5 +1,8 @@
 export const OPEN_DELAY_MS = 300;
 
+/** Upstream `VA`/`WE`: sidebar row glyph tooltips (delay 500, closeDelay 0, hoverable false, pointer-events-none). */
+export const ROW_MARK_TOOLTIP_DELAY_MS = 500;
+
 export const SIDE_CLASS =
 {
 	top: "bottom-full left-1/2 mb-1 -translate-x-1/2",

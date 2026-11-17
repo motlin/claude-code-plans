@@ -40,6 +40,60 @@ describe("prEntries", () =>
 		]);
 	});
 
+	it("copies the diff stat counts only when the status knows them", () =>
+	{
+		expect([
+			prEntries(
+				{
+					number: 1,
+					state: "merged",
+					additions: 10,
+					deletions: 2,
+				},
+				undefined,
+			),
+			prEntries(
+				{
+					number: 2,
+					state: "merged",
+					additions: 0,
+					deletions: 0,
+				},
+				undefined,
+			),
+			prEntries(
+				{
+					number: 3,
+					state: "merged",
+				},
+				undefined,
+			),
+		]).toStrictEqual([
+			[
+				{
+					state: "merged",
+					number: 1,
+					additions: 10,
+					deletions: 2,
+				},
+			],
+			[
+				{
+					state: "merged",
+					number: 2,
+					additions: 0,
+					deletions: 0,
+				},
+			],
+			[
+				{
+					state: "merged",
+					number: 3,
+				},
+			],
+		]);
+	});
+
 	it("maps an open approved PR to approved, and leaves a non-open approved PR alone", () =>
 	{
 		expect([

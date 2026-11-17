@@ -16,7 +16,7 @@ import {writeClipboardText} from "../lib/clipboard";
 import {useFizzyLake} from "../lib/fizzy-lake";
 import {messageHeading} from "../lib/transcript-action-targets";
 import {type ReadAloudStatus, useReadAloud} from "../hooks/use-read-aloud";
-import {TOUCH_REVEAL} from "../lib/touch-reveal";
+import {TOUCH_QUERY, TOUCH_REVEAL} from "../lib/touch-reveal";
 import {useMediaQuery} from "../lib/use-phone-sheet";
 import {useRovingToolbar} from "../lib/use-roving-toolbar";
 import {formatMessageTime, formatRelativeTimestamp, formatTimestamp} from "../lib/timestamp-format";
@@ -591,9 +591,6 @@ export function AssistantMessageActions({
 	);
 }
 
-/** Upstream's receipt-mark fork (`gw`): touch or no-hover devices get the InfoTip, fine pointers a toolbar button. */
-const RECEIPT_TOUCH_QUERY = "(pointer: coarse), (hover: none)";
-
 /**
  * Upstream's receipt mark (`vs`). On a fine pointer it is the toolbar's own icon button, unfilled on hover, in a
  * tooltip that a click opens and keeps open until the pointer leaves; on touch or no-hover devices it is the
@@ -615,7 +612,7 @@ function ReceiptMark({
 	tabIndex: number | undefined;
 })
 {
-	const touch = useMediaQuery(RECEIPT_TOUCH_QUERY);
+	const touch = useMediaQuery(TOUCH_QUERY);
 	if (touch)
 	{
 		const triggerClass = [className, anchorClassName].filter(Boolean).join(" ");

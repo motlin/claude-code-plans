@@ -74,3 +74,18 @@ export function AnimatedDiffStat({added, removed, className}: DiffStatProps)
 		/>
 	);
 }
+
+/**
+ * Upstream's `b7` in its subtle tone (the "Pull requests" card entries): raw digits, U+2212, no sr line and no
+ * tabular-nums (the caller's wrapper adds that). The bold tone (`font-medium text-git-added` / `ms-1
+ * text-git-closed`) has only cloud Projects callers, so it is left out.
+ */
+export function PrDiffStat({additions, deletions}: {additions: number; deletions: number})
+{
+	return (
+		<span dir="ltr">
+			<span className="text-git-added opacity-70">{`+${additions}`}</span>
+			<span className="ms-1 text-git-removed opacity-70">{`−${deletions}`}</span>
+		</span>
+	);
+}
