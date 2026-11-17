@@ -15,6 +15,8 @@ import
 	workflowSessionIdForPath,
 	type WorkflowRun,
 } from "../src/lib/workflow-runs";
+import {agentState} from "../src/lib/workflow-progress";
+import {runSizeCounts} from "../src/lib/workflow-size-warning";
 
 const SESSION = "1ff9ad30-4e13-4af4-8d20-31a37088f09f";
 const RUN = "wf_b3195248-105";
@@ -603,6 +605,205 @@ describe("readWorkflowRuns", () =>
 				phaseTitle: "Inventory",
 			},
 		]);
+	});
+
+	it("keeps each agent-less journal failure as its own error entry", () =>
+	{
+		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
+		writeJournal([
+			{
+				type: "launched",
+			},
+			{
+				type: "started",
+				key: "K1",
+				agentId: "a1",
+				label: "one",
+				phase: "P",
+			},
+			{
+				type: "failed",
+				key: "K2",
+				agentId: "",
+			},
+			{
+				type: "failed",
+				key: "K3",
+				agentId: "",
+			},
+		]);
+
+		expect(readWorkflowRuns(transcriptPath)[0]?.progress).toStrictEqual([
+			{
+				type: "workflow_phase",
+				index: 1,
+				title: "P",
+			},
+			{
+				type: "workflow_agent",
+				index: 1,
+				label: "one",
+				agentId: "a1",
+				state: "progress",
+				phaseIndex: 1,
+				phaseTitle: "P",
+			},
+			{
+				type: "workflow_agent",
+				index: 2,
+				label: "Agent",
+				agentId: "",
+				state: "error",
+			},
+			{
+				type: "workflow_agent",
+				index: 3,
+				label: "Agent",
+				agentId: "",
+				state: "error",
+			},
+		]);
+	});
+
+	it("upgrades an agent-less failure to the agent a later start with its key names", () =>
+	{
+		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
+		writeJournal([
+			{
+				type: "launched",
+			},
+			{
+				type: "failed",
+				key: "K1",
+				agentId: "",
+			},
+			{
+				type: "started",
+				key: "K1",
+				agentId: "a1",
+				label: "retry",
+			},
+		]);
+
+		expect(readWorkflowRuns(transcriptPath)[0]?.progress).toStrictEqual([
+			{
+				type: "workflow_agent",
+				index: 1,
+				label: "retry",
+				agentId: "a1",
+				state: "progress",
+			},
+		]);
+	});
+
+	it("counts only started agents on a live run: queued agents are never journaled", () =>
+	{
+		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
+		writeJournal([
+			{
+				type: "launched",
+			},
+			...["a1", "a2", "a3"].map((agentId) => (
+			{
+				type: "started",
+				key: `K-${agentId}`,
+				agentId,
+				label: agentId,
+			})),
+		]);
+
+		const agents = (readWorkflowRuns(transcriptPath)[0]?.progress ?? []).filter(
+			(entry) => entry.type === "workflow_agent",
+		);
+		expect(agents.map((entry) => [entry.agentId, entry.queuedAt, agentState(entry)])).toStrictEqual([
+			["a1", undefined, "running"],
+			["a2", undefined, "running"],
+			["a3", undefined, "running"],
+		]);
+	});
+
+	it("reads a running agent's tokens from the last usage in its transcript tail", () =>
+	{
+		writeTranscript([launch("toolu_A", "wxkmbdj52", "2026-10-01T12:00:00.000Z")]);
+		writeJournal([
+			{
+				type: "launched",
+			},
+			{
+				type: "started",
+				key: "K1",
+				agentId: "a1",
+				label: "one",
+			},
+			{
+				type: "started",
+				key: "K2",
+				agentId: "a2",
+				label: "two",
+			},
+		]);
+		const usageLine = (usage: readonly [number, number, number, number]): string =>
+			JSON.stringify(
+				{
+					type: "assistant",
+					message:
+					{
+						role: "assistant",
+						usage:
+						{
+							input_tokens: usage[0],
+							cache_read_input_tokens: usage[1],
+							cache_creation_input_tokens: usage[2],
+							output_tokens: usage[3],
+						},
+					},
+				},
+			);
+		writeFileSync(
+			join(transcriptDir(), "agent-a1.jsonl"),
+			[
+				usageLine([3, 1000, 200, 50]),
+				JSON.stringify(
+					{
+						type: "user",
+						message:
+						{
+							role: "user",
+							content: "next",
+						},
+					},
+				),
+				usageLine([5, 2000, 300, 80]),
+			].join("\n") + "\n",
+		);
+		utimesSync(join(transcriptDir(), "agent-a1.jsonl"), 1_790_000_060, 1_790_000_060);
+
+		const [run] = readWorkflowRuns(transcriptPath);
+		expect(run?.progress).toStrictEqual([
+			{
+				type: "workflow_agent",
+				index: 1,
+				label: "one",
+				agentId: "a1",
+				state: "progress",
+				lastProgressAt: 1_790_000_060_000,
+				tokens: 2385,
+			},
+			{
+				type: "workflow_agent",
+				index: 2,
+				label: "two",
+				agentId: "a2",
+				state: "progress",
+			},
+		]);
+		expect(run === undefined ? null : runSizeCounts(run)).toStrictEqual(
+			{
+				scheduledAgents: 2,
+				startedAgents: 2,
+				totalTokens: 2385,
+			},
+		);
 	});
 
 	it("reads a stopped run's status and summary from its task-notification", () =>

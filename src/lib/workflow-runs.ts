@@ -5,7 +5,7 @@
  * ends, and while it runs `subagents/workflows/<runId>/journal.jsonl` plus each
  * agent's `agent-*.meta.json` and transcript mtime.
  */
-import {readFileSync, statSync} from "node:fs";
+import {closeSync, fstatSync, openSync, readFileSync, readSync, statSync} from "node:fs";
 import {join, relative, sep} from "node:path";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import {z} from "zod";
@@ -372,33 +372,115 @@ function withJournalToolsUsed(entries: WorkflowProgressEntry[], transcriptDir: s
 	});
 }
 
+interface JournalAgent
+{
+	/** Empty for an agent that failed before it spawned (journal `failed` with `agentId: ""`). */
+	agentId: string;
+	label?: string;
+	phase?: string;
+	state: WorkflowAgentEntry["state"];
+}
+
+/** Bytes read from the end of an agent transcript to find its latest usage. */
+const USAGE_TAIL_BYTES = 64 * 1024;
+
+/**
+ * An agent's tokens so far: its last assistant `usage` in the transcript's final 64 KB, input +
+ * cache read + cache creation + output (within 0.5% of the CLI's per-agent `tokens`).
+ */
+function agentTokens(transcriptPath: string): number | undefined
+{
+	let tail: string;
+	try
+	{
+		const fd = openSync(transcriptPath, "r");
+		try
+		{
+			const {size} = fstatSync(fd);
+			const length = Math.min(size, USAGE_TAIL_BYTES);
+			const buffer = Buffer.alloc(length);
+			readSync(fd, buffer, 0, length, size - length);
+			tail = buffer.toString("utf8");
+		}
+		finally
+		{
+			closeSync(fd);
+		}
+	}
+	catch
+	{
+		return undefined;
+	}
+	const lines = tail.split("\n");
+	for (let i = lines.length - 1; i >= 0; i--)
+	{
+		const line = lines[i];
+		if (line === undefined || !line.includes('"usage"')) continue;
+		let record: Record<string, unknown> | undefined;
+		try
+		{
+			record = asRecord(JSON.parse(line));
+		}
+		catch
+		{
+			continue;
+		}
+		if (record?.["type"] !== "assistant") continue;
+		const usage = asRecord(asRecord(record["message"])?.["usage"]);
+		if (usage === undefined) continue;
+		const count = (key: string): number => (typeof usage[key] === "number" ? usage[key] : 0);
+		return (
+			count("input_tokens") +
+			count("cache_read_input_tokens") +
+			count("cache_creation_input_tokens") +
+			count("output_tokens")
+		);
+	}
+	return undefined;
+}
+
 /**
  * A running run's `workflowProgress`, synthesized from its journal: agents in
  * first-started order, phases numbered in first-seen order, `started` →
  * `progress`, `result` → `done`, `failed` → `error`. The agent's meta file
- * fills in a missing label or phase and the model; its mtime is the start time
- * and its transcript's mtime the last progress.
+ * fills in a missing label or phase and the model; its mtime is the start time,
+ * its transcript's mtime the last progress and its transcript's last usage the tokens.
+ *
+ * Queued agents (CLI progress `state:"start"`, `queuedAt`, no `startedAt`) are streamed only to the
+ * SDK/bridge, never journaled, so a live run's total is a lower bound; the anticipate ghost cell
+ * stands in for them (upstream counts them as `pending`).
  */
 function journalProgress(transcriptDir: string): WorkflowProgressEntry[]
 {
 	const events = journalEvents(transcriptDir);
 	const toolsUsed = journalToolsUsed(events);
-	const agents = new Map<
-		string,
-		{
-			label?: string;
-			phase?: string;
-			state: WorkflowAgentEntry["state"];
-		}
-	>();
+	const agents: JournalAgent[] = [];
+	// Each agent by its id, and an id-less one by `key:<journal key>` until a start names its id.
+	const byId = new Map<string, JournalAgent>();
 	for (const event of events)
 	{
 		if (event.type === "launched") continue;
-		const agent = agents.get(event.agentId) ??
+		const keyed = `key:${event.key}`;
+		let agent = byId.get(event.agentId === "" ? keyed : event.agentId);
+		if (agent === undefined && event.agentId !== "")
 		{
-			state: "progress",
-		};
-		agents.set(event.agentId, agent);
+			agent = byId.get(keyed);
+			if (agent !== undefined)
+			{
+				agent.agentId = event.agentId;
+				byId.delete(keyed);
+			}
+		}
+		if (agent === undefined)
+		{
+			agent =
+			{
+				agentId: event.agentId,
+				state: "progress",
+			};
+			agents.push(agent);
+		}
+		byId.set(agent.agentId === "" ? keyed : agent.agentId, agent);
 		if (event.type === "started")
 		{
 			if (event.label !== undefined) agent.label = event.label;
@@ -413,8 +495,23 @@ function journalProgress(transcriptDir: string): WorkflowProgressEntry[]
 
 	const phases = new Map<string, number>();
 	const entries: WorkflowAgentEntry[] = [];
-	for (const [agentId, agent] of agents)
+	for (const agent of agents)
 	{
+		const {agentId} = agent;
+		if (agentId === "")
+		{
+			// Failed before it spawned: no meta file or transcript to read.
+			entries.push(
+				{
+					type: "workflow_agent",
+					index: entries.length + 1,
+					label: "Agent",
+					agentId,
+					state: agent.state,
+				},
+			);
+			continue;
+		}
 		const metaPath = join(transcriptDir, `agent-${agentId}.meta.json`);
 		const meta = RuntimeAgentMetaSchema.safeParse(readJson(metaPath));
 		const phaseTitle = agent.phase ?? (meta.success ? meta.data.workflowPhase : undefined);
@@ -440,8 +537,11 @@ function journalProgress(transcriptDir: string): WorkflowProgressEntry[]
 		if (tools !== undefined) entry.toolsUsed = tools;
 		const startedAt = mtimeMs(metaPath);
 		if (startedAt !== undefined) entry.startedAt = startedAt;
-		const lastProgressAt = mtimeMs(join(transcriptDir, `agent-${agentId}.jsonl`));
+		const agentTranscript = join(transcriptDir, `agent-${agentId}.jsonl`);
+		const lastProgressAt = mtimeMs(agentTranscript);
 		if (lastProgressAt !== undefined) entry.lastProgressAt = lastProgressAt;
+		const tokens = agentTokens(agentTranscript);
+		if (tokens !== undefined) entry.tokens = tokens;
 		entries.push(entry);
 	}
 	const phaseEntries = [...phases].map(([title, index]): WorkflowProgressEntry => (

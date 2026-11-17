@@ -132,6 +132,7 @@ import {sessionApprovalSlotCard} from "../lib/approval-slot-card";
 import {showsWaitingForInputNotice} from "./waiting-for-input-notice";
 import {NotifyMePrompt} from "./notify-me-prompt";
 import {UsagePaceBanner} from "./usage-pace-banner";
+import {WorkflowSizeWarningNotice} from "./workflow-size-warning-notice";
 import {SessionAutoModeSetupBand} from "./auto-mode-setup-band";
 import {ColdResumeNotice} from "./cold-resume-notice";
 import {RefusalFallbackBand} from "./refusal-fallback-card";
@@ -2890,6 +2891,14 @@ function SessionView({
 															/>
 															{/* Upstream sets the usage chip between the docked card and the composer */}
 															{!chromeHidden && sessionDirectory && <UsagePaceBanner />}
+															{!chromeHidden && sessionDirectory && (
+																<WorkflowSizeWarningNotice
+																	runs={workflowRuns}
+																	refusalShown={
+																		!data.archived && refusalFallback !== null
+																	}
+																/>
+															)}
 															{/* Upstream's band needs a local session; locally, a live pane this app can type into */}
 															{!chromeHidden &&
 																sessionDirectory &&
