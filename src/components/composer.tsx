@@ -1,8 +1,10 @@
 import
 {
+	cloneElement,
 	type CSSProperties,
 	Fragment,
 	memo,
+	type ReactElement,
 	type ReactNode,
 	type Ref,
 	useCallback,
@@ -140,6 +142,7 @@ import
 } from "../lib/composer-shell-command";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
 import {focusHeldByField, focusHeldByOverlay, isCoarsePointer, refocusEmptiedEditor} from "../lib/editor-refocus-guard";
+import {handoffTarget, pickUpHandoff, useFaceFocusHandoff} from "../lib/face-focus-handoff";
 import {showsWorkingPlaceholder, workingPlaceholders} from "../lib/working-placeholder";
 import {useBashHighlight} from "../hooks/use-bash-highlight";
 import {useIsOverflowing} from "../hooks/use-is-overflowing";
@@ -301,6 +304,8 @@ interface ComposerProps
 	onStop?: (() => void) | undefined;
 	/** While idle and empty, the send slot offers to stop the session's background agents. */
 	nestedStop?: NestedStopFace | undefined;
+	/** When the host last asked this turn to stop (Stop, its menu, or Esc), so a keyboard Stop hands focus back. */
+	stopAskedAt?: number | null;
 	disabled?: boolean;
 	/**
 	 * Where dropped files land: upstream's page-wide hook and scrim (the home composer), or the chat tile's drop zone
@@ -560,6 +565,44 @@ const EnvironmentBar = memo(function EnvironmentBar({
 	);
 });
 
+/** The props a Tooltip puts on its trigger, which the handoff wrapper passes on to the face button. */
+interface TooltipTriggerProps
+{
+	"aria-describedby"?: string | undefined;
+	"data-popup-open"?: string | undefined;
+}
+
+/**
+ * Upstream's send-cell face wrapper (`td`): a `display: contents` span around one face button that hands keyboard
+ * focus to the prompt editor when the face stops being usable, unless `stays` says to keep it put.
+ */
+function SendFaceHandoff({
+	usable,
+	stays,
+	editorRef,
+	editorDisabled,
+	children,
+	...trigger
+}: TooltipTriggerProps &
+{
+	usable: boolean;
+	stays?: () => boolean;
+	editorRef: React.RefObject<HTMLTextAreaElement | null>;
+	editorDisabled: boolean;
+	children: ReactElement<TooltipTriggerProps>;
+})
+{
+	const ref = useRef<HTMLSpanElement>(null);
+	useFaceFocusHandoff(ref, usable, (face) =>
+		stays?.() === true ? null : handoffTarget(editorRef.current, face, editorDisabled),
+	);
+	return (
+		<span ref={ref} className="contents">
+			{cloneElement(children, trigger)}
+		</span>
+	);
+}
+
 function SendCrossfade({
 	face,
 	stop,
@@ -642,6 +685,8 @@ const SendSlot = memo(function SendSlot({
 	queueForLater,
 	onTouchSubmit,
 	editorRef,
+	editorDisabled,
+	stopAskedAt,
 }: {
 	isStreaming: boolean;
 	onStop: (() => void) | undefined;
@@ -662,12 +707,25 @@ const SendSlot = memo(function SendSlot({
 	queueForLater: boolean;
 	/** The coarse-pointer split's primary Send and its "Queue for later" item. */
 	onTouchSubmit: (lane: TouchSubmitLane) => void;
-	/** The prompt editor, which takes focus back when the split's menu closes. */
+	/** The prompt editor, which takes focus back when the split's menu closes or a face hands off. */
 	editorRef: React.RefObject<HTMLTextAreaElement | null>;
+	/** Whether the editor is disabled, so a face handoff waits for it to re-enable. */
+	editorDisabled: boolean;
+	/** When the host last asked the turn to stop (Esc included), for the Stop face's handoff rule. */
+	stopAskedAt: number | null;
 })
 {
 	const coarse = useCoarsePointer();
 	const stopClickAtRef = useRef(Number.NEGATIVE_INFINITY);
+	/* Upstream's `stopAskedAtRef`: any Stop ask from this cell; the host reports the rest through `stopAskedAt`. */
+	const stopAskedAtRef = useRef(Number.NEGATIVE_INFINITY);
+	/* Read through a ref: an unmounting Stop face runs the `stays` of its last render, not this one's. */
+	const hostStopAskedAtRef = useRef(stopAskedAt);
+	hostStopAskedAtRef.current = stopAskedAt;
+	/* Upstream's own-Stop `stays`: a Stop that goes without a recent ask (the turn ended on its own) keeps focus put. */
+	const stopStays = () =>
+		Date.now() - Math.max(stopAskedAtRef.current, hostStopAskedAtRef.current ?? Number.NEGATIVE_INFINITY) >=
+		STOP_TAP_GUARD_MS;
 	const forkKeys = useShortcutKeys("fork_with_prompt").keys;
 	const cmdEnterKeys = useIsMac() ? "cmd+enter" : "ctrl+enter";
 	const working = isStreaming || onStop !== undefined;
@@ -727,28 +785,40 @@ const SendSlot = memo(function SendSlot({
 				: undefined));
 	const send = (
 		<Tooltip content="Send" shortcut="enter" secondary={secondary}>
-			<button
-				type="button"
-				aria-label="Send"
+			<SendFaceHandoff
+				usable={canSend}
+				editorRef={editorRef}
+				editorDisabled={editorDisabled}
 				aria-describedby={deliveryHint ? hintId : undefined}
-				data-testid="code-prompt-send"
-				onClick={(event) =>
-				{
-					if (Date.now() - stopClickAtRef.current < STOP_TAP_GUARD_MS) return;
-					onSubmit(event);
-				}}
-				disabled={!canSend}
-				className={ICON_BUTTON_CLASS}
 			>
-				<Icon name="ArrowReturn" size="auto" />
-			</button>
+				<button
+					type="button"
+					aria-label="Send"
+					data-testid="code-prompt-send"
+					onClick={(event) =>
+					{
+						if (Date.now() - stopClickAtRef.current < STOP_TAP_GUARD_MS) return;
+						onSubmit(event);
+					}}
+					disabled={!canSend}
+					className={ICON_BUTTON_CLASS}
+				>
+					<Icon name="ArrowReturn" size="auto" />
+				</button>
+			</SendFaceHandoff>
 		</Tooltip>
 	);
 	const stop = () =>
 	{
 		if (Date.now() - faceGuardAtRef.current < STOP_TAP_GUARD_MS) return;
 		stopClickAtRef.current = Date.now();
+		stopAskedAtRef.current = Date.now();
 		onStop?.();
+	};
+	const cancel = () =>
+	{
+		stopAskedAtRef.current = Date.now();
+		onCancel?.();
 	};
 	/* Upstream leaves focus on the body after a menu Stop, so the soft keyboard stays down; other closes refocus the editor. */
 	const stopFromMenuRef = useRef(false);
@@ -784,6 +854,8 @@ const SendSlot = memo(function SendSlot({
 	 * pointer, the cell is a ghost split whose primary steers and whose menu queues or stops.
 	 */
 	const touchSplit = coarse && !isStreaming && onStop !== undefined && hasContent && stopAskedOf === null;
+	/* Upstream's `Te`: the own Stop face holds the cell (working with no draft, or a streamed turn). */
+	const stopShown = !touchSplit && nested === undefined && working && (isStreaming || !hasContent);
 	const splitItems: SplitItem[] = queueForLater
 		? [
 				{
@@ -841,7 +913,7 @@ const SendSlot = memo(function SendSlot({
 		/>
 	) : working || nestedStop !== undefined ? (
 		<SendCrossfade
-			face={nested === undefined ? (working && (isStreaming || !hasContent) ? "stop" : "send") : "nested"}
+			face={nested === undefined ? (stopShown ? "stop" : "send") : "nested"}
 			nested={
 				nestedStop !== undefined && (
 					<Tooltip content={nestedStop.label}>
@@ -886,16 +958,24 @@ const SendSlot = memo(function SendSlot({
 								shortcut: "escape",
 							})}
 				>
-					<button
-						type="button"
-						aria-label="Stop"
-						aria-keyshortcuts={isStreaming ? undefined : "Escape"}
-						data-testid="code-prompt-stop"
-						onClick={isStreaming ? onCancel : stop}
-						className={ICON_BUTTON_CLASS}
+					<SendFaceHandoff
+						key="own"
+						usable={stopShown}
+						stays={stopStays}
+						editorRef={editorRef}
+						editorDisabled={editorDisabled}
 					>
-						<Icon name="StopFilled" />
-					</button>
+						<button
+							type="button"
+							aria-label="Stop"
+							aria-keyshortcuts={isStreaming ? undefined : "Escape"}
+							data-testid="code-prompt-stop"
+							onClick={isStreaming ? cancel : stop}
+							className={ICON_BUTTON_CLASS}
+						>
+							<Icon name="StopFilled" />
+						</button>
+					</SendFaceHandoff>
 				</Tooltip>
 			}
 			send={send}
@@ -917,6 +997,7 @@ const SendSlot = memo(function SendSlot({
 		return (
 			<div
 				ref={cellRef}
+				data-testid="code-prompt-send-cell"
 				className="absolute right-0 bottom-0 grid min-h-7 items-center justify-items-end pl-1.5 comfortable:pl-2"
 			>
 				<div data-send-spacer aria-hidden="true" inert className="invisible col-start-1 row-start-1 flex">
@@ -940,7 +1021,11 @@ const SendSlot = memo(function SendSlot({
 		);
 	}
 	return (
-		<div ref={cellRef} className="absolute right-0 bottom-0 flex min-h-7 items-center pl-1.5 comfortable:pl-2">
+		<div
+			ref={cellRef}
+			data-testid="code-prompt-send-cell"
+			className="absolute right-0 bottom-0 flex min-h-7 items-center pl-1.5 comfortable:pl-2"
+		>
 			{face ?? (
 				<div data-send-spacer aria-hidden="true" inert className="invisible flex">
 					<span className="size-7" />
@@ -970,6 +1055,7 @@ export function Composer({
 	isStreaming = false,
 	onStop,
 	nestedStop,
+	stopAskedAt = null,
 	disabled = false,
 	dropScope = "page",
 	deliveryHint,
@@ -1179,10 +1265,12 @@ export function Composer({
 	);
 	const chinLaunchOptions = live?.options ?? launchOptions;
 
+	// Focus the prompt on mount. A turn's end never takes focus: upstream leaves that to the Stop face's handoff.
+	const mountStreamingRef = useRef(isStreaming);
 	useEffect(() =>
 	{
-		if (!isStreaming) textareaRef.current?.focus();
-	}, [isStreaming]);
+		if (!mountStreamingRef.current) textareaRef.current?.focus();
+	}, []);
 
 	// Upstream remounts its editor per session, so opening one from the sidebar or palette lands focus in the
 	// prompt; here a session switch keeps this instance, so a new draft key takes the focus a mount would,
@@ -1257,6 +1345,13 @@ export function Composer({
 		const active = document.activeElement;
 		if (active === null || active === document.body) textareaRef.current?.focus();
 	}, [disabled]);
+	// Upstream's editor zombie guard (`Vu`): a face that handed off while the editor was disabled lands on re-enable.
+	const editorDisabled = isStreaming || disabled;
+	useEffect(() =>
+	{
+		const textarea = textareaRef.current;
+		if (!editorDisabled && textarea !== null) pickUpHandoff(textarea);
+	}, [editorDisabled]);
 
 	const promptRef = useRef(prompt);
 	promptRef.current = prompt;
@@ -2716,7 +2811,12 @@ export function Composer({
 				onClick={(event) =>
 				{
 					// A portaled menu's click bubbles here through the React tree; only clicks on the card itself focus.
-					if (event.target instanceof Node && event.currentTarget.contains(event.target))
+					// Send and Stop leave focus to their face handoff, as upstream's probes show (a pointer Stop: body).
+					if (
+						event.target instanceof Element &&
+						event.currentTarget.contains(event.target) &&
+						event.target.closest('[data-testid="code-prompt-send-cell"]') === null
+					)
 						textareaRef.current?.focus();
 				}}
 			>
@@ -2994,6 +3094,8 @@ export function Composer({
 						queueForLater={onQueueForLater !== undefined && !bashMode}
 						onTouchSubmit={touchSubmit}
 						editorRef={textareaRef}
+						editorDisabled={editorDisabled}
+						stopAskedAt={stopAskedAt}
 					/>
 					{bashMode && (
 						<div className={BASH_PILL_SLOT_CLASS}>

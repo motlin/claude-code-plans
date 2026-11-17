@@ -127,11 +127,11 @@
 	},
 	"client.composer.home.slashMenu.componentsPerKeystroke":
 	{
-		"ceiling": 8,
+		"ceiling": 9,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "cds Icon (2026-11-07): the composer's Send glyph and the menu checks now render through the shared Icon component, one more distinct component in the census when the Send face mounts or a menu row draws. Went from 7 to 8.",
-		"raisedAt": "2026-11-07"
+		"reason": "send-cell face focus handoff (2026-11-17): the Send and Stop faces now render inside upstream's SendFaceHandoff wrapper (td, a span.contents holding the keyboard handoff hook), one more distinct component in the census when the Send face mounts. Went from 8 to 9.",
+		"raisedAt": "2026-11-17"
 	},
 	"client.composer.home.slashMenu.localStorageWrites":
 	{
@@ -159,11 +159,11 @@
 	},
 	"client.composer.home.typing.componentsPerKeystroke":
 	{
-		"ceiling": 1.5,
+		"ceiling": 1.6,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "cds Icon (2026-11-07): the composer's Send glyph and the menu checks now render through the shared Icon component, one more distinct component in the census when the Send face mounts or a menu row draws. Went from 1.4 to 1.5.",
-		"raisedAt": "2026-11-07"
+		"reason": "send-cell face focus handoff (2026-11-17): the Send and Stop faces now render inside upstream's SendFaceHandoff wrapper (td, a span.contents holding the keyboard handoff hook), one more distinct component in the census when the Send face mounts. Went from 1.5 to 1.6.",
+		"raisedAt": "2026-11-17"
 	},
 	"client.composer.home.typing.localStorageWrites":
 	{
@@ -191,11 +191,11 @@
 	},
 	"client.composer.session.mentionMenu.componentsPerKeystroke":
 	{
-		"ceiling": 11,
+		"ceiling": 12,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "cds Icon (2026-11-07): the composer's Send glyph and the menu checks now render through the shared Icon component, one more distinct component in the census when the Send face mounts or a menu row draws. Went from 10 to 11.",
-		"raisedAt": "2026-11-07"
+		"reason": "send-cell face focus handoff (2026-11-17): the Send and Stop faces now render inside upstream's SendFaceHandoff wrapper (td, a span.contents holding the keyboard handoff hook), one more distinct component in the census when the Send face mounts. Went from 11 to 12.",
+		"raisedAt": "2026-11-17"
 	},
 	"client.composer.session.mentionMenu.localStorageWrites":
 	{
@@ -229,11 +229,11 @@
 	},
 	"client.composer.session.slashMenu.componentsPerKeystroke":
 	{
-		"ceiling": 8,
+		"ceiling": 9,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "cds Icon (2026-11-07): the composer's Send glyph and the menu checks now render through the shared Icon component, one more distinct component in the census when the Send face mounts or a menu row draws. Went from 7 to 8.",
-		"raisedAt": "2026-11-07"
+		"reason": "send-cell face focus handoff (2026-11-17): the Send and Stop faces now render inside upstream's SendFaceHandoff wrapper (td, a span.contents holding the keyboard handoff hook), one more distinct component in the census when the Send face mounts. Went from 8 to 9.",
+		"raisedAt": "2026-11-17"
 	},
 	"client.composer.session.slashMenu.localStorageWrites":
 	{
@@ -267,11 +267,11 @@
 	},
 	"client.composer.session.typing.componentsPerKeystroke":
 	{
-		"ceiling": 1.5,
+		"ceiling": 1.6,
 		"unit": "count",
 		"tolerance": 0,
-		"reason": "cds Icon (2026-11-07): the composer's Send glyph and the menu checks now render through the shared Icon component, one more distinct component in the census when the Send face mounts or a menu row draws. Went from 1.4 to 1.5.",
-		"raisedAt": "2026-11-07"
+		"reason": "send-cell face focus handoff (2026-11-17): the Send and Stop faces now render inside upstream's SendFaceHandoff wrapper (td, a span.contents holding the keyboard handoff hook), one more distinct component in the census when the Send face mounts. Went from 1.5 to 1.6.",
+		"raisedAt": "2026-11-17"
 	},
 	"client.composer.session.typing.localStorageWrites":
 	{

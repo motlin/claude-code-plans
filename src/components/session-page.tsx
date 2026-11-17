@@ -2590,6 +2590,11 @@ function SessionView({
 																	}
 																	onStop={stopAvailable ? stopResponse : undefined}
 																	nestedStop={nestedStop}
+																	stopAskedAt={
+																		lastInterrupt?.sessionId === sessionId
+																			? lastInterrupt.at
+																			: null
+																	}
 																	disabled={
 																		promptBehavior.disabled ||
 																		(!promptBehavior.usesHerdr &&

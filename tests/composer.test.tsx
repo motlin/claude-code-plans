@@ -2082,4 +2082,465 @@ describe("Composer", () =>
 			);
 		});
 	});
+
+	describe("send face focus handoff", () =>
+	{
+		type Props =
+		{
+			onSend?: (prompt: string) => void;
+			onStop?: (() => void) | undefined;
+			onCancel?: () => void;
+			isStreaming?: boolean;
+			disabled?: boolean;
+			stopAskedAt?: number | null;
+		};
+
+		function ui(props: Props)
+		{
+			return (
+				<div>
+					<button type="button" id="outside">
+						outside
+					</button>
+					<Composer
+						variant="session"
+						draftKey="handoff"
+						onSend={
+							props.onSend ??
+							(() =>
+							{
+							})
+						}
+						{...(props.onStop === undefined
+							? {}
+							:
+								{
+									onStop: props.onStop,
+								})}
+						{...(props.onCancel === undefined
+							? {}
+							:
+								{
+									onCancel: props.onCancel,
+								})}
+						isStreaming={props.isStreaming ?? false}
+						disabled={props.disabled ?? false}
+						stopAskedAt={props.stopAskedAt ?? null}
+					/>
+				</div>
+			);
+		}
+
+		function textbox(): HTMLTextAreaElement
+		{
+			return screen.getByRole<HTMLTextAreaElement>(
+				"textbox",
+				{
+					name: "Prompt",
+				},
+			);
+		}
+
+		function type(value: string): void
+		{
+			fireEvent.change(
+				textbox(),
+				{
+					target:
+					{
+						value,
+					},
+				},
+			);
+		}
+
+		function keyActivate(button: HTMLElement): void
+		{
+			button.focus();
+			fireEvent.keyDown(
+				button,
+				{
+					key: "Enter",
+				},
+			);
+			fireEvent.click(button);
+		}
+
+		function pointerActivate(button: HTMLElement): void
+		{
+			fireEvent.pointerDown(button);
+			button.focus();
+			fireEvent.click(button);
+		}
+
+		function pressEnter(): void
+		{
+			fireEvent.keyDown(
+				textbox(),
+				{
+					key: "Enter",
+				},
+			);
+		}
+
+		afterEach(() =>
+		{
+			// Release any Enter guard a handoff left armed on the document.
+			fireEvent.keyDown(
+				document,
+				{
+					key: "Escape",
+				},
+			);
+		});
+
+		function sendGoesUnusable(focusSend: (send: HTMLElement) => void)
+		{
+			const sent: string[] = [];
+			const onSend = (prompt: string) =>
+			{
+				sent.push(prompt);
+			};
+			const {rerender} = render(
+				ui(
+					{
+						onSend,
+					},
+				),
+			);
+			type("hi");
+			const send = screen.getByRole(
+				"button",
+				{
+					name: "Send",
+				},
+			);
+			const wrapper = send.parentElement;
+			focusSend(send);
+			rerender(
+				ui(
+					{
+						onSend,
+						disabled: true,
+					},
+				),
+			);
+			rerender(
+				ui(
+					{
+						onSend,
+					},
+				),
+			);
+			const focused = document.activeElement === textbox();
+			pressEnter();
+			return {
+				wrapper: `${wrapper?.tagName}.${wrapper?.className}`,
+				focused,
+				sent,
+			};
+		}
+
+		it("hands a keyboard-focused Send that goes unusable to the editor and swallows the Enter that follows", () =>
+		{
+			expect(
+				sendGoesUnusable((send) =>
+				{
+					send.focus();
+				}),
+			).toStrictEqual(
+				{
+					wrapper: "SPAN.contents",
+					focused: true,
+					sent: [],
+				},
+			);
+		});
+
+		it("leaves a pointer-focused Send alone and arms no Enter guard", () =>
+		{
+			expect(
+				sendGoesUnusable((send) =>
+				{
+					fireEvent.pointerDown(send);
+					send.focus();
+				}),
+			).toStrictEqual(
+				{
+					wrapper: "SPAN.contents",
+					focused: false,
+					sent: ["hi"],
+				},
+			);
+		});
+
+		it("hands a keyboard steer to the editor as Send gives way to Stop", () =>
+		{
+			const sent: string[] = [];
+			render(
+				ui(
+					{
+						onStop: () =>
+						{
+						},
+						onSend: (prompt) =>
+						{
+							sent.push(prompt);
+						},
+					},
+				),
+			);
+			type("steer");
+			keyActivate(
+				screen.getByRole(
+					"button",
+					{
+						name: "Send",
+					},
+				),
+			);
+			expect(
+				{
+					focused: document.activeElement === textbox(),
+					sent,
+					leavingInert: screen.getByTestId("code-prompt-send").closest("[inert]") !== null,
+				},
+			).toStrictEqual(
+				{
+					focused: true,
+					sent: ["steer"],
+					leavingInert: true,
+				},
+			);
+		});
+
+		it("hands a keyboard-activated Stop to the editor when the turn stops", () =>
+		{
+			const stops: string[] = [];
+			const onStop = () =>
+			{
+				stops.push("stop");
+			};
+			const {rerender} = render(
+				ui(
+					{
+						onStop,
+					},
+				),
+			);
+			keyActivate(screen.getByTestId("code-prompt-stop"));
+			rerender(ui({}));
+			expect(
+				{
+					stops,
+					focused: document.activeElement === textbox(),
+				},
+			).toStrictEqual(
+				{
+					stops: ["stop"],
+					focused: true,
+				},
+			);
+		});
+
+		it("hands off after an Esc ask the host reports", () =>
+		{
+			const {rerender} = render(
+				ui(
+					{
+						onStop: () =>
+						{
+						},
+					},
+				),
+			);
+			const stop = screen.getByTestId("code-prompt-stop");
+			stop.focus();
+			fireEvent.keyDown(
+				stop,
+				{
+					key: "Escape",
+				},
+			);
+			rerender(
+				ui(
+					{
+						stopAskedAt: Date.now(),
+					},
+				),
+			);
+			expect(
+				{
+					focused: document.activeElement === textbox(),
+				},
+			).toStrictEqual(
+				{
+					focused: true,
+				},
+			);
+		});
+
+		it("keeps focus put when the turn ends on its own", () =>
+		{
+			vi.useFakeTimers(
+				{
+					toFake: ["setTimeout", "clearTimeout", "Date", "performance"],
+				},
+			);
+			const {rerender} = render(
+				ui(
+					{
+						onStop: () =>
+						{
+						},
+					},
+				),
+			);
+			const stop = screen.getByTestId("code-prompt-stop");
+			stop.focus();
+			fireEvent.keyDown(
+				stop,
+				{
+					key: "Tab",
+				},
+			);
+			vi.advanceTimersByTime(2000);
+			rerender(ui({}));
+			expect(
+				{
+					focused: document.activeElement === textbox(),
+				},
+			).toStrictEqual(
+				{
+					focused: false,
+				},
+			);
+		});
+
+		it("leaves a pointer-activated Stop alone", () =>
+		{
+			const {rerender} = render(
+				ui(
+					{
+						onStop: () =>
+						{
+						},
+					},
+				),
+			);
+			pointerActivate(screen.getByTestId("code-prompt-stop"));
+			rerender(ui({}));
+			expect(
+				{
+					focused: document.activeElement === textbox(),
+				},
+			).toStrictEqual(
+				{
+					focused: false,
+				},
+			);
+		});
+
+		it("does not take focus when a streamed turn ends", () =>
+		{
+			const {rerender} = render(
+				ui(
+					{
+						isStreaming: true,
+						onCancel: () =>
+						{
+						},
+					},
+				),
+			);
+			const outside = document.getElementById("outside");
+			outside?.focus();
+			rerender(ui({}));
+			expect(
+				{
+					focusedId: document.activeElement?.id,
+				},
+			).toStrictEqual(
+				{
+					focusedId: "outside",
+				},
+			);
+		});
+
+		function stopWhileDisabled(waitMs: number, between?: () => void): boolean
+		{
+			vi.useFakeTimers(
+				{
+					toFake: ["setTimeout", "clearTimeout", "Date", "performance"],
+				},
+			);
+			const {rerender} = render(
+				ui(
+					{
+						onStop: () =>
+						{
+						},
+						disabled: true,
+					},
+				),
+			);
+			keyActivate(screen.getByTestId("code-prompt-stop"));
+			rerender(
+				ui(
+					{
+						disabled: true,
+					},
+				),
+			);
+			act(() =>
+			{
+				vi.advanceTimersByTime(waitMs);
+			});
+			between?.();
+			rerender(ui({}));
+			return document.activeElement === textbox();
+		}
+
+		it("lands a handoff once the disabled editor re-enables within a second", () =>
+		{
+			expect(
+				{
+					focused: stopWhileDisabled(400),
+				},
+			).toStrictEqual(
+				{
+					focused: true,
+				},
+			);
+		});
+
+		it("drops a handoff the editor re-enables too late for", () =>
+		{
+			expect(
+				{
+					focused: stopWhileDisabled(1200),
+				},
+			).toStrictEqual(
+				{
+					focused: false,
+				},
+			);
+		});
+
+		it("drops a handoff after a pointerdown", () =>
+		{
+			expect(
+				{
+					focused: stopWhileDisabled(100, () =>
+					{
+						fireEvent.pointerDown(document.body);
+					}),
+				},
+			).toStrictEqual(
+				{
+					focused: false,
+				},
+			);
+		});
+	});
 });
