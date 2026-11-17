@@ -137,8 +137,7 @@ import
 	shellCommandUnavailableMessage,
 } from "../lib/composer-shell-command";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
-import {WorkingPlaceholderText} from "./composer-working-placeholder";
-import {showsWorkingPlaceholder, workingPlaceholder} from "../lib/working-placeholder";
+import {showsWorkingPlaceholder, workingPlaceholders} from "../lib/working-placeholder";
 import {useBashHighlight} from "../hooks/use-bash-highlight";
 import {useIsOverflowing} from "../hooks/use-is-overflowing";
 import {type SplitItem, SplitDropdownButton} from "./ui/split-dropdown-button";
@@ -178,6 +177,12 @@ const PAINTED_OVERLAY_CLASS = `${GHOST_OVERLAY_CLASS} left-[30px] comfortable:le
  * the empty editor past h28. The second line of a too-wide placeholder is clipped.
  */
 const PLACEHOLDER_OVERLAY_CLASS = `${PAINTED_OVERLAY_CLASS} text-placeholder select-none`;
+
+/**
+ * Upstream's `placeholderFit` "clamp" (`truncate`): outside bash mode the single-row card keeps the placeholder on
+ * one line with an ellipsis. Bash mode is "grow" and keeps the wrapping overlay.
+ */
+const PLACEHOLDER_CLAMP_CLASS = PLACEHOLDER_OVERLAY_CLASS.replace("break-words whitespace-pre-wrap", "truncate");
 
 /** Upstream `.epitaxy-prompt[data-bash-mode]`: the editor, placeholder, probe and painted command take the mono face. */
 function bashFont(className: string, bashMode: boolean): string
@@ -1303,23 +1308,6 @@ export function Composer({
 	const bashLines = useBashHighlight(prompt, bashMode && prompt !== "");
 	const bashPainted = bashMode && bashLines !== null;
 	const painted = bashPainted || chip !== null || mentions.length > 0;
-	// Upstream's fit probe: bash mode shows its compact placeholder when the full one overflows one line.
-	const [fitProbe, setFitProbe] = useState<HTMLDivElement | null>(null);
-	const bashCompact = useIsOverflowing(bashMode ? fitProbe : null, BASH_PLACEHOLDER);
-	const bashPlaceholder = bashCompact ? BASH_COMPACT_PLACEHOLDER : BASH_PLACEHOLDER;
-	// Upstream's editor hint in bash mode: the full placeholder as aria-description, and as title while compact.
-	const bashHintProps = bashMode
-		?
-			{
-				"aria-description": BASH_PLACEHOLDER,
-				...(bashCompact
-					?
-						{
-							title: BASH_PLACEHOLDER,
-						}
-					: {}),
-			}
-		: {};
 	const showWorking =
 		!bashMode &&
 		showsWorkingPlaceholder(
@@ -1330,7 +1318,43 @@ export function Composer({
 				isWindows,
 			},
 		);
-	const placeholder = bashMode ? bashPlaceholder : showWorking ? workingPlaceholder(isMac) : PLACEHOLDER[variant];
+	// Upstream's placeholder pair: bash mode and the working hint each have a compact form, and the editor's
+	// `aria-description` carries the full hint (spoken for the working one).
+	const working = workingPlaceholders(isMac);
+	const hint = bashMode
+		?
+			{
+				full: BASH_PLACEHOLDER,
+				compact: BASH_COMPACT_PLACEHOLDER,
+				description: BASH_PLACEHOLDER,
+			}
+		: showWorking
+			?
+				{
+					full: working.full,
+					compact: working.compact,
+					description: working.spoken,
+				}
+			: undefined;
+	const fullPlaceholder = hint?.full ?? PLACEHOLDER[variant];
+	// Upstream's fit probe: the compact text shows once the full one overflows one line.
+	const [fitProbe, setFitProbe] = useState<HTMLDivElement | null>(null);
+	const compact = useIsOverflowing(hint === undefined ? null : fitProbe, fullPlaceholder);
+	const placeholder = hint !== undefined && compact ? hint.compact : fullPlaceholder;
+	// Upstream's editor hint: the full text as aria-description, and as title while the compact text shows.
+	const hintProps =
+		hint === undefined
+			? {}
+			:
+				{
+					"aria-description": hint.description,
+					...(placeholder === hint.full
+						? {}
+						:
+							{
+								title: hint.full,
+							}),
+				};
 	// The textarea's selection end, so a selection spanning exactly one chip paints it selected.
 	const [selectionEnd, setSelectionEnd] = useState(0);
 	const selectedMention = mentions.find((m) => m.start === caret && m.end === selectionEnd);
@@ -2613,15 +2637,15 @@ export function Composer({
 							</span>
 						</div>
 					)}
-					{bashMode && (
+					{hint !== undefined && (
 						<div
 							aria-hidden="true"
-							className={`${bashFont(PLACEHOLDER_OVERLAY_CLASS, true)} ${BASH_OVERLAY_CLASS}`}
+							className={`${bashFont(PLACEHOLDER_OVERLAY_CLASS, bashMode)}${bashMode ? ` ${BASH_OVERLAY_CLASS}` : ""}`}
 						>
 							<div
 								ref={setFitProbe}
 								aria-hidden="true"
-								data-placeholder-fit-probe={BASH_PLACEHOLDER}
+								data-placeholder-fit-probe={fullPlaceholder}
 								className={PLACEHOLDER_FIT_PROBE_CLASS}
 							/>
 						</div>
@@ -2630,9 +2654,9 @@ export function Composer({
 						<div
 							data-testid="composer-placeholder"
 							aria-hidden="true"
-							className={`${bashFont(PLACEHOLDER_OVERLAY_CLASS, bashMode)}${bashMode ? ` ${BASH_OVERLAY_CLASS}` : ""}${isStreaming || disabled ? " opacity-50" : ""}`}
+							className={`${bashMode ? `${bashFont(PLACEHOLDER_OVERLAY_CLASS, true)} ${BASH_OVERLAY_CLASS}` : PLACEHOLDER_CLAMP_CLASS}${isStreaming || disabled ? " opacity-50" : ""}`}
 						>
-							{showWorking ? <WorkingPlaceholderText isMac={isMac} /> : placeholder}
+							{placeholder}
 						</div>
 					)}
 					<textarea
@@ -2696,7 +2720,7 @@ export function Composer({
 									: undefined
 						}
 						aria-placeholder={placeholder}
-						{...bashHintProps}
+						{...hintProps}
 						disabled={isStreaming || disabled}
 						rows={1}
 						enterKeyHint="enter"

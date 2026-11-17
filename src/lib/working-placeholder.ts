@@ -1,13 +1,23 @@
-/** Upstream's placeholder while Claude works: `{sendKey} to send, {queueKey} to queue for later`. */
-export function workingPlaceholder(isMac: boolean): string
+/**
+ * Upstream's working hint while Claude works (mZ6xnU `{sendKey} to send, {queueKey} to queue for later`), its compact
+ * form shown once the full one overflows the editor (FIL0bW `{queueKey} to queue`), and the spoken full text the
+ * editor carries as `aria-description`. Upstream's `fd` writes Mac keys as glyphs and spells them out, joined with
+ * `+`, everywhere else (`⏎` reads "Enter"; `Ctrl` has no glyph).
+ */
+export function workingPlaceholders(isMac: boolean):
 {
-	return `⏎ to send, ${isMac ? "⌘⏎" : "Ctrl⏎"} to queue for later`;
+	full: string;
+	compact: string;
+	spoken: string;
 }
-
-/** Upstream's `{queueKey} to queue`, shown once the full working placeholder overflows the editor. */
-export function pickWorkingPlaceholder({fits, isMac}: {fits: boolean; isMac: boolean}): string
 {
-	return fits ? workingPlaceholder(isMac) : `${isMac ? "⌘⏎" : "Ctrl⏎"} to queue`;
+	const send = isMac ? "⏎" : "Enter";
+	const queue = isMac ? "⌘⏎" : "Ctrl+Enter";
+	return {
+		full: `${send} to send, ${queue} to queue for later`,
+		compact: `${queue} to queue`,
+		spoken: `Enter to send, ${isMac ? "Command+Enter" : "Ctrl+Enter"} to queue for later`,
+	};
 }
 
 /**

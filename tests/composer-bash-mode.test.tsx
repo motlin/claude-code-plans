@@ -1560,6 +1560,10 @@ describe("Composer bash mode compact placeholder", () =>
 				probe: placeholderProbe(),
 				probeFont: fontClasses(document.querySelector("[data-placeholder-fit-probe]")?.parentElement ?? null),
 				placeholder: screen.getByTestId("composer-placeholder").textContent,
+				fit: screen
+					.getByTestId("composer-placeholder")
+					.className.split(" ")
+					.filter((name) => ["truncate", "break-words", "whitespace-pre-wrap"].includes(name)),
 				ariaPlaceholder: textarea.getAttribute("aria-placeholder"),
 				title: textarea.getAttribute("title"),
 			},
@@ -1574,6 +1578,7 @@ describe("Composer bash mode compact placeholder", () =>
 				},
 				probeFont: ["font-mono"],
 				placeholder: BASH_PLACEHOLDER,
+				fit: ["break-words", "whitespace-pre-wrap"],
 				ariaPlaceholder: BASH_PLACEHOLDER,
 				title: null,
 			},

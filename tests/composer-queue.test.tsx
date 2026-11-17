@@ -4,7 +4,6 @@ import {act, cleanup, fireEvent, render, renderHook, screen, waitFor, within} fr
 import {useState} from "react";
 import {afterEach, beforeAll, describe, expect, it, vi} from "vite-plus/test";
 import {Composer, type ComposerQueueView} from "../src/components/composer";
-import {pickWorkingPlaceholder} from "../src/lib/working-placeholder";
 import {recallLastHeldSteer} from "../src/lib/steer-recall";
 import {ToastContext, type ToastOptions} from "../src/components/toast-context";
 import {useLiveHerdrPrompt} from "../src/components/use-live-herdr-prompt";
@@ -1596,9 +1595,26 @@ describe("Composer while working", () =>
 		);
 	});
 
-	it("shows upstream's working placeholder with ⌘⏎ on Mac", () =>
+	const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)";
+	const LINUX_UA = "Mozilla/5.0 (X11; Linux x86_64)";
+	const PROBE_CLASS = "invisible me-px whitespace-nowrap before:content-[attr(data-placeholder-fit-probe)]";
+
+	function stubProbeWidths(scrollWidth: number, clientWidth: number)
 	{
-		vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)");
+		vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockImplementation(function (this: HTMLElement)
+		{
+			return this.hasAttribute("data-placeholder-fit-probe") ? scrollWidth : 0;
+		});
+		vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(function (this: HTMLElement)
+		{
+			return this.hasAttribute("data-placeholder-fit-probe") ? clientWidth : 0;
+		});
+	}
+
+	function workingHint(userAgent: string, widths: readonly [number, number])
+	{
+		vi.spyOn(navigator, "userAgent", "get").mockReturnValue(userAgent);
+		stubProbeWidths(...widths);
 		const textarea = renderComposer(
 			{
 				onQueueForLater: () =>
@@ -1609,103 +1625,123 @@ describe("Composer while working", () =>
 				},
 			},
 		);
+		const probes = [...document.querySelectorAll<HTMLElement>("[data-placeholder-fit-probe]")];
+		return {
+			probes: probes.map((probe) => (
+			{
+				text: probe.getAttribute("data-placeholder-fit-probe"),
+				hidden: probe.getAttribute("aria-hidden"),
+				className: probe.className,
+			})),
+			visible: screen.getByTestId("composer-placeholder").textContent,
+			ariaPlaceholder: textarea.getAttribute("aria-placeholder"),
+			description: textarea.getAttribute("aria-description"),
+			title: textarea.getAttribute("title"),
+		};
+	}
 
-		expect(textarea.getAttribute("aria-placeholder")).toBe("⏎ to send, ⌘⏎ to queue for later");
-	});
-
-	it("shows the working placeholder with Ctrl⏎ off Mac", () =>
+	it("probes upstream's full working placeholder on Mac and keeps it while it fits", () =>
 	{
-		vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (X11; Linux x86_64)");
-		const textarea = renderComposer(
+		expect(workingHint(MAC_UA, [231, 231])).toStrictEqual(
 			{
-				onQueueForLater: () =>
-				{
-				},
-				onStop: () =>
-				{
-				},
-			},
-		);
-
-		expect(textarea.getAttribute("aria-placeholder")).toBe("⏎ to send, Ctrl⏎ to queue for later");
-	});
-
-	it("picks the compact working placeholder only when the full sentence doesn't fit", () =>
-	{
-		expect(
-			{
-				fitsMac: pickWorkingPlaceholder(
+				probes: [
 					{
-						fits: true,
-						isMac: true,
+						text: "⏎ to send, ⌘⏎ to queue for later",
+						hidden: "true",
+						className: PROBE_CLASS,
 					},
-				),
-				overflowMac: pickWorkingPlaceholder(
-					{
-						fits: false,
-						isMac: true,
-					},
-				),
-				overflowOther: pickWorkingPlaceholder(
-					{
-						fits: false,
-						isMac: false,
-					},
-				),
-			},
-		).toStrictEqual(
-			{
-				fitsMac: "⏎ to send, ⌘⏎ to queue for later",
-				overflowMac: "⌘⏎ to queue",
-				overflowOther: "Ctrl⏎ to queue",
+				],
+				visible: "⏎ to send, ⌘⏎ to queue for later",
+				ariaPlaceholder: "⏎ to send, ⌘⏎ to queue for later",
+				description: "Enter to send, Command+Enter to queue for later",
+				title: null,
 			},
 		);
 	});
 
-	it("shows the compact working placeholder when the full one overflows, keeping the full aria-placeholder", () =>
+	it("swaps to upstream's compact working placeholder on Mac, with the full text as title, when it overflows", () =>
 	{
-		vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)");
-		vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(120);
-		vi.spyOn(HTMLElement.prototype, "scrollWidth", "get").mockReturnValue(260);
-		const textarea = renderComposer(
+		expect(workingHint(MAC_UA, [232, 231])).toStrictEqual(
 			{
-				onQueueForLater: () =>
-				{
-				},
-				onStop: () =>
-				{
-				},
-			},
-		);
-
-		expect(
-			{
-				visible: screen.getByTestId("composer-placeholder-text").textContent,
-				aria: textarea.getAttribute("aria-placeholder"),
-			},
-		).toStrictEqual(
-			{
+				probes: [
+					{
+						text: "⏎ to send, ⌘⏎ to queue for later",
+						hidden: "true",
+						className: PROBE_CLASS,
+					},
+				],
 				visible: "⌘⏎ to queue",
-				aria: "⏎ to send, ⌘⏎ to queue for later",
+				ariaPlaceholder: "⌘⏎ to queue",
+				description: "Enter to send, Command+Enter to queue for later",
+				title: "⏎ to send, ⌘⏎ to queue for later",
 			},
 		);
 	});
 
-	it("keeps the full working placeholder visible when it fits", () =>
+	it("spells upstream's working placeholder with +-joined Enter and Ctrl off Mac", () =>
 	{
-		vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)");
-		renderComposer(
+		expect(workingHint(LINUX_UA, [231, 231])).toStrictEqual(
+			{
+				probes: [
+					{
+						text: "Enter to send, Ctrl+Enter to queue for later",
+						hidden: "true",
+						className: PROBE_CLASS,
+					},
+				],
+				visible: "Enter to send, Ctrl+Enter to queue for later",
+				ariaPlaceholder: "Enter to send, Ctrl+Enter to queue for later",
+				description: "Enter to send, Ctrl+Enter to queue for later",
+				title: null,
+			},
+		);
+	});
+
+	it("shows upstream's compact Ctrl+Enter working placeholder off Mac when the full one overflows", () =>
+	{
+		expect(workingHint(LINUX_UA, [300, 200])).toStrictEqual(
+			{
+				probes: [
+					{
+						text: "Enter to send, Ctrl+Enter to queue for later",
+						hidden: "true",
+						className: PROBE_CLASS,
+					},
+				],
+				visible: "Ctrl+Enter to queue",
+				ariaPlaceholder: "Ctrl+Enter to queue",
+				description: "Enter to send, Ctrl+Enter to queue for later",
+				title: "Enter to send, Ctrl+Enter to queue for later",
+			},
+		);
+	});
+
+	it("renders no fit probe, title or aria-description for the idle placeholder, and truncates it on one line", () =>
+	{
+		const textarea = renderComposer(
 			{
 				onQueueForLater: () =>
 				{
 				},
-				onStop: () =>
-				{
-				},
 			},
 		);
+		const overlay = screen.getByTestId("composer-placeholder").className.split(" ");
 
-		expect(screen.getByTestId("composer-placeholder-text").textContent).toBe("⏎ to send, ⌘⏎ to queue for later");
+		expect(
+			{
+				probe: document.querySelector("[data-placeholder-fit-probe]"),
+				description: textarea.getAttribute("aria-description"),
+				title: textarea.getAttribute("title"),
+				fit: overlay.filter((name) => ["truncate", "break-words", "whitespace-pre-wrap"].includes(name)),
+			},
+		).toStrictEqual(
+			{
+				probe: null,
+				description: null,
+				title: null,
+				fit: ["truncate"],
+			},
+		);
 	});
 
 	it("keeps the normal placeholder on a coarse pointer, where plain Enter doesn't send (upstream's gate)", () =>
@@ -1778,7 +1814,7 @@ describe("Composer while working", () =>
 					},
 				},
 			);
-			expect(textarea.getAttribute("aria-placeholder")).toBe("⏎ to send, Ctrl⏎ to queue for later");
+			expect(textarea.getAttribute("aria-placeholder")).toBe("Enter to send, Ctrl+Enter to queue for later");
 		}
 		finally
 		{
