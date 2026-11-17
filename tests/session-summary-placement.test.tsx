@@ -1005,6 +1005,98 @@ describe("SessionPage dock composition", () =>
 			},
 		);
 	});
+	it("draws only the head permission card and lists the CLI's other open ask under it as upstream's Also waiting", async () =>
+	{
+		await renderSessionPage(
+			detail,
+			[],
+			(queryClient) =>
+			{
+				seedUsage(queryClient);
+				queryClient.setQueryData(
+					recentSessionsInfiniteQueryOptions().queryKey,
+					{
+						pages: [
+							{
+								sessions: [
+									{
+										id: SESSION_ID,
+										state: "waiting",
+										awaitingPermission: true,
+										pendingPermissionAsks: [
+											{
+												toolName: "Bash",
+												toolInput:
+												{
+													command: "gh pr create --draft",
+													description: "Open the draft PR",
+												},
+												agentId: null,
+												receivedAt: 1,
+											},
+											{
+												toolName: "Bash",
+												toolInput:
+												{
+													command: "ls",
+													description: "List files",
+												},
+												agentId: "agent-x",
+												receivedAt: 2,
+											},
+										],
+									},
+								],
+								nextCursor: null,
+							},
+						],
+						pageParams: [null],
+					} as never,
+				);
+			},
+			[
+				{
+					type: "assistant",
+					uuid: "a1",
+					sessionId: SESSION_ID,
+					timestamp: "2026-09-28T10:00:01.000Z",
+					message:
+					{
+						role: "assistant",
+						content: [
+							{
+								type: "tool_use",
+								id: "toolu_waiting",
+								name: "Bash",
+								input:
+								{
+									command: "gh pr create --draft",
+									description: "Open the draft PR",
+								},
+							},
+						],
+					},
+				},
+			],
+		);
+		const queued = document.querySelector("[data-approval-queued]")?.parentElement;
+		expect(
+			{
+				cards: document.querySelectorAll("[data-approval-card-root]").length,
+				ghosts: document.querySelectorAll("[data-approval-card-root] > [aria-hidden=true]:not([data-surface])")
+					.length,
+				alsoWaiting: [...(queued?.children ?? [])].map((child) => child.textContent),
+			},
+		).toStrictEqual(
+			{
+				cards: 1,
+				// The inline card never draws ghosts; only the dock does.
+				ghosts: 0,
+				alsoWaiting: ["Also waiting", "List files"],
+			},
+		);
+	});
+
 	it("docks the permission card above the usage chip and composer on a viewport at most 420px tall, with the plain scroll pill", async () =>
 	{
 		vi.stubGlobal("matchMedia", (query: string) => (

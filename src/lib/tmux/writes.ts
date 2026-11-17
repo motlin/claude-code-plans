@@ -119,7 +119,7 @@ async function currentPane(sessionId: string, sources: TmuxSessionPaneSources): 
 
 function readyCheck(
 	kind: TmuxWriteKind,
-	entry: Pick<ActiveSessionEntry, "state" | "pendingPermissionRequest"> | undefined,
+	entry: Pick<ActiveSessionEntry, "state" | "pendingPermissionRequests"> | undefined,
 ): HerdrResult<null>
 {
 	const state = entry?.state;
@@ -131,7 +131,7 @@ function readyCheck(
 		);
 	}
 	const ready: readonly ActivityState[] = READY_STATES[kind];
-	if (kind === "mid-turn-prompt" && entry?.pendingPermissionRequest !== undefined)
+	if (kind === "mid-turn-prompt" && entry?.pendingPermissionRequests !== undefined)
 	{
 		return failure("agent_not_ready", "A permission dialog is open; tmux input will not type into it");
 	}

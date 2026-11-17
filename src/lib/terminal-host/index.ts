@@ -286,8 +286,9 @@ export function createTmuxTerminalHost(
 		...writes,
 		pause: io.pause,
 		hasPendingPlan: (sessionId: string) =>
-			sources.entries().find((entry) => entry.sessionId === sessionId)?.pendingPermissionRequest?.toolName ===
-			"ExitPlanMode",
+			(sources.entries().find((entry) => entry.sessionId === sessionId)?.pendingPermissionRequests ?? []).some(
+				(request) => request.toolName === "ExitPlanMode",
+			),
 		readScreen: async (sessionId: string, paneId: string) => readTmuxScreen(sessionId, paneId, sources),
 		...tmuxWriteDependencies("plan", sources, io),
 	});
@@ -381,7 +382,7 @@ export function createTmuxTerminalHost(
 						const entry = sources.entries().find((candidate) => candidate.sessionId === sessionId);
 						return (
 							entry?.state === "idle" &&
-							entry.pendingPermissionRequest === undefined &&
+							entry.pendingPermissionRequests === undefined &&
 							getPendingQuestion(sessionId) === null
 						);
 					},
@@ -410,7 +411,7 @@ export function createTmuxTerminalHost(
 						const entry = sources.entries().find((candidate) => candidate.sessionId === sessionId);
 						return (
 							entry?.state === "idle" &&
-							entry.pendingPermissionRequest === undefined &&
+							entry.pendingPermissionRequests === undefined &&
 							getPendingQuestion(sessionId) === null
 						);
 					},

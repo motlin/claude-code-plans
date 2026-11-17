@@ -1,6 +1,6 @@
 import {z} from "zod";
 
-import {getActiveSessionEntry, setPendingPermissionRequest} from "../active-session-store";
+import {getActiveSessionEntry, headPermissionRequest, setPendingPermissionRequests} from "../active-session-store";
 import {clearNotificationsForSession} from "../notifications-store";
 import {outsideReadDialogKind, type PermissionDialogKind} from "../outside-read-prompt";
 import
@@ -87,16 +87,26 @@ export const defaultHerdrPermissionDependencies: HerdrPermissionDependencies =
 	writesEnabled: herdrWritesEnabled,
 	hasPendingPermission: (sessionId) => sessionAwaitingPermission(sessionId),
 	persistentAllow: (sessionId) =>
-		persistentAllowKind(getActiveSessionEntry(sessionId)?.pendingPermissionRequest?.suggestions),
+		persistentAllowKind(headPermissionRequest(getActiveSessionEntry(sessionId))?.suggestions),
 	dialogKind: async (sessionId) =>
 	{
 		const entry = getActiveSessionEntry(sessionId);
-		return outsideReadDialogKind(entry?.pendingPermissionRequest, entry?.claudeEnv ?? {});
+		return outsideReadDialogKind(headPermissionRequest(entry), entry?.claudeEnv ?? {});
 	},
 	clearPendingPermission: (sessionId) =>
 	{
 		clearNotificationsForSession(sessionId);
-		setPendingPermissionRequest(sessionId, null);
+		// The answer closes the dialog on screen; the asks queued behind it stay open.
+		const requests = getActiveSessionEntry(sessionId)?.pendingPermissionRequests ?? [];
+		const head = headPermissionRequest(
+			{
+				pendingPermissionRequests: requests,
+			},
+		);
+		setPendingPermissionRequests(
+			sessionId,
+			requests.filter((request) => request !== head),
+		);
 	},
 	resolveTarget: async (sessionId) => resolveHerdrPromptTarget(sessionId),
 	request: herdrRequest,

@@ -4,6 +4,7 @@ import {eq, or} from "drizzle-orm";
 import type {BetterSQLite3Database} from "drizzle-orm/better-sqlite3";
 import * as schema from "./db/schema";
 import type {ActiveSessionEntry, PendingPermissionRequest} from "./active-session-store";
+import {headPermissionAsk, withoutPermissionAsk, withPermissionAsk} from "./permission-queue";
 import {PERMISSION_PROMPT_NOTIFICATION} from "./permission-prompt";
 import
 {
@@ -131,7 +132,7 @@ interface ActiveSessionStore
 	touchSubagentActivity(sessionId: string, agentId: string): void;
 	setBackgroundTasks(sessionId: string, backgroundTasks: HookBackgroundTaskPayload[]): void;
 	setSessionCrons(sessionId: string, sessionCrons: HookSessionCronPayload[]): void;
-	setPendingPermissionRequest(sessionId: string, request: PendingPermissionRequest | null): void;
+	setPendingPermissionRequests(sessionId: string, requests: PendingPermissionRequest[]): void;
 	getActiveSessionEntry(sessionId: string): ActiveSessionEntry | null;
 }
 
@@ -687,6 +688,59 @@ function trackPendingElicitations(
 }
 
 /**
+ * Keep the session's open permission asks: a PermissionRequest opens one (with the persistent option its dialog
+ * offers, so the inline card can show it and the answer handler knows "2" is that option rather than "No"); its
+ * call's PostToolUse, PostToolUseFailure or PermissionDenied resolves it, from the same thread; the main thread's
+ * turn ending or a new prompt closes them all. One allowed tool running answers none of its parallel siblings, so
+ * working no longer clears the list. Returns whether the list changed.
+ */
+function trackPermissionAsks(event: HookEvent, entry: ActiveSessionEntry | null, store: ActiveSessionStore): boolean
+{
+	const asks = entry?.pendingPermissionRequests ?? [];
+	let next: PendingPermissionRequest[] = asks;
+	switch (event.hook_event_name)
+	{
+		case "PermissionRequest":
+		{
+			const request: PendingPermissionRequest =
+			{
+				toolName: event.tool_name,
+				toolInput: event.tool_input,
+				agentId: event.agent_id ?? null,
+				suggestions: event.permission_suggestions ?? [],
+				receivedAt: Date.now(),
+			};
+			if (event.permission_mode !== undefined) request.permissionMode = event.permission_mode;
+			next = withPermissionAsk(asks, request);
+			break;
+		}
+		case "PostToolUse":
+		case "PostToolUseFailure":
+		case "PermissionDenied":
+			next = withoutPermissionAsk(
+				asks,
+				{
+					toolName: event.tool_name,
+					toolInput: event.tool_input,
+					agentId: event.agent_id ?? null,
+				},
+			);
+			break;
+		case "Stop":
+		case "StopFailure":
+		case "SessionEnd":
+		case "UserPromptSubmit":
+			if (!isSubagentScopedEvent(event)) next = [];
+			break;
+		default:
+			break;
+	}
+	if (next.length === asks.length) return false;
+	store.setPendingPermissionRequests(event.session_id, next);
+	return true;
+}
+
+/**
  * Broadcast the session's summary as of this hook. The hook is the session's
  * newest activity, so its state outranks a registry status the CLI wrote
  * earlier (a `waiting` while the dialog showed, a `busy` before the question);
@@ -742,6 +796,7 @@ export async function dispatchHookEvent({
 }: DispatchHookEventArgs): Promise<void>
 {
 	const entryBeforeDispatch = store.getActiveSessionEntry(event.session_id);
+	const permissionAsksChanged = trackPermissionAsks(event, entryBeforeDispatch, store);
 	// Subagent hooks carry the root session_id plus agent_id. They describe the
 	// subagent, so they must not flip an idle root back to working (or to
 	// waiting on a subagent AskUserQuestion), nor clear the root's pending
@@ -768,11 +823,6 @@ export async function dispatchHookEvent({
 			event.hook_event_name === "SessionEnd" ||
 			event.hook_event_name === "PermissionDenied";
 		if (permissionPromptGone) clearPermissionPromptsForSession(event.session_id);
-		// Either way the permission dialog the PermissionRequest hook described is gone.
-		if ((nextState === "working" || permissionPromptGone) && entryBeforeDispatch?.pendingPermissionRequest)
-		{
-			store.setPendingPermissionRequest(event.session_id, null);
-		}
 		// Only a session the store tracks records the new state, so only its change is news.
 		const stateChanged =
 			nextState !== null && entryBeforeDispatch !== null && entryBeforeDispatch.state !== nextState;
@@ -791,6 +841,8 @@ export async function dispatchHookEvent({
 		}
 		broadcastNotificationsCleared(clearedNotificationIds);
 	}
+	// An ask opening or resolving reshapes the session's approval queue even when its state holds.
+	if (permissionAsksChanged) broadcastHookSessionSummary(event.session_id, db, store, broadcast);
 
 	// A subagent's MCP server can ask the user too, so this runs for both scopes.
 	trackPendingElicitations(event, broadcast);
@@ -1301,7 +1353,7 @@ export async function dispatchHookEvent({
 			{
 				// Auto mode's first outside-read prompt has no session-grant row, so its card offers none.
 				const entry = store.getActiveSessionEntry(event.session_id);
-				const request = entry?.pendingPermissionRequest;
+				const request = headPermissionAsk(entry?.pendingPermissionRequests ?? []);
 				const dialogKind = await outsideReadDialogKind(request, entry?.claudeEnv ?? {}, readHasSeen);
 				const persistentAllow = dialogKind === "generic" ? persistentAllowKind(request?.suggestions) : null;
 				if (persistentAllow !== null)
@@ -1316,17 +1368,8 @@ export async function dispatchHookEvent({
 
 		case "PermissionRequest":
 		{
-			// The CLI is about to show its permission dialog. Remember which
-			// persistent option it offers so the inline card can show it and the
-			// answer handler knows "2" is that option rather than "No".
+			// The CLI is about to show its permission dialog; `trackPermissionAsks` queued the ask above.
 			store.touchSession(event.session_id);
-			const pendingRequest: PendingPermissionRequest =
-			{
-				toolName: event.tool_name,
-				suggestions: event.permission_suggestions ?? [],
-			};
-			if (event.permission_mode !== undefined) pendingRequest.permissionMode = event.permission_mode;
-			store.setPendingPermissionRequest(event.session_id, pendingRequest);
 			break;
 		}
 

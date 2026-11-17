@@ -3,6 +3,9 @@ import {homedir} from "node:os";
 import {join} from "node:path";
 import type {PendingPermissionRequest} from "./active-session-store";
 
+/** The parts of a PermissionRequest the outside-read check reads. */
+export type AskedRequest = Pick<PendingPermissionRequest, "toolName" | "suggestions" | "permissionMode">;
+
 /**
  * Auto mode's first Read/Grep/Glob outside the working directories opens a
  * four-row dialog (CLI 2.1.319 `UZt`) whose rows 1 and 2 make lasting changes:
@@ -15,7 +18,7 @@ export type PermissionDialogKind = "generic" | "outsideReadFirstPrompt";
 const OUTSIDE_READ_TOOLS: ReadonlySet<string> = new Set(["Read", "Grep", "Glob"]);
 
 /** Everything the hook shows of the first-prompt dialog, before the global flag is checked. */
-function looksLikeOutsideReadFirstPrompt(request: PendingPermissionRequest): boolean
+function looksLikeOutsideReadFirstPrompt(request: AskedRequest): boolean
 {
 	if (request.permissionMode !== "auto" || !OUTSIDE_READ_TOOLS.has(request.toolName)) return false;
 	if (request.suggestions.length !== 1) return false;
@@ -32,7 +35,7 @@ function looksLikeOutsideReadFirstPrompt(request: PendingPermissionRequest): boo
 }
 
 /** Whether the pending dialog is auto mode's first outside-read prompt rather than the ordinary one. */
-export function isOutsideReadFirstPrompt(request: PendingPermissionRequest, hasSeenPrompt: boolean): boolean
+export function isOutsideReadFirstPrompt(request: AskedRequest, hasSeenPrompt: boolean): boolean
 {
 	return !hasSeenPrompt && looksLikeOutsideReadFirstPrompt(request);
 }
@@ -62,7 +65,7 @@ export async function readHasSeenOutsideReadPrompt(configDir: string): Promise<b
  * read only when the hook already looks like the first prompt.
  */
 export async function outsideReadDialogKind(
-	request: PendingPermissionRequest | undefined,
+	request: AskedRequest | undefined,
 	claudeEnv: Readonly<Record<string, string>>,
 	readHasSeen: (configDir: string) => Promise<boolean> = readHasSeenOutsideReadPrompt,
 	home: string = homedir(),

@@ -15,6 +15,8 @@ export interface PendingQuestionCardProps
 	/** The answer was already sent from a card for this call. */
 	sent: boolean;
 	presentation?: ApprovalPresentation;
+	/** Upstream's `queueDepth`: the other requests pending behind this one, drawn as ghosts while docked. */
+	queueDepth?: number;
 }
 
 /**
@@ -23,7 +25,14 @@ export interface PendingQuestionCardProps
  * Returned as elements, not a component, so the row's card keeps its node when the result swaps it for the sent
  * receipt's `QuestionCard`.
  */
-export function pendingQuestionCard({toolUseId, questions, ctx, sent, presentation = "card"}: PendingQuestionCardProps)
+export function pendingQuestionCard({
+	toolUseId,
+	questions,
+	ctx,
+	sent,
+	presentation = "card",
+	queueDepth = 0,
+}: PendingQuestionCardProps)
 {
 	const route = ctx?.answerRoute ?? "read-only";
 	const submit =
@@ -45,6 +54,7 @@ export function pendingQuestionCard({toolUseId, questions, ctx, sent, presentati
 			// A fork answers in a new session, so only a live answer holds this one as working.
 			sessionId={route === "live-pane" ? ctx?.sessionId : undefined}
 			presentation={presentation}
+			queueDepth={queueDepth}
 			{...(route === "fork"
 				?
 					{

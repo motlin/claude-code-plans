@@ -1,6 +1,7 @@
 import {useState, type ButtonHTMLAttributes, type DragEvent, type KeyboardEvent, type ReactNode, type Ref} from "react";
 
 import type {ElicitationFocus} from "../lib/herdr/elicitation-keys";
+import {ApprovalStackGhosts} from "./approval-stack";
 import {StatusPulse} from "./status-dot";
 import {type CdsButtonSize, type CdsButtonVariant, cdsButtonClass} from "./ui/cds-button";
 import {DisabledReason} from "./ui/disabled-reason";
@@ -189,6 +190,7 @@ export function ApprovalCardShell({
 	bodyRef,
 	bodyLabel,
 	presentation = "dock",
+	queueDepth = 0,
 	enter = false,
 	compact = false,
 	roam = true,
@@ -218,6 +220,8 @@ export function ApprovalCardShell({
 	bodyLabel?: string | undefined;
 	/** Upstream's inline "card" in the transcript, or the composer "dock". */
 	presentation?: "card" | "dock";
+	/** Upstream's `queueDepth`: requests pending behind this one. Only the dock draws them, as ghosts (`w`'s `V`). */
+	queueDepth?: number;
 	/** Upstream's 160ms enter fade for a live arrival; false marks the card `data-skip-approval-enter`. */
 	enter?: boolean;
 	/**
@@ -310,8 +314,10 @@ export function ApprovalCardShell({
 				{
 					event.stopPropagation();
 				}}
-				className={`epitaxy-approval-card @container relative isolate flex ${frame} flex-col rounded-card ${inset.pad} text-body text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 ${look}${enter ? " animate-approval-inline-enter motion-reduce:animate-none" : ""}`}
+				className={`epitaxy-approval-card @container relative isolate flex ${frame} flex-col rounded-card ${inset.pad} text-body text-primary origin-top focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 ${look}${enter ? " animate-approval-inline-enter motion-reduce:animate-none" : ""}`}
 			>
+				{/* Upstream's stack root: the ghosts come first, behind the backdrop at the same z, then the card. */}
+				<ApprovalStackGhosts queueDepth={presentation === "dock" ? queueDepth : 0} />
 				{presentation === "dock" && <ApprovalDockBackdrop />}
 				{band && (
 					<div

@@ -384,7 +384,7 @@ describe("auto-unarchive", () =>
 			setSessionCrons: () =>
 			{
 			},
-			setPendingPermissionRequest: () =>
+			setPendingPermissionRequests: () =>
 			{
 			},
 			getActiveSessionEntry: (): ActiveSessionEntry | null => null,

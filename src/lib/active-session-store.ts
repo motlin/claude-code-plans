@@ -3,11 +3,15 @@ import type {ActivityState} from "./session-state";
 import type {HookBackgroundTaskPayload, HookSessionCronPayload, PermissionUpdate} from "./hook-events";
 import type {LiveSessionRoutines} from "./routines";
 import {touchStoredLiveSubagent} from "./live-subagent-store";
+import type {PermissionAskEntry} from "./permission-ask";
+import {headPermissionAsk} from "./permission-queue";
 
-/** The CLI's latest PermissionRequest hook: the tool asking, the dialog's persistent-option updates, and the mode it asked in. */
-export interface PendingPermissionRequest
+/**
+ * One open PermissionRequest hook: the tool asking and its input, the subagent that asked (null for the main thread),
+ * the dialog's persistent-option updates, the mode it asked in, and when it arrived.
+ */
+export interface PendingPermissionRequest extends PermissionAskEntry
 {
-	toolName: string;
 	suggestions: PermissionUpdate[];
 	permissionMode?: string;
 }
@@ -61,10 +65,10 @@ export interface ActiveSessionEntry
 	/** Background work the session's last `Stop` reported (empty before any Stop). */
 	backgroundTasks: HookBackgroundTaskPayload[];
 	/**
-	 * The permission dialog the session is showing, from its PermissionRequest
-	 * hook; absent before one and once the session resumes working or its turn ends.
+	 * Every permission ask the session holds open, oldest first, from its PermissionRequest hooks: each is resolved
+	 * by its call's PostToolUse/PostToolUseFailure/PermissionDenied, and all end with the turn. Absent when none is.
 	 */
-	pendingPermissionRequest?: PendingPermissionRequest;
+	pendingPermissionRequests?: PendingPermissionRequest[];
 	/** Scheduled prompts the session's latest `Stop` reported, and when (absent before any). */
 	sessionCrons?:
 	{
@@ -248,12 +252,20 @@ export function setBackgroundTasks(sessionId: string, backgroundTasks: HookBackg
 	if (entry) entry.backgroundTasks = backgroundTasks;
 }
 
-export function setPendingPermissionRequest(sessionId: string, request: PendingPermissionRequest | null): void
+export function setPendingPermissionRequests(sessionId: string, requests: PendingPermissionRequest[]): void
 {
 	const entry = findSession(sessionId);
 	if (!entry) return;
-	if (request === null) delete entry.pendingPermissionRequest;
-	else entry.pendingPermissionRequest = request;
+	if (requests.length === 0) delete entry.pendingPermissionRequests;
+	else entry.pendingPermissionRequests = requests;
+}
+
+/** The permission dialog the session shows: the head of its open asks, or undefined when it holds none. */
+export function headPermissionRequest(
+	entry: Pick<ActiveSessionEntry, "pendingPermissionRequests"> | null | undefined,
+): PendingPermissionRequest | undefined
+{
+	return headPermissionAsk(entry?.pendingPermissionRequests ?? []);
 }
 
 export function setSessionCrons(sessionId: string, crons: HookSessionCronPayload[]): void

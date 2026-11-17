@@ -908,11 +908,18 @@ describe("midTurnPromptReady", () =>
 					entry(
 						{
 							state: "working",
-							pendingPermissionRequest:
-							{
-								toolName: "Bash",
-								suggestions: [],
-							},
+							pendingPermissionRequests: [
+								{
+									toolName: "Bash",
+									toolInput:
+									{
+										command: "ls",
+									},
+									agentId: null,
+									suggestions: [],
+									receivedAt: 1,
+								},
+							],
 						},
 					),
 					null,

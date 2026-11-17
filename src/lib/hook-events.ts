@@ -7,6 +7,7 @@ import {defined} from "./defined";
 import {objectKeys} from "./narrow";
 import type {PendingPlan} from "./pending-calls";
 import type {PrStatus} from "./pr-status";
+import type {PermissionAskEntry} from "./permission-ask";
 import type {SessionPrLink} from "./sessions";
 
 // ---------------------------------------------------------------------------
@@ -87,6 +88,8 @@ export interface SessionSummaryPayload
 	state: SessionSummaryState;
 	/** Blocked on a tool permission prompt (a hook notification or the registry's `waitingFor`); absent otherwise. */
 	awaitingPermission?: true;
+	/** Every permission ask the live CLI holds open, oldest first, from its PermissionRequest hooks; absent when none. */
+	pendingPermissionAsks?: PermissionAskEntry[];
 	/** When the session's live CLI process started, from its registry entry; absent without one. */
 	processStartedAt?: number;
 	/** Display bucket from `resolveSessionBucket`. */

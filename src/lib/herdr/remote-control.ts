@@ -91,7 +91,7 @@ export const defaultHerdrRemoteControlDependencies: HerdrRemoteControlDependenci
 		const entry = getActiveSessionEntry(sessionId);
 		return (
 			entry?.state === "idle" &&
-			entry.pendingPermissionRequest === undefined &&
+			entry.pendingPermissionRequests === undefined &&
 			getPendingQuestion(sessionId) === null
 		);
 	},

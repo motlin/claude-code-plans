@@ -161,6 +161,7 @@ export function PermissionCard({
 	answerKey,
 	hideOnDecision = true,
 	presentation = "card",
+	queueDepth = 0,
 }: {
 	title: PermissionTitle;
 	detail: string | null;
@@ -225,6 +226,8 @@ export function PermissionCard({
 	hideOnDecision?: boolean;
 	/** Upstream's approval presentation: the inline "card" or the composer "dock"; a change re-measures every gate. */
 	presentation?: "card" | "dock";
+	/** Upstream's `queueDepth`: the other requests pending behind this one, drawn as ghosts while docked. */
+	queueDepth?: number;
 })
 {
 	const isMac = useIsMac();
@@ -592,6 +595,7 @@ export function PermissionCard({
 			label={permissionCardLabel(title)}
 			footer={footer}
 			presentation={presentation}
+			queueDepth={queueDepth}
 			enter={enter}
 			titleRef={titleRef}
 			title={

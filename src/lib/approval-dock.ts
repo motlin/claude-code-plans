@@ -70,12 +70,15 @@ export function findLastPendingToolUse(records: readonly unknown[]): PendingTool
 	};
 }
 
-/**
- * Every main-thread assistant tool_use with no tool_result yet, in record
- * order, once each: a re-written block keeps its first place. Most are running
- * or not reached yet; the CLI asks serial tools one at a time, in this order.
- */
-export function findPendingToolUses(records: readonly unknown[]): PendingToolUse[]
+/** A main-thread tool_use and whether a tool_result answered it. */
+export interface MainToolUse
+{
+	call: PendingToolUse;
+	answered: boolean;
+}
+
+/** Every main-thread assistant tool_use in record order, once each: a re-written block keeps its first place. */
+export function findMainToolUses(records: readonly unknown[]): MainToolUse[]
 {
 	const calls = new Map<string, PendingToolUse>();
 	const answered = new Set<string>();
@@ -110,7 +113,23 @@ export function findPendingToolUses(records: readonly unknown[]): PendingToolUse
 			}
 		}
 	}
-	return [...calls.values()].filter((call) => !answered.has(call.id));
+	return [...calls.values()].map((call) => (
+	{
+		call,
+		answered: answered.has(call.id),
+	}));
+}
+
+/**
+ * Every main-thread assistant tool_use with no tool_result yet, in record
+ * order, once each. Most are running or not reached yet; the CLI asks serial
+ * tools one at a time, in this order.
+ */
+export function findPendingToolUses(records: readonly unknown[]): PendingToolUse[]
+{
+	return findMainToolUses(records)
+		.filter((use) => !use.answered)
+		.map((use) => use.call);
 }
 
 /** The main thread's first unanswered tool_use: the call a serial batch's permission prompt asks about. */
@@ -126,7 +145,8 @@ export interface PermissionAsk
 	toolInput: unknown;
 }
 
-function jsonEqual(a: unknown, b: unknown): boolean
+/** Deep equality of JSON values: a hook's tool_input against a tool_use block's input. */
+export function jsonEqual(a: unknown, b: unknown): boolean
 {
 	if (a === b) return true;
 	if (Array.isArray(a) || Array.isArray(b))

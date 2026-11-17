@@ -2921,7 +2921,7 @@ describe("PermissionCard", () =>
 		).toStrictEqual(
 			{
 				presentation: null,
-				card: "epitaxy-approval-card @container relative isolate flex max-h-[60vh] flex-col rounded-card p-3 text-body text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 gap-[12px]",
+				card: "epitaxy-approval-card @container relative isolate flex max-h-[60vh] flex-col rounded-card p-3 text-body text-primary origin-top focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 gap-[12px]",
 				backdrop:
 					'<div aria-hidden="true" data-surface="sidebar" class="absolute inset-0 -z-[1] rounded-[inherit] pointer-events-none bg-surface-2 shadow-[var(--approval-card-shadow)]"></div>',
 				body: "epitaxy-approval-body -mx-3 -mt-1 -mb-2 flex min-h-0 flex-col overflow-y-auto px-3 pt-1 pb-2 gap-[12px] overscroll-contain",
@@ -2949,7 +2949,7 @@ describe("PermissionCard", () =>
 		).toStrictEqual(
 			{
 				region: null,
-				card: "epitaxy-approval-card @container relative isolate flex max-h-[60vh] flex-col rounded-card p-lg text-body text-primary focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 card-ring w-full max-w-[480px] gap-[24px]",
+				card: "epitaxy-approval-card @container relative isolate flex max-h-[60vh] flex-col rounded-card p-lg text-body text-primary origin-top focus-visible:outline-1 focus-visible:outline-fill-accent focus-visible:outline-offset-2 card-ring w-full max-w-[480px] gap-[24px]",
 				body: "epitaxy-approval-body -mx-pad-lg -mt-1 -mb-2 flex min-h-0 flex-col overflow-y-auto px-lg pt-1 pb-2 gap-[24px]",
 			},
 		);

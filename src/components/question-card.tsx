@@ -50,6 +50,7 @@ import
 	typeOther,
 } from "../lib/question-card-draft";
 import {APPROVAL_ACTION_SHORTCUT_CLASS, ApprovalActionButton, ApprovalDockBackdrop} from "./approval-card";
+import {ApprovalStackGhosts} from "./approval-stack";
 import type {ApprovalPresentation} from "../lib/approval-presentation";
 import {QuestionReceipt, type QuestionReceiptRow} from "./question-receipt";
 import {ReadOnlyAnswerHint} from "./terminal-writes-tip";
@@ -506,6 +507,7 @@ export function QuestionCard({
 	answered,
 	sessionId,
 	presentation = "card",
+	queueDepth = 0,
 }: {
 	questions: readonly QuestionLike[];
 	onSubmit?: ((answers: Array<QuestionAnswer | null>) => Promise<void>) | undefined;
@@ -519,6 +521,8 @@ export function QuestionCard({
 	sessionId?: string | undefined;
 	/** Upstream's inline "card" (480px, outlined), or docked above the composer on the sidebar backdrop. */
 	presentation?: ApprovalPresentation;
+	/** Upstream's `queueDepth`: the other requests pending behind this one, drawn as ghosts while docked. */
+	queueDepth?: number;
 })
 {
 	const [wasSent] = useState(() =>
@@ -774,10 +778,11 @@ export function QuestionCard({
 						"data-skip-approval-enter": "",
 					}
 				: {})}
-			className={`${presentation === "card" ? "card-ring " : "epitaxy-approval-card max-h-[60vh] "}@container relative isolate flex ${presentation === "card" ? "max-w-[480px] " : ""}flex-col ${presentation === "card" ? "overflow-clip " : ""}rounded-card outline-none${
+			className={`${presentation === "card" ? "card-ring " : "epitaxy-approval-card max-h-[60vh] "}@container relative isolate flex ${presentation === "card" ? "max-w-[480px] " : ""}flex-col ${presentation === "card" ? "overflow-clip " : ""}rounded-card origin-top outline-none${
 				skipEnter ? "" : " animate-approval-inline-enter motion-reduce:animate-none"
 			}`}
 		>
+			<ApprovalStackGhosts queueDepth={presentation === "dock" ? queueDepth : 0} />
 			{presentation === "dock" && <ApprovalDockBackdrop />}
 			<div
 				className={`bg-alpha-1 px-lg flex gap-md py-md items-center${presentation === "dock" ? " rounded-t-[inherit]" : ""}`}

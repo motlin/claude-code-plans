@@ -5,6 +5,7 @@ import {JsonValueSchema} from "../json-value-schema";
 import {SlowCommandSchema} from "../slow-commands";
 import {SessionViewedStateSchema} from "./viewed-state";
 import {RemoteControlStateSchema, SessionBucketSchema} from "../session-state";
+import {PermissionAskEntrySchema} from "../permission-ask";
 import {PrStatusSchema} from "../pr-status";
 import {SessionCostStateSchema} from "../session-cost";
 import {SessionUsageStatsSchema} from "../session-usage-stats";
@@ -53,6 +54,8 @@ const SessionListItemSchema = z.object(
 		state: SessionSummaryStateSchema,
 		/** Blocked on a tool permission prompt; the session page docks the permission card from it. */
 		awaitingPermission: z.literal(true).optional(),
+		/** Every permission ask the live CLI holds open, oldest first; the session page queues its cards from them. */
+		pendingPermissionAsks: z.array(PermissionAskEntrySchema).optional(),
 		/** When the session's live CLI process started; in-process teammates from before it are gone. */
 		processStartedAt: z.number().optional(),
 		bucket: SessionBucketSchema,

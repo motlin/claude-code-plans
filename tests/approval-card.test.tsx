@@ -435,3 +435,124 @@ describe("approval card file drops", () =>
 		);
 	});
 });
+
+describe("approval queue ghost stack (upstream shared-40 Re, c2d1aeb56 w)", () =>
+{
+	function ghosts(presentation: "card" | "dock", queueDepth: number)
+	{
+		const {container} = render(
+			<PermissionCard
+				title={
+				{
+					action: "run",
+					meta: null,
+				}}
+				detail="ls"
+				canAnswer
+				presentation={presentation}
+				queueDepth={queueDepth}
+				onDecision={async () =>
+				{
+				}}
+			/>,
+		);
+		const root = container.querySelector("[data-approval-card-root]");
+		const children = [...(root?.children ?? [])];
+		return (
+			children
+				// Upstream's ghosts are the root's bare aria-hidden layers; the backdrop is the one marked as the sidebar surface.
+				.filter((child) => child.getAttribute("aria-hidden") === "true" && !child.hasAttribute("data-surface"))
+				.map((ghost) => (
+				{
+					index: children.indexOf(ghost),
+					ariaHidden: ghost.getAttribute("aria-hidden"),
+					className: ghost.getAttribute("class"),
+					transform: (ghost as HTMLElement).style.transform,
+					zIndex: (ghost as HTMLElement).style.zIndex,
+					opacity: (ghost as HTMLElement).style.opacity,
+				}))
+		);
+	}
+
+	const GHOST_CLASS =
+		"absolute inset-0 rounded-card bg-surface-1 origin-top transition-[transform,opacity] duration-[220ms] ease-[cubic-bezier(0.215,0.61,0.355,1)] motion-reduce:transition-none";
+
+	it("draws one ghost per queued request behind the docked card, capped at two, before its sidebar backdrop", () =>
+	{
+		expect(
+			{
+				one: ghosts("dock", 1),
+				five: ghosts("dock", 5),
+				none: ghosts("dock", 0),
+			},
+		).toStrictEqual(
+			{
+				one: [
+					{
+						index: 0,
+						ariaHidden: "true",
+						className: GHOST_CLASS,
+						transform: "translateY(-6px) scale(0.97)",
+						zIndex: "-1",
+						opacity: "0.75",
+					},
+				],
+				five: [
+					{
+						index: 0,
+						ariaHidden: "true",
+						className: GHOST_CLASS,
+						transform: "translateY(-6px) scale(0.97)",
+						zIndex: "-1",
+						opacity: "0.75",
+					},
+					{
+						index: 1,
+						ariaHidden: "true",
+						className: GHOST_CLASS,
+						transform: "translateY(-12px) scale(0.94)",
+						zIndex: "-2",
+						opacity: "0.5",
+					},
+				],
+				none: [],
+			},
+		);
+		cleanup();
+		const {container} = render(
+			<PermissionCard
+				title={
+				{
+					action: "run",
+					meta: null,
+				}}
+				detail="ls"
+				canAnswer
+				presentation="dock"
+				queueDepth={2}
+				onDecision={async () =>
+				{
+				}}
+			/>,
+		);
+		const root = container.querySelector("[data-approval-card-root]");
+		expect(
+			{
+				backdropIndex: [...(root?.children ?? [])].findIndex(
+					(child) => child.getAttribute("data-surface") === "sidebar",
+				),
+				originTop: root?.classList.contains("origin-top"),
+			},
+		).toStrictEqual(
+			{
+				backdropIndex: 2,
+				originTop: true,
+			},
+		);
+	});
+
+	it("draws no ghost on the inline card, whatever the depth", () =>
+	{
+		expect(ghosts("card", 3)).toStrictEqual([]);
+	});
+});

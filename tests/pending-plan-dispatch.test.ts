@@ -38,7 +38,7 @@ const store =
 	setSessionCrons: () =>
 	{
 	},
-	setPendingPermissionRequest: () =>
+	setPendingPermissionRequests: () =>
 	{
 	},
 	getActiveSessionEntry: () => null,

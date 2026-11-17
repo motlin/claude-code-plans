@@ -70,7 +70,18 @@ export const __testing =
  * it: a registry status change keeps the transcript mtime, so without it a
  * Needs input → Working flip inside the TTL would be swallowed.
  */
-export function sessionUpdatedDedupeKey(summary: {id: string; mtime: string; unseen: boolean; state: string}): string
+export function sessionUpdatedDedupeKey(summary: {
+	id: string;
+	mtime: string;
+	unseen: boolean;
+	state: string;
+	pendingPermissionAsks?: ReadonlyArray<
+	{
+		receivedAt: number;
+	}>;
+}): string
 {
-	return `session:updated:${summary.id}:${summary.mtime}:${summary.unseen}:${summary.state}`;
+	// An ask opening or resolving changes the session's approval queue without touching its state.
+	const asks = summary.pendingPermissionAsks?.map((ask) => ask.receivedAt).join(",");
+	return `session:updated:${summary.id}:${summary.mtime}:${summary.unseen}:${summary.state}${asks === undefined ? "" : `:${asks}`}`;
 }

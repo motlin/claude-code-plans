@@ -1,13 +1,13 @@
 import {z} from "zod";
 
-import {getActiveSessionEntry} from "../active-session-store";
+import {getActiveSessionEntry, setPendingPermissionRequests} from "../active-session-store";
+import {clearNotificationsForSession} from "../notifications-store";
 import {PlanDecisionSchema, type PlanDecision, type PlanDialog, type PlanForwardMode} from "../plan-approval";
 import {rejectCrossSite} from "../same-origin-guard";
 import {herdrRequest, type HerdrResult} from "./client";
 import {OPTION_LINE} from "./dialog-rows";
 import {readHerdrScreen} from "./read-screen";
 import type {HerdrRequester} from "./panes";
-import {defaultHerdrPermissionDependencies} from "./permission";
 import
 {
 	BRACKETED_PASTE_END,
@@ -176,8 +176,19 @@ export const defaultHerdrPlanDependencies: HerdrPlanDependencies =
 	rejectRequest: rejectCrossSite,
 	writesEnabled: herdrWritesEnabled,
 	hasPendingPlan: (sessionId) =>
-		getActiveSessionEntry(sessionId)?.pendingPermissionRequest?.toolName === "ExitPlanMode",
-	clearPendingPlan: defaultHerdrPermissionDependencies.clearPendingPermission,
+		(getActiveSessionEntry(sessionId)?.pendingPermissionRequests ?? []).some(
+			(request) => request.toolName === "ExitPlanMode",
+		),
+	clearPendingPlan: (sessionId) =>
+	{
+		clearNotificationsForSession(sessionId);
+		setPendingPermissionRequests(
+			sessionId,
+			(getActiveSessionEntry(sessionId)?.pendingPermissionRequests ?? []).filter(
+				(request) => request.toolName !== "ExitPlanMode",
+			),
+		);
+	},
 	clearHookPlan: (sessionId) =>
 	{
 		if (!clearStoredPendingPlan(sessionId)) return;

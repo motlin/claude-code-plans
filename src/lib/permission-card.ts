@@ -222,29 +222,51 @@ export function isVerdictSchema(schema: unknown): boolean
 	return values !== null && values.includes("allow") && values.includes("deny");
 }
 
+/** A pending verdict elicitation and the permission card it draws. */
+export interface ElicitationPermission
+{
+	permission: PendingPermission;
+	serverName: string;
+	receivedAt: number;
+}
+
 /**
- * The oldest verdict elicitation as upstream's permission card: "Allow Claude
- * to use {server}?" with the message below, and Always allow only when the
- * verdict enum offers "always_allow" (upstream's `NH`). Forms and url asks get no card.
+ * Every verdict elicitation, oldest first, as upstream's permission card: "Allow Claude to use {server}?" with the
+ * message below, and Always allow only when the verdict enum offers "always_allow" (upstream's `NH`). Forms and url
+ * asks get no card.
  */
+export function findPendingElicitationPermissions(entries: readonly PendingElicitation[]): ElicitationPermission[]
+{
+	return entries
+		.filter((candidate) => candidate.mode === "form" && isVerdictSchema(candidate.requestedSchema))
+		.map((entry) =>
+		{
+			const permission: PendingPermission =
+			{
+				notificationId: elicitationKey(entry),
+				toolUseId: null,
+				title:
+				{
+					action: `use ${entry.serverName}`,
+					meta: null,
+				},
+				detail: null,
+				description: entry.message,
+			};
+			if (verdictEnum(entry.requestedSchema)?.includes("always_allow") === true)
+				permission.persistentAllow = "always";
+			return {
+				permission,
+				serverName: entry.serverName,
+				receivedAt: entry.receivedAt,
+			};
+		});
+}
+
+/** The oldest verdict elicitation's permission card: the one the CLI's elicitation dialog shows. */
 export function findPendingElicitationPermission(entries: readonly PendingElicitation[]): PendingPermission | null
 {
-	const entry = entries.find((candidate) => candidate.mode === "form" && isVerdictSchema(candidate.requestedSchema));
-	if (entry === undefined) return null;
-	const permission: PendingPermission =
-	{
-		notificationId: elicitationKey(entry),
-		toolUseId: null,
-		title:
-		{
-			action: `use ${entry.serverName}`,
-			meta: null,
-		},
-		detail: null,
-		description: entry.message,
-	};
-	if (verdictEnum(entry.requestedSchema)?.includes("always_allow") === true) permission.persistentAllow = "always";
-	return permission;
+	return findPendingElicitationPermissions(entries)[0]?.permission ?? null;
 }
 
 /** The oldest form or url elicitation: one the CLI's terminal dialog answers, not a verdict card. */

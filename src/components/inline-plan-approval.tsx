@@ -32,6 +32,7 @@ export function InlinePlanApproval({
 	planText: text,
 	plan,
 	presentation = "card",
+	queueDepth = 0,
 }: {
 	toolUseId: string;
 	/** The ExitPlanMode input's plan, if any. */
@@ -39,6 +40,8 @@ export function InlinePlanApproval({
 	plan: PlanApprovalContextValue;
 	/** Inline after the transcript, sticky ("card"), or docked above the composer with the dock's keycaps. */
 	presentation?: ApprovalPresentation;
+	/** Upstream's `queueDepth`: the other requests pending behind this one, drawn as ghosts while docked. */
+	queueDepth?: number;
 })
 {
 	const host = useOptionalPaneHost();
@@ -85,6 +88,7 @@ export function InlinePlanApproval({
 		<div data-inline-plan="" className={presentation === "card" ? INLINE_PLAN_CLASS : undefined}>
 			<ApprovalCardShell
 				presentation={presentation}
+				queueDepth={queueDepth}
 				compact
 				roam={false}
 				enter={enter}

@@ -84,6 +84,7 @@ import {TranscriptHistoryLoader} from "./transcript-history-loader";
 import {Tooltip} from "./ui/tooltip";
 import {SessionPaneControls} from "./view-options-menu";
 import {SessionDock} from "./session-dock";
+import {ApprovalAlsoWaiting} from "./approval-also-waiting";
 import {ApprovalClusterHost} from "./approval-cluster-host";
 import {ApprovalDockContext, type ApprovalDock} from "./approval-dock-context";
 import {pendingQuestionCard} from "./pending-question-card";
@@ -220,10 +221,13 @@ import
 import {useSendRejectionActions} from "./use-send-rejection-actions";
 import {dockedHookPlan, inlinePlanToolUseId} from "../lib/docked-plan";
 import {planText} from "../lib/exit-plan-mode";
+import {sessionApprovalQueue} from "../lib/approval-queue";
+import type {PermissionAskEntry} from "../lib/permission-ask";
+import {permissionQueue} from "../lib/permission-queue";
 import
 {
 	findElicitationWaitingNotice,
-	findPendingElicitationPermission,
+	findPendingElicitationPermissions,
 	findUrlElicitationCard,
 	findPendingPermission,
 	permissionAnswerKey,
@@ -293,6 +297,9 @@ function SessionChrome({children}: {children: React.ReactNode})
  * running map and keeps a stable value as tasks start and stop, sparing the composer re-renders.
  */
 const COMPOSER_RUNNING_LAUNCHES: ReadonlyMap<string, string> = new Map();
+const EMPTY_PERMISSION_ASKS: readonly PermissionAskEntry[] = [];
+/** Asks whose tool draws its own card (the question or plan card), never the permission card. */
+const OWN_CARD_ASK_TOOLS = new Set(["AskUserQuestion", "ExitPlanMode"]);
 
 /** A pane to open on arrival (the `?pane=` deep link), reported back once handled. */
 interface RequestedPaneProps
@@ -1162,6 +1169,16 @@ function SessionView({
 		},
 		[toast],
 	);
+	// The CLI's open permission asks, oldest first: the head names the call the permission card describes.
+	const permissionAsks = sessionSummary?.pendingPermissionAsks ?? EMPTY_PERMISSION_ASKS;
+	const headToolAsk = useMemo(
+		() =>
+			permissionQueue(
+				permissionAsks.filter((ask) => !OWN_CARD_ASK_TOOLS.has(ask.toolName)),
+				transcript.records,
+			).head ?? undefined,
+		[permissionAsks, transcript.records],
+	);
 	const toolPermission = useMemo(
 		() =>
 			inlineQuestion === null
@@ -1172,19 +1189,55 @@ function SessionView({
 							notifications: notifications ?? [],
 							records: transcript.records,
 							awaitingPermission: sessionPermissionWait,
+							ask: headToolAsk,
 						},
 					)
 				: null,
-		[isActive, inlineQuestion, sessionId, notifications, transcript.records, sessionPermissionWait],
+		[isActive, inlineQuestion, sessionId, notifications, transcript.records, sessionPermissionWait, headToolAsk],
 	);
-	// Upstream draws a verdict elicitation as a permission card; a tool's own prompt takes the slot first.
-	const elicitationPermission = useMemo(
+	// Upstream draws a verdict elicitation as a permission card; only the oldest one's dialog is on screen.
+	const elicitationPermissions = useMemo(
+		() => (inlineQuestion === null ? findPendingElicitationPermissions(pendingElicitations ?? []) : []),
+		[inlineQuestion, pendingElicitations],
+	);
+	const headElicitation = elicitationPermissions[0]?.permission ?? null;
+	// Upstream's queue (`mS`/`ES`): one head card is drawn; the rest wait behind it as "Also waiting" or dock ghosts.
+	// An answered head keeps its place, hidden by its own card, until the signal that drew it clears.
+	const approvalQueue = useMemo(
 		() =>
-			inlineQuestion === null && toolPermission === null
-				? findPendingElicitationPermission(pendingElicitations ?? [])
-				: null,
-		[inlineQuestion, toolPermission, pendingElicitations],
+			sessionApprovalQueue(
+				{
+					asks: permissionAsks,
+					records: transcript.records,
+					permissionKey: toolPermission === null ? null : permissionAnswerKey(toolPermission),
+					elicitations: elicitationPermissions.map((entry) => (
+					{
+						key: permissionAnswerKey(entry.permission),
+						serverName: entry.serverName,
+						receivedAt: entry.receivedAt,
+					})),
+					planId: inlinePlanCard?.toolUseId ?? null,
+					// A sent hook question keeps its place: its card has become the receipt until the record lands.
+					hookQuestionId: hookQuestionCardShown ? (hookQuestion?.toolUseId ?? null) : null,
+					transcriptQuestionId: transcriptQuestionCard ? pendingQuestion.toolUseId : null,
+				},
+			),
+		[
+			permissionAsks,
+			transcript.records,
+			toolPermission,
+			elicitationPermissions,
+			inlinePlanCard,
+			hookQuestionCardShown,
+			hookQuestion,
+			transcriptQuestionCard,
+			pendingQuestion,
+		],
 	);
+	const headKind = approvalQueue.head?.kind ?? null;
+	const queueDepth = approvalQueue.queueDepth;
+	const headPlanCard = headKind === "plan" ? inlinePlanCard : null;
+	const elicitationPermission = headKind === "elicitation" ? headElicitation : null;
 	// A verdict elicitation answers through the CLI's elicitation dialog; Deny takes its Decline stop.
 	const answersElicitation = elicitationPermission !== null;
 	const sendPermissionDecision = useCallback(
@@ -1194,7 +1247,7 @@ function SessionView({
 				: sendHerdrPermissionDecision(sessionId, decision),
 		[answersElicitation, sessionId],
 	);
-	const candidatePermission = toolPermission ?? elicitationPermission;
+	const candidatePermission = headKind === "tool" ? toolPermission : elicitationPermission;
 	// Keyed by its tool call, so a handoff between the signals that describe it neither remounts nor redraws it.
 	const permissionKey = candidatePermission === null ? null : permissionAnswerKey(candidatePermission);
 	// A card the server says isn't pending is stale: it drops and the lists that drew it refetch.
@@ -1260,17 +1313,17 @@ function SessionView({
 							key: permissionKey,
 							dialog: permissionDialog,
 						},
-			planId: inlinePlanCard?.toolUseId ?? null,
-			questionId: hookQuestionCardShown && !hookQuestionSent ? (hookQuestion?.toolUseId ?? null) : null,
+			planId: headPlanCard?.toolUseId ?? null,
+			questionId: headKind === "hook-question" && !hookQuestionSent ? (hookQuestion?.toolUseId ?? null) : null,
 		},
 	);
 	// Upstream's cluster head (`Ms`): on a short viewport the whole approval cluster docks above the composer, and the
 	// head that docked stays there until another card heads the cluster.
-	const transcriptQuestionId = transcriptQuestionCard ? pendingQuestion.toolUseId : null;
-	const hookQuestionHeadId = hookQuestionCardShown ? (hookQuestion?.toolUseId ?? null) : null;
+	const transcriptQuestionId = transcriptQuestionCard && headKind === "question" ? pendingQuestion.toolUseId : null;
+	const hookQuestionHeadId = headKind === "hook-question" ? (hookQuestion?.toolUseId ?? null) : null;
 	const approvalHeadId =
 		(pendingPermission === null ? null : permissionKey) ??
-		inlinePlanCard?.toolUseId ??
+		headPlanCard?.toolUseId ??
 		hookQuestionHeadId ??
 		transcriptQuestionId;
 	const approvalDecision = useApprovalPresentation(approvalHeadId);
@@ -2650,6 +2703,7 @@ function SessionView({
 															autoSwitch={permissionAutoSwitch}
 															onDecision={answerPermission}
 															presentation={approvalPresentation}
+															queueDepth={queueDepth}
 															footer={
 																<Suspense fallback={null}>
 																	<ToolApprovalNotifyTip sessionId={sessionId} />
@@ -2661,17 +2715,18 @@ function SessionView({
 											)}
 											{/* Upstream draws a pending plan's approval as its own sticky card after the transcript, whether
 							    the record is on disk or only the hooks carry it yet */}
-											{inlinePlanCard !== null && (
+											{headPlanCard !== null && (
 												<DeferredInlinePlanApproval
-													key={inlinePlanCard.toolUseId}
-													toolUseId={inlinePlanCard.toolUseId}
-													planText={inlinePlanCard.planText}
+													key={headPlanCard.toolUseId}
+													toolUseId={headPlanCard.toolUseId}
+													planText={headPlanCard.planText}
 													plan={planApprovalCtx}
 													presentation={approvalPresentation}
+													queueDepth={queueDepth}
 												/>
 											)}
 											{/* Until the question's record is on disk, its hook copy is drawn inline at the transcript's end */}
-											{hookQuestionCardShown && hookQuestion && (
+											{headKind === "hook-question" && hookQuestion && (
 												<div
 													data-hook-question=""
 													className={
@@ -2689,10 +2744,20 @@ function SessionView({
 														}
 														sessionId={sessionId}
 														presentation={approvalPresentation}
+														queueDepth={queueDepth}
 													/>
 												</div>
 											)}
 										</ApprovalSlot>
+										{/* Upstream's "Also waiting": the requests queued behind the inline head card */}
+										{approvalPresentation === "card" && approvalQueue.queued.length > 0 && (
+											<div data-find-omitted="" className={`${CHAT_COLUMN_CLASS} pb-4`}>
+												<ApprovalAlsoWaiting
+													queued={approvalQueue.queued}
+													presentation={approvalPresentation}
+												/>
+											</div>
+										)}
 										{/* Docked, the transcript's pending question leaves its row for the cluster */}
 										{approvalPresentation === "dock" &&
 											transcriptQuestionId !== null &&
@@ -2705,6 +2770,7 @@ function SessionView({
 															ctx: askUserQuestionCtx,
 															sent: transcriptQuestionSent,
 															presentation: "dock",
+															queueDepth,
 														},
 													)}
 												</Fragment>

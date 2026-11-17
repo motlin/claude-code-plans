@@ -55,11 +55,11 @@ export interface HerdrPromptDependencies
  * (keys would answer it) or while the state is anything else.
  */
 export function midTurnPromptReady(
-	entry: Pick<ActiveSessionEntry, "state" | "pendingPermissionRequest"> | null | undefined,
+	entry: Pick<ActiveSessionEntry, "state" | "pendingPermissionRequests"> | null | undefined,
 	pendingQuestion: PendingQuestion | null,
 ): boolean
 {
-	return entry?.state === "working" && entry.pendingPermissionRequest === undefined && pendingQuestion === null;
+	return entry?.state === "working" && entry.pendingPermissionRequests === undefined && pendingQuestion === null;
 }
 
 /** Wraps multi-line text so the TUI reads it as one paste; tmux unwraps it into a paste buffer. */

@@ -101,6 +101,15 @@ export function toSessionSummaryPayload(
 	// A standing permission prompt outlives the active-session sweep: the CLI
 	// writes nothing while it waits, so the session goes quiet but is not done.
 	const awaitingPermission = sessionAwaitingPermission(entry.id, registrySession);
+	const permissionAsks = (activeSession?.pendingPermissionRequests ?? []).map(
+		({toolName, toolInput, agentId, receivedAt}) => (
+		{
+			toolName,
+			toolInput,
+			agentId,
+			receivedAt,
+		}),
+	);
 	const erroredAt =
 		entry.erroredAt !== undefined && now - entry.erroredAt < FAILED_ERROR_WINDOW_MS ? entry.erroredAt : undefined;
 	// Upstream judges every finished turn; ours judges only the turns an unread row could show as waiting.
@@ -201,6 +210,12 @@ export function toSessionSummaryPayload(
 					awaitingPermission: true,
 				}
 			: {}),
+		...(permissionAsks.length === 0
+			? {}
+			:
+				{
+					pendingPermissionAsks: permissionAsks,
+				}),
 		...(registrySession === null
 			? {}
 			:

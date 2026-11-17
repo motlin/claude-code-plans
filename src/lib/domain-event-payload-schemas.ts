@@ -13,6 +13,7 @@ import type
 } from "./hook-events";
 import type {LiveSubagentNode} from "./live-subagent-store";
 import {JsonValueSchema} from "./json-value-schema";
+import {PermissionAskEntrySchema} from "./permission-ask";
 import {PrStatusSchema} from "./pr-status";
 import {RemoteControlStateSchema, SessionBucketSchema} from "./session-state";
 
@@ -53,6 +54,7 @@ export const SessionSummaryPayloadSchema: z.ZodType<SessionSummaryPayload> = z
 			terminalHost: z.string().exactOptional(),
 			state: SessionSummaryStateSchema,
 			awaitingPermission: z.literal(true).exactOptional(),
+			pendingPermissionAsks: z.array(PermissionAskEntrySchema).exactOptional(),
 			processStartedAt: z.number().exactOptional(),
 			bucket: SessionBucketSchema,
 			liveAgentCount: z.number(),

@@ -157,7 +157,7 @@ export const defaultRewindFilesDependencies: RewindFilesDependencies =
 		if (entry === null) return true;
 		return (
 			entry.state === "idle" &&
-			entry.pendingPermissionRequest === undefined &&
+			entry.pendingPermissionRequests === undefined &&
 			getPendingQuestion(sessionId) === null
 		);
 	},

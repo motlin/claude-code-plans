@@ -104,7 +104,7 @@ function makeStore()
 		setSessionCrons: () =>
 		{
 		},
-		setPendingPermissionRequest: () =>
+		setPendingPermissionRequests: () =>
 		{
 		},
 		touchSubagentActivity: () =>

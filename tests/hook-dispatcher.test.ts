@@ -99,15 +99,16 @@ function makeStore()
 	const pendingPermissionCalls: Array<
 	{
 		sessionId: string;
-		request: PendingPermissionRequest | null;
+		requests: PendingPermissionRequest[];
 	}> = [];
 	const pendingPermissionEntry = (sessionId: string) =>
 	{
-		const request = pendingPermissionCalls.findLast((pendingCall) => pendingCall.sessionId === sessionId)?.request;
-		return request
+		const requests =
+			pendingPermissionCalls.findLast((pendingCall) => pendingCall.sessionId === sessionId)?.requests ?? [];
+		return requests.length > 0
 			?
 				{
-					pendingPermissionRequest: request,
+					pendingPermissionRequests: requests,
 				}
 			: {};
 	};
@@ -123,12 +124,12 @@ function makeStore()
 		sessionCronCalls,
 		store:
 		{
-			setPendingPermissionRequest: (sessionId: string, request: PendingPermissionRequest | null) =>
+			setPendingPermissionRequests: (sessionId: string, requests: PendingPermissionRequest[]) =>
 			{
 				pendingPermissionCalls.push(
 					{
 						sessionId,
-						request,
+						requests,
 					},
 				);
 			},
@@ -240,6 +241,19 @@ beforeEach(() =>
 	db = openTestDb();
 	clearLiveSubagents();
 });
+
+const PERMISSION_ASKED_AT = Date.UTC(1999, 11, 31);
+
+function bashAsk(toolInput: Record<string, unknown>, agentId: string | null = null): PendingPermissionRequest
+{
+	return {
+		toolName: "Bash",
+		toolInput,
+		agentId,
+		suggestions: [],
+		receivedAt: PERMISSION_ASKED_AT,
+	};
+}
 
 afterEach(() =>
 {
@@ -1331,7 +1345,7 @@ describe("dispatchHookEvent", () =>
 					setSessionCrons: () =>
 					{
 					},
-					setPendingPermissionRequest: () =>
+					setPendingPermissionRequests: () =>
 					{
 					},
 					getActiveSessionEntry: () => currentEntry,
@@ -1731,9 +1745,10 @@ describe("dispatchHookEvent", () =>
 		},
 	);
 
-	it("PermissionRequest stores its suggestions, the permission prompt carries the persistent option, and resuming work clears it", async () =>
+	it("PermissionRequest stores its ask, the permission prompt carries the persistent option, and its PostToolUse resolves it", async () =>
 	{
 		clearAllNotifications();
+		vi.spyOn(Date, "now").mockReturnValue(PERMISSION_ASKED_AT);
 		const {store, pendingPermissionCalls} = makeStore();
 		const base =
 		{
@@ -1844,15 +1859,22 @@ describe("dispatchHookEvent", () =>
 				pendingPermissionCalls: [
 					{
 						sessionId: "session-test-200",
-						request:
-						{
-							toolName: "Bash",
-							suggestions: [suggestion],
-						},
+						requests: [
+							{
+								toolName: "Bash",
+								toolInput:
+								{
+									command: "rm -rf dist",
+								},
+								agentId: null,
+								suggestions: [suggestion],
+								receivedAt: PERMISSION_ASKED_AT,
+							},
+						],
 					},
 					{
 						sessionId: "session-test-200",
-						request: null,
+						requests: [],
 					},
 				],
 			},
@@ -1874,6 +1896,7 @@ describe("dispatchHookEvent", () =>
 		async ({hasSeen, persistentAllow}) =>
 		{
 			clearAllNotifications();
+			vi.spyOn(Date, "now").mockReturnValue(PERMISSION_ASKED_AT);
 			const {store, pendingPermissionCalls} = makeStore();
 			const base =
 			{
@@ -1957,12 +1980,19 @@ describe("dispatchHookEvent", () =>
 					pendingPermissionCalls: [
 						{
 							sessionId: "session-test-202",
-							request:
-							{
-								toolName: "Read",
-								suggestions: [suggestion],
-								permissionMode: "auto",
-							},
+							requests: [
+								{
+									toolName: "Read",
+									toolInput:
+									{
+										file_path: "/tmp/spike/outside/note.txt",
+									},
+									agentId: null,
+									suggestions: [suggestion],
+									permissionMode: "auto",
+									receivedAt: PERMISSION_ASKED_AT,
+								},
+							],
 						},
 					],
 					persistentAllow: [persistentAllow],
@@ -4044,7 +4074,7 @@ describe("dispatchHookEvent for the turn-failure, denial, model-switch and elici
 		]);
 	});
 
-	it("PermissionDenied drops the pending permission request and the permission-prompt notification", async () =>
+	it("PermissionDenied resolves its own ask and drops the permission-prompt notification", async () =>
 	{
 		clearAllNotifications();
 		const harness = makeStore();
@@ -4054,13 +4084,13 @@ describe("dispatchHookEvent for the turn-failure, denial, model-switch and elici
 				cwd: "/Users/u/projects/app",
 			},
 		);
-		harness.store.setPendingPermissionRequest(
-			"abc-123",
+		const denied = bashAsk(permissionDeniedFixture.tool_input);
+		const sibling = bashAsk(
 			{
-				toolName: "Bash",
-				suggestions: [],
+				command: "ls",
 			},
 		);
+		harness.store.setPendingPermissionRequests("abc-123", [denied, sibling]);
 		addNotification(
 			db.index,
 			{
@@ -4083,20 +4113,122 @@ describe("dispatchHookEvent for the turn-failure, denial, model-switch and elici
 				pendingPermissionCalls: [
 					{
 						sessionId: "abc-123",
-						request:
-						{
-							toolName: "Bash",
-							suggestions: [],
-						},
+						requests: [denied, sibling],
 					},
 					{
 						sessionId: "abc-123",
-						request: null,
+						requests: [sibling],
 					},
 				],
 				touchedCalls: ["abc-123"],
 				notifications: [],
 				broadcastTypes: [],
+			},
+		);
+	});
+
+	it("keeps every open PermissionRequest until its own call resolves it or the turn ends", async () =>
+	{
+		vi.spyOn(Date, "now").mockReturnValue(PERMISSION_ASKED_AT);
+		const harness = makeStore();
+		harness.store.markSessionActive(
+			"abc-123",
+			{
+				cwd: "/Users/u/projects/app",
+			},
+		);
+		const base =
+		{
+			session_id: "abc-123",
+			transcript_path: "/Users/u/.claude/projects/app/abc-123.jsonl",
+			cwd: "/Users/u/projects/app",
+		} as const;
+		const webFetch = (url: string, agentId: string | null = null) => (
+		{
+			toolName: "WebFetch",
+			toolInput:
+			{
+				url,
+				prompt: "Summarize",
+			},
+			agentId,
+			suggestions: [],
+			receivedAt: PERMISSION_ASKED_AT,
+		});
+		const asked = (url: string, agentId?: string): HookEvent => (
+		{
+			...base,
+			...(agentId === undefined
+				? {}
+				:
+					{
+						agent_id: agentId,
+						agent_type: "general-purpose",
+					}),
+			hook_event_name: "PermissionRequest",
+			tool_name: "WebFetch",
+			tool_input:
+			{
+				url,
+				prompt: "Summarize",
+			},
+		});
+		const lengths: number[][] = [];
+		const run = async (events: HookEvent[]) =>
+		{
+			for (const event of events) await dispatch(event, harness);
+			lengths.push(harness.pendingPermissionCalls.map((call) => call.requests.length));
+		};
+		await run([asked("https://a"), asked("https://b")]);
+		const two = harness.pendingPermissionCalls.at(-1)?.requests;
+		await run([
+			{
+				...base,
+				hook_event_name: "PostToolUse",
+				tool_name: "WebFetch",
+				tool_use_id: "toolu_a",
+				tool_input:
+				{
+					url: "https://a",
+					prompt: "Summarize",
+				},
+				tool_response:
+				{
+					bytes: 1,
+					code: 200,
+					codeText: "OK",
+					result: "ok",
+					durationMs: 1,
+					url: "https://a",
+				},
+			},
+			asked("https://b"),
+			asked("https://c", "agent-x"),
+		]);
+		const afterResolve = harness.pendingPermissionCalls.at(-1)?.requests;
+		await run([
+			{
+				...base,
+				hook_event_name: "UserPromptSubmit",
+				prompt: "next",
+			},
+		]);
+		expect(
+			{
+				two,
+				afterResolve,
+				lengths,
+			},
+		).toStrictEqual(
+			{
+				two: [webFetch("https://a"), webFetch("https://b")],
+				afterResolve: [webFetch("https://b"), webFetch("https://c", "agent-x")],
+				// A duplicate ask changes nothing, so it records no call.
+				lengths: [
+					[1, 2],
+					[1, 2, 1, 2],
+					[1, 2, 1, 2, 0],
+				],
 			},
 		);
 	});
@@ -4111,13 +4243,13 @@ describe("dispatchHookEvent for the turn-failure, denial, model-switch and elici
 				cwd: "/Users/u/projects/app",
 			},
 		);
-		harness.store.setPendingPermissionRequest(
-			"abc-123",
+		// The main thread asks about the same command the subagent runs.
+		const mainAsk = bashAsk(
 			{
-				toolName: "Bash",
-				suggestions: [],
+				command: "true",
 			},
 		);
+		harness.store.setPendingPermissionRequests("abc-123", [mainAsk]);
 		addNotification(
 			db.index,
 			{
@@ -4174,11 +4306,7 @@ describe("dispatchHookEvent for the turn-failure, denial, model-switch and elici
 				pendingPermissionCalls: [
 					{
 						sessionId: "abc-123",
-						request:
-						{
-							toolName: "Bash",
-							suggestions: [],
-						},
+						requests: [mainAsk],
 					},
 				],
 				notificationTypes: ["permission_prompt"],

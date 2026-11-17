@@ -386,11 +386,18 @@ describe("tmux host writes", () =>
 				entry: entry(
 					{
 						state: "working",
-						pendingPermissionRequest:
-						{
-							toolName: "Bash",
-							suggestions: [],
-						},
+						pendingPermissionRequests: [
+							{
+								toolName: "Bash",
+								toolInput:
+								{
+									command: "ls",
+								},
+								agentId: null,
+								suggestions: [],
+								receivedAt: 1,
+							},
+						],
 					},
 				),
 				question: false,
@@ -1174,11 +1181,18 @@ describe("tmux plan approval", () =>
 			entry(
 				{
 					state: "waiting",
-					pendingPermissionRequest:
-					{
-						toolName: "Bash",
-						suggestions: [],
-					},
+					pendingPermissionRequests: [
+						{
+							toolName: "Bash",
+							toolInput:
+							{
+								command: "ls",
+							},
+							agentId: null,
+							suggestions: [],
+							receivedAt: 1,
+						},
+					],
 				},
 			),
 		);

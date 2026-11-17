@@ -19,7 +19,7 @@ import
 	touchSession,
 	setBackgroundTasks,
 	setSessionCrons,
-	setPendingPermissionRequest,
+	setPendingPermissionRequests,
 	touchSubagentActivity,
 } from "../../lib/active-session-store";
 import {getCacheDir} from "../../lib/db/connection";
@@ -277,7 +277,7 @@ async function dispatch(event: HookEvent): Promise<void>
 				touchSubagentActivity,
 				setBackgroundTasks,
 				setSessionCrons,
-				setPendingPermissionRequest,
+				setPendingPermissionRequests,
 				getActiveSessionEntry,
 			},
 			broadcast: broadcastTyped,

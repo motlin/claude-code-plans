@@ -11,7 +11,8 @@ import
 	hasAnyActiveSessions,
 	setBackgroundTasks,
 	setSessionCrons,
-	setPendingPermissionRequest,
+	headPermissionRequest,
+	setPendingPermissionRequests,
 	liveSessionRoutines,
 	touchSubagentActivity,
 } from "../src/lib/active-session-store";
@@ -429,11 +430,17 @@ describe("active-session-store", () =>
 		expect(entry.tmuxServerSocket).toBe("/tmp/tmux-501/default");
 	});
 
-	it("stores the pending PermissionRequest beside the session and clears it", () =>
+	it("stores the open PermissionRequests beside the session, heads the oldest, and clears them", () =>
 	{
 		const request =
 		{
 			toolName: "Bash",
+			toolInput:
+			{
+				command: "rm -rf dist",
+			},
+			agentId: null,
+			receivedAt: 1,
 			suggestions: [
 				{
 					type: "addRules" as const,
@@ -454,20 +461,28 @@ describe("active-session-store", () =>
 				cwd: "/projects/foo",
 			},
 		);
-		setPendingPermissionRequest("session-test-200", request);
-		setPendingPermissionRequest("session-test-unknown", request);
-		const stored = getActiveSessionEntry("session-test-200")?.pendingPermissionRequest;
-		setPendingPermissionRequest("session-test-200", null);
+		const later =
+		{
+			...request,
+			receivedAt: 2,
+		};
+		setPendingPermissionRequests("session-test-200", [request, later]);
+		setPendingPermissionRequests("session-test-unknown", [request]);
+		const stored = getActiveSessionEntry("session-test-200")?.pendingPermissionRequests;
+		const head = headPermissionRequest(getActiveSessionEntry("session-test-200"));
+		setPendingPermissionRequests("session-test-200", []);
 		expect(
 			{
 				stored,
-				cleared: getActiveSessionEntry("session-test-200")?.pendingPermissionRequest,
+				head,
+				cleared: Object.hasOwn(getActiveSessionEntry("session-test-200") ?? {}, "pendingPermissionRequests"),
 				unknown: getActiveSessionEntry("session-test-unknown"),
 			},
 		).toStrictEqual(
 			{
-				stored: request,
-				cleared: undefined,
+				stored: [request, later],
+				head: request,
+				cleared: false,
 				unknown: null,
 			},
 		);

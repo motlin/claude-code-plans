@@ -2,18 +2,18 @@ import {mkdtempSync, rmSync, writeFileSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import {afterEach, describe, expect, it} from "vite-plus/test";
-import type {PendingPermissionRequest} from "../src/lib/active-session-store";
 import {OPTION_LINE} from "../src/lib/herdr/dialog-rows";
 import
 {
 	isOutsideReadFirstPrompt,
 	outsideReadDialogKind,
+	type AskedRequest,
 	readHasSeenOutsideReadPrompt,
 } from "../src/lib/outside-read-prompt";
 import {READ_OUTSIDE_AUTO_FIRST_PROMPT} from "./fixtures/permission-screens";
 
 /** The real auto-mode payload from dumps/permission-dialog-capture-spike-permission-request-payloads.jsonl. */
-const AUTO_READ: PendingPermissionRequest =
+const AUTO_READ: AskedRequest =
 {
 	toolName: "Read",
 	permissionMode: "auto",
@@ -32,7 +32,7 @@ const AUTO_READ: PendingPermissionRequest =
 	],
 };
 
-function forTool(toolName: string): PendingPermissionRequest
+function forTool(toolName: string): AskedRequest
 {
 	return {
 		toolName,
@@ -195,7 +195,7 @@ describe("isOutsideReadFirstPrompt", () =>
 	] satisfies Array<
 	{
 		name: string;
-		request: PendingPermissionRequest;
+		request: AskedRequest;
 		hasSeen: boolean;
 		expected: boolean;
 	}>)("is $expected for $name", ({request, hasSeen, expected}) =>
