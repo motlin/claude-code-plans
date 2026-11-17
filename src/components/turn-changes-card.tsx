@@ -262,7 +262,12 @@ export function TurnChangesCard({
 				<ul aria-label={title} className="flex w-full min-w-0 flex-col">
 					<li className={ITEM_CLASS}>
 						{openChanges === undefined ? (
-							<a href={fileViewerPath(soleFile.path)} title={soleFile.path} className={ROW_CONTROL_CLASS}>
+							<a
+								href={fileViewerPath(soleFile.path)}
+								title={soleFile.path}
+								data-transcript-step-navigates=""
+								className={ROW_CONTROL_CLASS}
+							>
 								{label}
 							</a>
 						) : (
@@ -270,6 +275,7 @@ export function TurnChangesCard({
 							<Tooltip content="View this turn's changes" portal className="static! min-w-0 grow">
 								<button
 									type="button"
+									data-transcript-step-navigates=""
 									onClick={openChanges}
 									className={`${ROW_CONTROL_CLASS} cursor-pointer`}
 								>
@@ -328,7 +334,12 @@ export function TurnChangesCard({
 			<ul aria-label={title} className="flex w-full min-w-0 flex-col">
 				{visible.map((file) => (
 					<li key={file.path} className={ITEM_CLASS}>
-						<a href={fileViewerPath(file.path)} title={file.path} className={ROW_CONTROL_CLASS}>
+						<a
+							href={fileViewerPath(file.path)}
+							title={file.path}
+							data-transcript-step-navigates=""
+							className={ROW_CONTROL_CLASS}
+						>
 							<RowLabel
 								icon={<LazyFileTypeIcon fileName={file.path} size="sm" />}
 								path={file.path}
@@ -357,6 +368,7 @@ export function TurnChangesCard({
 					) : (
 						<button
 							type="button"
+							data-transcript-step-navigates=""
 							onClick={openChanges}
 							className={`${ROW_CONTROL_CLASS} ${SEE_ALL_CLASS} cursor-pointer`}
 						>

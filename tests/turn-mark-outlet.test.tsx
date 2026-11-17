@@ -7,6 +7,7 @@ import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {SessionChat} from "../src/components/session-chat";
 import {TurnMarkCarrier, TurnMarkOutlet, TurnMarkOutletProvider} from "../src/components/turn-mark-outlet";
 import {useMarkClaim, useMarkHeld, useMarkWords, useYieldMark} from "../src/components/turn-mark-context";
+import {TRANSCRIPT_RELEASE_END_FOLLOW_EVENT} from "../src/lib/jump-to-message";
 import {OUTLET_LATE_NOTICE_MS} from "../src/lib/turn-mark-outlet";
 import {processTranscript} from "../src/lib/transcript";
 
@@ -94,6 +95,72 @@ describe("TurnMarkOutlet", () =>
 				outlet: "",
 				controls: "",
 				className: "[&>[data-turn-mark-box]>*]:!my-0 empty:hidden",
+			},
+		);
+	});
+
+	it("forwards a press or Enter in a carried row to the transcript as a follow release (upstream _9)", () =>
+	{
+		const {getByTestId} = render(
+			<Page outlet>
+				<TurnMarkCarrier holds>
+					<span data-testid="row">Running</span>
+					<textarea data-testid="field" />
+					<button type="button" data-transcript-keeps-pin="" data-testid="pane-row">
+						Agent
+					</button>
+				</TurnMarkCarrier>
+			</Page>,
+		);
+		const releases: string[] = [];
+		const listener = (event: Event) =>
+		{
+			releases.push(event.type);
+		};
+		document.addEventListener(TRANSCRIPT_RELEASE_END_FOLLOW_EVENT, listener);
+		const count = (fire: () => void) =>
+		{
+			releases.length = 0;
+			fire();
+			return releases.length;
+		};
+		const results =
+		{
+			pressRow: count(() => fireEvent.pointerDown(getByTestId("row"))),
+			enterRow: count(() =>
+				fireEvent.keyDown(
+					getByTestId("row"),
+					{
+						key: "Enter",
+					},
+				),
+			),
+			letterRow: count(() =>
+				fireEvent.keyDown(
+					getByTestId("row"),
+					{
+						key: "a",
+					},
+				),
+			),
+			enterField: count(() =>
+				fireEvent.keyDown(
+					getByTestId("field"),
+					{
+						key: "Enter",
+					},
+				),
+			),
+			pressPaneRow: count(() => fireEvent.pointerDown(getByTestId("pane-row"))),
+		};
+		document.removeEventListener(TRANSCRIPT_RELEASE_END_FOLLOW_EVENT, listener);
+		expect(results).toStrictEqual(
+			{
+				pressRow: 1,
+				enterRow: 1,
+				letterRow: 0,
+				enterField: 0,
+				pressPaneRow: 0,
 			},
 		);
 	});

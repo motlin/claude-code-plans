@@ -2,7 +2,9 @@
 
 import {act, cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import {createRef} from "react";
 import {SessionChat} from "../src/components/session-chat";
+import {TranscriptAfterRows} from "../src/components/transcript-after-rows";
 import {jumpToMessage, releaseEndFollow} from "../src/lib/jump-to-message";
 import {setScrollTop} from "../src/lib/scroll-setter";
 import type {SessionLine} from "../src/lib/sessions";
@@ -456,6 +458,198 @@ describe("SessionChat initial scrolling", () =>
 				afterRelease: 0,
 			},
 		);
+	});
+
+	it("releases following on a press or Enter on a transcript control, but not on a pane-opening row (upstream ske)", () =>
+	{
+		const followsAfter = (key: string, act_: (feed: HTMLElement) => void) =>
+		{
+			const view = render(
+				<SessionChat
+					sessionId={`session-${key}`}
+					initialScrollKey={`history-entry-${key}`}
+					lines={messages(4)}
+					toolResultMap={new Map()}
+				/>,
+			);
+			act(flushAnimationFrames);
+			const feed = view.container.querySelector<HTMLElement>("[data-testid='virtualized-transcript']")!;
+			const before = scrollTo.mock.calls.length;
+			act(() =>
+			{
+				act_(feed);
+			});
+			act(() =>
+			{
+				observerFor(view.container.firstElementChild!).resize();
+			});
+			act(flushAnimationFrames);
+			const followed = scrollTo.mock.calls.length - before;
+			view.unmount();
+			return followed;
+		};
+		const appended = (feed: HTMLElement, html: string, selector: string) =>
+		{
+			const host = document.createElement("div");
+			host.innerHTML = html;
+			feed.querySelector("[role=article]")!.append(host);
+			return host.querySelector(selector)!;
+		};
+
+		expect(
+			{
+				untouched: followsAfter("untouched", () => undefined),
+				pressedToggle: followsAfter("press", (feed) =>
+				{
+					fireEvent.pointerDown(appended(feed, '<button aria-expanded="false">Run</button>', "button"));
+				}),
+				enterOnToggle: followsAfter("enter", (feed) =>
+				{
+					fireEvent.keyDown(
+						appended(feed, '<button aria-expanded="false">Run</button>', "button"),
+						{
+							key: "Enter",
+						},
+					);
+				}),
+				letterOnToggle: followsAfter("letter", (feed) =>
+				{
+					fireEvent.keyDown(
+						appended(feed, '<button aria-expanded="false">Run</button>', "button"),
+						{
+							key: "a",
+						},
+					);
+				}),
+				pressedPaneRow: followsAfter("keep", (feed) =>
+				{
+					fireEvent.pointerDown(
+						appended(feed, "<div data-transcript-keeps-pin><span>Agent</span></div>", "span"),
+					);
+				}),
+			},
+		).toStrictEqual(
+			{
+				untouched: 1,
+				pressedToggle: 0,
+				enterOnToggle: 0,
+				letterOnToggle: 1,
+				pressedPaneRow: 1,
+			},
+		);
+	});
+
+	it("resnaps to the end when the after-rows block grows while pinned, not once a press released it (upstream gTe)", () =>
+	{
+		const growsAfter = (key: string, press: boolean) =>
+		{
+			const contentRef = createRef<HTMLDivElement>();
+			const view = render(
+				<div ref={contentRef}>
+					<SessionChat
+						sessionId={`session-after-rows-${key}`}
+						initialScrollKey={`history-entry-after-rows-${key}`}
+						lines={messages(4)}
+						toolResultMap={new Map()}
+						scrollContentRef={contentRef}
+					/>
+					<TranscriptAfterRows turnBox={<div data-testid="plan-box" />} />
+				</div>,
+			);
+			act(flushAnimationFrames);
+			if (press)
+				fireEvent.pointerDown(
+					view.container.querySelector("[data-testid='virtualized-transcript'] [role=article]")!,
+				);
+			const before = scrollTo.mock.calls.length;
+			act(() =>
+			{
+				view.getByTestId("plan-box").style.height = "140px";
+				observerFor(view.getByTestId("transcript-after-rows").parentElement!).resize();
+			});
+			act(flushAnimationFrames);
+			const followed = scrollTo.mock.calls.length - before;
+			view.unmount();
+			return followed;
+		};
+
+		expect(
+			{
+				pinned: growsAfter("pinned", false),
+				released: growsAfter("released", true),
+			},
+		).toStrictEqual(
+			{
+				pinned: 1,
+				released: 0,
+			},
+		);
+	});
+
+	it("re-pins and snaps to the end 500ms after a still click on plain transcript text (upstream k7)", () =>
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+			},
+		);
+		try
+		{
+			const view = render(
+				<SessionChat
+					sessionId="session-still-click"
+					initialScrollKey="history-entry-still-click"
+					lines={messages(4)}
+					toolResultMap={new Map()}
+				/>,
+			);
+			act(flushAnimationFrames);
+			const before = scrollTo.mock.calls.length;
+			const text = view.container.querySelector("[data-testid='virtualized-transcript'] [role=article] p")!;
+			act(() =>
+			{
+				fireEvent.pointerDown(
+					text,
+					{
+						button: 0,
+					},
+				);
+				fireEvent.click(text);
+			});
+			act(() =>
+			{
+				vi.advanceTimersByTime(499);
+			});
+			const early = scrollTo.mock.calls.length - before;
+			act(() =>
+			{
+				vi.advanceTimersByTime(1);
+			});
+			const repinned = scrollTo.mock.calls.length - before;
+			act(() =>
+			{
+				observerFor(view.container.firstElementChild!).resize();
+			});
+			act(flushAnimationFrames);
+
+			expect(
+				{
+					early,
+					repinned,
+					followsGrowth: scrollTo.mock.calls.length - before - repinned,
+				},
+			).toStrictEqual(
+				{
+					early: 0,
+					repinned: 1,
+					followsGrowth: 1,
+				},
+			);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
 	});
 
 	it("resumes following the end when a tile move restores its scroller to the bottom through upstream's gT", () =>

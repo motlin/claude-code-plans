@@ -2151,15 +2151,18 @@ describe("TurnChangesCard", () =>
 			{
 				href: link.getAttribute("href"),
 				title: link.getAttribute("title"),
+				navigates: link.getAttribute("data-transcript-step-navigates"),
 			})),
 		).toStrictEqual([
 			{
 				href: fileViewerPath("/repo/src/file-1.ts"),
 				title: "/repo/src/file-1.ts",
+				navigates: "",
 			},
 			{
 				href: fileViewerPath("/repo/src/file-2.ts"),
 				title: "/repo/src/file-2.ts",
+				navigates: "",
 			},
 		]);
 	});
@@ -2207,20 +2210,20 @@ describe("TurnChangesCard", () =>
 					name: "Edited 2 files",
 				},
 			).parentElement!;
+			const seeAll = within(card).getByRole(
+				"button",
+				{
+					name: /^See all/,
+				},
+			);
 			act(() =>
 			{
-				fireEvent.click(
-					within(card).getByRole(
-						"button",
-						{
-							name: /^See all/,
-						},
-					),
-				);
+				fireEvent.click(seeAll);
 			});
 
 			expect(
 				{
+					navigates: seeAll.getAttribute("data-transcript-step-navigates"),
 					before,
 					opened: screen.queryByTestId("changes-pane")?.textContent,
 					scope: loadChangesScope("turn-card-session"),
@@ -2228,6 +2231,7 @@ describe("TurnChangesCard", () =>
 				},
 			).toStrictEqual(
 				{
+					navigates: "",
 					before: null,
 					opened: "Changes pane",
 					scope: "turn:u-1",
@@ -2280,24 +2284,25 @@ describe("TurnChangesCard", () =>
 					</TileHost>
 				</SettingsProvider>,
 			);
+			const row = screen.getByRole(
+				"button",
+				{
+					name: /^file-1\.ts/,
+				},
+			);
 			act(() =>
 			{
-				fireEvent.click(
-					screen.getByRole(
-						"button",
-						{
-							name: /^file-1\.ts/,
-						},
-					),
-				);
+				fireEvent.click(row);
 			});
 			expect(
 				{
+					navigates: row.getAttribute("data-transcript-step-navigates"),
 					opened: screen.queryByTestId("changes-pane")?.textContent,
 					scope: loadChangesScope("turn-card-single"),
 				},
 			).toStrictEqual(
 				{
+					navigates: "",
 					opened: "Changes pane",
 					scope: "turn:u-1",
 				},

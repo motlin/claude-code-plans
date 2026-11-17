@@ -12,7 +12,10 @@ import
 } from "react";
 import {createPortal} from "react-dom";
 
+import {releaseEndFollow} from "../lib/jump-to-message";
+import {pressOrKeyReleasesPin} from "../lib/transcript-follow-pin";
 import {moveInto, type OpenOutlet, type TurnMarkOutletStore} from "../lib/turn-mark-outlet";
+import {findScrollContainer} from "./scroll-container";
 import {noSubscribe, TurnMarkOutletContext, useTurnMarkStore} from "./turn-mark-context";
 
 const noOutlet = () => null;
@@ -56,8 +59,18 @@ export function TurnMarkOutlet({className, underPlan = false}: {className?: stri
 		const el = ref.current;
 		if (store === null || el === null) return undefined;
 		store.openOutlet(el);
+		// Upstream `setUnderListPressOrKey`: rows carried out of the feed forward their presses and keys (`_9`), so a
+		// toggle in a carried row releases "follow latest" as it would in place. A forwarded press never re-pins.
+		const forward = (event: Event) =>
+		{
+			if (pressOrKeyReleasesPin(event)) releaseEndFollow(findScrollContainer(el));
+		};
+		el.addEventListener("pointerdown", forward, true);
+		el.addEventListener("keydown", forward, true);
 		return () =>
 		{
+			el.removeEventListener("pointerdown", forward, true);
+			el.removeEventListener("keydown", forward, true);
 			store.closeOutlet(el);
 		};
 	}, [store]);

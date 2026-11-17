@@ -196,6 +196,7 @@ import
 } from "../lib/transcript-measurements";
 import {ApiRequestDisclosure} from "./api-request-disclosure";
 import {registerScrollSetter} from "../lib/scroll-setter";
+import {armStillClickRepin, keyReleasesPin, pressReleasesPin} from "../lib/transcript-follow-pin";
 import
 {
 	jumpToMessage,
@@ -489,6 +490,7 @@ const EMPTY_IMAGE_ROOTS: readonly string[] = [];
 const NO_SUBAGENTS: Subagent[] = [];
 const EMPTY_SLASH_COMMANDS: readonly SlashCommand[] = [];
 const END_FOLLOW_THRESHOLD_PIXELS = 32;
+const TRANSCRIPT_FEED_SELECTOR = "[data-testid='virtualized-transcript']";
 
 /**
  * Whether the transcript sits in a tile hidden while another pane is expanded: its content host under an inert,
@@ -1141,6 +1143,36 @@ export const SessionChat = React.memo(function SessionChat({
 				cancelLayoutFollow();
 			touchY = nextY;
 		};
+		// Upstream ske's feed hold props: a press or Enter/Space on a transcript row releases follow, so a toggle
+		// expands in place instead of being scrolled away; a still click on plain text re-pins after 500ms (k7).
+		let abortRepin: (() => void) | undefined;
+		const feedTarget = (target: EventTarget | null) =>
+			target instanceof Element && target.closest(TRANSCRIPT_FEED_SELECTOR) !== null;
+		const onFeedPointerDown = (event: Event) =>
+		{
+			if (!(event instanceof MouseEvent) || !feedTarget(event.target) || !pressReleasesPin(event)) return;
+			abortRepin = armStillClickRepin(
+				event,
+				{
+					isPinned: () => followsEnd,
+					scroller,
+					scrollTop: () => scrollMetrics(scroller).scrollTop,
+					repin: () =>
+					{
+						followsEnd = true;
+						scrollToEnd();
+					},
+				},
+			);
+			cancelLayoutFollow();
+		};
+		const onFeedKeyDown = (event: Event) =>
+		{
+			if (event instanceof KeyboardEvent && feedTarget(event.target) && keyReleasesPin(event))
+				cancelLayoutFollow();
+		};
+		container.addEventListener("pointerdown", onFeedPointerDown, true);
+		container.addEventListener("keydown", onFeedKeyDown, true);
 		const resizeObserver = new ResizeObserver(queueLayoutFollow);
 		resizeObserver.observe(container);
 		if (scrollContentRef?.current && scrollContentRef.current !== container)
@@ -1189,6 +1221,9 @@ export const SessionChat = React.memo(function SessionChat({
 		}
 		return () =>
 		{
+			abortRepin?.();
+			container.removeEventListener("pointerdown", onFeedPointerDown, true);
+			container.removeEventListener("keydown", onFeedKeyDown, true);
 			resizeObserver.disconnect();
 			unregisterScrollSetter();
 			scrollEventTarget.removeEventListener("scroll", updateFollowsEnd);
