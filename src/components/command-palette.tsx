@@ -177,7 +177,7 @@ import
 	paletteTokens,
 	type PaletteRank,
 } from "../lib/palette-rank";
-import {relativeBucket, titleMatches, type Snippet, type TextMatch} from "../lib/search-text";
+import {phraseMatches, relativeBucket, titleMatches, type Snippet, type TextMatch} from "../lib/search-text";
 import {createSessionCommands} from "../lib/session-commands";
 import {openSideChat} from "../lib/side-chat-store";
 import {getSessionMenuItems, type SessionMenuCapability} from "../lib/session-menu-items";
@@ -308,6 +308,15 @@ const BADGE_LABEL_PAD =
 	base: "pb-[0.05em]",
 };
 
+/** Server hit kinds that keep the server's title matches instead of upstream's phrase runs. */
+const KEEPS_SERVER_MATCHES =
+{
+	session: false,
+	plan: true,
+	memory: true,
+	file: true,
+} as const satisfies Record<UnifiedSearchItem["kind"], boolean>;
+
 /** One typed-search row: an instant title match over recents, or a server hit. */
 interface SearchRow
 {
@@ -389,13 +398,21 @@ function sessionRow(session: SessionListItem, matches: readonly TextMatch[], mar
 	};
 }
 
+/** Upstream's non-conversation row label runs: every occurrence of the whole trimmed, lowercased query. */
+function labelMatches(title: string, query: string): TextMatch[]
+{
+	return phraseMatches(title, query.toLowerCase()) ?? [];
+}
+
 function instantRows(sessions: readonly SessionListItem[], query: string, markOf: MarkOf): SearchRow[]
 {
 	const rows: SearchRow[] = [];
 	for (const session of sessions)
 	{
-		const matches = titleMatches(session.title, query);
-		if (matches !== null) rows.push(sessionRow(session, matches, markOf));
+		if (titleMatches(session.title, query) !== null)
+		{
+			rows.push(sessionRow(session, labelMatches(session.title, query), markOf));
+		}
 	}
 	return rows;
 }
@@ -435,14 +452,13 @@ function projectRows(projects: readonly PaletteProjectItem[], text: string): Sea
 	const rows: SearchRow[] = [];
 	for (const project of projects)
 	{
-		const matches = text === "" ? [] : titleMatches(project.name, text);
-		if (matches === null) continue;
+		if (text !== "" && titleMatches(project.name, text) === null) continue;
 		rows.push(
 			{
 				kind: "project",
 				id: project.id,
 				title: project.name,
-				titleMatches: matches,
+				titleMatches: labelMatches(project.name, text),
 				snippet: undefined,
 				mtime: project.lastActivity,
 				href: undefined,
@@ -459,14 +475,13 @@ function artifactRows(artifacts: readonly ArtifactSummary[], text: string): Sear
 	const rows: SearchRow[] = [];
 	for (const artifact of artifacts.toSorted((a, b) => artifactTimestamp(b) - artifactTimestamp(a)))
 	{
-		const matches = text === "" ? [] : titleMatches(artifact.title, text);
-		if (matches === null) continue;
+		if (text !== "" && titleMatches(artifact.title, text) === null) continue;
 		rows.push(
 			{
 				kind: "artifact",
 				id: artifact.id,
 				title: artifact.title,
-				titleMatches: matches,
+				titleMatches: labelMatches(artifact.title, text),
 				snippet: undefined,
 				mtime: new Date(artifactTimestamp(artifact)).toISOString(),
 				href: undefined,
@@ -503,7 +518,7 @@ function routineRows(routines: readonly Routine[], text: string, now: number): S
 				kind: "routine",
 				id: routine.toolUseId,
 				title,
-				titleMatches: text === "" ? [] : (titleMatches(title, text) ?? []),
+				titleMatches: labelMatches(title, text),
 				snippet: undefined,
 				mtime: new Date(routine.createdAt).toISOString(),
 				href: undefined,
@@ -582,6 +597,7 @@ function recentDocRows(
 /** A server hit; a session hit known to the session list takes that session's mark, PR and archived state. */
 function serverRow(
 	item: UnifiedSearchItem,
+	query: string,
 	sessionsById: ReadonlyMap<string, SessionListItem>,
 	markOf: MarkOf,
 ): SearchRow
@@ -591,7 +607,8 @@ function serverRow(
 		kind: item.kind,
 		id: item.id,
 		title: item.title,
-		titleMatches: item.titleMatches,
+		// Plan, memory and file hits stand in for upstream's conversation rows, the only ones that keep server matches.
+		titleMatches: KEEPS_SERVER_MATCHES[item.kind] ? item.titleMatches : labelMatches(item.title, query),
 		snippet: item.snippet,
 		mtime: item.mtime,
 		href: item.href,
@@ -1651,7 +1668,7 @@ function PalettePopup({
 		const shown = new Set(instant.map(rowKey));
 		return serverSearch.data.items
 			.filter((item) => item.id !== currentSessionId || item.kind !== "session")
-			.map((item) => serverRow(item, sessionsById, markOf))
+			.map((item) => serverRow(item, tokens.text, sessionsById, markOf))
 			.filter((row) => !shown.has(rowKey(row)));
 	}, [
 		serverActive,
@@ -1660,6 +1677,7 @@ function PalettePopup({
 		trimmedQuery,
 		instant,
 		currentSessionId,
+		tokens.text,
 		sessionsById,
 		markOf,
 	]);
@@ -2538,6 +2556,8 @@ function PalettePopup({
 	// Upstream's untitled `{id:"actions"}` group only appears when actionsInResults or server search is off,
 	// which never happens in the local palette, so there is no split actions group here.
 	const queryTokens = paletteTokens(tokens.text);
+	// Upstream's `Z`: the trimmed, lowercased query every non-conversation row label highlights as one phrase.
+	const lowerQuery = tokens.text.toLowerCase();
 	const rankOf = (label: string, prNumber?: number) => paletteRank(label, tokens.text, queryTokens, prNumber);
 	const typedOrder = interleaveByRank<TypedPaletteItem, TypedPaletteItem>(
 		[
@@ -3060,6 +3080,7 @@ function PalettePopup({
 														key={command.id}
 														value={`session-command:${command.id}`}
 														icon={SESSION_COMMAND_ICONS[command.id]}
+														lowerQuery={lowerQuery}
 														onSelect={() =>
 														{
 															select(() =>
@@ -3080,6 +3101,7 @@ function PalettePopup({
 														key={action.label}
 														value={action.value ?? `action:${action.label}`}
 														icon={action.icon}
+														lowerQuery={lowerQuery}
 														{...(action.warm === undefined
 															? {}
 															:
@@ -3099,6 +3121,7 @@ function PalettePopup({
 														value={`action:${action.label}`}
 														id={action.shortcut}
 														icon={action.icon}
+														lowerQuery={lowerQuery}
 														onSelect={() =>
 														{
 															select(action.run);
@@ -3116,6 +3139,7 @@ function PalettePopup({
 														key={command.to}
 														value={`nav:${command.to}`}
 														icon={command.icon}
+														lowerQuery={lowerQuery}
 														onSelect={() =>
 														{
 															select(() =>
@@ -3791,7 +3815,7 @@ function EmptyViewItem({
 							secondary: <PaletteSecondary text={secondary} archived={false} />,
 						})}
 			>
-				{row.title}
+				<HighlightRuns text={row.title} matches={[]} />
 				{mark !== undefined && <span className="sr-only"> {PALETTE_MARK_LABELS[mark]}</span>}
 			</CommandItem>
 		</SessionRowActions>
@@ -4037,9 +4061,12 @@ function CommandItem({
 	secondary,
 	badge,
 	onPointerEnter,
+	lowerQuery,
 }: {
 	children: ReactNode;
 	value: string;
+	/** Upstream's label `lowerQuery`: a string label highlights every occurrence of this phrase. */
+	lowerQuery?: string;
 	icon?: ReactNode;
 	/** Upstream's Badge after the label, e.g. a "Filter by" hint's filter name. */
 	badge?: ReactNode;
@@ -4075,7 +4102,11 @@ function CommandItem({
 					<span className="flex size-5 shrink-0 items-center justify-center [&_svg]:size-[18px]">{icon}</span>
 				)}
 				<span data-palette-label="" className="truncate">
-					{children}
+					{typeof children === "string" ? (
+						<HighlightRuns text={children} matches={phraseMatches(children, lowerQuery) ?? []} />
+					) : (
+						children
+					)}
 				</span>
 				{badge}
 			</span>

@@ -15,6 +15,7 @@ import {SHORTCUT_IDS, SHORTCUTS} from "../src/lib/shortcuts/registry";
 import {markTerminalCommand} from "../src/lib/terminal-marked-store";
 import {PanelsOff} from "./fizzy-lake-off";
 import {mockTallWindow} from "./tall-window";
+import {byLabel} from "./helpers/palette-label";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
@@ -1436,14 +1437,7 @@ describe("Command palette Keyboard shortcuts item", () =>
 			},
 		);
 
-		fireEvent.click(
-			await screen.findByRole(
-				"option",
-				{
-					name: /^Keyboard shortcuts/,
-				},
-			),
-		);
+		fireEvent.click(await screen.findByRole("option", byLabel(/^Keyboard shortcuts/)));
 
 		await screen.findByRole(
 			"dialog",

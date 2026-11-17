@@ -411,6 +411,72 @@ describe("⌘K palette live search", () =>
 		);
 	});
 
+	it("highlights only the whole query phrase on session titles, and keeps server matches for plans", async () =>
+	{
+		const {dialog} = await openPalette([
+			recentSession("sess-1", "New session notes"),
+			recentSession("sess-2", "Session for new users"),
+		]);
+		const labelHtml = (label: string) => option(dialog, label).querySelector("[data-palette-label]")?.innerHTML;
+		const hit = (text: string) => `<span class="font-semibold text-primary">${text}</span>`;
+
+		type(dialog, "new ses");
+		(await awaitRequest()).resolve([
+			serverSession(
+				"sess-3",
+				"Newer sessions",
+				{
+					titleMatches: [
+						{
+							start: 0,
+							end: 3,
+						},
+						{
+							start: 6,
+							end: 9,
+						},
+					],
+				},
+			),
+			{
+				...serverSession(
+					"new-plan.md",
+					"new plan for ses",
+					{
+						titleMatches: [
+							{
+								start: 0,
+								end: 3,
+							},
+						],
+					},
+				),
+				kind: "plan",
+				href: "/plan/new-plan",
+			},
+		]);
+
+		await waitFor(() =>
+		{
+			expect(optionLabels(dialog)).toContain("new plan for ses");
+		});
+		expect(
+			{
+				phrase: labelHtml("New session notes"),
+				termsWithoutPhrase: labelHtml("Session for new users"),
+				server: labelHtml("Newer sessions"),
+				plan: labelHtml("new plan for ses"),
+			},
+		).toStrictEqual(
+			{
+				phrase: `${hit("New ses")}<span>sion notes</span>`,
+				termsWithoutPhrase: "<span>Session for new users</span>",
+				server: "<span>Newer sessions</span>",
+				plan: `${hit("new")}<span> plan for ses</span>`,
+			},
+		);
+	});
+
 	it("quotes content snippets beside the title", async () =>
 	{
 		const {dialog} = await openPalette([]);

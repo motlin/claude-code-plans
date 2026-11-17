@@ -231,3 +231,60 @@ export function titleMatches(title: string, query: string): TextMatch[] | null
 		end: match.index + match[0].length,
 	}));
 }
+
+/** Maps each lowercase code unit back to the original char's start and end (upstream `yv`). */
+function lowerIndexMaps(text: string):
+{
+	starts: number[];
+	ends: number[];
+}
+{
+	const starts: number[] = [];
+	const ends: number[] = [];
+	let index = 0;
+	for (const char of text)
+	{
+		const end = index + char.length;
+		for (let unit = 0; unit < char.toLowerCase().length; unit++)
+		{
+			starts.push(index);
+			ends.push(end);
+		}
+		index = end;
+	}
+	return {
+		starts,
+		ends,
+	};
+}
+
+/**
+ * Ports upstream's palette label matcher `xk`: every non-overlapping,
+ * case-insensitive occurrence of the whole (already lowercased) query phrase.
+ */
+export function phraseMatches(text: string, lowerQuery: string | undefined): TextMatch[] | undefined
+{
+	if (!lowerQuery) return undefined;
+	const lower = text.toLowerCase();
+	const maps = lower.length === text.length ? undefined : lowerIndexMaps(text);
+	const matches: TextMatch[] = [];
+	let from = 0;
+	let previousEnd = 0;
+	for (let hit = lower.indexOf(lowerQuery, from); hit !== -1; hit = lower.indexOf(lowerQuery, from))
+	{
+		from = hit + lowerQuery.length;
+		const start = Math.max(maps?.starts[hit] ?? hit, previousEnd);
+		const end = maps?.ends[from - 1] ?? from;
+		if (end > start)
+		{
+			matches.push(
+				{
+					start,
+					end,
+				},
+			);
+			previousEnd = end;
+		}
+	}
+	return matches.length === 0 ? undefined : matches;
+}

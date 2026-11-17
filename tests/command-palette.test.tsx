@@ -30,6 +30,7 @@ import {saveRecents, type RecentEntry} from "../src/lib/recents-history";
 import {holdAnswered, releaseAnswered} from "../src/lib/answered-sessions";
 import {FIZZY_LAKE_PARTS, FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 import {installPaletteFocusOrigin} from "../src/lib/palette-focus-origin";
+import {byLabel} from "./helpers/palette-label";
 
 // Settings commands warm these chunks; the spies stand in for the downloads.
 vi.mock("../src/components/settings/settings-dialog-loader", async (importOriginal) => (
@@ -1486,6 +1487,27 @@ describe("CommandPalette shell", () =>
 				keyShortcuts: null,
 				kbd: 0,
 				text: "New session",
+			},
+		);
+	});
+
+	it("wraps empty-view labels in upstream's single plain run span", async () =>
+	{
+		const dialog = await openPalette();
+		const labelHtml = (label: string) =>
+			[...dialog.querySelectorAll("[cmdk-item] [data-palette-label]")].find(
+				(element) => element.textContent === label,
+			)?.innerHTML;
+
+		expect(
+			{
+				action: labelHtml("New session"),
+				session: labelHtml("Refactor auth module"),
+			},
+		).toStrictEqual(
+			{
+				action: "<span>New session</span>",
+				session: "<span>Refactor auth module</span>",
 			},
 		);
 	});
@@ -3588,14 +3610,7 @@ describe("CommandPalette shell", () =>
 				},
 			},
 		);
-		expect(
-			await within(dialog).findByRole(
-				"option",
-				{
-					name: /^Keyboard shortcuts/,
-				},
-			),
-		).toBeTruthy();
+		expect(await within(dialog).findByRole("option", byLabel(/^Keyboard shortcuts/))).toBeTruthy();
 	});
 
 	it("caps Needs attention at 5 leads, leaving the next ones in Recents", async () =>
@@ -4366,12 +4381,7 @@ describe("CommandPalette shell", () =>
 				},
 			},
 		);
-		await within(dialog).findByRole(
-			"option",
-			{
-				name: "Settings → Setup",
-			},
-		);
+		await within(dialog).findByRole("option", byLabel("Settings → Setup"));
 		fireEvent.change(
 			combobox,
 			{
@@ -4381,12 +4391,7 @@ describe("CommandPalette shell", () =>
 				},
 			},
 		);
-		await within(dialog).findByRole(
-			"option",
-			{
-				name: "Settings → Claude Config",
-			},
-		);
+		await within(dialog).findByRole("option", byLabel("Settings → Claude Config"));
 		fireEvent.change(
 			combobox,
 			{
@@ -4396,20 +4401,8 @@ describe("CommandPalette shell", () =>
 				},
 			},
 		);
-		const usage = await within(dialog).findByRole(
-			"option",
-			{
-				name: "Settings → Usage",
-			},
-		);
-		expect(
-			within(dialog).queryByRole(
-				"option",
-				{
-					name: "Settings",
-				},
-			),
-		).toBeNull();
+		const usage = await within(dialog).findByRole("option", byLabel("Settings → Usage"));
+		expect(within(dialog).queryByRole("option", byLabel("Settings"))).toBeNull();
 		fireEvent.click(usage);
 
 		await waitFor(() =>
@@ -4449,14 +4442,7 @@ describe("CommandPalette shell", () =>
 			},
 		);
 
-		expect(
-			await within(dialog).findByRole(
-				"option",
-				{
-					name: label,
-				},
-			),
-		).toBeTruthy();
+		expect(await within(dialog).findByRole("option", byLabel(label))).toBeTruthy();
 	});
 
 	it("switches an open Settings dialog to a command's section in place", async () =>
@@ -4472,14 +4458,7 @@ describe("CommandPalette shell", () =>
 				},
 			},
 		);
-		fireEvent.click(
-			await within(dialog).findByRole(
-				"option",
-				{
-					name: "Settings → Code",
-				},
-			),
-		);
+		fireEvent.click(await within(dialog).findByRole("option", byLabel("Settings → Code")));
 
 		await waitFor(() =>
 		{
@@ -4513,12 +4492,7 @@ describe("CommandPalette shell", () =>
 				},
 			},
 		);
-		const skills = await within(dialog).findByRole(
-			"option",
-			{
-				name: "Settings → Skills",
-			},
-		);
+		const skills = await within(dialog).findByRole("option", byLabel("Settings → Skills"));
 		for (let step = 0; step < 20 && skills.getAttribute("aria-selected") !== "true"; step += 1)
 		{
 			fireEvent.keyDown(
@@ -4560,12 +4534,7 @@ describe("CommandPalette shell", () =>
 				},
 			},
 		);
-		const appearance = await within(dialog).findByRole(
-			"option",
-			{
-				name: "Settings → Appearance",
-			},
-		);
+		const appearance = await within(dialog).findByRole("option", byLabel("Settings → Appearance"));
 		vi.mocked(loadSettingsDialog).mockClear();
 		vi.mocked(preloadCustomizeDialogPanel).mockClear();
 		fireEvent.pointerEnter(appearance);
@@ -5930,6 +5899,39 @@ describe("CommandPalette filter values", () =>
 		);
 	}
 
+	it("highlights every occurrence of the whole query phrase in action and nav labels, like upstream's xk", async () =>
+	{
+		const dialog = await openPalette();
+		const labelHtml = (query: string, label: string) =>
+		{
+			typeQuery(dialog, query);
+			return [...dialog.querySelectorAll("[cmdk-item] [data-palette-label]")].find(
+				(element) => element.textContent === label,
+			)?.innerHTML;
+		};
+		const hit = (text: string) => `<span class="font-semibold text-primary">${text}</span>`;
+
+		expect(
+			{
+				prefix: labelHtml("sett", "Settings → Usage"),
+				everyOccurrence: labelHtml("e", "Search sessions"),
+				originalCase: labelHtml("Tog", "Toggle sidebar"),
+				trimmed: labelHtml("  tog  ", "Toggle sidebar"),
+				phrase: labelHtml("toggle side", "Toggle sidebar"),
+				keywordOnly: labelHtml("repo", "Projects"),
+			},
+		).toStrictEqual(
+			{
+				prefix: `${hit("Sett")}<span>ings → Usage</span>`,
+				everyOccurrence: `<span>S</span>${hit("e")}<span>arch s</span>${hit("e")}<span>ssions</span>`,
+				originalCase: `${hit("Tog")}<span>gle sidebar</span>`,
+				trimmed: `${hit("Tog")}<span>gle sidebar</span>`,
+				phrase: `${hit("Toggle side")}<span>bar</span>`,
+				keywordOnly: "<span>Projects</span>",
+			},
+		);
+	});
+
 	it("lists the Date values under a Date heading after date:", async () =>
 	{
 		const dialog = await openPalette();
@@ -6422,14 +6424,7 @@ describe("CommandPalette filter values", () =>
 		const dialog = await openPalette();
 
 		typeQuery(dialog, "actions:true jump to main");
-		fireEvent.click(
-			within(dialog).getByRole(
-				"option",
-				{
-					name: "Jump to main content",
-				},
-			),
-		);
+		fireEvent.click(within(dialog).getByRole("option", byLabel("Jump to main content")));
 		await waitFor(() =>
 		{
 			expect(
@@ -7997,12 +7992,7 @@ describe("CommandPalette pinned Jump to question row", () =>
 			},
 		);
 		typeQuery(dialog, "!jm");
-		await within(dialog).findByRole(
-			"option",
-			{
-				name: "Jump to main content",
-			},
-		);
+		await within(dialog).findByRole("option", byLabel("Jump to main content"));
 		fireEvent.keyDown(
 			within(dialog).getByRole("combobox"),
 			{

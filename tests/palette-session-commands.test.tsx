@@ -29,6 +29,7 @@ import {getSideChat, resetSideChatStore} from "../src/lib/side-chat-store";
 import {publishFamilyHeads, resetFamilyHeadsStore} from "../src/lib/sidebar-family-heads-store";
 import {readSidebarState, setFamiliesCollapsed} from "../src/lib/sidebar-store";
 import {installLocalStorage} from "./fake-storage";
+import {byLabel} from "./helpers/palette-label";
 
 const MAC_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
 
@@ -269,12 +270,7 @@ describe("palette contextual session commands", () =>
 			},
 		);
 
-		await within(dialog).findByRole(
-			"option",
-			{
-				name: `Copy link to ${QUOTED}`,
-			},
-		);
+		await within(dialog).findByRole("option", byLabel(`Copy link to ${QUOTED}`));
 		expect(optionLabels(dialog).slice(0, 3)).toStrictEqual([
 			`Copy link to ${QUOTED}`,
 			"Copy resume command",
@@ -322,14 +318,7 @@ describe("palette contextual session commands", () =>
 				},
 			},
 		);
-		fireEvent.click(
-			await within(dialog).findByRole(
-				"option",
-				{
-					name: label,
-				},
-			),
-		);
+		fireEvent.click(await within(dialog).findByRole("option", byLabel(label)));
 		await waitFor(() =>
 		{
 			expect(writeText.mock.calls).toStrictEqual([[copied]]);
@@ -362,14 +351,7 @@ describe("palette contextual session commands", () =>
 				},
 			},
 		);
-		fireEvent.click(
-			await within(dialog).findByRole(
-				"option",
-				{
-					name: `Pin ${QUOTED}`,
-				},
-			),
-		);
+		fireEvent.click(await within(dialog).findByRole("option", byLabel(`Pin ${QUOTED}`)));
 		await waitFor(() =>
 		{
 			expect(readPinState()).toStrictEqual(
@@ -404,14 +386,7 @@ describe("palette contextual session commands", () =>
 				},
 			},
 		);
-		fireEvent.click(
-			await within(dialog).findByRole(
-				"option",
-				{
-					name: `Archive ${QUOTED}`,
-				},
-			),
-		);
+		fireEvent.click(await within(dialog).findByRole("option", byLabel(`Archive ${QUOTED}`)));
 		await waitFor(() =>
 		{
 			expect(
@@ -501,12 +476,7 @@ describe("palette contextual session commands", () =>
 			},
 		);
 
-		await within(dialog).findByRole(
-			"option",
-			{
-				name: `Pin ${QUOTED}`,
-			},
-		);
+		await within(dialog).findByRole("option", byLabel(`Pin ${QUOTED}`));
 		// The session commands match by keyword only (rank 2), so the rank-0/1 labels lead and upstream's cap of 7 ends the list.
 		expect(optionLabels(dialog)).toStrictEqual([
 			"Sessions",
@@ -534,12 +504,7 @@ describe("palette contextual session commands", () =>
 			},
 		);
 
-		await within(dialog).findByRole(
-			"option",
-			{
-				name: `Unpin ${QUOTED}`,
-			},
-		);
+		await within(dialog).findByRole("option", byLabel(`Unpin ${QUOTED}`));
 	});
 
 	it("offers Unarchive for an archived session", async () =>
@@ -563,20 +528,8 @@ describe("palette contextual session commands", () =>
 			},
 		);
 
-		await within(dialog).findByRole(
-			"option",
-			{
-				name: `Unarchive ${QUOTED}`,
-			},
-		);
-		expect(
-			within(dialog).queryByRole(
-				"option",
-				{
-					name: `Archive ${QUOTED}`,
-				},
-			),
-		).toBeNull();
+		await within(dialog).findByRole("option", byLabel(`Unarchive ${QUOTED}`));
+		expect(within(dialog).queryByRole("option", byLabel(`Archive ${QUOTED}`))).toBeNull();
 	});
 
 	it("archives the current session from its command", async () =>
@@ -592,14 +545,7 @@ describe("palette contextual session commands", () =>
 			},
 		);
 
-		fireEvent.click(
-			await within(dialog).findByRole(
-				"option",
-				{
-					name: `Archive ${QUOTED}`,
-				},
-			),
-		);
+		fireEvent.click(await within(dialog).findByRole("option", byLabel(`Archive ${QUOTED}`)));
 
 		await waitFor(() =>
 		{
@@ -620,12 +566,7 @@ describe("palette contextual session commands", () =>
 	{
 		const {dialog} = await openPalette("/session/sess-1");
 
-		await within(dialog).findByRole(
-			"option",
-			{
-				name: /^New session/,
-			},
-		);
+		await within(dialog).findByRole("option", byLabel(/^New session/));
 		expect(optionLabels(dialog).filter((label) => label.includes("Copy"))).toStrictEqual([]);
 	});
 
@@ -644,12 +585,7 @@ describe("palette contextual session commands", () =>
 			},
 		);
 
-		const option = await within(dialog).findByRole(
-			"option",
-			{
-				name: /Show side chat/,
-			},
-		);
+		const option = await within(dialog).findByRole("option", byLabel(/Show side chat/));
 		expect([
 			option.querySelector("[data-palette-label]")?.textContent,
 			option.getAttribute("aria-keyshortcuts"),
@@ -716,14 +652,7 @@ describe("palette contextual session commands", () =>
 				},
 			},
 		);
-		fireEvent.click(
-			await within(dialog).findByRole(
-				"option",
-				{
-					name: "Copy resume command",
-				},
-			),
-		);
+		fireEvent.click(await within(dialog).findByRole("option", byLabel("Copy resume command")));
 
 		await waitFor(() =>
 		{
@@ -745,14 +674,7 @@ describe("palette contextual session commands", () =>
 				},
 			},
 		);
-		fireEvent.click(
-			await within(dialog).findByRole(
-				"option",
-				{
-					name: "Copy fork command",
-				},
-			),
-		);
+		fireEvent.click(await within(dialog).findByRole("option", byLabel("Copy fork command")));
 
 		await waitFor(() =>
 		{
@@ -797,14 +719,7 @@ describe("palette contextual session commands", () =>
 				},
 			},
 		);
-		fireEvent.click(
-			await within(dialog).findByRole(
-				"option",
-				{
-					name: label,
-				},
-			),
-		);
+		fireEvent.click(await within(dialog).findByRole("option", byLabel(label)));
 		await waitFor(() =>
 		{
 			expect(writeText.mock.calls).toStrictEqual([[copied]]);
@@ -825,14 +740,7 @@ describe("palette contextual session commands", () =>
 				},
 			},
 		);
-		fireEvent.click(
-			await within(dialog).findByRole(
-				"option",
-				{
-					name: `Copy link to ${QUOTED}`,
-				},
-			),
-		);
+		fireEvent.click(await within(dialog).findByRole("option", byLabel(`Copy link to ${QUOTED}`)));
 
 		await waitFor(() =>
 		{
@@ -854,14 +762,7 @@ describe("palette contextual session commands", () =>
 				},
 			},
 		);
-		fireEvent.click(
-			await within(dialog).findByRole(
-				"option",
-				{
-					name: `Pin ${QUOTED}`,
-				},
-			),
-		);
+		fireEvent.click(await within(dialog).findByRole("option", byLabel(`Pin ${QUOTED}`)));
 
 		await waitFor(() =>
 		{
@@ -888,14 +789,7 @@ describe("palette contextual session commands", () =>
 				},
 			},
 		);
-		fireEvent.click(
-			await within(dialog).findByRole(
-				"option",
-				{
-					name: `Rename ${QUOTED}`,
-				},
-			),
-		);
+		fireEvent.click(await within(dialog).findByRole("option", byLabel(`Rename ${QUOTED}`)));
 
 		const rename = await screen.findByRole(
 			"textbox",
@@ -919,14 +813,7 @@ describe("palette contextual session commands", () =>
 				},
 			},
 		);
-		fireEvent.click(
-			await within(dialog).findByRole(
-				"option",
-				{
-					name: `Rename ${QUOTED}`,
-				},
-			),
-		);
+		fireEvent.click(await within(dialog).findByRole("option", byLabel(`Rename ${QUOTED}`)));
 		const rename = await screen.findByRole(
 			"textbox",
 			{
@@ -1000,14 +887,7 @@ describe("palette contextual session commands", () =>
 			publishFamilyHeads(owner, ["h1", "h2"]);
 			const {dialog, input} = await openPalette("/plans");
 			await typeQuery(dialog, input, "nested");
-			fireEvent.click(
-				within(dialog).getByRole(
-					"option",
-					{
-						name: "Hide all nested sessions",
-					},
-				),
-			);
+			fireEvent.click(within(dialog).getByRole("option", byLabel("Hide all nested sessions")));
 
 			expect(readSidebarState().collapsedFamilies).toStrictEqual(["code:h1", "code:h2"]);
 			await waitFor(() =>
@@ -1035,12 +915,7 @@ describe("palette contextual session commands", () =>
 		{
 			publishFamilyHeads(owner, ["h1", "h2"]);
 			const {dialog} = await openPalette("/plans");
-			await within(dialog).findByRole(
-				"option",
-				{
-					name: /^New session/,
-				},
-			);
+			await within(dialog).findByRole("option", byLabel(/^New session/));
 
 			expect(nestedLabels(dialog)).toStrictEqual([]);
 		});
@@ -1052,14 +927,7 @@ describe("palette contextual session commands", () =>
 			await typeQuery(dialog, input, "nested");
 
 			expect(nestedLabels(dialog)).toStrictEqual(["Hide nested sessions", "Hide all nested sessions"]);
-			fireEvent.click(
-				within(dialog).getByRole(
-					"option",
-					{
-						name: "Hide nested sessions",
-					},
-				),
-			);
+			fireEvent.click(within(dialog).getByRole("option", byLabel("Hide nested sessions")));
 			expect(readSidebarState().collapsedFamilies).toStrictEqual(["code:sess-1"]);
 		});
 
@@ -1071,14 +939,7 @@ describe("palette contextual session commands", () =>
 			await typeQuery(dialog, input, "nested");
 
 			expect(nestedLabels(dialog)).toStrictEqual(["Show nested sessions", "Show all nested sessions"]);
-			fireEvent.click(
-				within(dialog).getByRole(
-					"option",
-					{
-						name: "Show nested sessions",
-					},
-				),
-			);
+			fireEvent.click(within(dialog).getByRole("option", byLabel("Show nested sessions")));
 			expect(readSidebarState().collapsedFamilies).toStrictEqual([]);
 		});
 

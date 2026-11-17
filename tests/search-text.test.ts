@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {relativeBucket, titleMatches, trimSnippet} from "../src/lib/search-text";
+import {phraseMatches, relativeBucket, titleMatches, trimSnippet} from "../src/lib/search-text";
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -311,5 +311,97 @@ describe("titleMatches", () =>
 	])("returns null for %s", (_label, title, query) =>
 	{
 		expect(titleMatches(title, query)).toBeNull();
+	});
+});
+
+describe("phraseMatches", () =>
+{
+	it.each([
+		[
+			"every occurrence",
+			"Recents",
+			"e",
+			[
+				{
+					start: 1,
+					end: 2,
+				},
+				{
+					start: 3,
+					end: 4,
+				},
+			],
+		],
+		[
+			"the whole multi-token phrase",
+			"New session",
+			"new ses",
+			[
+				{
+					start: 0,
+					end: 7,
+				},
+			],
+		],
+		[
+			"non-overlapping repeats",
+			"aaa",
+			"aa",
+			[
+				{
+					start: 0,
+					end: 2,
+				},
+			],
+		],
+		[
+			"a symbol",
+			"Settings → Code",
+			"→",
+			[
+				{
+					start: 9,
+					end: 10,
+				},
+			],
+		],
+		[
+			"a repeated symbol",
+			"Comparing 17×23 and 19×21",
+			"×",
+			[
+				{
+					start: 12,
+					end: 13,
+				},
+				{
+					start: 22,
+					end: 23,
+				},
+			],
+		],
+		[
+			"through a case-fold length change",
+			"İstanbul",
+			"i̇s",
+			[
+				{
+					start: 0,
+					end: 2,
+				},
+			],
+		],
+	])("matches %s", (_label, text, lowerQuery, expected) =>
+	{
+		expect(phraseMatches(text, lowerQuery)).toStrictEqual(expected);
+	});
+
+	it.each([
+		["an absent phrase", "Peer Claude session request", "new ses"],
+		["an empty query", "New", ""],
+		["an undefined query", "New", undefined],
+	])("returns undefined for %s", (_label, text, lowerQuery) =>
+	{
+		expect(phraseMatches(text, lowerQuery)).toBeUndefined();
 	});
 });
