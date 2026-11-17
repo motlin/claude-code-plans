@@ -7,7 +7,9 @@ import
 	buildGroups,
 	buildSidebarSections,
 	customGroupLaunchTarget,
+	isOlderBucket,
 	migrateSessionListPrefs,
+	olderBulkArchivableIds,
 	nextPageCanHoldVisibleRows,
 	pinnedGroup,
 	type SessionGroup,
@@ -982,6 +984,70 @@ describe("buildGroups date mode", () =>
 				label: "Older",
 				rows: ids("old", 20),
 				hiddenCount: 5,
+			},
+		]);
+	});
+
+	it("scopes Older's bulk archive to every Older row past the cap, nested forks included, minus pinned, archived and open rows", () =>
+	{
+		const rows = [
+			...Array.from(
+				{
+					length: 25,
+				},
+				(_, index) =>
+					row(
+						`old-${index}`,
+						{
+							lastActivityAt: NOW - (30 + index) * DAY,
+							archived: index === 22,
+						},
+					),
+			),
+			row(
+				"old-fork",
+				{
+					lastActivityAt: NOW - 60 * DAY,
+					forkedFromSessionId: "old-3",
+				},
+			),
+			row("yesterday"),
+		];
+		const groups = buildGroups(
+			rows,
+			prefs(
+				{
+					groupBy: "date",
+					activityDays: "all",
+					statusFilter: "all",
+				},
+			),
+			NOW,
+		);
+
+		expect(
+			groups.map((group) => (
+			{
+				key: group.key,
+				older: isOlderBucket(group),
+				ids: olderBulkArchivableIds(
+					group,
+					{
+						pinnedIds: new Set(["old-21"]),
+						openIds: new Set(["old-24"]),
+					},
+				),
+			})),
+		).toStrictEqual([
+			{
+				key: "date-yesterday",
+				older: false,
+				ids: ["yesterday"],
+			},
+			{
+				key: "date-older",
+				older: true,
+				ids: [...ids("old", 4), "old-fork", ...ids("old", 17, 4), "old-23"],
 			},
 		]);
 	});

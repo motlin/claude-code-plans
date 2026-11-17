@@ -41,7 +41,9 @@ import
 {
 	customGroupIdOfKey,
 	customGroupLaunchTarget,
+	isOlderBucket,
 	isProjectGroupKey,
+	olderBulkArchivableIds,
 	type SessionGroup,
 	type SessionListPrefs,
 	truncates,
@@ -66,6 +68,7 @@ import {PrListCard} from "./pr-list-card";
 import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
 import {CustomGroupHeader} from "./custom-group-header";
+import {type FetchAllResult, OlderBucketMenu} from "./older-bucket-menu";
 import type {SectionActivator} from "./sortable-sections";
 import {GroupHeaderContextMenu} from "./group-header-context-menu";
 import {GroupNewSessionButton} from "./group-new-session-button";
@@ -101,12 +104,22 @@ const DESCRIBED_ROW_CLASS =
  * or keyboard focus (always on touch, and while its menu is open), then a folder or manual section's
  * own +. Upstream's hub-rail sidebar puts no generic New session + on any header: the New nav row has it.
  */
-function HeaderControls({filterSlot, trailing}: {filterSlot: ReactNode; trailing?: ReactNode})
+function HeaderControls({
+	leading,
+	filterSlot,
+	trailing,
+}: {
+	/** Upstream `qZ`'s Older bulk menu, ahead of the bucket's own trailing controls. */
+	leading?: ReactNode;
+	filterSlot: ReactNode;
+	trailing?: ReactNode;
+})
 {
 	const hasFilter = filterSlot !== undefined && filterSlot !== null;
-	if (!hasFilter && trailing === undefined) return null;
+	if (leading === undefined && !hasFilter && trailing === undefined) return null;
 	return (
 		<div data-header-controls="" className="flex items-center">
+			{leading}
 			{hasFilter && (
 				// Upstream's hub sidebar (`Cs` `o_(open && !held, inHubSidebar)`) keeps Group and sort's width; CSS fades it by opacity.
 				<span data-header-reveal="" className="flex">
@@ -262,6 +275,15 @@ export interface SectionFetchMore
 	onFetch: (event: MouseEvent<HTMLElement>) => void;
 }
 
+/** Recents' Older bucket bulk menu inputs (upstream `qZ` → `AG`'s `listHasMore` and `onFetchAll`). */
+export interface OlderBulk
+{
+	listHasMore: boolean;
+	onFetchAll: () => Promise<FetchAllResult>;
+	/** Pinned sessions, which Archive all leaves alone. */
+	pinnedIds: readonly string[];
+}
+
 /** A collapsible sidebar group: label row (caret on hover), session rows, "Show more" / "Show less". */
 export function GroupSection({
 	group: listedGroup,
@@ -283,6 +305,7 @@ export function GroupSection({
 	dropHot = false,
 	sectionKeys,
 	projectReorder = null,
+	olderBulk,
 }: {
 	group: SessionGroup<SidebarSessionRow>;
 	/** The list's grouping: grouped by status, the open session moving into a collapsed section expands it. */
@@ -318,6 +341,8 @@ export function GroupSection({
 	sectionKeys?: readonly string[];
 	/** A folder section's place in the folder order (Move up / Move down / Sort A to Z); null for Other. */
 	projectReorder?: ProjectReorder | null;
+	/** Set on Recents' sections: Date's Older bucket draws its bulk menu from it. */
+	olderBulk?: OlderBulk | undefined;
 })
 {
 	const {settings} = useSettings();
@@ -554,6 +579,21 @@ export function GroupSection({
 					</CustomGroupHeader>
 				)}
 				<HeaderControls
+					leading={
+						olderBulk !== undefined && groupBy === "date" && isOlderBucket(listedGroup) ? (
+							<OlderBucketMenu
+								ids={olderBulkArchivableIds(
+									listedGroup,
+									{
+										pinnedIds: new Set(olderBulk.pinnedIds),
+										openIds: new Set(openKeys),
+									},
+								)}
+								listHasMore={olderBulk.listHasMore}
+								onFetchAll={olderBulk.onFetchAll}
+							/>
+						) : undefined
+					}
 					filterSlot={filterSlot}
 					trailing={sectionNewSessionButton(group.label, customNewSession, projectNewSession)}
 				/>

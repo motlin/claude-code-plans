@@ -3279,6 +3279,223 @@ describe("sidebar SessionGroups", () =>
 		).toBe("label:fetchmore:date");
 	});
 
+	describe("Older bucket bulk menu", () =>
+	{
+		const DAY_MINUTES = 60 * 24;
+		const older = (index: number) => session(`o${index}`, `Old ${index}`, "done", (10 + index) * DAY_MINUTES);
+		const datePrefs: SessionListPrefs =
+		{
+			...DEFAULT_SESSION_LIST_PREFS,
+			groupBy: "date",
+			activityDays: "all",
+		};
+		const bulkButton = () =>
+			screen.queryByRole(
+				"button",
+				{
+					name: "Bulk actions for older sessions",
+				},
+			);
+
+		/** Serves the feed's first page, then `cursor-2`'s, and answers every archive PUT. */
+		function stubFeed(firstPage: unknown[], secondPage: unknown[])
+		{
+			const requests: string[] = [];
+			vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) =>
+			{
+				const url = String(input);
+				requests.push(`${init?.method ?? "GET"} ${url}`);
+				const body = url.includes("/archived")
+					?
+						{
+							archived: true,
+						}
+					: url.includes("cursor=cursor-2")
+						?
+							{
+								sessions: secondPage,
+								nextCursor: null,
+							}
+						:
+							{
+								sessions: firstPage,
+								nextCursor: "cursor-2",
+							};
+				return Promise.resolve(
+					new Response(
+						JSON.stringify(body),
+						{
+							status: 200,
+							headers:
+							{
+								"Content-Type": "application/json",
+							},
+						},
+					),
+				);
+			});
+			return requests;
+		}
+
+		it("puts upstream AG's trigger first in the Older header, scoped past pinned and open rows, only under Date grouping", async () =>
+		{
+			localStorage.setItem(
+				PIN_STORAGE_KEY,
+				JSON.stringify(
+					{
+						pinnedIds: ["o1"],
+						pinnedOrder: ["o1"],
+					},
+				),
+			);
+			const sessions = [
+				session("t1", "Today one", "done", 5),
+				...Array.from(
+					{
+						length: 8,
+					},
+					(_, index) => older(index),
+				),
+			];
+			const dated = await renderGroups(
+				sessions,
+				{
+					prefs: datePrefs,
+					activeItemId: "o2",
+					filterSlot: <button type="button">Group and sort</button>,
+				},
+			);
+			const button = bulkButton();
+			const controls = button?.closest("[data-header-controls]");
+			fireEvent.click(button!);
+			const menu = await waitFor(() => screen.getByRole("menu"));
+			const placement =
+			{
+				section: button?.closest("[data-group-key]")?.getAttribute("data-group-key"),
+				// Base UI's focus guards sit between the controls; only the controls themselves count.
+				controls: [...(controls?.querySelectorAll(":scope > button, :scope > [data-header-reveal]") ?? [])].map(
+					(child) => (child.hasAttribute("data-header-reveal") ? "reveal" : child.getAttribute("aria-label")),
+				),
+				items: [...menu.querySelectorAll("[role=menuitem]")].map((item) => item.textContent),
+				buttons: screen.getAllByRole(
+					"button",
+					{
+						name: "Bulk actions for older sessions",
+					},
+				).length,
+			};
+			dated.unmount();
+			await renderGroups(
+				sessions,
+				{
+					prefs:
+					{
+						...datePrefs,
+						groupBy: "state",
+					},
+				},
+			);
+
+			expect(
+				{
+					...placement,
+					stateGrouping: bulkButton(),
+				},
+			).toStrictEqual(
+				{
+					section: "date-older",
+					controls: ["Bulk actions for older sessions", "reveal"],
+					items: ["Archive all (6)"],
+					buttons: 1,
+					stateGrouping: null,
+				},
+			);
+		});
+
+		it("draws no trigger when every Older row is pinned or open", async () =>
+		{
+			localStorage.setItem(
+				PIN_STORAGE_KEY,
+				JSON.stringify(
+					{
+						pinnedIds: ["o0"],
+						pinnedOrder: ["o0"],
+					},
+				),
+			);
+			await renderGroups(
+				[session("t1", "Today one", "done", 5), older(0), older(1)],
+				{
+					prefs: datePrefs,
+					activeItemId: "o1",
+				},
+			);
+			expect(bulkButton()).toBeNull();
+		});
+
+		it("drains the rest of the feed on Archive all, archives the landed Older rows too, and trims the feed back after", async () =>
+		{
+			const firstPage = [session("t1", "Today one", "done", 5), older(0), older(1)];
+			const requests = stubFeed(firstPage, [older(2), older(3)]);
+			const {queryClient} = await renderGroups(
+				firstPage,
+				{
+					prefs: datePrefs,
+					nextCursor: "cursor-2",
+				},
+			);
+			fireEvent.click(bulkButton()!);
+			const item = await waitFor(() => screen.getByRole("menuitem"));
+			const label = item.textContent;
+			fireEvent.click(item);
+			const dialog = await waitFor(() => screen.getByRole("alertdialog"));
+			await waitFor(() =>
+			{
+				expect(within(dialog).getByRole("status").textContent).toBe(
+					"This will archive 4 sessions older than a week. Pinned sessions aren’t affected.",
+				);
+			});
+			const drainedPages = queryClient.getQueryData<
+			{
+				pages: unknown[];
+			}>(recentSessionsInfiniteQueryOptions(undefined, "active").queryKey)?.pages.length;
+			fireEvent.click(
+				within(dialog).getByRole(
+					"button",
+					{
+						name: "Archive all",
+					},
+				),
+			);
+			await waitFor(() => screen.getByText("Archived 4 older sessions"));
+
+			expect(
+				{
+					label,
+					drainedPages,
+					requests: requests.filter((request) => request.includes("cursor-2") || request.startsWith("PUT")),
+					pagesAfter: queryClient.getQueryData<
+					{
+						pages: unknown[];
+					}>(recentSessionsInfiniteQueryOptions(undefined, "active").queryKey)?.pages.length,
+				},
+			).toStrictEqual(
+				{
+					label: "Archive all",
+					drainedPages: 2,
+					requests: [
+						"GET /api/sessions/recent?limit=50&cursor=cursor-2&live=1",
+						"PUT /api/sessions/o0/archived",
+						"PUT /api/sessions/o1/archived",
+						"PUT /api/sessions/o2/archived",
+						"PUT /api/sessions/o3/archived",
+					],
+					pagesAfter: 1,
+				},
+			);
+		});
+	});
+
 	it("keeps the row background on upstream's wrapper while the kebab or context menu is open, hiding the mark only for the kebab", async () =>
 	{
 		const {container} = await renderGroups(

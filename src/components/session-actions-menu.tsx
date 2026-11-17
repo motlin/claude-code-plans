@@ -490,7 +490,7 @@ function BulkMenuBody({
 				for (const sessionId of ids) markUnseen(sessionId);
 				break;
 			case "archive":
-				archiveSessions(sessions.filter((session) => !session.archived).map(({id}) => id));
+				void archiveSessions(sessions.filter((session) => !session.archived).map(({id}) => id));
 				break;
 			case "move-to-custom-group":
 				if (value === undefined) return;

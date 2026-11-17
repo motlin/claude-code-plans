@@ -1122,6 +1122,7 @@ describe("phone sheet CSS", () =>
 				sheetWide: styles.includes(".phone-sheet .df-touch-reveal"),
 				decoration: declarations("\t[data-touch-menu] [data-row-decoration]"),
 				label: declarations("\t[data-touch-menu] [data-row-main-button] [data-row-label]"),
+				headerReveal: declarations("\t[data-phone-sheet] [data-sidebar-group-label] .df-touch-reveal"),
 			},
 		).toStrictEqual(
 			{
@@ -1129,6 +1130,9 @@ describe("phone sheet CSS", () =>
 				sheetWide: false,
 				decoration: ["right: calc(var(--sb-row-ctl-inset) + var(--sb-row-ctl) + 4px)"],
 				label: ["padding-inline-end: calc(var(--sb-row-ctl) * 2 + 4px)"],
+				// Upstream `.dframe-root[data-phone-sheet] .dframe-sidebar-body .df-touch-reveal`, kept to section headers
+				// so row kebabs stay on the current session's row only.
+				headerReveal: ["opacity: 1", "pointer-events: auto"],
 			},
 		);
 	});

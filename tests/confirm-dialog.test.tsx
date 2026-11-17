@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import {cleanup, render, screen, waitFor} from "@testing-library/react";
+import {cleanup, fireEvent, render, screen, waitFor} from "@testing-library/react";
 import {afterEach, describe, expect, it} from "vite-plus/test";
 
 import {ConfirmDialog} from "../src/components/confirm-dialog";
@@ -114,6 +114,55 @@ describe("ConfirmDialog", () =>
 				band: null,
 				title: "text-[17px] leading-6 font-semibold break-words text-primary",
 				description: "mt-2 text-body break-words text-secondary",
+			},
+		);
+	});
+
+	it("wraps a live body in upstream's role=status span, and a disabled confirm can't be pressed", async () =>
+	{
+		const confirmed: string[] = [];
+		render(
+			<ConfirmDialog
+				open
+				onOpenChange={() =>
+				{
+				}}
+				title="Archive older sessions?"
+				body="Counting sessions older than a week…"
+				bodyLive
+				confirmLabel="Archive all"
+				confirmDisabled
+				onConfirm={() =>
+				{
+					confirmed.push("confirm");
+				}}
+			/>,
+		);
+		const status = await screen.findByRole("status");
+		const confirm = screen.getByRole(
+			"button",
+			{
+				name: "Archive all",
+			},
+		);
+		fireEvent.click(confirm);
+
+		expect(
+			{
+				tag: status.tagName,
+				text: status.textContent,
+				inDescription:
+					status.parentElement?.id === screen.getByRole("alertdialog").getAttribute("aria-describedby"),
+				disabled: confirm.hasAttribute("disabled"),
+				confirmed,
+			},
+		).toStrictEqual(
+			{
+				tag: "SPAN",
+				text: "Counting sessions older than a week…",
+				inDescription: true,
+				disabled: true,
+				confirmed: [],
 			},
 		);
 	});

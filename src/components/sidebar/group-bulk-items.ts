@@ -81,7 +81,7 @@ export function useGroupBulkActions(
 		archiveAllReason: unarchived.length === 0 ? BULK_REASONS.archiveAllEmpty : BULK_REASONS.archiveAllNone,
 		archiveAll: () =>
 		{
-			archiveSessions(archivableIds);
+			void archiveSessions(archivableIds);
 		},
 	};
 }

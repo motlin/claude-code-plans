@@ -3631,6 +3631,12 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 		opacity: 1;
 		pointer-events: auto;
 	}
+	/* Upstream's phone sheet shows every header control at rest (the Older bulk menu's touch reveal). */
+	[data-phone-sheet] [data-sidebar-group-label] .df-touch-reveal
+	{
+		opacity: 1;
+		pointer-events: auto;
+	}
 	[data-touch-menu] [data-row-decoration]
 	{
 		right: calc(var(--sb-row-ctl-inset) + var(--sb-row-ctl) + 4px);

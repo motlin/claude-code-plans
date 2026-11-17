@@ -64,6 +64,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 	variant = "primary",
 	size = "sm",
 	confirmDisabled = false,
+	bodyLive = false,
 	initialFocus = "cancel",
 	onConfirm,
 	onCancel,
@@ -82,6 +83,8 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 	size?: keyof typeof SIZE_CLASS;
 	/** Upstream ConfirmationDialog `disabled`: the confirm button can't be pressed yet. */
 	confirmDisabled?: boolean;
+	/** Announce body changes: upstream wraps a description that updates in place in a `role=status` span. */
+	bodyLive?: boolean;
 	/** Upstream ConfirmationDialog `initialFocus`: which button takes focus on open. */
 	initialFocus?: "cancel" | "confirm";
 	onConfirm: () => void;
@@ -93,6 +96,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 	const confirmRef = useRef<HTMLButtonElement>(null);
 	const panels = useFizzyLake("panels");
 	const popupClass = `${POPUP_BASE_CLASS} ${SIZE_CLASS[size]}`;
+	const description = bodyLive ? <span role="status">{body}</span> : body;
 	const rest = (
 		<>
 			{details !== undefined && <div className="mt-2 min-h-0 overflow-y-auto">{details}</div>}
@@ -140,7 +144,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 								</div>
 								{body !== undefined && (
 									<AlertDialog.Description className={PANELS_DESCRIPTION_CLASS}>
-										{body}
+										{description}
 									</AlertDialog.Description>
 								)}
 								{rest}
@@ -152,7 +156,7 @@ export const ConfirmDialog = memo(function ConfirmDialog({
 								</AlertDialog.Title>
 								{body !== undefined && (
 									<AlertDialog.Description className="mt-2 text-body break-words text-secondary">
-										{body}
+										{description}
 									</AlertDialog.Description>
 								)}
 								{rest}
