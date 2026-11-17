@@ -5,44 +5,20 @@ import {InlineDiff} from "./inline-diff";
 import {CopyButton, PolicyDenialReason, TruncatedFilePathHeader} from "./shared";
 import {editDiffEntries} from "../../lib/session-utils";
 
-/**
- * One replacement: a smart-truncated file-path header with a hover copy button
- * above its unified diff. Upstream gives every `MultiEdit` replacement its own
- * such card, so a call with N edits stacks N of these.
- */
-function EditDiffCard({
-	filePath,
-	oldStr,
-	newStr,
-	copyText,
-	separated,
-}: {
-	filePath: string;
-	oldStr: string;
-	newStr: string;
-	copyText: string;
-	separated: boolean;
-})
-{
-	return (
-		<div className={separated ? "border-t border-[var(--card-outline)]" : undefined}>
-			<div className="flex items-center gap-g3 px-p6 py-p5">
-				<TruncatedFilePathHeader filePath={filePath} />
-				<CopyButton text={copyText} />
-			</div>
-
-			<div className="max-h-[400px] overflow-y-auto text-code">
-				<InlineDiff filePath={filePath} oldStr={oldStr} newStr={newStr} />
-			</div>
-		</div>
-	);
-}
-
 export function EditRenderer({toolCall}: ToolRendererProps)
 {
 	const {input, result, isError} = toolCall;
 	const filePath = inputString(input, "file_path") ?? "";
 	const entries = useMemo(() => editDiffEntries(input), [input]);
+	// Upstream's `b`: a MultiEdit is ONE diff, its edits' sides joined by a "…" line.
+	const joined = useMemo(
+		() => (
+		{
+			oldStr: entries.map((entry) => entry.oldStr).join("\n…\n"),
+			newStr: entries.map((entry) => entry.newStr).join("\n…\n"),
+		}),
+		[entries],
+	);
 
 	if (toolCall.blocked === true && entries.length === 0)
 	{
@@ -52,7 +28,7 @@ export function EditRenderer({toolCall}: ToolRendererProps)
 			</div>
 		);
 	}
-	if (entries.length === 0)
+	if (entries.length === 0 || (joined.oldStr === "" && joined.newStr === ""))
 	{
 		return (
 			<div className="px-p6 py-p5">
@@ -65,20 +41,21 @@ export function EditRenderer({toolCall}: ToolRendererProps)
 		);
 	}
 
-	const copyText = result ?? filePath;
-
 	return (
 		<>
-			{entries.map((entry, index) => (
-				<EditDiffCard
-					key={index}
+			<div className="flex items-center gap-g3 px-p6 py-p5">
+				<TruncatedFilePathHeader filePath={filePath} />
+				<CopyButton text={joined.newStr || joined.oldStr} />
+			</div>
+
+			<div className="max-h-[400px] overflow-y-auto text-code">
+				<InlineDiff
 					filePath={filePath}
-					oldStr={entry.oldStr}
-					newStr={entry.newStr}
-					copyText={copyText}
-					separated={index > 0}
+					oldStr={joined.oldStr}
+					newStr={joined.newStr}
+					patch={toolCall.resultMeta?.patch}
 				/>
-			))}
+			</div>
 
 			{toolCall.blocked === true && (
 				<div className="px-p6 pb-p8">

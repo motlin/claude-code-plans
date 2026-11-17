@@ -99,26 +99,34 @@ function diffTexts(container: HTMLElement): string[]
 
 describe("MultiEdit rendering", () =>
 {
-	it("renders one diff per edit instead of dumping the raw result", () =>
+	it("renders one diff of every edit, the edits' sides joined by a … line, instead of the raw result", () =>
 	{
 		const {container} = render(<EditRenderer toolCall={multiEditCall()} />);
 
-		const diffs = diffTexts(container);
-		expect(diffs.length).toBe(2);
-		expect(diffs[0]).toContain("-const a = 1;");
-		expect(diffs[0]).toContain("+const a = 2;");
-		expect(diffs[1]).toContain("+const d = 3;");
+		expect(diffTexts(container)).toStrictEqual([
+			"diff --git a//Users/craig/projects/app/src/cache.ts b//Users/craig/projects/app/src/cache.ts\n" +
+				"--- a//Users/craig/projects/app/src/cache.ts\n" +
+				"+++ b//Users/craig/projects/app/src/cache.ts\n" +
+				"@@ -1,4 +1,5 @@\n" +
+				"-const a = 1;\n" +
+				"+const a = 2;\n" +
+				" …\n" +
+				"-const b = 1;\n" +
+				"-const c = 1;\n" +
+				"+const b = 2;\n" +
+				"+const c = 2;\n" +
+				"+const d = 3;",
+		]);
 		expect(container.querySelector("pre")).toBe(null);
 	});
 
-	it("gives every edit its own file-path header and copy button", () =>
+	it("gives the call one file-path header and one copy button", () =>
 	{
 		const {container} = render(<EditRenderer toolCall={multiEditCall()} />);
 
 		const headers = [...container.querySelectorAll(`[title="${FILE_PATH}"]`)];
-		expect(headers.length).toBe(2);
-		expect(headers.map((header) => header.textContent)).toStrictEqual([FILE_PATH, FILE_PATH]);
-		expect(container.querySelectorAll("button").length).toBe(2);
+		expect(headers.map((header) => header.textContent)).toStrictEqual([FILE_PATH]);
+		expect(container.querySelectorAll("button").length).toBe(1);
 	});
 
 	it("still renders exactly one diff for a single-edit Edit call", () =>

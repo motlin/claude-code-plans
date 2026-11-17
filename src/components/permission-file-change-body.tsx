@@ -1,9 +1,6 @@
-import type {FileOptions} from "@pierre/diffs/react";
-import {File} from "@pierre/diffs/react";
-import {type CSSProperties, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState} from "react";
+import {type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState} from "react";
 
 import {useCodeThemeBackground} from "../hooks/use-code-theme-background";
-import {useCodeThemes} from "../hooks/use-code-themes";
 import {fileContentUrl, FileViewerResponse} from "../lib/api/file";
 import {resolveUrl} from "../lib/api/client";
 import {buildMultiEditHunk, buildPatchFromHunks, buildUnifiedHunk} from "../lib/diff-utils";
@@ -16,9 +13,8 @@ import
 	shownFileChangeNote,
 } from "../lib/permission-file-change";
 import {BidiLines} from "./bidi-lines";
-import {DIFFS_HOST_CLASS, INLINE_DIFFS_STYLE_OVERRIDES} from "./changes/diffs-config";
-import {useResolvedTheme} from "./theme-context";
 import {InlinePatchDiff} from "./tool-renderers/inline-diff";
+import {PureSideFile} from "./tool-renderers/pure-side-diff";
 
 /** Upstream's `Hx`/`Ux`: each row reserves 16px of the scroller, which caps at 400px. */
 const ROW_RESERVE_PX = 16;
@@ -376,59 +372,18 @@ function FileChangeBody({
 				{view.kind === "patch" ? (
 					<InlinePatchDiff patch={view.patch} disableLineNumbers={!view.numbered} hostStyle={hostStyle} />
 				) : (
-					<PureAdditions path={String(toolInput["file_path"])} content={view.content} hostStyle={hostStyle} />
+					<PureSideFile
+						path={String(toolInput["file_path"])}
+						content={view.content}
+						side="additions"
+						signColor={PERMISSION_SIGN_COLOR}
+						hostStyle={hostStyle}
+					/>
 				)}
 			</div>
 		</div>
 	);
 }
 
-/** Upstream's `Fx`: the headerless file's base sheet. */
-const FILE_BASE_CSS =
-	"[data-line]{min-height:1lh} [data-code]{padding-bottom:var(--diffs-gap-block, var(--diffs-gap-fallback));overflow:clip}";
-/**
- * Upstream's `QS` additions tint: every line on the addition background, a `+ ` sign before each line number
- * (`ro`, measured rgba(0,0,0,.6) in light).
- */
-const ADDITIONS_CSS =
-	'[data-line]{background:var(--diffs-bg-addition);}[data-line-number-content]::before{content:"+ ";display:inline-block;min-width:1ch;color:light-dark(rgb(0 0 0 / 0.6),rgb(255 255 255 / 0.6));}';
-
-/** Upstream's `QS` pure side: a new file's lines, every one an addition, numbered from 1. */
-function PureAdditions({path, content, hostStyle}: {path: string; content: string; hostStyle: CSSProperties})
-{
-	const themeType = useResolvedTheme();
-	const theme = useCodeThemes();
-	const file = useMemo(() =>
-	{
-		const name = path.replace(/^.*[\\/]/, "");
-		return {
-			name,
-			contents: content,
-			cacheKey: `permission-write:${path}:${content}`,
-		};
-	}, [path, content]);
-	const options = useMemo<FileOptions<undefined, undefined>>(
-		() => (
-		{
-			theme,
-			themeType,
-			disableFileHeader: true,
-			overflow: "wrap",
-			unsafeCSS: FILE_BASE_CSS + ADDITIONS_CSS,
-		}),
-		[theme, themeType],
-	);
-	const style = useMemo(
-		() => (
-		{
-			...INLINE_DIFFS_STYLE_OVERRIDES,
-			...hostStyle,
-		}),
-		[hostStyle],
-	);
-	return (
-		<div data-cds="FileDiff" dir="ltr" className={DIFFS_HOST_CLASS} style={style}>
-			<File file={file} options={options} disableWorkerPool />
-		</div>
-	);
-}
+/** Upstream's `ro` sign ink in a permission card, measured rgba(0,0,0,.6) in light. */
+const PERMISSION_SIGN_COLOR = "light-dark(rgb(0 0 0 / 0.6),rgb(255 255 255 / 0.6))";

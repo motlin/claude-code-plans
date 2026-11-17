@@ -60,9 +60,15 @@ export function WriteRenderer({toolCall}: ToolRendererProps)
 				<CopyButton text={copyText} />
 			</div>
 
-			{/* Body: unified diff view (all additions) */}
+			{/* Body: the real diff against the old file when the result carries it, else the new file's lines */}
 			<div {...TOOL_OUTPUT_REGION} className="max-h-[400px] overflow-y-auto text-code">
-				<InlineDiff filePath={filePath} oldStr="" newStr={content} />
+				<InlineDiff
+					filePath={filePath}
+					oldStr=""
+					newStr={content}
+					patch={toolCall.resultMeta?.patch}
+					excerpt={false}
+				/>
 			</div>
 
 			{toolCall.blocked === true && (

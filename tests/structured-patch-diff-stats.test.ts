@@ -113,6 +113,7 @@ describe("toolResultMetaFrom structuredPatch stats", () =>
 						added: 2,
 						removed: 1,
 					},
+					patch: [hunk(["-a", "+b", "+c", " d"])],
 				},
 				emptiedUpdate:
 				{
@@ -122,6 +123,7 @@ describe("toolResultMetaFrom structuredPatch stats", () =>
 						added: 2,
 						removed: 1,
 					},
+					patch: [hunk(["-a", "+b", "+c", " d"])],
 				},
 				edit:
 				{
@@ -130,6 +132,7 @@ describe("toolResultMetaFrom structuredPatch stats", () =>
 						added: 2,
 						removed: 1,
 					},
+					patch: [hunk(["-a", "+b", "+c", " d"])],
 				},
 				multiEdit:
 				{
@@ -138,6 +141,7 @@ describe("toolResultMetaFrom structuredPatch stats", () =>
 						added: 2,
 						removed: 1,
 					},
+					patch: [hunk(["-a", "+b", "+c", " d"])],
 				},
 			},
 		);
@@ -230,6 +234,110 @@ describe("toolResultMetaFrom structuredPatch stats", () =>
 				noCall:
 				{
 					writeType: "update",
+				},
+			},
+		);
+	});
+	it("carries the patch only when every hunk passes upstream's validation", () =>
+	{
+		const editWith = (structuredPatch: unknown) =>
+			toolResultMetaFrom(
+				{
+					...editResult,
+					structuredPatch,
+				},
+				{
+					name: "Edit",
+					input: editInput,
+				},
+			);
+		const real =
+		{
+			oldStart: 26,
+			oldLines: 4,
+			newStart: 26,
+			newLines: 5,
+			lines: [" a", "-b", "+c", "+d", " e"],
+		};
+		expect(
+			{
+				real: editWith([real]),
+				badPrefix: editWith([hunk(["x"])]),
+				multiLine: editWith([hunk(["+a\nb"])]),
+				negativeStart: editWith([
+					{
+						...real,
+						oldStart: -1,
+					},
+				]),
+				fractionalCount: editWith([
+					{
+						...real,
+						newLines: 1.5,
+					},
+				]),
+				oneBadHunk: editWith([real, hunk(["?"])]),
+				withMarker: editWith([hunk(["-a", "+b", "\\ No newline at end of file"])]),
+			},
+		).toStrictEqual(
+			{
+				real:
+				{
+					patchStats:
+					{
+						added: 2,
+						removed: 1,
+					},
+					patch: [real],
+				},
+				badPrefix:
+				{
+					patchStats:
+					{
+						added: 0,
+						removed: 0,
+					},
+				},
+				multiLine:
+				{
+					patchStats:
+					{
+						added: 1,
+						removed: 0,
+					},
+				},
+				negativeStart:
+				{
+					patchStats:
+					{
+						added: 2,
+						removed: 1,
+					},
+				},
+				fractionalCount:
+				{
+					patchStats:
+					{
+						added: 2,
+						removed: 1,
+					},
+				},
+				oneBadHunk:
+				{
+					patchStats:
+					{
+						added: 2,
+						removed: 1,
+					},
+				},
+				withMarker:
+				{
+					patchStats:
+					{
+						added: 1,
+						removed: 1,
+					},
+					patch: [hunk(["-a", "+b", "\\ No newline at end of file"])],
 				},
 			},
 		);
@@ -361,6 +469,10 @@ describe("01d132c8:835-841 Write that updated justfile", () =>
 		expect(
 			{
 				row: write === undefined ? null : diffStatsForCall(write),
+				patchStarts: (write === undefined
+					? undefined
+					: processTranscript(records).toolResultMap.get(write.id ?? "")
+				)?.resultMeta?.patch?.map(({oldStart, newStart, lines}) => [oldStart, newStart, lines.length]),
 				header:
 				{
 					added: header.added,
@@ -379,6 +491,10 @@ describe("01d132c8:835-841 Write that updated justfile", () =>
 					added: 46,
 					removed: 3,
 				},
+				patchStarts: [
+					[1, 1, 30],
+					[16, 32, 39],
+				],
 				header:
 				{
 					added: 46,

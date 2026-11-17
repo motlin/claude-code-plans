@@ -7,6 +7,7 @@ import {EditRenderer} from "../src/components/tool-renderers/edit-renderer";
 import {WriteRenderer} from "../src/components/tool-renderers/write-renderer";
 import type {ClientToolCall} from "../src/components/tool-renderers/types";
 import {OA, SA, WA} from "../src/components/changes/diffs-config";
+import type {PatchHunk} from "../src/lib/diff-utils";
 
 class FakeResizeObserver
 {
@@ -36,7 +37,7 @@ afterEach(() =>
 	vi.unstubAllGlobals();
 });
 
-function toolCall(name: string, input: Record<string, unknown>): ClientToolCall
+function toolCall(name: string, input: Record<string, unknown>, patch?: PatchHunk[]): ClientToolCall
 {
 	return {
 		id: "tool-call-64",
@@ -45,6 +46,15 @@ function toolCall(name: string, input: Record<string, unknown>): ClientToolCall
 		param: "",
 		result: "ok",
 		sourceUuid: "source-64",
+		...(patch === undefined
+			? {}
+			:
+				{
+					resultMeta:
+					{
+						patch,
+					},
+				}),
 	};
 }
 
@@ -60,7 +70,8 @@ function shadowRoots(container: HTMLElement): ShadowRoot[]
 interface InlineDiffMarkup
 {
 	rows: string[];
-	pre: Record<string, string | null>;
+	numbers: string[];
+	pre: Record<string, string | boolean | null>;
 	hasLibraryHeader: boolean;
 }
 
@@ -69,16 +80,45 @@ function inlineDiffMarkup(root: ShadowRoot): InlineDiffMarkup
 	const pre = root.querySelector("pre[data-diff]");
 	if (!pre) throw new Error("no rendered <pre> yet");
 	return {
-		rows: [...root.querySelectorAll("[data-content] > [data-line-type]")].map(
-			(row) => `${row.getAttribute("data-line-type")}:${row.textContent}`,
+		rows: [...root.querySelectorAll("[data-content] > *")].map((row) =>
+			row.hasAttribute("data-separator")
+				? "separator"
+				: `${row.getAttribute("data-line-type")}:${row.textContent}`,
 		),
+		numbers: [...root.querySelectorAll("[data-gutter] [data-line-number-content]")].map((cell) => cell.textContent),
 		pre:
 		{
 			diffType: pre.getAttribute("data-diff-type"),
 			overflow: pre.getAttribute("data-overflow"),
 			indicators: pre.getAttribute("data-indicators"),
+			disableLineNumbers: pre.hasAttribute("data-disable-line-numbers"),
 		},
 		hasLibraryHeader: root.querySelector("[data-diffs-header]") !== null,
+	};
+}
+
+interface PureSideMarkup
+{
+	lines: string[];
+	diff: boolean;
+	sign: string | null;
+	excerpt: boolean;
+	tint: string | undefined;
+}
+
+/** Upstream's `ES` pure-side view: a `File` (no `data-diff`) tinted one side, its sign drawn before each number. */
+function pureSideMarkup(container: HTMLElement): PureSideMarkup
+{
+	const [root] = shadowRoots(container);
+	const pre = root?.querySelector("pre[data-file]");
+	if (!root || !pre?.querySelector("[data-line]")) throw new Error("no rendered file yet");
+	const css = [...root.querySelectorAll("style")].map((style) => style.textContent).join("");
+	return {
+		lines: [...root.querySelectorAll("[data-content] > [data-line]")].map((line) => line.textContent),
+		diff: pre.hasAttribute("data-diff"),
+		sign: /\[data-line-number-content\]::before\{content:"([^"]*)"/.exec(css)?.[1] ?? null,
+		excerpt: css.includes("[data-line-number-content]{visibility:hidden;}"),
+		tint: container.querySelector<HTMLElement>("[data-pure-side]")?.style.background,
 	};
 }
 
@@ -215,11 +255,13 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () =>
 						"change-addition:const alice = 200;",
 						"context:const bob = 1;",
 					],
+					numbers: ["1", "1", "2"],
 					pre:
 					{
 						diffType: "single",
 						overflow: "wrap",
 						indicators: "classic",
+						disableLineNumbers: true,
 					},
 					hasLibraryHeader: false,
 				},
@@ -228,7 +270,110 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () =>
 		expect(container.querySelector(".diff-tailwindcss-wrapper")).toBe(null);
 	});
 
-	it("renders one diff per MultiEdit replacement", async () =>
+	it("numbers an Edit's diff from its result's real hunks", async () =>
+	{
+		const {container} = render(
+			<EditRenderer
+				toolCall={toolCall(
+					"Edit",
+					{
+						file_path: "/test/alice.ts",
+						old_string: "const alice = 100;",
+						new_string: "const alice = 200;",
+					},
+					[
+						{
+							oldStart: 26,
+							oldLines: 2,
+							newStart: 26,
+							newLines: 2,
+							lines: ["-const alice = 100;", "+const alice = 200;", " const bob = 1;"],
+						},
+					],
+				)}
+			/>,
+		);
+
+		await waitFor(() =>
+		{
+			expect(shadowRoots(container).map(inlineDiffMarkup)).toStrictEqual([
+				{
+					rows: [
+						"change-deletion:const alice = 100;",
+						"change-addition:const alice = 200;",
+						"context:const bob = 1;",
+					],
+					numbers: ["26", "26", "27"],
+					pre:
+					{
+						diffType: "single",
+						overflow: "wrap",
+						indicators: "classic",
+						disableLineNumbers: false,
+					},
+					hasLibraryHeader: false,
+				},
+			]);
+		});
+	});
+
+	it("draws every hunk of a two-hunk patch with a separator between them", async () =>
+	{
+		const {container} = render(
+			<EditRenderer
+				toolCall={toolCall(
+					"Edit",
+					{
+						file_path: "/test/alice.ts",
+						old_string: "x",
+						new_string: "y",
+						replace_all: true,
+					},
+					[
+						{
+							oldStart: 3,
+							oldLines: 1,
+							newStart: 3,
+							newLines: 1,
+							lines: ["-x", "+y"],
+						},
+						{
+							oldStart: 40,
+							oldLines: 2,
+							newStart: 40,
+							newLines: 2,
+							lines: [" a", "-x", "+y", "\\ No newline at end of file"],
+						},
+					],
+				)}
+			/>,
+		);
+
+		await waitFor(() =>
+		{
+			const [markup] = shadowRoots(container).map(inlineDiffMarkup);
+			expect(
+				{
+					rows: markup?.rows,
+					numbers: markup?.numbers,
+				},
+			).toStrictEqual(
+				{
+					rows: [
+						"change-deletion:x",
+						"change-addition:y",
+						"separator",
+						"context:a",
+						"change-deletion:x",
+						"change-addition:y",
+					],
+					numbers: ["3", "3", "40", "41", "41"],
+				},
+			);
+		});
+	});
+
+	it("renders a MultiEdit as one unnumbered diff, its edits joined by a … row", async () =>
 	{
 		const {container} = render(
 			<EditRenderer
@@ -238,12 +383,12 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () =>
 						file_path: "/test/alice.ts",
 						edits: [
 							{
-								old_string: "const a = 1;",
-								new_string: "const a = 2;",
+								old_string: "a",
+								new_string: "b",
 							},
 							{
-								old_string: "",
-								new_string: "const d = 3;",
+								old_string: "c",
+								new_string: "d",
 							},
 						],
 					},
@@ -253,14 +398,70 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () =>
 
 		await waitFor(() =>
 		{
-			expect(shadowRoots(container).map((root) => inlineDiffMarkup(root).rows)).toStrictEqual([
-				["change-deletion:const a = 1;", "change-addition:const a = 2;"],
-				["change-addition:const d = 3;"],
+			expect(shadowRoots(container).map((root) => inlineDiffMarkup(root))).toStrictEqual([
+				{
+					rows: [
+						"change-deletion:a",
+						"change-addition:b",
+						"context:…",
+						"change-deletion:c",
+						"change-addition:d",
+					],
+					numbers: ["1", "1", "2", "3", "3"],
+					pre:
+					{
+						diffType: "single",
+						overflow: "wrap",
+						indicators: "classic",
+						disableLineNumbers: true,
+					},
+					hasLibraryHeader: false,
+				},
 			]);
 		});
 	});
 
-	it("renders a Write as an all-additions diff with no file header", async () =>
+	it("renders a MultiEdit with a matching patch as one diff numbered from the patch", async () =>
+	{
+		const {container} = render(
+			<EditRenderer
+				toolCall={toolCall(
+					"MultiEdit",
+					{
+						file_path: "/test/alice.ts",
+						edits: [
+							{
+								old_string: "a",
+								new_string: "b",
+							},
+							{
+								old_string: "c",
+								new_string: "d",
+							},
+						],
+					},
+					[
+						{
+							oldStart: 12,
+							oldLines: 3,
+							newStart: 12,
+							newLines: 3,
+							lines: ["-a", "+b", " x", "-c", "+d"],
+						},
+					],
+				)}
+			/>,
+		);
+
+		await waitFor(() =>
+		{
+			expect(shadowRoots(container).map((root) => inlineDiffMarkup(root).numbers)).toStrictEqual([
+				["12", "12", "13", "14", "14"],
+			]);
+		});
+	});
+
+	it("renders a Write update with a matching patch as the real diff against the old file", async () =>
 	{
 		const {container} = render(
 			<WriteRenderer
@@ -268,8 +469,17 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () =>
 					"Write",
 					{
 						file_path: "/test/alice.ts",
-						content: "const alice = 100;\nconst bob = 1;",
+						content: "new\n",
 					},
+					[
+						{
+							oldStart: 1,
+							oldLines: 1,
+							newStart: 1,
+							newLines: 1,
+							lines: ["-old", "+new"],
+						},
+					],
 				)}
 			/>,
 		);
@@ -278,17 +488,76 @@ describe("inline Edit/Write diffs render with @pierre/diffs", () =>
 		{
 			expect(shadowRoots(container).map(inlineDiffMarkup)).toStrictEqual([
 				{
-					rows: ["change-addition:const alice = 100;", "change-addition:const bob = 1;"],
+					rows: ["change-deletion:old", "change-addition:new"],
+					numbers: ["1", "1"],
 					pre:
 					{
 						diffType: "single",
 						overflow: "wrap",
 						indicators: "classic",
+						disableLineNumbers: false,
 					},
 					hasLibraryHeader: false,
 				},
 			]);
 		});
+	});
+
+	it("renders a new file's Write as upstream's pure-additions file view, numbers shown", async () =>
+	{
+		const {container} = render(
+			<WriteRenderer
+				toolCall={toolCall(
+					"Write",
+					{
+						file_path: "/test/alice.ts",
+						content: "a\nb",
+					},
+				)}
+			/>,
+		);
+
+		await waitFor(() =>
+		{
+			expect(pureSideMarkup(container)).toStrictEqual(
+				{
+					lines: ["a", "b"],
+					diff: false,
+					sign: "+ ",
+					excerpt: false,
+					tint: "color-mix(in srgb, var(--upstream-git-added) 20%, transparent)",
+				},
+			);
+		});
 		expect(container.querySelector(".diff-tailwindcss-wrapper")).toBe(null);
+	});
+
+	it("renders an Edit that only deletes as a pure-deletions excerpt with its numbers hidden", async () =>
+	{
+		const {container} = render(
+			<EditRenderer
+				toolCall={toolCall(
+					"Edit",
+					{
+						file_path: "/test/alice.ts",
+						old_string: "x\n",
+						new_string: "",
+					},
+				)}
+			/>,
+		);
+
+		await waitFor(() =>
+		{
+			expect(pureSideMarkup(container)).toStrictEqual(
+				{
+					lines: ["x"],
+					diff: false,
+					sign: "− ",
+					excerpt: true,
+					tint: "color-mix(in srgb, var(--upstream-git-removed) 20%, transparent)",
+				},
+			);
+		});
 	});
 });

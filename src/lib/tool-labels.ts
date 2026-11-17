@@ -12,6 +12,7 @@ import
 	remoteTriggerActionLabels,
 } from "./schema-choices";
 import {planHeadingMeta, planText} from "./exit-plan-mode";
+import type {PatchHunk} from "./diff-utils";
 import {isRecord} from "./narrow";
 import {infinitive, pastTense, startsWithKnownVerb} from "./past-tense";
 import type {ReadFileLines} from "./tool-runs";
@@ -35,6 +36,12 @@ export interface ToolResultMeta
 		added: number;
 		removed: number;
 	};
+	/**
+	 * The result's `structuredPatch` hunks, when the result reports the call's own
+	 * change and every hunk passes upstream's validation: the transcript diff draws
+	 * them with the file's real line numbers.
+	 */
+	patch?: readonly PatchHunk[];
 	gitOperation?: GitOperation;
 	/** The subagent an Agent call launched, which a later SendMessage can address. */
 	agentId?: string;
@@ -189,13 +196,44 @@ function patchLineStats(hunks: FileEditToolUseResult["structuredPatch"]):
 	};
 }
 
+/** Upstream's `/^[ +\-\\]/`: a patch line is context, an addition, a deletion or a `\ No newline` marker. */
+const PATCH_LINE_RE = /^[ +\-\\]/;
+
+function isPatchCount(n: number): boolean
+{
+	return Number.isSafeInteger(n) && n >= 0;
+}
+
+/**
+ * Upstream's `f`: a non-empty patch whose every hunk has whole non-negative
+ * starts and counts, single-line strings led by a patch prefix, and at least
+ * one line that isn't a `\` marker.
+ */
+function validPatch(hunks: FileEditToolUseResult["structuredPatch"]): hunks is PatchHunk[]
+{
+	return (
+		hunks !== undefined &&
+		hunks.length > 0 &&
+		hunks.every(
+			(hunk) =>
+				isPatchCount(hunk.oldStart) &&
+				isPatchCount(hunk.oldLines) &&
+				isPatchCount(hunk.newStart) &&
+				isPatchCount(hunk.newLines) &&
+				hunk.lines.every((line) => !line.includes("\n") && PATCH_LINE_RE.test(line)) &&
+				hunk.lines.some((line) => !line.startsWith("\\")),
+		)
+	);
+}
+
 function fileEditMeta(result: FileEditToolUseResult, call: ToolResultCall | undefined): ToolResultMeta | undefined
 {
 	const meta: ToolResultMeta = {};
 	if ("type" in result) meta.writeType = result.type;
-	const patchStats =
-		call !== undefined && reportsCallChange(result, call) ? patchLineStats(result.structuredPatch) : null;
+	const reported = call !== undefined && reportsCallChange(result, call);
+	const patchStats = reported ? patchLineStats(result.structuredPatch) : null;
 	if (patchStats !== null) meta.patchStats = patchStats;
+	if (reported && validPatch(result.structuredPatch)) meta.patch = result.structuredPatch;
 	return Object.keys(meta).length > 0 ? meta : undefined;
 }
 

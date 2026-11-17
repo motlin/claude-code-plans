@@ -1,27 +1,125 @@
-import {getSingularPatch} from "@pierre/diffs";
+import {type FileDiffMetadata, getSingularPatch} from "@pierre/diffs";
 import {FileDiff} from "@pierre/diffs/react";
 import type {FileDiffOptions} from "@pierre/diffs/react";
 import {type CSSProperties, useMemo} from "react";
 import {useCodeThemes} from "../../hooks/use-code-themes";
-import {buildUnifiedHunk} from "../../lib/diff-utils";
+import {buildPatchFromHunks, buildUnifiedHunk, type PatchHunk} from "../../lib/diff-utils";
 import {railsPostRender} from "../changes/diff-rails";
 import {DIFFS_HOST_CLASS, INLINE_DIFFS_STYLE_OVERRIDES, diffsInjectedCss} from "../changes/diffs-config";
 import {useFizzyLake} from "../../lib/fizzy-lake";
 import {useResolvedTheme} from "../theme-context";
+import {type PureSide, TintedPureSideFile} from "./pure-side-diff";
+
+type InlineDiffView =
+	|
+	  {
+			kind: "diff";
+			fileDiff: FileDiffMetadata;
+			numbered: boolean;
+	  }
+	|
+	  {
+			kind: "pure";
+			side: PureSide;
+			content: string;
+	  };
+
+/** Upstream's `h()`: the result's hunks as a parsed diff, or null when parsing fails or loses a hunk. */
+function sidecarDiff(patch: readonly PatchHunk[], name: string): FileDiffMetadata | null
+{
+	const hunks = patch.map((hunk) => (
+	{
+		...hunk,
+		lines: hunk.lines.filter((line) => !line.startsWith("\\")),
+	}));
+	try
+	{
+		const fileDiff = getSingularPatch(buildPatchFromHunks(hunks, name).patch);
+		return fileDiff.hunks.length === patch.length ? fileDiff : null;
+	}
+	catch
+	{
+		return null;
+	}
+}
+
+/** Upstream's `s()` then line split: a final newline ends the last line rather than starting another. */
+function trimFinalNewline(text: string): string
+{
+	return text.endsWith("\n") ? text.slice(0, -1) : text;
+}
+
+/**
+ * Upstream's diff meta `S`: the result's real hunks, numbered, when it reports this call's change; else one
+ * side alone when the other is empty; else the input's old → new diff with the numbers off.
+ */
+function inlineDiffView(
+	name: string,
+	oldStr: string,
+	newStr: string,
+	patch: readonly PatchHunk[] | undefined,
+): InlineDiffView
+{
+	const fileName = name.replace(/^.*[\\/]/, "");
+	const sidecar = patch === undefined ? null : sidecarDiff(patch, fileName);
+	if (sidecar !== null)
+		return {
+			kind: "diff",
+			fileDiff: sidecar,
+			numbered: true,
+		};
+	if (oldStr === "")
+		return {
+			kind: "pure",
+			side: "additions",
+			content: newStr,
+		};
+	if (newStr === "")
+		return {
+			kind: "pure",
+			side: "deletions",
+			content: oldStr,
+		};
+	return {
+		kind: "diff",
+		fileDiff: getSingularPatch(buildUnifiedHunk(trimFinalNewline(oldStr), trimFinalNewline(newStr), fileName)),
+		numbered: false,
+	};
+}
 
 /**
  * A tool call's inline diff, rendered by `@pierre/diffs` like the Changes
  * pane, with upstream's inline options: unified, simple hunk separators,
  * wrapped lines and no file header (the tool card supplies its own).
+ *
+ * With the result's `patch` it draws the real hunks with the file's line
+ * numbers; without one it diffs the input's strings with the numbers off, or
+ * shows a lone side as upstream's pure-side view (`excerpt` hides its numbers).
  */
-export function InlineDiff({filePath, oldStr, newStr}: {filePath: string; oldStr: string; newStr: string})
+export function InlineDiff({
+	filePath,
+	oldStr,
+	newStr,
+	patch,
+	excerpt = true,
+}: {
+	filePath: string;
+	oldStr: string;
+	newStr: string;
+	patch?: readonly PatchHunk[] | undefined;
+	excerpt?: boolean;
+})
 {
-	const patch = useMemo(() => buildUnifiedHunk(oldStr, newStr, filePath), [filePath, oldStr, newStr]);
+	const view = useMemo(() => inlineDiffView(filePath, oldStr, newStr, patch), [filePath, oldStr, newStr, patch]);
+	if (view.kind === "pure")
+	{
+		return <TintedPureSideFile path={filePath} content={view.content} side={view.side} excerpt={excerpt} />;
+	}
 	// Upstream's `epitaxy-diff` hook class carries Settings ▸ Code font size into the diff; the cds FileDiff
 	// div (`Va`) inside it carries the host style.
 	return (
 		<div className="epitaxy-diff">
-			<InlinePatchDiff patch={patch} />
+			<InlineFileDiff fileDiff={view.fileDiff} disableLineNumbers={!view.numbered} />
 		</div>
 	);
 }
@@ -41,6 +139,19 @@ export function InlinePatchDiff({
 })
 {
 	const fileDiff = useMemo(() => getSingularPatch(patch), [patch]);
+	return <InlineFileDiff fileDiff={fileDiff} disableLineNumbers={disableLineNumbers} hostStyle={hostStyle} />;
+}
+
+function InlineFileDiff({
+	fileDiff,
+	disableLineNumbers,
+	hostStyle,
+}: {
+	fileDiff: FileDiffMetadata;
+	disableLineNumbers: boolean;
+	hostStyle?: CSSProperties | undefined;
+})
+{
 	const resolvedTheme = useResolvedTheme();
 	const codeThemes = useCodeThemes();
 	const panels = useFizzyLake("panels");
