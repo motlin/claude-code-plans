@@ -278,8 +278,22 @@ describe("PlanAutoOpen", () =>
 			},
 		).toStrictEqual(
 			{
-				afterFirst: [["plan"]],
-				calls: [["plan"]],
+				afterFirst: [
+					[
+						"plan",
+						{
+							unprompted: true,
+						},
+					],
+				],
+				calls: [
+					[
+						"plan",
+						{
+							unprompted: true,
+						},
+					],
+				],
 				stored:
 				{
 					s1: true,

@@ -518,7 +518,13 @@ function useAutoOpenPlanPane(enabled: boolean): void
 	{
 		if (!enabled || opened.current || host === null || phone || document.visibilityState !== "visible") return;
 		opened.current = true;
-		host.openPane("plan");
+		// Unprompted: drawn over a lone chat while there is room (upstream `ND`).
+		host.openPane(
+			"plan",
+			{
+				unprompted: true,
+			},
+		);
 	}, [enabled, host, phone]);
 }
 

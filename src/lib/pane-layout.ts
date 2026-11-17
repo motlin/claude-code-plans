@@ -75,6 +75,27 @@ export interface PaneLayoutState
 	focused: TileId;
 	/** Present only while some closed pane has a slot to reopen into. */
 	closedSlots?: ClosedPaneSlots;
+	/** Upstream `overlayTile`: an unprompted open drawn over the lone chat until it settles. Never persisted. */
+	overlay?: PaneOverlay;
+}
+
+/**
+ * Upstream c03935b01 `overlayTile`: the pane an unprompted open drew over the chat, the layout it was drawn for
+ * (any other layout means it settled), and the flex the settled split gives it so the pane keeps its width.
+ */
+export interface PaneOverlay
+{
+	tileId: PaneKind;
+	root: StackNode;
+	openedAt: number;
+	paneFlex?: number;
+}
+
+/** Upstream's open options: `{unprompted: true}` may overlay; `arrival` (re-showing a pane) never does. */
+export interface OpenPaneOptions
+{
+	unprompted?: boolean;
+	arrival?: boolean;
 }
 
 /** Gap between tiles (upstream `--tiles-gap`). */
@@ -715,22 +736,108 @@ export function openPane(
 	kind: PaneKind,
 	lastFlex: LastPaneFlex = {},
 	fit?: OpenFit,
+	options: OpenPaneOptions = {},
 ): PaneLayoutState
 {
 	if (isOpen(state, kind)) return focusPane(state, kind);
-	const slot = state.closedSlots?.[kind];
-	const restored = slot ? restoreSlot(state, kind, slot) : null;
-	const placed = restored ?? stackPane(state.root, kind, lastFlex);
+	const overlay = opensAsOverlay(state, options);
+	// Upstream `eu` opens from `Zl`: a drawn overlay's synced flex carries into the next layout.
+	const base = withOverlayFlex(state);
+	const slot = base.closedSlots?.[kind];
+	const restored = slot ? restoreSlot(base, kind, slot) : null;
+	const placed = restored ?? stackPane(base.root, kind, lastFlex);
 	if (placed === null) return state;
 	const root = fit === undefined ? placed : fitOpenedLayout(placed, fit.widthPx, restored !== null);
-	return withClosedSlots(
+	const next = withClosedSlots(
 		{
 			root,
 			expanded: null,
-			focused: kind,
+			// Upstream skips the focus move (`jl`) for an overlay and for any unprompted open.
+			focused: options.unprompted === true ? base.focused : kind,
 		},
-		withoutSlot(state.closedSlots, kind),
+		withoutSlot(base.closedSlots, kind),
 	);
+	if (!overlay) return next;
+	lastOverlayOpenedAt = Math.max(Date.now(), lastOverlayOpenedAt + 1);
+	return {
+		...next,
+		overlay:
+		{
+			tileId: kind,
+			root,
+			openedAt: lastOverlayOpenedAt,
+		},
+	};
+}
+
+/** Upstream `$l`: overlay open stamps stay strictly increasing. */
+let lastOverlayOpenedAt = 0;
+
+/** Upstream cf53e1812 `ue`: only an unprompted open (not an arrival) beside a lone chat draws an overlay. */
+function opensAsOverlay(state: PaneLayoutState, options: OpenPaneOptions): boolean
+{
+	if (options.unprompted !== true || options.arrival === true) return false;
+	const ids = tileIds(state.root);
+	return ids.length === 1 && ids[0] === "chat";
+}
+
+/** Upstream `ql`: the overlaid pane while its layout is current and nothing is expanded. */
+export function overlayTile(state: PaneLayoutState): PaneKind | null
+{
+	const {overlay} = state;
+	return overlay !== undefined && overlay.root === state.root && state.expanded === null ? overlay.tileId : null;
+}
+
+/** Upstream `Zl`: the layout with a drawn overlay's synced flex written into its tile. */
+function withOverlayFlex(state: PaneLayoutState): PaneLayoutState
+{
+	const tileId = overlayTile(state);
+	const paneFlex = state.overlay?.paneFlex;
+	if (tileId === null || paneFlex === undefined) return state;
+	return {
+		...state,
+		root:
+		{
+			...state.root,
+			children: state.root.children.map((child) =>
+				child.kind === "tile" && child.tileId === tileId
+					?
+						{
+							...child,
+							flex: paneFlex,
+						}
+					: child,
+			),
+		},
+	};
+}
+
+function withoutOverlay(state: PaneLayoutState): PaneLayoutState
+{
+	if (state.overlay === undefined) return state;
+	const {overlay: _overlay, ...rest} = state;
+	return rest;
+}
+
+/** Upstream `settleOverlayTile` (`G`): the overlay becomes a real split at its synced flex. */
+export function settleOverlay(state: PaneLayoutState): PaneLayoutState
+{
+	return withoutOverlay(withOverlayFlex(state));
+}
+
+/** Upstream `syncOverlayPaneFlex`: the flex the settled split gives the overlaid pane, so it keeps its drawn width. */
+export function syncOverlayPaneFlex(state: PaneLayoutState, kind: PaneKind, paneFlex: number): PaneLayoutState
+{
+	const {overlay} = state;
+	if (overlay === undefined || overlayTile(state) !== kind || overlay.paneFlex === paneFlex) return state;
+	return {
+		...state,
+		overlay:
+		{
+			...overlay,
+			paneFlex,
+		},
+	};
 }
 
 function stackPane(stackRoot: StackNode, kind: PaneKind, lastFlex: LastPaneFlex): StackNode | null
@@ -899,8 +1006,9 @@ export function focusPane(state: PaneLayoutState, tileId: TileId): PaneLayoutSta
 export function expandPane(state: PaneLayoutState, kind: PaneKind): PaneLayoutState
 {
 	if (!isOpen(state, kind)) return state;
+	// Upstream `Ql`: expanding settles a drawn overlay first.
 	return {
-		...state,
+		...settleOverlay(state),
 		expanded: kind,
 		focused: kind,
 	};
@@ -1465,7 +1573,7 @@ export function savePaneLayout(
 		{
 			const next: PaneLayoutEntry =
 			{
-				...state,
+				...withoutOverlay(state),
 			};
 			if (entry?.changesScope !== undefined) next.changesScope = entry.changesScope;
 			// Closing the Files pane discards the session's tabs, as upstream does.

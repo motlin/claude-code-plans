@@ -32,6 +32,9 @@ import
 	fitOpenedLayout,
 	fitPhoneLayout,
 	openPane,
+	overlayTile,
+	settleOverlay,
+	syncOverlayPaneFlex,
 	loadLastPaneFlex,
 	rememberPaneFlex,
 	resizeDivider,
@@ -1549,6 +1552,148 @@ describe("updatePhoneView", () =>
 				"changes",
 				CHANGES_UNDER_BACKGROUND_TASKS,
 			),
+		);
+	});
+});
+
+describe("unprompted overlay (upstream c03935b01 eu/ql/Zl/G, cf53e1812 ue)", () =>
+{
+	const CHAT_ONLY = defaultPaneLayout();
+
+	it("opens an unprompted pane beside a lone chat as an overlay over the normal split, keeping focus", () =>
+	{
+		const plain = openPane(CHAT_ONLY, "plan");
+		const opened = openPane(
+			CHAT_ONLY,
+			"plan",
+			{},
+			undefined,
+			{
+				unprompted: true,
+			},
+		);
+
+		expect(
+			{
+				root: opened.root,
+				focused: opened.focused,
+				overlay: overlayTile(opened),
+				overlayRoot: opened.overlay?.root === opened.root,
+				paneFlex: opened.overlay?.paneFlex,
+			},
+		).toStrictEqual(
+			{
+				root: plain.root,
+				focused: "chat",
+				overlay: "plan",
+				overlayRoot: true,
+				paneFlex: undefined,
+			},
+		);
+	});
+
+	it.each([
+		[
+			"an arrival",
+			CHAT_ONLY,
+			{
+				unprompted: true,
+				arrival: true,
+			},
+		],
+		["a user open", CHAT_ONLY, {}],
+		[
+			"a second pane",
+			ONE_PANE,
+			{
+				unprompted: true,
+			},
+		],
+	])("splits for %s", (_label, state, options) =>
+	{
+		const opened = openPane(state, "plan", {}, undefined, options);
+
+		expect(
+			{
+				overlay: overlayTile(opened),
+				stored: opened.overlay,
+			},
+		).toStrictEqual(
+			{
+				overlay: null,
+				stored: undefined,
+			},
+		);
+	});
+
+	it("settles into the split with the synced pane flex", () =>
+	{
+		const opened = openPane(
+			CHAT_ONLY,
+			"plan",
+			{},
+			undefined,
+			{
+				unprompted: true,
+			},
+		);
+		const settled = settleOverlay(syncOverlayPaneFlex(opened, "plan", 0.4));
+
+		expect(settled).toStrictEqual(layout([tile("chat", 2), tile("plan", 0.4)], "chat"));
+	});
+
+	it("keeps the split's flex when settling before a sync, and reports no overlay once the root changes", () =>
+	{
+		const opened = openPane(
+			CHAT_ONLY,
+			"plan",
+			{},
+			undefined,
+			{
+				unprompted: true,
+			},
+		);
+		const resized =
+		{
+			...opened,
+			root: stack("row", 1, [tile("chat", 3), tile("plan", 1)]),
+		};
+
+		expect(
+			{
+				settled: settleOverlay(opened),
+				stale: overlayTile(resized),
+				expanded: overlayTile(expandPane(opened, "plan")),
+				expandedFlex: expandPane(syncOverlayPaneFlex(opened, "plan", 0.4), "plan"),
+			},
+		).toStrictEqual(
+			{
+				settled: layout([tile("chat", 2), tile("plan", 1)], "chat"),
+				stale: null,
+				expanded: null,
+				expandedFlex: layout([tile("chat", 2), tile("plan", 0.4)], "plan", "plan"),
+			},
+		);
+	});
+
+	it("never persists the overlay", () =>
+	{
+		const storage = new MemoryStorage();
+		const opened = openPane(
+			CHAT_ONLY,
+			"plan",
+			{},
+			undefined,
+			{
+				unprompted: true,
+			},
+		);
+		savePaneLayout("s", opened, storage);
+
+		expect(JSON.parse(storage.getItem(PANE_LAYOUT_STORAGE_KEY) ?? "null")).toStrictEqual(
+			{
+				s: layout([tile("chat", 2), tile("plan", 1)], "chat"),
+			},
 		);
 	});
 });

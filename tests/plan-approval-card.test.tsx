@@ -1478,9 +1478,36 @@ describe("PlanApprovalCard auto-opens the Plan pane", () =>
 			},
 		).toStrictEqual(
 			{
-				afterMount: [["plan"]],
-				afterRerender: [["plan"]],
-				afterRemount: [["plan"], ["plan"]],
+				afterMount: [
+					[
+						"plan",
+						{
+							unprompted: true,
+						},
+					],
+				],
+				afterRerender: [
+					[
+						"plan",
+						{
+							unprompted: true,
+						},
+					],
+				],
+				afterRemount: [
+					[
+						"plan",
+						{
+							unprompted: true,
+						},
+					],
+					[
+						"plan",
+						{
+							unprompted: true,
+						},
+					],
+				],
 			},
 		);
 	});

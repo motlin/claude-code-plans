@@ -117,7 +117,7 @@ export function SessionDock({
 	if (needsInput)
 	{
 		return (
-			<div className={SESSION_DOCK_COLUMN_CLASS}>
+			<div data-epitaxy-chat-column="" className={SESSION_DOCK_COLUMN_CLASS}>
 				<button
 					type="button"
 					aria-label="Needs your input. Scroll to the request"
@@ -139,7 +139,7 @@ export function SessionDock({
 	}
 
 	return (
-		<div className={SESSION_DOCK_COLUMN_CLASS}>
+		<div data-epitaxy-chat-column="" className={SESSION_DOCK_COLUMN_CLASS}>
 			<button
 				type="button"
 				aria-label="Scroll to bottom"

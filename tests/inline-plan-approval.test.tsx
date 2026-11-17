@@ -348,7 +348,15 @@ describe("InlinePlanApproval", () =>
 				subtitle: ["text-body text-ink-muted", "line-clamp-2 break-words [unicode-bidi:plaintext]", "Plan: X"],
 				trailing: ["shrink-0 self-center", "Open plan"],
 				actions: ["Reject", "Revise…", "Accept", "Accept and use auto modeCtrl⏎Enter"],
-				opened: [["plan"], ["plan"]],
+				opened: [
+					[
+						"plan",
+						{
+							unprompted: true,
+						},
+					],
+					["plan"],
+				],
 			},
 		);
 	});

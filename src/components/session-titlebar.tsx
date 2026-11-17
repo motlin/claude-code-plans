@@ -733,7 +733,7 @@ export function SessionTitlebar({
 				</div>
 				<div
 					data-titlebar-trail=""
-					className={`relative ml-auto flex shrink-0 items-center gap-1 pl-6 text-secondary ${panels ? CONTROL_ROW_CLASS : ""}`}
+					className={`relative ml-auto flex shrink-0 items-center gap-1 pl-6 text-secondary [[data-pane-overlay]_&]:me-[calc(-1*var(--epitaxy-overlay-titlebar-shift,0px))] ${panels ? CONTROL_ROW_CLASS : ""}`}
 				>
 					<TitlebarHiddenCountContext.Provider value={hiddenCount}>
 						{paneToggles}

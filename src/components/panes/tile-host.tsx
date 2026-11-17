@@ -41,6 +41,7 @@ import
 	loadPaneLayout,
 	minTileSize,
 	openPane,
+	overlayTile,
 	parseTileId,
 	rememberPaneFlex,
 	resizeDivider,
@@ -48,6 +49,8 @@ import
 	resolveTileLayout,
 	saveLastPaneFlex,
 	savePaneLayout,
+	settleOverlay,
+	syncOverlayPaneFlex,
 	tileFloor,
 	rowEndOnlyTileIds,
 	tileShellEdges,
@@ -55,6 +58,7 @@ import
 	updatePhoneView,
 	type Direction,
 	type LayoutNode,
+	type OpenPaneOptions,
 	type PaneKind,
 	type PaneLayoutState,
 	type ResolvedNode,
@@ -62,6 +66,7 @@ import
 	type TileId,
 	type TileShellEdges,
 } from "../../lib/pane-layout";
+import {OVERLAY_SPLIT, overlayFit, overlaySpareWidth} from "../../lib/pane-overlay-fit";
 import {siblingMovedAhead, TileContentHosts} from "../../lib/tile-content-hosts";
 import
 {
@@ -154,6 +159,26 @@ interface KeyboardMoveNotice
 	seq: number;
 }
 
+/**
+ * Upstream `VPe`'s result: the pane an unprompted open draws over the lone chat, measured (`drawn`) once its layout
+ * effect fits it, or still pending.
+ */
+interface HostOverlay
+{
+	tileId: PaneKind;
+	drawn: DrawnOverlay | null;
+}
+
+interface DrawnOverlay
+{
+	tileId: PaneKind;
+	openedAt: number;
+	width: number;
+	reservePx: number;
+	/** The tile root's width when drawn; a 1px change settles it. */
+	containerWidth: number;
+}
+
 interface InternalHost
 {
 	definitions: ReadonlyMap<PaneKind, PaneDefinition>;
@@ -184,6 +209,10 @@ interface InternalHost
 	shellEdges: ReadonlyMap<TileId, TileShellEdges>;
 	/** Upstream's `rowEndIds`: the tiles whose panes get the row-end context (Automatic file column on the right). */
 	rowEnd: ReadonlySet<TileId>;
+	/** The pane drawn (or about to be) over the lone chat, or null. */
+	overlay: HostOverlay | null;
+	/** The tiles in the flow: the layout without an overlaid pane, which the chat's gutters and grip follow. */
+	flowRoot: StackNode;
 	phone: boolean;
 	/** The root row, measured when a pane opens so Changes can be sized to its minimum. */
 	rootRef: RefObject<HTMLDivElement | null>;
@@ -251,7 +280,7 @@ function rememberResize(resizedIds: readonly TileId[]): LayoutUpdate
  * Opens a pane, with the first split taking the kind's remembered flex. Given the tile root's measured
  * width, the result makes room for the chat (upstream `tileHost.fitOpenedLayout`).
  */
-function openWithMemory(kind: PaneKind, widthPx: number | undefined): LayoutUpdate
+function openWithMemory(kind: PaneKind, widthPx: number | undefined, options?: OpenPaneOptions): LayoutUpdate
 {
 	return (state) =>
 		openPane(
@@ -264,7 +293,44 @@ function openWithMemory(kind: PaneKind, widthPx: number | undefined): LayoutUpda
 					{
 						widthPx,
 					},
+			options,
 		);
+}
+
+/** Upstream `BPe`: the transcript scroller's scrollbar width, else a probe's. */
+function scrollbarWidth(root: HTMLElement): number
+{
+	const scroller = root.querySelector<HTMLElement>("[data-session-scrollport]");
+	if (scroller !== null) return scroller.offsetWidth - scroller.clientWidth;
+	const probe = root.ownerDocument.createElement("div");
+	probe.style.cssText =
+		"position:absolute;top:0;left:0;width:100px;height:50px;overflow-y:auto;scrollbar-gutter:stable both-edges;visibility:hidden;pointer-events:none";
+	root.append(probe);
+	const width = probe.offsetWidth - probe.clientWidth;
+	probe.remove();
+	return width;
+}
+
+/** Upstream `VPe`: how far a docked session rail overhangs its parent, which the chat column's width adds. */
+function railOverhang(root: HTMLElement): number
+{
+	const rail = root.querySelector("[data-epitaxy-rail-column]");
+	const parent = rail?.parentElement ?? null;
+	if (rail === null || parent === null) return 0;
+	const railRect = rail.getBoundingClientRect();
+	const parentRect = parent.getBoundingClientRect();
+	return Math.max(0, Math.round(Math.min(parentRect.right - railRect.left, railRect.right - parentRect.left)));
+}
+
+/** Upstream `z9(reserve, 0)`: the centred column moves half the reserve; the titlebar end and rail all of it. */
+function overlayShiftVars(reservePx: number): CSSProperties
+{
+	return {
+		"--epitaxy-overlay-column-shift": `${-reservePx / 2}px`,
+		"--epitaxy-overlay-docked-column-shift": `${-reservePx / 2}px`,
+		"--epitaxy-overlay-titlebar-shift": `${-reservePx}px`,
+		"--epitaxy-overlay-rail-titlebar-shift": `${-reservePx}px`,
+	};
 }
 
 function nodeTitle(node: LayoutNode, definitions: ReadonlyMap<PaneKind, PaneDefinition>): string
@@ -1143,7 +1209,7 @@ function StackView({
 	// Keep the expanded pane and chat on their keyed paths so their reader state survives.
 	stack.children.forEach((child, index) =>
 	{
-		if (host.expanded === null && index > 0)
+		if (host.expanded === null && host.overlay === null && index > 0)
 		{
 			items.push(
 				<Divider
@@ -1286,11 +1352,20 @@ function NodeView({
 		const hidden = host.hidden.has("chat");
 		// Upstream's line-mode tile shell (shared-20 `it`): 8px at the bottom, and 8px on a side the chat touches
 		// without a gutter attribute. Not on a phone until a live 390px read shows upstream insets there.
-		const gutters = layered ? chatGutters(host.layout.root) : null;
+		const gutters = layered ? chatGutters(host.flowRoot) : null;
 		// Upstream's `.tiles-shell[data-tile-overflow-anchor]`: pinned to the chat's outer edge at the full slot
 		// width but never under 320px, so a narrower slot slides the shell under the neighbouring pane. The chat
 		// alone keeps the shell as `display: contents`.
-		const anchor = leftEdgeTiles(host.layout.root).has("chat") ? "left" : "right";
+		const anchor = leftEdgeTiles(host.flowRoot).has("chat") ? "left" : "right";
+		// Upstream `vFe`/ca67f2c9d: under a drawn overlay the chat carries the shift vars and its shell is clipped.
+		const drawn = host.overlay?.drawn ?? null;
+		const reserve =
+			drawn === null
+				? undefined
+				:
+					{
+						"--tile-overlay-reserve": `${drawn.reservePx}px`,
+					};
 		return (
 			<TileSlot
 				tileId="chat"
@@ -1307,13 +1382,16 @@ function NodeView({
 								...style,
 								"--tiles-padding": "8px",
 								"--tile-shell-ground": "var(--color-page)",
+								...(drawn === null ? {} : overlayShiftVars(drawn.reservePx)),
 							}
 				}
 				hidden={hidden}
 				shellClassName={
 					gutters === null
 						? "contents"
-						: "absolute inset-y-0 w-full min-w-[320px] bg-[var(--tile-shell-ground)]"
+						: `absolute inset-y-0 w-full min-w-[320px] bg-[var(--tile-shell-ground)]${
+								drawn === null ? "" : " tiles-under-overlay"
+							}`
 				}
 				shellStyle={
 					gutters === null
@@ -1323,8 +1401,15 @@ function NodeView({
 								[anchor]: 0,
 								padding: chatShellPadding(gutters),
 								"--tile-overflow-min": `${CHAT_OVERFLOW_MIN_PX}px`,
+								...reserve,
 							}
 				}
+				{...(drawn === null
+					? {}
+					:
+						{
+							"data-pane-overlay": "",
+						})}
 				{...(gutters === null
 					? {}
 					:
@@ -1341,6 +1426,7 @@ function NodeView({
 	if (host.expanded !== null && !expanded && !hidden) return null;
 	const definition = host.definitions.get(node.tileId);
 	if (definition === undefined) return null;
+	const overlay = host.overlay?.tileId === node.tileId ? host.overlay : null;
 	return (
 		<TileSlot
 			tileId={node.tileId}
@@ -1348,7 +1434,19 @@ function NodeView({
 			host={host}
 			orderKey={orderKey}
 			aheadKey={aheadKey}
-			shellClassName="h-full"
+			shellClassName={overlay?.drawn ? "h-full tiles-overlay-shell" : "h-full"}
+			{...(overlay?.drawn
+				?
+					{
+						shellStyle:
+						{
+							"--tile-overlay-reserve": `${overlay.drawn.reservePx}px`,
+							padding: 0,
+							"--tiles-padding": "8px",
+							"--tile-shell-ground": "var(--color-page)",
+						},
+					}
+				: {})}
 			className={
 				expanded
 					? `min-h-0 min-w-0 ${host.phone ? PHONE_EXPANDED_SLOT_CLASSES : EXPANDED_SLOT_CLASSES}`
@@ -1356,17 +1454,41 @@ function NodeView({
 						? `${slotClass} z-[1]`
 						: slotClass
 			}
-			style={expanded ? undefined : style}
+			style={expanded ? undefined : overlay === null ? style : overlaySlotStyle(style, overlay.drawn)}
 			hidden={hidden}
 			phone={expanded ? host.phone : phone}
 			{...(expanded
 				?
 					{
-						"data-pane-overlay": true,
+						"data-pane-expanded": true,
 					}
 				: {})}
 		/>
 	);
+}
+
+/**
+ * Upstream ca67f2c9d `pt`: the overlaid pane's wrap leaves the flow, pinned to the row's end at its fitted width
+ * above the chat. Until the fit is measured it stays out of the flow unseen, so the chat measures as if alone.
+ */
+function overlaySlotStyle(style: CSSProperties, drawn: DrawnOverlay | null): CSSProperties
+{
+	if (drawn === null)
+	{
+		return {
+			...style,
+			...HIDDEN_TILE_STYLE,
+		};
+	}
+	return {
+		...style,
+		position: "absolute",
+		top: 0,
+		bottom: 0,
+		insetInlineEnd: OVERLAY_SPLIT.padding,
+		width: drawn.width,
+		zIndex: 2,
+	};
 }
 
 /**
@@ -1435,7 +1557,8 @@ function TileSlot({
 	overflowAnchor?: "left" | "right";
 	/** The tile's path in the layout, which places a wrap drop indicator's outset. */
 	path: readonly number[];
-	"data-pane-overlay"?: boolean;
+	"data-pane-expanded"?: boolean;
+	"data-pane-overlay"?: "";
 } & ChatGutterAttributes)
 {
 	const {contentHosts} = host;
@@ -1572,9 +1695,9 @@ const CONTENTS_STYLE =
 /** The chat tile's content: its Move grip (once a pane shares the row) above the transcript. */
 function ChatTileContent({host, chat}: {host: InternalHost; chat: ReactNode})
 {
-	const tiles = tileIdsOf(host.layout.root).length;
-	const layered = !host.phone && tiles > 1;
-	const root = host.layout.root;
+	const tiles = tileIdsOf(host.flowRoot).length;
+	const layered = !host.phone && tileIdsOf(host.layout.root).length > 1;
+	const root = host.flowRoot;
 	const attributes = useMemo(() => chatGutterAttributes(layered ? chatGutters(root) : null), [layered, root]);
 	return (
 		<>
@@ -1720,13 +1843,122 @@ export function TileHost({
 		[layout.root, layout.expanded, hidden],
 	);
 	const liveTileIds = useMemo(() => new Set(mountedTiles), [mountedTiles]);
+
+	// Upstream `VPe`: an unprompted open beside the lone chat is drawn over the chat's empty end while there is room,
+	// and settles into the split on the next press, key, wheel or resize. A phone has no side panes to overlay.
+	const overlaid = phone ? null : overlayTile(layout);
+	const overlayOpenedAt = overlaid === null ? null : (layout.overlay?.openedAt ?? null);
+	const [measured, setMeasured] = useState<DrawnOverlay | null>(null);
+	const drawn = measured?.tileId === overlaid && measured.openedAt === overlayOpenedAt ? measured : null;
+	const pendingOverlay = drawn === null ? overlaid : null;
+	const settle = useCallback(() =>
+	{
+		update(settleOverlay);
+	}, [update]);
+	useLayoutEffect(() =>
+	{
+		if (pendingOverlay === null || overlayOpenedAt === null) return;
+		const root = rootRef.current;
+		const column = root?.querySelector("[data-epitaxy-chat-column]") ?? null;
+		if (root === null || column === null)
+		{
+			settle();
+			return;
+		}
+		const containerWidth = root.getBoundingClientRect().width;
+		const fit = overlayFit(
+			{
+				root: layout.root,
+				tileId: pendingOverlay,
+				containerWidth,
+				spareWidth: overlaySpareWidth(
+					{
+						containerWidth,
+						chatColumnWidth: column.getBoundingClientRect().width + railOverhang(root),
+						scrollbarWidth: scrollbarWidth(root),
+					},
+				),
+			},
+		);
+		if (fit === null)
+		{
+			settle();
+			return;
+		}
+		update((state) => syncOverlayPaneFlex(state, pendingOverlay, fit.paneFlex));
+		setMeasured(
+			{
+				tileId: pendingOverlay,
+				openedAt: overlayOpenedAt,
+				width: fit.width,
+				reservePx: fit.reservePx,
+				containerWidth,
+			},
+		);
+	}, [pendingOverlay, overlayOpenedAt, layout.root, settle, update]);
+	const drawnKey = drawn === null ? null : `${drawn.tileId}\0${drawn.openedAt}`;
+	const drawnWidth = drawn?.containerWidth ?? null;
+	useEffect(() =>
+	{
+		const root = rootRef.current;
+		if (drawnKey === null || drawnWidth === null || root === null) return undefined;
+		const doc = root.ownerDocument;
+		const passive =
+		{
+			capture: true,
+			passive: true,
+		};
+		doc.addEventListener("pointerdown", settle, true);
+		doc.addEventListener("keydown", settle, true);
+		doc.addEventListener("wheel", settle, passive);
+		const observer =
+			typeof ResizeObserver === "undefined"
+				? null
+				: new ResizeObserver(() =>
+					{
+						if (Math.abs(root.getBoundingClientRect().width - drawnWidth) >= 1) settle();
+					});
+		observer?.observe(root);
+		return () =>
+		{
+			doc.removeEventListener("pointerdown", settle, true);
+			doc.removeEventListener("keydown", settle, true);
+			doc.removeEventListener("wheel", settle, passive);
+			observer?.disconnect();
+		};
+	}, [drawnKey, drawnWidth, settle]);
+	const overlay = useMemo<HostOverlay | null>(
+		() =>
+			overlaid === null
+				? null
+				:
+					{
+						tileId: overlaid,
+						drawn,
+					},
+		[overlaid, drawn],
+	);
+	const flowRoot = useMemo<StackNode>(
+		() =>
+			overlaid === null
+				? layout.root
+				:
+					{
+						...layout.root,
+						children: layout.root.children.filter(
+							(child) => child.kind !== "tile" || child.tileId !== overlaid,
+						),
+					},
+		[layout.root, overlaid],
+	);
+
 	// Upstream recomputes the edges against out-of-flow neighbours, so an expanded tile leaves every shell without them.
 	const shellEdges = useMemo(
 		() =>
-			layout.expanded === null && tileIdsOf(layout.root).length > 1
-				? tileShellEdges(layout.root)
+			layout.expanded === null && tileIdsOf(flowRoot).length > 1
+				? tileShellEdges(flowRoot)
 				: new Map<TileId, TileShellEdges>(),
-		[layout.root, layout.expanded],
+		[flowRoot, layout.expanded],
 	);
 	const rowEnd = useMemo(() => rowEndOnlyTileIds(layout.root), [layout.root]);
 	// Upstream `setInteractHandler(onTileInteract)`: focus entering a tile, or a press in it, makes it the focused tile.
@@ -1860,6 +2092,8 @@ export function TileHost({
 			mountedCount: mountedTiles.length,
 			shellEdges,
 			rowEnd,
+			overlay,
+			flowRoot,
 			phone,
 			rootRef,
 			rootSize,
@@ -1884,6 +2118,8 @@ export function TileHost({
 			mountedTiles,
 			shellEdges,
 			rowEnd,
+			overlay,
+			flowRoot,
 			phone,
 			rootSize,
 			resolved,
@@ -1897,9 +2133,10 @@ export function TileHost({
 			layout,
 			openKinds,
 			isOpen: (kind) => openKinds.includes(kind),
-			openPane: (kind) =>
+			// Upstream fits only user-initiated opens; an unprompted one may draw as an overlay instead.
+			openPane: (kind, options) =>
 			{
-				update(openWithMemory(kind, fitWidth()));
+				update(openWithMemory(kind, options?.unprompted === true ? undefined : fitWidth(), options));
 			},
 			closePane: (kind) =>
 			{

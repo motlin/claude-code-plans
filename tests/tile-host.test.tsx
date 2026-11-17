@@ -931,7 +931,8 @@ describe("TileHost", () =>
 		const expanded =
 		{
 			chat: chatState(),
-			overlay: document.querySelector("[data-pane-overlay]") !== null,
+			overlay: document.querySelector("[data-pane-expanded]") !== null,
+			paneOverlay: document.querySelector("[data-pane-overlay]") !== null,
 			toggle:
 				screen.queryByRole(
 					"button",
@@ -951,7 +952,8 @@ describe("TileHost", () =>
 		const collapsed =
 		{
 			chat: chatState(),
-			overlay: document.querySelector("[data-pane-overlay]") !== null,
+			overlay: document.querySelector("[data-pane-expanded]") !== null,
+			paneOverlay: document.querySelector("[data-pane-overlay]") !== null,
 			toggle:
 				screen.queryByRole(
 					"button",
@@ -980,6 +982,7 @@ describe("TileHost", () =>
 						style: "flex-grow: 1.33278; flex-shrink: 1; flex-basis: 0px; min-width: 0px; min-height: 100px; --tiles-padding: 8px; --tile-shell-ground: var(--color-page); position: absolute; top: 0px; right: 0px; bottom: 0px; left: 0px; visibility: hidden; content-visibility: hidden; pointer-events: none;",
 					},
 					overlay: true,
+					paneOverlay: false,
 					toggle: true,
 				},
 				collapsed:
@@ -991,6 +994,7 @@ describe("TileHost", () =>
 						style: "flex-grow: 1.33278; flex-shrink: 1; flex-basis: 0px; min-width: 100px; min-height: 100px; --tiles-padding: 8px; --tile-shell-ground: var(--color-page);",
 					},
 					overlay: false,
+					paneOverlay: false,
 					toggle: false,
 				},
 				calls: 1,
@@ -1015,7 +1019,7 @@ describe("TileHost", () =>
 			screen
 				.getByText("Test pane body")
 				.closest("[data-pane-root]")
-				?.closest("[data-pane-overlay]")
+				?.closest("[data-pane-expanded]")
 				?.className.split(" ") ?? [];
 
 		expect(
@@ -2120,10 +2124,10 @@ describe("TileHost", () =>
 				},
 			),
 		);
-		const expanded = document.querySelector("[data-pane-overlay] [data-pane-root]")?.getAttribute("aria-label");
+		const expanded = document.querySelector("[data-pane-expanded] [data-pane-root]")?.getAttribute("aria-label");
 		fireEvent.click(toggleFiles);
 		const panes = [...document.querySelectorAll("[data-pane-root]")].map((pane) => pane.getAttribute("aria-label"));
-		const overlay = document.querySelector("[data-pane-overlay]") !== null;
+		const overlay = document.querySelector("[data-pane-expanded]") !== null;
 		unregisterFiles();
 
 		expect(
@@ -2875,7 +2879,7 @@ describe("TileHost corner handle", () =>
 		expect(
 			{
 				connected: tasks.isConnected,
-				overlays: document.querySelectorAll("[data-pane-overlay]").length,
+				overlays: document.querySelectorAll("[data-pane-expanded]").length,
 			},
 		).toStrictEqual(
 			{
@@ -2930,7 +2934,7 @@ describe("TileHost corner handle", () =>
 				files: filesSlot?.querySelector("[data-pane-root]") === files,
 				inert: filesSlot?.hasAttribute("inert"),
 				hidden: filesSlot?.hidden,
-				overlays: document.querySelectorAll("[data-pane-overlay]").length,
+				overlays: document.querySelectorAll("[data-pane-expanded]").length,
 			},
 		).toStrictEqual(
 			{
@@ -4327,6 +4331,236 @@ describe("TileHost row-end context (upstream cc43287c9 ZFe `wT` provider over cf
 				after: "false",
 				first: "files",
 				mounts: 1,
+			},
+		);
+	});
+});
+
+describe("TileHost unprompted pane overlay (upstream cc43287c9 VPe / vFe, ca67f2c9d tiles overlay)", () =>
+{
+	function OverlayChat()
+	{
+		const host = usePaneHost();
+		return (
+			<>
+				<button
+					type="button"
+					onClick={() =>
+					{
+						host.openPane(
+							"plan",
+							{
+								unprompted: true,
+							},
+						);
+					}}
+				>
+					Auto open
+				</button>
+				<button
+					type="button"
+					onClick={() =>
+					{
+						host.openPane("plan");
+					}}
+				>
+					User open
+				</button>
+				<div data-epitaxy-chat-column="" />
+			</>
+		);
+	}
+
+	/** The tile root measures 2424px and the lone chat's column `columnWidth`, as the live 2432px capture did. */
+	function renderOverlayHost(columnWidth: number)
+	{
+		vi.mocked(HTMLElement.prototype.getBoundingClientRect).mockImplementation(function (this: HTMLElement)
+		{
+			const width = this.hasAttribute("data-tiles-viewport")
+				? 2424
+				: this.hasAttribute("data-epitaxy-chat-column")
+					? columnWidth
+					: 1200;
+			return DOMRect.fromRect(
+				{
+					x: 0,
+					y: 0,
+					width,
+					height: 800,
+				},
+			);
+		});
+		render(
+			<TileHost sessionId="session-overlay" onExpandWithoutPane={vi.fn<() => void>()}>
+				<OverlayChat />
+			</TileHost>,
+		);
+	}
+
+	function click(name: string)
+	{
+		fireEvent.click(
+			screen.getByRole(
+				"button",
+				{
+					name,
+				},
+			),
+		);
+	}
+
+	function overlayState()
+	{
+		const chat = document.querySelector<HTMLElement>('[data-tile-slot="chat"]');
+		const plan = document.querySelector<HTMLElement>('[data-tile-slot="plan"]');
+		return {
+			overlay: chat?.getAttribute("data-pane-overlay") ?? null,
+			chatVars: [
+				"--epitaxy-overlay-column-shift",
+				"--epitaxy-overlay-docked-column-shift",
+				"--epitaxy-overlay-titlebar-shift",
+				"--epitaxy-overlay-rail-titlebar-shift",
+			].map((name) => chat?.style.getPropertyValue(name)),
+			chatShell: chat?.querySelector(".tiles-shell")?.className,
+			chatShellReserve: chat
+				?.querySelector<HTMLElement>(".tiles-shell")
+				?.style.getPropertyValue("--tile-overlay-reserve"),
+			planStyle: longhandStyle(plan),
+			planShell: plan?.querySelector(".tiles-shell")?.className,
+			planShellReserve: plan
+				?.querySelector<HTMLElement>(".tiles-shell")
+				?.style.getPropertyValue("--tile-overlay-reserve"),
+			separators: screen.queryAllByRole("separator").length,
+		};
+	}
+
+	function savedPlanFlex(): unknown
+	{
+		const saved = JSON.parse(localStorage.getItem("ccb.paneLayout.v1") ?? "{}") as Record<
+			string,
+			{
+				root:
+				{
+					children: Array<
+					{
+						tileId?: string;
+						flex: number;
+					}>;
+				};
+			}
+		>;
+		return saved["session-overlay"]?.root.children.map((child) => [child.tileId, child.flex]);
+	}
+
+	it("draws an unprompted open over the lone chat with upstream's shift vars, then settles on a wheel", () =>
+	{
+		// Spare 2424 − 8 − 2058 = 358: a 356px pane, reserve 357, as the live capture measured.
+		renderOverlayHost(2058);
+		click("Auto open");
+		const drawn = overlayState();
+		act(() =>
+		{
+			fireEvent.wheel(document);
+		});
+		const settled = overlayState();
+
+		expect(
+			{
+				drawn,
+				settled:
+				{
+					overlay: settled.overlay,
+					chatShell: settled.chatShell,
+					planShell: settled.planShell,
+					separators: settled.separators,
+				},
+				saved: savedPlanFlex(),
+			},
+		).toStrictEqual(
+			{
+				drawn:
+				{
+					overlay: "",
+					chatVars: ["-178.5px", "-178.5px", "-357px", "-357px"],
+					chatShell:
+						"tiles-shell absolute inset-y-0 w-full min-w-[320px] bg-[var(--tile-shell-ground)] tiles-under-overlay",
+					chatShellReserve: "357px",
+					planStyle:
+						"flex-grow: 0.666942; flex-shrink: 1; flex-basis: 0px; min-width: 280px; min-height: 100px; position: absolute; top: 0px; bottom: 0px; inset-inline-end: 0px; width: 356px; z-index: 2;",
+					planShell: "tiles-shell h-full tiles-overlay-shell",
+					planShellReserve: "357px",
+					separators: 0,
+				},
+				settled:
+				{
+					overlay: null,
+					chatShell: "tiles-shell absolute inset-y-0 w-full min-w-[320px] bg-[var(--tile-shell-ground)]",
+					planShell: "tiles-shell h-full",
+					separators: 1,
+				},
+				saved: [
+					["chat", 2],
+					["plan", (2 * 356) / (2423 - 356)],
+				],
+			},
+		);
+	});
+
+	it.each([
+		[
+			"a key press",
+			() =>
+				fireEvent.keyDown(
+					document,
+					{
+						key: "a",
+					},
+				),
+		],
+		["a pointer press", () => fireEvent.pointerDown(document)],
+	])("settles on %s", (_label, settle) =>
+	{
+		renderOverlayHost(2058);
+		click("Auto open");
+		const before = overlayState().overlay;
+		act(() =>
+		{
+			settle();
+		});
+
+		expect(
+			{
+				before,
+				after: overlayState().overlay,
+			},
+		).toStrictEqual(
+			{
+				before: "",
+				after: null,
+			},
+		);
+	});
+
+	it.each([
+		["no room beside the chat column", 2200, "Auto open"],
+		["a user-initiated open", 2058, "User open"],
+	])("splits at once for %s", (_label, columnWidth, button) =>
+	{
+		renderOverlayHost(columnWidth);
+		click(button);
+		const state = overlayState();
+
+		expect(
+			{
+				overlay: state.overlay,
+				planShell: state.planShell,
+				separators: state.separators,
+			},
+		).toStrictEqual(
+			{
+				overlay: null,
+				planShell: "tiles-shell h-full",
+				separators: 1,
 			},
 		);
 	});

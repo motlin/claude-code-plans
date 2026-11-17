@@ -458,6 +458,23 @@ afterEach(() =>
 
 describe("SessionTitlebar layout", () =>
 {
+	it("moves the trail's end in by an unprompted pane overlay's reserve (upstream sU)", async () =>
+	{
+		const titlebar = await renderTitlebar(
+			fullDetail,
+			{
+				withSlots: true,
+			},
+		);
+
+		expect(
+			titlebar
+				.querySelector("[data-titlebar-trail]")
+				?.className.split(" ")
+				.filter((token) => token.includes("data-pane-overlay")),
+		).toStrictEqual(["[[data-pane-overlay]_&]:me-[calc(-1*var(--epitaxy-overlay-titlebar-shift,0px))]"]);
+	});
+
 	it("orders the lead (parent, title, chevron, origin pills) before the trail slots", async () =>
 	{
 		const titlebar = await renderTitlebar(

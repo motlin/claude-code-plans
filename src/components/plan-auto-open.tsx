@@ -21,8 +21,9 @@ interface PlanAutoOpenProps
 }
 
 /**
- * Upstream's `ZQ`/`JQ`: opens the Plan pane as a normal split the first time a session gains todos
- * live, once per session. A session whose Plan pane is already open is marked without opening it.
+ * Upstream's `ZQ`/`JQ`: opens the Plan pane unprompted (`ND`) the first time a session gains todos live, once per
+ * session: an overlay when the chat is alone and there is room, else a split. A session whose Plan pane is already
+ * open is marked without opening it.
  * Skipped where there are no side panes (no host, or a phone).
  */
 export function PlanAutoOpen({sessionId, firstRecordUuid, liveCount, hasTodos}: PlanAutoOpenProps)
@@ -69,7 +70,15 @@ export function PlanAutoOpen({sessionId, firstRecordUuid, liveCount, hasTodos}: 
 		);
 		track.current.snapshot = step.track;
 		if (!step.open) return;
-		if (!host.isOpen("plan")) host.openPane("plan");
+		if (!host.isOpen("plan"))
+		{
+			host.openPane(
+				"plan",
+				{
+					unprompted: true,
+				},
+			);
+		}
 		markPlanAutoOpened(sessionId);
 	}, [firstRecordUuid, liveCount, hasTodos, host, phone, sessionId]);
 

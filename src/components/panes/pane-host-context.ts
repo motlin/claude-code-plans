@@ -1,6 +1,6 @@
 import {createContext, useContext} from "react";
 
-import type {ChatGutters, PaneKind, PaneLayoutState} from "../../lib/pane-layout";
+import type {ChatGutters, OpenPaneOptions, PaneKind, PaneLayoutState} from "../../lib/pane-layout";
 
 export interface PaneHostApi
 {
@@ -8,7 +8,8 @@ export interface PaneHostApi
 	/** The side panes in the layout, whose presence swaps the session rail out. */
 	openKinds: readonly PaneKind[];
 	isOpen: (kind: PaneKind) => boolean;
-	openPane: (kind: PaneKind) => void;
+	/** `{unprompted: true}` marks an automatic open, which may draw over the lone chat (upstream `ND`). */
+	openPane: (kind: PaneKind, options?: OpenPaneOptions) => void;
 	closePane: (kind: PaneKind) => void;
 	togglePane: (kind: PaneKind) => void;
 }

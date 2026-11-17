@@ -1101,7 +1101,7 @@ it.each([false, true])(
 		expect(
 			{
 				paneCount: screen.getAllByText("Alice pane").length,
-				overlayCount: document.querySelectorAll("[data-pane-overlay]").length,
+				overlayCount: document.querySelectorAll("[data-pane-expanded]").length,
 			},
 		).toStrictEqual(
 			{
