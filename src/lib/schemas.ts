@@ -614,6 +614,7 @@ export const UserRecordSchema = z
 				.strict(),
 			toolUseResult: JsonValueSchema.optional(),
 			toolDenialKind: z.string().optional(),
+			toolDenialBeforeRun: z.boolean().optional(),
 			sourceToolAssistantUUID: z.string().optional(),
 			sourceToolUseID: z.string().optional(),
 			toolEndsTurn: z.boolean().optional(),
