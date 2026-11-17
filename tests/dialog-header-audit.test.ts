@@ -7,6 +7,7 @@ const SRC = path.join(import.meta.dirname, "../src");
 // Unstyled upstream consumers (no cds Dialog.Header), plus ConfirmDialog's alert band (panels-flag-flat-look T2).
 const EXEMPT = new Set([
 	"components/command-palette.tsx",
+	"components/palette-loading-shell.tsx",
 	"components/recents-switcher.tsx",
 	"components/image-viewer.tsx",
 	"components/image-preview-modal.tsx",

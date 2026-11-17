@@ -30,6 +30,8 @@ import {saveRecents, type RecentEntry} from "../src/lib/recents-history";
 import {holdAnswered, releaseAnswered} from "../src/lib/answered-sessions";
 import {FIZZY_LAKE_PARTS, FizzyLakeContext, type FizzyLakePart} from "../src/lib/fizzy-lake";
 import {installPaletteFocusOrigin} from "../src/lib/palette-focus-origin";
+import {appendPaletteKey, readPaletteKeys} from "../src/lib/palette-keystroke-buffer";
+import {paletteLoadingShown, setPaletteLoadingShown} from "../src/lib/palette-loading";
 import {byLabel} from "./helpers/palette-label";
 
 // Settings commands warm these chunks; the spies stand in for the downloads.
@@ -5189,17 +5191,106 @@ describe("CommandPalette Artifacts and Scheduled tabs", () =>
 		const classes = dialog.className.split(" ");
 		expect(
 			{
-				tops: classes.filter((name) => /^(sm:|lg:)?top-/.test(name)),
+				tops: classes.filter((name) => /^(sm:|lg:)?(top-|\[--cp-)/.test(name)),
 				inline: dialog.style.top,
+				settled: dialog.style.getPropertyValue("--cp-settled-h"),
 			},
 		).toStrictEqual(
 			{
 				tops: [
-					"top-4",
-					"sm:top-[max(0px,min(15vh,max(2rem,calc((100vh-583.9px)/2))))]",
-					"lg:top-[max(0px,min(25vh,max(2rem,calc((100vh-583.9px)/2))))]",
+					"top-[var(--cp-top)]",
+					"[--cp-inset:0px]",
+					"[--cp-clearance:0px]",
+					"[--cp-top:1rem]",
+					"sm:[--cp-cap:15vh]",
+					"lg:[--cp-cap:25vh]",
+					"sm:[--cp-top:max(var(--cp-clearance),min(var(--cp-cap),max(calc(var(--cp-inset)+2rem),calc((100vh-var(--cp-settled-h)+var(--cp-inset))/2))))]",
 				],
 				inline: "",
+				settled: "583.9px",
+			},
+		);
+	});
+
+	it("takes over from the loading shell without the backdrop fade-in, and fades in on later opens", async () =>
+	{
+		const fadeIn = () =>
+			document.querySelector(".bg-backdrop")?.className.includes("data-[starting-style]:opacity-0") ?? null;
+		const composer = await renderPalette();
+		setPaletteLoadingShown(true);
+		await pressOpen(composer);
+		const handoff = fadeIn();
+		fireEvent.keyDown(
+			document.activeElement ?? document.body,
+			{
+				key: "Escape",
+			},
+		);
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
+		const cleared = paletteLoadingShown();
+		await pressOpen(composer);
+		expect(
+			{
+				handoff,
+				cleared,
+				later: fadeIn(),
+			},
+		).toStrictEqual(
+			{
+				handoff: false,
+				cleared: false,
+				later: true,
+			},
+		);
+	});
+
+	it("opens on the keys typed while its module loaded, in the opening view, with the caret at the end", async () =>
+	{
+		appendPaletteKey("a");
+		appendPaletteKey("c");
+		const dialog = await openPalette();
+		const input = within(dialog).getByRole("combobox");
+		if (!(input instanceof HTMLTextAreaElement)) throw new Error("no textarea");
+		expect(
+			{
+				value: input.value,
+				caret: [input.selectionStart, input.selectionEnd],
+				buffered: readPaletteKeys(),
+			},
+		).toStrictEqual(
+			{
+				value: "ac",
+				caret: [2, 2],
+				buffered: "",
+			},
+		);
+	});
+
+	it("puts the keys typed while loading into Compose when the palette opens in Compose", async () =>
+	{
+		localStorage.setItem("cmdk-mode", "compose");
+		appendPaletteKey("h");
+		appendPaletteKey("i");
+		const dialog = await openPalette();
+		const input = await within(dialog).findByRole(
+			"combobox",
+			{
+				name: "Write a message…",
+			},
+		);
+		if (!(input instanceof HTMLTextAreaElement)) throw new Error("no textarea");
+		expect(
+			{
+				compose: input.value,
+				buffered: readPaletteKeys(),
+			},
+		).toStrictEqual(
+			{
+				compose: "hi",
+				buffered: "",
 			},
 		);
 	});

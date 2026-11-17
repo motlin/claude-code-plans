@@ -1,4 +1,5 @@
 import {DialogPopup} from "./ui/dialog-popup";
+import {PALETTE_POPUP_CLASS, PALETTE_POPUP_STYLE, PALETTE_RADIUS, paletteBackdropClass} from "./palette-shell-classes";
 import {isSessionRouteAlias} from "../lib/session-route-alias";
 import {useAnsweredSessionIds, withAnsweredHolds} from "../lib/answered-sessions";
 import {useFizzyLake} from "../lib/fizzy-lake";
@@ -68,6 +69,8 @@ import {findWaitingCard, landOnWaitingCard} from "../lib/question-landing";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
 import type {PaletteMode, PaletteModeChangeOptions} from "../hooks/use-command-palette";
 import {PASTE_ATTACH_CHARS, type PaletteBuffers, switchPaletteView} from "../lib/palette-compose";
+import {clearPaletteKeys, readPaletteKeys} from "../lib/palette-keystroke-buffer";
+import {paletteLoadingShown, setPaletteLoadingShown} from "../lib/palette-loading";
 import {offersQuickNewSession, paletteSearchable} from "../lib/palette-quick-action";
 import {useDebouncedValue} from "../hooks/use-debounced-value";
 import {sessionIdentityQueryOptions} from "../lib/api/session-identity";
@@ -242,8 +245,6 @@ const MODE_LABELS =
 const COMPOSE_DRAFT_KEY = "command-palette-compose";
 /** Upstream's hidden screen-reader hint, referenced by the Search textarea's aria-describedby. */
 const PALETTE_KEYS_HINT_ID = "command-palette-keys-hint";
-
-const PALETTE_RADIUS = "rounded-[calc(var(--radius-composer)+0.375rem)]";
 
 const GROUP_CLASS =
 	"[&_[cmdk-group-heading]]:px-3.5 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:pb-2 [&_[cmdk-group-heading]]:text-[12px]/[17px] [&_[cmdk-group-heading]]:text-muted-as-secondary [&_[cmdk-group-items]]:flex [&_[cmdk-group-items]]:flex-col";
@@ -1234,15 +1235,30 @@ export function CommandPalette({open, onOpenChange, mode: controlledMode, onMode
 	const [uncontrolledMode, setUncontrolledMode] = useState<PaletteMode>("search");
 	const mode = controlledMode ?? uncontrolledMode;
 	const setMode = onModeChange ?? setUncontrolledMode;
+	// The loading shell's hand-off lasts for the open it started.
+	useEffect(() =>
+	{
+		if (!open) setPaletteLoadingShown(false);
+	}, [open]);
 
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
-				<Dialog.Backdrop className="fixed inset-0 z-50 bg-backdrop backdrop-blur-[2px] transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
+				<PaletteBackdrop />
 				<PalettePopup mode={mode} onModeChange={setMode} onOpenChange={onOpenChange} />
 			</Dialog.Portal>
 		</Dialog.Root>
 	);
+}
+
+/**
+ * Mounted only while open, after the portal attaches (so after the loading shell unmounts). Taking over from the
+ * shell (upstream `_U()`), it skips the fade-in so the swap doesn't flash.
+ */
+function PaletteBackdrop()
+{
+	const [handoff] = useState(paletteLoadingShown);
+	return <Dialog.Backdrop className={paletteBackdropClass(handoff)} />;
 }
 
 /** Mounted only while open, so the query resets on every open like upstream. */
@@ -1274,13 +1290,23 @@ function PalettePopup({
 		session: PaletteCardSession;
 		open: boolean;
 	} | null>(null);
-	// Upstream keeps separate Search and Compose drafts; `query` is the active view's.
-	const [buffers, setBuffers] = useState<PaletteBuffers>(
-		{
-			search: "",
-			compose: "",
-		},
-	);
+	// Upstream keeps separate Search and Compose drafts; `query` is the active view's. Keys typed while the
+	// module loaded seed the opening view (upstream's `d` buffer under `qe`/`Je`).
+	const [buffers, setBuffers] = useState<PaletteBuffers>(() =>
+	{
+		const seed = readPaletteKeys();
+		return {
+			search: mode === "search" ? seed : "",
+			compose: mode === "compose" ? seed : "",
+		};
+	});
+	// The seed is taken; upstream's mount layout effect also puts the caret after it.
+	useLayoutEffect(() =>
+	{
+		clearPaletteKeys();
+		const input = inputRef.current;
+		if (input !== null && input.value !== "") input.setSelectionRange(input.value.length, input.value.length);
+	}, []);
 	const [tab, setTab] = useState<PaletteType>("all");
 	// Upstream's filter object: committed chips, kept apart from the query text.
 	const [filters, setFilters] = useState<PaletteFilters>({});
@@ -2663,9 +2689,8 @@ function PalettePopup({
 			data-perf-overlay="command_palette"
 			initialFocus={inputRef}
 			restoreFocus={restoreFocus}
-			// Upstream centres the card on a fixed 583.9px settled height, capped at 15vh (sm) or 25vh (lg),
-			// so it never jumps while results load or filter.
-			className={`fixed top-4 left-1/2 z-50 w-[calc(100vw-2rem)] max-w-2xl -translate-x-1/2 outline-none sm:top-[max(0px,min(15vh,max(2rem,calc((100vh-583.9px)/2))))] md:w-[calc(100vw-5rem)] lg:top-[max(0px,min(25vh,max(2rem,calc((100vh-583.9px)/2))))] ${PALETTE_RADIUS}`}
+			className={PALETTE_POPUP_CLASS}
+			style={PALETTE_POPUP_STYLE}
 		>
 			<Dialog.Title className="sr-only">Search</Dialog.Title>
 			<div
