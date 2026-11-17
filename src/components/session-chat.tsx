@@ -56,7 +56,7 @@ import {TruncatedContent} from "./truncated-content";
 import {AgentMessageRow} from "./agent-message-row";
 import {AgentNameContext, type AgentNameResolver} from "./agent-name-context";
 import {parseAgentMessage, type AgentMessage} from "../lib/agent-message";
-import {backgroundNoticeSummary} from "../lib/background-notice-summary";
+import {backgroundNoticeSummary, backgroundTaskClause} from "../lib/background-notice-summary";
 import
 {
 	noticeKind,
@@ -162,6 +162,7 @@ import {pastTense} from "../lib/past-tense";
 import {runningToolLabel, runningToolLabelText, toolLabel} from "../lib/tool-labels";
 import {stripControlsAndMask} from "../lib/secret-mask";
 import {formatElapsed} from "../lib/elapsed-format";
+import {taskFailureReason} from "../lib/task-failure-reason";
 import {ELAPSED_MIN_SECONDS, type TurnStatusState, turnStatusSwapKey} from "../lib/working-marker";
 import {MorphSlot} from "./ui/morph-slot";
 import {LABEL_HOLD_DEFAULT_MS, useHeldLabel} from "../hooks/use-held-label";
@@ -2173,35 +2174,111 @@ function stopCompletions(calls: readonly ClientToolCall[], {stoppedBy}: Backgrou
 }
 
 /**
- * Upstream's static group sub-row: a muted "Background command" (or "task"), the
- * description in primary ink, and a danger "Failed" or secondary "Stopped" when
- * the task did not complete.
+ * Upstream's lone in-group task step (`sF` → `EH`): the "Background {noun} {status}" clause in
+ * secondary ink, the description (plus a failed task's `": {reason}"`) in primary, "took
+ * {elapsed}" when the duration is known, then a danger "Failed" or secondary "Stopped". A summary
+ * that quoted no description reads as one "{clause} · {summary}" label. Where Background tasks
+ * can open and no artifact link is drawn, the step is a button that opens the pane on its task.
  */
 function BackgroundNoticeRow({notice}: {notice: BackgroundNotice})
 {
-	const {status, description, command, taskType} = notice.notification;
+	const {notification} = notice;
+	const {status, description, summary, taskType, taskId, durationMs} = notification;
+	const opener = useBackgroundTasksOpener();
+	const restInk = useRestInk();
 	const segments = taskDescriptionSegments(description, taskType);
+	const clause = backgroundTaskClause(noticeKind(notification), status);
+	const summaryOnly = description === summary;
+	const reason =
+		segments === undefined
+			? taskFailureReason(
+					{
+						status,
+						summary,
+						description,
+					},
+				)
+			: undefined;
+	const detail = reason === undefined ? description : `${description}: ${reason}`;
+	const navigates = opener !== null && segments === undefined;
+	const underline = navigates ? ` ${AGENT_META_UNDERLINE}` : "";
+	const children = (
+		<>
+			{summaryOnly ? (
+				<span dir="auto" className={`min-w-0 truncate text-secondary${underline}`}>
+					{`${clause} · ${summary}`}
+				</span>
+			) : (
+				<>
+					<span dir="auto" className="shrink-0 text-secondary">
+						{clause}
+					</span>
+					{description !== "" && (
+						<span
+							className={`truncate min-w-0 text-primary${underline}`}
+							title={segments === undefined ? detail : undefined}
+						>
+							{segments === undefined ? (
+								<bdi>{detail}</bdi>
+							) : (
+								// Upstream's `upe`: the artifact link segments in a bdi titled with the full description.
+								<bdi title={description}>
+									<TaskDescriptionLinks segments={segments} />
+								</bdi>
+							)}
+						</span>
+					)}
+				</>
+			)}
+			{durationMs !== null && (
+				<span
+					className={`inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible ${restInk} tabular-nums`}
+				>
+					took {formatElapsed(Math.round(durationMs / 1000))}
+				</span>
+			)}
+			{status === "failed" && <span className="shrink-0 text-danger-ink">Failed</span>}
+			{status === "stopped" && <span className="shrink-0 text-secondary">Stopped</span>}
+		</>
+	);
+	if (navigates)
+	{
+		return (
+			<button
+				type="button"
+				data-record-index={notice.lineIndex}
+				data-background-notice=""
+				data-transcript-step-navigates=""
+				data-state={status === "completed" ? "done" : status}
+				title={summaryOnly ? undefined : detail}
+				className={`group/tool flex min-w-0 items-center gap-1.5 text-body text-start cursor-pointer ${TURN_STATUS_ROW_FOCUS}`}
+				onClick={() =>
+				{
+					opener.open(
+						taskId === null
+							?
+								{
+									finished: true,
+								}
+							:
+								{
+									taskId,
+									finished: true,
+								},
+					);
+				}}
+			>
+				{children}
+			</button>
+		);
+	}
 	return (
 		<div
 			data-record-index={notice.lineIndex}
 			data-background-notice=""
 			className="flex min-w-0 items-center gap-1.5 text-body"
 		>
-			<span className="shrink-0 text-ink-muted">{command ? "Background command" : "Background task"}</span>
-			{description !== "" && (
-				<span className="truncate min-w-0 text-primary">
-					{segments === undefined ? (
-						description
-					) : (
-						// Upstream's `upe`: the artifact link segments in a bdi titled with the full description.
-						<bdi title={description}>
-							<TaskDescriptionLinks segments={segments} />
-						</bdi>
-					)}
-				</span>
-			)}
-			{status === "failed" && <span className="shrink-0 text-danger-ink">Failed</span>}
-			{status === "stopped" && <span className="shrink-0 text-secondary">Stopped</span>}
+			{children}
 		</div>
 	);
 }
@@ -2450,7 +2527,8 @@ function undeliveredTaskRows(
 
 function taskEvent(notification: TaskNotification): TaskEvent
 {
-	return {
+	const event: TaskEvent =
+	{
 		taskId: notification.taskId,
 		status: notification.status,
 		kind: noticeKind(notification),
@@ -2458,6 +2536,8 @@ function taskEvent(notification: TaskNotification): TaskEvent
 		durationMs: notification.durationMs,
 		taskType: notification.taskType,
 	};
+	if (notification.summary !== "") event.summary = notification.summary;
+	return event;
 }
 
 /** A completed background Agent's "<done description> · took Ns" task-event row. */

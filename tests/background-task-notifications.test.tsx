@@ -2,6 +2,11 @@
 
 import {cleanup, fireEvent, render} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
+import
+{
+	type BackgroundTasksOpener,
+	BackgroundTasksOpenerProvider,
+} from "../src/components/background-tasks-opener-context";
 import {SessionChat} from "../src/components/session-chat";
 import {backgroundNoticeSummary} from "../src/lib/background-notice-summary";
 import {noticeKind, parseTaskNotification} from "../src/lib/background-tasks";
@@ -267,10 +272,11 @@ function renderLines(
 	input: unknown[],
 	transcriptMode: TranscriptMode = "normal",
 	subagents: Subagent[] = [],
+	opener: BackgroundTasksOpener | null = null,
 ): HTMLElement
 {
 	const {lines, toolResultMap} = processTranscript(input);
-	return render(
+	const chat = (
 		<SessionChat
 			sessionId="test-session"
 			lines={lines}
@@ -278,7 +284,10 @@ function renderLines(
 			shouldScrollToEnd={false}
 			transcriptMode={transcriptMode}
 			subagents={subagents}
-		/>,
+		/>
+	);
+	return render(
+		opener === null ? chat : <BackgroundTasksOpenerProvider value={opener}>{chat}</BackgroundTasksOpenerProvider>,
 	).container;
 }
 
@@ -289,7 +298,7 @@ function summaryButton(container: HTMLElement, label: string): HTMLElement
 	return button;
 }
 
-const NOTICE_KIND = "shrink-0 text-ink-muted";
+const NOTICE_KIND = "shrink-0 text-secondary";
 const NOTICE_DESCRIPTION = "truncate min-w-0 text-primary";
 
 /** The text of each row in the expanded group card, in order. */
@@ -795,10 +804,10 @@ describe("task notifications in the transcript", () =>
 				userTurns: 1,
 				rawTag: false,
 				expanded: "true",
-				groupRows: ["Ran the test suite", "Background commandRun the test suite"],
+				groupRows: ["Ran the test suite", "Background command completedRun the test suite"],
 				notice: [
 					{
-						text: "Background command",
+						text: "Background command completed",
 						className: NOTICE_KIND,
 					},
 					{
@@ -834,7 +843,7 @@ describe("task notifications in the transcript", () =>
 			{
 				children: [
 					{
-						text: "Background task",
+						text: "Background agent",
 						className: NOTICE_KIND,
 					},
 					{
@@ -855,6 +864,184 @@ describe("task notifications in the transcript", () =>
 				],
 			},
 		);
+	});
+
+	it("names a workflow notice's noun from its task type with upstream's status word", () =>
+	{
+		const container = renderLines(
+			records(COMPLETED.replace("<status>", "<task-type>local_workflow</task-type>\n<status>")),
+		);
+		fireEvent.click(summaryButton(container, "Ran a command, finished a background command"));
+		expect(noticeChildren(container)[0]?.text).toBe("Background workflow completed");
+	});
+
+	it("appends a failed notice's reason to its titled description, as upstream's step detail", () =>
+	{
+		const summary = 'Background command "Stream Worker logs to a scratch file" failed with exit code 144';
+		const container = renderLines(
+			laterRecords(notification("failed", summary).replace("toolu_bash", "toolu_elsewhere")),
+		);
+		fireEvent.click(summaryButton(container, "Finished a background command, ran a command, 1 failed"));
+		const notice = container.querySelector("[data-background-notice]");
+		expect(
+			{
+				children: noticeChildren(container),
+				title: notice?.children[1]?.getAttribute("title"),
+				bdi: notice?.children[1]?.firstElementChild?.tagName,
+				dir: notice?.children[0]?.getAttribute("dir"),
+			},
+		).toStrictEqual(
+			{
+				children: [
+					{
+						text: "Background command",
+						className: NOTICE_KIND,
+					},
+					{
+						text: "Stream Worker logs to a scratch file: exit code 144",
+						className: NOTICE_DESCRIPTION,
+					},
+					{
+						text: "Failed",
+						className: "shrink-0 text-danger-ink",
+					},
+				],
+				title: "Stream Worker logs to a scratch file: exit code 144",
+				bdi: "BDI",
+				dir: "auto",
+			},
+		);
+	});
+
+	it('draws a summary-only notice as one "{clause} · {summary}" label, as upstream\'s summary-only step', () =>
+	{
+		const container = renderLines(
+			laterRecords(
+				notification("stopped", "Serve production from the new worktree").replace(
+					"toolu_bash",
+					"toolu_elsewhere",
+				),
+			),
+		);
+		fireEvent.click(summaryButton(container, "Ran a command, finished a background task (1 stopped)"));
+		expect(noticeChildren(container)).toStrictEqual([
+			{
+				text: "Background task · Serve production from the new worktree",
+				className: "min-w-0 truncate text-secondary",
+			},
+			{
+				text: "Stopped",
+				className: "shrink-0 text-secondary",
+			},
+		]);
+	});
+
+	it('trails a notice with a duration with upstream\'s "took {elapsed}"', () =>
+	{
+		const container = renderLines(
+			laterRecords(
+				notification("completed", 'Background agent "Review the diff" completed')
+					.replace("toolu_bash", "toolu_elsewhere")
+					.replace(
+						"</task-notification>",
+						"<usage><duration_ms>27000</duration_ms></usage>\n</task-notification>",
+					),
+			),
+		);
+		fireEvent.click(summaryButton(container, "Ran a command, finished a background task"));
+		expect(noticeChildren(container)).toStrictEqual([
+			{
+				text: "Background agent completed",
+				className: NOTICE_KIND,
+			},
+			{
+				text: "Review the diff",
+				className: NOTICE_DESCRIPTION,
+			},
+			{
+				text: "took 27s",
+				className:
+					"inline-flex h-[1lh] min-w-0 shrink-0 items-center overflow-visible text-secondary tabular-nums",
+			},
+		]);
+	});
+
+	it("draws the notice as a step button that opens Background tasks on its task, as upstream's onOpenTask", () =>
+	{
+		const open = vi.fn<BackgroundTasksOpener["open"]>();
+		const container = renderLines(
+			records(COMPLETED),
+			"normal",
+			[],
+			{
+				open,
+				running: new Map(),
+			},
+		);
+		fireEvent.click(summaryButton(container, "Ran a command, finished a background command"));
+		const notice = container.querySelector("[data-background-notice]");
+		const button = container.querySelector("button[data-background-notice][data-transcript-step-navigates]");
+		const description = notice?.children[1];
+		expect(
+			{
+				tag: notice?.tagName,
+				title: button?.getAttribute("title"),
+				state: button?.getAttribute("data-state"),
+				underline: description?.className.split(" ").includes("[--_text-link-line:transparent]"),
+			},
+		).toStrictEqual(
+			{
+				tag: "BUTTON",
+				title: "Run the test suite",
+				state: "done",
+				underline: true,
+			},
+		);
+		fireEvent.click(button!);
+		expect(open.mock.calls).toStrictEqual([
+			[
+				{
+					taskId: "b1x2y3",
+					finished: true,
+				},
+			],
+		]);
+	});
+
+	it("keeps an artifact-link notice a plain div even with an opener, as upstream's interactive chip drops onClick", () =>
+	{
+		const agentNotice = notification(
+			"failed",
+			'Agent "Publish artifact https://claude.ai/code/artifact/abc" failed',
+		).replace("toolu_bash", "toolu_agent_elsewhere");
+		const container = renderLines(
+			laterRecords(agentNotice),
+			"normal",
+			[],
+			{
+				open: vi.fn<BackgroundTasksOpener["open"]>(),
+				running: new Map(),
+			},
+		);
+		fireEvent.click(summaryButton(container, "Finished a background task, ran a command, 1 failed"));
+		expect(
+			{
+				div: container.querySelectorAll("div[data-background-notice]").length,
+				button: container.querySelectorAll("button[data-background-notice]").length,
+			},
+		).toStrictEqual(
+			{
+				div: 1,
+				button: 0,
+			},
+		);
+	});
+
+	it("keeps the notice a plain div where no pane can host Background tasks", () =>
+	{
+		const container = renderLines(records(COMPLETED));
+		fireEvent.click(summaryButton(container, "Ran a command, finished a background command"));
+		expect(container.querySelector("[data-background-notice]")?.tagName).toBe("DIV");
 	});
 
 	it('appends a secondary "Stopped" to a stopped task\'s sub-row', () =>
@@ -894,14 +1081,14 @@ describe("task notifications in the transcript", () =>
 			},
 		).toStrictEqual(
 			{
-				groupRows: ["Background commandRun the test suiteFailed", "Checked the server"],
+				groupRows: ["Background commandRun the test suite: exit code 7Failed", "Checked the server"],
 				notice: [
 					{
 						text: "Background command",
 						className: NOTICE_KIND,
 					},
 					{
-						text: "Run the test suite",
+						text: "Run the test suite: exit code 7",
 						className: NOTICE_DESCRIPTION,
 					},
 					{
@@ -922,7 +1109,7 @@ describe("task notifications in the transcript", () =>
 		fireEvent.click(summaryButton(container, "Ran a command, finished a background command, 1 failed"));
 		expect(groupRowTexts(container)).toStrictEqual([
 			"Run the test suiteFailed",
-			"Background commandRun the test suiteFailed",
+			"Background commandRun the test suite: exit code 7Failed",
 		]);
 	});
 
@@ -1423,7 +1610,7 @@ describe("idle-period subagent slow commands", () =>
 			},
 		).toStrictEqual(
 			{
-				rows: ["6 background commands completed", "Background command completed·Fix formatting and recheck"],
+				rows: ["6 background commands completed", "Background command completed· Fix formatting and recheck"],
 				beforeHandBack: true,
 			},
 		);
@@ -1551,7 +1738,7 @@ describe("idle-period background command failures", () =>
 		]);
 		const container = renderLines(doAllFailedIdleRecords(), "normal", [lone]);
 		expect([...container.querySelectorAll("[data-task-event-row]")].map((row) => row.textContent)).toStrictEqual([
-			"Background command failed·git fetch -q origin",
+			"Background command failed· git fetch -q origin",
 		]);
 	});
 });
@@ -1821,12 +2008,12 @@ describe("delivered notifications with no tool group after them", () =>
 		);
 	});
 
-	it('draws one as "Background command completed·<description>"', () =>
+	it('draws one as "Background command completed· <description>"', () =>
 	{
 		const container = renderLines(trailingNotifications(["Build"]));
 		expect(rows(container)).toStrictEqual(
 			{
-				rows: ["Background command completed·Build"],
+				rows: ["Background command completed· Build"],
 				notices: 0,
 			},
 		);

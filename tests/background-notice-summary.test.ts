@@ -1,6 +1,12 @@
 import {describe, expect, it} from "vite-plus/test";
 
-import {backgroundNoticeSummary, type NoticeEntry} from "../src/lib/background-notice-summary";
+import
+{
+	backgroundNoticeSummary,
+	backgroundTaskClause,
+	type NoticeEntry,
+	type NoticeKind,
+} from "../src/lib/background-notice-summary";
 
 const shell = (status: NoticeEntry["status"]): NoticeEntry => (
 {
@@ -104,6 +110,33 @@ describe("backgroundNoticeSummary", () =>
 		).toStrictEqual([
 			["completed", false],
 			["failed", true],
+		]);
+	});
+});
+
+describe("backgroundTaskClause", () =>
+{
+	it('reads upstream\'s "Background {noun} {started|completed}", and the bare noun for failed and stopped', () =>
+	{
+		const cases: [NoticeKind, NoticeEntry["status"]][] = [
+			["shell", "completed"],
+			["agent", "completed"],
+			["workflow", "completed"],
+			["monitor", "completed"],
+			["task", "completed"],
+			["agent", "running"],
+			["shell", "failed"],
+			["agent", "stopped"],
+		];
+		expect(cases.map(([kind, status]) => backgroundTaskClause(kind, status))).toStrictEqual([
+			"Background command completed",
+			"Background agent completed",
+			"Background workflow completed",
+			"Background monitor completed",
+			"Background task completed",
+			"Background agent started",
+			"Background command",
+			"Background agent",
 		]);
 	});
 });

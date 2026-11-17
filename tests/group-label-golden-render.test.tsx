@@ -703,8 +703,8 @@ describe("background task stopped row", () =>
 				notice: "Claude Code notice",
 			},
 			{
-				status: "Background task stopped·You are doing a behaviour-preserving refactor of a...",
-				secondary: [true, true, true],
+				status: "Background task stopped· You are doing a behaviour-preserving refactor of a...",
+				secondary: [true, true],
 				precedesStatus: false,
 				footer: true,
 				disclosures: 0,

@@ -9,6 +9,7 @@ import
 import type {BackgroundTaskStatus} from "../lib/background-tasks";
 import {type TaskDescriptionSegment, taskDescriptionSegments} from "../lib/task-description-segments";
 import {formatElapsed} from "../lib/elapsed-format";
+import {taskFailureReason} from "../lib/task-failure-reason";
 import {useBackgroundTasksOpener} from "./background-tasks-opener-context";
 
 /** One background task event a task-event row draws. */
@@ -18,6 +19,8 @@ export interface TaskEvent
 	status: BackgroundTaskStatus;
 	kind: NoticeKind;
 	description: string;
+	/** The notification's `<summary>`, which carries a failed task's reason. */
+	summary?: string;
 	durationMs: number | null;
 	/** The task's `<task-type>`, which decides whether its description gets artifact links. */
 	taskType: string | null;
@@ -59,11 +62,25 @@ function singleEventSegments(event: TaskEvent): TaskDescriptionSegment[] | undef
 	return event.phrase === undefined ? taskDescriptionSegments(event.description, event.taskType) : undefined;
 }
 
-/** Upstream's `YX` settled single row: label, "·", description, then "· took {elapsed}". */
+/**
+ * Upstream's `Fj` settled single row in its LTR form: label, then one truncating "· {description}"
+ * span titled with the description and, for a failed task, `": {reason}"`; then "· took {elapsed}".
+ */
 function SingleEvent({event}: {event: TaskEvent})
 {
 	const failed = event.status === "failed";
 	const segments = singleEventSegments(event);
+	const reason =
+		segments === undefined
+			? taskFailureReason(
+					{
+						status: event.status,
+						summary: event.summary,
+						description: event.description,
+					},
+				)
+			: undefined;
+	const text = reason === undefined ? event.description : `${event.description}: ${reason}`;
 	return (
 		<>
 			{event.phrase === undefined ? (
@@ -72,16 +89,13 @@ function SingleEvent({event}: {event: TaskEvent})
 						Background {NOTICE_NOUNS[event.kind][0]} {event.status}
 					</span>
 					{event.description !== "" && (
-						<>
-							<span className={`text-body ${INK} shrink-0`}>·</span>
-							<span className={`text-body ${INK} min-w-0 truncate`}>
-								{segments === undefined ? (
-									event.description
-								) : (
-									<TaskDescriptionLinks segments={segments} />
-								)}
-							</span>
-						</>
+						<span
+							title={segments === undefined ? text : undefined}
+							className={`text-body ${INK} min-w-0 truncate`}
+						>
+							{"· "}
+							{segments === undefined ? text : <TaskDescriptionLinks segments={segments} />}
+						</span>
 					)}
 				</>
 			) : (

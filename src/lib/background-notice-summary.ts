@@ -56,3 +56,21 @@ export function backgroundNoticeSummary(entries: readonly NoticeEntry[]): Notice
 	}
 	return parts;
 }
+
+/**
+ * Upstream's lone task step clause: "Background {noun} started" while running, "… completed" once
+ * done, and the bare "Background {noun}" for failed and stopped, whose outcome word follows.
+ */
+export function backgroundTaskClause(kind: NoticeKind, status: BackgroundTaskStatus): string
+{
+	const noun = `Background ${NOTICE_NOUNS[kind][0]}`;
+	switch (status)
+	{
+		case "running":
+			return `${noun} started`;
+		case "completed":
+			return `${noun} completed`;
+		default:
+			return noun;
+	}
+}

@@ -13018,7 +13018,7 @@
 		"line": 1126,
 		"upstream": [
 			"prose",
-			"status: Background command completed·Commit and run git test on HEAD",
+			"status: Background command completed· Commit and run git test on HEAD",
 			"message from subagent",
 			"status: Verified task commit, gate HEAD, get next task"
 		],
@@ -13567,7 +13567,7 @@
 		"line": 933,
 		"upstream": [
 			"prose",
-			"status: Background command completed·Commit change and run git-test on HEAD",
+			"status: Background command completed· Commit change and run git-test on HEAD",
 			"message from subagent",
 			"status: Verified task commit, gate HEAD, get next task"
 		],
@@ -18547,7 +18547,7 @@
 		"upstream": [
 			"prose",
 			"prose",
-			"status: Background task stopped·You are doing a behaviour-preserving refactor of a...",
+			"status: Background task stopped· You are doing a behaviour-preserving refactor of a...",
 			"user: Background agent \"You are doing a behaviour-preserving refactor of a...\" was stopped by the user."
 		],
 		"records": [

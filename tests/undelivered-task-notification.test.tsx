@@ -155,7 +155,7 @@ describe("undelivered background-task notifications", () =>
 			),
 		]);
 
-		expect(taskEventRows(container)).toStrictEqual(["Background command stopped·Wait for test-branch to finish"]);
+		expect(taskEventRows(container)).toStrictEqual(["Background command stopped· Wait for test-branch to finish"]);
 	});
 
 	it("collapses two or more undelivered notifications in one slot into upstream's single summary row", () =>
@@ -245,7 +245,7 @@ describe("undelivered background-task notifications", () =>
 			},
 		).toStrictEqual(
 			{
-				rows: ["Background command completed·Run git test on every branch commit"],
+				rows: ["Background command completed· Run git test on every branch commit"],
 				order: ["Waiting on the teammate.", "Background command completed"],
 			},
 		);
@@ -278,7 +278,7 @@ describe("undelivered background-task notifications", () =>
 				container.querySelectorAll("[data-task-event-row] [data-turn-status]"),
 				(status) => status.textContent,
 			),
-		).toStrictEqual(["Background command completed·Wait for test-branch runs to finish"]);
+		).toStrictEqual(["Background command completed· Wait for test-branch runs to finish"]);
 	});
 
 	it("draws no status row for a notification the queue removed, or one whose launch is in this transcript", () =>
@@ -369,13 +369,20 @@ describe("undelivered background-task notifications", () =>
 		);
 	});
 
-	it("draws a single failed command with its label in danger ink", () =>
+	it('draws a single failed command with its label in danger ink and upstream\'s LTR "· {description}: {reason}" span titled with the same text', () =>
 	{
 		const container = renderRecords([
 			reply,
-			enqueue(notification("toolu_elsewhere1", "failed", 'Background command "Fetch" failed with exit code 1')),
+			enqueue(
+				notification(
+					"toolu_elsewhere1",
+					"failed",
+					'Background command "Stream Worker logs to a scratch file" failed with exit code 144',
+				),
+			),
 		]);
 
+		const row = container.querySelector("[data-task-event-row]");
 		const spans = container.querySelectorAll("[data-turn-status-marker] > * > span > span");
 		expect(
 			{
@@ -384,27 +391,40 @@ describe("undelivered background-task notifications", () =>
 				{
 					text: span.textContent,
 					className: span.className,
+					title: span.getAttribute("title"),
 				})),
+				dir: row?.querySelectorAll("[dir]").length,
 			},
 		).toStrictEqual(
 			{
-				rows: ["Background command failed·Fetch"],
+				rows: ["Background command failed· Stream Worker logs to a scratch file: exit code 144"],
 				spans: [
 					{
 						text: "Background command failed",
 						className: "text-body shrink-0 text-danger-ink",
+						title: null,
 					},
 					{
-						text: "·",
-						className: "text-body text-secondary group-hover/tool:text-primary shrink-0",
-					},
-					{
-						text: "Fetch",
+						text: "· Stream Worker logs to a scratch file: exit code 144",
 						className: "text-body text-secondary group-hover/tool:text-primary min-w-0 truncate",
+						title: "Stream Worker logs to a scratch file: exit code 144",
 					},
 				],
+				dir: 0,
 			},
 		);
+	});
+
+	it("appends a failed agent's reason after its description", () =>
+	{
+		const container = renderRecords([
+			reply,
+			enqueue(notification("toolu_elsewhere1", "failed", 'Agent "Review the fabricated diff" failed: stalled')),
+		]);
+
+		expect(taskEventRows(container)).toStrictEqual([
+			"Background agent failed· Review the fabricated diff: stalled",
+		]);
 	});
 
 	it("ends a single completed command with its duration, as upstream's took span", () =>
@@ -431,7 +451,7 @@ describe("undelivered background-task notifications", () =>
 			},
 		).toStrictEqual(
 			{
-				rows: ["Background command completed·Build· took 12s"],
+				rows: ["Background command completed· Build· took 12s"],
 				took: "text-body text-secondary group-hover/tool:text-primary shrink-0 whitespace-nowrap tabular-nums",
 			},
 		);
@@ -444,7 +464,17 @@ describe("undelivered background-task notifications", () =>
 			enqueue(notification("toolu_elsewhere1", "completed", 'Agent "Review the diff" completed')),
 		]);
 
-		expect(taskEventRows(container)).toStrictEqual(["Background agent completed·Review the diff"]);
+		expect(
+			{
+				rows: taskEventRows(container),
+				title: container.querySelector("[data-task-event-row] [title]")?.getAttribute("title"),
+			},
+		).toStrictEqual(
+			{
+				rows: ["Background agent completed· Review the diff"],
+				title: "Review the diff",
+			},
+		);
 	});
 
 	it("draws the row as upstream's keeps-pin button that opens Background tasks on its first task's Finished entry", () =>
@@ -551,6 +581,7 @@ describe("undelivered background-task notifications", () =>
 					artifact: link.getAttribute("data-artifact-link"),
 				})),
 				text: row?.textContent,
+				titles: row?.querySelectorAll("[title]").length,
 			},
 		).toStrictEqual(
 			{
@@ -563,7 +594,8 @@ describe("undelivered background-task notifications", () =>
 						artifact: "",
 					},
 				],
-				text: "Background agent completed·Publish artifact",
+				text: "Background agent completed· Publish artifact",
+				titles: 0,
 			},
 		);
 	});
