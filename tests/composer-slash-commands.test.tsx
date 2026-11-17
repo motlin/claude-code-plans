@@ -97,6 +97,16 @@ function rows():
 	}));
 }
 
+function slashMenu(): HTMLElement | null
+{
+	return screen.queryByRole(
+		"menu",
+		{
+			name: "Slash commands",
+		},
+	);
+}
+
 describe("Composer slash commands", () =>
 {
 	it("opens every command with the first row highlighted when the text starts with /", () =>
@@ -1362,6 +1372,255 @@ describe("Composer slash commands", () =>
 				},
 			),
 		).toBeNull();
+	});
+
+	it("keeps ranking the head after a trailing space, bolding the trimmed match", () =>
+	{
+		const {textarea} = setup();
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/mo ",
+				},
+			},
+		);
+
+		expect(
+			{
+				rows: rows(),
+				bold: [...document.querySelectorAll("[role=menuitem] .font-semibold")].map((span) => span.textContent),
+			},
+		).toStrictEqual(
+			{
+				rows: [
+					{
+						name: "model",
+						highlighted: true,
+					},
+					{
+						name: "plan",
+						highlighted: false,
+					},
+				],
+				bold: ["mo"],
+			},
+		);
+	});
+
+	it("accepts the active row with Enter after a trailing space, without sending", () =>
+	{
+		const {textarea, onSend} = setup();
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/mo ",
+				},
+			},
+		);
+
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
+
+		expect(
+			{
+				value: textarea.value,
+				menu: slashMenu(),
+				hint: screen.getByTestId("slash-argument-hint").textContent,
+				sent: onSend.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				value: "/model ",
+				menu: null,
+				hint: "[model]",
+				sent: [],
+			},
+		);
+	});
+
+	it("accepts with Tab after a trailing space", () =>
+	{
+		const {textarea} = setup();
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/pl ",
+				},
+			},
+		);
+
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Tab",
+			},
+		);
+
+		expect(textarea.value).toBe("/plan ");
+	});
+
+	it("closes on a second word or an exact head, and reopens when the argument is deleted", () =>
+	{
+		const {textarea} = setup();
+		const after = (value: string) =>
+		{
+			fireEvent.change(
+				textarea,
+				{
+					target:
+					{
+						value,
+					},
+				},
+			);
+			return slashMenu() === null ? null : rows();
+		};
+
+		expect([after("/mo x"), after("/mo "), after("/model ")]).toStrictEqual([
+			null,
+			[
+				{
+					name: "model",
+					highlighted: true,
+				},
+				{
+					name: "plan",
+					highlighted: false,
+				},
+			],
+			null,
+		]);
+	});
+
+	it("keeps an Escape dismissal through a trailing space and Backspace", () =>
+	{
+		const {textarea} = setup();
+		const after = (value: string) =>
+		{
+			fireEvent.change(
+				textarea,
+				{
+					target:
+					{
+						value,
+					},
+				},
+			);
+			return slashMenu();
+		};
+		after("/mo");
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Escape",
+			},
+		);
+		const afterEscape = slashMenu();
+
+		expect([afterEscape, after("/mo "), after("/mo")]).toStrictEqual([null, null, null]);
+	});
+
+	it("keeps the menu closed for a mid-message slash followed by a symbol, so Enter sends", () =>
+	{
+		const {textarea, onSend} = setup(undefined, [
+			...COMMANDS,
+			{
+				name: "add-dir",
+				description: "Add a working directory",
+				source: "builtin",
+			},
+		]);
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "hello /-",
+				},
+			},
+		);
+		const menu = slashMenu();
+
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
+
+		expect(
+			{
+				menu,
+				sent: onSend.mock.calls,
+			},
+		).toStrictEqual(
+			{
+				menu: null,
+				sent: [["hello /-", {}]],
+			},
+		);
+	});
+
+	it("treats a slash after leading whitespace or a blank line as message start, opening selected", () =>
+	{
+		const {textarea} = setup();
+		const after = (value: string) =>
+		{
+			fireEvent.change(
+				textarea,
+				{
+					target:
+					{
+						value,
+					},
+				},
+			);
+			return rows();
+		};
+		const bare = after("/");
+		const indented = after("  /");
+		const blankLine = after("\n/mo");
+		after("  /mo");
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
+
+		expect(
+			{
+				indented,
+				blankLine,
+				accepted: textarea.value,
+			},
+		).toStrictEqual(
+			{
+				indented: bare,
+				blankLine: [
+					{
+						name: "model",
+						highlighted: true,
+					},
+					{
+						name: "plan",
+						highlighted: false,
+					},
+				],
+				accepted: "  /model ",
+			},
+		);
+		expect(bare[0]?.highlighted).toBe(true);
 	});
 
 	const MANY: SlashCommand[] = Array.from(

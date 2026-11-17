@@ -558,6 +558,53 @@ describe("filterSlashCommands", () =>
 		expect(filterSlashCommands(COMMANDS, "zzz")).toStrictEqual([]);
 	});
 
+	it("ranks the trimmed head while only whitespace follows it, and closes on an argument or an exact head (upstream spaceEndsCommand)", () =>
+	{
+		const cmds: SlashCommand[] = [
+			...COMMANDS,
+			{
+				name: "config",
+				description: "",
+				source: "builtin",
+				aliases: ["settings"],
+			},
+		];
+		const withPluginLabel: SlashCommand[] = [
+			...cmds,
+			{
+				name: "git:commit",
+				pluginName: "git",
+				description: "",
+				source: "plugin-skill",
+			},
+		];
+		const names = (list: readonly SlashCommand[], query: string) =>
+			filterSlashCommands(list, query).map((c) => c.name);
+		expect(
+			{
+				trailing: names(cmds, "mo "),
+				trailingRun: names(cmds, "mo   "),
+				exactName: names(cmds, "model "),
+				exactAlias: names(cmds, "settings "),
+				argument: names(cmds, "mo x"),
+				exactPluginName: names(cmds, "git:commit "),
+				exactPluginLabel: names(withPluginLabel, "commit "),
+				tooLong: names(cmds, `${"x".repeat(48)}   `),
+			},
+		).toStrictEqual(
+			{
+				trailing: ["model"],
+				trailingRun: ["model"],
+				exactName: [],
+				exactAlias: [],
+				argument: [],
+				exactPluginName: [],
+				exactPluginLabel: [],
+				tooLong: [],
+			},
+		);
+	});
+
 	it("ranks upstream's tiers: exact name, exact alias, name prefix, alias prefix, contains, then description", () =>
 	{
 		const commands: SlashCommand[] = [
@@ -736,6 +783,20 @@ describe("plugin skills", () =>
 
 describe("highlightMatches", () =>
 {
+	it("bolds the trimmed query, as upstream's menu context trims resetKey", () =>
+	{
+		expect(highlightMatches("model", "mo ")).toStrictEqual([
+			{
+				text: "mo",
+				match: true,
+			},
+			{
+				text: "del",
+				match: false,
+			},
+		]);
+	});
+
 	it("bolds only the first case-insensitive match", () =>
 	{
 		expect([
@@ -822,12 +883,168 @@ describe("slashTrigger", () =>
 				query: "mo",
 				atStart: true,
 			},
+			{
+				start: 0,
+				query: "model ",
+				atStart: true,
+			},
+			null,
+			{
+				start: 0,
+				query: "mo",
+				atStart: true,
+			},
+		]);
+	});
+
+	it("keeps spaces in the query as upstream's allowSpaces trigger does, stopping before a later ` /`", () =>
+	{
+		expect([
+			at("/mo "),
+			at("/mo   "),
+			at("/mo x"),
+			at("hello /mo "),
+			at("/mo /pl"),
+			at("/ "),
+			at("/ mo"),
+			at("/mo\n"),
+			slashTrigger("/mo x", 3),
+		]).toStrictEqual([
+			{
+				start: 0,
+				query: "mo ",
+				atStart: true,
+			},
+			{
+				start: 0,
+				query: "mo   ",
+				atStart: true,
+			},
+			{
+				start: 0,
+				query: "mo x",
+				atStart: true,
+			},
+			{
+				start: 6,
+				query: "mo ",
+				atStart: false,
+			},
+			{
+				start: 4,
+				query: "pl",
+				atStart: false,
+			},
+			null,
 			null,
 			null,
 			{
 				start: 0,
 				query: "mo",
 				atStart: true,
+			},
+		]);
+	});
+
+	it("opens mid-message only when the query starts with a letter, number or underscore (upstream midMessageNeedsName)", () =>
+	{
+		expect([
+			at("hi /-"),
+			at("hi /-x"),
+			at("hi /."),
+			at("hi /("),
+			at("hi /😀"),
+			at("line one\n/-"),
+			at("hi /é"),
+			at("hi /Ж"),
+			at("hi /_x"),
+			at("hi /1"),
+			at("hi /mo"),
+		]).toStrictEqual([
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			{
+				start: 3,
+				query: "é",
+				atStart: false,
+			},
+			{
+				start: 3,
+				query: "Ж",
+				atStart: false,
+			},
+			{
+				start: 3,
+				query: "_x",
+				atStart: false,
+			},
+			{
+				start: 3,
+				query: "1",
+				atStart: false,
+			},
+			{
+				start: 3,
+				query: "mo",
+				atStart: false,
+			},
+		]);
+	});
+
+	it("opens on any query at message start, which ignores leading whitespace and blank lines (upstream Pl/$5)", () =>
+	{
+		expect([at("/-"), at("/."), at("  /"), at("  /-"), at("  /mo"), at("\n/"), at("\n\n/mo")]).toStrictEqual([
+			{
+				start: 0,
+				query: "-",
+				atStart: true,
+			},
+			{
+				start: 0,
+				query: ".",
+				atStart: true,
+			},
+			{
+				start: 2,
+				query: "",
+				atStart: true,
+			},
+			{
+				start: 2,
+				query: "-",
+				atStart: true,
+			},
+			{
+				start: 2,
+				query: "mo",
+				atStart: true,
+			},
+			{
+				start: 1,
+				query: "",
+				atStart: true,
+			},
+			{
+				start: 2,
+				query: "mo",
+				atStart: true,
+			},
+		]);
+	});
+
+	it("opens only after a plain space or a line start (tiptap allowedPrefixes)", () =>
+	{
+		expect([at("hi\u00a0/mo"), at("hi\t/mo"), at("hi /mo")]).toStrictEqual([
+			null,
+			null,
+			{
+				start: 3,
+				query: "mo",
+				atStart: false,
 			},
 		]);
 	});

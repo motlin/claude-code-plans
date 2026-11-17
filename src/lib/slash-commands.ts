@@ -493,12 +493,26 @@ function slashRank(command: SlashCommand, needle: string): number | null
  * Empty query: every command in list order, as upstream does. Otherwise every command whose name, alias or description
  * contains the query, ranked exact name > exact alias > name prefix > alias prefix >
  * name or alias contains > description contains, keeping list order within a rank.
+ * Upstream `tG` with `spaceEndsCommand` (shared-33): a trailing space keeps ranking the head; a second word or an
+ * exact name/alias head closes.
  */
 export function filterSlashCommands(commands: readonly SlashCommand[], query: string): SlashCommand[]
 {
 	if (query === "") return [...commands];
 	if (query.length > MAX_SLASH_QUERY_LENGTH) return [];
-	const needle = query.toLowerCase();
+	const needle = query.trim().toLowerCase();
+	if (needle === "") return [];
+	const head = /^(\S+)\s+(\S)?/.exec(query.trimStart().toLowerCase());
+	if (head !== null)
+	{
+		const word = head[1] ?? "";
+		const exactHead = commands.some((command) =>
+		{
+			const rank = slashRank(command, word);
+			return rank === 0 || rank === 1;
+		});
+		if (head[2] !== undefined || exactHead) return [];
+	}
 	const ranks: SlashCommand[][] = [[], [], [], [], [], []];
 	for (const command of commands)
 	{
@@ -511,8 +525,8 @@ export function filterSlashCommands(commands: readonly SlashCommand[], query: st
 /** The first alias that starts with the query, which upstream appends to the row as `(alias)`. */
 export function matchingAlias(command: SlashCommand, query: string): string | undefined
 {
-	if (query === "") return undefined;
-	const needle = query.toLowerCase();
+	const needle = query.trim().toLowerCase();
+	if (needle === "") return undefined;
 	return command.aliases?.find((alias) => alias.toLowerCase().startsWith(needle));
 }
 
@@ -522,9 +536,13 @@ export interface HighlightSegment
 	match: boolean;
 }
 
-/** Splits `text` around the first case-insensitive occurrence of `query`, as upstream bolds only the first match. */
-export function highlightMatches(text: string, query: string): HighlightSegment[]
+/**
+ * Splits `text` around the first case-insensitive occurrence of the trimmed `query`, as upstream bolds only the first
+ * match of its menu context's trimmed query (`Nb`).
+ */
+export function highlightMatches(text: string, rawQuery: string): HighlightSegment[]
 {
+	const query = rawQuery.trim();
 	const index = query === "" ? -1 : text.toLowerCase().indexOf(query.toLowerCase());
 	if (index === -1)
 		return [
@@ -563,23 +581,31 @@ export interface SlashTrigger
 	/** Index of the `/` in the prompt. */
 	start: number;
 	query: string;
-	/** True only at the very start of the prompt, where upstream opens with row 0 highlighted. */
+	/** True at message start (only whitespace before the `/`), where upstream opens with row 0 highlighted. */
 	atStart: boolean;
 }
 
 /**
- * The `/query` token ending at the caret, or null. Upstream opens on a `/` at the start of the
- * prompt (selected) or after whitespace (unselected, and only once the query is non-empty).
+ * The `/query` token ending at the caret, or null. Upstream's tiptap trigger allows spaces: `/mo ` keeps the token
+ * open and `filterSlashCommands` decides whether it still ranks. Upstream `allow` (shared-9 `Zr`,
+ * `midMessageNeedsName` live): mid-message the query must start with `[\p{L}\p{N}_]`; message start ignores leading
+ * whitespace (`Pl`/`yl`) and opens selected (`$5`). Only a plain space or a line start may precede the `/` (tiptap
+ * `allowedPrefixes:[" "]`), and a query may not start with whitespace or span a line.
  */
 export function slashTrigger(prompt: string, caret: number): SlashTrigger | null
 {
 	if (/^\S/.test(prompt.slice(caret))) return null;
-	const match = /(?:^|\s)\/([^\s/]*)$/.exec(prompt.slice(0, caret));
+	/*
+	 * Upstream keeps a `/` inside the query (`/mo/` → `mo/`), but its matcher finds nothing for one, so excluding `/`
+	 * gives the same menu and keeps `/Users/…` paths quiet.
+	 */
+	const match = /(?:^|[ \n])\/([^\n/]*)$/.exec(prompt.slice(0, caret));
 	if (match === null) return null;
 	const query = match[1] ?? "";
+	if (/^\s/.test(query)) return null;
 	const start = caret - query.length - 1;
-	const atStart = start === 0;
-	if (!atStart && query === "") return null;
+	const atStart = !/[^\s\u200b-\u200d\u2060]/.test(prompt.slice(0, start));
+	if (!atStart && !/^[\p{L}\p{N}_]/u.test(query)) return null;
 	return {
 		start,
 		query,

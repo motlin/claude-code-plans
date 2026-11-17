@@ -1545,7 +1545,9 @@ export function Composer({
 
 	// Upstream disables the "/" and "@" suggestions in bash mode.
 	const slash = bashMode ? null : slashTrigger(prompt, caret);
-	const query = slash?.query ?? null;
+	// The menu bolds and gates on the trimmed query, as upstream's menu context trims `resetKey` (`Nb`); ranking and
+	// `slashKey` keep the raw query so a trailing space still resets the highlight and can close on an exact head.
+	const query = slash?.query.trim() ?? null;
 	// Esc dismisses the whole `/` trigger, as upstream does: typing more keeps it closed until the token is gone.
 	const [slashDismissed, setSlashDismissed] = useState(false);
 	if (slashDismissed && slash === null) setSlashDismissed(false);
