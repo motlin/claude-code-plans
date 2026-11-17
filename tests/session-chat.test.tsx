@@ -1074,7 +1074,7 @@ describe("SessionChat grouped tool card", () =>
 });
 
 // Matches both the disclosure row and the bare non-expanding row, whose class
-// list stops before `cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`.
+// list stops before `cursor-pointer` and the row focus ring.
 const TOOL_ROW = /group\/tool[^"]*"[^>]*>([\s\S]*?)<\/div>/g;
 
 /** Class of a tool row's argument span, e.g. the filename on a Read row. */
@@ -1668,7 +1668,7 @@ function rowHeaderChildren(records: unknown[]):
 	}));
 }
 
-const MUTED_LABEL = "text-body text-secondary group-hover/tool:text-secondary";
+const MUTED_LABEL = "text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary";
 const FAILED_SUFFIX =
 {
 	text: "Failed",
@@ -1682,7 +1682,8 @@ const STOPPED_SUFFIX =
 const ROW_CHEVRON =
 {
 	text: "",
-	className: "shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary comfortable:[&_svg]:size-4",
+	className:
+		"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary comfortable:[&_svg]:size-4",
 };
 
 describe("SessionChat tool row permission decision", () =>
@@ -2482,7 +2483,7 @@ describe("SessionChat Skill row label", () =>
 				spans: [
 					"shrink-0 text-body text-secondary",
 					"truncate min-w-0 text-body text-primary",
-					"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
+					"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 				],
 				name: true,
 			},
@@ -2516,10 +2517,10 @@ describe("SessionChat Skill row label", () =>
 			{
 				text: ["Running skill", "/nextdns:report", "Failed", ""],
 				spans: [
-					"shrink-0 text-body text-secondary group-hover/tool:text-secondary",
+					"shrink-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
 					"truncate min-w-0 text-body text-secondary",
 					"shrink-0 text-body text-danger",
-					"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
+					"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 				],
 				code: false,
 				oldLabel: false,
@@ -2586,22 +2587,40 @@ describe("SessionChat failed tool row label text", () =>
 		).toStrictEqual(
 			{
 				failedEdit: [
-					["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Editing"],
+					[
+						"shrink-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
+						"Editing",
+					],
 					["text-body text-primary truncate min-w-0", "cache.ts"],
 					["shrink-0 text-body text-danger", "Failed"],
 				],
 				okEdit: [
-					["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Edited"],
+					[
+						"shrink-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
+						"Edited",
+					],
 					["text-body text-primary truncate min-w-0", "cache.ts"],
 				],
 				failedGrep: [
-					["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Searching"],
-					["truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary", "alice"],
+					[
+						"shrink-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
+						"Searching",
+					],
+					[
+						"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
+						"alice",
+					],
 					["shrink-0 text-body text-danger", "Failed"],
 				],
 				okGrep: [
-					["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Searched"],
-					["truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary", "alice"],
+					[
+						"shrink-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
+						"Searched",
+					],
+					[
+						"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
+						"alice",
+					],
 				],
 			},
 		);
@@ -2644,14 +2663,14 @@ describe("SessionChat failed tool row label text", () =>
 			{
 				failed: [
 					[
-						"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
+						"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
 						"Install dependencies and build",
 					],
 					["shrink-0 text-body text-danger", "Failed"],
 				],
 				ok: [
 					[
-						"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
+						"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
 						"Installed dependencies and built",
 					],
 				],
@@ -2675,8 +2694,14 @@ describe("SessionChat failed tool row label text", () =>
 		);
 
 		expect(toolRowLabelSpans(html)).toStrictEqual([
-			["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Using sentry: search issues"],
-			["truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary", "unhandled"],
+			[
+				"shrink-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
+				"Using sentry: search issues",
+			],
+			[
+				"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
+				"unhandled",
+			],
 			["shrink-0 text-body text-danger", "Failed"],
 		]);
 	});
@@ -2684,7 +2709,8 @@ describe("SessionChat failed tool row label text", () =>
 
 describe("SessionChat file-param tool row argument", () =>
 {
-	const VERB = "shrink-0 text-body text-secondary group-hover/tool:text-secondary";
+	const VERB =
+		"shrink-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary";
 
 	it("sets a file argument in the sans body face, matching upstream Read/Edit rows", () =>
 	{
@@ -2736,7 +2762,8 @@ describe("SessionChat file-param tool row argument", () =>
 	// Upstream labels a partial read with the line range beside the filename
 	// ("Read archive-completed.ts (220-239)"), in its own secondary span, so a
 	// slice is distinguishable from a whole-file read.
-	const RANGE = "text-body text-secondary group-hover/tool:text-secondary truncate min-w-0";
+	const RANGE =
+		"text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary truncate min-w-0";
 
 	function readRow(input: unknown): [string, string][]
 	{
@@ -2872,8 +2899,10 @@ describe("SessionChat file-param tool row argument", () =>
 
 describe("SessionChat Agent row label", () =>
 {
-	const VERB = "shrink-0 text-body text-secondary group-hover/tool:text-secondary";
-	const DESCRIPTION = "truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary";
+	const VERB =
+		"shrink-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary";
+	const DESCRIPTION =
+		"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary";
 
 	const agentRecords = toolCallRecords([
 		{
@@ -3075,7 +3104,10 @@ describe("SessionChat Agent row opening the Subagent pane", () =>
 				tabIndex: "0",
 				ariaExpanded: null,
 				spans: [
-					["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Ran agent"],
+					[
+						"shrink-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
+						"Ran agent",
+					],
 					[`truncate min-w-0 text-body ${AGENT_META_UNDERLINE} text-primary`, "Commit lazy allocation fixup"],
 					[MODEL_BADGE_CLASS, "Haiku 4.5"],
 				],
@@ -3146,7 +3178,7 @@ describe("SessionChat Agent row opening the Subagent pane", () =>
 			state: "failed",
 			records: toolResultRecords(AGENT_CALL, "Fabricated failure", true),
 			expectedClasses: [
-				"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
+				"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
 				"shrink-0 text-body text-danger",
 			],
 		},
@@ -3222,7 +3254,8 @@ describe("SessionChat Agent row opening the Subagent pane", () =>
 
 describe("SessionChat Bash row label", () =>
 {
-	const PHRASE = "truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary";
+	const PHRASE =
+		"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary";
 
 	const bashLabel = (input: Record<string, unknown>) =>
 		toolRowLabelSpans(
@@ -3340,7 +3373,10 @@ describe("SessionChat Bash row label", () =>
 				),
 			),
 		).toStrictEqual([
-			["shrink-0 text-body text-secondary group-hover/tool:text-secondary", "Running"],
+			[
+				"shrink-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
+				"Running",
+			],
 			[PHRASE, "pnpm run build"],
 			["shrink-0 text-body text-danger", "Failed"],
 		]);
@@ -3349,8 +3385,10 @@ describe("SessionChat Bash row label", () =>
 
 describe("SessionChat tool row verbs", () =>
 {
-	const SECONDARY = "shrink-0 text-body text-secondary group-hover/tool:text-secondary";
-	const SECONDARY_PARAM = "truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary";
+	const SECONDARY =
+		"shrink-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary";
+	const SECONDARY_PARAM =
+		"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary";
 
 	it("labels every row with an upstream verb phrase instead of the raw tool name", () =>
 	{
@@ -3515,8 +3553,10 @@ describe("SessionChat tool row verbs", () =>
 
 describe("SessionChat tool rows labelled from the tool result", () =>
 {
-	const SECONDARY = "shrink-0 text-body text-secondary group-hover/tool:text-secondary";
-	const SECONDARY_PARAM = "truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary";
+	const SECONDARY =
+		"shrink-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary";
+	const SECONDARY_PARAM =
+		"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary";
 
 	const withToolUseResult = (
 		call:
@@ -3806,30 +3846,30 @@ describe("SessionChat tool row hover treatment", () =>
 	it("mutes a collapsed successful row and lifts its verb, param and chevron to secondary on group hover", () =>
 	{
 		expect(rowHeaderSpanClasses(renderTranscript(failedToolCallRecords(false)))).toStrictEqual([
-			"shrink-0 text-body text-secondary group-hover/tool:text-secondary",
-			"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
-			"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
+			"shrink-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
+			"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
+			"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 		]);
 	});
 
 	it('lifts a failed row\'s label on hover like any row while its "Failed" stays danger red', () =>
 	{
 		expect(rowHeaderSpanClasses(renderTranscript(failedToolCallRecords(true)))).toStrictEqual([
-			"shrink-0 text-body text-secondary group-hover/tool:text-secondary",
-			"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary",
+			"shrink-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
+			"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
 			"shrink-0 text-body text-danger",
-			"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
+			"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 		]);
 	});
 
 	it("colors the collapsed group summary muted from its wrapper so the whole label lifts on hover", () =>
 	{
 		expect(rowHeaderSpanClasses(renderTranscript(groupedToolCallRecords()))).toStrictEqual([
-			"inline-flex items-center gap-g3 min-w-0 text-secondary group-hover/tool:text-secondary",
+			"inline-flex items-center gap-g3 min-w-0 text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary group-has-[&gt;[data-cds-row-toggle]:focus-visible]/tool:text-secondary",
 			"block min-w-0 truncate text-body",
 			"text-body",
 			"",
-			"shrink-0 text-secondary group-hover/tool:text-secondary comfortable:[&amp;_svg]:size-4",
+			"shrink-0 text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary group-has-[&gt;[data-cds-row-toggle]:focus-visible]/tool:text-secondary comfortable:[&amp;_svg]:size-4",
 		]);
 	});
 });
@@ -4003,10 +4043,9 @@ describe("SessionChat non-expanding tool rows", () =>
 });
 
 // ---------------------------------------------------------------------------
-// Focus treatment: upstream claude.ai/code gives every disclosure row the
-// `outline-none hide-focus-ring focus-visible:ring-focus` trio -- a transparent outline
-// reserved by `hide-focus-ring`, coloured in by `focus-visible:ring-focus`.
-// See .llm/ui-sync/upstream/code-rich-exemplars.dict.json.
+// Focus treatment: upstream claude.ai/code rings a TurnStatus row with a 1px inset
+// --cds-fill-accent hairline (ROW_FOCUS below); other disclosures keep the
+// `outline-none hide-focus-ring focus-visible:ring-focus` trio.
 // ---------------------------------------------------------------------------
 
 /** Class list of the one disclosure control in a rendered transcript. */
@@ -4080,6 +4119,11 @@ function groupedBashRecords(second: "ok" | "error" | "pending"): unknown[]
 
 const STATUS_ROW_LAYOUT = `min-w-0 ${TURN_STATUS_ROW_GEOMETRY} py-[calc((var(--cds-h-control)_-_1lh)_/_2)]`;
 const MARKED_ROW_MOTION = "transition-[margin-inline-start] duration-200 ease-out motion-reduce:transition-none";
+/** Upstream's TurnStatus row ring: a 1px inset --cds-fill-accent hairline in the row's density radius, kept as a transparent outline under forced colors. */
+const ROW_FOCUS =
+	"rounded outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:outline-offset-[-2px] focus-visible:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent)]";
+/** The ring fading in over upstream's --cds-dur-fast; a marked row's margin ease takes the transition instead. */
+const ROW_FOCUS_FADE = `${ROW_FOCUS} transition-shadow duration-fast`;
 
 describe("SessionChat grouped header height", () =>
 {
@@ -4093,9 +4137,9 @@ describe("SessionChat grouped header height", () =>
 			},
 		).toStrictEqual(
 			{
-				completed: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:rounded-r6`,
-				failed: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:rounded-r6`,
-				running: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:rounded-r6 ${MARKED_ROW_MOTION}`,
+				completed: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer ${ROW_FOCUS_FADE}`,
+				failed: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer ${ROW_FOCUS_FADE}`,
+				running: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer ${ROW_FOCUS} ${MARKED_ROW_MOTION}`,
 			},
 		);
 	});
@@ -4120,7 +4164,8 @@ describe("SessionChat standalone status row layout", () =>
 			className: frame.querySelector(".group\\/tool")!.className,
 		};
 	};
-	const rowClass = `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:rounded-r6 comfortable:gap-g6`;
+	const rowClass = (focus: string) =>
+		`relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer ${focus} comfortable:gap-g6`;
 
 	it("draws failed and running standalone rows in the completed row's 24px padded layout, easing the running one's start margin, as upstream does", () =>
 	{
@@ -4137,17 +4182,17 @@ describe("SessionChat standalone status row layout", () =>
 				completed:
 				{
 					marker: true,
-					className: rowClass,
+					className: rowClass(ROW_FOCUS_FADE),
 				},
 				failed:
 				{
 					marker: true,
-					className: rowClass,
+					className: rowClass(ROW_FOCUS_FADE),
 				},
 				running:
 				{
 					marker: true,
-					className: `${rowClass} ${MARKED_ROW_MOTION}`,
+					className: `${rowClass(ROW_FOCUS)} ${MARKED_ROW_MOTION}`,
 				},
 			},
 		);
@@ -4161,8 +4206,8 @@ describe("SessionChat standalone status row layout", () =>
 		expect(
 			[...container.querySelectorAll<HTMLElement>('[role="button"][aria-expanded]')].map((row) => row.className),
 		).toStrictEqual([
-			"relative group/tool flex items-center max-w-full self-start py-0 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3",
-			"relative group/tool flex items-center max-w-full self-start py-0 gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3",
+			`relative group/tool flex items-center max-w-full self-start py-0 gap-g5 text-left cursor-pointer ${ROW_FOCUS_FADE}`,
+			`relative group/tool flex items-center max-w-full self-start py-0 gap-g5 text-left cursor-pointer ${ROW_FOCUS_FADE}`,
 		]);
 	});
 });
@@ -4183,7 +4228,8 @@ describe("SessionChat TurnStatus rows at comfortable density (coarse pointer)", 
 			chevron: comfortable(control?.querySelector("svg")?.parentElement ?? null),
 		};
 	};
-	const rowTokens = ["comfortable:rounded-r6"];
+	// The r8 comes from bare `rounded` (--upstream-radius is 8px at comfortable density), not a comfortable: token.
+	const rowTokens: string[] = [];
 
 	it("grows grouped and standalone tool rows to upstream's h32 6/6 r8 row with a 16px chevron and a 6px outset", () =>
 	{
@@ -4267,8 +4313,8 @@ describe("SessionChat disclosure focus treatment", () =>
 			},
 		).toStrictEqual(
 			{
-				row: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:rounded-r6 comfortable:gap-g6`,
-				summary: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3 comfortable:rounded-r6`,
+				row: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g5 text-left cursor-pointer ${ROW_FOCUS_FADE} comfortable:gap-g6`,
+				summary: `relative group/tool flex items-center ${STATUS_ROW_LAYOUT} gap-g1 text-left cursor-pointer ${ROW_FOCUS_FADE}`,
 			},
 		);
 	});
@@ -4583,7 +4629,10 @@ describe("SessionChat auto-mode blocked specimens (live upstream, 2026-11-05)", 
 					BLOCKED,
 					{
 						...ROW_CHEVRON,
-						className: ROW_CHEVRON.className.replace(" group-hover/tool:text-secondary", ""),
+						className: ROW_CHEVRON.className.replace(
+							" group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
+							"",
+						),
 					},
 				],
 				reason: "Blocked by auto mode: [Credential Materialization]",
@@ -4606,7 +4655,10 @@ describe("SessionChat auto-mode blocked specimens (live upstream, 2026-11-05)", 
 					BLOCKED,
 					{
 						...ROW_CHEVRON,
-						className: ROW_CHEVRON.className.replace(" group-hover/tool:text-secondary", ""),
+						className: ROW_CHEVRON.className.replace(
+							" group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
+							"",
+						),
 					},
 				],
 				reason: "This did not run because auto mode’s check had no usable answer.",

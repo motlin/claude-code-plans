@@ -123,6 +123,20 @@ describe("hand-rolled focus rings", () =>
 					"src/components/sidebar/session-group-section.tsx",
 					`\${ROW_CLASS} text-ink-muted ${ROW_FOCUS} hover:bg-[var(--sb-hover)]`,
 				),
+				turnStatusRow: has(
+					"src/components/turn-status-row-geometry.ts",
+					"focus-visible:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent)]",
+				),
+				// The outer ring + glow recipe must not come back on a TurnStatus row.
+				oldTurnStatusRing: sources("src/components").filter((path) =>
+					readFileSync(path, "utf8")
+						.split("\n")
+						.some(
+							(line) =>
+								/group\/(?:tool|step)\b/.test(line) &&
+								line.includes("focus-visible:ring-focus rounded-r3"),
+						),
+				),
 			},
 		).toStrictEqual(
 			{
@@ -139,6 +153,8 @@ describe("hand-rolled focus rings", () =>
 				groupLabel: true,
 				sessionRow: true,
 				overflowRow: true,
+				turnStatusRow: true,
+				oldTurnStatusRing: [],
 			},
 		);
 	});

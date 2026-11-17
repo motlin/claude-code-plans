@@ -1001,11 +1001,13 @@ function launchRowChildren(container: HTMLElement):
 
 describe("background launch row status", () =>
 {
-	const MUTED_PHRASE = "truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary";
+	const MUTED_PHRASE =
+		"truncate min-w-0 text-body text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary";
 	const CHEVRON =
 	{
 		text: "",
-		className: "shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary",
+		className:
+			"shrink-0 -ms-1 text-secondary group-hover/tool:text-secondary group-focus-visible/tool:text-secondary",
 	};
 	const expandedLaunchRow = (status: string, summary: string, label: string) =>
 	{

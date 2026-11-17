@@ -97,6 +97,8 @@ import {TranscriptActionsContext, type TranscriptMessageRef} from "./transcript-
 import {AssistantMessageActions, QuoteCopyAction, UserMessageActions} from "./message-actions";
 import
 {
+	TURN_STATUS_ROW_FOCUS,
+	TURN_STATUS_ROW_FOCUS_RING,
 	TURN_STATUS_ROW_GEOMETRY,
 	TURN_STATUS_ROW_MARKED_MOTION,
 	TURN_STATUS_ROW_PAD_Y,
@@ -5789,10 +5791,13 @@ function ClaudeCodeNoticeStep({notice}: {notice: ClaudeCodeNotice["notices"][num
 			<Collapsible.Trigger
 				hideCaret
 				data-cds-row=""
-				className={`group/step flex ${TURN_STATUS_ROW_LAYOUT} items-center gap-g2 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
+				className={`group/step flex ${TURN_STATUS_ROW_LAYOUT} items-center gap-g2 text-left ${TURN_STATUS_ROW_FOCUS}`}
 				style={TURN_STATUS_ROW_STYLE}
 			>
-				<span ref={rowCut} className={`text-body min-w-0 truncate ${restInk} group-hover/step:text-secondary`}>
+				<span
+					ref={rowCut}
+					className={`text-body min-w-0 truncate ${restInk} group-hover/step:text-secondary group-focus-visible/step:text-secondary`}
+				>
 					{CLAUDE_CODE_NOTICE_LABEL}
 				</span>
 				<span className="shrink-0 text-secondary">
@@ -5827,10 +5832,13 @@ function StopHookMarker({line}: {line: MessageSessionLine})
 					setExpanded(!expanded);
 				}}
 				data-cds-row=""
-				className={`group/step flex ${TURN_STATUS_ROW_LAYOUT} items-center gap-g2 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
+				className={`group/step flex ${TURN_STATUS_ROW_LAYOUT} items-center gap-g2 text-left ${TURN_STATUS_ROW_FOCUS}`}
 				style={TURN_STATUS_ROW_STYLE}
 			>
-				<span ref={rowCut} className={`text-body min-w-0 truncate ${restInk} group-hover/step:text-secondary`}>
+				<span
+					ref={rowCut}
+					className={`text-body min-w-0 truncate ${restInk} group-hover/step:text-secondary group-focus-visible/step:text-secondary`}
+				>
 					{STOP_HOOK_LABEL}
 				</span>
 				<span className="shrink-0 text-secondary">
@@ -6033,16 +6041,18 @@ function CompactedSessionStatus({
 						setExpanded(!expanded);
 					}}
 					data-cds-row=""
-					className={`group/tool flex ${TURN_STATUS_ROW_LAYOUT} items-center gap-g1 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
+					className={`group/tool flex ${TURN_STATUS_ROW_LAYOUT} items-center gap-g1 text-left ${TURN_STATUS_ROW_FOCUS}`}
 					style={TURN_STATUS_ROW_STYLE}
 				>
 					<span
 						ref={rowCut}
-						className={`text-body min-w-0 truncate ${restInk} group-hover/tool:text-secondary`}
+						className={`text-body min-w-0 truncate ${restInk} group-hover/tool:text-secondary group-focus-visible/tool:text-secondary`}
 					>
 						{label}
 					</span>
-					<span className={`shrink-0 ${restInk} group-hover/tool:text-secondary`}>
+					<span
+						className={`shrink-0 ${restInk} group-hover/tool:text-secondary group-focus-visible/tool:text-secondary`}
+					>
 						<ChevronIcon expanded={expanded} size={14} />
 					</span>
 				</button>
@@ -6108,16 +6118,18 @@ function RewindMarker({
 						onToggle(placement.replacementUuid);
 					}}
 					data-cds-row=""
-					className={`group/tool flex ${TURN_STATUS_ROW_LAYOUT} items-center gap-g1 text-left outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
+					className={`group/tool flex ${TURN_STATUS_ROW_LAYOUT} items-center gap-g1 text-left ${TURN_STATUS_ROW_FOCUS}`}
 					style={TURN_STATUS_ROW_STYLE}
 				>
 					<span
 						ref={rowCut}
-						className={`text-body min-w-0 truncate ${restInk} group-hover/tool:text-secondary`}
+						className={`text-body min-w-0 truncate ${restInk} group-hover/tool:text-secondary group-focus-visible/tool:text-secondary`}
 					>
 						{placement.label}
 					</span>
-					<span className={`shrink-0 ${restInk} group-hover/tool:text-secondary`}>
+					<span
+						className={`shrink-0 ${restInk} group-hover/tool:text-secondary group-focus-visible/tool:text-secondary`}
+					>
 						<ChevronIcon expanded={expanded} size={14} />
 					</span>
 				</button>
@@ -7597,8 +7609,9 @@ function TurnStatusFrame({leading, children}: {leading: boolean; children: React
 /** Upstream's TurnStatus row on the `qe` geometry, its height from --cds-h-control (24 / 28 / 32). */
 const TURN_STATUS_ROW_LAYOUT = `min-w-0 ${TURN_STATUS_ROW_GEOMETRY} ${TURN_STATUS_ROW_PAD_Y}`;
 
-/** The same row at comfortable density: r8 (pad-xs widens the inline padding, h-control the height). */
-const TURN_STATUS_ROW_COMFORTABLE = "comfortable:rounded-r6";
+/** A meta-split group header: the row rings while its toggle (a direct child) has keyboard focus. */
+const SPLIT_ROW_FOCUS =
+	"rounded transition-shadow duration-fast has-[>[data-cds-row-toggle]:focus-visible]:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent)]";
 
 /** Upstream's status chevron grows from 12px to 16px at comfortable density. */
 const TURN_STATUS_CHEVRON_COMFORTABLE = "comfortable:[&_svg]:size-4";
@@ -7881,7 +7894,9 @@ function ToolCallRow({
 		" empty:hidden";
 	// Collapsed rows rest in upstream's KH() ink (secondary under fizzy-lake color, else muted and lifting to secondary on hover); an open
 	// row stays secondary, as upstream does.
-	const ink = expanded ? "text-secondary" : `${restInk} group-hover/tool:text-secondary`;
+	const ink = expanded
+		? "text-secondary"
+		: `${restInk} group-hover/tool:text-secondary group-focus-visible/tool:text-secondary`;
 	// A settled Skill row reads "Ran skill" in secondary ink beside a primary
 	// skill name, as upstream draws it.
 	const isSkill = call.name === "Skill" && !call.isError && !pending;
@@ -8352,7 +8367,7 @@ function ToolCallRow({
 							open();
 						}
 					}}
-					className={`relative group/tool flex items-center ${isCompletedPaneAgent && !nested ? `${TURN_STATUS_ROW_LAYOUT} gap-1.5` : "max-w-full self-start py-0 gap-g5"} text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`}
+					className={`relative group/tool flex items-center ${isCompletedPaneAgent && !nested ? `${TURN_STATUS_ROW_LAYOUT} gap-1.5` : "max-w-full self-start py-0 gap-g5"} text-left cursor-pointer ${TURN_STATUS_ROW_FOCUS}`}
 					style={isCompletedPaneAgent && !nested ? TURN_STATUS_ROW_STYLE : undefined}
 				>
 					{rowLabel}
@@ -8451,7 +8466,7 @@ function ToolCallRow({
 						toggleExpanded();
 					}
 				}}
-				className={`relative group/tool flex items-center ${disclosureLayout} gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3${isTurnStatus ? ` ${TURN_STATUS_ROW_COMFORTABLE} comfortable:gap-g6` : ""}${runningRow && markedRow ? ` ${TURN_STATUS_ROW_MARKED_MOTION}` : ""}`}
+				className={`relative group/tool flex items-center ${disclosureLayout} gap-g5 text-left cursor-pointer ${runningRow && markedRow ? TURN_STATUS_ROW_FOCUS_RING : TURN_STATUS_ROW_FOCUS}${isTurnStatus ? " comfortable:gap-g6" : ""}${runningRow && markedRow ? ` ${TURN_STATUS_ROW_MARKED_MOTION}` : ""}`}
 				style={isTurnStatus ? TURN_STATUS_ROW_STYLE : undefined}
 			>
 				{rowLabel}
@@ -8647,7 +8662,9 @@ function ToolCallSummary({
 	const summaryLayout = TURN_STATUS_ROW_LAYOUT;
 	// Collapsed rows rest in upstream's KH() ink (secondary under fizzy-lake color, else muted and lifting to secondary on hover); an open
 	// row stays secondary, as upstream does.
-	const ink = expanded ? "text-secondary" : `${restInk} group-hover/tool:text-secondary`;
+	const ink = expanded
+		? "text-secondary"
+		: `${restInk} group-hover/tool:text-secondary group-focus-visible/tool:text-secondary group-has-[>[data-cds-row-toggle]:focus-visible]/tool:text-secondary`;
 	const live: GroupHeaderLabel =
 		handedOff === undefined
 			? pendingCall !== undefined && runningText !== null
@@ -8725,9 +8742,12 @@ function ToolCallSummary({
 	// toggle, so the row then holds the label and meta beside a toggle of just the pill and chevron.
 	const fileMeta =
 		!busy && summary.failed === 0 && summary.trailing === null ? splitTrailingFile(summary.segments) : undefined;
-	// The row is the toggle itself unless a meta slot splits them, when the focus ring moves to the toggle.
-	const rowFocus = fileMeta === undefined ? " outline-none hide-focus-ring focus-visible:ring-focus" : "";
-	const rowClass = `relative group/tool flex items-center ${hasGroupMedia ? "max-w-full min-w-0" : summaryLayout} gap-g1 text-left cursor-pointer${rowFocus} rounded-r3${hasGroupMedia ? "" : ` ${TURN_STATUS_ROW_COMFORTABLE}`}`;
+	const markedMotion = fileMeta === undefined && marked && !hasGroupMedia;
+	// The row is the toggle itself unless a meta slot splits them; the row then paints the ring while its toggle
+	// has keyboard focus, as upstream's stretched toggle `::after` does.
+	let rowFocus = SPLIT_ROW_FOCUS;
+	if (fileMeta === undefined) rowFocus = markedMotion ? TURN_STATUS_ROW_FOCUS_RING : TURN_STATUS_ROW_FOCUS;
+	const rowClass = `relative group/tool flex items-center ${hasGroupMedia ? "max-w-full min-w-0" : summaryLayout} gap-g1 text-left cursor-pointer ${rowFocus}`;
 	const rowStyle = hasGroupMedia ? undefined : TURN_STATUS_ROW_STYLE;
 	let labelledBy = `${statusId}-label`;
 	if (busy)
@@ -8749,8 +8769,8 @@ function ToolCallSummary({
 			data-cds-row-toggle=""
 			className={
 				fileMeta === undefined
-					? `${rowClass}${marked && !hasGroupMedia ? ` ${TURN_STATUS_ROW_MARKED_MOTION}` : ""}`
-					: "flex shrink-0 items-center gap-g1 cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3"
+					? `${rowClass}${markedMotion ? ` ${TURN_STATUS_ROW_MARKED_MOTION}` : ""}`
+					: "flex shrink-0 items-center gap-g1 cursor-pointer outline-none hide-focus-ring focus-visible:outline-hidden"
 			}
 			style={fileMeta === undefined ? rowStyle : undefined}
 		>

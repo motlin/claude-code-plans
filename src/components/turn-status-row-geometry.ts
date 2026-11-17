@@ -23,3 +23,15 @@ export const TURN_STATUS_ROW_PAD_Y = "py-[calc((var(--cds-h-control)_-_1lh)_/_2)
 /** Upstream `IO`: a marked (busy) row eases a change of its start margin. */
 export const TURN_STATUS_ROW_MARKED_MOTION =
 	"transition-[margin-inline-start] duration-200 ease-out motion-reduce:transition-none";
+
+/**
+ * Upstream `gR`/`rf`'s TurnStatus row keyboard ring: a 1px inset --cds-fill-accent hairline in the density radius
+ * (`rounded`: 6px compact, 8px comfortable). Upstream paints it on a stretched toggle's `::after`; a local row is its
+ * own toggle, so the same pixels go on the row. Under forced colors the transparent outline shows 2px inside the row,
+ * where upstream's `[data-cds-row-toggle]:focus-visible:after` outline sits.
+ */
+export const TURN_STATUS_ROW_FOCUS_RING =
+	"rounded outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:outline-offset-[-2px] focus-visible:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent)]";
+
+/** The ring fading over upstream's --cds-dur-fast (60ms). A marked row's margin ease owns `transition` instead. */
+export const TURN_STATUS_ROW_FOCUS = `${TURN_STATUS_ROW_FOCUS_RING} transition-shadow duration-fast`;

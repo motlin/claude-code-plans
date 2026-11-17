@@ -309,11 +309,12 @@ describe("Message from subagent rows", () =>
 			},
 		).toStrictEqual(
 			{
-				button: `group/step flex min-w-0 ${TURN_STATUS_ROW_GEOMETRY} py-[calc((var(--cds-h-control)_-_1lh)_/_2)] items-center gap-g5 text-left cursor-pointer outline-none hide-focus-ring focus-visible:ring-focus rounded-r3`,
+				button: `group/step flex min-w-0 ${TURN_STATUS_ROW_GEOMETRY} py-[calc((var(--cds-h-control)_-_1lh)_/_2)] items-center gap-g5 text-left cursor-pointer rounded outline-none hide-focus-ring focus-visible:outline-hidden focus-visible:outline-offset-[-2px] focus-visible:[box-shadow:inset_0_0_0_1px_var(--cds-fill-accent)] transition-shadow duration-fast`,
 				parts: [
 					{
 						tag: "SPAN",
-						className: "shrink-0 text-body text-ink-muted group-hover/step:text-secondary",
+						className:
+							"shrink-0 text-body text-ink-muted group-hover/step:text-secondary group-focus-visible/step:text-secondary",
 					},
 					{
 						tag: "BDI",
@@ -321,7 +322,8 @@ describe("Message from subagent rows", () =>
 					},
 					{
 						tag: "SPAN",
-						className: "shrink-0 -ms-1 text-ink-muted group-hover/step:text-secondary",
+						className:
+							"shrink-0 -ms-1 text-ink-muted group-hover/step:text-secondary group-focus-visible/step:text-secondary",
 					},
 				],
 				chevron: ["12", "12"],
