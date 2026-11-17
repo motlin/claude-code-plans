@@ -4,8 +4,11 @@ import
 	createContext,
 	lazy,
 	Suspense,
+	useCallback,
 	useContext,
 	useId,
+	useMemo,
+	useState,
 	type ComponentProps,
 	type ReactElement,
 	type ReactNode,
@@ -19,6 +22,7 @@ import
 	SESSION_HOVER_CARD,
 	type HoverCardKind,
 } from "./session-hover-card-classes";
+import {PrCardContext} from "./pr-card-context";
 import {useDensity} from "./ui/density-context";
 import {AwaitingBodySkeleton} from "./session-awaiting-skeleton";
 
@@ -71,10 +75,38 @@ export function SessionHoverCard({
 	const {delay, width} = SESSION_HOVER_CARD[kind];
 	const showsCard = blocked || summary !== null || aiTitle !== null;
 	const density = useDensity();
+	const [open, setOpen] = useState(false);
+	const [prCardOpen, setPrCardOpen] = useState(false);
+	const [menuOpen, setMenuOpen] = useState(false);
+	// Upstream's `rrG`: no session card while the row's PR card or menu is open.
+	const disabled = menuOpen || prCardOpen;
+	const onMenuOpenChange = useCallback((next: boolean) =>
+	{
+		setMenuOpen(next);
+		if (next) setOpen(false);
+	}, []);
+	const prCard = useMemo(
+		() => (
+		{
+			// A row with nothing to show opens no card, so it never holds the PR card shut.
+			rowCardOpen: open && showsCard,
+			menuOpen,
+			onPrCardOpenChange: setPrCardOpen,
+			onMenuOpenChange,
+		}),
+		[open, showsCard, menuOpen, onMenuOpenChange],
+	);
 	return (
-		<PreviewCard.Root>
+		<PreviewCard.Root
+			open={open && !disabled}
+			onOpenChange={(next) =>
+			{
+				if (next && disabled) return;
+				setOpen(next);
+			}}
+		>
 			<PreviewCard.Trigger render={render} data-hover-card-trigger="" delay={delay} closeDelay={CLOSE_DELAY_MS}>
-				{children}
+				<PrCardContext.Provider value={prCard}>{children}</PrCardContext.Provider>
 			</PreviewCard.Trigger>
 			{showsCard && (
 				<PreviewCard.Portal>

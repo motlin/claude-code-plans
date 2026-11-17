@@ -50,6 +50,7 @@ describe("data-cds-overlay popup sites", () =>
 				"session-hover-card.tsx:PreviewCard": false,
 				"session-link-chip.tsx:PreviewCard": false,
 				"settings/settings-search.tsx:Popover": true,
+				"sidebar/pr-list-card.tsx:PreviewCard": false,
 				"slash-command-chip.tsx:PreviewCard": false,
 				"stale-compact-band.tsx:Popover": false,
 				"step-screenshot-strip.tsx:PreviewCard": false,

@@ -110,7 +110,7 @@ describe("PrTailGlyph", () =>
 	{
 		const glyphs = (["opened", "draft", "merged", "closed", "conflicting", "queued"] as const).map((state) =>
 		{
-			const {container} = render(<PrTailGlyph state={state} />);
+			const {container} = render(<PrTailGlyph state={state} entries={[]} />);
 			const tail = container.querySelector("[data-pr-glyph]");
 			const icon = tail?.firstElementChild;
 			const result =
@@ -151,12 +151,12 @@ describe("PrTailGlyph", () =>
 		]);
 	});
 
-	it("shows upstream's Pull request · {state} tooltip on hover", () =>
+	it("shows upstream's Pull request · {state} tooltip on hover when it has no entries", () =>
 	{
 		vi.useFakeTimers();
 		try
 		{
-			const {container} = render(<PrTailGlyph state="draft" />);
+			const {container} = render(<PrTailGlyph state="draft" entries={[]} />);
 			const tail = container.querySelector("[data-pr-glyph]");
 			if (tail === null) throw new Error("no tail");
 			fireEvent.pointerEnter(tail);
@@ -170,5 +170,89 @@ describe("PrTailGlyph", () =>
 		{
 			vi.useRealTimers();
 		}
+	});
+
+	it("opens upstream's Pull requests card instead of the tooltip once the PR has an entry", async () =>
+	{
+		vi.useFakeTimers();
+		try
+		{
+			const url = "https://github.com/o/r/pull/12";
+			const {container} = render(
+				<PrTailGlyph
+					state="opened"
+					entries={[
+						{
+							state: "open",
+							repo: "o/r",
+							number: 12,
+							url,
+						},
+					]}
+				/>,
+			);
+			const tail = container.querySelector("[data-pr-glyph]");
+			if (tail === null) throw new Error("no tail");
+			act(() =>
+			{
+				fireEvent.pointerEnter(
+					tail,
+					{
+						pointerType: "mouse",
+					},
+				);
+				fireEvent.mouseEnter(tail);
+				fireEvent.mouseMove(tail);
+			});
+			await act(async () =>
+			{
+				await vi.advanceTimersByTimeAsync(300);
+			});
+			const links = [
+				...document.querySelectorAll("[aria-label='Pull requests'] ul[role=list] > li > a[target=_blank]"),
+			];
+			expect(
+				{
+					items: links.map((link) => [
+						link.parentElement?.getAttribute("title"),
+						link.getAttribute("href"),
+						link.getAttribute("rel"),
+					]),
+					tooltip: screen.queryByRole("tooltip"),
+					count: tail.querySelector(".tabular-nums"),
+				},
+			).toStrictEqual(
+				{
+					items: [[url, url, "noopener noreferrer"]],
+					tooltip: null,
+					count: null,
+				},
+			);
+		}
+		finally
+		{
+			vi.useRealTimers();
+		}
+	});
+
+	it("counts two or more entries beside the glyph", () =>
+	{
+		const entry = (number: number) => (
+		{
+			state: "open" as const,
+			number,
+		});
+		const {container} = render(<PrTailGlyph state="opened" entries={[entry(1), entry(2)]} />);
+		const tail = container.querySelector("[data-pr-glyph]");
+		expect(
+			[...(tail?.children ?? [])].map((child) => [
+				child.tagName.toLowerCase(),
+				child.getAttribute("class"),
+				child.textContent,
+			]),
+		).toStrictEqual([
+			["svg", "lucide lucide-git-pull-request", ""],
+			["span", "tabular-nums", "2"],
+		]);
 	});
 });

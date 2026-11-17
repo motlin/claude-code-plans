@@ -223,7 +223,7 @@ describe("sidebar session list roving focus", () =>
 
 async function renderSidebar(
 	path = "/",
-	sessions: readonly ReturnType<typeof session>[] = FIXTURE,
+	sessions: readonly Record<string, unknown>[] = FIXTURE,
 	projects: readonly unknown[] = [],
 	nextCursor: string | null = null,
 )
@@ -993,6 +993,130 @@ describe("sidebar body roving focus", () =>
 				kebab: "0",
 			},
 		);
+	});
+
+	it("wraps a PR row's kebab in upstream's keyboard-only Pull requests card", async () =>
+	{
+		localStorage.setItem(
+			"ccp-session-list-prefs",
+			JSON.stringify(
+				{
+					...DEFAULT_SESSION_LIST_PREFS,
+					groupBy: "state",
+					showPrStatus: true,
+				},
+			),
+		);
+		await renderSidebar("/", [
+			{
+				...session("s1", "First row", 1),
+				prStatus:
+				{
+					number: 12,
+					state: "open",
+					url: "https://github.com/o/r/pull/12",
+				},
+			},
+			session("s2", "Second row", 2),
+		]);
+		const kebab = (title: string) =>
+			screen.getByRole(
+				"button",
+				{
+					name: `More options for ${title}`,
+				},
+			);
+		const card = () => document.querySelector("[aria-label='Pull requests']");
+		const wait = async (ms: number) =>
+			new Promise((resolve) =>
+			{
+				setTimeout(resolve, ms);
+			});
+
+		rowLink("First row").focus();
+		const prKebabStop = kebab("First row").getAttribute("tabindex");
+		rowLink("Second row").focus();
+		const plainKebabStop = kebab("Second row").getAttribute("tabindex");
+		fireEvent.pointerOver(kebab("First row"));
+		fireEvent.mouseEnter(kebab("First row"));
+		await wait(400);
+		const hovered = card();
+		fireEvent.pointerLeave(kebab("First row").parentElement!);
+		rowLink("First row").focus();
+		fireEvent.keyDown(
+			rowLink("First row"),
+			{
+				key: "ArrowRight",
+			},
+		);
+		const focusedKebab = document.activeElement === kebab("First row");
+		await waitFor(() =>
+		{
+			expect(card()).not.toBeNull();
+		});
+		const wrapper = kebab("First row").parentElement;
+		expect(
+			{
+				prKebabStop,
+				plainKebabStop,
+				hovered,
+				focusedKebab,
+				wrapper: [
+					wrapper?.tagName.toLowerCase(),
+					wrapper?.getAttribute("class"),
+					wrapper?.hasAttribute("data-arrows-only"),
+				],
+				plainWrapper: kebab("Second row").parentElement?.hasAttribute("data-arrows-only"),
+			},
+		).toStrictEqual(
+			{
+				prKebabStop: "-1",
+				plainKebabStop: "0",
+				hovered: null,
+				focusedKebab: true,
+				wrapper: ["span", "flex items-center", true],
+				plainWrapper: false,
+			},
+		);
+	});
+
+	it("keeps a PR row's keyboard card closed while its row menu is open", async () =>
+	{
+		localStorage.setItem(
+			"ccp-session-list-prefs",
+			JSON.stringify(
+				{
+					...DEFAULT_SESSION_LIST_PREFS,
+					groupBy: "state",
+					showPrStatus: true,
+				},
+			),
+		);
+		await renderSidebar("/", [
+			{
+				...session("s1", "First row", 1),
+				prStatus:
+				{
+					number: 12,
+					state: "open",
+					url: "https://github.com/o/r/pull/12",
+				},
+			},
+		]);
+		const kebab = screen.getByRole(
+			"button",
+			{
+				name: "More options for First row",
+			},
+		);
+		fireEvent.click(kebab);
+		await screen.findByRole("menu");
+		fireEvent.focus(kebab);
+		await new Promise((resolve) =>
+		{
+			setTimeout(resolve, 400);
+		});
+		expect(document.querySelector("[aria-label='Pull requests']")).toBeNull();
 	});
 
 	it("keeps the section's remembered row as its stop while a group header button holds focus", async () =>

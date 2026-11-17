@@ -102,7 +102,8 @@ function rowControls(element: Element): HTMLElement[]
 
 /**
  * Upstream's `Tl`: a control of the focused row that Tab may stop on — not part of the row's item,
- * not aria-disabled, and not an arrows-only control such as the row's PR glyph.
+ * not aria-disabled, and not an arrows-only control such as a PR row's kebab, which upstream wraps in a
+ * keyboard-only PR card.
  */
 function isTabbableRowControl(item: HTMLElement, control: HTMLElement): boolean
 {

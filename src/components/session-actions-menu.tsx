@@ -5,6 +5,7 @@ import
 {
 	createContext,
 	Fragment,
+	type ReactElement,
 	type ReactNode,
 	useCallback,
 	useContext,
@@ -42,6 +43,7 @@ import {hasUnseenWork, markSeen, markUnseen, subscribeUnseenWork} from "../lib/u
 import {setSidebarMenuOpen} from "../lib/sidebar-menu-open";
 import {InlineRenameInput} from "./inline-rename-input";
 import {NewGroupDialog} from "./new-group-dialog";
+import {usePrCardContext} from "./pr-card-context";
 import {bulkSelectionFor, type SidebarSelectionApi, useSidebarSelection} from "./sidebar/selection-context";
 import {useHasUnseenWork} from "./use-has-unseen-work";
 import {useLiveApprovalIds} from "../lib/live-approval-sessions";
@@ -570,6 +572,7 @@ export function SessionActionsMenu({
 	children,
 	className,
 	kebabTabIndex,
+	wrapKebab,
 	touchMenu = false,
 	described = false,
 	familyHead = false,
@@ -579,6 +582,8 @@ export function SessionActionsMenu({
 	pinnedIds?: readonly string[];
 	/** -1 inside a roving-focus list, whose Menu key and Shift+F10 open the kebab instead. */
 	kebabTabIndex?: number;
+	/** Upstream's `coveredCell`: wraps the kebab, e.g. in a PR row's keyboard-only Pull requests card. */
+	wrapKebab?: (kebab: ReactElement) => ReactNode;
 	/** Keep the kebab visible at rest on touch, as upstream does only on the current session's row. */
 	touchMenu?: boolean;
 	/** The row is two-line (Show ▸ Metadata): CSS centres the kebab and decoration on its title line. */
@@ -616,6 +621,13 @@ export function SessionActionsMenu({
 	const [menuOpen, setMenuOpen] = useState(false);
 	const [contextMenuOpen, setContextMenuOpen] = useState(false);
 	useSidebarMenuOpenWhile(menuOpen || contextMenuOpen || newGroupOpen);
+	// Upstream's `kI.menuOpen`: an open row menu holds the row's session and PR cards shut.
+	const {onMenuOpenChange} = usePrCardContext();
+	const rowMenuOpen = menuOpen || contextMenuOpen;
+	useEffect(() =>
+	{
+		onMenuOpenChange(rowMenuOpen);
+	}, [rowMenuOpen, onMenuOpenChange]);
 	// After Move up / Move down the row itself takes focus, like upstream's movePinned.
 	const focusRowAfterClose = useRef(false);
 	const onOpenChangeComplete = (open: boolean) =>
@@ -662,6 +674,21 @@ export function SessionActionsMenu({
 			requestBulkNewGroup={requestBulkNewGroup}
 		/>
 	);
+	const kebab = (
+		<MenuTrigger
+			aria-label={`More options for ${rename.title}`}
+			data-row-action=""
+			{...(kebabTabIndex === undefined
+				? {}
+				:
+					{
+						tabIndex: kebabTabIndex,
+					})}
+			className={KEBAB_CLASS}
+		>
+			<Ellipsis aria-hidden="true" className="size-4" />
+		</MenuTrigger>
+	);
 	return (
 		<RowRenameContext.Provider value={rowRename}>
 			<div
@@ -681,19 +708,7 @@ export function SessionActionsMenu({
 					</MenuContent>
 				</ContextMenu>
 				<Menu onOpenChange={setMenuOpen} onOpenChangeComplete={onOpenChangeComplete}>
-					<MenuTrigger
-						aria-label={`More options for ${rename.title}`}
-						data-row-action=""
-						{...(kebabTabIndex === undefined
-							? {}
-							:
-								{
-									tabIndex: kebabTabIndex,
-								})}
-						className={KEBAB_CLASS}
-					>
-						<Ellipsis aria-hidden="true" className="size-4" />
-					</MenuTrigger>
+					{wrapKebab === undefined ? kebab : wrapKebab(kebab)}
 					<MenuContent density="comfortable" align="end" finalFocus={finalFocus}>
 						{menuBody}
 					</MenuContent>

@@ -15,6 +15,7 @@ import
 	useSyncExternalStore,
 	type KeyboardEvent,
 	type MouseEvent,
+	type ReactElement,
 	type ReactNode,
 	type SyntheticEvent,
 } from "react";
@@ -24,6 +25,7 @@ import {requestHomeComposerFocus, requestHomeLaunchFolder} from "../../lib/home-
 import {useSecondaryAiTitle} from "../../hooks/use-secondary-ai-title";
 import type {SidebarDragRowProps} from "../../hooks/use-sidebar-drag";
 import {startSessionSwitchJourney} from "../../lib/perf/field-journeys";
+import {prEntries, type PrEntry} from "../../lib/pr-entries";
 import {prGlyph} from "../../lib/pr-status";
 import {approvalsQueryOptions} from "../../lib/api/approvals";
 import {blockedDetail} from "../../lib/blocked-detail";
@@ -58,6 +60,7 @@ import {SidebarRowDecoration, SidebarRowSrText} from "../session-unread-control"
 import {type RowAttention, useRowAttention} from "../use-row-icon-kind";
 import {useSettings} from "../settings-context";
 import {PrTailGlyph, SessionStateIcon} from "../status-dot";
+import {PrListCard} from "./pr-list-card";
 import {Icon} from "../ui/icon";
 import {Tooltip} from "../ui/tooltip";
 import {CustomGroupHeader} from "./custom-group-header";
@@ -1212,6 +1215,8 @@ function FamilyStub({
 	);
 }
 
+const NO_PR_ENTRIES: readonly PrEntry[] = [];
+
 function SessionRowLink({
 	row,
 	selected,
@@ -1253,6 +1258,11 @@ function SessionRowLink({
 		pinnedIds === undefined && settings.sessionListPrefs.showPrStatus && row.session.prStatus !== undefined
 			? prGlyph(row.session.prStatus).state
 			: undefined;
+	const {prStatus, pr} = row.session;
+	const entries = useMemo(
+		() => (prTail === undefined ? NO_PR_ENTRIES : prEntries(prStatus, pr)),
+		[prTail, prStatus, pr],
+	);
 	const metaLine = useRowMetaLine(row, pinnedIds === undefined && place.metadata, place);
 	const labelId = useId();
 	const descriptionId = `${labelId}-description`;
@@ -1287,7 +1297,7 @@ function SessionRowLink({
 			)}
 			{/* Upstream's title tail: reserves the trailing slot and holds the PR glyph left of it */}
 			<span className="shrink-0 flex items-center gap-1.5 text-xs text-muted-as-secondary me-[calc(var(--sb-row-ctl-inset)+var(--sb-row-ctl)-var(--sb-row-px))]">
-				{prTail !== undefined && <PrTailGlyph state={prTail} />}
+				{prTail !== undefined && <PrTailGlyph state={prTail} entries={entries} />}
 			</span>
 		</>
 	);
@@ -1306,6 +1316,20 @@ function SessionRowLink({
 				touchMenu={selected}
 				described={metaLine !== undefined}
 				familyHead={familyHead}
+				{...(entries.length === 0
+					? {}
+					:
+						{
+							// Upstream `bV`: the kebab covers the PR tail on hover or focus, so keyboard users reach the
+							// same card from it. Arrows-only, so Tab skips it.
+							wrapKebab: (kebab: ReactElement) => (
+								<PrListCard entries={entries} keyboardOnly>
+									<span className="flex items-center" data-arrows-only="">
+										{kebab}
+									</span>
+								</PrListCard>
+							),
+						})}
 				// Upstream's row shell owns the background. The selected tint keys off the link's data-selected
 				// (which nav-scroll and roving focus watch), so switching rows mutates no extra attribute.
 				className="rounded-[var(--sb-radius)] hover:bg-[var(--sb-hover)] has-[:focus-visible]:bg-[var(--sb-hover)] data-[menu-open=true]:bg-[var(--sb-hover)] data-[context-menu-open=true]:bg-[var(--sb-hover)] has-[[data-row-main-button][data-selected=focused]]:bg-[var(--sb-session-selected)] hover:has-[[data-row-main-button][data-selected=focused]]:bg-[var(--selected-hover,var(--sb-session-selected))]"
