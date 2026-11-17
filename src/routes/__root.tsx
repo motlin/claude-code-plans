@@ -2,12 +2,10 @@ import {APP_TITLE} from "../lib/route-title";
 import
 {
 	Outlet,
-	Link,
 	createRootRouteWithContext,
 	HeadContent,
 	Scripts,
 	useMatches,
-	useRouter,
 	useRouterState,
 } from "@tanstack/react-router";
 import type {ErrorComponentProps, StaticDataRouteOption} from "@tanstack/react-router";
@@ -19,6 +17,7 @@ import {ToastProvider} from "../components/toast";
 import {DevOverlays} from "../components/dev-overlays";
 import {AppFrame} from "../components/app-frame";
 import {NotFoundContent} from "../components/not-found-content";
+import {CRASH_RELOAD_STUCK_MS, RouteCrashRecovering, RouteCrashScreen} from "../components/route-crash-screen";
 import {AppShellFallback} from "../components/app-shell-fallback";
 import {useMarkAppMounted} from "../lib/app-mounted";
 import {FIZZY_LAKE_ATTRIBUTE, FIZZY_LAKE_FLAT_LOOK} from "../lib/fizzy-lake";
@@ -297,10 +296,10 @@ function RootErrorComponent({error, reset}: ErrorComponentProps)
 
 export function DefaultErrorComponent({error}: ErrorComponentProps)
 {
-	const router = useRouter();
 	const staleChunk = isStaleChunkError(error);
 	// A React.lazy chunk from the previous deploy; Vite's preload errors are handled before they reach here.
 	const [reloading, setReloading] = useState(staleChunk);
+	const [stuck, setStuck] = useState(false);
 	const reloadAttempted = useRef(false);
 	useEffect(() =>
 	{
@@ -308,44 +307,28 @@ export function DefaultErrorComponent({error}: ErrorComponentProps)
 		reloadAttempted.current = true;
 		setReloading(reloadForStaleChunk());
 	}, [staleChunk]);
-
-	if (reloading)
+	useEffect(() =>
 	{
-		return (
-			<p role="status" className="p-8 text-sm text-t6">
-				App updated, reloading…
-			</p>
-		);
-	}
+		if (!reloading) return undefined;
+		const timer = setTimeout(() =>
+		{
+			setReloading(false);
+			setStuck(true);
+		}, CRASH_RELOAD_STUCK_MS);
+		return () =>
+		{
+			clearTimeout(timer);
+		};
+	}, [reloading]);
+
+	if (reloading) return <RouteCrashRecovering />;
 
 	if (error instanceof ApiResponseError && error.status === 404)
 	{
 		return <NotFoundContent detail={error.message} />;
 	}
 
-	const message = error instanceof Error ? error.message : "An unexpected error occurred";
-
-	return (
-		<div className="p-8">
-			<h1 className="text-lg font-semibold text-red-600 dark:text-red-400">Something went wrong</h1>
-			<p className="mt-2 text-sm text-t6">We couldn&apos;t load this page.</p>
-			<pre className="mt-3 max-w-2xl overflow-auto rounded-md border border-border bg-surface-0 p-3 font-mono text-xs text-t6">
-				{message}
-			</pre>
-			<div className="mt-4 flex items-center gap-3">
-				<button
-					type="button"
-					onClick={() => void router.invalidate()}
-					className="rounded-md bg-accent-100 px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-100/80"
-				>
-					Try again
-				</button>
-				<Link to="/" className="text-sm text-accent-100 hover:underline">
-					Back to home
-				</Link>
-			</div>
-		</div>
-	);
+	return <RouteCrashScreen error={error} variant={staleChunk ? "chunk" : "render"} stuck={stuck} />;
 }
 
 function RootDocument({

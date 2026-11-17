@@ -10,10 +10,10 @@ import
 } from "../lib/api/session-identity";
 import {sessionScrollKey} from "../lib/session-route-location";
 import {createFileRoute, useLocation, useRouter} from "@tanstack/react-router";
-import type {ErrorComponentProps} from "@tanstack/react-router";
 import {noop, useQueries, useQuery, useQueryClient} from "@tanstack/react-query";
 import {useCallback, useEffect, useRef} from "react";
 import {SessionPage} from "../components/session-page";
+import {SessionErrorComponent} from "../components/session-error";
 import {herdrPanesQueryOptions} from "../lib/api/herdr";
 import {validateSessionSearch} from "../lib/session-search";
 import {sessionDetailQueryOptions, sessionSubagentsQueryOptions, transcriptQueryOptions} from "../lib/api/sessions";
@@ -93,44 +93,6 @@ export function sessionHeadTitle(
 	if (detail === undefined) return "Loading session…";
 	if (detail === null) return "Session Not Found";
 	return detail.title;
-}
-
-function SessionErrorComponent({error, reset}: ErrorComponentProps)
-{
-	const router = useRouter();
-	const message = error instanceof Error ? error.message : "Failed to load session";
-
-	return (
-		<div className="h-full overflow-auto p-8">
-			<h1 className="text-lg font-semibold text-red-600 dark:text-red-400">Failed to load session</h1>
-			<pre className="mt-3 max-w-2xl overflow-auto rounded-md border border-border bg-surface-0 p-3 font-mono text-sm text-t6">
-				{message}
-			</pre>
-			<div className="mt-4 flex gap-2">
-				<button
-					type="button"
-					onClick={reset}
-					className="rounded-md bg-accent-100 px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-100/80"
-				>
-					Retry
-				</button>
-				<button
-					type="button"
-					onClick={() =>
-					{
-						void router.navigate(
-							{
-								to: "/sessions",
-							},
-						);
-					}}
-					className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-secondary hover:bg-surface-0"
-				>
-					Back to sessions
-				</button>
-			</div>
-		</div>
-	);
 }
 
 /**

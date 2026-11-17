@@ -46,3 +46,8 @@ export function installLocalStorage(): FakeStorage
 	);
 	return storage;
 }
+
+export function createFakeStorage(): Storage
+{
+	return new FakeStorage();
+}
