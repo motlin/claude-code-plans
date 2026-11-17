@@ -3,6 +3,7 @@ import {useEffect, useRef, useState, type PointerEvent, type Ref} from "react";
 import {shouldClose, swipeIntent} from "../../lib/sheet-swipe";
 import {PHONE_SIDEBAR_TOGGLE} from "../../lib/top-left-clearance";
 import {Sidebar} from "./Sidebar";
+import {SidebarHiddenContext} from "./sidebar-hidden";
 import {SidebarToggleIcon} from "./primitives";
 
 const PHONE_SHEET_ID = "sidebar-sheet";
@@ -168,7 +169,9 @@ export function PhoneSheet({open, onClose, onDismiss}: {open: boolean; onClose: 
 			onPointerCancel={resetSwipe}
 			className="phone-sheet"
 		>
-			<Sidebar collapsed={false} onPhoneSheetClose={onDismiss} />
+			<SidebarHiddenContext value={!open}>
+				<Sidebar collapsed={false} onPhoneSheetClose={onDismiss} />
+			</SidebarHiddenContext>
 		</div>
 	);
 }

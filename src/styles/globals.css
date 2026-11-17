@@ -5936,7 +5936,7 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 {
 	[data-hub-rail]
 		[data-group-key]:not([data-hover-within])
-		[data-sidebar-group-label]:not(:has(:focus-visible), :has([data-popup-open]))
+		[data-sidebar-group-label]:not(:has(:focus-visible), :has([data-popup-open]:not([data-held])))
 		[data-header-reveal]
 	{
 		opacity: 0;
@@ -5983,7 +5983,7 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 		> [data-group-toggle]
 		> [data-group-badge],
 	[data-hub-rail]
-		[data-sidebar-group-label]:has(> [data-header-controls]):has([data-popup-open])
+		[data-sidebar-group-label]:has(> [data-header-controls]):has([data-popup-open]:not([data-held]))
 		h3
 		> [data-group-toggle]
 		> [data-group-badge],
@@ -6000,7 +6000,8 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 @media (hover: hover)
 {
 	[data-hub-rail] [data-sidebar-group-label]:has(h3 > [data-group-toggle]):hover::before,
-	[data-hub-rail] [data-sidebar-group-label]:has(h3 > [data-group-toggle]):has([data-popup-open])::before
+	[data-hub-rail]
+		[data-sidebar-group-label]:has(h3 > [data-group-toggle]):has([data-popup-open]:not([data-held]))::before
 	{
 		content: "";
 		z-index: -1;
@@ -6025,7 +6026,7 @@ html[data-reduce-motion="true"] [data-cds="SkeletonGroup"][data-hold="delayed"]
 @media (hover: hover)
 {
 	[data-hub-rail] [data-sidebar-group-label]:hover h3 > [data-group-toggle],
-	[data-hub-rail] [data-sidebar-group-label]:has([data-popup-open]) h3 > [data-group-toggle]
+	[data-hub-rail] [data-sidebar-group-label]:has([data-popup-open]:not([data-held])) h3 > [data-group-toggle]
 	{
 		color: inherit;
 	}

@@ -88,7 +88,7 @@ describe("sidebar group header flat-look CSS", () =>
 
 	it("fades Group and sort by opacity on a fine pointer unless the section is hovered, focused or its menu is open", () =>
 	{
-		const selector = `${FLAT} [data-group-key]:not([data-hover-within]) [data-sidebar-group-label]:not(:has(:focus-visible), :has([data-popup-open])) [data-header-reveal]`;
+		const selector = `${FLAT} [data-group-key]:not([data-hover-within]) [data-sidebar-group-label]:not(:has(:focus-visible), :has([data-popup-open]:not([data-held]))) [data-header-reveal]`;
 		expect(
 			{
 				missing: missing([`${selector} { opacity: 0; }`]),
@@ -107,7 +107,7 @@ describe("sidebar group header flat-look CSS", () =>
 		const toggleBadge = "h3 > [data-group-toggle] > [data-group-badge]";
 		const isolation = `${BADGE_LABEL} h3 > [data-group-toggle]:has(> [data-group-badge]:not(:empty))`;
 		const park = `${BADGE_LABEL} ${toggleBadge}`;
-		const hidden = `${FLAT} [data-group-key][data-hover-within] [data-sidebar-group-label]:not([data-group-key]:not([data-hover-within]) [data-sidebar-group-label]):has(> [data-header-controls]) ${toggleBadge}, ${BADGE_LABEL}:has(:focus-visible) ${toggleBadge}, ${BADGE_LABEL}:has([data-popup-open]) ${toggleBadge}, ${LABEL}:has(> [data-header-controls] > :not([data-header-reveal]):focus-within) ${toggleBadge}`;
+		const hidden = `${FLAT} [data-group-key][data-hover-within] [data-sidebar-group-label]:not([data-group-key]:not([data-hover-within]) [data-sidebar-group-label]):has(> [data-header-controls]) ${toggleBadge}, ${BADGE_LABEL}:has(:focus-visible) ${toggleBadge}, ${BADGE_LABEL}:has([data-popup-open]:not([data-held])) ${toggleBadge}, ${LABEL}:has(> [data-header-controls] > :not([data-header-reveal]):focus-within) ${toggleBadge}`;
 		const fine = ["@media (hover: hover) and (pointer: fine)"];
 		expect(
 			{
@@ -132,10 +132,10 @@ describe("sidebar group header flat-look CSS", () =>
 		expect(
 			{
 				missing: missing([
-					`${hovered}, ${LABEL}:has(h3 > [data-group-toggle]):has([data-popup-open])::before { content: ""; z-index: -1; height: var(--sb-row-h); border-radius: var(--sb-radius); background: var(--sb-hover); position: absolute; inset: auto 0 0; }`,
+					`${hovered}, ${LABEL}:has(h3 > [data-group-toggle]):has([data-popup-open]:not([data-held]))::before { content: ""; z-index: -1; height: var(--sb-row-h); border-radius: var(--sb-radius); background: var(--sb-hover); position: absolute; inset: auto 0 0; }`,
 				]),
 				media: enclosingAtRules(
-					`${hovered}, ${LABEL}:has(h3 > [data-group-toggle]):has([data-popup-open])::before`,
+					`${hovered}, ${LABEL}:has(h3 > [data-group-toggle]):has([data-popup-open]:not([data-held]))::before`,
 				),
 			},
 		).toStrictEqual(
@@ -153,7 +153,7 @@ describe("sidebar group header flat-look CSS", () =>
 			missing([
 				`${LABEL} ${toggle} { color: var(--fizzy-lake-color-secondary, inherit); }`,
 				`${LABEL} ${toggle}:focus-visible { color: inherit; }`,
-				`${LABEL}:hover ${toggle}, ${LABEL}:has([data-popup-open]) ${toggle} { color: inherit; }`,
+				`${LABEL}:hover ${toggle}, ${LABEL}:has([data-popup-open]:not([data-held])) ${toggle} { color: inherit; }`,
 			]),
 		).toStrictEqual([]);
 	});

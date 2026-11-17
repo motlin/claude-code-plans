@@ -30,6 +30,7 @@ import
 	MenuTrigger,
 } from "../ui/menu";
 import {NewGroupDialog} from "../new-group-dialog";
+import type {MenuHandle} from "../ui/menu-handle";
 import {Tooltip} from "../ui/tooltip";
 
 /** Upstream `tz`'s reason on Reset to defaults while the grouping and sort already are. */
@@ -165,16 +166,50 @@ export function SortBySubmenu({
 	);
 }
 
-/** Upstream's `df-chrome-btn` "Group and sort" header trigger: 24px, with a 20px header glyph. */
-export function GroupSortTrigger()
+/**
+ * Upstream's `df-chrome-btn` "Group and sort" header trigger (`AR`): 24px, with a 20px header glyph. Given a
+ * `handle`, it is one of a shared menu's detached triggers: `open` drives its `aria-expanded`, and `held` marks it
+ * as the trigger the open menu was re-anchored to after its own header vanished.
+ */
+export function GroupSortTrigger({
+	handle,
+	id,
+	open,
+	held = false,
+}:
+{
+	handle?: MenuHandle<unknown>;
+	id?: string;
+	open?: boolean;
+	held?: boolean;
+} = {})
 {
 	return (
 		<Tooltip content="Group and sort" className="-my-1 shrink-0">
 			<MenuTrigger
+				{...(handle === undefined
+					? {}
+					:
+						{
+							handle,
+						})}
+				{...(id === undefined
+					? {}
+					:
+						{
+							id,
+						})}
+				{...(open === undefined
+					? {}
+					:
+						{
+							"aria-expanded": open,
+						})}
 				aria-label="Group and sort"
 				data-row-action=""
 				data-row-glyph=""
-				className="relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-[color:var(--sb-heading-ink,var(--color-secondary))] hover:text-primary data-[popup-open]:text-primary aria-expanded:text-primary hover:bg-[var(--sb-hover)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-[var(--sb-hover)]"
+				data-held={held ? "" : undefined}
+				className="aria-expanded:touch-none relative flex size-6 shrink-0 items-center justify-center rounded-r5 text-[color:var(--sb-heading-ink,var(--color-secondary))] hover:text-primary data-[popup-open]:text-primary aria-expanded:text-primary hover:bg-[var(--sb-hover)] hide-focus-ring focus-visible:outline-hidden focus-visible:shadow-focus data-[popup-open]:bg-[var(--sb-hover)]"
 			>
 				<SlidersVertical aria-hidden="true" className="size-5" />
 			</MenuTrigger>

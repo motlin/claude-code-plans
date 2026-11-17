@@ -11,16 +11,9 @@ import
 	type SessionListPrefs,
 } from "../../lib/session-groups";
 import {useSettings} from "../settings-context";
-import {Menu, MenuCheckboxItem, MenuContent, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger} from "../ui/menu";
-import
-{
-	ChoiceGroup,
-	GroupBySubmenu,
-	GroupSortFooter,
-	GroupSortTrigger,
-	NewSectionDialog,
-	SortBySubmenu,
-} from "./section-view-menu";
+import {MenuCheckboxItem, MenuContent, MenuSeparator, MenuSub, MenuSubContent, MenuSubTrigger} from "../ui/menu";
+import {ChoiceGroup, GroupBySubmenu, GroupSortFooter, NewSectionDialog, SortBySubmenu} from "./section-view-menu";
+import {type FrozenAnchor, GroupSortMenuHost, GroupSortTriggerSlot} from "./group-sort-menu-host";
 import {SessionGroups} from "./session-groups";
 
 /**
@@ -37,170 +30,176 @@ const GROUP_BY_ORDER = ["date", "state", "project"] as const satisfies readonly 
  * name, blocked reason from the pending approval); the local Status and Last activity filters and
  * the PR status toggle follow, the PR toggle only once some row has PR data.
  */
-function SessionFilterMenu({
+function SessionFilterMenuContent({
 	prefs,
 	onChange,
 	hasPrData,
+	anchor,
+	onNewSection,
 }: {
 	prefs: SessionListPrefs;
 	onChange: (next: SessionListPrefs) => void;
 	hasPrData: boolean;
+	/** The host's frozen trigger rect (upstream `IC`); focus returns to the held trigger only while one is set. */
+	anchor: FrozenAnchor | undefined;
+	onNewSection: () => void;
 })
 {
-	const [newSectionOpen, setNewSectionOpen] = useState(false);
 	// Upstream `tz` atDefaults: only the grouping and sort count; the local Show filters keep their own values.
 	const atDefaults =
 		prefs.groupBy === DEFAULT_SESSION_LIST_PREFS.groupBy &&
 		prefs.sortBy === DEFAULT_SESSION_LIST_PREFS.sortBy &&
 		prefs.sortDirection === DEFAULT_SESSION_LIST_PREFS.sortDirection;
 	return (
-		<>
-			<Menu>
-				<GroupSortTrigger />
-				<MenuContent align="end" density="comfortable" className="!min-w-[200px]">
-					<GroupBySubmenu
-						value={prefs.groupBy}
-						accent={prefs.groupBy !== DEFAULT_SESSION_LIST_PREFS.groupBy}
-						options={GROUP_BY_ORDER}
-						none="none"
-						labels={sessionGroupByLabels}
+		<MenuContent
+			align="end"
+			density="comfortable"
+			className="!min-w-[200px]"
+			{...(anchor === undefined
+				? {}
+				:
+					{
+						anchor,
+						finalFocus: true,
+					})}
+		>
+			<GroupBySubmenu
+				value={prefs.groupBy}
+				accent={prefs.groupBy !== DEFAULT_SESSION_LIST_PREFS.groupBy}
+				options={GROUP_BY_ORDER}
+				none="none"
+				labels={sessionGroupByLabels}
+				onSelect={(next) =>
+				{
+					onChange(
+						{
+							...prefs,
+							groupBy: next,
+						},
+					);
+				}}
+			/>
+			<SortBySubmenu
+				sortBy={prefs.sortBy}
+				sortDirection={prefs.sortDirection}
+				onSortBy={(next) =>
+				{
+					onChange(
+						{
+							...prefs,
+							sortBy: next,
+						},
+					);
+				}}
+				onSortDirection={(next) =>
+				{
+					onChange(
+						{
+							...prefs,
+							sortDirection: next,
+						},
+					);
+				}}
+			/>
+			<MenuSub>
+				<MenuSubTrigger>Show</MenuSubTrigger>
+				<MenuSubContent>
+					<MenuCheckboxItem
+						checked={prefs.showMetadata}
+						onCheckedChange={(checked) =>
+						{
+							onChange(
+								{
+									...prefs,
+									showMetadata: checked,
+								},
+							);
+						}}
+					>
+						Metadata
+					</MenuCheckboxItem>
+					<MenuSeparator />
+					<MenuCheckboxItem
+						checked={prefs.showEmptyGroups}
+						onCheckedChange={(checked) =>
+						{
+							onChange(
+								{
+									...prefs,
+									showEmptyGroups: checked,
+								},
+							);
+						}}
+					>
+						Empty groups
+					</MenuCheckboxItem>
+					{hasPrData && (
+						<MenuCheckboxItem
+							checked={prefs.showPrStatus}
+							onCheckedChange={(checked) =>
+							{
+								onChange(
+									{
+										...prefs,
+										showPrStatus: checked,
+									},
+								);
+							}}
+						>
+							PR status
+						</MenuCheckboxItem>
+					)}
+					<MenuSeparator />
+					<ChoiceGroup
+						label="Status"
+						value={prefs.statusFilter}
+						options={SessionStatusFilterSchema.options}
+						labels={sessionStatusFilterLabels}
 						onSelect={(next) =>
 						{
 							onChange(
 								{
 									...prefs,
-									groupBy: next,
+									statusFilter: next,
 								},
 							);
 						}}
 					/>
-					<SortBySubmenu
-						sortBy={prefs.sortBy}
-						sortDirection={prefs.sortDirection}
-						onSortBy={(next) =>
+					<MenuSeparator />
+					<ChoiceGroup
+						label="Last activity"
+						value={prefs.activityDays}
+						options={SessionActivityDaysSchema.options}
+						labels={sessionActivityDaysLabels}
+						onSelect={(next) =>
 						{
 							onChange(
 								{
 									...prefs,
-									sortBy: next,
-								},
-							);
-						}}
-						onSortDirection={(next) =>
-						{
-							onChange(
-								{
-									...prefs,
-									sortDirection: next,
+									activityDays: next,
 								},
 							);
 						}}
 					/>
-					<MenuSub>
-						<MenuSubTrigger>Show</MenuSubTrigger>
-						<MenuSubContent>
-							<MenuCheckboxItem
-								checked={prefs.showMetadata}
-								onCheckedChange={(checked) =>
-								{
-									onChange(
-										{
-											...prefs,
-											showMetadata: checked,
-										},
-									);
-								}}
-							>
-								Metadata
-							</MenuCheckboxItem>
-							<MenuSeparator />
-							<MenuCheckboxItem
-								checked={prefs.showEmptyGroups}
-								onCheckedChange={(checked) =>
-								{
-									onChange(
-										{
-											...prefs,
-											showEmptyGroups: checked,
-										},
-									);
-								}}
-							>
-								Empty groups
-							</MenuCheckboxItem>
-							{hasPrData && (
-								<MenuCheckboxItem
-									checked={prefs.showPrStatus}
-									onCheckedChange={(checked) =>
-									{
-										onChange(
-											{
-												...prefs,
-												showPrStatus: checked,
-											},
-										);
-									}}
-								>
-									PR status
-								</MenuCheckboxItem>
-							)}
-							<MenuSeparator />
-							<ChoiceGroup
-								label="Status"
-								value={prefs.statusFilter}
-								options={SessionStatusFilterSchema.options}
-								labels={sessionStatusFilterLabels}
-								onSelect={(next) =>
-								{
-									onChange(
-										{
-											...prefs,
-											statusFilter: next,
-										},
-									);
-								}}
-							/>
-							<MenuSeparator />
-							<ChoiceGroup
-								label="Last activity"
-								value={prefs.activityDays}
-								options={SessionActivityDaysSchema.options}
-								labels={sessionActivityDaysLabels}
-								onSelect={(next) =>
-								{
-									onChange(
-										{
-											...prefs,
-											activityDays: next,
-										},
-									);
-								}}
-							/>
-						</MenuSubContent>
-					</MenuSub>
-					<GroupSortFooter
-						atDefaults={atDefaults}
-						onReset={() =>
+				</MenuSubContent>
+			</MenuSub>
+			<GroupSortFooter
+				atDefaults={atDefaults}
+				onReset={() =>
+				{
+					onChange(
 						{
-							onChange(
-								{
-									...prefs,
-									groupBy: DEFAULT_SESSION_LIST_PREFS.groupBy,
-									sortBy: DEFAULT_SESSION_LIST_PREFS.sortBy,
-									sortDirection: DEFAULT_SESSION_LIST_PREFS.sortDirection,
-								},
-							);
-						}}
-						onNewSection={() =>
-						{
-							setNewSectionOpen(true);
-						}}
-						statusFilter={prefs.statusFilter}
-					/>
-				</MenuContent>
-			</Menu>
-			<NewSectionDialog open={newSectionOpen} onOpenChange={setNewSectionOpen} />
-		</>
+							...prefs,
+							groupBy: DEFAULT_SESSION_LIST_PREFS.groupBy,
+							sortBy: DEFAULT_SESSION_LIST_PREFS.sortBy,
+							sortDirection: DEFAULT_SESSION_LIST_PREFS.sortDirection,
+						},
+					);
+				}}
+				onNewSection={onNewSection}
+				statusFilter={prefs.statusFilter}
+			/>
+		</MenuContent>
 	);
 }
 
@@ -213,20 +212,29 @@ export function SidebarSessionGroups({activeItemId}: {activeItemId: string | nul
 	const {data} = useInfiniteQuery(recentSessionsInfiniteQueryOptions(undefined, prefs.statusFilter));
 	const hasPrData =
 		data?.pages.some((page) => page.sessions.some((session) => session.prStatus !== undefined)) ?? false;
+	const [newSectionOpen, setNewSectionOpen] = useState(false);
 	return (
-		<SessionGroups
-			activeItemId={activeItemId}
-			prefs={prefs}
-			filterSlot={
-				<SessionFilterMenu
-					prefs={prefs}
-					onChange={(next) =>
-					{
-						setSetting("sessionListPrefs", next);
-					}}
-					hasPrData={hasPrData}
-				/>
-			}
-		/>
+		<>
+			<GroupSortMenuHost
+				renderMenu={(anchor) => (
+					<SessionFilterMenuContent
+						prefs={prefs}
+						onChange={(next) =>
+						{
+							setSetting("sessionListPrefs", next);
+						}}
+						hasPrData={hasPrData}
+						anchor={anchor}
+						onNewSection={() =>
+						{
+							setNewSectionOpen(true);
+						}}
+					/>
+				)}
+			>
+				<SessionGroups activeItemId={activeItemId} prefs={prefs} filterSlot={<GroupSortTriggerSlot />} />
+			</GroupSortMenuHost>
+			<NewSectionDialog open={newSectionOpen} onOpenChange={setNewSectionOpen} />
+		</>
 	);
 }

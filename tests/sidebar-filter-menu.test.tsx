@@ -16,6 +16,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 
 import {SettingsProvider} from "../src/components/settings-provider";
 import {SidebarSessionGroups} from "../src/components/sidebar/session-filter-menu";
+import {SidebarHiddenContext} from "../src/components/sidebar/sidebar-hidden";
 import {RecentSessionsResponse, recentSessionsInfiniteQueryOptions} from "../src/lib/api/sessions";
 import {DEFAULT_SESSION_LIST_PREFS, type SessionListPrefs} from "../src/lib/session-groups";
 import type {SessionBucket} from "../src/lib/session-state";
@@ -23,6 +24,7 @@ import {FizzyLakeContext, FIZZY_LAKE_PARTS, type FizzyLakePart} from "../src/lib
 import {findTruncatingLabel, shiftLabelForActiveMatch} from "../src/lib/find-in-page/label-shift";
 import {installLocalStorage} from "./fake-storage";
 import {readFileSync} from "node:fs";
+import {useState} from "react";
 
 const MINUTE = 60 * 1000;
 const routerRef:
@@ -42,6 +44,21 @@ const routerRef:
 	current: null,
 };
 const PREFS_KEY = "ccp-session-list-prefs";
+const setSidebarHiddenRef:
+{
+	current: ((hidden: boolean) => void) | null;
+} =
+{
+	current: null,
+};
+
+/** Stands in for the collapsed peek or phone sheet hiding the sidebar around the list. */
+function SidebarHiddenHarness({children}: {children: React.ReactNode})
+{
+	const [hidden, setHidden] = useState(false);
+	setSidebarHiddenRef.current = setHidden;
+	return <SidebarHiddenContext value={hidden}>{children}</SidebarHiddenContext>;
+}
 
 function session(id: string, title: string, bucket: SessionBucket, projectName: string)
 {
@@ -140,7 +157,9 @@ async function renderSidebarGroups(
 					<SettingsProvider>
 						<QueryClientProvider client={queryClient}>
 							<ToastProvider>
-								<SidebarSessionGroups activeItemId={null} />
+								<SidebarHiddenHarness>
+									<SidebarSessionGroups activeItemId={null} />
+								</SidebarHiddenHarness>
 								<Outlet />
 							</ToastProvider>
 						</QueryClientProvider>
@@ -188,7 +207,10 @@ async function renderSidebarGroups(
 		expect(result.container.querySelector("[data-sidebar-group-label]")).toBeTruthy();
 	});
 	await flush();
-	return result;
+	return {
+		...result,
+		queryClient,
+	};
 }
 
 function groupNames(container: HTMLElement): string[]
@@ -1251,6 +1273,415 @@ describe("sidebar Group and sort menu", () =>
 				order: ["Pinned", "Blog", "Someday", "Working"],
 				manual: ["Blog", "Someday"],
 				recents: ["Working"],
+			},
+		);
+	});
+});
+
+describe("sidebar Group and sort shared menu (held re-anchor)", () =>
+{
+	const triggerSelector = 'button[aria-label="Group and sort"]';
+
+	/** jsdom lays nothing out: give each Group and sort trigger a 24px rect 40px below the previous one. */
+	function stubTriggerRects(height = 24)
+	{
+		const original = HTMLElement.prototype.getBoundingClientRect;
+		return vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement)
+		{
+			if (!this.matches(triggerSelector)) return original.call(this);
+			const index = [...document.querySelectorAll(triggerSelector)].indexOf(this);
+			return DOMRect.fromRect(
+				{
+					x: 200,
+					y: 40 * index,
+					width: 24,
+					height,
+				},
+			);
+		});
+	}
+
+	async function flushFrame()
+	{
+		await act(async () =>
+		{
+			await new Promise((resolve) =>
+			{
+				requestAnimationFrame(resolve);
+			});
+		});
+	}
+
+	function openTriggers(): Element[]
+	{
+		return [...document.querySelectorAll(`${triggerSelector}[aria-expanded="true"]`)];
+	}
+
+	async function pickFolder()
+	{
+		await openSubmenu(/^Group by/);
+		const folder = screen.getByRole(
+			"menuitemradio",
+			{
+				name: "Folder",
+			},
+		);
+		act(() =>
+		{
+			folder.focus();
+		});
+		fireEvent.click(folder);
+		await flush();
+	}
+
+	const originalScrollIntoView = Element.prototype.scrollIntoView;
+
+	/** Every element counts as :focus-visible, and scrollIntoView is recorded rather than run. */
+	function stubFocusVisibleScroll()
+	{
+		const scrollIntoView = vi.fn<Element["scrollIntoView"]>();
+		Element.prototype.scrollIntoView = scrollIntoView;
+		const matches = Element.prototype.matches;
+		vi.spyOn(Element.prototype, "matches").mockImplementation(function (this: Element, selector: string)
+		{
+			return selector === ":focus-visible" ? true : matches.call(this, selector);
+		});
+		// Base UI also scrolls highlighted menu items into view; only scrolls of a trigger slot count here.
+		return () =>
+			scrollIntoView.mock.calls.flatMap((args, index) =>
+			{
+				const target = scrollIntoView.mock.contexts[index];
+				return target instanceof Element && target.matches("[data-group-sort-trigger]")
+					? [
+							{
+								target,
+								args,
+							},
+						]
+					: [];
+			});
+	}
+	afterEach(() =>
+	{
+		vi.restoreAllMocks();
+		Element.prototype.scrollIntoView = originalScrollIntoView;
+	});
+
+	it("wraps each header's trigger in a data-group-sort-trigger span naming its id, and opens one menu for the whole list", async () =>
+	{
+		storePrefs(
+			{
+				groupBy: "state",
+			},
+		);
+		const {container} = await renderSidebarGroups();
+		const spans = [...container.querySelectorAll<HTMLElement>("[data-group-sort-trigger]")];
+		const second = spans[1]?.querySelector(triggerSelector);
+		if (!(second instanceof HTMLElement)) throw new Error("Expected a second Group and sort trigger");
+		fireEvent.click(second);
+		await flush();
+
+		expect(
+			{
+				spans: spans.map((span) => (
+				{
+					idMatches: span.querySelector(triggerSelector)?.id === span.dataset["groupSortTrigger"],
+					scrollMarginBlock: span.style.scrollMarginBlock,
+					className: span.className,
+				})),
+				menus: document.querySelectorAll('[role="menu"]').length,
+				open: openTriggers(),
+				touchNone: second.className.split(" ").includes("aria-expanded:touch-none"),
+			},
+		).toStrictEqual(
+			{
+				spans: [
+					{
+						idMatches: true,
+						scrollMarginBlock: "8px",
+						className: "flex",
+					},
+					{
+						idMatches: true,
+						scrollMarginBlock: "8px",
+						className: "flex",
+					},
+				],
+				menus: 1,
+				open: [second],
+				touchNone: true,
+			},
+		);
+		expect(menuOutline(screen.getByRole("menu"))).toEqual([
+			"Group byStatus",
+			"Sort byLast updated",
+			"Show",
+			"---",
+			"New section",
+			"---",
+			"Reset to defaults",
+			"View all",
+		]);
+	});
+
+	it("keeps the menu open on a regroup, holding it on the nearest surviving trigger and refocusing the picked item", async () =>
+	{
+		storePrefs(
+			{
+				groupBy: "state",
+			},
+		);
+		stubTriggerRects();
+		const {container} = await renderSidebarGroups();
+		await openFilterMenu();
+		await pickFolder();
+		await flushFrame();
+
+		const alphaTrigger = [...container.querySelectorAll("[data-sidebar-group-label]")]
+			.find((label) => label.querySelector("[data-group-name]")?.textContent === "alpha")
+			?.querySelector(triggerSelector);
+		expect(
+			{
+				menu: screen.queryAllByRole("menu").length > 0,
+				groups: groupNames(container),
+				open: openTriggers(),
+				held: alphaTrigger?.getAttribute("data-held"),
+				focusInMenu: document.activeElement?.closest('[role="menu"]') !== null,
+			},
+		).toStrictEqual(
+			{
+				menu: true,
+				groups: ["alpha", "beta"],
+				open: [alphaTrigger],
+				held: "",
+				focusInMenu: true,
+			},
+		);
+	});
+
+	it("closes and moves lost focus to the list's first group toggle when no laid-out trigger survives", async () =>
+	{
+		storePrefs(
+			{
+				groupBy: "state",
+			},
+		);
+		stubTriggerRects(0);
+		const {container} = await renderSidebarGroups();
+		await openFilterMenu();
+		await pickFolder();
+		await flushFrame();
+
+		expect(
+			{
+				menu: screen.queryByRole("menu"),
+				open: openTriggers(),
+				focused: document.activeElement,
+			},
+		).toStrictEqual(
+			{
+				menu: null,
+				open: [],
+				focused: container.querySelector('[data-testid="sidebar-recents"] [data-group-toggle]'),
+			},
+		);
+	});
+
+	it("does not reopen when the open header vanishes after the menu was closed", async () =>
+	{
+		storePrefs(
+			{
+				groupBy: "state",
+			},
+		);
+		stubTriggerRects();
+		const {container, queryClient} = await renderSidebarGroups();
+		const menu = await openFilterMenu();
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "Escape",
+			},
+		);
+		await flush();
+		act(() =>
+		{
+			queryClient.setQueryData(
+				recentSessionsInfiniteQueryOptions(undefined, "active").queryKey,
+				{
+					pages: [
+						RecentSessionsResponse.parse(
+							{
+								sessions: [session("d1", "Completed one", "done", "alpha")],
+								nextCursor: null,
+							},
+						),
+					],
+					pageParams: [null],
+				},
+			);
+		});
+		await flush();
+
+		expect(
+			{
+				groups: groupNames(container),
+				menu: screen.queryByRole("menu"),
+				open: openTriggers(),
+			},
+		).toStrictEqual(
+			{
+				groups: ["Idle"],
+				menu: null,
+				open: [],
+			},
+		);
+	});
+
+	it("scrolls the held trigger into view when an Escape returns focus to it", async () =>
+	{
+		storePrefs(
+			{
+				groupBy: "state",
+			},
+		);
+		stubTriggerRects();
+		const slotScrolls = stubFocusVisibleScroll();
+		const {container} = await renderSidebarGroups();
+		await openFilterMenu();
+		await pickFolder();
+		await flushFrame();
+		const held = container.querySelector(`${triggerSelector}[data-held]`);
+		// The first Escape closes the Group by submenu; the second closes the menu from its top level.
+		fireEvent.keyDown(
+			document.activeElement ?? document.body,
+			{
+				key: "Escape",
+			},
+		);
+		await flush();
+		fireEvent.keyDown(
+			document.activeElement ?? document.body,
+			{
+				key: "Escape",
+			},
+		);
+		await flush();
+		await flushFrame();
+
+		expect(
+			{
+				focused: document.activeElement === held,
+				scrolls: slotScrolls(),
+			},
+		).toStrictEqual(
+			{
+				focused: true,
+				scrolls: [
+					{
+						target: held?.closest("[data-group-sort-trigger]"),
+						args: [
+							{
+								block: "nearest",
+							},
+						],
+					},
+				],
+			},
+		);
+	});
+
+	it("does not scroll on an Escape that closes an unheld menu", async () =>
+	{
+		const slotScrolls = stubFocusVisibleScroll();
+		await renderSidebarGroups();
+		const menu = await openFilterMenu();
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "Escape",
+			},
+		);
+		await flush();
+
+		expect(slotScrolls()).toStrictEqual([]);
+	});
+
+	it("blocks wheel scrolling outside the menu while it is open, except a pinch zoom", async () =>
+	{
+		const {container} = await renderSidebarGroups();
+		const row = container.querySelector('[data-testid="sidebar-recents"] a');
+		if (row === null) throw new Error("Expected a session row");
+		const wheel = (target: Element, ctrlKey = false) =>
+		{
+			const event = new WheelEvent(
+				"wheel",
+				{
+					cancelable: true,
+					bubbles: true,
+					ctrlKey,
+				},
+			);
+			target.dispatchEvent(event);
+			return event.defaultPrevented;
+		};
+		const before = wheel(row);
+		const menu = await openFilterMenu();
+		const whileOpen =
+		{
+			row: wheel(row),
+			pinch: wheel(row, true),
+			menu: wheel(menu),
+		};
+		fireEvent.keyDown(
+			menu,
+			{
+				key: "Escape",
+			},
+		);
+		await flush();
+
+		expect(
+			{
+				before,
+				whileOpen,
+				after: wheel(row),
+			},
+		).toStrictEqual(
+			{
+				before: false,
+				whileOpen:
+				{
+					row: true,
+					pinch: false,
+					menu: false,
+				},
+				after: false,
+			},
+		);
+	});
+
+	it("closes when the sidebar hides around it, but not when opened while already hidden", async () =>
+	{
+		await renderSidebarGroups();
+		await openFilterMenu();
+		act(() =>
+		{
+			setSidebarHiddenRef.current?.(true);
+		});
+		await flush();
+		const closedOnHide = screen.queryByRole("menu");
+		await openFilterMenu();
+
+		expect(
+			{
+				closedOnHide,
+				reopenedWhileHidden: screen.queryAllByRole("menu").length,
+			},
+		).toStrictEqual(
+			{
+				closedOnHide: null,
+				reopenedWhileHidden: 1,
 			},
 		);
 	});

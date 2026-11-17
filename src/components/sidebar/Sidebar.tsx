@@ -50,6 +50,7 @@ import {Icon} from "../ui/icon";
 import {type Density, useScopeDensity} from "../ui/density-context";
 import {useSettings} from "../settings-context";
 import {isPeekMenuOpen} from "./peek-menu-open";
+import {SidebarHiddenContext} from "./sidebar-hidden";
 
 export function Sidebar({
 	collapsed,
@@ -787,7 +788,7 @@ function CollapsedSidebar({
 					<div className="w-8 shrink-0" />
 					<SidebarWordmark className="ml-1.5" />
 				</div>
-				{children}
+				<SidebarHiddenContext value={!hovering}>{children}</SidebarHiddenContext>
 			</nav>
 		</div>
 	);
