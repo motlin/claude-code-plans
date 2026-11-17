@@ -22,11 +22,16 @@ import
 } from "../lib/terminal-lifecycle";
 import type {ConnectionStatus} from "./herdr-terminal";
 import {createOscFilter} from "../lib/terminal-osc-filter";
+import {createPromptMarks, type PromptMarks} from "../lib/terminal-prompt-marks";
 import {loadGhostty} from "./load-ghostty";
+import {TerminalCommandMarks, type CommandMarksTerminal} from "./terminal-command-marks";
 import {TerminalPlaceholder} from "./terminal-placeholder";
 import {CDS_BUTTON_DISABLED, CDS_BUTTON_DISABLED_FILL} from "./ui/cds-button-disabled";
 import {TerminalSelectionStatus} from "./terminal-selection-status";
 import {installTerminalInput, useTerminalSelectionActions} from "./terminal-input";
+
+/** Upstream's ShellTerminal `contentPadding` (`SC`): pad-md above and below, and the left gutter for command marks. */
+const SHELL_TERMINAL_GUTTER = "var(--cds-pad-md)";
 
 /** Socket closes that mean "stop", not "reconnect". */
 const FINAL_CLOSE_CODES = new Set([1000, 1008, 4001, 4404]);
@@ -84,6 +89,11 @@ export function ShellTerminal({
 	const [lifecycle, setLifecycle] = useState<TerminalLifecycle>(INITIAL_TERMINAL_LIFECYCLE);
 	const [restarting, setRestarting] = useState(false);
 	const [appearance, setAppearance] = useState<GhosttyAppearance | null>(null);
+	const [commandMarks, setCommandMarks] = useState<
+	{
+		marks: PromptMarks;
+		terminal: CommandMarksTerminal;
+	} | null>(null);
 	const {actions: selectionActions, announcement} = useTerminalSelectionActions(sessionId);
 	const {ready: themeReady, theme: codeTheme, fontSize: codeFontSize} = useTerminalTheme();
 
@@ -136,7 +146,23 @@ export function ShellTerminal({
 			{
 				terminal.write(text);
 			};
-			installTerminalInput(terminal, selectionActions, () => multipleTabsRef.current);
+			const marks = createPromptMarks(terminal);
+			installTerminalInput(
+				terminal,
+				selectionActions,
+				() => multipleTabsRef.current,
+				(direction) => marks.scrollToCommand(direction),
+			);
+			const marksResizeSubscription = terminal.onResize(() =>
+			{
+				marks.handleResize();
+			});
+			setCommandMarks(
+				{
+					marks,
+					terminal,
+				},
+			);
 
 			let socket: WebSocket | null = null;
 			let retry: ReturnType<typeof setTimeout> | null = null;
@@ -202,7 +228,8 @@ export function ShellTerminal({
 					{
 						case "opened":
 							terminal.reset();
-							terminal.write(oscFilter(decodeTerminalBytes(frame.buffered)));
+							marks.reset();
+							marks.write(oscFilter(decodeTerminalBytes(frame.buffered)));
 							dispatch(
 								{
 									type: "opened",
@@ -210,7 +237,7 @@ export function ShellTerminal({
 							);
 							return;
 						case "data":
-							terminal.write(oscFilter(decodeTerminalBytes(frame.data)));
+							marks.write(oscFilter(decodeTerminalBytes(frame.data)));
 							return;
 						case "exit":
 							stopped = true;
@@ -297,6 +324,8 @@ export function ShellTerminal({
 				if (resizeTimer) clearTimeout(resizeTimer);
 				resizeObserver.disconnect();
 				dataSubscription.dispose();
+				marksResizeSubscription.dispose();
+				setCommandMarks(null);
 				socket?.close(1000, "shell view closed");
 				removeContrast();
 				terminal.dispose();
@@ -373,20 +402,36 @@ export function ShellTerminal({
 	const overlay = terminalOverlay(lifecycle);
 
 	return (
-		<div className="relative flex h-full min-h-0 flex-col">
+		<div
+			className="relative flex h-full min-h-0 flex-col rounded-b-[inherit]"
+			style={
+			{
+				padding: `${SHELL_TERMINAL_GUTTER} 0`,
+				"--terminal-gutter": SHELL_TERMINAL_GUTTER,
+				...(appearance
+					?
+						{
+							backgroundColor: appearance.theme.background,
+						}
+					: {}),
+			}}
+		>
 			<div
 				ref={container}
 				data-terminal=""
-				className="min-h-0 flex-1 overflow-hidden rounded-b-[inherit] p-2"
+				className="min-h-0 flex-1 overflow-hidden rounded-b-[inherit]"
 				style={
-					appearance
-						?
-							{
-								backgroundColor: appearance.theme.background,
-							}
-						: undefined
-				}
+				{
+					paddingLeft: "var(--terminal-gutter)",
+				}}
 			/>
+			{commandMarks && appearance && (
+				<TerminalCommandMarks
+					marks={commandMarks.marks}
+					terminal={commandMarks.terminal}
+					theme={appearance.theme}
+				/>
+			)}
 			{overlay?.kind === "placeholder" && <TerminalPlaceholder appearance={appearance} />}
 			<TerminalSelectionStatus announcement={announcement} />
 			{overlay?.kind === "load-failed" && (

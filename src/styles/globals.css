@@ -3771,6 +3771,13 @@ main[data-focus-region="main"][data-scroll-restoration-id="main"][data-focus-reg
 	}
 }
 
+/* Shell tab per-command gutter marks: xterm's decoration rule, without the .xterm-screen ancestor ghostty lacks. */
+.xterm-decoration-container .xterm-decoration
+{
+	z-index: 6;
+	position: absolute;
+}
+
 /* The terminal loading placeholder's caret, blinking like a terminal cursor. */
 .terminal-caret
 {

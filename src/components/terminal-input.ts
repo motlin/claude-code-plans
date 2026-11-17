@@ -3,6 +3,8 @@ import {useCallback, useEffect, useRef, useState} from "react";
 import {dispatchShortcutEvent} from "../hooks/use-shortcut";
 import {writeClipboardText} from "../lib/clipboard";
 import {terminalHandlesKey} from "../lib/herdr/terminal-keys";
+import {isMacPlatform} from "../lib/shortcuts/match";
+import type {CommandScrollDirection} from "../lib/terminal-prompt-marks";
 import
 {
 	attachTerminalSelection,
@@ -64,8 +66,25 @@ export function useTerminalSelectionActions(sessionId: string | null):
 }
 
 /**
- * Key handling and links for an opened terminal. Selection chords come first;
- * Ghostty skips (and preventDefaults) keys the handler claims, which would
+ * Upstream's ⌘↑ / ⌘↓ (Ctrl off the Mac) in a terminal: jump to the previous or next command the shell marked.
+ * Matched by `code` with key repeat allowed, and only claimed when `scrollToCommand` had marks to act on.
+ */
+function handleCommandScrollKey(
+	event: KeyboardEvent,
+	terminal: Terminal,
+	scrollToCommand: (direction: CommandScrollDirection) => boolean,
+): boolean
+{
+	if (terminal.buffer.active.type !== "normal") return false;
+	if (event.code !== "ArrowUp" && event.code !== "ArrowDown") return false;
+	const modifier = isMacPlatform() ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
+	if (!modifier || event.shiftKey || event.altKey) return false;
+	return scrollToCommand(event.code === "ArrowUp" ? "previous" : "next");
+}
+
+/**
+ * Key handling and links for an opened terminal. Selection chords come first, then the command-scroll keys
+ * when the terminal tracks its shell's prompt marks. Ghostty skips (and preventDefaults) keys the handler claims, which would
  * hide app chords from the document shortcut listener, so those are
  * dispatched to the app here. Links go through the "Open link?" confirm.
  */
@@ -73,11 +92,13 @@ export function installTerminalInput(
 	terminal: Terminal,
 	actions: SelectionActions,
 	hasMultipleTabs: () => boolean = () => false,
+	scrollToCommand?: (direction: CommandScrollDirection) => boolean,
 ): void
 {
 	terminal.attachCustomKeyEventHandler((event) =>
 	{
 		if (handleTerminalSelectionKey(event, terminal, actions)) return true;
+		if (scrollToCommand && handleCommandScrollKey(event, terminal, scrollToCommand)) return true;
 		if (
 			terminalHandlesKey(
 				event,

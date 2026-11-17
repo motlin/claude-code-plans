@@ -7,8 +7,11 @@ import {ruleStart} from "./css-rule";
 const COLOUR_PREFIXED_UTILITY =
 	/(?<![\w\-[./])(?:text|bg|border)-[a-z][\w-]*(?:\[[^\]\s]*\])?(?:\/(?:\d+|\[[^\]\s]*\]))?/g;
 
-/** CSS property names that are not classes: the ones mermaid-svg-audit.ts refuses in a drawing's styles. */
-const CSS_PROPERTY_NAMES = new Set(["text-transform", "text-orientation", "text-combine"]);
+/**
+ * CSS names that are not classes: the property names mermaid-svg-audit.ts refuses in a drawing's styles, and the
+ * `box-sizing` value inline styles set.
+ */
+const CSS_PROPERTY_NAMES = new Set(["text-transform", "text-orientation", "text-combine", "border-box"]);
 
 const RETIRED_CHROME_UTILITY = /(?:text-text|bg-bg|border-border)-[A-Za-z0-9]+|rounded-\[[0-9]+px\]/g;
 

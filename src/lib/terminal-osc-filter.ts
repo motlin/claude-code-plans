@@ -102,3 +102,160 @@ export function createOscFilter(): (chunk: Uint8Array) => Uint8Array
 		return Uint8Array.from(output);
 	};
 }
+
+const FULL_RESET = 0x63; // c
+const PROMPT_MARK_COMMAND = "133";
+/** A sane cap on the OSC 133 payload kept for parsing; the bytes themselves always pass through. */
+const MAX_PROMPT_MARK_PAYLOAD = 256;
+
+/**
+ * One piece of a terminal byte stream: bytes to write, then the OSC 133 prompt mark (`ESC ] 133 ; mark [; arg]`)
+ * or full reset (`ESC c`) those bytes just ended with. `arg` is the second `;` field only, as upstream's
+ * `data.split(";", 2)` reads it.
+ */
+export type TerminalStreamItem =
+	|
+	  {
+			bytes: Uint8Array;
+	  }
+	|
+	  {
+			mark: string;
+			arg: string | undefined;
+	  }
+	|
+	  {
+			fullReset: true;
+	  };
+
+type MarkState = "ground" | "escape" | "command" | "payload" | "string" | "string-escape";
+
+/**
+ * Returns a stateful splitter that cuts a terminal byte stream right after each OSC 133 prompt mark and each
+ * full reset, so the caller can write the bytes up to that point and then read the cursor where the shell
+ * put it. Every byte passes through; sequences may be split across chunks.
+ */
+export function createPromptMarkSplitter(): (chunk: Uint8Array) => TerminalStreamItem[]
+{
+	let state: MarkState = "ground";
+	let command = "";
+	let payload: string | null = null;
+
+	return (chunk) =>
+	{
+		const items: TerminalStreamItem[] = [];
+		let start = 0;
+		const cut = (end: number, event: TerminalStreamItem): void =>
+		{
+			items.push(
+				{
+					bytes: chunk.slice(start, end),
+				},
+			);
+			items.push(event);
+			start = end;
+		};
+		const endString = (end: number): void =>
+		{
+			state = "ground";
+			if (payload === null) return;
+			const [mark = "", arg] = payload.split(";", 2);
+			payload = null;
+			cut(
+				end,
+				{
+					mark,
+					arg,
+				},
+			);
+		};
+
+		for (let index = 0; index < chunk.length; index++)
+		{
+			const byte = chunk[index] ?? 0;
+			switch (state)
+			{
+				case "ground":
+					if (byte === ESC) state = "escape";
+					break;
+				case "escape":
+					if (byte === OSC_INTRODUCER)
+					{
+						command = "";
+						state = "command";
+					}
+					else if (byte === ESC)
+					{
+						state = "escape";
+					}
+					else
+					{
+						state = "ground";
+						if (byte === FULL_RESET)
+						{
+							cut(
+								index + 1,
+								{
+									fullReset: true,
+								},
+							);
+						}
+					}
+					break;
+				case "command":
+					if (byte >= DIGIT_0 && byte <= DIGIT_9 && command.length < MAX_COMMAND_DIGITS)
+					{
+						command += String.fromCharCode(byte);
+					}
+					else if (byte === SEPARATOR && command === PROMPT_MARK_COMMAND)
+					{
+						payload = "";
+						state = "payload";
+					}
+					else if (byte === BEL)
+					{
+						endString(index + 1);
+					}
+					else if (byte === ESC)
+					{
+						state = "string-escape";
+					}
+					else
+					{
+						state = "string";
+					}
+					break;
+				case "payload":
+					if (byte === BEL) endString(index + 1);
+					else if (byte === ESC) state = "string-escape";
+					else if (payload !== null && payload.length < MAX_PROMPT_MARK_PAYLOAD)
+						payload += String.fromCharCode(byte);
+					break;
+				case "string":
+					if (byte === BEL) state = "ground";
+					else if (byte === ESC) state = "string-escape";
+					break;
+				case "string-escape":
+					if (byte === STRING_TERMINATOR)
+					{
+						endString(index + 1);
+					}
+					else
+					{
+						// Any other byte cuts the string short: the ESC starts a new escape sequence instead.
+						payload = null;
+						state = "escape";
+						index--;
+					}
+					break;
+			}
+		}
+		if (start < chunk.length || items.length === 0)
+			items.push(
+				{
+					bytes: chunk.slice(start),
+				},
+			);
+		return items;
+	};
+}

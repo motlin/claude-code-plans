@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vite-plus/test";
-import {createOscFilter} from "../src/lib/terminal-osc-filter";
+import {createOscFilter, createPromptMarkSplitter, type TerminalStreamItem} from "../src/lib/terminal-osc-filter";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -58,5 +58,140 @@ describe("createOscFilter", () =>
 	{
 		const input = "\u001B[1;31mred\u001B[0m \u001B(B\u001B\u001B]xé";
 		expect(new Set(everySplit(input))).toEqual(new Set([input]));
+	});
+});
+
+type Readable =
+	|
+	  {
+			bytes: string;
+	  }
+	| Exclude<
+			TerminalStreamItem,
+			{
+				bytes: Uint8Array;
+			}
+	  >;
+
+function split(chunks: readonly string[]): Readable[]
+{
+	const filter = createOscFilter();
+	const splitter = createPromptMarkSplitter();
+	const items: Readable[] = [];
+	for (const chunk of chunks)
+	{
+		for (const item of splitter(filter(encoder.encode(chunk))))
+		{
+			if (!("bytes" in item))
+			{
+				items.push(item);
+				continue;
+			}
+			const text = decoder.decode(item.bytes);
+			const last = items.at(-1);
+			if (last !== undefined && "bytes" in last) last.bytes += text;
+			else if (text !== "")
+				items.push(
+					{
+						bytes: text,
+					},
+				);
+		}
+	}
+	return items;
+}
+
+describe("createPromptMarkSplitter", () =>
+{
+	const session = "a\u001B]133;A\u0007$ \u001B]133;B\u0007ls\r\n\u001B]133;C;\u0007out\r\n\u001B]133;D;1\u0007";
+	const expected: Readable[] = [
+		{
+			bytes: "a\u001B]133;A\u0007",
+		},
+		{
+			mark: "A",
+			arg: undefined,
+		},
+		{
+			bytes: "$ \u001B]133;B\u0007",
+		},
+		{
+			mark: "B",
+			arg: undefined,
+		},
+		{
+			bytes: "ls\r\n\u001B]133;C;\u0007",
+		},
+		{
+			mark: "C",
+			arg: "",
+		},
+		{
+			bytes: "out\r\n\u001B]133;D;1\u0007",
+		},
+		{
+			mark: "D",
+			arg: "1",
+		},
+	];
+
+	it("passes every byte through and emits each OSC 133 mark right after its terminator", () =>
+	{
+		expect(split([session])).toStrictEqual(expected);
+	});
+
+	it("emits the same bytes and marks when split at any byte", () =>
+	{
+		for (let index = 0; index <= session.length; index++)
+		{
+			expect(split([session.slice(0, index), session.slice(index)])).toStrictEqual(expected);
+		}
+	});
+
+	it('keeps only the field after the mark, like upstream\'s split(";", 2)', () =>
+	{
+		expect(split(["\u001B]133;P;k=i\u001B\\", "\u001B]133;D;0;aid=7\u0007"])).toStrictEqual([
+			{
+				bytes: "\u001B]133;P;k=i\u001B\\",
+			},
+			{
+				mark: "P",
+				arg: "k=i",
+			},
+			{
+				bytes: "\u001B]133;D;0;aid=7\u0007",
+			},
+			{
+				mark: "D",
+				arg: "0",
+			},
+		]);
+	});
+
+	it("emits a full reset after ESC c, also one that cuts an OSC string short, but not after CSI c", () =>
+	{
+		expect(split(["x\u001Bcy\u001B[c\u001B]0;a\u001Bc"])).toStrictEqual([
+			{
+				bytes: "x\u001Bc",
+			},
+			{
+				fullReset: true,
+			},
+			{
+				bytes: "y\u001B[c\u001B]0;a\u001Bc",
+			},
+			{
+				fullReset: true,
+			},
+		]);
+	});
+
+	it("ignores other OSC commands and still drops OSC 1337 upstream of it", () =>
+	{
+		expect(split(["\u001B]1337;CurrentDir=/tmp\u0007\u001B]1330;A\u0007\u001B]13;A\u0007p"])).toStrictEqual([
+			{
+				bytes: "\u001B]1330;A\u0007\u001B]13;A\u0007p",
+			},
+		]);
 	});
 });
