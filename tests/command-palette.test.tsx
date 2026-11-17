@@ -111,6 +111,29 @@ let currentRouter:
 		};
 	};
 } | null = null;
+let navigateTo: ((href: string) => Promise<void>) | null = null;
+
+/** A remote navigation (Back/Forward, a link outside the palette) while the palette is open. */
+async function navigateAway(href: string)
+{
+	await act(async () =>
+	{
+		await navigateTo?.(href);
+	});
+}
+
+/** Another app dialog opening over the palette, as upstream's `YI` sees it. */
+async function openOtherDialog()
+{
+	const other = document.createElement("div");
+	other.setAttribute("data-cds", "Dialog");
+	document.body.append(other);
+	await act(async () =>
+	{
+		await Promise.resolve();
+	});
+	return other;
+}
 
 async function renderPalette(
 	sessions = [recentSession("sess-1", "Refactor auth module")],
@@ -187,6 +210,12 @@ async function renderPalette(
 	);
 	await router.load();
 	currentRouter = router;
+	navigateTo = async (href) =>
+		router.navigate(
+			{
+				href,
+			},
+		);
 	render(<RouterProvider router={router} />);
 	const composer = await screen.findByRole(
 		"textbox",
@@ -1549,6 +1578,80 @@ describe("CommandPalette shell", () =>
 		{
 			expect(document.activeElement).toBe(composer);
 		});
+	});
+
+	it("auto-closes on a route change without returning focus to the opener (upstream A7)", async () =>
+	{
+		const composer = await renderPalette();
+		await pressOpen(composer);
+
+		await navigateAway("/routines");
+
+		await waitFor(() =>
+		{
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
+		expect(document.activeElement === composer).toBe(false);
+	});
+
+	it("keeps short Search text through a route change but closes when another dialog opens", async () =>
+	{
+		const dialog = await openPalette();
+		fireEvent.change(
+			within(dialog).getByRole("combobox"),
+			{
+				target:
+				{
+					value: "abc",
+				},
+			},
+		);
+
+		await navigateAway("/routines");
+		const afterRoute = screen.queryByRole("dialog") !== null;
+		const other = await openOtherDialog();
+
+		await waitFor(() =>
+		{
+			expect(
+				{
+					afterRoute,
+					afterDialog: screen.queryByRole("dialog"),
+				},
+			).toStrictEqual(
+				{
+					afterRoute: true,
+					afterDialog: null,
+				},
+			);
+		});
+		other.remove();
+	});
+
+	it("holds a Compose draft through route changes and other dialogs", async () =>
+	{
+		localStorage.setItem("cmdk-mode", "compose");
+		const dialog = await openPalette();
+		fireEvent.change(
+			await within(dialog).findByRole(
+				"combobox",
+				{
+					name: "Write a message…",
+				},
+			),
+			{
+				target:
+				{
+					value: "hi",
+				},
+			},
+		);
+
+		await navigateAway("/routines");
+		const other = await openOtherDialog();
+
+		expect(dialog.isConnected && dialog.hasAttribute("data-open")).toBe(true);
+		other.remove();
 	});
 
 	it("opening a session row closes without refocusing the opener, as upstream's Open", async () =>

@@ -227,6 +227,7 @@ export function ImagePreviewModal({
 						/>
 						<DialogPopup
 							unstyled
+							data-cds="Dialog"
 							ref={setPopup}
 							initialFocus={closeRef}
 							finalFocus={false}

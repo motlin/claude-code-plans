@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useState} from "react";
+import {useCallback, useEffect, useRef, useState} from "react";
 
 import {useShortcut} from "./use-shortcut";
 import {startPaletteOpenJourney} from "../lib/perf/field-journeys";
@@ -68,6 +68,9 @@ export function useCommandPalette()
 	const [forcedSearch, setForcedSearch] = useState(false);
 	// An unremembered switch (Backspace on an empty Compose) holds until the palette closes.
 	const [openOverride, setOpenOverride] = useState<PaletteMode | null>(null);
+	// Upstream `sendHeldRef` (owned by the shortcut host `gE`): while a send is held, every close is refused.
+	// Only an open palette holds, and it releases before its own closes.
+	const sendHeldRef = useRef(false);
 
 	const openPalette = useCallback((next: PaletteEntrypoint, options?: PaletteOpenOptions) =>
 	{
@@ -79,6 +82,8 @@ export function useCommandPalette()
 
 	const toggle = useCallback(() =>
 	{
+		// Upstream swallows ⌘K while the send is held instead of toggling the palette closed.
+		if (sendHeldRef.current) return;
 		setEntrypoint("default");
 		setForcedSearch(false);
 		setOpenOverride(null);
@@ -138,8 +143,14 @@ export function useCommandPalette()
 
 	const onOpenChange = useCallback((next: boolean) =>
 	{
+		if (!next && sendHeldRef.current) return;
 		if (!next) setOpenOverride(null);
 		setOpen(next);
+	}, []);
+
+	const onSendHoldChange = useCallback((held: boolean) =>
+	{
+		sendHeldRef.current = held;
 	}, []);
 
 	const mode: PaletteMode = entrypoint === "search" || forcedSearch ? "search" : (openOverride ?? rememberedMode);
@@ -152,5 +163,6 @@ export function useCommandPalette()
 		onOpenChange,
 		mode,
 		onModeChange,
+		onSendHoldChange,
 	};
 }

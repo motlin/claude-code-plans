@@ -25,6 +25,7 @@ export function SessionRenameDialog({
 	finalFocus,
 	title: titleOverride,
 	fieldLabel = "Rename session",
+	paletteOwned = false,
 }: {
 	open: boolean;
 	initialName: string;
@@ -39,6 +40,8 @@ export function SessionRenameDialog({
 	title?: string;
 	/** The name field's accessible label. */
 	fieldLabel?: string;
+	/** Opened from the ⌘K palette, so it must not auto-close the palette (see palette-close-hold). */
+	paletteOwned?: boolean;
 })
 {
 	const [name, setName] = useState(initialName);
@@ -83,6 +86,7 @@ export function SessionRenameDialog({
 					<Dialog.Backdrop className="fixed inset-0 z-50 bg-backdrop backdrop-blur-[2px] transition-opacity duration-200 ease-out data-[ending-style]:opacity-0 data-[starting-style]:opacity-0 motion-reduce:transition-none" />
 					<DialogPopup
 						initialFocus={inputRef}
+						data-palette-owned={paletteOwned ? "" : undefined}
 						{...(finalFocus === undefined
 							? {}
 							:

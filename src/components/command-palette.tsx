@@ -67,11 +67,13 @@ import {jumpActionKeywords, PALETTE_JUMP_ACTIONS, type PaletteJumpActionId} from
 import {paletteFocusOrigin} from "../lib/palette-focus-origin";
 import {findWaitingCard, landOnWaitingCard} from "../lib/question-landing";
 import {useCoarsePointer} from "../lib/use-phone-sheet";
-import type {PaletteMode, PaletteModeChangeOptions} from "../hooks/use-command-palette";
+import type {PaletteEntrypoint, PaletteMode, PaletteModeChangeOptions} from "../hooks/use-command-palette";
+import {usePaletteAutoClose} from "../hooks/use-palette-auto-close";
+import {paletteCloseHold} from "../lib/palette-close-hold";
 import {PASTE_ATTACH_CHARS, type PaletteBuffers, switchPaletteView} from "../lib/palette-compose";
 import {clearPaletteKeys, readPaletteKeys} from "../lib/palette-keystroke-buffer";
 import {paletteLoadingShown, setPaletteLoadingShown} from "../lib/palette-loading";
-import {offersQuickNewSession, paletteSearchable} from "../lib/palette-quick-action";
+import {offersQuickNewSession, PALETTE_SEND_HOLD_TIMEOUT_MS, paletteSearchable} from "../lib/palette-quick-action";
 import {useDebouncedValue} from "../hooks/use-debounced-value";
 import {sessionIdentityQueryOptions} from "../lib/api/session-identity";
 import {useSessionIdentity} from "../hooks/use-session-identity";
@@ -1236,9 +1238,20 @@ export interface CommandPaletteProps
 	onOpenChange: (open: boolean) => void;
 	mode?: PaletteMode;
 	onModeChange?: (mode: PaletteMode, options?: PaletteModeChangeOptions) => void;
+	/** Which shortcut opened it: the search-only entry (⇧⌘K) never treats long text as a draft. */
+	entrypoint?: PaletteEntrypoint;
+	/** Upstream `onSendHoldChange`: the opener refuses every close while a send is held. */
+	onSendHoldChange?: (held: boolean) => void;
 }
 
-export function CommandPalette({open, onOpenChange, mode: controlledMode, onModeChange}: CommandPaletteProps)
+export function CommandPalette({
+	open,
+	onOpenChange,
+	mode: controlledMode,
+	onModeChange,
+	entrypoint = "default",
+	onSendHoldChange,
+}: CommandPaletteProps)
 {
 	const [uncontrolledMode, setUncontrolledMode] = useState<PaletteMode>("search");
 	const mode = controlledMode ?? uncontrolledMode;
@@ -1253,7 +1266,14 @@ export function CommandPalette({open, onOpenChange, mode: controlledMode, onMode
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal>
 				<PaletteBackdrop />
-				<PalettePopup mode={mode} onModeChange={setMode} onOpenChange={onOpenChange} />
+				<PalettePopup
+					open={open}
+					mode={mode}
+					entrypoint={entrypoint}
+					onModeChange={setMode}
+					onOpenChange={onOpenChange}
+					onSendHoldChange={onSendHoldChange}
+				/>
 			</Dialog.Portal>
 		</Dialog.Root>
 	);
@@ -1271,13 +1291,19 @@ function PaletteBackdrop()
 
 /** Mounted only while open, so the query resets on every open like upstream. */
 function PalettePopup({
+	open,
 	mode,
+	entrypoint,
 	onModeChange,
 	onOpenChange,
+	onSendHoldChange,
 }: {
+	open: boolean;
 	mode: PaletteMode;
+	entrypoint: PaletteEntrypoint;
 	onModeChange: (mode: PaletteMode, options?: PaletteModeChangeOptions) => void;
 	onOpenChange: (open: boolean) => void;
+	onSendHoldChange: ((held: boolean) => void) | undefined;
 })
 {
 	const navigate = useNavigate();
@@ -1372,6 +1398,16 @@ function PalettePopup({
 	// Opening a session or jumping to a question puts focus somewhere new, so closing must not pull it back.
 	const restoreFocusRef = useRef(true);
 	const restoreFocus = useCallback(() => restoreFocusRef.current, []);
+	// Upstream's held send (host `sendHeldRef`): the local launch holds from `launching` until it releases.
+	const sendHeldRef = useRef(false);
+	const reportSendHold = useCallback(
+		(held: boolean) =>
+		{
+			sendHeldRef.current = held;
+			onSendHoldChange?.(held);
+		},
+		[onSendHoldChange],
+	);
 	// Upstream decides "Jump to question" once per open, from the waiting card on the page at that moment.
 	const [jumpOffered] = useState(() => typeof document !== "undefined" && findWaitingCard(document) !== null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1964,6 +2000,7 @@ function PalettePopup({
 			prompt: composePrompt(startPrompt, takeContextChips(COMPOSE_DRAFT_KEY), []),
 		};
 		const since = Date.now();
+		reportSendHold(true);
 		setStartStep("launching");
 		try
 		{
@@ -1992,6 +2029,7 @@ function PalettePopup({
 							message: "Couldn’t start a session. Try again.",
 						},
 			);
+			reportSendHold(false);
 			onOpenChange(false);
 		}
 	}
@@ -2003,6 +2041,7 @@ function PalettePopup({
 		const id = findLaunchedSession(activeSessions.values(), pendingLaunch);
 		if (id === null) return;
 		restoreFocusRef.current = false;
+		reportSendHold(false);
 		onOpenChange(false);
 		void navigate(
 			{
@@ -2013,7 +2052,50 @@ function PalettePopup({
 				},
 			},
 		);
-	}, [pendingLaunch, activeSessions, onOpenChange, navigate]);
+	}, [pendingLaunch, activeSessions, onOpenChange, navigate, reportSendHold]);
+
+	// Upstream releases a held send after `Zp`. Locally the herdr launch has already happened by then, so this
+	// only lifts the close guard: unlike upstream there is no "Couldn’t start a session" toast and no return
+	// to idle (which would invite a duplicate launch), and a late SessionStart still opens the session.
+	const launching = startStep === "launching";
+	useEffect(() =>
+	{
+		if (!launching) return undefined;
+		const timer = window.setTimeout(() =>
+		{
+			reportSendHold(false);
+		}, PALETTE_SEND_HOLD_TIMEOUT_MS);
+		return () =>
+		{
+			window.clearTimeout(timer);
+			reportSendHold(false);
+		};
+	}, [launching, reportSendHold]);
+
+	// Upstream `A7` with host `T`: a route change or another dialog closes the palette unless held, and an
+	// auto-close never returns focus to the opener. A refused attempt leaves the focus return alone.
+	usePaletteAutoClose(
+		{
+			enabled: open,
+			hold: paletteCloseHold(
+				{
+					mode,
+					entrypoint,
+					search: buffers.search,
+					compose: buffers.compose,
+					attachments: composeChips.length,
+					filters,
+					startStep,
+				},
+			),
+			onClose: () =>
+			{
+				if (sendHeldRef.current) return;
+				restoreFocusRef.current = false;
+				onOpenChange(false);
+			},
+		},
+	);
 
 	function seeAllResults(apiType: ServerPaletteType)
 	{
@@ -2681,7 +2763,6 @@ function PalettePopup({
 				? `${resultCount} ${resultCount === 1 ? "result" : "results"} available`
 				: emptyMessage;
 	const idle = startStep === "idle";
-	const launching = startStep === "launching";
 	// Upstream's sending Compose keeps the list hidden: the busy Send and the live region carry the state.
 	const composeAtRest = compose && startStep !== "picker";
 	const showEmptyState = idle && !compose && trimmedQuery === "" && tab === "all" && chips.length === 0;
@@ -3435,6 +3516,7 @@ function PalettePopup({
 					session={renaming.session}
 					open={renaming.open}
 					finalFocus={inputRef}
+					paletteOwned
 					onClose={() =>
 					{
 						setRenaming((current) =>

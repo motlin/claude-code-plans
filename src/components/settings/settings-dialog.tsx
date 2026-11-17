@@ -517,6 +517,7 @@ export function SettingsDialog()
 					<Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40 dark:bg-black/50 transition-opacity duration-200 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 motion-reduce:transition-none" />
 					<DialogPopup
 						unstyled
+						data-cds="Dialog"
 						aria-labelledby={titleId}
 						initialFocus={initialFocus}
 						finalFocus={finalFocus}

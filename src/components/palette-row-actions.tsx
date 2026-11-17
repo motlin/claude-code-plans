@@ -408,12 +408,15 @@ export function PaletteRenameDialog({
 	onClose,
 	onClosed,
 	finalFocus,
+	paletteOwned = false,
 }: {
 	session: PaletteCardSession;
 	open: boolean;
 	onClose: () => void;
 	onClosed: () => void;
 	finalFocus: RefObject<HTMLElement | null>;
+	/** Opened from inside the ⌘K palette rather than a session chip. */
+	paletteOwned?: boolean;
 })
 {
 	const mutation = useRenameSessionMutation(session.id);
@@ -425,6 +428,7 @@ export function PaletteRenameDialog({
 			onClose={onClose}
 			onClosed={onClosed}
 			finalFocus={finalFocus}
+			paletteOwned={paletteOwned}
 			onRename={(name) =>
 			{
 				mutation.mutate(

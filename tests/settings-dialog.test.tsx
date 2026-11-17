@@ -27,6 +27,7 @@ import
 	type SkillSummary,
 } from "../src/lib/api/customize";
 import {DIALOG_BODY_CLASS} from "../src/components/ui/dialog-classes";
+import {PALETTE_OVERLAY_SELECTOR} from "../src/lib/palette-close-hold";
 import {PHONE_SHEET_QUERY, SETTINGS_PHONE_QUERY, SETTINGS_WIDE_QUERY} from "../src/lib/use-phone-sheet";
 import {redirectToSettingsDialog} from "../src/routes/settings";
 import {installLocalStorage} from "./fake-storage";
@@ -192,7 +193,17 @@ describe("SettingsDialog", () =>
 				name: "Settings",
 			},
 		);
-		expect(dialog.parentElement?.closest("[data-density]")?.getAttribute("data-density")).toBe("comfortable");
+		expect(
+			{
+				density: dialog.parentElement?.closest("[data-density]")?.getAttribute("data-density"),
+				closesPalette: dialog.matches(PALETTE_OVERLAY_SELECTOR),
+			},
+		).toStrictEqual(
+			{
+				density: "comfortable",
+				closesPalette: true,
+			},
+		);
 	});
 
 	it("fades and scales the popup and fades the backdrop on open and close, as upstream's 0.2s ease-out", async () =>

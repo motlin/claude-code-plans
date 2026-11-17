@@ -20,7 +20,10 @@ interface PopupFocusProps
 type DialogPopupProps = ComponentProps<typeof Dialog.Popup> &
 	PopupFocusProps &
 	{
-		/** Upstream `lZ` without the styled `js` markers: no `data-cds="Dialog"`/`data-cds-fizzy`. */
+		/**
+		 * Upstream `lZ` without the styled `js` markers: no `data-cds="Dialog"`/`data-cds-fizzy`. A full-screen
+		 * modal passes `data-cds="Dialog"` itself so it still closes the ⌘K palette (upstream `YI`).
+		 */
 		unstyled?: boolean;
 	};
 

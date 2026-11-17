@@ -4,6 +4,7 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {useState} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {ImagePreviewModal} from "../src/components/image-preview-modal";
+import {PALETTE_OVERLAY_SELECTOR} from "../src/lib/palette-close-hold";
 
 const POPUP = "fixed inset-0 grid place-items-center p-4 sm:p-10 bg-black/62.5 outline-none";
 const GROUP_BASE = "inline-flex w-fit shrink-0 flex-col items-stretch gap-2";
@@ -134,6 +135,7 @@ describe("ImagePreviewModal structure", () =>
 		expect(
 			{
 				popup: dialog.getAttribute("class"),
+				closesPalette: dialog.matches(PALETTE_OVERLAY_SELECTOR),
 				backdrop: backdrop.getAttribute("class"),
 				title:
 				{
@@ -161,6 +163,7 @@ describe("ImagePreviewModal structure", () =>
 		).toStrictEqual(
 			{
 				popup: POPUP,
+				closesPalette: true,
 				backdrop: "fixed inset-0 bg-transparent backdrop-blur-none",
 				title:
 				{

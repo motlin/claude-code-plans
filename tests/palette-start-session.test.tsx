@@ -13,6 +13,7 @@ import
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from "@testing-library/react";
 import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT, PALETTE_SEARCH_DEBOUNCE_MS} from "../src/components/command-palette";
+import {PALETTE_SEND_HOLD_TIMEOUT_MS} from "../src/lib/palette-quick-action";
 import {ToastProvider} from "../src/components/toast";
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
@@ -208,9 +209,16 @@ async function openPalette()
 			component: () => null,
 		},
 	);
+	const plansRoute = createRoute(
+		{
+			getParentRoute: () => rootRoute,
+			path: "plans",
+			component: () => null,
+		},
+	);
 	const router = createRouter(
 		{
-			routeTree: rootRoute.addChildren([indexRoute, searchRoute, sessionRoute]),
+			routeTree: rootRoute.addChildren([indexRoute, searchRoute, sessionRoute, plansRoute]),
 			history: createMemoryHistory(
 				{
 					initialEntries: ["/"],
@@ -247,8 +255,62 @@ async function openPalette()
 		dialog,
 		router,
 		eventSource,
+		composer,
 		input: within(dialog).getByRole("combobox"),
 	};
+}
+
+/** Types a prompt, picks a project and waits for the never-resolving launch: the palette holds its send. */
+async function startLaunch()
+{
+	const opened = await openPalette();
+	fireEvent.change(
+		opened.input,
+		{
+			target:
+			{
+				value: LONG_PROMPT,
+			},
+		},
+	);
+	await pickProject(opened.dialog, opened.input, "older");
+	await waitFor(() =>
+	{
+		expect(launchCalls.length).toBe(1);
+	});
+	return opened;
+}
+
+function paletteDialog(): HTMLElement | null
+{
+	return screen.queryByRole(
+		"dialog",
+		{
+			name: "Search",
+		},
+	);
+}
+
+function pressEscape()
+{
+	fireEvent.keyDown(
+		document.activeElement ?? document.body,
+		{
+			key: "Escape",
+			code: "Escape",
+		},
+	);
+}
+
+function clickBackdrop()
+{
+	const backdrop = document.querySelector(".bg-backdrop");
+	if (backdrop === null) throw new Error("No palette backdrop");
+	fireEvent.pointerDown(backdrop);
+	fireEvent.mouseDown(backdrop);
+	fireEvent.pointerUp(backdrop);
+	fireEvent.mouseUp(backdrop);
+	fireEvent.click(backdrop);
 }
 
 function headings(dialog: HTMLElement): string[]
@@ -346,6 +408,7 @@ describe("⌘K palette: start a new session", () =>
 	afterEach(() =>
 	{
 		cleanup();
+		vi.useRealTimers();
 		vi.restoreAllMocks();
 		vi.unstubAllGlobals();
 		writeText.mockClear();
@@ -1259,6 +1322,235 @@ describe("⌘K palette: start a new session", () =>
 			expect(writeText.mock.calls).toStrictEqual([
 				["cd '/users/dev/newest' && claude 'hello there, please say hello back to me from the new session'"],
 			]);
+		});
+	});
+
+	it("refuses Escape while the send is held, keeping the Starting session… row", async () =>
+	{
+		const {dialog} = await startLaunch();
+
+		fireEvent.keyDown(
+			within(dialog).getByRole("combobox"),
+			{
+				key: "Escape",
+				code: "Escape",
+			},
+		);
+		await act(async () =>
+		{
+			await Promise.resolve();
+		});
+
+		expect(
+			{
+				open: paletteDialog() !== null,
+				row: groupLabels(dialog, "Quick actions"),
+			},
+		).toStrictEqual(
+			{
+				open: true,
+				row: ["Starting session…"],
+			},
+		);
+	});
+
+	it("closes on a backdrop click while idle", async () =>
+	{
+		await openPalette();
+
+		clickBackdrop();
+
+		await waitFor(() =>
+		{
+			expect(paletteDialog()).toBeNull();
+		});
+	});
+
+	it("refuses a backdrop click while the send is held", async () =>
+	{
+		await startLaunch();
+
+		clickBackdrop();
+		await act(async () =>
+		{
+			await Promise.resolve();
+		});
+
+		expect(paletteDialog()).not.toBeNull();
+	});
+
+	it("swallows ⌘K while the send is held instead of toggling closed", async () =>
+	{
+		await startLaunch();
+
+		fireEvent.keyDown(
+			document.activeElement ?? document.body,
+			{
+				key: "k",
+				code: "KeyK",
+				metaKey: true,
+			},
+		);
+		await act(async () =>
+		{
+			await Promise.resolve();
+		});
+
+		expect(paletteDialog()).not.toBeNull();
+	});
+
+	it("still closes and navigates on SessionStart after a refused Escape", async () =>
+	{
+		launchResponse = async () =>
+			Promise.resolve(
+				Response.json(
+					{
+						ok: true,
+						tabId: "t1",
+						paneId: "p1",
+						sessionId: null,
+					},
+				),
+			);
+		const {router, eventSource} = await startLaunch();
+		pressEscape();
+		const openAfterEscape = paletteDialog() !== null;
+
+		act(() =>
+		{
+			eventSource.emit(
+				SSE_EVENTS.SESSION_START,
+				{
+					sessionId: "new-session",
+					cwd: "/users/dev/older",
+					model: "",
+				},
+			);
+		});
+
+		await waitFor(() =>
+		{
+			expect(
+				{
+					openAfterEscape,
+					open: paletteDialog() !== null,
+					pathname: router.state.location.pathname,
+				},
+			).toStrictEqual(
+				{
+					openAfterEscape: true,
+					open: false,
+					pathname: "/session/new-session",
+				},
+			);
+		});
+	});
+
+	it("still closes when the launch fails", async () =>
+	{
+		launchResponse = async () => Promise.reject(new Error("x"));
+		await startLaunch();
+
+		await waitFor(() =>
+		{
+			expect(paletteDialog()).toBeNull();
+		});
+	});
+
+	it("releases the send hold after upstream's 10 s without a toast, keeping Starting session…", async () =>
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+				shouldAdvanceTime: true,
+			},
+		);
+		const {dialog} = await startLaunch();
+
+		act(() =>
+		{
+			vi.advanceTimersByTime(PALETTE_SEND_HOLD_TIMEOUT_MS - 100);
+		});
+		pressEscape();
+		const heldBefore = paletteDialog() !== null;
+		const rowBefore = groupLabels(dialog, "Quick actions");
+		act(() =>
+		{
+			vi.advanceTimersByTime(200);
+		});
+		const toasts = document.body.textContent.includes("Couldn’t start a session");
+		pressEscape();
+
+		await waitFor(() =>
+		{
+			expect(
+				{
+					timeout: PALETTE_SEND_HOLD_TIMEOUT_MS,
+					heldBefore,
+					rowBefore,
+					toasts,
+					open: paletteDialog() !== null,
+				},
+			).toStrictEqual(
+				{
+					timeout: 10_000,
+					heldBefore: true,
+					rowBefore: ["Starting session…"],
+					toasts: false,
+					open: false,
+				},
+			);
+		});
+	});
+
+	it("refuses route and dialog auto-closes while held, and a later Escape still returns focus", async () =>
+	{
+		vi.useFakeTimers(
+			{
+				toFake: ["setTimeout", "clearTimeout"],
+				shouldAdvanceTime: true,
+			},
+		);
+		const {router, composer} = await startLaunch();
+
+		await act(async () =>
+		{
+			await router.navigate(
+				{
+					to: "/plans",
+				},
+			);
+		});
+		const other = document.createElement("div");
+		other.setAttribute("data-cds", "Dialog");
+		document.body.append(other);
+		await act(async () =>
+		{
+			await Promise.resolve();
+		});
+		const heldThrough = paletteDialog() !== null;
+		other.remove();
+		act(() =>
+		{
+			vi.advanceTimersByTime(PALETTE_SEND_HOLD_TIMEOUT_MS + 100);
+		});
+		pressEscape();
+
+		await waitFor(() =>
+		{
+			expect(
+				{
+					heldThrough,
+					open: paletteDialog() !== null,
+					focus: document.activeElement === composer,
+				},
+			).toStrictEqual(
+				{
+					heldThrough: true,
+					open: false,
+					focus: true,
+				},
+			);
 		});
 	});
 });

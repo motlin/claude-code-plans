@@ -4,6 +4,7 @@ import {act, cleanup, fireEvent, render, screen} from "@testing-library/react";
 import {useState} from "react";
 import {afterEach, describe, expect, it, vi} from "vite-plus/test";
 import {ImageViewer} from "../src/components/image-viewer";
+import {PALETTE_OVERLAY_SELECTOR} from "../src/lib/palette-close-hold";
 import type {AttachedImage} from "../src/components/user-attachments";
 
 const IMAGES: readonly AttachedImage[] = [
@@ -226,6 +227,7 @@ describe("ImageViewer zoom and pan", () =>
 						pressed: button.getAttribute("aria-pressed"),
 					})),
 				roles: slides(viewer).map((slide) => slide.getAttribute("role")),
+				closesPalette: viewer.matches(PALETTE_OVERLAY_SELECTOR),
 			},
 		).toStrictEqual(
 			{
@@ -237,6 +239,7 @@ describe("ImageViewer zoom and pan", () =>
 					},
 				],
 				roles: [null, "button", null, null],
+				closesPalette: true,
 			},
 		);
 		fireEvent.click(

@@ -12,3 +12,8 @@ export function offersQuickNewSession(rawQuery: string): boolean
 {
 	return !paletteSearchable(rawQuery) && rawQuery.trim() !== "";
 }
+
+/**
+ * Upstream `Zp`: a held Compose send releases its close guard after 10 s, so the guard can never trap the user.
+ */
+export const PALETTE_SEND_HOLD_TIMEOUT_MS = 10_000;

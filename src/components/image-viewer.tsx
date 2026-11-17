@@ -431,6 +431,7 @@ export function ImageViewer({
 			<Dialog.Portal>
 				<DialogPopup
 					unstyled
+					data-cds="Dialog"
 					ref={setPopup}
 					finalFocus={false}
 					onKeyDown={onKeyDown}

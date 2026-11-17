@@ -861,7 +861,8 @@ describe("palette row actions card", () =>
 						name: "Actions",
 					},
 				),
-				paletteOpen: palette.isConnected,
+				paletteOpen: palette.isConnected && palette.hasAttribute("data-open"),
+				paletteOwned: rename.hasAttribute("data-palette-owned"),
 				value: (field as HTMLInputElement).value,
 				testId: field.getAttribute("data-testid"),
 				buttons: within(rename)
@@ -874,6 +875,7 @@ describe("palette row actions card", () =>
 			{
 				card: null,
 				paletteOpen: true,
+				paletteOwned: true,
 				value: "Refactor auth module",
 				testId: "name-session",
 				buttons: [
