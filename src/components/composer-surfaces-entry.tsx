@@ -6,6 +6,7 @@ const composerSurfaces = deferredModule(async () =>
 		({
 			AttachedContextChips,
 			ComposerDropScrim,
+			EmojiSuggestionMenu,
 			MentionMenu,
 			ParkedMessageBar,
 			QueuedMessageBar,
@@ -15,6 +16,7 @@ const composerSurfaces = deferredModule(async () =>
 		{
 			AttachedContextChips,
 			ComposerDropScrim,
+			EmojiSuggestionMenu,
 			MentionMenu,
 			ParkedMessageBar,
 			QueuedMessageBar,
@@ -30,6 +32,7 @@ const deferredSurfaces =
 {
 	AttachedContextChips: deferredComponent(composerSurfaces, "AttachedContextChips"),
 	ComposerDropScrim: deferredComponent(composerSurfaces, "ComposerDropScrim"),
+	EmojiSuggestionMenu: deferredComponent(composerSurfaces, "EmojiSuggestionMenu"),
 	MentionMenu: deferredComponent(composerSurfaces, "MentionMenu"),
 	ParkedMessageBar: deferredComponent(composerSurfaces, "ParkedMessageBar"),
 	QueuedMessageBar: deferredComponent(composerSurfaces, "QueuedMessageBar"),

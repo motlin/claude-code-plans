@@ -22,6 +22,9 @@ import type {ThemedToken} from "@shikijs/core";
 import {useBandEnter} from "../hooks/use-band-enter";
 import {useComposerDraft} from "../hooks/use-composer-draft";
 import {type FileMentionSource, useFileMentionSuggestions} from "../hooks/use-file-mention-suggestions";
+import {typedEmoticon} from "../lib/emoji-emoticons";
+import {type EmojiItem, searchEmoji, warmEmoji} from "../lib/emoji-search";
+import {emojiTrigger} from "../lib/emoji-trigger";
 import {useMentionProviders} from "../hooks/use-mention-providers";
 import type {MentionOutputFile} from "../lib/session-outputs";
 import type {AgentTileProps} from "./agent-tile";
@@ -136,6 +139,7 @@ import
 import {preloadFileTypeIcons} from "./file-type-icons-loader";
 import {ToastContext} from "./toast-context";
 import {fileMentionOptionId, mentionPopupId} from "./file-mention-option-id";
+import {emojiOptionId} from "./emoji-option-id";
 import {preloadComposerSurfaces, useComposerSurfaces} from "./composer-surfaces-entry";
 import {slashCommandOptionId} from "./slash-command-option-id";
 import {Icon} from "./ui/icon";
@@ -1055,6 +1059,7 @@ const SendSlot = memo(function SendSlot({
 const NO_COMMANDS: readonly SlashCommand[] = [];
 const NO_HISTORY: readonly string[] = [];
 const NO_MENTIONS: readonly AcceptedMention[] = [];
+const NO_EMOJI: readonly EmojiItem[] = [];
 const NO_MENTION_PROVIDERS: readonly MentionProvider[] = [];
 const NO_LAUNCH_OPTIONS: LaunchOptions = {};
 /** The model ids and aliases `/model <arg>` accepts: the chin's Model menu rows. */
@@ -1719,6 +1724,7 @@ export function Composer({
 	{
 		AttachedContextChips,
 		ComposerDropScrim,
+		EmojiSuggestionMenu,
 		MentionMenu,
 		ParkedMessageBar,
 		QueuedMessageBar,
@@ -2456,6 +2462,145 @@ export function Composer({
 		nav: HistoryNavigator;
 	} | null>(null);
 	const historyNav = historyWalk?.draftKey === draftKey && historyWalk.bashMode === bashMode ? historyWalk.nav : null;
+	// The last emoticon conversion, while Backspace can still revert it; any other edit clears it.
+	const lastEmoticonRef = useRef<
+	{
+		draftKey: string;
+		text: string;
+		at: number;
+		original: string;
+		originalCaret: number;
+	} | null>(null);
+
+	// Upstream's emoji-suggestion popup: a `:` token of two or more characters lists matching shortcodes. Off in bash
+	// mode, during history recall and while the / or @ menu is open.
+	const emojiMenuId = useId();
+	const emojiTriggerAt =
+		bashMode || historyNav !== null || slashOpen || mentionOpen || caret !== selectionEnd
+			? null
+			: emojiTrigger(prompt, caret);
+	// Esc keeps its token closed while the `:` it opened on is still there; a new `:` token opens again.
+	const [dismissedEmoji, setDismissedEmoji] = useState<number | null>(null);
+	if (dismissedEmoji !== null && prompt.charAt(dismissedEmoji) !== ":") setDismissedEmoji(null);
+	// A press outside closes the popup until the next edit.
+	const [emojiClosedFor, setEmojiClosedFor] = useState<string | null>(null);
+	if (emojiClosedFor !== null && emojiClosedFor !== prompt) setEmojiClosedFor(null);
+	const emojiQuery =
+		emojiTriggerAt === null || emojiTriggerAt.start === dismissedEmoji || emojiClosedFor === prompt
+			? null
+			: emojiTriggerAt.query;
+	const [emojiResult, setEmojiResult] = useState<
+	{
+		query: string;
+		items: readonly EmojiItem[];
+	} | null>(null);
+	useEffect(() =>
+	{
+		if (emojiQuery === null) return undefined;
+		// Upstream `items`: under two characters only warms the table.
+		if (emojiQuery.length < 2)
+		{
+			warmEmoji();
+			return undefined;
+		}
+		let live = true;
+		void searchEmoji(emojiQuery).then((items) =>
+		{
+			if (live)
+				setEmojiResult(
+					{
+						query: emojiQuery,
+						items,
+					},
+				);
+		});
+		return () =>
+		{
+			live = false;
+		};
+	}, [emojiQuery]);
+	const emojiItems =
+		emojiQuery !== null && emojiQuery.length >= 2 && emojiResult?.query === emojiQuery
+			? emojiResult.items
+			: NO_EMOJI;
+	const emojiOpen = emojiTriggerAt !== null && emojiItems.length > 0;
+	// Upstream resets the highlight to the first row whenever the rows change.
+	const [emojiHighlight, setEmojiHighlight] = useState<
+	{
+		items: readonly EmojiItem[];
+		index: number;
+	} | null>(null);
+	const emojiHighlighted = emojiHighlight?.items === emojiItems ? emojiHighlight.index : 0;
+	useEffect(() =>
+	{
+		if (!emojiOpen) return undefined;
+		const onMouseDown = (event: MouseEvent) =>
+		{
+			if (event.target instanceof Node && document.getElementById(emojiMenuId)?.contains(event.target)) return;
+			setEmojiClosedFor(promptRef.current);
+		};
+		document.addEventListener("mousedown", onMouseDown);
+		return () =>
+		{
+			document.removeEventListener("mousedown", onMouseDown);
+		};
+	}, [emojiOpen, emojiMenuId]);
+
+	/** Upstream's emoji `command`: the emoji replaces the `:query` token, with no trailing space. */
+	function acceptEmoji(item: EmojiItem)
+	{
+		if (emojiTriggerAt === null) return;
+		const next = prompt.slice(0, emojiTriggerAt.start) + item.char + prompt.slice(caret);
+		const nextCaret = emojiTriggerAt.start + item.char.length;
+		if (mentions.length > 0)
+		{
+			setMentionState(
+				{
+					draftKey,
+					text: next,
+					mentions: remapMentions(prompt, next, mentions),
+				},
+			);
+		}
+		pendingCaretRef.current = nextCaret;
+		setCaret(nextCaret);
+		setSelectionEnd(nextCaret);
+		setPrompt(next);
+		textareaRef.current?.focus();
+	}
+
+	function handleEmojiKey(e: React.KeyboardEvent<HTMLTextAreaElement>): boolean
+	{
+		if (!emojiOpen) return false;
+		const modified = e.shiftKey || e.ctrlKey || e.metaKey || e.altKey;
+		const move = modified ? 0 : e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
+		if (move !== 0)
+		{
+			setEmojiHighlight(
+				{
+					items: emojiItems,
+					index: (emojiHighlighted + move + emojiItems.length) % emojiItems.length,
+				},
+			);
+		}
+		else if ((e.key === "Enter" && !e.shiftKey) || (e.key === "Tab" && !modified))
+		{
+			const item = emojiItems[emojiHighlighted];
+			if (item === undefined) return false;
+			acceptEmoji(item);
+		}
+		else if (e.key === "Escape")
+		{
+			setDismissedEmoji(emojiTriggerAt.start);
+			e.stopPropagation();
+		}
+		else
+		{
+			return false;
+		}
+		e.preventDefault();
+		return true;
+	}
 
 	function showPrompt(text: string, caretAt: number)
 	{
@@ -2774,15 +2919,50 @@ export function Composer({
 		},
 	};
 
+	/** Upstream's `undoInputRule`: Backspace straight after an emoticon conversion puts the typed emoticon back. */
+	function handleEmoticonUndoKey(e: React.KeyboardEvent<HTMLTextAreaElement>): boolean
+	{
+		const last = lastEmoticonRef.current;
+		if (e.key !== "Backspace" || last === null) return false;
+		lastEmoticonRef.current = null;
+		const {selectionStart, selectionEnd} = e.currentTarget;
+		if (
+			last.draftKey !== draftKey ||
+			last.text !== prompt ||
+			selectionStart !== last.at ||
+			selectionEnd !== last.at ||
+			e.altKey ||
+			e.metaKey ||
+			e.ctrlKey
+		)
+			return false;
+		e.preventDefault();
+		if (mentions.length > 0)
+		{
+			setMentionState(
+				{
+					draftKey,
+					text: last.original,
+					mentions: remapMentions(prompt, last.original, mentions),
+				},
+			);
+		}
+		showPrompt(last.original, last.originalCaret);
+		setSelectionEnd(last.originalCaret);
+		return true;
+	}
+
 	function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>)
 	{
 		startComposerKeystrokeJourney(e.nativeEvent);
 		if (
 			e.nativeEvent.isComposing ||
+			handleEmoticonUndoKey(e) ||
 			handleChipKey(e) ||
 			handleMentionChipKey(e) ||
 			handleSlashKey(e) ||
 			handleMentionKey(e) ||
+			handleEmojiKey(e) ||
 			handleBashKey(e) ||
 			handleHistoryKey(e)
 		)
@@ -2997,6 +3177,25 @@ export function Composer({
 							emptyHint={mentionHint}
 						/>
 					)}
+					{emojiOpen && (
+						<EmojiSuggestionMenu
+							id={emojiMenuId}
+							items={emojiItems}
+							highlighted={emojiHighlighted}
+							onHighlight={(index) =>
+							{
+								setEmojiHighlight(
+									{
+										items: emojiItems,
+										index,
+									},
+								);
+							}}
+							onAccept={acceptEmoji}
+							textarea={textareaRef.current}
+							start={emojiTriggerAt.start}
+						/>
+					)}
 					{painted && (
 						<div
 							ref={paintedOverlayRef}
@@ -3123,6 +3322,25 @@ export function Composer({
 							setHistoryWalk(null);
 							let next = e.target.value;
 							let nextCaret = e.target.selectionStart;
+							lastEmoticonRef.current = null;
+							const emoticon =
+								!bashMode && historyNav === null
+									? typedEmoticon(prompt, next, nextCaret, e.target.selectionEnd)
+									: null;
+							if (emoticon !== null)
+							{
+								lastEmoticonRef.current =
+								{
+									draftKey,
+									text: emoticon.text,
+									at: emoticon.caret,
+									original: next,
+									originalCaret: nextCaret,
+								};
+								next = emoticon.text;
+								nextCaret = emoticon.caret;
+								pendingCaretRef.current = nextCaret;
+							}
 							// Upstream `Yg chipArgumentSeparator`: a character typed right after the chip gets a space before it.
 							const after = next.charAt(chipLength);
 							if (chip !== null && next.startsWith(`/${chip.name}`) && after !== "" && !/\s/.test(after))
@@ -3161,7 +3379,9 @@ export function Composer({
 						aria-describedby={argumentHint === null ? undefined : argumentHintSrId}
 						onKeyDown={handleKeyDown}
 						onPaste={handlePaste}
-						aria-controls={slashOpen ? slashMenuId : mentionOpen ? mentionMenuId : undefined}
+						aria-controls={
+							slashOpen ? slashMenuId : mentionOpen ? mentionMenuId : emojiOpen ? emojiMenuId : undefined
+						}
 						aria-activedescendant={
 							slashOpen
 								? highlighted === -1
@@ -3169,7 +3389,9 @@ export function Composer({
 									: slashCommandOptionId(slashMenuId, highlighted)
 								: mentionOpen && !mentionAlone
 									? fileMentionOptionId(mentionMenuId, mentionHighlighted)
-									: undefined
+									: emojiOpen
+										? emojiOptionId(emojiMenuId, emojiHighlighted)
+										: undefined
 						}
 						aria-placeholder={placeholder}
 						{...hintProps}
