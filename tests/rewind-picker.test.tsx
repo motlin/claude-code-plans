@@ -739,6 +739,7 @@ describe("/rewind", () =>
 				name: "rewind",
 				description: "Rewind the session to an earlier message",
 				source: "builtin",
+				hostHandled: true,
 			},
 		);
 	});

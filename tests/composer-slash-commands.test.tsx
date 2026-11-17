@@ -9,7 +9,13 @@ import {ToastProvider} from "../src/components/toast";
 import type {LiveLaunchControls} from "../src/hooks/use-live-launch-options";
 import {customizeMcpServersQueryOptions} from "../src/lib/api/customize";
 import type {ComposerState} from "../src/lib/composer-state";
-import type {SlashCommand} from "../src/lib/slash-commands";
+import
+{
+	BUILTIN_SLASH_COMMANDS,
+	SESSION_SLASH_COMMANDS,
+	mergeSlashCommands,
+	type SlashCommand,
+} from "../src/lib/slash-commands";
 import {preloadComposerSurfaces} from "../src/components/composer-surfaces-entry";
 import {CompactScope} from "./fizzy-lake-off";
 
@@ -218,18 +224,19 @@ describe("Composer slash commands", () =>
 		);
 	});
 
-	it("tags only a custom command that collides with a built-in, as a second muted Custom command row", () =>
+	it("tags only a custom command that collides with a host-handled built-in, as a second muted Custom command row", () =>
 	{
-		const builtinReview: SlashCommand =
+		const builtinEffort: SlashCommand =
 		{
-			name: "review",
-			description: "Review a pull request",
+			name: "effort",
+			description: "Set the effort level for this session",
 			source: "builtin",
+			hostHandled: true,
 		};
-		const customReview: SlashCommand =
+		const customEffort: SlashCommand =
 		{
-			name: "review",
-			description: "My own review flow",
+			name: "effort",
+			description: "My own effort flow",
 			source: "personal-command",
 			shadowsHost: true,
 		};
@@ -239,7 +246,7 @@ describe("Composer slash commands", () =>
 			description: "Color the tab",
 			source: "personal-command",
 		};
-		const {textarea, onSend} = setup(undefined, [builtinReview, customReview, tabColor]);
+		const {textarea, onSend} = setup(undefined, [builtinEffort, customEffort, tabColor]);
 
 		fireEvent.change(
 			textarea,
@@ -280,11 +287,11 @@ describe("Composer slash commands", () =>
 			{
 				menuRows: [
 					{
-						name: "review",
+						name: "effort",
 						highlighted: true,
 					},
 					{
-						name: "reviewCustom command",
+						name: "effortCustom command",
 						highlighted: false,
 					},
 					{
@@ -297,9 +304,57 @@ describe("Composer slash commands", () =>
 					'<span class="ms-auto shrink-0 ps-2 text-caption text-ink-muted">Custom command</span>',
 					null,
 				],
-				tooltip: "My own review flow",
-				prompt: "/review ",
+				tooltip: "My own effort flow",
+				prompt: "/effort ",
 				sent: [],
+			},
+		);
+	});
+
+	it("lists a custom command named after a built-in the CLI runs as the one row, without a subtitle", () =>
+	{
+		const {textarea} = setup(
+			undefined,
+			mergeSlashCommands([
+				BUILTIN_SLASH_COMMANDS,
+				[
+					{
+						name: "review",
+						description: "My own review flow",
+						source: "personal-command",
+					},
+				],
+			]),
+		);
+
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: "/rev",
+				},
+			},
+		);
+
+		expect(
+			{
+				menuRows: rows(),
+				subtitles: screen
+					.getAllByRole("menuitem")
+					.map((row) => row.querySelector(".ms-auto")?.outerHTML ?? null),
+				tooltip: screen.getByRole("tooltip").textContent,
+			},
+		).toStrictEqual(
+			{
+				menuRows: [
+					{
+						name: "review",
+						highlighted: true,
+					},
+				],
+				subtitles: [null],
+				tooltip: "My own review flow",
 			},
 		);
 	});
@@ -2513,6 +2568,7 @@ describe("Composer host commands", () =>
 		{
 			chin?: ComposerState | undefined;
 			live?: LiveLaunchControls;
+			slashCommands?: SlashCommand[];
 		} =
 		{
 			chin: CHIN,
@@ -2988,6 +3044,43 @@ describe("Composer host commands", () =>
 		);
 	});
 
+	/** Types `/name`, clicks its Custom command twin row, then sends. */
+	function sendTwin(textarea: HTMLTextAreaElement, name: string)
+	{
+		fireEvent.change(
+			textarea,
+			{
+				target:
+				{
+					value: `/${name}`,
+				},
+			},
+		);
+		const twin = screen.getAllByRole("menuitem").find((row) => row.textContent === `${name}Custom command`);
+		if (twin === undefined) throw new Error(`no ${name} twin`);
+		fireEvent.mouseDown(twin);
+		fireEvent.keyDown(
+			textarea,
+			{
+				key: "Enter",
+			},
+		);
+	}
+
+	function withTwin(base: readonly SlashCommand[], name: string): SlashCommand[]
+	{
+		return mergeSlashCommands([
+			base,
+			[
+				{
+					name,
+					description: `My own ${name}`,
+					source: "personal-command",
+				},
+			],
+		]);
+	}
+
 	it("toggles fast mode for a bare /fast without sending", () =>
 	{
 		const {textarea, onSend} = hostSetup();
@@ -3005,6 +3098,38 @@ describe("Composer host commands", () =>
 				sends: [],
 				text: "",
 				label: "Model: Opus 5.5 Fast High",
+			},
+		);
+	});
+
+	it("sends a twin-picked /fast to the CLI as typed, leaving fast mode alone", () =>
+	{
+		const {textarea, onSend} = hostSetup(
+			{
+				chin: CHIN,
+				slashCommands: withTwin(BUILTIN_SLASH_COMMANDS, "fast"),
+			},
+		);
+
+		sendTwin(textarea, "fast");
+
+		expect(
+			{
+				sends: onSend.mock.calls,
+				label: modelTrigger()?.getAttribute("aria-label"),
+			},
+		).toStrictEqual(
+			{
+				sends: [
+					[
+						"/fast",
+						{},
+						{
+							cliCommandForced: true,
+						},
+					],
+				],
+				label: "Model: Opus 5.5 High",
 			},
 		);
 	});
@@ -3183,7 +3308,7 @@ describe("Composer host commands", () =>
 		);
 	});
 
-	function rewindSetup(state: ComposerRewindState = "ready")
+	function rewindSetup(state: ComposerRewindState = "ready", slashCommands?: SlashCommand[])
 	{
 		const onSend = vi.fn<(prompt: string) => void>();
 		const onRewind = vi.fn<() => void>();
@@ -3198,6 +3323,12 @@ describe("Composer host commands", () =>
 						state,
 						open: onRewind,
 					}}
+					{...(slashCommands === undefined
+						? {}
+						:
+							{
+								slashCommands,
+							})}
 				/>
 			</ToastProvider>,
 		);
@@ -3233,6 +3364,47 @@ describe("Composer host commands", () =>
 				sends: [],
 				rewinds: 1,
 				text: "",
+			},
+		);
+	});
+
+	it("sends a twin-picked /rewind to the CLI as typed, while a typed /rewind still opens the picker", () =>
+	{
+		const {textarea, onSend, onRewind} = rewindSetup(
+			"ready",
+			withTwin([...SESSION_SLASH_COMMANDS, ...BUILTIN_SLASH_COMMANDS], "rewind"),
+		);
+
+		sendTwin(textarea, "rewind");
+		const twinPick =
+		{
+			sends: onSend.mock.calls.map((call) => call[0]),
+			rewinds: onRewind.mock.calls.length,
+		};
+		// The trailing space closes the menu on the exact head, so Enter sends what was typed.
+		send(textarea, "/rewind ");
+
+		expect(
+			{
+				twinPick,
+				typed:
+				{
+					sends: onSend.mock.calls.length,
+					rewinds: onRewind.mock.calls.length,
+				},
+			},
+		).toStrictEqual(
+			{
+				twinPick:
+				{
+					sends: ["/rewind"],
+					rewinds: 0,
+				},
+				typed:
+				{
+					sends: 1,
+					rewinds: 1,
+				},
 			},
 		);
 	});

@@ -27,11 +27,22 @@ export interface SlashCommand
 	/** The plugin a plugin skill or command comes from; upstream labels the row by the bare name and names the plugin beside it. */
 	pluginName?: string | undefined;
 	/**
-	 * A user, project or plugin entry whose name or alias collides with a built-in. Upstream lists it as a
-	 * second row tagged "Custom command" and routes it with `slashRouting:"cli"`; locally both rows insert
-	 * the same `/name` and the CLI decides.
+	 * The composer runs this command itself (upstream's host catalog row); a user/project command of the same
+	 * name or alias is listed beside it as a `Custom command` twin.
+	 */
+	hostHandled?: true | undefined;
+	/**
+	 * A user, project or plugin entry whose name or alias collides with a `hostHandled` built-in. Upstream lists
+	 * it as a second row tagged "Custom command"; picking it routes the command to the CLI (`slashRouting:"cli"`),
+	 * skipping the composer's host intercepts.
 	 */
 	shadowsHost?: true | undefined;
+}
+
+/** The row key upstream's `R8` builds (`name:routing`): a twin stays a distinct row from its host row. */
+export function slashCommandRowKey(command: SlashCommand): string
+{
+	return command.shadowsHost === true ? `${command.name}:cli` : command.name;
 }
 
 /** One row of the "/" popup, mirroring upstream's `SlashCommandMenuPopupBody` item types. */
@@ -108,17 +119,20 @@ export const SESSION_SLASH_COMMANDS: readonly SlashCommand[] = [
 		name: "rewind",
 		description: "Rewind the session to an earlier message",
 		source: "builtin",
+		hostHandled: true,
 	},
 	{
 		name: "autocompact",
 		description: "Show context usage or set when auto-compact runs",
 		source: "builtin",
 		argumentHint: "[auto|<tokens>]",
+		hostHandled: true,
 	},
 	{
 		name: "status",
 		description: "Show this session’s version, model, environment, and account",
 		source: "builtin",
+		hostHandled: true,
 	},
 ];
 
@@ -132,18 +146,21 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommand[] = [
 		description: "Set the model for this session",
 		source: "builtin",
 		argumentHint: "[model-id]",
+		hostHandled: true,
 	},
 	{
 		name: "effort",
 		description: "Set the effort level for this session",
 		source: "builtin",
 		argumentHint: "[level]",
+		hostHandled: true,
 	},
 	{
 		name: "fast",
 		description: "Turn fast mode on or off",
 		source: "builtin",
 		argumentHint: "[on|off]",
+		hostHandled: true,
 	},
 	{
 		name: "plan",
@@ -156,6 +173,7 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommand[] = [
 		description: "Change the permission mode",
 		source: "builtin",
 		aliases: ["allowed-tools"],
+		hostHandled: true,
 	},
 	{
 		name: "skills",
@@ -167,12 +185,14 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommand[] = [
 		description: "Browse workflow history (running and completed)",
 		source: "builtin",
 		aliases: ["workflow"],
+		hostHandled: true,
 	},
 	{
 		name: "usage",
 		description: "Show plan usage and rate limits",
 		source: "builtin",
 		aliases: ["stats", "cost"],
+		hostHandled: true,
 	},
 	{
 		name: "config",
@@ -197,6 +217,7 @@ export const BUILTIN_SLASH_COMMANDS: readonly SlashCommand[] = [
 		description: "Ask a quick side question without adding to the session",
 		source: "builtin",
 		argumentHint: "<question>",
+		hostHandled: true,
 	},
 	{
 		name: "rename",
@@ -431,38 +452,57 @@ export function isKnownSlashCommand(name: string, slashCommands: readonly SlashC
 	);
 }
 
+/* Upstream's `hidesCliRow` host rows that the composer intercepts: a custom twin of these is dropped, not listed. */
+const HIDES_CLI_ROW: ReadonlySet<string> = new Set(["model"]);
+
 /**
- * Flattens groups given in precedence order; the first entry for a name wins, except that the first
- * non-built-in entry colliding with a built-in's name or alias is also kept, marked `shadowsHost`.
+ * Flattens groups given in precedence order; the first entry for a name wins. A custom (non-built-in) entry
+ * colliding by name or alias with a `hostHandled` built-in is kept after it as a `shadowsHost` twin (dropped for
+ * `HIDES_CLI_ROW` names), as upstream twins CLI rows against its host rows. One sharing the name of a built-in the
+ * CLI runs replaces that row in place, since the CLI runs the custom command instead of its own.
  */
 export function mergeSlashCommands(groups: readonly (readonly SlashCommand[])[]): SlashCommand[]
 {
-	const builtinNames = new Set(
-		groups
-			.flat()
-			.flatMap((command) => (command.source === "builtin" ? [command.name, ...(command.aliases ?? [])] : [])),
+	const builtins = groups.flat().filter((command) => command.source === "builtin");
+	const hostNames = new Set(
+		builtins.flatMap((command) => (command.hostHandled === true ? [command.name, ...(command.aliases ?? [])] : [])),
+	);
+	const passThroughNames = new Set(
+		builtins.filter((command) => command.hostHandled !== true).map((command) => command.name),
 	);
 	const seen = new Set<string>();
-	const seenShadows = new Set<string>();
+	const seenTwins = new Set<string>();
+	const replaced = new Set<string>();
 	const merged: SlashCommand[] = [];
 	for (const group of groups)
 	{
 		for (const command of group)
 		{
-			const collides =
-				command.source !== "builtin" &&
-				[command.name, ...(command.aliases ?? [])].some((name) => builtinNames.has(name));
-			if (collides)
+			if (command.source !== "builtin")
 			{
-				if (seenShadows.has(command.name)) continue;
-				seenShadows.add(command.name);
-				merged.push(
-					{
-						...command,
-						shadowsHost: true,
-					},
-				);
-				continue;
+				const names = [command.name, ...(command.aliases ?? [])];
+				if (names.some((name) => hostNames.has(name)))
+				{
+					if (seenTwins.has(command.name) || names.some((name) => HIDES_CLI_ROW.has(name))) continue;
+					seenTwins.add(command.name);
+					merged.push(
+						{
+							...command,
+							shadowsHost: true,
+						},
+					);
+					continue;
+				}
+				if (passThroughNames.has(command.name))
+				{
+					if (replaced.has(command.name)) continue;
+					replaced.add(command.name);
+					seen.add(command.name);
+					const index = merged.findIndex((row) => row.source === "builtin" && row.name === command.name);
+					if (index === -1) merged.push(command);
+					else merged[index] = command;
+					continue;
+				}
 			}
 			if (seen.has(command.name)) continue;
 			seen.add(command.name);

@@ -112,6 +112,7 @@ import
 	isKnownSlashCommand,
 	type SlashCommand,
 	type SlashMenuItem,
+	slashCommandRowKey,
 	stepSlashHighlight,
 	skillChipArgumentHint,
 	slashTrigger,
@@ -231,6 +232,14 @@ interface AcceptedSkillChip
 	draftKey: string;
 	name: string;
 	argumentHint: string | undefined;
+	/** Upstream's chip `slashRouting`: "cli" only for an explicitly picked Custom command twin. */
+	routing: "cli" | null;
+}
+
+/** Upstream's `cliCommandForced`: the leading chip was a Custom command twin, so the CLI runs the command. */
+interface SlashRouting
+{
+	cliCommandForced: true;
 }
 
 const ICON_BUTTON_CLASS =
@@ -311,7 +320,7 @@ interface ComposerProps
 	/** Draft storage key: the session id, or `"home"` for the new-session composer. */
 	draftKey: string;
 	/** `launchOptions` holds the chin's mode / model / effort picks for a fork or launch. */
-	onSend: (prompt: string, launchOptions: LaunchOptions) => void;
+	onSend: (prompt: string, launchOptions: LaunchOptions, routing?: SlashRouting) => void;
 	onCancel?: () => void;
 	isStreaming?: boolean;
 	/** While a live session is working, the send slot becomes Stop response. */
@@ -1604,6 +1613,14 @@ export function Composer({
 				: -1;
 	const highlightedItem = slashItems[highlighted];
 	const highlightedCommand = highlightedItem?.type === "command" ? highlightedItem.command : undefined;
+	// Upstream's `te.current`: the row the user arrowed onto (hover doesn't count), cleared whenever the query changes.
+	const [arrowedRow, setArrowedRow] = useState<string | null>(null);
+	const [arrowedSlashKey, setArrowedSlashKey] = useState(slashKey);
+	if (arrowedSlashKey !== slashKey)
+	{
+		setArrowedSlashKey(slashKey);
+		setArrowedRow(null);
+	}
 	// In memory only: upstream doesn't restore the chip from a saved draft either.
 	const [acceptedChip, setAcceptedChip] = useState<AcceptedSkillChip | null>(null);
 	const chip =
@@ -1960,7 +1977,16 @@ export function Composer({
 		return true;
 	}
 
-	function acceptSlashCommand(command: SlashCommand)
+	/** `explicit`: a click, or Enter/Tab on a row the user arrowed onto; only that routes a twin to the CLI. */
+	function acceptSlashCommand(
+		command: SlashCommand,
+		{
+			explicit,
+		}:
+		{
+			explicit: boolean;
+		},
+	)
 	{
 		if (slash === null) return;
 		const inserted = `/${command.name} `;
@@ -1977,6 +2003,7 @@ export function Composer({
 						draftKey,
 						name: command.name,
 						argumentHint: command.argumentHint,
+						routing: explicit && command.shadowsHost === true ? "cli" : null,
 					}
 				: null,
 		);
@@ -1989,12 +2016,15 @@ export function Composer({
 		const move = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
 		if (move !== 0)
 		{
+			const index = stepSlashHighlight(slashItems, highlighted, move);
 			setHighlight(
 				{
 					key: slashKey,
-					index: stepSlashHighlight(slashItems, highlighted, move),
+					index,
 				},
 			);
+			const item = slashItems[index];
+			setArrowedRow(item?.type === "command" ? slashCommandRowKey(item.command) : null);
 		}
 		else if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey)
 		{
@@ -2005,7 +2035,12 @@ export function Composer({
 				setSlashDismissed(true);
 				return false;
 			}
-			acceptSlashCommand(command);
+			acceptSlashCommand(
+				command,
+				{
+					explicit: arrowedRow === slashCommandRowKey(command),
+				},
+			);
 		}
 		else if (e.key === "Escape")
 		{
@@ -2021,9 +2056,10 @@ export function Composer({
 	}
 
 	function handleSubmit(
-		send: (prompt: string) => void = (text) =>
+		send: (prompt: string, routing?: SlashRouting) => void = (text, routing) =>
 		{
-			onSend(text, launchOptions);
+			if (routing === undefined) onSend(text, launchOptions);
+			else onSend(text, launchOptions, routing);
 		},
 		trigger?: Event,
 	): void
@@ -2058,12 +2094,21 @@ export function Composer({
 			);
 			return;
 		}
-		if (trimmed.startsWith("/") && runHostCommand(trimmed)) return;
+		// Upstream's `Ne`: only the leading chip counts, and the local chip only exists at the start.
+		const cliCommandForced = chip?.routing === "cli";
+		if (trimmed.startsWith("/") && runHostCommand(trimmed, cliCommandForced)) return;
 		// Other slash commands run as typed; attached context and comments wait for the next real prompt.
 		if (trimmed.startsWith("/"))
 		{
 			noteUnknownCommand(trimmed);
-			send(trimmed);
+			if (cliCommandForced)
+				send(
+					trimmed,
+					{
+						cliCommandForced,
+					},
+				);
+			else send(trimmed);
 			clearDraft();
 			return;
 		}
@@ -2159,9 +2204,13 @@ export function Composer({
 		setPrompt(next);
 		textareaRef.current?.focus();
 	}
-	/** Upstream's host interception of `/model`, `/effort` and `/permissions`: true when the composer handled it. */
-	function runHostCommand(text: string): boolean
+	/**
+	 * Upstream's host interception (`Me`): true when the composer handled it. A CLI-routed twin pick skips every
+	 * intercept except `/usage`, which upstream keeps for local-ish sessions.
+	 */
+	function runHostCommand(text: string, cliCommandForced: boolean): boolean
 	{
+		if (cliCommandForced) return runUsageCommand(text);
 		if (
 			runFastCommand(text) ||
 			runRewindCommand(text) ||
@@ -3157,7 +3206,15 @@ export function Composer({
 									},
 								);
 							}}
-							onAccept={acceptSlashCommand}
+							onAccept={(command) =>
+							{
+								acceptSlashCommand(
+									command,
+									{
+										explicit: true,
+									},
+								);
+							}}
 						/>
 					)}
 					{mentionOpen && (

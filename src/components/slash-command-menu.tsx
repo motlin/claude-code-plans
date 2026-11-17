@@ -5,6 +5,7 @@ import
 	highlightMatches,
 	matchingAlias,
 	slashCommandLabel,
+	slashCommandRowKey,
 	type SlashCommand,
 	type SlashMenuItem,
 } from "../lib/slash-commands";
@@ -330,7 +331,7 @@ export function SlashCommandMenu({
 					const alias = matchingAlias(command, query);
 					return (
 						<div
-							key={command.shadowsHost === true ? `${command.name}:cli` : command.name}
+							key={slashCommandRowKey(command)}
 							id={slashCommandOptionId(id, index)}
 							role="menuitem"
 							tabIndex={-1}

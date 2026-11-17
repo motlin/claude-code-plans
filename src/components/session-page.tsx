@@ -2637,9 +2637,11 @@ function SessionView({
 																		variant="session"
 																		draftKey={sessionId}
 																		dropScope="chat-panel"
-																		onSend={(prompt, launchOptions) =>
+																		onSend={(prompt, launchOptions, routing) =>
 																		{
+																			// Upstream's `Me("btw")`: a CLI-routed twin pick skips the side chat.
 																			if (
+																				routing?.cliCommandForced !== true &&
 																				handleBtwPrompt(
 																					prompt,
 																					{

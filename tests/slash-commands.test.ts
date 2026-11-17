@@ -5,6 +5,16 @@ import {afterEach, beforeEach, describe, expect, it} from "vite-plus/test";
 import {SlashCommandListResponse} from "../src/lib/api/commands";
 import
 {
+	autocompactCommand,
+	fastCommandArg,
+	parseCommandShape,
+	parseHostCommand,
+	routeStatusCommand,
+	routeUsageCommand,
+} from "../src/lib/composer-host-commands";
+import {parseBtwCommand} from "../src/lib/side-chat";
+import
+{
 	BUILTIN_SLASH_COMMANDS,
 	CLI_COMMAND_NAMES,
 	SESSION_SLASH_COMMANDS,
@@ -50,17 +60,20 @@ describe("SESSION_SLASH_COMMANDS", () =>
 						name: "rewind",
 						description: "Rewind the session to an earlier message",
 						source: "builtin",
+						hostHandled: true,
 					},
 					{
 						name: "autocompact",
 						description: "Show context usage or set when auto-compact runs",
 						source: "builtin",
 						argumentHint: "[auto|<tokens>]",
+						hostHandled: true,
 					},
 					{
 						name: "status",
 						description: "Show this session’s version, model, environment, and account",
 						source: "builtin",
+						hostHandled: true,
 					},
 				],
 				inBuiltins: false,
@@ -80,18 +93,21 @@ describe("BUILTIN_SLASH_COMMANDS", () =>
 				description: "Set the model for this session",
 				source: "builtin",
 				argumentHint: "[model-id]",
+				hostHandled: true,
 			},
 			{
 				name: "effort",
 				description: "Set the effort level for this session",
 				source: "builtin",
 				argumentHint: "[level]",
+				hostHandled: true,
 			},
 			{
 				name: "fast",
 				description: "Turn fast mode on or off",
 				source: "builtin",
 				argumentHint: "[on|off]",
+				hostHandled: true,
 			},
 			{
 				name: "plan",
@@ -104,6 +120,7 @@ describe("BUILTIN_SLASH_COMMANDS", () =>
 				description: "Change the permission mode",
 				source: "builtin",
 				aliases: ["allowed-tools"],
+				hostHandled: true,
 			},
 			{
 				name: "skills",
@@ -115,12 +132,14 @@ describe("BUILTIN_SLASH_COMMANDS", () =>
 				description: "Browse workflow history (running and completed)",
 				source: "builtin",
 				aliases: ["workflow"],
+				hostHandled: true,
 			},
 			{
 				name: "usage",
 				description: "Show plan usage and rate limits",
 				source: "builtin",
 				aliases: ["stats", "cost"],
+				hostHandled: true,
 			},
 			{
 				name: "config",
@@ -144,6 +163,7 @@ describe("BUILTIN_SLASH_COMMANDS", () =>
 				description: "Ask a quick side question without adding to the session",
 				source: "builtin",
 				argumentHint: "<question>",
+				hostHandled: true,
 			},
 			{
 				name: "rename",
@@ -187,9 +207,63 @@ describe("BUILTIN_SLASH_COMMANDS", () =>
 	});
 });
 
+describe("hostHandled built-ins", () =>
+{
+	it("are exactly the names and aliases the composer intercepts", () =>
+	{
+		const intercepted = (text: string): boolean =>
+			parseHostCommand(
+				text,
+				{
+					effortLevels: ["high"],
+					models: [],
+					menusAvailable: true,
+				},
+			) !== null ||
+			fastCommandArg(text) !== null ||
+			autocompactCommand(text) !== null ||
+			parseBtwCommand(text) !== null ||
+			routeStatusCommand(
+				text,
+				{
+					hasSession: true,
+					turnActive: false,
+				},
+			) !== null ||
+			routeUsageCommand(
+				text,
+				{
+					hasSession: true,
+					turnActive: false,
+				},
+			) !== null ||
+			parseCommandShape(["rewind", "workflows", "workflow"], text) !== null;
+		const builtins = [...BUILTIN_SLASH_COMMANDS, ...SESSION_SLASH_COMMANDS];
+		const labels = (commands: readonly SlashCommand[]) =>
+			commands.flatMap((command) => [command.name, ...(command.aliases ?? [])]);
+
+		expect(
+			{
+				hostHandledNotIntercepted: labels(builtins.filter((c) => c.hostHandled === true)).filter(
+					(name) => !intercepted(`/${name}`),
+				),
+				interceptedNotHostHandled: labels(builtins.filter((c) => c.hostHandled !== true)).filter((name) =>
+					intercepted(`/${name}`),
+				),
+			},
+		).toStrictEqual(
+			{
+				// Upstream's /usage alias; the local /usage route answers only usage and cost, so /stats reaches the CLI.
+				hostHandledNotIntercepted: ["stats"],
+				interceptedNotHostHandled: [],
+			},
+		);
+	});
+});
+
 describe("mergeSlashCommands", () =>
 {
-	it("keeps the first command for each name, in group order", () =>
+	it("keeps the first command for each name, in group order, and drops a custom twin of a host row that hides CLI rows", () =>
 	{
 		const merged = mergeSlashCommands([
 			[
@@ -197,6 +271,7 @@ describe("mergeSlashCommands", () =>
 					name: "model",
 					description: "Built-in model",
 					source: "builtin",
+					hostHandled: true,
 				},
 			],
 			[
@@ -232,17 +307,12 @@ describe("mergeSlashCommands", () =>
 				name: "model",
 				description: "Built-in model",
 				source: "builtin",
+				hostHandled: true,
 			},
 			{
 				name: "deploy",
 				description: "Personal deploy",
 				source: "personal-skill",
-			},
-			{
-				name: "model",
-				description: "Shadowed model",
-				source: "personal-skill",
-				shadowsHost: true,
 			},
 			{
 				name: "tools:lint",
@@ -255,7 +325,7 @@ describe("mergeSlashCommands", () =>
 
 describe("mergeSlashCommands with built-in collisions", () =>
 {
-	it("keeps the first non-built-in entry that shares a built-in's name or alias, after it, marked shadowsHost", () =>
+	it("twins only host-handled built-ins; a custom entry replaces a pass-through built-in in place", () =>
 	{
 		const merged = mergeSlashCommands([
 			[
@@ -269,6 +339,19 @@ describe("mergeSlashCommands with built-in collisions", () =>
 					description: "Built-in config",
 					source: "builtin",
 					aliases: ["settings"],
+				},
+				{
+					name: "effort",
+					description: "Built-in effort",
+					source: "builtin",
+					hostHandled: true,
+				},
+				{
+					name: "workflows",
+					description: "Built-in workflows",
+					source: "builtin",
+					aliases: ["workflow"],
+					hostHandled: true,
 				},
 			],
 			[
@@ -294,14 +377,24 @@ describe("mergeSlashCommands with built-in collisions", () =>
 					description: "My settings",
 					source: "personal-command",
 				},
+				{
+					name: "effort",
+					description: "My effort",
+					source: "personal-command",
+				},
+				{
+					name: "workflow",
+					description: "My workflow",
+					source: "personal-command",
+				},
 			],
 		]);
 
 		expect(merged).toStrictEqual([
 			{
 				name: "review",
-				description: "Built-in review",
-				source: "builtin",
+				description: "Skill review",
+				source: "personal-skill",
 			},
 			{
 				name: "config",
@@ -310,10 +403,17 @@ describe("mergeSlashCommands with built-in collisions", () =>
 				aliases: ["settings"],
 			},
 			{
-				name: "review",
-				description: "Skill review",
-				source: "personal-skill",
-				shadowsHost: true,
+				name: "effort",
+				description: "Built-in effort",
+				source: "builtin",
+				hostHandled: true,
+			},
+			{
+				name: "workflows",
+				description: "Built-in workflows",
+				source: "builtin",
+				aliases: ["workflow"],
+				hostHandled: true,
 			},
 			{
 				name: "tab-color",
@@ -324,7 +424,75 @@ describe("mergeSlashCommands with built-in collisions", () =>
 				name: "settings",
 				description: "My settings",
 				source: "personal-command",
+			},
+			{
+				name: "effort",
+				description: "My effort",
+				source: "personal-command",
 				shadowsHost: true,
+			},
+			{
+				name: "workflow",
+				description: "My workflow",
+				source: "personal-command",
+				shadowsHost: true,
+			},
+		]);
+	});
+
+	it("twins a custom rewind only where the session's host-handled rewind is merged in", () =>
+	{
+		const custom: SlashCommand =
+		{
+			name: "rewind",
+			description: "Mine",
+			source: "project-skill",
+		};
+
+		expect(
+			{
+				session: mergeSlashCommands([SESSION_SLASH_COMMANDS, [custom]]).filter((c) => c.name === "rewind"),
+				home: mergeSlashCommands([[], [custom]]),
+			},
+		).toStrictEqual(
+			{
+				session: [
+					{
+						name: "rewind",
+						description: "Rewind the session to an earlier message",
+						source: "builtin",
+						hostHandled: true,
+					},
+					{
+						name: "rewind",
+						description: "Mine",
+						source: "project-skill",
+						shadowsHost: true,
+					},
+				],
+				home: [custom],
+			},
+		);
+	});
+
+	it("lets a custom rename replace the pass-through built-in rename", () =>
+	{
+		const renames = mergeSlashCommands([
+			BUILTIN_SLASH_COMMANDS,
+			[
+				{
+					name: "rename",
+					description: "Mine",
+					source: "personal-command",
+				},
+			],
+		]).filter((c) => c.name === "rename");
+
+		expect(renames).toStrictEqual([
+			{
+				name: "rename",
+				description: "Mine",
+				source: "personal-command",
 			},
 		]);
 	});
@@ -446,12 +614,6 @@ describe("listSlashCommands", () =>
 				name: "release",
 				description: "Cut a release",
 				source: "project-skill",
-			},
-			{
-				name: "model",
-				description: "My model command",
-				source: "personal-command",
-				shadowsHost: true,
 			},
 			{
 				name: "standup",
