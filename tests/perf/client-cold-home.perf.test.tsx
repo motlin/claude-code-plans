@@ -196,6 +196,12 @@ const STATIC_FIXTURES: Record<string, unknown> =
 		panes: [],
 		writesEnabled: false,
 	},
+	// The real handler reads the CLI's ~/.claude.json; the lab answers as a user who has seen both Auto dialogs.
+	"/api/auto-default-offer":
+	{
+		noticeEligible: false,
+		nudgeMode: null,
+	},
 	[`/api/home/folder-status?path=${encodeURIComponent(FIXTURE_CWD)}`]:
 	{
 		exists: true,

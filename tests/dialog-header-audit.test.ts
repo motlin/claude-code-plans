@@ -12,6 +12,7 @@ const EXEMPT = new Set([
 	"components/image-preview-modal.tsx",
 	"components/settings/settings-dialog.tsx",
 	"components/confirm-dialog.tsx",
+	"components/home/auto-default-dialog-views.tsx",
 	"components/ui/dialog-header.tsx",
 ]);
 

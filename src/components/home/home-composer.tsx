@@ -19,7 +19,8 @@ import {usageQueryOptions} from "../../lib/api/usage";
 import {resolveComposerState, withComposerAccountLimits} from "../../lib/composer-state";
 import {buildLaunchFlags, type LaunchOptions, modeMenuItems} from "../../lib/launch-options";
 import {useFolderModeMemory} from "../../hooks/use-folder-mode-memory";
-import {draftPermissionMode} from "../../lib/folder-permission-mode";
+import {draftPermissionMode, folderChoice, folderModeKey} from "../../lib/folder-permission-mode";
+import {autoDefaultOfferQueryOptions} from "../../lib/api/auto-default-offer";
 import
 {
 	onHomeComposerFocusRequest,
@@ -36,6 +37,7 @@ import {useSendRejectionActions} from "../use-send-rejection-actions";
 import {useToast} from "../toast-context";
 import {UsagePaceBanner} from "../usage-pace-banner";
 import {useOpenSettings} from "../settings/open-settings";
+import {AutoDefaultOfferDialogs} from "./auto-default-dialogs";
 import {type EnvironmentBarLine, EnvironmentBarLineHost} from "./environment-bar-line";
 import {GroupLaunchNote} from "./group-launch-note";
 import {useHomeLaunchFolder, useHomeWorktree} from "./launch-folder";
@@ -186,6 +188,9 @@ export function HomeComposer({
 			bypassPermissionsAllowed,
 		],
 	);
+	const {data: autoDefaultOffer} = useQuery(autoDefaultOfferQueryOptions);
+	// The Auto dialogs decide once, so they wait for the folder and its project settings.
+	const autoDefaultOfferSettled = defaults !== undefined && project !== undefined && folderDefaults !== undefined;
 	const slashMenu = useSlashCommands(project?.projectPath ?? undefined);
 	const {data: promptHistory} = useQuery(promptHistoryQueryOptions(undefined));
 
@@ -476,6 +481,11 @@ export function HomeComposer({
 				permissionCwd={project?.projectPath}
 				onPermissionModePick={folderModes.remember}
 				usageCommand={usageCommand}
+			/>
+			<AutoDefaultOfferDialogs
+				offer={autoDefaultOfferSettled ? autoDefaultOffer : undefined}
+				folderChoice={folderChoice(folderModes.modes, folderModeKey(project?.projectPath))}
+				repoDefaultMode={folderDefaults?.repoDefaultMode ?? null}
 			/>
 			{barLine !== null && pendingGroup !== null && (
 				<GroupLaunchNote name={pendingGroup.name} placement="block" onDismiss={dropPendingGroup} />

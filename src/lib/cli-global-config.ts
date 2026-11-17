@@ -25,18 +25,24 @@ function configPathIn(configDir: string): string
 	return join(configDir, CONFIG_FILENAME);
 }
 
-/** A top-level `true` flag in the CLI's global config; false when the file is missing or unreadable. */
-export async function readCliConfigFlag(configDir: string, key: string): Promise<boolean>
+/** The CLI's global config object; null when the file is missing, unreadable or not a JSON object. */
+export async function readCliConfig(configDir: string): Promise<Record<string, unknown> | null>
 {
 	try
 	{
 		const raw: unknown = JSON.parse(await readFile(configPathIn(configDir), "utf-8"));
-		return isRecord(raw) && raw[key] === true;
+		return isRecord(raw) ? raw : null;
 	}
 	catch
 	{
-		return false;
+		return null;
 	}
+}
+
+/** A top-level `true` flag in the CLI's global config; false when the file is missing or unreadable. */
+export async function readCliConfigFlag(configDir: string, key: string): Promise<boolean>
+{
+	return (await readCliConfig(configDir))?.[key] === true;
 }
 
 async function acquireLock(lockPath: string): Promise<void>

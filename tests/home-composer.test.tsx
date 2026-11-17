@@ -17,7 +17,8 @@ import {HOME_RECENT_LIMIT} from "../src/components/home/home-composer";
 import {NewSessionShortcut} from "../src/components/new-session-shortcut";
 import {ToastProvider} from "../src/components/toast";
 import {ClaudeEventsProvider} from "../src/components/claude-events-provider";
-import {composerDefaultsQueryOptions} from "../src/lib/api/composer-defaults";
+import {autoDefaultOfferQueryOptions} from "../src/lib/api/auto-default-offer";
+import {composerDefaultsQueryOptions, composerFolderDefaultsQueryOptions} from "../src/lib/api/composer-defaults";
 import {usageQueryOptions} from "../src/lib/api/usage";
 import {projectsQueryOptions} from "../src/lib/api/projects";
 import {recentSessionsQueryOptions} from "../src/lib/api/sessions";
@@ -2225,6 +2226,82 @@ describe("HomeComposer", () =>
 					: fetchMock(url, init),
 			);
 		}
+
+		it("offers the Auto default nudge on the draft and Switch to auto makes the chin read Auto", async () =>
+		{
+			const posts: unknown[] = [];
+			vi.stubGlobal("fetch", async (url: string, init?: RequestInit) =>
+			{
+				if (url === "/api/auto-default-offer" && init?.method === "POST")
+				{
+					posts.push(JSON.parse(String(init.body)));
+					return Response.json(
+						{
+							noticeEligible: false,
+							nudgeMode: null,
+						},
+					);
+				}
+				return fetchMock(url, init);
+			});
+			await renderApp("/", "claude-opus-4-8[1m]", (queryClient) =>
+			{
+				queryClient.setQueryData(
+					autoDefaultOfferQueryOptions.queryKey,
+					{
+						noticeEligible: false,
+						nudgeMode: "plan",
+					},
+				);
+				queryClient.setQueryData(
+					composerFolderDefaultsQueryOptions(HERE).queryKey,
+					{
+						model: null,
+						effortLevel: null,
+						defaultMode: "plan",
+						repoDefaultMode: null,
+						bypassPermissionsAllowed: false,
+						fastMode: false,
+						fastModeBlocked: null,
+					},
+				);
+			});
+			const dialog = await screen.findByRole("alertdialog");
+			const keep = within(dialog).getByRole(
+				"button",
+				{
+					name: "Keep Plan",
+				},
+			).textContent;
+			fireEvent.click(
+				within(dialog).getByRole(
+					"button",
+					{
+						name: "Switch to auto",
+					},
+				),
+			);
+			await waitFor(() =>
+			{
+				expect(modeReadout()).toBe("Auto");
+			});
+			expect(
+				{
+					keep,
+					posts,
+				},
+			).toStrictEqual(
+				{
+					keep: "Keep Plan",
+					posts: [
+						{
+							surface: "nudge",
+							choice: "accept",
+						},
+					],
+				},
+			);
+		});
 
 		it("starts the draft in the folder's remembered mode and launches with it", async () =>
 		{
