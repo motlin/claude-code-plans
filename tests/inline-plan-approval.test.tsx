@@ -6,6 +6,7 @@ import {InlinePlanApproval} from "../src/components/inline-plan-approval";
 import {PaneHostContext, type PaneHostApi} from "../src/components/panes/pane-host-context";
 import type {PlanApprovalContextValue} from "../src/components/plan-approval-context";
 import {dockedHookPlan, inlinePlanToolUseId} from "../src/lib/docked-plan";
+import {landOnWaitingCard} from "../src/lib/question-landing";
 import {approvalEnterSeen, markApprovalEnterSeen} from "../src/lib/approval-enter-seen";
 import type {PlanDecision} from "../src/lib/plan-approval";
 import {defaultPaneLayout} from "../src/lib/pane-layout";
@@ -383,6 +384,23 @@ describe("InlinePlanApproval", () =>
 				opened: [],
 			},
 		);
+	});
+
+	it("is named by its 'Claude proposed a plan' title while the Jump to question landing is on it", async () =>
+	{
+		render(<InlinePlanApproval toolUseId="toolu_plan_1" planText="# P" plan={PLAN} />);
+		await act(async () => Promise.resolve());
+		landOnWaitingCard(document.querySelector<HTMLElement>("[data-approval-card-root]")!);
+		expect(
+			screen
+				.getByRole(
+					"group",
+					{
+						name: "Claude proposed a plan",
+					},
+				)
+				.hasAttribute("data-approval-card-root"),
+		).toBe(true);
 	});
 
 	it("leaves out Open plan and the subtitle without a pane host", async () =>

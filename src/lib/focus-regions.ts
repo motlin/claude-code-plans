@@ -78,6 +78,8 @@ type LandOptions =
 	ringOn?: HTMLElement;
 	/** Clear on the next non-modifier keydown or beforeinput, for text-entry landings. */
 	clearOnInput?: boolean;
+	/** Runs just before the focus, returning a cleanup that runs first on clear (upstream's `prepare`, e.g. `nO`'s temporary name). */
+	prepare?: () => () => void;
 };
 
 /**
@@ -88,7 +90,10 @@ type LandOptions =
  * The ring clears when focus moves elsewhere (except into an unrelated dialog),
  * on pointerdown on the ring element, or on input for `clearOnInput` landings.
  */
-function landFocus(target: HTMLElement, {ring = true, ringOn = target, clearOnInput = false}: LandOptions = {}): void
+export function landFocusTarget(
+	target: HTMLElement,
+	{ring = true, ringOn = target, clearOnInput = false, prepare}: LandOptions = {},
+): void
 {
 	const doc = target.ownerDocument;
 	const view = doc.defaultView;
@@ -116,6 +121,7 @@ function landFocus(target: HTMLElement, {ring = true, ringOn = target, clearOnIn
 			target.setAttribute(INSIDE_ATTR, "");
 		}
 	}
+	const unprepare = prepare?.();
 	target.focus(
 		{
 			preventScroll: true,
@@ -145,6 +151,7 @@ function landFocus(target: HTMLElement, {ring = true, ringOn = target, clearOnIn
 	};
 	function clear()
 	{
+		unprepare?.();
 		if (addedTabIndex && (tabIndexObserver?.takeRecords().length ?? 0) === 0) target.removeAttribute("tabindex");
 		tabIndexObserver?.disconnect();
 		ringOn.removeAttribute(FOCUS_REGION_LANDING_ATTR);
@@ -191,7 +198,7 @@ function focusRegion(
 	{
 		// The composer's ring goes on its card, as upstream rings `[data-cds="ChatComposer"] > *`.
 		const card = entry.closest<HTMLElement>("[data-composer-card]");
-		landFocus(
+		landFocusTarget(
 			entry,
 			{
 				ring,
@@ -202,7 +209,7 @@ function focusRegion(
 		return;
 	}
 	// A button stop (the session title, the collapsed sidebar's Show sidebar) shows its own focus-visible ring.
-	landFocus(
+	landFocusTarget(
 		region,
 		{
 			ring: ring && !region.matches("button"),

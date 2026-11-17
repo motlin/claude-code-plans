@@ -1,4 +1,5 @@
 import {createElement, useCallback, useEffect, useRef, useState, type ReactElement} from "react";
+import {nameStopByText} from "./stop-name";
 
 /**
  * Upstream's approval slot focus landing (ca8b34310 `h_`/`c_`/`u_`/`d_`/`l_`, shared-frame `Gt`,
@@ -29,12 +30,6 @@ export const LANDING_AFTER_RING =
 	"focus-visible:outline-hidden focus-visible:after:pointer-events-none focus-visible:after:absolute focus-visible:after:inset-0.5 focus-visible:after:rounded-[calc(theme(--radius-card)-var(--spacing)*0.5)] focus-visible:after:shadow-focus focus-visible:after:outline-hidden focus-visible:after:-outline-offset-2";
 
 const CARD_ROOT = "[data-approval-card-root]";
-const STOP_NAME = "data-question-stop-name";
-const FALLBACK_NAME = "data-fallback-name";
-/** Upstream's `Oh`: an element already named, so the landing leaves its name alone. */
-const ALREADY_NAMED = `[aria-labelledby], [aria-label]:not([${FALLBACK_NAME}])`;
-/** Upstream's `_8`: a fallback name the landing's cleanup restores. */
-const FALLBACK_NAMED = `[${FALLBACK_NAME}]:not([aria-label])`;
 
 /** Upstream's `qo`: keys that neither clear a landing nor end the Enter swallow. */
 const MODIFIERS: ReadonlySet<string> = new Set(["Alt", "Control", "Shift", "Meta"]);
@@ -352,38 +347,6 @@ function firstRealCardRoot(slot: Element): HTMLElement | null
 	return found instanceof HTMLElement ? found : null;
 }
 
-let namedByText = 0;
-
-/**
- * Upstream's `nO`/`k0`: names an unnamed landed element by its `[data-question-stop-name]` parts (or by its own
- * text without any), as a group labelled by their ids. Returns the cleanup that restores what it changed.
- */
-function nameFromStopParts(element: Element): () => void
-{
-	if (element.matches(ALREADY_NAMED)) return () => undefined;
-	const parts = [...element.querySelectorAll(`[${STOP_NAME}]`)].filter((part) => part.textContent.trim() !== "");
-	const label = element.getAttribute("aria-label");
-	const names = parts.length === 0 ? [element] : parts;
-	const given = names.filter((part) => part.id === "");
-	for (const part of given)
-	{
-		namedByText += 1;
-		part.id = `named-by-text-${namedByText}`;
-	}
-	const addedRole = !element.hasAttribute("role");
-	if (addedRole) element.setAttribute("role", "group");
-	element.removeAttribute("aria-label");
-	const labelledBy = names.map((part) => part.id).join(" ");
-	element.setAttribute("aria-labelledby", labelledBy);
-	return () =>
-	{
-		if (element.getAttribute("aria-labelledby") === labelledBy) element.removeAttribute("aria-labelledby");
-		if (label !== null && element.matches(FALLBACK_NAMED)) element.setAttribute("aria-label", label);
-		if (addedRole) element.removeAttribute("role");
-		for (const part of given) part.removeAttribute("id");
-	};
-}
-
 /**
  * Upstream's `ic`: focuses `element` focus-visible with the landing ring classes (kept on through React
  * re-renders), a temporary `tabindex="-1"` when it has none, and a name from its parts. All of it is undone
@@ -391,7 +354,7 @@ function nameFromStopParts(element: Element): () => void
  */
 function focusWithLandingRing(element: HTMLElement, ring: string): void
 {
-	const unname = nameFromStopParts(element);
+	const unname = nameStopByText(element);
 	const added = ring.split(" ").filter((name) => name !== "" && !element.classList.contains(name));
 	const hadNoClass = !element.hasAttribute("class");
 	element.classList.add(...added);

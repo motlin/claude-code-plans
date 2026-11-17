@@ -7205,6 +7205,8 @@ describe("CommandPalette pinned Jump to question row", () =>
 		card.setAttribute("role", "group");
 		card.setAttribute("aria-label", "Pick one");
 		card.tabIndex = -1;
+		// Real card roots are `relative`, so the landing ring is the overlay one.
+		card.style.position = "relative";
 		document.body.append(card);
 		return card;
 	}
