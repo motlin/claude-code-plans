@@ -9,8 +9,10 @@ import {useNavigate, useRouterState} from "@tanstack/react-router";
 import
 {
 	type ClipboardEvent,
+	Component,
 	type KeyboardEvent,
 	type ReactNode,
+	type RefObject,
 	useCallback,
 	useEffect,
 	useLayoutEffect,
@@ -229,6 +231,8 @@ import {loadSettingsDialog} from "./settings/settings-dialog-loader";
 import {preloadCustomizeDialogPanel} from "./settings/customize-dialog-panel-loader";
 import {type SettingsPaletteCommand, settingsPaletteCommands} from "../lib/palette-settings-commands";
 import {setKeyboardShortcutsOpen} from "./keyboard-shortcuts-open";
+import {makePaletteExitCopy, type PaletteExitCopy} from "../lib/palette-exit-copy";
+import {runAfterOverlayDelay} from "../lib/overlay-open-note";
 
 /*
  * The claude.ai/code ⌘K palette shell, split Search | Compose variant
@@ -1262,21 +1266,85 @@ export function CommandPalette({
 		if (!open) setPaletteLoadingShown(false);
 	}, [open]);
 
+	const popupRef = useRef<HTMLDivElement>(null);
+
 	return (
-		<Dialog.Root open={open} onOpenChange={onOpenChange}>
-			<Dialog.Portal>
-				<PaletteBackdrop />
-				<PalettePopup
-					open={open}
-					mode={mode}
-					entrypoint={entrypoint}
-					onModeChange={setMode}
-					onOpenChange={onOpenChange}
-					onSendHoldChange={onSendHoldChange}
-				/>
-			</Dialog.Portal>
-		</Dialog.Root>
+		<>
+			<Dialog.Root open={open} onOpenChange={onOpenChange}>
+				<Dialog.Portal>
+					<PaletteBackdrop />
+					<PalettePopup
+						popupRef={popupRef}
+						open={open}
+						mode={mode}
+						entrypoint={entrypoint}
+						onModeChange={setMode}
+						onOpenChange={onOpenChange}
+						onSendHoldChange={onSendHoldChange}
+					/>
+				</Dialog.Portal>
+			</Dialog.Root>
+			<PaletteExitSnapshot open={open} popupRef={popupRef} />
+		</>
 	);
+}
+
+/**
+ * Upstream `KN`: on every close, snapshots the still-open popup into an exit copy before React commits the close, then
+ * plays it; a reopen drops a copy still fading. Every close path (Escape, backdrop, a pick, auto-close) passes here.
+ */
+class PaletteExitSnapshot extends Component<
+{
+	open: boolean;
+	popupRef: RefObject<HTMLDivElement | null>;
+}>
+{
+	private copy: PaletteExitCopy | null = null;
+
+	override getSnapshotBeforeUpdate(
+		previous: Readonly<
+		{
+			open: boolean;
+		}>,
+	): PaletteExitCopy | null
+	{
+		const popup = this.props.popupRef.current;
+		if (!previous.open || this.props.open || popup === null) return null;
+		try
+		{
+			return makePaletteExitCopy(popup);
+		}
+		catch
+		{
+			return null;
+		}
+	}
+
+	override componentDidUpdate(
+		previous: Readonly<
+		{
+			open: boolean;
+		}>,
+		_state: unknown,
+		copy: PaletteExitCopy | null,
+	): void
+	{
+		if (!previous.open && this.props.open)
+		{
+			this.copy?.remove();
+			this.copy = null;
+		}
+		if (copy !== null)
+		{
+			this.copy = copy;
+			copy.play();
+		}
+	}
+
+	override render(): null
+	{
+		return null;
+	}
 }
 
 /**
@@ -1291,6 +1359,7 @@ function PaletteBackdrop()
 
 /** Mounted only while open, so the query resets on every open like upstream. */
 function PalettePopup({
+	popupRef,
 	open,
 	mode,
 	entrypoint,
@@ -1298,6 +1367,7 @@ function PalettePopup({
 	onOpenChange,
 	onSendHoldChange,
 }: {
+	popupRef: RefObject<HTMLDivElement | null>;
 	open: boolean;
 	mode: PaletteMode;
 	entrypoint: PaletteEntrypoint;
@@ -1311,7 +1381,6 @@ function PalettePopup({
 	const openCustomize = useOpenCustomize();
 	const look = useFizzyLake("color") ? "fizzy" : "base";
 	const inputRef = useRef<HTMLTextAreaElement>(null);
-	const popupRef = useRef<HTMLDivElement>(null);
 	const cardRef = useRef<HTMLDivElement>(null);
 	const [rowActions, setRowActions] = useState<
 	{
@@ -2313,10 +2382,15 @@ function PalettePopup({
 
 	// A settings member opens its tab; a customize member its Yours list. Both are hash changes over the current
 	// page, so an open Settings dialog switches section in place.
+	// Upstream `m7(…, "dialog")`: the dialog opens 100ms after the palette closes, noted so the palette's exit copy
+	// hands its scrim to the incoming backdrop.
 	function openSettingsMember({member}: SettingsPaletteCommand)
 	{
-		if (member.kind === "settings") openSettings(member.tab);
-		else openCustomize(member.section);
+		runAfterOverlayDelay(() =>
+		{
+			if (member.kind === "settings") openSettings(member.tab);
+			else openCustomize(member.section);
+		}, "dialog");
 	}
 
 	function regionJumpAction(id: PaletteJumpActionId, icon: ReactNode, region: JumpRegionName): PaletteAction
@@ -2360,7 +2434,10 @@ function PalettePopup({
 				icon: <Keyboard />,
 				run: () =>
 				{
-					setKeyboardShortcutsOpen(true);
+					runAfterOverlayDelay(() =>
+					{
+						setKeyboardShortcutsOpen(true);
+					}, "dialog");
 				},
 				shortcut: "shortcuts_modal",
 			},

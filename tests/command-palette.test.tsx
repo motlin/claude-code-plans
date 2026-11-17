@@ -16,6 +16,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from "vite-plus/test";
 import {CommandPalette, PALETTE_RECENT_LIMIT} from "../src/components/command-palette";
 import {loadSettingsDialog} from "../src/components/settings/settings-dialog-loader";
 import {preloadCustomizeDialogPanel} from "../src/components/settings/customize-dialog-panel-loader";
+import {getKeyboardShortcutsOpen, setKeyboardShortcutsOpen} from "../src/components/keyboard-shortcuts-open";
 import {ToastProvider} from "../src/components/toast";
 import {useCommandPalette} from "../src/hooks/use-command-palette";
 import {onHomeComposerFocusRequest} from "../src/lib/home-composer-focus";
@@ -1559,6 +1560,205 @@ describe("CommandPalette shell", () =>
 		{
 			expect(screen.queryByRole("dialog")).toBeNull();
 		});
+	});
+
+	describe("exit copy (upstream KN + km)", () =>
+	{
+		let finishes: Array<() => void> = [];
+
+		beforeEach(() =>
+		{
+			finishes = [];
+			Object.defineProperty(
+				HTMLElement.prototype,
+				"animate",
+				{
+					configurable: true,
+					writable: true,
+					value: () =>
+					{
+						let finish = () =>
+						{
+						};
+						const finished = new Promise<void>((resolve) =>
+						{
+							finish = resolve;
+						});
+						finishes.push(finish);
+						return {
+							finished,
+						};
+					},
+				},
+			);
+			Object.defineProperty(
+				HTMLElement.prototype,
+				"getAnimations",
+				{
+					configurable: true,
+					writable: true,
+					value: () => [],
+				},
+			);
+			vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+				{
+					top: 111,
+					left: 300,
+					width: 672,
+					height: 262,
+					bottom: 373,
+					right: 972,
+					x: 300,
+					y: 111,
+					toJSON: () => ({}),
+				},
+			);
+		});
+
+		afterEach(() =>
+		{
+			Reflect.deleteProperty(HTMLElement.prototype, "animate");
+			Reflect.deleteProperty(HTMLElement.prototype, "getAnimations");
+			setKeyboardShortcutsOpen(false);
+			for (const layer of document.querySelectorAll("[data-palette-exit-copy]")) layer.remove();
+		});
+
+		function exitLayers()
+		{
+			return [...document.body.querySelectorAll<HTMLElement>(":scope > [data-palette-exit-copy]")];
+		}
+
+		it("leaves an inert copy of the closed palette fading in its place", async () =>
+		{
+			const dialog = await openPalette();
+
+			fireEvent.keyDown(
+				within(dialog).getByRole("combobox"),
+				{
+					key: "Escape",
+					code: "Escape",
+				},
+			);
+
+			await waitFor(() =>
+			{
+				expect(screen.queryByRole("dialog")).toBeNull();
+			});
+			const layers = exitLayers();
+			const panel = layers[0]?.lastElementChild;
+			expect(
+				{
+					layers: layers.length,
+					layerChildren: layers.map((layer) => layer.childElementCount),
+					panelIsCopy:
+						panel?.hasAttribute("data-command-palette") === false &&
+						panel.querySelector("[data-palette-recede-card]") !== null,
+					hidden: layers[0]?.getAttribute("aria-hidden"),
+					animations: finishes.length,
+				},
+			).toStrictEqual(
+				{
+					layers: 1,
+					layerChildren: [2],
+					panelIsCopy: true,
+					hidden: "true",
+					animations: 2,
+				},
+			);
+		});
+
+		it("drops a still-fading copy when the palette reopens", async () =>
+		{
+			const composer = await renderPalette();
+			const dialog = await pressOpen(composer);
+			fireEvent.keyDown(
+				within(dialog).getByRole("combobox"),
+				{
+					key: "Escape",
+					code: "Escape",
+				},
+			);
+			await waitFor(() =>
+			{
+				expect(exitLayers()).toHaveLength(1);
+			});
+
+			await pressOpen(composer);
+
+			expect(exitLayers()).toStrictEqual([]);
+		});
+
+		it("hands the scrim to the Keyboard shortcuts dialog opened 100ms after the close", async () =>
+		{
+			const dialog = await openPalette();
+			fireEvent.change(
+				within(dialog).getByRole("combobox"),
+				{
+					target:
+					{
+						value: "keyboard shortcuts",
+					},
+				},
+			);
+
+			fireEvent.click(await within(dialog).findByRole("option", byLabel(/^Keyboard shortcuts/)));
+
+			await waitFor(() =>
+			{
+				expect(exitLayers().map((layer) => layer.childElementCount)).toStrictEqual([1, 1]);
+			});
+			expect(getKeyboardShortcutsOpen()).toBe(false);
+			await waitFor(() =>
+			{
+				expect(getKeyboardShortcutsOpen()).toBe(true);
+			});
+		});
+
+		it("hands the scrim to Settings opened 100ms after a settings row closes the palette", async () =>
+		{
+			const dialog = await openPalette([], "/session/s-current");
+			fireEvent.change(
+				within(dialog).getByRole("combobox"),
+				{
+					target:
+					{
+						value: "code",
+					},
+				},
+			);
+
+			fireEvent.click(await within(dialog).findByRole("option", byLabel("Settings → Code")));
+
+			await waitFor(() =>
+			{
+				expect(exitLayers().map((layer) => layer.childElementCount)).toStrictEqual([1, 1]);
+			});
+			expect(currentRouter?.state.location.hash).toBe("");
+			await waitFor(() =>
+			{
+				expect(currentRouter?.state.location.hash).toBe("settings/claude-code");
+			});
+		});
+	});
+
+	it("vanishes on the closing frame like upstream's m8: hidden popup, transition-free backdrop exit", async () =>
+	{
+		const dialog = await openPalette();
+		const backdrop = document.querySelector(".bg-backdrop");
+
+		expect(
+			{
+				popup: dialog.className.split(" ").includes("data-[ending-style]:hidden"),
+				backdrop: ["data-[ending-style]:opacity-0", "data-[ending-style]:transition-none"].map((name) =>
+					backdrop?.className.split(" ").includes(name),
+				),
+			},
+		).toStrictEqual(
+			{
+				popup: true,
+				backdrop: [true, true],
+			},
+		);
 	});
 
 	it("Escape returns focus to the opener", async () =>
