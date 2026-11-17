@@ -15,7 +15,6 @@ import
 	planText,
 } from "../lib/exit-plan-mode";
 import type {ApprovalPresentation} from "../lib/approval-presentation";
-import {CHAT_COLUMN_CLASS} from "../lib/transcript-width";
 
 /**
  * Upstream's plan approval card (`Gc` in its inline "card" presentation) for the
@@ -82,7 +81,8 @@ export function InlinePlanApproval({
 			<span className="line-clamp-2 break-words [unicode-bidi:plaintext]">{planSubtitleLine(proposed)}</span>
 		);
 	return (
-		<div data-inline-plan="" className={presentation === "card" ? INLINE_PLAN_CLASS : undefined}>
+		// The transcript's trailing slot carries the column and the sticky place.
+		<div data-inline-plan="">
 			<ApprovalCardShell
 				presentation={presentation}
 				queueDepth={queueDepth}
@@ -134,9 +134,6 @@ export function InlinePlanApproval({
 		</div>
 	);
 }
-
-/** The inline card's sticky place in the transcript's trailing slot, on the transcript's measure. */
-const INLINE_PLAN_CLASS = `${CHAT_COLUMN_CLASS} sticky top-[calc(max(var(--epitaxy-top-fade-height,0px),var(--fade-top,0px),var(--epitaxy-suggested-task-end,0px),var(--epitaxy-sticky-prompt-end,0px))+5px)] z-[1] bg-[var(--epitaxy-transcript-surface,var(--color-surface-1))] pb-4`;
 
 /** Upstream's plan text in the card body (`approval-plan-text`). */
 const PLAN_TEXT_CLASS = "whitespace-pre-wrap break-words text-body text-secondary select-text [unicode-bidi:plaintext]";

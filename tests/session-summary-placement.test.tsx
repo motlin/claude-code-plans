@@ -1481,22 +1481,24 @@ describe("SessionPage dock composition", () =>
 				homeEmpty: home?.childElementCount,
 				lineBesideOutlet: line?.parentElement === grid,
 				gridClass: grid?.className,
-				chrome: [chrome?.hasAttribute("data-transcript-tail-chrome"), chrome?.className],
+				chrome: [chrome?.getAttribute("data-testid"), chrome?.className],
+				cardInStickySlot: card?.closest("[data-testid=transcript-trailing-slot]")?.className.includes("sticky"),
 			},
 		).toStrictEqual(
 			{
 				carriedFind: [true, 0, [true, true, true]],
 				cardFirst: true,
-				cardClass: "chat-column empty:hidden",
+				cardClass: "empty:hidden",
 				carried: true,
 				homeEmpty: 0,
 				lineBesideOutlet: true,
 				gridClass:
 					"grid grid-cols-[minmax(0,1fr)] gap-y-[var(--chat-turn-gap,15px)] [&>*]:min-w-0 [&>:empty]:invisible [&>:empty]:[grid-area:1/1] [&>[data-quiet]]:[grid-area:1/1] [&>[data-turn-mark-outlet]]:[grid-area:1/1]",
 				chrome: [
-					true,
-					"chat-column flex w-full flex-col gap-[var(--chat-turn-gap)] pt-[var(--chat-turn-gap)] empty:hidden",
+					"transcript-tail-chrome",
+					"chat-column flex w-full flex-col gap-[var(--chat-turn-gap)] pt-[var(--chat-turn-gap)] [[data-transcript-tail-turn]:has(>[data-transcript-last-row-controls]:not(:empty))+&]:pt-0 [[data-transcript-tail-turn]:has(>[data-transcript-last-row-controls]:not(:empty))+&]:mt-xs empty:hidden",
 				],
+				cardInStickySlot: true,
 			},
 		);
 	});
@@ -1635,6 +1637,15 @@ describe("SessionPage dock composition", () =>
 					grid !== undefined &&
 					(slot.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
 				outlets: document.querySelectorAll("[data-turn-mark-outlet]").length,
+				// Upstream's tail turn: the box's slot, then the last-row actions outlet the reply's toolbar portals into.
+				tailTurn: [...(slot.parentElement?.children ?? [])].map((child) => child.getAttribute("data-testid")),
+				tailTurnInAfterRows: slot.closest("[data-testid=transcript-after-rows]") !== null,
+				toolbars: [...document.querySelectorAll("[role=toolbar][aria-label='Message actions']")].map((bar) => [
+					bar.getAttribute("data-testid"),
+					bar.closest("[data-testid=transcript-tail-actions]") !== null,
+				]),
+				chrome: grid?.parentElement?.getAttribute("data-testid"),
+				chromeFollowsTurn: grid?.parentElement?.previousElementSibling === slot.parentElement,
 			},
 		).toStrictEqual(
 			{
@@ -1646,6 +1657,15 @@ describe("SessionPage dock composition", () =>
 				gridClass: PLAN_GRID_CLASS,
 				gridAfterSlot: true,
 				outlets: 1,
+				tailTurn: ["transcript-tail-slot", "transcript-tail-actions"],
+				tailTurnInAfterRows: true,
+				toolbars: [
+					["user-message-actions", false],
+					["user-message-actions", false],
+					["message-actions", true],
+				],
+				chrome: "transcript-tail-chrome",
+				chromeFollowsTurn: true,
 			},
 		);
 	});

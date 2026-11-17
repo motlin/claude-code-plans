@@ -186,6 +186,8 @@ import {stickyPromptText} from "../lib/sticky-prompt";
 import {StickyPromptOverlay, type StickyPromptCandidate} from "./sticky-prompt-overlay";
 import {TranscriptOverlayHostContext} from "./transcript-overlay-host-context";
 import {TranscriptTailContext} from "./transcript-tail-context";
+import {TailActionsPortal} from "./tail-actions-portal";
+import {TranscriptLastRowContext} from "./tail-actions-context";
 import
 {
 	readTranscriptMeasurements,
@@ -534,17 +536,19 @@ function AssistantTurnActions({line, sessionId}: {line: MessageSessionLine; sess
 {
 	const verbose = useContext(TranscriptModeContext) === "verbose";
 	return (
-		<AssistantMessageActions
-			message={messageRef(line, sessionId)}
-			text={messageText(line)}
-			timestamp={line.timestamp}
-			details={assistantTurnDetails(
-				line,
-				{
-					verbose,
-				},
-			)}
-		/>
+		<TailActionsPortal>
+			<AssistantMessageActions
+				message={messageRef(line, sessionId)}
+				text={messageText(line)}
+				timestamp={line.timestamp}
+				details={assistantTurnDetails(
+					line,
+					{
+						verbose,
+					},
+				)}
+			/>
+		</TailActionsPortal>
 	);
 }
 
@@ -812,47 +816,50 @@ function AssistantDisplaySpanFooter({span}: {span: AssistantDisplaySpan})
 	if (held === null ? !isEndpoint : held.entryKey !== entry.key) return null;
 	const displayed = held?.span ?? span;
 	return (
-		<div
-			ref={footerRef}
-			data-assistant-span-footer={span.key}
-			onFocusCapture={() =>
-			{
-				if (interaction.held?.entryKey === entry.key && interaction.held.span.key === span.key) return;
-				setHeld(
-					{
-						entryKey: entry.key,
-						startRecordIndex: entry.startRecordIndex,
-						endRecordIndex: entry.endRecordIndex,
-						span:
+		<TailActionsPortal>
+			<div
+				ref={footerRef}
+				data-assistant-span-footer={span.key}
+				onFocusCapture={() =>
+				{
+					if (interaction.held?.entryKey === entry.key && interaction.held.span.key === span.key) return;
+					setHeld(
 						{
-							...displayed,
+							entryKey: entry.key,
+							startRecordIndex: entry.startRecordIndex,
+							endRecordIndex: entry.endRecordIndex,
+							span:
+							{
+								...displayed,
+							},
 						},
-					},
-				);
-			}}
-			onBlurCapture={(event) =>
-			{
-				if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
-				setHeld((current) =>
-					current?.entryKey === entry.key && current.span.key === span.key ? null : current,
-				);
-			}}
-		>
-			<AssistantMessageActions
-				message={messageRef(displayed.endpoint, displayed.sourceSessionId)}
-				text={displayed.text}
-				timestamp={displayed.endpoint.timestamp}
-				details={assistantTurnDetails(
-					displayed.endpoint,
-					{
-						verbose: false,
-					},
-				)}
-				hovered={interaction.hoveredKey === span.key}
-				focused={interaction.focusedKey === span.key}
-				getHtml={() => spanProseHtml(footerRef.current, displayed)}
-			/>
-		</div>
+					);
+				}}
+				onBlurCapture={(event) =>
+				{
+					if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget))
+						return;
+					setHeld((current) =>
+						current?.entryKey === entry.key && current.span.key === span.key ? null : current,
+					);
+				}}
+			>
+				<AssistantMessageActions
+					message={messageRef(displayed.endpoint, displayed.sourceSessionId)}
+					text={displayed.text}
+					timestamp={displayed.endpoint.timestamp}
+					details={assistantTurnDetails(
+						displayed.endpoint,
+						{
+							verbose: false,
+						},
+					)}
+					hovered={interaction.hoveredKey === span.key}
+					focused={interaction.focusedKey === span.key}
+					getHtml={() => spanProseHtml(footerRef.current, displayed)}
+				/>
+			</div>
+		</TailActionsPortal>
 	);
 }
 
@@ -5068,14 +5075,16 @@ function VirtualizedSessionEntries({
 							data-perf-last={isLast ? "" : undefined}
 						>
 							<AssistantSpanEntryContext.Provider value={entry}>
-								{/* Upstream's TranscriptRow boundary: a crash replaces only this row. Its record range
+								<TranscriptLastRowContext.Provider value={isLast}>
+									{/* Upstream's TranscriptRow boundary: a crash replaces only this row. Its record range
 								    stands in for upstream's row stamp, so new lines joining the row redraw it. */}
-								<TranscriptRowBoundary
-									kind={entry.kind.startsWith("assistant") ? "reply" : "row"}
-									resetOn={`${entry.startRecordIndex}:${entry.endRecordIndex}`}
-								>
-									{entry.element}
-								</TranscriptRowBoundary>
+									<TranscriptRowBoundary
+										kind={entry.kind.startsWith("assistant") ? "reply" : "row"}
+										resetOn={`${entry.startRecordIndex}:${entry.endRecordIndex}`}
+									>
+										{entry.element}
+									</TranscriptRowBoundary>
+								</TranscriptLastRowContext.Provider>
 							</AssistantSpanEntryContext.Provider>
 							{isLast && tailInline && <TranscriptTail />}
 						</div>

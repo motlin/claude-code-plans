@@ -10,7 +10,6 @@ import {landOnWaitingCard} from "../src/lib/question-landing";
 import {approvalEnterSeen, markApprovalEnterSeen} from "../src/lib/approval-enter-seen";
 import type {PlanDecision} from "../src/lib/plan-approval";
 import {defaultPaneLayout} from "../src/lib/pane-layout";
-import {CHAT_COLUMN_CLASS} from "../src/lib/transcript-width";
 
 afterEach(cleanup);
 
@@ -251,7 +250,7 @@ describe("dockedHookPlan", () =>
 
 describe("InlinePlanApproval", () =>
 {
-	it("passes its presentation to the actions: docked, Revise… shows esc and Accept ⇧⌘⏎, and the wrapper drops its sticky inline place", async () =>
+	it("passes its presentation to the actions: docked, Revise… shows esc and Accept ⇧⌘⏎, and the wrapper leaves the sticky place to the trailing slot", async () =>
 	{
 		const names = async (presentation: "card" | "dock") =>
 		{
@@ -277,21 +276,21 @@ describe("InlinePlanApproval", () =>
 		expect(
 			{
 				card: card.buttons.filter((name) => name.startsWith("Revise") || name.startsWith("Accept")),
-				cardSticky: card.wrapper?.includes("sticky"),
+				cardWrapper: card.wrapper,
 				dock: dock.buttons.filter((name) => name.startsWith("Revise") || name.startsWith("Accept")),
 				dockWrapper: dock.wrapper,
 			},
 		).toStrictEqual(
 			{
 				card: ["Revise…", "Accept", "Accept and use auto modeCtrl⏎Enter"],
-				cardSticky: true,
+				cardWrapper: null,
 				dock: ["Revise…Esc", "AcceptCtrlShift⏎Enter", "Accept and use auto modeCtrl⏎Enter"],
 				dockWrapper: null,
 			},
 		);
 	});
 
-	it("draws upstream's sticky card after the transcript: the tinted title band with the first plan line, Open plan, then the inline actions; mounting auto-opens the Plan pane", async () =>
+	it("draws upstream's card for the transcript's sticky trailing slot: the tinted title band with the first plan line, Open plan, then the inline actions; mounting auto-opens the Plan pane", async () =>
 	{
 		const openPane = vi.fn<PaneHostApi["openPane"]>();
 		const host = paneHost(openPane);
@@ -339,7 +338,7 @@ describe("InlinePlanApproval", () =>
 			},
 		).toStrictEqual(
 			{
-				wrapper: `${CHAT_COLUMN_CLASS} sticky top-[calc(max(var(--epitaxy-top-fade-height,0px),var(--fade-top,0px),var(--epitaxy-suggested-task-end,0px),var(--epitaxy-sticky-prompt-end,0px))+5px)] z-[1] bg-[var(--epitaxy-transcript-surface,var(--color-surface-1))] pb-4`,
+				wrapper: "",
 				rootHas: ["!pt-0", "overflow-clip", "gap-3", "max-h-[60vh]"],
 				rootLacks: [],
 				band: "-mx-pad-lg flex flex-col gap-xs px-lg bg-alpha-1 py-md",

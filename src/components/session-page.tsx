@@ -162,7 +162,7 @@ import {preloadErrorRecoveryActions} from "./error-recovery-actions-entry";
 import {handleBtwPrompt} from "./btw-prompt";
 import {useSideChatShortcut} from "./use-side-chat-shortcut";
 import {useToast} from "./toast-context";
-import {CHAT_COLUMN_CLASS, transcriptWidthStyle} from "../lib/transcript-width";
+import {transcriptWidthStyle} from "../lib/transcript-width";
 import {useChatStream} from "../hooks/use-chat-stream";
 import {promptHistoryQueryOptions} from "../lib/api/prompt-history";
 import {useShortcutKeys} from "../hooks/use-shortcut";
@@ -314,6 +314,9 @@ import {compactActionState} from "../lib/compact-action";
 import {TerminalWritesTipProvider} from "./terminal-writes-tip";
 import {TurnMarkOutlet, TurnMarkOutletProvider} from "./turn-mark-outlet";
 import {TurnPlanBoxCard} from "./turn-plan-box";
+import {TranscriptAfterRows} from "./transcript-after-rows";
+import {TailActionsOutletContext} from "./tail-actions-context";
+import {createTailActionsOutlet} from "../lib/tail-actions-outlet";
 import {useTurnMarkStore} from "./turn-mark-context";
 import {markedRowBelowTailSlot} from "../lib/turn-mark-outlet";
 import {usePlanExitHold} from "../lib/plan-exit-hold";
@@ -2544,6 +2547,29 @@ function SessionView({
 		() => (lineAfterTranscript ? null : workingLine(true)),
 		[lineAfterTranscript, workingLine],
 	);
+	const [tailActions] = useState(createTailActionsOutlet);
+	// An inline card in the trailing slot: the working line moves into the tail chrome below it.
+	const cardsShown =
+		approvalPresentation === "card" &&
+		((shownPermission !== null && permissionKey !== null) ||
+			headPlanCard !== null ||
+			(headKind === "hook-question" && hookQuestion !== null && hookQuestion !== undefined));
+	// Upstream's tail chrome (`si`): the outlet and a quiet working line share one grid cell below the card or plan box.
+	const tailChrome = lineAfterTranscript ? (
+		lineBelowTailSlot ? (
+			<div
+				className={`grid grid-cols-[minmax(0,1fr)] gap-y-[var(--chat-turn-gap,15px)] [&>*]:min-w-0 [&>:empty]:invisible [&>:empty]:[grid-area:1/1] [&>[data-quiet]]:[grid-area:1/1] [&>[data-turn-mark-outlet]]:[grid-area:1/1]${planHolds ? " [&>[data-turn-working=true]:not(.invisible)]:[grid-area:1/1] [&:has(>[data-turn-working=true]:not(.invisible))>[data-turn-mark-outlet]]:invisible" : ""}`}
+			>
+				{markedRow !== false && <TurnMarkOutlet className="empty:hidden" underPlan={markedRow === "plan"} />}
+				{workingLine(false, true)}
+			</div>
+		) : cardsShown ? (
+			workingLine(false)
+		) : undefined
+	) : undefined;
+	// Upstream's cluster column (`flex w-full flex-col gap-[var(--chat-turn-gap)]`); with no chrome below, the cards
+	// end on the 16px the transcript list ends with.
+	const clusterClass = `flex w-full flex-col gap-[var(--chat-turn-gap)]${cardsShown && tailChrome === undefined ? " pb-4" : ""}`;
 
 	return (
 		<TerminalWritesTipProvider enableWrites={enableTerminalWrites}>
@@ -3076,115 +3102,130 @@ function SessionView({
 														>
 															<TurnUndoSendContext.Provider value={turnUndoSend}>
 																<TranscriptTailContext.Provider value={transcriptTail}>
-																	<FindLoadRestContext.Provider
-																		value={loadRestForFind}
+																	<TailActionsOutletContext.Provider
+																		value={tailActions}
 																	>
-																		<LiveStatusSourcesProvider
-																			value={liveStatusSources}
+																		<FindLoadRestContext.Provider
+																			value={loadRestForFind}
 																		>
-																			<TranscriptRevisionContext.Provider
-																				value={transcript.records.length}
+																			<LiveStatusSourcesProvider
+																				value={liveStatusSources}
 																			>
-																				<SessionChat
-																					sessionId={sessionId}
-																					lines={processed.lines}
-																					measurementSource={
-																						transcript.records
-																					}
-																					measurementLayout={JSON.stringify([
-																						settings.showDebug,
-																						settings.interfaceFont,
-																						settings.transcriptTextSize,
-																						settings.codeFont,
-																						settings.transcriptWidth,
-																					])}
-																					toolResultMap={
-																						processed.toolResultMap
-																					}
-																					rewindCuts={
-																						chainProcessed.cutsByReplacement
-																					}
-																					rewoundUuids={hiddenUuids}
-																					allowedImageRoots={data.imageRoots}
-																					subagents={subagents}
-																					{...(workflowRuns === undefined
-																						? null
-																						:
+																				<TranscriptRevisionContext.Provider
+																					value={transcript.records.length}
+																				>
+																					<SessionChat
+																						sessionId={sessionId}
+																						lines={processed.lines}
+																						measurementSource={
+																							transcript.records
+																						}
+																						measurementLayout={JSON.stringify(
+																							[
+																								settings.showDebug,
+																								settings.interfaceFont,
+																								settings.transcriptTextSize,
+																								settings.codeFont,
+																								settings.transcriptWidth,
+																							],
+																						)}
+																						toolResultMap={
+																							processed.toolResultMap
+																						}
+																						rewindCuts={
+																							chainProcessed.cutsByReplacement
+																						}
+																						rewoundUuids={hiddenUuids}
+																						allowedImageRoots={
+																							data.imageRoots
+																						}
+																						subagents={subagents}
+																						{...(workflowRuns === undefined
+																							? null
+																							:
+																								{
+																									workflowRuns,
+																								})}
+																						showThinking={
+																							transcriptFlags.showThinking
+																						}
+																						showTools={
+																							transcriptFlags.showTools
+																						}
+																						showPassedHooks={
+																							transcriptFlags.showPassedHooks
+																						}
+																						showHookWarnings={
+																							transcriptFlags.showHookWarnings
+																						}
+																						showHookErrors={
+																							transcriptFlags.showHookErrors
+																						}
+																						showSystemBanners={
+																							transcriptFlags.showSystemBanners
+																						}
+																						showCompactSummaries={
+																							transcriptFlags.showCompactSummaries
+																						}
+																						showTranscriptOnly={
+																							transcriptFlags.showTranscriptOnly
+																						}
+																						transcriptMode={transcriptMode}
+																						sessionLive={sessionProcessLive(
 																							{
-																								workflowRuns,
-																							})}
-																					showThinking={
-																						transcriptFlags.showThinking
-																					}
-																					showTools={
-																						transcriptFlags.showTools
-																					}
-																					showPassedHooks={
-																						transcriptFlags.showPassedHooks
-																					}
-																					showHookWarnings={
-																						transcriptFlags.showHookWarnings
-																					}
-																					showHookErrors={
-																						transcriptFlags.showHookErrors
-																					}
-																					showSystemBanners={
-																						transcriptFlags.showSystemBanners
-																					}
-																					showCompactSummaries={
-																						transcriptFlags.showCompactSummaries
-																					}
-																					showTranscriptOnly={
-																						transcriptFlags.showTranscriptOnly
-																					}
-																					transcriptMode={transcriptMode}
-																					sessionLive={sessionProcessLive(
-																						{
-																							hookActive: isActive,
-																							summaryState:
-																								sessionSummaryState,
-																						},
-																					)}
-																					turnInProgress={
-																						workingMarkerState.status !==
-																						"idle"
-																					}
-																					archived={data.archived}
-																					permissionWaitToolUseId={
-																						permissionWaitId
-																					}
-																					queuedCallIds={queuedCallIds}
-																					onSendNow={requestSendNowInterrupt}
-																					onFocusComposer={
-																						focusSessionComposer
-																					}
-																					sideChatAvailable={true}
-																					initialScrollKey={initialScrollKey}
-																					scrollContentRef={scrollAnchorRef}
-																					shouldScrollToEnd={
-																						restoredScrollPosition ===
+																								hookActive: isActive,
+																								summaryState:
+																									sessionSummaryState,
+																							},
+																						)}
+																						turnInProgress={
+																							workingMarkerState.status !==
+																							"idle"
+																						}
+																						archived={data.archived}
+																						permissionWaitToolUseId={
+																							permissionWaitId
+																						}
+																						queuedCallIds={queuedCallIds}
+																						onSendNow={
+																							requestSendNowInterrupt
+																						}
+																						onFocusComposer={
+																							focusSessionComposer
+																						}
+																						sideChatAvailable={true}
+																						initialScrollKey={
+																							initialScrollKey
+																						}
+																						scrollContentRef={
+																							scrollAnchorRef
+																						}
+																						shouldScrollToEnd={
+																							restoredScrollPosition ===
+																								undefined &&
+																							locationHash === ""
+																						}
+																						summary={aiSummary}
+																						{...(slashCommands === undefined
+																							? {}
+																							:
+																								{
+																									slashCommands,
+																								})}
+																						{...(errorRecovery !==
 																							undefined &&
-																						locationHash === ""
-																					}
-																					summary={aiSummary}
-																					{...(slashCommands === undefined
-																						? {}
-																						:
-																							{
-																								slashCommands,
-																							})}
-																					{...(errorRecovery !== undefined &&
-																					{
-																						errorRecovery,
-																					})}
-																					staleCompact={staleCompact}
-																					renderClientRowCard={
-																						renderClientRowCard
-																					}
-																				/>
-																			</TranscriptRevisionContext.Provider>
-																		</LiveStatusSourcesProvider>
-																	</FindLoadRestContext.Provider>
+																						{
+																							errorRecovery,
+																						})}
+																						staleCompact={staleCompact}
+																						renderClientRowCard={
+																							renderClientRowCard
+																						}
+																					/>
+																				</TranscriptRevisionContext.Provider>
+																			</LiveStatusSourcesProvider>
+																		</FindLoadRestContext.Provider>
+																	</TailActionsOutletContext.Provider>
 																</TranscriptTailContext.Provider>
 															</TurnUndoSendContext.Provider>
 														</TranscriptActionsProvider>
@@ -3198,139 +3239,6 @@ function SessionView({
 											text={permissionArrivalText}
 											cardRef={inlinePermissionRef}
 										/>
-										{/* Upstream's approval slot: a keyboard-answered card hands focus to the next card or the composer */}
-										<ApprovalClusterHost>
-											<ApprovalSlot sessionId={sessionId} {...approvalSlotCard}>
-												{/* Upstream draws every pending approval inline; a permission prompt is not on disk, so it follows the transcript */}
-												{shownPermission && permissionKey !== null && (
-													<div
-														ref={inlinePermissionRef}
-														data-inline-permission=""
-														// Upstream portals the card into its `transcript-tail-slot`, which in-app Find skips.
-														data-find-omitted=""
-														// Upstream's tail chrome pads the 15px under a card that holds the tail.
-														className={
-															approvalPresentation === "dock"
-																? "contents"
-																: `${CHAT_COLUMN_CLASS}${cardHoldsTail ? "" : " pb-4"} empty:hidden`
-														}
-													>
-														<SessionBackgroundTasksOpener
-															sessionId={sessionId}
-															running={runningBackgroundLaunches}
-														>
-															<DeferredSessionPermissionCard
-																key={permissionKey}
-																enterKey={permissionKey}
-																sessionId={sessionId}
-																answerKey={permissionKey}
-																title={shownPermission.title}
-																detail={shownPermission.detail}
-																detailLang={shownPermission.detailLang ?? null}
-																clampTitle={shownPermission.clampTitle === true}
-																detailNote={shownPermission.detailNote ?? null}
-																description={shownPermission.description ?? null}
-																tokenWarning={shownPermission.tokenWarning === true}
-																detailFirst={shownPermission.detailFirst === true}
-																rows={shownPermission.rows ?? null}
-																rowsTrail={shownPermission.rowsTrail === true}
-																rowsGate={shownPermission.rowsGate === true}
-																rowsGateStrict={shownPermission.rowsGateStrict === true}
-																detailReadGate={shownPermission.detailReadGate ?? null}
-																perUseOnly={shownPermission.perUseOnly === true}
-																clickOnly={shownPermission.clickOnly === true}
-																fileChange={shownPermission.fileChange ?? null}
-																folds={shownPermission.folds ?? null}
-																toolName={shownPermission.toolName ?? null}
-																toolInput={shownPermission.toolInput ?? null}
-																canAnswer={permissionCanAnswer}
-																// The CLI can refuse an early Enter, so the elicitation's ElicitationResult clears its card.
-																hideOnDecision={!answersElicitation}
-																persistentAllow={
-																	shownPermission.persistentAllow ?? null
-																}
-																persistentAllowSaves={
-																	shownPermission.persistentAllowSaves ?? null
-																}
-																dialog={permissionDialog}
-																autoSwitch={permissionAutoSwitch}
-																onDecision={answerPermission}
-																presentation={approvalPresentation}
-																queueDepth={queueDepth}
-																footer={
-																	<Suspense fallback={null}>
-																		<ToolApprovalNotifyTip sessionId={sessionId} />
-																	</Suspense>
-																}
-															/>
-														</SessionBackgroundTasksOpener>
-													</div>
-												)}
-												{/* Upstream draws a pending plan's approval as its own sticky card after the transcript, whether
-							    the record is on disk or only the hooks carry it yet */}
-												{headPlanCard !== null && (
-													<DeferredInlinePlanApproval
-														key={headPlanCard.toolUseId}
-														toolUseId={headPlanCard.toolUseId}
-														planText={headPlanCard.planText}
-														plan={planApprovalCtx}
-														presentation={approvalPresentation}
-														queueDepth={queueDepth}
-													/>
-												)}
-												{/* Until the question's record is on disk, its hook copy is drawn inline at the transcript's end */}
-												{headKind === "hook-question" && hookQuestion && (
-													<div
-														data-hook-question=""
-														className={
-															approvalPresentation === "dock"
-																? "contents"
-																: `${CHAT_COLUMN_CLASS} pb-4`
-														}
-													>
-														<QuestionCard
-															key={hookQuestion.toolUseId}
-															draftKey={hookQuestion.toolUseId}
-															questions={hookQuestion.questions}
-															onSubmit={
-																answerRoute === "live-pane"
-																	? answerHookQuestion
-																	: undefined
-															}
-															sessionId={sessionId}
-															presentation={approvalPresentation}
-															queueDepth={queueDepth}
-														/>
-													</div>
-												)}
-											</ApprovalSlot>
-											{/* Upstream's "Also waiting": the requests queued behind the inline head card */}
-											{approvalPresentation === "card" && approvalQueue.queued.length > 0 && (
-												<div data-find-omitted="" className={`${CHAT_COLUMN_CLASS} pb-4`}>
-													<ApprovalAlsoWaiting
-														queued={approvalQueue.queued}
-														presentation={approvalPresentation}
-													/>
-												</div>
-											)}
-											{/* Docked, the transcript's pending question leaves its row for the cluster */}
-											{approvalPresentation === "dock" &&
-												transcriptQuestionId !== null &&
-												pendingQuestion !== null && (
-													<Fragment key={transcriptQuestionId}>
-														{pendingQuestionCard(
-															{
-																toolUseId: transcriptQuestionId,
-																questions: pendingQuestion.questions,
-																ctx: askUserQuestionCtx,
-																sent: transcriptQuestionSent,
-																presentation: "dock",
-																queueDepth,
-															},
-														)}
-													</Fragment>
-												)}
-										</ApprovalClusterHost>
 										{(chatStream.state.isStreaming || chatStream.state.isComplete) && (
 											<StreamingMessage
 												text={chatStream.state.text}
@@ -3384,48 +3292,199 @@ function SessionView({
 											/>
 										)}
 
-										{shownPlan.todos !== null && (
-											// Upstream's tail slot (`transcript-tail-slot`), which the turn box portals into.
-											<div
-												data-testid="transcript-tail-slot"
-												data-find-omitted=""
-												className={`${CHAT_COLUMN_CLASS} w-full empty:hidden`}
-											>
-												<TurnPlanBoxCard
-													sessionId={sessionId}
-													todos={shownPlan.todos}
-													closing={shownPlan.closing}
-													stale={planBox?.stale ?? false}
-													working={planBox?.working ?? false}
-													parked={compactInFlight}
-													agentsRunning={planState.agentsRunning}
-													isResponding={turnResponding}
-												/>
-											</div>
-										)}
-										{lineAfterTranscript &&
-											(lineBelowTailSlot ? (
-												// Upstream's tail chrome (`si`): the outlet and a quiet working line share one grid cell.
-												<div
-													data-transcript-tail-chrome=""
-													data-find-omitted=""
-													className={`${CHAT_COLUMN_CLASS} flex w-full flex-col gap-[var(--chat-turn-gap)] pt-[var(--chat-turn-gap)] empty:hidden`}
-												>
+										{/* Upstream's after-rows block (`w8`): the sticky approval cards, the tail turn and the tail chrome */}
+										<TranscriptAfterRows
+											cards={
+												// Upstream's approval slot: a keyboard-answered card hands focus to the next card or the composer
+												<ApprovalClusterHost>
+													{/* Upstream's cluster column; the list's own bottom padding stands in for its turn-gap top */}
 													<div
-														className={`grid grid-cols-[minmax(0,1fr)] gap-y-[var(--chat-turn-gap,15px)] [&>*]:min-w-0 [&>:empty]:invisible [&>:empty]:[grid-area:1/1] [&>[data-quiet]]:[grid-area:1/1] [&>[data-turn-mark-outlet]]:[grid-area:1/1]${planHolds ? " [&>[data-turn-working=true]:not(.invisible)]:[grid-area:1/1] [&:has(>[data-turn-working=true]:not(.invisible))>[data-turn-mark-outlet]]:invisible" : ""}`}
+														className={
+															approvalPresentation === "dock" ? "contents" : clusterClass
+														}
 													>
-														{markedRow !== false && (
-															<TurnMarkOutlet
-																className="empty:hidden"
-																underPlan={markedRow === "plan"}
-															/>
-														)}
-														{workingLine(false, true)}
+														<ApprovalSlot sessionId={sessionId} {...approvalSlotCard}>
+															{/* Upstream draws every pending approval inline; a permission prompt is not on disk, so it follows the transcript */}
+															{shownPermission && permissionKey !== null && (
+																<div
+																	ref={inlinePermissionRef}
+																	data-inline-permission=""
+																	// Upstream portals the card into its `transcript-tail-slot`, which in-app Find skips.
+																	data-find-omitted=""
+																	// Upstream's tail chrome pads the 15px under a card that holds the tail.
+																	// The trailing slot carries the chat column; the cluster spaces the cards.
+																	className={
+																		approvalPresentation === "dock"
+																			? "contents"
+																			: "empty:hidden"
+																	}
+																>
+																	<SessionBackgroundTasksOpener
+																		sessionId={sessionId}
+																		running={runningBackgroundLaunches}
+																	>
+																		<DeferredSessionPermissionCard
+																			key={permissionKey}
+																			enterKey={permissionKey}
+																			sessionId={sessionId}
+																			answerKey={permissionKey}
+																			title={shownPermission.title}
+																			detail={shownPermission.detail}
+																			detailLang={
+																				shownPermission.detailLang ?? null
+																			}
+																			clampTitle={
+																				shownPermission.clampTitle === true
+																			}
+																			detailNote={
+																				shownPermission.detailNote ?? null
+																			}
+																			description={
+																				shownPermission.description ?? null
+																			}
+																			tokenWarning={
+																				shownPermission.tokenWarning === true
+																			}
+																			detailFirst={
+																				shownPermission.detailFirst === true
+																			}
+																			rows={shownPermission.rows ?? null}
+																			rowsTrail={
+																				shownPermission.rowsTrail === true
+																			}
+																			rowsGate={shownPermission.rowsGate === true}
+																			rowsGateStrict={
+																				shownPermission.rowsGateStrict === true
+																			}
+																			detailReadGate={
+																				shownPermission.detailReadGate ?? null
+																			}
+																			perUseOnly={
+																				shownPermission.perUseOnly === true
+																			}
+																			clickOnly={
+																				shownPermission.clickOnly === true
+																			}
+																			fileChange={
+																				shownPermission.fileChange ?? null
+																			}
+																			folds={shownPermission.folds ?? null}
+																			toolName={shownPermission.toolName ?? null}
+																			toolInput={
+																				shownPermission.toolInput ?? null
+																			}
+																			canAnswer={permissionCanAnswer}
+																			// The CLI can refuse an early Enter, so the elicitation's ElicitationResult clears its card.
+																			hideOnDecision={!answersElicitation}
+																			persistentAllow={
+																				shownPermission.persistentAllow ?? null
+																			}
+																			persistentAllowSaves={
+																				shownPermission.persistentAllowSaves ??
+																				null
+																			}
+																			dialog={permissionDialog}
+																			autoSwitch={permissionAutoSwitch}
+																			onDecision={answerPermission}
+																			presentation={approvalPresentation}
+																			queueDepth={queueDepth}
+																			footer={
+																				<Suspense fallback={null}>
+																					<ToolApprovalNotifyTip
+																						sessionId={sessionId}
+																					/>
+																				</Suspense>
+																			}
+																		/>
+																	</SessionBackgroundTasksOpener>
+																</div>
+															)}
+															{/* Upstream draws a pending plan's approval as its own card in the sticky trailing slot, whether
+										    the record is on disk or only the hooks carry it yet */}
+															{headPlanCard !== null && (
+																<DeferredInlinePlanApproval
+																	key={headPlanCard.toolUseId}
+																	toolUseId={headPlanCard.toolUseId}
+																	planText={headPlanCard.planText}
+																	plan={planApprovalCtx}
+																	presentation={approvalPresentation}
+																	queueDepth={queueDepth}
+																/>
+															)}
+															{/* Until the question's record is on disk, its hook copy is drawn inline at the transcript's end */}
+															{headKind === "hook-question" && hookQuestion && (
+																<div
+																	data-hook-question=""
+																	className={
+																		approvalPresentation === "dock"
+																			? "contents"
+																			: undefined
+																	}
+																>
+																	<QuestionCard
+																		key={hookQuestion.toolUseId}
+																		draftKey={hookQuestion.toolUseId}
+																		questions={hookQuestion.questions}
+																		onSubmit={
+																			answerRoute === "live-pane"
+																				? answerHookQuestion
+																				: undefined
+																		}
+																		sessionId={sessionId}
+																		presentation={approvalPresentation}
+																		queueDepth={queueDepth}
+																	/>
+																</div>
+															)}
+														</ApprovalSlot>
+														{/* Upstream's "Also waiting": the requests queued behind the inline head card */}
+														{approvalPresentation === "card" &&
+															approvalQueue.queued.length > 0 && (
+																<div data-find-omitted="">
+																	<ApprovalAlsoWaiting
+																		queued={approvalQueue.queued}
+																		presentation={approvalPresentation}
+																	/>
+																</div>
+															)}
+														{/* Docked, the transcript's pending question leaves its row for the cluster */}
+														{approvalPresentation === "dock" &&
+															transcriptQuestionId !== null &&
+															pendingQuestion !== null && (
+																<Fragment key={transcriptQuestionId}>
+																	{pendingQuestionCard(
+																		{
+																			toolUseId: transcriptQuestionId,
+																			questions: pendingQuestion.questions,
+																			ctx: askUserQuestionCtx,
+																			sent: transcriptQuestionSent,
+																			presentation: "dock",
+																			queueDepth,
+																		},
+																	)}
+																</Fragment>
+															)}
 													</div>
-												</div>
-											) : (
-												workingLine(false)
-											))}
+												</ApprovalClusterHost>
+											}
+											turnBox={
+												shownPlan.todos === null ? undefined : (
+													<TurnPlanBoxCard
+														sessionId={sessionId}
+														todos={shownPlan.todos}
+														closing={shownPlan.closing}
+														stale={planBox?.stale ?? false}
+														working={planBox?.working ?? false}
+														parked={compactInFlight}
+														agentsRunning={planState.agentsRunning}
+														isResponding={turnResponding}
+													/>
+												)
+											}
+											actionsOutletRef={tailActions.set}
+											chrome={tailChrome}
+										/>
+										{lineAfterTranscript && tailChrome === undefined && workingLine(false)}
 
 										<SideChat sessionId={sessionId} messageCount={data.messageCount} />
 									</div>
