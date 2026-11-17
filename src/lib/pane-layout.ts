@@ -909,6 +909,24 @@ export function collapsePane(state: PaneLayoutState): PaneLayoutState
 }
 
 /**
+ * The titlebar/shortcut toggle (upstream `toggleSidePane`, c03935b01): opens a
+ * closed pane, and closes an open one unless a different pane is expanded, in
+ * which case only the expansion collapses (its `H(n)` / `U(n, e)` branch) and
+ * the toggled pane stays open. `open` lets the host open with its remembered
+ * flex and fit.
+ */
+export function togglePane(
+	state: PaneLayoutState,
+	kind: PaneKind,
+	open: (state: PaneLayoutState) => PaneLayoutState = (current) => openPane(current, kind),
+): PaneLayoutState
+{
+	if (!isOpen(state, kind)) return open(state);
+	if (state.expanded !== null && state.expanded !== kind) return collapsePane(state);
+	return closePane(state, kind);
+}
+
+/**
  * The layout a phone shows: a saved layout with more than one side column
  * (from desktop) can't fit below 640px, so its panes stack in tree order in
  * one side column beside the chat, the shape opening them fresh on a phone

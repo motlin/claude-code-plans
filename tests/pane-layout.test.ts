@@ -44,6 +44,7 @@ import
 	saveChangesScope,
 	savePaneLayout,
 	saveSubagentPaneAgent,
+	togglePane,
 	updatePhoneView,
 } from "../src/lib/pane-layout";
 
@@ -1676,6 +1677,48 @@ describe("fitPhoneLayout", () =>
 		expect(
 			[ONE_PANE, TWO_PANES, defaultPaneLayout()].map((state) => fitPhoneLayout(state) === state),
 		).toStrictEqual([true, true, true]);
+	});
+});
+
+describe("togglePane", () =>
+{
+	it("collapses another pane's expansion instead of closing the toggled pane, as upstream toggleSidePane", () =>
+	{
+		expect(
+			{
+				otherExpanded: togglePane(expandPane(TWO_PANES, "background-tasks"), "changes"),
+				selfExpanded: togglePane(expandPane(TWO_PANES, "changes"), "changes"),
+				open: togglePane(TWO_PANES, "changes"),
+				closed: togglePane(ONE_PANE, "files"),
+				closedWhileExpanded: togglePane(expandPane(ONE_PANE, "background-tasks"), "files"),
+				phone: updatePhoneView(THREE_PANES, (state) =>
+					togglePane(expandPane(state, "background-tasks"), "changes"),
+				),
+			},
+		).toStrictEqual(
+			{
+				otherExpanded:
+				{
+					...TWO_PANES,
+					expanded: null,
+					focused: "background-tasks",
+				},
+				selfExpanded: closePane(expandPane(TWO_PANES, "changes"), "changes"),
+				open: closePane(TWO_PANES, "changes"),
+				closed: openPane(ONE_PANE, "files"),
+				closedWhileExpanded:
+				{
+					...openPane(expandPane(ONE_PANE, "background-tasks"), "files"),
+					expanded: null,
+				},
+				phone:
+				{
+					...THREE_PANES,
+					expanded: null,
+					focused: "background-tasks",
+				},
+			},
+		);
 	});
 });
 

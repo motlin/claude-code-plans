@@ -54,6 +54,7 @@ import
 	savePaneLayout,
 	tileFloor,
 	tileShellEdges,
+	togglePane,
 	updatePhoneView,
 	type Direction,
 	type LayoutNode,
@@ -1831,11 +1832,7 @@ export function TileHost({
 			togglePane: (kind) =>
 			{
 				const widthPx = fitWidth();
-				update((state) =>
-					tileIdsOf(state.root).includes(kind)
-						? closePane(state, kind)
-						: openWithMemory(kind, widthPx)(state),
-				);
+				update((state) => togglePane(state, kind, openWithMemory(kind, widthPx)));
 			},
 		}),
 		[layout, openKinds, update, fitWidth],

@@ -1823,6 +1823,66 @@ describe("TileHost", () =>
 		]);
 	});
 
+	it("un-expands the other pane instead of closing the toggled one, as upstream toggleSidePane", () =>
+	{
+		const unregisterFiles = registerPane(
+			"files",
+			{
+				title: "Files",
+				render: () => <p>Files body</p>,
+			},
+		);
+		render(
+			<TileHost sessionId="session-toggle" onExpandWithoutPane={vi.fn<() => void>()}>
+				<ChatContent />
+				<FilesOpener />
+			</TileHost>,
+		);
+		// The chat tile is inert and unnamed under the overlay; ⌃⇧D and the titlebar reach togglePane from outside it.
+		const toggleFiles = screen.getByRole(
+			"button",
+			{
+				name: "Toggle files",
+			},
+		);
+		fireEvent.click(toggleFiles);
+		openTestPane();
+		fireEvent.click(
+			within(
+				screen.getByRole(
+					"region",
+					{
+						name: "Test pane",
+					},
+				),
+			).getByRole(
+				"button",
+				{
+					name: "Expand",
+				},
+			),
+		);
+		const expanded = document.querySelector("[data-pane-overlay] [data-pane-root]")?.getAttribute("aria-label");
+		fireEvent.click(toggleFiles);
+		const panes = [...document.querySelectorAll("[data-pane-root]")].map((pane) => pane.getAttribute("aria-label"));
+		const overlay = document.querySelector("[data-pane-overlay]") !== null;
+		unregisterFiles();
+
+		expect(
+			{
+				expanded,
+				panes,
+				overlay,
+			},
+		).toStrictEqual(
+			{
+				expanded: "Test pane",
+				panes: ["Files", "Test pane"],
+				overlay: false,
+			},
+		);
+	});
+
 	it("keeps the default 2:3 split when the chat already has 320px at 1272", () =>
 	{
 		expect(savedFlexesAfterOpeningFiles(1272)).toStrictEqual([
